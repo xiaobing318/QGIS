@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsprocessinghelpeditorwidget.h"
-#include "moc_qgsprocessinghelpeditorwidget.cpp"
 #include "qgsprocessingmodelalgorithm.h"
 #include "qgsgui.h"
 #include <QTreeWidgetItem>
@@ -111,7 +110,7 @@ void QgsProcessingHelpEditorWidget::setAlgorithm( const QgsProcessingAlgorithm *
   const QList< const QgsProcessingParameterDefinition * > definitions = mAlgorithm->parameterDefinitions();
   for ( const QgsProcessingParameterDefinition *definition : definitions )
   {
-    if ( definition->flags() & Qgis::ProcessingParameterFlag::Hidden || definition->isDestination() )
+    if ( definition->flags() & QgsProcessingParameterDefinition::FlagHidden || definition->isDestination() )
       continue;
 
     parametersItem->addChild( new QgsProcessingHelpEditorTreeItem( definition->name(), definition->description() ) );

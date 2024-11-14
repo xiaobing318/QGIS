@@ -27,8 +27,8 @@
 #include "qgssettings.h"
 #include "qgsvectorlayer.h"
 #include "qgswkbtypes.h"
+#include "qgsmapmouseevent.h"
 #include "testqgsmaptoolutils.h"
-#include "qgssettingsregistrycore.h"
 
 bool operator==( const QgsGeometry &g1, const QgsGeometry &g2 )
 {
@@ -78,7 +78,6 @@ class TestQgsMapToolAddFeatureLine : public QObject
     void testStreamTolerance();
     void testWithTopologicalEditingDifferentCanvasCrs();
     void testWithTopologicalEditingWIthDiffLayerWithDiffCrs();
-    void testWithTopologicalEditingWithMoreThanOneLayer();
 
   private:
     QgisApp *mQgisApp = nullptr;
@@ -95,13 +94,8 @@ class TestQgsMapToolAddFeatureLine : public QObject
     QgsVectorLayer *mLayerSelfSnapLine = nullptr;
     QgsVectorLayer *mLayerCRS3946Line = nullptr;
     QgsVectorLayer *mLayerCRS3945Line = nullptr;
-    QgsVectorLayer *mLayerTopo1 = nullptr;
-    QgsVectorLayer *mLayerTopo2 = nullptr;
-    QgsVectorLayer *mLayerTopo3 = nullptr;
     QgsFeatureId mFidLineF1 = 0;
     QgsFeatureId mFidCurvedF1 = 0;
-    QgsFeatureId mFidTopoLineF1 = 0;
-    QgsFeatureId mFidTopoLineF2 = 0;
 };
 
 TestQgsMapToolAddFeatureLine::TestQgsMapToolAddFeatureLine() = default;
@@ -234,44 +228,8 @@ void TestQgsMapToolAddFeatureLine::initTestCase()
   QgsProject::instance()->addMapLayers( QList<QgsMapLayer *>() << mLayerCRS3945Line );
   mLayerCRS3945Line->startEditing();
 
-  // make layers with overlapping features to test topo editing
-  mLayerTopo1 = new QgsVectorLayer( QStringLiteral( "LineString?crs=EPSG:27700" ), QStringLiteral( "layer line topo1" ), QStringLiteral( "memory" ) );
-  QVERIFY( mLayerTopo1 ->isValid() );
-  QgsProject::instance()->addMapLayers( QList<QgsMapLayer *>() << mLayerTopo1 );
-  mLayerTopo1->startEditing();
-
-  QgsFeature topoLineF1;
-  topoLineF1.setGeometry( QgsGeometry::fromWkt( "LineString (1 6, 1 7, 2 7, 2 6)" ) );
-
-  mLayerTopo1->addFeature( topoLineF1 );
-  mFidTopoLineF1 = topoLineF1.id();
-  QCOMPARE( mLayerTopo1->featureCount(), ( long )1 );
-
-  // just one added feature
-  QCOMPARE( mLayerTopo1->undoStack()->index(), 1 );
-
-  mLayerTopo2 = new QgsVectorLayer( QStringLiteral( "LineString?crs=EPSG:27700" ), QStringLiteral( "layer line topo2" ), QStringLiteral( "memory" ) );
-  QVERIFY( mLayerTopo2 ->isValid() );
-  QgsProject::instance()->addMapLayers( QList<QgsMapLayer *>() << mLayerTopo2 );
-  mLayerTopo2->startEditing();
-
-  QgsFeature topoLineF2;
-  topoLineF2.setGeometry( QgsGeometry::fromWkt( "LineString (0 7, 3 7)" ) );
-
-  mLayerTopo2->addFeature( topoLineF2 );
-  mFidTopoLineF2 = topoLineF2.id();
-  QCOMPARE( mLayerTopo2->featureCount(), ( long )1 );
-
-  // just one added feature
-  QCOMPARE( mLayerTopo2->undoStack()->index(), 1 );
-
-  mLayerTopo3 = new QgsVectorLayer( QStringLiteral( "LineString?crs=EPSG:27700" ), QStringLiteral( "layer line topo3" ), QStringLiteral( "memory" ) );
-  QVERIFY( mLayerTopo3 ->isValid() );
-  mLayerTopo3->startEditing();
-  QgsProject::instance()->addMapLayers( QList<QgsMapLayer *>() << mLayerTopo3 );
-
   // add layers to canvas
-  mCanvas->setLayers( QList<QgsMapLayer *>() << mLayerLine << mLayerLineCurved << mLayerLineCurvedOffset << mLayerLineZ << mLayerLine2D << mLayerSelfSnapLine << mLayerCRS3946Line << mLayerCRS3945Line << mLayerTopo1 << mLayerTopo2 );
+  mCanvas->setLayers( QList<QgsMapLayer *>() << mLayerLine << mLayerLineCurved << mLayerLineCurvedOffset << mLayerLineZ << mLayerLine2D << mLayerSelfSnapLine << mLayerCRS3946Line << mLayerCRS3945Line );
   mCanvas->setSnappingUtils( new QgsMapCanvasSnappingUtils( mCanvas, this ) );
 
   // create the tool
@@ -313,7 +271,7 @@ void TestQgsMapToolAddFeatureLine::testNoTracing()
   QgsFeatureId newFid = utils.newFeatureId( oldFids );
 
   QCOMPARE( mLayerLine->undoStack()->index(), 2 );
-  QCOMPARE( mLayerLine->getFeature( newFid ).geometry(), QgsGeometry::fromWkt( "CompoundCurve ((1 1, 3 2))" ) );
+  QCOMPARE( mLayerLine->getFeature( newFid ).geometry(), QgsGeometry::fromWkt( "LineString ((1 1, 3 2))" ) );
 
   mLayerLine->undoStack()->undo();
   QCOMPARE( mLayerLine->undoStack()->index(), 1 );
@@ -375,7 +333,7 @@ void TestQgsMapToolAddFeatureLine::testTracing()
   const QgsFeatureId newFid = utils.newFeatureId( oldFids );
 
   QCOMPARE( mLayerLine->undoStack()->index(), 2 );
-  QCOMPARE( mLayerLine->getFeature( newFid ).geometry(), QgsGeometry::fromWkt( "CompoundCurve ((1 1, 2 1, 3 2))" ) );
+  QCOMPARE( mLayerLine->getFeature( newFid ).geometry(), QgsGeometry::fromWkt( "LineString(1 1, 2 1, 3 2)" ) );
 
   mLayerLine->undoStack()->undo();
 
@@ -393,7 +351,7 @@ void TestQgsMapToolAddFeatureLine::testTracing()
   const QgsFeatureId newFid2 = utils.newFeatureId( oldFids );
 
   QCOMPARE( mLayerLine->undoStack()->index(), 2 );
-  QCOMPARE( mLayerLine->getFeature( newFid2 ).geometry(), QgsGeometry::fromWkt( "CompoundCurve ((0 2, 1 1, 2 1, 3 2, 4 1))" ) );
+  QCOMPARE( mLayerLine->getFeature( newFid2 ).geometry(), QgsGeometry::fromWkt( "LineString(0 2, 1 1, 2 1, 3 2, 4 1)" ) );
 
   mLayerLine->undoStack()->undo();
 
@@ -433,7 +391,7 @@ void TestQgsMapToolAddFeatureLine::testTracingWithTransform()
   const QgsFeatureId newFid = utils.newFeatureId( oldFids );
 
   QCOMPARE( lineLayer3857->undoStack()->index(), 1 );
-  QCOMPARE( lineLayer3857->getFeature( newFid ).geometry().asWkt( -3 ), QStringLiteral( "CompoundCurve ((-841000 6406000, -841000 6406000, -841000 6406000))" ) );
+  QCOMPARE( lineLayer3857->getFeature( newFid ).geometry().asWkt( -3 ), QStringLiteral( "LineString (-841000 6406000, -841000 6406000, -841000 6406000)" ) );
 
   lineLayer3857->undoStack()->undo();
 
@@ -451,7 +409,7 @@ void TestQgsMapToolAddFeatureLine::testTracingWithTransform()
   const QgsFeatureId newFid2 = utils.newFeatureId( oldFids );
 
   QCOMPARE( lineLayer3857->undoStack()->index(), 1 );
-  QCOMPARE( lineLayer3857->getFeature( newFid2 ).geometry().asWkt( -3 ), QStringLiteral( "CompoundCurve ((-841000 6406000, -841000 6406000),(-841000 6406000, -841000 6406000, -841000 6406000),(-841000 6406000, -841000 6406000))" ) );
+  QCOMPARE( lineLayer3857->getFeature( newFid2 ).geometry().asWkt( -3 ), QStringLiteral( "LineString (-841000 6406000, -841000 6406000, -841000 6406000, -841000 6406000, -841000 6406000, -841000 6406000)" ) );
 
   mEnableTracingAction->setChecked( false );
   mCanvas->setCurrentLayer( mLayerLine );
@@ -549,7 +507,7 @@ void TestQgsMapToolAddFeatureLine::testTracingWithConvertToCurves()
   const QSet<QgsFeatureId> oldFids = utils.existingFeatureIds();
 
   // tracing enabled - without converting to curves
-  QgsSettingsRegistryCore::settingsDigitizingConvertToCurve->setValue( false );
+  QgsSettings().setValue( QStringLiteral( "/qgis/digitizing/convert_to_curve" ), false );
 
   utils.mouseClick( 6, 1, Qt::LeftButton );
   utils.mouseClick( 7, 1, Qt::LeftButton );
@@ -565,7 +523,7 @@ void TestQgsMapToolAddFeatureLine::testTracingWithConvertToCurves()
   mLayerLineCurved->undoStack()->undo();
 
   // we redo the same with convert to curves enabled
-  QgsSettingsRegistryCore::settingsDigitizingConvertToCurve->setValue( true );
+  QgsSettings().setValue( QStringLiteral( "/qgis/digitizing/convert_to_curve" ), true );
 
   // tracing enabled - without converting to curves
   utils.mouseClick( 6, 1, Qt::LeftButton );
@@ -594,8 +552,8 @@ void TestQgsMapToolAddFeatureLine::testTracingWithConvertToCurvesCustomTolerance
   // At this distance, the arcs aren't correctly detected with the default tolerance
   const double offset = 100000000; // remember to change the feature geometry accordingly in initTestCase (sic)
 
-  QgsSettingsRegistryCore::settingsDigitizingConvertToCurveAngleTolerance->setValue( 1e-5 );
-  QgsSettingsRegistryCore::settingsDigitizingConvertToCurveDistanceTolerance->setValue( 1e-5 );
+  QgsSettings().setValue( QStringLiteral( "/qgis/digitizing/convert_to_curve_angle_tolerance" ), 1e-5 );
+  QgsSettings().setValue( QStringLiteral( "/qgis/digitizing/convert_to_curve_distance_tolerance" ), 1e-5 );
 
   mCanvas->setExtent( QgsRectangle( offset + 0, offset + 0, offset + 8, offset + 8 ) );
   QCOMPARE( mCanvas->mapSettings().visibleExtent(), QgsRectangle( offset + 0, offset + 0, offset + 8, offset + 8 ) );
@@ -610,7 +568,7 @@ void TestQgsMapToolAddFeatureLine::testTracingWithConvertToCurvesCustomTolerance
   const QSet<QgsFeatureId> oldFids = utils.existingFeatureIds();
 
   // tracing enabled - without converting to curves
-  QgsSettingsRegistryCore::settingsDigitizingConvertToCurve->setValue( false );
+  QgsSettings().setValue( QStringLiteral( "/qgis/digitizing/convert_to_curve" ), false );
 
   utils.mouseClick( offset + 6, offset + 1, Qt::LeftButton );
   utils.mouseClick( offset + 7, offset + 1, Qt::LeftButton );
@@ -626,7 +584,7 @@ void TestQgsMapToolAddFeatureLine::testTracingWithConvertToCurvesCustomTolerance
   mLayerLineCurvedOffset->undoStack()->undo();
 
   // we redo the same with convert to curves enabled
-  QgsSettingsRegistryCore::settingsDigitizingConvertToCurve->setValue( true );
+  QgsSettings().setValue( QStringLiteral( "/qgis/digitizing/convert_to_curve" ), true );
 
   // tracing enabled - without converting to curves
   utils.mouseClick( offset + 6, offset + 1, Qt::LeftButton );
@@ -684,7 +642,7 @@ void TestQgsMapToolAddFeatureLine::testSelfSnapping()
   cfg.setMode( Qgis::SnappingMode::AllLayers );
   cfg.setTypeFlag( Qgis::SnappingType::Vertex );
   cfg.setTolerance( 50 );
-  cfg.setUnits( Qgis::MapToolUnit::Pixels );
+  cfg.setUnits( QgsTolerance::Pixels );
   mCanvas->snappingUtils()->setConfig( cfg );
 
 
@@ -745,7 +703,7 @@ void TestQgsMapToolAddFeatureLine::testLineString()
 
   const QgsFeatureId newFid = utils.newFeatureId( oldFids );
 
-  const QString wkt = "CompoundCurve ((5 6.5, 6.25 6.5, 6.75 6.5, 7.25 6.5, 7.5 6.5))";
+  const QString wkt = "LineString(5 6.5, 6.25 6.5, 6.75 6.5, 7.25 6.5, 7.5 6.5)";
   QCOMPARE( mLayerLine->getFeature( newFid ).geometry(), QgsGeometry::fromWkt( wkt ) );
 
   mLayerLine->undoStack()->undo();
@@ -830,7 +788,7 @@ void TestQgsMapToolAddFeatureLine::testStream()
 
   const QgsFeatureId newFid = utils.newFeatureId( oldFids );
 
-  const QString wkt = "CompoundCurve ((5 6.5, 6.25 6.5, 6.75 6.5),(6.75 6.5, 7 6.59375, 7.09375 6.703125, 7.203125 6.59375, 7.296875 6.5, 7.5 6.90625, 7.59375 6.296875),(7.59375 6.296875, 7.5 5),(7.5 5, 7.40625 5, 7.296875 5.09375, 7.203125 5, 7.09375 4.90625))";
+  const QString wkt = "LineString (5 6.5, 6.25 6.5, 6.75 6.5, 7 6.59375, 7.09375 6.703125, 7.203125 6.59375, 7.296875 6.5, 7.5 6.90625, 7.59375 6.296875, 7.5 5, 7.40625 5, 7.296875 5.09375, 7.203125 5, 7.09375 4.90625)";
   QCOMPARE( mLayerLine->getFeature( newFid ).geometry(), QgsGeometry::fromWkt( wkt ) );
 
   mLayerLine->undoStack()->undo();
@@ -924,7 +882,8 @@ void TestQgsMapToolAddFeatureLine::testUndo()
 void TestQgsMapToolAddFeatureLine::testStreamTolerance()
 {
   // test streaming mode digitizing with tolerance
-  QgsSettingsRegistryCore::settingsDigitizingStreamTolerance->setValue( 10 );
+  QgsSettings settings;
+  settings.setValue( QStringLiteral( "/qgis/digitizing/stream_tolerance" ), 10 );
 
   TestQgsMapToolAdvancedDigitizingUtils utils( mCaptureTool );
 
@@ -964,7 +923,7 @@ void TestQgsMapToolAddFeatureLine::testStreamTolerance()
 
   const QgsFeatureId newFid = utils.newFeatureId( oldFids );
 
-  const QString wkt = "CompoundCurve ((5 6.5, 6.25 6.5, 6.75 6.5),(6.75 6.5, 7 6.59375, 7.203125 6.59375, 7.5 6.90625, 7.59375 6.296875),(7.59375 6.296875, 7.5 5),(7.5 5, 7.296875 5.09375, 7.09375 4.90625))";
+  const QString wkt = "LineString(5 6.5, 6.25 6.5, 6.75 6.5, 7 6.59375, 7.203125 6.59375, 7.5 6.90625, 7.59375 6.296875, 7.5 5, 7.296875 5.09375, 7.09375 4.90625)";
   QCOMPARE( mLayerLine->getFeature( newFid ).geometry(), QgsGeometry::fromWkt( wkt ) );
 
   mLayerLine->undoStack()->undo();
@@ -1112,44 +1071,6 @@ void TestQgsMapToolAddFeatureLine::testWithTopologicalEditingWIthDiffLayerWithDi
   snapConfig.project()->setTopologicalEditing( topologicalEditing );
 }
 
-void TestQgsMapToolAddFeatureLine::testWithTopologicalEditingWithMoreThanOneLayer()
-{
-  TestQgsMapToolAdvancedDigitizingUtils utils( mCaptureTool );
-
-  mCanvas->setCurrentLayer( mLayerTopo3 );
-  mCaptureTool->setLayer( mLayerTopo3 );
-
-  QgsSnappingConfig snapConfig = mCanvas->snappingUtils()->config();
-  snapConfig.setEnabled( true );
-  snapConfig.setMode( Qgis::SnappingMode::AllLayers );
-  snapConfig.setTypeFlag( Qgis::SnappingType::Segment );
-  bool topologicalEditing = snapConfig.project()->topologicalEditing();
-  snapConfig.project()->setTopologicalEditing( true );
-  mCanvas->snappingUtils()->setConfig( snapConfig );
-
-  const QSet<QgsFeatureId> oldFids = utils.existingFeatureIds();
-  utils.mouseMove( 2, 5 );
-  utils.mouseClick( 2, 5, Qt::LeftButton );
-  utils.mouseMove( 1.5, 7 );
-  utils.mouseClick( 1.5, 7, Qt::LeftButton );
-  utils.mouseClick( 1.5, 7, Qt::RightButton );
-
-  const QgsFeatureId newFid = utils.newFeatureId( oldFids );
-
-  const QString wkt1 = "LineString (1 6, 1 7, 1.5 7, 2 7, 2 6)";
-  QCOMPARE( mLayerTopo1->getFeature( mFidTopoLineF1 ).geometry(), QgsGeometry::fromWkt( wkt1 ) );
-
-  const QString wkt2 = "LineString (0 7, 1.5 7, 3 7)";
-  QCOMPARE( mLayerTopo2->getFeature( mFidTopoLineF2 ).geometry(), QgsGeometry::fromWkt( wkt2 ) );
-
-  const QString wkt3 = "LineString (2 5, 1.5 7)";
-  QCOMPARE( mLayerTopo3->getFeature( newFid ).geometry(), QgsGeometry::fromWkt( wkt3 ) );
-
-  mLayerTopo1->undoStack()->undo();
-  mLayerTopo2->undoStack()->undo();
-  mLayerTopo3->undoStack()->undo();
-  snapConfig.project()->setTopologicalEditing( topologicalEditing );
-}
 
 QGSTEST_MAIN( TestQgsMapToolAddFeatureLine )
 #include "testqgsmaptooladdfeatureline.moc"

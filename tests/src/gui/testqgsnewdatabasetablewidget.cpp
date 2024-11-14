@@ -76,7 +76,7 @@ void TestQgsNewDatabaseTableNameWidget::initTestCase()
   const QMap<QString, QVariant> options { { QStringLiteral( "layerName" ), QString( "test_layer" ) } };
   QVERIFY( md->createEmptyLayer( mGpkgPath,
                                  QgsFields(),
-                                 Qgis::WkbType::Point,
+                                 QgsWkbTypes::Type::Point,
                                  QgsCoordinateReferenceSystem::fromEpsgId( 4326 ),
                                  true,
                                  m,

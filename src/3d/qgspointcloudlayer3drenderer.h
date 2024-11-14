@@ -27,7 +27,8 @@
 
 class QgsPointCloudLayer;
 #include "qgspointcloud3dsymbol.h"
-#include "qgs3drendercontext.h"
+#include "qgsfeature3dhandler_p.h"
+
 #ifndef SIP_RUN
 
 /**
@@ -51,10 +52,13 @@ class _3D_NO_EXPORT QgsPointCloud3DRenderContext : public Qgs3DRenderContext
      * The \a zValueFixedOffset argument specifies any constant offset value which must be added to z values
      * taken from the point cloud index.
      */
-    QgsPointCloud3DRenderContext( const Qgs3DRenderContext &context, const QgsCoordinateTransform &coordinateTransform, std::unique_ptr< QgsPointCloud3DSymbol > symbol,
+    QgsPointCloud3DRenderContext( const Qgs3DMapSettings &map, const QgsCoordinateTransform &coordinateTransform, std::unique_ptr< QgsPointCloud3DSymbol > symbol,
                                   double zValueScale, double zValueFixedOffset );
 
+    //! QgsPointCloudRenderContext cannot be copied.
     QgsPointCloud3DRenderContext( const QgsPointCloud3DRenderContext &rh ) = delete;
+
+    //! QgsPointCloudRenderContext cannot be copied.
     QgsPointCloud3DRenderContext &operator=( const QgsPointCloud3DRenderContext & ) = delete;
 
     /**
@@ -184,16 +188,7 @@ class _3D_NO_EXPORT QgsPointCloud3DRenderContext : public Qgs3DRenderContext
      * Returns the feedback object used to cancel rendering and check if rendering was canceled.
      */
     QgsFeedback *feedback() const { return mFeedback.get(); }
-
-    /**
-     * Returns the 3D scene's extent in layer crs.
-     * \since QGIS 3.30
-     */
-    QgsRectangle layerExtent() const { return mLayerExtent; }
-
   private:
-    //! Recalculates the 3D scene's extent in layer's crs
-    void updateExtent();
 #ifdef SIP_RUN
     QgsPointCloudRenderContext( const QgsPointCloudRenderContext &rh );
 #endif
@@ -204,7 +199,6 @@ class _3D_NO_EXPORT QgsPointCloud3DRenderContext : public Qgs3DRenderContext
     double mZValueFixedOffset = 0;
     QgsCoordinateTransform mCoordinateTransform;
     std::unique_ptr<QgsFeedback> mFeedback;
-    QgsRectangle mLayerExtent;
 };
 
 
@@ -246,7 +240,7 @@ class _3D_EXPORT QgsPointCloudLayer3DRenderer : public QgsAbstractPointCloud3DRe
 
     QString type() const override;
     QgsPointCloudLayer3DRenderer *clone() const override SIP_FACTORY;
-    Qt3DCore::QEntity *createEntity( Qgs3DMapSettings *map ) const override SIP_SKIP;
+    Qt3DCore::QEntity *createEntity( const Qgs3DMapSettings &map ) const override SIP_SKIP;
 
     /**
      * Sets the 3D \a symbol associated with the renderer.

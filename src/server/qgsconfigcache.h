@@ -72,6 +72,7 @@ class SERVER_EXPORT QgsAbstractCacheStrategy
 /**
  * \ingroup server
  * \brief Cache for server configuration.
+ * \since QGIS 2.8
  */
 class SERVER_EXPORT QgsConfigCache : public QObject
 {
@@ -106,6 +107,7 @@ class SERVER_EXPORT QgsConfigCache : public QObject
      * \param path the filename of the QGIS project
      * \param settings QGIS server settings
      * \returns the project or NULLPTR if an error happened
+     * \since QGIS 3.0
      */
     const QgsProject *project( const QString &path, const QgsServerSettings *settings = nullptr );
 
@@ -115,26 +117,12 @@ class SERVER_EXPORT QgsConfigCache : public QObject
      */
     QString strategyName() const { return mStrategy->name(); }
 
-    /**
-     * Returns projects currently in cache.
-     * \since QGIS 3.30
-     */
-    QList<QgsProject *> projects() const;
-
   public:
     //! Initialize from settings
     QgsConfigCache( QgsServerSettings *settings );
 
     //! Initialize with a strategy implementation.
     QgsConfigCache( QgsAbstractCacheStrategy *strategy ) SIP_SKIP;
-
-  signals:
-
-    /**
-     * Emitted whenever a project is removed from the cache.
-     * \since QGIS 3.38
-     */
-    void projectRemovedFromCache( const QString &path );
 
   private:
     // SIP require this

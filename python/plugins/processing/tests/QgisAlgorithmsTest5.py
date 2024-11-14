@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     QgisAlgorithmTests2.py
@@ -26,11 +28,10 @@ import nose2
 import shutil
 import os
 
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 
-class TestQgisAlgorithms5(QgisTestCase, AlgorithmsTestBase.AlgorithmsTest):
+class TestQgisAlgorithms5(unittest.TestCase, AlgorithmsTestBase.AlgorithmsTest):
 
     @classmethod
     def setUpClass(cls):
@@ -46,7 +47,7 @@ class TestQgisAlgorithms5(QgisTestCase, AlgorithmsTestBase.AlgorithmsTest):
         for path in cls.cleanup_paths:
             shutil.rmtree(path)
 
-    def definition_file(self):
+    def test_definition_file(self):
         return 'qgis_algorithm_tests5.yaml'
 
 

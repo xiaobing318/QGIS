@@ -28,7 +28,7 @@ bool QgisUntwine::start(Options& options)
         cmdline += "--" + op.first + " \"" + op.second + "\" ";
 
     PROCESS_INFORMATION processInfo;
-    STARTUPINFOA startupInfo;
+    STARTUPINFO startupInfo;
 
     ZeroMemory(&processInfo, sizeof(PROCESS_INFORMATION));
     ZeroMemory(&startupInfo, sizeof(STARTUPINFO));
@@ -76,7 +76,6 @@ bool QgisUntwine::stop()
 void QgisUntwine::childStopped()
 {
     m_running = false;
-    GetExitCodeProcess(m_pid, &m_exitCode);
     CloseHandle(m_progressFd);
     CloseHandle(m_pid);
 }

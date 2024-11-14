@@ -18,6 +18,9 @@
 #include <QMap>
 #include "ui_qgsstatisticalsummarybase.h"
 
+#include "qgsstatisticalsummary.h"
+#include "qgsstringstatisticalsummary.h"
+#include "qgsdatetimestatisticalsummary.h"
 #include "qgsdockwidget.h"
 #include "qgsfeatureiterator.h"
 #include "qgstaskmanager.h"
@@ -32,17 +35,6 @@ class QgsDockBrowserTreeView;
 class QgsLayerItem;
 class QgsDataItem;
 class QgsVectorLayer;
-class QgsStatisticalSummary;
-class QgsStringStatisticalSummary;
-class QgsDateTimeStatisticalSummary;
-
-//! Enumeration of supported statistics types
-enum DataType
-{
-  Numeric,  //!< Numeric fields: int, double, etc
-  String,  //!< String fields
-  DateTime  //!< Date and DateTime fields
-};
 
 /**
  * \class QgsStatisticsValueGatherer
@@ -53,23 +45,11 @@ class QgsStatisticsValueGatherer : public QgsTask
     Q_OBJECT
 
   public:
-    QgsStatisticsValueGatherer(
-      QgsVectorLayer *layer,
-      const QgsFeatureIterator &fit,
-      long featureCount,
-      const QString &sourceFieldExp,
-      DataType fieldType,
-      Qgis::Statistics statsToCalculate,
-      Qgis::StringStatistics stringStatsToCalculate,
-      Qgis::DateTimeStatistics dateTimeStatsToCalculate
-    );
-    ~QgsStatisticsValueGatherer() override;
+    QgsStatisticsValueGatherer( QgsVectorLayer *layer, const QgsFeatureIterator &fit, long featureCount, const QString &sourceFieldExp );
 
     bool run() override;
 
-    const QgsStatisticalSummary *statsSummary();
-    const QgsStringStatisticalSummary *stringStatsSummary();
-    const QgsDateTimeStatisticalSummary *dateTimeStatsSummary();
+    QList<QVariant> values() const { return mValues; }
 
   private:
 
@@ -77,17 +57,10 @@ class QgsStatisticsValueGatherer : public QgsTask
     long mFeatureCount = 0;
     QString mFieldExpression;
     int mFieldIndex = -1;
-    DataType mFieldType;
-    Qgis::Statistics mStatsToCalculate;
-    Qgis::StringStatistics mStringStatsToCalculate;
-    Qgis::DateTimeStatistics mDateTimeStatsToCalculate;
+    QList<QVariant> mValues;
 
     std::unique_ptr<QgsExpression> mExpression;
     QgsExpressionContext mContext;
-
-    std::unique_ptr< QgsStatisticalSummary > mStatsSummary;
-    std::unique_ptr< QgsStringStatisticalSummary > mStringStatsSummary;
-    std::unique_ptr< QgsDateTimeStatisticalSummary > mDateTimeStatsSummary;
 };
 
 /**
@@ -103,6 +76,7 @@ class APP_EXPORT QgsStatisticalSummaryDockWidget : public QgsDockWidget, private
 
     /**
      * Returns the currently active layer for the widget
+     * \since QGIS 2.12
      */
     QgsVectorLayer *layer() const { return mLayer; }
 
@@ -129,6 +103,14 @@ class APP_EXPORT QgsStatisticalSummaryDockWidget : public QgsDockWidget, private
 
   private:
 
+    //! Enumeration of supported statistics types
+    enum DataType
+    {
+      Numeric,  //!< Numeric fields: int, double, etc
+      String,  //!< String fields
+      DateTime  //!< Date and DateTime fields
+    };
+
     QgsVectorLayer *mLayer = nullptr;
 
     QMap< int, QAction * > mStatsActions;
@@ -152,7 +134,7 @@ class APP_EXPORT QgsStatisticalSummaryDockWidget : public QgsDockWidget, private
 
     QString mExpression;
 
-    QPointer< QgsStatisticsValueGatherer > mGatherer;
+    QgsStatisticsValueGatherer *mGatherer = nullptr;
 
     bool mPendingCalculate = false;
 };

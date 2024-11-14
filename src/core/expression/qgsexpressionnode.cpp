@@ -56,12 +56,6 @@ bool QgsExpressionNode::prepare( QgsExpression *parent, const QgsExpressionConte
   }
 }
 
-void QgsExpressionNode::setCachedStaticValue( const QVariant &value ) const
-{
-  mHasCachedValue = true;
-  mCachedStaticValue = value;
-}
-
 QgsExpressionNode::QgsExpressionNode( const QgsExpressionNode &other )
   : parserFirstLine( other.parserFirstLine )
   , parserFirstColumn( other.parserFirstColumn )

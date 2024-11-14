@@ -19,7 +19,6 @@
 #include "qgsstringutils.h"
 #include "qgsstatisticalsummary.h"
 #include "qgsrasterprojector.h"
-#include "qgsunittypes.h"
 
 ///@cond PRIVATE
 
@@ -61,18 +60,18 @@ void QgsRasterLayerZonalStatsAlgorithm::initAlgorithm( const QVariantMap & )
 
   std::unique_ptr< QgsProcessingParameterEnum > refParam = std::make_unique< QgsProcessingParameterEnum >( QStringLiteral( "REF_LAYER" ), QObject::tr( "Reference layer" ),
       QStringList() << QObject::tr( "Input layer" ) << QObject::tr( "Zones layer" ), false, 0 );
-  refParam->setFlags( refParam->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  refParam->setFlags( refParam->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( refParam.release() );
 
   addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT_TABLE" ),
-                QObject::tr( "Statistics" ), Qgis::ProcessingSourceType::Vector ) );
+                QObject::tr( "Statistics" ), QgsProcessing::TypeVector ) );
 
   addOutput( new QgsProcessingOutputString( QStringLiteral( "EXTENT" ), QObject::tr( "Extent" ) ) );
   addOutput( new QgsProcessingOutputString( QStringLiteral( "CRS_AUTHID" ), QObject::tr( "CRS authority identifier" ) ) );
   addOutput( new QgsProcessingOutputNumber( QStringLiteral( "WIDTH_IN_PIXELS" ), QObject::tr( "Width in pixels" ) ) );
   addOutput( new QgsProcessingOutputNumber( QStringLiteral( "HEIGHT_IN_PIXELS" ), QObject::tr( "Height in pixels" ) ) );
   addOutput( new QgsProcessingOutputNumber( QStringLiteral( "TOTAL_PIXEL_COUNT" ), QObject::tr( "Total pixel count" ) ) );
-  addOutput( new QgsProcessingOutputNumber( QStringLiteral( "NODATA_PIXEL_COUNT" ), QObject::tr( "NoData pixel count" ) ) );
+  addOutput( new QgsProcessingOutputNumber( QStringLiteral( "NODATA_PIXEL_COUNT" ), QObject::tr( "NODATA pixel count" ) ) );
 }
 
 QString QgsRasterLayerZonalStatsAlgorithm::shortDescription() const
@@ -85,7 +84,7 @@ QString QgsRasterLayerZonalStatsAlgorithm::shortHelpString() const
   return QObject::tr( "This algorithm calculates statistics for a raster layer's values, categorized by zones defined in another raster layer.\n\n"
                       "If the reference layer parameter is set to \"Input layer\", then zones are determined by sampling the zone raster layer value at the centroid of each pixel from the source raster layer.\n\n"
                       "If the reference layer parameter is set to \"Zones layer\", then the input raster layer will be sampled at the centroid of each pixel from the zones raster layer.\n\n"
-                      "If either the source raster layer or the zone raster layer value is NoData for a pixel, that pixel's value will be skipped and not included in the calculated statistics." );
+                      "If either the source raster layer or the zone raster layer value is NODATA for a pixel, that pixel's value will be skipped and not including in the calculated statistics." );
 }
 
 QgsRasterLayerZonalStatsAlgorithm *QgsRasterLayerZonalStatsAlgorithm::createInstance() const
@@ -177,15 +176,15 @@ QVariantMap QgsRasterLayerZonalStatsAlgorithm::processAlgorithm( const QVariantM
   if ( parameters.contains( QStringLiteral( "OUTPUT_TABLE" ) ) && parameters.value( QStringLiteral( "OUTPUT_TABLE" ) ).isValid() )
   {
     QgsFields outFields;
-    outFields.append( QgsField( QStringLiteral( "zone" ), QMetaType::Type::Double, QString(), 20, 8 ) );
-    outFields.append( QgsField( areaUnit.isEmpty() ? "area" : areaUnit.replace( QStringLiteral( "²" ), QStringLiteral( "2" ) ), QMetaType::Type::Double, QString(), 20, 8 ) );
-    outFields.append( QgsField( QStringLiteral( "sum" ), QMetaType::Type::Double, QString(), 20, 8 ) );
-    outFields.append( QgsField( QStringLiteral( "count" ), QMetaType::Type::LongLong, QString(), 20 ) );
-    outFields.append( QgsField( QStringLiteral( "min" ), QMetaType::Type::Double, QString(), 20, 8 ) );
-    outFields.append( QgsField( QStringLiteral( "max" ), QMetaType::Type::Double, QString(), 20, 8 ) );
-    outFields.append( QgsField( QStringLiteral( "mean" ), QMetaType::Type::Double, QString(), 20, 8 ) );
+    outFields.append( QgsField( QStringLiteral( "zone" ), QVariant::Double, QString(), 20, 8 ) );
+    outFields.append( QgsField( areaUnit.isEmpty() ? "area" : areaUnit.replace( QStringLiteral( "²" ), QStringLiteral( "2" ) ), QVariant::Double, QString(), 20, 8 ) );
+    outFields.append( QgsField( QStringLiteral( "sum" ), QVariant::Double, QString(), 20, 8 ) );
+    outFields.append( QgsField( QStringLiteral( "count" ), QVariant::LongLong, QString(), 20 ) );
+    outFields.append( QgsField( QStringLiteral( "min" ), QVariant::Double, QString(), 20, 8 ) );
+    outFields.append( QgsField( QStringLiteral( "max" ), QVariant::Double, QString(), 20, 8 ) );
+    outFields.append( QgsField( QStringLiteral( "mean" ), QVariant::Double, QString(), 20, 8 ) );
 
-    sink.reset( parameterAsSink( parameters, QStringLiteral( "OUTPUT_TABLE" ), context, tableDest, outFields, Qgis::WkbType::NoGeometry, QgsCoordinateReferenceSystem() ) );
+    sink.reset( parameterAsSink( parameters, QStringLiteral( "OUTPUT_TABLE" ), context, tableDest, outFields, QgsWkbTypes::NoGeometry, QgsCoordinateReferenceSystem() ) );
     if ( !sink )
       throw QgsProcessingException( invalidSinkError( parameters, QStringLiteral( "OUTPUT_TABLE" ) ) );
   }
@@ -194,7 +193,7 @@ QVariantMap QgsRasterLayerZonalStatsAlgorithm::processAlgorithm( const QVariantM
   {
     // only calculate cheap stats-- we cannot calculate stats which require holding values in memory -- because otherwise we'll end
     // up trying to store EVERY pixel value from the input in memory
-    QgsStatisticalSummary s{ Qgis::Statistic::Count | Qgis::Statistic::Sum | Qgis::Statistic::Min | Qgis::Statistic::Max | Qgis::Statistic::Mean };
+    QgsStatisticalSummary s{ QgsStatisticalSummary::Count | QgsStatisticalSummary::Sum | QgsStatisticalSummary::Min | QgsStatisticalSummary::Max | QgsStatisticalSummary::Mean };
   };
   QHash<double, StatCalculator > zoneStats;
   qgssize noDataCount = 0;
@@ -283,7 +282,6 @@ QVariantMap QgsRasterLayerZonalStatsAlgorithm::processAlgorithm( const QVariantM
                      it->s.min() << it->s.max() << it->s.mean() );
     if ( !sink->addFeature( f, QgsFeatureSink::FastInsert ) )
       throw QgsProcessingException( writeFeatureError( sink.get(), parameters, QStringLiteral( "OUTPUT_TABLE" ) ) );
-    sink->finalize();
   }
   outputs.insert( QStringLiteral( "OUTPUT_TABLE" ), tableDest );
 

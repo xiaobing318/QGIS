@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsuniquevaluewidgetwrapper.h"
-#include "moc_qgsuniquevaluewidgetwrapper.cpp"
 
 #include "qgsvectorlayer.h"
 #include "qgsfilterlineedit.h"
@@ -39,7 +38,7 @@ QVariant QgsUniqueValuesWidgetWrapper::value() const
   if ( mLineEdit )
   {
     if ( mLineEdit->text() == QgsApplication::nullRepresentation() )
-      value = QgsVariantUtils::createNullVariant( field().type() );
+      value = QVariant( field().type() );
     else
       value = mLineEdit->text();
   }
@@ -86,7 +85,7 @@ void QgsUniqueValuesWidgetWrapper::initWidget( QWidget *editor )
   if ( mLineEdit )
   {
     QgsFilterLineEdit *fle = qobject_cast<QgsFilterLineEdit *>( editor );
-    if ( fle && !( field().type() == QMetaType::Type::Int || field().type() == QMetaType::Type::Double || field().type() == QMetaType::Type::LongLong || field().type() == QMetaType::Type::QDate ) )
+    if ( fle && !( field().type() == QVariant::Int || field().type() == QVariant::Double || field().type() == QVariant::LongLong || field().type() == QVariant::Date ) )
     {
       fle->setNullValue( QgsApplication::nullRepresentation() );
     }

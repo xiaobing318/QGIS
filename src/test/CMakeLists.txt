@@ -1,5 +1,3 @@
-add_definitions(-DTEST_DATA_DIR="${TEST_DATA_DIR}")
-
 # for installing headers
 
 include_directories(SYSTEM

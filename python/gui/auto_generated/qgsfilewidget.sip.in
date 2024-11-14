@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsfilewidget.h                                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -250,6 +250,8 @@ Sets whether the relative path is with respect to the project path or the defaul
 %Docstring
 Returns a pointer to the widget's line edit, which can be used to customize
 the appearance and behavior of the line edit portion of the widget.
+
+.. versionadded:: 3.0
 %End
 
   signals:
@@ -293,10 +295,6 @@ returns a HTML code with a link to the given file path
 Returns a filePath with relative path options applied (or not) !
 %End
 
-  public:
-    virtual QSize minimumSizeHint() const;
-
-
 };
 
 
@@ -308,5 +306,5 @@ Returns a filePath with relative path options applied (or not) !
  *                                                                      *
  * src/gui/qgsfilewidget.h                                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

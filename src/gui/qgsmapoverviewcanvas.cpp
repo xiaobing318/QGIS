@@ -20,17 +20,16 @@
 #include "qgsmaplayer.h"
 #include "qgsproject.h"
 #include "qgsmapoverviewcanvas.h"
-#include "moc_qgsmapoverviewcanvas.cpp"
 #include "qgsmaprenderersequentialjob.h"
 #include "qgsmaptopixel.h"
 #include "qgsprojectviewsettings.h"
-#include "qgslogger.h"
 
 #include <QPainter>
 #include <QPainterPath>
 #include <QPaintEvent>
 #include <QResizeEvent>
 #include <QMouseEvent>
+#include "qgslogger.h"
 #include <limits>
 
 
@@ -76,18 +75,13 @@ void QgsMapOverviewCanvas::showEvent( QShowEvent *e )
 void QgsMapOverviewCanvas::paintEvent( QPaintEvent *pe )
 {
   QPainter paint( this );
-  QRect rect = pe->rect();
-  QRect sourceRect( std::ceil( pe->rect().left() * mPixmap.devicePixelRatio() ),
-                    std::ceil( pe->rect().top() * mPixmap.devicePixelRatio() ),
-                    std::ceil( pe->rect().width() * mPixmap.devicePixelRatio() ),
-                    std::ceil( pe->rect().height() * mPixmap.devicePixelRatio() ) );
   if ( !mPixmap.isNull() )
   {
-    paint.drawPixmap( rect.topLeft(), mPixmap, sourceRect );
+    paint.drawPixmap( pe->rect().topLeft(), mPixmap, pe->rect() );
   }
   else
   {
-    paint.fillRect( rect, QBrush( mSettings.backgroundColor() ) );
+    paint.fillRect( pe->rect(), QBrush( mSettings.backgroundColor() ) );
   }
 }
 
@@ -158,10 +152,7 @@ void QgsMapOverviewCanvas::mouseReleaseEvent( QMouseEvent *e )
 
 void QgsMapOverviewCanvas::wheelEvent( QWheelEvent *e )
 {
-  QgsSettings settings;
-  bool reverseZoom = settings.value( QStringLiteral( "qgis/reverse_wheel_zoom" ), false ).toBool();
-  bool zoomIn = reverseZoom ? e->angleDelta().y() < 0 : e->angleDelta().y() > 0;
-  double zoomFactor = zoomIn ? 1. / mMapCanvas->zoomInFactor() : mMapCanvas->zoomOutFactor();
+  double zoomFactor = e->angleDelta().y() > 0 ? 1. / mMapCanvas->zoomInFactor() : mMapCanvas->zoomOutFactor();
 
   // "Normal" mouse have an angle delta of 120, precision mouses provide data faster, in smaller steps
   zoomFactor = 1.0 + ( zoomFactor - 1.0 ) / 120.0 * std::fabs( e->angleDelta().y() );
@@ -172,7 +163,7 @@ void QgsMapOverviewCanvas::wheelEvent( QWheelEvent *e )
     zoomFactor = 1.0 + ( zoomFactor - 1.0 ) / 20.0;
   }
 
-  const double signedWheelFactor = zoomIn ? 1 / zoomFactor : zoomFactor;
+  const double signedWheelFactor = e->angleDelta().y() > 0 ? 1 / zoomFactor : zoomFactor;
 
   const QgsMapToPixel &cXf = mSettings.mapToPixel();
   const QgsPointXY center = cXf.toMapCoordinates( e->position().x(), e->position().y() );
@@ -213,15 +204,13 @@ void QgsMapOverviewCanvas::refresh()
 
   if ( mJob )
   {
-    QgsDebugMsgLevel( QStringLiteral( "oveview - canceling old" ), 2 );
+    QgsDebugMsg( QStringLiteral( "oveview - canceling old" ) );
     mJob->cancel();
-    QgsDebugMsgLevel( QStringLiteral( "oveview - deleting old" ), 2 );
+    QgsDebugMsg( QStringLiteral( "oveview - deleting old" ) );
     delete mJob; // get rid of previous job (if any)
   }
 
-  QgsDebugMsgLevel( QStringLiteral( "oveview - starting new" ), 2 );
-
-  mSettings.setDevicePixelRatio( static_cast<float>( devicePixelRatioF() ) );
+  QgsDebugMsg( QStringLiteral( "oveview - starting new" ) );
 
   // TODO: setup overview mode
   mJob = new QgsMapRendererSequentialJob( mSettings );
@@ -239,7 +228,7 @@ void QgsMapOverviewCanvas::refresh()
 
 void QgsMapOverviewCanvas::mapRenderingFinished()
 {
-  QgsDebugMsgLevel( QStringLiteral( "overview - finished" ), 2 );
+  QgsDebugMsg( QStringLiteral( "overview - finished" ) );
   mPixmap = QPixmap::fromImage( mJob->renderedImage() );
 
   delete mJob;

@@ -15,13 +15,12 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsnewarcgisrestconnection.h"
-#include "moc_qgsnewarcgisrestconnection.cpp"
 #include "qgsauthsettingswidget.h"
+#include "qgshttpheaderwidget.h"
+#include "qgssettings.h"
 #include "qgshelp.h"
 #include "qgsgui.h"
-#include "qgsowsconnection.h"
 #include "fromencodedcomponenthelper.h"
-#include "qgssettingsentryimpl.h"
 
 #include <QMessageBox>
 #include <QUrl>
@@ -30,8 +29,9 @@
 #include <QRegularExpressionValidator>
 #include <QUrlQuery>
 
-QgsNewArcGisRestConnectionDialog::QgsNewArcGisRestConnectionDialog( QWidget *parent, const QString &connectionName, Qt::WindowFlags fl )
+QgsNewArcGisRestConnectionDialog::QgsNewArcGisRestConnectionDialog( QWidget *parent, const QString &baseKey, const QString &connectionName, Qt::WindowFlags fl )
   : QDialog( parent, fl )
+  , mBaseKey( baseKey )
   , mOriginalConnName( connectionName )
 {
   setupUi( this );
@@ -40,7 +40,15 @@ QgsNewArcGisRestConnectionDialog::QgsNewArcGisRestConnectionDialog( QWidget *par
 
   connect( buttonBox, &QDialogButtonBox::helpRequested, this, &QgsNewArcGisRestConnectionDialog::showHelp );
 
-  setWindowTitle( tr( "Create a New arcgisfeatureserver Connection" ) );
+  const QRegularExpression rx( QStringLiteral( "/connections-([^/]+)/" ) );
+  const QRegularExpressionMatch match = rx.match( baseKey );
+  if ( match.hasMatch() )
+  {
+    const QString connectionType( match.captured( 1 ).toUpper() );
+    setWindowTitle( tr( "Create a New %1 Connection" ).arg( connectionType ) );
+  }
+
+  mCredentialsBaseKey = mBaseKey.split( '-' ).last().toUpper();
 
   txtName->setValidator( new QRegularExpressionValidator( QRegularExpression( QStringLiteral( "[^\\/]+" ) ), txtName ) );
 
@@ -49,19 +57,22 @@ QgsNewArcGisRestConnectionDialog::QgsNewArcGisRestConnectionDialog( QWidget *par
     // populate the dialog with the information stored for the connection
     // populate the fields with the stored setting parameters
 
+    const QgsSettings settings;
+
+    const QString key = mBaseKey + connectionName;
+    const QString credentialsKey = "qgis/" + mCredentialsBaseKey + '/' + connectionName;
     txtName->setText( connectionName );
-    txtUrl->setText( QgsArcGisConnectionSettings::settingsUrl->value( connectionName ) );
-    mHttpHeaders->setHeaders( QgsHttpHeaders( QgsArcGisConnectionSettings::settingsHeaders->value( connectionName ) ) );
-    mUrlPrefix->setText( QgsArcGisConnectionSettings::settingsUrlPrefix->value( connectionName ) );
+    txtUrl->setText( settings.value( key + "/url" ).toString() );
+    mHttpHeaders->setFromSettings( settings, key );
 
     // portal
-    mContentEndPointLineEdit->setText( QgsArcGisConnectionSettings::settingsContentEndpoint->value( connectionName ) );
-    mCommunityEndPointLineEdit->setText( QgsArcGisConnectionSettings::settingsCommunityEndpoint->value( connectionName ) );
+    mContentEndPointLineEdit->setText( settings.value( key + "/content_endpoint" ).toString() );
+    mCommunityEndPointLineEdit->setText( settings.value( key + "/community_endpoint" ).toString() );
 
     // Authentication
-    mAuthSettings->setUsername( QgsArcGisConnectionSettings::settingsUsername->value( connectionName ) );
-    mAuthSettings->setPassword( QgsArcGisConnectionSettings::settingsPassword->value( connectionName ) );
-    mAuthSettings->setConfigId( QgsArcGisConnectionSettings::settingsAuthcfg->value( connectionName ) );
+    mAuthSettings->setUsername( settings.value( credentialsKey + "/username" ).toString() );
+    mAuthSettings->setPassword( settings.value( credentialsKey + "/password" ).toString() );
+    mAuthSettings->setConfigId( settings.value( credentialsKey + "/authcfg" ).toString() );
   }
 
   // Adjust height
@@ -109,15 +120,15 @@ void QgsNewArcGisRestConnectionDialog::updateOkButtonState()
 
 bool QgsNewArcGisRestConnectionDialog::validate()
 {
-  const QString newName = txtName->text();
-  bool newNameAlreadyExists = QgsArcGisConnectionSettings::sTreeConnectionArcgis->items().contains( newName );
+  const QgsSettings settings;
+  const QString key = mBaseKey + txtName->text();
 
   // warn if entry was renamed to an existing connection
-  if ( ( mOriginalConnName.isNull() || mOriginalConnName.compare( newName, Qt::CaseInsensitive ) != 0 ) &&
-       newNameAlreadyExists &&
+  if ( ( mOriginalConnName.isNull() || mOriginalConnName.compare( txtName->text(), Qt::CaseInsensitive ) != 0 ) &&
+       settings.contains( key + "/url" ) &&
        QMessageBox::question( this,
                               tr( "Save Connection" ),
-                              tr( "Should the existing connection '%1' be overwritten?" ).arg( newName ),
+                              tr( "Should the existing connection %1 be overwritten?" ).arg( txtName->text() ),
                               QMessageBox::Ok | QMessageBox::Cancel ) == QMessageBox::Cancel )
   {
     return false;
@@ -157,32 +168,35 @@ QUrl QgsNewArcGisRestConnectionDialog::urlTrimmed() const
 
 void QgsNewArcGisRestConnectionDialog::accept()
 {
-  const QString newName = txtName->text();
+  QgsSettings settings;
+  const QString key = mBaseKey + txtName->text();
+  const QString credentialsKey = "qgis/" + mCredentialsBaseKey + '/' + txtName->text();
 
   if ( !validate() )
     return;
 
   // on rename delete original entry first
-  if ( !mOriginalConnName.isNull() && mOriginalConnName != newName )
+  if ( !mOriginalConnName.isNull() && mOriginalConnName != key )
   {
-    QgsArcGisConnectionSettings::sTreeConnectionArcgis->deleteItem( mOriginalConnName );
+    settings.remove( mBaseKey + mOriginalConnName );
+    settings.remove( "qgis/" + mCredentialsBaseKey + '/' + mOriginalConnName );
+    settings.sync();
   }
 
   const QUrl url( urlTrimmed() );
-  QgsArcGisConnectionSettings::settingsUrl->setValue( url.toString(), newName );
+  settings.setValue( key + "/url", url.toString() );
 
-  QgsArcGisConnectionSettings::settingsUsername->setValue( mAuthSettings->username(), newName );
-  QgsArcGisConnectionSettings::settingsPassword->setValue( mAuthSettings->password(), newName );
+  settings.setValue( credentialsKey + "/username", mAuthSettings->username() );
+  settings.setValue( credentialsKey + "/password", mAuthSettings->password() );
 
-  QgsArcGisConnectionSettings::settingsContentEndpoint->setValue( mContentEndPointLineEdit->text(), newName );
-  QgsArcGisConnectionSettings::settingsCommunityEndpoint->setValue( mCommunityEndPointLineEdit->text(), newName );
+  settings.setValue( key + "/content_endpoint", mContentEndPointLineEdit->text() );
+  settings.setValue( key + "/community_endpoint", mCommunityEndPointLineEdit->text() );
 
-  QgsArcGisConnectionSettings::settingsAuthcfg->setValue( mAuthSettings->configId(), newName );
+  settings.setValue( credentialsKey + "/authcfg", mAuthSettings->configId() );
 
-  QgsArcGisConnectionSettings::settingsHeaders->setValue( mHttpHeaders->httpHeaders().headers(), newName );
-  QgsArcGisConnectionSettings::settingsUrlPrefix->setValue( mUrlPrefix->text(), newName );
+  mHttpHeaders->updateSettings( settings, key );
 
-  QgsArcGisConnectionSettings::sTreeConnectionArcgis->setSelectedItem( newName );
+  settings.setValue( mBaseKey + "/selected", txtName->text() );
 
   QDialog::accept();
 }

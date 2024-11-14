@@ -14,7 +14,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsauthsettingswidget.h"
-#include "moc_qgsauthsettingswidget.cpp"
 #include "qgsauthmanager.h"
 #include "qgsauthconfig.h"
 #include "qgsapplication.h"

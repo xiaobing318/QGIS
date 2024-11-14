@@ -127,9 +127,9 @@ QString QgsOracleExpressionCompiler::quotedValue( const QVariant &value, bool &o
 {
   ok = true;
 
-  switch ( value.userType() )
+  switch ( value.type() )
   {
-    case QMetaType::Type::Bool:
+    case QVariant::Bool:
       //no boolean literal support in Oracle, so fake it
       return value.toBool() ? QStringLiteral( "(1=1)" ) : QStringLiteral( "(1=0)" );
 

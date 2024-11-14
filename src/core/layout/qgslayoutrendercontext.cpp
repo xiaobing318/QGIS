@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgslayoutrendercontext.h"
-#include "moc_qgslayoutrendercontext.cpp"
 #include "qgslayout.h"
 
 QgsLayoutRenderContext::QgsLayoutRenderContext( QgsLayout *layout )
@@ -23,7 +22,7 @@ QgsLayoutRenderContext::QgsLayoutRenderContext( QgsLayout *layout )
   , mFlags( FlagAntialiasing | FlagUseAdvancedEffects )
   , mLayout( layout )
 {
-  mSimplifyMethod.setSimplifyHints( Qgis::VectorRenderingSimplificationFlag::NoSimplification );
+  mSimplifyMethod.setSimplifyHints( QgsVectorSimplifyMethod::NoSimplification );
 }
 
 void QgsLayoutRenderContext::setFlags( const QgsLayoutRenderContext::Flags flags )
@@ -115,11 +114,6 @@ void QgsLayoutRenderContext::setBoundingBoxesVisible( bool visible )
 void QgsLayoutRenderContext::setPagesVisible( bool visible )
 {
   mPagesVisible = visible;
-}
-
-void QgsLayoutRenderContext::setMaskSettings( const QgsMaskRenderSettings &settings )
-{
-  mMaskRenderSettings = settings;
 }
 
 QStringList QgsLayoutRenderContext::exportThemes() const

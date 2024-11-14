@@ -17,12 +17,10 @@
 
 #include "qgslayoututils.h"
 #include "qgslayout.h"
-#include "qgssettingsregistrycore.h"
 #include "qgslayoutitemmap.h"
 #include "qgsprojectviewsettings.h"
 #include "qgsrendercontext.h"
 #include "qgssettings.h"
-#include "qgslayoutrendercontext.h"
 
 #include <QStyleOptionGraphicsItem>
 #include <QPainter>
@@ -128,7 +126,7 @@ QgsRenderContext QgsLayoutUtils::createRenderContextForMap( QgsLayoutItemMap *ma
     // get map settings from reference map
     QgsRectangle extent = map->extent();
     QSizeF mapSizeLayoutUnits = map->rect().size();
-    QSizeF mapSizeMM = map->layout()->convertFromLayoutUnits( mapSizeLayoutUnits, Qgis::LayoutUnit::Millimeters ).toQSizeF();
+    QSizeF mapSizeMM = map->layout()->convertFromLayoutUnits( mapSizeLayoutUnits, QgsUnitTypes::LayoutMillimeters ).toQSizeF();
     QgsMapSettings ms = map->mapSettings( extent, mapSizeMM * dotsPerMM, dpi, false );
     QgsRenderContext context = QgsRenderContext::fromMapSettings( ms );
     if ( painter )
@@ -156,18 +154,10 @@ QgsRenderContext QgsLayoutUtils::createRenderContextForLayout( QgsLayout *layout
 void QgsLayoutUtils::relativeResizeRect( QRectF &rectToResize, const QRectF &boundsBefore, const QRectF &boundsAfter )
 {
   //linearly scale rectToResize relative to the scaling from boundsBefore to boundsAfter
-  const double left = !qgsDoubleNear( boundsBefore.left(), boundsBefore.right() )
-                      ? relativePosition( rectToResize.left(), boundsBefore.left(), boundsBefore.right(), boundsAfter.left(), boundsAfter.right() )
-                      : boundsAfter.left();
-  const double right = !qgsDoubleNear( boundsBefore.left(), boundsBefore.right() )
-                       ? relativePosition( rectToResize.right(), boundsBefore.left(), boundsBefore.right(), boundsAfter.left(), boundsAfter.right() )
-                       : boundsAfter.right();
-  const double top = !qgsDoubleNear( boundsBefore.top(), boundsBefore.bottom() )
-                     ? relativePosition( rectToResize.top(), boundsBefore.top(), boundsBefore.bottom(), boundsAfter.top(), boundsAfter.bottom() )
-                     : boundsAfter.top();
-  const double bottom = !qgsDoubleNear( boundsBefore.top(), boundsBefore.bottom() )
-                        ? relativePosition( rectToResize.bottom(), boundsBefore.top(), boundsBefore.bottom(), boundsAfter.top(), boundsAfter.bottom() )
-                        : boundsAfter.bottom();
+  double left = relativePosition( rectToResize.left(), boundsBefore.left(), boundsBefore.right(), boundsAfter.left(), boundsAfter.right() );
+  double right = relativePosition( rectToResize.right(), boundsBefore.left(), boundsBefore.right(), boundsAfter.left(), boundsAfter.right() );
+  double top = relativePosition( rectToResize.top(), boundsBefore.top(), boundsBefore.bottom(), boundsAfter.top(), boundsAfter.bottom() );
+  double bottom = relativePosition( rectToResize.bottom(), boundsBefore.top(), boundsBefore.bottom(), boundsAfter.top(), boundsAfter.bottom() );
 
   rectToResize.setRect( left, top, right - left, bottom - top );
 }
@@ -533,7 +523,8 @@ QVector< double > QgsLayoutUtils::predefinedScales( const QgsLayout *layout )
   {
     // default to global map tool scales
     QgsSettings settings;
-    const QStringList scales = QgsSettingsRegistryCore::settingsMapScales->value();
+    QString scalesStr( settings.value( QStringLiteral( "Map/scales" ), Qgis::defaultProjectScales() ).toString() );
+    const QStringList scales = scalesStr.split( ',' );
     for ( const QString &scale : scales )
     {
       QStringList parts( scale.split( ':' ) );

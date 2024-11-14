@@ -13,13 +13,12 @@
  *                                                                         *
  ***************************************************************************/
 
-#include "qgsabstractgeometry.h"
 #include "qgsvectorrenderingoptions.h"
-#include "moc_qgsvectorrenderingoptions.cpp"
 #include "qgssettings.h"
 #include "qgsapplication.h"
-#include "qgsvectorlayer.h"
-#include "qgssettingsentryenumflag.h"
+#include "qgssettingsregistrycore.h"
+#include "qgsguiutils.h"
+#include "qgsvectorsimplifymethod.h"
 
 #include <QThread>
 //
@@ -34,9 +33,9 @@ QgsVectorRenderingOptionsWidget::QgsVectorRenderingOptionsWidget( QWidget *paren
   QgsSettings settings;
 
   // Default simplify drawing configuration
-  mSimplifyDrawingGroupBox->setChecked( settings.enumValue( QStringLiteral( "/qgis/simplifyDrawingHints" ), Qgis::VectorRenderingSimplificationFlag::GeometrySimplification ) != Qgis::VectorRenderingSimplificationFlag::NoSimplification );
-  mSimplifyDrawingSpinBox->setValue( QgsVectorLayer::settingsSimplifyDrawingTol->value() );
-  mSimplifyDrawingAtProvider->setChecked( !QgsVectorLayer::settingsSimplifyLocal->value() );
+  mSimplifyDrawingGroupBox->setChecked( settings.enumValue( QStringLiteral( "/qgis/simplifyDrawingHints" ), QgsVectorSimplifyMethod::GeometrySimplification ) != QgsVectorSimplifyMethod::NoSimplification );
+  mSimplifyDrawingSpinBox->setValue( settings.value( QStringLiteral( "/qgis/simplifyDrawingTol" ), Qgis::DEFAULT_MAPTOPIXEL_THRESHOLD ).toFloat() );
+  mSimplifyDrawingAtProvider->setChecked( !settings.value( QStringLiteral( "/qgis/simplifyLocal" ), true ).toBool() );
 
   //segmentation tolerance type
   mToleranceTypeComboBox->addItem( tr( "Maximum Angle" ), QgsAbstractGeometry::MaximumAngle );
@@ -59,18 +58,14 @@ QgsVectorRenderingOptionsWidget::QgsVectorRenderingOptionsWidget( QWidget *paren
   QStringList myScalesList = Qgis::defaultProjectScales().split( ',' );
   myScalesList.append( QStringLiteral( "1:1" ) );
   mSimplifyMaximumScaleComboBox->updateScales( myScalesList );
-  mSimplifyMaximumScaleComboBox->setScale( QgsVectorLayer::settingsSimplifyMaxScale->value() );
+  mSimplifyMaximumScaleComboBox->setScale( settings.value( QStringLiteral( "/qgis/simplifyMaxScale" ), 1 ).toFloat() );
 
   // Default local simplification algorithm
-  mSimplifyAlgorithmComboBox->addItem( tr( "Distance" ), QVariant::fromValue( Qgis::VectorSimplificationAlgorithm::Distance ) );
-  mSimplifyAlgorithmComboBox->addItem( tr( "SnapToGrid" ), QVariant::fromValue( Qgis::VectorSimplificationAlgorithm::SnapToGrid ) );
-  mSimplifyAlgorithmComboBox->addItem( tr( "Visvalingam" ), QVariant::fromValue( Qgis::VectorSimplificationAlgorithm::Visvalingam ) );
-  mSimplifyAlgorithmComboBox->setCurrentIndex( mSimplifyAlgorithmComboBox->findData( QVariant::fromValue( QgsVectorLayer::settingsSimplifyAlgorithm->value() ) ) );
-}
+  mSimplifyAlgorithmComboBox->addItem( tr( "Distance" ), static_cast<int>( QgsVectorSimplifyMethod::Distance ) );
+  mSimplifyAlgorithmComboBox->addItem( tr( "SnapToGrid" ), static_cast<int>( QgsVectorSimplifyMethod::SnapToGrid ) );
+  mSimplifyAlgorithmComboBox->addItem( tr( "Visvalingam" ), static_cast<int>( QgsVectorSimplifyMethod::Visvalingam ) );
+  mSimplifyAlgorithmComboBox->setCurrentIndex( mSimplifyAlgorithmComboBox->findData( settings.enumValue( QStringLiteral( "/qgis/simplifyAlgorithm" ), QgsVectorSimplifyMethod::NoSimplification ) ) );
 
-QString QgsVectorRenderingOptionsWidget::helpKey() const
-{
-  return QStringLiteral( "introduction/qgis_configuration.html#vector-rendering-options" );
 }
 
 void QgsVectorRenderingOptionsWidget::apply()
@@ -78,18 +73,17 @@ void QgsVectorRenderingOptionsWidget::apply()
   QgsSettings settings;
 
   // Default simplify drawing configuration
-  Qgis::VectorRenderingSimplificationFlags simplifyHints = Qgis::VectorRenderingSimplificationFlag::NoSimplification;
+  QgsVectorSimplifyMethod::SimplifyHints simplifyHints = QgsVectorSimplifyMethod::NoSimplification;
   if ( mSimplifyDrawingGroupBox->isChecked() )
   {
-    simplifyHints |= Qgis::VectorRenderingSimplificationFlag::GeometrySimplification;
-    if ( mSimplifyDrawingSpinBox->value() > 1 )
-      simplifyHints |= Qgis::VectorRenderingSimplificationFlag::AntialiasingSimplification;
+    simplifyHints |= QgsVectorSimplifyMethod::GeometrySimplification;
+    if ( mSimplifyDrawingSpinBox->value() > 1 ) simplifyHints |= QgsVectorSimplifyMethod::AntialiasingSimplification;
   }
-  QgsVectorLayer::settingsSimplifyDrawingHints->setValue( simplifyHints );
-  QgsVectorLayer::settingsSimplifyAlgorithm->setValue( mSimplifyAlgorithmComboBox->currentData().value<Qgis::VectorSimplificationAlgorithm>() );
-  QgsVectorLayer::settingsSimplifyDrawingTol->setValue( mSimplifyDrawingSpinBox->value() );
-  QgsVectorLayer::settingsSimplifyLocal->setValue( !mSimplifyDrawingAtProvider->isChecked() );
-  QgsVectorLayer::settingsSimplifyMaxScale->setValue( mSimplifyMaximumScaleComboBox->scale() );
+  settings.setFlagValue( QStringLiteral( "/qgis/simplifyDrawingHints" ), simplifyHints );
+  settings.setEnumValue( QStringLiteral( "/qgis/simplifyAlgorithm" ), static_cast<QgsVectorSimplifyMethod::SimplifyAlgorithm>( mSimplifyAlgorithmComboBox->currentData().toInt() ) );
+  settings.setValue( QStringLiteral( "/qgis/simplifyDrawingTol" ), mSimplifyDrawingSpinBox->value() );
+  settings.setValue( QStringLiteral( "/qgis/simplifyLocal" ), !mSimplifyDrawingAtProvider->isChecked() );
+  settings.setValue( QStringLiteral( "/qgis/simplifyMaxScale" ), mSimplifyMaximumScaleComboBox->scale() );
 
   //curve segmentation
   QgsAbstractGeometry::SegmentationToleranceType segmentationType = ( QgsAbstractGeometry::SegmentationToleranceType )mToleranceTypeComboBox->currentData().toInt();
@@ -108,7 +102,7 @@ void QgsVectorRenderingOptionsWidget::apply()
 // QgsVectorRenderingOptionsFactory
 //
 QgsVectorRenderingOptionsFactory::QgsVectorRenderingOptionsFactory()
-  : QgsOptionsWidgetFactory( tr( "Vector" ), QIcon(), QStringLiteral( "vector" ) )
+  : QgsOptionsWidgetFactory( tr( "Vector" ), QIcon() )
 {
 
 }

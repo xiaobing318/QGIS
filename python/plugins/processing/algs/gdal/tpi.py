@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     tpi.py
@@ -58,8 +60,10 @@ class tpi(GdalAlgorithm):
                                                      self.tr('Additional creation options'),
                                                      defaultValue='',
                                                      optional=True)
-        options_param.setFlags(options_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
-        options_param.setMetadata({'widget_wrapper': {'widget_type': 'rasteroptions'}})
+        options_param.setFlags(options_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        options_param.setMetadata({
+            'widget_wrapper': {
+                'class': 'processing.algs.gdal.ui.RasterOptionsWidget.RasterOptionsWidgetWrapper'}})
         self.addParameter(options_param)
 
         self.addParameter(QgsProcessingParameterRasterDestination(self.OUTPUT, self.tr('Topographic Position Index')))
@@ -84,10 +88,8 @@ class tpi(GdalAlgorithm):
         inLayer = self.parameterAsRasterLayer(parameters, self.INPUT, context)
         if inLayer is None:
             raise QgsProcessingException(self.invalidRasterError(parameters, self.INPUT))
-        input_details = GdalUtils.gdal_connection_details_from_layer(
-            inLayer)
 
-        arguments.append(input_details.connection_string)
+        arguments.append(inLayer.source())
         out = self.parameterAsOutputLayer(parameters, self.OUTPUT, context)
         self.setOutputValue(self.OUTPUT, out)
         arguments.append(out)
@@ -97,9 +99,6 @@ class tpi(GdalAlgorithm):
 
         if self.parameterAsBoolean(parameters, self.COMPUTE_EDGES, context):
             arguments.append('-compute_edges')
-
-        if input_details.credential_options:
-            arguments.extend(input_details.credential_options_as_arguments())
 
         options = self.parameterAsString(parameters, self.OPTIONS, context)
         if options:

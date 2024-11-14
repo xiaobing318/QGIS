@@ -31,9 +31,15 @@
 #include "qgsmeshlayer.h"
 #include "qgsapplication.h"
 #include "qgsmaplayerlegend.h"
+#include "qgsproviderregistry.h"
 #include "qgsproject.h"
+#include "qgsmaprenderersequentialjob.h"
+#include "qgsmeshmemorydataprovider.h"
 #include "qgsmesh3daveraging.h"
-#include "qgsmaplayertemporalproperties.h"
+#include "qgsmeshlayertemporalproperties.h"
+
+//qgis test includes
+#include "qgsrenderchecker.h"
 
 /**
  * \ingroup UnitTests
@@ -44,7 +50,7 @@ class TestQgsMeshRenderer : public QgsTest
     Q_OBJECT
 
   public:
-    TestQgsMeshRenderer() : QgsTest( QStringLiteral( "Mesh Layer Rendering Tests" ), QStringLiteral( "mesh" ) ) {}
+    TestQgsMeshRenderer() : QgsTest( QStringLiteral( "Mesh Layer Rendering Tests" ) ) {}
 
   private:
     QString mDataDir;
@@ -58,7 +64,9 @@ class TestQgsMeshRenderer : public QgsTest
     void initTestCase();// will be called before the first testfunction is executed.
     void cleanupTestCase();// will be called after the last testfunction was executed.
     void init(); // will be called before each testfunction is executed.
+    bool imageCheck( const QString &testType, QgsMeshLayer *layer, double rotation = 0.0 );
     QString readFile( const QString &fname ) const;
+
 
     void test_native_mesh_rendering();
     void test_native_mesh_renderingWithClipping();
@@ -80,7 +88,6 @@ class TestQgsMeshRenderer : public QgsTest
     void test_face_vector_on_user_grid();
     void test_face_vector_on_user_grid_streamlines();
     void test_vertex_vector_on_user_grid();
-    void test_vertex_vector_on_user_grid_wind_barbs();
     void test_vertex_vector_on_user_grid_streamlines();
     void test_vertex_vector_on_user_grid_streamlines_colorRamp();
     void test_vertex_vector_traces();
@@ -157,7 +164,6 @@ void TestQgsMeshRenderer::initTestCase()
   // Mdal layer
   mMdalLayer = new QgsMeshLayer( mDataDir + "/quad_and_triangle.2dm", "Triangle and Quad Mdal", "mdal" );
   mMdalLayer->dataProvider()->addDataset( mDataDir + "/quad_and_triangle_vertex_scalar_with_inactive_face.dat" );
-  mMdalLayer->dataProvider()->addDataset( mDataDir + "/quad_and_triangle_vertex_vector2.dat" );
   QVERIFY( mMdalLayer->isValid() );
 
   // Memory layer
@@ -210,6 +216,23 @@ QString TestQgsMeshRenderer::readFile( const QString &fname ) const
   return uri;
 }
 
+bool TestQgsMeshRenderer::imageCheck( const QString &testType, QgsMeshLayer *layer, double rotation )
+{
+  mMapSettings->setDestinationCrs( layer->crs() );
+  mMapSettings->setExtent( layer->extent() );
+  mMapSettings->setRotation( rotation );
+  mMapSettings->setOutputDpi( 96 );
+
+  QgsRenderChecker myChecker;
+  myChecker.setControlPathPrefix( QStringLiteral( "mesh" ) );
+  myChecker.setControlName( "expected_" + testType );
+  myChecker.setMapSettings( *mMapSettings );
+  myChecker.setColorTolerance( 15 );
+  const bool myResultFlag = myChecker.runTest( testType, 0 );
+  mReport += myChecker.report();
+  return myResultFlag;
+}
+
 void TestQgsMeshRenderer::test_native_mesh_rendering()
 {
   QgsMeshRendererSettings rendererSettings = mMemoryLayer->rendererSettings();
@@ -218,16 +241,8 @@ void TestQgsMeshRenderer::test_native_mesh_rendering()
   settings.setLineWidth( 1. );
   rendererSettings.setNativeMeshSettings( settings );
   mMemoryLayer->setRendererSettings( rendererSettings );
-
-  mMapSettings->setDestinationCrs( mMemoryLayer->crs() );
-  mMapSettings->setExtent( mMemoryLayer->extent() );
-  mMapSettings->setOutputDpi( 96 );
-  mMapSettings->setRotation( 0 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "quad_and_triangle_native_mesh", "quad_and_triangle_native_mesh", *mMapSettings, 0, 15 );
-
-  mMapSettings->setRotation( 45 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "quad_and_triangle_native_mesh_rotated_45", "quad_and_triangle_native_mesh_rotated_45", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 0 );
+  QVERIFY( imageCheck( "quad_and_triangle_native_mesh", mMemoryLayer ) );
+  QVERIFY( imageCheck( "quad_and_triangle_native_mesh_rotated_45", mMemoryLayer, 45.0 ) );
 }
 
 void TestQgsMeshRenderer::test_native_mesh_renderingWithClipping()
@@ -246,12 +261,10 @@ void TestQgsMeshRenderer::test_native_mesh_renderingWithClipping()
   mMapSettings->addClippingRegion( region );
   mMapSettings->addClippingRegion( region2 );
 
-  mMapSettings->setDestinationCrs( mMemoryLayer->crs() );
-  mMapSettings->setExtent( mMemoryLayer->extent() );
-  mMapSettings->setOutputDpi( 96 );
-  mMapSettings->setRotation( 0 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "painterclip_region", "painterclip_region", *mMapSettings, 0, 15 );
+  const bool res = imageCheck( "painterclip_region", mMemoryLayer );
+
   mMapSettings->setClippingRegions( QList< QgsMapClippingRegion >() );
+  QVERIFY( res );
 }
 
 void TestQgsMeshRenderer::test_triangular_mesh_rendering()
@@ -263,16 +276,8 @@ void TestQgsMeshRenderer::test_triangular_mesh_rendering()
   settings.setLineWidth( 0.26 );
   rendererSettings.setTriangularMeshSettings( settings );
   mMemoryLayer->setRendererSettings( rendererSettings );
-
-  mMapSettings->setDestinationCrs( mMemoryLayer->crs() );
-  mMapSettings->setExtent( mMemoryLayer->extent() );
-  mMapSettings->setRotation( 0 );
-  mMapSettings->setOutputDpi( 96 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "quad_and_triangle_triangular_mesh", "quad_and_triangle_triangular_mesh", *mMapSettings, 0, 15 );
-
-  mMapSettings->setRotation( 45 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "quad_and_triangle_triangular_mesh_rotated_45", "quad_and_triangle_triangular_mesh_rotated_45", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 0 );
+  QVERIFY( imageCheck( "quad_and_triangle_triangular_mesh", mMemoryLayer ) );
+  QVERIFY( imageCheck( "quad_and_triangle_triangular_mesh_rotated_45", mMemoryLayer, 45.0 ) );
 }
 
 void TestQgsMeshRenderer::test_edge_mesh_rendering()
@@ -284,12 +289,7 @@ void TestQgsMeshRenderer::test_edge_mesh_rendering()
   settings.setLineWidth( 0.26 );
   rendererSettings.setEdgeMeshSettings( settings );
   mMemory1DLayer->setRendererSettings( rendererSettings );
-
-  mMapSettings->setDestinationCrs( mMemory1DLayer->crs() );
-  mMapSettings->setExtent( mMemory1DLayer->extent() );
-  mMapSettings->setOutputDpi( 96 );
-  mMapSettings->setRotation( 0 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "lines_edge_mesh", "lines_edge_mesh", *mMapSettings, 0, 15 );
+  QVERIFY( imageCheck( "lines_edge_mesh", mMemory1DLayer ) );
 }
 
 void TestQgsMeshRenderer::test_1d_vertex_scalar_dataset_rendering()
@@ -309,14 +309,8 @@ void TestQgsMeshRenderer::test_1d_vertex_scalar_dataset_rendering()
   mMemory1DLayer->setRendererSettings( rendererSettings );
   mMemory1DLayer->setStaticScalarDatasetIndex( ds );
 
-  mMapSettings->setDestinationCrs( mMemory1DLayer->crs() );
-  mMapSettings->setExtent( mMemory1DLayer->extent() );
-  mMapSettings->setOutputDpi( 96 );
-  mMapSettings->setRotation( 0 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "lines_vertex_scalar_dataset", "lines_vertex_scalar_dataset", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 45 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "lines_vertex_scalar_dataset_rotated_45", "lines_vertex_scalar_dataset_rotated_45", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 0 );
+  QVERIFY( imageCheck( "lines_vertex_scalar_dataset", mMemory1DLayer ) );
+  QVERIFY( imageCheck( "lines_vertex_scalar_dataset_rotated_45", mMemory1DLayer, 45 ) );
 }
 
 void TestQgsMeshRenderer::test_1d_vertex_vector_dataset_rendering()
@@ -334,14 +328,8 @@ void TestQgsMeshRenderer::test_1d_vertex_vector_dataset_rendering()
   mMemory1DLayer->setRendererSettings( rendererSettings );
   mMemory1DLayer->setStaticVectorDatasetIndex( ds );
 
-  mMapSettings->setDestinationCrs( mMemory1DLayer->crs() );
-  mMapSettings->setExtent( mMemory1DLayer->extent() );
-  mMapSettings->setOutputDpi( 96 );
-  mMapSettings->setRotation( 0 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "lines_vertex_vector_dataset", "lines_vertex_vector_dataset", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 45 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "lines_vertex_vector_dataset_rotated_45", "lines_vertex_vector_dataset_rotated_45", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 0 );
+  QVERIFY( imageCheck( "lines_vertex_vector_dataset", mMemory1DLayer ) );
+  QVERIFY( imageCheck( "lines_vertex_vector_dataset_rotated_45", mMemory1DLayer, 45 ) );
 }
 
 void TestQgsMeshRenderer::test_1d_edge_scalar_dataset_rendering()
@@ -361,14 +349,8 @@ void TestQgsMeshRenderer::test_1d_edge_scalar_dataset_rendering()
   mMemory1DLayer->setRendererSettings( rendererSettings );
   mMemory1DLayer->setStaticScalarDatasetIndex( ds );
 
-  mMapSettings->setDestinationCrs( mMemory1DLayer->crs() );
-  mMapSettings->setExtent( mMemory1DLayer->extent() );
-  mMapSettings->setOutputDpi( 96 );
-  mMapSettings->setRotation( 0 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "lines_edge_scalar_dataset", "lines_edge_scalar_dataset", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 45 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "lines_edge_scalar_dataset_rotated_45", "lines_edge_scalar_dataset_rotated_45", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 0 );
+  QVERIFY( imageCheck( "lines_edge_scalar_dataset", mMemory1DLayer ) );
+  QVERIFY( imageCheck( "lines_edge_scalar_dataset_rotated_45", mMemory1DLayer, 45 ) );
 }
 
 void TestQgsMeshRenderer::test_1d_edge_vector_dataset_rendering()
@@ -381,14 +363,8 @@ void TestQgsMeshRenderer::test_1d_edge_vector_dataset_rendering()
   mMemory1DLayer->setRendererSettings( rendererSettings );
   mMemory1DLayer->setStaticVectorDatasetIndex( ds );
 
-  mMapSettings->setDestinationCrs( mMemory1DLayer->crs() );
-  mMapSettings->setExtent( mMemory1DLayer->extent() );
-  mMapSettings->setOutputDpi( 96 );
-  mMapSettings->setRotation( 0 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "lines_edge_vector_dataset", "lines_edge_vector_dataset", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 45 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "lines_edge_vector_dataset_rotated_45", "lines_edge_vector_dataset_rotated_45", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 0 );
+  QVERIFY( imageCheck( "lines_edge_vector_dataset", mMemory1DLayer ) );
+  QVERIFY( imageCheck( "lines_edge_vector_dataset_rotated_45", mMemory1DLayer, 45 ) );
 }
 
 void TestQgsMeshRenderer::test_vertex_scalar_dataset_rendering()
@@ -401,14 +377,8 @@ void TestQgsMeshRenderer::test_vertex_scalar_dataset_rendering()
   mMemoryLayer->setRendererSettings( rendererSettings );
   mMemoryLayer->setStaticScalarDatasetIndex( ds );
 
-  mMapSettings->setDestinationCrs( mMemoryLayer->crs() );
-  mMapSettings->setExtent( mMemoryLayer->extent() );
-  mMapSettings->setOutputDpi( 96 );
-  mMapSettings->setRotation( 0 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "quad_and_triangle_vertex_scalar_dataset", "quad_and_triangle_vertex_scalar_dataset", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 45 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "quad_and_triangle_vertex_scalar_dataset_rotated_45", "quad_and_triangle_vertex_scalar_dataset_rotated_45", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 0 );
+  QVERIFY( imageCheck( "quad_and_triangle_vertex_scalar_dataset", mMemoryLayer ) );
+  QVERIFY( imageCheck( "quad_and_triangle_vertex_scalar_dataset_rotated_45", mMemoryLayer, 45.0 ) );
 }
 
 void TestQgsMeshRenderer::test_vertex_vector_dataset_rendering()
@@ -426,14 +396,8 @@ void TestQgsMeshRenderer::test_vertex_vector_dataset_rendering()
   mMemoryLayer->setRendererSettings( rendererSettings );
   mMemoryLayer->setStaticVectorDatasetIndex( ds );
 
-  mMapSettings->setDestinationCrs( mMemoryLayer->crs() );
-  mMapSettings->setExtent( mMemoryLayer->extent() );
-  mMapSettings->setOutputDpi( 96 );
-  mMapSettings->setRotation( 0 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "quad_and_triangle_vertex_vector_dataset", "quad_and_triangle_vertex_vector_dataset", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 45 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "quad_and_triangle_vertex_vector_dataset_rotated_45", "quad_and_triangle_vertex_vector_dataset_rotated_45", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 0 );
+  QVERIFY( imageCheck( "quad_and_triangle_vertex_vector_dataset", mMemoryLayer ) );
+  QVERIFY( imageCheck( "quad_and_triangle_vertex_vector_dataset_rotated_45", mMemoryLayer, 45.0 ) );
 }
 
 void TestQgsMeshRenderer::test_vertex_vector_dataset_colorRamp_rendering()
@@ -452,11 +416,7 @@ void TestQgsMeshRenderer::test_vertex_vector_dataset_colorRamp_rendering()
   rendererSettings.setVectorSettings( ds.group(), settings );
   mMemoryLayer->setRendererSettings( rendererSettings );
 
-  mMapSettings->setDestinationCrs( mMemoryLayer->crs() );
-  mMapSettings->setExtent( mMemoryLayer->extent() );
-  mMapSettings->setOutputDpi( 96 );
-  mMapSettings->setRotation( 0 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "quad_and_triangle_vertex_vector_dataset_colorRamp", "quad_and_triangle_vertex_vector_dataset_colorRamp", *mMapSettings, 0, 15 );
+  QVERIFY( imageCheck( "quad_and_triangle_vertex_vector_dataset_colorRamp", mMemoryLayer ) );
 }
 
 void TestQgsMeshRenderer::test_face_scalar_dataset_rendering()
@@ -469,14 +429,8 @@ void TestQgsMeshRenderer::test_face_scalar_dataset_rendering()
   mMemoryLayer->setRendererSettings( rendererSettings );
   mMemoryLayer->setStaticScalarDatasetIndex( ds );
 
-  mMapSettings->setDestinationCrs( mMemoryLayer->crs() );
-  mMapSettings->setExtent( mMemoryLayer->extent() );
-  mMapSettings->setOutputDpi( 96 );
-  mMapSettings->setRotation( 0 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "quad_and_triangle_face_scalar_dataset", "quad_and_triangle_face_scalar_dataset", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 45 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "quad_and_triangle_face_scalar_dataset_rotated_45", "quad_and_triangle_face_scalar_dataset_rotated_45", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 0 );
+  QVERIFY( imageCheck( "quad_and_triangle_face_scalar_dataset", mMemoryLayer ) );
+  QVERIFY( imageCheck( "quad_and_triangle_face_scalar_dataset_rotated_45", mMemoryLayer, 45.0 ) );
 }
 
 void TestQgsMeshRenderer::test_face_scalar_dataset_interpolated_neighbour_average_rendering()
@@ -492,12 +446,9 @@ void TestQgsMeshRenderer::test_face_scalar_dataset_interpolated_neighbour_averag
   mMemoryLayer->setRendererSettings( rendererSettings );
   mMemoryLayer->setStaticScalarDatasetIndex( ds );
 
-  mMapSettings->setDestinationCrs( mMemoryLayer->crs() );
-  mMapSettings->setExtent( mMemoryLayer->extent() );
-  mMapSettings->setOutputDpi( 96 );
-  mMapSettings->setRotation( 0 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "quad_and_triangle_face_scalar_interpolated_neighbour_average_dataset", "quad_and_triangle_face_scalar_interpolated_neighbour_average_dataset", *mMapSettings, 0, 15 );
+  QVERIFY( imageCheck( "quad_and_triangle_face_scalar_interpolated_neighbour_average_dataset", mMemoryLayer ) );
 }
+
 
 void TestQgsMeshRenderer::test_face_vector_dataset_rendering()
 {
@@ -509,14 +460,8 @@ void TestQgsMeshRenderer::test_face_vector_dataset_rendering()
   mMemoryLayer->setRendererSettings( rendererSettings );
   mMemoryLayer->setStaticVectorDatasetIndex( ds );
 
-  mMapSettings->setDestinationCrs( mMemoryLayer->crs() );
-  mMapSettings->setExtent( mMemoryLayer->extent() );
-  mMapSettings->setOutputDpi( 96 );
-  mMapSettings->setRotation( 0 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "quad_and_triangle_face_vector_dataset", "quad_and_triangle_face_vector_dataset", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 45 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "quad_and_triangle_face_vector_dataset_rotated_45", "quad_and_triangle_face_vector_dataset_rotated_45", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 0 );
+  QVERIFY( imageCheck( "quad_and_triangle_face_vector_dataset", mMemoryLayer ) );
+  QVERIFY( imageCheck( "quad_and_triangle_face_vector_dataset_rotated_45", mMemoryLayer, 45.0 ) );
 }
 
 void TestQgsMeshRenderer::test_vertex_scalar_dataset_with_inactive_face_rendering()
@@ -529,45 +474,7 @@ void TestQgsMeshRenderer::test_vertex_scalar_dataset_with_inactive_face_renderin
   mMdalLayer->setRendererSettings( rendererSettings );
   mMdalLayer->setStaticScalarDatasetIndex( ds );
 
-  mMapSettings->setDestinationCrs( mMdalLayer->crs() );
-  mMapSettings->setExtent( mMdalLayer->extent() );
-  mMapSettings->setOutputDpi( 96 );
-  mMapSettings->setRotation( 0 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "quad_and_triangle_vertex_scalar_dataset_with_inactive_face", "quad_and_triangle_vertex_scalar_dataset_with_inactive_face", *mMapSettings, 0, 15 );
-}
-
-void TestQgsMeshRenderer::test_vertex_vector_on_user_grid_wind_barbs()
-{
-  const QgsMeshDatasetIndex ds( 2, 0 );
-  const QgsMeshDatasetGroupMetadata metadata = mMdalLayer->dataProvider()->datasetGroupMetadata( ds );
-  QCOMPARE( metadata.name(), QStringLiteral( "VertexVectorDataset2" ) );
-
-  QgsMeshRendererSettings rendererSettings = mMdalLayer->rendererSettings();
-  QgsMeshRendererVectorSettings settings = rendererSettings.vectorSettings( ds.group() );
-  settings.setOnUserDefinedGrid( true );
-  settings.setUserGridCellWidth( 30 );
-  settings.setUserGridCellHeight( 30 );
-  settings.setLineWidth( 0.5 );
-  settings.setSymbology( QgsMeshRendererVectorSettings::WindBarbs );
-  settings.setColoringMethod( QgsInterpolatedLineColor::SingleColor );
-  QgsMeshRendererVectorWindBarbSettings windBarbSettings = settings.windBarbSettings();
-  windBarbSettings.setShaftLength( 20 );
-  windBarbSettings.setShaftLengthUnits( Qgis::RenderUnit::Pixels );
-  windBarbSettings.setMagnitudeUnits( QgsMeshRendererVectorWindBarbSettings::WindSpeedUnit::OtherUnit );
-  windBarbSettings.setMagnitudeMultiplier( 2 );
-  settings.setWindBarbSettings( windBarbSettings );
-  rendererSettings.setVectorSettings( ds.group(), settings );
-  mMdalLayer->setRendererSettings( rendererSettings );
-  mMdalLayer->setStaticVectorDatasetIndex( ds );
-
-  mMapSettings->setDestinationCrs( mMdalLayer->crs() );
-  mMapSettings->setExtent( mMdalLayer->extent() );
-  mMapSettings->setOutputDpi( 96 );
-  mMapSettings->setRotation( 0 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "quad_and_triangle_vertex_vector_user_grid_dataset_wind_barbs", "quad_and_triangle_vertex_vector_user_grid_dataset_wind_barbs", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 45 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "quad_and_triangle_vertex_vector_user_grid_dataset_wind_barbs_rotated_45", "quad_and_triangle_vertex_vector_user_grid_dataset_wind_barbs_rotated_45", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 0 );
+  QVERIFY( imageCheck( "quad_and_triangle_vertex_scalar_dataset_with_inactive_face", mMdalLayer ) );
 }
 
 void TestQgsMeshRenderer::test_face_vector_on_user_grid()
@@ -587,14 +494,8 @@ void TestQgsMeshRenderer::test_face_vector_on_user_grid()
   mMemoryLayer->setRendererSettings( rendererSettings );
   mMemoryLayer->setStaticVectorDatasetIndex( ds );
 
-  mMapSettings->setDestinationCrs( mMemoryLayer->crs() );
-  mMapSettings->setExtent( mMemoryLayer->extent() );
-  mMapSettings->setOutputDpi( 96 );
-  mMapSettings->setRotation( 0 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "quad_and_triangle_face_vector_user_grid_dataset", "quad_and_triangle_face_vector_user_grid_dataset", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 45 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "quad_and_triangle_face_vector_user_grid_dataset_rotated_45", "quad_and_triangle_face_vector_user_grid_dataset_rotated_45", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 0 );
+  QVERIFY( imageCheck( "quad_and_triangle_face_vector_user_grid_dataset", mMemoryLayer ) );
+  QVERIFY( imageCheck( "quad_and_triangle_face_vector_user_grid_dataset_rotated_45", mMemoryLayer, 45.0 ) );
 }
 
 void TestQgsMeshRenderer::test_face_vector_on_user_grid_streamlines()
@@ -614,14 +515,8 @@ void TestQgsMeshRenderer::test_face_vector_on_user_grid_streamlines()
   mMemoryLayer->setRendererSettings( rendererSettings );
   mMemoryLayer->setStaticVectorDatasetIndex( ds );
 
-  mMapSettings->setDestinationCrs( mMemoryLayer->crs() );
-  mMapSettings->setExtent( mMemoryLayer->extent() );
-  mMapSettings->setOutputDpi( 96 );
-  mMapSettings->setRotation( 0 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "quad_and_triangle_face_vector_user_grid_dataset_streamlines", "quad_and_triangle_face_vector_user_grid_dataset_streamlines", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 45 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "quad_and_triangle_face_vector_user_grid_dataset_streamlines_rotated_45", "quad_and_triangle_face_vector_user_grid_dataset_streamlines_rotated_45", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 0 );
+  QVERIFY( imageCheck( "quad_and_triangle_face_vector_user_grid_dataset_streamlines", mMemoryLayer ) );
+  QVERIFY( imageCheck( "quad_and_triangle_face_vector_user_grid_dataset_streamlines_rotated_45", mMemoryLayer, 45.0 ) );
 }
 
 void TestQgsMeshRenderer::test_vertex_vector_on_user_grid()
@@ -642,14 +537,8 @@ void TestQgsMeshRenderer::test_vertex_vector_on_user_grid()
   mMemoryLayer->setRendererSettings( rendererSettings );
   mMemoryLayer->setStaticVectorDatasetIndex( ds );
 
-  mMapSettings->setDestinationCrs( mMemoryLayer->crs() );
-  mMapSettings->setExtent( mMemoryLayer->extent() );
-  mMapSettings->setOutputDpi( 96 );
-  mMapSettings->setRotation( 0 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "quad_and_triangle_vertex_vector_user_grid_dataset", "quad_and_triangle_vertex_vector_user_grid_dataset", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 45 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "quad_and_triangle_vertex_vector_user_grid_dataset_rotated_45", "quad_and_triangle_vertex_vector_user_grid_dataset_rotated_45", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 0 );
+  QVERIFY( imageCheck( "quad_and_triangle_vertex_vector_user_grid_dataset", mMemoryLayer ) );
+  QVERIFY( imageCheck( "quad_and_triangle_vertex_vector_user_grid_dataset_rotated_45", mMemoryLayer, 45.0 ) );
 }
 
 void TestQgsMeshRenderer::test_vertex_vector_on_user_grid_streamlines()
@@ -670,14 +559,8 @@ void TestQgsMeshRenderer::test_vertex_vector_on_user_grid_streamlines()
   mMemoryLayer->setRendererSettings( rendererSettings );
   mMemoryLayer->setStaticVectorDatasetIndex( ds );
 
-  mMapSettings->setDestinationCrs( mMemoryLayer->crs() );
-  mMapSettings->setExtent( mMemoryLayer->extent() );
-  mMapSettings->setOutputDpi( 96 );
-  mMapSettings->setRotation( 0 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "quad_and_triangle_vertex_vector_user_grid_dataset_streamlines", "quad_and_triangle_vertex_vector_user_grid_dataset_streamlines", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 45 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "quad_and_triangle_vertex_vector_user_grid_dataset_streamlines_rotated_45", "quad_and_triangle_vertex_vector_user_grid_dataset_streamlines_rotated_45", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 0 );
+  QVERIFY( imageCheck( "quad_and_triangle_vertex_vector_user_grid_dataset_streamlines", mMemoryLayer ) );
+  QVERIFY( imageCheck( "quad_and_triangle_vertex_vector_user_grid_dataset_streamlines_rotated_45", mMemoryLayer, 45.0 ) );
 }
 
 void TestQgsMeshRenderer::test_vertex_vector_on_user_grid_streamlines_colorRamp()
@@ -698,11 +581,7 @@ void TestQgsMeshRenderer::test_vertex_vector_on_user_grid_streamlines_colorRamp(
   mMemoryLayer->setRendererSettings( rendererSettings );
   mMemoryLayer->setStaticVectorDatasetIndex( ds );
 
-  mMapSettings->setDestinationCrs( mMemoryLayer->crs() );
-  mMapSettings->setExtent( mMemoryLayer->extent() );
-  mMapSettings->setOutputDpi( 96 );
-  mMapSettings->setRotation( 0 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "quad_and_triangle_vertex_vector_user_grid_dataset_streamlines_colorRamp", "quad_and_triangle_vertex_vector_user_grid_dataset_streamlines_colorRamp", *mMapSettings, 0, 15 );
+  QVERIFY( imageCheck( "quad_and_triangle_vertex_vector_user_grid_dataset_streamlines_colorRamp", mMemoryLayer ) );
 }
 
 void TestQgsMeshRenderer::test_vertex_vector_traces()
@@ -723,20 +602,14 @@ void TestQgsMeshRenderer::test_vertex_vector_traces()
   QgsMeshRendererVectorTracesSettings tracesSetting = settings.tracesSettings();
   tracesSetting.setParticlesCount( -1 );
   tracesSetting.setMaximumTailLength( 40 );
-  tracesSetting.setMaximumTailLengthUnit( Qgis::RenderUnit::Pixels );
+  tracesSetting.setMaximumTailLengthUnit( QgsUnitTypes::RenderPixels );
   settings.setTracesSettings( tracesSetting );
   rendererSettings.setVectorSettings( ds.group(), settings );
   mMemoryLayer->setRendererSettings( rendererSettings );
   mMemoryLayer->setStaticVectorDatasetIndex( ds );
 
-  mMapSettings->setDestinationCrs( mMemoryLayer->crs() );
-  mMapSettings->setExtent( mMemoryLayer->extent() );
-  mMapSettings->setOutputDpi( 96 );
-  mMapSettings->setRotation( 0 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "lines_edge_quad_and_triangle_vertex_vector_traces", "quad_and_triangle_vertex_vector_traces", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 45 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "quad_and_triangle_vertex_vector_traces_rotated_45", "quad_and_triangle_vertex_vector_traces_rotated_45", *mMapSettings, 0, 15 );
-  mMapSettings->setRotation( 0 );
+  QVERIFY( imageCheck( "quad_and_triangle_vertex_vector_traces", mMemoryLayer ) );
+  QVERIFY( imageCheck( "quad_and_triangle_vertex_vector_traces_rotated_45", mMemoryLayer, 45.0 ) );
 }
 
 void TestQgsMeshRenderer::test_vertex_vector_traces_colorRamp()
@@ -757,17 +630,13 @@ void TestQgsMeshRenderer::test_vertex_vector_traces_colorRamp()
   QgsMeshRendererVectorTracesSettings tracesSetting = settings.tracesSettings();
   tracesSetting.setParticlesCount( -1 );
   tracesSetting.setMaximumTailLength( 40 );
-  tracesSetting.setMaximumTailLengthUnit( Qgis::RenderUnit::Pixels );
+  tracesSetting.setMaximumTailLengthUnit( QgsUnitTypes::RenderPixels );
   settings.setTracesSettings( tracesSetting );
   rendererSettings.setVectorSettings( ds.group(), settings );
   mMemoryLayer->setRendererSettings( rendererSettings );
   mMemoryLayer->setStaticVectorDatasetIndex( ds );
 
-  mMapSettings->setDestinationCrs( mMemoryLayer->crs() );
-  mMapSettings->setExtent( mMemoryLayer->extent() );
-  mMapSettings->setOutputDpi( 96 );
-  mMapSettings->setRotation( 0 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "quad_and_triangle_vertex_vector_traces_colorRamp", "quad_and_triangle_vertex_vector_traces_colorRamp", *mMapSettings, 0, 15 );
+  QVERIFY( imageCheck( "quad_and_triangle_vertex_vector_traces_colorRamp", mMemoryLayer ) );
 }
 
 void TestQgsMeshRenderer::test_signals()
@@ -795,7 +664,7 @@ void TestQgsMeshRenderer::test_stacked_3d_mesh_single_level_averaging()
   QVERIFY( metadata.name() == "temperature" );
   QVERIFY( metadata.maximumVerticalLevelsCount() == 10 );
   QgsMeshRendererScalarSettings scalarSettings = rendererSettings.scalarSettings( ds.group() );
-  scalarSettings.setDataResamplingMethod( QgsMeshRendererScalarSettings::NoResampling );
+  scalarSettings.setDataResamplingMethod( QgsMeshRendererScalarSettings::None );
   rendererSettings.setScalarSettings( ds.group(), scalarSettings );
   // want to set active vector dataset one defined on 3d mesh
   ds = QgsMeshDatasetIndex( 6, 3 );
@@ -820,11 +689,7 @@ void TestQgsMeshRenderer::test_stacked_3d_mesh_single_level_averaging()
   mMdal3DLayer->setRendererSettings( rendererSettings );
   mMdal3DLayer->setStaticVectorDatasetIndex( ds );
 
-  mMapSettings->setDestinationCrs( mMdal3DLayer->crs() );
-  mMapSettings->setExtent( mMdal3DLayer->extent() );
-  mMapSettings->setRotation( 0 );
-  mMapSettings->setOutputDpi( 96 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "stacked_3d_mesh_single_level_averaging", "stacked_3d_mesh_single_level_averaging", *mMapSettings, 0, 15 );
+  QVERIFY( imageCheck( "stacked_3d_mesh_single_level_averaging", mMdal3DLayer ) );
 }
 
 void TestQgsMeshRenderer::test_simplified_triangular_mesh_rendering()
@@ -841,12 +706,7 @@ void TestQgsMeshRenderer::test_simplified_triangular_mesh_rendering()
   mMdal3DLayer->setRendererSettings( rendererSettings );
 
   mMdal3DLayer->setMeshSimplificationSettings( simplificatationSettings );
-
-  mMapSettings->setDestinationCrs( mMdal3DLayer->crs() );
-  mMapSettings->setExtent( mMdal3DLayer->extent() );
-  mMapSettings->setOutputDpi( 96 );
-  mMapSettings->setRotation( 0 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "simplified_triangular_mesh", "simplified_triangular_mesh", *mMapSettings, 0, 15 );
+  QVERIFY( imageCheck( "simplified_triangular_mesh", mMdal3DLayer ) );
 }
 
 void TestQgsMeshRenderer::test_classified_values()
@@ -860,11 +720,7 @@ void TestQgsMeshRenderer::test_classified_values()
   classifiedMesh.temporalProperties()->setIsActive( false );
   classifiedMesh.setStaticScalarDatasetIndex( QgsMeshDatasetIndex( 3, 4 ) );
 
-  mMapSettings->setDestinationCrs( classifiedMesh.crs() );
-  mMapSettings->setExtent( classifiedMesh.extent() );
-  mMapSettings->setOutputDpi( 96 );
-  mMapSettings->setRotation( 0 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "classified_values", "classified_values", *mMapSettings, 0, 15 );
+  QVERIFY( imageCheck( "classified_values", &classifiedMesh ) );
 }
 
 QGSTEST_MAIN( TestQgsMeshRenderer )

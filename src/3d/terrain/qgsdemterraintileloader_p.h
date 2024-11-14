@@ -34,10 +34,10 @@
 #include <QElapsedTimer>
 #include <QMutex>
 
-#include "qgschunknode.h"
+#include "qgschunknode_p.h"
 #include "qgscoordinatetransformcontext.h"
 #include "qgsrectangle.h"
-#include "qgsterraintileloader.h"
+#include "qgsterraintileloader_p.h"
 #include "qgstilingscheme.h"
 
 class QgsRasterDataProvider;
@@ -48,6 +48,7 @@ class QgsTerrainGenerator;
 /**
  * \ingroup 3d
  * \brief Chunk loader for DEM terrain tiles.
+ * \since QGIS 3.0
  */
 class QgsDemTerrainTileLoader : public QgsTerrainTileLoader
 {
@@ -75,6 +76,7 @@ class QgsTerrainDownloader;
 /**
  * \ingroup 3d
  * \brief Utility class to asynchronously create heightmaps from DEM raster for given tiles of terrain.
+ * \since QGIS 3.0
  */
 class QgsDemHeightMapGenerator : public QObject
 {
@@ -108,8 +110,8 @@ class QgsDemHeightMapGenerator : public QObject
     void onFutureFinished();
 
   private:
-    //! dtm raster layer's extent in layer crs
-    const QgsRectangle mDtmExtent;
+    //! raster used to build terrain
+    QgsRasterLayer *mDtm = nullptr;
 
     //! cloned provider to be used in worker thread
     QgsRasterDataProvider *mClonedProvider = nullptr;

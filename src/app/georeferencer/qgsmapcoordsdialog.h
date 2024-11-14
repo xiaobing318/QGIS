@@ -25,7 +25,7 @@
 
 #include "ui_qgsmapcoordsdialogbase.h"
 
-class QgsGeorefDataPoint;
+class QgsGCPCanvasItem;
 
 class QPushButton;
 
@@ -64,15 +64,12 @@ class QgsMapCoordsDialog : public QDialog, private Ui::QgsMapCoordsDialogBase
     /**
      * Constructor for QgsMapCoordsDialog.
      * \param qgisCanvas
-     * \param georefDataPoint Temporary data point used for preview on source and destination canvases while dialog is visible
+     * \param sourceCoordinates must be in source layer coordinates, NOT pixels (unless source image is completely non-referenced)!
      * \param rasterCrs
      * \param parent
      */
-    QgsMapCoordsDialog( QgsMapCanvas *qgisCanvas, QgsGeorefDataPoint *georefDataPoint, QgsCoordinateReferenceSystem &rasterCrs, QWidget *parent = nullptr );
+    QgsMapCoordsDialog( QgsMapCanvas *qgisCanvas, const QgsPointXY &sourceCoordinates, QgsCoordinateReferenceSystem &rasterCrs, QWidget *parent = nullptr );
     ~QgsMapCoordsDialog() override;
-
-    //! Update the source coordinates of the newly added
-    void updateSourceCoordinates( const QgsPointXY &sourceCoordinates );
 
   private slots:
     void buttonBox_accepted();
@@ -104,10 +101,12 @@ class QgsMapCoordsDialog : public QDialog, private Ui::QgsMapCoordsDialogBase
     QgsMapTool *mPrevMapTool = nullptr;
     QgsMapCanvas *mQgisCanvas = nullptr;
 
+    QgsGCPCanvasItem *mNewlyAddedPointItem = nullptr;
+
     QgsCoordinateReferenceSystem mRasterCrs;
 
-    //! Used for point preview. Holds the source layer coordinates -- must be in source layer coordinates, not pixels (unless source image is completely non-referenced)
-    QgsGeorefDataPoint *mNewlyAddedPoint = nullptr;
+    //! Source layer coordinates -- must be in source layer coordinates, not pixels (unless source image is completely non-referenced)
+    QgsPointXY mSourceLayerCoordinates;
 };
 
 #endif

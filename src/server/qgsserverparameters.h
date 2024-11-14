@@ -40,19 +40,12 @@ class SERVER_EXPORT QgsServerParameterDefinition
      * \param type The type of the parameter
      * \param defaultValue The default value of the parameter
      */
-    QgsServerParameterDefinition( const QMetaType::Type type = QMetaType::Type::QString,
+    QgsServerParameterDefinition( const QVariant::Type type = QVariant::String,
                                   const QVariant defaultValue = QVariant( "" ) );
 
-
     /**
-     * Constructor for QgsServerParameterDefinition.
-     * \param type The type of the parameter
-     * \param defaultValue The default value of the parameter
-     * \deprecated QGIS 3.38. Use the method with a QMetaType::Type argument instead.
+     * Default destructor for QgsServerParameterDefinition.
      */
-    Q_DECL_DEPRECATED QgsServerParameterDefinition( const QVariant::Type type,
-        const QVariant defaultValue = QVariant( "" ) ) SIP_DEPRECATED;
-
     virtual ~QgsServerParameterDefinition() = default;
 
     /**
@@ -182,7 +175,7 @@ class SERVER_EXPORT QgsServerParameterDefinition
      */
     static void raiseError( const QString &msg );
 
-    QMetaType::Type mType;
+    QVariant::Type mType;
     QVariant mValue;
     QVariant mDefaultValue;
 };
@@ -217,19 +210,8 @@ class SERVER_EXPORT QgsServerParameter : public QgsServerParameterDefinition
      * \param defaultValue The default value to use if not defined
      */
     QgsServerParameter( const QgsServerParameter::Name name = QgsServerParameter::UNKNOWN,
-                        const QMetaType::Type type = QMetaType::Type::QString,
+                        const QVariant::Type type = QVariant::String,
                         const QVariant defaultValue = QVariant( "" ) );
-
-    /**
-     * Constructor for QgsServerParameter.
-     * \param name The name of the parameter
-     * \param type The type of the parameter
-     * \param defaultValue The default value to use if not defined
-     * \deprecated QGIS 3.38. Use the method with a QMetaType::Type argument instead.
-     */
-    Q_DECL_DEPRECATED QgsServerParameter( const QgsServerParameter::Name name,
-                                          const QVariant::Type type,
-                                          const QVariant defaultValue = QVariant( "" ) ) SIP_DEPRECATED;
 
     /**
      * Raises an error in case of an invalid conversion.

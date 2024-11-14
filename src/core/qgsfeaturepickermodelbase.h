@@ -44,24 +44,17 @@ class CORE_EXPORT QgsFeaturePickerModelBase : public QAbstractItemModel SIP_ABST
 
   public:
 
-    // *INDENT-OFF*
-
     /**
      * Extra roles that can be used to fetch data from this model.
-     *
-     * \note Prior to QGIS 3.36 this was available as QgsFeaturePickerModelBase::Role
-     * \since QGIS 3.36
      */
-    enum class CustomRole SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsFeaturePickerModelBase, Role ) : int
+    enum Role
     {
-      IdentifierValue SIP_MONKEYPATCH_COMPAT_NAME(IdentifierValueRole) = Qt::UserRole, //!< Used to retrieve the identifier value (primary key) of a feature. \deprecated QGIS 3.40. Use IdentifierValuesRole instead.
-      IdentifierValues SIP_MONKEYPATCH_COMPAT_NAME(IdentifierValuesRole), //!< Used to retrieve the identifierValues (primary keys) of a feature.
-      Value SIP_MONKEYPATCH_COMPAT_NAME(ValueRole), //!< Used to retrieve the displayExpression of a feature.
-      Feature SIP_MONKEYPATCH_COMPAT_NAME(FeatureRole), //!< Used to retrieve the feature, it might be incomplete if the request doesn't fetch all attributes or geometry.
-      FeatureId SIP_MONKEYPATCH_COMPAT_NAME(FeatureIdRole) //!< Used to retrieve the id of a feature.
+      IdentifierValueRole = Qt::UserRole, //!< \deprecated Use IdentifierValuesRole instead
+      IdentifierValuesRole, //!< Used to retrieve the identifierValues (primary keys) of a feature.
+      ValueRole, //!< Used to retrieve the displayExpression of a feature.
+      FeatureRole, //!< Used to retrieve the feature, it might be incomplete if the request doesn't fetch all attributes or geometry.
+      FeatureIdRole //!< Used to retrieve the id of a feature.
     };
-    Q_ENUM( CustomRole )
-    // *INDENT-ON*
 
     /**
      * Create a new QgsFeaturePickerModelBase, optionally specifying a \a parent.
@@ -241,9 +234,9 @@ class CORE_EXPORT QgsFeaturePickerModelBase : public QAbstractItemModel SIP_ABST
     void extraIdentifierValueIndexChanged( int index );
 
     /**
-     * Notification whether the model has \a found a feature tied to the extraIdentifierValue or not.
+     * Flag indicating that the extraIdentifierValue does not exist in the data.
      */
-    void extraValueDoesNotExistChanged( bool found );
+    void extraValueDoesNotExistChanged();
 
     /**
      * Notification that the model is about to be changed because a job was completed.

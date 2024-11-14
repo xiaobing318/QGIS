@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgscheckablecombobox.h"
-#include "moc_qgscheckablecombobox.cpp"
 #include "qgsapplication.h"
 
 #include <QEvent>

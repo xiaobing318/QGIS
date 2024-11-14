@@ -178,7 +178,7 @@
   <customwidget>
    <class>QgsAuthSettingsWidget</class>
    <extends>QWidget</extends>
-   <header>qgsauthsettingswidget.h</header>
+   <header>auth/qgsauthsettingswidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>

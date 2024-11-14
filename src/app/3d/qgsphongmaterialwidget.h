@@ -28,26 +28,15 @@ class QgsPhongMaterialSettings;
 class QgsPhongMaterialWidget : public QgsMaterialSettingsWidget, private Ui::PhongMaterialWidget
 {
     Q_OBJECT
-    Q_PROPERTY( bool hasOpacity READ hasOpacity WRITE setHasOpacity )
-
   public:
-    explicit QgsPhongMaterialWidget( QWidget *parent = nullptr, bool hasOpacity = true );
+    explicit QgsPhongMaterialWidget( QWidget *parent = nullptr );
 
     static QgsMaterialSettingsWidget *create();
 
-    void setTechnique( QgsMaterialSettingsRenderingTechnique technique ) final;
-    void setSettings( const QgsAbstractMaterialSettings *settings, QgsVectorLayer *layer ) final;
+    void setTechnique( QgsMaterialSettingsRenderingTechnique technique ) override;
+    void setSettings( const QgsAbstractMaterialSettings *settings, QgsVectorLayer *layer ) override;
     QgsAbstractMaterialSettings *settings() override;
 
-    bool hasOpacity() const { return mHasOpacity; }
-    void setHasOpacity( const bool opacity );
-
-  private slots:
-
-    void updateWidgetState();
-
-  private:
-    bool mHasOpacity; //! whether to display the opacity slider
 };
 
 #endif // QGSPHONGMATERIALWIDGET_H

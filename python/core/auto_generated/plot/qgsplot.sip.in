@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/plot/qgsplot.h                                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -29,15 +29,18 @@ Base class for plot/chart/graphs.
   public:
 
     QgsPlot();
+%Docstring
+Constructor for QgsPlot.
+%End
 
     virtual ~QgsPlot();
 
-    virtual bool writeXml( QDomElement &element, QDomDocument &document, const QgsReadWriteContext &context ) const;
+    virtual bool writeXml( QDomElement &element, QDomDocument &document, QgsReadWriteContext &context ) const;
 %Docstring
 Writes the plot's properties into an XML ``element``.
 %End
 
-    virtual bool readXml( const QDomElement &element, const QgsReadWriteContext &context );
+    virtual bool readXml( const QDomElement &element, QgsReadWriteContext &context );
 %Docstring
 Reads the plot's properties from an XML ``element``.
 %End
@@ -65,12 +68,12 @@ Encapsulates the properties of a plot axis.
     ~QgsPlotAxis();
 
 
-    bool writeXml( QDomElement &element, QDomDocument &document, const QgsReadWriteContext &context ) const;
+    bool writeXml( QDomElement &element, QDomDocument &document, QgsReadWriteContext &context ) const;
 %Docstring
 Writes the axis' properties into an XML ``element``.
 %End
 
-    bool readXml( const QDomElement &element, const QgsReadWriteContext &context );
+    bool readXml( const QDomElement &element, QgsReadWriteContext &context );
 %Docstring
 Reads the axis' properties from an XML ``element``.
 %End
@@ -179,50 +182,6 @@ Ownership of ``format`` is transferred to the plot.
 .. seealso:: :py:func:`numericFormat`
 %End
 
-    QString labelSuffix() const;
-%Docstring
-Returns the axis label suffix, or an empty string if no label suffix is to be used.
-
-.. seealso:: :py:func:`setLabelSuffix`
-
-.. seealso:: :py:func:`labelSuffixPlacement`
-
-.. versionadded:: 3.32
-%End
-
-    void setLabelSuffix( const QString &suffix );
-%Docstring
-Sets the axis label ``suffix``. Set to an empty string if no label suffix is to be used.
-
-.. seealso:: :py:func:`labelSuffix`
-
-.. seealso:: :py:func:`setLabelSuffixPlacement`
-
-.. versionadded:: 3.32
-%End
-
-    Qgis::PlotAxisSuffixPlacement labelSuffixPlacement() const;
-%Docstring
-Returns the placement for the axis label suffixes.
-
-.. seealso:: :py:func:`setLabelSuffixPlacement`
-
-.. seealso:: :py:func:`labelSuffix`
-
-.. versionadded:: 3.32
-%End
-
-    void setLabelSuffixPlacement( Qgis::PlotAxisSuffixPlacement placement );
-%Docstring
-Sets the ``placement`` for the axis label suffixes.
-
-.. seealso:: :py:func:`labelSuffixPlacement`
-
-.. seealso:: :py:func:`setLabelSuffix`
-
-.. versionadded:: 3.32
-%End
-
   private:
     QgsPlotAxis( const QgsPlotAxis &other );
 };
@@ -233,7 +192,7 @@ class Qgs2DPlot : QgsPlot
 Base class for 2-dimensional plot/chart/graphs.
 
 The base class is responsible for rendering the axis, grid lines and chart area. Subclasses
-can implement the :py:func:`~renderContent` method to render their actual plot content.
+can implement the :py:func:`~QgsPlotAxis.renderContent` method to render their actual plot content.
 
 .. warning::
 
@@ -255,9 +214,12 @@ Constructor for Qgs2DPlot.
     ~Qgs2DPlot();
 
 
-    virtual bool writeXml( QDomElement &element, QDomDocument &document, const QgsReadWriteContext &context ) const;
+    virtual bool writeXml( QDomElement &element, QDomDocument &document, QgsReadWriteContext &context ) const;
 
-    virtual bool readXml( const QDomElement &element, const QgsReadWriteContext &context );
+%Docstring
+Qgs2DPlot cannot be copied
+%End
+    virtual bool readXml( const QDomElement &element, QgsReadWriteContext &context );
 
 
     void render( QgsRenderContext &context );
@@ -379,6 +341,7 @@ Returns a reference to the plot's y axis.
 %End
 
 
+
     QgsFillSymbol *chartBackgroundSymbol();
 %Docstring
 Returns the fill symbol used to render the background of the chart.
@@ -429,62 +392,10 @@ Sets the ``margins`` of the plot area (in millimeters)
     Qgs2DPlot( const Qgs2DPlot &other );
 };
 
-class QgsPlotDefaultSettings
-{
-%Docstring(signature="appended")
-Manages default settings for plot objects
-
-.. warning::
-
-   This class is not considered stable API, and may change in future!
-
-.. versionadded:: 3.30
-%End
-
-%TypeHeaderCode
-#include "qgsplot.h"
-%End
-  public:
-
-    static QgsNumericFormat *axisLabelNumericFormat() /Factory/;
-%Docstring
-Returns the default numeric format to use for plot axis labels.
-%End
-
-    static QgsLineSymbol *axisGridMajorSymbol() /Factory/;
-%Docstring
-Returns the default line symbol to use for axis major grid lines.
-
-.. seealso:: :py:func:`axisGridMinorSymbol`
-%End
-
-    static QgsLineSymbol *axisGridMinorSymbol() /Factory/;
-%Docstring
-Returns the default line symbol to use for axis minor grid lines.
-
-.. seealso:: :py:func:`axisGridMajorSymbol`
-%End
-
-    static QgsFillSymbol *chartBackgroundSymbol() /Factory/;
-%Docstring
-Returns the default fill symbol to use for the chart area background fill.
-
-.. seealso:: :py:func:`chartBorderSymbol`
-%End
-
-    static QgsFillSymbol *chartBorderSymbol() /Factory/;
-%Docstring
-Returns the default fill symbol to use for the chart area border.
-
-.. seealso:: :py:func:`chartBackgroundSymbol`
-%End
-
-};
-
 /************************************************************************
  * This file has been generated automatically from                      *
  *                                                                      *
  * src/core/plot/qgsplot.h                                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

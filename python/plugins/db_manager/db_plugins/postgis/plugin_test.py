@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     plugin_test.py
@@ -21,8 +23,8 @@ __copyright__ = '(C) 2017, Sandro Santilli'
 
 import os
 import re
-import unittest
-from qgis.testing import start_app, QgisTestCase
+import qgis
+from qgis.testing import start_app, unittest
 from qgis.core import QgsDataSourceUri
 from qgis.utils import iface
 from qgis.PyQt.QtCore import QObject
@@ -36,7 +38,7 @@ from db_manager.db_plugins.plugin import Table
 from db_manager.db_plugins.postgis.connector import PostGisDBConnector
 
 
-class TestDBManagerPostgisPlugin(QgisTestCase):
+class TestDBManagerPostgisPlugin(unittest.TestCase):
 
     @classmethod
     def setUpClass(self):
@@ -142,12 +144,12 @@ class TestDBManagerPostgisPlugin(QgisTestCase):
         res = database.sqlResultModel("SELECT 'é'::text", obj)
         self.assertIsInstance(res, PGSqlResultModel)
         dat = res.getData(0, 0)
-        self.assertEqual(dat, "é")
+        self.assertEqual(dat, u"é")
         # SQL as unicode literal
-        res = database.sqlResultModel("SELECT 'é'::text", obj)
+        res = database.sqlResultModel(u"SELECT 'é'::text", obj)
         self.assertIsInstance(res, PGSqlResultModel)
         dat = res.getData(0, 0)
-        self.assertEqual(dat, "é")
+        self.assertEqual(dat, u"é")
 
 
 if __name__ == '__main__':

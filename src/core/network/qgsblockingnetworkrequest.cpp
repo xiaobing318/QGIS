@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsblockingnetworkrequest.h"
-#include "moc_qgsblockingnetworkrequest.cpp"
 #include "qgslogger.h"
 #include "qgsapplication.h"
 #include "qgsnetworkaccessmanager.h"
@@ -57,9 +56,9 @@ void QgsBlockingNetworkRequest::setAuthCfg( const QString &authCfg )
   mAuthCfg = authCfg;
 }
 
-QgsBlockingNetworkRequest::ErrorCode QgsBlockingNetworkRequest::get( QNetworkRequest &request, bool forceRefresh, QgsFeedback *feedback, RequestFlags requestFlags )
+QgsBlockingNetworkRequest::ErrorCode QgsBlockingNetworkRequest::get( QNetworkRequest &request, bool forceRefresh, QgsFeedback *feedback )
 {
-  return doRequest( Get, request, forceRefresh, feedback, requestFlags );
+  return doRequest( Get, request, forceRefresh, feedback );
 }
 
 QgsBlockingNetworkRequest::ErrorCode QgsBlockingNetworkRequest::post( QNetworkRequest &request, const QByteArray &data, bool forceRefresh, QgsFeedback *feedback )
@@ -126,7 +125,7 @@ void QgsBlockingNetworkRequest::sendRequestToNetworkAccessManager( const QNetwor
   };
 }
 
-QgsBlockingNetworkRequest::ErrorCode QgsBlockingNetworkRequest::doRequest( QgsBlockingNetworkRequest::Method method, QNetworkRequest &request, bool forceRefresh, QgsFeedback *feedback, RequestFlags requestFlags )
+QgsBlockingNetworkRequest::ErrorCode QgsBlockingNetworkRequest::doRequest( QgsBlockingNetworkRequest::Method method, QNetworkRequest &request, bool forceRefresh, QgsFeedback *feedback )
 {
   mMethod = method;
   mFeedback = feedback;
@@ -135,7 +134,6 @@ QgsBlockingNetworkRequest::ErrorCode QgsBlockingNetworkRequest::doRequest( QgsBl
   mIsAborted = false;
   mTimedout = false;
   mGotNonEmptyResponse = false;
-  mRequestFlags = requestFlags;
 
   mErrorMessage.clear();
   mErrorCode = NoError;
@@ -198,9 +196,6 @@ QgsBlockingNetworkRequest::ErrorCode QgsBlockingNetworkRequest::doRequest( QgsBl
       connect( mReply, &QNetworkReply::finished, this, &QgsBlockingNetworkRequest::replyFinished, Qt::DirectConnection );
       connect( mReply, &QNetworkReply::downloadProgress, this, &QgsBlockingNetworkRequest::replyProgress, Qt::DirectConnection );
       connect( mReply, &QNetworkReply::uploadProgress, this, &QgsBlockingNetworkRequest::replyProgress, Qt::DirectConnection );
-
-      if ( request.hasRawHeader( "Range" ) )
-        connect( mReply, &QNetworkReply::metaDataChanged, this, &QgsBlockingNetworkRequest::abortIfNotPartialContentReturned, Qt::DirectConnection );
 
       auto resumeMainThread = [&waitConditionMutex, &authRequestBufferNotEmpty ]()
       {
@@ -359,10 +354,6 @@ void QgsBlockingNetworkRequest::replyFinished()
           request.setAttribute( QNetworkRequest::CacheLoadControlAttribute, mForceRefresh ? QNetworkRequest::AlwaysNetwork : QNetworkRequest::PreferCache );
           request.setAttribute( QNetworkRequest::CacheSaveControlAttribute, true );
 
-          // if that was a range request, use the same range for the redirected request
-          if ( mReply->request().hasRawHeader( "Range" ) )
-            request.setRawHeader( "Range", mReply->request().rawHeader( "Range" ) );
-
           mReply->deleteLater();
           mReply = nullptr;
 
@@ -389,10 +380,6 @@ void QgsBlockingNetworkRequest::replyFinished()
           connect( mReply, &QNetworkReply::finished, this, &QgsBlockingNetworkRequest::replyFinished, Qt::DirectConnection );
           connect( mReply, &QNetworkReply::downloadProgress, this, &QgsBlockingNetworkRequest::replyProgress, Qt::DirectConnection );
           connect( mReply, &QNetworkReply::uploadProgress, this, &QgsBlockingNetworkRequest::replyProgress, Qt::DirectConnection );
-
-          if ( request.hasRawHeader( "Range" ) )
-            connect( mReply, &QNetworkReply::metaDataChanged, this, &QgsBlockingNetworkRequest::abortIfNotPartialContentReturned, Qt::DirectConnection );
-
           return;
         }
       }
@@ -433,7 +420,7 @@ void QgsBlockingNetworkRequest::replyFinished()
 
         mReplyContent = QgsNetworkReplyContent( mReply );
         const QByteArray content = mReply->readAll();
-        if ( !( mRequestFlags & RequestFlag::EmptyResponseIsValid ) && content.isEmpty() && !mGotNonEmptyResponse && mMethod == Get )
+        if ( content.isEmpty() && !mGotNonEmptyResponse && mMethod == Get )
         {
           mErrorMessage = tr( "empty response: %1" ).arg( mReply->errorString() );
           mErrorCode = ServerExceptionError;
@@ -472,16 +459,4 @@ void QgsBlockingNetworkRequest::replyFinished()
 QString QgsBlockingNetworkRequest::errorMessageFailedAuth()
 {
   return tr( "network request update failed for authentication config" );
-}
-
-void QgsBlockingNetworkRequest::abortIfNotPartialContentReturned()
-{
-  if ( mReply && mReply->attribute( QNetworkRequest::HttpStatusCodeAttribute ).toInt() == 200 )
-  {
-    // We're expecting a 206 - Partial Content but the server returned 200
-    // It seems it does not support range requests and is returning the whole file!
-    mReply->abort();
-    mErrorMessage = tr( "The server does not support range requests" );
-    mErrorCode = ServerExceptionError;
-  }
 }

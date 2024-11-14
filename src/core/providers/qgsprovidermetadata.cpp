@@ -17,7 +17,6 @@
  ***************************************************************************/
 
 #include "qgsprovidermetadata.h"
-#include "moc_qgsprovidermetadata.cpp"
 #include "qgsdataprovider.h"
 #include "qgsmaplayer.h"
 #include "qgsexception.h"
@@ -68,7 +67,7 @@ QgsProviderMetadata::ProviderCapabilities QgsProviderMetadata::providerCapabilit
   return QgsProviderMetadata::ProviderCapabilities();
 }
 
-QList<Qgis::LayerType> QgsProviderMetadata::supportedLayerTypes() const
+QList<QgsMapLayerType> QgsProviderMetadata::supportedLayerTypes() const
 {
   return {};
 }
@@ -76,11 +75,6 @@ QList<Qgis::LayerType> QgsProviderMetadata::supportedLayerTypes() const
 QString QgsProviderMetadata::library() const
 {
   return mLibrary;
-}
-
-QString QgsProviderMetadata::suggestGroupNameForUri( const QString & /*uri*/ ) const
-{
-  return QString();
 }
 
 QgsProviderMetadata::CreateDataProviderFunction QgsProviderMetadata::createFunction() const
@@ -98,7 +92,7 @@ void QgsProviderMetadata::cleanupProvider()
 
 }
 
-QString QgsProviderMetadata::filters( Qgis::FileFilterType )
+QString QgsProviderMetadata::filters( FilterType )
 {
   return QString();
 }
@@ -113,9 +107,9 @@ int QgsProviderMetadata::priorityForUri( const QString & ) const
   return 0;
 }
 
-QList<Qgis::LayerType> QgsProviderMetadata::validLayerTypesForUri( const QString & ) const
+QList<QgsMapLayerType> QgsProviderMetadata::validLayerTypesForUri( const QString & ) const
 {
-  return QList<Qgis::LayerType>();
+  return QList<QgsMapLayerType>();
 }
 
 bool QgsProviderMetadata::uriIsBlocklisted( const QString & ) const
@@ -135,7 +129,7 @@ QList<QgsProviderSublayerDetails> QgsProviderMetadata::querySublayers( const QSt
 
 QgsDataProvider *QgsProviderMetadata::createProvider( const QString &uri,
     const QgsDataProvider::ProviderOptions &options,
-    Qgis::DataProviderReadFlags flags )
+    QgsDataProvider::ReadFlags flags )
 {
   if ( mCreateFunction )
   {
@@ -188,20 +182,11 @@ QString QgsProviderMetadata::encodeUri( const QVariantMap & ) const
   return QString();
 }
 
-QString QgsProviderMetadata::absoluteToRelativeUri( const QString &uri, const QgsReadWriteContext &context ) const
-{
-  return context.pathResolver().writePath( uri );
-}
-
-QString QgsProviderMetadata::relativeToAbsoluteUri( const QString &uri, const QgsReadWriteContext &context ) const
-{
-  return context.pathResolver().readPath( uri );
-}
-
-Qgis::VectorExportResult QgsProviderMetadata::createEmptyLayer( const QString &, const QgsFields &,
-    Qgis::WkbType, const QgsCoordinateReferenceSystem &,
-    bool, QMap<int, int> &,
-    QString &errorMessage, const QMap<QString, QVariant> * )
+Qgis::VectorExportResult QgsProviderMetadata::createEmptyLayer(
+  const QString &, const QgsFields &,
+  QgsWkbTypes::Type, const QgsCoordinateReferenceSystem &,
+  bool, QMap<int, int> &,
+  QString &errorMessage, const QMap<QString, QVariant> * )
 {
   errorMessage = QObject::tr( "Provider %1 has no %2 method" ).arg( key(), QStringLiteral( "createEmptyLayer" ) );
   return Qgis::VectorExportResult::ErrorProviderUnsupportedFeature;
@@ -226,16 +211,14 @@ QgsRasterDataProvider *QgsProviderMetadata::createRasterDataProvider(
 bool QgsProviderMetadata::createMeshData( const QgsMesh &,
     const QString &,
     const QString &,
-    const QgsCoordinateReferenceSystem &,
-    const QMap<QString, QString> & ) const
+    const QgsCoordinateReferenceSystem & ) const
 {
   return false;
 }
 
 bool QgsProviderMetadata::createMeshData( const QgsMesh &,
     const QString &,
-    const QgsCoordinateReferenceSystem &,
-    const QMap<QString, QString> & ) const
+    const QgsCoordinateReferenceSystem & ) const
 {
   return false;
 }
@@ -286,12 +269,6 @@ bool QgsProviderMetadata::saveStyle( const QString &, const QString &, const QSt
 QString QgsProviderMetadata::loadStyle( const QString &, QString &errCause )
 {
   errCause = QObject::tr( "Provider %1 has no %2 method" ).arg( key(), QStringLiteral( "loadStyle" ) );
-  return QString();
-}
-
-QString QgsProviderMetadata::loadStoredStyle( const QString &, QString &, QString &errCause )
-{
-  errCause = QObject::tr( "Provider %1 has no %2 method" ).arg( key(), QStringLiteral( "loadStoredStyle" ) );
   return QString();
 }
 

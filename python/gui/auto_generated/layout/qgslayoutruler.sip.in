@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/layout/qgslayoutruler.h                                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -14,6 +14,8 @@ class QgsLayoutRuler: QWidget
 A custom ruler widget for use with :py:class:`QgsLayoutView`, displaying the
 current zoom and position of the visible layout and for interacting
 with guides in a layout.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -72,7 +74,7 @@ the view.
 %End
 
   signals:
-    void cursorPosChanged( QPointF position );
+    void cursorPosChanged( QPointF );
 %Docstring
 Emitted when mouse cursor coordinates change
 %End
@@ -94,5 +96,5 @@ Emitted when mouse cursor coordinates change
  *                                                                      *
  * src/gui/layout/qgslayoutruler.h                                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

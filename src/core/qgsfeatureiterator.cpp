@@ -13,8 +13,11 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsfeatureiterator.h"
+#include "qgslogger.h"
+
 #include "qgssimplifymethod.h"
 #include "qgsexception.h"
+#include "qgslinestring.h"
 #include "qgsexpressionsorter_p.h"
 #include "qgsfeedback.h"
 #include "qgscoordinatetransform.h"
@@ -54,11 +57,11 @@ bool QgsAbstractFeatureIterator::nextFeature( QgsFeature &f )
   {
     switch ( mRequest.filterType() )
     {
-      case Qgis::FeatureRequestFilterType::Expression:
+      case QgsFeatureRequest::FilterExpression:
         dataOk = nextFeatureFilterExpression( f );
         break;
 
-      case Qgis::FeatureRequestFilterType::Fids:
+      case QgsFeatureRequest::FilterFids:
         dataOk = nextFeatureFilterFids( f );
         break;
 
@@ -102,7 +105,7 @@ void QgsAbstractFeatureIterator::geometryToDestinationCrs( QgsFeature &feature, 
     try
     {
       QgsGeometry g = feature.geometry();
-      g.transform( transform, Qgis::TransformDirection::Forward, transform.hasVerticalComponent() );
+      g.transform( transform );
       feature.setGeometry( g );
     }
     catch ( QgsCsException & )
@@ -130,11 +133,10 @@ QgsAbstractFeatureIterator::RequestToSourceCrsResult QgsAbstractFeatureIterator:
 
     case Qgis::SpatialFilterType::BoundingBox:
     {
-      QgsRectangle newRect = transform.transformBoundingBox( request.filterRect(), Qgis::TransformDirection::Reverse, true );
+      QgsRectangle newRect = transform.transformBoundingBox( request.filterRect(), Qgis::TransformDirection::Reverse );
       request.setFilterRect( newRect );
       return RequestToSourceCrsResult::Success;
     }
-
     case Qgis::SpatialFilterType::DistanceWithin:
     {
       // we can't safely handle a distance within query, as we cannot transform the
@@ -142,7 +144,7 @@ QgsAbstractFeatureIterator::RequestToSourceCrsResult QgsAbstractFeatureIterator:
 
       // in this case we transform the request's distance within requirement to a "worst case" bounding box filter, so
       // that the request itself can still take advantage of spatial indices even when we have to do the distance within check locally
-      QgsRectangle newRect = transform.transformBoundingBox( request.filterRect(), Qgis::TransformDirection::Reverse, true );
+      QgsRectangle newRect = transform.transformBoundingBox( request.filterRect(), Qgis::TransformDirection::Reverse );
       request.setFilterRect( newRect );
 
       return RequestToSourceCrsResult::DistanceWithinMustBeCheckedManually;
@@ -159,7 +161,7 @@ QgsRectangle QgsAbstractFeatureIterator::filterRectToSourceCrs( const QgsCoordin
 
   QgsCoordinateTransform extentTransform = transform;
   extentTransform.setBallparkTransformsAreAppropriate( true );
-  return extentTransform.transformBoundingBox( mRequest.filterRect(), Qgis::TransformDirection::Reverse, true );
+  return extentTransform.transformBoundingBox( mRequest.filterRect(), Qgis::TransformDirection::Reverse );
 }
 
 void QgsAbstractFeatureIterator::ref()

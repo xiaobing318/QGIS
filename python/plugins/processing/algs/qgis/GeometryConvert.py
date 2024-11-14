@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     Gridify.py
@@ -77,27 +79,27 @@ class GeometryConvert(QgisAlgorithm):
         index = self.parameterAsEnum(parameters, self.TYPE, context)
 
         if index == 0:
-            newType = QgsWkbTypes.Type.Point
+            newType = QgsWkbTypes.Point
         elif index == 1:
-            newType = QgsWkbTypes.Type.Point
+            newType = QgsWkbTypes.Point
             if QgsWkbTypes.hasM(source.wkbType()):
                 newType = QgsWkbTypes.addM(newType)
             if QgsWkbTypes.hasZ(source.wkbType()):
                 newType = QgsWkbTypes.addZ(newType)
         elif index == 2:
-            newType = QgsWkbTypes.Type.LineString
+            newType = QgsWkbTypes.LineString
             if QgsWkbTypes.hasM(source.wkbType()):
                 newType = QgsWkbTypes.addM(newType)
             if QgsWkbTypes.hasZ(source.wkbType()):
                 newType = QgsWkbTypes.addZ(newType)
         elif index == 3:
-            newType = QgsWkbTypes.Type.MultiLineString
+            newType = QgsWkbTypes.MultiLineString
             if QgsWkbTypes.hasM(source.wkbType()):
                 newType = QgsWkbTypes.addM(newType)
             if QgsWkbTypes.hasZ(source.wkbType()):
                 newType = QgsWkbTypes.addZ(newType)
         else:
-            newType = QgsWkbTypes.Type.Polygon
+            newType = QgsWkbTypes.Polygon
             if QgsWkbTypes.hasM(source.wkbType()):
                 newType = QgsWkbTypes.addM(newType)
             if QgsWkbTypes.hasZ(source.wkbType()):
@@ -116,17 +118,16 @@ class GeometryConvert(QgisAlgorithm):
                 break
 
             if not f.hasGeometry():
-                sink.addFeature(f, QgsFeatureSink.Flag.FastInsert)
+                sink.addFeature(f, QgsFeatureSink.FastInsert)
             else:
                 for p in self.convertGeometry(f.geometry(), index):
                     feat = QgsFeature()
                     feat.setAttributes(f.attributes())
                     feat.setGeometry(p)
-                    sink.addFeature(feat, QgsFeatureSink.Flag.FastInsert)
+                    sink.addFeature(feat, QgsFeatureSink.FastInsert)
 
             feedback.setProgress(int(current * total))
 
-        sink.finalize()
         return {self.OUTPUT: dest_id}
 
     def convertGeometry(self, geom, target_type):
@@ -161,10 +162,10 @@ class GeometryConvert(QgisAlgorithm):
         return [QgsGeometry(mp)]
 
     def convertToLineStrings(self, geom):
-        if QgsWkbTypes.geometryType(geom.wkbType()) == QgsWkbTypes.GeometryType.PointGeometry:
+        if QgsWkbTypes.geometryType(geom.wkbType()) == QgsWkbTypes.PointGeometry:
             raise QgsProcessingException(
                 self.tr('Cannot convert from {0} to LineStrings').format(QgsWkbTypes.displayString(geom.wkbType())))
-        elif QgsWkbTypes.geometryType(geom.wkbType()) == QgsWkbTypes.GeometryType.LineGeometry:
+        elif QgsWkbTypes.geometryType(geom.wkbType()) == QgsWkbTypes.LineGeometry:
             if QgsWkbTypes.isMultiType(geom.wkbType()):
                 return geom.asGeometryCollection()
             else:
@@ -178,10 +179,10 @@ class GeometryConvert(QgisAlgorithm):
             return boundary.asGeometryCollection()
 
     def convertToMultiLineStrings(self, geom):
-        if QgsWkbTypes.geometryType(geom.wkbType()) == QgsWkbTypes.GeometryType.PointGeometry:
+        if QgsWkbTypes.geometryType(geom.wkbType()) == QgsWkbTypes.PointGeometry:
             raise QgsProcessingException(
                 self.tr('Cannot convert from {0} to MultiLineStrings').format(QgsWkbTypes.displayString(geom.wkbType())))
-        elif QgsWkbTypes.geometryType(geom.wkbType()) == QgsWkbTypes.GeometryType.LineGeometry:
+        elif QgsWkbTypes.geometryType(geom.wkbType()) == QgsWkbTypes.LineGeometry:
             if QgsWkbTypes.isMultiType(geom.wkbType()):
                 return [geom]
             else:
@@ -195,10 +196,10 @@ class GeometryConvert(QgisAlgorithm):
             return [QgsGeometry(geom.constGet().boundary())]
 
     def convertToPolygon(self, geom):
-        if QgsWkbTypes.geometryType(geom.wkbType()) == QgsWkbTypes.GeometryType.PointGeometry and geom.constGet().nCoordinates() < 3:
+        if QgsWkbTypes.geometryType(geom.wkbType()) == QgsWkbTypes.PointGeometry and geom.constGet().nCoordinates() < 3:
             raise QgsProcessingException(
                 self.tr('Cannot convert from Point to Polygon').format(QgsWkbTypes.displayString(geom.wkbType())))
-        elif QgsWkbTypes.geometryType(geom.wkbType()) == QgsWkbTypes.GeometryType.PointGeometry:
+        elif QgsWkbTypes.geometryType(geom.wkbType()) == QgsWkbTypes.PointGeometry:
             # multipoint with at least 3 points
             # TODO: mega inefficient - needs rework when geometry iterators land
             # (but at least it doesn't lose Z/M values)
@@ -212,7 +213,7 @@ class GeometryConvert(QgisAlgorithm):
             p = QgsPolygon()
             p.setExteriorRing(linestring)
             return [QgsGeometry(p)]
-        elif QgsWkbTypes.geometryType(geom.wkbType()) == QgsWkbTypes.GeometryType.LineGeometry:
+        elif QgsWkbTypes.geometryType(geom.wkbType()) == QgsWkbTypes.LineGeometry:
             if QgsWkbTypes.isMultiType(geom.wkbType()):
                 parts = []
                 for i in range(geom.constGet().numGeometries()):

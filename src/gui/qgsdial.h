@@ -15,9 +15,6 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef QGSDIAL_H
-#define QGSDIAL_H
-
 #include <QDial>
 #include <QVariant>
 #include "qgis_gui.h"
@@ -60,5 +57,3 @@ class GUI_EXPORT QgsDial : public QDial
 
     QVariant mMin, mMax, mStep, mValue;
 };
-
-#endif // QGSDIAL_H

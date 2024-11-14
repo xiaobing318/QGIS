@@ -36,7 +36,7 @@ class QgsVectorLayer;
  * \note This class is not a part of public API
  * \since QGIS 3.12
  */
-class GUI_EXPORT QgsGeospatialPdfLayerTreeModel : public QgsMapLayerModel
+class GUI_EXPORT QgsGeoPdfLayerTreeModel : public QgsMapLayerModel
 {
     Q_OBJECT
 
@@ -47,12 +47,12 @@ class GUI_EXPORT QgsGeospatialPdfLayerTreeModel : public QgsMapLayerModel
     {
       LayerColumn = 0, //!< Layer name
       GroupColumn, //!< PDF group
-      InitiallyVisible, //!< Initial visibility state
+      InitiallyVisible, //!< Initial visiblity state
       IncludeVectorAttributes //!< Vector attribute
     };
 
     //! constructor
-    QgsGeospatialPdfLayerTreeModel( const QList< QgsMapLayer * > &layers, QObject *parent = nullptr );
+    QgsGeoPdfLayerTreeModel( const QList< QgsMapLayer * > &layers, QObject *parent = nullptr );
 
     int columnCount( const QModelIndex &parent ) const override;
     QVariant headerData( int section, Qt::Orientation orientation, int role ) const override;
@@ -73,17 +73,17 @@ class GUI_EXPORT QgsGeospatialPdfLayerTreeModel : public QgsMapLayerModel
 
 
 ///@cond PRIVATE
-class GUI_EXPORT QgsGeospatialPdfLayerFilteredTreeModel : public QSortFilterProxyModel
+class GUI_EXPORT QgsGeoPdfLayerFilteredTreeModel : public QSortFilterProxyModel
 {
     Q_OBJECT
   public:
 
-    QgsGeospatialPdfLayerFilteredTreeModel( QgsGeospatialPdfLayerTreeModel *sourceModel, QObject *parent = nullptr );
+    QgsGeoPdfLayerFilteredTreeModel( QgsGeoPdfLayerTreeModel *sourceModel, QObject *parent = nullptr );
 
     bool filterAcceptsRow( int source_row, const QModelIndex &source_parent ) const override;
 
   private:
-    QgsGeospatialPdfLayerTreeModel *mLayerTreeModel = nullptr;
+    QgsGeoPdfLayerTreeModel *mLayerTreeModel = nullptr;
 };
 ///@endcond
 

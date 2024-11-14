@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsscreenhelper.h"
-#include "moc_qgsscreenhelper.cpp"
 #include "qgis.h"
 #include <QWidget>
 #include <QEvent>

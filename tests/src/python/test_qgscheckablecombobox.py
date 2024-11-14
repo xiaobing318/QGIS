@@ -9,22 +9,21 @@ __author__ = 'Alexander Bruy'
 __date__ = '22/03/2017'
 __copyright__ = 'Copyright 2017, The QGIS Project'
 
+import qgis  # NOQA
 
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtTest import QSignalSpy
-import unittest
 
-from qgis.gui import QgsCheckableComboBox
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsCheckableComboBox(QgisTestCase):
+class TestQgsCheckableComboBox(unittest.TestCase):
 
     def testGettersSetters(self):
         """ test widget getters/setters """
-        w = QgsCheckableComboBox()
+        w = qgis.gui.QgsCheckableComboBox()
 
         w.setSeparator('|')
         self.assertEqual(w.separator(), '|')
@@ -40,13 +39,13 @@ class TestQgsCheckableComboBox(QgisTestCase):
         self.assertEqual(len(w.checkedItems()), 2)
         self.assertEqual(w.checkedItems(), ['Two', 'Three'])
 
-        w.setItemCheckState(2, Qt.CheckState.Unchecked)
-        self.assertEqual(w.itemCheckState(2), Qt.CheckState.Unchecked)
+        w.setItemCheckState(2, Qt.Unchecked)
+        self.assertEqual(w.itemCheckState(2), Qt.Unchecked)
 
     def test_ChangedSignals(self):
         """ test that signals are correctly emitted when clearing"""
 
-        w = QgsCheckableComboBox()
+        w = qgis.gui.QgsCheckableComboBox()
 
         w.addItems(['One', 'Two', 'Three'])
 
@@ -56,7 +55,7 @@ class TestQgsCheckableComboBox(QgisTestCase):
         self.assertEqual(len(checkedItemsChanged_spy), 1)
 
     def test_readonly(self):
-        w = QgsCheckableComboBox()
+        w = qgis.gui.QgsCheckableComboBox()
         w.setEditable(False)
         w.show()  # Should not crash
 

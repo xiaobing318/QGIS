@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     QgisAlgorithmTests.py
@@ -30,13 +32,12 @@ from qgis.core import (QgsApplication,
                        QgsProject)
 from qgis.PyQt import sip
 from qgis.analysis import (QgsNativeAlgorithms)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 import processing
 from processing.tests.TestData import points
 
 
-class TestProcessingGeneral(QgisTestCase):
+class TestProcessingGeneral(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -117,7 +118,9 @@ class TestProcessingGeneral(QgisTestCase):
         self.assertIn('project', providers)
         self.assertIn('script', providers)
         self.assertIn('model', providers)
-        self.assertIn('grass', providers)
+        self.assertIn('grass7', providers)
+        self.assertIn('saga', providers)
+        self.assertIn('otb', providers)
 
 
 if __name__ == '__main__':

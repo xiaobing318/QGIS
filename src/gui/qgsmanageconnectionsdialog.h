@@ -48,14 +48,11 @@ class GUI_EXPORT QgsManageConnectionsDialog : public QDialog, private Ui::QgsMan
       WCS,
       Oracle,
       HANA,
+      GeoNode,
       XyzTiles,
-      ArcgisMapServer, // TODO QGIS 4: remove
+      ArcgisMapServer,
       ArcgisFeatureServer,
-      VectorTile,
-      TiledScene, //!< Tiled scene connection \since QGIS 3.34
-      SensorThings, //!< SensorThings connections \since QGIS 3.36
-      CloudStorage, //!< Cloud storage connections \since QGIS 3.40
-      STAC, //!< SpatioTemporal Asset Catalog connections \since QGIS 3.40
+      VectorTile
     };
 
     /**
@@ -78,13 +75,10 @@ class GUI_EXPORT QgsManageConnectionsDialog : public QDialog, private Ui::QgsMan
     QDomDocument saveMssqlConnections( const QStringList &connections );
     QDomDocument saveOracleConnections( const QStringList &connections );
     QDomDocument saveHanaConnections( const QStringList &connections );
+    QDomDocument saveGeonodeConnections( const QStringList &connections );
     QDomDocument saveXyzTilesConnections( const QStringList &connections );
-    QDomDocument saveArcgisConnections( const QStringList &connections );
+    QDomDocument saveArcgisConnections( const QStringList &connections, const QString &service );
     QDomDocument saveVectorTileConnections( const QStringList &connections );
-    QDomDocument saveTiledSceneConnections( const QStringList &connections );
-    QDomDocument saveSensorThingsConnections( const QStringList &connections );
-    QDomDocument saveCloudStorageConnections( const QStringList &connections );
-    QDomDocument saveStacConnections( const QStringList &connections );
 
     void loadOWSConnections( const QDomDocument &doc, const QStringList &items, const QString &service );
     void loadWfsConnections( const QDomDocument &doc, const QStringList &items );
@@ -92,13 +86,10 @@ class GUI_EXPORT QgsManageConnectionsDialog : public QDialog, private Ui::QgsMan
     void loadMssqlConnections( const QDomDocument &doc, const QStringList &items );
     void loadOracleConnections( const QDomDocument &doc, const QStringList &items );
     void loadHanaConnections( const QDomDocument &doc, const QStringList &items );
+    void loadGeonodeConnections( const QDomDocument &doc, const QStringList &items );
     void loadXyzTilesConnections( const QDomDocument &doc, const QStringList &items );
     void loadArcgisConnections( const QDomDocument &doc, const QStringList &items, const QString &service );
     void loadVectorTileConnections( const QDomDocument &doc, const QStringList &items );
-    void loadTiledSceneConnections( const QDomDocument &doc, const QStringList &items );
-    void loadSensorThingsConnections( const QDomDocument &doc, const QStringList &items );
-    void loadCloudStorageConnections( const QDomDocument &doc, const QStringList &items );
-    void loadStacConnections( const QDomDocument &doc, const QStringList &items );
 
     QString mFileName;
     Mode mDialogMode;

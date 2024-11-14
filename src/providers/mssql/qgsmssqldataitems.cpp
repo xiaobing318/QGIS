@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsmssqldataitems.h"
-#include "moc_qgsmssqldataitems.cpp"
 #include "qgsmssqlconnection.h"
 #include "qgsmssqldatabase.h"
 
@@ -26,6 +25,7 @@
 #include "qgsvectorlayer.h"
 #include "qgsvectorlayerexporter.h"
 #include "qgsdatasourceuri.h"
+#include "qgsmssqlprovider.h"
 #include "qgssettings.h"
 #include "qgsmessageoutput.h"
 #include "qgsmssqlconnection.h"
@@ -80,7 +80,7 @@ void QgsMssqlConnectionItem::readConnectionSettings()
   if ( mSchemasFilteringEnabled )
   {
     QVariant schemasSettingsVariant = settings.value( key + "/excludedSchemas" );
-    if ( schemasSettingsVariant.isValid() && schemasSettingsVariant.userType() == QMetaType::Type::QVariantMap )
+    if ( schemasSettingsVariant.isValid() && schemasSettingsVariant.type() == QVariant::Map )
       mSchemaSettings = schemasSettingsVariant.toMap();
   }
 
@@ -112,8 +112,8 @@ void QgsMssqlConnectionItem::refresh()
   stop();
 
   // Clear all children
-  const QVector<QgsDataItem *> allChildren = children();
-  for ( QgsDataItem *item : allChildren )
+  const QVector<QgsDataItem *> allChidren = children();
+  for ( QgsDataItem *item : allChidren )
   {
     removeChildItem( item );
     delete item;
@@ -170,15 +170,6 @@ QVector<QgsDataItem *> QgsMssqlConnectionItem::createChildren()
       layer.srid = q.value( 3 ).toString();
       layer.type = q.value( 4 ).toString();
       layer.isView = q.value( 5 ).toBool();
-      const int dimensions { q.value( 6 ).toInt( ) };
-      if ( dimensions >= 3 )
-      {
-        layer.type = layer.type.append( 'Z' );
-      }
-      if ( dimensions == 4 )
-      {
-        layer.type = layer.type.append( 'M' );
-      }
       layer.pkCols = QStringList(); //TODO
       layer.isGeography = false;
 
@@ -342,7 +333,7 @@ void QgsMssqlConnectionItem::setLayerType( QgsMssqlLayerProperty layerProperty )
 
   if ( !schemaItem )
   {
-    QgsDebugError( QStringLiteral( "schema item for %1 not found." ).arg( layerProperty.schemaName ) );
+    QgsDebugMsg( QStringLiteral( "schema item for %1 not found." ).arg( layerProperty.schemaName ) );
     return;
   }
 
@@ -353,16 +344,21 @@ void QgsMssqlConnectionItem::setLayerType( QgsMssqlLayerProperty layerProperty )
       return; // already added
   }
 
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+  QStringList typeList = layerProperty.type.split( ',', QString::SkipEmptyParts );
+  QStringList sridList = layerProperty.srid.split( ',', QString::SkipEmptyParts );
+#else
   QStringList typeList = layerProperty.type.split( ',', Qt::SkipEmptyParts );
   QStringList sridList = layerProperty.srid.split( ',', Qt::SkipEmptyParts );
+#endif
   Q_ASSERT( typeList.size() == sridList.size() );
 
   for ( int i = 0; i < typeList.size(); i++ )
   {
-    Qgis::WkbType wkbType = QgsMssqlTableModel::wkbTypeFromMssql( typeList[i] );
-    if ( wkbType == Qgis::WkbType::Unknown )
+    QgsWkbTypes::Type wkbType = QgsMssqlTableModel::wkbTypeFromMssql( typeList[i] );
+    if ( wkbType == QgsWkbTypes::Unknown )
     {
-      QgsDebugError( QStringLiteral( "unsupported geometry type:%1" ).arg( typeList[i] ) );
+      QgsDebugMsg( QStringLiteral( "unsupported geometry type:%1" ).arg( typeList[i] ) );
       continue;
     }
 
@@ -428,7 +424,7 @@ bool QgsMssqlConnectionItem::handleDrop( const QMimeData *data, const QString &t
       }
 
       QString uri = connInfo() + " table=" + tableName;
-      if ( srcLayer->geometryType() != Qgis::GeometryType::Null )
+      if ( srcLayer->geometryType() != QgsWkbTypes::NullGeometry )
         uri += QLatin1String( " (geom)" );
 
       std::unique_ptr< QgsVectorLayerExporterTask > exportTask( QgsVectorLayerExporterTask::withLayerOwnership( srcLayer, uri, QStringLiteral( "mssql" ), srcLayer->crs() ) );
@@ -509,7 +505,7 @@ QString QgsMssqlLayerItem::createUri()
 
   if ( !connItem )
   {
-    QgsDebugError( QStringLiteral( "connection item not found." ) );
+    QgsDebugMsg( QStringLiteral( "connection item not found." ) );
     return QString();
   }
 
@@ -564,23 +560,23 @@ void QgsMssqlSchemaItem::addLayers( QgsDataItem *newLayers )
 
 QgsMssqlLayerItem *QgsMssqlSchemaItem::addLayer( const QgsMssqlLayerProperty &layerProperty, bool refresh )
 {
-  Qgis::WkbType wkbType = QgsMssqlTableModel::wkbTypeFromMssql( layerProperty.type );
+  QgsWkbTypes::Type wkbType = QgsMssqlTableModel::wkbTypeFromMssql( layerProperty.type );
   QString tip = tr( "%1 as %2 in %3" ).arg( layerProperty.geometryColName, QgsWkbTypes::displayString( wkbType ), layerProperty.srid );
 
   Qgis::BrowserLayerType layerType;
-  Qgis::WkbType flatType = QgsWkbTypes::flatType( wkbType );
+  QgsWkbTypes::Type flatType = QgsWkbTypes::flatType( wkbType );
   switch ( flatType )
   {
-    case Qgis::WkbType::Point:
-    case Qgis::WkbType::MultiPoint:
+    case QgsWkbTypes::Point:
+    case QgsWkbTypes::MultiPoint:
       layerType = Qgis::BrowserLayerType::Point;
       break;
-    case Qgis::WkbType::LineString:
-    case Qgis::WkbType::MultiLineString:
+    case QgsWkbTypes::LineString:
+    case QgsWkbTypes::MultiLineString:
       layerType = Qgis::BrowserLayerType::Line;
       break;
-    case Qgis::WkbType::Polygon:
-    case Qgis::WkbType::MultiPolygon:
+    case QgsWkbTypes::Polygon:
+    case QgsWkbTypes::MultiPolygon:
       layerType = Qgis::BrowserLayerType::Polygon;
       break;
     default:
@@ -672,9 +668,9 @@ QString QgsMssqlDataItemProvider::dataProviderKey() const
   return QStringLiteral( "mssql" );
 }
 
-Qgis::DataItemProviderCapabilities QgsMssqlDataItemProvider::capabilities() const
+int QgsMssqlDataItemProvider::capabilities() const
 {
-  return Qgis::DataItemProviderCapability::Databases;
+  return QgsDataProvider::Database;
 }
 
 QgsDataItem *QgsMssqlDataItemProvider::createDataItem( const QString &pathIn, QgsDataItem *parentItem )

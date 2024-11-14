@@ -13,7 +13,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsfontoptions.h"
-#include "moc_qgsfontoptions.cpp"
 
 #include "qgsbabelgpsdevice.h"
 #include "qgssettings.h"
@@ -69,7 +68,7 @@ QgsFontOptionsWidget::QgsFontOptionsWidget( QWidget *parent )
     }
   } );
 
-  mCheckBoxDownloadFonts->setChecked( QgsFontManager::settingsDownloadMissingFonts->value() );
+  mCheckBoxDownloadFonts->setChecked( QgsFontManager::settingsDownloadMissingFonts.value() );
 
   const QMap< QString, QStringList > userFonts = QgsApplication::fontManager()->userFontToFamilyMap();
   mTableUserFonts->setRowCount( userFonts.size() );
@@ -105,11 +104,6 @@ QgsFontOptionsWidget::QgsFontOptionsWidget( QWidget *parent )
 
 }
 
-QString QgsFontOptionsWidget::helpKey() const
-{
-  return QStringLiteral( "introduction/qgis_configuration.html#fonts-options" );
-}
-
 void QgsFontOptionsWidget::apply()
 {
   QMap< QString, QString > replacements;
@@ -124,7 +118,7 @@ void QgsFontOptionsWidget::apply()
   }
   QgsApplication::fontManager()->setFontFamilyReplacements( replacements );
 
-  QgsFontManager::settingsDownloadMissingFonts->setValue( mCheckBoxDownloadFonts->isChecked() );
+  QgsFontManager::settingsDownloadMissingFonts.setValue( mCheckBoxDownloadFonts->isChecked() );
 
   const QMap< QString, QStringList > userFonts = QgsApplication::fontManager()->userFontToFamilyMap();
   QSet< QString > remainingUserFonts;
@@ -146,7 +140,7 @@ void QgsFontOptionsWidget::apply()
 // QgsFontOptionsFactory
 //
 QgsFontOptionsFactory::QgsFontOptionsFactory()
-  : QgsOptionsWidgetFactory( tr( "Fonts" ), QIcon(), QStringLiteral( "fonts" ) )
+  : QgsOptionsWidgetFactory( tr( "Fonts" ), QIcon() )
 {
 }
 

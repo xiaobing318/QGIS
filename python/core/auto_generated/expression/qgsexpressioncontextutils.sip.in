@@ -3,9 +3,8 @@
  *                                                                      *
  * src/core/expression/qgsexpressioncontextutils.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
-
 
 
 
@@ -15,6 +14,8 @@ class QgsExpressionContextUtils
 %Docstring(signature="appended")
 Contains utilities for working with :py:class:`QgsExpressionContext` objects, including methods
 for creating scopes for specific uses (e.g., project scopes, layer scopes).
+
+.. versionadded:: 2.12
 %End
 
 %TypeHeaderCode
@@ -154,6 +155,8 @@ For instance, layer name, id and fields.
     static QList<QgsExpressionContextScope *> globalProjectLayerScopes( const QgsMapLayer *layer ) /Factory/;
 %Docstring
 Creates a list of three scopes: global, layer's project and layer.
+
+.. versionadded:: 3.0
 %End
 
     static void setLayerVariable( QgsMapLayer *layer, const QString &name, const QVariant &value );
@@ -193,16 +196,8 @@ For instance, map scale and rotation.
 %Docstring
 Sets the expression context variables which are available for expressions triggered by
 a map tool capture like add feature.
-%End
 
-    static QgsExpressionContextScope *mapLayerPositionScope( const QgsPointXY &position ) /Factory/;
-%Docstring
-Sets the expression context variables which are available for expressions triggered by moving the mouse over a feature
-of the currently selected layer.
-
-:param position: map coordinates of the current pointer position in the CRS of the layer which triggered the action.
-
-.. versionadded:: 3.30
+.. versionadded:: 3.0
 %End
 
     static QgsExpressionContextScope *updateSymbolScope( const QgsSymbol *symbol, QgsExpressionContextScope *symbolScope = 0 );
@@ -211,12 +206,16 @@ Updates a symbol scope related to a :py:class:`QgsSymbol` to an expression conte
 
 :param symbol: symbol to extract properties from
 :param symbolScope: pointer to an existing scope to update
+
+.. versionadded:: 2.14
 %End
 
     static QgsExpressionContextScope *layoutScope( const QgsLayout *layout ) /Factory/;
 %Docstring
 Creates a new scope which contains variables and functions relating to a :py:class:`QgsLayout` ``layout``.
 For instance, number of pages and page sizes.
+
+.. versionadded:: 3.0
 %End
 
     static void setLayoutVariable( QgsLayout *layout, const QString &name, const QVariant &value );
@@ -231,6 +230,8 @@ Sets a layout context variable. This variable will be contained within scopes re
 .. seealso:: :py:func:`setLayoutVariables`
 
 .. seealso:: :py:func:`layoutScope`
+
+.. versionadded:: 3.0
 %End
 
     static void setLayoutVariables( QgsLayout *layout, const QVariantMap &variables );
@@ -244,6 +245,8 @@ with the variables specified.
 .. seealso:: :py:func:`setLayoutVariable`
 
 .. seealso:: :py:func:`layoutScope`
+
+.. versionadded:: 3.0
 %End
 
     static QgsExpressionContextScope *atlasScope( const QgsLayoutAtlas *atlas ) /Factory/;
@@ -262,6 +265,8 @@ For instance, item size and position.
 .. seealso:: :py:func:`setLayoutItemVariable`
 
 .. seealso:: :py:func:`setLayoutItemVariables`
+
+.. versionadded:: 3.0
 %End
 
     static void setLayoutItemVariable( QgsLayoutItem *item, const QString &name, const QVariant &value );
@@ -273,6 +278,8 @@ This variable will be contained within scopes retrieved via
 .. seealso:: :py:func:`setLayoutItemVariables`
 
 .. seealso:: :py:func:`layoutItemScope`
+
+.. versionadded:: 3.0
 %End
 
     static void setLayoutItemVariables( QgsLayoutItem *item, const QVariantMap &variables );
@@ -283,6 +290,8 @@ with the ``variables`` specified.
 .. seealso:: :py:func:`setLayoutItemVariable`
 
 .. seealso:: :py:func:`layoutItemScope`
+
+.. versionadded:: 3.0
 %End
 
     static QgsExpressionContextScope *multiFrameScope( const QgsLayoutMultiFrame *frame ) /Factory/;
@@ -369,11 +378,10 @@ Creates a new scope which contains functions relating to mesh layer element ``el
 };
 
 
-
 /************************************************************************
  * This file has been generated automatically from                      *
  *                                                                      *
  * src/core/expression/qgsexpressioncontextutils.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

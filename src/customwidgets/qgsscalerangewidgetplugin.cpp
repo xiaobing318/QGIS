@@ -15,7 +15,6 @@
 
 #include "qgiscustomwidgets.h"
 #include "qgsscalerangewidgetplugin.h"
-#include "moc_qgsscalerangewidgetplugin.cpp"
 #include "qgsscalerangewidget.h"
 
 

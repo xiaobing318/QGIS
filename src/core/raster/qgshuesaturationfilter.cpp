@@ -78,7 +78,7 @@ bool QgsHueSaturationFilter::setInput( QgsRasterInterface *input )
   // Hue/saturation filter can only work with single band ARGB32_Premultiplied
   if ( !input )
   {
-    QgsDebugError( QStringLiteral( "No input" ) );
+    QgsDebugMsg( QStringLiteral( "No input" ) );
     return false;
   }
 
@@ -92,14 +92,14 @@ bool QgsHueSaturationFilter::setInput( QgsRasterInterface *input )
 
   if ( input->bandCount() < 1 )
   {
-    QgsDebugError( QStringLiteral( "No input band" ) );
+    QgsDebugMsg( QStringLiteral( "No input band" ) );
     return false;
   }
 
   if ( input->dataType( 1 ) != Qgis::DataType::ARGB32_Premultiplied &&
        input->dataType( 1 ) != Qgis::DataType::ARGB32 )
   {
-    QgsDebugError( QStringLiteral( "Unknown input data type" ) );
+    QgsDebugMsg( QStringLiteral( "Unknown input data type" ) );
     return false;
   }
 
@@ -124,7 +124,7 @@ QgsRasterBlock *QgsHueSaturationFilter::block( int bandNo, QgsRectangle  const &
   std::unique_ptr< QgsRasterBlock > inputBlock( mInput->block( bandNumber, extent, width, height, feedback ) );
   if ( !inputBlock || inputBlock->isEmpty() )
   {
-    QgsDebugError( QStringLiteral( "No raster data!" ) );
+    QgsDebugMsg( QStringLiteral( "No raster data!" ) );
     return outputBlock.release();
   }
 

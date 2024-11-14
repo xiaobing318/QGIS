@@ -9,20 +9,21 @@ __author__ = 'Nyall Dawson'
 __date__ = '18/10/2016'
 __copyright__ = 'Copyright 2016, The QGIS Project'
 
+import qgis  # NOQA switch sip api
 
-from qgis.core import (
-    QgsBearingUtils,
-    QgsCoordinateReferenceSystem,
-    QgsCoordinateTransformContext,
-    QgsPointXY,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsBearingUtils,
+                       QgsCoordinateReferenceSystem,
+                       QgsCoordinateTransformContext,
+                       QgsPointXY
+                       )
+
+from qgis.testing import start_app, unittest
+
 
 start_app()
 
 
-class TestQgsBearingUtils(QgisTestCase):
+class TestQgsBearingUtils(unittest.TestCase):
 
     def testTrueNorth(self):
         """ test calculating bearing to true north"""

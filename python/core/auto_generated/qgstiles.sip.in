@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgstiles.h                                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -13,9 +13,7 @@
 class QgsTileXYZ
 {
 %Docstring(signature="appended")
-Stores coordinates of a tile in a tile matrix set.
-
-Tile matrix is identified
+Stores coordinates of a tile in a tile matrix set. Tile matrix is identified
 by the :py:func:`~zoomLevel`, and the position within tile matrix is given by :py:func:`~column`
 and :py:func:`~row`.
 
@@ -49,17 +47,7 @@ Returns tile's zoom level (Z)
 Returns tile coordinates in a formatted string
 %End
 
-    bool operator==( const QgsTileXYZ &other ) const;
-    bool operator!=( const QgsTileXYZ &other ) const;
-
-    SIP_PYOBJECT __repr__();
-%MethodCode
-    const QString str = QStringLiteral( "<QgsTileXYZ: %1, %2, %3>" ).arg( sipCpp->column() ).arg( sipCpp->row() ).arg( sipCpp->zoomLevel() );
-    sipRes = PyUnicode_FromString( str.toUtf8().constData() );
-%End
-
 };
-
 
 
 class QgsTileRange
@@ -107,7 +95,7 @@ Returns index of the last row in the range
 class QgsTileMatrix
 {
 %Docstring(signature="appended")
-Defines a matrix of tiles for a single zoom level: it is defined by its size (width * height)
+Defines a matrix of tiles for a single zoom level: it is defined by its size (width * \brief height)
 and map extent that it covers.
 
 Please note that we follow the XYZ convention of X/Y axes, i.e. top-left tile has [0,0] coordinate
@@ -244,8 +232,6 @@ Defines a set of tile matrices for multiple zoom levels.
 %End
   public:
 
-    QgsTileMatrixSet();
-
     virtual ~QgsTileMatrixSet();
 
     bool isEmpty() const;
@@ -304,19 +290,6 @@ Deletes any existing matrices which fall outside the zoom range specified
 by ``minimumZoom`` to ``maximumZoom``, inclusive.
 %End
 
-    Qgis::TileAvailability tileAvailability( QgsTileXYZ id ) const;
-%Docstring
-Returns the availability of the given tile in this matrix.
-
-This method can be used to determine whether a particular tile actually
-exists within the matrix, or is not available (e.g. due to holes within the matrix).
-
-This method returns :py:class:`Qgis`.TileAvailability.Available by default, unless specific
-tile availability is known for the given ``id``.
-
-.. versionadded:: 3.32
-%End
-
     QgsCoordinateReferenceSystem crs() const;
 %Docstring
 Returns the coordinate reference system associated with the tiles.
@@ -332,11 +305,9 @@ Calculates a fractional zoom level given a map ``scale`` denominator.
 The zoom level will be linearly interpolated between zoom levels present in the set.
 %End
 
-    int scaleToZoomLevel( double scale, bool clamp = true ) const;
+    int scaleToZoomLevel( double scale ) const;
 %Docstring
-Finds the best fitting (integer) zoom level given a map ``scale`` denominator. An
-optional ``clamp`` parameter can be set to ``False`` to disable clamping zoom level
-to the tile matrix set's minimum and maximum zoom level.
+Finds the best fitting (integer) zoom level given a map ``scale`` denominator.
 
 Values are constrained to the zoom levels between :py:func:`~QgsTileMatrixSet.minimumZoom` and :py:func:`~QgsTileMatrixSet.maximumZoom`.
 %End
@@ -386,15 +357,6 @@ Sets the scale to tile zoom method.
 .. seealso:: :py:func:`scaleToTileZoomMethod`
 %End
 
-    QVector<QgsTileXYZ> tilesInRange( QgsTileRange range, int zoomLevel ) const;
-%Docstring
-Returns a list of tiles in the given tile range.
-
-.. versionadded:: 3.32
-%End
-
-  protected:
-
 };
 
 /************************************************************************
@@ -402,5 +364,5 @@ Returns a list of tiles in the given tile range.
  *                                                                      *
  * src/core/qgstiles.h                                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

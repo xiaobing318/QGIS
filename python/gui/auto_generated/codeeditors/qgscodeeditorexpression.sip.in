@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/codeeditors/qgscodeeditorexpression.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -28,9 +28,6 @@ code autocompletion.
 %Docstring
 Constructor for QgsCodeEditorExpression
 %End
-
-    virtual Qgis::ScriptLanguage language() const;
-
 
     void setExpressionContext( const QgsExpressionContext &context );
 %Docstring
@@ -57,5 +54,5 @@ Field names will be added to the API.
  *                                                                      *
  * src/gui/codeeditors/qgscodeeditorexpression.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

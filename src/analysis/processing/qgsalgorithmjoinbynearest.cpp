@@ -18,7 +18,7 @@
 #include "qgsalgorithmjoinbynearest.h"
 #include "qgsprocessingoutputs.h"
 #include "qgslinestring.h"
-#include "qgsspatialindex.h"
+
 #include <algorithm>
 
 ///@cond PRIVATE
@@ -57,7 +57,7 @@ void QgsJoinByNearestAlgorithm::initAlgorithm( const QVariantMap & )
 
   addParameter( new QgsProcessingParameterField( QStringLiteral( "FIELDS_TO_COPY" ),
                 QObject::tr( "Layer 2 fields to copy (leave empty to copy all fields)" ),
-                QVariant(), QStringLiteral( "INPUT_2" ), Qgis::ProcessingFieldParameterDataType::Any,
+                QVariant(), QStringLiteral( "INPUT_2" ), QgsProcessingParameterField::Any,
                 true, true ) );
 
   addParameter( new QgsProcessingParameterBoolean( QStringLiteral( "DISCARD_NONMATCHING" ),
@@ -68,17 +68,17 @@ void QgsJoinByNearestAlgorithm::initAlgorithm( const QVariantMap & )
                 QObject::tr( "Joined field prefix" ), QVariant(), false, true ) );
 
   addParameter( new QgsProcessingParameterNumber( QStringLiteral( "NEIGHBORS" ),
-                QObject::tr( "Maximum nearest neighbors" ), Qgis::ProcessingNumberParameterType::Integer, 1, false, 1 ) );
+                QObject::tr( "Maximum nearest neighbors" ), QgsProcessingParameterNumber::Integer, 1, false, 1 ) );
 
   addParameter( new QgsProcessingParameterDistance( QStringLiteral( "MAX_DISTANCE" ),
                 QObject::tr( "Maximum distance" ), QVariant(), QStringLiteral( "INPUT" ), true, 0 ) );
 
-  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Joined layer" ), Qgis::ProcessingSourceType::VectorAnyGeometry, QVariant(), true, true ) );
+  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Joined layer" ), QgsProcessing::TypeVectorAnyGeometry, QVariant(), true, true ) );
 
   std::unique_ptr< QgsProcessingParameterFeatureSink > nonMatchingSink = std::make_unique< QgsProcessingParameterFeatureSink >(
-        QStringLiteral( "NON_MATCHING" ), QObject::tr( "Unjoinable features from first layer" ), Qgis::ProcessingSourceType::VectorAnyGeometry, QVariant(), true, false );
+        QStringLiteral( "NON_MATCHING" ), QObject::tr( "Unjoinable features from first layer" ), QgsProcessing::TypeVectorAnyGeometry, QVariant(), true, false );
   // TODO GUI doesn't support advanced outputs yet
-  //nonMatchingSink->setFlags(nonMatchingSink->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  //nonMatchingSink->setFlags(nonMatchingSink->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( nonMatchingSink.release() );
 
   addOutput( new QgsProcessingOutputNumber( QStringLiteral( "JOINED_COUNT" ), QObject::tr( "Number of joined features from input table" ) ) );
@@ -110,11 +110,6 @@ QString QgsJoinByNearestAlgorithm::shortDescription() const
   return QObject::tr( "Joins a layer to another layer, using the closest features (nearest neighbors)." );
 }
 
-Qgis::ProcessingAlgorithmDocumentationFlags QgsJoinByNearestAlgorithm::documentationFlags() const
-{
-  return Qgis::ProcessingAlgorithmDocumentationFlag::RegeneratesPrimaryKey;
-}
-
 QgsJoinByNearestAlgorithm *QgsJoinByNearestAlgorithm::createInstance() const
 {
   return new QgsJoinByNearestAlgorithm();
@@ -136,7 +131,7 @@ QVariantMap QgsJoinByNearestAlgorithm::processAlgorithm( const QVariantMap &para
   const bool sameSourceAndTarget = parameters.value( QStringLiteral( "INPUT" ) ) == parameters.value( QStringLiteral( "INPUT_2" ) );
 
   const QString prefix = parameterAsString( parameters, QStringLiteral( "PREFIX" ), context );
-  const QStringList fieldsToCopy = parameterAsStrings( parameters, QStringLiteral( "FIELDS_TO_COPY" ), context );
+  const QStringList fieldsToCopy = parameterAsFields( parameters, QStringLiteral( "FIELDS_TO_COPY" ), context );
 
   QgsFields outFields2;
   QgsAttributeList fields2Indices;
@@ -176,12 +171,12 @@ QVariantMap QgsJoinByNearestAlgorithm::processAlgorithm( const QVariantMap &para
   QgsFields outFields = QgsProcessingUtils::combineFields( input->fields(), outFields2 );
 
   QgsFields resultFields;
-  resultFields.append( QgsField( QStringLiteral( "n" ), QMetaType::Type::Int ) );
-  resultFields.append( QgsField( QStringLiteral( "distance" ), QMetaType::Type::Double ) );
-  resultFields.append( QgsField( QStringLiteral( "feature_x" ), QMetaType::Type::Double ) );
-  resultFields.append( QgsField( QStringLiteral( "feature_y" ), QMetaType::Type::Double ) );
-  resultFields.append( QgsField( QStringLiteral( "nearest_x" ), QMetaType::Type::Double ) );
-  resultFields.append( QgsField( QStringLiteral( "nearest_y" ), QMetaType::Type::Double ) );
+  resultFields.append( QgsField( QStringLiteral( "n" ), QVariant::Int ) );
+  resultFields.append( QgsField( QStringLiteral( "distance" ), QVariant::Double ) );
+  resultFields.append( QgsField( QStringLiteral( "feature_x" ), QVariant::Double ) );
+  resultFields.append( QgsField( QStringLiteral( "feature_y" ), QVariant::Double ) );
+  resultFields.append( QgsField( QStringLiteral( "nearest_x" ), QVariant::Double ) );
+  resultFields.append( QgsField( QStringLiteral( "nearest_y" ), QVariant::Double ) );
   outFields = QgsProcessingUtils::combineFields( outFields, resultFields );
 
   QString dest;
@@ -214,8 +209,7 @@ QVariantMap QgsJoinByNearestAlgorithm::processAlgorithm( const QVariantMap &para
 
     // only keep selected attributes
     QgsAttributes attributes;
-    const int attributeCount = f.attributeCount();
-    for ( int j = 0; j < attributeCount; ++j )
+    for ( int j = 0; j < f.attributes().count(); ++j )
     {
       if ( ! fields2Indices.contains( j ) )
         continue;
@@ -343,15 +337,9 @@ QVariantMap QgsJoinByNearestAlgorithm::processAlgorithm( const QVariantMap &para
   outputs.insert( QStringLiteral( "JOINED_COUNT" ), joinedCount );
   outputs.insert( QStringLiteral( "UNJOINABLE_COUNT" ), unjoinedCount );
   if ( sink )
-  {
-    sink->finalize();
     outputs.insert( QStringLiteral( "OUTPUT" ), dest );
-  }
   if ( sinkNonMatching1 )
-  {
-    sinkNonMatching1->finalize();
     outputs.insert( QStringLiteral( "NON_MATCHING" ), destNonMatching1 );
-  }
   return outputs;
 }
 

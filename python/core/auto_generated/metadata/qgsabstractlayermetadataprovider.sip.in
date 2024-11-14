@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/metadata/qgsabstractlayermetadataprovider.h                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -47,6 +47,9 @@ Constructor for QgsLayerMetadataProviderResult.
 %End
 
     QgsLayerMetadataProviderResult( );
+%Docstring
+Default constructor.
+%End
 
     const QgsPolygon &geographicExtent() const;
 %Docstring
@@ -58,12 +61,12 @@ Returns the layer extent in EPSG:4326
 Sets the layer extent in EPSG:4326 to ``geographicExtent``
 %End
 
-    Qgis::GeometryType geometryType() const;
+    const QgsWkbTypes::GeometryType &geometryType() const;
 %Docstring
 Returns the layer geometry type.
 %End
 
-    void setGeometryType( Qgis::GeometryType geometryType );
+    void setGeometryType( const QgsWkbTypes::GeometryType &geometryType );
 %Docstring
 Sets the layer geometry type to ``geometryType``.
 %End
@@ -98,12 +101,12 @@ Returns the data provider name.
 Sets the data provider name to ``dataProviderName``.
 %End
 
-    Qgis::LayerType layerType() const;
+    QgsMapLayerType layerType() const;
 %Docstring
 Returns the layer type.
 %End
 
-    void setLayerType( Qgis::LayerType layerType );
+    void setLayerType( QgsMapLayerType layerType );
 %Docstring
 Sets the layer type to ``layerType``.
 %End
@@ -202,5 +205,5 @@ Searches for metadata optionally filtering by search string and geographic exten
  *                                                                      *
  * src/core/metadata/qgsabstractlayermetadataprovider.h                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

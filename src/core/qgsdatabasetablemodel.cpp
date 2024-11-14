@@ -13,7 +13,6 @@
 *                                                                         *
 ***************************************************************************/
 #include "qgsdatabasetablemodel.h"
-#include "moc_qgsdatabasetablemodel.cpp"
 #include "qgsproviderregistry.h"
 #include "qgsprovidermetadata.h"
 #include "qgsabstractdatabaseproviderconnection.h"
@@ -76,7 +75,7 @@ QVariant QgsDatabaseTableModel::data( const QModelIndex &index, int role ) const
 
   if ( index.row() == 0 && mAllowEmpty )
   {
-    if ( role == static_cast< int >( CustomRole::Empty ) )
+    if ( role == RoleEmpty )
       return true;
 
     return QVariant();
@@ -88,7 +87,7 @@ QVariant QgsDatabaseTableModel::data( const QModelIndex &index, int role ) const
   const QgsAbstractDatabaseProviderConnection::TableProperty &table = mTables[ index.row() - ( mAllowEmpty ? 1 : 0 ) ];
   switch ( role )
   {
-    case static_cast< int >( CustomRole::Empty ):
+    case RoleEmpty:
       return false;
 
     case Qt::DisplayRole:
@@ -98,14 +97,14 @@ QVariant QgsDatabaseTableModel::data( const QModelIndex &index, int role ) const
       return mSchema.isEmpty() && !table.schema().isEmpty() ? QStringLiteral( "%1.%2" ).arg( table.schema(), table.tableName() ) : table.tableName();
     }
 
-    case static_cast< int >( CustomRole::TableName ):
+    case RoleTableName:
     {
       return table.tableName();
     }
 
     case Qt::DecorationRole:
-    case static_cast< int >( CustomRole::WkbType ):
-    case static_cast< int >( CustomRole::Crs ):
+    case RoleWkbType:
+    case RoleCrs:
     {
       if ( table.geometryColumnTypes().empty() )
       {
@@ -117,49 +116,49 @@ QVariant QgsDatabaseTableModel::data( const QModelIndex &index, int role ) const
 
       if ( role == Qt::DecorationRole )
       {
-        const Qgis::GeometryType geomType = QgsWkbTypes::geometryType( table.geometryColumnTypes().at( 0 ).wkbType );
+        const QgsWkbTypes::GeometryType geomType = QgsWkbTypes::geometryType( table.geometryColumnTypes().at( 0 ).wkbType );
         switch ( geomType )
         {
-          case Qgis::GeometryType::Point:
+          case QgsWkbTypes::PointGeometry:
           {
             return QgsIconUtils::iconPoint();
           }
-          case Qgis::GeometryType::Polygon:
+          case QgsWkbTypes::PolygonGeometry:
           {
             return QgsIconUtils::iconPolygon();
           }
-          case Qgis::GeometryType::Line:
+          case QgsWkbTypes::LineGeometry:
           {
             return QgsIconUtils::iconLine();
           }
-          case Qgis::GeometryType::Unknown:
+          case QgsWkbTypes::UnknownGeometry:
           {
             return QgsIconUtils::iconGeometryCollection();
           }
-          case Qgis::GeometryType::Null:
+          case QgsWkbTypes::NullGeometry:
             return QgsIconUtils::iconTable();
         }
 
         return QgsIconUtils::iconTable();
       }
-      else if ( role == static_cast< int >( CustomRole::WkbType ) )
-        return static_cast< quint32>( table.geometryColumnTypes().at( 0 ).wkbType );
-      else if ( role == static_cast< int >( CustomRole::Crs ) )
+      else if ( role == RoleWkbType )
+        return table.geometryColumnTypes().at( 0 ).wkbType;
+      else if ( role == RoleCrs )
         return table.geometryColumnTypes().at( 0 ).crs;
 
       return QVariant();
     }
 
-    case static_cast< int >( CustomRole::Schema ):
+    case RoleSchema:
       return table.schema();
 
-    case static_cast< int >( CustomRole::TableFlags ):
+    case RoleTableFlags:
       return static_cast< int >( table.flags() );
 
-    case static_cast< int >( CustomRole::Comment ):
+    case RoleComment:
       return table.comment();
 
-    case static_cast< int >( CustomRole::CustomInfo ):
+    case RoleCustomInfo:
       return table.info();
 
   }

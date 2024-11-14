@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     ScriptEdit.py
@@ -49,7 +51,7 @@ class ScriptEdit(QgsCodeEditorPython):
         # self.SendScintilla(QsciScintilla.SCI_CLEARCMDKEY, ord("Y") + ctrl)
 
         # Use Ctrl+Space for autocompletion
-        self.shortcutAutocomplete = QShortcut(QKeySequence(Qt.Modifier.CTRL
-                                                           + Qt.Key.Key_Space), self)
-        self.shortcutAutocomplete.setContext(Qt.ShortcutContext.WidgetShortcut)
+        self.shortcutAutocomplete = QShortcut(QKeySequence(Qt.CTRL
+                                                           + Qt.Key_Space), self)
+        self.shortcutAutocomplete.setContext(Qt.WidgetShortcut)
         self.shortcutAutocomplete.activated.connect(self.autoComplete)

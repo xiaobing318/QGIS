@@ -56,13 +56,7 @@ QgsPointCloudRenderer *QgsPointCloudRgbRenderer::clone() const
 
 void QgsPointCloudRgbRenderer::renderBlock( const QgsPointCloudBlock *block, QgsPointCloudRenderContext &context )
 {
-  QgsRectangle visibleExtent = context.renderContext().extent();
-  if ( renderAsTriangles() )
-  {
-    // we need to include also points slightly outside of the visible extent,
-    // otherwise the triangulation may be missing triangles near the edges and corners
-    visibleExtent.grow( std::max( visibleExtent.width(), visibleExtent.height() ) * 0.05 );
-  }
+  const QgsRectangle visibleExtent = context.renderContext().extent();
 
   const char *ptr = block->data();
   const int count = block->pointCount();
@@ -91,7 +85,7 @@ void QgsPointCloudRgbRenderer::renderBlock( const QgsPointCloudBlock *block, Qgs
   const bool useBlueContrastEnhancement = mBlueContrastEnhancement && mBlueContrastEnhancement->contrastEnhancementAlgorithm() != QgsContrastEnhancement::NoEnhancement;
   const bool useGreenContrastEnhancement = mGreenContrastEnhancement && mGreenContrastEnhancement->contrastEnhancementAlgorithm() != QgsContrastEnhancement::NoEnhancement;
 
-  const bool renderElevation = context.renderContext().elevationMap();
+  const bool renderElevation = context.elevationMap();
   const QgsDoubleRange zRange = context.renderContext().zRange();
   const bool considerZ = !zRange.isInfinite() || renderElevation;
 
@@ -164,19 +158,9 @@ void QgsPointCloudRgbRenderer::renderBlock( const QgsPointCloudBlock *block, Qgs
       green = std::max( 0, std::min( 255, green ) );
       blue = std::max( 0, std::min( 255, blue ) );
 
-      if ( renderAsTriangles() )
-      {
-        addPointToTriangulation( x, y, z, QColor( red, green, blue ), context );
-
-        // We don't want to render any points if we're rendering triangles and there is no preview painter
-        if ( !context.renderContext().previewRenderPainter() )
-          continue;
-      }
-
       drawPoint( x, y, QColor( red, green, blue ), context );
       if ( renderElevation )
         drawPointToElevationMap( x, y, z, context );
-
       rendered++;
     }
   }

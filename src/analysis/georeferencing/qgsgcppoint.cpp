@@ -46,7 +46,7 @@ QgsPointXY QgsGcpPoint::transformedDestinationPoint( const QgsCoordinateReferenc
   }
   catch ( QgsCsException & )
   {
-    QgsDebugError( QStringLiteral( "Error transforming destination point" ) );
+    QgsDebugMsg( QStringLiteral( "Error transforming destination point" ) );
     return mDestinationPoint;
   }
 }

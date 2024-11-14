@@ -29,10 +29,7 @@
 #include "qgslocatorfilter.h"
 #include "qgsfeedback.h"
 #include "qgslocatorcontext.h"
-#include "qgssettingstree.h"
-
-class QgsSettingsEntryBool;
-class QgsSettingsEntryString;
+#include "qgssettingsentryimpl.h"
 
 
 /**
@@ -56,6 +53,7 @@ class QgsSettingsEntryString;
  * encounters an individual result, it will usually be triggered many times for a single
  * call to fetchResults().
  *
+ * \since QGIS 3.0
 */
 class CORE_EXPORT QgsLocator : public QObject
 {
@@ -107,7 +105,7 @@ class CORE_EXPORT QgsLocator : public QObject
      * Returns a map of prefix to filter, for all registered filters
      * with valid prefixes.
      * \see filters()
-     * \deprecated QGIS 3.2. Use filters() instead.
+     * \deprecated since QGIS 3.2 use filters() instead
      */
     Q_DECL_DEPRECATED QMap<QString, QgsLocatorFilter *> prefixedFilters() const;
 
@@ -156,14 +154,12 @@ class CORE_EXPORT QgsLocator : public QObject
     QStringList completionList() const {return mAutocompletionList;}
 
 #ifndef SIP_RUN
-    static inline QgsSettingsTreeNamedListNode *sTreeLocatorFilters = QgsSettingsTree::treeRoot()->createNamedListNode( QStringLiteral( "locator-filters" ) );
-
     //! Settings entry locator filter enabled
-    static const QgsSettingsEntryBool *settingsLocatorFilterEnabled;
+    static const inline QgsSettingsEntryBool settingsLocatorFilterEnabled = QgsSettingsEntryBool( QStringLiteral( "enabled_%1" ), QgsSettings::Prefix::GUI_LOCATORFILTERS, true, QObject::tr( "Locator filter enabled" ) );
     //! Settings entry locator filter default value
-    static const QgsSettingsEntryBool *settingsLocatorFilterDefault;
+    static const inline QgsSettingsEntryBool settingsLocatorFilterDefault = QgsSettingsEntryBool( QStringLiteral( "default_%1" ), QgsSettings::Prefix::GUI_LOCATORFILTERS, false, QObject::tr( "Locator filter default value" ) );
     //! Settings entry locator filter prefix
-    static const QgsSettingsEntryString *settingsLocatorFilterPrefix;
+    static const inline QgsSettingsEntryString settingsLocatorFilterPrefix = QgsSettingsEntryString( QStringLiteral( "prefix_%1" ), QgsSettings::Prefix::GUI_LOCATORFILTERS, QString(), QObject::tr( "Locator filter prefix" ) );
 #endif
 
   signals:

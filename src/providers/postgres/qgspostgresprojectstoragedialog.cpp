@@ -13,7 +13,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgspostgresprojectstoragedialog.h"
-#include "moc_qgspostgresprojectstoragedialog.cpp"
 
 #include "qgspostgresconn.h"
 #include "qgspostgresconnpool.h"

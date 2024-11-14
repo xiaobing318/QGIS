@@ -16,7 +16,6 @@
 #include "qplugin.h"
 
 #include "qgiscustomwidgets.h"
-#include "moc_qgiscustomwidgets.cpp"
 #include "qgsauthconfigselectplugin.h"
 #include "qgscheckablecomboboxplugin.h"
 #include "qgscollapsiblegroupboxplugin.h"

@@ -11,38 +11,38 @@ __copyright__ = 'Copyright 2015, The QGIS Project'
 
 import os
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import QTimer
 from qgis.PyQt.QtWidgets import (
-    QDialog,
-    QDialogButtonBox,
-    QMessageBox,
-    QTableView,
     QToolButton,
+    QMessageBox,
+    QDialogButtonBox,
+    QTableView,
+    QDialog
 )
 from qgis.core import (
     QgsFeature,
-    QgsFeatureRequest,
-    QgsGeometry,
+    QgsVectorLayer,
     QgsProject,
     QgsRelation,
     QgsTransaction,
-    QgsVectorLayer,
+    QgsFeatureRequest,
     QgsVectorLayerTools,
+    QgsGeometry
 )
 from qgis.gui import (
-    QgsAdvancedDigitizingDockWidget,
-    QgsAttributeEditorContext,
     QgsGui,
-    QgsMapCanvas,
     QgsRelationWidgetWrapper,
+    QgsAttributeEditorContext,
+    QgsMapCanvas,
+    QgsAdvancedDigitizingDockWidget
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsRelationEditWidget(QgisTestCase):
+class TestQgsRelationEditWidget(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -50,7 +50,6 @@ class TestQgsRelationEditWidget(QgisTestCase):
         Setup the involved layers and relations for a n:m relation
         :return:
         """
-        super().setUpClass()
         cls.mapCanvas = QgsMapCanvas()
         QgsGui.editorWidgetRegistry().initEditors(cls.mapCanvas)
         cls.dbconn = 'service=\'qgis_test\''
@@ -89,8 +88,6 @@ class TestQgsRelationEditWidget(QgisTestCase):
         cls.mapCanvas = None
         cls.vltools = None
         cls.relMgr = None
-
-        super().tearDownClass()
 
     def setUp(self):
         self.rel_a = QgsRelation()
@@ -160,7 +157,7 @@ class TestQgsRelationEditWidget(QgisTestCase):
             # box
             widget = self.widget.findChild(QMessageBox)
             buttonBox = widget.findChild(QDialogButtonBox)
-            deleteButton = next(b for b in buttonBox.buttons() if buttonBox.buttonRole(b) == QDialogButtonBox.ButtonRole.AcceptRole)
+            deleteButton = next(b for b in buttonBox.buttons() if buttonBox.buttonRole(b) == QDialogButtonBox.AcceptRole)
             deleteButton.click()
 
         QTimer.singleShot(1, clickOk)

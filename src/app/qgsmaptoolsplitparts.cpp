@@ -18,7 +18,6 @@
 #include "qgsmapcanvas.h"
 #include "qgsproject.h"
 #include "qgsmaptoolsplitparts.h"
-#include "moc_qgsmaptoolsplitparts.cpp"
 #include "qgssnappingutils.h"
 #include "qgsvectorlayer.h"
 #include "qgsmapmouseevent.h"
@@ -70,7 +69,7 @@ void QgsMapToolSplitParts::cadCanvasReleaseEvent( QgsMapMouseEvent *e )
   {
     int error = 0;
     //If we snap the first point on a vertex of a line layer, we directly split the feature at this point
-    if ( vlayer->geometryType() == Qgis::GeometryType::Line && pointsZM().isEmpty() )
+    if ( vlayer->geometryType() == QgsWkbTypes::LineGeometry && pointsZM().isEmpty() )
     {
       const QgsPointLocator::Match m = mCanvas->snappingUtils()->snapToCurrentLayer( e->pos(), QgsPointLocator::Vertex );
       if ( m.isValid() )

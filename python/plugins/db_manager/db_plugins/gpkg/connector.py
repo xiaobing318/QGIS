@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 /***************************************************************************
 Name                 : DB Manager
@@ -18,6 +20,7 @@ email                : even.rouault at spatialys.com
  *                                                                         *
  ***************************************************************************/
 """
+from builtins import str
 
 from functools import cmp_to_key
 
@@ -39,8 +42,6 @@ from qgis.core import (
 import sqlite3
 
 from osgeo import gdal, ogr, osr
-gdal.UseExceptions()
-ogr.UseExceptions()
 
 
 def classFactory():
@@ -77,13 +78,11 @@ class GPKGDBConnector(DBConnector):
         # Keep this explicit assignment to None to make sure the file is
         # properly closed before being re-opened
         self.gdal_ds = None
-        try:
-            self.gdal_ds = gdal.OpenEx(self.dbname, gdal.OF_UPDATE)
-        except Exception:
-            try:
-                self.gdal_ds = gdal.OpenEx(self.dbname)
-            except Exception:
-                raise ConnectionError(QApplication.translate("DBManagerPlugin", '"{0}" not found').format(self.dbname))
+        self.gdal_ds = gdal.OpenEx(self.dbname, gdal.OF_UPDATE)
+        if self.gdal_ds is None:
+            self.gdal_ds = gdal.OpenEx(self.dbname)
+        if self.gdal_ds is None:
+            raise ConnectionError(QApplication.translate("DBManagerPlugin", '"{0}" not found').format(self.dbname))
         if self.gdal_ds.GetDriver().ShortName != 'GPKG':
             raise ConnectionError(QApplication.translate("DBManagerPlugin", '"{dbname}" not recognized as GPKG ({shortname} reported instead.)').format(dbname=self.dbname, shortname=self.gdal_ds.GetDriver().ShortName))
         self.has_raster = self.gdal_ds.RasterCount != 0 or self.gdal_ds.GetMetadata('SUBDATASETS') is not None
@@ -190,11 +189,15 @@ class GPKGDBConnector(DBConnector):
 
     @classmethod
     def isValidDatabase(cls, path):
-        try:
+        if hasattr(gdal, 'OpenEx'):
             ds = gdal.OpenEx(path)
-        except Exception:
-            return False
-        return ds.GetDriver().ShortName == 'GPKG'
+            if ds is None or ds.GetDriver().ShortName != 'GPKG':
+                return False
+        else:
+            ds = ogr.Open(path)
+            if ds is None or ds.GetDriver().GetName() != 'GPKG':
+                return False
+        return True
 
     def getInfo(self):
         return None
@@ -280,36 +283,36 @@ class GPKGDBConnector(DBConnector):
         """
 
         items = []
-        for table in self.core_connection.tables(schema, QgsAbstractDatabaseProviderConnection.TableFlag.Vector | QgsAbstractDatabaseProviderConnection.TableFlag.Aspatial):
-            if not (table.flags() & QgsAbstractDatabaseProviderConnection.TableFlag.Aspatial):
+        for table in self.core_connection.tables(schema, QgsAbstractDatabaseProviderConnection.Vector | QgsAbstractDatabaseProviderConnection.Aspatial):
+            if not (table.flags() & QgsAbstractDatabaseProviderConnection.Aspatial):
                 geom_type = table.geometryColumnTypes()[0]
                 # Use integer PG code for SRID
                 srid = geom_type.crs.postgisSrid()
                 geomtype_flatten = QgsWkbTypes.flatType(geom_type.wkbType)
                 geomname = 'GEOMETRY'
-                if geomtype_flatten == QgsWkbTypes.Type.Point:
+                if geomtype_flatten == QgsWkbTypes.Point:
                     geomname = 'POINT'
-                elif geomtype_flatten == QgsWkbTypes.Type.LineString:
+                elif geomtype_flatten == QgsWkbTypes.LineString:
                     geomname = 'LINESTRING'
-                elif geomtype_flatten == QgsWkbTypes.Type.Polygon:
+                elif geomtype_flatten == QgsWkbTypes.Polygon:
                     geomname = 'POLYGON'
-                elif geomtype_flatten == QgsWkbTypes.Type.MultiPoint:
+                elif geomtype_flatten == QgsWkbTypes.MultiPoint:
                     geomname = 'MULTIPOINT'
-                elif geomtype_flatten == QgsWkbTypes.Type.MultiLineString:
+                elif geomtype_flatten == QgsWkbTypes.MultiLineString:
                     geomname = 'MULTILINESTRING'
-                elif geomtype_flatten == QgsWkbTypes.Type.MultiPolygon:
+                elif geomtype_flatten == QgsWkbTypes.MultiPolygon:
                     geomname = 'MULTIPOLYGON'
-                elif geomtype_flatten == QgsWkbTypes.Type.GeometryCollection:
+                elif geomtype_flatten == QgsWkbTypes.GeometryCollection:
                     geomname = 'GEOMETRYCOLLECTION'
-                elif geomtype_flatten == QgsWkbTypes.Type.CircularString:
+                elif geomtype_flatten == QgsWkbTypes.CircularString:
                     geomname = 'CIRCULARSTRING'
-                elif geomtype_flatten == QgsWkbTypes.Type.CompoundCurve:
+                elif geomtype_flatten == QgsWkbTypes.CompoundCurve:
                     geomname = 'COMPOUNDCURVE'
-                elif geomtype_flatten == QgsWkbTypes.Type.CurvePolygon:
+                elif geomtype_flatten == QgsWkbTypes.CurvePolygon:
                     geomname = 'CURVEPOLYGON'
-                elif geomtype_flatten == QgsWkbTypes.Type.MultiCurve:
+                elif geomtype_flatten == QgsWkbTypes.MultiCurve:
                     geomname = 'MULTICURVE'
-                elif geomtype_flatten == QgsWkbTypes.Type.MultiSurface:
+                elif geomtype_flatten == QgsWkbTypes.MultiSurface:
                     geomname = 'MULTISURFACE'
                 geomdim = 'XY'
                 if QgsWkbTypes.hasZ(geom_type.wkbType):
@@ -319,7 +322,7 @@ class GPKGDBConnector(DBConnector):
                 item = [
                     Table.VectorType,
                     table.tableName(),
-                    bool(table.flags() & QgsAbstractDatabaseProviderConnection.TableFlag.View),  # is_view
+                    bool(table.flags() & QgsAbstractDatabaseProviderConnection.View),  # is_view
                     table.tableName(),
                     table.geometryColumn(),
                     geomname,
@@ -331,7 +334,7 @@ class GPKGDBConnector(DBConnector):
                 item = [
                     Table.TableType,
                     table.tableName(),
-                    bool(table.flags() & QgsAbstractDatabaseProviderConnection.TableFlag.View),
+                    bool(table.flags() & QgsAbstractDatabaseProviderConnection.View),
                 ]
 
             items.append(item)
@@ -350,14 +353,14 @@ class GPKGDBConnector(DBConnector):
         """
 
         items = []
-        for table in self.core_connection.tables(schema, QgsAbstractDatabaseProviderConnection.TableFlag.Raster):
+        for table in self.core_connection.tables(schema, QgsAbstractDatabaseProviderConnection.Raster):
             geom_type = table.geometryColumnTypes()[0]
             # Use integer PG code for SRID
             srid = geom_type.crs.postgisSrid()
             item = [
                 Table.RasterType,
                 table.tableName(),
-                bool(table.flags() & QgsAbstractDatabaseProviderConnection.TableFlag.View),
+                bool(table.flags() & QgsAbstractDatabaseProviderConnection.View),
                 table.tableName(),
                 table.geometryColumn(),
                 srid,
@@ -373,7 +376,7 @@ class GPKGDBConnector(DBConnector):
 
     def getTableFields(self, table):
         """ return list of columns in table """
-        sql = "PRAGMA table_info(%s)" % (self.quoteId(table))
+        sql = u"PRAGMA table_info(%s)" % (self.quoteId(table))
         ret = self._fetchAll(sql)
         if ret is None:
             ret = []
@@ -381,7 +384,7 @@ class GPKGDBConnector(DBConnector):
 
     def getTableIndexes(self, table):
         """ get info about table's indexes """
-        sql = "PRAGMA index_list(%s)" % (self.quoteId(table))
+        sql = u"PRAGMA index_list(%s)" % (self.quoteId(table))
         indexes = self._fetchAll(sql)
         if indexes is None:
             return []
@@ -395,7 +398,7 @@ class GPKGDBConnector(DBConnector):
                 num, name, unique = idx
             if len(idx) == 5:
                 num, name, unique, createdby, partial = idx
-            sql = "PRAGMA index_info(%s)" % (self.quoteId(name))
+            sql = u"PRAGMA index_info(%s)" % (self.quoteId(name))
 
             idx = [num, name, unique]
             cols = [
@@ -414,21 +417,21 @@ class GPKGDBConnector(DBConnector):
 
         _, tablename = self.getSchemaTableName(table)
         # Do not list rtree related triggers as we don't want them to be dropped
-        sql = "SELECT name, sql FROM sqlite_master WHERE tbl_name = %s AND type = 'trigger'" % (self.quoteString(tablename))
+        sql = u"SELECT name, sql FROM sqlite_master WHERE tbl_name = %s AND type = 'trigger'" % (self.quoteString(tablename))
         if self.isVectorTable(table):
-            sql += " AND name NOT LIKE 'rtree_%%'"
+            sql += u" AND name NOT LIKE 'rtree_%%'"
         elif self.isRasterTable(table):
-            sql += " AND name NOT LIKE '%%_zoom_insert'"
-            sql += " AND name NOT LIKE '%%_zoom_update'"
-            sql += " AND name NOT LIKE '%%_tile_column_insert'"
-            sql += " AND name NOT LIKE '%%_tile_column_update'"
-            sql += " AND name NOT LIKE '%%_tile_row_insert'"
-            sql += " AND name NOT LIKE '%%_tile_row_update'"
+            sql += u" AND name NOT LIKE '%%_zoom_insert'"
+            sql += u" AND name NOT LIKE '%%_zoom_update'"
+            sql += u" AND name NOT LIKE '%%_tile_column_insert'"
+            sql += u" AND name NOT LIKE '%%_tile_column_update'"
+            sql += u" AND name NOT LIKE '%%_tile_row_insert'"
+            sql += u" AND name NOT LIKE '%%_tile_row_update'"
         return self._fetchAll(sql)
 
     def deleteTableTrigger(self, trigger, table=None):
         """Deletes trigger """
-        sql = "DROP TRIGGER %s" % self.quoteId(trigger)
+        sql = u"DROP TRIGGER %s" % self.quoteId(trigger)
         self._execute_and_commit(sql)
 
     def getTableExtent(self, table, geom, force=False):
@@ -442,10 +445,7 @@ class GPKGDBConnector(DBConnector):
                 ds = self.gdal_ds
             else:
                 subdataset_name = 'GPKG:%s:%s' % (self.gdal_ds.GetDescription(), tablename)
-                try:
-                    ds = gdal.Open(subdataset_name)
-                except Exception:
-                    ds = None
+                ds = gdal.Open(subdataset_name)
             if ds is None:
                 return None
             gt = ds.GetGeoTransform()
@@ -473,7 +473,7 @@ class GPKGDBConnector(DBConnector):
         if srid in self.mapSridToName:
             return self.mapSridToName[srid]
 
-        sql = "SELECT srs_name FROM gpkg_spatial_ref_sys WHERE srs_id = %s" % self.quoteString(srid)
+        sql = u"SELECT srs_name FROM gpkg_spatial_ref_sys WHERE srs_id = %s" % self.quoteString(srid)
         res = self._fetchOne(sql)
         if res is not None and len(res) > 0:
             res = res[0]
@@ -490,7 +490,7 @@ class GPKGDBConnector(DBConnector):
             _, tablename = self.getSchemaTableName(table)
             md = self.gdal_ds.GetMetadata('SUBDATASETS')
             if md is None or len(md) == 0:
-                sql = "SELECT COUNT(*) FROM gpkg_contents WHERE data_type = 'tiles' AND table_name = %s" % self.quoteString(tablename)
+                sql = u"SELECT COUNT(*) FROM gpkg_contents WHERE data_type = 'tiles' AND table_name = %s" % self.quoteString(tablename)
                 ret = self._fetchOne(sql)
                 return ret != [] and ret[0][0] == 1
             else:
@@ -587,9 +587,7 @@ class GPKGDBConnector(DBConnector):
     def deleteTable(self, table):
         """Deletes table from the database """
         if self.isRasterTable(table):
-            sql = "DROP TABLE {}".format(self.quoteId(table))
-            self._execute_and_commit(sql)
-            return True
+            return False
 
         _, tablename = self.getSchemaTableName(table)
         for i in range(self.gdal_ds.GetLayerCount()):
@@ -602,7 +600,7 @@ class GPKGDBConnector(DBConnector):
         if self.isRasterTable(table):
             return False
 
-        sql = "DELETE FROM %s" % self.quoteId(table)
+        sql = u"DELETE FROM %s" % self.quoteId(table)
         self._execute_and_commit(sql)
 
     def renameTable(self, table, new_table):
@@ -617,7 +615,7 @@ class GPKGDBConnector(DBConnector):
         """
         try:
             name = table[1]  # 0 is schema
-            vector_table_names = [t.tableName() for t in self.core_connection.tables('', QgsAbstractDatabaseProviderConnection.TableFlag.Vector)]
+            vector_table_names = [t.tableName() for t in self.core_connection.tables('', QgsAbstractDatabaseProviderConnection.Vector)]
             if name in vector_table_names:
                 self.core_connection.renameVectorTable('', name, new_table)
             else:
@@ -771,26 +769,26 @@ class GPKGDBConnector(DBConnector):
 
     def addTablePrimaryKey(self, table, column):
         """Adds a primery key (with one column) to a table """
-        sql = "ALTER TABLE %s ADD PRIMARY KEY (%s)" % (self.quoteId(table), self.quoteId(column))
+        sql = u"ALTER TABLE %s ADD PRIMARY KEY (%s)" % (self.quoteId(table), self.quoteId(column))
         self._execute_and_commit(sql)
 
     def createTableIndex(self, table, name, column, unique=False):
         """Creates index on one column using default options """
-        unique_str = "UNIQUE" if unique else ""
-        sql = "CREATE %s INDEX %s ON %s (%s)" % (
+        unique_str = u"UNIQUE" if unique else ""
+        sql = u"CREATE %s INDEX %s ON %s (%s)" % (
             unique_str, self.quoteId(name), self.quoteId(table), self.quoteId(column))
         self._execute_and_commit(sql)
 
     def deleteTableIndex(self, table, name):
         schema, tablename = self.getSchemaTableName(table)
-        sql = "DROP INDEX %s" % self.quoteId((schema, name))
+        sql = u"DROP INDEX %s" % self.quoteId((schema, name))
         self._execute_and_commit(sql)
 
     def createSpatialIndex(self, table, geom_column):
         if self.isRasterTable(table):
             return False
         _, tablename = self.getSchemaTableName(table)
-        sql = "SELECT CreateSpatialIndex(%s, %s)" % (
+        sql = u"SELECT CreateSpatialIndex(%s, %s)" % (
             self.quoteId(tablename), self.quoteId(geom_column))
         try:
             res = self._fetchOne(sql)
@@ -802,7 +800,7 @@ class GPKGDBConnector(DBConnector):
         if self.isRasterTable(table):
             return False
         _, tablename = self.getSchemaTableName(table)
-        sql = "SELECT DisableSpatialIndex(%s, %s)" % (
+        sql = u"SELECT DisableSpatialIndex(%s, %s)" % (
             self.quoteId(tablename), self.quoteId(geom_column))
         res = self._fetchOne(sql)
         return len(res) > 0 and len(res[0]) > 0 and res[0][0] == 1
@@ -813,14 +811,14 @@ class GPKGDBConnector(DBConnector):
         _, tablename = self.getSchemaTableName(table)
 
         # (only available in >= 2.1.2)
-        sql = "SELECT HasSpatialIndex(%s, %s)" % (self.quoteString(tablename), self.quoteString(geom_column))
+        sql = u"SELECT HasSpatialIndex(%s, %s)" % (self.quoteString(tablename), self.quoteString(geom_column))
         gdal.PushErrorHandler()
         ret = self._fetchOne(sql)
         gdal.PopErrorHandler()
 
         if len(ret) == 0:
             # might be the case for GDAL < 2.1.2
-            sql = "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name LIKE %s" % self.quoteString("%%rtree_" + tablename + "_%%")
+            sql = u"SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name LIKE %s" % self.quoteString("%%rtree_" + tablename + "_%%")
             ret = self._fetchOne(sql)
         if len(ret) == 0:
             return False

@@ -16,11 +16,10 @@
 #ifndef QGSGCPTRANSFORMER_H
 #define QGSGCPTRANSFORMER_H
 
-#include <QObject>
 #include <gdal_alg.h>
+#include "qgspoint.h"
 #include "qgis_analysis.h"
 #include "qgis_sip.h"
-#include "qgspointxy.h"
 
 /**
  * \ingroup analysis
@@ -53,6 +52,7 @@ class ANALYSIS_EXPORT QgsGcpTransformerInterface SIP_ABSTRACT
     };
     Q_ENUM( TransformMethod )
 
+    //! Constructor for QgsGcpTransformerInterface
     QgsGcpTransformerInterface() = default;
 
     virtual ~QgsGcpTransformerInterface() = default;
@@ -152,6 +152,7 @@ class ANALYSIS_EXPORT QgsLinearGeorefTransform : public QgsGcpTransformerInterfa
 {
   public:
 
+    //! Constructor for QgsLinearGeorefTransform
     QgsLinearGeorefTransform() = default;
 
     /**
@@ -190,6 +191,7 @@ class ANALYSIS_EXPORT QgsHelmertGeorefTransform : public QgsGcpTransformerInterf
 {
   public:
 
+    //! Constructor for QgsHelmertGeorefTransform
     QgsHelmertGeorefTransform() = default;
 
     /**
@@ -209,8 +211,8 @@ class ANALYSIS_EXPORT QgsHelmertGeorefTransform : public QgsGcpTransformerInterf
     struct HelmertParameters
     {
       QgsPointXY origin;
-      double scale = 0;
-      double angle = 0;
+      double scale;
+      double angle;
       bool invertYAxis = false;
     };
     HelmertParameters mHelmertParameters;
@@ -268,6 +270,7 @@ class ANALYSIS_EXPORT QgsProjectiveGeorefTransform : public QgsGcpTransformerInt
 {
   public:
 
+    //! Constructor for QgsProjectiveGeorefTransform
     QgsProjectiveGeorefTransform();
 
     QgsGcpTransformerInterface *clone() const override;

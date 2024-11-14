@@ -45,10 +45,11 @@ QString QgsTransferAnnotationsFromMainAlgorithm::groupId() const
   return QStringLiteral( "cartography" );
 }
 
-Qgis::ProcessingAlgorithmFlags QgsTransferAnnotationsFromMainAlgorithm::flags() const
+QgsProcessingAlgorithm::Flags QgsTransferAnnotationsFromMainAlgorithm::flags() const
 {
-  return QgsProcessingAlgorithm::flags() | Qgis::ProcessingAlgorithmFlag::NoThreading | Qgis::ProcessingAlgorithmFlag::RequiresProject;
+  return QgsProcessingAlgorithm::flags() | QgsProcessingAlgorithm::FlagNoThreading | QgsProcessingAlgorithm::FlagRequiresProject;
 }
+
 
 QString QgsTransferAnnotationsFromMainAlgorithm::shortHelpString() const
 {

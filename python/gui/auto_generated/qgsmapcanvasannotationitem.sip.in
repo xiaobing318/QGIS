@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsmapcanvasannotationitem.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -19,6 +19,8 @@ class QgsMapCanvasAnnotationItem: QObject, QgsMapCanvasItem
 {
 %Docstring(signature="appended")
 An interactive map canvas item which displays a :py:class:`QgsAnnotation`.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -87,5 +89,5 @@ Returns matching cursor shape for a mouse move action.
  *                                                                      *
  * src/gui/qgsmapcanvasannotationitem.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

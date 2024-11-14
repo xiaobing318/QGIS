@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     AlgorithmsTest.py
@@ -19,6 +21,7 @@ __author__ = 'Matthias Kuhn'
 __date__ = 'January 2016'
 __copyright__ = '(C) 2016, Matthias Kuhn'
 
+import qgis  # NOQA switch sip api
 
 import os
 import yaml
@@ -48,13 +51,11 @@ from qgis.core import (Qgis,
                        QgsProcessingFeedback)
 from qgis.analysis import (QgsNativeAlgorithms)
 from qgis.testing import (_UnexpectedSuccess,
-                          QgisTestCase,
-                          start_app)
+                          start_app,
+                          unittest)
 from utilities import unitTestDataPath
 
 import processing
-
-gdal.UseExceptions()
 
 
 def GDAL_COMPUTE_VERSION(maj, min, rev):
@@ -65,13 +66,13 @@ def processingTestDataPath():
     return os.path.join(os.path.dirname(__file__), 'testdata')
 
 
-class AlgorithmsTest:
+class AlgorithmsTest(object):
 
     def test_algorithms(self):
         """
         This is the main test function. All others will be executed based on the definitions in testdata/algorithm_tests.yaml
         """
-        with open(os.path.join(processingTestDataPath(), self.definition_file())) as stream:
+        with open(os.path.join(processingTestDataPath(), self.test_definition_file()), 'r') as stream:
             algorithm_tests = yaml.load(stream, Loader=yaml.SafeLoader)
 
         if 'tests' in algorithm_tests and algorithm_tests['tests'] is not None:
@@ -169,23 +170,17 @@ class AlgorithmsTest:
         # ignore user setting for invalid geometry handling
         context = QgsProcessingContext()
         context.setProject(QgsProject.instance())
-        if 'ellipsoid' in defs:
-            # depending on the project settings, we can't always rely
-            # on QgsProject.ellipsoid() returning the same ellipsoid as was
-            # specified in the test definition. So just force ensure that the
-            # context's ellipsoid is the desired one
-            context.setEllipsoid(defs['ellipsoid'])
 
         if 'skipInvalid' in defs and defs['skipInvalid']:
-            context.setInvalidGeometryCheck(QgsFeatureRequest.InvalidGeometryCheck.GeometrySkipInvalid)
+            context.setInvalidGeometryCheck(QgsFeatureRequest.GeometrySkipInvalid)
 
         feedback = QgsProcessingFeedback()
 
-        print(f'Algorithm parameters are {parameters}')
+        print('Algorithm parameters are {}'.format(parameters))
 
         # first check that algorithm accepts the parameters we pass...
         ok, msg = alg.checkParameterValues(parameters, context)
-        self.assertTrue(ok, f'Algorithm failed checkParameterValues with result {msg}')
+        self.assertTrue(ok, 'Algorithm failed checkParameterValues with result {}'.format(msg))
 
         if expectFailure:
             try:
@@ -197,7 +192,7 @@ class AlgorithmsTest:
                 pass
         else:
             results, ok = alg.run(parameters, context, feedback)
-            self.assertTrue(ok, f'params: {parameters}, results: {results}')
+            self.assertTrue(ok, 'params: {}, results: {}'.format(parameters, results))
             self.check_results(results, context, parameters, defs['results'])
 
     def load_params(self, params):
@@ -261,7 +256,10 @@ class AlgorithmsTest:
         elif param['type'] == 'rasterhash':
             outdir = tempfile.mkdtemp()
             self.cleanup_paths.append(outdir)
-            basename = 'raster.tif'
+            if self.test_definition_file().lower().startswith('saga'):
+                basename = 'raster.sdat'
+            else:
+                basename = 'raster.tif'
             filepath = os.path.join(outdir, basename)
             return filepath
         elif param['type'] == 'directory':
@@ -297,7 +295,7 @@ class AlgorithmsTest:
             self.cleanup_paths.append(tmpdir)
             path, file_name = os.path.split(filepath)
             base, ext = os.path.splitext(file_name)
-            for file in glob.glob(os.path.join(path, f'{base}.*')):
+            for file in glob.glob(os.path.join(path, '{}.*'.format(base))):
                 shutil.copy(os.path.join(path, file), tmpdir)
             filepath = os.path.join(tmpdir, file_name)
             self.in_place_layers[id] = filepath
@@ -321,7 +319,7 @@ class AlgorithmsTest:
             options.loadDefaultStyle = False
             lyr = QgsRasterLayer(filepath, param['name'], 'gdal', options)
 
-        self.assertTrue(lyr.isValid(), f'Could not load layer "{filepath}" from param {param}')
+        self.assertTrue(lyr.isValid(), 'Could not load layer "{}" from param {}'.format(filepath, param))
         QgsProject.instance().addMapLayer(lyr)
         return lyr
 
@@ -347,7 +345,7 @@ class AlgorithmsTest:
         if filepath.startswith('ogr:'):
             if not prefix[-1] == os.path.sep:
                 prefix += os.path.sep
-            filepath = re.sub(r"dbname='", f"dbname='{prefix}", filepath)
+            filepath = re.sub(r"dbname='", "dbname='{}".format(prefix), filepath)
         else:
             filepath = os.path.join(prefix, filepath)
 
@@ -376,7 +374,7 @@ class AlgorithmsTest:
                     try:
                         results[id]
                     except KeyError as e:
-                        raise KeyError(f'Expected result {str(e)} does not exist in {list(results.keys())}')
+                        raise KeyError('Expected result {} does not exist in {}'.format(str(e), list(results.keys())))
 
                     if isinstance(results[id], QgsMapLayer):
                         result_lyr = results[id]
@@ -406,8 +404,8 @@ class AlgorithmsTest:
                     self.assertTrue(res, 'Could not find matching layer in expected results')
 
             elif 'rasterhash' == expected_result['type']:
-                print(f"id:{id} result:{results[id]}")
-                self.assertTrue(os.path.exists(results[id]), f'File does not exist: {results[id]}, {params}')
+                print("id:{} result:{}".format(id, results[id]))
+                self.assertTrue(os.path.exists(results[id]), 'File does not exist: {}, {}'.format(results[id], params))
                 dataset = gdal.Open(results[id], GA_ReadOnly)
                 dataArray = nan_to_num(dataset.ReadAsArray(0))
                 strhash = hashlib.sha224(dataArray.data).hexdigest()
@@ -436,14 +434,14 @@ class AlgorithmsTest:
 
                 self.assertDirectoriesEqual(expected_dirpath, result_dirpath)
             elif 'regex' == expected_result['type']:
-                with open(results[id]) as file:
+                with open(results[id], 'r') as file:
                     data = file.read()
 
                 for rule in expected_result.get('rules', []):
                     self.assertRegex(data, rule)
 
 
-class GenericAlgorithmsTest(QgisTestCase):
+class GenericAlgorithmsTest(unittest.TestCase):
     """
     General (non-provider specific) algorithm tests
     """
@@ -464,9 +462,9 @@ class GenericAlgorithmsTest(QgisTestCase):
 
     def testAlgorithmCompliance(self):
         for p in QgsApplication.processingRegistry().providers():
-            print(f'testing provider {p.id()}')
+            print('testing provider {}'.format(p.id()))
             for a in p.algorithms():
-                print(f'testing algorithm {a.id()}')
+                print('testing algorithm {}'.format(a.id()))
                 self.check_algorithm(a)
 
     def check_algorithm(self, alg):

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/layout/qgslayoutreportcontext.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -12,6 +12,8 @@ class QgsLayoutReportContext : QObject
 {
 %Docstring(signature="appended")
 Stores information relating to the current reporting context for a layout.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -81,9 +83,8 @@ for maps which are set to the predefined atlas scaling mode.
 
 .. seealso:: :py:func:`predefinedScales`
 
-.. deprecated:: 3.40
-
-   Use :py:func:`QgsLayoutRenderContext.setPredefinedScales()`.
+.. deprecated::
+   Use :py:func:`QgsLayoutRenderContext.setPredefinedScales()`
 %End
 
  QVector<qreal> predefinedScales() const /Deprecated/;
@@ -92,9 +93,8 @@ Returns the current list of predefined scales for use with the layout.
 
 .. seealso:: :py:func:`setPredefinedScales`
 
-.. deprecated:: 3.40
-
-   Use :py:func:`QgsLayoutRenderContext.predefinedScales()`.
+.. deprecated::
+   Use :py:func:`QgsLayoutRenderContext.predefinedScales()`
 %End
 
   signals:
@@ -120,5 +120,5 @@ for the context.
  *                                                                      *
  * src/core/layout/qgslayoutreportcontext.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

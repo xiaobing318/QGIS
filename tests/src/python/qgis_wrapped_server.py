@@ -124,24 +124,17 @@ __copyright__ = 'Copyright 2016, The QGIS Project'
 # executions
 os.environ['QT_HASH_SEED'] = '1'
 
-import copy
-import math
+import sys
 import signal
 import ssl
-import sys
+import math
+import copy
 import urllib.parse
-
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
 
 from qgis.core import QgsApplication
-from qgis.server import (
-    QgsBufferServerRequest,
-    QgsBufferServerResponse,
-    QgsServer,
-    QgsServerFilter,
-    QgsServerRequest,
-)
+from qgis.server import QgsServer, QgsServerRequest, QgsBufferServerRequest, QgsBufferServerResponse, QgsServerFilter
 
 QGIS_SERVER_PORT = int(os.environ.get('QGIS_SERVER_PORT', '8081'))
 QGIS_SERVER_HOST = os.environ.get('QGIS_SERVER_HOST', '127.0.0.1')
@@ -265,10 +258,9 @@ xyzfilter = XYZFilter(qgs_server.serverInterface())
 qgs_server.serverInterface().registerFilter(xyzfilter)
 
 if QGIS_SERVER_OAUTH2_AUTH:
-    from datetime import datetime
-
-    from oauthlib.oauth2 import LegacyApplicationServer, RequestValidator
     from qgis.server import QgsServerFilter
+    from oauthlib.oauth2 import RequestValidator, LegacyApplicationServer
+    from datetime import datetime
 
     # Naive token storage implementation
     _tokens = {}
@@ -447,29 +439,23 @@ if __name__ == '__main__':
     # HTTPS is enabled if any of PKI or OAuth2 are enabled too
     if HTTPS_ENABLED:
         if QGIS_SERVER_OAUTH2_AUTH:
-            ssl_version = ssl.PROTOCOL_TLS
-            context = ssl.SSLContext(ssl_version)
-            context.verify_mode = ssl.CERT_NONE  # No certs for OAuth2
-            context.load_cert_chain(certfile=QGIS_SERVER_OAUTH2_CERTIFICATE,
-                                    keyfile=QGIS_SERVER_OAUTH2_KEY)
-            context.load_verify_locations(cafile=QGIS_SERVER_OAUTH2_AUTHORITY)
-
-            server.socket = context.wrap_socket(
+            server.socket = ssl.wrap_socket(
                 server.socket,
-                server_side=True
-            )
+                certfile=QGIS_SERVER_OAUTH2_CERTIFICATE,
+                ca_certs=QGIS_SERVER_OAUTH2_AUTHORITY,
+                keyfile=QGIS_SERVER_OAUTH2_KEY,
+                server_side=True,
+                # cert_reqs=ssl.CERT_REQUIRED,  # No certs for OAuth2
+                ssl_version=ssl.PROTOCOL_TLSv1_2)
         else:
-            ssl_version = ssl.PROTOCOL_TLS
-            context = ssl.SSLContext(ssl_version)
-            context.verify_mode = ssl.CERT_REQUIRED
-            context.load_cert_chain(certfile=QGIS_SERVER_PKI_CERTIFICATE,
-                                    keyfile=QGIS_SERVER_PKI_KEY)
-            context.load_verify_locations(cafile=QGIS_SERVER_PKI_AUTHORITY)
-
-            server.socket = context.wrap_socket(
+            server.socket = ssl.wrap_socket(
                 server.socket,
-                server_side=True
-            )
+                certfile=QGIS_SERVER_PKI_CERTIFICATE,
+                keyfile=QGIS_SERVER_PKI_KEY,
+                ca_certs=QGIS_SERVER_PKI_AUTHORITY,
+                cert_reqs=ssl.CERT_REQUIRED,
+                server_side=True,
+                ssl_version=ssl.PROTOCOL_TLSv1_2)
 
     print('Starting server on %s://%s:%s, use <Ctrl-C> to stop' %
           ('https' if HTTPS_ENABLED else 'http', QGIS_SERVER_HOST, server.server_port), flush=True)

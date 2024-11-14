@@ -91,7 +91,6 @@ class TestQgsRasterLayer : public QgsTest
     void multiBandColorRendererNoData();
     void multiBandColorRendererNoDataColor();
     void palettedRendererNoData();
-    void palettedRendererRasterAttributeTable();
     void palettedRendererNoDataColor();
     void palettedRendererConstantInt();
     void singleBandGrayRendererNoData();
@@ -115,7 +114,7 @@ class TestQgsRasterLayer : public QgsTest
                                   QgsColorRamp *colorRamp,
                                   int numberOfEntries );
     bool testColorRamp( const QString &name, QgsColorRamp *colorRamp,
-                        Qgis::ShaderInterpolationMethod type, int numberOfEntries );
+                        QgsColorRampShader::Type type, int numberOfEntries );
     QString mTestDataDir;
     QgsRasterLayer *mpRasterLayer = nullptr;
     QgsRasterLayer *mpLandsatRasterLayer = nullptr;
@@ -211,7 +210,7 @@ void TestQgsRasterLayer::pseudoColor()
 {
   QgsRasterShader *rasterShader = new QgsRasterShader();
   QgsColorRampShader *colorRampShader = new QgsColorRampShader();
-  colorRampShader->setColorRampType( Qgis::ShaderInterpolationMethod::Linear );
+  colorRampShader->setColorRampType( QgsColorRampShader::Interpolated );
 
   //items to imitate old pseudo color renderer
   QList<QgsColorRampShader::ColorRampItem> colorRampItems;
@@ -286,7 +285,7 @@ void TestQgsRasterLayer::populateColorRampShader( QgsColorRampShader *colorRampS
 }
 
 bool TestQgsRasterLayer::testColorRamp( const QString &name, QgsColorRamp *colorRamp,
-                                        Qgis::ShaderInterpolationMethod type, int numberOfEntries )
+                                        QgsColorRampShader::Type type, int numberOfEntries )
 {
   QgsRasterShader *rasterShader = new QgsRasterShader();
   QgsColorRampShader *colorRampShader = new QgsColorRampShader();
@@ -310,7 +309,7 @@ void TestQgsRasterLayer::colorRamp1()
   colorRamp->setStops( stops );
 
   // QVERIFY( testColorRamp( "raster_colorRamp1", colorRamp, QgsColorRampShader::Interpolated, 5 ) );
-  QVERIFY( testColorRamp( "raster_colorRamp1", colorRamp, Qgis::ShaderInterpolationMethod::Discrete, 10 ) );
+  QVERIFY( testColorRamp( "raster_colorRamp1", colorRamp, QgsColorRampShader::Discrete, 10 ) );
   delete colorRamp;
 }
 
@@ -320,7 +319,7 @@ void TestQgsRasterLayer::colorRamp2()
   // ColorBrewer ramp
   QVERIFY( testColorRamp( "raster_colorRamp2",
                           &ramp,
-                          Qgis::ShaderInterpolationMethod::Discrete, 10 ) );
+                          QgsColorRampShader::Discrete, 10 ) );
 }
 
 void TestQgsRasterLayer::colorRamp3()
@@ -330,7 +329,7 @@ void TestQgsRasterLayer::colorRamp3()
   QgsCptCityColorRamp ramp( QStringLiteral( "cb/div/BrBG" ), QStringLiteral( "_10" ) );
   QVERIFY( testColorRamp( "raster_colorRamp3",
                           &ramp,
-                          Qgis::ShaderInterpolationMethod::Discrete, 10 ) );
+                          QgsColorRampShader::Discrete, 10 ) );
   QgsCptCityArchive::clearArchives();
 }
 
@@ -340,7 +339,7 @@ void TestQgsRasterLayer::colorRamp4()
   QgsCptCityColorRamp ramp( QStringLiteral( "grass/elevation" ), QString() );
   QVERIFY( testColorRamp( "raster_colorRamp4",
                           &ramp,
-                          Qgis::ShaderInterpolationMethod::Discrete, 10 ) );
+                          QgsColorRampShader::Discrete, 10 ) );
 }
 
 void TestQgsRasterLayer::landsatBasic()
@@ -376,8 +375,8 @@ void TestQgsRasterLayer::checkDimensions()
 void TestQgsRasterLayer::checkStats()
 {
   QgsRasterBandStats myStatistics = mpRasterLayer->dataProvider()->bandStatistics( 1,
-                                    Qgis::RasterBandStatistic::Min | Qgis::RasterBandStatistic::Max |
-                                    Qgis::RasterBandStatistic::Mean | Qgis::RasterBandStatistic::StdDev );
+                                    QgsRasterBandStats::Min | QgsRasterBandStats::Max |
+                                    QgsRasterBandStats::Mean | QgsRasterBandStats::StdDev );
   QCOMPARE( mpRasterLayer->width(), 10 );
   QCOMPARE( mpRasterLayer->height(), 10 );
   //QCOMPARE( myStatistics.elementCount, 100 );
@@ -390,8 +389,8 @@ void TestQgsRasterLayer::checkStats()
 
   // limited extent
   myStatistics = mpRasterLayer->dataProvider()->bandStatistics( 1,
-                 Qgis::RasterBandStatistic::Min | Qgis::RasterBandStatistic::Max |
-                 Qgis::RasterBandStatistic::Mean | Qgis::RasterBandStatistic::StdDev, QgsRectangle( 1535400, 5083280, 1535450, 5083320 ) );
+                 QgsRasterBandStats::Min | QgsRasterBandStats::Max |
+                 QgsRasterBandStats::Mean | QgsRasterBandStats::StdDev, QgsRectangle( 1535400, 5083280, 1535450, 5083320 ) );
 
   QCOMPARE( myStatistics.minimumValue, 2.0 );
   QCOMPARE( myStatistics.maximumValue, 7.0 );
@@ -400,8 +399,8 @@ void TestQgsRasterLayer::checkStats()
 
   // with sample size
   myStatistics = mpRasterLayer->dataProvider()->bandStatistics( 1,
-                 Qgis::RasterBandStatistic::Min | Qgis::RasterBandStatistic::Max |
-                 Qgis::RasterBandStatistic::Mean | Qgis::RasterBandStatistic::StdDev, QgsRectangle( 1535400, 5083280, 1535450, 5083320 ), 10 );
+                 QgsRasterBandStats::Min | QgsRasterBandStats::Max |
+                 QgsRasterBandStats::Mean | QgsRasterBandStats::StdDev, QgsRectangle( 1535400, 5083280, 1535450, 5083320 ), 10 );
   QCOMPARE( myStatistics.minimumValue, 2.0 );
   QCOMPARE( myStatistics.maximumValue, 7.0 );
   QCOMPARE( myStatistics.elementCount, 12ULL );
@@ -410,8 +409,8 @@ void TestQgsRasterLayer::checkStats()
 
   // extremely limited extent - ~1 px size
   myStatistics = mpRasterLayer->dataProvider()->bandStatistics( 1,
-                 Qgis::RasterBandStatistic::Min | Qgis::RasterBandStatistic::Max |
-                 Qgis::RasterBandStatistic::Mean | Qgis::RasterBandStatistic::StdDev, QgsRectangle( 1535400, 5083280, 1535412, 5083288 ) );
+                 QgsRasterBandStats::Min | QgsRasterBandStats::Max |
+                 QgsRasterBandStats::Mean | QgsRasterBandStats::StdDev, QgsRectangle( 1535400, 5083280, 1535412, 5083288 ) );
   QCOMPARE( myStatistics.minimumValue, 2.0 );
   QCOMPARE( myStatistics.maximumValue, 3.0 );
   QGSCOMPARENEAR( myStatistics.mean, 2.600000, 4 * std::numeric_limits<double>::epsilon() );
@@ -419,8 +418,8 @@ void TestQgsRasterLayer::checkStats()
 
   // extremely limited extent - ~1 px size - with sample size
   myStatistics = mpRasterLayer->dataProvider()->bandStatistics( 1,
-                 Qgis::RasterBandStatistic::Min | Qgis::RasterBandStatistic::Max |
-                 Qgis::RasterBandStatistic::Mean | Qgis::RasterBandStatistic::StdDev, QgsRectangle( 1535400, 5083280, 1535412, 5083288 ), 6 );
+                 QgsRasterBandStats::Min | QgsRasterBandStats::Max |
+                 QgsRasterBandStats::Mean | QgsRasterBandStats::StdDev, QgsRectangle( 1535400, 5083280, 1535412, 5083288 ), 6 );
   QCOMPARE( myStatistics.minimumValue, 2.0 );
   QCOMPARE( myStatistics.maximumValue, 3.0 );
   QCOMPARE( myStatistics.elementCount, 2ULL );
@@ -446,8 +445,8 @@ void TestQgsRasterLayer::checkScaleOffset()
 
   QFile::remove( myRasterFileInfo.filePath() + ".aux.xml" ); // remove cached stats
   const QgsRasterBandStats myStatistics = myRasterLayer->dataProvider()->bandStatistics( 1,
-                                          Qgis::RasterBandStatistic::Min | Qgis::RasterBandStatistic::Max |
-                                          Qgis::RasterBandStatistic::Mean | Qgis::RasterBandStatistic::StdDev );
+                                          QgsRasterBandStats::Min | QgsRasterBandStats::Max |
+                                          QgsRasterBandStats::Mean | QgsRasterBandStats::StdDev );
 
   const QString oldReport = mReport;
 
@@ -473,17 +472,15 @@ void TestQgsRasterLayer::checkScaleOffset()
   QgsRasterDataProvider *myProvider = myRasterLayer->dataProvider();
   const QgsPointXY myPoint( 1535030, 5083350 );
   const QgsRectangle myRect( 1535030 - 5, 5083350 - 5, 1535030 + 5, 5083350 + 5 );
-  const QgsRasterIdentifyResult identifyResult = myProvider->identify( myPoint, Qgis::RasterIdentifyFormat::Value, myRect, 1, 1 );
+  const QgsRasterIdentifyResult identifyResult = myProvider->identify( myPoint, QgsRaster::IdentifyFormatValue, myRect, 1, 1 );
 
   if ( identifyResult.isValid() )
   {
     const QMap<int, QVariant> values = identifyResult.results();
-    for ( auto it = values.constBegin(); it != values.constEnd(); it++ )
+    for ( const int bandNo : values.keys() )
     {
-      const int bandNo = it.key();
-
       QString valueString;
-      if ( it.value().isNull() )
+      if ( values.value( bandNo ).isNull() )
       {
         valueString = tr( "no data" );
         mReport += QStringLiteral( " %1 = %2 <br>\n" ).arg( myProvider->generateBandName( bandNo ), valueString );
@@ -493,7 +490,7 @@ void TestQgsRasterLayer::checkScaleOffset()
       else
       {
         const double expected = 0.99995432;
-        const double value = it.value().toDouble();
+        const double value = values.value( bandNo ).toDouble();
         valueString = QgsRasterBlock::printValue( value );
         mReport += QStringLiteral( " %1 = %2 <br>\n" ).arg( myProvider->generateBandName( bandNo ), valueString );
         mReport += QStringLiteral( " value = %1 expected = %2 diff = %3 <br>\n" ).arg( value ).arg( expected ).arg( std::fabs( value - expected ) );
@@ -529,7 +526,7 @@ void TestQgsRasterLayer::buildExternalOverviews()
   // OK now we can go on to test
   //
 
-  const Qgis::RasterPyramidFormat myFormatFlag = Qgis::RasterPyramidFormat::GeoTiff;
+  const QgsRaster::RasterPyramidsFormat myFormatFlag = QgsRaster::PyramidsGTiff;
   QList< QgsRasterPyramid > myPyramidList = mypLayer->dataProvider()->buildPyramidList();
   for ( int myCounterInt = 0; myCounterInt < myPyramidList.count(); myCounterInt++ )
   {
@@ -657,15 +654,19 @@ void TestQgsRasterLayer::transparency()
   qDebug( "contrastEnhancement.minimumValue = %.17g", renderer->contrastEnhancement()->minimumValue() );
   qDebug( "contrastEnhancement.maximumValue = %.17g", renderer->contrastEnhancement()->maximumValue() );
 
-  QVector<QgsRasterTransparency::TransparentSingleValuePixel> myTransparentSingleValuePixelList;
+  QList<QgsRasterTransparency::TransparentSingleValuePixel> myTransparentSingleValuePixelList;
   QgsRasterTransparency *rasterTransparency = new QgsRasterTransparency();
+  QgsRasterTransparency::TransparentSingleValuePixel myTransparentPixel;
 
-  myTransparentSingleValuePixelList.append(
-    QgsRasterTransparency::TransparentSingleValuePixel( -2.5840000772112106e+38, -1.0879999684602689e+38, 0.5 )
-  );
-  myTransparentSingleValuePixelList.append(
-    QgsRasterTransparency::TransparentSingleValuePixel( 1.359999960575336e+37, 9.520000231087593e+37, 0.3 )
-  );
+  myTransparentPixel.min = -2.5840000772112106e+38;
+  myTransparentPixel.max = -1.0879999684602689e+38;
+  myTransparentPixel.percentTransparent = 50;
+  myTransparentSingleValuePixelList.append( myTransparentPixel );
+
+  myTransparentPixel.min = 1.359999960575336e+37;
+  myTransparentPixel.max = 9.520000231087593e+37;
+  myTransparentPixel.percentTransparent = 70;
+  myTransparentSingleValuePixelList.append( myTransparentPixel );
 
   rasterTransparency->setTransparentSingleValuePixelList( myTransparentSingleValuePixelList );
 
@@ -732,61 +733,6 @@ void TestQgsRasterLayer::palettedRendererNoData()
   QVERIFY( render( QStringLiteral( "raster_palettedrenderer_nodata" ) ) );
 }
 
-void TestQgsRasterLayer::palettedRendererRasterAttributeTable()
-{
-  const QString rasterFileName = mTestDataDir + "raster/band1_byte_attribute_table_epsg4326.tif";
-  std::unique_ptr< QgsRasterLayer> rl = std::make_unique< QgsRasterLayer >( rasterFileName,
-                                        QStringLiteral( "rl" ) );
-  QVERIFY( rl->isValid() );
-  QVERIFY( rl->dataProvider()->setNoDataValue( 1, 9999 ) );
-  mMapSettings->setLayers( QList<QgsMapLayer *>() << rl.get() );
-  mMapSettings->setDestinationCrs( rl->crs() );
-  mMapSettings->setExtent( rl->extent() );
-  QVERIFY( render( QStringLiteral( "raster_palettedrenderer_with_attribute_table" ) ) );
-  QgsPalettedRasterRenderer *rasterRenderer { static_cast<QgsPalettedRasterRenderer *>( rl->renderer() ) };
-  QVERIFY( rasterRenderer );
-
-  const QgsPalettedRasterRenderer::MultiValueClassData multiValueclasses { rasterRenderer->multiValueClasses() };
-  QCOMPARE( multiValueclasses.size(), 79 );
-
-  // The test class with multiple value
-  QgsPalettedRasterRenderer::MultiValueClass testClass = multiValueclasses.at( 0 );
-  QCOMPARE( testClass.label, QStringLiteral( "2" ) );
-  QCOMPARE( testClass.values.size(), 3 );
-  QCOMPARE( testClass.values.at( 0 ).toDouble( ), 2.0 );
-  QCOMPARE( testClass.values.at( 1 ).toDouble( ), 246.0 );
-  QCOMPARE( testClass.values.at( 2 ).toDouble( ), 254.0 );
-
-  // Test legacy classes
-  QgsPalettedRasterRenderer::ClassData legacyClasses { rasterRenderer->classes() };
-  QCOMPARE( legacyClasses.size(), 79 + 2 );
-
-  // Make sure the actual grouped values are returned as individual entries
-  struct Klass
-  {
-    QString label;
-    QString color;
-  };
-
-  QMap<double, Klass> classMap;
-  for ( const QgsPalettedRasterRenderer::Class &klass : std::as_const( legacyClasses ) )
-  {
-    classMap.insert( klass.value, { klass.label, klass.color.name() } );
-  }
-
-  QVERIFY( classMap.contains( 2.0 ) );
-  QVERIFY( classMap.contains( 246.0 ) );
-  QVERIFY( classMap.contains( 254.0 ) );
-
-  QCOMPARE( classMap.value( 2.0 ).label,  QStringLiteral( "2" ) );
-  QCOMPARE( classMap.value( 246.0 ).label,  classMap.value( 2.0 ).label );
-  QCOMPARE( classMap.value( 254.0 ).label,  classMap.value( 2.0 ).label );
-
-  QCOMPARE( classMap.value( 246.0 ).color, classMap.value( 2.0 ).color );
-  QCOMPARE( classMap.value( 254.0 ).color, classMap.value( 2.0 ).color );
-
-}
-
 void TestQgsRasterLayer::palettedRendererNoDataColor()
 {
   const QString rasterFileName = mTestDataDir + "raster/with_color_table.tif";
@@ -808,21 +754,16 @@ void TestQgsRasterLayer::palettedRendererNoDataColor()
 
 void TestQgsRasterLayer::palettedRendererConstantInt()
 {
-  constexpr double value = 2.0;
-  GDALDriverH hGTiffDrv = GDALGetDriverByName( "GTiff" );
-  Q_ASSERT( hGTiffDrv );
-  const char *tempFileName = "/vsimem/temp.tif";
-  GDALDatasetH hDS = GDALCreate( hGTiffDrv, tempFileName, 1, 1, 1, GDT_Byte, NULL );
-  Q_ASSERT( hDS );
-  GDALFillRaster( GDALGetRasterBand( hDS, 1 ), value, 0 );
-  GDALClose( hDS );
-  std::unique_ptr< QgsRasterLayer> rl = std::make_unique< QgsRasterLayer >( QString( tempFileName ), QStringLiteral( "rl" ) );
+  char data { 2 };
+  std::unique_ptr< QgsRasterLayer> rl = std::make_unique< QgsRasterLayer >( QStringLiteral( "MEM:::DATAPOINTER=0x%1,PIXELS=1,LINES=1,BANDS=1,DATATYPE=Byte" )
+                                        .arg( reinterpret_cast<quintptr>( &data ),
+                                            QT_POINTER_SIZE * 2, 16, QChar( '0' ) ).toStdString().c_str(),
+                                        QStringLiteral( "rl" ) );
   Q_ASSERT( rl->isValid() );
   const auto classData { QgsPalettedRasterRenderer::classDataFromRaster( rl->dataProvider(), 1 ) };
   QCOMPARE( classData.size(), 1 );
-  QCOMPARE( classData.first().value, value );
+  QCOMPARE( classData.first().value, 2.0 );
   rl.reset( );
-  VSIUnlink( tempFileName );
 }
 
 void TestQgsRasterLayer::singleBandGrayRendererNoData()
@@ -879,7 +820,7 @@ void TestQgsRasterLayer::singleBandPseudoRendererNoData()
 
   QgsRasterShader *rasterShader = new QgsRasterShader();
   QgsColorRampShader *colorRampShader = new QgsColorRampShader();
-  colorRampShader->setColorRampType( Qgis::ShaderInterpolationMethod::Linear );
+  colorRampShader->setColorRampType( QgsColorRampShader::Interpolated );
 
   //items to imitate old pseudo color renderer
   QList<QgsColorRampShader::ColorRampItem> colorRampItems;
@@ -925,7 +866,7 @@ void TestQgsRasterLayer::singleBandPseudoRendererNoDataColor()
 
   QgsRasterShader *rasterShader = new QgsRasterShader();
   QgsColorRampShader *colorRampShader = new QgsColorRampShader();
-  colorRampShader->setColorRampType( Qgis::ShaderInterpolationMethod::Linear );
+  colorRampShader->setColorRampType( QgsColorRampShader::Interpolated );
 
   //items to imitate old pseudo color renderer
   QList<QgsColorRampShader::ColorRampItem> colorRampItems;

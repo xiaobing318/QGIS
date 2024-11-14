@@ -18,7 +18,6 @@
 #include "qgsalgorithmdeleteduplicategeometries.h"
 #include "qgsvectorlayer.h"
 #include "qgsgeometryengine.h"
-#include "qgsspatialindex.h"
 
 ///@cond PRIVATE
 
@@ -89,7 +88,7 @@ QVariantMap QgsDeleteDuplicateGeometriesAlgorithm::processAlgorithm( const QVari
   if ( !sink )
     throw QgsProcessingException( invalidSinkError( parameters, QStringLiteral( "OUTPUT" ) ) );
 
-  QgsFeatureIterator it = mSource->getFeatures( QgsFeatureRequest().setSubsetOfAttributes( QgsAttributeList() ), Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks );
+  QgsFeatureIterator it = mSource->getFeatures( QgsFeatureRequest().setSubsetOfAttributes( QgsAttributeList() ) );
 
   double step = mSource->featureCount() > 0 ? 100.0 / mSource->featureCount() : 0;
   QHash< QgsFeatureId, QgsGeometry > geometries;
@@ -169,8 +168,8 @@ QVariantMap QgsDeleteDuplicateGeometriesAlgorithm::processAlgorithm( const QVari
   outputFeatureIds.unite( nullGeometryFeatures );
   step = outputFeatureIds.empty() ? 1 : 100.0 / outputFeatureIds.size();
 
-  const QgsFeatureRequest request = QgsFeatureRequest().setFilterFids( outputFeatureIds ).setFlags( Qgis::FeatureRequestFlag::NoGeometry );
-  it = mSource->getFeatures( request, Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks );
+  const QgsFeatureRequest request = QgsFeatureRequest().setFilterFids( outputFeatureIds ).setFlags( QgsFeatureRequest::NoGeometry );
+  it = mSource->getFeatures( request );
   current = 0;
   while ( it.nextFeature( f ) )
   {
@@ -190,8 +189,6 @@ QVariantMap QgsDeleteDuplicateGeometriesAlgorithm::processAlgorithm( const QVari
   }
 
   feedback->pushInfo( QObject::tr( "%n duplicate feature(s) removed", nullptr, removed ) );
-
-  sink->finalize();
 
   QVariantMap outputs;
   outputs.insert( QStringLiteral( "OUTPUT" ), destId );

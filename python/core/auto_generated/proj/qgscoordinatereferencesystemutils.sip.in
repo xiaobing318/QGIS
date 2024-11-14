@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/proj/qgscoordinatereferencesystemutils.h                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -29,28 +29,12 @@ Returns the default coordinate order to use for the specified ``crs``.
 .. warning::
 
    This is quite a "coarse" method, in that many possible CRS axis don't map well to a simply X/Y or Y/X order.
-   Accordingly this method will default to returning :py:class:`Qgis`.CoordinateOrder.XY unless we are reasonably certain of a Y/X order.
+   Accordingly this method will default to returning Qgis.CoordinateOrder.XY unless we are reasonably certain of a Y/X order.
 %End
 
     static QString axisDirectionToAbbreviatedString( Qgis::CrsAxisDirection axis );
 %Docstring
 Returns a translated abbreviation representing an ``axis`` direction.
-%End
-
-    static QString crsTypeToString( Qgis::CrsType type );
-%Docstring
-Returns a translated string representing a CRS ``type``.
-
-.. versionadded:: 3.34
-%End
-
-    static QString translateProjection( const QString &projection );
-%Docstring
-Returns a translated string for a ``projection`` method.
-
-Returns an empty string for unhandled methods.
-
-.. versionadded:: 3.34
 %End
 };
 
@@ -59,5 +43,5 @@ Returns an empty string for unhandled methods.
  *                                                                      *
  * src/core/proj/qgscoordinatereferencesystemutils.h                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

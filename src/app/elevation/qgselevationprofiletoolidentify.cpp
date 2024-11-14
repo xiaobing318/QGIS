@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgselevationprofiletoolidentify.h"
-#include "moc_qgselevationprofiletoolidentify.cpp"
 #include "qgsplotcanvas.h"
 #include "qgsplotmouseevent.h"
 #include "qgsapplication.h"

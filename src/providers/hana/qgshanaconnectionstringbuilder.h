@@ -89,7 +89,7 @@ class QgsHanaConnectionStringBuilder
     bool mProxyEnabled = false;
     bool mProxyHttp = false;
     QString mProxyHost;
-    uint mProxyPort = 0;
+    uint mProxyPort;
     QString mProxyUsername;
     QString mProxyPassword;
 };

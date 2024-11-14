@@ -14,7 +14,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgslayermetadatasearchwidget.h"
-#include "moc_qgslayermetadatasearchwidget.cpp"
 #include "qgslayermetadataresultsmodel.h"
 #include "qgslayermetadataresultsproxymodel.h"
 #include "qgsapplication.h"
@@ -55,11 +54,11 @@ QgsLayerMetadataSearchWidget::QgsLayerMetadataSearchWidget( QWidget *parent, Qt:
   mExtentFilterComboBox->adjustSize();
 
   mGeometryTypeComboBox->addItem( QString( ), QVariant() );
-  mGeometryTypeComboBox->addItem( QgsIconUtils::iconForGeometryType( Qgis::GeometryType::Point ), QgsWkbTypes::geometryDisplayString( Qgis::GeometryType::Point ), static_cast< int >( Qgis::GeometryType::Point ) );
-  mGeometryTypeComboBox->addItem( QgsIconUtils::iconForGeometryType( Qgis::GeometryType::Line ), QgsWkbTypes::geometryDisplayString( Qgis::GeometryType::Line ), static_cast< int >( Qgis::GeometryType::Line ) );
-  mGeometryTypeComboBox->addItem( QgsIconUtils::iconForGeometryType( Qgis::GeometryType::Polygon ), QgsWkbTypes::geometryDisplayString( Qgis::GeometryType::Polygon ), static_cast< int >( Qgis::GeometryType::Polygon ) );
+  mGeometryTypeComboBox->addItem( QgsIconUtils::iconForGeometryType( QgsWkbTypes::GeometryType::PointGeometry ), QgsWkbTypes::geometryDisplayString( QgsWkbTypes::GeometryType::PointGeometry ), QgsWkbTypes::GeometryType::PointGeometry );
+  mGeometryTypeComboBox->addItem( QgsIconUtils::iconForGeometryType( QgsWkbTypes::GeometryType::LineGeometry ), QgsWkbTypes::geometryDisplayString( QgsWkbTypes::GeometryType::LineGeometry ), QgsWkbTypes::GeometryType::LineGeometry );
+  mGeometryTypeComboBox->addItem( QgsIconUtils::iconForGeometryType( QgsWkbTypes::GeometryType::PolygonGeometry ), QgsWkbTypes::geometryDisplayString( QgsWkbTypes::GeometryType::PolygonGeometry ), QgsWkbTypes::GeometryType::PolygonGeometry );
   // Note: unknown geometry is mapped to null and missing from the combo
-  mGeometryTypeComboBox->addItem( QgsIconUtils::iconForGeometryType( Qgis::GeometryType::Null ), QgsWkbTypes::geometryDisplayString( Qgis::GeometryType::Null ), static_cast< int >( Qgis::GeometryType::Null ) );
+  mGeometryTypeComboBox->addItem( QgsIconUtils::iconForGeometryType( QgsWkbTypes::GeometryType::NullGeometry ), QgsWkbTypes::geometryDisplayString( QgsWkbTypes::GeometryType::NullGeometry ), QgsWkbTypes::GeometryType::NullGeometry );
   mGeometryTypeComboBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "mIconRaster.svg" ) ), tr( "Raster" ), QVariant() );
   mGeometryTypeComboBox->setCurrentIndex( 0 );
   mGeometryTypeComboBox->setSizeAdjustPolicy( QComboBox::SizeAdjustPolicy::AdjustToContents );
@@ -129,15 +128,15 @@ QgsLayerMetadataSearchWidget::QgsLayerMetadataSearchWidget( QWidget *parent, Qt:
       if ( geomTypeFilterValue.isValid() )  // Vector layers
       {
         mProxyModel->setFilterGeometryTypeEnabled( true );
-        mProxyModel->setFilterGeometryType( geomTypeFilterValue.value<Qgis::GeometryType>( ) );
+        mProxyModel->setFilterGeometryType( geomTypeFilterValue.value<QgsWkbTypes::GeometryType>( ) );
         mProxyModel->setFilterMapLayerTypeEnabled( true );
-        mProxyModel->setFilterMapLayerType( Qgis::LayerType::Vector );
+        mProxyModel->setFilterMapLayerType( QgsMapLayerType::VectorLayer );
       }
       else // Raster layers
       {
         mProxyModel->setFilterGeometryTypeEnabled( false );
         mProxyModel->setFilterMapLayerTypeEnabled( true );
-        mProxyModel->setFilterMapLayerType( Qgis::LayerType::Raster );
+        mProxyModel->setFilterMapLayerType( QgsMapLayerType::RasterLayer );
       }
     }
 
@@ -206,50 +205,22 @@ void QgsLayerMetadataSearchWidget::addButtonClicked()
   {
     for ( const auto &selectedIndex : std::as_const( selectedIndexes ) )
     {
-      const QgsLayerMetadataProviderResult metadataResult { mSourceModel->data( mProxyModel->mapToSource( selectedIndex ), static_cast< int >( QgsLayerMetadataResultsModel::CustomRole::Metadata ) ).value<QgsLayerMetadataProviderResult>() };
-
-      QString layerName = metadataResult.title();
-      if ( layerName.isEmpty() )
-      {
-        QVariantMap components = QgsProviderRegistry::instance()->decodeUri( metadataResult.dataProviderName(),  metadataResult.uri() );
-        if ( components.contains( QStringLiteral( "layerName" ) ) )
-        {
-          layerName = components.value( QStringLiteral( "layerName" ) ).toString();
-        }
-        else if ( components.contains( QStringLiteral( "table" ) ) )
-        {
-          layerName = components.value( QStringLiteral( "table" ) ).toString();
-        }
-        else
-        {
-          layerName = metadataResult.identifier();
-        }
-      }
-
+      const QgsLayerMetadataProviderResult metadataResult { mSourceModel->data( mProxyModel->mapToSource( selectedIndex ), QgsLayerMetadataResultsModel::Roles::Metadata ).value<QgsLayerMetadataProviderResult>() };
       switch ( metadataResult.layerType() )
       {
-        case Qgis::LayerType::Raster:
+        case QgsMapLayerType::RasterLayer:
         {
-          Q_NOWARN_DEPRECATED_PUSH
-          emit addRasterLayer( metadataResult.uri(), layerName, metadataResult.dataProviderName() );
-          Q_NOWARN_DEPRECATED_POP
-          emit addLayer( metadataResult.layerType(), metadataResult.uri(), layerName, metadataResult.dataProviderName() );
+          emit addRasterLayer( metadataResult.uri(), metadataResult.identifier(), metadataResult.dataProviderName() );
           break;
         }
-        case Qgis::LayerType::Vector:
+        case QgsMapLayerType::VectorLayer:
         {
-          Q_NOWARN_DEPRECATED_PUSH
-          emit addVectorLayer( metadataResult.uri(), layerName, metadataResult.dataProviderName() );
-          Q_NOWARN_DEPRECATED_POP
-          emit addLayer( metadataResult.layerType(), metadataResult.uri(), layerName, metadataResult.dataProviderName() );
+          emit addVectorLayer( metadataResult.uri(), metadataResult.identifier(), metadataResult.dataProviderName() );
           break;
         }
-        case Qgis::LayerType::Mesh:
+        case QgsMapLayerType::MeshLayer:
         {
-          Q_NOWARN_DEPRECATED_PUSH
-          emit addMeshLayer( metadataResult.uri(), layerName, metadataResult.dataProviderName() );
-          Q_NOWARN_DEPRECATED_POP
-          emit addLayer( metadataResult.layerType(), metadataResult.uri(), layerName, metadataResult.dataProviderName() );
+          emit addMeshLayer( metadataResult.uri(), metadataResult.identifier(), metadataResult.dataProviderName() );
           break;
         }
         default:  // unsupported

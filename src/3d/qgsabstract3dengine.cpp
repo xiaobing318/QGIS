@@ -14,9 +14,8 @@
  ***************************************************************************/
 
 #include "qgsabstract3dengine.h"
-#include "moc_qgsabstract3dengine.cpp"
 
-#include "qgsframegraph.h"
+#include "qgsshadowrenderingframegraph.h"
 
 #include <Qt3DRender/QRenderCapture>
 #include <Qt3DRender/QRenderSettings>
@@ -31,10 +30,12 @@ void QgsAbstract3DEngine::requestCaptureImage()
 {
   Qt3DRender::QRenderCaptureReply *captureReply;
   captureReply = mFrameGraph->renderCapture()->requestCapture();
-
+  // We need to change render policy to RenderPolicy::Always, since otherwise render capture node won't work
+  this->renderSettings()->setRenderPolicy( Qt3DRender::QRenderSettings::RenderPolicy::Always );
   connect( captureReply, &Qt3DRender::QRenderCaptureReply::completed, this, [ = ]
   {
     emit imageCaptured( captureReply->image() );
+    this->renderSettings()->setRenderPolicy( Qt3DRender::QRenderSettings::RenderPolicy::OnDemand );
     captureReply->deleteLater();
   } );
 }
@@ -43,10 +44,12 @@ void QgsAbstract3DEngine::requestDepthBufferCapture()
 {
   Qt3DRender::QRenderCaptureReply *captureReply;
   captureReply = mFrameGraph->depthRenderCapture()->requestCapture();
-
+  // We need to change render policy to RenderPolicy::Always, since otherwise render capture node won't work
+  this->renderSettings()->setRenderPolicy( Qt3DRender::QRenderSettings::RenderPolicy::Always );
   connect( captureReply, &Qt3DRender::QRenderCaptureReply::completed, this, [ = ]
   {
     emit depthBufferCaptured( captureReply->image() );
+    this->renderSettings()->setRenderPolicy( Qt3DRender::QRenderSettings::RenderPolicy::OnDemand );
     captureReply->deleteLater();
   } );
 }
@@ -59,31 +62,4 @@ void QgsAbstract3DEngine::setRenderCaptureEnabled( bool enabled )
 bool QgsAbstract3DEngine::renderCaptureEnabled() const
 {
   return mFrameGraph->renderCaptureEnabled();
-}
-
-void QgsAbstract3DEngine::dumpFrameGraphToConsole() const
-{
-  if ( mFrameGraph )
-  {
-    qDebug() << "FrameGraph:\n" << mFrameGraph->dumpFrameGraph();
-    qDebug() << "SceneGraph:\n" << mFrameGraph->dumpSceneGraph();
-  }
-}
-
-QString QgsAbstract3DEngine::dumpFrameGraph() const
-{
-  if ( mFrameGraph )
-  {
-    return mFrameGraph->dumpFrameGraph();
-  }
-  return QString();
-}
-
-QString QgsAbstract3DEngine::dumpSceneGraph() const
-{
-  if ( mFrameGraph )
-  {
-    return mFrameGraph->dumpSceneGraph();
-  }
-  return QString();
 }

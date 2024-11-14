@@ -9,18 +9,19 @@ __author__ = 'Nyall Dawson'
 __date__ = '12.09.2017'
 __copyright__ = 'Copyright 2017, The QGIS Project'
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import QCoreApplication
-from qgis.core import QgsDataSourceUri, QgsOwsConnection, QgsSettings
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsOwsConnection,
+                       QgsDataSourceUri,
+                       QgsSettings)
+from qgis.testing import unittest, start_app
 
 
-class TestQgsOwsConnection(QgisTestCase):
+class TestQgsOwsConnection(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
-        super().setUpClass()
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain("QGIS_TestPyQgsColorScheme.com")
         QCoreApplication.setApplicationName("QGIS_TestPyQgsColorScheme")
@@ -29,23 +30,22 @@ class TestQgsOwsConnection(QgisTestCase):
 
         # setup some fake connections
         settings = QgsSettings()
-        key = '/connections/ows/items/wms/connections/items/test/'
+        key = 'qgis/connections-wms/test/'
         settings.setValue(key + 'url', 'aaa.bbb.com')
-        settings.setValue(key + 'http-header', {'referer': 'my_ref'})
-        settings.setValue(key + 'ignore-get-map-uri', True)
-        settings.setValue(key + 'ignore-get-feature-info-uri', True)
-        settings.setValue(key + 'smooth-pixmap-transform', True)
-        settings.setValue(key + 'dpi-mode', 4)
-        settings.setValue(key + 'ignore-axis-orientation', True)
-        settings.setValue(key + 'invert-axis-orientation', True)
-        settings.setValue(key + 'feature-count', 9)
+        settings.setValue(key + 'referer', 'my_ref')
+        settings.setValue(key + 'ignoreGetMapURI', True)
+        settings.setValue(key + 'ignoreGetFeatureInfoURI', True)
+        settings.setValue(key + 'smoothPixmapTransform', True)
+        settings.setValue(key + 'dpiMode', 4)
+        settings.setValue(key + 'ignoreAxisOrientation', True)
+        settings.setValue(key + 'invertAxisOrientation', True)
 
-        key = '/connections/ows/items/wfs/connections/items/test/'
+        key = 'qgis/connections-wfs/test/'
         settings.setValue(key + 'url', 'ccc.ddd.com')
         settings.setValue(key + 'version', '1.1.0')
-        settings.setValue(key + 'max-num-features', '47')
-        settings.setValue(key + 'ignore-axis-orientation', True)
-        settings.setValue(key + 'invert-axis-orientation', True)
+        settings.setValue(key + 'maxnumfeatures', '47')
+        settings.setValue(key + 'ignoreAxisOrientation', True)
+        settings.setValue(key + 'invertAxisOrientation', True)
 
     def testWmsConnection(self):
         c = QgsOwsConnection('WMS', 'test')
@@ -59,11 +59,10 @@ class TestQgsOwsConnection(QgisTestCase):
         self.assertEqual(uri.param('dpiMode'), '4')
         self.assertEqual(uri.param('IgnoreAxisOrientation'), '1')
         self.assertEqual(uri.param('InvertAxisOrientation'), '1')
-        self.assertEqual(uri.param('featureCount'), '9')
 
     def testWmsSettings(self):
         uri = QgsDataSourceUri()
-        QgsOwsConnection.addWmsWcsConnectionSettings(uri, 'wms', 'test')
+        QgsOwsConnection.addWmsWcsConnectionSettings(uri, 'qgis/connections-wms/test/')
 
         self.assertEqual(uri.httpHeader('referer'), 'my_ref')
         self.assertEqual(uri.param('IgnoreGetMapUrl'), '1')
@@ -72,7 +71,6 @@ class TestQgsOwsConnection(QgisTestCase):
         self.assertEqual(uri.param('dpiMode'), '4')
         self.assertEqual(uri.param('IgnoreAxisOrientation'), '1')
         self.assertEqual(uri.param('InvertAxisOrientation'), '1')
-        self.assertEqual(uri.param('featureCount'), '9')
 
     def testWfsConnection(self):
         c = QgsOwsConnection('WFS', 'test')
@@ -86,7 +84,7 @@ class TestQgsOwsConnection(QgisTestCase):
 
     def testWfsSettings(self):
         uri = QgsDataSourceUri()
-        QgsOwsConnection.addWfsConnectionSettings(uri, 'wfs', 'test')
+        QgsOwsConnection.addWfsConnectionSettings(uri, 'qgis/connections-wfs/test/')
 
         self.assertEqual(uri.param('version'), '1.1.0')
         self.assertEqual(uri.param('maxNumFeatures'), '47')

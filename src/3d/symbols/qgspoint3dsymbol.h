@@ -20,7 +20,6 @@
 
 #include "qgsabstract3dsymbol.h"
 #include "qgs3dtypes.h"
-#include "qgis.h"
 
 #include <QMatrix4x4>
 
@@ -34,6 +33,7 @@ class QgsMarkerSymbol;
  * \warning This is not considered stable API, and may change in future QGIS releases. It is
  * exposed to the Python bindings as a tech preview only.
  *
+ * \since QGIS 3.0
  */
 class _3D_EXPORT QgsPoint3DSymbol : public QgsAbstract3DSymbol SIP_NODEFAULTCTORS
 {
@@ -41,6 +41,7 @@ class _3D_EXPORT QgsPoint3DSymbol : public QgsAbstract3DSymbol SIP_NODEFAULTCTOR
     //! Constructor for QgsPoint3DSymbol with default QgsMarkerSymbol as the billboardSymbol
     QgsPoint3DSymbol();
 
+    //! Copy Constructor for QgsPoint3DSymbol
     QgsPoint3DSymbol( const QgsPoint3DSymbol &other );
 
     ~QgsPoint3DSymbol() override;
@@ -57,7 +58,7 @@ class _3D_EXPORT QgsPoint3DSymbol : public QgsAbstract3DSymbol SIP_NODEFAULTCTOR
 
     void writeXml( QDomElement &elem, const QgsReadWriteContext &context ) const override;
     void readXml( const QDomElement &elem, const QgsReadWriteContext &context ) override;
-    QList< Qgis::GeometryType > compatibleGeometryTypes() const override;
+    QList< QgsWkbTypes::GeometryType > compatibleGeometryTypes() const override;
     void setDefaultPropertiesFromLayer( const QgsVectorLayer *layer ) override;
 
     //! Returns method that determines altitude (whether to clamp to feature to terrain)
@@ -65,93 +66,43 @@ class _3D_EXPORT QgsPoint3DSymbol : public QgsAbstract3DSymbol SIP_NODEFAULTCTOR
     //! Sets method that determines altitude (whether to clamp to feature to terrain)
     void setAltitudeClamping( Qgis::AltitudeClamping altClamping ) { mAltClamping = altClamping; }
 
-    //! Returns material settings used for shading of the symbol
-    QgsAbstractMaterialSettings *materialSettings() const;
+    //! Returns material used for shading of the symbol
+    QgsAbstractMaterialSettings *material() const;
 
     /**
      * Sets the \a material settings used for shading of the symbol.
      *
      * Ownership of \a material is transferred to the symbol.
      */
-    void setMaterialSettings( QgsAbstractMaterialSettings *materialSettings SIP_TRANSFER );
+    void setMaterial( QgsAbstractMaterialSettings *material SIP_TRANSFER );
+
+    //! 3D shape types supported by the symbol
+    enum Shape
+    {
+      Cylinder,
+      Sphere,
+      Cone,
+      Cube,
+      Torus,
+      Plane,
+      ExtrudedText,  //!< Supported in Qt 5.9+
+      Model,
+      Billboard,
+    };
 
     //! Returns shape enum value from a string
-    static Qgis::Point3DShape shapeFromString( const QString &shape );
+    static Shape shapeFromString( const QString &shape );
     //! Returns string from a shape enum value
-    static QString shapeToString( Qgis::Point3DShape shape );
+    static QString shapeToString( Shape shape );
 
     //! Returns 3D shape for points
-    Qgis::Point3DShape shape() const { return mShape; }
+    Shape shape() const { return mShape; }
     //! Sets 3D shape for points
-    void setShape( Qgis::Point3DShape shape ) { mShape = shape; }
+    void setShape( Shape shape ) { mShape = shape; }
 
-    /**
-     * Returns a key-value dictionary of point shape properties.
-     *
-     * In most cases callers should use shapeProperty() instead, to
-     * correctly handle default values when a property has not been
-     * explicitly set.
-     *
-     * \see setShapeProperties() for a description of available properties.
-     * \see shapeProperty()
-     */
+    //! Returns a key-value dictionary of point shape properties
     QVariantMap shapeProperties() const { return mShapeProperties; }
-
-    /**
-     * Returns the value for a specific shape \a property.
-     *
-     * This method accounts for default property values for the symbol's shape(),
-     * used when the property has not been explicitly set.
-     *
-     * \see setShapeProperties() for a description of available properties.
-     * \since QGIS 3.36
-     */
-    QVariant shapeProperty( const QString &property ) const;
-
-    /**
-     * Sets a key-value dictionary of point shape \a properties.
-     *
-     * The available properties depend on the point shape().
-     *
-     * ### Cylinders (Qgis.Point3DShape.Cylinder)
-     *
-     * - \a radius
-     * - \a length
-     *
-     * ### Spheres (Qgis.Point3DShape.Sphere)
-     *
-     * - \a radius
-     *
-     * ### Cones (Qgis.Point3DShape.Cone)
-     *
-     * - \a length
-     * - \a topRadius
-     * - \a bottomRadius
-     *
-     * ### Cubes (Qgis.Point3DShape.Cube)
-     *
-     * - \a size
-     *
-     * ### Torus (Qgis.Point3DShape.Torus)
-     *
-     * - \a radius
-     * - \a minorRadius
-     *
-     * ### Flat Planes (Qgis.Point3DShape.Plane)
-     *
-     * - \a size
-     *
-     * ### Extruded Text (Qgis.Point3DShape.ExtrudedText)
-     *
-     * - \a depth
-     * - \a text (string)
-     *
-     * ### Models (Qgis.Point3DShape.Model)
-     *
-     * - \a model (path to model file)
-     *
-     * \see shapeProperty()
-     */
+    //! Sets a key-value dictionary of point shape properties
     void setShapeProperties( const QVariantMap &properties ) { mShapeProperties = properties; }
 
     //! Returns a symbol for billboard
@@ -164,8 +115,8 @@ class _3D_EXPORT QgsPoint3DSymbol : public QgsAbstract3DSymbol SIP_NODEFAULTCTOR
     //! Sets transform for individual objects represented by the symbol
     void setTransform( const QMatrix4x4 &transform ) { mTransform = transform; }
 
-    //! Returns how much the billboard should be elevated upwards
-    float billboardHeight() const;
+    //! Returns transform for billboards
+    QMatrix4x4 billboardTransform() const;
 
     /**
      * Exports the geometries contained within the hierarchy of entity.
@@ -176,8 +127,8 @@ class _3D_EXPORT QgsPoint3DSymbol : public QgsAbstract3DSymbol SIP_NODEFAULTCTOR
     //! how to handle altitude of vector features
     Qgis::AltitudeClamping mAltClamping = Qgis::AltitudeClamping::Relative;
 
-    std::unique_ptr< QgsAbstractMaterialSettings> mMaterialSettings;  //!< Defines appearance of objects
-    Qgis::Point3DShape mShape = Qgis::Point3DShape::Cylinder;  //!< What kind of shape to use
+    std::unique_ptr< QgsAbstractMaterialSettings> mMaterial;  //!< Defines appearance of objects
+    Shape mShape = Cylinder;  //!< What kind of shape to use
     QVariantMap mShapeProperties;  //!< Key-value dictionary of shape's properties (different keys for each shape)
     QMatrix4x4 mTransform;  //!< Transform of individual instanced models
     std::unique_ptr<QgsMarkerSymbol> mBillboardSymbol;

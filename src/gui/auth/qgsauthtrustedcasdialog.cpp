@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgsauthtrustedcasdialog.h"
-#include "moc_qgsauthtrustedcasdialog.cpp"
 #include "ui_qgsauthtrustedcasdialog.h"
 
 #include <QPushButton>
@@ -48,8 +47,8 @@ QgsAuthTrustedCAsDialog::QgsAuthTrustedCAsDialog( QWidget *parent,
     connect( btnInfoCa, &QToolButton::clicked, this, &QgsAuthTrustedCAsDialog::btnInfoCa_clicked );
     connect( btnGroupByOrg, &QToolButton::toggled, this, &QgsAuthTrustedCAsDialog::btnGroupByOrg_toggled );
 
-    connect( QgsApplication::authManager(), &QgsAuthManager::messageLog,
-             this, &QgsAuthTrustedCAsDialog::authMessageLog );
+    connect( QgsApplication::authManager(), &QgsAuthManager::messageOut,
+             this, &QgsAuthTrustedCAsDialog::authMessageOut );
 
     setupCaCertsTree();
 
@@ -224,7 +223,7 @@ void QgsAuthTrustedCAsDialog::showCertInfo( QTreeWidgetItem *item )
 
   if ( !cacertscache.contains( digest ) )
   {
-    QgsDebugError( QStringLiteral( "Certificate Authority not in CA certs cache" ) );
+    QgsDebugMsg( QStringLiteral( "Certificate Authority not in CA certs cache" ) );
     return;
   }
 
@@ -300,16 +299,17 @@ void QgsAuthTrustedCAsDialog::btnGroupByOrg_toggled( bool checked )
 {
   if ( !QgsApplication::authManager()->storeAuthSetting( QStringLiteral( "trustedcasortby" ), QVariant( checked ) ) )
   {
-    authMessageLog( QObject::tr( "Could not store sort by preference" ),
+    authMessageOut( QObject::tr( "Could not store sort by preference" ),
                     QObject::tr( "Trusted Authorities/Issuers" ),
-                    Qgis::MessageLevel::Warning );
+                    QgsAuthManager::WARNING );
   }
   populateCaCertsView();
 }
 
-void QgsAuthTrustedCAsDialog::authMessageLog( const QString &message, const QString &authtag, Qgis::MessageLevel level )
+void QgsAuthTrustedCAsDialog::authMessageOut( const QString &message, const QString &authtag, QgsAuthManager::MessageLevel level )
 {
-  messageBar()->pushMessage( authtag, message, level, 7 );
+  const int levelint = static_cast<int>( level );
+  messageBar()->pushMessage( authtag, message, ( Qgis::MessageLevel )levelint, 7 );
 }
 
 void QgsAuthTrustedCAsDialog::showEvent( QShowEvent *e )

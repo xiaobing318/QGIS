@@ -26,7 +26,6 @@
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgstextformat.h"
 #include "qgsreadwritecontext.h"
 
 /**
@@ -65,37 +64,22 @@ class CORE_EXPORT QgsLegendStyle
     /**
      * Returns the font used for rendering this legend component.
      * \see setFont()
-     * \deprecated QGIS 3.40. Use textFormat() instead.
      */
-    Q_DECL_DEPRECATED QFont font() const SIP_DEPRECATED { return mTextFormat.font(); }
+    QFont font() const { return mFont; }
 
     /**
      * Sets the \a font used for rendering this legend component.
      * \see font()
-     * \deprecated QGIS 3.40. Use setTextFormat() instead.
      */
-    Q_DECL_DEPRECATED void setFont( const QFont &font ) SIP_DEPRECATED;
+    void setFont( const QFont &font ) { mFont = font; }
 
     /**
-     * Returns the text format used for rendering this legend component.
-     * \see setTextFormat()
-     * \since QGIS 3.30
+     * Returns a modifiable reference to the component's font.
+     *
+     * \see setFont()
+     * \note Not available in Python bindings
      */
-    QgsTextFormat &textFormat() { return mTextFormat; }
-
-    /**
-     * Returns the text format used for rendering this legend component.
-     * \see setTextFormat()
-     * \since QGIS 3.30
-     */
-    QgsTextFormat textFormat() const SIP_SKIP { return mTextFormat; }
-
-    /**
-     * Sets the text \a format used for rendering this legend component.
-     * \see textFormat()
-     * \since QGIS 3.30
-     */
-    void setTextFormat( const QgsTextFormat &format ) { mTextFormat = format; }
+    SIP_SKIP QFont &rfont() { return mFont; }
 
     /**
      * Returns the margin (in mm) for the specified \a side of the component.
@@ -104,7 +88,7 @@ class CORE_EXPORT QgsLegendStyle
      *
      * \see setMargin()
      */
-    double margin( Side side ) const { return mMarginMap.value( side ); }
+    double margin( Side side ) { return mMarginMap.value( side ); }
 
     /**
      * Sets the \a margin (in mm) for the specified \a side of the component.
@@ -188,7 +172,7 @@ class CORE_EXPORT QgsLegendStyle
     static QString styleLabel( Style s );
 
   private:
-    QgsTextFormat mTextFormat;
+    QFont mFont;
     QMap<Side, double> mMarginMap;
     Qt::Alignment mAlignment = Qt::AlignLeft;
     double mIndent = 0;

@@ -13,20 +13,19 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsoracledataitems.h"
-#include "moc_qgsoracledataitems.cpp"
+
+#include "qgsoracletablemodel.h"
 #include "qgsoraclenewconnection.h"
 #include "qgsoraclecolumntypetask.h"
 #include "qgsoracleprovider.h"
+
 #include "qgslogger.h"
 #include "qgsdatasourceuri.h"
 #include "qgsapplication.h"
 #include "qgsmessageoutput.h"
 #include "qgsvectorlayer.h"
-#include "qgsdbquerylog.h"
-#include "qgsdbquerylog_p.h"
+#include "qgsproxyprogresstask.h"
 #include "qgsvectorlayerexporter.h"
-#include "qgsdataitemguiproviderutils.h"
-#include "qgssettings.h"
 
 #include <QMessageBox>
 #include <QProgressDialog>
@@ -35,7 +34,7 @@
 
 bool deleteLayer( const QString &uri, QString &errCause )
 {
-  QgsDebugMsgLevel( "deleting layer " + uri, 2 );
+  QgsDebugMsg( "deleting layer " + uri );
 
   QgsDataSourceUri dsUri( uri );
   QString ownerName = dsUri.schema();
@@ -238,8 +237,8 @@ void QgsOracleConnectionItem::setLayerType( const QgsOracleLayerProperty &layerP
 
   for ( int i = 0 ; i < layerProperty.size(); i++ )
   {
-    Qgis::WkbType wkbType = layerProperty.types.at( i );
-    if ( wkbType == Qgis::WkbType::Unknown )
+    QgsWkbTypes::Type wkbType = layerProperty.types.at( i );
+    if ( wkbType == QgsWkbTypes::Unknown )
     {
       QgsDebugMsgLevel( QStringLiteral( "skip unknown geometry type" ), 3 );
       continue;
@@ -286,10 +285,6 @@ QList<QAction *> QgsOracleConnectionItem::actions( QWidget *parent )
   connect( actionEdit, &QAction::triggered, this, &QgsOracleConnectionItem::editConnection );
   lst.append( actionEdit );
 
-  QAction *actionDuplicate = new QAction( tr( "Duplicate Connection" ), parent );
-  connect( actionDuplicate, &QAction::triggered, this, &QgsOracleConnectionItem::duplicateConnection );
-  lst.append( actionDuplicate );
-
   QAction *actionDelete = new QAction( tr( "Remove Connection" ), parent );
   connect( actionDelete, &QAction::triggered, this, &QgsOracleConnectionItem::deleteConnection );
   lst.append( actionDelete );
@@ -306,21 +301,6 @@ void QgsOracleConnectionItem::editConnection()
     mParent->refreshConnections();
   }
 }
-
-void QgsOracleConnectionItem::duplicateConnection()
-{
-  QgsSettings settings;
-  settings.beginGroup( QStringLiteral( "/Oracle/connections" ) );
-  const QStringList connections = settings.childGroups();
-  settings.endGroup();
-
-  const QString newConnectionName = QgsDataItemGuiProviderUtils::uniqueName( mName, connections );
-
-  QgsOracleConn::duplicateConnection( mName, newConnectionName );
-
-  mParent->refreshConnections();
-}
-
 
 void QgsOracleConnectionItem::deleteConnection()
 {
@@ -477,7 +457,7 @@ QString QgsOracleLayerItem::createUri()
 
   if ( !connItem )
   {
-    QgsDebugError( QStringLiteral( "connection item not found." ) );
+    QgsDebugMsg( QStringLiteral( "connection item not found." ) );
     return QString();
   }
 
@@ -511,23 +491,23 @@ void QgsOracleOwnerItem::addLayer( const QgsOracleLayerProperty &layerProperty )
   QgsDebugMsgLevel( layerProperty.toString(), 3 );
 
   Q_ASSERT( layerProperty.size() == 1 );
-  Qgis::WkbType wkbType = layerProperty.types.at( 0 );
+  QgsWkbTypes::Type wkbType = layerProperty.types.at( 0 );
   QString tip = tr( "%1 as %2 in %3" ).arg( layerProperty.geometryColName, QgsWkbTypes::translatedDisplayString( wkbType ) ).arg( layerProperty.srids.at( 0 ) );
 
   Qgis::BrowserLayerType layerType;
   switch ( QgsWkbTypes::geometryType( wkbType ) )
   {
-    case Qgis::GeometryType::Point:
+    case QgsWkbTypes::PointGeometry:
       layerType = Qgis::BrowserLayerType::Point;
       break;
-    case Qgis::GeometryType::Line:
+    case QgsWkbTypes::LineGeometry:
       layerType = Qgis::BrowserLayerType::Line;
       break;
-    case Qgis::GeometryType::Polygon:
+    case QgsWkbTypes::PolygonGeometry:
       layerType = Qgis::BrowserLayerType::Polygon;
       break;
     default:
-      if ( wkbType == Qgis::WkbType::NoGeometry && layerProperty.geometryColName.isEmpty() )
+      if ( wkbType == QgsWkbTypes::NoGeometry && layerProperty.geometryColName.isEmpty() )
       {
         layerType = Qgis::BrowserLayerType::TableLayer;
         tip = tr( "as geometryless table" );
@@ -612,9 +592,9 @@ QString QgsOracleDataItemProvider::dataProviderKey() const
   return QStringLiteral( "oracle" );
 }
 
-Qgis::DataItemProviderCapabilities QgsOracleDataItemProvider::capabilities() const
+int QgsOracleDataItemProvider::capabilities() const
 {
-  return Qgis::DataItemProviderCapability::Databases;
+  return QgsDataProvider::Database;
 }
 
 

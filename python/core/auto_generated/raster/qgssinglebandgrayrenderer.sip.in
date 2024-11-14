@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/raster/qgssinglebandgrayrenderer.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -43,27 +43,8 @@ QgsSingleBandGrayRenderer cannot be copied. Use :py:func:`~QgsSingleBandGrayRend
     virtual QgsRasterBlock *block( int bandNo, const QgsRectangle &extent, int width, int height, QgsRasterBlockFeedback *feedback = 0 ) /Factory/;
 
 
- int grayBand() const /Deprecated/;
-%Docstring
-
-.. deprecated:: 3.38
-
-   Use :py:func:`~QgsSingleBandGrayRenderer.inputBand` instead.
-%End
-
- void setGrayBand( int band ) /Deprecated/;
-%Docstring
-
-.. deprecated:: 3.38
-
-   Use :py:func:`~QgsSingleBandGrayRenderer.setInputBand` instead.
-%End
-
-    virtual int inputBand() const;
-
-    virtual bool setInputBand( int band );
-
-
+    int grayBand() const;
+    void setGrayBand( int band );
     const QgsContrastEnhancement *contrastEnhancement() const;
     void setContrastEnhancement( QgsContrastEnhancement *ce /Transfer/ );
 %Docstring
@@ -117,5 +98,5 @@ Ownership of ``settings`` is transferred.
  *                                                                      *
  * src/core/raster/qgssinglebandgrayrenderer.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

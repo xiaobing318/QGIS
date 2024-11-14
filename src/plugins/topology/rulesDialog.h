@@ -19,7 +19,6 @@
 #define RULESDIALOG_H_
 
 #include <QDialog>
-#include <QMenu>
 
 
 #include "ui_rulesDialog.h"
@@ -67,8 +66,6 @@ class rulesDialog : public QDialog, private Ui::rulesDialog
     QMap<QString, TopologyRule> mTestConfMap;
     QList<QString> mLayerIds;
     QgisInterface *mQgisIface = nullptr;
-    QMenu *mContextMenu = nullptr;
-
 
     /*
      * Reads a test from the project
@@ -81,6 +78,8 @@ class rulesDialog : public QDialog, private Ui::rulesDialog
      */
     void setHorizontalHeaderItems();
 
+
+
   private slots:
     /*
      * Shows or hides controls according to test settings
@@ -92,9 +91,9 @@ class rulesDialog : public QDialog, private Ui::rulesDialog
      */
     void addRule();
     /*
-     * Deletes selected test from the table
+     * Deletes test from the table
      */
-    void deleteTests();
+    void deleteTest();
     /*
      * Reads tests from the project
      */

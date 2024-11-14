@@ -36,7 +36,6 @@ class QgsPrintLayout;
 class QgsFeature;
 class QgsLayout;
 class QgsMapLayer;
-class QgsMapRendererTask;
 class QgsMapSettings;
 class QgsPointXY;
 class QgsRasterLayer;
@@ -63,6 +62,7 @@ namespace QgsWms
    * \ingroup server
    * \class QgsWms::QgsRenderer
    * \brief Map renderer for WMS requests
+   * \since QGIS 3.0
    */
   class QgsRenderer
   {
@@ -75,6 +75,9 @@ namespace QgsWms
        */
       QgsRenderer( const QgsWmsRenderContext &context );
 
+      /**
+       * Destructor for QgsRenderer.
+       */
       ~QgsRenderer();
 
       /**
@@ -99,22 +102,10 @@ namespace QgsWms
        * Returns the map legend as a JSON object. The caller takes the ownership
        * of the JSON object.
        * \param model The layer tree model to use for building the legend
-       * \param jsonRenderFlags The JSON export flags
        * \returns the legend as a JSON object
-       * \since QGIS 3.36
+       * \since QGIS 3.12
        */
-      QJsonObject getLegendGraphicsAsJson( QgsLayerTreeModel &model, const Qgis::LegendJsonRenderFlags &jsonRenderFlags = Qgis::LegendJsonRenderFlags() );
-
-      /**
-       * Returns the map legend as a JSON object (or NULLPTR in case of error). The
-       * caller takes ownership of the image object.
-       * \param legendNode The legend node to use for building the legend
-       * \param jsonRenderFlags The JSON export flags
-       * \returns the legend as a JSON object
-       * \since QGIS 3.36
-       */
-      QJsonObject getLegendGraphicsAsJson( QgsLayerTreeModelLegendNode &legendNode, const Qgis::LegendJsonRenderFlags &jsonRenderFlags = Qgis::LegendJsonRenderFlags() );
-
+      QJsonObject getLegendGraphicsAsJson( QgsLayerTreeModel &model );
 
       typedef QSet<QString> SymbolSet;
       typedef QHash<QgsVectorLayer *, SymbolSet> HitTest;
@@ -135,16 +126,9 @@ namespace QgsWms
       /**
        * Returns the map as DXF data
        * \returns the map as DXF data
+       * \since QGIS 3.0
       */
       std::unique_ptr<QgsDxfExport> getDxf();
-
-      /**
-       * Returns a configured pdf export task
-       * \param tmpFileName the name of the temporary file to store the pdf
-       * \returns pdf export object
-       * \since QGIS 3.36
-       */
-      std::unique_ptr<QgsMapRendererTask> getPdf( const QString &tmpFileName );
 
       /**
        * Returns printed page as binary
@@ -292,7 +276,6 @@ namespace QgsWms
       bool featureInfoFromRasterLayer( QgsRasterLayer *layer,
                                        const QgsMapSettings &mapSettings,
                                        const QgsPointXY *infoPoint,
-                                       const QgsRenderContext &renderContext,
                                        QDomDocument &infoDocument,
                                        QDomElement &layerElement,
                                        const QString &version ) const;
@@ -320,7 +303,7 @@ namespace QgsWms
       QByteArray convertFeatureInfoToText( const QDomDocument &doc ) const;
 
       //! Converts a feature info xml document to json
-      QByteArray convertFeatureInfoToJson( const QList<QgsMapLayer *> &layers, const QDomDocument &doc, const QgsCoordinateReferenceSystem &destCRS ) const;
+      QByteArray convertFeatureInfoToJson( const QList<QgsMapLayer *> &layers, const QDomDocument &doc ) const;
 
       QDomElement createFeatureGML(
         const QgsFeature *feat,

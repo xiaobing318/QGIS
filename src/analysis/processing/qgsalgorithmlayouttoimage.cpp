@@ -64,24 +64,24 @@ void QgsLayoutToImageAlgorithm::initAlgorithm( const QVariantMap & )
 {
   addParameter( new QgsProcessingParameterLayout( QStringLiteral( "LAYOUT" ), QObject::tr( "Print layout" ) ) );
 
-  std::unique_ptr< QgsProcessingParameterMultipleLayers > layersParam = std::make_unique< QgsProcessingParameterMultipleLayers>( QStringLiteral( "LAYERS" ), QObject::tr( "Map layers to assign to unlocked map item(s)" ), Qgis::ProcessingSourceType::MapLayer, QVariant(), true );
-  layersParam->setFlags( layersParam->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  std::unique_ptr< QgsProcessingParameterMultipleLayers > layersParam = std::make_unique< QgsProcessingParameterMultipleLayers>( QStringLiteral( "LAYERS" ), QObject::tr( "Map layers to assign to unlocked map item(s)" ), QgsProcessing::TypeMapLayer, QVariant(), true );
+  layersParam->setFlags( layersParam->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( layersParam.release() );
 
-  std::unique_ptr< QgsProcessingParameterNumber > dpiParam = std::make_unique< QgsProcessingParameterNumber >( QStringLiteral( "DPI" ), QObject::tr( "DPI (leave blank for default layout DPI)" ), Qgis::ProcessingNumberParameterType::Double, QVariant(), true, 0 );
-  dpiParam->setFlags( dpiParam->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  std::unique_ptr< QgsProcessingParameterNumber > dpiParam = std::make_unique< QgsProcessingParameterNumber >( QStringLiteral( "DPI" ), QObject::tr( "DPI (leave blank for default layout DPI)" ), QgsProcessingParameterNumber::Double, QVariant(), true, 0 );
+  dpiParam->setFlags( dpiParam->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( dpiParam.release() );
 
   std::unique_ptr< QgsProcessingParameterBoolean > appendGeorefParam = std::make_unique< QgsProcessingParameterBoolean >( QStringLiteral( "GEOREFERENCE" ), QObject::tr( "Generate world file" ), true );
-  appendGeorefParam->setFlags( appendGeorefParam->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  appendGeorefParam->setFlags( appendGeorefParam->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( appendGeorefParam.release() );
 
   std::unique_ptr< QgsProcessingParameterBoolean > exportRDFParam = std::make_unique< QgsProcessingParameterBoolean >( QStringLiteral( "INCLUDE_METADATA" ), QObject::tr( "Export RDF metadata (title, author, etc.)" ), true );
-  exportRDFParam->setFlags( exportRDFParam->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  exportRDFParam->setFlags( exportRDFParam->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( exportRDFParam.release() );
 
   std::unique_ptr< QgsProcessingParameterBoolean > antialias = std::make_unique< QgsProcessingParameterBoolean >( QStringLiteral( "ANTIALIAS" ), QObject::tr( "Enable antialiasing" ), true );
-  antialias->setFlags( antialias->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  antialias->setFlags( antialias->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( antialias.release() );
 
   QStringList imageFilters;
@@ -103,9 +103,9 @@ void QgsLayoutToImageAlgorithm::initAlgorithm( const QVariantMap & )
   addParameter( new QgsProcessingParameterFileDestination( QStringLiteral( "OUTPUT" ), QObject::tr( "Image file" ), imageFilters.join( QLatin1String( ";;" ) ) ) );
 }
 
-Qgis::ProcessingAlgorithmFlags QgsLayoutToImageAlgorithm::flags() const
+QgsProcessingAlgorithm::Flags QgsLayoutToImageAlgorithm::flags() const
 {
-  return QgsProcessingAlgorithm::flags() | Qgis::ProcessingAlgorithmFlag::NoThreading | Qgis::ProcessingAlgorithmFlag::RequiresProject;
+  return QgsProcessingAlgorithm::flags() | FlagNoThreading | FlagRequiresProject;
 }
 
 QgsLayoutToImageAlgorithm *QgsLayoutToImageAlgorithm::createInstance() const
@@ -164,10 +164,10 @@ QVariantMap QgsLayoutToImageAlgorithm::processAlgorithm( const QVariantMap &para
     }
 
     case QgsLayoutExporter::FileError:
-      throw QgsProcessingException( !exporter.errorMessage().isEmpty() ? exporter.errorMessage() : QObject::tr( "Cannot write to %1.\n\nThis file may be open in another application." ).arg( QDir::toNativeSeparators( dest ) ) );
+      throw QgsProcessingException( QObject::tr( "Cannot write to %1.\n\nThis file may be open in another application." ).arg( QDir::toNativeSeparators( dest ) ) );
 
     case QgsLayoutExporter::MemoryError:
-      throw QgsProcessingException( !exporter.errorMessage().isEmpty() ? exporter.errorMessage() : QObject::tr( "Trying to create the image "
+      throw QgsProcessingException( QObject::tr( "Trying to create the image "
                                     "resulted in a memory overflow.\n\n"
                                     "Please try a lower resolution or a smaller paper size." ) );
 

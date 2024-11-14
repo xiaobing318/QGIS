@@ -42,6 +42,7 @@ class QgsLayoutItemRenderContext;
  * \class QgsLayoutMultiFrame
  * \brief Abstract base class for layout items with the ability to distribute the content to
  * several frames (QgsLayoutFrame items).
+ * \since QGIS 3.0
  */
 
 class CORE_EXPORT QgsLayoutMultiFrame: public QgsLayoutObject, public QgsLayoutUndoObjectInterface
@@ -365,7 +366,7 @@ class CORE_EXPORT QgsLayoutMultiFrame: public QgsLayoutObject, public QgsLayoutU
      * QgsLayoutObject::AllProperties then all data defined properties for the item will be
      * refreshed.
     */
-    virtual void refreshDataDefinedProperty( QgsLayoutObject::DataDefinedProperty property = QgsLayoutObject::DataDefinedProperty::AllProperties );
+    virtual void refreshDataDefinedProperty( QgsLayoutObject::DataDefinedProperty property = QgsLayoutObject::AllProperties );
 
   signals:
 

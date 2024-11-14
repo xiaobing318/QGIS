@@ -1,10 +1,11 @@
+# -*- coding: utf-8 -*-
 ###############################################################################
 #
 # CSW Client
 # ---------------------------------------------------------
 # QGIS Catalog Service client.
 #
-# Copyright (C) 2024 Tom Kralidis (tomkralidis@gmail.com)
+# Copyright (C) 2021 Tom Kralidis (tomkralidis@gmail.com)
 #
 # This source is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free
@@ -27,14 +28,10 @@ import warnings
 import owslib
 from owslib.fes import BBox, PropertyIsLike
 
-from MetaSearch.util import log_message
-
 with warnings.catch_warnings():
     warnings.filterwarnings("ignore", category=ResourceWarning)
     warnings.filterwarnings("ignore", category=ImportWarning)
     from owslib.csw import CatalogueServiceWeb  # spellok
-
-from qgis.core import Qgis
 
 if owslib.__version__ < '0.25':
     OWSLIB_OAREC_SUPPORTED = False
@@ -88,7 +85,6 @@ class CSW202Search(SearchBase):
         self.record_info_template = 'record_metadata_dc.html'
         self.constraints = []
 
-        log_message(f'Connecting to CSW: {self.url}', Qgis.MessageLevel.Info)
         self.conn = CatalogueServiceWeb(self.url,  # spellok
                                         timeout=self.timeout,
                                         username=self.username,
@@ -106,7 +102,6 @@ class CSW202Search(SearchBase):
         # even for a global bbox, if a spatial filter is applied, then
         # the CSW server will skip records without a bbox
         if bbox and bbox != ['-180', '-90', '180', '90']:
-            log_message(f'Setting bbox filter ({bbox})', Qgis.MessageLevel.Info)
             minx, miny, maxx, maxy = bbox
             self.constraints.append(BBox([miny, minx, maxy, maxx],
                                          crs='urn:ogc:def:crs:EPSG::4326'))
@@ -114,20 +109,16 @@ class CSW202Search(SearchBase):
         # keywords
         if keywords:
             # TODO: handle multiple word searches
-            log_message(f'Setting csw:AnyText filter {keywords}', Qgis.MessageLevel.Info)
             self.constraints.append(PropertyIsLike('csw:AnyText', keywords))
 
         if len(self.constraints) > 1:  # exclusive search (a && b)
             self.constraints = [self.constraints]
 
-        log_message('Searching CSW: {self.url}', Qgis.MessageLevel.Info)
         self.conn.getrecords2(constraints=self.constraints, maxrecords=limit,
                               startposition=offset, esn='full')
 
         self.matches = self.conn.results['matches']
         self.returned = self.conn.results['returned']
-        log_message(f'Matches: {self.matches}', Qgis.MessageLevel.Info)
-        log_message(f'Returned: {self.returned}', Qgis.MessageLevel.Info)
 
         self.request = self.conn.request
         self.response = self.conn.response
@@ -161,7 +152,6 @@ class CSW202Search(SearchBase):
         return recs
 
     def get_record(self, identifier):
-        log_message(f'Searching CSW for record: {identifier}', Qgis.MessageLevel.Info)
         self.conn.getrecordbyid([identifier])
 
         return self.conn.records[identifier]
@@ -185,7 +175,6 @@ class OARecSearch(SearchBase):
         self.record_collection = None
 
         if '/collections/' in self.url:  # catalog is a collection
-            log_message('OARec endpoint is a collection', Qgis.MessageLevel.Info)
             self.base_url, self.record_collection = self.url.split('/collections/')  # noqa
             self.conn = Records(
                 self.base_url, timeout=self.timeout, auth=self.auth)
@@ -198,7 +187,6 @@ class OARecSearch(SearchBase):
                 pass
             self.request = self.conn.request
         else:
-            log_message('OARec endpoint is not a collection', Qgis.MessageLevel.Info)
             self.conn = Records(self.url, timeout=self.timeout, auth=self.auth)
             self.request = None
 
@@ -216,21 +204,15 @@ class OARecSearch(SearchBase):
         }
 
         if keywords:
-            log_message(f'Setting keyword search {keywords}', Qgis.MessageLevel.Info)
             params['q'] = keywords
         if bbox and bbox != ['-180', '-90', '180', '90']:
-            log_message(f'Setting bbox search {bbox}', Qgis.MessageLevel.Info)
             params['bbox'] = bbox
 
-        log_message(f'Searching OARec: {self.url}', Qgis.MessageLevel.Info)
         self.response = self.conn.collection_items(**params)
 
         self.matches = self.response.get('numberMatched', 0)
         self.returned = self.response.get('numberReturned', 0)
         self.request = self.conn.request
-
-        log_message(f'Matches: {self.matches}', Qgis.MessageLevel.Info)
-        log_message(f'Returned: {self.returned}', Qgis.MessageLevel.Info)
 
     def records(self):
         recs = []
@@ -239,18 +221,17 @@ class OARecSearch(SearchBase):
             rec1 = {
                 'identifier': rec['id'],
                 'type': rec['properties']['type'],
+
+
+
                 'bbox': None,
                 'title': rec['properties']['title'],
                 'links': rec.get('links', [])
             }
             try:
-                if rec.get('geometry') is not None:
-                    rec1['bbox'] = bbox_list_to_dict([
-                        rec['geometry']['coordinates'][0][0][0],
-                        rec['geometry']['coordinates'][0][0][1],
-                        rec['geometry']['coordinates'][0][2][0],
-                        rec['geometry']['coordinates'][0][2][1]
-                    ])
+                bbox2 = rec['properties']['extent']['spatial']['bbox'][0]
+                if bbox2:
+                    rec1['bbox'] = bbox_list_to_dict(bbox2)
             except KeyError:
                 pass
 
@@ -259,8 +240,6 @@ class OARecSearch(SearchBase):
         return recs
 
     def get_record(self, identifier):
-        log_message(f'Searching OARec endpoint for item {identifier}',
-                    Qgis.MessageLevel.Info)
         return self.conn.collection_item(self.record_collection, identifier)
 
     def parse_link(self, link):
@@ -279,10 +258,8 @@ class OARecSearch(SearchBase):
 def get_catalog_service(url, catalog_type, timeout, username, password,
                         auth=None):
     if catalog_type in [None, CATALOG_TYPES[0]]:
-        log_message('CSW endpoint detected', Qgis.MessageLevel.Info)
         return CSW202Search(url, timeout, username, password, auth)
     elif catalog_type == CATALOG_TYPES[1]:
-        log_message('OARec endpoint detected', Qgis.MessageLevel.Info)
         if not OWSLIB_OAREC_SUPPORTED:
             raise ValueError("OGC API - Records requires OWSLib 0.25 or above")
         return OARecSearch(url, timeout, auth)

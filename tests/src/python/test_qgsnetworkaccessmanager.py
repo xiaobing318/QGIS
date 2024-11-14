@@ -15,14 +15,18 @@ import socketserver
 import threading
 from functools import partial
 
-from qgis.PyQt.QtCore import QUrl
-from qgis.PyQt.QtNetwork import QNetworkReply, QNetworkRequest
-from qgis.PyQt.QtTest import QSignalSpy
-from qgis.core import (
-    QgsNetworkAccessManager,
+import qgis  # NOQA
+from qgis.PyQt.QtCore import (
+    QUrl
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.PyQt.QtNetwork import (
+    QNetworkRequest,
+    QNetworkReply
+)
+from qgis.PyQt.QtTest import QSignalSpy
+from qgis.core import (QgsNetworkAccessManager
+                       )
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -30,11 +34,10 @@ start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestQgsNetworkAccessManager(QgisTestCase):
+class TestQgsNetworkAccessManager(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        super().setUpClass()
         # Bring up a simple HTTP server
         os.chdir(unitTestDataPath() + '')
         handler = http.server.SimpleHTTPRequestHandler
@@ -43,7 +46,7 @@ class TestQgsNetworkAccessManager(QgisTestCase):
         cls.port = cls.httpd.server_address[1]
 
         cls.httpd_thread = threading.Thread(target=cls.httpd.serve_forever)
-        cls.httpd_thread.daemon = True
+        cls.httpd_thread.setDaemon(True)
         cls.httpd_thread.start()
 
     def test_request_preprocessor(self):

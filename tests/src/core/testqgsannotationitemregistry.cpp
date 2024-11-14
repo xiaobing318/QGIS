@@ -47,7 +47,7 @@ class TestItem : public QgsAnnotationItem
     {
     }
 
-    TestItem *clone() const override
+    TestItem *clone() override
     {
       return new TestItem();
     }

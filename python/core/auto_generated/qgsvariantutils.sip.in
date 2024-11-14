@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsvariantutils.h                                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -22,22 +22,11 @@ Contains utility functions for working with QVariants and QVariant types.
 %End
   public:
 
-    static QString typeToDisplayString( QMetaType::Type type, QMetaType::Type subType = QMetaType::Type::UnknownType );
+    static QString typeToDisplayString( QVariant::Type type, QVariant::Type subType = QVariant::Type::Invalid );
 %Docstring
 Returns a user-friendly translated string representing a QVariant ``type``.
 
 The optional ``subType`` can be used to specify the type of variant list or map values.
-%End
-
- static QString typeToDisplayString( QVariant::Type type, QVariant::Type subType = QVariant::Type::Invalid ) /Deprecated/;
-%Docstring
-Returns a user-friendly translated string representing a QVariant ``type``.
-
-The optional ``subType`` can be used to specify the type of variant list or map values.
-
-.. deprecated:: 3.38
-
-   Use the method with a QMetaType.Type argument instead.
 %End
 
     static bool isNull( const QVariant &variant );
@@ -50,18 +39,6 @@ This method is more rigorous vs QVariant.isNull(), which will return
 .. versionadded:: 3.28
 %End
 
-    static bool isNumericType( QMetaType::Type metaType );
-%Docstring
-Returns ``True`` if the specified ``metaType`` is a numeric type.
-
-.. versionadded:: 3.40
-%End
-
-
-
-
-
-
 };
 
 /************************************************************************
@@ -69,5 +46,5 @@ Returns ``True`` if the specified ``metaType`` is a numeric type.
  *                                                                      *
  * src/core/qgsvariantutils.h                                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

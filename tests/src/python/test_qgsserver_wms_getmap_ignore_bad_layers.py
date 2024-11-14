@@ -12,19 +12,22 @@ the Free Software Foundation; either version 2 of the License, or
 __author__ = 'Alessandro Pasotti'
 __date__ = '13/04/2020'
 __copyright__ = 'Copyright 2020, The QGIS Project'
+# This will get replaced with a git SHA1 when you do a git archive
+__revision__ = '252ad49ddcbc4a0dcfe9eb9381503de0fde9e0ed'
 
 import os
 
 # Needed on Qt 5 so that the serialization of XML is consistent among all executions
 os.environ['QT_HASH_SEED'] = '1'
 
-import urllib.error
-import urllib.parse
 import urllib.request
+import urllib.parse
+import urllib.error
+
+from qgis.testing import unittest
 
 import osgeo.gdal  # NOQA
 
-from qgis.testing import unittest
 from test_qgsserver import QgsServerTestBase
 
 # Strip path and content length because path may vary

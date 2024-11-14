@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsmaptoolshaperegularpolygonabstract.h"
-#include "moc_qgsmaptoolshaperegularpolygonabstract.cpp"
 #include "qgsgeometryrubberband.h"
 #include "qgsgeometryutils.h"
 #include "qgsmapcanvas.h"
@@ -22,7 +21,7 @@
 #include "qgisapp.h"
 #include "qgsmaptoolcapture.h"
 
-QgsMapToolShapeRegularPolygonAbstract::QgsMapToolShapeRegularPolygonAbstract( const QString &id, QgsMapToolCapture *parentTool )
+QgsMapToolShapeRegularPolygonAbstract::QgsMapToolShapeRegularPolygonAbstract(const QString &id, QgsMapToolCapture *parentTool )
   : QgsMapToolShapeAbstract( id, parentTool )
 {
 }

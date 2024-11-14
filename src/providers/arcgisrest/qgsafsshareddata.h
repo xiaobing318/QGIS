@@ -34,9 +34,6 @@ class QgsAfsSharedData
   public:
     QgsAfsSharedData( const QgsDataSourceUri &uri );
 
-    //! Creates a deep copy of this shared data
-    std::shared_ptr< QgsAfsSharedData > clone() const;
-
     long long objectIdCount() const;
     long long featureCount() const;
     bool isDeleted( QgsFeatureId id ) const { return mDeletedFeatureIds.contains( id ); }
@@ -77,7 +74,7 @@ class QgsAfsSharedData
     QgsDataSourceUri mDataSource;
     bool mLimitBBox = false;
     QgsRectangle mExtent;
-    Qgis::WkbType mGeometryType = Qgis::WkbType::Unknown;
+    QgsWkbTypes::Type mGeometryType = QgsWkbTypes::Unknown;
     QgsFields mFields;
     int mMaximumFetchObjectsCount = 100;
 

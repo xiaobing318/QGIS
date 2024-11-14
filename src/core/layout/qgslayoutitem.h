@@ -24,6 +24,7 @@
 #include "qgsrendercontext.h"
 #include "qgslayoutundocommand.h"
 #include "qgslayoutmeasurement.h"
+#include "qgsapplication.h"
 #include <QGraphicsRectItem>
 #include <QIcon>
 #include <QPainter>
@@ -38,6 +39,7 @@ class QgsStyleEntityVisitorInterface;
  * \ingroup core
  * \class QgsLayoutItemRenderContext
  * \brief Contains settings and helpers relating to a render of a QgsLayoutItem.
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsLayoutItemRenderContext
 {
@@ -55,7 +57,10 @@ class CORE_EXPORT QgsLayoutItemRenderContext
      */
     QgsLayoutItemRenderContext( QgsRenderContext &context, double viewScaleFactor = 1.0 );
 
+    //! QgsLayoutItemRenderContext cannot be copied.
     QgsLayoutItemRenderContext( const QgsLayoutItemRenderContext &other ) = delete;
+
+    //! QgsLayoutItemRenderContext cannot be copied.
     QgsLayoutItemRenderContext &operator=( const QgsLayoutItemRenderContext &other ) = delete;
 
     /**
@@ -102,6 +107,7 @@ class CORE_EXPORT QgsLayoutItemRenderContext
  * \ingroup core
  * \class QgsLayoutItem
  * \brief Base class for graphical items within a QgsLayout.
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsLayoutItem : public QgsLayoutObject, public QGraphicsRectItem, public QgsLayoutUndoObjectInterface
 {
@@ -117,8 +123,6 @@ class CORE_EXPORT QgsLayoutItem : public QgsLayoutObject, public QGraphicsRectIt
 #include "qgslayoutframe.h"
 #include "qgslayoutitemshape.h"
 #include "qgslayoutitempage.h"
-#include "qgslayoutitemmarker.h"
-#include "qgslayoutitemelevationprofile.h"
 #endif
 
 #ifdef SIP_RUN
@@ -178,14 +182,6 @@ class CORE_EXPORT QgsLayoutItem : public QgsLayoutObject, public QGraphicsRectIt
         sipType = sipType_QgsLayoutFrame;
         *sipCppRet = static_cast<QgsLayoutFrame *>( sipCpp );
         break;
-      case QGraphicsItem::UserType + 117:
-        sipType = sipType_QgsLayoutItemMarker;
-        *sipCppRet = static_cast<QgsLayoutItemMarker *>( sipCpp );
-        break;
-      case QGraphicsItem::UserType + 118:
-        sipType = sipType_QgsLayoutItemElevationProfile;
-        *sipCppRet = static_cast<QgsLayoutItemElevationProfile *>( sipCpp );
-        break;
 
       // did you read that comment above? NO? Go read it now. You're about to break stuff.
 
@@ -225,13 +221,8 @@ class CORE_EXPORT QgsLayoutItem : public QgsLayoutObject, public QGraphicsRectIt
       UndoStrokeWidth, //!< Stroke width adjustment
       UndoBackgroundColor, //!< Background color adjustment
       UndoOpacity, //!< Opacity adjustment
-      UndoMarginLeft, //!< Left margin \since QGIS 3.30
-      UndoMarginTop, //!< Top margin \since QGIS 3.30
-      UndoMarginBottom, //!< Bottom margin \since QGIS 3.30
-      UndoMarginRight, //!< Right margin \since QGIS 3.30
       UndoSetId, //!< Change item ID
       UndoRotation, //!< Rotation adjustment
-      UndoExportLayerName, //!< Export layer name \since QGIS 3.40
       UndoShapeStyle, //!< Shape symbol style
       UndoShapeCornerRadius, //!< Shape corner radius
       UndoNodeMove, //!< Node move
@@ -301,23 +292,6 @@ class CORE_EXPORT QgsLayoutItem : public QgsLayoutObject, public QGraphicsRectIt
       UndoArrowHeadWidth, //!< Arrow head width
       UndoArrowHeadFillColor, //!< Arrow head fill color
       UndoArrowHeadStrokeColor, //!< Arrow head stroke color
-      UndoElevationProfileTolerance, //!< Change elevation profile distance tolerance
-      UndoElevationProfileChartBackground, //!< Change elevation profile chart background
-      UndoElevationProfileChartBorder, //!< Change elevation profile chart border
-      UndoElevationProfileDistanceMajorGridlines, //!< Change elevation profile distance axis major gridlines
-      UndoElevationProfileDistanceMinorGridlines, //!< Change elevation profile distance axis minor gridlines
-      UndoElevationProfileDistanceFormat, //!< Change elevation profile distance axis number format
-      UndoElevationProfileDistanceFont, //!< Change elevation profile distance axis number font
-      UndoElevationProfileDistanceLabels, //!< Change elevation profile distance axis label interval
-      UndoElevationProfileElevationMajorGridlines, //!< Change elevation profile elevation axis major gridlines
-      UndoElevationProfileElevationMinorGridlines, //!< Change elevation profile elevation axis minor gridlines
-      UndoElevationProfileElevationFormat, //!< Change elevation profile elevation axis number format
-      UndoElevationProfileElevationFont, //!< Change elevation profile elevation axis number font
-      UndoElevationProfileElevationLabels, //!< Change elevation profile elevation axis label interval
-      UndoElevationProfileMinimumDistance, //!< Change elevation profile minimum distance
-      UndoElevationProfileMaximumDistance, //!< Change elevation profile maximum distance
-      UndoElevationProfileMinimumElevation, //!< Change elevation profile minimum elevation
-      UndoElevationProfileMaximumElevation, //!< Change elevation profile maximum elevation
 
       UndoCustomCommand, //!< Base id for plugin based item undo commands
     };
@@ -326,11 +300,10 @@ class CORE_EXPORT QgsLayoutItem : public QgsLayoutObject, public QGraphicsRectIt
      * Flags for controlling how an item behaves.
      * \since QGIS 3.4.3
      */
-    enum Flag SIP_ENUM_BASETYPE( IntFlag )
+    enum Flag
     {
       FlagOverridesPaint = 1 << 1,  //!< Item overrides the default layout item painting method
       FlagProvidesClipPath = 1 << 2, //!< Item can act as a clipping path provider (see clipPath())
-      FlagDisableSceneCaching = 1 << 3, //!< Item should not have QGraphicsItem caching enabled
     };
     Q_DECLARE_FLAGS( Flags, Flag )
 
@@ -360,7 +333,7 @@ class CORE_EXPORT QgsLayoutItem : public QgsLayoutObject, public QGraphicsRectIt
     /**
      * Returns the item's icon.
      */
-    virtual QIcon icon() const;
+    virtual QIcon icon() const { return QgsApplication::getThemeIcon( QStringLiteral( "/mLayoutItem.svg" ) ); }
 
     /**
      * Returns the item identification string. This is a unique random string set for the item
@@ -462,11 +435,9 @@ class CORE_EXPORT QgsLayoutItem : public QgsLayoutObject, public QGraphicsRectIt
     };
 
     /**
-     * Returns the behavior of this item during exporting to layered exports (e.g. SVG or geospatial PDF).
-     *
+     * Returns the behavior of this item during exporting to layered exports (e.g. SVG).
      * \see numberExportLayers()
      * \see exportLayerDetails()
-     *
      * \since QGIS 3.10
      */
     virtual ExportLayerBehavior exportLayerBehavior() const;
@@ -482,7 +453,7 @@ class CORE_EXPORT QgsLayoutItem : public QgsLayoutObject, public QGraphicsRectIt
      * \see exportLayerBehavior()
      * \see exportLayerDetails()
      *
-     * \deprecated QGIS 3.40. Use nextExportPart() and exportLayerBehavior() instead.
+     * \deprecated Use nextExportPart() and exportLayerBehavior() instead.
      */
     Q_DECL_DEPRECATED virtual int numberExportLayers() const SIP_DEPRECATED;
 
@@ -540,13 +511,6 @@ class CORE_EXPORT QgsLayoutItem : public QgsLayoutObject, public QGraphicsRectIt
 
       //! Associated map theme, or an empty string if this export layer does not need to be associated with a map theme
       QString mapTheme;
-
-      /**
-       * Associated group name, if this layer is associated with an export group.
-       *
-       * \since QGIS 3.40
-       */
-      QString groupName;
     };
 
     /**
@@ -1019,13 +983,6 @@ class CORE_EXPORT QgsLayoutItem : public QgsLayoutObject, public QGraphicsRectIt
      */
     virtual QgsGeometry clipPath() const;
 
-    /**
-     * Returns TRUE if the item is currently refreshing content in the background.
-     *
-     * \since QGIS 3.32
-     */
-    virtual bool isRefreshing() const;
-
   public slots:
 
     /**
@@ -1050,7 +1007,7 @@ class CORE_EXPORT QgsLayoutItem : public QgsLayoutObject, public QGraphicsRectIt
      * QgsLayoutObject::AllProperties then all data defined properties for the item will be
      * refreshed.
     */
-    virtual void refreshDataDefinedProperty( QgsLayoutObject::DataDefinedProperty property = QgsLayoutObject::DataDefinedProperty::AllProperties );
+    virtual void refreshDataDefinedProperty( QgsLayoutObject::DataDefinedProperty property = QgsLayoutObject::AllProperties );
 
     /**
      * Sets the layout item's \a rotation, in degrees clockwise.
@@ -1149,13 +1106,6 @@ class CORE_EXPORT QgsLayoutItem : public QgsLayoutObject, public QGraphicsRectIt
      * \see framePath()
      */
     virtual void drawBackground( QgsRenderContext &context );
-
-    /**
-     * Draws a "refreshing" overlay icon on the item.
-     *
-     * \since QGIS 3.32
-     */
-    void drawRefreshingOverlay( QPainter *painter, const QStyleOptionGraphicsItem *itemStyle );
 
     /**
      * Sets a fixed \a size for the layout item, which prevents it from being freely
@@ -1322,10 +1272,7 @@ class CORE_EXPORT QgsLayoutItem : public QgsLayoutObject, public QGraphicsRectIt
 
     //! Composition blend mode for item
     QPainter::CompositionMode mBlendMode = QPainter::CompositionMode_SourceOver;
-    //! Evaluated blend mode, including evaluated overrides for data defined blending
-    QPainter::CompositionMode mEvaluatedBlendMode = QPainter::CompositionMode_SourceOver;
-
-    QPainter::CompositionMode blendModeForRender() const;
+    QPointer< QgsLayoutEffect > mEffect;
 
     //! Item opacity, between 0 and 1
     double mOpacity = 1.0;
@@ -1341,7 +1288,7 @@ class CORE_EXPORT QgsLayoutItem : public QgsLayoutObject, public QGraphicsRectIt
     //! Item frame color
     QColor mFrameColor = QColor( 0, 0, 0 );
     //! Item frame width
-    QgsLayoutMeasurement mFrameWidth = QgsLayoutMeasurement( 0.3, Qgis::LayoutUnit::Millimeters );
+    QgsLayoutMeasurement mFrameWidth = QgsLayoutMeasurement( 0.3, QgsUnitTypes::LayoutMillimeters );
     //! Frame join style
     Qt::PenJoinStyle mFrameJoinStyle = Qt::MiterJoin;
 
@@ -1374,9 +1321,6 @@ class CORE_EXPORT QgsLayoutItem : public QgsLayoutObject, public QGraphicsRectIt
     friend class TestQgsLayoutView;
     friend class QgsLayout;
     friend class QgsLayoutItemGroup;
-    friend class QgsLayoutItemMap;
-    friend class QgsLayoutItemLegend;
-    friend class QgsLayoutItemElevationProfile;
     friend class QgsCompositionConverter;
 };
 

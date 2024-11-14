@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/symbology/qgscategorizedsymbolrendererwidget.h               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -20,10 +20,9 @@ class QgsCategorizedSymbolRendererWidget : QgsRendererWidget
 %End
   public:
 
-
-    enum class CustomRole
+    enum CustomRoles
     {
-      Value
+      ValueRole
     };
 
     static QgsRendererWidget *create( QgsVectorLayer *layer, QgsStyle *style, QgsFeatureRenderer *renderer ) /Factory/;
@@ -34,8 +33,6 @@ class QgsCategorizedSymbolRendererWidget : QgsRendererWidget
     virtual QgsFeatureRenderer *renderer();
 
     virtual void setContext( const QgsSymbolWidgetContext &context );
-
-    virtual QgsExpressionContext createExpressionContext() const;
 
 
     int matchToSymbols( QgsStyle *style );
@@ -50,6 +47,8 @@ name.
 .. seealso:: :py:func:`matchToSymbolsFromLibrary`
 
 .. seealso:: :py:func:`matchToSymbolsFromXml`
+
+.. versionadded:: 2.9
 %End
 
   public slots:
@@ -79,6 +78,8 @@ matching name.
 .. seealso:: :py:func:`matchToSymbolsFromXml`
 
 .. seealso:: :py:func:`matchToSymbols`
+
+.. versionadded:: 2.9
 %End
 
     void matchToSymbolsFromXml();
@@ -89,6 +90,8 @@ from the XML file with a matching name.
 .. seealso:: :py:func:`matchToSymbolsFromLibrary`
 
 .. seealso:: :py:func:`matchToSymbols`
+
+.. versionadded:: 2.9
 %End
 
   protected:
@@ -146,5 +149,5 @@ Applies current symbol to selected categories, or to all categories if none is s
  *                                                                      *
  * src/gui/symbology/qgscategorizedsymbolrendererwidget.h               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

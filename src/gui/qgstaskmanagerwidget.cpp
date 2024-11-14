@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgstaskmanagerwidget.h"
-#include "moc_qgstaskmanagerwidget.cpp"
 #include "qgstaskmanager.h"
 #include "qgsapplication.h"
 #include <QPainter>
@@ -207,7 +206,7 @@ QVariant QgsTaskManagerModel::data( const QModelIndex &index, int role ) const
             return QVariant();
         }
 
-      case static_cast< int >( CustomRole::Status ):
+      case StatusRole:
         return static_cast<int>( task->status() );
 
       case Qt::ToolTipRole:

@@ -43,12 +43,12 @@ class QgsBoundaryAlgorithm : public QgsProcessingFeatureBasedAlgorithm
     QList<int> inputLayerTypes() const override;
     bool supportInPlaceEdit( const QgsMapLayer *layer ) const override;
     QgsBoundaryAlgorithm *createInstance() const override SIP_FACTORY;
-    Qgis::ProcessingFeatureSourceFlags sourceFlags() const override;
+    QgsProcessingFeatureSource::Flag sourceFlags() const override;
 
   protected:
 
     QString outputName() const override;
-    Qgis::WkbType outputWkbType( Qgis::WkbType inputWkbType ) const override;
+    QgsWkbTypes::Type outputWkbType( QgsWkbTypes::Type inputWkbType ) const override;
     QgsFeatureList processFeature( const QgsFeature &feature,  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 };
 

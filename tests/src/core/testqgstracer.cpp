@@ -21,6 +21,7 @@
 #include <qgsvectorlayer.h>
 #include "qgsproject.h"
 #include "qgscategorizedsymbolrenderer.h"
+#include "qgssettings.h"
 #include "qgslayertree.h"
 #include "qgslayertreemodel.h"
 #include "qgsmapsettings.h"
@@ -37,7 +38,6 @@ class TestQgsTracer : public QObject
     void testSimple();
     void testPolygon();
     void testButterfly();
-    void testAddPointsOnIntersections();
     void testLayerUpdates();
     void testExtent();
     void testReprojection();
@@ -202,8 +202,8 @@ void TestQgsTracer::testInvisible()
 
   QgsCategorizedSymbolRenderer *renderer = new QgsCategorizedSymbolRenderer();
   renderer->setClassAttribute( QStringLiteral( "fld" ) );
-  renderer->setSourceSymbol( QgsSymbol::defaultSymbol( Qgis::GeometryType::Line ) );
-  renderer->addCategory( QgsRendererCategory( "2", QgsSymbol::defaultSymbol( Qgis::GeometryType::Line ), QStringLiteral( "2" ) ) );
+  renderer->setSourceSymbol( QgsSymbol::defaultSymbol( QgsWkbTypes::LineGeometry ) );
+  renderer->addCategory( QgsRendererCategory( "2", QgsSymbol::defaultSymbol( QgsWkbTypes::LineGeometry ), QStringLiteral( "2" ) ) );
   mVL->setRenderer( renderer );
 
   //create legend with symbology nodes for categorized renderer
@@ -236,7 +236,7 @@ void TestQgsTracer::testInvisible()
   QgsSnappingConfig snappingConfig = u.config();
   snappingConfig.setEnabled( true );
   snappingConfig.setTolerance( 10 );
-  snappingConfig.setUnits( Qgis::MapToolUnit::Pixels );
+  snappingConfig.setUnits( QgsTolerance::Pixels );
   snappingConfig.setMode( Qgis::SnappingMode::ActiveLayer );
   u.setConfig( snappingConfig );
   QgsTracer tracer;
@@ -304,50 +304,6 @@ void TestQgsTracer::testButterfly()
   QCOMPARE( points[1], QgsPointXY( 5, 5 ) );
   QCOMPARE( points[2], QgsPointXY( 10, 0 ) );
 
-  delete vl;
-}
-
-void TestQgsTracer::testAddPointsOnIntersections()
-{
-  // checks whether tracer adds vertices at intersections
-
-  QStringList wkts;
-  wkts << QStringLiteral( "LINESTRING(0 0, 10 10)" )
-       << QStringLiteral( "LINESTRING(0 10, 10 0)" );
-
-  /* This shape (without a vertex where the linestring crosses itself):
-   *    +  +  10,10
-   *     \/
-   *     /\
-   *    +  +
-   *  0,0
-   */
-
-  QgsVectorLayer *vl = make_layer( wkts );
-
-  QgsTracer tracer;
-  tracer.setLayers( QList<QgsVectorLayer *>() << vl );
-
-  QgsPolylineXY points = tracer.findShortestPath( QgsPointXY( 0, 0 ), QgsPointXY( 10, 10 ) );
-
-  QCOMPARE( points.count(), 2 );
-  QCOMPARE( points[0], QgsPointXY( 0, 0 ) );
-  QCOMPARE( points[1], QgsPointXY( 10, 10 ) );
-
-  // now enable adding points on intersections
-  tracer.setAddPointsOnIntersectionsEnabled( true );
-  points = tracer.findShortestPath( QgsPointXY( 0, 0 ), QgsPointXY( 10, 10 ) );
-  QCOMPARE( points.count(), 3 );
-  QCOMPARE( points[0], QgsPointXY( 0, 0 ) );
-  QCOMPARE( points[1], QgsPointXY( 5, 5 ) );
-  QCOMPARE( points[2], QgsPointXY( 10, 10 ) );
-
-  // and disable it again
-  tracer.setAddPointsOnIntersectionsEnabled( false );
-  points = tracer.findShortestPath( QgsPointXY( 0, 0 ), QgsPointXY( 10, 10 ) );
-  QCOMPARE( points.count(), 2 );
-  QCOMPARE( points[0], QgsPointXY( 0, 0 ) );
-  QCOMPARE( points[1], QgsPointXY( 10, 10 ) );
   delete vl;
 }
 

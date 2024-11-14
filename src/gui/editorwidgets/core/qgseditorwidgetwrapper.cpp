@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgseditorwidgetwrapper.h"
-#include "moc_qgseditorwidgetwrapper.cpp"
 #include "qgsvectorlayer.h"
 #include "qgsvectordataprovider.h"
 #include "qgsfields.h"
@@ -53,11 +52,8 @@ QVariant QgsEditorWidgetWrapper::defaultValue() const
   return mDefaultValue;
 }
 
-QgsEditorWidgetWrapper *QgsEditorWidgetWrapper::fromWidget( QWidget *widget ) // cppcheck-suppress duplInheritedMember
+QgsEditorWidgetWrapper *QgsEditorWidgetWrapper::fromWidget( QWidget *widget )
 {
-  if ( !widget )
-    return nullptr;
-
   return qobject_cast<QgsEditorWidgetWrapper *>( widget->property( "EWV2Wrapper" ).value<QgsWidgetWrapper *>() );
 }
 
@@ -265,15 +261,6 @@ void QgsEditorWidgetWrapper::updateConstraint( const QgsVectorLayer *layer, int 
     updateConstraintWidgetStatus();
     emit constraintStatusChanged( expressionDesc, description, errStr, result );
   }
-}
-
-void QgsEditorWidgetWrapper::updateConstraint( QgsEditorWidgetWrapper::ConstraintResult constraintResult, const QString &constraintFailureReason )
-{
-  mValidConstraint = constraintResult == ConstraintResultPass;
-  mIsBlockingCommit = constraintResult == ConstraintResultFailHard;
-  mConstraintFailureReason = constraintResult != ConstraintResultPass ? constraintFailureReason : QString();
-  mConstraintResult = constraintResult;
-  updateConstraintWidgetStatus();
 }
 
 bool QgsEditorWidgetWrapper::isValidConstraint() const

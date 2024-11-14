@@ -17,21 +17,18 @@
 
 #include "qgslayoutpoint.h"
 #include "qgis.h"
-#include "qgsunittypes.h"
 
 #include <QStringList>
 
-QgsLayoutPoint::QgsLayoutPoint( const double x, const double y, const Qgis::LayoutUnit units )
+QgsLayoutPoint::QgsLayoutPoint( const double x, const double y, const QgsUnitTypes::LayoutUnit units )
   : mX( x )
   , mY( y )
   , mUnits( units )
 {
-#ifdef QGISDEBUG
-  Q_ASSERT_X( !std::isnan( mX ) && !std::isnan( mY ), "QgsLayoutPoint", "Layout point with NaN coordinates created" );
-#endif
+
 }
 
-QgsLayoutPoint::QgsLayoutPoint( const QPointF point, const Qgis::LayoutUnit units )
+QgsLayoutPoint::QgsLayoutPoint( const QPointF point, const QgsUnitTypes::LayoutUnit units )
   : mX( point.x() )
   , mY( point.y() )
   , mUnits( units )
@@ -39,7 +36,7 @@ QgsLayoutPoint::QgsLayoutPoint( const QPointF point, const Qgis::LayoutUnit unit
 
 }
 
-QgsLayoutPoint::QgsLayoutPoint( const Qgis::LayoutUnit units )
+QgsLayoutPoint::QgsLayoutPoint( const QgsUnitTypes::LayoutUnit units )
   : mUnits( units )
 {
 
@@ -67,16 +64,7 @@ QgsLayoutPoint QgsLayoutPoint::decodePoint( const QString &string )
   {
     return QgsLayoutPoint();
   }
-  const double x = parts[0].toDouble();
-  const double y = parts[1].toDouble();
-
-  // don't restore corrupted coordinates from xml. This can happen when eg a broken item size causes a nan position,
-  // which breaks the layout size calculation and results in nan or massive x/y values. Restoring these leads to a broken
-  // layout which cannot be interacted with.
-  if ( std::isnan( x ) || std::isnan( y ) || x > 9.99998e+06 || y > 9.99998e+06 )
-    return QgsLayoutPoint();
-
-  return QgsLayoutPoint( x, y, QgsUnitTypes::decodeLayoutUnit( parts[2] ) );
+  return QgsLayoutPoint( parts[0].toDouble(), parts[1].toDouble(), QgsUnitTypes::decodeLayoutUnit( parts[2] ) );
 }
 
 bool QgsLayoutPoint::operator==( const QgsLayoutPoint &other ) const

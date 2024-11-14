@@ -11,17 +11,15 @@ __copyright__ = 'Copyright 2019, The QGIS Project'
 
 import math
 
+import qgis  # NOQA
 from qgis.PyQt.QtTest import QSignalSpy
-from qgis.PyQt.QtWidgets import QComboBox
-
-from qgis.gui import QgsScaleWidget, QgsScaleComboBox
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.gui import QgsScaleWidget
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsScaleWidget(QgisTestCase):
+class TestQgsScaleWidget(unittest.TestCase):
 
     def testBasic(self):
         w = QgsScaleWidget()
@@ -43,32 +41,6 @@ class TestQgsScaleWidget(QgisTestCase):
         self.assertEqual(w.scale(), 4000)
         self.assertEqual(len(spy), 3)
         self.assertEqual(spy[-1][0], 4000)
-
-    def test_predefined_scales(self):
-        w = QgsScaleWidget()
-        combo = w.findChild(QComboBox)
-
-        w.updateScales(['1:500', '1:100'])
-        self.assertEqual(combo.count(), 2)
-        self.assertEqual(combo.itemText(0), '1:500')
-        self.assertEqual(combo.itemText(1), '1:100')
-
-        w.setScale(100)
-        self.assertEqual(w.scale(), 100)
-        self.assertEqual(combo.currentText(), '1:100')
-
-        w.setScale(500)
-        self.assertEqual(w.scale(), 500)
-        self.assertEqual(combo.currentText(), '1:500')
-
-        w.setPredefinedScales([10.0, 20.0, 30.0, 500.0])
-        self.assertEqual(combo.count(), 4)
-        self.assertEqual(combo.itemText(0), '1:10')
-        self.assertEqual(combo.itemText(1), '1:20')
-        self.assertEqual(combo.itemText(2), '1:30')
-        self.assertEqual(combo.itemText(3), '1:500')
-        self.assertEqual(w.scale(), 500)
-        self.assertEqual(combo.currentText(), '1:500')
 
     def testNull(self):
         w = QgsScaleWidget()
@@ -117,30 +89,6 @@ class TestQgsScaleWidget(QgisTestCase):
 
         w.setAllowNull(False)
         self.assertFalse(w.allowNull())
-
-    def test_combo(self):
-        w = QgsScaleComboBox()
-        w.updateScales(['1:500', '1:100'])
-        self.assertEqual(w.count(), 2)
-        self.assertEqual(w.itemText(0), '1:500')
-        self.assertEqual(w.itemText(1), '1:100')
-
-        w.setScale(100)
-        self.assertEqual(w.scale(), 100)
-        self.assertEqual(w.currentText(), '1:100')
-
-        w.setScale(500)
-        self.assertEqual(w.scale(), 500)
-        self.assertEqual(w.currentText(), '1:500')
-
-        w.setPredefinedScales([10.0, 20.0, 30.0, 500.0])
-        self.assertEqual(w.count(), 4)
-        self.assertEqual(w.itemText(0), '1:10')
-        self.assertEqual(w.itemText(1), '1:20')
-        self.assertEqual(w.itemText(2), '1:30')
-        self.assertEqual(w.itemText(3), '1:500')
-        self.assertEqual(w.scale(), 500)
-        self.assertEqual(w.currentText(), '1:500')
 
 
 if __name__ == '__main__':

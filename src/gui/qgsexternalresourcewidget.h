@@ -19,7 +19,6 @@
 
 class QWebView;
 class QgsPixmapLabel;
-class QgsMediaWidget;
 class QgsMessageBar;
 class QgsExternalStorageFileWidget;
 class QgsExternalStorageFetchedContent;
@@ -75,9 +74,7 @@ class GUI_EXPORT QgsExternalResourceWidget : public QWidget
     {
       NoContent,
       Image,
-      Web,
-      Audio, // since QGIS 3.30
-      Video, // since QGIS 3.30
+      Web
     };
 
     /**
@@ -91,15 +88,7 @@ class GUI_EXPORT QgsExternalResourceWidget : public QWidget
      * \brief documentPath returns the path of the current document in the widget
      * \param type determines the type of the returned null variant if the document is not defined yet
      */
-    QVariant documentPath( QMetaType::Type type = QMetaType::Type::QString ) const;
-
-    /**
-     * \brief documentPath returns the path of the current document in the widget
-     * \param type determines the type of the returned null variant if the document is not defined yet
-     * \deprecated QGIS 3.38. Use the method with a QMetaType::Type argument instead.
-     */
-    Q_DECL_DEPRECATED QVariant documentPath( QVariant::Type type ) const SIP_DEPRECATED;
-
+    QVariant documentPath( QVariant::Type type = QVariant::String ) const;
     void setDocumentPath( const QVariant &documentPath );
 
     /**
@@ -193,19 +182,19 @@ class GUI_EXPORT QgsExternalResourceWidget : public QWidget
 
     /**
      * Set \a messageBar to report messages
-     * \since QGIS 3.22
+     * \since 3.22
      */
     void setMessageBar( QgsMessageBar *messageBar );
 
     /**
      * Returns message bar used to report messages
-     * \since QGIS 3.22
+     * \since 3.22
      */
     QgsMessageBar *messageBar() const;
 
   signals:
-    //! Emitted as soon as the current document changes
-    void valueChanged( const QString &value );
+    //! emitteed as soon as the current document changes
+    void valueChanged( const QString & );
 
   private slots:
     void loadDocument( const QString &path );
@@ -228,11 +217,9 @@ class GUI_EXPORT QgsExternalResourceWidget : public QWidget
 
     //! properties
     bool mFileWidgetVisible = true;
-
     DocumentViewerContent mDocumentViewerContent = NoContent;
     int mDocumentViewerHeight = 0;
     int mDocumentViewerWidth = 0;
-
     QgsFileWidget::RelativeStorage mRelativeStorage = QgsFileWidget::Absolute;
     QString mDefaultRoot; // configured default root path for QgsFileWidget::RelativeStorage::RelativeDefaultPath
 
@@ -243,8 +230,6 @@ class GUI_EXPORT QgsExternalResourceWidget : public QWidget
     //! This webview is used as a container to display the picture
     QWebView *mWebView = nullptr;
 #endif
-    QgsMediaWidget *mMediaWidget = nullptr;
-
     QLabel *mLoadingLabel = nullptr;
     QLabel *mErrorLabel = nullptr;
     QMovie *mLoadingMovie = nullptr;

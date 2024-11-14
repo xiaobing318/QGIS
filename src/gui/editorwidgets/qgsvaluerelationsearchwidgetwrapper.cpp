@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsvaluerelationsearchwidgetwrapper.h"
-#include "moc_qgsvaluerelationsearchwidgetwrapper.cpp"
 
 #include "qgsfields.h"
 #include "qgsvaluerelationwidgetfactory.h"
@@ -97,13 +96,13 @@ QString QgsValueRelationSearchWidgetWrapper::createExpression( QgsSearchWidgetWr
   if ( !v.isValid() )
     return QString();
 
-  switch ( v.userType() )
+  switch ( v.type() )
   {
-    case QMetaType::Type::Int:
-    case QMetaType::Type::UInt:
-    case QMetaType::Type::Double:
-    case QMetaType::Type::LongLong:
-    case QMetaType::Type::ULongLong:
+    case QVariant::Int:
+    case QVariant::UInt:
+    case QVariant::Double:
+    case QVariant::LongLong:
+    case QVariant::ULongLong:
     {
       if ( flags & EqualTo )
         return fieldName + '=' + v.toString();
@@ -222,7 +221,7 @@ void QgsValueRelationSearchWidgetWrapper::initWidget( QWidget *editor )
     mComboBox->addItem( tr( "Please Select" ), QVariant() ); // creates an invalid to allow selecting all features
     if ( config( QStringLiteral( "AllowNull" ) ).toBool() )
     {
-      mComboBox->addItem( tr( "(no selection)" ), QgsVariantUtils::createNullVariant( layer()->fields().at( mFieldIdx ).type() ) );
+      mComboBox->addItem( tr( "(no selection)" ), QVariant( layer()->fields().at( mFieldIdx ).type() ) );
     }
 
     const auto constMCache = mCache;

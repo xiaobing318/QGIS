@@ -13,11 +13,11 @@
  *                                                                         *
  ***************************************************************************/
 
+#include <QGridLayout>
 #include <QToolButton>
 #include <QObject>
 #include <QHeaderView>
 #include <QCheckBox>
-#include <QStandardItemModel>
 #include "qgis.h"
 
 Q_NOWARN_DEPRECATED_PUSH
@@ -25,26 +25,27 @@ Q_NOWARN_DEPRECATED_PUSH
 #include "qwt_dial_needle.h"
 Q_NOWARN_DEPRECATED_POP
 
+#include "qgsapplication.h"
+
 #include "qgscameracontroller.h"
-#include "qgs3dmapcanvas.h"
 #include "qgs3dnavigationwidget.h"
-#include "moc_qgs3dnavigationwidget.cpp"
+#include "qgs3daxis.h"
 
 #include <Qt3DRender/QCamera>
 
-Qgs3DNavigationWidget::Qgs3DNavigationWidget( Qgs3DMapCanvas *canvas, QWidget *parent ) : QWidget( parent )
+Qgs3DNavigationWidget::Qgs3DNavigationWidget( Qgs3DMapCanvas *parent ) : QWidget( parent )
 {
   setupUi( this );
 
-  m3DMapCanvas = canvas;
+  mParent3DMapCanvas = parent;
   // Zoom in button
   QObject::connect(
     mZoomInButton,
     &QToolButton::clicked,
-    m3DMapCanvas,
+    parent,
     [ = ]
   {
-    m3DMapCanvas->cameraController()->zoom( 5 );
+    parent->cameraController()->zoom( 5 );
   }
   );
 
@@ -52,10 +53,10 @@ Qgs3DNavigationWidget::Qgs3DNavigationWidget( Qgs3DMapCanvas *canvas, QWidget *p
   QObject::connect(
     mZoomOutButton,
     &QToolButton::clicked,
-    m3DMapCanvas,
+    parent,
     [ = ]
   {
-    m3DMapCanvas->cameraController()->zoom( -5 );
+    parent->cameraController()->zoom( -5 );
   }
   );
 
@@ -63,10 +64,10 @@ Qgs3DNavigationWidget::Qgs3DNavigationWidget( Qgs3DMapCanvas *canvas, QWidget *p
   QObject::connect(
     mTiltUpButton,
     &QToolButton::clicked,
-    m3DMapCanvas,
+    parent,
     [ = ]
   {
-    m3DMapCanvas->cameraController()->tiltUpAroundViewCenter( 1 );
+    parent->cameraController()->tiltUpAroundViewCenter( 1 );
   }
   );
 
@@ -74,10 +75,10 @@ Qgs3DNavigationWidget::Qgs3DNavigationWidget( Qgs3DMapCanvas *canvas, QWidget *p
   QObject::connect(
     mTiltDownButton,
     &QToolButton::clicked,
-    m3DMapCanvas,
+    parent,
     [ = ]
   {
-    m3DMapCanvas->cameraController()->tiltUpAroundViewCenter( -1 );
+    parent->cameraController()->tiltUpAroundViewCenter( -1 );
   }
   );
 
@@ -88,10 +89,10 @@ Qgs3DNavigationWidget::Qgs3DNavigationWidget( Qgs3DMapCanvas *canvas, QWidget *p
   QObject::connect(
     mCompass,
     &QwtDial::valueChanged,
-    m3DMapCanvas,
+    parent,
     [ = ]
   {
-    m3DMapCanvas->cameraController()->setCameraHeadingAngle( float( mCompass->value() ) );
+    parent->cameraController()->setCameraHeadingAngle( float( mCompass->value() ) );
   }
   );
 
@@ -99,10 +100,10 @@ Qgs3DNavigationWidget::Qgs3DNavigationWidget( Qgs3DMapCanvas *canvas, QWidget *p
   QObject::connect(
     mMoveUpButton,
     &QToolButton::clicked,
-    m3DMapCanvas,
+    parent,
     [ = ]
   {
-    m3DMapCanvas->cameraController()->moveView( 0, 1 );
+    parent->cameraController()->moveView( 0, 1 );
   }
   );
 
@@ -110,10 +111,10 @@ Qgs3DNavigationWidget::Qgs3DNavigationWidget( Qgs3DMapCanvas *canvas, QWidget *p
   QObject::connect(
     mMoveRightButton,
     &QToolButton::clicked,
-    m3DMapCanvas,
+    parent,
     [ = ]
   {
-    m3DMapCanvas->cameraController()->moveView( 1, 0 );
+    parent->cameraController()->moveView( 1, 0 );
   }
   );
 
@@ -121,10 +122,10 @@ Qgs3DNavigationWidget::Qgs3DNavigationWidget( Qgs3DMapCanvas *canvas, QWidget *p
   QObject::connect(
     mMoveDownButton,
     &QToolButton::clicked,
-    m3DMapCanvas,
+    parent,
     [ = ]
   {
-    m3DMapCanvas->cameraController()->moveView( 0, -1 );
+    parent->cameraController()->moveView( 0, -1 );
   }
   );
 
@@ -132,10 +133,10 @@ Qgs3DNavigationWidget::Qgs3DNavigationWidget( Qgs3DMapCanvas *canvas, QWidget *p
   QObject::connect(
     mMoveLeftButton,
     &QToolButton::clicked,
-    m3DMapCanvas,
+    parent,
     [ = ]
   {
-    m3DMapCanvas->cameraController()->moveView( -1, 0 );
+    parent->cameraController()->moveView( -1, 0 );
   }
   );
 
@@ -155,20 +156,40 @@ Qgs3DNavigationWidget::Qgs3DNavigationWidget( Qgs3DMapCanvas *canvas, QWidget *p
   mCameraInfo->horizontalHeader()->hide();
   mCameraInfo->horizontalHeader()->setSectionResizeMode( QHeaderView::ResizeMode::Stretch );
 
-  QObject::connect( mCameraInfoCheckBox, &QCheckBox::clicked, m3DMapCanvas, [ = ]( bool enabled ) { mCameraInfo->setVisible( enabled ); } );
+  QObject::connect( mCameraInfoCheckBox, &QCheckBox::clicked, parent, [ = ]( bool enabled ) { mCameraInfo->setVisible( enabled ); } );
 }
 
 void Qgs3DNavigationWidget::updateFromCamera()
 {
   // Make sure the angle is between 0 - 359
-  whileBlocking( mCompass )->setValue( fmod( m3DMapCanvas->cameraController()->yaw() + 360, 360 ) );
+  whileBlocking( mCompass )->setValue( fmod( mParent3DMapCanvas->cameraController()->yaw() + 360, 360 ) );
 
-  mCameraInfoItemModel->setData( mCameraInfoItemModel->index( 0, 1 ), QStringLiteral( "%1" ).arg( m3DMapCanvas->cameraController()->camera()->nearPlane() ) );
-  mCameraInfoItemModel->setData( mCameraInfoItemModel->index( 1, 1 ), QStringLiteral( "%1" ).arg( m3DMapCanvas->cameraController()->camera()->farPlane() ) );
-  mCameraInfoItemModel->setData( mCameraInfoItemModel->index( 2, 1 ), QStringLiteral( "%1" ).arg( m3DMapCanvas->cameraController()->camera()->position().x() ) );
-  mCameraInfoItemModel->setData( mCameraInfoItemModel->index( 3, 1 ), QStringLiteral( "%1" ).arg( m3DMapCanvas->cameraController()->camera()->position().y() ) );
-  mCameraInfoItemModel->setData( mCameraInfoItemModel->index( 4, 1 ), QStringLiteral( "%1" ).arg( m3DMapCanvas->cameraController()->camera()->position().z() ) );
-  mCameraInfoItemModel->setData( mCameraInfoItemModel->index( 5, 1 ), QStringLiteral( "%1" ).arg( m3DMapCanvas->cameraController()->lookingAtPoint().x() ) );
-  mCameraInfoItemModel->setData( mCameraInfoItemModel->index( 6, 1 ), QStringLiteral( "%1" ).arg( m3DMapCanvas->cameraController()->lookingAtPoint().y() ) );
-  mCameraInfoItemModel->setData( mCameraInfoItemModel->index( 7, 1 ), QStringLiteral( "%1" ).arg( m3DMapCanvas->cameraController()->lookingAtPoint().z() ) );
+  mCameraInfoItemModel->setData( mCameraInfoItemModel->index( 0, 1 ), QStringLiteral( "%1" ).arg( mParent3DMapCanvas->cameraController()->camera()->nearPlane() ) );
+  mCameraInfoItemModel->setData( mCameraInfoItemModel->index( 1, 1 ), QStringLiteral( "%1" ).arg( mParent3DMapCanvas->cameraController()->camera()->farPlane() ) );
+  mCameraInfoItemModel->setData( mCameraInfoItemModel->index( 2, 1 ), QStringLiteral( "%1" ).arg( mParent3DMapCanvas->cameraController()->camera()->position().x() ) );
+  mCameraInfoItemModel->setData( mCameraInfoItemModel->index( 3, 1 ), QStringLiteral( "%1" ).arg( mParent3DMapCanvas->cameraController()->camera()->position().y() ) );
+  mCameraInfoItemModel->setData( mCameraInfoItemModel->index( 4, 1 ), QStringLiteral( "%1" ).arg( mParent3DMapCanvas->cameraController()->camera()->position().z() ) );
+  mCameraInfoItemModel->setData( mCameraInfoItemModel->index( 5, 1 ), QStringLiteral( "%1" ).arg( mParent3DMapCanvas->cameraController()->lookingAtPoint().x() ) );
+  mCameraInfoItemModel->setData( mCameraInfoItemModel->index( 6, 1 ), QStringLiteral( "%1" ).arg( mParent3DMapCanvas->cameraController()->lookingAtPoint().y() ) );
+  mCameraInfoItemModel->setData( mCameraInfoItemModel->index( 7, 1 ), QStringLiteral( "%1" ).arg( mParent3DMapCanvas->cameraController()->lookingAtPoint().z() ) );
+}
+
+void Qgs3DNavigationWidget::resizeEvent( QResizeEvent *ev )
+{
+  QWidget::resizeEvent( ev );
+
+  QSize size = ev->size();
+  emit sizeChanged( size );
+}
+
+void Qgs3DNavigationWidget::hideEvent( QHideEvent *ev )
+{
+  QWidget::hideEvent( ev );
+  emit sizeChanged( QSize( 0, 0 ) );
+}
+
+void Qgs3DNavigationWidget::showEvent( QShowEvent *ev )
+{
+  QWidget::showEvent( ev );
+  emit sizeChanged( size() );
 }

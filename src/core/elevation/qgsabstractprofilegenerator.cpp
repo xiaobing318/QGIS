@@ -59,11 +59,6 @@ QgsAbstractProfileGenerator::~QgsAbstractProfileGenerator() = default;
 
 QgsAbstractProfileResults::~QgsAbstractProfileResults() = default;
 
-QVector< QgsAbstractProfileResults::Feature > QgsAbstractProfileResults::asFeatures( Qgis::ProfileExportType, QgsFeedback * ) const
-{
-  return {};
-}
-
 QgsProfileSnapResult QgsAbstractProfileResults::snapPoint( const QgsProfilePoint &, const QgsProfileSnapContext & )
 {
   return QgsProfileSnapResult();
@@ -91,36 +86,36 @@ void QgsAbstractProfileResults::copyPropertiesFromGenerator( const QgsAbstractPr
 #define POINTS_TO_MM 2.83464567
 #define INCH_TO_MM 25.4
 
-double QgsProfileGenerationContext::convertDistanceToPixels( double size, Qgis::RenderUnit unit ) const
+double QgsProfileGenerationContext::convertDistanceToPixels( double size, QgsUnitTypes::RenderUnit unit ) const
 {
   double conversionFactor = 1.0;
   const double pixelsPerMillimeter = mDpi / 25.4;
   switch ( unit )
   {
-    case Qgis::RenderUnit::Millimeters:
+    case QgsUnitTypes::RenderMillimeters:
       conversionFactor = pixelsPerMillimeter;
       break;
 
-    case Qgis::RenderUnit::Points:
+    case QgsUnitTypes::RenderPoints:
       conversionFactor = pixelsPerMillimeter / POINTS_TO_MM;
       break;
 
-    case Qgis::RenderUnit::Inches:
+    case QgsUnitTypes::RenderInches:
       conversionFactor = pixelsPerMillimeter * INCH_TO_MM;
       break;
 
-    case Qgis::RenderUnit::MapUnits:
+    case QgsUnitTypes::RenderMapUnits:
     {
       conversionFactor = 1.0 / mMapUnitsPerDistancePixel;
       break;
     }
-    case Qgis::RenderUnit::Pixels:
+    case QgsUnitTypes::RenderPixels:
       conversionFactor = 1.0;
       break;
 
-    case Qgis::RenderUnit::Unknown:
-    case Qgis::RenderUnit::Percentage:
-    case Qgis::RenderUnit::MetersInMapUnits:
+    case QgsUnitTypes::RenderUnknownUnit:
+    case QgsUnitTypes::RenderPercentage:
+    case QgsUnitTypes::RenderMetersInMapUnits:
       //not supported
       conversionFactor = 1.0;
       break;

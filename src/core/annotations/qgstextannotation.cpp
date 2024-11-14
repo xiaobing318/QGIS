@@ -16,7 +16,6 @@ email                : marco dot hugentobler at hugis dot net
  ***************************************************************************/
 
 #include "qgstextannotation.h"
-#include "moc_qgstextannotation.cpp"
 #include "qgsrendercontext.h"
 #include <QDomDocument>
 #include <QPainter>
@@ -53,7 +52,7 @@ void QgsTextAnnotation::setDocument( const QTextDocument *doc )
 void QgsTextAnnotation::renderAnnotation( QgsRenderContext &context, QSizeF size ) const
 {
   QPainter *painter = context.painter();
-  if ( !mDocument || ! painter || ( context.feedback() && context.feedback()->isCanceled() ) )
+  if ( !mDocument )
   {
     return;
   }

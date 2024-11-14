@@ -3,16 +3,13 @@
  *                                                                      *
  * src/core/symbology/qgscolorbrewerpalette.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
 
 class QgsColorBrewerPalette
 {
-%Docstring(signature="appended")
-Contains utility functions for working with Color Brewer color schemes.
-%End
 
 %TypeHeaderCode
 #include "qgscolorbrewerpalette.h"
@@ -33,5 +30,5 @@ Contains utility functions for working with Color Brewer color schemes.
  *                                                                      *
  * src/core/symbology/qgscolorbrewerpalette.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

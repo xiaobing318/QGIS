@@ -25,7 +25,6 @@
 #include <QNetworkReply>
 #include <QFile>
 #include <QTemporaryFile>
-#include <QPointer>
 
 #include "qgis_core.h"
 #include "qgstaskmanager.h"
@@ -118,7 +117,7 @@ class CORE_EXPORT QgsFetchedContent : public QObject
     QString mUrl;
     QTemporaryFile *mFile = nullptr;
     QString mFilePath;
-    QPointer< QgsNetworkContentFetcherTask > mFetchingTask;
+    QgsNetworkContentFetcherTask *mFetchingTask = nullptr;
     ContentStatus mStatus = NotStarted;
     QNetworkReply::NetworkError mError = QNetworkReply::NoError;
     QString mAuthConfig;

@@ -17,7 +17,7 @@
 #define QGSOPTIONAL_H
 
 #include "qgis_core.h"
-#include "qgis_sip.h"
+
 
 /**
  * \ingroup core
@@ -30,6 +30,7 @@
  * \note For Python you need to use implementations for specific template classes
  * \note Not available in Python bindings (although SIP file is present for specific implementations).
  *
+ * \since QGIS 3.0
  */
 template<typename T>
 class CORE_EXPORT QgsOptional
@@ -65,6 +66,7 @@ class CORE_EXPORT QgsOptional
      * This will compare the enabled flag and call the == operator
      * of the contained class.
      *
+     * \since QGIS 3.0
      */
     bool operator== ( const QgsOptional<T> &other ) const
     {
@@ -74,7 +76,7 @@ class CORE_EXPORT QgsOptional
     /**
      * Boolean operator. Will return TRUE if this optional is enabled.
      */
-    explicit operator bool() const SIP_SKIP
+    operator bool() const
     {
       return mEnabled;
     }
@@ -82,6 +84,7 @@ class CORE_EXPORT QgsOptional
     /**
      * Check if this optional is enabled
      *
+     * \since QGIS 3.0
      */
     bool enabled() const
     {
@@ -91,6 +94,7 @@ class CORE_EXPORT QgsOptional
     /**
      * Set if this optional is enabled
      *
+     * \since QGIS 3.0
      */
     void setEnabled( bool enabled )
     {
@@ -100,6 +104,7 @@ class CORE_EXPORT QgsOptional
     /**
      * Access the payload data
      *
+     * \since QGIS 3.0
      */
     const T *operator->() const
     {
@@ -109,6 +114,7 @@ class CORE_EXPORT QgsOptional
     /**
      * Access the payload data
      *
+     * \since QGIS 3.0
      */
     T data() const
     {
@@ -118,6 +124,7 @@ class CORE_EXPORT QgsOptional
     /**
      * Set the payload data
      *
+     * \since QGIS 3.0
      */
     void setData( const T &data )
     {

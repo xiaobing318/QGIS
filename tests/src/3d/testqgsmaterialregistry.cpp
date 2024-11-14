@@ -15,7 +15,6 @@
  *                                                                         *
  ***************************************************************************/
 
-#include "qgsmaterial.h"
 #include "qgsmaterialregistry.h"
 #include "qgsabstractmaterialsettings.h"
 
@@ -34,20 +33,15 @@ class DummyMaterialSettings : public QgsAbstractMaterialSettings
     static bool supportsTechnique( QgsMaterialSettingsRenderingTechnique ) { return true; }
     void readXml( const QDomElement &, const QgsReadWriteContext & ) override { }
     void writeXml( QDomElement &, const QgsReadWriteContext & ) const override {}
-    void addParametersToEffect( Qt3DRender::QEffect *, const QgsMaterialContext & ) const override {}
-    QgsMaterial *toMaterial( QgsMaterialSettingsRenderingTechnique, const QgsMaterialContext & ) const override { return nullptr; }
+    void addParametersToEffect( Qt3DRender::QEffect * ) const override {}
+    Qt3DRender::QMaterial *toMaterial( QgsMaterialSettingsRenderingTechnique, const QgsMaterialContext & ) const override { return nullptr; }
     QMap<QString, QString> toExportParameters() const override { return QMap<QString, QString>(); }
     QByteArray dataDefinedVertexColorsAsByte( const QgsExpressionContext & ) const override {return QByteArray();}
 };
 
-class TestQgsMaterialRegistry : public QgsTest
+class TestQgsMaterialRegistry : public QObject
 {
     Q_OBJECT
-
-  public:
-    TestQgsMaterialRegistry()
-      : QgsTest( QStringLiteral( "3D Material Registry Tests" ), QStringLiteral( "3d" ) )
-    {}
 
   private slots:
     void initTestCase();

@@ -141,7 +141,7 @@ void TestQgsVectorFileWriter::initTestCase()
   //create some objects that will be used in all tests...
 
   mEncoding = QStringLiteral( "UTF-8" );
-  const QgsField myField1( QStringLiteral( "Field1" ), QMetaType::Type::QString, QStringLiteral( "String" ), 10, 0, QStringLiteral( "Field 1 comment" ) );
+  const QgsField myField1( QStringLiteral( "Field1" ), QVariant::String, QStringLiteral( "String" ), 10, 0, QStringLiteral( "Field 1 comment" ) );
   mFields.append( myField1 );
   mCRS = QgsCoordinateReferenceSystem( geoWkt() );
   mPoint1 = QgsPointXY( 10.0, 10.0 );
@@ -168,7 +168,7 @@ void TestQgsVectorFileWriter::createPoint()
 
   QgsVectorFileWriter::SaveVectorOptions saveOptions;
   saveOptions.fileEncoding = mEncoding;
-  std::unique_ptr< QgsVectorFileWriter > writer( QgsVectorFileWriter::create( myFileName, mFields, Qgis::WkbType::Point, mCRS, QgsCoordinateTransformContext(), saveOptions ) );
+  std::unique_ptr< QgsVectorFileWriter > writer( QgsVectorFileWriter::create( myFileName, mFields, QgsWkbTypes::Point, mCRS, QgsCoordinateTransformContext(), saveOptions ) );
   //
   // Create a feature
   //
@@ -210,7 +210,7 @@ void TestQgsVectorFileWriter::createLine()
 
   QgsVectorFileWriter::SaveVectorOptions saveOptions;
   saveOptions.fileEncoding = mEncoding;
-  std::unique_ptr< QgsVectorFileWriter > writer( QgsVectorFileWriter::create( myFileName, mFields, Qgis::WkbType::LineString, mCRS, QgsCoordinateTransformContext(), saveOptions ) );
+  std::unique_ptr< QgsVectorFileWriter > writer( QgsVectorFileWriter::create( myFileName, mFields, QgsWkbTypes::LineString, mCRS, QgsCoordinateTransformContext(), saveOptions ) );
   //
   // Create a feature
   //
@@ -254,7 +254,7 @@ void TestQgsVectorFileWriter::createPolygon()
 
   QgsVectorFileWriter::SaveVectorOptions saveOptions;
   saveOptions.fileEncoding = mEncoding;
-  std::unique_ptr< QgsVectorFileWriter > writer( QgsVectorFileWriter::create( myFileName, mFields, Qgis::WkbType::Polygon, mCRS, QgsCoordinateTransformContext(), saveOptions ) );
+  std::unique_ptr< QgsVectorFileWriter > writer( QgsVectorFileWriter::create( myFileName, mFields, QgsWkbTypes::Polygon, mCRS, QgsCoordinateTransformContext(), saveOptions ) );
   //
   // Create a polygon feature
   //
@@ -301,7 +301,7 @@ void TestQgsVectorFileWriter::polygonGridTest()
 
   QgsVectorFileWriter::SaveVectorOptions saveOptions;
   saveOptions.fileEncoding = mEncoding;
-  std::unique_ptr< QgsVectorFileWriter > writer( QgsVectorFileWriter::create( myFileName, mFields, Qgis::WkbType::Polygon, mCRS, QgsCoordinateTransformContext(), saveOptions ) );
+  std::unique_ptr< QgsVectorFileWriter > writer( QgsVectorFileWriter::create( myFileName, mFields, QgsWkbTypes::Polygon, mCRS, QgsCoordinateTransformContext(), saveOptions ) );
   const double myInterval = 5.0;
   for ( double i = -180.0; i <= 180.0; i += myInterval )
   {
@@ -364,7 +364,7 @@ void TestQgsVectorFileWriter::projectedPlygonGridTest()
 
   QgsVectorFileWriter::SaveVectorOptions saveOptions;
   saveOptions.fileEncoding = mEncoding;
-  std::unique_ptr< QgsVectorFileWriter > writer( QgsVectorFileWriter::create( myFileName, mFields, Qgis::WkbType::Polygon, mCRS, QgsCoordinateTransformContext(), saveOptions ) );
+  std::unique_ptr< QgsVectorFileWriter > writer( QgsVectorFileWriter::create( myFileName, mFields, QgsWkbTypes::Polygon, mCRS, QgsCoordinateTransformContext(), saveOptions ) );
   const double myInterval = 1000.0; //1km2
   for ( double i = 0.0; i <= 10000.0; i += myInterval ) //10km
   {
@@ -416,7 +416,7 @@ void TestQgsVectorFileWriter::regression1141()
 {
 #if defined(linux)
   const char *cs = nl_langinfo( CODESET );
-  QgsDebugMsgLevel( QStringLiteral( "CODESET:%1" ).arg( cs ? cs : "unset" ), 1 );
+  QgsDebugMsg( QStringLiteral( "CODESET:%1" ).arg( cs ? cs : "unset" ) );
   if ( !cs || strcmp( cs, "UTF-8" ) != 0 )
   {
     QSKIP( "This test requires a UTF-8 locale", SkipSingle );
@@ -426,7 +426,7 @@ void TestQgsVectorFileWriter::regression1141()
 
   //create some objects that will be used in all tests...
   const QString encoding = QStringLiteral( "UTF-8" );
-  const QgsField myField( QStringLiteral( "ąęćń" ), QMetaType::Type::Int, QStringLiteral( "int" ), 10, 0, QStringLiteral( "Value on lon" ) );
+  const QgsField myField( QStringLiteral( "ąęćń" ), QVariant::Int, QStringLiteral( "int" ), 10, 0, QStringLiteral( "Value on lon" ) );
   QgsFields fields;
   fields.append( myField );
   QgsCoordinateReferenceSystem crs;
@@ -441,7 +441,7 @@ void TestQgsVectorFileWriter::regression1141()
   {
     QgsVectorFileWriter::SaveVectorOptions saveOptions;
     saveOptions.fileEncoding = encoding;
-    std::unique_ptr< QgsVectorFileWriter > writer( QgsVectorFileWriter::create( fileName, fields, Qgis::WkbType::Point, crs, QgsCoordinateTransformContext(), saveOptions ) );
+    std::unique_ptr< QgsVectorFileWriter > writer( QgsVectorFileWriter::create( fileName, fields, QgsWkbTypes::Point, crs, QgsCoordinateTransformContext(), saveOptions ) );
 
     const QgsPointXY myPoint = QgsPointXY( 10.0, 10.0 );
     const QgsGeometry mypPointGeometry = QgsGeometry::fromPointXY( myPoint );
@@ -546,10 +546,10 @@ void TestQgsVectorFileWriter::testExportArrayToGpkg()
   tmpFile.open();
   const QString fileName( tmpFile.fileName( ) );
   QgsVectorLayer vl( "Point?field=arrayfield:integerlist&field=arrayfield2:stringlist", "test", "memory" );
-  QCOMPARE( vl.fields().at( 0 ).type(), QMetaType::Type::QVariantList );
-  QCOMPARE( vl.fields().at( 0 ).subType(), QMetaType::Type::Int );
-  QCOMPARE( vl.fields().at( 1 ).type(), QMetaType::Type::QStringList );
-  QCOMPARE( vl.fields().at( 1 ).subType(), QMetaType::Type::QString );
+  QCOMPARE( vl.fields().at( 0 ).type(), QVariant::List );
+  QCOMPARE( vl.fields().at( 0 ).subType(), QVariant::Int );
+  QCOMPARE( vl.fields().at( 1 ).type(), QVariant::StringList );
+  QCOMPARE( vl.fields().at( 1 ).subType(), QVariant::String );
   QgsFeature f { vl.fields() };
   f.setAttribute( 0, QVariantList() << 1 << 2 << 3 );
   f.setAttribute( 1, QStringList() << "a" << "b" << "c" );
@@ -571,11 +571,11 @@ void TestQgsVectorFileWriter::testExportArrayToGpkg()
   const QgsVectorLayer vl2( QStringLiteral( "%1|layername=test" ).arg( fileName ), "src_test", "ogr" );
   QVERIFY( vl2.isValid() );
   QCOMPARE( vl2.featureCount(), 1L );
-  QCOMPARE( vl2.fields().at( 1 ).type(), QMetaType::Type::QVariantMap );
-  QCOMPARE( vl2.fields().at( 1 ).subType(), QMetaType::Type::QString );
+  QCOMPARE( vl2.fields().at( 1 ).type(), QVariant::Map );
+  QCOMPARE( vl2.fields().at( 1 ).subType(), QVariant::String );
   QCOMPARE( vl2.fields().at( 1 ).typeName(), QStringLiteral( "JSON" ) );
-  QCOMPARE( vl2.fields().at( 2 ).type(), QMetaType::Type::QVariantMap );
-  QCOMPARE( vl2.fields().at( 2 ).subType(), QMetaType::Type::QString );
+  QCOMPARE( vl2.fields().at( 2 ).type(), QVariant::Map );
+  QCOMPARE( vl2.fields().at( 2 ).subType(), QVariant::String );
   QCOMPARE( vl2.fields().at( 2 ).typeName(), QStringLiteral( "JSON" ) );
   QCOMPARE( vl2.getFeature( 1 ).attribute( 1 ).toList(), QVariantList() << 1 << 2 << 3 );
   QCOMPARE( vl2.getFeature( 1 ).attribute( 2 ).toStringList(), QStringList() << "a" << "b" << "c" );
@@ -716,7 +716,7 @@ void TestQgsVectorFileWriter::testExportToShapeNanValuesForZ()
 
   QgsVectorFileWriter::SaveVectorOptions saveOptions;
   saveOptions.fileEncoding = mEncoding;
-  std::unique_ptr< QgsVectorFileWriter > writer( QgsVectorFileWriter::create( myFileName, mFields, Qgis::WkbType::LineStringZ, mCRS, QgsCoordinateTransformContext(), saveOptions ) );
+  std::unique_ptr< QgsVectorFileWriter > writer( QgsVectorFileWriter::create( myFileName, mFields, QgsWkbTypes::LineStringZ, mCRS, QgsCoordinateTransformContext(), saveOptions ) );
   //
   // Create a feature
   //

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>849</width>
-    <height>765</height>
+    <width>825</width>
+    <height>730</height>
    </rect>
   </property>
   <property name="minimumSize">
@@ -21,7 +21,7 @@
   </property>
   <property name="windowIcon">
    <iconset resource="../../images/images.qrc">
-    <normaloff>:/images/icons/qgis-icon-16x16.png</normaloff>:/images/icons/qgis-icon-16x16.png</iconset>
+    <normaloff>:/images/icons/qgis-icon-16x16.svg</normaloff>:/images/icons/qgis-icon-16x16.svg</iconset>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_26">
    <item>
@@ -363,7 +363,7 @@
           </sizepolicy>
          </property>
          <property name="currentIndex">
-          <number>11</number>
+          <number>0</number>
          </property>
          <widget class="QWidget" name="mOptsPage_Information">
           <layout class="QVBoxLayout" name="verticalLayout_5">
@@ -439,8 +439,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>336</width>
-                <height>577</height>
+                <width>274</width>
+                <height>462</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_9">
@@ -543,7 +543,7 @@
                  <property name="checkable">
                   <bool>false</bool>
                  </property>
-                 <property name="syncGroup">
+                 <property name="syncGroup" stdset="0">
                   <string notr="true">vectorgeneral</string>
                  </property>
                  <layout class="QVBoxLayout" name="verticalLayout_28">
@@ -551,7 +551,7 @@
                    <number>6</number>
                   </property>
                   <item>
-                   <widget class="QgsProjectionSelectionWidget" name="mCrsSelector">
+                   <widget class="QgsProjectionSelectionWidget" name="mCrsSelector" native="true">
                     <property name="focusPolicy">
                      <enum>Qt::StrongFocus</enum>
                     </property>
@@ -598,7 +598,7 @@
                  <property name="checkable">
                   <bool>false</bool>
                  </property>
-                 <property name="syncGroup">
+                 <property name="syncGroup" stdset="0">
                   <string notr="true">vectorgeneral</string>
                  </property>
                  <layout class="QVBoxLayout" name="verticalLayout_31">
@@ -950,7 +950,7 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>104</width>
+                <width>116</width>
                 <height>102</height>
                </rect>
               </property>
@@ -1095,7 +1095,7 @@
                 <property name="checkable">
                  <bool>false</bool>
                 </property>
-                <property name="syncGroup">
+                <property name="syncGroup" stdset="0">
                  <string notr="true">vectormeta</string>
                 </property>
                 <layout class="QGridLayout" name="gridLayout_11">
@@ -1429,7 +1429,7 @@
                 </property>
                 <layout class="QGridLayout" name="gridLayout_50">
                  <item row="0" column="0">
-                  <widget class="QgsFieldExpressionWidget" name="mDisplayExpressionWidget">
+                  <widget class="QgsFieldExpressionWidget" name="mDisplayExpressionWidget" native="true">
                    <property name="focusPolicy">
                     <enum>Qt::StrongFocus</enum>
                    </property>
@@ -1449,20 +1449,7 @@
                </widget>
               </item>
               <item row="1" column="0">
-               <widget class="QCheckBox" name="mEnableMapTips">
-                <property name="toolTip">
-                 <string>Indicates whether map tips are displayed for this layer or not</string>
-                </property>
-                <property name="text">
-                 <string>Enable map tips</string>
-                </property>
-                <property name="checked">
-                 <bool>true</bool>
-                </property>
-               </widget>
-              </item>
-              <item row="2" column="0">
-               <widget class="QGroupBox" name="mHtmlMapTipGroupBox">
+               <widget class="QGroupBox" name="groupBox_2">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Preferred" vsizetype="MinimumExpanding">
                   <horstretch>0</horstretch>
@@ -1472,134 +1459,50 @@
                 <property name="title">
                  <string>HTML Map Tip</string>
                 </property>
-                <layout class="QVBoxLayout" name="verticalLayout_35">
-                 <item>
-                  <widget class="QSplitter" name="mMapTipSplitter">
+                <layout class="QGridLayout" name="gridLayout_8">
+                 <item row="1" column="2">
+                  <widget class="QPushButton" name="mInsertExpressionButton">
                    <property name="sizePolicy">
-                    <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                    <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                      <horstretch>0</horstretch>
                      <verstretch>0</verstretch>
                     </sizepolicy>
                    </property>
-                   <property name="orientation">
-                    <enum>Qt::Horizontal</enum>
+                   <property name="toolTip">
+                    <string>Inserts the selected field or expression into the map tip</string>
                    </property>
-                   <widget class="QWidget" name="mMapTipWidgetContainer" native="true">
-                    <property name="sizePolicy">
-                     <sizepolicy hsizetype="Preferred" vsizetype="MinimumExpanding">
-                      <horstretch>0</horstretch>
-                      <verstretch>0</verstretch>
-                     </sizepolicy>
-                    </property>
-                    <property name="minimumSize">
-                     <size>
-                      <width>100</width>
-                      <height>100</height>
-                     </size>
-                    </property>
-                    <layout class="QVBoxLayout" name="verticalLayout_36">
-                     <property name="leftMargin">
-                      <number>0</number>
-                     </property>
-                     <property name="topMargin">
-                      <number>0</number>
-                     </property>
-                     <property name="rightMargin">
-                      <number>0</number>
-                     </property>
-                     <property name="bottomMargin">
-                      <number>0</number>
-                     </property>
-                     <item>
-                      <widget class="QgsCodeEditorHTML" name="mMapTipWidget" native="true">
-                       <property name="sizePolicy">
-                        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
-                         <horstretch>0</horstretch>
-                         <verstretch>0</verstretch>
-                        </sizepolicy>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <layout class="QHBoxLayout" name="horizontalLayout_3">
-                       <property name="spacing">
-                        <number>2</number>
-                       </property>
-                       <item>
-                        <widget class="QgsFieldComboBox" name="mMapTipFieldComboBox">
-                         <property name="sizePolicy">
-                          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-                           <horstretch>0</horstretch>
-                           <verstretch>0</verstretch>
-                          </sizepolicy>
-                         </property>
-                         <property name="allowEmptyFieldName">
-                          <bool>true</bool>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <widget class="QPushButton" name="mMapTipInsertFieldButton">
-                         <property name="sizePolicy">
-                          <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                           <horstretch>0</horstretch>
-                           <verstretch>0</verstretch>
-                          </sizepolicy>
-                         </property>
-                         <property name="toolTip">
-                          <string>Inserts the selected field into the map tip</string>
-                         </property>
-                         <property name="text">
-                          <string/>
-                         </property>
-                         <property name="icon">
-                          <iconset resource="../../images/images.qrc">
-                           <normaloff>:/images/themes/default/symbologyAdd.svg</normaloff>:/images/themes/default/symbologyAdd.svg</iconset>
-                         </property>
-                        </widget>
-                       </item>
-                       <item>
-                        <spacer name="horizontalSpacer_4">
-                         <property name="orientation">
-                          <enum>Qt::Horizontal</enum>
-                         </property>
-                         <property name="sizeHint" stdset="0">
-                          <size>
-                           <width>40</width>
-                           <height>20</height>
-                          </size>
-                         </property>
-                        </spacer>
-                       </item>
-                       <item>
-                        <widget class="QPushButton" name="mMapTipInsertExpressionButton">
-                         <property name="text">
-                          <string>Insert/Edit Expression</string>
-                         </property>
-                         <property name="icon">
-                          <iconset resource="../../images/images.qrc">
-                           <normaloff>:/images/themes/default/mIconExpression.svg</normaloff>:/images/themes/default/mIconExpression.svg</iconset>
-                         </property>
-                        </widget>
-                       </item>
-                      </layout>
-                     </item>
-                    </layout>
-                   </widget>
-                   <widget class="QGroupBox" name="mMapTipPreviewContainer">
-                    <property name="minimumSize">
-                     <size>
-                      <width>100</width>
-                      <height>100</height>
-                     </size>
-                    </property>
-                    <property name="title">
-                     <string>Preview</string>
-                    </property>
-                   </widget>
+                   <property name="text">
+                    <string>Insert</string>
+                   </property>
                   </widget>
                  </item>
-                 <item>
+                 <item row="0" column="0" colspan="3">
+                  <widget class="QgsCodeEditorHTML" name="mMapTipWidget" native="true">
+                   <property name="sizePolicy">
+                    <sizepolicy hsizetype="Preferred" vsizetype="MinimumExpanding">
+                     <horstretch>0</horstretch>
+                     <verstretch>0</verstretch>
+                    </sizepolicy>
+                   </property>
+                   <property name="minimumSize">
+                    <size>
+                     <width>0</width>
+                     <height>100</height>
+                    </size>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="1" column="0" colspan="2">
+                  <widget class="QgsFieldExpressionWidget" name="mMapTipExpressionFieldWidget" native="true">
+                   <property name="focusPolicy">
+                    <enum>Qt::StrongFocus</enum>
+                   </property>
+                   <property name="toolTip">
+                    <string>The valid attribute names for this layer</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="3" column="0" colspan="3">
                   <widget class="QLabel" name="labelMapTipInfo">
                    <property name="text">
                     <string>The HTML map tips are shown when moving mouse over features of the currently selected layer when the 'Show Map Tips' action is toggled on. If no HTML code is set, the feature display name is used.</string>
@@ -1644,8 +1547,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>703</width>
-                <height>726</height>
+                <width>613</width>
+                <height>455</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_32">
@@ -1671,7 +1574,7 @@
                  </property>
                  <layout class="QGridLayout" name="gridLayout_6">
                   <item row="0" column="0">
-                   <widget class="QgsScaleRangeWidget" name="mScaleRangeWidget">
+                   <widget class="QgsScaleRangeWidget" name="mScaleRangeWidget" native="true">
                     <property name="focusPolicy">
                      <enum>Qt::StrongFocus</enum>
                     </property>
@@ -1808,7 +1711,7 @@
                  <property name="checkable">
                   <bool>true</bool>
                  </property>
-                 <property name="syncGroup">
+                 <property name="syncGroup" stdset="0">
                   <string notr="true">vectorgeneral</string>
                  </property>
                  <layout class="QGridLayout" name="gridLayout">
@@ -1827,7 +1730,7 @@
                    </widget>
                   </item>
                   <item row="2" column="1">
-                   <widget class="QgsScaleWidget" name="mReferenceScaleWidget">
+                   <widget class="QgsScaleWidget" name="mReferenceScaleWidget" native="true">
                     <property name="focusPolicy">
                      <enum>Qt::StrongFocus</enum>
                     </property>
@@ -1850,68 +1753,6 @@
                 </widget>
                </item>
                <item>
-                <widget class="QgsCollapsibleGroupBox" name="groupBox_2">
-                 <property name="title">
-                  <string>Selections</string>
-                 </property>
-                 <layout class="QGridLayout" name="gridLayout_9">
-                  <item row="3" column="0">
-                   <widget class="QRadioButton" name="mRadioOverrideSelectionSymbol">
-                    <property name="text">
-                     <string>Override symbol for selected features</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="0">
-                   <widget class="QRadioButton" name="mRadioDefaultSelectionColor">
-                    <property name="text">
-                     <string>Use default selection color</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="1" column="0">
-                   <widget class="QRadioButton" name="mRadioOverrideSelectionColor">
-                    <property name="text">
-                     <string>Override color for selected features</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="1" column="1">
-                   <widget class="QgsColorButton" name="mSelectionColorButton">
-                    <property name="sizePolicy">
-                     <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                      <horstretch>0</horstretch>
-                      <verstretch>0</verstretch>
-                     </sizepolicy>
-                    </property>
-                    <property name="minimumSize">
-                     <size>
-                      <width>100</width>
-                      <height>0</height>
-                     </size>
-                    </property>
-                    <property name="text">
-                     <string/>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="3" column="1">
-                   <widget class="QgsSymbolButton" name="mSelectionSymbolButton">
-                    <property name="sizePolicy">
-                     <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
-                      <horstretch>0</horstretch>
-                      <verstretch>0</verstretch>
-                     </sizepolicy>
-                    </property>
-                    <property name="text">
-                     <string>Change…</string>
-                    </property>
-                   </widget>
-                  </item>
-                 </layout>
-                </widget>
-               </item>
-               <item>
                 <widget class="QCheckBox" name="mForceRasterCheckBox">
                  <property name="text">
                   <string>Force layer to render as a raster (may result in smaller export file sizes)</string>
@@ -1919,11 +1760,50 @@
                 </widget>
                </item>
                <item>
-                <widget class="QgsMapLayerRefreshSettingsWidget" name="mRefreshSettingsWidget" native="true">
-                 <property name="focusPolicy">
-                  <enum>Qt::StrongFocus</enum>
-                 </property>
-                </widget>
+                <layout class="QHBoxLayout" name="horizontalLayout_3">
+                 <item>
+                  <widget class="QCheckBox" name="mRefreshLayerCheckBox">
+                   <property name="text">
+                    <string>Refresh layer at interval (seconds)</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <widget class="QgsDoubleSpinBox" name="mRefreshLayerIntervalSpinBox">
+                   <property name="toolTip">
+                    <string>Lower values result in more data refreshing. Canvas updates are deferred in order to avoid refreshing multiple times if more than one layer has an auto update interval set.</string>
+                   </property>
+                   <property name="decimals">
+                    <number>2</number>
+                   </property>
+                   <property name="minimum">
+                    <double>0.000000000000000</double>
+                   </property>
+                   <property name="maximum">
+                    <double>100000000000000000000.000000000000000</double>
+                   </property>
+                   <property name="singleStep">
+                    <double>5.000000000000000</double>
+                   </property>
+                   <property name="value">
+                    <double>10.000000000000000</double>
+                   </property>
+                  </widget>
+                 </item>
+                 <item>
+                  <spacer name="horizontalSpacer_4">
+                   <property name="orientation">
+                    <enum>Qt::Horizontal</enum>
+                   </property>
+                   <property name="sizeHint" stdset="0">
+                    <size>
+                     <width>40</width>
+                     <height>20</height>
+                    </size>
+                   </property>
+                  </spacer>
+                 </item>
+                </layout>
                </item>
                <item>
                 <layout class="QHBoxLayout" name="horizontalLayout_14">
@@ -2226,8 +2106,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>374</width>
-                <height>813</height>
+                <width>308</width>
+                <height>718</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_13">
@@ -2248,7 +2128,7 @@
                  <property name="title">
                   <string>Description</string>
                  </property>
-                 <property name="syncGroup">
+                 <property name="syncGroup" stdset="0">
                   <string notr="true">vectormeta</string>
                  </property>
                  <layout class="QGridLayout" name="gridLayout_5">
@@ -2259,27 +2139,7 @@
                     </property>
                    </widget>
                   </item>
-                  <item row="2" column="0">
-                   <widget class="QLabel" name="mLayerOptWfsTitleLabel">
-                    <property name="text">
-                     <string>WFS title</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="2" column="1">
-                   <widget class="QLineEdit" name="mLayerOptWfsTitleLineEdit">
-                    <property name="toolTip">
-                     <string>The alternative title is for the benefit of humans to identify the WFS layer if the original title is only helpful with the WMS grouping.</string>
-                    </property>
-                    <property name="text">
-                     <string/>
-                    </property>
-                    <property name="placeholderText">
-                     <string>Optional alternative title for the layer for use with WFS</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="6" column="1">
+                  <item row="5" column="1">
                    <widget class="QLineEdit" name="mLayerKeywordListLineEdit">
                     <property name="toolTip">
                      <string>List of keywords separated by comma to help catalog searching.</string>
@@ -2289,7 +2149,7 @@
                     </property>
                    </widget>
                   </item>
-                  <item row="7" column="1">
+                  <item row="6" column="1">
                    <layout class="QHBoxLayout" name="horizontalLayout_7">
                     <item>
                      <widget class="QLineEdit" name="mLayerDataUrlLineEdit">
@@ -2329,7 +2189,7 @@
                     </item>
                    </layout>
                   </item>
-                  <item row="6" column="0">
+                  <item row="5" column="0">
                    <widget class="QLabel" name="mLayerKeywordListLabel">
                     <property name="text">
                      <string>Keyword list</string>
@@ -2369,14 +2229,14 @@
                     </property>
                    </widget>
                   </item>
-                  <item row="4" column="0">
+                  <item row="3" column="0">
                    <widget class="QLabel" name="mLayerAbstractLabel">
                     <property name="text">
                      <string>Abstract</string>
                     </property>
                    </widget>
                   </item>
-                  <item row="4" column="1">
+                  <item row="3" column="1">
                    <widget class="QPlainTextEdit" name="mLayerAbstractTextEdit">
                     <property name="sizePolicy">
                      <sizepolicy hsizetype="Expanding" vsizetype="Minimum">
@@ -2395,7 +2255,7 @@
                     </property>
                    </widget>
                   </item>
-                  <item row="7" column="0">
+                  <item row="6" column="0">
                    <widget class="QLabel" name="mLayerDataUrlLabel">
                     <property name="text">
                      <string>Data URL</string>
@@ -2410,7 +2270,7 @@
                  <property name="title">
                   <string>Attribution</string>
                  </property>
-                 <property name="syncGroup">
+                 <property name="syncGroup" stdset="0">
                   <string notr="true">vectormeta</string>
                  </property>
                  <layout class="QGridLayout" name="gridLayout_7">
@@ -2710,26 +2570,9 @@
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>QgsColorButton</class>
-   <extends>QToolButton</extends>
-   <header>qgscolorbutton.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
    <class>QgsDoubleSpinBox</class>
    <extends>QDoubleSpinBox</extends>
    <header>qgsdoublespinbox.h</header>
-  </customwidget>
-  <customwidget>
-   <class>QgsFieldComboBox</class>
-   <extends>QComboBox</extends>
-   <header>qgsfieldcombobox.h</header>
-  </customwidget>
-  <customwidget>
-   <class>QgsFieldExpressionWidget</class>
-   <extends>QWidget</extends>
-   <header>qgsfieldexpressionwidget.h</header>
-   <container>1</container>
   </customwidget>
   <customwidget>
    <class>QgsFilterLineEdit</class>
@@ -2743,25 +2586,15 @@
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>QgsScaleRangeWidget</class>
-   <extends>QWidget</extends>
-   <header>qgsscalerangewidget.h</header>
-  </customwidget>
-  <customwidget>
-   <class>QgsScaleWidget</class>
-   <extends>QWidget</extends>
-   <header>qgsscalewidget.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>QgsSymbolButton</class>
-   <extends>QToolButton</extends>
-   <header>qgssymbolbutton.h</header>
-  </customwidget>
-  <customwidget>
    <class>QgsScrollArea</class>
    <extends>QScrollArea</extends>
    <header>qgsscrollarea.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>QgsFieldExpressionWidget</class>
+   <extends>QWidget</extends>
+   <header>qgsfieldexpressionwidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
@@ -2782,6 +2615,11 @@
    <container>1</container>
   </customwidget>
   <customwidget>
+   <class>QgsScaleRangeWidget</class>
+   <extends>QWidget</extends>
+   <header>qgsscalerangewidget.h</header>
+  </customwidget>
+  <customwidget>
    <class>QgsLayerTreeEmbeddedConfigWidget</class>
    <extends>QWidget</extends>
    <header>qgslayertreeembeddedconfigwidget.h</header>
@@ -2799,9 +2637,9 @@
    <container>1</container>
   </customwidget>
   <customwidget>
-   <class>QgsMapLayerRefreshSettingsWidget</class>
+   <class>QgsScaleWidget</class>
    <extends>QWidget</extends>
-   <header>qgsmaplayerrefreshsettingswidget.h</header>
+   <header>qgsscalewidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
@@ -2833,6 +2671,8 @@
   <tabstop>mAuxiliaryStorageActions</tabstop>
   <tabstop>scrollArea_6</tabstop>
   <tabstop>mDisplayExpressionWidget</tabstop>
+  <tabstop>mMapTipExpressionFieldWidget</tabstop>
+  <tabstop>mInsertExpressionButton</tabstop>
   <tabstop>mScaleVisibilityGroupBox</tabstop>
   <tabstop>scrollArea_19</tabstop>
   <tabstop>mScaleRangeWidget</tabstop>
@@ -2844,7 +2684,8 @@
   <tabstop>mUseReferenceScaleGroupBox</tabstop>
   <tabstop>mReferenceScaleWidget</tabstop>
   <tabstop>mForceRasterCheckBox</tabstop>
-  <tabstop>mRefreshSettingsWidget</tabstop>
+  <tabstop>mRefreshLayerCheckBox</tabstop>
+  <tabstop>mRefreshLayerIntervalSpinBox</tabstop>
   <tabstop>mRefreshLayerNotificationCheckBox</tabstop>
   <tabstop>mNotificationMessageCheckBox</tabstop>
   <tabstop>mNotifyMessagValueLineEdit</tabstop>
@@ -2866,13 +2707,6 @@
   <tabstop>mButtonAddWmsDimension</tabstop>
   <tabstop>mButtonEditWmsDimension</tabstop>
   <tabstop>mButtonRemoveWmsDimension</tabstop>
-  <tabstop>mEnableMapTips</tabstop>
-  <tabstop>mRadioOverrideSelectionSymbol</tabstop>
-  <tabstop>mRadioDefaultSelectionColor</tabstop>
-  <tabstop>mRadioOverrideSelectionColor</tabstop>
-  <tabstop>mSelectionColorButton</tabstop>
-  <tabstop>mSelectionSymbolButton</tabstop>
-  <tabstop>tableViewMetadataUrl</tabstop>
  </tabstops>
  <resources>
   <include location="../../images/images.qrc"/>

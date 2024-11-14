@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsgraduatedhistogramwidget.h"
-#include "moc_qgsgraduatedhistogramwidget.cpp"
 #include "qgsgraduatedsymbolrenderer.h"
 #include "qgsgraduatedsymbolrendererwidget.h"
 #include "qgsapplication.h"

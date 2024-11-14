@@ -34,6 +34,7 @@ class QgsProject;
  * This class provides methods for executing server requests
  * They are registered at runtime for a given service name.
  *
+ * \since QGIS 3.0
  */
 class SERVER_EXPORT QgsService
 {
@@ -44,7 +45,10 @@ class SERVER_EXPORT QgsService
 
   public:
 
+    //! Constructor
     QgsService();
+
+    //! Destructor
     virtual ~QgsService() = default;
 
     /**

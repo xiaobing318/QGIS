@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 /***************************************************************************
 Name                 : DB Manager
@@ -20,16 +22,14 @@ The content of this file is based on
  ***************************************************************************/
 """
 
-from qgis.PyQt import uic
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import QDialog, QMessageBox, QApplication
 from qgis.utils import OverrideCursor
 
 from .db_plugins.plugin import DbError
 from .dlg_db_error import DlgDbError
-from .gui_utils import GuiUtils
 
-Ui_Dialog, _ = uic.loadUiType(GuiUtils.get_ui_file_path('DlgAddGeometryColumn.ui'))
+from .ui.ui_DlgAddGeometryColumn import Ui_DbManagerDlgAddGeometryColumn as Ui_Dialog
 
 
 class DlgAddGeometryColumn(QDialog, Ui_Dialog):
@@ -60,7 +60,7 @@ class DlgAddGeometryColumn(QDialog, Ui_Dialog):
         createSpatialIndex = False
 
         # now create the geometry column
-        with OverrideCursor(Qt.CursorShape.WaitCursor):
+        with OverrideCursor(Qt.WaitCursor):
             try:
                 self.table.addGeometryColumn(name, geom_type, srid, dim, createSpatialIndex)
             except DbError as e:

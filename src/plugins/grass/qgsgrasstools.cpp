@@ -15,9 +15,9 @@
  ***************************************************************************/
 
 #include "qgsgrasstools.h"
-#include "moc_qgsgrasstools.cpp"
 #include "qgsgrassmodule.h"
 #include "qgsgrassregion.h"
+#include "qgsgrassshell.h"
 #include "qgsgrass.h"
 #include "qgsconfig.h"
 
@@ -32,7 +32,7 @@
 #include <QHeaderView>
 #include <QMessageBox>
 #include <QPainter>
-#include <QRegularExpression>
+
 
 //
 // For experimental model view alternative ui by Tim
@@ -51,7 +51,7 @@ QgsGrassTools::QgsGrassTools( QgisInterface *iface, QWidget *parent, const char 
   : QgsDockWidget( parent, f )
 {
   Q_UNUSED( name )
-  QgsDebugMsgLevel( "QgsGrassTools()", 3 );
+  QgsDebugMsg( "QgsGrassTools()" );
   setupUi( this );
   connect( mFilterInput, &QLineEdit::textChanged, this, &QgsGrassTools::mFilterInput_textChanged );
   connect( mDebugButton, &QPushButton::clicked, this, &QgsGrassTools::mDebugButton_clicked );
@@ -134,14 +134,14 @@ void QgsGrassTools::showTabs()
   resetTitle();
 
   // Build modules tree if empty
-  QgsDebugMsgLevel( QString( "mTreeModel->rowCount() = %1" ).arg( mTreeModel->rowCount() ), 3 );
+  QgsDebugMsg( QString( "mTreeModel->rowCount() = %1" ).arg( mTreeModel->rowCount() ) );
   if ( mTreeModel->rowCount() == 0 )
   {
     // Load the modules lists
     QApplication::setOverrideCursor( Qt::WaitCursor );
     loadConfig();
     QApplication::restoreOverrideCursor();
-    QgsDebugMsgLevel( QString( "mTreeModel->rowCount() = %1" ).arg( mTreeModel->rowCount() ), 3 );
+    QgsDebugMsg( QString( "mTreeModel->rowCount() = %1" ).arg( mTreeModel->rowCount() ) );
   }
 
   // we always show tabs but disabled if not active
@@ -164,15 +164,55 @@ void QgsGrassTools::runModule( QString name, bool direct )
     return;  // Section
   }
 
-  // set wait cursor because starting module may be slow because of getting temporal datasets (t.list)
-  QApplication::setOverrideCursor( Qt::WaitCursor );
-  QgsGrassModule *gmod = new QgsGrassModule( this, name, mIface, direct, mTabWidget );
-  QApplication::restoreOverrideCursor();
-  if ( !gmod->errors().isEmpty() )
+#ifdef HAVE_POSIX_OPENPT
+  QgsGrassShell *sh = nullptr;
+#endif
+
+  QWidget *m = nullptr;
+  if ( name == QLatin1String( "shell" ) )
   {
-    QgsGrass::warning( gmod->errors().join( QLatin1Char( '\n' ) ) );
+#ifdef Q_OS_WIN
+    QgsGrass::putEnv( "GRASS_HTML_BROWSER", QgsGrassUtils::htmlBrowserPath() );
+    QStringList env;
+    QByteArray origPath = qgetenv( "PATH" );
+    QByteArray origPythonPath = qgetenv( "PYTHONPATH" );
+    QString path = QString( origPath ) + QgsGrass::pathSeparator() + QgsGrass::grassModulesPaths().join( QgsGrass::pathSeparator() );
+    QString pythonPath = QString( origPythonPath ) + QgsGrass::pathSeparator() + QgsGrass::getPythonPath();
+    QgsDebugMsg( "path = " + path );
+    QgsDebugMsg( "pythonPath = " + pythonPath );
+    qputenv( "PATH", path.toLocal8Bit() );
+    qputenv( "PYTHONPATH", pythonPath.toLocal8Bit() );
+    // QProcess does not support environment for startDetached() -> set/reset to orig
+    if ( !QProcess::startDetached( getenv( "COMSPEC" ) ) )
+    {
+      QMessageBox::warning( 0, "Warning", tr( "Cannot start command shell (%1)" ).arg( getenv( "COMSPEC" ) ) );
+    }
+    qputenv( "PATH", origPath );
+    qputenv( "PYTHONPATH", origPythonPath );
+    return;
+#else
+
+#ifdef HAVE_POSIX_OPENPT
+    sh = new QgsGrassShell( this, mTabWidget );
+    m = qobject_cast<QWidget *>( sh );
+#else
+    QMessageBox::warning( 0, tr( "Warning" ), tr( "GRASS Shell is not compiled." ) );
+#endif
+
+#endif // Q_OS_WIN
   }
-  QWidget *m = qobject_cast<QWidget *>( gmod );
+  else
+  {
+    // set wait cursor because starting module may be slow because of getting temporal datasets (t.list)
+    QApplication::setOverrideCursor( Qt::WaitCursor );
+    QgsGrassModule *gmod = new QgsGrassModule( this, name, mIface, direct, mTabWidget );
+    QApplication::restoreOverrideCursor();
+    if ( !gmod->errors().isEmpty() )
+    {
+      QgsGrass::warning( gmod->errors().join( QLatin1Char( '\n' ) ) );
+    }
+    m = qobject_cast<QWidget *>( gmod );
+  }
 
   int height = mTabWidget->iconSize().height();
   QString path = QgsGrass::modulesConfigDirPath() + "/" + name;
@@ -199,6 +239,20 @@ void QgsGrassTools::runModule( QString name, bool direct )
 
 
   mTabWidget->setCurrentIndex( mTabWidget->count() - 1 );
+
+  // We must call resize to reset COLUMNS environment variable
+  // used by bash !!!
+#if 0
+  /* TODO: Implement something that resizes the terminal without
+   *       crashes.
+   */
+#ifdef HAVE_POSIX_OPENPT
+  if ( sh )
+  {
+    sh->resizeTerminal();
+  }
+#endif
+#endif
 }
 
 bool QgsGrassTools::loadConfig()
@@ -209,7 +263,7 @@ bool QgsGrassTools::loadConfig()
 
 bool QgsGrassTools::loadConfig( QString filePath, QStandardItemModel *treeModel, QStandardItemModel *modulesListModel, bool direct )
 {
-  QgsDebugMsgLevel( filePath, 3 );
+  QgsDebugMsg( filePath );
   treeModel->clear();
   modulesListModel->clear();
 
@@ -233,7 +287,7 @@ bool QgsGrassTools::loadConfig( QString filePath, QStandardItemModel *treeModel,
   {
     QString errmsg = tr( "Cannot read config file (%1):" ).arg( filePath )
                      + tr( "\n%1\nat line %2 column %3" ).arg( err ).arg( line ).arg( column );
-    QgsDebugError( errmsg );
+    QgsDebugMsg( errmsg );
     QMessageBox::warning( nullptr, tr( "Warning" ), errmsg );
     file.close();
     return false;
@@ -295,11 +349,11 @@ void QgsGrassTools::addModules( QStandardItem *parent, QDomElement &element, QSt
     QDomElement e = n.toElement();
     if ( !e.isNull() )
     {
-// QgsDebugMsgLevel(QString("tag = %1").arg(e.tagName()), 3);
+// QgsDebugMsg(QString("tag = %1").arg(e.tagName()));
 
       if ( e.tagName() != QLatin1String( "section" ) && e.tagName() != QLatin1String( "grass" ) )
       {
-        QgsDebugError( QString( "Unknown tag: %1" ).arg( e.tagName() ) );
+        QgsDebugMsg( QString( "Unknown tag: %1" ).arg( e.tagName() ) );
         continue;
       }
 
@@ -325,7 +379,7 @@ void QgsGrassTools::addModules( QStandardItem *parent, QDomElement &element, QSt
       if ( e.tagName() == QLatin1String( "section" ) )
       {
         QString label = QApplication::translate( "grasslabel", e.attribute( QStringLiteral( "label" ) ).toUtf8() );
-        QgsDebugMsgLevel( QString( "label = %1" ).arg( label ), 3 );
+        QgsDebugMsg( QString( "label = %1" ).arg( label ) );
         QStandardItem *item = new QStandardItem( label );
         item->setData( label, Qt::UserRole + Label ); // original label, for debug
         item->setData( label, Qt::UserRole + Search ); // for filtering later
@@ -337,7 +391,7 @@ void QgsGrassTools::addModules( QStandardItem *parent, QDomElement &element, QSt
       {
         // GRASS module
         QString name = e.attribute( QStringLiteral( "name" ) );
-        QgsDebugMsgLevel( QString( "name = %1" ).arg( name ), 3 );
+        QgsDebugMsgLevel( QString( "name = %1" ).arg( name ), 1 );
 
         //QString path = QgsApplication::pkgDataPath() + "/grass/modules/" + name;
         QString path = QgsGrass::modulesConfigDirPath() + "/" + name;
@@ -476,7 +530,7 @@ void QgsGrassTools::closeTools()
 //
 void QgsGrassTools::mFilterInput_textChanged( QString text )
 {
-  QgsDebugMsgLevel( "GRASS modules filter changed to :" + text, 2 );
+  QgsDebugMsg( "GRASS modules filter changed to :" + text );
   mTreeModelProxy->setFilter( text );
   if ( text.isEmpty() )
   {
@@ -490,12 +544,15 @@ void QgsGrassTools::mFilterInput_textChanged( QString text )
 
   // using simple wildcard filter which is probably what users is expecting, at least until
   // there is a filter type switch in UI
-  mModelProxy->setFilterRegularExpression( QRegularExpression( QRegularExpression::wildcardToRegularExpression( text ), QRegularExpression::CaseInsensitiveOption ) );
+  QRegExp::PatternSyntax mySyntax = QRegExp::PatternSyntax( QRegExp::Wildcard );
+  Qt::CaseSensitivity myCaseSensitivity = Qt::CaseInsensitive;
+  QRegExp myRegExp( text, myCaseSensitivity, mySyntax );
+  mModelProxy->setFilterRegExp( myRegExp );
 }
 
 void QgsGrassTools::itemClicked( const QModelIndex &index )
 {
-  QgsDebugMsgLevel( "Entered", 3 );
+  QgsDebugMsg( "Entered" );
   if ( index.column() == 0 )
   {
     //
@@ -575,8 +632,12 @@ int QgsGrassTools::debug( QStandardItem *item )
   }
   else // module
   {
+    if ( name == QLatin1String( "shell" ) )
+    {
+      return 0;
+    }
     QgsGrassModule *module = new QgsGrassModule( this, name, mIface, false );
-    QgsDebugMsgLevel( QString( "module: %1 errors: %2" ).arg( name ).arg( module->errors().size() ), 2 );
+    QgsDebugMsg( QString( "module: %1 errors: %2" ).arg( name ).arg( module->errors().size() ) );
     for ( QString error : module->errors() )
     {
       // each error may have multiple rows and may be html formatted (<br>)
@@ -615,6 +676,8 @@ QgsGrassToolsTreeFilterProxyModel::QgsGrassToolsTreeFilterProxyModel( QObject *p
   : QSortFilterProxyModel( parent )
 {
   setDynamicSortFilter( true );
+  mRegExp.setPatternSyntax( QRegExp::Wildcard );
+  mRegExp.setCaseSensitivity( Qt::CaseInsensitive );
 }
 
 void QgsGrassToolsTreeFilterProxyModel::setSourceModel( QAbstractItemModel *sourceModel )
@@ -625,13 +688,13 @@ void QgsGrassToolsTreeFilterProxyModel::setSourceModel( QAbstractItemModel *sour
 
 void QgsGrassToolsTreeFilterProxyModel::setFilter( const QString &filter )
 {
-  QgsDebugMsgLevel( QString( "filter = %1" ).arg( filter ), 2 );
+  QgsDebugMsg( QString( "filter = %1" ).arg( filter ) );
   if ( mFilter == filter )
   {
     return;
   }
   mFilter = filter;
-  mRegExp = QRegularExpression( QRegularExpression::wildcardToRegularExpression( QStringLiteral( "*%1*" ).arg( mFilter.trimmed() ) ), QRegularExpression::CaseInsensitiveOption );
+  mRegExp.setPattern( mFilter );
 
   invalidateFilter();
 }

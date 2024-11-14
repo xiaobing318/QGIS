@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgssnappingconfig.h                                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -15,6 +15,8 @@ class QgsSnappingConfig
 {
 %Docstring(signature="appended")
 This is a container for configuration of the snapping of the project
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -42,7 +44,7 @@ This is a container for configuration of the snapping of the project
     static QString snappingTypeToString( Qgis::SnappingType type );
 %Docstring
 Convenient method to returns the translated name of the enum type
-:py:class:`Qgis`.SnappingTypes.
+Qgis.SnappingTypes.
 
 .. versionadded:: 3.26
 %End
@@ -50,20 +52,19 @@ Convenient method to returns the translated name of the enum type
  static QString snappingTypeFlagToString( Qgis::SnappingType type ) /Deprecated/;
 %Docstring
 Convenient method to return the translated name of the enum type
-:py:class:`Qgis`.SnappingTypes.
+Qgis.SnappingTypes.
 
 .. versionadded:: 3.12
 
-.. deprecated:: 3.26
-
-   Use :py:class:`Qgis`.snappingTypeToString instead.
+.. deprecated:: QGIS 3.26
+   use Qgis.snappingTypeToString instead
 %End
 
 
     static QIcon snappingTypeToIcon( Qgis::SnappingType type );
 %Docstring
 Convenient method to return an icon corresponding to the enum type
-:py:class:`Qgis`.SnappingTypes.
+Qgis.SnappingTypes.
 
 .. versionadded:: 3.20
 %End
@@ -71,11 +72,11 @@ Convenient method to return an icon corresponding to the enum type
  static QIcon snappingTypeFlagToIcon( Qgis::SnappingType type ) /Deprecated/;
 %Docstring
 Convenient method to return an icon corresponding to the enum type
-:py:class:`Qgis`.SnappingTypes.
+Qgis.SnappingTypes.
 
-.. deprecated:: 3.26
+.. deprecated:: QGIS 3.26
+   use Qgis.snappingTypeToString instead
 
-   Use :py:class:`Qgis`.snappingTypeToString instead.
 .. versionadded:: 3.20
 %End
 
@@ -83,6 +84,8 @@ Convenient method to return an icon corresponding to the enum type
 {
 %Docstring(signature="appended")
 This is a container of advanced configuration (per layer) of the snapping of the project
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -90,7 +93,7 @@ This is a container of advanced configuration (per layer) of the snapping of the
 %End
       public:
 
- IndividualLayerSettings( bool enabled, SnappingType type, double tolerance, Qgis::MapToolUnit units ) /Deprecated/;
+ IndividualLayerSettings( bool enabled, SnappingType type, double tolerance, QgsTolerance::UnitType units ) /Deprecated/;
 %Docstring
 IndividualLayerSettings
 
@@ -99,12 +102,11 @@ IndividualLayerSettings
 :param tolerance:
 :param units:
 
-.. deprecated:: 3.12
-
-   Use the method with :py:class:`Qgis`.SnappingTypes instead.
+.. deprecated:: QGIS 3.12
+   use the method with Qgis.SnappingTypes instead.
 %End
 
-        IndividualLayerSettings( bool enabled, Qgis::SnappingTypes type, double tolerance, Qgis::MapToolUnit units, double minScale = 0.0, double maxScale = 0.0 );
+        IndividualLayerSettings( bool enabled, Qgis::SnappingTypes type, double tolerance, QgsTolerance::UnitType units, double minScale = 0.0, double maxScale = 0.0 );
 %Docstring
 IndividualLayerSettings
 
@@ -149,18 +151,16 @@ Returns the flags type (vertices | segments | area | centroid | middle)
 %Docstring
 Returns the flags type (vertices | segments | area | centroid | middle)
 
-.. deprecated:: 3.12
-
-   Use typeFlag instead.
+.. deprecated:: QGIS 3.12
+   use typeFlag instead.
 %End
 
  void setType( SnappingType type ) /Deprecated/;
 %Docstring
 define the type of snapping
 
-.. deprecated:: 3.12
-
-   Use setTypeFlag instead.
+.. deprecated:: QGIS 3.12
+   use setTypeFlag instead.
 %End
 
         void setTypeFlag( Qgis::SnappingTypes type );
@@ -180,12 +180,12 @@ Returns the tolerance
 Sets the tolerance
 %End
 
-        Qgis::MapToolUnit units() const;
+        QgsTolerance::UnitType units() const;
 %Docstring
 Returns the type of units
 %End
 
-        void setUnits( Qgis::MapToolUnit units );
+        void setUnits( QgsTolerance::UnitType units );
 %Docstring
 Sets the type of units
 %End
@@ -267,18 +267,16 @@ Returns the flags type (vertices | segments | area | centroid | middle)
 %Docstring
 Returns the flags type (vertices | segments | area | centroid | middle)
 
-.. deprecated:: 3.12
-
-   Use typeFlag instead.
+.. deprecated:: QGIS 3.12
+   use typeFlag instead.
 %End
 
  void setType( QgsSnappingConfig::SnappingType type );
 %Docstring
 define the type of snapping
 
-.. deprecated:: 3.12
-
-   Use setTypeFlag instead.
+.. deprecated:: QGIS 3.12
+   use setTypeFlag instead.
 %End
 
     void setTypeFlag( Qgis::SnappingTypes type );
@@ -340,12 +338,12 @@ Returns the scale dependency mode
 .. versionadded:: 3.14
 %End
 
-    Qgis::MapToolUnit units() const;
+    QgsTolerance::UnitType units() const;
 %Docstring
 Returns the type of units
 %End
 
-    void setUnits( Qgis::MapToolUnit units );
+    void setUnits( QgsTolerance::UnitType units );
 %Docstring
 Sets the type of units
 %End
@@ -440,11 +438,15 @@ Removes all individual layer snapping settings
     void readProject( const QDomDocument &doc );
 %Docstring
 Reads the configuration from the specified QGIS project document.
+
+.. versionadded:: 3.0
 %End
 
     void writeProject( QDomDocument &doc );
 %Docstring
 Writes the configuration to the specified QGIS project document.
+
+.. versionadded:: 3.0
 %End
 
     bool addLayers( const QList<QgsMapLayer *> &layers );
@@ -455,6 +457,8 @@ When implementing a long-living QgsSnappingConfig (like the one in QgsProject)
 it is best to directly feed this with information from the layer registry.
 
 :return: ``True`` if changes have been done.
+
+.. versionadded:: 3.0
 %End
 
 
@@ -465,16 +469,22 @@ When implementing a long-living QgsSnappingConfig (like the one in QgsProject)
 it is best to directly feed this with information from the layer registry.
 
 :return: ``True`` if changes have been done.
+
+.. versionadded:: 3.0
 %End
 
     QgsProject *project() const;
 %Docstring
 The project from which the snapped layers should be retrieved
+
+.. versionadded:: 3.0
 %End
 
     void setProject( QgsProject *project );
 %Docstring
 The project from which the snapped layers should be retrieved
+
+.. versionadded:: 3.0
 %End
 
 };
@@ -484,5 +494,5 @@ The project from which the snapped layers should be retrieved
  *                                                                      *
  * src/core/qgssnappingconfig.h                                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

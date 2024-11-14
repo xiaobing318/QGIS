@@ -20,10 +20,11 @@ os.environ['QT_HASH_SEED'] = '1'
 
 import urllib.parse
 
-from qgis.core import QgsProject
 from qgis.testing import unittest
-from test_qgsserver import QgsServerTestBase
 from utilities import unitTestDataPath
+from test_qgsserver import QgsServerTestBase
+
+from qgis.core import QgsProject
 
 
 class TestQgsServerWMSGetPrintAtlas(QgsServerTestBase):
@@ -52,8 +53,8 @@ class TestQgsServerWMSGetPrintAtlas(QgsServerTestBase):
             "REQUEST": "GetProjectSettings",
         }.items())])
         r, h = self._result(self._execute_request(qs))
-        self.assertIn('atlasEnabled="1"', str(r))
-        self.assertIn('<PrimaryKeyAttribute>', str(r))
+        self.assertTrue('atlasEnabled="1"' in str(r))
+        self.assertTrue('<PrimaryKeyAttribute>' in str(r))
 
     def test_wms_getprint_atlas_no_pk(self):
         """Test issue GH #30817"""

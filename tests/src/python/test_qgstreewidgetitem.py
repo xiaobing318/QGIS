@@ -9,13 +9,12 @@ __author__ = 'Nyall Dawson'
 __date__ = '12/07/2016'
 __copyright__ = 'Copyright 2016, The QGIS Project'
 
-
-from qgis.core import NULL
-from qgis.gui import QgsTreeWidgetItem, QgsTreeWidgetItemObject
+import qgis  # NOQA switch sip api
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import QTreeWidget
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import NULL
+from qgis.gui import QgsTreeWidgetItem, QgsTreeWidgetItemObject
+from qgis.testing import start_app, unittest
 
 try:
     from qgis.PyQt.QtTest import QSignalSpy
@@ -26,7 +25,7 @@ except:
 start_app()
 
 
-class TestQgsTreeWidgetItem(QgisTestCase):
+class TestQgsTreeWidgetItem(unittest.TestCase):
 
     def testGettersSetters(self):
         """ test getters and setters """
@@ -61,13 +60,13 @@ class TestQgsTreeWidgetItem(QgisTestCase):
         i2.setText(1, 'a')
         i2.setText(2, 'd')
 
-        w.sortItems(0, Qt.SortOrder.AscendingOrder)
+        w.sortItems(0, Qt.AscendingOrder)
         self.assertEqual(i1 < i2, False)
         self.assertEqual(i2 < i1, True)
-        w.sortItems(1, Qt.SortOrder.AscendingOrder)
+        w.sortItems(1, Qt.AscendingOrder)
         self.assertEqual(i1 < i2, False)
         self.assertEqual(i2 < i1, True)
-        w.sortItems(2, Qt.SortOrder.AscendingOrder)
+        w.sortItems(2, Qt.AscendingOrder)
         self.assertEqual(i1 < i2, True)
         self.assertEqual(i2 < i1, False)
 
@@ -75,7 +74,7 @@ class TestQgsTreeWidgetItem(QgisTestCase):
         i1.setText(1, '2')
         i1.setSortData(1, '200')
         i2.setText(1, '3')
-        w.sortItems(1, Qt.SortOrder.AscendingOrder)
+        w.sortItems(1, Qt.AscendingOrder)
         self.assertEqual(i1 < i2, False)
         self.assertEqual(i2 < i1, True)
         i2.setSortData(1, '300')
@@ -85,14 +84,14 @@ class TestQgsTreeWidgetItem(QgisTestCase):
         # test that nulls are sorted before other values
         i1.setSortData(0, '2')
         i2.setSortData(0, NULL)
-        w.sortItems(0, Qt.SortOrder.AscendingOrder)
+        w.sortItems(0, Qt.AscendingOrder)
         self.assertEqual(i1 < i2, False)
         self.assertEqual(i2 < i1, True)
 
         # test numeric sorting
         i1.setSortData(0, '02')
         i2.setSortData(0, '005')
-        w.sortItems(0, Qt.SortOrder.AscendingOrder)
+        w.sortItems(0, Qt.AscendingOrder)
         self.assertEqual(i1 < i2, True)
         self.assertEqual(i2 < i1, False)
         # numbers should come first
@@ -120,7 +119,7 @@ class TestQgsTreeWidgetItem(QgisTestCase):
         self.assertEqual(i2 < i1, True)
 
 
-class TestQgsTreeWidgetItemObject(QgisTestCase):
+class TestQgsTreeWidgetItemObject(unittest.TestCase):
 
     @unittest.skipIf(not use_signal_spy, "No QSignalSpy available")
     def testItemEdited(self):
@@ -128,9 +127,9 @@ class TestQgsTreeWidgetItemObject(QgisTestCase):
 
         i = QgsTreeWidgetItemObject()
         item_edited_spy = QSignalSpy(i.itemEdited)
-        i.setData(1, Qt.ItemDataRole.EditRole, 'a')
+        i.setData(1, Qt.EditRole, 'a')
         self.assertEqual(len(item_edited_spy), 1)
-        i.setData(1, Qt.ItemDataRole.EditRole, 'b')
+        i.setData(1, Qt.EditRole, 'b')
         self.assertEqual(len(item_edited_spy), 2)
 
 

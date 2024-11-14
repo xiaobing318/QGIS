@@ -31,14 +31,11 @@ class APP_EXPORT QgsMapToolAnnotation: public QgsMapTool
   public:
     QgsMapToolAnnotation( QgsMapCanvas *canvas );
 
-    Flags flags() const override;
-
     void canvasPressEvent( QgsMapMouseEvent *e ) override;
     void canvasReleaseEvent( QgsMapMouseEvent *e ) override;
     void canvasMoveEvent( QgsMapMouseEvent *e ) override;
     void canvasDoubleClickEvent( QgsMapMouseEvent *e ) override;
     void keyPressEvent( QKeyEvent *e ) override;
-    bool populateContextMenuWithEvent( QMenu *menu, QgsMapMouseEvent *event ) override;
 
   protected:
 
@@ -56,6 +53,8 @@ class APP_EXPORT QgsMapToolAnnotation: public QgsMapTool
     QgsMapCanvasAnnotationItem *selectedItem() const;
     //! Returns a list of all annotationitems in the canvas
     QList<QgsMapCanvasAnnotationItem *> annotationItems() const;
+    //! Switches visibility states of text items
+    void toggleTextItemVisibilities();
 
     QgsPointXY transformCanvasToAnnotation( QgsPointXY p, QgsAnnotation *annotation ) const;
 

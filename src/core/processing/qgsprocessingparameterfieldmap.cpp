@@ -15,6 +15,9 @@
 
 #include "qgsprocessingparameterfieldmap.h"
 
+#include "qgsvectorlayer.h"
+
+
 QgsProcessingParameterFieldMapping::QgsProcessingParameterFieldMapping( const QString &name, const QString &description, const QString &parentLayerParameterName, bool optional )
   : QgsProcessingParameterDefinition( name, description, QVariant(), optional )
   , mParentLayerParameterName( parentLayerParameterName )
@@ -34,15 +37,15 @@ QString QgsProcessingParameterFieldMapping::type() const
 bool QgsProcessingParameterFieldMapping::checkValueIsAcceptable( const QVariant &input, QgsProcessingContext * ) const
 {
   if ( !input.isValid() )
-    return mFlags & Qgis::ProcessingParameterFlag::Optional;
+    return mFlags & FlagOptional;
 
-  if ( input.userType() != QMetaType::Type::QVariantList )
+  if ( input.type() != QVariant::List )
     return false;
 
   const QVariantList inputList = input.toList();
   for ( const QVariant &inputItem : inputList )
   {
-    if ( inputItem.userType() != QMetaType::Type::QVariantMap )
+    if ( inputItem.type() != QVariant::Map )
       return false;
 
     const QVariantMap inputItemMap = inputItem.toMap();
@@ -67,14 +70,14 @@ QString QgsProcessingParameterFieldMapping::asPythonString( QgsProcessing::Pytho
 {
   switch ( outputType )
   {
-    case QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass:
+    case QgsProcessing::PythonQgsProcessingAlgorithmSubclass:
     {
       QString code = QStringLiteral( "QgsProcessingParameterFieldMapping('%1', %2" )
                      .arg( name(), QgsProcessingUtils::stringToPythonLiteral( description() ) );
       if ( !mParentLayerParameterName.isEmpty() )
         code += QStringLiteral( ", parentLayerParameterName=%1" ).arg( QgsProcessingUtils::stringToPythonLiteral( mParentLayerParameterName ) );
 
-      if ( mFlags & Qgis::ProcessingParameterFlag::Optional )
+      if ( mFlags & FlagOptional )
         code += QLatin1String( ", optional=True" );
       code += ')';
       return code;

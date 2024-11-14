@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/vector/qgsvectorlayereditutils.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -11,9 +11,6 @@
 
 class QgsVectorLayerEditUtils
 {
-%Docstring(signature="appended")
-Contains utility functions for editing vector layers.
-%End
 
 %TypeHeaderCode
 #include "qgsvectorlayereditutils.h"
@@ -59,6 +56,8 @@ Deletes a vertex from a feature.
 
 :param featureId: ID of feature to remove vertex from
 :param vertex: index of vertex to delete
+
+.. versionadded:: 2.14
 %End
 
  Qgis::GeometryOperationResult addRing( const QVector<QgsPointXY> &ring, const QgsFeatureIds &targetFeatureIds = QgsFeatureIds(), QgsFeatureId *modifiedFeatureId = 0 ) /Deprecated/;
@@ -72,9 +71,8 @@ Adds a ring to polygon/multipolygon features
 
 :return: OperationResult result code: success or reason of failure
 
-.. deprecated:: 3.12
-
-   Will be removed in QGIS 4.0. Use the variant which accepts :py:class:`QgsPoint` objects instead of :py:class:`QgsPointXY`.
+.. deprecated:: QGIS 3.12
+   - will be removed in QGIS 4.0. Use the variant which accepts :py:class:`QgsPoint` objects instead of :py:class:`QgsPointXY`.
 %End
 
     Qgis::GeometryOperationResult addRing( const QgsPointSequence &ring, const QgsFeatureIds &targetFeatureIds = QgsFeatureIds(), QgsFeatureId *modifiedFeatureId = 0 );
@@ -130,9 +128,8 @@ Adds a new part polygon to a multipart feature
          - :py:class:`QgsGeometry`.InvalidBaseGeometry
          - :py:class:`QgsGeometry`.InvalidInput
 
-.. deprecated:: 3.12
-
-   Will be removed in QGIS 4.0. Use the variant which accepts :py:class:`QgsPoint` objects instead of :py:class:`QgsPointXY`.
+.. deprecated:: QGIS 3.12
+   - will be removed in QGIS 4.0. Use the variant which accepts :py:class:`QgsPoint` objects instead of :py:class:`QgsPointXY`.
 %End
 
     Qgis::GeometryOperationResult addPart( const QgsPointSequence &ring, QgsFeatureId featureId );
@@ -194,9 +191,8 @@ Splits parts cut by the given line
          - :py:class:`QgsGeometry`.GeometryEngineError
          - :py:class:`QgsGeometry`.SplitCannotSplitPoint
 
-.. deprecated:: 3.12
-
-   Will be removed in QGIS 4.0. Use the variant which accepts :py:class:`QgsPoint` objects instead of :py:class:`QgsPointXY`.
+.. deprecated:: QGIS 3.12
+   - will be removed in QGIS 4.0. Use the variant which accepts :py:class:`QgsPoint` objects instead of :py:class:`QgsPointXY`.
 %End
 
     Qgis::GeometryOperationResult splitParts( const QgsPointSequence &splitLine, bool topologicalEditing = false );
@@ -225,9 +221,8 @@ Splits features cut by the given line
 
 :return: :py:class:`QgsGeometry`.OperationResult
 
-.. deprecated:: 3.12
-
-   Will be removed in QGIS 4.0. Use the variant which accepts :py:class:`QgsPoint` objects instead of :py:class:`QgsPointXY`.
+.. deprecated:: QGIS 3.12
+   - will be removed in QGIS 4.0. Use the variant which accepts :py:class:`QgsPoint` objects instead of :py:class:`QgsPointXY`.
 %End
 
     Qgis::GeometryOperationResult splitFeatures( const QgsPointSequence &splitLine, bool topologicalEditing = false );
@@ -245,11 +240,11 @@ Splits features cut by the given line
 Splits features cut by the given curve
 
 :param curve: line that splits the layer features
+\param[out] topologyTestPoints topological points to be tested against other layers
 :param preserveCircular: whether circular strings are preserved after splitting
 :param topologicalEditing: ``True`` if topological editing is enabled
 
-:return: - :py:class:`QgsGeometry`.OperationResult
-         - topologyTestPoints: topological points to be tested against other layers
+:return: :py:class:`QgsGeometry`.OperationResult
 
 .. versionadded:: 3.16
 %End
@@ -327,7 +322,7 @@ Merge features into a single one.
 :param unionGeometry: is the resulting geometry of the merged feature
 
 :return: - ``True`` if the merge was successful, or ``False`` if the operation failed.
-         - errorMessage: a descriptive error message if any occurs
+         - errorMessage: will be set to a descriptive error message if any occurs
 
 .. versionadded:: 3.30
 %End
@@ -339,5 +334,5 @@ Merge features into a single one.
  *                                                                      *
  * src/core/vector/qgsvectorlayereditutils.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

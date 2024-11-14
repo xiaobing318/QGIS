@@ -22,8 +22,12 @@
 #include "qgsprocessingutils.h"
 #include "qgsprocessingalgorithm.h"
 #include "qgsprocessingcontext.h"
+#include "qgsprocessingmodelalgorithm.h"
 #include "qgsnativealgorithms.h"
+#include "qgsalgorithmfillnodata.h"
+#include "qgsalgorithmlinedensity.h"
 #include "qgsalgorithmimportphotos.h"
+#include "qgsalgorithmtransform.h"
 #include "qgsalgorithmkmeansclustering.h"
 #include "qgsvectorlayer.h"
 #include "qgscategorizedsymbolrenderer.h"
@@ -32,8 +36,10 @@
 #include "qgsrasteranalysisutils.h"
 #include "qgsrasteranalysisutils.cpp"
 #include "qgsrasterfilewriter.h"
+#include "qgsreclassifyutils.h"
 #include "qgsalgorithmrasterlogicalop.h"
 #include "qgsprintlayout.h"
+#include "qgslayertree.h"
 #include "qgslayoutmanager.h"
 #include "qgslayoutitemmap.h"
 #include "qgsmarkersymbollayer.h"
@@ -49,21 +55,19 @@
 #include "qgsstyle.h"
 #include "qgsbookmarkmanager.h"
 #include "qgsexpressioncontextutils.h"
+#include "qgsrenderchecker.h"
 #include "qgsrelationmanager.h"
 #include "qgsmeshlayer.h"
 #include "qgsmarkersymbol.h"
 #include "qgsfillsymbol.h"
+#include "qgsannotationlayer.h"
+#include "qgsannotationmarkeritem.h"
 #include "qgscolorrampimpl.h"
 #include "qgstextformat.h"
 
-class TestQgsProcessingAlgsPt1: public QgsTest
+class TestQgsProcessingAlgsPt1: public QObject
 {
     Q_OBJECT
-
-  public:
-    TestQgsProcessingAlgsPt1()
-      : QgsTest( QStringLiteral( "Processing Algorithms Pt 1" ) )
-    {}
 
   private:
 
@@ -170,6 +174,8 @@ class TestQgsProcessingAlgsPt1: public QgsTest
     // WARNING this test is "full" -- adding more to it will cause timeouts on CI! Add to testqgsprocessingalgspt(N+1).cpp instead
 
   private:
+
+    bool imageCheck( const QString &testName, const QString &renderedImage );
 
     QString mPointLayerPath;
     QgsVectorLayer *mPointsLayer = nullptr;
@@ -467,7 +473,7 @@ void TestQgsProcessingAlgsPt1::packageAlg()
   selectedPolygonsPackagedLayer = std::make_unique< QgsVectorLayer >( outputGpkg + "|layername=polygons", "polygons", "ogr" );
   QVERIFY( selectedPolygonsPackagedLayer->isValid() );
   QCOMPARE( selectedPolygonsPackagedLayer->wkbType(), mPolygonLayer->wkbType() );
-  QCOMPARE( selectedPolygonsPackagedLayer->featureCount(), 0 ); // With enabled SELECTED_FEATURES_ONLY no features should be saved when there is no selection
+  QCOMPARE( selectedPolygonsPackagedLayer->featureCount(), 10 ); // With enabled SELECTED_FEATURES_ONLY all features should be saved when there is no selection
 }
 
 void TestQgsProcessingAlgsPt1::rasterLayerProperties()
@@ -957,8 +963,8 @@ void TestQgsProcessingAlgsPt1::featureFilterAlg()
   QCOMPARE( outputDef->type(), QStringLiteral( "outputVector" ) );
 
   auto outputParamDef = filterAlg->parameterDefinition( "OUTPUT_test" );
-  Q_ASSERT( outputParamDef->flags() & Qgis::ProcessingParameterFlag::IsModelOutput );
-  Q_ASSERT( outputParamDef->flags() & Qgis::ProcessingParameterFlag::Hidden );
+  Q_ASSERT( outputParamDef->flags() & QgsProcessingParameterDefinition::FlagIsModelOutput );
+  Q_ASSERT( outputParamDef->flags() & QgsProcessingParameterDefinition::FlagHidden );
 
   QVariantMap output2;
   output2.insert( QStringLiteral( "name" ), QStringLiteral( "nonmodeloutput" ) );
@@ -978,8 +984,8 @@ void TestQgsProcessingAlgsPt1::featureFilterAlg()
   QCOMPARE( outputDef2->type(), QStringLiteral( "outputVector" ) );
 
   auto outputParamDef2 = filterAlg2->parameterDefinition( "OUTPUT_nonmodeloutput" );
-  Q_ASSERT( !outputParamDef2->flags().testFlag( Qgis::ProcessingParameterFlag::IsModelOutput ) );
-  Q_ASSERT( outputParamDef2->flags() & Qgis::ProcessingParameterFlag::Hidden );
+  Q_ASSERT( !outputParamDef2->flags().testFlag( QgsProcessingParameterDefinition::FlagIsModelOutput ) );
+  Q_ASSERT( outputParamDef2->flags() & QgsProcessingParameterDefinition::FlagHidden );
 }
 
 void TestQgsProcessingAlgsPt1::transformAlg()
@@ -1132,7 +1138,7 @@ void TestQgsProcessingAlgsPt1::categorizeByStyle()
   QVERIFY( catRenderer->categories().at( catRenderer->categoryIndexForValue( QStringLiteral( "b" ) ) ).symbol()->color().name() != QLatin1String( "#00ff00" ) );
   QVERIFY( catRenderer->categories().at( catRenderer->categoryIndexForValue( QStringLiteral( "c " ) ) ).symbol()->color().name() != QLatin1String( "#0000ff" ) );
   // reset renderer
-  layer->setRenderer( new QgsSingleSymbolRenderer( QgsSymbol::defaultSymbol( Qgis::GeometryType::Point ) ) );
+  layer->setRenderer( new QgsSingleSymbolRenderer( QgsSymbol::defaultSymbol( QgsWkbTypes::PointGeometry ) ) );
 
   // case insensitive
   parameters.insert( QStringLiteral( "CASE_SENSITIVE" ), false );
@@ -1153,7 +1159,7 @@ void TestQgsProcessingAlgsPt1::categorizeByStyle()
   QCOMPARE( catRenderer->categories().at( catRenderer->categoryIndexForValue( QStringLiteral( "b" ) ) ).symbol()->color().name(), QStringLiteral( "#00ff00" ) );
   QVERIFY( catRenderer->categories().at( catRenderer->categoryIndexForValue( QStringLiteral( "c " ) ) ).symbol()->color().name() != QLatin1String( "#0000ff" ) );
   // reset renderer
-  layer->setRenderer( new QgsSingleSymbolRenderer( QgsSymbol::defaultSymbol( Qgis::GeometryType::Point ) ) );
+  layer->setRenderer( new QgsSingleSymbolRenderer( QgsSymbol::defaultSymbol( QgsWkbTypes::PointGeometry ) ) );
 
   // tolerant
   parameters.insert( QStringLiteral( "CASE_SENSITIVE" ), true );
@@ -1176,7 +1182,7 @@ void TestQgsProcessingAlgsPt1::categorizeByStyle()
   QVERIFY( catRenderer->categories().at( catRenderer->categoryIndexForValue( QStringLiteral( "b" ) ) ).symbol()->color().name() != QLatin1String( "#00ff00" ) );
   QCOMPARE( catRenderer->categories().at( catRenderer->categoryIndexForValue( QStringLiteral( "c " ) ) ).symbol()->color().name(), QStringLiteral( "#0000ff" ) );
   // reset renderer
-  layer->setRenderer( new QgsSingleSymbolRenderer( QgsSymbol::defaultSymbol( Qgis::GeometryType::Point ) ) );
+  layer->setRenderer( new QgsSingleSymbolRenderer( QgsSymbol::defaultSymbol( QgsWkbTypes::PointGeometry ) ) );
 
   // no optional sinks
   parameters.insert( QStringLiteral( "CASE_SENSITIVE" ), false );
@@ -4130,8 +4136,9 @@ void TestQgsProcessingAlgsPt1::roundRasterValues()
   QgsProject p;
   std::unique_ptr< QgsProcessingAlgorithm > alg( QgsApplication::processingRegistry()->createAlgorithmById( QStringLiteral( "native:roundrastervalues" ) ) );
 
-  const QString rasterSource = copyTestData( inputRaster );
-  std::unique_ptr<QgsRasterLayer> inputRasterLayer = std::make_unique< QgsRasterLayer >( rasterSource, "inputDataset", "gdal" );
+  const QString myDataPath( TEST_DATA_DIR ); //defined in CmakeLists.txt
+
+  std::unique_ptr<QgsRasterLayer> inputRasterLayer = std::make_unique< QgsRasterLayer >( myDataPath + inputRaster, "inputDataset", "gdal" );
 
   //set project crs and ellipsoid from input layer
   p.setCrs( inputRasterLayer->crs(), true );
@@ -4142,7 +4149,7 @@ void TestQgsProcessingAlgsPt1::roundRasterValues()
 
   QVariantMap parameters;
 
-  parameters.insert( QStringLiteral( "INPUT" ), rasterSource );
+  parameters.insert( QStringLiteral( "INPUT" ), QString( myDataPath + inputRaster ) );
   parameters.insert( QStringLiteral( "BAND" ), inputBand );
   parameters.insert( QStringLiteral( "ROUNDING_DIRECTION" ), roundingDirection );
   parameters.insert( QStringLiteral( "DECIMAL_PLACES" ), decimals );
@@ -4150,7 +4157,7 @@ void TestQgsProcessingAlgsPt1::roundRasterValues()
   parameters.insert( QStringLiteral( "OUTPUT" ), QgsProcessing::TEMPORARY_OUTPUT );
 
   //prepare expectedRaster
-  std::unique_ptr<QgsRasterLayer> expectedRasterLayer = std::make_unique< QgsRasterLayer >( testDataPath( "/control_images/roundRasterValues/" + expectedRaster ), "expectedDataset", "gdal" );
+  std::unique_ptr<QgsRasterLayer> expectedRasterLayer = std::make_unique< QgsRasterLayer >( myDataPath + "/control_images/roundRasterValues/" + expectedRaster, "expectedDataset", "gdal" );
   std::unique_ptr< QgsRasterInterface > expectedInterface( expectedRasterLayer->dataProvider()->clone() );
   QgsRasterIterator expectedIter( expectedInterface.get() );
   expectedIter.startRasterRead( 1, expectedRasterLayer->width(), expectedRasterLayer->height(), expectedInterface->extent() );
@@ -4340,9 +4347,9 @@ void TestQgsProcessingAlgsPt1::styleFromProject()
   QgsVectorLayer *vl2 = new QgsVectorLayer( QStringLiteral( "Point?crs=epsg:4326&field=pk:int&field=col1:string" ), QStringLiteral( "vl2" ), QStringLiteral( "memory" ) );
   QVERIFY( vl2->isValid() );
   p.addMapLayer( vl2 );
-  QgsSymbol *s1 = QgsSymbol::defaultSymbol( Qgis::GeometryType::Point );
+  QgsSymbol *s1 = QgsSymbol::defaultSymbol( QgsWkbTypes::PointGeometry );
   s1->setColor( QColor( 0, 255, 0 ) );
-  QgsSymbol *s2 = QgsSymbol::defaultSymbol( Qgis::GeometryType::Point );
+  QgsSymbol *s2 = QgsSymbol::defaultSymbol( QgsWkbTypes::PointGeometry );
   s2->setColor( QColor( 0, 255, 255 ) );
   QgsRuleBasedRenderer::Rule *rootRule = new QgsRuleBasedRenderer::Rule( nullptr );
   QgsRuleBasedRenderer::Rule *rule2 = new QgsRuleBasedRenderer::Rule( s1, 0, 0, QStringLiteral( "fld >= 5 and fld <= 20" ) );
@@ -4362,7 +4369,7 @@ void TestQgsProcessingAlgsPt1::styleFromProject()
 
   QgsRasterShader *rasterShader = new QgsRasterShader();
   QgsColorRampShader *colorRampShader = new QgsColorRampShader();
-  colorRampShader->setColorRampType( Qgis::ShaderInterpolationMethod::Linear );
+  colorRampShader->setColorRampType( QgsColorRampShader::Interpolated );
   colorRampShader->setSourceColorRamp( new QgsGradientColorRamp( QColor( 255, 255, 0 ), QColor( 255, 0, 255 ) ) );
   rasterShader->setRasterShaderFunction( colorRampShader );
   QgsSingleBandPseudoColorRenderer *r = new QgsSingleBandPseudoColorRenderer( rl->dataProvider(), 1, rasterShader );
@@ -4381,10 +4388,10 @@ void TestQgsProcessingAlgsPt1::styleFromProject()
 
   // with annotations
   QgsTextAnnotation *annotation = new QgsTextAnnotation();
-  QgsSymbol *a1 = QgsSymbol::defaultSymbol( Qgis::GeometryType::Point );
+  QgsSymbol *a1 = QgsSymbol::defaultSymbol( QgsWkbTypes::PointGeometry );
   a1->setColor( QColor( 0, 200, 0 ) );
   annotation->setMarkerSymbol( static_cast< QgsMarkerSymbol * >( a1 ) );
-  QgsSymbol *a2 = QgsSymbol::defaultSymbol( Qgis::GeometryType::Polygon );
+  QgsSymbol *a2 = QgsSymbol::defaultSymbol( QgsWkbTypes::PolygonGeometry );
   a2->setColor( QColor( 200, 200, 0 ) );
   annotation->setFillSymbol( static_cast< QgsFillSymbol * >( a2 ) );
   p.annotationManager()->addAnnotation( annotation );
@@ -4458,9 +4465,9 @@ void TestQgsProcessingAlgsPt1::combineStyles()
   s1.addSymbol( QStringLiteral( "sym1" ), markerSymbol, true );
   s1.tagSymbol( QgsStyle::SymbolEntity, QStringLiteral( "sym1" ), QStringList() << QStringLiteral( "t1" ) << QStringLiteral( "t2" ) );
 
-  QgsSymbol *sym1 = QgsSymbol::defaultSymbol( Qgis::GeometryType::Point );
+  QgsSymbol *sym1 = QgsSymbol::defaultSymbol( QgsWkbTypes::PointGeometry );
   s2.addSymbol( QStringLiteral( "sym2" ), sym1, true );
-  QgsSymbol *sym2 = QgsSymbol::defaultSymbol( Qgis::GeometryType::Point );
+  QgsSymbol *sym2 = QgsSymbol::defaultSymbol( QgsWkbTypes::PointGeometry );
   s2.addSymbol( QStringLiteral( "sym1" ), sym2, true );
 
   QgsPalLayerSettings settings;
@@ -5791,6 +5798,17 @@ void TestQgsProcessingAlgsPt1::setProjectVariable()
   QVERIFY( ok );
   scope.reset( QgsExpressionContextUtils::projectScope( &p ) );
   QCOMPARE( scope->variable( QStringLiteral( "my_var" ) ).toInt(), 13 );
+}
+
+bool TestQgsProcessingAlgsPt1::imageCheck( const QString &testName, const QString &renderedImage )
+{
+  QgsRenderChecker checker;
+  checker.setControlPathPrefix( QStringLiteral( "processing_algorithm" ) );
+  checker.setControlName( "expected_" + testName );
+  checker.setRenderedImage( renderedImage );
+  checker.setSizeTolerance( 3, 3 );
+  const bool equal = checker.compareImages( testName, 500 );
+  return equal;
 }
 
 QGSTEST_MAIN( TestQgsProcessingAlgsPt1 )

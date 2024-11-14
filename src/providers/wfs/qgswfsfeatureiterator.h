@@ -68,7 +68,7 @@ class QgsWFSFeatureDownloaderImpl final: public QgsWfsRequest, public QgsFeature
 {
     Q_OBJECT
 
-    DEFINE_FEATURE_DOWNLOADER_IMPL_SLOTS // cppcheck-suppress duplInheritedMember
+    DEFINE_FEATURE_DOWLOADER_IMPL_SLOTS
 
   signals:
     /* Used internally by the stop() method */
@@ -90,7 +90,7 @@ class QgsWFSFeatureDownloaderImpl final: public QgsWfsRequest, public QgsFeature
     void startHitsRequest();
     void gotHitsResponse();
 
-    void createProgressTask();
+    void createProgressDialog();
 
   private:
     QUrl buildURL( qint64 startIndex, long long maxFeatures, bool forHits );

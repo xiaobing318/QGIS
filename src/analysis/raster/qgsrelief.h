@@ -49,7 +49,9 @@ class ANALYSIS_EXPORT QgsRelief
     QgsRelief( const QString &inputFile, const QString &outputFile, const QString &outputFormat );
     ~QgsRelief();
 
+    //! QgsRelief cannot be copied
     QgsRelief( const QgsRelief &rh ) = delete;
+    //! QgsRelief cannot be copied
     QgsRelief &operator=( const QgsRelief &rh ) = delete;
 
     /**
@@ -121,10 +123,8 @@ class ANALYSIS_EXPORT QgsRelief
     */
     gdal::dataset_unique_ptr openOutputFile( GDALDatasetH inputDataset, GDALDriverH outputDriver );
 
-    /**
-     * Retrieves the color corresponding to the specified \a elevation.
-     */
-    bool getElevationColor( double elevation, int *red, int *green, int *blue ) const;
+    //! Sets elevation color
+    bool setElevationColor( double elevation, int *red, int *green, int *blue );
 
     //! Sets relief colors
     void setDefaultReliefColors();

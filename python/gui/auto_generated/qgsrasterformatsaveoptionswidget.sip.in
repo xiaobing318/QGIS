@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsrasterformatsaveoptionswidget.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -70,6 +70,8 @@ Populate widget with user-defined options. String should contain
 key=value pairs separated by spaces, e.g. "TILED=YES TFW=YES"
 
 .. seealso:: :py:func:`options`
+
+.. versionadded:: 3.0
 %End
 
     void setType( QgsRasterFormatSaveOptionsWidget::Type type = Default );
@@ -77,7 +79,7 @@ key=value pairs separated by spaces, e.g. "TILED=YES TFW=YES"
 Set widget look and feel
 %End
 
-    void setPyramidsFormat( Qgis::RasterPyramidFormat format );
+    void setPyramidsFormat( QgsRaster::RasterPyramidsFormat format );
 %Docstring
 Set pyramids format to use
 %End
@@ -119,11 +121,7 @@ Reloads profiles list from QGIS settings
 
 
   signals:
-
     void optionsChanged();
-%Docstring
-Emitted when the options configured in the widget are changed.
-%End
 
   private:
     QString settingsKey( QString profile ) const;
@@ -145,5 +143,5 @@ Emitted when the options configured in the widget are changed.
  *                                                                      *
  * src/gui/qgsrasterformatsaveoptionswidget.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

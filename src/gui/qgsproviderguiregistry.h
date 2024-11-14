@@ -57,6 +57,7 @@ class GUI_EXPORT QgsProviderGuiRegistry
     //! Creates registry and loads static provider plugins
     QgsProviderGuiRegistry( const QString &pluginPath );
 
+    //! dtor
     virtual ~QgsProviderGuiRegistry();
 
     //! Returns list of available providers by their keys

@@ -14,8 +14,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgssnappingconfig.h"
-#include "qgsproject.h"
-#include "moc_qgssnappingconfig.cpp"
 
 #include <QDomElement>
 #include <QHeaderView>
@@ -24,11 +22,11 @@
 #include "qgssettingsregistrycore.h"
 #include "qgslogger.h"
 #include "qgsvectorlayer.h"
+#include "qgsproject.h"
 #include "qgsapplication.h"
-#include "qgssettingsentryenumflag.h"
 
 
-QgsSnappingConfig::IndividualLayerSettings::IndividualLayerSettings( bool enabled, Qgis::SnappingTypes type, double tolerance, Qgis::MapToolUnit units, double minScale, double maxScale )
+QgsSnappingConfig::IndividualLayerSettings::IndividualLayerSettings( bool enabled, Qgis::SnappingTypes type, double tolerance, QgsTolerance::UnitType units, double minScale, double maxScale )
   : mValid( true )
   , mEnabled( enabled )
   , mType( type )
@@ -38,7 +36,7 @@ QgsSnappingConfig::IndividualLayerSettings::IndividualLayerSettings( bool enable
   , mMaximumScale( maxScale )
 {}
 
-QgsSnappingConfig::IndividualLayerSettings::IndividualLayerSettings( bool enabled, SnappingType type, double tolerance, Qgis::MapToolUnit units )
+QgsSnappingConfig::IndividualLayerSettings::IndividualLayerSettings( bool enabled, SnappingType type, double tolerance, QgsTolerance::UnitType units )
   : mValid( true )
   , mEnabled( enabled )
   , mTolerance( tolerance )
@@ -114,12 +112,12 @@ void QgsSnappingConfig::IndividualLayerSettings::setTolerance( double tolerance 
   mTolerance = tolerance;
 }
 
-Qgis::MapToolUnit QgsSnappingConfig::IndividualLayerSettings::units() const
+QgsTolerance::UnitType QgsSnappingConfig::IndividualLayerSettings::units() const
 {
   return mUnits;
 }
 
-void QgsSnappingConfig::IndividualLayerSettings::setUnits( Qgis::MapToolUnit units )
+void QgsSnappingConfig::IndividualLayerSettings::setUnits( QgsTolerance::UnitType units )
 {
   mUnits = units;
 }
@@ -191,11 +189,11 @@ bool QgsSnappingConfig::operator==( const QgsSnappingConfig &other ) const
 void QgsSnappingConfig::reset()
 {
   // get defaults values. They are both used for standard and advanced configuration (per layer)
-  const bool enabled = QgsSettingsRegistryCore::settingsDigitizingDefaultSnapEnabled->value();
-  const Qgis::SnappingMode mode = QgsSettingsRegistryCore::settingsDigitizingDefaultSnapMode->value();
-  const Qgis::SnappingType type = QgsSettingsRegistryCore::settingsDigitizingDefaultSnapType->value();
-  const double tolerance = QgsSettingsRegistryCore::settingsDigitizingDefaultSnappingTolerance->value();
-  const Qgis::MapToolUnit units = QgsSettingsRegistryCore::settingsDigitizingDefaultSnappingToleranceUnit->value();
+  const bool enabled = QgsSettingsRegistryCore::settingsDigitizingDefaultSnapEnabled.value();
+  const Qgis::SnappingMode mode = QgsSettingsRegistryCore::settingsDigitizingDefaultSnapMode.value();
+  const Qgis::SnappingType type = QgsSettingsRegistryCore::settingsDigitizingDefaultSnapType.value();
+  const double tolerance = QgsSettingsRegistryCore::settingsDigitizingDefaultSnappingTolerance.value();
+  const QgsTolerance::UnitType units = QgsSettingsRegistryCore::settingsDigitizingDefaultSnappingToleranceUnit.value();
 
   // assign main (standard) config
   mEnabled = enabled;
@@ -206,9 +204,9 @@ void QgsSnappingConfig::reset()
   mMinimumScale = 0.0;
   mMaximumScale = 0.0;
   // do not allow unit to be "layer" if not in advanced configuration
-  if ( mUnits == Qgis::MapToolUnit::Layer && mMode != Qgis::SnappingMode::AdvancedConfiguration )
+  if ( mUnits == QgsTolerance::LayerUnits && mMode != Qgis::SnappingMode::AdvancedConfiguration )
   {
-    mUnits = Qgis::MapToolUnit::Project;
+    mUnits = QgsTolerance::ProjectUnits;
   }
   else
   {
@@ -361,12 +359,12 @@ void QgsSnappingConfig::setTolerance( double tolerance )
   mTolerance = tolerance;
 }
 
-Qgis::MapToolUnit QgsSnappingConfig::units() const
+QgsTolerance::UnitType QgsSnappingConfig::units() const
 {
   return mUnits;
 }
 
-void QgsSnappingConfig::setUnits( Qgis::MapToolUnit units )
+void QgsSnappingConfig::setUnits( QgsTolerance::UnitType units )
 {
   if ( mUnits == units )
   {
@@ -464,7 +462,7 @@ void QgsSnappingConfig::readProject( const QDomDocument &doc )
     if ( versionElem.hasAttribute( QStringLiteral( "version" ) ) )
     {
       version = versionElem.attribute( QStringLiteral( "version" ) );
-      const thread_local QRegularExpression re( QStringLiteral( "([\\d]+)\\.([\\d]+)" ) );
+      const QRegularExpression re( QStringLiteral( "([\\d]+)\\.([\\d]+)" ) );
       const QRegularExpressionMatch match = re.match( version );
       if ( match.hasMatch() )
       {
@@ -511,7 +509,7 @@ void QgsSnappingConfig::readProject( const QDomDocument &doc )
     mMaximumScale = snapSettingsElem.attribute( QStringLiteral( "maxScale" ) ).toDouble();
 
   if ( snapSettingsElem.hasAttribute( QStringLiteral( "unit" ) ) )
-    mUnits = static_cast< Qgis::MapToolUnit >( snapSettingsElem.attribute( QStringLiteral( "unit" ) ).toInt() );
+    mUnits = static_cast< QgsTolerance::UnitType >( snapSettingsElem.attribute( QStringLiteral( "unit" ) ).toInt() );
 
   if ( snapSettingsElem.hasAttribute( QStringLiteral( "intersection-snapping" ) ) )
     mIntersectionSnapping = snapSettingsElem.attribute( QStringLiteral( "intersection-snapping" ) ) == QLatin1String( "1" );
@@ -539,12 +537,12 @@ void QgsSnappingConfig::readProject( const QDomDocument &doc )
       const bool enabled = settingElement.attribute( QStringLiteral( "enabled" ) ) == QLatin1String( "1" );
       const Qgis::SnappingTypes type = static_cast<Qgis::SnappingTypes>( settingElement.attribute( QStringLiteral( "type" ) ).toInt() );
       const double tolerance = settingElement.attribute( QStringLiteral( "tolerance" ) ).toDouble();
-      const Qgis::MapToolUnit units = static_cast< Qgis::MapToolUnit >( settingElement.attribute( QStringLiteral( "units" ) ).toInt() );
+      const QgsTolerance::UnitType units = static_cast< QgsTolerance::UnitType >( settingElement.attribute( QStringLiteral( "units" ) ).toInt() );
       const double minScale = settingElement.attribute( QStringLiteral( "minScale" ) ).toDouble();
       const double maxScale = settingElement.attribute( QStringLiteral( "maxScale" ) ).toDouble();
 
       QgsMapLayer *ml = mProject->mapLayer( layerId );
-      if ( !ml || ml->type() != Qgis::LayerType::Vector )
+      if ( !ml || ml->type() != QgsMapLayerType::VectorLayer )
         continue;
 
       QgsVectorLayer *vl = qobject_cast<QgsVectorLayer *>( ml );
@@ -593,10 +591,10 @@ void QgsSnappingConfig::writeProject( QDomDocument &doc )
 bool QgsSnappingConfig::addLayers( const QList<QgsMapLayer *> &layers )
 {
   bool changed = false;
-  const bool enabled = QgsSettingsRegistryCore::settingsDigitizingDefaultSnapEnabled->valueWithDefaultOverride( true );
-  const Qgis::SnappingTypes type = QgsSettingsRegistryCore::settingsDigitizingDefaultSnapType->value();
-  const double tolerance = QgsSettingsRegistryCore::settingsDigitizingDefaultSnappingTolerance->value();
-  const Qgis::MapToolUnit units = QgsSettingsRegistryCore::settingsDigitizingDefaultSnappingToleranceUnit->value();
+  const bool enabled = QgsSettingsRegistryCore::settingsDigitizingDefaultSnapEnabled.valueWithDefaultOverride( true );
+  const Qgis::SnappingTypes type = QgsSettingsRegistryCore::settingsDigitizingDefaultSnapType.value();
+  const double tolerance = QgsSettingsRegistryCore::settingsDigitizingDefaultSnappingTolerance.value();
+  const QgsTolerance::UnitType units = QgsSettingsRegistryCore::settingsDigitizingDefaultSnappingToleranceUnit.value();
 
   const auto constLayers = layers;
   for ( QgsMapLayer *ml : constLayers )
@@ -635,7 +633,7 @@ void QgsSnappingConfig::readLegacySettings()
   const QString snapMode = mProject->readEntry( QStringLiteral( "Digitizing" ), QStringLiteral( "/SnappingMode" ) );
 
   mTolerance = mProject->readDoubleEntry( QStringLiteral( "Digitizing" ), QStringLiteral( "/DefaultSnapTolerance" ), 0 );
-  mUnits = static_cast< Qgis::MapToolUnit >( mProject->readNumEntry( QStringLiteral( "Digitizing" ), QStringLiteral( "/DefaultSnapToleranceUnit" ), static_cast<int>( Qgis::MapToolUnit::Project ) ) );
+  mUnits = static_cast< QgsTolerance::UnitType >( mProject->readNumEntry( QStringLiteral( "Digitizing" ), QStringLiteral( "/DefaultSnapToleranceUnit" ), QgsTolerance::ProjectUnits ) );
 
   mIntersectionSnapping = mProject->readNumEntry( QStringLiteral( "Digitizing" ), QStringLiteral( "/IntersectionSnapping" ), 0 );
 
@@ -679,7 +677,7 @@ void QgsSnappingConfig::readLegacySettings()
                                  )
                                );
 
-    mIndividualLayerSettings.insert( vlayer, IndividualLayerSettings( *enabledIt == QLatin1String( "enabled" ), t, tolIt->toDouble(), static_cast<Qgis::MapToolUnit>( tolUnitIt->toInt() ), 0.0, 0.0 ) );
+    mIndividualLayerSettings.insert( vlayer, IndividualLayerSettings( *enabledIt == QLatin1String( "enabled" ), t, tolIt->toDouble(), static_cast<QgsTolerance::UnitType>( tolUnitIt->toInt() ), 0.0, 0.0 ) );
   }
 
   const QString snapType = mProject->readEntry( QStringLiteral( "Digitizing" ), QStringLiteral( "/DefaultSnapType" ), QStringLiteral( "off" ) );
@@ -703,11 +701,9 @@ QgsProject *QgsSnappingConfig::project() const
 
 void QgsSnappingConfig::setProject( QgsProject *project )
 {
-  if ( mProject == project )
-  {
-    return;
-  }
-  mProject = project;
+  if ( mProject != project )
+    mProject = project;
+
   reset();
 }
 

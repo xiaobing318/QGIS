@@ -9,20 +9,20 @@ __author__ = 'Nyall Dawson'
 __date__ = '11/11/2018'
 __copyright__ = 'Copyright 2018, The QGIS Project'
 
+import qgis  # NOQA
+
 from qgis.PyQt.QtCore import QByteArray
-from qgis.core import NULL, QgsFeature, QgsGeometry, QgsPointXY, QgsVectorLayer
+from qgis.core import QgsFeature, QgsGeometry, QgsPointXY, QgsVectorLayer, NULL
 from qgis.gui import QgsGui
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsBinaryWidget(QgisTestCase):
+class TestQgsBinaryWidget(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        super().setUpClass()
         QgsGui.editorWidgetRegistry().initEditors()
 
     def setUp(self):

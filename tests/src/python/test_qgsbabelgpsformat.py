@@ -9,25 +9,24 @@ __author__ = 'Nyall Dawson'
 __date__ = '2021-07'
 __copyright__ = 'Copyright 2021, The QGIS Project'
 
+import qgis  # NOQA
+
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import (
-    Qgis,
-    QgsApplication,
-    QgsBabelFormatRegistry,
-    QgsBabelGpsDeviceFormat,
+    Qgis, QgsSettings,
     QgsBabelSimpleImportFormat,
-    QgsSettings,
+    QgsBabelGpsDeviceFormat,
+    QgsApplication,
+    QgsBabelFormatRegistry
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 
-class TestQgsBabelGpsFormat(QgisTestCase):
+class TestQgsBabelGpsFormat(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
-        super().setUpClass()
 
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain("TestPyQgsBabelGpsFormat.com")

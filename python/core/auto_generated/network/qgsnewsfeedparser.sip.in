@@ -3,10 +3,8 @@
  *                                                                      *
  * src/core/network/qgsnewsfeedparser.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
-
-
 
 
 
@@ -25,7 +23,6 @@ https://github.com/elpaso/qgis-feed.
 #include "qgsnewsfeedparser.h"
 %End
   public:
-
 
     class Entry
 {
@@ -96,6 +93,7 @@ Returns the authentication configuration for the parser.
 Returns the settings key used for a feed with the given ``baseUrl``.
 %End
 
+
   public slots:
 
     void fetch();
@@ -109,7 +107,7 @@ Fetches new entries from the feed's URL.
 
     void fetched( const QList< QgsNewsFeedParser::Entry > &entries );
 %Docstring
-Emitted when ``entries`` have been fetched from the feed.
+Emitted when ``entries`` have fetched from the feed.
 
 .. seealso:: :py:func:`fetch`
 %End
@@ -120,16 +118,6 @@ Emitted whenever a new ``entry`` is available from the feed (as a result
 of a call to :py:func:`~QgsNewsFeedParser.fetch`).
 
 .. seealso:: :py:func:`fetch`
-%End
-
-    void entryUpdated( const QgsNewsFeedParser::Entry &entry );
-%Docstring
-Emitted whenever an existing ``entry`` is available from the feed (as a result
-of a call to :py:func:`~QgsNewsFeedParser.fetch`).
-
-.. seealso:: :py:func:`fetch`
-
-.. versionadded:: 3.36
 %End
 
     void entryDismissed( const QgsNewsFeedParser::Entry &entry );
@@ -153,5 +141,5 @@ and is now available.
  *                                                                      *
  * src/core/network/qgsnewsfeedparser.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsexpressionselectiondialog.h"
-#include "moc_qgsexpressionselectiondialog.cpp"
 
 #include "qgsapplication.h"
 #include "qgsexpression.h"
@@ -165,7 +164,7 @@ void QgsExpressionSelectionDialog::mButtonZoomToFeatures_clicked()
   QgsFeatureIterator features = mLayer->getFeatures( request );
 
   QgsRectangle bbox;
-  bbox.setNull();
+  bbox.setMinimal();
   QgsFeature feat;
   int featureCount = 0;
   while ( features.nextFeature( feat ) )

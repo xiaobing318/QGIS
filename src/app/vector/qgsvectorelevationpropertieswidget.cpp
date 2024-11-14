@@ -14,7 +14,7 @@
  ***************************************************************************/
 
 #include "qgsvectorelevationpropertieswidget.h"
-#include "moc_qgsvectorelevationpropertieswidget.cpp"
+#include "qgsstyle.h"
 #include "qgsapplication.h"
 #include "qgsmaplayer.h"
 #include "qgsvectorlayer.h"
@@ -23,24 +23,12 @@
 #include "qgsmarkersymbol.h"
 #include "qgsfillsymbol.h"
 #include "qgsexpressioncontextutils.h"
-#include "qgsprojectionselectionwidget.h"
 
 QgsVectorElevationPropertiesWidget::QgsVectorElevationPropertiesWidget( QgsVectorLayer *layer, QgsMapCanvas *canvas, QWidget *parent )
   : QgsMapLayerConfigWidget( layer, canvas, parent )
 {
   setupUi( this );
   setObjectName( QStringLiteral( "mOptsPage_Elevation" ) );
-
-  mVerticalCrsStackedWidget->setSizeMode( QgsStackedWidget::SizeMode::CurrentPageOnly );
-
-  QVBoxLayout *vl = new QVBoxLayout();
-  vl->setContentsMargins( 0, 0, 0, 0 );
-  mVerticalCrsWidget = new QgsProjectionSelectionWidget( nullptr, QgsCoordinateReferenceSystemProxyModel::FilterVertical );
-  mVerticalCrsWidget->setOptionVisible( QgsProjectionSelectionWidget::CrsNotSet, true );
-  mVerticalCrsWidget->setNotSetText( tr( "Not set" ) );
-  mVerticalCrsWidget->setDialogTitle( tr( "Layer Vertical CRS" ) );
-  vl->addWidget( mVerticalCrsWidget );
-  mCrsPageEnabled->setLayout( vl );
 
   mOffsetZSpinBox->setClearValue( 0 );
   mScaleZSpinBox->setClearValue( 1 );
@@ -52,7 +40,6 @@ QgsVectorElevationPropertiesWidget::QgsVectorElevationPropertiesWidget( QgsVecto
   mSurfaceLineStyleButton->setSymbolType( Qgis::SymbolType::Line );
   mSurfaceFillStyleButton->setSymbolType( Qgis::SymbolType::Fill );
   mSurfaceMarkerStyleButton->setSymbolType( Qgis::SymbolType::Marker );
-  mElevationLimitSpinBox->setClearValue( mElevationLimitSpinBox->minimum(), tr( "Not set" ) );
 
   mComboClamping->addItem( tr( "Clamped to Terrain" ), static_cast< int >( Qgis::AltitudeClamping::Terrain ) );
   mComboClamping->addItem( tr( "Relative to Terrain" ), static_cast< int >( Qgis::AltitudeClamping::Relative ) );
@@ -66,16 +53,14 @@ QgsVectorElevationPropertiesWidget::QgsVectorElevationPropertiesWidget( QgsVecto
 
   mStyleComboBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "mIconSurfaceElevationLine.svg" ) ), tr( "Line" ), static_cast< int >( Qgis::ProfileSurfaceSymbology::Line ) );
   mStyleComboBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "mIconSurfaceElevationFillBelow.svg" ) ), tr( "Fill Below" ), static_cast< int >( Qgis::ProfileSurfaceSymbology::FillBelow ) );
-  mStyleComboBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "mIconSurfaceElevationFillAbove.svg" ) ), tr( "Fill Above" ), static_cast< int >( Qgis::ProfileSurfaceSymbology::FillAbove ) );
 
-  initializeDataDefinedButton( mOffsetDDBtn, QgsMapLayerElevationProperties::Property::ZOffset );
-  initializeDataDefinedButton( mExtrusionDDBtn, QgsMapLayerElevationProperties::Property::ExtrusionHeight );
+  initializeDataDefinedButton( mOffsetDDBtn, QgsMapLayerElevationProperties::ZOffset );
+  initializeDataDefinedButton( mExtrusionDDBtn, QgsMapLayerElevationProperties::ExtrusionHeight );
 
   syncToLayer( layer );
 
   connect( mOffsetZSpinBox, qOverload<double >( &QDoubleSpinBox::valueChanged ), this, &QgsVectorElevationPropertiesWidget::onChanged );
   connect( mScaleZSpinBox, qOverload<double >( &QDoubleSpinBox::valueChanged ), this, &QgsVectorElevationPropertiesWidget::onChanged );
-  connect( mElevationLimitSpinBox, qOverload<double >( &QDoubleSpinBox::valueChanged ), this, &QgsVectorElevationPropertiesWidget::onChanged );
   connect( mExtrusionSpinBox, qOverload<double >( &QDoubleSpinBox::valueChanged ), this, &QgsVectorElevationPropertiesWidget::onChanged );
   connect( mExtrusionGroupBox, &QGroupBox::toggled, this, &QgsVectorElevationPropertiesWidget::onChanged );
   connect( mComboClamping, qOverload<int>( &QComboBox::currentIndexChanged ), this, &QgsVectorElevationPropertiesWidget::onChanged );
@@ -104,7 +89,6 @@ QgsVectorElevationPropertiesWidget::QgsVectorElevationPropertiesWidget( QgsVecto
         mSymbologyStackedWidget->setCurrentWidget( mPageLine );
         break;
       case Qgis::ProfileSurfaceSymbology::FillBelow:
-      case Qgis::ProfileSurfaceSymbology::FillAbove:
         mSymbologyStackedWidget->setCurrentWidget( mPageFill );
         break;
     }
@@ -121,9 +105,6 @@ QgsVectorElevationPropertiesWidget::QgsVectorElevationPropertiesWidget( QgsVecto
   connect( mSurfaceLineStyleButton, &QgsSymbolButton::changed, this, &QgsVectorElevationPropertiesWidget::onChanged );
   connect( mSurfaceMarkerStyleButton, &QgsSymbolButton::changed, this, &QgsVectorElevationPropertiesWidget::onChanged );
   connect( mExtrusionGroupBox, &QGroupBox::toggled, this, &QgsVectorElevationPropertiesWidget::toggleSymbolWidgets );
-
-  connect( mLayer, &QgsMapLayer::crsChanged, this, &QgsVectorElevationPropertiesWidget::updateVerticalCrsOptions );
-
 
   setProperty( "helpPage", QStringLiteral( "working_with_vector/vector_properties.html#elevation-properties" ) );
 }
@@ -151,10 +132,6 @@ void QgsVectorElevationPropertiesWidget::syncToLayer( QgsMapLayer *layer )
   mComboBinding->setCurrentIndex( mComboBinding->findData( static_cast< int >( props->binding() ) ) );
   mOffsetZSpinBox->setValue( props->zOffset() );
   mScaleZSpinBox->setValue( props->zScale() );
-  if ( std::isnan( props->elevationLimit() ) )
-    mElevationLimitSpinBox->clear();
-  else
-    mElevationLimitSpinBox->setValue( props->elevationLimit() );
   mExtrusionGroupBox->setChecked( props->extrusionEnabled() );
   mExtrusionSpinBox->setValue( props->extrusionHeight() );
   mTypeComboBox->setCurrentIndex( mTypeComboBox->findData( static_cast< int >( props->type() ) ) );
@@ -174,7 +151,6 @@ void QgsVectorElevationPropertiesWidget::syncToLayer( QgsMapLayer *layer )
       mSymbologyStackedWidget->setCurrentWidget( mPageLine );
       break;
     case Qgis::ProfileSurfaceSymbology::FillBelow:
-    case Qgis::ProfileSurfaceSymbology::FillAbove:
       mSymbologyStackedWidget->setCurrentWidget( mPageFill );
       break;
   }
@@ -211,8 +187,6 @@ void QgsVectorElevationPropertiesWidget::syncToLayer( QgsMapLayer *layer )
 
   clampingChanged();
   bindingChanged();
-
-  updateVerticalCrsOptions();
 }
 
 QgsExpressionContext QgsVectorElevationPropertiesWidget::createExpressionContext() const
@@ -236,10 +210,6 @@ void QgsVectorElevationPropertiesWidget::apply()
   props->setBinding( static_cast< Qgis::AltitudeBinding >( mComboBinding->currentData().toInt() ) );
   props->setExtrusionEnabled( mExtrusionGroupBox->isChecked() );
   props->setExtrusionHeight( mExtrusionSpinBox->value() );
-  if ( mElevationLimitSpinBox->value() != mElevationLimitSpinBox->clearValue() )
-    props->setElevationLimit( mElevationLimitSpinBox->value() );
-  else
-    props->setElevationLimit( std::numeric_limits< double >::quiet_NaN() );
 
   props->setRespectLayerSymbology( mCheckRespectLayerSymbology->isChecked() );
   props->setShowMarkerSymbolInSurfacePlots( mCheckBoxShowMarkersAtSampledPoints->isChecked() );
@@ -261,7 +231,6 @@ void QgsVectorElevationPropertiesWidget::apply()
 
   props->setDataDefinedProperties( mPropertyCollection );
 
-  mLayer->setVerticalCrs( mVerticalCrsWidget->crs() );
   mLayer->trigger3DUpdate();
 }
 
@@ -274,7 +243,7 @@ void QgsVectorElevationPropertiesWidget::onChanged()
 void QgsVectorElevationPropertiesWidget::clampingChanged()
 {
   bool enableScale = true;
-  bool enableBinding = !mLayer || mLayer->geometryType() != Qgis::GeometryType::Point;
+  bool enableBinding = !mLayer || mLayer->geometryType() != QgsWkbTypes::PointGeometry;
   switch ( static_cast< Qgis::AltitudeClamping >( mComboClamping->currentData().toInt() ) )
   {
     case Qgis::AltitudeClamping::Absolute:
@@ -348,26 +317,26 @@ void QgsVectorElevationPropertiesWidget::toggleSymbolWidgets()
   // enabled here
   switch ( mLayer->geometryType() )
   {
-    case Qgis::GeometryType::Point:
+    case QgsWkbTypes::PointGeometry:
       mLineStyleButton->setEnabled( mExtrusionGroupBox->isChecked() );
       mMarkerStyleButton->setEnabled( true );
       mFillStyleButton->setEnabled( false );
       break;
 
-    case Qgis::GeometryType::Line:
+    case QgsWkbTypes::LineGeometry:
       mLineStyleButton->setEnabled( mExtrusionGroupBox->isChecked() );
       mMarkerStyleButton->setEnabled( true );
       mFillStyleButton->setEnabled( false );
       break;
 
-    case Qgis::GeometryType::Polygon:
+    case QgsWkbTypes::PolygonGeometry:
       mLineStyleButton->setEnabled( true );
       mMarkerStyleButton->setEnabled( true );
       mFillStyleButton->setEnabled( mExtrusionGroupBox->isChecked() );
       break;
 
-    case Qgis::GeometryType::Unknown:
-    case Qgis::GeometryType::Null:
+    case QgsWkbTypes::UnknownGeometry:
+    case QgsWkbTypes::NullGeometry:
       mLineStyleButton->setEnabled( false );
       mMarkerStyleButton->setEnabled( false );
       mFillStyleButton->setEnabled( false );
@@ -382,62 +351,10 @@ void QgsVectorElevationPropertiesWidget::updateProperty()
   mPropertyCollection.setProperty( key, button->toProperty() );
 }
 
-void QgsVectorElevationPropertiesWidget::updateVerticalCrsOptions()
-{
-  switch ( mLayer->crs().type() )
-  {
-    case Qgis::CrsType::Compound:
-      mVerticalCrsStackedWidget->setCurrentWidget( mCrsPageDisabled );
-      mCrsDisabledLabel->setText( tr( "Layer coordinate reference system is set to a compound CRS (%1), so the layer's vertical CRS is the vertical component of this CRS (%2)." ).arg(
-                                    mLayer->crs().userFriendlyIdentifier(),
-                                    mLayer->verticalCrs().userFriendlyIdentifier()
-                                  ) );
-      break;
-
-    case Qgis::CrsType::Geographic3d:
-      mVerticalCrsStackedWidget->setCurrentWidget( mCrsPageDisabled );
-      mCrsDisabledLabel->setText( tr( "Layer coordinate reference system is set to a geographic 3D CRS (%1), so the vertical CRS cannot be manually specified." ).arg(
-                                    mLayer->crs().userFriendlyIdentifier()
-                                  ) );
-      break;
-
-    case Qgis::CrsType::Geocentric:
-      mVerticalCrsStackedWidget->setCurrentWidget( mCrsPageDisabled );
-      mCrsDisabledLabel->setText( tr( "Layer coordinate reference system is set to a geocentric CRS (%1), so the vertical CRS cannot be manually specified." ).arg(
-                                    mLayer->crs().userFriendlyIdentifier()
-                                  ) );
-      break;
-
-    case Qgis::CrsType::Projected:
-      if ( mLayer->crs().hasVerticalAxis() )
-      {
-        mVerticalCrsStackedWidget->setCurrentWidget( mCrsPageDisabled );
-        mCrsDisabledLabel->setText( tr( "Layer coordinate reference system is set to a projected 3D CRS (%1), so the vertical CRS cannot be manually specified." ).arg(
-                                      mLayer->crs().userFriendlyIdentifier()
-                                    ) );
-        break;
-      }
-      [[fallthrough]];
-
-    case Qgis::CrsType::Unknown:
-    case Qgis::CrsType::Geodetic:
-    case Qgis::CrsType::Geographic2d:
-    case Qgis::CrsType::Vertical:
-    case Qgis::CrsType::Temporal:
-    case Qgis::CrsType::Engineering:
-    case Qgis::CrsType::Bound:
-    case Qgis::CrsType::Other:
-    case Qgis::CrsType::DerivedProjected:
-      mVerticalCrsStackedWidget->setCurrentWidget( mCrsPageEnabled );
-      mVerticalCrsWidget->setCrs( mLayer->verticalCrs() );
-      break;
-  }
-}
-
 void QgsVectorElevationPropertiesWidget::initializeDataDefinedButton( QgsPropertyOverrideButton *button, QgsMapLayerElevationProperties::Property key )
 {
   button->blockSignals( true );
-  button->init( static_cast< int >( key ), mPropertyCollection, QgsMapLayerElevationProperties::propertyDefinitions(), nullptr );
+  button->init( key, mPropertyCollection, QgsMapLayerElevationProperties::propertyDefinitions(), nullptr );
   connect( button, &QgsPropertyOverrideButton::changed, this, &QgsVectorElevationPropertiesWidget::updateProperty );
   button->registerExpressionContextGenerator( this );
   button->blockSignals( false );
@@ -494,7 +411,7 @@ bool QgsVectorElevationPropertiesWidgetFactory::supportsStyleDock() const
 
 bool QgsVectorElevationPropertiesWidgetFactory::supportsLayer( QgsMapLayer *layer ) const
 {
-  return layer->type() == Qgis::LayerType::Vector;
+  return layer->type() == QgsMapLayerType::VectorLayer;
 }
 
 QString QgsVectorElevationPropertiesWidgetFactory::layerPropertiesPagePositionHint() const

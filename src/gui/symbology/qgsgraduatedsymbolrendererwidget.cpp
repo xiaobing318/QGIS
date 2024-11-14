@@ -22,11 +22,8 @@
 #include <QPainter>
 #include <QClipboard>
 #include <QCompleter>
-#include <QPointer>
-#include <QScreen>
 
 #include "qgsgraduatedsymbolrendererwidget.h"
-#include "moc_qgsgraduatedsymbolrendererwidget.cpp"
 #include "qgspanelwidget.h"
 
 #include "qgsdatadefinedsizelegend.h"
@@ -39,6 +36,7 @@
 #include "qgsexpressioncontextutils.h"
 #include "qgsvectorlayer.h"
 #include "qgssymbolselectordialog.h"
+#include "qgsexpressionbuilderdialog.h"
 #include "qgslogger.h"
 #include "qgsludialog.h"
 #include "qgsproject.h"
@@ -63,9 +61,8 @@
 
 ///@cond PRIVATE
 
-QgsGraduatedSymbolRendererModel::QgsGraduatedSymbolRendererModel( QObject *parent, QScreen *screen ) : QAbstractItemModel( parent )
+QgsGraduatedSymbolRendererModel::QgsGraduatedSymbolRendererModel( QObject *parent ) : QAbstractItemModel( parent )
   , mMimeFormat( QStringLiteral( "application/x-qgsgraduatedsymbolrendererv2model" ) )
-  , mScreen( screen )
 {
 }
 
@@ -181,7 +178,7 @@ QVariant QgsGraduatedSymbolRendererModel::data( const QModelIndex &index, int ro
   else if ( role == Qt::DecorationRole && index.column() == 0 && range.symbol() )
   {
     const int iconSize = QgsGuiUtils::scaleIconSize( 16 );
-    return QgsSymbolLayerUtils::symbolPreviewIcon( range.symbol(), QSize( iconSize, iconSize ), 0, nullptr, QgsScreenProperties( mScreen.data() ) );
+    return QgsSymbolLayerUtils::symbolPreviewIcon( range.symbol(), QSize( iconSize, iconSize ) );
   }
   else if ( role == Qt::TextAlignmentRole )
   {
@@ -325,7 +322,7 @@ bool QgsGraduatedSymbolRendererModel::dropMimeData( const QMimeData *data, Qt::D
   if ( to == -1 ) to = mRenderer->ranges().size(); // out of rang ok, will be decreased
   for ( int i = rows.size() - 1; i >= 0; i-- )
   {
-    QgsDebugMsgLevel( QStringLiteral( "move %1 to %2" ).arg( rows[i] ).arg( to ), 2 );
+    QgsDebugMsg( QStringLiteral( "move %1 to %2" ).arg( rows[i] ).arg( to ) );
     int t = to;
     // moveCategory first removes and then inserts
     if ( rows[i] < t ) t--;
@@ -420,17 +417,22 @@ QgsRendererWidget *QgsGraduatedSymbolRendererWidget::create( QgsVectorLayer *lay
 QgsExpressionContext QgsGraduatedSymbolRendererWidget::createExpressionContext() const
 {
   QgsExpressionContext expContext;
+  expContext << QgsExpressionContextUtils::globalScope()
+             << QgsExpressionContextUtils::projectScope( QgsProject::instance() )
+             << QgsExpressionContextUtils::atlasScope( nullptr );
 
   if ( auto *lMapCanvas = mContext.mapCanvas() )
   {
-    expContext = lMapCanvas->createExpressionContext();
+    expContext << QgsExpressionContextUtils::mapSettingsScope( lMapCanvas->mapSettings() )
+               << new QgsExpressionContextScope( lMapCanvas->expressionContextScope() );
+    if ( const QgsExpressionContextScopeGenerator *generator = dynamic_cast< const QgsExpressionContextScopeGenerator * >( lMapCanvas->temporalController() ) )
+    {
+      expContext << generator->createExpressionContextScope();
+    }
   }
   else
   {
-    expContext << QgsExpressionContextUtils::globalScope()
-               << QgsExpressionContextUtils::projectScope( QgsProject::instance() )
-               << QgsExpressionContextUtils::atlasScope( nullptr )
-               << QgsExpressionContextUtils::mapSettingsScope( QgsMapSettings() );
+    expContext << QgsExpressionContextUtils::mapSettingsScope( QgsMapSettings() );
   }
 
   if ( auto *lVectorLayer = vectorLayer() )
@@ -479,7 +481,7 @@ QgsGraduatedSymbolRendererWidget::QgsGraduatedSymbolRendererWidget( QgsVectorLay
   connect( methodComboBox, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, &QgsGraduatedSymbolRendererWidget::methodComboBox_currentIndexChanged );
   this->layout()->setContentsMargins( 0, 0, 0, 0 );
 
-  mModel = new QgsGraduatedSymbolRendererModel( this, screen() );
+  mModel = new QgsGraduatedSymbolRendererModel( this );
 
   mExpressionWidget->setFilters( QgsFieldProxyModel::Numeric | QgsFieldProxyModel::Date );
   mExpressionWidget->setLayer( mLayer );
@@ -487,14 +489,8 @@ QgsGraduatedSymbolRendererWidget::QgsGraduatedSymbolRendererWidget( QgsVectorLay
   btnChangeGraduatedSymbol->setLayer( mLayer );
   btnChangeGraduatedSymbol->registerExpressionContextGenerator( this );
 
-  mSizeUnitWidget->setUnits(
-  {
-    Qgis::RenderUnit::Millimeters,
-    Qgis::RenderUnit::MapUnits,
-    Qgis::RenderUnit::Pixels,
-    Qgis::RenderUnit::Points,
-    Qgis::RenderUnit::Inches
-  } );
+  mSizeUnitWidget->setUnits( QgsUnitTypes::RenderUnitList() << QgsUnitTypes::RenderMillimeters << QgsUnitTypes::RenderMapUnits << QgsUnitTypes::RenderPixels
+                             << QgsUnitTypes::RenderPoints << QgsUnitTypes::RenderInches );
 
   spinPrecision->setMinimum( QgsClassificationMethod::MIN_PRECISION );
   spinPrecision->setMaximum( QgsClassificationMethod::MAX_PRECISION );
@@ -602,9 +598,6 @@ QgsGraduatedSymbolRendererWidget::QgsGraduatedSymbolRendererWidget( QgsVectorLay
   connect( mExpressionWidget, static_cast < void ( QgsFieldExpressionWidget::* )( const QString & ) >( &QgsFieldExpressionWidget::fieldChanged ), mHistogramWidget, &QgsHistogramWidget::setSourceFieldExp );
 
   mExpressionWidget->registerExpressionContextGenerator( this );
-
-  mUpdateTimer.setSingleShot( true );
-  mUpdateTimer.connect( &mUpdateTimer, &QTimer::timeout, this, &QgsGraduatedSymbolRendererWidget::classifyGraduatedImpl );
 }
 
 void QgsGraduatedSymbolRendererWidget::mSizeUnitWidget_changed()
@@ -918,7 +911,7 @@ void QgsGraduatedSymbolRendererWidget::clearParameterWidgets()
   while ( mParametersLayout->rowCount() )
   {
     QFormLayout::TakeRowResult row = mParametersLayout->takeRow( 0 );
-    for ( QLayoutItem *item : {row.labelItem, row.fieldItem} )
+    for ( QLayoutItem *item : QList<QLayoutItem *>( {row.labelItem, row.fieldItem} ) )
       if ( item )
       {
         QWidget *widget = item->widget();
@@ -959,9 +952,19 @@ void QgsGraduatedSymbolRendererWidget::setSymbolLevels( const QgsLegendSymbolLis
   emit widgetChanged();
 }
 
-void QgsGraduatedSymbolRendererWidget::updateSymbolsFromWidget( QgsSymbolSelectorWidget *widget )
+void QgsGraduatedSymbolRendererWidget::cleanUpSymbolSelector( QgsPanelWidget *container )
 {
-  mGraduatedSymbol.reset( widget->symbol()->clone() );
+  QgsSymbolSelectorWidget *dlg = qobject_cast<QgsSymbolSelectorWidget *>( container );
+  if ( !dlg )
+    return;
+
+  delete dlg->symbol();
+}
+
+void QgsGraduatedSymbolRendererWidget::updateSymbolsFromWidget()
+{
+  QgsSymbolSelectorWidget *dlg = qobject_cast<QgsSymbolSelectorWidget *>( sender() );
+  mGraduatedSymbol.reset( dlg->symbol()->clone() );
 
   applyChangeToSymbol();
 }
@@ -1020,12 +1023,6 @@ void QgsGraduatedSymbolRendererWidget::symmetryPointEditingFinished( )
 
 void QgsGraduatedSymbolRendererWidget::classifyGraduated()
 {
-  mUpdateTimer.start( 500 );
-}
-
-void QgsGraduatedSymbolRendererWidget::classifyGraduatedImpl( )
-{
-
   if ( mBlockUpdates )
     return;
 
@@ -1102,11 +1099,7 @@ void QgsGraduatedSymbolRendererWidget::classifyGraduatedImpl( )
     mRenderer->setSourceColorRamp( nullptr );
   }
 
-  QString error;
-  mRenderer->updateClasses( mLayer, nclasses, error );
-
-  if ( !error.isEmpty() )
-    QMessageBox::critical( this, tr( "Apply Classification" ), error );
+  mRenderer->updateClasses( mLayer, nclasses );
 
   if ( methodComboBox->currentData() == SizeMode )
     mRenderer->setSymbolSizes( minSizeSpinBox->value(), maxSizeSpinBox->value() );
@@ -1201,11 +1194,14 @@ void QgsGraduatedSymbolRendererWidget::changeRangeSymbol( int rangeIdx )
   QgsPanelWidget *panel = QgsPanelWidget::findParentPanel( this );
   if ( panel && panel->dockMode() )
   {
-    QgsSymbolSelectorWidget *widget = QgsSymbolSelectorWidget::createWidgetWithSymbolOwnership( std::move( newSymbol ), mStyle, mLayer, panel );
-    widget->setContext( mContext );
-    widget->setPanelTitle( range.label() );
-    connect( widget, &QgsPanelWidget::widgetChanged, this, [ = ] { updateSymbolsFromWidget( widget ); } );
-    openPanel( widget );
+    // bit tricky here - the widget doesn't take ownership of the symbol. So we need it to last for the duration of the
+    // panel's existence. Accordingly, just kinda give it ownership here, and clean up in cleanUpSymbolSelector
+    QgsSymbolSelectorWidget *dlg = new QgsSymbolSelectorWidget( newSymbol.release(), mStyle, mLayer, panel );
+    dlg->setContext( mContext );
+    dlg->setPanelTitle( range.label() );
+    connect( dlg, &QgsPanelWidget::widgetChanged, this, &QgsGraduatedSymbolRendererWidget::updateSymbolsFromWidget );
+    connect( dlg, &QgsPanelWidget::panelAccepted, this, &QgsGraduatedSymbolRendererWidget::cleanUpSymbolSelector );
+    openPanel( dlg );
   }
   else
   {

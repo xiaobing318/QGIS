@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsaddattrdialog.h"
-#include "moc_qgsaddattrdialog.cpp"
 #include "qgsvectorlayer.h"
 #include "qgsvectordataprovider.h"
 #include "qgslogger.h"
@@ -32,10 +31,8 @@ QgsAddAttrDialog::QgsAddAttrDialog( QgsVectorLayer *vlayer, QWidget *parent, Qt:
   connect( mTypeBox, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, &QgsAddAttrDialog::mTypeBox_currentIndexChanged );
   connect( mLength, &QSpinBox::editingFinished, this, &QgsAddAttrDialog::mLength_editingFinished );
 
-  if ( !vlayer || !vlayer->dataProvider() )
+  if ( !vlayer )
     return;
-
-  const Qgis::VectorDataProviderAttributeEditCapabilities attributeEditCapabilities = vlayer->dataProvider()->attributeEditCapabilities();
 
   //fill data types into the combo box
   const QList< QgsVectorDataProvider::NativeType > &typelist = vlayer->dataProvider()->nativeTypes();
@@ -48,7 +45,7 @@ QgsAddAttrDialog::QgsAddAttrDialog( QgsVectorLayer *vlayer, QWidget *parent, Qt:
                       .arg( typelist[i].mMinLen ).arg( typelist[i].mMaxLen )
                       .arg( typelist[i].mMinPrec ).arg( typelist[i].mMaxPrec ), 2 );
 
-    whileBlocking( mTypeBox )->addItem( QgsFields::iconForFieldType( typelist[i].mType, typelist[i].mSubType, typelist[i].mTypeName ),
+    whileBlocking( mTypeBox )->addItem( QgsFields::iconForFieldType( typelist[i].mType, typelist[i].mSubType ),
                                         typelist[i].mTypeDesc );
     mTypeBox->setItemData( i, static_cast<int>( typelist[i].mType ), Qt::UserRole );
     mTypeBox->setItemData( i, typelist[i].mTypeName, Qt::UserRole + 1 );
@@ -69,22 +66,6 @@ QgsAddAttrDialog::QgsAddAttrDialog( QgsVectorLayer *vlayer, QWidget *parent, Qt:
     mNameEdit->setMaxLength( 10 );
 
   mNameEdit->setFocus();
-
-  if ( !( attributeEditCapabilities & Qgis::VectorDataProviderAttributeEditCapability::EditAlias ) )
-  {
-    mLabelAlias->hide();
-    mAliasEdit->hide();
-  }
-  if ( !( attributeEditCapabilities & Qgis::VectorDataProviderAttributeEditCapability::EditComment ) )
-  {
-    mLabelComment->hide();
-    mCommentEdit->hide();
-  }
-}
-
-void QgsAddAttrDialog::setIllegalFieldNames( const QSet<QString> &names )
-{
-  mIllegalFieldNames = names;
 }
 
 void QgsAddAttrDialog::mTypeBox_currentIndexChanged( int idx )
@@ -129,25 +110,12 @@ void QgsAddAttrDialog::setPrecisionMinMax()
 
 void QgsAddAttrDialog::accept()
 {
-  const QString newName = mNameEdit->text().trimmed();
-  if ( mIsShapeFile && newName.compare( QLatin1String( "shape" ), Qt::CaseInsensitive ) == 0 )
+  if ( mIsShapeFile && mNameEdit->text().compare( QLatin1String( "shape" ), Qt::CaseInsensitive ) == 0 )
   {
     QMessageBox::warning( this, tr( "Add Field" ),
                           tr( "Invalid field name. This field name is reserved and cannot be used." ) );
     return;
   }
-
-
-  for ( const QString &illegalName : std::as_const( mIllegalFieldNames ) )
-  {
-    if ( newName.compare( illegalName, Qt::CaseInsensitive ) == 0 )
-    {
-      QMessageBox::warning( this, tr( "Add Field" ),
-                            tr( "%1 is an illegal field name for this format and cannot be used." ).arg( newName ) );
-      return;
-    }
-  }
-
   if ( mNameEdit->text().isEmpty() )
   {
     QMessageBox::warning( this, tr( "Add Field" ),
@@ -170,18 +138,13 @@ QgsField QgsAddAttrDialog::field() const
                     .arg( mPrec->value() )
                     .arg( mCommentEdit->text() ), 2 );
 
-  QgsField res = QgsField(
-                   mNameEdit->text(),
-                   ( QMetaType::Type ) mTypeBox->currentData( Qt::UserRole ).toInt(),
-                   mTypeBox->currentData( Qt::UserRole + 1 ).toString(),
-                   mLength->value(),
-                   mPrec->isEnabled() ? mPrec->value() : 0,
-                   mCommentEdit->text(),
-                   static_cast<QMetaType::Type>( mTypeBox->currentData( Qt::UserRole ).toInt() ) == QMetaType::Type::QVariantMap ? QMetaType::Type::QString : QMetaType::Type::UnknownType
-                 );
-
-  if ( !mAliasEdit->text().isEmpty() )
-    res.setAlias( mAliasEdit->text() );
-
-  return res;
+  return QgsField(
+           mNameEdit->text(),
+           ( QVariant::Type ) mTypeBox->currentData( Qt::UserRole ).toInt(),
+           mTypeBox->currentData( Qt::UserRole + 1 ).toString(),
+           mLength->value(),
+           mPrec->isEnabled() ? mPrec->value() : 0,
+           mCommentEdit->text(),
+           static_cast<QVariant::Type>( mTypeBox->currentData( Qt::UserRole ).toInt() ) == QVariant::Map ? QVariant::String : QVariant::Invalid
+         );
 }

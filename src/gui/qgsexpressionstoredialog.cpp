@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsexpressionstoredialog.h"
-#include "moc_qgsexpressionstoredialog.cpp"
 #include <QPushButton>
 #include <QStyle>
 

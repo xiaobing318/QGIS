@@ -23,7 +23,6 @@
 #include "qgsscientificnumericformat.h"
 #include "qgsfractionnumericformat.h"
 #include "qgscoordinatenumericformat.h"
-#include "qgsexpressionbasednumericformat.h"
 #include "qgsxmlutils.h"
 
 QgsNumericFormatRegistry::QgsNumericFormatRegistry()
@@ -36,7 +35,6 @@ QgsNumericFormatRegistry::QgsNumericFormatRegistry()
   addFormat( new QgsPercentageNumericFormat() );
   addFormat( new QgsScientificNumericFormat() );
   addFormat( new QgsFractionNumericFormat() );
-  addFormat( new QgsExpressionBasedNumericFormat() );
 }
 
 QgsNumericFormatRegistry::~QgsNumericFormatRegistry()

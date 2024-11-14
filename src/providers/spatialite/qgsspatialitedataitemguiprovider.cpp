@@ -14,7 +14,7 @@
  ***************************************************************************/
 
 #include "qgsspatialitedataitemguiprovider.h"
-#include "moc_qgsspatialitedataitemguiprovider.cpp"
+#include "qgsspatialiteconnection.h"
 #include "qgsspatialitedataitems.h"
 #include "qgsspatialitesourceselect.h"
 #include "qgsproviderregistry.h"
@@ -28,13 +28,12 @@
 #include "qgsvectorlayer.h"
 #include "qgsvectorlayerexporter.h"
 #include "qgsfileutils.h"
-#include "qgsdataitemguiproviderutils.h"
 
 #include <QFileDialog>
 #include <QMessageBox>
 
 
-void QgsSpatiaLiteDataItemGuiProvider::populateContextMenu( QgsDataItem *item, QMenu *menu, const QList<QgsDataItem *> &selection, QgsDataItemGuiContext context )
+void QgsSpatiaLiteDataItemGuiProvider::populateContextMenu( QgsDataItem *item, QMenu *menu, const QList<QgsDataItem *> &, QgsDataItemGuiContext )
 {
   if ( QgsSLRootItem *rootItem = qobject_cast< QgsSLRootItem * >( item ) )
   {
@@ -47,18 +46,10 @@ void QgsSpatiaLiteDataItemGuiProvider::populateContextMenu( QgsDataItem *item, Q
     menu->addAction( actionCreateDatabase );
   }
 
-  if ( qobject_cast< QgsSLConnectionItem * >( item ) )
+  if ( QgsSLConnectionItem *connItem = qobject_cast< QgsSLConnectionItem * >( item ) )
   {
-    const QList< QgsSLConnectionItem * > slConnectionItems = QgsDataItem::filteredItems<QgsSLConnectionItem>( selection );
-    QAction *actionDeleteConnection = new QAction( slConnectionItems.size() > 1 ? tr( "Remove Connections…" ) : tr( "Remove Connection…" ), menu );
-    connect( actionDeleteConnection, &QAction::triggered, this, [slConnectionItems, context]
-    {
-      QgsDataItemGuiProviderUtils::deleteConnections( slConnectionItems, []( const QString & connectionName )
-      {
-        QgsProviderMetadata *providerMetadata = QgsProviderRegistry::instance()->providerMetadata( QStringLiteral( "spatialite" ) );
-        providerMetadata->deleteConnection( connectionName );
-      }, context );
-    } );
+    QAction *actionDeleteConnection = new QAction( tr( "Remove Connection" ), menu );
+    connect( actionDeleteConnection, &QAction::triggered, this, [connItem] { deleteConnection( connItem ); } );
     menu->addAction( actionDeleteConnection );
   }
 }
@@ -148,6 +139,20 @@ void QgsSpatiaLiteDataItemGuiProvider::createDatabase( QgsDataItem *item )
   }
 }
 
+void QgsSpatiaLiteDataItemGuiProvider::deleteConnection( QgsDataItem *item )
+{
+  if ( QMessageBox::question( nullptr, QObject::tr( "Remove Connection" ),
+                              QObject::tr( "Are you sure you want to remove the connection to %1?" ).arg( item->name() ),
+                              QMessageBox::Yes | QMessageBox::No, QMessageBox::No ) != QMessageBox::Yes )
+    return;
+
+  QgsProviderMetadata *providerMetadata = QgsProviderRegistry::instance()->providerMetadata( QStringLiteral( "spatialite" ) );
+  providerMetadata->deleteConnection( item->name() );
+
+  // the parent should be updated
+  item->parent()->refreshConnections();
+}
+
 bool QgsSpatiaLiteDataItemGuiProvider::handleDropConnectionItem( QgsSLConnectionItem *connItem, const QMimeData *data, Qt::DropAction )
 {
   if ( !QgsMimeDataUtils::isUriList( data ) )
@@ -178,8 +183,8 @@ bool QgsSpatiaLiteDataItemGuiProvider::handleDropConnectionItem( QgsSLConnection
 
     if ( srcLayer->isValid() )
     {
-      destUri.setDataSource( QString(), u.name, srcLayer->geometryType() != Qgis::GeometryType::Null ? QStringLiteral( "geom" ) : QString() );
-      QgsDebugMsgLevel( "URI " + destUri.uri(), 2 );
+      destUri.setDataSource( QString(), u.name, srcLayer->geometryType() != QgsWkbTypes::NullGeometry ? QStringLiteral( "geom" ) : QString() );
+      QgsDebugMsg( "URI " + destUri.uri() );
 
       std::unique_ptr< QgsVectorLayerExporterTask > exportTask( new QgsVectorLayerExporterTask( srcLayer, destUri.uri(), QStringLiteral( "spatialite" ), srcLayer->crs(), QVariantMap(), owner ) );
 

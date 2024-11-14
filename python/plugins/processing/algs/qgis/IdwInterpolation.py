@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     IdwInterpolation.py
@@ -67,7 +69,7 @@ class IdwInterpolation(QgisAlgorithm):
         self.addParameter(ParameterInterpolationData(self.INTERPOLATION_DATA,
                                                      self.tr('Input layer(s)')))
         self.addParameter(QgsProcessingParameterNumber(self.DISTANCE_COEFFICIENT,
-                                                       self.tr('Distance coefficient P'), type=QgsProcessingParameterNumber.Type.Double,
+                                                       self.tr('Distance coefficient P'), type=QgsProcessingParameterNumber.Double,
                                                        minValue=0.0, maxValue=99.99, defaultValue=2.0))
         self.addParameter(QgsProcessingParameterExtent(self.EXTENT,
                                                        self.tr('Extent'),
@@ -84,14 +86,14 @@ class IdwInterpolation(QgisAlgorithm):
                                                   self.tr('Number of columns'),
                                                   optional=True,
                                                   minValue=0, maxValue=10000000)
-        cols_param.setFlags(cols_param.flags() | QgsProcessingParameterDefinition.Flag.FlagHidden)
+        cols_param.setFlags(cols_param.flags() | QgsProcessingParameterDefinition.FlagHidden)
         self.addParameter(cols_param)
 
         rows_param = QgsProcessingParameterNumber(self.ROWS,
                                                   self.tr('Number of rows'),
                                                   optional=True,
                                                   minValue=0, maxValue=10000000)
-        rows_param.setFlags(rows_param.flags() | QgsProcessingParameterDefinition.Flag.FlagHidden)
+        rows_param.setFlags(rows_param.flags() | QgsProcessingParameterDefinition.FlagHidden)
         self.addParameter(rows_param)
 
         self.addParameter(QgsProcessingParameterRasterDestination(self.OUTPUT,
@@ -135,16 +137,15 @@ class IdwInterpolation(QgisAlgorithm):
 
             data.valueSource = int(v[1])
             data.interpolationAttribute = int(v[2])
-            if data.valueSource == QgsInterpolator.ValueSource.ValueAttribute and data.interpolationAttribute == -1:
-                raise QgsProcessingException(self.tr(
-                    'Layer {} is set to use a value attribute, but no attribute was set').format(i + 1))
+            if data.valueSource == QgsInterpolator.ValueAttribute and data.interpolationAttribute == -1:
+                raise QgsProcessingException(self.tr('Layer {} is set to use a value attribute, but no attribute was set'.format(i + 1)))
 
             if v[3] == '0':
-                data.sourceType = QgsInterpolator.SourceType.SourcePoints
+                data.sourceType = QgsInterpolator.SourcePoints
             elif v[3] == '1':
-                data.sourceType = QgsInterpolator.SourceType.SourceStructureLines
+                data.sourceType = QgsInterpolator.SourceStructureLines
             else:
-                data.sourceType = QgsInterpolator.SourceType.SourceBreakLines
+                data.sourceType = QgsInterpolator.SourceBreakLines
             layerData.append(data)
 
         interpolator = QgsIDWInterpolator(layerData)

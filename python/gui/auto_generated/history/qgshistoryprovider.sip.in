@@ -3,12 +3,13 @@
  *                                                                      *
  * src/gui/history/qgshistoryprovider.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
 
-class QgsAbstractHistoryProvider : QObject
+
+class QgsAbstractHistoryProvider
 {
 %Docstring(signature="appended")
 Abstract base class for objects which track user history (i.e. operations performed through the GUI).
@@ -24,7 +25,7 @@ Abstract base class for objects which track user history (i.e. operations perfor
   public:
 
 %ConvertToSubClassCode
-    if ( qobject_cast<QgsProcessingHistoryProvider *>( sipCpp ) )
+    if ( dynamic_cast<QgsProcessingHistoryProvider *>( sipCpp ) )
       sipType = sipType_QgsProcessingHistoryProvider;
     else
       sipType = nullptr;
@@ -37,20 +38,6 @@ Abstract base class for objects which track user history (i.e. operations perfor
 Returns the provider's unique id, which is used to associate existing history entries with the provider.
 %End
 
-    virtual QgsHistoryEntryNode *createNodeForEntry( const QgsHistoryEntry &entry, const QgsHistoryWidgetContext &context ) /Factory/;
-%Docstring
-Creates a new history node for the given ``entry``.
-
-.. versionadded:: 3.32
-%End
-
-    virtual void updateNodeForEntry( QgsHistoryEntryNode *node, const QgsHistoryEntry &entry, const QgsHistoryWidgetContext &context );
-%Docstring
-Updates an existing history ``node`` for the given ``entry``.
-
-.. versionadded:: 3.32
-%End
-
 };
 
 
@@ -61,5 +48,5 @@ Updates an existing history ``node`` for the given ``entry``.
  *                                                                      *
  * src/gui/history/qgshistoryprovider.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

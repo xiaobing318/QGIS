@@ -14,36 +14,17 @@
  ***************************************************************************/
 
 #include "qgsmaptooldeletepart.h"
-#include "moc_qgsmaptooldeletepart.cpp"
 
 #include "qgsfeatureiterator.h"
 #include "qgsmapcanvas.h"
+#include "qgsvertexmarker.h"
 #include "qgsvectorlayer.h"
 #include "qgsgeometry.h"
 #include "qgsrubberband.h"
 #include "qgssnappingutils.h"
+#include "qgstolerance.h"
+#include "qgisapp.h"
 #include "qgsmapmouseevent.h"
-
-
-/**
- * A filter to limit the matches to selected features, if a selection is present.
- * If there is no selection, any feature can be matched.
- */
-class SelectedOnlyFilter : public QgsPointLocator::MatchFilter
-{
-    bool acceptMatch( const QgsPointLocator::Match &match ) override
-    {
-      // If there is a selection, we limit matches to selected features
-      if ( match.layer() &&
-           match.layer()->selectedFeatureCount() > 0 &&
-           !match.layer()->selectedFeatureIds().contains( match.featureId() ) )
-      {
-        return false;
-      }
-      return true;
-    }
-};
-
 
 QgsMapToolDeletePart::QgsMapToolDeletePart( QgsMapCanvas *canvas )
   : QgsMapToolEdit( canvas )
@@ -90,19 +71,14 @@ void QgsMapToolDeletePart::canvasPressEvent( QgsMapMouseEvent *e )
 
   const QgsGeometry geomPart = partUnderPoint( e->pos(), mPressedFid, mPressedPartNum );
 
-  if ( mPressedPartNum != -1 )
+  if ( mPressedFid != -1 )
   {
     mRubberBand = createRubberBand( vlayer->geometryType() );
 
     mRubberBand->setToGeometry( geomPart, vlayer );
     mRubberBand->show();
   }
-  else if ( vlayer->selectedFeatureCount() > 0 )
-  {
-    emit messageEmitted(
-      tr( "If there are selected features, the delete parts tool only applies to those. Clear the selection and try again." ),
-      Qgis::MessageLevel::Warning );
-  }
+
 }
 
 void QgsMapToolDeletePart::canvasReleaseEvent( QgsMapMouseEvent *e )
@@ -117,7 +93,7 @@ void QgsMapToolDeletePart::canvasReleaseEvent( QgsMapMouseEvent *e )
     return;
   }
 
-  if ( mPressedPartNum == -1 )
+  if ( mPressedFid == -1 )
     return;
 
   QgsFeature f;
@@ -135,11 +111,6 @@ void QgsMapToolDeletePart::canvasReleaseEvent( QgsMapMouseEvent *e )
   {
     emit messageEmitted( tr( "Couldn't remove the selected part." ) );
   }
-
-  if ( g.isEmpty() )
-  {
-    emit messageEmitted( tr( "All geometry parts deleted from feature %1. Feature has no geometry now!" ).arg( mPressedFid ) );
-  }
 }
 
 QgsGeometry QgsMapToolDeletePart::partUnderPoint( QPoint point, QgsFeatureId &fid, int &partNum )
@@ -149,11 +120,10 @@ QgsGeometry QgsMapToolDeletePart::partUnderPoint( QPoint point, QgsFeatureId &fi
 
   switch ( vlayer->geometryType() )
   {
-    case Qgis::GeometryType::Point:
-    case Qgis::GeometryType::Line:
+    case QgsWkbTypes::PointGeometry:
+    case QgsWkbTypes::LineGeometry:
     {
-      SelectedOnlyFilter filter;
-      const QgsPointLocator::Match match = mCanvas->snappingUtils()->snapToCurrentLayer( point, QgsPointLocator::Types( QgsPointLocator::Vertex | QgsPointLocator::Edge ), &filter );
+      const QgsPointLocator::Match match = mCanvas->snappingUtils()->snapToCurrentLayer( point, QgsPointLocator::Types( QgsPointLocator::Vertex | QgsPointLocator::Edge ) );
       if ( !match.isValid() )
         return geomPart;
 
@@ -165,13 +135,13 @@ QgsGeometry QgsMapToolDeletePart::partUnderPoint( QPoint point, QgsFeatureId &fi
         fid = match.featureId();
         return QgsGeometry::fromPointXY( match.point() );
       }
-      else if ( QgsWkbTypes::geometryType( g.wkbType() ) == Qgis::GeometryType::Point )
+      else if ( QgsWkbTypes::geometryType( g.wkbType() ) == QgsWkbTypes::PointGeometry )
       {
         fid = match.featureId();
         partNum = snapVertex;
         return QgsGeometry::fromPointXY( match.point() );
       }
-      else if ( QgsWkbTypes::geometryType( g.wkbType() ) == Qgis::GeometryType::Line )
+      else if ( QgsWkbTypes::geometryType( g.wkbType() ) == QgsWkbTypes::LineGeometry )
       {
         QgsMultiPolylineXY mline = g.asMultiPolyline();
         for ( int part = 0; part < mline.count(); part++ )
@@ -187,10 +157,9 @@ QgsGeometry QgsMapToolDeletePart::partUnderPoint( QPoint point, QgsFeatureId &fi
       }
       break;
     }
-    case Qgis::GeometryType::Polygon:
+    case QgsWkbTypes::PolygonGeometry:
     {
-      SelectedOnlyFilter filter;
-      const QgsPointLocator::Match match = mCanvas->snappingUtils()->snapToCurrentLayer( point, QgsPointLocator::Area, &filter );
+      const QgsPointLocator::Match match = mCanvas->snappingUtils()->snapToCurrentLayer( point, QgsPointLocator::Area );
       if ( !match.isValid() )
         return geomPart;
 
@@ -204,7 +173,6 @@ QgsGeometry QgsMapToolDeletePart::partUnderPoint( QPoint point, QgsFeatureId &fi
       if ( !g.isMultipart() )
       {
         fid = f.id();
-        partNum = 0;
         return geomPart;
       }
       QgsMultiPolygonXY mpolygon = g.asMultiPolygon();

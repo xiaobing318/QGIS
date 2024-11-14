@@ -38,13 +38,14 @@ class _3D_EXPORT QgsOnlineTerrainGenerator : public QgsTerrainGenerator
 {
     Q_OBJECT
   public:
+    //! Constructor for QgsOnlineTerrainGenerator
     QgsOnlineTerrainGenerator();
     ~QgsOnlineTerrainGenerator() override;
 
     //! Sets CRS of the terrain
     void setCrs( const QgsCoordinateReferenceSystem &crs, const QgsCoordinateTransformContext &context );
     //! Returns CRS of the terrain
-    QgsCoordinateReferenceSystem crs() const override { return mCrs; }
+    QgsCoordinateReferenceSystem crs() const { return mCrs; }
 
     //! Sets resolution of the generator (how many elevation samples on one side of a terrain tile)
     void setResolution( int resolution ) { mResolution = resolution; updateGenerator(); }
@@ -61,9 +62,9 @@ class _3D_EXPORT QgsOnlineTerrainGenerator : public QgsTerrainGenerator
 
     QgsTerrainGenerator *clone() const override SIP_FACTORY;
     Type type() const override;
-    QgsRectangle rootChunkExtent() const override;
+    QgsRectangle extent() const override;
     void setExtent( const QgsRectangle &extent ) override;
-    float heightAt( double x, double y, const Qgs3DRenderContext &context ) const override;
+    float heightAt( double x, double y, const Qgs3DMapSettings &map ) const override;
     void writeXml( QDomElement &elem ) const override;
     void readXml( const QDomElement &elem ) override;
     //void resolveReferences( const QgsProject &project ) override;
@@ -74,6 +75,7 @@ class _3D_EXPORT QgsOnlineTerrainGenerator : public QgsTerrainGenerator
 
     void updateGenerator();
 
+    QgsRectangle mExtent;
     QgsCoordinateReferenceSystem mCrs;
     QgsCoordinateTransformContext mTransformContext;
 

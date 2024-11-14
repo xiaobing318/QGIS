@@ -15,6 +15,8 @@
 #ifndef QGSPIEDIAGRAM_H
 #define QGSPIEDIAGRAM_H
 
+#define DIAGRAM_NAME_PIE "Pie"
+
 #include "qgis_core.h"
 #include "qgis.h"
 #include "qgsdiagram.h"
@@ -36,8 +38,6 @@ class QgsRenderContext;
 class CORE_EXPORT QgsPieDiagram: public QgsDiagram SIP_NODEFAULTCTORS
 {
   public:
-    static const QString DIAGRAM_NAME_PIE SIP_SKIP;
-
     QgsPieDiagram();
 
     QgsPieDiagram *clone() const override SIP_FACTORY;
@@ -45,8 +45,8 @@ class CORE_EXPORT QgsPieDiagram: public QgsDiagram SIP_NODEFAULTCTORS
     void renderDiagram( const QgsFeature &feature, QgsRenderContext &c, const QgsDiagramSettings &s, QPointF position ) override;
 
     QSizeF diagramSize( const QgsAttributes &attributes, const QgsRenderContext &c, const QgsDiagramSettings &s ) override;
-    QSizeF diagramSize( const QgsFeature &feature, const QgsRenderContext &c, const QgsDiagramSettings &s, const QgsDiagramInterpolationSettings &interpolationSettings ) override;
-    double legendSize( double value, const QgsDiagramSettings &s, const QgsDiagramInterpolationSettings &interpolationSettings ) const override;
+    QSizeF diagramSize( const QgsFeature &feature, const QgsRenderContext &c, const QgsDiagramSettings &s, const QgsDiagramInterpolationSettings &is ) override;
+    double legendSize( double value, const QgsDiagramSettings &s, const QgsDiagramInterpolationSettings &is ) const override;
     QString diagramName() const override;
 
   private:

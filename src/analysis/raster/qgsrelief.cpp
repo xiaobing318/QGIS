@@ -179,7 +179,7 @@ int QgsRelief::processRaster( QgsFeedback *feedback )
       }
       if ( GDALRasterIO( rasterBand, GF_Read, 0, 0, xSize, 1, scanLine2, xSize, 1, GDT_Float32, 0, 0 )  != CE_None )
       {
-        QgsDebugError( QStringLiteral( "Raster IO Error" ) );
+        QgsDebugMsg( QStringLiteral( "Raster IO Error" ) );
       }
     }
     else
@@ -202,7 +202,7 @@ int QgsRelief::processRaster( QgsFeedback *feedback )
     {
       if ( GDALRasterIO( rasterBand, GF_Read, 0, i + 1, xSize, 1, scanLine3, xSize, 1, GDT_Float32, 0, 0 ) != CE_None )
       {
-        QgsDebugError( QStringLiteral( "Raster IO Error" ) );
+        QgsDebugMsg( QStringLiteral( "Raster IO Error" ) );
       }
     }
 
@@ -237,15 +237,15 @@ int QgsRelief::processRaster( QgsFeedback *feedback )
 
     if ( GDALRasterIO( outputRedBand, GF_Write, 0, i, xSize, 1, resultRedLine, xSize, 1, GDT_Byte, 0, 0 ) != CE_None )
     {
-      QgsDebugError( QStringLiteral( "Raster IO Error" ) );
+      QgsDebugMsg( QStringLiteral( "Raster IO Error" ) );
     }
     if ( GDALRasterIO( outputGreenBand, GF_Write, 0, i, xSize, 1, resultGreenLine, xSize, 1, GDT_Byte, 0, 0 ) != CE_None )
     {
-      QgsDebugError( QStringLiteral( "Raster IO Error" ) );
+      QgsDebugMsg( QStringLiteral( "Raster IO Error" ) );
     }
     if ( GDALRasterIO( outputBlueBand, GF_Write, 0, i, xSize, 1, resultBlueLine, xSize, 1, GDT_Byte, 0, 0 ) != CE_None )
     {
-      QgsDebugError( QStringLiteral( "Raster IO Error" ) );
+      QgsDebugMsg( QStringLiteral( "Raster IO Error" ) );
     }
   }
 
@@ -282,7 +282,7 @@ bool QgsRelief::processNineCellWindow( float *x1, float *x2, float *x3, float *x
   const float hillShadeValue300 = mHillshadeFilter300->processNineCellWindow( x1, x2, x3, x4, x5, x6, x7, x8, x9 );
   if ( hillShadeValue300 != mOutputNodataValue )
   {
-    if ( !getElevationColor( *x5, &r, &g, &b ) )
+    if ( !setElevationColor( *x5, &r, &g, &b ) )
     {
       r = hillShadeValue300;
       g = hillShadeValue300;
@@ -365,7 +365,7 @@ bool QgsRelief::processNineCellWindow( float *x1, float *x2, float *x3, float *x
   return true;
 }
 
-bool QgsRelief::getElevationColor( double elevation, int *red, int *green, int *blue ) const
+bool QgsRelief::setElevationColor( double elevation, int *red, int *green, int *blue )
 {
   QList< ReliefColor >::const_iterator reliefColorIt = mReliefColors.constBegin();
   for ( ; reliefColorIt != mReliefColors.constEnd(); ++reliefColorIt )
@@ -514,7 +514,7 @@ bool QgsRelief::exportFrequencyDistributionToCsv( const QString &file )
                        scanLine, nCellsX, 1, GDT_Float32,
                        0, 0 ) != CE_None )
     {
-      QgsDebugError( QStringLiteral( "Raster IO Error" ) );
+      QgsDebugMsg( QStringLiteral( "Raster IO Error" ) );
     }
 
     for ( int j = 0; j < nCellsX; ++j )
@@ -598,7 +598,7 @@ QList< QgsRelief::ReliefColor > QgsRelief::calculateOptimizedReliefClasses()
                        scanLine, nCellsX, 1, GDT_Float32,
                        0, 0 ) != CE_None )
     {
-      QgsDebugError( QStringLiteral( "Raster IO Error" ) );
+      QgsDebugMsg( QStringLiteral( "Raster IO Error" ) );
     }
     for ( int j = 0; j < nCellsX; ++j )
     {
@@ -728,7 +728,7 @@ void QgsRelief::optimiseClassBreaks( QList<int> &breaks, double *frequencies )
 
   for ( int i = classesToRemove.size() - 1; i >= 0; --i )
   {
-    breaks.removeAt( classesToRemove.at( i ) ); // cppcheck-suppress containerOutOfBounds
+    breaks.removeAt( classesToRemove.at( i ) );
   }
 
   delete[] a;

@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgslayoutmodel.h"
-#include "moc_qgslayoutmodel.cpp"
 #include "qgslayout.h"
 #include "qgsapplication.h"
 #include "qgslogger.h"
@@ -334,6 +333,7 @@ bool QgsLayoutModel::dropMimeData( const QMimeData *data,
   QByteArray encodedData = data->data( QStringLiteral( "application/x-vnd.qgis.qgis.composeritemid" ) );
   QDataStream stream( &encodedData, QIODevice::ReadOnly );
   QList<QgsLayoutItem *> droppedItems;
+  int rows = 0;
 
   while ( !stream.atEnd() )
   {
@@ -343,6 +343,7 @@ bool QgsLayoutModel::dropMimeData( const QMimeData *data,
     if ( item )
     {
       droppedItems << item;
+      ++rows;
     }
   }
 

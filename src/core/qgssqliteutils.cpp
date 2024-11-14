@@ -211,7 +211,7 @@ long long QgsSqliteUtils::nextSequenceValue( sqlite3 *connection, const QString 
   dsPtr.reset( connection );
   const QString quotedTableName { QgsSqliteUtils::quotedValue( tableName ) };
 
-  int resultCode = 0;
+  int resultCode;
   sqlite3_statement_unique_ptr stmt { dsPtr.prepare( QStringLiteral( "SELECT seq FROM sqlite_sequence WHERE name = %1" )
                                       .arg( quotedTableName ), resultCode )};
   if ( resultCode == SQLITE_OK )
@@ -269,19 +269,19 @@ QString QgsSqliteUtils::quotedValue( const QVariant &value )
   if ( QgsVariantUtils::isNull( value ) )
     return QStringLiteral( "NULL" );
 
-  switch ( value.userType() )
+  switch ( value.type() )
   {
-    case QMetaType::Type::Int:
-    case QMetaType::Type::LongLong:
-    case QMetaType::Type::Double:
+    case QVariant::Int:
+    case QVariant::LongLong:
+    case QVariant::Double:
       return value.toString();
 
-    case QMetaType::Type::Bool:
+    case QVariant::Bool:
       //SQLite has no boolean literals
       return value.toBool() ? QStringLiteral( "1" ) : QStringLiteral( "0" );
 
     default:
-    case QMetaType::Type::QString:
+    case QVariant::String:
       QString v = value.toString();
       // https://www.sqlite.org/lang_expr.html :
       // """A string constant is formed by enclosing the string in single quotes (').

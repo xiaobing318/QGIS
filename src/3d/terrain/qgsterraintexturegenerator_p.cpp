@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsterraintexturegenerator_p.h"
-#include "moc_qgsterraintexturegenerator_p.cpp"
 
 #include <qgsmaprenderercustompainterjob.h>
 #include <qgsmaprenderersequentialjob.h>
@@ -39,24 +38,15 @@ int QgsTerrainTextureGenerator::render( const QgsRectangle &extent, QgsChunkNode
 {
   QgsMapSettings mapSettings( baseMapSettings() );
   mapSettings.setExtent( extent );
-  QSize size = QSize( mTextureSize );
 
-  QgsRectangle clippedExtent = extent;
-  if ( mMap.terrainGenerator()->type() == QgsTerrainGenerator::Flat )
+  QList<QgsMapLayer *> layers = mMap.layers();
+  QList<QgsMapLayer *> toBeRenderedLayers;
+  for ( QgsMapLayer *l : layers )
   {
-    // The flat terrain generator might have non-square tiles, clipped at the scene's extent.
-    // We need to produce non-square textures for those cases.
-    clippedExtent = extent.intersect( mMap.extent() );
-    mapSettings.setExtent( clippedExtent );
+    if ( l->renderer3D() == nullptr )
+      toBeRenderedLayers.push_back( l );
   }
-  if ( !qgsDoubleNear( clippedExtent.width(), clippedExtent.height() ) )
-  {
-    if ( clippedExtent.height() > clippedExtent.width() )
-      size.setWidth( std::round( size.width() * clippedExtent.width() / clippedExtent.height() ) );
-    else if ( clippedExtent.height() < clippedExtent.width() )
-      size.setHeight( std::round( size.height() * clippedExtent.height() / clippedExtent.width() ) );
-  }
-  mapSettings.setOutputSize( size );
+  mapSettings.setLayers( toBeRenderedLayers );
 
   QgsEventTracing::addEvent( QgsEventTracing::AsyncBegin, QStringLiteral( "3D" ), QStringLiteral( "Texture" ), tileId.text() );
 
@@ -96,14 +86,13 @@ void QgsTerrainTextureGenerator::cancelJob( int jobId )
 
 void QgsTerrainTextureGenerator::waitForFinished()
 {
-  for ( auto it = mJobs.keyBegin(); it != mJobs.keyEnd(); it++ )
-    disconnect( *it, &QgsMapRendererJob::finished, this, &QgsTerrainTextureGenerator::onRenderingFinished );
+  for ( QgsMapRendererSequentialJob *job : mJobs.keys() )
+    disconnect( job, &QgsMapRendererJob::finished, this, &QgsTerrainTextureGenerator::onRenderingFinished );
   QVector<QgsMapRendererSequentialJob *> toBeDeleted;
-  for ( auto it = mJobs.constBegin(); it != mJobs.constEnd(); it++ )
+  for ( QgsMapRendererSequentialJob *mapJob : mJobs.keys() )
   {
-    QgsMapRendererSequentialJob *mapJob = it.key();
     mapJob->waitForFinished();
-    JobData jobData = it.value();
+    JobData jobData = mJobs.value( mapJob );
     toBeDeleted.push_back( mapJob );
 
     QImage img = mapJob->renderedImage();
@@ -112,11 +101,7 @@ void QgsTerrainTextureGenerator::waitForFinished()
     {
       // extra tile information for debugging
       QPainter p( &img );
-      p.setPen( Qt::red );
-      p.setBackgroundMode( Qt::OpaqueMode );
-      QFont font = p.font();
-      font.setPixelSize( std::max( 30, mMap.mapTileResolution() / 6 ) );
-      p.setFont( font );
+      p.setPen( Qt::white );
       p.drawRect( 0, 0, img.width() - 1, img.height() - 1 );
       p.drawText( img.rect(), jobData.debugText, QTextOption( Qt::AlignCenter ) );
       p.end();
@@ -146,11 +131,7 @@ void QgsTerrainTextureGenerator::onRenderingFinished()
   {
     // extra tile information for debugging
     QPainter p( &img );
-    p.setPen( Qt::red );
-    p.setBackgroundMode( Qt::OpaqueMode );
-    QFont font = p.font();
-    font.setPixelSize( std::max( 30, mMap.mapTileResolution() / 6 ) );
-    p.setFont( font );
+    p.setPen( Qt::white );
     p.drawRect( 0, 0, img.width() - 1, img.height() - 1 );
     p.drawText( img.rect(), jobData.debugText, QTextOption( Qt::AlignCenter ) );
     p.end();
@@ -180,23 +161,17 @@ QgsMapSettings QgsTerrainTextureGenerator::baseMapSettings()
   mapSettings.setPathResolver( mMap.pathResolver() );
   mapSettings.setRendererUsage( mMap.rendererUsage() );
 
-  QList<QgsMapLayer *> layers;
   QgsMapThemeCollection *mapThemes = mMap.mapThemeCollection();
   QString mapThemeName = mMap.terrainMapTheme();
   if ( mapThemeName.isEmpty() || !mapThemes || !mapThemes->hasMapTheme( mapThemeName ) )
   {
-    layers = mMap.layers();
+    mapSettings.setLayers( mMap.layers() );
   }
   else
   {
-    layers = mapThemes->mapThemeVisibleLayers( mapThemeName );
+    mapSettings.setLayers( mapThemes->mapThemeVisibleLayers( mapThemeName ) );
     mapSettings.setLayerStyleOverrides( mapThemes->mapThemeStyleOverrides( mapThemeName ) );
   }
-  layers.erase( std::remove_if( layers.begin(),
-                                layers.end(),
-  []( const QgsMapLayer * layer ) { return layer->renderer3D(); } ),
-  layers.end() );
-  mapSettings.setLayers( layers );
 
   return mapSettings;
 }

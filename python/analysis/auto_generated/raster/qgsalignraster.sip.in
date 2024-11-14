@@ -3,7 +3,7 @@
  *                                                                      *
  * src/analysis/raster/qgsalignraster.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -20,6 +20,8 @@ so they have the same:
 - coordinate reference system
 - cell size and raster size
 - offset of the raster grid
+
+.. versionadded:: 2.12
 %End
 
 %TypeHeaderCode
@@ -88,9 +90,36 @@ Gets raster value at the given coordinates (from the first band)
         RasterInfo( const QgsAlignRaster::RasterInfo &rh );
     };
 
-    typedef Qgis::GdalResampleAlgorithm ResampleAlg;
-    typedef QgsAlignRasterData::RasterItem Item;
-    typedef QList<QgsAlignRasterData::RasterItem> List;
+
+    enum ResampleAlg
+    {
+      RA_NearestNeighbour,
+      RA_Bilinear,
+      RA_Cubic,
+      RA_CubicSpline,
+      RA_Lanczos,
+      RA_Average,
+      RA_Mode,
+      RA_Max,
+      RA_Min,
+      RA_Median,
+      RA_Q1,
+      RA_Q3,
+    };
+
+    struct Item
+    {
+      Item( const QString &input, const QString &output );
+
+      QString inputFilename;
+      QString outputFilename;
+      QgsAlignRaster::ResampleAlg resampleMethod;
+      bool rescaleValues;
+
+
+      double srcCellSizeInDestCRS;
+    };
+    typedef QList<QgsAlignRaster::Item> List;
 
     struct ProgressHandler
     {
@@ -257,12 +286,14 @@ Determine suggested output of raster warp to a different CRS. Returns ``True`` o
 
 
 
+
 };
+
 
 /************************************************************************
  * This file has been generated automatically from                      *
  *                                                                      *
  * src/analysis/raster/qgsalignraster.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

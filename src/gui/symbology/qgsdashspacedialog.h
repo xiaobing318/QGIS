@@ -45,7 +45,7 @@ class GUI_EXPORT QgsDashSpaceWidget: public QgsPanelWidget, private Ui::QgsDashS
      * Sets the unit type used for the dash space pattern (used to update interface labels)
      * \param unit the unit type
     */
-    void setUnit( Qgis::RenderUnit unit );
+    void setUnit( QgsUnitTypes::RenderUnit unit );
 
   private slots:
     void mAddButton_clicked();
@@ -73,7 +73,7 @@ class GUI_EXPORT QgsDashSpaceDialog : public QDialog
      * \param unit the unit type
      * \since QGIS 3.8
     */
-    void setUnit( Qgis::RenderUnit unit );
+    void setUnit( QgsUnitTypes::RenderUnit unit );
 
   private:
 

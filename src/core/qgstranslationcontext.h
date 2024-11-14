@@ -46,6 +46,9 @@ class CORE_EXPORT QgsTranslationContext
 
   public:
 
+    /**
+     * Constructor
+     */
     QgsTranslationContext() = default;
 
     /**

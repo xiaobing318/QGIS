@@ -13,7 +13,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgspointcloudquerybuilder.h"
-#include "moc_qgspointcloudquerybuilder.cpp"
 #include "qgssettings.h"
 #include "qgspointcloudlayer.h"
 #include "qgspointcloudexpression.h"

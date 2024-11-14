@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     FieldPyculator.py
@@ -21,9 +23,8 @@ __copyright__ = '(C) 2012, Victor Olaya & NextGIS'
 
 import sys
 
-from qgis.PyQt.QtCore import QMetaType
-from qgis.core import (Qgis,
-                       QgsProcessingException,
+from qgis.PyQt.QtCore import QVariant
+from qgis.core import (QgsProcessingException,
                        QgsField,
                        QgsFields,
                        QgsFeatureSink,
@@ -48,10 +49,7 @@ class FieldsPyculator(QgisAlgorithm):
     OUTPUT = 'OUTPUT'
     RESULT_VAR_NAME = 'value'
 
-    def flags(self):
-        # This algorithm represents a security risk, due to the use
-        # of the Python "exec" function
-        return super().flags() | Qgis.ProcessingAlgorithmFlag.SecurityRisk
+    TYPES = [QVariant.LongLong, QVariant.Double, QVariant.String]
 
     def group(self):
         return self.tr('Vector table')
@@ -64,21 +62,21 @@ class FieldsPyculator(QgisAlgorithm):
 
     def initAlgorithm(self, config=None):
         self.addParameter(QgsProcessingParameterFeatureSource(self.INPUT, self.tr('Input layer'),
-                                                              types=[QgsProcessing.SourceType.TypeVector]))
+                                                              types=[QgsProcessing.TypeVector]))
         self.addParameter(QgsProcessingParameterString(self.FIELD_NAME,
                                                        self.tr('Result field name'), defaultValue='NewField'))
 
-        types = [(QMetaType.Type.Int, QMetaType.Type.UnknownType),
-                 (QMetaType.Type.Double, QMetaType.Type.UnknownType),
-                 (QMetaType.Type.QString, QMetaType.Type.UnknownType),
-                 (QMetaType.Type.Bool, QMetaType.Type.UnknownType),
-                 (QMetaType.Type.QDate, QMetaType.Type.UnknownType),
-                 (QMetaType.Type.QTime, QMetaType.Type.UnknownType),
-                 (QMetaType.Type.QDateTime, QMetaType.Type.UnknownType),
-                 (QMetaType.Type.QByteArray, QMetaType.Type.UnknownType),
-                 (QMetaType.Type.QStringList, QMetaType.Type.QString),
-                 (QMetaType.Type.QVariantList, QMetaType.Type.Int),
-                 (QMetaType.Type.QVariantList, QMetaType.Type.Double)]
+        types = [(QVariant.Int, QVariant.Invalid),
+                 (QVariant.Double, QVariant.Invalid),
+                 (QVariant.String, QVariant.Invalid),
+                 (QVariant.Bool, QVariant.Invalid),
+                 (QVariant.Date, QVariant.Invalid),
+                 (QVariant.Time, QVariant.Invalid),
+                 (QVariant.DateTime, QVariant.Invalid),
+                 (QVariant.ByteArray, QVariant.Invalid),
+                 (QVariant.StringList, QVariant.String),
+                 (QVariant.List, QVariant.Int),
+                 (QVariant.List, QVariant.Double)]
         type_names = []
         type_icons = []
         for type_name, subtype_name in types:
@@ -114,34 +112,34 @@ class FieldsPyculator(QgisAlgorithm):
 
         field_name = self.parameterAsString(parameters, self.FIELD_NAME, context)
 
-        field_type = QMetaType.Type.UnknownType
-        field_sub_type = QMetaType.Type.UnknownType
+        field_type = QVariant.Invalid
+        field_sub_type = QVariant.Invalid
         field_type_parameter = self.parameterAsEnum(parameters, self.FIELD_TYPE, context)
         if field_type_parameter == 0:  # Integer
-            field_type = QMetaType.Type.Int
+            field_type = QVariant.Int
         elif field_type_parameter == 1:  # Float
-            field_type = QMetaType.Type.Double
+            field_type = QVariant.Double
         elif field_type_parameter == 2:  # String
-            field_type = QMetaType.Type.QString
+            field_type = QVariant.String
         elif field_type_parameter == 3:  # Boolean
-            field_type = QMetaType.Type.Bool
+            field_type = QVariant.Bool
         elif field_type_parameter == 4:  # Date
-            field_type = QMetaType.Type.QDate
+            field_type = QVariant.Date
         elif field_type_parameter == 5:  # Time
-            field_type = QMetaType.Type.QTime
+            field_type = QVariant.Time
         elif field_type_parameter == 6:  # DateTime
-            field_type = QMetaType.Type.QDateTime
+            field_type = QVariant.DateTime
         elif field_type_parameter == 7:  # Binary
-            field_type = QMetaType.Type.QByteArray
+            field_type = QVariant.ByteArray
         elif field_type_parameter == 8:  # StringList
-            field_type = QMetaType.Type.QStringList
-            field_sub_type = QMetaType.Type.QString
+            field_type = QVariant.StringList
+            field_sub_type = QVariant.String
         elif field_type_parameter == 9:  # IntegerList
-            field_type = QMetaType.Type.QVariantList
-            field_sub_type = QMetaType.Type.Int
+            field_type = QVariant.List
+            field_sub_type = QVariant.Int
         elif field_type_parameter == 10:  # DoubleList
-            field_type = QMetaType.Type.QVariantList
-            field_sub_type = QMetaType.Type.Double
+            field_type = QVariant.List
+            field_sub_type = QVariant.Double
 
         width = self.parameterAsInt(parameters, self.FIELD_LENGTH, context)
         precision = self.parameterAsInt(parameters, self.FIELD_PRECISION, context)
@@ -230,11 +228,10 @@ class FieldsPyculator(QgisAlgorithm):
             # Write feature
             attrs.append(new_ns[self.RESULT_VAR_NAME])
             feat.setAttributes(attrs)
-            sink.addFeature(feat, QgsFeatureSink.Flag.FastInsert)
+            sink.addFeature(feat, QgsFeatureSink.FastInsert)
 
-        sink.finalize()
         return {self.OUTPUT: dest_id}
 
     def checkParameterValues(self, parameters, context):
         # TODO check that formula is correct and fields exist
-        return super().checkParameterValues(parameters, context)
+        return super(FieldsPyculator, self).checkParameterValues(parameters, context)

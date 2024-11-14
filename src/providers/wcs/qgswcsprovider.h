@@ -121,7 +121,7 @@ class QgsWcsProvider final: public QgsRasterDataProvider, QgsGdalProviderBase
      *                otherwise we contact the host directly.
      * \param options generic data provider options
      */
-    explicit QgsWcsProvider( const QString &uri, const QgsDataProvider::ProviderOptions &providerOptions, Qgis::DataProviderReadFlags flags );
+    explicit QgsWcsProvider( const QString &uri, const QgsDataProvider::ProviderOptions &providerOptions, QgsDataProvider::ReadFlags flags );
 
     //! copy constructor
     explicit QgsWcsProvider( const QgsWcsProvider &other, const QgsDataProvider::ProviderOptions &providerOptions );
@@ -171,7 +171,7 @@ class QgsWcsProvider final: public QgsRasterDataProvider, QgsGdalProviderBase
     QString wcsVersion();
 
     // Reimplemented QgsRasterDataProvider virtual methods
-    Qgis::RasterInterfaceCapabilities capabilities() const override;
+    int capabilities() const override;
     Qgis::DataType dataType( int bandNo ) const override;
     Qgis::DataType sourceDataType( int bandNo ) const override;
     int bandCount() const override;
@@ -180,19 +180,19 @@ class QgsWcsProvider final: public QgsRasterDataProvider, QgsGdalProviderBase
     int yBlockSize() const override;
     int xSize() const override;
     int ySize() const override;
-    QString htmlMetadata() const override;
-    QgsRasterIdentifyResult identify( const QgsPointXY &point, Qgis::RasterIdentifyFormat format, const QgsRectangle &boundingBox = QgsRectangle(), int width = 0, int height = 0, int dpi = 96 ) override;
+    QString htmlMetadata() override;
+    QgsRasterIdentifyResult identify( const QgsPointXY &point, QgsRaster::IdentifyFormat format, const QgsRectangle &boundingBox = QgsRectangle(), int width = 0, int height = 0, int dpi = 96 ) override;
     QString lastErrorTitle() override;
     QString lastError() override;
     QString lastErrorFormat() override;
     QString name() const override;
     QString description() const override;
-    Qgis::RasterProviderCapabilities providerCapabilities() const override;
+    QgsRasterDataProvider::ProviderCapabilities providerCapabilities() const override;
     QList<QgsColorRampShader::ColorRampItem> colorTable( int bandNo )const override;
 
     static QString providerKey();
 
-    Qgis::RasterColorInterpretation colorInterpretation( int bandNo ) const override;
+    int colorInterpretation( int bandNo ) const override;
 
     static QMap<QString, QString> supportedMimes();
 
@@ -235,7 +235,7 @@ class QgsWcsProvider final: public QgsRasterDataProvider, QgsGdalProviderBase
      */
     QString prepareUri( QString uri ) const;
 
-    QString coverageMetadata( const QgsWcsCoverageSummary &c ) const;
+    QString coverageMetadata( const QgsWcsCoverageSummary &c );
 
     //! remove query item and replace it with a new value
     void setQueryItem( QUrl &url, const QString &key, const QString &value ) const;
@@ -244,10 +244,10 @@ class QgsWcsProvider final: public QgsRasterDataProvider, QgsGdalProviderBase
     void clearCache() const;
 
     //! Create html cell (used by metadata)
-    static QString htmlCell( const QString &text );
+    QString htmlCell( const QString &text );
 
     //! Create html row with 2 cells (used by metadata)
-    static QString htmlRow( const QString &text1, const QString &text2 );
+    QString htmlRow( const QString &text1, const QString &text2 );
 
     //! Data source URI of the WCS for this layer
     QString mHttpUri;
@@ -384,6 +384,9 @@ class QgsWcsProvider final: public QgsRasterDataProvider, QgsGdalProviderBase
     //QMap<int, int> mLayerParents;
     //QMap<int, QStringList> mLayerParentNames;
 
+    //! Errors counter
+    int mErrors = 0;
+
     //! http authorization details
     mutable QgsWcsAuthorization mAuth;
 
@@ -448,11 +451,11 @@ class QgsWcsProviderMetadata final: public QgsProviderMetadata
   public:
     QgsWcsProviderMetadata();
     QIcon icon() const override;
-    QgsWcsProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() ) override;
+    QgsWcsProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() ) override;
     QList<QgsDataItemProvider *> dataItemProviders() const override;
     QVariantMap decodeUri( const QString &uri ) const override;
     QString encodeUri( const QVariantMap &parts ) const override;
-    QList< Qgis::LayerType > supportedLayerTypes() const override;
+    QList< QgsMapLayerType > supportedLayerTypes() const override;
 };
 
 #endif

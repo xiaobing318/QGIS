@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     UniqueValues.py
@@ -71,10 +73,10 @@ class UniqueValues(QgisAlgorithm):
 
     def initAlgorithm(self, config=None):
         self.addParameter(QgsProcessingParameterFeatureSource(self.INPUT,
-                                                              self.tr('Input layer'), types=[QgsProcessing.SourceType.TypeVector]))
+                                                              self.tr('Input layer'), types=[QgsProcessing.TypeVector]))
         self.addParameter(QgsProcessingParameterField(self.FIELDS,
                                                       self.tr('Target field(s)'),
-                                                      parentLayerParameterName=self.INPUT, type=QgsProcessingParameterField.DataType.Any, allowMultiple=True))
+                                                      parentLayerParameterName=self.INPUT, type=QgsProcessingParameterField.Any, allowMultiple=True))
 
         self.addParameter(QgsProcessingParameterFeatureSink(self.OUTPUT, self.tr('Unique values'), optional=True, defaultValue=None))
 
@@ -106,7 +108,7 @@ class UniqueValues(QgisAlgorithm):
             fields.append(field)
             field_indices.append(field_index)
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context,
-                                               fields, QgsWkbTypes.Type.NoGeometry, QgsCoordinateReferenceSystem())
+                                               fields, QgsWkbTypes.NoGeometry, QgsCoordinateReferenceSystem())
 
         results = {}
         values = set()
@@ -117,10 +119,10 @@ class UniqueValues(QgisAlgorithm):
             # have to scan whole table
             # TODO - add this support to QgsVectorDataProvider so we can run it on
             # the backend
-            request = QgsFeatureRequest().setFlags(QgsFeatureRequest.Flag.NoGeometry)
+            request = QgsFeatureRequest().setFlags(QgsFeatureRequest.NoGeometry)
             request.setSubsetOfAttributes(field_indices)
             total = 100.0 / source.featureCount() if source.featureCount() else 0
-            for current, f in enumerate(source.getFeatures(request, QgsProcessingFeatureSource.Flag.FlagSkipGeometryValidityChecks)):
+            for current, f in enumerate(source.getFeatures(request, QgsProcessingFeatureSource.FlagSkipGeometryValidityChecks)):
                 if feedback.isCanceled():
                     break
 
@@ -135,8 +137,7 @@ class UniqueValues(QgisAlgorithm):
 
                 f = QgsFeature()
                 f.setAttributes([attr for attr in value])
-                sink.addFeature(f, QgsFeatureSink.Flag.FastInsert)
-            sink.finalize()
+                sink.addFeature(f, QgsFeatureSink.FastInsert)
             results[self.OUTPUT] = dest_id
 
         output_file = self.parameterAsFileOutput(parameters, self.OUTPUT_HTML_FILE, context)

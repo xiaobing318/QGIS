@@ -45,6 +45,7 @@ class CORE_EXPORT QgsTextLabelFeature : public QgsLabelFeature
      * Returns the text component corresponding to a specified label part
      * \param partId Set to -1 for labels which are not broken into parts (e.g., non-curved labels), or the required
      * part index for labels which are broken into parts (curved labels)
+     * \since QGIS 2.10
      */
     QString text( int partId ) const;
 
@@ -98,7 +99,7 @@ class CORE_EXPORT QgsTextLabelFeature : public QgsLabelFeature
      *
      * \since QGIS 3.20
      */
-    static QgsPrecalculatedTextMetrics calculateTextMetrics( const QgsMapToPixel *xform, const QgsRenderContext &context, const QgsTextFormat &format, const QFont &baseFont, const QFontMetricsF &fontMetrics, double letterSpacing,
+    static QgsPrecalculatedTextMetrics calculateTextMetrics( const QgsMapToPixel *xform, const QgsRenderContext &context, const QFont &baseFont, const QFontMetricsF &fontMetrics, double letterSpacing,
         double wordSpacing, const QString &text = QString(), QgsTextDocument *document = nullptr, QgsTextDocumentMetrics *metrics = nullptr );
 
     /**
@@ -106,7 +107,7 @@ class CORE_EXPORT QgsTextLabelFeature : public QgsLabelFeature
      * \see setDocument()
      * \since QGIS 3.14
      */
-    const QgsTextDocument &document() const { return mDocument; }
+    QgsTextDocument document() const;
 
     /**
      * Returns the document metrics for the label.
@@ -114,7 +115,7 @@ class CORE_EXPORT QgsTextLabelFeature : public QgsLabelFeature
      * \see document()
      * \since QGIS 3.28
      */
-    const QgsTextDocumentMetrics &documentMetrics() const { return mDocumentMetrics; }
+    QgsTextDocumentMetrics documentMetrics() const;
 
     /**
      * Sets the \a document and document \a metrics for the label.

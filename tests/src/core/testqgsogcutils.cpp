@@ -73,10 +73,6 @@ class TestQgsOgcUtils : public QObject
     void testExpressionToOgcFilterWFS20();
     void testExpressionToOgcFilterWFS20_data();
 
-    void testExpressionToOgcFilterWithXPath();
-
-    void testSQLStatementToOgcFilterWithXPath();
-
     void testSQLStatementToOgcFilter();
     void testSQLStatementToOgcFilter_data();
 
@@ -90,23 +86,23 @@ void TestQgsOgcUtils::testGeometryFromGML()
   // Test GML2
   QgsGeometry geom( QgsOgcUtils::geometryFromGML( QStringLiteral( "<Point><coordinates>123,456</coordinates></Point>" ) ) );
   QVERIFY( !geom.isNull() );
-  QVERIFY( geom.wkbType() == Qgis::WkbType::Point );
+  QVERIFY( geom.wkbType() == QgsWkbTypes::Point );
   QVERIFY( geom.asPoint() == QgsPointXY( 123, 456 ) );
 
   QgsGeometry geomBox( QgsOgcUtils::geometryFromGML( QStringLiteral( "<gml:Box srsName=\"foo\"><gml:coordinates>135.2239,34.4879 135.8578,34.8471</gml:coordinates></gml:Box>" ) ) );
   QVERIFY( !geomBox.isNull() );
-  QVERIFY( geomBox.wkbType() == Qgis::WkbType::Polygon );
+  QVERIFY( geomBox.wkbType() == QgsWkbTypes::Polygon );
 
 
   // Test GML3
   geom = QgsOgcUtils::geometryFromGML( QStringLiteral( "<Point><pos>123 456</pos></Point>" ) );
   QVERIFY( !geom.isNull() );
-  QVERIFY( geom.wkbType() == Qgis::WkbType::Point );
+  QVERIFY( geom.wkbType() == QgsWkbTypes::Point );
   QVERIFY( geom.asPoint() == QgsPointXY( 123, 456 ) );
 
   geomBox = QgsOgcUtils::geometryFromGML( QStringLiteral( "<gml:Envelope srsName=\"foo\"><gml:lowerCorner>135.2239 34.4879</gml:lowerCorner><gml:upperCorner>135.8578 34.8471</gml:upperCorner></gml:Envelope>" ) );
   QVERIFY( !geomBox.isNull() );
-  QVERIFY( geomBox.wkbType() == Qgis::WkbType::Polygon );
+  QVERIFY( geomBox.wkbType() == QgsWkbTypes::Polygon );
 }
 
 static bool compareElements( QDomElement &element1, QDomElement &element2 )
@@ -547,7 +543,7 @@ void TestQgsOgcUtils::testExpressionFromOgcFilterWithLongLong()
 
   QgsVectorLayer layer( "Point?crs=epsg:4326", "temp", "memory" );
 
-  const QgsField longlongField( QStringLiteral( "id" ), QMetaType::Type::LongLong );
+  const QgsField longlongField( QStringLiteral( "id" ), QVariant::LongLong );
 
   QList<QgsField> fields;
   fields.append( longlongField );
@@ -701,24 +697,6 @@ void TestQgsOgcUtils::testExpressionToOgcFilter_data()
                               "<ogc:Literal>30</ogc:Literal>"
                               "</ogc:PropertyIsEqualTo>"
                               "</ogc:Or>"
-                              "</ogc:Not>"
-                              "</ogc:Filter>" );
-
-  QTest::newRow( "in" ) << QStringLiteral( "A IN (10)" ) << QString(
-                          "<ogc:Filter xmlns:ogc=\"http://www.opengis.net/ogc\">"
-                          "<ogc:PropertyIsEqualTo>"
-                          "<ogc:PropertyName>A</ogc:PropertyName>"
-                          "<ogc:Literal>10</ogc:Literal>"
-                          "</ogc:PropertyIsEqualTo>"
-                          "</ogc:Filter>" );
-
-  QTest::newRow( "not in" ) << QStringLiteral( "A NOT IN (10)" ) << QString(
-                              "<ogc:Filter xmlns:ogc=\"http://www.opengis.net/ogc\">"
-                              "<ogc:Not>"
-                              "<ogc:PropertyIsEqualTo>"
-                              "<ogc:PropertyName>A</ogc:PropertyName>"
-                              "<ogc:Literal>10</ogc:Literal>"
-                              "</ogc:PropertyIsEqualTo>"
                               "</ogc:Not>"
                               "</ogc:Filter>" );
 
@@ -1083,26 +1061,6 @@ void TestQgsOgcUtils::testSQLStatementToOgcFilter_data()
                               "</ogc:Not>"
                               "</ogc:Filter>" );
 
-  QTest::newRow( "in" ) << QStringLiteral( "SELECT * FROM t WHERE A IN (10)" ) <<
-                        QgsOgcUtils::GML_2_1_2 << QgsOgcUtils::FILTER_OGC_1_0 << layerProperties << QString(
-                          "<ogc:Filter xmlns:ogc=\"http://www.opengis.net/ogc\">"
-                          "<ogc:PropertyIsEqualTo>"
-                          "<ogc:PropertyName>A</ogc:PropertyName>"
-                          "<ogc:Literal>10</ogc:Literal>"
-                          "</ogc:PropertyIsEqualTo>"
-                          "</ogc:Filter>" );
-
-  QTest::newRow( "not in" ) << QStringLiteral( "SELECT * FROM t WHERE A NOT IN (10)" ) <<
-                            QgsOgcUtils::GML_2_1_2 << QgsOgcUtils::FILTER_OGC_1_0 << layerProperties << QString(
-                              "<ogc:Filter xmlns:ogc=\"http://www.opengis.net/ogc\">"
-                              "<ogc:Not>"
-                              "<ogc:PropertyIsEqualTo>"
-                              "<ogc:PropertyName>A</ogc:PropertyName>"
-                              "<ogc:Literal>10</ogc:Literal>"
-                              "</ogc:PropertyIsEqualTo>"
-                              "</ogc:Not>"
-                              "</ogc:Filter>" );
-
   QTest::newRow( "between" ) << QStringLiteral( "SELECT * FROM t WHERE A BETWEEN 1 AND 2" ) <<
                              QgsOgcUtils::GML_2_1_2 << QgsOgcUtils::FILTER_OGC_1_0 << layerProperties << QString(
                                "<ogc:Filter xmlns:ogc=\"http://www.opengis.net/ogc\">"
@@ -1290,82 +1248,6 @@ void TestQgsOgcUtils::testSQLStatementToOgcFilter_data()
                                  "<fes:Literal>New York</fes:Literal>"
                                  "</fes:PropertyIsEqualTo>"
                                  "</fes:Filter>" );
-}
-
-void TestQgsOgcUtils::testExpressionToOgcFilterWithXPath()
-{
-  const QgsExpression exp( "a = 1" );
-  QString errorMsg;
-
-  QMap<QString, QString> mapFieldNameToXPath;
-  mapFieldNameToXPath["a"] = "myns:foo/myns:bar/otherns:a";
-
-  QMap<QString, QString> mapNamespacePrefixToUri;
-  mapNamespacePrefixToUri["myns"] = "https://myns";
-  mapNamespacePrefixToUri["otherns"] = "https://otherns";
-
-  QDomDocument doc;
-  const QDomElement filterElem = QgsOgcUtils::expressionToOgcFilter( exp, doc,
-                                 QgsOgcUtils::GML_3_2_1, QgsOgcUtils::FILTER_FES_2_0,
-                                 QString(), QString(),
-                                 QStringLiteral( "my_geometry_name" ), QString(), true, false, &errorMsg, mapFieldNameToXPath, mapNamespacePrefixToUri );
-
-  if ( !errorMsg.isEmpty() )
-    qDebug( "ERROR: %s", errorMsg.toLatin1().data() );
-
-  QDomElement xmlElem = comparableElement( QStringLiteral( "<fes:Filter xmlns:fes=\"http://www.opengis.net/fes/2.0\"><fes:PropertyIsEqualTo><fes:ValueReference xmlns:otherns=\"https://otherns\" xmlns:myns=\"https://myns\">myns:foo/myns:bar/otherns:a</fes:ValueReference><fes:Literal>1</fes:Literal></fes:PropertyIsEqualTo></fes:Filter>" ) );
-  doc.appendChild( filterElem );
-  qDebug( "OGC :   %s", doc.toString( -1 ).toLatin1().data() );
-
-  QDomElement ogcElem = comparableElement( doc.toString( -1 ) );
-  QVERIFY( compareElements( xmlElem, ogcElem ) );
-}
-
-void TestQgsOgcUtils::testSQLStatementToOgcFilterWithXPath()
-{
-
-  const QgsSQLStatement statement( "SELECT * FROM t WHERE a = 1" );
-  if ( !statement.hasParserError() )
-  {
-    qDebug( "%s", statement.parserErrorString().toLatin1().data() );
-    QVERIFY( !statement.hasParserError() );
-  }
-
-  QMap<QString, QString> mapFieldNameToXPath;
-  mapFieldNameToXPath["a"] = "myns:foo/myns:bar/otherns:a";
-
-  QMap<QString, QString> mapNamespacePrefixToUri;
-  mapNamespacePrefixToUri["myns"] = "https://myns";
-  mapNamespacePrefixToUri["otherns"] = "https://otherns";
-
-  QString errorMsg;
-  QDomDocument doc;
-  const bool honourAxisOrientation = true;
-  const bool invertAxisOrientation = false;
-  QList<QgsOgcUtils::LayerProperties> layerProperties;
-  QgsOgcUtils::LayerProperties prop;
-  prop.mSRSName = QStringLiteral( "urn:ogc:def:crs:EPSG::4326" );
-  prop.mGeometryAttribute = QStringLiteral( "geom" );
-  layerProperties.append( prop );
-  const QDomElement filterElem = QgsOgcUtils::SQLStatementToOgcFilter( statement,
-                                 doc,
-                                 QgsOgcUtils::GML_3_2_1,
-                                 QgsOgcUtils::FILTER_FES_2_0,
-                                 layerProperties,
-                                 honourAxisOrientation,
-                                 invertAxisOrientation,
-                                 QMap<QString, QString>(),
-                                 &errorMsg, mapFieldNameToXPath, mapNamespacePrefixToUri );
-
-  if ( !errorMsg.isEmpty() )
-    qDebug( "ERROR: %s", errorMsg.toLatin1().data() );
-
-  QDomElement xmlElem = comparableElement( QStringLiteral( "<fes:Filter xmlns:fes=\"http://www.opengis.net/fes/2.0\"><fes:PropertyIsEqualTo><fes:ValueReference xmlns:otherns=\"https://otherns\" xmlns:myns=\"https://myns\">myns:foo/myns:bar/otherns:a</fes:ValueReference><fes:Literal>1</fes:Literal></fes:PropertyIsEqualTo></fes:Filter>" ) );
-  doc.appendChild( filterElem );
-  qDebug( "OGC :   %s", doc.toString( -1 ).toLatin1().data() );
-
-  QDomElement ogcElem = comparableElement( doc.toString( -1 ) );
-  QVERIFY( compareElements( xmlElem, ogcElem ) );
 }
 
 

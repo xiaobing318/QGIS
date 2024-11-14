@@ -25,13 +25,13 @@
  * See details in QEP #17
  ****************************************************************************/
 
-QgsStatisticalSummary::QgsStatisticalSummary( Qgis::Statistics stats )
+QgsStatisticalSummary::QgsStatisticalSummary( Statistics stats )
   : mStatistics( stats )
 {
   reset();
 }
 
-void QgsStatisticalSummary::setStatistics( Qgis::Statistics stats )
+void QgsStatisticalSummary::setStatistics( QgsStatisticalSummary::Statistics stats )
 {
   mStatistics = stats;
   reset();
@@ -57,11 +57,11 @@ void QgsStatisticalSummary::reset()
   mValueCount.clear();
   mValues.clear();
 
-  mRequiresHisto = mStatistics & Qgis::Statistic::Majority || mStatistics & Qgis::Statistic::Minority || mStatistics & Qgis::Statistic::Variety;
+  mRequiresHisto = mStatistics & QgsStatisticalSummary::Majority || mStatistics & QgsStatisticalSummary::Minority || mStatistics & QgsStatisticalSummary::Variety;
 
-  mRequiresAllValueStorage = mStatistics & Qgis::Statistic::StDev || mStatistics & Qgis::Statistic::StDevSample ||
-                             mStatistics & Qgis::Statistic::Median || mStatistics & Qgis::Statistic::FirstQuartile ||
-                             mStatistics & Qgis::Statistic::ThirdQuartile || mStatistics & Qgis::Statistic::InterQuartileRange;
+  mRequiresAllValueStorage = mStatistics & QgsStatisticalSummary::StDev || mStatistics & QgsStatisticalSummary::StDevSample ||
+                             mStatistics & QgsStatisticalSummary::Median || mStatistics & QgsStatisticalSummary::FirstQuartile ||
+                             mStatistics & QgsStatisticalSummary::ThirdQuartile || mStatistics & QgsStatisticalSummary::InterQuartileRange;
 }
 
 /***************************************************************************
@@ -135,7 +135,7 @@ void QgsStatisticalSummary::finalize()
 
   mMean = mSum / mCount;
 
-  if ( mStatistics & Qgis::Statistic::StDev || mStatistics & Qgis::Statistic::StDevSample )
+  if ( mStatistics & QgsStatisticalSummary::StDev || mStatistics & QgsStatisticalSummary::StDevSample )
   {
     double sumSquared = 0;
     const auto constMValues = mValues;
@@ -148,10 +148,10 @@ void QgsStatisticalSummary::finalize()
     mSampleStdev = std::pow( sumSquared / ( mValues.count() - 1 ), 0.5 );
   }
 
-  if ( mStatistics & Qgis::Statistic::Median
-       || mStatistics & Qgis::Statistic::FirstQuartile
-       || mStatistics & Qgis::Statistic::ThirdQuartile
-       || mStatistics & Qgis::Statistic::InterQuartileRange )
+  if ( mStatistics & QgsStatisticalSummary::Median
+       || mStatistics & QgsStatisticalSummary::FirstQuartile
+       || mStatistics & QgsStatisticalSummary::ThirdQuartile
+       || mStatistics & QgsStatisticalSummary::InterQuartileRange )
   {
     std::sort( mValues.begin(), mValues.end() );
     const bool even = ( mCount % 2 ) < 1;
@@ -165,8 +165,8 @@ void QgsStatisticalSummary::finalize()
     }
   }
 
-  if ( mStatistics & Qgis::Statistic::FirstQuartile
-       || mStatistics & Qgis::Statistic::InterQuartileRange )
+  if ( mStatistics & QgsStatisticalSummary::FirstQuartile
+       || mStatistics & QgsStatisticalSummary::InterQuartileRange )
   {
     if ( ( mCount % 2 ) < 1 )
     {
@@ -196,8 +196,8 @@ void QgsStatisticalSummary::finalize()
     }
   }
 
-  if ( mStatistics & Qgis::Statistic::ThirdQuartile
-       || mStatistics & Qgis::Statistic::InterQuartileRange )
+  if ( mStatistics & QgsStatisticalSummary::ThirdQuartile
+       || mStatistics & QgsStatisticalSummary::InterQuartileRange )
   {
     if ( ( mCount % 2 ) < 1 )
     {
@@ -227,15 +227,15 @@ void QgsStatisticalSummary::finalize()
     }
   }
 
-  if ( mStatistics & Qgis::Statistic::Minority || mStatistics & Qgis::Statistic::Majority )
+  if ( mStatistics & QgsStatisticalSummary::Minority || mStatistics & QgsStatisticalSummary::Majority )
   {
     QList<int> valueCounts = mValueCount.values();
 
-    if ( mStatistics & Qgis::Statistic::Minority )
+    if ( mStatistics & QgsStatisticalSummary::Minority )
     {
       mMinority = mValueCount.key( *std::min_element( valueCounts.begin(), valueCounts.end() ) );
     }
-    if ( mStatistics & Qgis::Statistic::Majority )
+    if ( mStatistics & QgsStatisticalSummary::Majority )
     {
       mMajority = mValueCount.key( *std::max_element( valueCounts.begin(), valueCounts.end() ) );
     }
@@ -249,139 +249,139 @@ void QgsStatisticalSummary::finalize()
  * See details in QEP #17
  ****************************************************************************/
 
-double QgsStatisticalSummary::statistic( Qgis::Statistic stat ) const
+double QgsStatisticalSummary::statistic( QgsStatisticalSummary::Statistic stat ) const
 {
   switch ( stat )
   {
-    case Qgis::Statistic::Count:
+    case Count:
       return mCount;
-    case Qgis::Statistic::CountMissing:
+    case CountMissing:
       return mMissing;
-    case Qgis::Statistic::Sum:
+    case Sum:
       return mSum;
-    case Qgis::Statistic::Mean:
+    case Mean:
       return mMean;
-    case Qgis::Statistic::Median:
+    case Median:
       return mMedian;
-    case Qgis::Statistic::StDev:
+    case StDev:
       return mStdev;
-    case Qgis::Statistic::StDevSample:
+    case StDevSample:
       return mSampleStdev;
-    case Qgis::Statistic::Min:
+    case Min:
       return mMin;
-    case Qgis::Statistic::Max:
+    case Max:
       return mMax;
-    case Qgis::Statistic::Range:
+    case Range:
       return mMax - mMin;
-    case Qgis::Statistic::Minority:
+    case Minority:
       return mMinority;
-    case Qgis::Statistic::Majority:
+    case Majority:
       return mMajority;
-    case Qgis::Statistic::Variety:
+    case Variety:
       return mValueCount.count();
-    case Qgis::Statistic::FirstQuartile:
+    case FirstQuartile:
       return mFirstQuartile;
-    case Qgis::Statistic::ThirdQuartile:
+    case ThirdQuartile:
       return mThirdQuartile;
-    case Qgis::Statistic::InterQuartileRange:
+    case InterQuartileRange:
       return mThirdQuartile - mFirstQuartile;
-    case Qgis::Statistic::First:
+    case First:
       return mFirst;
-    case Qgis::Statistic::Last:
+    case Last:
       return mLast;
-    case Qgis::Statistic::All:
+    case All:
       return 0;
   }
   return 0;
 }
 
-QString QgsStatisticalSummary::displayName( Qgis::Statistic statistic )
+QString QgsStatisticalSummary::displayName( QgsStatisticalSummary::Statistic statistic )
 {
   switch ( statistic )
   {
-    case Qgis::Statistic::Count:
+    case Count:
       return QObject::tr( "Count" );
-    case Qgis::Statistic::CountMissing:
+    case CountMissing:
       return QObject::tr( "Count (missing)" );
-    case Qgis::Statistic::Sum:
+    case Sum:
       return QObject::tr( "Sum" );
-    case Qgis::Statistic::Mean:
+    case Mean:
       return QObject::tr( "Mean" );
-    case Qgis::Statistic::Median:
+    case Median:
       return QObject::tr( "Median" );
-    case Qgis::Statistic::StDev:
+    case StDev:
       return QObject::tr( "St dev (pop)" );
-    case Qgis::Statistic::StDevSample:
+    case StDevSample:
       return QObject::tr( "St dev (sample)" );
-    case Qgis::Statistic::Min:
+    case Min:
       return QObject::tr( "Minimum" );
-    case Qgis::Statistic::Max:
+    case Max:
       return QObject::tr( "Maximum" );
-    case Qgis::Statistic::Range:
+    case Range:
       return QObject::tr( "Range" );
-    case Qgis::Statistic::Minority:
+    case Minority:
       return QObject::tr( "Minority" );
-    case Qgis::Statistic::Majority:
+    case Majority:
       return QObject::tr( "Majority" );
-    case Qgis::Statistic::Variety:
+    case Variety:
       return QObject::tr( "Variety" );
-    case Qgis::Statistic::FirstQuartile:
+    case FirstQuartile:
       return QObject::tr( "Q1" );
-    case Qgis::Statistic::ThirdQuartile:
+    case ThirdQuartile:
       return QObject::tr( "Q3" );
-    case Qgis::Statistic::InterQuartileRange:
+    case InterQuartileRange:
       return QObject::tr( "IQR" );
-    case Qgis::Statistic::First:
+    case First:
       return QObject::tr( "First" );
-    case Qgis::Statistic::Last:
+    case Last:
       return QObject::tr( "Last" );
-    case Qgis::Statistic::All:
+    case All:
       return QString();
   }
   return QString();
 }
 
-QString QgsStatisticalSummary::shortName( Qgis::Statistic statistic )
+QString QgsStatisticalSummary::shortName( QgsStatisticalSummary::Statistic statistic )
 {
   switch ( statistic )
   {
-    case Qgis::Statistic::Count:
+    case Count:
       return QStringLiteral( "count" );
-    case Qgis::Statistic::CountMissing:
+    case CountMissing:
       return QStringLiteral( "countmissing" );
-    case Qgis::Statistic::Sum:
+    case Sum:
       return QStringLiteral( "sum" );
-    case Qgis::Statistic::Mean:
+    case Mean:
       return QStringLiteral( "mean" );
-    case Qgis::Statistic::Median:
+    case Median:
       return QStringLiteral( "median" );
-    case Qgis::Statistic::StDev:
+    case StDev:
       return QStringLiteral( "stdev" );
-    case Qgis::Statistic::StDevSample:
+    case StDevSample:
       return QStringLiteral( "stdevsample" );
-    case Qgis::Statistic::Min:
+    case Min:
       return QStringLiteral( "min" );
-    case Qgis::Statistic::Max:
+    case Max:
       return QStringLiteral( "max" );
-    case Qgis::Statistic::Range:
+    case Range:
       return QStringLiteral( "range" );
-    case Qgis::Statistic::Minority:
+    case Minority:
       return QStringLiteral( "minority" );
-    case Qgis::Statistic::Majority:
+    case Majority:
       return QStringLiteral( "majority" );
-    case Qgis::Statistic::Variety:
+    case Variety:
       return QStringLiteral( "variety" );
-    case Qgis::Statistic::FirstQuartile:
+    case FirstQuartile:
       return QStringLiteral( "q1" );
-    case Qgis::Statistic::ThirdQuartile:
+    case ThirdQuartile:
       return QStringLiteral( "q3" );
-    case Qgis::Statistic::InterQuartileRange:
+    case InterQuartileRange:
       return QStringLiteral( "iqr" );
-    case Qgis::Statistic::First:
+    case First:
       return QStringLiteral( "first" );
-    case Qgis::Statistic::Last:
+    case Last:
       return QStringLiteral( "last" );
-    case Qgis::Statistic::All:
+    case All:
       return QString();
   }
   return QString();

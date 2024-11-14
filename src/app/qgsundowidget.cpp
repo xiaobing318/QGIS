@@ -13,7 +13,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsundowidget.h"
-#include "moc_qgsundowidget.cpp"
 
 #include "qgsapplication.h"
 #include "qgslogger.h"

@@ -20,9 +20,10 @@ os.environ['QT_HASH_SEED'] = '1'
 
 import urllib.parse
 
-from qgis.server import QgsServerRequest
 from qgis.testing import unittest
+
 from test_qgsserver import QgsServerTestBase
+from qgis.server import QgsServerRequest
 
 
 class TestQgsServerWMSGetPrintExtra(QgsServerTestBase):
@@ -98,8 +99,7 @@ class TestQgsServerWMSGetPrintExtra(QgsServerTestBase):
             "map0:HIGHLIGHT_GEOM": "POLYGON((-15000000 10000000, -15000000 6110620, 2500000 6110620, 2500000 10000000, -15000000 10000000))",
             "map0:HIGHLIGHT_SYMBOL": "<StyledLayerDescriptor><UserStyle><Name>Highlight</Name><FeatureTypeStyle><Rule><Name>Symbol</Name><LineSymbolizer><Stroke><SvgParameter name=\"stroke\">%23ea1173</SvgParameter><SvgParameter name=\"stroke-opacity\">1</SvgParameter><SvgParameter name=\"stroke-width\">1.6</SvgParameter></Stroke></LineSymbolizer></Rule></FeatureTypeStyle></UserStyle></StyledLayerDescriptor>",
             "map0:HIGHLIGHT_LABELSTRING": "Highlight Layer!",
-            "map0:HIGHLIGHT_LABELFONT": "QGIS Vera Sans",
-            "map0:HIGHLIGHT_LABELSIZE": "20",
+            "map0:HIGHLIGHT_LABELSIZE": "16",
             "map0:HIGHLIGHT_LABELCOLOR": "%2300FF0000",
             "map0:HIGHLIGHT_LABELBUFFERCOLOR": "%232300FF00",
             "map0:HIGHLIGHT_LABELBUFFERSIZE": "1.5",
@@ -124,7 +124,6 @@ class TestQgsServerWMSGetPrintExtra(QgsServerTestBase):
             "map0:HIGHLIGHT_GEOM": "LINESTRING(-15000000 6110620, 2500000 6110620)",
             "map0:HIGHLIGHT_SYMBOL": "<StyledLayerDescriptor><UserStyle><Name>Highlight</Name><FeatureTypeStyle><Rule><Name>Symbol</Name><LineSymbolizer><Stroke><SvgParameter name=\"stroke\">%23ea1173</SvgParameter><SvgParameter name=\"stroke-opacity\">1</SvgParameter><SvgParameter name=\"stroke-width\">1.6</SvgParameter></Stroke></LineSymbolizer></Rule></FeatureTypeStyle></UserStyle></StyledLayerDescriptor>",
             "map0:HIGHLIGHT_LABELSTRING": "Highlight Layer!",
-            "map0:HIGHLIGHT_LABELFONT": "QGIS Vera Sans",
             "map0:HIGHLIGHT_LABELSIZE": "16",
             "map0:HIGHLIGHT_LABELCOLOR": "%2300FF0000",
             "map0:HIGHLIGHT_LABELBUFFERCOLOR": "%232300FF00",

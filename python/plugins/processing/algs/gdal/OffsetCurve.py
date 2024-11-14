@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     offsetcurve.py
@@ -25,6 +27,7 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingParameterFeatureSource,
                        QgsProcessingParameterString,
                        QgsProcessingException,
+                       QgsProcessingParameterNumber,
                        QgsProcessingParameterVectorDestination)
 from processing.algs.gdal.GdalAlgorithm import GdalAlgorithm
 from processing.algs.gdal.GdalUtils import GdalUtils
@@ -43,7 +46,7 @@ class OffsetCurve(GdalAlgorithm):
     def initAlgorithm(self, config=None):
         self.addParameter(QgsProcessingParameterFeatureSource(self.INPUT,
                                                               self.tr('Input layer'),
-                                                              [QgsProcessing.SourceType.TypeVectorLine]))
+                                                              [QgsProcessing.TypeVectorLine]))
         self.addParameter(QgsProcessingParameterString(self.GEOMETRY,
                                                        self.tr('Geometry column name'),
                                                        defaultValue='geometry'))
@@ -56,12 +59,12 @@ class OffsetCurve(GdalAlgorithm):
                                                      self.tr('Additional creation options'),
                                                      defaultValue='',
                                                      optional=True)
-        options_param.setFlags(options_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        options_param.setFlags(options_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(options_param)
 
         self.addParameter(QgsProcessingParameterVectorDestination(self.OUTPUT,
                                                                   self.tr('Offset curve'),
-                                                                  QgsProcessing.SourceType.TypeVectorLine))
+                                                                  QgsProcessing.TypeVectorLine))
 
     def name(self):
         return 'offsetcurve'
@@ -84,14 +87,14 @@ class OffsetCurve(GdalAlgorithm):
             raise QgsProcessingException(self.invalidSourceError(parameters, self.INPUT))
 
         fields = source.fields()
-        input_details = self.getOgrCompatibleSource(self.INPUT, parameters, context, feedback, executing)
+        ogrLayer, layerName = self.getOgrCompatibleSource(self.INPUT, parameters, context, feedback, executing)
         geometry = self.parameterAsString(parameters, self.GEOMETRY, context)
         distance = self.parameterAsDouble(parameters, self.DISTANCE, context)
         options = self.parameterAsString(parameters, self.OPTIONS, context)
         outFile = self.parameterAsOutputLayer(parameters, self.OUTPUT, context)
         self.setOutputValue(self.OUTPUT, outFile)
 
-        output_details = GdalUtils.gdal_connection_details_from_uri(outFile, context)
+        output, outputFormat = GdalUtils.ogrConnectionStringAndFormat(outFile, context)
 
         other_fields_exist = any(
             True for f in fields
@@ -101,25 +104,19 @@ class OffsetCurve(GdalAlgorithm):
         other_fields = ',*' if other_fields_exist else ''
 
         arguments = [
-            output_details.connection_string,
-            input_details.connection_string,
+            output,
+            ogrLayer,
             '-dialect',
             'sqlite',
             '-sql'
         ]
-        sql = f'SELECT ST_OffsetCurve({geometry}, {distance}) AS {geometry}{other_fields} FROM "{input_details.layer_name}"'
+        sql = 'SELECT ST_OffsetCurve({}, {}) AS {}{} FROM "{}"'.format(geometry, distance, geometry, other_fields, layerName)
         arguments.append(sql)
-
-        if input_details.open_options:
-            arguments.extend(input_details.open_options_as_arguments())
-
-        if input_details.credential_options:
-            arguments.extend(input_details.credential_options_as_arguments())
 
         if options:
             arguments.append(options)
 
-        if output_details.format:
-            arguments.append(f'-f {output_details.format}')
+        if outputFormat:
+            arguments.append('-f {}'.format(outputFormat))
 
         return ['ogr2ogr', GdalUtils.escapeAndJoin(arguments)]

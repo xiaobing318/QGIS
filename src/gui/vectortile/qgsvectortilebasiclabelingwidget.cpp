@@ -14,16 +14,13 @@
  ***************************************************************************/
 
 #include "qgsvectortilebasiclabelingwidget.h"
-#include "moc_qgsvectortilebasiclabelingwidget.cpp"
 
-#include "qgis.h"
-#include "qgsapplication.h"
 #include "qgsvectortilebasiclabeling.h"
 #include "qgsvectortilelayer.h"
+
 #include "qgslabelinggui.h"
 #include "qgsmapcanvas.h"
 #include "qgsvectortileutils.h"
-#include "qgsvectorlayer.h"
 
 #include <QMenu>
 
@@ -326,18 +323,14 @@ QgsVectorTileBasicLabelingWidget::QgsVectorTileBasicLabelingWidget( QgsVectorTil
   mFilterLineEdit->setPlaceholderText( tr( "Filter rules" ) );
 
   QMenu *menuAddRule = new QMenu( btnAddRule );
-  menuAddRule->addAction( tr( "Marker" ), this, [this] { addStyle( Qgis::GeometryType::Point ); } );
-  menuAddRule->addAction( tr( "Line" ), this, [this] { addStyle( Qgis::GeometryType::Line ); } );
-  menuAddRule->addAction( tr( "Fill" ), this, [this] { addStyle( Qgis::GeometryType::Polygon ); } );
+  menuAddRule->addAction( tr( "Marker" ), this, [this] { addStyle( QgsWkbTypes::PointGeometry ); } );
+  menuAddRule->addAction( tr( "Line" ), this, [this] { addStyle( QgsWkbTypes::LineGeometry ); } );
+  menuAddRule->addAction( tr( "Fill" ), this, [this] { addStyle( QgsWkbTypes::PolygonGeometry ); } );
   btnAddRule->setMenu( menuAddRule );
 
   //connect( btnAddRule, &QPushButton::clicked, this, &QgsVectorTileBasicLabelingWidget::addStyle );
   connect( btnEditRule, &QPushButton::clicked, this, &QgsVectorTileBasicLabelingWidget::editStyle );
   connect( btnRemoveRule, &QAbstractButton::clicked, this, &QgsVectorTileBasicLabelingWidget::removeStyle );
-
-  mLabelModeComboBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "labelingNone.svg" ) ), tr( "No Labels" ) );
-  mLabelModeComboBox->addItem( QgsApplication::getThemeIcon( QStringLiteral( "labelingRuleBased.svg" ) ), tr( "Rule-based Labeling" ) );
-  connect( mLabelModeComboBox, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, &QgsVectorTileBasicLabelingWidget::labelModeChanged );
 
   connect( viewStyles, &QAbstractItemView::doubleClicked, this, &QgsVectorTileBasicLabelingWidget::editStyleAtIndex );
 
@@ -379,35 +372,18 @@ QgsVectorTileBasicLabelingWidget::QgsVectorTileBasicLabelingWidget( QgsVectorTil
   setLayer( layer );
 }
 
-void QgsVectorTileBasicLabelingWidget::resyncToCurrentLayer()
-{
-  setLayer( mVTLayer );
-}
-
 void QgsVectorTileBasicLabelingWidget::setLayer( QgsVectorTileLayer *layer )
 {
-  if ( mVTLayer && mVTLayer != layer )
-  {
-    disconnect( mVTLayer, &QgsMapLayer::styleChanged, this, &QgsVectorTileBasicLabelingWidget::resyncToCurrentLayer );
-  }
-  else if ( layer )
-  {
-    connect( layer, &QgsMapLayer::styleChanged, this, &QgsVectorTileBasicLabelingWidget::resyncToCurrentLayer );
-  }
-
   mVTLayer = layer;
 
-  if ( mVTLayer && mVTLayer->labeling() && mVTLayer->labeling()->type() == QLatin1String( "basic" ) )
+  if ( layer && layer->labeling() && layer->labeling()->type() == QLatin1String( "basic" ) )
   {
-    mLabeling.reset( static_cast<QgsVectorTileBasicLabeling *>( mVTLayer->labeling()->clone() ) );
-    whileBlocking( mLabelModeComboBox )->setCurrentIndex( mVTLayer->labelsEnabled() ? 1 : 0 );
+    mLabeling.reset( static_cast<QgsVectorTileBasicLabeling *>( layer->labeling()->clone() ) );
   }
   else
   {
     mLabeling.reset( new QgsVectorTileBasicLabeling() );
-    whileBlocking( mLabelModeComboBox )->setCurrentIndex( 1 );
   }
-  mOptionsStackedWidget->setCurrentIndex( mLabelModeComboBox->currentIndex() );
 
   mModel = new QgsVectorTileBasicLabelingListModel( mLabeling.get(), viewStyles );
   mProxyModel = new QgsVectorTileBasicLabelingProxyModel( mModel, viewStyles );
@@ -435,32 +411,25 @@ QgsVectorTileBasicLabelingWidget::~QgsVectorTileBasicLabelingWidget() = default;
 void QgsVectorTileBasicLabelingWidget::apply()
 {
   mVTLayer->setLabeling( mLabeling->clone() );
-  mVTLayer->setLabelsEnabled( mLabelModeComboBox->currentIndex() == 1 );
 }
 
-void QgsVectorTileBasicLabelingWidget::labelModeChanged()
-{
-  mOptionsStackedWidget->setCurrentIndex( mLabelModeComboBox->currentIndex() );
-  emit widgetChanged();
-}
-
-void QgsVectorTileBasicLabelingWidget::addStyle( Qgis::GeometryType geomType )
+void QgsVectorTileBasicLabelingWidget::addStyle( QgsWkbTypes::GeometryType geomType )
 {
   QgsVectorTileBasicLabelingStyle style;
   style.setGeometryType( geomType );
   switch ( geomType )
   {
-    case Qgis::GeometryType::Point:
-      style.setFilterExpression( QStringLiteral( "geometry_type(@geometry)='Point'" ) );
+    case QgsWkbTypes::PointGeometry:
+      style.setFilterExpression( QStringLiteral( "geometry_type($geometry)='Point'" ) );
       break;
-    case Qgis::GeometryType::Line:
-      style.setFilterExpression( QStringLiteral( "geometry_type(@geometry)='Line'" ) );
+    case QgsWkbTypes::LineGeometry:
+      style.setFilterExpression( QStringLiteral( "geometry_type($geometry)='Line'" ) );
       break;
-    case Qgis::GeometryType::Polygon:
-      style.setFilterExpression( QStringLiteral( "geometry_type(@geometry)='Polygon'" ) );
+    case QgsWkbTypes::PolygonGeometry:
+      style.setFilterExpression( QStringLiteral( "geometry_type($geometry)='Polygon'" ) );
       break;
-    case Qgis::GeometryType::Unknown:
-    case Qgis::GeometryType::Null:
+    case QgsWkbTypes::UnknownGeometry:
+    case QgsWkbTypes::NullGeometry:
       break;
   }
 
@@ -483,7 +452,7 @@ void QgsVectorTileBasicLabelingWidget::editStyleAtIndex( const QModelIndex &prox
   const QgsVectorTileBasicLabelingStyle style = mLabeling->style( index.row() );
 
   QgsPalLayerSettings labelSettings = style.labelSettings();
-  if ( labelSettings.layerType == Qgis::GeometryType::Unknown )
+  if ( labelSettings.layerType == QgsWkbTypes::UnknownGeometry )
     labelSettings.layerType = style.geometryType();
 
   QgsSymbolWidgetContext context;

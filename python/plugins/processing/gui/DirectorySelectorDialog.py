@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     DirectorySelectorDialog.py
@@ -37,23 +39,23 @@ with warnings.catch_warnings():
 class DirectorySelectorDialog(BASE, WIDGET):
 
     def __init__(self, parent, options):
-        super().__init__(None)
+        super(DirectorySelectorDialog, self).__init__(None)
         self.setupUi(self)
 
-        self.lstLayers.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.lstLayers.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
         self.options = options
 
         # Additional buttons
         self.btnAdd = QPushButton(self.tr('Add'))
         self.buttonBox.addButton(self.btnAdd,
-                                 QDialogButtonBox.ButtonRole.ActionRole)
+                                 QDialogButtonBox.ActionRole)
         self.btnRemove = QPushButton(self.tr('Remove'))
         self.buttonBox.addButton(self.btnRemove,
-                                 QDialogButtonBox.ButtonRole.ActionRole)
+                                 QDialogButtonBox.ActionRole)
         self.btnRemoveAll = QPushButton(self.tr('Remove all'))
         self.buttonBox.addButton(self.btnRemoveAll,
-                                 QDialogButtonBox.ButtonRole.ActionRole)
+                                 QDialogButtonBox.ActionRole)
 
         self.btnAdd.clicked.connect(self.addDirectory)
         self.btnRemove.clicked.connect(lambda: self.removeRows())
@@ -90,7 +92,7 @@ class DirectorySelectorDialog(BASE, WIDGET):
         folder = QFileDialog.getExistingDirectory(self,
                                                   self.tr('Select directory'),
                                                   path,
-                                                  QFileDialog.Option.ShowDirsOnly)
+                                                  QFileDialog.ShowDirsOnly)
 
         if folder == '':
             return

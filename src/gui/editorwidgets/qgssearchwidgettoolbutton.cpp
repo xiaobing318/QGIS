@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgssearchwidgettoolbutton.h"
-#include "moc_qgssearchwidgettoolbutton.cpp"
 #include "qgsapplication.h"
 #include <QMenu>
 

@@ -144,7 +144,7 @@ void QgsRenderedItemResults::appendResults( const QList<QgsRenderedItemDetails *
     }
     catch ( QgsCsException & )
     {
-      QgsDebugError( QStringLiteral( "Could not transform rendered item's bounds to map CRS" ) );
+      QgsDebugMsg( QStringLiteral( "Could not transform rendered item's bounds to map CRS" ) );
     }
 
     if ( QgsRenderedAnnotationItemDetails *annotationDetails = dynamic_cast< QgsRenderedAnnotationItemDetails * >( details ) )

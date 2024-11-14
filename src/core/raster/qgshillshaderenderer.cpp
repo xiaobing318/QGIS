@@ -102,7 +102,7 @@ QgsRasterBlock *QgsHillshadeRenderer::block( int bandNo, const QgsRectangle &ext
   std::unique_ptr< QgsRasterBlock > outputBlock( new QgsRasterBlock() );
   if ( !mInput )
   {
-    QgsDebugError( QStringLiteral( "No input raster!" ) );
+    QgsDebugMsg( QStringLiteral( "No input raster!" ) );
     return outputBlock.release();
   }
 
@@ -110,7 +110,7 @@ QgsRasterBlock *QgsHillshadeRenderer::block( int bandNo, const QgsRectangle &ext
 
   if ( !inputBlock || inputBlock->isEmpty() )
   {
-    QgsDebugError( QStringLiteral( "No raster data!" ) );
+    QgsDebugMsg( QStringLiteral( "No raster data!" ) );
     return outputBlock.release();
   }
 
@@ -521,7 +521,7 @@ QgsRasterBlock *QgsHillshadeRenderer::block( int bandNo, const QgsRectangle &ext
         double currentAlpha = mOpacity;
         if ( mRasterTransparency )
         {
-          currentAlpha *= mRasterTransparency->opacityForValue( x22 );
+          currentAlpha = mRasterTransparency->alphaValue( x22, mOpacity * 255 ) / 255.0;
         }
         if ( mAlphaBand > 0 )
         {
@@ -569,29 +569,13 @@ QList<int> QgsHillshadeRenderer::usesBands() const
 
 }
 
-int QgsHillshadeRenderer::inputBand() const
-{
-  return mBand;
-}
-
 void QgsHillshadeRenderer::setBand( int bandNo )
 {
-  setInputBand( bandNo );
-}
-
-bool QgsHillshadeRenderer::setInputBand( int band )
-{
-  if ( !mInput )
+  if ( bandNo > mInput->bandCount() || bandNo <= 0 )
   {
-    mBand = band;
-    return true;
+    return;
   }
-  else if ( band > 0 && band <= mInput->bandCount() )
-  {
-    mBand = band;
-    return true;
-  }
-  return false;
+  mBand = bandNo;
 }
 
 void QgsHillshadeRenderer::toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props ) const
@@ -610,7 +594,7 @@ void QgsHillshadeRenderer::toSld( QDomDocument &doc, QDomElement &element, const
   // add Channel Selection tags (if band is not default 1)
   // Need to insert channelSelection in the correct sequence as in SLD standard e.g.
   // after opacity or geometry or as first element after sld:RasterSymbolizer
-  if ( mBand != 1 )
+  if ( band() != 1 )
   {
     QDomElement channelSelectionElem = doc.createElement( QStringLiteral( "sld:ChannelSelection" ) );
     elements = rasterSymbolizerElem.elementsByTagName( QStringLiteral( "sld:Opacity" ) );
@@ -637,7 +621,7 @@ void QgsHillshadeRenderer::toSld( QDomDocument &doc, QDomElement &element, const
 
     // set band
     QDomElement sourceChannelNameElem = doc.createElement( QStringLiteral( "sld:SourceChannelName" ) );
-    sourceChannelNameElem.appendChild( doc.createTextNode( QString::number( mBand ) ) );
+    sourceChannelNameElem.appendChild( doc.createTextNode( QString::number( band() ) ) );
     channelElem.appendChild( sourceChannelNameElem );
   }
 

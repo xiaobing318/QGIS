@@ -74,8 +74,8 @@ class GUI_EXPORT QgsOptionsProxyModel : public QSortFilterProxyModel
  *
  * To use:
  *
- * - Start with copy of qgsoptionsdialog_template.ui and build options/properties dialog.
- * - In source file for dialog, inherit this class instead of QDialog, then in constructor:
+ * # Start with copy of qgsoptionsdialog_template.ui and build options/properties dialog.
+ * # In source file for dialog, inherit this class instead of QDialog, then in constructor:
  *   ...
  *   setupUi( this ); // set up .ui file objects
  *   initOptionsBase( FALSE ); // set up this class to use .ui objects, optionally restoring base ui
@@ -152,13 +152,10 @@ class GUI_EXPORT QgsOptionsDialogBase : public QDialog
      * Since QGIS 3.22, the optional \a path argument can be used to set the path of the item's entry in the tree view
      * (for dialogs which show a tree view of options pages only).
      *
-     * Since QGIS 3.32, the optional \a key argument can be used to set an untranslated key that \a path can refer to
-     * in following calls. Default to \a title.
-     *
      * \see insertPage()
      * \since QGIS 3.14
      */
-    void addPage( const QString &title, const QString &tooltip, const QIcon &icon, QWidget *widget SIP_TRANSFER, const QStringList &path = QStringList(), const QString &key = QString() );
+    void addPage( const QString &title, const QString &tooltip, const QIcon &icon, QWidget *widget SIP_TRANSFER, const QStringList &path = QStringList() );
 
     /**
      * Inserts a new page into the dialog pages.
@@ -173,19 +170,17 @@ class GUI_EXPORT QgsOptionsDialogBase : public QDialog
      * Since QGIS 3.22, the optional \a path argument can be used to set the path of the item's entry in the tree view
      * (for dialogs which show a tree view of options pages only).
      *
-     * Since QGIS 3.32, the optional \a key argument can be used to set an untranslated key that \a path can refer to
-     * in following calls. Default to \a title.
-     *
      * \see addPage()
      * \since QGIS 3.14
      */
-    void insertPage( const QString &title, const QString &tooltip, const QIcon &icon, QWidget *widget SIP_TRANSFER, const QString &before, const QStringList &path = QStringList(), const QString &key = QString() );
+    void insertPage( const QString &title, const QString &tooltip, const QIcon &icon, QWidget *widget SIP_TRANSFER, const QString &before, const QStringList &path = QStringList() );
 
   public slots:
 
     /**
      * searchText searches for a text in all the pages of the stacked widget and highlight the results
      * \param text the text to search
+     * \since QGIS 3.0
      */
     void searchText( const QString &text );
 
@@ -208,6 +203,7 @@ class GUI_EXPORT QgsOptionsDialogBase : public QDialog
     /**
      * register widgets in the dialog to search for text in it
      * it is automatically called if a line edit has "mSearchLineEdit" as object name.
+     * \since QGIS 3.0
      */
     void registerTextSearchWidgets();
 

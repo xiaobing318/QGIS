@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsuserprofilemanager.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -20,6 +20,8 @@ This allows for manage different user profiles per machine vs the single default
 past.
 
 A user profile is all settings and anything that used to be found in .qgis3 in the users home folder.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -141,30 +143,6 @@ with no arguments.
 Set the default profile name from the current active profile.
 %End
 
-    QString lastProfileName() const;
-%Docstring
-Returns the name of the most recently closed profile. Empty if it is the first time QGIS is run.
-
-.. versionadded:: 3.32
-%End
-
-
-    Qgis::UserProfileSelectionPolicy userProfileSelectionPolicy() const;
-%Docstring
-Returns the user profile selection policy.
-
-.. versionadded:: 3.32
-%End
-
-    void setUserProfileSelectionPolicy( Qgis::UserProfileSelectionPolicy policy );
-%Docstring
-Sets the user profile selection policy.
-
-:param policy: The policy to use when selecting a user profile.
-
-.. versionadded:: 3.32
-%End
-
     QgsUserProfile *profileForName( const QString &name ) const /Factory/;
 %Docstring
 Returns the profile found for a given name.
@@ -219,13 +197,6 @@ Starts a new instance of QGIS for the given profile.
 :param name: The profile to start QGIS with.
 %End
 
-    QSettings *settings();
-%Docstring
-Returns the settings for the profile manager.
-
-.. versionadded:: 3.32
-%End
-
   signals:
 
     void profilesChanged();
@@ -248,5 +219,5 @@ By default new profile notification is disabled.
  *                                                                      *
  * src/core/qgsuserprofilemanager.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -18,9 +18,6 @@
 
 #include "qgsdataitemguiprovider.h"
 
-class QgsWMSConnectionItem;
-class QgsXyzLayerItem;
-
 class QgsWmsDataItemGuiProvider : public QObject, public QgsDataItemGuiProvider
 {
     Q_OBJECT
@@ -36,7 +33,7 @@ class QgsWmsDataItemGuiProvider : public QObject, public QgsDataItemGuiProvider
   private:
     static void refreshConnection( QgsDataItem *item );
     static void editConnection( QgsDataItem *item );
-    static void duplicateConnection( QgsDataItem *item );
+    static void deleteConnection( QgsDataItem *item );
     static void newConnection( QgsDataItem *item );
     static void saveConnections();
     static void loadConnections( QgsDataItem *item );
@@ -58,7 +55,7 @@ class QgsXyzDataItemGuiProvider : public QObject, public QgsDataItemGuiProvider
 
   private:
     static void editConnection( QgsDataItem *item );
-    static void duplicateConnection( QgsDataItem *item );
+    static void deleteConnection( QgsDataItem *item );
     static void newConnection( QgsDataItem *item );
     static void saveXyzTilesServers();
     static void loadXyzTilesServers( QgsDataItem *item );

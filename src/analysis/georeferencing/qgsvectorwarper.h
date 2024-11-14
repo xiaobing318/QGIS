@@ -16,12 +16,15 @@
 #ifndef QGSVECTORWARPER_H
 #define QGSVECTORWARPER_H
 
+#include "qgspoint.h"
 #include "qgis_analysis.h"
 #include "qgis_sip.h"
 #include "qgsgcptransformer.h"
 #include "qgsgcppoint.h"
 #include "qgsfeatureiterator.h"
+#include "qgsfeaturesource.h"
 #include "qgstaskmanager.h"
+#include "qgsvectorfilewriter.h"
 #include "qgsvectorlayerfeatureiterator.h"
 
 class QgsFeatureSink;
@@ -136,7 +139,7 @@ class ANALYSIS_EXPORT QgsVectorWarperTask : public QgsTask
 
     QgsCoordinateTransformContext mTransformContext;
     QgsFields mFields;
-    Qgis::WkbType mWkbType = Qgis::WkbType::Unknown;
+    QgsWkbTypes::Type mWkbType = QgsWkbTypes::Unknown;
 
     Result mResult = Result::Success;
     QString mErrorMessage;

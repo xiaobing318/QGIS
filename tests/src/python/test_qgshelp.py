@@ -14,13 +14,12 @@ __copyright__ = 'Copyright 2022, Julien Cabieces'
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import QgsSettings
 from qgis.gui import QgsHelp
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 import mockedwebserver
 
 
-class TestQgsHelp(QgisTestCase):
+class TestQgsHelp(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):

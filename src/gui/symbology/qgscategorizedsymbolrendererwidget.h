@@ -25,7 +25,6 @@
 
 class QgsCategorizedSymbolRenderer;
 class QgsRendererCategory;
-class QgsSymbolSelectorWidget;
 
 #include "ui_qgscategorizedsymbolrendererwidget.h"
 #include "qgis_gui.h"
@@ -38,7 +37,7 @@ class GUI_EXPORT QgsCategorizedSymbolRendererModel : public QAbstractItemModel
 {
     Q_OBJECT
   public:
-    QgsCategorizedSymbolRendererModel( QObject *parent = nullptr, QScreen *screen = nullptr );
+    QgsCategorizedSymbolRendererModel( QObject *parent = nullptr );
     Qt::ItemFlags flags( const QModelIndex &index ) const override;
     Qt::DropActions supportedDropActions() const override;
     QVariant data( const QModelIndex &index, int role ) const override;
@@ -67,7 +66,6 @@ class GUI_EXPORT QgsCategorizedSymbolRendererModel : public QAbstractItemModel
   private:
     QgsCategorizedSymbolRenderer *mRenderer = nullptr;
     QString mMimeFormat;
-    QPointer< QScreen > mScreen;
 };
 
 /**
@@ -112,25 +110,19 @@ class QgsCategorizedRendererViewItemDelegate: public QStyledItemDelegate
  * \ingroup gui
  * \class QgsCategorizedSymbolRendererWidget
  */
-class GUI_EXPORT QgsCategorizedSymbolRendererWidget : public QgsRendererWidget, private Ui::QgsCategorizedSymbolRendererWidget
+class GUI_EXPORT QgsCategorizedSymbolRendererWidget : public QgsRendererWidget, private Ui::QgsCategorizedSymbolRendererWidget, private QgsExpressionContextGenerator
 {
     Q_OBJECT
   public:
 
-    // *INDENT-OFF*
-
     /**
-     * Custom model roles.
-     *
-     * \note Prior to QGIS 3.36 this was available as QgsCategorizedSymbolRendererWidget::CustomRoles
-     * \since QGIS 3.36
+     * CustomRoles enum represent custom roles for the widget.
+     * \since QGIS 3.22.1
      */
-    enum class CustomRole SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsCategorizedSymbolRendererWidget, CustomRoles ) : int
+    enum CustomRoles
     {
-      Value SIP_MONKEYPATCH_COMPAT_NAME(ValueRole) = Qt::UserRole + 1 //!< Category value
+      ValueRole = Qt::UserRole + 1 //!< Category value
     };
-    Q_ENUM( CustomRole )
-    // *INDENT-ON*
 
     static QgsRendererWidget *create( QgsVectorLayer *layer, QgsStyle *style, QgsFeatureRenderer *renderer ) SIP_FACTORY;
 
@@ -140,7 +132,6 @@ class GUI_EXPORT QgsCategorizedSymbolRendererWidget : public QgsRendererWidget, 
     QgsFeatureRenderer *renderer() override;
     void setContext( const QgsSymbolWidgetContext &context ) override;
     void disableSymbolLevels() override SIP_SKIP;
-    QgsExpressionContext createExpressionContext() const override;
 
     /**
      * Replaces category symbols with the symbols from a style that have a matching
@@ -149,6 +140,7 @@ class GUI_EXPORT QgsCategorizedSymbolRendererWidget : public QgsRendererWidget, 
      * \returns number of symbols matched
      * \see matchToSymbolsFromLibrary
      * \see matchToSymbolsFromXml
+     * \since QGIS 2.9
      */
     int matchToSymbols( QgsStyle *style );
 
@@ -176,6 +168,7 @@ class GUI_EXPORT QgsCategorizedSymbolRendererWidget : public QgsRendererWidget, 
      * matching name.
      * \see matchToSymbolsFromXml
      * \see matchToSymbols
+     * \since QGIS 2.9
      */
     void matchToSymbolsFromLibrary();
 
@@ -184,6 +177,7 @@ class GUI_EXPORT QgsCategorizedSymbolRendererWidget : public QgsRendererWidget, 
      * from the XML file with a matching name.
      * \see matchToSymbolsFromLibrary
      * \see matchToSymbols
+     * \since QGIS 2.9
      */
     void matchToSymbolsFromXml();
 
@@ -196,7 +190,8 @@ class GUI_EXPORT QgsCategorizedSymbolRendererWidget : public QgsRendererWidget, 
 
   private slots:
 
-    void updateSymbolsFromWidget( QgsSymbolSelectorWidget *widget );
+    void cleanUpSymbolSelector( QgsPanelWidget *container );
+    void updateSymbolsFromWidget();
     void updateSymbolsFromButton();
     void dataDefinedSizeLegend();
 
@@ -257,6 +252,8 @@ class GUI_EXPORT QgsCategorizedSymbolRendererWidget : public QgsRendererWidget, 
     QAction *mMergeCategoriesAction = nullptr;
     QAction *mUnmergeCategoriesAction = nullptr;
     QAction *mActionLevels = nullptr;
+
+    QgsExpressionContext createExpressionContext() const override;
 
     friend class TestQgsCategorizedRendererWidget;
 };

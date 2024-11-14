@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     RasterLayerCalculator.py
@@ -24,7 +26,6 @@ import math
 from processing.algs.qgis.QgisAlgorithm import QgisAlgorithm
 from processing.algs.gdal.GdalUtils import GdalUtils
 from qgis.core import (QgsProcessing,
-                       QgsProcessingAlgorithm,
                        QgsProcessingException,
                        QgsProcessingUtils,
                        QgsProcessingParameterCrs,
@@ -77,20 +78,17 @@ class RasterCalculator(QgisAlgorithm):
                                                               multiLine=True))
         self.addParameter(QgsProcessingParameterMultipleLayers(self.LAYERS,
                                                                self.tr('Reference layer(s) (used for automated extent, cellsize, and CRS)'),
-                                                               layerType=QgsProcessing.SourceType.TypeRaster,
+                                                               layerType=QgsProcessing.TypeRaster,
                                                                optional=True))
         self.addParameter(QgsProcessingParameterNumber(self.CELLSIZE,
                                                        self.tr('Cell size (use 0 or empty to set it automatically)'),
-                                                       type=QgsProcessingParameterNumber.Type.Double,
+                                                       type=QgsProcessingParameterNumber.Double,
                                                        minValue=0.0, defaultValue=0.0, optional=True))
         self.addParameter(QgsProcessingParameterExtent(self.EXTENT,
                                                        self.tr('Output extent'),
                                                        optional=True))
         self.addParameter(QgsProcessingParameterCrs(self.CRS, 'Output CRS', optional=True))
         self.addParameter(QgsProcessingParameterRasterDestination(self.OUTPUT, self.tr('Output')))
-
-    def flags(self):
-        return super().flags() | QgsProcessingAlgorithm.Flag.FlagDeprecated
 
     def name(self):
         return 'rastercalculator'
@@ -156,7 +154,7 @@ class RasterCalculator(QgisAlgorithm):
         entries = []
         for name, lyr in layersDict.items():
             for n in range(lyr.bandCount()):
-                ref = f'{name:s}@{n + 1:d}'
+                ref = '{:s}@{:d}'.format(name, n + 1)
 
                 if ref in expression:
                     entry = QgsRasterCalculatorEntry()
@@ -187,9 +185,9 @@ class RasterCalculator(QgisAlgorithm):
                                    context.transformContext())
 
         res = calc.processCalculation(feedback)
-        if res == QgsRasterCalculator.Result.ParserError:
+        if res == QgsRasterCalculator.ParserError:
             raise QgsProcessingException(self.tr("Error parsing formula"))
-        elif res == QgsRasterCalculator.Result.CalculationError:
+        elif res == QgsRasterCalculator.CalculationError:
             raise QgsProcessingException(self.tr("An error occurred while performing the calculation"))
 
         return {self.OUTPUT: output}
@@ -262,8 +260,8 @@ class RasterCalculator(QgisAlgorithm):
                 # !!!found!!! => substitute in expression
                 # and add in the list of layers that will be passed to raster calculator
                 nameToMap = varName
-                new = f"{nameToMap}@"
-                old = f"{varDescription}@"
+                new = "{}@".format(nameToMap)
+                old = "{}@".format(varDescription)
                 expression = expression.replace(old, new)
 
                 layersDict[nameToMap] = lyr

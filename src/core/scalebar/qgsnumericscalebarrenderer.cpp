@@ -59,32 +59,32 @@ void QgsNumericScaleBarRenderer::draw( QgsRenderContext &context, const QgsScale
   const QgsScopedQPainterState painterState( painter );
   context.setPainterFlagsUsingContext( painter );
 
-  const double margin = context.convertToPainterUnits( settings.boxContentSpace(), Qgis::RenderUnit::Millimeters );
+  const double margin = context.convertToPainterUnits( settings.boxContentSpace(), QgsUnitTypes::RenderMillimeters );
   //map scalebar alignment to Qt::AlignmentFlag type
   Qgis::TextHorizontalAlignment hAlign = Qgis::TextHorizontalAlignment::Left;
   switch ( settings.alignment() )
   {
-    case Qgis::ScaleBarAlignment::Left:
+    case QgsScaleBarSettings::AlignLeft:
       hAlign = Qgis::TextHorizontalAlignment::Left;
       break;
-    case Qgis::ScaleBarAlignment::Middle:
+    case QgsScaleBarSettings::AlignMiddle:
       hAlign = Qgis::TextHorizontalAlignment::Center;
       break;
-    case Qgis::ScaleBarAlignment::Right:
+    case QgsScaleBarSettings::AlignRight:
       hAlign = Qgis::TextHorizontalAlignment::Right;
       break;
   }
 
   //text destination is item's rect, excluding the margin
-  const QRectF painterRect( margin, margin, context.convertToPainterUnits( scaleContext.size.width(), Qgis::RenderUnit::Millimeters ) - 2 * margin,
-                            context.convertToPainterUnits( scaleContext.size.height(), Qgis::RenderUnit::Millimeters ) - 2 * margin );
+  const QRectF painterRect( margin, margin, context.convertToPainterUnits( scaleContext.size.width(), QgsUnitTypes::RenderMillimeters ) - 2 * margin,
+                            context.convertToPainterUnits( scaleContext.size.height(), QgsUnitTypes::RenderMillimeters ) - 2 * margin );
   QgsTextRenderer::drawText( painterRect, 0, hAlign, QStringList() << scaleText( scaleContext.scale, settings ), context, settings.textFormat() );
 }
 
 QSizeF QgsNumericScaleBarRenderer::calculateBoxSize( QgsRenderContext &context, const QgsScaleBarSettings &settings,
     const QgsScaleBarRenderer::ScaleBarContext &scaleContext ) const
 {
-  const double painterToMm = 1.0 / context.convertToPainterUnits( 1, Qgis::RenderUnit::Millimeters );
+  const double painterToMm = 1.0 / context.convertToPainterUnits( 1, QgsUnitTypes::RenderMillimeters );
 
   const double textWidth = QgsTextRenderer::textWidth( context, settings.textFormat(), QStringList() << scaleText( scaleContext.scale, settings ) ) * painterToMm;
   const double textHeight = QgsTextRenderer::textHeight( context, settings.textFormat(), QStringList() << scaleText( scaleContext.scale, settings ) ) * painterToMm;

@@ -11,15 +11,15 @@ __author__ = '(C) 2021 by Nyall Dawson'
 __date__ = '03/09/2021'
 __copyright__ = 'Copyright 2021, The QGIS Project'
 
+import qgis  # NOQA
 from qgis.core import (
-    QgsRectangle,
-    QgsRenderContext,
-    QgsRenderedAnnotationItemDetails,
     QgsRenderedItemDetails,
     QgsRenderedItemResults,
+    QgsRenderedAnnotationItemDetails,
+    QgsRectangle,
+    QgsRenderContext
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -27,7 +27,7 @@ start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestQgsRenderedItemResults(QgisTestCase):
+class TestQgsRenderedItemResults(unittest.TestCase):
 
     def test_basic(self):
         details = QgsRenderedItemDetails('layer_id')

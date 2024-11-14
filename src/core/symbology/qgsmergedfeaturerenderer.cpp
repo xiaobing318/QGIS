@@ -26,7 +26,6 @@
 #include "qgspainteffect.h"
 #include "qgspainteffectregistry.h"
 #include "qgsstyleentityvisitor.h"
-#include "qgsmaptopixelgeometrysimplifier.h"
 
 #include <QDomDocument>
 #include <QDomElement>
@@ -166,16 +165,6 @@ void QgsMergedFeatureRenderer::startRender( QgsRenderContext &context, const Qgs
   }
 }
 
-Qgis::FeatureRendererFlags QgsMergedFeatureRenderer::flags() const
-{
-  Qgis::FeatureRendererFlags res;
-  if ( mSubRenderer )
-  {
-    res = mSubRenderer->flags();
-  }
-  return res;
-}
-
 bool QgsMergedFeatureRenderer::renderFeature( const QgsFeature &feature, QgsRenderContext &context, int layer, bool selected, bool drawVertexMarker )
 {
   if ( !context.painter() || !mSubRenderer )
@@ -243,20 +232,6 @@ bool QgsMergedFeatureRenderer::renderFeature( const QgsFeature &feature, QgsRend
   }
   QgsGeometry geom = feature.geometry();
 
-  // Simplify the geometry, if needed.
-  if ( context.vectorSimplifyMethod().forceLocalOptimization() )
-  {
-    const int simplifyHints = context.vectorSimplifyMethod().simplifyHints();
-    const QgsMapToPixelSimplifier simplifier( simplifyHints, context.vectorSimplifyMethod().tolerance(),
-        context.vectorSimplifyMethod().simplifyAlgorithm() );
-
-    QgsGeometry simplified( simplifier.simplify( geom ) );
-    if ( !simplified.isEmpty() )
-    {
-      geom = simplified;
-    }
-  }
-
   QgsCoordinateTransform xform = context.coordinateTransform();
   if ( xform.isValid() )
   {
@@ -319,7 +294,7 @@ void QgsMergedFeatureRenderer::stopRender( QgsRenderContext &context )
       case QgsMergedFeatureRenderer::Merge:
       {
         QgsGeometry unioned( QgsGeometry::unaryUnion( cit.geometries ) );
-        if ( unioned.type() == Qgis::GeometryType::Line )
+        if ( unioned.type() == QgsWkbTypes::LineGeometry )
           unioned = unioned.mergeLines();
         feat.setGeometry( unioned );
         break;
@@ -353,13 +328,13 @@ void QgsMergedFeatureRenderer::stopRender( QgsRenderContext &context )
         for ( const QgsGeometry &geom : std::as_const( cit.geometries ) )
         {
           QgsMultiPolygonXY multi;
-          Qgis::WkbType type = QgsWkbTypes::flatType( geom.constGet()->wkbType() );
+          QgsWkbTypes::Type type = QgsWkbTypes::flatType( geom.constGet()->wkbType() );
 
-          if ( ( type == Qgis::WkbType::Polygon ) || ( type == Qgis::WkbType::CurvePolygon ) )
+          if ( ( type == QgsWkbTypes::Polygon ) || ( type == QgsWkbTypes::CurvePolygon ) )
           {
             multi.append( geom.asPolygon() );
           }
-          else if ( ( type == Qgis::WkbType::MultiPolygon ) || ( type == Qgis::WkbType::MultiSurface ) )
+          else if ( ( type == QgsWkbTypes::MultiPolygon ) || ( type == QgsWkbTypes::MultiSurface ) )
           {
             multi = geom.asMultiPolygon();
           }
@@ -391,11 +366,7 @@ void QgsMergedFeatureRenderer::stopRender( QgsRenderContext &context )
     if ( feat.hasGeometry() )
     {
       mContext.expressionContext().setFeature( feat );
-      const bool prevSimplify = context.vectorSimplifyMethod().forceLocalOptimization();
-      // we've already simplified, no need to re-do simplification
-      mContext.vectorSimplifyMethod().setForceLocalOptimization( false );
       mSubRenderer->renderFeature( feat, mContext );
-      mContext.vectorSimplifyMethod().setForceLocalOptimization( prevSimplify );
     }
   }
 

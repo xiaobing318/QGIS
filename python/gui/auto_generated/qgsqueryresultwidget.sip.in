@@ -3,9 +3,8 @@
  *                                                                      *
  * src/gui/qgsqueryresultwidget.h                                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
-
 
 
 
@@ -94,20 +93,6 @@ in the SQL error panel is ``isSqlError`` is set.
 Triggered when the threaded API fetcher has new ``tokens`` to add.
 %End
 
-    void copyResults();
-%Docstring
-Copies the query results to the clipboard, as a formatted table.
-
-.. versionadded:: 3.32
-%End
-
-    void copyResults( int fromRow, int toRow, int fromColumn, int toColumn );
-%Docstring
-Copies a range of the query results to the clipboard, as a formatted table.
-
-.. versionadded:: 3.32
-%End
-
   signals:
 
     void createSqlVectorLayer( const QString &providerKey, const QString &connectionUri, const QgsAbstractDatabaseProviderConnection::SqlVectorLayerOptions &options );
@@ -135,5 +120,5 @@ Emitted when the first batch of results has been fetched.
  *                                                                      *
  * src/gui/qgsqueryresultwidget.h                                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

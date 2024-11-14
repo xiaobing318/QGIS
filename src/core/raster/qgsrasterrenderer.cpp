@@ -18,7 +18,7 @@
 #include "qgsrasterrenderer.h"
 #include "qgsrastertransparency.h"
 
-#include "qgscolorutils.h"
+#include "qgssymbollayerutils.h"
 #include "qgslayertreemodellegendnode.h"
 
 #include <QCoreApplication>
@@ -66,11 +66,6 @@ Qgis::RasterRendererFlags QgsRasterRenderer::flags() const
   return Qgis::RasterRendererFlags();
 }
 
-bool QgsRasterRenderer::canCreateRasterAttributeTable() const
-{
-  return false;
-}
-
 bool QgsRasterRenderer::setInput( QgsRasterInterface *input )
 {
   // Renderer can only work with numerical values in at least 1 band
@@ -95,16 +90,6 @@ bool QgsRasterRenderer::setInput( QgsRasterInterface *input )
   }
   mInput = input;
   return true;
-}
-
-int QgsRasterRenderer::inputBand() const
-{
-  return -1;
-}
-
-bool QgsRasterRenderer::setInputBand( int )
-{
-  return false;
 }
 
 bool QgsRasterRenderer::usesTransparency() const
@@ -146,7 +131,7 @@ QList<QgsLayerTreeModelLegendNode *> QgsRasterRenderer::createLegendNodes( QgsLa
 
     if ( count == max_count )
     {
-      const QString label = tr( "following %n item(s) not displayed", nullptr, rasterItemList.size() - max_count );
+      const QString label = tr( "following %1 items\nnot displayed" ).arg( rasterItemList.size() - max_count );
       nodes << new QgsSimpleLegendNode( nodeLayer, label );
       break;
     }
@@ -165,7 +150,7 @@ void QgsRasterRenderer::_writeXml( QDomDocument &doc, QDomElement &rasterRendere
   rasterRendererElem.setAttribute( QStringLiteral( "type" ), mType );
   rasterRendererElem.setAttribute( QStringLiteral( "opacity" ), QString::number( mOpacity ) );
   rasterRendererElem.setAttribute( QStringLiteral( "alphaBand" ), mAlphaBand );
-  rasterRendererElem.setAttribute( QStringLiteral( "nodataColor" ), mNodataColor.isValid() ? QgsColorUtils::colorToString( mNodataColor ) : QString() );
+  rasterRendererElem.setAttribute( QStringLiteral( "nodataColor" ), mNodataColor.isValid() ? QgsSymbolLayerUtils::encodeColor( mNodataColor ) : QString() );
 
   if ( mRasterTransparency )
   {
@@ -196,7 +181,7 @@ void QgsRasterRenderer::readXml( const QDomElement &rendererElem )
   mOpacity = rendererElem.attribute( QStringLiteral( "opacity" ), QStringLiteral( "1.0" ) ).toDouble();
   mAlphaBand = rendererElem.attribute( QStringLiteral( "alphaBand" ), QStringLiteral( "-1" ) ).toInt();
   const QString colorEncoded = rendererElem.attribute( QStringLiteral( "nodataColor" ) );
-  mNodataColor = !colorEncoded.isEmpty() ? QgsColorUtils::colorFromString( colorEncoded ) : QColor();
+  mNodataColor = !colorEncoded.isEmpty() ? QgsSymbolLayerUtils::decodeColor( colorEncoded ) : QColor();
 
   const QDomElement rasterTransparencyElem = rendererElem.firstChildElement( QStringLiteral( "rasterTransparency" ) );
   if ( !rasterTransparencyElem.isNull() )

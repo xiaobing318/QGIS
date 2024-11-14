@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgspointcloudclassifiedrendererwidget.h"
-#include "moc_qgspointcloudclassifiedrendererwidget.cpp"
 #include "qgscontrastenhancement.h"
 #include "qgspointcloudlayer.h"
 #include "qgspointcloudclassifiedrenderer.h"
@@ -30,7 +29,6 @@
 #include "qgspointcloudrendererregistry.h"
 
 #include <QMimeData>
-#include <QInputDialog>
 
 ///@cond PRIVATE
 
@@ -84,9 +82,11 @@ Qt::ItemFlags QgsPointCloudClassifiedRendererModel::flags( const QModelIndex &in
   }
 
   Qt::ItemFlags flags = Qt::ItemIsSelectable | Qt::ItemIsEnabled | Qt::ItemIsDragEnabled | Qt::ItemIsDropEnabled | Qt::ItemIsUserCheckable;
-  if ( index.column() == 1 ||
-       index.column() == 2 ||
-       index.column() == 3 )
+  if ( index.column() == 1 )
+  {
+    flags |= Qt::ItemIsEditable;
+  }
+  else if ( index.column() == 2 )
   {
     flags |= Qt::ItemIsEditable;
   }
@@ -122,12 +122,12 @@ QVariant QgsPointCloudClassifiedRendererModel::data( const QModelIndex &index, i
       switch ( index.column() )
       {
         case 1:
-          return category.pointSize() > 0 ? QString::number( category.pointSize() ) : QString();
-        case 2:
+        {
           return QString::number( category.value() );
-        case 3:
+        }
+        case 2:
           return category.label();
-        case 4:
+        case 3:
           const float value = mPercentages.value( category.value(), -1 );
           QString str;
           if ( value < 0 )
@@ -157,7 +157,7 @@ QVariant QgsPointCloudClassifiedRendererModel::data( const QModelIndex &index, i
     {
       if ( index.column() == 0 )
         return static_cast<Qt::Alignment::Int>( Qt::AlignHCenter );
-      if ( index.column() == 4 )
+      if ( index.column() == 3 )
         return static_cast<Qt::Alignment::Int>( Qt::AlignRight );
       return static_cast<Qt::Alignment::Int>( Qt::AlignLeft );
     }
@@ -167,10 +167,11 @@ QVariant QgsPointCloudClassifiedRendererModel::data( const QModelIndex &index, i
       switch ( index.column() )
       {
         case 1:
-          return category.pointSize() > 0 ? QString::number( category.pointSize() ) : QString();
-        case 2:
+        {
           return QString::number( category.value() );
-        case 3:
+        }
+
+        case 2:
           return category.label();
       }
       break;
@@ -198,19 +199,13 @@ bool QgsPointCloudClassifiedRendererModel::setData( const QModelIndex &index, co
 
   switch ( index.column() )
   {
-    case 1: // point size
-    {
-      const double size = value.toDouble();
-      mCategories[ index.row() ].setPointSize( size );
-      break;
-    }
-    case 2: // value
+    case 1: // value
     {
       const int val = value.toInt();
       mCategories[ index.row() ].setValue( val );
       break;
     }
-    case 3: // label
+    case 2: // label
     {
       mCategories[ index.row() ].setLabel( value.toString() );
       break;
@@ -226,10 +221,10 @@ bool QgsPointCloudClassifiedRendererModel::setData( const QModelIndex &index, co
 
 QVariant QgsPointCloudClassifiedRendererModel::headerData( int section, Qt::Orientation orientation, int role ) const
 {
-  if ( orientation == Qt::Horizontal && role == Qt::DisplayRole && section >= 0 && section < 5 )
+  if ( orientation == Qt::Horizontal && role == Qt::DisplayRole && section >= 0 && section < 4 )
   {
     QStringList lst;
-    lst << tr( "Color" ) << tr( "Size" ) << tr( "Value" ) << tr( "Legend" ) << tr( "Percentage" );
+    lst << tr( "Color" ) << tr( "Value" ) << tr( "Legend" ) << tr( "Percentage" );
     return lst.value( section );
   }
   return QVariant();
@@ -247,7 +242,7 @@ int QgsPointCloudClassifiedRendererModel::rowCount( const QModelIndex &parent ) 
 int QgsPointCloudClassifiedRendererModel::columnCount( const QModelIndex &index ) const
 {
   Q_UNUSED( index )
-  return 5;
+  return 4;
 }
 
 QModelIndex QgsPointCloudClassifiedRendererModel::index( int row, int column, const QModelIndex &parent ) const
@@ -371,13 +366,6 @@ void QgsPointCloudClassifiedRendererModel::setCategoryColor( int row, const QCol
   emit categoriesChanged();
 }
 
-void QgsPointCloudClassifiedRendererModel::setCategoryPointSize( int row, double size )
-{
-  mCategories[row].setPointSize( size );
-  emit dataChanged( createIndex( row, 0 ), createIndex( row, 0 ) );
-  emit categoriesChanged();
-}
-
 // ------------------------------ View style --------------------------------
 QgsPointCloudClassifiedRendererViewStyle::QgsPointCloudClassifiedRendererViewStyle( QWidget *parent )
   : QgsProxyStyle( parent )
@@ -421,7 +409,6 @@ QgsPointCloudClassifiedRendererWidget::QgsPointCloudClassifiedRendererWidget( Qg
   viewCategories->resizeColumnToContents( 0 );
   viewCategories->resizeColumnToContents( 1 );
   viewCategories->resizeColumnToContents( 2 );
-  viewCategories->resizeColumnToContents( 3 );
 
   viewCategories->setStyle( new QgsPointCloudClassifiedRendererViewStyle( viewCategories ) );
 
@@ -435,14 +422,6 @@ QgsPointCloudClassifiedRendererWidget::QgsPointCloudClassifiedRendererWidget( Qg
   connect( btnDeleteAllCategories, &QAbstractButton::clicked, this, &QgsPointCloudClassifiedRendererWidget::deleteAllCategories );
   connect( btnAddCategory, &QAbstractButton::clicked, this, &QgsPointCloudClassifiedRendererWidget::addCategory );
 
-  contextMenu = new QMenu( tr( "Options" ), this );
-  contextMenu->addAction( tr( "Change &Color…" ), this, &QgsPointCloudClassifiedRendererWidget::changeCategoryColor );
-  contextMenu->addAction( tr( "Change &Opacity…" ), this, &QgsPointCloudClassifiedRendererWidget::changeCategoryOpacity );
-  contextMenu->addAction( tr( "Change &Size…" ), this, &QgsPointCloudClassifiedRendererWidget::changeCategoryPointSize );
-
-  viewCategories->setContextMenuPolicy( Qt::CustomContextMenu );
-  viewCategories->setSelectionMode( QAbstractItemView::ExtendedSelection );
-  connect( viewCategories, &QTreeView::customContextMenuRequested, this, [ = ]( QPoint ) { contextMenu->exec( QCursor::pos() ); } );
 }
 
 QgsPointCloudRendererWidget *QgsPointCloudClassifiedRendererWidget::create( QgsPointCloudLayer *layer, QgsStyle *style, QgsPointCloudRenderer * )
@@ -497,7 +476,7 @@ void QgsPointCloudClassifiedRendererWidget::emitWidgetChanged()
 void QgsPointCloudClassifiedRendererWidget::categoriesDoubleClicked( const QModelIndex &idx )
 {
   if ( idx.isValid() && idx.column() == 0 )
-    changeCategoryColor();
+    changeCategorySymbol();
 }
 
 void QgsPointCloudClassifiedRendererWidget::addCategories()
@@ -508,27 +487,15 @@ void QgsPointCloudClassifiedRendererWidget::addCategories()
 
   const QString currentAttribute = mAttributeComboBox->currentAttribute();
   const QgsPointCloudStatistics stats = mLayer->statistics();
+  const QList<int> providerCategories = stats.classesOf( currentAttribute );
 
   const QgsPointCloudCategoryList currentCategories = mModel->categories();
 
-  const bool isClassificationAttribute = ( 0 == currentAttribute.compare( QStringLiteral( "Classification" ), Qt::CaseInsensitive ) );
-  const bool isBooleanAttribute = ( 0 == currentAttribute.compare( QStringLiteral( "Synthetic" ), Qt::CaseInsensitive ) ||
-                                    0 == currentAttribute.compare( QStringLiteral( "KeyPoint" ), Qt::CaseInsensitive ) ||
-                                    0 == currentAttribute.compare( QStringLiteral( "Withheld" ), Qt::CaseInsensitive ) ||
-                                    0 == currentAttribute.compare( QStringLiteral( "Overlap" ), Qt::CaseInsensitive ) );
-
-  QList<int> providerCategories = stats.classesOf( currentAttribute );
-
-  // for 0/1 attributes we should always show both 0 and 1 categories, unless we have full stats
-  // so we can show categories that are actually available
-  if ( isBooleanAttribute &&
-       ( providerCategories.isEmpty() || stats.sampledPointsCount() < mLayer->pointCount() ) )
-    providerCategories = { 0, 1 };
-
+  const bool isClassificationAttribute = ! currentAttribute.compare( QStringLiteral( "Classification" ), Qt::CaseInsensitive );
   const QgsPointCloudCategoryList defaultLayerCategories = isClassificationAttribute ? QgsPointCloudRendererRegistry::classificationAttributeCategories( mLayer ) : QgsPointCloudCategoryList();
 
   mBlockChangedSignal = true;
-  for ( const int &providerCategory : std::as_const( providerCategories ) )
+  for ( const int &providerCategory : providerCategories )
   {
     // does this category already exist?
     bool found = false;
@@ -629,30 +596,25 @@ void QgsPointCloudClassifiedRendererWidget::initialize()
   addCategories();
 }
 
-void QgsPointCloudClassifiedRendererWidget::changeCategoryColor()
+void QgsPointCloudClassifiedRendererWidget::changeCategorySymbol()
 {
-  const QList<int> categoryList = selectedCategories();
-  if ( categoryList.isEmpty() )
-  {
+  const int row = currentCategoryRow();
+  if ( row < 0 )
     return;
-  }
 
-  const QgsPointCloudCategory category = mModel->categories().value( categoryList.first() );
+  const QgsPointCloudCategory category = mModel->categories().value( row );
 
   QgsPanelWidget *panel = QgsPanelWidget::findParentPanel( this );
   if ( panel && panel->dockMode() )
   {
     QgsCompoundColorWidget *colorWidget = new QgsCompoundColorWidget( panel, category.color(), QgsCompoundColorWidget::LayoutVertical );
-    colorWidget->setPanelTitle( categoryList.count() == 1 ? category.label() : tr( "Select Color" ) );
+    colorWidget->setPanelTitle( category.label() );
     colorWidget->setAllowOpacity( true );
     colorWidget->setPreviousColor( category.color() );
 
     connect( colorWidget, &QgsCompoundColorWidget::currentColorChanged, this, [ = ]( const QColor & newColor )
     {
-      for ( int row : categoryList )
-      {
-        mModel->setCategoryColor( row, newColor );
-      }
+      mModel->setCategoryColor( row, newColor );
     } );
     panel->openPanel( colorWidget );
   }
@@ -661,55 +623,7 @@ void QgsPointCloudClassifiedRendererWidget::changeCategoryColor()
     const QColor newColor = QgsColorDialog::getColor( category.color(), this, category.label(), true );
     if ( newColor.isValid() )
     {
-      for ( int row : categoryList )
-      {
-        mModel->setCategoryColor( row, newColor );
-      }
-    }
-  }
-}
-
-void QgsPointCloudClassifiedRendererWidget::changeCategoryOpacity()
-{
-  const QList<int> categoryList = selectedCategories();
-  if ( categoryList.isEmpty() )
-  {
-    return;
-  }
-
-  const double oldOpacity = mModel->categories().value( categoryList.first() ).color().alphaF() * 100.0;
-
-  bool ok;
-  const double opacity = QInputDialog::getDouble( this, tr( "Opacity" ), tr( "Change symbol opacity [%]" ), oldOpacity, 0.0, 100.0, 1, &ok );
-  if ( ok )
-  {
-    for ( int row : categoryList )
-    {
-      const QgsPointCloudCategory category = mModel->categories().value( row );
-      QColor color = category.color();
-      color.setAlphaF( opacity / 100.0 );
-      mModel->setCategoryColor( row, color );
-    }
-  }
-}
-
-void QgsPointCloudClassifiedRendererWidget::changeCategoryPointSize()
-{
-  const QList<int> categoryList = selectedCategories();
-  if ( categoryList.isEmpty() )
-  {
-    return;
-  }
-
-  const double oldSize = mModel->categories().value( categoryList.first() ).pointSize();
-
-  bool ok;
-  const double size = QInputDialog::getDouble( this, tr( "Point Size" ), tr( "Change point size (set to 0 to reset to default point size)" ), oldSize, 0.0, 42.0, 1, &ok );
-  if ( ok )
-  {
-    for ( int row : categoryList )
-    {
-      mModel->setCategoryPointSize( row, size );
+      mModel->setCategoryColor( row, newColor );
     }
   }
 }

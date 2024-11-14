@@ -34,8 +34,8 @@ class GUI_EXPORT QgsLabelingGui : public QgsTextFormatWidget
     Q_OBJECT
 
   public:
-    QgsLabelingGui( QgsMapLayer *layer, QgsMapCanvas *mapCanvas, const QgsPalLayerSettings &settings, QWidget *parent = nullptr,
-                    Qgis::GeometryType geomType = Qgis::GeometryType::Unknown );
+    QgsLabelingGui( QgsVectorLayer *layer, QgsMapCanvas *mapCanvas, const QgsPalLayerSettings &settings, QWidget *parent = nullptr,
+                    QgsWkbTypes::GeometryType geomType = QgsWkbTypes::UnknownGeometry );
 
     QgsPalLayerSettings layerSettings();
 
@@ -98,6 +98,7 @@ class GUI_EXPORT QgsLabelingGui : public QgsTextFormatWidget
 
   private slots:
 
+    void initCalloutWidgets();
     void updateCalloutWidget( QgsCallout *callout );
     void showObstacleSettings();
     void showLineAnchorSettings();
@@ -111,7 +112,7 @@ class GUI_EXPORT QgsLabelSettingsDialog : public QDialog
   public:
 
     QgsLabelSettingsDialog( const QgsPalLayerSettings &settings, QgsVectorLayer *layer, QgsMapCanvas *mapCanvas, QWidget *parent SIP_TRANSFERTHIS = nullptr,
-                            Qgis::GeometryType geomType = Qgis::GeometryType::Unknown );
+                            QgsWkbTypes::GeometryType geomType = QgsWkbTypes::UnknownGeometry );
 
     QgsPalLayerSettings settings() const { return mWidget->layerSettings(); }
 

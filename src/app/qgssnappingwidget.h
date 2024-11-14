@@ -175,6 +175,7 @@ class APP_EXPORT QgsSnappingWidget : public QWidget
     QAction *mSelfSnappingAction = nullptr;
     QTreeView *mLayerTreeView = nullptr;
     QWidget *mAdvancedConfigWidget = nullptr;
+    QgsFloatingWidget *mAdvancedConfigContainer = nullptr;
 
     bool mRequireLayerTreeViewUpdate = false;
 

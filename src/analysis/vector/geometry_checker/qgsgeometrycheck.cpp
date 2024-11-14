@@ -17,7 +17,6 @@
 #include "qgsgeometrycollection.h"
 #include "qgscurvepolygon.h"
 #include "qgsgeometrycheck.h"
-#include "moc_qgsgeometrycheck.cpp"
 #include "qgsgeometrycheckerror.h"
 #include "qgsfeaturepool.h"
 #include "qgsvectorlayer.h"

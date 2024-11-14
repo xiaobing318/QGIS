@@ -1,5 +1,5 @@
 /***************************************************************************
-    qgisexpressionbuilderdialog.h - A generic expression builder dialog.
+    qgisexpressionbuilderdialog.h - A generic expression string builder dialog.
      --------------------------------------
     Date                 :  29-May-2011
     Copyright            : (C) 2011 by Nathan Woodrow
@@ -25,6 +25,7 @@
 /**
  * \ingroup gui
  * \brief A generic dialog for building expression strings
+  * @remarks This class also shows an example on how to use QgsExpressionBuilderWidget
   */
 class GUI_EXPORT QgsExpressionBuilderDialog : public QDialog, private Ui::QgsExpressionBuilderDialogBase
 {
@@ -65,6 +66,7 @@ class GUI_EXPORT QgsExpressionBuilderDialog : public QDialog, private Ui::QgsExp
      * Returns the expression context for the dialog. The context is used for the expression
      * preview result and for populating the list of available functions and variables.
      * \see setExpressionContext
+     * \since QGIS 2.12
      */
     QgsExpressionContext expressionContext() const;
 
@@ -73,6 +75,7 @@ class GUI_EXPORT QgsExpressionBuilderDialog : public QDialog, private Ui::QgsExp
      * preview result and for populating the list of available functions and variables.
      * \param context expression context
      * \see expressionContext
+     * \since QGIS 2.12
      */
     void setExpressionContext( const QgsExpressionContext &context );
 
@@ -83,6 +86,7 @@ class GUI_EXPORT QgsExpressionBuilderDialog : public QDialog, private Ui::QgsExp
      * Allow accepting invalid expressions. This can be useful when we are not able to
      * provide an expression context of which we are sure it's completely populated.
      *
+     * \since QGIS 3.0
      */
     bool allowEvalErrors() const;
 
@@ -90,6 +94,7 @@ class GUI_EXPORT QgsExpressionBuilderDialog : public QDialog, private Ui::QgsExp
      * Allow accepting expressions with evaluation errors. This can be useful when we are not able to
      * provide an expression context of which we are sure it's completely populated.
      *
+     * \since QGIS 3.0
      */
     void setAllowEvalErrors( bool allowEvalErrors );
 
@@ -99,6 +104,7 @@ class GUI_EXPORT QgsExpressionBuilderDialog : public QDialog, private Ui::QgsExp
      * Allow accepting expressions with evaluation errors. This can be useful when we are not able to
      * provide an expression context of which we are sure it's completely populated.
      *
+     * \since QGIS 3.0
      */
     void allowEvalErrorsChanged();
 

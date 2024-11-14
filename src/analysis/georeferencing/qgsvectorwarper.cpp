@@ -14,12 +14,11 @@
  ***************************************************************************/
 
 #include "qgsvectorwarper.h"
-#include "moc_qgsvectorwarper.cpp"
 #include "qgsfeaturesink.h"
 #include "qgsfeedback.h"
 #include "qgsgcpgeometrytransformer.h"
+#include "qgsfeaturesource.h"
 #include "qgsvectorlayer.h"
-#include "qgsvectorfilewriter.h"
 
 #include <QObject>
 #include <QFileInfo>

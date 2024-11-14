@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/vector/qgsvectorlayerfeaturecounter.h                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -12,10 +12,11 @@ class QgsVectorLayerFeatureCounter : QgsTask
 %Docstring(signature="appended")
 
 Counts the features in a :py:class:`QgsVectorLayer` in task.
-
 You should most likely not use this directly and instead call
 :py:func:`QgsVectorLayer.countSymbolFeatures()` and connect to the signal
 :py:func:`QgsVectorLayer.symbolFeatureCountMapChanged()`.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -72,5 +73,5 @@ Emitted when the symbols have been counted.
  *                                                                      *
  * src/core/vector/qgsvectorlayerfeaturecounter.h                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

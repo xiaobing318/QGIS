@@ -16,6 +16,9 @@ email                : nyall dot dawson at gmail dot com
  ***************************************************************************/
 
 #include "qgslegendpatchshape.h"
+#include "qgsmultilinestring.h"
+#include "qgslinestring.h"
+#include "qgspolygon.h"
 #include "qgsstyle.h"
 
 QgsLegendPatchShape::QgsLegendPatchShape( Qgis::SymbolType type, const QgsGeometry &geometry, bool preserveAspectRatio )
@@ -59,6 +62,33 @@ bool QgsLegendPatchShape::scaleToOutputSize() const
 void QgsLegendPatchShape::setScaleToOutputSize( bool scale )
 {
   mScaleToTargetSize = scale;
+}
+
+QPolygonF lineStringToQPolygonF( const QgsLineString *line )
+{
+  const double *srcX = line->xData();
+  const double *srcY = line->yData();
+  const int count = line->numPoints();
+  QPolygonF thisRes( count );
+  QPointF *dest = thisRes.data();
+  for ( int i = 0; i < count; ++i )
+  {
+    *dest++ = QPointF( *srcX++, *srcY++ );
+  }
+  return thisRes;
+}
+
+QPolygonF curveToPolygonF( const QgsCurve *curve )
+{
+  if ( const QgsLineString *line = qgsgeometry_cast< const QgsLineString * >( curve ) )
+  {
+    return lineStringToQPolygonF( line );
+  }
+  else
+  {
+    const std::unique_ptr< QgsLineString > straightened( curve->curveToLine() );
+    return lineStringToQPolygonF( straightened.get() );
+  }
 }
 
 QgsGeometry QgsLegendPatchShape::scaledGeometry( QSizeF size ) const
@@ -116,14 +146,70 @@ QList<QList<QPolygonF> > QgsLegendPatchShape::toQPolygonF( Qgis::SymbolType type
     return QgsStyle::defaultStyle()->defaultPatchAsQPolygonF( type, size );
 
   const QgsGeometry geom = scaledGeometry( size );
-  if ( type == Qgis::SymbolType::Marker && ( QgsWkbTypes::flatType( geom.wkbType() ) != Qgis::WkbType::MultiPoint ) )
+
+  switch ( mSymbolType )
   {
-    QPolygonF points;
-    points << QPointF( size.width() / 2, size.height() / 2 );
-    return QList< QList<QPolygonF> >() << ( QList< QPolygonF >() << points );
+    case Qgis::SymbolType::Marker:
+    {
+      QPolygonF points;
+
+      if ( QgsWkbTypes::flatType( mGeometry.wkbType() ) == QgsWkbTypes::MultiPoint )
+      {
+        const QgsGeometry patch = geom;
+        for ( auto it = patch.vertices_begin(); it != patch.vertices_end(); ++it )
+          points << QPointF( ( *it ).x(), ( *it ).y() );
+      }
+      else
+      {
+        points << QPointF( static_cast< int >( size.width() ) / 2, static_cast< int >( size.height() ) / 2 );
+      }
+      return QList< QList<QPolygonF> >() << ( QList< QPolygonF >() << points );
+    }
+
+    case Qgis::SymbolType::Line:
+    {
+      QList< QList<QPolygonF> > res;
+      const QgsGeometry patch = geom;
+      if ( QgsWkbTypes::geometryType( mGeometry.wkbType() ) == QgsWkbTypes::LineGeometry )
+      {
+        for ( auto it = patch.const_parts_begin(); it != patch.const_parts_end(); ++it )
+        {
+          res << ( QList< QPolygonF >() << curveToPolygonF( qgsgeometry_cast< const QgsCurve * >( *it ) ) );
+        }
+      }
+      return res;
+    }
+
+    case Qgis::SymbolType::Fill:
+    {
+      QList< QList<QPolygonF> > res;
+
+      const QgsGeometry patch = geom;
+      for ( auto it = patch.const_parts_begin(); it != patch.const_parts_end(); ++it )
+      {
+        QList<QPolygonF> thisPart;
+        const QgsCurvePolygon *surface = qgsgeometry_cast< const QgsCurvePolygon * >( *it );
+        if ( !surface )
+          continue;
+
+        if ( !surface->exteriorRing() )
+          continue;
+
+        thisPart << curveToPolygonF( surface->exteriorRing() );
+
+        for ( int i = 0; i < surface->numInteriorRings(); ++i )
+          thisPart << curveToPolygonF( surface->interiorRing( i ) );
+        res << thisPart;
+      }
+
+      return res;
+    }
+
+    case Qgis::SymbolType::Hybrid:
+      return QList< QList<QPolygonF> >();
   }
 
-  return QgsSymbolLayerUtils::toQPolygonF( geom, type );
+  return QList< QList<QPolygonF> >();
 }
 
 void QgsLegendPatchShape::readXml( const QDomElement &element, const QgsReadWriteContext & )

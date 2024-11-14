@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsreportsectionmodel.h"
-#include "moc_qgsreportsectionmodel.cpp"
 #include "functional"
 #include "qgsguiutils.h"
 

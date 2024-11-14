@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsfocuskeeper.h"
-#include "moc_qgsfocuskeeper.cpp"
 
 #include <QApplication>
 #include <QEvent>

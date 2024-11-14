@@ -22,7 +22,6 @@
 #include "qgis_server.h"
 #include "qgis_sip.h"
 #include "qgsserverexception.h"
-#include "qgsfeedback.h"
 
 #include <QString>
 #include <QIODevice>
@@ -34,6 +33,7 @@ class QgsServerException;
  * \brief QgsServerResponse
  * Class defining response interface passed to services QgsService::executeRequest() method
  *
+ * \since QGIS 3.0
  */
 
 // Note:
@@ -44,7 +44,10 @@ class SERVER_EXPORT QgsServerResponse
 {
   public:
 
+    //!constructor
     QgsServerResponse() = default;
+
+    //! destructor
     virtual ~QgsServerResponse() = default;
 
     /**
@@ -192,12 +195,6 @@ class SERVER_EXPORT QgsServerResponse
      * Clear internal buffer
      */
     virtual void truncate() = 0;
-
-    /**
-     * Returns the socket feedback if any
-     * \since QGIS 3.36
-     */
-    virtual QgsFeedback *feedback() const;
 };
 
 #endif

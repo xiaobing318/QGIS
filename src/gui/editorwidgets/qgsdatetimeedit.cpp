@@ -22,7 +22,6 @@
 
 
 #include "qgsdatetimeedit.h"
-#include "moc_qgsdatetimeedit.cpp"
 
 #include "qgsapplication.h"
 #include "qgsvariantutils.h"
@@ -30,7 +29,7 @@
 
 QgsDateTimeEdit::QgsDateTimeEdit( QWidget *parent )
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-  : QgsDateTimeEdit( QDateTime(), QMetaType::Type::QDateTime, parent )
+  : QgsDateTimeEdit( QDateTime(), QVariant::DateTime, parent )
 #else
   : QgsDateTimeEdit( QDateTime(), QMetaType::QDateTime, parent )
 #endif
@@ -40,7 +39,7 @@ QgsDateTimeEdit::QgsDateTimeEdit( QWidget *parent )
 
 ///@cond PRIVATE
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-QgsDateTimeEdit::QgsDateTimeEdit( const QVariant &var, QMetaType::Type parserType, QWidget *parent )
+QgsDateTimeEdit::QgsDateTimeEdit( const QVariant &var, QVariant::Type parserType, QWidget *parent )
   : QDateTimeEdit( var, parserType, parent )
 #else
 QgsDateTimeEdit::QgsDateTimeEdit( const QVariant & var, QMetaType::Type parserType, QWidget * parent )
@@ -347,9 +346,6 @@ void QgsDateTimeEdit::setDateTime( const QDateTime &dateTime )
   {
     // changed emits a signal, so don't allow it to be emitted from setDateTime
     mBlockChangedSignal++;
-    // We need to set the time spec of the set datetime to the widget, otherwise
-    // the dateTime() getter would loose edit, and return local time.
-    QDateTimeEdit::setTimeSpec( dateTime.timeSpec() );
     QDateTimeEdit::setDateTime( dateTime );
     mBlockChangedSignal--;
     changed( dateTime );
@@ -399,7 +395,7 @@ QDate QgsDateTimeEdit::date() const
 
 QgsTimeEdit::QgsTimeEdit( QWidget *parent )
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-  : QgsDateTimeEdit( QTime(), QMetaType::Type::QTime, parent )
+  : QgsDateTimeEdit( QTime(), QVariant::Time, parent )
 #else
   : QgsDateTimeEdit( QTime(), QMetaType::QTime, parent )
 #endif
@@ -440,7 +436,7 @@ void QgsTimeEdit::emitValueChanged( const QVariant &value )
 
 QgsDateEdit::QgsDateEdit( QWidget *parent )
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-  : QgsDateTimeEdit( QDate(), QMetaType::Type::QDate, parent )
+  : QgsDateTimeEdit( QDate(), QVariant::Date, parent )
 #else
   : QgsDateTimeEdit( QDate(), QMetaType::QDate, parent )
 #endif

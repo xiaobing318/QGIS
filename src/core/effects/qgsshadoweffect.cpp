@@ -18,7 +18,6 @@
 #include "qgsshadoweffect.h"
 #include "qgsimageoperation.h"
 #include "qgssymbollayerutils.h"
-#include "qgscolorutils.h"
 #include "qgsunittypes.h"
 
 QgsShadowEffect::QgsShadowEffect()
@@ -112,7 +111,7 @@ QVariantMap QgsShadowEffect::properties() const
   props.insert( QStringLiteral( "offset_distance" ), QString::number( mOffsetDist ) );
   props.insert( QStringLiteral( "offset_unit" ), QgsUnitTypes::encodeUnit( mOffsetUnit ) );
   props.insert( QStringLiteral( "offset_unit_scale" ), QgsSymbolLayerUtils::encodeMapUnitScale( mOffsetMapUnitScale ) );
-  props.insert( QStringLiteral( "color" ), QgsColorUtils::colorToString( mColor ) );
+  props.insert( QStringLiteral( "color" ), QgsSymbolLayerUtils::encodeColor( mColor ) );
   return props;
 }
 
@@ -168,7 +167,7 @@ void QgsShadowEffect::readProperties( const QVariantMap &props )
   mOffsetMapUnitScale = QgsSymbolLayerUtils::decodeMapUnitScale( props.value( QStringLiteral( "offset_unit_scale" ) ).toString() );
   if ( props.contains( QStringLiteral( "color" ) ) )
   {
-    mColor = QgsColorUtils::colorFromString( props.value( QStringLiteral( "color" ) ).toString() );
+    mColor = QgsSymbolLayerUtils::decodeColor( props.value( QStringLiteral( "color" ) ).toString() );
   }
 }
 

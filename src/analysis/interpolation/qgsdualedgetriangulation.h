@@ -50,10 +50,6 @@ class ANALYSIS_EXPORT QgsDualEdgeTriangulation: public QgsTriangulation
 {
   public:
     QgsDualEdgeTriangulation();
-
-    QgsDualEdgeTriangulation( const QgsDualEdgeTriangulation & ) = delete;
-    QgsDualEdgeTriangulation &operator=( const QgsDualEdgeTriangulation &other ) = delete;
-
     //! Constructor with a number of points to reserve
     QgsDualEdgeTriangulation( int nop );
     ~QgsDualEdgeTriangulation() override;

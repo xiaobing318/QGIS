@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsprocessingbatchalgorithmdialogbase.h"
-#include "moc_qgsprocessingbatchalgorithmdialogbase.cpp"
 #include "qgsprocessingbatch.h"
 #include "qgsproxyprogresstask.h"
 #include "qgsprocessingalgorithm.h"
@@ -111,7 +110,7 @@ void QgsProcessingBatchAlgorithmDialogBase::executeNext()
   mQueuedParameters.pop_front();
 
   mCurrentStepTimer.restart();
-  if ( !( algorithm()->flags() & Qgis::ProcessingAlgorithmFlag::NoThreading ) )
+  if ( !( algorithm()->flags() & QgsProcessingAlgorithm::FlagNoThreading ) )
   {
     QgsProcessingAlgRunnerTask *task = new QgsProcessingAlgRunnerTask( algorithm(), mCurrentParameters, *mTaskContext, mBatchFeedback.get(), QgsTask::CanCancel | QgsTask::Hidden );
     if ( task->algorithmCanceled() )

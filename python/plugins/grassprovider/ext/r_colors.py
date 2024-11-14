@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     r_colors.py
@@ -20,7 +22,7 @@ __date__ = 'February 2016'
 __copyright__ = '(C) 2016, Médéric Ribreux'
 
 import os
-from grassprovider.grass_utils import GrassUtils
+from grassprovider.Grass7Utils import Grass7Utils
 from processing.tools.system import getTempFilename
 
 
@@ -30,12 +32,6 @@ def checkParameterValuesBeforeExecuting(alg, parameters, context):
     rules = alg.parameterAsString(parameters, 'rules', context)
     if txtRules and rules:
         return False, alg.tr("You need to set either inline rules or a rules file!")
-
-    rules_or_txtRules = bool(txtRules or rules)
-    color = bool(alg.parameterAsEnum(parameters, 'color', context))
-    raster = bool(alg.parameterAsString(parameters, 'raster', context))
-    if not sum([rules_or_txtRules, color, raster]) == 1:
-        return False, alg.tr("The color table, color rules and raster map parameters are mutually exclusive. You need to set one and only one of them!")
 
     return True, None
 
@@ -47,7 +43,7 @@ def processInputs(alg, parameters, context, feedback):
     for idx, layer in enumerate(rasters):
         layerName = 'map_{}'.format(idx)
         # Add a raster layer
-        alg.loadRasterLayer(layerName, layer, context, False, None)
+        alg.loadRasterLayer(layerName, layer, False, None)
 
     # Optional raster layer to copy from
     raster = alg.parameterAsString(parameters, 'raster', context)
@@ -62,16 +58,13 @@ def processCommand(alg, parameters, context, feedback):
     txtRules = alg.parameterAsString(parameters, 'txtrules', context)
     if txtRules:
         # Creates a temporary txt file
-        tempRulesName = getTempFilename(context=context)
+        tempRulesName = getTempFilename()
 
         # Inject rules into temporary txt file
         with open(tempRulesName, "w") as tempRules:
             tempRules.write(txtRules)
         alg.removeParameter('txtrules')
         parameters['rules'] = tempRulesName
-
-    if alg.parameterAsEnum(parameters, 'color', context) == 0:
-        alg.removeParameter('color')
 
     alg.processCommand(parameters, context, feedback, True)
 
@@ -86,6 +79,6 @@ def processOutputs(alg, parameters, context, feedback):
     for idx, raster in enumerate(rasters):
         rasterName = 'map_{}'.format(idx)
         fileName = os.path.join(outputDir, rasterName)
-        outFormat = GrassUtils.getRasterFormatFromFilename(fileName)
+        outFormat = Grass7Utils.getRasterFormatFromFilename(fileName)
         alg.exportRasterLayer(alg.exportedLayers[rasterName], fileName, True,
                               outFormat, createOpt, metaOpt)

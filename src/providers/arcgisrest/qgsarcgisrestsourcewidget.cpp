@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsarcgisrestsourcewidget.h"
-#include "moc_qgsarcgisrestsourcewidget.cpp"
 
 #include "qgsproviderregistry.h"
 

@@ -16,9 +16,11 @@
 #ifndef QGSANNOTATIONLAYERPROPERTIES_H
 #define QGSANNOTATIONLAYERPROPERTIES_H
 
-#include "qgslayerpropertiesdialog.h"
+#include "qgsoptionsdialogbase.h"
 
 #include "ui_qgsannotationlayerpropertiesbase.h"
+
+#include "qgsmaplayerstylemanager.h"
 
 #include "qgsannotationlayer.h"
 #include "qgis_app.h"
@@ -31,30 +33,51 @@ class QgsMetadataWidget;
 class QgsMapLayerConfigWidgetFactory;
 class QgsMapLayerConfigWidget;
 
-class APP_EXPORT QgsAnnotationLayerProperties : public QgsLayerPropertiesDialog, private Ui::QgsAnnotationLayerPropertiesBase
+
+class APP_EXPORT QgsAnnotationLayerProperties : public QgsOptionsDialogBase, private Ui::QgsAnnotationLayerPropertiesBase
 {
     Q_OBJECT
   public:
     QgsAnnotationLayerProperties( QgsAnnotationLayer *layer, QgsMapCanvas *canvas, QgsMessageBar *messageBar, QWidget *parent = nullptr, Qt::WindowFlags = QgsGuiUtils::ModalDialogFlags );
     ~QgsAnnotationLayerProperties() override;
 
-  private slots:
-    void apply() FINAL;
-    void rollback() FINAL;
+    void addPropertiesPageFactory( const QgsMapLayerConfigWidgetFactory *factory );
 
+  private slots:
+    void apply();
+    void onCancel();
+
+    void loadDefaultStyle();
+    void saveDefaultStyle();
+    void loadStyle();
+    void saveStyleAs();
     void aboutToShowStyleMenu();
     void showHelp();
+    void urlClicked( const QUrl &url );
     void crsChanged( const QgsCoordinateReferenceSystem &crs );
 
+  protected slots:
+    void optionsStackedWidget_CurrentChanged( int index ) override SIP_SKIP ;
+
   private:
-    void syncToLayer() FINAL;
+    void syncToLayer();
 
   private:
     QgsAnnotationLayer *mLayer = nullptr;
 
     QPushButton *mBtnStyle = nullptr;
 
+    QgsMapCanvas *mMapCanvas = nullptr;
+
+    /**
+     * Previous layer style. Used to reset style to previous state if new style
+     * was loaded but dialog is canceled.
+    */
+    QgsMapLayerStyle mOldStyle;
+
     std::unique_ptr< QgsPaintEffect > mPaintEffect;
+
+    QList<QgsMapLayerConfigWidget *> mConfigWidgets;
 
     QgsCoordinateReferenceSystem mBackupCrs;
 

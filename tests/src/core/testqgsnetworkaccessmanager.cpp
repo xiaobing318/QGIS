@@ -138,13 +138,11 @@ class TestAuthRequestHandler : public QgsNetworkAuthenticationHandler
 
 };
 
-class TestQgsNetworkAccessManager : public QgsTest
+class TestQgsNetworkAccessManager : public QObject
 {
     Q_OBJECT
   public:
-    TestQgsNetworkAccessManager()
-      : QgsTest( QStringLiteral( "Network access manager tests" ) )
-    {}
+    TestQgsNetworkAccessManager() = default;
 
   private slots:
     void initTestCase();// will be called before the first testfunction is executed.
@@ -182,7 +180,7 @@ void TestQgsNetworkAccessManager::initTestCase()
   QgsApplication::init();
   QgsApplication::initQgis();
 
-  QgsNetworkAccessManager::settingsNetworkTimeout->setValue( 5000 );
+  QgsNetworkAccessManager::settingsNetworkTimeout.setValue( 5000 );
 
   mHttpBinHost = QStringLiteral( "httpbin.org" );
   const QString overrideHost = qgetenv( "QGIS_HTTPBIN_HOST" );
@@ -630,11 +628,6 @@ void TestQgsNetworkAccessManager::fetchPostMultiPart_data()
 
 void TestQgsNetworkAccessManager::fetchBadSsl()
 {
-  if ( QgsTest::isCIRun() )
-  {
-    QSKIP( "badssl.com service is not reliable enough for use on CI" );
-  }
-
   const QObject context;
   //test fetching from a blank url
   bool loaded = false;
@@ -686,11 +679,7 @@ void TestQgsNetworkAccessManager::fetchBadSsl()
   gotRequestEncounteredSslError = false;
   QNetworkRequest req{ u };
   const QgsNetworkReplyContent rep = QgsNetworkAccessManager::blockingGet( req );
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
   QCOMPARE( rep.errorString(), QStringLiteral( "SSL handshake failed" ) );
-#else
-  QCOMPARE( rep.errorString(), QStringLiteral( "SSL handshake failed: The certificate has expired" ) );
-#endif
   while ( !loaded || !gotSslError || !gotRequestAboutToBeCreatedSignal || !gotRequestEncounteredSslError )
   {
     qApp->processEvents();
@@ -736,11 +725,6 @@ void TestQgsNetworkAccessManager::fetchBadSsl()
 
 void TestQgsNetworkAccessManager::testSslErrorHandler()
 {
-  if ( QgsTest::isCIRun() )
-  {
-    QSKIP( "badssl.com service is not reliable enough for use on CI" );
-  }
-
   QgsNetworkAccessManager::instance()->setSslErrorHandler( std::make_unique< TestSslErrorHandler >() );
 
   const QObject context;

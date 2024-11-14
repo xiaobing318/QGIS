@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsprocessingtininputlayerswidget.h"
-#include "moc_qgsprocessingtininputlayerswidget.cpp"
 #include "qgsproject.h"
 #include "qgsprocessingcontext.h"
 
@@ -24,7 +23,7 @@ QgsProcessingTinInputLayersWidget::QgsProcessingTinInputLayersWidget( QgsProject
   mInputLayersModel( project )
 {
   setupUi( this );
-  mComboLayers->setFilters( Qgis::LayerFilter::VectorLayer );
+  mComboLayers->setFilters( QgsMapLayerProxyModel::VectorLayer );
 
   connect( mComboLayers, &QgsMapLayerComboBox::layerChanged, this, &QgsProcessingTinInputLayersWidget::onLayerChanged );
   connect( mButtonAdd, &QToolButton::clicked, this, &QgsProcessingTinInputLayersWidget::onCurrentLayerAdded );
@@ -46,7 +45,7 @@ QVariant QgsProcessingTinInputLayersWidget::value() const
   {
     QVariantMap layerMap;
     layerMap[QStringLiteral( "source" )] = layer.source;
-    layerMap[QStringLiteral( "type" )] = static_cast< int >( layer.type );
+    layerMap[QStringLiteral( "type" )] = layer.type;
     layerMap[QStringLiteral( "attributeIndex" )] = layer.attributeIndex;
     list.append( layerMap );
   }
@@ -57,19 +56,19 @@ QVariant QgsProcessingTinInputLayersWidget::value() const
 void QgsProcessingTinInputLayersWidget::setValue( const QVariant &value )
 {
   mInputLayersModel.clear();
-  if ( !value.isValid() || value.userType() != QMetaType::Type::QVariantList )
+  if ( !value.isValid() || value.type() != QVariant::List )
     return;
 
   const QVariantList list = value.toList();
 
   for ( const QVariant &layerValue : list )
   {
-    if ( layerValue.userType() != QMetaType::Type::QVariantMap )
+    if ( layerValue.type() != QVariant::Map )
       continue;
     const QVariantMap layerMap = layerValue.toMap();
     QgsProcessingParameterTinInputLayers::InputLayer layer;
     layer.source = layerMap.value( QStringLiteral( "source" ) ).toString();
-    layer.type = static_cast<Qgis::ProcessingTinInputLayerType >( layerMap.value( QStringLiteral( "type" ) ).toInt() );
+    layer.type = static_cast<QgsProcessingParameterTinInputLayers::Type>( layerMap.value( QStringLiteral( "type" ) ).toInt() );
     layer.attributeIndex = layerMap.value( QStringLiteral( "attributeIndex" ) ).toInt();
     mInputLayersModel.addLayer( layer );
   }
@@ -109,15 +108,15 @@ void QgsProcessingTinInputLayersWidget::onCurrentLayerAdded()
 
   switch ( currentLayer->geometryType() )
   {
-    case Qgis::GeometryType::Point:
-      layer.type = Qgis::ProcessingTinInputLayerType::Vertices;
+    case QgsWkbTypes::PointGeometry:
+      layer.type = QgsProcessingParameterTinInputLayers::Vertices;
       break;
-    case Qgis::GeometryType::Line:
-    case Qgis::GeometryType::Polygon:
-      layer.type = Qgis::ProcessingTinInputLayerType::BreakLines;
+    case QgsWkbTypes::LineGeometry:
+    case QgsWkbTypes::PolygonGeometry:
+      layer.type = QgsProcessingParameterTinInputLayers::BreakLines;
       break;
-    case Qgis::GeometryType::Unknown:
-    case Qgis::GeometryType::Null:
+    case QgsWkbTypes::UnknownGeometry:
+    case QgsWkbTypes::NullGeometry:
       return;
       break;
   }
@@ -178,10 +177,10 @@ QVariant QgsProcessingTinInputLayersModel::data( const QModelIndex &index, int r
         case 1:
           switch ( mInputLayers.at( index.row() ).type )
           {
-            case Qgis::ProcessingTinInputLayerType::Vertices:
+            case QgsProcessingParameterTinInputLayers::Vertices:
               return tr( "Vertices" );
               break;
-            case Qgis::ProcessingTinInputLayerType::BreakLines:
+            case QgsProcessingParameterTinInputLayers::BreakLines:
               return tr( "Break Lines" );
               break;
             default:
@@ -226,7 +225,7 @@ QVariant QgsProcessingTinInputLayersModel::data( const QModelIndex &index, int r
       break;
     case Type:
       if ( index.column() == 1 )
-        return static_cast< int >( mInputLayers.at( index.row() ).type );
+        return mInputLayers.at( index.row() ).type;
       break;
     default:
       break;
@@ -238,7 +237,7 @@ bool QgsProcessingTinInputLayersModel::setData( const QModelIndex &index, const 
 {
   if ( index.column() == 1 && role == Qt::EditRole )
   {
-    mInputLayers[index.row()].type = static_cast<Qgis::ProcessingTinInputLayerType>( value.toInt() );
+    mInputLayers[index.row()].type = static_cast<QgsProcessingParameterTinInputLayers::Type>( value.toInt() );
     emit dataChanged( QAbstractTableModel::index( index.row(), 1 ), QAbstractTableModel::index( index.row(), 1 ) );
     return true;
   }
@@ -316,8 +315,8 @@ QWidget *QgsProcessingTinInputLayersDelegate::createEditor( QWidget *parent, con
   Q_UNUSED( option );
   Q_UNUSED( index );
   QComboBox *comboType = new QComboBox( parent );
-  comboType->addItem( tr( "Vertices" ), static_cast< int >( Qgis::ProcessingTinInputLayerType::Vertices ) );
-  comboType->addItem( tr( "Break Lines" ), static_cast< int >( Qgis::ProcessingTinInputLayerType::BreakLines ) );
+  comboType->addItem( tr( "Vertices" ), QgsProcessingParameterTinInputLayers::Vertices );
+  comboType->addItem( tr( "Break Lines" ), QgsProcessingParameterTinInputLayers::BreakLines );
   return comboType;
 }
 
@@ -325,9 +324,9 @@ void QgsProcessingTinInputLayersDelegate::setEditorData( QWidget *editor, const 
 {
   QComboBox *comboType = qobject_cast<QComboBox *>( editor );
   Q_ASSERT( comboType );
-  const Qgis::ProcessingTinInputLayerType type =
-    static_cast<Qgis::ProcessingTinInputLayerType>( index.data( QgsProcessingTinInputLayersModel::Type ).toInt() );
-  const int comboIndex = comboType->findData( static_cast< int >( type ) );
+  const QgsProcessingParameterTinInputLayers::Type type =
+    static_cast<QgsProcessingParameterTinInputLayers::Type>( index.data( QgsProcessingTinInputLayersModel::Type ).toInt() );
+  const int comboIndex = comboType->findData( type );
   if ( comboIndex >= 0 )
     comboType->setCurrentIndex( comboIndex );
   else

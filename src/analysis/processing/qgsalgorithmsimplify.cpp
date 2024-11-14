@@ -16,11 +16,8 @@
  ***************************************************************************/
 
 #include "qgsalgorithmsimplify.h"
-#include "qgsmaptopixelgeometrysimplifier.h"
 
 ///@cond PRIVATE
-
-QgsSimplifyAlgorithm::~QgsSimplifyAlgorithm() = default;
 
 QString QgsSimplifyAlgorithm::name() const
 {
@@ -67,7 +64,7 @@ QgsSimplifyAlgorithm *QgsSimplifyAlgorithm::createInstance() const
 
 QList<int> QgsSimplifyAlgorithm::inputLayerTypes() const
 {
-  return QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorLine ) << static_cast< int >( Qgis::ProcessingSourceType::VectorPolygon );
+  return QList<int>() << QgsProcessing::TypeVectorLine << QgsProcessing::TypeVectorPolygon;
 }
 
 void QgsSimplifyAlgorithm::initParameters( const QVariantMap & )
@@ -96,8 +93,8 @@ bool QgsSimplifyAlgorithm::prepareAlgorithm( const QVariantMap &parameters, QgsP
   if ( mDynamicTolerance )
     mToleranceProperty = parameters.value( QStringLiteral( "TOLERANCE" ) ).value< QgsProperty >();
 
-  mMethod = static_cast< Qgis::VectorSimplificationAlgorithm >( parameterAsEnum( parameters, QStringLiteral( "METHOD" ), context ) );
-  if ( mMethod != Qgis::VectorSimplificationAlgorithm::Distance )
+  mMethod = static_cast< QgsMapToPixelSimplifier::SimplifyAlgorithm >( parameterAsEnum( parameters, QStringLiteral( "METHOD" ), context ) );
+  if ( mMethod != QgsMapToPixelSimplifier::Distance )
     mSimplifier.reset( new QgsMapToPixelSimplifier( QgsMapToPixelSimplifier::SimplifyGeometry, mTolerance, mMethod ) );
 
   return true;
@@ -110,7 +107,7 @@ QgsFeatureList QgsSimplifyAlgorithm::processFeature( const QgsFeature &feature, 
   {
     const QgsGeometry inputGeometry = f.geometry();
     QgsGeometry outputGeometry;
-    if ( mMethod == Qgis::VectorSimplificationAlgorithm::Distance )
+    if ( mMethod == QgsMapToPixelSimplifier::Distance )
     {
       double tolerance = mTolerance;
       if ( mDynamicTolerance )
@@ -135,9 +132,9 @@ QgsFeatureList QgsSimplifyAlgorithm::processFeature( const QgsFeature &feature, 
   return QgsFeatureList() << f;
 }
 
-Qgis::ProcessingFeatureSourceFlags QgsSimplifyAlgorithm::sourceFlags() const
+QgsProcessingFeatureSource::Flag QgsSimplifyAlgorithm::sourceFlags() const
 {
-  return Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks;
+  return QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks;
 }
 
 ///@endcond

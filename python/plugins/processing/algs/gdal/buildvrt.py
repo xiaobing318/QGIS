@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     merge.py
@@ -83,16 +85,16 @@ class buildvrt(GdalAlgorithm):
                 return super(QgsProcessingParameterRasterDestination, self).parameterAsOutputLayer(definition, value, context)
 
             def isSupportedOutputValue(self, value, context):
-                output_path = QgsProcessingParameters.parameterAsOutputLayer(self, value, context, testOnly=True)
+                output_path = QgsProcessingParameters.parameterAsOutputLayer(self, value, context)
                 if pathlib.Path(output_path).suffix.lower() != '.vrt':
                     return False, QCoreApplication.translate("GdalAlgorithm", 'Output filename must use a .vrt extension')
                 return True, ''
 
         self.RESAMPLING_OPTIONS = ((self.tr('Nearest Neighbour'), 'nearest'),
-                                   (self.tr('Bilinear (2x2 Kernel)'), 'bilinear'),
-                                   (self.tr('Cubic (4x4 Kernel)'), 'cubic'),
-                                   (self.tr('Cubic B-Spline (4x4 Kernel)'), 'cubicspline'),
-                                   (self.tr('Lanczos (6x6 Kernel)'), 'lanczos'),
+                                   (self.tr('Bilinear'), 'bilinear'),
+                                   (self.tr('Cubic Convolution'), 'cubic'),
+                                   (self.tr('B-Spline Convolution'), 'cubicspline'),
+                                   (self.tr('Lanczos Windowed Sinc'), 'lanczos'),
                                    (self.tr('Average'), 'average'),
                                    (self.tr('Mode'), 'mode'))
 
@@ -102,7 +104,7 @@ class buildvrt(GdalAlgorithm):
 
         self.addParameter(QgsProcessingParameterMultipleLayers(self.INPUT,
                                                                self.tr('Input layers'),
-                                                               QgsProcessing.SourceType.TypeRaster))
+                                                               QgsProcessing.TypeRaster))
         self.addParameter(QgsProcessingParameterEnum(self.RESOLUTION,
                                                      self.tr('Resolution'),
                                                      options=[i[0] for i in self.RESOLUTION_OPTIONS],
@@ -123,34 +125,34 @@ class buildvrt(GdalAlgorithm):
         add_alpha_param = QgsProcessingParameterBoolean(self.ADD_ALPHA,
                                                         self.tr('Add alpha mask band to VRT when source raster has none'),
                                                         defaultValue=False)
-        add_alpha_param.setFlags(add_alpha_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        add_alpha_param.setFlags(add_alpha_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(add_alpha_param)
 
         assign_crs = QgsProcessingParameterCrs(self.ASSIGN_CRS,
                                                self.tr('Override projection for the output file'),
                                                defaultValue=None, optional=True)
-        assign_crs.setFlags(assign_crs.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        assign_crs.setFlags(assign_crs.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(assign_crs)
 
         resampling = QgsProcessingParameterEnum(self.RESAMPLING,
                                                 self.tr('Resampling algorithm'),
                                                 options=[i[0] for i in self.RESAMPLING_OPTIONS],
                                                 defaultValue=0)
-        resampling.setFlags(resampling.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        resampling.setFlags(resampling.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(resampling)
 
         src_nodata_param = QgsProcessingParameterString(self.SRC_NODATA,
                                                         self.tr('Nodata value(s) for input bands (space separated)'),
                                                         defaultValue=None,
                                                         optional=True)
-        src_nodata_param.setFlags(src_nodata_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        src_nodata_param.setFlags(src_nodata_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(src_nodata_param)
 
         extra_param = QgsProcessingParameterString(self.EXTRA,
                                                    self.tr('Additional command-line parameters'),
                                                    defaultValue=None,
                                                    optional=True)
-        extra_param.setFlags(extra_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        extra_param.setFlags(extra_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(extra_param)
 
         self.addParameter(ParameterVrtDestination(self.OUTPUT, QCoreApplication.translate("ParameterVrtDestination", 'Virtual')))

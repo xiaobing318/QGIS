@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/editorwidgets/qgsjsoneditwidget.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -42,13 +42,6 @@ Constructor for QgsJsonEditWidget.
 :param parent: parent widget
 %End
 
-    QgsCodeEditorJson *jsonEditor();
-%Docstring
-Returns a reference to the JSON code editor used in the widget.
-
-.. versionadded:: 3.36
-%End
-
     void setJsonText( const QString &jsonText );
 %Docstring
 Set the JSON text in the widget to ``jsonText``.
@@ -85,5 +78,5 @@ Set the visibility of controls to ``visible``.
  *                                                                      *
  * src/gui/editorwidgets/qgsjsoneditwidget.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

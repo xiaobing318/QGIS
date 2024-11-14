@@ -33,6 +33,7 @@
  *
  * \note not available in Python bindings
  *
+ * \since QGIS 3.0
 */
 class GUI_EXPORT QgsLayoutReportSectionLabel: public QGraphicsRectItem
 {

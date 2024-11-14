@@ -14,13 +14,17 @@
  ***************************************************************************/
 
 #include "qgsmaptooltrimextendfeature.h"
-#include "moc_qgsmaptooltrimextendfeature.cpp"
+
 #include "qgsmapcanvas.h"
+#include "qgsvertexmarker.h"
 #include "qgsvectorlayer.h"
 #include "qgsgeometry.h"
 #include "qgssnappingutils.h"
+#include "qgstolerance.h"
+#include "qgisapp.h"
 #include "qgsgeometryutils.h"
 #include "qgsmapmouseevent.h"
+#include "qgssnapindicator.h"
 
 class QgsRubberBand;
 
@@ -90,7 +94,7 @@ void QgsMapToolTrimExtendFeature::canvasMoveEvent( QgsMapMouseEvent *e )
         QgsPointXY p1, p2;
         match.edgePoints( p1, p2 );
 
-        mRubberBandLimit.reset( createRubberBand( Qgis::GeometryType::Line ) );
+        mRubberBandLimit.reset( createRubberBand( QgsWkbTypes::LineGeometry ) );
         mRubberBandLimit->addPoint( p1 );
         mRubberBandLimit->addPoint( p2 );
         mRubberBandLimit->show();
@@ -153,7 +157,7 @@ void QgsMapToolTrimExtendFeature::canvasMoveEvent( QgsMapMouseEvent *e )
 
         if ( mIsIntersection )
         {
-          mRubberBandIntersection.reset( createRubberBand( Qgis::GeometryType::Point ) );
+          mRubberBandIntersection.reset( createRubberBand( QgsWkbTypes::PointGeometry ) );
           mRubberBandIntersection->addPoint( QgsPointXY( mIntersection ) );
           mRubberBandIntersection->show();
 

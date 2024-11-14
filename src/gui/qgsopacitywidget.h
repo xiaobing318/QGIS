@@ -27,6 +27,7 @@ class QSlider;
  * \class QgsOpacityWidget
  * \ingroup gui
  * \brief A widget for setting an opacity value.
+ * \since QGIS 3.0
  */
 class GUI_EXPORT QgsOpacityWidget : public QWidget
 {

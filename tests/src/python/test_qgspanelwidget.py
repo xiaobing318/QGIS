@@ -9,15 +9,16 @@ __author__ = 'Nyall Dawson'
 __date__ = '16/08/2016'
 __copyright__ = 'Copyright 2016, The QGIS Project'
 
-from qgis.PyQt.QtWidgets import QDialog, QWidget
+import qgis  # NOQA
+
+from qgis.PyQt.QtWidgets import QWidget, QDialog
 from qgis.gui import QgsPanelWidget
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsPanelWidget(QgisTestCase):
+class TestQgsPanelWidget(unittest.TestCase):
 
     def testFindParentPanel(self):
         """ test QgsPanelWidget.findParentPanel """

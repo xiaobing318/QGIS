@@ -31,6 +31,7 @@ SIP_IF_MODULE( HAVE_SERVER_PYTHON_PLUGINS )
  * \ingroup server
  * \class QgsAccessControl
  * \brief A helper class that centralizes restrictions given by all the access control filter plugins.
+ * \since QGIS 2.14
  */
 class SERVER_EXPORT QgsAccessControl : public QgsFeatureFilterProvider
 {
@@ -46,6 +47,7 @@ class SERVER_EXPORT QgsAccessControl : public QgsFeatureFilterProvider
       mResolved = false;
     }
 
+    //! Constructor
     QgsAccessControl( const QgsAccessControl &copy )
     {
       mPluginsAccessControls = new QgsAccessControlFilterMap( *copy.mPluginsAccessControls );
@@ -59,6 +61,7 @@ class SERVER_EXPORT QgsAccessControl : public QgsFeatureFilterProvider
       delete mPluginsAccessControls;
     }
 
+    //! Assignment operator
     QgsAccessControl &operator= ( const QgsAccessControl &other )
     {
       if ( this != &other )

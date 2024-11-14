@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgscolorschemelist.h"
-#include "moc_qgscolorschemelist.cpp"
 #include "qgsapplication.h"
 #include "qgslogger.h"
 #include "qgssymbollayerutils.h"

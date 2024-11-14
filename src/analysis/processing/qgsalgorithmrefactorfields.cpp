@@ -63,12 +63,12 @@ QString QgsRefactorFieldsAlgorithm::outputName() const
 
 QList<int> QgsRefactorFieldsAlgorithm::inputLayerTypes() const
 {
-  return QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::Vector );
+  return QList<int>() << QgsProcessing::TypeVector;
 }
 
-Qgis::ProcessingFeatureSourceFlags QgsRefactorFieldsAlgorithm::sourceFlags() const
+QgsProcessingFeatureSource::Flag QgsRefactorFieldsAlgorithm::sourceFlags() const
 {
-  return Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks;
+  return QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks;
 }
 
 QgsRefactorFieldsAlgorithm *QgsRefactorFieldsAlgorithm::createInstance() const
@@ -106,20 +106,14 @@ bool QgsRefactorFieldsAlgorithm::prepareAlgorithm( const QVariantMap &parameters
     if ( name.isEmpty() )
       throw QgsProcessingException( QObject::tr( "Field name cannot be empty" ) );
 
-    const QMetaType::Type type = static_cast< QMetaType::Type >( fieldDef.value( QStringLiteral( "type" ) ).toInt() );
+    const QVariant::Type type = static_cast< QVariant::Type >( fieldDef.value( QStringLiteral( "type" ) ).toInt() );
     const QString typeName = fieldDef.value( QStringLiteral( "sub_name" ) ).toString();
-    const QMetaType::Type subType = static_cast< QMetaType::Type >( fieldDef.value( QStringLiteral( "sub_type" ) ).toInt() );
+    const QVariant::Type subType = static_cast< QVariant::Type >( fieldDef.value( QStringLiteral( "sub_type" ) ).toInt() );
 
     const int length = fieldDef.value( QStringLiteral( "length" ), 0 ).toInt();
     const int precision = fieldDef.value( QStringLiteral( "precision" ), 0 ).toInt();
 
-    const QString alias = fieldDef.value( QStringLiteral( "alias" ) ).toString();
-    const QString comment = fieldDef.value( QStringLiteral( "comment" ) ).toString();
-
-    QgsField newField( name, type, typeName, length, precision, QString(), subType );
-    newField.setAlias( alias );
-    newField.setComment( comment );
-    mFields.append( newField );
+    mFields.append( QgsField( name, type, typeName, length, precision, QString(), subType ) );
 
     const QString expressionString = fieldDef.value( QStringLiteral( "expression" ) ).toString();
     if ( !expressionString.isEmpty() )

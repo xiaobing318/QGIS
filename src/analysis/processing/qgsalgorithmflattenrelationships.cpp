@@ -59,22 +59,17 @@ QString QgsFlattenRelationshipsAlgorithm::shortHelpString() const
                       "the attributes for the related features." );
 }
 
-Qgis::ProcessingAlgorithmDocumentationFlags QgsFlattenRelationshipsAlgorithm::documentationFlags() const
+QgsProcessingAlgorithm::Flags QgsFlattenRelationshipsAlgorithm::flags() const
 {
-  return Qgis::ProcessingAlgorithmDocumentationFlag::RegeneratesPrimaryKey;
-}
-
-Qgis::ProcessingAlgorithmFlags QgsFlattenRelationshipsAlgorithm::flags() const
-{
-  return QgsProcessingAlgorithm::flags() | Qgis::ProcessingAlgorithmFlag::RequiresProject;
+  return QgsProcessingAlgorithm::flags() | FlagRequiresProject;
 }
 
 void QgsFlattenRelationshipsAlgorithm::initAlgorithm( const QVariantMap & )
 {
   addParameter( new QgsProcessingParameterVectorLayer( QStringLiteral( "INPUT" ),
-                QObject::tr( "Input layer" ), QList< int>() << static_cast< int >( Qgis::ProcessingSourceType::Vector ) ) );
+                QObject::tr( "Input layer" ), QList< int>() << QgsProcessing::TypeVector ) );
 
-  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Flattened layer" ), Qgis::ProcessingSourceType::VectorAnyGeometry ) );
+  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Flattened layer" ), QgsProcessing::TypeVectorAnyGeometry ) );
 }
 
 QgsFlattenRelationshipsAlgorithm *QgsFlattenRelationshipsAlgorithm::createInstance() const
@@ -126,7 +121,7 @@ QVariantMap QgsFlattenRelationshipsAlgorithm::processAlgorithm( const QVariantMa
 
   // Create output vector layer with additional attributes
   const double step = input->featureCount() > 0 ? 100.0 / input->featureCount() : 1;
-  QgsFeatureIterator features = input->getFeatures( QgsFeatureRequest(), Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks );
+  QgsFeatureIterator features = input->getFeatures( QgsFeatureRequest(), QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks );
   long long i = 0;
   QgsFeature feat;
   while ( features.nextFeature( feat ) )
@@ -140,7 +135,7 @@ QVariantMap QgsFlattenRelationshipsAlgorithm::processAlgorithm( const QVariantMa
     feedback->setProgress( i * step );
 
     QgsFeatureRequest referencingRequest = mRelation.getRelatedFeaturesRequest( feat );
-    referencingRequest.setFlags( referencingRequest.flags() | Qgis::FeatureRequestFlag::NoGeometry );
+    referencingRequest.setFlags( referencingRequest.flags() | QgsFeatureRequest::NoGeometry );
     QgsFeatureIterator childIt = mReferencingSource->getFeatures( referencingRequest );
     QgsFeature relatedFeature;
     while ( childIt.nextFeature( relatedFeature ) )
@@ -156,10 +151,7 @@ QVariantMap QgsFlattenRelationshipsAlgorithm::processAlgorithm( const QVariantMa
 
   QVariantMap outputs;
   if ( sink )
-  {
-    sink->finalize();
     outputs.insert( QStringLiteral( "OUTPUT" ), dest );
-  }
   return outputs;
 }
 

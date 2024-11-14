@@ -16,7 +16,6 @@
 
 #include "qgsgdalutils.h"
 #include "qgsmeshcalculatordialog.h"
-#include "moc_qgsmeshcalculatordialog.cpp"
 #include "qgsproject.h"
 #include "qgsmeshcalcnode.h"
 #include "qgsmeshdataprovider.h"
@@ -47,7 +46,7 @@ QgsMeshCalculatorDialog::QgsMeshCalculatorDialog( QgsMeshLayer *meshLayer, QWidg
   setupUi( this );
   QgsGui::enableAutoGeometryRestore( this );
 
-  cboLayerMask->setFilters( Qgis::LayerFilter::PolygonLayer );
+  cboLayerMask->setFilters( QgsMapLayerProxyModel::PolygonLayer );
   QgsMeshDatasetGroupListModel *model = new QgsMeshDatasetGroupListModel( this );
   model->syncToLayer( meshLayer );
   model->setDisplayProviderName( true );
@@ -630,14 +629,15 @@ QString QgsMeshCalculatorDialog::currentDatasetGroup() const
 void QgsMeshCalculatorDialog::setTimesByDatasetGroupName( const QString group )
 {
   QgsMeshLayer *layer = meshLayer();
-  if ( !layer )
+  if ( !layer || !layer->dataProvider() )
     return;
+  const QgsMeshDataProvider *dp = layer->dataProvider();
 
   // find group index from group name
   int groupIndex = -1;
-  for ( int i = 0; i < layer->datasetGroupCount(); ++i )
+  for ( int i = 0; i < dp->datasetGroupCount(); ++i )
   {
-    const QgsMeshDatasetGroupMetadata meta = layer->datasetGroupMetadata( i );
+    const QgsMeshDatasetGroupMetadata meta = dp->datasetGroupMetadata( i );
     if ( meta.name() == group )
     {
       groupIndex = i;
@@ -648,18 +648,18 @@ void QgsMeshCalculatorDialog::setTimesByDatasetGroupName( const QString group )
   if ( groupIndex < 0 )
     return; //not found
 
-  const int datasetCount = layer->datasetCount( groupIndex );
+  const int datasetCount = dp->datasetCount( groupIndex );
   if ( datasetCount < 1 )
     return; // group without datasets
 
 
   // find maximum and minimum time in this group
-  const double minTime = layer->datasetMetadata( QgsMeshDatasetIndex( groupIndex, 0 ) ).time();
+  const double minTime = dp->datasetMetadata( QgsMeshDatasetIndex( groupIndex, 0 ) ).time();
   int idx = mStartTimeComboBox->findData( minTime );
   if ( idx >= 0 )
     mStartTimeComboBox->setCurrentIndex( idx );
 
-  const double maxTime = layer->datasetMetadata( QgsMeshDatasetIndex( groupIndex, datasetCount - 1 ) ).time();
+  const double maxTime = dp->datasetMetadata( QgsMeshDatasetIndex( groupIndex, datasetCount - 1 ) ).time();
   idx = mEndTimeComboBox->findData( maxTime );
   if ( idx >= 0 )
     mEndTimeComboBox->setCurrentIndex( idx );
@@ -668,8 +668,9 @@ void QgsMeshCalculatorDialog::setTimesByDatasetGroupName( const QString group )
 void QgsMeshCalculatorDialog::repopulateTimeCombos()
 {
   QgsMeshLayer *layer = meshLayer();
-  if ( !layer )
+  if ( !layer || !layer->dataProvider() )
     return;
+  const QgsMeshDataProvider *dp = layer->dataProvider();
 
   // extract all times from all datasets
   QMap<qint64, double> times;
@@ -683,9 +684,7 @@ void QgsMeshCalculatorDialog::repopulateTimeCombos()
       qint64 timeMs = layer->datasetRelativeTimeInMilliseconds( QgsMeshDatasetIndex( dsgi, datasetIndex ) );
       if ( timeMs == INVALID_MESHLAYER_TIME )
         continue;
-      const QgsMeshDatasetMetadata meta = layer->datasetMetadata( QgsMeshDatasetIndex( dsgi, datasetIndex ) );
-      if ( !meta.isValid() )
-        continue;
+      const QgsMeshDatasetMetadata meta = dp->datasetMetadata( QgsMeshDatasetIndex( dsgi, datasetIndex ) );
       times[timeMs] = meta.time();
     }
   }

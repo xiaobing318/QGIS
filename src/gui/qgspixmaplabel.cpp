@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgspixmaplabel.h"
-#include "moc_qgspixmaplabel.cpp"
 
 
 QgsPixmapLabel::QgsPixmapLabel( QWidget *parent )

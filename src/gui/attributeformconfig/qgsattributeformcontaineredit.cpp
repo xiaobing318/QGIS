@@ -14,10 +14,9 @@
  ***************************************************************************/
 
 #include "qgsattributeformcontaineredit.h"
-#include "moc_qgsattributeformcontaineredit.cpp"
 #include "ui_qgsattributeformcontaineredit.h"
 #include "qgsattributesformproperties.h"
-#include "qgsvectorlayer.h"
+
 
 QgsAttributeFormContainerEdit::QgsAttributeFormContainerEdit( QTreeWidgetItem *item, QgsVectorLayer *layer, QWidget *parent )
   : QWidget( parent )
@@ -28,40 +27,36 @@ QgsAttributeFormContainerEdit::QgsAttributeFormContainerEdit( QTreeWidgetItem *i
   const QgsAttributesFormProperties::DnDTreeItemData itemData = mTreeItem->data( 0, QgsAttributesFormProperties::DnDTreeRole ).value<QgsAttributesFormProperties::DnDTreeItemData>();
   Q_ASSERT( itemData.type() == QgsAttributesFormProperties::DnDTreeItemData::Container );
 
-  if ( ! item->parent() )
+  if ( item->parent() )
   {
     // only top level items can be tabs
-    mTypeCombo->addItem( tr( "Tab" ), QVariant::fromValue( Qgis::AttributeEditorContainerType::Tab ) );
+    // i.e. it's always a group box if it's a nested container
+    mShowAsGroupBox->hide();
+    mShowAsGroupBox->setEnabled( false );
   }
-  mTypeCombo->addItem( tr( "Group Box" ), QVariant::fromValue( Qgis::AttributeEditorContainerType::GroupBox ) );
-  mTypeCombo->addItem( tr( "Row" ), QVariant::fromValue( Qgis::AttributeEditorContainerType::Row ) );
-
-  mHozStretchSpin->setClearValue( 0, tr( "Default" ) );
-  mVertStretchSpin->setClearValue( 0, tr( "Default" ) );
 
   mTitleLineEdit->setText( itemData.name() );
   mShowLabelCheckBox->setChecked( itemData.showLabel() );
-  mTypeCombo->setCurrentIndex( mTypeCombo->findData( QVariant::fromValue( itemData.containerType() ) ) );
-  if ( mTypeCombo->currentIndex() < 0 )
-    mTypeCombo->setCurrentIndex( 0 );
+  mShowLabelCheckBox->setEnabled( itemData.showAsGroupBox() ); // show label makes sense for group box, not for tabs
+  mShowAsGroupBox->setChecked( itemData.showAsGroupBox() );
 
   mControlVisibilityGroupBox->setChecked( itemData.visibilityExpression().enabled() );
   mVisibilityExpressionWidget->setLayer( layer );
   mVisibilityExpressionWidget->setExpression( itemData.visibilityExpression()->expression() );
   mColumnCountSpinBox->setValue( itemData.columnCount() );
-  mBackgroundColorButton->setShowNull( true );
   mBackgroundColorButton->setColor( itemData.backgroundColor() );
   mCollapsedCheckBox->setChecked( itemData.collapsed() );
+  mCollapsedCheckBox->setEnabled( itemData.showAsGroupBox() );
   mControlCollapsedGroupBox->setChecked( itemData.collapsedExpression().enabled() );
+  mControlCollapsedGroupBox->setEnabled( itemData.showAsGroupBox() );
   mCollapsedExpressionWidget->setExpression( itemData.collapsedExpression()->expression() );
-
-  mHozStretchSpin->setValue( itemData.horizontalStretch() );
-  mVertStretchSpin->setValue( itemData.verticalStretch() );
 
   mFormLabelFormatWidget->setLabelStyle( itemData.labelStyle() );
 
-  connect( mTypeCombo, qOverload<int>( &QComboBox::currentIndexChanged ), this, &QgsAttributeFormContainerEdit::containerTypeChanged );
-  containerTypeChanged();
+  // show label makes sense for group box, not for tabs
+  connect( mShowAsGroupBox, &QCheckBox::stateChanged, mShowLabelCheckBox, &QCheckBox::setEnabled );
+  connect( mShowAsGroupBox, &QCheckBox::stateChanged, mCollapsedCheckBox, &QCheckBox::setEnabled );
+  connect( mShowAsGroupBox, &QCheckBox::stateChanged, mControlCollapsedGroupBox, &QCheckBox::setEnabled );
 }
 
 void QgsAttributeFormContainerEdit::registerExpressionContextGenerator( QgsExpressionContextGenerator *generator )
@@ -75,13 +70,11 @@ void QgsAttributeFormContainerEdit::updateItemData()
   QgsAttributesFormProperties::DnDTreeItemData itemData = mTreeItem->data( 0, QgsAttributesFormProperties::DnDTreeRole ).value<QgsAttributesFormProperties::DnDTreeItemData>();
 
   itemData.setColumnCount( mColumnCountSpinBox->value() );
-  itemData.setContainerType( mTypeCombo->currentData().value< Qgis::AttributeEditorContainerType >() );
+  itemData.setShowAsGroupBox( mShowAsGroupBox->isEnabled() ? mShowAsGroupBox->isChecked() : false );
   itemData.setName( mTitleLineEdit->text() );
   itemData.setShowLabel( mShowLabelCheckBox->isChecked() );
   itemData.setBackgroundColor( mBackgroundColorButton->color() );
   itemData.setLabelStyle( mFormLabelFormatWidget->labelStyle() );
-  itemData.setHorizontalStretch( mHozStretchSpin->value() );
-  itemData.setVerticalStretch( mVertStretchSpin->value() );
 
   QgsOptionalExpression visibilityExpression;
   visibilityExpression.setData( QgsExpression( mVisibilityExpressionWidget->expression() ) );
@@ -96,38 +89,4 @@ void QgsAttributeFormContainerEdit::updateItemData()
 
   mTreeItem->setData( 0, QgsAttributesFormProperties::DnDTreeRole, itemData );
   mTreeItem->setText( 0, itemData.name() );
-}
-
-void QgsAttributeFormContainerEdit::containerTypeChanged()
-{
-  // show label makes sense for group box, not for tabs
-  const Qgis::AttributeEditorContainerType type = mTypeCombo->currentData().value< Qgis::AttributeEditorContainerType >();
-  switch ( type )
-  {
-    case Qgis::AttributeEditorContainerType::GroupBox:
-      mShowLabelCheckBox->setEnabled( true );
-      mCollapsedCheckBox->setEnabled( true );
-      mControlCollapsedGroupBox->setEnabled( true );
-      mColumnsLabel->show();
-      mColumnCountSpinBox->show();
-      break;
-    case Qgis::AttributeEditorContainerType::Tab:
-      mShowLabelCheckBox->setEnabled( false );
-      mShowLabelCheckBox->setChecked( true );
-      mCollapsedCheckBox->setEnabled( false );
-      mCollapsedCheckBox->setChecked( false );
-      mControlCollapsedGroupBox->setEnabled( false );
-      mColumnsLabel->show();
-      mColumnCountSpinBox->show();
-      break;
-    case Qgis::AttributeEditorContainerType::Row:
-      mShowLabelCheckBox->setEnabled( false );
-      mShowLabelCheckBox->setChecked( false );
-      mCollapsedCheckBox->setEnabled( false );
-      mCollapsedCheckBox->setChecked( false );
-      mControlCollapsedGroupBox->setEnabled( false );
-      mColumnsLabel->hide();
-      mColumnCountSpinBox->hide();
-      break;
-  }
 }

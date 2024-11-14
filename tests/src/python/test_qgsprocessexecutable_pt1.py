@@ -33,26 +33,19 @@ class TestQgsProcessExecutablePt1(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        super().setUpClass()
         cls.TMP_DIR = tempfile.mkdtemp()
         # print('TMP_DIR: ' + cls.TMP_DIR)
         # subprocess.call(['open', cls.TMP_DIR])
 
     @classmethod
     def tearDownClass(cls):
-        super().tearDownClass()
         shutil.rmtree(cls.TMP_DIR, ignore_errors=True)
 
     @staticmethod
     def _strip_ignorable_errors(output: str):
         return '\n'.join([e for e in output.splitlines() if e not in (
             'Problem with GRASS installation: GRASS was not found or is not correctly installed',
-            'QStandardPaths: wrong permissions on runtime directory /tmp, 0777 instead of 0700',
-            'MESA: error: ZINK: failed to choose pdev',
-            'MESA: error: ZINK: vkEnumeratePhysicalDevices failed (VK_ERROR_INITIALIZATION_FAILED)',
-            'glx: failed to create drisw screen',
-            'failed to load driver: zink',
-            'QML debugging is enabled. Only use this in a safe environment.'
+            'QStandardPaths: wrong permissions on runtime directory /tmp, 0777 instead of 0700'
         )
         ])
 
@@ -90,79 +83,11 @@ class TestQgsProcessExecutablePt1(unittest.TestCase):
 
     def testPlugins(self):
         rc, output, err = self.run_process(['plugins'])
-        self.assertIn('indicates loaded plugins', output.lower())
         self.assertIn('available plugins', output.lower())
         self.assertIn('processing', output.lower())
         self.assertNotIn('metasearch', output.lower())
         self.assertFalse(self._strip_ignorable_errors(err))
         self.assertEqual(rc, 0)
-
-    def testPluginsSkipLoading(self):
-        rc, output, err = self.run_process(['plugins', '--skip-loading-plugins'])
-        self.assertIn('indicates enabled plugins', output.lower())
-        self.assertIn('available plugins', output.lower())
-        self.assertIn('processing', output.lower())
-        self.assertNotIn('metasearch', output.lower())
-        self.assertFalse(self._strip_ignorable_errors(err))
-        self.assertEqual(rc, 0)
-
-    def testPluginStatus(self):
-        rc, output, err = self.run_process(['plugins'])
-        self.assertIn('available plugins', output.lower())
-        previously_enabled = '* grassprovider' in output.lower()
-
-        # ensure plugin is enabled initially
-        self.run_process(['plugins', 'enable', 'grassprovider'])
-
-        # try to re-enable, should error out
-        rc, output, err = self.run_process(['plugins', 'enable', 'grassprovider'])
-
-        self.assertIn('plugin is already enabled', err.lower())
-        self.assertEqual(rc, 1)
-
-        rc, output, err = self.run_process(['plugins'])
-        self.assertIn('available plugins', output.lower())
-        self.assertIn('* grassprovider', output.lower())
-        self.assertFalse(self._strip_ignorable_errors(err))
-        self.assertEqual(rc, 0)
-
-        # disable
-        rc, output, err = self.run_process(['plugins', 'disable', 'grassprovider'])
-        self.assertFalse(self._strip_ignorable_errors(err))
-        self.assertEqual(rc, 0)
-
-        # try to re-disable
-        rc, output, err = self.run_process(['plugins', 'disable', 'grassprovider'])
-        self.assertIn('plugin is already disabled', err.lower())
-        self.assertEqual(rc, 1)
-
-        rc, output, err = self.run_process(['plugins'])
-        self.assertIn('available plugins', output.lower())
-        self.assertNotIn('* grassprovider', output.lower())
-        self.assertFalse(self._strip_ignorable_errors(err))
-        self.assertEqual(rc, 0)
-
-        rc, output, err = self.run_process(['plugins', 'enable', 'grassprovider'])
-        self.assertFalse(self._strip_ignorable_errors(err))
-        self.assertEqual(rc, 0)
-
-        rc, output, err = self.run_process(['plugins'])
-        self.assertIn('available plugins', output.lower())
-        self.assertIn('* grassprovider', output.lower())
-        self.assertFalse(self._strip_ignorable_errors(err))
-        self.assertEqual(rc, 0)
-
-        if not previously_enabled:
-            self.run_process(['plugins', 'disable', 'grassprovider'])
-
-        # not a plugin
-        rc, output, err = self.run_process(['plugins', 'enable', 'reformatplugin'])
-        self.assertIn('no matching plugins found', err.lower())
-        self.assertEqual(rc, 1)
-
-        rc, output, err = self.run_process(['plugins', 'disable', 'reformatplugin'])
-        self.assertIn('no matching plugins found', err.lower())
-        self.assertEqual(rc, 1)
 
     def testPluginsJson(self):
         rc, output, err = self.run_process(['plugins', '--json'])
@@ -195,7 +120,7 @@ class TestQgsProcessExecutablePt1(unittest.TestCase):
         self.assertEqual(rc, 0)
 
     def testAlgorithmsListJson(self):
-        rc, output, err = self.run_process(['list', '--json'])
+        rc, output, err = self.run_process(['list', '--no-python', '--json'])
         res = json.loads(output)
         self.assertIn('gdal_version', res)
         self.assertIn('geos_version', res)
@@ -208,8 +133,6 @@ class TestQgsProcessExecutablePt1(unittest.TestCase):
         self.assertIn('native', res['providers'])
         self.assertTrue(res['providers']['native']['is_active'])
         self.assertIn('native:buffer', res['providers']['native']['algorithms'])
-        self.assertIn('gdal:translate',
-                      res['providers']['gdal']['algorithms'])
         self.assertFalse(res['providers']['native']['algorithms']['native:buffer']['deprecated'])
 
         self.assertEqual(rc, 0)
@@ -262,7 +185,7 @@ class TestQgsProcessExecutablePt1(unittest.TestCase):
 
     def testAlgorithmRunLegacy(self):
         output_file = self.TMP_DIR + '/polygon_centroid.shp'
-        rc, output, err = self.run_process(['run', '--no-python', 'native:centroids', f"--INPUT={TEST_DATA_DIR + '/polys.shp'}", f'--OUTPUT={output_file}'])
+        rc, output, err = self.run_process(['run', '--no-python', 'native:centroids', '--INPUT={}'.format(TEST_DATA_DIR + '/polys.shp'), f'--OUTPUT={output_file}'])
         self.assertFalse(self._strip_ignorable_errors(err))
         self.assertIn('0...10...20...30...40...50...60...70...80...90', output.lower())
         self.assertIn('results', output.lower())
@@ -272,7 +195,7 @@ class TestQgsProcessExecutablePt1(unittest.TestCase):
 
     def testAlgorithmRun(self):
         output_file = self.TMP_DIR + '/polygon_centroid.shp'
-        rc, output, err = self.run_process(['run', '--no-python', 'native:centroids', '--', f"INPUT={TEST_DATA_DIR + '/polys.shp'}", f'OUTPUT={output_file}'])
+        rc, output, err = self.run_process(['run', '--no-python', 'native:centroids', '--', 'INPUT={}'.format(TEST_DATA_DIR + '/polys.shp'), f'OUTPUT={output_file}'])
         self.assertFalse(self._strip_ignorable_errors(err))
         self.assertIn('0...10...20...30...40...50...60...70...80...90', output.lower())
         self.assertIn('results', output.lower())

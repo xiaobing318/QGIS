@@ -16,7 +16,6 @@ email                : jpalmer at linz dot govt dot nz
 #include <limits>
 
 #include "qgsmaptoolselectutils.h"
-#include "moc_qgsmaptoolselectutils.cpp"
 #include "qgsfeatureiterator.h"
 #include "qgisapp.h"
 #include "qgsmessagebar.h"
@@ -35,6 +34,7 @@ email                : jpalmer at linz dot govt dot nz
 #include "qgsproject.h"
 #include "qgsexpressioncontextutils.h"
 #include "qgsmessagelog.h"
+#include "qgsvectorlayertemporalproperties.h"
 #include "qgsmapcanvasutils.h"
 #include "qgsselectioncontext.h"
 
@@ -50,17 +50,16 @@ QgsMapLayer *QgsMapToolSelectUtils::getCurrentTargetLayer( QgsMapCanvas *canvas 
   {
     switch ( layer->type() )
     {
-      case Qgis::LayerType::Vector:
-      case Qgis::LayerType::VectorTile:
+      case QgsMapLayerType::VectorLayer:
+      case QgsMapLayerType::VectorTileLayer:
         // supported
         break;
-      case Qgis::LayerType::Raster:
-      case Qgis::LayerType::Plugin:
-      case Qgis::LayerType::Mesh:
-      case Qgis::LayerType::Annotation:
-      case Qgis::LayerType::PointCloud:
-      case Qgis::LayerType::Group:
-      case Qgis::LayerType::TiledScene:
+      case QgsMapLayerType::RasterLayer:
+      case QgsMapLayerType::PluginLayer:
+      case QgsMapLayerType::MeshLayer:
+      case QgsMapLayerType::AnnotationLayer:
+      case QgsMapLayerType::PointCloudLayer:
+      case QgsMapLayerType::GroupLayer:
         layer = nullptr; //not supported
         break;
     }
@@ -86,7 +85,7 @@ void QgsMapToolSelectUtils::setRubberBand( QgsMapCanvas *canvas, QRect &selectRe
 
   if ( rubberBand )
   {
-    rubberBand->reset( Qgis::GeometryType::Polygon );
+    rubberBand->reset( QgsWkbTypes::PolygonGeometry );
     rubberBand->addPoint( ll, false );
     rubberBand->addPoint( lr, false );
     rubberBand->addPoint( ur, false );
@@ -105,10 +104,10 @@ QgsRectangle QgsMapToolSelectUtils::expandSelectRectangle( QgsPointXY mapPoint, 
   {
     switch ( layer->type() )
     {
-      case Qgis::LayerType::Vector:
+      case QgsMapLayerType::VectorLayer:
       {
         QgsVectorLayer *vLayer = qobject_cast< QgsVectorLayer * >( layer );
-        if ( vLayer->geometryType() != Qgis::GeometryType::Polygon )
+        if ( vLayer->geometryType() != QgsWkbTypes::PolygonGeometry )
         {
           //if point or line use an artificial bounding box of 10x10 pixels
           //to aid the user to click on a feature accurately
@@ -121,18 +120,17 @@ QgsRectangle QgsMapToolSelectUtils::expandSelectRectangle( QgsPointXY mapPoint, 
         }
         break;
       }
-      case Qgis::LayerType::VectorTile:
+      case QgsMapLayerType::VectorTileLayer:
         // mixed layer type, so aim for somewhere between the vector layer polygon/point sizes
         boxSize = 2;
         break;
 
-      case Qgis::LayerType::Raster:
-      case Qgis::LayerType::Plugin:
-      case Qgis::LayerType::Mesh:
-      case Qgis::LayerType::Annotation:
-      case Qgis::LayerType::PointCloud:
-      case Qgis::LayerType::Group:
-      case Qgis::LayerType::TiledScene:
+      case QgsMapLayerType::RasterLayer:
+      case QgsMapLayerType::PluginLayer:
+      case QgsMapLayerType::MeshLayer:
+      case QgsMapLayerType::AnnotationLayer:
+      case QgsMapLayerType::PointCloudLayer:
+      case QgsMapLayerType::GroupLayer:
         break;
     }
   }
@@ -163,7 +161,7 @@ bool transformSelectGeometry( const QgsGeometry &selectGeometry, QgsGeometry &se
   selectGeomTrans = selectGeometry;
   try
   {
-    if ( !ct.isShortCircuited() && selectGeomTrans.type() == Qgis::GeometryType::Polygon )
+    if ( !ct.isShortCircuited() && selectGeomTrans.type() == QgsWkbTypes::PolygonGeometry )
     {
       // convert add more points to the edges of the rectangle
       // improve transformation result
@@ -200,7 +198,7 @@ bool transformSelectGeometry( const QgsGeometry &selectGeometry, QgsGeometry &se
   {
     Q_UNUSED( cse )
     // catch exception for 'invalid' point and leave existing selection unchanged
-    QgsDebugError( QStringLiteral( "Caught CRS exception " ) );
+    QgsDebugMsg( QStringLiteral( "Caught CRS exception " ) );
     QgisApp::instance()->messageBar()->pushMessage(
       QObject::tr( "CRS Exception" ),
       QObject::tr( "Selection extends beyond layer's coordinate system" ),
@@ -222,7 +220,7 @@ void QgsMapToolSelectUtils::selectSingleFeature( QgsMapCanvas *canvas, const Qgs
   QApplication::setOverrideCursor( Qt::WaitCursor );
   switch ( layer->type() )
   {
-    case Qgis::LayerType::Vector:
+    case QgsMapLayerType::VectorLayer:
     {
       QgsVectorLayer *vlayer = qobject_cast< QgsVectorLayer *>( layer );
       QgsFeatureIds selectedFeatures = getMatchingFeatures( canvas, selectGeometry, false, true );
@@ -255,7 +253,7 @@ void QgsMapToolSelectUtils::selectSingleFeature( QgsMapCanvas *canvas, const Qgs
       break;
     }
 
-    case Qgis::LayerType::VectorTile:
+    case QgsMapLayerType::VectorTileLayer:
     {
       QgsVectorTileLayer *vtLayer = qobject_cast< QgsVectorTileLayer *>( layer );
 
@@ -279,13 +277,12 @@ void QgsMapToolSelectUtils::selectSingleFeature( QgsMapCanvas *canvas, const Qgs
       break;
     }
 
-    case Qgis::LayerType::Raster:
-    case Qgis::LayerType::Plugin:
-    case Qgis::LayerType::Mesh:
-    case Qgis::LayerType::Annotation:
-    case Qgis::LayerType::PointCloud:
-    case Qgis::LayerType::Group:
-    case Qgis::LayerType::TiledScene:
+    case QgsMapLayerType::RasterLayer:
+    case QgsMapLayerType::PluginLayer:
+    case QgsMapLayerType::MeshLayer:
+    case QgsMapLayerType::AnnotationLayer:
+    case QgsMapLayerType::PointCloudLayer:
+    case QgsMapLayerType::GroupLayer:
       break;
   }
 
@@ -306,7 +303,7 @@ void QgsMapToolSelectUtils::setSelectedFeatures( QgsMapCanvas *canvas, const Qgs
 
   switch ( layer->type() )
   {
-    case Qgis::LayerType::Vector:
+    case QgsMapLayerType::VectorLayer:
     {
       QgsVectorLayer *vLayer = qobject_cast< QgsVectorLayer * >( layer );
       QgsFeatureIds selectedFeatures = getMatchingFeatures( canvas, selectGeometry, doContains, singleSelect );
@@ -314,7 +311,7 @@ void QgsMapToolSelectUtils::setSelectedFeatures( QgsMapCanvas *canvas, const Qgs
       break;
     }
 
-    case Qgis::LayerType::VectorTile:
+    case QgsMapLayerType::VectorTileLayer:
     {
       QgsVectorTileLayer *vtLayer = qobject_cast< QgsVectorTileLayer * >( layer );
       QgsCoordinateTransform ct( canvas->mapSettings().destinationCrs(), layer->crs(), QgsProject::instance() );
@@ -333,13 +330,12 @@ void QgsMapToolSelectUtils::setSelectedFeatures( QgsMapCanvas *canvas, const Qgs
       break;
     }
 
-    case Qgis::LayerType::Raster:
-    case Qgis::LayerType::Plugin:
-    case Qgis::LayerType::Mesh:
-    case Qgis::LayerType::Annotation:
-    case Qgis::LayerType::PointCloud:
-    case Qgis::LayerType::Group:
-    case Qgis::LayerType::TiledScene:
+    case QgsMapLayerType::RasterLayer:
+    case QgsMapLayerType::PluginLayer:
+    case QgsMapLayerType::MeshLayer:
+    case QgsMapLayerType::AnnotationLayer:
+    case QgsMapLayerType::PointCloudLayer:
+    case QgsMapLayerType::GroupLayer:
       break;
   }
 
@@ -350,7 +346,7 @@ QgsFeatureIds QgsMapToolSelectUtils::getMatchingFeatures( QgsMapCanvas *canvas, 
 {
   QgsFeatureIds newSelectedFeatures;
 
-  if ( selectGeometry.type() != Qgis::GeometryType::Polygon )
+  if ( selectGeometry.type() != QgsWkbTypes::PolygonGeometry )
     return newSelectedFeatures;
 
   QgsMapLayer *targetLayer = QgsMapToolSelectUtils::getCurrentTargetLayer( canvas );
@@ -403,7 +399,7 @@ QgsFeatureIds QgsMapToolSelectUtils::getMatchingFeatures( QgsMapCanvas *canvas, 
 
   QgsFeatureRequest request;
   request.setFilterRect( selectGeomTrans.boundingBox() );
-  request.setFlags( Qgis::FeatureRequestFlag::ExactIntersect );
+  request.setFlags( QgsFeatureRequest::ExactIntersect );
   if ( r )
     request.setSubsetOfAttributes( r->usedAttributes( context ), vlayer->fields() );
   else
@@ -566,7 +562,7 @@ QgsFeatureIds QgsMapToolSelectUtils::QgsMapToolSelectMenuActions::search( std::s
 {
   QgsFeatureIds newSelectedFeatures;
 
-  if ( data->selectGeometry.type() != Qgis::GeometryType::Polygon )
+  if ( data->selectGeometry.type() != QgsWkbTypes::PolygonGeometry )
     return newSelectedFeatures;
 
   QgsGeometry selectGeomTrans = data->selectGeometry;
@@ -594,7 +590,7 @@ QgsFeatureIds QgsMapToolSelectUtils::QgsMapToolSelectMenuActions::search( std::s
 
   QgsFeatureRequest request;
   request.setFilterRect( selectGeomTrans.boundingBox() );
-  request.setFlags( Qgis::FeatureRequestFlag::ExactIntersect );
+  request.setFlags( QgsFeatureRequest::ExactIntersect );
 
   if ( !data->filterString.isEmpty() )
     request.setFilterExpression( data->filterString );
@@ -650,7 +646,7 @@ QgsFeatureIds QgsMapToolSelectUtils::QgsMapToolSelectMenuActions::search( std::s
 
 void QgsMapToolSelectUtils::QgsMapToolSelectMenuActions::onSearchFinished()
 {
-  if ( !mFutureWatcher || !mFutureWatcher->isFinished() )
+  if ( mFutureWatcher && !mFutureWatcher->isFinished() )
     return;
 
   mAllFeatureIds = mFutureWatcher->result();
@@ -803,7 +799,7 @@ void QgsMapToolSelectUtils::QgsMapToolSelectMenuActions::highlightAllFeatures()
       if ( !geom.isEmpty() )
       {
         QgsHighlight *hl = new QgsHighlight( mCanvas, geom, mVectorLayer );
-        hl->applyDefaultStyle();
+        styleHighlight( hl );
         mHighlight.append( hl );
         count++;
       }
@@ -825,9 +821,24 @@ void QgsMapToolSelectUtils::QgsMapToolSelectMenuActions::highlightOneFeature( Qg
   if ( !geom.isEmpty() )
   {
     QgsHighlight *hl = new QgsHighlight( mCanvas, geom, mVectorLayer );
-    hl->applyDefaultStyle();
+    styleHighlight( hl );
     mHighlight.append( hl );
   }
+}
+
+void QgsMapToolSelectUtils::QgsMapToolSelectMenuActions::styleHighlight( QgsHighlight *highlight )
+{
+  QgsSettings settings;
+  QColor color = QColor( settings.value( QStringLiteral( "Map/highlight/color" ), Qgis::DEFAULT_HIGHLIGHT_COLOR.name() ).toString() );
+  int alpha = settings.value( QStringLiteral( "Map/highlight/colorAlpha" ), Qgis::DEFAULT_HIGHLIGHT_COLOR.alpha() ).toInt();
+  double buffer = settings.value( QStringLiteral( "Map/highlight/buffer" ), Qgis::DEFAULT_HIGHLIGHT_BUFFER_MM ).toDouble();
+  double minWidth = settings.value( QStringLiteral( "Map/highlight/minWidth" ), Qgis::DEFAULT_HIGHLIGHT_MIN_WIDTH_MM ).toDouble();
+
+  highlight->setColor( color ); // sets also fill with default alpha
+  color.setAlpha( alpha );
+  highlight->setFillColor( color ); // sets fill with alpha
+  highlight->setBuffer( buffer );
+  highlight->setMinWidth( minWidth );
 }
 
 QgsFeatureIds QgsMapToolSelectUtils::QgsMapToolSelectMenuActions::filterIds( const QgsFeatureIds &ids,

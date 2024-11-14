@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsrasterbandcombobox.h"
-#include "moc_qgsrasterbandcombobox.cpp"
 #include "qgsrasterlayer.h"
 #include "qgsrasterdataprovider.h"
 
@@ -167,14 +166,5 @@ QString QgsRasterBandComboBox::displayBandName( QgsRasterDataProvider *provider,
   if ( !provider )
     return QString();
 
-  QString name {  provider->displayBandName( band ) };
-  const QString description { provider->bandDescription( band ) };
-  // displayBandName() includes band description and this description can be the same
-  // as a band description from the metadata, so let's not append description to the band
-  // name if it is already there
-  if ( !description.isEmpty() )
-  {
-    return name.contains( description, Qt::CaseInsensitive ) ? name : QStringLiteral( "%1 - %2" ).arg( name, description );
-  }
-  return name;
+  return provider->displayBandName( band );
 }

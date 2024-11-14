@@ -88,12 +88,12 @@ class TopolError
     /**
      * Deletes first feature
      */
-    bool fixDeleteFirst(); // cppcheck-suppress functionConst
+    bool fixDeleteFirst();
 
     /**
      * Deletes second feature
      */
-    bool fixDeleteSecond(); // cppcheck-suppress functionConst
+    bool fixDeleteSecond();
 
     //helper fix functions
 

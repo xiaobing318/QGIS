@@ -20,7 +20,7 @@
 #include "qgsexpressioncontext.h"
 #include "qgis_gui.h"
 
-class QgsMapLayer;
+
 class QgsMapCanvas;
 class QgsMessageBar;
 
@@ -30,13 +30,23 @@ class QgsMessageBar;
  * \brief Contains settings which reflect the context in which a symbol (or renderer) widget is shown, e.g., the
  * map canvas and relevant expression contexts.
  *
+ * \since QGIS 3.0
  */
 class GUI_EXPORT QgsSymbolWidgetContext // clazy:exclude=rule-of-three
 {
   public:
 
+    /**
+     * Constructor for QgsSymbolWidgetContext.
+     */
     QgsSymbolWidgetContext() = default;
+
+    /**
+     * Copy constructor.
+     * \param other source QgsSymbolWidgetContext
+     */
     QgsSymbolWidgetContext( const QgsSymbolWidgetContext &other );
+
     QgsSymbolWidgetContext &operator=( const QgsSymbolWidgetContext &other );
 
     /**
@@ -102,6 +112,7 @@ class GUI_EXPORT QgsSymbolWidgetContext // clazy:exclude=rule-of-three
     /**
      * Returns list of scopes: global, project, atlas, map, layer.
      * Ownership is transferred to the caller.
+     * \since QGIS 3.0
      */
     QList<QgsExpressionContextScope *> globalProjectAtlasMapLayerScopes( const QgsMapLayer *layer ) const SIP_FACTORY;
 

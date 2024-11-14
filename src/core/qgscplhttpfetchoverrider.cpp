@@ -20,10 +20,9 @@
 #include "cpl_http.h"
 #include "gdal.h"
 
-QgsCPLHTTPFetchOverrider::QgsCPLHTTPFetchOverrider( const QString &authCfg, QgsFeedback *feedback )
-  : mAuthCfg( authCfg )
-  , mFeedback( feedback )
-  , mThread( QThread::currentThread() )
+QgsCPLHTTPFetchOverrider::QgsCPLHTTPFetchOverrider( const QString &authCfg, QgsFeedback *feedback ):
+  mAuthCfg( authCfg ),
+  mFeedback( feedback )
 {
   CPLHTTPPushFetchCallback( QgsCPLHTTPFetchOverrider::callback, this );
 }
@@ -58,16 +57,9 @@ CPLHTTPResult *QgsCPLHTTPFetchOverrider::callback( const char *pszURL,
   {
     if ( CSLFetchNameValue( papszOptions, pszOption ) )
     {
-      QgsDebugError( QStringLiteral( "Option %1 not handled" ).arg( pszOption ) );
+      QgsDebugMsg( QStringLiteral( "Option %1 not handled" ).arg( pszOption ) );
       return nullptr;
     }
-  }
-
-  if ( pThis->mFeedback && pThis->mFeedback->isCanceled() )
-  {
-    psResult->nStatus = 1;
-    psResult->pszErrBuf = CPLStrdup( "download interrupted by user" );
-    return psResult;
   }
 
   QgsBlockingNetworkRequest blockingRequest;
@@ -105,7 +97,7 @@ CPLHTTPResult *QgsCPLHTTPFetchOverrider::callback( const char *pszURL,
   QgsBlockingNetworkRequest::ErrorCode errCode;
   if ( pszPostFields )
   {
-    if ( !pszCustomRequest || EQUAL( pszCustomRequest, "POST" ) )
+    if ( pszCustomRequest == nullptr || EQUAL( pszCustomRequest, "POST" ) )
     {
       errCode = blockingRequest.post( request,
                                       QByteArray::fromStdString( pszPostFields ),
@@ -120,15 +112,15 @@ CPLHTTPResult *QgsCPLHTTPFetchOverrider::callback( const char *pszURL,
     }
     else
     {
-      QgsDebugError( QStringLiteral( "Invalid CUSTOMREQUEST = %1 when POSTFIELDS is defined" ).arg( pszCustomRequest ) );
+      QgsDebugMsg( QStringLiteral( "Invalid CUSTOMREQUEST = %1 when POSTFIELDS is defined" ).arg( pszCustomRequest ) );
       return nullptr;
     }
   }
   else
   {
-    if ( !pszCustomRequest || EQUAL( pszCustomRequest, "GET" ) )
+    if ( pszCustomRequest == nullptr || EQUAL( pszCustomRequest, "GET" ) )
     {
-      errCode = blockingRequest.get( request, forceRefresh, pThis->mFeedback, QgsBlockingNetworkRequest::RequestFlag::EmptyResponseIsValid );
+      errCode = blockingRequest.get( request, forceRefresh, pThis->mFeedback );
     }
     else if ( EQUAL( pszCustomRequest, "HEAD" ) )
     {
@@ -140,7 +132,7 @@ CPLHTTPResult *QgsCPLHTTPFetchOverrider::callback( const char *pszURL,
     }
     else
     {
-      QgsDebugError( QStringLiteral( "Invalid CUSTOMREQUEST = %1 when POSTFIELDS is not defined" ).arg( pszCustomRequest ) );
+      QgsDebugMsg( QStringLiteral( "Invalid CUSTOMREQUEST = %1 when POSTFIELDS is not defined" ).arg( pszCustomRequest ) );
       return nullptr;
     }
   }
@@ -195,14 +187,4 @@ CPLHTTPResult *QgsCPLHTTPFetchOverrider::callback( const char *pszURL,
 void QgsCPLHTTPFetchOverrider::setAttribute( QNetworkRequest::Attribute code, const QVariant &value )
 {
   mAttributes[code] = value;
-}
-
-void QgsCPLHTTPFetchOverrider::setFeedback( QgsFeedback *feedback )
-{
-  mFeedback = feedback;
-}
-
-QThread *QgsCPLHTTPFetchOverrider::thread() const
-{
-  return mThread;
 }

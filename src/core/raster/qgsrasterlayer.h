@@ -33,6 +33,7 @@
 #include "qgis_sip.h"
 #include "qgis.h"
 #include "qgsmaplayer.h"
+#include "qgsraster.h"
 #include "qgsrasterdataprovider.h"
 #include "qgsrasterviewport.h"
 #include "qgsrasterminmaxorigin.h"
@@ -48,8 +49,6 @@ class QgsRasterResampleFilter;
 class QgsBrightnessContrastFilter;
 class QgsHueSaturationFilter;
 class QgsRasterLayerElevationProperties;
-class QgsSettingsEntryBool;
-class QgsSettingsEntryDouble;
 
 class QImage;
 class QPixmap;
@@ -77,11 +76,7 @@ typedef QList < QPair< QString, QColor > > QgsLegendColorList;
 class CORE_EXPORT QgsRasterLayer : public QgsMapLayer, public QgsAbstractProfileSource
 {
     Q_OBJECT
-
   public:
-
-    static const QgsSettingsEntryBool *settingsRasterDefaultEarlyResampling SIP_SKIP;
-    static const QgsSettingsEntryDouble *settingsRasterDefaultOversampling SIP_SKIP;
 
     //! \brief Default sample size (number of pixels) for estimated statistics/histogram calculation
     static const double SAMPLE_SIZE;
@@ -109,6 +104,7 @@ class CORE_EXPORT QgsRasterLayer : public QgsMapLayer, public QgsAbstractProfile
 
     /**
      * Setting options for loading raster layers.
+     * \since QGIS 3.0
      */
     struct LayerOptions
     {
@@ -179,10 +175,30 @@ class CORE_EXPORT QgsRasterLayer : public QgsMapLayer, public QgsAbstractProfile
      * Returns a new instance equivalent to this one. A new provider is
      *  created for the same data source and renderer is cloned too.
      * \returns a new layer instance
+     * \since QGIS 3.0
      */
     QgsRasterLayer *clone() const override SIP_FACTORY;
 
     QgsAbstractProfileGenerator *createProfileGenerator( const QgsProfileRequest &request ) override SIP_FACTORY;
+
+    //! \brief This enumerator describes the types of shading that can be used
+    enum ColorShadingAlgorithm
+    {
+      UndefinedShader,
+      PseudoColorShader,
+      FreakOutShader,
+      ColorRampShader,
+      UserDefinedShader
+    };
+
+    //! \brief This enumerator describes the type of raster layer
+    enum LayerType
+    {
+      GrayOrUndefined,
+      Palette,
+      Multiband,
+      ColorLayer
+    };
 
     /**
      * This helper checks to see whether the file name appears to be a valid
@@ -200,7 +216,7 @@ class CORE_EXPORT QgsRasterLayer : public QgsMapLayer, public QgsAbstractProfile
 
     /**
      * Set the data provider.
-     * \deprecated QGIS 3.40. Use the version with ProviderOptions instead.
+     * \deprecated Use the version with ProviderOptions instead.
      */
     Q_DECL_DEPRECATED void setDataProvider( const QString &provider ) SIP_DEPRECATED;
 
@@ -211,12 +227,12 @@ class CORE_EXPORT QgsRasterLayer : public QgsMapLayer, public QgsAbstractProfile
      * \param flags provider flags since QGIS 3.16
      * \since QGIS 3.2
      */
-    void setDataProvider( const QString &provider, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() );
+    void setDataProvider( const QString &provider, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() );
 
     /**
      * Returns the raster layer type (which is a read only property).
      */
-    Qgis::RasterLayerType rasterType() const { return mRasterType; }
+    LayerType rasterType() { return mRasterType; }
 
     /**
      * Sets the raster's \a renderer. Takes ownership of the renderer object.
@@ -301,24 +317,6 @@ class CORE_EXPORT QgsRasterLayer : public QgsMapLayer, public QgsAbstractProfile
     QString bandName( int bandNoInt ) const;
 
     /**
-     * Returns the (possibly NULL) raster attribute table for the given band \a bandNumber.
-     * \since QGIS 3.30
-     */
-    QgsRasterAttributeTable *attributeTable( int bandNumber ) const;
-
-    /**
-     * Returns the number of attribute tables for the raster by counting the number of bands that have an associated attribute table.
-     * \since QGIS 3.30
-     */
-    int attributeTableCount( ) const;
-
-    /**
-     * Returns TRUE if the raster renderer is suitable for creation of a raster attribute table. The supported renderers are QgsPalettedRasterRenderer and QgsSingleBandPseudoColorRenderer.
-     * \since QGIS 3.30
-     */
-    bool canCreateRasterAttributeTable( );
-
-    /**
      * Returns the source data provider.
      *
      * This will be NULLPTR if the layer is invalid.
@@ -343,7 +341,7 @@ class CORE_EXPORT QgsRasterLayer : public QgsMapLayer, public QgsAbstractProfile
     /**
      * Returns a list with classification items (Text and color).
      *
-     * \deprecated QGIS 3.40. Use QgsRasterRenderer::createLegendNodes() instead.
+     * \deprecated use QgsRasterRenderer::createLegendNodes() instead.
      */
     Q_DECL_DEPRECATED QgsLegendColorList legendSymbologyItems() const SIP_DEPRECATED;
 
@@ -441,6 +439,7 @@ class CORE_EXPORT QgsRasterLayer : public QgsMapLayer, public QgsAbstractProfile
 
     /**
      * \brief Draws a preview of the rasterlayer into a QImage
+     * \since QGIS 2.4
     */
     QImage previewAsImage( QSize size, const QColor &bgColor = Qt::white,
                            QImage::Format format = QImage::Format_ARGB32_Premultiplied );
@@ -492,6 +491,7 @@ class CORE_EXPORT QgsRasterLayer : public QgsMapLayer, public QgsAbstractProfile
      */
     void subsetStringChanged();
 
+
   protected:
     bool readSymbology( const QDomNode &node, QString &errorMessage, QgsReadWriteContext &context, QgsMapLayer::StyleCategories categories = QgsMapLayer::AllStyleCategories ) override;
     bool readStyle( const QDomNode &node, QString &errorMessage, QgsReadWriteContext &context, QgsMapLayer::StyleCategories categories = QgsMapLayer::AllStyleCategories ) override;
@@ -515,7 +515,7 @@ class CORE_EXPORT QgsRasterLayer : public QgsMapLayer, public QgsAbstractProfile
     bool update();
 
     //! Sets corresponding renderer for style
-    void setRendererForDrawingStyle( Qgis::RasterDrawingStyle drawingStyle );
+    void setRendererForDrawingStyle( QgsRaster::DrawingStyle drawingStyle );
 
     void setContrastEnhancement( QgsContrastEnhancement::ContrastEnhancementAlgorithm algorithm,
                                  QgsRasterMinMaxOrigin::Limits limits,
@@ -545,24 +545,7 @@ class CORE_EXPORT QgsRasterLayer : public QgsMapLayer, public QgsAbstractProfile
      * \see dataSourceChanged()
      * \since QGIS 3.20
      */
-    void setDataSourcePrivate( const QString &dataSource, const QString &baseName, const QString &provider, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags ) override;
-
-    /**
-     * Writes the paths to the external raster attribute table files associated with the raster bands.
-     * \param layerNode layer node
-     * \param doc document
-     * \param context read-write context
-     * \since QGIS 3.30
-     */
-    void writeRasterAttributeTableExternalPaths( QDomNode &layerNode, QDomDocument &doc, const QgsReadWriteContext &context ) const;
-
-    /**
-     * Reads the paths to the external raster attribute table files associated with the raster bands and loads the raster attribute tables, the raster symbology is not changed.
-     * \param layerNode layer node
-     * \param context read-write context
-     * \since QGIS 3.30
-     */
-    void readRasterAttributeTableExternalPaths( const QDomNode &layerNode, QgsReadWriteContext &context ) const;
+    void setDataSourcePrivate( const QString &dataSource, const QString &baseName, const QString &provider, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags ) override;
 
     //! \brief  Constant defining flag for XML and a constant that signals property not used
     const QString QSTRING_NOT_SET;
@@ -581,7 +564,7 @@ class CORE_EXPORT QgsRasterLayer : public QgsMapLayer, public QgsAbstractProfile
 
     QgsRasterViewPort mLastViewPort;
 
-    Qgis::RasterLayerType mRasterType = Qgis::RasterLayerType::GrayOrUndefined;
+    LayerType mRasterType = GrayOrUndefined;
 
     std::unique_ptr< QgsRasterPipe > mPipe;
 
@@ -590,7 +573,6 @@ class CORE_EXPORT QgsRasterLayer : public QgsMapLayer, public QgsAbstractProfile
 
     QDomDocument mOriginalStyleDocument;
     QDomElement mOriginalStyleElement;
-
 };
 
 // clazy:excludeall=qstring-allocations

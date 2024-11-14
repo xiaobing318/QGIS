@@ -28,6 +28,7 @@
 
 #define SIP_NO_FILE
 
+#include "qgis_core.h"
 #include <QSharedData>
 #include <QVariant>
 #include "qgsexpression.h"
@@ -59,7 +60,7 @@ class QgsPropertyPrivate : public QSharedData
       delete transformer;
     }
 
-    Qgis::PropertyType type = Qgis::PropertyType::Invalid;
+    int type = 0;
 
     //! Stores whether the property is currently active
     bool active = true;

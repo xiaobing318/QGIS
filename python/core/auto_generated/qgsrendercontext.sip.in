@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsrendercontext.h                                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -34,26 +34,36 @@ to be rendered etc.
     void setFlags( Qgis::RenderContextFlags flags );
 %Docstring
 Set combination of flags that will be used for rendering.
+
+.. versionadded:: 2.14
 %End
 
     void setFlag( Qgis::RenderContextFlag flag, bool on = true );
 %Docstring
 Enable or disable a particular flag (other flags are not affected)
+
+.. versionadded:: 2.14
 %End
 
     Qgis::RenderContextFlags flags() const;
 %Docstring
 Returns combination of flags used for rendering.
+
+.. versionadded:: 2.14
 %End
 
     bool testFlag( Qgis::RenderContextFlag flag ) const;
 %Docstring
 Check whether a particular flag is enabled.
+
+.. versionadded:: 2.14
 %End
 
     static QgsRenderContext fromMapSettings( const QgsMapSettings &mapSettings );
 %Docstring
 create initialized QgsRenderContext instance from given :py:class:`QgsMapSettings`
+
+.. versionadded:: 2.4
 %End
 
     static QgsRenderContext fromQPainter( QPainter *painter );
@@ -61,6 +71,8 @@ create initialized QgsRenderContext instance from given :py:class:`QgsMapSetting
 Creates a default render context given a pixel based QPainter destination.
 If no painter is specified or the painter has no device, then a default
 DPI of 88 will be assumed.
+
+.. versionadded:: 3.0
 %End
 
 
@@ -69,18 +81,6 @@ DPI of 88 will be assumed.
 Returns the destination QPainter for the render operation.
 
 .. seealso:: :py:func:`setPainter`
-%End
-
-
-    QPainter *previewRenderPainter();
-%Docstring
-Returns the const destination QPainter for temporary in-progress preview renders.
-
-May be ``None`` if temporary in-progress preview renders are not required.
-
-.. seealso:: :py:func:`setPreviewRenderPainter`
-
-.. versionadded:: 3.34
 %End
 
 
@@ -109,40 +109,7 @@ This is currently used to implement selective masking.
 .. versionadded:: 3.12
 %End
 
-
- void setDisabledSymbolLayers( const QSet<const QgsSymbolLayer *> &symbolLayers ) /Deprecated/;
-%Docstring
-When rendering a map layer in a second pass (for selective masking),
-some symbol layers may be disabled.
-
-Sets the list of disabled symbol layers.
-
-.. seealso:: :py:func:`disabledSymbolLayers`
-
-.. seealso:: :py:func:`isSymbolLayerEnabled`
-
-.. versionadded:: 3.12
-
-.. deprecated:: 3.30
-
-   And replaced with setDisabledSymbolLayersV2.
-%End
-
-    void setDisabledSymbolLayersV2( const QSet<QString> &symbolLayers );
-%Docstring
-When rendering a map layer in a second pass (for selective masking),
-some symbol layers may be disabled.
-
-Sets the list of disabled symbol layer ids.
-
-.. seealso:: :py:func:`disabledSymbolLayersV2`
-
-.. seealso:: :py:func:`isSymbolLayerEnabled`
-
-.. versionadded:: 3.30
-%End
-
- QSet<const QgsSymbolLayer *> disabledSymbolLayers() const /Deprecated/;
+    QSet<const QgsSymbolLayer *> disabledSymbolLayers() const;
 %Docstring
 When rendering a map layer in a second pass (for selective masking),
 some symbol layers may be disabled.
@@ -154,24 +121,6 @@ Returns the list of disabled symbol layers.
 .. seealso:: :py:func:`isSymbolLayerEnabled`
 
 .. versionadded:: 3.12
-
-.. deprecated:: 3.30
-
-   And replaced with disabledSymbolLayersV2.
-%End
-
-    QSet<QString> disabledSymbolLayersV2() const;
-%Docstring
-When rendering a map layer in a second pass (for selective masking),
-some symbol layers may be disabled.
-
-Returns the list of disabled symbol layer ids.
-
-.. seealso:: :py:func:`setDisabledSymbolLayers`
-
-.. seealso:: :py:func:`isSymbolLayerEnabled`
-
-.. versionadded:: 3.30
 %End
 
     bool isSymbolLayerEnabled( const QgsSymbolLayer *layer ) const;
@@ -203,6 +152,8 @@ a map layer render, then an invalid coordinate transformation is returned.
     const QgsDistanceArea &distanceArea() const;
 %Docstring
 A general purpose distance and area calculator, capable of performing ellipsoid based calculations.
+
+.. versionadded:: 3.0
 %End
 
     QgsCoordinateTransformContext transformContext() const;
@@ -212,6 +163,8 @@ information regarding which datum transforms should be used when transforming po
 from a source to destination coordinate reference system.
 
 .. seealso:: :py:func:`setTransformContext`
+
+.. versionadded:: 3.0
 %End
 
     void setTransformContext( const QgsCoordinateTransformContext &context );
@@ -221,6 +174,8 @@ information regarding which datum transforms should be used when transforming po
 from a source to destination coordinate reference system.
 
 .. seealso:: :py:func:`transformContext`
+
+.. versionadded:: 3.0
 %End
 
     const QgsPathResolver &pathResolver() const;
@@ -229,6 +184,8 @@ Returns the path resolver for conversion between relative and absolute paths
 during rendering operations, e.g. for resolving relative symbol paths.
 
 .. seealso:: :py:func:`setPathResolver`
+
+.. versionadded:: 3.0
 %End
 
     void setPathResolver( const QgsPathResolver &resolver );
@@ -237,6 +194,8 @@ Sets the path ``resolver`` for conversion between relative and absolute paths
 during rendering operations, e.g. for resolving relative symbol paths.
 
 .. seealso:: :py:func:`pathResolver`
+
+.. versionadded:: 3.0
 %End
 
     const QgsRectangle &extent() const;
@@ -490,6 +449,8 @@ rendering should be canceled immediately.
 %Docstring
 A general purpose distance and area calculator, capable of performing ellipsoid based calculations.
 Will be used to convert meter distances to active MapUnit values for :py:class:`QgsUnitTypes`.RenderMetersInMapUnits
+
+.. versionadded:: 3.0
 %End
 
     void setScaleFactor( double factor );
@@ -546,19 +507,6 @@ of any rendering operations.
 .. seealso:: :py:func:`painter`
 %End
 
-    void setPreviewRenderPainter( QPainter *painter );
-%Docstring
-Sets the destination ``painter`` for temporary in-progress preview renders.
-Ownership of ``painter`` is not transferred and the QPainter destination must
-stay alive for the duration of any rendering operations.
-
-``painter`` may be ``None`` if temporary in-progress preview renders are not required.
-
-.. seealso:: :py:func:`previewRenderPainter`
-
-.. versionadded:: 3.34
-%End
-
     void setMaskPainter( QPainter *p, int id = 0 );
 %Docstring
 Sets a mask QPainter for the render operation. Ownership of the painter
@@ -567,6 +515,20 @@ of any rendering operations.
 Multiple mask painters can be defined and the second parameter gives a unique identifier to each one.
 
 .. seealso:: :py:func:`maskPainter`
+%End
+
+    void setDisabledSymbolLayers( const QSet<const QgsSymbolLayer *> &symbolLayers );
+%Docstring
+When rendering a map layer in a second pass (for selective masking),
+some symbol layers may be disabled.
+
+Sets the list of disabled symbol layers.
+
+.. seealso:: :py:func:`disabledSymbolLayers`
+
+.. seealso:: :py:func:`isSymbolLayerEnabled`
+
+.. versionadded:: 3.12
 %End
 
     void setForceVectorOutput( bool force );
@@ -613,15 +575,16 @@ Sets whether the rendering optimization (geometry simplification) should be exec
 .. seealso:: :py:func:`useRenderingOptimization`
 %End
 
-    QgsVectorSimplifyMethod &vectorSimplifyMethod();
+    const QgsVectorSimplifyMethod &vectorSimplifyMethod() const;
 %Docstring
 Returns the simplification settings to use when rendering vector layers.
 
 The default is to use no simplification.
 
 .. seealso:: :py:func:`setVectorSimplifyMethod`
-%End
 
+.. versionadded:: 2.4
+%End
 
     void setVectorSimplifyMethod( const QgsVectorSimplifyMethod &simplifyMethod );
 %Docstring
@@ -634,6 +597,8 @@ during PDF exports or to speed up layer rendering
 The default is to use no simplification.
 
 .. seealso:: :py:func:`vectorSimplifyMethod`
+
+.. versionadded:: 2.4
 %End
 
     void setExpressionContext( const QgsExpressionContext &context );
@@ -642,6 +607,8 @@ Sets the expression context. This context is used for all expression evaluation
 associated with this render context.
 
 .. seealso:: :py:func:`expressionContext`
+
+.. versionadded:: 2.12
 %End
 
     QgsExpressionContext &expressionContext();
@@ -650,6 +617,8 @@ Gets the expression context. This context should be used for all expression eval
 associated with this render context.
 
 .. seealso:: :py:func:`setExpressionContext`
+
+.. versionadded:: 2.12
 %End
 
 
@@ -669,6 +638,8 @@ Set a filter feature provider used for additional filtering of rendered features
 :param ffp: the filter feature provider
 
 .. seealso:: :py:func:`featureFilterProvider`
+
+.. versionadded:: 2.14
 %End
 
     const QgsFeatureFilterProvider *featureFilterProvider() const;
@@ -678,6 +649,8 @@ Gets the filter feature provider used for additional filtering of rendered featu
 :return: the filter feature provider
 
 .. seealso:: :py:func:`setFeatureFilterProvider`
+
+.. versionadded:: 2.14
 %End
 
     void setSegmentationTolerance( double tolerance );
@@ -717,53 +690,46 @@ Gets segmentation tolerance type (maximum angle or maximum difference between cu
 %End
 
 
-    double convertToPainterUnits( double size, Qgis::RenderUnit unit, const QgsMapUnitScale &scale = QgsMapUnitScale(), Qgis::RenderSubcomponentProperty property = Qgis::RenderSubcomponentProperty::Generic ) const;
+    double convertToPainterUnits( double size, QgsUnitTypes::RenderUnit unit, const QgsMapUnitScale &scale = QgsMapUnitScale(), Qgis::RenderSubcomponentProperty property = Qgis::RenderSubcomponentProperty::Generic ) const;
 %Docstring
 Converts a size from the specified units to painter units (pixels). The conversion respects the limits
 specified by the optional scale parameter.
 
 Since QGIS 3.22 the optional ``property`` argument can be used to specify the associated property. This
-is used in some contexts to refine the converted size. For example, a :py:class:`Qgis`.RenderSubcomponentProperty.BlurSize
-property will be limited to a suitably fast range when the render context has the :py:class:`Qgis`.RenderContextFlag.RenderSymbolPreview set.
-
-.. seealso:: :py:func:`convertFromPainterUnits`
-
-.. seealso:: :py:func:`convertToMapUnits`
-%End
-
-    double convertFromPainterUnits( double size, Qgis::RenderUnit unit ) const;
-%Docstring
-Converts a size from painter units (pixels) to the specified render unit.
-
-.. seealso:: :py:func:`convertToPainterUnits`
+is used in some contexts to refine the converted size. For example, a Qgis.RenderSubcomponentProperty.BlurSize
+property will be limited to a suitably fast range when the render context has the Qgis.RenderContextFlag.RenderSymbolPreview set.
 
 .. seealso:: :py:func:`convertToMapUnits`
 
-.. versionadded:: 3.40
+.. versionadded:: 3.0
 %End
 
-    double convertToMapUnits( double size, Qgis::RenderUnit unit, const QgsMapUnitScale &scale = QgsMapUnitScale() ) const;
+    double convertToMapUnits( double size, QgsUnitTypes::RenderUnit unit, const QgsMapUnitScale &scale = QgsMapUnitScale() ) const;
 %Docstring
 Converts a size from the specified units to map units. The conversion respects the limits
 specified by the optional scale parameter.
 
 .. seealso:: :py:func:`convertToPainterUnits`
+
+.. versionadded:: 3.0
 %End
 
-    double convertFromMapUnits( double sizeInMapUnits, Qgis::RenderUnit outputUnit ) const;
+    double convertFromMapUnits( double sizeInMapUnits, QgsUnitTypes::RenderUnit outputUnit ) const;
 %Docstring
 Converts a size from map units to the specified units.
 
 .. seealso:: :py:func:`convertToMapUnits`
+
+.. versionadded:: 3.0
 %End
 
     double convertMetersToMapUnits( double meters ) const;
 %Docstring
 Convert meter distances to active MapUnit values for :py:class:`QgsUnitTypes`.RenderMetersInMapUnits
+\note
+When the :py:func:`~QgsRenderContext.sourceCrs` is geographic, the center of the Extent will be used
 
-.. note::
-
-   When the :py:func:`~QgsRenderContext.sourceCrs` is geographic, the center of the Extent will be used
+.. versionadded:: 3.0
 %End
 
     Qgis::TextRenderFormat textRenderFormat() const;
@@ -873,7 +839,7 @@ in a mask painter, which is not meant to be visible, by definition.
 .. versionadded:: 3.12
 %End
 
- QVariantMap customRenderingFlags() const /Deprecated/;
+    QVariantMap customRenderingFlags() const;
 %Docstring
 Gets custom rendering flags. Layers might honour these to alter their rendering.
 
@@ -881,23 +847,10 @@ Gets custom rendering flags. Layers might honour these to alter their rendering.
 
 .. seealso:: :py:func:`setCustomRenderingFlag`
 
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsRenderContext.customProperties` instead.
+.. versionadded:: 3.12
 %End
 
-    QVariantMap customProperties() const;
-%Docstring
-Returns custom rendering properties.
-
-Objects might honour these to alter their rendering.
-
-.. seealso:: :py:func:`setCustomProperty`
-
-.. versionadded:: 3.40
-%End
-
- void setCustomRenderingFlag( const QString &flag, const QVariant &value ) /Deprecated/;
+    void setCustomRenderingFlag( const QString &flag, const QVariant &value );
 %Docstring
 Sets a custom rendering flag. Layers might honour these to alter their rendering.
 
@@ -906,23 +859,10 @@ Sets a custom rendering flag. Layers might honour these to alter their rendering
 
 .. seealso:: :py:func:`customRenderingFlags`
 
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsRenderContext.setCustomProperty` instead.
+.. versionadded:: 3.12
 %End
 
-    void setCustomProperty( const QString &property, const QVariant &value );
-%Docstring
-Sets a custom rendering property.
-
-Objects might honour these to alter their rendering.
-
-.. seealso:: :py:func:`customProperties`
-
-.. versionadded:: 3.40
-%End
-
- void clearCustomRenderingFlag( const QString &flag ) /Deprecated/;
+    void clearCustomRenderingFlag( const QString &flag );
 %Docstring
 Clears the specified custom rendering flag.
 
@@ -930,18 +870,7 @@ Clears the specified custom rendering flag.
 
 .. seealso:: :py:func:`setCustomRenderingFlag`
 
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsRenderContext.clearCustomProperty` instead.
-%End
-
-    void clearCustomProperty( const QString &property );
-%Docstring
-Clears the specified custom rendering property.
-
-.. seealso:: :py:func:`setCustomProperty`
-
-.. versionadded:: 3.40
+.. versionadded:: 3.12
 %End
 
     QList< QgsMapClippingRegion > clippingRegions() const;
@@ -967,6 +896,7 @@ When vector features are rendered, they should be clipped to this geometry.
    a rule-based renderer using the feature's area.
 
 .. seealso:: :py:func:`setFeatureClipGeometry`
+
 
 .. versionadded:: 3.16
 %End
@@ -1005,77 +935,6 @@ rendering using QBrush objects.
 .. versionadded:: 3.16
 %End
 
-
-    QgsMaskRenderSettings &maskSettings();
-%Docstring
-Returns a reference to the mask render settings, which control how masks
-are drawn and behave during render operations.
-
-.. seealso:: :py:func:`setMaskSettings`
-
-.. versionadded:: 3.38
-%End
-
-    void setMaskSettings( const QgsMaskRenderSettings &settings );
-%Docstring
-Sets the mask render ``settings``, which control how masks
-are drawn and behave during render operations.
-
-.. seealso:: :py:func:`maskSettings`
-
-.. versionadded:: 3.38
-%End
-
- void addSymbolLayerClipPath( const QString &symbolLayerId, QPainterPath path ) /Deprecated/;
-%Docstring
-Add a clip ``path`` to be applied to the ``symbolLayer`` before rendering
-
-.. seealso:: :py:func:`addSymbolLayerClipGeometry`
-
-.. deprecated:: 3.38
-
-   Use :py:func:`~QgsRenderContext.addSymbolLayerClipGeometry` instead.
-%End
-
- QList<QPainterPath> symbolLayerClipPaths( const QString &symbolLayerId ) const /Deprecated/;
-%Docstring
-Returns clip paths to be applied to the ``symbolLayer`` before rendering
-
-.. seealso:: :py:func:`symbolLayerClipGeometries`
-
-.. deprecated:: 3.38
-
-   Use :py:func:`~QgsRenderContext.symbolLayerClipGeometries` instead.
-%End
-
-    void addSymbolLayerClipGeometry( const QString &symbolLayerId, const QgsGeometry &geometry );
-%Docstring
-Add a clip ``geometry`` to be applied to the ``symbolLayer`` before rendering.
-
-.. seealso:: :py:func:`symbolLayerClipGeometries`
-
-.. versionadded:: 3.38
-%End
-
-    bool symbolLayerHasClipGeometries( const QString &symbolLayerId ) const;
-%Docstring
-Returns ``True`` if the symbol layer with matching ID has any associated clip geometries.
-
-.. seealso:: :py:func:`symbolLayerClipGeometries`
-
-.. versionadded:: 3.38
-%End
-
-    QVector<QgsGeometry> symbolLayerClipGeometries( const QString &symbolLayerId ) const;
-%Docstring
-Returns clipping geometries to be applied to the ``symbolLayer`` before rendering
-
-.. seealso:: :py:func:`symbolLayerHasClipGeometries`
-
-.. seealso:: :py:func:`addSymbolLayerClipGeometry`
-
-.. versionadded:: 3.38
-%End
 
     QgsDoubleRange zRange() const;
 %Docstring
@@ -1239,27 +1098,6 @@ Defaults to -1 if the map is not associated with an animation.
 .. versionadded:: 3.26
 %End
 
-
-    QgsElevationMap *elevationMap() const;
-%Docstring
-Returns the destination elevation map for the render operation.
-
-.. seealso:: :py:func:`setElevationMap`
-
-.. versionadded:: 3.30
-%End
-
-    void setElevationMap( QgsElevationMap *map );
-%Docstring
-Sets the destination elevation ``map`` for the render operation. Ownership of the elevation map
-is not transferred and the :py:class:`QgsElevationMap` destination must stay alive for the duration
-of any rendering operations.
-
-.. seealso:: :py:func:`elevationMap`
-
-.. versionadded:: 3.30
-%End
-
 };
 
 
@@ -1268,5 +1106,5 @@ of any rendering operations.
  *                                                                      *
  * src/core/qgsrendercontext.h                                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

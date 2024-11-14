@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsmapcanvasannotationitem.h"
-#include "moc_qgsmapcanvasannotationitem.cpp"
 #include "qgsannotation.h"
 #include "qgsmapcanvas.h"
 #include "qgsmaptool.h"
@@ -98,7 +97,7 @@ void QgsMapCanvasAnnotationItem::updateBoundingRect()
   const double fillSymbolBleed = mAnnotation && mAnnotation->fillSymbol() ?
                                  QgsSymbolLayerUtils::estimateMaxSymbolBleed( mAnnotation->fillSymbol(), rc ) : 0;
 
-  const double mmToPixelScale = mMapCanvas->physicalDpiX() / 25.4;
+  const double mmToPixelScale = mMapCanvas->logicalDpiX() / 25.4;
 
   if ( mAnnotation && !mAnnotation->hasFixedMapPosition() )
   {
@@ -173,7 +172,7 @@ void QgsMapCanvasAnnotationItem::setFeatureForMapPosition()
 
   searchRect = mMapCanvas->mapSettings().mapToLayerCoordinates( vectorLayer, searchRect );
 
-  QgsFeatureIterator fit = vectorLayer->getFeatures( QgsFeatureRequest().setFilterRect( searchRect ).setFlags( Qgis::FeatureRequestFlag::ExactIntersect ).setLimit( 1 ) );
+  QgsFeatureIterator fit = vectorLayer->getFeatures( QgsFeatureRequest().setFilterRect( searchRect ).setFlags( QgsFeatureRequest::ExactIntersect ).setLimit( 1 ) );
 
   QgsFeature currentFeature;
   ( void )fit.nextFeature( currentFeature );
@@ -219,57 +218,48 @@ QgsMapCanvasAnnotationItem::MouseMoveAction QgsMapCanvasAnnotationItem::moveActi
   const QPointF offset = mAnnotation && mAnnotation->hasFixedMapPosition() ? mAnnotation->frameOffsetFromReferencePointMm() * mmToPixelScale : QPointF( 0, 0 );
   const QSizeF frameSize = mAnnotation ? mAnnotation->frameSizeMm() * mmToPixelScale : QSizeF( 0, 0 );
 
-  bool left, right, up, down, inframe;
+  bool left, right, up, down;
   left = std::fabs( itemPos.x() - offset.x() ) < cursorSensitivity;
   right = std::fabs( itemPos.x() - ( offset.x() + frameSize.width() ) ) < cursorSensitivity;
   up = std::fabs( itemPos.y() - offset.y() ) < cursorSensitivity;
   down = std::fabs( itemPos.y() - ( offset.y() + frameSize.height() ) ) < cursorSensitivity;
-  inframe = (
-              itemPos.x() + cursorSensitivity >= offset.x() &&
-              itemPos.x() - cursorSensitivity <= ( offset.x() + frameSize.width() ) &&
-              itemPos.y() + cursorSensitivity >= offset.y() &&
-              itemPos.y() - cursorSensitivity <= ( offset.y() + frameSize.height() ) );
 
-  // Resize actions are only available if the item is selected
-  // Otherwise, mouse handles are not visible
-  if ( isSelected() )
+  if ( left && up )
   {
-    if ( left && up )
-    {
-      return ResizeFrameLeftUp;
-    }
-    else if ( right && up )
-    {
-      return ResizeFrameRightUp;
-    }
-    else if ( left && down )
-    {
-      return ResizeFrameLeftDown;
-    }
-    else if ( right && down )
-    {
-      return ResizeFrameRightDown;
-    }
-    if ( left && inframe )
-    {
-      return ResizeFrameLeft;
-    }
-    if ( right && inframe )
-    {
-      return ResizeFrameRight;
-    }
-    if ( up && inframe )
-    {
-      return ResizeFrameUp;
-    }
-    if ( down && inframe )
-    {
-      return ResizeFrameDown;
-    }
+    return ResizeFrameLeftUp;
+  }
+  else if ( right && up )
+  {
+    return ResizeFrameRightUp;
+  }
+  else if ( left && down )
+  {
+    return ResizeFrameLeftDown;
+  }
+  else if ( right && down )
+  {
+    return ResizeFrameRightDown;
+  }
+  if ( left )
+  {
+    return ResizeFrameLeft;
+  }
+  if ( right )
+  {
+    return ResizeFrameRight;
+  }
+  if ( up )
+  {
+    return ResizeFrameUp;
+  }
+  if ( down )
+  {
+    return ResizeFrameDown;
   }
 
   //finally test if pos is in the frame area
-  if ( inframe )
+  if ( itemPos.x() >= offset.x() && itemPos.x() <= ( offset.x() + frameSize.width() )
+       && itemPos.y() >= offset.y() && itemPos.y() <= ( offset.y() + frameSize.height() ) )
   {
     return MoveFramePosition;
   }

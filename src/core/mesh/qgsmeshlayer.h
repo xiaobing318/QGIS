@@ -36,13 +36,12 @@ class QgsSymbol;
 class QgsTriangularMesh;
 class QgsRenderContext;
 struct QgsMesh;
-class QgsMesh3DAveragingMethod;
+class QgsMesh3dAveragingMethod;
 class QgsMeshLayerTemporalProperties;
 class QgsMeshDatasetGroupStore;
 class QgsMeshEditor;
 class QgsMeshEditingError;
 class QgsMeshLayerElevationProperties;
-class QgsAbstractMeshLayerLabeling;
 
 /**
  * \ingroup core
@@ -161,7 +160,9 @@ class CORE_EXPORT QgsMeshLayer : public QgsMapLayer, public QgsAbstractProfileSo
 
     ~QgsMeshLayer() override;
 
+    //! QgsMeshLayer cannot be copied.
     QgsMeshLayer( const QgsMeshLayer &rhs ) = delete;
+    //! QgsMeshLayer cannot be copied.
     QgsMeshLayer &operator=( QgsMeshLayer const &rhs ) = delete;
 
 #ifdef SIP_RUN
@@ -461,7 +462,7 @@ class CORE_EXPORT QgsMeshLayer : public QgsMapLayer, public QgsAbstractProfileSo
      *
      * \since QGIS 3.16
      */
-    QgsMesh3DDataBlock dataset3dValues( const QgsMeshDatasetIndex &index, int faceIndex, int count ) const;
+    QgsMesh3dDataBlock dataset3dValues( const QgsMeshDatasetIndex &index, int faceIndex, int count ) const;
 
     /**
      * Returns N vector/scalar values from the face index from the dataset for 3d stacked meshes
@@ -529,7 +530,7 @@ class CORE_EXPORT QgsMeshLayer : public QgsMapLayer, public QgsAbstractProfileSo
       *
       * \since QGIS 3.12
       */
-    QgsMesh3DDataBlock dataset3dValue( const QgsMeshDatasetIndex &index, const QgsPointXY &point ) const;
+    QgsMesh3dDataBlock dataset3dValue( const QgsMeshDatasetIndex &index, const QgsPointXY &point ) const;
 
     /**
       * Returns the value of 1D mesh dataset defined on edge that are in the search area defined by point ans searchRadius
@@ -606,27 +607,27 @@ class CORE_EXPORT QgsMeshLayer : public QgsMapLayer, public QgsAbstractProfileSo
       * Returns dataset index from active scalar group depending on the time range.
       * If the temporal properties is not active, return the static dataset
       *
-      * Since QGIS 3.38, the \a group argument can be used to specify a fixed group
-      * to use. If this is not specified, then the active group from the layer's renderer will be used.
+      * \param timeRange the time range
+      * \returns dataset index
       *
       * \note the returned dataset index depends on the matching method, see setTemporalMatchingMethod()
       *
       * \since QGIS 3.14
       */
-    QgsMeshDatasetIndex activeScalarDatasetAtTime( const QgsDateTimeRange &timeRange, int group = -1 ) const;
+    QgsMeshDatasetIndex activeScalarDatasetAtTime( const QgsDateTimeRange &timeRange ) const;
 
     /**
       * Returns dataset index from active vector group depending on the time range
       * If the temporal properties is not active, return the static dataset
       *
-      * Since QGIS 3.38, the \a group argument can be used to specify a fixed group
-      * to use. If this is not specified, then the active group from the layer's renderer will be used.
+      * \param timeRange the time range
+      * \returns dataset index
       *
       * \note the returned dataset index depends on the matching method, see setTemporalMatchingMethod()
       *
       * \since QGIS 3.14
       */
-    QgsMeshDatasetIndex activeVectorDatasetAtTime( const QgsDateTimeRange &timeRange, int group = -1 ) const;
+    QgsMeshDatasetIndex activeVectorDatasetAtTime( const QgsDateTimeRange &timeRange ) const;
 
     /**
       * Sets the static scalar dataset index that is rendered if the temporal properties is not active
@@ -647,24 +648,18 @@ class CORE_EXPORT QgsMeshLayer : public QgsMapLayer, public QgsAbstractProfileSo
     void setStaticVectorDatasetIndex( const QgsMeshDatasetIndex &staticVectorDatasetIndex ) SIP_SKIP;
 
     /**
-      * Returns the static scalar dataset index that is rendered if the temporal properties is not active.
-      *
-      * Since QGIS 3.38, the \a group argument can be used to specify a fixed group
-      * to use. If this is not specified, then the active group from the layer's renderer will be used.
+      * Returns the static scalar dataset index that is rendered if the temporal properties is not active
       *
       * \since QGIS 3.14
       */
-    QgsMeshDatasetIndex staticScalarDatasetIndex( int group = -1 ) const;
+    QgsMeshDatasetIndex staticScalarDatasetIndex() const;
 
     /**
-      * Returns the static vector dataset index that is rendered if the temporal properties is not active.
-      *
-      * Since QGIS 3.38, the \a group argument can be used to specify a fixed group
-      * to use. If this is not specified, then the active group from the layer's renderer will be used.
+      * Returns the static vector dataset index that is rendered if the temporal properties is not active
       *
       * \since QGIS 3.14
       */
-    QgsMeshDatasetIndex staticVectorDatasetIndex( int group = -1 ) const;
+    QgsMeshDatasetIndex staticVectorDatasetIndex() const;
 
     /**
       * Sets the reference time of the layer
@@ -784,7 +779,7 @@ class CORE_EXPORT QgsMeshLayer : public QgsMapLayer, public QgsAbstractProfileSo
     * This operation will disconnect the mesh layer from the data provider and removes all existing dataset group
     *
     * \since QGIS 3.22
-    * \deprecated QGIS 3.28. Use the version with QgsMeshEditingError instead.
+    * \deprecated since QGIS 3.28, use the version with QgsMeshEditingError instead
     */
     Q_DECL_DEPRECATED bool startFrameEditing( const QgsCoordinateTransform &transform );
 
@@ -886,53 +881,6 @@ class CORE_EXPORT QgsMeshLayer : public QgsMapLayer, public QgsAbstractProfileSo
     */
     int meshEdgeCount() const;
 
-    /**
-     * Returns whether the layer contains labels which are enabled and should be drawn.
-     * \returns TRUE if layer contains enabled labels
-     *
-     * \see setLabelsEnabled()
-     * \see labeling()
-     * \since QGIS 3.36
-     */
-    bool labelsEnabled() const;
-
-    /**
-     * Sets whether labels should be \a enabled for the layer.
-     *
-     * \note Labels will only be rendered if labelsEnabled() is TRUE and a labeling
-     * object is returned by labeling().
-     *
-     * \see labelsEnabled()
-     * \see labeling()
-     * \since QGIS 3.36
-     */
-    void setLabelsEnabled( bool enabled );
-
-    /**
-     * Access to const labeling configuration. May be NULLPTR if labeling is not used.
-     * \note Labels will only be rendered if labelsEnabled() returns TRUE.
-     *
-     * \see labelsEnabled()
-     * \see setLabelsEnabled()
-     * \since QGIS 3.36
-     */
-    const QgsAbstractMeshLayerLabeling *labeling() const SIP_SKIP { return mLabeling; }
-
-    /**
-     * Access to labeling configuration. May be NULLPTR if labeling is not used.
-     * \note Labels will only be rendered if labelsEnabled() returns TRUE.
-     * \see labelsEnabled()
-     * \since QGIS 3.36
-     */
-    QgsAbstractMeshLayerLabeling *labeling() { return mLabeling; }
-
-    /**
-     * Sets labeling configuration. Takes ownership of the object.
-     * \since QGIS 3.36
-     */
-    void setLabeling( QgsAbstractMeshLayerLabeling *labeling SIP_TRANSFER );
-
-
   public slots:
 
     /**
@@ -985,7 +933,7 @@ class CORE_EXPORT QgsMeshLayer : public QgsMapLayer, public QgsAbstractProfileSo
      * \param options generic provider options
      * \param flags provider flags since QGIS 3.16
      */
-    bool setDataProvider( QString const &provider, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() );
+    bool setDataProvider( QString const &provider, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() );
 
 #ifdef SIP_RUN
     QgsMeshLayer( const QgsMeshLayer &rhs );
@@ -1036,18 +984,12 @@ class CORE_EXPORT QgsMeshLayer : public QgsMapLayer, public QgsAbstractProfileSo
     QgsMeshLayerElevationProperties *mElevationProperties = nullptr;
 
     //! Temporal unit used by the provider
-    Qgis::TemporalUnit mTemporalUnit = Qgis::TemporalUnit::Hours;
+    QgsUnitTypes::TemporalUnit mTemporalUnit = QgsUnitTypes::TemporalHours;
 
     int mStaticScalarDatasetIndex = 0;
     int mStaticVectorDatasetIndex = 0;
 
     QgsMeshEditor *mMeshEditor = nullptr;
-
-    //! True if labels are enabled
-    bool mLabelsEnabled = false;
-
-    //! Labeling configuration
-    QgsAbstractMeshLayerLabeling *mLabeling = nullptr;
 
     int closestEdge( const QgsPointXY &point, double searchRadius, QgsPointXY &projectedPoint ) const;
 
@@ -1062,11 +1004,10 @@ class CORE_EXPORT QgsMeshLayer : public QgsMapLayer, public QgsAbstractProfileSo
 
     void updateActiveDatasetGroups();
 
-    QgsMeshRendererSettings accordSymbologyWithGroupName( const QgsMeshRendererSettings &settings, const QMap<QString, int> &nameToIndex );
     void checkSymbologyConsistency();
 
     void setDataSourcePrivate( const QString &dataSource, const QString &baseName, const QString &provider,
-                               const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags ) final;
+                               const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags ) override;
 };
 
 #endif //QGSMESHLAYER_H

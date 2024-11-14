@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgscolordialog.h                                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -15,6 +15,8 @@ class QgsColorDialog : QDialog
 %Docstring(signature="appended")
 A custom QGIS dialog for selecting a color. Has many improvements over the standard Qt color picker dialog, including
 hue wheel supports, color swatches, and a color sampler.
+
+.. versionadded:: 2.5
 %End
 
 %TypeHeaderCode
@@ -52,6 +54,8 @@ Sets whether opacity modification (transparency) is permitted
 for the color dialog. Defaults to ``True``.
 
 :param allowOpacity: set to ``False`` to disable opacity modification
+
+.. versionadded:: 3.0
 %End
 
     static QColor getColor( const QColor &initialColor, QWidget *parent, const QString &title = QString(),
@@ -97,5 +101,5 @@ Sets the current color for the dialog
  *                                                                      *
  * src/gui/qgscolordialog.h                                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

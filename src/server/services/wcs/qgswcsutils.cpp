@@ -43,8 +43,8 @@ namespace QgsWcs
     // create name
     QDomElement nameElem = doc.createElement( QStringLiteral( "name" ) );
     QString name = layer->name();
-    if ( !layer->serverProperties()->shortName().isEmpty() )
-      name = layer->serverProperties()->shortName();
+    if ( !layer->shortName().isEmpty() )
+      name = layer->shortName();
     name = name.replace( ' ', '_' );
     const QDomText nameText = doc.createTextNode( name );
     nameElem.appendChild( nameText );
@@ -52,7 +52,7 @@ namespace QgsWcs
 
     // create label
     QDomElement labelElem = doc.createElement( QStringLiteral( "label" ) );
-    QString title = layer->serverProperties()->title();
+    QString title = layer->title();
     if ( title.isEmpty() )
     {
       title = layer->name();
@@ -62,7 +62,7 @@ namespace QgsWcs
     layerElem.appendChild( labelElem );
 
     //create description
-    const QString abstract = layer->serverProperties()->abstract();
+    const QString abstract = layer->abstract();
     if ( !abstract.isEmpty() )
     {
       QDomElement descriptionElem = doc.createElement( QStringLiteral( "description" ) );
@@ -84,7 +84,7 @@ namespace QgsWcs
     }
     catch ( QgsCsException &e )
     {
-      QgsDebugError( QStringLiteral( "Transform error caught: %1. Using original layer extent." ).arg( e.what() ) );
+      QgsDebugMsg( QStringLiteral( "Transform error caught: %1. Using original layer extent." ).arg( e.what() ) );
       BBox = layer->extent();
     }
     QDomElement lonLatElem = doc.createElement( QStringLiteral( "lonLatEnvelope" ) );

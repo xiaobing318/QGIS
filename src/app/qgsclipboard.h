@@ -26,7 +26,6 @@
 #include "qgsfields.h"
 #include "qgsfeature.h"
 #include "qgscoordinatereferencesystem.h"
-#include "qgsmaplayer.h"
 #include "qgis_app.h"
 
 class QgsVectorLayer;
@@ -56,7 +55,6 @@ class APP_EXPORT QgsClipboard : public QObject
     {
       AttributesOnly, //!< Tab delimited text, attributes only
       AttributesWithWKT, //!< Tab delimited text, with geometry in WKT format
-      AttributesWithWKB, //!< Tab delimited text, with geometry in WKB format
       GeoJSON, //!< GeoJSON FeatureCollection format
     };
     Q_ENUM( CopyFormat )
@@ -82,7 +80,7 @@ class APP_EXPORT QgsClipboard : public QObject
      * Place a copy of features on the internal clipboard,
      * destroying the previous contents.
      */
-    void replaceWithCopyOf( QgsFeatureStore &featureStore, QgsVectorLayer *src = nullptr );
+    void replaceWithCopyOf( QgsFeatureStore &featureStore );
 
     /**
      * Returns a copy of features on the internal clipboard.
@@ -142,8 +140,6 @@ class APP_EXPORT QgsClipboard : public QObject
      */
     QgsFields fields() const;
 
-    QgsMapLayer *layer() const;
-
   private slots:
 
     void systemClipboardChanged();
@@ -166,7 +162,7 @@ class APP_EXPORT QgsClipboard : public QObject
     void generateClipboardText( QString &textContent, QString &htmlContent ) const;
 
     /**
-     * Attempts to convert a string to a list of features, by parsing the string as WKT/WKB and GeoJSON
+     * Attempts to convert a string to a list of features, by parsing the string as WKT and GeoJSON
      * \param string string to convert
      * \param fields fields for resultant features
      * \returns list of features if conversion was successful
@@ -188,7 +184,6 @@ class APP_EXPORT QgsClipboard : public QObject
     QgsFeatureList mFeatureClipboard;
     QgsFields mFeatureFields;
     QgsCoordinateReferenceSystem mCRS;
-    QPointer<QgsMapLayer> mFeatureLayer;
 
     //! True if next system clipboard change should be ignored
     bool mIgnoreNextSystemClipboardChange = false;

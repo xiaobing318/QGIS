@@ -9,26 +9,21 @@ __author__ = 'Nyall Dawson'
 __date__ = '6/01/2020'
 __copyright__ = 'Copyright 2020, The QGIS Project'
 
+import qgis  # NOQA
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (
-    QgsBasicNumericFormat,
-    QgsBearingNumericFormat,
-    QgsCurrencyNumericFormat,
-    QgsFallbackNumericFormat,
-    QgsFractionNumericFormat,
-    QgsGeographicCoordinateNumericFormat,
-    QgsNumericFormat,
-    QgsNumericFormatContext,
-    QgsNumericFormatRegistry,
-    QgsPercentageNumericFormat,
-    QgsReadWriteContext,
-    QgsScientificNumericFormat,
-    QgsExpressionBasedNumericFormat,
-    QgsExpressionContextScope,
-    QgsExpressionContext
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsFallbackNumericFormat,
+                       QgsBasicNumericFormat,
+                       QgsNumericFormatContext,
+                       QgsBearingNumericFormat,
+                       QgsPercentageNumericFormat,
+                       QgsScientificNumericFormat,
+                       QgsCurrencyNumericFormat,
+                       QgsNumericFormatRegistry,
+                       QgsNumericFormat,
+                       QgsFractionNumericFormat,
+                       QgsGeographicCoordinateNumericFormat,
+                       QgsReadWriteContext)
+from qgis.testing import start_app, unittest
 
 start_app()
 
@@ -54,7 +49,7 @@ class TestFormat(QgsNumericFormat):
         return {}
 
 
-class TestQgsNumericFormat(QgisTestCase):
+class TestQgsNumericFormat(unittest.TestCase):
 
     def testFallbackFormat(self):
         """ test fallback formatter """
@@ -150,7 +145,7 @@ class TestQgsNumericFormat(QgisTestCase):
         self.assertEqual(f.formatDouble(5.5, context), 'w5⛹500')
 
         f.setShowPlusSign(False)
-        f.setRoundingType(QgsBasicNumericFormat.RoundingType.SignificantFigures)
+        f.setRoundingType(QgsBasicNumericFormat.SignificantFigures)
         self.assertEqual(f.formatDouble(0, context), '0⛹00')
         self.assertEqual(f.formatDouble(5, context), '5⛹00')
         self.assertEqual(f.formatDouble(-5, context), '-5⛹00')
@@ -302,7 +297,7 @@ class TestQgsNumericFormat(QgisTestCase):
     def testBearingFormat(self):
         """ test bearing formatter """
         f = QgsBearingNumericFormat()
-        f.setDirectionFormat(QgsBearingNumericFormat.FormatDirectionOption.UseRange0To180WithEWDirectionalSuffix)
+        f.setDirectionFormat(QgsBearingNumericFormat.UseRange0To180WithEWDirectionalSuffix)
         context = QgsNumericFormatContext()
         self.assertEqual(f.formatDouble(0, context), '0°')
         self.assertEqual(f.formatDouble(90, context), '90°E')
@@ -337,7 +332,7 @@ class TestQgsNumericFormat(QgisTestCase):
         self.assertEqual(f.formatDouble(180, context), '180.000°E')  # todo fix and avoid E
 
         f = QgsBearingNumericFormat()
-        f.setDirectionFormat(QgsBearingNumericFormat.FormatDirectionOption.UseRangeNegative180ToPositive180)
+        f.setDirectionFormat(QgsBearingNumericFormat.UseRangeNegative180ToPositive180)
         self.assertEqual(f.formatDouble(0, context), '0°')
         self.assertEqual(f.formatDouble(90, context), '90°')
         self.assertEqual(f.formatDouble(180, context), '180°')
@@ -370,7 +365,7 @@ class TestQgsNumericFormat(QgisTestCase):
         self.assertEqual(f.formatDouble(180, context), '180.000°')
 
         f = QgsBearingNumericFormat()
-        f.setDirectionFormat(QgsBearingNumericFormat.FormatDirectionOption.UseRange0To360)
+        f.setDirectionFormat(QgsBearingNumericFormat.UseRange0To360)
         self.assertEqual(f.formatDouble(0, context), '0°')
         self.assertEqual(f.formatDouble(90, context), '90°')
         self.assertEqual(f.formatDouble(180, context), '180°')
@@ -427,7 +422,7 @@ class TestQgsNumericFormat(QgisTestCase):
     def testPercentageFormat(self):
         """ test percentage formatter """
         f = QgsPercentageNumericFormat()
-        f.setInputValues(QgsPercentageNumericFormat.InputValues.ValuesArePercentage)
+        f.setInputValues(QgsPercentageNumericFormat.ValuesArePercentage)
         context = QgsNumericFormatContext()
         self.assertEqual(f.formatDouble(0, context), '0%')
         self.assertEqual(f.formatDouble(5, context), '5%')
@@ -480,7 +475,7 @@ class TestQgsNumericFormat(QgisTestCase):
         self.assertEqual(f.formatDouble(-55555555.5, context), '-55555555.500%')
 
         f = QgsPercentageNumericFormat()
-        f.setInputValues(QgsPercentageNumericFormat.InputValues.ValuesAreFractions)
+        f.setInputValues(QgsPercentageNumericFormat.ValuesAreFractions)
         context = QgsNumericFormatContext()
         self.assertEqual(f.formatDouble(0, context), '0%')
         self.assertEqual(f.formatDouble(5, context), '500%')
@@ -1423,40 +1418,6 @@ class TestQgsNumericFormat(QgisTestCase):
         self.assertEqual(f.formatDouble(5.44, context), "5☕44°N")
         self.assertEqual(f.formatDouble(-5.44, context), "5☕44°S")
         self.assertEqual(f.formatDouble(-5.44101, context), "5☕44°S")
-
-    def testExpressionBasedFormat(self):
-        """ test expression based formatter """
-        f = QgsExpressionBasedNumericFormat()
-        self.assertEqual(f.expression(), '@value')
-        f.setExpression("@value || @suffix")
-        self.assertEqual(f.expression(), "@value || @suffix")
-
-        context = QgsNumericFormatContext()
-        scope = QgsExpressionContextScope()
-        exp_context = QgsExpressionContext()
-        scope.setVariable('suffix', 'm')
-        exp_context.appendScope(scope)
-        context.setExpressionContext(exp_context)
-
-        self.assertEqual(f.formatDouble(0, context), '0m')
-        self.assertEqual(f.formatDouble(5, context), '5m')
-        self.assertEqual(f.formatDouble(5.5, context), '5.5m')
-        self.assertEqual(f.formatDouble(-5, context), '-5m')
-        self.assertEqual(f.formatDouble(-5.5, context), '-5.5m')
-
-        f2 = f.clone()
-        self.assertIsInstance(f2, QgsExpressionBasedNumericFormat)
-
-        self.assertEqual(f2.expression(), f.expression())
-
-        doc = QDomDocument("testdoc")
-        elem = doc.createElement("test")
-        f2.writeXml(elem, doc, QgsReadWriteContext())
-
-        f3 = QgsNumericFormatRegistry().createFromXml(elem, QgsReadWriteContext())
-        self.assertIsInstance(f3, QgsExpressionBasedNumericFormat)
-
-        self.assertEqual(f3.expression(), f.expression())
 
     def testRegistry(self):
         registry = QgsNumericFormatRegistry()

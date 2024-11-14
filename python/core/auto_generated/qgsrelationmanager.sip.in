@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsrelationmanager.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -90,6 +90,8 @@ Returns a list of relations with matching names.
 :return: a list of matching relations
 
 .. seealso:: :py:func:`relation`
+
+.. versionadded:: 2.16
 %End
 
     void clear();
@@ -124,6 +126,8 @@ Discover all the relations available from the current layers.
 :param layers: the current layers
 
 :return: the list of discovered relations
+
+.. versionadded:: 3.0
 %End
 
     QMap<QString, QgsPolymorphicRelation> polymorphicRelations() const;
@@ -161,6 +165,8 @@ Emitted when the relations were loaded after reading a project
     void changed();
 %Docstring
 Emitted when relations are added or removed to the manager.
+
+.. versionadded:: 2.5
 %End
 
   public slots:
@@ -177,5 +183,5 @@ Updates relations status
  *                                                                      *
  * src/core/qgsrelationmanager.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

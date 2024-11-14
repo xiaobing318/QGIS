@@ -3,7 +3,7 @@
  *                                                                      *
  * src/3d/qgs3d.h                                                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -23,6 +23,7 @@ related to 3D classes.
 #include "qgs3d.h"
 %End
   public:
+
 
 
     static Qgs3D *instance();
@@ -51,5 +52,5 @@ Returns the material registry, used for managing 3D materials.
  *                                                                      *
  * src/3d/qgs3d.h                                                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/annotations/qgsannotationmanager.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -21,6 +21,8 @@ rather accessed through a :py:class:`QgsProject` via :py:func:`QgsProject.annota
 
 :py:class:`QgsAnnotationManager` retains ownership of all the annotations contained
 in the manager.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -92,7 +94,6 @@ present in the XML document.
 .. seealso:: :py:func:`writeXml`
 %End
 
-
     QDomElement writeXml( QDomDocument &doc, const QgsReadWriteContext &context ) const;
 %Docstring
 Returns a DOM element representing the state of the manager.
@@ -135,5 +136,5 @@ Emitted when an annotation is about to be removed from the manager
  *                                                                      *
  * src/core/annotations/qgsannotationmanager.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

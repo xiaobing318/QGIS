@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     pct2rgb.py
@@ -78,29 +80,20 @@ class pct2rgb(GdalAlgorithm):
         inLayer = self.parameterAsRasterLayer(parameters, self.INPUT, context)
         if inLayer is None:
             raise QgsProcessingException(self.invalidRasterError(parameters, self.INPUT))
-        input_details = GdalUtils.gdal_connection_details_from_layer(
-            inLayer)
 
         out = self.parameterAsOutputLayer(parameters, self.OUTPUT, context)
         self.setOutputValue(self.OUTPUT, out)
 
-        output_format = QgsRasterFileWriter.driverForExtension(os.path.splitext(out)[1])
-        if not output_format:
-            raise QgsProcessingException(self.tr('Output format is invalid'))
-
         arguments = [
-            input_details.connection_string,
+            inLayer.source(),
             out,
             '-of',
-            output_format,
+            QgsRasterFileWriter.driverForExtension(os.path.splitext(out)[1]),
             '-b',
             str(self.parameterAsInt(parameters, self.BAND, context)),
         ]
 
         if self.parameterAsBoolean(parameters, self.RGBA, context):
             arguments.append('-rgba')
-
-        if input_details.credential_options:
-            arguments.extend(input_details.credential_options_as_arguments())
 
         return [self.commandName() + ('.bat' if isWindows() else '.py'), GdalUtils.escapeAndJoin(arguments)]

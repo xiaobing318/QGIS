@@ -16,14 +16,13 @@ from qgis.PyQt import sip
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.PyQt.QtXml import QDomDocument, QDomNode
 from qgis.core import (
-    QgsMapLayer,
     QgsMapLayerStore,
+    QgsVectorLayer,
+    QgsMapLayer,
     QgsProject,
     QgsReadWriteContext,
-    QgsVectorLayer,
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -35,7 +34,7 @@ def createLayer(name):
     return QgsVectorLayer("Point?field=x:string", name, "memory")
 
 
-class TestQgsMapLayerStore(QgisTestCase):
+class TestQgsMapLayerStore(unittest.TestCase):
 
     def setUp(self):
         pass
@@ -560,7 +559,7 @@ class TestQgsMapLayerStore(QgisTestCase):
 
         doc = QDomDocument()
         doc.setContent(
-            f'<maplayer><provider encoding="UTF-8">ogr</provider><layername>fixed</layername><id>{vl2.id()}</id></maplayer>')
+            '<maplayer><provider encoding="UTF-8">ogr</provider><layername>fixed</layername><id>%s</id></maplayer>' % vl2.id())
         layer_node = QDomNode(doc.firstChild())
         self.assertTrue(vl2.writeXml(layer_node, doc, QgsReadWriteContext()))
         datasource_node = doc.createElement("datasource")

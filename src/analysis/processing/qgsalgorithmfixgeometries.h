@@ -45,9 +45,9 @@ class QgsFixGeometriesAlgorithm : public QgsProcessingFeatureBasedAlgorithm
     void initParameters( const QVariantMap &configuration = QVariantMap() ) override;
 
   protected:
-    Qgis::ProcessingFeatureSourceFlags sourceFlags() const override;
+    QgsProcessingFeatureSource::Flag sourceFlags() const override;
     QString outputName() const override;
-    Qgis::WkbType outputWkbType( Qgis::WkbType type ) const override;
+    QgsWkbTypes::Type outputWkbType( QgsWkbTypes::Type type ) const override;
     bool prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
     QgsFeatureList processFeature( const QgsFeature &feature,  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
   private:

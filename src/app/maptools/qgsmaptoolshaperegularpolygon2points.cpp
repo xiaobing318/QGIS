@@ -15,8 +15,8 @@
  ***************************************************************************/
 
 #include "qgsmaptoolshaperegularpolygon2points.h"
-#include "moc_qgsmaptoolshaperegularpolygon2points.cpp"
 #include "qgsgeometryrubberband.h"
+#include "qgsmapcanvas.h"
 #include "qgspoint.h"
 #include "qgsmapmouseevent.h"
 #include "qgsmaptoolcapture.h"
@@ -69,7 +69,7 @@ bool QgsMapToolShapeRegularPolygon2Points::cadCanvasReleaseEvent( QgsMapMouseEve
 
     if ( !mTempRubberBand )
     {
-      Qgis::GeometryType type = mode == QgsMapToolCapture::CapturePolygon ? Qgis::GeometryType::Polygon : Qgis::GeometryType::Line;
+      QgsWkbTypes::GeometryType type = mode == QgsMapToolCapture::CapturePolygon ? QgsWkbTypes::PolygonGeometry : QgsWkbTypes::LineGeometry;
       mTempRubberBand = mParentTool->createGeometryRubberBand( type, true );
       mTempRubberBand->show();
 

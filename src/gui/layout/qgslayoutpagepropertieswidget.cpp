@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgslayoutpagepropertieswidget.h"
-#include "moc_qgslayoutpagepropertieswidget.cpp"
 #include "qgsapplication.h"
 #include "qgspagesizeregistry.h"
 #include "qgslayoutitempage.h"
@@ -23,8 +22,6 @@
 #include "qgslayoutundostack.h"
 #include "qgsvectorlayer.h"
 #include "qgsfillsymbol.h"
-#include "qgslayoutrendercontext.h"
-#include "qgslayoutreportcontext.h"
 
 QgsLayoutPagePropertiesWidget::QgsLayoutPagePropertiesWidget( QWidget *parent, QgsLayoutItem *layoutItem )
   : QgsLayoutItemBaseWidget( parent, layoutItem )
@@ -69,11 +66,11 @@ QgsLayoutPagePropertiesWidget::QgsLayoutPagePropertiesWidget( QWidget *parent, Q
   connect( mExcludePageCheckBox, &QCheckBox::toggled, this, &QgsLayoutPagePropertiesWidget::excludeExportsToggled );
 
   connect( mSymbolButton, &QgsSymbolButton::changed, this, &QgsLayoutPagePropertiesWidget::symbolChanged );
-  registerDataDefinedButton( mPaperSizeDDBtn, QgsLayoutObject::DataDefinedProperty::PresetPaperSize );
-  registerDataDefinedButton( mWidthDDBtn, QgsLayoutObject::DataDefinedProperty::ItemWidth );
-  registerDataDefinedButton( mHeightDDBtn, QgsLayoutObject::DataDefinedProperty::ItemHeight );
-  registerDataDefinedButton( mOrientationDDBtn, QgsLayoutObject::DataDefinedProperty::PaperOrientation );
-  registerDataDefinedButton( mExcludePageDDBtn, QgsLayoutObject::DataDefinedProperty::ExcludeFromExports );
+  registerDataDefinedButton( mPaperSizeDDBtn, QgsLayoutObject::PresetPaperSize );
+  registerDataDefinedButton( mWidthDDBtn, QgsLayoutObject::ItemWidth );
+  registerDataDefinedButton( mHeightDDBtn, QgsLayoutObject::ItemHeight );
+  registerDataDefinedButton( mOrientationDDBtn, QgsLayoutObject::PaperOrientation );
+  registerDataDefinedButton( mExcludePageDDBtn, QgsLayoutObject::ExcludeFromExports );
 
   connect( mPaperSizeDDBtn, &QgsPropertyOverrideButton::changed, this, &QgsLayoutPagePropertiesWidget::refreshLayout );
   connect( mWidthDDBtn, &QgsPropertyOverrideButton::changed, this, &QgsLayoutPagePropertiesWidget::refreshLayout );
@@ -84,26 +81,9 @@ QgsLayoutPagePropertiesWidget::QgsLayoutPagePropertiesWidget( QWidget *parent, Q
 
   mSymbolButton->registerExpressionContextGenerator( mPage );
   mSymbolButton->setLayer( coverageLayer() );
-
-  connect( mApplyToAllButton, &QPushButton::clicked, this, &QgsLayoutPagePropertiesWidget::applyToAll );
-
   if ( mPage->layout() )
   {
     connect( &mPage->layout()->reportContext(), &QgsLayoutReportContext::layerChanged, mSymbolButton, &QgsSymbolButton::setLayer );
-
-    QgsLayoutPageCollection *pages = mPage->layout()->pageCollection();
-    const bool multiPage = pages->pageCount() > 1;
-    if ( multiPage )
-    {
-      const int pageNumber = mPage->layout()->pageCollection()->pageNumber( mPage );
-      mTitleLabel->setText( tr( "Page (%1/%2)" ).arg( pageNumber + 1 ).arg( pages->pageCount() ) );
-    }
-    else
-    {
-      mTitleLabel->setText( tr( "Page" ) );
-    }
-    mApplyToAllButton->setVisible( multiPage );
-
   }
 
   showCurrentPageSize();
@@ -241,10 +221,4 @@ void QgsLayoutPagePropertiesWidget::showCurrentPageSize()
     mSizeUnitsComboBox->setEnabled( true );
     mPageOrientationComboBox->setEnabled( false );
   }
-}
-
-void QgsLayoutPagePropertiesWidget::applyToAll()
-{
-  QgsLayoutPageCollection *pages = mPage->layout()->pageCollection();
-  pages->applyPropertiesToAllOtherPages( pages->pageNumber( mPage ) );
 }

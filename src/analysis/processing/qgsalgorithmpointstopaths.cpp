@@ -63,7 +63,7 @@ QString QgsPointsToPathsAlgorithm::groupId() const
 void QgsPointsToPathsAlgorithm::initAlgorithm( const QVariantMap & )
 {
   addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ),
-                QObject::tr( "Input layer" ), QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::VectorPoint ) ) );
+                QObject::tr( "Input layer" ), QList< int >() << QgsProcessing::TypeVectorPoint ) );
   addParameter( new QgsProcessingParameterBoolean( QStringLiteral( "CLOSE_PATH" ),
                 QObject::tr( "Create closed paths" ), false, true ) );
   addParameter( new QgsProcessingParameterExpression( QStringLiteral( "ORDER_EXPRESSION" ),
@@ -73,7 +73,7 @@ void QgsPointsToPathsAlgorithm::initAlgorithm( const QVariantMap & )
   addParameter( new QgsProcessingParameterExpression( QStringLiteral( "GROUP_EXPRESSION" ),
                 QObject::tr( "Path group expression" ), QVariant(), QStringLiteral( "INPUT" ), true ) );
   addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ),
-                QObject::tr( "Paths" ), Qgis::ProcessingSourceType::VectorLine ) );
+                QObject::tr( "Paths" ), QgsProcessing::TypeVectorLine ) );
   // TODO QGIS 4: remove parameter. move logic to separate algorithm if needed.
   addParameter( new QgsProcessingParameterFolderDestination( QStringLiteral( "OUTPUT_TEXT_DIR" ),
                 QObject::tr( "Directory for text output" ), QVariant(), true, false ) );
@@ -82,16 +82,16 @@ void QgsPointsToPathsAlgorithm::initAlgorithm( const QVariantMap & )
   // backwards compatibility parameters
   // TODO QGIS 4: remove compatibility parameters and their logic
   QgsProcessingParameterField *orderField = new QgsProcessingParameterField( QStringLiteral( "ORDER_FIELD" ),
-      QObject::tr( "Order field" ), QVariant(), QString(), Qgis::ProcessingFieldParameterDataType::Any, false, true );
-  orderField->setFlags( orderField->flags() | Qgis::ProcessingParameterFlag::Hidden );
+      QObject::tr( "Order field" ), QVariant(), QString(), QgsProcessingParameterField::Any, false, true );
+  orderField->setFlags( orderField->flags() | QgsProcessingParameterDefinition::FlagHidden );
   addParameter( orderField );
   QgsProcessingParameterField *groupField = new QgsProcessingParameterField( QStringLiteral( "GROUP_FIELD" ),
-      QObject::tr( "Group field" ), QVariant(), QStringLiteral( "INPUT" ), Qgis::ProcessingFieldParameterDataType::Any, false, true );
-  groupField->setFlags( orderField->flags() | Qgis::ProcessingParameterFlag::Hidden );
+      QObject::tr( "Group field" ), QVariant(), QStringLiteral( "INPUT" ), QgsProcessingParameterField::Any, false, true );
+  groupField->setFlags( orderField->flags() | QgsProcessingParameterDefinition::FlagHidden );
   addParameter( groupField );
   QgsProcessingParameterString *dateFormat = new QgsProcessingParameterString( QStringLiteral( "DATE_FORMAT" ),
       QObject::tr( "Date format (if order field is DateTime)" ), QVariant(), false, true );
-  dateFormat->setFlags( orderField->flags() | Qgis::ProcessingParameterFlag::Hidden );
+  dateFormat->setFlags( orderField->flags() | QgsProcessingParameterDefinition::FlagHidden );
   addParameter( dateFormat );
 }
 
@@ -166,7 +166,7 @@ QVariantMap QgsPointsToPathsAlgorithm::processAlgorithm( const QVariantMap &para
   QStringList requiredFields = QStringList( orderExpression.referencedColumns().values() );
   orderExpression.prepare( &expressionContext );
 
-  QMetaType::Type orderFieldType = QMetaType::Type::QString;
+  QVariant::Type orderFieldType = QVariant::String;
   if ( orderExpression.isField() )
   {
     const int orderFieldIndex = source->fields().indexFromName( orderExpression.referencedColumns().values().first() );
@@ -198,7 +198,7 @@ QVariantMap QgsPointsToPathsAlgorithm::processAlgorithm( const QVariantMap &para
   QCollator collator;
   collator.setNumericMode( true );
 
-  Qgis::WkbType wkbType = Qgis::WkbType::LineString;
+  QgsWkbTypes::Type wkbType = QgsWkbTypes::LineString;
   if ( QgsWkbTypes::hasM( source->wkbType() ) )
     wkbType = QgsWkbTypes::addM( wkbType );
   if ( QgsWkbTypes::hasZ( source->wkbType() ) )
@@ -210,10 +210,9 @@ QVariantMap QgsPointsToPathsAlgorithm::processAlgorithm( const QVariantMap &para
     throw QgsProcessingException( invalidSinkError( parameters, QStringLiteral( "OUTPUT" ) ) );
 
   const QString textDir = parameterAsString( parameters, QStringLiteral( "OUTPUT_TEXT_DIR" ), context );
-  if ( !textDir.isEmpty() && !QDir().mkpath( textDir ) )
-  {
-    throw QgsProcessingException( QObject::tr( "Failed to create the text output directory" ) );
-  }
+  if ( ! textDir.isEmpty() &&
+       ! QDir( textDir ).exists() )
+    throw QgsProcessingException( QObject::tr( "The text output directory does not exist" ) );
 
   QgsDistanceArea da = QgsDistanceArea();
   da.setSourceCrs( source->sourceCrs(), context.transformContext() );
@@ -223,7 +222,7 @@ QVariantMap QgsPointsToPathsAlgorithm::processAlgorithm( const QVariantMap &para
   QHash< QVariant, QVector< QPair< QVariant, QgsPoint > > > allPoints;
 
   const QgsFeatureRequest request = QgsFeatureRequest().setSubsetOfAttributes( requiredFields, source->fields() );
-  QgsFeatureIterator fit = source->getFeatures( request, Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks );
+  QgsFeatureIterator fit = source->getFeatures( request, QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks );
   QgsFeature f;
   const double totalPoints = source->featureCount() > 0 ? 100.0 / source->featureCount() : 0;
   long currentPoint = 0;
@@ -278,7 +277,7 @@ QVariantMap QgsPointsToPathsAlgorithm::processAlgorithm( const QVariantMap &para
     {
       break;
     }
-    QVector< QPair< QVariant, QgsPoint > > pairs = hit.value();
+    auto pairs = hit.value();
 
     if ( naturalSort )
     {
@@ -325,14 +324,14 @@ QVariantMap QgsPointsToPathsAlgorithm::processAlgorithm( const QVariantMap &para
     QgsAttributes attrs;
     if ( ! groupExpressionString.isEmpty() )
       attrs.append( hit.key() );
-    attrs.append( pairs.first().first );
-    attrs.append( pairs.last().first );
+    attrs.append( hit.value().first().first );
+    attrs.append( hit.value().last().first );
     outputFeature.setGeometry( QgsGeometry::fromPolyline( pathPoints ) );
     outputFeature.setAttributes( attrs );
     if ( !sink->addFeature( outputFeature, QgsFeatureSink::FastInsert ) )
       throw QgsProcessingException( writeFeatureError( sink.get(), parameters, QStringLiteral( "OUTPUT" ) ) );
 
-    if ( !textDir.isEmpty() )
+    if ( ! textDir.isEmpty() )
     {
       const QString filename = QDir( textDir ).filePath( hit.key().toString() + QString( ".txt" ) );
       QFile textFile( filename );
@@ -353,15 +352,7 @@ QVariantMap QgsPointsToPathsAlgorithm::processAlgorithm( const QVariantMap &para
       for ( int i = 1; i < pathPoints.size(); ++i )
       {
         const double angle = pathPoints.at( i - 1 ).azimuth( pathPoints.at( i ) );
-        double distance = 0;
-        try
-        {
-          distance = da.measureLine( pathPoints.at( i - 1 ), pathPoints.at( i ) );
-        }
-        catch ( QgsCsException & )
-        {
-          throw QgsProcessingException( QObject::tr( "An error occurred while calculating length" ) );
-        }
+        const double distance = da.measureLine( pathPoints.at( i - 1 ), pathPoints.at( i ) );
         out << QString( "%1;%2;90\n" ).arg( angle ).arg( distance );
       }
     }
@@ -369,15 +360,10 @@ QVariantMap QgsPointsToPathsAlgorithm::processAlgorithm( const QVariantMap &para
     ++pathCount;
   }
 
-  sink->finalize();
 
   QVariantMap outputs;
   outputs.insert( QStringLiteral( "OUTPUT" ), dest );
   outputs.insert( QStringLiteral( "NUM_PATHS" ), pathCount );
-  if ( !textDir.isEmpty() )
-  {
-    outputs.insert( QStringLiteral( "OUTPUT_TEXT_DIR" ), textDir );
-  }
   return outputs;
 }
 

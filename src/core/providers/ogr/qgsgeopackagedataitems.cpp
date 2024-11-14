@@ -13,7 +13,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsgeopackagedataitems.h"
-#include "moc_qgsgeopackagedataitems.cpp"
 ///@cond PRIVATE
 
 #include "qgsgeopackagedataitems.h"
@@ -44,9 +43,9 @@ QString QgsGeoPackageDataItemProvider::dataProviderKey() const
   return QStringLiteral( "ogr" );
 }
 
-Qgis::DataItemProviderCapabilities QgsGeoPackageDataItemProvider::capabilities() const
+int QgsGeoPackageDataItemProvider::capabilities() const
 {
-  return Qgis::DataItemProviderCapability::Databases;
+  return QgsDataProvider::Database;
 }
 
 QgsDataItem *QgsGeoPackageDataItemProvider::createDataItem( const QString &path, QgsDataItem *parentItem )
@@ -112,29 +111,29 @@ QVector<QgsDataItem *> QgsGeoPackageCollectionItem::createChildren()
   {
     switch ( sublayer.type() )
     {
-      case Qgis::LayerType::Vector:
+      case QgsMapLayerType::VectorLayer:
       {
         Qgis::BrowserLayerType layerType = Qgis::BrowserLayerType::Vector;
 
         switch ( QgsWkbTypes::geometryType( sublayer.wkbType() ) )
         {
-          case Qgis::GeometryType::Point:
+          case QgsWkbTypes::PointGeometry:
             layerType = Qgis::BrowserLayerType::Point;
             break;
 
-          case Qgis::GeometryType::Line:
+          case QgsWkbTypes::LineGeometry:
             layerType = Qgis::BrowserLayerType::Line;
             break;
 
-          case Qgis::GeometryType::Polygon:
+          case QgsWkbTypes::PolygonGeometry:
             layerType = Qgis::BrowserLayerType::Polygon;
             break;
 
-          case Qgis::GeometryType::Null:
+          case QgsWkbTypes::NullGeometry:
             layerType = Qgis::BrowserLayerType::TableLayer;
             break;
 
-          case Qgis::GeometryType::Unknown:
+          case QgsWkbTypes::UnknownGeometry:
             layerType = Qgis::BrowserLayerType::Vector;
             break;
         }
@@ -143,17 +142,16 @@ QVector<QgsDataItem *> QgsGeoPackageCollectionItem::createChildren()
         break;
       }
 
-      case Qgis::LayerType::Raster:
+      case QgsMapLayerType::RasterLayer:
         children.append( new QgsGeoPackageRasterLayerItem( this, sublayer.name(), path, sublayer.uri() ) );
         break;
 
-      case Qgis::LayerType::Plugin:
-      case Qgis::LayerType::Mesh:
-      case Qgis::LayerType::VectorTile:
-      case Qgis::LayerType::Annotation:
-      case Qgis::LayerType::PointCloud:
-      case Qgis::LayerType::Group:
-      case Qgis::LayerType::TiledScene:
+      case QgsMapLayerType::PluginLayer:
+      case QgsMapLayerType::MeshLayer:
+      case QgsMapLayerType::VectorTileLayer:
+      case QgsMapLayerType::AnnotationLayer:
+      case QgsMapLayerType::PointCloudLayer:
+      case QgsMapLayerType::GroupLayer:
         break;
     }
   }
@@ -388,7 +386,7 @@ QList<QgsMapLayer *> QgsGeoPackageAbstractLayerItem::layersInProject() const
 {
   // Check if the layer(s) are in the registry
   QList<QgsMapLayer *> layersList;
-  const auto mapLayers( QgsProject::instance()->mapLayers() ); // skip-keyword-check
+  const auto mapLayers( QgsProject::instance()->mapLayers() );
   for ( QgsMapLayer *layer :  mapLayers )
   {
     if ( layer->publicSource() == mUri )

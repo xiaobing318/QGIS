@@ -41,7 +41,7 @@ class QgsCoordinateReferenceSystem;
 class QgsVectorLayer;
 
 #ifndef SIP_RUN
-#include <nlohmann/json_fwd.hpp>
+#include "nlohmann/json_fwd.hpp"
 using namespace nlohmann;
 #endif
 
@@ -225,10 +225,8 @@ class SERVER_EXPORT QgsServerApiUtils
     /**
      * Returns a \a crs as OGC URI (format: http://www.opengis.net/def/crs/OGC/1.3/CRS84)
      * Returns an empty string on failure.
-     *
-     * \deprecated QGIS 3.30. Use QgsCoordinateReferenceSystem::toOgcUri() instead.
      */
-    Q_DECL_DEPRECATED static QString crsToOgcUri( const QgsCoordinateReferenceSystem &crs ) SIP_DEPRECATED;
+    static QString crsToOgcUri( const QgsCoordinateReferenceSystem &crs );
 
     /**
      * Appends MAP query string parameter from current \a requestUrl to the given \a path

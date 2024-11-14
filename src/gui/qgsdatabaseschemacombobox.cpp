@@ -14,7 +14,6 @@
 ***************************************************************************/
 
 #include "qgsdatabaseschemacombobox.h"
-#include "moc_qgsdatabaseschemacombobox.cpp"
 #include "qgsdatabaseschemamodel.h"
 #include "qgsabstractdatabaseproviderconnection.h"
 #include "qgsapplication.h"
@@ -189,9 +188,9 @@ QgsDatabaseSchemaComboBoxSortModel::QgsDatabaseSchemaComboBoxSortModel( QObject 
 bool QgsDatabaseSchemaComboBoxSortModel::lessThan( const QModelIndex &left, const QModelIndex &right ) const
 {
   // empty row is always first
-  if ( sourceModel()->data( left, static_cast< int >( QgsDatabaseSchemaModel::CustomRole::Empty ) ).toBool() )
+  if ( sourceModel()->data( left, QgsDatabaseSchemaModel::RoleEmpty ).toBool() )
     return true;
-  else if ( sourceModel()->data( right, static_cast< int >( QgsDatabaseSchemaModel::CustomRole::Empty ) ).toBool() )
+  else if ( sourceModel()->data( right, QgsDatabaseSchemaModel::RoleEmpty ).toBool() )
     return false;
 
   // default mode is alphabetical order

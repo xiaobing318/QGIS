@@ -15,13 +15,11 @@
 
 #include <QTreeWidget>
 #include <QVBoxLayout>
-#include <QPointer>
-#include <QScreen>
 
 #include "qgsmasksourceselectionwidget.h"
-#include "moc_qgsmasksourceselectionwidget.cpp"
 #include "qgsproject.h"
 #include "qgsvectorlayer.h"
+#include "qgslegendsymbolitem.h"
 #include "symbology/qgsrenderer.h"
 #include "qgsstyleentityvisitor.h"
 #include "symbology/qgssymbollayerutils.h"
@@ -29,6 +27,8 @@
 #include "qgslayertree.h"
 #include "qgslayertreelayer.h"
 #include "qgsvectorlayerlabeling.h"
+#include "qgsvectorlayerutils.h"
+#include "symbology/qgsmasksymbollayer.h"
 
 static void expandAll( QTreeWidgetItem *item )
 {
@@ -37,9 +37,20 @@ static void expandAll( QTreeWidgetItem *item )
   item->setExpanded( true );
 }
 
+void printSymbolLayerId( const QgsSymbolLayerId &lid )
+{
+  std::cout << lid.symbolKey().toLocal8Bit().constData() << "/";
+  QVector<int> path = lid.symbolLayerIndexPath();
+  for ( int i = 0; i < path.size(); i++ )
+  {
+    std::cout << path[i] << "/";
+  }
+}
+
 void printSymbolLayerRef( const QgsSymbolLayerReference &ref )
 {
-  std::cout << ref.layerId().toLocal8Bit().constData() << "/" << ref.symbolLayerIdV2().toLocal8Bit().constData();
+  std::cout << ref.layerId().toLocal8Bit().constData() << "/";
+  printSymbolLayerId( ref.symbolLayerId() );
 }
 
 QgsMaskSourceSelectionWidget::QgsMaskSourceSelectionWidget( QWidget *parent )
@@ -66,11 +77,8 @@ void QgsMaskSourceSelectionWidget::update()
   class SymbolLayerFillVisitor : public QgsStyleEntityVisitorInterface
   {
     public:
-      SymbolLayerFillVisitor( QTreeWidgetItem *layerItem, const QgsVectorLayer *layer, QHash<QgsSymbolLayerReference, QTreeWidgetItem *> &items, QScreen *screen )
-        : mLayerItem( layerItem )
-        , mLayer( layer )
-        , mItems( items )
-        , mScreen( screen )
+      SymbolLayerFillVisitor( QTreeWidgetItem *layerItem, const QgsVectorLayer *layer, QHash<QgsSymbolLayerReference, QTreeWidgetItem *> &items ):
+        mLayerItem( layerItem ), mLayer( layer ), mItems( items )
       {}
 
       bool visitEnter( const QgsStyleEntityVisitorInterface::Node &node ) override
@@ -78,23 +86,13 @@ void QgsMaskSourceSelectionWidget::update()
         if ( node.type != QgsStyleEntityVisitorInterface::NodeType::SymbolRule )
           return false;
 
+        mCurrentIdentifier = node.identifier;
         mCurrentDescription = node.description;
 
         return true;
       }
 
-      struct TreeNode
-      {
-        TreeNode( const QgsSymbol *_symbol, const QgsSymbolLayer *_sl = nullptr )
-          : sl( _sl ), symbol( _symbol ) {};
-
-        const QgsSymbolLayer *sl = nullptr;
-        const QgsSymbol *symbol = nullptr;
-        QList<TreeNode> children;
-      };
-
-
-      bool visitSymbol( TreeNode &parent, const QString &identifier, const QgsSymbol *symbol, QVector<int> rootPath )
+      bool visitSymbol( QTreeWidgetItem *rootItem, const QString &identifier, const QgsSymbol *symbol, QVector<int> rootPath )
       {
         bool ret = false;
         for ( int idx = 0; idx < symbol->symbolLayerCount(); idx++ )
@@ -105,12 +103,23 @@ void QgsMaskSourceSelectionWidget::update()
           QVector<int> indexPath = rootPath;
           indexPath.append( idx );
 
-          TreeNode node( symbol, sl );
-          if ( ( sl->layerType() == "MaskMarker" ) ||
-               ( subSymbol && visitSymbol( node, identifier, subSymbol, indexPath ) ) )
+          std::unique_ptr< QTreeWidgetItem > slItem = std::make_unique< QTreeWidgetItem >( rootItem );
+          const QIcon slIcon = QgsSymbolLayerUtils::symbolLayerPreviewIcon( sl, QgsUnitTypes::RenderMillimeters, QSize( iconSize, iconSize ), QgsMapUnitScale(), symbol->type() );
+          slItem->setIcon( 0, slIcon );
+          if ( sl->layerType() == "MaskMarker" )
           {
+            slItem->setText( 0, QObject::tr( "Mask symbol layer" ) );
+            slItem->setFlags( slItem->flags() | Qt::ItemIsUserCheckable );
+            slItem->setCheckState( 0, Qt::Unchecked );
+          }
+
+          if ( ( sl->layerType() == "MaskMarker" ) ||
+               ( subSymbol && visitSymbol( slItem.get(), identifier, subSymbol, indexPath ) ) )
+          {
+            const QgsSymbolLayerReference ref( mLayer->id(), QgsSymbolLayerId( mCurrentIdentifier + identifier, indexPath ) );
+            mItems[ref] = slItem.get();
+            rootItem->addChild( slItem.release() );
             ret = true;
-            parent.children << node;
           }
         }
         return ret;
@@ -126,52 +135,22 @@ void QgsMaskSourceSelectionWidget::update()
         if ( ! symbol )
           return true;
 
-        TreeNode node( symbol );
-        if ( visitSymbol( node, leaf.identifier, symbol, {} ) )
-          createItems( leaf.description, mLayerItem, node );
+        std::unique_ptr< QTreeWidgetItem > symbolItem = std::make_unique< QTreeWidgetItem >( mLayerItem, QStringList() << ( mCurrentDescription + leaf.description ) );
+        const QIcon icon = QgsSymbolLayerUtils::symbolPreviewIcon( symbol, QSize( iconSize, iconSize ) );
+        symbolItem->setIcon( 0, icon );
+
+        if ( visitSymbol( symbolItem.get(), leaf.identifier, symbol, {} ) )
+          mLayerItem->addChild( symbolItem.release() );
 
         return true;
       }
 
-      void createItems( const QString &leafDescription, QTreeWidgetItem *rootItem, const TreeNode &node )
-      {
-        QTreeWidgetItem *item = nullptr;
-        // root symbol node
-        if ( !node.sl )
-        {
-          item = new QTreeWidgetItem( rootItem, QStringList() << ( mCurrentDescription + leafDescription ) );
-          const QIcon icon = QgsSymbolLayerUtils::symbolPreviewIcon( node.symbol, QSize( iconSize, iconSize ), 0, nullptr, QgsScreenProperties( mScreen.data() ) );
-          item->setIcon( 0, icon );
-        }
-        // symbol layer node
-        else
-        {
-          item = new QTreeWidgetItem( rootItem );
-          const QIcon slIcon = QgsSymbolLayerUtils::symbolLayerPreviewIcon( node.sl, Qgis::RenderUnit::Millimeters, QSize( iconSize, iconSize ), QgsMapUnitScale(), node.symbol->type(), nullptr, QgsScreenProperties( mScreen.data() ) );
-          item->setIcon( 0, slIcon );
-          if ( node.sl->layerType() == "MaskMarker" )
-          {
-            item->setText( 0, QObject::tr( "Mask symbol layer" ) );
-            item->setFlags( item->flags() | Qt::ItemIsUserCheckable );
-            item->setCheckState( 0, Qt::Unchecked );
-
-            const QgsSymbolLayerReference ref( mLayer->id(), node.sl->id() );
-            mItems[ref] = item;
-          }
-        }
-
-        rootItem->addChild( item );
-
-        for ( TreeNode child : node.children )
-          createItems( leafDescription, item, child );
-      };
-
       const int iconSize = QgsGuiUtils::scaleIconSize( 16 );
       QString mCurrentDescription;
+      QString mCurrentIdentifier;
       QTreeWidgetItem *mLayerItem;
       const QgsVectorLayer *mLayer;
       QHash<QgsSymbolLayerReference, QTreeWidgetItem *> &mItems;
-      QPointer< QScreen > mScreen;
   };
 
   class LabelMasksVisitor : public QgsStyleEntityVisitorInterface
@@ -204,7 +183,7 @@ void QgsMaskSourceSelectionWidget::update()
             slItem->setFlags( slItem->flags() | Qt::ItemIsUserCheckable );
             slItem->setCheckState( 0, Qt::Unchecked );
             mLayerItem->addChild( slItem );
-            mItems[QgsSymbolLayerReference( "__labels__" + mLayer->id(), currentRule )] = slItem;
+            mItems[QgsSymbolLayerReference( "__labels__" + mLayer->id(), { currentRule, 0 } )] = slItem;
           }
         }
         return true;
@@ -223,15 +202,15 @@ void QgsMaskSourceSelectionWidget::update()
   const auto layers = QgsProject::instance()->layerTreeRoot()->findLayers();
   for ( const QgsLayerTreeLayer *layerTreeLayer : layers )
   {
-    QgsMapLayer *layer = layerTreeLayer->layer();
-    QgsVectorLayer *vl = qobject_cast<QgsVectorLayer *>( layer );
+    const QgsMapLayer *layer = layerTreeLayer->layer();
+    const QgsVectorLayer *vl = qobject_cast<const QgsVectorLayer *>( layer );
     if ( ! vl )
       continue;
     if ( ! vl->renderer() )
       continue;
 
     std::unique_ptr< QTreeWidgetItem > layerItem = std::make_unique< QTreeWidgetItem >( mTree, QStringList() << layer->name() );
-    layerItem->setData( 0, Qt::UserRole, QVariant::fromValue( vl ) );
+    layerItem->setData( 0, Qt::UserRole, vl );
 
     if ( vl->labeling() )
     {
@@ -239,7 +218,7 @@ void QgsMaskSourceSelectionWidget::update()
       vl->labeling()->accept( &lblVisitor );
     }
 
-    SymbolLayerFillVisitor slVisitor( layerItem.get(), vl, mItems, screen() );
+    SymbolLayerFillVisitor slVisitor( layerItem.get(), vl, mItems );
     vl->renderer()->accept( &slVisitor );
 
     if ( layerItem->childCount() > 0 )
@@ -261,7 +240,7 @@ QList<QgsMaskSourceSelectionWidget::MaskSource> QgsMaskSourceSelectionWidget::se
       QgsMaskSourceSelectionWidget::MaskSource source;
       source.isLabeling = ref.layerId().startsWith( "__labels__" );
       source.layerId = source.isLabeling ? ref.layerId().mid( 10 ) : ref.layerId();
-      source.symbolLayerId = ref.symbolLayerIdV2();
+      source.symbolLayerId = ref.symbolLayerId();
       sel.append( source );
     }
   }
@@ -287,3 +266,4 @@ void QgsMaskSourceSelectionWidget::setSelection( const QList<QgsMaskSourceSelect
     }
   }
 }
+

@@ -16,7 +16,7 @@
 #ifndef QGSSIMPLECOPYEXTERNALSTORAGE_H
 #define QGSSIMPLECOPYEXTERNALSTORAGE_H
 
-#include "qgsexternalstorage.h"
+#include "externalstorage/qgsexternalstorage.h"
 #include "qgis_core.h"
 #include "qgis_sip.h"
 
@@ -28,6 +28,7 @@
 class QgsCopyFileTask;
 
 /**
+ * \ingroup core
  * \brief External storage implementation which simply copy the given resource
  * on a given directory file path.
  *
@@ -47,6 +48,7 @@ class CORE_EXPORT QgsSimpleCopyExternalStorage : public QgsExternalStorage
 };
 
 /**
+ * \ingroup core
  * \brief Class for Simple copy stored content
  *
  * \since QGIS 3.22
@@ -72,6 +74,7 @@ class QgsSimpleCopyExternalStorageStoredContent  : public QgsExternalStorageStor
 };
 
 /**
+ * \ingroup core
  * \brief Class for Simple copy fetched content
  *
  * \since QGIS 3.22

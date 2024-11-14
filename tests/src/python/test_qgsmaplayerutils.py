@@ -10,26 +10,26 @@ __date__ = '2021-05'
 __copyright__ = 'Copyright 2021, The QGIS Project'
 
 
+import qgis  # NOQA
 from qgis.core import (
-    QgsAnnotationLayer,
+    QgsMapLayerUtils,
     QgsCoordinateReferenceSystem,
     QgsCoordinateTransformContext,
-    QgsGroupLayer,
-    QgsMapLayerType,
-    QgsMapLayerUtils,
-    QgsProject,
-    QgsRasterLayer,
     QgsVectorLayer,
+    QgsRasterLayer,
+    QgsAnnotationLayer,
+    QgsGroupLayer,
+    QgsProject,
+    QgsMapLayerType
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
 start_app()
 
 
-class TestQgsMapLayerUtils(QgisTestCase):
+class TestQgsMapLayerUtils(unittest.TestCase):
 
     def testCombinedExtent(self):
         extent = QgsMapLayerUtils.combinedExtent([], QgsCoordinateReferenceSystem(), QgsCoordinateTransformContext())

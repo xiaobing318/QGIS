@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/raster/qgsrasteriterator.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -19,11 +19,9 @@ Iterator for sequentially processing raster cells.
 %End
   public:
 
-    QgsRasterIterator( QgsRasterInterface *input, int tileOverlapPixels = 0 );
+    QgsRasterIterator( QgsRasterInterface *input );
 %Docstring
 Constructor for QgsRasterIterator, iterating over the specified ``input`` raster source.
-
-Since QGIS 3.34 the tileOverlapPixels can be used to specify a margin in pixels for retrieving pixels overlapping into neighbor cells.
 %End
 
     static QgsRectangle subRegion( const QgsRectangle &rasterExtent, int rasterWidth, int rasterHeight, const QgsRectangle &subRegion, int &subRegionWidth /Out/, int &subRegionHeight /Out/, int &subRegionLeft /Out/, int &subRegionTop /Out/ );
@@ -41,6 +39,7 @@ of the raster covering the specified ``subRegion``.
          - subRegionHeight: height in pixels of sub region
          - subRegionLeft: starting column of left side of sub region
          - subRegionTop: starting row of top side of sub region
+
 
 .. versionadded:: 3.26
 %End
@@ -143,46 +142,6 @@ Returns the minimum tile width returned during iteration.
 .. seealso:: :py:func:`maximumTileWidth`
 %End
 
-    int blockCountWidth() const;
-%Docstring
-Returns the total number of blocks which cover the width of the input raster.
-
-.. seealso:: :py:func:`blockCount`
-
-.. seealso:: :py:func:`blockCountHeight`
-
-.. versionadded:: 3.42
-%End
-
-    int blockCountHeight() const;
-%Docstring
-Returns the total number of blocks which cover the height of the input raster.
-
-.. seealso:: :py:func:`blockCount`
-
-.. seealso:: :py:func:`blockCountWidth`
-
-.. versionadded:: 3.42
-%End
-
-    qgssize blockCount() const;
-%Docstring
-Returns the total number of blocks required to iterate over the input raster.
-
-.. seealso:: :py:func:`blockCountWidth`
-
-.. seealso:: :py:func:`blockCountHeight`
-
-.. versionadded:: 3.42
-%End
-
-    double progress( int bandNumber ) const;
-%Docstring
-Returns the raster iteration progress as a fraction from 0 to 1.0, for the specified ``bandNumber``.
-
-.. versionadded:: 3.42
-%End
-
     static const int DEFAULT_MAXIMUM_TILE_WIDTH;
 
     static const int DEFAULT_MAXIMUM_TILE_HEIGHT;
@@ -194,5 +153,5 @@ Returns the raster iteration progress as a fraction from 0 to 1.0, for the speci
  *                                                                      *
  * src/core/raster/qgsrasteriterator.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

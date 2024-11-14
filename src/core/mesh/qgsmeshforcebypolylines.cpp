@@ -21,8 +21,9 @@
 #include "qgsmultisurface.h"
 #include "qgsmulticurve.h"
 #include "qgscurvepolygon.h"
+#include "qgslinestring.h"
 #include "qgsmeshlayerutils.h"
-#include "qgscurve.h"
+
 
 static int vertexPositionInFace( int vertexIndex, const QgsMeshFace &face )
 {
@@ -360,7 +361,7 @@ bool QgsMeshEditForceByLine::buildForcedElements()
   QPair<int, int> currentEdge{-1, -1};
 
   int currentAddedVertex = -1; // Last added point
-  int nextCutFace = -1; //face that has to be cut from an intersected edge (not snap on existing vertex)
+  int nextCutFace = -1; //face that has to be cutted from an intersected edge (not snap on existing vertex)
   int leftFace = -1; //the face that has been just cut in a edge
 
   while ( true )
@@ -1152,7 +1153,7 @@ QgsTopologicalMesh::Changes QgsMeshEditForceByPolylines::apply( QgsMeshEditor *m
 void QgsMeshEditForceByPolylines::addLineFromGeometry( const QgsGeometry &geom )
 {
   std::vector<const QgsCurve *> curves;
-  if ( QgsWkbTypes::geometryType( geom.wkbType() ) == Qgis::GeometryType::Polygon )
+  if ( QgsWkbTypes::geometryType( geom.wkbType() ) == QgsWkbTypes::PolygonGeometry )
   {
     std::vector< const QgsCurvePolygon * > polygons;
     if ( geom.isMultipart() )

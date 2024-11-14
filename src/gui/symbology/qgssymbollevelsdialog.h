@@ -32,6 +32,7 @@
  * \ingroup gui
  * \brief A widget which allows the user to modify the rendering order of symbol layers.
  * \see QgsSymbolLevelsDialog
+ * \since QGIS 3.0
  */
 class GUI_EXPORT QgsSymbolLevelsWidget : public QgsPanelWidget, private Ui::QgsSymbolLevelsDialogBase
 {
@@ -71,7 +72,7 @@ class GUI_EXPORT QgsSymbolLevelsWidget : public QgsPanelWidget, private Ui::QgsS
     /**
      * Apply button.
      *
-     * \deprecated QGIS 3.20. Use symbolLevels() and manually apply the changes to the renderer as appropriate.
+     * \deprecated since QGIS 3.20. Use symbolLevels() and manually apply the changes to the renderer as appropriate.
      */
     Q_DECL_DEPRECATED void apply() SIP_DEPRECATED;
 

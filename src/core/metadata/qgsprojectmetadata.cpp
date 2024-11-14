@@ -29,13 +29,9 @@ bool QgsProjectMetadata::readMetadataXml( const QDomElement &metadataElement )
   mnl = metadataElement.namedItem( QStringLiteral( "author" ) );
   mAuthor = mnl.toElement().text();
 
-  if ( !mDates.contains( Qgis::MetadataDateType::Created ) )
-  {
-    // creation datetime -- old format
-    mnl = metadataElement.namedItem( QStringLiteral( "creation" ) );
-    const QDateTime creationDateTime = QDateTime::fromString( mnl.toElement().text(), Qt::ISODate );
-    mDates.insert( Qgis::MetadataDateType::Created, creationDateTime );
-  }
+  // creation datetime
+  mnl = metadataElement.namedItem( QStringLiteral( "creation" ) );
+  mCreationDateTime = QDateTime::fromString( mnl.toElement().text(), Qt::ISODate );
 
   return true;
 }
@@ -52,7 +48,7 @@ bool QgsProjectMetadata::writeMetadataXml( QDomElement &metadataElement, QDomDoc
 
   // creation datetime
   QDomElement creation = document.createElement( QStringLiteral( "creation" ) );
-  const QDomText creationText = document.createTextNode( mDates.value( Qgis::MetadataDateType::Created ).toString( Qt::ISODate ) );
+  const QDomText creationText = document.createTextNode( mCreationDateTime.toString( Qt::ISODate ) );
   creation.appendChild( creationText );
   metadataElement.appendChild( creation );
 
@@ -67,13 +63,17 @@ void QgsProjectMetadata::combine( const QgsAbstractMetadataBase *other )
   {
     if ( !otherProjectMetadata->author().isEmpty() )
       mAuthor = otherProjectMetadata->author();
+
+    if ( otherProjectMetadata->creationDateTime().isValid() )
+      mCreationDateTime = otherProjectMetadata->creationDateTime();
   }
 }
 
 bool QgsProjectMetadata::operator==( const QgsProjectMetadata &metadataOther )  const
 {
   return equals( metadataOther ) &&
-         mAuthor == metadataOther.mAuthor;
+         mAuthor == metadataOther.mAuthor &&
+         mCreationDateTime == metadataOther.mCreationDateTime ;
 }
 
 QgsProjectMetadata *QgsProjectMetadata::clone() const
@@ -93,10 +93,10 @@ void QgsProjectMetadata::setAuthor( const QString &author )
 
 QDateTime QgsProjectMetadata::creationDateTime() const
 {
-  return mDates.value( Qgis::MetadataDateType::Created );
+  return mCreationDateTime;
 }
 
 void QgsProjectMetadata::setCreationDateTime( const QDateTime &creationDateTime )
 {
-  mDates[ Qgis::MetadataDateType::Created ] = creationDateTime;
+  mCreationDateTime = creationDateTime;
 }

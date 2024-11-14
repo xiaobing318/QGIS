@@ -45,16 +45,16 @@ class QgsCellStatisticsAlgorithmBase : public QgsProcessingAlgorithm
     virtual void processRasterStack( QgsProcessingFeedback *feedback ) = 0;
 
     std::vector< QgsRasterAnalysisUtils::RasterLogicInput > mInputs;
-    bool mIgnoreNoData = false;
-    Qgis::DataType mDataType = Qgis::DataType::UnknownDataType;
+    bool mIgnoreNoData;
+    Qgis::DataType mDataType;
     double mNoDataValue = -9999;
-    int mLayerWidth = 0;
-    int mLayerHeight = 0;
+    int mLayerWidth;
+    int mLayerHeight;
     QgsRectangle mExtent;
     QgsCoordinateReferenceSystem mCrs;
-    double mRasterUnitsPerPixelX = 0;
-    double mRasterUnitsPerPixelY = 0;
-    std::unique_ptr< QgsRasterDataProvider > mOutputRasterDataProvider;
+    double mRasterUnitsPerPixelX;
+    double mRasterUnitsPerPixelY;
+    QgsRasterDataProvider *mOutputRasterDataProvider;
 };
 
 class QgsCellStatisticsAlgorithm : public QgsCellStatisticsAlgorithmBase
@@ -75,7 +75,7 @@ class QgsCellStatisticsAlgorithm : public QgsCellStatisticsAlgorithmBase
     void processRasterStack( QgsProcessingFeedback *feedback ) override;
 
   private:
-    QgsRasterAnalysisUtils::CellValueStatisticMethods mMethod = QgsRasterAnalysisUtils::CellValueStatisticMethods::Sum;
+    QgsRasterAnalysisUtils::CellValueStatisticMethods mMethod;
 
 };
 
@@ -98,7 +98,7 @@ class QgsCellStatisticsPercentileAlgorithm : public QgsCellStatisticsAlgorithmBa
     void processRasterStack( QgsProcessingFeedback *feedback ) override;
 
   private:
-    QgsRasterAnalysisUtils::CellValuePercentileMethods mMethod = QgsRasterAnalysisUtils::CellValuePercentileMethods::NearestRankPercentile;
+    QgsRasterAnalysisUtils::CellValuePercentileMethods mMethod;
     double mPercentile = 0.0;
 };
 
@@ -121,7 +121,7 @@ class QgsCellStatisticsPercentRankFromValueAlgorithm : public QgsCellStatisticsA
     void processRasterStack( QgsProcessingFeedback *feedback ) override;
 
   private:
-    QgsRasterAnalysisUtils::CellValuePercentRankMethods mMethod = QgsRasterAnalysisUtils::CellValuePercentRankMethods::InterpolatedPercentRankInc;
+    QgsRasterAnalysisUtils::CellValuePercentRankMethods mMethod;
     double mValue = 0.0;
 
 };
@@ -145,9 +145,9 @@ class QgsCellStatisticsPercentRankFromRasterAlgorithm : public QgsCellStatistics
     void processRasterStack( QgsProcessingFeedback *feedback ) override;
 
   private:
-    QgsRasterAnalysisUtils::CellValuePercentRankMethods mMethod = QgsRasterAnalysisUtils::CellValuePercentRankMethods::InterpolatedPercentRankInc;
+    QgsRasterAnalysisUtils::CellValuePercentRankMethods mMethod;
     std::unique_ptr< QgsRasterInterface > mValueRasterInterface;
-    int mValueRasterBand = 1;
+    int mValueRasterBand;
 
 };
 

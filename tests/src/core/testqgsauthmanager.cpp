@@ -93,11 +93,9 @@ void TestQgsAuthManager::initTestCase()
             "Authentication system is DISABLED" );
 
   // verify QGIS_AUTH_DB_DIR_PATH (temp auth db path) worked
-  Q_NOWARN_DEPRECATED_PUSH
   const QString db1( QFileInfo( QgsApplication::authManager()->authenticationDatabasePath() ).canonicalFilePath() );
-  Q_NOWARN_DEPRECATED_POP
   const QString db2( QFileInfo( mTempDir + "/qgis-auth.db" ).canonicalFilePath() );
-  QCOMPARE( db1, db2 );
+  QVERIFY2( db1 == db2, "Auth db temp path does not match db path of manager" );
 
   // verify master pass can be set manually
   // (this also creates a fresh password hash in the new temp database)
@@ -190,7 +188,7 @@ void TestQgsAuthManager::testMasterPassword()
   QVERIFY( authm->setMasterPassword( true ) );
   QCOMPARE( spy.count(), 1 );
   spyargs = spy.takeFirst();
-  QVERIFY( spyargs.at( 0 ).userType() == QMetaType::Type::Bool );
+  QVERIFY( spyargs.at( 0 ).type() == QVariant::Bool );
   QVERIFY( spyargs.at( 0 ).toBool() );
 
   authm->clearMasterPassword();
@@ -199,7 +197,7 @@ void TestQgsAuthManager::testMasterPassword()
   QVERIFY( !authm->masterPasswordIsSet() );
   QCOMPARE( spy.count(), 1 );
   spyargs = spy.takeFirst();
-  QVERIFY( spyargs.at( 0 ).userType() == QMetaType::Type::Bool );
+  QVERIFY( spyargs.at( 0 ).type() == QVariant::Bool );
   QVERIFY( !spyargs.at( 0 ).toBool() );
 
   authm->clearMasterPassword();
@@ -208,7 +206,7 @@ void TestQgsAuthManager::testMasterPassword()
   QVERIFY( authm->masterPasswordIsSet() );
   QCOMPARE( spy.count(), 1 );
   spyargs = spy.takeFirst();
-  QVERIFY( spyargs.at( 0 ).userType() == QMetaType::Type::Bool );
+  QVERIFY( spyargs.at( 0 ).type() == QVariant::Bool );
   QVERIFY( spyargs.at( 0 ).toBool() );
 }
 
@@ -255,10 +253,9 @@ void TestQgsAuthManager::testAuthConfigs()
     QVERIFY( config == config2 );
 
     // changed config should update then correctly roundtrip
-    const QgsStringMap configMap = config2.configMap();
-    for ( auto it = configMap.constBegin(); it != configMap.constEnd(); it++ )
+    for ( const QString &key : config2.configMap().keys() )
     {
-      config2.setConfig( it.key(), it.value() + "changed" );
+      config2.setConfig( key, config2.configMap().value( key ) + "changed" );
     }
     config2.setName( config2.name() + "changed" );
     config2.setUri( config2.uri() + "changed" );

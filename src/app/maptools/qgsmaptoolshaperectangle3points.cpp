@@ -15,8 +15,8 @@
 ***************************************************************************/
 
 #include "qgsmaptoolshaperectangle3points.h"
-#include "moc_qgsmaptoolshaperectangle3points.cpp"
 #include "qgsgeometryrubberband.h"
+#include "qgsgeometryutils.h"
 #include "qgslinestring.h"
 #include "qgsmapcanvas.h"
 #include "qgspoint.h"
@@ -101,7 +101,7 @@ bool QgsMapToolShapeRectangle3Points::cadCanvasReleaseEvent( QgsMapMouseEvent *e
       mPoints.append( point );
     }
 
-    Qgis::GeometryType type = mode == QgsMapToolCapture::CapturePolygon ? Qgis::GeometryType::Polygon : Qgis::GeometryType::Line;
+    QgsWkbTypes::GeometryType type = mode == QgsMapToolCapture::CapturePolygon ? QgsWkbTypes::PolygonGeometry : QgsWkbTypes::LineGeometry;
 
     if ( !mPoints.isEmpty() && !mTempRubberBand )
     {

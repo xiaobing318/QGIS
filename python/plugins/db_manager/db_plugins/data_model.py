@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 /***************************************************************************
 Name                 : DB Manager
@@ -17,10 +19,12 @@ email                : brush.tyler@gmail.com
  *                                                                         *
  ***************************************************************************/
 """
+from builtins import str
+from builtins import range
 
 from qgis.PyQt.QtCore import (Qt,
-                              QElapsedTimer,
-                              QRegularExpression,
+                              QTime,
+                              QRegExp,
                               QAbstractTableModel,
                               pyqtSignal,
                               QObject)
@@ -41,11 +45,11 @@ class BaseTableModel(QAbstractTableModel):
         self._header = header if header else []
         self.resdata = data if data else []
 
-    def headerToString(self, sep="\t"):
+    def headerToString(self, sep=u"\t"):
         header = self._header
         return sep.join(header)
 
-    def rowToString(self, row, sep="\t"):
+    def rowToString(self, row, sep=u"\t"):
         return sep.join(
             str(self.getData(row, col))
             for col in range(self.columnCount())
@@ -64,17 +68,17 @@ class BaseTableModel(QAbstractTableModel):
         return len(self._header)
 
     def data(self, index, role):
-        if role not in [Qt.ItemDataRole.DisplayRole,
-                        Qt.ItemDataRole.EditRole,
-                        Qt.ItemDataRole.FontRole]:
+        if role not in [Qt.DisplayRole,
+                        Qt.EditRole,
+                        Qt.FontRole]:
             return None
 
         val = self.getData(index.row(), index.column())
 
-        if role == Qt.ItemDataRole.EditRole:
+        if role == Qt.EditRole:
             return val
 
-        if role == Qt.ItemDataRole.FontRole:  # draw NULL in italic
+        if role == Qt.FontRole:  # draw NULL in italic
             if val is not None:
                 return None
             f = QFont()
@@ -95,10 +99,10 @@ class BaseTableModel(QAbstractTableModel):
             return str(val, 'utf-8', 'replace')  # convert from utf8 and replace errors (if any)
 
     def headerData(self, section, orientation, role):
-        if role != Qt.ItemDataRole.DisplayRole:
+        if role != Qt.DisplayRole:
             return None
 
-        if orientation == Qt.Orientation.Vertical:
+        if orientation == Qt.Vertical:
             # header for a row
             return section + 1
         else:
@@ -185,7 +189,7 @@ class SqlResultModel(BaseTableModel):
     def __init__(self, db, sql, parent=None):
         self.db = db.connector
 
-        t = QElapsedTimer()
+        t = QTime()
         t.start()
         c = self.db._execute(None, sql)
 
@@ -231,12 +235,12 @@ class SimpleTableModel(QStandardItemModel):
         row = []
         for c in data:
             item = QStandardItem(str(c))
-            item.setFlags((item.flags() | Qt.ItemFlag.ItemIsEditable) if self.editable else (item.flags() & ~Qt.ItemFlag.ItemIsEditable))
+            item.setFlags((item.flags() | Qt.ItemIsEditable) if self.editable else (item.flags() & ~Qt.ItemIsEditable))
             row.append(item)
         return row
 
     def headerData(self, section, orientation, role):
-        if orientation == Qt.Orientation.Horizontal and role == Qt.ItemDataRole.DisplayRole:
+        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
             return self.header[section]
         return None
 
@@ -257,24 +261,24 @@ class TableFieldsModel(SimpleTableModel):
         SimpleTableModel.__init__(self, ['Name', 'Type', 'Null', 'Default', 'Comment'], editable, parent)
 
     def headerData(self, section, orientation, role):
-        if orientation == Qt.Orientation.Vertical and role == Qt.ItemDataRole.DisplayRole:
+        if orientation == Qt.Vertical and role == Qt.DisplayRole:
             return section + 1
         return SimpleTableModel.headerData(self, section, orientation, role)
 
     def flags(self, index):
         flags = SimpleTableModel.flags(self, index)
-        if index.column() == 2 and flags & Qt.ItemFlag.ItemIsEditable:  # set Null column as checkable instead of editable
-            flags = flags & ~Qt.ItemFlag.ItemIsEditable | Qt.ItemFlag.ItemIsUserCheckable
+        if index.column() == 2 and flags & Qt.ItemIsEditable:  # set Null column as checkable instead of editable
+            flags = flags & ~Qt.ItemIsEditable | Qt.ItemIsUserCheckable
         return flags
 
     def append(self, fld):
         data = [fld.name, fld.type2String(), not fld.notNull, fld.default2String(), fld.getComment()]
         self.appendRow(self.rowFromData(data))
         row = self.rowCount() - 1
-        self.setData(self.index(row, 0), fld, Qt.ItemDataRole.UserRole)
-        self.setData(self.index(row, 1), fld.primaryKey, Qt.ItemDataRole.UserRole)
-        self.setData(self.index(row, 2), None, Qt.ItemDataRole.DisplayRole)
-        self.setData(self.index(row, 2), Qt.CheckState.Unchecked if fld.notNull else Qt.CheckState.Checked, Qt.ItemDataRole.CheckStateRole)
+        self.setData(self.index(row, 0), fld, Qt.UserRole)
+        self.setData(self.index(row, 1), fld.primaryKey, Qt.UserRole)
+        self.setData(self.index(row, 2), None, Qt.DisplayRole)
+        self.setData(self.index(row, 2), Qt.Unchecked if fld.notNull else Qt.Checked, Qt.CheckStateRole)
 
     def _getNewObject(self):
         from .plugin import TableField
@@ -282,21 +286,21 @@ class TableFieldsModel(SimpleTableModel):
         return TableField(None)
 
     def getObject(self, row):
-        val = self.data(self.index(row, 0), Qt.ItemDataRole.UserRole)
+        val = self.data(self.index(row, 0), Qt.UserRole)
         fld = val if val is not None else self._getNewObject()
         fld.name = self.data(self.index(row, 0)) or ""
         typestr = self.data(self.index(row, 1)) or ""
-        regex = QRegularExpression(r"([^\(]+)\(([^\)]+)\)")
-        match = regex.match(typestr)
-        if match.hasMatch():
-            fld.dataType = match.captured(1).strip()
-            fld.modifier = match.captured(2).strip()
+        regex = QRegExp("([^\\(]+)\\(([^\\)]+)\\)")
+        startpos = regex.indexIn(typestr)
+        if startpos >= 0:
+            fld.dataType = regex.cap(1).strip()
+            fld.modifier = regex.cap(2).strip()
         else:
             fld.modifier = None
             fld.dataType = typestr
 
-        fld.notNull = self.data(self.index(row, 2), Qt.ItemDataRole.CheckStateRole) == Qt.CheckState.Unchecked
-        fld.primaryKey = self.data(self.index(row, 1), Qt.ItemDataRole.UserRole)
+        fld.notNull = self.data(self.index(row, 2), Qt.CheckStateRole) == Qt.Unchecked
+        fld.primaryKey = self.data(self.index(row, 1), Qt.UserRole)
         fld.comment = self.data(self.index(row, 4))
         return fld
 
@@ -316,12 +320,12 @@ class TableConstraintsModel(SimpleTableModel):
 
     def append(self, constr):
         field_names = [str(k_v[1].name) for k_v in iter(list(constr.fields().items()))]
-        data = [constr.name, constr.type2String(), ", ".join(field_names)]
+        data = [constr.name, constr.type2String(), u", ".join(field_names)]
         self.appendRow(self.rowFromData(data))
         row = self.rowCount() - 1
-        self.setData(self.index(row, 0), constr, Qt.ItemDataRole.UserRole)
-        self.setData(self.index(row, 1), constr.type, Qt.ItemDataRole.UserRole)
-        self.setData(self.index(row, 2), constr.columns, Qt.ItemDataRole.UserRole)
+        self.setData(self.index(row, 0), constr, Qt.UserRole)
+        self.setData(self.index(row, 1), constr.type, Qt.UserRole)
+        self.setData(self.index(row, 2), constr.columns, Qt.UserRole)
 
     def _getNewObject(self):
         from .plugin import TableConstraint
@@ -329,12 +333,12 @@ class TableConstraintsModel(SimpleTableModel):
         return TableConstraint(None)
 
     def getObject(self, row):
-        constr = self.data(self.index(row, 0), Qt.ItemDataRole.UserRole)
+        constr = self.data(self.index(row, 0), Qt.UserRole)
         if not constr:
             constr = self._getNewObject()
         constr.name = self.data(self.index(row, 0)) or ""
-        constr.type = self.data(self.index(row, 1), Qt.ItemDataRole.UserRole)
-        constr.columns = self.data(self.index(row, 2), Qt.ItemDataRole.UserRole)
+        constr.type = self.data(self.index(row, 1), Qt.UserRole)
+        constr.columns = self.data(self.index(row, 2), Qt.UserRole)
         return constr
 
     def getConstraints(self):
@@ -352,11 +356,11 @@ class TableIndexesModel(SimpleTableModel):
 
     def append(self, idx):
         field_names = [str(k_v1[1].name) for k_v1 in iter(list(idx.fields().items()))]
-        data = [idx.name, ", ".join(field_names)]
+        data = [idx.name, u", ".join(field_names)]
         self.appendRow(self.rowFromData(data))
         row = self.rowCount() - 1
-        self.setData(self.index(row, 0), idx, Qt.ItemDataRole.UserRole)
-        self.setData(self.index(row, 1), idx.columns, Qt.ItemDataRole.UserRole)
+        self.setData(self.index(row, 0), idx, Qt.UserRole)
+        self.setData(self.index(row, 1), idx.columns, Qt.UserRole)
 
     def _getNewObject(self):
         from .plugin import TableIndex
@@ -364,11 +368,11 @@ class TableIndexesModel(SimpleTableModel):
         return TableIndex(None)
 
     def getObject(self, row):
-        idx = self.data(self.index(row, 0), Qt.ItemDataRole.UserRole)
+        idx = self.data(self.index(row, 0), Qt.UserRole)
         if not idx:
             idx = self._getNewObject()
         idx.name = self.data(self.index(row, 0))
-        idx.columns = self.data(self.index(row, 1), Qt.ItemDataRole.UserRole)
+        idx.columns = self.data(self.index(row, 1), Qt.UserRole)
         return idx
 
     def getIndexes(self):

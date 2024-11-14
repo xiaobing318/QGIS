@@ -15,7 +15,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgscustomization.h"
-#include "moc_qgscustomization.cpp"
 #include "qgisapp.h"
 #include "qgsapplication.h"
 #include "qgslogger.h"
@@ -53,7 +52,7 @@ bool isInternalWidget( const QString &name )
   return false;
 }
 
-#ifdef Q_OS_MACOS
+#ifdef Q_OS_MACX
 QgsCustomizationDialog::QgsCustomizationDialog( QWidget *parent, QSettings *settings )
   : QMainWindow( parent, Qt::WindowSystemMenuHint )  // Modeless dialog with close button only
 #else
@@ -569,7 +568,7 @@ bool QgsCustomizationDialog::catchOn()
 
 void QgsCustomizationDialog::showHelp()
 {
-  QgsHelp::openHelp( QStringLiteral( "introduction/qgis_configuration.html#sec-customization" ) );
+  QgsHelp::openHelp( QStringLiteral( "introduction/qgis_configuration.html#customization" ) );
 }
 
 
@@ -740,8 +739,8 @@ void QgsCustomization::createTreeItemBrowser()
   const auto constProviders = QgsApplication::dataItemProviderRegistry()->providers();
   for ( QgsDataItemProvider *pr : constProviders )
   {
-    const Qgis::DataItemProviderCapabilities capabilities = pr->capabilities();
-    if ( capabilities != Qgis::DataItemProviderCapabilities( Qgis::DataItemProviderCapability::NoCapabilities ) )
+    int capabilities = pr->capabilities();
+    if ( capabilities != QgsDataProvider::NoDataCapabilities )
     {
       QStringList item;
       item << pr->name() << QObject::tr( "Data Item Provider: %1" ).arg( pr->name() );
@@ -995,7 +994,7 @@ void QgsCustomization::customizeWidget( const QString &path, QWidget *widget, QS
     QString p = myPath + '/' + w->objectName();
 
     bool on = settings->value( p, true ).toBool();
-    //QgsDebugMsgLevel( QStringLiteral( "p = %1 on = %2" ).arg( p ).arg( on ), 2 );
+    //QgsDebugMsg( QStringLiteral( "p = %1 on = %2" ).arg( p ).arg( on ) );
     if ( on )
     {
       QgsCustomization::customizeWidget( myPath, w, settings );
@@ -1080,7 +1079,7 @@ void QgsCustomization::preNotify( QObject *receiver, QEvent *event, bool *done )
     }
     else if ( widget && event->type() == QEvent::MouseButtonPress )
     {
-      //QgsDebugMsgLevel( QStringLiteral( "click" ), 2 );
+      //QgsDebugMsg( QStringLiteral( "click" ) );
       if ( pDialog && pDialog->isVisible() )
       {
         QMouseEvent *e = static_cast<QMouseEvent *>( event );
@@ -1096,7 +1095,7 @@ void QgsCustomization::preNotify( QObject *receiver, QEvent *event, bool *done )
     if ( pDialog && pDialog->isVisible() )
     {
       QKeyEvent *e = static_cast<QKeyEvent *>( event );
-      //QgsDebugMsgLevel( QStringLiteral( "key = %1 modifiers = %2" ).arg( e->key() ).arg( e->modifiers() ), 2 );
+      //QgsDebugMsg( QStringLiteral( "key = %1 modifiers = %2" ).arg( e->key() ).arg( e->modifiers() ) );
       if ( e->key() == Qt::Key_M && e->modifiers() == Qt::ControlModifier )
       {
         pDialog->setCatch( !pDialog->catchOn() );

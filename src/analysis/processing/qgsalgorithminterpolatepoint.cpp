@@ -67,17 +67,17 @@ QString QgsInterpolatePointAlgorithm::shortDescription() const
 
 QList<int> QgsInterpolatePointAlgorithm::inputLayerTypes() const
 {
-  return QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorLine ) << static_cast< int >( Qgis::ProcessingSourceType::VectorPolygon );
+  return QList<int>() << QgsProcessing::TypeVectorLine << QgsProcessing::TypeVectorPolygon;
 }
 
-Qgis::ProcessingSourceType QgsInterpolatePointAlgorithm::outputLayerType() const
+QgsProcessing::SourceType QgsInterpolatePointAlgorithm::outputLayerType() const
 {
-  return Qgis::ProcessingSourceType::VectorPoint;
+  return QgsProcessing::TypeVectorPoint;
 }
 
-Qgis::WkbType QgsInterpolatePointAlgorithm::outputWkbType( Qgis::WkbType inputType ) const
+QgsWkbTypes::Type QgsInterpolatePointAlgorithm::outputWkbType( QgsWkbTypes::Type inputType ) const
 {
-  Qgis::WkbType out = Qgis::WkbType::Point;
+  QgsWkbTypes::Type out = QgsWkbTypes::Point;
   if ( QgsWkbTypes::hasZ( inputType ) )
     out = QgsWkbTypes::addZ( out );
   if ( QgsWkbTypes::hasM( inputType ) )
@@ -100,10 +100,10 @@ void QgsInterpolatePointAlgorithm::initParameters( const QVariantMap & )
   addParameter( distance.release() );
 }
 
-Qgis::ProcessingFeatureSourceFlags QgsInterpolatePointAlgorithm::sourceFlags() const
+QgsProcessingFeatureSource::Flag QgsInterpolatePointAlgorithm::sourceFlags() const
 {
   // skip geometry checks - this algorithm doesn't care about invalid geometries
-  return Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks;
+  return QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks;
 }
 
 bool QgsInterpolatePointAlgorithm::prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback * )

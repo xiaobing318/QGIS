@@ -3,8 +3,9 @@
  *                                                                      *
  * src/core/processing/qgsprocessingcontext.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
+
 
 
 
@@ -19,6 +20,8 @@ Contains information about the context in which a processing algorithm is execut
 
 Contextual information includes settings such as the associated project, and
 expression context.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -34,7 +37,16 @@ expression context.
     typedef QFlags<QgsProcessingContext::Flag> Flags;
 
 
+    enum LogLevel
+    {
+      DefaultLevel,
+      Verbose,
+    };
+
     QgsProcessingContext();
+%Docstring
+Constructor for QgsProcessingContext.
+%End
 
 
     ~QgsProcessingContext();
@@ -45,28 +57,28 @@ Copies all settings which are safe for use across different threads from
 ``other`` to this context.
 %End
 
-    QgsProcessingContext::Flags flags() const /HoldGIL/;
+    QgsProcessingContext::Flags flags() const;
 %Docstring
 Returns any flags set in the context.
 
 .. seealso:: :py:func:`setFlags`
 %End
 
-    void setFlags( QgsProcessingContext::Flags flags ) /HoldGIL/;
+    void setFlags( QgsProcessingContext::Flags flags );
 %Docstring
 Sets ``flags`` for the context.
 
 .. seealso:: :py:func:`flags`
 %End
 
-    QgsProject *project() const /HoldGIL/;
+    QgsProject *project() const;
 %Docstring
 Returns the project in which the algorithm is being executed.
 
 .. seealso:: :py:func:`setProject`
 %End
 
-    void setProject( QgsProject *project ) /HoldGIL/;
+    void setProject( QgsProject *project );
 %Docstring
 Sets the ``project`` in which the algorithm will be executed.
 
@@ -76,7 +88,7 @@ This also automatically sets the :py:func:`~QgsProcessingContext.transformContex
 .. seealso:: :py:func:`project`
 %End
 
-    QgsExpressionContext &expressionContext() /HoldGIL/;
+    QgsExpressionContext &expressionContext();
 %Docstring
 Returns the expression context.
 %End
@@ -87,14 +99,14 @@ Returns the expression context.
 Sets the expression ``context``.
 %End
 
-    QgsCoordinateTransformContext transformContext() const /HoldGIL/;
+    QgsCoordinateTransformContext transformContext() const;
 %Docstring
 Returns the coordinate transform context.
 
 .. seealso:: :py:func:`setTransformContext`
 %End
 
-    void setTransformContext( const QgsCoordinateTransformContext &context ) /HoldGIL/;
+    void setTransformContext( const QgsCoordinateTransformContext &context );
 %Docstring
 Sets the coordinate transform ``context``.
 
@@ -104,7 +116,7 @@ context.
 .. seealso:: :py:func:`transformContext`
 %End
 
-    QString ellipsoid() const /HoldGIL/;
+    QString ellipsoid() const;
 %Docstring
 Returns the ellipsoid to use for distance and area calculations.
 
@@ -113,7 +125,7 @@ Returns the ellipsoid to use for distance and area calculations.
 .. versionadded:: 3.16
 %End
 
-    void setEllipsoid( const QString &ellipsoid ) /HoldGIL/;
+    void setEllipsoid( const QString &ellipsoid );
 %Docstring
 Sets a specified ``ellipsoid`` to use for distance and area calculations.
 
@@ -124,7 +136,7 @@ If not explicitly set, the ellipsoid will default to the :py:func:`~QgsProcessin
 .. versionadded:: 3.16
 %End
 
-    Qgis::DistanceUnit distanceUnit() const /HoldGIL/;
+    QgsUnitTypes::DistanceUnit distanceUnit() const;
 %Docstring
 Returns the distance unit to use for distance calculations.
 
@@ -135,7 +147,7 @@ Returns the distance unit to use for distance calculations.
 .. versionadded:: 3.16
 %End
 
-    void setDistanceUnit( Qgis::DistanceUnit unit ) /HoldGIL/;
+    void setDistanceUnit( QgsUnitTypes::DistanceUnit unit );
 %Docstring
 Sets the ``unit`` to use for distance calculations.
 
@@ -148,7 +160,7 @@ If not explicitly set, the unit will default to the :py:func:`~QgsProcessingCont
 .. versionadded:: 3.16
 %End
 
-    Qgis::AreaUnit areaUnit() const /HoldGIL/;
+    QgsUnitTypes::AreaUnit areaUnit() const;
 %Docstring
 Returns the area unit to use for area calculations.
 
@@ -159,7 +171,7 @@ Returns the area unit to use for area calculations.
 .. versionadded:: 3.16
 %End
 
-    void setAreaUnit( Qgis::AreaUnit areaUnit ) /HoldGIL/;
+    void setAreaUnit( QgsUnitTypes::AreaUnit areaUnit );
 %Docstring
 Sets the ``unit`` to use for area calculations.
 
@@ -172,7 +184,7 @@ If not explicitly set, the unit will default to the :py:func:`~QgsProcessingCont
 .. versionadded:: 3.16
 %End
 
-    QgsDateTimeRange currentTimeRange() const /HoldGIL/;
+    QgsDateTimeRange currentTimeRange() const;
 %Docstring
 Returns the current time range to use for temporal operations.
 
@@ -181,7 +193,7 @@ Returns the current time range to use for temporal operations.
 .. versionadded:: 3.18
 %End
 
-    void setCurrentTimeRange( const QgsDateTimeRange &currentTimeRange ) /HoldGIL/;
+    void setCurrentTimeRange( const QgsDateTimeRange &currentTimeRange );
 %Docstring
 Sets the ``current`` time range to use for temporal operations.
 
@@ -190,7 +202,7 @@ Sets the ``current`` time range to use for temporal operations.
 .. versionadded:: 3.18
 %End
 
-    QgsMapLayerStore *temporaryLayerStore() /HoldGIL/;
+    QgsMapLayerStore *temporaryLayerStore();
 %Docstring
 Returns a reference to the layer store used for storing temporary layers during
 algorithm execution.
@@ -200,6 +212,8 @@ algorithm execution.
 {
 %Docstring(signature="appended")
 Details for layers to load into projects.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -213,16 +227,15 @@ Constructor for LayerDetails.
 %End
 
         LayerDetails();
+%Docstring
+Default constructor
+%End
 
         QString name;
 
         bool forceName;
 
         QString outputName;
-
-        QString groupName;
-
-        int layerSortKey;
 
         QgsProcessingUtils::LayerHint layerTypeHint;
 
@@ -257,7 +270,7 @@ Sets a ``layer`` name to match this output, respecting any local user settings w
 
     };
 
-    QMap< QString, QgsProcessingContext::LayerDetails > layersToLoadOnCompletion() const /HoldGIL/;
+    QMap< QString, QgsProcessingContext::LayerDetails > layersToLoadOnCompletion() const;
 %Docstring
 Returns a map of layers (by ID or datasource) to LayerDetails, to load into the canvas upon completion of the algorithm or model.
 
@@ -270,7 +283,7 @@ Returns a map of layers (by ID or datasource) to LayerDetails, to load into the 
 .. seealso:: :py:func:`layerToLoadOnCompletionDetails`
 %End
 
-    bool willLoadLayerOnCompletion( const QString &layer ) const /HoldGIL/;
+    bool willLoadLayerOnCompletion( const QString &layer ) const;
 %Docstring
 Returns ``True`` if the given ``layer`` (by ID or datasource) will be loaded into the current project
 upon completion of the algorithm or model.
@@ -286,7 +299,7 @@ upon completion of the algorithm or model.
 .. versionadded:: 3.2
 %End
 
-    void setLayersToLoadOnCompletion( const QMap< QString, QgsProcessingContext::LayerDetails > &layers ) /HoldGIL/;
+    void setLayersToLoadOnCompletion( const QMap< QString, QgsProcessingContext::LayerDetails > &layers );
 %Docstring
 Sets the map of ``layers`` (by ID or datasource) to LayerDetails, to load into the canvas upon completion of the algorithm or model.
 
@@ -299,7 +312,7 @@ Sets the map of ``layers`` (by ID or datasource) to LayerDetails, to load into t
 .. seealso:: :py:func:`layerToLoadOnCompletionDetails`
 %End
 
-    void addLayerToLoadOnCompletion( const QString &layer, const QgsProcessingContext::LayerDetails &details ) /HoldGIL/;
+    void addLayerToLoadOnCompletion( const QString &layer, const QgsProcessingContext::LayerDetails &details );
 %Docstring
 Adds a ``layer`` to load (by ID or datasource) into the canvas upon completion of the algorithm or model.
 The ``details`` parameter dictates the LayerDetails.
@@ -313,7 +326,7 @@ The ``details`` parameter dictates the LayerDetails.
 .. seealso:: :py:func:`layerToLoadOnCompletionDetails`
 %End
 
-    QgsProcessingContext::LayerDetails &layerToLoadOnCompletionDetails( const QString &layer ) /HoldGIL/;
+    QgsProcessingContext::LayerDetails &layerToLoadOnCompletionDetails( const QString &layer );
 %Docstring
 Returns a reference to the details for a given ``layer`` which is loaded on completion of the
 algorithm or model.
@@ -334,14 +347,14 @@ algorithm or model.
 .. versionadded:: 3.2
 %End
 
-    Qgis::InvalidGeometryCheck invalidGeometryCheck() const /HoldGIL/;
+    QgsFeatureRequest::InvalidGeometryCheck invalidGeometryCheck() const;
 %Docstring
 Returns the behavior used for checking invalid geometries in input layers.
 
 .. seealso:: :py:func:`setInvalidGeometryCheck`
 %End
 
-    void setInvalidGeometryCheck( Qgis::InvalidGeometryCheck check );
+    void setInvalidGeometryCheck( QgsFeatureRequest::InvalidGeometryCheck check );
 %Docstring
 Sets the behavior used for checking invalid geometries in input layers.
 Settings this to anything but :py:class:`QgsFeatureRequest`.GeometryNoCheck will also
@@ -357,6 +370,8 @@ Sets a callback function to use when encountering an invalid geometry and
 called using the feature with invalid geometry as a parameter.
 
 .. seealso:: :py:func:`invalidGeometryCallback`
+
+.. versionadded:: 3.0
 %End
 %MethodCode
     Py_BEGIN_ALLOW_THREADS
@@ -380,6 +395,8 @@ features. This function will be
 called using the feature which encountered the transform error as a parameter.
 
 .. seealso:: :py:func:`transformErrorCallback`
+
+.. versionadded:: 3.0
 %End
 %MethodCode
     Py_BEGIN_ALLOW_THREADS
@@ -395,28 +412,28 @@ called using the feature which encountered the transform error as a parameter.
 %End
 
 
-    QString defaultEncoding() const /HoldGIL/;
+    QString defaultEncoding() const;
 %Docstring
 Returns the default encoding to use for newly created files.
 
 .. seealso:: :py:func:`setDefaultEncoding`
 %End
 
-    void setDefaultEncoding( const QString &encoding ) /HoldGIL/;
+    void setDefaultEncoding( const QString &encoding );
 %Docstring
 Sets the default ``encoding`` to use for newly created files.
 
 .. seealso:: :py:func:`defaultEncoding`
 %End
 
-    QgsProcessingFeedback *feedback() /HoldGIL/;
+    QgsProcessingFeedback *feedback();
 %Docstring
 Returns the associated feedback object.
 
 .. seealso:: :py:func:`setFeedback`
 %End
 
-    void setFeedback( QgsProcessingFeedback *feedback ) /HoldGIL/;
+    void setFeedback( QgsProcessingFeedback *feedback );
 %Docstring
 Sets an associated ``feedback`` object. This allows context related functions
 to report feedback and errors to users and processing logs. While ideally this feedback
@@ -427,7 +444,7 @@ Ownership of ``feedback`` is not transferred.
 .. seealso:: :py:func:`setFeedback`
 %End
 
-    QThread *thread() /HoldGIL/;
+    QThread *thread();
 %Docstring
 Returns the thread in which the context lives.
 
@@ -474,7 +491,7 @@ from a context.
 .. seealso:: :py:func:`getMapLayer`
 %End
 
-    QString preferredVectorFormat() const /HoldGIL/;
+    QString preferredVectorFormat() const;
 %Docstring
 Returns the preferred vector format to use for vector outputs.
 
@@ -495,7 +512,7 @@ and to provide an appropriate fallback when the returned format is not usable.
 .. versionadded:: 3.10
 %End
 
-    void setPreferredVectorFormat( const QString &format ) /HoldGIL/;
+    void setPreferredVectorFormat( const QString &format );
 %Docstring
 Sets the preferred vector ``format`` to use for vector outputs.
 
@@ -513,7 +530,7 @@ function will be used when creating these outputs.
 .. versionadded:: 3.10
 %End
 
-    QString preferredRasterFormat() const /HoldGIL/;
+    QString preferredRasterFormat() const;
 %Docstring
 Returns the preferred raster format to use for vector outputs.
 
@@ -534,7 +551,7 @@ and to provide an appropriate fallback when the returned format is not usable.
 .. versionadded:: 3.10
 %End
 
-    void setPreferredRasterFormat( const QString &format ) /HoldGIL/;
+    void setPreferredRasterFormat( const QString &format );
 %Docstring
 Sets the preferred raster ``format`` to use for vector outputs.
 
@@ -552,7 +569,7 @@ function will be used when creating these outputs.
 .. versionadded:: 3.10
 %End
 
-    Qgis::ProcessingLogLevel logLevel() const /HoldGIL/;
+    LogLevel logLevel() const;
 %Docstring
 Returns the logging level for algorithms to use when pushing feedback messages to users.
 
@@ -561,7 +578,7 @@ Returns the logging level for algorithms to use when pushing feedback messages t
 .. versionadded:: 3.20
 %End
 
-    void setLogLevel( Qgis::ProcessingLogLevel level ) /HoldGIL/;
+    void setLogLevel( LogLevel level );
 %Docstring
 Sets the logging ``level`` for algorithms to use when pushing feedback messages to users.
 
@@ -570,67 +587,7 @@ Sets the logging ``level`` for algorithms to use when pushing feedback messages 
 .. versionadded:: 3.20
 %End
 
-    QString temporaryFolder() const /HoldGIL/;
-%Docstring
-Returns the (optional) temporary folder to use when running algorithms.
-
-If set, this overrides the standard global Processing temporary folder and should be used
-for all temporary files created during algorithm execution.
-
-.. seealso:: :py:func:`setTemporaryFolder`
-
-.. versionadded:: 3.32
-%End
-
-    void setTemporaryFolder( const QString &folder ) /HoldGIL/;
-%Docstring
-Sets the (optional) temporary ``folder`` to use when running algorithms.
-
-If set, this overrides the standard global Processing temporary folder and should be used
-for all temporary files created during algorithm execution.
-
-.. seealso:: :py:func:`temporaryFolder`
-
-.. versionadded:: 3.32
-%End
-
-    int maximumThreads() const /HoldGIL/;
-%Docstring
-Returns the (optional) number of threads to use when running algorithms.
-
-.. warning::
-
-   Not all algorithms which support multithreaded execution will
-   respect this setting, depending on the multi-threading framework in use.
-   Multithreaded algorithms must check this value and adapt their thread
-   handling accordingly -- the setting will not be automatically applied.
-
-.. seealso:: :py:func:`setMaximumThreads`
-
-.. versionadded:: 3.32
-%End
-
-    void setMaximumThreads( int threads ) /HoldGIL/;
-%Docstring
-Sets the (optional) number of ``threads`` to use when running algorithms.
-
-If set, this overrides the standard global Processing number of threads setting.
-Note that if algorithm implementation does not support multhreaded execution, this
-setting will be ignored.
-
-.. warning::
-
-   Not all algorithms which support multithreaded execution will
-   respect this setting, depending on the multi-threading framework in use.
-   Multithreaded algorithms must check this value and adapt their thread
-   handling accordingly -- the setting will not be automatically applied.
-
-.. seealso:: :py:func:`maximumThreads`
-
-.. versionadded:: 3.32
-%End
-
-    QVariantMap exportToMap() const /HoldGIL/;
+    QVariantMap exportToMap() const;
 %Docstring
 Exports the context's settings to a variant map.
 
@@ -650,17 +607,6 @@ Returns list of the equivalent qgis_process arguments representing the settings 
 
 .. versionadded:: 3.24
 %End
-
-
-
-
-    QgsProcessingModelResult modelResult() const;
-%Docstring
-Returns the model results, populated when the context is used to run a model algorithm.
-
-.. versionadded:: 3.38
-%End
-
 
   private:
     QgsProcessingContext( const QgsProcessingContext &other );
@@ -721,5 +667,5 @@ on algorithm completion. See :py:func:`QgsProcessingContext.layersToLoadOnComple
  *                                                                      *
  * src/core/processing/qgsprocessingcontext.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

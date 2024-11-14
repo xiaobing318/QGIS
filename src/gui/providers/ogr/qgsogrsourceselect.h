@@ -31,6 +31,7 @@
 #include <vector>
 
 #include "ui_qgsogrsourceselectbase.h"
+#include "qgshelp.h"
 #include "qgsproviderregistry.h"
 #include "qgsabstractdatasourcewidget.h"
 #include "qgis_gui.h"
@@ -38,8 +39,6 @@
 
 ///@cond PRIVATE
 #define SIP_NO_FILE
-
-class QgsGdalCredentialOptionsWidget;
 
 /**
  *  Class for a  dialog to select the type and source for ogr vectors, supports
@@ -51,7 +50,7 @@ class QgsOgrSourceSelect : public QgsAbstractDataSourceWidget, private Ui::QgsOg
     Q_OBJECT
 
   public:
-    QgsOgrSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = Qt::WindowFlags(), QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::Standalone );
+    QgsOgrSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = Qt::WindowFlags(), QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::None );
     //! Opens a dialog to select a file datasource
     QStringList openFile();
     //! Opens a dialog to select a directory datasource
@@ -62,6 +61,8 @@ class QgsOgrSourceSelect : public QgsAbstractDataSourceWidget, private Ui::QgsOg
     QString encoding();
     //! Returns the connection type
     QString dataSourceType();
+    //! Returns whether the protocol is a cloud type
+    bool isProtocolCloudType();
 
   private:
     //! Stores the file vector filters
@@ -73,7 +74,7 @@ class QgsOgrSourceSelect : public QgsAbstractDataSourceWidget, private Ui::QgsOg
     //! Stores the datasource type
     QString mDataSourceType;
     //! Embedded dialog (do not call parent's accept) and emit signals
-    QgsProviderRegistry::WidgetMode mWidgetMode = QgsProviderRegistry::WidgetMode::Standalone;
+    QgsProviderRegistry::WidgetMode mWidgetMode = QgsProviderRegistry::WidgetMode::None;
 
   public slots:
     void addButtonClicked() override;
@@ -99,7 +100,6 @@ class QgsOgrSourceSelect : public QgsAbstractDataSourceWidget, private Ui::QgsOg
     void setProtocolWidgetsVisibility();
 
     void radioSrcFile_toggled( bool checked );
-    void radioSrcOgcApi_toggled( bool checked );
     void radioSrcDirectory_toggled( bool checked );
     void radioSrcDatabase_toggled( bool checked );
     void radioSrcProtocol_toggled( bool checked );
@@ -110,9 +110,6 @@ class QgsOgrSourceSelect : public QgsAbstractDataSourceWidget, private Ui::QgsOg
     void cmbConnections_currentIndexChanged( const QString &text );
     void cmbProtocolTypes_currentIndexChanged( const QString &text );
     void showHelp();
-    bool configureFromUri( const QString &uri ) override;
-    void updateProtocolOptions();
-    void credentialOptionsChanged();
 
   private:
 
@@ -120,9 +117,7 @@ class QgsOgrSourceSelect : public QgsAbstractDataSourceWidget, private Ui::QgsOg
     void clearOpenOptions();
     void fillOpenOptions();
     std::vector<QWidget *> mOpenOptionsWidgets;
-    QgsGdalCredentialOptionsWidget *mCredentialsWidget = nullptr;
-    bool mIsOgcApi = false;
-    QVariantMap mCredentialOptions;
+
     QString mVectorPath;
 
 };

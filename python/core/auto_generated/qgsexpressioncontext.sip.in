@@ -3,9 +3,8 @@
  *                                                                      *
  * src/core/qgsexpressioncontext.h                                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
-
 
 
 
@@ -16,6 +15,8 @@ class QgsScopedExpressionFunction : QgsExpressionFunction
 Expression function for use within a :py:class:`QgsExpressionContextScope`. This differs from a
 standard :py:class:`QgsExpression`.Function in that it requires an implemented
 :py:func:`~clone` method.
+
+.. versionadded:: 2.12
 %End
 
 %TypeHeaderCode
@@ -34,6 +35,8 @@ standard :py:class:`QgsExpression`.Function in that it requires an implemented
                                  bool isContextual = true );
 %Docstring
 Create a new QgsScopedExpressionFunction
+
+.. versionadded:: 2.12
 %End
 
     QgsScopedExpressionFunction( const QString &fnname,
@@ -47,6 +50,8 @@ Create a new QgsScopedExpressionFunction
                                  bool isContextual = true );
 %Docstring
 Create a new QgsScopedExpressionFunction using named parameters.
+
+.. versionadded:: 3.0
 %End
 
     virtual QVariant func( const QVariantList &values, const QgsExpressionContext *context, QgsExpression *parent, const QgsExpressionNodeFunction *node ) = 0;
@@ -74,12 +79,13 @@ class QgsExpressionContextScope
 {
 %Docstring(signature="appended")
 Single scope for storing variables and functions for use within a :py:class:`QgsExpressionContext`.
-
 Examples include a project's scope, which could contain information about the current project such as
 the project file's location. :py:class:`QgsExpressionContextScope` can encapsulate both variables (static values)
 and functions(which are calculated only when an expression is evaluated).
 
 See :py:class:`QgsExpressionContextUtils` for helper methods for working with :py:class:`QgsExpressionContextScope` objects.
+
+.. versionadded:: 2.12
 %End
 
 %TypeHeaderCode
@@ -120,6 +126,9 @@ Constructor for QgsExpressionContextScope
 %End
 
     QgsExpressionContextScope( const QgsExpressionContextScope &other );
+%Docstring
+Copy constructor
+%End
 
 
     ~QgsExpressionContextScope();
@@ -219,12 +228,16 @@ by users.
 %Docstring
 Tests whether the variable with the specified ``name`` is static and can
 be cached.
+
+.. versionadded:: 3.0
 %End
 
     QString description( const QString &name ) const;
 %Docstring
 Returns the translated description for the variable with the specified ``name``
 (if set).
+
+.. versionadded:: 3.0
 %End
 
     int variableCount() const;
@@ -284,6 +297,8 @@ Adds a function to the scope.
 Returns ``True`` if the scope has a feature associated with it.
 
 .. seealso:: :py:func:`feature`
+
+.. versionadded:: 3.0
 %End
 
     QgsFeature feature() const;
@@ -293,6 +308,8 @@ Sets the feature associated with the scope.
 .. seealso:: :py:func:`setFeature`
 
 .. seealso:: :py:func:`hasFeature`
+
+.. versionadded:: 3.0
 %End
 
     void setFeature( const QgsFeature &feature );
@@ -314,6 +331,8 @@ Removes any feature associated with the scope.
 .. seealso:: :py:func:`setFeature`
 
 .. seealso:: :py:func:`hasFeature`
+
+.. versionadded:: 3.0
 %End
 
     bool hasGeometry() const;
@@ -444,42 +463,20 @@ Removes the passed variable from a list of hidden variables.
 .. versionadded:: 3.28
 %End
 
-    void addLayerStore( QgsMapLayerStore *store );
-%Docstring
-Adds a layer ``store`` to the scope.
-
-Ownership of the ``store`` is not transferred to the scope, it is the caller's
-responsibility to ensure that the store remains alive for the duration of the
-expression context.
-
-.. seealso:: :py:func:`layerStores`
-
-.. versionadded:: 3.30
-%End
-
-    QList< QgsMapLayerStore * > layerStores() const;
-%Docstring
-Returns the list of layer stores associated with the scope.
-
-.. seealso:: :py:func:`addLayerStore`
-
-.. versionadded:: 3.30
-%End
-
 };
 
 class QgsExpressionContext
 {
 %Docstring(signature="appended")
 Expression contexts are used to encapsulate the parameters around which a :py:class:`QgsExpression` should
-be evaluated.
-
-:py:class:`QgsExpressions` can then utilize the information stored within a context to contextualise
+be evaluated. :py:class:`QgsExpressions` can then utilize the information stored within a context to contextualise
 their evaluated result. A :py:class:`QgsExpressionContext` consists of a stack of :py:class:`QgsExpressionContextScope` objects,
 where scopes added later to the stack will override conflicting variables and functions from scopes
 lower in the stack.
 
 See :py:class:`QgsExpressionContextUtils` for helper methods for working with :py:class:`QgsExpressionContext` objects.
+
+.. versionadded:: 2.12
 %End
 
 %TypeHeaderCode
@@ -488,14 +485,22 @@ See :py:class:`QgsExpressionContextUtils` for helper methods for working with :p
   public:
 
     QgsExpressionContext();
+%Docstring
+Constructor for QgsExpressionContext
+%End
 
     explicit QgsExpressionContext( const QList<QgsExpressionContextScope *> &scopes /Transfer/ );
 %Docstring
 Initializes the context with given list of scopes.
 Ownership of the scopes is transferred to the stack.
+
+.. versionadded:: 3.0
 %End
 
     QgsExpressionContext( const QgsExpressionContext &other );
+%Docstring
+Copy constructor
+%End
 
 
 
@@ -533,6 +538,8 @@ variable set.
 %Docstring
 Returns a map of variable name to value representing all the expression variables
 contained by the context.
+
+.. versionadded:: 3.0
 %End
 
     bool isHighlightedVariable( const QString &name ) const;
@@ -648,6 +655,8 @@ Returns the index of the first scope with a matching name within the context.
 :param scopeName: name of scope to find
 
 :return: index of scope, or -1 if scope was not found within the context.
+
+.. versionadded:: 3.0
 %End
 
     QStringList variableNames() const;
@@ -691,6 +700,8 @@ Returns a translated description string for the variable with specified ``name``
 
 If no specific description has been provided for the variable, the value from
 :py:func:`QgsExpression.variableHelpText()` will be returned.
+
+.. versionadded:: 3.0
 %End
 
     bool hasFunction( const QString &name ) const;
@@ -747,6 +758,8 @@ any matching variables or functions provided by existing scopes within the
 context. Ownership of the scopes is transferred to the stack.
 
 :param scopes: scopes to append to context
+
+.. versionadded:: 3.0
 %End
 
     QgsExpressionContextScope *popScope();
@@ -772,6 +785,8 @@ existing features within the context.
 Returns ``True`` if the context has a feature associated with it.
 
 .. seealso:: :py:func:`feature`
+
+.. versionadded:: 3.0
 %End
 
     QgsFeature feature() const;
@@ -834,6 +849,8 @@ Sets the original value variable value for the context.
 
 :param value: value for original value variable. This usually represents an original widget
               value before any data defined overrides have been applied.
+
+.. versionadded:: 2.12
 %End
 
     void setCachedValue( const QString &key, const QVariant &value ) const;
@@ -850,6 +867,8 @@ expression context.
 .. seealso:: :py:func:`cachedValue`
 
 .. seealso:: :py:func:`clearCachedValues`
+
+.. versionadded:: 2.16
 %End
 
     bool hasCachedValue( const QString &key ) const;
@@ -863,6 +882,8 @@ Returns ``True`` if the expression context contains a cached value with a matchi
 .. seealso:: :py:func:`cachedValue`
 
 .. seealso:: :py:func:`clearCachedValues`
+
+.. versionadded:: 2.16
 %End
 
     QVariant cachedValue( const QString &key ) const;
@@ -879,6 +900,8 @@ of an expensive expression sub-calculation.
 .. seealso:: :py:func:`hasCachedValue`
 
 .. seealso:: :py:func:`clearCachedValues`
+
+.. versionadded:: 2.16
 %End
 
     void clearCachedValues() const;
@@ -890,37 +913,8 @@ Clears all cached values from the context.
 .. seealso:: :py:func:`hasCachedValue`
 
 .. seealso:: :py:func:`cachedValue`
-%End
 
-    QList< QgsMapLayerStore * > layerStores() const;
-%Docstring
-Returns the list of layer stores associated with the context.
-
-.. versionadded:: 3.30
-%End
-
-    void setLoadedLayerStore( QgsMapLayerStore *store );
-%Docstring
-Sets the destination layer ``store`` for any layers loaded during
-expression evaluation.
-
-Ownership of the ``store`` is not transferred to the context, it is the caller's
-responsibility to ensure that the store remains alive for the duration of the
-expression context.
-
-.. seealso:: :py:func:`loadedLayerStore`
-
-.. versionadded:: 3.30
-%End
-
-    QgsMapLayerStore *loadedLayerStore() const;
-%Docstring
-Returns the destination layer store for any layers loaded during
-expression evaluation.
-
-.. seealso:: :py:func:`setLoadedLayerStore`
-
-.. versionadded:: 3.30
+.. versionadded:: 2.16
 %End
 
     void setFeedback( QgsFeedback *feedback );
@@ -946,18 +940,6 @@ if evaluation should be canceled, if set.
 .. versionadded:: 3.20
 %End
 
-    QString uniqueHash( bool &ok /Out/, const QSet<QString> &variables = QSet<QString>() ) const;
-%Docstring
-Returns a unique hash representing the current state of the context.
-
-:param variables: optional names of a subset of variables to include in the hash. If not specified, all variables will be considered.
-
-:return: - calculated hash
-         - ok: ``True`` if the hash could be generated, or false if e.g. a variable value is of a type which cannot be hashed
-
-.. versionadded:: 3.40
-%End
-
     static const QString EXPR_FIELDS;
     static const QString EXPR_ORIGINAL_VALUE;
     static const QString EXPR_SYMBOL_COLOR;
@@ -978,5 +960,5 @@ Returns a unique hash representing the current state of the context.
  *                                                                      *
  * src/core/qgsexpressioncontext.h                                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

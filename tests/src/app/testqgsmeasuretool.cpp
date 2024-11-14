@@ -15,11 +15,15 @@
 #include "qgstest.h"
 #include "qgisapp.h"
 #include "qgsapplication.h"
+#include "qgsvectorlayer.h"
+#include "qgsfeature.h"
+#include "qgsgeometry.h"
+#include "qgsvectordataprovider.h"
 #include "qgsmeasuretool.h"
 #include "qgsmeasuredialog.h"
 #include "qgsproject.h"
 #include "qgsmapcanvas.h"
-#include "qgsrubberband.h"
+#include "qgsunittypes.h"
 
 /**
  * \ingroup UnitTests
@@ -42,7 +46,6 @@ class TestQgsMeasureTool : public QObject
     void testAreaCalculationCartesian();
     void testAreaCalculationProjected();
     void degreeDecimalPlaces();
-    void testToolDesactivationNoExtraPoint();
 
   private:
     QgisApp *mQgisApp = nullptr;
@@ -54,7 +57,7 @@ TestQgsMeasureTool::TestQgsMeasureTool() = default;
 //runs before all tests
 void TestQgsMeasureTool::initTestCase()
 {
-  qDebug() << "TestQgsMeasureTool::initTestCase()";
+  qDebug() << "TestQgisAppClipboard::initTestCase()";
   // init QGIS's paths - true means that all path will be inited from prefix
   QgsApplication::init();
   QgsApplication::initQgis();
@@ -90,7 +93,7 @@ void TestQgsMeasureTool::testLengthCalculationCartesian()
   mCanvas->setDestinationCrs( srs );
   QgsProject::instance()->setCrs( srs );
   QgsProject::instance()->setEllipsoid( QStringLiteral( "WGS84" ) );
-  QgsProject::instance()->setDistanceUnits( Qgis::DistanceUnit::Meters );
+  QgsProject::instance()->setDistanceUnits( QgsUnitTypes::DistanceMeters );
 
   // run length calculation
   std::unique_ptr< QgsMeasureTool > tool( new QgsMeasureTool( mCanvas, false ) );
@@ -111,7 +114,7 @@ void TestQgsMeasureTool::testLengthCalculationCartesian()
   QGSCOMPARENEAR( measured, expected, 0.001 );
 
   // change project length unit, check calculation respects unit
-  QgsProject::instance()->setDistanceUnits( Qgis::DistanceUnit::Feet );
+  QgsProject::instance()->setDistanceUnits( QgsUnitTypes::DistanceFeet );
   std::unique_ptr< QgsMeasureTool > tool2( new QgsMeasureTool( mCanvas, false ) );
   std::unique_ptr< QgsMeasureDialog > dlg2( new QgsMeasureDialog( tool2.get() ) );
   dlg2->mCartesian->setChecked( true );
@@ -158,7 +161,7 @@ void TestQgsMeasureTool::testLengthCalculationProjected()
   mCanvas->setDestinationCrs( srs );
   QgsProject::instance()->setCrs( srs );
   QgsProject::instance()->setEllipsoid( QStringLiteral( "WGS84" ) );
-  QgsProject::instance()->setDistanceUnits( Qgis::DistanceUnit::Meters );
+  QgsProject::instance()->setDistanceUnits( QgsUnitTypes::DistanceMeters );
 
   // run length calculation
   std::unique_ptr< QgsMeasureTool > tool( new QgsMeasureTool( mCanvas, false ) );
@@ -178,7 +181,7 @@ void TestQgsMeasureTool::testLengthCalculationProjected()
   QGSCOMPARENEAR( measured, expected, 0.001 );
 
   // change project length unit, check calculation respects unit
-  QgsProject::instance()->setDistanceUnits( Qgis::DistanceUnit::Feet );
+  QgsProject::instance()->setDistanceUnits( QgsUnitTypes::DistanceFeet );
   std::unique_ptr< QgsMeasureTool > tool2( new QgsMeasureTool( mCanvas, false ) );
   std::unique_ptr< QgsMeasureDialog > dlg2( new QgsMeasureDialog( tool2.get() ) );
   dlg2->mEllipsoidal->setChecked( true );
@@ -253,7 +256,7 @@ void TestQgsMeasureTool::testAreaCalculationCartesian()
   mCanvas->setDestinationCrs( srs );
   QgsProject::instance()->setCrs( srs );
   QgsProject::instance()->setEllipsoid( QStringLiteral( "WGS84" ) );
-  QgsProject::instance()->setAreaUnits( Qgis::AreaUnit::SquareMeters );
+  QgsProject::instance()->setAreaUnits( QgsUnitTypes::AreaSquareMeters );
 
   // run length calculation
   std::unique_ptr< QgsMeasureTool > tool( new QgsMeasureTool( mCanvas, true ) );
@@ -276,7 +279,7 @@ void TestQgsMeasureTool::testAreaCalculationCartesian()
   QGSCOMPARENEAR( measured, expected, 1.0 );
 
   // change project area unit, check calculation respects unit
-  QgsProject::instance()->setAreaUnits( Qgis::AreaUnit::SquareMiles );
+  QgsProject::instance()->setAreaUnits( QgsUnitTypes::AreaSquareMiles );
   std::unique_ptr< QgsMeasureTool > tool2( new QgsMeasureTool( mCanvas, true ) );
   std::unique_ptr< QgsMeasureDialog > dlg2( new QgsMeasureDialog( tool2.get() ) );
   dlg2->mCartesian->setChecked( true );
@@ -307,7 +310,7 @@ void TestQgsMeasureTool::testAreaCalculationProjected()
   mCanvas->setDestinationCrs( srs );
   QgsProject::instance()->setCrs( srs );
   QgsProject::instance()->setEllipsoid( QStringLiteral( "WGS84" ) );
-  QgsProject::instance()->setAreaUnits( Qgis::AreaUnit::SquareMeters );
+  QgsProject::instance()->setAreaUnits( QgsUnitTypes::AreaSquareMeters );
 
   // run length calculation
   std::unique_ptr< QgsMeasureTool > tool( new QgsMeasureTool( mCanvas, true ) );
@@ -330,7 +333,7 @@ void TestQgsMeasureTool::testAreaCalculationProjected()
   QGSCOMPARENEAR( measured, expected, 1.0 );
 
   // change project area unit, check calculation respects unit
-  QgsProject::instance()->setAreaUnits( Qgis::AreaUnit::SquareMiles );
+  QgsProject::instance()->setAreaUnits( QgsUnitTypes::AreaSquareMiles );
   std::unique_ptr< QgsMeasureTool > tool2( new QgsMeasureTool( mCanvas, true ) );
   std::unique_ptr< QgsMeasureDialog > dlg2( new QgsMeasureDialog( tool2.get() ) );
 
@@ -353,7 +356,7 @@ void TestQgsMeasureTool::testAreaCalculationProjected()
 
 void TestQgsMeasureTool::degreeDecimalPlaces()
 {
-  QgsProject::instance()->setDistanceUnits( Qgis::DistanceUnit::Degrees );
+  QgsProject::instance()->setDistanceUnits( QgsUnitTypes::DistanceDegrees );
 
   QgsSettings s;
   s.setValue( QStringLiteral( "qgis/measure/decimalplaces" ), 3 );
@@ -368,57 +371,6 @@ void TestQgsMeasureTool::degreeDecimalPlaces()
   QCOMPARE( dlg->formatDistance( 0.0001, false ), QString( "0.00010 deg" ) );
   QCOMPARE( dlg->formatDistance( 0.00001, false ), QString( "0.000010 deg" ) );
 
-}
-
-void TestQgsMeasureTool::testToolDesactivationNoExtraPoint()
-{
-  // set project CRS and ellipsoid
-  const QgsCoordinateReferenceSystem srs( QStringLiteral( "EPSG:3111" ) );
-  mCanvas->setDestinationCrs( srs );
-  QgsProject::instance()->setCrs( srs );
-  QgsProject::instance()->setEllipsoid( QStringLiteral( "WGS84" ) );
-  QgsProject::instance()->setAreaUnits( Qgis::AreaUnit::SquareMeters );
-
-  // run length calculation
-  std::unique_ptr< QgsMeasureTool > tool( new QgsMeasureTool( mCanvas, true ) );
-  std::unique_ptr< QgsMeasureDialog > dlg( new QgsMeasureDialog( tool.get() ) );
-
-  dlg->mEllipsoidal->setChecked( true );
-
-  auto moveCanvas = [this]( int x, int y, int delay = 0 )
-  {
-    auto widget = mCanvas->viewport();
-    QTest::mouseMove( widget, QPoint( x, y ), delay );
-  };
-
-  auto clickCanvas = [this]( int x, int y )
-  {
-    auto widget = mCanvas->viewport();
-    QTest::mouseMove( widget, QPoint( x, y ) );
-    QTest::mouseClick( mCanvas->viewport(), Qt::LeftButton, Qt::NoModifier, QPoint( x, y ), 50 );
-  };
-
-  mCanvas->setMapTool( tool.get() );
-
-  // Click on two points, then move the cursor
-  clickCanvas( 50, 50 );
-  clickCanvas( 50, 100 );
-  moveCanvas( 150, 150, 50 );
-
-  // Check number of vertices in the rubberbands
-  // The points Rubberband should have one vertice per click
-  QCOMPARE( tool->mRubberBandPoints->numberOfVertices(), 2 );
-  // The temp rubberband should have one more
-  QCOMPARE( tool->mRubberBand->numberOfVertices(), tool->mRubberBandPoints->numberOfVertices() + 1 );
-
-  // Deactivate & reactivate the tool, then move mouse cursor
-  mCanvas->unsetMapTool( tool.get() );
-  mCanvas->setMapTool( tool.get() );
-  moveCanvas( 100, 100, 50 );
-
-  // Check if both rubberbands still have the right number of vertices
-  QCOMPARE( tool->mRubberBandPoints->numberOfVertices(), 2 );
-  QCOMPARE( tool->mRubberBand->numberOfVertices(), tool->mRubberBandPoints->numberOfVertices() + 1 );
 }
 
 QGSTEST_MAIN( TestQgsMeasureTool )

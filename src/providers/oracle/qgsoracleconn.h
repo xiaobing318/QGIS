@@ -28,19 +28,21 @@
 #include <QDateTime>
 
 #include "qgis.h"
+#include "qgslogger.h"
 #include "qgsdatasourceuri.h"
 #include "qgsvectordataprovider.h"
+#include "qgsdbquerylog.h"
 
 #include <QSqlDatabase>
 #include <QSqlQuery>
-#include <QRecursiveMutex>
+#include <QMutex>
 
 class QgsField;
 
 // Oracle layer properties
 struct QgsOracleLayerProperty
 {
-  QList<Qgis::WkbType> types;
+  QList<QgsWkbTypes::Type> types;
   QList<int>           srids;
   QString              ownerName;
   QString              tableName;
@@ -83,11 +85,11 @@ struct QgsOracleLayerProperty
   {
     QString typeString;
     const auto constTypes = types;
-    for ( Qgis::WkbType type : constTypes )
+    for ( QgsWkbTypes::Type type : constTypes )
     {
       if ( !typeString.isEmpty() )
         typeString += "|";
-      typeString += QString::number( static_cast< quint32>( type ) );
+      typeString += QString::number( type );
     }
     QString sridString;
     const auto constSrids = srids;
@@ -160,7 +162,7 @@ class QgsOracleConn : public QObject
     /**
      * Quote a value for placement in a SQL string.
      */
-    static QString quotedValue( const QVariant &value, QMetaType::Type type = QMetaType::Type::UnknownType );
+    static QString quotedValue( const QVariant &value, QVariant::Type type = QVariant::Invalid );
 
     bool exec( const QString &query, bool logError = true, QString *errorMessage = nullptr );
     bool execLogged( const QString &sql, bool logError = true, QString *errorMessage = nullptr, const QString &originatorClass = QString(), const QString &queryOrigin = QString() );
@@ -238,11 +240,11 @@ class QgsOracleConn : public QObject
 
     static const int sGeomTypeSelectLimit;
 
-    static Qgis::WkbType wkbTypeFromDatabase( int gtype );
+    static QgsWkbTypes::Type wkbTypeFromDatabase( int gtype );
 
-    static QString databaseTypeFilter( const QString &alias, QString geomCol, Qgis::WkbType wkbType );
+    static QString databaseTypeFilter( const QString &alias, QString geomCol, QgsWkbTypes::Type wkbType );
 
-    static Qgis::WkbType wkbTypeFromGeomType( Qgis::GeometryType geomType );
+    static QgsWkbTypes::Type wkbTypeFromGeomType( QgsWkbTypes::GeometryType geomType );
 
     static QStringList connectionList();
     static QString selectedConnection();
@@ -258,12 +260,6 @@ class QgsOracleConn : public QObject
     static void deleteConnection( const QString &connName );
     static QString databaseName( const QString &database, const QString &host, const QString &port );
     static QString toPoolName( const QgsDataSourceUri &uri );
-
-    /**
-     * Duplicates \a src connection settings to a new \a dst connection.
-     * \since QGIS 3.40
-     */
-    static void duplicateConnection( const QString &src, const QString &dst );
 
     operator QSqlDatabase() { return mDatabase; }
 
@@ -290,11 +286,11 @@ class QgsOracleConn : public QObject
     //! List of the supported layers
     QVector<QgsOracleLayerProperty> mLayersSupported;
 
-    mutable QRecursiveMutex mLock;
+    mutable QMutex mLock;
     bool mTransaction = false;
     int mSavePointId = 1;
 
-    static QMap<QPair<QString, QThread *>, QgsOracleConn *> sConnections;
+    static QMap<QString, QgsOracleConn *> sConnections;
     static int snConnections;
     static QMap<QString, QDateTime> sBrokenConnections;
 

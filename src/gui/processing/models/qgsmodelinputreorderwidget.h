@@ -21,7 +21,7 @@
 #include "qgis.h"
 #include "qgis_gui.h"
 #include "ui_qgsmodelinputreorderwidgetbase.h"
-#include "qgsprocessingmodelparameter.h"
+#include "processing/models/qgsprocessingmodelparameter.h"
 #include <QDialog>
 
 class QStandardItemModel;

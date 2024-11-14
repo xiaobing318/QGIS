@@ -12,26 +12,26 @@ __copyright__ = 'Copyright 2022, The QGIS Project'
 import math
 import os
 
+import qgis  # NOQA
 from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import (
-    QgsCoordinateReferenceSystem,
     QgsFlatTerrainProvider,
-    QgsMeshLayer,
+    QgsRasterDemTerrainProvider,
     QgsMeshTerrainProvider,
     QgsProject,
-    QgsRasterDemTerrainProvider,
     QgsRasterLayer,
+    QgsMeshLayer,
     QgsReadWriteContext,
+    QgsCoordinateReferenceSystem
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
 start_app()
 
 
-class TestQgsTerrainProviders(QgisTestCase):
+class TestQgsTerrainProviders(unittest.TestCase):
 
     def testFlatProvider(self):
         """

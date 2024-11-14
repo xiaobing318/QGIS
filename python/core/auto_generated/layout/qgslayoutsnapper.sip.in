@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/layout/qgslayoutsnapper.h                                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -13,6 +13,8 @@ class QgsLayoutSnapper: QgsLayoutSerializableObject
 %Docstring(signature="appended")
 Manages snapping grids and preset snap lines in a layout, and handles
 snapping points to the nearest grid coordinate/snap line when possible.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -255,5 +257,5 @@ Sets the snapper's state from a DOM element. snapperElement is the DOM node corr
  *                                                                      *
  * src/core/layout/qgslayoutsnapper.h                                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

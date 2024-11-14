@@ -14,9 +14,7 @@
  ***************************************************************************/
 
 #include "qgspolygon3dsymbolwidget.h"
-#include "moc_qgspolygon3dsymbolwidget.cpp"
 
-#include "qgs3dtypes.h"
 #include "qgspolygon3dsymbol.h"
 #include "qgsphongmaterialsettings.h"
 
@@ -24,23 +22,16 @@ QgsPolygon3DSymbolWidget::QgsPolygon3DSymbolWidget( QWidget *parent )
   : Qgs3DSymbolWidget( parent )
 {
   setupUi( this );
-  spinOffset->setClearValue( 0.0 );
+  spinHeight->setClearValue( 0.0 );
   spinExtrusion->setClearValue( 0.0 );
   spinEdgeWidth->setClearValue( 1.0 );
-
-  cboCullingMode->addItem( tr( "No Culling" ), Qgs3DTypes::NoCulling );
-  cboCullingMode->addItem( tr( "Front" ), Qgs3DTypes::Front );
-  cboCullingMode->addItem( tr( "Back" ), Qgs3DTypes::Back );
-
-  cboCullingMode->setItemData( 0, tr( "Both sides of the shapes are visible" ), Qt::ToolTipRole );
-  cboCullingMode->setItemData( 1, tr( "Only the back of the shapes is visible" ), Qt::ToolTipRole );
-  cboCullingMode->setItemData( 2, tr( "Only the front of the shapes is visible" ), Qt::ToolTipRole );
 
   QgsPolygon3DSymbol defaultSymbol;
   setSymbol( &defaultSymbol, nullptr );
 
-  connect( spinOffset, static_cast<void ( QDoubleSpinBox::* )( double )>( &QDoubleSpinBox::valueChanged ), this, &QgsPolygon3DSymbolWidget::changed );
+  connect( spinHeight, static_cast<void ( QDoubleSpinBox::* )( double )>( &QDoubleSpinBox::valueChanged ), this, &QgsPolygon3DSymbolWidget::changed );
   connect( spinExtrusion, static_cast<void ( QDoubleSpinBox::* )( double )>( &QDoubleSpinBox::valueChanged ), this, &QgsPolygon3DSymbolWidget::changed );
+  connect( cboAltClamping, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, &QgsPolygon3DSymbolWidget::changed );
   connect( cboAltBinding, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, &QgsPolygon3DSymbolWidget::changed );
   connect( cboCullingMode, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, &QgsPolygon3DSymbolWidget::changed );
   connect( cboRenderedFacade, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, &QgsPolygon3DSymbolWidget::changed );
@@ -52,8 +43,6 @@ QgsPolygon3DSymbolWidget::QgsPolygon3DSymbolWidget( QWidget *parent )
   connect( groupEdges, &QGroupBox::clicked, this, &QgsPolygon3DSymbolWidget::changed );
   connect( btnEdgeColor, &QgsColorButton::colorChanged, this, &QgsPolygon3DSymbolWidget::changed );
   connect( spinEdgeWidth, static_cast<void ( QDoubleSpinBox::* )( double )>( &QDoubleSpinBox::valueChanged ), this, &QgsPolygon3DSymbolWidget::changed );
-  connect( cboAltClamping, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, &QgsPolygon3DSymbolWidget::changed );
-  connect( cboAltClamping, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, &QgsPolygon3DSymbolWidget::updateGuiState );
 
   widgetMaterial->setTechnique( QgsMaterialSettingsRenderingTechnique::TrianglesDataDefined );
 }
@@ -69,20 +58,20 @@ void QgsPolygon3DSymbolWidget::setSymbol( const QgsAbstract3DSymbol *symbol, Qgs
   if ( !polygonSymbol )
     return;
 
-  spinOffset->setValue( polygonSymbol->offset() );
+  spinHeight->setValue( polygonSymbol->height() );
   spinExtrusion->setValue( polygonSymbol->extrusionHeight() );
   cboAltClamping->setCurrentIndex( static_cast<int>( polygonSymbol->altitudeClamping() ) );
   cboAltBinding->setCurrentIndex( static_cast<int>( polygonSymbol->altitudeBinding() ) );
-  cboCullingMode->setCurrentIndex( cboCullingMode->findData( polygonSymbol->cullingMode() ) );
+  cboCullingMode->setCurrentIndex( static_cast<int>( polygonSymbol->cullingMode() ) );
   cboRenderedFacade->setCurrentIndex( polygonSymbol->renderedFacade() );
 
   chkAddBackFaces->setChecked( polygonSymbol->addBackFaces() );
   chkInvertNormals->setChecked( polygonSymbol->invertNormals() );
 
-  widgetMaterial->setSettings( polygonSymbol->materialSettings(), layer );
+  widgetMaterial->setSettings( polygonSymbol->material(), layer );
 
-  btnHeightDD->init( static_cast< int >( QgsAbstract3DSymbol::Property::Height ), polygonSymbol->dataDefinedProperties(), QgsAbstract3DSymbol::propertyDefinitions(), layer, true );
-  btnExtrusionDD->init( static_cast< int >( QgsAbstract3DSymbol::Property::ExtrusionHeight ), polygonSymbol->dataDefinedProperties(), QgsAbstract3DSymbol::propertyDefinitions(), layer, true );
+  btnHeightDD->init( QgsAbstract3DSymbol::PropertyHeight, polygonSymbol->dataDefinedProperties(), QgsAbstract3DSymbol::propertyDefinitions(), layer, true );
+  btnExtrusionDD->init( QgsAbstract3DSymbol::PropertyExtrusionHeight, polygonSymbol->dataDefinedProperties(), QgsAbstract3DSymbol::propertyDefinitions(), layer, true );
 
   groupEdges->setChecked( polygonSymbol->edgesEnabled() );
   spinEdgeWidth->setValue( polygonSymbol->edgeWidth() );
@@ -92,19 +81,19 @@ void QgsPolygon3DSymbolWidget::setSymbol( const QgsAbstract3DSymbol *symbol, Qgs
 QgsAbstract3DSymbol *QgsPolygon3DSymbolWidget::symbol()
 {
   std::unique_ptr< QgsPolygon3DSymbol > sym = std::make_unique< QgsPolygon3DSymbol >();
-  sym->setOffset( static_cast<float>( spinOffset->value() ) );
+  sym->setHeight( spinHeight->value() );
   sym->setExtrusionHeight( spinExtrusion->value() );
   sym->setAltitudeClamping( static_cast<Qgis::AltitudeClamping>( cboAltClamping->currentIndex() ) );
   sym->setAltitudeBinding( static_cast<Qgis::AltitudeBinding>( cboAltBinding->currentIndex() ) );
-  sym->setCullingMode( static_cast<Qgs3DTypes::CullingMode>( cboCullingMode->currentData().toInt() ) );
+  sym->setCullingMode( static_cast<Qgs3DTypes::CullingMode>( cboCullingMode->currentIndex() ) );
   sym->setRenderedFacade( cboRenderedFacade->currentIndex() );
   sym->setAddBackFaces( chkAddBackFaces->isChecked() );
   sym->setInvertNormals( chkInvertNormals->isChecked() );
-  sym->setMaterialSettings( widgetMaterial->settings() );
+  sym->setMaterial( widgetMaterial->settings() );
 
   QgsPropertyCollection ddp;
-  ddp.setProperty( QgsAbstract3DSymbol::Property::Height, btnHeightDD->toProperty() );
-  ddp.setProperty( QgsAbstract3DSymbol::Property::ExtrusionHeight, btnExtrusionDD->toProperty() );
+  ddp.setProperty( QgsAbstract3DSymbol::PropertyHeight, btnHeightDD->toProperty() );
+  ddp.setProperty( QgsAbstract3DSymbol::PropertyExtrusionHeight, btnExtrusionDD->toProperty() );
   sym->setDataDefinedProperties( ddp );
 
   sym->setEdgesEnabled( groupEdges->isChecked() );
@@ -117,12 +106,4 @@ QgsAbstract3DSymbol *QgsPolygon3DSymbolWidget::symbol()
 QString QgsPolygon3DSymbolWidget::symbolType() const
 {
   return QStringLiteral( "polygon" );
-}
-
-void QgsPolygon3DSymbolWidget::updateGuiState()
-{
-  // Altitude binding is not taken into account if altitude clamping is absolute.
-  // See: Qgs3DUtils::clampAltitudes()
-  const bool absoluteClamping = cboAltClamping->currentIndex() == static_cast< int >( Qgis::AltitudeClamping::Absolute );
-  cboAltBinding->setEnabled( !absoluteClamping );
 }

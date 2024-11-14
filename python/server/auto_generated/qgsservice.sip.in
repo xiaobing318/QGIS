@@ -3,7 +3,7 @@
  *                                                                      *
  * src/server/qgsservice.h                                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -19,6 +19,8 @@ Class defining interfaces for QGIS server services
 
 This class provides methods for executing server requests
 They are registered at runtime for a given service name.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -29,6 +31,10 @@ They are registered at runtime for a given service name.
   public:
 
     QgsService();
+%Docstring
+Constructor
+%End
+
     virtual ~QgsService();
 
     virtual QString name() const = 0;
@@ -57,5 +63,5 @@ Execute the requests and set result in :py:class:`QgsServerRequest`
  *                                                                      *
  * src/server/qgsservice.h                                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

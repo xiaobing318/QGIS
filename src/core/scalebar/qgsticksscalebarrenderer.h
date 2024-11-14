@@ -24,6 +24,7 @@
  * \class QgsTicksScaleBarRenderer
  * \ingroup core
  * \brief A scale bar that draws segments using short ticks.
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsTicksScaleBarRenderer: public QgsScaleBarRenderer
 {

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsfieldcombobox.h                                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -19,6 +19,8 @@ It might be combined with a :py:class:`QgsMapLayerComboBox` to automatically upd
 If expression must be used, :py:class:`QgsFieldExpressionWidget` shall be used instead.
 
 .. seealso:: :py:class:`QgsMapLayerComboBox`
+
+.. versionadded:: 2.3
 %End
 
 %TypeHeaderCode
@@ -47,6 +49,8 @@ currently used filter on list of fields
 Sets whether an optional empty field ("not set") option is shown in the combo box.
 
 .. seealso:: :py:func:`allowEmptyFieldName`
+
+.. versionadded:: 3.0
 %End
 
     bool allowEmptyFieldName() const;
@@ -54,6 +58,8 @@ Sets whether an optional empty field ("not set") option is shown in the combo bo
 Returns ``True`` if the combo box allows the empty field ("not set") choice.
 
 .. seealso:: :py:func:`setAllowEmptyFieldName`
+
+.. versionadded:: 3.0
 %End
 
     QString currentField() const;
@@ -122,5 +128,5 @@ setField sets the currently selected field
  *                                                                      *
  * src/gui/qgsfieldcombobox.h                                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

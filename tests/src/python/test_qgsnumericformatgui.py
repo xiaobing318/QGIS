@@ -9,27 +9,23 @@ __author__ = 'Nyall Dawson'
 __date__ = '6/01/2020'
 __copyright__ = 'Copyright 2020, The QGIS Project'
 
+import qgis  # NOQA
 from qgis.PyQt.QtTest import QSignalSpy
-from qgis.core import (
-    QgsApplication,
-    QgsBasicNumericFormat,
-    QgsBearingNumericFormat,
-    QgsCurrencyNumericFormat,
-    QgsFallbackNumericFormat,
-    QgsGeographicCoordinateNumericFormat,
-    QgsNumericFormat,
-    QgsPercentageNumericFormat,
-    QgsScientificNumericFormat,
-)
-from qgis.gui import (
-    QgsGui,
-    QgsNumericFormatConfigurationWidgetFactory,
-    QgsNumericFormatGuiRegistry,
-    QgsNumericFormatSelectorWidget,
-    QgsNumericFormatWidget,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsFallbackNumericFormat,
+                       QgsBasicNumericFormat,
+                       QgsBearingNumericFormat,
+                       QgsPercentageNumericFormat,
+                       QgsScientificNumericFormat,
+                       QgsCurrencyNumericFormat,
+                       QgsGeographicCoordinateNumericFormat,
+                       QgsNumericFormat,
+                       QgsApplication)
+from qgis.gui import (QgsNumericFormatSelectorWidget,
+                      QgsNumericFormatGuiRegistry,
+                      QgsNumericFormatConfigurationWidgetFactory,
+                      QgsNumericFormatWidget,
+                      QgsGui)
+from qgis.testing import start_app, unittest
 
 start_app()
 
@@ -84,7 +80,7 @@ class TestWidgetFactory(QgsNumericFormatConfigurationWidgetFactory):
         return w
 
 
-class TestQgsNumericFormatGui(QgisTestCase):
+class TestQgsNumericFormatGui(unittest.TestCase):
 
     def testRegistry(self):
         """
@@ -178,7 +174,7 @@ class TestQgsNumericFormatGui(QgisTestCase):
         original = QgsBearingNumericFormat()
         original.setNumberDecimalPlaces(4)
         original.setShowTrailingZeros(True)
-        original.setDirectionFormat(QgsBearingNumericFormat.FormatDirectionOption.UseRange0To360)
+        original.setDirectionFormat(QgsBearingNumericFormat.UseRange0To360)
 
         w.setFormat(original)
         new = w.format()
@@ -216,7 +212,7 @@ class TestQgsNumericFormatGui(QgisTestCase):
         original = QgsPercentageNumericFormat()
         original.setNumberDecimalPlaces(4)
         original.setShowTrailingZeros(True)
-        original.setInputValues(QgsPercentageNumericFormat.InputValues.ValuesAreFractions)
+        original.setInputValues(QgsPercentageNumericFormat.ValuesAreFractions)
 
         w.setFormat(original)
         new = w.format()

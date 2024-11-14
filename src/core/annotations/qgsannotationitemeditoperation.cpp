@@ -17,31 +17,6 @@
 #include "qgsannotationitemeditoperation.h"
 
 //
-// QgsAnnotationItemEditContext
-//
-
-QgsRectangle QgsAnnotationItemEditContext::currentItemBounds() const
-{
-  return mCurrentItemBounds;
-}
-
-void QgsAnnotationItemEditContext::setCurrentItemBounds( const QgsRectangle &bounds )
-{
-  mCurrentItemBounds = bounds;
-}
-
-QgsRenderContext QgsAnnotationItemEditContext::renderContext() const
-{
-  return mRenderContext;
-}
-
-void QgsAnnotationItemEditContext::setRenderContext( const QgsRenderContext &context )
-{
-  mRenderContext = context;
-}
-
-
-//
 // QgsAbstractAnnotationItemEditOperation
 //
 QgsAbstractAnnotationItemEditOperation::QgsAbstractAnnotationItemEditOperation( const QString &itemId )
@@ -56,14 +31,11 @@ QgsAbstractAnnotationItemEditOperation::~QgsAbstractAnnotationItemEditOperation(
 //
 // QgsAnnotationItemEditOperationMoveNode
 //
-QgsAnnotationItemEditOperationMoveNode::QgsAnnotationItemEditOperationMoveNode( const QString &itemId, QgsVertexId nodeId, const QgsPoint &before, const QgsPoint &after,
-    double translatePixelsX, double translatePixelsY )
+QgsAnnotationItemEditOperationMoveNode::QgsAnnotationItemEditOperationMoveNode( const QString &itemId, QgsVertexId nodeId, const QgsPoint &before, const QgsPoint &after )
   : QgsAbstractAnnotationItemEditOperation( itemId )
   , mNodeId( nodeId )
   , mBefore( before )
   , mAfter( after )
-  , mTranslatePixelsX( translatePixelsX )
-  , mTranslatePixelsY( translatePixelsY )
 {
 
 }
@@ -95,12 +67,10 @@ QgsAbstractAnnotationItemEditOperation::Type QgsAnnotationItemEditOperationDelet
 // QgsAnnotationItemEditOperationTranslateItem
 //
 
-QgsAnnotationItemEditOperationTranslateItem::QgsAnnotationItemEditOperationTranslateItem( const QString &itemId, double translateX, double translateY, double translatePixelsX, double translatePixelsY )
+QgsAnnotationItemEditOperationTranslateItem::QgsAnnotationItemEditOperationTranslateItem( const QString &itemId, double translateX, double translateY )
   : QgsAbstractAnnotationItemEditOperation( itemId )
   , mTranslateX( translateX )
   , mTranslateY( translateY )
-  , mTranslatePixelsX( translatePixelsX )
-  , mTranslatePixelsY( translatePixelsY )
 {
 
 }

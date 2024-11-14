@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsfocuswatcher.h                                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -16,6 +16,8 @@ A event filter for watching for focus events on a parent object. Usually QObject
 subclass and override methods like focusOutEvent to handle focus events. Using this class
 as an event filter avoids the need to subclass objects and the focus events can be directly
 caught using the emitted signals.
+
+.. versionadded:: 2.16
 %End
 
 %TypeHeaderCode
@@ -60,5 +62,5 @@ Emitted when parent object loses focus.
  *                                                                      *
  * src/gui/qgsfocuswatcher.h                                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

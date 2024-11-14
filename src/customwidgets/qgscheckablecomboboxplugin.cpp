@@ -16,7 +16,6 @@
 #include "qgiscustomwidgets.h"
 #include "qgscheckablecombobox.h"
 #include "qgscheckablecomboboxplugin.h"
-#include "moc_qgscheckablecomboboxplugin.cpp"
 
 
 QgsCheckableComboBoxPlugin::QgsCheckableComboBoxPlugin( QObject *parent )

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     StatisticsByCategories.py
@@ -37,7 +39,7 @@ from qgis.core import (QgsProcessingParameterFeatureSource,
                        QgsProcessing,
                        QgsProcessingFeatureSource,
                        NULL)
-from qgis.PyQt.QtCore import QMetaType
+from qgis.PyQt.QtCore import QVariant
 from processing.algs.qgis.QgisAlgorithm import QgisAlgorithm
 
 from collections import defaultdict
@@ -71,7 +73,7 @@ class StatisticsByCategories(QgisAlgorithm):
     def initAlgorithm(self, config=None):
         self.addParameter(QgsProcessingParameterFeatureSource(self.INPUT,
                                                               self.tr('Input vector layer'),
-                                                              types=[QgsProcessing.SourceType.TypeVector]))
+                                                              types=[QgsProcessing.TypeVector]))
         self.addParameter(QgsProcessingParameterField(self.VALUES_FIELD_NAME,
                                                       self.tr(
                                                           'Field to calculate statistics on (if empty, only count is calculated)'),
@@ -79,7 +81,7 @@ class StatisticsByCategories(QgisAlgorithm):
         self.addParameter(QgsProcessingParameterField(self.CATEGORIES_FIELD_NAME,
                                                       self.tr('Field(s) with categories'),
                                                       parentLayerParameterName=self.INPUT,
-                                                      type=QgsProcessingParameterField.DataType.Any, allowMultiple=True))
+                                                      type=QgsProcessingParameterField.Any, allowMultiple=True))
 
         self.addParameter(QgsProcessingParameterFeatureSink(self.OUTPUT, self.tr('Statistics by category')))
 
@@ -123,53 +125,53 @@ class StatisticsByCategories(QgisAlgorithm):
 
         if value_field is None:
             field_type = 'none'
-            fields.append(QgsField('count', QMetaType.Type.Int))
+            fields.append(QgsField('count', QVariant.Int))
         elif value_field.isNumeric():
             field_type = 'numeric'
-            fields.append(QgsField('count', QMetaType.Type.Int))
-            fields.append(QgsField('unique', QMetaType.Type.Int))
-            fields.append(QgsField('min', QMetaType.Type.Double))
-            fields.append(QgsField('max', QMetaType.Type.Double))
-            fields.append(QgsField('range', QMetaType.Type.Double))
-            fields.append(QgsField('sum', QMetaType.Type.Double))
-            fields.append(QgsField('mean', QMetaType.Type.Double))
-            fields.append(QgsField('median', QMetaType.Type.Double))
-            fields.append(QgsField('stddev', QMetaType.Type.Double))
-            fields.append(QgsField('minority', QMetaType.Type.Double))
-            fields.append(QgsField('majority', QMetaType.Type.Double))
-            fields.append(QgsField('q1', QMetaType.Type.Double))
-            fields.append(QgsField('q3', QMetaType.Type.Double))
-            fields.append(QgsField('iqr', QMetaType.Type.Double))
-        elif value_field.type() in (QMetaType.Type.QDate, QMetaType.Type.QTime, QMetaType.Type.QDateTime):
+            fields.append(QgsField('count', QVariant.Int))
+            fields.append(QgsField('unique', QVariant.Int))
+            fields.append(QgsField('min', QVariant.Double))
+            fields.append(QgsField('max', QVariant.Double))
+            fields.append(QgsField('range', QVariant.Double))
+            fields.append(QgsField('sum', QVariant.Double))
+            fields.append(QgsField('mean', QVariant.Double))
+            fields.append(QgsField('median', QVariant.Double))
+            fields.append(QgsField('stddev', QVariant.Double))
+            fields.append(QgsField('minority', QVariant.Double))
+            fields.append(QgsField('majority', QVariant.Double))
+            fields.append(QgsField('q1', QVariant.Double))
+            fields.append(QgsField('q3', QVariant.Double))
+            fields.append(QgsField('iqr', QVariant.Double))
+        elif value_field.type() in (QVariant.Date, QVariant.Time, QVariant.DateTime):
             field_type = 'datetime'
-            fields.append(QgsField('count', QMetaType.Type.Int))
-            fields.append(QgsField('unique', QMetaType.Type.Int))
-            fields.append(QgsField('empty', QMetaType.Type.Int))
-            fields.append(QgsField('filled', QMetaType.Type.Int))
+            fields.append(QgsField('count', QVariant.Int))
+            fields.append(QgsField('unique', QVariant.Int))
+            fields.append(QgsField('empty', QVariant.Int))
+            fields.append(QgsField('filled', QVariant.Int))
             # keep same data type for these fields
             addField('min')
             addField('max')
         else:
             field_type = 'string'
-            fields.append(QgsField('count', QMetaType.Type.Int))
-            fields.append(QgsField('unique', QMetaType.Type.Int))
-            fields.append(QgsField('empty', QMetaType.Type.Int))
-            fields.append(QgsField('filled', QMetaType.Type.Int))
+            fields.append(QgsField('count', QVariant.Int))
+            fields.append(QgsField('unique', QVariant.Int))
+            fields.append(QgsField('empty', QVariant.Int))
+            fields.append(QgsField('filled', QVariant.Int))
             # keep same data type for these fields
             addField('min')
             addField('max')
-            fields.append(QgsField('min_length', QMetaType.Type.Int))
-            fields.append(QgsField('max_length', QMetaType.Type.Int))
-            fields.append(QgsField('mean_length', QMetaType.Type.Double))
+            fields.append(QgsField('min_length', QVariant.Int))
+            fields.append(QgsField('max_length', QVariant.Int))
+            fields.append(QgsField('mean_length', QVariant.Double))
 
-        request = QgsFeatureRequest().setFlags(QgsFeatureRequest.Flag.NoGeometry)
+        request = QgsFeatureRequest().setFlags(QgsFeatureRequest.NoGeometry)
         if value_field is not None:
             attrs = [value_field_index]
         else:
             attrs = []
         attrs.extend(category_field_indexes)
         request.setSubsetOfAttributes(attrs)
-        features = source.getFeatures(request, QgsProcessingFeatureSource.Flag.FlagSkipGeometryValidityChecks)
+        features = source.getFeatures(request, QgsProcessingFeatureSource.FlagSkipGeometryValidityChecks)
         total = 50.0 / source.featureCount() if source.featureCount() else 0
         if field_type == 'none':
             values = defaultdict(lambda: 0)
@@ -202,7 +204,7 @@ class StatisticsByCategories(QgisAlgorithm):
             values[cat].append(value)
 
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context,
-                                               fields, QgsWkbTypes.Type.NoGeometry, QgsCoordinateReferenceSystem())
+                                               fields, QgsWkbTypes.NoGeometry, QgsCoordinateReferenceSystem())
         if sink is None:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
 
@@ -215,7 +217,6 @@ class StatisticsByCategories(QgisAlgorithm):
         else:
             self.calcStringStats(values, sink, feedback)
 
-        sink.finalize()
         return {self.OUTPUT: dest_id}
 
     def saveCounts(self, values, sink, feedback):
@@ -228,7 +229,7 @@ class StatisticsByCategories(QgisAlgorithm):
             feedback.setProgress(int(current * total) + 50)
             f = QgsFeature()
             f.setAttributes(list(cat) + [v])
-            sink.addFeature(f, QgsFeatureSink.Flag.FastInsert)
+            sink.addFeature(f, QgsFeatureSink.FastInsert)
             current += 1
 
     def calcNumericStats(self, values, sink, feedback):
@@ -259,7 +260,7 @@ class StatisticsByCategories(QgisAlgorithm):
                                          stat.thirdQuartile(),
                                          stat.interQuartileRange()])
 
-            sink.addFeature(f, QgsFeatureSink.Flag.FastInsert)
+            sink.addFeature(f, QgsFeatureSink.FastInsert)
             current += 1
 
     def calcDateTimeStats(self, values, sink, feedback):
@@ -279,11 +280,11 @@ class StatisticsByCategories(QgisAlgorithm):
                                          stat.countDistinct(),
                                          stat.countMissing(),
                                          stat.count() - stat.countMissing(),
-                                         stat.statistic(QgsDateTimeStatisticalSummary.Statistic.Min),
-                                         stat.statistic(QgsDateTimeStatisticalSummary.Statistic.Max)
+                                         stat.statistic(QgsDateTimeStatisticalSummary.Min),
+                                         stat.statistic(QgsDateTimeStatisticalSummary.Max)
                                          ])
 
-            sink.addFeature(f, QgsFeatureSink.Flag.FastInsert)
+            sink.addFeature(f, QgsFeatureSink.FastInsert)
             current += 1
 
     def calcStringStats(self, values, sink, feedback):
@@ -310,5 +311,5 @@ class StatisticsByCategories(QgisAlgorithm):
                                          stat.meanLength()
                                          ])
 
-            sink.addFeature(f, QgsFeatureSink.Flag.FastInsert)
+            sink.addFeature(f, QgsFeatureSink.FastInsert)
             current += 1

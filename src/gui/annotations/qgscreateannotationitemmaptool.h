@@ -18,7 +18,6 @@
 #include "qgis_gui.h"
 #include "qgis_sip.h"
 #include "qgsmaptooladvanceddigitizing.h"
-#include "qgssettingstree.h"
 
 class QgsAnnotationItem;
 class QgsAnnotationLayer;
@@ -83,6 +82,7 @@ class GUI_EXPORT QgsCreateAnnotationItemMapToolHandler : public QObject
   private:
 
     QgsMapCanvas *mMapCanvas = nullptr;
+    QgsAdvancedDigitizingDockWidget *mCadDockWidget = nullptr;
     std::unique_ptr< QgsAnnotationItem > mCreatedItem;
 
 };
@@ -103,16 +103,12 @@ class GUI_EXPORT QgsCreateAnnotationItemMapToolInterface
 {
   public:
 
-#ifndef SIP_RUN
-    static inline QgsSettingsTreeNode *sTreeAnnotationTools = QgsSettingsTree::sTreeGui->createChildNode( QStringLiteral( "annotation-items" ) );
-#endif
-
     virtual ~QgsCreateAnnotationItemMapToolInterface() = default;
 
     /**
      * Returns the handler object for the map tool.
      */
-    virtual QgsCreateAnnotationItemMapToolHandler *handler() const = 0;
+    virtual QgsCreateAnnotationItemMapToolHandler *handler() = 0;
 
     /**
      * Returns a reference to the associated map tool.

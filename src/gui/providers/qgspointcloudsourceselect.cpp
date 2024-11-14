@@ -18,7 +18,6 @@
 #include <QMessageBox>
 
 #include "qgspointcloudsourceselect.h"
-#include "moc_qgspointcloudsourceselect.cpp"
 #include "qgsproviderregistry.h"
 #include "qgsprovidermetadata.h"
 #include "qgshelp.h"
@@ -78,14 +77,13 @@ void QgsPointCloudSourceSelect::addButtonClicked()
 
     for ( const QString &path : QgsFileWidget::splitFilePaths( mPath ) )
     {
-      // maybe we should raise an assert if preferredProviders size is 0 or >1? Play it safe for now...
+      // auto determine preferred provider for each path
+
       const QList< QgsProviderRegistry::ProviderCandidateDetails > preferredProviders = QgsProviderRegistry::instance()->preferredProvidersForUri( path );
-      // if no preferred providers we can still give pdal a try
-      const QString providerKey = preferredProviders.empty() ? QStringLiteral( "pdal" ) : preferredProviders.first().metadata()->key();
-      Q_NOWARN_DEPRECATED_PUSH
-      emit addPointCloudLayer( path, QFileInfo( path ).baseName(), providerKey ) ;
-      Q_NOWARN_DEPRECATED_POP
-      emit addLayer( Qgis::LayerType::PointCloud, path, QFileInfo( path ).baseName(), providerKey );
+      // maybe we should raise an assert if preferredProviders size is 0 or >1? Play it safe for now...
+      if ( preferredProviders.empty() )
+        continue;
+      emit addPointCloudLayer( path, QFileInfo( path ).baseName(), preferredProviders.at( 0 ).metadata()->key() ) ;
     }
   }
   else if ( mDataSourceType == QLatin1String( "remote" ) )
@@ -125,10 +123,7 @@ void QgsPointCloudSourceSelect::addButtonClicked()
       {
         baseName = QFileInfo( mPath ).baseName();
       }
-      Q_NOWARN_DEPRECATED_PUSH
       emit addPointCloudLayer( mPath, baseName, preferredProviders.at( 0 ).metadata()->key() ) ;
-      Q_NOWARN_DEPRECATED_POP
-      emit addLayer( Qgis::LayerType::PointCloud, mPath, baseName, preferredProviders.at( 0 ).metadata()->key() );
     }
   }
 }

@@ -19,8 +19,6 @@
 #include "qgsoptionswidgetfactory.h"
 #include "qgscodeeditor.h"
 
-class QgsCodeEditorShell;
-
 /**
  * \ingroup app
  * \class QgsCodeEditorOptionsWidget
@@ -50,9 +48,6 @@ class QgsCodeEditorOptionsWidget : public QgsOptionsPageWidget, private Ui::QgsC
     bool mBlockCustomColorChange = false;
 
     void updatePreview();
-
-    QgsCodeEditorShell *mBashPreview = nullptr;
-    QgsCodeEditorShell *mBatchPreview = nullptr;
 
 
 };

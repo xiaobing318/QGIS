@@ -16,7 +16,6 @@ email                : jef at norbit dot de
  ***************************************************************************/
 
 #include "qgscolumntypethread.h"
-#include "moc_qgscolumntypethread.cpp"
 #include "qgspostgresconnpool.h"
 #include "qgslogger.h"
 
@@ -47,7 +46,7 @@ void QgsGeomColumnTypeThread::run()
   mConn = QgsPostgresConnPool::instance()->acquireConnection( uri.connectionInfo( false ) );
   if ( !mConn )
   {
-    QgsDebugError( "Connection failed - " + uri.connectionInfo( false ) );
+    QgsDebugMsg( "Connection failed - " + uri.connectionInfo( false ) );
     return;
   }
 
@@ -78,7 +77,7 @@ void QgsGeomColumnTypeThread::run()
   for ( auto &layerProperty : layerProperties )
   {
     if ( !layerProperty.geometryColName.isNull() &&
-         ( layerProperty.types.value( 0, Qgis::WkbType::Unknown ) == Qgis::WkbType::Unknown ||
+         ( layerProperty.types.value( 0, QgsWkbTypes::Unknown ) == QgsWkbTypes::Unknown ||
            layerProperty.srids.value( 0, std::numeric_limits<int>::min() ) == std::numeric_limits<int>::min() ) )
     {
       unrestrictedLayers << &layerProperty;

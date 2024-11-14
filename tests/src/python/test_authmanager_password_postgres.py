@@ -9,7 +9,7 @@ From build dir, run: ctest -R PyQgsAuthManagerPasswordPostgresTest -V
 
 It uses a docker container as postgres/postgis server with certificates from tests/testdata/auth_system/certs_keys_2048
 
-Use docker compose -f .docker/docker-compose-testing-postgres.yml up postgres to start the server
+Use docker-compose -f .docker/docker-compose-testing-postgres.yml up postgres to start the server
 
 TODO:
     - Document how to restore the server data
@@ -27,12 +27,14 @@ from qgis.PyQt.QtNetwork import QSslCertificate
 from qgis.core import (
     QgsApplication,
     QgsAuthMethodConfig,
-    QgsDataSourceUri,
     QgsVectorLayer,
+    QgsDataSourceUri,
     QgsWkbTypes,
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import (
+    start_app,
+    unittest,
+)
 
 from utilities import unitTestDataPath
 
@@ -72,13 +74,12 @@ def ScopedCertAuthority(username, password, sslrootcert_path=None):
     authm.rebuildCertTrustCache()
 
 
-class TestAuthManager(QgisTestCase):
+class TestAuthManager(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         """Run before all tests:
         Creates an auth configuration"""
-        super().setUpClass()
         cls.username = 'docker'
         cls.password = 'docker'
         cls.dbname = 'qgis_test'
@@ -99,14 +100,14 @@ class TestAuthManager(QgisTestCase):
         pass
 
     @classmethod
-    def _getPostGISLayer(cls, type_name, layer_name=None, authcfg=None, sslmode=QgsDataSourceUri.SslMode.SslVerifyFull):
+    def _getPostGISLayer(cls, type_name, layer_name=None, authcfg=None, sslmode=QgsDataSourceUri.SslVerifyFull):
         """
         PG layer factory
         """
         if layer_name is None:
             layer_name = 'pg_' + type_name
         uri = QgsDataSourceUri()
-        uri.setWkbType(QgsWkbTypes.Type.Point)
+        uri.setWkbType(QgsWkbTypes.Point)
         uri.setConnection(cls.hostname, cls.port, cls.dbname, "", "", sslmode, authcfg)
         uri.setKeyColumn('pk')
         uri.setSrid('EPSG:4326')
@@ -137,7 +138,7 @@ class TestAuthManager(QgisTestCase):
         This should work.
         """
         with ScopedCertAuthority(self.username, self.password) as auth_config:
-            pg_layer = self._getPostGISLayer('testlayer_èé', authcfg=auth_config.id(), sslmode=QgsDataSourceUri.SslMode.SslRequire)
+            pg_layer = self._getPostGISLayer('testlayer_èé', authcfg=auth_config.id(), sslmode=QgsDataSourceUri.SslRequire)
             self.assertTrue(pg_layer.isValid())
 
     def testSslVerifyFullCaCheck(self):

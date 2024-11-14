@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     ClipVectorByExtent.py
@@ -19,7 +21,9 @@ __author__ = 'Victor Olaya'
 __date__ = 'November 2012'
 __copyright__ = '(C) 2012, Victor Olaya'
 
-from qgis.core import (QgsProcessingException,
+from qgis.core import (QgsVectorLayer,
+                       QgsProcessing,
+                       QgsProcessingException,
                        QgsProcessingParameterDefinition,
                        QgsProcessingParameterFeatureSource,
                        QgsProcessingParameterExtent,
@@ -48,7 +52,7 @@ class ClipVectorByExtent(GdalAlgorithm):
                                                      self.tr('Additional creation options'),
                                                      defaultValue='',
                                                      optional=True)
-        options_param.setFlags(options_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        options_param.setFlags(options_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(options_param)
 
         self.addParameter(QgsProcessingParameterVectorDestination(self.OUTPUT,
@@ -70,7 +74,7 @@ class ClipVectorByExtent(GdalAlgorithm):
         return 'ogr2ogr'
 
     def getConsoleCommands(self, parameters, context, feedback, executing=True):
-        input_details = self.getOgrCompatibleSource(self.INPUT, parameters, context, feedback, executing)
+        ogrLayer, layerName = self.getOgrCompatibleSource(self.INPUT, parameters, context, feedback, executing)
         source = self.parameterAsSource(parameters, self.INPUT, context)
         if source is None:
             raise QgsProcessingException(self.invalidSourceError(parameters, self.INPUT))
@@ -80,9 +84,7 @@ class ClipVectorByExtent(GdalAlgorithm):
         outFile = self.parameterAsOutputLayer(parameters, self.OUTPUT, context)
         self.setOutputValue(self.OUTPUT, outFile)
 
-        output_details = GdalUtils.gdal_connection_details_from_uri(
-            outFile,
-            context)
+        output, outputFormat = GdalUtils.ogrConnectionStringAndFormat(outFile, context)
 
         arguments = [
             '-spat',
@@ -92,21 +94,15 @@ class ClipVectorByExtent(GdalAlgorithm):
             str(extent.yMinimum()),
             '-clipsrc spat_extent',
 
-            output_details.connection_string,
-            input_details.connection_string,
-            input_details.layer_name
+            output,
+            ogrLayer,
+            layerName
         ]
-
-        if input_details.open_options:
-            arguments.extend(input_details.open_options_as_arguments())
-
-        if input_details.credential_options:
-            arguments.extend(input_details.credential_options_as_arguments())
 
         if options:
             arguments.append(options)
 
-        if output_details.format:
-            arguments.append(f'-f {output_details.format}')
+        if outputFormat:
+            arguments.append('-f {}'.format(outputFormat))
 
         return [self.commandName(), GdalUtils.escapeAndJoin(arguments)]

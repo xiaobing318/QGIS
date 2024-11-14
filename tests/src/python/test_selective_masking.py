@@ -14,50 +14,55 @@ __date__ = '28/06/2019'
 
 import os
 import subprocess
-import tempfile
 
-from qgis.PyQt.QtCore import QRectF, QSize, Qt, QUuid, QCoreApplication
-from qgis.PyQt.QtGui import QColor, QImage, QPainter
+import qgis  # NOQA
+from qgis.PyQt.QtCore import (
+    Qt,
+    QSize,
+    QRectF,
+    QDir
+)
+from qgis.PyQt.QtGui import (
+    QColor,
+    QImage,
+    QPainter
+)
 from qgis.core import (
     Qgis,
+    QgsMapSettings,
     QgsCoordinateReferenceSystem,
-    QgsLayout,
-    QgsLayoutExporter,
-    QgsLayoutItemMap,
-    QgsLayoutItemPage,
-    QgsLayoutSize,
-    QgsLineSymbol,
-    QgsMapRendererCache,
-    QgsMapRendererCustomPainterJob,
+    QgsRectangle,
+    QgsProject,
+    QgsSymbolLayerReference,
     QgsMapRendererParallelJob,
     QgsMapRendererSequentialJob,
-    QgsMapSettings,
-    QgsMarkerLineSymbolLayer,
+    QgsMapRendererCustomPainterJob,
+    QgsRenderChecker,
     QgsMarkerSymbol,
     QgsMaskMarkerSymbolLayer,
-    QgsNullSymbolRenderer,
+    QgsSingleSymbolRenderer,
+    QgsSymbolLayerId,
+    QgsSymbolLayerUtils,
+    QgsMapRendererCache,
+    QgsUnitTypes,
     QgsOuterGlowEffect,
     QgsPalLayerSettings,
-    QgsPathResolver,
-    QgsProject,
-    QgsProjectFileTransform,
     QgsProperty,
-    QgsRectangle,
     QgsRenderContext,
-    QgsSingleSymbolRenderer,
-    QgsSvgMarkerSymbolLayer,
-    QgsSymbolLayerId,
-    QgsSymbolLayerReference,
-    QgsSymbolLayerUtils,
-    QgsUnitTypes,
+    QgsLayout,
+    QgsLayoutItemPage,
+    QgsLayoutSize,
+    QgsLayoutItemMap,
+    QgsLayoutExporter,
     QgsWkbTypes,
-    QgsFontUtils,
-    QgsSettings
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import unittest, start_app
 
-from utilities import getTempfilePath, getTestFont, unitTestDataPath
+from utilities import (
+    unitTestDataPath,
+    getTempfilePath,
+    getTestFont,
+)
 
 TEST_DATA_DIR = unitTestDataPath()
 
@@ -81,31 +86,22 @@ def renderMapToImageWithTime(mapsettings, parallel=False, cache=None):
     return (job.renderedImage(), job.renderingTime())
 
 
-class TestSelectiveMasking(QgisTestCase):
-
-    @classmethod
-    def control_path_prefix(cls):
-        return "selective_masking"
-
-    @classmethod
-    def setUpClass(cls):
-        super(TestSelectiveMasking, cls).setUpClass()
-        QCoreApplication.setOrganizationName("QGIS_Test")
-        QCoreApplication.setOrganizationDomain("SelectiveMaskingTestBase.com")
-        QCoreApplication.setApplicationName("SelectiveMaskingTestBase")
-        QgsSettings().clear()
-
-        start_app()
+class TestSelectiveMasking(unittest.TestCase):
 
     def setUp(self):
+        self.checker = QgsRenderChecker()
+        self.checker.setControlPathPrefix("selective_masking")
+
+        self.report = "<h1>Python Selective Masking Tests</h1>\n"
+
         self.map_settings = QgsMapSettings()
         crs = QgsCoordinateReferenceSystem('epsg:4326')
         extent = QgsRectangle(-123.0, 22.7, -76.4, 46.9)
         self.map_settings.setBackgroundColor(QColor(152, 219, 249))
         self.map_settings.setOutputSize(QSize(420, 280))
         self.map_settings.setOutputDpi(72)
-        self.map_settings.setFlag(QgsMapSettings.Flag.Antialiasing, True)
-        self.map_settings.setFlag(QgsMapSettings.Flag.UseAdvancedEffects, False)
+        self.map_settings.setFlag(QgsMapSettings.Antialiasing, True)
+        self.map_settings.setFlag(QgsMapSettings.UseAdvancedEffects, False)
         self.map_settings.setDestinationCrs(crs)
         self.map_settings.setExtent(extent)
 
@@ -136,137 +132,104 @@ class TestSelectiveMasking(QgisTestCase):
                 fmt.setFont(font)
                 fmt.setNamedStyle('Roman')
                 fmt.setSize(32)
-                fmt.setSizeUnit(QgsUnitTypes.RenderUnit.RenderPoints)
+                fmt.setSizeUnit(QgsUnitTypes.RenderPoints)
                 settings.setFormat(fmt)
-                if (layer.geometryType == QgsWkbTypes.GeometryType.PolygonGeometry):
-                    settings.placement = QgsPalLayerSettings.Placement.OverPoint
+                if (layer.geometryType == QgsWkbTypes.PolygonGeometry):
+                    settings.placement = QgsPalLayerSettings.OverPoint
                 layer.labeling().setSettings(settings, provider)
 
         # order layers for rendering
         self.map_settings.setLayers([self.points_layer, self.lines_layer, self.polys_layer])
 
-    def get_symbollayer(self, layer, ruleId, symbollayer_ids):
-        """
-        Returns the symbol layer according to given layer, ruleId (None if no rule) and the path
-        to symbol layer id (for instance [0, 1])
-        """
-        renderer = layer.renderer()
-        symbol = None
-        if renderer.type() == "categorizedSymbol":
-            i = renderer.categoryIndexForValue(ruleId)
-            cat = renderer.categories()[i]
-            symbol = cat.symbol()
-        elif renderer.type() == "singleSymbol":
-            symbol = renderer.symbol()
+    def tearDown(self):
+        report_file_path = "%s/qgistest.html" % QDir.tempPath()
+        with open(report_file_path, 'a') as report_file:
+            report_file.write(self.report)
 
-        symbollayer = symbol.symbolLayer(symbollayer_ids[0])
-        for i in range(1, len(symbollayer_ids)):
-            symbol = symbollayer.subSymbol()
-            symbollayer = symbol.symbolLayer(symbollayer_ids[i])
-
-        return symbollayer
-
-    def get_symbollayer_ref(self, layer, ruleId, symbollayer_ids):
-        """
-        Returns the symbol layer according to given layer, ruleId (None if no rule) and the path
-        to symbol layer id (for instance [0, 1])
-        """
-        symbollayer = self.get_symbollayer(layer, ruleId, symbollayer_ids)
-        return QgsSymbolLayerReference(layer.id(), symbollayer.id())
-
-    def check_renderings(self, map_settings, control_name, test_parallel_rendering: bool = True):
+    def check_renderings(self, map_settings, control_name):
         """Test a rendering with different configurations:
         - parallel rendering, no cache
         - sequential rendering, no cache
         - parallel rendering, with cache (rendered two times)
         - sequential rendering, with cache (rendered two times)
         """
-        if test_parallel_rendering:
-            parallel_tests = [False, True]
-        else:
-            parallel_tests = [False]
 
-        for do_parallel in parallel_tests:
+        for do_parallel in [False, True]:
             for use_cache in [False, True]:
                 print("=== parallel", do_parallel, "cache", use_cache)
+                tmp = getTempfilePath('png')
                 cache = None
                 if use_cache:
                     cache = QgsMapRendererCache()
                     # render a first time to fill the cache
-                    renderMapToImageWithTime(map_settings, parallel=do_parallel, cache=cache)
-                img, t = renderMapToImageWithTime(map_settings, parallel=do_parallel, cache=cache)
+                    renderMapToImageWithTime(self.map_settings, parallel=do_parallel, cache=cache)
+                img, t = renderMapToImageWithTime(self.map_settings, parallel=do_parallel, cache=cache)
+                img.save(tmp)
+                print(f"Image rendered in {tmp}")
 
+                self.checker.setControlName(control_name)
+                self.checker.setRenderedImage(tmp)
                 suffix = ("_parallel" if do_parallel else "_sequential") + ("_cache" if use_cache else "_nocache")
-                res = self.image_check(
-                    control_name + suffix,
-                    control_name,
-                    img,
-                    control_name,
-                    allowed_mismatch=0,
-                    color_tolerance=0
-                )
-
+                res = self.checker.compareImages(control_name + suffix)
+                self.report += self.checker.report()
                 self.assertTrue(res)
 
                 print(f"=== Rendering took {float(t) / 1000.0}s")
 
-    def check_layout_export(self, control_name, expected_nb_raster, layers=None, dpiTarget=None,
-                            extent=None):
+    def check_layout_export(self, control_name, expected_nb_raster, layers=None, dpiTarget=None):
         """
         Generate a PDF layout export and control the output matches expected_filename
         """
 
-        with tempfile.TemporaryDirectory() as temp_dir:
-            # generate vector file
-            layout = QgsLayout(QgsProject.instance())
-            page = QgsLayoutItemPage(layout)
-            page.setPageSize(QgsLayoutSize(50, 33))
-            layout.pageCollection().addPage(page)
+        # generate vector file
+        layout = QgsLayout(QgsProject.instance())
+        page = QgsLayoutItemPage(layout)
+        page.setPageSize(QgsLayoutSize(50, 33))
+        layout.pageCollection().addPage(page)
 
-            map = QgsLayoutItemMap(layout)
-            map.attemptSetSceneRect(QRectF(1, 1, 48, 32))
-            map.setFrameEnabled(True)
-            layout.addLayoutItem(map)
-            map.setExtent(extent if extent is not None else self.lines_layer.extent())
-            map.setLayers(layers if layers is not None else [self.points_layer, self.lines_layer, self.polys_layer])
+        map = QgsLayoutItemMap(layout)
+        map.attemptSetSceneRect(QRectF(1, 1, 48, 32))
+        map.setFrameEnabled(True)
+        layout.addLayoutItem(map)
+        map.setExtent(self.lines_layer.extent())
+        map.setLayers(layers if layers is not None else [self.points_layer, self.lines_layer, self.polys_layer])
 
-            settings = QgsLayoutExporter.PdfExportSettings()
+        settings = QgsLayoutExporter.PdfExportSettings()
 
-            if dpiTarget is not None:
-                settings.dpi = dpiTarget
+        if dpiTarget is not None:
+            settings.dpi = dpiTarget
 
-            exporter = QgsLayoutExporter(layout)
-            result_filename = os.path.join(temp_dir, "export.pdf")
-            exporter.exportToPdf(result_filename, settings)
-            self.assertTrue(os.path.exists(result_filename))
+        exporter = QgsLayoutExporter(layout)
+        result_filename = getTempfilePath('pdf')
+        exporter.exportToPdf(result_filename, settings)
+        self.assertTrue(os.path.exists(result_filename))
 
-            # Generate a readable PDF file so we count raster in it
-            result_txt = os.path.join(temp_dir, "export.txt")
-            subprocess.run(["qpdf", "--qdf", "--object-streams=disable", result_filename, result_txt])
-            self.assertTrue(os.path.exists(result_txt))
+        # Generate a readable PDF file so we count raster in it
+        result_txt = getTempfilePath("txt")
+        subprocess.run(["qpdf", "--qdf", "--object-streams=disable", result_filename, result_txt])
+        self.assertTrue(os.path.exists(result_txt))
 
-            result = open(result_txt, 'rb')
-            result_lines = [l.decode('iso-8859-1') for l in result.readlines()]
-            result.close()
-            nb_raster = len([l for l in result_lines if "/Subtype /Image" in l])
-            self.assertEqual(nb_raster, expected_nb_raster)
+        # expected_file = os.path.join(TEST_DATA_DIR, "control_images/selective_masking/pdf_exports/{}".format(expected_filename))
+        # self.assertTrue(os.path.exists(expected_file))
 
-            # Generate an image from pdf to compare with expected control image
-            # keep PDF DPI resolution (300)
-            image_result_filename = os.path.join(temp_dir, "export.png")
-            subprocess.run(["pdftoppm", result_filename,
-                            os.path.splitext(image_result_filename)[0],
-                            "-png", "-r", "300", "-singlefile"])
+        result = open(result_txt, 'rb')
+        result_lines = [l.decode('iso-8859-1') for l in result.readlines()]
+        result.close()
+        nb_raster = len([l for l in result_lines if "/Subtype /Image" in l])
+        self.assertEqual(nb_raster, expected_nb_raster)
 
-            rendered_image = QImage(image_result_filename)
-            res = self.image_check(control_name,
-                                   control_name,
-                                   rendered_image,
-                                   control_name,
-                                   allowed_mismatch=0,
-                                   color_tolerance=0)
+        # Generate an image from pdf to compare with expected control image
+        # keep PDF DPI resolution (300)
+        image_result_filename = getTempfilePath("png")
+        subprocess.run(["pdftoppm", result_filename,
+                        os.path.splitext(image_result_filename)[0],
+                        "-png", "-r", "300", "-singlefile"])
 
-            self.assertTrue(res)
+        self.checker.setControlName(control_name)
+        self.checker.setRenderedImage(image_result_filename)
+        res = self.checker.compareImages(control_name)
+        self.report += self.checker.report()
+        self.assertTrue(res)
 
     def test_save_restore_references(self):
         """
@@ -276,88 +239,53 @@ class TestSelectiveMasking(QgisTestCase):
         # simple ids
         mask_layer = QgsMaskMarkerSymbolLayer()
         mask_layer.setMasks([
-            self.get_symbollayer_ref(self.lines_layer, "", [0]),
-            self.get_symbollayer_ref(self.lines_layer2, "some_id", [1, 0]),
-            self.get_symbollayer_ref(self.polys_layer, "some_other_id", [0])
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 0)),
+            QgsSymbolLayerReference(self.lines_layer2.id(), QgsSymbolLayerId("some_id", [1, 3, 5, 19])),
+            QgsSymbolLayerReference(self.polys_layer.id(), QgsSymbolLayerId("some_other_id", [4, 5])),
         ])
 
         props = mask_layer.properties()
 
-        print(f"props={props}")
+        mask_layer2 = QgsMaskMarkerSymbolLayer.create(props)
+        self.assertEqual(mask_layer2.masks(), [
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 0)),
+            QgsSymbolLayerReference(self.lines_layer2.id(), QgsSymbolLayerId("some_id", [1, 3, 5, 19])),
+            QgsSymbolLayerReference(self.polys_layer.id(), QgsSymbolLayerId("some_other_id", [4, 5])),
+        ])
+
+        # complex ids
+        mask_layer = QgsMaskMarkerSymbolLayer()
+        mask_layer.setMasks([
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 0)),
+            QgsSymbolLayerReference(self.lines_layer2.id(), QgsSymbolLayerId("some id, #1", [1, 3, 5, 19])),
+            QgsSymbolLayerReference(self.polys_layer.id(), QgsSymbolLayerId("some other id, like, this", [4, 5])),
+        ])
+
+        props = mask_layer.properties()
 
         mask_layer2 = QgsMaskMarkerSymbolLayer.create(props)
         self.assertEqual(mask_layer2.masks(), [
-            self.get_symbollayer_ref(self.lines_layer, "", [0]),
-            self.get_symbollayer_ref(self.lines_layer2, "some_id", [1, 0]),
-            self.get_symbollayer_ref(self.polys_layer, "some_other_id", [0])
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 0)),
+            QgsSymbolLayerReference(self.lines_layer2.id(), QgsSymbolLayerId("some id, #1", [1, 3, 5, 19])),
+            QgsSymbolLayerReference(self.polys_layer.id(), QgsSymbolLayerId("some other id, like, this", [4, 5])),
         ])
 
-    def test_migrate_old_references(self):
-        """
-        Since QGIS 3.30, QgsSymbolLayerReference has change its definition, so we test we can migrate
-        old reference to new ones
-        """
-
-        # test label mask
-        label_settings = self.polys_layer.labeling().settings()
-        fmt = label_settings.format()
-        # enable a mask
-        fmt.mask().setEnabled(True)
-        fmt.mask().setSize(4.0)
-        # and mask other symbol layers underneath
-        oldMaskRefs = [
-            # the black part of roads
-            QgsSymbolLayerReference(self.lines_layer2.id(), QgsSymbolLayerId("", [1, 0])),
-            # the black jets
-            QgsSymbolLayerReference(self.points_layer.id(), QgsSymbolLayerId("B52", [0])),
-            QgsSymbolLayerReference(self.points_layer.id(), QgsSymbolLayerId("Jet", [0]))]
-        fmt.mask().setMaskedSymbolLayers(oldMaskRefs)
-
-        label_settings.setFormat(fmt)
-        self.polys_layer.labeling().setSettings(label_settings)
-
-        self.assertEqual([slRef.symbolLayerIdV2() for slRef in self.polys_layer.labeling().settings().format().mask().maskedSymbolLayers()],
-                         ["", "", ""])
-        self.assertEqual([slRef.symbolLayerId() for slRef in self.polys_layer.labeling().settings().format().mask().maskedSymbolLayers()],
-                         [slRef.symbolLayerId() for slRef in oldMaskRefs])
-
-        QgsProjectFileTransform.fixOldSymbolLayerReferences(QgsProject.instance().mapLayers())
-
-        self.assertEqual([QUuid(slRef.symbolLayerIdV2()).isNull() for slRef in self.polys_layer.labeling().settings().format().mask().maskedSymbolLayers()],
-                         [False, False, False])
-        self.assertEqual([slRef.symbolLayerIdV2() for slRef in self.polys_layer.labeling().settings().format().mask().maskedSymbolLayers()],
-                         [self.get_symbollayer(self.lines_layer2, "", [1, 0]).id(),
-                          self.get_symbollayer(self.points_layer, "B52", [0]).id(),
-                          self.get_symbollayer(self.points_layer, "Jet", [0]).id()])
-        self.assertEqual([slRef.symbolLayerId() for slRef in self.polys_layer.labeling().settings().format().mask().maskedSymbolLayers()],
-                         [QgsSymbolLayerId(), QgsSymbolLayerId(), QgsSymbolLayerId()])
-
-        # test symbol layer masks
-        p = QgsMarkerSymbol.createSimple({'color': '#fdbf6f', 'size': "7"})
-        self.points_layer.setRenderer(QgsSingleSymbolRenderer(p))
-
-        circle_symbol = QgsMarkerSymbol.createSimple({'size': '10'})
+        # complex ids, v2
         mask_layer = QgsMaskMarkerSymbolLayer()
-        mask_layer.setSubSymbol(circle_symbol)
-        oldMaskRefs = [QgsSymbolLayerReference(self.lines_layer2.id(), QgsSymbolLayerId("", [1, 0]))]
-        mask_layer.setMasks(oldMaskRefs)
+        mask_layer.setMasks([
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("a string; with bits", 0)),
+            QgsSymbolLayerReference(self.lines_layer2.id(), QgsSymbolLayerId("some; id, #1", [1, 3, 5, 19])),
+            QgsSymbolLayerReference(self.polys_layer.id(), QgsSymbolLayerId("some other; id, lik;e, this", [4, 5])),
+        ])
 
-        # add this mask layer to the point layer
-        self.points_layer.renderer().symbol().appendSymbolLayer(mask_layer)
+        props = mask_layer.properties()
 
-        self.assertEqual([slRef.symbolLayerIdV2() for slRef in self.points_layer.renderer().symbol().symbolLayers()[1].masks()],
-                         [""])
-        self.assertEqual([slRef.symbolLayerId() for slRef in self.points_layer.renderer().symbol().symbolLayers()[1].masks()],
-                         [slRef.symbolLayerId() for slRef in oldMaskRefs])
-
-        QgsProjectFileTransform.fixOldSymbolLayerReferences(QgsProject.instance().mapLayers())
-
-        self.assertEqual([QUuid(slRef.symbolLayerIdV2()).isNull() for slRef in self.points_layer.renderer().symbol().symbolLayers()[1].masks()],
-                         [False])
-        self.assertEqual([slRef.symbolLayerIdV2() for slRef in self.points_layer.renderer().symbol().symbolLayers()[1].masks()],
-                         [self.get_symbollayer(self.lines_layer2, "", [1, 0]).id()])
-        self.assertEqual([slRef.symbolLayerId() for slRef in self.points_layer.renderer().symbol().symbolLayers()[1].masks()],
-                         [QgsSymbolLayerId()])
+        mask_layer2 = QgsMaskMarkerSymbolLayer.create(props)
+        self.assertEqual(mask_layer2.masks(), [
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("a string; with bits", 0)),
+            QgsSymbolLayerReference(self.lines_layer2.id(), QgsSymbolLayerId("some; id, #1", [1, 3, 5, 19])),
+            QgsSymbolLayerReference(self.polys_layer.id(), QgsSymbolLayerId("some other; id, lik;e, this", [4, 5])),
+        ])
 
     def test_label_mask(self):
         # modify labeling settings
@@ -369,10 +297,10 @@ class TestSelectiveMasking(QgisTestCase):
         # and mask other symbol layers underneath
         fmt.mask().setMaskedSymbolLayers([
             # the black part of roads
-            self.get_symbollayer_ref(self.lines_layer, "", [0]),
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 0)),
             # the black jets
-            self.get_symbollayer_ref(self.points_layer, "B52", [0]),
-            self.get_symbollayer_ref(self.points_layer, "Jet", [0])])
+            QgsSymbolLayerReference(self.points_layer.id(), QgsSymbolLayerId("B52", 0)),
+            QgsSymbolLayerReference(self.points_layer.id(), QgsSymbolLayerId("Jet", 0))])
 
         label_settings.setFormat(fmt)
         self.polys_layer.labeling().setSettings(label_settings)
@@ -392,10 +320,10 @@ class TestSelectiveMasking(QgisTestCase):
         # and mask other symbol layers underneath
         fmt.mask().setMaskedSymbolLayers([
             # the black part of roads
-            self.get_symbollayer_ref(self.lines_with_labels, "", [0]),
+            QgsSymbolLayerReference(self.lines_with_labels.id(), QgsSymbolLayerId("", 0)),
             # the black jets
-            self.get_symbollayer_ref(self.points_layer, "B52", [0]),
-            self.get_symbollayer_ref(self.points_layer, "Jet", [0])])
+            QgsSymbolLayerReference(self.points_layer.id(), QgsSymbolLayerId("B52", 0)),
+            QgsSymbolLayerReference(self.points_layer.id(), QgsSymbolLayerId("Jet", 0))])
 
         label_settings.setFormat(fmt)
         self.polys_layer.labeling().setSettings(label_settings)
@@ -412,7 +340,7 @@ class TestSelectiveMasking(QgisTestCase):
         # and mask other symbol layers underneath
         fmt.mask().setMaskedSymbolLayers([
             # polygons
-            self.get_symbollayer_ref(self.polys_layer, "", [0]),
+            QgsSymbolLayerReference(self.polys_layer.id(), QgsSymbolLayerId("", 0)),
         ])
         label_settings.setFormat(fmt)
         self.lines_with_labels.labeling().setSettings(label_settings)
@@ -433,7 +361,7 @@ class TestSelectiveMasking(QgisTestCase):
         # and mask other symbol layers underneath
         fmt.mask().setMaskedSymbolLayers([
             # the black part of roads
-            self.get_symbollayer_ref(self.lines_with_labels, "", [0]),
+            QgsSymbolLayerReference(self.lines_with_labels.id(), QgsSymbolLayerId("", 0)),
         ])
 
         label_settings.setFormat(fmt)
@@ -451,7 +379,7 @@ class TestSelectiveMasking(QgisTestCase):
         # and mask other symbol layers underneath
         fmt.mask().setMaskedSymbolLayers([
             # the black part of roads
-            self.get_symbollayer_ref(self.lines_with_labels, "", [0]),
+            QgsSymbolLayerReference(self.lines_with_labels.id(), QgsSymbolLayerId("", 0)),
         ])
         label_settings.setFormat(fmt)
         self.lines_with_labels.labeling().setSettings(label_settings)
@@ -475,10 +403,10 @@ class TestSelectiveMasking(QgisTestCase):
         # and mask other symbol layers underneath
         fmt.mask().setMaskedSymbolLayers([
             # mask only vertical segments of "roads"
-            self.get_symbollayer_ref(self.lines_layer2, "", [1, 0]),
+            QgsSymbolLayerReference(self.lines_layer2.id(), QgsSymbolLayerId("", [1, 0])),
             # the black jets
-            self.get_symbollayer_ref(self.points_layer, "B52", [0]),
-            self.get_symbollayer_ref(self.points_layer, "Jet", [0])])
+            QgsSymbolLayerReference(self.points_layer.id(), QgsSymbolLayerId("B52", 0)),
+            QgsSymbolLayerReference(self.points_layer.id(), QgsSymbolLayerId("Jet", 0))])
 
         label_settings.setFormat(fmt)
         self.polys_layer.labeling().setSettings(label_settings)
@@ -501,15 +429,15 @@ class TestSelectiveMasking(QgisTestCase):
         # mask other symbol layers underneath
         fmt.mask().setMaskedSymbolLayers([
             # the black part of roads
-            self.get_symbollayer_ref(self.lines_layer, "", [0]),
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 0)),
             # the black jets
-            self.get_symbollayer_ref(self.points_layer, "B52", [0]),
-            self.get_symbollayer_ref(self.points_layer, "Jet", [0])])
+            QgsSymbolLayerReference(self.points_layer.id(), QgsSymbolLayerId("B52", 0)),
+            QgsSymbolLayerReference(self.points_layer.id(), QgsSymbolLayerId("Jet", 0))])
 
         # overwrite with data-defined properties
-        fmt.dataDefinedProperties().setProperty(QgsPalLayerSettings.Property.MaskEnabled, QgsProperty.fromExpression('1'))
-        fmt.dataDefinedProperties().setProperty(QgsPalLayerSettings.Property.MaskBufferSize, QgsProperty.fromExpression('4.0'))
-        fmt.dataDefinedProperties().setProperty(QgsPalLayerSettings.Property.MaskOpacity, QgsProperty.fromExpression('100.0'))
+        fmt.dataDefinedProperties().setProperty(QgsPalLayerSettings.MaskEnabled, QgsProperty.fromExpression('1'))
+        fmt.dataDefinedProperties().setProperty(QgsPalLayerSettings.MaskBufferSize, QgsProperty.fromExpression('4.0'))
+        fmt.dataDefinedProperties().setProperty(QgsPalLayerSettings.MaskOpacity, QgsProperty.fromExpression('100.0'))
 
         context = QgsRenderContext()
         fmt.updateDataDefinedProperties(context)
@@ -540,10 +468,10 @@ class TestSelectiveMasking(QgisTestCase):
         # and mask other symbol layers underneath
         fmt.mask().setMaskedSymbolLayers([
             # the black part of roads
-            self.get_symbollayer_ref(self.lines_layer, "", [0]),
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 0)),
             # the black jets
-            self.get_symbollayer_ref(self.points_layer, "B52", [0]),
-            self.get_symbollayer_ref(self.points_layer, "Jet", [0])])
+            QgsSymbolLayerReference(self.points_layer.id(), QgsSymbolLayerId("B52", 0)),
+            QgsSymbolLayerReference(self.points_layer.id(), QgsSymbolLayerId("Jet", 0))])
 
         label_settings.setFormat(fmt)
         child.setSettings(label_settings)
@@ -560,7 +488,7 @@ class TestSelectiveMasking(QgisTestCase):
         # and mask other symbol layers underneath
         fmt.mask().setMaskedSymbolLayers([
             # the polygons
-            self.get_symbollayer_ref(self.polys_layer2, "", [0]),
+            QgsSymbolLayerReference(self.polys_layer2.id(), QgsSymbolLayerId("", 0)),
         ])
         label_settings.setFormat(fmt)
         child.setSettings(label_settings)
@@ -580,10 +508,10 @@ class TestSelectiveMasking(QgisTestCase):
         # and mask other symbol layers underneath
         fmt.mask().setMaskedSymbolLayers([
             # the black part of roads
-            self.get_symbollayer_ref(self.lines_layer, "", [0]),
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 0)),
             # the black jets
-            self.get_symbollayer_ref(self.points_layer, "B52", [0]),
-            self.get_symbollayer_ref(self.points_layer, "Jet", [0])])
+            QgsSymbolLayerReference(self.points_layer.id(), QgsSymbolLayerId("B52", 0)),
+            QgsSymbolLayerReference(self.points_layer.id(), QgsSymbolLayerId("Jet", 0))])
 
         label_settings.setFormat(fmt)
         self.polys_layer.labeling().setSettings(label_settings)
@@ -605,7 +533,7 @@ class TestSelectiveMasking(QgisTestCase):
         mask_layer.setSubSymbol(circle_symbol)
         mask_layer.setMasks([
             # the black part of roads
-            self.get_symbollayer_ref(self.lines_layer, "", [0]),
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 0)),
         ])
         # add this mask layer to the point layer
         self.points_layer.renderer().symbol().appendSymbolLayer(mask_layer)
@@ -625,7 +553,7 @@ class TestSelectiveMasking(QgisTestCase):
         mask_layer.setSubSymbol(circle_symbol)
         mask_layer.setMasks([
             # the black part of roads
-            self.get_symbollayer_ref(self.lines_layer, "", [0]),
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 0)),
         ])
         # add this mask layer to the point layer
         self.points_layer.renderer().symbol().appendSymbolLayer(mask_layer)
@@ -643,7 +571,7 @@ class TestSelectiveMasking(QgisTestCase):
         # and mask other symbol layers underneath
         fmt.mask().setMaskedSymbolLayers([
             # the black part of roads
-            self.get_symbollayer_ref(self.lines_layer, "", [0])
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 0))
         ])
         label_settings.setFormat(fmt)
         self.polys_layer.labeling().setSettings(label_settings)
@@ -664,7 +592,7 @@ class TestSelectiveMasking(QgisTestCase):
         mask_layer.setSubSymbol(circle_symbol)
         mask_layer.setMasks([
             # the yellow part of roads
-            self.get_symbollayer_ref(self.lines_layer, "", [1]),
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 1)),
         ])
         # add this mask layer to the point layer
         self.points_layer.renderer().symbol().appendSymbolLayer(mask_layer)
@@ -682,7 +610,7 @@ class TestSelectiveMasking(QgisTestCase):
         # and mask other symbol layers underneath
         fmt.mask().setMaskedSymbolLayers([
             # the black part of roads
-            self.get_symbollayer_ref(self.lines_layer, "", [0])
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 0))
         ])
         label_settings.setFormat(fmt)
         self.polys_layer.labeling().setSettings(label_settings)
@@ -703,7 +631,7 @@ class TestSelectiveMasking(QgisTestCase):
         mask_layer.setSubSymbol(circle_symbol)
         mask_layer.setMasks([
             # the black part of roads
-            self.get_symbollayer_ref(self.lines_layer, "", [0]),
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 0)),
         ])
         # add this mask layer to the point layer
         self.points_layer.renderer().symbol().appendSymbolLayer(mask_layer)
@@ -721,7 +649,7 @@ class TestSelectiveMasking(QgisTestCase):
         # and mask other symbol layers underneath
         fmt.mask().setMaskedSymbolLayers([
             # the yellow part of roads
-            self.get_symbollayer_ref(self.lines_layer, "", [1])
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 1))
         ])
         label_settings.setFormat(fmt)
         self.polys_layer.labeling().setSettings(label_settings)
@@ -744,25 +672,16 @@ class TestSelectiveMasking(QgisTestCase):
                 ("as_big_preview", lambda: p.bigSymbolPreviewImage().save(tmp)),
                 ("sl_preview", lambda:
                  QgsSymbolLayerUtils.symbolLayerPreviewIcon(mask_layer,
-                                                            QgsUnitTypes.RenderUnit.RenderPixels,
+                                                            QgsUnitTypes.RenderPixels,
                                                             QSize(64, 64)).pixmap(QSize(64, 64)).save(tmp))
         ]:
-            with tempfile.TemporaryDirectory() as temp_dir:
-                tmp = os.path.join(temp_dir, "render.png")
-                render_function()
-
-                rendered_image = QImage(tmp)
-
-                res = self.image_check(
-                    control_name,
-                    control_name,
-                    rendered_image,
-                    control_name,
-                    allowed_mismatch=90,
-                    color_tolerance=0
-                )
-
-                self.assertTrue(res)
+            tmp = getTempfilePath('png')
+            render_function()
+            self.checker.setControlName(control_name)
+            self.checker.setRenderedImage(tmp)
+            res = self.checker.compareImages(control_name, 90)
+            self.report += self.checker.report()
+            self.assertTrue(res)
 
     def test_mask_with_effect(self):
         p = QgsMarkerSymbol.createSimple({'color': '#fdbf6f', 'size': "7"})
@@ -773,7 +692,7 @@ class TestSelectiveMasking(QgisTestCase):
         mask_layer.setSubSymbol(circle_symbol)
         mask_layer.setMasks([
             # the yellow part of roads
-            self.get_symbollayer_ref(self.lines_layer, "", [1]),
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 1)),
         ])
         # add an outer glow effect to the mask layer
         blur = QgsOuterGlowEffect.create({"enabled": "1",
@@ -801,10 +720,10 @@ class TestSelectiveMasking(QgisTestCase):
         # and mask other symbol layers underneath
         fmt.mask().setMaskedSymbolLayers([
             # the black part of roads
-            self.get_symbollayer_ref(self.lines_layer, "", [0]),
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 0)),
             # the black jets
-            self.get_symbollayer_ref(self.points_layer, "B52", [0]),
-            self.get_symbollayer_ref(self.points_layer, "Jet", [0])])
+            QgsSymbolLayerReference(self.points_layer.id(), QgsSymbolLayerId("B52", 0)),
+            QgsSymbolLayerReference(self.points_layer.id(), QgsSymbolLayerId("Jet", 0))])
 
         # add an outer glow effect to the mask
         blur = QgsOuterGlowEffect.create({"enabled": "1",
@@ -828,9 +747,7 @@ class TestSelectiveMasking(QgisTestCase):
 
         # test that force vector output has no impact on the result
         self.map_settings.setFlag(Qgis.MapSettingsFlag.ForceVectorOutput, True)
-        # skip parallel rendering for this check, as force vector output is ignored when parallel rendering
-        # is used
-        self.check_renderings(self.map_settings, "label_mask_with_effect", test_parallel_rendering=False)
+        self.check_renderings(self.map_settings, "label_mask_with_effect")
 
     def test_different_dpi_target(self):
         """Test with raster layer and a target dpi"""
@@ -844,7 +761,7 @@ class TestSelectiveMasking(QgisTestCase):
         # and mask other symbol layers underneath
         fmt.mask().setMaskedSymbolLayers([
             # the black part of roads
-            self.get_symbollayer_ref(self.lines_layer, "", [0])])
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 0))])
 
         label_settings.setFormat(fmt)
         self.polys_layer.labeling().setSettings(label_settings)
@@ -859,7 +776,6 @@ class TestSelectiveMasking(QgisTestCase):
 
     def test_layout_export(self):
         """Test mask effects in a layout export at 300 dpi"""
-
         # modify labeling settings
         label_settings = self.polys_layer.labeling().settings()
         fmt = label_settings.format()
@@ -872,10 +788,10 @@ class TestSelectiveMasking(QgisTestCase):
         # and mask other symbol layers underneath
         fmt.mask().setMaskedSymbolLayers([
             # the black part of roads
-            self.get_symbollayer_ref(self.lines_layer, "", [0]),
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 0)),
             # the black jets
-            self.get_symbollayer_ref(self.points_layer, "B52", [0]),
-            self.get_symbollayer_ref(self.points_layer, "Jet", [0])])
+            QgsSymbolLayerReference(self.points_layer.id(), QgsSymbolLayerId("B52", 0)),
+            QgsSymbolLayerReference(self.points_layer.id(), QgsSymbolLayerId("Jet", 0))])
 
         label_settings.setFormat(fmt)
         self.polys_layer.labeling().setSettings(label_settings)
@@ -896,10 +812,10 @@ class TestSelectiveMasking(QgisTestCase):
         # and mask other symbol layers underneath
         fmt.mask().setMaskedSymbolLayers([
             # the black part of roads
-            self.get_symbollayer_ref(self.lines_layer, "", [0]),
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 0)),
             # the black jets
-            self.get_symbollayer_ref(self.points_layer, "B52", [0]),
-            self.get_symbollayer_ref(self.points_layer, "Jet", [0])])
+            QgsSymbolLayerReference(self.points_layer.id(), QgsSymbolLayerId("B52", 0)),
+            QgsSymbolLayerReference(self.points_layer.id(), QgsSymbolLayerId("Jet", 0))])
 
         # add an outer glow effect to the mask
         blur = QgsOuterGlowEffect.create({"enabled": "1",
@@ -930,7 +846,7 @@ class TestSelectiveMasking(QgisTestCase):
         mask_layer.setSubSymbol(circle_symbol)
         mask_layer.setMasks([
             # the black part of roads
-            self.get_symbollayer_ref(self.lines_layer, "", [0]),
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 0)),
         ])
         # add this mask layer to the point layer
         self.points_layer.renderer().symbol().appendSymbolLayer(mask_layer)
@@ -948,7 +864,7 @@ class TestSelectiveMasking(QgisTestCase):
         mask_layer.setSubSymbol(circle_symbol)
         mask_layer.setMasks([
             # the black part of roads
-            self.get_symbollayer_ref(self.lines_layer, "", [0]),
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 0)),
         ])
 
         # add an outer glow effect to the mask
@@ -989,10 +905,10 @@ class TestSelectiveMasking(QgisTestCase):
         # and mask other symbol layers underneath
         fmt.mask().setMaskedSymbolLayers([
             # the black part of roads
-            self.get_symbollayer_ref(self.lines_layer, "", [0]),
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 0)),
             # the black jets
-            self.get_symbollayer_ref(self.points_layer, "B52", [0]),
-            self.get_symbollayer_ref(self.points_layer, "Jet", [0])])
+            QgsSymbolLayerReference(self.points_layer.id(), QgsSymbolLayerId("B52", 0)),
+            QgsSymbolLayerReference(self.points_layer.id(), QgsSymbolLayerId("Jet", 0))])
 
         label_settings.setFormat(fmt)
         self.polys_layer.labeling().setSettings(label_settings)
@@ -1015,7 +931,7 @@ class TestSelectiveMasking(QgisTestCase):
         mask_layer.setSubSymbol(circle_symbol)
         mask_layer.setMasks([
             # the black part of roads
-            self.get_symbollayer_ref(self.lines_layer, "", [0]),
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 0)),
         ])
         # add this mask layer to the point layer
         self.points_layer.renderer().symbol().appendSymbolLayer(mask_layer)
@@ -1036,7 +952,7 @@ class TestSelectiveMasking(QgisTestCase):
         mask_layer.setSubSymbol(circle_symbol)
         mask_layer.setMasks([
             # the black part of roads
-            self.get_symbollayer_ref(self.lines_layer, "", [0]),
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 0)),
         ])
         # add this mask layer to the point layer
         self.points_layer.renderer().symbol().appendSymbolLayer(mask_layer)
@@ -1060,10 +976,10 @@ class TestSelectiveMasking(QgisTestCase):
         # and mask other symbol layers underneath
         fmt.mask().setMaskedSymbolLayers([
             # the black part of roads
-            self.get_symbollayer_ref(self.lines_layer, "", [0]),
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 0)),
             # the black jets
-            self.get_symbollayer_ref(self.points_layer, "B52", [0]),
-            self.get_symbollayer_ref(self.points_layer, "Jet", [0])])
+            QgsSymbolLayerReference(self.points_layer.id(), QgsSymbolLayerId("B52", 0)),
+            QgsSymbolLayerReference(self.points_layer.id(), QgsSymbolLayerId("Jet", 0))])
 
         label_settings.setFormat(fmt)
         self.polys_layer.labeling().setSettings(label_settings)
@@ -1086,7 +1002,7 @@ class TestSelectiveMasking(QgisTestCase):
         # and mask other symbol layers underneath
         fmt.mask().setMaskedSymbolLayers([
             # the black part of roads
-            self.get_symbollayer_ref(self.lines_layer, "", [0])])
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 0))])
 
         label_settings.setFormat(fmt)
         self.polys_layer.labeling().setSettings(label_settings)
@@ -1100,23 +1016,21 @@ class TestSelectiveMasking(QgisTestCase):
         image.setDevicePixelRatio(self.map_settings.devicePixelRatio())
         image.setDotsPerMeterX(int(1000 * self.map_settings.outputDpi() / 25.4))
         image.setDotsPerMeterY(int(1000 * self.map_settings.outputDpi() / 25.4))
-        image.fill(Qt.GlobalColor.transparent)
+        image.fill(Qt.transparent)
         pImg = QPainter()
         pImg.begin(image)
         job = QgsMapRendererCustomPainterJob(self.map_settings, pImg)
         job.start()
         job.waitForFinished()
         pImg.end()
+        tmp = getTempfilePath('png')
+        image.save(tmp)
 
         control_name = "different_dpi_target_vector"
-        res = self.image_check(
-            control_name,
-            control_name,
-            image,
-            control_name,
-            allowed_mismatch=0,
-            color_tolerance=0
-        )
+        self.checker.setControlName(control_name)
+        self.checker.setRenderedImage(tmp)
+        res = self.checker.compareImages(control_name)
+        self.report += self.checker.report()
         self.assertTrue(res)
 
         # Same test with high dpi
@@ -1125,23 +1039,21 @@ class TestSelectiveMasking(QgisTestCase):
         image.setDevicePixelRatio(self.map_settings.devicePixelRatio())
         image.setDotsPerMeterX(int(1000 * self.map_settings.outputDpi() / 25.4))
         image.setDotsPerMeterY(int(1000 * self.map_settings.outputDpi() / 25.4))
-        image.fill(Qt.GlobalColor.transparent)
+        image.fill(Qt.transparent)
         pImg = QPainter()
         pImg.begin(image)
         job = QgsMapRendererCustomPainterJob(self.map_settings, pImg)
         job.start()
         job.waitForFinished()
         pImg.end()
+        tmp = getTempfilePath('png')
+        image.save(tmp)
 
         control_name = "different_dpi_target_vector_hdpi"
-        res = self.image_check(
-            control_name,
-            control_name,
-            image,
-            control_name,
-            allowed_mismatch=0,
-            color_tolerance=0
-        )
+        self.checker.setControlName(control_name)
+        self.checker.setRenderedImage(tmp)
+        res = self.checker.compareImages(control_name)
+        self.report += self.checker.report()
         self.assertTrue(res)
 
     def test_layout_export_2_sources_masking(self):
@@ -1156,7 +1068,7 @@ class TestSelectiveMasking(QgisTestCase):
         mask_layer.setSubSymbol(circle_symbol)
         mask_layer.setMasks([
             # the black part of roads
-            self.get_symbollayer_ref(self.lines_layer, "", [0]),
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 0)),
         ])
         self.points_layer.renderer().symbol().appendSymbolLayer(mask_layer)
 
@@ -1170,231 +1082,14 @@ class TestSelectiveMasking(QgisTestCase):
         # and mask other symbol layers underneath
         fmt.mask().setMaskedSymbolLayers([
             # the black part of roads
-            self.get_symbollayer_ref(self.lines_layer, "", [0])])
+            QgsSymbolLayerReference(self.lines_layer.id(), QgsSymbolLayerId("", 0))])
 
         label_settings.setFormat(fmt)
         self.polys_layer.labeling().setSettings(label_settings)
 
         self.check_layout_export("layout_export_2_sources_masking", 0)
 
-    def test_raster_line_pattern_fill(self):
-        """
-        Test raster rendering and masking when a line pattern fill symbol layer is involved
-        """
-        self.assertTrue(QgsProject.instance().read(os.path.join(unitTestDataPath(), "selective_masking_fill_symbollayer.qgz")))
-
-        layer = QgsProject.instance().mapLayersByName('line_pattern_fill')[0]
-        self.assertTrue(layer)
-
-        self.assertTrue(len(layer.labeling().subProviders()), 1)
-        settings = layer.labeling().settings()
-        fmt = settings.format()
-        fmt.setFont(QgsFontUtils.getStandardTestFont("Bold"))
-        fmt.setSize(30)
-        fmt.setSizeUnit(QgsUnitTypes.RenderUnit.RenderPoints)
-        settings.setFormat(fmt)
-        layer.labeling().setSettings(settings)
-
-        map_settings = QgsMapSettings()
-        crs = QgsCoordinateReferenceSystem('epsg:4326')
-        extent = QgsRectangle(0, -1, 0.5, 0.8)
-        map_settings.setBackgroundColor(QColor(152, 219, 249))
-        map_settings.setOutputSize(QSize(420, 280))
-        map_settings.setOutputDpi(72)
-        map_settings.setFlag(QgsMapSettings.Flag.Antialiasing, True)
-        map_settings.setFlag(QgsMapSettings.Flag.UseAdvancedEffects, False)
-        map_settings.setDestinationCrs(crs)
-        map_settings.setExtent(extent)
-
-        map_settings.setLayers([layer])
-
-        self.check_renderings(map_settings, "line_pattern_fill")
-
-    def test_vector_line_pattern_fill(self):
-        """
-        Test vector rendering and masking when a line pattern fill symbol layer is involved
-        """
-        self.assertTrue(QgsProject.instance().read(os.path.join(unitTestDataPath(), "selective_masking_fill_symbollayer.qgz")))
-
-        layer = QgsProject.instance().mapLayersByName('line_pattern_fill')[0]
-        self.assertTrue(layer)
-
-        self.assertTrue(len(layer.labeling().subProviders()), 1)
-        settings = layer.labeling().settings()
-        fmt = settings.format()
-        fmt.setFont(QgsFontUtils.getStandardTestFont("Bold"))
-        fmt.setSize(9)
-        fmt.setSizeUnit(QgsUnitTypes.RenderUnit.RenderPoints)
-        settings.setFormat(fmt)
-        layer.labeling().setSettings(settings)
-
-        map_settings = QgsMapSettings()
-        crs = QgsCoordinateReferenceSystem('epsg:4326')
-        extent = QgsRectangle(-1.0073971192118132, -0.7875782447946843, 0.87882587741257345, 0.51640826470600099)
-        map_settings.setBackgroundColor(QColor(152, 219, 249))
-        map_settings.setOutputSize(QSize(420, 280))
-        map_settings.setOutputDpi(72)
-        map_settings.setFlag(QgsMapSettings.Flag.Antialiasing, True)
-        map_settings.setFlag(QgsMapSettings.Flag.UseAdvancedEffects, False)
-        map_settings.setDestinationCrs(crs)
-
-        map_settings.setLayers([layer])
-
-        self.check_layout_export("layout_export_line_pattern_fill", 0, [layer], extent=extent)
-
-    def test_vector_point_pattern_fill(self):
-        """
-        Test vector rendering and masking when a point pattern fill symbol layer is involved
-        """
-        self.assertTrue(QgsProject.instance().read(os.path.join(unitTestDataPath(), "selective_masking_fill_symbollayer.qgz")))
-
-        layer = QgsProject.instance().mapLayersByName('point_pattern_fill')[0]
-        self.assertTrue(layer)
-
-        self.assertTrue(len(layer.labeling().subProviders()), 1)
-        settings = layer.labeling().settings()
-        fmt = settings.format()
-        fmt.setFont(QgsFontUtils.getStandardTestFont("Bold"))
-        fmt.setSize(9)
-        fmt.setSizeUnit(QgsUnitTypes.RenderUnit.RenderPoints)
-        settings.setFormat(fmt)
-        layer.labeling().setSettings(settings)
-
-        map_settings = QgsMapSettings()
-        crs = QgsCoordinateReferenceSystem('epsg:4326')
-        extent = QgsRectangle(-1.0073971192118132, -0.7875782447946843, 0.87882587741257345, 0.51640826470600099)
-        map_settings.setBackgroundColor(QColor(152, 219, 249))
-        map_settings.setOutputSize(QSize(420, 280))
-        map_settings.setOutputDpi(72)
-        map_settings.setFlag(QgsMapSettings.Flag.Antialiasing, True)
-        map_settings.setFlag(QgsMapSettings.Flag.UseAdvancedEffects, False)
-        map_settings.setDestinationCrs(crs)
-        map_settings.setExtent(extent)
-
-        map_settings.setLayers([layer])
-
-        self.check_layout_export("layout_export_point_pattern_fill", 0, [layer], extent=extent)
-
-    def test_vector_centroid_fill(self):
-        """
-        Test masking when a centroid fill symbol layer is involved
-        """
-        self.assertTrue(QgsProject.instance().read(os.path.join(unitTestDataPath(), "selective_masking_fill_symbollayer.qgz")))
-
-        layer = QgsProject.instance().mapLayersByName('centroid_fill')[0]
-        self.assertTrue(layer)
-
-        self.assertTrue(len(layer.labeling().subProviders()), 1)
-        settings = layer.labeling().settings()
-        fmt = settings.format()
-        fmt.setFont(QgsFontUtils.getStandardTestFont("Bold"))
-        fmt.setSize(9)
-        fmt.setSizeUnit(QgsUnitTypes.RenderUnit.RenderPoints)
-        settings.setFormat(fmt)
-        layer.labeling().setSettings(settings)
-
-        map_settings = QgsMapSettings()
-        crs = QgsCoordinateReferenceSystem('epsg:4326')
-        extent = QgsRectangle(-1.0073971192118132, -0.7875782447946843, 0.87882587741257345, 0.51640826470600099)
-        map_settings.setBackgroundColor(QColor(152, 219, 249))
-        map_settings.setOutputSize(QSize(420, 280))
-        map_settings.setOutputDpi(72)
-        map_settings.setFlag(QgsMapSettings.Flag.Antialiasing, True)
-        map_settings.setFlag(QgsMapSettings.Flag.UseAdvancedEffects, False)
-        map_settings.setDestinationCrs(crs)
-
-        map_settings.setLayers([layer])
-
-        self.check_layout_export("layout_export_centroid_fill", 0, [layer], extent=extent)
-
-    def test_vector_random_generator_fill(self):
-        """
-        Test masking when a random generator fill symbol layer is involved
-        """
-        self.assertTrue(QgsProject.instance().read(os.path.join(unitTestDataPath(), "selective_masking_fill_symbollayer.qgz")))
-
-        layer = QgsProject.instance().mapLayersByName('random_generator_fill')[0]
-        self.assertTrue(layer)
-
-        self.assertTrue(len(layer.labeling().subProviders()), 1)
-        settings = layer.labeling().settings()
-        fmt = settings.format()
-        fmt.setFont(QgsFontUtils.getStandardTestFont("Bold"))
-        fmt.setSize(9)
-        fmt.setSizeUnit(QgsUnitTypes.RenderUnit.RenderPoints)
-        settings.setFormat(fmt)
-        layer.labeling().setSettings(settings)
-
-        map_settings = QgsMapSettings()
-        crs = QgsCoordinateReferenceSystem('epsg:4326')
-        extent = QgsRectangle(-1.0073971192118132, -0.7875782447946843, 0.87882587741257345, 0.51640826470600099)
-        map_settings.setBackgroundColor(QColor(152, 219, 249))
-        map_settings.setOutputSize(QSize(420, 280))
-        map_settings.setOutputDpi(72)
-        map_settings.setFlag(QgsMapSettings.Flag.Antialiasing, True)
-        map_settings.setFlag(QgsMapSettings.Flag.UseAdvancedEffects, False)
-        map_settings.setDestinationCrs(crs)
-
-        map_settings.setLayers([layer])
-
-        self.check_layout_export("layout_export_random_generator_fill", 0, [layer], extent=extent)
-
-    def test_layout_export_svg_marker_masking(self):
-        """Test layout export with a svg marker symbol masking"""
-
-        svgPath = QgsSymbolLayerUtils.svgSymbolNameToPath('gpsicons/plane.svg', QgsPathResolver())
-
-        sl = QgsSvgMarkerSymbolLayer(svgPath, 5)
-        sl.setFillColor(QColor("blue"))
-        sl.setStrokeColor(QColor("white"))
-        sl.setStrokeWidth(0)
-
-        p = QgsMarkerSymbol()
-        p.changeSymbolLayer(0, sl)
-
-        self.points_layer.setRenderer(QgsSingleSymbolRenderer(p))
-
-        mask_layer = QgsMaskMarkerSymbolLayer()
-        maskSl = QgsSvgMarkerSymbolLayer(svgPath, 8)
-        pSl = QgsMarkerSymbol()
-        pSl.changeSymbolLayer(0, maskSl)
-        mask_layer.setSubSymbol(pSl)
-        mask_layer.setMasks([
-            # the black part of roads
-            self.get_symbollayer_ref(self.lines_layer, "", [0]),
-        ])
-        # add this mask layer to the point layer
-        self.points_layer.renderer().symbol().appendSymbolLayer(mask_layer)
-
-        # no rasters
-        self.check_layout_export("layout_export_svg_marker_masking", 0, [self.points_layer, self.lines_layer])
-
-    def test_markerline_masked(self):
-        """
-        Test a layout export where a QgsMarkerLineSymbolLayer is masked
-        """
-
-        sl = QgsMarkerLineSymbolLayer(True, 7)
-        circle_symbol = QgsMarkerSymbol.createSimple({'size': '3'})
-        sl.setSubSymbol(circle_symbol)
-
-        symbol = QgsLineSymbol.createSimple({})
-        symbol.changeSymbolLayer(0, sl)
-        self.lines_layer.setRenderer(QgsSingleSymbolRenderer(symbol))
-        self.polys_layer.setRenderer(QgsNullSymbolRenderer())
-
-        label_settings = self.polys_layer.labeling().settings()
-        fmt = label_settings.format()
-        # enable a mask
-        fmt.mask().setEnabled(True)
-        fmt.mask().setSize(4.0)
-        # and mask other symbol layers underneath
-        fmt.mask().setMaskedSymbolLayers([QgsSymbolLayerReference(self.lines_layer.id(), sl.id())])
-        label_settings.setFormat(fmt)
-        self.polys_layer.labeling().setSettings(label_settings)
-
-        self.check_layout_export("layout_export_markerline_masked", 0, [self.polys_layer, self.lines_layer])
-
 
 if __name__ == '__main__':
+    start_app()
     unittest.main()

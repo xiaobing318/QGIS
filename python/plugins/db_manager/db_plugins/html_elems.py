@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 /***************************************************************************
 Name                 : DB Manager
@@ -17,16 +19,18 @@ email                : brush.tyler@gmail.com
  *                                                                         *
  ***************************************************************************/
 """
+from builtins import str
+from builtins import object
 
 
-class HtmlContent:
+class HtmlContent(object):
 
     def __init__(self, data):
         self.data = data if not isinstance(data, HtmlContent) else data.data
 
     def toHtml(self):
         if isinstance(self.data, list) or isinstance(self.data, tuple):
-            html = ''
+            html = u''
             for item in self.data:
                 html += HtmlContent(item).toHtml()
             return html
@@ -52,7 +56,7 @@ class HtmlContent:
         return len(self.data) > 0
 
 
-class HtmlElem:
+class HtmlElem(object):
 
     def __init__(self, tag, data, attrs=None):
         self.tag = tag
@@ -72,19 +76,19 @@ class HtmlElem:
         self.attrs[name] = value
 
     def getAttrsHtml(self):
-        html = ''
+        html = u''
         for k, v in self.attrs.items():
-            html += ' %s="%s"' % (k, v)
+            html += u' %s="%s"' % (k, v)
         return html
 
     def openTagHtml(self):
-        return "<%s%s>" % (self.tag, self.getAttrsHtml())
+        return u"<%s%s>" % (self.tag, self.getAttrsHtml())
 
     def closeTagHtml(self):
-        return "</%s>" % self.tag
+        return u"</%s>" % self.tag
 
     def toHtml(self):
-        return "%s%s%s" % (self.openTagHtml(), self.data.toHtml(), self.closeTagHtml())
+        return u"%s%s%s" % (self.openTagHtml(), self.data.toHtml(), self.closeTagHtml())
 
     def hasContents(self):
         return self.data.toHtml() != ""
@@ -120,7 +124,7 @@ class HtmlTableCol(HtmlElem):
 
     def closeTagHtml(self):
         # FIX INVALID BEHAVIOR: an empty cell as last table's cell break margins
-        return "&nbsp;%s" % HtmlElem.closeTagHtml(self)
+        return u"&nbsp;%s" % HtmlElem.closeTagHtml(self)
 
 
 class HtmlTableRow(HtmlElem):
@@ -151,6 +155,13 @@ class HtmlTable(HtmlElem):
             if not isinstance(r, HtmlTableRow):
                 rows[i] = HtmlTableRow(r)
         HtmlElem.__init__(self, 'table', rows, attrs)
+
+
+class HtmlWarning(HtmlContent):
+
+    def __init__(self, data):
+        data = ['<img src=":/icons/warning-20px.png">&nbsp;&nbsp; ', data]
+        HtmlContent.__init__(self, data)
 
 
 class HtmlSection(HtmlContent):

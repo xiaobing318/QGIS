@@ -76,12 +76,12 @@ QgsSumLineLengthAlgorithm *QgsSumLineLengthAlgorithm::createInstance() const
 
 QList<int> QgsSumLineLengthAlgorithm::inputLayerTypes() const
 {
-  return QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::VectorPolygon );
+  return QList< int >() << QgsProcessing::TypeVectorPolygon;
 }
 
-Qgis::ProcessingSourceType QgsSumLineLengthAlgorithm::outputLayerType() const
+QgsProcessing::SourceType QgsSumLineLengthAlgorithm::outputLayerType() const
 {
-  return Qgis::ProcessingSourceType::VectorPolygon;
+  return QgsProcessing::TypeVectorPolygon;
 }
 
 QgsCoordinateReferenceSystem QgsSumLineLengthAlgorithm::outputCrs( const QgsCoordinateReferenceSystem &inputCrs ) const
@@ -111,13 +111,13 @@ void QgsSumLineLengthAlgorithm::initParameters( const QVariantMap &configuration
   mIsInPlace = configuration.value( QStringLiteral( "IN_PLACE" ) ).toBool();
 
   addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "LINES" ),
-                QObject::tr( "Lines" ), QList< int > () << static_cast< int >( Qgis::ProcessingSourceType::VectorLine ) ) );
+                QObject::tr( "Lines" ), QList< int > () << QgsProcessing::TypeVectorLine ) );
   if ( mIsInPlace )
   {
     addParameter( new QgsProcessingParameterField( QStringLiteral( "LEN_FIELD" ),
-                  QObject::tr( "Lines length field name" ), QStringLiteral( "LENGTH" ), inputParameterName(), Qgis::ProcessingFieldParameterDataType::Any, false, true ) );
+                  QObject::tr( "Lines length field name" ), QStringLiteral( "LENGTH" ), inputParameterName(), QgsProcessingParameterField::Any, false, true ) );
     addParameter( new QgsProcessingParameterField( QStringLiteral( "COUNT_FIELD" ),
-                  QObject::tr( "Lines count field name" ), QStringLiteral( "COUNT" ), inputParameterName(), Qgis::ProcessingFieldParameterDataType::Any, false, true ) );
+                  QObject::tr( "Lines count field name" ), QStringLiteral( "COUNT" ), inputParameterName(), QgsProcessingParameterField::Any, false, true ) );
   }
   else
   {
@@ -137,7 +137,7 @@ bool QgsSumLineLengthAlgorithm::prepareAlgorithm( const QVariantMap &parameters,
   if ( !mLinesSource )
     throw QgsProcessingException( invalidSourceError( parameters, QStringLiteral( "LINES" ) ) );
 
-  if ( mLinesSource->hasSpatialIndex() == Qgis::SpatialIndexPresence::NotPresent )
+  if ( mLinesSource->hasSpatialIndex() == QgsFeatureSource::SpatialIndexNotPresent )
     feedback->pushWarning( QObject::tr( "No spatial index exists for lines layer, performance will be severely degraded" ) );
 
   mDa.setEllipsoid( context.ellipsoid() );
@@ -159,11 +159,11 @@ QgsFields QgsSumLineLengthAlgorithm::outputFields( const QgsFields &inputFields 
     QgsFields outFields = inputFields;
     mLengthFieldIndex = inputFields.lookupField( mLengthFieldName );
     if ( mLengthFieldIndex < 0 )
-      outFields.append( QgsField( mLengthFieldName, QMetaType::Type::Double ) );
+      outFields.append( QgsField( mLengthFieldName, QVariant::Double ) );
 
     mCountFieldIndex = inputFields.lookupField( mCountFieldName );
     if ( mCountFieldIndex < 0 )
-      outFields.append( QgsField( mCountFieldName, QMetaType::Type::Double ) );
+      outFields.append( QgsField( mCountFieldName, QVariant::Double ) );
 
     mFields = outFields;
     return outFields;
@@ -174,7 +174,7 @@ bool QgsSumLineLengthAlgorithm::supportInPlaceEdit( const QgsMapLayer *layer ) c
 {
   if ( const QgsVectorLayer *vl = qobject_cast< const QgsVectorLayer * >( layer ) )
   {
-    return vl->geometryType() == Qgis::GeometryType::Polygon;
+    return vl->geometryType() == QgsWkbTypes::PolygonGeometry;
   }
   return false;
 }
@@ -220,14 +220,7 @@ QgsFeatureList QgsSumLineLengthAlgorithm::processFeature( const QgsFeature &feat
       if ( engine->intersects( lineFeature.geometry().constGet() ) )
       {
         const QgsGeometry outGeom = polyGeom.intersection( lineFeature.geometry() );
-        try
-        {
-          length += mDa.measureLength( outGeom );
-        }
-        catch ( QgsCsException & )
-        {
-          throw QgsProcessingException( QObject::tr( "An error occurred while calculating feature length" ) );
-        }
+        length += mDa.measureLength( outGeom );
         count++;
       }
     }

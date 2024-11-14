@@ -9,20 +9,14 @@ __author__ = 'Nyall Dawson'
 __date__ = '25/07/2014'
 __copyright__ = 'Copyright 2014, The QGIS Project'
 
-
-from qgis.core import (
-    QgsApplication,
-    QgsColorScheme,
-    QgsColorSchemeRegistry,
-    QgsRecentColorScheme,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+import qgis  # NOQA
+from qgis.core import QgsColorSchemeRegistry, QgsRecentColorScheme, QgsApplication, QgsColorScheme
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsColorSchemeRegistry(QgisTestCase):
+class TestQgsColorSchemeRegistry(unittest.TestCase):
 
     def testCreateInstance(self):
         """Test creating global color scheme registry instance"""

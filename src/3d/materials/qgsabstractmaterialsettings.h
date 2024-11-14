@@ -20,8 +20,8 @@
 #include "qgis_sip.h"
 
 #include <QColor>
+#include <Qt3DRender/qmaterial.h>
 #include "qgspropertycollection.h"
-#include "qgsmaterial.h"
 
 class QDomElement;
 class QgsReadWriteContext;
@@ -116,6 +116,7 @@ class _3D_EXPORT QgsMaterialContext
  * \warning This is not considered stable API, and may change in future QGIS releases. It is
  * exposed to the Python bindings as a tech preview only.
  *
+ * \since QGIS 3.0
  */
 class _3D_EXPORT QgsAbstractMaterialSettings SIP_ABSTRACT
 {
@@ -174,12 +175,12 @@ class _3D_EXPORT QgsAbstractMaterialSettings SIP_ABSTRACT
 #ifndef SIP_RUN
 
     /**
-     * Creates a new QgsMaterial object representing the material settings.
+     * Creates a new QMaterial object representing the material settings.
      *
      * The \a technique argument specifies the rendering technique which will be used with the returned
      * material.
      */
-    virtual QgsMaterial *toMaterial( QgsMaterialSettingsRenderingTechnique technique, const QgsMaterialContext &context ) const = 0 SIP_FACTORY;
+    virtual Qt3DRender::QMaterial *toMaterial( QgsMaterialSettingsRenderingTechnique technique, const QgsMaterialContext &context ) const = 0 SIP_FACTORY;
 
     /**
      * Returns the parameters to be exported to .mtl file
@@ -189,11 +190,10 @@ class _3D_EXPORT QgsAbstractMaterialSettings SIP_ABSTRACT
     /**
      * Adds parameters from the material to a destination \a effect.
      */
-    virtual void addParametersToEffect( Qt3DRender::QEffect *effect, const QgsMaterialContext &materialContext ) const = 0;
+    virtual void addParametersToEffect( Qt3DRender::QEffect *effect ) const = 0;
 
-    // *INDENT-OFF*
     //! Data definable properties.
-    enum class Property SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsAbstractMaterialSettings, Property ) : int
+    enum Property
     {
       Diffuse, //!< Diffuse color
       Ambient, //!< Ambient color (phong material)
@@ -201,7 +201,6 @@ class _3D_EXPORT QgsAbstractMaterialSettings SIP_ABSTRACT
       Cool,//!< Cool color (gooch material)
       Specular //!< Specular color
     };
-    // *INDENT-ON*
 
     /**
      * Sets the material property collection, used for data defined overrides.
@@ -219,7 +218,7 @@ class _3D_EXPORT QgsAbstractMaterialSettings SIP_ABSTRACT
     * Returns a reference to the material properties definition, used for data defined overrides.
     * \since QGIS 3.18
     */
-    const QgsPropertiesDefinition   &propertyDefinitions() const;
+    const QgsPropertiesDefinition  &propertyDefinitions() const;
 
     /**
      * Applies the data defined bytes, \a dataDefinedBytes, on the \a geometry by filling a specific vertex buffer that will be used by the shader.

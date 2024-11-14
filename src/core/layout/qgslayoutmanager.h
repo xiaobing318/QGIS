@@ -39,6 +39,7 @@ class QgsStyleEntityVisitorInterface;
  *
  * QgsLayoutManager retains ownership of all the layouts contained
  * in the manager.
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsLayoutManager : public QObject
 {
@@ -174,20 +175,11 @@ class CORE_EXPORT QgsLayoutManagerModel : public QAbstractListModel
 
   public:
 
-    // *INDENT-OFF*
-
-    /**
-     * Custom model roles.
-     *
-     * \note Prior to QGIS 3.36 this was available as QgsLayoutManagerModel::Role
-     * \since QGIS 3.36
-     */
-    enum class CustomRole SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsLayoutManagerModel, Role ) : int
+    //! Custom model roles
+    enum Role
     {
-      Layout SIP_MONKEYPATCH_COMPAT_NAME(LayoutRole) = Qt::UserRole + 1, //!< Layout object
+      LayoutRole = Qt::UserRole + 1, //!< Layout object
     };
-    Q_ENUM( CustomRole )
-    // *INDENT-ON*
 
     /**
      * Constructor for QgsLayoutManagerModel, showing the layouts from the specified \a manager.
@@ -250,7 +242,7 @@ class CORE_EXPORT QgsLayoutManagerProxyModel : public QSortFilterProxyModel
   public:
 
     //! Available filter flags for filtering the model
-    enum Filter SIP_ENUM_BASETYPE( IntFlag )
+    enum Filter
     {
       FilterPrintLayouts = 1 << 1, //!< Includes print layouts
       FilterReports = 1 << 2, //!< Includes reports

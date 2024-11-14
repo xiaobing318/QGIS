@@ -16,14 +16,10 @@
  ***************************************************************************/
 
 #include "qgstiledownloadmanager.h"
-#include "moc_qgstiledownloadmanager.cpp"
 
 #include "qgslogger.h"
 #include "qgsnetworkaccessmanager.h"
 #include "qgsrangerequestcache.h"
-#include "qgssettings.h"
-#include "qgssettingsregistrycore.h"
-#include "qgssettingsentryimpl.h"
 
 #include <QElapsedTimer>
 #include <QNetworkReply>
@@ -193,7 +189,7 @@ QgsTileDownloadManager::QgsTileDownloadManager()
   mRangesCache.reset( new QgsRangeRequestCache );
 
   const QgsSettings settings;
-  QString cacheDirectory = QgsSettingsRegistryCore::settingsNetworkCacheDirectory->value();
+  QString cacheDirectory = settings.value( QStringLiteral( "cache/directory" ) ).toString();
   if ( cacheDirectory.isEmpty() )
     cacheDirectory = QStandardPaths::writableLocation( QStandardPaths::CacheLocation );
   if ( !cacheDirectory.endsWith( QDir::separator() ) )
@@ -201,8 +197,9 @@ QgsTileDownloadManager::QgsTileDownloadManager()
     cacheDirectory.push_back( QDir::separator() );
   }
   cacheDirectory += QLatin1String( "http-ranges" );
+  const qint64 cacheSize = settings.value( QStringLiteral( "cache/size" ), 256 * 1024 * 1024 ).toLongLong();
+
   mRangesCache->setCacheDirectory( cacheDirectory );
-  qint64 cacheSize = QgsSettingsRegistryCore::settingsNetworkCacheSize->value();
   mRangesCache->setCacheSize( cacheSize );
 }
 
@@ -397,7 +394,7 @@ bool QgsTileDownloadManager::isRangeRequest( const QNetworkRequest &request )
 {
   if ( request.rawHeader( "Range" ).isEmpty() )
     return false;
-  const thread_local QRegularExpression regex( "^bytes=\\d+-\\d+$" );
+  QRegularExpression regex( "^bytes=\\d+-\\d+$" );
   QRegularExpressionMatch match = regex.match( QString::fromUtf8( request.rawHeader( "Range" ) ) );
   return match.hasMatch();
 }

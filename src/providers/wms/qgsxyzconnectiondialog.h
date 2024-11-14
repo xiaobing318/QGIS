@@ -35,8 +35,6 @@ class QgsXyzConnectionDialog : public QDialog, public Ui::QgsXyzConnectionDialog
 
     QgsXyzConnection connection() const;
 
-    QgsXyzSourceWidget *sourceWidget() { return mSourceWidget; }
-
     void accept() override;
 
   private slots:

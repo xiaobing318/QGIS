@@ -12,7 +12,6 @@
  *   (at your option) any later version.                                   *
  ***************************************************************************/
 #include "qgsdelimitedtextsourceselect.h"
-#include "moc_qgsdelimitedtextsourceselect.cpp"
 
 #include "qgslogger.h"
 #include "qgsvectordataprovider.h"
@@ -56,9 +55,15 @@ QgsDelimitedTextSourceSelect::QgsDelimitedTextSourceSelect( QWidget *parent, Qt:
   bgGeomType->addButton( geomTypeWKT, swGeomType->indexOf( swpGeomWKT ) );
   bgGeomType->addButton( geomTypeNone, swGeomType->indexOf( swpGeomNone ) );
 
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+  connect( bgFileFormat, static_cast < void ( QButtonGroup::* )( int ) > ( &QButtonGroup::buttonClicked ), swFileFormat, &QStackedWidget::setCurrentIndex );
+  connect( bgGeomType, static_cast < void ( QButtonGroup::* )( int ) > ( &QButtonGroup::buttonClicked ), swGeomType, &QStackedWidget::setCurrentIndex );
+  connect( bgGeomType, static_cast < void ( QButtonGroup::* )( int ) > ( &QButtonGroup::buttonClicked ), this, &QgsDelimitedTextSourceSelect::updateCrsWidgetVisibility );
+#else
   connect( bgFileFormat, &QButtonGroup::idClicked, swFileFormat, &QStackedWidget::setCurrentIndex );
   connect( bgGeomType, &QButtonGroup::idClicked, swGeomType, &QStackedWidget::setCurrentIndex );
   connect( bgGeomType, &QButtonGroup::idClicked, this, &QgsDelimitedTextSourceSelect::updateCrsWidgetVisibility );
+#endif
 
   cmbEncoding->clear();
   cmbEncoding->addItems( QgsVectorDataProvider::availableEncodings() );
@@ -80,7 +85,6 @@ QgsDelimitedTextSourceSelect::QgsDelimitedTextSourceSelect( QWidget *parent, Qt:
   connect( cbxDelimTab, &QCheckBox::stateChanged, this, &QgsDelimitedTextSourceSelect::updateFieldsAndEnable );
   connect( cbxDelimSemicolon, &QCheckBox::stateChanged, this, &QgsDelimitedTextSourceSelect::updateFieldsAndEnable );
   connect( cbxDelimColon, &QCheckBox::stateChanged, this, &QgsDelimitedTextSourceSelect::updateFieldsAndEnable );
-  connect( cbxDetectTypes, &QCheckBox::stateChanged, this, &QgsDelimitedTextSourceSelect::updateFieldsAndEnable );
 
   connect( txtDelimiterOther, &QLineEdit::textChanged, this, &QgsDelimitedTextSourceSelect::updateFieldsAndEnable );
   connect( txtQuoteChars, &QLineEdit::textChanged, this, &QgsDelimitedTextSourceSelect::updateFieldsAndEnable );
@@ -164,17 +168,14 @@ void QgsDelimitedTextSourceSelect::addButtonClicked()
 
 
   // add the layer to the map
-  Q_NOWARN_DEPRECATED_PUSH
   emit addVectorLayer( datasourceUrl, txtLayerName->text() );
-  Q_NOWARN_DEPRECATED_POP
-  emit addLayer( Qgis::LayerType::Vector, datasourceUrl, txtLayerName->text(), QStringLiteral( "delimitedtext" ) );
 
   // clear the file and layer name show something has happened, ready for another file
 
   mFileWidget->setFilePath( QString() );
   txtLayerName->setText( QString() );
 
-  if ( widgetMode() == QgsProviderRegistry::WidgetMode::Standalone )
+  if ( widgetMode() == QgsProviderRegistry::WidgetMode::None )
   {
     accept();
   }
@@ -324,7 +325,6 @@ void QgsDelimitedTextSourceSelect::saveSettings( const QString &subkey, bool sav
 void QgsDelimitedTextSourceSelect::loadSettingsForFile( const QString &filename )
 {
   if ( filename.isEmpty() ) return;
-  mOverriddenFields.clear();
   const QFileInfo fi( filename );
   const QString filetype = fi.suffix();
   // Don't expect to change settings if not changing file type
@@ -408,7 +408,7 @@ void QgsDelimitedTextSourceSelect::updateFieldLists()
   int counter = 0;
   mBadRowCount = 0;
   QStringList values;
-  const thread_local QRegularExpression wktre( "^\\s*(?:MULTI)?(?:POINT|LINESTRING|POLYGON)\\s*Z?\\s*M?\\(", QRegularExpression::CaseInsensitiveOption );
+  const QRegularExpression wktre( "^\\s*(?:MULTI)?(?:POINT|LINESTRING|POLYGON)\\s*Z?\\s*M?\\(", QRegularExpression::CaseInsensitiveOption );
 
   while ( counter < mExampleRowCount )
   {
@@ -509,17 +509,17 @@ void QgsDelimitedTextSourceSelect::updateFieldLists()
   for ( int column = 0; column < tblSample->columnCount(); column++ )
   {
     QComboBox *typeCombo = new QComboBox( tblSample );
-    typeCombo->addItem( QgsFields::iconForFieldType( QMetaType::Type::QString ), QgsVariantUtils::typeToDisplayString( QMetaType::Type::QString ), "text" );
-    typeCombo->addItem( QgsFields::iconForFieldType( QMetaType::Type::Int ), QgsVariantUtils::typeToDisplayString( QMetaType::Type::Int ), "integer" );
-    typeCombo->addItem( QgsFields::iconForFieldType( QMetaType::Type::LongLong ), QgsVariantUtils::typeToDisplayString( QMetaType::Type::LongLong ), "longlong" );
-    typeCombo->addItem( QgsFields::iconForFieldType( QMetaType::Type::Double ), QgsVariantUtils::typeToDisplayString( QMetaType::Type::Double ), "double" );
-    typeCombo->addItem( QgsFields::iconForFieldType( QMetaType::Type::Bool ), QgsVariantUtils::typeToDisplayString( QMetaType::Type::Bool ), "bool" );
-    typeCombo->addItem( QgsFields::iconForFieldType( QMetaType::Type::QDate ), QgsVariantUtils::typeToDisplayString( QMetaType::Type::QDate ), "date" );
-    typeCombo->addItem( QgsFields::iconForFieldType( QMetaType::Type::QTime ), QgsVariantUtils::typeToDisplayString( QMetaType::Type::QTime ), "time" );
-    typeCombo->addItem( QgsFields::iconForFieldType( QMetaType::Type::QDateTime ), QgsVariantUtils::typeToDisplayString( QMetaType::Type::QDateTime ), "datetime" );
+    typeCombo->addItem( QgsFields::iconForFieldType( QVariant::String ), QgsVariantUtils::typeToDisplayString( QVariant::String ), "text" );
+    typeCombo->addItem( QgsFields::iconForFieldType( QVariant::Int ), QgsVariantUtils::typeToDisplayString( QVariant::Int ), "integer" );
+    typeCombo->addItem( QgsFields::iconForFieldType( QVariant::LongLong ), QgsVariantUtils::typeToDisplayString( QVariant::LongLong ), "longlong" );
+    typeCombo->addItem( QgsFields::iconForFieldType( QVariant::Double ), QgsVariantUtils::typeToDisplayString( QVariant::Double ), "double" );
+    typeCombo->addItem( QgsFields::iconForFieldType( QVariant::Bool ), QgsVariantUtils::typeToDisplayString( QVariant::Bool ), "bool" );
+    typeCombo->addItem( QgsFields::iconForFieldType( QVariant::Date ), QgsVariantUtils::typeToDisplayString( QVariant::Date ), "date" );
+    typeCombo->addItem( QgsFields::iconForFieldType( QVariant::Time ), QgsVariantUtils::typeToDisplayString( QVariant::Time ), "time" );
+    typeCombo->addItem( QgsFields::iconForFieldType( QVariant::DateTime ), QgsVariantUtils::typeToDisplayString( QVariant::DateTime ), "datetime" );
     connect( typeCombo, qOverload<int>( &QComboBox::currentIndexChanged ), this, [ = ]( int )
     {
-      mOverriddenFields.insert( column, typeCombo->currentData().toString() );
+      mOverriddenFields.insert( column );
     } );
     tblSample->setCellWidget( 0, column, typeCombo );
   }
@@ -817,29 +817,21 @@ void QgsDelimitedTextSourceSelect::updateFieldTypes( const QgsFields &fields )
 
   for ( int column = 0; column < tblSample->columnCount(); column++ )
   {
-
-
-    const QString fieldName { tblSample->horizontalHeaderItem( column )->text() };
-    const int fieldIdx { mFields.lookupField( fieldName ) };
-    if ( fieldIdx >= 0 )
+    if ( ! mOverriddenFields.contains( column ) )
     {
-      QComboBox *typeCombo { qobject_cast<QComboBox *>( tblSample->cellWidget( 0, column ) ) };
-      QString fieldTypeName;
-      if ( mOverriddenFields.contains( column ) )
+      const QString fieldName { tblSample->horizontalHeaderItem( column )->text() };
+      const int fieldIdx { mFields.lookupField( fieldName ) };
+      if ( fieldIdx >= 0 )
       {
-        fieldTypeName = mOverriddenFields[ column ];
-      }
-      else
-      {
-        fieldTypeName = mFields.field( fieldIdx ).typeName();
-      }
-      if ( typeCombo && typeCombo->currentData( ) != fieldTypeName && typeCombo->findData( fieldTypeName ) >= 0 )
-      {
-        QgsDebugMsgLevel( QStringLiteral( "Setting field type %1 from %2 to %3" ).arg( fieldName, typeCombo->currentData().toString(), fieldTypeName ), 2 );
-        QgsSignalBlocker( typeCombo )->setCurrentIndex( typeCombo->findData( fieldTypeName ) );
+        QComboBox *typeCombo { qobject_cast<QComboBox *>( tblSample->cellWidget( 0, column ) ) };
+        const QString fieldTypeName { mFields.field( fieldIdx ).typeName() };
+        if ( typeCombo && typeCombo->currentData( ) != fieldTypeName && typeCombo->findData( fieldTypeName ) >= 0 )
+        {
+          QgsDebugMsgLevel( QStringLiteral( "Setting field type %1 from %2 to %3" ).arg( fieldName, typeCombo->currentData().toString(), fieldTypeName ), 2 );
+          QgsSignalBlocker( typeCombo )->setCurrentIndex( typeCombo->findData( fieldTypeName ) );
+        }
       }
     }
-
   }
 }
 
@@ -979,7 +971,7 @@ bool QgsDelimitedTextFileScanTask::run()
   QgsDelimitedTextProvider provider(
     mDataSource,
     QgsDataProvider::ProviderOptions(),
-    Qgis::DataProviderReadFlag::SkipFeatureCount | Qgis::DataProviderReadFlag::SkipGetExtent | Qgis::DataProviderReadFlag::SkipFullScan );
+    QgsDataProvider::ReadFlag::SkipFeatureCount | QgsDataProvider::ReadFlag::SkipGetExtent | QgsDataProvider::ReadFlag::SkipFullScan );
 
   connect( &mFeedback, &QgsFeedback::processedCountChanged, this, &QgsDelimitedTextFileScanTask::processedCountChanged );
 

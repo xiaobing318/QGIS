@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgsunittypes.h"
-#include "moc_qgsunittypes.cpp"
 #include "qgis.h"
 
 /***************************************************************************
@@ -24,295 +23,135 @@
  * See details in QEP #17
  ****************************************************************************/
 
-QString QgsUnitTypes::encodeUnitType( Qgis::UnitType type )
+QString QgsUnitTypes::encodeUnitType( QgsUnitTypes::UnitType type )
 {
   switch ( type )
   {
-    case Qgis::UnitType::Distance:
+    case TypeDistance:
       return QStringLiteral( "distance" );
 
-    case Qgis::UnitType::Area:
+    case TypeArea:
       return QStringLiteral( "area" );
 
-    case Qgis::UnitType::Volume:
+    case TypeVolume:
       return QStringLiteral( "volume" );
 
-    case Qgis::UnitType::Temporal:
+    case TypeTemporal:
       return QStringLiteral( "temporal" );
 
-    case Qgis::UnitType::Unknown:
+    case TypeUnknown:
       return QStringLiteral( "<unknown>" );
 
   }
   return QString();
 }
 
-Qgis::UnitType QgsUnitTypes::decodeUnitType( const QString &string, bool *ok )
+QgsUnitTypes::UnitType QgsUnitTypes::decodeUnitType( const QString &string, bool *ok )
 {
   const QString normalized = string.trimmed().toLower();
 
   if ( ok )
     *ok = true;
 
-  if ( normalized == encodeUnitType( Qgis::UnitType::Distance ) )
-    return Qgis::UnitType::Distance;
-  if ( normalized == encodeUnitType( Qgis::UnitType::Area ) )
-    return Qgis::UnitType::Area;
-  if ( normalized == encodeUnitType( Qgis::UnitType::Volume ) )
-    return Qgis::UnitType::Volume;
-  if ( normalized == encodeUnitType( Qgis::UnitType::Temporal ) )
-    return Qgis::UnitType::Temporal;
-  if ( normalized == encodeUnitType( Qgis::UnitType::Unknown ) )
-    return Qgis::UnitType::Unknown;
+  if ( normalized == encodeUnitType( TypeDistance ) )
+    return TypeDistance;
+  if ( normalized == encodeUnitType( TypeArea ) )
+    return TypeArea;
+  if ( normalized == encodeUnitType( TypeVolume ) )
+    return TypeVolume;
+  if ( normalized == encodeUnitType( TypeTemporal ) )
+    return TypeTemporal;
+  if ( normalized == encodeUnitType( TypeUnknown ) )
+    return TypeUnknown;
 
   if ( ok )
     *ok = false;
 
-  return Qgis::UnitType::Unknown;
+  return TypeUnknown;
 }
 
-Qgis::DistanceUnitType QgsUnitTypes::unitType( Qgis::DistanceUnit unit )
+QgsUnitTypes::DistanceUnitType QgsUnitTypes::unitType( DistanceUnit unit )
 {
   switch ( unit )
   {
-    case Qgis::DistanceUnit::Meters:
-    case Qgis::DistanceUnit::Feet:
-    case Qgis::DistanceUnit::NauticalMiles:
-    case Qgis::DistanceUnit::Yards:
-    case Qgis::DistanceUnit::Miles:
-    case Qgis::DistanceUnit::Kilometers:
-    case Qgis::DistanceUnit::Centimeters:
-    case Qgis::DistanceUnit::Millimeters:
-    case Qgis::DistanceUnit::Inches:
-    case Qgis::DistanceUnit::ChainsInternational:
-    case Qgis::DistanceUnit::ChainsBritishBenoit1895A:
-    case Qgis::DistanceUnit::ChainsBritishBenoit1895B:
-    case Qgis::DistanceUnit::ChainsBritishSears1922Truncated:
-    case Qgis::DistanceUnit::ChainsBritishSears1922:
-    case Qgis::DistanceUnit::ChainsClarkes:
-    case Qgis::DistanceUnit::ChainsUSSurvey:
-    case Qgis::DistanceUnit::FeetBritish1865:
-    case Qgis::DistanceUnit::FeetBritish1936:
-    case Qgis::DistanceUnit::FeetBritishBenoit1895A:
-    case Qgis::DistanceUnit::FeetBritishBenoit1895B:
-    case Qgis::DistanceUnit::FeetBritishSears1922Truncated:
-    case Qgis::DistanceUnit::FeetBritishSears1922:
-    case Qgis::DistanceUnit::FeetClarkes:
-    case Qgis::DistanceUnit::FeetGoldCoast:
-    case Qgis::DistanceUnit::FeetIndian:
-    case Qgis::DistanceUnit::FeetIndian1937:
-    case Qgis::DistanceUnit::FeetIndian1962:
-    case Qgis::DistanceUnit::FeetIndian1975:
-    case Qgis::DistanceUnit::FeetUSSurvey:
-    case Qgis::DistanceUnit::LinksInternational:
-    case Qgis::DistanceUnit::LinksBritishBenoit1895A:
-    case Qgis::DistanceUnit::LinksBritishBenoit1895B:
-    case Qgis::DistanceUnit::LinksBritishSears1922Truncated:
-    case Qgis::DistanceUnit::LinksBritishSears1922:
-    case Qgis::DistanceUnit::LinksClarkes:
-    case Qgis::DistanceUnit::LinksUSSurvey:
-    case Qgis::DistanceUnit::YardsBritishBenoit1895A:
-    case Qgis::DistanceUnit::YardsBritishBenoit1895B:
-    case Qgis::DistanceUnit::YardsBritishSears1922Truncated:
-    case Qgis::DistanceUnit::YardsBritishSears1922:
-    case Qgis::DistanceUnit::YardsClarkes:
-    case Qgis::DistanceUnit::YardsIndian:
-    case Qgis::DistanceUnit::YardsIndian1937:
-    case Qgis::DistanceUnit::YardsIndian1962:
-    case Qgis::DistanceUnit::YardsIndian1975:
-    case Qgis::DistanceUnit::MilesUSSurvey:
-    case Qgis::DistanceUnit::Fathoms:
-    case Qgis::DistanceUnit::MetersGermanLegal:
-      return Qgis::DistanceUnitType::Standard;
+    case DistanceMeters:
+    case DistanceFeet:
+    case DistanceNauticalMiles:
+    case DistanceYards:
+    case DistanceMiles:
+    case DistanceKilometers:
+    case DistanceCentimeters:
+    case DistanceMillimeters:
+      return Standard;
 
-    case Qgis::DistanceUnit::Degrees:
-      return Qgis::DistanceUnitType::Geographic;
+    case DistanceDegrees:
+      return Geographic;
 
-    case Qgis::DistanceUnit::Unknown:
-      return Qgis::DistanceUnitType::Unknown;
+    case DistanceUnknownUnit:
+      return UnknownType;
   }
-  return Qgis::DistanceUnitType::Unknown;
+  return UnknownType;
 }
 
-Qgis::DistanceUnitType QgsUnitTypes::unitType( Qgis::AreaUnit unit )
+QgsUnitTypes::DistanceUnitType QgsUnitTypes::unitType( QgsUnitTypes::AreaUnit unit )
 {
   switch ( unit )
   {
-    case Qgis::AreaUnit::SquareMeters:
-    case Qgis::AreaUnit::SquareKilometers:
-    case Qgis::AreaUnit::SquareFeet:
-    case Qgis::AreaUnit::SquareYards:
-    case Qgis::AreaUnit::SquareMiles:
-    case Qgis::AreaUnit::Hectares:
-    case Qgis::AreaUnit::Acres:
-    case Qgis::AreaUnit::SquareNauticalMiles:
-    case Qgis::AreaUnit::SquareCentimeters:
-    case Qgis::AreaUnit::SquareMillimeters:
-    case Qgis::AreaUnit::SquareInches:
-      return Qgis::DistanceUnitType::Standard;
+    case AreaSquareMeters:
+    case AreaSquareKilometers:
+    case AreaSquareFeet:
+    case AreaSquareYards:
+    case AreaSquareMiles:
+    case AreaHectares:
+    case AreaAcres:
+    case AreaSquareNauticalMiles:
+    case AreaSquareCentimeters:
+    case AreaSquareMillimeters:
+      return Standard;
 
-    case Qgis::AreaUnit::SquareDegrees:
-      return Qgis::DistanceUnitType::Geographic;
+    case AreaSquareDegrees:
+      return Geographic;
 
-    case Qgis::AreaUnit::Unknown:
-      return Qgis::DistanceUnitType::Unknown;
+    case AreaUnknownUnit:
+      return UnknownType;
   }
 
-  return Qgis::DistanceUnitType::Unknown;
+  return UnknownType;
 }
 
-QString QgsUnitTypes::encodeUnit( Qgis::DistanceUnit unit )
+QString QgsUnitTypes::encodeUnit( DistanceUnit unit )
 {
   switch ( unit )
   {
-    case Qgis::DistanceUnit::Meters:
+    case DistanceMeters:
       return QStringLiteral( "meters" );
 
-    case Qgis::DistanceUnit::Kilometers:
+    case DistanceKilometers:
       return QStringLiteral( "km" );
 
-    case Qgis::DistanceUnit::Feet:
+    case DistanceFeet:
       return QStringLiteral( "feet" );
 
-    case Qgis::DistanceUnit::Yards:
+    case DistanceYards:
       return QStringLiteral( "yd" );
 
-    case Qgis::DistanceUnit::Miles:
+    case DistanceMiles:
       return QStringLiteral( "mi" );
 
-    case Qgis::DistanceUnit::Degrees:
+    case DistanceDegrees:
       return QStringLiteral( "degrees" );
 
-    case Qgis::DistanceUnit::Unknown:
+    case DistanceUnknownUnit:
       return QStringLiteral( "<unknown>" );
 
-    case Qgis::DistanceUnit::NauticalMiles:
+    case DistanceNauticalMiles:
       return QStringLiteral( "nautical miles" );
 
-    case Qgis::DistanceUnit::Centimeters:
+    case DistanceCentimeters:
       return QStringLiteral( "cm" );
 
-    case Qgis::DistanceUnit::Millimeters:
+    case DistanceMillimeters:
       return QStringLiteral( "mm" );
-
-    case Qgis::DistanceUnit::Inches:
-      return QStringLiteral( "in" );
-
-    case Qgis::DistanceUnit::ChainsInternational:
-      return QStringLiteral( "chain" );
-
-    case Qgis::DistanceUnit::ChainsBritishBenoit1895A:
-      return QStringLiteral( "chain british benoit b1895a" );
-
-    case Qgis::DistanceUnit::ChainsBritishBenoit1895B:
-      return QStringLiteral( "chain british benoit b1895b" );
-
-    case Qgis::DistanceUnit::ChainsBritishSears1922Truncated:
-      return QStringLiteral( "chain british sears 1922 truncated" );
-
-    case Qgis::DistanceUnit::ChainsBritishSears1922:
-      return QStringLiteral( "chain british sears 1922" );
-
-    case Qgis::DistanceUnit::ChainsClarkes:
-      return QStringLiteral( "chain clarkes" );
-
-    case Qgis::DistanceUnit::ChainsUSSurvey:
-      return QStringLiteral( "chain us survey" );
-
-    case Qgis::DistanceUnit::FeetBritish1865:
-      return QStringLiteral( "feet british 1865" );
-
-    case Qgis::DistanceUnit::FeetBritish1936:
-      return QStringLiteral( "feet british 1936" );
-
-    case Qgis::DistanceUnit::FeetBritishBenoit1895A:
-      return QStringLiteral( "feet british benoit 1895a" );
-
-    case Qgis::DistanceUnit::FeetBritishBenoit1895B:
-      return QStringLiteral( "feet british benoit 1895b" );
-
-    case Qgis::DistanceUnit::FeetBritishSears1922Truncated:
-      return QStringLiteral( "feet british sears 1922 truncated" );
-
-    case Qgis::DistanceUnit::FeetBritishSears1922:
-      return QStringLiteral( "feet british sears 1922" );
-
-    case Qgis::DistanceUnit::FeetClarkes:
-      return QStringLiteral( "feet clarkes" );
-
-    case Qgis::DistanceUnit::FeetGoldCoast:
-      return QStringLiteral( "feet gold coast" );
-
-    case Qgis::DistanceUnit::FeetIndian:
-      return QStringLiteral( "feet indian" );
-    case Qgis::DistanceUnit::FeetIndian1937:
-      return QStringLiteral( "feet indian 1937" );
-
-    case Qgis::DistanceUnit::FeetIndian1962:
-      return QStringLiteral( "feet indian 1962" );
-
-    case Qgis::DistanceUnit::FeetIndian1975:
-      return QStringLiteral( "feet indian 1975" );
-
-    case Qgis::DistanceUnit::FeetUSSurvey:
-      return QStringLiteral( "feet us survey" );
-
-    case Qgis::DistanceUnit::LinksInternational:
-      return QStringLiteral( "links" );
-
-    case Qgis::DistanceUnit::LinksBritishBenoit1895A:
-      return QStringLiteral( "links british benoit 1895a" );
-
-    case Qgis::DistanceUnit::LinksBritishBenoit1895B:
-      return QStringLiteral( "links british benoit 1895b" );
-
-    case Qgis::DistanceUnit::LinksBritishSears1922Truncated:
-      return QStringLiteral( "links british sears 1922 truncated" );
-
-    case Qgis::DistanceUnit::LinksBritishSears1922:
-      return QStringLiteral( "links british sears 1922" );
-
-    case Qgis::DistanceUnit::LinksClarkes:
-      return QStringLiteral( "links clarkes" );
-
-    case Qgis::DistanceUnit::LinksUSSurvey:
-      return QStringLiteral( "links us survey" );
-
-    case Qgis::DistanceUnit::YardsBritishBenoit1895A:
-      return QStringLiteral( "yards british benoit 1895a" );
-
-    case Qgis::DistanceUnit::YardsBritishBenoit1895B:
-      return QStringLiteral( "yards british benoit 1895b" );
-
-    case Qgis::DistanceUnit::YardsBritishSears1922Truncated:
-      return QStringLiteral( "yards british sears 1922 truncated" );
-
-    case Qgis::DistanceUnit::YardsBritishSears1922:
-      return QStringLiteral( "yards british sears 1922" );
-
-    case Qgis::DistanceUnit::YardsClarkes:
-      return QStringLiteral( "yards clarkes" );
-
-    case Qgis::DistanceUnit::YardsIndian:
-      return QStringLiteral( "yards indian" );
-
-    case Qgis::DistanceUnit::YardsIndian1937:
-      return QStringLiteral( "yards indian 1937" );
-
-    case Qgis::DistanceUnit::YardsIndian1962:
-      return QStringLiteral( "yards indian 1962" );
-
-    case Qgis::DistanceUnit::YardsIndian1975:
-      return QStringLiteral( "yards indian 1975" );
-
-    case Qgis::DistanceUnit::MilesUSSurvey:
-      return QStringLiteral( "miles us survey" );
-
-    case Qgis::DistanceUnit::Fathoms:
-      return QStringLiteral( "yards fathom" );
-
-    case Qgis::DistanceUnit::MetersGermanLegal:
-      return QStringLiteral( "german legal meters" );
   }
   return QString();
 }
@@ -323,260 +162,103 @@ QString QgsUnitTypes::encodeUnit( Qgis::DistanceUnit unit )
  * See details in QEP #17
  ****************************************************************************/
 
-Qgis::DistanceUnit QgsUnitTypes::decodeDistanceUnit( const QString &string, bool *ok )
+QgsUnitTypes::DistanceUnit QgsUnitTypes::decodeDistanceUnit( const QString &string, bool *ok )
 {
   const QString normalized = string.trimmed().toLower();
 
   if ( ok )
     *ok = true;
 
-  for ( const Qgis::DistanceUnit unit :
-        {
-          Qgis::DistanceUnit::Meters,
-          Qgis::DistanceUnit::Feet,
-          Qgis::DistanceUnit::Degrees,
-          Qgis::DistanceUnit::NauticalMiles,
-          Qgis::DistanceUnit::Kilometers,
-          Qgis::DistanceUnit::Yards,
-          Qgis::DistanceUnit::Miles,
-          Qgis::DistanceUnit::Centimeters,
-          Qgis::DistanceUnit::Millimeters,
-          Qgis::DistanceUnit::Inches,
-          Qgis::DistanceUnit::Unknown,
+  if ( normalized == encodeUnit( DistanceMeters ) )
+    return DistanceMeters;
+  if ( normalized == encodeUnit( DistanceFeet ) )
+    return DistanceFeet;
+  if ( normalized == encodeUnit( DistanceDegrees ) )
+    return DistanceDegrees;
+  if ( normalized == encodeUnit( DistanceNauticalMiles ) )
+    return DistanceNauticalMiles;
+  if ( normalized == encodeUnit( DistanceKilometers ) )
+    return DistanceKilometers;
+  if ( normalized == encodeUnit( DistanceYards ) )
+    return DistanceYards;
+  if ( normalized == encodeUnit( DistanceMiles ) )
+    return DistanceMiles;
+  if ( normalized == encodeUnit( DistanceCentimeters ) )
+    return DistanceCentimeters;
+  if ( normalized == encodeUnit( DistanceMillimeters ) )
+    return DistanceMillimeters;
+  if ( normalized == encodeUnit( DistanceUnknownUnit ) )
+    return DistanceUnknownUnit;
 
-          Qgis::DistanceUnit::ChainsInternational,
-          Qgis::DistanceUnit::ChainsBritishBenoit1895A,
-          Qgis::DistanceUnit::ChainsBritishBenoit1895B,
-          Qgis::DistanceUnit::ChainsBritishSears1922Truncated,
-          Qgis::DistanceUnit::ChainsBritishSears1922,
-          Qgis::DistanceUnit::ChainsClarkes,
-          Qgis::DistanceUnit::ChainsUSSurvey,
-          Qgis::DistanceUnit::FeetBritish1865,
-          Qgis::DistanceUnit::FeetBritish1936,
-          Qgis::DistanceUnit::FeetBritishBenoit1895A,
-          Qgis::DistanceUnit::FeetBritishBenoit1895B,
-          Qgis::DistanceUnit::FeetBritishSears1922Truncated,
-          Qgis::DistanceUnit::FeetBritishSears1922,
-          Qgis::DistanceUnit::FeetClarkes,
-          Qgis::DistanceUnit::FeetGoldCoast,
-          Qgis::DistanceUnit::FeetIndian,
-          Qgis::DistanceUnit::FeetIndian1937,
-          Qgis::DistanceUnit::FeetIndian1962,
-          Qgis::DistanceUnit::FeetIndian1975,
-          Qgis::DistanceUnit::FeetUSSurvey,
-          Qgis::DistanceUnit::LinksInternational,
-          Qgis::DistanceUnit::LinksBritishBenoit1895A,
-          Qgis::DistanceUnit::LinksBritishBenoit1895B,
-          Qgis::DistanceUnit::LinksBritishSears1922Truncated,
-          Qgis::DistanceUnit::LinksBritishSears1922,
-          Qgis::DistanceUnit::LinksClarkes,
-          Qgis::DistanceUnit::LinksUSSurvey,
-          Qgis::DistanceUnit::YardsBritishBenoit1895A,
-          Qgis::DistanceUnit::YardsBritishBenoit1895B,
-          Qgis::DistanceUnit::YardsBritishSears1922Truncated,
-          Qgis::DistanceUnit::YardsBritishSears1922,
-          Qgis::DistanceUnit::YardsClarkes,
-          Qgis::DistanceUnit::YardsIndian,
-          Qgis::DistanceUnit::YardsIndian1937,
-          Qgis::DistanceUnit::YardsIndian1962,
-          Qgis::DistanceUnit::YardsIndian1975,
-          Qgis::DistanceUnit::MilesUSSurvey,
-          Qgis::DistanceUnit::Fathoms,
-          Qgis::DistanceUnit::MetersGermanLegal,
-        } )
-  {
-    if ( normalized == encodeUnit( unit ) )
-      return unit;
-  }
   if ( ok )
     *ok = false;
 
-  return Qgis::DistanceUnit::Unknown;
+  return DistanceUnknownUnit;
 }
 
-QString QgsUnitTypes::toString( Qgis::DistanceUnit unit )
+QString QgsUnitTypes::toString( DistanceUnit unit )
 {
   switch ( unit )
   {
-    case Qgis::DistanceUnit::Meters:
+    case DistanceMeters:
       return QObject::tr( "meters", "distance" );
 
-    case Qgis::DistanceUnit::Kilometers:
+    case DistanceKilometers:
       return QObject::tr( "kilometers", "distance" );
 
-    case Qgis::DistanceUnit::Feet:
+    case DistanceFeet:
       return QObject::tr( "feet", "distance" );
 
-    case Qgis::DistanceUnit::Yards:
+    case DistanceYards:
       return QObject::tr( "yards", "distance" );
 
-    case Qgis::DistanceUnit::Miles:
+    case DistanceMiles:
       return QObject::tr( "miles", "distance" );
 
-    case Qgis::DistanceUnit::Degrees:
+    case DistanceDegrees:
       return QObject::tr( "degrees", "distance" );
 
-    case Qgis::DistanceUnit::Centimeters:
+    case DistanceCentimeters:
       return QObject::tr( "centimeters", "distance" );
 
-    case Qgis::DistanceUnit::Millimeters:
+    case DistanceMillimeters:
       return QObject::tr( "millimeters", "distance" );
 
-    case Qgis::DistanceUnit::Inches:
-      return QObject::tr( "inches", "distance" );
-
-    case Qgis::DistanceUnit::Unknown:
+    case DistanceUnknownUnit:
       return QObject::tr( "<unknown>", "distance" );
 
-    case Qgis::DistanceUnit::NauticalMiles:
+    case DistanceNauticalMiles:
       return QObject::tr( "nautical miles", "distance" );
-
-    case Qgis::DistanceUnit::ChainsInternational:
-      return QObject::tr( "chains (international)", "distance" );
-
-    case Qgis::DistanceUnit::ChainsBritishBenoit1895A:
-      return QObject::tr( "chains (British, Benoit 1895 A)", "distance" );
-
-    case Qgis::DistanceUnit::ChainsBritishBenoit1895B:
-      return QObject::tr( "chains (British, Benoit 1895 B)", "distance" );
-
-    case Qgis::DistanceUnit::ChainsBritishSears1922Truncated:
-      return QObject::tr( "chains (British, Sears 1922 truncated)", "distance" );
-
-    case Qgis::DistanceUnit::ChainsBritishSears1922:
-      return QObject::tr( "chains (British, Sears 1922)", "distance" );
-
-    case Qgis::DistanceUnit::ChainsClarkes:
-      return QObject::tr( "chains (Clarke's)", "distance" );
-
-    case Qgis::DistanceUnit::ChainsUSSurvey:
-      return QObject::tr( "chains (US survey)", "distance" );
-
-    case Qgis::DistanceUnit::FeetBritish1865:
-      return QObject::tr( "feet (British, 1865)", "distance" );
-
-    case Qgis::DistanceUnit::FeetBritish1936:
-      return QObject::tr( "feet (British, 1936)", "distance" );
-
-    case Qgis::DistanceUnit::FeetBritishBenoit1895A:
-      return QObject::tr( "feet (British, Benoit 1895 A)", "distance" );
-
-    case Qgis::DistanceUnit::FeetBritishBenoit1895B:
-      return QObject::tr( "feet (British, Benoit 1895 B)", "distance" );
-
-    case Qgis::DistanceUnit::FeetBritishSears1922Truncated:
-      return QObject::tr( "feet (British, Sears 1922 truncated)", "distance" );
-
-    case Qgis::DistanceUnit::FeetBritishSears1922:
-      return QObject::tr( "feet (British, Sears 1922)", "distance" );
-
-    case Qgis::DistanceUnit::FeetClarkes:
-      return QObject::tr( "feet (Clarke's)", "distance" );
-
-    case Qgis::DistanceUnit::FeetGoldCoast:
-      return QObject::tr( "feet (Gold Coast)", "distance" );
-
-    case Qgis::DistanceUnit::FeetIndian:
-      return QObject::tr( "feet (Indian)", "distance" );
-
-    case Qgis::DistanceUnit::FeetIndian1937:
-      return QObject::tr( "feet (Indian 1937)", "distance" );
-
-    case Qgis::DistanceUnit::FeetIndian1962:
-      return QObject::tr( "feet (Indian 1962)", "distance" );
-
-    case Qgis::DistanceUnit::FeetIndian1975:
-      return QObject::tr( "feet (Indian 1975)", "distance" );
-
-    case Qgis::DistanceUnit::FeetUSSurvey:
-      return QObject::tr( "feet (US survey)", "distance" );
-
-    case Qgis::DistanceUnit::LinksInternational:
-      return QObject::tr( "links", "distance" );
-
-    case Qgis::DistanceUnit::LinksBritishBenoit1895A:
-      return QObject::tr( "links (British, Benoit 1895 A)", "distance" );
-
-    case Qgis::DistanceUnit::LinksBritishBenoit1895B:
-      return QObject::tr( "links (British, Benoit 1895 B)", "distance" );
-
-    case Qgis::DistanceUnit::LinksBritishSears1922Truncated:
-      return QObject::tr( "links (British, Sears 1922 truncated)", "distance" );
-
-    case Qgis::DistanceUnit::LinksBritishSears1922:
-      return QObject::tr( "links (British, Sears 1922)", "distance" );
-
-    case Qgis::DistanceUnit::LinksClarkes:
-      return QObject::tr( "links (Clarke's)", "distance" );
-
-    case Qgis::DistanceUnit::LinksUSSurvey:
-      return QObject::tr( "links (US survey)", "distance" );
-
-    case Qgis::DistanceUnit::YardsBritishBenoit1895A:
-      return QObject::tr( "yards (British, Benoit 1895 A)", "distance" );
-
-    case Qgis::DistanceUnit::YardsBritishBenoit1895B:
-      return QObject::tr( "yards (British, Benoit 1895 B)", "distance" );
-
-    case Qgis::DistanceUnit::YardsBritishSears1922Truncated:
-      return QObject::tr( "yards (British, Sears 1922 truncated)", "distance" );
-
-    case Qgis::DistanceUnit::YardsBritishSears1922:
-      return QObject::tr( "yards (British, Sears 1922)", "distance" );
-
-    case Qgis::DistanceUnit::YardsClarkes:
-      return QObject::tr( "yards (Clarke's)", "distance" );
-
-    case Qgis::DistanceUnit::YardsIndian:
-      return QObject::tr( "yards (Indian)", "distance" );
-
-    case Qgis::DistanceUnit::YardsIndian1937:
-      return QObject::tr( "yards (Indian 1937)", "distance" );
-
-    case Qgis::DistanceUnit::YardsIndian1962:
-      return QObject::tr( "yards (Indian 1962)", "distance" );
-
-    case Qgis::DistanceUnit::YardsIndian1975:
-      return QObject::tr( "yards (Indian 1975)", "distance" );
-
-    case Qgis::DistanceUnit::MilesUSSurvey:
-      return QObject::tr( "miles (US survey)", "distance" );
-
-    case Qgis::DistanceUnit::Fathoms:
-      return QObject::tr( "fathoms", "distance" );
-
-    case Qgis::DistanceUnit::MetersGermanLegal:
-      return QObject::tr( "meters (German legal)", "distance" );
   }
   return QString();
 }
 
-QString QgsUnitTypes::toAbbreviatedString( Qgis::RenderUnit unit )
+QString QgsUnitTypes::toAbbreviatedString( QgsUnitTypes::RenderUnit unit )
 {
   switch ( unit )
   {
-    case Qgis::RenderUnit::Millimeters:
+    case RenderMillimeters:
       return QObject::tr( "mm", "render" );
 
-    case Qgis::RenderUnit::MapUnits:
+    case RenderMapUnits:
       return QObject::tr( "map units", "render" );
 
-    case Qgis::RenderUnit::Pixels:
+    case RenderPixels:
       return QObject::tr( "px", "render" );
 
-    case Qgis::RenderUnit::Percentage:
+    case RenderPercentage:
       return QObject::tr( "%", "render" );
 
-    case Qgis::RenderUnit::Points:
+    case RenderPoints:
       return QObject::tr( "pt", "render" );
 
-    case Qgis::RenderUnit::Inches:
+    case RenderInches:
       return QObject::tr( "in", "render" );
 
-    case Qgis::RenderUnit::Unknown:
+    case RenderUnknownUnit:
       return QObject::tr( "unknown", "render" );
 
-    case Qgis::RenderUnit::MetersInMapUnits:
+    case RenderMetersInMapUnits:
       return QObject::tr( "m", "render" );
 
   }
@@ -584,90 +266,39 @@ QString QgsUnitTypes::toAbbreviatedString( Qgis::RenderUnit unit )
   return QString();
 }
 
-QString QgsUnitTypes::toAbbreviatedString( Qgis::DistanceUnit unit )
+QString QgsUnitTypes::toAbbreviatedString( QgsUnitTypes::DistanceUnit unit )
 {
   switch ( unit )
   {
-    case Qgis::DistanceUnit::Meters:
+    case DistanceMeters:
       return QObject::tr( "m", "distance" );
 
-    case Qgis::DistanceUnit::Kilometers:
+    case DistanceKilometers:
       return QObject::tr( "km", "distance" );
 
-    case Qgis::DistanceUnit::Feet:
-    case Qgis::DistanceUnit::FeetBritish1865:
-    case Qgis::DistanceUnit::FeetBritish1936:
-    case Qgis::DistanceUnit::FeetBritishBenoit1895A:
-    case Qgis::DistanceUnit::FeetBritishBenoit1895B:
-    case Qgis::DistanceUnit::FeetBritishSears1922Truncated:
-    case Qgis::DistanceUnit::FeetBritishSears1922:
-    case Qgis::DistanceUnit::FeetClarkes:
-    case Qgis::DistanceUnit::FeetGoldCoast:
-    case Qgis::DistanceUnit::FeetIndian:
-    case Qgis::DistanceUnit::FeetIndian1937:
-    case Qgis::DistanceUnit::FeetIndian1962:
-    case Qgis::DistanceUnit::FeetIndian1975:
-    case Qgis::DistanceUnit::FeetUSSurvey:
+    case DistanceFeet:
       return QObject::tr( "ft", "distance" );
 
-    case Qgis::DistanceUnit::Yards:
-    case Qgis::DistanceUnit::YardsBritishBenoit1895A:
-    case Qgis::DistanceUnit::YardsBritishBenoit1895B:
-    case Qgis::DistanceUnit::YardsBritishSears1922Truncated:
-    case Qgis::DistanceUnit::YardsBritishSears1922:
-    case Qgis::DistanceUnit::YardsClarkes:
-    case Qgis::DistanceUnit::YardsIndian:
-    case Qgis::DistanceUnit::YardsIndian1937:
-    case Qgis::DistanceUnit::YardsIndian1962:
-    case Qgis::DistanceUnit::YardsIndian1975:
+    case DistanceYards:
       return QObject::tr( "yd", "distance" );
 
-    case Qgis::DistanceUnit::Miles:
-    case Qgis::DistanceUnit::MilesUSSurvey:
+    case DistanceMiles:
       return QObject::tr( "mi", "distance" );
 
-    case Qgis::DistanceUnit::Degrees:
+    case DistanceDegrees:
       return QObject::tr( "deg", "distance" );
 
-    case Qgis::DistanceUnit::Centimeters:
+    case DistanceCentimeters:
       return QObject::tr( "cm", "distance" );
 
-    case Qgis::DistanceUnit::Millimeters:
+    case DistanceMillimeters:
       return QObject::tr( "mm", "distance" );
 
-    case Qgis::DistanceUnit::Inches:
-      return QObject::tr( "in", "distance" );
-
-    case Qgis::DistanceUnit::Unknown:
+    case DistanceUnknownUnit:
       return QString();
 
-    case Qgis::DistanceUnit::NauticalMiles:
+    case DistanceNauticalMiles:
       return QObject::tr( "NM", "distance" );
-
-    case Qgis::DistanceUnit::ChainsInternational:
-    case Qgis::DistanceUnit::ChainsBritishBenoit1895A:
-    case Qgis::DistanceUnit::ChainsBritishBenoit1895B:
-    case Qgis::DistanceUnit::ChainsBritishSears1922Truncated:
-    case Qgis::DistanceUnit::ChainsBritishSears1922:
-    case Qgis::DistanceUnit::ChainsClarkes:
-    case Qgis::DistanceUnit::ChainsUSSurvey:
-      return QObject::tr( "ch", "distance" );
-
-    case Qgis::DistanceUnit::LinksInternational:
-    case Qgis::DistanceUnit::LinksBritishBenoit1895A:
-    case Qgis::DistanceUnit::LinksBritishBenoit1895B:
-    case Qgis::DistanceUnit::LinksBritishSears1922Truncated:
-    case Qgis::DistanceUnit::LinksBritishSears1922:
-    case Qgis::DistanceUnit::LinksClarkes:
-    case Qgis::DistanceUnit::LinksUSSurvey:
-      return QObject::tr( "lk", "distance" );
-
-    case Qgis::DistanceUnit::Fathoms:
-      return QObject::tr( "f", "distance" );
-
-    case Qgis::DistanceUnit::MetersGermanLegal:
-      return QObject::tr( "glm", "distance" );
-
   }
   return QString();
 }
@@ -678,75 +309,38 @@ QString QgsUnitTypes::toAbbreviatedString( Qgis::DistanceUnit unit )
  * See details in QEP #17
  ****************************************************************************/
 
-Qgis::DistanceUnit QgsUnitTypes::stringToDistanceUnit( const QString &string, bool *ok )
+QgsUnitTypes::DistanceUnit QgsUnitTypes::stringToDistanceUnit( const QString &string, bool *ok )
 {
   const QString normalized = string.trimmed().toLower();
 
   if ( ok )
     *ok = true;
 
-  for ( const Qgis::DistanceUnit unit :
-        {
-          Qgis::DistanceUnit::Meters,
-          Qgis::DistanceUnit::Feet,
-          Qgis::DistanceUnit::Degrees,
-          Qgis::DistanceUnit::NauticalMiles,
-          Qgis::DistanceUnit::Kilometers,
-          Qgis::DistanceUnit::Yards,
-          Qgis::DistanceUnit::Miles,
-          Qgis::DistanceUnit::Centimeters,
-          Qgis::DistanceUnit::Millimeters,
-          Qgis::DistanceUnit::Inches,
-          Qgis::DistanceUnit::Unknown,
-          Qgis::DistanceUnit::ChainsInternational,
-          Qgis::DistanceUnit::ChainsBritishBenoit1895A,
-          Qgis::DistanceUnit::ChainsBritishBenoit1895B,
-          Qgis::DistanceUnit::ChainsBritishSears1922Truncated,
-          Qgis::DistanceUnit::ChainsBritishSears1922,
-          Qgis::DistanceUnit::ChainsClarkes,
-          Qgis::DistanceUnit::ChainsUSSurvey,
-          Qgis::DistanceUnit::FeetBritish1865,
-          Qgis::DistanceUnit::FeetBritish1936,
-          Qgis::DistanceUnit::FeetBritishBenoit1895A,
-          Qgis::DistanceUnit::FeetBritishBenoit1895B,
-          Qgis::DistanceUnit::FeetBritishSears1922Truncated,
-          Qgis::DistanceUnit::FeetBritishSears1922,
-          Qgis::DistanceUnit::FeetClarkes,
-          Qgis::DistanceUnit::FeetGoldCoast,
-          Qgis::DistanceUnit::FeetIndian,
-          Qgis::DistanceUnit::FeetIndian1937,
-          Qgis::DistanceUnit::FeetIndian1962,
-          Qgis::DistanceUnit::FeetIndian1975,
-          Qgis::DistanceUnit::FeetUSSurvey,
-          Qgis::DistanceUnit::LinksInternational,
-          Qgis::DistanceUnit::LinksBritishBenoit1895A,
-          Qgis::DistanceUnit::LinksBritishBenoit1895B,
-          Qgis::DistanceUnit::LinksBritishSears1922Truncated,
-          Qgis::DistanceUnit::LinksBritishSears1922,
-          Qgis::DistanceUnit::LinksClarkes,
-          Qgis::DistanceUnit::LinksUSSurvey,
-          Qgis::DistanceUnit::YardsBritishBenoit1895A,
-          Qgis::DistanceUnit::YardsBritishBenoit1895B,
-          Qgis::DistanceUnit::YardsBritishSears1922Truncated,
-          Qgis::DistanceUnit::YardsBritishSears1922,
-          Qgis::DistanceUnit::YardsClarkes,
-          Qgis::DistanceUnit::YardsIndian,
-          Qgis::DistanceUnit::YardsIndian1937,
-          Qgis::DistanceUnit::YardsIndian1962,
-          Qgis::DistanceUnit::YardsIndian1975,
-          Qgis::DistanceUnit::MilesUSSurvey,
-          Qgis::DistanceUnit::Fathoms,
-          Qgis::DistanceUnit::MetersGermanLegal,
-        } )
-  {
-    if ( normalized.compare( toString( unit ), Qt::CaseInsensitive ) == 0 )
-      return unit;
-  }
+  if ( normalized == toString( DistanceMeters ) )
+    return DistanceMeters;
+  if ( normalized == toString( DistanceKilometers ) )
+    return DistanceKilometers;
+  if ( normalized == toString( DistanceFeet ) )
+    return DistanceFeet;
+  if ( normalized == toString( DistanceYards ) )
+    return DistanceYards;
+  if ( normalized == toString( DistanceMiles ) )
+    return DistanceMiles;
+  if ( normalized == toString( DistanceDegrees ) )
+    return DistanceDegrees;
+  if ( normalized == toString( DistanceCentimeters ) )
+    return DistanceCentimeters;
+  if ( normalized == toString( DistanceMillimeters ) )
+    return DistanceMillimeters;
+  if ( normalized == toString( DistanceNauticalMiles ) )
+    return DistanceNauticalMiles;
+  if ( normalized == toString( DistanceUnknownUnit ) )
+    return DistanceUnknownUnit;
 
   if ( ok )
     *ok = false;
 
-  return Qgis::DistanceUnit::Unknown;
+  return DistanceUnknownUnit;
 }
 
 /***************************************************************************
@@ -755,367 +349,456 @@ Qgis::DistanceUnit QgsUnitTypes::stringToDistanceUnit( const QString &string, bo
  * See details in QEP #17
  ****************************************************************************/
 
-constexpr double distanceUnitToMeter( Qgis::DistanceUnit unit )
+double QgsUnitTypes::fromUnitToUnitFactor( DistanceUnit fromUnit, DistanceUnit toUnit )
 {
-  // values are from the EPSG units database:
-  switch ( unit )
-  {
-    case Qgis::DistanceUnit::Meters:
-      return 1.0;
-    case Qgis::DistanceUnit::Kilometers:
-      return 1000.0;
-    case Qgis::DistanceUnit::Feet:
-      return 0.3048;
-    case Qgis::DistanceUnit::NauticalMiles:
-      return 1852.0;
-    case Qgis::DistanceUnit::Yards:
-      return 0.9144;
-    case Qgis::DistanceUnit::Miles:
-      return 1609.344;
-    case Qgis::DistanceUnit::Degrees:
-      return 111319.49079327358;
-    case Qgis::DistanceUnit::Centimeters:
-      return 0.01;
-    case Qgis::DistanceUnit::Millimeters:
-      return 0.001;
-    case Qgis::DistanceUnit::Inches:
-      return 0.0254;
-    case Qgis::DistanceUnit::ChainsInternational:
-      return 20.1168;
-    case Qgis::DistanceUnit::ChainsBritishBenoit1895A:
-      return 20.1167824;
-    case Qgis::DistanceUnit::ChainsBritishBenoit1895B:
-      return 20.116782494376;
-    case Qgis::DistanceUnit::ChainsBritishSears1922Truncated:
-      return 20.116756;
-    case Qgis::DistanceUnit::ChainsBritishSears1922:
-      return 20.116765121553;
-    case Qgis::DistanceUnit::ChainsClarkes:
-      return 20.1166195164;
-    case Qgis::DistanceUnit::ChainsUSSurvey:
-      return 20.11684023368;
-    case Qgis::DistanceUnit::FeetBritish1865:
-      return 0.30480083333333;
-    case Qgis::DistanceUnit::FeetBritish1936:
-      return 0.3048007491;
-    case Qgis::DistanceUnit::FeetBritishBenoit1895A:
-      return 0.30479973333333;
-    case Qgis::DistanceUnit::FeetBritishBenoit1895B:
-      return 0.30479973476327;
-    case Qgis::DistanceUnit::FeetBritishSears1922Truncated:
-      return 0.30479933333333;
-    case Qgis::DistanceUnit::FeetBritishSears1922:
-      return 0.30479947153868;
-    case Qgis::DistanceUnit::FeetClarkes:
-      return 0.3047972654;
-    case Qgis::DistanceUnit::FeetGoldCoast:
-      return 0.30479971018151;
-    case Qgis::DistanceUnit::FeetIndian:
-      return 0.30479951024815;
-    case Qgis::DistanceUnit::FeetIndian1937:
-      return 0.30479841;
-    case Qgis::DistanceUnit::FeetIndian1962:
-      return 0.3047996;
-    case Qgis::DistanceUnit::FeetIndian1975:
-      return 0.3047995;
-    case Qgis::DistanceUnit::FeetUSSurvey:
-      return 0.30480060960122;
-    case Qgis::DistanceUnit::LinksInternational:
-      return 0.201168;
-    case Qgis::DistanceUnit::LinksBritishBenoit1895A:
-      return 0.201167824;
-    case Qgis::DistanceUnit::LinksBritishBenoit1895B:
-      return 0.20116782494376;
-    case Qgis::DistanceUnit::LinksBritishSears1922Truncated:
-      return 0.20116756;
-    case Qgis::DistanceUnit::LinksBritishSears1922:
-      return 0.20116765121553;
-    case Qgis::DistanceUnit::LinksClarkes:
-      return 0.201166195164;
-    case Qgis::DistanceUnit::LinksUSSurvey:
-      return 0.2011684023368;
-    case Qgis::DistanceUnit::YardsBritishBenoit1895A:
-      return 0.9143992;
-    case Qgis::DistanceUnit::YardsBritishBenoit1895B:
-      return 0.91439920428981;
-    case Qgis::DistanceUnit::YardsBritishSears1922Truncated:
-      return 0.914398;
-    case Qgis::DistanceUnit::YardsBritishSears1922:
-      return 0.91439841461603;
-    case Qgis::DistanceUnit::YardsClarkes:
-      return 0.9143917962;
-    case Qgis::DistanceUnit::YardsIndian:
-      return 0.91439853074444;
-    case Qgis::DistanceUnit::YardsIndian1937:
-      return 0.91439523;
-    case Qgis::DistanceUnit::YardsIndian1962:
-      return 0.9143988;
-    case Qgis::DistanceUnit::YardsIndian1975:
-      return 0.9143985;
-    case Qgis::DistanceUnit::MilesUSSurvey:
-      return 1609.3472186944;
-    case Qgis::DistanceUnit::Fathoms:
-      return 1.8288;
-    case Qgis::DistanceUnit::Unknown:
-      return 1;
-    case Qgis::DistanceUnit::MetersGermanLegal:
-      return 1.0000135965;
-  }
-  return 1;
-}
-
-double QgsUnitTypes::fromUnitToUnitFactor( Qgis::DistanceUnit fromUnit, Qgis::DistanceUnit toUnit )
-{
-  if ( fromUnit == toUnit || fromUnit == Qgis::DistanceUnit::Unknown || toUnit == Qgis::DistanceUnit::Unknown )
-    return 1.0;
-
-  constexpr double FEET_TO_INCHES = 12;
-  constexpr double YARDS_TO_FEET = 3.0;
+#define DEGREE_TO_METER 111319.49079327358
+#define FEET_TO_METER 0.3048
+#define NMILE_TO_METER 1852.0
+#define KILOMETERS_TO_METER 1000.0
+#define CENTIMETERS_TO_METER 0.01
+#define MILLIMETERS_TO_METER 0.001
+#define YARDS_TO_METER 0.9144
+#define YARDS_TO_FEET 3.0
+#define MILES_TO_METER 1609.344
 
   // Calculate the conversion factor between the specified units
-
-  // special cases, where we don't go through meters as an intermediate unit:
   switch ( fromUnit )
   {
-    case Qgis::DistanceUnit::Feet:
+    case DistanceMeters:
     {
       switch ( toUnit )
       {
-        case Qgis::DistanceUnit::Inches:
-          return FEET_TO_INCHES;
-        case Qgis::DistanceUnit::Yards:
+        case DistanceMeters:
+          return 1.0;
+        case DistanceKilometers:
+          return 1.0 / KILOMETERS_TO_METER;
+        case DistanceMillimeters:
+          return 1.0 / MILLIMETERS_TO_METER;
+        case DistanceCentimeters:
+          return 1.0 / CENTIMETERS_TO_METER;
+        case DistanceFeet:
+          return 1.0 / FEET_TO_METER;
+        case DistanceYards:
+          return 1.0 / YARDS_TO_METER;
+        case DistanceMiles:
+          return 1.0 / MILES_TO_METER;
+        case DistanceDegrees:
+          return 1.0 / DEGREE_TO_METER;
+        case DistanceNauticalMiles:
+          return 1.0 / NMILE_TO_METER;
+        case DistanceUnknownUnit:
+          break;
+      }
+
+      break;
+    }
+    case DistanceKilometers:
+    {
+      switch ( toUnit )
+      {
+        case DistanceMeters:
+          return KILOMETERS_TO_METER;
+        case DistanceKilometers:
+          return 1.0;
+        case DistanceCentimeters:
+          return KILOMETERS_TO_METER / CENTIMETERS_TO_METER;
+        case DistanceMillimeters:
+          return KILOMETERS_TO_METER / MILLIMETERS_TO_METER;
+        case DistanceFeet:
+          return KILOMETERS_TO_METER / FEET_TO_METER;
+        case DistanceYards:
+          return KILOMETERS_TO_METER / YARDS_TO_METER;
+        case DistanceMiles:
+          return KILOMETERS_TO_METER / MILES_TO_METER;
+        case DistanceDegrees:
+          return KILOMETERS_TO_METER / DEGREE_TO_METER;
+        case DistanceNauticalMiles:
+          return KILOMETERS_TO_METER / NMILE_TO_METER;
+        case DistanceUnknownUnit:
+          break;
+      }
+
+      break;
+    }
+    case DistanceFeet:
+    {
+      switch ( toUnit )
+      {
+        case DistanceMeters:
+          return FEET_TO_METER;
+        case DistanceKilometers:
+          return FEET_TO_METER / KILOMETERS_TO_METER;
+        case DistanceCentimeters:
+          return FEET_TO_METER / CENTIMETERS_TO_METER;
+        case DistanceMillimeters:
+          return FEET_TO_METER / MILLIMETERS_TO_METER;
+        case DistanceFeet:
+          return 1.0;
+        case DistanceYards:
           return 1.0 / YARDS_TO_FEET;
-        default:
+        case DistanceMiles:
+          return FEET_TO_METER / MILES_TO_METER;
+        case DistanceDegrees:
+          return FEET_TO_METER / DEGREE_TO_METER;
+        case DistanceNauticalMiles:
+          return FEET_TO_METER / NMILE_TO_METER;
+        case DistanceUnknownUnit:
           break;
       }
 
       break;
     }
-    case Qgis::DistanceUnit::Yards:
+    case DistanceYards:
     {
       switch ( toUnit )
       {
-        case Qgis::DistanceUnit::Feet:
+        case DistanceMeters:
+          return YARDS_TO_METER;
+        case DistanceKilometers:
+          return YARDS_TO_METER / KILOMETERS_TO_METER;
+        case DistanceCentimeters:
+          return YARDS_TO_METER / CENTIMETERS_TO_METER;
+        case DistanceMillimeters:
+          return YARDS_TO_METER / MILLIMETERS_TO_METER;
+        case DistanceFeet:
           return YARDS_TO_FEET;
-        case Qgis::DistanceUnit::Inches:
-          return YARDS_TO_FEET * FEET_TO_INCHES;
-        default:
+        case DistanceYards:
+          return 1.0;
+        case DistanceMiles:
+          return YARDS_TO_METER / MILES_TO_METER;
+        case DistanceDegrees:
+          return YARDS_TO_METER / DEGREE_TO_METER;
+        case DistanceNauticalMiles:
+          return YARDS_TO_METER / NMILE_TO_METER;
+        case DistanceUnknownUnit:
           break;
       }
 
       break;
     }
-
-    case Qgis::DistanceUnit::Inches:
+    case DistanceMiles:
     {
       switch ( toUnit )
       {
-        case Qgis::DistanceUnit::Feet:
-          return 1.0 / FEET_TO_INCHES;
-        case Qgis::DistanceUnit::Yards:
-          return 1.0 / ( YARDS_TO_FEET * FEET_TO_INCHES );
-        default:
+        case DistanceMeters:
+          return MILES_TO_METER;
+        case DistanceKilometers:
+          return MILES_TO_METER / KILOMETERS_TO_METER;
+        case DistanceCentimeters:
+          return MILES_TO_METER / CENTIMETERS_TO_METER;
+        case DistanceMillimeters:
+          return MILES_TO_METER / MILLIMETERS_TO_METER;
+        case DistanceFeet:
+          return MILES_TO_METER / FEET_TO_METER;
+        case DistanceYards:
+          return MILES_TO_METER / YARDS_TO_METER;
+        case DistanceMiles:
+          return 1.0;
+        case DistanceDegrees:
+          return MILES_TO_METER / DEGREE_TO_METER;
+        case DistanceNauticalMiles:
+          return MILES_TO_METER / NMILE_TO_METER;
+        case DistanceUnknownUnit:
           break;
       }
 
       break;
     }
+    case DistanceDegrees:
+    {
+      switch ( toUnit )
+      {
+        case DistanceMeters:
+          return DEGREE_TO_METER;
+        case DistanceKilometers:
+          return DEGREE_TO_METER / KILOMETERS_TO_METER;
+        case DistanceCentimeters:
+          return DEGREE_TO_METER / CENTIMETERS_TO_METER;
+        case DistanceMillimeters:
+          return DEGREE_TO_METER / MILLIMETERS_TO_METER;
+        case DistanceFeet:
+          return DEGREE_TO_METER / FEET_TO_METER;
+        case DistanceYards:
+          return DEGREE_TO_METER / YARDS_TO_METER;
+        case DistanceMiles:
+          return DEGREE_TO_METER / MILES_TO_METER;
+        case DistanceDegrees:
+          return 1.0;
+        case DistanceNauticalMiles:
+          return DEGREE_TO_METER / NMILE_TO_METER;
+        case DistanceUnknownUnit:
+          break;
+      }
 
-    default:
+      break;
+    }
+    case DistanceNauticalMiles:
+    {
+      switch ( toUnit )
+      {
+        case DistanceMeters:
+          return NMILE_TO_METER;
+        case DistanceKilometers:
+          return NMILE_TO_METER / KILOMETERS_TO_METER;
+        case DistanceCentimeters:
+          return NMILE_TO_METER / CENTIMETERS_TO_METER;
+        case DistanceMillimeters:
+          return NMILE_TO_METER / MILLIMETERS_TO_METER;
+        case DistanceFeet:
+          return NMILE_TO_METER / FEET_TO_METER;
+        case DistanceYards:
+          return NMILE_TO_METER / YARDS_TO_METER;
+        case DistanceMiles:
+          return NMILE_TO_METER / MILES_TO_METER;
+        case DistanceDegrees:
+          return NMILE_TO_METER / DEGREE_TO_METER;
+        case DistanceNauticalMiles:
+          return 1.0;
+        case DistanceUnknownUnit:
+          break;
+      }
+
+      break;
+    }
+    case DistanceCentimeters:
+    {
+      switch ( toUnit )
+      {
+        case DistanceMeters:
+          return CENTIMETERS_TO_METER;
+        case DistanceKilometers:
+          return CENTIMETERS_TO_METER / KILOMETERS_TO_METER;
+        case DistanceCentimeters:
+          return 1.0;
+        case DistanceMillimeters:
+          return CENTIMETERS_TO_METER / MILLIMETERS_TO_METER;
+        case DistanceFeet:
+          return CENTIMETERS_TO_METER / FEET_TO_METER;
+        case DistanceYards:
+          return CENTIMETERS_TO_METER / YARDS_TO_METER;
+        case DistanceMiles:
+          return CENTIMETERS_TO_METER / MILES_TO_METER;
+        case DistanceDegrees:
+          return CENTIMETERS_TO_METER / DEGREE_TO_METER;
+        case DistanceNauticalMiles:
+          return CENTIMETERS_TO_METER / NMILE_TO_METER;
+        case DistanceUnknownUnit:
+          break;
+      }
+
+      break;
+    }
+    case DistanceMillimeters:
+    {
+      switch ( toUnit )
+      {
+        case DistanceMeters:
+          return MILLIMETERS_TO_METER;
+        case DistanceKilometers:
+          return MILLIMETERS_TO_METER / KILOMETERS_TO_METER;
+        case DistanceCentimeters:
+          return MILLIMETERS_TO_METER / CENTIMETERS_TO_METER;
+        case DistanceMillimeters:
+          return 1.0;
+        case DistanceFeet:
+          return MILLIMETERS_TO_METER / FEET_TO_METER;
+        case DistanceYards:
+          return MILLIMETERS_TO_METER / YARDS_TO_METER;
+        case DistanceMiles:
+          return MILLIMETERS_TO_METER / MILES_TO_METER;
+        case DistanceDegrees:
+          return MILLIMETERS_TO_METER / DEGREE_TO_METER;
+        case DistanceNauticalMiles:
+          return MILLIMETERS_TO_METER / NMILE_TO_METER;
+        case DistanceUnknownUnit:
+          break;
+      }
+
+      break;
+    }
+    case DistanceUnknownUnit:
       break;
   }
-
-  return distanceUnitToMeter( fromUnit ) / distanceUnitToMeter( toUnit );
+  return 1.0;
 }
 
-QString QgsUnitTypes::encodeUnit( Qgis::AreaUnit unit )
+QString QgsUnitTypes::encodeUnit( QgsUnitTypes::AreaUnit unit )
 {
   switch ( unit )
   {
-    case Qgis::AreaUnit::SquareMeters:
+    case AreaSquareMeters:
       return QStringLiteral( "m2" );
-    case Qgis::AreaUnit::SquareKilometers:
+    case AreaSquareKilometers:
       return QStringLiteral( "km2" );
-    case Qgis::AreaUnit::SquareFeet:
+    case AreaSquareFeet:
       return QStringLiteral( "ft2" );
-    case Qgis::AreaUnit::SquareYards:
+    case AreaSquareYards:
       return QStringLiteral( "y2" );
-    case Qgis::AreaUnit::SquareMiles:
+    case AreaSquareMiles:
       return QStringLiteral( "mi2" );
-    case Qgis::AreaUnit::Hectares:
+    case AreaHectares:
       return QStringLiteral( "ha" );
-    case Qgis::AreaUnit::Acres:
+    case AreaAcres:
       return QStringLiteral( "ac" );
-    case Qgis::AreaUnit::SquareNauticalMiles:
+    case AreaSquareNauticalMiles:
       return QStringLiteral( "nm2" );
-    case Qgis::AreaUnit::SquareDegrees:
+    case AreaSquareDegrees:
       return QStringLiteral( "deg2" );
-    case Qgis::AreaUnit::SquareCentimeters:
+    case AreaSquareCentimeters:
       return QStringLiteral( "cm2" );
-    case Qgis::AreaUnit::SquareMillimeters:
+    case AreaSquareMillimeters:
       return QStringLiteral( "mm2" );
-    case Qgis::AreaUnit::SquareInches:
-      return QStringLiteral( "in2" );
-    case Qgis::AreaUnit::Unknown:
+    case AreaUnknownUnit:
       return QStringLiteral( "<unknown>" );
   }
   return QString();
 }
 
-Qgis::AreaUnit QgsUnitTypes::decodeAreaUnit( const QString &string, bool *ok )
+QgsUnitTypes::AreaUnit QgsUnitTypes::decodeAreaUnit( const QString &string, bool *ok )
 {
   const QString normalized = string.trimmed().toLower();
 
   if ( ok )
     *ok = true;
 
-  if ( normalized == encodeUnit( Qgis::AreaUnit::SquareMeters ) )
-    return Qgis::AreaUnit::SquareMeters;
-  if ( normalized == encodeUnit( Qgis::AreaUnit::SquareKilometers ) )
-    return Qgis::AreaUnit::SquareKilometers;
-  if ( normalized == encodeUnit( Qgis::AreaUnit::SquareFeet ) )
-    return Qgis::AreaUnit::SquareFeet;
-  if ( normalized == encodeUnit( Qgis::AreaUnit::SquareYards ) )
-    return Qgis::AreaUnit::SquareYards;
-  if ( normalized == encodeUnit( Qgis::AreaUnit::SquareMiles ) )
-    return Qgis::AreaUnit::SquareMiles;
-  if ( normalized == encodeUnit( Qgis::AreaUnit::Hectares ) )
-    return Qgis::AreaUnit::Hectares;
-  if ( normalized == encodeUnit( Qgis::AreaUnit::Acres ) )
-    return Qgis::AreaUnit::Acres;
-  if ( normalized == encodeUnit( Qgis::AreaUnit::SquareNauticalMiles ) )
-    return Qgis::AreaUnit::SquareNauticalMiles;
-  if ( normalized == encodeUnit( Qgis::AreaUnit::SquareDegrees ) )
-    return Qgis::AreaUnit::SquareDegrees;
-  if ( normalized == encodeUnit( Qgis::AreaUnit::SquareCentimeters ) )
-    return Qgis::AreaUnit::SquareCentimeters;
-  if ( normalized == encodeUnit( Qgis::AreaUnit::SquareMillimeters ) )
-    return Qgis::AreaUnit::SquareMillimeters;
-  if ( normalized == encodeUnit( Qgis::AreaUnit::SquareInches ) )
-    return Qgis::AreaUnit::SquareInches;
-  if ( normalized == encodeUnit( Qgis::AreaUnit::Unknown ) )
-    return Qgis::AreaUnit::Unknown;
+  if ( normalized == encodeUnit( AreaSquareMeters ) )
+    return AreaSquareMeters;
+  if ( normalized == encodeUnit( AreaSquareKilometers ) )
+    return AreaSquareKilometers;
+  if ( normalized == encodeUnit( AreaSquareFeet ) )
+    return AreaSquareFeet;
+  if ( normalized == encodeUnit( AreaSquareYards ) )
+    return AreaSquareYards;
+  if ( normalized == encodeUnit( AreaSquareMiles ) )
+    return AreaSquareMiles;
+  if ( normalized == encodeUnit( AreaHectares ) )
+    return AreaHectares;
+  if ( normalized == encodeUnit( AreaAcres ) )
+    return AreaAcres;
+  if ( normalized == encodeUnit( AreaSquareNauticalMiles ) )
+    return AreaSquareNauticalMiles;
+  if ( normalized == encodeUnit( AreaSquareDegrees ) )
+    return AreaSquareDegrees;
+  if ( normalized == encodeUnit( AreaSquareCentimeters ) )
+    return AreaSquareCentimeters;
+  if ( normalized == encodeUnit( AreaSquareMillimeters ) )
+    return AreaSquareMillimeters;
+  if ( normalized == encodeUnit( AreaUnknownUnit ) )
+    return AreaUnknownUnit;
 
   if ( ok )
     *ok = false;
 
-  return Qgis::AreaUnit::Unknown;
+  return AreaUnknownUnit;
 }
 
-QString QgsUnitTypes::toString( Qgis::AreaUnit unit )
+QString QgsUnitTypes::toString( QgsUnitTypes::AreaUnit unit )
 {
   switch ( unit )
   {
-    case Qgis::AreaUnit::SquareMeters:
+    case AreaSquareMeters:
       return QObject::tr( "square meters", "area" );
-    case Qgis::AreaUnit::SquareKilometers:
+    case AreaSquareKilometers:
       return QObject::tr( "square kilometers", "area" );
-    case Qgis::AreaUnit::SquareFeet:
+    case AreaSquareFeet:
       return QObject::tr( "square feet", "area" );
-    case Qgis::AreaUnit::SquareYards:
+    case AreaSquareYards:
       return QObject::tr( "square yards", "area" );
-    case Qgis::AreaUnit::SquareMiles:
+    case AreaSquareMiles:
       return QObject::tr( "square miles", "area" );
-    case Qgis::AreaUnit::Hectares:
+    case AreaHectares:
       return QObject::tr( "hectares", "area" );
-    case Qgis::AreaUnit::Acres:
+    case AreaAcres:
       return QObject::tr( "acres", "area" );
-    case Qgis::AreaUnit::SquareNauticalMiles:
+    case AreaSquareNauticalMiles:
       return QObject::tr( "square nautical miles", "area" );
-    case Qgis::AreaUnit::SquareDegrees:
+    case AreaSquareDegrees:
       return QObject::tr( "square degrees", "area" );
-    case Qgis::AreaUnit::SquareMillimeters:
+    case AreaSquareMillimeters:
       return QObject::tr( "square millimeters", "area" );
-    case Qgis::AreaUnit::SquareCentimeters:
+    case AreaSquareCentimeters:
       return QObject::tr( "square centimeters", "area" );
-    case Qgis::AreaUnit::SquareInches:
-      return QObject::tr( "square inches", "area" );
-    case Qgis::AreaUnit::Unknown:
+    case AreaUnknownUnit:
       return QObject::tr( "<unknown>", "area" );
   }
   return QString();
 }
 
-QString QgsUnitTypes::toAbbreviatedString( Qgis::AreaUnit unit )
+QString QgsUnitTypes::toAbbreviatedString( QgsUnitTypes::AreaUnit unit )
 {
   switch ( unit )
   {
-    case Qgis::AreaUnit::SquareMeters:
+    case AreaSquareMeters:
       return QObject::tr( "m²", "area" );
-    case Qgis::AreaUnit::SquareKilometers:
+    case AreaSquareKilometers:
       return QObject::tr( "km²", "area" );
-    case Qgis::AreaUnit::SquareFeet:
+    case AreaSquareFeet:
       return QObject::tr( "ft²", "area" );
-    case Qgis::AreaUnit::SquareYards:
+    case AreaSquareYards:
       return QObject::tr( "yd²", "area" );
-    case Qgis::AreaUnit::SquareMiles:
+    case AreaSquareMiles:
       return QObject::tr( "mi²", "area" );
-    case Qgis::AreaUnit::Hectares:
+    case AreaHectares:
       return QObject::tr( "ha", "area" );
-    case Qgis::AreaUnit::Acres:
+    case AreaAcres:
       return QObject::tr( "ac", "area" );
-    case Qgis::AreaUnit::SquareNauticalMiles:
+    case AreaSquareNauticalMiles:
       return QObject::tr( "NM²", "area" );
-    case Qgis::AreaUnit::SquareDegrees:
+    case AreaSquareDegrees:
       return QObject::tr( "deg²", "area" );
-    case Qgis::AreaUnit::SquareCentimeters:
+    case AreaSquareCentimeters:
       return QObject::tr( "cm²", "area" );
-    case Qgis::AreaUnit::SquareMillimeters:
+    case AreaSquareMillimeters:
       return QObject::tr( "mm²", "area" );
-    case Qgis::AreaUnit::SquareInches:
-      return QObject::tr( "in²", "area" );
-    case Qgis::AreaUnit::Unknown:
+    case AreaUnknownUnit:
       return QString();
   }
   return QString();
 }
 
-Qgis::AreaUnit QgsUnitTypes::stringToAreaUnit( const QString &string, bool *ok )
+QgsUnitTypes::AreaUnit QgsUnitTypes::stringToAreaUnit( const QString &string, bool *ok )
 {
   const QString normalized = string.trimmed().toLower();
 
   if ( ok )
     *ok = true;
 
-  if ( normalized == toString( Qgis::AreaUnit::SquareMeters ) )
-    return Qgis::AreaUnit::SquareMeters;
-  if ( normalized == toString( Qgis::AreaUnit::SquareKilometers ) )
-    return Qgis::AreaUnit::SquareKilometers;
-  if ( normalized == toString( Qgis::AreaUnit::SquareFeet ) )
-    return Qgis::AreaUnit::SquareFeet;
-  if ( normalized == toString( Qgis::AreaUnit::SquareYards ) )
-    return Qgis::AreaUnit::SquareYards;
-  if ( normalized == toString( Qgis::AreaUnit::SquareMiles ) )
-    return Qgis::AreaUnit::SquareMiles;
-  if ( normalized == toString( Qgis::AreaUnit::Hectares ) )
-    return Qgis::AreaUnit::Hectares;
-  if ( normalized == toString( Qgis::AreaUnit::Acres ) )
-    return Qgis::AreaUnit::Acres;
-  if ( normalized == toString( Qgis::AreaUnit::SquareNauticalMiles ) )
-    return Qgis::AreaUnit::SquareNauticalMiles;
-  if ( normalized == toString( Qgis::AreaUnit::SquareDegrees ) )
-    return Qgis::AreaUnit::SquareDegrees;
-  if ( normalized == toString( Qgis::AreaUnit::SquareMillimeters ) )
-    return Qgis::AreaUnit::SquareMillimeters;
-  if ( normalized == toString( Qgis::AreaUnit::SquareCentimeters ) )
-    return Qgis::AreaUnit::SquareCentimeters;
-  if ( normalized == toString( Qgis::AreaUnit::SquareInches ) )
-    return Qgis::AreaUnit::SquareInches;
-  if ( normalized == toString( Qgis::AreaUnit::Unknown ) )
-    return Qgis::AreaUnit::Unknown;
+  if ( normalized == toString( AreaSquareMeters ) )
+    return AreaSquareMeters;
+  if ( normalized == toString( AreaSquareKilometers ) )
+    return AreaSquareKilometers;
+  if ( normalized == toString( AreaSquareFeet ) )
+    return AreaSquareFeet;
+  if ( normalized == toString( AreaSquareYards ) )
+    return AreaSquareYards;
+  if ( normalized == toString( AreaSquareMiles ) )
+    return AreaSquareMiles;
+  if ( normalized == toString( AreaHectares ) )
+    return AreaHectares;
+  if ( normalized == toString( AreaAcres ) )
+    return AreaAcres;
+  if ( normalized == toString( AreaSquareNauticalMiles ) )
+    return AreaSquareNauticalMiles;
+  if ( normalized == toString( AreaSquareDegrees ) )
+    return AreaSquareDegrees;
+  if ( normalized == toString( AreaSquareMillimeters ) )
+    return AreaSquareMillimeters;
+  if ( normalized == toString( AreaSquareCentimeters ) )
+    return AreaSquareCentimeters;
+  if ( normalized == toString( AreaUnknownUnit ) )
+    return AreaUnknownUnit;
   if ( ok )
     *ok = false;
 
-  return Qgis::AreaUnit::Unknown;
+  return AreaUnknownUnit;
 }
 
-double QgsUnitTypes::fromUnitToUnitFactor( Qgis::AreaUnit fromUnit, Qgis::AreaUnit toUnit )
+double QgsUnitTypes::fromUnitToUnitFactor( QgsUnitTypes::AreaUnit fromUnit, QgsUnitTypes::AreaUnit toUnit )
 {
 #define KM2_TO_M2 1000000.0
 #define CM2_TO_M2 0.0001
 #define MM2_TO_M2 0.000001
 #define FT2_TO_M2 0.09290304
-#define IN2_TO_M2 0.00064516
 #define YD2_TO_M2 0.83612736
 #define MI2_TO_M2 2589988.110336
 #define HA_TO_M2 10000.0
@@ -1126,1029 +809,928 @@ double QgsUnitTypes::fromUnitToUnitFactor( Qgis::AreaUnit fromUnit, Qgis::AreaUn
   // Calculate the conversion factor between the specified units
   switch ( fromUnit )
   {
-    case Qgis::AreaUnit::SquareMeters:
+    case AreaSquareMeters:
     {
       switch ( toUnit )
       {
-        case Qgis::AreaUnit::SquareMeters:
+        case AreaSquareMeters:
           return 1.0;
-        case Qgis::AreaUnit::SquareKilometers:
+        case AreaSquareKilometers:
           return 1.0 / KM2_TO_M2;
-        case Qgis::AreaUnit::SquareFeet:
+        case AreaSquareFeet:
           return 1.0 / FT2_TO_M2;
-        case Qgis::AreaUnit::SquareYards:
+        case AreaSquareYards:
           return 1.0 / YD2_TO_M2;
-        case Qgis::AreaUnit::SquareMiles:
+        case AreaSquareMiles:
           return 1.0 / MI2_TO_M2;
-        case Qgis::AreaUnit::Hectares:
+        case AreaHectares:
           return 1.0 / HA_TO_M2;
-        case Qgis::AreaUnit::Acres:
+        case AreaAcres:
           return 1.0 / AC_TO_FT2 / FT2_TO_M2;
-        case Qgis::AreaUnit::SquareNauticalMiles:
+        case AreaSquareNauticalMiles:
           return 1.0 / NM2_TO_M2;
-        case Qgis::AreaUnit::SquareDegrees:
+        case AreaSquareDegrees:
           return 1.0 / DEG2_TO_M2;
-        case Qgis::AreaUnit::SquareCentimeters:
+        case AreaSquareCentimeters:
           return 1.0 / CM2_TO_M2;
-        case Qgis::AreaUnit::SquareMillimeters:
+        case AreaSquareMillimeters:
           return 1.0 / MM2_TO_M2;
-        case Qgis::AreaUnit::SquareInches:
-          return 1.0 / IN2_TO_M2;
-        case Qgis::AreaUnit::Unknown:
+        case AreaUnknownUnit:
           break;
       }
 
       break;
     }
-    case Qgis::AreaUnit::SquareKilometers:
+    case AreaSquareKilometers:
     {
       switch ( toUnit )
       {
-        case Qgis::AreaUnit::SquareMeters:
+        case AreaSquareMeters:
           return KM2_TO_M2;
-        case Qgis::AreaUnit::SquareKilometers:
+        case AreaSquareKilometers:
           return 1.0;
-        case Qgis::AreaUnit::SquareFeet:
+        case AreaSquareFeet:
           return KM2_TO_M2 / FT2_TO_M2;
-        case Qgis::AreaUnit::SquareYards:
+        case AreaSquareYards:
           return KM2_TO_M2 / YD2_TO_M2;
-        case Qgis::AreaUnit::SquareMiles:
+        case AreaSquareMiles:
           return KM2_TO_M2 / MI2_TO_M2;
-        case Qgis::AreaUnit::Hectares:
+        case AreaHectares:
           return KM2_TO_M2 / HA_TO_M2;
-        case Qgis::AreaUnit::Acres:
+        case AreaAcres:
           return KM2_TO_M2 / AC_TO_FT2 / FT2_TO_M2;
-        case Qgis::AreaUnit::SquareNauticalMiles:
+        case AreaSquareNauticalMiles:
           return KM2_TO_M2 / NM2_TO_M2;
-        case Qgis::AreaUnit::SquareDegrees:
+        case AreaSquareDegrees:
           return KM2_TO_M2 / DEG2_TO_M2;
-        case Qgis::AreaUnit::SquareCentimeters:
+        case AreaSquareCentimeters:
           return KM2_TO_M2 / CM2_TO_M2;
-        case Qgis::AreaUnit::SquareMillimeters:
+        case AreaSquareMillimeters:
           return KM2_TO_M2 / MM2_TO_M2;
-        case Qgis::AreaUnit::SquareInches:
-          return KM2_TO_M2 / IN2_TO_M2;
-        case Qgis::AreaUnit::Unknown:
+        case AreaUnknownUnit:
           break;
       }
 
       break;
     }
-    case Qgis::AreaUnit::SquareFeet:
+    case AreaSquareFeet:
     {
       switch ( toUnit )
       {
-        case Qgis::AreaUnit::SquareMeters:
+        case AreaSquareMeters:
           return FT2_TO_M2;
-        case Qgis::AreaUnit::SquareKilometers:
+        case AreaSquareKilometers:
           return FT2_TO_M2 / KM2_TO_M2;
-        case Qgis::AreaUnit::SquareFeet:
+        case AreaSquareFeet:
           return 1.0;
-        case Qgis::AreaUnit::SquareYards:
+        case AreaSquareYards:
           return FT2_TO_M2 / YD2_TO_M2;
-        case Qgis::AreaUnit::SquareMiles:
+        case AreaSquareMiles:
           return FT2_TO_M2 / MI2_TO_M2;
-        case Qgis::AreaUnit::Hectares:
+        case AreaHectares:
           return FT2_TO_M2 / HA_TO_M2;
-        case Qgis::AreaUnit::Acres:
+        case AreaAcres:
           return 1.0 / AC_TO_FT2;
-        case Qgis::AreaUnit::SquareNauticalMiles:
+        case AreaSquareNauticalMiles:
           return FT2_TO_M2 / NM2_TO_M2;
-        case Qgis::AreaUnit::SquareDegrees:
+        case AreaSquareDegrees:
           return FT2_TO_M2 / DEG2_TO_M2;
-        case Qgis::AreaUnit::SquareCentimeters:
+        case AreaSquareCentimeters:
           return FT2_TO_M2 / CM2_TO_M2;
-        case Qgis::AreaUnit::SquareMillimeters:
+        case AreaSquareMillimeters:
           return FT2_TO_M2 / MM2_TO_M2;
-        case Qgis::AreaUnit::SquareInches:
-          return FT2_TO_M2 / IN2_TO_M2;
-        case Qgis::AreaUnit::Unknown:
+        case AreaUnknownUnit:
           break;
       }
 
       break;
     }
 
-    case Qgis::AreaUnit::SquareYards:
+    case AreaSquareYards:
     {
       switch ( toUnit )
       {
-        case Qgis::AreaUnit::SquareMeters:
+        case AreaSquareMeters:
           return YD2_TO_M2;
-        case Qgis::AreaUnit::SquareKilometers:
+        case AreaSquareKilometers:
           return YD2_TO_M2 / KM2_TO_M2;
-        case Qgis::AreaUnit::SquareFeet:
+        case AreaSquareFeet:
           return YD2_TO_M2 / FT2_TO_M2;
-        case Qgis::AreaUnit::SquareYards:
+        case AreaSquareYards:
           return 1.0;
-        case Qgis::AreaUnit::SquareMiles:
+        case AreaSquareMiles:
           return YD2_TO_M2 / MI2_TO_M2;
-        case Qgis::AreaUnit::Hectares:
+        case AreaHectares:
           return YD2_TO_M2 / HA_TO_M2;
-        case Qgis::AreaUnit::Acres:
+        case AreaAcres:
           return YD2_TO_M2 / FT2_TO_M2 / AC_TO_FT2;
-        case Qgis::AreaUnit::SquareNauticalMiles:
+        case AreaSquareNauticalMiles:
           return YD2_TO_M2 / NM2_TO_M2;
-        case Qgis::AreaUnit::SquareDegrees:
+        case AreaSquareDegrees:
           return YD2_TO_M2 / DEG2_TO_M2;
-        case Qgis::AreaUnit::SquareCentimeters:
+        case AreaSquareCentimeters:
           return YD2_TO_M2 / CM2_TO_M2;
-        case Qgis::AreaUnit::SquareMillimeters:
+        case AreaSquareMillimeters:
           return YD2_TO_M2 / MM2_TO_M2;
-        case Qgis::AreaUnit::SquareInches:
-          return YD2_TO_M2 / IN2_TO_M2;
-        case Qgis::AreaUnit::Unknown:
+        case AreaUnknownUnit:
           break;
       }
       break;
     }
 
-    case Qgis::AreaUnit::SquareMiles:
+    case AreaSquareMiles:
     {
       switch ( toUnit )
       {
-        case Qgis::AreaUnit::SquareMeters:
+        case AreaSquareMeters:
           return MI2_TO_M2;
-        case Qgis::AreaUnit::SquareKilometers:
+        case AreaSquareKilometers:
           return MI2_TO_M2 / KM2_TO_M2;
-        case Qgis::AreaUnit::SquareFeet:
+        case AreaSquareFeet:
           return MI2_TO_M2 / FT2_TO_M2;
-        case Qgis::AreaUnit::SquareYards:
+        case AreaSquareYards:
           return MI2_TO_M2 / YD2_TO_M2;
-        case Qgis::AreaUnit::SquareMiles:
+        case AreaSquareMiles:
           return 1.0;
-        case Qgis::AreaUnit::Hectares:
+        case AreaHectares:
           return MI2_TO_M2 / HA_TO_M2;
-        case Qgis::AreaUnit::Acres:
+        case AreaAcres:
           return MI2_TO_M2 / FT2_TO_M2 / AC_TO_FT2;
-        case Qgis::AreaUnit::SquareNauticalMiles:
+        case AreaSquareNauticalMiles:
           return MI2_TO_M2 / NM2_TO_M2;
-        case Qgis::AreaUnit::SquareDegrees:
+        case AreaSquareDegrees:
           return MI2_TO_M2 / DEG2_TO_M2;
-        case Qgis::AreaUnit::SquareCentimeters:
+        case AreaSquareCentimeters:
           return MI2_TO_M2 / CM2_TO_M2;
-        case Qgis::AreaUnit::SquareMillimeters:
+        case AreaSquareMillimeters:
           return MI2_TO_M2 / MM2_TO_M2;
-        case Qgis::AreaUnit::SquareInches:
-          return MI2_TO_M2 / IN2_TO_M2;
-        case Qgis::AreaUnit::Unknown:
+        case AreaUnknownUnit:
           break;
       }
 
       break;
     }
 
-    case Qgis::AreaUnit::Hectares:
+    case AreaHectares:
     {
       switch ( toUnit )
       {
-        case Qgis::AreaUnit::SquareMeters:
+        case AreaSquareMeters:
           return HA_TO_M2;
-        case Qgis::AreaUnit::SquareKilometers:
+        case AreaSquareKilometers:
           return HA_TO_M2 / KM2_TO_M2;
-        case Qgis::AreaUnit::SquareFeet:
+        case AreaSquareFeet:
           return HA_TO_M2 / FT2_TO_M2;
-        case Qgis::AreaUnit::SquareYards:
+        case AreaSquareYards:
           return HA_TO_M2 / YD2_TO_M2;
-        case Qgis::AreaUnit::SquareMiles:
+        case AreaSquareMiles:
           return HA_TO_M2 / MI2_TO_M2;
-        case Qgis::AreaUnit::Hectares:
+        case AreaHectares:
           return 1.0;
-        case Qgis::AreaUnit::Acres:
+        case AreaAcres:
           return HA_TO_M2 / FT2_TO_M2 / AC_TO_FT2;
-        case Qgis::AreaUnit::SquareNauticalMiles:
+        case AreaSquareNauticalMiles:
           return HA_TO_M2 / NM2_TO_M2;
-        case Qgis::AreaUnit::SquareDegrees:
+        case AreaSquareDegrees:
           return HA_TO_M2 / DEG2_TO_M2;
-        case Qgis::AreaUnit::SquareCentimeters:
+        case AreaSquareCentimeters:
           return HA_TO_M2 / CM2_TO_M2;
-        case Qgis::AreaUnit::SquareMillimeters:
+        case AreaSquareMillimeters:
           return HA_TO_M2 / MM2_TO_M2;
-        case Qgis::AreaUnit::SquareInches:
-          return HA_TO_M2 / IN2_TO_M2;
-        case Qgis::AreaUnit::Unknown:
+        case AreaUnknownUnit:
           break;
       }
 
       break;
     }
 
-    case Qgis::AreaUnit::Acres:
+    case AreaAcres:
     {
       switch ( toUnit )
       {
-        case Qgis::AreaUnit::SquareMeters:
+        case AreaSquareMeters:
           return AC_TO_FT2 * FT2_TO_M2;
-        case Qgis::AreaUnit::SquareKilometers:
+        case AreaSquareKilometers:
           return AC_TO_FT2 * FT2_TO_M2 / KM2_TO_M2;
-        case Qgis::AreaUnit::SquareFeet:
+        case AreaSquareFeet:
           return AC_TO_FT2;
-        case Qgis::AreaUnit::SquareYards:
+        case AreaSquareYards:
           return AC_TO_FT2 * FT2_TO_M2 / YD2_TO_M2;
-        case Qgis::AreaUnit::SquareMiles:
+        case AreaSquareMiles:
           return AC_TO_FT2 * FT2_TO_M2 / MI2_TO_M2;
-        case Qgis::AreaUnit::Hectares:
+        case AreaHectares:
           return AC_TO_FT2 * FT2_TO_M2 / HA_TO_M2;
-        case Qgis::AreaUnit::Acres:
+        case AreaAcres:
           return 1.0;
-        case Qgis::AreaUnit::SquareNauticalMiles:
+        case AreaSquareNauticalMiles:
           return AC_TO_FT2 * FT2_TO_M2 / NM2_TO_M2;
-        case Qgis::AreaUnit::SquareDegrees:
+        case AreaSquareDegrees:
           return AC_TO_FT2 * FT2_TO_M2 / DEG2_TO_M2;
-        case Qgis::AreaUnit::SquareCentimeters:
+        case AreaSquareCentimeters:
           return AC_TO_FT2 * FT2_TO_M2 / CM2_TO_M2;
-        case Qgis::AreaUnit::SquareMillimeters:
+        case AreaSquareMillimeters:
           return AC_TO_FT2 * FT2_TO_M2 / MM2_TO_M2;
-        case Qgis::AreaUnit::SquareInches:
-          return AC_TO_FT2 * FT2_TO_M2 / IN2_TO_M2;
-        case Qgis::AreaUnit::Unknown:
+        case AreaUnknownUnit:
           break;
       }
 
       break;
     }
 
-    case Qgis::AreaUnit::SquareNauticalMiles:
+    case AreaSquareNauticalMiles:
     {
       switch ( toUnit )
       {
-        case Qgis::AreaUnit::SquareMeters:
+        case AreaSquareMeters:
           return NM2_TO_M2;
-        case Qgis::AreaUnit::SquareKilometers:
+        case AreaSquareKilometers:
           return NM2_TO_M2 / KM2_TO_M2;
-        case Qgis::AreaUnit::SquareFeet:
+        case AreaSquareFeet:
           return NM2_TO_M2 / FT2_TO_M2;
-        case Qgis::AreaUnit::SquareYards:
+        case AreaSquareYards:
           return NM2_TO_M2 / YD2_TO_M2;
-        case Qgis::AreaUnit::SquareMiles:
+        case AreaSquareMiles:
           return NM2_TO_M2 / MI2_TO_M2;
-        case Qgis::AreaUnit::Hectares:
+        case AreaHectares:
           return NM2_TO_M2 / HA_TO_M2;
-        case Qgis::AreaUnit::Acres:
+        case AreaAcres:
           return NM2_TO_M2 / FT2_TO_M2 / AC_TO_FT2;
-        case Qgis::AreaUnit::SquareNauticalMiles:
+        case AreaSquareNauticalMiles:
           return 1.0;
-        case Qgis::AreaUnit::SquareDegrees:
+        case AreaSquareDegrees:
           return NM2_TO_M2 / DEG2_TO_M2;
-        case Qgis::AreaUnit::SquareCentimeters:
+        case AreaSquareCentimeters:
           return NM2_TO_M2 / CM2_TO_M2;
-        case Qgis::AreaUnit::SquareMillimeters:
+        case AreaSquareMillimeters:
           return NM2_TO_M2 / MM2_TO_M2;
-        case Qgis::AreaUnit::SquareInches:
-          return NM2_TO_M2 / IN2_TO_M2;
-        case Qgis::AreaUnit::Unknown:
+        case AreaUnknownUnit:
           break;
       }
 
       break;
     }
 
-    case Qgis::AreaUnit::SquareDegrees:
+    case AreaSquareDegrees:
     {
       switch ( toUnit )
       {
-        case Qgis::AreaUnit::SquareMeters:
+        case AreaSquareMeters:
           return DEG2_TO_M2;
-        case Qgis::AreaUnit::SquareKilometers:
+        case AreaSquareKilometers:
           return DEG2_TO_M2 / KM2_TO_M2;
-        case Qgis::AreaUnit::SquareFeet:
+        case AreaSquareFeet:
           return DEG2_TO_M2 / FT2_TO_M2;
-        case Qgis::AreaUnit::SquareYards:
+        case AreaSquareYards:
           return DEG2_TO_M2 / YD2_TO_M2;
-        case Qgis::AreaUnit::SquareMiles:
+        case AreaSquareMiles:
           return DEG2_TO_M2 / MI2_TO_M2;
-        case Qgis::AreaUnit::Hectares:
+        case AreaHectares:
           return DEG2_TO_M2 / HA_TO_M2;
-        case Qgis::AreaUnit::Acres:
+        case AreaAcres:
           return DEG2_TO_M2 / FT2_TO_M2 / AC_TO_FT2;
-        case Qgis::AreaUnit::SquareNauticalMiles:
+        case AreaSquareNauticalMiles:
           return DEG2_TO_M2 / NM2_TO_M2;
-        case Qgis::AreaUnit::SquareDegrees:
+        case AreaSquareDegrees:
           return 1.0;
-        case Qgis::AreaUnit::SquareCentimeters:
+        case AreaSquareCentimeters:
           return DEG2_TO_M2 / CM2_TO_M2;
-        case Qgis::AreaUnit::SquareMillimeters:
+        case AreaSquareMillimeters:
           return DEG2_TO_M2 / MM2_TO_M2;
-        case Qgis::AreaUnit::SquareInches:
-          return DEG2_TO_M2 / IN2_TO_M2;
-        case Qgis::AreaUnit::Unknown:
+        case AreaUnknownUnit:
           break;
       }
 
       break;
     }
 
-    case Qgis::AreaUnit::SquareMillimeters:
+    case AreaSquareMillimeters:
     {
       switch ( toUnit )
       {
-        case Qgis::AreaUnit::SquareMeters:
+        case AreaSquareMeters:
           return MM2_TO_M2;
-        case Qgis::AreaUnit::SquareKilometers:
+        case AreaSquareKilometers:
           return MM2_TO_M2 / KM2_TO_M2;
-        case Qgis::AreaUnit::SquareFeet:
+        case AreaSquareFeet:
           return MM2_TO_M2 / FT2_TO_M2;
-        case Qgis::AreaUnit::SquareYards:
+        case AreaSquareYards:
           return MM2_TO_M2 / YD2_TO_M2;
-        case Qgis::AreaUnit::SquareMiles:
+        case AreaSquareMiles:
           return MM2_TO_M2 / MI2_TO_M2;
-        case Qgis::AreaUnit::Hectares:
+        case AreaHectares:
           return MM2_TO_M2 / HA_TO_M2;
-        case Qgis::AreaUnit::Acres:
+        case AreaAcres:
           return MM2_TO_M2 / AC_TO_FT2 / FT2_TO_M2;
-        case Qgis::AreaUnit::SquareNauticalMiles:
+        case AreaSquareNauticalMiles:
           return MM2_TO_M2 / NM2_TO_M2;
-        case Qgis::AreaUnit::SquareDegrees:
+        case AreaSquareDegrees:
           return MM2_TO_M2 / DEG2_TO_M2;
-        case Qgis::AreaUnit::SquareCentimeters:
+        case AreaSquareCentimeters:
           return MM2_TO_M2 / CM2_TO_M2;
-        case Qgis::AreaUnit::SquareMillimeters:
+        case AreaSquareMillimeters:
           return 1.0;
-        case Qgis::AreaUnit::SquareInches:
-          return MM2_TO_M2 / IN2_TO_M2;
-        case Qgis::AreaUnit::Unknown:
+        case AreaUnknownUnit:
           break;
       }
 
       break;
     }
-    case Qgis::AreaUnit::SquareCentimeters:
+    case AreaSquareCentimeters:
     {
       switch ( toUnit )
       {
-        case Qgis::AreaUnit::SquareMeters:
+        case AreaSquareMeters:
           return CM2_TO_M2;
-        case Qgis::AreaUnit::SquareKilometers:
+        case AreaSquareKilometers:
           return CM2_TO_M2 / KM2_TO_M2;
-        case Qgis::AreaUnit::SquareFeet:
+        case AreaSquareFeet:
           return CM2_TO_M2 / FT2_TO_M2;
-        case Qgis::AreaUnit::SquareYards:
+        case AreaSquareYards:
           return CM2_TO_M2 / YD2_TO_M2;
-        case Qgis::AreaUnit::SquareMiles:
+        case AreaSquareMiles:
           return CM2_TO_M2 / MI2_TO_M2;
-        case Qgis::AreaUnit::Hectares:
+        case AreaHectares:
           return CM2_TO_M2 / HA_TO_M2;
-        case Qgis::AreaUnit::Acres:
+        case AreaAcres:
           return CM2_TO_M2 / AC_TO_FT2 / FT2_TO_M2;
-        case Qgis::AreaUnit::SquareNauticalMiles:
+        case AreaSquareNauticalMiles:
           return CM2_TO_M2 / NM2_TO_M2;
-        case Qgis::AreaUnit::SquareDegrees:
+        case AreaSquareDegrees:
           return CM2_TO_M2 / DEG2_TO_M2;
-        case Qgis::AreaUnit::SquareCentimeters:
+        case AreaSquareCentimeters:
           return 1.0;
-        case Qgis::AreaUnit::SquareMillimeters:
+        case AreaSquareMillimeters:
           return CM2_TO_M2 / MM2_TO_M2;
-        case Qgis::AreaUnit::SquareInches:
-          return CM2_TO_M2 / IN2_TO_M2;
-        case Qgis::AreaUnit::Unknown:
+        case AreaUnknownUnit:
           break;
       }
 
       break;
     }
-    case Qgis::AreaUnit::SquareInches:
-    {
-      switch ( toUnit )
-      {
-        case Qgis::AreaUnit::SquareMeters:
-          return IN2_TO_M2;
-        case Qgis::AreaUnit::SquareKilometers:
-          return IN2_TO_M2 / KM2_TO_M2;
-        case Qgis::AreaUnit::SquareFeet:
-          return IN2_TO_M2 / FT2_TO_M2;
-        case Qgis::AreaUnit::SquareYards:
-          return IN2_TO_M2 / YD2_TO_M2;
-        case Qgis::AreaUnit::SquareMiles:
-          return IN2_TO_M2 / MI2_TO_M2;
-        case Qgis::AreaUnit::Hectares:
-          return IN2_TO_M2 / HA_TO_M2;
-        case Qgis::AreaUnit::Acres:
-          return IN2_TO_M2 / AC_TO_FT2 / FT2_TO_M2;
-        case Qgis::AreaUnit::SquareNauticalMiles:
-          return IN2_TO_M2 / NM2_TO_M2;
-        case Qgis::AreaUnit::SquareDegrees:
-          return IN2_TO_M2 / DEG2_TO_M2;
-        case Qgis::AreaUnit::SquareCentimeters:
-          return IN2_TO_M2 / CM2_TO_M2;
-        case Qgis::AreaUnit::SquareMillimeters:
-          return IN2_TO_M2 / MM2_TO_M2;
-        case Qgis::AreaUnit::SquareInches:
-          return 1;
-        case Qgis::AreaUnit::Unknown:
-          break;
-      }
-
-      break;
-    }
-    case Qgis::AreaUnit::Unknown:
+    case AreaUnknownUnit:
       break;
   }
   return 1.0;
 }
 
-Qgis::AreaUnit QgsUnitTypes::distanceToAreaUnit( Qgis::DistanceUnit distanceUnit )
+QgsUnitTypes::AreaUnit QgsUnitTypes::distanceToAreaUnit( DistanceUnit distanceUnit )
 {
   switch ( distanceUnit )
   {
-    case Qgis::DistanceUnit::Meters:
-    case Qgis::DistanceUnit::MetersGermanLegal:
-      return Qgis::AreaUnit::SquareMeters;
+    case DistanceMeters:
+      return AreaSquareMeters;
 
-    case Qgis::DistanceUnit::Kilometers:
-      return Qgis::AreaUnit::SquareKilometers;
+    case DistanceKilometers:
+      return AreaSquareKilometers;
 
-    case Qgis::DistanceUnit::Centimeters:
-      return Qgis::AreaUnit::SquareCentimeters;
+    case DistanceCentimeters:
+      return AreaSquareCentimeters;
 
-    case Qgis::DistanceUnit::Millimeters:
-      return Qgis::AreaUnit::SquareMillimeters;
+    case DistanceMillimeters:
+      return AreaSquareMillimeters;
 
-    case Qgis::DistanceUnit::Feet:
-    case Qgis::DistanceUnit::ChainsInternational:
-    case Qgis::DistanceUnit::ChainsBritishBenoit1895A:
-    case Qgis::DistanceUnit::ChainsBritishBenoit1895B:
-    case Qgis::DistanceUnit::ChainsBritishSears1922Truncated:
-    case Qgis::DistanceUnit::ChainsBritishSears1922:
-    case Qgis::DistanceUnit::ChainsClarkes:
-    case Qgis::DistanceUnit::ChainsUSSurvey:
-    case Qgis::DistanceUnit::FeetBritish1865:
-    case Qgis::DistanceUnit::FeetBritish1936:
-    case Qgis::DistanceUnit::FeetBritishBenoit1895A:
-    case Qgis::DistanceUnit::FeetBritishBenoit1895B:
-    case Qgis::DistanceUnit::FeetBritishSears1922Truncated:
-    case Qgis::DistanceUnit::FeetBritishSears1922:
-    case Qgis::DistanceUnit::FeetClarkes:
-    case Qgis::DistanceUnit::FeetGoldCoast:
-    case Qgis::DistanceUnit::FeetIndian:
-    case Qgis::DistanceUnit::FeetIndian1937:
-    case Qgis::DistanceUnit::FeetIndian1962:
-    case Qgis::DistanceUnit::FeetIndian1975:
-    case Qgis::DistanceUnit::FeetUSSurvey:
-    case Qgis::DistanceUnit::LinksInternational:
-    case Qgis::DistanceUnit::LinksBritishBenoit1895A:
-    case Qgis::DistanceUnit::LinksBritishBenoit1895B:
-    case Qgis::DistanceUnit::LinksBritishSears1922Truncated:
-    case Qgis::DistanceUnit::LinksBritishSears1922:
-    case Qgis::DistanceUnit::LinksClarkes:
-    case Qgis::DistanceUnit::LinksUSSurvey:
-    case Qgis::DistanceUnit::YardsBritishBenoit1895A:
-    case Qgis::DistanceUnit::YardsBritishBenoit1895B:
-    case Qgis::DistanceUnit::YardsBritishSears1922Truncated:
-    case Qgis::DistanceUnit::YardsBritishSears1922:
-    case Qgis::DistanceUnit::YardsClarkes:
-    case Qgis::DistanceUnit::YardsIndian:
-    case Qgis::DistanceUnit::YardsIndian1937:
-    case Qgis::DistanceUnit::YardsIndian1962:
-    case Qgis::DistanceUnit::YardsIndian1975:
-    case Qgis::DistanceUnit::Fathoms:
-      return Qgis::AreaUnit::SquareFeet;
+    case DistanceFeet:
+      return AreaSquareFeet;
 
-    case Qgis::DistanceUnit::Yards:
-      return Qgis::AreaUnit::SquareYards;
+    case DistanceYards:
+      return AreaSquareYards;
 
-    case Qgis::DistanceUnit::Miles:
-    case Qgis::DistanceUnit::MilesUSSurvey:
-      return Qgis::AreaUnit::SquareMiles;
+    case DistanceMiles:
+      return AreaSquareMiles;
 
-    case Qgis::DistanceUnit::Degrees:
-      return Qgis::AreaUnit::SquareDegrees;
+    case DistanceDegrees:
+      return AreaSquareDegrees;
 
-    case Qgis::DistanceUnit::Unknown:
-      return Qgis::AreaUnit::Unknown;
+    case DistanceUnknownUnit:
+      return AreaUnknownUnit;
 
-    case Qgis::DistanceUnit::NauticalMiles:
-      return Qgis::AreaUnit::SquareNauticalMiles;
-
-    case Qgis::DistanceUnit::Inches:
-      return Qgis::AreaUnit::SquareInches;
+    case DistanceNauticalMiles:
+      return AreaSquareNauticalMiles;
   }
 
-  return Qgis::AreaUnit::Unknown;
+  return AreaUnknownUnit;
 }
 
-Qgis::DistanceUnit QgsUnitTypes::areaToDistanceUnit( Qgis::AreaUnit areaUnit )
+QgsUnitTypes::DistanceUnit QgsUnitTypes::areaToDistanceUnit( AreaUnit areaUnit )
 {
   switch ( areaUnit )
   {
-    case Qgis::AreaUnit::SquareMeters:
-    case Qgis::AreaUnit::Hectares:
-      return Qgis::DistanceUnit::Meters;
+    case AreaSquareMeters:
+    case AreaHectares:
+      return DistanceMeters;
 
-    case Qgis::AreaUnit::SquareKilometers:
-      return Qgis::DistanceUnit::Kilometers;
+    case AreaSquareKilometers:
+      return DistanceKilometers;
 
-    case Qgis::AreaUnit::SquareCentimeters:
-      return Qgis::DistanceUnit::Centimeters;
+    case AreaSquareCentimeters:
+      return DistanceCentimeters;
 
-    case Qgis::AreaUnit::SquareMillimeters:
-      return Qgis::DistanceUnit::Millimeters;
+    case AreaSquareMillimeters:
+      return DistanceMillimeters;
 
-    case Qgis::AreaUnit::SquareFeet:
-      return Qgis::DistanceUnit::Feet;
+    case AreaSquareFeet:
+      return DistanceFeet;
 
-    case Qgis::AreaUnit::SquareYards:
-    case Qgis::AreaUnit::Acres:
-      return Qgis::DistanceUnit::Yards;
+    case AreaSquareYards:
+    case AreaAcres:
+      return DistanceYards;
 
-    case Qgis::AreaUnit::SquareMiles:
-      return Qgis::DistanceUnit::Miles;
+    case AreaSquareMiles:
+      return DistanceMiles;
 
-    case Qgis::AreaUnit::SquareDegrees:
-      return Qgis::DistanceUnit::Degrees;
+    case AreaSquareDegrees:
+      return DistanceDegrees;
 
-    case Qgis::AreaUnit::Unknown:
-      return Qgis::DistanceUnit::Unknown;
+    case AreaUnknownUnit:
+      return DistanceUnknownUnit;
 
-    case Qgis::AreaUnit::SquareNauticalMiles:
-      return Qgis::DistanceUnit::NauticalMiles;
-
-    case Qgis::AreaUnit::SquareInches:
-      return Qgis::DistanceUnit::Inches;
+    case AreaSquareNauticalMiles:
+      return DistanceNauticalMiles;
   }
 
-  return Qgis::DistanceUnit::Unknown;
+  return DistanceUnknownUnit;
 }
 
-QString QgsUnitTypes::encodeUnit( Qgis::TemporalUnit unit )
+QString QgsUnitTypes::encodeUnit( QgsUnitTypes::TemporalUnit unit )
 {
   switch ( unit )
   {
-    case Qgis::TemporalUnit::Seconds:
+    case TemporalSeconds:
       return QStringLiteral( "s" );
-    case Qgis::TemporalUnit::Milliseconds:
+    case TemporalMilliseconds:
       return QStringLiteral( "ms" );
-    case Qgis::TemporalUnit::Minutes:
+    case TemporalMinutes:
       return QStringLiteral( "min" );
-    case Qgis::TemporalUnit::Hours:
+    case TemporalHours:
       return QStringLiteral( "h" );
-    case Qgis::TemporalUnit::Days:
+    case TemporalDays:
       return QStringLiteral( "d" );
-    case Qgis::TemporalUnit::Weeks:
+    case TemporalWeeks:
       return QStringLiteral( "wk" );
-    case Qgis::TemporalUnit::Months:
+    case TemporalMonths:
       return QStringLiteral( "mon" );
-    case Qgis::TemporalUnit::Years:
+    case TemporalYears:
       return QStringLiteral( "y" );
-    case Qgis::TemporalUnit::Decades:
+    case TemporalDecades:
       return QStringLiteral( "dec" );
-    case Qgis::TemporalUnit::Centuries:
+    case TemporalCenturies:
       return QStringLiteral( "c" );
-    case Qgis::TemporalUnit::IrregularStep:
+    case TemporalIrregularStep:
       return QStringLiteral( "xxx" );
-    case Qgis::TemporalUnit::Unknown:
+    case TemporalUnknownUnit:
       return QStringLiteral( "<unknown>" );
   }
   return QString();
 }
 
-Qgis::TemporalUnit QgsUnitTypes::decodeTemporalUnit( const QString &string, bool *ok )
+QgsUnitTypes::TemporalUnit QgsUnitTypes::decodeTemporalUnit( const QString &string, bool *ok )
 {
   const QString normalized = string.trimmed().toLower();
 
   if ( ok )
     *ok = true;
 
-  if ( normalized == encodeUnit( Qgis::TemporalUnit::Seconds ) )
-    return Qgis::TemporalUnit::Seconds;
-  if ( normalized == encodeUnit( Qgis::TemporalUnit::Milliseconds ) )
-    return Qgis::TemporalUnit::Milliseconds;
-  if ( normalized == encodeUnit( Qgis::TemporalUnit::Minutes ) )
-    return Qgis::TemporalUnit::Minutes;
-  if ( normalized == encodeUnit( Qgis::TemporalUnit::Hours ) )
-    return Qgis::TemporalUnit::Hours;
-  if ( normalized == encodeUnit( Qgis::TemporalUnit::Days ) )
-    return Qgis::TemporalUnit::Days;
-  if ( normalized == encodeUnit( Qgis::TemporalUnit::Weeks ) )
-    return Qgis::TemporalUnit::Weeks;
-  if ( normalized == encodeUnit( Qgis::TemporalUnit::Months ) )
-    return Qgis::TemporalUnit::Months;
-  if ( normalized == encodeUnit( Qgis::TemporalUnit::Years ) )
-    return Qgis::TemporalUnit::Years;
-  if ( normalized == encodeUnit( Qgis::TemporalUnit::Decades ) )
-    return Qgis::TemporalUnit::Decades;
-  if ( normalized == encodeUnit( Qgis::TemporalUnit::Centuries ) )
-    return Qgis::TemporalUnit::Centuries;
-  if ( normalized == encodeUnit( Qgis::TemporalUnit::IrregularStep ) )
-    return Qgis::TemporalUnit::IrregularStep;
-  if ( normalized == encodeUnit( Qgis::TemporalUnit::Unknown ) )
-    return Qgis::TemporalUnit::Unknown;
+  if ( normalized == encodeUnit( TemporalSeconds ) )
+    return TemporalSeconds;
+  if ( normalized == encodeUnit( TemporalMilliseconds ) )
+    return TemporalMilliseconds;
+  if ( normalized == encodeUnit( TemporalMinutes ) )
+    return TemporalMinutes;
+  if ( normalized == encodeUnit( TemporalHours ) )
+    return TemporalHours;
+  if ( normalized == encodeUnit( TemporalDays ) )
+    return TemporalDays;
+  if ( normalized == encodeUnit( TemporalWeeks ) )
+    return TemporalWeeks;
+  if ( normalized == encodeUnit( TemporalMonths ) )
+    return TemporalMonths;
+  if ( normalized == encodeUnit( TemporalYears ) )
+    return TemporalYears;
+  if ( normalized == encodeUnit( TemporalDecades ) )
+    return TemporalDecades;
+  if ( normalized == encodeUnit( TemporalCenturies ) )
+    return TemporalCenturies;
+  if ( normalized == encodeUnit( TemporalIrregularStep ) )
+    return TemporalIrregularStep;
+  if ( normalized == encodeUnit( TemporalUnknownUnit ) )
+    return TemporalUnknownUnit;
 
   if ( ok )
     *ok = false;
 
-  return Qgis::TemporalUnit::Unknown;
+  return TemporalUnknownUnit;
 }
 
-QString QgsUnitTypes::toString( Qgis::TemporalUnit unit )
+QString QgsUnitTypes::toString( QgsUnitTypes::TemporalUnit unit )
 {
   switch ( unit )
   {
-    case Qgis::TemporalUnit::Seconds:
+    case TemporalSeconds:
       return QObject::tr( "seconds", "temporal" );
-    case Qgis::TemporalUnit::Milliseconds:
+    case TemporalMilliseconds:
       return QObject::tr( "milliseconds", "temporal" );
-    case Qgis::TemporalUnit::Minutes:
+    case TemporalMinutes:
       return QObject::tr( "minutes", "temporal" );
-    case Qgis::TemporalUnit::Hours:
+    case TemporalHours:
       return QObject::tr( "hours", "temporal" );
-    case Qgis::TemporalUnit::Days:
+    case TemporalDays:
       return QObject::tr( "days", "temporal" );
-    case Qgis::TemporalUnit::Weeks:
+    case TemporalWeeks:
       return QObject::tr( "weeks", "temporal" );
-    case Qgis::TemporalUnit::Months:
+    case TemporalMonths:
       return QObject::tr( "months", "temporal" );
-    case Qgis::TemporalUnit::Years:
+    case TemporalYears:
       return QObject::tr( "years", "temporal" );
-    case Qgis::TemporalUnit::Decades:
+    case TemporalDecades:
       return QObject::tr( "decades", "temporal" );
-    case Qgis::TemporalUnit::Centuries:
+    case TemporalCenturies:
       return QObject::tr( "centuries", "temporal" );
-    case Qgis::TemporalUnit::IrregularStep:
+    case TemporalIrregularStep:
       return QObject::tr( "steps", "temporal" );
-    case Qgis::TemporalUnit::Unknown:
+    case TemporalUnknownUnit:
       return QObject::tr( "<unknown>", "temporal" );
   }
   return QString();
 }
 
-QString QgsUnitTypes::toAbbreviatedString( Qgis::TemporalUnit unit )
+QString QgsUnitTypes::toAbbreviatedString( QgsUnitTypes::TemporalUnit unit )
 {
   switch ( unit )
   {
-    case Qgis::TemporalUnit::Seconds:
+    case TemporalSeconds:
       return QObject::tr( "s", "temporal" );
-    case Qgis::TemporalUnit::Milliseconds:
+    case TemporalMilliseconds:
       return QObject::tr( "ms", "temporal" );
-    case Qgis::TemporalUnit::Minutes:
+    case TemporalMinutes:
       return QObject::tr( "min", "temporal" );
-    case Qgis::TemporalUnit::Hours:
+    case TemporalHours:
       return QObject::tr( "h", "temporal" );
-    case Qgis::TemporalUnit::Days:
+    case TemporalDays:
       return QObject::tr( "d", "temporal" );
-    case Qgis::TemporalUnit::Weeks:
+    case TemporalWeeks:
       return QObject::tr( "wk", "temporal" );
-    case Qgis::TemporalUnit::Months:
+    case TemporalMonths:
       return QObject::tr( "mon", "temporal" );
-    case Qgis::TemporalUnit::Years:
+    case TemporalYears:
       return QObject::tr( "y", "temporal" );
-    case Qgis::TemporalUnit::Decades:
+    case TemporalDecades:
       return QObject::tr( "dec", "temporal" );
-    case Qgis::TemporalUnit::Centuries:
+    case TemporalCenturies:
       return QObject::tr( "cen", "temporal" );
-    case Qgis::TemporalUnit::IrregularStep:
+    case TemporalIrregularStep:
       return QObject::tr( "steps", "temporal" );
-    case Qgis::TemporalUnit::Unknown:
+    case TemporalUnknownUnit:
       return QObject::tr( "<unknown>", "temporal" );
   }
   return QString();
 }
 
-Qgis::TemporalUnit QgsUnitTypes::stringToTemporalUnit( const QString &string, bool *ok )
+QgsUnitTypes::TemporalUnit QgsUnitTypes::stringToTemporalUnit( const QString &string, bool *ok )
 {
   const QString normalized = string.trimmed().toLower();
 
   if ( ok )
     *ok = true;
 
-  if ( normalized == toString( Qgis::TemporalUnit::Seconds ) )
-    return Qgis::TemporalUnit::Seconds;
-  if ( normalized == toString( Qgis::TemporalUnit::Milliseconds ) )
-    return Qgis::TemporalUnit::Milliseconds;
-  if ( normalized == toString( Qgis::TemporalUnit::Minutes ) )
-    return Qgis::TemporalUnit::Minutes;
-  if ( normalized == toString( Qgis::TemporalUnit::Hours ) )
-    return Qgis::TemporalUnit::Hours;
-  if ( normalized == toString( Qgis::TemporalUnit::Days ) )
-    return Qgis::TemporalUnit::Days;
-  if ( normalized == toString( Qgis::TemporalUnit::Weeks ) )
-    return Qgis::TemporalUnit::Weeks;
-  if ( normalized == toString( Qgis::TemporalUnit::Months ) )
-    return Qgis::TemporalUnit::Months;
-  if ( normalized == toString( Qgis::TemporalUnit::Years ) )
-    return Qgis::TemporalUnit::Years;
-  if ( normalized == toString( Qgis::TemporalUnit::Decades ) )
-    return Qgis::TemporalUnit::Decades;
-  if ( normalized == toString( Qgis::TemporalUnit::Centuries ) )
-    return Qgis::TemporalUnit::Centuries;
-  if ( normalized == toString( Qgis::TemporalUnit::IrregularStep ) )
-    return Qgis::TemporalUnit::IrregularStep;
-  if ( normalized == toString( Qgis::TemporalUnit::Unknown ) )
-    return Qgis::TemporalUnit::Unknown;
+  if ( normalized == toString( TemporalSeconds ) )
+    return TemporalSeconds;
+  if ( normalized == toString( TemporalMilliseconds ) )
+    return TemporalMilliseconds;
+  if ( normalized == toString( TemporalMinutes ) )
+    return TemporalMinutes;
+  if ( normalized == toString( TemporalHours ) )
+    return TemporalHours;
+  if ( normalized == toString( TemporalDays ) )
+    return TemporalDays;
+  if ( normalized == toString( TemporalWeeks ) )
+    return TemporalWeeks;
+  if ( normalized == toString( TemporalMonths ) )
+    return TemporalMonths;
+  if ( normalized == toString( TemporalYears ) )
+    return TemporalYears;
+  if ( normalized == toString( TemporalDecades ) )
+    return TemporalDecades;
+  if ( normalized == toString( TemporalCenturies ) )
+    return TemporalCenturies;
+  if ( normalized == toString( TemporalIrregularStep ) )
+    return TemporalIrregularStep;
+  if ( normalized == toString( TemporalUnknownUnit ) )
+    return TemporalUnknownUnit;
 
   if ( ok )
     *ok = false;
 
-  return Qgis::TemporalUnit::Unknown;
+  return TemporalUnknownUnit;
 }
 
-double QgsUnitTypes::fromUnitToUnitFactor( Qgis::TemporalUnit fromUnit, Qgis::TemporalUnit toUnit )
+double QgsUnitTypes::fromUnitToUnitFactor( QgsUnitTypes::TemporalUnit fromUnit, QgsUnitTypes::TemporalUnit toUnit )
 {
   switch ( fromUnit )
   {
-    case Qgis::TemporalUnit::Seconds:
+    case TemporalSeconds:
     {
       switch ( toUnit )
       {
-        case Qgis::TemporalUnit::Seconds:
+        case TemporalSeconds:
           return 1.0;
-        case Qgis::TemporalUnit::Milliseconds:
+        case TemporalMilliseconds:
           return 1000.0;
-        case Qgis::TemporalUnit::Minutes:
+        case TemporalMinutes:
           return 1 / 60.0;
-        case Qgis::TemporalUnit::Hours:
+        case TemporalHours:
           return 1 / 3600.0;
-        case Qgis::TemporalUnit::Days:
+        case TemporalDays:
           return 1 / 86400.0;
-        case Qgis::TemporalUnit::Weeks:
+        case TemporalWeeks:
           return 1 / 604800.0;
-        case Qgis::TemporalUnit::Months:
+        case TemporalMonths:
           return 1 / 2592000.0;
-        case Qgis::TemporalUnit::Years:
+        case TemporalYears:
           return 1 / 31557600.0;
-        case Qgis::TemporalUnit::Decades:
+        case TemporalDecades:
           return 1 / 315576000.0;
-        case Qgis::TemporalUnit::Centuries:
+        case TemporalCenturies:
           return 1 / 3155760000.0;
-        case Qgis::TemporalUnit::Unknown:
-        case Qgis::TemporalUnit::IrregularStep:
+        case TemporalUnknownUnit:
+        case TemporalIrregularStep:
           return 1.0;
       }
       break;
     }
-    case Qgis::TemporalUnit::Milliseconds:
+    case TemporalMilliseconds:
     {
       switch ( toUnit )
       {
-        case Qgis::TemporalUnit::Seconds:
+        case TemporalSeconds:
           return 1 / 1000.0;
-        case Qgis::TemporalUnit::Milliseconds:
+        case TemporalMilliseconds:
           return 1.0;
-        case Qgis::TemporalUnit::Minutes:
+        case TemporalMinutes:
           return 1 / 60000.0;
-        case Qgis::TemporalUnit::Hours:
+        case TemporalHours:
           return 1 / 3600000.0;
-        case Qgis::TemporalUnit::Days:
+        case TemporalDays:
           return 1 / 86400000.0;
-        case Qgis::TemporalUnit::Weeks:
-          return 1 / 604800000.0;
-        case Qgis::TemporalUnit::Months:
-          return 1 / 2592000000.0;
-        case Qgis::TemporalUnit::Years:
+        case TemporalWeeks:
+          return 1 / 60480000.0;
+        case TemporalMonths:
+          return 1 / 259200000.0;
+        case TemporalYears:
+          return 1 / 3155760000.0;
+        case TemporalDecades:
           return 1 / 31557600000.0;
-        case Qgis::TemporalUnit::Decades:
+        case TemporalCenturies:
           return 1 / 315576000000.0;
-        case Qgis::TemporalUnit::Centuries:
-          return 1 / 3155760000000.0;
-        case Qgis::TemporalUnit::Unknown:
-        case Qgis::TemporalUnit::IrregularStep:
+        case TemporalUnknownUnit:
+        case TemporalIrregularStep:
           return 1.0;
       }
       break;
     }
-    case Qgis::TemporalUnit::Minutes:
+    case TemporalMinutes:
     {
       switch ( toUnit )
       {
-        case Qgis::TemporalUnit::Seconds:
+        case TemporalSeconds:
           return 60.0;
-        case Qgis::TemporalUnit::Milliseconds:
+        case TemporalMilliseconds:
           return 60000.0;
-        case Qgis::TemporalUnit::Minutes:
+        case TemporalMinutes:
           return 1;
-        case Qgis::TemporalUnit::Hours:
+        case TemporalHours:
           return 1 / 60.0;
-        case Qgis::TemporalUnit::Days:
+        case TemporalDays:
           return 1 / 1440.0;
-        case Qgis::TemporalUnit::Weeks:
+        case TemporalWeeks:
           return 1 / 10080.0;
-        case Qgis::TemporalUnit::Months:
+        case TemporalMonths:
           return 1 / 43200.0;
-        case Qgis::TemporalUnit::Years:
+        case TemporalYears:
           return 1 / 525960.0;
-        case Qgis::TemporalUnit::Decades:
+        case TemporalDecades:
           return 1 / 5259600.0;
-        case Qgis::TemporalUnit::Centuries:
+        case TemporalCenturies:
           return 1 / 52596000.0;
-        case Qgis::TemporalUnit::Unknown:
-        case Qgis::TemporalUnit::IrregularStep:
+        case TemporalUnknownUnit:
+        case TemporalIrregularStep:
           return 1.0;
       }
       break;
     }
-    case Qgis::TemporalUnit::Hours:
+    case TemporalHours:
     {
       switch ( toUnit )
       {
-        case Qgis::TemporalUnit::Seconds:
+        case TemporalSeconds:
           return 3600.0;
-        case Qgis::TemporalUnit::Milliseconds:
+        case TemporalMilliseconds:
           return 3600000.0;
-        case Qgis::TemporalUnit::Minutes:
+        case TemporalMinutes:
           return 60;
-        case Qgis::TemporalUnit::Hours:
+        case TemporalHours:
           return 1;
-        case Qgis::TemporalUnit::Days:
+        case TemporalDays:
           return 1 / 24.0;
-        case Qgis::TemporalUnit::Weeks:
+        case TemporalWeeks:
           return 1 / 168.0;
-        case Qgis::TemporalUnit::Months:
+        case TemporalMonths:
           return 1 / 720.0;
-        case Qgis::TemporalUnit::Years:
+        case TemporalYears:
           return 1 / 8766.0;
-        case Qgis::TemporalUnit::Decades:
+        case TemporalDecades:
           return 1 / 87660.0;
-        case Qgis::TemporalUnit::Centuries:
+        case TemporalCenturies:
           return 1 / 876600.0;
-        case Qgis::TemporalUnit::Unknown:
-        case Qgis::TemporalUnit::IrregularStep:
+        case TemporalUnknownUnit:
+        case TemporalIrregularStep:
           return 1.0;
       }
       break;
     }
-    case Qgis::TemporalUnit::Days:
+    case TemporalDays:
     {
       switch ( toUnit )
       {
-        case Qgis::TemporalUnit::Seconds:
+        case TemporalSeconds:
           return 86400.0;
-        case Qgis::TemporalUnit::Milliseconds:
+        case TemporalMilliseconds:
           return 86400000.0;
-        case Qgis::TemporalUnit::Minutes:
+        case TemporalMinutes:
           return 1440;
-        case Qgis::TemporalUnit::Hours:
+        case TemporalHours:
           return 24;
-        case Qgis::TemporalUnit::Days:
+        case TemporalDays:
           return 1;
-        case Qgis::TemporalUnit::Weeks:
+        case TemporalWeeks:
           return 1 / 7.0;
-        case Qgis::TemporalUnit::Months:
+        case TemporalMonths:
           return 1 / 30.0;
-        case Qgis::TemporalUnit::Years:
+        case TemporalYears:
           return 1 / 365.25;
-        case Qgis::TemporalUnit::Decades:
+        case TemporalDecades:
           return 1 / 3652.5;
-        case Qgis::TemporalUnit::Centuries:
+        case TemporalCenturies:
           return 1 / 36525.0;
-        case Qgis::TemporalUnit::Unknown:
-        case Qgis::TemporalUnit::IrregularStep:
+        case TemporalUnknownUnit:
+        case TemporalIrregularStep:
           return 1.0;
       }
       break;
     }
-    case Qgis::TemporalUnit::Weeks:
+    case TemporalWeeks:
     {
       switch ( toUnit )
       {
-        case Qgis::TemporalUnit::Seconds:
+        case TemporalSeconds:
           return 604800.0;
-        case Qgis::TemporalUnit::Milliseconds:
+        case TemporalMilliseconds:
           return 604800000.0;
-        case Qgis::TemporalUnit::Minutes:
+        case TemporalMinutes:
           return 10080;
-        case Qgis::TemporalUnit::Hours:
+        case TemporalHours:
           return 168;
-        case Qgis::TemporalUnit::Days:
+        case TemporalDays:
           return 7;
-        case Qgis::TemporalUnit::Weeks:
+        case TemporalWeeks:
           return 1;
-        case Qgis::TemporalUnit::Months:
+        case TemporalMonths:
           return 7 / 30.0;
-        case Qgis::TemporalUnit::Years:
+        case TemporalYears:
           return 7 / 365.25;
-        case Qgis::TemporalUnit::Decades:
+        case TemporalDecades:
           return 7 / 3652.5;
-        case Qgis::TemporalUnit::Centuries:
+        case TemporalCenturies:
           return 7 / 36525.0;
-        case Qgis::TemporalUnit::Unknown:
-        case Qgis::TemporalUnit::IrregularStep:
+        case TemporalUnknownUnit:
+        case TemporalIrregularStep:
           return 1.0;
       }
       break;
     }
-    case Qgis::TemporalUnit::Months:
+    case TemporalMonths:
     {
       switch ( toUnit )
       {
-        case Qgis::TemporalUnit::Seconds:
+        case TemporalSeconds:
           return 2592000.0;
-        case Qgis::TemporalUnit::Milliseconds:
+        case TemporalMilliseconds:
           return 2592000000.0;
-        case Qgis::TemporalUnit::Minutes:
+        case TemporalMinutes:
           return 43200;
-        case Qgis::TemporalUnit::Hours:
+        case TemporalHours:
           return 720;
-        case Qgis::TemporalUnit::Days:
+        case TemporalDays:
           return 30;
-        case Qgis::TemporalUnit::Weeks:
+        case TemporalWeeks:
           return 30 / 7.0;
-        case Qgis::TemporalUnit::Months:
+        case TemporalMonths:
           return 1;
-        case Qgis::TemporalUnit::Years:
+        case TemporalYears:
           return 30 / 365.25;
-        case Qgis::TemporalUnit::Decades:
+        case TemporalDecades:
           return 30 / 3652.5;
-        case Qgis::TemporalUnit::Centuries:
+        case TemporalCenturies:
           return 30 / 36525.0;
-        case Qgis::TemporalUnit::Unknown:
-        case Qgis::TemporalUnit::IrregularStep:
+        case TemporalUnknownUnit:
+        case TemporalIrregularStep:
           return 1.0;
       }
       break;
     }
-    case Qgis::TemporalUnit::Years:
+    case TemporalYears:
     {
       switch ( toUnit )
       {
-        case Qgis::TemporalUnit::Seconds:
+        case TemporalSeconds:
           return 31557600.0;
-        case Qgis::TemporalUnit::Milliseconds:
+        case TemporalMilliseconds:
           return 31557600000.0;
-        case Qgis::TemporalUnit::Minutes:
+        case TemporalMinutes:
           return 525960.0;
-        case Qgis::TemporalUnit::Hours:
+        case TemporalHours:
           return 8766.0;
-        case Qgis::TemporalUnit::Days:
+        case TemporalDays:
           return 365.25;
-        case Qgis::TemporalUnit::Weeks:
+        case TemporalWeeks:
           return 365.25 / 7.0;
-        case Qgis::TemporalUnit::Months:
+        case TemporalMonths:
           return 365.25 / 30.0;
-        case Qgis::TemporalUnit::Years:
+        case TemporalYears:
           return 1;
-        case Qgis::TemporalUnit::Decades:
+        case TemporalDecades:
           return 0.1;
-        case Qgis::TemporalUnit::Centuries:
+        case TemporalCenturies:
           return 0.01;
-        case Qgis::TemporalUnit::Unknown:
-        case Qgis::TemporalUnit::IrregularStep:
+        case TemporalUnknownUnit:
+        case TemporalIrregularStep:
           return 1.0;
       }
       break;
     }
-    case Qgis::TemporalUnit::Decades:
+    case TemporalDecades:
     {
       switch ( toUnit )
       {
-        case Qgis::TemporalUnit::Seconds:
+        case TemporalSeconds:
           return 315576000.0;
-        case Qgis::TemporalUnit::Milliseconds:
+        case TemporalMilliseconds:
           return 315576000000.0;
-        case Qgis::TemporalUnit::Minutes:
+        case TemporalMinutes:
           return 5259600.0;
-        case Qgis::TemporalUnit::Hours:
+        case TemporalHours:
           return 87660.0;
-        case Qgis::TemporalUnit::Days:
+        case TemporalDays:
           return 3652.5;
-        case Qgis::TemporalUnit::Weeks:
+        case TemporalWeeks:
           return 3652.5 / 7.0;
-        case Qgis::TemporalUnit::Months:
+        case TemporalMonths:
           return 3652.5 / 30.0;
-        case Qgis::TemporalUnit::Years:
+        case TemporalYears:
           return 10;
-        case Qgis::TemporalUnit::Decades:
+        case TemporalDecades:
           return 1;
-        case Qgis::TemporalUnit::Centuries:
+        case TemporalCenturies:
           return 0.1;
-        case Qgis::TemporalUnit::Unknown:
-        case Qgis::TemporalUnit::IrregularStep:
+        case TemporalUnknownUnit:
+        case TemporalIrregularStep:
           return 1.0;
       }
       break;
     }
 
-    case Qgis::TemporalUnit::Centuries:
+    case TemporalCenturies:
     {
       switch ( toUnit )
       {
-        case Qgis::TemporalUnit::Seconds:
+        case TemporalSeconds:
           return 3155760000.0;
-        case Qgis::TemporalUnit::Milliseconds:
+        case TemporalMilliseconds:
           return 3155760000000.0;
-        case Qgis::TemporalUnit::Minutes:
+        case TemporalMinutes:
           return 52596000.0;
-        case Qgis::TemporalUnit::Hours:
+        case TemporalHours:
           return 876600.0;
-        case Qgis::TemporalUnit::Days:
+        case TemporalDays:
           return 36525;
-        case Qgis::TemporalUnit::Weeks:
+        case TemporalWeeks:
           return 36525 / 7.0;
-        case Qgis::TemporalUnit::Months:
+        case TemporalMonths:
           return 36525 / 30.0;
-        case Qgis::TemporalUnit::Years:
+        case TemporalYears:
           return 100;
-        case Qgis::TemporalUnit::Decades:
+        case TemporalDecades:
           return 10;
-        case Qgis::TemporalUnit::Centuries:
+        case TemporalCenturies:
           return 1;
-        case Qgis::TemporalUnit::Unknown:
-        case Qgis::TemporalUnit::IrregularStep:
+        case TemporalUnknownUnit:
+        case TemporalIrregularStep:
           return 1.0;
       }
       break;
     }
 
-    case Qgis::TemporalUnit::Unknown:
-    case Qgis::TemporalUnit::IrregularStep:
+    case TemporalUnknownUnit:
+    case TemporalIrregularStep:
     {
       return 1.0;
     }
@@ -2156,891 +1738,843 @@ double QgsUnitTypes::fromUnitToUnitFactor( Qgis::TemporalUnit fromUnit, Qgis::Te
   return 1.0;
 }
 
-Qgis::VolumeUnit QgsUnitTypes::decodeVolumeUnit( const QString &string, bool *ok )
+QgsUnitTypes::VolumeUnit QgsUnitTypes::decodeVolumeUnit( const QString &string, bool *ok )
 {
   const QString normalized = string.trimmed().toLower();
 
   if ( ok )
     *ok = true;
 
-  if ( normalized == encodeUnit( Qgis::VolumeUnit::CubicMeters ) )
-    return Qgis::VolumeUnit::CubicMeters;
-  if ( normalized == encodeUnit( Qgis::VolumeUnit::CubicFeet ) )
-    return Qgis::VolumeUnit::CubicFeet;
-  if ( normalized == encodeUnit( Qgis::VolumeUnit::CubicYards ) )
-    return Qgis::VolumeUnit::CubicYards;
-  if ( normalized == encodeUnit( Qgis::VolumeUnit::Barrel ) )
-    return Qgis::VolumeUnit::Barrel;
-  if ( normalized == encodeUnit( Qgis::VolumeUnit::CubicDecimeter ) )
-    return Qgis::VolumeUnit::CubicDecimeter;
-  if ( normalized == encodeUnit( Qgis::VolumeUnit::Liters ) )
-    return Qgis::VolumeUnit::Liters;
-  if ( normalized == encodeUnit( Qgis::VolumeUnit::GallonUS ) )
-    return Qgis::VolumeUnit::GallonUS;
-  if ( normalized == encodeUnit( Qgis::VolumeUnit::CubicInch ) )
-    return Qgis::VolumeUnit::CubicInch;
-  if ( normalized == encodeUnit( Qgis::VolumeUnit::CubicCentimeter ) )
-    return Qgis::VolumeUnit::CubicCentimeter;
-  if ( normalized == encodeUnit( Qgis::VolumeUnit::CubicDegrees ) )
-    return Qgis::VolumeUnit::CubicDegrees;
-  if ( normalized == encodeUnit( Qgis::VolumeUnit::Unknown ) )
-    return Qgis::VolumeUnit::Unknown;
+  if ( normalized == encodeUnit( VolumeCubicMeters ) )
+    return VolumeCubicMeters;
+  if ( normalized == encodeUnit( VolumeCubicFeet ) )
+    return VolumeCubicFeet;
+  if ( normalized == encodeUnit( VolumeCubicYards ) )
+    return VolumeCubicYards;
+  if ( normalized == encodeUnit( VolumeBarrel ) )
+    return VolumeBarrel;
+  if ( normalized == encodeUnit( VolumeCubicDecimeter ) )
+    return VolumeCubicDecimeter;
+  if ( normalized == encodeUnit( VolumeLiters ) )
+    return VolumeLiters;
+  if ( normalized == encodeUnit( VolumeGallonUS ) )
+    return VolumeGallonUS;
+  if ( normalized == encodeUnit( VolumeCubicInch ) )
+    return VolumeCubicInch;
+  if ( normalized == encodeUnit( VolumeCubicCentimeter ) )
+    return VolumeCubicCentimeter;
+  if ( normalized == encodeUnit( VolumeCubicDegrees ) )
+    return VolumeCubicDegrees;
+  if ( normalized == encodeUnit( VolumeUnknownUnit ) )
+    return VolumeUnknownUnit;
 
   if ( ok )
     *ok = false;
 
-  return Qgis::VolumeUnit::Unknown;
+  return VolumeUnknownUnit;
 }
 
-QString QgsUnitTypes::toString( Qgis::VolumeUnit unit )
+QString QgsUnitTypes::toString( QgsUnitTypes::VolumeUnit unit )
 {
   switch ( unit )
   {
-    case Qgis::VolumeUnit::CubicMeters:
+    case VolumeCubicMeters:
       return QObject::tr( "cubic meters", "volume" );
-    case Qgis::VolumeUnit::CubicFeet:
+    case VolumeCubicFeet:
       return QObject::tr( "cubic feet", "volume" );
-    case Qgis::VolumeUnit::CubicYards:
+    case VolumeCubicYards:
       return QObject::tr( "cubic yards", "volume" );
-    case Qgis::VolumeUnit::Barrel:
+    case VolumeBarrel:
       return QObject::tr( "barrels", "volume" );
-    case Qgis::VolumeUnit::CubicDecimeter:
+    case VolumeCubicDecimeter:
       return QObject::tr( "cubic decimeters", "volume" );
-    case Qgis::VolumeUnit::Liters:
+    case VolumeLiters:
       return QObject::tr( "liters", "volume" );
-    case Qgis::VolumeUnit::GallonUS:
+    case VolumeGallonUS:
       return QObject::tr( "gallons", "volume" );
-    case Qgis::VolumeUnit::CubicInch:
+    case VolumeCubicInch:
       return QObject::tr( "cubic inches", "volume" );
-    case Qgis::VolumeUnit::CubicCentimeter:
+    case VolumeCubicCentimeter:
       return QObject::tr( "cubic centimeters", "volume" );
-    case Qgis::VolumeUnit::CubicDegrees:
+    case VolumeCubicDegrees:
       return QObject::tr( "cubic degrees", "volume" );
-    case Qgis::VolumeUnit::Unknown:
+    case VolumeUnknownUnit:
       return QObject::tr( "<unknown>", "volume" );
   }
   return QString();
 }
 
-QString QgsUnitTypes::toAbbreviatedString( Qgis::VolumeUnit unit )
+QString QgsUnitTypes::toAbbreviatedString( QgsUnitTypes::VolumeUnit unit )
 {
   switch ( unit )
   {
-    case Qgis::VolumeUnit::CubicMeters:
+    case VolumeCubicMeters:
       return QObject::tr( "m³", "volume" );
-    case Qgis::VolumeUnit::CubicFeet:
+    case VolumeCubicFeet:
       return QObject::tr( "ft³", "volume" );
-    case Qgis::VolumeUnit::CubicYards:
+    case VolumeCubicYards:
       return QObject::tr( "yds³", "volume" );
-    case Qgis::VolumeUnit::Barrel:
+    case VolumeBarrel:
       return QObject::tr( "bbl", "volume" );
-    case Qgis::VolumeUnit::CubicDecimeter:
+    case VolumeCubicDecimeter:
       return QObject::tr( "dm³", "volume" );
-    case Qgis::VolumeUnit::Liters:
+    case VolumeLiters:
       return QObject::tr( "l", "volume" );
-    case Qgis::VolumeUnit::GallonUS:
+    case VolumeGallonUS:
       return QObject::tr( "gal", "volume" );
-    case Qgis::VolumeUnit::CubicInch:
+    case VolumeCubicInch:
       return QObject::tr( "in³", "volume" );
-    case Qgis::VolumeUnit::CubicCentimeter:
+    case VolumeCubicCentimeter:
       return QObject::tr( "cm³", "volume" );
-    case Qgis::VolumeUnit::CubicDegrees:
+    case VolumeCubicDegrees:
       return QObject::tr( "deg³", "volume" );
-    case Qgis::VolumeUnit::Unknown:
+    case VolumeUnknownUnit:
       return QObject::tr( "<unknown>", "volume" );
   }
   return QString();
 
 }
 
-Qgis::VolumeUnit QgsUnitTypes::stringToVolumeUnit( const QString &string, bool *ok )
+QgsUnitTypes::VolumeUnit QgsUnitTypes::stringToVolumeUnit( const QString &string, bool *ok )
 {
   const QString normalized = string.trimmed().toLower();
 
   if ( ok )
     *ok = true;
 
-  if ( normalized == toString( Qgis::VolumeUnit::CubicMeters ) )
-    return Qgis::VolumeUnit::CubicMeters;
-  if ( normalized == toString( Qgis::VolumeUnit::CubicFeet ) )
-    return Qgis::VolumeUnit::CubicFeet;
-  if ( normalized == toString( Qgis::VolumeUnit::CubicYards ) )
-    return Qgis::VolumeUnit::CubicYards;
-  if ( normalized == toString( Qgis::VolumeUnit::Barrel ) )
-    return Qgis::VolumeUnit::Barrel;
-  if ( normalized == toString( Qgis::VolumeUnit::CubicDecimeter ) )
-    return Qgis::VolumeUnit::CubicDecimeter;
-  if ( normalized == toString( Qgis::VolumeUnit::Liters ) )
-    return Qgis::VolumeUnit::Liters;
-  if ( normalized == toString( Qgis::VolumeUnit::GallonUS ) )
-    return Qgis::VolumeUnit::GallonUS;
-  if ( normalized == toString( Qgis::VolumeUnit::CubicInch ) )
-    return Qgis::VolumeUnit::CubicInch;
-  if ( normalized == toString( Qgis::VolumeUnit::CubicCentimeter ) )
-    return Qgis::VolumeUnit::CubicCentimeter;
-  if ( normalized == toString( Qgis::VolumeUnit::CubicDegrees ) )
-    return Qgis::VolumeUnit::CubicDegrees;
-  if ( normalized == toString( Qgis::VolumeUnit::Unknown ) )
-    return Qgis::VolumeUnit::Unknown;
+  if ( normalized == toString( VolumeCubicMeters ) )
+    return VolumeCubicMeters;
+  if ( normalized == toString( VolumeCubicFeet ) )
+    return VolumeCubicFeet;
+  if ( normalized == toString( VolumeCubicYards ) )
+    return VolumeCubicYards;
+  if ( normalized == toString( VolumeBarrel ) )
+    return VolumeBarrel;
+  if ( normalized == toString( VolumeCubicDecimeter ) )
+    return VolumeCubicDecimeter;
+  if ( normalized == toString( VolumeLiters ) )
+    return VolumeLiters;
+  if ( normalized == toString( VolumeGallonUS ) )
+    return VolumeGallonUS;
+  if ( normalized == toString( VolumeCubicInch ) )
+    return VolumeCubicInch;
+  if ( normalized == toString( VolumeCubicCentimeter ) )
+    return VolumeCubicCentimeter;
+  if ( normalized == toString( VolumeCubicDegrees ) )
+    return VolumeCubicDegrees;
+  if ( normalized == toString( VolumeUnknownUnit ) )
+    return VolumeUnknownUnit;
 
   if ( ok )
     *ok = false;
 
-  return Qgis::VolumeUnit::Unknown;
+  return VolumeUnknownUnit;
 }
 
 #define DEG2_TO_M3 1379474361572186.2
-double QgsUnitTypes::fromUnitToUnitFactor( Qgis::VolumeUnit fromUnit, Qgis::VolumeUnit toUnit )
+double QgsUnitTypes::fromUnitToUnitFactor( QgsUnitTypes::VolumeUnit fromUnit, QgsUnitTypes::VolumeUnit toUnit )
 {
-  // cloned branches are intentional here for improved readability
-  // NOLINTBEGIN(bugprone-branch-clone)
   switch ( fromUnit )
   {
-    case Qgis::VolumeUnit::CubicMeters:
+    case VolumeCubicMeters:
     {
       switch ( toUnit )
       {
-        case Qgis::VolumeUnit::CubicMeters:
+        case VolumeCubicMeters:
           return 1.0;
-        case Qgis::VolumeUnit::CubicFeet:
+        case VolumeCubicFeet:
           return 35.314666572222;
-        case Qgis::VolumeUnit::CubicYards:
+        case VolumeCubicYards:
           return  1.307950613786;
-        case Qgis::VolumeUnit::Barrel:
+        case VolumeBarrel:
           return 6.2898107438466;
-        case Qgis::VolumeUnit::CubicDecimeter:
+        case VolumeCubicDecimeter:
           return 1000;
-        case Qgis::VolumeUnit::Liters:
+        case VolumeLiters:
           return 1000;
-        case Qgis::VolumeUnit::GallonUS:
+        case VolumeGallonUS:
           return 264.17205124156;
-        case Qgis::VolumeUnit::CubicInch:
+        case VolumeCubicInch:
           return 61023.7438368;
-        case Qgis::VolumeUnit::CubicCentimeter:
+        case VolumeCubicCentimeter:
           return 1000000;
-        case Qgis::VolumeUnit::CubicDegrees:
+        case VolumeCubicDegrees:
           return 1 / DEG2_TO_M3; // basically meaningless!
-        case Qgis::VolumeUnit::Unknown:
+        case VolumeUnknownUnit:
           return 1.0;
       }
       break;
     }
-    case Qgis::VolumeUnit::CubicFeet:
+    case VolumeCubicFeet:
     {
       switch ( toUnit )
       {
-        case Qgis::VolumeUnit::CubicMeters:
+        case VolumeCubicMeters:
           return 0.028316846592;
-        case Qgis::VolumeUnit::CubicFeet:
+        case VolumeCubicFeet:
           return 1.0;
-        case Qgis::VolumeUnit::CubicYards:
+        case VolumeCubicYards:
           return 0.037037037;
-        case Qgis::VolumeUnit::Barrel:
+        case VolumeBarrel:
           return 0.178107622;
-        case Qgis::VolumeUnit::CubicDecimeter:
+        case VolumeCubicDecimeter:
           return 28.31685;
-        case Qgis::VolumeUnit::Liters:
+        case VolumeLiters:
           return 28.31685;
-        case Qgis::VolumeUnit::GallonUS:
+        case VolumeGallonUS:
           return 7.480519954;
-        case Qgis::VolumeUnit::CubicInch:
+        case VolumeCubicInch:
           return 1728.000629765;
-        case Qgis::VolumeUnit::CubicCentimeter:
+        case VolumeCubicCentimeter:
           return 28316.85;
-        case Qgis::VolumeUnit::CubicDegrees:
+        case VolumeCubicDegrees:
           return 0.028316846592 / DEG2_TO_M3; // basically meaningless!
-        case Qgis::VolumeUnit::Unknown:
+        case VolumeUnknownUnit:
           return 1.0;
       }
       break;
     }
-    case Qgis::VolumeUnit::CubicYards:
+    case VolumeCubicYards:
     {
       switch ( toUnit )
       {
-        case Qgis::VolumeUnit::CubicMeters:
+        case VolumeCubicMeters:
           return 0.764554900;
-        case Qgis::VolumeUnit::CubicFeet:
+        case VolumeCubicFeet:
           return 26.999998234;
-        case Qgis::VolumeUnit::CubicYards:
+        case VolumeCubicYards:
           return 1.0;
-        case Qgis::VolumeUnit::Barrel:
+        case VolumeBarrel:
           return 4.808905491;
-        case Qgis::VolumeUnit::CubicDecimeter:
+        case VolumeCubicDecimeter:
           return 764.5549;
-        case Qgis::VolumeUnit::Liters:
+        case VolumeLiters:
           return 764.5549;
-        case Qgis::VolumeUnit::GallonUS:
+        case VolumeGallonUS:
           return 201.974025549;
-        case Qgis::VolumeUnit::CubicInch:
+        case VolumeCubicInch:
           return 46656.013952472;
-        case Qgis::VolumeUnit::CubicCentimeter:
+        case VolumeCubicCentimeter:
           return 764554.9;
-        case Qgis::VolumeUnit::CubicDegrees:
+        case VolumeCubicDegrees:
           return 0.764554900 / DEG2_TO_M3; // basically meaningless!
-        case Qgis::VolumeUnit::Unknown:
+        case VolumeUnknownUnit:
           return 1.0;
       }
       break;
     }
-    case Qgis::VolumeUnit::Barrel:
+    case VolumeBarrel:
     {
       switch ( toUnit )
       {
-        case Qgis::VolumeUnit::CubicMeters:
+        case VolumeCubicMeters:
           return 0.158987300;
-        case Qgis::VolumeUnit::CubicFeet:
+        case VolumeCubicFeet:
           return 5.614582837;
-        case Qgis::VolumeUnit::CubicYards:
+        case VolumeCubicYards:
           return 0.207947526;
-        case Qgis::VolumeUnit::Barrel:
+        case VolumeBarrel:
           return 1.0;
-        case Qgis::VolumeUnit::CubicDecimeter:
+        case VolumeCubicDecimeter:
           return 158.9873;
-        case Qgis::VolumeUnit::Liters:
+        case VolumeLiters:
           return 158.9873;
-        case Qgis::VolumeUnit::GallonUS:
+        case VolumeGallonUS:
           return 41.999998943;
-        case Qgis::VolumeUnit::CubicInch:
+        case VolumeCubicInch:
           return 9702.002677722;
-        case Qgis::VolumeUnit::CubicCentimeter:
+        case VolumeCubicCentimeter:
           return 158987.3;
-        case Qgis::VolumeUnit::CubicDegrees:
+        case VolumeCubicDegrees:
           return 0.158987300 / DEG2_TO_M3; // basically meaningless!
-        case Qgis::VolumeUnit::Unknown:
+        case VolumeUnknownUnit:
           return 1.0;
       }
       break;
     }
-    case Qgis::VolumeUnit::CubicDecimeter:
-    case Qgis::VolumeUnit::Liters:
+    case VolumeCubicDecimeter:
+    case VolumeLiters:
     {
       switch ( toUnit )
       {
-        case Qgis::VolumeUnit::CubicMeters:
+        case VolumeCubicMeters:
           return 0.001;
-        case Qgis::VolumeUnit::CubicFeet:
+        case VolumeCubicFeet:
           return 0.035314662;
-        case Qgis::VolumeUnit::CubicYards:
+        case VolumeCubicYards:
           return 0.001307951;
-        case Qgis::VolumeUnit::Barrel:
+        case VolumeBarrel:
           return 0.006289811;
-        case Qgis::VolumeUnit::CubicDecimeter:
-        case Qgis::VolumeUnit::Liters:
+        case VolumeCubicDecimeter:
+        case VolumeLiters:
           return 1.0;
-        case Qgis::VolumeUnit::GallonUS:
+        case VolumeGallonUS:
           return 0.264172037;
-        case Qgis::VolumeUnit::CubicInch:
+        case VolumeCubicInch:
           return 61.023758990;
-        case Qgis::VolumeUnit::CubicCentimeter:
+        case VolumeCubicCentimeter:
           return 1000;
-        case Qgis::VolumeUnit::CubicDegrees:
+        case VolumeCubicDegrees:
           return 0.001 / DEG2_TO_M3; // basically meaningless!
-        case Qgis::VolumeUnit::Unknown:
+        case VolumeUnknownUnit:
           return 1.0;
       }
       break;
     }
-    case Qgis::VolumeUnit::GallonUS:
+    case VolumeGallonUS:
     {
       switch ( toUnit )
       {
-        case Qgis::VolumeUnit::CubicMeters:
+        case VolumeCubicMeters:
           return 0.003785412;
-        case Qgis::VolumeUnit::CubicFeet:
+        case VolumeCubicFeet:
           return 0.133680547;
-        case Qgis::VolumeUnit::CubicYards:
+        case VolumeCubicYards:
           return 0.004951132;
-        case Qgis::VolumeUnit::Barrel:
+        case VolumeBarrel:
           return 0.023809524;
-        case Qgis::VolumeUnit::CubicDecimeter:
-        case Qgis::VolumeUnit::Liters:
+        case VolumeCubicDecimeter:
+        case VolumeLiters:
           return 3.785412000;
-        case Qgis::VolumeUnit::GallonUS:
+        case VolumeGallonUS:
           return 1.0;
-        case Qgis::VolumeUnit::CubicInch:
+        case VolumeCubicInch:
           return 231.000069567;
-        case Qgis::VolumeUnit::CubicCentimeter:
+        case VolumeCubicCentimeter:
           return 3785.412;
-        case Qgis::VolumeUnit::CubicDegrees:
+        case VolumeCubicDegrees:
           return 0.003785412 / DEG2_TO_M3; // basically meaningless!
-        case Qgis::VolumeUnit::Unknown:
+        case VolumeUnknownUnit:
           return 1.0;
       }
       break;
     }
-    case Qgis::VolumeUnit::CubicInch:
+    case VolumeCubicInch:
     {
       switch ( toUnit )
       {
-        case Qgis::VolumeUnit::CubicMeters:
+        case VolumeCubicMeters:
           return 0.000016387;
-        case Qgis::VolumeUnit::CubicFeet:
+        case VolumeCubicFeet:
           return 0.000578703;
-        case Qgis::VolumeUnit::CubicYards:
+        case VolumeCubicYards:
           return 0.000021433;
-        case Qgis::VolumeUnit::Barrel:
+        case VolumeBarrel:
           return 0.000103072;
-        case Qgis::VolumeUnit::CubicDecimeter:
-        case Qgis::VolumeUnit::Liters:
+        case VolumeCubicDecimeter:
+        case VolumeLiters:
           return 0.016387060;
-        case Qgis::VolumeUnit::GallonUS:
+        case VolumeGallonUS:
           return 0.004329003;
-        case Qgis::VolumeUnit::CubicInch:
+        case VolumeCubicInch:
           return 1.0;
-        case Qgis::VolumeUnit::CubicCentimeter:
+        case VolumeCubicCentimeter:
           return 16.387060000;
-        case Qgis::VolumeUnit::CubicDegrees:
+        case VolumeCubicDegrees:
           return 0.000016387 / DEG2_TO_M3; // basically meaningless!
-        case Qgis::VolumeUnit::Unknown:
+        case VolumeUnknownUnit:
           return 1.0;
       }
       break;
     }
-    case Qgis::VolumeUnit::CubicCentimeter:
+    case VolumeCubicCentimeter:
     {
       switch ( toUnit )
       {
-        case Qgis::VolumeUnit::CubicMeters:
+        case VolumeCubicMeters:
           return 0.000001;
-        case Qgis::VolumeUnit::CubicFeet:
+        case VolumeCubicFeet:
           return 0.000035315;
-        case Qgis::VolumeUnit::CubicYards:
+        case VolumeCubicYards:
           return 0.000001308;
-        case Qgis::VolumeUnit::Barrel:
+        case VolumeBarrel:
           return 0.000006290;
-        case Qgis::VolumeUnit::CubicDecimeter:
-        case Qgis::VolumeUnit::Liters:
+        case VolumeCubicDecimeter:
+        case VolumeLiters:
           return 0.001;
-        case Qgis::VolumeUnit::GallonUS:
+        case VolumeGallonUS:
           return 0.000264172 ;
-        case Qgis::VolumeUnit::CubicInch:
+        case VolumeCubicInch:
           return 0.061023759;
-        case Qgis::VolumeUnit::CubicCentimeter:
+        case VolumeCubicCentimeter:
           return 1.0;
-        case Qgis::VolumeUnit::CubicDegrees:
+        case VolumeCubicDegrees:
           return 0.000001 / DEG2_TO_M3; // basically meaningless!
-        case Qgis::VolumeUnit::Unknown:
+        case VolumeUnknownUnit:
           return 1.0;
       }
       break;
     }
-    case Qgis::VolumeUnit::CubicDegrees:
-      if ( toUnit == Qgis::VolumeUnit::Unknown || toUnit == Qgis::VolumeUnit::CubicDegrees )
+    case VolumeCubicDegrees:
+      if ( toUnit == VolumeUnknownUnit || toUnit == VolumeCubicDegrees )
         return 1.0;
       else
-        return fromUnitToUnitFactor( toUnit, Qgis::VolumeUnit::CubicMeters ) * DEG2_TO_M3;
+        return fromUnitToUnitFactor( toUnit, QgsUnitTypes::VolumeCubicMeters ) * DEG2_TO_M3;
 
-    case Qgis::VolumeUnit::Unknown:
+    case VolumeUnknownUnit:
     {
       return 1.0;
     }
   }
-  // NOLINTEND(bugprone-branch-clone)
   return 1.0;
 }
 
-Qgis::VolumeUnit QgsUnitTypes::distanceToVolumeUnit( Qgis::DistanceUnit distanceUnit )
+QgsUnitTypes::VolumeUnit QgsUnitTypes::distanceToVolumeUnit( QgsUnitTypes::DistanceUnit distanceUnit )
 {
-  // cloned branches are intentional here for improved readability
-  // NOLINTBEGIN(bugprone-branch-clone)
   switch ( distanceUnit )
   {
-    case Qgis::DistanceUnit::Meters:
-    case Qgis::DistanceUnit::MetersGermanLegal:
-      return Qgis::VolumeUnit::CubicMeters;
+    case DistanceMeters:
+      return VolumeCubicMeters;
 
-    case Qgis::DistanceUnit::Kilometers:
-      return Qgis::VolumeUnit::CubicMeters;
+    case DistanceKilometers:
+      return VolumeCubicMeters;
 
-    case Qgis::DistanceUnit::Centimeters:
-      return Qgis::VolumeUnit::CubicCentimeter;
+    case DistanceCentimeters:
+      return VolumeCubicCentimeter;
 
-    case Qgis::DistanceUnit::Millimeters:
-      return Qgis::VolumeUnit::CubicCentimeter;
+    case DistanceMillimeters:
+      return VolumeCubicCentimeter;
 
-    case Qgis::DistanceUnit::Feet:
-    case Qgis::DistanceUnit::FeetBritish1865:
-    case Qgis::DistanceUnit::FeetBritish1936:
-    case Qgis::DistanceUnit::FeetBritishBenoit1895A:
-    case Qgis::DistanceUnit::FeetBritishBenoit1895B:
-    case Qgis::DistanceUnit::FeetBritishSears1922Truncated:
-    case Qgis::DistanceUnit::FeetBritishSears1922:
-    case Qgis::DistanceUnit::FeetClarkes:
-    case Qgis::DistanceUnit::FeetGoldCoast:
-    case Qgis::DistanceUnit::FeetIndian:
-    case Qgis::DistanceUnit::FeetIndian1937:
-    case Qgis::DistanceUnit::FeetIndian1962:
-    case Qgis::DistanceUnit::FeetIndian1975:
-    case Qgis::DistanceUnit::FeetUSSurvey:
-      return Qgis::VolumeUnit::CubicFeet;
+    case DistanceFeet:
+      return VolumeCubicFeet;
 
-    case Qgis::DistanceUnit::Yards:
-    case Qgis::DistanceUnit::YardsBritishBenoit1895A:
-    case Qgis::DistanceUnit::YardsBritishBenoit1895B:
-    case Qgis::DistanceUnit::YardsBritishSears1922Truncated:
-    case Qgis::DistanceUnit::YardsBritishSears1922:
-    case Qgis::DistanceUnit::YardsClarkes:
-    case Qgis::DistanceUnit::YardsIndian:
-    case Qgis::DistanceUnit::YardsIndian1937:
-    case Qgis::DistanceUnit::YardsIndian1962:
-    case Qgis::DistanceUnit::YardsIndian1975:
-      return Qgis::VolumeUnit::CubicYards;
+    case DistanceYards:
+      return VolumeCubicYards;
 
-    case Qgis::DistanceUnit::Miles:
-    case Qgis::DistanceUnit::MilesUSSurvey:
-    case Qgis::DistanceUnit::ChainsInternational:
-    case Qgis::DistanceUnit::ChainsBritishBenoit1895A:
-    case Qgis::DistanceUnit::ChainsBritishBenoit1895B:
-    case Qgis::DistanceUnit::ChainsBritishSears1922Truncated:
-    case Qgis::DistanceUnit::ChainsBritishSears1922:
-    case Qgis::DistanceUnit::ChainsClarkes:
-    case Qgis::DistanceUnit::ChainsUSSurvey:
-    case Qgis::DistanceUnit::LinksInternational:
-    case Qgis::DistanceUnit::LinksBritishBenoit1895A:
-    case Qgis::DistanceUnit::LinksBritishBenoit1895B:
-    case Qgis::DistanceUnit::LinksBritishSears1922Truncated:
-    case Qgis::DistanceUnit::LinksBritishSears1922:
-    case Qgis::DistanceUnit::LinksClarkes:
-    case Qgis::DistanceUnit::LinksUSSurvey:
-    case Qgis::DistanceUnit::Fathoms:
-      return Qgis::VolumeUnit::CubicFeet;
+    case DistanceMiles:
+      return VolumeCubicFeet;
 
-    case Qgis::DistanceUnit::Degrees:
-      return Qgis::VolumeUnit::CubicDegrees;
+    case DistanceDegrees:
+      return VolumeCubicDegrees;
 
-    case Qgis::DistanceUnit::Unknown:
-      return Qgis::VolumeUnit::Unknown;
+    case DistanceUnknownUnit:
+      return VolumeUnknownUnit;
 
-    case Qgis::DistanceUnit::NauticalMiles:
-      return Qgis::VolumeUnit::CubicFeet;
-
-    case Qgis::DistanceUnit::Inches:
-      return Qgis::VolumeUnit::CubicInch;
+    case DistanceNauticalMiles:
+      return VolumeCubicFeet;
   }
-  // NOLINTEND(bugprone-branch-clone)
 
-  return Qgis::VolumeUnit::Unknown;
+  return VolumeUnknownUnit;
 }
 
-Qgis::DistanceUnit QgsUnitTypes::volumeToDistanceUnit( Qgis::VolumeUnit volumeUnit )
+QgsUnitTypes::DistanceUnit QgsUnitTypes::volumeToDistanceUnit( QgsUnitTypes::VolumeUnit volumeUnit )
 {
   switch ( volumeUnit )
   {
-    case Qgis::VolumeUnit::CubicMeters:
-      return Qgis::DistanceUnit::Meters;
-    case Qgis::VolumeUnit::CubicFeet:
-      return Qgis::DistanceUnit::Feet;
-    case Qgis::VolumeUnit::CubicYards:
-      return Qgis::DistanceUnit::Yards;
-    case Qgis::VolumeUnit::Barrel:
-      return Qgis::DistanceUnit::Feet;
-    case Qgis::VolumeUnit::CubicDecimeter:
-      return Qgis::DistanceUnit::Centimeters;
-    case Qgis::VolumeUnit::Liters:
-      return Qgis::DistanceUnit::Meters;
-    case Qgis::VolumeUnit::GallonUS:
-      return Qgis::DistanceUnit::Feet;
-    case Qgis::VolumeUnit::CubicInch:
-      return Qgis::DistanceUnit::Inches;
-    case Qgis::VolumeUnit::CubicCentimeter:
-      return Qgis::DistanceUnit::Centimeters;
-    case Qgis::VolumeUnit::CubicDegrees:
-      return Qgis::DistanceUnit::Degrees;
-    case Qgis::VolumeUnit::Unknown:
-      return Qgis::DistanceUnit::Unknown;
+    case VolumeCubicMeters:
+      return DistanceMeters;
+    case VolumeCubicFeet:
+      return DistanceFeet;
+    case VolumeCubicYards:
+      return DistanceYards;
+    case VolumeBarrel:
+      return DistanceFeet;
+    case VolumeCubicDecimeter:
+      return DistanceCentimeters;
+    case VolumeLiters:
+      return DistanceMeters;
+    case VolumeGallonUS:
+      return DistanceFeet;
+    case VolumeCubicInch:
+      return DistanceFeet;
+    case VolumeCubicCentimeter:
+      return DistanceCentimeters;
+    case VolumeCubicDegrees:
+      return DistanceDegrees;
+    case VolumeUnknownUnit:
+      return DistanceUnknownUnit;
   }
-  return Qgis::DistanceUnit::Unknown;
+  return DistanceUnknownUnit;
 }
 
-Qgis::DistanceUnitType QgsUnitTypes::unitType( Qgis::VolumeUnit unit )
+QgsUnitTypes::DistanceUnitType QgsUnitTypes::unitType( QgsUnitTypes::VolumeUnit unit )
 {
   switch ( unit )
   {
-    case Qgis::VolumeUnit::CubicMeters:
-    case Qgis::VolumeUnit::CubicFeet:
-    case Qgis::VolumeUnit::CubicYards:
-    case Qgis::VolumeUnit::Barrel:
-    case Qgis::VolumeUnit::CubicDecimeter:
-    case Qgis::VolumeUnit::Liters:
-    case Qgis::VolumeUnit::GallonUS:
-    case Qgis::VolumeUnit::CubicInch:
-    case Qgis::VolumeUnit::CubicCentimeter:
-      return Qgis::DistanceUnitType::Standard;
-    case Qgis::VolumeUnit::CubicDegrees:
-      return Qgis::DistanceUnitType::Geographic;
-    case Qgis::VolumeUnit::Unknown:
-      return Qgis::DistanceUnitType::Unknown;
+    case VolumeCubicMeters:
+    case VolumeCubicFeet:
+    case VolumeCubicYards:
+    case VolumeBarrel:
+    case VolumeCubicDecimeter:
+    case VolumeLiters:
+    case VolumeGallonUS:
+    case VolumeCubicInch:
+    case VolumeCubicCentimeter:
+      return Standard;
+    case VolumeCubicDegrees:
+      return Geographic;
+    case VolumeUnknownUnit:
+      return UnknownType;
   }
-  return Qgis::DistanceUnitType::Unknown;
+  return UnknownType;
 }
 
-QString QgsUnitTypes::encodeUnit( Qgis::VolumeUnit unit )
+QString QgsUnitTypes::encodeUnit( QgsUnitTypes::VolumeUnit unit )
 {
   switch ( unit )
   {
-    case Qgis::VolumeUnit::CubicMeters:
+    case VolumeCubicMeters:
       return QStringLiteral( "m3" );
-    case Qgis::VolumeUnit::CubicFeet:
+    case VolumeCubicFeet:
       return QStringLiteral( "ft3" );
-    case Qgis::VolumeUnit::CubicYards:
+    case VolumeCubicYards:
       return QStringLiteral( "yd3" );
-    case Qgis::VolumeUnit::Barrel:
+    case VolumeBarrel:
       return QStringLiteral( "bbl" );
-    case Qgis::VolumeUnit::CubicDecimeter:
+    case VolumeCubicDecimeter:
       return QStringLiteral( "dm3" );
-    case Qgis::VolumeUnit::Liters:
+    case VolumeLiters:
       return QStringLiteral( "l" );
-    case Qgis::VolumeUnit::GallonUS:
+    case VolumeGallonUS:
       return QStringLiteral( "gal" );
-    case Qgis::VolumeUnit::CubicInch:
+    case VolumeCubicInch:
       return QStringLiteral( "in3" );
-    case Qgis::VolumeUnit::CubicCentimeter:
+    case VolumeCubicCentimeter:
       return QStringLiteral( "cm3" );
-    case Qgis::VolumeUnit::CubicDegrees:
+    case VolumeCubicDegrees:
       return QStringLiteral( "deg3" );
-    case Qgis::VolumeUnit::Unknown:
+    case VolumeUnknownUnit:
       return QStringLiteral( "<unknown>" );
   }
   return QString();
 }
 
-QString QgsUnitTypes::encodeUnit( Qgis::AngleUnit unit )
+QString QgsUnitTypes::encodeUnit( QgsUnitTypes::AngleUnit unit )
 {
   switch ( unit )
   {
-    case Qgis::AngleUnit::Degrees:
+    case AngleDegrees:
       return QStringLiteral( "degrees" );
-    case Qgis::AngleUnit::Radians:
+    case AngleRadians:
       return QStringLiteral( "radians" );
-    case Qgis::AngleUnit::Gon:
+    case AngleGon:
       return QStringLiteral( "gon" );
-    case Qgis::AngleUnit::MinutesOfArc:
+    case AngleMinutesOfArc:
       return QStringLiteral( "moa" );
-    case Qgis::AngleUnit::SecondsOfArc:
+    case AngleSecondsOfArc:
       return QStringLiteral( "soa" );
-    case Qgis::AngleUnit::Turn:
+    case AngleTurn:
       return QStringLiteral( "tr" );
-    case Qgis::AngleUnit::MilliradiansSI:
+    case AngleMilliradiansSI:
       return QStringLiteral( "milliradians" );
-    case Qgis::AngleUnit::MilNATO:
+    case AngleMilNATO:
       return QStringLiteral( "mil" );
-    case Qgis::AngleUnit::Unknown:
+    case AngleUnknownUnit:
       return QStringLiteral( "<unknown>" );
   }
   return QString();
 }
 
-Qgis::AngleUnit QgsUnitTypes::decodeAngleUnit( const QString &string, bool *ok )
+QgsUnitTypes::AngleUnit QgsUnitTypes::decodeAngleUnit( const QString &string, bool *ok )
 {
   const QString normalized = string.trimmed().toLower();
 
   if ( ok )
     *ok = true;
 
-  if ( normalized == encodeUnit( Qgis::AngleUnit::Degrees ) )
-    return Qgis::AngleUnit::Degrees;
-  if ( normalized == encodeUnit( Qgis::AngleUnit::Radians ) )
-    return Qgis::AngleUnit::Radians;
-  if ( normalized == encodeUnit( Qgis::AngleUnit::Gon ) )
-    return Qgis::AngleUnit::Gon;
-  if ( normalized == encodeUnit( Qgis::AngleUnit::MinutesOfArc ) )
-    return Qgis::AngleUnit::MinutesOfArc;
-  if ( normalized == encodeUnit( Qgis::AngleUnit::SecondsOfArc ) )
-    return Qgis::AngleUnit::SecondsOfArc;
-  if ( normalized == encodeUnit( Qgis::AngleUnit::Turn ) )
-    return Qgis::AngleUnit::Turn;
-  if ( normalized == encodeUnit( Qgis::AngleUnit::MilliradiansSI ) )
-    return Qgis::AngleUnit::MilliradiansSI;
-  if ( normalized == encodeUnit( Qgis::AngleUnit::MilNATO ) )
-    return Qgis::AngleUnit::MilNATO;
-  if ( normalized == encodeUnit( Qgis::AngleUnit::Unknown ) )
-    return Qgis::AngleUnit::Unknown;
+  if ( normalized == encodeUnit( AngleDegrees ) )
+    return AngleDegrees;
+  if ( normalized == encodeUnit( AngleRadians ) )
+    return AngleRadians;
+  if ( normalized == encodeUnit( AngleGon ) )
+    return AngleGon;
+  if ( normalized == encodeUnit( AngleMinutesOfArc ) )
+    return AngleMinutesOfArc;
+  if ( normalized == encodeUnit( AngleSecondsOfArc ) )
+    return AngleSecondsOfArc;
+  if ( normalized == encodeUnit( AngleTurn ) )
+    return AngleTurn;
+  if ( normalized == encodeUnit( AngleMilliradiansSI ) )
+    return AngleMilliradiansSI;
+  if ( normalized == encodeUnit( AngleMilNATO ) )
+    return AngleMilNATO;
+  if ( normalized == encodeUnit( AngleUnknownUnit ) )
+    return AngleUnknownUnit;
   if ( ok )
     *ok = false;
 
-  return Qgis::AngleUnit::Unknown;
+  return AngleUnknownUnit;
 }
 
-QString QgsUnitTypes::toString( Qgis::AngleUnit unit )
+QString QgsUnitTypes::toString( QgsUnitTypes::AngleUnit unit )
 {
   switch ( unit )
   {
-    case Qgis::AngleUnit::Degrees:
+    case AngleDegrees:
       return QObject::tr( "degrees", "angle" );
-    case Qgis::AngleUnit::Radians:
+    case AngleRadians:
       return QObject::tr( "radians", "angle" );
-    case Qgis::AngleUnit::Gon:
+    case AngleGon:
       return QObject::tr( "gon", "angle" );
-    case Qgis::AngleUnit::MinutesOfArc:
+    case AngleMinutesOfArc:
       return QObject::tr( "minutes of arc", "angle" );
-    case Qgis::AngleUnit::SecondsOfArc:
+    case AngleSecondsOfArc:
       return QObject::tr( "seconds of arc", "angle" );
-    case Qgis::AngleUnit::Turn:
+    case AngleTurn:
       return QObject::tr( "turns", "angle" );
-    case Qgis::AngleUnit::MilliradiansSI:
+    case AngleMilliradiansSI:
       return QObject::tr( "milliradians", "angle" );
-    case Qgis::AngleUnit::MilNATO:
+    case AngleMilNATO:
       return QObject::tr( "mil", "angle" );
-    case Qgis::AngleUnit::Unknown:
+    case AngleUnknownUnit:
       return QObject::tr( "<unknown>", "angle" );
   }
   return QString();
 }
 
-double QgsUnitTypes::fromUnitToUnitFactor( Qgis::AngleUnit fromUnit, Qgis::AngleUnit toUnit )
+double QgsUnitTypes::fromUnitToUnitFactor( QgsUnitTypes::AngleUnit fromUnit, QgsUnitTypes::AngleUnit toUnit )
 {
   // Calculate the conversion factor between the specified units
   switch ( fromUnit )
   {
-    case Qgis::AngleUnit::Degrees:
+    case AngleDegrees:
     {
       switch ( toUnit )
       {
-        case Qgis::AngleUnit::Degrees:
+        case AngleDegrees:
           return 1.0;
-        case Qgis::AngleUnit::Radians:
+        case AngleRadians:
           return M_PI / 180.0;
-        case Qgis::AngleUnit::Gon:
+        case AngleGon:
           return 400.0 / 360.0;
-        case Qgis::AngleUnit::MinutesOfArc:
+        case AngleMinutesOfArc:
           return 60;
-        case Qgis::AngleUnit::SecondsOfArc:
+        case AngleSecondsOfArc:
           return 3600;
-        case Qgis::AngleUnit::Turn:
+        case AngleTurn:
           return 1.0 / 360.0;
-        case Qgis::AngleUnit::MilliradiansSI:
+        case AngleMilliradiansSI:
           return M_PI / 180.0 * 1000;
-        case Qgis::AngleUnit::MilNATO:
+        case AngleMilNATO:
           return 3200.0 / 180;
-        case Qgis::AngleUnit::Unknown:
+        case AngleUnknownUnit:
           break;
       }
       break;
     }
-    case Qgis::AngleUnit::Radians:
+    case AngleRadians:
     {
       switch ( toUnit )
       {
-        case Qgis::AngleUnit::Degrees:
+        case AngleDegrees:
           return 180.0 / M_PI;
-        case Qgis::AngleUnit::Radians:
+        case AngleRadians:
           return 1.0;
-        case Qgis::AngleUnit::Gon:
+        case AngleGon:
           return 200.0 / M_PI;
-        case Qgis::AngleUnit::MinutesOfArc:
+        case AngleMinutesOfArc:
           return 60 * 180.0 / M_PI;
-        case Qgis::AngleUnit::SecondsOfArc:
+        case AngleSecondsOfArc:
           return 3600 * 180.0 / M_PI;
-        case Qgis::AngleUnit::Turn:
+        case AngleTurn:
           return 0.5 / M_PI;
-        case Qgis::AngleUnit::MilliradiansSI:
+        case AngleMilliradiansSI:
           return 1000;
-        case Qgis::AngleUnit::MilNATO:
+        case AngleMilNATO:
           return 3200.0 / M_PI;
-        case Qgis::AngleUnit::Unknown:
+        case AngleUnknownUnit:
           break;
       }
       break;
     }
-    case Qgis::AngleUnit::Gon:
+    case AngleGon:
     {
       switch ( toUnit )
       {
-        case Qgis::AngleUnit::Degrees:
+        case AngleDegrees:
           return 360.0 / 400.0;
-        case Qgis::AngleUnit::Radians:
+        case AngleRadians:
           return M_PI / 200.0;
-        case Qgis::AngleUnit::Gon:
+        case AngleGon:
           return 1.0;
-        case Qgis::AngleUnit::MinutesOfArc:
+        case AngleMinutesOfArc:
           return 60 * 360.0 / 400.0;
-        case Qgis::AngleUnit::SecondsOfArc:
+        case AngleSecondsOfArc:
           return 3600 * 360.0 / 400.0;
-        case Qgis::AngleUnit::Turn:
+        case AngleTurn:
           return 1.0 / 400.0;
-        case Qgis::AngleUnit::MilliradiansSI:
+        case AngleMilliradiansSI:
           return M_PI / 200.0 * 1000;
-        case Qgis::AngleUnit::MilNATO:
+        case AngleMilNATO:
           return 3200.0 / 200.0;
-        case Qgis::AngleUnit::Unknown:
+        case AngleUnknownUnit:
           break;
       }
       break;
     }
-    case Qgis::AngleUnit::MinutesOfArc:
+    case AngleMinutesOfArc:
     {
       switch ( toUnit )
       {
-        case Qgis::AngleUnit::Degrees:
+        case AngleDegrees:
           return 1 / 60.0;
-        case Qgis::AngleUnit::Radians:
+        case AngleRadians:
           return M_PI / 180.0 / 60.0;
-        case Qgis::AngleUnit::Gon:
+        case AngleGon:
           return 400.0 / 360.0 / 60.0;
-        case Qgis::AngleUnit::MinutesOfArc:
+        case AngleMinutesOfArc:
           return 1.0;
-        case Qgis::AngleUnit::SecondsOfArc:
+        case AngleSecondsOfArc:
           return 60.0;
-        case Qgis::AngleUnit::Turn:
+        case AngleTurn:
           return 1.0 / 360.0 / 60.0;
-        case Qgis::AngleUnit::MilliradiansSI:
+        case AngleMilliradiansSI:
           return M_PI / 180.0 / 60.0 * 1000;
-        case Qgis::AngleUnit::MilNATO:
+        case AngleMilNATO:
           return 3200.0 / 180.0 / 60.0;
-        case Qgis::AngleUnit::Unknown:
+        case AngleUnknownUnit:
           break;
       }
       break;
     }
-    case Qgis::AngleUnit::SecondsOfArc:
+    case AngleSecondsOfArc:
     {
       switch ( toUnit )
       {
-        case Qgis::AngleUnit::Degrees:
+        case AngleDegrees:
           return 1 / 3600.0;
-        case Qgis::AngleUnit::Radians:
+        case AngleRadians:
           return M_PI / 180.0 / 3600.0;
-        case Qgis::AngleUnit::Gon:
+        case AngleGon:
           return 400.0 / 360.0 / 3600.0;
-        case Qgis::AngleUnit::MinutesOfArc:
+        case AngleMinutesOfArc:
           return 1.0 / 60.0;
-        case Qgis::AngleUnit::SecondsOfArc:
+        case AngleSecondsOfArc:
           return 1.0;
-        case Qgis::AngleUnit::Turn:
+        case AngleTurn:
           return 1.0 / 360.0 / 3600.0;
-        case Qgis::AngleUnit::MilliradiansSI:
+        case AngleMilliradiansSI:
           return M_PI / 180.0 / 3600.0 * 1000;
-        case Qgis::AngleUnit::MilNATO:
+        case AngleMilNATO:
           return 3200.0 / 180.0 / 3600.0;
-        case Qgis::AngleUnit::Unknown:
+        case AngleUnknownUnit:
           break;
       }
       break;
     }
-    case Qgis::AngleUnit::Turn:
+    case AngleTurn:
     {
       switch ( toUnit )
       {
-        case Qgis::AngleUnit::Degrees:
+        case AngleDegrees:
           return 360.0;
-        case Qgis::AngleUnit::Radians:
+        case AngleRadians:
           return 2 * M_PI;
-        case Qgis::AngleUnit::Gon:
+        case AngleGon:
           return 400.0;
-        case Qgis::AngleUnit::MinutesOfArc:
+        case AngleMinutesOfArc:
           return 360.0 * 60.0;
-        case Qgis::AngleUnit::SecondsOfArc:
+        case AngleSecondsOfArc:
           return 360.0 * 3600.0;
-        case Qgis::AngleUnit::Turn:
+        case AngleTurn:
           return 1.0;
-        case Qgis::AngleUnit::MilliradiansSI:
+        case AngleMilliradiansSI:
           return 2 * M_PI * 1000;
-        case Qgis::AngleUnit::MilNATO:
+        case AngleMilNATO:
           return 2 * 3200;
-        case Qgis::AngleUnit::Unknown:
+        case AngleUnknownUnit:
           break;
       }
       break;
     }
-    case Qgis::AngleUnit::MilliradiansSI:
+    case AngleMilliradiansSI:
     {
       switch ( toUnit )
       {
-        case Qgis::AngleUnit::Degrees:
+        case AngleDegrees:
           return 180.0 / M_PI / 1000;
-        case Qgis::AngleUnit::Radians:
+        case AngleRadians:
           return 0.001;
-        case Qgis::AngleUnit::Gon:
+        case AngleGon:
           return 200.0 / M_PI / 1000;
-        case Qgis::AngleUnit::MinutesOfArc:
+        case AngleMinutesOfArc:
           return 180.0 * 60.0 / M_PI / 1000;
-        case Qgis::AngleUnit::SecondsOfArc:
+        case AngleSecondsOfArc:
           return 180.0 * 3600.0 / M_PI / 1000;
-        case Qgis::AngleUnit::Turn:
+        case AngleTurn:
           return M_PI / 2 / 1000;
-        case Qgis::AngleUnit::MilliradiansSI:
+        case AngleMilliradiansSI:
           return 1.0;
-        case Qgis::AngleUnit::MilNATO:
+        case AngleMilNATO:
           return 3200.0 / 1000.0 / M_PI;
-        case Qgis::AngleUnit::Unknown:
+        case AngleUnknownUnit:
           break;
       }
       break;
     }
 
-    case Qgis::AngleUnit::MilNATO:
+    case AngleMilNATO:
     {
       switch ( toUnit )
       {
-        case Qgis::AngleUnit::Degrees:
+        case AngleDegrees:
           return 180.0 / 3200;
-        case Qgis::AngleUnit::Radians:
+        case AngleRadians:
           return M_PI / 3200;
-        case Qgis::AngleUnit::Gon:
+        case AngleGon:
           return 200.0 / 3200;
-        case Qgis::AngleUnit::MinutesOfArc:
+        case AngleMinutesOfArc:
           return 60 * 180.0 / 3200;
-        case Qgis::AngleUnit::SecondsOfArc:
+        case AngleSecondsOfArc:
           return 3600.0 * 180 / 3200;
-        case Qgis::AngleUnit::Turn:
+        case AngleTurn:
           return 1.0 / ( 2 * 32000 );
-        case Qgis::AngleUnit::MilliradiansSI:
+        case AngleMilliradiansSI:
           return 1000.0 * M_PI / 3200.0;
-        case Qgis::AngleUnit::MilNATO:
+        case AngleMilNATO:
           return 1.0;
-        case Qgis::AngleUnit::Unknown:
+        case AngleUnknownUnit:
           break;
       }
       break;
     }
 
-    case Qgis::AngleUnit::Unknown:
+    case AngleUnknownUnit:
       break;
   }
   return 1.0;
 }
 
-QString QgsUnitTypes::formatAngle( double angle, int decimals, Qgis::AngleUnit unit )
+QString QgsUnitTypes::formatAngle( double angle, int decimals, QgsUnitTypes::AngleUnit unit )
 {
   QString unitLabel;
   int decimalPlaces = 2;
 
   switch ( unit )
   {
-    case Qgis::AngleUnit::Degrees:
+    case AngleDegrees:
       unitLabel = QObject::tr( "°", "angle" );
       decimalPlaces = 0;
       break;
-    case Qgis::AngleUnit::Radians:
+    case AngleRadians:
       unitLabel = QObject::tr( " rad", "angle" );
       decimalPlaces = 2;
       break;
-    case Qgis::AngleUnit::Gon:
+    case AngleGon:
       unitLabel = QObject::tr( " gon", "angle" );
       decimalPlaces = 0;
       break;
-    case Qgis::AngleUnit::MinutesOfArc:
+    case AngleMinutesOfArc:
       unitLabel = QObject::tr( "′", "angle minutes" );
       decimalPlaces = 0;
       break;
-    case Qgis::AngleUnit::SecondsOfArc:
+    case AngleSecondsOfArc:
       unitLabel = QObject::tr( "″", "angle seconds" );
       decimalPlaces = 0;
       break;
-    case Qgis::AngleUnit::Turn:
+    case AngleTurn:
       unitLabel = QObject::tr( " tr", "angle turn" );
       decimalPlaces = 3;
       break;
-    case Qgis::AngleUnit::MilliradiansSI:
+    case AngleMilliradiansSI:
       unitLabel = QObject::tr( " millirad", "angular mil SI" );
       decimalPlaces = 0;
       break;
-    case Qgis::AngleUnit::MilNATO:
+    case AngleMilNATO:
       unitLabel = QObject::tr( " mil", "angular mil NATO" );
       decimalPlaces = 0;
       break;
-    case Qgis::AngleUnit::Unknown:
+    case AngleUnknownUnit:
       break;
   }
 
@@ -3050,108 +2584,106 @@ QString QgsUnitTypes::formatAngle( double angle, int decimals, Qgis::AngleUnit u
   return QStringLiteral( "%L1%2" ).arg( angle, 0, 'f', decimalPlaces ).arg( unitLabel );
 }
 
-QgsUnitTypes::DistanceValue QgsUnitTypes::scaledDistance( double distance,  Qgis::DistanceUnit unit, int decimals, bool keepBaseUnit )
+QgsUnitTypes::DistanceValue QgsUnitTypes::scaledDistance( double distance, QgsUnitTypes::DistanceUnit unit, int decimals, bool keepBaseUnit )
 {
   DistanceValue result;
 
-  // cloned branches are intentional here for improved readability
-  // NOLINTBEGIN(bugprone-branch-clone)
   switch ( unit )
   {
-    case Qgis::DistanceUnit::Meters:
+    case DistanceMeters:
       if ( keepBaseUnit )
       {
         result.value = qgsRound( distance, decimals );
-        result.unit = Qgis::DistanceUnit::Meters;
+        result.unit = QgsUnitTypes::DistanceMeters;
       }
       else if ( std::fabs( distance ) > 1000.0 )
       {
         result.value = qgsRound( distance / 1000, decimals );
-        result.unit = Qgis::DistanceUnit::Kilometers;
+        result.unit = QgsUnitTypes::DistanceKilometers;
       }
       else if ( std::fabs( distance ) < 0.01 )
       {
         result.value = qgsRound( distance * 1000, decimals );
-        result.unit = Qgis::DistanceUnit::Millimeters;
+        result.unit = QgsUnitTypes::DistanceMillimeters;
       }
       else if ( std::fabs( distance ) < 0.1 )
       {
 
         result.value = qgsRound( distance * 100, decimals );
-        result.unit = Qgis::DistanceUnit::Centimeters;
+        result.unit = QgsUnitTypes::DistanceCentimeters;
       }
       else
       {
         result.value = qgsRound( distance, decimals );
-        result.unit = Qgis::DistanceUnit::Meters;
+        result.unit = QgsUnitTypes::DistanceMeters;
       }
       break;
 
-    case Qgis::DistanceUnit::Kilometers:
+    case DistanceKilometers:
       if ( keepBaseUnit || std::fabs( distance ) >= 1.0 )
       {
         result.value = qgsRound( distance, decimals );
-        result.unit = Qgis::DistanceUnit::Kilometers;
+        result.unit = QgsUnitTypes::DistanceKilometers;
       }
       else
       {
         result.value = qgsRound( distance * 1000, decimals );
-        result.unit = Qgis::DistanceUnit::Meters;
+        result.unit = QgsUnitTypes::DistanceMeters;
       }
       break;
 
-    case Qgis::DistanceUnit::Feet:
+    case DistanceFeet:
       if ( std::fabs( distance ) <= 5280.0 || keepBaseUnit )
       {
         result.value = qgsRound( distance, decimals );
-        result.unit = Qgis::DistanceUnit::Feet;
+        result.unit = QgsUnitTypes::DistanceFeet;
       }
       else
       {
         result.value = qgsRound( distance / 5280.0, decimals );
-        result.unit = Qgis::DistanceUnit::Miles;
+        result.unit = QgsUnitTypes::DistanceMiles;
       }
       break;
 
-    case Qgis::DistanceUnit::Yards:
+    case DistanceYards:
       if ( std::fabs( distance ) <= 1760.0 || keepBaseUnit )
       {
         result.value = qgsRound( distance, decimals );
-        result.unit = Qgis::DistanceUnit::Yards;
+        result.unit = QgsUnitTypes::DistanceYards;
       }
       else
       {
         result.value = qgsRound( distance / 1760.0, decimals );
-        result.unit = Qgis::DistanceUnit::Miles;
+        result.unit = QgsUnitTypes::DistanceMiles;
       }
       break;
 
-    case Qgis::DistanceUnit::Miles:
+    case DistanceMiles:
       if ( std::fabs( distance ) >= 1.0 || keepBaseUnit )
       {
         result.value = qgsRound( distance, decimals );
-        result.unit = Qgis::DistanceUnit::Miles;
+        result.unit = QgsUnitTypes::DistanceMiles;
       }
       else
       {
         result.value = qgsRound( distance * 5280.0, decimals );
-        result.unit = Qgis::DistanceUnit::Feet;
+        result.unit = QgsUnitTypes::DistanceFeet;
       }
       break;
 
-    case Qgis::DistanceUnit::NauticalMiles:
+    case DistanceNauticalMiles:
       result.value = qgsRound( distance, decimals );
-      result.unit = Qgis::DistanceUnit::NauticalMiles;
+      result.unit = QgsUnitTypes::DistanceNauticalMiles;
       break;
 
-    case Qgis::DistanceUnit::Degrees:
+    case DistanceDegrees:
       result.value = qgsRound( distance, decimals );
-      result.unit = Qgis::DistanceUnit::Degrees;
+      result.unit = QgsUnitTypes::DistanceDegrees;
       break;
 
-    case Qgis::DistanceUnit::Unknown:
+    case DistanceUnknownUnit:
       result.value = qgsRound( distance, decimals );
-      result.unit = Qgis::DistanceUnit::Unknown;
+      result.unit = QgsUnitTypes::DistanceUnknownUnit;
       break;
 
     default:
@@ -3159,214 +2691,203 @@ QgsUnitTypes::DistanceValue QgsUnitTypes::scaledDistance( double distance,  Qgis
       result.unit = unit;
       break;
   }
-  // NOLINTEND(bugprone-branch-clone)
 
   return result;
 }
 
-QgsUnitTypes::AreaValue QgsUnitTypes::scaledArea( double area, Qgis::AreaUnit unit, int decimals, bool keepBaseUnit )
+QgsUnitTypes::AreaValue QgsUnitTypes::scaledArea( double area, QgsUnitTypes::AreaUnit unit, int decimals, bool keepBaseUnit )
 {
-  QgsUnitTypes::AreaValue result;
+  AreaValue result;
   result.value = -1.0;
-  result.unit = Qgis::AreaUnit::Unknown;
+  result.unit = AreaUnknownUnit;
 
   // If we are not forced to keep the base units, switch to meter calculation
-  if ( unit == Qgis::AreaUnit::SquareMillimeters )
+  if ( unit == AreaSquareMillimeters )
   {
     if ( keepBaseUnit )
     {
       result.value = qgsRound( area, decimals );
-      result.unit = Qgis::AreaUnit::SquareMillimeters;
+      result.unit = QgsUnitTypes::AreaSquareMillimeters;
     }
     else
     {
       area /= 1000000.0;
-      unit = Qgis::AreaUnit::SquareMeters;
+      unit = QgsUnitTypes::AreaSquareMeters;
     }
   }
-  else if ( unit == Qgis::AreaUnit::SquareCentimeters )
+  else if ( unit == AreaSquareCentimeters )
   {
     if ( keepBaseUnit )
     {
       result.value = qgsRound( area, decimals );
-      result.unit = Qgis::AreaUnit::SquareCentimeters;
+      result.unit = QgsUnitTypes::AreaSquareCentimeters;
     }
     else
     {
       area /= 10000.0;
-      unit = Qgis::AreaUnit::SquareMeters;
+      unit = QgsUnitTypes::AreaSquareMeters;
     }
   }
 
-  // cloned branches are intentional here for improved readability
-  // NOLINTBEGIN(bugprone-branch-clone)
   switch ( unit )
   {
-    case Qgis::AreaUnit::SquareCentimeters:
+    case AreaSquareCentimeters:
       // handled in the if above
       break;
-    case Qgis::AreaUnit::SquareMillimeters:
+    case AreaSquareMillimeters:
       // handled in the if above
       break;
-    case Qgis::AreaUnit::SquareMeters:
+    case AreaSquareMeters:
     {
       if ( keepBaseUnit )
       {
         result.value = qgsRound( area, decimals );
-        result.unit = Qgis::AreaUnit::SquareMeters;
+        result.unit = QgsUnitTypes::AreaSquareMeters;
       }
-      else if ( std::fabs( area ) > QgsUnitTypes::fromUnitToUnitFactor( Qgis::AreaUnit::SquareKilometers, Qgis::AreaUnit::SquareMeters ) )
+      else if ( std::fabs( area ) > QgsUnitTypes::fromUnitToUnitFactor( QgsUnitTypes::AreaSquareKilometers, QgsUnitTypes::AreaSquareMeters ) )
       {
-        result.value = qgsRound( area * QgsUnitTypes::fromUnitToUnitFactor( Qgis::AreaUnit::SquareMeters, Qgis::AreaUnit::SquareKilometers ), decimals );
-        result.unit = Qgis::AreaUnit::SquareKilometers;
+        result.value = qgsRound( area * QgsUnitTypes::fromUnitToUnitFactor( QgsUnitTypes::AreaSquareMeters, QgsUnitTypes::AreaSquareKilometers ), decimals );
+        result.unit = QgsUnitTypes::AreaSquareKilometers;
       }
-      else if ( std::fabs( area ) > QgsUnitTypes::fromUnitToUnitFactor( Qgis::AreaUnit::Hectares, Qgis::AreaUnit::SquareMeters ) )
+      else if ( std::fabs( area ) > QgsUnitTypes::fromUnitToUnitFactor( QgsUnitTypes::AreaHectares, QgsUnitTypes::AreaSquareMeters ) )
       {
-        result.value = qgsRound( area * QgsUnitTypes::fromUnitToUnitFactor( Qgis::AreaUnit::SquareMeters, Qgis::AreaUnit::Hectares ), decimals );
-        result.unit = Qgis::AreaUnit::Hectares;
+        result.value = qgsRound( area * QgsUnitTypes::fromUnitToUnitFactor( QgsUnitTypes::AreaSquareMeters, QgsUnitTypes::AreaHectares ), decimals );
+        result.unit = QgsUnitTypes::AreaHectares;
       }
       else
       {
         result.value = qgsRound( area, decimals );
-        result.unit = Qgis::AreaUnit::SquareMeters;
+        result.unit = QgsUnitTypes::AreaSquareMeters;
       }
       break;
     }
 
-    case Qgis::AreaUnit::SquareKilometers:
+    case AreaSquareKilometers:
     {
       result.value = qgsRound( area, decimals );
-      result.unit = Qgis::AreaUnit::SquareKilometers;
+      result.unit = QgsUnitTypes::AreaSquareKilometers;
       break;
     }
 
-    case Qgis::AreaUnit::SquareInches:
-    {
-      result.value = qgsRound( area, decimals );
-      result.unit = Qgis::AreaUnit::SquareInches;
-      break;
-    }
-
-    case Qgis::AreaUnit::SquareFeet:
+    case AreaSquareFeet:
     {
       if ( keepBaseUnit )
       {
         result.value = qgsRound( area, decimals );
-        result.unit = Qgis::AreaUnit::SquareFeet;
+        result.unit = QgsUnitTypes::AreaSquareFeet;
       }
-      else if ( std::fabs( area ) > QgsUnitTypes::fromUnitToUnitFactor( Qgis::AreaUnit::SquareMiles, Qgis::AreaUnit::SquareFeet ) )
+      else if ( std::fabs( area ) > QgsUnitTypes::fromUnitToUnitFactor( QgsUnitTypes::AreaSquareMiles, QgsUnitTypes::AreaSquareFeet ) )
       {
-        result.value = qgsRound( area * QgsUnitTypes::fromUnitToUnitFactor( Qgis::AreaUnit::SquareFeet, Qgis::AreaUnit::SquareMiles ), decimals );
-        result.unit = Qgis::AreaUnit::SquareMiles;
+        result.value = qgsRound( area * QgsUnitTypes::fromUnitToUnitFactor( QgsUnitTypes::AreaSquareFeet, QgsUnitTypes::AreaSquareMiles ), decimals );
+        result.unit = QgsUnitTypes::AreaSquareMiles;
       }
       else
       {
         result.value = qgsRound( area, decimals );
-        result.unit = Qgis::AreaUnit::SquareFeet;
+        result.unit = QgsUnitTypes::AreaSquareFeet;
       }
       break;
     }
 
-    case Qgis::AreaUnit::SquareYards:
+    case AreaSquareYards:
     {
       if ( keepBaseUnit )
       {
         result.value = qgsRound( area, decimals );
-        result.unit = Qgis::AreaUnit::SquareYards;
+        result.unit = QgsUnitTypes::AreaSquareYards;
       }
-      else if ( std::fabs( area ) > QgsUnitTypes::fromUnitToUnitFactor( Qgis::AreaUnit::SquareMiles, Qgis::AreaUnit::SquareYards ) )
+      else if ( std::fabs( area ) > QgsUnitTypes::fromUnitToUnitFactor( QgsUnitTypes::AreaSquareMiles, QgsUnitTypes::AreaSquareYards ) )
       {
-        result.value = qgsRound( area * QgsUnitTypes::fromUnitToUnitFactor( Qgis::AreaUnit::SquareYards, Qgis::AreaUnit::SquareMiles ), decimals );
-        result.unit = Qgis::AreaUnit::SquareMiles;
+        result.value = qgsRound( area * QgsUnitTypes::fromUnitToUnitFactor( QgsUnitTypes::AreaSquareYards, QgsUnitTypes::AreaSquareMiles ), decimals );
+        result.unit = QgsUnitTypes::AreaSquareMiles;
       }
       else
       {
         result.value = qgsRound( area, decimals );
-        result.unit = Qgis::AreaUnit::SquareYards;
+        result.unit = QgsUnitTypes::AreaSquareYards;
       }
       break;
     }
 
-    case Qgis::AreaUnit::SquareMiles:
+    case AreaSquareMiles:
     {
       result.value = qgsRound( area, decimals );
-      result.unit = Qgis::AreaUnit::SquareMiles;
+      result.unit = QgsUnitTypes::AreaSquareMiles;
       break;
     }
 
-    case Qgis::AreaUnit::Hectares:
+    case AreaHectares:
     {
       if ( keepBaseUnit )
       {
         result.value = qgsRound( area, decimals );
-        result.unit = Qgis::AreaUnit::Hectares;
+        result.unit = QgsUnitTypes::AreaHectares;
       }
-      else if ( std::fabs( area ) > QgsUnitTypes::fromUnitToUnitFactor( Qgis::AreaUnit::SquareKilometers, Qgis::AreaUnit::Hectares ) )
+      else if ( std::fabs( area ) > QgsUnitTypes::fromUnitToUnitFactor( QgsUnitTypes::AreaSquareKilometers, QgsUnitTypes::AreaHectares ) )
       {
-        result.value = qgsRound( area * QgsUnitTypes::fromUnitToUnitFactor( Qgis::AreaUnit::Hectares, Qgis::AreaUnit::SquareKilometers ), decimals );
-        result.unit = Qgis::AreaUnit::SquareKilometers;
+        result.value = qgsRound( area * QgsUnitTypes::fromUnitToUnitFactor( QgsUnitTypes::AreaHectares, QgsUnitTypes::AreaSquareKilometers ), decimals );
+        result.unit = QgsUnitTypes::AreaSquareKilometers;
       }
       else
       {
         result.value = qgsRound( area, decimals );
-        result.unit = Qgis::AreaUnit::Hectares;
+        result.unit = QgsUnitTypes::AreaHectares;
       }
       break;
     }
 
-    case Qgis::AreaUnit::Acres:
+    case AreaAcres:
     {
       if ( keepBaseUnit )
       {
         result.value = qgsRound( area, decimals );
-        result.unit = Qgis::AreaUnit::Acres;
+        result.unit = QgsUnitTypes::AreaAcres;
       }
-      else if ( std::fabs( area ) > QgsUnitTypes::fromUnitToUnitFactor( Qgis::AreaUnit::SquareMiles, Qgis::AreaUnit::Acres ) )
+      else if ( std::fabs( area ) > QgsUnitTypes::fromUnitToUnitFactor( QgsUnitTypes::AreaSquareMiles, QgsUnitTypes::AreaAcres ) )
       {
-        result.value = qgsRound( area * QgsUnitTypes::fromUnitToUnitFactor( Qgis::AreaUnit::Acres, Qgis::AreaUnit::SquareMiles ), decimals );
-        result.unit = Qgis::AreaUnit::SquareMiles;
+        result.value = qgsRound( area * QgsUnitTypes::fromUnitToUnitFactor( QgsUnitTypes::AreaAcres, QgsUnitTypes::AreaSquareMiles ), decimals );
+        result.unit = QgsUnitTypes::AreaSquareMiles;
       }
       else
       {
         result.value = qgsRound( area, decimals );
-        result.unit = Qgis::AreaUnit::Acres;
+        result.unit = QgsUnitTypes::AreaAcres;
       }
       break;
     }
 
-    case Qgis::AreaUnit::SquareNauticalMiles:
+    case AreaSquareNauticalMiles:
     {
       result.value = qgsRound( area, decimals );
-      result.unit = Qgis::AreaUnit::SquareNauticalMiles;
+      result.unit = QgsUnitTypes::AreaSquareNauticalMiles;
       break;
     }
 
-    case Qgis::AreaUnit::SquareDegrees:
+    case AreaSquareDegrees:
     {
       result.value = qgsRound( area, decimals );
-      result.unit = Qgis::AreaUnit::SquareDegrees;
+      result.unit = QgsUnitTypes::AreaSquareDegrees;
       break;
     }
 
-    case Qgis::AreaUnit::Unknown:
+    case AreaUnknownUnit:
     {
       result.value = qgsRound( area, decimals );
-      result.unit = Qgis::AreaUnit::Unknown;
+      result.unit = QgsUnitTypes::AreaUnknownUnit;
       break;
     }
   }
-  // NOLINTEND(bugprone-branch-clone)
   return result;
 }
 
 
-QString QgsUnitTypes::formatDistance( double distance, int decimals,  Qgis::DistanceUnit unit, bool keepBaseUnit )
+QString QgsUnitTypes::formatDistance( double distance, int decimals, QgsUnitTypes::DistanceUnit unit, bool keepBaseUnit )
 {
   const DistanceValue dist = scaledDistance( distance, unit, decimals, keepBaseUnit );
 
   QString unitText;
 
-  if ( dist.unit != Qgis::DistanceUnit::Unknown )
+  if ( dist.unit != DistanceUnknownUnit )
     unitText = QChar( ' ' ) + QgsUnitTypes::toAbbreviatedString( dist.unit );
 
   if ( qgsDoubleNear( dist.value, 0 ) )
@@ -3380,13 +2901,13 @@ QString QgsUnitTypes::formatDistance( double distance, int decimals,  Qgis::Dist
   }
 }
 
-QString QgsUnitTypes::formatArea( double area, int decimals, Qgis::AreaUnit unit, bool keepBaseUnit )
+QString QgsUnitTypes::formatArea( double area, int decimals, QgsUnitTypes::AreaUnit unit, bool keepBaseUnit )
 {
-  const QgsUnitTypes::AreaValue areaValue = scaledArea( area, unit, decimals, keepBaseUnit );
+  const AreaValue areaValue = scaledArea( area, unit, decimals, keepBaseUnit );
 
   QString unitText;
 
-  if ( areaValue.unit != Qgis::AreaUnit::Unknown )
+  if ( areaValue.unit != AreaUnknownUnit )
     unitText = QChar( ' ' ) + QgsUnitTypes::toAbbreviatedString( areaValue.unit );
 
   if ( qgsDoubleNear( areaValue.value, 0 ) )
@@ -3400,93 +2921,93 @@ QString QgsUnitTypes::formatArea( double area, int decimals, Qgis::AreaUnit unit
   }
 }
 
-QString QgsUnitTypes::encodeUnit( Qgis::RenderUnit unit )
+QString QgsUnitTypes::encodeUnit( RenderUnit unit )
 {
   switch ( unit )
   {
-    case Qgis::RenderUnit::Millimeters:
+    case RenderMillimeters:
       return QStringLiteral( "MM" );
-    case Qgis::RenderUnit::MetersInMapUnits:
+    case RenderMetersInMapUnits:
       return QStringLiteral( "RenderMetersInMapUnits" );
-    case Qgis::RenderUnit::MapUnits:
+    case RenderMapUnits:
       return QStringLiteral( "MapUnit" );
-    case Qgis::RenderUnit::Pixels:
+    case RenderPixels:
       return QStringLiteral( "Pixel" );
-    case Qgis::RenderUnit::Percentage:
+    case RenderPercentage:
       return QStringLiteral( "Percentage" );
-    case Qgis::RenderUnit::Points:
+    case RenderPoints:
       return QStringLiteral( "Point" );
-    case Qgis::RenderUnit::Inches:
+    case RenderInches:
       return QStringLiteral( "Inch" );
-    case Qgis::RenderUnit::Unknown:
+    case RenderUnknownUnit:
       return QString();
   }
   return QString();
 }
 
-Qgis::RenderUnit QgsUnitTypes::decodeRenderUnit( const QString &string, bool *ok )
+QgsUnitTypes::RenderUnit QgsUnitTypes::decodeRenderUnit( const QString &string, bool *ok )
 {
   const QString normalized = string.trimmed().toLower();
 
   if ( ok )
     *ok = true;
 
-  if ( normalized == encodeUnit( Qgis::RenderUnit::Millimeters ).toLower() )
-    return Qgis::RenderUnit::Millimeters;
-  if ( normalized == encodeUnit( Qgis::RenderUnit::MetersInMapUnits ).toLower() )
-    return Qgis::RenderUnit::MetersInMapUnits;
+  if ( normalized == encodeUnit( RenderMillimeters ).toLower() )
+    return RenderMillimeters;
+  if ( normalized == encodeUnit( RenderMetersInMapUnits ).toLower() )
+    return RenderMetersInMapUnits;
   if ( normalized == QLatin1String( "meters" ) )
-    return Qgis::RenderUnit::MetersInMapUnits;
-  if ( normalized == encodeUnit( Qgis::RenderUnit::MapUnits ).toLower() )
-    return Qgis::RenderUnit::MapUnits;
+    return RenderMetersInMapUnits;
+  if ( normalized == encodeUnit( RenderMapUnits ).toLower() )
+    return RenderMapUnits;
   if ( normalized == QLatin1String( "mapunits" ) )
-    return Qgis::RenderUnit::MapUnits;
-  if ( normalized == encodeUnit( Qgis::RenderUnit::Pixels ).toLower() )
-    return Qgis::RenderUnit::Pixels;
-  if ( normalized == encodeUnit( Qgis::RenderUnit::Percentage ).toLower() )
-    return Qgis::RenderUnit::Percentage;
+    return RenderMapUnits;
+  if ( normalized == encodeUnit( RenderPixels ).toLower() )
+    return RenderPixels;
+  if ( normalized == encodeUnit( RenderPercentage ).toLower() )
+    return RenderPercentage;
   if ( normalized == QLatin1String( "percent" ) )
-    return Qgis::RenderUnit::Percentage;
-  if ( normalized == encodeUnit( Qgis::RenderUnit::Points ).toLower() )
-    return Qgis::RenderUnit::Points;
+    return RenderPercentage;
+  if ( normalized == encodeUnit( RenderPoints ).toLower() )
+    return RenderPoints;
   if ( normalized == QLatin1String( "points" ) )
-    return Qgis::RenderUnit::Points;
-  if ( normalized == encodeUnit( Qgis::RenderUnit::Inches ).toLower() )
-    return Qgis::RenderUnit::Inches;
+    return RenderPoints;
+  if ( normalized == encodeUnit( RenderInches ).toLower() )
+    return RenderInches;
 
   if ( ok )
     *ok = false;
 
   // millimeters are default
-  return Qgis::RenderUnit::Millimeters;
+  return RenderMillimeters;
 }
 
-QString QgsUnitTypes::toString( Qgis::RenderUnit unit )
+QString QgsUnitTypes::toString( QgsUnitTypes::RenderUnit unit )
 {
   switch ( unit )
   {
-    case Qgis::RenderUnit::Millimeters:
+    case RenderMillimeters:
       return QObject::tr( "millimeters", "render" );
 
-    case Qgis::RenderUnit::MetersInMapUnits:
+    case RenderMetersInMapUnits:
       return QObject::tr( "meters at scale", "render" );
 
-    case Qgis::RenderUnit::MapUnits:
+    case RenderMapUnits:
       return QObject::tr( "map units", "render" );
 
-    case Qgis::RenderUnit::Pixels:
+    case RenderPixels:
       return QObject::tr( "pixels", "render" );
 
-    case Qgis::RenderUnit::Percentage:
+    case RenderPercentage:
       return QObject::tr( "percent", "render" );
 
-    case Qgis::RenderUnit::Points:
+    case RenderPoints:
       return QObject::tr( "points", "render" );
 
-    case Qgis::RenderUnit::Inches:
+    case RenderInches:
       return QObject::tr( "inches", "render" );
 
-    case Qgis::RenderUnit::Unknown:
+    case RenderUnknownUnit:
       return QObject::tr( "<unknown>", "render" );
 
   }
@@ -3495,124 +3016,124 @@ QString QgsUnitTypes::toString( Qgis::RenderUnit unit )
 
 
 
-QString QgsUnitTypes::encodeUnit( Qgis::LayoutUnit unit )
+QString QgsUnitTypes::encodeUnit( QgsUnitTypes::LayoutUnit unit )
 {
   switch ( unit )
   {
-    case Qgis::LayoutUnit::Centimeters:
+    case LayoutCentimeters:
       return QStringLiteral( "cm" );
-    case Qgis::LayoutUnit::Meters:
+    case LayoutMeters:
       return QStringLiteral( "m" );
-    case Qgis::LayoutUnit::Inches:
+    case LayoutInches:
       return QStringLiteral( "in" );
-    case Qgis::LayoutUnit::Feet:
+    case LayoutFeet:
       return QStringLiteral( "ft" );
-    case Qgis::LayoutUnit::Points:
+    case LayoutPoints:
       return QStringLiteral( "pt" );
-    case Qgis::LayoutUnit::Picas:
+    case LayoutPicas:
       return QStringLiteral( "pi" );
-    case Qgis::LayoutUnit::Pixels:
+    case LayoutPixels:
       return QStringLiteral( "px" );
-    case  Qgis::LayoutUnit::Millimeters:
+    case  LayoutMillimeters:
       return QStringLiteral( "mm" );
   }
   return QString();
 }
 
-Qgis::LayoutUnit QgsUnitTypes::decodeLayoutUnit( const QString &string, bool *ok )
+QgsUnitTypes::LayoutUnit QgsUnitTypes::decodeLayoutUnit( const QString &string, bool *ok )
 {
   const QString normalized = string.trimmed().toLower();
 
   if ( ok )
     *ok = true;
 
-  if ( normalized == encodeUnit( Qgis::LayoutUnit::Millimeters ).toLower() )
-    return Qgis::LayoutUnit::Millimeters;
-  if ( normalized == encodeUnit( Qgis::LayoutUnit::Centimeters ).toLower() )
-    return Qgis::LayoutUnit::Centimeters;
-  if ( normalized == encodeUnit( Qgis::LayoutUnit::Meters ).toLower() )
-    return Qgis::LayoutUnit::Meters;
-  if ( normalized == encodeUnit( Qgis::LayoutUnit::Inches ).toLower() )
-    return Qgis::LayoutUnit::Inches;
-  if ( normalized == encodeUnit( Qgis::LayoutUnit::Feet ).toLower() )
-    return Qgis::LayoutUnit::Feet;
-  if ( normalized == encodeUnit( Qgis::LayoutUnit::Points ).toLower() )
-    return Qgis::LayoutUnit::Points;
-  if ( normalized == encodeUnit( Qgis::LayoutUnit::Picas ).toLower() )
-    return Qgis::LayoutUnit::Picas;
-  if ( normalized == encodeUnit( Qgis::LayoutUnit::Pixels ).toLower() )
-    return Qgis::LayoutUnit::Pixels;
+  if ( normalized == encodeUnit( LayoutMillimeters ).toLower() )
+    return LayoutMillimeters;
+  if ( normalized == encodeUnit( LayoutCentimeters ).toLower() )
+    return LayoutCentimeters;
+  if ( normalized == encodeUnit( LayoutMeters ).toLower() )
+    return LayoutMeters;
+  if ( normalized == encodeUnit( LayoutInches ).toLower() )
+    return LayoutInches;
+  if ( normalized == encodeUnit( LayoutFeet ).toLower() )
+    return LayoutFeet;
+  if ( normalized == encodeUnit( LayoutPoints ).toLower() )
+    return LayoutPoints;
+  if ( normalized == encodeUnit( LayoutPicas ).toLower() )
+    return LayoutPicas;
+  if ( normalized == encodeUnit( LayoutPixels ).toLower() )
+    return LayoutPixels;
 
   if ( ok )
     *ok = false;
 
   // millimeters are default
-  return Qgis::LayoutUnit::Millimeters;
+  return LayoutMillimeters;
 }
 
-Qgis::LayoutUnitType QgsUnitTypes::unitType( const Qgis::LayoutUnit units )
+QgsUnitTypes::LayoutUnitType QgsUnitTypes::unitType( const QgsUnitTypes::LayoutUnit units )
 {
   switch ( units )
   {
-    case Qgis::LayoutUnit::Pixels:
-      return Qgis::LayoutUnitType::ScreenUnits;
-    case  Qgis::LayoutUnit::Millimeters:
-    case Qgis::LayoutUnit::Centimeters:
-    case Qgis::LayoutUnit::Meters:
-    case Qgis::LayoutUnit::Inches:
-    case Qgis::LayoutUnit::Feet:
-    case Qgis::LayoutUnit::Points:
-    case Qgis::LayoutUnit::Picas:
-      return Qgis::LayoutUnitType::PaperUnits;
+    case LayoutPixels:
+      return LayoutScreenUnits;
+    case  LayoutMillimeters:
+    case LayoutCentimeters:
+    case LayoutMeters:
+    case LayoutInches:
+    case LayoutFeet:
+    case LayoutPoints:
+    case LayoutPicas:
+      return LayoutPaperUnits;
   }
 
   // avoid warnings
-  return Qgis::LayoutUnitType::PaperUnits;
+  return LayoutPaperUnits;
 }
 
-QString QgsUnitTypes::toAbbreviatedString( Qgis::LayoutUnit unit )
+QString QgsUnitTypes::toAbbreviatedString( QgsUnitTypes::LayoutUnit unit )
 {
   switch ( unit )
   {
-    case Qgis::LayoutUnit::Pixels:
+    case LayoutPixels:
       return QObject::tr( "px" );
-    case  Qgis::LayoutUnit::Millimeters:
+    case  LayoutMillimeters:
       return QObject::tr( "mm" );
-    case Qgis::LayoutUnit::Centimeters:
+    case LayoutCentimeters:
       return QObject::tr( "cm" );
-    case Qgis::LayoutUnit::Meters:
+    case LayoutMeters:
       return QObject::tr( "m" );
-    case Qgis::LayoutUnit::Inches:
+    case LayoutInches:
       return QObject::tr( "in", "unit inch" );
-    case Qgis::LayoutUnit::Feet:
+    case LayoutFeet:
       return QObject::tr( "ft" );
-    case Qgis::LayoutUnit::Points:
+    case LayoutPoints:
       return QObject::tr( "pt" );
-    case Qgis::LayoutUnit::Picas:
+    case LayoutPicas:
       return QObject::tr( "pica" );
   }
   return QString(); // no warnings
 }
 
-QString QgsUnitTypes::toString( Qgis::LayoutUnit unit )
+QString QgsUnitTypes::toString( QgsUnitTypes::LayoutUnit unit )
 {
   switch ( unit )
   {
-    case Qgis::LayoutUnit::Pixels:
+    case LayoutPixels:
       return QObject::tr( "pixels" );
-    case  Qgis::LayoutUnit::Millimeters:
+    case  LayoutMillimeters:
       return QObject::tr( "millimeters" );
-    case Qgis::LayoutUnit::Centimeters:
+    case LayoutCentimeters:
       return QObject::tr( "centimeters" );
-    case Qgis::LayoutUnit::Meters:
+    case LayoutMeters:
       return QObject::tr( "meters" );
-    case Qgis::LayoutUnit::Inches:
+    case LayoutInches:
       return QObject::tr( "inches" );
-    case Qgis::LayoutUnit::Feet:
+    case LayoutFeet:
       return QObject::tr( "feet" );
-    case Qgis::LayoutUnit::Points:
+    case LayoutPoints:
       return QObject::tr( "points" );
-    case Qgis::LayoutUnit::Picas:
+    case LayoutPicas:
       return QObject::tr( "picas" );
   }
   return QString(); // no warnings

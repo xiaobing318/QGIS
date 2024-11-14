@@ -74,17 +74,6 @@ bool QgsProjectVersion::operator>( const QgsProjectVersion &other ) const
            ( ( mMajor == other.mMajor ) && ( mMinor == other.mMinor ) && ( mSub > other.mSub ) ) );
 }
 
-bool QgsProjectVersion::operator<( const QgsProjectVersion &other ) const
-{
-  return other > *this;
-}
-
-bool QgsProjectVersion::operator<=( const QgsProjectVersion &other ) const
-{
-  return other >= *this;
-}
-
-
 QString QgsProjectVersion::text() const
 {
   if ( mName.isEmpty() )

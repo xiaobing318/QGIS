@@ -80,6 +80,11 @@ class GUI_EXPORT QgsTemporalControllerWidget : public QgsPanelWidget, private Ui
 
     bool mHasTemporalLayersLoaded = false;
 
+    void togglePlayForward();
+    void togglePlayBackward();
+    void togglePause();
+    bool mPlayingForward = true;
+
     std::unique_ptr< QMenu > mRangeMenu;
     QAction *mRangeSetToProjectAction = nullptr;
     QAction *mRangeSetToAllLayersAction = nullptr;
@@ -103,7 +108,7 @@ class GUI_EXPORT QgsTemporalControllerWidget : public QgsPanelWidget, private Ui
      *
      * \note Updates will only be made if the \a timeStep is valid.
      *
-     * \since QGIS 3.18
+     * \since 3.18
      */
     void updateTimeStepInputs( const QgsInterval &timeStep );
 
@@ -135,14 +140,12 @@ class GUI_EXPORT QgsTemporalControllerWidget : public QgsPanelWidget, private Ui
      * that isn't defined, the range will fallback to the full range of all
      * layers.
      */
-    void setDatesToProjectTime( bool tryLastStoredRange );
+    void setDatesToProjectTime();
 
     /**
      * Updates the value of the slider
      */
     void updateSlider( const QgsDateTimeRange &range );
-
-    void totalMovieFramesChanged( long long frames );
 
     /**
      * Updates the current range label
@@ -164,8 +167,7 @@ class GUI_EXPORT QgsTemporalControllerWidget : public QgsPanelWidget, private Ui
     void mNavigationOff_clicked();
     void mNavigationFixedRange_clicked();
     void mNavigationAnimated_clicked();
-    void mNavigationMovie_clicked();
-    void setWidgetStateFromNavigationMode( Qgis::TemporalNavigationMode mode );
+    void setWidgetStateFromNavigationMode( const QgsTemporalNavigationObject::NavigationMode mode );
 
     void onLayersAdded( const QList<QgsMapLayer *> &layers );
     void onProjectCleared();

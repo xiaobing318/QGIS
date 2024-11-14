@@ -69,17 +69,6 @@ class CORE_EXPORT QgsProfilePlotRenderer : public QObject
     QgsProfilePlotRenderer( const QList< QgsAbstractProfileSource * > &sources,
                             const QgsProfileRequest &request );
 
-    /**
-     * Constructor for QgsProfilePlotRenderer, using the provided list of profile \a generators to generate the
-     * results.
-     *
-     * \note Not available in Python bindings
-     *
-     * \since QGIS 3.32
-     */
-    QgsProfilePlotRenderer( std::vector<std::unique_ptr<QgsAbstractProfileGenerator> > generators,
-                            const QgsProfileRequest &request ) SIP_SKIP;
-
     ~QgsProfilePlotRenderer() override;
 
     /**
@@ -92,19 +81,6 @@ class CORE_EXPORT QgsProfilePlotRenderer : public QObject
      * Does nothing if the generation is already in progress.
      */
     void startGeneration();
-
-    /**
-     * Generate the profile results synchronously in this thread. The function does not return until the generation
-     * is complete.
-     *
-     * This is an alternative to ordinary API (using startGeneration() + waiting for generationFinished() signal).
-     * Users are discouraged to use this method unless they have a strong reason for doing it.
-     * The synchronous generation blocks the main thread, making the application unresponsive.
-     * Also, it is not possible to cancel generation while it is in progress.
-     *
-     * \since QGIS 3.30
-     */
-    void generateSynchronously();
 
     /**
      * Stop the generation job - does not return until the job has terminated.
@@ -174,7 +150,7 @@ class CORE_EXPORT QgsProfilePlotRenderer : public QObject
      *
      * If \a sourceId is empty then all sources will be rendered, otherwise only the matching source will be rendered.
      */
-    QImage renderToImage( int width, int height, double distanceMin, double distanceMax, double zMin, double zMax, const QString &sourceId = QString(), double devicePixelRatio = 1.0 );
+    QImage renderToImage( int width, int height, double distanceMin, double distanceMax, double zMin, double zMax, const QString &sourceId = QString() );
 
     /**
      * Renders a portion of the profile using the specified render \a context.
@@ -197,13 +173,6 @@ class CORE_EXPORT QgsProfilePlotRenderer : public QObject
      * Identify results visible within the specified ranges.
      */
     QVector<QgsProfileIdentifyResults> identify( const QgsDoubleRange &distanceRange, const QgsDoubleRange &elevationRange, const QgsProfileIdentifyContext &context );
-
-    /**
-     * Exports the profile results as a set of features.
-     *
-     * \since QGIS 3.32
-     */
-    QVector< QgsAbstractProfileResults::Feature > asFeatures( Qgis::ProfileExportType type, QgsFeedback *feedback = nullptr );
 
   signals:
 

@@ -14,7 +14,6 @@
 ***************************************************************************/
 
 #include "qgsscalerangewidget.h"
-#include "moc_qgsscalerangewidget.cpp"
 #include "qgsapplication.h"
 #include "qgsproject.h"
 #include "qgsscalewidget.h"
@@ -73,11 +72,16 @@ QgsScaleRangeWidget::QgsScaleRangeWidget( QWidget *parent )
 
 void QgsScaleRangeWidget::reloadProjectScales()
 {
-  if ( QgsProject::instance()->viewSettings()->useProjectScales() )
+  const bool projectScales = QgsProject::instance()->viewSettings()->useProjectScales();
+  if ( projectScales )
   {
-    const QVector< double > projectScales = QgsProject::instance()->viewSettings()->mapScales();
-    mMinimumScaleWidget->setPredefinedScales( projectScales );
-    mMaximumScaleWidget->setPredefinedScales( projectScales );
+    QStringList scalesList;
+    const QVector< double >projectScales = QgsProject::instance()->viewSettings()->mapScales();
+    scalesList.reserve( projectScales.size() );
+    for ( const double scale : projectScales )
+      scalesList << QStringLiteral( "1:%1" ).arg( scale );
+    mMinimumScaleWidget->updateScales( scalesList );
+    mMaximumScaleWidget->updateScales( scalesList );
   }
 }
 

@@ -9,7 +9,7 @@ From build dir, run: ctest -R PyQgsAuthManagerPKIPostgresTest -V
 
 It uses a docker container as postgres/postgis server with certificates from tests/testdata/auth_system/certs_keys_2048
 
-Use docker compose -f .docker/docker-compose-testing-postgres.yml up postgres to start the server.
+Use docker-compose -f .docker/docker-compose-testing-postgres.yml up postgres to start the server.
 
 TODO:
     - Document how to restore the server data
@@ -30,12 +30,14 @@ from qgis.PyQt.QtNetwork import QSslCertificate
 from qgis.core import (
     QgsApplication,
     QgsAuthMethodConfig,
-    QgsDataSourceUri,
     QgsVectorLayer,
+    QgsDataSourceUri,
     QgsWkbTypes,
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import (
+    start_app,
+    unittest,
+)
 
 from utilities import unitTestDataPath
 
@@ -46,7 +48,7 @@ __copyright__ = 'Copyright 2016, The QGIS Project'
 qgis_app = start_app()
 
 
-class TestAuthManager(QgisTestCase):
+class TestAuthManager(unittest.TestCase):
 
     @classmethod
     def setUpAuth(cls):
@@ -85,10 +87,14 @@ class TestAuthManager(QgisTestCase):
     def setUpClass(cls):
         """Run before all tests:
         Creates an auth configuration"""
-        super().setUpClass()
 
         cls.certsdata_path = os.path.join(unitTestDataPath('auth_system'), 'certs_keys_2048')
         cls.setUpAuth()
+
+    @classmethod
+    def tearDownClass(cls):
+        """Run after all tests"""
+        super().tearDownClass()
 
     def setUp(self):
         """Run before each test."""
@@ -106,8 +112,8 @@ class TestAuthManager(QgisTestCase):
         if layer_name is None:
             layer_name = 'pg_' + type_name
         uri = QgsDataSourceUri()
-        uri.setWkbType(QgsWkbTypes.Type.Point)
-        uri.setConnection(cls.pg_host, cls.pg_port, cls.pg_dbname, cls.pg_user, cls.pg_pass, QgsDataSourceUri.SslMode.SslVerifyFull, authcfg)
+        uri.setWkbType(QgsWkbTypes.Point)
+        uri.setConnection(cls.pg_host, cls.pg_port, cls.pg_dbname, cls.pg_user, cls.pg_pass, QgsDataSourceUri.SslVerifyFull, authcfg)
         uri.setKeyColumn('pk')
         uri.setSrid('EPSG:4326')
         uri.setDataSource('qgis_test', 'someData', "geom", "", "pk")
@@ -139,7 +145,7 @@ class TestAuthManager(QgisTestCase):
             pkies = glob.glob(os.path.join(tempfile.gettempdir(), 'tmp*_{*}.pem'))
             for fn in pkies:
                 f = QFile(fn)
-                f.setPermissions(QFile.Permission.WriteOwner)
+                f.setPermissions(QFile.WriteOwner)
                 f.remove()
 
         # remove any temppki in temporary path to check that no

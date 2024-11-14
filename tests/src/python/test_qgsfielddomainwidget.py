@@ -10,21 +10,18 @@ __date__ = '2022-01-25'
 __copyright__ = 'Copyright 2022, The QGIS Project'
 
 from qgis.PyQt.QtCore import QVariant
-from qgis.core import (
-    Qgis,
-    QgsCodedFieldDomain,
-    QgsCodedValue,
-    QgsGlobFieldDomain,
-    QgsRangeFieldDomain,
-)
+from qgis.core import (Qgis,
+                       QgsCodedValue,
+                       QgsCodedFieldDomain,
+                       QgsRangeFieldDomain,
+                       QgsGlobFieldDomain)
 from qgis.gui import QgsFieldDomainWidget
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestPyQgsFieldDomainWidget(QgisTestCase):
+class TestPyQgsFieldDomainWidget(unittest.TestCase):
 
     def testRangeDomainWidget(self):
         w = QgsFieldDomainWidget(Qgis.FieldDomainType.Range)

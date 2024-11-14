@@ -11,26 +11,19 @@ __copyright__ = 'Copyright 2013, The QGIS Project'
 
 import os
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import QVariant
-from qgis.core import (
-    NULL,
-    QgsAuxiliaryStorage,
-    QgsFeature,
-    QgsFeatureRequest,
-    QgsField,
-    QgsGeometry,
-    QgsProject,
-    QgsPropertyDefinition,
-    QgsVectorLayer,
-    QgsVectorLayerJoinInfo,
-    QgsPoint,
-    QgsCoordinateReferenceSystem,
-    QgsCoordinateTransform,
-    QgsCoordinateTransformContext,
-    QgsDatumTransform,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsAuxiliaryStorage,
+                       QgsVectorLayer,
+                       QgsFeatureRequest,
+                       QgsFeature,
+                       QgsField,
+                       NULL,
+                       QgsProject,
+                       QgsPropertyDefinition,
+                       QgsVectorLayerJoinInfo,
+                       QgsGeometry)
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -38,11 +31,11 @@ start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestQgsFeatureIterator(QgisTestCase):
+class TestQgsFeatureIterator(unittest.TestCase):
 
     def __init__(self, methodName):
         """Run once on class initialization."""
-        QgisTestCase.__init__(self, methodName)
+        unittest.TestCase.__init__(self, methodName)
 
     def test_FilterExpression(self):
         # create point layer
@@ -120,29 +113,6 @@ class TestQgsFeatureIterator(QgisTestCase):
         feat['Staff'] = 2
         vl.addFeature(feat)
 
-    def test_VectorLayerEditing(self):
-        ogr_layer = QgsVectorLayer(os.path.join(TEST_DATA_DIR, 'points.shp'), 'Points', 'ogr')
-        self.assertTrue(ogr_layer.isValid())
-
-        request = QgsFeatureRequest()
-        iterator = ogr_layer.getFeatures(request)
-        self.assertTrue(iterator.isValid())
-
-        self.assertTrue(ogr_layer.startEditing())
-        iterator = ogr_layer.getFeatures(request)
-        self.assertTrue(iterator.isValid())
-
-        memory_layer = QgsVectorLayer("Point?field=x:string&field=y:integer&field=z:integer", "layer", "memory")
-        self.assertTrue(memory_layer.isValid())
-
-        request = QgsFeatureRequest()
-        iterator = memory_layer.getFeatures(request)
-        self.assertTrue(iterator.isValid())
-
-        self.assertTrue(memory_layer.startEditing())
-        iterator = memory_layer.getFeatures(request)
-        self.assertTrue(iterator.isValid())
-
     def test_ExpressionFieldNested(self):
         myShpFile = os.path.join(TEST_DATA_DIR, 'points.shp')
         layer = QgsVectorLayer(myShpFile, 'Points', 'ogr')
@@ -167,7 +137,7 @@ class TestQgsFeatureIterator(QgisTestCase):
         idx = layer.addExpressionField('"exp1"/1.5', QgsField('exp2', QVariant.LongLong))  # NOQA
 
         fet = next(layer.getFeatures(
-            QgsFeatureRequest().setFlags(QgsFeatureRequest.Flag.NoGeometry).setSubsetOfAttributes(['exp2'], layer.fields())))
+            QgsFeatureRequest().setFlags(QgsFeatureRequest.NoGeometry).setSubsetOfAttributes(['exp2'], layer.fields())))
         # nested virtual fields should have made geometry be fetched
         self.assertEqual(fet['exp2'], -156)
         self.assertEqual(fet['exp1'], -234)
@@ -180,7 +150,7 @@ class TestQgsFeatureIterator(QgisTestCase):
         idx = layer.addExpressionField("eval('Class')", QgsField('exp1', QVariant.String))  # NOQA
 
         fet = next(layer.getFeatures(
-            QgsFeatureRequest().setFlags(QgsFeatureRequest.Flag.NoGeometry).setSubsetOfAttributes(['exp1'], layer.fields())))
+            QgsFeatureRequest().setFlags(QgsFeatureRequest.NoGeometry).setSubsetOfAttributes(['exp1'], layer.fields())))
 
         self.assertEqual(fet['exp1'], 'Jet')
 
@@ -316,7 +286,7 @@ class TestQgsFeatureIterator(QgisTestCase):
 
         f = QgsFeature()
         fi = layer.getFeatures(
-            QgsFeatureRequest().setFlags(QgsFeatureRequest.Flag.SubsetOfAttributes).setFilterExpression('joinlayer_z=654'))
+            QgsFeatureRequest().setFlags(QgsFeatureRequest.SubsetOfAttributes).setFilterExpression('joinlayer_z=654'))
         self.assertTrue(fi.nextFeature(f))
         self.assertEqual(f['fldint'], 124)
         self.assertEqual(f['joinlayer_z'], 654)
@@ -418,7 +388,7 @@ class TestQgsFeatureIterator(QgisTestCase):
 
         prop = QgsPropertyDefinition()
         prop.setComment('test_field')
-        prop.setDataType(QgsPropertyDefinition.DataType.DataTypeNumeric)
+        prop.setDataType(QgsPropertyDefinition.DataTypeNumeric)
         prop.setOrigin('user')
         prop.setName('custom')
         self.assertTrue(al.addAuxiliaryField(prop))
@@ -465,13 +435,13 @@ class TestQgsFeatureIterator(QgisTestCase):
         self.assertTrue(pr.addFeatures([f1, f2, f3]))
 
         res = [f['x'] for f in
-               layer.getFeatures(QgsFeatureRequest().setInvalidGeometryCheck(QgsFeatureRequest.InvalidGeometryCheck.GeometryNoCheck))]
+               layer.getFeatures(QgsFeatureRequest().setInvalidGeometryCheck(QgsFeatureRequest.GeometryNoCheck))]
         self.assertEqual(res, ['a', 'b', 'c'])
         res = [f['x'] for f in
-               layer.getFeatures(QgsFeatureRequest().setInvalidGeometryCheck(QgsFeatureRequest.InvalidGeometryCheck.GeometrySkipInvalid))]
+               layer.getFeatures(QgsFeatureRequest().setInvalidGeometryCheck(QgsFeatureRequest.GeometrySkipInvalid))]
         self.assertEqual(res, ['a', 'c'])
         res = [f['x'] for f in
-               layer.getFeatures(QgsFeatureRequest().setInvalidGeometryCheck(QgsFeatureRequest.InvalidGeometryCheck.GeometryAbortOnInvalid))]
+               layer.getFeatures(QgsFeatureRequest().setInvalidGeometryCheck(QgsFeatureRequest.GeometryAbortOnInvalid))]
         self.assertEqual(res, ['a'])
 
         # with callback
@@ -482,27 +452,27 @@ class TestQgsFeatureIterator(QgisTestCase):
 
         res = [f['x'] for f in
                layer.getFeatures(QgsFeatureRequest().setInvalidGeometryCheck(
-                   QgsFeatureRequest.InvalidGeometryCheck.GeometryAbortOnInvalid).setInvalidGeometryCallback(callback))]
+                   QgsFeatureRequest.GeometryAbortOnInvalid).setInvalidGeometryCallback(callback))]
         self.assertEqual(res, ['a'])
         self.assertEqual(self.callback_feature_val, 'b')
         # clear callback
         res = [f['x'] for f in
                layer.getFeatures(QgsFeatureRequest().setInvalidGeometryCheck(
-                   QgsFeatureRequest.InvalidGeometryCheck.GeometryAbortOnInvalid).setInvalidGeometryCallback(None))]
+                   QgsFeatureRequest.GeometryAbortOnInvalid).setInvalidGeometryCallback(None))]
         self.assertEqual(res, ['a'])
 
         # check with filter fids
         res = [f['x'] for f in
                layer.getFeatures(QgsFeatureRequest().setFilterFid(f2.id()).setInvalidGeometryCheck(
-                   QgsFeatureRequest.InvalidGeometryCheck.GeometryNoCheck))]
+                   QgsFeatureRequest.GeometryNoCheck))]
         self.assertEqual(res, ['b'])
         res = [f['x'] for f in
                layer.getFeatures(QgsFeatureRequest().setFilterFid(f2.id()).setInvalidGeometryCheck(
-                   QgsFeatureRequest.InvalidGeometryCheck.GeometrySkipInvalid))]
+                   QgsFeatureRequest.GeometrySkipInvalid))]
         self.assertEqual(res, [])
         res = [f['x'] for f in
                layer.getFeatures(QgsFeatureRequest().setFilterFid(f2.id()).setInvalidGeometryCheck(
-                   QgsFeatureRequest.InvalidGeometryCheck.GeometryAbortOnInvalid))]
+                   QgsFeatureRequest.GeometryAbortOnInvalid))]
         self.assertEqual(res, [])
 
         f4 = QgsFeature(4)
@@ -513,13 +483,13 @@ class TestQgsFeatureIterator(QgisTestCase):
         layer.startEditing()
         self.assertTrue(layer.addFeatures([f4]))
         res = [f['x'] for f in
-               layer.getFeatures(QgsFeatureRequest().setInvalidGeometryCheck(QgsFeatureRequest.InvalidGeometryCheck.GeometryNoCheck))]
+               layer.getFeatures(QgsFeatureRequest().setInvalidGeometryCheck(QgsFeatureRequest.GeometryNoCheck))]
         self.assertEqual(set(res), {'a', 'b', 'c', 'd'})
         res = [f['x'] for f in
-               layer.getFeatures(QgsFeatureRequest().setInvalidGeometryCheck(QgsFeatureRequest.InvalidGeometryCheck.GeometrySkipInvalid))]
+               layer.getFeatures(QgsFeatureRequest().setInvalidGeometryCheck(QgsFeatureRequest.GeometrySkipInvalid))]
         self.assertEqual(set(res), {'a', 'c'})
         res = [f['x'] for f in
-               layer.getFeatures(QgsFeatureRequest().setInvalidGeometryCheck(QgsFeatureRequest.InvalidGeometryCheck.GeometryAbortOnInvalid))]
+               layer.getFeatures(QgsFeatureRequest().setInvalidGeometryCheck(QgsFeatureRequest.GeometryAbortOnInvalid))]
         self.assertEqual(res, ['a'])
 
         # check with features with changed geometry
@@ -528,271 +498,15 @@ class TestQgsFeatureIterator(QgisTestCase):
         layer.changeGeometry(2, QgsGeometry.fromWkt('Polygon((0 0, 1 0, 1 1, 0 1, 0 0))'))  # valid
         layer.changeGeometry(3, QgsGeometry.fromWkt('Polygon((0 0, 1 0, 0 1, 1 1, 0 0))'))  # invalid
         res = [f['x'] for f in
-               layer.getFeatures(QgsFeatureRequest().setInvalidGeometryCheck(QgsFeatureRequest.InvalidGeometryCheck.GeometryNoCheck))]
+               layer.getFeatures(QgsFeatureRequest().setInvalidGeometryCheck(QgsFeatureRequest.GeometryNoCheck))]
         self.assertEqual(set(res), {'a', 'b', 'c'})
         res = [f['x'] for f in
-               layer.getFeatures(QgsFeatureRequest().setInvalidGeometryCheck(QgsFeatureRequest.InvalidGeometryCheck.GeometrySkipInvalid))]
+               layer.getFeatures(QgsFeatureRequest().setInvalidGeometryCheck(QgsFeatureRequest.GeometrySkipInvalid))]
         self.assertEqual(set(res), {'a', 'b'})
         res = [f['x'] for f in
-               layer.getFeatures(QgsFeatureRequest().setInvalidGeometryCheck(QgsFeatureRequest.InvalidGeometryCheck.GeometryAbortOnInvalid))]
+               layer.getFeatures(QgsFeatureRequest().setInvalidGeometryCheck(QgsFeatureRequest.GeometryAbortOnInvalid))]
         self.assertEqual(res, ['a', 'b'])
         layer.rollBack()
-
-    def test_vertical_transformation_4978_to_4979(self):
-        """
-        Test vertical transformations are correctly handled during iteration
-
-        EPSG:4978 to EPSG:4979
-        """
-
-        vl = QgsVectorLayer('PointZ?crs=EPSG:4978', 'gda2020points', 'memory')
-        self.assertTrue(vl.isValid())
-        self.assertEqual(vl.crs().authid(), 'EPSG:4978')
-
-        self.assertEqual(vl.crs3D().horizontalCrs().authid(), 'EPSG:4978')
-
-        f = QgsFeature()
-        f.setGeometry(QgsPoint(134.445567853,
-                               -23.445567853,
-                               5543.325))
-        self.assertTrue(vl.dataProvider().addFeature(f))
-
-        dest_crs = QgsCoordinateReferenceSystem('EPSG:4979')
-        self.assertTrue(dest_crs.isValid())
-        self.assertEqual(dest_crs.horizontalCrs().authid(), 'EPSG:4979')
-
-        transform = QgsCoordinateTransform(
-            vl.crs3D(),
-            dest_crs,
-            QgsCoordinateTransformContext()
-        )
-
-        request = QgsFeatureRequest().setCoordinateTransform(
-            transform)
-
-        transformed_features = list(vl.getFeatures(request))
-        self.assertEqual(len(transformed_features), 1)
-        geom = transformed_features[0].geometry()
-        self.assertAlmostEqual(geom.constGet().x(), -9.8921668708, 4)
-        self.assertAlmostEqual(geom.constGet().y(), 89.839008, 4)
-        self.assertAlmostEqual(geom.constGet().z(), -6351023.00373, 3)
-
-    def test_vertical_transformation_gda2020_to_AVWS(self):
-        """
-        Test vertical transformations are correctly handled during iteration
-
-        GDA2020 to AVWS
-        """
-
-        # GDA2020 vertical CRS
-        vl = QgsVectorLayer('PointZ?crs=EPSG:7843', 'gda2020points', 'memory')
-        self.assertTrue(vl.isValid())
-        self.assertEqual(vl.crs().authid(), 'EPSG:7843')
-
-        self.assertEqual(vl.crs3D().horizontalCrs().authid(), 'EPSG:7843')
-
-        f = QgsFeature()
-        f.setGeometry(QgsPoint(134.445567853,
-                               -23.445567853,
-                               5543.325))
-        self.assertTrue(vl.dataProvider().addFeature(f))
-
-        # AVWS
-        dest_crs, msg = QgsCoordinateReferenceSystem.createCompoundCrs(
-            QgsCoordinateReferenceSystem('EPSG:7844'),
-            QgsCoordinateReferenceSystem('EPSG:9458'))
-        self.assertFalse(msg)
-        self.assertTrue(dest_crs.isValid())
-        self.assertEqual(dest_crs.horizontalCrs().authid(), 'EPSG:7844')
-        self.assertEqual(dest_crs.verticalCrs().authid(), 'EPSG:9458')
-
-        available_operations = QgsDatumTransform.operations(vl.crs3D(), dest_crs)
-        self.assertEqual(len(available_operations[0].grids), 1)
-        self.assertEqual(available_operations[0].grids[0].shortName, 'au_ga_AGQG_20201120.tif')
-        if not available_operations[0].isAvailable:
-            self.skipTest(f'Required grid {available_operations[0].grids[0].shortName} not available on system')
-
-        transform = QgsCoordinateTransform(
-            vl.crs3D(),
-            dest_crs,
-            QgsCoordinateTransformContext()
-        )
-        # for debugging
-        # self.assertEqual(transform.instantiatedCoordinateOperationDetails().proj, '+proj=pipeline +step +proj=unitconvert +xy_in=deg +xy_out=rad +step +inv +proj=vgridshift +grids=au_ga_AGQG_20201120.tif +multiplier=1 +step +proj=unitconvert +xy_in=rad +xy_out=deg')
-
-        request = QgsFeatureRequest().setCoordinateTransform(
-            transform)
-
-        transformed_features = list(vl.getFeatures(request))
-        self.assertEqual(len(transformed_features), 1)
-        geom = transformed_features[0].geometry()
-        self.assertAlmostEqual(geom.constGet().x(), 134.445567853, 6)
-        self.assertAlmostEqual(geom.constGet().y(), -23.445567853, 6)
-        # comparing against results from https://geodesyapps.ga.gov.au/avws
-        self.assertAlmostEqual(geom.constGet().z(), 5524.13969, 3)
-
-    def test_vertical_transformation_AVWS_to_gda2020(self):
-        """
-        Test vertical transformations are correctly handled during iteration
-
-        AVWS to GDA2020
-        """
-
-        # GDA2020 vertical CRS
-        vl = QgsVectorLayer('PointZ?crs=EPSG:7844', 'gda2020points', 'memory')
-        self.assertTrue(vl.isValid())
-
-        f = QgsFeature()
-        f.setGeometry(QgsPoint(134.445567853,
-                               -23.445567853,
-                               5524.13969))
-        self.assertTrue(vl.dataProvider().addFeature(f))
-
-        # AVWS
-        source_crs, msg = QgsCoordinateReferenceSystem.createCompoundCrs(
-            QgsCoordinateReferenceSystem('EPSG:7844'),
-            QgsCoordinateReferenceSystem('EPSG:9458'))
-        self.assertFalse(msg)
-        self.assertTrue(source_crs.isValid())
-        self.assertEqual(source_crs.horizontalCrs().authid(), 'EPSG:7844')
-        self.assertEqual(source_crs.verticalCrs().authid(), 'EPSG:9458')
-
-        available_operations = QgsDatumTransform.operations(source_crs,
-                                                            QgsCoordinateReferenceSystem('EPSG:7843'))
-        self.assertEqual(len(available_operations[0].grids), 1)
-        self.assertEqual(available_operations[0].grids[0].shortName, 'au_ga_AGQG_20201120.tif')
-        if not available_operations[0].isAvailable:
-            self.skipTest(f'Required grid {available_operations[0].grids[0].shortName} not available on system')
-
-        # dest CRS is GDA2020
-
-        transform = QgsCoordinateTransform(
-            source_crs,
-            QgsCoordinateReferenceSystem('EPSG:7843'),
-            QgsCoordinateTransformContext()
-        )
-        # for debugging
-        # self.assertEqual(transform.instantiatedCoordinateOperationDetails().proj, '+proj=pipeline +step +proj=unitconvert +xy_in=deg +xy_out=rad +step +inv +proj=vgridshift +grids=au_ga_AGQG_20201120.tif +multiplier=1 +step +proj=unitconvert +xy_in=rad +xy_out=deg')
-
-        request = QgsFeatureRequest().setCoordinateTransform(
-            transform)
-
-        transformed_features = list(vl.getFeatures(request))
-        self.assertEqual(len(transformed_features), 1)
-        geom = transformed_features[0].geometry()
-        self.assertAlmostEqual(geom.constGet().x(), 134.445567853, 6)
-        self.assertAlmostEqual(geom.constGet().y(), -23.445567853, 6)
-        # comparing against results from https://geodesyapps.ga.gov.au/avws
-        self.assertAlmostEqual(geom.constGet().z(), 5543.325, 3)
-
-    def test_vertical_transformation_gda2020_to_AHD(self):
-        """
-        Test vertical transformations are correctly handled during iteration
-
-        GDA2020 to AHD
-        """
-
-        # GDA2020 vertical CRS
-        vl = QgsVectorLayer('PointZ?crs=EPSG:7843', 'gda2020points', 'memory')
-        self.assertTrue(vl.isValid())
-        self.assertEqual(vl.crs().authid(), 'EPSG:7843')
-
-        self.assertEqual(vl.crs3D().horizontalCrs().authid(), 'EPSG:7843')
-
-        f = QgsFeature()
-        f.setGeometry(QgsPoint(134.445567853,
-                               -23.445567853,
-                               5543.325))
-        self.assertTrue(vl.dataProvider().addFeature(f))
-
-        # AHD
-        dest_crs, msg = QgsCoordinateReferenceSystem.createCompoundCrs(
-            QgsCoordinateReferenceSystem('EPSG:7844'),
-            QgsCoordinateReferenceSystem('EPSG:5711'))
-        self.assertFalse(msg)
-        self.assertTrue(dest_crs.isValid())
-        self.assertEqual(dest_crs.horizontalCrs().authid(), 'EPSG:7844')
-        self.assertEqual(dest_crs.verticalCrs().authid(), 'EPSG:5711')
-
-        available_operations = QgsDatumTransform.operations(vl.crs3D(),
-                                                            dest_crs)
-        self.assertEqual(len(available_operations[0].grids), 1)
-        self.assertEqual(available_operations[0].grids[0].shortName, 'au_ga_AUSGeoid2020_20180201.tif')
-        if not available_operations[0].isAvailable:
-            self.skipTest(f'Required grid {available_operations[0].grids[0].shortName} not available on system')
-
-        transform = QgsCoordinateTransform(
-            vl.crs3D(),
-            dest_crs,
-            QgsCoordinateTransformContext()
-        )
-        # for debugging
-        # self.assertEqual(transform.instantiatedCoordinateOperationDetails().proj, '+proj=pipeline +step +proj=unitconvert +xy_in=deg +xy_out=rad +step +inv +proj=vgridshift +grids=au_ga_AGQG_20201120.tif +multiplier=1 +step +proj=unitconvert +xy_in=rad +xy_out=deg')
-
-        request = QgsFeatureRequest().setCoordinateTransform(
-            transform)
-
-        transformed_features = list(vl.getFeatures(request))
-        self.assertEqual(len(transformed_features), 1)
-        geom = transformed_features[0].geometry()
-        self.assertAlmostEqual(geom.constGet().x(), 134.445567853, 6)
-        self.assertAlmostEqual(geom.constGet().y(), -23.445567853, 6)
-        # comparing against results from https://geodesyapps.ga.gov.au/ausgeoid2020
-        self.assertAlmostEqual(geom.constGet().z(), 5523.598, 3)
-
-    def test_vertical_transformation_AHD_to_gda2020(self):
-        """
-        Test vertical transformations are correctly handled during iteration
-
-        AHD to GDA2020
-        """
-
-        # GDA2020 vertical CRS
-        vl = QgsVectorLayer('PointZ?crs=EPSG:7844', 'gda2020points', 'memory')
-        self.assertTrue(vl.isValid())
-
-        f = QgsFeature()
-        f.setGeometry(QgsPoint(134.445567853,
-                               -23.445567853,
-                               5523.598))
-        self.assertTrue(vl.dataProvider().addFeature(f))
-
-        # AHD
-        source_crs, msg = QgsCoordinateReferenceSystem.createCompoundCrs(
-            QgsCoordinateReferenceSystem('EPSG:7844'),
-            QgsCoordinateReferenceSystem('EPSG:5711'))
-        self.assertFalse(msg)
-        self.assertTrue(source_crs.isValid())
-        self.assertEqual(source_crs.horizontalCrs().authid(), 'EPSG:7844')
-        self.assertEqual(source_crs.verticalCrs().authid(), 'EPSG:5711')
-
-        # dest CRS is GDA2020
-
-        available_operations = QgsDatumTransform.operations(source_crs,
-                                                            QgsCoordinateReferenceSystem('EPSG:7843'))
-        self.assertEqual(len(available_operations[0].grids), 1)
-        self.assertEqual(available_operations[0].grids[0].shortName, 'au_ga_AUSGeoid2020_20180201.tif')
-        if not available_operations[0].isAvailable:
-            self.skipTest(f'Required grid {available_operations[0].grids[0].shortName} not available on system')
-
-        transform = QgsCoordinateTransform(
-            source_crs,
-            QgsCoordinateReferenceSystem('EPSG:7843'),
-            QgsCoordinateTransformContext()
-        )
-        # for debugging
-        # self.assertEqual(transform.instantiatedCoordinateOperationDetails().proj, '+proj=pipeline +step +proj=unitconvert +xy_in=deg +xy_out=rad +step +inv +proj=vgridshift +grids=au_ga_AGQG_20201120.tif +multiplier=1 +step +proj=unitconvert +xy_in=rad +xy_out=deg')
-
-        request = QgsFeatureRequest().setCoordinateTransform(
-            transform)
-
-        transformed_features = list(vl.getFeatures(request))
-        self.assertEqual(len(transformed_features), 1)
-        geom = transformed_features[0].geometry()
-        self.assertAlmostEqual(geom.constGet().x(), 134.445567853, 6)
-        self.assertAlmostEqual(geom.constGet().y(), -23.445567853, 6)
-        # comparing against results from https://geodesyapps.ga.gov.au/avws
-        self.assertAlmostEqual(geom.constGet().z(), 5543.325, 3)
 
 
 if __name__ == '__main__':

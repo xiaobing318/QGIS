@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/pointcloud/qgspointclouddataprovider.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -35,7 +35,6 @@ Responsible for reading native point cloud data and returning the indexed data.
       ReadLayerMetadata,
       WriteLayerMetadata,
       CreateRenderer,
-      ContainSubIndexes,
     };
 
     typedef QFlags<QgsPointCloudDataProvider::Capability> Capabilities;
@@ -50,7 +49,7 @@ Responsible for reading native point cloud data and returning the indexed data.
 
     QgsPointCloudDataProvider( const QString &uri,
                                const QgsDataProvider::ProviderOptions &providerOptions,
-                               Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() );
+                               QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() );
 %Docstring
 Ctor
 %End
@@ -103,7 +102,7 @@ May return empty collection until :py:func:`~QgsPointCloudDataProvider.pointClou
 %Docstring
 Triggers loading of the point cloud index
 
-.. seealso:: :py:func:`index`
+\sa :py:func:`~QgsPointCloudDataProvider.index`
 %End
 
     virtual void generateIndex( ) = 0;
@@ -112,7 +111,7 @@ Triggers generation of the point cloud index
 
 emits :py:func:`~QgsPointCloudDataProvider.indexGenerationStateChanged`
 
-.. seealso:: :py:func:`index`
+\sa :py:func:`~QgsPointCloudDataProvider.index`
 %End
 
 
@@ -120,8 +119,6 @@ emits :py:func:`~QgsPointCloudDataProvider.indexGenerationStateChanged`
 %Docstring
 Gets the current index generation state
 %End
-
-
 
 
     bool hasValidIndex() const;
@@ -178,7 +175,7 @@ Returns whether the dataset contains statistics metadata
 %End
 
 
-    SIP_PYOBJECT metadataStatistic( const QString &attribute, Qgis::Statistic statistic ) const;
+    SIP_PYOBJECT metadataStatistic( const QString &attribute, QgsStatisticalSummary::Statistic statistic ) const;
 %Docstring
 Returns a statistic for the specified ``attribute``, taken only from the metadata of the point cloud
 data source.
@@ -217,7 +214,7 @@ in the metadata.
 
 
 
-    SIP_PYOBJECT metadataClassStatistic( const QString &attribute, const QVariant &value, Qgis::Statistic statistic ) const;
+    SIP_PYOBJECT metadataClassStatistic( const QString &attribute, const QVariant &value, QgsStatisticalSummary::Statistic statistic ) const;
 %Docstring
 Returns a statistic for one class ``value`` from the specified ``attribute``, taken only from the metadata of the point cloud
 data source.
@@ -246,17 +243,12 @@ in the metadata, and even for sources with statistical metadata only some ``stat
 
     QgsPointCloudStatistics metadataStatistics();
 %Docstring
-Returns the object containing the statistics metadata extracted from the dataset
+Returns the object containings the statistics metadata extracted from the dataset
 
 .. versionadded:: 3.26
 %End
 
     virtual bool supportsSubsetString() const;
-
-    virtual QString subsetStringDialect() const;
-
-    virtual QString subsetStringHelpUrl() const;
-
     virtual QString subsetString() const;
 
     virtual bool setSubsetString( const QString &subset, bool updateFeatureCount = false );
@@ -299,9 +291,6 @@ Returns the map of LAS data format ID to translated string value.
 Emitted when point cloud generation state is changed
 %End
 
-  protected:
-
-
 };
 
 /************************************************************************
@@ -309,5 +298,5 @@ Emitted when point cloud generation state is changed
  *                                                                      *
  * src/core/pointcloud/qgspointclouddataprovider.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

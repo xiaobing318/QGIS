@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgswfsparameters.h"
-#include "moc_qgswfsparameters.cpp"
 #include "qgsmessagelog.h"
 #include <QRegularExpression>
 #include <QRegularExpressionMatch>
@@ -27,7 +26,7 @@ namespace QgsWfs
   // QgsWfsParameter
   //
   QgsWfsParameter::QgsWfsParameter( const QgsWfsParameter::Name name,
-                                    const QMetaType::Type type,
+                                    const QVariant::Type type,
                                     const QVariant defaultValue )
     : QgsServerParameterDefinition( type, defaultValue )
     , mName( name )
@@ -145,12 +144,12 @@ namespace QgsWfs
     save( pPropertyName );
 
     const QgsWfsParameter pMaxFeatures = QgsWfsParameter( QgsWfsParameter::MAXFEATURES,
-                                         QMetaType::Type::Int,
+                                         QVariant::Int,
                                          QVariant( -1 ) );
     save( pMaxFeatures );
 
     const QgsWfsParameter pStartIndex = QgsWfsParameter( QgsWfsParameter::STARTINDEX,
-                                        QMetaType::Type::Int,
+                                        QVariant::Int,
                                         QVariant( 0 ) );
     save( pStartIndex );
 
@@ -369,10 +368,10 @@ namespace QgsWfs
     const QString vStr = version();
     QgsProjectVersion version;
 
-    if ( mVersions.contains( QgsProjectVersion( vStr ) ) )
-      version = QgsProjectVersion( vStr );
-    else
+    if ( vStr.isEmpty() )
       version = QgsProjectVersion( 1, 1, 0 ); // default value
+    else if ( mVersions.contains( QgsProjectVersion( vStr ) ) )
+      version = QgsProjectVersion( vStr );
 
     return version;
   }

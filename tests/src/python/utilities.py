@@ -12,30 +12,32 @@ __copyright__ = 'Copyright 2012, The QGIS Project'
 import os
 import platform
 import re
-import stat
 import sys
 import tempfile
 
+import qgis  # NOQA
 
 try:
-    from urllib2 import HTTPError, URLError, urlopen
+    from urllib2 import urlopen, HTTPError, URLError
 except ImportError:
     from urllib.request import urlopen, HTTPError, URLError
 
-import hashlib
-import subprocess
-import webbrowser
+from qgis.PyQt.QtCore import QDir, QUrl, QUrlQuery
 
 from qgis.core import (
     QgsCoordinateReferenceSystem,
-    QgsFontUtils,
+    QgsVectorFileWriter,
+    QgsMapSettings,
     QgsMapRendererParallelJob,
     QgsMapRendererSequentialJob,
-    QgsMapSettings,
-    QgsVectorFileWriter,
+    QgsFontUtils
 )
-from qgis.PyQt.QtCore import QDir, QUrl, QUrlQuery
 from qgis.testing import start_app
+import hashlib
+
+
+import webbrowser
+import subprocess
 
 GEOCRS = 4326  # constant for EPSG:GEOCRS Geographic CRS id
 
@@ -116,7 +118,7 @@ def writeShape(theMemoryLayer, theFileName):
         myOptions,
         myLayerOptions,
         mySkipAttributesFlag)
-    assert myResult == QgsVectorFileWriter.WriterError.NoError, f'Writing shape failed, Error {myResult} ({myErrorMessage})'
+    assert myResult == QgsVectorFileWriter.NoError, f'Writing shape failed, Error {myResult} ({myErrorMessage})'
 
     return myFileName
 
@@ -195,9 +197,6 @@ def getTempfilePath(sufx='png'):
         suffix=f".{sufx}", delete=False)
     filepath = tmp.name
     tmp.close()
-    # set read permission for group and other so we can access docker test generated file
-    # to build artifact for instance
-    os.chmod(filepath, stat.S_IRUSR | stat.S_IWUSR | stat.S_IROTH | stat.S_IRGRP)
     return filepath
 
 
@@ -249,15 +248,15 @@ def mapSettingsString(ms):
     s += '  destinationCrs(): {}\n'.format(
         ms.destinationCrs().authid())
     s += '  flag.Antialiasing: {}\n'.format(
-        ms.testFlag(QgsMapSettings.Flag.Antialiasing))
+        ms.testFlag(QgsMapSettings.Antialiasing))
     s += '  flag.UseAdvancedEffects: {}\n'.format(
-        ms.testFlag(QgsMapSettings.Flag.UseAdvancedEffects))
+        ms.testFlag(QgsMapSettings.UseAdvancedEffects))
     s += '  flag.ForceVectorOutput: {}\n'.format(
-        ms.testFlag(QgsMapSettings.Flag.ForceVectorOutput))
+        ms.testFlag(QgsMapSettings.ForceVectorOutput))
     s += '  flag.DrawLabeling: {}\n'.format(
-        ms.testFlag(QgsMapSettings.Flag.DrawLabeling))
+        ms.testFlag(QgsMapSettings.DrawLabeling))
     s += '  flag.DrawEditingInfo: {}\n'.format(
-        ms.testFlag(QgsMapSettings.Flag.DrawEditingInfo))
+        ms.testFlag(QgsMapSettings.DrawEditingInfo))
     s += f'  outputImageFormat(): {ms.outputImageFormat()}\n'
     return s
 
@@ -300,7 +299,7 @@ def loadTestFonts():
 
     global FONTSLOADED  # pylint: disable=W0603
     if FONTSLOADED is False:
-        QgsFontUtils.loadStandardTestFonts(['Roman', 'Bold', 'Deja Bold'])
+        QgsFontUtils.loadStandardTestFonts(['Roman', 'Bold'])
         msg = getTestFontFamily() + ' base test font styles could not be loaded'
         res = (QgsFontUtils.fontFamilyHasStyle(getTestFontFamily(), 'Roman') and
                QgsFontUtils.fontFamilyHasStyle(getTestFontFamily(), 'Bold'))

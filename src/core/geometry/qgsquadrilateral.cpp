@@ -32,7 +32,7 @@ QgsQuadrilateral::QgsQuadrilateral( const QgsPointXY &p1, const QgsPointXY &p2, 
 
 QgsQuadrilateral QgsQuadrilateral::rectangleFrom3Points( const QgsPoint &p1, const QgsPoint &p2, const QgsPoint &p3, ConstructionOption mode )
 {
-  Qgis::WkbType pType( Qgis::WkbType::Point );
+  QgsWkbTypes::Type pType( QgsWkbTypes::Point );
 
   double z = std::numeric_limits< double >::quiet_NaN();
   double m = std::numeric_limits< double >::quiet_NaN();
@@ -69,7 +69,7 @@ QgsQuadrilateral QgsQuadrilateral::rectangleFrom3Points( const QgsPoint &p1, con
   QgsQuadrilateral rect;
   double inclination = 90.0;
   double distance = 0;
-  const double azimuth = point1.azimuth( point2 ) + 90.0 * QgsGeometryUtilsBase::leftOfLine( point3.x(), point3.y(), point1.x(), point1.y(), point2.x(), point2.y() );
+  const double azimuth = point1.azimuth( point2 ) + 90.0 * QgsGeometryUtils::leftOfLine( point3.x(), point3.y(), point1.x(), point1.y(), point2.x(), point2.y() );
   switch ( mode )
   {
     case Distance:
@@ -110,7 +110,7 @@ QgsQuadrilateral QgsQuadrilateral::rectangleFrom3Points( const QgsPoint &p1, con
   QgsPoint fp3 = point2.project( distance, azimuth, inclination );
   QgsPoint fp4 = point1.project( distance, azimuth, inclination ) ;
 
-  if ( pType != Qgis::WkbType::PointZ )
+  if ( pType != QgsWkbTypes::PointZ )
   {
     fp1.dropZValue();
     fp2.dropZValue();
@@ -435,12 +435,10 @@ QString QgsQuadrilateral::toString( int pointPrecision ) const
 
 double QgsQuadrilateral::area() const
 {
-  std::unique_ptr<QgsPolygon> polygon( toPolygon() );
-  return polygon->area();
+  return toPolygon()->area();
 }
 
 double QgsQuadrilateral::perimeter() const
 {
-  std::unique_ptr<QgsPolygon> polygon( toPolygon() );
-  return polygon->perimeter();
+  return toPolygon()->perimeter();
 }

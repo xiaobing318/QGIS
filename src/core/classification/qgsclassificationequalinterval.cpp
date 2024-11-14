@@ -36,10 +36,9 @@ QString QgsClassificationEqualInterval::id() const
 }
 
 QList<double> QgsClassificationEqualInterval::calculateBreaks( double &minimum, double &maximum,
-    const QList<double> &values, int nclasses, QString &error )
+    const QList<double> &values, int nclasses )
 {
   Q_UNUSED( values )
-  Q_UNUSED( error )
 
   // Equal interval algorithm
   // Returns breaks based on dividing the range ('minimum' to 'maximum') into 'classes' parts.

@@ -11,30 +11,25 @@ __author__ = 'Nyall Dawson'
 __date__ = '29/03/2018'
 __copyright__ = 'Copyright 2018, The QGIS Project'
 
-import http.server
-import os
-import socketserver
-import threading
+import qgis  # NOQA
 
+import os
+from qgis.testing import unittest, start_app
+from qgis.core import QgsNetworkContentFetcherTask, QgsApplication
+from utilities import unitTestDataPath
 from qgis.PyQt.QtCore import QUrl
 from qgis.PyQt.QtNetwork import QNetworkReply
-from qgis.core import (
-    QgsApplication,
-    QgsNetworkContentFetcherTask,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
-
-from utilities import unitTestDataPath
+import socketserver
+import threading
+import http.server
 
 app = start_app()
 
 
-class TestQgsNetworkContentFetcherTask(QgisTestCase):
+class TestQgsNetworkContentFetcherTask(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        super().setUpClass()
         # Bring up a simple HTTP server
         os.chdir(unitTestDataPath() + '')
         handler = http.server.SimpleHTTPRequestHandler
@@ -43,12 +38,12 @@ class TestQgsNetworkContentFetcherTask(QgisTestCase):
         cls.port = cls.httpd.server_address[1]
 
         cls.httpd_thread = threading.Thread(target=cls.httpd.serve_forever)
-        cls.httpd_thread.daemon = True
+        cls.httpd_thread.setDaemon(True)
         cls.httpd_thread.start()
 
     def __init__(self, methodName):
         """Run once on class initialization."""
-        QgisTestCase.__init__(self, methodName)
+        unittest.TestCase.__init__(self, methodName)
 
         self.loaded = False
 
@@ -61,7 +56,7 @@ class TestQgsNetworkContentFetcherTask(QgisTestCase):
 
         def check_reply():
             r = fetcher.reply()
-            assert r.error() != QNetworkReply.NetworkError.NoError
+            assert r.error() != QNetworkReply.NoError
             self.loaded = True
 
         fetcher.fetched.connect(check_reply)
@@ -76,7 +71,7 @@ class TestQgsNetworkContentFetcherTask(QgisTestCase):
 
         def check_reply():
             r = fetcher.reply()
-            assert r.error() == QNetworkReply.NetworkError.NoError, r.error()
+            assert r.error() == QNetworkReply.NoError, r.error()
 
             assert b'QGIS' in r.readAll()
             self.loaded = True

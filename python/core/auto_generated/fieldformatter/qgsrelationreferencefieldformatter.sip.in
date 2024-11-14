@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/fieldformatter/qgsrelationreferencefieldformatter.h         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -14,6 +14,8 @@ Field formatter for a relation reference field.
 
 A value relation field formatter looks up the values from
 features on another layer.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -50,5 +52,5 @@ Default constructor of field formatter for a relation reference field.
  *                                                                      *
  * src/core/fieldformatter/qgsrelationreferencefieldformatter.h         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

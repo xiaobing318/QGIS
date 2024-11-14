@@ -24,7 +24,6 @@
 #include <QVBoxLayout>
 
 #include "qgsrelationadddlg.h"
-#include "moc_qgsrelationadddlg.cpp"
 #include "qgsvectorlayer.h"
 #include "qgsmaplayercombobox.h"
 #include "qgsfieldcombobox.h"
@@ -41,11 +40,11 @@ QgsCreateRelationDialog::QgsCreateRelationDialog( QWidget *parent )
   setupUi( this );
 
   mReferencedLayerCombobox = new QgsMapLayerComboBox( this );
-  mReferencedLayerCombobox->setFilters( Qgis::LayerFilter::VectorLayer );
+  mReferencedLayerCombobox->setFilters( QgsMapLayerProxyModel::VectorLayer );
   mFieldsMappingTable->setCellWidget( 0, 0, mReferencedLayerCombobox );
 
   mReferencingLayerCombobox = new QgsMapLayerComboBox( this );
-  mReferencingLayerCombobox->setFilters( Qgis::LayerFilter::VectorLayer );
+  mReferencingLayerCombobox->setFilters( QgsMapLayerProxyModel::VectorLayer );
   mFieldsMappingTable->setCellWidget( 0, 1, mReferencingLayerCombobox );
 
   mRelationStrengthComboBox->addItem( tr( "Association" ), static_cast< int >( Qgis::RelationshipStrength::Association ) );
@@ -59,7 +58,7 @@ QgsCreateRelationDialog::QgsCreateRelationDialog( QWidget *parent )
   connect( mButtonBox, &QDialogButtonBox::rejected, this, &QgsCreateRelationDialog::reject );
   connect( mButtonBox, &QDialogButtonBox::helpRequested, this, [ = ]
   {
-    QgsHelp::openHelp( QStringLiteral( "working_with_vector/joins_relations.html#one-to-many-relation" ) );
+    QgsHelp::openHelp( QStringLiteral( "working_with_vector/attribute_table.html#defining-1-n-relations" ) );
   } );
 
   addFieldsRow();

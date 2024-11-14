@@ -9,6 +9,7 @@ __author__ = 'Nyall Dawson'
 __date__ = '20/08/2016'
 __copyright__ = 'Copyright 2016, The QGIS Project'
 
+import qgis  # NOQA
 
 try:
     from qgis.PyQt.QtTest import QSignalSpy
@@ -16,14 +17,13 @@ try:
 except:
     use_signal_spy = False
 
+from qgis.testing import start_app, unittest
 from qgis.gui import QgsExpressionLineEdit
-import unittest
-from qgis.testing import start_app, QgisTestCase
 
 start_app()
 
 
-class TestQgsExpressionLineEdit(QgisTestCase):
+class TestQgsExpressionLineEdit(unittest.TestCase):
 
     def testDialog(self):
         """ test dialog related methods """

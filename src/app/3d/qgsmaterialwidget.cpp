@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsmaterialwidget.h"
-#include "moc_qgsmaterialwidget.cpp"
 #include "qgs3d.h"
 #include "qgsmaterialregistry.h"
 #include "qgsabstractmaterialsettings.h"

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsrasterpyramidsoptionswidget.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -29,12 +29,7 @@ Constructor for QgsRasterPyramidsOptionsWidget
     QStringList configOptions() const;
     QgsRasterFormatSaveOptionsWidget *createOptionsWidget() /Factory/;
     const QList<int> overviewList() const;
-
-    Qgis::RasterPyramidFormat pyramidsFormat() const;
-%Docstring
-Returns the selected pyramid format.
-%End
-
+    QgsRaster::RasterPyramidsFormat pyramidsFormat() const;
     QString resamplingMethod() const;
     void setRasterLayer( QgsRasterLayer *rasterLayer );
     void setRasterFileName( const QString &file );
@@ -50,16 +45,8 @@ Returns the selected pyramid format.
     void setOverviewList();
     void updateUi();
   signals:
-
     void overviewListChanged();
-%Docstring
-Emitted when the list of configured overviews is changed.
-%End
-
-    void someValueChanged();
-%Docstring
-Emitted when settings are changed in the widget.
-%End
+    void someValueChanged(); /* emitted when any other setting changes */
 
 };
 
@@ -69,5 +56,5 @@ Emitted when settings are changed in the widget.
  *                                                                      *
  * src/gui/qgsrasterpyramidsoptionswidget.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/layertree/qgslayertreemapcanvasbridge.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -24,6 +24,8 @@ to the layer tree will trigger just one update of canvas layers.
 Also allows the client to override the default order of layers. This is useful
 in advanced cases where the grouping in layer tree should be independent from the actual
 order in the canvas.
+
+.. versionadded:: 2.4
 %End
 
 %TypeHeaderCode
@@ -54,6 +56,8 @@ Associates overview canvas with the bridge, so the overview will be updated when
     QgsMapOverviewCanvas *overviewCanvas() const;
 %Docstring
 Returns associated overview canvas (may be ``None``)
+
+.. versionadded:: 3.0
 %End
 
     void setAutoSetupOnFirstLayer( bool enabled );
@@ -74,6 +78,8 @@ force update of canvas layers from the layer tree. Normally this should not be n
 %Docstring
 Emitted when the set of layers (or order of layers) visible in the
 canvas changes.
+
+.. versionadded:: 3.0
 %End
 
 };
@@ -83,5 +89,5 @@ canvas changes.
  *                                                                      *
  * src/gui/layertree/qgslayertreemapcanvasbridge.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -3,8 +3,10 @@
  *                                                                      *
  * src/core/symbology/qgscombinedstylemodel.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
+
+
 
 
 
@@ -77,16 +79,6 @@ This allows style icons to be generated at an icon size which
 corresponds exactly to the view's icon size in which this model is used.
 %End
 
-    void addTargetScreenProperties( const QgsScreenProperties &properties );
-%Docstring
-Adds additional target screen ``properties`` to use when generating icons for Qt.DecorationRole data.
-
-This allows style icons to be generated at an icon device pixel ratio and DPI which
-corresponds exactly to the view's screen properties in which this model is used.
-
-.. versionadded:: 3.32
-%End
-
 };
 
 /************************************************************************
@@ -94,5 +86,5 @@ corresponds exactly to the view's screen properties in which this model is used.
  *                                                                      *
  * src/core/symbology/qgscombinedstylemodel.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

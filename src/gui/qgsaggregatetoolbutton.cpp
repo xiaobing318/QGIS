@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsaggregatetoolbutton.h"
-#include "moc_qgsaggregatetoolbutton.cpp"
 #include "qgsaggregatecalculator.h"
 #include "qgis.h"
 
@@ -32,18 +31,13 @@ QgsAggregateToolButton::QgsAggregateToolButton()
   setText( tr( "Exclude" ) );
 }
 
-void QgsAggregateToolButton::setType( QMetaType::Type type )
+void QgsAggregateToolButton::setType( QVariant::Type type )
 {
   if ( mType == type )
     return;
 
   mType = type;
   updateAvailableAggregates();
-}
-
-void QgsAggregateToolButton::setType( QVariant::Type type )
-{
-  setType( QgsVariantUtils::variantTypeToMetaType( type ) );
 }
 
 void QgsAggregateToolButton::aboutToShowMenu()
@@ -124,7 +118,7 @@ bool QgsAggregateToolButton::active() const
   return mActive;
 }
 
-QMetaType::Type QgsAggregateToolButton::type() const
+QVariant::Type QgsAggregateToolButton::type() const
 {
   return mType;
 }

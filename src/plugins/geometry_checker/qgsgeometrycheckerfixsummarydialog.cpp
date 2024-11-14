@@ -16,7 +16,6 @@
 
 #include "qgsgeometrycheckcontext.h"
 #include "qgsgeometrycheckerfixsummarydialog.h"
-#include "moc_qgsgeometrycheckerfixsummarydialog.cpp"
 #include "qgsgeometrychecker.h"
 #include "qgsgeometrycheck.h"
 #include "qgsfeaturepool.h"

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/processing/qgsprocessingparametertininputlayers.h           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -29,10 +29,17 @@ if -1, the Z coordinates of features are used
 %End
   public:
 
+    enum Type
+    {
+      Vertices,
+      StructureLines,
+      BreakLines
+    };
+
     struct InputLayer
     {
       QString source; //!The source of the input layer
-      Qgis::ProcessingTinInputLayerType type; //!The type of the input layer (see Type)
+      Type type; //!The type of the input layer (see Type)
       int attributeIndex; //! The attribute index used for Z value of vertices
     };
 
@@ -53,7 +60,7 @@ Constructor
 
     virtual QVariant valueAsJsonObject( const QVariant &value, QgsProcessingContext &context ) const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
 
 
     static QString typeName();
@@ -68,5 +75,5 @@ Returns the type name for the parameter class.
  *                                                                      *
  * src/core/processing/qgsprocessingparametertininputlayers.h           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

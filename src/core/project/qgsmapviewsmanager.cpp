@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsmapviewsmanager.h"
-#include "moc_qgsmapviewsmanager.cpp"
 #include "qgsproject.h"
 
 QgsMapViewsManager::QgsMapViewsManager( QgsProject *project )
@@ -29,7 +28,7 @@ bool QgsMapViewsManager::readXml( const QDomElement &element, const QDomDocument
   clear();
 
   QgsReadWriteContext readWriteContext;
-  readWriteContext.setPathResolver( QgsProject::instance()->pathResolver() ); // skip-keyword-check
+  readWriteContext.setPathResolver( QgsProject::instance()->pathResolver() );
   QDomElement elem3DMaps = element.firstChildElement( QStringLiteral( "mapViewDocks3D" ) );
   if ( !elem3DMaps.isNull() )
   {
@@ -49,7 +48,7 @@ bool QgsMapViewsManager::readXml( const QDomElement &element, const QDomDocument
 QDomElement QgsMapViewsManager::writeXml( QDomDocument &doc ) const
 {
   QDomElement dom = doc.createElement( "mapViewDocks3D" );
-  for ( QDomElement d : m3DMapViewsDom )
+  for ( QDomElement d : m3DMapViewsDom.values() )
     dom.appendChild( d );
   return dom;
 }

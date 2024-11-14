@@ -3,14 +3,16 @@
  *                                                                      *
  * src/gui/vectortile/qgsvectortilelayerproperties.h                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
 
 
 
-class QgsVectorTileLayerProperties : QgsLayerPropertiesDialog
+
+
+class QgsVectorTileLayerProperties : QgsOptionsDialogBase
 {
 %Docstring(signature="appended")
 Vectortile layer properties dialog
@@ -27,30 +29,7 @@ Vectortile layer properties dialog
 Constructor
 %End
 
- void saveDefaultStyle() /Deprecated/;
-%Docstring
-Saves the default style when appropriate button is pressed
-
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsVectorTileLayerProperties.saveStyleAsDefault` instead.
-%End
-
-    void loadStyle();
-%Docstring
-Loads a saved style when appropriate button is pressed
-
-.. versionadded:: 3.30
-%End
-
- void saveStyleAs() /Deprecated/;
-%Docstring
-Saves a style when appriate button is pressed
-
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsVectorTileLayerProperties.saveStyleToFile` instead.
-%End
+  protected slots:
 
 };
 
@@ -59,5 +38,5 @@ Saves a style when appriate button is pressed
  *                                                                      *
  * src/gui/vectortile/qgsvectortilelayerproperties.h                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -42,7 +42,6 @@ class QgsJoinByNearestAlgorithm : public QgsProcessingAlgorithm
     QString groupId() const override;
     QString shortHelpString() const override;
     QString shortDescription() const override;
-    Qgis::ProcessingAlgorithmDocumentationFlags documentationFlags() const override;
     QgsJoinByNearestAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:

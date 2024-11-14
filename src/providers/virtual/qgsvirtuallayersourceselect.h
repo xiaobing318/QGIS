@@ -65,7 +65,7 @@ class QgsVirtualLayerSourceSelect : public QgsAbstractDataSourceWidget, private 
     Q_OBJECT
 
   public:
-    QgsVirtualLayerSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::Standalone );
+    QgsVirtualLayerSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::None );
     ~QgsVirtualLayerSourceSelect() override;
 
     void setBrowserModel( QgsBrowserModel *model ) override;
@@ -80,7 +80,7 @@ class QgsVirtualLayerSourceSelect : public QgsAbstractDataSourceWidget, private 
     void testQuery();
     void browseCRS();
     void layerComboChanged( int );
-    void addLayerPrivate( bool browseForLayer = false );
+    void addLayer( bool browseForLayer = false );
     void removeLayer();
     void importLayer();
     void tableRowChanged( const QModelIndex &current, const QModelIndex &previous );

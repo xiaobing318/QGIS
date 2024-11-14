@@ -1,15 +1,8 @@
 import pathlib
 
-from qgis.core import (
-    QgsMultiBandColorRenderer,
-    QgsRasterLayer,
-    QgsSingleBandGrayRenderer,
-)
-from qgis.gui import (
-    QgsMapCanvas,
-    QgsRendererRasterPropertiesWidget,
-)
-from qgis.testing import TestCase, unittest
+from qgis.core import QgsRasterLayer, QgsMultiBandColorRenderer, QgsSingleBandGrayRenderer
+from qgis.gui import QgsRendererRasterPropertiesWidget, QgsMapCanvas
+from qgis.testing import unittest, TestCase
 from qgis.testing.mocked import get_iface
 
 
@@ -31,7 +24,7 @@ class QgsRendererRasterPropertiesTestCases(TestCase):
         lyr.setName(path.name)
         self.assertIsInstance(lyr, QgsRasterLayer)
         self.assertTrue(lyr.isValid())
-        self.assertGreater(lyr.bandCount(), 1)
+        self.assertTrue(lyr.bandCount() > 1)
 
         return lyr
 

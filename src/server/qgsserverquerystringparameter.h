@@ -24,7 +24,7 @@
 #include <QObject>
 
 
-#include <nlohmann/json_fwd.hpp>
+#include "nlohmann/json_fwd.hpp"
 
 #ifndef SIP_RUN
 using namespace nlohmann;
@@ -59,11 +59,11 @@ class SERVER_EXPORT QgsServerQueryStringParameter
      */
     enum class Type
     {
-      String = QMetaType::Type::QString,    //!< Parameter is a string
-      Integer = QMetaType::Type::LongLong, //!< Parameter is an integer
-      Double = QMetaType::Type::Double,    //!< Parameter is a double
-      Boolean = QMetaType::Type::Bool,     //!< Parameter is a boolean
-      List = QMetaType::Type::QStringList,  //!< Parameter is a (comma separated) list of strings, the handler will perform any further required conversion of the list values
+      String = QVariant::String,    //! parameter is a string
+      Integer = QVariant::LongLong, //! parameter is an integer
+      Double = QVariant::Double,    //! parameter is a double
+      Boolean = QVariant::Bool,     //! parameter is a boolean
+      List = QVariant::StringList,  //! parameter is a (comma separated) list of strings, the handler will perform any further required conversion of the list values
     };
     Q_ENUM( Type )
 

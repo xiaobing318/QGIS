@@ -3,10 +3,8 @@
  *                                                                      *
  * src/gui/settings/qgssettingsregistrygui.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
-
-
 
 
 
@@ -26,6 +24,10 @@ class QgsSettingsRegistryGui : QgsSettingsRegistry
   public:
 
     QgsSettingsRegistryGui();
+%Docstring
+Constructor for QgsSettingsRegistryGui.
+%End
+
     virtual ~QgsSettingsRegistryGui();
 
 
@@ -36,5 +38,5 @@ class QgsSettingsRegistryGui : QgsSettingsRegistry
  *                                                                      *
  * src/gui/settings/qgssettingsregistrygui.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

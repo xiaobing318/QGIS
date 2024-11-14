@@ -23,6 +23,7 @@
 #include "qgswfsutils.h"
 #include "qgsogcutils.h"
 #include "qgsserverprojectutils.h"
+#include "qgswfsparameters.h"
 #include "qgsvectorlayer.h"
 #include "qgsproject.h"
 
@@ -68,8 +69,8 @@ namespace QgsWfs
   QString layerTypeName( const QgsMapLayer *layer )
   {
     QString name = layer->name();
-    if ( !layer->serverProperties()->shortName().isEmpty() )
-      name = layer->serverProperties()->shortName();
+    if ( !layer->shortName().isEmpty() )
+      name = layer->shortName();
     name = name.replace( ' ', '_' ).replace( ':', '-' );
     return name;
   }
@@ -84,7 +85,7 @@ namespace QgsWfs
       {
         continue;
       }
-      if ( layer->type() != Qgis::LayerType::Vector )
+      if ( layer->type() != QgsMapLayerType::VectorLayer )
       {
         continue;
       }
@@ -139,7 +140,7 @@ namespace QgsWfs
       }
       // update server feature ids
       serverFids.append( collectedServerFids );
-      request.setFlags( Qgis::FeatureRequestFlag::NoFlags );
+      request.setFlags( QgsFeatureRequest::NoFlags );
       return request;
     }
     else if ( !goidNodes.isEmpty() )
@@ -173,7 +174,7 @@ namespace QgsWfs
       }
       // update server feature ids
       serverFids.append( collectedServerFids );
-      request.setFlags( Qgis::FeatureRequestFlag::NoFlags );
+      request.setFlags( QgsFeatureRequest::NoFlags );
       return request;
     }
     else if ( filterElem.firstChildElement().tagName() == QLatin1String( "BBOX" ) )
@@ -196,7 +197,7 @@ namespace QgsWfs
         childElem = childElem.nextSiblingElement();
       }
 
-      request.setFlags( Qgis::FeatureRequestFlag::ExactIntersect | Qgis::FeatureRequestFlag::NoFlags );
+      request.setFlags( QgsFeatureRequest::ExactIntersect | QgsFeatureRequest::NoFlags );
       return request;
     }
     // Apply BBOX through filterRect even inside an And to use spatial index
@@ -266,13 +267,13 @@ namespace QgsWfs
       // Update expression
       request.setFilterExpression( childRequest.filterExpression()->expression() );
 
-      request.setFlags( Qgis::FeatureRequestFlag::ExactIntersect | Qgis::FeatureRequestFlag::NoFlags );
+      request.setFlags( QgsFeatureRequest::ExactIntersect | QgsFeatureRequest::NoFlags );
       return request;
     }
     else
     {
       QgsVectorLayer *layer = nullptr;
-      if ( project )
+      if ( project != nullptr )
       {
         layer = layerByTypeName( project, typeName );
       }
@@ -286,7 +287,7 @@ namespace QgsWfs
 
         if ( filter->needsGeometry() )
         {
-          request.setFlags( Qgis::FeatureRequestFlag::NoFlags );
+          request.setFlags( QgsFeatureRequest::NoFlags );
         }
         request.setFilterExpression( filter->expression() );
         return request;

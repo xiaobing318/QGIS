@@ -13,7 +13,6 @@
  ***************************************************************************/
 
 #include "qgsauthoauth2method.h"
-#include "moc_qgsauthoauth2method.cpp"
 
 #include "o0globals.h"
 #include "o0requestparameter.h"
@@ -26,6 +25,7 @@
 #include "qgsnetworkaccessmanager.h"
 #include "qgslogger.h"
 #include "qgsmessagelog.h"
+#include "qgssettings.h"
 #ifdef HAVE_GUI
 #include "qgsauthoauth2edit.h"
 #endif
@@ -70,7 +70,7 @@ QgsAuthOAuth2Method::QgsAuthOAuth2Method()
     const QDir cachedir( cachedirpath );
     if ( !cachedir.mkpath( cachedirpath ) )
     {
-      QgsDebugError( QStringLiteral( "FAILED to create cache dir: %1" ).arg( cachedirpath ) );
+      QgsDebugMsg( QStringLiteral( "FAILED to create cache dir: %1" ).arg( cachedirpath ) );
     }
   }
 }
@@ -84,12 +84,12 @@ QgsAuthOAuth2Method::~QgsAuthOAuth2Method()
     const QString tempfile( tempdir.path() + '/' + f );
     if ( !QFile::remove( tempfile ) )
     {
-      QgsDebugError( QStringLiteral( "FAILED to delete temp token cache file: %1" ).arg( tempfile ) );
+      QgsDebugMsg( QStringLiteral( "FAILED to delete temp token cache file: %1" ).arg( tempfile ) );
     }
   }
   if ( !tempdir.rmdir( tempdir.path() ) )
   {
-    QgsDebugError( QStringLiteral( "FAILED to delete temp token cache directory: %1" ).arg( tempdir.path() ) );
+    QgsDebugMsg( QStringLiteral( "FAILED to delete temp token cache directory: %1" ).arg( tempdir.path() ) );
   }
 }
 
@@ -189,9 +189,11 @@ bool QgsAuthOAuth2Method::updateNetworkRequest( QNetworkRequest &request, const 
     connect( o2, &QgsO2::refreshFinished, this, &QgsAuthOAuth2Method::onRefreshFinished, Qt::UniqueConnection );
 
 
-    const int prevtimeout = QgsNetworkAccessManager::settingsNetworkTimeout->value();
+    QgsSettings settings;
+    const QString timeoutkey = QStringLiteral( "qgis/networkAndProxy/networkTimeout" );
+    const int prevtimeout = settings.value( timeoutkey, QStringLiteral( "-1" ) ).toInt();
     const int reqtimeout = o2->oauth2config()->requestTimeout() * 1000;
-    QgsNetworkAccessManager::settingsNetworkTimeout->setValue( reqtimeout );
+    settings.setValue( timeoutkey, reqtimeout );
 
     // go into local event loop and wait for a fired linking-related slot
     QEventLoop loop( nullptr );
@@ -218,13 +220,13 @@ bool QgsAuthOAuth2Method::updateNetworkRequest( QNetworkRequest &request, const 
     }
 
     // don't re-apply a setting that wasn't already set
-    if ( !prevtimeout )
+    if ( prevtimeout == -1 )
     {
-      QgsNetworkAccessManager::settingsNetworkTimeout->remove();
+      settings.remove( timeoutkey );
     }
     else
     {
-      QgsNetworkAccessManager::settingsNetworkTimeout->setValue( prevtimeout );
+      settings.setValue( timeoutkey, prevtimeout );
     }
 
     if ( !o2->linked() )
@@ -357,8 +359,8 @@ void QgsAuthOAuth2Method::onLinkingSucceeded()
   QgsMessageLog::logMessage( tr( "Linking succeeded" ), AUTH_METHOD_KEY, Qgis::MessageLevel::Info );
 
   //###################### DO NOT LEAVE ME UNCOMMENTED ######################
-  //QgsDebugMsgLevel( QStringLiteral( "Access token: %1" ).arg( o2->token() ), 2 );
-  //QgsDebugMsgLevel( QStringLiteral( "Access token secret: %1" ).arg( o2->tokenSecret() ), 2 );
+  //QgsDebugMsg( QStringLiteral( "Access token: %1" ).arg( o2->token() ) );
+  //QgsDebugMsg( QStringLiteral( "Access token secret: %1" ).arg( o2->tokenSecret() ) );
   //###################### DO NOT LEAVE ME UNCOMMENTED ######################
 
   const QVariantMap extraTokens = o2->extraTokens();
@@ -398,7 +400,7 @@ void QgsAuthOAuth2Method::onNetworkError( QNetworkReply::NetworkError err )
   {
 #ifdef QGISDEBUG
     msg = tr( "Network error but no reply object accessible" );
-    QgsDebugError( msg );
+    QgsDebugMsg( msg );
 #endif
     return;
   }
@@ -535,7 +537,7 @@ QgsO2 *QgsAuthOAuth2Method::getOAuth2Bundle( const QString &authcfg, bool fullco
   QgsAuthMethodConfig mconfig;
   if ( !QgsApplication::authManager()->loadAuthenticationConfig( authcfg, mconfig, fullconfig ) )
   {
-    QgsDebugError( QStringLiteral( "Retrieve config FAILED for authcfg: %1" ).arg( authcfg ) );
+    QgsDebugMsg( QStringLiteral( "Retrieve config FAILED for authcfg: %1" ).arg( authcfg ) );
     config->deleteLater();
     return nullbundle;
   }
@@ -549,17 +551,17 @@ QgsO2 *QgsAuthOAuth2Method::getOAuth2Bundle( const QString &authcfg, bool fullco
     const QByteArray configtxt = configmap.value( QStringLiteral( "oauth2config" ) ).toUtf8();
     if ( configtxt.isEmpty() )
     {
-      QgsDebugError( QStringLiteral( "FAILED to load OAuth2 config: empty config txt" ) );
+      QgsDebugMsg( QStringLiteral( "FAILED to load OAuth2 config: empty config txt" ) );
       config->deleteLater();
       return nullbundle;
     }
     //###################### DO NOT LEAVE ME UNCOMMENTED #####################
-    //QgsDebugMsgLevel( QStringLiteral( "LOAD oauth2config configtxt: \n\n%1\n\n" ).arg( QString( configtxt ) ), 2 );
+    //QgsDebugMsg( QStringLiteral( "LOAD oauth2config configtxt: \n\n%1\n\n" ).arg( QString( configtxt ) ) );
     //###################### DO NOT LEAVE ME UNCOMMENTED #####################
 
     if ( !config->loadConfigTxt( configtxt, QgsAuthOAuth2Config::JSON ) )
     {
-      QgsDebugError( QStringLiteral( "FAILED to load OAuth2 config into object" ) );
+      QgsDebugMsg( QStringLiteral( "FAILED to load OAuth2 config into object" ) );
       config->deleteLater();
       return nullbundle;
     }
@@ -570,7 +572,7 @@ QgsO2 *QgsAuthOAuth2Method::getOAuth2Bundle( const QString &authcfg, bool fullco
     const QString definedid = configmap.value( QStringLiteral( "definedid" ) );
     if ( definedid.isEmpty() )
     {
-      QgsDebugError( QStringLiteral( "FAILED to load a defined ID for OAuth2 config" ) );
+      QgsDebugMsg( QStringLiteral( "FAILED to load a defined ID for OAuth2 config" ) );
       config->deleteLater();
       return nullbundle;
     }
@@ -578,14 +580,14 @@ QgsO2 *QgsAuthOAuth2Method::getOAuth2Bundle( const QString &authcfg, bool fullco
     const QString extradir = configmap.value( QStringLiteral( "defineddirpath" ) );
     if ( extradir.isEmpty() )
     {
-      QgsDebugError( QStringLiteral( "No custom defined dir path to load OAuth2 config" ) );
+      QgsDebugMsg( QStringLiteral( "No custom defined dir path to load OAuth2 config" ) );
     }
 
     const QgsStringMap definedcache = QgsAuthOAuth2Config::mappedOAuth2ConfigsCache( this, extradir );
 
     if ( !definedcache.contains( definedid ) )
     {
-      QgsDebugError( QStringLiteral( "FAILED to load OAuth2 config for defined ID: missing ID or file for %1" ).arg( definedid ) );
+      QgsDebugMsg( QStringLiteral( "FAILED to load OAuth2 config for defined ID: missing ID or file for %1" ).arg( definedid ) );
       config->deleteLater();
       return nullbundle;
     }
@@ -593,14 +595,14 @@ QgsO2 *QgsAuthOAuth2Method::getOAuth2Bundle( const QString &authcfg, bool fullco
     const QByteArray definedtxt = definedcache.value( definedid ).toUtf8();
     if ( definedtxt.isNull() || definedtxt.isEmpty() )
     {
-      QgsDebugError( QStringLiteral( "FAILED to load config text for defined ID: empty text for %1" ).arg( definedid ) );
+      QgsDebugMsg( QStringLiteral( "FAILED to load config text for defined ID: empty text for %1" ).arg( definedid ) );
       config->deleteLater();
       return nullbundle;
     }
 
     if ( !config->loadConfigTxt( definedtxt, QgsAuthOAuth2Config::JSON ) )
     {
-      QgsDebugError( QStringLiteral( "FAILED to load config text for defined ID: %1" ).arg( definedid ) );
+      QgsDebugMsg( QStringLiteral( "FAILED to load config text for defined ID: %1" ).arg( definedid ) );
       config->deleteLater();
       return nullbundle;
     }
@@ -612,11 +614,11 @@ QgsO2 *QgsAuthOAuth2Method::getOAuth2Bundle( const QString &authcfg, bool fullco
         QgsAuthOAuth2Config::variantFromSerialized( querypairstxt, QgsAuthOAuth2Config::JSON, &ok );
       if ( !ok )
       {
-        QgsDebugError( QStringLiteral( "No query pairs to load OAuth2 config: FAILED to parse" ) );
+        QgsDebugMsg( QStringLiteral( "No query pairs to load OAuth2 config: FAILED to parse" ) );
       }
       if ( querypairsmap.isEmpty() )
       {
-        QgsDebugError( QStringLiteral( "No query pairs to load OAuth2 config: parsed pairs are empty" ) );
+        QgsDebugMsg( QStringLiteral( "No query pairs to load OAuth2 config: parsed pairs are empty" ) );
       }
       else
       {
@@ -625,7 +627,7 @@ QgsO2 *QgsAuthOAuth2Method::getOAuth2Bundle( const QString &authcfg, bool fullco
     }
     else
     {
-      QgsDebugError( QStringLiteral( "No query pairs to load OAuth2 config: empty text" ) );
+      QgsDebugMsg( QStringLiteral( "No query pairs to load OAuth2 config: empty text" ) );
     }
   }
 

@@ -47,7 +47,9 @@ class CORE_EXPORT QgsRecentStyleHandler
     */
     QgsRecentStyleHandler();
 
+    //! QgsRecentStyleHandler cannot be copied
     QgsRecentStyleHandler( const QgsRecentStyleHandler &other ) = delete;
+    //! QgsRecentStyleHandler cannot be copied
     QgsRecentStyleHandler &operator=( const QgsRecentStyleHandler &other ) = delete;
 
     ~QgsRecentStyleHandler();

@@ -15,7 +15,6 @@
  *
  ***************************************************************************/
 #include "qgshanacolumntypethread.h"
-#include "moc_qgshanacolumntypethread.cpp"
 #include "qgshanaconnection.h"
 #include "qgshanaconnectionpool.h"
 #include "qgshanaexception.h"

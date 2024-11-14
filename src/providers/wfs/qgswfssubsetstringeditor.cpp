@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgswfssubsetstringeditor.h"
-#include "moc_qgswfssubsetstringeditor.cpp"
 #include "qgswfsprovider.h"
 #include "qgswfsshareddata.h"
 #include "qgswfsutils.h"

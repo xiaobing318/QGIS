@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgslayertreeviewbadlayerindicator.h"
-#include "moc_qgslayertreeviewbadlayerindicator.cpp"
 #include "qgslayertree.h"
 #include "qgslayertreeview.h"
 #include "qgslayertreeutils.h"

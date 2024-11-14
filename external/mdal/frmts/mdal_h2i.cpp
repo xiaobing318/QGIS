@@ -137,7 +137,7 @@ bool MDAL::DriverH2i::parseJsonFile( const std::string filePath, MetadataH2i &me
     metadata.dirPath = MDAL::dirName( filePath );
 
   }
-  catch ( Json::exception & )
+  catch ( Json::exception &e )
   {
     return false;
   }

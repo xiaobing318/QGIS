@@ -37,7 +37,7 @@ QgsEditorConfigWidget *QgsExternalResourceWidgetFactory::configWidget( QgsVector
 
 unsigned int QgsExternalResourceWidgetFactory::fieldScore( const QgsVectorLayer *vl, int fieldIdx ) const
 {
-  if ( vl->fields().at( fieldIdx ).type() == QMetaType::Type::QString )
+  if ( vl->fields().at( fieldIdx ).type() == QVariant::String )
     return 5;
 
   return 0;

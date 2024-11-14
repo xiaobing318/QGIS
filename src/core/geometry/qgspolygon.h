@@ -28,6 +28,7 @@ class QgsLineString;
  * \ingroup core
  * \class QgsPolygon
  * \brief Polygon geometry type.
+ * \since QGIS 2.10
  */
 class CORE_EXPORT QgsPolygon: public QgsCurvePolygon
 {
@@ -54,7 +55,6 @@ class CORE_EXPORT QgsPolygon: public QgsCurvePolygon
     bool fromWkb( QgsConstWkbPtr &wkb ) override;
     int wkbSize( QgsAbstractGeometry::WkbFlags flags = QgsAbstractGeometry::WkbFlags() ) const override;
     QByteArray asWkb( QgsAbstractGeometry::WkbFlags flags = QgsAbstractGeometry::WkbFlags() ) const override;
-    QString asWkt( int precision = 17 ) const override;
     QgsPolygon *surfaceToPolygon() const override SIP_FACTORY;
 
     /**
@@ -73,6 +73,7 @@ class CORE_EXPORT QgsPolygon: public QgsCurvePolygon
      * Returns the distance from a point to the boundary of the polygon (either the
      * exterior ring or any closer interior rings). The returned distance will be
      * negative if the point lies outside the polygon.
+     * \since QGIS 3.0
      */
     double pointDistanceToBoundary( double x, double y ) const;
 
@@ -83,16 +84,17 @@ class CORE_EXPORT QgsPolygon: public QgsCurvePolygon
      * Should be used by qgsgeometry_cast<QgsPolygon *>( geometry ).
      *
      * \note Not available in Python. Objects will be automatically be converted to the appropriate target type.
+     * \since QGIS 3.0
      */
-    inline static const QgsPolygon *cast( const QgsAbstractGeometry *geom ) // cppcheck-suppress duplInheritedMember
+    inline static const QgsPolygon *cast( const QgsAbstractGeometry *geom )
     {
       if ( !geom )
         return nullptr;
 
-      const Qgis::WkbType flatType = QgsWkbTypes::flatType( geom->wkbType() );
+      const QgsWkbTypes::Type flatType = QgsWkbTypes::flatType( geom->wkbType() );
 
-      if ( flatType == Qgis::WkbType::Polygon
-           || flatType == Qgis::WkbType::Triangle )
+      if ( flatType == QgsWkbTypes::Polygon
+           || flatType == QgsWkbTypes::Triangle )
         return static_cast<const QgsPolygon *>( geom );
       return nullptr;
     }

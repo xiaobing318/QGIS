@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     v_edit.py
@@ -37,7 +39,7 @@ def processCommand(alg, parameters, context, feedback):
     txtRules = alg.parameterAsString(parameters, 'input_txt', context)
     if txtRules:
         # Creates a temporary txt file
-        tempRulesName = getTempFilename(context=context)
+        tempRulesName = getTempFilename()
 
         # Inject rules into temporary txt file
         with open(tempRulesName, "w") as tempRules:

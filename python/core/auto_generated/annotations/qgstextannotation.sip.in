@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/annotations/qgstextannotation.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -13,6 +13,8 @@ class QgsTextAnnotation: QgsAnnotation
 {
 %Docstring(signature="appended")
 An annotation item that displays formatted text from a QTextDocument document.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -66,5 +68,5 @@ Returns a new QgsTextAnnotation object.
  *                                                                      *
  * src/core/annotations/qgstextannotation.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

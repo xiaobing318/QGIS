@@ -11,13 +11,13 @@ __copyright__ = 'Copyright 2015, The QGIS Project'
 
 import os
 
-from qgis.PyQt.QtCore import QUrl, QVariant
-from qgis.core import (
-    QgsField,
-    QgsFields,
-    QgsVirtualLayerDefinition,
-    QgsWkbTypes,
-)
+import qgis  # NOQA
+from qgis.PyQt.QtCore import QVariant, QUrl
+from qgis.core import (QgsField,
+                       QgsWkbTypes,
+                       QgsFields,
+                       QgsVirtualLayerDefinition
+                       )
 from qgis.testing import unittest
 
 
@@ -69,9 +69,9 @@ class TestQgsVirtualLayerDefinition(unittest.TestCase):
         self.assertEqual(QgsVirtualLayerDefinition.fromUrl(d.toUrl()).geometryField(), "geom")
         self.assertEqual(QgsVirtualLayerDefinition.fromUrl(strToUrl(d.toString())).geometryField(), "geom")
 
-        d.setGeometryWkbType(QgsWkbTypes.Type.Point)
-        self.assertEqual(QgsVirtualLayerDefinition.fromUrl(d.toUrl()).geometryWkbType(), QgsWkbTypes.Type.Point)
-        self.assertEqual(QgsVirtualLayerDefinition.fromUrl(strToUrl(d.toString())).geometryWkbType(), QgsWkbTypes.Type.Point)
+        d.setGeometryWkbType(QgsWkbTypes.Point)
+        self.assertEqual(QgsVirtualLayerDefinition.fromUrl(d.toUrl()).geometryWkbType(), QgsWkbTypes.Point)
+        self.assertEqual(QgsVirtualLayerDefinition.fromUrl(strToUrl(d.toString())).geometryWkbType(), QgsWkbTypes.Point)
 
         f = QgsFields()
         f.append(QgsField("a", QVariant.Int))

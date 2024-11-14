@@ -24,12 +24,12 @@
 
 QgsTriangle::QgsTriangle()
 {
-  mWkbType = Qgis::WkbType::Triangle;
+  mWkbType = QgsWkbTypes::Triangle;
 }
 
 QgsTriangle::QgsTriangle( const QgsPoint &p1, const QgsPoint &p2, const QgsPoint &p3 )
 {
-  mWkbType = Qgis::WkbType::Triangle;
+  mWkbType = QgsWkbTypes::Triangle;
 
   const QVector< double > x { p1.x(), p2.x(), p3.x(), p1.x() };
   const QVector< double > y { p1.y(), p2.y(), p3.y(), p1.y() };
@@ -48,7 +48,7 @@ QgsTriangle::QgsTriangle( const QgsPoint &p1, const QgsPoint &p2, const QgsPoint
 
 QgsTriangle::QgsTriangle( const QgsPointXY &p1, const QgsPointXY &p2, const QgsPointXY &p3 )
 {
-  mWkbType = Qgis::WkbType::Triangle;
+  mWkbType = QgsWkbTypes::Triangle;
 
   const QVector< double > x { p1.x(), p2.x(), p3.x(), p1.x() };
   const QVector< double > y {p1.y(), p2.y(), p3.y(), p1.y() };
@@ -58,7 +58,7 @@ QgsTriangle::QgsTriangle( const QgsPointXY &p1, const QgsPointXY &p2, const QgsP
 
 QgsTriangle::QgsTriangle( const QPointF p1, const QPointF p2, const QPointF p3 )
 {
-  mWkbType = Qgis::WkbType::Triangle;
+  mWkbType = QgsWkbTypes::Triangle;
 
   const QVector< double > x{ p1.x(), p2.x(), p3.x(), p1.x() };
   const QVector< double > y{ p1.y(), p2.y(), p3.y(), p1.y() };
@@ -66,27 +66,24 @@ QgsTriangle::QgsTriangle( const QPointF p1, const QPointF p2, const QPointF p3 )
   setExteriorRing( ext );
 }
 
-bool QgsTriangle::operator==( const QgsAbstractGeometry &other ) const
+bool QgsTriangle::operator==( const QgsTriangle &other ) const
 {
-  const QgsTriangle *otherTriangle = qgsgeometry_cast< const QgsTriangle * >( &other );
-  if ( !otherTriangle )
-    return false;
-
-  if ( isEmpty() && otherTriangle->isEmpty() )
+  if ( isEmpty() && other.isEmpty() )
   {
     return true;
   }
-  else if ( isEmpty() || otherTriangle->isEmpty() )
+  else if ( isEmpty() || other.isEmpty() )
   {
     return false;
   }
 
-  return ( ( vertexAt( 0 ) == otherTriangle->vertexAt( 0 ) ) &&
-           ( vertexAt( 1 ) == otherTriangle->vertexAt( 1 ) ) &&
-           ( vertexAt( 2 ) == otherTriangle->vertexAt( 2 ) ) );
+  return ( ( vertexAt( 0 ) == other.vertexAt( 0 ) ) &&
+           ( vertexAt( 1 ) == other.vertexAt( 1 ) ) &&
+           ( vertexAt( 2 ) == other.vertexAt( 2 ) )
+         );
 }
 
-bool QgsTriangle::operator!=( const QgsAbstractGeometry &other ) const
+bool QgsTriangle::operator!=( const QgsTriangle &other ) const
 {
   return !operator==( other );
 }
@@ -106,7 +103,7 @@ QgsTriangle *QgsTriangle::createEmptyWithSameType() const
 void QgsTriangle::clear()
 {
   QgsPolygon::clear();
-  mWkbType = Qgis::WkbType::Triangle;
+  mWkbType = QgsWkbTypes::Triangle;
 }
 
 QgsTriangle *QgsTriangle::clone() const
@@ -122,27 +119,27 @@ bool QgsTriangle::fromWkb( QgsConstWkbPtr &wkbPtr )
     return false;
   }
 
-  const Qgis::WkbType type = wkbPtr.readHeader();
-  if ( QgsWkbTypes::flatType( type ) != Qgis::WkbType::Triangle )
+  const QgsWkbTypes::Type type = wkbPtr.readHeader();
+  if ( QgsWkbTypes::flatType( type ) != QgsWkbTypes::Triangle )
   {
     return false;
   }
   mWkbType = type;
 
-  Qgis::WkbType ringType;
+  QgsWkbTypes::Type ringType;
   switch ( mWkbType )
   {
-    case Qgis::WkbType::TriangleZ:
-      ringType = Qgis::WkbType::LineStringZ;
+    case QgsWkbTypes::TriangleZ:
+      ringType = QgsWkbTypes::LineStringZ;
       break;
-    case Qgis::WkbType::TriangleM:
-      ringType = Qgis::WkbType::LineStringM;
+    case QgsWkbTypes::TriangleM:
+      ringType = QgsWkbTypes::LineStringM;
       break;
-    case Qgis::WkbType::TriangleZM:
-      ringType = Qgis::WkbType::LineStringZM;
+    case QgsWkbTypes::TriangleZM:
+      ringType = QgsWkbTypes::LineStringZM;
       break;
     default:
-      ringType = Qgis::WkbType::LineString;
+      ringType = QgsWkbTypes::LineString;
       break;
   }
 
@@ -164,9 +161,9 @@ bool QgsTriangle::fromWkt( const QString &wkt )
 {
   clear();
 
-  const QPair<Qgis::WkbType, QString> parts = QgsGeometryUtils::wktReadBlock( wkt );
+  const QPair<QgsWkbTypes::Type, QString> parts = QgsGeometryUtils::wktReadBlock( wkt );
 
-  if ( QgsWkbTypes::geometryType( parts.first ) != Qgis::GeometryType::Polygon )
+  if ( QgsWkbTypes::geometryType( parts.first ) != QgsWkbTypes::PolygonGeometry )
     return false;
 
   mWkbType = parts.first;
@@ -182,11 +179,11 @@ bool QgsTriangle::fromWkt( const QString &wkt )
   const QStringList blocks = QgsGeometryUtils::wktGetChildBlocks( parts.second, defaultChildWkbType );
   for ( const QString &childWkt : blocks )
   {
-    const QPair<Qgis::WkbType, QString> childParts = QgsGeometryUtils::wktReadBlock( childWkt );
+    const QPair<QgsWkbTypes::Type, QString> childParts = QgsGeometryUtils::wktReadBlock( childWkt );
 
-    const Qgis::WkbType flatCurveType = QgsWkbTypes::flatType( childParts.first );
+    const QgsWkbTypes::Type flatCurveType = QgsWkbTypes::flatType( childParts.first );
 
-    if ( flatCurveType == Qgis::WkbType::LineString )
+    if ( flatCurveType == QgsWkbTypes::LineString )
       mInteriorRings.append( new QgsLineString() );
     else
     {
@@ -348,7 +345,7 @@ void QgsTriangle::setExteriorRing( QgsCurve *ring )
   mExteriorRing.reset( ring );
 
   //set proper wkb type
-  setZMTypeFromSubGeometry( ring, Qgis::WkbType::Triangle );
+  setZMTypeFromSubGeometry( ring, QgsWkbTypes::Triangle );
 
   clearCache();
 }
@@ -418,7 +415,7 @@ bool QgsTriangle::isDegenerate() const
   const QgsPoint p1( vertexAt( 0 ) );
   const QgsPoint p2( vertexAt( 1 ) );
   const QgsPoint p3( vertexAt( 2 ) );
-  return ( ( ( p1 == p2 ) || ( p1 == p3 ) || ( p2 == p3 ) ) || QgsGeometryUtilsBase::leftOfLine( p1.x(), p1.y(), p2.x(), p2.y(), p3.x(), p3.y() ) == 0 );
+  return ( ( ( p1 == p2 ) || ( p1 == p3 ) || ( p2 == p3 ) ) || QgsGeometryUtils::leftOfLine( p1.x(), p1.y(), p2.x(), p2.y(), p3.x(), p3.y() ) == 0 );
 }
 
 bool QgsTriangle::isIsocele( double lengthTolerance ) const

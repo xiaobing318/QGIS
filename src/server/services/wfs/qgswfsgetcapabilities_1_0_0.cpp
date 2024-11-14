@@ -291,7 +291,7 @@ namespace QgsWfs
         {
           continue;
         }
-        if ( layer->type() != Qgis::LayerType::Vector )
+        if ( layer->type() != QgsMapLayerType::VectorLayer )
         {
           continue;
         }
@@ -306,8 +306,8 @@ namespace QgsWfs
         //create Name
         QDomElement nameElem = doc.createElement( QStringLiteral( "Name" ) );
         QString typeName = layer->name();
-        if ( !layer->serverProperties()->shortName().isEmpty() )
-          typeName = layer->serverProperties()->shortName();
+        if ( !layer->shortName().isEmpty() )
+          typeName = layer->shortName();
         typeName = typeName.replace( QLatin1String( " " ), QLatin1String( "_" ) );
         const QDomText nameText = doc.createTextNode( typeName );
         nameElem.appendChild( nameText );
@@ -315,7 +315,7 @@ namespace QgsWfs
 
         //create Title
         QDomElement titleElem = doc.createElement( QStringLiteral( "Title" ) );
-        QString title = layer->serverProperties()->title();
+        QString title = layer->title();
         if ( title.isEmpty() )
         {
           title = layer->name();
@@ -325,7 +325,7 @@ namespace QgsWfs
         layerElem.appendChild( titleElem );
 
         //create Abstract
-        const QString abstract = layer->serverProperties()->abstract();
+        const QString abstract = layer->abstract();
         if ( !abstract.isEmpty() )
         {
           QDomElement abstractElem = doc.createElement( QStringLiteral( "Abstract" ) );
@@ -335,7 +335,7 @@ namespace QgsWfs
         }
 
         //create keywords
-        const QString keywords = layer->serverProperties()->keywordList();
+        const QString keywords = layer->keywordList();
         if ( !keywords.isEmpty() )
         {
           QDomElement keywordsElem = doc.createElement( QStringLiteral( "Keywords" ) );
@@ -398,21 +398,21 @@ namespace QgsWfs
         {
           QgsVectorLayer *vlayer = qobject_cast<QgsVectorLayer *>( layer );
           QgsVectorDataProvider *provider = vlayer->dataProvider();
-          if ( ( provider->capabilities() & Qgis::VectorProviderCapability::AddFeatures ) && wfstInsertLayersId.contains( layer->id() ) )
+          if ( ( provider->capabilities() & QgsVectorDataProvider::AddFeatures ) && wfstInsertLayersId.contains( layer->id() ) )
           {
             //wfs:Insert element
             const QDomElement insertElement = doc.createElement( QStringLiteral( "Insert" )/*wfs:Insert*/ );
             operationsElement.appendChild( insertElement );
           }
-          if ( ( provider->capabilities() & Qgis::VectorProviderCapability::ChangeAttributeValues ) &&
-               ( provider->capabilities() & Qgis::VectorProviderCapability::ChangeGeometries ) &&
+          if ( ( provider->capabilities() & QgsVectorDataProvider::ChangeAttributeValues ) &&
+               ( provider->capabilities() & QgsVectorDataProvider::ChangeGeometries ) &&
                wfstUpdateLayersId.contains( layer->id() ) )
           {
             //wfs:Update element
             const QDomElement updateElement = doc.createElement( QStringLiteral( "Update" )/*wfs:Update*/ );
             operationsElement.appendChild( updateElement );
           }
-          if ( ( provider->capabilities() & Qgis::VectorProviderCapability::DeleteFeatures ) && wfstDeleteLayersId.contains( layer->id() ) )
+          if ( ( provider->capabilities() & QgsVectorDataProvider::DeleteFeatures ) && wfstDeleteLayersId.contains( layer->id() ) )
           {
             //wfs:Delete element
             const QDomElement deleteElement = doc.createElement( QStringLiteral( "Delete" )/*wfs:Delete*/ );

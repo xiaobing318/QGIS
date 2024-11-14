@@ -13,11 +13,14 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsembeddedsymbolrendererwidget.h"
-#include "moc_qgsembeddedsymbolrendererwidget.cpp"
 #include "qgsembeddedsymbolrenderer.h"
 #include "qgsrendererregistry.h"
+
 #include "qgssymbol.h"
+
+#include "qgslogger.h"
 #include "qgsvectorlayer.h"
+#include "qgsapplication.h"
 
 QgsRendererWidget *QgsEmbeddedSymbolRendererWidget::create( QgsVectorLayer *layer, QgsStyle *style, QgsFeatureRenderer *renderer )
 {
@@ -32,10 +35,10 @@ QgsEmbeddedSymbolRendererWidget::QgsEmbeddedSymbolRendererWidget( QgsVectorLayer
     return;
   }
 
-  const Qgis::GeometryType type = QgsWkbTypes::geometryType( layer->wkbType() );
+  const QgsWkbTypes::GeometryType type = QgsWkbTypes::geometryType( layer->wkbType() );
 
   // the renderer only applies to layers with providers supporting embedded symbols
-  if ( !( layer->dataProvider()->capabilities() & Qgis::VectorProviderCapability::FeatureSymbology ) )
+  if ( !( layer->dataProvider()->capabilities() & QgsVectorDataProvider::FeatureSymbology ) )
   {
     //setup blank dialog
     mRenderer.reset( nullptr );

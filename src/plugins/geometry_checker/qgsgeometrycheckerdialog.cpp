@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgsgeometrycheckerdialog.h"
-#include "moc_qgsgeometrycheckerdialog.cpp"
 #include "qgsgeometrycheckersetuptab.h"
 #include "qgsgeometrycheckerresulttab.h"
 #include "qgsgeometrychecker.h"

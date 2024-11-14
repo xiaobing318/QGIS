@@ -29,6 +29,7 @@
 #include "qgstransformeffect.h"
 #include "qgspainteffectregistry.h"
 #include "qgscolorrampimpl.h"
+#include "qgssymbollayerutils.h"
 #include "qgsmapsettings.h"
 #include "qgsvectorlayer.h"
 #include "qgsapplication.h"
@@ -45,7 +46,6 @@
 #include "qgsfillsymbol.h"
 #include "qgsmarkersymbol.h"
 #include "qgslinesymbol.h"
-#include "qgslayoutexporter.h"
 
 //qgis test includes
 #include "qgsmultirenderchecker.h"
@@ -430,8 +430,8 @@ void TestQgsPaintEffect::dropShadow()
   QCOMPARE( effect->offsetAngle(), 77 );
   effect->setOffsetDistance( 9.7 );
   QCOMPARE( effect->offsetDistance(), 9.7 );
-  effect->setOffsetUnit( Qgis::RenderUnit::MapUnits );
-  QCOMPARE( effect->offsetUnit(), Qgis::RenderUnit::MapUnits );
+  effect->setOffsetUnit( QgsUnitTypes::RenderMapUnits );
+  QCOMPARE( effect->offsetUnit(), QgsUnitTypes::RenderMapUnits );
   effect->setOffsetMapUnitScale( QgsMapUnitScale( 1.0, 2.0 ) );
   QCOMPARE( effect->offsetMapUnitScale().minScale, 1.0 );
   QCOMPARE( effect->offsetMapUnitScale().maxScale, 2.0 );
@@ -525,8 +525,8 @@ void TestQgsPaintEffect::glow()
   QCOMPARE( effect->blurLevel(), 6.0 );
   effect->setSpread( 7.8 );
   QCOMPARE( effect->spread(), 7.8 );
-  effect->setSpreadUnit( Qgis::RenderUnit::MapUnits );
-  QCOMPARE( effect->spreadUnit(), Qgis::RenderUnit::MapUnits );
+  effect->setSpreadUnit( QgsUnitTypes::RenderMapUnits );
+  QCOMPARE( effect->spreadUnit(), QgsUnitTypes::RenderMapUnits );
   effect->setSpreadMapUnitScale( QgsMapUnitScale( 1.0, 2.0 ) );
   QCOMPARE( effect->spreadMapUnitScale().minScale, 1.0 );
   QCOMPARE( effect->spreadMapUnitScale().maxScale, 2.0 );
@@ -629,8 +629,8 @@ void TestQgsPaintEffect::transform()
   QCOMPARE( effect->translateX(), 6.0 );
   effect->setTranslateY( 77 );
   QCOMPARE( effect->translateY(), 77.0 );
-  effect->setTranslateUnit( Qgis::RenderUnit::MapUnits );
-  QCOMPARE( effect->translateUnit(), Qgis::RenderUnit::MapUnits );
+  effect->setTranslateUnit( QgsUnitTypes::RenderMapUnits );
+  QCOMPARE( effect->translateUnit(), QgsUnitTypes::RenderMapUnits );
   effect->setTranslateMapUnitScale( QgsMapUnitScale( 1.0, 2.0 ) );
   QCOMPARE( effect->translateMapUnitScale().minScale, 1.0 );
   QCOMPARE( effect->translateMapUnitScale().maxScale, 2.0 );
@@ -657,7 +657,7 @@ void TestQgsPaintEffect::transform()
   QCOMPARE( copy->enabled(), false );
   QCOMPARE( copy->translateX(), 6.0 );
   QCOMPARE( copy->translateY(), 77.0 );
-  QCOMPARE( copy->translateUnit(), Qgis::RenderUnit::MapUnits );
+  QCOMPARE( copy->translateUnit(), QgsUnitTypes::RenderMapUnits );
   QCOMPARE( copy->translateMapUnitScale().minScale, 1.0 );
   QCOMPARE( copy->translateMapUnitScale().maxScale, 2.0 );
   QCOMPARE( copy->scaleX(), 0.5 );
@@ -677,7 +677,7 @@ void TestQgsPaintEffect::transform()
   QCOMPARE( cloneCast->enabled(), false );
   QCOMPARE( cloneCast->translateX(), 6.0 );
   QCOMPARE( cloneCast->translateY(), 77.0 );
-  QCOMPARE( cloneCast->translateUnit(), Qgis::RenderUnit::MapUnits );
+  QCOMPARE( cloneCast->translateUnit(), QgsUnitTypes::RenderMapUnits );
   QCOMPARE( cloneCast->translateMapUnitScale().minScale, 1.0 );
   QCOMPARE( cloneCast->translateMapUnitScale().maxScale, 2.0 );
   QCOMPARE( cloneCast->scaleX(), 0.5 );
@@ -698,7 +698,7 @@ void TestQgsPaintEffect::transform()
   QCOMPARE( readCast->enabled(), false );
   QCOMPARE( readCast->translateX(), 6.0 );
   QCOMPARE( readCast->translateY(), 77.0 );
-  QCOMPARE( readCast->translateUnit(), Qgis::RenderUnit::MapUnits );
+  QCOMPARE( readCast->translateUnit(), QgsUnitTypes::RenderMapUnits );
   QCOMPARE( readCast->translateMapUnitScale().minScale, 1.0 );
   QCOMPARE( readCast->translateMapUnitScale().maxScale, 2.0 );
   QCOMPARE( readCast->scaleX(), 0.5 );
@@ -783,7 +783,7 @@ void TestQgsPaintEffect::layerEffectPolygon()
   QgsVectorLayer *polysLayer = new QgsVectorLayer( polyFileInfo.filePath(),
       polyFileInfo.completeBaseName(), QStringLiteral( "ogr" ) );
   QgsVectorSimplifyMethod simplifyMethod;
-  simplifyMethod.setSimplifyHints( Qgis::VectorRenderingSimplificationFlags() );
+  simplifyMethod.setSimplifyHints( QgsVectorSimplifyMethod::NoSimplification );
   polysLayer->setSimplifyMethod( simplifyMethod );
 
   QgsMapSettings ms;
@@ -813,7 +813,7 @@ void TestQgsPaintEffect::layerEffectLine()
   QgsVectorLayer *lineLayer = new QgsVectorLayer( lineFileInfo.filePath(),
       lineFileInfo.completeBaseName(), QStringLiteral( "ogr" ) );
   QgsVectorSimplifyMethod simplifyMethod;
-  simplifyMethod.setSimplifyHints( Qgis::VectorRenderingSimplificationFlags() );
+  simplifyMethod.setSimplifyHints( QgsVectorSimplifyMethod::NoSimplification );
   lineLayer->setSimplifyMethod( simplifyMethod );
 
   QgsMapSettings ms;
@@ -871,7 +871,7 @@ void TestQgsPaintEffect::vectorLayerEffect()
   QgsVectorLayer *polysLayer = new QgsVectorLayer( polyFileInfo.filePath(),
       polyFileInfo.completeBaseName(), QStringLiteral( "ogr" ) );
   QgsVectorSimplifyMethod simplifyMethod;
-  simplifyMethod.setSimplifyHints( Qgis::VectorRenderingSimplificationFlags() );
+  simplifyMethod.setSimplifyHints( QgsVectorSimplifyMethod::NoSimplification );
   polysLayer->setSimplifyMethod( simplifyMethod );
 
   QgsMapSettings ms;
@@ -905,7 +905,7 @@ void TestQgsPaintEffect::mapUnits()
   QgsVectorLayer *lineLayer = new QgsVectorLayer( lineFileInfo.filePath(),
       lineFileInfo.completeBaseName(), QStringLiteral( "ogr" ) );
   QgsVectorSimplifyMethod simplifyMethod;
-  simplifyMethod.setSimplifyHints( Qgis::VectorRenderingSimplificationFlags() );
+  simplifyMethod.setSimplifyHints( QgsVectorSimplifyMethod::NoSimplification );
   lineLayer->setSimplifyMethod( simplifyMethod );
 
   QgsMapSettings ms;
@@ -919,7 +919,7 @@ void TestQgsPaintEffect::mapUnits()
   QgsOuterGlowEffect *effect = new QgsOuterGlowEffect();
   effect->setColor( QColor( 255, 0, 0 ) );
   effect->setSpread( 3 );
-  effect->setSpreadUnit( Qgis::RenderUnit::MapUnits );
+  effect->setSpreadUnit( QgsUnitTypes::RenderMapUnits );
   renderer->setPaintEffect( effect );
 
   lineLayer->setRenderer( renderer );
@@ -940,7 +940,7 @@ void TestQgsPaintEffect::layout()
   QgsVectorLayer *lineLayer = new QgsVectorLayer( lineFileInfo.filePath(),
       lineFileInfo.completeBaseName(), QStringLiteral( "ogr" ) );
   QgsVectorSimplifyMethod simplifyMethod;
-  simplifyMethod.setSimplifyHints( Qgis::VectorRenderingSimplificationFlags() );
+  simplifyMethod.setSimplifyHints( QgsVectorSimplifyMethod::NoSimplification );
   lineLayer->setSimplifyMethod( simplifyMethod );
 
   QgsSimpleLineSymbolLayer *line = new QgsSimpleLineSymbolLayer;

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 /***************************************************************************
 Name                 : DB Manager
@@ -19,8 +21,9 @@ The content of this file is based on
  *                                                                         *
  ***************************************************************************/
 """
+from builtins import str
+from builtins import range
 
-from qgis.PyQt import uic
 from qgis.PyQt.QtCore import Qt, QModelIndex
 from qgis.PyQt.QtWidgets import QItemDelegate, QComboBox, QDialog, QPushButton, QDialogButtonBox, QMessageBox, QApplication
 from qgis.PyQt.QtCore import QItemSelectionModel, pyqtSignal
@@ -30,9 +33,8 @@ from qgis.utils import OverrideCursor
 from .db_plugins.data_model import TableFieldsModel
 from .db_plugins.plugin import DbError, ConnectionError
 from .dlg_db_error import DlgDbError
-from .gui_utils import GuiUtils
 
-Ui_Dialog, _ = uic.loadUiType(GuiUtils.get_ui_file_path('DlgCreateTable.ui'))
+from .ui.ui_DlgCreateTable import Ui_DbManagerDlgCreateTable as Ui_Dialog
 
 
 class TableFieldsDelegate(QItemDelegate):
@@ -59,7 +61,7 @@ class TableFieldsDelegate(QItemDelegate):
         """ load data from model to editor """
         m = index.model()
         if index.column() == 1:
-            txt = m.data(index, Qt.ItemDataRole.DisplayRole)
+            txt = m.data(index, Qt.DisplayRole)
             editor.setEditText(txt)
         else:
             # use default
@@ -102,7 +104,7 @@ class DlgCreateTable(QDialog, Ui_Dialog):
         self.fields.setColumnWidth(2, 50)
 
         b = QPushButton(self.tr("&Create"))
-        self.buttonBox.addButton(b, QDialogButtonBox.ButtonRole.ActionRole)
+        self.buttonBox.addButton(b, QDialogButtonBox.ActionRole)
 
         self.btnAddField.clicked.connect(self.addField)
         self.btnDeleteField.clicked.connect(self.deleteField)
@@ -187,12 +189,12 @@ class DlgCreateTable(QDialog, Ui_Dialog):
             if "serial" in self.fieldTypes:  # PostgreSQL
                 colType = "serial"
         m.setData(indexType, colType)
-        m.setData(indexNull, None, Qt.ItemDataRole.DisplayRole)
-        m.setData(indexNull, Qt.CheckState.Unchecked, Qt.ItemDataRole.CheckStateRole)
+        m.setData(indexNull, None, Qt.DisplayRole)
+        m.setData(indexNull, Qt.Unchecked, Qt.CheckStateRole)
 
         # selects the new row
         sel = self.fields.selectionModel()
-        sel.select(indexName, QItemSelectionModel.SelectionFlag.Rows | QItemSelectionModel.SelectionFlag.ClearAndSelect)
+        sel.select(indexName, QItemSelectionModel.Rows | QItemSelectionModel.ClearAndSelect)
 
         # starts editing
         self.fields.edit(indexName)
@@ -231,7 +233,7 @@ class DlgCreateTable(QDialog, Ui_Dialog):
 
         # set selection again
         index = self.fields.model().index(row - 1, 0, QModelIndex())
-        self.fields.selectionModel().select(index, QItemSelectionModel.SelectionFlag.Rows | QItemSelectionModel.SelectionFlag.ClearAndSelect)
+        self.fields.selectionModel().select(index, QItemSelectionModel.Rows | QItemSelectionModel.ClearAndSelect)
 
         self.updatePkeyCombo()
 
@@ -251,7 +253,7 @@ class DlgCreateTable(QDialog, Ui_Dialog):
 
         # set selection again
         index = self.fields.model().index(row + 1, 0, QModelIndex())
-        self.fields.selectionModel().select(index, QItemSelectionModel.SelectionFlag.Rows | QItemSelectionModel.SelectionFlag.ClearAndSelect)
+        self.fields.selectionModel().select(index, QItemSelectionModel.Rows | QItemSelectionModel.ClearAndSelect)
 
         self.updatePkeyCombo()
 
@@ -296,7 +298,7 @@ class DlgCreateTable(QDialog, Ui_Dialog):
             flds[pk_index].primaryKey = True
 
         # commit to DB
-        with OverrideCursor(Qt.CursorShape.WaitCursor):
+        with OverrideCursor(Qt.WaitCursor):
             try:
                 if not useGeomColumn:
                     self.db.createTable(table, flds, schema)

@@ -21,8 +21,6 @@
 #include "qgsexpression.h"
 #include "qgsgeometry.h"
 #include "qgsmapunitscale.h"
-#include "qgis.h"
-#include "qgscolorramplegendnodesettings.h"
 
 class QgsColorRamp;
 
@@ -30,6 +28,7 @@ class QgsColorRamp;
  * \ingroup core
  * \class QgsHeatmapRenderer
  * \brief A renderer which draws points as a live heatmap
+ * \since QGIS 2.7
  */
 class CORE_EXPORT QgsHeatmapRenderer : public QgsFeatureRenderer
 {
@@ -59,7 +58,6 @@ class CORE_EXPORT QgsHeatmapRenderer : public QgsFeatureRenderer
     QDomElement save( QDomDocument &doc, const QgsReadWriteContext &context ) override;
     static QgsHeatmapRenderer *convertFromRenderer( const QgsFeatureRenderer *renderer ) SIP_FACTORY;
     bool accept( QgsStyleEntityVisitorInterface *visitor ) const override;
-    QList<QgsLayerTreeModelLegendNode *> createLegendNodes( QgsLayerTreeLayer *nodeLayer ) const override SIP_FACTORY;
 
     //reimplemented to extent the request so that points up to heatmap's radius distance outside
     //visible area are included
@@ -80,22 +78,6 @@ class CORE_EXPORT QgsHeatmapRenderer : public QgsFeatureRenderer
      * \see colorRamp
      */
     void setColorRamp( QgsColorRamp *ramp SIP_TRANSFER );
-
-    /**
-     * Returns the color ramp legend settings.
-     *
-     * \see setLegendSettings()
-     * \since QGIS 3.38
-     */
-    const QgsColorRampLegendNodeSettings &legendSettings() const { return mLegendSettings; }
-
-    /**
-     * Sets the color ramp legend \a settings.
-     *
-     * \see legendSettings()
-     * \since QGIS 3.38
-     */
-    void setLegendSettings( const QgsColorRampLegendNodeSettings &settings );
 
     /**
      * Returns the radius for the heatmap
@@ -122,7 +104,7 @@ class CORE_EXPORT QgsHeatmapRenderer : public QgsFeatureRenderer
      * \see setRadiusUnit
      * \see radiusMapUnitScale
      */
-    Qgis::RenderUnit radiusUnit() const { return mRadiusUnit; }
+    QgsUnitTypes::RenderUnit radiusUnit() const { return mRadiusUnit; }
 
     /**
      * Sets the units used for the heatmap's radius
@@ -131,7 +113,7 @@ class CORE_EXPORT QgsHeatmapRenderer : public QgsFeatureRenderer
      * \see setRadius
      * \see radiusMapUnitScale
      */
-    void setRadiusUnit( const Qgis::RenderUnit unit ) { mRadiusUnit = unit; }
+    void setRadiusUnit( const QgsUnitTypes::RenderUnit unit ) { mRadiusUnit = unit; }
 
     /**
      * Returns the map unit scale used for the heatmap's radius
@@ -206,7 +188,7 @@ class CORE_EXPORT QgsHeatmapRenderer : public QgsFeatureRenderer
     double mRadius = 10;
     int mRadiusPixels = 0;
     double mRadiusSquared = 0;
-    Qgis::RenderUnit mRadiusUnit = Qgis::RenderUnit::Millimeters;
+    QgsUnitTypes::RenderUnit mRadiusUnit = QgsUnitTypes::RenderMillimeters;
     QgsMapUnitScale mRadiusMapUnitScale;
 
     QString mWeightExpressionString;
@@ -219,8 +201,6 @@ class CORE_EXPORT QgsHeatmapRenderer : public QgsFeatureRenderer
     int mRenderQuality = 3;
 
     int mFeaturesRendered = 0;
-
-    QgsColorRampLegendNodeSettings mLegendSettings;
 
     double uniformKernel( double distance, int bandwidth ) const;
     double quarticKernel( double distance, int bandwidth ) const;

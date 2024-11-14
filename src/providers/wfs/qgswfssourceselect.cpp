@@ -17,7 +17,6 @@
 
 #include "qgswfsconstants.h"
 #include "qgswfssourceselect.h"
-#include "moc_qgswfssourceselect.cpp"
 #include "qgswfsconnection.h"
 #include "qgswfscapabilities.h"
 #include "qgswfsprovider.h"
@@ -27,6 +26,7 @@
 #include "qgsprojectionselectiondialog.h"
 #include "qgsproject.h"
 #include "qgscoordinatereferencesystem.h"
+#include "qgscoordinatetransform.h"
 #include "qgslogger.h"
 #include "qgsmanageconnectionsdialog.h"
 #include "qgsoapifprovider.h"
@@ -65,7 +65,7 @@ QgsWFSSourceSelect::QgsWFSSourceSelect( QWidget *parent, Qt::WindowFlags fl, Qgs
   setupButtons( buttonBox );
   connect( buttonBox, &QDialogButtonBox::helpRequested, this, &QgsWFSSourceSelect::showHelp );
 
-  if ( widgetMode() != QgsProviderRegistry::WidgetMode::Standalone )
+  if ( widgetMode() != QgsProviderRegistry::WidgetMode::None )
   {
     mHoldDialogOpen->hide();
   }
@@ -109,8 +109,6 @@ QgsWFSSourceSelect::QgsWFSSourceSelect( QWidget *parent, Qt::WindowFlags fl, Qgs
   mModelProxy->setSourceModel( mModel );
   mModelProxy->setSortCaseSensitivity( Qt::CaseInsensitive );
   treeView->setModel( mModelProxy );
-
-  treeView->sortByColumn( MODEL_IDX_TITLE, Qt::AscendingOrder );
 
   connect( treeView, &QAbstractItemView::doubleClicked, this, &QgsWFSSourceSelect::treeWidgetItemDoubleClicked );
   connect( treeView->selectionModel(), &QItemSelectionModel::currentRowChanged, this, &QgsWFSSourceSelect::treeWidgetCurrentRowChanged );
@@ -545,13 +543,10 @@ void QgsWFSSourceSelect::addButtonClicked()
                                        isOapif() ? sql : QString(),
                                        cbxFeatureCurrentViewExtent->isChecked() );
 
-    Q_NOWARN_DEPRECATED_PUSH
     emit addVectorLayer( mUri, layerName, isOapif() ? QgsOapifProvider::OAPIF_PROVIDER_KEY : QgsWFSProvider::WFS_PROVIDER_KEY );
-    Q_NOWARN_DEPRECATED_POP
-    emit addLayer( Qgis::LayerType::Vector, mUri, layerName, isOapif() ? QgsOapifProvider::OAPIF_PROVIDER_KEY : QgsWFSProvider::WFS_PROVIDER_KEY );
   }
 
-  if ( ! mHoldDialogOpen->isChecked() && widgetMode() == QgsProviderRegistry::WidgetMode::Standalone )
+  if ( ! mHoldDialogOpen->isChecked() && widgetMode() == QgsProviderRegistry::WidgetMode::None )
   {
     accept();
   }
@@ -570,11 +565,6 @@ void QgsWFSSourceSelect::buildQuery( const QModelIndex &index )
   QgsWfsConnection connection( cmbConnections->currentText() );
   QgsWFSDataSourceURI uri( connection.uri().uri( false ) );
   uri.setTypeName( typeName );
-  if ( gbCRS->isEnabled() )
-  {
-    QString crsString = labelCoordRefSys->text();
-    uri.setSRSName( crsString );
-  }
 
   QModelIndex filterIndex = index.sibling( index.row(), MODEL_IDX_SQL );
   QString sql( filterIndex.data().toString() );
@@ -605,16 +595,8 @@ void QgsWFSSourceSelect::buildQuery( const QModelIndex &index )
       }
       else if ( provider->filterTranslatedState() == QgsOapifProvider::FilterTranslationState::PARTIAL )
       {
-        if ( provider->clientSideFilterExpression().isEmpty() )
-        {
-          QMessageBox::information( nullptr, tr( "Filter" ),
-                                    tr( "The filter will partially evaluated on client side." ) );
-        }
-        else
-        {
-          QMessageBox::information( nullptr, tr( "Filter" ),
-                                    tr( "The following part of the filter will be evaluated on client side : %1" ).arg( provider->clientSideFilterExpression() ) );
-        }
+        QMessageBox::information( nullptr, tr( "Filter" ),
+                                  tr( "The following part of the filter will be evaluated on client side : %1" ).arg( provider->clientSideFilterExpression() ) );
       }
       mModelProxy->setData( filterIndex, QVariant( gb.sql() ) );
     }

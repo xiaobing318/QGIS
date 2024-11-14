@@ -14,7 +14,6 @@ email                : sherman at mrcc.com
  ***************************************************************************/
 
 #include "qgsfeature.h"
-#include "moc_qgsfeature.cpp"
 #include "qgsfeature_p.h"
 #include "qgsfields.h"
 #include "qgsgeometry.h"
@@ -142,7 +141,7 @@ QVariantMap QgsFeature::attributeMap() const
   const int attributeSize = d->attributes.size();
   if ( fieldSize != attributeSize )
   {
-    QgsDebugError( QStringLiteral( "Attribute size (%1) does not match number of fields (%2)" ).arg( attributeSize ).arg( fieldSize ) );
+    QgsDebugMsg( QStringLiteral( "Attribute size (%1) does not match number of fields (%2)" ).arg( attributeSize ).arg( fieldSize ) );
     return QVariantMap();
   }
 
@@ -160,6 +159,9 @@ int QgsFeature::attributeCount() const
 
 void QgsFeature::setAttributes( const QgsAttributes &attrs )
 {
+  if ( attrs == d->attributes )
+    return;
+
   d.detach();
   d->attributes = attrs;
   d->valid = true;
@@ -316,7 +318,7 @@ bool QgsFeature::isUnsetValue( int fieldIdx ) const
   if ( fieldIdx < 0 || fieldIdx >= d->attributes.count() )
     return false;
 
-  return d->attributes.at( fieldIdx ).userType() == qMetaTypeId<QgsUnsetAttributeValue>();
+  return d->attributes.at( fieldIdx ).userType() == QMetaType::type( "QgsUnsetAttributeValue" );
 }
 
 const QgsSymbol *QgsFeature::embeddedSymbol() const
@@ -363,16 +365,16 @@ static size_t qgsQVariantApproximateMemoryUsage( const QVariant &v )
   // A QVariant has a private structure that is a union of things whose larger
   // size if a long long, and a int
   size_t s = sizeof( QVariant ) + sizeof( long long ) + sizeof( int );
-  if ( v.userType() == QMetaType::Type::QString )
+  if ( v.type() == QVariant::String )
   {
     s += qgsQStringApproximateMemoryUsage( v.toString() );
   }
-  else if ( v.userType() == QMetaType::Type::QStringList )
+  else if ( v.type() == QVariant::StringList )
   {
     for ( const QString &str : v.toStringList() )
       s += qgsQStringApproximateMemoryUsage( str );
   }
-  else if ( v.userType() == QMetaType::Type::QVariantList )
+  else if ( v.type() == QVariant::List )
   {
     for ( const QVariant &subV : v.toList() )
       s += qgsQVariantApproximateMemoryUsage( subV );

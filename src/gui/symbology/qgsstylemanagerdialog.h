@@ -22,16 +22,16 @@
 #include <QMenu>
 
 #include "ui_qgsstylemanagerdialogbase.h"
+#include "qgshelp.h"
 #include "qgsstylemodel.h"
 #include "qgis_gui.h"
 #include "qgis_sip.h"
-#include "qgssettingstree.h"
+#include "qgssettingsentryimpl.h"
 
 class QgsStyle;
 class QgsTemporaryCursorOverride;
 class QgsMessageBar;
 class QgsProjectStyleDatabaseModel;
-class QgsSettingsEntryString;
 
 #ifndef SIP_RUN
 ///@cond PRIVATE
@@ -74,13 +74,11 @@ class GUI_EXPORT QgsStyleManagerDialog : public QDialog, private Ui::QgsStyleMan
   public:
 #ifndef SIP_RUN
 
-    static inline QgsSettingsTreeNode *sTtreeStyleManager = QgsSettingsTree::sTreeApp->createChildNode( QStringLiteral( "style-manager" ) );
-
     /**
      * Last used folder for generic style database actions.
      * \since QGIS 3.26
      */
-    static const QgsSettingsEntryString *settingLastStyleDatabaseFolder;
+    static const inline QgsSettingsEntryString settingLastStyleDatabaseFolder = QgsSettingsEntryString( QStringLiteral( "last-style-database-folder" ), QgsSettings::Prefix::STYLE_MANAGER, QString(), QStringLiteral( "Last used folder for style databases" ) );
 #endif
 
     /**
@@ -218,7 +216,7 @@ class GUI_EXPORT QgsStyleManagerDialog : public QDialog, private Ui::QgsStyleMan
     void showHelp();
 
     /**
-     * \deprecated QGIS 3.6. Has no effect and will be removed in QGIS 4.0.
+     * \deprecated since QGIS 3.6 - has no effect and will be removed in QGIS 4.0
      */
     Q_DECL_DEPRECATED void itemChanged( QStandardItem *item ) SIP_DEPRECATED;
 
@@ -258,7 +256,7 @@ class GUI_EXPORT QgsStyleManagerDialog : public QDialog, private Ui::QgsStyleMan
     void editSmartgroupAction();
 
     /**
-     * \deprecated QGIS 3.6. Has no effect and will be removed in QGIS 4.0.
+     * \deprecated since QGIS 3.6 - has no effect and will be removed in QGIS 4.0
      */
     Q_DECL_DEPRECATED void regrouped( QStandardItem * ) SIP_DEPRECATED;
 
@@ -304,7 +302,7 @@ class GUI_EXPORT QgsStyleManagerDialog : public QDialog, private Ui::QgsStyleMan
     /**
      * Populate combo box with known style items (symbols, color ramps).
      *
-     * \deprecated QGIS 3.6. Has no effect and will be removed in QGIS 4.0.
+     * \deprecated since QGIS 3.6 - has no effect and will be removed in QGIS 4.0
      */
     Q_DECL_DEPRECATED void populateTypes() SIP_DEPRECATED;
 
@@ -312,21 +310,21 @@ class GUI_EXPORT QgsStyleManagerDialog : public QDialog, private Ui::QgsStyleMan
     void populateGroups();
 
     /**
-     * \deprecated QGIS 3.6. Has no effect and will be removed in QGIS 4.0.
+     * \deprecated since QGIS 3.6 - has no effect and will be removed in QGIS 4.0
      */
     Q_DECL_DEPRECATED void setSymbolsChecked( const QStringList & ) SIP_DEPRECATED;
 
     /**
      * Populates the list view with symbols of the current type with the given names.
      *
-     * \deprecated QGIS 3.40. No longer required in QGIS 3.6, as the model is updated live. Has no effect and will be removed in QGIS 4.0.
+     * \deprecated No longer required in QGIS 3.6, as the model is updated live. Has no effect and will be removed in QGIS 4.0
      */
     Q_DECL_DEPRECATED void populateSymbols( const QStringList &symbolNames, bool checkable = false ) SIP_DEPRECATED;
 
     /**
      * Populates the list view with color ramps of the current type with the given names.
      *
-     * \deprecated QGIS 3.40. No longer required in QGIS 3.6, as the model is updated live. Has no effect and will be removed in QGIS 4.0.
+     * \deprecated No longer required in QGIS 3.6, as the model is updated live. Has no effect and will be removed in QGIS 4.0
      */
     Q_DECL_DEPRECATED void populateColorRamps( const QStringList &colorRamps, bool checkable = false ) SIP_DEPRECATED;
 
@@ -340,12 +338,12 @@ class GUI_EXPORT QgsStyleManagerDialog : public QDialog, private Ui::QgsStyleMan
     bool editColorRamp();
 
     /**
-     * \deprecated QGIS 3.6. Has no effect and will be removed in QGIS 4.0.
+     * \deprecated since QGIS 3.6 - has no effect and will be removed in QGIS 4.0
      */
     Q_DECL_DEPRECATED bool removeSymbol() SIP_DEPRECATED;
 
     /**
-     * \deprecated QGIS 3.6. Has no effect and will be removed in QGIS 4.0.
+     * \deprecated since QGIS 3.6 - has no effect and will be removed in QGIS 4.0
      */
     Q_DECL_DEPRECATED bool removeColorRamp() SIP_DEPRECATED;
 
@@ -473,7 +471,7 @@ class GUI_EXPORT QgsStyleManagerDialog : public QDialog, private Ui::QgsStyleMan
     bool addTextFormat();
     bool editTextFormat();
 
-    bool addLabelSettings( Qgis::GeometryType type );
+    bool addLabelSettings( QgsWkbTypes::GeometryType type );
     bool editLabelSettings();
 
     bool addLegendPatchShape( Qgis::SymbolType type );

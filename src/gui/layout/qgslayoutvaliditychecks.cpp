@@ -19,9 +19,6 @@
 #include "qgslayoutitemscalebar.h"
 #include "qgslayoutitemmap.h"
 #include "qgslayoutitempicture.h"
-#ifndef WITH_QTWEBKIT
-#include "qgslayoutmultiframe.h"
-#endif
 #include "qgslayout.h"
 #include "qgssettings.h"
 #include <QUrl>
@@ -42,7 +39,7 @@ QString QgsLayoutScaleBarValidityCheck::id() const
 
 int QgsLayoutScaleBarValidityCheck::checkType() const
 {
-  return static_cast< int >( QgsAbstractValidityCheck::Type::LayoutCheck );
+  return QgsAbstractValidityCheck::TypeLayoutCheck;
 }
 
 bool QgsLayoutScaleBarValidityCheck::prepareCheck( const QgsValidityCheckContext *context, QgsFeedback * )
@@ -94,7 +91,7 @@ QString QgsLayoutNorthArrowValidityCheck::id() const
 
 int QgsLayoutNorthArrowValidityCheck::checkType() const
 {
-  return static_cast< int >( QgsAbstractValidityCheck::Type::LayoutCheck );
+  return QgsAbstractValidityCheck::TypeLayoutCheck;
 }
 
 bool QgsLayoutNorthArrowValidityCheck::prepareCheck( const QgsValidityCheckContext *context, QgsFeedback * )
@@ -152,7 +149,7 @@ QString QgsLayoutOverviewValidityCheck::id() const
 
 int QgsLayoutOverviewValidityCheck::checkType() const
 {
-  return static_cast< int >( QgsAbstractValidityCheck::Type::LayoutCheck );
+  return QgsAbstractValidityCheck::TypeLayoutCheck;
 }
 
 bool QgsLayoutOverviewValidityCheck::prepareCheck( const QgsValidityCheckContext *context, QgsFeedback * )
@@ -209,7 +206,7 @@ QString QgsLayoutPictureSourceValidityCheck::id() const
 
 int QgsLayoutPictureSourceValidityCheck::checkType() const
 {
-  return static_cast< int >( QgsAbstractValidityCheck::Type::LayoutCheck );
+  return QgsAbstractValidityCheck::TypeLayoutCheck;
 }
 
 bool QgsLayoutPictureSourceValidityCheck::prepareCheck( const QgsValidityCheckContext *context, QgsFeedback * )
@@ -248,55 +245,3 @@ QList<QgsValidityCheckResult> QgsLayoutPictureSourceValidityCheck::runCheck( con
 {
   return mResults;
 }
-
-#ifndef WITH_QTWEBKIT
-//
-// QgsLayoutHtmlItemValidityCheck
-//
-
-QgsLayoutHtmlItemValidityCheck *QgsLayoutHtmlItemValidityCheck::create() const
-{
-  return new QgsLayoutHtmlItemValidityCheck();
-}
-
-QString QgsLayoutHtmlItemValidityCheck::id() const
-{
-  return QStringLiteral( "layout_html_item_check" );
-}
-
-int QgsLayoutHtmlItemValidityCheck::checkType() const
-{
-  return static_cast< int >( QgsAbstractValidityCheck::Type::LayoutCheck );
-}
-
-bool QgsLayoutHtmlItemValidityCheck::prepareCheck( const QgsValidityCheckContext *context, QgsFeedback * )
-{
-  if ( context->type() != QgsValidityCheckContext::TypeLayoutContext )
-    return false;
-
-  const QgsLayoutValidityCheckContext *layoutContext = static_cast< const QgsLayoutValidityCheckContext * >( context );
-  if ( !layoutContext )
-    return false;
-
-  const QList<QgsLayoutMultiFrame *> multiFrames = layoutContext->layout->multiFrames();
-  for ( QgsLayoutMultiFrame *multiFrame : std::as_const( multiFrames ) )
-  {
-    if ( multiFrame->type() == QgsLayoutItemRegistry::LayoutHtml && multiFrame->frameCount() > 0 )
-    {
-      QgsValidityCheckResult res;
-      res.type = QgsValidityCheckResult::Warning;
-      res.title = QObject::tr( "HTML item cannot be rendered" );
-      res.detailedDescription = QObject::tr( "HTML items cannot be rendered because this QGIS install was built without WebKit support. These items will be missing from the export." );
-      mResults.append( res );
-      break;
-    }
-  }
-
-  return true;
-}
-
-QList<QgsValidityCheckResult> QgsLayoutHtmlItemValidityCheck::runCheck( const QgsValidityCheckContext *, QgsFeedback * )
-{
-  return mResults;
-}
-#endif

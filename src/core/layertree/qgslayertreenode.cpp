@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgslayertreenode.h"
-#include "moc_qgslayertreenode.cpp"
 
 #include "qgslayertree.h"
 #include "qgslayertreeutils.h"
@@ -285,8 +284,6 @@ void QgsLayerTreeNode::insertChildrenPrivate( int index, const QList<QgsLayerTre
       node->insertChildrenPrivate( -1, orphans );
     }
 
-    // ensure initial expanded state for node is respected
-    emit expandedChanged( node, node->isExpanded() );
   }
 }
 

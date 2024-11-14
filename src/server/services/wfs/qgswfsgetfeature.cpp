@@ -149,7 +149,7 @@ namespace QgsWfs
       {
         continue;
       }
-      if ( layer->type() != Qgis::LayerType::Vector )
+      if ( layer->type() != QgsMapLayerType::VectorLayer )
       {
         continue;
       }
@@ -306,7 +306,7 @@ namespace QgsWfs
       {
         for ( const QgsField &field : fields )
         {
-          if ( field.configurationFlags().testFlag( Qgis::FieldConfigurationFlag::HideFromWfs ) )
+          if ( field.configurationFlags().testFlag( QgsField::ConfigurationFlag::HideFromWfs ) )
           {
             int fieldNameIdx = fields.indexOf( field.name() );
             if ( fieldNameIdx > -1 && attrIndexes.contains( fieldNameIdx ) )
@@ -333,10 +333,10 @@ namespace QgsWfs
       }
 
       // geometry flags
-      if ( vlayer->wkbType() == Qgis::WkbType::NoGeometry )
-        featureRequest.setFlags( featureRequest.flags() | Qgis::FeatureRequestFlag::NoGeometry );
+      if ( vlayer->wkbType() == QgsWkbTypes::NoGeometry )
+        featureRequest.setFlags( featureRequest.flags() | QgsFeatureRequest::NoGeometry );
       else
-        featureRequest.setFlags( featureRequest.flags() | ( withGeom ? Qgis::FeatureRequestFlag::NoFlags : Qgis::FeatureRequestFlag::NoGeometry ) );
+        featureRequest.setFlags( featureRequest.flags() | ( withGeom ? QgsFeatureRequest::NoFlags : QgsFeatureRequest::NoGeometry ) );
 
       // subset of attributes
       featureRequest.setSubsetOfAttributes( attrIndexes );
@@ -348,7 +348,7 @@ namespace QgsWfs
       if ( accessControl )
       {
         // Access control expression could not be combined with feature ids filter
-        if ( featureRequest.filterType() == Qgis::FeatureRequestFilterType::Fid || featureRequest.filterType() == Qgis::FeatureRequestFilterType::Fids )
+        if ( featureRequest.filterType() == QgsFeatureRequest::FilterFid || featureRequest.filterType() == QgsFeatureRequest::FilterFids )
         {
           // expression context for access control filter
           QgsExpressionContext accessControlContext;
@@ -414,29 +414,11 @@ namespace QgsWfs
         geometryName = QLatin1String( "NONE" );
       }
       // outputCrs
-      // if the crs is defined in the parameters, use it
-      // otherwise fallback:
-      //  - geojson uses 'EPSG:4326' by default
-      //  - other formats use the default CRS (the layer's CRS)
-      const QString requestSrsName = request.serverParameters().value( QStringLiteral( "SRSNAME" ) );
-      QString outputSrsName;
+      QgsCoordinateReferenceSystem outputCrs = vlayer->crs();
       if ( !query.srsName.isEmpty() )
       {
-        outputSrsName = query.srsName;
+        outputCrs = QgsCoordinateReferenceSystem::fromOgcWmsCrs( query.srsName );
       }
-      else if ( !requestSrsName.isEmpty() )
-      {
-        outputSrsName = requestSrsName;
-      }
-      else
-      {
-        // fallback to a default value
-        // geojson uses 'EPSG:4326' by default
-        outputSrsName = ( aRequest.outputFormat == QgsWfsParameters::Format::GeoJSON ) ? QStringLiteral( "EPSG:4326" ) : vlayer->crs().authid();
-      }
-
-      QgsCoordinateReferenceSystem outputCrs;
-      outputCrs.createFromUserInput( outputSrsName );
 
       bool forceGeomToMulti = QgsWkbTypes::isMultiType( vlayer->wkbType() );
 
@@ -464,7 +446,7 @@ namespace QgsWfs
       {
         while ( fit.nextFeature( feature ) && ( aRequest.maxFeatures == -1 || sentFeatures < aRequest.maxFeatures ) )
         {
-          if ( accessControlRequest.filterType() != Qgis::FeatureRequestFilterType::NoFilter && !accessControlRequest.acceptFeature( feature ) )
+          if ( accessControlRequest.filterType() != QgsFeatureRequest::FilterNone && !accessControlRequest.acceptFeature( feature ) )
           {
             continue;
           }
@@ -479,13 +461,10 @@ namespace QgsWfs
       {
 
         // For WFS 1.1 we honor requested CRS and axis order
-        // Axis is not inverted if srsName starts with EPSG
-        // It needs to be an EPSG urn, e.g. urn:ogc:def:crs:EPSG::4326
-        // This follows geoserver convention
-        // See: https://docs.geoserver.org/stable/en/user/services/wfs/axis_order.html
+        const QString srsName {request.serverParameters().value( QStringLiteral( "SRSNAME" ) )};
         const bool invertAxis { mWfsParameters.versionAsNumber() >= QgsProjectVersion( 1, 1, 0 ) &&
                                 outputCrs.hasAxisInverted() &&
-                                ! outputSrsName.startsWith( QLatin1String( "EPSG:" ) ) };
+                                ! srsName.startsWith( QLatin1String( "EPSG:" ) ) };
 
         const createFeatureParams cfp = { layerPrecision,
                                           layerCrs,
@@ -495,12 +474,12 @@ namespace QgsWfs
                                           geometryName,
                                           outputCrs,
                                           forceGeomToMulti,
-                                          outputSrsName,
+                                          srsName,
                                           invertAxis
                                         };
         while ( fit.nextFeature( feature ) && ( aRequest.maxFeatures == -1 || sentFeatures < aRequest.maxFeatures ) )
         {
-          if ( accessControlRequest.filterType() != Qgis::FeatureRequestFilterType::NoFilter && !accessControlRequest.acceptFeature( feature ) )
+          if ( accessControlRequest.filterType() != QgsFeatureRequest::FilterNone && !accessControlRequest.acceptFeature( feature ) )
           {
             continue;
           }
@@ -779,7 +758,7 @@ namespace QgsWfs
             }
             if ( filter->needsGeometry() )
             {
-              query.featureRequest.setFlags( Qgis::FeatureRequestFlag::NoFlags );
+              query.featureRequest.setFlags( QgsFeatureRequest::NoFlags );
             }
             query.featureRequest.setFilterExpression( filter->expression() );
           }
@@ -845,7 +824,7 @@ namespace QgsWfs
       for ( ; qIt != request.queries.end(); ++qIt )
       {
         getFeatureQuery &query = *qIt;
-        query.featureRequest.setFilterRect( extent ).setFlags( query.featureRequest.flags() | Qgis::FeatureRequestFlag::ExactIntersect );
+        query.featureRequest.setFilterRect( extent ).setFlags( query.featureRequest.flags() | QgsFeatureRequest::ExactIntersect );
       }
       return request;
     }
@@ -1111,8 +1090,7 @@ namespace QgsWfs
         else
           query.addQueryItem( QStringLiteral( "VERSION" ), QStringLiteral( "1.0.0" ) );
 
-        const auto constItems { query.queryItems() };
-        for ( const auto &param : std::as_const( constItems ) )
+        for ( auto param : query.queryItems() )
         {
           if ( sParamFilter.contains( param.first.toUpper() ) )
             query.removeAllQueryItems( param.first );
@@ -1195,21 +1173,6 @@ namespace QgsWfs
 
         fcString = QStringLiteral( "{\"type\": \"FeatureCollection\",\n" );
         fcString += " \"bbox\": [ " + qgsDoubleToString( rect->xMinimum(), prec ) + ", " + qgsDoubleToString( rect->yMinimum(), prec ) + ", " + qgsDoubleToString( rect->xMaximum(), prec ) + ", " + qgsDoubleToString( rect->yMaximum(), prec ) + "],\n";
-
-        const QString srsName {request.serverParameters().value( QStringLiteral( "SRSNAME" ) )};
-        const QgsCoordinateReferenceSystem destinationCrs { srsName.isEmpty( ) ? QStringLiteral( "EPSG:4326" ) : srsName };
-        if ( ! destinationCrs.isValid() )
-        {
-          throw QgsRequestNotWellFormedException( QStringLiteral( "srsName error: '%1' is not valid." ).arg( srsName ) );
-        }
-
-        json value;
-        QgsJsonUtils::addCrsInfo( value, destinationCrs );
-        for ( const auto &it : value.items() )
-        {
-          fcString += " \"" + QString::fromStdString( it.key() ) + "\": " + QString::fromStdString( it.value().dump() ) + ",\n";
-        }
-
         fcString += QLatin1String( " \"features\": [\n" );
         response.write( fcString.toUtf8() );
       }
@@ -1283,15 +1246,16 @@ namespace QgsWfs
         QDomElement bbElem = doc.createElement( QStringLiteral( "gml:boundedBy" ) );
         if ( format == QgsWfsParameters::Format::GML3 )
         {
-          // If requested SRS (outputSrsName) is different from rect CRS (crs) we need to transform the envelope
-          const QString requestSrsName = request.serverParameters().value( QStringLiteral( "SRSNAME" ) );
-          const QString outputSrsName = !requestSrsName.isEmpty() ? requestSrsName : crs.authid();
-          QgsCoordinateReferenceSystem outputCrs;
-          outputCrs.createFromUserInput( outputSrsName );
+          // For WFS 1.1 we honor requested CRS and axis order
+          const QString srsName {request.serverParameters().value( QStringLiteral( "SRSNAME" ) )};
+          const bool invertAxis { mWfsParameters.versionAsNumber() >= QgsProjectVersion( 1, 1, 0 ) &&
+                                  crs.hasAxisInverted() &&
+                                  ! srsName.startsWith( QLatin1String( "EPSG:" ) ) };
 
+          // If requested SRS (srsName) is different from rect CRS (crs) we need to transform the envelope
           QgsCoordinateTransform transform;
           transform.setSourceCrs( crs );
-          transform.setDestinationCrs( outputCrs );
+          transform.setDestinationCrs( QgsCoordinateReferenceSystem( srsName ) );
           QgsRectangle crsCorrectedRect { rect ? *rect : QgsRectangle() };
 
           try
@@ -1303,19 +1267,10 @@ namespace QgsWfs
             Q_UNUSED( cse )
           }
 
-          // For WFS 1.1 we honor requested CRS and axis order
-          // Axis is not inverted if srsName starts with EPSG
-          // It needs to be an EPSG urn, e.g. urn:ogc:def:crs:EPSG::4326
-          // This follows geoserver convention
-          // See: https://docs.geoserver.org/stable/en/user/services/wfs/axis_order.html
-          const bool invertAxis { mWfsParameters.versionAsNumber() >= QgsProjectVersion( 1, 1, 0 ) &&
-                                  outputCrs.hasAxisInverted() &&
-                                  !outputSrsName.startsWith( QLatin1String( "EPSG:" ) ) };
-
-          QDomElement envElem = QgsOgcUtils::rectangleToGMLEnvelope( &crsCorrectedRect, doc, outputSrsName, invertAxis, prec );
+          QDomElement envElem = QgsOgcUtils::rectangleToGMLEnvelope( &crsCorrectedRect, doc, srsName, invertAxis, prec );
           if ( !envElem.isNull() )
           {
-            if ( crs.isValid() && outputSrsName.isEmpty() )
+            if ( crs.isValid() && srsName.isEmpty() )
             {
               envElem.setAttribute( QStringLiteral( "srsName" ), crs.authid() );
             }
@@ -1354,15 +1309,6 @@ namespace QgsWfs
           fcString += QLatin1String( "  " );
         else
           fcString += QLatin1String( " ," );
-
-        const QgsCoordinateReferenceSystem destinationCrs { params.srsName.isEmpty( ) ? QStringLiteral( "EPSG:4326" ) : params.srsName };
-        if ( ! destinationCrs.isValid() )
-        {
-          throw QgsRequestNotWellFormedException( QStringLiteral( "srsName error: '%1' is not valid." ).arg( params.srsName ) );
-        }
-
-        mJsonExporter.setDestinationCrs( destinationCrs );
-        mJsonExporter.setTransformGeometries( true );
         mJsonExporter.setSourceCrs( params.crs );
         mJsonExporter.setIncludeGeometry( false );
         mJsonExporter.setIncludeAttributes( !params.attributeIndexes.isEmpty() );
@@ -1518,7 +1464,7 @@ namespace QgsWfs
       for ( int i = 0; i < params.attributeIndexes.count(); ++i )
       {
         int idx = params.attributeIndexes[i];
-        if ( idx >= fields.count() || QgsVariantUtils::isNull( featureAttributes[idx] ) )
+        if ( idx >= fields.count() )
         {
           continue;
         }
@@ -1615,7 +1561,7 @@ namespace QgsWfs
       for ( int i = 0; i < params.attributeIndexes.count(); ++i )
       {
         int idx = params.attributeIndexes[i];
-        if ( idx >= fields.count() || QgsVariantUtils::isNull( featureAttributes[idx] ) )
+        if ( idx >= fields.count() )
         {
           continue;
         }
@@ -1661,7 +1607,7 @@ namespace QgsWfs
       if ( setup.type() ==  QStringLiteral( "DateTime" ) )
       {
         // For time fields use const TIME_FORMAT
-        if ( value.userType() == QMetaType::Type::QTime )
+        if ( value.type() == QVariant::Time )
         {
           return value.toTime().toString( QgsDateTimeFieldFormatter::TIME_FORMAT );
         }
@@ -1673,7 +1619,7 @@ namespace QgsWfs
         const QString fieldFormat =
           config.value( QStringLiteral( "field_iso_format" ), false ).toBool() ?
           QgsDateTimeFieldFormatter::DISPLAY_FOR_ISO_FORMAT :
-          config.value( QStringLiteral( "field_format" ), QgsDateTimeFieldFormatter::defaultFormat( static_cast<QMetaType::Type>( value.userType() ) ) ).toString();
+          config.value( QStringLiteral( "field_format" ), QgsDateTimeFieldFormatter::defaultFormat( value.type() ) ).toString();
 
         // Convert value to date time
         QDateTime date = value.toDateTime();
@@ -1703,25 +1649,25 @@ namespace QgsWfs
         }
       }
 
-      switch ( value.userType() )
+      switch ( value.type() )
       {
-        case QMetaType::Type::Int:
-        case QMetaType::Type::UInt:
-        case QMetaType::Type::LongLong:
-        case QMetaType::Type::ULongLong:
-        case QMetaType::Type::Double:
+        case QVariant::Int:
+        case QVariant::UInt:
+        case QVariant::LongLong:
+        case QVariant::ULongLong:
+        case QVariant::Double:
           return value.toString();
 
-        case QMetaType::Type::Bool:
+        case QVariant::Bool:
           return value.toBool() ? QStringLiteral( "true" ) : QStringLiteral( "false" );
 
-        case QMetaType::Type::QStringList:
-        case QMetaType::Type::QVariantList:
-        case QMetaType::Type::QVariantMap:
+        case QVariant::StringList:
+        case QVariant::List:
+        case QVariant::Map:
           return QgsJsonUtils::encodeValue( value );
 
         default:
-        case QMetaType::Type::QString:
+        case QVariant::String:
           return value.toString();
       }
     }

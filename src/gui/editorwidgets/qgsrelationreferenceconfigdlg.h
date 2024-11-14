@@ -46,7 +46,6 @@ class GUI_EXPORT QgsRelationReferenceConfigDlg : public QgsEditorConfigWidget, p
     int indexFromListWidgetItem( QListWidgetItem *item );
 
     QgsVectorLayer *mReferencedLayer = nullptr;
-    bool mAllowNullWasSetByConfig = false;
 
   private slots:
     void relationChanged( int idx );
@@ -57,8 +56,6 @@ class GUI_EXPORT QgsRelationReferenceConfigDlg : public QgsEditorConfigWidget, p
      * Opens an expression dialog and sets its value as filter expression for the relation reference.
      */
     void mEditExpression_clicked();
-
-    friend class TestQgsRelationReferenceWidget;
 };
 
 #endif // QGSRELATIONREFERENCECONFIGDLGBASE_H

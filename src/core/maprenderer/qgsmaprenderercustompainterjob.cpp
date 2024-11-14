@@ -14,17 +14,29 @@
  ***************************************************************************/
 
 #include "qgsmaprenderercustompainterjob.h"
-#include "moc_qgsmaprenderercustompainterjob.cpp"
 
 #include "qgsfeedback.h"
 #include "qgslabelingengine.h"
 #include "qgslogger.h"
 #include "qgsmaplayerrenderer.h"
 #include "qgsmaplayerlistutils_p.h"
-#include "qgselevationmap.h"
-#include "qgspainting.h"
+#include "qgsvectorlayerlabeling.h"
+#include "qgsrasterlayerrenderer.h"
 
 #include <QtConcurrentRun>
+
+Q_GUI_EXPORT extern int qt_defaultDpiX();
+Q_GUI_EXPORT extern int qt_defaultDpiY();
+
+static void _fixQPictureDPI( QPainter *p )
+{
+  // QPicture makes an assumption that we drawing to it with system DPI.
+  // Then when being drawn, it scales the painter. The following call
+  // negates the effect. There is no way of setting QPicture's DPI.
+  // See QTBUG-20361
+  p->scale( static_cast< double >( qt_defaultDpiX() ) / p->device()->logicalDpiX(),
+            static_cast< double >( qt_defaultDpiY() ) / p->device()->logicalDpiY() );
+}
 
 //
 // QgsMapRendererAbstractCustomPainterJob
@@ -157,7 +169,7 @@ void QgsMapRendererCustomPainterJob::cancelWithoutBlocking()
 {
   if ( !isActive() )
   {
-    QgsDebugError( QStringLiteral( "QPAINTER not running!" ) );
+    QgsDebugMsg( QStringLiteral( "QPAINTER not running!" ) );
     return;
   }
 
@@ -270,16 +282,16 @@ void QgsMapRendererCustomPainterJob::staticRender( QgsMapRendererCustomPainterJo
   catch ( QgsException &e )
   {
     Q_UNUSED( e )
-    QgsDebugError( "Caught unhandled QgsException: " + e.what() );
+    QgsDebugMsg( "Caught unhandled QgsException: " + e.what() );
   }
   catch ( std::exception &e )
   {
     Q_UNUSED( e )
-    QgsDebugError( "Caught unhandled std::exception: " + QString::fromLatin1( e.what() ) );
+    QgsDebugMsg( "Caught unhandled std::exception: " + QString::fromLatin1( e.what() ) );
   }
   catch ( ... )
   {
-    QgsDebugError( QStringLiteral( "Caught unhandled unknown exception" ) );
+    QgsDebugMsg( QStringLiteral( "Caught unhandled unknown exception" ) );
   }
 }
 
@@ -289,11 +301,6 @@ void QgsMapRendererCustomPainterJob::doRender()
   QgsDebugMsgLevel( QStringLiteral( "Starting to render layer stack." ), 5 );
   QElapsedTimer renderTime;
   renderTime.start();
-
-  const QgsElevationShadingRenderer mapShadingRenderer = mSettings.elevationShadingRenderer();
-  std::unique_ptr<QgsElevationMap> mainElevationMap;
-  if ( mapShadingRenderer.isActive() )
-    mainElevationMap.reset( new QgsElevationMap( mSettings.deviceOutputSize(), mSettings.devicePixelRatio() ) );
 
   for ( LayerRenderJob &job : mLayerJobs )
   {
@@ -313,12 +320,6 @@ void QgsMapRendererCustomPainterJob::doRender()
     {
       QElapsedTimer layerTime;
       layerTime.start();
-
-      if ( job.previewRenderImage && !job.previewRenderImageInitialized )
-      {
-        job.previewRenderImage->fill( 0 );
-        job.previewRenderImageInitialized = true;
-      }
 
       if ( job.img )
       {
@@ -344,30 +345,11 @@ void QgsMapRendererCustomPainterJob::doRender()
       mPainter->setOpacity( 1.0 );
     }
 
-    if ( mainElevationMap && job.context()->elevationMap() )
-    {
-      const QgsElevationMap &layerElevationMap = *job.context()->elevationMap();
-      if ( layerElevationMap.isValid() )
-        mainElevationMap->combine( layerElevationMap, mapShadingRenderer.combinedElevationMethod() );
-    }
-
     emit layerRendered( job.layerId );
   }
 
   emit renderingLayersFinished();
   QgsDebugMsgLevel( QStringLiteral( "Done rendering map layers" ), 5 );
-
-  if ( mapShadingRenderer.isActive() &&  mainElevationMap )
-  {
-    QImage image( mainElevationMap->rawElevationImage().size(), QImage::Format_RGB32 );
-    image.setDevicePixelRatio( mSettings.devicePixelRatio() );
-    image.fill( Qt::white );
-    mapShadingRenderer.renderShading( *mainElevationMap.get(), image, QgsRenderContext::fromMapSettings( mSettings ) );
-    mPainter->save();
-    mPainter->setCompositionMode( QPainter::CompositionMode_Multiply );
-    mPainter->drawImage( 0, 0, image );
-    mPainter->restore();
-  }
 
   if ( mSettings.testFlag( Qgis::MapSettingsFlag::DrawLabeling ) && !mLabelJob.context.renderingStopped() )
   {
@@ -400,7 +382,7 @@ void QgsMapRendererCustomPainterJob::doRender()
 
       mLabelJob.complete = true;
       mLabelJob.renderingTime = labelTime.elapsed();
-      mLabelJob.participatingLayers = participatingLabelLayers( mLabelingEngineV2.get() );
+      mLabelJob.participatingLayers = _qgis_listRawToQPointer( mLabelingEngineV2->participatingLayers() );
     }
   }
 
@@ -426,12 +408,6 @@ void QgsMapRendererCustomPainterJob::doRender()
       {
         QElapsedTimer layerTime;
         layerTime.start();
-
-        if ( job.previewRenderImage && !job.previewRenderImageInitialized )
-        {
-          job.previewRenderImage->fill( 0 );
-          job.previewRenderImageInitialized = true;
-        }
 
         if ( job.img )
         {
@@ -469,7 +445,10 @@ void QgsMapRendererCustomPainterJob::doRender()
         // if there is vector rendering we use it, else we use the raster rendering
         if ( job.picture )
         {
-          QgsPainting::drawPicture( mPainter, QPointF( 0, 0 ), *job.picture );
+          mPainter->save();
+          _fixQPictureDPI( mPainter );
+          mPainter->drawPicture( 0, 0, *job.picture );
+          mPainter->restore();
         }
         else
           mPainter->drawImage( 0, 0, *job.img );
@@ -477,7 +456,10 @@ void QgsMapRendererCustomPainterJob::doRender()
 
       if ( mLabelJob.picture )
       {
-        QgsPainting::drawPicture( mPainter, QPointF( 0, 0 ), *mLabelJob.picture );
+        mPainter->save();
+        _fixQPictureDPI( mPainter );
+        mPainter->drawPicture( 0, 0, *mLabelJob.picture );
+        mPainter->restore();
       }
     }
   }

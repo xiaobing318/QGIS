@@ -17,25 +17,24 @@
 #include <QDoubleSpinBox>
 
 #include "qgsgeopdflayertreemodel.h"
-#include "moc_qgsgeopdflayertreemodel.cpp"
 #include "qgslayertree.h"
 #include "qgsproject.h"
 #include "qgsvectorlayer.h"
 #include "qgsapplication.h"
 
-QgsGeospatialPdfLayerTreeModel::QgsGeospatialPdfLayerTreeModel( const QList<QgsMapLayer *> &layers, QObject *parent )
+QgsGeoPdfLayerTreeModel::QgsGeoPdfLayerTreeModel( const QList<QgsMapLayer *> &layers, QObject *parent )
   : QgsMapLayerModel( layers, parent )
 {
   setItemsCanBeReordered( true );
 }
 
-int QgsGeospatialPdfLayerTreeModel::columnCount( const QModelIndex &parent ) const
+int QgsGeoPdfLayerTreeModel::columnCount( const QModelIndex &parent ) const
 {
   Q_UNUSED( parent )
   return 4;
 }
 
-Qt::ItemFlags QgsGeospatialPdfLayerTreeModel::flags( const QModelIndex &idx ) const
+Qt::ItemFlags QgsGeoPdfLayerTreeModel::flags( const QModelIndex &idx ) const
 {
   if ( !idx.isValid() )
     return Qt::ItemIsDropEnabled;
@@ -59,17 +58,17 @@ Qt::ItemFlags QgsGeospatialPdfLayerTreeModel::flags( const QModelIndex &idx ) co
   return Qt::ItemIsEnabled | Qt::ItemIsEditable | Qt::ItemIsDragEnabled;
 }
 
-QgsMapLayer *QgsGeospatialPdfLayerTreeModel::mapLayer( const QModelIndex &idx ) const
+QgsMapLayer *QgsGeoPdfLayerTreeModel::mapLayer( const QModelIndex &idx ) const
 {
   return layerFromIndex( index( idx.row(), LayerColumn, idx.parent() ) );
 }
 
-QgsVectorLayer *QgsGeospatialPdfLayerTreeModel::vectorLayer( const QModelIndex &idx ) const
+QgsVectorLayer *QgsGeoPdfLayerTreeModel::vectorLayer( const QModelIndex &idx ) const
 {
   return qobject_cast<QgsVectorLayer *>( mapLayer( idx ) );
 }
 
-QVariant QgsGeospatialPdfLayerTreeModel::headerData( int section, Qt::Orientation orientation, int role ) const
+QVariant QgsGeoPdfLayerTreeModel::headerData( int section, Qt::Orientation orientation, int role ) const
 {
   if ( orientation == Qt::Horizontal )
   {
@@ -93,7 +92,7 @@ QVariant QgsGeospatialPdfLayerTreeModel::headerData( int section, Qt::Orientatio
   return QgsMapLayerModel::headerData( section, orientation, role );
 }
 
-QVariant QgsGeospatialPdfLayerTreeModel::data( const QModelIndex &idx, int role ) const
+QVariant QgsGeoPdfLayerTreeModel::data( const QModelIndex &idx, int role ) const
 {
   switch ( idx.column() )
   {
@@ -168,7 +167,7 @@ QVariant QgsGeospatialPdfLayerTreeModel::data( const QModelIndex &idx, int role 
   return QVariant();
 }
 
-bool QgsGeospatialPdfLayerTreeModel::setData( const QModelIndex &index, const QVariant &value, int role )
+bool QgsGeoPdfLayerTreeModel::setData( const QModelIndex &index, const QVariant &value, int role )
 {
   switch ( index.column() )
   {
@@ -220,7 +219,7 @@ bool QgsGeospatialPdfLayerTreeModel::setData( const QModelIndex &index, const QV
   return false;
 }
 
-void QgsGeospatialPdfLayerTreeModel::checkAll( bool checked, const QModelIndex &parent, int column )
+void QgsGeoPdfLayerTreeModel::checkAll( bool checked, const QModelIndex &parent, int column )
 {
   for ( int row = 0; row < rowCount( parent ); ++row )
   {
@@ -232,14 +231,14 @@ void QgsGeospatialPdfLayerTreeModel::checkAll( bool checked, const QModelIndex &
 
 
 ///@cond PRIVATE
-QgsGeospatialPdfLayerFilteredTreeModel::QgsGeospatialPdfLayerFilteredTreeModel( QgsGeospatialPdfLayerTreeModel *sourceModel, QObject *parent )
+QgsGeoPdfLayerFilteredTreeModel::QgsGeoPdfLayerFilteredTreeModel( QgsGeoPdfLayerTreeModel *sourceModel, QObject *parent )
   : QSortFilterProxyModel( parent )
   , mLayerTreeModel( sourceModel )
 {
   setSourceModel( sourceModel );
 }
 
-bool QgsGeospatialPdfLayerFilteredTreeModel::filterAcceptsRow( int source_row, const QModelIndex &source_parent ) const
+bool QgsGeoPdfLayerFilteredTreeModel::filterAcceptsRow( int source_row, const QModelIndex &source_parent ) const
 {
   if ( QgsMapLayer *layer = mLayerTreeModel->layerFromIndex( sourceModel()->index( source_row, 0, source_parent ) ) )
   {

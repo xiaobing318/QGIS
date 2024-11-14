@@ -47,8 +47,8 @@ QString QgsExportLayersInformationAlgorithm::groupId() const
 
 void QgsExportLayersInformationAlgorithm::initAlgorithm( const QVariantMap & )
 {
-  addParameter( new QgsProcessingParameterMultipleLayers( QStringLiteral( "LAYERS" ), QObject::tr( "Input layer(s)" ), Qgis::ProcessingSourceType::MapLayer ) );
-  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Output" ), Qgis::ProcessingSourceType::VectorPolygon, QVariant() ) );
+  addParameter( new QgsProcessingParameterMultipleLayers( QStringLiteral( "LAYERS" ), QObject::tr( "Input layer(s)" ), QgsProcessing::TypeMapLayer ) );
+  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Output" ), QgsProcessing::TypeVectorPolygon, QVariant() ) );
 }
 
 QString QgsExportLayersInformationAlgorithm::shortHelpString() const
@@ -94,19 +94,19 @@ bool QgsExportLayersInformationAlgorithm::prepareAlgorithm( const QVariantMap &p
 QVariantMap QgsExportLayersInformationAlgorithm::processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback )
 {
   QgsFields outFields;
-  outFields.append( QgsField( QStringLiteral( "name" ), QMetaType::Type::QString ) );
-  outFields.append( QgsField( QStringLiteral( "source" ), QMetaType::Type::QString ) );
-  outFields.append( QgsField( QStringLiteral( "crs" ), QMetaType::Type::QString ) );
-  outFields.append( QgsField( QStringLiteral( "provider" ), QMetaType::Type::QString ) );
-  outFields.append( QgsField( QStringLiteral( "file_path" ), QMetaType::Type::QString ) );
-  outFields.append( QgsField( QStringLiteral( "layer_name" ), QMetaType::Type::QString ) );
-  outFields.append( QgsField( QStringLiteral( "subset" ), QMetaType::Type::QString ) );
-  outFields.append( QgsField( QStringLiteral( "abstract" ), QMetaType::Type::QString ) );
-  outFields.append( QgsField( QStringLiteral( "attribution" ), QMetaType::Type::QString ) );
+  outFields.append( QgsField( QStringLiteral( "name" ), QVariant::String ) );
+  outFields.append( QgsField( QStringLiteral( "source" ), QVariant::String ) );
+  outFields.append( QgsField( QStringLiteral( "crs" ), QVariant::String ) );
+  outFields.append( QgsField( QStringLiteral( "provider" ), QVariant::String ) );
+  outFields.append( QgsField( QStringLiteral( "file_path" ), QVariant::String ) );
+  outFields.append( QgsField( QStringLiteral( "layer_name" ), QVariant::String ) );
+  outFields.append( QgsField( QStringLiteral( "subset" ), QVariant::String ) );
+  outFields.append( QgsField( QStringLiteral( "abstract" ), QVariant::String ) );
+  outFields.append( QgsField( QStringLiteral( "attribution" ), QVariant::String ) );
 
   QString outputDest;
   std::unique_ptr< QgsFeatureSink > outputSink( parameterAsSink( parameters, QStringLiteral( "OUTPUT" ), context, outputDest, outFields,
-      Qgis::WkbType::Polygon, mCrs ) );
+      QgsWkbTypes::Polygon, mCrs ) );
 
   const QList< QgsMapLayer * > layers = parameterAsLayerList( parameters, QStringLiteral( "LAYERS" ), context );
 
@@ -141,7 +141,7 @@ QVariantMap QgsExportLayersInformationAlgorithm::processAlgorithm( const QVarian
       attributes << QVariant() << QVariant() << QVariant() << QVariant();
     }
     attributes << layer->metadata().rights().join( ';' )
-               << layer->serverProperties()->abstract();
+               << layer->abstract();
     feature.setAttributes( attributes );
 
     QgsRectangle rect = layer->extent();
@@ -167,8 +167,6 @@ QVariantMap QgsExportLayersInformationAlgorithm::processAlgorithm( const QVarian
     if ( !outputSink->addFeature( feature, QgsFeatureSink::FastInsert ) )
       throw QgsProcessingException( writeFeatureError( outputSink.get(), parameters, QStringLiteral( "OUTPUT" ) ) );
   }
-
-  outputSink->finalize();
 
   QVariantMap outputs;
   outputs.insert( QStringLiteral( "OUTPUT" ), outputDest );

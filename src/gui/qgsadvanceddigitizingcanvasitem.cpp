@@ -18,6 +18,7 @@
 #include "qgsadvanceddigitizingdockwidget.h"
 #include "qgsadvanceddigitizingcanvasitem.h"
 #include "qgsmapcanvas.h"
+#include "qgscadutils.h"
 
 
 QgsAdvancedDigitizingCanvasItem::QgsAdvancedDigitizingCanvasItem( QgsMapCanvas *canvas, QgsAdvancedDigitizingDockWidget *cadDockWidget )
@@ -28,7 +29,6 @@ QgsAdvancedDigitizingCanvasItem::QgsAdvancedDigitizingCanvasItem( QgsMapCanvas *
   , mSnapPen( QPen( QColor( 127, 0, 0, 150 ), 1 ) )
   , mSnapLinePen( QPen( QColor( 127, 0, 0, 150 ), 1, Qt::DashLine ) )
   , mCursorPen( QPen( QColor( 127, 127, 127, 255 ), 1 ) )
-  , mConstructionGuidesPen( QPen( QColor( 20, 210, 150 ), 1, Qt::DashLine ) )
   , mAdvancedDigitizingDockWidget( cadDockWidget )
 {
 }
@@ -37,35 +37,6 @@ void QgsAdvancedDigitizingCanvasItem::paint( QPainter *painter )
 {
   if ( !mAdvancedDigitizingDockWidget->cadEnabled() )
     return;
-
-  painter->setRenderHint( QPainter::Antialiasing );
-  painter->setCompositionMode( QPainter::CompositionMode_Difference );
-
-  // Draw construction guides
-  if ( mAdvancedDigitizingDockWidget->showConstructionGuides() )
-  {
-    if ( QgsVectorLayer *constructionGuidesLayer = mAdvancedDigitizingDockWidget->constructionGuidesLayer() )
-    {
-      QgsFeatureIterator it = constructionGuidesLayer->getFeatures( QgsFeatureRequest().setNoAttributes().setFilterRect( mMapCanvas->mapSettings().visibleExtent() ) );
-      QgsFeature feature;
-      painter->setPen( mConstructionGuidesPen );
-      while ( it.nextFeature( feature ) )
-      {
-        QgsGeometry geom = feature.geometry();
-        geom.mapToPixel( *mMapCanvas->getCoordinateTransform() );
-        const QPolygonF polygon = geom.asQPolygonF();
-        painter->drawPolyline( polygon );
-      }
-    }
-  }
-
-  // Draw current tool
-  if ( QgsAdvancedDigitizingTool *tool =  mAdvancedDigitizingDockWidget->tool() )
-  {
-    // if a tool is active in the dock, then delegate to that tool to handle decorating the canvas instead of using the default decorations
-    tool->paint( painter );
-    return;
-  }
 
   // Use visible polygon rather than extent to properly handle rotated maps
   QPolygonF mapPoly = mMapCanvas->mapSettings().visiblePolygon();
@@ -112,6 +83,9 @@ void QgsAdvancedDigitizingCanvasItem::paint( QPainter *painter )
     snapSegmentPix1 = toCanvasCoordinates( snappedSegment[0] );
     snapSegmentPix2 = toCanvasCoordinates( snappedSegment[1] );
   }
+
+  painter->setRenderHint( QPainter::Antialiasing );
+  painter->setCompositionMode( QPainter::CompositionMode_Difference );
 
   // Draw point snap
   if ( curPointExist && snappedToVertex )
@@ -253,7 +227,7 @@ void QgsAdvancedDigitizingCanvasItem::paint( QPainter *painter )
     }
   }
 
-  // Draw constraints
+  // Draw constr
   if ( mAdvancedDigitizingDockWidget->betweenLineConstraint() == Qgis::BetweenLineConstraint::NoConstraint )
   {
     if ( curPointExist && previousPointExist )
@@ -285,38 +259,20 @@ void QgsAdvancedDigitizingCanvasItem::paint( QPainter *painter )
   {
     painter->setPen( mLockedPen );
 
-    const QgsPointLocator::Match snap = mAdvancedDigitizingDockWidget->lockedSnapVertices().constLast();
+    const QgsPointLocator::Match snap = mAdvancedDigitizingDockWidget->lockedSnapVertices().last();
     const QPointF snappedPoint = toCanvasCoordinates( snap.point() );
 
-    QgsFeatureRequest req;
-    req.setFilterFid( snap.featureId() );
-    req.setNoAttributes();
-    req.setDestinationCrs( mMapCanvas->mapSettings().destinationCrs(), mMapCanvas->mapSettings().transformContext() );
-    QgsFeatureIterator featureIt = snap.layer()->getFeatures( req );
-
-    QgsFeature feature;
-    featureIt.nextFeature( feature );
-
-    const QgsGeometry geometry = feature.geometry();
-    const QgsAbstractGeometry *geom = geometry.constGet();
+    const QgsFeature feature = snap.layer()->getFeature( snap.featureId() );
+    const QgsGeometry geom = feature.geometry();
 
     QgsPoint vertex;
-    QgsVertexId vertexId;
-    geometry.vertexIdFromVertexNr( snap.vertexIndex(), vertexId );
-    if ( vertexId.isValid() )
+    if ( lineExtensionSide == Qgis::LineExtensionSide::BeforeVertex )
     {
-      QgsVertexId previousVertexId;
-      QgsVertexId nextVertexId;
-      geom->adjacentVertices( vertexId, previousVertexId, nextVertexId );
-
-      if ( lineExtensionSide == Qgis::LineExtensionSide::BeforeVertex )
-      {
-        vertex = geom->vertexAt( previousVertexId );
-      }
-      else
-      {
-        vertex = geom->vertexAt( nextVertexId );
-      }
+      vertex = geom.vertexAt( snap.vertexIndex() - 1 );
+    }
+    else
+    {
+      vertex = geom.vertexAt( snap.vertexIndex() + 1 );
     }
 
     if ( !vertex.isEmpty() )
@@ -357,7 +313,7 @@ void QgsAdvancedDigitizingCanvasItem::paint( QPainter *painter )
   painter->setPen( mCursorPen );
 
   const QList< QgsPointLocator::Match > lockedSnapVertices = mAdvancedDigitizingDockWidget->lockedSnapVertices();
-  for ( const QgsPointLocator::Match &snapMatch : lockedSnapVertices )
+  for ( QgsPointLocator::Match snapMatch : lockedSnapVertices )
   {
     const QgsPointXY point = snapMatch.point();
     const QPointF canvasPoint = toCanvasCoordinates( point );

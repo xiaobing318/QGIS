@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/layout/qgslayoutrendercontext.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -12,6 +12,8 @@ class QgsLayoutRenderContext : QObject
 {
 %Docstring(signature="appended")
 Stores information relating to the current rendering settings for a layout.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -31,8 +33,6 @@ Stores information relating to the current rendering settings for a layout.
       FlagDisableTiledRasterLayerRenders,
       FlagRenderLabelsByMapLayer,
       FlagLosslessImageRendering,
-      FlagSynchronousLegendGraphics,
-      FlagAlwaysUseGlobalMasks,
     };
     typedef QFlags<QgsLayoutRenderContext::Flag> Flags;
 
@@ -195,8 +195,7 @@ If ``layer`` is -1, all item layers will be rendered.
 
 .. seealso:: :py:func:`currentExportLayer`
 
-.. deprecated:: 3.40
-
+.. deprecated::
    Items should now handle this themselves, via :py:func:`QgsLayoutItem.exportLayerBehavior()` and returning :py:func:`QgsLayoutItem.nextExportPart()`.
 %End
 
@@ -210,8 +209,7 @@ If ``layer`` is -1, all item layers should be rendered.
 
 .. seealso:: :py:func:`setCurrentExportLayer`
 
-.. deprecated:: 3.40
-
+.. deprecated::
    Items should now handle this themselves, via :py:func:`QgsLayoutItem.exportLayerBehavior()` and returning :py:func:`QgsLayoutItem.nextExportPart()`.
 %End
 
@@ -251,6 +249,7 @@ The default is to use no simplification.
 
 .. seealso:: :py:func:`simplifyMethod`
 
+
 .. versionadded:: 3.10
 %End
 
@@ -269,27 +268,6 @@ The default is to use no simplification.
 .. seealso:: :py:func:`setSimplifyMethod`
 
 .. versionadded:: 3.10
-%End
-
-
-    QgsMaskRenderSettings &maskSettings();
-%Docstring
-Returns a reference to the mask render settings, which control how masks
-are drawn and behave during map renders.
-
-.. seealso:: :py:func:`setMaskSettings`
-
-.. versionadded:: 3.38
-%End
-
-    void setMaskSettings( const QgsMaskRenderSettings &settings );
-%Docstring
-Sets the mask render ``settings``, which control how masks
-are drawn and behave during map renders.
-
-.. seealso:: :py:func:`maskSettings`
-
-.. versionadded:: 3.38
 %End
 
     QStringList exportThemes() const;
@@ -337,7 +315,7 @@ Returns the current list of predefined scales for use with the layout.
 
     QgsFeatureFilterProvider *featureFilterProvider() const;
 %Docstring
-Returns the (possibly ``None``) feature filter provider.
+Returns the possibly NULL feature filter provider.
 
 A feature filter provider for filtering visible features or attributes.
 It is currently used by QGIS Server Access Control Plugins.
@@ -389,5 +367,5 @@ Emitted when the list of predefined scales changes.
  *                                                                      *
  * src/core/layout/qgslayoutrendercontext.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

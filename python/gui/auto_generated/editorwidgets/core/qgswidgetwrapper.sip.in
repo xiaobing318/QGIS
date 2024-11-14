@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/editorwidgets/core/qgswidgetwrapper.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -48,8 +48,7 @@ changed status of the widget will be saved.
 %End
   public:
 
-
-    enum class Property
+    enum Property
     {
       RootPath,
       DocumentViewerContent,
@@ -59,6 +58,8 @@ changed status of the widget will be saved.
     static const QgsPropertiesDefinition &propertyDefinitions();
 %Docstring
 Returns the editor widget property definitions.
+
+.. versionadded:: 3.0
 %End
 
     explicit QgsWidgetWrapper( QgsVectorLayer *vl, QWidget *editor = 0, QWidget *parent = 0 );
@@ -135,6 +136,8 @@ If it cannot be used this is a hint to the caller that he may try to find
 another suitable widget type instead.
 
 :return: Validity status of this widget.
+
+.. versionadded:: 2.12
 %End
 
 
@@ -146,6 +149,8 @@ Returns a reference to the editor widget's property collection, used for data de
 .. seealso:: :py:func:`setDataDefinedProperties`
 
 .. seealso:: Property
+
+.. versionadded:: 3.0
 %End
 
     void setDataDefinedProperties( const QgsPropertyCollection &collection );
@@ -157,6 +162,8 @@ Sets the editor widget's property collection, used for data defined overrides.
 .. seealso:: :py:func:`dataDefinedProperties`
 
 .. seealso:: Property
+
+.. versionadded:: 3.0
 %End
 
     void notifyAboutToSave();
@@ -227,5 +234,5 @@ By default this will not change the enabled state of the widget
  *                                                                      *
  * src/gui/editorwidgets/core/qgswidgetwrapper.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

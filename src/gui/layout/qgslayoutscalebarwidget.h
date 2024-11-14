@@ -66,7 +66,8 @@ class GUI_EXPORT QgsLayoutScaleBarWidget: public QgsLayoutItemBaseWidget, public
     void mStyleComboBox_currentIndexChanged( const QString &text );
     void mLabelBarSpaceSpinBox_valueChanged( double d );
     void mBoxSizeSpinBox_valueChanged( double d );
-    void mDistanceLabelPlacementComboBox_currentIndexChanged( int index );
+    void mLabelVerticalPlacementComboBox_currentIndexChanged( int index );
+    void mLabelHorizontalPlacementComboBox_currentIndexChanged( int index );
     void alignmentChanged();
     void mUnitsComboBox_currentIndexChanged( int index );
     void mMinWidthSpinBox_valueChanged( double d );
@@ -80,15 +81,6 @@ class GUI_EXPORT QgsLayoutScaleBarWidget: public QgsLayoutItemBaseWidget, public
     void changeNumberFormat();
 
   private:
-    enum class DistanceLabelPlacement : int
-    {
-      CenteredAboveSegmentEdges,
-      CenteredAboveSegmentCenters,
-      CenteredBelowSegmentEdges,
-      CenteredBelowSegmentCenters,
-    };
-    static DistanceLabelPlacement distanceLabelPlacement( Qgis::ScaleBarDistanceLabelHorizontalPlacement horizontalPlacement, Qgis::ScaleBarDistanceLabelVerticalPlacement verticalPlacement );
-
     QPointer< QgsLayoutItemScaleBar > mScalebar;
     QgsLayoutItemPropertiesWidget *mItemPropertiesWidget = nullptr;
 

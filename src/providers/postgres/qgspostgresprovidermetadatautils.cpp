@@ -15,10 +15,8 @@
  ***************************************************************************/
 
 #include "qgspostgresprovidermetadatautils.h"
+#include "qgspostgresproviderconnection.h"
 #include "qgscoordinatetransform.h"
-#include "qgslogger.h"
-#include "qgspostgresconn.h"
-#include "qgsfeedback.h"
 
 #include <QTextStream>
 
@@ -102,10 +100,8 @@ QList<QgsLayerMetadataProviderResult> QgsPostgresProviderMetadataUtils::searchLa
       uri.setSchema( res.PQgetvalue( row, 1 ) );
       uri.setTable( res.PQgetvalue( row, 2 ) );
       uri.setGeometryColumn( res.PQgetvalue( row, 3 ) );
-      const Qgis::WkbType wkbType =  QgsWkbTypes::parseType( res.PQgetvalue( row, 7 ) );
-      uri.setWkbType( wkbType );
       result.setStandardUri( QStringLiteral( "http://mrcc.com/qgis.dtd" ) );
-      result.setGeometryType( QgsWkbTypes::geometryType( wkbType ) );
+      result.setGeometryType( QgsWkbTypes::geometryType( QgsWkbTypes::parseType( res.PQgetvalue( row, 7 ) ) ) );
       QgsPolygon geographicExtent;
       geographicExtent.fromWkt( res.PQgetvalue( row, 8 ) );
       result.setGeographicExtent( geographicExtent );
@@ -114,16 +110,16 @@ QList<QgsLayerMetadataProviderResult> QgsPostgresProviderMetadataUtils::searchLa
       if ( layerType == QLatin1String( "raster" ) )
       {
         result.setDataProviderName( QStringLiteral( "postgresraster" ) );
-        result.setLayerType( Qgis::LayerType::Raster );
+        result.setLayerType( QgsMapLayerType::RasterLayer );
       }
       else if ( layerType == QLatin1String( "vector" ) )
       {
         result.setDataProviderName( QStringLiteral( "postgres" ) );
-        result.setLayerType( Qgis::LayerType::Vector );
+        result.setLayerType( QgsMapLayerType::VectorLayer );
       }
       else
       {
-        QgsDebugError( QStringLiteral( "Unsupported layer type '%1': skipping metadata record" ).arg( layerType ) );
+        QgsDebugMsg( QStringLiteral( "Unsupported layer type '%1': skipping metadata record" ).arg( layerType ) );
         continue;
       }
       result.setUri( uri.uri() );
@@ -137,17 +133,17 @@ QList<QgsLayerMetadataProviderResult> QgsPostgresProviderMetadataUtils::searchLa
   return results;
 }
 
-bool QgsPostgresProviderMetadataUtils::saveLayerMetadata( const Qgis::LayerType &layerType, const QString &uri, const QgsLayerMetadata &metadata, QString &errorMessage )
+bool QgsPostgresProviderMetadataUtils::saveLayerMetadata( const QgsMapLayerType &layerType, const QString &uri, const QgsLayerMetadata &metadata, QString &errorMessage )
 {
   QgsDataSourceUri dsUri( uri );
 
   QString layerTypeString;
 
-  if ( layerType == Qgis::LayerType::Vector )
+  if ( layerType == QgsMapLayerType::VectorLayer )
   {
     layerTypeString = QStringLiteral( "vector" );
   }
-  else if ( layerType == Qgis::LayerType::Raster )
+  else if ( layerType == QgsMapLayerType::RasterLayer )
   {
     layerTypeString = QStringLiteral( "raster" );
   }
@@ -209,7 +205,7 @@ bool QgsPostgresProviderMetadataUtils::saveLayerMetadata( const Qgis::LayerType 
     }
   }
 
-  const QString wkbTypeString = QgsWkbTypes::displayString( dsUri.wkbType() );
+  const QString wkbTypeString = QgsWkbTypes::geometryDisplayString( QgsWkbTypes::geometryType( dsUri.wkbType() ) );
 
   const QgsCoordinateReferenceSystem metadataCrs { metadata.crs() };
   QgsCoordinateReferenceSystem destCrs {QgsCoordinateReferenceSystem::fromEpsgId( 4326 ) };

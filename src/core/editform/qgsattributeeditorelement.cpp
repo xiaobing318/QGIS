@@ -22,9 +22,7 @@
 #include "qgsattributeeditorhtmlelement.h"
 #include "qgsattributeeditorqmlelement.h"
 #include "qgsattributeeditorrelation.h"
-#include "qgsattributeeditorspacerelement.h"
-#include "qgsattributeeditortextelement.h"
-#include "qgscolorutils.h"
+#include "qgssymbollayerutils.h"
 #include "qgsfontutils.h"
 
 QDomElement QgsAttributeEditorElement::toDomElement( QDomDocument &doc ) const
@@ -32,8 +30,6 @@ QDomElement QgsAttributeEditorElement::toDomElement( QDomDocument &doc ) const
   QDomElement elem = doc.createElement( typeIdentifier() );
   elem.setAttribute( QStringLiteral( "name" ), mName );
   elem.setAttribute( QStringLiteral( "showLabel" ), mShowLabel );
-  elem.setAttribute( QStringLiteral( "horizontalStretch" ), mHorizontalStretch );
-  elem.setAttribute( QStringLiteral( "verticalStretch" ), mVerticalStretch );
   elem.appendChild( mLabelStyle.writeXml( doc ) );
   saveConfiguration( elem, doc );
   return elem;
@@ -89,14 +85,6 @@ QgsAttributeEditorElement *QgsAttributeEditorElement::create( const QDomElement 
   {
     newElement = new QgsAttributeEditorHtmlElement( element.attribute( QStringLiteral( "name" ) ), parent );
   }
-  else if ( element.tagName() == QLatin1String( "attributeEditorTextElement" ) )
-  {
-    newElement = new QgsAttributeEditorTextElement( element.attribute( QStringLiteral( "name" ) ), parent );
-  }
-  else if ( element.tagName() == QLatin1String( "attributeEditorSpacerElement" ) )
-  {
-    newElement = new QgsAttributeEditorSpacerElement( element.attribute( QStringLiteral( "name" ) ), parent );
-  }
   else if ( element.tagName() == QLatin1String( "attributeEditorAction" ) )
   {
     newElement = new QgsAttributeEditorAction( QUuid( element.attribute( QStringLiteral( "name" ) ) ), parent );
@@ -108,9 +96,6 @@ QgsAttributeEditorElement *QgsAttributeEditorElement::create( const QDomElement 
       newElement->setShowLabel( element.attribute( QStringLiteral( "showLabel" ) ).toInt() );
     else
       newElement->setShowLabel( true );
-
-    newElement->setHorizontalStretch( element.attribute( QStringLiteral( "horizontalStretch" ), QStringLiteral( "0" ) ).toInt() );
-    newElement->setVerticalStretch( element.attribute( QStringLiteral( "verticalStretch" ), QStringLiteral( "0" ) ).toInt() );
 
     // Label font and color
     LabelStyle style;
@@ -134,7 +119,7 @@ void QgsAttributeEditorElement::LabelStyle::readXml( const QDomNode &node )
     // Label font and color
     if ( element.hasAttribute( QStringLiteral( "labelColor" ) ) )
     {
-      color = QgsColorUtils::colorFromString( element.attribute( QStringLiteral( "labelColor" ) ) );
+      color = QgsSymbolLayerUtils::decodeColor( element.attribute( QStringLiteral( "labelColor" ) ) );
     }
 
     QFont newFont;
@@ -157,7 +142,7 @@ void QgsAttributeEditorElement::LabelStyle::readXml( const QDomNode &node )
 QDomElement QgsAttributeEditorElement::LabelStyle::writeXml( QDomDocument &document ) const
 {
   QDomElement elem {  document.createElement( QStringLiteral( "labelStyle" ) ) };
-  elem.setAttribute( QStringLiteral( "labelColor" ), QgsColorUtils::colorToString( color ) );
+  elem.setAttribute( QStringLiteral( "labelColor" ), QgsSymbolLayerUtils::encodeColor( color ) );
   elem.appendChild( QgsFontUtils::toXmlElement( font, document, QStringLiteral( "labelFont" ) ) );
   elem.setAttribute( QStringLiteral( "overrideLabelColor" ), overrideColor ? QChar( '1' ) : QChar( '0' ) );
   elem.setAttribute( QStringLiteral( "overrideLabelFont" ), overrideFont ? QChar( '1' ) : QChar( '0' ) );

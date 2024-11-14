@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     gdalinfo.py
@@ -66,7 +68,7 @@ class gdalinfo(GdalAlgorithm):
                                                    self.tr('Additional command-line parameters'),
                                                    defaultValue=None,
                                                    optional=True)
-        extra_param.setFlags(extra_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        extra_param.setFlags(extra_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(extra_param)
 
         self.addParameter(QgsProcessingParameterFileDestination(self.OUTPUT,
@@ -109,15 +111,7 @@ class gdalinfo(GdalAlgorithm):
         raster = self.parameterAsRasterLayer(parameters, self.INPUT, context)
         if raster is None:
             raise QgsProcessingException(self.invalidRasterError(parameters, self.INPUT))
-        input_details = GdalUtils.gdal_connection_details_from_layer(raster)
-        arguments.append(input_details.connection_string)
-
-        if input_details.open_options:
-            arguments.extend(input_details.open_options_as_arguments())
-
-        if input_details.credential_options:
-            arguments.extend(input_details.credential_options_as_arguments())
-
+        arguments.append(raster.source())
         return [self.commandName(), GdalUtils.escapeAndJoin(arguments)]
 
     def processAlgorithm(self, parameters, context, feedback):

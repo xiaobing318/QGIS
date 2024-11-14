@@ -64,20 +64,20 @@ class QgsRoundRasterValuesAlgorithm : public QgsProcessingAlgorithm
 
     int mDecimalPrecision = 2;
     int mBaseN = 10;
-    double mScaleFactor = 0;
-    int mMultipleOfBaseN = 0;
-    int mBand = 1;
-    int mRoundingDirection = 0;
+    double mScaleFactor;
+    int mMultipleOfBaseN;
+    int mBand;
+    int mRoundingDirection;
     std::unique_ptr< QgsRasterInterface > mInterface;
-    Qgis::DataType mDataType = Qgis::DataType::UnknownDataType;
-    bool mIsInteger = false;
+    Qgis::DataType mDataType;
+    bool mIsInteger;
     QgsRectangle mExtent;
     QgsCoordinateReferenceSystem mCrs;
-    int mLayerWidth = 0;
-    int mLayerHeight = 0;
+    int mLayerWidth;
+    int mLayerHeight;
     int mNbCellsXProvider = 0;
     int mNbCellsYProvider = 0;
-    double mInputNoDataValue = 0;
+    double mInputNoDataValue;
 };
 
 ///@endcond PRIVATE

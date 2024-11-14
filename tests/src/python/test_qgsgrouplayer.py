@@ -12,26 +12,35 @@ __copyright__ = 'Copyright 2021, The QGIS Project'
 import os
 from tempfile import TemporaryDirectory
 
-from qgis.PyQt.QtCore import QCoreApplication, QDir, QEvent, QSize
-from qgis.PyQt.QtGui import QColor, QPainter
+import qgis  # NOQA
+from qgis.PyQt.QtCore import (
+    QCoreApplication,
+    QEvent,
+    QSize,
+    QDir
+)
+from qgis.PyQt.QtGui import (
+    QPainter,
+    QColor
+)
 from qgis.core import (
-    QgsColorEffect,
+    QgsFeature,
+    QgsVectorLayer,
+    QgsRasterLayer,
+    QgsProject,
     QgsCoordinateTransformContext,
-    QgsDrawSourceEffect,
+    QgsGroupLayer,
+    QgsGeometry,
+    QgsPointXY,
+    QgsMapSettings,
+    QgsMultiRenderChecker,
     QgsDropShadowEffect,
     QgsEffectStack,
-    QgsFeature,
-    QgsGeometry,
-    QgsGroupLayer,
-    QgsImageOperation,
-    QgsMapSettings,
-    QgsPointXY,
-    QgsProject,
-    QgsRasterLayer,
-    QgsVectorLayer,
+    QgsDrawSourceEffect,
+    QgsColorEffect,
+    QgsImageOperation
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -40,11 +49,17 @@ start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestQgsGroupLayer(QgisTestCase):
+class TestQgsGroupLayer(unittest.TestCase):
 
     @classmethod
-    def control_path_prefix(cls):
-        return 'group_layer'
+    def setUpClass(cls):
+        cls.report = "<h1>Python QgsGroupLayer Tests</h1>\n"
+
+    @classmethod
+    def tearDownClass(cls):
+        report_file_path = "%s/qgistest.html" % QDir.tempPath()
+        with open(report_file_path, 'a') as report_file:
+            report_file.write(cls.report)
 
     def test_children(self):
         options = QgsGroupLayer.LayerOptions(QgsCoordinateTransformContext())
@@ -63,7 +78,7 @@ class TestQgsGroupLayer(QgisTestCase):
         # force deletion of a layer
         layer1.deleteLater()
         layer1 = None
-        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
         # should be automatically cleaned
         self.assertEqual(group_layer.childLayers(), [layer2])
 
@@ -196,9 +211,13 @@ class TestQgsGroupLayer(QgisTestCase):
         mapsettings.setExtent(group_layer.extent())
         mapsettings.setLayers([group_layer])
 
-        self.assertTrue(
-            self.render_map_settings_check('group_opacity', 'group_opacity', mapsettings)
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(mapsettings)
+        renderchecker.setControlPathPrefix('group_layer')
+        renderchecker.setControlName('expected_group_opacity')
+        result = renderchecker.runTest('expected_group_opacity')
+        TestQgsGroupLayer.report += renderchecker.report()
+        self.assertTrue(result)
 
     def test_render_group_blend_mode(self):
         """
@@ -212,16 +231,7 @@ class TestQgsGroupLayer(QgisTestCase):
         options = QgsGroupLayer.LayerOptions(QgsCoordinateTransformContext())
         group_layer = QgsGroupLayer('group', options)
         group_layer.setChildLayers([vl2, vl1])
-        vl1.setBlendMode(QPainter.CompositionMode.CompositionMode_DestinationIn)
-        self.assertEqual(vl1.blendMode(), QPainter.CompositionMode.CompositionMode_DestinationIn)
-        # temporarily remove layer from group and check blend mode
-        group_layer.setChildLayers([vl2])
-        # blend mode must be reset to a non-clipping mode
-        self.assertEqual(vl1.blendMode(), QPainter.CompositionMode.CompositionMode_SourceOver)
-        # readd layer to group
-        group_layer.setChildLayers([vl2, vl1])
-        # group blend mode should be restored
-        self.assertEqual(vl1.blendMode(), QPainter.CompositionMode.CompositionMode_DestinationIn)
+        vl1.setBlendMode(QPainter.CompositionMode_DestinationIn)
 
         mapsettings = QgsMapSettings()
         mapsettings.setOutputSize(QSize(600, 400))
@@ -230,9 +240,13 @@ class TestQgsGroupLayer(QgisTestCase):
         mapsettings.setExtent(group_layer.extent())
         mapsettings.setLayers([group_layer])
 
-        self.assertTrue(
-            self.render_map_settings_check('group_child_blend_mode', 'group_child_blend_mode', mapsettings)
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(mapsettings)
+        renderchecker.setControlPathPrefix('group_layer')
+        renderchecker.setControlName('expected_group_child_blend_mode')
+        result = renderchecker.runTest('expected_group_child_blend_mode')
+        TestQgsGroupLayer.report += renderchecker.report()
+        self.assertTrue(result)
 
     def test_render_paint_effect(self):
         """
@@ -265,9 +279,13 @@ class TestQgsGroupLayer(QgisTestCase):
         mapsettings.setExtent(group_layer.extent())
         mapsettings.setLayers([group_layer])
 
-        self.assertTrue(
-            self.render_map_settings_check('group_paint_effect', 'group_paint_effect', mapsettings)
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(mapsettings)
+        renderchecker.setControlPathPrefix('group_layer')
+        renderchecker.setControlName('expected_group_paint_effect')
+        result = renderchecker.runTest('expected_group_paint_effect')
+        TestQgsGroupLayer.report += renderchecker.report()
+        self.assertTrue(result)
 
     def test_render_magnification(self):
         """
@@ -283,7 +301,7 @@ class TestQgsGroupLayer(QgisTestCase):
         group_layer.setChildLayers([rl1, vl1])
 
         color_effect = QgsColorEffect()
-        color_effect.setGrayscaleMode(QgsImageOperation.GrayscaleMode.GrayscaleAverage)
+        color_effect.setGrayscaleMode(QgsImageOperation.GrayscaleAverage)
 
         effect_stack = QgsEffectStack()
         effect_stack.appendEffect(color_effect)
@@ -298,9 +316,13 @@ class TestQgsGroupLayer(QgisTestCase):
         mapsettings.setExtent(group_layer.extent())
         mapsettings.setLayers([group_layer])
 
-        self.assertTrue(
-            self.render_map_settings_check('group_magnification', 'group_magnification', mapsettings)
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(mapsettings)
+        renderchecker.setControlPathPrefix('group_layer')
+        renderchecker.setControlName('expected_group_magnification')
+        result = renderchecker.runTest('expected_group_magnification')
+        TestQgsGroupLayer.report += renderchecker.report()
+        self.assertTrue(result)
 
 
 if __name__ == '__main__':

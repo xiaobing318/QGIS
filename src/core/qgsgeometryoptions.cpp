@@ -16,16 +16,12 @@
  ***************************************************************************/
 
 #include "qgsgeometryoptions.h"
-#include "moc_qgsgeometryoptions.cpp"
-#include "qgsxmlutils.h"
-#include "qgssettingsentryimpl.h"
-#include "qgssettingstree.h"
 
-const QgsSettingsEntryString *QgsGeometryOptions::settingsGeometryValidationDefaultChecks = new QgsSettingsEntryString( QStringLiteral( "default_checks" ), QgsSettingsTree::sTreeGeometryValidation, QString() );
+#include "qgsxmlutils.h"
 
 QgsGeometryOptions::QgsGeometryOptions()
 {
-  mGeometryChecks = settingsGeometryValidationDefaultChecks->value().split( ',' ) ;
+  mGeometryChecks = settingsGeometryValidationDefaultChecks.value().split( ',' ) ;
 }
 
 bool QgsGeometryOptions::removeDuplicateNodes() const

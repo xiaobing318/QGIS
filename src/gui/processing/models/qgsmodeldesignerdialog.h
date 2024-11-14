@@ -30,7 +30,6 @@ class QUndoView;
 class QgsModelViewToolPan;
 class QgsModelViewToolSelect;
 class QgsScreenHelper;
-class QgsProcessingAlgorithmDialogBase;
 
 ///@cond NOT_STABLE
 
@@ -121,14 +120,10 @@ class GUI_EXPORT QgsModelDesignerDialog : public QMainWindow, public Ui::QgsMode
     // cppcheck-suppress pureVirtualCall
     virtual void repaintModel( bool showControls = true ) = 0;
     virtual void addAlgorithm( const QString &algorithmId, const QPointF &pos ) = 0;
-    // cppcheck-suppress pureVirtualCall
     virtual void addInput( const QString &inputId, const QPointF &pos ) = 0;
-    // cppcheck-suppress pureVirtualCall
     virtual void exportAsScriptAlgorithm() = 0;
     // cppcheck-suppress pureVirtualCall
     virtual bool saveModel( bool saveAs = false ) = 0;
-    // cppcheck-suppress pureVirtualCall
-    virtual QgsProcessingAlgorithmDialogBase *createExecutionDialog() = 0 SIP_TRANSFERBACK;
 
     QToolBar *toolbar() { return mToolbar; }
     QAction *actionOpen() { return mActionOpen; }
@@ -152,9 +147,14 @@ class GUI_EXPORT QgsModelDesignerDialog : public QMainWindow, public Ui::QgsMode
     bool checkForUnsavedChanges();
 
     /**
-     * Sets the \a result of the last run of the model through the designer window.
+     * Sets the results of child algorithms for the last run of the model through the designer window.
      */
-    void setLastRunResult( const QgsProcessingModelResult &result );
+    void setLastRunChildAlgorithmResults( const QVariantMap &results );
+
+    /**
+     * Sets the inputs for child algorithms for the last run of the model through the designer window.
+     */
+    void setLastRunChildAlgorithmInputs( const QVariantMap &inputs );
 
     /**
      * Sets the model \a name.
@@ -181,14 +181,8 @@ class GUI_EXPORT QgsModelDesignerDialog : public QMainWindow, public Ui::QgsMode
     void populateZoomToMenu();
     void validate();
     void reorderInputs();
-    void reorderOutputs();
     void setPanelVisibility( bool hidden );
     void editHelp();
-    void runSelectedSteps();
-    void runFromChild( const QString &id );
-    void run( const QSet<QString> &childAlgorithmSubset = QSet<QString>() );
-    void showChildAlgorithmOutputs( const QString &childId );
-    void showChildAlgorithmLog( const QString &childId );
 
   private:
 
@@ -232,7 +226,8 @@ class GUI_EXPORT QgsModelDesignerDialog : public QMainWindow, public Ui::QgsMode
 
     int mBlockRepaints = 0;
 
-    QgsProcessingModelResult mLastResult;
+    QVariantMap mChildResults;
+    QVariantMap mChildInputs;
 
     bool isDirty() const;
 
@@ -249,8 +244,6 @@ class GUI_EXPORT QgsModelDesignerDialog : public QMainWindow, public Ui::QgsMode
       bool isActive;
     };
     QMap< QString, PanelStatus > mPanelStatus;
-
-    QgsProcessingContext mLayerStore;
 };
 
 

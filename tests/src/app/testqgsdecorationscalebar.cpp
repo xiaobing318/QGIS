@@ -40,7 +40,7 @@ TestQgsDecorationScalebar::TestQgsDecorationScalebar() = default;
 //runs before all tests
 void TestQgsDecorationScalebar::initTestCase()
 {
-  qDebug() << "TestQgsDecorationScalebar::initTestCase()";
+  qDebug() << "TestQgisAppClipboard::initTestCase()";
   // init QGIS's paths - true means that all path will be inited from prefix
   QgsApplication::init();
   QgsApplication::initQgis();
@@ -78,7 +78,7 @@ void TestQgsDecorationScalebar::mapWidth()
 
   // Cartesian measure
   QgsProject::instance()->setEllipsoid( QString() );
-  scalebar.mSettings.setUnits( Qgis::DistanceUnit::Miles );
+  scalebar.mSettings.setUnits( QgsUnitTypes::DistanceMiles );
   QGSCOMPARENEAR( scalebar.mapWidth( settings ), 4.97097, 0.0001 );
 
   // ellipsoidal measure

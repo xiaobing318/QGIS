@@ -33,7 +33,6 @@
 #define SIP_NO_FILE
 
 #include "qgis.h"
-#include "qgs3drendercontext.h"
 
 
 namespace Qt3DCore
@@ -52,6 +51,7 @@ namespace Qt3DRender
 #endif
 
 class QgsLineString;
+class Qgs3DMapSettings;
 
 
 /**
@@ -63,16 +63,14 @@ class QgsLineString;
  *
  * It is expected that client code:
  *
- * - calls init()
- * - calls addLineString() many times
- * - calls createGeometry()
- *
+ * # calls init()
+ * # calls addLineString() many times
+ * # calls createGeometry()
  */
 struct QgsLineVertexData
 {
   QVector<QVector3D> vertices;
   QVector<unsigned int> indexes;
-  QByteArray materialDataDefined;
 
   bool withAdjacency = false;  //!< Whether line strip with adjacency primitive will be used
 
@@ -80,12 +78,11 @@ struct QgsLineVertexData
   Qgis::AltitudeClamping altClamping = Qgis::AltitudeClamping::Relative;
   Qgis::AltitudeBinding altBinding = Qgis::AltitudeBinding::Vertex;
   float baseHeight = 0;
-  Qgs3DRenderContext renderContext;  // used for altitude clamping
-  QgsVector3D origin;                // all coordinates are relative to this origin (e.g. center of the chunk)
+  const Qgs3DMapSettings *mapSettings = nullptr;
 
   QgsLineVertexData();
 
-  void init( Qgis::AltitudeClamping clamping, Qgis::AltitudeBinding binding, float height, const Qgs3DRenderContext &renderContext, const QgsVector3D &chunkOrigin );
+  void init( Qgis::AltitudeClamping clamping, Qgis::AltitudeBinding binding, float height, const Qgs3DMapSettings *map );
 
   QByteArray createVertexBuffer();
   QByteArray createIndexBuffer();

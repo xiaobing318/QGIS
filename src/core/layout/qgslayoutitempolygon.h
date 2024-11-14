@@ -25,6 +25,7 @@ class QgsFillSymbol;
 /**
  * \ingroup core
  * \brief Layout item for node based polygon shapes.
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsLayoutItemPolygon: public QgsLayoutNodesItem
 {
@@ -58,7 +59,6 @@ class CORE_EXPORT QgsLayoutItemPolygon: public QgsLayoutNodesItem
     bool accept( QgsStyleEntityVisitorInterface *visitor ) const override;
     QgsLayoutItem::Flags itemFlags() const override;
     QgsGeometry clipPath() const override;
-    bool isValid() const override;
 
     /**
      * Returns the fill symbol used to draw the shape.

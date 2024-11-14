@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsfieldformatterregistry.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -17,6 +17,8 @@ The :py:class:`QgsFieldFormatterRegistry` manages registered classes of :py:clas
 
 A reference to the :py:class:`QgsFieldFormatterRegistry` can be obtained from
 :py:func:`QgsApplication.fieldFormatterRegistry()`.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -82,5 +84,5 @@ Will be emitted just before a field formatter is removed and deleted.
  *                                                                      *
  * src/core/qgsfieldformatterregistry.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

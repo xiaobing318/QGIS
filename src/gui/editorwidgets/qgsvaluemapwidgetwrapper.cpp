@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsvaluemapwidgetwrapper.h"
-#include "moc_qgsvaluemapwidgetwrapper.cpp"
 #include "qgsvaluemapconfigdlg.h"
 #include "qgsvaluemapfieldformatter.h"
 #include "qgsapplication.h"
@@ -38,7 +37,7 @@ QVariant QgsValueMapWidgetWrapper::value() const
   }
 
   if ( v == QgsValueMapFieldFormatter::NULL_VALUE )
-    v = QgsVariantUtils::createNullVariant( field().type() );
+    v = QVariant( field().type() );
 
   return v;
 }

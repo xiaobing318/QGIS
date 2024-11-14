@@ -16,10 +16,9 @@
  ***************************************************************************/
 
 #include "qgis.h"
-#include "qgssettingsregistrycore.h"
+#include "qgslogger.h"
 #include "qgsscalecombobox.h"
-#include "moc_qgsscalecombobox.cpp"
-#include "qgssettingsentryimpl.h"
+#include "qgssettings.h"
 
 #include <QAbstractItemView>
 #include <QLocale>
@@ -40,22 +39,30 @@ QgsScaleComboBox::QgsScaleComboBox( QWidget *parent )
 
 void QgsScaleComboBox::updateScales( const QStringList &scales )
 {
-  QStringList scalesList;
+  QStringList myScalesList;
   const QString oldScale = currentText();
 
   if ( scales.isEmpty() )
   {
-    scalesList = QgsSettingsRegistryCore::settingsMapScales->value();
+    const QgsSettings settings;
+    const QString myScales = settings.value( QStringLiteral( "Map/scales" ), Qgis::defaultProjectScales() ).toString();
+    if ( !myScales.isEmpty() )
+    {
+      myScalesList = myScales.split( ',' );
+    }
   }
   else
   {
-    scalesList = scales;
+    QStringList::const_iterator scaleIt = scales.constBegin();
+    for ( ; scaleIt != scales.constEnd(); ++scaleIt )
+    {
+      myScalesList.append( *scaleIt );
+    }
   }
 
-  QStringList cleanedScalesList;
-  for ( const QString &scale : std::as_const( scalesList ) )
+  for ( int i = 0; i < myScalesList.size(); ++i )
   {
-    const QStringList parts = scale.split( ':' );
+    const QStringList parts = myScalesList[ i ] .split( ':' );
     if ( parts.size() < 2 )
       continue;
 
@@ -63,45 +70,13 @@ void QgsScaleComboBox::updateScales( const QStringList &scales )
     const double denominator = QLocale().toDouble( parts[1], &ok );
     if ( ok )
     {
-      cleanedScalesList.push_back( toString( denominator ) );
-    }
-    else
-    {
-      const double denominator = parts[1].toDouble( &ok );
-      if ( ok )
-      {
-        cleanedScalesList.push_back( toString( denominator ) );
-      }
+      myScalesList[ i ] = toString( denominator );
     }
   }
 
   blockSignals( true );
   clear();
-  addItems( cleanedScalesList );
-  setScaleString( oldScale );
-  blockSignals( false );
-}
-
-void QgsScaleComboBox::setPredefinedScales( const QVector<double> &scales )
-{
-  if ( scales.isEmpty() )
-  {
-    updateScales();
-    return;
-  }
-
-  const QString oldScale = currentText();
-
-  QStringList scalesStringList;
-  scalesStringList.reserve( scales.size() );
-  for ( double denominator : scales )
-  {
-    scalesStringList.push_back( toString( denominator ) );
-  }
-
-  blockSignals( true );
-  clear();
-  addItems( scalesStringList );
+  addItems( myScalesList );
   setScaleString( oldScale );
   blockSignals( false );
 }

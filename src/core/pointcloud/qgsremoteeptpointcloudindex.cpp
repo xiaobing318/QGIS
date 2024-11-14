@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsremoteeptpointcloudindex.h"
-#include "moc_qgsremoteeptpointcloudindex.cpp"
 
 #include <QFile>
 #include <QFileInfo>
@@ -29,18 +28,21 @@
 #include <QQueue>
 #include <QTimer>
 
-#include "qgsapplication.h"
+#include "qgseptdecoder.h"
+#include "qgscoordinatereferencesystem.h"
 #include "qgspointcloudrequest.h"
 #include "qgspointcloudattribute.h"
 #include "qgslogger.h"
 #include "qgsfeedback.h"
+#include "qgsmessagelog.h"
+
 #include "qgstiledownloadmanager.h"
 #include "qgsblockingnetworkrequest.h"
+
+#include "qgsfileutils.h"
+#include "qgsapplication.h"
 #include "qgseptpointcloudblockrequest.h"
-#include "qgscachedpointcloudblockrequest.h"
 #include "qgspointcloudexpression.h"
-#include "qgsnetworkaccessmanager.h"
-#include "qgssetrequestinitiator_p.h"
 
 ///@cond PRIVATE
 
@@ -81,25 +83,24 @@ QList<IndexedPointCloudNode> QgsRemoteEptPointCloudIndex::nodeChildren( const In
   return lst;
 }
 
-void QgsRemoteEptPointCloudIndex::load( const QString &uri )
+void QgsRemoteEptPointCloudIndex::load( const QString &url )
 {
-  mUri = uri;
+  mUrl = QUrl( url );
 
-  QStringList splitUrl = uri.split( '/' );
+  QStringList splitUrl = url.split( '/' );
 
   mUrlFileNamePart = splitUrl.back();
   splitUrl.pop_back();
   mUrlDirectoryPart = splitUrl.join( '/' );
 
-  QNetworkRequest nr = QNetworkRequest( QUrl( mUri ) );
+  QNetworkRequest nr( url );
 
   QgsBlockingNetworkRequest req;
   const QgsBlockingNetworkRequest::ErrorCode errCode = req.get( nr );
   if ( errCode != QgsBlockingNetworkRequest::NoError )
   {
-    QgsDebugError( QStringLiteral( "Request failed: " ) + uri );
+    QgsDebugMsg( QStringLiteral( "Request failed: " ) + url );
     mIsValid = false;
-    mError = req.errorMessage();
     return;
   }
 
@@ -107,13 +108,8 @@ void QgsRemoteEptPointCloudIndex::load( const QString &uri )
   mIsValid = loadSchema( reply.content() );
 }
 
-std::unique_ptr<QgsPointCloudBlock> QgsRemoteEptPointCloudIndex::nodeData( const IndexedPointCloudNode &n, const QgsPointCloudRequest &request )
+QgsPointCloudBlock *QgsRemoteEptPointCloudIndex::nodeData( const IndexedPointCloudNode &n, const QgsPointCloudRequest &request )
 {
-  if ( QgsPointCloudBlock *cached = getNodeDataFromCache( n, request ) )
-  {
-    return std::unique_ptr<QgsPointCloudBlock>( cached );
-  }
-
   std::unique_ptr<QgsPointCloudBlockRequest> blockRequest( asyncNodeData( n, request ) );
   if ( !blockRequest )
     return nullptr;
@@ -122,24 +118,16 @@ std::unique_ptr<QgsPointCloudBlock> QgsRemoteEptPointCloudIndex::nodeData( const
   connect( blockRequest.get(), &QgsPointCloudBlockRequest::finished, &loop, &QEventLoop::quit );
   loop.exec();
 
-  std::unique_ptr<QgsPointCloudBlock> block = blockRequest->takeBlock();
-  if ( !block )
+  if ( !blockRequest->block() )
   {
-    QgsDebugError( QStringLiteral( "Error downloading node %1 data, error : %2 " ).arg( n.toString(), blockRequest->errorStr() ) );
+    QgsDebugMsg( QStringLiteral( "Error downloading node %1 data, error : %2 " ).arg( n.toString(), blockRequest->errorStr() ) );
   }
 
-  storeNodeDataToCache( block.get(), n, request );
-  return block;
+  return blockRequest->block();
 }
 
 QgsPointCloudBlockRequest *QgsRemoteEptPointCloudIndex::asyncNodeData( const IndexedPointCloudNode &n, const QgsPointCloudRequest &request )
 {
-  if ( QgsPointCloudBlock *cached = getNodeDataFromCache( n, request ) )
-  {
-    return new QgsCachedPointCloudBlockRequest( cached,  n, mUri, attributes(), request.attributes(),
-           scale(), offset(), mFilterExpression, request.filterRect() );
-  }
-
   if ( !loadNodeHierarchy( n ) )
     return nullptr;
 
@@ -167,7 +155,7 @@ QgsPointCloudBlockRequest *QgsRemoteEptPointCloudIndex::asyncNodeData( const Ind
   QgsPointCloudExpression filterExpression = mFilterExpression;
   QgsPointCloudAttributeCollection requestAttributes = request.attributes();
   requestAttributes.extend( attributes(), filterExpression.referencedAttributes() );
-  return new QgsEptPointCloudBlockRequest( n, fileUrl, mDataType, attributes(), requestAttributes, scale(), offset(), filterExpression, request.filterRect() );
+  return new QgsEptPointCloudBlockRequest( n, fileUrl, mDataType, attributes(), requestAttributes, scale(), offset(), filterExpression );
 }
 
 bool QgsRemoteEptPointCloudIndex::hasNode( const IndexedPointCloudNode &n ) const
@@ -210,23 +198,21 @@ bool QgsRemoteEptPointCloudIndex::loadNodeHierarchy( const IndexedPointCloudNode
 
     const QString fileUrl = QStringLiteral( "%1/ept-hierarchy/%2.json" ).arg( mUrlDirectoryPart, node.toString() );
     QNetworkRequest nr( fileUrl );
-    QgsSetRequestInitiatorClass( nr, QStringLiteral( "QgsRemoteEptPointCloudIndex" ) );
+
     nr.setAttribute( QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::PreferCache );
     nr.setAttribute( QNetworkRequest::CacheSaveControlAttribute, true );
 
-    std::unique_ptr<QgsTileDownloadManagerReply> reply( QgsApplication::tileDownloadManager()->get( nr ) );
-
-    QEventLoop loop;
-    connect( reply.get(), &QgsTileDownloadManagerReply::finished, &loop, &QEventLoop::quit );
-    loop.exec();
-
-    if ( reply->error() != QNetworkReply::NoError )
+    QgsBlockingNetworkRequest req;
+    const QgsBlockingNetworkRequest::ErrorCode errCode = req.get( nr );
+    if ( errCode != QgsBlockingNetworkRequest::NoError )
     {
-      QgsDebugError( QStringLiteral( "Request failed: " ) + mUri );
+      QgsDebugMsgLevel( QStringLiteral( "unable to read hierarchy from file %1" ).arg( fileUrl ), 2 );
       return false;
     }
 
-    const QByteArray dataJsonH = reply->data();
+    const QgsNetworkReplyContent reply = req.reply();
+
+    const QByteArray dataJsonH = reply.content();
     QJsonParseError errH;
     const QJsonDocument docH = QJsonDocument::fromJson( dataJsonH, &errH );
     if ( errH.error != QJsonParseError::NoError )
@@ -269,6 +255,7 @@ void QgsRemoteEptPointCloudIndex::copyCommonProperties( QgsRemoteEptPointCloudIn
   // QgsRemoteEptPointCloudIndex specific fields
   destination->mUrlDirectoryPart = mUrlDirectoryPart;
   destination->mUrlFileNamePart = mUrlFileNamePart;
+  destination->mUrl = mUrl;
   destination->mHierarchyNodes = mHierarchyNodes;
 }
 

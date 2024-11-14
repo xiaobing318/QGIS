@@ -554,6 +554,7 @@ void MDAL::DriverFlo2D::parseTIMDEPFile( const std::string &datFileName, const s
   std::string line;
 
   size_t nVertexs = mMesh->verticesCount();
+  size_t ntimes = 0;
 
   RelativeTimestamp time = RelativeTimestamp();
   size_t face_idx = 0;
@@ -597,6 +598,7 @@ void MDAL::DriverFlo2D::parseTIMDEPFile( const std::string &datFileName, const s
     if ( lineParts.size() == 1 )
     {
       time = RelativeTimestamp( MDAL::toDouble( line ), RelativeTimestamp::hours );
+      ntimes++;
 
       if ( depthDataset ) addDatasetToGroup( depthDsGroup, depthDataset );
       if ( flowDataset ) addDatasetToGroup( flowDsGroup, flowDataset );

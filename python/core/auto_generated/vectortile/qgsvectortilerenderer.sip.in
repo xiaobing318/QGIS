@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/vectortile/qgsvectortilerenderer.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -44,30 +44,6 @@ Sets polygon of the tile
 Returns polygon (made out of four corners of the tile) in screen coordinates calculated from render context
 %End
 
-    void setRenderZoomLevel( int level );
-%Docstring
-Sets the zoom level corresponding to the target render.
-
-This may differ from the tile's actual zoom leve when indexed tiles cause replacement of
-higher zoom level tiles with data from lower zoom level tiles.
-
-.. seealso:: :py:func:`renderZoomLevel`
-
-.. versionadded:: 3.32
-%End
-
-    int renderZoomLevel() const;
-%Docstring
-Returns the zoom level corresponding to the target render.
-
-This may differ from the tile's actual zoom leve when indexed tiles cause replacement of
-higher zoom level tiles with data from lower zoom level tiles.
-
-.. seealso:: :py:func:`setRenderZoomLevel`
-
-.. versionadded:: 3.32
-%End
-
     void setFields( const QMap<QString, QgsFields> &fields );
 %Docstring
 Sets per-layer fields
@@ -95,9 +71,9 @@ Abstract base class for all vector tile renderer implementations.
 
 For rendering it is expected that client code calls:
 
-- :py:func:`~startRender` to prepare renderer
-- :py:func:`~renderTile` for each tile
-- :py:func:`~stopRender` to clean up renderer and free resources
+# :py:func:`~QgsVectorTileRendererData.startRender` to prepare renderer
+# :py:func:`~QgsVectorTileRendererData.renderTile` for each tile
+# :py:func:`~QgsVectorTileRendererData.stopRender` to clean up renderer and free resources
 
 .. versionadded:: 3.14
 %End
@@ -196,5 +172,5 @@ Resolves references to other objects - second phase of loading - after :py:func:
  *                                                                      *
  * src/core/vectortile/qgsvectortilerenderer.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

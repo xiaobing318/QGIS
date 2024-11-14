@@ -17,7 +17,6 @@
 
 
 #include "qgsdockwidget.h"
-#include "moc_qgsdockwidget.cpp"
 #include <QAction>
 
 

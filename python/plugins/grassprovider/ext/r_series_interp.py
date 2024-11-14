@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     r_series_interp.py
@@ -20,7 +22,7 @@ __date__ = 'February 2016'
 __copyright__ = '(C) 2016, Médéric Ribreux'
 
 import os
-from grassprovider.grass_utils import GrassUtils
+from grassprovider.Grass7Utils import Grass7Utils
 
 
 def checkParameterValuesBeforeExecuting(alg, parameters, context):
@@ -65,6 +67,6 @@ def processOutputs(alg, parameters, context, feedback):
     for out in outs:
         # We need to export the raster with all its bands and its color table
         fileName = os.path.join(outputDir, out)
-        outFormat = GrassUtils.getRasterFormatFromFilename(fileName)
+        outFormat = Grass7Utils.getRasterFormatFromFilename(fileName)
         alg.exportRasterLayer(out, fileName, True,
                               outFormat, createOpt, metaOpt)

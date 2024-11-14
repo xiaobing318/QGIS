@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgslayoutframe.h"
-#include "moc_qgslayoutframe.cpp"
 #include "qgslayoutmultiframe.h"
 #include "qgslayoutitemregistry.h"
 #include "qgslayout.h"
@@ -32,7 +31,7 @@ QgsLayoutFrame::QgsLayoutFrame( QgsLayout *layout, QgsLayoutMultiFrame *multiFra
   if ( multiFrame )
   {
     //repaint frame when multiframe content changes
-    connect( multiFrame, &QgsLayoutMultiFrame::contentsChanged, this, [this]
+    connect( multiFrame, &QgsLayoutMultiFrame::contentsChanged, this, [ = ]
     {
       update();
     } );
@@ -40,11 +39,6 @@ QgsLayoutFrame::QgsLayoutFrame( QgsLayout *layout, QgsLayoutMultiFrame *multiFra
     //force recalculation of rect, so that multiframe specified sizes can be applied
     refreshItemSize();
   }
-}
-
-QgsLayoutFrame::~QgsLayoutFrame()
-{
-  QgsLayoutFrame::cleanup();
 }
 
 QgsLayoutFrame *QgsLayoutFrame::create( QgsLayout *layout )
@@ -65,7 +59,7 @@ QgsLayoutSize QgsLayoutFrame::minimumSize() const
   //calculate index of frame
   const int frameIndex = mMultiFrame->frameIndex( const_cast< QgsLayoutFrame * >( this ) );
   //check minimum size
-  return QgsLayoutSize( mMultiFrame->minFrameSize( frameIndex ), Qgis::LayoutUnit::Millimeters );
+  return QgsLayoutSize( mMultiFrame->minFrameSize( frameIndex ), QgsUnitTypes::LayoutMillimeters );
 }
 
 QgsLayoutSize QgsLayoutFrame::fixedSize() const
@@ -76,7 +70,7 @@ QgsLayoutSize QgsLayoutFrame::fixedSize() const
   //calculate index of frame
   const int frameIndex = mMultiFrame->frameIndex( const_cast< QgsLayoutFrame * >( this ) );
   //check fixed size
-  return QgsLayoutSize( mMultiFrame->fixedFrameSize( frameIndex ), Qgis::LayoutUnit::Millimeters );
+  return QgsLayoutSize( mMultiFrame->fixedFrameSize( frameIndex ), QgsUnitTypes::LayoutMillimeters );
 }
 
 int QgsLayoutFrame::type() const
@@ -164,7 +158,6 @@ void QgsLayoutFrame::cleanup()
 {
   if ( mMultiFrame )
     mMultiFrame->handleFrameRemoval( this );
-  mMultiFrame = nullptr;
 
   QgsLayoutItem::cleanup();
 }

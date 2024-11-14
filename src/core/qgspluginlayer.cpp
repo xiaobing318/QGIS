@@ -13,13 +13,16 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgspluginlayer.h"
-#include "moc_qgspluginlayer.cpp"
+
+#include "qgsmaplayerlegend.h"
+#include "qgsmaplayerrenderer.h"
+
 
 QgsPluginLayer::QgsPluginLayer( const QString &layerType, const QString &layerName )
-  : QgsMapLayer( Qgis::LayerType::Plugin, layerName )
+  : QgsMapLayer( QgsMapLayerType::PluginLayer, layerName )
   , mPluginLayerType( layerType )
 {
-  mDataProvider = new QgsPluginLayerDataProvider( layerType, QgsDataProvider::ProviderOptions(), Qgis::DataProviderReadFlags() );
+  mDataProvider = new QgsPluginLayerDataProvider( layerType, QgsDataProvider::ProviderOptions(), QgsDataProvider::ReadFlags() );
 }
 
 QgsPluginLayer::~QgsPluginLayer()
@@ -62,7 +65,7 @@ const QgsDataProvider *QgsPluginLayer::dataProvider() const
 ///@cond PRIVATE
 QgsPluginLayerDataProvider::QgsPluginLayerDataProvider( const QString &layerType,
     const ProviderOptions &options,
-    Qgis::DataProviderReadFlags flags )
+    QgsDataProvider::ReadFlags flags )
   : QgsDataProvider( QString(), options, flags )
   , mName( layerType )
 {}

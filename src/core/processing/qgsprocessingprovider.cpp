@@ -16,11 +16,10 @@
  ***************************************************************************/
 
 #include "qgsprocessingprovider.h"
-#include "moc_qgsprocessingprovider.cpp"
 #include "qgsapplication.h"
 #include "qgsvectorfilewriter.h"
 #include "qgsrasterfilewriter.h"
-#include "qgsmessagelog.h"
+#include "qgssettings.h"
 
 QgsProcessingProvider::QgsProcessingProvider( QObject *parent SIP_TRANSFERTHIS )
   : QObject( parent )
@@ -42,9 +41,9 @@ QString QgsProcessingProvider::svgIconPath() const
   return QgsApplication::iconPath( QStringLiteral( "processingAlgorithm.svg" ) );
 }
 
-Qgis::ProcessingProviderFlags QgsProcessingProvider::flags() const
+QgsProcessingProvider::Flags QgsProcessingProvider::flags() const
 {
-  return Qgis::ProcessingProviderFlags();
+  return QgsProcessingProvider::Flags();
 }
 
 QString QgsProcessingProvider::helpId() const
@@ -70,11 +69,6 @@ QStringList QgsProcessingProvider::supportedOutputRasterLayerExtensions() const
 QStringList QgsProcessingProvider::supportedOutputPointCloudLayerExtensions() const
 {
   return QStringList();
-}
-
-QStringList QgsProcessingProvider::supportedOutputVectorTileLayerExtensions() const
-{
-  return QStringList() << QgsProcessingUtils::defaultVectorTileExtension();
 }
 
 void QgsProcessingProvider::refreshAlgorithms()
@@ -131,11 +125,11 @@ QStringList QgsProcessingProvider::supportedOutputTableExtensions() const
 bool QgsProcessingProvider::isSupportedOutputValue( const QVariant &outputValue, const QgsProcessingDestinationParameter *parameter, QgsProcessingContext &context, QString &error ) const
 {
   error.clear();
-  QString outputPath = QgsProcessingParameters::parameterAsOutputLayer( parameter, outputValue, context, true ).trimmed();
+  QString outputPath = QgsProcessingParameters::parameterAsOutputLayer( parameter, outputValue, context ).trimmed();
 
   if ( outputPath.isEmpty() )
   {
-    if ( parameter->flags() & Qgis::ProcessingParameterFlag::Optional )
+    if ( parameter->flags() & QgsProcessingParameterDefinition::FlagOptional )
     {
       return true;
     }
@@ -201,17 +195,6 @@ bool QgsProcessingProvider::isSupportedOutputValue( const QVariant &outputValue,
     const QFileInfo fi( outputPath );
     const QString extension = fi.completeSuffix();
     if ( !supportedOutputPointCloudLayerExtensions().contains( extension, Qt::CaseInsensitive ) )
-    {
-      error = tr( "“.%1” files are not supported as outputs for this algorithm" ).arg( extension );
-      return false;
-    }
-    return true;
-  }
-  else if ( parameter->type() == QgsProcessingParameterVectorTileDestination::typeName() )
-  {
-    const QFileInfo fi( outputPath );
-    const QString extension = fi.completeSuffix();
-    if ( !supportedOutputVectorTileLayerExtensions().contains( extension, Qt::CaseInsensitive ) )
     {
       error = tr( "“.%1” files are not supported as outputs for this algorithm" ).arg( extension );
       return false;
@@ -285,27 +268,6 @@ QString QgsProcessingProvider::defaultPointCloudFileExtension() const
   {
     // who knows? provider says it has no file support at all...
     return QStringLiteral( "las" );
-  }
-}
-
-QString QgsProcessingProvider::defaultVectorTileFileExtension() const
-{
-  const QString userDefault = QgsProcessingUtils::defaultVectorTileExtension();
-
-  const QStringList supportedExtensions = supportedOutputVectorTileLayerExtensions();
-  if ( supportedExtensions.contains( userDefault, Qt::CaseInsensitive ) )
-  {
-    // user set default is supported by provider, use that
-    return userDefault;
-  }
-  else if ( !supportedExtensions.empty() )
-  {
-    return supportedExtensions.at( 0 );
-  }
-  else
-  {
-    // who knows? provider says it has no file support at all...
-    return QStringLiteral( "mbtiles" );
   }
 }
 

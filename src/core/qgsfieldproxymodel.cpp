@@ -14,9 +14,8 @@
 ***************************************************************************/
 
 #include "qgsfieldproxymodel.h"
-#include "moc_qgsfieldproxymodel.cpp"
 #include "qgsfieldmodel.h"
-#include "qgsvariantutils.h"
+#include "qgsvectorlayer.h"
 
 QgsFieldProxyModel::QgsFieldProxyModel( QObject *parent )
   : QSortFilterProxyModel( parent )
@@ -35,36 +34,36 @@ QgsFieldProxyModel *QgsFieldProxyModel::setFilters( QgsFieldProxyModel::Filters 
 
 bool QgsFieldProxyModel::isReadOnly( const QModelIndex &index ) const
 {
-  const QVariant originVariant = sourceModel()->data( index, static_cast< int >( QgsFieldModel::CustomRole::FieldOrigin ) );
+  const QVariant originVariant = sourceModel()->data( index, QgsFieldModel::FieldOriginRole );
   if ( QgsVariantUtils::isNull( originVariant ) )
   {
     //expression
     return true;
   }
 
-  const Qgis::FieldOrigin origin = static_cast< Qgis::FieldOrigin >( originVariant.toInt() );
+  const QgsFields::FieldOrigin origin = static_cast< QgsFields::FieldOrigin >( originVariant.toInt() );
   switch ( origin )
   {
-    case Qgis::FieldOrigin::Join:
+    case QgsFields::OriginJoin:
     {
       // show joined fields (e.g. auxiliary fields) only if they have a non-hidden editor widget.
       // This enables them to be bulk field-calculated when a user needs to, but hides them by default
       // (since there's often MANY of these, e.g. after using the label properties tool on a layer)
-      if ( sourceModel()->data( index, static_cast< int >( QgsFieldModel::CustomRole::EditorWidgetType ) ).toString() == QLatin1String( "Hidden" ) )
+      if ( sourceModel()->data( index, QgsFieldModel::EditorWidgetType ).toString() == QLatin1String( "Hidden" ) )
         return true;
 
-      return !sourceModel()->data( index, static_cast< int >( QgsFieldModel::CustomRole::JoinedFieldIsEditable ) ).toBool();
+      return !sourceModel()->data( index, QgsFieldModel::JoinedFieldIsEditable ).toBool();
     }
 
-    case Qgis::FieldOrigin::Unknown:
-    case Qgis::FieldOrigin::Expression:
+    case QgsFields::OriginUnknown:
+    case QgsFields::OriginExpression:
       //read only
       return true;
 
-    case Qgis::FieldOrigin::Edit:
-    case Qgis::FieldOrigin::Provider:
+    case QgsFields::OriginEdit:
+    case QgsFields::OriginProvider:
     {
-      if ( !sourceModel()->data( index, static_cast< int >( QgsFieldModel::CustomRole::FieldIsWidgetEditable ) ).toBool() )
+      if ( !sourceModel()->data( index, QgsFieldModel::FieldIsWidgetEditable ).toBool() )
       {
         return true;
       }
@@ -86,46 +85,28 @@ bool QgsFieldProxyModel::filterAcceptsRow( int source_row, const QModelIndex &so
   if ( mFilters.testFlag( HideReadOnly ) && isReadOnly( index ) )
     return false;
 
-  if ( mFilters.testFlag( QgsFieldProxyModel::OriginProvider ) )
-  {
-    const Qgis::FieldOrigin origin = static_cast< Qgis::FieldOrigin >( sourceModel()->data( index, static_cast< int >( QgsFieldModel::CustomRole::FieldOrigin ) ).toInt() );
-    switch ( origin )
-    {
-      case Qgis::FieldOrigin::Unknown:
-      case Qgis::FieldOrigin::Join:
-      case Qgis::FieldOrigin::Edit:
-      case Qgis::FieldOrigin::Expression:
-        return false;
-
-      case Qgis::FieldOrigin::Provider:
-        break;
-    }
-  }
-
   if ( mFilters.testFlag( AllTypes ) )
     return true;
 
-  const QVariant typeVar = sourceModel()->data( index, static_cast< int >( QgsFieldModel::CustomRole::FieldType ) );
+  const QVariant typeVar = sourceModel()->data( index, QgsFieldModel::FieldTypeRole );
 
   // if expression, consider valid
   if ( QgsVariantUtils::isNull( typeVar ) )
     return true;
 
   bool ok;
-  const QMetaType::Type type = static_cast<QMetaType::Type>( typeVar.toInt( &ok ) );
+  const QVariant::Type type = ( QVariant::Type )typeVar.toInt( &ok );
   if ( !ok )
     return true;
 
-  if ( ( mFilters.testFlag( String ) && type == QMetaType::Type::QString ) ||
-       ( mFilters.testFlag( LongLong ) && type == QMetaType::Type::LongLong ) ||
-       ( mFilters.testFlag( Int ) && type == QMetaType::Type::Int ) ||
-       ( mFilters.testFlag( Double ) && type == QMetaType::Type::Double ) ||
-       ( mFilters.testFlag( Date ) && type == QMetaType::Type::QDate ) ||
-       ( mFilters.testFlag( Date ) && type == QMetaType::Type::QDateTime ) ||
-       ( mFilters.testFlag( DateTime ) && type == QMetaType::Type::QDateTime ) ||
-       ( mFilters.testFlag( Time ) && type == QMetaType::Type::QTime ) ||
-       ( mFilters.testFlag( Binary ) && type == QMetaType::Type::QByteArray ) ||
-       ( mFilters.testFlag( Boolean ) && type == QMetaType::Type::Bool ) )
+  if ( ( mFilters.testFlag( String ) && type == QVariant::String ) ||
+       ( mFilters.testFlag( LongLong ) && type == QVariant::LongLong ) ||
+       ( mFilters.testFlag( Int ) && type == QVariant::Int ) ||
+       ( mFilters.testFlag( Double ) && type == QVariant::Double ) ||
+       ( mFilters.testFlag( Date ) && type == QVariant::Date ) ||
+       ( mFilters.testFlag( Date ) && type == QVariant::DateTime ) ||
+       ( mFilters.testFlag( DateTime ) && type == QVariant::DateTime ) ||
+       ( mFilters.testFlag( Time ) && type == QVariant::Time ) )
     return true;
 
   return false;
@@ -134,15 +115,15 @@ bool QgsFieldProxyModel::filterAcceptsRow( int source_row, const QModelIndex &so
 bool QgsFieldProxyModel::lessThan( const QModelIndex &left, const QModelIndex &right ) const
 {
   // empty field is always first
-  if ( sourceModel()->data( left, static_cast< int >( QgsFieldModel::CustomRole::IsEmpty ) ).toBool() )
+  if ( sourceModel()->data( left, QgsFieldModel::IsEmptyRole ).toBool() )
     return true;
-  else if ( sourceModel()->data( right, static_cast< int >( QgsFieldModel::CustomRole::IsEmpty ) ).toBool() )
+  else if ( sourceModel()->data( right, QgsFieldModel::IsEmptyRole ).toBool() )
     return false;
 
   // order is field order, then expressions
   bool lok, rok;
-  const int leftId = sourceModel()->data( left, static_cast< int >( QgsFieldModel::CustomRole::FieldIndex ) ).toInt( &lok );
-  const int rightId = sourceModel()->data( right, static_cast< int >( QgsFieldModel::CustomRole::FieldIndex ) ).toInt( &rok );
+  const int leftId = sourceModel()->data( left, QgsFieldModel::FieldIndexRole ).toInt( &lok );
+  const int rightId = sourceModel()->data( right, QgsFieldModel::FieldIndexRole ).toInt( &rok );
 
   if ( !lok )
     return false;

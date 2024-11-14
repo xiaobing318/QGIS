@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsuuidwidgetwrapper.h"
-#include "moc_qgsuuidwidgetwrapper.cpp"
 
 #include <QUuid>
 
@@ -74,7 +73,7 @@ void QgsUuidWidgetWrapper::updateValues( const QVariant &value, const QVariantLi
   if ( QgsVariantUtils::isNull( value ) )
   {
     int maxLength = 0;
-    if ( field().type() == QMetaType::Type::QString && field().length() > 0 )
+    if ( field().type() == QVariant::String && field().length() > 0 )
     {
       maxLength = field().length();
     }

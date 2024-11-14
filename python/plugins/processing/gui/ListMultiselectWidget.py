@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     ListMultiSelectWidget.py
@@ -153,7 +155,7 @@ class ListMultiSelectWidget(QGroupBox):
 
     def _setupUI(self):
         self.setSizePolicy(
-            QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+            QSizePolicy.Preferred, QSizePolicy.Preferred)
 
         self.setMinimumHeight(180)
 
@@ -167,7 +169,7 @@ class ListMultiSelectWidget(QGroupBox):
         self._set_list_widget_defaults(self.deselected_widget)
         deselected_label = QLabel()
         deselected_label.setText('Deselected')
-        deselected_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        deselected_label.setAlignment(Qt.AlignCenter)
         deselected_label.setFont(italic_font)
         deselected_v_layout = QVBoxLayout()
         deselected_v_layout.addWidget(deselected_label)
@@ -178,7 +180,7 @@ class ListMultiSelectWidget(QGroupBox):
         self._set_list_widget_defaults(self.selected_widget)
         selected_label = QLabel()
         selected_label.setText('Selected')
-        selected_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        selected_label.setAlignment(Qt.AlignCenter)
         selected_label.setFont(italic_font)
         selected_v_layout = QVBoxLayout()
         selected_v_layout.addWidget(selected_label)
@@ -217,10 +219,10 @@ class ListMultiSelectWidget(QGroupBox):
         widget.setAlternatingRowColors(True)
         widget.setSortingEnabled(True)
         widget.setDragEnabled(True)
-        widget.setDragDropMode(QAbstractItemView.DragDropMode.DragDrop)
+        widget.setDragDropMode(QAbstractItemView.DragDrop)
         widget.setDragDropOverwriteMode(False)
-        widget.setDefaultDropAction(Qt.DropAction.MoveAction)
-        widget.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
+        widget.setDefaultDropAction(Qt.MoveAction)
+        widget.setSelectionMode(QAbstractItemView.MultiSelection)
 
 
 class SmallQPushButton(QPushButton):
@@ -229,6 +231,6 @@ class SmallQPushButton(QPushButton):
         QPushButton.__init__(self)
         self.setText(text)
         buttons_size_policy = QSizePolicy(
-            QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
+            QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setSizePolicy(buttons_size_policy)
         self.setMaximumSize(QSize(30, 30))

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     PointsFromLines.py
@@ -20,7 +22,7 @@ __date__ = 'August 2013'
 __copyright__ = '(C) 2013, Alexander Bruy'
 
 from osgeo import gdal
-from qgis.PyQt.QtCore import QMetaType
+from qgis.PyQt.QtCore import QVariant
 from qgis.core import (QgsFeature,
                        QgsFeatureSink,
                        QgsFields,
@@ -36,8 +38,6 @@ from qgis.core import (QgsFeature,
                        QgsProcessingParameterFeatureSink)
 from processing.tools import raster
 from processing.algs.qgis.QgisAlgorithm import QgisAlgorithm
-
-gdal.UseExceptions()
 
 
 class PointsFromLines(QgisAlgorithm):
@@ -59,8 +59,8 @@ class PointsFromLines(QgisAlgorithm):
         self.addParameter(QgsProcessingParameterRasterLayer(self.INPUT_RASTER,
                                                             self.tr('Raster layer')))
         self.addParameter(QgsProcessingParameterFeatureSource(self.INPUT_VECTOR,
-                                                              self.tr('Vector layer'), [QgsProcessing.SourceType.TypeVectorLine]))
-        self.addParameter(QgsProcessingParameterFeatureSink(self.OUTPUT, self.tr('Points along lines'), QgsProcessing.SourceType.TypeVectorPoint))
+                                                              self.tr('Vector layer'), [QgsProcessing.TypeVectorLine]))
+        self.addParameter(QgsProcessingParameterFeatureSink(self.OUTPUT, self.tr('Points along lines'), QgsProcessing.TypeVectorPoint))
 
     def name(self):
         return 'generatepointspixelcentroidsalongline'
@@ -81,12 +81,12 @@ class PointsFromLines(QgisAlgorithm):
         rasterDS = None
 
         fields = QgsFields()
-        fields.append(QgsField('id', QMetaType.Type.Int, '', 10, 0))
-        fields.append(QgsField('line_id', QMetaType.Type.Int, '', 10, 0))
-        fields.append(QgsField('point_id', QMetaType.Type.Int, '', 10, 0))
+        fields.append(QgsField('id', QVariant.Int, '', 10, 0))
+        fields.append(QgsField('line_id', QVariant.Int, '', 10, 0))
+        fields.append(QgsField('point_id', QVariant.Int, '', 10, 0))
 
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context,
-                                               fields, QgsWkbTypes.Type.Point, raster_layer.crs())
+                                               fields, QgsWkbTypes.Point, raster_layer.crs())
         if sink is None:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
 
@@ -138,7 +138,6 @@ class PointsFromLines(QgisAlgorithm):
 
             feedback.setProgress(int(current * total))
 
-        sink.finalize()
         return {self.OUTPUT: dest_id}
 
     def buildLine(self, startX, startY, endX, endY, geoTransform, writer, feature):
@@ -205,4 +204,4 @@ class PointsFromLines(QgisAlgorithm):
         self.fid += 1
         self.pointId += 1
 
-        writer.addFeature(feature, QgsFeatureSink.Flag.FastInsert)
+        writer.addFeature(feature, QgsFeatureSink.FastInsert)

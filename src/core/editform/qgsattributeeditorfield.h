@@ -36,7 +36,7 @@ class CORE_EXPORT QgsAttributeEditorField : public QgsAttributeEditorElement
      * \param parent The parent of this widget (used as container)
      */
     QgsAttributeEditorField( const QString &name, int idx, QgsAttributeEditorElement *parent )
-      : QgsAttributeEditorElement( Qgis::AttributeEditorType::Field, name, parent )
+      : QgsAttributeEditorElement( AeTypeField, name, parent )
       , mIdx( idx )
     {}
 

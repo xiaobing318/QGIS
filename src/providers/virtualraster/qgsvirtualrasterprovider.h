@@ -40,7 +40,6 @@ class QgsVirtualRasterProvider : public QgsRasterDataProvider
     { Q_UNUSED( bandNo ) Q_UNUSED( viewExtent ); Q_UNUSED( width ); Q_UNUSED( height ); Q_UNUSED( data ); Q_UNUSED( feedback ); return true; }
 
     // QgsDataProvider interface
-    Qgis::DataProviderFlags flags() const override;
     virtual bool isValid() const override;
     virtual QgsCoordinateReferenceSystem crs() const override;
     virtual QgsRectangle extent() const override;
@@ -59,10 +58,10 @@ class QgsVirtualRasterProvider : public QgsRasterDataProvider
     int ySize() const override;
 
     // QgsRasterDataProvider interface
-    virtual QString htmlMetadata() const override;
+    virtual QString htmlMetadata() override;
     virtual QString lastErrorTitle() override;
     virtual QString lastError() override;
-    Qgis::RasterInterfaceCapabilities capabilities() const override;
+    int capabilities() const override;
 
     static QString providerKey();
 
@@ -96,10 +95,8 @@ class QgsVirtualRasterProviderMetadata: public QgsProviderMetadata
   public:
     QgsVirtualRasterProviderMetadata();
     QIcon icon() const override;
-    QgsVirtualRasterProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() ) override;
-    QString absoluteToRelativeUri( const QString &uri, const QgsReadWriteContext &context ) const override;
-    QString relativeToAbsoluteUri( const QString &uri, const QgsReadWriteContext &context ) const override;
-    QList< Qgis::LayerType > supportedLayerTypes() const override;
+    QgsVirtualRasterProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() ) override;
+    QList< QgsMapLayerType > supportedLayerTypes() const override;
 };
 
 #endif // QGSVIRTUALRASTERPROVIDER_H

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/diagram/qgsdiagram.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -29,8 +29,6 @@ Base class for all diagram types.
       sipType = sipType_QgsTextDiagram;
     else if ( sipCpp->diagramName() == QLatin1String( "Stacked" ) )
       sipType = sipType_QgsStackedBarDiagram;
-    else if ( sipCpp->diagramName() == QLatin1String( "StackedDiagram" ) )
-      sipType = sipType_QgsStackedDiagram;
     else
       sipType = NULL;
 %End
@@ -40,6 +38,8 @@ Base class for all diagram types.
     virtual QgsDiagram *clone() const = 0 /Factory/;
 %Docstring
 Returns an instance that is equivalent to this one
+
+.. versionadded:: 2.4
 %End
 
     void clearCache();
@@ -50,6 +50,8 @@ Returns a prepared expression for the specified context.
 
 :param expression: expression string
 :param context: expression context
+
+.. versionadded:: 2.12
 %End
 
     virtual void renderDiagram( const QgsFeature &feature, QgsRenderContext &c, const QgsDiagramSettings &s, QPointF position ) = 0;
@@ -65,23 +67,28 @@ Gets a descriptive name for this diagram type.
 %Docstring
 Returns the size in map units the diagram will use to render.
 %End
-    virtual QSizeF diagramSize( const QgsFeature &feature, const QgsRenderContext &c, const QgsDiagramSettings &s, const QgsDiagramInterpolationSettings &interpolationSettings ) = 0;
+    virtual QSizeF diagramSize( const QgsFeature &feature, const QgsRenderContext &c, const QgsDiagramSettings &s, const QgsDiagramInterpolationSettings &is ) = 0;
 %Docstring
 Returns the size in map units the diagram will use to render. Interpolate size
 %End
 
-    virtual double legendSize( double value, const QgsDiagramSettings &s, const QgsDiagramInterpolationSettings &interpolationSettings ) const = 0;
+    virtual double legendSize( double value, const QgsDiagramSettings &s, const QgsDiagramInterpolationSettings &is ) const = 0;
 %Docstring
 Returns the size of the legend item for the diagram corresponding to a specified value.
 
 :param value: value to return legend item size for
 :param s: diagram settings
-:param interpolationSettings: interpolation settings
+:param is: interpolation settings
+
+.. versionadded:: 2.16
 %End
 
   protected:
 
     QgsDiagram();
+%Docstring
+Constructor for QgsDiagram.
+%End
     QgsDiagram( const QgsDiagram &other );
 
     void setPenWidth( QPen &pen, const QgsDiagramSettings &s, const QgsRenderContext &c );
@@ -109,7 +116,7 @@ Calculates a size to match the current settings and rendering context
 Calculates a length to match the current settings and rendering context
 
 :param l: The length to convert
-:param s: The settings that specify the size type
+:param s: Unused
 :param c: The rendering specifying the proper scale units for pixel conversion
 
 :return: The converted length for rendering
@@ -125,13 +132,15 @@ Calculates a size to match the current settings and rendering context
 :return: The properly scaled font for rendering
 %End
 
-    QSizeF sizeForValue( double value, const QgsDiagramSettings &s, const QgsDiagramInterpolationSettings &interpolationSettings ) const;
+    QSizeF sizeForValue( double value, const QgsDiagramSettings &s, const QgsDiagramInterpolationSettings &is ) const;
 %Docstring
 Returns the scaled size of a diagram for a value, respecting the specified diagram interpolation settings.
 
 :param value: value to calculate corresponding circular size for
 :param s: diagram settings
-:param interpolationSettings: interpolation settings
+:param is: interpolation settings
+
+.. versionadded:: 2.16
 %End
 
 };
@@ -141,5 +150,5 @@ Returns the scaled size of a diagram for a value, respecting the specified diagr
  *                                                                      *
  * src/core/diagram/qgsdiagram.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

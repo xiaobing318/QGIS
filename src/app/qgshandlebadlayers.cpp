@@ -16,12 +16,13 @@
  ***************************************************************************/
 
 #include "qgshandlebadlayers.h"
-#include "moc_qgshandlebadlayers.cpp"
 #include "qgisapp.h"
 #include "qgsauthconfigselect.h"
 #include "qgsdataprovider.h"
 #include "qgsguiutils.h"
+#include "qgsdatasourceuri.h"
 #include "qgslogger.h"
+#include "qgsrasterlayer.h"
 #include "qgsproviderregistry.h"
 #include "qgsmessagebar.h"
 #include "qgssettings.h"
@@ -267,39 +268,37 @@ void QgsHandleBadLayers::browseClicked()
 
     QString memoryQualifier;
 
-    const Qgis::LayerType layerType = static_cast< Qgis::LayerType >( mLayerList->item( row, 0 )->data( static_cast< int >( CustomRoles::LayerType ) ).toInt() );
+    const QgsMapLayerType layerType = static_cast< QgsMapLayerType >( mLayerList->item( row, 0 )->data( static_cast< int >( CustomRoles::LayerType ) ).toInt() );
     const QString provider = mLayerList->item( row, 0 )->data( static_cast< int >( CustomRoles::Provider ) ).toString();
 
     QString fileFilter;
-    QgsProviderMetadata *metadata = QgsProviderRegistry::instance()->providerMetadata( provider );
-
     switch ( layerType )
     {
-      case Qgis::LayerType::Vector:
+      case QgsMapLayerType::VectorLayer:
         memoryQualifier = QStringLiteral( "lastVectorFileFilter" );
-        fileFilter = metadata->filters( Qgis::FileFilterType::Vector );
+        fileFilter = QgsProviderRegistry::instance()->providerMetadata( provider )->filters( QgsProviderMetadata::FilterType::FilterVector );
         break;
-      case Qgis::LayerType::Raster:
+      case QgsMapLayerType::RasterLayer:
         memoryQualifier = QStringLiteral( "lastRasterFileFilter" );
-        fileFilter = metadata->filters( Qgis::FileFilterType::Raster );
+        fileFilter = QgsProviderRegistry::instance()->providerMetadata( provider )->filters( QgsProviderMetadata::FilterType::FilterRaster );
         break;
-      case Qgis::LayerType::Mesh:
+      case QgsMapLayerType::MeshLayer:
         memoryQualifier = QStringLiteral( "lastMeshFileFilter" );
         fileFilter = QgsProviderRegistry::instance()->fileMeshFilters();
         break;
-      case Qgis::LayerType::VectorTile:
+      case QgsMapLayerType::VectorTileLayer:
         memoryQualifier = QStringLiteral( "lastVectorTileFileFilter" );
-        fileFilter = metadata ? metadata->filters( Qgis::FileFilterType::VectorTile ) : QObject::tr( "All files (*.*)" );
+        // not quite right -- but currently there's no generic method to get vector tile filters...
+        fileFilter = QgsProviderRegistry::instance()->fileVectorFilters();
         break;
-      case Qgis::LayerType::PointCloud:
+      case QgsMapLayerType::PointCloudLayer:
         memoryQualifier = QStringLiteral( "lastPointCloudFileFilter" );
-        fileFilter = metadata->filters( Qgis::FileFilterType::PointCloud );
+        fileFilter = QgsProviderRegistry::instance()->providerMetadata( provider )->filters( QgsProviderMetadata::FilterType::FilterPointCloud );
         break;
 
-      case Qgis::LayerType::Annotation:
-      case Qgis::LayerType::Plugin:
-      case Qgis::LayerType::Group:
-      case Qgis::LayerType::TiledScene:
+      case QgsMapLayerType::AnnotationLayer:
+      case QgsMapLayerType::PluginLayer:
+      case QgsMapLayerType::GroupLayer:
         break;
     }
 

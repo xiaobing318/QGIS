@@ -50,9 +50,9 @@ void QgsRemoveNullGeometryAlgorithm::initAlgorithm( const QVariantMap & )
   addParameter( new QgsProcessingParameterBoolean( QStringLiteral( "REMOVE_EMPTY" ), QObject::tr( "Also remove empty geometries" ), false ) );
 
   addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Non null geometries" ),
-                Qgis::ProcessingSourceType::VectorAnyGeometry, QVariant(), true ) );
+                QgsProcessing::TypeVectorAnyGeometry, QVariant(), true ) );
   QgsProcessingParameterFeatureSink *nullOutput = new QgsProcessingParameterFeatureSink( QStringLiteral( "NULL_OUTPUT" ),  QObject::tr( "Null geometries" ),
-      Qgis::ProcessingSourceType::Vector, QVariant(), true );
+      QgsProcessing::TypeVector, QVariant(), true );
   nullOutput->setCreateByDefault( false );
   addParameter( nullOutput );
 }
@@ -93,7 +93,7 @@ QVariantMap QgsRemoveNullGeometryAlgorithm::processAlgorithm( const QVariantMap 
   int current = 0;
 
   QgsFeature f;
-  QgsFeatureIterator it = source->getFeatures( QgsFeatureRequest(), Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks );
+  QgsFeatureIterator it = source->getFeatures( QgsFeatureRequest(), QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks );
   while ( it.nextFeature( f ) )
   {
     if ( feedback->isCanceled() )
@@ -118,15 +118,9 @@ QVariantMap QgsRemoveNullGeometryAlgorithm::processAlgorithm( const QVariantMap 
 
   QVariantMap outputs;
   if ( nonNullSink )
-  {
-    nonNullSink->finalize();
     outputs.insert( QStringLiteral( "OUTPUT" ), nonNullSinkId );
-  }
   if ( nullSink )
-  {
-    nullSink->finalize();
     outputs.insert( QStringLiteral( "NULL_OUTPUT" ), nullSinkId );
-  }
   return outputs;
 }
 

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/editorwidgets/core/qgseditorconfigwidget.h                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -71,6 +71,8 @@ Returns the layer for which this configuration widget applies
     void changed();
 %Docstring
 Emitted when the configuration of the widget is changed.
+
+.. versionadded:: 3.0
 %End
 
   protected:
@@ -101,5 +103,5 @@ Updates a specific property override ``button`` to reflect the widgets's current
  *                                                                      *
  * src/gui/editorwidgets/core/qgseditorconfigwidget.h                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

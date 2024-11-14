@@ -47,10 +47,16 @@ class CORE_EXPORT QgsProfileRequest
      */
     QgsProfileRequest( QgsCurve *curve SIP_TRANSFER );
 
+    /**
+     * Copy constructor.
+     */
     QgsProfileRequest( const QgsProfileRequest &other );
 
     ~QgsProfileRequest();
 
+    /**
+     * Assignment operator
+     */
     QgsProfileRequest &operator=( const QgsProfileRequest &other );
 
     bool operator==( const QgsProfileRequest &other ) const;

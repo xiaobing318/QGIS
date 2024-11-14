@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/fieldformatter/qgsrangefieldformatter.h                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -11,6 +11,8 @@ class QgsRangeFieldFormatter : QgsFieldFormatter
 {
 %Docstring(signature="appended")
 Field formatter for a range (double) field with precision and locale.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -19,6 +21,9 @@ Field formatter for a range (double) field with precision and locale.
   public:
 
     QgsRangeFieldFormatter();
+%Docstring
+Default constructor of field formatter for a range (double)field.
+%End
 
     virtual QString id() const;
 
@@ -33,5 +38,5 @@ Field formatter for a range (double) field with precision and locale.
  *                                                                      *
  * src/core/fieldformatter/qgsrangefieldformatter.h                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
 *                                                                         *
@@ -50,5 +52,5 @@ class ConvertStringToUppercase(QgsProcessingAlgorithm):
     def processAlgorithm(self, parameters, context, feedback):
         input_string = self.parameterAsString(parameters, self.INPUT, context)
         output_string = input_string.upper()
-        feedback.pushInfo(f'Converted {input_string} to {output_string}')
+        feedback.pushInfo('Converted {} to {}'.format(input_string, output_string))
         return {self.OUTPUT: output_string}

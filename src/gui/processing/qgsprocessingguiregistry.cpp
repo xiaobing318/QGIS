@@ -18,7 +18,6 @@
 #include "qgsprocessingguiregistry.h"
 #include "qgsprocessingalgorithmconfigurationwidget.h"
 #include "qgsprocessingconfigurationwidgets.h"
-#include "qgsprocessingalignrasterlayerswidgetwrapper.h"
 #include "qgsprocessingvectortilewriterlayerswidgetwrapper.h"
 #include "qgsprocessingfieldmapwidgetwrapper.h"
 #include "qgsprocessingaggregatewidgetwrapper.h"
@@ -26,7 +25,6 @@
 #include "qgsprocessingwidgetwrapperimpl.h"
 #include "qgsprocessingtininputlayerswidget.h"
 #include "qgsprocessingmeshdatasetwidget.h"
-#include "qgsprocessingrasteroptionswidgetwrapper.h"
 #include "qgsprocessingparameters.h"
 #include "qgis.h"
 #include "qgslogger.h"
@@ -36,14 +34,11 @@ QgsProcessingGuiRegistry::QgsProcessingGuiRegistry()
   addAlgorithmConfigurationWidgetFactory( new QgsFilterAlgorithmConfigurationWidgetFactory() );
   addAlgorithmConfigurationWidgetFactory( new QgsConditionalBranchAlgorithmConfigurationWidgetFactory() );
 
-  addParameterWidgetFactory( new QgsProcessingAlignRasterLayersWidgetWrapper() );
   addParameterWidgetFactory( new QgsProcessingBooleanWidgetWrapper() );
   addParameterWidgetFactory( new QgsProcessingCrsWidgetWrapper() );
   addParameterWidgetFactory( new QgsProcessingStringWidgetWrapper() );
   addParameterWidgetFactory( new QgsProcessingNumericWidgetWrapper() );
   addParameterWidgetFactory( new QgsProcessingDistanceWidgetWrapper() );
-  addParameterWidgetFactory( new QgsProcessingAreaWidgetWrapper() );
-  addParameterWidgetFactory( new QgsProcessingVolumeWidgetWrapper() );
   addParameterWidgetFactory( new QgsProcessingDurationWidgetWrapper() );
   addParameterWidgetFactory( new QgsProcessingScaleWidgetWrapper() );
   addParameterWidgetFactory( new QgsProcessingRangeWidgetWrapper() );
@@ -87,9 +82,6 @@ QgsProcessingGuiRegistry::QgsProcessingGuiRegistry()
   addParameterWidgetFactory( new QgsProcessingPointCloudLayerWidgetWrapper() );
   addParameterWidgetFactory( new QgsProcessingAnnotationLayerWidgetWrapper() );
   addParameterWidgetFactory( new QgsProcessingPointCloudDestinationWidgetWrapper() );
-  addParameterWidgetFactory( new QgsProcessingPointCloudAttributeWidgetWrapper() );
-  addParameterWidgetFactory( new QgsProcessingVectorTileDestinationWidgetWrapper() );
-  addParameterWidgetFactory( new QgsProcessingRasterOptionsWidgetWrapper() );
 }
 
 QgsProcessingGuiRegistry::~QgsProcessingGuiRegistry()
@@ -158,9 +150,7 @@ QgsAbstractProcessingParameterWidgetWrapper *QgsProcessingGuiRegistry::createPar
   if ( !parameter )
     return nullptr;
 
-  const QVariantMap metadata = parameter->metadata();
-  const QString widgetType = metadata.value( QStringLiteral( "widget_wrapper" ) ).toMap().value( QStringLiteral( "widget_type" ) ).toString();
-  const QString parameterType = !widgetType.isEmpty() ? widgetType : parameter->type();
+  const QString parameterType = parameter->type();
   if ( !mParameterWidgetFactories.contains( parameterType ) )
     return nullptr;
 

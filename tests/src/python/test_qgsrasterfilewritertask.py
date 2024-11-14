@@ -11,17 +11,17 @@ __copyright__ = 'Copyright 2017, The QGIS Project'
 
 import os
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import QCoreApplication, QDir
 from qgis.core import (
     QgsApplication,
     QgsCoordinateTransformContext,
-    QgsRasterFileWriter,
-    QgsRasterFileWriterTask,
     QgsRasterLayer,
     QgsRasterPipe,
+    QgsRasterFileWriter,
+    QgsRasterFileWriterTask
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -32,7 +32,7 @@ def create_temp_filename(base_file):
     return os.path.join(str(QDir.tempPath()), base_file)
 
 
-class TestQgsRasterFileWriterTask(QgisTestCase):
+class TestQgsRasterFileWriterTask(unittest.TestCase):
 
     def setUp(self):
         self.success = False

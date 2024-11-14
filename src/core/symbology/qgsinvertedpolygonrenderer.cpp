@@ -35,7 +35,7 @@ QgsInvertedPolygonRenderer::QgsInvertedPolygonRenderer( QgsFeatureRenderer *subR
 {
   if ( !subRenderer )
   {
-    mSubRenderer.reset( QgsFeatureRenderer::defaultRenderer( Qgis::GeometryType::Polygon ) );
+    mSubRenderer.reset( QgsFeatureRenderer::defaultRenderer( QgsWkbTypes::PolygonGeometry ) );
   }
   mOperation = InvertOnly;
 }
@@ -65,7 +65,7 @@ QgsInvertedPolygonRenderer *QgsInvertedPolygonRenderer::clone() const
   return newRenderer;
 }
 
-QgsFeatureRenderer *QgsInvertedPolygonRenderer::create( QDomElement &element, const QgsReadWriteContext &context ) // cppcheck-suppress duplInheritedMember
+QgsFeatureRenderer *QgsInvertedPolygonRenderer::create( QDomElement &element, const QgsReadWriteContext &context )
 {
   QgsInvertedPolygonRenderer *r = new QgsInvertedPolygonRenderer();
   //look for an embedded renderer <renderer-v2>
@@ -98,7 +98,7 @@ QDomElement QgsInvertedPolygonRenderer::save( QDomDocument &doc, const QgsReadWr
   return rendererElem;
 }
 
-QgsInvertedPolygonRenderer *QgsInvertedPolygonRenderer::convertFromRenderer( const QgsFeatureRenderer *renderer ) // cppcheck-suppress duplInheritedMember
+QgsInvertedPolygonRenderer *QgsInvertedPolygonRenderer::convertFromRenderer( const QgsFeatureRenderer *renderer )
 {
   if ( renderer->type() == QLatin1String( "invertedPolygonRenderer" ) )
   {

@@ -18,7 +18,6 @@
 
 #include "qgis.h"
 #include "qgis_gui.h"
-#include "qgsprocessingcontext.h"
 #include <QGraphicsObject>
 #include <QFont>
 #include <QPicture>
@@ -59,7 +58,7 @@ class GUI_EXPORT QgsModelComponentGraphicItem : public QGraphicsObject
     };
 
     //! Available flags
-    enum Flag SIP_ENUM_BASETYPE( IntFlag )
+    enum Flag
     {
       // For future API flexibility only and to avoid sip issues, remove when real entries are added to flags.
       Unused = 1 << 0, //!< Temporary unused entry
@@ -385,6 +384,7 @@ class GUI_EXPORT QgsModelComponentGraphicItem : public QGraphicsObject
     QFont mFont;
 
     bool mIsHovering = false;
+    bool mIsMoving = false;
     QSizeF mTempSize;
 
 };
@@ -461,39 +461,14 @@ class GUI_EXPORT QgsModelChildAlgorithmGraphicItem : public QgsModelComponentGra
     bool canDeleteComponent() override;
 
     /**
-     * Sets the \a results obtained for this child algorithm for the last model execution through the dialog.
+     * Sets the results obtained for this child algorithm for the last model execution through the dialog.
      */
-    void setResults( const QgsProcessingModelChildAlgorithmResult &results );
-
-  signals:
+    void setResults( const QVariantMap &results );
 
     /**
-     * Emitted when the user opts to run the model from this child algorithm.
-     *
-     * \since QGIS 3.38
-    */
-    void runFromHere();
-
-    /**
-     * Emitted when the user opts to run selected steps from the model.
-     *
-     * \since QGIS 3.38
-    */
-    void runSelected();
-
-    /**
-     * Emitted when the user opts to view previous results from this child algorithm.
-     *
-     * \since QGIS 3.38
+     * Sets the inputs used for this child algorithm for the last model execution through the dialog.
      */
-    void showPreviousResults();
-
-    /**
-    * Emitted when the user opts to view the previous log from this child algorithm.
-    *
-    * \since QGIS 3.38
-    */
-    void showLog();
+    void setInputs( const QVariantMap &inputs );
 
   protected:
 
@@ -518,7 +493,8 @@ class GUI_EXPORT QgsModelChildAlgorithmGraphicItem : public QgsModelComponentGra
   private:
     QPicture mPicture;
     QPixmap mPixmap;
-    QgsProcessingModelChildAlgorithmResult mResults;
+    QVariantMap mResults;
+    QVariantMap mInputs;
     bool mIsValid = true;
 };
 

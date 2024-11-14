@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     EditScriptDialog.py
@@ -27,32 +29,21 @@ import warnings
 
 from qgis.PyQt import uic, sip
 from qgis.PyQt.QtCore import Qt
-from qgis.PyQt.QtWidgets import (
-    QMessageBox,
-    QFileDialog,
-    QVBoxLayout
-)
+from qgis.PyQt.QtGui import QCursor
+from qgis.PyQt.QtWidgets import (QMessageBox,
+                                 QFileDialog)
 
-from qgis.gui import (
-    QgsGui,
-    QgsErrorDialog,
-    QgsCodeEditorWidget
-)
-from qgis.core import (
-    QgsApplication,
-    QgsFileUtils,
-    QgsSettings,
-    QgsError,
-    QgsProcessingAlgorithm,
-    QgsProcessingFeatureBasedAlgorithm
-)
+from qgis.gui import QgsGui, QgsErrorDialog
+from qgis.core import (QgsApplication,
+                       QgsSettings,
+                       QgsError,
+                       QgsProcessingAlgorithm,
+                       QgsProcessingFeatureBasedAlgorithm)
 from qgis.utils import iface, OverrideCursor
 from qgis.processing import alg as algfactory
 
 from processing.gui.AlgorithmDialog import AlgorithmDialog
 from processing.script import ScriptUtils
-
-from .ScriptEdit import ScriptEdit
 
 pluginPath = os.path.split(os.path.dirname(__file__))[0]
 
@@ -65,35 +56,13 @@ with warnings.catch_warnings():
 class ScriptEditorDialog(BASE, WIDGET):
     hasChanged = False
 
-    DIALOG_STORE = []
-
     def __init__(self, filePath=None, parent=None):
-        super().__init__(parent)
-        # SIP is totally messed up here -- the dialog wrapper or something
-        # is always prematurely cleaned which results in broken QObject
-        # connections throughout.
-        # Hack around this by storing dialog instances in a global list to
-        # prevent too early wrapper garbage collection
-        ScriptEditorDialog.DIALOG_STORE.append(self)
-
-        def clean_up_store():
-            ScriptEditorDialog.DIALOG_STORE =\
-                [d for d in ScriptEditorDialog.DIALOG_STORE if d != self]
-
-        self.destroyed.connect(clean_up_store)
-
+        super(ScriptEditorDialog, self).__init__(parent)
         self.setupUi(self)
-        self.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
 
         QgsGui.instance().enableAutoGeometryRestore(self)
 
-        vl = QVBoxLayout()
-        vl.setContentsMargins(0, 0, 0, 0)
-        self.editor_container.setLayout(vl)
-
-        self.editor = ScriptEdit()
-        self.code_editor_widget = QgsCodeEditorWidget(self.editor)
-        vl.addWidget(self.code_editor_widget)
+        self.searchWidget.setVisible(False)
 
         if iface is not None:
             self.toolBar.setIconSize(iface.iconSize())
@@ -123,8 +92,6 @@ class ScriptEditorDialog(BASE, WIDGET):
             QgsApplication.getThemeIcon('/mActionIncreaseFont.svg'))
         self.actionDecreaseFontSize.setIcon(
             QgsApplication.getThemeIcon('/mActionDecreaseFont.svg'))
-        self.actionToggleComment.setIcon(
-            QgsApplication.getThemeIcon('console/iconCommentEditorConsole.svg'))
 
         # Connect signals and slots
         self.actionOpenScript.triggered.connect(self.openScript)
@@ -136,20 +103,18 @@ class ScriptEditorDialog(BASE, WIDGET):
         self.actionPaste.triggered.connect(self.editor.paste)
         self.actionUndo.triggered.connect(self.editor.undo)
         self.actionRedo.triggered.connect(self.editor.redo)
-        self.actionFindReplace.toggled.connect(
-            self.code_editor_widget.setSearchBarVisible
-        )
-        self.code_editor_widget.searchBarToggled.connect(
-            self.actionFindReplace.setChecked
-        )
-
+        self.actionFindReplace.toggled.connect(self.toggleSearchBox)
         self.actionIncreaseFontSize.triggered.connect(self.editor.zoomIn)
         self.actionDecreaseFontSize.triggered.connect(self.editor.zoomOut)
-        self.actionToggleComment.triggered.connect(self.editor.toggleComment)
-        self.editor.modificationChanged.connect(self._on_text_modified)
+        self.editor.textChanged.connect(lambda: self.setHasChanged(True))
 
+        self.leFindText.returnPressed.connect(self.find)
+        self.btnFind.clicked.connect(self.find)
+        self.btnReplace.clicked.connect(self.replace)
+        self.lastSearch = None
         self.run_dialog = None
 
+        self.filePath = None
         if filePath is not None:
             self._loadFile(filePath)
 
@@ -159,10 +124,8 @@ class ScriptEditorDialog(BASE, WIDGET):
         """
         Updates the script editor dialog title
         """
-        if self.code_editor_widget.filePath():
-            path, file_name = os.path.split(
-                self.code_editor_widget.filePath()
-            )
+        if self.filePath:
+            path, file_name = os.path.split(self.filePath)
         else:
             file_name = self.tr('Untitled Script')
 
@@ -180,12 +143,12 @@ class ScriptEditorDialog(BASE, WIDGET):
             ret = QMessageBox.question(
                 self, self.tr('Save Script?'),
                 self.tr('There are unsaved changes in this script. Do you want to keep those?'),
-                QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Cancel | QMessageBox.StandardButton.Discard, QMessageBox.StandardButton.Cancel)
+                QMessageBox.Save | QMessageBox.Cancel | QMessageBox.Discard, QMessageBox.Cancel)
 
-            if ret == QMessageBox.StandardButton.Save:
+            if ret == QMessageBox.Save:
                 self.saveScript(False)
                 event.accept()
-            elif ret == QMessageBox.StandardButton.Discard:
+            elif ret == QMessageBox.Discard:
                 event.accept()
             else:
                 event.ignore()
@@ -197,8 +160,8 @@ class ScriptEditorDialog(BASE, WIDGET):
             ret = QMessageBox.warning(self,
                                       self.tr("Unsaved changes"),
                                       self.tr("There are unsaved changes in the script. Continue?"),
-                                      QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.No)
-            if ret == QMessageBox.StandardButton.No:
+                                      QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+            if ret == QMessageBox.No:
                 return
 
         scriptDir = ScriptUtils.scriptsFolders()[0]
@@ -210,7 +173,7 @@ class ScriptEditorDialog(BASE, WIDGET):
         if fileName == "":
             return
 
-        with OverrideCursor(Qt.CursorShape.WaitCursor):
+        with OverrideCursor(Qt.WaitCursor):
             self._loadFile(fileName)
 
     def save(self):
@@ -221,7 +184,7 @@ class ScriptEditorDialog(BASE, WIDGET):
 
     def saveScript(self, saveAs):
         newPath = None
-        if not self.code_editor_widget.filePath() or saveAs:
+        if self.filePath is None or saveAs:
             scriptDir = ScriptUtils.scriptsFolders()[0]
             newPath, _ = QFileDialog.getSaveFileName(self,
                                                      self.tr("Save script"),
@@ -229,16 +192,26 @@ class ScriptEditorDialog(BASE, WIDGET):
                                                      self.tr("Processing scripts (*.py *.PY)"))
 
             if newPath:
-                newPath = QgsFileUtils.ensureFileNameHasExtension(newPath, ['py'])
-                self.code_editor_widget.save(newPath)
-        elif self.code_editor_widget.filePath():
-            self.code_editor_widget.save()
+                if not newPath.lower().endswith(".py"):
+                    newPath += ".py"
 
-        self.setHasChanged(False)
+                self.filePath = newPath
+
+        if self.filePath:
+            text = self.editor.text()
+            try:
+                with codecs.open(self.filePath, "w", encoding="utf-8") as f:
+                    f.write(text)
+            except IOError as e:
+                QMessageBox.warning(self,
+                                    self.tr("I/O error"),
+                                    self.tr("Unable to save edits:\n{}").format(str(e))
+                                    )
+                return
+
+            self.setHasChanged(False)
+
         QgsApplication.processingRegistry().providerById("script").refreshAlgorithms()
-
-    def _on_text_modified(self, modified):
-        self.setHasChanged(modified)
 
     def setHasChanged(self, hasChanged):
         self.hasChanged = hasChanged
@@ -295,9 +268,32 @@ class ScriptEditorDialog(BASE, WIDGET):
                 pass
             canvas.setMapTool(prevMapTool)
 
+    def find(self):
+        textToFind = self.leFindText.text()
+        caseSensitive = self.chkCaseSensitive.isChecked()
+        wholeWord = self.chkWholeWord.isChecked()
+        if self.lastSearch is None or textToFind != self.lastSearch:
+            self.editor.findFirst(textToFind, False, caseSensitive, wholeWord, True)
+        else:
+            self.editor.findNext()
+
+    def replace(self):
+        textToReplace = self.leReplaceText.text()
+        self.editor.replaceSelectedText(textToReplace)
+
+    def toggleSearchBox(self, checked):
+        self.searchWidget.setVisible(checked)
+        if (checked):
+            self.leFindText.setFocus()
+
     def _loadFile(self, filePath):
+        with codecs.open(filePath, "r", encoding="utf-8") as f:
+            txt = f.read()
 
-        self.code_editor_widget.loadFile(filePath)
+        self.editor.setText(txt)
         self.hasChanged = False
+        self.editor.setModified(False)
+        self.editor.recolor()
 
+        self.filePath = filePath
         self.update_dialog_title()

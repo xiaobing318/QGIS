@@ -41,18 +41,18 @@ static QgsFields createFields( const QList<QgsMeshDatasetGroupMetadata> &groupMe
     {
       if ( vectorOption == 0 || vectorOption == 2 )
       {
-        fields.append( QgsField( QStringLiteral( "%1_x" ).arg( meta.name() ), QMetaType::Type::Double ) );
-        fields.append( QgsField( QStringLiteral( "%1_y" ).arg( meta.name() ), QMetaType::Type::Double ) );
+        fields.append( QgsField( QStringLiteral( "%1_x" ).arg( meta.name() ), QVariant::Double ) );
+        fields.append( QgsField( QStringLiteral( "%1_y" ).arg( meta.name() ), QVariant::Double ) );
       }
 
       if ( vectorOption == 1 || vectorOption == 2 )
       {
-        fields.append( QgsField( QStringLiteral( "%1_mag" ).arg( meta.name() ), QMetaType::Type::Double ) );
-        fields.append( QgsField( QStringLiteral( "%1_dir" ).arg( meta.name() ), QMetaType::Type::Double ) );
+        fields.append( QgsField( QStringLiteral( "%1_mag" ).arg( meta.name() ), QVariant::Double ) );
+        fields.append( QgsField( QStringLiteral( "%1_dir" ).arg( meta.name() ), QVariant::Double ) );
       }
     }
     else
-      fields.append( QgsField( meta.name(), QMetaType::Type::Double ) );
+      fields.append( QgsField( meta.name(), QVariant::Double ) );
   }
   return fields;
 }
@@ -392,8 +392,6 @@ QVariantMap QgsExportMeshOnElement::processAlgorithm( const QVariantMap &paramet
     }
   }
 
-  sink->finalize();
-
   QVariantMap ret;
   ret[QStringLiteral( "OUTPUT" )] = identifier;
 
@@ -525,7 +523,7 @@ void QgsExportMeshOnGridAlgorithm::initAlgorithm( const QVariantMap &configurati
                       << QObject::tr( "Polar (magnitude,degree)" )
                       << QObject::tr( "Cartesian and Polar" );
   addParameter( new QgsProcessingParameterEnum( QStringLiteral( "VECTOR_OPTION" ), QObject::tr( "Export vector option" ), exportVectorOptions, false, 0 ) );
-  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Output vector layer" ), Qgis::ProcessingSourceType::VectorPoint ) );
+  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Output vector layer" ), QgsProcessing::TypeVectorPoint ) );
 }
 
 static void extractDatasetValues( const QList<int> &datasetGroups,
@@ -607,7 +605,7 @@ QVariantMap QgsExportMeshOnGridAlgorithm::processAlgorithm( const QVariantMap &p
   }
 
   //First, if present, average 3D staked dataset value to 2D face value
-  const QgsMesh3DAveragingMethod *avgMethod = mLayerRendererSettings.averagingMethod();
+  const QgsMesh3dAveragingMethod *avgMethod = mLayerRendererSettings.averagingMethod();
   for ( DataGroup &dataGroup : mDataPerGroup )
   {
     if ( dataGroup.dataset3dStakedValue.isValid() )
@@ -628,7 +626,7 @@ QVariantMap QgsExportMeshOnGridAlgorithm::processAlgorithm( const QVariantMap &p
                                         context,
                                         identifier,
                                         fields,
-                                        Qgis::WkbType::Point,
+                                        QgsWkbTypes::Point,
                                         outputCrs ) );
   if ( !sink )
     return QVariantMap();
@@ -705,8 +703,6 @@ QVariantMap QgsExportMeshOnGridAlgorithm::processAlgorithm( const QVariantMap &p
     }
   }
 
-  sink->finalize();
-
   QVariantMap ret;
   ret[QStringLiteral( "OUTPUT" )] = identifier;
 
@@ -779,13 +775,10 @@ void QgsMeshRasterizeAlgorithm::initAlgorithm( const QVariantMap &configuration 
                   QStringLiteral( "DATASET_GROUPS" ) ) );
 
   addParameter( new QgsProcessingParameterExtent( QStringLiteral( "EXTENT" ), QObject::tr( "Extent" ), QVariant(), true ) );
-  addParameter( new QgsProcessingParameterDistance( QStringLiteral( "PIXEL_SIZE" ), QObject::tr( "Pixel size" ), 1, QStringLiteral( "INPUT" ), false ) );
-  addParameter( new QgsProcessingParameterCrs( QStringLiteral( "CRS_OUTPUT" ), QObject::tr( "Output coordinate system" ), QVariant(), true ) );
 
-  std::unique_ptr< QgsProcessingParameterString > createOptsParam = std::make_unique< QgsProcessingParameterString >( QStringLiteral( "CREATE_OPTIONS" ), QObject::tr( "Creation options" ), QVariant(), false, true );
-  createOptsParam->setMetadata( QVariantMap( {{QStringLiteral( "widget_wrapper" ), QVariantMap( {{QStringLiteral( "widget_type" ), QStringLiteral( "rasteroptions" ) }} ) }} ) );
-  createOptsParam->setFlags( createOptsParam->flags() | Qgis::ProcessingParameterFlag::Advanced );
-  addParameter( createOptsParam.release() );
+  addParameter( new QgsProcessingParameterDistance( QStringLiteral( "PIXEL_SIZE" ), QObject::tr( "Pixel size" ), 1, QStringLiteral( "INPUT" ), false ) );
+
+  addParameter( new QgsProcessingParameterCrs( QStringLiteral( "CRS_OUTPUT" ), QObject::tr( "Output coordinate system" ), QVariant(), true ) );
 
   addParameter( new QgsProcessingParameterRasterDestination( QStringLiteral( "OUTPUT" ), QObject::tr( "Output raster layer" ) ) );
 }
@@ -836,7 +829,7 @@ QVariantMap QgsMeshRasterizeAlgorithm::processAlgorithm( const QVariantMap &para
   }
 
   //First, if present, average 3D staked dataset value to 2D face value
-  const QgsMesh3DAveragingMethod *avgMethod = mLayerRendererSettings.averagingMethod();
+  const QgsMesh3dAveragingMethod *avgMethod = mLayerRendererSettings.averagingMethod();
   for ( DataGroup &dataGroup : mDataPerGroup )
   {
     if ( dataGroup.dataset3dStakedValue.isValid() )
@@ -852,16 +845,11 @@ QVariantMap QgsMeshRasterizeAlgorithm::processAlgorithm( const QVariantMap &para
   int width = extent.width() / pixelSize;
   int height = extent.height() / pixelSize;
 
-  const QString createOptions = parameterAsString( parameters, QStringLiteral( "CREATE_OPTIONS" ), context ).trimmed();
-  const QString fileName = parameterAsOutputLayer( parameters, QStringLiteral( "OUTPUT" ), context );
-  const QFileInfo fileInfo( fileName );
-  const QString outputFormat = QgsRasterFileWriter::driverForExtension( fileInfo.suffix() );
+  QString fileName = parameterAsOutputLayer( parameters, QStringLiteral( "OUTPUT" ), context );
+  QFileInfo fileInfo( fileName );
+  QString outputFormat = QgsRasterFileWriter::driverForExtension( fileInfo.suffix() );
   QgsRasterFileWriter rasterFileWriter( fileName );
   rasterFileWriter.setOutputProviderKey( QStringLiteral( "gdal" ) );
-  if ( !createOptions.isEmpty() )
-  {
-    rasterFileWriter.setCreateOptions( createOptions.split( '|' ) );
-  }
   rasterFileWriter.setOutputFormat( outputFormat );
 
   std::unique_ptr<QgsRasterDataProvider> rasterDataProvider(
@@ -975,12 +963,12 @@ void QgsMeshContoursAlgorithm::initAlgorithm( const QVariantMap &configuration )
                   QStringLiteral( "DATASET_GROUPS" ) ) );
 
   addParameter( new QgsProcessingParameterNumber(
-                  QStringLiteral( "INCREMENT" ), QObject::tr( "Increment between contour levels" ), Qgis::ProcessingNumberParameterType::Double, QVariant(), true ) );
+                  QStringLiteral( "INCREMENT" ), QObject::tr( "Increment between contour levels" ), QgsProcessingParameterNumber::Double, QVariant(), true ) );
 
   addParameter( new QgsProcessingParameterNumber(
-                  QStringLiteral( "MINIMUM" ), QObject::tr( "Minimum contour level" ), Qgis::ProcessingNumberParameterType::Double, QVariant(), true ) );
+                  QStringLiteral( "MINIMUM" ), QObject::tr( "Minimum contour level" ), QgsProcessingParameterNumber::Double, QVariant(), true ) );
   addParameter( new QgsProcessingParameterNumber(
-                  QStringLiteral( "MAXIMUM" ), QObject::tr( "Maximum contour level" ), Qgis::ProcessingNumberParameterType::Double, QVariant(), true ) );
+                  QStringLiteral( "MAXIMUM" ), QObject::tr( "Maximum contour level" ), QgsProcessingParameterNumber::Double, QVariant(), true ) );
 
   std::unique_ptr< QgsProcessingParameterString > contourLevelList = std::make_unique < QgsProcessingParameterString >(
         QStringLiteral( "CONTOUR_LEVEL_LIST" ), QObject::tr( "List of contours level" ), QVariant(), false, true );
@@ -990,8 +978,8 @@ void QgsMeshContoursAlgorithm::initAlgorithm( const QVariantMap &configuration )
   addParameter( new QgsProcessingParameterCrs( QStringLiteral( "CRS_OUTPUT" ), QObject::tr( "Output coordinate system" ), QVariant(), true ) );
 
 
-  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT_LINES" ), QObject::tr( "Exported contour lines" ), Qgis::ProcessingSourceType::VectorLine ) );
-  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT_POLYGONS" ), QObject::tr( "Exported contour polygons" ), Qgis::ProcessingSourceType::VectorPolygon ) );
+  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT_LINES" ), QObject::tr( "Exported contour lines" ), QgsProcessing::TypeVectorLine ) );
+  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT_POLYGONS" ), QObject::tr( "Exported contour polygons" ), QgsProcessing::TypeVectorPolygon ) );
 }
 
 bool QgsMeshContoursAlgorithm::prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback )
@@ -1085,7 +1073,7 @@ bool QgsMeshContoursAlgorithm::prepareAlgorithm( const QVariantMap &parameters, 
 QVariantMap QgsMeshContoursAlgorithm::processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback )
 {
   //First, if present, average 3D staked dataset value to 2D face value
-  const QgsMesh3DAveragingMethod *avgMethod = mLayerRendererSettings.averagingMethod();
+  const QgsMesh3dAveragingMethod *avgMethod = mLayerRendererSettings.averagingMethod();
   for ( DataGroup &dataGroup : mDataPerGroup )
   {
     if ( dataGroup.dataset3dStakedValue.isValid() )
@@ -1095,13 +1083,13 @@ QVariantMap QgsMeshContoursAlgorithm::processAlgorithm( const QVariantMap &param
   // Create vector layers
   QgsFields polygonFields;
   QgsFields lineFields;
-  polygonFields.append( QgsField( QObject::tr( "group" ), QMetaType::Type::QString ) );
-  polygonFields.append( QgsField( QObject::tr( "time" ), QMetaType::Type::QString ) );
-  polygonFields.append( QgsField( QObject::tr( "min_value" ), QMetaType::Type::Double ) );
-  polygonFields.append( QgsField( QObject::tr( "max_value" ), QMetaType::Type::Double ) );
-  lineFields.append( QgsField( QObject::tr( "group" ), QMetaType::Type::QString ) );
-  lineFields.append( QgsField( QObject::tr( "time" ), QMetaType::Type::QString ) );
-  lineFields.append( QgsField( QObject::tr( "value" ), QMetaType::Type::Double ) );
+  polygonFields.append( QgsField( QObject::tr( "group" ), QVariant::String ) );
+  polygonFields.append( QgsField( QObject::tr( "time" ), QVariant::String ) );
+  polygonFields.append( QgsField( QObject::tr( "min_value" ), QVariant::Double ) );
+  polygonFields.append( QgsField( QObject::tr( "max_value" ), QVariant::Double ) );
+  lineFields.append( QgsField( QObject::tr( "group" ), QVariant::String ) );
+  lineFields.append( QgsField( QObject::tr( "time" ), QVariant::String ) );
+  lineFields.append( QgsField( QObject::tr( "value" ), QVariant::Double ) );
 
   QgsCoordinateReferenceSystem outputCrs = parameterAsCrs( parameters, QStringLiteral( "CRS_OUTPUT" ), context );
 
@@ -1113,7 +1101,7 @@ QVariantMap QgsMeshContoursAlgorithm::processAlgorithm( const QVariantMap &param
         context,
         polygonIdentifier,
         polygonFields,
-        Qgis::WkbType::PolygonZ,
+        QgsWkbTypes::PolygonZ,
         outputCrs ) );
   std::unique_ptr<QgsFeatureSink> sinkLines( parameterAsSink(
         parameters,
@@ -1121,7 +1109,7 @@ QVariantMap QgsMeshContoursAlgorithm::processAlgorithm( const QVariantMap &param
         context,
         lineIdentifier,
         lineFields,
-        Qgis::WkbType::LineStringZ,
+        QgsWkbTypes::LineStringZ,
         outputCrs ) );
 
   if ( !sinkLines || !sinkPolygons )
@@ -1203,11 +1191,6 @@ QVariantMap QgsMeshContoursAlgorithm::processAlgorithm( const QVariantMap &param
     }
   }
 
-  if ( sinkPolygons )
-    sinkPolygons->finalize();
-  if ( sinkLines )
-    sinkLines->finalize();
-
   QVariantMap ret;
   ret[QStringLiteral( "OUTPUT_LINES" )] = lineIdentifier;
   ret[QStringLiteral( "OUTPUT_POLYGONS" )] = polygonIdentifier;
@@ -1270,7 +1253,7 @@ void QgsMeshExportCrossSection::initAlgorithm( const QVariantMap &configuration 
                   QStringLiteral( "DATASET_GROUPS" ) ) );
 
   QList<int> datatype;
-  datatype << static_cast< int >( Qgis::ProcessingSourceType::VectorLine );
+  datatype << QgsProcessing::TypeVectorLine;
   addParameter( new QgsProcessingParameterFeatureSource(
                   QStringLiteral( "INPUT_LINES" ), QObject::tr( "Lines for data export" ), datatype, QVariant(), false ) );
 
@@ -1278,10 +1261,10 @@ void QgsMeshExportCrossSection::initAlgorithm( const QVariantMap &configuration 
                   QStringLiteral( "RESOLUTION" ), QObject::tr( "Line segmentation resolution" ), 10.0, QStringLiteral( "INPUT_LINES" ), false, 0 ) );
 
   addParameter( new QgsProcessingParameterNumber(
-                  QStringLiteral( "COORDINATES_DIGITS" ), QObject::tr( "Digits count for coordinates" ), Qgis::ProcessingNumberParameterType::Integer, 2 ) );
+                  QStringLiteral( "COORDINATES_DIGITS" ), QObject::tr( "Digits count for coordinates" ), QgsProcessingParameterNumber::Integer, 2 ) );
 
   addParameter( new QgsProcessingParameterNumber(
-                  QStringLiteral( "DATASET_DIGITS" ), QObject::tr( "Digits count for dataset value" ), Qgis::ProcessingNumberParameterType::Integer, 2 ) );
+                  QStringLiteral( "DATASET_DIGITS" ), QObject::tr( "Digits count for dataset value" ), QgsProcessingParameterNumber::Integer, 2 ) );
 
   addParameter( new QgsProcessingParameterFileDestination(
                   QStringLiteral( "OUTPUT" ), QObject::tr( "Exported data CSV file" ), QObject::tr( "CSV file (*.csv)" ) ) );
@@ -1320,7 +1303,7 @@ QVariantMap QgsMeshExportCrossSection::processAlgorithm( const QVariantMap &para
   if ( feedback )
     feedback->setProgress( 0 );
   //First, if present, average 3D staked dataset value to 2D face value
-  const QgsMesh3DAveragingMethod *avgMethod = mLayerRendererSettings.averagingMethod();
+  const QgsMesh3dAveragingMethod *avgMethod = mLayerRendererSettings.averagingMethod();
   for ( DataGroup &dataGroup : mDataPerGroup )
   {
     if ( dataGroup.dataset3dStakedValue.isValid() )
@@ -1492,18 +1475,18 @@ void QgsMeshExportTimeSeries::initAlgorithm( const QVariantMap &configuration )
                   QStringLiteral( "DATASET_GROUPS" ) ) );
 
   addParameter( new QgsProcessingParameterNumber(
-                  QStringLiteral( "TIME_STEP" ), QObject::tr( "Time step (hours)" ), Qgis::ProcessingNumberParameterType::Double, 0, true, 0 ) );
+                  QStringLiteral( "TIME_STEP" ), QObject::tr( "Time step (hours)" ), QgsProcessingParameterNumber::Double, 0, true, 0 ) );
 
   QList<int> datatype;
-  datatype << static_cast< int >( Qgis::ProcessingSourceType::VectorPoint );
+  datatype << QgsProcessing::TypeVectorPoint;
   addParameter( new QgsProcessingParameterFeatureSource(
                   QStringLiteral( "INPUT_POINTS" ), QObject::tr( "Points for data export" ), datatype, QVariant(), false ) );
 
   addParameter( new QgsProcessingParameterNumber(
-                  QStringLiteral( "COORDINATES_DIGITS" ), QObject::tr( "Digits count for coordinates" ), Qgis::ProcessingNumberParameterType::Integer, 2 ) );
+                  QStringLiteral( "COORDINATES_DIGITS" ), QObject::tr( "Digits count for coordinates" ), QgsProcessingParameterNumber::Integer, 2 ) );
 
   addParameter( new QgsProcessingParameterNumber(
-                  QStringLiteral( "DATASET_DIGITS" ), QObject::tr( "Digits count for dataset value" ), Qgis::ProcessingNumberParameterType::Integer, 2 ) );
+                  QStringLiteral( "DATASET_DIGITS" ), QObject::tr( "Digits count for dataset value" ), QgsProcessingParameterNumber::Integer, 2 ) );
 
   addParameter( new QgsProcessingParameterFileDestination(
                   QStringLiteral( "OUTPUT" ), QObject::tr( "Exported data CSV file" ), QObject::tr( "CSV file (*.csv)" ) ) );
@@ -1639,7 +1622,7 @@ QVariantMap QgsMeshExportTimeSeries::processAlgorithm( const QVariantMap &parame
   if ( feedback )
     feedback->setProgress( 0 );
   //First, if present, average 3D staked dataset value to 2D face value
-  const QgsMesh3DAveragingMethod *avgMethod = mLayerRendererSettings.averagingMethod();
+  const QgsMesh3dAveragingMethod *avgMethod = mLayerRendererSettings.averagingMethod();
 
   for ( DataGroup &dataGroup : mDatasets )
   {

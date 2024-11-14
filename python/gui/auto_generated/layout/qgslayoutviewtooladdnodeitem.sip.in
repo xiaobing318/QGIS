@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/layout/qgslayoutviewtooladdnodeitem.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -12,6 +12,8 @@ class QgsLayoutViewToolAddNodeItem : QgsLayoutViewTool
 {
 %Docstring(signature="appended")
 Layout view tool for adding node based items to a layout.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -66,5 +68,5 @@ Emitted when an item has been created using the tool.
  *                                                                      *
  * src/gui/layout/qgslayoutviewtooladdnodeitem.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

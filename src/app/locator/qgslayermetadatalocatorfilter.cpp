@@ -14,7 +14,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgslayermetadatalocatorfilter.h"
-#include "moc_qgslayermetadatalocatorfilter.cpp"
 #include "qgslayermetadataproviderregistry.h"
 #include "qgsfeedback.h"
 #include "qgsapplication.h"
@@ -48,7 +47,7 @@ void QgsLayerMetadataLocatorFilter::fetchResults( const QString &string, const Q
       result.displayString = metadata.identifier();
       result.description = metadata.title();
       result.icon = QgsIconUtils::iconForGeometryType( metadata.geometryType() );
-      result.setUserData( QVariant::fromValue( metadata ) );
+      result.userData = QVariant::fromValue( metadata );
       emit resultFetched( result );
     }
   }
@@ -56,20 +55,20 @@ void QgsLayerMetadataLocatorFilter::fetchResults( const QString &string, const Q
 
 void QgsLayerMetadataLocatorFilter::triggerResult( const QgsLocatorResult &result )
 {
-  QgsLayerMetadataProviderResult metadataResult { result.userData().value<QgsLayerMetadataProviderResult>() };
+  QgsLayerMetadataProviderResult metadataResult { result.userData.value<QgsLayerMetadataProviderResult>() };
   switch ( metadataResult.layerType() )
   {
-    case Qgis::LayerType::Raster:
+    case QgsMapLayerType::RasterLayer:
     {
       QgisApp::instance()->addRasterLayer( metadataResult.uri(), metadataResult.identifier(), metadataResult.dataProviderName() );
       break;
     }
-    case Qgis::LayerType::Vector:
+    case QgsMapLayerType::VectorLayer:
     {
       QgisApp::instance()->addVectorLayer( metadataResult.uri(), metadataResult.identifier(), metadataResult.dataProviderName() );
       break;
     }
-    case Qgis::LayerType::Mesh:
+    case QgsMapLayerType::MeshLayer:
     {
       QgisApp::instance()->addMeshLayer( metadataResult.uri(), metadataResult.identifier(), metadataResult.dataProviderName() );
       break;

@@ -17,20 +17,13 @@
 
 #include "qgis_core.h"
 #include "qgis_sip.h"
-#include "qgssettingstree.h"
-
-
+#include "qgssettingsentryimpl.h"
 #include <QObject>
 #include <QUrl>
 #include <QPixmap>
 #include <QDateTime>
 
 class QgsNetworkContentFetcher;
-class QgsSettingsEntryBool;
-class QgsSettingsEntryInteger64;
-class QgsSettingsEntryString;
-class QgsSettingsEntryDouble;
-class QgsSettingsEntryVariant;
 
 /**
  * \ingroup core
@@ -45,22 +38,6 @@ class CORE_EXPORT QgsNewsFeedParser : public QObject
 {
     Q_OBJECT
   public:
-
-#ifndef SIP_RUN
-    static inline QgsSettingsTreeNamedListNode *sTreeNewsFeed = QgsSettingsTree::sTreeApp->createNamedListNode( QStringLiteral( "news-feed" ) );
-    static const QgsSettingsEntryInteger64 *settingsFeedLastFetchTime;
-    static const QgsSettingsEntryString *settingsFeedLanguage;
-    static const QgsSettingsEntryDouble *settingsFeedLatitude;
-    static const QgsSettingsEntryDouble *settingsFeedLongitude;
-
-    static inline QgsSettingsTreeNamedListNode *sTreeNewsFeedEntries = sTreeNewsFeed->createNamedListNode( QStringLiteral( "entries" ) );
-    static const QgsSettingsEntryString *settingsFeedEntryTitle;
-    static const QgsSettingsEntryString *settingsFeedEntryImageUrl;
-    static const QgsSettingsEntryString *settingsFeedEntryContent;
-    static const QgsSettingsEntryString *settingsFeedEntryLink;
-    static const QgsSettingsEntryBool *settingsFeedEntrySticky;
-    static const QgsSettingsEntryVariant *settingsFeedEntryExpiry;
-#endif
 
     /**
      * \brief Represents a single entry from a news feed.
@@ -134,6 +111,17 @@ class CORE_EXPORT QgsNewsFeedParser : public QObject
      */
     static QString keyForFeed( const QString &baseUrl );
 
+#ifndef SIP_RUN
+    //! Settings entry last fetch time
+    static const inline QgsSettingsEntryInteger settingsFeedLastFetchTime = QgsSettingsEntryInteger( QStringLiteral( "%1/lastFetchTime" ), QgsSettings::Prefix::CORE, 0, QObject::tr( "Feed last fetch time" ), Qgis::SettingsOptions(), 0 );
+    //! Settings entry feed language
+    static const inline QgsSettingsEntryString settingsFeedLanguage = QgsSettingsEntryString( QStringLiteral( "%1/lang" ), QgsSettings::Prefix::CORE, QString(), QObject::tr( "Feed language" ) );
+    //! Settings entry feed latitude
+    static const inline QgsSettingsEntryDouble settingsFeedLatitude = QgsSettingsEntryDouble( QStringLiteral( "%1/latitude" ), QgsSettings::Prefix::CORE, 0.0, QObject::tr( "Feed latitude" ) );
+    //! Settings entry feed longitude
+    static const inline QgsSettingsEntryDouble settingsFeedLongitude = QgsSettingsEntryDouble( QStringLiteral( "%1/longitude" ), QgsSettings::Prefix::CORE, 0.0, QObject::tr( "Feed longitude" ) );
+#endif
+
   public slots:
 
     /**
@@ -145,7 +133,7 @@ class CORE_EXPORT QgsNewsFeedParser : public QObject
   signals:
 
     /**
-     * Emitted when \a entries have been fetched from the feed.
+     * Emitted when \a entries have fetched from the feed.
      *
      * \see fetch()
      */
@@ -158,16 +146,6 @@ class CORE_EXPORT QgsNewsFeedParser : public QObject
      * \see fetch()
      */
     void entryAdded( const QgsNewsFeedParser::Entry &entry );
-
-    /**
-     * Emitted whenever an existing \a entry is available from the feed (as a result
-     * of a call to fetch()).
-     *
-     * \see fetch()
-     *
-     * \since QGIS 3.36
-     */
-    void entryUpdated( const QgsNewsFeedParser::Entry &entry );
 
     /**
      * Emitted whenever an \a entry is dismissed (as a result of a call
@@ -193,7 +171,7 @@ class CORE_EXPORT QgsNewsFeedParser : public QObject
     QUrl mFeedUrl;
     QString mAuthCfg;
     qint64 mFetchStartTime = 0;
-    QString mFeedKey;
+    QString mSettingsKey;
 
     QList< Entry > mEntries;
     bool mBlockSignals = false;

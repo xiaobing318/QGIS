@@ -50,7 +50,7 @@ class APP_EXPORT QgsPointRotationItem: public QgsMapCanvasItem
      * Sets the rotation unit.
      * \since QGIS 3.22
      */
-    void setRotationUnit( Qgis::AngleUnit rotationUnit );
+    void setRotationUnit( const QgsUnitTypes::AngleUnit &rotationUnit );
 
     //! Sets rotation symbol from image (takes ownership)
     void setSymbol( const QImage &symbolImage );
@@ -69,7 +69,7 @@ class APP_EXPORT QgsPointRotationItem: public QgsMapCanvasItem
     //! Symbol pixmap
     QPixmap mPixmap;
     int mRotation = 0.0;
-    Qgis::AngleUnit mRotationUnit = Qgis::AngleUnit::Degrees;
+    QgsUnitTypes::AngleUnit mRotationUnit = QgsUnitTypes::AngleDegrees;
     QPainterPath mArrowPath;
 };
 

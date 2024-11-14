@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgshighlight.h                                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -94,6 +94,8 @@ Returns the fill color
 %Docstring
 Fill color for the highlight.
 Will be used for polygons and points.
+
+.. versionadded:: 2.4
 %End
 
     int width( ) const;
@@ -122,11 +124,15 @@ Returns the buffer
     void setBuffer( double buffer );
 %Docstring
 Set line / stroke buffer in millimeters.
+
+.. versionadded:: 2.4
 %End
 
     void setMinWidth( double width );
 %Docstring
 Set minimum line / stroke width in millimeters.
+
+.. versionadded:: 2.4
 %End
 
     QgsMapLayer *layer() const;
@@ -136,13 +142,6 @@ Returns the layer for which this highlight has been created.
 
     virtual void updatePosition();
 
-
-    void applyDefaultStyle();
-%Docstring
-Applies the default style from the user settings to the highlight.
-
-.. versionadded:: 3.30
-%End
 
   protected:
     virtual void paint( QPainter *p );
@@ -160,5 +159,5 @@ recalculates needed rectangle
  *                                                                      *
  * src/gui/qgshighlight.h                                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

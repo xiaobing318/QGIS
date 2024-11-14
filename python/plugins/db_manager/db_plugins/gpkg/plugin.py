@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 /***************************************************************************
 Name                 : DB Manager
@@ -17,6 +19,7 @@ email                : brush.tyler@gmail.com
  *                                                                         *
  ***************************************************************************/
 """
+from builtins import str
 
 # this will disable the dbplugin if the connector raise an ImportError
 from .connector import GPKGDBConnector
@@ -73,7 +76,7 @@ class GPKGDBPlugin(DBPlugin):
         conn = md.findConnection(conn_name)
 
         if conn is None:  # non-existent entry?
-            raise InvalidDataException(self.tr('There is no defined database connection "{0}".').format(conn_name))
+            raise InvalidDataException(self.tr(u'There is no defined database connection "{0}".').format(conn_name))
 
         uri = QgsDataSourceUri()
         uri.setDatabase(conn.uri())
@@ -95,7 +98,7 @@ class GPKGDBPlugin(DBPlugin):
             if not filename:
                 return
         finally:
-            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            QApplication.setOverrideCursor(Qt.WaitCursor)
 
         conn_name = QFileInfo(filename).fileName()
         uri = QgsDataSourceUri()
@@ -147,10 +150,10 @@ class GPKGDatabase(Database):
         try:
             if not isinstance(item, (DBPlugin, Table)) or item.database() is None:
                 parent.infoBar.pushMessage(self.tr("No database selected or you are not connected to it."),
-                                           Qgis.MessageLevel.Info, parent.iface.messageTimeout())
+                                           Qgis.Info, parent.iface.messageTimeout())
                 return
         finally:
-            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            QApplication.setOverrideCursor(Qt.WaitCursor)
 
         self.runVacuum()
 
@@ -199,12 +202,12 @@ class GPKGTable(Table):
         self.name, self.isView, self.isSysTable = row
 
     def ogrUri(self):
-        ogrUri = "%s|layername=%s" % (self.uri().database(), self.name)
+        ogrUri = u"%s|layername=%s" % (self.uri().database(), self.name)
         return ogrUri
 
     def mimeUri(self):
         # QGIS has no provider to load Geopackage vectors, let's use OGR
-        return "vector:ogr:%s:%s" % (self.name, self.ogrUri())
+        return u"vector:ogr:%s:%s" % (self.name, self.ogrUri())
 
     def toMapLayer(self, geometryType=None, crs=None):
         from qgis.core import QgsVectorLayer
@@ -297,12 +300,12 @@ class GPKGRasterTable(GPKGTable, RasterTable):
         self.extent = self.database().connector.getTableExtent((self.schemaName(), self.name), self.geomColumn)
 
     def gpkgGdalUri(self):
-        gdalUri = 'GPKG:%s:%s' % (self.uri().database(), self.prefixName)
+        gdalUri = u'GPKG:%s:%s' % (self.uri().database(), self.prefixName)
         return gdalUri
 
     def mimeUri(self):
         # QGIS has no provider to load rasters, let's use GDAL
-        uri = "raster:gdal:%s:%s" % (self.name, self.uri().database())
+        uri = u"raster:gdal:%s:%s" % (self.name, self.uri().database())
         return uri
 
     def toMapLayer(self, geometryType=None, crs=None):
@@ -312,7 +315,7 @@ class GPKGRasterTable(GPKGTable, RasterTable):
         uri = self.gpkgGdalUri()
         rl = QgsRasterLayer(uri, self.name)
         if rl.isValid():
-            rl.setContrastEnhancement(QgsContrastEnhancement.ContrastEnhancementAlgorithm.StretchToMinimumMaximum)
+            rl.setContrastEnhancement(QgsContrastEnhancement.StretchToMinimumMaximum)
         return rl
 
 

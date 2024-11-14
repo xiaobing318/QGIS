@@ -28,9 +28,7 @@ QgsWFSDataSourceURI::QgsWFSDataSourceURI( const QString &uri )
 
   // Compatibility with QGIS < 2.16 layer URI of the format
   // http://example.com/?SERVICE=WFS&VERSION=1.0.0&REQUEST=GetFeature&TYPENAME=x&SRSNAME=y&username=foo&password=
-  if ( !mURI.hasParam( QgsWFSConstants::URI_PARAM_URL ) &&
-       ( uri.startsWith( QLatin1String( "http://" ) ) ||
-         uri.startsWith( QLatin1String( "https://" ) ) ) )
+  if ( !mURI.hasParam( QgsWFSConstants::URI_PARAM_URL ) )
   {
     mDeprecatedURI = true;
     static const QSet<QString> sFilter
@@ -104,7 +102,7 @@ QgsWFSDataSourceURI::QgsWFSDataSourceURI( const QString &uri )
     if ( !bbox.isEmpty() )
       mURI.setParam( QgsWFSConstants::URI_PARAM_RESTRICT_TO_REQUEST_BBOX, QStringLiteral( "1" ) );
   }
-  else if ( mURI.hasParam( QgsWFSConstants::URI_PARAM_URL ) )
+  else
   {
     QUrl url( mURI.param( QgsWFSConstants::URI_PARAM_URL ) );
     QUrlQuery query( url );
@@ -170,12 +168,6 @@ QgsWFSDataSourceURI &QgsWFSDataSourceURI::operator=( const QgsWFSDataSourceURI &
   return *this;
 }
 
-bool QgsWFSDataSourceURI::isValid() const
-{
-  return mURI.hasParam( QgsWFSConstants::URI_PARAM_URL ) &&
-         mURI.hasParam( QgsWFSConstants::URI_PARAM_TYPENAME );
-}
-
 QSet<QString> QgsWFSDataSourceURI::unknownParamKeys() const
 {
   static const QSet<QString> knownKeys
@@ -201,7 +193,6 @@ QSet<QString> QgsWFSDataSourceURI::unknownParamKeys() const
     QgsWFSConstants::URI_PARAM_PAGE_SIZE,
     QgsWFSConstants::URI_PARAM_WFST_1_1_PREFER_COORDINATES,
     QgsWFSConstants::URI_PARAM_SKIP_INITIAL_GET_FEATURE,
-    QgsWFSConstants::URI_PARAM_GEOMETRY_TYPE_FILTER,
     QgsWFSConstants::URI_PARAM_SQL,
   };
 
@@ -334,17 +325,11 @@ long long QgsWFSDataSourceURI::pageSize() const
   return mURI.param( QgsWFSConstants::URI_PARAM_PAGE_SIZE ).toLongLong();
 }
 
-QgsWFSDataSourceURI::PagingStatus QgsWFSDataSourceURI::pagingStatus() const
+bool QgsWFSDataSourceURI::pagingEnabled() const
 {
   if ( !mURI.hasParam( QgsWFSConstants::URI_PARAM_PAGING_ENABLED ) )
-    return PagingStatus::DEFAULT;
-  const QString val = mURI.param( QgsWFSConstants::URI_PARAM_PAGING_ENABLED );
-  if ( val == QLatin1String( "true" ) || val == QLatin1String( "enabled" ) )
-    return PagingStatus::ENABLED;
-  else if ( val == QLatin1String( "false" ) || val ==  QLatin1String( "disabled" ) )
-    return PagingStatus::DISABLED;
-  else
-    return PagingStatus::DEFAULT;
+    return true;
+  return mURI.param( QgsWFSConstants::URI_PARAM_PAGING_ENABLED ) == QLatin1String( "true" );
 }
 
 void QgsWFSDataSourceURI::setTypeName( const QString &typeName )
@@ -389,16 +374,6 @@ void QgsWFSDataSourceURI::setFilter( const QString &filter )
   {
     mURI.setParam( QgsWFSConstants::URI_PARAM_FILTER, filter );
   }
-}
-
-bool QgsWFSDataSourceURI::hasGeometryTypeFilter() const
-{
-  return mURI.hasParam( QgsWFSConstants::URI_PARAM_GEOMETRY_TYPE_FILTER );
-}
-
-Qgis::WkbType QgsWFSDataSourceURI::geometryTypeFilter() const
-{
-  return QgsWkbTypes::parseType( mURI.param( QgsWFSConstants::URI_PARAM_GEOMETRY_TYPE_FILTER ) );
 }
 
 QString QgsWFSDataSourceURI::sql() const

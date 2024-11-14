@@ -197,7 +197,7 @@ bool QgsLayerMetadata::readMetadataXml( const QDomElement &metadataElement )
     mne = mnl.toElement();
     QgsLayerMetadata::SpatialExtent se = QgsLayerMetadata::SpatialExtent();
     se.extentCrs = QgsCoordinateReferenceSystem( mne.attribute( QStringLiteral( "crs" ) ) );
-    se.bounds = QgsBox3D();
+    se.bounds = QgsBox3d();
     se.bounds.setXMinimum( mne.attribute( QStringLiteral( "minx" ) ).toDouble() );
     se.bounds.setYMinimum( mne.attribute( QStringLiteral( "miny" ) ).toDouble() );
     se.bounds.setZMinimum( mne.attribute( QStringLiteral( "minz" ) ).toDouble() );
@@ -444,6 +444,7 @@ bool QgsLayerMetadata::contains( const QString &searchString ) const
   const QList<QStringList> keyVals { keywords().values() };
   for ( const QStringList &kws : std::as_const( keyVals ) )
   {
+    const QStringList constKws { kws };
     for ( const QString &kw : std::as_const( kws ) )
     {
       if ( kw.contains( searchString, Qt::CaseSensitivity::CaseInsensitive ) )
@@ -479,6 +480,7 @@ bool QgsLayerMetadata::matches( const QVector<QRegularExpression> &searchReList 
     const QList<QStringList> keyVals { keywords().values() };
     for ( const QStringList &kws : std::as_const( keyVals ) )
     {
+      const QStringList constKws { kws };
       for ( const QString &kw : std::as_const( kws ) )
       {
         if ( re.match( kw ).hasMatch() )

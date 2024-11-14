@@ -39,24 +39,38 @@
  * are calculated by default. Statistics which require slower computations are only calculated by
  * specifying the statistic in the constructor or via setStatistics().
  *
+ * \since QGIS 2.16
  */
 
 class CORE_EXPORT QgsDateTimeStatisticalSummary
 {
   public:
 
+    //! Enumeration of flags that specify statistics to be calculated
+    enum Statistic
+    {
+      Count = 1,  //!< Count
+      CountDistinct = 2,  //!< Number of distinct datetime values
+      CountMissing = 4,  //!< Number of missing (null) values
+      Min = 8, //!< Minimum (earliest) datetime value
+      Max = 16, //!< Maximum (latest) datetime value
+      Range = 32, //!< Interval between earliest and latest datetime value
+      All = Count | CountDistinct | CountMissing | Min | Max | Range, //!< All statistics
+    };
+    Q_DECLARE_FLAGS( Statistics, Statistic )
+
     /**
      * Constructor for QgsDateTimeStatisticalSummary
      * \param stats flags for statistics to calculate
      */
-    QgsDateTimeStatisticalSummary( Qgis::DateTimeStatistics stats = Qgis::DateTimeStatistic::All );
+    QgsDateTimeStatisticalSummary( QgsDateTimeStatisticalSummary::Statistics stats = All );
 
     /**
      * Returns flags which specify which statistics will be calculated. Some statistics
      * are always calculated (e.g., count).
      * \see setStatistics
      */
-    Qgis::DateTimeStatistics statistics() const { return mStatistics; }
+    Statistics statistics() const { return mStatistics; }
 
     /**
      * Sets flags which specify which statistics will be calculated. Some statistics
@@ -64,7 +78,7 @@ class CORE_EXPORT QgsDateTimeStatisticalSummary
      * \param stats flags for statistics to calculate
      * \see statistics
      */
-    void setStatistics( Qgis::DateTimeStatistics stats ) { mStatistics = stats; }
+    void setStatistics( Statistics stats ) { mStatistics = stats; }
 
     /**
      * Resets the calculated values
@@ -106,7 +120,7 @@ class CORE_EXPORT QgsDateTimeStatisticalSummary
      * \param stat statistic to return
      * \returns calculated value of statistic
      */
-    QVariant statistic( Qgis::DateTimeStatistic stat ) const;
+    QVariant statistic( QgsDateTimeStatisticalSummary::Statistic stat ) const;
 
     /**
      * Returns the calculated count of values.
@@ -141,17 +155,17 @@ class CORE_EXPORT QgsDateTimeStatisticalSummary
     /**
      * Returns the range (interval between earliest and latest non-null datetime values).
      */
-    QgsInterval range() const;
+    QgsInterval range() const { return mMax - mMin; }
 
     /**
      * Returns the friendly display name for a statistic
      * \param statistic statistic to return name for
      */
-    static QString displayName( Qgis::DateTimeStatistic statistic );
+    static QString displayName( QgsDateTimeStatisticalSummary::Statistic statistic );
 
   private:
 
-    Qgis::DateTimeStatistics mStatistics;
+    Statistics mStatistics;
 
     int mCount;
     QSet< QDateTime > mValues;
@@ -162,5 +176,7 @@ class CORE_EXPORT QgsDateTimeStatisticalSummary
 
     void testDateTime( const QDateTime &dateTime, bool isNull );
 };
+
+Q_DECLARE_OPERATORS_FOR_FLAGS( QgsDateTimeStatisticalSummary::Statistics )
 
 #endif // QGSDATETIMESTATISTICALSUMMARY_H

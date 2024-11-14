@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/./3d/qgsabstract3dsymbol.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -28,6 +28,9 @@ Abstract base class for 3D symbols that are used by VectorLayer3DRenderer object
 .. note::
 
    Prior to QGIS 3.16 this was available through the QGIS 3D library.
+
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -54,17 +57,17 @@ Writes symbol configuration to the given DOM element
 Reads symbol configuration from the given DOM element
 %End
 
-    virtual QList< Qgis::GeometryType > compatibleGeometryTypes() const;
+    virtual QList< QgsWkbTypes::GeometryType > compatibleGeometryTypes() const;
 %Docstring
 Returns the list of the vector layer geometry types which are compatible with this symbol.
 
 .. versionadded:: 3.16
 %End
 
-    enum class Property
-      {
-      Height,
-      ExtrusionHeight,
+    enum Property
+    {
+      PropertyHeight,
+      PropertyExtrusionHeight,
     };
 
     static const QgsPropertiesDefinition &propertyDefinitions();
@@ -106,5 +109,5 @@ Copies base class settings from this object to a ``destination`` object.
  *                                                                      *
  * src/core/./3d/qgsabstract3dsymbol.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

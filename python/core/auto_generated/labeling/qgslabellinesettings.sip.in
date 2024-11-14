@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/labeling/qgslabellinesettings.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -55,7 +55,7 @@ a "perimeter" style mode).
       FollowPlacement,
     };
 
-    Qgis::LabelLinePlacementFlags placementFlags() const;
+    QgsLabeling::LinePlacementFlags placementFlags() const;
 %Docstring
 Returns the line placement flags, which dictate how line labels can be placed
 above or below the lines.
@@ -63,7 +63,7 @@ above or below the lines.
 .. seealso:: :py:func:`setPlacementFlags`
 %End
 
-    void setPlacementFlags( Qgis::LabelLinePlacementFlags flags );
+    void setPlacementFlags( QgsLabeling::LinePlacementFlags flags );
 %Docstring
 Returns the line placement ``flags``, which dictate how line labels can be placed
 above or below the lines.
@@ -89,7 +89,7 @@ prior to generating label positions.
 
     void updateDataDefinedProperties( const QgsPropertyCollection &properties, QgsExpressionContext &context );
 %Docstring
-Updates the line settings to respect any data defined properties
+Updates the thinning settings to respect any data defined properties
 set within the specified ``properties`` collection.
 %End
 
@@ -229,7 +229,7 @@ Sets the ``distance`` which labels are allowed to overrun past the start or end 
 .. seealso:: :py:func:`overrunDistanceMapUnitScale`
 %End
 
-    Qgis::RenderUnit overrunDistanceUnit() const;
+    QgsUnitTypes::RenderUnit overrunDistanceUnit() const;
 %Docstring
 Returns the units for label overrun distance.
 
@@ -240,7 +240,7 @@ Returns the units for label overrun distance.
 .. seealso:: :py:func:`overrunDistanceMapUnitScale`
 %End
 
-    void setOverrunDistanceUnit( const Qgis::RenderUnit &unit );
+    void setOverrunDistanceUnit( const QgsUnitTypes::RenderUnit &unit );
 %Docstring
 Sets the ``unit`` for label overrun distance.
 
@@ -388,5 +388,5 @@ should be placed at the :py:func:`~QgsLabelLineSettings.lineAnchorPercent`.
  *                                                                      *
  * src/core/labeling/qgslabellinesettings.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

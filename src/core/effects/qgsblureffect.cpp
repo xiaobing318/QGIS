@@ -19,7 +19,6 @@
 #include "qgsimageoperation.h"
 #include "qgsrendercontext.h"
 #include "qgssymbollayerutils.h"
-#include "qgsunittypes.h"
 
 QgsPaintEffect *QgsBlurEffect::create( const QVariantMap &map )
 {

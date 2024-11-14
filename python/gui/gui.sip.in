@@ -4,14 +4,15 @@
 ${DEFAULTDOCSTRINGSIGNATURE}
 
 %Feature HAVE_QSCI_SIP
-%Feature HAVE_QTGAMEPAD
 
 %Import core/core.sip
 
 %Import QtCore/QtCoremod.sip
 %Import QtGui/QtGuimod.sip
 %Import QtXml/QtXmlmod.sip
-%Import QtMultimedia/QtMultimediamod.sip
-%Import ${QSCI_SIP_MOD_NAME}
+
+%If (HAVE_QSCI_SIP)
+  %Import Qsci/qscimod5.sip
+%End
 
 %Include gui_auto.sip

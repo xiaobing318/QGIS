@@ -14,7 +14,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgstabwidget.h"
-#include "moc_qgstabwidget.cpp"
 
 #include "qgslogger.h"
 
@@ -30,7 +29,7 @@ QgsTabWidget::QgsTabWidget( QWidget *parent )
 
 void QgsTabWidget::hideTab( QWidget *tab )
 {
-  QgsDebugMsgLevel( QStringLiteral( "Hide" ), 3 );
+  QgsDebugMsg( QStringLiteral( "Hide" ) );
   TabInformation &info = mTabs[ realTabIndex( tab )];
   if ( info.visible )
   {
@@ -43,7 +42,7 @@ void QgsTabWidget::hideTab( QWidget *tab )
 
 void QgsTabWidget::showTab( QWidget *tab )
 {
-  QgsDebugMsgLevel( QStringLiteral( "Show" ), 3 );
+  QgsDebugMsg( QStringLiteral( "Show" ) );
   TabInformation &info = mTabs[ realTabIndex( tab )];
   if ( ! info.visible )
   {
@@ -136,7 +135,7 @@ void QgsTabWidget::tabRemoved( int index )
 
 void QgsTabWidget::synchronizeIndexes()
 {
-  QgsDebugMsgLevel( QStringLiteral( "---------" ), 3 );
+  QgsDebugMsg( QStringLiteral( "---------" ) );
   int i = -1;
   QWidget *nextWidget = widget( 0 );
 
@@ -150,7 +149,7 @@ void QgsTabWidget::synchronizeIndexes()
       nextWidget = widget( i + 1 );
     }
     it->sourceIndex = i;
-    QgsDebugMsgLevel( QStringLiteral( "Tab %1 (%2): %3" ).arg( it->sourceIndex ).arg( it->label ).arg( i ), 3 );
+    QgsDebugMsg( QStringLiteral( "Tab %1 (%2): %3" ).arg( it->sourceIndex ).arg( it->label ).arg( i ) );
   }
 }
 

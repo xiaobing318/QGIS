@@ -59,7 +59,7 @@ class QgsMssqlProviderConnection : public QgsAbstractDatabaseProviderConnection
     void createVectorTable( const QString &schema,
                             const QString &name,
                             const QgsFields &fields,
-                            Qgis::WkbType wkbType,
+                            QgsWkbTypes::Type wkbType,
                             const QgsCoordinateReferenceSystem &srs, bool overwrite,
                             const QMap<QString, QVariant> *options ) const override;
 
@@ -69,7 +69,7 @@ class QgsMssqlProviderConnection : public QgsAbstractDatabaseProviderConnection
     void dropSchema( const QString &name, bool force = false ) const override;
     QgsAbstractDatabaseProviderConnection::QueryResult execSql( const QString &sql, QgsFeedback *feedback ) const override;
     QList<QgsAbstractDatabaseProviderConnection::TableProperty> tables( const QString &schema,
-        const TableFlags &flags = TableFlags(), QgsFeedback *feedback = nullptr ) const override;
+        const TableFlags &flags = TableFlags() ) const override;
     QStringList schemas( ) const override;
     void store( const QString &name ) const override;
     void remove( const QString &name ) const override;

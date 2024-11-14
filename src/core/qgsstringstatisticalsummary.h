@@ -38,24 +38,42 @@
  * are calculated by default. Statistics which require slower computations are only calculated by
  * specifying the statistic in the constructor or via setStatistics().
  *
+ * \since QGIS 2.16
  */
 
 class CORE_EXPORT QgsStringStatisticalSummary
 {
   public:
 
+    //! Enumeration of flags that specify statistics to be calculated
+    enum Statistic
+    {
+      Count = 1,  //!< Count
+      CountDistinct = 2,  //!< Number of distinct string values
+      CountMissing = 4,  //!< Number of missing (null) values
+      Min = 8, //!< Minimum string value
+      Max = 16, //!< Maximum string value
+      MinimumLength = 32, //!< Minimum length of string
+      MaximumLength = 64, //!< Maximum length of string
+      MeanLength = 128, //!< Mean length of strings
+      Minority = 256, //!< Minority of strings
+      Majority = 512, //!< Majority of strings
+      All = Count | CountDistinct | CountMissing | Min | Max | MinimumLength | MaximumLength | MeanLength | Minority | Majority, //!< All statistics
+    };
+    Q_DECLARE_FLAGS( Statistics, Statistic )
+
     /**
      * Constructor for QgsStringStatistics
      * \param stats flags for statistics to calculate
      */
-    QgsStringStatisticalSummary( Qgis::StringStatistics stats = Qgis::StringStatistic::All );
+    QgsStringStatisticalSummary( QgsStringStatisticalSummary::Statistics stats = QgsStringStatisticalSummary::All );
 
     /**
      * Returns flags which specify which statistics will be calculated. Some statistics
      * are always calculated (e.g., count).
      * \see setStatistics
      */
-    Qgis::StringStatistics statistics() const { return mStatistics; }
+    Statistics statistics() const { return mStatistics; }
 
     /**
      * Sets flags which specify which statistics will be calculated. Some statistics
@@ -63,7 +81,7 @@ class CORE_EXPORT QgsStringStatisticalSummary
      * \param stats flags for statistics to calculate
      * \see statistics
      */
-    void setStatistics( Qgis::StringStatistics stats ) { mStatistics = stats; }
+    void setStatistics( QgsStringStatisticalSummary::Statistics stats ) { mStatistics = stats; }
 
     /**
      * Resets the calculated values
@@ -130,7 +148,7 @@ class CORE_EXPORT QgsStringStatisticalSummary
      * \param stat statistic to return
      * \returns calculated value of statistic
      */
-    QVariant statistic( Qgis::StringStatistic stat ) const;
+    QVariant statistic( QgsStringStatisticalSummary::Statistic stat ) const;
 
     /**
      * Returns the calculated count of values.
@@ -141,7 +159,7 @@ class CORE_EXPORT QgsStringStatisticalSummary
      * Returns the number of distinct string values.
      * \see distinctValues()
      */
-    int countDistinct() const { return mValues.count(); }
+    int countDistinct() const { return mValues.keys().count(); }
 
     /**
      * Returns the set of distinct string values.
@@ -176,6 +194,7 @@ class CORE_EXPORT QgsStringStatisticalSummary
 
     /**
       * Returns the mean length of strings.
+      * \since QGIS 3.0
       */
     double meanLength() const { return mMeanLength; }
 
@@ -203,11 +222,11 @@ class CORE_EXPORT QgsStringStatisticalSummary
      * Returns the friendly display name for a statistic
      * \param statistic statistic to return name for
      */
-    static QString displayName( Qgis::StringStatistic statistic );
+    static QString displayName( QgsStringStatisticalSummary::Statistic statistic );
 
   private:
 
-    Qgis::StringStatistics mStatistics;
+    Statistics mStatistics;
 
     int mCount;
     QMap< QString, int > mValues;
@@ -223,5 +242,7 @@ class CORE_EXPORT QgsStringStatisticalSummary
 
     void testString( const QString &string );
 };
+
+Q_DECLARE_OPERATORS_FOR_FLAGS( QgsStringStatisticalSummary::Statistics )
 
 #endif // QGSSTRINGSTATISTICALSUMMARY_H

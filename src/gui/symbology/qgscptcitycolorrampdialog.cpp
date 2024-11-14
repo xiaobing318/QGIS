@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgscptcitycolorrampdialog.h"
-#include "moc_qgscptcitycolorrampdialog.cpp"
 
 #include "qgscptcityarchive.h"
 #include "qgscolorramp.h"
@@ -225,7 +224,7 @@ void QgsCptCityColorRampDialog::updateTreeView( QgsCptCityDataItem *item, bool r
 {
   if ( ! item )
   {
-    QgsDebugError( QStringLiteral( "invalid item" ) );
+    QgsDebugMsg( QStringLiteral( "invalid item" ) );
     return;
   }
   if ( item->type() == QgsCptCityDataItem::Directory )
@@ -258,7 +257,7 @@ void QgsCptCityColorRampDialog::updateTreeView( QgsCptCityDataItem *item, bool r
   }
   else
   {
-    QgsDebugError( QStringLiteral( "item %1 has invalid type %2" ).arg( item->path() ).arg( static_cast<int>( item->type() ) ) );
+    QgsDebugMsg( QStringLiteral( "item %1 has invalid type %2" ).arg( item->path() ).arg( static_cast<int>( item->type() ) ) );
   }
 }
 
@@ -275,7 +274,7 @@ void QgsCptCityColorRampDialog::mListWidget_itemClicked( QListWidgetItem *item )
   }
   else
   {
-    QgsDebugError( QStringLiteral( "invalid item" ) );
+    QgsDebugMsg( QStringLiteral( "invalid item" ) );
   }
 }
 
@@ -301,7 +300,7 @@ void QgsCptCityColorRampDialog::tabBar_currentChanged( int index )
   }
   else
   {
-    QgsDebugError( QStringLiteral( "invalid index %1" ).arg( index ) );
+    QgsDebugMsg( QStringLiteral( "invalid index %1" ).arg( index ) );
     setTreeModel( mAuthorsModel );
     mArchiveViewType = QgsCptCityBrowserModel::Authors;
   }
@@ -527,7 +526,7 @@ void QgsCptCityColorRampDialog::updateListWidget( QgsCptCityDataItem *item )
       QgsCptCityColorRampItem *rampItem = qobject_cast<QgsCptCityColorRampItem *>( childrenRamps[i] );
       if ( ! rampItem )
       {
-        QgsDebugError( "invalid item " + childrenRamps[i]->path() );
+        QgsDebugMsg( "invalid item " + childrenRamps[i]->path() );
         continue;
       }
       QListWidgetItem *listItem = new QListWidgetItem();
@@ -541,7 +540,7 @@ void QgsCptCityColorRampDialog::updateListWidget( QgsCptCityDataItem *item )
   }
   else
   {
-    QgsDebugError( QStringLiteral( "invalid item" ) );
+    QgsDebugMsg( QStringLiteral( "invalid item" ) );
   }
   mListWidget->blockSignals( false );
 }
@@ -684,7 +683,7 @@ void QgsCptCityColorRampDialog::refreshModel( const QModelIndex &index )
     }
     else
     {
-      QgsDebugError( QStringLiteral( "invalid item" ) );
+      QgsDebugMsg( QStringLiteral( "invalid item" ) );
     }
   }
 

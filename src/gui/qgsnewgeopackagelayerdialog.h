@@ -46,21 +46,25 @@ class GUI_EXPORT QgsNewGeoPackageLayerDialog: public QDialog, private Ui::QgsNew
 
     /**
      * Sets the \a crs value for the new layer in the dialog.
+     * \since QGIS 3.0
      */
     void setCrs( const QgsCoordinateReferenceSystem &crs );
 
     /**
      * Returns the database path
+     * \since QGIS 3.0
      */
     QString databasePath() const { return mDatabase->filePath(); }
 
     /**
      * Sets the initial database \a path
+     * \since QGIS 3.0
      */
     void setDatabasePath( const QString &path ) { mDatabase->setFilePath( path ); }
 
     /**
      * Sets the database path widgets to a locked and read-only mode.
+     * \since QGIS 3.0
      */
     void lockDatabasePath();
 
@@ -69,6 +73,7 @@ class GUI_EXPORT QgsNewGeoPackageLayerDialog: public QDialog, private Ui::QgsNew
      *
      * The default behavior is to prompt the user for an action to take.
      *
+     * \since QGIS 3.0
      */
     void setOverwriteBehavior( OverwriteBehavior behavior );
 
@@ -95,8 +100,6 @@ class GUI_EXPORT QgsNewGeoPackageLayerDialog: public QDialog, private Ui::QgsNew
     void showHelp();
     void buttonBox_accepted();
     void buttonBox_rejected();
-    void moveFieldsUp();
-    void moveFieldsDown();
 
   private:
     bool apply();

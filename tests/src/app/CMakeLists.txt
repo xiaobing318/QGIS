@@ -17,16 +17,11 @@ set(TESTS
   testqgsattributetable.cpp
   testqgsapplocatorfilters.cpp
   testqgsdecorationscalebar.cpp
-  testqgsdwgimportdialog.cpp
   testqgsfieldcalculator.cpp
-  testqgsidentify.cpp
   testqgslayerpropertiesdialogs.cpp
   testqgsmapcanvasdockwidget.cpp
-  testqgsmaptooladdpart.cpp
-  testqgsmaptooldeletepart.cpp
-  testqgsmaptooladdring.cpp
-  testqgsmaptooldeletering.cpp
   testqgsmaptooleditannotation.cpp
+  testqgsmaptoolidentifyaction.cpp
   testqgsmaptoollabel.cpp
   testqgsmaptoolselect.cpp
   testqgsmaptoolreshape.cpp
@@ -41,7 +36,6 @@ set(TESTS
   testqgsmaptoolregularpolygon.cpp
   testqgsmaptoolsplitparts.cpp
   testqgsmaptoolsplitfeatures.cpp
-  testqgsmaptooloffsetcurve.cpp
   testqgsmeasuretool.cpp
   testqgsmeasurebearingtool.cpp
   testqgsvertexeditor.cpp
@@ -52,7 +46,7 @@ set(TESTS
   testqgsprojectproperties.cpp
   testqgsapplayoutvaliditychecks.cpp
   testqgsmeshcalculatordialog.cpp
-  testqgsgpsintegration.cpp
+  testqgsgpsinformationwidget.cpp
   testqgslabelpropertydialog.cpp
   testqgsmergeattributesdialog.cpp
 )
@@ -63,7 +57,6 @@ endif()
 
 if (WITH_BINDINGS)
   set(TESTS ${TESTS} testqgisapppython.cpp)
-  set(TESTS ${TESTS} testqgsprojectexpressions.cpp)
 endif()
 
 foreach(TESTSRC ${TESTS})

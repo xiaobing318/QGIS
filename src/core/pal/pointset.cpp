@@ -33,7 +33,6 @@
 #include "qgsgeos.h"
 #include "qgsmessagelog.h"
 #include "qgsgeometryutils.h"
-#include "qgsgeometryutils_base.h"
 #include <qglobal.h>
 
 using namespace pal;
@@ -92,14 +91,14 @@ PointSet::PointSet( const PointSet &ps )
 
   if ( ps.mGeos )
   {
-    mGeos = GEOSGeom_clone_r( QgsGeosContext::get(), ps.mGeos );
+    mGeos = GEOSGeom_clone_r( QgsGeos::getGEOSHandler(), ps.mGeos );
     mOwnsGeom = true;
   }
 }
 
 void PointSet::createGeosGeom() const
 {
-  GEOSContextHandle_t geosctxt = QgsGeosContext::get();
+  GEOSContextHandle_t geosctxt = QgsGeos::getGEOSHandler();
 
   bool needClose = false;
   if ( type == GEOS_POLYGON && ( !qgsDoubleNear( x[0], x[ nbPoints - 1] ) || !qgsDoubleNear( y[0], y[ nbPoints - 1 ] ) ) )
@@ -159,14 +158,14 @@ const GEOSPreparedGeometry *PointSet::preparedGeom() const
 
   if ( !mPreparedGeom )
   {
-    mPreparedGeom = GEOSPrepare_r( QgsGeosContext::get(), mGeos );
+    mPreparedGeom = GEOSPrepare_r( QgsGeos::getGEOSHandler(), mGeos );
   }
   return mPreparedGeom;
 }
 
 void PointSet::invalidateGeos() const
 {
-  GEOSContextHandle_t geosctxt = QgsGeosContext::get();
+  GEOSContextHandle_t geosctxt = QgsGeos::getGEOSHandler();
   if ( mOwnsGeom ) // delete old geometry if we own it
     GEOSGeom_destroy_r( geosctxt, mGeos );
   mOwnsGeom = false;
@@ -201,7 +200,7 @@ void PointSet::invalidateGeos() const
 
 PointSet::~PointSet()
 {
-  GEOSContextHandle_t geosctxt = QgsGeosContext::get();
+  GEOSContextHandle_t geosctxt = QgsGeos::getGEOSHandler();
 
   if ( mGeos && mOwnsGeom )
   {
@@ -270,7 +269,7 @@ std::unique_ptr<PointSet> PointSet::clone() const
 
 bool PointSet::containsPoint( double x, double y ) const
 {
-  GEOSContextHandle_t geosctxt = QgsGeosContext::get();
+  GEOSContextHandle_t geosctxt = QgsGeos::getGEOSHandler();
   try
   {
     geos::unique_ptr point( GEOSGeom_createPointFromXY_r( geosctxt, x, y ) );
@@ -358,13 +357,13 @@ QLinkedList<PointSet *> PointSet::splitPolygons( PointSet *inputShape, double la
         if ( pt  != -1 )
         {
           // compute the ihs->ihn->pt triangle's area
-          const double base = QgsGeometryUtilsBase::distance2D( x[shape->convexHull[ihs]], y[shape->convexHull[ihs]],
+          const double base = GeomFunction::dist_euc2d( x[shape->convexHull[ihs]], y[shape->convexHull[ihs]],
                               x[shape->convexHull[ihn]], y[shape->convexHull[ihn]] );
 
-          b = QgsGeometryUtilsBase::distance2D( x[shape->convexHull[ihs]], y[shape->convexHull[ihs]],
-                                                x[pt], y[pt] );
+          b = GeomFunction::dist_euc2d( x[shape->convexHull[ihs]], y[shape->convexHull[ihs]],
+                                        x[pt], y[pt] );
 
-          const double c = QgsGeometryUtilsBase::distance2D( x[shape->convexHull[ihn]], y[shape->convexHull[ihn]],
+          const double c = GeomFunction::dist_euc2d( x[shape->convexHull[ihn]], y[shape->convexHull[ihn]],
                            x[pt], y[pt] );
 
           const double s = ( base + b + c ) / 2; // s = half perimeter
@@ -407,7 +406,7 @@ QLinkedList<PointSet *> PointSet::splitPolygons( PointSet *inputShape, double la
         // compute distance between retainedPoint and segment
         // whether perpendicular distance (if retaindPoint is fronting segment i->j)
         // or distance between retainedPt and i or j (choose the nearest)
-        seg_length = QgsGeometryUtilsBase::distance2D( x[i], y[i], x[j], y[j] );
+        seg_length = GeomFunction::dist_euc2d( x[i], y[i], x[j], y[j] );
         cx = ( x[i] + x[j] ) / 2.0;
         cy = ( y[i] + y[j] ) / 2.0;
         dx = cy - y[i];
@@ -420,7 +419,7 @@ QLinkedList<PointSet *> PointSet::splitPolygons( PointSet *inputShape, double la
 
         if ( seg_length < EPSILON || std::fabs( ( b = GeomFunction::cross_product( ex, ey, fx, fy, x[retainedPt], y[retainedPt] ) / ( seg_length ) ) ) > ( seg_length / 2 ) )   // retainedPt is not fronting i->j
         {
-          if ( ( ex = QgsGeometryUtilsBase::sqrDistance2D( x[i], y[i], x[retainedPt], y[retainedPt] ) ) < ( ey = QgsGeometryUtilsBase::sqrDistance2D( x[j], y[j], x[retainedPt], y[retainedPt] ) ) )
+          if ( ( ex = GeomFunction::dist_euc2d_sq( x[i], y[i], x[retainedPt], y[retainedPt] ) ) < ( ey = GeomFunction::dist_euc2d_sq( x[j], y[j], x[retainedPt], y[retainedPt] ) ) )
           {
             b = ex;
             ps = i;
@@ -551,7 +550,7 @@ void PointSet::offsetCurveByDistance( double distance )
   if ( !mGeos || type != GEOS_LINESTRING )
     return;
 
-  GEOSContextHandle_t geosctxt = QgsGeosContext::get();
+  GEOSContextHandle_t geosctxt = QgsGeos::getGEOSHandler();
   geos::unique_ptr newGeos = nullptr;
   try
   {
@@ -649,7 +648,7 @@ void PointSet::extendLineByDistance( double startDistance, double endDistance, d
     {
       const double thisX = x[i];
       const double thisY = y[i];
-      const double thisSegmentLength = QgsGeometryUtilsBase::distance2D( thisX, thisY, lastX, lastY );
+      const double thisSegmentLength = std::sqrt( ( thisX - lastX ) * ( thisX - lastX ) + ( thisY - lastY ) * ( thisY - lastY ) );
       distanceConsumed += thisSegmentLength;
       if ( distanceConsumed >= smoothDistance )
       {
@@ -662,7 +661,7 @@ void PointSet::extendLineByDistance( double startDistance, double endDistance, d
       lastY = thisY;
     }
 
-    const double distance = QgsGeometryUtilsBase::distance2D( x1, y1, x0, y0 );
+    const double distance = std::sqrt( ( x1 - x0 ) * ( x1 - x0 ) + ( y1 - y0 ) * ( y1 - y0 ) );
     const double extensionFactor = ( startDistance + distance ) / distance;
     const QgsPointXY newStart = QgsGeometryUtils::interpolatePointOnLine( x1, y1, x0, y0, extensionFactor );
     x0 = newStart.x();
@@ -685,7 +684,7 @@ void PointSet::extendLineByDistance( double startDistance, double endDistance, d
     {
       const double thisX = x[i];
       const double thisY = y[i];
-      const double thisSegmentLength = QgsGeometryUtilsBase::distance2D( thisX, thisY, lastX, lastY );
+      const double thisSegmentLength = std::sqrt( ( thisX - lastX ) * ( thisX - lastX ) + ( thisY - lastY ) * ( thisY - lastY ) );
       distanceConsumed += thisSegmentLength;
       if ( distanceConsumed >= smoothDistance )
       {
@@ -698,7 +697,7 @@ void PointSet::extendLineByDistance( double startDistance, double endDistance, d
       lastY = thisY;
     }
 
-    const double distance = QgsGeometryUtilsBase::distance2D( xend1, yend1, xend0, yend0 );
+    const double distance = std::sqrt( ( xend1 - xend0 ) * ( xend1 - xend0 ) + ( yend1 - yend0 ) * ( yend1 - yend0 ) );
     const double extensionFactor = ( endDistance + distance ) / distance;
     const QgsPointXY newEnd = QgsGeometryUtils::interpolatePointOnLine( xend1, yend1, xend0, yend0, extensionFactor );
     x.emplace_back( newEnd.x() );
@@ -716,7 +715,7 @@ void PointSet::extendLineByDistance( double startDistance, double endDistance, d
   invalidateGeos();
 }
 
-OrientedConvexHullBoundingBox PointSet::computeConvexHullOrientedBoundingBox( bool &ok ) const
+OrientedConvexHullBoundingBox PointSet::computeConvexHullOrientedBoundingBox( bool &ok )
 {
   ok = false;
   double bbox[4]; // xmin, ymin, xmax, ymax
@@ -866,7 +865,7 @@ double PointSet::minDistanceToPoint( double px, double py, double *rx, double *r
   if ( !mGeos )
     return 0;
 
-  GEOSContextHandle_t geosctxt = QgsGeosContext::get();
+  GEOSContextHandle_t geosctxt = QgsGeos::getGEOSHandler();
   try
   {
     geos::unique_ptr geosPt( GEOSGeom_createPointFromXY_r( geosctxt, px, py ) );
@@ -905,7 +904,7 @@ double PointSet::minDistanceToPoint( double px, double py, double *rx, double *r
     if ( ry )
       *ry = ny;
 
-    return QgsGeometryUtilsBase::sqrDistance2D( px, py, nx, ny );
+    return GeomFunction::dist_euc2d_sq( px, py, nx, ny );
   }
   catch ( GEOSException &e )
   {
@@ -925,7 +924,7 @@ void PointSet::getCentroid( double &px, double &py, bool forceInside ) const
 
   try
   {
-    GEOSContextHandle_t geosctxt = QgsGeosContext::get();
+    GEOSContextHandle_t geosctxt = QgsGeos::getGEOSHandler();
     geos::unique_ptr centroidGeom( GEOSGetCentroid_r( geosctxt, mGeos ) );
     if ( centroidGeom )
     {
@@ -1020,7 +1019,7 @@ geos::unique_ptr PointSet::interpolatePoint( double distance ) const
 
   try
   {
-    geos::unique_ptr res( GEOSInterpolate_r( QgsGeosContext::get(), thisGeos, distance ) );
+    geos::unique_ptr res( GEOSInterpolate_r( QgsGeos::getGEOSHandler(), thisGeos, distance ) );
     return res;
   }
   catch ( GEOSException &e )
@@ -1039,7 +1038,7 @@ double PointSet::lineLocatePoint( const GEOSGeometry *point ) const
   double distance = -1;
   try
   {
-    distance = GEOSProject_r( QgsGeosContext::get(), thisGeos, point );
+    distance = GEOSProject_r( QgsGeos::getGEOSHandler(), thisGeos, point );
   }
   catch ( GEOSException &e )
   {
@@ -1069,7 +1068,7 @@ double PointSet::length() const
   if ( !mGeos )
     return -1;
 
-  GEOSContextHandle_t geosctxt = QgsGeosContext::get();
+  GEOSContextHandle_t geosctxt = QgsGeos::getGEOSHandler();
 
   try
   {
@@ -1095,7 +1094,7 @@ double PointSet::area() const
   if ( !mGeos )
     return -1;
 
-  GEOSContextHandle_t geosctxt = QgsGeosContext::get();
+  GEOSContextHandle_t geosctxt = QgsGeos::getGEOSHandler();
 
   try
   {
@@ -1121,7 +1120,7 @@ QString PointSet::toWkt() const
   if ( !mGeos )
     createGeosGeom();
 
-  GEOSContextHandle_t geosctxt = QgsGeosContext::get();
+  GEOSContextHandle_t geosctxt = QgsGeos::getGEOSHandler();
 
   try
   {

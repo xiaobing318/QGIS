@@ -20,7 +20,6 @@
 
 #include "qgsgrass.h"
 #include "qgsgrassoptions.h"
-#include "moc_qgsgrassoptions.cpp"
 #include "ui_qgsgrassoptionsbase.h"
 
 extern "C"
@@ -116,7 +115,7 @@ void QgsGrassOptions::gisbaseChanged()
   {
     gisbase = mGisbaseLineEdit->text().trimmed();
   }
-  QgsDebugMsgLevel( "gisbase = " + gisbase, 2 );
+  QgsDebugMsg( "gisbase = " + gisbase );
   if ( !QgsGrass::isValidGrassBaseDir( gisbase ) )
   {
     mGisbaseErrorLabel->setText( tr( "Currently selected GRASS installation is not valid" ) );

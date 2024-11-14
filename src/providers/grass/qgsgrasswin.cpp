@@ -70,7 +70,7 @@ void QgsGrassWin::hideWindow( int pid )
   }
   else
   {
-    QgsDebugError( "cannot find driver window" );
+    QgsDebugMsg( "cannot find driver window" );
   }
   // Unfortunately the window opens first for a moment
   ShowWindow( hWnd, SW_HIDE );

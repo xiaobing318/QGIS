@@ -24,27 +24,21 @@
 //
 
 QVariantMap QgsCollectorAlgorithm::processCollection( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback,
-    const std::function<QgsGeometry( const QVector< QgsGeometry >& )> &collector, int maxQueueLength, Qgis::ProcessingFeatureSourceFlags sourceFlags, bool separateDisjoint )
+    const std::function<QgsGeometry( const QVector< QgsGeometry >& )> &collector, int maxQueueLength, QgsProcessingFeatureSource::Flags sourceFlags, bool separateDisjoint )
 {
   std::unique_ptr< QgsProcessingFeatureSource > source( parameterAsSource( parameters, QStringLiteral( "INPUT" ), context ) );
   if ( !source )
     throw QgsProcessingException( invalidSourceError( parameters, QStringLiteral( "INPUT" ) ) );
 
   QString dest;
-  std::unique_ptr< QgsFeatureSink > sink( parameterAsSink( parameters, QStringLiteral( "OUTPUT" ), context, dest, source->fields(), QgsWkbTypes::multiType( source->wkbType() ), source->sourceCrs(), QgsFeatureSink::RegeneratePrimaryKey ) );
+  std::unique_ptr< QgsFeatureSink > sink( parameterAsSink( parameters, QStringLiteral( "OUTPUT" ), context, dest, source->fields(), QgsWkbTypes::multiType( source->wkbType() ), source->sourceCrs() ) );
 
   if ( !sink )
     throw QgsProcessingException( invalidSinkError( parameters, QStringLiteral( "OUTPUT" ) ) );
 
-  QVariantMap outputs;
-  outputs.insert( QStringLiteral( "OUTPUT" ), dest );
-
-  const QStringList fields = parameterAsStrings( parameters, QStringLiteral( "FIELD" ), context );
+  const QStringList fields = parameterAsFields( parameters, QStringLiteral( "FIELD" ), context );
 
   const long count = source->featureCount();
-
-  if ( !( count > 0 ) )
-    return outputs;
 
   QgsFeature f;
   QgsFeatureIterator it = source->getFeatures( QgsFeatureRequest(), sourceFlags );
@@ -73,7 +67,7 @@ QVariantMap QgsCollectorAlgorithm::processCollection( const QVariantMap &paramet
         firstFeature = false;
       }
 
-      if ( f.hasGeometry() && !f.geometry().isEmpty() )
+      if ( f.hasGeometry() && !f.geometry().isNull() )
       {
         geomQueue.append( f.geometry() );
         if ( maxQueueLength > 0 && geomQueue.length() > maxQueueLength )
@@ -89,13 +83,7 @@ QVariantMap QgsCollectorAlgorithm::processCollection( const QVariantMap &paramet
       current++;
     }
 
-    if ( geomQueue.isEmpty() )
-    {
-      outputFeature.clearGeometry();
-      if ( !sink->addFeature( outputFeature, QgsFeatureSink::FastInsert ) )
-        throw QgsProcessingException( writeFeatureError( sink.get(), parameters, QStringLiteral( "OUTPUT" ) ) );
-    }
-    else if ( !separateDisjoint )
+    if ( !separateDisjoint )
     {
       outputFeature.setGeometry( collector( geomQueue ) );
       if ( !sink->addFeature( outputFeature, QgsFeatureSink::FastInsert ) )
@@ -148,7 +136,7 @@ QVariantMap QgsCollectorAlgorithm::processCollection( const QVariantMap &paramet
         attributeHash.insert( indexAttributes, f.attributes() );
       }
 
-      if ( f.hasGeometry() && !f.geometry().isEmpty() )
+      if ( f.hasGeometry() && !f.geometry().isNull() )
       {
         geometryHash[ indexAttributes ].append( f.geometry() );
       }
@@ -202,8 +190,8 @@ QVariantMap QgsCollectorAlgorithm::processCollection( const QVariantMap &paramet
     }
   }
 
-  sink->finalize();
-
+  QVariantMap outputs;
+  outputs.insert( QStringLiteral( "OUTPUT" ), dest );
   return outputs;
 }
 
@@ -242,11 +230,11 @@ void QgsDissolveAlgorithm::initAlgorithm( const QVariantMap & )
 {
   addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ), QObject::tr( "Input layer" ) ) );
   addParameter( new QgsProcessingParameterField( QStringLiteral( "FIELD" ), QObject::tr( "Dissolve field(s)" ), QVariant(),
-                QStringLiteral( "INPUT" ), Qgis::ProcessingFieldParameterDataType::Any, true, true ) );
+                QStringLiteral( "INPUT" ), QgsProcessingParameterField::Any, true, true ) );
 
   std::unique_ptr< QgsProcessingParameterBoolean > disjointParam = std::make_unique< QgsProcessingParameterBoolean >( QStringLiteral( "SEPARATE_DISJOINT" ),
       QObject::tr( "Keep disjoint features separate" ), false );
-  disjointParam->setFlags( disjointParam->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  disjointParam->setFlags( disjointParam->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( disjointParam.release() );
 
   addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Dissolved" ) ) );
@@ -263,11 +251,6 @@ QString QgsDissolveAlgorithm::shortHelpString() const
                       "as separate features (instead of parts of a single multipart feature)." );
 }
 
-Qgis::ProcessingAlgorithmDocumentationFlags QgsDissolveAlgorithm::documentationFlags() const
-{
-  return Qgis::ProcessingAlgorithmDocumentationFlag::RegeneratesPrimaryKey;
-}
-
 QgsDissolveAlgorithm *QgsDissolveAlgorithm::createInstance() const
 {
   return new QgsDissolveAlgorithm();
@@ -280,7 +263,7 @@ QVariantMap QgsDissolveAlgorithm::processAlgorithm( const QVariantMap &parameter
   return processCollection( parameters, context, feedback, [ & ]( const QVector< QgsGeometry > &parts )->QgsGeometry
   {
     QgsGeometry result( QgsGeometry::unaryUnion( parts ) );
-    if ( QgsWkbTypes::geometryType( result.wkbType() ) == Qgis::GeometryType::Line )
+    if ( QgsWkbTypes::geometryType( result.wkbType() ) == QgsWkbTypes::LineGeometry )
       result = result.mergeLines();
     // Geos may fail in some cases, let's try a slower but safer approach
     // See: https://github.com/qgis/QGIS/issues/28411 - Dissolve tool failing to produce outputs
@@ -294,7 +277,7 @@ QVariantMap QgsDissolveAlgorithm::processAlgorithm( const QVariantMap &parameter
       for ( const auto &p : parts )
       {
         result = QgsGeometry::unaryUnion( QVector< QgsGeometry >() << result << p );
-        if ( QgsWkbTypes::geometryType( result.wkbType() ) == Qgis::GeometryType::Line )
+        if ( QgsWkbTypes::geometryType( result.wkbType() ) == QgsWkbTypes::LineGeometry )
           result = result.mergeLines();
         if ( feedback->isCanceled() )
           return result;
@@ -307,7 +290,7 @@ QVariantMap QgsDissolveAlgorithm::processAlgorithm( const QVariantMap &parameter
         throw QgsProcessingException( QObject::tr( "The algorithm returned no output." ) );
     }
     return result;
-  }, 10000, Qgis::ProcessingFeatureSourceFlags(), separateDisjoint );
+  }, 10000, QgsProcessingFeatureSource::Flags(), separateDisjoint );
 }
 
 //
@@ -344,7 +327,7 @@ QVariantMap QgsCollectAlgorithm::processAlgorithm( const QVariantMap &parameters
   return processCollection( parameters, context, feedback, []( const QVector< QgsGeometry > &parts )->QgsGeometry
   {
     return QgsGeometry::collectGeometry( parts );
-  }, 0, Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks );
+  }, 0, QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks );
 }
 
 
@@ -352,7 +335,7 @@ void QgsCollectAlgorithm::initAlgorithm( const QVariantMap & )
 {
   addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ), QObject::tr( "Input layer" ) ) );
   addParameter( new QgsProcessingParameterField( QStringLiteral( "FIELD" ), QObject::tr( "Unique ID fields" ), QVariant(),
-                QStringLiteral( "INPUT" ), Qgis::ProcessingFieldParameterDataType::Any, true, true ) );
+                QStringLiteral( "INPUT" ), QgsProcessingParameterField::Any, true, true ) );
 
   addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Collected" ) ) );
 }
@@ -367,11 +350,6 @@ QString QgsCollectAlgorithm::shortHelpString() const
                       "This algorithm does not dissolve overlapping geometries - they will be collected together without modifying the shape of each geometry part." ) +
          QStringLiteral( "\n\n" ) +
          QObject::tr( "See the 'Promote to multipart' or 'Aggregate' algorithms for alternative options." );
-}
-
-Qgis::ProcessingAlgorithmDocumentationFlags QgsCollectAlgorithm::documentationFlags() const
-{
-  return Qgis::ProcessingAlgorithmDocumentationFlag::RegeneratesPrimaryKey;
 }
 
 QgsCollectAlgorithm *QgsCollectAlgorithm::createInstance() const

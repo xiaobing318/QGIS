@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/labeling/qgslabelsettingswidgetbase.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -45,7 +45,7 @@ Returns the context in which the symbol widget is shown, e.g., the associated ma
 .. seealso:: :py:func:`setContext`
 %End
 
-    virtual void setGeometryType( Qgis::GeometryType type );
+    virtual void setGeometryType( QgsWkbTypes::GeometryType type );
 %Docstring
 Sets the geometry ``type`` of the features to customize the widget accordingly.
 %End
@@ -106,7 +106,7 @@ and help text for the associated property.
 class QgsLabelSettingsWidgetDialog : QDialog
 {
 %Docstring(signature="appended")
-A blocking dialog containing a :py:class:`QgsLabelSettingsWidgetBase`.
+A blocking dialog containing a QgsLabelSettingsWidgetBase.
 
 .. versionadded:: 3.12
 %End
@@ -140,5 +140,5 @@ Returns the dialog's button box.
  *                                                                      *
  * src/gui/labeling/qgslabelsettingswidgetbase.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

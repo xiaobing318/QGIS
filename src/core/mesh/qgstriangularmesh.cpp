@@ -133,7 +133,7 @@ QgsMeshVertex QgsTriangularMesh::transformVertex( const QgsMeshVertex &vertex, Q
     catch ( QgsCsException &cse )
     {
       Q_UNUSED( cse )
-      QgsDebugError( QStringLiteral( "Caught CRS exception %1" ).arg( cse.what() ) );
+      QgsDebugMsg( QStringLiteral( "Caught CRS exception %1" ).arg( cse.what() ) );
       transformedVertex = QgsMeshVertex();
     }
   }
@@ -141,7 +141,7 @@ QgsMeshVertex QgsTriangularMesh::transformVertex( const QgsMeshVertex &vertex, Q
   return transformedVertex;
 }
 
-QgsMeshVertex QgsTriangularMesh::calculateCentroid( const QgsMeshFace &nativeFace ) const
+QgsMeshVertex QgsTriangularMesh::calculateCentroid( const QgsMeshFace &nativeFace )
 {
   return QgsMeshUtils::centroid( nativeFace, mTriangularMesh.vertices );
 }
@@ -187,7 +187,7 @@ bool QgsTriangularMesh::update( QgsMesh *nativeMesh, const QgsCoordinateTransfor
   // TRANSFORM VERTICES
   mCoordinateTransform = transform;
   mTriangularMesh.vertices.resize( nativeMesh->vertices.size() );
-  mExtent.setNull();
+  mExtent.setMinimal();
   for ( int i = 0; i < nativeMesh->vertices.size(); ++i )
   {
     mTriangularMesh.vertices[i] = nativeToTriangularCoordinates( nativeMesh->vertices.at( i ) );
@@ -303,7 +303,7 @@ QgsRectangle QgsTriangularMesh::nativeExtent()
     catch ( QgsCsException &cse )
     {
       Q_UNUSED( cse )
-      QgsDebugError( QStringLiteral( "Caught CRS exception %1" ).arg( cse.what() ) );
+      QgsDebugMsg( QStringLiteral( "Caught CRS exception %1" ).arg( cse.what() ) );
     }
   }
   else
@@ -316,7 +316,7 @@ QgsRectangle QgsTriangularMesh::extent() const
 {
   if ( !mIsExtentValid )
   {
-    mExtent.setNull();
+    mExtent.setMinimal();
     for ( int i = 0; i < mTriangularMesh.vertices.size(); ++i )
       if ( !mTriangularMesh.vertices.at( i ).isEmpty() )
         mExtent.include( mTriangularMesh.vertices.at( i ) );
@@ -406,7 +406,7 @@ QgsPointXY QgsTriangularMesh::transformFromLayerToTrianglesCoordinates( const Qg
     catch ( QgsCsException &cse )
     {
       Q_UNUSED( cse )
-      QgsDebugError( QStringLiteral( "Caught CRS exception %1" ).arg( cse.what() ) );
+      QgsDebugMsg( QStringLiteral( "Caught CRS exception %1" ).arg( cse.what() ) );
       mapPoint = point;
     }
   }
@@ -474,7 +474,7 @@ QList<int> QgsTriangularMesh::edgeIndexesForRectangle( const QgsRectangle &recta
 
 QVector<QVector3D> QgsTriangularMesh::vertexNormals( float vertScale ) const
 {
-  QVector<QVector3D> normals( vertices().count(), QVector3D( 0, 0, 0 ) );
+  QVector<QVector3D> normales( vertices().count(), QVector3D( 0, 0, 0 ) );
 
   for ( const auto &face : triangles() )
   {
@@ -494,10 +494,10 @@ QVector<QVector3D> QgsTriangularMesh::vertexNormals( float vertScale ) const
       QVector3D v1( float( otherVert1.x() - vert.x() ), float( otherVert1.y() - vert.y() ), vertScale * float( otherVert1.z() - vert.z() ) );
       QVector3D v2( float( otherVert2.x() - vert.x() ), float( otherVert2.y() - vert.y() ), vertScale * float( otherVert2.z() - vert.z() ) );
 
-      normals[index1] += QVector3D::crossProduct( v1, v2 );
+      normales[index1] += QVector3D::crossProduct( v1, v2 );
     }
   }
-  return normals;
+  return normales;
 }
 
 QVector<QgsTriangularMesh *> QgsTriangularMesh::simplifyMesh( double reductionFactor, int minimumTrianglesCount ) const
@@ -559,7 +559,7 @@ QVector<QgsTriangularMesh *> QgsTriangularMesh::simplifyMesh( double reductionFa
 
     if ( size == 0 || int( size ) >= indexes.size() )
     {
-      QgsDebugError( QStringLiteral( "Mesh simplification failed after %1 path" ).arg( path + 1 ) );
+      QgsDebugMsg( QStringLiteral( "Mesh simplification failed after %1 path" ).arg( path + 1 ) );
       delete simplifiedMesh;
       break;
     }
@@ -690,7 +690,7 @@ bool QgsMeshUtils::isInTriangleFace( const QgsPointXY point, const QgsMeshFace &
   QVector<QgsMeshVertex> triangle( 3 );
   for ( int i = 0; i < 3; ++i )
   {
-    if ( face[i] >= vertices.count() )
+    if ( face[i] > vertices.count() )
       return false;
     triangle[i] = vertices[face[i]];
   }

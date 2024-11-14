@@ -15,28 +15,28 @@ import os
 import unittest
 
 from osgeo import ogr
-from qgis.PyQt.QtCore import QCoreApplication, Qt, QTemporaryDir, QVariant
+from qgis.PyQt.QtCore import QCoreApplication, QTemporaryDir, QVariant, Qt
 from qgis.PyQt.QtTest import QAbstractItemModelTester
 from qgis.core import (
+    QgsVectorLayer,
+    QgsProviderRegistry,
+    QgsWkbTypes,
+    QgsLayerMetadata,
+    QgsProviderMetadata,
     QgsBox3d,
+    QgsRectangle,
+    QgsMetadataSearchContext,
+    QgsFields,
+    QgsField,
     QgsCoordinateReferenceSystem,
     QgsFeature,
-    QgsField,
-    QgsFields,
     QgsGeometry,
-    QgsLayerMetadata,
-    QgsMetadataSearchContext,
-    QgsProviderMetadata,
-    QgsProviderRegistry,
-    QgsRectangle,
-    QgsVectorLayer,
-    QgsWkbTypes,
 )
 from qgis.gui import (
     QgsLayerMetadataResultsModel,
     QgsLayerMetadataResultsProxyModel,
 )
-from qgis.testing import TestCase, start_app
+from qgis.testing import start_app, TestCase
 
 QGIS_APP = start_app()
 NUM_LAYERS = 20
@@ -49,7 +49,6 @@ class TestQgsLayerMetadataResultModels(TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
-        super().setUpClass()
 
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain(cls.__name__)
@@ -71,7 +70,7 @@ class TestQgsLayerMetadataResultModels(TestCase):
         self.conn.store('test_conn')
 
         for i in range(NUM_LAYERS):
-            lyr = ds.CreateLayer(f"layer_{i}", geom_type=ogr.wkbPoint, options=['SPATIAL_INDEX=NO'])
+            lyr = ds.CreateLayer("layer_%s" % i, geom_type=ogr.wkbPoint, options=['SPATIAL_INDEX=NO'])
             lyr.CreateField(ogr.FieldDefn('text_field', ogr.OFTString))
             f = ogr.Feature(lyr.GetLayerDefn())
             f['text_field'] = 'foo'
@@ -87,8 +86,8 @@ class TestQgsLayerMetadataResultModels(TestCase):
 
         fields = QgsFields()
         fields.append(QgsField('name', QVariant.String))
-        self.conn.createVectorTable('', 'aspatial', fields, QgsWkbTypes.Type.NoGeometry, QgsCoordinateReferenceSystem(), False, {})
-        self.conn.createVectorTable('', 'linestring', fields, QgsWkbTypes.Type.LineString, QgsCoordinateReferenceSystem(), False, {})
+        self.conn.createVectorTable('', 'aspatial', fields, QgsWkbTypes.NoGeometry, QgsCoordinateReferenceSystem(), False, {})
+        self.conn.createVectorTable('', 'linestring', fields, QgsWkbTypes.LineString, QgsCoordinateReferenceSystem(), False, {})
         vl = QgsVectorLayer(self.conn.tableUri('', 'linestring'))
         self.assertTrue(vl.isValid())
         self.assertTrue(vl.startEditing())
@@ -97,7 +96,7 @@ class TestQgsLayerMetadataResultModels(TestCase):
         f.setGeometry(QgsGeometry.fromWkt('LINESTRING(0 0, 1 1, 2 2)'))
         vl.addFeatures([f])
         self.assertTrue(vl.commitChanges())
-        self.conn.createVectorTable('', 'polygon', fields, QgsWkbTypes.Type.Polygon, QgsCoordinateReferenceSystem(), False, {})
+        self.conn.createVectorTable('', 'polygon', fields, QgsWkbTypes.Polygon, QgsCoordinateReferenceSystem(), False, {})
         vl = QgsVectorLayer(self.conn.tableUri('', 'polygon'))
         self.assertTrue(vl.isValid())
         self.assertTrue(vl.startEditing())
@@ -147,11 +146,11 @@ class TestQgsLayerMetadataResultModels(TestCase):
         proxy_model.setFilterExtent(QgsRectangle())
         metadata = proxy_model.data(proxy_model.index(0, 0), QgsLayerMetadataResultsModel.Roles.Metadata)
         self.assertEqual(metadata.identifier(), 'layer_0')
-        proxy_model.sort(0, Qt.SortOrder.DescendingOrder)
+        proxy_model.sort(0, Qt.DescendingOrder)
         metadata = proxy_model.data(proxy_model.index(0, 0), QgsLayerMetadataResultsModel.Roles.Metadata)
         self.assertEqual(metadata.identifier(), 'polygon')
 
-        proxy_model.setFilterGeometryType(QgsWkbTypes.GeometryType.PolygonGeometry)
+        proxy_model.setFilterGeometryType(QgsWkbTypes.PolygonGeometry)
         proxy_model.setFilterGeometryTypeEnabled(True)
         self.assertEqual({proxy_model.data(proxy_model.index(i, 0)) for i in range(proxy_model.rowCount())}, {'polygon'})
         proxy_model.setFilterGeometryTypeEnabled(False)

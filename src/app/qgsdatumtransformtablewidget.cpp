@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsdatumtransformtablewidget.h"
-#include "moc_qgsdatumtransformtablewidget.cpp"
 
 #include "qgscoordinatetransform.h"
 #include "qgsdatumtransformdialog.h"

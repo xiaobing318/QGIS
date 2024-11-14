@@ -20,7 +20,7 @@
 #include "qgis_sip.h"
 #include "qgis_core.h"
 #include "qgsmapunitscale.h"
-#include "qgis.h"
+#include "qgsunittypes.h"
 
 #include <QSharedData>
 #include <QPainter>
@@ -37,6 +37,7 @@ class QgsPropertyCollection;
   * \ingroup core
   * \brief Container for settings relating to a text buffer.
   * \note QgsTextBufferSettings objects are implicitly shared.
+  * \since QGIS 3.0
  */
 class CORE_EXPORT QgsTextBufferSettings
 {
@@ -44,8 +45,16 @@ class CORE_EXPORT QgsTextBufferSettings
 
     QgsTextBufferSettings();
 
+    /**
+     * Copy constructor.
+     * \param other source settings
+     */
     QgsTextBufferSettings( const QgsTextBufferSettings &other );
 
+    /**
+     * Copy constructor.
+     * \param other source QgsTextBufferSettings
+     */
     QgsTextBufferSettings &operator=( const QgsTextBufferSettings &other );
 
     ~QgsTextBufferSettings();
@@ -86,7 +95,7 @@ class CORE_EXPORT QgsTextBufferSettings
      * \see size()
      * \see setSizeUnit()
      */
-    Qgis::RenderUnit sizeUnit() const;
+    QgsUnitTypes::RenderUnit sizeUnit() const;
 
     /**
      * Sets the units used for the buffer size.
@@ -94,7 +103,7 @@ class CORE_EXPORT QgsTextBufferSettings
      * \see setSize()
      * \see sizeUnit()
      */
-    void setSizeUnit( Qgis::RenderUnit unit );
+    void setSizeUnit( QgsUnitTypes::RenderUnit unit );
 
     /**
      * Returns the map unit scale object for the buffer size. This is only used if the

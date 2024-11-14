@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     translate.py
@@ -52,9 +54,9 @@ class gdaladdo(GdalAlgorithm):
         self.methods = ((self.tr('Nearest Neighbour (default)'), 'nearest'),
                         (self.tr('Average'), 'average'),
                         (self.tr('Gaussian'), 'gauss'),
-                        (self.tr('Cubic (4x4 Kernel)'), 'cubic'),
-                        (self.tr('Cubic B-Spline (4x4 Kernel)'), 'cubicspline'),
-                        (self.tr('Lanczos (6x6 Kernel)'), 'lanczos'),
+                        (self.tr('Cubic Convolution'), 'cubic'),
+                        (self.tr('B-Spline Convolution'), 'cubicspline'),
+                        (self.tr('Lanczos Windowed Sinc'), 'lanczos'),
                         (self.tr('Average MP'), 'average_mp'),
                         (self.tr('Average in Mag/Phase Space'), 'average_magphase'),
                         (self.tr('Mode'), 'mode'))
@@ -97,7 +99,7 @@ class gdaladdo(GdalAlgorithm):
                                                    defaultValue=None,
                                                    optional=True))
         for p in params:
-            p.setFlags(p.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+            p.setFlags(p.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
             self.addParameter(p)
 
         self.addOutput(QgsProcessingOutputRasterLayer(self.OUTPUT, self.tr('Pyramidized')))
@@ -124,9 +126,10 @@ class gdaladdo(GdalAlgorithm):
         inLayer = self.parameterAsRasterLayer(parameters, self.INPUT, context)
         if inLayer is None:
             raise QgsProcessingException(self.invalidRasterError(parameters, self.INPUT))
-        input_details = GdalUtils.gdal_connection_details_from_layer(inLayer)
 
-        arguments = [input_details.connection_string]
+        fileName = inLayer.source()
+
+        arguments = [fileName]
         if self.RESAMPLING in parameters and parameters[self.RESAMPLING] is not None:
             arguments.append('-r')
             arguments.append(self.methods[self.parameterAsEnum(parameters, self.RESAMPLING, context)][1])
@@ -146,9 +149,6 @@ class gdaladdo(GdalAlgorithm):
 
         arguments.extend(self.parameterAsString(parameters, self.LEVELS, context).split(' '))
 
-        if input_details.credential_options:
-            arguments.extend(input_details.credential_options_as_arguments())
-
-        self.setOutputValue(self.OUTPUT, inLayer.source())
+        self.setOutputValue(self.OUTPUT, fileName)
 
         return [self.commandName(), GdalUtils.escapeAndJoin(arguments)]

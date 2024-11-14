@@ -33,12 +33,11 @@ class QgsExtractLabelsAlgorithm : public QgsProcessingAlgorithm
     QString name() const override;
     QString displayName() const override;
     QStringList tags() const override;
-    Qgis::ProcessingAlgorithmFlags flags() const override;
+    Flags flags() const override;
     QString group() const override;
     QString groupId() const override;
     QString shortHelpString() const override;
     QString shortDescription() const override;
-    Qgis::ProcessingAlgorithmDocumentationFlags documentationFlags() const override;
     QgsExtractLabelsAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/raster/qgsrasterresampler.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -39,9 +39,8 @@ Resamples a source image to a destination image.
 The size of the passed destination image should be respected during the resampling
 process.
 
-.. deprecated:: 3.10.1
-
-   Use the more efficient :py:class:`QgsRasterResamplerV2` interface instead.
+.. deprecated:: QGIS 3.10.1
+  use the more efficient :py:class:`QgsRasterResamplerV2` interface instead.
 %End
 
     virtual QString type() const = 0;
@@ -72,7 +71,7 @@ class QgsRasterResamplerV2 : QgsRasterResampler
 {
 %Docstring(signature="appended")
 Interface for resampling rasters (V2) (e.g. to have a smoother appearance),
-which provides a more efficient interface vs :py:class:`QgsRasterResampler`.
+which provides a more efficient interface vs QgsRasterResampler.
 
 .. versionadded:: 3.10.1
 %End
@@ -96,5 +95,5 @@ Returns the resampled image, or a null QImage if the resampling fails.
  *                                                                      *
  * src/core/raster/qgsrasterresampler.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

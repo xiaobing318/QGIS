@@ -70,14 +70,14 @@ QVariantMap QgsExtractByExtentAlgorithm::processAlgorithm( const QVariantMap &pa
   if ( !featureSource )
     throw QgsProcessingException( invalidSourceError( parameters, QStringLiteral( "INPUT" ) ) );
 
-  if ( featureSource->hasSpatialIndex() == Qgis::SpatialIndexPresence::NotPresent )
+  if ( featureSource->hasSpatialIndex() == QgsFeatureSource::SpatialIndexNotPresent )
     feedback->pushWarning( QObject::tr( "No spatial index exists for input layer, performance will be severely degraded" ) );
 
   const QgsRectangle extent = parameterAsExtent( parameters, QStringLiteral( "EXTENT" ), context, featureSource->sourceCrs() );
   const bool clip = parameterAsBoolean( parameters, QStringLiteral( "CLIP" ), context );
 
   // if clipping, we force multi output
-  const Qgis::WkbType outType = clip ? QgsWkbTypes::promoteNonPointTypesToMulti( featureSource->wkbType() ) : featureSource->wkbType();
+  const QgsWkbTypes::Type outType = clip ? QgsWkbTypes::promoteNonPointTypesToMulti( featureSource->wkbType() ) : featureSource->wkbType();
 
   QString dest;
   std::unique_ptr< QgsFeatureSink > sink( parameterAsSink( parameters, QStringLiteral( "OUTPUT" ), context, dest, featureSource->fields(), outType, featureSource->sourceCrs() ) );
@@ -88,7 +88,7 @@ QVariantMap QgsExtractByExtentAlgorithm::processAlgorithm( const QVariantMap &pa
   const QgsGeometry clipGeom = parameterAsExtentGeometry( parameters, QStringLiteral( "EXTENT" ), context, featureSource->sourceCrs() );
 
   const double step = featureSource->featureCount() > 0 ? 100.0 / featureSource->featureCount() : 1;
-  QgsFeatureIterator inputIt = featureSource->getFeatures( QgsFeatureRequest().setFilterRect( extent ).setFlags( Qgis::FeatureRequestFlag::ExactIntersect ) );
+  QgsFeatureIterator inputIt = featureSource->getFeatures( QgsFeatureRequest().setFilterRect( extent ).setFlags( QgsFeatureRequest::ExactIntersect ) );
   QgsFeature f;
   int i = -1;
   while ( inputIt.nextFeature( f ) )
@@ -103,7 +103,7 @@ QVariantMap QgsExtractByExtentAlgorithm::processAlgorithm( const QVariantMap &pa
     {
       QgsGeometry g = f.geometry().intersection( clipGeom );
 
-      if ( g.type() != Qgis::GeometryType::Point )
+      if ( g.type() != QgsWkbTypes::GeometryType::PointGeometry )
       {
         // some data providers are picky about the geometries we pass to them: we can't add single-part geometries
         // when we promised multi-part geometries, so ensure we have the right type
@@ -117,8 +117,6 @@ QVariantMap QgsExtractByExtentAlgorithm::processAlgorithm( const QVariantMap &pa
       throw QgsProcessingException( writeFeatureError( sink.get(), parameters, QStringLiteral( "OUTPUT" ) ) );
     feedback->setProgress( i * step );
   }
-
-  sink->finalize();
 
   QVariantMap outputs;
   outputs.insert( QStringLiteral( "OUTPUT" ), dest );

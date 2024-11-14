@@ -47,20 +47,10 @@ void QgsWmsRenderContext::setParameters( const QgsWmsParameters &parameters )
 
   searchLayersToRender();
   removeUnwantedLayers();
+  checkLayerReadPermissions();
 
   std::reverse( mLayersToRender.begin(), mLayersToRender.end() );
 }
-
-bool QgsWmsRenderContext::addLayerToRender( QgsMapLayer *layer )
-{
-  const bool allowed = checkLayerReadPermissions( layer );
-  if ( allowed )
-  {
-    mLayersToRender.append( layer );
-  }
-  return allowed;
-}
-
 
 void QgsWmsRenderContext::setFlag( const Flag flag, const bool on )
 {
@@ -196,7 +186,6 @@ qreal QgsWmsRenderContext::dotsPerMm() const
 
 QStringList QgsWmsRenderContext::flattenedQueryLayers( const QStringList &layerNames ) const
 {
-
   QStringList result;
   std::function <QStringList( const QString &name )> findLeaves = [ & ]( const QString & name ) -> QStringList
   {
@@ -206,19 +195,15 @@ QStringList QgsWmsRenderContext::flattenedQueryLayers( const QStringList &layerN
       const auto &layers  { mLayerGroups[ name ] };
       for ( const auto &l : layers )
       {
-        // Only add allowed layers
-        if ( checkLayerReadPermissions( l ) )
+        const auto nick { layerNickname( *l ) };
+        // This handles the case for root (fake) group
+        if ( mLayerGroups.contains( nick ) )
         {
-          const auto nick { layerNickname( *l ) };
-          // This handles the case for root (fake) group
-          if ( mLayerGroups.contains( nick ) )
-          {
-            _result.append( name );
-          }
-          else
-          {
-            _result.append( findLeaves( nick ) );
-          }
+          _result.append( name );
+        }
+        else
+        {
+          _result.append( findLeaves( nick ) );
         }
       }
     }
@@ -282,7 +267,7 @@ bool QgsWmsRenderContext::updateExtent() const
 
 QString QgsWmsRenderContext::layerNickname( const QgsMapLayer &layer ) const
 {
-  QString name = layer.serverProperties()->shortName();
+  QString name = layer.shortName();
   // For external layers we cannot use the layer id because it's not known to the client, use layer name instead.
   if ( QgsServerProjectUtils::wmsUseLayerIds( *mProject ) &&
        std::find_if( mExternalLayers.cbegin(), mExternalLayers.cend(),
@@ -319,7 +304,7 @@ QgsMapLayer *QgsWmsRenderContext::layer( const QString &nickname ) const
 
 bool QgsWmsRenderContext::isValidLayer( const QString &nickname ) const
 {
-  return layer( nickname );
+  return layer( nickname ) != nullptr;
 }
 
 QList<QgsMapLayer *> QgsWmsRenderContext::layersFromGroup( const QString &nickname ) const
@@ -350,7 +335,7 @@ void QgsWmsRenderContext::initLayerGroupsRecursive( const QgsLayerTreeGroup *gro
 {
   if ( !groupName.isEmpty() )
   {
-    QList<QgsMapLayer *> layerGroup;
+    mLayerGroups[groupName] = QList<QgsMapLayer *>();
     const auto projectLayerTreeRoot { mProject->layerTreeRoot() };
     const auto treeGroupLayers { group->findLayers() };
     // Fast track if there is no custom layer order,
@@ -359,7 +344,7 @@ void QgsWmsRenderContext::initLayerGroupsRecursive( const QgsLayerTreeGroup *gro
     {
       for ( const auto &tl : treeGroupLayers )
       {
-        layerGroup.push_back( tl->layer() );
+        mLayerGroups[groupName].push_back( tl->layer() );
       }
     }
     else
@@ -375,14 +360,9 @@ void QgsWmsRenderContext::initLayerGroupsRecursive( const QgsLayerTreeGroup *gro
       {
         if ( groupLayersList.contains( l ) )
         {
-          layerGroup.push_back( l );
+          mLayerGroups[groupName].push_back( l );
         }
       }
-    }
-
-    if ( !layerGroup.empty() )
-    {
-      mLayerGroups[groupName] = layerGroup;
     }
   }
 
@@ -462,16 +442,10 @@ void QgsWmsRenderContext::searchLayersToRender()
     {
       const QList<QgsMapLayer *> layers = mNicknameLayers.values( layerName );
       for ( QgsMapLayer *lyr : layers )
-      {
         if ( !mLayersToRender.contains( lyr ) )
         {
-          if ( !addLayerToRender( lyr ) )
-          {
-            throw QgsSecurityException( QStringLiteral( "Your are not allowed to access the layer %1" ).arg( lyr->name() ) );
-
-          }
+          mLayersToRender.append( lyr );
         }
-      }
     }
   }
 
@@ -482,16 +456,10 @@ void QgsWmsRenderContext::searchLayersToRender()
     {
       const QList<QgsMapLayer *> layers = mNicknameLayers.values( layerName );
       for ( QgsMapLayer *lyr : layers )
-      {
         if ( !mLayersToRender.contains( lyr ) )
         {
-          if ( !addLayerToRender( lyr ) )
-          {
-            throw QgsSecurityException( QStringLiteral( "Your are not allowed to access the layer %1" ).arg( lyr->name() ) );
-
-          }
+          mLayersToRender.append( lyr );
         }
-      }
     }
   }
 }
@@ -527,45 +495,15 @@ void QgsWmsRenderContext::searchLayersToRenderSld()
       if ( mNicknameLayers.contains( lname ) )
       {
         mSlds[lname] = namedElem;
-        for ( const auto layer : mNicknameLayers.values( lname ) )
-        {
-          if ( !addLayerToRender( layer ) )
-          {
-            throw QgsSecurityException( QStringLiteral( "Your are not allowed to access the layer %1" ).arg( layer->name() ) );
-          }
-        }
+        mLayersToRender.append( mNicknameLayers.values( lname ) );
       }
       else if ( mLayerGroups.contains( lname ) )
       {
-        if ( QgsServerProjectUtils::wmsSkipNameForGroup( *mProject ) )
-        {
-          QgsWmsParameter param( QgsWmsParameter::LAYER );
-          param.mValue = lname;
-          throw QgsBadRequestException( QgsServiceException::OGC_LayerNotDefined,
-                                        param );
-        }
-
-        bool layerAdded = false;
         for ( QgsMapLayer *layer : mLayerGroups[lname] )
         {
-          // Insert only allowed layers
-          if ( checkLayerReadPermissions( layer ) )
-          {
-            const QString name = layerNickname( *layer );
-            mSlds[name] = namedElem;
-            mLayersToRender.insert( 0, layer );
-            layerAdded = true;
-          }
-        }
-        // No layers have been added, consider the group
-        // as non-existent.
-        if ( !layerAdded )
-        {
-          QgsWmsParameter param( QgsWmsParameter::LAYER );
-          param.mValue = lname;
-          throw QgsBadRequestException( QgsServiceException::OGC_LayerNotDefined,
-                                        param );
-
+          const QString name = layerNickname( *layer );
+          mSlds[name] = namedElem;
+          mLayersToRender.insert( 0, layer );
         }
       }
       else
@@ -595,12 +533,7 @@ void QgsWmsRenderContext::searchLayersToRenderStyle()
       {
         // to delete later
         mExternalLayers.append( layer.release() );
-        auto lyr = mExternalLayers.last();
-        if ( !addLayerToRender( lyr ) )
-        {
-          throw QgsSecurityException( QStringLiteral( "Your are not allowed to access the layer %1" ).arg( lyr->name() ) );
-
-        }
+        mLayersToRender.append( mExternalLayers.last() );
       }
     }
     else if ( mNicknameLayers.contains( nickname ) )
@@ -610,23 +543,10 @@ void QgsWmsRenderContext::searchLayersToRenderStyle()
         mStyles[nickname] = style;
       }
 
-      for ( const auto layer : mNicknameLayers.values( nickname ) )
-      {
-        if ( !addLayerToRender( layer ) )
-        {
-          throw QgsSecurityException( QStringLiteral( "Your are not allowed to access the layer %1" ).arg( layer->name() ) );
-        }
-      }
+      mLayersToRender.append( mNicknameLayers.values( nickname ) );
     }
     else if ( mLayerGroups.contains( nickname ) )
     {
-      if ( QgsServerProjectUtils::wmsSkipNameForGroup( *mProject ) )
-      {
-        QgsWmsParameter param( QgsWmsParameter::LAYER );
-        param.mValue = nickname;
-        throw QgsBadRequestException( QgsServiceException::OGC_LayerNotDefined,
-                                      param );
-      }
       // Reverse order of layers from a group
       QList<QString> layersFromGroup;
       for ( QgsMapLayer *layer : mLayerGroups[nickname] )
@@ -639,25 +559,9 @@ void QgsWmsRenderContext::searchLayersToRenderStyle()
         layersFromGroup.push_front( nickname );
       }
 
-      bool layerAdded = false;
       for ( const auto &name : layersFromGroup )
       {
-        for ( const auto layer : mNicknameLayers.values( name ) )
-        {
-          if ( addLayerToRender( layer ) )
-          {
-            layerAdded = true;
-          }
-        }
-      }
-      // No layers have been added, consider the group
-      // as non-existent.
-      if ( !layerAdded )
-      {
-        QgsWmsParameter param( QgsWmsParameter::LAYER );
-        param.mValue = nickname;
-        throw QgsBadRequestException( QgsServiceException::OGC_LayerNotDefined,
-                                      param );
+        mLayersToRender.append( mNicknameLayers.values( name ) );
       }
     }
     else
@@ -732,9 +636,6 @@ bool QgsWmsRenderContext::isValidWidthHeight() const
 
 bool QgsWmsRenderContext::isValidWidthHeight( int width, int height ) const
 {
-  if ( width <= 0 || height <= 0 )
-    return false;
-
   //test if maxWidth / maxHeight are set in the project or as an env variable
   //and WIDTH / HEIGHT parameter is in the range allowed range
   //WIDTH
@@ -777,15 +678,14 @@ bool QgsWmsRenderContext::isValidWidthHeight( int width, int height ) const
     return false;
   }
 
-  // Sanity check from internal QImage checks
-  // (see QImageData::calculateImageParameters() in qimage_p.h)
+  // Sanity check from internal QImage checks (see qimage.cpp)
   // this is to report a meaningful error message in case of
   // image creation failure and to differentiate it from out
   // of memory conditions.
 
   // depth for now it cannot be anything other than 32, but I don't like
   // to hardcode it: I hope we will support other depths in the future.
-  int depth = 32;
+  uint depth = 32;
   switch ( mParameters.format() )
   {
     case QgsWmsParameters::Format::JPG:
@@ -794,12 +694,12 @@ bool QgsWmsRenderContext::isValidWidthHeight( int width, int height ) const
       depth = 32;
   }
 
-  if ( width > ( std::numeric_limits<int>::max() - 31 ) / depth )
-    return false;
-
   const int bytes_per_line = ( ( width * depth + 31 ) >> 5 ) << 2; // bytes per scanline (must be multiple of 4)
 
-  if ( std::numeric_limits<int>::max() / bytes_per_line < height
+  if ( std::numeric_limits<int>::max() / depth < static_cast<uint>( width )
+       || bytes_per_line <= 0
+       || height <= 0
+       || std::numeric_limits<int>::max() / static_cast<uint>( bytes_per_line ) < static_cast<uint>( height )
        || std::numeric_limits<int>::max() / sizeof( uchar * ) < static_cast<uint>( height ) )
   {
     return false;
@@ -904,7 +804,7 @@ void QgsWmsRenderContext::removeUnwantedLayers()
 
       if ( mFlags & UseWfsLayersOnly )
       {
-        if ( layer->type() != Qgis::LayerType::Vector )
+        if ( layer->type() != QgsMapLayerType::VectorLayer )
         {
           continue;
         }
@@ -934,18 +834,17 @@ bool QgsWmsRenderContext::isExternalLayer( const QString &name ) const
   return false;
 }
 
-bool QgsWmsRenderContext::checkLayerReadPermissions( QgsMapLayer *layer ) const
+void QgsWmsRenderContext::checkLayerReadPermissions()
 {
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
-  if ( !accessControl()->layerReadPermission( layer ) )
+  for ( const auto layer : mLayersToRender )
   {
-    QString msg = QStringLiteral( "Checking forbidden access for layer: %1" ).arg( layer->name() );
-    QgsMessageLog::logMessage( msg, "Server", Qgis::MessageLevel::Info );
-    return false;
+    if ( !accessControl()->layerReadPermission( layer ) )
+    {
+      throw QgsSecurityException( QStringLiteral( "You are not allowed to access to the layer: %1" ).arg( layer->name() ) );
+    }
   }
 #endif
-  Q_UNUSED( layer )
-  return true;
 }
 
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
@@ -954,13 +853,3 @@ QgsAccessControl *QgsWmsRenderContext::accessControl() const
   return mInterface->accessControls();
 }
 #endif
-
-void QgsWmsRenderContext::setSocketFeedback( QgsFeedback *feedback )
-{
-  mSocketFeedback = feedback;
-}
-
-QgsFeedback *QgsWmsRenderContext::socketFeedback() const
-{
-  return mSocketFeedback;
-}

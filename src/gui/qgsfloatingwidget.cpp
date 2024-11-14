@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsfloatingwidget.h"
-#include "moc_qgsfloatingwidget.cpp"
 #include <QEvent>
 #include <QStyleOption>
 #include <QPainter>

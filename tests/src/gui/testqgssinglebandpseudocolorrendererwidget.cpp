@@ -74,7 +74,7 @@ void TestQgsSingleBandPseudoColorRendererWidget::testEditLabel()
 
   QgsRasterShader *rasterShader = new QgsRasterShader();
   QgsColorRampShader *colorRampShader = new QgsColorRampShader();
-  colorRampShader->setColorRampType( Qgis::ShaderInterpolationMethod::Linear );
+  colorRampShader->setColorRampType( QgsColorRampShader::Interpolated );
 
   const double min = 122.123456;
   const double max = 129.123456;

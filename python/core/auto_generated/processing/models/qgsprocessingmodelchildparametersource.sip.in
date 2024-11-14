@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/processing/models/qgsprocessingmodelchildparametersource.h  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -14,12 +14,24 @@ class QgsProcessingModelChildParameterSource
 {
 %Docstring(signature="appended")
 Source for the value of a parameter for a child algorithm within a model.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
 #include "qgsprocessingmodelchildparametersource.h"
 %End
   public:
+
+    enum Source
+    {
+      ModelParameter,
+      ChildOutput,
+      StaticValue,
+      Expression,
+      ExpressionText,
+      ModelOutput,
+    };
 
     QgsProcessingModelChildParameterSource();
 %Docstring
@@ -106,12 +118,12 @@ algorithms already executed by the model.
 .. versionadded:: 3.2
 %End
 
-    Qgis::ProcessingModelChildParameterSource source() const;
+    Source source() const;
 %Docstring
 Returns the parameter value's source.
 %End
 
-    void setSource( Qgis::ProcessingModelChildParameterSource source );
+    void setSource( Source source );
 %Docstring
 Sets the parameter's source.
 
@@ -267,5 +279,5 @@ Returns a user-friendly identifier for this source, given the context of the spe
  *                                                                      *
  * src/core/processing/models/qgsprocessingmodelchildparametersource.h  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -17,8 +17,6 @@
 #define QGSVECTORTILECONNECTION_H
 
 #include "qgis_core.h"
-#include "qgssettingstree.h"
-#include "qgssettingstreenode.h"
 
 ///@cond PRIVATE
 #define SIP_NO_FILE
@@ -26,32 +24,11 @@
 #include <QStringList>
 
 #include "qgsabstractproviderconnection.h"
-#include "qgshttpheaders.h"
-
-class QgsSettingsEntryString;
-class QgsSettingsEntryInteger;
-class QgsSettingsEntryVariantMap;
 
 class CORE_EXPORT QgsVectorTileProviderConnection : public QgsAbstractProviderConnection
 {
 
   public:
-
-#ifndef SIP_RUN
-
-    static inline QgsSettingsTreeNamedListNode *sTreeConnectionVectorTile = QgsSettingsTree::sTreeConnections->createNamedListNode( QStringLiteral( "vector-tile" ), Qgis::SettingsTreeNodeOption::NamedListSelectedItemSetting );
-
-    static const QgsSettingsEntryString *settingsUrl;
-    static const QgsSettingsEntryInteger *settingsZmin;
-    static const QgsSettingsEntryInteger *settingsZmax;
-    static const QgsSettingsEntryString *settingsAuthcfg;
-    static const QgsSettingsEntryString *settingsUsername;
-    static const QgsSettingsEntryString *settingsPassword;
-    static const QgsSettingsEntryString *settingsStyleUrl;
-    static const QgsSettingsEntryString *settingsServiceType;
-    static const QgsSettingsEntryVariantMap *settingsHeaders;
-#endif
-
     QgsVectorTileProviderConnection( const QString &name );
     QgsVectorTileProviderConnection( const QString &uri, const QVariantMap &configuration );
 

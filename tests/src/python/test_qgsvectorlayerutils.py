@@ -12,25 +12,23 @@ __copyright__ = 'Copyright 2016, The QGIS Project'
 import shutil
 import tempfile
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import QVariant
-from qgis.core import (
-    NULL,
-    Qgis,
-    QgsDefaultValue,
-    QgsFeature,
-    QgsField,
-    QgsFieldConstraints,
-    QgsFields,
-    QgsGeometry,
-    QgsPointXY,
-    QgsProject,
-    QgsRelation,
-    QgsVectorLayer,
-    QgsVectorLayerJoinInfo,
-    QgsVectorLayerUtils,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsProject,
+                       QgsVectorLayer,
+                       QgsVectorLayerUtils,
+                       QgsFieldConstraints,
+                       QgsFeature,
+                       QgsGeometry,
+                       QgsPointXY,
+                       QgsDefaultValue,
+                       QgsRelation,
+                       QgsFields,
+                       QgsField,
+                       QgsVectorLayerJoinInfo,
+                       NULL
+                       )
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -48,7 +46,7 @@ def createLayerWithOnePoint():
     return layer
 
 
-class TestQgsVectorLayerUtils(QgisTestCase):
+class TestQgsVectorLayerUtils(unittest.TestCase):
 
     def test_field_is_read_only(self):
         """
@@ -261,9 +259,7 @@ class TestQgsVectorLayerUtils(QgisTestCase):
         layer = createLayerWithOnePoint()
 
         # field expression check
-        self.assertFalse(QgsVectorLayerUtils.attributeHasConstraints(layer, 1))
         layer.setConstraintExpression(1, 'fldint>5')
-        self.assertTrue(QgsVectorLayerUtils.attributeHasConstraints(layer, 1))
 
         f = QgsFeature(2)
         f.setAttributes(["test123", 6])
@@ -277,7 +273,7 @@ class TestQgsVectorLayerUtils(QgisTestCase):
         print(errors)
         # checking only for provider constraints
         res, errors = QgsVectorLayerUtils.validateAttribute(layer, f, 1,
-                                                            origin=QgsFieldConstraints.ConstraintOrigin.ConstraintOriginProvider)
+                                                            origin=QgsFieldConstraints.ConstraintOriginProvider)
         self.assertTrue(res)
         self.assertEqual(len(errors), 0)
 
@@ -296,10 +292,7 @@ class TestQgsVectorLayerUtils(QgisTestCase):
         self.assertTrue(res)
         self.assertEqual(len(errors), 0)
 
-        self.assertFalse(QgsVectorLayerUtils.attributeHasConstraints(layer, 1))
-        layer.setFieldConstraint(1, QgsFieldConstraints.Constraint.ConstraintNotNull)
-        self.assertTrue(QgsVectorLayerUtils.attributeHasConstraints(layer, 1))
-
+        layer.setFieldConstraint(1, QgsFieldConstraints.ConstraintNotNull)
         res, errors = QgsVectorLayerUtils.validateAttribute(layer, f, 1)
         self.assertFalse(res)
         self.assertEqual(len(errors), 1)
@@ -307,21 +300,17 @@ class TestQgsVectorLayerUtils(QgisTestCase):
 
         # checking only for provider constraints
         res, errors = QgsVectorLayerUtils.validateAttribute(layer, f, 1,
-                                                            origin=QgsFieldConstraints.ConstraintOrigin.ConstraintOriginProvider)
+                                                            origin=QgsFieldConstraints.ConstraintOriginProvider)
         self.assertTrue(res)
         self.assertEqual(len(errors), 0)
 
         # unique constraint
         f.setAttributes(["test123", 123])
-        layer.removeFieldConstraint(1, QgsFieldConstraints.Constraint.ConstraintNotNull)
+        layer.removeFieldConstraint(1, QgsFieldConstraints.ConstraintNotNull)
         res, errors = QgsVectorLayerUtils.validateAttribute(layer, f, 1)
         self.assertTrue(res)
         self.assertEqual(len(errors), 0)
-
-        self.assertFalse(QgsVectorLayerUtils.attributeHasConstraints(layer, 1))
-        layer.setFieldConstraint(1, QgsFieldConstraints.Constraint.ConstraintUnique)
-        self.assertTrue(QgsVectorLayerUtils.attributeHasConstraints(layer, 1))
-
+        layer.setFieldConstraint(1, QgsFieldConstraints.ConstraintUnique)
         res, errors = QgsVectorLayerUtils.validateAttribute(layer, f, 1)
         self.assertFalse(res)
         self.assertEqual(len(errors), 1)
@@ -329,19 +318,19 @@ class TestQgsVectorLayerUtils(QgisTestCase):
 
         # checking only for provider constraints
         res, errors = QgsVectorLayerUtils.validateAttribute(layer, f, 1,
-                                                            origin=QgsFieldConstraints.ConstraintOrigin.ConstraintOriginProvider)
+                                                            origin=QgsFieldConstraints.ConstraintOriginProvider)
         self.assertTrue(res)
         self.assertEqual(len(errors), 0)
 
         # checking only for soft constraints
-        layer.setFieldConstraint(1, QgsFieldConstraints.Constraint.ConstraintUnique, QgsFieldConstraints.ConstraintStrength.ConstraintStrengthHard)
+        layer.setFieldConstraint(1, QgsFieldConstraints.ConstraintUnique, QgsFieldConstraints.ConstraintStrengthHard)
         res, errors = QgsVectorLayerUtils.validateAttribute(layer, f, 1,
-                                                            strength=QgsFieldConstraints.ConstraintStrength.ConstraintStrengthSoft)
+                                                            strength=QgsFieldConstraints.ConstraintStrengthSoft)
         self.assertTrue(res)
         self.assertEqual(len(errors), 0)
         # checking for hard constraints
         res, errors = QgsVectorLayerUtils.validateAttribute(layer, f, 1,
-                                                            strength=QgsFieldConstraints.ConstraintStrength.ConstraintStrengthHard)
+                                                            strength=QgsFieldConstraints.ConstraintStrengthHard)
         self.assertFalse(res)
         self.assertEqual(len(errors), 1)
 
@@ -354,8 +343,8 @@ class TestQgsVectorLayerUtils(QgisTestCase):
 
         # test double constraint failure
         layer.setConstraintExpression(1, 'fldint>5')
-        layer.removeFieldConstraint(1, QgsFieldConstraints.Constraint.ConstraintUnique)
-        layer.setFieldConstraint(1, QgsFieldConstraints.Constraint.ConstraintNotNull)
+        layer.removeFieldConstraint(1, QgsFieldConstraints.ConstraintUnique)
+        layer.setFieldConstraint(1, QgsFieldConstraints.ConstraintNotNull)
         f.setAttributes(["test123", NULL])
         res, errors = QgsVectorLayerUtils.validateAttribute(layer, f, 1)
         self.assertFalse(res)
@@ -451,11 +440,11 @@ class TestQgsVectorLayerUtils(QgisTestCase):
         layer.setDefaultValueDefinition(2, QgsDefaultValue(None))
 
         # test with violated unique constraints
-        layer.setFieldConstraint(1, QgsFieldConstraints.Constraint.ConstraintUnique)
+        layer.setFieldConstraint(1, QgsFieldConstraints.ConstraintUnique)
         f = QgsVectorLayerUtils.createFeature(layer, attributes={0: 'test_1', 1: 123})
         # since field 1 has Unique Constraint, it ignores value 123 that already has been set and sets to 128
         self.assertEqual(f.attributes(), ['test_1', 128, NULL])
-        layer.setFieldConstraint(0, QgsFieldConstraints.Constraint.ConstraintUnique)
+        layer.setFieldConstraint(0, QgsFieldConstraints.ConstraintUnique)
         # since field 0 and 1 already have values test_1 and 123, the output must be a new unique value
         f = QgsVectorLayerUtils.createFeature(layer, attributes={0: 'test_1', 1: 123})
         self.assertEqual(f.attributes(), ['test_4', 128, NULL])
@@ -479,141 +468,81 @@ class TestQgsVectorLayerUtils(QgisTestCase):
         self.assertEqual(f.attributes(), ['test_5', 132, NULL])
 
     def testDuplicateFeature(self):
-        """ test duplicating a feature with relations """
+        """ test duplicating a feature """
 
         project = QgsProject().instance()
 
         # LAYERS
         # - add first layer (parent)
-        layer1 = QgsVectorLayer("Point?field=fldtxt:string&field=pkid:integer&field=policycheck1value:text&field=policycheck2value:text&field=policycheck3value:text",
+        layer1 = QgsVectorLayer("Point?field=fldtxt:string&field=pkid:integer",
                                 "parentlayer", "memory")
         # > check first layer (parent)
         self.assertTrue(layer1.isValid())
-        # -  set the default values for pk and policy check and the field policy
+        # -  set the value for the copy
         layer1.setDefaultValueDefinition(1, QgsDefaultValue("rand(1000,2000)"))
-        layer1.setDefaultValueDefinition(2, QgsDefaultValue("'Def Blabla L1'"))
-        layer1.setDefaultValueDefinition(3, QgsDefaultValue("'Def Blabla L1'"))
-        layer1.setDefaultValueDefinition(4, QgsDefaultValue("'Def Blabla L1'"))
-        layer1.setFieldDuplicatePolicy(2, Qgis.FieldDuplicatePolicy.Duplicate)
-        layer1.setFieldDuplicatePolicy(3, Qgis.FieldDuplicatePolicy.DefaultValue)
-        layer1.setFieldDuplicatePolicy(4, Qgis.FieldDuplicatePolicy.UnsetField)
         # > check first layer (parent)
         self.assertTrue(layer1.isValid())
         # - add second layer (child)
-        layer2 = QgsVectorLayer("Point?field=fldtxt:string&field=id:integer&field=foreign_key:integer&field=policycheck1value:text&field=policycheck2value:text&field=policycheck3value:text",
-                                "childlayer1", "memory")
+        layer2 = QgsVectorLayer("Point?field=fldtxt:string&field=id:integer&field=foreign_key:integer",
+                                "childlayer", "memory")
         # > check second layer (child)
         self.assertTrue(layer2.isValid())
-        # -  set the default values for pk and policy check and the field policy
-        layer2.setDefaultValueDefinition(3, QgsDefaultValue("'Def Blabla L2'"))
-        layer2.setDefaultValueDefinition(4, QgsDefaultValue("'Def Blabla L2'"))
-        layer2.setDefaultValueDefinition(5, QgsDefaultValue("'Def Blabla L2'"))
-        layer2.setFieldDuplicatePolicy(3, Qgis.FieldDuplicatePolicy.Duplicate)
-        layer2.setFieldDuplicatePolicy(4, Qgis.FieldDuplicatePolicy.DefaultValue)
-        layer2.setFieldDuplicatePolicy(5, Qgis.FieldDuplicatePolicy.UnsetField)
-        # > check second layer (child)
-        self.assertTrue(layer2.isValid())
-        # - add third layer (child)
-        layer3 = QgsVectorLayer("Point?field=fldtxt:string&field=id:integer&field=foreign_key:integer&field=policycheck1value:text&field=policycheck2value:text&field=policycheck3value:text",
-                                "childlayer2", "memory")
-        # > check third layer (child)
-        self.assertTrue(layer3.isValid())
-        # -  set the default values for pk and policy check and the field policy
-        layer3.setDefaultValueDefinition(3, QgsDefaultValue("'Def Blabla L3'"))
-        layer3.setDefaultValueDefinition(4, QgsDefaultValue("'Def Blabla L3'"))
-        layer3.setDefaultValueDefinition(5, QgsDefaultValue("'Def Blabla L3'"))
-        layer3.setFieldDuplicatePolicy(3, Qgis.FieldDuplicatePolicy.Duplicate)
-        layer3.setFieldDuplicatePolicy(4, Qgis.FieldDuplicatePolicy.DefaultValue)
-        layer3.setFieldDuplicatePolicy(5, Qgis.FieldDuplicatePolicy.UnsetField)
-        # > check third layer (child)
-        self.assertTrue(layer3.isValid())
         # - add layers
-        project.addMapLayers([layer1, layer2, layer3])
+        project.addMapLayers([layer1, layer2])
 
         # FEATURES
         # - add 2 features on layer1 (parent)
         l1f1orig = QgsFeature()
         l1f1orig.setFields(layer1.fields())
-        l1f1orig.setAttributes(["F_l1f1", 100, 'Orig Blabla L1', 'Orig Blabla L1', 'Orig Blabla L1'])
+        l1f1orig.setAttributes(["F_l1f1", 100])
         l1f2orig = QgsFeature()
         l1f2orig.setFields(layer1.fields())
-        l1f2orig.setAttributes(["F_l1f2", 101, 'Orig Blabla L1', 'Orig Blabla L1', 'Orig Blabla L1'])
+        l1f2orig.setAttributes(["F_l1f2", 101])
         # > check by adding features
         self.assertTrue(layer1.dataProvider().addFeatures([l1f1orig, l1f2orig]))
         # add 4 features on layer2 (child)
         l2f1orig = QgsFeature()
         l2f1orig.setFields(layer2.fields())
-        l2f1orig.setAttributes(["F_l2f1", 201, 100, 'Orig Blabla L2', 'Orig Blabla L2', 'Orig Blabla L2'])
+        l2f1orig.setAttributes(["F_l2f1", 201, 100])
         l2f2orig = QgsFeature()
         l2f2orig.setFields(layer2.fields())
-        l2f2orig.setAttributes(["F_l2f2", 202, 100, 'Orig Blabla L2', 'Orig Blabla L2', 'Orig Blabla L2'])
+        l2f2orig.setAttributes(["F_l2f2", 202, 100])
         l2f3orig = QgsFeature()
         l2f3orig.setFields(layer2.fields())
-        l2f3orig.setAttributes(["F_l2f3", 203, 100, 'Orig Blabla L2', 'Orig Blabla L2', 'Orig Blabla L2'])
+        l2f3orig.setAttributes(["F_l2f3", 203, 100])
         l2f4orig = QgsFeature()
         l2f4orig.setFields(layer2.fields())
-        l2f4orig.setAttributes(["F_l2f4", 204, 101, 'Orig Blabla L2', 'Orig Blabla L2', 'Orig Blabla L2'])
+        l2f4orig.setAttributes(["F_l2f4", 204, 101])
         # > check by adding features
         self.assertTrue(layer2.dataProvider().addFeatures([l2f1orig, l2f2orig, l2f3orig, l2f4orig]))
-        # add 2 features on layer3 (child)
-        l3f1orig = QgsFeature()
-        l3f1orig.setFields(layer3.fields())
-        l3f1orig.setAttributes(["F_l3f1", 301, 100, 'Orig Blabla L3', 'Orig Blabla L3', 'Orig Blabla L3'])
-        l3f2orig = QgsFeature()
-        l3f2orig.setFields(layer2.fields())
-        l3f2orig.setAttributes(["F_l3f2", 302, 100, 'Orig Blabla L3', 'Orig Blabla L3', 'Orig Blabla L3'])
-        # > check by adding features
-        self.assertTrue(layer3.dataProvider().addFeatures([l3f1orig, l3f2orig]))
 
         # RELATION
         # - create the relationmanager
         relMgr = project.relationManager()
-        # - create the first relation
-        rel1 = QgsRelation()
-        rel1.setId('rel1')
-        rel1.setName('childrel1')
-        rel1.setReferencingLayer(layer2.id())
-        rel1.setReferencedLayer(layer1.id())
-        rel1.addFieldPair('foreign_key', 'pkid')
-        rel1.setStrength(QgsRelation.RelationStrength.Composition)
+        # - create the relation
+        rel = QgsRelation()
+        rel.setId('rel1')
+        rel.setName('childrel')
+        rel.setReferencingLayer(layer2.id())
+        rel.setReferencedLayer(layer1.id())
+        rel.addFieldPair('foreign_key', 'pkid')
+        rel.setStrength(QgsRelation.Composition)
         # > check relation
-        self.assertTrue(rel1.isValid())
+        self.assertTrue(rel.isValid())
         # - add relation
-        relMgr.addRelation(rel1)
+        relMgr.addRelation(rel)
         # > check if referencedLayer is layer1
-        self.assertEqual(rel1.referencedLayer(), layer1)
+        self.assertEqual(rel.referencedLayer(), layer1)
         # > check if referencingLayer is layer2
-        self.assertEqual(rel1.referencingLayer(), layer2)
-        # - create the second relation
-        rel2 = QgsRelation()
-        rel2.setId('rel2')
-        rel2.setName('childrel2')
-        rel2.setReferencingLayer(layer3.id())
-        rel2.setReferencedLayer(layer1.id())
-        rel2.addFieldPair('foreign_key', 'pkid')
-        rel2.setStrength(QgsRelation.RelationStrength.Composition)
-        # > check relation
-        self.assertTrue(rel2.isValid())
-        # - add relation
-        relMgr.addRelation(rel2)
-        # > check if referencedLayer is layer1
-        self.assertEqual(rel2.referencedLayer(), layer1)
-        # > check if referencingLayer is layer2
-        self.assertEqual(rel2.referencingLayer(), layer3)
-
+        self.assertEqual(rel.referencingLayer(), layer2)
         # > check if the layers are correct in relation when loading from relationManager
-        relations = project.relationManager().relationsByName('childrel1')
-        relation = relations[0]
+        relations = project.relationManager().relations()
+        relation = relations[list(relations.keys())[0]]
         # > check if referencedLayer is layer1
         self.assertEqual(relation.referencedLayer(), layer1)
         # > check if referencingLayer is layer2
         self.assertEqual(relation.referencingLayer(), layer2)
-        relations = project.relationManager().relationsByName('childrel2')
-        relation = relations[0]
-        # > check if referencedLayer is layer1
-        self.assertEqual(relation.referencedLayer(), layer1)
-        # > check if referencingLayer is layer2
-        self.assertEqual(relation.referencingLayer(), layer3)
+        # > check the relatedfeatures
 
         '''
         # testoutput 1
@@ -643,30 +572,13 @@ class TestQgsVectorLayerUtils(QgisTestCase):
         results = QgsVectorLayerUtils.duplicateFeature(layer1, l1f1orig, project, 0)
 
         # > check if name is name of duplicated (pk is different)
-        # > and duplicate policy is concerned
         result_feature = results[0]
         self.assertEqual(result_feature.attribute('fldtxt'), l1f1orig.attribute('fldtxt'))
-        self.assertEqual(result_feature.attribute('policycheck1value'), 'Orig Blabla L1')  # duplicated
-        self.assertEqual(result_feature.attribute('policycheck2value'), 'Def Blabla L1')  # default Value
-        self.assertEqual(result_feature.attribute('policycheck3value'), None)  # unset
-        # > check duplicated children occurred on both layers
-        self.assertEqual(len(results[1].layers()), 2)
-        idx = results[1].layers().index(layer2)
-        self.assertEqual(results[1].layers()[idx], layer2)
-        self.assertTrue(results[1].duplicatedFeatures(layer2))
-        for child_fid in results[1].duplicatedFeatures(layer2):
-            child_feature = layer2.getFeature(child_fid)
-            self.assertEqual(child_feature.attribute('policycheck1value'), 'Orig Blabla L2')  # duplicated
-            self.assertEqual(child_feature.attribute('policycheck2value'), 'Def Blabla L2')  # default Value
-            self.assertEqual(child_feature.attribute('policycheck3value'), None)  # unset
-        idx = results[1].layers().index(layer3)
-        self.assertEqual(results[1].layers()[idx], layer3)
-        self.assertTrue(results[1].duplicatedFeatures(layer3))
-        for child_fid in results[1].duplicatedFeatures(layer3):
-            child_feature = layer3.getFeature(child_fid)
-            self.assertEqual(child_feature.attribute('policycheck1value'), 'Orig Blabla L3')  # duplicated
-            self.assertEqual(child_feature.attribute('policycheck2value'), 'Def Blabla L3')  # default Value
-            self.assertEqual(child_feature.attribute('policycheck3value'), None)  # unset
+        # > check duplicated child layer
+        result_layer = results[1].layers()[0]
+        self.assertEqual(result_layer, layer2)
+        #  > check duplicated child features
+        self.assertTrue(results[1].duplicatedFeatures(result_layer))
 
         '''
         # testoutput 2
@@ -694,13 +606,13 @@ class TestQgsVectorLayerUtils(QgisTestCase):
 
         # - create copyValueList
         childFeature = QgsFeature()
-        relfeatit = rel1.getRelatedFeatures(result_feature)
+        relfeatit = rel.getRelatedFeatures(result_feature)
         copyValueList = []
         while relfeatit.nextFeature(childFeature):
             copyValueList.append(childFeature.attribute('fldtxt'))
         # - create origValueList
         childFeature = QgsFeature()
-        relfeatit = rel1.getRelatedFeatures(l1f1orig)
+        relfeatit = rel.getRelatedFeatures(l1f1orig)
         origValueList = []
         while relfeatit.nextFeature(childFeature):
             origValueList.append(childFeature.attribute('fldtxt'))
@@ -728,15 +640,15 @@ class TestQgsVectorLayerUtils(QgisTestCase):
         f1.setAttributes([])
         QgsVectorLayerUtils.matchAttributesToFields(f1, fields)
         self.assertEqual(len(f1.attributes()), 2)
-        self.assertEqual(f1.attributes()[0], NULL)
-        self.assertEqual(f1.attributes()[1], NULL)
+        self.assertEqual(f1.attributes()[0], QVariant())
+        self.assertEqual(f1.attributes()[1], QVariant())
 
         # Test pad with 0 without fields
         f1 = QgsFeature()
         QgsVectorLayerUtils.matchAttributesToFields(f1, fields)
         self.assertEqual(len(f1.attributes()), 2)
-        self.assertEqual(f1.attributes()[0], NULL)
-        self.assertEqual(f1.attributes()[1], NULL)
+        self.assertEqual(f1.attributes()[0], QVariant())
+        self.assertEqual(f1.attributes()[1], QVariant())
 
         # Test drop extra attrs
         f1 = QgsFeature(fields)
@@ -766,7 +678,7 @@ class TestQgsVectorLayerUtils(QgisTestCase):
         self.assertEqual(len(f1.attributes()), 3)
         self.assertEqual(f1.attributes()[0], 'foo')
         self.assertEqual(f1.attributes()[1], 1)
-        self.assertEqual(f1.attributes()[2], NULL)
+        self.assertEqual(f1.attributes()[2], QVariant())
 
         fields.append(QgsField('extra', QVariant.Int))
         f1.setAttributes([1, 'foo', 'blah'])
@@ -775,7 +687,7 @@ class TestQgsVectorLayerUtils(QgisTestCase):
         self.assertEqual(f1.attributes()[0], 1)
         self.assertEqual(f1.attributes()[1], 'foo')
         self.assertEqual(f1.attributes()[2], 'blah')
-        self.assertEqual(f1.attributes()[3], NULL)
+        self.assertEqual(f1.attributes()[3], QVariant())
 
         # case insensitive
         fields2.append(QgsField('extra3', QVariant.String))
@@ -786,7 +698,7 @@ class TestQgsVectorLayerUtils(QgisTestCase):
         self.assertEqual(len(f1.attributes()), 5)
         self.assertEqual(f1.attributes()[0], 'foo')
         self.assertEqual(f1.attributes()[1], 1)
-        self.assertEqual(f1.attributes()[2], NULL)
+        self.assertEqual(f1.attributes()[2], QVariant())
         self.assertEqual(f1.attributes()[3], 'blah')
         self.assertEqual(f1.attributes()[4], 'blergh')
 
@@ -794,13 +706,13 @@ class TestQgsVectorLayerUtils(QgisTestCase):
         """Test create multiple features with unique constraint"""
 
         vl = createLayerWithOnePoint()
-        vl.setFieldConstraint(1, QgsFieldConstraints.Constraint.ConstraintUnique)
+        vl.setFieldConstraint(1, QgsFieldConstraints.ConstraintUnique)
 
         features_data = []
         context = vl.createExpressionContext()
         for i in range(2):
             features_data.append(
-                QgsVectorLayerUtils.QgsFeatureData(QgsGeometry.fromWkt('Point (7 44)'), {0: f'test_{i}', 1: 123}))
+                QgsVectorLayerUtils.QgsFeatureData(QgsGeometry.fromWkt('Point (7 44)'), {0: 'test_%s' % i, 1: 123}))
         features = QgsVectorLayerUtils.createFeatures(vl, features_data, context)
 
         self.assertEqual(features[0].attributes()[1], 124)
@@ -817,9 +729,9 @@ class TestQgsVectorLayerUtils(QgisTestCase):
         features_data.append(
             QgsVectorLayerUtils.QgsFeatureData(QgsGeometry.fromWkt('Point (7 44)'), {0: 'test_1', 1: None}))
         features_data.append(
-            QgsVectorLayerUtils.QgsFeatureData(QgsGeometry.fromWkt('Point (7 45)'), {0: 'test_2', 1: NULL}))
+            QgsVectorLayerUtils.QgsFeatureData(QgsGeometry.fromWkt('Point (7 45)'), {0: 'test_2', 1: QVariant()}))
         features_data.append(QgsVectorLayerUtils.QgsFeatureData(QgsGeometry.fromWkt('Point (7 46)'),
-                                                                {0: 'test_3', 1: NULL}))
+                                                                {0: 'test_3', 1: QVariant(QVariant.Int)}))
         features_data.append(QgsVectorLayerUtils.QgsFeatureData(QgsGeometry.fromWkt('Point (7 46)'), {0: 'test_4'}))
         features = QgsVectorLayerUtils.createFeatures(vl, features_data, context)
 
@@ -832,9 +744,9 @@ class TestQgsVectorLayerUtils(QgisTestCase):
         features_data = []
         context = vl.createExpressionContext()
         features_data.append(QgsVectorLayerUtils.QgsFeatureData(QgsGeometry.fromWkt('Point (7 44)'), {0: None}))
-        features_data.append(QgsVectorLayerUtils.QgsFeatureData(QgsGeometry.fromWkt('Point (7 45)'), {0: NULL}))
+        features_data.append(QgsVectorLayerUtils.QgsFeatureData(QgsGeometry.fromWkt('Point (7 45)'), {0: QVariant()}))
         features_data.append(
-            QgsVectorLayerUtils.QgsFeatureData(QgsGeometry.fromWkt('Point (7 46)'), {0: NULL}))
+            QgsVectorLayerUtils.QgsFeatureData(QgsGeometry.fromWkt('Point (7 46)'), {0: QVariant(QVariant.String)}))
         features_data.append(QgsVectorLayerUtils.QgsFeatureData(QgsGeometry.fromWkt('Point (7 46)'), {}))
         features = QgsVectorLayerUtils.createFeatures(vl, features_data, context)
 
@@ -918,19 +830,6 @@ class TestQgsVectorLayerUtils(QgisTestCase):
         fields.append(QgsField('station', QVariant.String))
         fields.append(QgsField('org', QVariant.String))
         self.assertEqual(QgsVectorLayerUtils.guessFriendlyIdentifierField(fields), 'station')
-
-        # Particular case for WFS layers analyzed with the GMLAS driver.
-        # We prioritize a field ending with _name, but which is not gml_name
-        fields = QgsFields()
-        fields.append(QgsField('id', QVariant.String))
-        fields.append(QgsField('gml_name', QVariant.String))
-        fields.append(QgsField('other_name', QVariant.String))
-        self.assertEqual(QgsVectorLayerUtils.guessFriendlyIdentifierField(fields), 'other_name')
-
-        fields = QgsFields()
-        fields.append(QgsField('id', QVariant.String))
-        fields.append(QgsField('gml_name', QVariant.String))
-        self.assertEqual(QgsVectorLayerUtils.guessFriendlyIdentifierField(fields), 'id')
 
 
 if __name__ == '__main__':

@@ -9,24 +9,23 @@ __author__ = 'Chris Crook'
 __date__ = '3/10/2014'
 __copyright__ = 'Copyright 2014, The QGIS Project'
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (
-    QgsFeature,
-    QgsGeometry,
-    QgsGradientColorRamp,
-    QgsGraduatedSymbolRenderer,
-    QgsMarkerSymbol,
-    QgsPointXY,
-    QgsReadWriteContext,
-    QgsRenderContext,
-    QgsRendererRange,
-    QgsRendererRangeLabelFormat,
-    QgsVectorLayer,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsGraduatedSymbolRenderer,
+                       QgsRendererRange,
+                       QgsRendererRangeLabelFormat,
+                       QgsMarkerSymbol,
+                       QgsGradientColorRamp,
+                       QgsVectorLayer,
+                       QgsFeature,
+                       QgsGeometry,
+                       QgsPointXY,
+                       QgsReadWriteContext,
+                       QgsRenderContext
+                       )
+from qgis.testing import unittest, start_app
 
 start_app()
 
@@ -149,7 +148,7 @@ def dumpGraduatedRenderer(r):
 # Tests
 
 
-class TestQgsGraduatedSymbolRenderer(QgisTestCase):
+class TestQgsGraduatedSymbolRenderer(unittest.TestCase):
 
     def testQgsRendererRange_1(self):
         """Test QgsRendererRange getter/setter functions"""
@@ -287,12 +286,12 @@ class TestQgsGraduatedSymbolRenderer(QgisTestCase):
         self.assertEqual(attr, renderer.classAttribute(), "Get/set renderer class attribute")
 
         for m in (
-            QgsGraduatedSymbolRenderer.Mode.Custom,
-            QgsGraduatedSymbolRenderer.Mode.EqualInterval,
-            QgsGraduatedSymbolRenderer.Mode.Quantile,
-            QgsGraduatedSymbolRenderer.Mode.Jenks,
-            QgsGraduatedSymbolRenderer.Mode.Pretty,
-            QgsGraduatedSymbolRenderer.Mode.StdDev,
+            QgsGraduatedSymbolRenderer.Custom,
+            QgsGraduatedSymbolRenderer.EqualInterval,
+            QgsGraduatedSymbolRenderer.Quantile,
+            QgsGraduatedSymbolRenderer.Jenks,
+            QgsGraduatedSymbolRenderer.Pretty,
+            QgsGraduatedSymbolRenderer.StdDev,
         ):
             renderer.setMode(m)
             self.assertEqual(m, renderer.mode(), "Get/set renderer mode")
@@ -318,7 +317,7 @@ class TestQgsGraduatedSymbolRenderer(QgisTestCase):
             "Get/set renderer color ramp")
 
         # test for classificatio with varying size
-        renderer.setGraduatedMethod(QgsGraduatedSymbolRenderer.GraduatedMethod.GraduatedSize)
+        renderer.setGraduatedMethod(QgsGraduatedSymbolRenderer.GraduatedSize)
         renderer.setSourceColorRamp(None)
         renderer.addClassLowerUpper(0, 2)
         renderer.addClassLowerUpper(2, 4)
@@ -409,7 +408,7 @@ class TestQgsGraduatedSymbolRenderer(QgisTestCase):
             dumpRangeBreaks(renderer.ranges()),
             '(0.0000-0.0000,10.0000-25.0000,20.0000-25.5000,25.5000-30.5000,)',
             'sortByValue not correct')
-        renderer.sortByValue(Qt.SortOrder.DescendingOrder)
+        renderer.sortByValue(Qt.DescendingOrder)
         self.assertEqual(
             dumpRangeBreaks(renderer.ranges()),
             '(25.5000-30.5000,20.0000-25.5000,10.0000-25.0000,0.0000-0.0000,)',
@@ -490,21 +489,6 @@ class TestQgsGraduatedSymbolRenderer(QgisTestCase):
         renderer.setClassAttribute("value - $area")
         self.assertTrue(renderer.filterNeedsGeometry())
 
-    def test_legend_keys(self):
-        renderer = QgsGraduatedSymbolRenderer()
-        renderer.setClassAttribute('field_name')
-
-        self.assertFalse(renderer.legendKeys())
-
-        symbol_a = createMarkerSymbol()
-        renderer.addClassRange(QgsRendererRange(1, 2, symbol_a, 'a', True, '0'))
-        symbol_b = createMarkerSymbol()
-        renderer.addClassRange(QgsRendererRange(5, 6, symbol_b, 'b', True, '1'))
-        symbol_c = createMarkerSymbol()
-        renderer.addClassRange(QgsRendererRange(15.5, 16.5, symbol_c, 'c', False, '2'))
-
-        self.assertEqual(renderer.legendKeys(), {'0', '1', '2'})
-
     def test_legend_key_to_expression(self):
         renderer = QgsGraduatedSymbolRenderer()
         renderer.setClassAttribute('field_name')
@@ -517,11 +501,11 @@ class TestQgsGraduatedSymbolRenderer(QgisTestCase):
         self.assertFalse(ok)
 
         symbol_a = createMarkerSymbol()
-        renderer.addClassRange(QgsRendererRange(1, 2, symbol_a, 'a', True, '0'))
+        renderer.addClassRange(QgsRendererRange(1, 2, symbol_a, 'a'))
         symbol_b = createMarkerSymbol()
-        renderer.addClassRange(QgsRendererRange(5, 6, symbol_b, 'b', True, '1'))
+        renderer.addClassRange(QgsRendererRange(5, 6, symbol_b, 'b'))
         symbol_c = createMarkerSymbol()
-        renderer.addClassRange(QgsRendererRange(15.5, 16.5, symbol_c, 'c', False, '2'))
+        renderer.addClassRange(QgsRendererRange(15.5, 16.5, symbol_c, 'c', False))
 
         exp, ok = renderer.legendKeyToExpression('0', None)
         self.assertTrue(ok)

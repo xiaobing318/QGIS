@@ -25,18 +25,23 @@ __date__ = '05/15/2016'
 __copyright__ = 'Copyright 2016, The QGIS Project'
 
 import os
+import sys
 import re
 import subprocess
-import sys
-import tempfile
 from shutil import copytree, rmtree
+import tempfile
+from utilities import unitTestDataPath, waitServer
+from qgis.core import (
+    QgsVectorLayer,
+    QgsApplication
+)
 
-from qgis.core import QgsApplication, QgsVectorLayer
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import (
+    start_app,
+    unittest,
+)
 
 from offlineditingtestbase import OfflineTestBase
-from utilities import unitTestDataPath, waitServer
 
 try:
     QGIS_SERVER_OFFLINE_PORT = os.environ['QGIS_SERVER_OFFLINE_PORT']
@@ -46,14 +51,13 @@ except:
 qgis_app = start_app()
 
 
-class TestWFST(QgisTestCase, OfflineTestBase):
+class TestWFST(unittest.TestCase, OfflineTestBase):
     # To fake the WFS cache!
     counter = 0
 
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
-        super(TestWFST, cls).setUpClass()
         cls.port = QGIS_SERVER_OFFLINE_PORT
         # Create tmp folder
         cls.temp_path = tempfile.mkdtemp()
@@ -81,7 +85,6 @@ class TestWFST(QgisTestCase, OfflineTestBase):
     def tearDownClass(cls):
         """Run after all tests"""
         rmtree(cls.temp_path)
-        super(TestWFST, cls).tearDownClass()
 
     def setUp(self):
         """Run before each test."""
@@ -91,7 +94,7 @@ class TestWFST(QgisTestCase, OfflineTestBase):
         self.port = int(re.findall(br':(\d+)', line)[0])
         assert self.port != 0
         # Wait for the server process to start
-        assert waitServer(f'http://127.0.0.1:{self.port}'), "Server is not responding!"
+        assert waitServer('http://127.0.0.1:%s' % self.port), "Server is not responding!"
         self._setUp()
 
     def tearDown(self):

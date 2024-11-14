@@ -19,16 +19,15 @@
 #include "qgsstringutils.h"
 
 QgsTextFragment::QgsTextFragment( const QString &text, const QgsTextCharacterFormat &format )
-  : mText( text != QStringLiteral( "\ufffc" ) ? text : QString() )
-  , mIsImage( text == QStringLiteral( "\ufffc" ) )
+  : mText( text )
   , mCharFormat( format )
 {}
 
 QgsTextFragment::QgsTextFragment( const QTextFragment &fragment )
-  : mText( fragment.text() != QStringLiteral( "\ufffc" ) ? fragment.text() : QString() )
-  , mIsImage( fragment.text() == QStringLiteral( "\ufffc" ) )
-  , mCharFormat( fragment.charFormat() )
+  : mText( fragment.text() )
+  , mCharFormat( QgsTextCharacterFormat( fragment.charFormat() ) )
 {
+
 }
 
 QString QgsTextFragment::text() const
@@ -44,11 +43,6 @@ void QgsTextFragment::setText( const QString &text )
 void QgsTextFragment::setCharacterFormat( const QgsTextCharacterFormat &charFormat )
 {
   mCharFormat = charFormat;
-}
-
-bool QgsTextFragment::isImage() const
-{
-  return mIsImage;
 }
 
 double QgsTextFragment::horizontalAdvance( const QFont &font, const QgsRenderContext &context, bool fontHasBeenUpdatedForFragment, double scaleFactor ) const

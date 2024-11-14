@@ -9,16 +9,11 @@ __author__ = 'Nyall Dawson'
 __date__ = '25/07/2014'
 __copyright__ = 'Copyright 2014, The QGIS Project'
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QColor
-from qgis.core import (
-    QgsColorScheme,
-    QgsRecentColorScheme,
-    QgsSettings,
-    QgsUserColorScheme,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import QgsColorScheme, QgsUserColorScheme, QgsRecentColorScheme, QgsSettings
+from qgis.testing import unittest, start_app
 
 
 # Make a dummy color scheme for testing
@@ -44,12 +39,11 @@ class DummyColorScheme(QgsColorScheme):
         return DummyColorScheme()
 
 
-class TestQgsColorScheme(QgisTestCase):
+class TestQgsColorScheme(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
-        super().setUpClass()
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain("QGIS_TestPyQgsColorScheme.com")
         QCoreApplication.setApplicationName("QGIS_TestPyQgsColorScheme")
@@ -108,11 +102,11 @@ class TestQgsColorScheme(QgisTestCase):
         self.assertEqual(scheme.schemeName(), 'user_test.gpl')
         self.assertTrue(scheme.isEditable())
 
-        self.assertFalse(scheme.flags() & QgsColorScheme.SchemeFlag.ShowInColorButtonMenu)
+        self.assertFalse(scheme.flags() & QgsColorScheme.ShowInColorButtonMenu)
         scheme.setShowSchemeInMenu(True)
-        self.assertTrue(scheme.flags() & QgsColorScheme.SchemeFlag.ShowInColorButtonMenu)
+        self.assertTrue(scheme.flags() & QgsColorScheme.ShowInColorButtonMenu)
         scheme.setShowSchemeInMenu(False)
-        self.assertFalse(scheme.flags() & QgsColorScheme.SchemeFlag.ShowInColorButtonMenu)
+        self.assertFalse(scheme.flags() & QgsColorScheme.ShowInColorButtonMenu)
 
         scheme.erase()
 

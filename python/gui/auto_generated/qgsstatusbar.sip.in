@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsstatusbar.h                                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -24,6 +24,8 @@ for resize grips and other platform specific status bar tweaks.
 
 Instead of adding child widgets and showing messages directly in the window's status bar,
 these widgets (and messages) should instead be added into the embedded :py:class:`QgsStatusBar`.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -110,5 +112,5 @@ and shown on this status bar too.
  *                                                                      *
  * src/gui/qgsstatusbar.h                                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

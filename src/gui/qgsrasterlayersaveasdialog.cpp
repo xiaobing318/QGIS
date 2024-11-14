@@ -12,24 +12,24 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
-
 #include "qgsapplication.h"
 #include "qgsgdalutils.h"
 #include "qgslogger.h"
 #include "qgscoordinatetransform.h"
-#include "qgsmaplayerutils.h"
 #include "qgsrasterlayer.h"
 #include "qgsrasterlayersaveasdialog.h"
-#include "moc_qgsrasterlayersaveasdialog.cpp"
 #include "qgsrasterdataprovider.h"
 #include "qgsrasterformatsaveoptionswidget.h"
 #include "qgsrasterrenderer.h"
 #include "qgsrastertransparency.h"
+#include "qgsprojectionselectiondialog.h"
 #include "qgssettings.h"
 #include "qgsrasterfilewriter.h"
 #include "qgsvectorlayer.h"
+#include "cpl_string.h"
 #include "qgsproject.h"
 #include <gdal.h>
+#include "qgsmessagelog.h"
 #include "qgsgui.h"
 #include "qgsdoublevalidator.h"
 #include "qgsdatums.h"
@@ -87,7 +87,7 @@ QgsRasterLayerSaveAsDialog::QgsRasterLayerSaveAsDialog( QgsRasterLayer *rasterLa
   //fill reasonable default values depending on the provider
   if ( mDataProvider )
   {
-    if ( mDataProvider->capabilities() & Qgis::RasterInterfaceCapability::Size )
+    if ( mDataProvider->capabilities() & QgsRasterDataProvider::Size )
     {
       setOriginalResolution();
       int xSize = mDataProvider->xSize();
@@ -113,8 +113,7 @@ QgsRasterLayerSaveAsDialog::QgsRasterLayerSaveAsDialog( QgsRasterLayer *rasterLa
   }
 
   // Only do pyramids if dealing directly with GDAL.
-  if ( mDataProvider && ( mDataProvider->capabilities() & Qgis::RasterInterfaceCapability::BuildPyramids
-                          || mDataProvider->providerCapabilities() & Qgis::RasterProviderCapability::BuildPyramids ) )
+  if ( mDataProvider && mDataProvider->capabilities() & QgsRasterDataProvider::BuildPyramids )
   {
     // setup pyramids option widget
     // mPyramidsOptionsWidget->createOptionsWidget()->setType( QgsRasterFormatSaveOptionsWidget::ProfileLineEdit );
@@ -133,7 +132,6 @@ QgsRasterLayerSaveAsDialog::QgsRasterLayerSaveAsDialog( QgsRasterLayer *rasterLa
   else
   {
     mPyramidsGroupBox->setEnabled( false );
-    mPyramidsGroupBox->setCollapsed( true );
   }
 
   // restore checked state for most groupboxes (default is to restore collapsed state)
@@ -503,7 +501,7 @@ void QgsRasterLayerSaveAsDialog::hideOutput()
 
 void QgsRasterLayerSaveAsDialog::toggleResolutionSize()
 {
-  bool hasResolution = mDataProvider && mDataProvider->capabilities() & Qgis::RasterInterfaceCapability::Size;
+  bool hasResolution = mDataProvider && mDataProvider->capabilities() & QgsRasterDataProvider::Size;
 
   bool on = mResolutionRadioButton->isChecked();
   mXResolutionLineEdit->setEnabled( on );
@@ -518,7 +516,7 @@ void QgsRasterLayerSaveAsDialog::setOriginalResolution()
 {
   double xRes, yRes;
 
-  if ( mDataProvider->capabilities() & Qgis::RasterInterfaceCapability::Size )
+  if ( mDataProvider->capabilities() & QgsRasterDataProvider::Size )
   {
     xRes = mDataProvider->extent().width() / mDataProvider->xSize();
     yRes = mDataProvider->extent().height() / mDataProvider->ySize();
@@ -666,7 +664,6 @@ QgsRasterLayerSaveAsDialog::Mode QgsRasterLayerSaveAsDialog::mode() const
 void QgsRasterLayerSaveAsDialog::mRawModeRadioButton_toggled( bool checked )
 {
   mNoDataGroupBox->setEnabled( checked && mDataProvider->bandCount() == 1 );
-  mNoDataGroupBox->setCollapsed( !mNoDataGroupBox->isEnabled() );
 }
 
 void QgsRasterLayerSaveAsDialog::mAddNoDataManuallyToolButton_clicked()
@@ -683,7 +680,7 @@ void QgsRasterLayerSaveAsDialog::mLoadTransparentNoDataToolButton_clicked()
   const auto constTransparentSingleValuePixelList = rasterTransparency->transparentSingleValuePixelList();
   for ( const QgsRasterTransparency::TransparentSingleValuePixel &transparencyPixel : constTransparentSingleValuePixelList )
   {
-    if ( qgsDoubleNear( transparencyPixel.opacity, 0 ) )
+    if ( transparencyPixel.percentTransparent == 100 )
     {
       addNoDataRow( transparencyPixel.min, transparencyPixel.max );
       if ( transparencyPixel.min != transparencyPixel.max )
@@ -767,14 +764,14 @@ void QgsRasterLayerSaveAsDialog::noDataCellTextEdited( const QString &text )
     }
     if ( row != -1 ) break;
   }
-  QgsDebugMsgLevel( QStringLiteral( "row = %1 column =%2" ).arg( row ).arg( column ), 2 );
+  QgsDebugMsg( QStringLiteral( "row = %1 column =%2" ).arg( row ).arg( column ) );
 
   if ( column == 0 )
   {
     QLineEdit *toLineEdit = dynamic_cast<QLineEdit *>( mNoDataTableWidget->cellWidget( row, 1 ) );
     if ( !toLineEdit ) return;
     bool toChanged = mNoDataToEdited.value( row );
-    QgsDebugMsgLevel( QStringLiteral( "toChanged = %1" ).arg( toChanged ), 2 );
+    QgsDebugMsg( QStringLiteral( "toChanged = %1" ).arg( toChanged ) );
     if ( !toChanged )
     {
       toLineEdit->setText( lineEdit->text() );
@@ -906,14 +903,14 @@ QList<int> QgsRasterLayerSaveAsDialog::pyramidsList() const
   return mPyramidsGroupBox->isChecked() ? mPyramidsOptionsWidget->overviewList() : QList<int>();
 }
 
-Qgis::RasterBuildPyramidOption QgsRasterLayerSaveAsDialog::buildPyramidsFlag() const
+QgsRaster::RasterBuildPyramids QgsRasterLayerSaveAsDialog::buildPyramidsFlag() const
 {
   if ( ! mPyramidsGroupBox->isChecked() )
-    return Qgis::RasterBuildPyramidOption::No;
+    return QgsRaster::PyramidsFlagNo;
   else if ( mPyramidsUseExistingCheckBox->isChecked() )
-    return Qgis::RasterBuildPyramidOption::CopyExisting;
+    return QgsRaster::PyramidsCopyExisting;
   else
-    return Qgis::RasterBuildPyramidOption::Yes;
+    return QgsRaster::PyramidsFlagYes;
 }
 
 bool QgsRasterLayerSaveAsDialog::validate() const
@@ -964,21 +961,6 @@ void QgsRasterLayerSaveAsDialog::accept()
   if ( !validate() )
   {
     return;
-  }
-
-  if ( QgsMapLayerUtils::isOpenStreetMapLayer( mRasterLayer ) )
-  {
-    const int nbTilesWidth = std::ceil( nColumns() / 256 );
-    const int nbTilesHeight = std::ceil( nRows() / 256 );
-    int64_t totalTiles = static_cast<int64_t>( nbTilesWidth ) * nbTilesHeight;
-
-    if ( totalTiles > MAXIMUM_OPENSTREETMAP_TILES_FETCH )
-    {
-      QMessageBox::warning( this, tr( "Save Raster Layer" ),
-                            tr( "The number of OpenStreetMap tiles needed to produce the raster layer is too large and will lead to bulk downloading behavior which is prohibited by the %1OpenStreetMap Foundation tile usage policy%2." ).arg( QStringLiteral( "<a href=\"https://operations.osmfoundation.org/policies/tiles/\">" ), QStringLiteral( "</a>" ) ),
-                            QMessageBox::Ok );
-      return;
-    }
   }
 
   if ( outputFormat() == QLatin1String( "GPKG" ) && outputLayerExists() &&

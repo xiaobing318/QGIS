@@ -20,8 +20,6 @@
 #include "qgstextcharacterformat.h"
 #include "qgstextfragment.h"
 #include "qgstextblock.h"
-#include "qgstextrenderer.h"
-#include "qgsrendercontext.h"
 
 QgsTextLabelFeature::QgsTextLabelFeature( QgsFeatureId id, geos::unique_ptr geometry, QSizeF size )
   : QgsLabelFeature( id, std::move( geometry ), size )
@@ -49,25 +47,8 @@ bool QgsTextLabelFeature::hasCharacterFormat( int partId ) const
   return mTextMetrics.has_value() && partId < mTextMetrics->graphemeFormatCount();
 }
 
-QgsPrecalculatedTextMetrics QgsTextLabelFeature::calculateTextMetrics( const QgsMapToPixel *xform, const QgsRenderContext &context, const QgsTextFormat &format, const QFont &baseFont, const QFontMetricsF &fontMetrics, double letterSpacing, double wordSpacing, const QString &text, QgsTextDocument *document, QgsTextDocumentMetrics * )
+QgsPrecalculatedTextMetrics QgsTextLabelFeature::calculateTextMetrics( const QgsMapToPixel *xform, const QgsRenderContext &context, const QFont &baseFont, const QFontMetricsF &fontMetrics, double letterSpacing, double wordSpacing, const QString &text, QgsTextDocument *document, QgsTextDocumentMetrics * )
 {
-  const double tabStopDistancePainterUnits = format.tabStopDistanceUnit() == Qgis::RenderUnit::Percentage
-      ? format.tabStopDistance() * baseFont.pixelSize()
-      : context.convertToPainterUnits( format.tabStopDistance(), format.tabStopDistanceUnit(), format.tabStopDistanceMapUnitScale() );
-
-  const QList< QgsTextFormat::Tab > tabPositions = format.tabPositions();
-  QList< double > tabStopDistancesPainterUnits;
-  tabStopDistancesPainterUnits.reserve( tabPositions.size() );
-  for ( const QgsTextFormat::Tab &tab : tabPositions )
-  {
-    tabStopDistancesPainterUnits.append(
-      format.tabStopDistanceUnit() == Qgis::RenderUnit::Percentage
-      ? tab.position() * baseFont.pixelSize()
-      : context.convertToPainterUnits( tab.position(), format.tabStopDistanceUnit(), format.tabStopDistanceMapUnitScale() )
-    );
-  }
-
-
   // create label info!
   const double mapScale = xform->mapUnitsPerPixel();
   QStringList graphemes;
@@ -97,10 +78,6 @@ QgsPrecalculatedTextMetrics QgsTextLabelFeature::calculateTextMetrics( const Qgs
   QVector< double > characterWidths( graphemes.count() );
   QVector< double > characterHeights( graphemes.count() );
   QVector< double > characterDescents( graphemes.count() );
-
-  QFont previousNonSuperSubScriptFont;
-
-  double currentWidth = 0;
   for ( int i = 0; i < graphemes.count(); i++ )
   {
     // reconstruct how Qt creates word spacing, then adjust per individual stored character
@@ -115,74 +92,12 @@ QgsPrecalculatedTextMetrics QgsTextLabelFeature::calculateTextMetrics( const Qgs
     {
       QFont graphemeFont = baseFont;
       graphemeFormat->updateFontForFormat( graphemeFont, context, 1 );
-
-      if ( i == 0 )
-        previousNonSuperSubScriptFont = graphemeFont;
-
-      if ( graphemeFormat->hasVerticalAlignmentSet() )
-      {
-        switch ( graphemeFormat->verticalAlignment() )
-        {
-          case Qgis::TextCharacterVerticalAlignment::Normal:
-            previousNonSuperSubScriptFont = graphemeFont;
-            break;
-
-          case Qgis::TextCharacterVerticalAlignment::SuperScript:
-          case Qgis::TextCharacterVerticalAlignment::SubScript:
-          {
-            if ( graphemeFormat->fontPointSize() < 0 )
-            {
-              // if fragment has no explicit font size set, then we scale the inherited font size to 60% of base font size
-              // this allows for easier use of super/subscript in labels as "my text<sup>2</sup>" will automatically render
-              // the superscript in a smaller font size. BUT if the fragment format HAS a non -1 font size then it indicates
-              // that the document has an explicit font size for the super/subscript element, eg "my text<sup style="font-size: 6pt">2</sup>"
-              // which we should respect
-              graphemeFont.setPixelSize( static_cast< int >( std::round( graphemeFont.pixelSize() * QgsTextRenderer::SUPERSCRIPT_SUBSCRIPT_FONT_SIZE_SCALING_FACTOR ) ) );
-            }
-            break;
-          }
-        }
-      }
-      else
-      {
-        previousNonSuperSubScriptFont = graphemeFont;
-      }
-
       const QFontMetricsF graphemeFontMetrics( graphemeFont );
       graphemeFirstCharHorizontalAdvance = graphemeFontMetrics.horizontalAdvance( QString( graphemes[i].at( 0 ) ) );
       graphemeFirstCharHorizontalAdvanceWithLetterSpacing = graphemeFontMetrics.horizontalAdvance( graphemes[i].at( 0 ) ) + letterSpacing;
       graphemeHorizontalAdvance = graphemeFontMetrics.horizontalAdvance( QString( graphemes[i] ) );
       characterDescent = graphemeFontMetrics.descent();
       characterHeight = graphemeFontMetrics.height();
-    }
-    else if ( graphemes[i] == '\t' )
-    {
-      double nextTabStop = 0;
-      if ( !tabStopDistancesPainterUnits.empty() )
-      {
-        // if we don't find a tab stop before the current length of line, we just ignore the tab character entirely
-        nextTabStop = currentWidth;
-        for ( const double tabStop : std::as_const( tabStopDistancesPainterUnits ) )
-        {
-          if ( tabStop >= currentWidth )
-          {
-            nextTabStop = tabStop;
-            break;
-          }
-        }
-      }
-      else
-      {
-        nextTabStop = ( std::floor( currentWidth / tabStopDistancePainterUnits ) + 1 ) * tabStopDistancePainterUnits;
-      }
-
-      const double thisTabWidth = nextTabStop - currentWidth;
-
-      graphemeFirstCharHorizontalAdvance = thisTabWidth;
-      graphemeFirstCharHorizontalAdvanceWithLetterSpacing = thisTabWidth;
-      graphemeHorizontalAdvance = thisTabWidth;
-      characterDescent = fontMetrics.descent();
-      characterHeight = fontMetrics.height();
     }
     else
     {
@@ -214,13 +129,21 @@ QgsPrecalculatedTextMetrics QgsTextLabelFeature::calculateTextMetrics( const Qgs
     characterWidths[i] = mapScale * charWidth;
     characterHeights[i] = mapScale * characterHeight;
     characterDescents[i] = mapScale * characterDescent;
-
-    currentWidth += charWidth;
   }
 
   QgsPrecalculatedTextMetrics res( graphemes, std::move( characterWidths ), std::move( characterHeights ), std::move( characterDescents ) );
   res.setGraphemeFormats( graphemeFormats );
   return res;
+}
+
+QgsTextDocument QgsTextLabelFeature::document() const
+{
+  return mDocument;
+}
+
+QgsTextDocumentMetrics QgsTextLabelFeature::documentMetrics() const
+{
+  return mDocumentMetrics;
 }
 
 void QgsTextLabelFeature::setDocument( const QgsTextDocument &document, const QgsTextDocumentMetrics &metrics )

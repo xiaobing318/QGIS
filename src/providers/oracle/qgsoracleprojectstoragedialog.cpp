@@ -13,7 +13,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsoracleprojectstoragedialog.h"
-#include "moc_qgsoracleprojectstoragedialog.cpp"
 
 #include "qgsoracleconn.h"
 #include "qgsoracleconnpool.h"

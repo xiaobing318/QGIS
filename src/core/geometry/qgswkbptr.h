@@ -16,7 +16,7 @@
 #define QGSWKBPTR_H
 
 #include "qgis_core.h"
-#include "qgis.h"
+#include "qgswkbtypes.h"
 #include "qgis_sip.h"
 #include "qgsexception.h"
 #include "qpolygon.h"
@@ -85,8 +85,7 @@ class CORE_EXPORT QgsWkbPtr
     inline const QgsWkbPtr &operator>>( quint32 &v ) const { read( v ); return *this; } SIP_SKIP
     //! Reads an char value
     inline const QgsWkbPtr &operator>>( char &v ) const { read( v ); return *this; } SIP_SKIP
-    //! Reads a Qgis::WkbType enum value
-    inline const QgsWkbPtr &operator>>( Qgis::WkbType &v ) const { read( v ); return *this; } SIP_SKIP
+    inline const QgsWkbPtr &operator>>( QgsWkbTypes::Type &v ) const { read( v ); return *this; } SIP_SKIP
 
     //! Writes a double to the pointer
     inline QgsWkbPtr &operator<<( double v ) { write( v ); return *this; } SIP_SKIP
@@ -101,7 +100,7 @@ class CORE_EXPORT QgsWkbPtr
     //! Writes a char to the pointer
     inline QgsWkbPtr &operator<<( char v ) { write( v ); return *this; } SIP_SKIP
     //! Writes a WKB type value to the pointer
-    inline QgsWkbPtr &operator<<( Qgis::WkbType v ) { write( v ); return *this; } SIP_SKIP
+    inline QgsWkbPtr &operator<<( QgsWkbTypes::Type v ) { write( v ); return *this; } SIP_SKIP
     //! Append data from a byte array
     inline QgsWkbPtr &operator<<( const QByteArray &data ) { write( data ); return *this; } SIP_SKIP
 
@@ -140,7 +139,7 @@ class CORE_EXPORT QgsConstWkbPtr
     mutable unsigned char *mP;
     unsigned char *mEnd;
     mutable bool mEndianSwap;
-    mutable Qgis::WkbType mWkbType;
+    mutable QgsWkbTypes::Type mWkbType;
 
     /**
      * \brief Verify bounds
@@ -170,7 +169,7 @@ class CORE_EXPORT QgsConstWkbPtr
      * \brief readHeader
      * \note not available in Python bindings
      */
-    Qgis::WkbType readHeader() const SIP_SKIP;
+    QgsWkbTypes::Type readHeader() const SIP_SKIP;
 
     inline const QgsConstWkbPtr &operator>>( double &v ) const { read( v ); return *this; } SIP_SKIP
     inline const QgsConstWkbPtr &operator>>( float &r ) const { double v; read( v ); r = v; return *this; } SIP_SKIP

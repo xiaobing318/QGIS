@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     self.py
@@ -61,19 +63,19 @@ class warp(GdalAlgorithm):
 
     def initAlgorithm(self, config=None):
         self.methods = ((self.tr('Nearest Neighbour'), 'near'),
-                        (self.tr('Bilinear (2x2 Kernel)'), 'bilinear'),
-                        (self.tr('Cubic (4x4 Kernel)'), 'cubic'),
-                        (self.tr('Cubic B-Spline (4x4 Kernel)'), 'cubicspline'),
-                        (self.tr('Lanczos (6x6 Kernel)'), 'lanczos'),
+                        (self.tr('Bilinear'), 'bilinear'),
+                        (self.tr('Cubic'), 'cubic'),
+                        (self.tr('Cubic Spline'), 'cubicspline'),
+                        (self.tr('Lanczos Windowed Sinc'), 'lanczos'),
                         (self.tr('Average'), 'average'),
                         (self.tr('Mode'), 'mode'),
                         (self.tr('Maximum'), 'max'),
                         (self.tr('Minimum'), 'min'),
                         (self.tr('Median'), 'med'),
-                        (self.tr('First Quartile (Q1)'), 'q1'),
-                        (self.tr('Third Quartile (Q3)'), 'q3'))
+                        (self.tr('First Quartile'), 'q1'),
+                        (self.tr('Third Quartile'), 'q3'))
 
-        self.TYPES = [self.tr('Use Input Layer Data Type'), 'Byte', 'Int16', 'UInt16', 'UInt32', 'Int32', 'Float32', 'Float64', 'CInt16', 'CInt32', 'CFloat32', 'CFloat64', 'Int8']
+        self.TYPES = [self.tr('Use Input Layer Data Type'), 'Byte', 'Int16', 'UInt16', 'UInt32', 'Int32', 'Float32', 'Float64', 'CInt16', 'CInt32', 'CFloat32', 'CFloat64']
 
         self.addParameter(QgsProcessingParameterRasterLayer(self.INPUT, self.tr('Input layer')))
         self.addParameter(QgsProcessingParameterCrs(self.SOURCE_CRS,
@@ -88,12 +90,12 @@ class warp(GdalAlgorithm):
                                                      defaultValue=0))
         self.addParameter(QgsProcessingParameterNumber(self.NODATA,
                                                        self.tr('Nodata value for output bands'),
-                                                       type=QgsProcessingParameterNumber.Type.Double,
+                                                       type=QgsProcessingParameterNumber.Double,
                                                        defaultValue=None,
                                                        optional=True))
         self.addParameter(QgsProcessingParameterNumber(self.TARGET_RESOLUTION,
                                                        self.tr('Output file resolution in target georeferenced units'),
-                                                       type=QgsProcessingParameterNumber.Type.Double,
+                                                       type=QgsProcessingParameterNumber.Double,
                                                        minValue=0.0,
                                                        defaultValue=None,
                                                        optional=True))
@@ -102,8 +104,10 @@ class warp(GdalAlgorithm):
                                                      self.tr('Additional creation options'),
                                                      defaultValue='',
                                                      optional=True)
-        options_param.setFlags(options_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
-        options_param.setMetadata({'widget_wrapper': {'widget_type': 'rasteroptions'}})
+        options_param.setFlags(options_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        options_param.setMetadata({
+            'widget_wrapper': {
+                'class': 'processing.algs.gdal.ui.RasterOptionsWidget.RasterOptionsWidgetWrapper'}})
         self.addParameter(options_param)
 
         dataType_param = QgsProcessingParameterEnum(self.DATA_TYPE,
@@ -111,32 +115,32 @@ class warp(GdalAlgorithm):
                                                     self.TYPES,
                                                     allowMultiple=False,
                                                     defaultValue=0)
-        dataType_param.setFlags(dataType_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        dataType_param.setFlags(dataType_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(dataType_param)
 
         target_extent_param = QgsProcessingParameterExtent(self.TARGET_EXTENT,
                                                            self.tr('Georeferenced extents of output file to be created'),
                                                            optional=True)
-        target_extent_param.setFlags(target_extent_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        target_extent_param.setFlags(target_extent_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(target_extent_param)
 
         target_extent_crs_param = QgsProcessingParameterCrs(self.TARGET_EXTENT_CRS,
                                                             self.tr('CRS of the target raster extent'),
                                                             optional=True)
-        target_extent_crs_param.setFlags(target_extent_crs_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        target_extent_crs_param.setFlags(target_extent_crs_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(target_extent_crs_param)
 
         multithreading_param = QgsProcessingParameterBoolean(self.MULTITHREADING,
                                                              self.tr('Use multithreaded warping implementation'),
                                                              defaultValue=False)
-        multithreading_param.setFlags(multithreading_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        multithreading_param.setFlags(multithreading_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(multithreading_param)
 
         extra_param = QgsProcessingParameterString(self.EXTRA,
                                                    self.tr('Additional command-line parameters'),
                                                    defaultValue=None,
                                                    optional=True)
-        extra_param.setFlags(extra_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        extra_param.setFlags(extra_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(extra_param)
 
         self.addParameter(QgsProcessingParameterRasterDestination(self.OUTPUT,
@@ -161,7 +165,7 @@ class warp(GdalAlgorithm):
         return 'gdalwarp'
 
     def tags(self):
-        tags = self.tr('transform,reproject,crs,srs,resample').split(',')
+        tags = self.tr('transform,reproject,crs,srs').split(',')
         tags.extend(super().tags())
         return tags
 
@@ -169,8 +173,6 @@ class warp(GdalAlgorithm):
         inLayer = self.parameterAsRasterLayer(parameters, self.INPUT, context)
         if inLayer is None:
             raise QgsProcessingException(self.invalidRasterError(parameters, self.INPUT))
-        input_details = GdalUtils.gdal_connection_details_from_layer(
-            inLayer)
 
         sourceCrs = self.parameterAsCrs(parameters, self.SOURCE_CRS, context)
         targetCrs = self.parameterAsCrs(parameters, self.TARGET_CRS, context)
@@ -219,20 +221,12 @@ class warp(GdalAlgorithm):
 
         data_type = self.parameterAsEnum(parameters, self.DATA_TYPE, context)
         if data_type:
-            if self.TYPES[data_type] == 'Int8' and GdalUtils.version() < 3070000:
-                raise QgsProcessingException(self.tr('Int8 data type requires GDAL version 3.7 or later'))
-
             arguments.append('-ot ' + self.TYPES[data_type])
 
         out = self.parameterAsOutputLayer(parameters, self.OUTPUT, context)
         self.setOutputValue(self.OUTPUT, out)
-
-        output_format = QgsRasterFileWriter.driverForExtension(os.path.splitext(out)[1])
-        if not output_format:
-            raise QgsProcessingException(self.tr('Output format is invalid'))
-
         arguments.append('-of')
-        arguments.append(output_format)
+        arguments.append(QgsRasterFileWriter.driverForExtension(os.path.splitext(out)[1]))
 
         options = self.parameterAsString(parameters, self.OPTIONS, context)
         if options:
@@ -242,13 +236,7 @@ class warp(GdalAlgorithm):
             extra = self.parameterAsString(parameters, self.EXTRA, context)
             arguments.append(extra)
 
-        arguments.append(input_details.connection_string)
+        arguments.append(inLayer.source())
         arguments.append(out)
-
-        if input_details.open_options:
-            arguments.extend(input_details.open_options_as_arguments())
-
-        if input_details.credential_options:
-            arguments.extend(input_details.credential_options_as_arguments())
 
         return [self.commandName(), GdalUtils.escapeAndJoin(arguments)]

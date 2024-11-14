@@ -41,7 +41,7 @@ class QgsRasterizeAlgorithm : public QgsProcessingAlgorithm
     QString name() const override;
     QString displayName() const override;
     QStringList tags() const override;
-    Qgis::ProcessingAlgorithmFlags flags() const override;
+    Flags flags() const override;
     QString group() const override;
     QString groupId() const override;
     QString shortHelpString() const override;
@@ -54,8 +54,6 @@ class QgsRasterizeAlgorithm : public QgsProcessingAlgorithm
                                   QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 
     bool prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
-
-    void checkLayersUsagePolicy( QgsProcessingFeedback *feedback );
 
   private:
 

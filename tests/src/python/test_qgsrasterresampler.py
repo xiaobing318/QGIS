@@ -16,19 +16,18 @@ import struct
 import tempfile
 from contextlib import contextmanager
 
+import qgis  # NOQA
 from osgeo import gdal
 from qgis.PyQt.QtGui import qRed
-from qgis.core import (
-    QgsBilinearRasterResampler,
-    QgsCubicRasterResampler,
-    QgsRasterDataProvider,
-    QgsRasterLayer,
-    QgsRasterResampleFilter,
-    QgsRectangle,
-    QgsSingleBandGrayRenderer,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsRasterLayer,
+                       QgsRectangle,
+                       QgsRasterResampleFilter,
+                       QgsSingleBandGrayRenderer,
+                       QgsCubicRasterResampler,
+                       QgsBilinearRasterResampler,
+                       QgsRasterDataProvider
+                       )
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -37,7 +36,7 @@ from utilities import unitTestDataPath
 start_app()
 
 
-class TestQgsRasterResampler(QgisTestCase):
+class TestQgsRasterResampler(unittest.TestCase):
 
     def checkBlockContents(self, block, expected):
         res = []

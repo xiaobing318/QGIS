@@ -42,10 +42,10 @@
        <bool>true</bool>
       </property>
       <property name="frameShape">
-       <enum>QFrame::Shape::StyledPanel</enum>
+       <enum>QFrame::StyledPanel</enum>
       </property>
       <property name="frameShadow">
-       <enum>QFrame::Shadow::Plain</enum>
+       <enum>QFrame::Plain</enum>
       </property>
      </widget>
     </item>
@@ -58,7 +58,7 @@
      <x>0</x>
      <y>0</y>
      <width>2180</width>
-     <height>23</height>
+     <height>24</height>
     </rect>
    </property>
    <widget class="QMenu" name="menu_Table">
@@ -83,9 +83,6 @@
     <addaction name="menuInsert_Columns"/>
     <addaction name="mActionDeleteRows"/>
     <addaction name="mActionDeleteColumns"/>
-    <addaction name="separator"/>
-    <addaction name="mActionMergeSelected"/>
-    <addaction name="mActionSplitSelected"/>
     <addaction name="separator"/>
     <addaction name="mActionIncludeHeader"/>
    </widget>
@@ -197,16 +194,6 @@
    </property>
    <property name="text">
     <string>Include Header Row</string>
-   </property>
-  </action>
-  <action name="mActionMergeSelected">
-   <property name="text">
-    <string>Merge Selected Cells</string>
-   </property>
-  </action>
-  <action name="mActionSplitSelected">
-   <property name="text">
-    <string>Split Selected Cells</string>
    </property>
   </action>
  </widget>

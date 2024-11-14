@@ -39,6 +39,7 @@ class CORE_EXPORT QgsErrorMessage
       Html
     };
 
+    //! Constructor for QgsErrorMessage
     QgsErrorMessage() = default;
 
     /**
@@ -72,15 +73,15 @@ class CORE_EXPORT QgsErrorMessage
 
 /**
  * \ingroup core
- * \brief A container for error messages.
- *
- * It may contain a chain (e.g. a traceback) of error messages (e.g. GDAL - provider - layer).
+ * \brief QgsError is container for error messages (report). It may contain chain
+ * (sort of traceback) of error messages (e.g. GDAL - provider - layer).
  * Higher level messages are appended at the end.
 */
 class CORE_EXPORT QgsError
 {
   public:
 
+    //! Constructor for QgsError
     QgsError() = default;
 
     /**

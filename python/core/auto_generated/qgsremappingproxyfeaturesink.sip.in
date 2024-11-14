@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsremappingproxyfeaturesink.h                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -92,14 +92,14 @@ Sets the ``destination`` crs used for reprojecting incoming features to the sink
 .. seealso:: :py:func:`destinationCrs`
 %End
 
-    Qgis::WkbType destinationWkbType() const;
+    QgsWkbTypes::Type destinationWkbType() const;
 %Docstring
 Returns the WKB geometry type for the destination.
 
 .. seealso:: :py:func:`setDestinationWkbType`
 %End
 
-    void setDestinationWkbType( Qgis::WkbType type );
+    void setDestinationWkbType( QgsWkbTypes::Type type );
 %Docstring
 Sets the WKB geometry ``type`` for the destination.
 
@@ -211,5 +211,5 @@ Returns the destination :py:class:`QgsFeatureSink` which the proxy will forward 
  *                                                                      *
  * src/core/qgsremappingproxyfeaturesink.h                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

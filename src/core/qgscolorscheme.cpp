@@ -22,7 +22,6 @@
 #include "qgssymbollayerutils.h"
 #include "qgsapplication.h"
 #include "qgssettings.h"
-#include "qgscolorutils.h"
 
 #include <QDir>
 #include <QRegularExpression>
@@ -199,15 +198,15 @@ QgsNamedColorList QgsProjectColorScheme::fetchColors( const QString &context, co
 
   QgsNamedColorList colorList;
 
-  QStringList colorStrings = QgsProject::instance()->readListEntry( QStringLiteral( "Palette" ), QStringLiteral( "/Colors" ) ); // skip-keyword-check
-  const QStringList colorLabels = QgsProject::instance()->readListEntry( QStringLiteral( "Palette" ), QStringLiteral( "/Labels" ) ); // skip-keyword-check
+  QStringList colorStrings = QgsProject::instance()->readListEntry( QStringLiteral( "Palette" ), QStringLiteral( "/Colors" ) );
+  const QStringList colorLabels = QgsProject::instance()->readListEntry( QStringLiteral( "Palette" ), QStringLiteral( "/Labels" ) );
 
   //generate list from custom colors
   int colorIndex = 0;
   for ( QStringList::iterator it = colorStrings.begin();
         it != colorStrings.end(); ++it )
   {
-    const QColor color = QgsColorUtils::colorFromString( *it );
+    const QColor color = QgsSymbolLayerUtils::decodeColor( *it );
     QString label;
     if ( colorLabels.length() > colorIndex )
     {
@@ -225,7 +224,7 @@ bool QgsProjectColorScheme::setColors( const QgsNamedColorList &colors, const QS
 {
   Q_UNUSED( context )
   Q_UNUSED( baseColor )
-  QgsProject::instance()->setProjectColors( colors ); // skip-keyword-check
+  QgsProject::instance()->setProjectColors( colors );
   return true;
 }
 
@@ -307,7 +306,7 @@ QgsUserColorScheme::QgsUserColorScheme( const QString &filename )
     }
     if ( !in.atEnd() )
     {
-      const thread_local QRegularExpression rx( "Name:\\s*(\\S.*)$" );
+      const QRegularExpression rx( "Name:\\s*(\\S.*)$" );
       const QRegularExpressionMatch match = rx.match( line );
       if ( match.hasMatch() )
       {

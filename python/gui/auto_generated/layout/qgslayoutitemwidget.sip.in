@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/layout/qgslayoutitemwidget.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -19,6 +19,8 @@ this object.
 
 If you are creating a new :py:class:`QgsLayoutItem` configuration widget, you should instead
 inherit from :py:class:`QgsLayoutItemBaseWidget` (rather then directly working with :py:class:`QgsLayoutConfigObject`).
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -61,6 +63,8 @@ class QgsLayoutItemBaseWidget: QgsPanelWidget
 
 A base class for property widgets for layout items. All layout item widgets should inherit from
 this base class.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -153,6 +157,8 @@ class QgsLayoutItemPropertiesWidget: QWidget
 %Docstring(signature="appended")
 A widget for controlling the common properties of layout items (e.g. position and size, background, stroke, frame).
 This widget can be embedded into other layout item widgets.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -217,5 +223,5 @@ Sets data defined button state to match item
  *                                                                      *
  * src/gui/layout/qgslayoutitemwidget.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

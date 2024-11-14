@@ -9,15 +9,14 @@ __author__ = 'Loïc Bartoletti'
 __date__ = '28.6.2019'
 __copyright__ = 'Copyright 2019, The QGIS Project'
 
-
-from qgis.core import qgsDoubleNear, qgsRound
-import unittest
-from qgis.testing import start_app, QgisTestCase
+import qgis  # NOQA
+from qgis.core import qgsRound, qgsDoubleNear
+from qgis.testing import unittest, start_app
 
 start_app()
 
 
-class TestCoreAdditions(QgisTestCase):
+class TestCoreAdditions(unittest.TestCase):
 
     def testQgsRound(self):
         qgsDoubleNear(qgsRound(1234.567, 2), 1234.57, 0.01)

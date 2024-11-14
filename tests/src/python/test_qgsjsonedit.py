@@ -11,13 +11,12 @@ __copyright__ = 'Copyright 2021, The QGIS Project'
 
 
 from qgis.gui import QgsJsonEditWidget
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsJsonEdit(QgisTestCase):
+class TestQgsJsonEdit(unittest.TestCase):
 
     def testSettersGetters(self):
         """ test widget handling of null values """

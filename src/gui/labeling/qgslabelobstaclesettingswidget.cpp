@@ -15,7 +15,6 @@
 
 
 #include "qgslabelobstaclesettingswidget.h"
-#include "moc_qgslabelobstaclesettingswidget.cpp"
 #include "qgsexpressioncontextutils.h"
 
 QgsLabelObstacleSettingsWidget::QgsLabelObstacleSettingsWidget( QWidget *parent, QgsVectorLayer *vl )
@@ -25,8 +24,8 @@ QgsLabelObstacleSettingsWidget::QgsLabelObstacleSettingsWidget( QWidget *parent,
 
   setPanelTitle( tr( "Obstacle Settings" ) );
 
-  mObstacleTypeComboBox->addItem( tr( "Over the Feature's Interior" ), static_cast<int>( QgsLabelObstacleSettings::ObstacleType::PolygonInterior ) );
-  mObstacleTypeComboBox->addItem( tr( "Over the Feature's Boundary" ), static_cast< int >( QgsLabelObstacleSettings::ObstacleType::PolygonBoundary ) );
+  mObstacleTypeComboBox->addItem( tr( "Over the Feature's Interior" ), QgsLabelObstacleSettings::PolygonInterior );
+  mObstacleTypeComboBox->addItem( tr( "Over the Feature's Boundary" ), QgsLabelObstacleSettings::PolygonBoundary );
 
   connect( mObstacleTypeComboBox, qOverload<int>( &QComboBox::currentIndexChanged ), this, [ = ]( int )
   {
@@ -39,14 +38,15 @@ QgsLabelObstacleSettingsWidget::QgsLabelObstacleSettingsWidget( QWidget *parent,
       emit changed();
   } );
 
-  registerDataDefinedButton( mObstacleFactorDDBtn, QgsPalLayerSettings::Property::ObstacleFactor );
+  registerDataDefinedButton( mObstacleFactorDDBtn, QgsPalLayerSettings::ObstacleFactor );
+
 }
 
 void QgsLabelObstacleSettingsWidget::setSettings( const QgsLabelObstacleSettings &settings )
 {
   mBlockSignals = true;
   mObstacleFactorSlider->setValue( static_cast< int >( std::round( settings.factor() * 5 ) ) );
-  mObstacleTypeComboBox->setCurrentIndex( mObstacleTypeComboBox->findData( static_cast< int >( settings.type() ) ) );
+  mObstacleTypeComboBox->setCurrentIndex( mObstacleTypeComboBox->findData( settings.type() ) );
   mBlockSignals = false;
 }
 
@@ -58,13 +58,13 @@ QgsLabelObstacleSettings QgsLabelObstacleSettingsWidget::settings() const
   return settings;
 }
 
-void QgsLabelObstacleSettingsWidget::setGeometryType( Qgis::GeometryType type )
+void QgsLabelObstacleSettingsWidget::setGeometryType( QgsWkbTypes::GeometryType type )
 {
-  mObstacleTypeComboBox->setVisible( type == Qgis::GeometryType::Polygon || type == Qgis::GeometryType::Unknown );
-  mObstacleTypeLabel->setVisible( type == Qgis::GeometryType::Polygon || type == Qgis::GeometryType::Unknown );
+  mObstacleTypeComboBox->setVisible( type == QgsWkbTypes::PolygonGeometry || type == QgsWkbTypes::UnknownGeometry );
+  mObstacleTypeLabel->setVisible( type == QgsWkbTypes::PolygonGeometry || type == QgsWkbTypes::UnknownGeometry );
 }
 
 void QgsLabelObstacleSettingsWidget::updateDataDefinedProperties( QgsPropertyCollection &properties )
 {
-  properties.setProperty( QgsPalLayerSettings::Property::ObstacleFactor, mDataDefinedProperties.property( QgsPalLayerSettings::Property::ObstacleFactor ) );
+  properties.setProperty( QgsPalLayerSettings::ObstacleFactor, mDataDefinedProperties.property( QgsPalLayerSettings::ObstacleFactor ) );
 }

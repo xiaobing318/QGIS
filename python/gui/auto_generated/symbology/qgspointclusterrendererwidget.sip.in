@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/symbology/qgspointclusterrendererwidget.h                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -11,10 +11,12 @@
 
 
 
-class QgsPointClusterRendererWidget: QgsRendererWidget
+class QgsPointClusterRendererWidget: QgsRendererWidget, QgsExpressionContextGenerator
 {
 %Docstring(signature="appended")
 A widget which allows configuration of the properties for a :py:class:`QgsPointClusterRenderer`.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -59,5 +61,5 @@ Constructor for QgsPointClusterRendererWidget.
  *                                                                      *
  * src/gui/symbology/qgspointclusterrendererwidget.h                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

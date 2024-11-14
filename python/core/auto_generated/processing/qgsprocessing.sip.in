@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/processing/qgsprocessing.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -17,40 +17,41 @@ class QgsProcessing
 
 Contains enumerations and other constants for use in processing algorithms
 and parameters.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
 #include "qgsprocessing.h"
 %End
   public:
-    static const QMetaObject staticMetaObject;
 
-  public:
+    enum SourceType
+    {
+      TypeMapLayer,
+      TypeVectorAnyGeometry,
+      TypeVectorPoint,
+      TypeVectorLine,
+      TypeVectorPolygon,
+      TypeRaster,
+      TypeFile,
+      TypeVector,
+      TypeMesh,
+      TypePlugin,
+      TypePointCloud,
+      TypeAnnotation
+    };
 
-    enum class PythonOutputType
+    enum PythonOutputType
     {
       PythonQgsProcessingAlgorithmSubclass,
     };
 
-    enum class LayerOptionsFlag
-    {
-      SkipIndexGeneration,
-    };
-    typedef QFlags<QgsProcessing::LayerOptionsFlag> LayerOptionsFlags;
-
-
-    static QString sourceTypeToString( Qgis::ProcessingSourceType type );
+    static QString sourceTypeToString( SourceType type );
 %Docstring
 Converts a source ``type`` to a string representation.
 
 .. versionadded:: 3.6
-%End
-
-    static QString documentationFlagToString( Qgis::ProcessingAlgorithmDocumentationFlag flag );
-%Docstring
-Converts a documentation ``flag`` to a translated string.
-
-.. versionadded:: 3.40
 %End
 
     static const QString TEMPORARY_OUTPUT;
@@ -62,5 +63,5 @@ Converts a documentation ``flag`` to a translated string.
  *                                                                      *
  * src/core/processing/qgsprocessing.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

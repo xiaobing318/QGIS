@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     sieve.py
@@ -54,7 +56,7 @@ class sieve(GdalAlgorithm):
         self.addParameter(QgsProcessingParameterRasterLayer(self.INPUT, self.tr('Input layer')))
         self.addParameter(QgsProcessingParameterNumber(self.THRESHOLD,
                                                        self.tr('Threshold'),
-                                                       type=QgsProcessingParameterNumber.Type.Integer,
+                                                       type=QgsProcessingParameterNumber.Integer,
                                                        minValue=0,
                                                        defaultValue=10))
         self.addParameter(QgsProcessingParameterBoolean(self.EIGHT_CONNECTEDNESS,
@@ -71,7 +73,7 @@ class sieve(GdalAlgorithm):
                                                    self.tr('Additional command-line parameters'),
                                                    defaultValue=None,
                                                    optional=True)
-        extra_param.setFlags(extra_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        extra_param.setFlags(extra_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(extra_param)
 
         self.addParameter(QgsProcessingParameterRasterDestination(self.OUTPUT, self.tr('Sieved')))
@@ -110,20 +112,13 @@ class sieve(GdalAlgorithm):
 
         mask = self.parameterAsRasterLayer(parameters, self.MASK_LAYER, context)
         if mask:
-            mask_details = GdalUtils.gdal_connection_details_from_layer(
-                mask)
             arguments.append('-mask')
-            arguments.append(mask_details.connection_string)
+            arguments.append(mask.source())
 
         out = self.parameterAsOutputLayer(parameters, self.OUTPUT, context)
         self.setOutputValue(self.OUTPUT, out)
-
-        output_format = QgsRasterFileWriter.driverForExtension(os.path.splitext(out)[1])
-        if not output_format:
-            raise QgsProcessingException(self.tr('Output format is invalid'))
-
         arguments.append('-of')
-        arguments.append(output_format)
+        arguments.append(QgsRasterFileWriter.driverForExtension(os.path.splitext(out)[1]))
 
         if self.EXTRA in parameters and parameters[self.EXTRA] not in (None, ''):
             extra = self.parameterAsString(parameters, self.EXTRA, context)
@@ -132,13 +127,8 @@ class sieve(GdalAlgorithm):
         raster = self.parameterAsRasterLayer(parameters, self.INPUT, context)
         if raster is None:
             raise QgsProcessingException(self.invalidRasterError(parameters, self.INPUT))
-        input_details = GdalUtils.gdal_connection_details_from_layer(
-            raster)
 
-        arguments.append(input_details.connection_string)
+        arguments.append(raster.source())
         arguments.append(out)
-
-        if input_details.credential_options:
-            arguments.extend(input_details.credential_options_as_arguments())
 
         return [self.commandName() + ('.bat' if isWindows() else '.py'), GdalUtils.escapeAndJoin(arguments)]

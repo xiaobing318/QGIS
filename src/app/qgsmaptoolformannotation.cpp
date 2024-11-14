@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsmaptoolformannotation.h"
-#include "moc_qgsmaptoolformannotation.cpp"
 #include "qgsformannotation.h"
 #include "qgsmapcanvas.h"
 #include "qgsvectorlayer.h"

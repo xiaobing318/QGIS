@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/geometry/qgsrectangle.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -19,7 +19,7 @@ A rectangle specified with double values.
 :py:class:`QgsRectangle` is used to store a rectangle when double values are required.
 Examples are storing a layer extent or the current view extent of a map
 
-.. seealso:: :py:class:`QgsBox3D`
+.. seealso:: :py:class:`QgsBox3d`
 %End
 
 %TypeHeaderCode
@@ -53,6 +53,9 @@ The rectangle is NOT normalized after construction.
 %End
 
     QgsRectangle( const QgsRectangle &other ) /HoldGIL/;
+%Docstring
+Copy constructor
+%End
 
     ~QgsRectangle();
 
@@ -60,12 +63,16 @@ The rectangle is NOT normalized after construction.
 %Docstring
 Creates a new rectangle from a ``wkt`` string.
 The WKT must contain only 5 vertices, representing a rectangle aligned with X and Y axes.
+
+.. versionadded:: 3.0
 %End
 
     static QgsRectangle fromCenterAndSize( const QgsPointXY &center, double width, double height );
 %Docstring
 Creates a new rectangle, given the specified ``center`` point
 and ``width`` and ``height``.
+
+.. versionadded:: 3.0
 %End
 
     void set( const QgsPointXY &p1, const QgsPointXY &p2, bool normalize = true );
@@ -104,27 +111,10 @@ Set the minimum y value.
 Set the maximum y value.
 %End
 
-    void setNull() /HoldGIL/;
-%Docstring
-Mark a rectangle as being null (holding no spatial information).
-
-A null rectangle is also empty by definition.
-
-.. seealso:: :py:func:`isNull`
-
-.. seealso:: :py:func:`isEmpty`
-
-.. versionadded:: 3.34
-%End
-
- void setMinimal() /Deprecated/;
+    void setMinimal() /HoldGIL/;
 %Docstring
 Set a rectangle so that min corner is at max
 and max corner is at min. It is NOT normalized.
-
-.. deprecated:: 3.34
-
-   Will be removed in QGIS 4.0. Use :py:func:`~QgsRectangle.setNull`.
 %End
 
     double xMaximum() const /HoldGIL/;
@@ -179,6 +169,8 @@ Returns the area of the rectangle.
 .. seealso:: :py:func:`height`
 
 .. seealso:: :py:func:`perimeter`
+
+.. versionadded:: 3.0
 %End
 
     double perimeter() const /HoldGIL/;
@@ -186,6 +178,8 @@ Returns the area of the rectangle.
 Returns the perimeter of the rectangle.
 
 .. seealso:: :py:func:`area`
+
+.. versionadded:: 3.0
 %End
 
     QgsPointXY center() const /HoldGIL/;
@@ -231,6 +225,8 @@ Gets rectangle enlarged by buffer.
    In earlier QGIS releases this method was named :py:func:`~QgsRectangle.buffer`.
 
 .. seealso:: :py:func:`grow`
+
+.. versionadded:: 3.0
 %End
 
     QgsRectangle intersect( const QgsRectangle &rect ) const;
@@ -294,22 +290,16 @@ Returns the distance from ``point`` to the nearest point on the boundary of the 
 
     bool isEmpty() const;
 %Docstring
-Returns ``True`` if the rectangle has no area.
-
-An empty rectangle may still be non-null if it contains valid
-spatial information (e.g. bounding box of a point or of a vertical
-or horizontal segment).
-
-.. seealso:: :py:func:`isNull`
+Returns ``True`` if the rectangle is empty.
+An empty rectangle may still be non-null if it contains valid information (e.g. bounding box of a point).
 %End
 
     bool isNull() const;
 %Docstring
-Test if the rectangle is null (holding no spatial information).
-
+Test if the rectangle is null (all coordinates zero or after call to :py:func:`~QgsRectangle.setMinimal`).
 A null rectangle is also an empty rectangle.
 
-.. seealso:: :py:func:`setNull`
+.. versionadded:: 2.4
 %End
 
     QString asWktCoordinates() const;
@@ -355,10 +345,12 @@ return ``False`` if any of the rectangle boundaries are NaN or Inf.
 Swap x/y coordinates in the rectangle.
 %End
 
-    QgsBox3D toBox3d( double zMin, double zMax ) const;
+    QgsBox3d toBox3d( double zMin, double zMax ) const;
 %Docstring
 Converts the rectangle to a 3D box, with the specified
 ``zMin`` and ``zMax`` z values.
+
+.. versionadded:: 3.0
 %End
 
     operator QVariant() const;
@@ -373,11 +365,7 @@ the specified ``spacing`` between the grid lines.
 
     SIP_PYOBJECT __repr__();
 %MethodCode
-    QString str;
-    if ( sipCpp->isNull() )
-      str = QStringLiteral( "<QgsRectangle()>" );
-    else
-      str = QStringLiteral( "<QgsRectangle: %1>" ).arg( sipCpp->asWktCoordinates() );
+    QString str = QStringLiteral( "<QgsRectangle: %1>" ).arg( sipCpp->asWktCoordinates() );
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );
 %End
 
@@ -390,5 +378,5 @@ the specified ``spacing`` between the grid lines.
  *                                                                      *
  * src/core/geometry/qgsrectangle.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

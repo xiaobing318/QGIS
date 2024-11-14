@@ -16,7 +16,6 @@ email                : jef at norbit dot de
  ***************************************************************************/
 
 #include "qgsoraclecolumntypetask.h"
-#include "moc_qgsoraclecolumntypetask.cpp"
 #include "qgslogger.h"
 #include "qgsoracleconnpool.h"
 
@@ -38,7 +37,7 @@ bool QgsOracleColumnTypeTask::run()
   QgsOracleConn *conn = QgsOracleConnPool::instance()->acquireConnection( conninfo );
   if ( !conn )
   {
-    QgsDebugError( "Connection failed - " + conninfo );
+    QgsDebugMsg( "Connection failed - " + conninfo );
     return false;
   }
 

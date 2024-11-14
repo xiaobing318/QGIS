@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsmodeldesignerinputstreewidget.h"
-#include "moc_qgsmodeldesignerinputstreewidget.cpp"
 
 #include <QMimeData>
 

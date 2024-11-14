@@ -17,13 +17,11 @@
  ***************************************************************************/
 
 #include "qgsprojectproperties.h"
-#include "moc_qgsprojectproperties.cpp"
 
 //qgis includes
 #include "qgsapplication.h"
 #include "qgisapp.h"
 #include "qgis.h"
-#include "qgscolorutils.h"
 #include "qgscoordinatetransform.h"
 #include "qgsdatumtransformtablewidget.h"
 #include "qgslayoutmanager.h"
@@ -136,31 +134,11 @@ QgsProjectProperties::QgsProjectProperties( QgsMapCanvas *mapCanvas, QWidget *pa
   connect( mButtonNewStyleDatabase, &QAbstractButton::clicked, this, &QgsProjectProperties::newStyleDatabase );
   connect( mCoordinateDisplayComboBox, qOverload<int>( &QComboBox::currentIndexChanged ), this, [ = ]( int ) { updateGuiForCoordinateType(); } );
   connect( mCoordinateCrs, &QgsProjectionSelectionWidget::crsChanged, this, [ = ]( const QgsCoordinateReferenceSystem & ) { updateGuiForCoordinateCrs(); } );
-#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
-  connect( mAddIccProfile, &QToolButton::clicked, this, static_cast<void ( QgsProjectProperties::* )()>( &QgsProjectProperties::addIccProfile ) );
-  connect( mRemoveIccProfile, &QToolButton::clicked, this, &QgsProjectProperties::removeIccProfile );
-  connect( mSaveIccProfile, &QToolButton::clicked, this, &QgsProjectProperties::saveIccProfile );
-#endif
 
   // QgsOptionsDialogBase handles saving/restoring of geometry, splitter and current tab states,
   // switching vertical tabs between icon/text to icon-only modes (splitter collapsed to left),
   // and connecting QDialogButtonBox's accepted/rejected signals to dialog's accept/reject slots
   initOptionsBase( false );
-
-  pixStyleMarker->setFixedSize( 24, 24 );
-  pixStyleMarker->load( QgsApplication::iconPath( QStringLiteral( "mIconPointLayer.svg" ) ) );
-
-  pixStyleFill->setFixedSize( 24, 24 );
-  pixStyleFill->load( QgsApplication::iconPath( QStringLiteral( "mIconPolygonLayer.svg" ) ) );
-
-  pixStyleLine->setFixedSize( 24, 24 );
-  pixStyleLine->load( QgsApplication::iconPath( QStringLiteral( "mIconLineLayer.svg" ) ) );
-
-  pixStyleColorRamp->setFixedSize( 24, 24 );
-  pixStyleColorRamp->load( QgsApplication::iconPath( QStringLiteral( "styleicons/color.svg" ) ) );
-
-  pixStyleTextFormat->setFixedSize( 24, 24 );
-  pixStyleTextFormat->load( QgsApplication::iconPath( QStringLiteral( "text.svg" ) ) );
 
   mCoordinateDisplayComboBox->addItem( tr( "Map Units" ), static_cast<int>( Qgis::CoordinateDisplayType::MapCrs ) );
   mCoordinateDisplayComboBox->addItem( tr( "Map Geographic (degrees)" ), static_cast<int>( Qgis::CoordinateDisplayType::MapGeographic ) );
@@ -170,31 +148,29 @@ QgsProjectProperties::QgsProjectProperties( QgsMapCanvas *mapCanvas, QWidget *pa
   mCoordinateOrderComboBox->addItem( tr( "Easting, Northing (Longitude, Latitude)" ), static_cast< int >( Qgis::CoordinateOrder::XY ) );
   mCoordinateOrderComboBox->addItem( tr( "Northing, Easting (Latitude, Longitude)" ), static_cast< int >( Qgis::CoordinateOrder::YX ) );
 
-  mDistanceUnitsCombo->addItem( tr( "Meters" ), static_cast< int >( Qgis::DistanceUnit::Meters ) );
-  mDistanceUnitsCombo->addItem( tr( "Kilometers" ), static_cast< int >( Qgis::DistanceUnit::Kilometers ) );
-  mDistanceUnitsCombo->addItem( tr( "Feet" ), static_cast< int >( Qgis::DistanceUnit::Feet ) );
-  mDistanceUnitsCombo->addItem( tr( "Yards" ), static_cast< int >( Qgis::DistanceUnit::Yards ) );
-  mDistanceUnitsCombo->addItem( tr( "Miles" ), static_cast< int >( Qgis::DistanceUnit::Miles ) );
-  mDistanceUnitsCombo->addItem( tr( "Nautical Miles" ), static_cast< int >( Qgis::DistanceUnit::NauticalMiles ) );
-  mDistanceUnitsCombo->addItem( tr( "Centimeters" ), static_cast< int >( Qgis::DistanceUnit::Centimeters ) );
-  mDistanceUnitsCombo->addItem( tr( "Millimeters" ), static_cast< int >( Qgis::DistanceUnit::Millimeters ) );
-  mDistanceUnitsCombo->addItem( tr( "Inches" ), static_cast< int >( Qgis::DistanceUnit::Inches ) );
-  mDistanceUnitsCombo->addItem( tr( "Degrees" ), static_cast< int >( Qgis::DistanceUnit::Degrees ) );
-  mDistanceUnitsCombo->addItem( tr( "Map Units" ), static_cast< int >( Qgis::DistanceUnit::Unknown ) );
+  mDistanceUnitsCombo->addItem( tr( "Meters" ), QgsUnitTypes::DistanceMeters );
+  mDistanceUnitsCombo->addItem( tr( "Kilometers" ), QgsUnitTypes::DistanceKilometers );
+  mDistanceUnitsCombo->addItem( tr( "Feet" ), QgsUnitTypes::DistanceFeet );
+  mDistanceUnitsCombo->addItem( tr( "Yards" ), QgsUnitTypes::DistanceYards );
+  mDistanceUnitsCombo->addItem( tr( "Miles" ), QgsUnitTypes::DistanceMiles );
+  mDistanceUnitsCombo->addItem( tr( "Nautical Miles" ), QgsUnitTypes::DistanceNauticalMiles );
+  mDistanceUnitsCombo->addItem( tr( "Centimeters" ), QgsUnitTypes::DistanceCentimeters );
+  mDistanceUnitsCombo->addItem( tr( "Millimeters" ), QgsUnitTypes::DistanceMillimeters );
+  mDistanceUnitsCombo->addItem( tr( "Degrees" ), QgsUnitTypes::DistanceDegrees );
+  mDistanceUnitsCombo->addItem( tr( "Map Units" ), QgsUnitTypes::DistanceUnknownUnit );
 
-  mAreaUnitsCombo->addItem( tr( "Square Meters" ), static_cast< int >( Qgis::AreaUnit::SquareMeters ) );
-  mAreaUnitsCombo->addItem( tr( "Square Kilometers" ), static_cast< int >( Qgis::AreaUnit::SquareKilometers ) );
-  mAreaUnitsCombo->addItem( tr( "Square Feet" ), static_cast< int >( Qgis::AreaUnit::SquareFeet ) );
-  mAreaUnitsCombo->addItem( tr( "Square Yards" ), static_cast< int >( Qgis::AreaUnit::SquareYards ) );
-  mAreaUnitsCombo->addItem( tr( "Square Miles" ), static_cast< int >( Qgis::AreaUnit::SquareMiles ) );
-  mAreaUnitsCombo->addItem( tr( "Hectares" ), static_cast< int >( Qgis::AreaUnit::Hectares ) );
-  mAreaUnitsCombo->addItem( tr( "Acres" ), static_cast< int >( Qgis::AreaUnit::Acres ) );
-  mAreaUnitsCombo->addItem( tr( "Square Nautical Miles" ), static_cast< int >( Qgis::AreaUnit::SquareNauticalMiles ) );
-  mAreaUnitsCombo->addItem( tr( "Square Centimeters" ), static_cast< int >( Qgis::AreaUnit::SquareCentimeters ) );
-  mAreaUnitsCombo->addItem( tr( "Square Millimeters" ), static_cast< int >( Qgis::AreaUnit::SquareMillimeters ) );
-  mAreaUnitsCombo->addItem( tr( "Square Inches" ), static_cast< int >( Qgis::AreaUnit::SquareInches ) );
-  mAreaUnitsCombo->addItem( tr( "Square Degrees" ), static_cast< int >( Qgis::AreaUnit::SquareDegrees ) );
-  mAreaUnitsCombo->addItem( tr( "Map Units" ), static_cast< int >( Qgis::AreaUnit::Unknown ) );
+  mAreaUnitsCombo->addItem( tr( "Square Meters" ), QgsUnitTypes::AreaSquareMeters );
+  mAreaUnitsCombo->addItem( tr( "Square Kilometers" ), QgsUnitTypes::AreaSquareKilometers );
+  mAreaUnitsCombo->addItem( tr( "Square Feet" ), QgsUnitTypes::AreaSquareFeet );
+  mAreaUnitsCombo->addItem( tr( "Square Yards" ), QgsUnitTypes::AreaSquareYards );
+  mAreaUnitsCombo->addItem( tr( "Square Miles" ), QgsUnitTypes::AreaSquareMiles );
+  mAreaUnitsCombo->addItem( tr( "Hectares" ), QgsUnitTypes::AreaHectares );
+  mAreaUnitsCombo->addItem( tr( "Acres" ), QgsUnitTypes::AreaAcres );
+  mAreaUnitsCombo->addItem( tr( "Square Nautical Miles" ), QgsUnitTypes::AreaSquareNauticalMiles );
+  mAreaUnitsCombo->addItem( tr( "Square Centimeters" ), QgsUnitTypes::AreaSquareCentimeters );
+  mAreaUnitsCombo->addItem( tr( "Square Millimeters" ), QgsUnitTypes::AreaSquareMillimeters );
+  mAreaUnitsCombo->addItem( tr( "Square Degrees" ), QgsUnitTypes::AreaSquareDegrees );
+  mAreaUnitsCombo->addItem( tr( "Map Units" ), QgsUnitTypes::AreaUnknownUnit );
 
   mTransactionModeComboBox->addItem( tr( "Local Edit Buffer" ), static_cast< int >( Qgis::TransactionMode::Disabled ) );
   mTransactionModeComboBox->setItemData( mTransactionModeComboBox->count() - 1, tr( "Edits are buffered locally and sent to the provider when toggling layer editing mode." ), Qt::ToolTipRole );
@@ -206,7 +182,6 @@ QgsProjectProperties::QgsProjectProperties( QgsMapCanvas *mapCanvas, QWidget *pa
   projectionSelector->setShowNoProjection( true );
 
   connect( buttonBox->button( QDialogButtonBox::Apply ), &QAbstractButton::clicked, this, &QgsProjectProperties::apply );
-  connect( this, &QDialog::finished, this, [ = ]( int result ) { if ( result == QDialog::Rejected ) cancel(); } );
 
   // disconnect default connection setup by initOptionsBase for accepting dialog, and insert logic
   // to validate widgets before allowing dialog to be closed
@@ -312,15 +287,7 @@ QgsProjectProperties::QgsProjectProperties( QgsMapCanvas *mapCanvas, QWidget *pa
   mEndDateTimeEdit->setDateTime( range.end() );
 
   title( QgsProject::instance()->title() );
-
-  QString name = !QgsProject::instance()->fileName().isEmpty() ? QgsProject::instance()->fileName() : QgsProject::instance()->originalPath();
-  if ( QgsProject::instance()->projectStorage() )
-  {
-    name = QgsDataSourceUri::removePassword( name, true );
-  }
-
-  mProjectFileLineEdit->setText( QDir::toNativeSeparators( name ) );
-
+  mProjectFileLineEdit->setText( QDir::toNativeSeparators( !QgsProject::instance()->fileName().isEmpty() ? QgsProject::instance()->fileName() : QgsProject::instance()->originalPath() ) );
   mProjectHomeLineEdit->setShowClearButton( true );
   mProjectHomeLineEdit->setText( QDir::toNativeSeparators( QgsProject::instance()->presetHomePath() ) );
   connect( mButtonSetProjectHome, &QToolButton::clicked, this, [ = ]
@@ -442,8 +409,8 @@ QgsProjectProperties::QgsProjectProperties( QgsMapCanvas *mapCanvas, QWidget *pa
   const Qgis::CoordinateOrder axisOrder = QgsProject::instance()->displaySettings()->coordinateAxisOrder();
   mCoordinateOrderComboBox->setCurrentIndex( mCoordinateOrderComboBox->findData( static_cast< int >( axisOrder ) ) );
 
-  mDistanceUnitsCombo->setCurrentIndex( mDistanceUnitsCombo->findData( static_cast< int >( QgsProject::instance()->distanceUnits() ) ) );
-  mAreaUnitsCombo->setCurrentIndex( mAreaUnitsCombo->findData( static_cast< int >( QgsProject::instance()->areaUnits() ) ) );
+  mDistanceUnitsCombo->setCurrentIndex( mDistanceUnitsCombo->findData( QgsProject::instance()->distanceUnits() ) );
+  mAreaUnitsCombo->setCurrentIndex( mAreaUnitsCombo->findData( QgsProject::instance()->areaUnits() ) );
 
   //get the color selections and set the button color accordingly
   int myRedInt = settings.value( QStringLiteral( "qgis/default_selection_color_red" ), 255 ).toInt();
@@ -752,11 +719,6 @@ QgsProjectProperties::QgsProjectProperties( QgsMapCanvas *mapCanvas, QWidget *pa
   bool segmentizeFeatureInfoGeometry = QgsProject::instance()->readBoolEntry( QStringLiteral( "WMSSegmentizeFeatureInfoGeometry" ), QStringLiteral( "/" ) );
   mSegmentizeFeatureInfoGeometryCheckBox->setChecked( segmentizeFeatureInfoGeometry );
 
-  bool addLayerGroupsLegendGraphic = QgsProject::instance()->readBoolEntry( QStringLiteral( "WMSAddLayerGroupsLegendGraphic" ), QStringLiteral( "/" ) );
-  mAddLayerGroupsLegendGraphicCheckBox->setChecked( addLayerGroupsLegendGraphic );
-  bool skipNameForGroup = QgsProject::instance()->readBoolEntry( QStringLiteral( "WMSSkipNameForGroup" ), QStringLiteral( "/" ) );
-  mSkipNameForGroupCheckBox->setChecked( skipNameForGroup );
-
   bool useLayerIDs = QgsProject::instance()->readBoolEntry( QStringLiteral( "WMSUseLayerIDs" ), QStringLiteral( "/" ) );
   mWmsUseLayerIDs->setChecked( useLayerIDs );
 
@@ -801,7 +763,7 @@ QgsProjectProperties::QgsProjectProperties( QgsMapCanvas *mapCanvas, QWidget *pa
   else
   {
     mWMSDefaultMapUnitScale = new QgsScaleWidget();
-    mWMSDefaultMapUnitScale->setScale( QgsProject::instance()->readDoubleEntry( QStringLiteral( "WMSDefaultMapUnitsPerMm" ), QStringLiteral( "/" ), 1 ) * QgsUnitTypes::fromUnitToUnitFactor( QgsProject::instance()->crs().mapUnits(), Qgis::DistanceUnit::Millimeters ) );
+    mWMSDefaultMapUnitScale->setScale( QgsProject::instance()->readDoubleEntry( QStringLiteral( "WMSDefaultMapUnitsPerMm" ), QStringLiteral( "/" ), 1 ) * QgsUnitTypes::fromUnitToUnitFactor( QgsProject::instance()->crs().mapUnits(), QgsUnitTypes::DistanceMillimeters ) );
     mWMSDefaultMapUnitScale->setToolTip( defaultValueToolTip );
     mWMSDefaultMapUnitsPerMmLayout->addWidget( mWMSDefaultMapUnitScale );
     mWMSDefaultMapUnitsPerMmLabel->setText( tr( "Default scale for legend" ) );
@@ -905,7 +867,7 @@ QgsProjectProperties::QgsProjectProperties( QgsMapCanvas *mapCanvas, QWidget *pa
   for ( QMap<QString, QgsMapLayer *>::const_iterator it = mapLayers.constBegin(); it != mapLayers.constEnd(); ++it, i++ )
   {
     currentLayer = it.value();
-    if ( currentLayer->type() == Qgis::LayerType::Vector )
+    if ( currentLayer->type() == QgsMapLayerType::VectorLayer )
     {
       QgsVectorLayer *vlayer = qobject_cast<QgsVectorLayer *>( currentLayer );
       QgsVectorDataProvider *provider = vlayer->dataProvider();
@@ -928,35 +890,24 @@ QgsProjectProperties::QgsProjectProperties( QgsMapCanvas *mapCanvas, QWidget *pa
       psb->setValue( QgsProject::instance()->readNumEntry( QStringLiteral( "WFSLayersPrecision" ), "/" + currentLayer->id(), 8 ) );
       twWFSLayers->setCellWidget( j, 2, psb );
 
-      QCheckBox *cbu = new QCheckBox();
-      cbu->setEnabled( false );
-      if ( ( provider->capabilities() & Qgis::VectorProviderCapability::ChangeAttributeValues ) )
+      if ( ( provider->capabilities() & QgsVectorDataProvider::ChangeAttributeValues ) && ( provider->capabilities() & QgsVectorDataProvider::ChangeGeometries ) )
       {
-        if ( ! currentLayer->isSpatial() || ( provider->capabilities() & Qgis::VectorProviderCapability::ChangeGeometries ) )
-        {
-          cbu->setEnabled( true );
-          cbu->setChecked( wfstUpdateLayerIdList.contains( currentLayer->id() ) );
-        }
+        QCheckBox *cbu = new QCheckBox();
+        cbu->setChecked( wfstUpdateLayerIdList.contains( currentLayer->id() ) );
+        twWFSLayers->setCellWidget( j, 3, cbu );
       }
-      twWFSLayers->setCellWidget( j, 3, cbu );
-
-      QCheckBox *cbi = new QCheckBox();
-      cbi->setEnabled( false );
-      if ( ( provider->capabilities() & Qgis::VectorProviderCapability::AddFeatures ) )
+      if ( ( provider->capabilities() & QgsVectorDataProvider::AddFeatures ) )
       {
-        cbi->setEnabled( true );
+        QCheckBox *cbi = new QCheckBox();
         cbi->setChecked( wfstInsertLayerIdList.contains( currentLayer->id() ) );
+        twWFSLayers->setCellWidget( j, 4, cbi );
       }
-      twWFSLayers->setCellWidget( j, 4, cbi );
-
-      QCheckBox *cbd = new QCheckBox();
-      cbd->setEnabled( false );
-      if ( ( provider->capabilities() & Qgis::VectorProviderCapability::DeleteFeatures ) )
+      if ( ( provider->capabilities() & QgsVectorDataProvider::DeleteFeatures ) )
       {
-        cbd->setEnabled( true );
+        QCheckBox *cbd = new QCheckBox();
         cbd->setChecked( wfstDeleteLayerIdList.contains( currentLayer->id() ) );
+        twWFSLayers->setCellWidget( j, 5, cbd );
       }
-      twWFSLayers->setCellWidget( j, 5, cbd );
 
       j++;
     }
@@ -978,7 +929,7 @@ QgsProjectProperties::QgsProjectProperties( QgsMapCanvas *mapCanvas, QWidget *pa
   for ( QMap<QString, QgsMapLayer *>::const_iterator it = mapLayers.constBegin(); it != mapLayers.constEnd(); ++it, i++ )
   {
     currentLayer = it.value();
-    if ( currentLayer->type() == Qgis::LayerType::Raster )
+    if ( currentLayer->type() == QgsMapLayerType::RasterLayer )
     {
 
       QTableWidgetItem *twi = new QTableWidgetItem( QString::number( j ) );
@@ -1032,20 +983,6 @@ QgsProjectProperties::QgsProjectProperties( QgsMapCanvas *mapCanvas, QWidget *pa
   // Random colors
   cbxStyleRandomColors->setChecked( QgsProject::instance()->styleSettings()->randomizeDefaultSymbolColor() );
 
-  mColorModel->addItem( tr( "RGB" ), QVariant::fromValue( Qgis::ColorModel::Rgb ) );
-  mColorModel->addItem( tr( "CMYK" ), QVariant::fromValue( Qgis::ColorModel::Cmyk ) );
-  mColorModel->setCurrentIndex( mColorModel->findData( QVariant::fromValue( QgsProject::instance()->styleSettings()->colorModel() ) ) );
-
-#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
-  mColorSpace = QgsProject::instance()->styleSettings()->colorSpace();
-  updateColorSpaceWidgets();
-#else
-  mIccProfileLabel->setVisible( false );
-  mColorSpaceName->setVisible( false );
-  mAddIccProfile->setVisible( false );
-  mRemoveIccProfile->setVisible( false );
-  mSaveIccProfile->setVisible( false );
-#endif
   // Default alpha transparency
   mDefaultOpacityWidget->setOpacity( QgsProject::instance()->styleSettings()->defaultSymbolOpacity() );
 
@@ -1095,7 +1032,7 @@ QgsProjectProperties::QgsProjectProperties( QgsMapCanvas *mapCanvas, QWidget *pa
   const auto constMapLayers = mapLayers;
   for ( QgsMapLayer *mapLayer : constMapLayers )
   {
-    if ( Qgis::LayerType::Vector == mapLayer->type() )
+    if ( QgsMapLayerType::VectorLayer == mapLayer->type() )
     {
       vectorLayers.append( qobject_cast<QgsVectorLayer *>( mapLayer ) );
     }
@@ -1140,7 +1077,7 @@ QgsProjectProperties::QgsProjectProperties( QgsMapCanvas *mapCanvas, QWidget *pa
   }
 
   cbtsLocale->addItem( QIcon( QStringLiteral( ":/images/flags/%1.svg" ).arg( QLatin1String( "en_US" ) ) ), QLocale( QStringLiteral( "en_US" ) ).nativeLanguageName(), QStringLiteral( "en_US" ) );
-  cbtsLocale->setCurrentIndex( cbtsLocale->findData( QgsApplication::settingsLocaleUserLocale->value() ) );
+  cbtsLocale->setCurrentIndex( cbtsLocale->findData( QgsApplication::settingsLocaleUserLocale.value() ) );
 
   connect( generateTsFileButton, &QPushButton::clicked, this, &QgsProjectProperties::onGenerateTsFileButton );
 
@@ -1285,10 +1222,10 @@ void QgsProjectProperties::apply()
   // Announce that we may have a new display precision setting
   emit displayPrecisionChanged();
 
-  const Qgis::DistanceUnit distanceUnits = static_cast< Qgis::DistanceUnit >( mDistanceUnitsCombo->currentData().toInt() );
+  const QgsUnitTypes::DistanceUnit distanceUnits = static_cast< QgsUnitTypes::DistanceUnit >( mDistanceUnitsCombo->currentData().toInt() );
   QgsProject::instance()->setDistanceUnits( distanceUnits );
 
-  const Qgis::AreaUnit areaUnits = static_cast< Qgis::AreaUnit >( mAreaUnitsCombo->currentData().toInt() );
+  const QgsUnitTypes::AreaUnit areaUnits = static_cast< QgsUnitTypes::AreaUnit >( mAreaUnitsCombo->currentData().toInt() );
   QgsProject::instance()->setAreaUnits( areaUnits );
 
   QgsProject::instance()->setFilePathStorage( static_cast< Qgis::FilePathType >( cbxAbsolutePath->currentData().toInt() ) );
@@ -1576,8 +1513,6 @@ void QgsProjectProperties::apply()
   QgsProject::instance()->writeEntry( QStringLiteral( "WMSFeatureInfoUseAttributeFormSettings" ), QStringLiteral( "/" ), mUseAttributeFormSettingsCheckBox->isChecked() );
   QgsProject::instance()->writeEntry( QStringLiteral( "WMSAddWktGeometry" ), QStringLiteral( "/" ), mAddWktGeometryCheckBox->isChecked() );
   QgsProject::instance()->writeEntry( QStringLiteral( "WMSSegmentizeFeatureInfoGeometry" ), QStringLiteral( "/" ), mSegmentizeFeatureInfoGeometryCheckBox->isChecked() );
-  QgsProject::instance()->writeEntry( QStringLiteral( "WMSAddLayerGroupsLegendGraphic" ), QStringLiteral( "/" ), mAddLayerGroupsLegendGraphicCheckBox->isChecked() );
-  QgsProject::instance()->writeEntry( QStringLiteral( "WMSSkipNameForGroup" ), QStringLiteral( "/" ), mSkipNameForGroupCheckBox->isChecked() );
   QgsProject::instance()->writeEntry( QStringLiteral( "WMSUseLayerIDs" ), QStringLiteral( "/" ), mWmsUseLayerIDs->isChecked() );
 
   QString maxWidthText = mMaxWidthLineEdit->text();
@@ -1622,7 +1557,7 @@ void QgsProjectProperties::apply()
   }
   else if ( mWMSDefaultMapUnitScale )
   {
-    double defaultMapUnitsPerMm = mWMSDefaultMapUnitScale->scale() / QgsUnitTypes::fromUnitToUnitFactor( QgsProject::instance()->crs().mapUnits(), Qgis::DistanceUnit::Millimeters );
+    double defaultMapUnitsPerMm = mWMSDefaultMapUnitScale->scale() / QgsUnitTypes::fromUnitToUnitFactor( QgsProject::instance()->crs().mapUnits(), QgsUnitTypes::DistanceMillimeters );
     QgsProject::instance()->writeEntry( QStringLiteral( "WMSDefaultMapUnitsPerMm" ), QStringLiteral( "/" ), defaultMapUnitsPerMm );
   }
 
@@ -1754,8 +1689,6 @@ void QgsProjectProperties::apply()
   QgsProject::instance()->styleSettings()->setDefaultTextFormat( mStyleTextFormat->textFormat() );
   QgsProject::instance()->styleSettings()->setRandomizeDefaultSymbolColor( cbxStyleRandomColors->isChecked() );
   QgsProject::instance()->styleSettings()->setDefaultSymbolOpacity( mDefaultOpacityWidget->opacity() );
-  QgsProject::instance()->styleSettings()->setColorModel( mColorModel->currentData().value<Qgis::ColorModel>() );
-  QgsProject::instance()->styleSettings()->setColorSpace( mColorSpace );
 
   {
     QStringList styleDatabasePaths;
@@ -1798,14 +1731,6 @@ void QgsProjectProperties::apply()
   for ( QgsMapCanvas *canvas : constMapCanvases )
   {
     canvas->redrawAllLayers();
-  }
-}
-
-void QgsProjectProperties::cancel()
-{
-  for ( QgsOptionsPageWidget *widget : std::as_const( mAdditionalProjectPropertiesWidgets ) )
-  {
-    widget->cancel();
   }
 }
 
@@ -1941,7 +1866,7 @@ void QgsProjectProperties::updateGuiForCoordinateCrs()
   const int customIndex = mCoordinateDisplayComboBox->findData( static_cast<int>( Qgis::CoordinateDisplayType::CustomCrs ) );
   if ( coordinateType == Qgis::CoordinateDisplayType::CustomCrs )
   {
-    const Qgis::DistanceUnit units = mCoordinateCrs->crs().mapUnits();
+    const QgsUnitTypes::DistanceUnit units = mCoordinateCrs->crs().mapUnits();
     mCoordinateDisplayComboBox->setItemText( customIndex, tr( "Custom Projection Units (%1)" ).arg( QgsUnitTypes::toString( units ) ) );
   }
   else
@@ -1979,13 +1904,13 @@ void QgsProjectProperties::updateGuiForMapUnits()
   if ( !mCrs.isValid() )
   {
     // no projection set - disable everything!
-    int idx = mDistanceUnitsCombo->findData( static_cast<int>( Qgis::DistanceUnit::Unknown ) );
+    int idx = mDistanceUnitsCombo->findData( QgsUnitTypes::DistanceUnknownUnit );
     if ( idx >= 0 )
     {
       mDistanceUnitsCombo->setItemText( idx, tr( "Unknown Units" ) );
       mDistanceUnitsCombo->setCurrentIndex( idx );
     }
-    idx = mAreaUnitsCombo->findData( static_cast< int >( Qgis::AreaUnit::Unknown ) );
+    idx = mAreaUnitsCombo->findData( QgsUnitTypes::AreaUnknownUnit );
     if ( idx >= 0 )
     {
       mAreaUnitsCombo->setItemText( idx, tr( "Unknown Units" ) );
@@ -2003,7 +1928,7 @@ void QgsProjectProperties::updateGuiForMapUnits()
   }
   else
   {
-    Qgis::DistanceUnit units = mCrs.mapUnits();
+    QgsUnitTypes::DistanceUnit units = mCrs.mapUnits();
 
     mDistanceUnitsCombo->setEnabled( true );
     mAreaUnitsCombo->setEnabled( true );
@@ -2015,13 +1940,13 @@ void QgsProjectProperties::updateGuiForMapUnits()
     mCoordinateDisplayComboBox->setItemText( idx, mapUnitString );
 
     //also update unit combo boxes
-    idx = mDistanceUnitsCombo->findData( static_cast< int >( Qgis::DistanceUnit::Unknown ) );
+    idx = mDistanceUnitsCombo->findData( QgsUnitTypes::DistanceUnknownUnit );
     if ( idx >= 0 )
     {
       QString mapUnitString = tr( "Map Units (%1)" ).arg( QgsUnitTypes::toString( units ) );
       mDistanceUnitsCombo->setItemText( idx, mapUnitString );
     }
-    idx = mAreaUnitsCombo->findData( static_cast< int >( Qgis::AreaUnit::Unknown ) );
+    idx = mAreaUnitsCombo->findData( QgsUnitTypes::AreaUnknownUnit );
     if ( idx >= 0 )
     {
       QString mapUnitString = tr( "Map Units (%1)" ).arg( QgsUnitTypes::toString( QgsUnitTypes::distanceToAreaUnit( units ) ) );
@@ -2306,7 +2231,7 @@ void QgsProjectProperties::pbnImportScales_clicked()
   QStringList myScales;
   if ( !QgsScaleUtils::loadScaleList( fileName, myScales, msg ) )
   {
-    QgsDebugError( msg );
+    QgsDebugMsg( msg );
   }
 
   const auto constMyScales = myScales;
@@ -2330,9 +2255,6 @@ void QgsProjectProperties::pbnExportScales_clicked()
 {
   QString fileName = QFileDialog::getSaveFileName( this, tr( "Save scales" ), QDir::homePath(),
                      tr( "XML files (*.xml *.XML)" ) );
-  // return dialog focus on Mac
-  activateWindow();
-  raise();
   if ( fileName.isEmpty() )
   {
     return;
@@ -2354,7 +2276,7 @@ void QgsProjectProperties::pbnExportScales_clicked()
   QString msg;
   if ( !QgsScaleUtils::saveScaleList( fileName, myScales, msg ) )
   {
-    QgsDebugError( msg );
+    QgsDebugMsg( msg );
   }
 }
 
@@ -2450,14 +2372,14 @@ void QgsProjectProperties::addWmtsGrid( const QString &crsStr )
       int rowRes = ( extent.yMaximum() - extent.yMinimum() ) / tileSize;
       if ( colRes > rowRes )
       {
-        scaleDenominator = std::ceil( colRes * QgsUnitTypes::fromUnitToUnitFactor( crs.mapUnits(), Qgis::DistanceUnit::Meters ) / POINTS_TO_M );
+        scaleDenominator = std::ceil( colRes * QgsUnitTypes::fromUnitToUnitFactor( crs.mapUnits(), QgsUnitTypes::DistanceMeters ) / POINTS_TO_M );
       }
       else
       {
-        scaleDenominator = std::ceil( rowRes * QgsUnitTypes::fromUnitToUnitFactor( crs.mapUnits(), Qgis::DistanceUnit::Meters ) / POINTS_TO_M );
+        scaleDenominator = std::ceil( rowRes * QgsUnitTypes::fromUnitToUnitFactor( crs.mapUnits(), QgsUnitTypes::DistanceMeters ) / POINTS_TO_M );
       }
       // Calculate resolution based on scale denominator
-      double res = POINTS_TO_M * scaleDenominator / QgsUnitTypes::fromUnitToUnitFactor( crs.mapUnits(), Qgis::DistanceUnit::Meters );
+      double res = POINTS_TO_M * scaleDenominator / QgsUnitTypes::fromUnitToUnitFactor( crs.mapUnits(), QgsUnitTypes::DistanceMeters );
       // Get numbers of column and row for the resolution
       int col = std::ceil( ( extent.xMaximum() - extent.xMinimum() ) / ( tileSize * res ) );
       int row = std::ceil( ( extent.yMaximum() - extent.yMinimum() ) / ( tileSize * res ) );
@@ -2622,11 +2544,7 @@ void QgsProjectProperties::setCurrentEllipsoid( const QString &ellipsoidAcronym 
 
 void QgsProjectProperties::mButtonAddColor_clicked()
 {
-  const Qgis::ColorModel colorModel = mColorModel->currentData().value<Qgis::ColorModel>();
-  const QColor defaultColor = colorModel == Qgis::ColorModel::Cmyk ?
-                              QColor::fromCmykF( 0., 1., 1., 0. ) : QColor::fromRgbF( 1., 0., 0. );
-
-  QColor newColor = QgsColorDialog::getColor( defaultColor, this->parentWidget(), tr( "Select Color" ), true );
+  QColor newColor = QgsColorDialog::getColor( QColor(), this->parentWidget(), tr( "Select Color" ), true );
   if ( !newColor.isValid() )
   {
     return;
@@ -2655,7 +2573,7 @@ void QgsProjectProperties::newStyleDatabase()
 
 void QgsProjectProperties::addStyleDatabasePrivate( bool createNew )
 {
-  QString initialFolder = QgsStyleManagerDialog::settingLastStyleDatabaseFolder->value();
+  QString initialFolder = QgsStyleManagerDialog::settingLastStyleDatabaseFolder.value();
   if ( initialFolder.isEmpty() )
     initialFolder = QDir::homePath();
 
@@ -2670,12 +2588,9 @@ void QgsProjectProperties::addStyleDatabasePrivate( bool createNew )
                            tr( "Add Style Database" ),
                            initialFolder,
                            tr( "Style databases" ) + " (*.db *.xml)" );
-  // return dialog focus on Mac
-  activateWindow();
-  raise();
   if ( ! databasePath.isEmpty() )
   {
-    QgsStyleManagerDialog::settingLastStyleDatabaseFolder->setValue( QFileInfo( databasePath ).path() );
+    QgsStyleManagerDialog::settingLastStyleDatabaseFolder.setValue( QFileInfo( databasePath ).path() );
 
     if ( createNew )
     {
@@ -2706,77 +2621,6 @@ void QgsProjectProperties::removeStyleDatabase()
   int currentRow = mListStyleDatabases->currentRow();
   delete mListStyleDatabases->takeItem( currentRow );
 }
-
-#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
-
-void QgsProjectProperties::addIccProfile()
-{
-  const QString iccProfileFilePath = QFileDialog::getOpenFileName(
-                                       this,
-                                       tr( "Load ICC Profile" ),
-                                       QDir::homePath(),
-                                       tr( "ICC Profile" ) + QStringLiteral( " (*.icc)" ) );
-
-  addIccProfile( iccProfileFilePath );
-}
-
-void QgsProjectProperties::addIccProfile( const QString &iccProfileFilePath )
-{
-  if ( iccProfileFilePath.isEmpty() )
-    return;
-
-  QString errorMsg;
-  QColorSpace colorSpace = QgsColorUtils::iccProfile( iccProfileFilePath, errorMsg );
-  if ( !colorSpace.isValid() )
-  {
-    QMessageBox::warning( this, tr( "Load ICC Profile" ), errorMsg );
-    return;
-  }
-
-  mColorSpace = colorSpace;
-  updateColorSpaceWidgets();
-}
-
-void QgsProjectProperties::removeIccProfile()
-{
-  mColorSpace = QColorSpace();
-  updateColorSpaceWidgets();
-}
-
-void QgsProjectProperties::saveIccProfile()
-{
-  QString fileName = QFileDialog::getSaveFileName( this, tr( "Save ICC Profile" ), QDir::homePath(),
-                     tr( "ICC profile files (*.icc *.ICC)" ) );
-
-  if ( fileName.isEmpty() )
-    return;
-
-  fileName = QgsFileUtils::ensureFileNameHasExtension( fileName, { QStringLiteral( "icc" ) } );
-  const QString error = QgsColorUtils::saveIccProfile( mColorSpace, fileName );
-  if ( !error.isEmpty() )
-  {
-    QMessageBox::warning( this, tr( "Save ICC profile" ), error );
-  }
-}
-
-
-void QgsProjectProperties::updateColorSpaceWidgets()
-{
-  mColorSpaceName->setText( mColorSpace.isValid() ? mColorSpace.description() : tr( "<i>None</i>" ) );
-  mRemoveIccProfile->setEnabled( mColorSpace.isValid() );
-  mSaveIccProfile->setEnabled( mColorSpace.isValid() );
-
-  // force color model index according to color space one
-  if ( mColorSpace.isValid() )
-  {
-    const Qgis::ColorModel colorModel = QgsColorUtils::toColorModel( mColorSpace.colorModel() );
-    mColorModel->setCurrentIndex( mColorModel->findData( QVariant::fromValue( colorModel ) ) );
-  }
-
-  mColorModel->setEnabled( !mColorSpace.isValid() );
-}
-
-#endif
 
 QListWidgetItem *QgsProjectProperties::addScaleToScaleList( const double newScaleDenominator )
 {

@@ -26,6 +26,8 @@
 #include <QTextDocumentFragment>
 
 #include "qgsoptionsdialoghighlightwidget.h"
+#include "qgsmessagebaritem.h"
+#include "qgslogger.h"
 
 #include "qgsoptionsdialoghighlightwidgetsimpl.h"
 
@@ -284,12 +286,11 @@ void QgsOptionsDialogHighlightTree::reset()
       item->setHidden( !mTreeInitialVisible.value( item, true ) );
     };
     showChildren( treeWidget->invisibleRootItem() );
-    for ( auto it = mTreeInitialExpand.constBegin(); it != mTreeInitialExpand.constEnd(); it++ )
+    for ( QTreeWidgetItem *item : mTreeInitialExpand.keys() )
     {
-      QTreeWidgetItem *item = it.key();
       if ( item )
       {
-        item->setExpanded( it.value() );
+        item->setExpanded( mTreeInitialExpand.value( item ) );
       }
     }
     mTreeInitialExpand.clear();

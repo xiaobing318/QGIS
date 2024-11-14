@@ -19,8 +19,6 @@
 
 #include "qgslogger.h"
 #include "qgsblockingnetworkrequest.h"
-#include "qgsnetworkaccessmanager.h"
-#include "qgssetrequestinitiator_p.h"
 
 #include "lazperf/readers.hpp"
 
@@ -168,17 +166,14 @@ void QgsLazInfo::parseLazAttributes()
   mAttributes.push_back( QgsPointCloudAttribute( "ScanDirectionFlag", QgsPointCloudAttribute::Char ) );
   mAttributes.push_back( QgsPointCloudAttribute( "EdgeOfFlightLine", QgsPointCloudAttribute::Char ) );
   mAttributes.push_back( QgsPointCloudAttribute( "Classification", QgsPointCloudAttribute::UChar ) );
-  mAttributes.push_back( QgsPointCloudAttribute( "ScanAngleRank", QgsPointCloudAttribute::Float ) );
-  mAttributes.push_back( QgsPointCloudAttribute( "UserData", QgsPointCloudAttribute::UChar ) );
+  mAttributes.push_back( QgsPointCloudAttribute( "ScanAngleRank", QgsPointCloudAttribute::Short ) );
+  mAttributes.push_back( QgsPointCloudAttribute( "UserData", QgsPointCloudAttribute::Char ) );
   mAttributes.push_back( QgsPointCloudAttribute( "PointSourceId", QgsPointCloudAttribute::UShort ) );
-  mAttributes.push_back( QgsPointCloudAttribute( "Synthetic", QgsPointCloudAttribute::UChar ) );
-  mAttributes.push_back( QgsPointCloudAttribute( "KeyPoint", QgsPointCloudAttribute::UChar ) );
-  mAttributes.push_back( QgsPointCloudAttribute( "Withheld", QgsPointCloudAttribute::UChar ) );
-  mAttributes.push_back( QgsPointCloudAttribute( "Overlap", QgsPointCloudAttribute::UChar ) );
 
   if ( mPointFormat == 6 || mPointFormat == 7 || mPointFormat == 8 || mPointFormat == 9 || mPointFormat == 10 )
   {
     mAttributes.push_back( QgsPointCloudAttribute( "ScannerChannel", QgsPointCloudAttribute::Char ) );
+    mAttributes.push_back( QgsPointCloudAttribute( "ClassificationFlags", QgsPointCloudAttribute::Char ) );
   }
   if ( mPointFormat != 0 && mPointFormat != 2 )
   {
@@ -298,10 +293,15 @@ QgsLazInfo QgsLazInfo::fromUrl( QUrl &url )
 {
   QgsLazInfo lazInfo;
 
+  if ( !supportsRangeQueries( url ) )
+  {
+    lazInfo.mError = QStringLiteral( "The server of submitted URL doesn't support range queries" );
+    return lazInfo;
+  }
+
   // Fetch header data
   {
     QNetworkRequest nr( url );
-    QgsSetRequestInitiatorClass( nr, QStringLiteral( "QgsLazInfo" ) );
     nr.setAttribute( QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysNetwork );
     nr.setAttribute( QNetworkRequest::CacheSaveControlAttribute, false );
     nr.setRawHeader( "Range", "bytes=0-374" );
@@ -309,21 +309,12 @@ QgsLazInfo QgsLazInfo::fromUrl( QUrl &url )
     QgsBlockingNetworkRequest::ErrorCode errCode = req.get( nr );
     if ( errCode != QgsBlockingNetworkRequest::NoError )
     {
-      QgsDebugError( QStringLiteral( "Request failed: " ) + url.toString() );
-
-      if ( req.reply().attribute( QNetworkRequest::HttpStatusCodeAttribute ).toInt() == 200 )
-      {
-        lazInfo.mError = req.errorMessage();
-      }
-      else
-      {
-        lazInfo.mError = QStringLiteral( "Range query 0-374 to \"%1\" failed: \"%2\"" ).arg( url.toString() ).arg( req.errorMessage() );
-      }
+      QgsDebugMsg( QStringLiteral( "Request failed: " ) + url.toString() );
+      lazInfo.mError = QStringLiteral( "Range query 0-374 to \"%1\" failed: \"%2\"" ).arg( url.toString() ).arg( req.errorMessage() );
       return lazInfo;
     }
 
     const QgsNetworkReplyContent reply = req.reply();
-
     QByteArray lazHeaderData = reply.content();
 
     lazInfo.parseRawHeader( lazHeaderData.data(), lazHeaderData.size() );
@@ -332,7 +323,6 @@ QgsLazInfo QgsLazInfo::fromUrl( QUrl &url )
   // Fetch VLR data
   {
     QNetworkRequest nr( url );
-    QgsSetRequestInitiatorClass( nr, QStringLiteral( "QgsLazInfo" ) );
     nr.setAttribute( QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysNetwork );
     nr.setAttribute( QNetworkRequest::CacheSaveControlAttribute, false );
     uint32_t firstVlrOffset = lazInfo.firstVariableLengthRecord();
@@ -342,7 +332,7 @@ QgsLazInfo QgsLazInfo::fromUrl( QUrl &url )
     QgsBlockingNetworkRequest::ErrorCode errCode = req.get( nr );
     if ( errCode != QgsBlockingNetworkRequest::NoError )
     {
-      QgsDebugError( QStringLiteral( "Request failed: " ) + url.toString() );
+      QgsDebugMsg( QStringLiteral( "Request failed: " ) + url.toString() );
 
       lazInfo.mError = QStringLiteral( "Range query %1-%2 to \"%3\" failed: \"%4\"" ).arg( firstVlrOffset ).arg( lazInfo.firstPointRecordOffset() - 1 )
                        .arg( url.toString() ).arg( req.errorMessage() );
@@ -354,4 +344,19 @@ QgsLazInfo QgsLazInfo::fromUrl( QUrl &url )
   }
 
   return lazInfo;
+}
+
+bool QgsLazInfo::supportsRangeQueries( QUrl &url )
+{
+  QNetworkRequest nr( url );
+  nr.setAttribute( QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::AlwaysNetwork );
+  nr.setAttribute( QNetworkRequest::CacheSaveControlAttribute, false );
+  nr.setRawHeader( "Range", "bytes=0-0" );
+  QgsBlockingNetworkRequest req;
+  // ignore the reply's status, we only care if accept-ranges is in the headers
+  req.head( nr );
+  QgsNetworkReplyContent reply = req.reply();
+
+  const QString acceptRangesHeader = reply.rawHeader( QStringLiteral( "Accept-Ranges" ).toLocal8Bit() );
+  return acceptRangesHeader.compare( QStringLiteral( "bytes" ), Qt::CaseSensitivity::CaseInsensitive ) == 0;
 }

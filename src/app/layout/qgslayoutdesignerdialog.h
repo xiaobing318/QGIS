@@ -18,7 +18,6 @@
 #define QGSLAYOUTDESIGNERDIALOG_H
 
 #include "ui_qgslayoutdesignerbase.h"
-#include "qgsconfig.h"
 #include "qgslayoutdesignerinterface.h"
 #include <QToolButton>
 
@@ -50,8 +49,6 @@ class QgsFeature;
 class QgsMasterLayoutInterface;
 class QgsLayoutGuideWidget;
 class QgsScreenHelper;
-class QgsConfigureShortcutsDialog;
-class QgsShortcutsManager;
 
 class QgsAppLayoutDesignerInterface : public QgsLayoutDesignerInterface
 {
@@ -211,12 +208,6 @@ class QgsLayoutDesignerDialog: public QMainWindow, public Ui::QgsLayoutDesignerB
      * May be NULLPTR if no export has been performed in the designer.
      */
     std::unique_ptr< QgsLayoutDesignerInterface::ExportResults > lastExportResults() const;
-
-    /**
-     * Returns the keyboard shortcuts manager
-     *
-     */
-    QgsShortcutsManager *shortcutsManager();
 
   public slots:
 
@@ -381,7 +372,6 @@ class QgsLayoutDesignerDialog: public QMainWindow, public Ui::QgsLayoutDesignerB
     void toggleFullScreen( bool enabled );
 
     void addPages();
-    void showPageProperties();
     void statusMessageReceived( const QString &message );
     void dockVisibilityChanged( bool visible );
     void undoRedoOccurredForItems( const QSet< QString > &itemUuids );
@@ -427,7 +417,6 @@ class QgsLayoutDesignerDialog: public QMainWindow, public Ui::QgsLayoutDesignerB
     void onMapPreviewRefreshed();
     void onItemAdded( QgsLayoutItem *item );
     void onItemDestroyed( QObject *item );
-    void layoutMenuAboutToShow();
 
   private:
 
@@ -515,12 +504,8 @@ class QgsLayoutDesignerDialog: public QMainWindow, public Ui::QgsLayoutDesignerB
 
     QComboBox *mAtlasPageComboBox = nullptr;
 
-#if defined( HAVE_QTPRINTER )
     //! Page & Printer Setup
     std::unique_ptr< QPrinter > mPrinter;
-    QPrinter *printer();
-    void setPrinterPageOrientation( QgsLayoutItemPage::Orientation orientation );
-#endif
     bool mSetPageOrientation = false;
 
     QString mTitle;
@@ -532,10 +517,6 @@ class QgsLayoutDesignerDialog: public QMainWindow, public Ui::QgsLayoutDesignerB
     void storeExportResults( QgsLayoutExporter::ExportResult result, QgsLayoutExporter *exporter = nullptr );
     std::unique_ptr< QgsLayoutDesignerInterface::ExportResults> mLastExportResults;
     QMap< QString, QgsLabelingResults *> mLastExportLabelingResults;
-
-    //! Shortcuts manager and dialog
-    QgsShortcutsManager *mShortcutsManager = nullptr;
-    QgsConfigureShortcutsDialog *mShortcutsDialog = nullptr;
 
     //! Save window state
     void saveWindowState();
@@ -559,14 +540,14 @@ class QgsLayoutDesignerDialog: public QMainWindow, public Ui::QgsLayoutDesignerB
 
     void showSvgExportWarning();
 
-    //! Displays a warning because of incompatibility between blend modes and QPagedPaintDevice
+    //! Displays a warning because of incompatibility between blend modes and QPrinter
     void showRasterizationWarning();
     void showForceVectorWarning();
 
     bool showFileSizeWarning();
-    bool getRasterExportSettings( QgsLayoutExporter::ImageExportSettings &settings, QSize &imageSize, const QString &fileExtension );
+    bool getRasterExportSettings( QgsLayoutExporter::ImageExportSettings &settings, QSize &imageSize );
     bool getSvgExportSettings( QgsLayoutExporter::SvgExportSettings &settings );
-    bool getPdfExportSettings( QgsLayoutExporter::PdfExportSettings &settings, bool allowGeospatialPdfExport = true, const QString &geospatialPdfReason = QString() );
+    bool getPdfExportSettings( QgsLayoutExporter::PdfExportSettings &settings, bool allowGeoPdfExport = true, const QString &geoPdfReason = QString() );
 
     void toggleAtlasActions( bool enabled );
 
@@ -590,6 +571,8 @@ class QgsLayoutDesignerDialog: public QMainWindow, public Ui::QgsLayoutDesignerB
 
     void toggleActions( bool layoutAvailable );
 
+    void setPrinterPageOrientation( QgsLayoutItemPage::Orientation orientation );
+    QPrinter *printer();
     QString reportTypeString();
     void updateActionNames( QgsMasterLayoutInterface::Type type );
 

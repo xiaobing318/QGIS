@@ -63,7 +63,7 @@ class CORE_EXPORT QgsPointCloudStatsCalculator : public QObject
     QgsPointCloudStatistics statistics() const { return mStats; }
 
   private:
-    std::unique_ptr<QgsPointCloudIndex> mIndex;
+    std::unique_ptr<QgsPointCloudIndex> mIndex = nullptr;
 
     QgsPointCloudStatistics mStats;
     QSet<IndexedPointCloudNode> mProcessedNodes;

@@ -64,12 +64,10 @@ class ANALYSIS_EXPORT QgsRasterMatrix
       opABS,
     };
 
+    //! Takes ownership of data array
     QgsRasterMatrix() = default;
 
-    /**
-     * Takes ownership of \a data array.
-     * \note note available in Python bindings
-     */
+    //! \note note available in Python bindings
     QgsRasterMatrix( int nCols, int nRows, double *data, double nodataValue ) SIP_SKIP;
     QgsRasterMatrix( const QgsRasterMatrix &m );
     ~QgsRasterMatrix();

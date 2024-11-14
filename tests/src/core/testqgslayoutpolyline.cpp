@@ -18,6 +18,7 @@
 
 #include "qgsapplication.h"
 #include "qgslayoutitempolyline.h"
+#include "qgsrenderchecker.h"
 
 #include <QLocale>
 #include <QObject>
@@ -28,12 +29,15 @@ class TestQgsLayoutPolyline : public QgsTest
     Q_OBJECT
 
   public:
-    TestQgsLayoutPolyline() : QgsTest( QStringLiteral( "Layout Polyline Tests" ), QStringLiteral( "composer_utils" ) ) {}
+    TestQgsLayoutPolyline() : QgsTest( QStringLiteral( "Layout Polyline Tests" ) ) {}
 
   private slots:
     void initTestCase();// will be called before the first testfunction is executed.
     void cleanupTestCase();// will be called after the last testfunction was executed.
     void drawArrowHead();
+
+  private:
+    bool renderCheck( const QString &testName, QImage &image, int mismatchCount = 0 );
 
 };
 
@@ -60,7 +64,22 @@ void TestQgsLayoutPolyline::drawArrowHead()
   testPainter.begin( &testImage );
   QgsLayoutItemPolyline::drawArrowHead( &testPainter, 100, 100, 45, 30 );
   testPainter.end();
-  QGSVERIFYIMAGECHECK( "composerutils_drawarrowhead", "composerutils_drawarrowhead", testImage, QString(), 40 );
+  QVERIFY( renderCheck( "composerutils_drawarrowhead", testImage, 40 ) );
+}
+
+
+bool TestQgsLayoutPolyline::renderCheck( const QString &testName, QImage &image, int mismatchCount )
+{
+  const QString myTmpDir = QDir::tempPath() + '/';
+  const QString myFileName = myTmpDir + testName + ".png";
+  image.save( myFileName, "PNG" );
+  QgsRenderChecker myChecker;
+  myChecker.setControlPathPrefix( QStringLiteral( "composer_utils" ) );
+  myChecker.setControlName( "expected_" + testName );
+  myChecker.setRenderedImage( myFileName );
+  const bool myResultFlag = myChecker.compareImages( testName, mismatchCount );
+  mReport += myChecker.report();
+  return myResultFlag;
 }
 
 QGSTEST_MAIN( TestQgsLayoutPolyline )

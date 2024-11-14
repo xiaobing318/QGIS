@@ -27,7 +27,6 @@
 
 #include <QDomElement>
 
-class QgsMapLayer;
 class QgsDataProviderTemporalCapabilities;
 
 /**

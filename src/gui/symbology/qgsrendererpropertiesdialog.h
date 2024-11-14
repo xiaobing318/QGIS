@@ -61,6 +61,7 @@ class GUI_EXPORT QgsRendererPropertiesDialog : public QDialog, private Ui::QgsRe
      * Sets the map canvas associated with the dialog. This allows the widget to retrieve the current
      * map scale and other properties from the canvas.
      * \param canvas map canvas
+     * \since QGIS 2.12
      */
     void setMapCanvas( QgsMapCanvas *canvas );
 
@@ -135,13 +136,14 @@ class GUI_EXPORT QgsRendererPropertiesDialog : public QDialog, private Ui::QgsRe
   protected:
 
     /**
-     * Connect the value changed event for the set of widgets to
-     * widgetChanged signal. Each widget is checked for type and
-     * the common type of signal is connected to widgetChanged.
+     * Connect the given slot to the value changed event for the set of widgets
+     * Each widget is checked for type and the common type of signal is connected
+     * to the slot.
      *
      * \param widgets The list of widgets to check.
+     * \param slot The slot to connect to the signals.
      */
-    void connectValueChanged( const QList<QWidget *> &widgets );
+    void connectValueChanged( const QList<QWidget *> &widgets, const char *slot );
 
     // Reimplements dialog keyPress event so we can ignore it
     void keyPressEvent( QKeyEvent *event ) override;
@@ -159,9 +161,6 @@ class GUI_EXPORT QgsRendererPropertiesDialog : public QDialog, private Ui::QgsRe
     QgsFeatureRequest::OrderBy mOrderBy;
 
   private:
-
-    static void initRendererWidgetFunctions();
-
     bool mDockMode = false;
 
     friend class QgsAppScreenShots;

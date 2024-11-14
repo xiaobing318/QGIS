@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgslayout3dmapwidget.h"
-#include "moc_qgslayout3dmapwidget.cpp"
 
 #include "qgisapp.h"
 #include "qgs3dmapcanvas.h"
@@ -106,7 +105,7 @@ void QgsLayout3DMapWidget::copy3DMapSettings( Qgs3DMapCanvasWidget *widget )
 {
   if ( !widget )
     return;
-  Qgs3DMapSettings *settings = new Qgs3DMapSettings( *widget->mapCanvas3D()->mapSettings() );
+  Qgs3DMapSettings *settings = new Qgs3DMapSettings( *widget->mapCanvas3D()->map() );
 
   // first setting passed on
   if ( !mMap3D->mapSettings() )

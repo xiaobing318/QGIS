@@ -9,30 +9,28 @@ __author__ = 'Matthias Kuhn'
 __date__ = '18/11/2016'
 __copyright__ = 'Copyright 2016, The QGIS Project'
 
-from qgis.PyQt.QtCore import QDate, QDateTime, QTime, QVariant
+import qgis  # NOQA switch sip api
+from qgis.PyQt.QtCore import QDateTime, QDate, QTime, QVariant
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (
-    NULL,
-    QgsCoordinateReferenceSystem,
-    QgsFeatureRequest,
-    QgsField,
-    QgsFields,
-    QgsGeometry,
-    QgsProcessingFeatureSourceDefinition,
-    QgsProcessingOutputLayerDefinition,
-    QgsProperty,
-    QgsRemappingSinkDefinition,
-    QgsWkbTypes,
-    QgsXmlUtils,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsXmlUtils,
+                       QgsProperty,
+                       QgsGeometry,
+                       QgsFeatureRequest,
+                       QgsCoordinateReferenceSystem,
+                       QgsProcessingOutputLayerDefinition,
+                       QgsProcessingFeatureSourceDefinition,
+                       QgsRemappingSinkDefinition,
+                       QgsWkbTypes,
+                       QgsFields,
+                       QgsField,
+                       NULL)
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsXmlUtils(QgisTestCase):
+class TestQgsXmlUtils(unittest.TestCase):
 
     def test_invalid(self):
         """
@@ -81,7 +79,7 @@ class TestQgsXmlUtils(QgisTestCase):
 
         prop2 = QgsXmlUtils.readVariant(elem)
 
-        self.assertEqual(prop2, {'a': 'a', 'b': 'b', 'c': 'something_else', 'empty': None})
+        self.assertEqual(my_properties, prop2)
 
     def test_double(self):
         """
@@ -178,7 +176,7 @@ class TestQgsXmlUtils(QgisTestCase):
         elem = QgsXmlUtils.writeVariant(crs, doc)
 
         crs2 = QgsXmlUtils.readVariant(elem)
-        self.assertIsNone(crs2)
+        self.assertFalse(crs2.isValid())
 
     def test_geom(self):
         """
@@ -206,7 +204,7 @@ class TestQgsXmlUtils(QgisTestCase):
         self.assertEqual(c, QColor(100, 200, 210, 50))
         elem = QgsXmlUtils.writeVariant(QColor(), doc)
         c = QgsXmlUtils.readVariant(elem)
-        self.assertIsNone(c)
+        self.assertFalse(c.isValid())
 
     def test_datetime(self):
         """
@@ -256,16 +254,16 @@ class TestQgsXmlUtils(QgisTestCase):
         definition = QgsProcessingFeatureSourceDefinition(QgsProperty.fromValue('my source'))
         definition.selectedFeaturesOnly = True
         definition.featureLimit = 27
-        definition.flags = QgsProcessingFeatureSourceDefinition.Flag.FlagCreateIndividualOutputPerInputFeature
-        definition.geometryCheck = QgsFeatureRequest.InvalidGeometryCheck.GeometrySkipInvalid
+        definition.flags = QgsProcessingFeatureSourceDefinition.FlagCreateIndividualOutputPerInputFeature
+        definition.geometryCheck = QgsFeatureRequest.GeometrySkipInvalid
 
         elem = QgsXmlUtils.writeVariant(definition, doc)
         c = QgsXmlUtils.readVariant(elem)
         self.assertEqual(c.source.staticValue(), 'my source')
         self.assertTrue(c.selectedFeaturesOnly)
         self.assertEqual(c.featureLimit, 27)
-        self.assertEqual(c.flags, QgsProcessingFeatureSourceDefinition.Flag.FlagCreateIndividualOutputPerInputFeature)
-        self.assertEqual(c.geometryCheck, QgsFeatureRequest.InvalidGeometryCheck.GeometrySkipInvalid)
+        self.assertEqual(c.flags, QgsProcessingFeatureSourceDefinition.FlagCreateIndividualOutputPerInputFeature)
+        self.assertEqual(c.geometryCheck, QgsFeatureRequest.GeometrySkipInvalid)
 
     def test_output_layer_definition(self):
         """
@@ -288,7 +286,7 @@ class TestQgsXmlUtils(QgisTestCase):
         fields.append(QgsField('fldtxt2', QVariant.String))
 
         mapping_def = QgsRemappingSinkDefinition()
-        mapping_def.setDestinationWkbType(QgsWkbTypes.Type.Point)
+        mapping_def.setDestinationWkbType(QgsWkbTypes.Point)
         mapping_def.setSourceCrs(QgsCoordinateReferenceSystem('EPSG:4326'))
         mapping_def.setDestinationCrs(QgsCoordinateReferenceSystem('EPSG:3857'))
         mapping_def.setDestinationFields(fields)
@@ -299,7 +297,7 @@ class TestQgsXmlUtils(QgisTestCase):
         elem = QgsXmlUtils.writeVariant(mapping_def, doc)
         c = QgsXmlUtils.readVariant(elem)
 
-        self.assertEqual(c.destinationWkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(c.destinationWkbType(), QgsWkbTypes.Point)
         self.assertEqual(c.sourceCrs().authid(), 'EPSG:4326')
         self.assertEqual(c.destinationCrs().authid(), 'EPSG:3857')
         self.assertEqual(c.destinationFields()[0].name(), 'fldtxt')

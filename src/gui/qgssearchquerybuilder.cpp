@@ -23,13 +23,14 @@
 #include <QStandardItem>
 #include <QTextStream>
 
+#include "qgssettings.h"
 #include "qgsfeature.h"
 #include "qgsfeatureiterator.h"
 #include "qgsfields.h"
 #include "qgssearchquerybuilder.h"
-#include "moc_qgssearchquerybuilder.cpp"
 #include "qgsexpression.h"
 #include "qgsvectorlayer.h"
+#include "qgslogger.h"
 #include "qgshelp.h"
 #include "qgsexpressioncontextutils.h"
 #include "qgsquerybuilder.h"
@@ -133,7 +134,7 @@ void QgsSearchQueryBuilder::getFieldValues( int limit )
   const QString fieldName = mModelFields->data( lstFields->currentIndex() ).toString();
   const int fieldIndex = mFieldMap[fieldName];
   const QgsField field = mLayer->fields().at( fieldIndex );//provider->fields().at( fieldIndex );
-  const bool numeric = ( field.type() == QMetaType::Type::Int || field.type() == QMetaType::Type::Double );
+  const bool numeric = ( field.type() == QVariant::Int || field.type() == QVariant::Double );
 
   QgsFeature feat;
   QString value;
@@ -141,7 +142,7 @@ void QgsSearchQueryBuilder::getFieldValues( int limit )
   QgsAttributeList attrs;
   attrs.append( fieldIndex );
 
-  QgsFeatureIterator fit = mLayer->getFeatures( QgsFeatureRequest().setFlags( Qgis::FeatureRequestFlag::NoGeometry ).setSubsetOfAttributes( attrs ) );
+  QgsFeatureIterator fit = mLayer->getFeatures( QgsFeatureRequest().setFlags( QgsFeatureRequest::NoGeometry ).setSubsetOfAttributes( attrs ) );
 
   lstValues->setCursor( Qt::WaitCursor );
   // Block for better performance
@@ -228,7 +229,7 @@ long QgsSearchQueryBuilder::countRecords( const QString &searchString )
 
   QApplication::setOverrideCursor( Qt::WaitCursor );
 
-  QgsFeatureIterator fit = mLayer->getFeatures( QgsFeatureRequest().setFlags( fetchGeom ? Qgis::FeatureRequestFlag::NoFlags : Qgis::FeatureRequestFlag::NoGeometry ) );
+  QgsFeatureIterator fit = mLayer->getFeatures( QgsFeatureRequest().setFlags( fetchGeom ? QgsFeatureRequest::NoFlags : QgsFeatureRequest::NoGeometry ) );
 
   while ( fit.nextFeature( feat ) )
   {

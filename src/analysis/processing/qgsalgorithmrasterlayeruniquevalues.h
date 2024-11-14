@@ -54,12 +54,12 @@ class QgsRasterLayerUniqueValuesReportAlgorithm : public QgsProcessingAlgorithm
     std::unique_ptr< QgsRasterInterface > mInterface;
     bool mHasNoDataValue = false;
     int mBand = 1;
-    int mLayerWidth = 0;
-    int mLayerHeight = 0;
+    int mLayerWidth;
+    int mLayerHeight;
     QgsRectangle mExtent;
     QgsCoordinateReferenceSystem mCrs;
-    double mRasterUnitsPerPixelX = 0;
-    double mRasterUnitsPerPixelY = 0;
+    double mRasterUnitsPerPixelX;
+    double mRasterUnitsPerPixelY;
     QString mSource;
 
 };

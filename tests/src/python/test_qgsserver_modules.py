@@ -28,7 +28,9 @@ import os
 
 from qgis.PyQt.QtCore import QBuffer, QIODevice
 from qgis.core import QgsApplication
-from qgis.server import QgsServer, QgsServerResponse, QgsService
+from qgis.server import (QgsServer,
+                         QgsService,
+                         QgsServerResponse)
 from qgis.testing import unittest
 
 from utilities import unitTestDataPath
@@ -39,7 +41,7 @@ class Response(QgsServerResponse):
     def __init__(self):
         QgsServerResponse.__init__(self)
         self._buffer = QBuffer()
-        self._buffer.open(QIODevice.OpenModeFlag.ReadWrite)
+        self._buffer.open(QIODevice.ReadWrite)
 
     def setStatusCode(self, code):
         pass
@@ -79,13 +81,11 @@ class TestModules(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        super().setUpClass()
         cls.app = QgsApplication([], False)
 
     @classmethod
     def tearDownClass(cls):
         cls.app.exitQgis()
-        super().tearDownClass()
 
     def setUp(self):
         """Create the server instance"""
@@ -103,12 +103,14 @@ class TestModules(unittest.TestCase):
                 pass
         self.server = QgsServer()
 
-    def test_dummy(self):
-        """
-        A dummy test to avoid empty test suite
-        reporting failures on some unittest versions
-        """
-        pass
+    def test_modules(self):
+        """ Tests that modules are loaded """
+
+        # Check that our 'SampleService is registered
+        iface = self.server.serverInterface()
+        service = iface.serviceRegistry().getService('SampleService')
+
+        self.assertIsNotNone(service)
 
 
 if __name__ == '__main__':

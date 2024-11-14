@@ -27,7 +27,7 @@ QString QgsExtentToLayerAlgorithm::name() const
 void QgsExtentToLayerAlgorithm::initAlgorithm( const QVariantMap & )
 {
   addParameter( new QgsProcessingParameterExtent( QStringLiteral( "INPUT" ), QObject::tr( "Extent" ) ) );
-  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Extent" ), Qgis::ProcessingSourceType::VectorPolygon ) );
+  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Extent" ), QgsProcessing::TypeVectorPolygon ) );
 }
 
 QString QgsExtentToLayerAlgorithm::shortHelpString() const
@@ -48,10 +48,10 @@ QVariantMap QgsExtentToLayerAlgorithm::processAlgorithm( const QVariantMap &para
   const QgsGeometry geom = parameterAsExtentGeometry( parameters, QStringLiteral( "INPUT" ), context );
 
   QgsFields fields;
-  fields.append( QgsField( QStringLiteral( "id" ), QMetaType::Type::Int ) );
+  fields.append( QgsField( QStringLiteral( "id" ), QVariant::Int ) );
 
   QString dest;
-  std::unique_ptr< QgsFeatureSink > sink( parameterAsSink( parameters, QStringLiteral( "OUTPUT" ), context, dest, fields, Qgis::WkbType::Polygon, crs ) );
+  std::unique_ptr< QgsFeatureSink > sink( parameterAsSink( parameters, QStringLiteral( "OUTPUT" ), context, dest, fields, QgsWkbTypes::Polygon, crs ) );
   if ( !sink )
     throw QgsProcessingException( invalidSinkError( parameters, QStringLiteral( "OUTPUT" ) ) );
 
@@ -61,7 +61,6 @@ QVariantMap QgsExtentToLayerAlgorithm::processAlgorithm( const QVariantMap &para
   if ( !sink->addFeature( f, QgsFeatureSink::FastInsert ) )
     throw QgsProcessingException( writeFeatureError( sink.get(), parameters, QStringLiteral( "OUTPUT" ) ) );
 
-  sink->finalize();
   feedback->setProgress( 100 );
 
   QVariantMap outputs;

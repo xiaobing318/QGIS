@@ -54,19 +54,19 @@ QgsPalLayerSettings QgsAbstractVectorLayerLabeling::defaultSettingsForLayer( con
 
   switch ( layer->geometryType() )
   {
-    case Qgis::GeometryType::Point:
+    case QgsWkbTypes::PointGeometry:
       settings.placement = Qgis::LabelPlacement::OrderedPositionsAroundPoint;
       settings.offsetType = Qgis::LabelOffsetType::FromSymbolBounds;
       break;
-    case Qgis::GeometryType::Line:
+    case QgsWkbTypes::LineGeometry:
       settings.placement = Qgis::LabelPlacement::Line;
       break;
-    case Qgis::GeometryType::Polygon:
+    case QgsWkbTypes::PolygonGeometry:
       settings.placement = Qgis::LabelPlacement::AroundPoint;
       break;
 
-    case Qgis::GeometryType::Unknown:
-    case Qgis::GeometryType::Null:
+    case QgsWkbTypes::UnknownGeometry:
+    case QgsWkbTypes::NullGeometry:
       break;
   }
   return settings;
@@ -123,7 +123,7 @@ bool QgsVectorLayerSimpleLabeling::requiresAdvancedEffects() const
   return mSettings->containsAdvancedEffects();
 }
 
-QgsVectorLayerSimpleLabeling *QgsVectorLayerSimpleLabeling::create( const QDomElement &element, const QgsReadWriteContext &context ) // cppcheck-suppress duplInheritedMember
+QgsVectorLayerSimpleLabeling *QgsVectorLayerSimpleLabeling::create( const QDomElement &element, const QgsReadWriteContext &context )
 {
   const QDomElement settingsElem = element.firstChildElement( QStringLiteral( "settings" ) );
   if ( !settingsElem.isNull() )
@@ -216,7 +216,7 @@ std::unique_ptr<QgsMarkerSymbolLayer> backgroundToMarkerLayer( const QgsTextBack
         layer.reset( static_cast< QgsMarkerSymbolLayer * >( settings.markerSymbol()->symbolLayer( 0 )->clone() ) );
         break;
       }
-      [[fallthrough]]; // not set, just go with the default
+      FALLTHROUGH // not set, just go with the default
     }
     case QgsTextBackgroundSettings::ShapeCircle:
     case QgsTextBackgroundSettings::ShapeEllipse:
@@ -345,12 +345,12 @@ void QgsAbstractVectorLayerLabeling::writeTextSymbolizer( QDomNode &parent, QgsP
       QDomElement pointPlacement = doc.createElement( "se:PointPlacement" );
       labelPlacement.appendChild( pointPlacement );
       // anchor point
-      const QPointF anchor = quadOffsetToSldAnchor( settings.pointSettings().quadrant() );
+      const QPointF anchor = quadOffsetToSldAnchor( settings.quadOffset );
       QgsSymbolLayerUtils::createAnchorPointElement( doc, pointPlacement, anchor );
       // displacement
-      if ( settings.xOffset != 0 || settings.yOffset != 0 )
+      if ( settings.xOffset > 0 || settings.yOffset > 0 )
       {
-        const Qgis::RenderUnit offsetUnit =  settings.offsetUnits;
+        const QgsUnitTypes::RenderUnit offsetUnit =  settings.offsetUnits;
         const double dx = QgsSymbolLayerUtils::rescaleUom( settings.xOffset, offsetUnit, props );
         const double dy = QgsSymbolLayerUtils::rescaleUom( settings.yOffset, offsetUnit, props );
         QgsSymbolLayerUtils::createDisplacementElement( doc, pointPlacement, QPointF( dx, dy ) );
@@ -373,7 +373,7 @@ void QgsAbstractVectorLayerLabeling::writeTextSymbolizer( QDomNode &parent, QgsP
       // SLD cannot do either, but let's do a best effort setting the distance using
       // anchor point and displacement
       QgsSymbolLayerUtils::createAnchorPointElement( doc, pointPlacement, QPointF( 0, 0.5 ) );
-      const Qgis::RenderUnit distUnit = settings.distUnits;
+      const QgsUnitTypes::RenderUnit distUnit = settings.distUnits;
       const double radius = QgsSymbolLayerUtils::rescaleUom( settings.dist, distUnit, props );
       const double offset = std::sqrt( radius * radius / 2 ); // make it start top/right
       maxDisplacement = radius + 1; // lock the distance
@@ -388,7 +388,7 @@ void QgsAbstractVectorLayerLabeling::writeTextSymbolizer( QDomNode &parent, QgsP
       QDomElement pointPlacement = doc.createElement( "se:PointPlacement" );
       labelPlacement.appendChild( pointPlacement );
       QgsSymbolLayerUtils::createAnchorPointElement( doc, pointPlacement, QPointF( 0.5, 0.5 ) );
-      const Qgis::RenderUnit distUnit = settings.distUnits;
+      const QgsUnitTypes::RenderUnit distUnit = settings.distUnits;
       const double dist = QgsSymbolLayerUtils::rescaleUom( settings.dist, distUnit, props );
       QgsSymbolLayerUtils::createDisplacementElement( doc, pointPlacement, QPointF( 0, dist ) );
       break;
@@ -403,7 +403,7 @@ void QgsAbstractVectorLayerLabeling::writeTextSymbolizer( QDomNode &parent, QgsP
       // perpendicular distance if required
       if ( settings.dist > 0 )
       {
-        const Qgis::RenderUnit distUnit = settings.distUnits;
+        const QgsUnitTypes::RenderUnit distUnit = settings.distUnits;
         const double dist = QgsSymbolLayerUtils::rescaleUom( settings.dist, distUnit, props );
         QDomElement perpendicular = doc.createElement( "se:PerpendicularOffset" );
         linePlacement.appendChild( perpendicular );
@@ -632,13 +632,7 @@ void QgsVectorLayerSimpleLabeling::toSld( QDomNode &parent, const QVariantMap &p
     writeTextSymbolizer( ruleElement, *mSettings, props );
   }
 
-}
 
-void QgsVectorLayerSimpleLabeling::multiplyOpacity( double opacityFactor )
-{
-  QgsTextFormat format { mSettings->format() };
-  format.multiplyOpacity( opacityFactor );
-  mSettings->setFormat( format );
 }
 
 void QgsVectorLayerSimpleLabeling::setSettings( QgsPalLayerSettings *settings, const QString &providerId )

@@ -15,8 +15,8 @@
  ***************************************************************************/
 
 #include "qgsattributeactionpropertiesdialog.h"
-#include "moc_qgsattributeactionpropertiesdialog.cpp"
 #include "qgsfieldexpressionwidget.h"
+#include "qgsmapcanvas.h"
 #include "qgsproject.h"
 #include "qgsvectorlayer.h"
 #include "qgsapplication.h"
@@ -31,15 +31,13 @@
 #include <QFileDialog>
 #include <QImageWriter>
 
-QgsAttributeActionPropertiesDialog::QgsAttributeActionPropertiesDialog( Qgis::AttributeActionType type, const QString &description, const QString &shortTitle, const QString &iconPath, const QString &actionText, bool capture, const QSet<QString> &actionScopes, const QString &notificationMessage, bool isEnabledOnlyWhenEditable, QgsVectorLayer *layer, QWidget *parent )
+QgsAttributeActionPropertiesDialog::QgsAttributeActionPropertiesDialog( QgsAction::ActionType type, const QString &description, const QString &shortTitle, const QString &iconPath, const QString &actionText, bool capture, const QSet<QString> &actionScopes, const QString &notificationMessage, bool isEnabledOnlyWhenEditable, QgsVectorLayer *layer, QWidget *parent )
   : QDialog( parent )
   , mLayer( layer )
 {
   setupUi( this );
 
-  populateActionTypes();
-
-  mActionType->setCurrentIndex( mActionType->findData( static_cast< int >( type ) ) );
+  mActionType->setCurrentIndex( type );
   mActionName->setText( description );
   mShortTitle->setText( shortTitle );
   mActionIcon->setText( iconPath );
@@ -58,8 +56,6 @@ QgsAttributeActionPropertiesDialog::QgsAttributeActionPropertiesDialog( QgsVecto
 {
   setupUi( this );
 
-  populateActionTypes();
-
   QSet<QString> defaultActionScopes;
   defaultActionScopes << QStringLiteral( "Canvas" )
                       << QStringLiteral( "FieldSpecific" )
@@ -69,9 +65,9 @@ QgsAttributeActionPropertiesDialog::QgsAttributeActionPropertiesDialog( QgsVecto
   init( defaultActionScopes );
 }
 
-Qgis::AttributeActionType QgsAttributeActionPropertiesDialog::type() const
+QgsAction::ActionType QgsAttributeActionPropertiesDialog::type() const
 {
-  return static_cast<Qgis::AttributeActionType>( mActionType->currentData().toInt() );
+  return static_cast<QgsAction::ActionType>( mActionType->currentIndex() );
 }
 
 QString QgsAttributeActionPropertiesDialog::description() const
@@ -242,16 +238,4 @@ void QgsAttributeActionPropertiesDialog::init( const QSet<QString> &actionScopes
 void QgsAttributeActionPropertiesDialog::showHelp()
 {
   QgsHelp::openHelp( QStringLiteral( "working_with_vector/vector_properties.html#actions-properties" ) );
-}
-
-void QgsAttributeActionPropertiesDialog::populateActionTypes()
-{
-  mActionType->addItem( tr( "Generic" ), static_cast< int>( Qgis::AttributeActionType::Generic ) );
-  mActionType->addItem( tr( "Python" ), static_cast< int>( Qgis::AttributeActionType::GenericPython ) );
-  mActionType->addItem( tr( "macOS" ), static_cast< int>( Qgis::AttributeActionType::Mac ) );
-  mActionType->addItem( tr( "Windows" ), static_cast< int>( Qgis::AttributeActionType::Windows ) );
-  mActionType->addItem( tr( "Unix" ), static_cast< int>( Qgis::AttributeActionType::Unix ) );
-  mActionType->addItem( tr( "Open URL" ), static_cast< int>( Qgis::AttributeActionType::OpenUrl ) );
-  mActionType->addItem( tr( "Submit URL (urlencoded or JSON)" ), static_cast< int>( Qgis::AttributeActionType::SubmitUrlEncoded ) );
-  mActionType->addItem( tr( "Submit URL (multipart)" ), static_cast< int>( Qgis::AttributeActionType::SubmitUrlMultipart ) );
 }

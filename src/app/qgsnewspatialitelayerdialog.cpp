@@ -19,7 +19,6 @@
 
 
 #include "qgsnewspatialitelayerdialog.h"
-#include "moc_qgsnewspatialitelayerdialog.cpp"
 
 #include "qgis.h"
 #include "qgsapplication.h"
@@ -30,10 +29,12 @@
 #include "qgscoordinatereferencesystem.h"
 #include "qgsfileutils.h"
 #include "qgsprojectionselectiondialog.h"
+#include "qgsproviderconnectionmodel.h"
 #include "qgsprovidermetadata.h"
 #include "qgsproviderregistry.h"
 #include "qgsspatialiteutils.h"
 #include "qgslogger.h"
+#include "qgssettings.h"
 #include "qgsgui.h"
 #include "qgsiconutils.h"
 #include "qgsvariantutils.h"
@@ -51,18 +52,18 @@ QgsNewSpatialiteLayerDialog::QgsNewSpatialiteLayerDialog( QWidget *parent, Qt::W
   setupUi( this );
   QgsGui::enableAutoGeometryRestore( this );
 
-  const auto addGeomItem = [this]( Qgis::WkbType type, const QString & sqlType )
+  const auto addGeomItem = [this]( QgsWkbTypes::Type type, const QString & sqlType )
   {
     mGeometryTypeBox->addItem( QgsIconUtils::iconForWkbType( type ), QgsWkbTypes::translatedDisplayString( type ), sqlType );
   };
 
-  addGeomItem( Qgis::WkbType::NoGeometry, QString() );
-  addGeomItem( Qgis::WkbType::Point, QStringLiteral( "POINT" ) );
-  addGeomItem( Qgis::WkbType::LineString, QStringLiteral( "LINESTRING" ) );
-  addGeomItem( Qgis::WkbType::Polygon, QStringLiteral( "POLYGON" ) );
-  addGeomItem( Qgis::WkbType::MultiPoint, QStringLiteral( "MULTIPOINT" ) );
-  addGeomItem( Qgis::WkbType::MultiLineString, QStringLiteral( "MULTILINESTRING" ) );
-  addGeomItem( Qgis::WkbType::MultiPolygon, QStringLiteral( "MULTIPOLYGON" ) );
+  addGeomItem( QgsWkbTypes::NoGeometry, QString() );
+  addGeomItem( QgsWkbTypes::Point, QStringLiteral( "POINT" ) );
+  addGeomItem( QgsWkbTypes::LineString, QStringLiteral( "LINESTRING" ) );
+  addGeomItem( QgsWkbTypes::Polygon, QStringLiteral( "POLYGON" ) );
+  addGeomItem( QgsWkbTypes::MultiPoint, QStringLiteral( "MULTIPOINT" ) );
+  addGeomItem( QgsWkbTypes::MultiLineString, QStringLiteral( "MULTILINESTRING" ) );
+  addGeomItem( QgsWkbTypes::MultiPolygon, QStringLiteral( "MULTIPOLYGON" ) );
   mGeometryTypeBox->setCurrentIndex( -1 );
 
   pbnFindSRID->setEnabled( false );
@@ -73,11 +74,11 @@ QgsNewSpatialiteLayerDialog::QgsNewSpatialiteLayerDialog( QWidget *parent, Qt::W
 
   mAddAttributeButton->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionNewAttribute.svg" ) ) );
   mRemoveAttributeButton->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionDeleteAttribute.svg" ) ) );
-  mTypeBox->addItem( QgsFields::iconForFieldType( QMetaType::Type::QString ), QgsVariantUtils::typeToDisplayString( QMetaType::Type::QString ), "text" );
-  mTypeBox->addItem( QgsFields::iconForFieldType( QMetaType::Type::Int ), QgsVariantUtils::typeToDisplayString( QMetaType::Type::Int ), "integer" );
-  mTypeBox->addItem( QgsFields::iconForFieldType( QMetaType::Type::Double ), QgsVariantUtils::typeToDisplayString( QMetaType::Type::Double ), "real" );
-  mTypeBox->addItem( QgsFields::iconForFieldType( QMetaType::Type::QDate ), QgsVariantUtils::typeToDisplayString( QMetaType::Type::QDate ), "date" );
-  mTypeBox->addItem( QgsFields::iconForFieldType( QMetaType::Type::QDateTime ), QgsVariantUtils::typeToDisplayString( QMetaType::Type::QDateTime ), "timestamp" );
+  mTypeBox->addItem( QgsFields::iconForFieldType( QVariant::String ), QgsVariantUtils::typeToDisplayString( QVariant::String ), "text" );
+  mTypeBox->addItem( QgsFields::iconForFieldType( QVariant::Int ), QgsVariantUtils::typeToDisplayString( QVariant::Int ), "integer" );
+  mTypeBox->addItem( QgsFields::iconForFieldType( QVariant::Double ), QgsVariantUtils::typeToDisplayString( QVariant::Double ), "real" );
+  mTypeBox->addItem( QgsFields::iconForFieldType( QVariant::Date ), QgsVariantUtils::typeToDisplayString( QVariant::Date ), "date" );
+  mTypeBox->addItem( QgsFields::iconForFieldType( QVariant::DateTime ), QgsVariantUtils::typeToDisplayString( QVariant::DateTime ), "timestamp" );
 
   mDatabaseComboBox->setProvider( QStringLiteral( "spatialite" ) );
 
@@ -102,14 +103,11 @@ QgsNewSpatialiteLayerDialog::QgsNewSpatialiteLayerDialog( QWidget *parent, Qt::W
   connect( toolButtonNewDatabase, &QToolButton::clicked, this, &QgsNewSpatialiteLayerDialog::createDb );
   connect( buttonBox, &QDialogButtonBox::accepted, this, &QgsNewSpatialiteLayerDialog::buttonBox_accepted );
   connect( buttonBox, &QDialogButtonBox::rejected, this, &QgsNewSpatialiteLayerDialog::buttonBox_rejected );
+
   connect( buttonBox, &QDialogButtonBox::helpRequested, this, &QgsNewSpatialiteLayerDialog::showHelp );
-  connect( mButtonUp, &QToolButton::clicked, this, &QgsNewSpatialiteLayerDialog::moveFieldsUp );
-  connect( mButtonDown, &QToolButton::clicked, this, &QgsNewSpatialiteLayerDialog::moveFieldsDown );
 
   mAddAttributeButton->setEnabled( false );
   mRemoveAttributeButton->setEnabled( false );
-  mButtonUp->setEnabled( false );
-  mButtonDown->setEnabled( false );
 }
 
 void QgsNewSpatialiteLayerDialog::mGeometryTypeBox_currentIndexChanged( int index )
@@ -179,11 +177,6 @@ void QgsNewSpatialiteLayerDialog::mAddAttributeButton_clicked()
     checkOk();
 
     mNameEdit->clear();
-
-    if ( !mNameEdit->hasFocus() )
-    {
-      mNameEdit->setFocus();
-    }
   }
 }
 
@@ -262,8 +255,6 @@ void QgsNewSpatialiteLayerDialog::nameChanged( const QString &name )
 void QgsNewSpatialiteLayerDialog::selectionChanged()
 {
   mRemoveAttributeButton->setDisabled( mAttributeView->selectedItems().isEmpty() );
-  mButtonUp->setDisabled( mAttributeView->selectedItems().isEmpty() );
-  mButtonDown->setDisabled( mAttributeView->selectedItems().isEmpty() );
 }
 
 bool QgsNewSpatialiteLayerDialog::createDb()
@@ -345,33 +336,6 @@ void QgsNewSpatialiteLayerDialog::buttonBox_rejected()
 
 bool QgsNewSpatialiteLayerDialog::apply()
 {
-  if ( !mNameEdit->text().trimmed().isEmpty() )
-  {
-    const QString currentFieldName = mNameEdit->text();
-    bool currentFound = false;
-    QTreeWidgetItemIterator it( mAttributeView );
-    while ( *it )
-    {
-      QTreeWidgetItem *item = *it;
-      if ( item->text( 0 ) == currentFieldName )
-      {
-        currentFound = true;
-        break;
-      }
-      ++it;
-    }
-
-    if ( !currentFound )
-    {
-      if ( QMessageBox::question( this, windowTitle(),
-                                  tr( "The field “%1” has not been added to the fields list. Are you sure you want to proceed and discard this field?" ).arg( currentFieldName ),
-                                  QMessageBox::Ok | QMessageBox::Cancel ) != QMessageBox::Ok )
-      {
-        return false;
-      }
-    }
-  }
-
   const QgsDataSourceUri dbUri = mDatabaseComboBox->currentConnectionUri();
   const QString dbPath = dbUri.database();
 
@@ -395,8 +359,8 @@ bool QgsNewSpatialiteLayerDialog::apply()
   // complete the create table statement
   sql += ')';
 
-  QgsDebugMsgLevel( QStringLiteral( "Creating table in database %1" ).arg( dbPath ), 2 );
-  QgsDebugMsgLevel( sql, 2 );
+  QgsDebugMsg( QStringLiteral( "Creating table in database %1" ).arg( dbPath ) );
+  QgsDebugMsg( sql );
 
   spatialite_database_unique_ptr database;
   int rc = database.open( dbPath );
@@ -430,7 +394,7 @@ bool QgsNewSpatialiteLayerDialog::apply()
                                .arg( mCrsId.split( ':' ).value( 1, QStringLiteral( "0" ) ).toInt() )
                                .arg( QgsSqliteUtils::quotedString( selectedType() ) )
                                .arg( QgsSqliteUtils::quotedString( selectedZM() ) );
-    QgsDebugMsgLevel( sqlAddGeom, 2 );
+    QgsDebugMsg( sqlAddGeom );
 
     rc = sqlite3_exec( database.get(), sqlAddGeom.toUtf8(), nullptr, nullptr, &errmsg );
     if ( rc != SQLITE_OK )
@@ -445,7 +409,7 @@ bool QgsNewSpatialiteLayerDialog::apply()
     const QString sqlCreateIndex = QStringLiteral( "select CreateSpatialIndex(%1,%2)" )
                                    .arg( QgsSqliteUtils::quotedString( leLayerName->text() ),
                                          QgsSqliteUtils::quotedString( leGeometryColumn->text() ) );
-    QgsDebugMsgLevel( sqlCreateIndex, 2 );
+    QgsDebugMsg( sqlCreateIndex );
 
     rc = sqlite3_exec( database.get(), sqlCreateIndex.toUtf8(), nullptr, nullptr, &errmsg );
     if ( rc != SQLITE_OK )
@@ -479,7 +443,7 @@ bool QgsNewSpatialiteLayerDialog::apply()
   }
   else
   {
-    QgsDebugError( leLayerName->text() + " is an invalid layer - not loaded" );
+    QgsDebugMsg( leLayerName->text() + " is an invalid layer - not loaded" );
     QMessageBox::critical( this, tr( "SpatiaLite Database" ), tr( "%1 is an invalid layer and cannot be loaded." ).arg( leLayerName->text() ) );
     delete layer;
   }
@@ -496,24 +460,4 @@ QString QgsNewSpatialiteLayerDialog::quotedIdentifier( QString id )
 void QgsNewSpatialiteLayerDialog::showHelp()
 {
   QgsHelp::openHelp( QStringLiteral( "managing_data_source/create_layers.html#creating-a-new-spatialite-layer" ) );
-}
-
-void QgsNewSpatialiteLayerDialog::moveFieldsUp()
-{
-  int currentRow = mAttributeView->currentIndex().row();
-  if ( currentRow == 0 )
-    return;
-
-  mAttributeView->insertTopLevelItem( currentRow - 1, mAttributeView->takeTopLevelItem( currentRow ) );
-  mAttributeView->setCurrentIndex( mAttributeView->model()->index( currentRow - 1, 0 ) );
-}
-
-void QgsNewSpatialiteLayerDialog::moveFieldsDown()
-{
-  int currentRow = mAttributeView->currentIndex().row();
-  if ( currentRow == mAttributeView->topLevelItemCount() - 1 )
-    return;
-
-  mAttributeView->insertTopLevelItem( currentRow + 1, mAttributeView->takeTopLevelItem( currentRow ) );
-  mAttributeView->setCurrentIndex( mAttributeView->model()->index( currentRow + 1, 0 ) );
 }

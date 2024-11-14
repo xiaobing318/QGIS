@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/layout/qgslayoutpagecollection.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -13,6 +13,8 @@ class QgsLayoutPageCollection : QObject, QgsLayoutSerializableObject
 {
 %Docstring(signature="appended")
 A manager for a collection of pages in a layout.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -199,8 +201,7 @@ Returns the symbol to use for drawing pages in the collection.
 
 .. seealso:: :py:func:`setPageStyleSymbol`
 
-.. deprecated:: 3.40
-
+.. deprecated::
    Use :py:func:`QgsLayoutItemPage.pageStyleSymbol()` instead.
 %End
 
@@ -336,7 +337,7 @@ Returns the space between pages, in layout units.
 Returns the size of the page shadow, in layout units.
 %End
 
-    void resizeToContents( const QgsMargins &margins, Qgis::LayoutUnit marginUnits );
+    void resizeToContents( const QgsMargins &margins, QgsUnitTypes::LayoutUnit marginUnits );
 %Docstring
 Resizes the layout to a single page which fits the current contents of the layout.
 
@@ -368,13 +369,6 @@ Returns a reference to the collection's guide collection, which manages page sna
 %End
 
 
-    void applyPropertiesToAllOtherPages( int sourcePage );
-%Docstring
-Apply the source page properties (size & background color) to all other pages
-
-.. versionadded:: 3.42
-%End
-
   public slots:
 
     void redraw();
@@ -404,5 +398,5 @@ first page.
  *                                                                      *
  * src/core/layout/qgslayoutpagecollection.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

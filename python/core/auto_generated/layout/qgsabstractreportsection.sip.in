@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/layout/qgsabstractreportsection.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -19,6 +19,8 @@ Current context for a report section.
 
    This is not considered stable API, and may change in future QGIS releases. It is
    exposed to the Python bindings for unit testing purposes only.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -42,6 +44,8 @@ An abstract base class for :py:class:`QgsReport` subsections.
 
    This is not considered stable API, and may change in future QGIS releases. It is
    exposed to the Python bindings for unit testing purposes only.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -64,6 +68,8 @@ Note that ownership is not transferred to ``parent``.
 %End
 
     ~QgsAbstractReportSection();
+
+
 
     virtual QString type() const = 0;
 %Docstring
@@ -399,5 +405,5 @@ Sets section state from a DOM element.
  *                                                                      *
  * src/core/layout/qgsabstractreportsection.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

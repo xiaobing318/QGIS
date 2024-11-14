@@ -60,7 +60,7 @@ QString QgsBoundaryAlgorithm::shortHelpString() const
 
 QList<int> QgsBoundaryAlgorithm::inputLayerTypes() const
 {
-  return QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorLine ) << static_cast< int >( Qgis::ProcessingSourceType::VectorPolygon );
+  return QList<int>() << QgsProcessing::TypeVectorLine << QgsProcessing::TypeVectorPolygon;
 }
 
 bool QgsBoundaryAlgorithm::supportInPlaceEdit( const QgsMapLayer * ) const
@@ -73,28 +73,28 @@ QgsBoundaryAlgorithm *QgsBoundaryAlgorithm::createInstance() const
   return new QgsBoundaryAlgorithm();
 }
 
-Qgis::ProcessingFeatureSourceFlags QgsBoundaryAlgorithm::sourceFlags() const
+QgsProcessingFeatureSource::Flag QgsBoundaryAlgorithm::sourceFlags() const
 {
-  return Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks;
+  return QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks;
 }
 
-Qgis::WkbType QgsBoundaryAlgorithm::outputWkbType( Qgis::WkbType inputWkbType ) const
+QgsWkbTypes::Type QgsBoundaryAlgorithm::outputWkbType( QgsWkbTypes::Type inputWkbType ) const
 {
-  Qgis::WkbType outputWkb = Qgis::WkbType::Unknown;
+  QgsWkbTypes::Type outputWkb = QgsWkbTypes::Unknown;
   switch ( QgsWkbTypes::geometryType( inputWkbType ) )
   {
-    case Qgis::GeometryType::Line:
-      outputWkb = Qgis::WkbType::MultiPoint;
+    case QgsWkbTypes::LineGeometry:
+      outputWkb = QgsWkbTypes::MultiPoint;
       break;
 
-    case Qgis::GeometryType::Polygon:
-      outputWkb = Qgis::WkbType::MultiLineString;
+    case QgsWkbTypes::PolygonGeometry:
+      outputWkb = QgsWkbTypes::MultiLineString;
       break;
 
-    case Qgis::GeometryType::Point:
-    case Qgis::GeometryType::Unknown:
-    case Qgis::GeometryType::Null:
-      outputWkb = Qgis::WkbType::NoGeometry;
+    case QgsWkbTypes::PointGeometry:
+    case QgsWkbTypes::UnknownGeometry:
+    case QgsWkbTypes::NullGeometry:
+      outputWkb = QgsWkbTypes::NoGeometry;
       break;
   }
 
@@ -116,7 +116,7 @@ QgsFeatureList QgsBoundaryAlgorithm::processFeature( const QgsFeature &feature, 
     const QgsGeometry outputGeometry = QgsGeometry( inputGeometry.constGet()->boundary() );
     if ( outputGeometry.isNull() )
     {
-      feedback->reportError( QObject::tr( "No boundary for feature %1 (possibly a closed linestring?)" ).arg( feature.id() ) );
+      feedback->reportError( QObject::tr( "No boundary for feature %1 (possibly a closed linestring?)'" ).arg( feature.id() ) );
       outFeature.clearGeometry();
     }
     else

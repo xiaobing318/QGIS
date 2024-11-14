@@ -14,21 +14,21 @@ __copyright__ = 'Copyright 2021, The QGIS Project'
 import os
 from functools import partial
 
+import qgis  # NOQA switch sip api
 from qgis.PyQt.QtCore import QTemporaryDir
 from qgis.core import (
-    QgsAction,
-    QgsApplication,
     QgsExpressionContext,
+    QgsAction,
     QgsNetworkAccessManager,
     QgsNetworkRequestParameters,
+    QgsApplication,
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsAction(QgisTestCase):
+class TestQgsAction(unittest.TestCase):
 
     def setUp(self):
         self.body = None
@@ -48,7 +48,7 @@ class TestQgsAction(QgisTestCase):
         temp_path = temp_dir.path()
         temp_file = os.path.join(temp_path, 'urlencoded.txt')
 
-        action = QgsAction(QgsAction.ActionType.SubmitUrlEncoded, 'url_encoded', "http://fake_qgis_http_endpoint" + temp_file + r"?[% url_encode(map('a&+b', 'a and plus b', 'a=b', 'a equals b')) %]")
+        action = QgsAction(QgsAction.SubmitUrlEncoded, 'url_encoded', "http://fake_qgis_http_endpoint" + temp_file + r"?[% url_encode(map('a&+b', 'a and plus b', 'a=b', 'a equals b')) %]")
         ctx = QgsExpressionContext()
         action.run(ctx)
 

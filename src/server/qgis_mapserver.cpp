@@ -177,7 +177,7 @@ class TcpServerWorker: public QObject
           };
 
           // This will delete the connection
-          QObject::connect( clientConnection, &QAbstractSocket::disconnected, clientConnection, connectionDeleter, Qt::QueuedConnection );
+          QTcpSocket::connect( clientConnection, &QAbstractSocket::disconnected, clientConnection, connectionDeleter, Qt::QueuedConnection );
 
 #if 0     // Debugging output
           clientConnection->connect( clientConnection, &QAbstractSocket::errorOccurred, clientConnection, [ = ]( QAbstractSocket::SocketError socketError )
@@ -187,7 +187,7 @@ class TcpServerWorker: public QObject
 #endif
 
           // Incoming connection parser
-          QObject::connect( clientConnection, &QIODevice::readyRead, context, [ = ] {
+          QTcpSocket::connect( clientConnection, &QIODevice::readyRead, context, [ = ] {
 
             // Read all incoming data
             while ( clientConnection->bytesAvailable() > 0 )
@@ -243,7 +243,6 @@ class TcpServerWorker: public QObject
                 throw HttpException( QStringLiteral( "HTTP error unsupported method: %1" ).arg( methodString ) );
               }
 
-              // cppcheck-suppress containerOutOfBounds
               const QString protocol { firstLinePieces.at( 2 )};
               if ( protocol != QLatin1String( "HTTP/1.0" ) && protocol != QLatin1String( "HTTP/1.1" ) )
               {
@@ -292,7 +291,6 @@ class TcpServerWorker: public QObject
               // ... or from server ip/port and request path
               if ( url.isEmpty() )
               {
-                // cppcheck-suppress containerOutOfBounds
                 const QString path { firstLinePieces.at( 1 )};
                 // Take Host header if defined
                 if ( headers.contains( QStringLiteral( "Host" ) ) )
@@ -592,7 +590,6 @@ int main( int argc, char *argv[] )
     if ( addressAndPort.size() == 2 )
     {
       ipAddress = addressAndPort.at( 0 );
-      // cppcheck-suppress containerOutOfBounds
       serverPort = addressAndPort.at( 1 );
     }
   }
@@ -612,8 +609,7 @@ int main( int argc, char *argv[] )
                                          Qgis::ProjectReadFlag::DontResolveLayers
                                          | Qgis::ProjectReadFlag::DontLoadLayouts
                                          | Qgis::ProjectReadFlag::DontStoreOriginalStyles
-                                         | Qgis::ProjectReadFlag::DontLoad3DViews
-                                         | Qgis::ProjectReadFlag::DontUpgradeAnnotations ) )
+                                         | Qgis::ProjectReadFlag::DontLoad3DViews ) )
     {
       std::cout << QObject::tr( "Project file not found, the option will be ignored." ).toStdString() << std::endl;
     }

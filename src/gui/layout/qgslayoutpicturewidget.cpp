@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgslayoutpicturewidget.h"
-#include "moc_qgslayoutpicturewidget.cpp"
 #include "qgsapplication.h"
 #include "qgslayoutitemmap.h"
 #include "qgslayoutitempicture.h"
@@ -116,10 +115,10 @@ QgsLayoutPictureWidget::QgsLayoutPictureWidget( QgsLayoutItemPicture *picture )
   connect( mPicture, &QgsLayoutItemPicture::pictureRotationChanged, this, &QgsLayoutPictureWidget::setPicRotationSpinValue );
 
   //connections for data defined buttons
-  registerDataDefinedButton( mSvgSelectorWidget->propertyOverrideToolButton(), QgsLayoutObject::DataDefinedProperty::PictureSource );
-  registerDataDefinedButton( mFillColorDDBtn, QgsLayoutObject::DataDefinedProperty::PictureSvgBackgroundColor );
-  registerDataDefinedButton( mStrokeColorDDBtn, QgsLayoutObject::DataDefinedProperty::PictureSvgStrokeColor );
-  registerDataDefinedButton( mStrokeWidthDDBtn, QgsLayoutObject::DataDefinedProperty::PictureSvgStrokeWidth );
+  registerDataDefinedButton( mSvgSelectorWidget->propertyOverrideToolButton(), QgsLayoutObject::PictureSource );
+  registerDataDefinedButton( mFillColorDDBtn, QgsLayoutObject::PictureSvgBackgroundColor );
+  registerDataDefinedButton( mStrokeColorDDBtn, QgsLayoutObject::PictureSvgStrokeColor );
+  registerDataDefinedButton( mStrokeWidthDDBtn, QgsLayoutObject::PictureSvgStrokeWidth );
 }
 
 void QgsLayoutPictureWidget::setMasterLayout( QgsMasterLayoutInterface *masterLayout )
@@ -322,11 +321,11 @@ void QgsLayoutPictureWidget::setGuiElementValues()
 
     switch ( mPicture->originalMode() )
     {
-      case Qgis::PictureFormat::SVG:
-      case Qgis::PictureFormat::Unknown:
+      case QgsLayoutItemPicture::FormatSVG:
+      case QgsLayoutItemPicture::FormatUnknown:
         mRadioSVG->setChecked( true );
         break;
-      case Qgis::PictureFormat::Raster:
+      case QgsLayoutItemPicture::FormatRaster:
         mRadioRaster->setChecked( true );
         break;
     }
@@ -454,7 +453,7 @@ void QgsLayoutPictureWidget::modeChanged( bool checked )
     return;
 
   const bool svg = mRadioSVG->isChecked();
-  const Qgis::PictureFormat newFormat = svg ? Qgis::PictureFormat::SVG : Qgis::PictureFormat::Raster;
+  const QgsLayoutItemPicture::Format newFormat = svg ? QgsLayoutItemPicture::FormatSVG : QgsLayoutItemPicture::FormatRaster;
 
   if ( svg )
     mSvgSelectorWidget->sourceLineEdit()->setMode( QgsPictureSourceLineEditBase::Svg );
@@ -478,7 +477,7 @@ void QgsLayoutPictureWidget::sourceChanged( const QString &source )
   if ( mPicture )
   {
     mPicture->beginCommand( tr( "Change Picture" ) );
-    mPicture->setPicturePath( source, mRadioSVG->isChecked() ? Qgis::PictureFormat::SVG : Qgis::PictureFormat::Raster );
+    mPicture->setPicturePath( source, mRadioSVG->isChecked() ? QgsLayoutItemPicture::FormatSVG : QgsLayoutItemPicture::FormatRaster );
     mPicture->update();
     mPicture->endCommand();
     updateSvgParamGui();

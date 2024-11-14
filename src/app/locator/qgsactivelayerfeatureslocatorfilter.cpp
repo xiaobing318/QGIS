@@ -17,7 +17,6 @@
 
 #include "qgisapp.h"
 #include "qgsactivelayerfeatureslocatorfilter.h"
-#include "moc_qgsactivelayerfeatureslocatorfilter.cpp"
 #include "qgsexpressioncontextutils.h"
 #include "qgsfeatureaction.h"
 #include "qgsiconutils.h"
@@ -68,9 +67,6 @@ QStringList QgsActiveLayerFeaturesLocatorFilter::prepare( const QString &string,
   if ( !layer )
     return QStringList();
 
-  if ( !layer->flags().testFlag( QgsMapLayer::Searchable ) )
-    return QStringList();
-
   mLayerIsSpatial = layer->isSpatial();
   mDispExpression = QgsExpression( layer->displayExpression() );
   mContext.appendScopes( QgsExpressionContextUtils::globalProjectLayerScopes( layer ) );
@@ -89,7 +85,7 @@ QStringList QgsActiveLayerFeaturesLocatorFilter::prepare( const QString &string,
     QgsFeatureRequest req;
     req.setSubsetOfAttributes( qgis::setToList( mDispExpression.referencedAttributeIndexes( layer->fields() ) ) );
     if ( !mDispExpression.needsGeometry() )
-      req.setFlags( Qgis::FeatureRequestFlag::NoGeometry );
+      req.setFlags( QgsFeatureRequest::NoGeometry );
     QString enhancedSearch = searchString;
     enhancedSearch.replace( ' ', '%' );
     req.setFilterExpression( QStringLiteral( "%1 ILIKE '%%2%'" )
@@ -109,7 +105,7 @@ QStringList QgsActiveLayerFeaturesLocatorFilter::prepare( const QString &string,
   QgsAttributeList subsetOfAttributes = qgis::setToList( mDispExpression.referencedAttributeIndexes( layer->fields() ) );
   for ( const QgsField &field : fields )
   {
-    if ( field.configurationFlags().testFlag( Qgis::FieldConfigurationFlag::NotSearchable ) )
+    if ( field.configurationFlags().testFlag( QgsField::ConfigurationFlag::NotSearchable ) )
       continue;
 
     if ( isRestricting && !field.name().startsWith( _fieldRestriction ) )
@@ -132,7 +128,7 @@ QStringList QgsActiveLayerFeaturesLocatorFilter::prepare( const QString &string,
     // the completion list (returned by the current method) is used by the locator line edit directly
     completionList.append( QStringLiteral( "@%1 " ).arg( field.name() ) );
 
-    if ( field.type() == QMetaType::Type::QString )
+    if ( field.type() == QVariant::String )
     {
       expressionParts << QStringLiteral( "%1 ILIKE '%%2%'" ).arg( QgsExpression::quotedColumnRef( field.name() ),
                       searchString );
@@ -147,7 +143,7 @@ QStringList QgsActiveLayerFeaturesLocatorFilter::prepare( const QString &string,
 
   QgsFeatureRequest req;
   if ( !mDispExpression.needsGeometry() )
-    req.setFlags( Qgis::FeatureRequestFlag::NoGeometry );
+    req.setFlags( QgsFeatureRequest::NoGeometry );
   req.setFilterExpression( expression );
   if ( isRestricting )
     req.setSubsetOfAttributes( subsetOfAttributes );
@@ -179,9 +175,9 @@ void QgsActiveLayerFeaturesLocatorFilter::fetchResults( const QString &string, c
     QgsLocatorResult result;
     result.displayString = QStringLiteral( "@%1" ).arg( field );
     result.description = tr( "Limit the search to the field '%1'" ).arg( field );
-    result.setUserData( QVariantMap( {{QStringLiteral( "type" ), QVariant::fromValue( ResultType::FieldRestriction )},
+    result.userData = QVariantMap( {{QStringLiteral( "type" ), QVariant::fromValue( ResultType::FieldRestriction )},
       {QStringLiteral( "search_text" ), QStringLiteral( "%1 @%2 " ).arg( prefix(), field ) }
-    } ) );
+    } );
     result.score = 1;
     emit resultFetched( result );
   }
@@ -199,13 +195,13 @@ void QgsActiveLayerFeaturesLocatorFilter::fetchResults( const QString &string, c
       QgsLocatorResult result;
 
       result.displayString =  mDispExpression.evaluate( &mContext ).toString();
-      result.setUserData( QVariantMap(
+      result.userData = QVariantMap(
       {
         {QStringLiteral( "type" ), QVariant::fromValue( ResultType::Feature )},
         {QStringLiteral( "feature_id" ), f.id()},
         {QStringLiteral( "layer_id" ), mLayerId},
         {QStringLiteral( "layer_is_spatial" ), mLayerIsSpatial}
-      } ) );
+      } );
       result.icon = mLayerIcon;
       result.score = static_cast< double >( searchString.length() ) / result.displayString.size();
       if ( mLayerIsSpatial )
@@ -254,13 +250,13 @@ void QgsActiveLayerFeaturesLocatorFilter::fetchResults( const QString &string, c
       continue; //not sure how this result slipped through...
 
     result.description = mDispExpression.evaluate( &mContext ).toString();
-    result.setUserData( QVariantMap(
+    result.userData = QVariantMap(
     {
       {QStringLiteral( "type" ), QVariant::fromValue( ResultType::Feature )},
       {QStringLiteral( "feature_id" ), f.id()},
       {QStringLiteral( "layer_id" ), mLayerId},
       {QStringLiteral( "layer_is_spatial" ), mLayerIsSpatial}
-    } ) );
+    } );
     result.icon = mLayerIcon;
     result.score = static_cast< double >( searchString.length() ) / result.displayString.size();
     if ( mLayerIsSpatial )
@@ -282,7 +278,7 @@ void QgsActiveLayerFeaturesLocatorFilter::triggerResult( const QgsLocatorResult 
 
 void QgsActiveLayerFeaturesLocatorFilter::triggerResultFromAction( const QgsLocatorResult &result, const int actionId )
 {
-  QVariantMap data = result.userData().value<QVariantMap>();
+  QVariantMap data = result.userData.value<QVariantMap>();
   switch ( data.value( QStringLiteral( "type" ) ).value<ResultType>() )
   {
     case ResultType::Feature:

@@ -3,9 +3,8 @@
  *                                                                      *
  * src/core/editform/qgsattributeeditorelement.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
-
 
 
 
@@ -27,16 +26,16 @@ layer.
 %ConvertToSubClassCode
     switch ( sipCpp->type() )
     {
-      case Qgis::AttributeEditorType::Container:
+      case QgsAttributeEditorElement::AeTypeContainer:
         sipType = sipType_QgsAttributeEditorContainer;
         break;
-      case Qgis::AttributeEditorType::Field:
+      case QgsAttributeEditorElement::AeTypeField:
         sipType = sipType_QgsAttributeEditorField;
         break;
-      case Qgis::AttributeEditorType::Relation:
+      case QgsAttributeEditorElement::AeTypeRelation:
         sipType = sipType_QgsAttributeEditorRelation;
         break;
-      case Qgis::AttributeEditorType::Action:
+      case QgsAttributeEditorElement::AeTypeAction:
         sipType = sipType_QgsAttributeEditorAction;
         break;
       default:
@@ -61,7 +60,19 @@ layer.
 
     };
 
-    QgsAttributeEditorElement( Qgis::AttributeEditorType type, const QString &name, QgsAttributeEditorElement *parent = 0 );
+
+    enum AttributeEditorType
+    {
+      AeTypeContainer,
+      AeTypeField,
+      AeTypeRelation,
+      AeTypeInvalid,
+      AeTypeQmlElement,
+      AeTypeHtmlElement,
+      AeTypeAction
+    };
+
+    QgsAttributeEditorElement( AttributeEditorType type, const QString &name, QgsAttributeEditorElement *parent = 0 );
 %Docstring
 Constructor
 
@@ -86,7 +97,7 @@ Returns the name of this element
 :return: The name for this element
 %End
 
-    Qgis::AttributeEditorType type() const;
+    AttributeEditorType type() const;
 %Docstring
 The type of this element
 
@@ -96,6 +107,8 @@ The type of this element
     QgsAttributeEditorElement *parent() const;
 %Docstring
 Gets the parent of this element.
+
+.. versionadded:: 3.0
 %End
 
     QDomElement toDomElement( QDomDocument &doc ) const;
@@ -110,60 +123,22 @@ Gets the XML Dom element to save this element.
     virtual QgsAttributeEditorElement *clone( QgsAttributeEditorElement *parent ) const = 0 /Factory/;
 %Docstring
 Returns a clone of this element. To be implemented by subclasses.
+
+.. versionadded:: 3.0
 %End
 
     bool showLabel() const;
 %Docstring
 Controls if this element should be labeled with a title (field, relation or groupname).
+
+.. versionadded:: 2.18
 %End
 
     void setShowLabel( bool showLabel );
 %Docstring
 Controls if this element should be labeled with a title (field, relation or groupname).
-%End
 
-    int horizontalStretch() const;
-%Docstring
-Returns the horizontal stretch factor for the element.
-
-.. seealso:: :py:func:`setHorizontalStretch`
-
-.. seealso:: :py:func:`verticalStretch`
-
-.. versionadded:: 3.32
-%End
-
-    void setHorizontalStretch( int stretch );
-%Docstring
-Sets the horizontal ``stretch`` factor for the element.
-
-.. seealso:: :py:func:`horizontalStretch`
-
-.. seealso:: :py:func:`setVerticalStretch`
-
-.. versionadded:: 3.32
-%End
-
-    int verticalStretch() const;
-%Docstring
-Returns the vertical stretch factor for the element.
-
-.. seealso:: :py:func:`setVerticalStretch`
-
-.. seealso:: :py:func:`horizontalStretch`
-
-.. versionadded:: 3.32
-%End
-
-    void setVerticalStretch( int stretch );
-%Docstring
-Sets the vertical ``stretch`` factor for the element.
-
-.. seealso:: :py:func:`verticalStretch`
-
-.. seealso:: :py:func:`setHorizontalStretch`
-
-.. versionadded:: 3.32
+.. versionadded:: 2.18
 %End
 
     LabelStyle labelStyle() const;
@@ -194,5 +169,5 @@ Sets the ``labelStyle``.
  *                                                                      *
  * src/core/editform/qgsattributeeditorelement.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

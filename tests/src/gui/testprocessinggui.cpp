@@ -82,7 +82,6 @@
 #include "qgsprocessingfeaturesourceoptionswidget.h"
 #include "qgsextentwidget.h"
 #include "qgsrasterbandcombobox.h"
-#include "qgspointcloudattributecombobox.h"
 #include "qgsmeshlayertemporalproperties.h"
 #include "qgsmodelgraphicsscene.h"
 #include "qgsmodelgraphicsview.h"
@@ -97,15 +96,9 @@
 #include "qgsprocessingdxflayerswidgetwrapper.h"
 #include "qgsprocessingmeshdatasetwidget.h"
 #include "qgsabstractdatabaseproviderconnection.h"
-#include "qgsprocessingpointcloudexpressionlineedit.h"
 #include "qgspluginlayer.h"
 #include "qgspointcloudlayer.h"
 #include "qgsannotationlayer.h"
-#include "qgsprocessingparameteralignrasterlayers.h"
-#include "qgsprocessingalignrasterlayerswidgetwrapper.h"
-#include "qgsprocessingrasteroptionswidgetwrapper.h"
-#include "qgsrasterformatsaveoptionswidget.h"
-#include "qgsgeometrywidget.h"
 
 
 class TestParamType : public QgsProcessingParameterDefinition
@@ -264,8 +257,6 @@ class TestProcessingGui : public QObject
     void testNumericWrapperDouble();
     void testNumericWrapperInt();
     void testDistanceWrapper();
-    void testAreaWrapper();
-    void testVolumeWrapper();
     void testDurationWrapper();
     void testScaleWrapper();
     void testRangeWrapper();
@@ -304,7 +295,6 @@ class TestProcessingGui : public QObject
     void testDatabaseTableWrapper();
     void testPointCloudLayerWrapper();
     void testAnnotationLayerWrapper();
-    void testPointCloudAttributeWrapper();
     void testFieldMapWidget();
     void testFieldMapWrapper();
     void testAggregateWidget();
@@ -323,8 +313,6 @@ class TestProcessingGui : public QObject
     void testFolderOutWrapper();
     void testTinInputLayerWrapper();
     void testDxfLayersWrapper();
-    void testAlignRasterLayersWrapper();
-    void testRasterOptionsWrapper();
     void testMeshDatasetWrapperLayerInProject();
     void testMeshDatasetWrapperLayerOutsideProject();
     void testModelGraphicsView();
@@ -336,6 +324,7 @@ class TestProcessingGui : public QObject
 
     void cleanupTempDir();
 };
+
 
 void TestProcessingGui::initTestCase()
 {
@@ -355,9 +344,7 @@ void TestProcessingGui::initTestCase()
             "Authentication system is DISABLED" );
 
   // verify QGIS_AUTH_DB_DIR_PATH (temp auth db path) worked
-  Q_NOWARN_DEPRECATED_PUSH
   QString db1( QFileInfo( QgsApplication::authManager()->authenticationDatabasePath() ).canonicalFilePath() );
-  Q_NOWARN_DEPRECATED_POP
   QString db2( QFileInfo( mTempDir + "/qgis-auth.db" ).canonicalFilePath() );
   QVERIFY2( db1 == db2, "Auth db temp path does not match db path of manager" );
 
@@ -397,13 +384,14 @@ void TestProcessingGui::cleanupTestCase()
 {
   QgsApplication::exitQgis();
 }
-
 void TestProcessingGui::init()
 {
+
 }
 
 void TestProcessingGui::cleanup()
 {
+
 }
 
 void TestProcessingGui::testModelUndo()
@@ -532,21 +520,6 @@ void TestProcessingGui::testWrapperFactoryRegistry()
   QCOMPARE( wrapper->parameterDefinition()->type(), QStringLiteral( "num" ) );
   delete wrapper;
 
-  // creating wrapper using metadata
-  TestParamType customParam( QStringLiteral( "custom" ), QStringLiteral( "custom" ) );
-  wrapper = registry.createParameterWidgetWrapper( &customParam, QgsProcessingGui::Standard );
-  QVERIFY( !wrapper );
-  customParam.setMetadata( {{
-      QStringLiteral( "widget_wrapper" ), QVariantMap(
-      {{QStringLiteral( "widget_type" ), QStringLiteral( "str" ) }}
-      )
-    }
-  } );
-  wrapper = registry.createParameterWidgetWrapper( &customParam, QgsProcessingGui::Standard );
-  QVERIFY( wrapper );
-  QCOMPARE( wrapper->parameterDefinition()->type(), QStringLiteral( "custom" ) );
-  delete wrapper;
-
   // removing
   registry.removeParameterWidgetFactory( nullptr );
   TestWidgetFactory *factory4 = new TestWidgetFactory( QStringLiteral( "xxxx" ) );
@@ -647,6 +620,7 @@ class TestProcessingContextGenerator : public QgsProcessingContextGenerator
 
     QgsProcessingContext &mContext;
 };
+
 
 class TestLayerWrapper : public QgsAbstractProcessingParameterWidgetWrapper // clazy:exclude=missing-qobject-macro
 {
@@ -767,8 +741,6 @@ void TestProcessingGui::testModelerWrapper()
   model.addModelParameter( new QgsProcessingParameterFileDestination( "test_dest", "p3" ), testDestParam );
   QgsProcessingModelParameter testLayerParam( "p4" );
   model.addModelParameter( new QgsProcessingParameterMapLayer( "p4", "test_layer" ), testLayerParam );
-  QgsProcessingModelParameter testOptionalLayerParam( "p5" );
-  model.addModelParameter( new QgsProcessingParameterMapLayer( "p5", "test_layer2", QVariant(), true ), testLayerParam );
 
   // try to create a parameter widget, no factories registered
   QgsProcessingGuiRegistry registry;
@@ -785,23 +757,18 @@ void TestProcessingGui::testModelerWrapper()
   w = registry.createModelerParameterWidget( &model, QStringLiteral( "a" ), model.parameterDefinition( "p1" ), context );
   QVERIFY( w );
   // should default to static value
-  QCOMPARE( w->value().value< QgsProcessingModelChildParameterSource>().source(), Qgis::ProcessingModelChildParameterSource::StaticValue );
+  QCOMPARE( w->value().value< QgsProcessingModelChildParameterSource>().source(), QgsProcessingModelChildParameterSource::StaticValue );
   delete w;
 
   w = registry.createModelerParameterWidget( &model, QStringLiteral( "a" ), model.parameterDefinition( "p4" ), context );
   QVERIFY( w );
   // a layer parameter should default to "model input" type
-  QCOMPARE( w->value().value< QgsProcessingModelChildParameterSource>().source(), Qgis::ProcessingModelChildParameterSource::ModelParameter );
-  delete w;
-  // but an optionl layer parameter should NOT -- we don't want to autofill values for optional layers by default
-  w = registry.createModelerParameterWidget( &model, QStringLiteral( "a" ), model.parameterDefinition( "p5" ), context );
-  QVERIFY( w );
-  QCOMPARE( w->value().value< QgsProcessingModelChildParameterSource>().source(), Qgis::ProcessingModelChildParameterSource::StaticValue );
+  QCOMPARE( w->value().value< QgsProcessingModelChildParameterSource>().source(), QgsProcessingModelChildParameterSource::ModelParameter );
   delete w;
 
   // widget tests
   w = new QgsProcessingModelerParameterWidget( &model, "alg1", model.parameterDefinition( "p1" ), context );
-  QCOMPARE( w->value().value< QgsProcessingModelChildParameterSource>().source(), Qgis::ProcessingModelChildParameterSource::StaticValue );
+  QCOMPARE( w->value().value< QgsProcessingModelChildParameterSource>().source(), QgsProcessingModelChildParameterSource::StaticValue );
   QCOMPARE( w->parameterDefinition()->name(), QStringLiteral( "p1" ) );
   QLabel *l = w->createLabel();
   QVERIFY( l );
@@ -811,31 +778,31 @@ void TestProcessingGui::testModelerWrapper()
 
   // static value
   w->setWidgetValue( QgsProcessingModelChildParameterSource::fromStaticValue( true ) );
-  QCOMPARE( w->value().value< QgsProcessingModelChildParameterSource>().source(), Qgis::ProcessingModelChildParameterSource::StaticValue );
+  QCOMPARE( w->value().value< QgsProcessingModelChildParameterSource>().source(), QgsProcessingModelChildParameterSource::StaticValue );
   QCOMPARE( w->value().value< QgsProcessingModelChildParameterSource>().staticValue().toBool(), true );
   w->setWidgetValue( QgsProcessingModelChildParameterSource::fromStaticValue( false ) );
-  QCOMPARE( w->value().value< QgsProcessingModelChildParameterSource>().source(), Qgis::ProcessingModelChildParameterSource::StaticValue );
+  QCOMPARE( w->value().value< QgsProcessingModelChildParameterSource>().source(), QgsProcessingModelChildParameterSource::StaticValue );
   QCOMPARE( w->value().value< QgsProcessingModelChildParameterSource>().staticValue().toBool(), false );
   QCOMPARE( w->mStackedWidget->currentIndex(), 0 );
   QCOMPARE( w->mSourceButton->toolTip(), QStringLiteral( "Value" ) );
 
   // expression value
   w->setWidgetValue( QgsProcessingModelChildParameterSource::fromExpression( QStringLiteral( "1+2" ) ) );
-  QCOMPARE( w->value().value< QgsProcessingModelChildParameterSource>().source(), Qgis::ProcessingModelChildParameterSource::Expression );
+  QCOMPARE( w->value().value< QgsProcessingModelChildParameterSource>().source(), QgsProcessingModelChildParameterSource::Expression );
   QCOMPARE( w->value().value< QgsProcessingModelChildParameterSource>().expression(), QStringLiteral( "1+2" ) );
   QCOMPARE( w->mStackedWidget->currentIndex(), 1 );
   QCOMPARE( w->mSourceButton->toolTip(), QStringLiteral( "Pre-calculated Value" ) );
 
   // model input - should fail, because we haven't populated sources yet, and so have no compatible sources
   w->setWidgetValue( QgsProcessingModelChildParameterSource::fromModelParameter( QStringLiteral( "p1" ) ) );
-  QCOMPARE( w->value().value< QgsProcessingModelChildParameterSource>().source(), Qgis::ProcessingModelChildParameterSource::ModelParameter );
+  QCOMPARE( w->value().value< QgsProcessingModelChildParameterSource>().source(), QgsProcessingModelChildParameterSource::ModelParameter );
   QVERIFY( w->value().value< QgsProcessingModelChildParameterSource>().parameterName().isEmpty() );
   QCOMPARE( w->mStackedWidget->currentIndex(), 2 );
   QCOMPARE( w->mSourceButton->toolTip(), QStringLiteral( "Model Input" ) );
 
   // alg output  - should fail, because we haven't populated sources yet, and so have no compatible sources
   w->setWidgetValue( QgsProcessingModelChildParameterSource::fromChildOutput( QStringLiteral( "alg3" ), QStringLiteral( "OUTPUT" ) ) );
-  QCOMPARE( w->value().value< QgsProcessingModelChildParameterSource>().source(), Qgis::ProcessingModelChildParameterSource::ChildOutput );
+  QCOMPARE( w->value().value< QgsProcessingModelChildParameterSource>().source(), QgsProcessingModelChildParameterSource::ChildOutput );
   QVERIFY( w->value().value< QgsProcessingModelChildParameterSource>().outputChildId().isEmpty() );
   QCOMPARE( w->mStackedWidget->currentIndex(), 3 );
   QCOMPARE( w->mSourceButton->toolTip(), QStringLiteral( "Algorithm Output" ) );
@@ -845,12 +812,12 @@ void TestProcessingGui::testModelerWrapper()
 
   // model input
   w->setWidgetValue( QgsProcessingModelChildParameterSource::fromModelParameter( QStringLiteral( "p1" ) ) );
-  QCOMPARE( w->value().value< QgsProcessingModelChildParameterSource>().source(), Qgis::ProcessingModelChildParameterSource::ModelParameter );
+  QCOMPARE( w->value().value< QgsProcessingModelChildParameterSource>().source(), QgsProcessingModelChildParameterSource::ModelParameter );
   QCOMPARE( w->value().value< QgsProcessingModelChildParameterSource>().parameterName(), QStringLiteral( "p1" ) );
 
   // alg output
   w->setWidgetValue( QgsProcessingModelChildParameterSource::fromChildOutput( QStringLiteral( "alg3" ), QStringLiteral( "OUTPUT" ) ) );
-  QCOMPARE( w->value().value< QgsProcessingModelChildParameterSource>().source(), Qgis::ProcessingModelChildParameterSource::ChildOutput );
+  QCOMPARE( w->value().value< QgsProcessingModelChildParameterSource>().source(), QgsProcessingModelChildParameterSource::ChildOutput );
   QCOMPARE( w->value().value< QgsProcessingModelChildParameterSource>().outputChildId(), QStringLiteral( "alg3" ) );
   QCOMPARE( w->value().value< QgsProcessingModelChildParameterSource>().outputName(), QStringLiteral( "OUTPUT" ) );
 
@@ -886,13 +853,13 @@ void TestProcessingGui::testModelerWrapper()
                      << QgsProcessingModelChildParameterSource::fromStaticValue( QStringLiteral( "something" ) ) );
   QCOMPARE( w->value().toList().count(), 3 );
 
-  QCOMPARE( w->value().toList().at( 0 ).value< QgsProcessingModelChildParameterSource>().source(), Qgis::ProcessingModelChildParameterSource::ChildOutput );
-  QCOMPARE( w->value().toList().at( 0 ).value< QgsProcessingModelChildParameterSource>().source(), Qgis::ProcessingModelChildParameterSource::ChildOutput );
+  QCOMPARE( w->value().toList().at( 0 ).value< QgsProcessingModelChildParameterSource>().source(), QgsProcessingModelChildParameterSource::ChildOutput );
+  QCOMPARE( w->value().toList().at( 0 ).value< QgsProcessingModelChildParameterSource>().source(), QgsProcessingModelChildParameterSource::ChildOutput );
   QCOMPARE( w->value().toList().at( 0 ).value< QgsProcessingModelChildParameterSource>().outputChildId(), QStringLiteral( "alg3" ) );
   QCOMPARE( w->value().toList().at( 0 ).value< QgsProcessingModelChildParameterSource>().outputName(), QStringLiteral( "OUTPUT" ) );
-  QCOMPARE( w->value().toList().at( 1 ).value< QgsProcessingModelChildParameterSource>().source(), Qgis::ProcessingModelChildParameterSource::ModelParameter );
+  QCOMPARE( w->value().toList().at( 1 ).value< QgsProcessingModelChildParameterSource>().source(), QgsProcessingModelChildParameterSource::ModelParameter );
   QCOMPARE( w->value().toList().at( 1 ).value< QgsProcessingModelChildParameterSource>().parameterName(), QStringLiteral( "p1" ) );
-  QCOMPARE( w->value().toList().at( 2 ).value< QgsProcessingModelChildParameterSource>().source(), Qgis::ProcessingModelChildParameterSource::StaticValue );
+  QCOMPARE( w->value().toList().at( 2 ).value< QgsProcessingModelChildParameterSource>().source(), QgsProcessingModelChildParameterSource::StaticValue );
   QCOMPARE( w->value().toList().at( 2 ).value< QgsProcessingModelChildParameterSource>().staticValue().toString(), QStringLiteral( "something" ) );
   delete w;
 
@@ -1013,8 +980,8 @@ void TestProcessingGui::testBooleanWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "boolean" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
 
   // using a parameter definition as initial values
   QgsProcessingParameterBoolean boolParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), true, false );
@@ -1022,17 +989,17 @@ void TestProcessingGui::testBooleanWrapper()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QVERIFY( static_cast< QgsProcessingParameterBoolean * >( def.get() )->defaultValue().toBool() );
-  boolParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
+  boolParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
   boolParam.setDefaultValue( false );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "boolean" ), context, widgetContext, &boolParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
   QVERIFY( !static_cast< QgsProcessingParameterBoolean * >( def.get() )->defaultValue().toBool() );
 }
 
@@ -1317,8 +1284,8 @@ void TestProcessingGui::testStringWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "string" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QVERIFY( !static_cast< QgsProcessingParameterString * >( def.get() )->multiLine() );
 
   // using a parameter definition as initial values
@@ -1327,19 +1294,19 @@ void TestProcessingGui::testStringWrapper()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QVERIFY( static_cast< QgsProcessingParameterString * >( def.get() )->multiLine() );
   QCOMPARE( static_cast< QgsProcessingParameterString * >( def.get() )->defaultValue().toString(), QStringLiteral( "aaa" ) );
-  stringParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
+  stringParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
   stringParam.setMultiLine( false );
   stringParam.setDefaultValue( QString() );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "string" ), context, widgetContext, &stringParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
   QVERIFY( static_cast< QgsProcessingParameterString * >( def.get() )->defaultValue().toString().isEmpty() );
   QVERIFY( !static_cast< QgsProcessingParameterString * >( def.get() )->multiLine() );
 }
@@ -1387,7 +1354,7 @@ void TestProcessingGui::testFileWrapper()
     delete w;
 
     // with extension
-    QgsProcessingParameterFile param2( QStringLiteral( "file" ), QStringLiteral( "file" ), Qgis::ProcessingFileParameterBehavior::File, QStringLiteral( "qml" ) );
+    QgsProcessingParameterFile param2( QStringLiteral( "file" ), QStringLiteral( "file" ), QgsProcessingParameterFile::File, QStringLiteral( "qml" ) );
 
     QgsProcessingFileWidgetWrapper wrapper2( &param2, type );
     w = wrapper2.createWrappedWidget( context );
@@ -1395,7 +1362,7 @@ void TestProcessingGui::testFileWrapper()
     QCOMPARE( static_cast< QgsFileWidget * >( wrapper2.wrappedWidget() )->storageMode(),  QgsFileWidget::GetFile );
 
     // with filter
-    QgsProcessingParameterFile param3( QStringLiteral( "file" ), QStringLiteral( "file" ), Qgis::ProcessingFileParameterBehavior::File, QString(), QVariant(), false, QStringLiteral( "Project files (*.qgs *.qgz)" ) );
+    QgsProcessingParameterFile param3( QStringLiteral( "file" ), QStringLiteral( "file" ), QgsProcessingParameterFile::File, QString(), QVariant(), false, QStringLiteral( "Project files (*.qgs *.qgz)" ) );
 
     QgsProcessingFileWidgetWrapper wrapper3( & param3, type );
     w = wrapper3.createWrappedWidget( context );
@@ -1403,7 +1370,7 @@ void TestProcessingGui::testFileWrapper()
     QCOMPARE( static_cast< QgsFileWidget * >( wrapper3.wrappedWidget() )->storageMode(),  QgsFileWidget::GetFile );
 
     // folder mode
-    QgsProcessingParameterFile param4( QStringLiteral( "folder" ), QStringLiteral( "folder" ), Qgis::ProcessingFileParameterBehavior::Folder );
+    QgsProcessingParameterFile param4( QStringLiteral( "folder" ), QStringLiteral( "folder" ), QgsProcessingParameterFile::Folder );
 
     QgsProcessingFileWidgetWrapper wrapper4( &param4, type );
     w = wrapper4.createWrappedWidget( context );
@@ -1426,18 +1393,18 @@ void TestProcessingGui::testFileWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "file" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
 
   // using a parameter definition as initial values
-  QgsProcessingParameterFile fileParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), Qgis::ProcessingFileParameterBehavior::File );
+  QgsProcessingParameterFile fileParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), QgsProcessingParameterFile::File );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "file" ), context, widgetContext, &fileParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
-  QCOMPARE( static_cast< QgsProcessingParameterFile * >( def.get() )->behavior(), Qgis::ProcessingFileParameterBehavior::File );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
+  QCOMPARE( static_cast< QgsProcessingParameterFile * >( def.get() )->behavior(), QgsProcessingParameterFile::File );
   QVERIFY( !static_cast< QgsProcessingParameterFile * >( def.get() )->defaultValue().isValid() );
   QCOMPARE( static_cast< QgsProcessingParameterFile * >( def.get() )->fileFilter(), QStringLiteral( "All files (*.*)" ) );
   fileParam.setFileFilter( QStringLiteral( "TAB files (*.tab)" ) );
@@ -1445,16 +1412,16 @@ void TestProcessingGui::testFileWrapper()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( static_cast< QgsProcessingParameterFile * >( def.get() )->fileFilter(), QStringLiteral( "TAB files (*.tab)" ) );
 
-  fileParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
-  fileParam.setBehavior( Qgis::ProcessingFileParameterBehavior::Folder );
+  fileParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
+  fileParam.setBehavior( QgsProcessingParameterFile::Folder );
   fileParam.setDefaultValue( QStringLiteral( "my path" ) );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "file" ), context, widgetContext, &fileParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
-  QCOMPARE( static_cast< QgsProcessingParameterFile * >( def.get() )->behavior(), Qgis::ProcessingFileParameterBehavior::Folder );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
+  QCOMPARE( static_cast< QgsProcessingParameterFile * >( def.get() )->behavior(), QgsProcessingParameterFile::Folder );
   QCOMPARE( static_cast< QgsProcessingParameterFile * >( def.get() )->defaultValue().toString(), QStringLiteral( "my path" ) );
 }
 
@@ -1683,8 +1650,8 @@ void TestProcessingGui::testCrsWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "crs" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
 
   // using a parameter definition as initial values
   QgsProcessingParameterCrs crsParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), QStringLiteral( "EPSG:4326" ) );
@@ -1692,17 +1659,17 @@ void TestProcessingGui::testCrsWrapper()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QCOMPARE( static_cast< QgsProcessingParameterCrs * >( def.get() )->defaultValue().toString(), QStringLiteral( "EPSG:4326" ) );
-  crsParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
+  crsParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
   crsParam.setDefaultValue( QStringLiteral( "EPSG:3111" ) );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "crs" ), context, widgetContext, &crsParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
   QCOMPARE( static_cast< QgsProcessingParameterCrs * >( def.get() )->defaultValue().toString(), QStringLiteral( "EPSG:3111" ) );
 }
 
@@ -1712,7 +1679,7 @@ void TestProcessingGui::testNumericWrapperDouble()
   {
     QgsProcessingContext context;
 
-    QgsProcessingParameterNumber param( QStringLiteral( "num" ), QStringLiteral( "num" ), Qgis::ProcessingNumberParameterType::Double );
+    QgsProcessingParameterNumber param( QStringLiteral( "num" ), QStringLiteral( "num" ), QgsProcessingParameterNumber::Double );
     QgsProcessingNumericWidgetWrapper wrapper( &param, type );
 
     QWidget *w = wrapper.createWrappedWidget( context );
@@ -1761,7 +1728,7 @@ void TestProcessingGui::testNumericWrapperDouble()
     delete w;
 
     // with min value
-    QgsProcessingParameterNumber paramMin( QStringLiteral( "num" ), QStringLiteral( "num" ), Qgis::ProcessingNumberParameterType::Double );
+    QgsProcessingParameterNumber paramMin( QStringLiteral( "num" ), QStringLiteral( "num" ), QgsProcessingParameterNumber::Double );
     paramMin.setMinimum( -5 );
 
     QgsProcessingNumericWidgetWrapper wrapperMin( &paramMin, type );
@@ -1775,7 +1742,7 @@ void TestProcessingGui::testNumericWrapperDouble()
     delete w;
 
     // with max value
-    QgsProcessingParameterNumber paramMax( QStringLiteral( "num" ), QStringLiteral( "num" ), Qgis::ProcessingNumberParameterType::Double );
+    QgsProcessingParameterNumber paramMax( QStringLiteral( "num" ), QStringLiteral( "num" ), QgsProcessingParameterNumber::Double );
     paramMax.setMaximum( 5 );
 
     QgsProcessingNumericWidgetWrapper wrapperMax( &paramMax, type );
@@ -1789,7 +1756,7 @@ void TestProcessingGui::testNumericWrapperDouble()
     delete w;
 
     // with min and max value
-    QgsProcessingParameterNumber paramMinMax( QStringLiteral( "num" ), QStringLiteral( "num" ), Qgis::ProcessingNumberParameterType::Double );
+    QgsProcessingParameterNumber paramMinMax( QStringLiteral( "num" ), QStringLiteral( "num" ), QgsProcessingParameterNumber::Double );
     paramMinMax.setMinimum( -.1 );
     paramMinMax.setMaximum( .1 );
 
@@ -1804,7 +1771,7 @@ void TestProcessingGui::testNumericWrapperDouble()
     delete w;
 
     // with default value
-    QgsProcessingParameterNumber paramDefault( QStringLiteral( "num" ), QStringLiteral( "num" ), Qgis::ProcessingNumberParameterType::Double );
+    QgsProcessingParameterNumber paramDefault( QStringLiteral( "num" ), QStringLiteral( "num" ), QgsProcessingParameterNumber::Double );
     paramDefault.setDefaultValue( 55 );
 
     QgsProcessingNumericWidgetWrapper wrapperDefault( &paramDefault, type );
@@ -1815,7 +1782,7 @@ void TestProcessingGui::testNumericWrapperDouble()
     delete w;
 
     // optional, no default
-    QgsProcessingParameterNumber paramOptional( QStringLiteral( "num" ), QStringLiteral( "num" ), Qgis::ProcessingNumberParameterType::Double, QVariant(), true );
+    QgsProcessingParameterNumber paramOptional( QStringLiteral( "num" ), QStringLiteral( "num" ), QgsProcessingParameterNumber::Double, QVariant(), true );
 
     QgsProcessingNumericWidgetWrapper wrapperOptional( &paramOptional, type );
 
@@ -1852,7 +1819,7 @@ void TestProcessingGui::testNumericWrapperDouble()
     delete w;
 
     // with decimals
-    QgsProcessingParameterNumber paramDecimals( QStringLiteral( "num" ), QStringLiteral( "num" ), Qgis::ProcessingNumberParameterType::Double, QVariant(), true, 1, 1.02 );
+    QgsProcessingParameterNumber paramDecimals( QStringLiteral( "num" ), QStringLiteral( "num" ), QgsProcessingParameterNumber::Double, QVariant(), true, 1, 1.02 );
     QVariantMap metadata;
     QVariantMap wrapperMetadata;
     wrapperMetadata.insert( QStringLiteral( "decimals" ), 2 );
@@ -1880,25 +1847,25 @@ void TestProcessingGui::testNumericWrapperDouble()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "number" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
 
   // using a parameter definition as initial values
-  QgsProcessingParameterNumber numParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), Qgis::ProcessingNumberParameterType::Double, 1.0 );
+  QgsProcessingParameterNumber numParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), QgsProcessingParameterNumber::Double, 1.0 );
   numParam.setMinimum( 0 );
   numParam.setMaximum( 10 );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "number" ), context, widgetContext, &numParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->defaultValue().toDouble(), 1.0 );
-  QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->dataType(), Qgis::ProcessingNumberParameterType::Double );
+  QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->dataType(), QgsProcessingParameterNumber::Double );
   QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->minimum(), 0.0 );
   QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->maximum(), 10.0 );
-  numParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
-  numParam.setDataType( Qgis::ProcessingNumberParameterType::Integer );
+  numParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
+  numParam.setDataType( QgsProcessingParameterNumber::Integer );
   numParam.setMinimum( -1 );
   numParam.setMaximum( 1 );
   numParam.setDefaultValue( 0 );
@@ -1906,10 +1873,10 @@ void TestProcessingGui::testNumericWrapperDouble()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
   QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->defaultValue().toInt(), 0 );
-  QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->dataType(), Qgis::ProcessingNumberParameterType::Integer );
+  QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->dataType(), QgsProcessingParameterNumber::Integer );
   QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->minimum(), -1.0 );
   QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->maximum(), 1.0 );
 }
@@ -1920,7 +1887,7 @@ void TestProcessingGui::testNumericWrapperInt()
   {
     QgsProcessingContext context;
 
-    QgsProcessingParameterNumber param( QStringLiteral( "num" ), QStringLiteral( "num" ), Qgis::ProcessingNumberParameterType::Integer );
+    QgsProcessingParameterNumber param( QStringLiteral( "num" ), QStringLiteral( "num" ), QgsProcessingParameterNumber::Integer );
     QgsProcessingNumericWidgetWrapper wrapper( &param, type );
 
     QWidget *w = wrapper.createWrappedWidget( context );
@@ -1967,7 +1934,7 @@ void TestProcessingGui::testNumericWrapperInt()
     delete w;
 
     // with min value
-    QgsProcessingParameterNumber paramMin( QStringLiteral( "num" ), QStringLiteral( "num" ), Qgis::ProcessingNumberParameterType::Integer );
+    QgsProcessingParameterNumber paramMin( QStringLiteral( "num" ), QStringLiteral( "num" ), QgsProcessingParameterNumber::Integer );
     paramMin.setMinimum( -5 );
 
     QgsProcessingNumericWidgetWrapper wrapperMin( &paramMin, type );
@@ -1980,7 +1947,7 @@ void TestProcessingGui::testNumericWrapperInt()
     delete w;
 
     // with max value
-    QgsProcessingParameterNumber paramMax( QStringLiteral( "num" ), QStringLiteral( "num" ), Qgis::ProcessingNumberParameterType::Integer );
+    QgsProcessingParameterNumber paramMax( QStringLiteral( "num" ), QStringLiteral( "num" ), QgsProcessingParameterNumber::Integer );
     paramMax.setMaximum( 5 );
 
     QgsProcessingNumericWidgetWrapper wrapperMax( &paramMax, type );
@@ -1993,7 +1960,7 @@ void TestProcessingGui::testNumericWrapperInt()
     delete w;
 
     // with min and max value
-    QgsProcessingParameterNumber paramMinMax( QStringLiteral( "num" ), QStringLiteral( "num" ), Qgis::ProcessingNumberParameterType::Integer );
+    QgsProcessingParameterNumber paramMinMax( QStringLiteral( "num" ), QStringLiteral( "num" ), QgsProcessingParameterNumber::Integer );
     paramMinMax.setMinimum( -1 );
     paramMinMax.setMaximum( 1 );
 
@@ -2007,7 +1974,7 @@ void TestProcessingGui::testNumericWrapperInt()
     delete w;
 
     // with default value
-    QgsProcessingParameterNumber paramDefault( QStringLiteral( "num" ), QStringLiteral( "num" ), Qgis::ProcessingNumberParameterType::Integer );
+    QgsProcessingParameterNumber paramDefault( QStringLiteral( "num" ), QStringLiteral( "num" ), QgsProcessingParameterNumber::Integer );
     paramDefault.setDefaultValue( 55 );
 
     QgsProcessingNumericWidgetWrapper wrapperDefault( &paramDefault, type );
@@ -2018,7 +1985,7 @@ void TestProcessingGui::testNumericWrapperInt()
     delete w;
 
     // optional, no default
-    QgsProcessingParameterNumber paramOptional( QStringLiteral( "num" ), QStringLiteral( "num" ), Qgis::ProcessingNumberParameterType::Integer, QVariant(), true );
+    QgsProcessingParameterNumber paramOptional( QStringLiteral( "num" ), QStringLiteral( "num" ), QgsProcessingParameterNumber::Integer, QVariant(), true );
 
     QgsProcessingNumericWidgetWrapper wrapperOptional( &paramOptional, type );
 
@@ -2070,25 +2037,25 @@ void TestProcessingGui::testNumericWrapperInt()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "number" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
 
   // using a parameter definition as initial values
-  QgsProcessingParameterNumber numParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), Qgis::ProcessingNumberParameterType::Integer, 1 );
+  QgsProcessingParameterNumber numParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), QgsProcessingParameterNumber::Integer, 1 );
   numParam.setMinimum( 0 );
   numParam.setMaximum( 10 );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "number" ), context, widgetContext, &numParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->defaultValue().toDouble(), 1.0 );
-  QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->dataType(), Qgis::ProcessingNumberParameterType::Integer );
+  QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->dataType(), QgsProcessingParameterNumber::Integer );
   QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->minimum(), 0.0 );
   QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->maximum(), 10.0 );
-  numParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
-  numParam.setDataType( Qgis::ProcessingNumberParameterType::Double );
+  numParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
+  numParam.setDataType( QgsProcessingParameterNumber::Double );
   numParam.setMinimum( -2.5 );
   numParam.setMaximum( 2.5 );
   numParam.setDefaultValue( 0.5 );
@@ -2096,36 +2063,36 @@ void TestProcessingGui::testNumericWrapperInt()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
   QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->defaultValue().toDouble(), 0.5 );
-  QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->dataType(), Qgis::ProcessingNumberParameterType::Double );
+  QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->dataType(), QgsProcessingParameterNumber::Double );
   QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->minimum(), -2.5 );
   QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->maximum(), 2.5 );
 
   // integer type, no min/max values set
-  QgsProcessingParameterNumber numParam2( QStringLiteral( "n" ), QStringLiteral( "test desc" ), Qgis::ProcessingNumberParameterType::Integer, 1 );
+  QgsProcessingParameterNumber numParam2( QStringLiteral( "n" ), QStringLiteral( "test desc" ), QgsProcessingParameterNumber::Integer, 1 );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "number" ), context, widgetContext, &numParam2 );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->defaultValue().toDouble(), 1.0 );
-  QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->dataType(), Qgis::ProcessingNumberParameterType::Integer );
+  QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->dataType(), QgsProcessingParameterNumber::Integer );
   QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->minimum(), numParam2.minimum() );
   QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->maximum(), numParam2.maximum() );
 
   // double type, no min/max values set
-  QgsProcessingParameterNumber numParam3( QStringLiteral( "n" ), QStringLiteral( "test desc" ), Qgis::ProcessingNumberParameterType::Double, 1 );
+  QgsProcessingParameterNumber numParam3( QStringLiteral( "n" ), QStringLiteral( "test desc" ), QgsProcessingParameterNumber::Double, 1 );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "number" ), context, widgetContext, &numParam3 );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->defaultValue().toDouble(), 1.0 );
-  QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->dataType(), Qgis::ProcessingNumberParameterType::Double );
+  QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->dataType(), QgsProcessingParameterNumber::Double );
   QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->minimum(), numParam3.minimum() );
   QCOMPARE( static_cast< QgsProcessingParameterNumber * >( def.get() )->maximum(), numParam3.maximum() );
 }
@@ -2171,7 +2138,7 @@ void TestProcessingGui::testDistanceWrapper()
   QVERIFY( !wrapper.mWarningLabel->isVisible() );
   QVERIFY( wrapper.mUnitsCombo->isVisible() );
   QVERIFY( !wrapper.mLabel->isVisible() );
-  QCOMPARE( wrapper.mUnitsCombo->currentData().toInt(), static_cast< int >( Qgis::DistanceUnit::Meters ) );
+  QCOMPARE( wrapper.mUnitsCombo->currentData().toInt(), static_cast< int >( QgsUnitTypes::DistanceMeters ) );
 
   wrapper.setUnitParameterValue( QStringLiteral( "EPSG:4326" ) );
   QCOMPARE( wrapper.mLabel->text(), QStringLiteral( "degrees" ) );
@@ -2184,7 +2151,7 @@ void TestProcessingGui::testDistanceWrapper()
   QVERIFY( !wrapper.mWarningLabel->isVisible() );
   QVERIFY( wrapper.mUnitsCombo->isVisible() );
   QVERIFY( !wrapper.mLabel->isVisible() );
-  QCOMPARE( wrapper.mUnitsCombo->currentData().toInt(), static_cast< int >( Qgis::DistanceUnit::Meters ) );
+  QCOMPARE( wrapper.mUnitsCombo->currentData().toInt(), static_cast< int >( QgsUnitTypes::DistanceMeters ) );
 
   wrapper.setUnitParameterValue( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) ) );
   QCOMPARE( wrapper.mLabel->text(), QStringLiteral( "degrees" ) );
@@ -2199,7 +2166,7 @@ void TestProcessingGui::testDistanceWrapper()
   QVERIFY( !wrapper.mWarningLabel->isVisible() );
   QVERIFY( wrapper.mUnitsCombo->isVisible() );
   QVERIFY( !wrapper.mLabel->isVisible() );
-  QCOMPARE( wrapper.mUnitsCombo->currentData().toInt(), static_cast< int >( Qgis::DistanceUnit::Meters ) );
+  QCOMPARE( wrapper.mUnitsCombo->currentData().toInt(), static_cast< int >( QgsUnitTypes::DistanceMeters ) );
 
   std::unique_ptr< QgsVectorLayer > vl2 = std::make_unique< QgsVectorLayer >( QStringLiteral( "Polygon?crs=epsg:4326&field=pk:int" ), QStringLiteral( "vl" ), QStringLiteral( "memory" ) );
   wrapper.setUnitParameterValue( QVariant::fromValue( vl2.get() ) );
@@ -2227,12 +2194,12 @@ void TestProcessingGui::testDistanceWrapper()
   QVERIFY( !wrapper.mWarningLabel->isVisible() );
   QVERIFY( wrapper.mUnitsCombo->isVisible() );
   QVERIFY( !wrapper.mLabel->isVisible() );
-  QCOMPARE( wrapper.mUnitsCombo->currentData().toInt(), static_cast< int >( Qgis::DistanceUnit::Meters ) );
+  QCOMPARE( wrapper.mUnitsCombo->currentData().toInt(), static_cast< int >( QgsUnitTypes::DistanceMeters ) );
 
   // using unit choice
   wrapper.setParameterValue( 5, context );
   QCOMPARE( wrapper.parameterValue().toDouble(), 5.0 );
-  wrapper.mUnitsCombo->setCurrentIndex( wrapper.mUnitsCombo->findData( static_cast< int >( Qgis::DistanceUnit::Kilometers ) ) );
+  wrapper.mUnitsCombo->setCurrentIndex( wrapper.mUnitsCombo->findData( QgsUnitTypes::DistanceKilometers ) );
   QCOMPARE( wrapper.parameterValue().toDouble(), 5000.0 );
   wrapper.setParameterValue( 2, context );
   QCOMPARE( wrapper.parameterValue().toDouble(), 2000.0 );
@@ -2246,7 +2213,7 @@ void TestProcessingGui::testDistanceWrapper()
 
   // with default unit
   QgsProcessingParameterDistance paramDefaultUnit( QStringLiteral( "num" ), QStringLiteral( "num" ) );
-  paramDefaultUnit.setDefaultUnit( Qgis::DistanceUnit::Feet );
+  paramDefaultUnit.setDefaultUnit( QgsUnitTypes::DistanceFeet );
   QgsProcessingDistanceWidgetWrapper wrapperDefaultUnit( &paramDefaultUnit, QgsProcessingGui::Standard );
   w = wrapperDefaultUnit.createWrappedWidget( context );
   w->show();
@@ -2319,8 +2286,8 @@ void TestProcessingGui::testDistanceWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "distance" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
 
   // using a parameter definition as initial values
   QgsProcessingParameterDistance distParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), 1, QStringLiteral( "parent" ) );
@@ -2330,13 +2297,13 @@ void TestProcessingGui::testDistanceWrapper()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QCOMPARE( static_cast< QgsProcessingParameterDistance * >( def.get() )->defaultValue().toDouble(), 1.0 );
   QCOMPARE( static_cast< QgsProcessingParameterDistance * >( def.get() )->minimum(), 1.0 );
   QCOMPARE( static_cast< QgsProcessingParameterDistance * >( def.get() )->maximum(), 100.0 );
   QCOMPARE( static_cast< QgsProcessingParameterDistance * >( def.get() )->parentParameterName(), QStringLiteral( "parent" ) );
-  distParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
+  distParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
   distParam.setParentParameterName( QString() );
   distParam.setMinimum( 10 );
   distParam.setMaximum( 12 );
@@ -2345,458 +2312,12 @@ void TestProcessingGui::testDistanceWrapper()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
   QCOMPARE( static_cast< QgsProcessingParameterDistance * >( def.get() )->defaultValue().toDouble(), 11.5 );
   QCOMPARE( static_cast< QgsProcessingParameterDistance * >( def.get() )->minimum(), 10.0 );
   QCOMPARE( static_cast< QgsProcessingParameterDistance * >( def.get() )->maximum(), 12.0 );
   QVERIFY( static_cast< QgsProcessingParameterDistance * >( def.get() )->parentParameterName().isEmpty() );
-}
-
-void TestProcessingGui::testAreaWrapper()
-{
-  QgsProcessingParameterArea param( QStringLiteral( "area" ), QStringLiteral( "area" ) );
-
-  // standard wrapper
-  QgsProcessingAreaWidgetWrapper wrapper( &param );
-
-  QgsProcessingContext context;
-  QWidget *w = wrapper.createWrappedWidget( context );
-
-  QSignalSpy spy( &wrapper, &QgsProcessingAreaWidgetWrapper::widgetValueHasChanged );
-  wrapper.setWidgetValue( 55.5, context );
-  QCOMPARE( spy.count(), 1 );
-  QCOMPARE( wrapper.widgetValue().toDouble(), 55.5 );
-  QCOMPARE( wrapper.mDoubleSpinBox->value(), 55.5 );
-  wrapper.setWidgetValue( 3.0, context );
-  QCOMPARE( spy.count(), 2 );
-  QCOMPARE( wrapper.widgetValue().toDouble(), 3.0 );
-  QCOMPARE( wrapper.mDoubleSpinBox->value(), 3.0 );
-
-  QLabel *l = wrapper.createWrappedLabel();
-  QVERIFY( l );
-  QCOMPARE( l->text(), QStringLiteral( "area" ) );
-  QCOMPARE( l->toolTip(), param.toolTip() );
-  delete l;
-
-  // check signal
-  wrapper.mDoubleSpinBox->setValue( 43.0 );
-  QCOMPARE( spy.count(), 3 );
-
-  // test unit handling
-  w->show();
-
-  QCOMPARE( wrapper.mLabel->text(), QStringLiteral( "<unknown>" ) );
-
-  // crs values
-  wrapper.setUnitParameterValue( QStringLiteral( "EPSG:3111" ) );
-  QCOMPARE( wrapper.mLabel->text(), QStringLiteral( "square meters" ) );
-  QVERIFY( !wrapper.mWarningLabel->isVisible() );
-  QVERIFY( wrapper.mUnitsCombo->isVisible() );
-  QVERIFY( !wrapper.mLabel->isVisible() );
-  QCOMPARE( wrapper.mUnitsCombo->currentData().value< Qgis::AreaUnit >(), Qgis::AreaUnit::SquareMeters );
-
-  wrapper.setUnitParameterValue( QStringLiteral( "EPSG:4326" ) );
-  QCOMPARE( wrapper.mLabel->text(), QStringLiteral( "square degrees" ) );
-  QVERIFY( wrapper.mWarningLabel->isVisible() );
-  QVERIFY( !wrapper.mUnitsCombo->isVisible() );
-  QVERIFY( wrapper.mLabel->isVisible() );
-
-  wrapper.setUnitParameterValue( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:3111" ) ) );
-  QCOMPARE( wrapper.mLabel->text(), QStringLiteral( "square meters" ) );
-  QVERIFY( !wrapper.mWarningLabel->isVisible() );
-  QVERIFY( wrapper.mUnitsCombo->isVisible() );
-  QVERIFY( !wrapper.mLabel->isVisible() );
-  QCOMPARE( wrapper.mUnitsCombo->currentData().value< Qgis::AreaUnit >(), Qgis::AreaUnit::SquareMeters );
-
-  wrapper.setUnitParameterValue( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) ) );
-  QCOMPARE( wrapper.mLabel->text(), QStringLiteral( "square degrees" ) );
-  QVERIFY( wrapper.mWarningLabel->isVisible() );
-  QVERIFY( !wrapper.mUnitsCombo->isVisible() );
-  QVERIFY( wrapper.mLabel->isVisible() );
-
-  // layer values
-  std::unique_ptr< QgsVectorLayer > vl = std::make_unique< QgsVectorLayer >( QStringLiteral( "Polygon?crs=epsg:3111&field=pk:int" ), QStringLiteral( "vl" ), QStringLiteral( "memory" ) );
-  wrapper.setUnitParameterValue( QVariant::fromValue( vl.get() ) );
-  QCOMPARE( wrapper.mLabel->text(), QStringLiteral( "square meters" ) );
-  QVERIFY( !wrapper.mWarningLabel->isVisible() );
-  QVERIFY( wrapper.mUnitsCombo->isVisible() );
-  QVERIFY( !wrapper.mLabel->isVisible() );
-  QCOMPARE( wrapper.mUnitsCombo->currentData().value< Qgis::AreaUnit >(), Qgis::AreaUnit::SquareMeters );
-
-  std::unique_ptr< QgsVectorLayer > vl2 = std::make_unique< QgsVectorLayer >( QStringLiteral( "Polygon?crs=epsg:4326&field=pk:int" ), QStringLiteral( "vl" ), QStringLiteral( "memory" ) );
-  wrapper.setUnitParameterValue( QVariant::fromValue( vl2.get() ) );
-  QCOMPARE( wrapper.mLabel->text(), QStringLiteral( "square degrees" ) );
-  QVERIFY( wrapper.mWarningLabel->isVisible() );
-  QVERIFY( !wrapper.mUnitsCombo->isVisible() );
-  QVERIFY( wrapper.mLabel->isVisible() );
-
-  // unresolvable values
-  wrapper.setUnitParameterValue( QStringLiteral( "blah" ) );
-  QCOMPARE( wrapper.mLabel->text(), QStringLiteral( "<unknown>" ) );
-  QVERIFY( !wrapper.mWarningLabel->isVisible() );
-  QVERIFY( !wrapper.mUnitsCombo->isVisible() );
-  QVERIFY( wrapper.mLabel->isVisible() );
-
-  // resolvable text value
-  const QString id = vl->id();
-  QgsProject::instance()->addMapLayer( vl.release() );
-  context.setProject( QgsProject::instance() );
-
-  TestProcessingContextGenerator generator( context );
-  wrapper.registerProcessingContextGenerator( &generator );
-  wrapper.setUnitParameterValue( id );
-  QCOMPARE( wrapper.mLabel->text(), QStringLiteral( "square meters" ) );
-  QVERIFY( !wrapper.mWarningLabel->isVisible() );
-  QVERIFY( wrapper.mUnitsCombo->isVisible() );
-  QVERIFY( !wrapper.mLabel->isVisible() );
-  QCOMPARE( wrapper.mUnitsCombo->currentData().value< Qgis::AreaUnit >(), Qgis::AreaUnit::SquareMeters );
-
-  // using unit choice
-  wrapper.setParameterValue( 5, context );
-  QCOMPARE( wrapper.parameterValue().toDouble(), 5.0 );
-  wrapper.mUnitsCombo->setCurrentIndex( wrapper.mUnitsCombo->findData( QVariant::fromValue( Qgis::AreaUnit::Hectares ) ) );
-  QCOMPARE( wrapper.parameterValue().toDouble(), 50000.0 );
-  wrapper.setParameterValue( 2, context );
-  QCOMPARE( wrapper.parameterValue().toDouble(), 20000.0 );
-
-  wrapper.setUnitParameterValue( id );
-  QCOMPARE( wrapper.parameterValue().toDouble(), 2.0 );
-  wrapper.setParameterValue( 5, context );
-  QCOMPARE( wrapper.parameterValue().toDouble(), 5.0 );
-
-  delete w;
-
-  // with default unit
-  QgsProcessingParameterArea paramDefaultUnit( QStringLiteral( "num" ), QStringLiteral( "num" ) );
-  paramDefaultUnit.setDefaultUnit( Qgis::AreaUnit::SquareFeet );
-  QgsProcessingAreaWidgetWrapper wrapperDefaultUnit( &paramDefaultUnit, QgsProcessingGui::Standard );
-  w = wrapperDefaultUnit.createWrappedWidget( context );
-  w->show();
-  QCOMPARE( wrapperDefaultUnit.mLabel->text(), QStringLiteral( "square feet" ) );
-  delete w;
-
-  // with decimals
-  QgsProcessingParameterArea paramDecimals( QStringLiteral( "num" ), QStringLiteral( "num" ), QVariant(), QString(), true, 1, 1.02 );
-  QVariantMap metadata;
-  QVariantMap wrapperMetadata;
-  wrapperMetadata.insert( QStringLiteral( "decimals" ), 2 );
-  metadata.insert( QStringLiteral( "widget_wrapper" ), wrapperMetadata );
-  paramDecimals.setMetadata( metadata );
-  QgsProcessingAreaWidgetWrapper wrapperDecimals( &paramDecimals, QgsProcessingGui::Standard );
-  w = wrapperDecimals.createWrappedWidget( context );
-  QCOMPARE( wrapperDecimals.mDoubleSpinBox->decimals(), 2 );
-  QCOMPARE( wrapperDecimals.mDoubleSpinBox->singleStep(), 0.01 ); // single step should never be less than set number of decimals
-  delete w;
-
-  // batch wrapper
-  QgsProcessingAreaWidgetWrapper wrapperB( &param, QgsProcessingGui::Batch );
-
-  w = wrapperB.createWrappedWidget( context );
-  QSignalSpy spy2( &wrapperB, &QgsProcessingAreaWidgetWrapper::widgetValueHasChanged );
-  wrapperB.setWidgetValue( 34, context );
-  QCOMPARE( spy2.count(), 1 );
-  QCOMPARE( wrapperB.widgetValue().toDouble(), 34.0 );
-  QCOMPARE( wrapperB.mDoubleSpinBox->value(), 34.0 );
-  wrapperB.setWidgetValue( 5, context );
-  QCOMPARE( spy2.count(), 2 );
-  QCOMPARE( wrapperB.widgetValue().toDouble(), 5.0 );
-  QCOMPARE( wrapperB.mDoubleSpinBox->value(), 5.0 );
-
-  // check signal
-  static_cast< QgsDoubleSpinBox * >( w )->setValue( 29 );
-  QCOMPARE( spy2.count(), 3 );
-
-  // should be no label in batch mode
-  QVERIFY( !wrapperB.createWrappedLabel() );
-  delete w;
-
-  // modeler wrapper
-  QgsProcessingAreaWidgetWrapper wrapperM( &param, QgsProcessingGui::Modeler );
-
-  w = wrapperM.createWrappedWidget( context );
-  QSignalSpy spy3( &wrapperM, &QgsProcessingAreaWidgetWrapper::widgetValueHasChanged );
-  wrapperM.setWidgetValue( 29, context );
-  QCOMPARE( wrapperM.widgetValue().toDouble(), 29.0 );
-  QCOMPARE( spy3.count(), 1 );
-  QCOMPARE( wrapperM.mDoubleSpinBox->value(), 29.0 );
-  wrapperM.setWidgetValue( 4, context );
-  QCOMPARE( wrapperM.widgetValue().toDouble(), 4.0 );
-  QCOMPARE( spy3.count(), 2 );
-  QCOMPARE( wrapperM.mDoubleSpinBox->value(), 4.0 );
-
-  // check signal
-  wrapperM.mDoubleSpinBox->setValue( 33 );
-  QCOMPARE( spy3.count(), 3 );
-
-  // should be a label in modeler mode
-  l = wrapperM.createWrappedLabel();
-  QVERIFY( l );
-  QCOMPARE( l->text(), QStringLiteral( "area" ) );
-  QCOMPARE( l->toolTip(), param.toolTip() );
-  delete w;
-  delete l;
-
-  // config widget
-  QgsProcessingParameterWidgetContext widgetContext;
-  std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "area" ), context, widgetContext );
-  std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
-  QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
-
-  // using a parameter definition as initial values
-  QgsProcessingParameterArea distParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), 1, QStringLiteral( "parent" ) );
-  distParam.setMinimum( 1 );
-  distParam.setMaximum( 100 );
-  widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "area" ), context, widgetContext, &distParam );
-  def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
-  QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
-  QCOMPARE( static_cast< QgsProcessingParameterArea * >( def.get() )->defaultValue().toDouble(), 1.0 );
-  QCOMPARE( static_cast< QgsProcessingParameterArea * >( def.get() )->minimum(), 1.0 );
-  QCOMPARE( static_cast< QgsProcessingParameterArea * >( def.get() )->maximum(), 100.0 );
-  QCOMPARE( static_cast< QgsProcessingParameterArea * >( def.get() )->parentParameterName(), QStringLiteral( "parent" ) );
-  distParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
-  distParam.setParentParameterName( QString() );
-  distParam.setMinimum( 10 );
-  distParam.setMaximum( 12 );
-  distParam.setDefaultValue( 11.5 );
-  widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "area" ), context, widgetContext, &distParam );
-  def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
-  QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
-  QCOMPARE( static_cast< QgsProcessingParameterArea * >( def.get() )->defaultValue().toDouble(), 11.5 );
-  QCOMPARE( static_cast< QgsProcessingParameterArea * >( def.get() )->minimum(), 10.0 );
-  QCOMPARE( static_cast< QgsProcessingParameterArea * >( def.get() )->maximum(), 12.0 );
-  QVERIFY( static_cast< QgsProcessingParameterArea * >( def.get() )->parentParameterName().isEmpty() );
-}
-
-void TestProcessingGui::testVolumeWrapper()
-{
-  QgsProcessingParameterVolume param( QStringLiteral( "volume" ), QStringLiteral( "volume" ) );
-
-  // standard wrapper
-  QgsProcessingVolumeWidgetWrapper wrapper( &param );
-
-  QgsProcessingContext context;
-  QWidget *w = wrapper.createWrappedWidget( context );
-
-  QSignalSpy spy( &wrapper, &QgsProcessingVolumeWidgetWrapper::widgetValueHasChanged );
-  wrapper.setWidgetValue( 55.5, context );
-  QCOMPARE( spy.count(), 1 );
-  QCOMPARE( wrapper.widgetValue().toDouble(), 55.5 );
-  QCOMPARE( wrapper.mDoubleSpinBox->value(), 55.5 );
-  wrapper.setWidgetValue( 3.0, context );
-  QCOMPARE( spy.count(), 2 );
-  QCOMPARE( wrapper.widgetValue().toDouble(), 3.0 );
-  QCOMPARE( wrapper.mDoubleSpinBox->value(), 3.0 );
-
-  QLabel *l = wrapper.createWrappedLabel();
-  QVERIFY( l );
-  QCOMPARE( l->text(), QStringLiteral( "volume" ) );
-  QCOMPARE( l->toolTip(), param.toolTip() );
-  delete l;
-
-  // check signal
-  wrapper.mDoubleSpinBox->setValue( 43.0 );
-  QCOMPARE( spy.count(), 3 );
-
-  // test unit handling
-  w->show();
-
-  QCOMPARE( wrapper.mLabel->text(), QStringLiteral( "<unknown>" ) );
-
-  // crs values
-  wrapper.setUnitParameterValue( QStringLiteral( "EPSG:3111" ) );
-  QCOMPARE( wrapper.mLabel->text(), QStringLiteral( "cubic meters" ) );
-  QVERIFY( !wrapper.mWarningLabel->isVisible() );
-  QVERIFY( wrapper.mUnitsCombo->isVisible() );
-  QVERIFY( !wrapper.mLabel->isVisible() );
-  QCOMPARE( wrapper.mUnitsCombo->currentData().value< Qgis::VolumeUnit >(), Qgis::VolumeUnit::CubicMeters );
-
-  wrapper.setUnitParameterValue( QStringLiteral( "EPSG:4326" ) );
-  QCOMPARE( wrapper.mLabel->text(), QStringLiteral( "cubic degrees" ) );
-  QVERIFY( wrapper.mWarningLabel->isVisible() );
-  QVERIFY( !wrapper.mUnitsCombo->isVisible() );
-  QVERIFY( wrapper.mLabel->isVisible() );
-
-  wrapper.setUnitParameterValue( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:3111" ) ) );
-  QCOMPARE( wrapper.mLabel->text(), QStringLiteral( "cubic meters" ) );
-  QVERIFY( !wrapper.mWarningLabel->isVisible() );
-  QVERIFY( wrapper.mUnitsCombo->isVisible() );
-  QVERIFY( !wrapper.mLabel->isVisible() );
-  QCOMPARE( wrapper.mUnitsCombo->currentData().value< Qgis::VolumeUnit >(), Qgis::VolumeUnit::CubicMeters );
-
-  wrapper.setUnitParameterValue( QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) ) );
-  QCOMPARE( wrapper.mLabel->text(), QStringLiteral( "cubic degrees" ) );
-  QVERIFY( wrapper.mWarningLabel->isVisible() );
-  QVERIFY( !wrapper.mUnitsCombo->isVisible() );
-  QVERIFY( wrapper.mLabel->isVisible() );
-
-  // layer values
-  std::unique_ptr< QgsVectorLayer > vl = std::make_unique< QgsVectorLayer >( QStringLiteral( "Polygon?crs=epsg:3111&field=pk:int" ), QStringLiteral( "vl" ), QStringLiteral( "memory" ) );
-  wrapper.setUnitParameterValue( QVariant::fromValue( vl.get() ) );
-  QCOMPARE( wrapper.mLabel->text(), QStringLiteral( "cubic meters" ) );
-  QVERIFY( !wrapper.mWarningLabel->isVisible() );
-  QVERIFY( wrapper.mUnitsCombo->isVisible() );
-  QVERIFY( !wrapper.mLabel->isVisible() );
-  QCOMPARE( wrapper.mUnitsCombo->currentData().value< Qgis::VolumeUnit >(), Qgis::VolumeUnit::CubicMeters );
-
-  std::unique_ptr< QgsVectorLayer > vl2 = std::make_unique< QgsVectorLayer >( QStringLiteral( "Polygon?crs=epsg:4326&field=pk:int" ), QStringLiteral( "vl" ), QStringLiteral( "memory" ) );
-  wrapper.setUnitParameterValue( QVariant::fromValue( vl2.get() ) );
-  QCOMPARE( wrapper.mLabel->text(), QStringLiteral( "cubic degrees" ) );
-  QVERIFY( wrapper.mWarningLabel->isVisible() );
-  QVERIFY( !wrapper.mUnitsCombo->isVisible() );
-  QVERIFY( wrapper.mLabel->isVisible() );
-
-  // unresolvable values
-  wrapper.setUnitParameterValue( QStringLiteral( "blah" ) );
-  QCOMPARE( wrapper.mLabel->text(), QStringLiteral( "<unknown>" ) );
-  QVERIFY( !wrapper.mWarningLabel->isVisible() );
-  QVERIFY( !wrapper.mUnitsCombo->isVisible() );
-  QVERIFY( wrapper.mLabel->isVisible() );
-
-  // resolvable text value
-  const QString id = vl->id();
-  QgsProject::instance()->addMapLayer( vl.release() );
-  context.setProject( QgsProject::instance() );
-
-  TestProcessingContextGenerator generator( context );
-  wrapper.registerProcessingContextGenerator( &generator );
-  wrapper.setUnitParameterValue( id );
-  QCOMPARE( wrapper.mLabel->text(), QStringLiteral( "cubic meters" ) );
-  QVERIFY( !wrapper.mWarningLabel->isVisible() );
-  QVERIFY( wrapper.mUnitsCombo->isVisible() );
-  QVERIFY( !wrapper.mLabel->isVisible() );
-  QCOMPARE( wrapper.mUnitsCombo->currentData().value< Qgis::VolumeUnit >(), Qgis::VolumeUnit::CubicMeters );
-
-  // using unit choice
-  wrapper.setParameterValue( 5, context );
-  QCOMPARE( wrapper.parameterValue().toDouble(), 5.0 );
-  wrapper.mUnitsCombo->setCurrentIndex( wrapper.mUnitsCombo->findData( QVariant::fromValue( Qgis::VolumeUnit::Liters ) ) );
-  QCOMPARE( wrapper.parameterValue().toDouble(), 0.005 );
-  wrapper.setParameterValue( 2, context );
-  QCOMPARE( wrapper.parameterValue().toDouble(), 0.002 );
-
-  wrapper.setUnitParameterValue( id );
-  QCOMPARE( wrapper.parameterValue().toDouble(), 2.0 );
-  wrapper.setParameterValue( 5, context );
-  QCOMPARE( wrapper.parameterValue().toDouble(), 5.0 );
-
-  delete w;
-
-  // with default unit
-  QgsProcessingParameterVolume paramDefaultUnit( QStringLiteral( "num" ), QStringLiteral( "num" ) );
-  paramDefaultUnit.setDefaultUnit( Qgis::VolumeUnit::CubicFeet );
-  QgsProcessingVolumeWidgetWrapper wrapperDefaultUnit( &paramDefaultUnit, QgsProcessingGui::Standard );
-  w = wrapperDefaultUnit.createWrappedWidget( context );
-  w->show();
-  QCOMPARE( wrapperDefaultUnit.mLabel->text(), QStringLiteral( "cubic feet" ) );
-  delete w;
-
-  // with decimals
-  QgsProcessingParameterVolume paramDecimals( QStringLiteral( "num" ), QStringLiteral( "num" ), QVariant(), QString(), true, 1, 1.02 );
-  QVariantMap metadata;
-  QVariantMap wrapperMetadata;
-  wrapperMetadata.insert( QStringLiteral( "decimals" ), 2 );
-  metadata.insert( QStringLiteral( "widget_wrapper" ), wrapperMetadata );
-  paramDecimals.setMetadata( metadata );
-  QgsProcessingVolumeWidgetWrapper wrapperDecimals( &paramDecimals, QgsProcessingGui::Standard );
-  w = wrapperDecimals.createWrappedWidget( context );
-  QCOMPARE( wrapperDecimals.mDoubleSpinBox->decimals(), 2 );
-  QCOMPARE( wrapperDecimals.mDoubleSpinBox->singleStep(), 0.01 ); // single step should never be less than set number of decimals
-  delete w;
-
-  // batch wrapper
-  QgsProcessingVolumeWidgetWrapper wrapperB( &param, QgsProcessingGui::Batch );
-
-  w = wrapperB.createWrappedWidget( context );
-  QSignalSpy spy2( &wrapperB, &QgsProcessingVolumeWidgetWrapper::widgetValueHasChanged );
-  wrapperB.setWidgetValue( 34, context );
-  QCOMPARE( spy2.count(), 1 );
-  QCOMPARE( wrapperB.widgetValue().toDouble(), 34.0 );
-  QCOMPARE( wrapperB.mDoubleSpinBox->value(), 34.0 );
-  wrapperB.setWidgetValue( 5, context );
-  QCOMPARE( spy2.count(), 2 );
-  QCOMPARE( wrapperB.widgetValue().toDouble(), 5.0 );
-  QCOMPARE( wrapperB.mDoubleSpinBox->value(), 5.0 );
-
-  // check signal
-  static_cast< QgsDoubleSpinBox * >( w )->setValue( 29 );
-  QCOMPARE( spy2.count(), 3 );
-
-  // should be no label in batch mode
-  QVERIFY( !wrapperB.createWrappedLabel() );
-  delete w;
-
-  // modeler wrapper
-  QgsProcessingVolumeWidgetWrapper wrapperM( &param, QgsProcessingGui::Modeler );
-
-  w = wrapperM.createWrappedWidget( context );
-  QSignalSpy spy3( &wrapperM, &QgsProcessingVolumeWidgetWrapper::widgetValueHasChanged );
-  wrapperM.setWidgetValue( 29, context );
-  QCOMPARE( wrapperM.widgetValue().toDouble(), 29.0 );
-  QCOMPARE( spy3.count(), 1 );
-  QCOMPARE( wrapperM.mDoubleSpinBox->value(), 29.0 );
-  wrapperM.setWidgetValue( 3, context );
-  QCOMPARE( wrapperM.widgetValue().toDouble(), 3.0 );
-  QCOMPARE( spy3.count(), 2 );
-  QCOMPARE( wrapperM.mDoubleSpinBox->value(), 3.0 );
-
-  // check signal
-  wrapperM.mDoubleSpinBox->setValue( 33 );
-  QCOMPARE( spy3.count(), 3 );
-
-  // should be a label in modeler mode
-  l = wrapperM.createWrappedLabel();
-  QVERIFY( l );
-  QCOMPARE( l->text(), QStringLiteral( "volume" ) );
-  QCOMPARE( l->toolTip(), param.toolTip() );
-  delete w;
-  delete l;
-
-  // config widget
-  QgsProcessingParameterWidgetContext widgetContext;
-  std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "volume" ), context, widgetContext );
-  std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
-  QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
-
-  // using a parameter definition as initial values
-  QgsProcessingParameterVolume distParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), 1, QStringLiteral( "parent" ) );
-  distParam.setMinimum( 1 );
-  distParam.setMaximum( 100 );
-  widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "volume" ), context, widgetContext, &distParam );
-  def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
-  QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
-  QCOMPARE( static_cast< QgsProcessingParameterVolume * >( def.get() )->defaultValue().toDouble(), 1.0 );
-  QCOMPARE( static_cast< QgsProcessingParameterVolume * >( def.get() )->minimum(), 1.0 );
-  QCOMPARE( static_cast< QgsProcessingParameterVolume * >( def.get() )->maximum(), 100.0 );
-  QCOMPARE( static_cast< QgsProcessingParameterVolume * >( def.get() )->parentParameterName(), QStringLiteral( "parent" ) );
-  distParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
-  distParam.setParentParameterName( QString() );
-  distParam.setMinimum( 10 );
-  distParam.setMaximum( 12 );
-  distParam.setDefaultValue( 11.5 );
-  widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "volume" ), context, widgetContext, &distParam );
-  def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
-  QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
-  QCOMPARE( static_cast< QgsProcessingParameterVolume * >( def.get() )->defaultValue().toDouble(), 11.5 );
-  QCOMPARE( static_cast< QgsProcessingParameterVolume * >( def.get() )->minimum(), 10.0 );
-  QCOMPARE( static_cast< QgsProcessingParameterVolume * >( def.get() )->maximum(), 12.0 );
-  QVERIFY( static_cast< QgsProcessingParameterVolume * >( def.get() )->parentParameterName().isEmpty() );
 }
 
 void TestProcessingGui::testDurationWrapper()
@@ -2831,11 +2352,11 @@ void TestProcessingGui::testDurationWrapper()
 
   // with default unit
   QgsProcessingParameterDuration paramDefaultUnit( QStringLiteral( "dur" ), QStringLiteral( "dur" ) );
-  paramDefaultUnit.setDefaultUnit( Qgis::TemporalUnit::Days );
+  paramDefaultUnit.setDefaultUnit( QgsUnitTypes::TemporalDays );
   QgsProcessingDurationWidgetWrapper wrapperDefaultUnit( &paramDefaultUnit, QgsProcessingGui::Standard );
   w = wrapperDefaultUnit.createWrappedWidget( context );
   w->show();
-  QCOMPARE( wrapperDefaultUnit.mUnitsCombo->currentText(), QgsUnitTypes::toString( Qgis::TemporalUnit::Days ) );
+  QCOMPARE( wrapperDefaultUnit.mUnitsCombo->currentText(), QgsUnitTypes::toString( QgsUnitTypes::TemporalDays ) );
   delete w;
 
   // with decimals
@@ -2904,8 +2425,8 @@ void TestProcessingGui::testDurationWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "duration" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
 
   // using a parameter definition as initial values
   QgsProcessingParameterDuration durParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), 1 );
@@ -2915,12 +2436,12 @@ void TestProcessingGui::testDurationWrapper()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QCOMPARE( static_cast< QgsProcessingParameterDuration * >( def.get() )->defaultValue().toDouble(), 1.0 );
   QCOMPARE( static_cast< QgsProcessingParameterDuration * >( def.get() )->minimum(), 1.0 );
   QCOMPARE( static_cast< QgsProcessingParameterDuration * >( def.get() )->maximum(), 100.0 );
-  durParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
+  durParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
   durParam.setMinimum( 10 );
   durParam.setMaximum( 12 );
   durParam.setDefaultValue( 11.5 );
@@ -2928,8 +2449,8 @@ void TestProcessingGui::testDurationWrapper()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
   QCOMPARE( static_cast< QgsProcessingParameterDuration * >( def.get() )->defaultValue().toDouble(), 11.5 );
   QCOMPARE( static_cast< QgsProcessingParameterDuration * >( def.get() )->minimum(), 10.0 );
   QCOMPARE( static_cast< QgsProcessingParameterDuration * >( def.get() )->maximum(), 12.0 );
@@ -3029,8 +2550,8 @@ void TestProcessingGui::testScaleWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "scale" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
 
   // using a parameter definition as initial values
   QgsProcessingParameterScale scaleParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), 1000 );
@@ -3038,17 +2559,17 @@ void TestProcessingGui::testScaleWrapper()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QCOMPARE( static_cast< QgsProcessingParameterScale * >( def.get() )->defaultValue().toDouble(), 1000.0 );
-  scaleParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
+  scaleParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
   scaleParam.setDefaultValue( 28356 );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "scale" ), context, widgetContext, &scaleParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
   QCOMPARE( static_cast< QgsProcessingParameterScale * >( def.get() )->defaultValue().toDouble(), 28356.0 );
 }
 
@@ -3058,7 +2579,7 @@ void TestProcessingGui::testRangeWrapper()
   {
     QgsProcessingContext context;
 
-    QgsProcessingParameterRange param( QStringLiteral( "range" ), QStringLiteral( "range" ), Qgis::ProcessingNumberParameterType::Double );
+    QgsProcessingParameterRange param( QStringLiteral( "range" ), QStringLiteral( "range" ), QgsProcessingParameterNumber::Double );
     param.setDefaultValue( QStringLiteral( "0.0,100.0" ) );
     QgsProcessingRangeWidgetWrapper wrapper( &param, type );
 
@@ -3122,7 +2643,7 @@ void TestProcessingGui::testRangeWrapper()
     delete w;
 
     // ints
-    QgsProcessingParameterRange param2( QStringLiteral( "range" ), QStringLiteral( "range" ), Qgis::ProcessingNumberParameterType::Integer );
+    QgsProcessingParameterRange param2( QStringLiteral( "range" ), QStringLiteral( "range" ), QgsProcessingParameterNumber::Integer );
     param2.setDefaultValue( QStringLiteral( "0.1,100.1" ) );
 
     QgsProcessingRangeWidgetWrapper wrapper2( &param2, type );
@@ -3153,7 +2674,7 @@ void TestProcessingGui::testRangeWrapper()
     delete w;
 
     // optional
-    QgsProcessingParameterRange paramOptional( QStringLiteral( "range" ), QStringLiteral( "range" ), Qgis::ProcessingNumberParameterType::Double, QVariant(), true );
+    QgsProcessingParameterRange paramOptional( QStringLiteral( "range" ), QStringLiteral( "range" ), QgsProcessingParameterNumber::Double, QVariant(), true );
 
     QgsProcessingRangeWidgetWrapper wrapperOptional( &paramOptional, type );
 
@@ -3190,30 +2711,30 @@ void TestProcessingGui::testRangeWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "range" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
 
   // using a parameter definition as initial values
-  QgsProcessingParameterRange rangeParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), Qgis::ProcessingNumberParameterType::Integer, QStringLiteral( "0,255" ) );
+  QgsProcessingParameterRange rangeParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), QgsProcessingParameterNumber::Integer, QStringLiteral( "0,255" ) );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "range" ), context, widgetContext, &rangeParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QCOMPARE( static_cast< QgsProcessingParameterRange * >( def.get() )->defaultValue().toString(), QStringLiteral( "0,255" ) );
-  QCOMPARE( static_cast< QgsProcessingParameterRange * >( def.get() )->dataType(), Qgis::ProcessingNumberParameterType::Integer );
-  rangeParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
-  rangeParam.setDataType( Qgis::ProcessingNumberParameterType::Double );
+  QCOMPARE( static_cast< QgsProcessingParameterRange * >( def.get() )->dataType(), QgsProcessingParameterNumber::Integer );
+  rangeParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
+  rangeParam.setDataType( QgsProcessingParameterNumber::Double );
   rangeParam.setDefaultValue( QStringLiteral( "0,1" ) );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "range" ), context, widgetContext, &rangeParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
   QCOMPARE( static_cast< QgsProcessingParameterRange * >( def.get() )->defaultValue().toString(), QStringLiteral( "0,1" ) );
-  QCOMPARE( static_cast< QgsProcessingParameterRange * >( def.get() )->dataType(), Qgis::ProcessingNumberParameterType::Double );
+  QCOMPARE( static_cast< QgsProcessingParameterRange * >( def.get() )->dataType(), QgsProcessingParameterNumber::Double );
 }
 
 void TestProcessingGui::testMatrixDialog()
@@ -3303,8 +2824,8 @@ void TestProcessingGui::testMatrixWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "matrix" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
 
   // using a parameter definition as initial values
   QgsProcessingParameterMatrix matrixParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), 1, false, QStringList() << "A" << "B" << "C", QVariantList() << 0 << 0 << 0 );
@@ -3312,20 +2833,20 @@ void TestProcessingGui::testMatrixWrapper()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QCOMPARE( static_cast< QgsProcessingParameterMatrix * >( def.get() )->headers(), QStringList() << "A" << "B" << "C" );
   QCOMPARE( static_cast< QgsProcessingParameterMatrix * >( def.get() )->defaultValue().toStringList(), QStringList() << "0" << "0" << "0" );
   QVERIFY( !static_cast< QgsProcessingParameterMatrix * >( def.get() )->hasFixedNumberRows() );
-  matrixParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
+  matrixParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
   matrixParam.setHasFixedNumberRows( true );
   matrixParam.setDefaultValue( QVariantList() << 1 << 2 << 3 );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "matrix" ), context, widgetContext, &matrixParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
   QCOMPARE( static_cast< QgsProcessingParameterMatrix * >( def.get() )->headers(), QStringList() << "A" << "B" << "C" );
   QCOMPARE( static_cast< QgsProcessingParameterMatrix * >( def.get() )->defaultValue().toStringList(), QStringList() << "1" << "2" << "3" );
   QVERIFY( static_cast< QgsProcessingParameterMatrix * >( def.get() )->hasFixedNumberRows() );
@@ -3334,10 +2855,9 @@ void TestProcessingGui::testMatrixWrapper()
 void TestProcessingGui::testExpressionWrapper()
 {
   const QgsProcessingAlgorithm *centroidAlg = QgsApplication::processingRegistry()->algorithmById( QStringLiteral( "native:centroids" ) );
-  const QgsProcessingParameterDefinition *vLayerDef = centroidAlg->parameterDefinition( QStringLiteral( "INPUT" ) );
-  const QgsProcessingParameterDefinition *pcLayerDef = new QgsProcessingParameterPointCloudLayer( "INPUT", QStringLiteral( "input" ), QVariant(), false );
+  const QgsProcessingParameterDefinition *layerDef = centroidAlg->parameterDefinition( QStringLiteral( "INPUT" ) );
 
-  auto testWrapper = [vLayerDef, pcLayerDef]( QgsProcessingGui::WidgetType type )
+  auto testWrapper = [layerDef]( QgsProcessingGui::WidgetType type )
   {
     QgsProcessingParameterExpression param( QStringLiteral( "expression" ), QStringLiteral( "expression" ) );
 
@@ -3394,24 +2914,24 @@ void TestProcessingGui::testExpressionWrapper()
     static_cast< QgsFieldExpressionWidget * >( wrapper2.wrappedWidget() )->setExpression( QStringLiteral( "3+4" ) );
     QCOMPARE( spy2.count(), 3 );
 
-    TestLayerWrapper vLayerWrapper( vLayerDef );
+    TestLayerWrapper layerWrapper( layerDef );
     QgsProject p;
     QgsVectorLayer *vl = new QgsVectorLayer( QStringLiteral( "LineString" ), QStringLiteral( "x" ), QStringLiteral( "memory" ) );
     p.addMapLayer( vl );
 
     QVERIFY( !wrapper2.mFieldExpWidget->layer() );
-    vLayerWrapper.setWidgetValue( QVariant::fromValue( vl ), context );
-    wrapper2.setParentLayerWrapperValue( &vLayerWrapper );
+    layerWrapper.setWidgetValue( QVariant::fromValue( vl ), context );
+    wrapper2.setParentLayerWrapperValue( &layerWrapper );
     QCOMPARE( wrapper2.mFieldExpWidget->layer(), vl );
 
     // should not be owned by wrapper
     QVERIFY( !wrapper2.mParentLayer.get() );
-    vLayerWrapper.setWidgetValue( QVariant(), context );
-    wrapper2.setParentLayerWrapperValue( &vLayerWrapper );
+    layerWrapper.setWidgetValue( QVariant(), context );
+    wrapper2.setParentLayerWrapperValue( &layerWrapper );
     QVERIFY( !wrapper2.mFieldExpWidget->layer() );
 
-    vLayerWrapper.setWidgetValue( vl->id(), context );
-    wrapper2.setParentLayerWrapperValue( &vLayerWrapper );
+    layerWrapper.setWidgetValue( vl->id(), context );
+    wrapper2.setParentLayerWrapperValue( &layerWrapper );
     QVERIFY( !wrapper2.mFieldExpWidget->layer() );
     QVERIFY( !wrapper2.mParentLayer.get() );
 
@@ -3420,99 +2940,18 @@ void TestProcessingGui::testExpressionWrapper()
     TestProcessingContextGenerator generator( context );
     wrapper2.registerProcessingContextGenerator( &generator );
 
-    vLayerWrapper.setWidgetValue( vl->id(), context );
-    wrapper2.setParentLayerWrapperValue( &vLayerWrapper );
+    layerWrapper.setWidgetValue( vl->id(), context );
+    wrapper2.setParentLayerWrapperValue( &layerWrapper );
     QCOMPARE( wrapper2.mFieldExpWidget->layer(), vl );
     QVERIFY( !wrapper2.mParentLayer.get() );
 
     // non-project layer
     QString pointFileName = TEST_DATA_DIR + QStringLiteral( "/points.shp" );
-    vLayerWrapper.setWidgetValue( pointFileName, context );
-    wrapper2.setParentLayerWrapperValue( &vLayerWrapper );
+    layerWrapper.setWidgetValue( pointFileName, context );
+    wrapper2.setParentLayerWrapperValue( &layerWrapper );
     QCOMPARE( wrapper2.mFieldExpWidget->layer()->publicSource(), pointFileName );
     // must be owned by wrapper, or layer may be deleted while still required by wrapper
     QCOMPARE( wrapper2.mParentLayer->publicSource(), pointFileName );
-
-    //
-    // point cloud expression
-    //
-    param.setExpressionType( Qgis::ExpressionType::PointCloud );
-    param.setParentLayerParameterName( QStringLiteral( "pointcloud" ) );
-    QgsProcessingExpressionWidgetWrapper wrapper3( &param, type );
-    w = wrapper3.createWrappedWidget( context );
-
-    QSignalSpy spy3( &wrapper3, &QgsProcessingExpressionWidgetWrapper::widgetValueHasChanged );
-    wrapper3.setWidgetValue( QStringLiteral( "Intensity+100" ), context );
-    QCOMPARE( spy3.count(), 1 );
-    QCOMPARE( wrapper3.widgetValue().toString(),  QStringLiteral( "Intensity+100" ) );
-    QCOMPARE( static_cast< QgsProcessingPointCloudExpressionLineEdit * >( wrapper3.wrappedWidget() )->expression(),  QStringLiteral( "Intensity+100" ) );
-    wrapper3.setWidgetValue( QString(), context );
-    QCOMPARE( spy3.count(), 2 );
-    QVERIFY( wrapper3.widgetValue().toString().isEmpty() );
-    QVERIFY( static_cast< QgsProcessingPointCloudExpressionLineEdit * >( wrapper3.wrappedWidget() )->expression().isEmpty() );
-
-    // check signal
-    static_cast< QgsProcessingPointCloudExpressionLineEdit * >( wrapper3.wrappedWidget() )->setExpression( QStringLiteral( "Red+4" ) );
-    QCOMPARE( spy3.count(), 3 );
-
-    delete w;
-
-    // with layer
-    param.setParentLayerParameterName( QStringLiteral( "other" ) );
-    QgsProcessingExpressionWidgetWrapper wrapper4( &param, type );
-    w = wrapper4.createWrappedWidget( context );
-
-    QSignalSpy spy4( &wrapper4, &QgsProcessingExpressionWidgetWrapper::widgetValueHasChanged );
-    wrapper4.setWidgetValue( QStringLiteral( "Intensity+100" ), context );
-    QCOMPARE( spy4.count(), 1 );
-    QCOMPARE( wrapper4.widgetValue().toString(),  QStringLiteral( "Intensity+100" ) );
-    QCOMPARE( static_cast< QgsProcessingPointCloudExpressionLineEdit * >( wrapper4.wrappedWidget() )->expression(),  QStringLiteral( "Intensity+100" ) );
-
-    wrapper4.setWidgetValue( QString(), context );
-    QCOMPARE( spy4.count(), 2 );
-    QVERIFY( wrapper4.widgetValue().toString().isEmpty() );
-    QVERIFY( static_cast< QgsProcessingPointCloudExpressionLineEdit * >( wrapper4.wrappedWidget() )->expression().isEmpty() );
-
-    static_cast< QgsProcessingPointCloudExpressionLineEdit * >( wrapper4.wrappedWidget() )->setExpression( QStringLiteral( "Red+4" ) );
-    QCOMPARE( spy4.count(), 3 );
-
-    TestLayerWrapper pcLayerWrapper( pcLayerDef );
-    QgsPointCloudLayer *pcl = new QgsPointCloudLayer( QStringLiteral( TEST_DATA_DIR ) + "/point_clouds/copc/rgb.copc.laz", QStringLiteral( "x" ), QStringLiteral( "copc" ) );
-    p.addMapLayer( pcl );
-
-    QVERIFY( !wrapper4.mPointCloudExpLineEdit->layer() );
-    pcLayerWrapper.setWidgetValue( QVariant::fromValue( pcl ), context );
-    wrapper4.setParentLayerWrapperValue( &pcLayerWrapper );
-    QCOMPARE( wrapper4.mPointCloudExpLineEdit->layer(), pcl );
-
-    // should not be owned by wrapper
-    QVERIFY( !wrapper4.mParentLayer.get() );
-    pcLayerWrapper.setWidgetValue( QVariant(), context );
-    wrapper4.setParentLayerWrapperValue( &pcLayerWrapper );
-    QVERIFY( !wrapper4.mPointCloudExpLineEdit->layer() );
-
-    pcLayerWrapper.setWidgetValue( pcl->id(), context );
-    wrapper4.setParentLayerWrapperValue( &pcLayerWrapper );
-    QVERIFY( !wrapper4.mPointCloudExpLineEdit->layer() );
-    QVERIFY( !wrapper4.mParentLayer.get() );
-
-    // with project layer
-    context.setProject( &p );
-    TestProcessingContextGenerator generator2( context );
-    wrapper4.registerProcessingContextGenerator( &generator2 );
-
-    pcLayerWrapper.setWidgetValue( pcl->id(), context );
-    wrapper4.setParentLayerWrapperValue( &pcLayerWrapper );
-    QCOMPARE( wrapper4.mPointCloudExpLineEdit->layer(), pcl );
-    QVERIFY( !wrapper4.mParentLayer.get() );
-
-    // non-project layer
-    QString pointCloudFileName = TEST_DATA_DIR + QStringLiteral( "/point_clouds/copc/sunshine-coast.copc.laz" );
-    pcLayerWrapper.setWidgetValue( pointCloudFileName, context );
-    wrapper4.setParentLayerWrapperValue( &pcLayerWrapper );
-    QCOMPARE( wrapper4.mPointCloudExpLineEdit->layer()->publicSource(), pointCloudFileName );
-    // must be owned by wrapper, or layer may be deleted while still required by wrapper
-    QCOMPARE( wrapper4.mParentLayer->publicSource(), pointCloudFileName );
   };
 
   // standard wrapper
@@ -3530,9 +2969,8 @@ void TestProcessingGui::testExpressionWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "expression" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
-  QCOMPARE( static_cast< QgsProcessingParameterExpression * >( def.get() )->expressionType(), Qgis::ExpressionType::Qgis );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
 
   // using a parameter definition as initial values
   QgsProcessingParameterExpression exprParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), QVariant(), QStringLiteral( "parent" ) );
@@ -3540,26 +2978,23 @@ void TestProcessingGui::testExpressionWrapper()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QCOMPARE( static_cast< QgsProcessingParameterExpression * >( def.get() )->parentLayerParameterName(), QStringLiteral( "parent" ) );
-  QCOMPARE( static_cast< QgsProcessingParameterExpression * >( def.get() )->expressionType(), Qgis::ExpressionType::Qgis );
-  exprParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
-  exprParam.setExpressionType( Qgis::ExpressionType::PointCloud );
+  exprParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
   exprParam.setParentLayerParameterName( QString() );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "expression" ), context, widgetContext, &exprParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
   QVERIFY( static_cast< QgsProcessingParameterExpression * >( def.get() )->parentLayerParameterName().isEmpty() );
-  QCOMPARE( static_cast< QgsProcessingParameterExpression * >( def.get() )->expressionType(), Qgis::ExpressionType::PointCloud );
 }
 
 void TestProcessingGui::testFieldSelectionPanel()
 {
-  QgsProcessingParameterField fieldParam( QString(), QString(), QVariant(), QStringLiteral( "INPUT" ), Qgis::ProcessingFieldParameterDataType::Any, true );
+  QgsProcessingParameterField fieldParam( QString(), QString(), QVariant(), QStringLiteral( "INPUT" ), QgsProcessingParameterField::Any, true );
   QgsProcessingFieldPanelWidget w( nullptr, &fieldParam );
   QSignalSpy spy( &w, &QgsProcessingFieldPanelWidget::changed );
 
@@ -3628,7 +3063,7 @@ void TestProcessingGui::testFieldWrapper()
     delete w;
 
     // optional
-    param = QgsProcessingParameterField( QStringLiteral( "field" ), QStringLiteral( "field" ), QVariant(), QStringLiteral( "INPUT" ), Qgis::ProcessingFieldParameterDataType::Any, false, true );
+    param = QgsProcessingParameterField( QStringLiteral( "field" ), QStringLiteral( "field" ), QVariant(), QStringLiteral( "INPUT" ), QgsProcessingParameterField::Any, false, true );
 
     QgsProcessingFieldWidgetWrapper wrapper2( &param, type );
 
@@ -3765,7 +3200,7 @@ void TestProcessingGui::testFieldWrapper()
     delete w;
 
     // multiple
-    param = QgsProcessingParameterField( QStringLiteral( "field" ), QStringLiteral( "field" ), QVariant(), QStringLiteral( "INPUT" ), Qgis::ProcessingFieldParameterDataType::Any, true, true );
+    param = QgsProcessingParameterField( QStringLiteral( "field" ), QStringLiteral( "field" ), QVariant(), QStringLiteral( "INPUT" ), QgsProcessingParameterField::Any, true, true );
 
     QgsProcessingFieldWidgetWrapper wrapper3( &param, type );
 
@@ -3789,20 +3224,18 @@ void TestProcessingGui::testFieldWrapper()
 
     // filtering fields
     QgsFields f;
-    f.append( QgsField( QStringLiteral( "string" ), QMetaType::Type::QString ) );
-    f.append( QgsField( QStringLiteral( "double" ), QMetaType::Type::Double ) );
-    f.append( QgsField( QStringLiteral( "int" ), QMetaType::Type::Int ) );
-    f.append( QgsField( QStringLiteral( "date" ), QMetaType::Type::QDate ) );
-    f.append( QgsField( QStringLiteral( "time" ), QMetaType::Type::QTime ) );
-    f.append( QgsField( QStringLiteral( "datetime" ), QMetaType::Type::QDateTime ) );
-    f.append( QgsField( QStringLiteral( "binary" ), QMetaType::Type::QByteArray ) );
-    f.append( QgsField( QStringLiteral( "boolean" ), QMetaType::Type::Bool ) );
+    f.append( QgsField( QStringLiteral( "string" ), QVariant::String ) );
+    f.append( QgsField( QStringLiteral( "double" ), QVariant::Double ) );
+    f.append( QgsField( QStringLiteral( "int" ), QVariant::Int ) );
+    f.append( QgsField( QStringLiteral( "date" ), QVariant::Date ) );
+    f.append( QgsField( QStringLiteral( "time" ), QVariant::Time ) );
+    f.append( QgsField( QStringLiteral( "datetime" ), QVariant::DateTime ) );
 
     QgsFields f2 = wrapper3.filterFields( f );
     QCOMPARE( f2, f );
 
     // string fields
-    param = QgsProcessingParameterField( QStringLiteral( "field" ), QStringLiteral( "field" ), QVariant(), QStringLiteral( "INPUT" ), Qgis::ProcessingFieldParameterDataType::String, false, true );
+    param = QgsProcessingParameterField( QStringLiteral( "field" ), QStringLiteral( "field" ), QVariant(), QStringLiteral( "INPUT" ), QgsProcessingParameterField::String, false, true );
     QgsProcessingFieldWidgetWrapper wrapper4( &param, type );
     w = wrapper4.createWrappedWidget( context );
     switch ( type )
@@ -3821,7 +3254,7 @@ void TestProcessingGui::testFieldWrapper()
     delete w;
 
     // string, multiple
-    param = QgsProcessingParameterField( QStringLiteral( "field" ), QStringLiteral( "field" ), QVariant(), QStringLiteral( "INPUT" ), Qgis::ProcessingFieldParameterDataType::String, true, true );
+    param = QgsProcessingParameterField( QStringLiteral( "field" ), QStringLiteral( "field" ), QVariant(), QStringLiteral( "INPUT" ), QgsProcessingParameterField::String, true, true );
     QgsProcessingFieldWidgetWrapper wrapper4a( &param, type );
     w = wrapper4a.createWrappedWidget( context );
     wrapper4a.setParentLayerWrapperValue( &layerWrapper );
@@ -3839,7 +3272,7 @@ void TestProcessingGui::testFieldWrapper()
     delete w;
 
     // numeric fields
-    param = QgsProcessingParameterField( QStringLiteral( "field" ), QStringLiteral( "field" ), QVariant(), QStringLiteral( "INPUT" ), Qgis::ProcessingFieldParameterDataType::Numeric, false, true );
+    param = QgsProcessingParameterField( QStringLiteral( "field" ), QStringLiteral( "field" ), QVariant(), QStringLiteral( "INPUT" ), QgsProcessingParameterField::Numeric, false, true );
     QgsProcessingFieldWidgetWrapper wrapper5( &param, type );
     w = wrapper5.createWrappedWidget( context );
     switch ( type )
@@ -3860,7 +3293,7 @@ void TestProcessingGui::testFieldWrapper()
     delete w;
 
     // numeric, multiple
-    param = QgsProcessingParameterField( QStringLiteral( "field" ), QStringLiteral( "field" ), QVariant(), QStringLiteral( "INPUT" ), Qgis::ProcessingFieldParameterDataType::Numeric, true, true );
+    param = QgsProcessingParameterField( QStringLiteral( "field" ), QStringLiteral( "field" ), QVariant(), QStringLiteral( "INPUT" ), QgsProcessingParameterField::Numeric, true, true );
     QgsProcessingFieldWidgetWrapper wrapper5a( &param, type );
     w = wrapper5a.createWrappedWidget( context );
     wrapper5a.setParentLayerWrapperValue( &layerWrapper );
@@ -3878,7 +3311,7 @@ void TestProcessingGui::testFieldWrapper()
     delete w;
 
     // datetime fields
-    param = QgsProcessingParameterField( QStringLiteral( "field" ), QStringLiteral( "field" ), QVariant(), QStringLiteral( "INPUT" ), Qgis::ProcessingFieldParameterDataType::DateTime, false, true );
+    param = QgsProcessingParameterField( QStringLiteral( "field" ), QStringLiteral( "field" ), QVariant(), QStringLiteral( "INPUT" ), QgsProcessingParameterField::DateTime, false, true );
     QgsProcessingFieldWidgetWrapper wrapper6( &param, type );
     w = wrapper6.createWrappedWidget( context );
     switch ( type )
@@ -3897,55 +3330,18 @@ void TestProcessingGui::testFieldWrapper()
     QCOMPARE( f2.at( 1 ).name(), QStringLiteral( "time" ) );
     QCOMPARE( f2.at( 2 ).name(), QStringLiteral( "datetime" ) );
 
-    // binary fields
-    param = QgsProcessingParameterField( QStringLiteral( "field" ), QStringLiteral( "field" ), QVariant(), QStringLiteral( "INPUT" ), Qgis::ProcessingFieldParameterDataType::Binary, false, true );
-    QgsProcessingFieldWidgetWrapper wrapper7( &param, type );
-    w = wrapper7.createWrappedWidget( context );
-    switch ( type )
-    {
-      case QgsProcessingGui::Standard:
-      case QgsProcessingGui::Batch:
-        QCOMPARE( static_cast< QgsFieldComboBox * >( wrapper7.wrappedWidget() )->filters(), QgsFieldProxyModel::Binary );
-        break;
-
-      case QgsProcessingGui::Modeler:
-        break;
-    }
-    f2 = wrapper7.filterFields( f );
-    QCOMPARE( f2.size(), 1 );
-    QCOMPARE( f2.at( 0 ).name(), QStringLiteral( "binary" ) );
-    delete w;
-
-    // boolean fields
-    param = QgsProcessingParameterField( QStringLiteral( "field" ), QStringLiteral( "field" ), QVariant(), QStringLiteral( "INPUT" ), Qgis::ProcessingFieldParameterDataType::Boolean, false, true );
-    QgsProcessingFieldWidgetWrapper wrapper8( &param, type );
-    w = wrapper8.createWrappedWidget( context );
-    switch ( type )
-    {
-      case QgsProcessingGui::Standard:
-      case QgsProcessingGui::Batch:
-        QCOMPARE( static_cast< QgsFieldComboBox * >( wrapper8.wrappedWidget() )->filters(), QgsFieldProxyModel::Boolean );
-        break;
-
-      case QgsProcessingGui::Modeler:
-        break;
-    }
-    f2 = wrapper8.filterFields( f );
-    QCOMPARE( f2.size(), 1 );
-    QCOMPARE( f2.at( 0 ).name(), QStringLiteral( "boolean" ) );
-    delete w;
 
     // default to all fields
-    param = QgsProcessingParameterField( QStringLiteral( "field" ), QStringLiteral( "field" ), QVariant(), QStringLiteral( "INPUT" ), Qgis::ProcessingFieldParameterDataType::Any, true, true );
+    param = QgsProcessingParameterField( QStringLiteral( "field" ), QStringLiteral( "field" ), QVariant(), QStringLiteral( "INPUT" ), QgsProcessingParameterField::Any, true, true );
     param.setDefaultToAllFields( true );
-    QgsProcessingFieldWidgetWrapper wrapper9( &param, type );
-    w = wrapper9.createWrappedWidget( context );
-    wrapper9.setParentLayerWrapperValue( &layerWrapper );
+    QgsProcessingFieldWidgetWrapper wrapper7( &param, type );
+    w = wrapper7.createWrappedWidget( context );
+    wrapper7.setParentLayerWrapperValue( &layerWrapper );
     switch ( type )
     {
       case QgsProcessingGui::Standard:
       case QgsProcessingGui::Batch:
-        QCOMPARE( wrapper9.widgetValue().toList(), QVariantList() << QStringLiteral( "aaa" ) << QStringLiteral( "bbb" ) );
+        QCOMPARE( wrapper7.widgetValue().toList(), QVariantList() << QStringLiteral( "aaa" ) << QStringLiteral( "bbb" ) );
         break;
 
       case QgsProcessingGui::Modeler:
@@ -3957,17 +3353,17 @@ void TestProcessingGui::testFieldWrapper()
     QgsVectorLayer *vl2 = new QgsVectorLayer( QStringLiteral( "LineString?field=bbb:string" ), QStringLiteral( "y" ), QStringLiteral( "memory" ) );
     p.addMapLayer( vl2 );
 
-    QgsProcessingFieldWidgetWrapper wrapper10( &param, type );
-    wrapper10.registerProcessingContextGenerator( &generator );
-    w = wrapper10.createWrappedWidget( context );
+    QgsProcessingFieldWidgetWrapper wrapper8( &param, type );
+    wrapper8.registerProcessingContextGenerator( &generator );
+    w = wrapper8.createWrappedWidget( context );
     layerWrapper.setWidgetValue( QVariantList() << vl->id() << vl2->id(), context );
-    wrapper10.setParentLayerWrapperValue( &layerWrapper );
+    wrapper8.setParentLayerWrapperValue( &layerWrapper );
 
     switch ( type )
     {
       case QgsProcessingGui::Standard:
       case QgsProcessingGui::Batch:
-        QCOMPARE( wrapper10.widgetValue().toList(), QVariantList() << QStringLiteral( "bbb" ) );
+        QCOMPARE( wrapper8.widgetValue().toList(), QVariantList() << QStringLiteral( "bbb" ) );
         break;
 
       case QgsProcessingGui::Modeler:
@@ -3992,8 +3388,8 @@ void TestProcessingGui::testFieldWrapper()
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QVERIFY( !def->defaultValue().isValid() );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
 
   // using a parameter definition as initial values
   QgsProcessingParameterField fieldParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), QStringLiteral( "field_name" ), QStringLiteral( "parent" ) );
@@ -4001,28 +3397,28 @@ void TestProcessingGui::testFieldWrapper()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QCOMPARE( static_cast< QgsProcessingParameterField * >( def.get() )->defaultValue().toString(), QStringLiteral( "field_name" ) );
   QCOMPARE( static_cast< QgsProcessingParameterField * >( def.get() )->parentLayerParameterName(), QStringLiteral( "parent" ) );
-  QCOMPARE( static_cast< QgsProcessingParameterField * >( def.get() )->dataType(), Qgis::ProcessingFieldParameterDataType::Any );
+  QCOMPARE( static_cast< QgsProcessingParameterField * >( def.get() )->dataType(), QgsProcessingParameterField::Any );
   QCOMPARE( static_cast< QgsProcessingParameterField * >( def.get() )->allowMultiple(), false );
   QCOMPARE( static_cast< QgsProcessingParameterField * >( def.get() )->defaultToAllFields(), false );
-  fieldParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
+  fieldParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
   fieldParam.setParentLayerParameterName( QString() );
   fieldParam.setAllowMultiple( true );
   fieldParam.setDefaultToAllFields( true );
-  fieldParam.setDataType( Qgis::ProcessingFieldParameterDataType::String );
+  fieldParam.setDataType( QgsProcessingParameterField::String );
   fieldParam.setDefaultValue( QStringLiteral( "field_1;field_2" ) );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "field" ), context, widgetContext, &fieldParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
   QCOMPARE( static_cast< QgsProcessingParameterField * >( def.get() )->defaultValue().toString(), QStringLiteral( "field_1;field_2" ) );
   QVERIFY( static_cast< QgsProcessingParameterBand * >( def.get() )->parentLayerParameterName().isEmpty() );
-  QCOMPARE( static_cast< QgsProcessingParameterField * >( def.get() )->dataType(), Qgis::ProcessingFieldParameterDataType::String );
+  QCOMPARE( static_cast< QgsProcessingParameterField * >( def.get() )->dataType(), QgsProcessingParameterField::String );
   QCOMPARE( static_cast< QgsProcessingParameterField * >( def.get() )->allowMultiple(), true );
   QCOMPARE( static_cast< QgsProcessingParameterField * >( def.get() )->defaultToAllFields(), true );
 }
@@ -4138,7 +3534,7 @@ void TestProcessingGui::testMultipleSelectionDialog()
 
 void TestProcessingGui::testMultipleFileSelectionDialog()
 {
-  std::unique_ptr< QgsProcessingParameterMultipleLayers > param = std::make_unique< QgsProcessingParameterMultipleLayers >( QString(), QString(), Qgis::ProcessingSourceType::Raster );
+  std::unique_ptr< QgsProcessingParameterMultipleLayers > param = std::make_unique< QgsProcessingParameterMultipleLayers >( QString(), QString(), QgsProcessing::TypeRaster );
   QVariantList selectedOptions;
   std::unique_ptr< QgsProcessingMultipleInputPanelWidget > dlg = std::make_unique< QgsProcessingMultipleInputPanelWidget >( param.get(), selectedOptions, QList<QgsProcessingModelChildParameterSource >() );
   QVERIFY( dlg->selectedOptions().isEmpty() );
@@ -4215,7 +3611,7 @@ void TestProcessingGui::testMultipleFileSelectionDialog()
   QCOMPARE( dlg->selectedOptions().at( 1 ).toString(), raster->source() );
 
   // mesh
-  param = std::make_unique< QgsProcessingParameterMultipleLayers >( QString(), QString(), Qgis::ProcessingSourceType::Mesh );
+  param = std::make_unique< QgsProcessingParameterMultipleLayers >( QString(), QString(), QgsProcessing::TypeMesh );
   dlg = std::make_unique< QgsProcessingMultipleInputPanelWidget >( param.get(), QVariantList(), QList<QgsProcessingModelChildParameterSource >() );
   dlg->setProject( QgsProject::instance() );
   QCOMPARE( dlg->mModel->rowCount(), 1 );
@@ -4223,7 +3619,7 @@ void TestProcessingGui::testMultipleFileSelectionDialog()
   QCOMPARE( dlg->mModel->data( dlg->mModel->index( 0, 0 ), Qt::UserRole ).toString(), mesh->id() );
 
   // plugin
-  param = std::make_unique< QgsProcessingParameterMultipleLayers >( QString(), QString(), Qgis::ProcessingSourceType::Plugin );
+  param = std::make_unique< QgsProcessingParameterMultipleLayers >( QString(), QString(), QgsProcessing::TypePlugin );
   dlg = std::make_unique< QgsProcessingMultipleInputPanelWidget >( param.get(), QVariantList(), QList<QgsProcessingModelChildParameterSource >() );
   dlg->setProject( QgsProject::instance() );
   QCOMPARE( dlg->mModel->rowCount(), 1 );
@@ -4232,7 +3628,7 @@ void TestProcessingGui::testMultipleFileSelectionDialog()
 
 #ifdef HAVE_EPT
   // point cloud
-  param = std::make_unique< QgsProcessingParameterMultipleLayers >( QString(), QString(), Qgis::ProcessingSourceType::PointCloud );
+  param = std::make_unique< QgsProcessingParameterMultipleLayers >( QString(), QString(), QgsProcessing::TypePointCloud );
   dlg = std::make_unique< QgsProcessingMultipleInputPanelWidget >( param.get(), QVariantList(), QList<QgsProcessingModelChildParameterSource >() );
   dlg->setProject( QgsProject::instance() );
   QCOMPARE( dlg->mModel->rowCount(), 1 );
@@ -4241,7 +3637,7 @@ void TestProcessingGui::testMultipleFileSelectionDialog()
 #endif
 
   // annotation
-  param = std::make_unique< QgsProcessingParameterMultipleLayers >( QString(), QString(), Qgis::ProcessingSourceType::Annotation );
+  param = std::make_unique< QgsProcessingParameterMultipleLayers >( QString(), QString(), QgsProcessing::TypeAnnotation );
   dlg = std::make_unique< QgsProcessingMultipleInputPanelWidget >( param.get(), QVariantList(), QList<QgsProcessingModelChildParameterSource >() );
   dlg->setProject( QgsProject::instance() );
   QCOMPARE( dlg->mModel->rowCount(), 2 );
@@ -4251,7 +3647,7 @@ void TestProcessingGui::testMultipleFileSelectionDialog()
   QCOMPARE( dlg->mModel->data( dlg->mModel->index( 1, 0 ), Qt::UserRole ).toString(), QStringLiteral( "main" ) );
 
   // vector points
-  param = std::make_unique< QgsProcessingParameterMultipleLayers >( QString(), QString(), Qgis::ProcessingSourceType::VectorPoint );
+  param = std::make_unique< QgsProcessingParameterMultipleLayers >( QString(), QString(), QgsProcessing::TypeVectorPoint );
   dlg = std::make_unique< QgsProcessingMultipleInputPanelWidget >( param.get(), QVariantList(), QList<QgsProcessingModelChildParameterSource >() );
   dlg->setProject( QgsProject::instance() );
   QCOMPARE( dlg->mModel->rowCount(), 1 );
@@ -4259,7 +3655,7 @@ void TestProcessingGui::testMultipleFileSelectionDialog()
   QCOMPARE( dlg->mModel->data( dlg->mModel->index( 0, 0 ), Qt::UserRole ).toString(), point->id() );
 
   // vector lines
-  param = std::make_unique< QgsProcessingParameterMultipleLayers >( QString(), QString(), Qgis::ProcessingSourceType::VectorLine );
+  param = std::make_unique< QgsProcessingParameterMultipleLayers >( QString(), QString(), QgsProcessing::TypeVectorLine );
   dlg = std::make_unique< QgsProcessingMultipleInputPanelWidget >( param.get(), QVariantList(), QList<QgsProcessingModelChildParameterSource >() );
   dlg->setProject( QgsProject::instance() );
   QCOMPARE( dlg->mModel->rowCount(), 1 );
@@ -4267,27 +3663,15 @@ void TestProcessingGui::testMultipleFileSelectionDialog()
   QCOMPARE( dlg->mModel->data( dlg->mModel->index( 0, 0 ), Qt::UserRole ).toString(), line->id() );
 
   // vector polygons
-  param = std::make_unique< QgsProcessingParameterMultipleLayers >( QString(), QString(), Qgis::ProcessingSourceType::VectorPolygon );
+  param = std::make_unique< QgsProcessingParameterMultipleLayers >( QString(), QString(), QgsProcessing::TypeVectorPolygon );
   dlg = std::make_unique< QgsProcessingMultipleInputPanelWidget >( param.get(), QVariantList(), QList<QgsProcessingModelChildParameterSource >() );
   dlg->setProject( QgsProject::instance() );
   QCOMPARE( dlg->mModel->rowCount(), 1 );
   QCOMPARE( dlg->mModel->data( dlg->mModel->index( 0, 0 ) ).toString(), QStringLiteral( "polygon [EPSG:4326]" ) );
   QCOMPARE( dlg->mModel->data( dlg->mModel->index( 0, 0 ), Qt::UserRole ).toString(), polygon->id() );
 
-  // vector any geometry type
-  param = std::make_unique< QgsProcessingParameterMultipleLayers >( QString(), QString(), Qgis::ProcessingSourceType::VectorAnyGeometry );
-  dlg = std::make_unique< QgsProcessingMultipleInputPanelWidget >( param.get(), QVariantList(), QList<QgsProcessingModelChildParameterSource >() );
-  dlg->setProject( QgsProject::instance() );
-  QCOMPARE( dlg->mModel->rowCount(), 3 );
-  QCOMPARE( dlg->mModel->data( dlg->mModel->index( 0, 0 ) ).toString(), QStringLiteral( "line [EPSG:4326]" ) );
-  QCOMPARE( dlg->mModel->data( dlg->mModel->index( 0, 0 ), Qt::UserRole ).toString(), line->id() );
-  QCOMPARE( dlg->mModel->data( dlg->mModel->index( 1, 0 ) ).toString(), QStringLiteral( "point [EPSG:4326]" ) );
-  QCOMPARE( dlg->mModel->data( dlg->mModel->index( 1, 0 ), Qt::UserRole ).toString(), point->id() );
-  QCOMPARE( dlg->mModel->data( dlg->mModel->index( 2, 0 ) ).toString(), QStringLiteral( "polygon [EPSG:4326]" ) );
-  QCOMPARE( dlg->mModel->data( dlg->mModel->index( 2, 0 ), Qt::UserRole ).toString(), polygon->id() );
-
   // vector any type
-  param = std::make_unique< QgsProcessingParameterMultipleLayers >( QString(), QString(), Qgis::ProcessingSourceType::Vector );
+  param = std::make_unique< QgsProcessingParameterMultipleLayers >( QString(), QString(), QgsProcessing::TypeVector );
   dlg = std::make_unique< QgsProcessingMultipleInputPanelWidget >( param.get(), QVariantList(), QList<QgsProcessingModelChildParameterSource >() );
   dlg->setProject( QgsProject::instance() );
   QCOMPARE( dlg->mModel->rowCount(), 4 );
@@ -4297,7 +3681,7 @@ void TestProcessingGui::testMultipleFileSelectionDialog()
   QCOMPARE( titles, QSet<QString>() << QStringLiteral( "polygon [EPSG:4326]" ) << QStringLiteral( "point [EPSG:4326]" ) << QStringLiteral( "line [EPSG:4326]" ) << QStringLiteral( "nogeom" ) );
 
   // any type
-  param = std::make_unique< QgsProcessingParameterMultipleLayers >( QString(), QString(), Qgis::ProcessingSourceType::MapLayer );
+  param = std::make_unique< QgsProcessingParameterMultipleLayers >( QString(), QString(), QgsProcessing::TypeMapLayer );
   dlg = std::make_unique< QgsProcessingMultipleInputPanelWidget >( param.get(), QVariantList(), QList<QgsProcessingModelChildParameterSource >() );
   dlg->setProject( QgsProject::instance() );
 #ifdef HAVE_EPT
@@ -4320,7 +3704,7 @@ void TestProcessingGui::testMultipleFileSelectionDialog()
 #endif
 
   // files
-  param = std::make_unique< QgsProcessingParameterMultipleLayers >( QString(), QString(), Qgis::ProcessingSourceType::File );
+  param = std::make_unique< QgsProcessingParameterMultipleLayers >( QString(), QString(), QgsProcessing::TypeFile );
   dlg = std::make_unique< QgsProcessingMultipleInputPanelWidget >( param.get(), QVariantList(), QList<QgsProcessingModelChildParameterSource >() );
   dlg->setProject( QgsProject::instance() );
   QCOMPARE( dlg->mModel->rowCount(), 0 );
@@ -4622,8 +4006,8 @@ void TestProcessingGui::testBandWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "band" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
 
   // using a parameter definition as initial values
   QgsProcessingParameterBand bandParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), 1, QStringLiteral( "parent" ) );
@@ -4631,12 +4015,12 @@ void TestProcessingGui::testBandWrapper()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QCOMPARE( static_cast< QgsProcessingParameterBand * >( def.get() )->defaultValue().toString(), QStringLiteral( "1" ) );
   QCOMPARE( static_cast< QgsProcessingParameterBand * >( def.get() )->allowMultiple(), false );
   QCOMPARE( static_cast< QgsProcessingParameterBand * >( def.get() )->parentLayerParameterName(), QStringLiteral( "parent" ) );
-  bandParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
+  bandParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
   bandParam.setParentLayerParameterName( QString() );
   bandParam.setAllowMultiple( true );
   bandParam.setDefaultValue( QVariantList() << 2 << 3 );
@@ -4644,8 +4028,8 @@ void TestProcessingGui::testBandWrapper()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
   QCOMPARE( static_cast< QgsProcessingParameterBand * >( def.get() )->defaultValue().toStringList(), QStringList() << "2" << "3" );
   QCOMPARE( static_cast< QgsProcessingParameterBand * >( def.get() )->allowMultiple(), true );
   QVERIFY( static_cast< QgsProcessingParameterBand * >( def.get() )->parentLayerParameterName().isEmpty() );
@@ -4658,7 +4042,7 @@ void TestProcessingGui::testMultipleInputWrapper()
 
   auto testWrapper = [ = ]( QgsProcessingGui::WidgetType type )
   {
-    QgsProcessingParameterMultipleLayers param( QStringLiteral( "multi" ), QStringLiteral( "multi" ), Qgis::ProcessingSourceType::Vector, QVariant(), false );
+    QgsProcessingParameterMultipleLayers param( QStringLiteral( "multi" ), QStringLiteral( "multi" ), QgsProcessing::TypeVector, QVariant(), false );
 
     QgsProcessingMultipleLayerWidgetWrapper wrapper( &param, type );
 
@@ -4680,7 +4064,7 @@ void TestProcessingGui::testMultipleInputWrapper()
     delete w;
 
     // optional
-    param = QgsProcessingParameterMultipleLayers( QStringLiteral( "multi" ), QStringLiteral( "multi" ), Qgis::ProcessingSourceType::Vector, QVariant(), true );
+    param = QgsProcessingParameterMultipleLayers( QStringLiteral( "multi" ), QStringLiteral( "multi" ), QgsProcessing::TypeVector, QVariant(), true );
 
     QgsProcessingMultipleLayerWidgetWrapper wrapper2( &param, type );
 
@@ -4723,13 +4107,13 @@ void TestProcessingGui::testMultipleInputWrapper()
                                << QVariant::fromValue( QgsProcessingModelChildParameterSource::fromStaticValue( QStringLiteral( "something" ) ) ), context ) ;
       QCOMPARE( wrapper2.widgetValue().toList().count(), 3 );
 
-      QCOMPARE( wrapper2.widgetValue().toList().at( 0 ).value< QgsProcessingModelChildParameterSource>().source(), Qgis::ProcessingModelChildParameterSource::ChildOutput );
-      QCOMPARE( wrapper2.widgetValue().toList().at( 0 ).value< QgsProcessingModelChildParameterSource>().source(), Qgis::ProcessingModelChildParameterSource::ChildOutput );
+      QCOMPARE( wrapper2.widgetValue().toList().at( 0 ).value< QgsProcessingModelChildParameterSource>().source(), QgsProcessingModelChildParameterSource::ChildOutput );
+      QCOMPARE( wrapper2.widgetValue().toList().at( 0 ).value< QgsProcessingModelChildParameterSource>().source(), QgsProcessingModelChildParameterSource::ChildOutput );
       QCOMPARE( wrapper2.widgetValue().toList().at( 0 ).value< QgsProcessingModelChildParameterSource>().outputChildId(), QStringLiteral( "alg3" ) );
       QCOMPARE( wrapper2.widgetValue().toList().at( 0 ).value< QgsProcessingModelChildParameterSource>().outputName(), QStringLiteral( "OUTPUT" ) );
-      QCOMPARE( wrapper2.widgetValue().toList().at( 1 ).value< QgsProcessingModelChildParameterSource>().source(), Qgis::ProcessingModelChildParameterSource::ModelParameter );
+      QCOMPARE( wrapper2.widgetValue().toList().at( 1 ).value< QgsProcessingModelChildParameterSource>().source(), QgsProcessingModelChildParameterSource::ModelParameter );
       QCOMPARE( wrapper2.widgetValue().toList().at( 1 ).value< QgsProcessingModelChildParameterSource>().parameterName(), QStringLiteral( "p1" ) );
-      QCOMPARE( wrapper2.widgetValue().toList().at( 2 ).value< QgsProcessingModelChildParameterSource>().source(), Qgis::ProcessingModelChildParameterSource::StaticValue );
+      QCOMPARE( wrapper2.widgetValue().toList().at( 2 ).value< QgsProcessingModelChildParameterSource>().source(), QgsProcessingModelChildParameterSource::StaticValue );
       QCOMPARE( wrapper2.widgetValue().toList().at( 2 ).value< QgsProcessingModelChildParameterSource>().staticValue().toString(), QStringLiteral( "something" ) );
       delete w;
     }
@@ -4750,8 +4134,8 @@ void TestProcessingGui::testMultipleInputWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "multilayer" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
 
   // using a parameter definition as initial values
   QgsProcessingParameterMultipleLayers layersParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ) );
@@ -4759,18 +4143,18 @@ void TestProcessingGui::testMultipleInputWrapper()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
-  QCOMPARE( static_cast< QgsProcessingParameterMultipleLayers * >( def.get() )->layerType(), Qgis::ProcessingSourceType::VectorAnyGeometry );
-  layersParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
-  layersParam.setLayerType( Qgis::ProcessingSourceType::Raster );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
+  QCOMPARE( static_cast< QgsProcessingParameterMultipleLayers * >( def.get() )->layerType(), QgsProcessing::TypeVectorAnyGeometry );
+  layersParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
+  layersParam.setLayerType( QgsProcessing::TypeRaster );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "multilayer" ), context, widgetContext, &layersParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
-  QCOMPARE( static_cast< QgsProcessingParameterMultipleLayers * >( def.get() )->layerType(), Qgis::ProcessingSourceType::Raster );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
+  QCOMPARE( static_cast< QgsProcessingParameterMultipleLayers * >( def.get() )->layerType(), QgsProcessing::TypeRaster );
 }
 
 void TestProcessingGui::testEnumSelectionPanel()
@@ -5497,8 +4881,8 @@ void TestProcessingGui::testEnumWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "enum" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
 
   // using a parameter definition as initial values
   QgsProcessingParameterEnum enumParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), QStringList() << "A" << "B" << "C", false, 2 );
@@ -5506,20 +4890,20 @@ void TestProcessingGui::testEnumWrapper()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QCOMPARE( static_cast< QgsProcessingParameterEnum * >( def.get() )->options(), QStringList() << "A" << "B" << "C" );
   QCOMPARE( static_cast< QgsProcessingParameterEnum * >( def.get() )->defaultValue().toStringList(), QStringList() << "2" );
   QVERIFY( !static_cast< QgsProcessingParameterEnum * >( def.get() )->allowMultiple() );
-  enumParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
+  enumParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
   enumParam.setAllowMultiple( true );
   enumParam.setDefaultValue( QVariantList() << 0 << 1 );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "enum" ), context, widgetContext, &enumParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
   QCOMPARE( static_cast< QgsProcessingParameterEnum * >( def.get() )->options(), QStringList() << "A" << "B" << "C" );
   QCOMPARE( static_cast< QgsProcessingParameterEnum * >( def.get() )->defaultValue().toStringList(), QStringList() << "0" << "1" );
   QVERIFY( static_cast< QgsProcessingParameterEnum * >( def.get() )->allowMultiple() );
@@ -5821,8 +5205,8 @@ void TestProcessingGui::testLayoutItemWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "layoutitem" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
 
   // using a parameter definition as initial values
   QgsProcessingParameterLayoutItem itemParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), QVariant(), QStringLiteral( "parent" ) );
@@ -5830,17 +5214,17 @@ void TestProcessingGui::testLayoutItemWrapper()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QCOMPARE( static_cast< QgsProcessingParameterLayoutItem * >( def.get() )->parentLayoutParameterName(), QStringLiteral( "parent" ) );
-  itemParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
+  itemParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
   itemParam.setParentLayoutParameterName( QString() );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "layoutitem" ), context, widgetContext, &itemParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
   QVERIFY( static_cast< QgsProcessingParameterLayoutItem * >( def.get() )->parentLayoutParameterName().isEmpty() );
 }
 
@@ -6033,8 +5417,8 @@ void TestProcessingGui::testPointWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "point" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
 
   // using a parameter definition as initial values
   QgsProcessingParameterPoint pointParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), QStringLiteral( "1,2" ) );
@@ -6042,17 +5426,17 @@ void TestProcessingGui::testPointWrapper()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QCOMPARE( static_cast< QgsProcessingParameterPoint * >( def.get() )->defaultValue().toString(), QStringLiteral( "1.000000,2.000000" ) );
-  pointParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
+  pointParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
   pointParam.setDefaultValue( QStringLiteral( "4,7" ) );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "point" ), context, widgetContext, &pointParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
   QCOMPARE( static_cast< QgsProcessingParameterPoint * >( def.get() )->defaultValue().toString(), QStringLiteral( "4.000000,7.000000" ) );
 
 }
@@ -6070,15 +5454,15 @@ void TestProcessingGui::testGeometryWrapper()
     QgsProcessingContext context;
     QWidget *w = wrapper.createWrappedWidget( context );
 
-    QSignalSpy spy( &wrapper, &QgsProcessingGeometryWidgetWrapper::widgetValueHasChanged );
+    QSignalSpy spy( &wrapper, &QgsProcessingLayoutItemWidgetWrapper::widgetValueHasChanged );
     wrapper.setWidgetValue( QStringLiteral( "POINT (1 2)" ), context );
     QCOMPARE( spy.count(), 1 );
     QCOMPARE( wrapper.widgetValue().toString().toLower(), QStringLiteral( "point (1 2)" ) );
-    QCOMPARE( static_cast< QgsGeometryWidget * >( wrapper.wrappedWidget() )->geometryValue().asWkt().toLower(), QStringLiteral( "point (1 2)" ).toLower() );
+    QCOMPARE( static_cast< QLineEdit * >( wrapper.wrappedWidget() )->text().toLower(), QStringLiteral( "point (1 2)" ).toLower() );
     wrapper.setWidgetValue( QString(), context );
     QCOMPARE( spy.count(), 2 );
     QVERIFY( wrapper.widgetValue().toString().isEmpty() );
-    QVERIFY( static_cast< QgsGeometryWidget * >( wrapper.wrappedWidget() )->geometryValue().asWkt().isEmpty() );
+    QVERIFY( static_cast< QLineEdit * >( wrapper.wrappedWidget() )->text().isEmpty() );
 
     QLabel *l = wrapper.createWrappedLabel();
     if ( wrapper.type() != QgsProcessingGui::Batch )
@@ -6094,9 +5478,9 @@ void TestProcessingGui::testGeometryWrapper()
     }
 
     // check signal
-    static_cast< QgsGeometryWidget * >( wrapper.wrappedWidget() )->setGeometryValue( QgsReferencedGeometry( QgsGeometry::fromWkt( "point(0 0)" ), QgsCoordinateReferenceSystem() ) );
+    static_cast< QLineEdit * >( wrapper.wrappedWidget() )->setText( QStringLiteral( "b" ) );
     QCOMPARE( spy.count(), 3 );
-    static_cast< QgsGeometryWidget * >( wrapper.wrappedWidget() )->clearGeometry();
+    static_cast< QLineEdit * >( wrapper.wrappedWidget() )->clear();
     QCOMPARE( spy.count(), 4 );
 
     delete w;
@@ -6113,19 +5497,19 @@ void TestProcessingGui::testGeometryWrapper()
     wrapper2.setWidgetValue( "POINT (1 2)", context );
     QCOMPARE( spy2.count(), 1 );
     QCOMPARE( wrapper2.widgetValue().toString().toLower(), QStringLiteral( "point (1 2)" ) );
-    QCOMPARE( static_cast< QgsGeometryWidget * >( wrapper2.wrappedWidget() )->geometryValue().asWkt().toLower(), QStringLiteral( "point (1 2)" ) );
+    QCOMPARE( static_cast< QLineEdit * >( wrapper2.wrappedWidget() )->text().toLower(), QStringLiteral( "point (1 2)" ) );
 
     wrapper2.setWidgetValue( QVariant(), context );
     QCOMPARE( spy2.count(), 2 );
     QVERIFY( !wrapper2.widgetValue().isValid() );
-    QVERIFY( static_cast< QgsGeometryWidget * >( wrapper2.wrappedWidget() )->geometryValue().asWkt().isEmpty() );
+    QVERIFY( static_cast< QLineEdit * >( wrapper2.wrappedWidget() )->text().isEmpty() );
 
     wrapper2.setWidgetValue( "POINT (1 3)", context );
     QCOMPARE( spy2.count(), 3 );
     wrapper2.setWidgetValue( "", context );
     QCOMPARE( spy2.count(), 4 );
     QVERIFY( !wrapper2.widgetValue().isValid() );
-    QVERIFY( static_cast< QgsGeometryWidget * >( wrapper2.wrappedWidget() )->geometryValue().asWkt().isEmpty() );
+    QVERIFY( static_cast< QLineEdit * >( wrapper2.wrappedWidget() )->text().isEmpty() );
 
     delete w;
   };
@@ -6147,8 +5531,8 @@ void TestProcessingGui::testGeometryWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "geometry" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
 
   // using a parameter definition as initial values
   QgsProcessingParameterGeometry geometryParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), QStringLiteral( "POINT (1 2)" ) );
@@ -6158,17 +5542,17 @@ void TestProcessingGui::testGeometryWrapper()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QCOMPARE( static_cast< QgsProcessingParameterGeometry * >( def.get() )->defaultValue().toString().toLower(), QStringLiteral( "point (1 2)" ) );
-  geometryParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
+  geometryParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
   geometryParam.setDefaultValue( QStringLiteral( "POINT (4 7)" ) );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "geometry" ), context, widgetContext, &geometryParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
   QCOMPARE( static_cast< QgsProcessingParameterGeometry * >( def.get() )->defaultValue().toString().toLower(), QStringLiteral( "point (4 7)" ) );
 
 }
@@ -6280,8 +5664,8 @@ void TestProcessingGui::testExtentWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "extent" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
 
   // using a parameter definition as initial values
   QgsProcessingParameterExtent extentParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), QStringLiteral( "1,2,3,4" ) );
@@ -6289,17 +5673,17 @@ void TestProcessingGui::testExtentWrapper()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QCOMPARE( static_cast< QgsProcessingParameterExtent * >( def.get() )->defaultValue().toString(), QStringLiteral( "1.000000000,2.000000000,3.000000000,4.000000000" ) );
-  extentParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
+  extentParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
   extentParam.setDefaultValue( QStringLiteral( "4,7,8,9" ) );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "extent" ), context, widgetContext, &extentParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
   QCOMPARE( static_cast< QgsProcessingParameterExtent * >( def.get() )->defaultValue().toString(), QStringLiteral( "4.000000000,7.000000000,8.000000000,9.000000000" ) );
 }
 
@@ -6385,8 +5769,8 @@ void TestProcessingGui::testColorWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "color" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QVERIFY( static_cast< QgsProcessingParameterColor * >( def.get() )->opacityEnabled() ); // should default to true
 
   // using a parameter definition as initial values
@@ -6395,18 +5779,18 @@ void TestProcessingGui::testColorWrapper()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QCOMPARE( static_cast< QgsProcessingParameterColor * >( def.get() )->defaultValue().value< QColor >(), QColor( 255, 0, 0, 100 ) );
   QVERIFY( static_cast< QgsProcessingParameterColor * >( def.get() )->opacityEnabled() );
-  colorParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
+  colorParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
   colorParam.setOpacityEnabled( false );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "color" ), context, widgetContext, &colorParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
   QCOMPARE( static_cast< QgsProcessingParameterColor * >( def.get() )->defaultValue().value< QColor >(), QColor( 255, 0, 0 ) ); // (no opacity!)
   QVERIFY( !static_cast< QgsProcessingParameterColor * >( def.get() )->opacityEnabled() );
 }
@@ -6491,8 +5875,8 @@ void TestProcessingGui::testCoordinateOperationWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "coordinateoperation" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
 
   QVERIFY( !static_cast< QgsProcessingParameterCoordinateOperation * >( def.get() )->sourceCrs().isValid() ); // should default to not set
   QVERIFY( !static_cast< QgsProcessingParameterCoordinateOperation * >( def.get() )->destinationCrs().isValid() ); // should default to not set
@@ -6505,20 +5889,20 @@ void TestProcessingGui::testCoordinateOperationWrapper()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QCOMPARE( static_cast< QgsProcessingParameterCoordinateOperation * >( def.get() )->defaultValue().toString(), QStringLiteral( "+proj" ) );
   QCOMPARE( static_cast< QgsProcessingParameterCoordinateOperation * >( def.get() )->sourceCrsParameterName(), QStringLiteral( "a" ) );
   QCOMPARE( static_cast< QgsProcessingParameterCoordinateOperation * >( def.get() )->destinationCrsParameterName(), QStringLiteral( "b" ) );
   QCOMPARE( static_cast< QgsProcessingParameterCoordinateOperation * >( def.get() )->sourceCrs().value< QgsCoordinateReferenceSystem >( ).authid(), QStringLiteral( "EPSG:26745" ) );
   QCOMPARE( static_cast< QgsProcessingParameterCoordinateOperation * >( def.get() )->destinationCrs().value< QgsCoordinateReferenceSystem >( ).authid(), QStringLiteral( "EPSG:4326" ) );
-  coordParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
+  coordParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "coordinateoperation" ), context, widgetContext, &coordParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
 }
 
 void TestProcessingGui::mapLayerComboBox()
@@ -6604,7 +5988,7 @@ void TestProcessingGui::mapLayerComboBox()
   // now make a selection in the layer, and repeat
   vl2->selectAll();
   combo->setValue( sourceDef, context );
-  QCOMPARE( combo->value().userType(), qMetaTypeId<QgsProcessingFeatureSourceDefinition>() );
+  QCOMPARE( combo->value().userType(), QMetaType::type( "QgsProcessingFeatureSourceDefinition" ) );
   QCOMPARE( combo->value().value< QgsProcessingFeatureSourceDefinition >().source.staticValue().toString(), vl2->id() );
   QVERIFY( combo->value().value< QgsProcessingFeatureSourceDefinition >().selectedFeaturesOnly );
   QVERIFY( combo->currentText().startsWith( vl2->name() ) );
@@ -6619,7 +6003,7 @@ void TestProcessingGui::mapLayerComboBox()
   // phew, nearly there. Let's check another variation
   vl2->selectAll();
   combo->setValue( sourceDef, context );
-  QCOMPARE( combo->value().userType(), qMetaTypeId<QgsProcessingFeatureSourceDefinition>() );
+  QCOMPARE( combo->value().userType(), QMetaType::type( "QgsProcessingFeatureSourceDefinition" ) );
   QCOMPARE( spy.count(), 10 );
   combo->setValue( QVariant::fromValue( vl ), context );
   QCOMPARE( combo->value().toString(), vl->id() );
@@ -6634,20 +6018,20 @@ void TestProcessingGui::mapLayerComboBox()
   sourceDef = QgsProcessingFeatureSourceDefinition( vl->id(), true );
   combo->setValue( sourceDef, context );
   // expect "selected only" state to remain
-  QCOMPARE( combo->value().userType(), qMetaTypeId<QgsProcessingFeatureSourceDefinition>() );
+  QCOMPARE( combo->value().userType(), QMetaType::type( "QgsProcessingFeatureSourceDefinition" ) );
   QCOMPARE( combo->value().value< QgsProcessingFeatureSourceDefinition >().source.staticValue().toString(), vl->id() );
   QVERIFY( combo->value().value< QgsProcessingFeatureSourceDefinition >().selectedFeaturesOnly );
   QVERIFY( combo->currentText().startsWith( vl->name() ) );
   QCOMPARE( spy.count(), 13 );
 
   // iterate over features
-  QVERIFY( !( combo->value().value< QgsProcessingFeatureSourceDefinition >().flags & Qgis::ProcessingFeatureSourceDefinitionFlag::CreateIndividualOutputPerInputFeature ) );
-  sourceDef.flags |= Qgis::ProcessingFeatureSourceDefinitionFlag::CreateIndividualOutputPerInputFeature;
+  QVERIFY( !( combo->value().value< QgsProcessingFeatureSourceDefinition >().flags & QgsProcessingFeatureSourceDefinition::Flag::FlagCreateIndividualOutputPerInputFeature ) );
+  sourceDef.flags |= QgsProcessingFeatureSourceDefinition::Flag::FlagCreateIndividualOutputPerInputFeature;
   combo->setValue( sourceDef, context );
-  QVERIFY( combo->value().value< QgsProcessingFeatureSourceDefinition >().flags & Qgis::ProcessingFeatureSourceDefinitionFlag::CreateIndividualOutputPerInputFeature );
-  sourceDef.flags = Qgis::ProcessingFeatureSourceDefinitionFlags();
+  QVERIFY( combo->value().value< QgsProcessingFeatureSourceDefinition >().flags & QgsProcessingFeatureSourceDefinition::Flag::FlagCreateIndividualOutputPerInputFeature );
+  sourceDef.flags = QgsProcessingFeatureSourceDefinition::Flags();
   combo->setValue( sourceDef, context );
-  QVERIFY( !( combo->value().value< QgsProcessingFeatureSourceDefinition >().flags & Qgis::ProcessingFeatureSourceDefinitionFlag::CreateIndividualOutputPerInputFeature ) );
+  QVERIFY( !( combo->value().value< QgsProcessingFeatureSourceDefinition >().flags & QgsProcessingFeatureSourceDefinition::Flag::FlagCreateIndividualOutputPerInputFeature ) );
 
   // advanced settings
   sourceDef.featureLimit = 67;
@@ -6656,20 +6040,14 @@ void TestProcessingGui::mapLayerComboBox()
   sourceDef.featureLimit = -1;
   combo->setValue( sourceDef, context );
   QCOMPARE( combo->value().value< QgsProcessingFeatureSourceDefinition >().featureLimit, -1LL );
-  sourceDef.flags |= Qgis::ProcessingFeatureSourceDefinitionFlag::OverrideDefaultGeometryCheck;
-  sourceDef.geometryCheck = Qgis::InvalidGeometryCheck::SkipInvalid;
+  sourceDef.flags |= QgsProcessingFeatureSourceDefinition::Flag::FlagOverrideDefaultGeometryCheck;
+  sourceDef.geometryCheck = QgsFeatureRequest::GeometrySkipInvalid;
   combo->setValue( sourceDef, context );
-  QVERIFY( combo->value().value< QgsProcessingFeatureSourceDefinition >().flags & Qgis::ProcessingFeatureSourceDefinitionFlag::OverrideDefaultGeometryCheck );
-  QCOMPARE( combo->value().value< QgsProcessingFeatureSourceDefinition >().geometryCheck, Qgis::InvalidGeometryCheck::SkipInvalid );
-  sourceDef.flags = Qgis::ProcessingFeatureSourceDefinitionFlags();
+  QVERIFY( combo->value().value< QgsProcessingFeatureSourceDefinition >().flags & QgsProcessingFeatureSourceDefinition::Flag::FlagOverrideDefaultGeometryCheck );
+  QCOMPARE( combo->value().value< QgsProcessingFeatureSourceDefinition >().geometryCheck, QgsFeatureRequest::GeometrySkipInvalid );
+  sourceDef.flags = QgsProcessingFeatureSourceDefinition::Flags();
   combo->setValue( sourceDef, context );
-  QVERIFY( !( combo->value().value< QgsProcessingFeatureSourceDefinition >().flags & Qgis::ProcessingFeatureSourceDefinitionFlag::OverrideDefaultGeometryCheck ) );
-  sourceDef.filterExpression = QStringLiteral( "name='test'" );
-  combo->setValue( sourceDef, context );
-  QCOMPARE( combo->value().value< QgsProcessingFeatureSourceDefinition >().filterExpression, QStringLiteral( "name='test'" ) );
-  sourceDef.filterExpression = QString();
-  combo->setValue( sourceDef, context );
-  QCOMPARE( combo->value().value< QgsProcessingFeatureSourceDefinition >().filterExpression, QString() );
+  QVERIFY( !( combo->value().value< QgsProcessingFeatureSourceDefinition >().flags & QgsProcessingFeatureSourceDefinition::Flag::FlagOverrideDefaultGeometryCheck ) );
 
   combo.reset();
   param.reset();
@@ -6715,7 +6093,7 @@ void TestProcessingGui::mapLayerComboBox()
   param.reset();
 
   // map layer param, only point vector and raster types are acceptable
-  param = std::make_unique< QgsProcessingParameterMapLayer> ( QStringLiteral( "param" ), QString(), QVariant(), false, QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::VectorPoint ) << static_cast< int >( Qgis::ProcessingSourceType::Raster ) );
+  param = std::make_unique< QgsProcessingParameterMapLayer> ( QStringLiteral( "param" ), QString(), QVariant(), false, QList< int >() << QgsProcessing::TypeVectorPoint << QgsProcessing::TypeRaster );
   combo = std::make_unique< QgsProcessingMapLayerComboBox >( param.get() );
   combo->setLayer( point );
   QCOMPARE( combo->currentLayer(), point );
@@ -6834,9 +6212,9 @@ void TestProcessingGui::mapLayerComboBox()
   param.reset();
 
   // point layer
-  param = std::make_unique< QgsProcessingParameterVectorLayer> ( QStringLiteral( "param" ), QString(), QList< int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorPoint ) );
+  param = std::make_unique< QgsProcessingParameterVectorLayer> ( QStringLiteral( "param" ), QString(), QList< int>() << QgsProcessing::TypeVectorPoint );
   combo = std::make_unique< QgsProcessingMapLayerComboBox >( param.get() );
-  param2 = std::make_unique< QgsProcessingParameterFeatureSource> ( QStringLiteral( "param" ), QString(), QList< int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorPoint ) );
+  param2 = std::make_unique< QgsProcessingParameterFeatureSource> ( QStringLiteral( "param" ), QString(), QList< int>() << QgsProcessing::TypeVectorPoint );
   combo2 = std::make_unique< QgsProcessingMapLayerComboBox >( param2.get() );
   combo->setLayer( point );
   QCOMPARE( combo->currentLayer(), point );
@@ -6872,9 +6250,9 @@ void TestProcessingGui::mapLayerComboBox()
   param.reset();
 
   // line layer
-  param = std::make_unique< QgsProcessingParameterVectorLayer> ( QStringLiteral( "param" ), QString(), QList< int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorLine ) );
+  param = std::make_unique< QgsProcessingParameterVectorLayer> ( QStringLiteral( "param" ), QString(), QList< int>() << QgsProcessing::TypeVectorLine );
   combo = std::make_unique< QgsProcessingMapLayerComboBox >( param.get() );
-  param2 = std::make_unique< QgsProcessingParameterFeatureSource> ( QStringLiteral( "param" ), QString(), QList< int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorLine ) );
+  param2 = std::make_unique< QgsProcessingParameterFeatureSource> ( QStringLiteral( "param" ), QString(), QList< int>() << QgsProcessing::TypeVectorLine );
   combo2 = std::make_unique< QgsProcessingMapLayerComboBox >( param2.get() );
   combo->setLayer( point );
   QVERIFY( !combo->currentLayer() );
@@ -6910,9 +6288,9 @@ void TestProcessingGui::mapLayerComboBox()
   param.reset();
 
   // polygon
-  param = std::make_unique< QgsProcessingParameterVectorLayer> ( QStringLiteral( "param" ), QString(), QList< int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorPolygon ) );
+  param = std::make_unique< QgsProcessingParameterVectorLayer> ( QStringLiteral( "param" ), QString(), QList< int>() << QgsProcessing::TypeVectorPolygon );
   combo = std::make_unique< QgsProcessingMapLayerComboBox >( param.get() );
-  param2 = std::make_unique< QgsProcessingParameterFeatureSource> ( QStringLiteral( "param" ), QString(), QList< int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorPolygon ) );
+  param2 = std::make_unique< QgsProcessingParameterFeatureSource> ( QStringLiteral( "param" ), QString(), QList< int>() << QgsProcessing::TypeVectorPolygon );
   combo2 = std::make_unique< QgsProcessingMapLayerComboBox >( param2.get() );
   combo->setLayer( point );
   QVERIFY( !combo->currentLayer() );
@@ -6948,9 +6326,9 @@ void TestProcessingGui::mapLayerComboBox()
   param.reset();
 
   // no geom
-  param = std::make_unique< QgsProcessingParameterVectorLayer> ( QStringLiteral( "param" ), QString(), QList< int>() << static_cast< int >( Qgis::ProcessingSourceType::Vector ) );
+  param = std::make_unique< QgsProcessingParameterVectorLayer> ( QStringLiteral( "param" ), QString(), QList< int>() << QgsProcessing::TypeVector );
   combo = std::make_unique< QgsProcessingMapLayerComboBox >( param.get() );
-  param2 = std::make_unique< QgsProcessingParameterFeatureSource> ( QStringLiteral( "param" ), QString(), QList< int>() << static_cast< int >( Qgis::ProcessingSourceType::Vector ) );
+  param2 = std::make_unique< QgsProcessingParameterFeatureSource> ( QStringLiteral( "param" ), QString(), QList< int>() << QgsProcessing::TypeVector );
   combo2 = std::make_unique< QgsProcessingMapLayerComboBox >( param2.get() );
   combo->setLayer( point );
   QCOMPARE( combo->currentLayer(), point );
@@ -6986,9 +6364,9 @@ void TestProcessingGui::mapLayerComboBox()
   param.reset();
 
   // any geom
-  param = std::make_unique< QgsProcessingParameterVectorLayer> ( QStringLiteral( "param" ), QString(), QList< int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorAnyGeometry ) );
+  param = std::make_unique< QgsProcessingParameterVectorLayer> ( QStringLiteral( "param" ), QString(), QList< int>() << QgsProcessing::TypeVectorAnyGeometry );
   combo = std::make_unique< QgsProcessingMapLayerComboBox >( param.get() );
-  param2 = std::make_unique< QgsProcessingParameterFeatureSource> ( QStringLiteral( "param" ), QString(), QList< int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorAnyGeometry ) );
+  param2 = std::make_unique< QgsProcessingParameterFeatureSource> ( QStringLiteral( "param" ), QString(), QList< int>() << QgsProcessing::TypeVectorAnyGeometry );
   combo2 = std::make_unique< QgsProcessingMapLayerComboBox >( param2.get() );
   combo->setLayer( point );
   QCOMPARE( combo->currentLayer(), point );
@@ -7024,9 +6402,9 @@ void TestProcessingGui::mapLayerComboBox()
   param.reset();
 
   // combination point and line only
-  param = std::make_unique< QgsProcessingParameterVectorLayer> ( QStringLiteral( "param" ), QString(), QList< int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorPoint ) << static_cast< int >( Qgis::ProcessingSourceType::VectorLine ) );
+  param = std::make_unique< QgsProcessingParameterVectorLayer> ( QStringLiteral( "param" ), QString(), QList< int>() << QgsProcessing::TypeVectorPoint << QgsProcessing::TypeVectorLine );
   combo = std::make_unique< QgsProcessingMapLayerComboBox >( param.get() );
-  param2 = std::make_unique< QgsProcessingParameterFeatureSource> ( QStringLiteral( "param" ), QString(), QList< int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorPoint ) << static_cast< int >( Qgis::ProcessingSourceType::VectorLine ) );
+  param2 = std::make_unique< QgsProcessingParameterFeatureSource> ( QStringLiteral( "param" ), QString(), QList< int>() << QgsProcessing::TypeVectorPoint << QgsProcessing::TypeVectorLine );
   combo2 = std::make_unique< QgsProcessingMapLayerComboBox >( param2.get() );
   combo->setLayer( point );
   QCOMPARE( combo->currentLayer(), point );
@@ -7239,27 +6617,27 @@ void TestProcessingGui::testMapLayerWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "layer" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
 
   // using a parameter definition as initial values
-  QgsProcessingParameterMapLayer layerParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), QVariant(), false, QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::VectorAnyGeometry ) );
+  QgsProcessingParameterMapLayer layerParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), QVariant(), false, QList< int >() << QgsProcessing::TypeVectorAnyGeometry );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "layer" ), context, widgetContext, &layerParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
-  QCOMPARE( static_cast< QgsProcessingParameterMapLayer * >( def.get() )->dataTypes(), QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::VectorAnyGeometry ) );
-  layerParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
-  layerParam.setDataTypes( QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::Raster ) << static_cast< int >( Qgis::ProcessingSourceType::VectorPoint ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
+  QCOMPARE( static_cast< QgsProcessingParameterMapLayer * >( def.get() )->dataTypes(), QList< int >() << QgsProcessing::TypeVectorAnyGeometry );
+  layerParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
+  layerParam.setDataTypes( QList< int >() << QgsProcessing::TypeRaster << QgsProcessing::TypeVectorPoint );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "layer" ), context, widgetContext, &layerParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
-  QCOMPARE( static_cast< QgsProcessingParameterMapLayer * >( def.get() )->dataTypes(), QList< int >()  << static_cast< int >( Qgis::ProcessingSourceType::VectorPoint ) << static_cast< int >( Qgis::ProcessingSourceType::Raster ) );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
+  QCOMPARE( static_cast< QgsProcessingParameterMapLayer * >( def.get() )->dataTypes(), QList< int >()  << QgsProcessing::TypeVectorPoint << QgsProcessing::TypeRaster );
 }
 
 void TestProcessingGui::testRasterLayerWrapper()
@@ -7420,7 +6798,7 @@ void TestProcessingGui::testVectorLayerWrapper()
   auto testWrapper = [ = ]( QgsProcessingGui::WidgetType type )
   {
     // non optional
-    QgsProcessingParameterVectorLayer param( QStringLiteral( "vector" ), QStringLiteral( "vector" ), QList<int >() << static_cast< int >( Qgis::ProcessingSourceType::Vector ), false );
+    QgsProcessingParameterVectorLayer param( QStringLiteral( "vector" ), QStringLiteral( "vector" ), QList<int >() << QgsProcessing::TypeVector, false );
 
     QgsProcessingVectorLayerWidgetWrapper wrapper( &param, type );
 
@@ -7497,7 +6875,7 @@ void TestProcessingGui::testVectorLayerWrapper()
     delete w;
 
     // optional
-    QgsProcessingParameterVectorLayer param2( QStringLiteral( "vector" ), QStringLiteral( "vector" ), QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::Vector ), QVariant(), true );
+    QgsProcessingParameterVectorLayer param2( QStringLiteral( "vector" ), QStringLiteral( "vector" ), QList< int >() << QgsProcessing::TypeVector, QVariant(), true );
     QgsProcessingVectorLayerWidgetWrapper wrapper3( &param2, type );
     wrapper3.setWidgetContext( widgetContext );
     w = wrapper3.createWrappedWidget( context );
@@ -7555,27 +6933,27 @@ void TestProcessingGui::testVectorLayerWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "vector" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
 
   // using a parameter definition as initial values
-  QgsProcessingParameterVectorLayer layerParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::VectorAnyGeometry ) );
+  QgsProcessingParameterVectorLayer layerParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), QList< int >() << QgsProcessing::TypeVectorAnyGeometry );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "vector" ), context, widgetContext, &layerParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
-  QCOMPARE( static_cast< QgsProcessingParameterVectorLayer * >( def.get() )->dataTypes(), QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::VectorAnyGeometry ) );
-  layerParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
-  layerParam.setDataTypes( QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::VectorLine ) << static_cast< int >( Qgis::ProcessingSourceType::VectorPoint ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
+  QCOMPARE( static_cast< QgsProcessingParameterVectorLayer * >( def.get() )->dataTypes(), QList< int >() << QgsProcessing::TypeVectorAnyGeometry );
+  layerParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
+  layerParam.setDataTypes( QList< int >() << QgsProcessing::TypeVectorLine << QgsProcessing::TypeVectorPoint );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "vector" ), context, widgetContext, &layerParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
-  QCOMPARE( static_cast< QgsProcessingParameterVectorLayer * >( def.get() )->dataTypes(), QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::VectorPoint ) << static_cast< int >( Qgis::ProcessingSourceType::VectorLine ) );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
+  QCOMPARE( static_cast< QgsProcessingParameterVectorLayer * >( def.get() )->dataTypes(), QList< int >() << QgsProcessing::TypeVectorPoint << QgsProcessing::TypeVectorLine );
 }
 
 void TestProcessingGui::testFeatureSourceWrapper()
@@ -7594,7 +6972,7 @@ void TestProcessingGui::testFeatureSourceWrapper()
   auto testWrapper = [ = ]( QgsProcessingGui::WidgetType type )
   {
     // non optional
-    QgsProcessingParameterFeatureSource param( QStringLiteral( "source" ), QStringLiteral( "source" ), QList<int >() << static_cast< int >( Qgis::ProcessingSourceType::Vector ), false );
+    QgsProcessingParameterFeatureSource param( QStringLiteral( "source" ), QStringLiteral( "source" ), QList<int >() << QgsProcessing::TypeVector, false );
 
     QgsProcessingFeatureSourceWidgetWrapper wrapper( &param, type );
 
@@ -7671,7 +7049,7 @@ void TestProcessingGui::testFeatureSourceWrapper()
     delete w;
 
     // optional
-    QgsProcessingParameterFeatureSource param2( QStringLiteral( "source" ), QStringLiteral( "source" ), QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::Vector ), QVariant(), true );
+    QgsProcessingParameterFeatureSource param2( QStringLiteral( "source" ), QStringLiteral( "source" ), QList< int >() << QgsProcessing::TypeVector, QVariant(), true );
     QgsProcessingFeatureSourceWidgetWrapper wrapper3( &param2, type );
     wrapper3.setWidgetContext( widgetContext );
     w = wrapper3.createWrappedWidget( context );
@@ -7729,27 +7107,27 @@ void TestProcessingGui::testFeatureSourceWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "source" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
 
   // using a parameter definition as initial values
-  QgsProcessingParameterFeatureSource sourceParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::VectorAnyGeometry ) );
+  QgsProcessingParameterFeatureSource sourceParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), QList< int >() << QgsProcessing::TypeVectorAnyGeometry );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "source" ), context, widgetContext, &sourceParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
-  QCOMPARE( static_cast< QgsProcessingParameterFeatureSource * >( def.get() )->dataTypes(), QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::VectorAnyGeometry ) );
-  sourceParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
-  sourceParam.setDataTypes( QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::VectorPoint ) << static_cast< int >( Qgis::ProcessingSourceType::VectorLine ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
+  QCOMPARE( static_cast< QgsProcessingParameterFeatureSource * >( def.get() )->dataTypes(), QList< int >() << QgsProcessing::TypeVectorAnyGeometry );
+  sourceParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
+  sourceParam.setDataTypes( QList< int >() << QgsProcessing::TypeVectorPoint << QgsProcessing::TypeVectorLine );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "source" ), context, widgetContext, &sourceParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
-  QCOMPARE( static_cast< QgsProcessingParameterFeatureSource * >( def.get() )->dataTypes(), QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::VectorPoint ) << static_cast< int >( Qgis::ProcessingSourceType::VectorLine ) );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
+  QCOMPARE( static_cast< QgsProcessingParameterFeatureSource * >( def.get() )->dataTypes(), QList< int >() << QgsProcessing::TypeVectorPoint << QgsProcessing::TypeVectorLine );
 }
 
 void TestProcessingGui::testMeshLayerWrapper()
@@ -7907,25 +7285,25 @@ void TestProcessingGui::paramConfigWidget()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "string" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
 
   // using a parameter definition as initial values
   def->setDescription( QStringLiteral( "test desc" ) );
-  def->setFlags( Qgis::ProcessingParameterFlag::Optional );
+  def->setFlags( QgsProcessingParameterDefinition::FlagOptional );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "string" ), context, widgetContext, def.get() );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
-  def->setFlags( Qgis::ProcessingParameterFlag::Advanced );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
+  def->setFlags( QgsProcessingParameterDefinition::FlagAdvanced );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "string" ), context, widgetContext, def.get() );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
 }
 
 void TestProcessingGui::testMapThemeWrapper()
@@ -8053,8 +7431,8 @@ void TestProcessingGui::testMapThemeWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "maptheme" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QVERIFY( !static_cast< QgsProcessingParameterMapTheme * >( def.get() )->defaultValue().isValid() );
 
   // using a parameter definition as initial values
@@ -8063,17 +7441,17 @@ void TestProcessingGui::testMapThemeWrapper()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QCOMPARE( static_cast< QgsProcessingParameterMapTheme * >( def.get() )->defaultValue().toString(), QStringLiteral( "aaa" ) );
-  themeParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
+  themeParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
   themeParam.setDefaultValue( QStringLiteral( "xxx" ) );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "maptheme" ), context, widgetContext, &themeParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
   QCOMPARE( static_cast< QgsProcessingParameterMapTheme * >( def.get() )->defaultValue().toString(), QStringLiteral( "xxx" ) );
   themeParam.setDefaultValue( QVariant() );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "maptheme" ), context, widgetContext, &themeParam );
@@ -8086,7 +7464,7 @@ void TestProcessingGui::testDateTimeWrapper()
   auto testWrapper = [ = ]( QgsProcessingGui::WidgetType type )
   {
     // non optional, no existing themes
-    QgsProcessingParameterDateTime param( QStringLiteral( "datetime" ), QStringLiteral( "datetime" ), Qgis::ProcessingDateTimeParameterDataType::DateTime, QVariant(), false );
+    QgsProcessingParameterDateTime param( QStringLiteral( "datetime" ), QStringLiteral( "datetime" ), QgsProcessingParameterDateTime::DateTime, QVariant(), false );
 
     QgsProcessingDateTimeWidgetWrapper wrapper( &param, type );
 
@@ -8114,7 +7492,7 @@ void TestProcessingGui::testDateTimeWrapper()
     delete w;
 
     // optional
-    QgsProcessingParameterDateTime param2( QStringLiteral( "datetime" ), QStringLiteral( "datetime" ), Qgis::ProcessingDateTimeParameterDataType::DateTime, QVariant(), true );
+    QgsProcessingParameterDateTime param2( QStringLiteral( "datetime" ), QStringLiteral( "datetime" ), QgsProcessingParameterDateTime::DateTime, QVariant(), true );
     QgsProcessingDateTimeWidgetWrapper wrapper3( &param2, type );
     w = wrapper3.createWrappedWidget( context );
     QVERIFY( !wrapper3.widgetValue().isValid() );
@@ -8133,7 +7511,7 @@ void TestProcessingGui::testDateTimeWrapper()
     delete w;
 
     // date mode
-    QgsProcessingParameterDateTime param3( QStringLiteral( "datetime" ), QStringLiteral( "datetime" ), Qgis::ProcessingDateTimeParameterDataType::Date, QVariant(), true );
+    QgsProcessingParameterDateTime param3( QStringLiteral( "datetime" ), QStringLiteral( "datetime" ), QgsProcessingParameterDateTime::Date, QVariant(), true );
     QgsProcessingDateTimeWidgetWrapper wrapper4( &param3, type );
     w = wrapper4.createWrappedWidget( context );
     QVERIFY( !wrapper4.widgetValue().isValid() );
@@ -8156,7 +7534,7 @@ void TestProcessingGui::testDateTimeWrapper()
     delete w;
 
     // time mode
-    QgsProcessingParameterDateTime param4( QStringLiteral( "datetime" ), QStringLiteral( "datetime" ), Qgis::ProcessingDateTimeParameterDataType::Time, QVariant(), true );
+    QgsProcessingParameterDateTime param4( QStringLiteral( "datetime" ), QStringLiteral( "datetime" ), QgsProcessingParameterDateTime::Time, QVariant(), true );
     QgsProcessingDateTimeWidgetWrapper wrapper5( &param4, type );
     w = wrapper5.createWrappedWidget( context );
     QVERIFY( !wrapper5.widgetValue().isValid() );
@@ -8207,28 +7585,28 @@ void TestProcessingGui::testDateTimeWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "datetime" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QVERIFY( !static_cast< QgsProcessingParameterDateTime * >( def.get() )->defaultValue().isValid() );
 
   // using a parameter definition as initial values
-  QgsProcessingParameterDateTime datetimeParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), Qgis::ProcessingDateTimeParameterDataType::Date, QVariant(), false );
+  QgsProcessingParameterDateTime datetimeParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), QgsProcessingParameterDateTime::Date, QVariant(), false );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "datetime" ), context, widgetContext, &datetimeParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
-  QCOMPARE( static_cast< QgsProcessingParameterDateTime * >( def.get() )->dataType(), Qgis::ProcessingDateTimeParameterDataType::Date );
-  datetimeParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
+  QCOMPARE( static_cast< QgsProcessingParameterDateTime * >( def.get() )->dataType(), QgsProcessingParameterDateTime::Date );
+  datetimeParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
   datetimeParam.setDefaultValue( QStringLiteral( "xxx" ) );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "datetime" ), context, widgetContext, &datetimeParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
-  QCOMPARE( static_cast< QgsProcessingParameterDateTime * >( def.get() )->dataType(), Qgis::ProcessingDateTimeParameterDataType::Date );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
+  QCOMPARE( static_cast< QgsProcessingParameterDateTime * >( def.get() )->dataType(), QgsProcessingParameterDateTime::Date );
 }
 
 void TestProcessingGui::testProviderConnectionWrapper()
@@ -8334,8 +7712,8 @@ void TestProcessingGui::testProviderConnectionWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "providerconnection" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QVERIFY( !static_cast< QgsProcessingParameterProviderConnection * >( def.get() )->defaultValue().isValid() );
 
   // using a parameter definition as initial values
@@ -8344,18 +7722,18 @@ void TestProcessingGui::testProviderConnectionWrapper()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QCOMPARE( static_cast< QgsProcessingParameterProviderConnection * >( def.get() )->defaultValue().toString(), QStringLiteral( "aaa" ) );
   QCOMPARE( static_cast< QgsProcessingParameterProviderConnection * >( def.get() )->providerId(), QStringLiteral( "spatialite" ) );
-  connParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
+  connParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
   connParam.setDefaultValue( QStringLiteral( "xxx" ) );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "providerconnection" ), context, widgetContext, &connParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
   QCOMPARE( static_cast< QgsProcessingParameterProviderConnection * >( def.get() )->defaultValue().toString(), QStringLiteral( "xxx" ) );
   connParam.setDefaultValue( QVariant() );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "providerconnection" ), context, widgetContext, &connParam );
@@ -8533,8 +7911,8 @@ void TestProcessingGui::testDatabaseSchemaWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "databaseschema" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QVERIFY( !static_cast< QgsProcessingParameterDatabaseSchema * >( def.get() )->defaultValue().isValid() );
 
   // using a parameter definition as initial values
@@ -8543,18 +7921,18 @@ void TestProcessingGui::testDatabaseSchemaWrapper()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QCOMPARE( static_cast< QgsProcessingParameterDatabaseSchema * >( def.get() )->defaultValue().toString(), QStringLiteral( "aaa" ) );
   QCOMPARE( static_cast< QgsProcessingParameterDatabaseSchema * >( def.get() )->parentConnectionParameterName(), QStringLiteral( "connparam" ) );
-  schemaParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
+  schemaParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
   schemaParam.setDefaultValue( QStringLiteral( "xxx" ) );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "databaseschema" ), context, widgetContext, &schemaParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
   QCOMPARE( static_cast< QgsProcessingParameterDatabaseSchema * >( def.get() )->defaultValue().toString(), QStringLiteral( "xxx" ) );
   schemaParam.setDefaultValue( QVariant() );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "databaseschema" ), context, widgetContext, &schemaParam );
@@ -8772,8 +8150,8 @@ void TestProcessingGui::testDatabaseTableWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "databasetable" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QVERIFY( !static_cast< QgsProcessingParameterDatabaseTable * >( def.get() )->defaultValue().isValid() );
 
   // using a parameter definition as initial values
@@ -8782,19 +8160,19 @@ void TestProcessingGui::testDatabaseTableWrapper()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QCOMPARE( static_cast< QgsProcessingParameterDatabaseTable * >( def.get() )->defaultValue().toString(), QStringLiteral( "aaa" ) );
   QCOMPARE( static_cast< QgsProcessingParameterDatabaseTable * >( def.get() )->parentConnectionParameterName(), QStringLiteral( "connparam" ) );
   QCOMPARE( static_cast< QgsProcessingParameterDatabaseTable * >( def.get() )->parentSchemaParameterName(), QStringLiteral( "schemaparam" ) );
-  tableParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
+  tableParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
   tableParam.setDefaultValue( QStringLiteral( "xxx" ) );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "databasetable" ), context, widgetContext, &tableParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
   QCOMPARE( static_cast< QgsProcessingParameterDatabaseTable * >( def.get() )->defaultValue().toString(), QStringLiteral( "xxx" ) );
   tableParam.setDefaultValue( QVariant() );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "databasetable" ), context, widgetContext, &tableParam );
@@ -8809,15 +8187,13 @@ void TestProcessingGui::testFieldMapWidget()
 
   QVariantMap map;
   map.insert( QStringLiteral( "name" ), QStringLiteral( "n" ) );
-  map.insert( QStringLiteral( "type" ), static_cast< int >( QMetaType::Type::Double ) );
+  map.insert( QStringLiteral( "type" ), static_cast< int >( QVariant::Double ) );
   map.insert( QStringLiteral( "length" ), 8 );
   map.insert( QStringLiteral( "precision" ), 5 );
   QVariantMap map2;
   map2.insert( QStringLiteral( "name" ), QStringLiteral( "n2" ) );
-  map2.insert( QStringLiteral( "type" ), static_cast< int >( QMetaType::Type::QString ) );
+  map2.insert( QStringLiteral( "type" ), static_cast< int >( QVariant::String ) );
   map2.insert( QStringLiteral( "expression" ), QStringLiteral( "'abc' || \"def\"" ) );
-  map2.insert( QStringLiteral( "alias" ), QStringLiteral( "my alias" ) );
-  map2.insert( QStringLiteral( "comment" ), QStringLiteral( "my comment" ) );
 
   QSignalSpy spy( &widget, &QgsProcessingFieldMapPanelWidget::changed );
   widget.setValue( QVariantList() << map << map2 );
@@ -8825,15 +8201,13 @@ void TestProcessingGui::testFieldMapWidget()
 
   QCOMPARE( widget.value().toList().size(), 2 );
   QCOMPARE( widget.value().toList().at( 0 ).toMap().value( QStringLiteral( "name" ) ).toString(), QStringLiteral( "n" ) );
-  QCOMPARE( widget.value().toList().at( 0 ).toMap().value( QStringLiteral( "type" ) ).toInt(), static_cast< int >( QMetaType::Type::Double ) );
+  QCOMPARE( widget.value().toList().at( 0 ).toMap().value( QStringLiteral( "type" ) ).toInt(), static_cast< int >( QVariant::Double ) );
   QCOMPARE( widget.value().toList().at( 0 ).toMap().value( QStringLiteral( "length" ) ).toInt(), 8 );
   QCOMPARE( widget.value().toList().at( 0 ).toMap().value( QStringLiteral( "precision" ) ).toInt(), 5 );
   QCOMPARE( widget.value().toList().at( 0 ).toMap().value( QStringLiteral( "expression" ) ).toString(), QString() );
   QCOMPARE( widget.value().toList().at( 1 ).toMap().value( QStringLiteral( "name" ) ).toString(), QStringLiteral( "n2" ) );
-  QCOMPARE( widget.value().toList().at( 1 ).toMap().value( QStringLiteral( "type" ) ).toInt(), static_cast< int >( QMetaType::Type::QString ) );
+  QCOMPARE( widget.value().toList().at( 1 ).toMap().value( QStringLiteral( "type" ) ).toInt(), static_cast< int >( QVariant::String ) );
   QCOMPARE( widget.value().toList().at( 1 ).toMap().value( QStringLiteral( "expression" ) ).toString(), QStringLiteral( "'abc' || \"def\"" ) );
-  QCOMPARE( widget.value().toList().at( 1 ).toMap().value( QStringLiteral( "alias" ) ).toString(), QStringLiteral( "my alias" ) );
-  QCOMPARE( widget.value().toList().at( 1 ).toMap().value( QStringLiteral( "comment" ) ).toString(), QStringLiteral( "my comment" ) );
 }
 
 void TestProcessingGui::testFieldMapWrapper()
@@ -8852,29 +8226,25 @@ void TestProcessingGui::testFieldMapWrapper()
 
     QVariantMap map;
     map.insert( QStringLiteral( "name" ), QStringLiteral( "n" ) );
-    map.insert( QStringLiteral( "type" ), static_cast< int >( QMetaType::Type::Double ) );
+    map.insert( QStringLiteral( "type" ), static_cast< int >( QVariant::Double ) );
     map.insert( QStringLiteral( "length" ), 8 );
     map.insert( QStringLiteral( "precision" ), 5 );
     QVariantMap map2;
     map2.insert( QStringLiteral( "name" ), QStringLiteral( "n2" ) );
-    map2.insert( QStringLiteral( "type" ), static_cast< int >( QMetaType::Type::QString ) );
+    map2.insert( QStringLiteral( "type" ), static_cast< int >( QVariant::String ) );
     map2.insert( QStringLiteral( "expression" ), QStringLiteral( "'abc' || \"def\"" ) );
-    map2.insert( QStringLiteral( "alias" ), QStringLiteral( "my alias" ) );
-    map2.insert( QStringLiteral( "comment" ), QStringLiteral( "my comment" ) );
 
     QSignalSpy spy( &wrapper, &QgsProcessingFieldMapWidgetWrapper::widgetValueHasChanged );
     wrapper.setWidgetValue( QVariantList() << map << map2, context );
     QCOMPARE( spy.count(), 1 );
     QCOMPARE( wrapper.widgetValue().toList().at( 0 ).toMap().value( QStringLiteral( "name" ) ).toString(), QStringLiteral( "n" ) );
-    QCOMPARE( wrapper.widgetValue().toList().at( 0 ).toMap().value( QStringLiteral( "type" ) ).toInt(), static_cast< int >( QMetaType::Type::Double ) );
+    QCOMPARE( wrapper.widgetValue().toList().at( 0 ).toMap().value( QStringLiteral( "type" ) ).toInt(), static_cast< int >( QVariant::Double ) );
     QCOMPARE( wrapper.widgetValue().toList().at( 0 ).toMap().value( QStringLiteral( "length" ) ).toInt(), 8 );
     QCOMPARE( wrapper.widgetValue().toList().at( 0 ).toMap().value( QStringLiteral( "precision" ) ).toInt(), 5 );
     QCOMPARE( wrapper.widgetValue().toList().at( 0 ).toMap().value( QStringLiteral( "expression" ) ).toString(), QString() );
     QCOMPARE( wrapper.widgetValue().toList().at( 1 ).toMap().value( QStringLiteral( "name" ) ).toString(), QStringLiteral( "n2" ) );
-    QCOMPARE( wrapper.widgetValue().toList().at( 1 ).toMap().value( QStringLiteral( "type" ) ).toInt(), static_cast< int >( QMetaType::Type::QString ) );
+    QCOMPARE( wrapper.widgetValue().toList().at( 1 ).toMap().value( QStringLiteral( "type" ) ).toInt(), static_cast< int >( QVariant::String ) );
     QCOMPARE( wrapper.widgetValue().toList().at( 1 ).toMap().value( QStringLiteral( "expression" ) ).toString(), QStringLiteral( "'abc' || \"def\"" ) );
-    QCOMPARE( wrapper.widgetValue().toList().at( 1 ).toMap().value( QStringLiteral( "alias" ) ).toString(), QStringLiteral( "my alias" ) );
-    QCOMPARE( wrapper.widgetValue().toList().at( 1 ).toMap().value( QStringLiteral( "comment" ) ).toString(), QStringLiteral( "my comment" ) );
 
     QCOMPARE( static_cast< QgsProcessingFieldMapPanelWidget * >( wrapper.wrappedWidget() )->value().toList().count(), 2 );
     QCOMPARE( static_cast< QgsProcessingFieldMapPanelWidget * >( wrapper.wrappedWidget() )->value().toList().at( 0 ).toMap().value( QStringLiteral( "name" ) ).toString(), QStringLiteral( "n" ) );
@@ -8980,8 +8350,8 @@ void TestProcessingGui::testFieldMapWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "fields_mapping" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
 
   // using a parameter definition as initial values
   QgsProcessingParameterFieldMapping mapParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), QStringLiteral( "parent" ) );
@@ -8989,17 +8359,17 @@ void TestProcessingGui::testFieldMapWrapper()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QCOMPARE( static_cast< QgsProcessingParameterFieldMapping * >( def.get() )->parentLayerParameterName(), QStringLiteral( "parent" ) );
-  mapParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
+  mapParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
   mapParam.setParentLayerParameterName( QString() );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "fields_mapping" ), context, widgetContext, &mapParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
   QVERIFY( static_cast< QgsProcessingParameterFieldMapping * >( def.get() )->parentLayerParameterName().isEmpty() );
 }
 
@@ -9009,12 +8379,12 @@ void TestProcessingGui::testAggregateWidget()
 
   QVariantMap map;
   map.insert( QStringLiteral( "name" ), QStringLiteral( "n" ) );
-  map.insert( QStringLiteral( "type" ), static_cast< int >( QMetaType::Type::Double ) );
+  map.insert( QStringLiteral( "type" ), static_cast< int >( QVariant::Double ) );
   map.insert( QStringLiteral( "length" ), 8 );
   map.insert( QStringLiteral( "precision" ), 5 );
   QVariantMap map2;
   map2.insert( QStringLiteral( "name" ), QStringLiteral( "n2" ) );
-  map2.insert( QStringLiteral( "type" ), static_cast< int >( QMetaType::Type::QString ) );
+  map2.insert( QStringLiteral( "type" ), static_cast< int >( QVariant::String ) );
   map2.insert( QStringLiteral( "input" ), QStringLiteral( "'abc' || \"def\"" ) );
   map2.insert( QStringLiteral( "aggregate" ), QStringLiteral( "concatenate" ) );
   map2.insert( QStringLiteral( "delimiter" ), QStringLiteral( "|" ) );
@@ -9025,14 +8395,14 @@ void TestProcessingGui::testAggregateWidget()
 
   QCOMPARE( widget.value().toList().size(), 2 );
   QCOMPARE( widget.value().toList().at( 0 ).toMap().value( QStringLiteral( "name" ) ).toString(), QStringLiteral( "n" ) );
-  QCOMPARE( widget.value().toList().at( 0 ).toMap().value( QStringLiteral( "type" ) ).toInt(), static_cast< int >( QMetaType::Type::Double ) );
+  QCOMPARE( widget.value().toList().at( 0 ).toMap().value( QStringLiteral( "type" ) ).toInt(), static_cast< int >( QVariant::Double ) );
   QCOMPARE( widget.value().toList().at( 0 ).toMap().value( QStringLiteral( "length" ) ).toInt(), 8 );
   QCOMPARE( widget.value().toList().at( 0 ).toMap().value( QStringLiteral( "precision" ) ).toInt(), 5 );
   QCOMPARE( widget.value().toList().at( 0 ).toMap().value( QStringLiteral( "input" ) ).toString(), QString() );
   QCOMPARE( widget.value().toList().at( 0 ).toMap().value( QStringLiteral( "aggregate" ) ).toString(), QString() );
   QCOMPARE( widget.value().toList().at( 0 ).toMap().value( QStringLiteral( "delimiter" ) ).toString(), QString() );
   QCOMPARE( widget.value().toList().at( 1 ).toMap().value( QStringLiteral( "name" ) ).toString(), QStringLiteral( "n2" ) );
-  QCOMPARE( widget.value().toList().at( 1 ).toMap().value( QStringLiteral( "type" ) ).toInt(), static_cast< int >( QMetaType::Type::QString ) );
+  QCOMPARE( widget.value().toList().at( 1 ).toMap().value( QStringLiteral( "type" ) ).toInt(), static_cast< int >( QVariant::String ) );
   QCOMPARE( widget.value().toList().at( 1 ).toMap().value( QStringLiteral( "input" ) ).toString(), QStringLiteral( "'abc' || \"def\"" ) );
   QCOMPARE( widget.value().toList().at( 1 ).toMap().value( QStringLiteral( "aggregate" ) ).toString(), QStringLiteral( "concatenate" ) );
   QCOMPARE( widget.value().toList().at( 1 ).toMap().value( QStringLiteral( "delimiter" ) ).toString(), QStringLiteral( "|" ) );
@@ -9054,12 +8424,12 @@ void TestProcessingGui::testAggregateWrapper()
 
     QVariantMap map;
     map.insert( QStringLiteral( "name" ), QStringLiteral( "n" ) );
-    map.insert( QStringLiteral( "type" ), static_cast< int >( QMetaType::Type::Double ) );
+    map.insert( QStringLiteral( "type" ), static_cast< int >( QVariant::Double ) );
     map.insert( QStringLiteral( "length" ), 8 );
     map.insert( QStringLiteral( "precision" ), 5 );
     QVariantMap map2;
     map2.insert( QStringLiteral( "name" ), QStringLiteral( "n2" ) );
-    map2.insert( QStringLiteral( "type" ), static_cast< int >( QMetaType::Type::QString ) );
+    map2.insert( QStringLiteral( "type" ), static_cast< int >( QVariant::String ) );
     map2.insert( QStringLiteral( "input" ), QStringLiteral( "'abc' || \"def\"" ) );
     map2.insert( QStringLiteral( "aggregate" ), QStringLiteral( "concatenate" ) );
     map2.insert( QStringLiteral( "delimiter" ), QStringLiteral( "|" ) );
@@ -9068,14 +8438,14 @@ void TestProcessingGui::testAggregateWrapper()
     wrapper.setWidgetValue( QVariantList() << map << map2, context );
     QCOMPARE( spy.count(), 1 );
     QCOMPARE( wrapper.widgetValue().toList().at( 0 ).toMap().value( QStringLiteral( "name" ) ).toString(), QStringLiteral( "n" ) );
-    QCOMPARE( wrapper.widgetValue().toList().at( 0 ).toMap().value( QStringLiteral( "type" ) ).toInt(), static_cast< int >( QMetaType::Type::Double ) );
+    QCOMPARE( wrapper.widgetValue().toList().at( 0 ).toMap().value( QStringLiteral( "type" ) ).toInt(), static_cast< int >( QVariant::Double ) );
     QCOMPARE( wrapper.widgetValue().toList().at( 0 ).toMap().value( QStringLiteral( "length" ) ).toInt(), 8 );
     QCOMPARE( wrapper.widgetValue().toList().at( 0 ).toMap().value( QStringLiteral( "precision" ) ).toInt(), 5 );
     QCOMPARE( wrapper.widgetValue().toList().at( 0 ).toMap().value( QStringLiteral( "input" ) ).toString(), QString() );
     QCOMPARE( wrapper.widgetValue().toList().at( 0 ).toMap().value( QStringLiteral( "aggregate" ) ).toString(), QString() );
     QCOMPARE( wrapper.widgetValue().toList().at( 0 ).toMap().value( QStringLiteral( "delimiter" ) ).toString(), QString() );
     QCOMPARE( wrapper.widgetValue().toList().at( 1 ).toMap().value( QStringLiteral( "name" ) ).toString(), QStringLiteral( "n2" ) );
-    QCOMPARE( wrapper.widgetValue().toList().at( 1 ).toMap().value( QStringLiteral( "type" ) ).toInt(), static_cast< int >( QMetaType::Type::QString ) );
+    QCOMPARE( wrapper.widgetValue().toList().at( 1 ).toMap().value( QStringLiteral( "type" ) ).toInt(), static_cast< int >( QVariant::String ) );
     QCOMPARE( wrapper.widgetValue().toList().at( 1 ).toMap().value( QStringLiteral( "input" ) ).toString(), QStringLiteral( "'abc' || \"def\"" ) );
     QCOMPARE( wrapper.widgetValue().toList().at( 1 ).toMap().value( QStringLiteral( "aggregate" ) ).toString(), QStringLiteral( "concatenate" ) );
     QCOMPARE( wrapper.widgetValue().toList().at( 1 ).toMap().value( QStringLiteral( "delimiter" ) ).toString(), QStringLiteral( "|" ) );
@@ -9185,8 +8555,8 @@ void TestProcessingGui::testAggregateWrapper()
   std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "aggregates" ), context, widgetContext );
   std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) ); // should default to mandatory
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
 
   // using a parameter definition as initial values
   QgsProcessingParameterAggregate mapParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), QStringLiteral( "parent" ) );
@@ -9194,17 +8564,17 @@ void TestProcessingGui::testAggregateWrapper()
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagOptional ) );
+  QVERIFY( !( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced ) );
   QCOMPARE( static_cast< QgsProcessingParameterAggregate * >( def.get() )->parentLayerParameterName(), QStringLiteral( "parent" ) );
-  mapParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
+  mapParam.setFlags( QgsProcessingParameterDefinition::FlagAdvanced | QgsProcessingParameterDefinition::FlagOptional );
   mapParam.setParentLayerParameterName( QString() );
   widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "aggregates" ), context, widgetContext, &mapParam );
   def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
   QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
   QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagOptional );
+  QVERIFY( def->flags() & QgsProcessingParameterDefinition::FlagAdvanced );
   QVERIFY( static_cast< QgsProcessingParameterAggregate * >( def.get() )->parentLayerParameterName().isEmpty() );
 }
 
@@ -9217,13 +8587,13 @@ void TestProcessingGui::testOutputDefinitionWidget()
   QSignalSpy changedSpy( &panel, &QgsProcessingLayerOutputDestinationWidget::destinationChanged );
 
   QVariant v = panel.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QgsProcessing::TEMPORARY_OUTPUT );
   QVERIFY( !panel.outputIsSkipped() );
 
   panel.setValue( QgsProcessing::TEMPORARY_OUTPUT );
   v = panel.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().createOptions.value( QStringLiteral( "fileEncoding" ) ).toString(), QStringLiteral( "UTF-8" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QgsProcessing::TEMPORARY_OUTPUT );
   QVERIFY( !panel.outputIsSkipped() );
@@ -9240,13 +8610,13 @@ void TestProcessingGui::testOutputDefinitionWidget()
   QCOMPARE( skipSpy.count(), 0 );
   QCOMPARE( changedSpy.count(), 0 );
   v = panel.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().createOptions.value( QStringLiteral( "fileEncoding" ) ).toString(), QStringLiteral( "utf8" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QgsProcessing::TEMPORARY_OUTPUT );
 
   panel.setValue( QStringLiteral( "memory:" ) );
   v = panel.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().createOptions.value( QStringLiteral( "fileEncoding" ) ).toString(), QStringLiteral( "utf8" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QgsProcessing::TEMPORARY_OUTPUT );
   QVERIFY( !panel.outputIsSkipped() );
@@ -9261,7 +8631,7 @@ void TestProcessingGui::testOutputDefinitionWidget()
   QCOMPARE( skipSpy.count(), 0 );
   QCOMPARE( changedSpy.count(), 0 );
   v = panel.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().createOptions.value( QStringLiteral( "fileEncoding" ) ).toString(), QStringLiteral( "utf8" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QgsProcessing::TEMPORARY_OUTPUT );
 
@@ -9269,7 +8639,7 @@ void TestProcessingGui::testOutputDefinitionWidget()
   QCOMPARE( skipSpy.count(), 0 );
   QCOMPARE( changedSpy.count(), 1 );
   v = panel.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().createOptions.value( QStringLiteral( "fileEncoding" ) ).toString(), QStringLiteral( "utf8" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QStringLiteral( "ogr:dbname='/me/a.gpkg' table=\"d\" (geom) sql=''" ) );
   QVERIFY( !panel.outputIsSkipped() );
@@ -9279,7 +8649,7 @@ void TestProcessingGui::testOutputDefinitionWidget()
 
   panel.setValue( QStringLiteral( "postgis:dbname='oraclesux' host=10.1.1.221 port=5432 user='qgis' password='qgis' table=\"stufff\".\"output\" (the_geom) sql=" ) );
   v = panel.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().createOptions.value( QStringLiteral( "fileEncoding" ) ).toString(), QStringLiteral( "utf8" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QStringLiteral( "postgis:dbname='oraclesux' host=10.1.1.221 port=5432 user='qgis' password='qgis' table=\"stufff\".\"output\" (the_geom) sql=" ) );
   QVERIFY( !panel.outputIsSkipped() );
@@ -9291,7 +8661,7 @@ void TestProcessingGui::testOutputDefinitionWidget()
 
   panel.setValue( QStringLiteral( "/home/me/test.shp" ) );
   v = panel.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().createOptions.value( QStringLiteral( "fileEncoding" ) ).toString(), QStringLiteral( "utf8" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QStringLiteral( "/home/me/test.shp" ) );
   QVERIFY( !panel.outputIsSkipped() );
@@ -9308,12 +8678,12 @@ void TestProcessingGui::testOutputDefinitionWidget()
   settings.setValue( QStringLiteral( "/Processing/Configuration/OUTPUTS_FOLDER" ), TEST_DATA_DIR );
   panel.setValue( QStringLiteral( "test.shp" ) );
   v = panel.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().createOptions.value( QStringLiteral( "fileEncoding" ) ).toString(), QStringLiteral( "utf8" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QString( TEST_DATA_DIR + QStringLiteral( "/test.shp" ) ) );
 
   // optional, test skipping
-  sink.setFlags( sink.flags() | Qgis::ProcessingParameterFlag::Optional );
+  sink.setFlags( sink.flags() | QgsProcessingParameterDefinition::FlagOptional );
   sink.setCreateByDefault( true );
   QgsProcessingLayerOutputDestinationWidget panel2( &sink, false );
 
@@ -9321,13 +8691,13 @@ void TestProcessingGui::testOutputDefinitionWidget()
   QSignalSpy changedSpy2( &panel2, &QgsProcessingLayerOutputDestinationWidget::destinationChanged );
 
   v = panel2.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QgsProcessing::TEMPORARY_OUTPUT );
   QVERIFY( !panel2.outputIsSkipped() );
 
   panel2.setValue( QgsProcessing::TEMPORARY_OUTPUT );
   v = panel2.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().createOptions.value( QStringLiteral( "fileEncoding" ) ).toString(), QStringLiteral( "UTF-8" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QgsProcessing::TEMPORARY_OUTPUT );
   QVERIFY( !panel2.outputIsSkipped() );
@@ -9359,7 +8729,7 @@ void TestProcessingGui::testOutputDefinitionWidget()
 
   panel3.setValue( QgsProcessing::TEMPORARY_OUTPUT );
   v = panel3.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().createOptions.value( QStringLiteral( "fileEncoding" ) ).toString(), QStringLiteral( "UTF-8" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QgsProcessing::TEMPORARY_OUTPUT );
   QVERIFY( !panel3.outputIsSkipped() );
@@ -9390,7 +8760,7 @@ void TestProcessingGui::testOutputDefinitionWidget()
 
   panel3.setValue( def );
   v = panel3.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QVERIFY( v.value< QgsProcessingOutputLayerDefinition>().useRemapping() );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().remappingDefinition().fieldMap().size(), 2 );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().remappingDefinition().fieldMap().value( QStringLiteral( "field1" ) ), QgsProperty::fromField( QStringLiteral( "source1" ) ) );
@@ -9398,7 +8768,7 @@ void TestProcessingGui::testOutputDefinitionWidget()
 
   panel3.setValue( QStringLiteral( "other.shp" ) );
   v = panel3.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QVERIFY( !v.value< QgsProcessingOutputLayerDefinition>().useRemapping() );
 }
 
@@ -9411,13 +8781,13 @@ void TestProcessingGui::testOutputDefinitionWidgetVectorOut()
   QSignalSpy changedSpy( &panel, &QgsProcessingLayerOutputDestinationWidget::destinationChanged );
 
   QVariant v = panel.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QgsProcessing::TEMPORARY_OUTPUT );
   QVERIFY( !panel.outputIsSkipped() );
 
   panel.setValue( QgsProcessing::TEMPORARY_OUTPUT );
   v = panel.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().createOptions.value( QStringLiteral( "fileEncoding" ) ).toString(), QStringLiteral( "UTF-8" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QgsProcessing::TEMPORARY_OUTPUT );
   QVERIFY( !panel.outputIsSkipped() );
@@ -9429,7 +8799,7 @@ void TestProcessingGui::testOutputDefinitionWidgetVectorOut()
 
   panel.setValue( QStringLiteral( "memory:" ) );
   v = panel.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().createOptions.value( QStringLiteral( "fileEncoding" ) ).toString(), QStringLiteral( "UTF-8" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QgsProcessing::TEMPORARY_OUTPUT );
   QVERIFY( !panel.outputIsSkipped() );
@@ -9444,7 +8814,7 @@ void TestProcessingGui::testOutputDefinitionWidgetVectorOut()
   QCOMPARE( skipSpy.count(), 0 );
   QCOMPARE( changedSpy.count(), 1 );
   v = panel.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().createOptions.value( QStringLiteral( "fileEncoding" ) ).toString(), QStringLiteral( "UTF-8" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QStringLiteral( "ogr:dbname='/me/a.gpkg' table=\"d\" (geom) sql=''" ) );
   QVERIFY( !panel.outputIsSkipped() );
@@ -9454,7 +8824,7 @@ void TestProcessingGui::testOutputDefinitionWidgetVectorOut()
 
   panel.setValue( QStringLiteral( "postgis:dbname='oraclesux' host=10.1.1.221 port=5432 user='qgis' password='qgis' table=\"stufff\".\"output\" (the_geom) sql=" ) );
   v = panel.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().createOptions.value( QStringLiteral( "fileEncoding" ) ).toString(), QStringLiteral( "UTF-8" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QStringLiteral( "postgis:dbname='oraclesux' host=10.1.1.221 port=5432 user='qgis' password='qgis' table=\"stufff\".\"output\" (the_geom) sql=" ) );
   QVERIFY( !panel.outputIsSkipped() );
@@ -9466,7 +8836,7 @@ void TestProcessingGui::testOutputDefinitionWidgetVectorOut()
 
   panel.setValue( QStringLiteral( "/home/me/test.shp" ) );
   v = panel.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().createOptions.value( QStringLiteral( "fileEncoding" ) ).toString(), QStringLiteral( "UTF-8" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QStringLiteral( "/home/me/test.shp" ) );
   QVERIFY( !panel.outputIsSkipped() );
@@ -9483,12 +8853,12 @@ void TestProcessingGui::testOutputDefinitionWidgetVectorOut()
   settings.setValue( QStringLiteral( "/Processing/Configuration/OUTPUTS_FOLDER" ), TEST_DATA_DIR );
   panel.setValue( QStringLiteral( "test.shp" ) );
   v = panel.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().createOptions.value( QStringLiteral( "fileEncoding" ) ).toString(), QStringLiteral( "UTF-8" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QString( TEST_DATA_DIR + QStringLiteral( "/test.shp" ) ) );
 
   // optional, test skipping
-  vector.setFlags( vector.flags() | Qgis::ProcessingParameterFlag::Optional );
+  vector.setFlags( vector.flags() | QgsProcessingParameterDefinition::FlagOptional );
   vector.setCreateByDefault( true );
   QgsProcessingLayerOutputDestinationWidget panel2( &vector, false );
 
@@ -9496,13 +8866,13 @@ void TestProcessingGui::testOutputDefinitionWidgetVectorOut()
   QSignalSpy changedSpy2( &panel2, &QgsProcessingLayerOutputDestinationWidget::destinationChanged );
 
   v = panel2.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QgsProcessing::TEMPORARY_OUTPUT );
   QVERIFY( !panel2.outputIsSkipped() );
 
   panel2.setValue( QgsProcessing::TEMPORARY_OUTPUT );
   v = panel2.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().createOptions.value( QStringLiteral( "fileEncoding" ) ).toString(), QStringLiteral( "UTF-8" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QgsProcessing::TEMPORARY_OUTPUT );
   QVERIFY( !panel2.outputIsSkipped() );
@@ -9534,7 +8904,7 @@ void TestProcessingGui::testOutputDefinitionWidgetVectorOut()
 
   panel3.setValue( QgsProcessing::TEMPORARY_OUTPUT );
   v = panel3.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().createOptions.value( QStringLiteral( "fileEncoding" ) ).toString(), QStringLiteral( "UTF-8" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QgsProcessing::TEMPORARY_OUTPUT );
   QVERIFY( !panel3.outputIsSkipped() );
@@ -9564,13 +8934,13 @@ void TestProcessingGui::testOutputDefinitionWidgetRasterOut()
   QSignalSpy changedSpy( &panel, &QgsProcessingLayerOutputDestinationWidget::destinationChanged );
 
   QVariant v = panel.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QgsProcessing::TEMPORARY_OUTPUT );
   QVERIFY( !panel.outputIsSkipped() );
 
   panel.setValue( QgsProcessing::TEMPORARY_OUTPUT );
   v = panel.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().createOptions.value( QStringLiteral( "fileEncoding" ) ).toString(), QStringLiteral( "UTF-8" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QgsProcessing::TEMPORARY_OUTPUT );
   QVERIFY( !panel.outputIsSkipped() );
@@ -9584,7 +8954,7 @@ void TestProcessingGui::testOutputDefinitionWidgetRasterOut()
   QCOMPARE( skipSpy.count(), 0 );
   QCOMPARE( changedSpy.count(), 1 );
   v = panel.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().createOptions.value( QStringLiteral( "fileEncoding" ) ).toString(), QStringLiteral( "UTF-8" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QStringLiteral( "/home/me/test.tif" ) );
   QVERIFY( !panel.outputIsSkipped() );
@@ -9596,12 +8966,12 @@ void TestProcessingGui::testOutputDefinitionWidgetRasterOut()
   settings.setValue( QStringLiteral( "/Processing/Configuration/OUTPUTS_FOLDER" ), TEST_DATA_DIR );
   panel.setValue( QStringLiteral( "test.tif" ) );
   v = panel.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().createOptions.value( QStringLiteral( "fileEncoding" ) ).toString(), QStringLiteral( "UTF-8" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QString( TEST_DATA_DIR + QStringLiteral( "/test.tif" ) ) );
 
   // optional, test skipping
-  raster.setFlags( raster.flags() | Qgis::ProcessingParameterFlag::Optional );
+  raster.setFlags( raster.flags() | QgsProcessingParameterDefinition::FlagOptional );
   raster.setCreateByDefault( true );
   QgsProcessingLayerOutputDestinationWidget panel2( &raster, false );
 
@@ -9609,13 +8979,13 @@ void TestProcessingGui::testOutputDefinitionWidgetRasterOut()
   QSignalSpy changedSpy2( &panel2, &QgsProcessingLayerOutputDestinationWidget::destinationChanged );
 
   v = panel2.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QgsProcessing::TEMPORARY_OUTPUT );
   QVERIFY( !panel2.outputIsSkipped() );
 
   panel2.setValue( QgsProcessing::TEMPORARY_OUTPUT );
   v = panel2.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().createOptions.value( QStringLiteral( "fileEncoding" ) ).toString(), QStringLiteral( "UTF-8" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QgsProcessing::TEMPORARY_OUTPUT );
   QVERIFY( !panel2.outputIsSkipped() );
@@ -9647,7 +9017,7 @@ void TestProcessingGui::testOutputDefinitionWidgetRasterOut()
 
   panel3.setValue( QgsProcessing::TEMPORARY_OUTPUT );
   v = panel3.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().createOptions.value( QStringLiteral( "fileEncoding" ) ).toString(), QStringLiteral( "UTF-8" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QgsProcessing::TEMPORARY_OUTPUT );
   QVERIFY( !panel3.outputIsSkipped() );
@@ -9677,13 +9047,13 @@ void TestProcessingGui::testOutputDefinitionWidgetPointCloudOut()
   QSignalSpy changedSpy( &panel, &QgsProcessingLayerOutputDestinationWidget::destinationChanged );
 
   QVariant v = panel.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QgsProcessing::TEMPORARY_OUTPUT );
   QVERIFY( !panel.outputIsSkipped() );
 
   panel.setValue( QgsProcessing::TEMPORARY_OUTPUT );
   v = panel.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().createOptions.value( QStringLiteral( "fileEncoding" ) ).toString(), QStringLiteral( "UTF-8" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QgsProcessing::TEMPORARY_OUTPUT );
   QVERIFY( !panel.outputIsSkipped() );
@@ -9697,7 +9067,7 @@ void TestProcessingGui::testOutputDefinitionWidgetPointCloudOut()
   QCOMPARE( skipSpy.count(), 0 );
   QCOMPARE( changedSpy.count(), 1 );
   v = panel.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().createOptions.value( QStringLiteral( "fileEncoding" ) ).toString(), QStringLiteral( "UTF-8" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QStringLiteral( "/home/me/test.las" ) );
   QVERIFY( !panel.outputIsSkipped() );
@@ -9709,12 +9079,12 @@ void TestProcessingGui::testOutputDefinitionWidgetPointCloudOut()
   settings.setValue( QStringLiteral( "/Processing/Configuration/OUTPUTS_FOLDER" ), TEST_DATA_DIR );
   panel.setValue( QStringLiteral( "test.las" ) );
   v = panel.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().createOptions.value( QStringLiteral( "fileEncoding" ) ).toString(), QStringLiteral( "UTF-8" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QString( TEST_DATA_DIR + QStringLiteral( "/test.las" ) ) );
 
   // optional, test skipping
-  pointCloud.setFlags( pointCloud.flags() | Qgis::ProcessingParameterFlag::Optional );
+  pointCloud.setFlags( pointCloud.flags() | QgsProcessingParameterDefinition::FlagOptional );
   pointCloud.setCreateByDefault( true );
   QgsProcessingLayerOutputDestinationWidget panel2( &pointCloud, false );
 
@@ -9722,13 +9092,13 @@ void TestProcessingGui::testOutputDefinitionWidgetPointCloudOut()
   QSignalSpy changedSpy2( &panel2, &QgsProcessingLayerOutputDestinationWidget::destinationChanged );
 
   v = panel2.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QgsProcessing::TEMPORARY_OUTPUT );
   QVERIFY( !panel2.outputIsSkipped() );
 
   panel2.setValue( QgsProcessing::TEMPORARY_OUTPUT );
   v = panel2.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().createOptions.value( QStringLiteral( "fileEncoding" ) ).toString(), QStringLiteral( "UTF-8" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QgsProcessing::TEMPORARY_OUTPUT );
   QVERIFY( !panel2.outputIsSkipped() );
@@ -9760,7 +9130,7 @@ void TestProcessingGui::testOutputDefinitionWidgetPointCloudOut()
 
   panel3.setValue( QgsProcessing::TEMPORARY_OUTPUT );
   v = panel3.value();
-  QCOMPARE( v.userType(), qMetaTypeId<QgsProcessingOutputLayerDefinition>() );
+  QCOMPARE( v.userType(), QMetaType::type( "QgsProcessingOutputLayerDefinition" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().createOptions.value( QStringLiteral( "fileEncoding" ) ).toString(), QStringLiteral( "UTF-8" ) );
   QCOMPARE( v.value< QgsProcessingOutputLayerDefinition>().sink.staticValue().toString(), QgsProcessing::TEMPORARY_OUTPUT );
   QVERIFY( !panel3.outputIsSkipped() );
@@ -9820,7 +9190,7 @@ void TestProcessingGui::testOutputDefinitionWidgetFolder()
   QCOMPARE( v.toString(), QString( TEST_DATA_DIR + QStringLiteral( "/mystuff" ) ) );
 
   // optional, test skipping
-  folder.setFlags( folder.flags() | Qgis::ProcessingParameterFlag::Optional );
+  folder.setFlags( folder.flags() | QgsProcessingParameterDefinition::FlagOptional );
   folder.setCreateByDefault( true );
   QgsProcessingLayerOutputDestinationWidget panel2( &folder, false );
 
@@ -9921,7 +9291,7 @@ void TestProcessingGui::testOutputDefinitionWidgetFileOut()
   QCOMPARE( v.toString(), QString( TEST_DATA_DIR + QStringLiteral( "/test.tif" ) ) );
 
   // optional, test skipping
-  file.setFlags( file.flags() | Qgis::ProcessingParameterFlag::Optional );
+  file.setFlags( file.flags() | QgsProcessingParameterDefinition::FlagOptional );
   file.setCreateByDefault( true );
   QgsProcessingLayerOutputDestinationWidget panel2( &file, false );
 
@@ -9997,31 +9367,22 @@ void TestProcessingGui::testFeatureSourceOptionsWidget()
   QCOMPARE( spy.count(), 2 );
   QCOMPARE( w.featureLimit(), -1 );
 
-  w.setGeometryCheckMethod( false, Qgis::InvalidGeometryCheck::SkipInvalid );
+  w.setGeometryCheckMethod( false, QgsFeatureRequest::GeometrySkipInvalid );
   QCOMPARE( spy.count(), 2 );
   QVERIFY( !w.isOverridingInvalidGeometryCheck() );
-  w.setGeometryCheckMethod( true, Qgis::InvalidGeometryCheck::SkipInvalid );
+  w.setGeometryCheckMethod( true, QgsFeatureRequest::GeometrySkipInvalid );
   QCOMPARE( spy.count(), 3 );
   QVERIFY( w.isOverridingInvalidGeometryCheck() );
-  QCOMPARE( w.geometryCheckMethod(), Qgis::InvalidGeometryCheck::SkipInvalid );
-  w.setGeometryCheckMethod( true, Qgis::InvalidGeometryCheck::SkipInvalid );
+  QCOMPARE( w.geometryCheckMethod(), QgsFeatureRequest::GeometrySkipInvalid );
+  w.setGeometryCheckMethod( true, QgsFeatureRequest::GeometrySkipInvalid );
   QCOMPARE( spy.count(), 3 );
-  w.setGeometryCheckMethod( true, Qgis::InvalidGeometryCheck::AbortOnInvalid );
+  w.setGeometryCheckMethod( true, QgsFeatureRequest::GeometryAbortOnInvalid );
   QCOMPARE( spy.count(), 4 );
   QVERIFY( w.isOverridingInvalidGeometryCheck() );
-  QCOMPARE( w.geometryCheckMethod(), Qgis::InvalidGeometryCheck::AbortOnInvalid );
-  w.setGeometryCheckMethod( false, Qgis::InvalidGeometryCheck::AbortOnInvalid );
+  QCOMPARE( w.geometryCheckMethod(), QgsFeatureRequest::GeometryAbortOnInvalid );
+  w.setGeometryCheckMethod( false, QgsFeatureRequest::GeometryAbortOnInvalid );
   QVERIFY( !w.isOverridingInvalidGeometryCheck() );
   QCOMPARE( spy.count(), 5 );
-
-  w.setFilterExpression( QStringLiteral( "name='test'" ) );
-  QCOMPARE( spy.count(), 6 );
-  QCOMPARE( w.filterExpression(), QStringLiteral( "name='test'" ) );
-  w.setFilterExpression( QStringLiteral( "name='test'" ) );
-  QCOMPARE( spy.count(), 6 );
-  w.setFilterExpression( QString() );
-  QCOMPARE( spy.count(), 7 );
-  QCOMPARE( w.filterExpression(), QString() );
 }
 
 void TestProcessingGui::testVectorOutWrapper()
@@ -10061,7 +9422,7 @@ void TestProcessingGui::testVectorOutWrapper()
     delete w;
 
     // optional
-    QgsProcessingParameterVectorDestination param2( QStringLiteral( "vector" ), QStringLiteral( "vector" ), Qgis::ProcessingSourceType::Vector, QVariant(), true );
+    QgsProcessingParameterVectorDestination param2( QStringLiteral( "vector" ), QStringLiteral( "vector" ), QgsProcessing::TypeVector, QVariant(), true );
     QgsProcessingVectorDestinationWidgetWrapper wrapper3( &param2, type );
     w = wrapper3.createWrappedWidget( context );
 
@@ -10136,7 +9497,7 @@ void TestProcessingGui::testSinkWrapper()
     delete w;
 
     // optional
-    QgsProcessingParameterFeatureSink param2( QStringLiteral( "sink" ), QStringLiteral( "sink" ), Qgis::ProcessingSourceType::Vector, QVariant(), true );
+    QgsProcessingParameterFeatureSink param2( QStringLiteral( "sink" ), QStringLiteral( "sink" ), QgsProcessing::TypeVector, QVariant(), true );
     QgsProcessingFeatureSinkWidgetWrapper wrapper3( &param2, type );
     w = wrapper3.createWrappedWidget( context );
 
@@ -10457,9 +9818,6 @@ void TestProcessingGui::testDxfLayersWrapper()
   QVariantMap layerMap;
   layerMap["layer"] = "PointLayer";
   layerMap["attributeIndex"] = -1;
-  layerMap["overriddenLayerName"] = QString();
-  layerMap["buildDataDefinedBlocks"] = DEFAULT_DXF_DATA_DEFINED_BLOCKS;
-  layerMap["dataDefinedBlocksMaximumNumberOfClasses"] = -1;
   layerList.append( layerMap );
 
   QVERIFY( definition.checkValueIsAcceptable( layerList, &context ) );
@@ -10470,68 +9828,7 @@ void TestProcessingGui::testDxfLayersWrapper()
 
   QVERIFY( definition.checkValueIsAcceptable( value, &context ) );
   QString valueAsPythonString = definition.valueAsPythonString( value, context );
-  QCOMPARE( valueAsPythonString, QStringLiteral( "[{'layer': '%1','attributeIndex': -1,'overriddenLayerName': '','buildDataDefinedBlocks': True,'dataDefinedBlocksMaximumNumberOfClasses': -1}]" ).arg( vectorLayer->source() ) );
-}
-
-void TestProcessingGui::testAlignRasterLayersWrapper()
-{
-  QgsProcessingParameterAlignRasterLayers definition( QStringLiteral( "Raster layers" ) ) ;
-  QgsProcessingAlignRasterLayersWidgetWrapper wrapper;
-
-  std::unique_ptr<QWidget> w( wrapper.createWidget() );
-  QVERIFY( w );
-
-  QSignalSpy spy( &wrapper, &QgsProcessingTinInputLayersWidgetWrapper::widgetValueHasChanged );
-
-  QgsProcessingContext context;
-  QgsProject project;
-  context.setProject( &project );
-  QgsRasterLayer *rasterLayer = new QgsRasterLayer( QStringLiteral( TEST_DATA_DIR ) + "/raster/band1_byte_ct_epsg4326.tif", QStringLiteral( "raster" ) );
-  project.addMapLayer( rasterLayer );
-
-  QVariantList layerList;
-  QVariantMap layerMap;
-  layerMap["inputFile"] = rasterLayer->source();
-  layerMap["outputFile"] = "";
-  layerMap["resampleMethod"] = 1;
-  layerMap["rescale"] = false;
-  layerList.append( layerMap );
-
-  QVERIFY( definition.checkValueIsAcceptable( layerList, &context ) );
-  wrapper.setWidgetValue( layerList, context );
-  QCOMPARE( spy.count(), 1 );
-
-  QVariant value = wrapper.widgetValue();
-
-  QVERIFY( definition.checkValueIsAcceptable( value, &context ) );
-  QString valueAsPythonString = definition.valueAsPythonString( value, context );
-  QCOMPARE( valueAsPythonString, QStringLiteral( "[{'inputFile': '%1','outputFile': '%2','resampleMethod': 1,'rescale': False}]" ).arg( rasterLayer->source() ).arg( layerMap["outputFile"].toString() ) );
-}
-
-void TestProcessingGui::testRasterOptionsWrapper()
-{
-  QgsProcessingParameterString param( QStringLiteral( "string" ), QStringLiteral( "string" ) );
-  param.setMetadata( {{
-      QStringLiteral( "widget_wrapper" ), QVariantMap(
-      {{QStringLiteral( "widget_type" ), QStringLiteral( "rasteroptions" ) }}
-      )
-    }
-  } );
-
-  QgsProcessingContext context;
-  QgsProcessingRasterOptionsWidgetWrapper wrapper( &param );
-
-  std::unique_ptr<QWidget> w( wrapper.createWidget() );
-  QVERIFY( w );
-
-  QSignalSpy spy( &wrapper, &QgsProcessingRasterOptionsWidgetWrapper::widgetValueHasChanged );
-  wrapper.setWidgetValue( QStringLiteral( "TFW=YES" ), context );
-  QCOMPARE( spy.count(), 1 );
-  QCOMPARE( wrapper.widgetValue().toString(), QStringLiteral( "TFW=YES" ) );
-  wrapper.setWidgetValue( QStringLiteral( "TFW=YES TILED=YES" ), context );
-  QCOMPARE( wrapper.widgetValue().toString(), QStringLiteral( "TFW=YES|TILED=YES" ) );
-  wrapper.setWidgetValue( QStringLiteral( "TFW=YES|TILED=NO" ), context );
-  QCOMPARE( wrapper.widgetValue().toString(), QStringLiteral( "TFW=YES|TILED=NO" ) );
+  QCOMPARE( valueAsPythonString, QStringLiteral( "[{'layer': '%1','attributeIndex': -1}]" ).arg( vectorLayer->source() ) );
 }
 
 void TestProcessingGui::testMeshDatasetWrapperLayerInProject()
@@ -10650,7 +9947,7 @@ void TestProcessingGui::testMeshDatasetWrapperLayerInProject()
   QCOMPARE( timeSpy.count(), 3 );
 
   QVariant groupsValue = groupsWrapper.widgetValue();
-  QVERIFY( groupsValue.userType() == QMetaType::Type::QVariantList );
+  QVERIFY( groupsValue.type() == QVariant::List );
   QVariantList groupsList = groupsValue.toList();
   QCOMPARE( groupsList.count(), 1 );
   QCOMPARE( groupsList.at( 0 ).toInt(), 1 );
@@ -10680,7 +9977,7 @@ void TestProcessingGui::testMeshDatasetWrapperLayerInProject()
   QCOMPARE( timeSpy.count(), 4 ); //radioButtonDatasetGroupTimeStep already checked
 
   QVariant timeValue = timeWrapper.widgetValue();
-  QVERIFY( timeValue.userType() == QMetaType::Type::QVariantMap );
+  QVERIFY( timeValue.type() == QVariant::Map );
   QVariantMap timeValueMap = timeValue.toMap();
   QCOMPARE( timeValueMap[QStringLiteral( "type" )].toString(), QStringLiteral( "dataset-time-step" ) );
   pythonString = timeDefinition.valueAsPythonString( timeWrapper.widgetValue(), context );
@@ -10756,7 +10053,7 @@ void TestProcessingGui::testMeshDatasetWrapperLayerInProject()
 
   // parameter definition widget
   std::unique_ptr<QgsProcessingAbstractParameterDefinitionWidget> paramWidgetGroup( groupsWrapper.createParameterDefinitionWidget( context, widgetContext, &groupsDefinition, nullptr ) );
-  Qgis::ProcessingParameterFlags flags;
+  QgsProcessingParameterDefinition::Flags flags;
   std::unique_ptr<QgsProcessingParameterDefinition> paramDefGroup( paramWidgetGroup->createParameter( QStringLiteral( "my_param_name" ), QStringLiteral( "my_param_descr" ), flags ) );
   QVERIFY( paramDefGroup );
   QCOMPARE( paramDefGroup->name(), QStringLiteral( "my_param_name" ) );
@@ -11135,299 +10432,6 @@ void TestProcessingGui::testAnnotationLayerWrapper()
 
   // modeler wrapper
   testWrapper( QgsProcessingGui::Modeler );
-}
-
-void TestProcessingGui::testPointCloudAttributeWrapper()
-{
-  const QgsProcessingParameterDefinition *layerDef = new QgsProcessingParameterPointCloudLayer( "INPUT", QStringLiteral( "input" ), QVariant(), false );
-
-  auto testWrapper = [layerDef]( QgsProcessingGui::WidgetType type )
-  {
-    TestLayerWrapper layerWrapper( layerDef );
-    QgsProject p;
-    QgsPointCloudLayer *pcl = new QgsPointCloudLayer( QStringLiteral( TEST_DATA_DIR ) + "/point_clouds/copc/rgb.copc.laz", QStringLiteral( "x" ), QStringLiteral( "copc" ) );
-    p.addMapLayer( pcl );
-
-    QgsProcessingParameterPointCloudAttribute param( QStringLiteral( "attribute" ), QStringLiteral( "attribute" ), QVariant(), QStringLiteral( "INPUT" ) );
-
-    QgsProcessingPointCloudAttributeWidgetWrapper wrapper( &param, type );
-
-    QgsProcessingContext context;
-
-    QWidget *w = wrapper.createWrappedWidget( context );
-    ( void )w;
-    layerWrapper.setWidgetValue( QVariant::fromValue( pcl ), context );
-    wrapper.setParentLayerWrapperValue( &layerWrapper );
-
-    QSignalSpy spy( &wrapper, &QgsProcessingPointCloudAttributeWidgetWrapper::widgetValueHasChanged );
-    wrapper.setWidgetValue( QStringLiteral( "Red" ), context );
-    QCOMPARE( spy.count(), 1 );
-    QCOMPARE( wrapper.widgetValue().toString(),  QStringLiteral( "Red" ) );
-
-    switch ( type )
-    {
-      case QgsProcessingGui::Standard:
-      case QgsProcessingGui::Batch:
-        QCOMPARE( static_cast< QgsPointCloudAttributeComboBox * >( wrapper.wrappedWidget() )->currentAttribute(),  QStringLiteral( "Red" ) );
-        break;
-
-      case QgsProcessingGui::Modeler:
-        QCOMPARE( static_cast< QLineEdit * >( wrapper.wrappedWidget() )->text(),  QStringLiteral( "Red" ) );
-        break;
-    }
-
-    wrapper.setWidgetValue( QString(), context );
-    QCOMPARE( spy.count(), 2 );
-    QVERIFY( wrapper.widgetValue().toString().isEmpty() );
-
-    delete w;
-
-    // optional
-    param = QgsProcessingParameterPointCloudAttribute( QStringLiteral( "attribute" ), QStringLiteral( "attribute" ), QVariant(), QStringLiteral( "INPUT" ), false, true );
-
-    QgsProcessingPointCloudAttributeWidgetWrapper wrapper2( &param, type );
-
-    w = wrapper2.createWrappedWidget( context );
-    layerWrapper.setWidgetValue( QVariant::fromValue( pcl ), context );
-    wrapper2.setParentLayerWrapperValue( &layerWrapper );
-    QSignalSpy spy2( &wrapper2, &QgsProcessingPointCloudAttributeWidgetWrapper::widgetValueHasChanged );
-    wrapper2.setWidgetValue( QStringLiteral( "Intensity" ), context );
-    QCOMPARE( spy2.count(), 1 );
-    QCOMPARE( wrapper2.widgetValue().toString(),  QStringLiteral( "Intensity" ) );
-
-    wrapper2.setWidgetValue( QString(), context );
-    QCOMPARE( spy2.count(), 2 );
-    QVERIFY( wrapper2.widgetValue().toString().isEmpty() );
-
-    switch ( type )
-    {
-      case QgsProcessingGui::Standard:
-      case QgsProcessingGui::Batch:
-        QCOMPARE( static_cast< QgsPointCloudAttributeComboBox * >( wrapper2.wrappedWidget() )->currentAttribute(), QString() );
-        break;
-
-      case QgsProcessingGui::Modeler:
-        QCOMPARE( static_cast< QLineEdit * >( wrapper2.wrappedWidget() )->text(),  QString() );
-        break;
-    }
-
-    QLabel *l = wrapper.createWrappedLabel();
-    if ( wrapper.type() != QgsProcessingGui::Batch )
-    {
-      QVERIFY( l );
-      QCOMPARE( l->text(), QStringLiteral( "attribute [optional]" ) );
-      QCOMPARE( l->toolTip(), param.toolTip() );
-      delete l;
-    }
-    else
-    {
-      QVERIFY( !l );
-    }
-
-    // check signal
-    switch ( type )
-    {
-      case QgsProcessingGui::Standard:
-      case QgsProcessingGui::Batch:
-        static_cast< QgsPointCloudAttributeComboBox * >( wrapper2.wrappedWidget() )->setAttribute( QStringLiteral( "Red" ) );
-        break;
-
-      case QgsProcessingGui::Modeler:
-        static_cast< QLineEdit * >( wrapper2.wrappedWidget() )->setText( QStringLiteral( "Red" ) );
-        break;
-    }
-
-    QCOMPARE( spy2.count(), 3 );
-
-    switch ( type )
-    {
-      case QgsProcessingGui::Standard:
-      case QgsProcessingGui::Batch:
-        QCOMPARE( wrapper2.mComboBox->layer(), pcl );
-        break;
-
-      case QgsProcessingGui::Modeler:
-        break;
-    }
-
-    // should not be owned by wrapper
-    QVERIFY( !wrapper2.mParentLayer.get() );
-    layerWrapper.setWidgetValue( QVariant(), context );
-    wrapper2.setParentLayerWrapperValue( &layerWrapper );
-
-    switch ( type )
-    {
-      case QgsProcessingGui::Standard:
-      case QgsProcessingGui::Batch:
-        QVERIFY( !wrapper2.mComboBox->layer() );
-        break;
-
-      case QgsProcessingGui::Modeler:
-        break;
-    }
-
-    layerWrapper.setWidgetValue( pcl->id(), context );
-    wrapper2.setParentLayerWrapperValue( &layerWrapper );
-    switch ( type )
-    {
-      case QgsProcessingGui::Standard:
-      case QgsProcessingGui::Batch:
-        QVERIFY( !wrapper2.mComboBox->layer() );
-        break;
-
-      case QgsProcessingGui::Modeler:
-        break;
-    }
-    QVERIFY( !wrapper2.mParentLayer.get() );
-
-    // with project layer
-    context.setProject( &p );
-    TestProcessingContextGenerator generator( context );
-    wrapper2.registerProcessingContextGenerator( &generator );
-
-    layerWrapper.setWidgetValue( pcl->id(), context );
-    wrapper2.setParentLayerWrapperValue( &layerWrapper );
-    switch ( type )
-    {
-      case QgsProcessingGui::Standard:
-      case QgsProcessingGui::Batch:
-        QCOMPARE( wrapper2.mComboBox->layer(), pcl );
-        break;
-
-      case QgsProcessingGui::Modeler:
-        break;
-    }
-    QVERIFY( !wrapper2.mParentLayer.get() );
-
-    // non-project layer
-    QString pointCloudFileName = TEST_DATA_DIR + QStringLiteral( "/point_clouds/copc/sunshine-coast.copc.laz" );
-    layerWrapper.setWidgetValue( pointCloudFileName, context );
-    wrapper2.setParentLayerWrapperValue( &layerWrapper );
-    switch ( type )
-    {
-      case QgsProcessingGui::Standard:
-      case QgsProcessingGui::Batch:
-        QCOMPARE( wrapper2.mComboBox->layer()->publicSource(), pointCloudFileName );
-        break;
-
-      case QgsProcessingGui::Modeler:
-        break;
-    }
-
-    // must be owned by wrapper, or layer may be deleted while still required by wrapper
-    QCOMPARE( wrapper2.mParentLayer->publicSource(), pointCloudFileName );
-
-    delete w;
-
-    // multiple
-    param = QgsProcessingParameterPointCloudAttribute( QStringLiteral( "attribute" ), QStringLiteral( "attribute" ), QVariant(), QStringLiteral( "INPUT" ), true, true );
-
-    QgsProcessingPointCloudAttributeWidgetWrapper wrapper3( &param, type );
-
-    w = wrapper3.createWrappedWidget( context );
-    layerWrapper.setWidgetValue( QVariant::fromValue( pcl ), context );
-    wrapper3.setParentLayerWrapperValue( &layerWrapper );
-    QSignalSpy spy3( &wrapper3, &QgsProcessingPointCloudAttributeWidgetWrapper::widgetValueHasChanged );
-    wrapper3.setWidgetValue( QStringLiteral( "Intensity" ), context );
-    QCOMPARE( spy3.count(), 1 );
-    QCOMPARE( wrapper3.widgetValue().toStringList(), QStringList() << QStringLiteral( "Intensity" ) );
-
-    wrapper3.setWidgetValue( QString(), context );
-    QCOMPARE( spy3.count(), 2 );
-    QVERIFY( wrapper3.widgetValue().toString().isEmpty() );
-
-    wrapper3.setWidgetValue( QStringLiteral( "Intensity;Red" ), context );
-    QCOMPARE( spy3.count(), 3 );
-    QCOMPARE( wrapper3.widgetValue().toStringList(), QStringList() << QStringLiteral( "Intensity" ) << QStringLiteral( "Red" ) );
-
-    delete w;
-
-    // default to all fields
-    param = QgsProcessingParameterPointCloudAttribute( QStringLiteral( "attribute" ), QStringLiteral( "attribute" ), QVariant(), QStringLiteral( "INPUT" ), true, true );
-    param.setDefaultToAllAttributes( true );
-    QgsProcessingPointCloudAttributeWidgetWrapper wrapper4( &param, type );
-    w = wrapper4.createWrappedWidget( context );
-    wrapper4.setParentLayerWrapperValue( &layerWrapper );
-    switch ( type )
-    {
-      case QgsProcessingGui::Standard:
-      case QgsProcessingGui::Batch:
-        QCOMPARE( wrapper4.widgetValue().toList(), QVariantList()
-                  << QStringLiteral( "X" )
-                  << QStringLiteral( "Y" )
-                  << QStringLiteral( "Z" )
-                  << QStringLiteral( "Intensity" )
-                  << QStringLiteral( "ReturnNumber" )
-                  << QStringLiteral( "NumberOfReturns" )
-                  << QStringLiteral( "ScanDirectionFlag" )
-                  << QStringLiteral( "EdgeOfFlightLine" )
-                  << QStringLiteral( "Classification" )
-                  << QStringLiteral( "ScanAngleRank" )
-                  << QStringLiteral( "UserData" )
-                  << QStringLiteral( "PointSourceId" )
-                  << QStringLiteral( "Synthetic" )
-                  << QStringLiteral( "KeyPoint" )
-                  << QStringLiteral( "Withheld" )
-                  << QStringLiteral( "Overlap" )
-                  << QStringLiteral( "ScannerChannel" )
-                  << QStringLiteral( "GpsTime" )
-                  << QStringLiteral( "Red" )
-                  << QStringLiteral( "Green" )
-                  << QStringLiteral( "Blue" ) );
-        break;
-
-      case QgsProcessingGui::Modeler:
-        break;
-    }
-    delete w;
-  };
-
-  // standard wrapper
-  testWrapper( QgsProcessingGui::Standard );
-
-  // batch wrapper
-  testWrapper( QgsProcessingGui::Batch );
-
-  // modeler wrapper
-  testWrapper( QgsProcessingGui::Modeler );
-
-  // config widget
-  QgsProcessingParameterWidgetContext widgetContext;
-  QgsProcessingContext context;
-  std::unique_ptr< QgsProcessingParameterDefinitionWidget > widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "attribute" ), context, widgetContext );
-  std::unique_ptr< QgsProcessingParameterDefinition > def( widget->createParameter( QStringLiteral( "param_name" ) ) );
-  QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QVERIFY( !def->defaultValue().isValid() );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) ); // should default to mandatory
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
-
-  // using a parameter definition as initial values
-  QgsProcessingParameterPointCloudAttribute attrParam( QStringLiteral( "n" ), QStringLiteral( "test desc" ), QStringLiteral( "attribute_name" ), QStringLiteral( "parent" ) );
-  widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "attribute" ), context, widgetContext, &attrParam );
-  def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
-  QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Optional ) );
-  QVERIFY( !( def->flags() & Qgis::ProcessingParameterFlag::Advanced ) );
-  QCOMPARE( static_cast< QgsProcessingParameterPointCloudAttribute * >( def.get() )->defaultValue().toString(), QStringLiteral( "attribute_name" ) );
-  QCOMPARE( static_cast< QgsProcessingParameterPointCloudAttribute * >( def.get() )->parentLayerParameterName(), QStringLiteral( "parent" ) );
-  QCOMPARE( static_cast< QgsProcessingParameterPointCloudAttribute * >( def.get() )->allowMultiple(), false );
-  QCOMPARE( static_cast< QgsProcessingParameterPointCloudAttribute * >( def.get() )->defaultToAllAttributes(), false );
-  attrParam.setFlags( Qgis::ProcessingParameterFlag::Advanced | Qgis::ProcessingParameterFlag::Optional );
-  attrParam.setParentLayerParameterName( QString() );
-  attrParam.setAllowMultiple( true );
-  attrParam.setDefaultToAllAttributes( true );
-  attrParam.setDefaultValue( QStringLiteral( "Intensity;Red" ) );
-  widget = std::make_unique< QgsProcessingParameterDefinitionWidget >( QStringLiteral( "attribute" ), context, widgetContext, &attrParam );
-  def.reset( widget->createParameter( QStringLiteral( "param_name" ) ) );
-  QCOMPARE( def->name(), QStringLiteral( "param_name" ) );
-  QCOMPARE( def->description(), QStringLiteral( "test desc" ) );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Optional );
-  QVERIFY( def->flags() & Qgis::ProcessingParameterFlag::Advanced );
-  QCOMPARE( static_cast< QgsProcessingParameterPointCloudAttribute * >( def.get() )->defaultValue().toString(), QStringLiteral( "Intensity;Red" ) );
-  QVERIFY( static_cast< QgsProcessingParameterPointCloudAttribute * >( def.get() )->parentLayerParameterName().isEmpty() );
-  QCOMPARE( static_cast< QgsProcessingParameterPointCloudAttribute * >( def.get() )->allowMultiple(), true );
-  QCOMPARE( static_cast< QgsProcessingParameterPointCloudAttribute * >( def.get() )->defaultToAllAttributes(), true );
 }
 
 void TestProcessingGui::testModelGraphicsView()

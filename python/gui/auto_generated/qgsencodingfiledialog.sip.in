@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsencodingfiledialog.h                                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -50,6 +50,8 @@ class QgsEncodingSelectionDialog: QDialog
 {
 %Docstring(signature="appended")
 A dialog which presents the user with a choice of file encodings.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -89,5 +91,5 @@ see :py:func:`~QgsEncodingSelectionDialog.encoding`
  *                                                                      *
  * src/gui/qgsencodingfiledialog.h                                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

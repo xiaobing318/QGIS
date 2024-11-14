@@ -50,6 +50,7 @@ class QToolBar;
  * signal and gracefully cleanup any customizations before the designer dialog is
  * deleted.
  *
+ * \since QGIS 3.0
  */
 class GUI_EXPORT QgsLayoutDesignerInterface: public QObject
 {

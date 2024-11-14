@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgsauthpkipathsedit.h"
-#include "moc_qgsauthpkipathsedit.cpp"
 #include "ui_qgsauthpkipathsedit.h"
 
 #include <QDateTime>
@@ -35,6 +34,7 @@ QgsAuthPkiPathsEdit::QgsAuthPkiPathsEdit( QWidget *parent )
   : QgsAuthMethodEdit( parent )
 {
   setupUi( this );
+  connect( chkPkiPathsPassShow, &QCheckBox::stateChanged, this, &QgsAuthPkiPathsEdit::chkPkiPathsPassShow_stateChanged );
   connect( btnPkiPathsCert, &QToolButton::clicked, this, &QgsAuthPkiPathsEdit::btnPkiPathsCert_clicked );
   connect( btnPkiPathsKey, &QToolButton::clicked, this, &QgsAuthPkiPathsEdit::btnPkiPathsKey_clicked );
   connect( cbAddCas, &QCheckBox::stateChanged, this, [ = ]( int state ) {  cbAddRootCa->setEnabled( state == Qt::Checked ); } );
@@ -169,10 +169,17 @@ void QgsAuthPkiPathsEdit::clearPkiPathsKeyPath()
   lePkiPathsKey->setStyleSheet( QString() );
 }
 
+
 void QgsAuthPkiPathsEdit::clearPkiPathsKeyPass()
 {
   lePkiPathsKeyPass->clear();
   lePkiPathsKeyPass->setStyleSheet( QString() );
+  chkPkiPathsPassShow->setChecked( false );
+}
+
+void QgsAuthPkiPathsEdit::chkPkiPathsPassShow_stateChanged( int state )
+{
+  lePkiPathsKeyPass->setEchoMode( ( state > 0 ) ? QLineEdit::Normal : QLineEdit::Password );
 }
 
 void QgsAuthPkiPathsEdit::btnPkiPathsCert_clicked()
@@ -206,6 +213,7 @@ bool QgsAuthPkiPathsEdit::validityChange( bool curvalid )
   }
   return curvalid;
 }
+
 
 bool QgsAuthPkiPathsEdit::populateCas()
 {

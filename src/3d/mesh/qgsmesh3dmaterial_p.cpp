@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsmesh3dmaterial_p.h"
-#include "moc_qgsmesh3dmaterial_p.cpp"
 
 #include <Qt3DRender/QEffect>
 #include <Qt3DRender/QGraphicsApiFilter>
@@ -36,7 +35,6 @@
 #include <QByteArray>
 
 #include "qgsmeshlayer.h"
-#include "qgs3dutils.h"
 #include "qgsmeshlayerutils.h"
 #include "qgstriangularmesh.h"
 
@@ -110,7 +108,7 @@ class ArrowsTextureGenerator: public Qt3DRender::QTextureImageDataGenerator
 
 
 
-QgsMesh3DMaterial::QgsMesh3DMaterial( QgsMeshLayer *layer,
+QgsMesh3dMaterial::QgsMesh3dMaterial( QgsMeshLayer *layer,
                                       const QgsDateTimeRange &timeRange,
                                       const QgsVector3D &origin,
                                       const QgsMesh3DSymbol *symbol,
@@ -131,7 +129,7 @@ QgsMesh3DMaterial::QgsMesh3DMaterial( QgsMeshLayer *layer,
   setEffect( eff );
 }
 
-void QgsMesh3DMaterial::configure()
+void QgsMesh3dMaterial::configure()
 {
   // Create the texture to pass the color ramp
   Qt3DRender::QTexture1D *colorRampTexture = new Qt3DRender::QTexture1D( this );
@@ -139,11 +137,11 @@ void QgsMesh3DMaterial::configure()
   {
     switch ( mMagnitudeType )
     {
-      case QgsMesh3DMaterial::ZValue:
+      case QgsMesh3dMaterial::ZValue:
         // if the color shading is done with the Z value of vertices, the color ramp has to be adapted with vertical scale
         colorRampTexture->addTextureImage( new QgsColorRampTexture( mSymbol->colorRampShader(), mSymbol->verticalScale() ) );
         break;
-      case QgsMesh3DMaterial::ScalarDataSet:
+      case QgsMesh3dMaterial::ScalarDataSet:
         // if the color shading is done with scalar dataset, no vertical scale to use
         colorRampTexture->addTextureImage( new QgsColorRampTexture( mSymbol->colorRampShader(), 1 ) );
         break;
@@ -173,10 +171,6 @@ void QgsMesh3DMaterial::configure()
   Qt3DRender::QRenderPass *renderPass = new Qt3DRender::QRenderPass();
   Qt3DRender::QShaderProgram *shaderProgram = new Qt3DRender::QShaderProgram();
 
-  Qt3DRender::QCullFace *cullingFace = new Qt3DRender::QCullFace();
-  cullingFace->setMode( Qgs3DUtils::qt3DcullingMode( mSymbol->cullingMode() ) );
-  renderPass->addRenderState( cullingFace );
-
   //Load shader programs
   const QUrl urlVert( QStringLiteral( "qrc:/shaders/mesh/mesh.vert" ) );
   shaderProgram->setShaderCode( Qt3DRender::QShaderProgram::Vertex, Qt3DRender::QShaderProgram::loadSource( urlVert ) );
@@ -197,14 +191,14 @@ void QgsMesh3DMaterial::configure()
   mTechnique->addParameter( new Qt3DRender::QParameter( "textureType", int( mSymbol->renderingStyle() ) ) );
   mTechnique->addParameter( new Qt3DRender::QParameter( "colorRampTexture", colorRampTexture ) ) ;
   mTechnique->addParameter( new Qt3DRender::QParameter( "colorRampCount", mSymbol->colorRampShader().colorRampItemList().count() ) );
-  const Qgis::ShaderInterpolationMethod colorRampType = mSymbol->colorRampShader().colorRampType();
-  mTechnique->addParameter( new Qt3DRender::QParameter( "colorRampType", static_cast< int >( colorRampType ) ) );
+  const int colorRampType = mSymbol->colorRampShader().colorRampType();
+  mTechnique->addParameter( new Qt3DRender::QParameter( "colorRampType", colorRampType ) );
   const QColor meshColor = mSymbol->singleMeshColor();
   mTechnique->addParameter( new Qt3DRender::QParameter( "meshColor", QVector4D( meshColor.redF(), meshColor.greenF(), meshColor.blueF(), 1.0f ) ) );
-  mTechnique->addParameter( new Qt3DRender::QParameter( "isScalarMagnitude", ( mMagnitudeType == QgsMesh3DMaterial::ScalarDataSet ) ) );
+  mTechnique->addParameter( new Qt3DRender::QParameter( "isScalarMagnitude", ( mMagnitudeType == QgsMesh3dMaterial::ScalarDataSet ) ) );
 }
 
-void QgsMesh3DMaterial::configureArrows( QgsMeshLayer *layer, const QgsDateTimeRange &timeRange )
+void QgsMesh3dMaterial::configureArrows( QgsMeshLayer *layer, const QgsDateTimeRange &timeRange )
 {
   QgsMeshDatasetIndex datasetIndex;
   QColor arrowsColor;

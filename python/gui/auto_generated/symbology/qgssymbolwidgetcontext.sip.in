@@ -3,8 +3,9 @@
  *                                                                      *
  * src/gui/symbology/qgssymbolwidgetcontext.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
+
 
 
 
@@ -14,6 +15,8 @@ class QgsSymbolWidgetContext
 %Docstring(signature="appended")
 Contains settings which reflect the context in which a symbol (or renderer) widget is shown, e.g., the
 map canvas and relevant expression contexts.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -22,7 +25,17 @@ map canvas and relevant expression contexts.
   public:
 
     QgsSymbolWidgetContext();
+%Docstring
+Constructor for QgsSymbolWidgetContext.
+%End
+
     QgsSymbolWidgetContext( const QgsSymbolWidgetContext &other );
+%Docstring
+Copy constructor.
+
+:param other: source QgsSymbolWidgetContext
+%End
+
 
     void setMapCanvas( QgsMapCanvas *canvas );
 %Docstring
@@ -102,6 +115,8 @@ Returns the list of additional expression context scopes to show as available wi
 %Docstring
 Returns list of scopes: global, project, atlas, map, layer.
 Ownership is transferred to the caller.
+
+.. versionadded:: 3.0
 %End
 
     Qgis::SymbolType symbolType() const;
@@ -131,5 +146,5 @@ of a parent symbol configuration widget.
  *                                                                      *
  * src/gui/symbology/qgssymbolwidgetcontext.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

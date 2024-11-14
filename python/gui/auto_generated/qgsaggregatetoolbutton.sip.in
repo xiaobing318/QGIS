@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsaggregatetoolbutton.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -15,6 +15,8 @@ class QgsAggregateToolButton : QToolButton
 
 Offers a toolbutton to choose between different aggregate functions.
 Functions are filtered based on the type.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -27,21 +29,12 @@ Functions are filtered based on the type.
 Constructor
 %End
 
-    void setType( QMetaType::Type type );
+    void setType( QVariant::Type type );
 %Docstring
 Based on the ``type`` of underlying data, some aggregates will be available or not.
 %End
 
- void setType( QVariant::Type type ) /Deprecated/;
-%Docstring
-Based on the ``type`` of underlying data, some aggregates will be available or not.
-
-.. deprecated:: 3.38
-
-   Use the method with a QMetaType.Type argument instead.
-%End
-
-    QMetaType::Type type() const;
+    QVariant::Type type() const;
 %Docstring
 Based on the ``type`` of underlying data, some aggregates will be available or not.
 %End
@@ -85,5 +78,5 @@ A function has been selected or deselected.
  *                                                                      *
  * src/gui/qgsaggregatetoolbutton.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

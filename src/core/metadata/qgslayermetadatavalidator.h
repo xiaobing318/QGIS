@@ -30,6 +30,7 @@ class QgsLayerMetadata;
  * \ingroup core
  * \class QgsAbstractMetadataBaseValidator
  * \brief Abstract base class for metadata validators.
+ * \since QGIS 3.0
  */
 
 class CORE_EXPORT QgsAbstractMetadataBaseValidator
@@ -40,6 +41,7 @@ class CORE_EXPORT QgsAbstractMetadataBaseValidator
     /**
      * \ingroup core
      * \brief Contains the parameters describing a metadata validation failure.
+     * \since QGIS 3.0
      */
     class ValidationResult
     {
@@ -58,7 +60,11 @@ class CORE_EXPORT QgsAbstractMetadataBaseValidator
         //! Metadata section which failed the validation
         QString section;
 
-        // TODO QGIS 4.0 - remove compatibility code
+        // TODO QGIS 4.0 - fix this
+
+#ifdef SIP_RUN
+        SIP_PROPERTY( name = identifier, get = _identifier, set = _setIdentifier )
+#endif
 
         /**
          * Returns the optional identifier for the failed metadata item.
@@ -66,7 +72,7 @@ class CORE_EXPORT QgsAbstractMetadataBaseValidator
          * will be set to the list index of the failed metadata
          * item.
          */
-        QVariant identifier() const SIP_PYNAME( _identifier ) { return mIdentifier; }
+        QVariant _identifier() const { return mIdentifier; }
 
         /**
          * Sets the optional \a identifier for the failed metadata item.
@@ -74,7 +80,7 @@ class CORE_EXPORT QgsAbstractMetadataBaseValidator
          * will be set to the list index of the failed metadata
          * item.
          */
-        void setIdentifier( const QVariant &identifier ) { mIdentifier = identifier; }
+        void _setIdentifier( QVariant identifier ) { mIdentifier = identifier; }
 
         //! The reason behind the validation failure.
         QString note;
@@ -109,6 +115,9 @@ class CORE_EXPORT QgsNativeMetadataBaseValidator : public QgsAbstractMetadataBas
 
   public:
 
+    /**
+     * Constructor for QgsNativeMetadataBaseValidator.
+     */
     QgsNativeMetadataBaseValidator() = default;
 
     bool validate( const QgsAbstractMetadataBase *metadata, QList< QgsAbstractMetadataBaseValidator::ValidationResult > &results SIP_OUT ) const override;
@@ -120,12 +129,17 @@ class CORE_EXPORT QgsNativeMetadataBaseValidator : public QgsAbstractMetadataBas
  * \ingroup core
  * \class QgsNativeMetadataValidator
  * \brief A validator for the native QGIS layer metadata schema definition.
+ * \since QGIS 3.0
  */
 
 class CORE_EXPORT QgsNativeMetadataValidator : public QgsNativeMetadataBaseValidator
 {
 
   public:
+
+    /**
+     * Constructor for QgsNativeMetadataValidator.
+     */
     QgsNativeMetadataValidator() = default;
 
     bool validate( const QgsAbstractMetadataBase *metadata, QList< QgsAbstractMetadataBaseValidator::ValidationResult > &results SIP_OUT ) const override;
@@ -144,6 +158,9 @@ class CORE_EXPORT QgsNativeProjectMetadataValidator : public QgsNativeMetadataBa
 
   public:
 
+    /**
+     * Constructor for QgsNativeProjectMetadataValidator.
+     */
     QgsNativeProjectMetadataValidator() = default;
 
     bool validate( const QgsAbstractMetadataBase *metadata, QList< QgsAbstractMetadataBaseValidator::ValidationResult > &results SIP_OUT ) const override;

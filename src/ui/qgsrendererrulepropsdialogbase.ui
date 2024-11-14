@@ -124,6 +124,9 @@
         <property name="toolTip">
          <string/>
         </property>
+        <property name="whatsThis">
+         <string/>
+        </property>
        </widget>
       </item>
      </layout>

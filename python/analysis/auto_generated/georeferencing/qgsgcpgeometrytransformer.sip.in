@@ -3,7 +3,7 @@
  *                                                                      *
  * src/analysis/georeferencing/qgsgcpgeometrytransformer.h              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -40,8 +40,12 @@ list of source and destination coordinates to transform geometries.
     ~QgsGcpGeometryTransformer();
 
 
+
     virtual bool transformPoint( double &x /In,Out/, double &y /In,Out/, double &z /In,Out/, double &m /In,Out/ );
 
+%Docstring
+QgsGcpGeometryTransformer cannot be copied
+%End
 
     QgsGeometry transform( const QgsGeometry &geometry, bool &ok /Out/, QgsFeedback *feedback = 0 );
 %Docstring
@@ -52,7 +56,7 @@ Transforms the specified input ``geometry`` using the GCP based transform.
                  If this is done, the geometry will be left in a semi-transformed state.
 
 :return: - transformed geometry
-         - ok: ``True`` if geometry was successfully transformed, or ``False`` if an error occurred
+         - ok: will be set to ``True`` if geometry was successfully transformed, or ``False`` if an error occurred
 %End
 
     QgsGcpTransformerInterface *gcpTransformer() const;
@@ -80,5 +84,5 @@ Ownership is transferred to this object.
  *                                                                      *
  * src/analysis/georeferencing/qgsgcpgeometrytransformer.h              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

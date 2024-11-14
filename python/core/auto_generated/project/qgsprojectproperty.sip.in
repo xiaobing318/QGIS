@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/project/qgsprojectproperty.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -26,6 +26,8 @@ hierarchy.  :py:class:`QgsProjectPropertyValues` are always graph leaves.
 
    This class is used internally by :py:class:`QgsProject`. It's generally recommended that the methods in
    :py:class:`QgsProject` are used to modify project properties rather than using these low-level classes.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -108,6 +110,8 @@ class QgsProjectPropertyValue : QgsProjectProperty
 {
 %Docstring(signature="appended")
 Project property value node, contains a :py:class:`QgsProjectPropertyKey`'s value.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -116,6 +120,9 @@ Project property value node, contains a :py:class:`QgsProjectPropertyKey`'s valu
   public:
 
     QgsProjectPropertyValue();
+%Docstring
+Constructor for QgsProjectPropertyValue.
+%End
 
     QgsProjectPropertyValue( const QVariant &value );
 %Docstring
@@ -148,14 +155,16 @@ Project property key node.
 Can, itself, contain :py:class:`QgsProjectPropertyKey` and :py:class:`QgsProjectPropertyValues`.
 
 The internal QHash, mProperties, maps key names to their respective
-:py:class:`QgsProjectPropertyValue` or next :py:class:`QgsProjectPropertyKey` in the key name sequence.  The key with
-the current name should contain its :py:class:`QgsProjectPropertyValue`.
+QgsProjectPropertyValue or next QgsProjectPropertyKey in the key name sequence.  The key with
+the current name should contain its QgsProjectPropertyValue.
 
 E.g., given the key sequence "/foo/bar", "foo" will have a corresponding
 :py:class:`QgsProjectPropertyKey` with a name "foo".  It will contain an element in its
 mProperties that maps to "bar", which is another :py:class:`QgsProjectPropertyKey`.  The "bar"
 :py:class:`QgsProjectPropertyKey` will, in turn, have an element that maps to itself, i.e. "bar",
-that will contain a :py:class:`QgsProjectPropertyValue`.
+that will contain a QgsProjectPropertyValue.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -181,6 +190,8 @@ The name of the property is used as identifier.
 The name of the property is used as identifier.
 
 .. seealso:: :py:func:`name`
+
+.. versionadded:: 3.0
 %End
 
     virtual QVariant value() const;
@@ -278,5 +289,5 @@ Attempts to find a property with a matching sub-key name.
  *                                                                      *
  * src/core/project/qgsprojectproperty.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

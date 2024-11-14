@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/vector/qgsvectorlayerproperties.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -12,7 +12,7 @@
 
 
 
-class QgsVectorLayerProperties : QgsLayerPropertiesDialog
+class QgsVectorLayerProperties : QgsOptionsDialogBase
 {
 
 %TypeHeaderCode
@@ -22,17 +22,12 @@ class QgsVectorLayerProperties : QgsLayerPropertiesDialog
 
     QgsVectorLayerProperties( QgsMapCanvas *canvas, QgsMessageBar *messageBar, QgsVectorLayer *lyr = 0, QWidget *parent = 0, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags );
 
-    virtual bool eventFilter( QObject *obj, QEvent *ev );
-
+    void addPropertiesPageFactory( const QgsMapLayerConfigWidgetFactory *factory );
+%Docstring
+Adds a properties page factory to the vector layer properties dialog.
+%End
 
   protected slots:
-    void optionsStackedWidget_CurrentChanged( int index ) final;
-    virtual void syncToLayer() ${SIP_FINAL};
-
-    virtual void apply() ${SIP_FINAL};
-
-    virtual void rollback() ${SIP_FINAL};
-
 
   signals:
 
@@ -45,5 +40,5 @@ class QgsVectorLayerProperties : QgsLayerPropertiesDialog
  *                                                                      *
  * src/gui/vector/qgsvectorlayerproperties.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

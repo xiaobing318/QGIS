@@ -19,9 +19,9 @@
 
 ///@cond PRIVATE
 
-Qgis::ProcessingAlgorithmFlags QgsDropTableFieldsAlgorithm::flags() const
+QgsProcessingAlgorithm::Flags QgsDropTableFieldsAlgorithm::flags() const
 {
-  return QgsProcessingFeatureBasedAlgorithm::flags() & ~static_cast< int >( Qgis::ProcessingAlgorithmFlag::SupportsInPlaceEdits );
+  return QgsProcessingFeatureBasedAlgorithm::flags() & ~QgsProcessingAlgorithm::FlagSupportsInPlaceEdits;
 }
 
 QString QgsDropTableFieldsAlgorithm::name() const
@@ -66,12 +66,12 @@ QString QgsDropTableFieldsAlgorithm::outputName() const
 
 QList<int> QgsDropTableFieldsAlgorithm::inputLayerTypes() const
 {
-  return QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::Vector );
+  return QList<int>() << QgsProcessing::TypeVector;
 }
 
-Qgis::ProcessingFeatureSourceFlags QgsDropTableFieldsAlgorithm::sourceFlags() const
+QgsProcessingFeatureSource::Flag QgsDropTableFieldsAlgorithm::sourceFlags() const
 {
-  return Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks;
+  return QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks;
 }
 
 QgsDropTableFieldsAlgorithm *QgsDropTableFieldsAlgorithm::createInstance() const
@@ -81,7 +81,7 @@ QgsDropTableFieldsAlgorithm *QgsDropTableFieldsAlgorithm::createInstance() const
 
 void QgsDropTableFieldsAlgorithm::initParameters( const QVariantMap & )
 {
-  addParameter( new QgsProcessingParameterField( QStringLiteral( "COLUMN" ), QObject::tr( "Fields to drop" ), QVariant(), QStringLiteral( "INPUT" ), Qgis::ProcessingFieldParameterDataType::Any, true ) );
+  addParameter( new QgsProcessingParameterField( QStringLiteral( "COLUMN" ), QObject::tr( "Fields to drop" ), QVariant(), QStringLiteral( "INPUT" ), QgsProcessingParameterField::Any, true ) );
 }
 
 QgsFields QgsDropTableFieldsAlgorithm::outputFields( const QgsFields &inputFields ) const
@@ -108,7 +108,7 @@ QgsFields QgsDropTableFieldsAlgorithm::outputFields( const QgsFields &inputField
 
 bool QgsDropTableFieldsAlgorithm::prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback )
 {
-  mFieldsToDelete = parameterAsStrings( parameters, QStringLiteral( "COLUMN" ), context );
+  mFieldsToDelete = parameterAsFields( parameters, QStringLiteral( "COLUMN" ), context );
 
   if ( feedback )
   {
@@ -153,9 +153,9 @@ bool QgsDropTableFieldsAlgorithm::supportInPlaceEdit( const QgsMapLayer *layer )
 // QgsRetainTableFieldsAlgorithm
 //
 
-Qgis::ProcessingAlgorithmFlags QgsRetainTableFieldsAlgorithm::flags() const
+QgsProcessingAlgorithm::Flags QgsRetainTableFieldsAlgorithm::flags() const
 {
-  return QgsProcessingFeatureBasedAlgorithm::flags() & ~static_cast< int >( Qgis::ProcessingAlgorithmFlag::SupportsInPlaceEdits );
+  return QgsProcessingFeatureBasedAlgorithm::flags() & ~QgsProcessingAlgorithm::FlagSupportsInPlaceEdits;
 }
 
 QString QgsRetainTableFieldsAlgorithm::name() const
@@ -200,12 +200,12 @@ QString QgsRetainTableFieldsAlgorithm::outputName() const
 
 QList<int> QgsRetainTableFieldsAlgorithm::inputLayerTypes() const
 {
-  return QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::Vector );
+  return QList<int>() << QgsProcessing::TypeVector;
 }
 
-Qgis::ProcessingFeatureSourceFlags QgsRetainTableFieldsAlgorithm::sourceFlags() const
+QgsProcessingFeatureSource::Flag QgsRetainTableFieldsAlgorithm::sourceFlags() const
 {
-  return Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks;
+  return QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks;
 }
 
 QgsRetainTableFieldsAlgorithm *QgsRetainTableFieldsAlgorithm::createInstance() const
@@ -215,7 +215,7 @@ QgsRetainTableFieldsAlgorithm *QgsRetainTableFieldsAlgorithm::createInstance() c
 
 void QgsRetainTableFieldsAlgorithm::initParameters( const QVariantMap & )
 {
-  addParameter( new QgsProcessingParameterField( QStringLiteral( "FIELDS" ), QObject::tr( "Fields to retain" ), QVariant(), QStringLiteral( "INPUT" ), Qgis::ProcessingFieldParameterDataType::Any, true ) );
+  addParameter( new QgsProcessingParameterField( QStringLiteral( "FIELDS" ), QObject::tr( "Fields to retain" ), QVariant(), QStringLiteral( "INPUT" ), QgsProcessingParameterField::Any, true ) );
 }
 
 QgsFields QgsRetainTableFieldsAlgorithm::outputFields( const QgsFields &inputFields ) const
@@ -241,7 +241,7 @@ QgsFields QgsRetainTableFieldsAlgorithm::outputFields( const QgsFields &inputFie
 
 bool QgsRetainTableFieldsAlgorithm::prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback )
 {
-  mFieldsToRetain = parameterAsStrings( parameters, QStringLiteral( "FIELDS" ), context );
+  mFieldsToRetain = parameterAsFields( parameters, QStringLiteral( "FIELDS" ), context );
 
   if ( feedback )
   {

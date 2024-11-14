@@ -198,16 +198,7 @@
      <normaloff>:/images/themes/default/mActionOpenTableVisible.svg</normaloff>:/images/themes/default/mActionOpenTableVisible.svg</iconset>
    </property>
    <property name="text">
-    <string>Show Features Visible on Map</string>
-   </property>
-  </action>
-  <action name="mActionInvalidFilter">
-   <property name="icon">
-    <iconset resource="../../images/images.qrc">
-     <normaloff>:/images/themes/default/mActionOpenTableInvalid.svg</normaloff>:/images/themes/default/mActionOpenTableInvalid.svg</iconset>
-   </property>
-   <property name="text">
-    <string>Show Features with Failing Constraints</string>
+    <string>Show Features Visible On Map</string>
    </property>
   </action>
   <action name="mActionEditedFilter">

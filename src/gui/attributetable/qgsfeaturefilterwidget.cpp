@@ -55,7 +55,6 @@ QgsFeatureFilterWidget::QgsFeatureFilterWidget( QWidget *parent )
   mActionShowAllFilter->setIcon( QgsApplication::getThemeIcon( "/mActionOpenTable.svg" ) );
   mActionAdvancedFilter->setIcon( QgsApplication::getThemeIcon( "/mActionFilter2.svg" ) );
   mActionSelectedFilter->setIcon( QgsApplication::getThemeIcon( "/mActionOpenTableSelected.svg" ) );
-  mActionInvalidFilter->setIcon( QgsApplication::getThemeIcon( "/mActionOpenTableInvalid.svg" ) );
   mActionVisibleFilter->setIcon( QgsApplication::getThemeIcon( "/mActionOpenTableVisible.svg" ) );
   mActionEditedFilter->setIcon( QgsApplication::getThemeIcon( "/mActionOpenTableEdited.svg" ) );
 
@@ -71,7 +70,6 @@ QgsFeatureFilterWidget::QgsFeatureFilterWidget( QWidget *parent )
   connect( mActionAdvancedFilter, &QAction::triggered, this, &QgsFeatureFilterWidget::filterExpressionBuilder );
   connect( mActionShowAllFilter, &QAction::triggered, this, &QgsFeatureFilterWidget::filterShowAll );
   connect( mActionSelectedFilter, &QAction::triggered, this, &QgsFeatureFilterWidget::filterSelected );
-  connect( mActionInvalidFilter, &QAction::triggered, this, &QgsFeatureFilterWidget::filterInvalid );
   connect( mActionVisibleFilter, &QAction::triggered, this, &QgsFeatureFilterWidget::filterVisible );
   connect( mActionEditedFilter, &QAction::triggered, this, &QgsFeatureFilterWidget::filterEdited );
   connect( mFilterQuery, &QLineEdit::returnPressed, this, &QgsFeatureFilterWidget::filterQueryAccepted );
@@ -140,18 +138,6 @@ void QgsFeatureFilterWidget::filterVisible()
   mMainView->setFilterMode( QgsAttributeTableFilterModel::ShowVisible );
 }
 
-void QgsFeatureFilterWidget::filterInvalid()
-{
-  mFilterButton->setDefaultAction( mActionInvalidFilter );
-  mFilterButton->setPopupMode( QToolButton::InstantPopup );
-  mFilterQuery->setVisible( false );
-  mApplyFilterButton->setVisible( false );
-  mStoreFilterExpressionButton->setVisible( false );
-  const QgsExpressionContext context( QgsExpressionContextUtils::globalProjectLayerScopes( mLayer ) );
-  mMainView->filterFeatures( QStringLiteral( "is_feature_valid() = false" ), context );
-  mMainView->setFilterMode( QgsAttributeTableFilterModel::ShowInvalid );
-}
-
 void QgsFeatureFilterWidget::filterEdited()
 {
   mFilterButton->setDefaultAction( mActionEditedFilter );
@@ -206,7 +192,6 @@ void QgsFeatureFilterWidget::columnBoxInit()
   {
     mFilterButton->addAction( mActionVisibleFilter );
   }
-  mFilterButton->addAction( mActionInvalidFilter );
   mFilterButton->addAction( mActionEditedFilter );
   mFilterButton->addAction( mActionFilterColumnsMenu );
   mFilterButton->addAction( mActionAdvancedFilter );

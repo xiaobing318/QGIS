@@ -45,6 +45,9 @@ class GUI_EXPORT QgsFeatureListModel : public QSortFilterProxyModel, public QgsF
     {
       public:
 
+        /**
+         * Constructor for FeatureInfo.
+         */
         FeatureInfo() = default;
 
         //! True if feature is a newly added feature.
@@ -86,12 +89,14 @@ class GUI_EXPORT QgsFeatureListModel : public QSortFilterProxyModel, public QgsF
      * \brief If TRUE is specified, a NULL value will be injected
      * \param injectNull state of null value injection
      * \note If set to TRUE, the sort by display expression cannot be used
+     * \since QGIS 2.9
      */
     void setInjectNull( bool injectNull );
 
     /**
      * \brief Returns the current state of null value injection
      * \returns If a NULL value is added
+     * \since QGIS 2.9
      */
     bool injectNull();
 
@@ -164,28 +169,28 @@ class GUI_EXPORT QgsFeatureListModel : public QSortFilterProxyModel, public QgsF
     /**
      * Does nothing except for calling beginRemoveRows()
      *
-     * \deprecated QGIS 3.40. Use beginRemoveRows() instead.
+     * \deprecated Use beginRemoveRows() instead
      */
     Q_DECL_DEPRECATED void onBeginRemoveRows( const QModelIndex &parent, int first, int last );
 
     /**
      * Does nothing except for calling endRemoveRows()
      *
-     * \deprecated QGIS 3.40. Use endRemoveRows() instead.
+     * \deprecated Use endRemoveRows() instead
      */
     Q_DECL_DEPRECATED void onEndRemoveRows( const QModelIndex &parent, int first, int last );
 
     /**
      * Does nothing except for calling beginInsertRows()
      *
-     * \deprecated QGIS 3.40. Use beginInsertRows() instead.
+     * \deprecated use beginInsertRows() instead
      */
     Q_DECL_DEPRECATED void onBeginInsertRows( const QModelIndex &parent, int first, int last );
 
     /**
      * Does nothing except for calling endInsertRows()
      *
-     * \deprecated QGIS 3.40. Use endInsertRows() instead.
+     * \deprecated use endInsertRows() instead
      */
     Q_DECL_DEPRECATED void onEndInsertRows( const QModelIndex &parent, int first, int last );
 

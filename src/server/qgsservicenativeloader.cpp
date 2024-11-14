@@ -91,7 +91,7 @@ QgsServiceModule *QgsServiceNativeLoader::loadNativeModule( const QString &locat
   }
 
   QLibrary lib( location );
-  //QgsDebugMsgLevel( QStringLiteral( "Loading native module %1" ).arg( location ), 2 );
+  //QgsDebugMsg( QStringLiteral( "Loading native module %1" ).arg( location ) );
   qDebug() << QString( "Loading native module %1" ).arg( location );
   if ( !lib.load() )
   {

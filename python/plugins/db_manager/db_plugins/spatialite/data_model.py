@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 /***************************************************************************
 Name                 : DB Manager
@@ -32,11 +34,11 @@ class SLTableDataModel(TableDataModel):
     def __init__(self, table, parent=None):
         TableDataModel.__init__(self, table, parent)
 
-        fields_txt = ", ".join(self.fields)
+        fields_txt = u", ".join(self.fields)
         table_txt = self.db.quoteId((self.table.schemaName(), self.table.name))
 
         # run query and get results
-        sql = "SELECT %s FROM %s" % (fields_txt, table_txt)
+        sql = u"SELECT %s FROM %s" % (fields_txt, table_txt)
         c = self.db._get_cursor()
         self.db._execute(c, sql)
 
@@ -57,7 +59,7 @@ class SLTableDataModel(TableDataModel):
         if dataType[-10:] == "COLLECTION":
             dataType = dataType[:-10]
         if dataType in ["POINT", "LINESTRING", "POLYGON", "GEOMETRY"]:
-            return 'GeometryType(%s)' % self.db.quoteId(field.name)
+            return u'GeometryType(%s)' % self.db.quoteId(field.name)
         return self.db.quoteId(field.name)
 
     def rowCount(self, index=None):

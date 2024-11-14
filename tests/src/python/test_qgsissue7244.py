@@ -11,9 +11,9 @@ __copyright__ = 'Copyright 2013, The QGIS Project'
 
 import os
 
+import qgis  # NOQA
 from qgis.core import QgsPointXY, QgsVectorLayer
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 from qgis.utils import spatialite_connect
 
 # Convenience instances in case you may need them
@@ -24,12 +24,11 @@ def die(error_message):
     raise Exception(error_message)
 
 
-class TestQgsSpatialiteProvider(QgisTestCase):
+class TestQgsSpatialiteProvider(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
-        super().setUpClass()
         # create test db
         if os.path.exists("test.sqlite"):
             os.remove("test.sqlite")
@@ -75,7 +74,7 @@ class TestQgsSpatialiteProvider(QgisTestCase):
         # for the time being, keep the file to check with qgis
         # if os.path.exists("test.sqlite") :
         #    os.remove("test.sqlite")
-        super().tearDownClass()
+        pass
 
     def setUp(self):
         """Run before each test."""

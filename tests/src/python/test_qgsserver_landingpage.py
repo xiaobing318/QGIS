@@ -11,6 +11,8 @@ the Free Software Foundation; either version 2 of the License, or
 __author__ = 'Alessandro Pasotti'
 __date__ = '03/08/2020'
 __copyright__ = 'Copyright 2020, The QGIS Project'
+# This will get replaced with a git SHA1 when you do a git archive
+__revision__ = '252ad49ddcbc4a0dcfe9eb9381503de0fde9e0ed'
 
 import json
 import os
@@ -19,14 +21,16 @@ import shutil
 # Deterministic XML
 os.environ['QT_HASH_SEED'] = '1'
 
-from qgis.PyQt import QtCore
 from qgis.server import (
     QgsBufferServerRequest,
-    QgsBufferServerResponse,
+    QgsBufferServerResponse
 )
+from qgis.PyQt import QtCore
+
 from qgis.testing import unittest
-from test_qgsserver_api import QgsServerAPITestBase
 from utilities import unitTestDataPath
+
+from test_qgsserver_api import QgsServerAPITestBase
 
 
 class QgsServerLandingPageTest(QgsServerAPITestBase):
@@ -113,7 +117,7 @@ class QgsServerLandingPageTest(QgsServerAPITestBase):
             f = open(expected_path.encode('utf8'), 'w+', encoding='utf8')
             f.write(actual)
             f.close()
-            print(f"Reference file {expected_path.encode('utf8')} regenerated!")
+            print("Reference file %s regenerated!" % expected_path.encode('utf8'))
 
         for title in expected_projects.keys():
             self.assertLinesEqual(json.dumps(actual_projects[title], indent=4), json.dumps(expected_projects[title], indent=4), expected_path.encode('utf8'))
@@ -153,7 +157,7 @@ class QgsServerLandingPageTest(QgsServerAPITestBase):
                 'http://server.qgis.org/map/' + identifier)
             request.setHeader('Accept', 'application/json')
             self.compareApi(
-                request, None, f"test_project_{name.replace('.', '_')}.json", subdir='landingpage')
+                request, None, 'test_project_{}.json'.format(name.replace('.', '_')), subdir='landingpage')
 
     def test_landing_page_json_empty(self):
         """Test landing page in JSON format with no projects"""

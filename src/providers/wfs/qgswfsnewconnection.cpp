@@ -16,7 +16,6 @@
 #include "qgslogger.h"
 #include "qgsmessagelog.h"
 #include "qgswfsnewconnection.h"
-#include "moc_qgswfsnewconnection.cpp"
 #include "qgswfsguiutils.h"
 
 #include <QMessageBox>
@@ -107,11 +106,7 @@ void QgsWFSNewConnection::capabilitiesReplyFinished()
     wfsPageSizeLineEdit()->setText( QString::number( caps.maxFeatures ) );
   }
   wfsVersionComboBox()->setCurrentIndex( versionIdx );
-
-  wfsPagingComboBox()->setCurrentIndex(
-    static_cast<int>( caps.supportsPaging ?
-                      QgsNewHttpConnection::WfsFeaturePagingIndex::ENABLED :
-                      QgsNewHttpConnection::WfsFeaturePagingIndex::DISABLED ) );
+  wfsPagingEnabledCheckBox()->setChecked( caps.supportsPaging );
 
   mCapabilities.reset();
 }
@@ -164,7 +159,7 @@ void QgsWFSNewConnection::oapifLandingPageReplyFinished()
   }
 
   wfsVersionComboBox()->setCurrentIndex( WFS_VERSION_API_FEATURES_1_0 );
-  wfsPagingComboBox()->setCurrentIndex( static_cast<int>( QgsNewHttpConnection::WfsFeaturePagingIndex::ENABLED ) );
+  wfsPagingEnabledCheckBox()->setChecked( true );
 
   mCapabilities.reset();
 

@@ -3,8 +3,9 @@
  *                                                                      *
  * src/gui/qgscolorramplegendnodewidget.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
+
 
 
 
@@ -29,24 +30,9 @@ When changes are made the to settings by a user the :py:func:`~widgetChanged` si
 %End
   public:
 
-    enum class Capability
-    {
-      Prefix,
-      Suffix,
-      NumberFormat,
-      DefaultMinimum,
-      DefaultMaximum,
-      AllCapabilities,
-    };
-
-    typedef QFlags<QgsColorRampLegendNodeWidget::Capability> Capabilities;
-
-
-    QgsColorRampLegendNodeWidget( QWidget *parent = 0, QgsColorRampLegendNodeWidget::Capabilities capabilities = QgsColorRampLegendNodeWidget::Capability::AllCapabilities );
+    QgsColorRampLegendNodeWidget( QWidget *parent = 0 );
 %Docstring
 Constructor for QgsColorRampLegendNodeWidget, with the specified ``parent`` widget.
-
-Since QGIS 3.38, the ``capabilities`` argument can be used to fine-tune settings exposed in the widget.
 %End
 
     QgsColorRampLegendNodeSettings settings() const;
@@ -73,8 +59,6 @@ when using single band gray renderer).
 %End
 
 };
-QFlags<QgsColorRampLegendNodeWidget::Capability> operator|(QgsColorRampLegendNodeWidget::Capability f1, QFlags<QgsColorRampLegendNodeWidget::Capability> f2);
-
 
 class QgsColorRampLegendNodeDialog : QDialog
 {
@@ -89,11 +73,9 @@ A dialog for configuring a :py:class:`QgsColorRampLegendNode` (:py:class:`QgsCol
 %End
   public:
 
-    QgsColorRampLegendNodeDialog( const QgsColorRampLegendNodeSettings &settings, QWidget *parent /TransferThis/ = 0, QgsColorRampLegendNodeWidget::Capabilities capabilities = QgsColorRampLegendNodeWidget::Capability::AllCapabilities );
+    QgsColorRampLegendNodeDialog( const QgsColorRampLegendNodeSettings &settings, QWidget *parent /TransferThis/ = 0 );
 %Docstring
 Constructor for QgsColorRampLegendNodeDialog, initially showing the specified ``settings``.
-
-Since QGIS 3.38, the ``capabilities`` argument can be used to fine-tune settings exposed in the dialog.
 %End
 
     QgsColorRampLegendNodeSettings settings() const;
@@ -124,5 +106,5 @@ when using single band gray renderer).
  *                                                                      *
  * src/gui/qgscolorramplegendnodewidget.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -68,13 +68,6 @@ class CORE_EXPORT QgsPointCloudExpressionNodeUnaryOperator : public QgsPointClou
     double evalNode( QgsPointCloudExpression *parent, int pointIndex ) override;
     QString dump() const override;
 
-    /**
-     * Returns PDAL expression representing the node
-     *
-     * \since QGIS 3.32
-     */
-    QString toPdal() const override;
-
     QSet<QString> referencedAttributes() const override;
     QList<const QgsPointCloudExpressionNode *> nodes() const override;
     QgsPointCloudExpressionNode *clone() const override;
@@ -166,13 +159,6 @@ class CORE_EXPORT QgsPointCloudExpressionNodeBinaryOperator : public QgsPointClo
     double evalNode( QgsPointCloudExpression *parent, int pointIndex ) override;
     QString dump() const override;
 
-    /**
-     * Returns PDAL expression representing the node
-     *
-     * \since QGIS 3.32
-     */
-    QString toPdal() const override;
-
     QSet<QString> referencedAttributes() const override;
     QList<const QgsPointCloudExpressionNode *> nodes( ) const override;
 
@@ -247,13 +233,6 @@ class CORE_EXPORT QgsPointCloudExpressionNodeInOperator : public QgsPointCloudEx
     double evalNode( QgsPointCloudExpression *parent, int pointIndex ) override;
     QString dump() const override;
 
-    /**
-     * Returns PDAL expression representing the node
-     *
-     * \since QGIS 3.32
-     */
-    QString toPdal() const override;
-
     QSet<QString> referencedAttributes() const override;
     QList<const QgsPointCloudExpressionNode *> nodes() const override;
     QgsPointCloudExpressionNode *clone() const override;
@@ -289,13 +268,6 @@ class CORE_EXPORT QgsPointCloudExpressionNodeLiteral : public QgsPointCloudExpre
     bool prepareNode( QgsPointCloudExpression *parent, const QgsPointCloudBlock *block ) override;
     double evalNode( QgsPointCloudExpression *parent, int pointIndex ) override;
     QString dump() const override;
-
-    /**
-     * Returns PDAL expression representing the node
-     *
-     * \since QGIS 3.32
-     */
-    QString toPdal() const override;
 
     QSet<QString> referencedAttributes() const override;
 
@@ -337,13 +309,6 @@ class CORE_EXPORT QgsPointCloudExpressionNodeAttributeRef : public QgsPointCloud
     bool prepareNode( QgsPointCloudExpression *parent, const QgsPointCloudBlock *block ) override;
     double evalNode( QgsPointCloudExpression *parent, int pointIndex ) override;
     QString dump() const override;
-
-    /**
-     * Returns PDAL expression representing the node
-     *
-     * \since QGIS 3.32
-     */
-    QString toPdal() const override;
 
     QSet<QString> referencedAttributes() const override;
     QList<const QgsPointCloudExpressionNode *> nodes( ) const override;

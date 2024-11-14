@@ -90,6 +90,7 @@ class GUI_EXPORT QgsSpinBox : public QSpinBox
      * Sets if the widget will allow entry of simple expressions, which are
      * evaluated and then discarded.
      * \param enabled set to TRUE to allow expression entry
+     * \since QGIS 2.7
      */
     void setExpressionsEnabled( bool enabled );
 
@@ -97,6 +98,7 @@ class GUI_EXPORT QgsSpinBox : public QSpinBox
      * Returns whether the widget will allow entry of simple expressions, which are
      * evaluated and then discarded.
      * \returns TRUE if spin box allows expression entry
+     * \since QGIS 2.7
      */
     bool expressionsEnabled() const {return mExpressionsEnabled;}
 
@@ -139,21 +141,6 @@ class GUI_EXPORT QgsSpinBox : public QSpinBox
 
     int valueFromText( const QString &text ) const override;
     QValidator::State validate( QString &input, int &pos ) const override;
-    void stepBy( int steps ) override;
-
-  signals:
-
-    /**
-     * Emitted when the Return or Enter key is used in the line edit
-     * \since QGIS 3.40
-     */
-    void returnPressed();
-
-    /**
-     * Emitted when the the value has been manually edited via line edit.
-     * \since QGIS 3.40
-     */
-    void textEdited( const QString &text );
 
   protected:
 

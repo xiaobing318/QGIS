@@ -15,7 +15,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgserrordialog.h"
-#include "moc_qgserrordialog.cpp"
 #include "qgssettings.h"
 
 #include <QMessageBox>

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 /***************************************************************************
                                appinfo2cpp.py
@@ -34,7 +35,7 @@ for elem in ['name', 'summary', 'description']:
             t = c.text if not l else "".join([et.tostring(x).decode("utf-8") for x in l])
             strings[t] = 1
 
-f = open("linux/org.qgis.qgis.desktop.in")
+f = open("linux/org.qgis.qgis.desktop.in", "r")
 
 for r in f.readlines():
     r = r.strip()
@@ -57,6 +58,6 @@ print("""\
 """)
 
 for k in strings:
-    print(f"<property><string>{escape(k)}</string></property>")
+    print("<property><string>{}</string></property>".format(escape(k)))
 
 print("</ui>")

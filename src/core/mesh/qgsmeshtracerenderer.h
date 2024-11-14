@@ -26,12 +26,8 @@
 #include "qgis.h"
 #include "qgstriangularmesh.h"
 #include "qgsmeshlayer.h"
+#include "qgsmeshlayerutils.h"
 #include "qgsmeshvectorrenderer.h"
-#include "qgsmaptopixel.h"
-#include "qgsrendercontext.h"
-
-class QgsMeshLayerInterpolator;
-class QgsMeshLayerRendererFeedback;
 
 ///@cond PRIVATE
 
@@ -49,21 +45,21 @@ class QgsMeshVectorValueInterpolator
 {
   public:
     //! Constructor
-    QgsMeshVectorValueInterpolator(
-      const QgsTriangularMesh &triangularMesh,
-      const QgsMeshDataBlock &datasetVectorValues );
+    QgsMeshVectorValueInterpolator( const QgsTriangularMesh &triangularMesh,
+                                    const QgsMeshDataBlock &datasetVectorValues );
 
     //! Constructor with scalar active face flag values to not interpolate on inactive face
-    QgsMeshVectorValueInterpolator(
-      const QgsTriangularMesh &triangularMesh,
-      const QgsMeshDataBlock &datasetVectorValues,
-      const QgsMeshDataBlock &scalarActiveFaceFlagValues );
+    QgsMeshVectorValueInterpolator( const QgsTriangularMesh &triangularMesh,
+                                    const QgsMeshDataBlock &datasetVectorValues,
+                                    const QgsMeshDataBlock &scalarActiveFaceFlagValues );
 
+    //! Copy constructor
     QgsMeshVectorValueInterpolator( const QgsMeshVectorValueInterpolator &other );
 
     //! Clone
     virtual QgsMeshVectorValueInterpolator *clone() = 0;
 
+    //! Destructor
     virtual ~QgsMeshVectorValueInterpolator() = default;
 
     /**
@@ -105,21 +101,21 @@ class QgsMeshVectorValueInterpolatorFromVertex: public QgsMeshVectorValueInterpo
 {
   public:
     //! Constructor
-    QgsMeshVectorValueInterpolatorFromVertex(
-      const QgsTriangularMesh &triangularMesh,
-      const QgsMeshDataBlock &datasetVectorValues );
+    QgsMeshVectorValueInterpolatorFromVertex( const QgsTriangularMesh &triangularMesh,
+        const QgsMeshDataBlock &datasetVectorValues );
 
     //! Constructor with scalar active face flag value to not interpolate on inactive face
-    QgsMeshVectorValueInterpolatorFromVertex(
-      const QgsTriangularMesh &triangularMesh,
-      const QgsMeshDataBlock &datasetVectorValues,
-      const QgsMeshDataBlock &scalarActiveFaceFlagValues );
+    QgsMeshVectorValueInterpolatorFromVertex( const QgsTriangularMesh &triangularMesh,
+        const QgsMeshDataBlock &datasetVectorValues,
+        const QgsMeshDataBlock &scalarActiveFaceFlagValues );
 
+    //! Copy constructor
     QgsMeshVectorValueInterpolatorFromVertex( const QgsMeshVectorValueInterpolatorFromVertex &other );
 
     //! Clone the instance
     virtual QgsMeshVectorValueInterpolatorFromVertex *clone() override;
 
+    //! Assignment operator
     QgsMeshVectorValueInterpolatorFromVertex &operator=( const QgsMeshVectorValueInterpolatorFromVertex &other );
 
   private:
@@ -138,21 +134,21 @@ class QgsMeshVectorValueInterpolatorFromFace: public QgsMeshVectorValueInterpola
 {
   public:
     //! Constructor
-    QgsMeshVectorValueInterpolatorFromFace(
-      const QgsTriangularMesh &triangularMesh,
-      const QgsMeshDataBlock &datasetVectorValues );
+    QgsMeshVectorValueInterpolatorFromFace( const QgsTriangularMesh &triangularMesh,
+                                            const QgsMeshDataBlock &datasetVectorValues );
 
     //! Constructor with scalar active face flag value to not interpolate on inactive face
-    QgsMeshVectorValueInterpolatorFromFace(
-      const QgsTriangularMesh &triangularMesh,
-      const QgsMeshDataBlock &datasetVectorValues,
-      const QgsMeshDataBlock &scalarActiveFaceFlagValues );
+    QgsMeshVectorValueInterpolatorFromFace( const QgsTriangularMesh &triangularMesh,
+                                            const QgsMeshDataBlock &datasetVectorValues,
+                                            const QgsMeshDataBlock &scalarActiveFaceFlagValues );
 
+    //! Copy constructor
     QgsMeshVectorValueInterpolatorFromFace( const QgsMeshVectorValueInterpolatorFromFace &other );
 
     //! Clone the instance
     virtual QgsMeshVectorValueInterpolatorFromFace *clone() override;
 
+    //! Assignment operator
     QgsMeshVectorValueInterpolatorFromFace &operator=( const QgsMeshVectorValueInterpolatorFromFace &other );
 
   private:
@@ -179,18 +175,20 @@ class QgsMeshStreamField
     };
 
     //! Constructor
-    QgsMeshStreamField(
-      const QgsTriangularMesh &triangularMesh,
-      const QgsMeshDataBlock &dataSetVectorValues,
-      const QgsMeshDataBlock &scalarActiveFaceFlagValues,
-      const QgsRectangle &layerExtent,
-      double magnitudeMaximum,
-      bool dataIsOnVertices,
-      const QgsRenderContext &rendererContext,
-      const QgsInterpolatedLineColor &vectorColoring,
-      int resolution = 1 );
+    QgsMeshStreamField( const QgsTriangularMesh &triangularMesh,
+                        const QgsMeshDataBlock &dataSetVectorValues,
+                        const QgsMeshDataBlock &scalarActiveFaceFlagValues,
+                        const QgsRectangle &layerExtent,
+                        double magnitudeMaximum,
+                        bool dataIsOnVertices,
+                        const QgsRenderContext &rendererContext,
+                        const QgsInterpolatedLineColor &vectorColoring,
+                        int resolution = 1 );
 
+    //! Copy constructor
     QgsMeshStreamField( const QgsMeshStreamField &other );
+
+    //! Destructor
     virtual ~QgsMeshStreamField();
 
     /**
@@ -244,7 +242,7 @@ class QgsMeshStreamField
     QSize imageSize() const;
 
     //! Returns the current render image of the field
-    virtual QImage image() const;
+    virtual QImage image();
 
     //! Sets the maximum pixel filling, eg, the rate of number pixel that can be filled with way.
     void setPixelFillingDensity( double maxFilling );
@@ -265,10 +263,9 @@ class QgsMeshStreamField
     QgsMeshStreamField &operator=( const QgsMeshStreamField &other );
 
   protected:
-    virtual void initImage();
+    void initImage();
     QPointF fieldToDevice( const QPoint &pixel ) const;
     bool filterMag( double value ) const;
-    bool isTraceOutside( const QPoint &pixel ) const;
 
   private:
     QgsPointXY positionToMapCoordinates( const QPoint &pixelPosition, const QgsPointXY &positionInPixel );
@@ -276,13 +273,14 @@ class QgsMeshStreamField
                                QgsMeshStreamField::FieldData &data,
                                std::list<QPair<QPoint, QgsMeshStreamField::FieldData> > &chunkTrace );
     void setChunkTrace( std::list<QPair<QPoint, FieldData>> &chunkTrace );
-    virtual void drawTrace( const QPoint & ) const {}
+    virtual void drawChunkTrace( const std::list<QPair<QPoint, FieldData>> &chunkTrace ) = 0;
     void clearChunkTrace( std::list<QPair<QPoint, FieldData>> &chunkTrace );
     virtual void storeInField( const QPair<QPoint, FieldData> pixelData ) = 0;
     virtual void initField() = 0;
     void simplifyChunkTrace( std::list<QPair<QPoint, FieldData>> &shunkTrace );
 
     virtual bool isTraceExists( const QPoint &pixel ) const = 0;
+    bool isTraceOutside( const QPoint &pixel ) const;
 
   protected:
 
@@ -293,24 +291,7 @@ class QgsMeshStreamField
     QImage mTraceImage;
 
     QgsMapToPixel mMapToFieldPixel;
-    QgsRectangle mOutputExtent = QgsRectangle();
     QgsInterpolatedLineColor mVectorColoring;
-
-    /*the direction for a pixel is defined with a char value
-     *
-     *     1  2  3
-     *     4  5  6
-     *     7  8  9
-     *
-     *     convenient to retrieve the indexes of the next pixel from the direction d:
-     *     Xnext= (d-1)%3-1
-     *     Ynext = (d-1)/3-1
-     *
-     *     and the direction is defined by :
-     *     d=incX + 2 + (incY+1)*3
-     */
-    QVector<unsigned char> mDirectionField;
-    QgsRenderContext mRenderContext;
 
   private:
     int mPixelFillingCount = 0;
@@ -324,6 +305,7 @@ class QgsMeshStreamField
     double mPixelFillingDensity = 0;
     double mMinMagFilter = -1;
     double mMaxMagFilter = -1;
+    const QgsRenderContext &mRenderContext; //keep the renderer context only to know if the renderer is stopped
     bool mMinimizeFieldSize = true; //
 };
 
@@ -339,47 +321,28 @@ class QgsMeshStreamlinesField: public QgsMeshStreamField
 {
   public:
     //! Constructor
-    Q_DECL_DEPRECATED QgsMeshStreamlinesField(
-      const QgsTriangularMesh &triangularMesh,
-      const QgsMeshDataBlock &datasetVectorValues,
-      const QgsMeshDataBlock &scalarActiveFaceFlagValues,
-      const QgsRectangle &layerExtent,
-      double magMax,
-      bool dataIsOnVertices,
-      QgsRenderContext &rendererContext,
-      const QgsInterpolatedLineColor vectorColoring );
+    QgsMeshStreamlinesField( const QgsTriangularMesh &triangularMesh,
+                             const QgsMeshDataBlock &datasetVectorValues,
+                             const QgsMeshDataBlock &scalarActiveFaceFlagValues,
+                             const QgsRectangle &layerExtent,
+                             double magMax,
+                             bool dataIsOnVertices,
+                             QgsRenderContext &rendererContext,
+                             const QgsInterpolatedLineColor vectorColoring );
 
-    QgsMeshStreamlinesField(
-      const QgsTriangularMesh &triangularMesh,
-      const QgsMeshDataBlock &datasetVectorValues,
-      const QgsMeshDataBlock &scalarActiveFaceFlagValues,
-      const QVector<double> &datasetMagValues,
-      const QgsRectangle &layerExtent,
-      QgsMeshLayerRendererFeedback *feedBack,
-      double magMax,
-      bool dataIsOnVertices,
-      QgsRenderContext &rendererContext,
-      const QgsInterpolatedLineColor vectorColoring );
+    //! Copy constructor
+    QgsMeshStreamlinesField( const QgsMeshStreamlinesField &other );
 
-    void compose();
+    //! Assignment operator
+    QgsMeshStreamlinesField &operator=( const QgsMeshStreamlinesField &other );
 
   private:
     void storeInField( const QPair<QPoint, FieldData> pixelData ) override;
     void initField() override;
-    void initImage() override;
     bool isTraceExists( const QPoint &pixel ) const override;
-    void drawTrace( const QPoint &start ) const override;
+    void drawChunkTrace( const std::list<QPair<QPoint, FieldData> > &chunkTrace ) override;
 
     QVector<bool> mField;
-    QImage mDrawingTraceImage;
-    std::unique_ptr<QPainter> mDrawingTracePainter;
-
-    //** Needed data
-    QgsTriangularMesh mTriangularMesh;
-    QVector<double> mMagValues;
-    QgsMeshDataBlock mScalarActiveFaceFlagValues;
-    QgsMeshDatasetGroupMetadata::DataType mDataType = QgsMeshDatasetGroupMetadata::DataOnVertices;
-    QgsMeshLayerRendererFeedback *mFeedBack = nullptr;
 
 };
 
@@ -413,16 +376,16 @@ class QgsMeshParticleTracesField: public QgsMeshStreamField
 {
   public:
     //! Constructor
-    QgsMeshParticleTracesField(
-      const QgsTriangularMesh &triangularMesh,
-      const QgsMeshDataBlock &datasetVectorValues,
-      const QgsMeshDataBlock &scalarActiveFaceFlagValues,
-      const QgsRectangle &layerExtent,
-      double magMax,
-      bool dataIsOnVertices,
-      const QgsRenderContext &rendererContext,
-      const QgsInterpolatedLineColor vectorColoring );
+    QgsMeshParticleTracesField( const QgsTriangularMesh &triangularMesh,
+                                const QgsMeshDataBlock &datasetVectorValues,
+                                const QgsMeshDataBlock &scalarActiveFaceFlagValues,
+                                const QgsRectangle &layerExtent,
+                                double magMax,
+                                bool dataIsOnVertices,
+                                const QgsRenderContext &rendererContext,
+                                const QgsInterpolatedLineColor vectorColoring );
 
+    //! Copy constructor
     QgsMeshParticleTracesField( const QgsMeshParticleTracesField &other );
 
     //! Adds a particle in the vector field from a start point (pixel) with a specified life time
@@ -468,14 +431,14 @@ class QgsMeshParticleTracesField: public QgsMeshStreamField
     //! Sets the minimum tail length
     void setMinTailLength( int minTailLength );
 
+    //! Assignment operator
+    QgsMeshParticleTracesField &operator=( const QgsMeshParticleTracesField &other );
+
     //! Sets if the particle has to be stumped dependiong on liketime
     void setStumpParticleWithLifeTime( bool stumpParticleWithLifeTime );
 
     //! Sets the color of the particles, overwrite the color provided by vector settings
     void setParticlesColor( const QColor &c );
-
-    QgsMeshParticleTracesField &operator=( const QgsMeshParticleTracesField &other );
-
   private:
     QPoint direction( QPoint position ) const;
 
@@ -487,6 +450,7 @@ class QgsMeshParticleTracesField: public QgsMeshStreamField
     void storeInField( const QPair<QPoint, FieldData> pixelData ) override;
     void initField() override;
     bool isTraceExists( const QPoint &pixel ) const override;
+    void drawChunkTrace( const std::list<QPair<QPoint, FieldData>> &chunkTrace ) override {Q_UNUSED( chunkTrace )}
 
     /* Nondimensional time
      * This field store the time spent by the particle in the pixel
@@ -498,6 +462,20 @@ class QgsMeshParticleTracesField: public QgsMeshStreamField
     QVector<float> mTimeField;
     QVector<float> mMagnitudeField;
 
+    /*the direction for a pixel is defined with a char value
+     *
+     *     1  2  3
+     *     4  5  6
+     *     7  8  9
+     *
+     *     convenient to retrieve the indexes of the next pixel from the direction d:
+     *     Xnext= (d-1)%3-1
+     *     Ynext = (d-1)/3-1
+     *
+     *     and the direction is defined by :
+     *     d=incX + 2 + (incY+1)*3
+     */
+    QVector<char> mDirectionField;
     QList<QgsMeshTraceParticle> mParticles;
     QImage mStumpImage;
 
@@ -526,32 +504,19 @@ class QgsMeshVectorStreamlineRenderer: public QgsMeshVectorRenderer
 {
   public:
     //!Constructor
-    Q_DECL_DEPRECATED QgsMeshVectorStreamlineRenderer(
-      const QgsTriangularMesh &triangularMesh,
-      const QgsMeshDataBlock &dataSetVectorValues,
-      const QgsMeshDataBlock &scalarActiveFaceFlagValues,
-      bool dataIsOnVertices,
-      const QgsMeshRendererVectorSettings &settings,
-      QgsRenderContext &rendererContext,
-      const QgsRectangle &layerExtent,
-      double magMax );
-
-    QgsMeshVectorStreamlineRenderer(
-      const QgsTriangularMesh &triangularMesh,
-      const QgsMeshDataBlock &dataSetVectorValues,
-      const QgsMeshDataBlock &scalarActiveFaceFlagValues,
-      const QVector<double> &datasetMagValues,
-      bool dataIsOnVertices,
-      const QgsMeshRendererVectorSettings &settings,
-      QgsRenderContext &rendererContext,
-      const QgsRectangle &layerExtent,
-      QgsMeshLayerRendererFeedback *feedBack,
-      double magMax );
+    QgsMeshVectorStreamlineRenderer( const QgsTriangularMesh &triangularMesh,
+                                     const QgsMeshDataBlock &dataSetVectorValues,
+                                     const QgsMeshDataBlock &scalarActiveFaceFlagValues,
+                                     bool dataIsOnVertices,
+                                     const QgsMeshRendererVectorSettings &settings,
+                                     QgsRenderContext &rendererContext,
+                                     const QgsRectangle &layerExtent,
+                                     double magMax );
 
     void draw() override;
 
   private:
-    std::unique_ptr<QgsMeshStreamlinesField> mStreamlineField;
+    std::unique_ptr<QgsMeshStreamField> mStreamlineField;
     QgsRenderContext &mRendererContext;
 };
 
@@ -570,15 +535,14 @@ class QgsMeshVectorTraceRenderer: public QgsMeshVectorRenderer
 {
   public:
     //!Constructor
-    QgsMeshVectorTraceRenderer(
-      const QgsTriangularMesh &triangularMesh,
-      const QgsMeshDataBlock &dataSetVectorValues,
-      const QgsMeshDataBlock &scalarActiveFaceFlagValues,
-      bool dataIsOnVertices,
-      const QgsMeshRendererVectorSettings &settings,
-      QgsRenderContext &rendererContext,
-      const QgsRectangle &layerExtent,
-      double magMax );
+    QgsMeshVectorTraceRenderer( const QgsTriangularMesh &triangularMesh,
+                                const QgsMeshDataBlock &dataSetVectorValues,
+                                const QgsMeshDataBlock &scalarActiveFaceFlagValues,
+                                bool dataIsOnVertices,
+                                const QgsMeshRendererVectorSettings &settings,
+                                QgsRenderContext &rendererContext,
+                                const QgsRectangle &layerExtent,
+                                double magMax );
 
     void draw() override;
 
@@ -603,21 +567,22 @@ class CORE_EXPORT QgsMeshVectorTraceAnimationGenerator
 {
   public:
     //!Constructor to use from QgsMeshVectorRenderer
-    QgsMeshVectorTraceAnimationGenerator(
-      const QgsTriangularMesh &triangularMesh,
-      const QgsMeshDataBlock &dataSetVectorValues,
-      const QgsMeshDataBlock &scalarActiveFaceFlagValues,
-      bool dataIsOnVertices,
-      const QgsRenderContext &rendererContext,
-      const QgsRectangle &layerExtent,
-      double magMax,
-      const QgsMeshRendererVectorSettings &vectorSettings ) SIP_SKIP;
+    QgsMeshVectorTraceAnimationGenerator( const QgsTriangularMesh &triangularMesh,
+                                          const QgsMeshDataBlock &dataSetVectorValues,
+                                          const QgsMeshDataBlock &scalarActiveFaceFlagValues,
+                                          bool dataIsOnVertices,
+                                          const QgsRenderContext &rendererContext,
+                                          const QgsRectangle &layerExtent,
+                                          double magMax,
+                                          const QgsMeshRendererVectorSettings &vectorSettings ) SIP_SKIP;
 
     //!Constructor to use with Python binding
     QgsMeshVectorTraceAnimationGenerator( QgsMeshLayer *layer, const QgsRenderContext &rendererContext );
 
+    //! Copy constructor
     QgsMeshVectorTraceAnimationGenerator( const QgsMeshVectorTraceAnimationGenerator &other );
 
+    //! Destructor
     ~QgsMeshVectorTraceAnimationGenerator() = default;
 
     //! seeds particles in the vector fields
@@ -650,8 +615,8 @@ class CORE_EXPORT QgsMeshVectorTraceAnimationGenerator
     //! Sets the visual persistence of the tail
     void setTailPersitence( double p );
 
+    //! Assignment operator
     QgsMeshVectorTraceAnimationGenerator &operator=( const QgsMeshVectorTraceAnimationGenerator &other );
-
   private:
     std::unique_ptr<QgsMeshParticleTracesField> mParticleField;
     const QgsRenderContext &mRendererContext;

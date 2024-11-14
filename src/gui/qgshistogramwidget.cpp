@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgshistogramwidget.h"
-#include "moc_qgshistogramwidget.cpp"
 #include "qgsapplication.h"
 #include "qgsvectorlayer.h"
 #include "qgsvectorlayerutils.h"
@@ -121,7 +120,7 @@ void QgsHistogramWidget::refreshValues()
   mBinsSpinBox->setValue( std::max( mHistogram.optimalNumberBins(), 30 ) );
   mBinsSpinBox->blockSignals( false );
 
-  mStats.setStatistics( Qgis::Statistic::StDev );
+  mStats.setStatistics( QgsStatisticalSummary::StDev );
   mStats.calculate( mValues );
 
   mpPlot->setEnabled( true );

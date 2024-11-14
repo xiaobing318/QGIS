@@ -129,5 +129,5 @@ QString QgsError::message( QgsErrorMessage::Format format ) const
 QString QgsError::summary() const
 {
   // The first message in chain is usually the real error given by backend/server
-  return ( mMessageList.isEmpty() ? QString() : mMessageList.first().message() );
+  return mMessageList.first().message();
 }

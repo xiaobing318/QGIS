@@ -19,9 +19,7 @@
  ***************************************************************************/
 
 #include "qgshttpheaders.h"
-#include "qgssettings.h"
-
-
+#include "qgsdatasourceuri.h"
 #include <QDir>
 #include <QNetworkRequest>
 #include <QUrlQuery>
@@ -37,7 +35,7 @@ const QString QgsHttpHeaders::KEY_REFERER = "referer";
 
 QgsHttpHeaders::QgsHttpHeaders() = default;
 
-QgsHttpHeaders::QgsHttpHeaders( const QVariantMap &headers )
+QgsHttpHeaders::QgsHttpHeaders( const QMap<QString, QVariant> &headers )
   : mHeaders( headers )
 {
   mHeaders.detach(); // clone like
@@ -137,6 +135,8 @@ bool QgsHttpHeaders::updateDomElement( QDomElement &el ) const
 }
 
 
+
+
 void QgsHttpHeaders::setFromSettings( const QgsSettings &settings, const QString &key )
 {
   QString keyFixed = sanitizeKey( key );
@@ -183,10 +183,6 @@ void QgsHttpHeaders::setFromUrlQuery( const QUrlQuery &uri )
     {
       QString name = key.right( key.size() - QgsHttpHeaders::PARAM_PREFIX.size() );
       mHeaders[sanitizeKey( name )] = item.second;
-    }
-    else if ( key == QgsHttpHeaders::KEY_REFERER ) // backward comptibility
-    {
-      mHeaders[QgsHttpHeaders::KEY_REFERER] = item.second;
     }
   }
 }

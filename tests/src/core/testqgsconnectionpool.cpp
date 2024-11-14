@@ -20,7 +20,6 @@
 #include "qgspoint.h"
 #include "qgslinestring.h"
 #include "qgsvectorlayer.h"
-#include "qgsvectorlayerfeatureiterator.h"
 #include <QEventLoop>
 #include <QObject>
 #include <QTemporaryFile>
@@ -40,14 +39,14 @@ class TestQgsConnectionPool: public QObject
   private:
     struct ReadJob
     {
-      explicit ReadJob( QgsVectorLayer *_layer ) : source( std::make_shared< QgsVectorLayerFeatureSource >( _layer ) ) {}
-      std::shared_ptr< QgsVectorLayerFeatureSource> source;
+      explicit ReadJob( QgsVectorLayer *_layer ) : layer( _layer ) {}
+      QgsVectorLayer *layer = nullptr;
       QList<QgsFeature> features;
     };
 
     static void processJob( ReadJob &job )
     {
-      QgsFeatureIterator it = job.source->getFeatures();
+      QgsFeatureIterator it = job.layer->getFeatures();
       QgsFeature f;
       while ( it.nextFeature( f ) )
       {

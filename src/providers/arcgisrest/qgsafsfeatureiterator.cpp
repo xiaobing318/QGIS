@@ -15,6 +15,7 @@
 #include "qgsafsfeatureiterator.h"
 #include "qgsspatialindex.h"
 #include "qgsafsshareddata.h"
+#include "qgsmessagelog.h"
 #include "geometry/qgsgeometry.h"
 #include "qgsexception.h"
 #include "qgsarcgisrestutils.h"
@@ -41,7 +42,10 @@ QgsAfsSharedData *QgsAfsFeatureSource::sharedData() const
 QgsAfsFeatureIterator::QgsAfsFeatureIterator( QgsAfsFeatureSource *source, bool ownSource, const QgsFeatureRequest &request )
   : QgsAbstractFeatureIteratorFromSource<QgsAfsFeatureSource>( source, ownSource, request )
 {
-  mTransform = mRequest.calculateTransform( mSource->sharedData()->crs() );
+  if ( mRequest.destinationCrs().isValid() && mRequest.destinationCrs() != mSource->sharedData()->crs() )
+  {
+    mTransform = QgsCoordinateTransform( mSource->sharedData()->crs(), mRequest.destinationCrs(), mRequest.transformContext() );
+  }
   try
   {
     mFilterRect = filterRectToSourceCrs( mTransform );
@@ -59,11 +63,11 @@ QgsAfsFeatureIterator::QgsAfsFeatureIterator( QgsAfsFeatureSource *source, bool 
   }
 
   QgsFeatureIds requestIds;
-  if ( mRequest.filterType() == Qgis::FeatureRequestFilterType::Fids )
+  if ( mRequest.filterType() == QgsFeatureRequest::FilterFids )
   {
     requestIds = mRequest.filterFids();
   }
-  else if ( mRequest.filterType() == Qgis::FeatureRequestFilterType::Fid )
+  else if ( mRequest.filterType() == QgsFeatureRequest::FilterFid )
   {
     requestIds.insert( mRequest.filterFid() );
   }
@@ -147,7 +151,7 @@ bool QgsAfsFeatureIterator::fetchFeature( QgsFeature &f )
 
     mDeferredFeaturesInFilterRectCheck = false;
 
-    if ( !( mRequest.flags() & Qgis::FeatureRequestFlag::ExactIntersect ) )
+    if ( !( mRequest.flags() & QgsFeatureRequest::ExactIntersect ) )
     {
       // discard the filter rect - we know that the features in mRemainingFeatureIds are guaranteed
       // to be intersecting the rect, so avoid any extra unnecessary checks
@@ -160,7 +164,7 @@ bool QgsAfsFeatureIterator::fetchFeature( QgsFeature &f )
 
   switch ( mRequest.filterType() )
   {
-    case Qgis::FeatureRequestFilterType::Fid:
+    case QgsFeatureRequest::FilterFid:
     {
       if ( mRemainingFeatureIds.empty() )
         return false;
@@ -180,9 +184,9 @@ bool QgsAfsFeatureIterator::fetchFeature( QgsFeature &f )
       return result;
     }
 
-    case Qgis::FeatureRequestFilterType::Fids:
-    case Qgis::FeatureRequestFilterType::Expression:
-    case Qgis::FeatureRequestFilterType::NoFilter:
+    case QgsFeatureRequest::FilterFids:
+    case QgsFeatureRequest::FilterExpression:
+    case QgsFeatureRequest::FilterNone:
     {
       while ( mFeatureIterator < mSource->sharedData()->objectIdCount() )
       {
@@ -216,7 +220,7 @@ bool QgsAfsFeatureIterator::fetchFeature( QgsFeature &f )
             success = false;
           else
           {
-            if ( mRequest.spatialFilterType() == Qgis::SpatialFilterType::BoundingBox && mRequest.flags() & Qgis::FeatureRequestFlag::ExactIntersect )
+            if ( mRequest.spatialFilterType() == Qgis::SpatialFilterType::BoundingBox && mRequest.flags() & QgsFeatureRequest::ExactIntersect )
             {
               // exact intersection check requested
               if ( !f.geometry().intersects( mFilterRect ) )

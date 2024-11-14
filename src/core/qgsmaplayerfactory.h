@@ -24,9 +24,6 @@
 
 #include <QString>
 
-class QgsMapLayer;
-
-
 /**
  * \ingroup core
  * \brief Contains utility functions for creating map layers.
@@ -47,14 +44,14 @@ class CORE_EXPORT QgsMapLayerFactory
      *
      * \see typeToString()
      */
-    static Qgis::LayerType typeFromString( const QString &string, bool &ok SIP_OUT );
+    static QgsMapLayerType typeFromString( const QString &string, bool &ok SIP_OUT );
 
     /**
      * Converts a map layer \a type to a string value.
      *
      * \see typeFromString()
      */
-    static QString typeToString( Qgis::LayerType type );
+    static QString typeToString( QgsMapLayerType type );
 
     /**
      * Setting options for loading layers.
@@ -76,20 +73,6 @@ class CORE_EXPORT QgsMapLayerFactory
 
       //! Set to TRUE if the default layer style should be loaded
       bool loadDefaultStyle = true;
-
-      /**
-       * Controls whether the stored styles will be all loaded.
-       *
-       * If TRUE and the layer's provider supports style stored in the
-       * data source all the available styles will be loaded in addition
-       * to the default one.
-       *
-       * If FALSE (the default), the layer's provider will only load
-       * the default style.
-       *
-       * \since QGIS 3.30
-       */
-      bool loadAllStoredStyles = false;
     };
 
     /**
@@ -99,7 +82,7 @@ class CORE_EXPORT QgsMapLayerFactory
      *
      * \since QGIS 3.22
      */
-    static QgsMapLayer *createLayer( const QString &uri, const QString &name, Qgis::LayerType type, const LayerOptions &options,
+    static QgsMapLayer *createLayer( const QString &uri, const QString &name, QgsMapLayerType type, const LayerOptions &options,
                                      const QString &provider = QString() ) SIP_FACTORY;
 
 };

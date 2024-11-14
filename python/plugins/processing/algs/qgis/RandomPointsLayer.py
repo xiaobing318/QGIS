@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     RandomPointsLayer.py
@@ -23,9 +25,8 @@ import os
 import random
 
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtCore import QMetaType
-from qgis.core import (Qgis,
-                       QgsApplication,
+from qgis.PyQt.QtCore import QVariant
+from qgis.core import (QgsApplication,
                        QgsField,
                        QgsFeatureSink,
                        QgsFeature,
@@ -73,26 +74,23 @@ class RandomPointsLayer(QgisAlgorithm):
     def initAlgorithm(self, config=None):
         self.addParameter(QgsProcessingParameterFeatureSource(self.INPUT,
                                                               self.tr('Input layer'),
-                                                              [QgsProcessing.SourceType.TypeVectorPolygon]))
+                                                              [QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterNumber(self.POINTS_NUMBER,
                                                        self.tr('Number of points'),
-                                                       QgsProcessingParameterNumber.Type.Integer,
+                                                       QgsProcessingParameterNumber.Integer,
                                                        1, False, 1, 1000000000))
         self.addParameter(QgsProcessingParameterDistance(self.MIN_DISTANCE,
                                                          self.tr('Minimum distance between points'),
                                                          0, self.INPUT, False, 0, 1000000000))
         self.addParameter(QgsProcessingParameterFeatureSink(self.OUTPUT,
                                                             self.tr('Random points'),
-                                                            type=QgsProcessing.SourceType.TypeVectorPoint))
+                                                            type=QgsProcessing.TypeVectorPoint))
 
     def name(self):
         return 'randompointsinlayerbounds'
 
     def displayName(self):
         return self.tr('Random points in layer bounds')
-
-    def documentationFlags(self):
-        return Qgis.ProcessingAlgorithmDocumentationFlag.RegeneratesPrimaryKey
 
     def processAlgorithm(self, parameters, context, feedback):
         source = self.parameterAsSource(parameters, self.INPUT, context)
@@ -106,10 +104,10 @@ class RandomPointsLayer(QgisAlgorithm):
         sourceIndex = QgsSpatialIndex(source, feedback)
 
         fields = QgsFields()
-        fields.append(QgsField('id', QMetaType.Type.Int, '', 10, 0))
+        fields.append(QgsField('id', QVariant.Int, '', 10, 0))
 
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context,
-                                               fields, QgsWkbTypes.Type.Point, source.sourceCrs(), QgsFeatureSink.SinkFlag.RegeneratePrimaryKey)
+                                               fields, QgsWkbTypes.Point, source.sourceCrs(), QgsFeatureSink.RegeneratePrimaryKey)
         if sink is None:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
 
@@ -147,7 +145,7 @@ class RandomPointsLayer(QgisAlgorithm):
                         f.setFields(fields)
                         f.setAttribute('id', nPoints)
                         f.setGeometry(geom)
-                        sink.addFeature(f, QgsFeatureSink.Flag.FastInsert)
+                        sink.addFeature(f, QgsFeatureSink.FastInsert)
                         index.addFeature(f)
                         points[nPoints] = p
                         nPoints += 1
@@ -158,5 +156,4 @@ class RandomPointsLayer(QgisAlgorithm):
             feedback.pushInfo(self.tr('Could not generate requested number of random points. '
                                       'Maximum number of attempts exceeded.'))
 
-        sink.finalize()
         return {self.OUTPUT: dest_id}

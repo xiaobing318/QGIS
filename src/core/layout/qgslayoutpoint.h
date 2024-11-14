@@ -19,8 +19,7 @@
 #define QGSLAYOUTPOINT_H
 
 #include "qgis_core.h"
-#include "qgis.h"
-#include "qgsconfig.h"
+#include "qgsunittypes.h"
 #include <QPointF>
 
 /**
@@ -35,6 +34,7 @@
  * to believe that addition of two QgsLayoutPoints with different unit types would automatically convert
  * units. Instead, all unit conversion must be handled by a QgsLayoutMeasurementConverter so that
  * conversion between paper and screen units can be correctly performed.
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsLayoutPoint
 {
@@ -43,18 +43,18 @@ class CORE_EXPORT QgsLayoutPoint
     /**
      * Constructor for QgsLayoutPoint.
     */
-    QgsLayoutPoint( double x, double y, Qgis::LayoutUnit units = Qgis::LayoutUnit::Millimeters );
+    QgsLayoutPoint( double x, double y, QgsUnitTypes::LayoutUnit units = QgsUnitTypes::LayoutMillimeters );
 
     /**
      * Constructor for QgsLayoutPoint.
     */
-    explicit QgsLayoutPoint( QPointF point, Qgis::LayoutUnit units = Qgis::LayoutUnit::Millimeters );
+    explicit QgsLayoutPoint( QPointF point, QgsUnitTypes::LayoutUnit units = QgsUnitTypes::LayoutMillimeters );
 
     /**
      * Constructor for an empty point, where both x and y are set to 0.
      * \param units units for measurement
     */
-    explicit QgsLayoutPoint( Qgis::LayoutUnit units = Qgis::LayoutUnit::Millimeters );
+    explicit QgsLayoutPoint( QgsUnitTypes::LayoutUnit units = QgsUnitTypes::LayoutMillimeters );
 
     /**
      * Sets new x and y coordinates for the point.
@@ -76,13 +76,7 @@ class CORE_EXPORT QgsLayoutPoint
      * \see x()
      * \see setY()
     */
-    void setX( const double x )
-    {
-#ifdef QGISDEBUG
-      Q_ASSERT_X( !std::isnan( x ), "QgsLayoutPoint", "Layout point with NaN coordinates created" );
-#endif
-      mX = x;
-    }
+    void setX( const double x ) { mX = x; }
 
     /**
      * Returns y coordinate of point.
@@ -96,26 +90,20 @@ class CORE_EXPORT QgsLayoutPoint
      * \see y()
      * \see setX()
     */
-    void setY( const double y )
-    {
-#ifdef QGISDEBUG
-      Q_ASSERT_X( !std::isnan( y ), "QgsLayoutPoint", "Layout point with NaN coordinates created" );
-#endif
-      mY = y;
-    }
+    void setY( const double y ) { mY = y; }
 
     /**
      * Returns the units for the point.
      * \see setUnits()
     */
-    Qgis::LayoutUnit units() const { return mUnits; }
+    QgsUnitTypes::LayoutUnit units() const { return mUnits; }
 
     /**
      * Sets the \a units for the point. Does not alter the stored coordinates,
      * ie. no conversion is done.
      * \see units()
     */
-    void setUnits( const Qgis::LayoutUnit units ) { mUnits = units; }
+    void setUnits( const QgsUnitTypes::LayoutUnit units ) { mUnits = units; }
 
     /**
      * Tests whether the position is null, ie both its x and y coordinates
@@ -178,7 +166,7 @@ class CORE_EXPORT QgsLayoutPoint
 
     double mX = 0.0;
     double mY = 0.0;
-    Qgis::LayoutUnit mUnits = Qgis::LayoutUnit::Millimeters;
+    QgsUnitTypes::LayoutUnit mUnits = QgsUnitTypes::LayoutMillimeters;
 
 };
 

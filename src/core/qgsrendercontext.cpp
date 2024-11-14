@@ -19,12 +19,11 @@
 #include "qgsrendercontext.h"
 
 #include "qgsmapsettings.h"
+#include "qgsexpression.h"
+#include "qgsvectorlayer.h"
 #include "qgsfeaturefilterprovider.h"
 #include "qgslogger.h"
-#include "qgselevationmap.h"
-#include "qgsunittypes.h"
-#include "qgssymbollayer.h"
-#include "qgsgeometrypaintdevice.h"
+#include "qgspoint.h"
 
 #define POINTS_TO_MM 2.83464567
 #define INCH_TO_MM 25.4
@@ -32,7 +31,7 @@
 QgsRenderContext::QgsRenderContext()
   : mFlags( Qgis::RenderContextFlag::DrawEditingInfo | Qgis::RenderContextFlag::UseAdvancedEffects | Qgis::RenderContextFlag::DrawSelection | Qgis::RenderContextFlag::UseRenderingOptimization )
 {
-  mVectorSimplifyMethod.setSimplifyHints( Qgis::VectorRenderingSimplificationFlag::NoSimplification );
+  mVectorSimplifyMethod.setSimplifyHints( QgsVectorSimplifyMethod::NoSimplification );
   // For RenderMetersInMapUnits support, when rendering in Degrees, the Ellipsoid must be set
   // - for Previews/Icons the default Extent can be used
   mDistanceArea.setEllipsoid( mDistanceArea.sourceCrs().ellipsoidAcronym() );
@@ -44,14 +43,7 @@ QgsRenderContext::QgsRenderContext( const QgsRenderContext &rh )
   : QgsTemporalRangeObject( rh )
   , mFlags( rh.mFlags )
   , mPainter( rh.mPainter )
-  , mPreviewRenderPainter( rh.mPreviewRenderPainter )
   , mMaskPainter( rh.mMaskPainter )
-
-    // TODO -- these were NOT being copied, but it's unclear if that was intentional or a bug??
-  , mMaskIdProvider( nullptr )
-  , mCurrentMaskId( -1 )
-
-  , mIsGuiPreview( rh.mIsGuiPreview )
   , mCoordTransform( rh.mCoordTransform )
   , mDistanceArea( rh.mDistanceArea )
   , mExtent( rh.mExtent )
@@ -77,7 +69,7 @@ QgsRenderContext::QgsRenderContext( const QgsRenderContext &rh )
   , mTextRenderFormat( rh.mTextRenderFormat )
   , mRenderedFeatureHandlers( rh.mRenderedFeatureHandlers )
   , mHasRenderedFeatureHandlers( rh.mHasRenderedFeatureHandlers )
-  , mCustomProperties( rh.mCustomProperties )
+  , mCustomRenderingFlags( rh.mCustomRenderingFlags )
   , mDisabledSymbolLayers()
   , mClippingRegions( rh.mClippingRegions )
   , mFeatureClipGeometry( rh.mFeatureClipGeometry )
@@ -89,12 +81,10 @@ QgsRenderContext::QgsRenderContext( const QgsRenderContext &rh )
   , mRendererUsage( rh.mRendererUsage )
   , mFrameRate( rh.mFrameRate )
   , mCurrentFrame( rh.mCurrentFrame )
-  , mSymbolLayerClippingGeometries( rh.mSymbolLayerClippingGeometries )
-  , mMaskRenderSettings( rh.mMaskRenderSettings )
+  , mSymbolLayerClipPaths( rh.mSymbolLayerClipPaths )
 #ifdef QGISDEBUG
   , mHasTransformContext( rh.mHasTransformContext )
 #endif
-  , mElevationMap( rh.mElevationMap )
 {
 }
 
@@ -102,12 +92,7 @@ QgsRenderContext &QgsRenderContext::operator=( const QgsRenderContext &rh )
 {
   mFlags = rh.mFlags;
   mPainter = rh.mPainter;
-  mPreviewRenderPainter = rh.mPreviewRenderPainter;
   mMaskPainter = rh.mMaskPainter;
-  // TODO -- these were NOT being copied, but it's unclear if that was intentional or a bug??
-  // mMaskIdProvider
-  // mCurrentMaskId
-  mIsGuiPreview = rh.mIsGuiPreview;
   mCoordTransform = rh.mCoordTransform;
   mExtent = rh.mExtent;
   mOriginalMapExtent = rh.mOriginalMapExtent;
@@ -133,7 +118,7 @@ QgsRenderContext &QgsRenderContext::operator=( const QgsRenderContext &rh )
   mTextRenderFormat = rh.mTextRenderFormat;
   mRenderedFeatureHandlers = rh.mRenderedFeatureHandlers;
   mHasRenderedFeatureHandlers = rh.mHasRenderedFeatureHandlers;
-  mCustomProperties = rh.mCustomProperties;
+  mCustomRenderingFlags = rh.mCustomRenderingFlags;
   mClippingRegions = rh.mClippingRegions;
   mFeatureClipGeometry = rh.mFeatureClipGeometry;
   mTextureOrigin = rh.mTextureOrigin;
@@ -145,14 +130,12 @@ QgsRenderContext &QgsRenderContext::operator=( const QgsRenderContext &rh )
   mRendererUsage = rh.mRendererUsage;
   mFrameRate = rh.mFrameRate;
   mCurrentFrame = rh.mCurrentFrame;
-  mSymbolLayerClippingGeometries = rh.mSymbolLayerClippingGeometries;
-  mMaskRenderSettings = rh.mMaskRenderSettings;
+  mSymbolLayerClipPaths = rh.mSymbolLayerClipPaths;
   if ( isTemporal() )
     setTemporalRange( rh.temporalRange() );
 #ifdef QGISDEBUG
   mHasTransformContext = rh.mHasTransformContext;
 #endif
-  mElevationMap = rh.elevationMap();
 
   return *this;
 }
@@ -163,7 +146,7 @@ QgsRenderContext QgsRenderContext::fromQPainter( QPainter *painter )
   context.setPainter( painter );
   if ( painter && painter->device() )
   {
-    context.setScaleFactor( painter->device()->physicalDpiX() / 25.4 );
+    context.setScaleFactor( painter->device()->logicalDpiX() / 25.4 );
   }
   else
   {
@@ -268,8 +251,6 @@ QgsRenderContext QgsRenderContext::fromMapSettings( const QgsMapSettings &mapSet
   ctx.setFlag( Qgis::RenderContextFlag::Render3DMap, mapSettings.testFlag( Qgis::MapSettingsFlag::Render3DMap ) );
   ctx.setFlag( Qgis::RenderContextFlag::HighQualityImageTransforms, mapSettings.testFlag( Qgis::MapSettingsFlag::HighQualityImageTransforms ) );
   ctx.setFlag( Qgis::RenderContextFlag::SkipSymbolRendering, mapSettings.testFlag( Qgis::MapSettingsFlag::SkipSymbolRendering ) );
-  ctx.setFlag( Qgis::RenderContextFlag::RecordProfile, mapSettings.testFlag( Qgis::MapSettingsFlag::RecordProfile ) );
-  ctx.setFlag( Qgis::RenderContextFlag::AlwaysUseGlobalMasks, mapSettings.testFlag( Qgis::MapSettingsFlag::AlwaysUseGlobalMasks ) );
   ctx.setScaleFactor( mapSettings.outputDpi() / 25.4 ); // = pixels per mm
   ctx.setDpiTarget( mapSettings.dpiTarget() >= 0.0 ? mapSettings.dpiTarget() : -1.0 );
   ctx.setRendererScale( mapSettings.scale() );
@@ -287,7 +268,7 @@ QgsRenderContext QgsRenderContext::fromMapSettings( const QgsMapSettings &mapSet
   //this flag is only for stopping during the current rendering progress,
   //so must be false at every new render operation
   ctx.setRenderingStopped( false );
-  ctx.mCustomProperties = mapSettings.customRenderingFlags();
+  ctx.mCustomRenderingFlags = mapSettings.customRenderingFlags();
   ctx.setIsTemporal( mapSettings.isTemporal() );
   if ( ctx.isTemporal() )
     ctx.setTemporalRange( mapSettings.temporalRange() );
@@ -299,15 +280,9 @@ QgsRenderContext QgsRenderContext::fromMapSettings( const QgsMapSettings &mapSet
 
   ctx.mClippingRegions = mapSettings.clippingRegions();
 
-  ctx.setMaskSettings( mapSettings.maskSettings() );
-
   ctx.mRendererUsage = mapSettings.rendererUsage();
   ctx.mFrameRate = mapSettings.frameRate();
   ctx.mCurrentFrame = mapSettings.currentFrame();
-
-  const QStringList layerIds = mapSettings.layerIds( true );
-  if ( !layerIds.empty() )
-    ctx.setCustomProperty( QStringLiteral( "visible_layer_ids" ), layerIds );
 
   return ctx;
 }
@@ -384,33 +359,33 @@ const QgsFeatureFilterProvider *QgsRenderContext::featureFilterProvider() const
   return mFeatureFilterProvider.get();
 }
 
-double QgsRenderContext::convertToPainterUnits( double size, Qgis::RenderUnit unit, const QgsMapUnitScale &scale, Qgis::RenderSubcomponentProperty property ) const
+double QgsRenderContext::convertToPainterUnits( double size, QgsUnitTypes::RenderUnit unit, const QgsMapUnitScale &scale, Qgis::RenderSubcomponentProperty property ) const
 {
   double conversionFactor = 1.0;
   bool isMapUnitHack = false;
   switch ( unit )
   {
-    case Qgis::RenderUnit::Millimeters:
+    case QgsUnitTypes::RenderMillimeters:
       conversionFactor = mScaleFactor;
       break;
 
-    case Qgis::RenderUnit::Points:
+    case QgsUnitTypes::RenderPoints:
       conversionFactor = mScaleFactor / POINTS_TO_MM;
       break;
 
-    case Qgis::RenderUnit::Inches:
+    case QgsUnitTypes::RenderInches:
       conversionFactor = mScaleFactor * INCH_TO_MM;
       break;
 
-    case Qgis::RenderUnit::MetersInMapUnits:
+    case QgsUnitTypes::RenderMetersInMapUnits:
     {
       if ( mMapToPixel.isValid() )
         size = convertMetersToMapUnits( size );
-      unit = Qgis::RenderUnit::MapUnits;
+      unit = QgsUnitTypes::RenderMapUnits;
       // Fall through to RenderMapUnits with size in meters converted to size in MapUnits
-      [[fallthrough]];
+      FALLTHROUGH
     }
-    case Qgis::RenderUnit::MapUnits:
+    case QgsUnitTypes::RenderMapUnits:
     {
       if ( mMapToPixel.isValid() )
       {
@@ -433,12 +408,12 @@ double QgsRenderContext::convertToPainterUnits( double size, Qgis::RenderUnit un
       }
       break;
     }
-    case Qgis::RenderUnit::Pixels:
+    case QgsUnitTypes::RenderPixels:
       conversionFactor = 1.0;
       break;
 
-    case Qgis::RenderUnit::Unknown:
-    case Qgis::RenderUnit::Percentage:
+    case QgsUnitTypes::RenderUnknownUnit:
+    case QgsUnitTypes::RenderPercentage:
       //no sensible value
       conversionFactor = 1.0;
       break;
@@ -446,7 +421,7 @@ double QgsRenderContext::convertToPainterUnits( double size, Qgis::RenderUnit un
 
   double convertedSize = size * conversionFactor;
 
-  if ( unit == Qgis::RenderUnit::MapUnits )
+  if ( unit == QgsUnitTypes::RenderMapUnits )
   {
     //check max/min size
     if ( scale.minSizeMMEnabled )
@@ -492,69 +467,7 @@ double QgsRenderContext::convertToPainterUnits( double size, Qgis::RenderUnit un
   return convertedSize;
 }
 
-double QgsRenderContext::convertFromPainterUnits( double size, Qgis::RenderUnit unit ) const
-{
-  double conversionFactor = 1.0;
-  // NOLINTBEGIN(bugprone-branch-clone)
-  switch ( unit )
-  {
-    case Qgis::RenderUnit::Millimeters:
-      conversionFactor = 1 / mScaleFactor;
-      break;
-
-    case Qgis::RenderUnit::Points:
-      conversionFactor = POINTS_TO_MM / mScaleFactor;
-      break;
-
-    case Qgis::RenderUnit::Inches:
-      conversionFactor = 1 / ( mScaleFactor * INCH_TO_MM );
-      break;
-
-    case Qgis::RenderUnit::MetersInMapUnits:
-    {
-      if ( mMapToPixel.isValid() )
-        size = 1 / convertMetersToMapUnits( size );
-      // Fall through to RenderMapUnits with size in meters converted to size in MapUnits
-      [[fallthrough]];
-    }
-    case Qgis::RenderUnit::MapUnits:
-    {
-      if ( mMapToPixel.isValid() )
-      {
-        const double mup = mapToPixel().mapUnitsPerPixel();;
-        if ( mup > 0 )
-        {
-          conversionFactor = mup / 1.0;
-        }
-        else
-        {
-          conversionFactor = 1.0;
-        }
-      }
-      else
-      {
-        // invalid map to pixel. A size in map units can't be calculated, so treat the size as points.
-        // It's the best we can do in this situation!
-        conversionFactor = POINTS_TO_MM / mScaleFactor;
-      }
-      break;
-    }
-    case Qgis::RenderUnit::Pixels:
-      conversionFactor = 1.0;
-      break;
-
-    case Qgis::RenderUnit::Unknown:
-    case Qgis::RenderUnit::Percentage:
-      //no sensible value
-      conversionFactor = 1.0;
-      break;
-  }
-  // NOLINTEND(bugprone-branch-clone)
-
-  return size * conversionFactor;
-}
-
-double QgsRenderContext::convertToMapUnits( double size, Qgis::RenderUnit unit, const QgsMapUnitScale &scale ) const
+double QgsRenderContext::convertToMapUnits( double size, QgsUnitTypes::RenderUnit unit, const QgsMapUnitScale &scale ) const
 {
   const double mup = mMapToPixel.mapUnitsPerPixel();
 
@@ -562,13 +475,13 @@ double QgsRenderContext::convertToMapUnits( double size, Qgis::RenderUnit unit, 
 
   switch ( unit )
   {
-    case Qgis::RenderUnit::MetersInMapUnits:
+    case QgsUnitTypes::RenderMetersInMapUnits:
     {
       size = convertMetersToMapUnits( size );
       // Fall through to RenderMapUnits with values of meters converted to MapUnits
-      [[fallthrough]];
+      FALLTHROUGH
     }
-    case Qgis::RenderUnit::MapUnits:
+    case QgsUnitTypes::RenderMapUnits:
     {
       // check scale
       double minSizeMU = std::numeric_limits<double>::lowest();
@@ -595,65 +508,65 @@ double QgsRenderContext::convertToMapUnits( double size, Qgis::RenderUnit unit, 
 
       return size;
     }
-    case Qgis::RenderUnit::Millimeters:
+    case QgsUnitTypes::RenderMillimeters:
     {
       return size * mScaleFactor * mup / symbologyReferenceScaleFactor;
     }
-    case Qgis::RenderUnit::Points:
+    case QgsUnitTypes::RenderPoints:
     {
       return size * mScaleFactor * mup / POINTS_TO_MM / symbologyReferenceScaleFactor;
     }
-    case Qgis::RenderUnit::Inches:
+    case QgsUnitTypes::RenderInches:
     {
       return size * mScaleFactor * mup * INCH_TO_MM / symbologyReferenceScaleFactor;
     }
-    case Qgis::RenderUnit::Pixels:
+    case QgsUnitTypes::RenderPixels:
     {
       return size * mup / symbologyReferenceScaleFactor;
     }
 
-    case Qgis::RenderUnit::Unknown:
-    case Qgis::RenderUnit::Percentage:
+    case QgsUnitTypes::RenderUnknownUnit:
+    case QgsUnitTypes::RenderPercentage:
       //no sensible value
       return 0.0;
   }
   return 0.0;
 }
 
-double QgsRenderContext::convertFromMapUnits( double sizeInMapUnits, Qgis::RenderUnit outputUnit ) const
+double QgsRenderContext::convertFromMapUnits( double sizeInMapUnits, QgsUnitTypes::RenderUnit outputUnit ) const
 {
   const double mup = mMapToPixel.mapUnitsPerPixel();
   const double symbologyReferenceScaleFactor = mSymbologyReferenceScale > 0 ? mSymbologyReferenceScale / mRendererScale : 1;
 
   switch ( outputUnit )
   {
-    case Qgis::RenderUnit::MetersInMapUnits:
+    case QgsUnitTypes::RenderMetersInMapUnits:
     {
       return sizeInMapUnits / convertMetersToMapUnits( 1.0 );
     }
-    case Qgis::RenderUnit::MapUnits:
+    case QgsUnitTypes::RenderMapUnits:
     {
       return sizeInMapUnits;
     }
-    case Qgis::RenderUnit::Millimeters:
+    case QgsUnitTypes::RenderMillimeters:
     {
       return sizeInMapUnits / ( mScaleFactor * mup ) * symbologyReferenceScaleFactor;
     }
-    case Qgis::RenderUnit::Points:
+    case QgsUnitTypes::RenderPoints:
     {
       return sizeInMapUnits / ( mScaleFactor * mup / POINTS_TO_MM ) * symbologyReferenceScaleFactor;
     }
-    case Qgis::RenderUnit::Inches:
+    case QgsUnitTypes::RenderInches:
     {
       return sizeInMapUnits / ( mScaleFactor * mup * INCH_TO_MM ) * symbologyReferenceScaleFactor;
     }
-    case Qgis::RenderUnit::Pixels:
+    case QgsUnitTypes::RenderPixels:
     {
       return sizeInMapUnits / mup * symbologyReferenceScaleFactor;
     }
 
-    case Qgis::RenderUnit::Unknown:
-    case Qgis::RenderUnit::Percentage:
+    case QgsUnitTypes::RenderUnknownUnit:
+    case QgsUnitTypes::RenderPercentage:
       //no sensible value
       return 0.0;
   }
@@ -664,14 +577,14 @@ double QgsRenderContext::convertMetersToMapUnits( double meters ) const
 {
   switch ( mDistanceArea.sourceCrs().mapUnits() )
   {
-    case Qgis::DistanceUnit::Meters:
+    case QgsUnitTypes::DistanceMeters:
       return meters;
-    case Qgis::DistanceUnit::Degrees:
+    case QgsUnitTypes::DistanceDegrees:
     {
       if ( mExtent.isNull() )
       {
         // we don't have an extent to calculate exactly -- so just use a very rough approximation
-        return meters * QgsUnitTypes::fromUnitToUnitFactor( Qgis::DistanceUnit::Meters, Qgis::DistanceUnit::Degrees );
+        return meters * QgsUnitTypes::fromUnitToUnitFactor( QgsUnitTypes::DistanceMeters, QgsUnitTypes::DistanceDegrees );
       }
 
       QgsPointXY pointCenter = mExtent.center();
@@ -680,70 +593,21 @@ double QgsRenderContext::convertMetersToMapUnits( double meters ) const
       // Note: the default QgsCoordinateTransform() : authid() will return an empty String
       if ( !mCoordTransform.isShortCircuited() )
       {
-        try
-        {
-          pointCenter = mCoordTransform.transform( pointCenter );
-        }
-        catch ( const QgsCsException & )
-        {
-          QgsDebugError( QStringLiteral( "QgsRenderContext::convertMetersToMapUnits(): failed to reproject pointCenter" ) );
-          // what should we return;.. ?
-          return meters;
-        }
+        pointCenter = mCoordTransform.transform( pointCenter );
       }
 
       const int multiplier = meters < 0 ? -1 : 1;
       return multiplier * mDistanceArea.measureLineProjected( pointCenter, std::fabs( meters ) );
     }
-    case Qgis::DistanceUnit::Kilometers:
-    case Qgis::DistanceUnit::Feet:
-    case Qgis::DistanceUnit::NauticalMiles:
-    case Qgis::DistanceUnit::Yards:
-    case Qgis::DistanceUnit::Miles:
-    case Qgis::DistanceUnit::Centimeters:
-    case Qgis::DistanceUnit::Millimeters:
-    case Qgis::DistanceUnit::Inches:
-    case Qgis::DistanceUnit::Unknown:
-    case Qgis::DistanceUnit::ChainsInternational:
-    case Qgis::DistanceUnit::ChainsBritishBenoit1895A:
-    case Qgis::DistanceUnit::ChainsBritishBenoit1895B:
-    case Qgis::DistanceUnit::ChainsBritishSears1922Truncated:
-    case Qgis::DistanceUnit::ChainsBritishSears1922:
-    case Qgis::DistanceUnit::ChainsClarkes:
-    case Qgis::DistanceUnit::ChainsUSSurvey:
-    case Qgis::DistanceUnit::FeetBritish1865:
-    case Qgis::DistanceUnit::FeetBritish1936:
-    case Qgis::DistanceUnit::FeetBritishBenoit1895A:
-    case Qgis::DistanceUnit::FeetBritishBenoit1895B:
-    case Qgis::DistanceUnit::FeetBritishSears1922Truncated:
-    case Qgis::DistanceUnit::FeetBritishSears1922:
-    case Qgis::DistanceUnit::FeetClarkes:
-    case Qgis::DistanceUnit::FeetGoldCoast:
-    case Qgis::DistanceUnit::FeetIndian:
-    case Qgis::DistanceUnit::FeetIndian1937:
-    case Qgis::DistanceUnit::FeetIndian1962:
-    case Qgis::DistanceUnit::FeetIndian1975:
-    case Qgis::DistanceUnit::FeetUSSurvey:
-    case Qgis::DistanceUnit::LinksInternational:
-    case Qgis::DistanceUnit::LinksBritishBenoit1895A:
-    case Qgis::DistanceUnit::LinksBritishBenoit1895B:
-    case Qgis::DistanceUnit::LinksBritishSears1922Truncated:
-    case Qgis::DistanceUnit::LinksBritishSears1922:
-    case Qgis::DistanceUnit::LinksClarkes:
-    case Qgis::DistanceUnit::LinksUSSurvey:
-    case Qgis::DistanceUnit::YardsBritishBenoit1895A:
-    case Qgis::DistanceUnit::YardsBritishBenoit1895B:
-    case Qgis::DistanceUnit::YardsBritishSears1922Truncated:
-    case Qgis::DistanceUnit::YardsBritishSears1922:
-    case Qgis::DistanceUnit::YardsClarkes:
-    case Qgis::DistanceUnit::YardsIndian:
-    case Qgis::DistanceUnit::YardsIndian1937:
-    case Qgis::DistanceUnit::YardsIndian1962:
-    case Qgis::DistanceUnit::YardsIndian1975:
-    case Qgis::DistanceUnit::MilesUSSurvey:
-    case Qgis::DistanceUnit::Fathoms:
-    case Qgis::DistanceUnit::MetersGermanLegal:
-      return ( meters * QgsUnitTypes::fromUnitToUnitFactor( Qgis::DistanceUnit::Meters, mDistanceArea.sourceCrs().mapUnits() ) );
+    case QgsUnitTypes::DistanceKilometers:
+    case QgsUnitTypes::DistanceFeet:
+    case QgsUnitTypes::DistanceNauticalMiles:
+    case QgsUnitTypes::DistanceYards:
+    case QgsUnitTypes::DistanceMiles:
+    case QgsUnitTypes::DistanceCentimeters:
+    case QgsUnitTypes::DistanceMillimeters:
+    case QgsUnitTypes::DistanceUnknownUnit:
+      return ( meters * QgsUnitTypes::fromUnitToUnitFactor( QgsUnitTypes::DistanceMeters, mDistanceArea.sourceCrs().mapUnits() ) );
   }
   return meters;
 }
@@ -776,11 +640,6 @@ QPointF QgsRenderContext::textureOrigin() const
 void QgsRenderContext::setTextureOrigin( const QPointF &origin )
 {
   mTextureOrigin = origin;
-}
-
-void QgsRenderContext::setMaskSettings( const QgsMaskRenderSettings &settings )
-{
-  mMaskRenderSettings = settings;
 }
 
 QgsDoubleRange QgsRenderContext::zRange() const
@@ -838,83 +697,12 @@ void QgsRenderContext::setCurrentFrame( long long frame )
   mCurrentFrame = frame;
 }
 
-QgsElevationMap *QgsRenderContext::elevationMap() const
+void QgsRenderContext::addSymbolLayerClipPath( const QgsSymbolLayer *symbolLayer, QPainterPath path )
 {
-  return mElevationMap;
+  mSymbolLayerClipPaths[ symbolLayer ].append( path );
 }
 
-void QgsRenderContext::setElevationMap( QgsElevationMap *map )
+QList<QPainterPath> QgsRenderContext::symbolLayerClipPaths( const QgsSymbolLayer *symbolLayer ) const
 {
-  mElevationMap = map;
-}
-
-void QgsRenderContext::addSymbolLayerClipPath( const QString &symbolLayerId, QPainterPath path )
-{
-  const QgsGeometry geometry = QgsGeometryPaintDevice::painterPathToGeometry( path );
-  if ( !geometry.isEmpty() )
-    addSymbolLayerClipGeometry( symbolLayerId, geometry );
-}
-
-QList<QPainterPath> QgsRenderContext::symbolLayerClipPaths( const QString &symbolLayerId ) const
-{
-  const QVector<QgsGeometry> geometries = symbolLayerClipGeometries( symbolLayerId );
-  QList<QPainterPath> res;
-  res.reserve( geometries.size() );
-  for ( const QgsGeometry &geometry : geometries )
-  {
-    res << geometry.constGet()->asQPainterPath();
-  }
-  return res;
-}
-
-void QgsRenderContext::addSymbolLayerClipGeometry( const QString &symbolLayerId, const QgsGeometry &geometry )
-{
-  if ( geometry.isMultipart() )
-  {
-    mSymbolLayerClippingGeometries[ symbolLayerId ].append( geometry.asGeometryCollection() );
-  }
-  else
-  {
-    mSymbolLayerClippingGeometries[ symbolLayerId ].append( geometry );
-  }
-}
-
-bool QgsRenderContext::symbolLayerHasClipGeometries( const QString &symbolLayerId ) const
-{
-  auto it = mSymbolLayerClippingGeometries.constFind( symbolLayerId );
-  if ( it == mSymbolLayerClippingGeometries.constEnd() )
-    return false;
-  return !it.value().isEmpty();
-}
-
-QVector<QgsGeometry> QgsRenderContext::symbolLayerClipGeometries( const QString &symbolLayerId ) const
-{
-  return mSymbolLayerClippingGeometries[ symbolLayerId ];
-}
-
-void QgsRenderContext::setDisabledSymbolLayers( const QSet<const QgsSymbolLayer *> &symbolLayers )
-{
-  mDisabledSymbolLayers.clear();
-  for ( const QgsSymbolLayer *symbolLayer : symbolLayers )
-    mDisabledSymbolLayers << symbolLayer->id();
-}
-
-void QgsRenderContext::setDisabledSymbolLayersV2( const QSet<QString> &symbolLayers )
-{
-  mDisabledSymbolLayers = symbolLayers;
-}
-
-QSet<const QgsSymbolLayer *> QgsRenderContext::disabledSymbolLayers() const
-{
-  return QSet<const QgsSymbolLayer *>();
-}
-
-QSet<QString> QgsRenderContext::disabledSymbolLayersV2() const
-{
-  return mDisabledSymbolLayers;
-}
-
-bool QgsRenderContext::isSymbolLayerEnabled( const QgsSymbolLayer *layer ) const
-{
-  return !mDisabledSymbolLayers.contains( layer->id() );
+  return mSymbolLayerClipPaths[ symbolLayer ];
 }

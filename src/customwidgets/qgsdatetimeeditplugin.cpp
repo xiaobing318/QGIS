@@ -15,7 +15,6 @@
 
 #include "qgiscustomwidgets.h"
 #include "qgsdatetimeeditplugin.h"
-#include "moc_qgsdatetimeeditplugin.cpp"
 #include "qgsdatetimeedit.h"
 
 

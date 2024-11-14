@@ -57,9 +57,9 @@ class QgsRandomPointsExtentAlgorithm : public QgsProcessingAlgorithm
 
   private:
     QgsRectangle mExtent;
-    int mNumPoints = 0;
-    double mDistance = 0;
-    int mMaxAttempts = 0;
+    int mNumPoints;
+    double mDistance;
+    int mMaxAttempts;
     QgsCoordinateReferenceSystem mCrs;
 
 };

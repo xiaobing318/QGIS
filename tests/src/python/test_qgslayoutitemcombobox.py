@@ -9,19 +9,17 @@ __author__ = '(C) 2019 by Nyall Dawson'
 __date__ = '11/03/2019'
 __copyright__ = 'Copyright 2019, The QGIS Project'
 
+import qgis  # NOQA
 from qgis.PyQt.QtTest import QSignalSpy
-from qgis.core import (
-    QgsLayoutItem,
-    QgsLayoutItemLabel,
-    QgsLayoutItemMap,
-    QgsLayoutItemRegistry,
-    QgsLayoutItemShape,
-    QgsPrintLayout,
-    QgsProject,
-)
+from qgis.core import (QgsProject,
+                       QgsPrintLayout,
+                       QgsLayoutItemMap,
+                       QgsLayoutItemLabel,
+                       QgsLayoutItemRegistry,
+                       QgsLayoutItemShape,
+                       QgsLayoutItem)
 from qgis.gui import QgsLayoutItemComboBox
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -29,7 +27,7 @@ start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestQgsLayoutItemComboBox(QgisTestCase):
+class TestQgsLayoutItemComboBox(unittest.TestCase):
 
     def setUp(self):
         """Run before each test."""
@@ -220,21 +218,21 @@ class TestQgsLayoutItemComboBox(QgisTestCase):
         self.assertEqual(combo.item(2), map)
         self.assertEqual(combo.currentItem(), label2)
 
-        combo.setItemType(QgsLayoutItemRegistry.ItemType.LayoutMap)
+        combo.setItemType(QgsLayoutItemRegistry.LayoutMap)
         self.assertEqual(combo.itemText(0), '')
         self.assertEqual(combo.itemText(1), 'pppp')
         self.assertIsNone(combo.item(0))
         self.assertEqual(combo.item(1), map)
         self.assertIsNone(combo.currentItem())
 
-        combo.setItemType(QgsLayoutItemRegistry.ItemType.LayoutLabel)
+        combo.setItemType(QgsLayoutItemRegistry.LayoutLabel)
         self.assertEqual(combo.itemText(0), '')
         self.assertEqual(combo.itemText(1), 'oooo')
         self.assertIsNone(combo.item(0))
         self.assertEqual(combo.item(1), label2)
         self.assertIsNone(combo.currentItem())
 
-        combo.setItemType(QgsLayoutItemRegistry.ItemType.LayoutAttributeTable)
+        combo.setItemType(QgsLayoutItemRegistry.LayoutAttributeTable)
         self.assertEqual(combo.itemText(0), '')
         self.assertIsNone(combo.item(0))
         self.assertIsNone(combo.currentItem())
@@ -244,9 +242,9 @@ class TestQgsLayoutItemComboBox(QgisTestCase):
         self.assertIsNone(combo.currentItem())
         self.assertEqual(combo.currentIndex(), -1)
 
-        combo.setItemType(QgsLayoutItemRegistry.ItemType.LayoutItem)
+        combo.setItemType(QgsLayoutItemRegistry.LayoutItem)
         self.assertEqual(combo.count(), 2)
-        combo.setItemFlags(QgsLayoutItem.Flag.FlagProvidesClipPath)
+        combo.setItemFlags(QgsLayoutItem.FlagProvidesClipPath)
         self.assertEqual(combo.count(), 0)
         shape = QgsLayoutItemShape(layout)
         shape.setId('shape 1')

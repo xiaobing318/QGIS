@@ -13,16 +13,14 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsquerybuilder.h"
-#include "moc_qgsquerybuilder.cpp"
 #include "qgslogger.h"
+#include "qgsproject.h"
 #include "qgssettings.h"
 #include "qgsvectorlayer.h"
 #include "qgsvectordataprovider.h"
 #include "qgsapplication.h"
 #include "qgshelp.h"
 #include "qgsgui.h"
-#include "qgsfieldproxymodel.h"
-#include "qgsfieldmodel.h"
 
 #include <QDomDocument>
 #include <QDomElement>
@@ -85,48 +83,18 @@ QgsQueryBuilder::QgsQueryBuilder( QgsVectorLayer *layer,
 
   setupGuiViews();
 
-  mModelFields = new QgsFieldProxyModel();
-  mModelFields->setFilters( QgsFieldProxyModel::Filter::AllTypes | QgsFieldProxyModel::Filter::OriginProvider );
-  mModelFields->sourceFieldModel()->setLayer( layer );
-  lstFields->setModel( mModelFields );
-
   mOrigSubsetString = layer->subsetString();
   connect( layer, &QgsVectorLayer::subsetStringChanged, this, &QgsQueryBuilder::layerSubsetStringChanged );
   layerSubsetStringChanged();
 
-  QString subsetStringDialect;
-  QString subsetStringHelpUrl;
-
-  if ( QgsDataProvider *provider = layer->dataProvider() )
-  {
-    lblDataUri->setText( tr( "Set provider filter on %1 (provider: %2)" ).arg( layer->name(), provider->name() ) );
-    subsetStringDialect = provider->subsetStringDialect();
-    subsetStringHelpUrl = provider->subsetStringHelpUrl();
-  }
-  else
-  {
-    lblDataUri->setText( tr( "Set provider filter on %1 (provider: %2)" ).arg( layer->name(), layer->providerType() ) );
-  }
-
-  if ( !subsetStringDialect.isEmpty() && !subsetStringHelpUrl.isEmpty() )
-  {
-    lblProviderFilterInfo->setOpenExternalLinks( true );
-    lblProviderFilterInfo->setText( tr( "Enter a <a href=\"%1\">%2</a> to filter the layer" ).arg( subsetStringHelpUrl ).arg( subsetStringDialect ) ) ;
-  }
-  else if ( !subsetStringDialect.isEmpty() )
-  {
-    lblProviderFilterInfo->setText( tr( "Enter a %1 to filter the layer" ).arg( subsetStringDialect ) ) ;
-  }
-  else
-  {
-    lblProviderFilterInfo->hide();
-  }
-
+  lblDataUri->setText( tr( "Set provider filter on %1" ).arg( layer->name() ) );
   mTxtSql->setText( mOrigSubsetString );
 
   mFilterLineEdit->setShowSearchIcon( true );
   mFilterLineEdit->setPlaceholderText( tr( "Search…" ) );
   connect( mFilterLineEdit, &QgsFilterLineEdit::textChanged, this, &QgsQueryBuilder::onTextChanged );
+
+  populateFields();
 }
 
 void QgsQueryBuilder::showEvent( QShowEvent *event )
@@ -135,9 +103,36 @@ void QgsQueryBuilder::showEvent( QShowEvent *event )
   QDialog::showEvent( event );
 }
 
+void QgsQueryBuilder::populateFields()
+{
+  const QgsFields &fields = mLayer->fields();
+  mTxtSql->setFields( fields );
+  for ( int idx = 0; idx < fields.count(); ++idx )
+  {
+    if ( fields.fieldOrigin( idx ) != QgsFields::OriginProvider )
+    {
+      // only consider native fields
+      continue;
+    }
+    QStandardItem *myItem = new QStandardItem( fields.at( idx ).displayNameWithAlias() );
+    myItem->setData( idx );
+    myItem->setEditable( false );
+    mModelFields->insertRow( mModelFields->rowCount(), myItem );
+  }
+
+  // All fields get ... setup
+  setupLstFieldsModel();
+}
+
+void QgsQueryBuilder::setupLstFieldsModel()
+{
+  lstFields->setModel( mModelFields );
+}
+
 void QgsQueryBuilder::setupGuiViews()
 {
   //Initialize the models
+  mModelFields = new QStandardItemModel();
   mModelValues = new QStandardItemModel();
   mProxyValues = new QSortFilterProxyModel();
   mProxyValues->setSourceModel( mModelValues );
@@ -155,20 +150,18 @@ void QgsQueryBuilder::setupGuiViews()
   lstValues->setModel( mProxyValues );
 }
 
-void QgsQueryBuilder::fillValues( const QString &field, int limit )
+void QgsQueryBuilder::fillValues( int idx, int limit )
 {
   // clear the model
   mModelValues->clear();
 
-  const int fieldIndex = mLayer->fields().lookupField( field );
-
   // determine the field type
-  QList<QVariant> values = qgis::setToList( mLayer->uniqueValues( fieldIndex, limit ) );
+  QList<QVariant> values = qgis::setToList( mLayer->uniqueValues( idx, limit ) );
   std::sort( values.begin(), values.end() );
 
   const QString nullValue = QgsApplication::nullRepresentation();
 
-  QgsDebugMsgLevel( QStringLiteral( "nullValue: %1" ).arg( nullValue ), 2 );
+  QgsDebugMsg( QStringLiteral( "nullValue: %1" ).arg( nullValue ) );
 
   const auto constValues = values;
   for ( const QVariant &var : constValues )
@@ -176,9 +169,9 @@ void QgsQueryBuilder::fillValues( const QString &field, int limit )
     QString value;
     if ( QgsVariantUtils::isNull( var ) )
       value = nullValue;
-    else if ( var.userType() == QMetaType::Type::QDate && mLayer->providerType() == QLatin1String( "ogr" ) && mLayer->storageType() == QLatin1String( "ESRI Shapefile" ) )
+    else if ( var.type() == QVariant::Date && mLayer->providerType() == QLatin1String( "ogr" ) && mLayer->storageType() == QLatin1String( "ESRI Shapefile" ) )
       value = var.toDate().toString( QStringLiteral( "yyyy/MM/dd" ) );
-    else if ( var.userType() == QMetaType::Type::QVariantList || var.userType() == QMetaType::Type::QStringList )
+    else if ( var.type() == QVariant::List || var.type() == QVariant::StringList )
     {
       const QVariantList list = var.toList();
       for ( const QVariant &val : list )
@@ -195,7 +188,7 @@ void QgsQueryBuilder::fillValues( const QString &field, int limit )
     myItem->setEditable( false );
     myItem->setData( var, Qt::UserRole + 1 );
     mModelValues->insertRow( mModelValues->rowCount(), myItem );
-    QgsDebugMsgLevel( QStringLiteral( "Value is null: %1\nvalue: %2" ).arg( QgsVariantUtils::isNull( var ) ).arg( QgsVariantUtils::isNull( var ) ? nullValue : var.toString() ), 2 );
+    QgsDebugMsg( QStringLiteral( "Value is null: %1\nvalue: %2" ).arg( QgsVariantUtils::isNull( var ) ).arg( QgsVariantUtils::isNull( var ) ? nullValue : var.toString() ) );
   }
 }
 
@@ -211,7 +204,7 @@ void QgsQueryBuilder::btnSampleValues_clicked()
   }
 
   //Clear and fill the mModelValues
-  fillValues( mModelFields->data( lstFields->currentIndex(), static_cast< int >( QgsFieldModel::CustomRole::FieldName ) ).toString(), 25 );
+  fillValues( mModelFields->data( lstFields->currentIndex(), Qt::UserRole + 1 ).toInt(), 25 );
 
   if ( prevSubsetString != mLayer->subsetString() )
   {
@@ -234,7 +227,7 @@ void QgsQueryBuilder::btnGetAllValues_clicked()
   }
 
   //Clear and fill the mModelValues
-  fillValues( mModelFields->data( lstFields->currentIndex(), static_cast< int >( QgsFieldModel::CustomRole::FieldName ) ).toString(), -1 );
+  fillValues( mModelFields->data( lstFields->currentIndex(), Qt::UserRole + 1 ).toInt(), -1 );
 
   if ( prevSubsetString != mLayer->subsetString() )
   {
@@ -387,7 +380,7 @@ void QgsQueryBuilder::lstFields_clicked( const QModelIndex &index )
 
 void QgsQueryBuilder::lstFields_doubleClicked( const QModelIndex &index )
 {
-  mTxtSql->insertText( '\"' + mModelFields->data( index, static_cast< int >( QgsFieldModel::CustomRole::FieldName ) ).toString() + '\"' );
+  mTxtSql->insertText( '\"' + mLayer->fields().at( mModelFields->data( index, Qt::UserRole + 1 ).toInt() ).name() + '\"' );
   mTxtSql->setFocus();
 }
 
@@ -396,9 +389,9 @@ void QgsQueryBuilder::lstValues_doubleClicked( const QModelIndex &index )
   const QVariant value = index.data( Qt::UserRole + 1 );
   if ( QgsVariantUtils::isNull( value ) )
     mTxtSql->insertText( QStringLiteral( "NULL" ) );
-  else if ( value.userType() == QMetaType::Type::QDate && mLayer->providerType() == QLatin1String( "ogr" ) && mLayer->storageType() == QLatin1String( "ESRI Shapefile" ) )
+  else if ( value.type() == QVariant::Date && mLayer->providerType() == QLatin1String( "ogr" ) && mLayer->storageType() == QLatin1String( "ESRI Shapefile" ) )
     mTxtSql->insertText( '\'' + value.toDate().toString( QStringLiteral( "yyyy/MM/dd" ) ) + '\'' );
-  else if ( value.userType() == QMetaType::Type::Int || value.userType() == QMetaType::Type::Double || value.userType() == QMetaType::Type::LongLong || value.userType() == QMetaType::Type::Bool )
+  else if ( value.type() == QVariant::Int || value.type() == QVariant::Double || value.type() == QVariant::LongLong || value.type() == QVariant::Bool )
     mTxtSql->insertText( value.toString() );
   else
     mTxtSql->insertText( '\'' + value.toString().replace( '\'', QLatin1String( "''" ) ) + '\'' );

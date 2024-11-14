@@ -20,46 +20,39 @@
 #include "qgsvectorlayer.h"
 #include <QUrl>
 
-QString memoryLayerFieldType( QMetaType::Type type, const QString &typeString )
+QString memoryLayerFieldType( QVariant::Type type )
 {
   switch ( type )
   {
-    case QMetaType::Type::Int:
+    case QVariant::Int:
       return QStringLiteral( "integer" );
 
-    case QMetaType::Type::LongLong:
+    case QVariant::LongLong:
       return QStringLiteral( "long" );
 
-    case QMetaType::Type::Double:
+    case QVariant::Double:
       return QStringLiteral( "double" );
 
-    case QMetaType::Type::QString:
+    case QVariant::String:
       return QStringLiteral( "string" );
 
-    case QMetaType::Type::QDate:
+    case QVariant::Date:
       return QStringLiteral( "date" );
 
-    case QMetaType::Type::QTime:
+    case QVariant::Time:
       return QStringLiteral( "time" );
 
-    case QMetaType::Type::QDateTime:
+    case QVariant::DateTime:
       return QStringLiteral( "datetime" );
 
-    case QMetaType::Type::QByteArray:
+    case QVariant::ByteArray:
       return QStringLiteral( "binary" );
 
-    case QMetaType::Type::Bool:
+    case QVariant::Bool:
       return QStringLiteral( "boolean" );
 
-    case QMetaType::Type::QVariantMap:
+    case QVariant::Map:
       return QStringLiteral( "map" );
-
-    case QMetaType::Type::User:
-      if ( typeString.compare( QLatin1String( "geometry" ), Qt::CaseInsensitive ) == 0 )
-      {
-        return QStringLiteral( "geometry" );
-      }
-      break;
 
     default:
       break;
@@ -67,7 +60,7 @@ QString memoryLayerFieldType( QMetaType::Type type, const QString &typeString )
   return QStringLiteral( "string" );
 }
 
-QgsVectorLayer *QgsMemoryProviderUtils::createMemoryLayer( const QString &name, const QgsFields &fields, Qgis::WkbType geometryType, const QgsCoordinateReferenceSystem &crs, bool loadDefaultStyle )
+QgsVectorLayer *QgsMemoryProviderUtils::createMemoryLayer( const QString &name, const QgsFields &fields, QgsWkbTypes::Type geometryType, const QgsCoordinateReferenceSystem &crs )
 {
   QString geomType = QgsWkbTypes::displayString( geometryType );
   if ( geomType.isNull() )
@@ -79,24 +72,19 @@ QgsVectorLayer *QgsMemoryProviderUtils::createMemoryLayer( const QString &name, 
     if ( !crs.authid().isEmpty() )
       parts << QStringLiteral( "crs=%1" ).arg( crs.authid() );
     else
-      parts << QStringLiteral( "crs=wkt:%1" ).arg( crs.toWkt( Qgis::CrsWktVariant::Preferred ) );
+      parts << QStringLiteral( "crs=wkt:%1" ).arg( crs.toWkt( QgsCoordinateReferenceSystem::WKT_PREFERRED ) );
   }
-  else
-  {
-    parts << QStringLiteral( "crs=" );
-  }
-  for ( const QgsField &field : fields )
+  for ( const auto &field : fields )
   {
     const QString lengthPrecision = QStringLiteral( "(%1,%2)" ).arg( field.length() ).arg( field.precision() );
     parts << QStringLiteral( "field=%1:%2%3%4" ).arg( QString( QUrl::toPercentEncoding( field.name() ) ),
-          memoryLayerFieldType( field.type() == QMetaType::Type::QVariantList || field.type() == QMetaType::Type::QStringList ? field.subType() : field.type(), field.typeName() ),
+          memoryLayerFieldType( field.type() == QVariant::List || field.type() == QVariant::StringList ? field.subType() : field.type() ),
           lengthPrecision,
-          field.type() == QMetaType::Type::QVariantList || field.type() == QMetaType::Type::QStringList ? QStringLiteral( "[]" ) : QString() );
+          field.type() == QVariant::List || field.type() == QVariant::StringList ? QStringLiteral( "[]" ) : QString() );
   }
 
   const QString uri = geomType + '?' + parts.join( '&' );
   QgsVectorLayer::LayerOptions options{ QgsCoordinateTransformContext() };
   options.skipCrsValidation = true;
-  options.loadDefaultStyle = loadDefaultStyle;
   return new QgsVectorLayer( uri, name, QStringLiteral( "memory" ), options );
 }

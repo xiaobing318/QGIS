@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/geometry/qgscurve.h                                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -14,6 +14,8 @@ class QgsCurve: QgsAbstractGeometry /Abstract/
 {
 %Docstring(signature="appended")
 Abstract base class for curved geometry type
+
+.. versionadded:: 2.10
 %End
 
 %TypeHeaderCode
@@ -22,10 +24,15 @@ Abstract base class for curved geometry type
   public:
 
     QgsCurve();
+%Docstring
+Constructor for QgsCurve.
+%End
 
     virtual bool equals( const QgsCurve &other ) const = 0;
 %Docstring
 Checks whether this curve exactly equals another curve.
+
+.. versionadded:: 3.0
 %End
 
     virtual bool operator==( const QgsAbstractGeometry &other ) const;
@@ -144,8 +151,8 @@ Returns the point and vertex id of a point within the curve.
 :param node: node number, where the first node is 0
 
 :return: - ``True`` if node exists within the curve
-         - point: point at corresponding node in the curve
-         - type: the vertex type of the node
+         - point: will be set to point at corresponding node in the curve
+         - type: will be set to the vertex type of the node
 %End
 
     virtual int indexOf( const QgsPoint &point ) const = 0;
@@ -168,6 +175,8 @@ vertex is not found.
     virtual QgsCurve *reversed() const = 0 /Factory/;
 %Docstring
 Returns a reversed copy of the curve, where the direction of the curve has been flipped.
+
+.. versionadded:: 2.14
 %End
 
     virtual QgsAbstractGeometry *boundary() const /Factory/;
@@ -197,7 +206,7 @@ Returns a geometry without curves. Caller takes ownership
 
     void normalize() final /HoldGIL/;
 
-    virtual QgsBox3D boundingBox3D() const;
+    virtual QgsRectangle boundingBox() const;
 
     virtual bool isValid( QString &error /Out/, Qgis::GeometryValidityFlags flags = Qgis::GeometryValidityFlags() ) const;
 
@@ -218,28 +227,6 @@ Returns the y-coordinate of the specified node in the line string.
 :param index: index of node, where the first node in the line is 0
 
 :return: y-coordinate of node, or 0.0 if index is out of bounds
-%End
-
-    virtual double zAt( int index ) const = 0;
-%Docstring
-Returns the z-coordinate of the specified node in the line string.
-
-:param index: index of node, where the first node in the line is 0
-
-:return: z-coordinate of node, or 0.0 if index is out of bounds
-
-.. versionadded:: 3.28
-%End
-
-    virtual double mAt( int index ) const = 0;
-%Docstring
-Returns the m-coordinate of the specified node in the line string.
-
-:param index: index of node, where the first node in the line is 0
-
-:return: m-coordinate of node, or 0.0 if index is out of bounds
-
-.. versionadded:: 3.28
 %End
 
     virtual QPolygonF asQPolygonF() const;
@@ -319,6 +306,7 @@ Scrolls the curve vertices so that they start with the vertex at the given index
    The ``firstVertexIndex`` must correspond to a segment vertex and not a curve point or the result
    is undefined.
 
+
 .. versionadded:: 3.20
 %End
 
@@ -343,5 +331,5 @@ Scrolls the curve vertices so that they start with the vertex at the given index
  *                                                                      *
  * src/core/geometry/qgscurve.h                                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

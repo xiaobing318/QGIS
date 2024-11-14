@@ -11,6 +11,8 @@ the Free Software Foundation; either version 2 of the License, or
 __author__ = 'Alessandro Pasotti'
 __date__ = '11/07/2019'
 __copyright__ = 'Copyright 2019, The QGIS Project'
+# This will get replaced with a git SHA1 when you do a git archive
+__revision__ = '252ad49ddcbc4a0dcfe9eb9381503de0fde9e0ed'
 
 import os
 
@@ -20,9 +22,10 @@ os.environ['QT_HASH_SEED'] = '1'
 from qgis.server import (
     QgsBufferServerRequest,
     QgsBufferServerResponse,
-    QgsServerApiContext,
+    QgsServerApiContext
 )
 from qgis.testing import unittest
+
 from test_qgsserver import QgsServerTestBase
 
 

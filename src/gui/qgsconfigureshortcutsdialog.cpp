@@ -14,14 +14,12 @@
  ***************************************************************************/
 
 #include "qgsconfigureshortcutsdialog.h"
-#include "moc_qgsconfigureshortcutsdialog.cpp"
 
 #include "qgsshortcutsmanager.h"
 #include "qgsapplication.h"
 #include "qgslogger.h"
 #include "qgssettings.h"
 #include "qgsgui.h"
-#include "qgsprojectversion.h"
 
 #include <QKeyEvent>
 #include <QKeySequence>
@@ -32,7 +30,7 @@
 #include <QTextStream>
 #include <QMenu>
 #include <QAction>
-#include <QPdfWriter>
+#include <QPrinter>
 #include <QTextDocument>
 #include <QTextCursor>
 #include <QTextTable>
@@ -91,7 +89,6 @@ void QgsConfigureShortcutsDialog::populateActions()
     QString actionText;
     QString sequence;
     QIcon icon;
-    const QString settingKey = mManager->objectSettingKey( obj );
 
     if ( QAction *action = qobject_cast< QAction * >( obj ) )
     {
@@ -121,7 +118,6 @@ void QgsConfigureShortcutsDialog::populateActions()
     QTreeWidgetItem *item = new QTreeWidgetItem( lst );
     item->setIcon( 0, icon );
     item->setData( 0, Qt::UserRole, QVariant::fromValue( obj ) );
-    item->setToolTip( 0, settingKey );
     items.append( item );
   }
 
@@ -138,9 +134,6 @@ void QgsConfigureShortcutsDialog::saveShortcuts( bool saveAll )
 {
   QString fileName = QFileDialog::getSaveFileName( this, tr( "Save Shortcuts" ), QDir::homePath(),
                      tr( "XML file" ) + " (*.xml);;" + tr( "All files" ) + " (*)" );
-  // return dialog focus on Mac
-  activateWindow();
-  raise();
 
   if ( fileName.isEmpty() )
     return;
@@ -165,8 +158,8 @@ void QgsConfigureShortcutsDialog::saveShortcuts( bool saveAll )
 
   QDomDocument doc( QStringLiteral( "shortcuts" ) );
   QDomElement root = doc.createElement( QStringLiteral( "qgsshortcuts" ) );
-  root.setAttribute( QStringLiteral( "version" ), QStringLiteral( "1.1" ) );
-  root.setAttribute( QStringLiteral( "locale" ), settings.value( QgsApplication::settingsLocaleUserLocale->key(), "en_US" ).toString() );
+  root.setAttribute( QStringLiteral( "version" ), QStringLiteral( "1.0" ) );
+  root.setAttribute( QStringLiteral( "locale" ), settings.value( QgsApplication::settingsLocaleUserLocale.key(), "en_US" ).toString() );
   doc.appendChild( root );
 
   const QList<QObject *> objects = mManager->listAll();
@@ -174,7 +167,6 @@ void QgsConfigureShortcutsDialog::saveShortcuts( bool saveAll )
   {
     QString actionText;
     QString actionShortcut;
-    QString actionSettingKey;
     QKeySequence sequence;
 
     if ( QAction *action = qobject_cast< QAction * >( obj ) )
@@ -194,9 +186,7 @@ void QgsConfigureShortcutsDialog::saveShortcuts( bool saveAll )
       continue;
     }
 
-    actionSettingKey = mManager->objectSettingKey( obj );
-
-    if ( actionSettingKey.isEmpty() )
+    if ( actionText.isEmpty() || actionShortcut.isEmpty() )
     {
       continue;
     }
@@ -210,7 +200,6 @@ void QgsConfigureShortcutsDialog::saveShortcuts( bool saveAll )
     QDomElement el = doc.createElement( QStringLiteral( "action" ) );
     el.setAttribute( QStringLiteral( "name" ), actionText );
     el.setAttribute( QStringLiteral( "shortcut" ), actionShortcut );
-    el.setAttribute( QStringLiteral( "setting" ), actionSettingKey );
     root.appendChild( el );
   }
 
@@ -238,7 +227,7 @@ void QgsConfigureShortcutsDialog::loadShortcuts()
     return;
   }
 
-  QDomDocument doc;
+  QDomDocument  doc;
   QString errorStr;
   int errorLine;
   int errorColumn;
@@ -263,55 +252,32 @@ void QgsConfigureShortcutsDialog::loadShortcuts()
 
   QString currentLocale;
 
-  const bool localeOverrideFlag = QgsApplication::settingsLocaleOverrideFlag->value();
+  const bool localeOverrideFlag = QgsApplication::settingsLocaleOverrideFlag.value();
   if ( localeOverrideFlag )
   {
-    currentLocale = QgsApplication::settingsLocaleUserLocale->valueWithDefaultOverride( "en_US" );
+    currentLocale = QgsApplication::settingsLocaleUserLocale.valueWithDefaultOverride( "en_US" );
   }
   else // use QGIS locale
   {
     currentLocale = QLocale().name();
   }
 
-  const QString versionStr = root.attribute( QStringLiteral( "version" ) );
-  const QgsProjectVersion version( versionStr );
-
   if ( root.attribute( QStringLiteral( "locale" ) ) != currentLocale )
   {
-    if ( version < QgsProjectVersion( QStringLiteral( "1.1" ) ) )
-    {
-      QMessageBox::information( this, tr( "Loading Shortcuts" ),
-                                tr( "The file contains shortcuts created with different locale, so you can't use it." ) );
-      return;
-    }
-    else // From version 1.1, if objectName is not empty, it is used as key.
-    {
-      QMessageBox::information( this, tr( "Loading Shortcuts" ),
-                                tr( "The file contains shortcuts created with different locale, so some shortcuts may not work." ) );
-    }
+    QMessageBox::information( this, tr( "Loading Shortcuts" ),
+                              tr( "The file contains shortcuts created with different locale, so you can't use it." ) );
+    return;
   }
 
   QString actionName;
   QString actionShortcut;
-  QString actionSettingKey;
 
   QDomElement child = root.firstChildElement();
   while ( !child.isNull() )
   {
+    actionName = child.attribute( QStringLiteral( "name" ) );
     actionShortcut = child.attribute( QStringLiteral( "shortcut" ) );
-    if ( version < QgsProjectVersion( QStringLiteral( "1.1" ) ) )
-    {
-      actionName = child.attribute( QStringLiteral( "name" ) );
-      mManager->setKeySequence( actionName, actionShortcut );
-    }
-    else
-    {
-      actionSettingKey = child.attribute( QStringLiteral( "setting" ) );
-      QObject *obj = mManager->objectForSettingKey( actionSettingKey );
-      if ( obj )
-        mManager->setObjectKeySequence( obj, actionShortcut );
-
-    }
+    mManager->setKeySequence( actionName, actionShortcut );
 
     child = child.nextSiblingElement();
   }
@@ -562,16 +528,13 @@ void QgsConfigureShortcutsDialog::mLeFilter_textChanged( const QString &text )
 
 void QgsConfigureShortcutsDialog::showHelp()
 {
-  QgsHelp::openHelp( QStringLiteral( "introduction/qgis_configuration.html#shortcuts" ) );
+  QgsHelp::openHelp( QStringLiteral( "introduction/qgis_configuration.html#keyboard-shortcuts" ) );
 }
 
 void QgsConfigureShortcutsDialog::saveShortcutsPdf()
 {
   QString fileName = QFileDialog::getSaveFileName( this, tr( "Save Shortcuts" ), QDir::homePath(),
                      tr( "PDF file" ) + " (*.pdf);;" + tr( "All files" ) + " (*)" );
-  // return dialog focus on Mac
-  activateWindow();
-  raise();
 
   if ( fileName.isEmpty() )
     return;
@@ -672,8 +635,11 @@ void QgsConfigureShortcutsDialog::saveShortcutsPdf()
     table->cellAt( row, 2 ).firstCursorPosition().insertText( sequence );
   }
 
-  QPdfWriter pdfWriter( fileName );
-  pdfWriter.setPageLayout( QPageLayout( QPageSize( QPageSize::A4 ), QPageLayout::Portrait, QMarginsF( 20, 10, 10, 10 ) ) );
-  document->setPageSize( QSizeF( pdfWriter.pageLayout().fullRect( QPageLayout::Point ).size() ) );
-  document->print( &pdfWriter );
+  QPrinter printer( QPrinter::ScreenResolution );
+  printer.setOutputFormat( QPrinter::PdfFormat );
+  printer.setPageLayout( QPageLayout( QPageSize( QPageSize::A4 ), QPageLayout::Portrait, QMarginsF( 20, 10, 10, 10 ) ) );
+  printer.setOutputFileName( fileName );
+  document->setPageSize( QSizeF( printer.pageRect( QPrinter::DevicePixel ).size() ) );
+
+  document->print( &printer );
 }

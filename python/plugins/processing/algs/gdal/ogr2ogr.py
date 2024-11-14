@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     ogr2ogr.py
@@ -44,7 +46,7 @@ class ogr2ogr(GdalAlgorithm):
     def initAlgorithm(self, config=None):
         self.addParameter(QgsProcessingParameterFeatureSource(self.INPUT,
                                                               self.tr('Input layer'),
-                                                              types=[QgsProcessing.SourceType.TypeVector]))
+                                                              types=[QgsProcessing.TypeVector]))
 
         convert_all_layers_param = QgsProcessingParameterBoolean(self.CONVERT_ALL_LAYERS,
                                                                  self.tr('Convert all layers from dataset'), defaultValue=False)
@@ -56,7 +58,7 @@ class ogr2ogr(GdalAlgorithm):
                                                      self.tr('Additional creation options'),
                                                      defaultValue='',
                                                      optional=True)
-        options_param.setFlags(options_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        options_param.setFlags(options_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(options_param)
 
         self.addParameter(QgsProcessingParameterVectorDestination(self.OUTPUT,
@@ -78,34 +80,28 @@ class ogr2ogr(GdalAlgorithm):
         return 'ogr2ogr'
 
     def getConsoleCommands(self, parameters, context, feedback, executing=True):
-        input_details = self.getOgrCompatibleSource(self.INPUT, parameters, context, feedback, executing)
+        ogrLayer, layerName = self.getOgrCompatibleSource(self.INPUT, parameters, context, feedback, executing)
         convertAllLayers = self.parameterAsBoolean(parameters, self.CONVERT_ALL_LAYERS, context)
         options = self.parameterAsString(parameters, self.OPTIONS, context)
         outFile = self.parameterAsOutputLayer(parameters, self.OUTPUT, context)
         self.setOutputValue(self.OUTPUT, outFile)
 
-        output_details = GdalUtils.gdal_connection_details_from_uri(outFile, context)
+        output, outputFormat = GdalUtils.ogrConnectionStringAndFormat(outFile, context)
 
-        if output_details.format in ('SQLite', 'GPKG') and os.path.isfile(output_details.connection_string):
-            raise QgsProcessingException(self.tr('Output file "{}" already exists.').format(output_details.connection_string))
+        if outputFormat in ('SQLite', 'GPKG') and os.path.isfile(output):
+            raise QgsProcessingException(self.tr('Output file "{}" already exists.'.format(output)))
 
         arguments = []
-        if output_details.format:
-            arguments.append(f'-f {output_details.format}')
-
-        if input_details.open_options:
-            arguments.extend(input_details.open_options_as_arguments())
-
-        if input_details.credential_options:
-            arguments.extend(input_details.credential_options_as_arguments())
+        if outputFormat:
+            arguments.append('-f {}'.format(outputFormat))
 
         if options:
             arguments.append(options)
 
-        arguments.append(output_details.connection_string)
-        arguments.append(input_details.connection_string)
+        arguments.append(output)
+        arguments.append(ogrLayer)
         if not convertAllLayers:
-            arguments.append(input_details.layer_name)
+            arguments.append(layerName)
 
         return ['ogr2ogr', GdalUtils.escapeAndJoin(arguments)]
 

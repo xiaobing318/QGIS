@@ -308,6 +308,9 @@ class QgsGrassModuleInput : public QgsGrassModuleGroupBoxItem
     //! Name of vector layer option associated with this input
     QString mVectorLayerOption;
 
+    //! Model used in combo
+    QgsGrassModuleInputModel *mModel = nullptr;
+
     //! Model containing currently selected maps
     QStandardItemModel *mSelectedModel = nullptr;
 

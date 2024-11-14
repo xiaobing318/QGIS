@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     RegularPoints.py
@@ -24,7 +26,7 @@ from random import seed, uniform
 from math import sqrt
 
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtCore import QMetaType
+from qgis.PyQt.QtCore import QVariant
 from qgis.core import (QgsApplication,
                        QgsFields,
                        QgsFeatureSink,
@@ -84,7 +86,7 @@ class RegularPoints(QgisAlgorithm):
         self.addParameter(QgsProcessingParameterCrs(self.CRS,
                                                     self.tr('Output layer CRS'), 'ProjectCrs'))
 
-        self.addParameter(QgsProcessingParameterFeatureSink(self.OUTPUT, self.tr('Regular points'), QgsProcessing.SourceType.TypeVectorPoint))
+        self.addParameter(QgsProcessingParameterFeatureSink(self.OUTPUT, self.tr('Regular points'), QgsProcessing.TypeVectorPoint))
 
     def name(self):
         return 'regularpoints'
@@ -101,10 +103,10 @@ class RegularPoints(QgisAlgorithm):
         extent = self.parameterAsExtent(parameters, self.EXTENT, context, crs)
 
         fields = QgsFields()
-        fields.append(QgsField('id', QMetaType.Type.Int, '', 10, 0))
+        fields.append(QgsField('id', QVariant.Int, '', 10, 0))
 
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context,
-                                               fields, QgsWkbTypes.Type.Point, crs)
+                                               fields, QgsWkbTypes.Point, crs)
         if sink is None:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
 
@@ -146,7 +148,7 @@ class RegularPoints(QgisAlgorithm):
                 if extent_engine.intersects(geom.constGet()):
                     f.setAttributes([id])
                     f.setGeometry(geom)
-                    sink.addFeature(f, QgsFeatureSink.Flag.FastInsert)
+                    sink.addFeature(f, QgsFeatureSink.FastInsert)
                     x += pSpacing
                     id += 1
 
@@ -155,5 +157,4 @@ class RegularPoints(QgisAlgorithm):
 
             y = y - pSpacing
 
-        sink.finalize()
         return {self.OUTPUT: dest_id}

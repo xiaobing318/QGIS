@@ -39,7 +39,7 @@ QString QgsMssqlDatabase::connectionName( const QString &service, const QString 
 
     if ( database.isEmpty() )
     {
-      QgsDebugError( QStringLiteral( "QgsMssqlProvider database name not specified" ) );
+      QgsDebugMsg( QStringLiteral( "QgsMssqlProvider database name not specified" ) );
       return QString();
     }
 
@@ -100,7 +100,7 @@ QgsMssqlDatabase::QgsMssqlDatabase( const QSqlDatabase &db, bool transaction )
   {
     if ( !mDB.open() )
     {
-      QgsDebugError( "Failed to open MSSQL database: " + mDB.lastError().text() );
+      QgsDebugMsg( "Failed to open MSSQL database: " + mDB.lastError().text() );
     }
   }
 }
@@ -208,6 +208,6 @@ QSqlDatabase QgsMssqlDatabase::getDatabase( const QString &service, const QStrin
   db.setDatabaseName( connectionString );
 
   // only uncomment temporarily -- it can show connection password otherwise!
-  // QgsDebugMsgLevel( connectionString, 2 );
+  // QgsDebugMsg( connectionString );
   return db;
 }

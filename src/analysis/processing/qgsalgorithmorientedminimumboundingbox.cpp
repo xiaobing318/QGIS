@@ -50,9 +50,9 @@ QString QgsOrientedMinimumBoundingBoxAlgorithm::outputName() const
   return QObject::tr( "Bounding boxes" );
 }
 
-Qgis::WkbType QgsOrientedMinimumBoundingBoxAlgorithm::outputWkbType( Qgis::WkbType ) const
+QgsWkbTypes::Type QgsOrientedMinimumBoundingBoxAlgorithm::outputWkbType( QgsWkbTypes::Type ) const
 {
-  return Qgis::WkbType::Polygon;
+  return QgsWkbTypes::Polygon;
 }
 
 QString QgsOrientedMinimumBoundingBoxAlgorithm::shortHelpString() const
@@ -76,17 +76,17 @@ bool QgsOrientedMinimumBoundingBoxAlgorithm::supportInPlaceEdit( const QgsMapLay
   if ( ! QgsProcessingFeatureBasedAlgorithm::supportInPlaceEdit( layer ) )
     return false;
   // Polygons only
-  return layer->wkbType() == Qgis::WkbType::Polygon || layer->wkbType() == Qgis::WkbType::MultiPolygon;
+  return layer->wkbType() == QgsWkbTypes::Type::Polygon || layer->wkbType() == QgsWkbTypes::Type::MultiPolygon;
 }
 
 QgsFields QgsOrientedMinimumBoundingBoxAlgorithm::outputFields( const QgsFields &inputFields ) const
 {
   QgsFields fields = inputFields;
-  fields.append( QgsField( QStringLiteral( "width" ), QMetaType::Type::Double, QString(), 20, 6 ) );
-  fields.append( QgsField( QStringLiteral( "height" ), QMetaType::Type::Double, QString(), 20, 6 ) );
-  fields.append( QgsField( QStringLiteral( "angle" ), QMetaType::Type::Double, QString(), 20, 6 ) );
-  fields.append( QgsField( QStringLiteral( "area" ), QMetaType::Type::Double, QString(), 20, 6 ) );
-  fields.append( QgsField( QStringLiteral( "perimeter" ), QMetaType::Type::Double, QString(), 20, 6 ) );
+  fields.append( QgsField( QStringLiteral( "width" ), QVariant::Double, QString(), 20, 6 ) );
+  fields.append( QgsField( QStringLiteral( "height" ), QVariant::Double, QString(), 20, 6 ) );
+  fields.append( QgsField( QStringLiteral( "angle" ), QVariant::Double, QString(), 20, 6 ) );
+  fields.append( QgsField( QStringLiteral( "area" ), QVariant::Double, QString(), 20, 6 ) );
+  fields.append( QgsField( QStringLiteral( "perimeter" ), QVariant::Double, QString(), 20, 6 ) );
   return fields;
 }
 

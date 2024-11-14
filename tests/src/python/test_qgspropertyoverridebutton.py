@@ -9,27 +9,26 @@ __author__ = 'Nyall Dawson'
 __date__ = '11/01/2019'
 __copyright__ = 'Copyright 2019, The QGIS Project'
 
+import qgis  # NOQA
 from qgis.PyQt.QtGui import QColor
-from qgis.core import (
-    QgsApplication,
-    QgsProjectColorScheme,
-    QgsProperty,
-    QgsPropertyDefinition,
-)
-from qgis.gui import QgsColorButton, QgsPropertyOverrideButton
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsPropertyDefinition,
+                       QgsProperty,
+                       QgsApplication,
+                       QgsProjectColorScheme)
+from qgis.gui import (QgsColorButton,
+                      QgsPropertyOverrideButton)
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsPropertyOverrideButton(QgisTestCase):
+class TestQgsPropertyOverrideButton(unittest.TestCase):
 
     def testProjectColor(self):
         scheme = [s for s in QgsApplication.colorSchemeRegistry().schemes() if isinstance(s, QgsProjectColorScheme)][0]
         scheme.setColors([])
 
-        definition = QgsPropertyDefinition('test', 'test', QgsPropertyDefinition.StandardPropertyTemplate.ColorWithAlpha)
+        definition = QgsPropertyDefinition('test', 'test', QgsPropertyDefinition.ColorWithAlpha)
         button = QgsPropertyOverrideButton()
         button.init(0, QgsProperty(), definition)
 
@@ -51,26 +50,20 @@ class TestQgsPropertyOverrideButton(QgisTestCase):
 
         button.menuActionTriggered(color_action.menu().actions()[1])
         self.assertTrue(button.toProperty().isActive())
-        self.assertEqual(button.toProperty().asExpression(), 'project_color_object(\'burnt marigold\')')
+        self.assertEqual(button.toProperty().asExpression(), 'project_color(\'burnt marigold\')')
 
         button.menuActionTriggered(color_action.menu().actions()[0])
         self.assertTrue(button.toProperty().isActive())
-        self.assertEqual(button.toProperty().asExpression(), 'project_color_object(\'color 1\')')
+        self.assertEqual(button.toProperty().asExpression(), 'project_color(\'color 1\')')
 
-        button.setToProperty(QgsProperty.fromExpression('project_color_object(\'burnt marigold\')'))
+        button.setToProperty(QgsProperty.fromExpression('project_color(\'burnt marigold\')'))
         button.aboutToShowMenu()
         color_action = [a for a in button.menu().actions() if a.text() == 'Color'][0]
         self.assertTrue(color_action.isChecked())
         self.assertEqual([a.isChecked() for a in color_action.menu().actions()], [False, True])
 
-        button.setToProperty(QgsProperty.fromExpression('project_color(\'color 1\')'))
-        button.aboutToShowMenu()
-        color_action = [a for a in button.menu().actions() if a.text() == 'Color'][0]
-        self.assertTrue(color_action.isChecked())
-        self.assertEqual([a.isChecked() for a in color_action.menu().actions()], [True, False])
-
         # should also see color menu for ColorNoAlpha properties
-        definition = QgsPropertyDefinition('test', 'test', QgsPropertyDefinition.StandardPropertyTemplate.ColorNoAlpha)
+        definition = QgsPropertyDefinition('test', 'test', QgsPropertyDefinition.ColorNoAlpha)
         button = QgsPropertyOverrideButton()
         button.init(0, QgsProperty(), definition)
 
@@ -79,7 +72,7 @@ class TestQgsPropertyOverrideButton(QgisTestCase):
         self.assertIn('Color', [a.text() for a in button.menu().actions()])
 
         # but no color menu for other types
-        definition = QgsPropertyDefinition('test', 'test', QgsPropertyDefinition.StandardPropertyTemplate.Double)
+        definition = QgsPropertyDefinition('test', 'test', QgsPropertyDefinition.Double)
         button = QgsPropertyOverrideButton()
         button.init(0, QgsProperty(), definition)
 
@@ -88,7 +81,7 @@ class TestQgsPropertyOverrideButton(QgisTestCase):
         self.assertNotIn('Color', [a.text() for a in button.menu().actions()])
 
     def testLinkedColorButton(self):
-        definition = QgsPropertyDefinition('test', 'test', QgsPropertyDefinition.StandardPropertyTemplate.ColorWithAlpha)
+        definition = QgsPropertyDefinition('test', 'test', QgsPropertyDefinition.ColorWithAlpha)
         button = QgsPropertyOverrideButton()
         button.init(0, QgsProperty(), definition)
         cb = QgsColorButton()

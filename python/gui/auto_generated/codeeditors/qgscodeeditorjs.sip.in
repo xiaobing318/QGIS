@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/codeeditors/qgscodeeditorjs.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -28,8 +28,6 @@ code autocompletion.
 %Docstring
 Constructor for QgsCodeEditorJavascript
 %End
-    virtual Qgis::ScriptLanguage language() const;
-
 
   protected:
     virtual void initializeLexer();
@@ -41,5 +39,5 @@ Constructor for QgsCodeEditorJavascript
  *                                                                      *
  * src/gui/codeeditors/qgscodeeditorjs.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

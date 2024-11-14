@@ -3,7 +3,7 @@
  *                                                                      *
  * src/analysis/raster/qgsrastercalculator.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -14,6 +14,8 @@ class QgsRasterCalculatorEntry
 {
 %Docstring(signature="appended")
 Represents an individual raster layer/band number entry within a raster calculation.
+
+.. versionadded:: 2.18
 %End
 
 %TypeHeaderCode
@@ -119,9 +121,8 @@ QgsRasterCalculator constructor.
 :param nOutputRows: number of rows in output raster
 :param rasterEntries: list of referenced raster layers
 
-.. deprecated:: 3.8
-
-   Use the version with transformContext instead.
+.. deprecated:: QGIS 3.8
+  use the version with transformContext instead
 %End
 
  QgsRasterCalculator( const QString &formulaString, const QString &outputFile, const QString &outputFormat,
@@ -138,9 +139,10 @@ QgsRasterCalculator constructor.
 :param nOutputRows: number of rows in output raster
 :param rasterEntries: list of referenced raster layers
 
-.. deprecated:: 3.8
+.. deprecated:: QGIS 3.8
+  use the version with transformContext instead
 
-   Use the version with transformContext instead.
+.. versionadded:: 2.10
 %End
 
     Result processCalculation( QgsFeedback *feedback = 0 );
@@ -167,5 +169,5 @@ Returns a description of the last error encountered.
  *                                                                      *
  * src/analysis/raster/qgsrastercalculator.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

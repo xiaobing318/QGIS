@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgstextpreview.h                                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -21,6 +21,8 @@ a :py:class:`QgsTextFormat`, including shadow, background and buffer.
 
 In order to preview the exact appearance of text which uses sizes in map units,
 the scale and map units must be set by calling :py:func:`~setScale` and :py:func:`~setMapUnits`.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -74,7 +76,7 @@ The scale value indicates the scale denominator, e.g. 1000.0 for a 1:1000 map.
 .. seealso:: :py:func:`mapUnits`
 %End
 
-    void setMapUnits( Qgis::DistanceUnit unit );
+    void setMapUnits( QgsUnitTypes::DistanceUnit unit );
 %Docstring
 Sets the map unit type for previewing format sizes in map units.
 
@@ -85,7 +87,7 @@ Sets the map unit type for previewing format sizes in map units.
 .. seealso:: :py:func:`setScale`
 %End
 
-    Qgis::DistanceUnit mapUnits() const;
+    QgsUnitTypes::DistanceUnit mapUnits() const;
 %Docstring
 Returns the map unit type used for previewing format sizes in map units.
 
@@ -101,5 +103,5 @@ Returns the map unit type used for previewing format sizes in map units.
  *                                                                      *
  * src/gui/qgstextpreview.h                                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

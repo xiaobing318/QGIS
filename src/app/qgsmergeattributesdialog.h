@@ -21,6 +21,7 @@
 
 #include "ui_qgsmergeattributesdialogbase.h"
 #include "qgsfeature.h"
+#include "qgsstatisticalsummary.h"
 #include "qgsfields.h"
 #include "qgis_app.h"
 
@@ -74,12 +75,12 @@ class APP_EXPORT QgsMergeAttributesDialog: public QDialog, private Ui::QgsMergeA
     void setAllToSkip();
 
   private slots:
+    void comboValueChanged( const QString &text );
     void selectedRowChanged();
     void mFromSelectedPushButton_clicked();
     void mFromLargestPushButton_clicked();
     void mRemoveFeatureFromSelectionButton_clicked();
-    void tableWidgetCellClicked( int row, int column );
-    void updateManualWidget( int column, bool isManual );
+    void tableWidgetCellChanged( int row, int column );
 
   private:
     QgsMergeAttributesDialog(); //default constructor forbidden
@@ -87,7 +88,7 @@ class APP_EXPORT QgsMergeAttributesDialog: public QDialog, private Ui::QgsMergeA
     void setAttributeTableConfig( const QgsAttributeTableConfig &config );
 
     //! Create new combo box with the options for featureXX / mean / min / max
-    QComboBox *createMergeComboBox( QMetaType::Type columnType, int column );
+    QComboBox *createMergeComboBox( QVariant::Type columnType ) const;
 
     /**
      * Returns the table widget column index of a combo box
@@ -107,7 +108,7 @@ class APP_EXPORT QgsMergeAttributesDialog: public QDialog, private Ui::QgsMergeA
      * Calculates a summary statistic for a column. Returns null if no valid numerical
      * values found in column.
      */
-    QVariant calcStatistic( int col, Qgis::Statistic stat );
+    QVariant calcStatistic( int col, QgsStatisticalSummary::Statistic stat );
 
     //! Sets mSelectionRubberBand to a new feature
     void createRubberBandForFeature( QgsFeatureId featureId );
@@ -124,7 +125,7 @@ class APP_EXPORT QgsMergeAttributesDialog: public QDialog, private Ui::QgsMergeA
     QMap< QString, int > mFieldToColumnMap;
     bool mUpdating = false;
 
-    static const QList< Qgis::Statistic > DISPLAY_STATS;
+    static const QList< QgsStatisticalSummary::Statistic > DISPLAY_STATS;
 
 };
 

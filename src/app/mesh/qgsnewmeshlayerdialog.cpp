@@ -14,7 +14,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsnewmeshlayerdialog.h"
-#include "moc_qgsnewmeshlayerdialog.cpp"
 
 #include <QPushButton>
 #include <QMessageBox>
@@ -59,7 +58,7 @@ QgsNewMeshLayerDialog::QgsNewMeshLayerDialog( QWidget *parent, Qt::WindowFlags f
   mFormatComboBox->setCurrentIndex( -1 );
   mFileWidget->setStorageMode( QgsFileWidget::SaveFile );
   mFileWidget->setFilter( filters.join( QLatin1String( ";;" ) ) );
-  mMeshProjectComboBox->setFilters( Qgis::LayerFilter::MeshLayer );
+  mMeshProjectComboBox->setFilters( QgsMapLayerProxyModel::MeshLayer );
 
   connect( mFormatComboBox, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ),
            this, &QgsNewMeshLayerDialog::onFormatChanged );
@@ -119,7 +118,7 @@ void QgsNewMeshLayerDialog::updateSourceMeshframe()
   {
     mMeshProjectComboBox->setEnabled( true );
     mSourceMeshFromFile.reset();
-    mSourceMeshFrameReady = mMeshProjectComboBox->currentLayer();
+    mSourceMeshFrameReady = mMeshProjectComboBox->currentLayer() != nullptr;
     mProjectionSelectionWidget->setEnabled( false );
   }
   else if ( mMeshFileRadioButton->isChecked() )
@@ -136,7 +135,7 @@ void QgsNewMeshLayerDialog::updateSourceMeshframe()
 
       mProjectionSelectionWidget->setEnabled( false );
 
-      mSourceMeshFrameReady = static_cast< bool >( mSourceMeshFromFile );
+      mSourceMeshFrameReady = mSourceMeshFromFile != nullptr;
 
       QgsApplication::restoreOverrideCursor();
     }

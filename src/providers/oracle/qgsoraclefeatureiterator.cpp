@@ -18,11 +18,11 @@
 #include "qgsoracleconnpool.h"
 #include "qgsoracleexpressioncompiler.h"
 #include "qgsoracletransaction.h"
-#include "qgsdbquerylog.h"
-#include "qgsdbquerylog_p.h"
+
 #include "qgslogger.h"
 #include "qgsmessagelog.h"
 #include "qgsgeometry.h"
+#include "qgssettings.h"
 #include "qgsexception.h"
 #include "qgsgeometryengine.h"
 
@@ -48,7 +48,10 @@ QgsOracleFeatureIterator::QgsOracleFeatureIterator( QgsOracleFeatureSource *sour
     return;
   }
 
-  mTransform = mRequest.calculateTransform( mSource->mCrs );
+  if ( mRequest.destinationCrs().isValid() && mRequest.destinationCrs() != mSource->mCrs )
+  {
+    mTransform = QgsCoordinateTransform( mSource->mCrs, mRequest.destinationCrs(), mRequest.transformContext() );
+  }
   try
   {
     mFilterRect = filterRectToSourceCrs( mTransform );
@@ -80,12 +83,12 @@ QgsOracleFeatureIterator::QgsOracleFeatureIterator( QgsOracleFeatureSource *sour
   QVariantList args;
   mQry = QSqlQuery( *mConnection );
 
-  if ( mRequest.flags() & Qgis::FeatureRequestFlag::SubsetOfAttributes )
+  if ( mRequest.flags() & QgsFeatureRequest::SubsetOfAttributes )
   {
     mAttributeList = mRequest.subsetOfAttributes();
 
     // ensure that all attributes required for expression filter are being fetched
-    if ( mRequest.filterType() == Qgis::FeatureRequestFilterType::Expression )
+    if ( mRequest.filterType() == QgsFeatureRequest::FilterExpression )
     {
       const QSet<int> attributeIndexes = mRequest.filterExpression()->referencedAttributeIndexes( mSource->mFields );
       for ( int attrIdx : attributeIndexes )
@@ -116,10 +119,10 @@ QgsOracleFeatureIterator::QgsOracleFeatureIterator( QgsOracleFeatureSource *sour
   if ( !mSource->mGeometryColumn.isNull() )
   {
     // fetch geometry if requested
-    mFetchGeometry = ( mRequest.flags() & Qgis::FeatureRequestFlag::NoGeometry ) == 0
+    mFetchGeometry = ( mRequest.flags() & QgsFeatureRequest::NoGeometry ) == 0
                      || !mFilterRect.isNull()
                      || mRequest.spatialFilterType() == Qgis::SpatialFilterType::DistanceWithin;
-    if ( mRequest.filterType() == Qgis::FeatureRequestFilterType::Expression && mRequest.filterExpression()->needsGeometry() )
+    if ( mRequest.filterType() == QgsFeatureRequest::FilterExpression && mRequest.filterExpression()->needsGeometry() )
     {
       mFetchGeometry = true;
     }
@@ -137,9 +140,9 @@ QgsOracleFeatureIterator::QgsOracleFeatureIterator( QgsOracleFeatureSource *sour
         whereClause = QStringLiteral( "sdo_filter(%1,%2)='TRUE'" )
                       .arg( QgsOracleProvider::quotedIdentifier( mSource->mGeometryColumn ), bbox );
 
-        args << ( mSource->mSrid < 1 ? QgsVariantUtils::createNullVariant( QMetaType::Type::Int ) : mSource->mSrid ) << mFilterRect.xMinimum() << mFilterRect.yMinimum() << mFilterRect.xMaximum() << mFilterRect.yMaximum();
+        args << ( mSource->mSrid < 1 ? QVariant( QVariant::Int ) : mSource->mSrid ) << mFilterRect.xMinimum() << mFilterRect.yMinimum() << mFilterRect.xMaximum() << mFilterRect.yMaximum();
 
-        if ( ( mRequest.flags() & Qgis::FeatureRequestFlag::ExactIntersect ) != 0
+        if ( ( mRequest.flags() & QgsFeatureRequest::ExactIntersect ) != 0
              && mRequest.spatialFilterType() == Qgis::SpatialFilterType::BoundingBox )
         {
           // sdo_relate requires Spatial
@@ -148,7 +151,7 @@ QgsOracleFeatureIterator::QgsOracleFeatureIterator( QgsOracleFeatureSource *sour
             whereClause += QStringLiteral( " AND sdo_relate(%1,%2,'mask=ANYINTERACT')='TRUE'" )
                            .arg( QgsOracleProvider::quotedIdentifier( mSource->mGeometryColumn ),
                                  bbox );
-            args << ( mSource->mSrid < 1 ? QgsVariantUtils::createNullVariant( QMetaType::Type::Int ) : mSource->mSrid ) << mFilterRect.xMinimum() << mFilterRect.yMinimum() << mFilterRect.xMaximum() << mFilterRect.yMaximum();
+            args << ( mSource->mSrid < 1 ? QVariant( QVariant::Int ) : mSource->mSrid ) << mFilterRect.xMinimum() << mFilterRect.yMinimum() << mFilterRect.xMaximum() << mFilterRect.yMaximum();
           }
           else
           {
@@ -171,30 +174,30 @@ QgsOracleFeatureIterator::QgsOracleFeatureIterator( QgsOracleFeatureSource *sour
 
   switch ( mRequest.filterType() )
   {
-    case Qgis::FeatureRequestFilterType::Fid:
+    case QgsFeatureRequest::FilterFid:
     {
       QString fidWhereClause = QgsOracleUtils::whereClause( mRequest.filterFid(), mSource->mFields, mSource->mPrimaryKeyType, mSource->mPrimaryKeyAttrs, mSource->mShared, args );
       whereClause = QgsOracleUtils::andWhereClauses( whereClause, fidWhereClause );
     }
     break;
 
-    case Qgis::FeatureRequestFilterType::Fids:
+    case QgsFeatureRequest::FilterFids:
     {
       QString fidsWhereClause = QgsOracleUtils::whereClause( mRequest.filterFids(), mSource->mFields, mSource->mPrimaryKeyType, mSource->mPrimaryKeyAttrs, mSource->mShared, args );
       whereClause = QgsOracleUtils::andWhereClauses( whereClause, fidsWhereClause );
     }
     break;
 
-    case Qgis::FeatureRequestFilterType::NoFilter:
+    case QgsFeatureRequest::FilterNone:
       break;
 
-    case Qgis::FeatureRequestFilterType::Expression:
+    case QgsFeatureRequest::FilterExpression:
       //handled below
       break;
 
   }
 
-  if ( mSource->mRequestedGeomType != Qgis::WkbType::Unknown && mSource->mRequestedGeomType != mSource->mDetectedGeomType )
+  if ( mSource->mRequestedGeomType != QgsWkbTypes::Unknown && mSource->mRequestedGeomType != mSource->mDetectedGeomType )
   {
     if ( !whereClause.isEmpty() )
       whereClause += QLatin1String( " AND " );
@@ -220,9 +223,9 @@ QgsOracleFeatureIterator::QgsOracleFeatureIterator( QgsOracleFeatureSource *sour
   mCompileStatus = NoCompilation;
   QString fallbackStatement;
   bool useFallback = false;
-  if ( request.filterType() == Qgis::FeatureRequestFilterType::Expression )
+  if ( request.filterType() == QgsFeatureRequest::FilterExpression )
   {
-    QgsOracleExpressionCompiler compiler( mSource, request.flags() & Qgis::FeatureRequestFlag::IgnoreStaticNodesDuringExpressionCompilation );
+    QgsOracleExpressionCompiler compiler( mSource, request.flags() & QgsFeatureRequest::IgnoreStaticNodesDuringExpressionCompilation );
     QgsSqlExpressionCompiler::Result result = compiler.compile( mRequest.filterExpression() );
     if ( result == QgsSqlExpressionCompiler::Complete || result == QgsSqlExpressionCompiler::Partial )
     {
@@ -336,7 +339,7 @@ bool QgsOracleFeatureIterator::fetchFeature( QgsFeature &feature )
           continue;
         }
 
-        if ( ( mRequest.flags() & Qgis::FeatureRequestFlag::ExactIntersect ) == 0 )
+        if ( ( mRequest.flags() & QgsFeatureRequest::ExactIntersect ) == 0 )
         {
           // even if we could use sdo_filter earlier, we still need to double-check the results
           // as sdo_filter can return results outside the filter (it's only a first-pass
@@ -385,7 +388,7 @@ bool QgsOracleFeatureIterator::fetchFeature( QgsFeature &feature )
             QgsField fld = mSource->mFields.at( idx );
 
             QVariant v = mQry.value( col );
-            if ( v.userType() != fld.type() )
+            if ( v.type() != fld.type() )
               v = QgsVectorDataProvider::convertValue( fld.type(), v.toString() );
             primaryKeyVals << v;
 
@@ -422,7 +425,7 @@ bool QgsOracleFeatureIterator::fetchFeature( QgsFeature &feature )
       QgsField fld = mSource->mFields.at( idx );
 
       QVariant v = mQry.value( col );
-      if ( fld.type() == QMetaType::Type::QByteArray && fld.typeName().endsWith( QLatin1String( ".SDO_GEOMETRY" ) ) )
+      if ( fld.type() == QVariant::ByteArray && fld.typeName().endsWith( QLatin1String( ".SDO_GEOMETRY" ) ) )
       {
         QByteArray ba( v.toByteArray() );
         if ( ba.size() > 0 )
@@ -433,10 +436,10 @@ bool QgsOracleFeatureIterator::fetchFeature( QgsFeature &feature )
         }
         else
         {
-          v = QgsVariantUtils::createNullVariant( QMetaType::Type::QString );
+          v = QVariant( QVariant::String );
         }
       }
-      else if ( v.userType() != fld.type() )
+      else if ( v.type() != fld.type() )
         v = QgsVectorDataProvider::convertValue( fld.type(), v.toString() );
       feature.setAttribute( idx, v );
 
@@ -514,7 +517,7 @@ bool QgsOracleFeatureIterator::openQuery( const QString &whereClause, const QVar
         break;
 
       case PktUnknown:
-        QgsDebugError( QStringLiteral( "Cannot query without primary key." ) );
+        QgsDebugMsg( QStringLiteral( "Cannot query without primary key." ) );
         return false;
     }
 

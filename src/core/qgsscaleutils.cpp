@@ -13,12 +13,11 @@
  *                                                                         *
  ***************************************************************************/
 
-#include "qgsscaleutils.h"
-#include "qgis.h"
-
 #include <QFile>
 #include <QDomDocument>
 #include <QTextStream>
+
+#include "qgsscaleutils.h"
 
 bool QgsScaleUtils::saveScaleList( const QString &fileName, const QStringList &scales, QString &errorMessage )
 {
@@ -84,14 +83,4 @@ bool QgsScaleUtils::loadScaleList( const QString &fileName, QStringList &scales,
   }
 
   return true;
-}
-
-bool QgsScaleUtils::equalToOrGreaterThanMinimumScale( const double scale, const double minScale )
-{
-  return scale > minScale || qgsDoubleNear( scale, minScale, 1E-8 );
-}
-
-bool QgsScaleUtils::lessThanMaximumScale( const double scale, const double maxScale )
-{
-  return scale < maxScale && !qgsDoubleNear( scale, maxScale, 1E-8 );
 }

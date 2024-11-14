@@ -31,6 +31,7 @@
  * The widget also offers the functionality to convert username/password credentials
  * to an authentication configuration.
  *
+ * \since QGIS 3.0
  */
 class GUI_EXPORT QgsAuthSettingsWidget : public QWidget, private Ui::QgsAuthSettingsWidget
 {
@@ -159,7 +160,7 @@ class GUI_EXPORT QgsAuthSettingsWidget : public QWidget, private Ui::QgsAuthSett
     void setStoreUsernameChecked( bool checked );
 
     /**
-     * \brief setStorePasswordChecked check the "Store" checkbox for the password
+     * \brief setStorePasswordCheched check the "Store" checkbox for the password
      * \param checked
      * \see showStoreCheckboxes
      */

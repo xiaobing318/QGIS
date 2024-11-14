@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsalignmentcombobox.h"
-#include "moc_qgsalignmentcombobox.cpp"
 
 #include "qgsapplication.h"
 #include "qgsguiutils.h"

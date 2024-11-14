@@ -11,21 +11,19 @@ __copyright__ = 'Copyright 2016, The QGIS Project'
 
 import os
 
-from qgis.PyQt.QtCore import QTemporaryDir, QVariant
+import qgis  # NOQA
+from qgis.PyQt.QtCore import QVariant, QTemporaryDir
 from qgis.PyQt.QtTest import QSignalSpy
-from qgis.core import (
-    Qgis,
-    QgsCoordinateTransformContext,
-    QgsFeature,
-    QgsField,
-    QgsGeometry,
-    QgsPointXY,
-    QgsProject,
-    QgsVectorFileWriter,
-    QgsVectorLayer,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (Qgis,
+                       QgsVectorLayer,
+                       QgsFeature,
+                       QgsProject,
+                       QgsGeometry,
+                       QgsPointXY,
+                       QgsField,
+                       QgsVectorFileWriter,
+                       QgsCoordinateTransformContext)
+from qgis.testing import start_app, unittest
 
 start_app()
 
@@ -56,7 +54,7 @@ def createEmptyLinestringLayer():
     return layer
 
 
-class TestQgsVectorLayerEditBuffer(QgisTestCase):
+class TestQgsVectorLayerEditBuffer(unittest.TestCase):
 
     def testAddFeatures(self):
         # test adding features to an edit buffer
@@ -443,7 +441,7 @@ class TestQgsVectorLayerEditBuffer(QgisTestCase):
             options.layerName = 'layer_a'
             err, msg, newFileName, newLayer = QgsVectorFileWriter.writeAsVectorFormatV3(ml, os.path.join(d.path(), 'transaction_test.gpkg'), QgsCoordinateTransformContext(), options)
 
-            self.assertEqual(err, QgsVectorFileWriter.WriterError.NoError)
+            self.assertEqual(err, QgsVectorFileWriter.NoError)
             self.assertTrue(os.path.isfile(newFileName))
 
             layer_a = QgsVectorLayer(newFileName + '|layername=layer_a')
@@ -650,13 +648,13 @@ class TestQgsVectorLayerEditBuffer(QgisTestCase):
             f.setGeometry(QgsGeometry.fromWkt('point(8 46)'))
             self.assertTrue(layer_a.addFeatures([f]))
             f = [f for f in layer_a.getFeatures() if f.attribute('int') == 555][0]
-            self.assertIn(f.id(), buffer.addedFeatures())
+            self.assertTrue(f.id() in buffer.addedFeatures())
             self.assertTrue(layer_a.deleteFeature(f.id()))
-            self.assertNotIn(f.id(), buffer.addedFeatures())
-            self.assertNotIn(f.id(), buffer.deletedFeatureIds())
+            self.assertFalse(f.id() in buffer.addedFeatures())
+            self.assertFalse(f.id() in buffer.deletedFeatureIds())
 
             layer_a.undoStack().undo()
-            self.assertIn(f.id(), buffer.addedFeatures())
+            self.assertTrue(f.id() in buffer.addedFeatures())
 
             ###########################################
             # Add attribute

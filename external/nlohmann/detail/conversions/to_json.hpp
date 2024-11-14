@@ -1,6 +1,7 @@
 #pragma once
 
 #include <algorithm> // copy
+#include <ciso646> // or, and, not
 #include <iterator> // begin, end
 #include <string> // string
 #include <tuple> // tuple, get
@@ -55,35 +56,13 @@ struct external_constructor<value_t::string>
         j.assert_invariant();
     }
 
-    template < typename BasicJsonType, typename CompatibleStringType,
-               enable_if_t < !std::is_same<CompatibleStringType, typename BasicJsonType::string_t>::value,
-                             int > = 0 >
+    template<typename BasicJsonType, typename CompatibleStringType,
+             enable_if_t<not std::is_same<CompatibleStringType, typename BasicJsonType::string_t>::value,
+                         int> = 0>
     static void construct(BasicJsonType& j, const CompatibleStringType& str)
     {
         j.m_type = value_t::string;
         j.m_value.string = j.template create<typename BasicJsonType::string_t>(str);
-        j.assert_invariant();
-    }
-};
-
-template<>
-struct external_constructor<value_t::binary>
-{
-    template<typename BasicJsonType>
-    static void construct(BasicJsonType& j, const typename BasicJsonType::binary_t& b)
-    {
-        j.m_type = value_t::binary;
-        typename BasicJsonType::binary_t value{b};
-        j.m_value = value;
-        j.assert_invariant();
-    }
-
-    template<typename BasicJsonType>
-    static void construct(BasicJsonType& j, typename BasicJsonType::binary_t&& b)
-    {
-        j.m_type = value_t::binary;
-        typename BasicJsonType::binary_t value{std::move(b)};
-        j.m_value = value;
         j.assert_invariant();
     }
 };
@@ -143,9 +122,9 @@ struct external_constructor<value_t::array>
         j.assert_invariant();
     }
 
-    template < typename BasicJsonType, typename CompatibleArrayType,
-               enable_if_t < !std::is_same<CompatibleArrayType, typename BasicJsonType::array_t>::value,
-                             int > = 0 >
+    template<typename BasicJsonType, typename CompatibleArrayType,
+             enable_if_t<not std::is_same<CompatibleArrayType, typename BasicJsonType::array_t>::value,
+                         int> = 0>
     static void construct(BasicJsonType& j, const CompatibleArrayType& arr)
     {
         using std::begin;
@@ -175,10 +154,7 @@ struct external_constructor<value_t::array>
         j.m_type = value_t::array;
         j.m_value = value_t::array;
         j.m_value.array->resize(arr.size());
-        if (arr.size() > 0)
-        {
-            std::copy(std::begin(arr), std::end(arr), j.m_value.array->begin());
-        }
+        std::copy(std::begin(arr), std::end(arr), j.m_value.array->begin());
         j.assert_invariant();
     }
 };
@@ -202,8 +178,8 @@ struct external_constructor<value_t::object>
         j.assert_invariant();
     }
 
-    template < typename BasicJsonType, typename CompatibleObjectType,
-               enable_if_t < !std::is_same<CompatibleObjectType, typename BasicJsonType::object_t>::value, int > = 0 >
+    template<typename BasicJsonType, typename CompatibleObjectType,
+             enable_if_t<not std::is_same<CompatibleObjectType, typename BasicJsonType::object_t>::value, int> = 0>
     static void construct(BasicJsonType& j, const CompatibleObjectType& obj)
     {
         using std::begin;
@@ -274,23 +250,17 @@ void to_json(BasicJsonType& j, const std::vector<bool>& e)
     external_constructor<value_t::array>::construct(j, e);
 }
 
-template < typename BasicJsonType, typename CompatibleArrayType,
-           enable_if_t < is_compatible_array_type<BasicJsonType,
-                         CompatibleArrayType>::value&&
-                         !is_compatible_object_type<BasicJsonType, CompatibleArrayType>::value&&
-                         !is_compatible_string_type<BasicJsonType, CompatibleArrayType>::value&&
-                         !std::is_same<typename BasicJsonType::binary_t, CompatibleArrayType>::value&&
-                         !is_basic_json<CompatibleArrayType>::value,
-                         int > = 0 >
+template <typename BasicJsonType, typename CompatibleArrayType,
+          enable_if_t<is_compatible_array_type<BasicJsonType,
+                      CompatibleArrayType>::value and
+                      not is_compatible_object_type<
+                          BasicJsonType, CompatibleArrayType>::value and
+                      not is_compatible_string_type<BasicJsonType, CompatibleArrayType>::value and
+                      not is_basic_json<CompatibleArrayType>::value,
+                      int> = 0>
 void to_json(BasicJsonType& j, const CompatibleArrayType& arr)
 {
     external_constructor<value_t::array>::construct(j, arr);
-}
-
-template<typename BasicJsonType>
-void to_json(BasicJsonType& j, const typename BasicJsonType::binary_t& bin)
-{
-    external_constructor<value_t::binary>::construct(j, bin);
 }
 
 template<typename BasicJsonType, typename T,
@@ -306,8 +276,8 @@ void to_json(BasicJsonType& j, typename BasicJsonType::array_t&& arr)
     external_constructor<value_t::array>::construct(j, std::move(arr));
 }
 
-template < typename BasicJsonType, typename CompatibleObjectType,
-           enable_if_t < is_compatible_object_type<BasicJsonType, CompatibleObjectType>::value&& !is_basic_json<CompatibleObjectType>::value, int > = 0 >
+template<typename BasicJsonType, typename CompatibleObjectType,
+         enable_if_t<is_compatible_object_type<BasicJsonType, CompatibleObjectType>::value and not is_basic_json<CompatibleObjectType>::value, int> = 0>
 void to_json(BasicJsonType& j, const CompatibleObjectType& obj)
 {
     external_constructor<value_t::object>::construct(j, obj);
@@ -321,23 +291,23 @@ void to_json(BasicJsonType& j, typename BasicJsonType::object_t&& obj)
 
 template <
     typename BasicJsonType, typename T, std::size_t N,
-    enable_if_t < !std::is_constructible<typename BasicJsonType::string_t,
-                  const T(&)[N]>::value,
-                  int > = 0 >
+    enable_if_t<not std::is_constructible<typename BasicJsonType::string_t,
+                const T(&)[N]>::value,
+                int> = 0 >
 void to_json(BasicJsonType& j, const T(&arr)[N])
 {
     external_constructor<value_t::array>::construct(j, arr);
 }
 
-template < typename BasicJsonType, typename T1, typename T2, enable_if_t < std::is_constructible<BasicJsonType, T1>::value&& std::is_constructible<BasicJsonType, T2>::value, int > = 0 >
-void to_json(BasicJsonType& j, const std::pair<T1, T2>& p)
+template<typename BasicJsonType, typename... Args>
+void to_json(BasicJsonType& j, const std::pair<Args...>& p)
 {
     j = { p.first, p.second };
 }
 
 // for https://github.com/nlohmann/json/pull/1134
-template<typename BasicJsonType, typename T,
-         enable_if_t<std::is_same<T, iteration_proxy_value<typename BasicJsonType::iterator>>::value, int> = 0>
+template < typename BasicJsonType, typename T,
+           enable_if_t<std::is_same<T, iteration_proxy_value<typename BasicJsonType::iterator>>::value, int> = 0>
 void to_json(BasicJsonType& j, const T& b)
 {
     j = { {b.key(), b.value()} };
@@ -349,10 +319,10 @@ void to_json_tuple_impl(BasicJsonType& j, const Tuple& t, index_sequence<Idx...>
     j = { std::get<Idx>(t)... };
 }
 
-template<typename BasicJsonType, typename T, enable_if_t<is_constructible_tuple<BasicJsonType, T>::value, int > = 0>
-void to_json(BasicJsonType& j, const T& t)
+template<typename BasicJsonType, typename... Args>
+void to_json(BasicJsonType& j, const std::tuple<Args...>& t)
 {
-    to_json_tuple_impl(j, t, make_index_sequence<std::tuple_size<T>::value> {});
+    to_json_tuple_impl(j, t, index_sequence_for<Args...> {});
 }
 
 struct to_json_fn
@@ -371,4 +341,4 @@ namespace
 {
 constexpr const auto& to_json = detail::static_const<detail::to_json_fn>::value;
 } // namespace
-} // namespace nlohmann
+}  // namespace nlohmann

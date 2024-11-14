@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsexternalresourceconfigdlg.h"
-#include "moc_qgsexternalresourceconfigdlg.cpp"
 #include "qgsexternalresourcewidget.h"
 #include "qgsproject.h"
 #include "qgssettings.h"
@@ -46,7 +45,7 @@ QgsExternalResourceConfigDlg::QgsExternalResourceConfigDlg( QgsVectorLayer *vl, 
 
   mExternalStorageGroupBox->setVisible( false );
 
-  initializeDataDefinedButton( mStorageUrlPropertyOverrideButton, QgsEditorWidgetWrapper::Property::StorageUrl );
+  initializeDataDefinedButton( mStorageUrlPropertyOverrideButton, QgsEditorWidgetWrapper::StorageUrl );
   mStorageUrlPropertyOverrideButton->registerVisibleWidget( mStorageUrlExpression );
   mStorageUrlPropertyOverrideButton->registerExpressionWidget( mStorageUrlExpression );
   mStorageUrlPropertyOverrideButton->registerVisibleWidget( mStorageUrl, false );
@@ -62,13 +61,13 @@ QgsExternalResourceConfigDlg::QgsExternalResourceConfigDlg( QgsVectorLayer *vl, 
 
   connect( mRootPathButton, &QToolButton::clicked, this, &QgsExternalResourceConfigDlg::chooseDefaultPath );
 
-  initializeDataDefinedButton( mRootPathPropertyOverrideButton, QgsEditorWidgetWrapper::Property::RootPath );
+  initializeDataDefinedButton( mRootPathPropertyOverrideButton, QgsEditorWidgetWrapper::RootPath );
   mRootPathPropertyOverrideButton->registerVisibleWidget( mRootPathExpression );
   mRootPathPropertyOverrideButton->registerExpressionWidget( mRootPathExpression );
   mRootPathPropertyOverrideButton->registerVisibleWidget( mRootPath, false );
   mRootPathPropertyOverrideButton->registerEnabledWidget( mRootPathButton, false );
 
-  initializeDataDefinedButton( mDocumentViewerContentPropertyOverrideButton, QgsEditorWidgetWrapper::Property::DocumentViewerContent );
+  initializeDataDefinedButton( mDocumentViewerContentPropertyOverrideButton, QgsEditorWidgetWrapper::DocumentViewerContent );
   mDocumentViewerContentPropertyOverrideButton->registerVisibleWidget( mDocumentViewerContentExpression );
   mDocumentViewerContentPropertyOverrideButton->registerExpressionWidget( mDocumentViewerContentExpression );
   mDocumentViewerContentPropertyOverrideButton->registerEnabledWidget( mDocumentViewerContentComboBox, false );
@@ -97,20 +96,14 @@ QgsExternalResourceConfigDlg::QgsExternalResourceConfigDlg( QgsVectorLayer *vl, 
   connect( mStorageModeCbx, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, &QgsEditorConfigWidget::changed );
   connect( mStoragePathCbx, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, &QgsEditorConfigWidget::changed );
   connect( mDocumentViewerGroupBox, &QGroupBox::toggled, this, &QgsEditorConfigWidget::changed );
-  connect( mDocumentViewerContentComboBox, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ),  this, [ = ]( int )
-  {
-    const QgsExternalResourceWidget::DocumentViewerContent content = static_cast<QgsExternalResourceWidget::DocumentViewerContent>( mDocumentViewerContentComboBox->currentData().toInt() );
-    const bool hasSizeSettings = ( content != QgsExternalResourceWidget::NoContent && content != QgsExternalResourceWidget::Audio );
-    mDocumentViewerContentSettingsWidget->setEnabled( hasSizeSettings );
-  } );
+  connect( mDocumentViewerContentComboBox, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ),  this, [ = ]( int idx )
+  { mDocumentViewerContentSettingsWidget->setEnabled( ( QgsExternalResourceWidget::DocumentViewerContent )idx != QgsExternalResourceWidget::NoContent ); } );
   connect( mDocumentViewerHeight, static_cast<void ( QSpinBox::* )( int )>( &QSpinBox::valueChanged ), this, &QgsEditorConfigWidget::changed );
   connect( mDocumentViewerWidth, static_cast<void ( QSpinBox::* )( int )>( &QSpinBox::valueChanged ), this, &QgsEditorConfigWidget::changed );
   connect( mStorageUrlExpression, &QLineEdit::textChanged, this, &QgsEditorConfigWidget::changed );
 
   mDocumentViewerContentComboBox->addItem( tr( "No Content" ), QgsExternalResourceWidget::NoContent );
   mDocumentViewerContentComboBox->addItem( tr( "Image" ), QgsExternalResourceWidget::Image );
-  mDocumentViewerContentComboBox->addItem( tr( "Audio" ), QgsExternalResourceWidget::Audio );
-  mDocumentViewerContentComboBox->addItem( tr( "Video" ), QgsExternalResourceWidget::Video );
   mDocumentViewerContentComboBox->addItem( tr( "Web View" ), QgsExternalResourceWidget::Web );
 }
 

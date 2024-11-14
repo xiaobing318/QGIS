@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsexpressionbuilderdialog.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -13,6 +13,7 @@ class QgsExpressionBuilderDialog : QDialog
 {
 %Docstring(signature="appended")
 A generic dialog for building expression strings
+@remarks This class also shows an example on how to use :py:class:`QgsExpressionBuilderWidget`
 %End
 
 %TypeHeaderCode
@@ -57,6 +58,8 @@ Returns the expression context for the dialog. The context is used for the expre
 preview result and for populating the list of available functions and variables.
 
 .. seealso:: :py:func:`setExpressionContext`
+
+.. versionadded:: 2.12
 %End
 
     void setExpressionContext( const QgsExpressionContext &context );
@@ -67,6 +70,8 @@ preview result and for populating the list of available functions and variables.
 :param context: expression context
 
 .. seealso:: :py:func:`expressionContext`
+
+.. versionadded:: 2.12
 %End
 
     void setGeomCalculator( const QgsDistanceArea &da );
@@ -78,12 +83,16 @@ Sets geometry calculator used in distance/area calculations.
 %Docstring
 Allow accepting invalid expressions. This can be useful when we are not able to
 provide an expression context of which we are sure it's completely populated.
+
+.. versionadded:: 3.0
 %End
 
     void setAllowEvalErrors( bool allowEvalErrors );
 %Docstring
 Allow accepting expressions with evaluation errors. This can be useful when we are not able to
 provide an expression context of which we are sure it's completely populated.
+
+.. versionadded:: 3.0
 %End
 
   signals:
@@ -92,6 +101,8 @@ provide an expression context of which we are sure it's completely populated.
 %Docstring
 Allow accepting expressions with evaluation errors. This can be useful when we are not able to
 provide an expression context of which we are sure it's completely populated.
+
+.. versionadded:: 3.0
 %End
 
   protected:
@@ -118,5 +129,5 @@ Used to save geometry
  *                                                                      *
  * src/gui/qgsexpressionbuilderdialog.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -65,7 +65,7 @@ QString QgsAddIncrementalFieldAlgorithm::outputName() const
 
 QList<int> QgsAddIncrementalFieldAlgorithm::inputLayerTypes() const
 {
-  return QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::Vector );
+  return QList<int>() << QgsProcessing::TypeVector;
 }
 
 QgsAddIncrementalFieldAlgorithm *QgsAddIncrementalFieldAlgorithm::createInstance() const
@@ -73,37 +73,37 @@ QgsAddIncrementalFieldAlgorithm *QgsAddIncrementalFieldAlgorithm::createInstance
   return new QgsAddIncrementalFieldAlgorithm();
 }
 
-Qgis::ProcessingFeatureSourceFlags QgsAddIncrementalFieldAlgorithm::sourceFlags() const
+QgsProcessingFeatureSource::Flag QgsAddIncrementalFieldAlgorithm::sourceFlags() const
 {
-  return Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks;
+  return QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks;
 }
 
 void QgsAddIncrementalFieldAlgorithm::initParameters( const QVariantMap & )
 {
   addParameter( new QgsProcessingParameterString( QStringLiteral( "FIELD_NAME" ), QObject::tr( "Field name" ), QStringLiteral( "AUTO" ) ) );
   addParameter( new QgsProcessingParameterNumber( QStringLiteral( "START" ), QObject::tr( "Start values at" ),
-                Qgis::ProcessingNumberParameterType::Integer, 0, true ) );
+                QgsProcessingParameterNumber::Integer, 0, true ) );
   addParameter( new QgsProcessingParameterNumber( QStringLiteral( "MODULUS" ), QObject::tr( "Modulus value" ),
-                Qgis::ProcessingNumberParameterType::Integer, QVariant( 0 ), true ) );
+                QgsProcessingParameterNumber::Integer, QVariant( 0 ), true ) );
   addParameter( new QgsProcessingParameterField( QStringLiteral( "GROUP_FIELDS" ), QObject::tr( "Group values by" ), QVariant(),
-                QStringLiteral( "INPUT" ), Qgis::ProcessingFieldParameterDataType::Any, true, true ) );
+                QStringLiteral( "INPUT" ), QgsProcessingParameterField::Any, true, true ) );
 
   // sort params
   std::unique_ptr< QgsProcessingParameterExpression > sortExp = std::make_unique< QgsProcessingParameterExpression >( QStringLiteral( "SORT_EXPRESSION" ), QObject::tr( "Sort expression" ), QVariant(), QStringLiteral( "INPUT" ), true );
-  sortExp->setFlags( sortExp->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  sortExp->setFlags( sortExp->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( sortExp.release() );
   std::unique_ptr< QgsProcessingParameterBoolean > sortAscending = std::make_unique< QgsProcessingParameterBoolean >( QStringLiteral( "SORT_ASCENDING" ), QObject::tr( "Sort ascending" ), true );
-  sortAscending->setFlags( sortAscending->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  sortAscending->setFlags( sortAscending->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( sortAscending.release() );
   std::unique_ptr< QgsProcessingParameterBoolean > sortNullsFirst = std::make_unique< QgsProcessingParameterBoolean >( QStringLiteral( "SORT_NULLS_FIRST" ), QObject::tr( "Sort nulls first" ), false );
-  sortNullsFirst->setFlags( sortNullsFirst->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  sortNullsFirst->setFlags( sortNullsFirst->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( sortNullsFirst.release() );
 }
 
 QgsFields QgsAddIncrementalFieldAlgorithm::outputFields( const QgsFields &inputFields ) const
 {
   QgsFields outFields = inputFields;
-  outFields.append( QgsField( mFieldName, QMetaType::Type::LongLong ) );
+  outFields.append( QgsField( mFieldName, QVariant::LongLong ) );
   mFields = outFields;
   return outFields;
 }
@@ -114,7 +114,7 @@ bool QgsAddIncrementalFieldAlgorithm::prepareAlgorithm( const QVariantMap &param
   mValue = mStartValue;
   mModulusValue = parameterAsInt( parameters, QStringLiteral( "MODULUS" ), context );
   mFieldName = parameterAsString( parameters, QStringLiteral( "FIELD_NAME" ), context );
-  mGroupedFieldNames = parameterAsStrings( parameters, QStringLiteral( "GROUP_FIELDS" ), context );
+  mGroupedFieldNames = parameterAsFields( parameters, QStringLiteral( "GROUP_FIELDS" ), context );
 
   mSortExpressionString = parameterAsExpression( parameters, QStringLiteral( "SORT_EXPRESSION" ), context );
   mSortAscending = parameterAsBoolean( parameters, QStringLiteral( "SORT_ASCENDING" ), context );

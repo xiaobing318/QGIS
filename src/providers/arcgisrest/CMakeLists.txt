@@ -31,9 +31,6 @@ target_include_directories(provider_arcgisfeatureserver_a PUBLIC
 # require c++17
 target_compile_features(provider_arcgisfeatureserver_a PRIVATE cxx_std_17)
 
-# We use private headers from core that need this
-target_compile_definitions(provider_arcgisfeatureserver_a PRIVATE "CMAKE_SOURCE_DIR=\"${CMAKE_SOURCE_DIR}\"")
-
 target_link_libraries (provider_arcgisfeatureserver_a
   qgis_core
   ${QCA_LIBRARY}
@@ -83,9 +80,6 @@ else()
   # require c++17
   target_compile_features(provider_arcgisfeatureserver PRIVATE cxx_std_17)
   
-  # We use private headers from core that need this
-  target_compile_definitions(provider_arcgisfeatureserver PRIVATE "CMAKE_SOURCE_DIR=\"${CMAKE_SOURCE_DIR}\"")
-
   if (WITH_GUI)
     target_link_libraries(provider_arcgisfeatureserver
       qgis_gui
@@ -114,9 +108,6 @@ target_include_directories(provider_arcgismapserver_a PUBLIC
 # require c++17
 target_compile_features(provider_arcgismapserver_a PRIVATE cxx_std_17)
 
-# We use private headers from core that need this
-target_compile_definitions(provider_arcgismapserver_a PRIVATE "CMAKE_SOURCE_DIR=\"${CMAKE_SOURCE_DIR}\"")
-
 target_link_libraries (provider_arcgismapserver_a
   qgis_core
   ${QCA_LIBRARY}
@@ -130,8 +121,6 @@ else()
   
   # require c++17
   target_compile_features(provider_arcgismapserver PRIVATE cxx_std_17)
-  # We use private headers from core that need this
-  target_compile_definitions(provider_arcgismapserver PRIVATE "CMAKE_SOURCE_DIR=\"${CMAKE_SOURCE_DIR}\"")
   
   target_link_libraries(provider_arcgismapserver
     qgis_core

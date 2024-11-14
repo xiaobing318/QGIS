@@ -13,9 +13,12 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsmergedfeaturerendererwidget.h"
-#include "moc_qgsmergedfeaturerendererwidget.cpp"
 #include "qgsmergedfeaturerenderer.h"
 #include "qgsrendererregistry.h"
+
+#include "qgssymbol.h"
+
+#include "qgslogger.h"
 #include "qgsvectorlayer.h"
 #include "qgsapplication.h"
 
@@ -32,10 +35,10 @@ QgsMergedFeatureRendererWidget::QgsMergedFeatureRendererWidget( QgsVectorLayer *
     return;
   }
 
-  const Qgis::GeometryType type = QgsWkbTypes::geometryType( layer->wkbType() );
+  const QgsWkbTypes::GeometryType type = QgsWkbTypes::geometryType( layer->wkbType() );
 
   // the renderer only applies to line or polygon vector layers
-  if ( type != Qgis::GeometryType::Polygon && type != Qgis::GeometryType::Line )
+  if ( type != QgsWkbTypes::PolygonGeometry && type != QgsWkbTypes::LineGeometry )
   {
     //setup blank dialog
     mRenderer.reset( nullptr );
@@ -66,7 +69,7 @@ QgsMergedFeatureRendererWidget::QgsMergedFeatureRendererWidget( QgsVectorLayer *
 
   int currentEmbeddedIdx = 0;
   //insert possible renderer types
-  const QStringList rendererList = QgsApplication::rendererRegistry()->renderersList( type == Qgis::GeometryType::Polygon ? QgsRendererAbstractMetadata::PolygonLayer :  QgsRendererAbstractMetadata::LineLayer );
+  const QStringList rendererList = QgsApplication::rendererRegistry()->renderersList( type == QgsWkbTypes::PolygonGeometry ? QgsRendererAbstractMetadata::PolygonLayer :  QgsRendererAbstractMetadata::LineLayer );
   QStringList::const_iterator it = rendererList.constBegin();
   int idx = 0;
   mRendererComboBox->blockSignals( true );

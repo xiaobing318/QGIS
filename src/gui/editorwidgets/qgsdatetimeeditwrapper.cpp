@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsdatetimeeditwrapper.h"
-#include "moc_qgsdatetimeeditwrapper.cpp"
 #include "qgsdatetimeeditfactory.h"
 #include "qgsmessagelog.h"
 #include "qgslogger.h"
@@ -60,7 +59,7 @@ void QgsDateTimeEditWrapper::initWidget( QWidget *editor )
 
   if ( !mQDateTimeEdit )
   {
-    QgsDebugError( QStringLiteral( "Date/time edit widget could not be initialized because provided widget is not a QDateTimeEdit." ) );
+    QgsDebugMsg( QStringLiteral( "Date/time edit widget could not be initialized because provided widget is not a QDateTimeEdit." ) );
     QgsMessageLog::logMessage( tr( "Date/time edit widget could not be initialized because provided widget is not a QDateTimeEdit." ), tr( "UI forms" ), Qgis::MessageLevel::Warning );
     return;
   }
@@ -118,19 +117,19 @@ void QgsDateTimeEditWrapper::dateTimeChanged( const QDateTime &dateTime )
 {
   switch ( field().type() )
   {
-    case QMetaType::Type::QDateTime:
+    case QVariant::DateTime:
       Q_NOWARN_DEPRECATED_PUSH
       emit valueChanged( dateTime );
       Q_NOWARN_DEPRECATED_POP
       emit valuesChanged( dateTime );
       break;
-    case QMetaType::Type::QDate:
+    case QVariant::Date:
       Q_NOWARN_DEPRECATED_PUSH
       emit valueChanged( dateTime.date() );
       Q_NOWARN_DEPRECATED_POP
       emit valuesChanged( dateTime.date() );
       break;
-    case QMetaType::Type::QTime:
+    case QVariant::Time:
       Q_NOWARN_DEPRECATED_PUSH
       emit valueChanged( dateTime.time() );
       Q_NOWARN_DEPRECATED_POP
@@ -140,9 +139,9 @@ void QgsDateTimeEditWrapper::dateTimeChanged( const QDateTime &dateTime )
       if ( !dateTime.isValid() || dateTime.isNull() )
       {
         Q_NOWARN_DEPRECATED_PUSH
-        emit valueChanged( QgsVariantUtils::createNullVariant( field().type() ) );
+        emit valueChanged( QVariant( field().type() ) );
         Q_NOWARN_DEPRECATED_POP
-        emit valuesChanged( QgsVariantUtils::createNullVariant( field().type() ) );
+        emit valuesChanged( QVariant( field().type() ) );
       }
       else
       {
@@ -170,7 +169,7 @@ void QgsDateTimeEditWrapper::dateTimeChanged( const QDateTime &dateTime )
 QVariant QgsDateTimeEditWrapper::value() const
 {
   if ( !mQDateTimeEdit )
-    return QgsVariantUtils::createNullVariant( field().type() );
+    return QVariant( field().type() );
 
   QDateTime dateTime;
   if ( mQgsDateTimeEdit )
@@ -183,15 +182,15 @@ QVariant QgsDateTimeEditWrapper::value() const
   }
 
   if ( dateTime.isNull() )
-    return QgsVariantUtils::createNullVariant( field().type() );
+    return QVariant( field().type() );
 
   switch ( field().type() )
   {
-    case QMetaType::Type::QDateTime:
+    case QVariant::DateTime:
       return dateTime;
-    case QMetaType::Type::QDate:
+    case QVariant::Date:
       return dateTime.date();
-    case QMetaType::Type::QTime:
+    case QVariant::Time:
       return dateTime.time();
     default:
       const bool fieldIsoFormat = config( QStringLiteral( "field_iso_format" ), false ).toBool();
@@ -219,34 +218,34 @@ void QgsDateTimeEditWrapper::updateValues( const QVariant &value, const QVariant
 
   switch ( field().type() )
   {
-    case QMetaType::Type::QDateTime:
+    case QVariant::DateTime:
       dateTime = value.toDateTime();
       break;
-    case QMetaType::Type::QDate:
+    case QVariant::Date:
       dateTime.setDate( value.toDate() );
       dateTime.setTime( QTime( 0, 0, 0 ) );
       break;
-    case QMetaType::Type::QTime:
+    case QVariant::Time:
       dateTime.setDate( QDate::currentDate() );
       dateTime.setTime( value.toTime() );
       break;
     default:
       // Field type is not a date/time but we might already have a date/time variant
       // value coming from a default: no need for string parsing in that case
-      switch ( value.userType() )
+      switch ( value.type() )
       {
-        case QMetaType::Type::QDateTime:
+        case QVariant::DateTime:
         {
           dateTime = value.toDateTime();
           break;
         }
-        case QMetaType::Type::QDate:
+        case QVariant::Date:
         {
           dateTime.setDate( value.toDate() );
           dateTime.setTime( QTime( 0, 0, 0 ) );
           break;
         }
-        case QMetaType::Type::QTime:
+        case QVariant::Time:
         {
           dateTime.setDate( QDate::currentDate() );
           dateTime.setTime( value.toTime() );
@@ -272,12 +271,6 @@ void QgsDateTimeEditWrapper::updateValues( const QVariant &value, const QVariant
 
   if ( mQgsDateTimeEdit )
   {
-    // Convert to UTC if the format string includes a Z
-    if ( mQgsDateTimeEdit->displayFormat().indexOf( "Z" ) > 0 )
-    {
-      dateTime = dateTime.toUTC();
-    }
-
     mQgsDateTimeEdit->setDateTime( dateTime );
   }
   else

@@ -15,15 +15,15 @@ import tempfile
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import QDir
 from qgis.core import (
     QgsApplication,
     QgsPathResolver,
     QgsProject,
-    QgsVectorLayer,
+    QgsVectorLayer
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 start_app()
 
@@ -32,20 +32,18 @@ BASE_PATH = QgsApplication.pkgDataPath() + '/resources'
 ABSOLUTE_PATH = f'{BASE_PATH}/{MAP_PATH}'
 
 
-class TestQgsLocalizedDataPathRegistry(QgisTestCase):
+class TestQgsLocalizedDataPathRegistry(unittest.TestCase):
     """
     Test resolving and saving localized data paths
     """
 
     @classmethod
     def setUpClass(cls):
-        super().setUpClass()
         cls.temp_path = tempfile.mkdtemp()
 
     @classmethod
     def tearDownClass(cls):
         shutil.rmtree(cls.temp_path)
-        super().tearDownClass()
 
     def setUp(self):
         QgsApplication.localizedDataPathRegistry().registerPath(BASE_PATH)

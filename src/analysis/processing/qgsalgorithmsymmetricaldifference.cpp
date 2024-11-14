@@ -51,11 +51,6 @@ QString QgsSymmetricalDifferenceAlgorithm::shortHelpString() const
                       "contains original attributes from both the Input and Difference layers." );
 }
 
-Qgis::ProcessingAlgorithmDocumentationFlags QgsSymmetricalDifferenceAlgorithm::documentationFlags() const
-{
-  return Qgis::ProcessingAlgorithmDocumentationFlag::RegeneratesPrimaryKey;
-}
-
 QgsProcessingAlgorithm *QgsSymmetricalDifferenceAlgorithm::createInstance() const
 {
   return new QgsSymmetricalDifferenceAlgorithm();
@@ -67,14 +62,14 @@ void QgsSymmetricalDifferenceAlgorithm::initAlgorithm( const QVariantMap & )
   addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "OVERLAY" ), QObject::tr( "Overlay layer" ) ) );
 
   std::unique_ptr< QgsProcessingParameterString > prefix = std::make_unique< QgsProcessingParameterString >( QStringLiteral( "OVERLAY_FIELDS_PREFIX" ), QObject::tr( "Overlay fields prefix" ), QString(), false, true );
-  prefix->setFlags( prefix->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  prefix->setFlags( prefix->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( prefix.release() );
 
   addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Symmetrical difference" ) ) );
 
   std::unique_ptr< QgsProcessingParameterNumber > gridSize = std::make_unique< QgsProcessingParameterNumber >( QStringLiteral( "GRID_SIZE" ),
-      QObject::tr( "Grid size" ), Qgis::ProcessingNumberParameterType::Double, QVariant(), true, 0 );
-  gridSize->setFlags( gridSize->flags() | Qgis::ProcessingParameterFlag::Advanced );
+      QObject::tr( "Grid size" ), QgsProcessingParameterNumber::Double, QVariant(), true, 0 );
+  gridSize->setFlags( gridSize->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( gridSize.release() );
 }
 
@@ -89,8 +84,8 @@ QVariantMap QgsSymmetricalDifferenceAlgorithm::processAlgorithm( const QVariantM
   if ( !sourceB )
     throw QgsProcessingException( invalidSourceError( parameters, QStringLiteral( "OVERLAY" ) ) );
 
-  const Qgis::WkbType geomTypeA = QgsWkbTypes::promoteNonPointTypesToMulti( sourceA->wkbType() );
-  const Qgis::WkbType geomTypeB = QgsWkbTypes::promoteNonPointTypesToMulti( sourceB->wkbType() );
+  const QgsWkbTypes::Type geomTypeA = QgsWkbTypes::promoteNonPointTypesToMulti( sourceA->wkbType() );
+  const QgsWkbTypes::Type geomTypeB = QgsWkbTypes::promoteNonPointTypesToMulti( sourceB->wkbType() );
 
   if ( geomTypeA != geomTypeB )
     feedback->pushWarning( QObject::tr( "Performing symmetrical difference between layers with different geometry types (INPUT has %1 and OVERLAY has %2) can lead to unexpected results" ).arg( QgsWkbTypes::displayString( sourceA->wkbType() ), QgsWkbTypes::displayString( sourceB->wkbType() ) ) );
@@ -120,8 +115,6 @@ QVariantMap QgsSymmetricalDifferenceAlgorithm::processAlgorithm( const QVariantM
     return outputs;
 
   QgsOverlayUtils::difference( *sourceB, *sourceA, *sink, context, feedback, count, total, QgsOverlayUtils::OutputBA, geometryParameters, QgsOverlayUtils::SanitizeFlag::DontPromotePointGeometryToMultiPoint );
-
-  sink->finalize();
 
   return outputs;
 }

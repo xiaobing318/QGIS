@@ -32,6 +32,9 @@ class GUI_EXPORT QgsDetailedItemData
 {
   public:
 
+    /**
+     * Constructor for QgsDetailedItemData.
+     */
     QgsDetailedItemData() = default;
 
     /**

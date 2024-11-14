@@ -15,8 +15,7 @@
  ***************************************************************************/
 #include "qgsoracleproviderconnection.h"
 #include "qgsoracleconn.h"
-#include "qgsdbquerylog.h"
-#include "qgsdbquerylog_p.h"
+#include "qgsoracleconnpool.h"
 #include "qgssettings.h"
 #include "qgsoracleprovider.h"
 #include "qgsexception.h"
@@ -47,22 +46,6 @@ const QStringList EXTRA_CONNECTION_PARAMETERS
 {
   QStringLiteral( "dboptions" ),
   QStringLiteral( "dbworkspace" )
-};
-
-/**
- * A light wrapper around QSqlQuery that keep a shared reference on the connection
- */
-class QgsOracleQuery : public QSqlQuery
-{
-  public:
-    explicit QgsOracleQuery( std::shared_ptr<QgsPoolOracleConn> pconn )
-      : QSqlQuery( *pconn->get() )
-      , mPconn( pconn )
-    {}
-
-  private:
-    std::shared_ptr<QgsPoolOracleConn> mPconn;
-
 };
 
 QgsOracleProviderConnection::QgsOracleProviderConnection( const QString &name )
@@ -207,7 +190,7 @@ QgsVectorLayer *QgsOracleProviderConnection::createSqlVectorLayer( const QgsAbst
     tUri.setGeometryColumn( options.geometryColumn );
   }
 
-  std::unique_ptr<QgsVectorLayer> vl = std::make_unique<QgsVectorLayer>( tUri.uri( false ), options.layerName.isEmpty() ? QStringLiteral( "QueryLayer" ) : options.layerName, providerKey() );
+  std::unique_ptr<QgsVectorLayer> vl = std::make_unique<QgsVectorLayer>( tUri.uri(), options.layerName.isEmpty() ? QStringLiteral( "QueryLayer" ) : options.layerName, providerKey() );
 
   // Try to guess the geometry and srid
   if ( ! vl->isValid() )
@@ -231,53 +214,53 @@ QgsVectorLayer *QgsOracleProviderConnection::createSqlVectorLayer( const QgsAbst
         if ( ok )
         {
 
-          Qgis::WkbType geomType { Qgis::WkbType::Unknown };
+          QgsWkbTypes::Type geomType { QgsWkbTypes::Type::Unknown };
 
           switch ( type )
           {
             case 2001:
-              geomType = Qgis::WkbType::Point;
+              geomType = QgsWkbTypes::Point;
               break;
             case 2002:
-              geomType = Qgis::WkbType::LineString;
+              geomType = QgsWkbTypes::LineString;
               break;
             case 2003:
-              geomType = Qgis::WkbType::Polygon;
+              geomType = QgsWkbTypes::Polygon;
               break;
             // Note: 2004 is missing
             case 2005:
-              geomType = Qgis::WkbType::MultiPoint;
+              geomType = QgsWkbTypes::MultiPoint;
               break;
             case 2006:
-              geomType = Qgis::WkbType::MultiLineString;
+              geomType = QgsWkbTypes::MultiLineString;
               break;
             case 2007:
-              geomType = Qgis::WkbType::MultiPolygon;
+              geomType = QgsWkbTypes::MultiPolygon;
               break;
             // 3K...
             case 3001:
-              geomType = Qgis::WkbType::PointZ;
+              geomType = QgsWkbTypes::PointZ;
               break;
             case 3002:
-              geomType = Qgis::WkbType::LineStringZ;
+              geomType = QgsWkbTypes::LineStringZ;
               break;
             case 3003:
-              geomType = Qgis::WkbType::PolygonZ;
+              geomType = QgsWkbTypes::PolygonZ;
               break;
             // Note: 3004 is missing
             case 3005:
-              geomType = Qgis::WkbType::MultiPointZ;
+              geomType = QgsWkbTypes::MultiPointZ;
               break;
             case 3006:
-              geomType = Qgis::WkbType::MultiLineStringZ;
+              geomType = QgsWkbTypes::MultiLineStringZ;
               break;
             case 3007:
-              geomType = Qgis::WkbType::MultiPolygonZ;
+              geomType = QgsWkbTypes::MultiPolygonZ;
               break;
             default:
-              geomType = Qgis::WkbType::Unknown;
+              geomType = QgsWkbTypes::Type::Unknown;
           }
-          if ( geomType != Qgis::WkbType::Unknown )
+          if ( geomType != QgsWkbTypes::Type::Unknown )
           {
             tUri.setSrid( QString::number( srid ) );
             tUri.setWkbType( geomType );
@@ -1374,8 +1357,8 @@ QgsAbstractDatabaseProviderConnection::QueryResult QgsOracleProviderConnection::
   if ( feedback && feedback->isCanceled() )
     return QgsAbstractDatabaseProviderConnection::QueryResult();
 
-  std::shared_ptr<QgsPoolOracleConn> pconn = std::make_shared<QgsPoolOracleConn>( QgsDataSourceUri{ uri() }.connectionInfo( false ) );
-  if ( !pconn->get() )
+  QgsPoolOracleConn pconn( QgsDataSourceUri{ uri() }.connectionInfo( false ) );
+  if ( !pconn.get() )
   {
     throw QgsProviderConnectionException( QObject::tr( "Connection failed: %1" ).arg( uri() ) );
   }
@@ -1383,17 +1366,17 @@ QgsAbstractDatabaseProviderConnection::QueryResult QgsOracleProviderConnection::
   if ( feedback && feedback->isCanceled() )
     return QgsAbstractDatabaseProviderConnection::QueryResult();
 
-  std::unique_ptr<QgsOracleQuery> qry = std::make_unique<QgsOracleQuery>( pconn );
+  QSqlQuery qry( *pconn.get() );
   std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
   QgsDatabaseQueryLogWrapper logWrapper { sql, uri(), providerKey(), QStringLiteral( "QgsAbstractDatabaseProviderConnection" ), QGS_QUERY_LOG_ORIGIN };
 
-  if ( !qry->exec( sql ) )
+  if ( !qry.exec( sql ) )
   {
-    logWrapper.setError( qry->lastError().text() );
+    logWrapper.setError( qry.lastError().text() );
     throw QgsProviderConnectionException( QObject::tr( "SQL error: %1 returned %2" )
-                                          .arg( qry->lastQuery(),
-                                              qry->lastError().text() ) );
+                                          .arg( qry.lastQuery(),
+                                              qry.lastError().text() ) );
   }
 
   if ( feedback && feedback->isCanceled() )
@@ -1402,11 +1385,11 @@ QgsAbstractDatabaseProviderConnection::QueryResult QgsOracleProviderConnection::
     return QgsAbstractDatabaseProviderConnection::QueryResult();
   }
 
-  if ( qry->isActive() )
+  if ( qry.isActive() )
   {
-    const QSqlRecord rec { qry->record() };
+    const QSqlRecord rec { qry.record() };
     const int numCols { rec.count() };
-    auto iterator = std::make_shared<QgsOracleProviderResultIterator>( numCols, std::move( qry ) );
+    auto iterator = std::make_shared<QgsOracleProviderResultIterator>( numCols, qry );
     QgsAbstractDatabaseProviderConnection::QueryResult results( iterator );
     for ( int idx = 0; idx < numCols; ++idx )
     {
@@ -1419,12 +1402,6 @@ QgsAbstractDatabaseProviderConnection::QueryResult QgsOracleProviderConnection::
   }
 
   return QgsAbstractDatabaseProviderConnection::QueryResult();
-}
-
-QgsOracleProviderResultIterator::QgsOracleProviderResultIterator( int columnCount, std::unique_ptr<QgsOracleQuery> query )
-  : mColumnCount( columnCount )
-  , mQuery( std::move( query ) )
-{
 }
 
 QVariantList QgsOracleProviderResultIterator::nextRowPrivate()
@@ -1442,29 +1419,29 @@ bool QgsOracleProviderResultIterator::hasNextRowPrivate() const
 QVariantList QgsOracleProviderResultIterator::nextRowInternal()
 {
   QVariantList row;
-  if ( mQuery->next() )
+  if ( mQuery.next() )
   {
     for ( int col = 0; col < mColumnCount; ++col )
     {
-      row.push_back( mQuery->value( col ) );
+      row.push_back( mQuery.value( col ) );
     }
   }
   else
   {
-    mQuery->finish();
+    mQuery.finish();
   }
   return row;
 }
 
 long long QgsOracleProviderResultIterator::rowCountPrivate() const
 {
-  return mQuery->size();
+  return mQuery.size();
 }
 
 void QgsOracleProviderConnection::createVectorTable( const QString &schema,
     const QString &name,
     const QgsFields &fields,
-    Qgis::WkbType wkbType,
+    QgsWkbTypes::Type wkbType,
     const QgsCoordinateReferenceSystem &srs,
     bool overwrite,
     const QMap<QString,
@@ -1476,7 +1453,7 @@ void QgsOracleProviderConnection::createVectorTable( const QString &schema,
   newUri.setSchema( schema );
   newUri.setTable( name );
   // Set geometry column and if it's not aspatial
-  if ( wkbType != Qgis::WkbType::Unknown &&  wkbType != Qgis::WkbType::NoGeometry )
+  if ( wkbType != QgsWkbTypes::Type::Unknown &&  wkbType != QgsWkbTypes::Type::NoGeometry )
   {
     newUri.setGeometryColumn( options->value( QStringLiteral( "geometryColumn" ), QStringLiteral( "GEOM" ) ).toString() );
   }
@@ -1507,7 +1484,7 @@ QString QgsOracleProviderConnection::tableUri( const QString &schema, const QStr
 }
 
 
-QList<QgsAbstractDatabaseProviderConnection::TableProperty> QgsOracleProviderConnection::tables( const QString &schema, const TableFlags &flags, QgsFeedback *feedback ) const
+QList<QgsAbstractDatabaseProviderConnection::TableProperty> QgsOracleProviderConnection::tables( const QString &schema, const TableFlags &flags ) const
 {
   checkCapability( Capability::Tables );
   QList<QgsAbstractDatabaseProviderConnection::TableProperty> tables;
@@ -1532,9 +1509,6 @@ QList<QgsAbstractDatabaseProviderConnection::TableProperty> QgsOracleProviderCon
 
   for ( auto &pr : properties )
   {
-    if ( feedback && feedback->isCanceled() )
-      break;
-
     // Classify
     TableFlags prFlags;
     if ( pr.isView )

@@ -33,7 +33,7 @@ class QgsSetProjectVariableAlgorithm : public QgsProcessingAlgorithm
   public:
     QgsSetProjectVariableAlgorithm() = default;
     void initAlgorithm( const QVariantMap &configuration = QVariantMap() ) override;
-    Qgis::ProcessingAlgorithmFlags flags() const override;
+    Flags flags() const override;
     QString name() const override;
     QString displayName() const override;
     QStringList tags() const override;

@@ -35,11 +35,11 @@ QgsPointDistanceRenderer::QgsPointDistanceRenderer( const QString &rendererName,
   , mLabelAttributeName( labelAttributeName )
   , mLabelIndex( -1 )
   , mTolerance( 3 )
-  , mToleranceUnit( Qgis::RenderUnit::Millimeters )
+  , mToleranceUnit( QgsUnitTypes::RenderMillimeters )
   , mDrawLabels( true )
 
 {
-  mRenderer.reset( QgsFeatureRenderer::defaultRenderer( Qgis::GeometryType::Point ) );
+  mRenderer.reset( QgsFeatureRenderer::defaultRenderer( QgsWkbTypes::PointGeometry ) );
 }
 
 void QgsPointDistanceRenderer::toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props ) const
@@ -71,8 +71,8 @@ bool QgsPointDistanceRenderer::renderFeature( const QgsFeature &feature, QgsRend
 
   //point position in screen coords
   QgsGeometry geom = feature.geometry();
-  const Qgis::WkbType geomType = geom.wkbType();
-  if ( QgsWkbTypes::geometryType( geomType ) != Qgis::GeometryType::Point )
+  const QgsWkbTypes::Type geomType = geom.wkbType();
+  if ( QgsWkbTypes::geometryType( geomType ) != QgsWkbTypes::PointGeometry )
   {
     //can only render point type
     return false;
@@ -428,7 +428,7 @@ void QgsPointDistanceRenderer::drawLabels( QPointF centerPoint, QgsSymbolRenderC
   //scale font (for printing)
   QFont pixelSizeFont = mLabelFont;
 
-  const double fontSizeInPixels = context.renderContext().convertToPainterUnits( mLabelFont.pointSizeF(), Qgis::RenderUnit::Points );
+  const double fontSizeInPixels = context.renderContext().convertToPainterUnits( mLabelFont.pointSizeF(), QgsUnitTypes::RenderPoints );
   pixelSizeFont.setPixelSize( static_cast< int >( std::round( fontSizeInPixels ) ) );
   QFont scaledFont = pixelSizeFont;
   scaledFont.setPixelSize( pixelSizeFont.pixelSize() );

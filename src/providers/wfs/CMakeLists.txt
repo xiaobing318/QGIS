@@ -3,12 +3,11 @@
 # Files
 
 set(WFS_SRCS
+  ${CMAKE_SOURCE_DIR}/external/nlohmann/json.hpp
   qgswfsprovider.cpp
-  qgswfsprovidermetadata.cpp
   qgswfscapabilities.cpp
   qgswfsdataitems.cpp
   qgswfsfeatureiterator.cpp
-  qgswfsgetfeature.cpp
   qgswfsrequest.cpp
   qgswfsconnection.cpp
   qgswfsdatasourceuri.cpp
@@ -26,16 +25,8 @@ set(WFS_SRCS
   oapif/qgsoapifapirequest.cpp
   oapif/qgsoapifcollection.cpp
   oapif/qgsoapifconformancerequest.cpp
-  oapif/qgsoapifcreatefeaturerequest.cpp
-  oapif/qgsoapifcql2textexpressioncompiler.cpp
-  oapif/qgsoapifdeletefeaturerequest.cpp
-  oapif/qgsoapifpatchfeaturerequest.cpp
-  oapif/qgsoapifputfeaturerequest.cpp
   oapif/qgsoapifitemsrequest.cpp
-  oapif/qgsoapifoptionsrequest.cpp
   oapif/qgsoapifprovider.cpp
-  oapif/qgsoapifqueryablesrequest.cpp
-  oapif/qgsoapifsingleitemrequest.cpp
   oapif/qgsoapifutils.cpp
 )
 
@@ -62,16 +53,13 @@ target_include_directories(provider_wfs_a PUBLIC
 )
 
 target_link_libraries(provider_wfs_a
+  ${EXPAT_LIBRARY}
   qgis_core
-  GDAL::GDAL
 )
 
 # require c++17
 target_compile_features(provider_wfs_a PRIVATE cxx_std_17)
 
-
-# We use private headers from core that need this
-target_compile_definitions(provider_wfs_a PRIVATE "CMAKE_SOURCE_DIR=\"${CMAKE_SOURCE_DIR}\"")
 target_compile_definitions(provider_wfs_a PRIVATE "-DQT_NO_FOREACH")
 
 if (WITH_GUI)
@@ -120,13 +108,11 @@ else()
   # require c++17
   target_compile_features(provider_wfs PRIVATE cxx_std_17)
 
-  # We use private headers from core that need this
-  target_compile_definitions(provider_wfs PRIVATE "CMAKE_SOURCE_DIR=\"${CMAKE_SOURCE_DIR}\"")
   target_compile_definitions(provider_wfs PRIVATE "-DQT_NO_FOREACH")
 
   target_link_libraries (provider_wfs
+    ${EXPAT_LIBRARY}
     qgis_core
-    GDAL::GDAL
   )
 
   if (WITH_GUI)

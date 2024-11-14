@@ -28,12 +28,10 @@ set(TESTS
   testqgspoint.cpp
   testqgspointxy.cpp
   testqgspolygon.cpp
-  testqgspolyhedralsurface.cpp
   testqgsquadrilateral.cpp
   testqgsrectangle.cpp
   testqgsregularpolygon.cpp
   testqgstriangle.cpp
-  testqgstriangulatedsurface.cpp
   )
 
 foreach(TESTSRC ${TESTS})
@@ -43,4 +41,3 @@ endforeach(TESTSRC)
 add_qgis_test(testqgsgeometry.cpp MODULE core LINKEDLIBRARIES qgis_core)
 add_qgis_test(testqgsgeometrycollection.cpp MODULE core LINKEDLIBRARIES qgis_core)
 add_qgis_test(testqgsgeometryutils.cpp MODULE core LINKEDLIBRARIES qgis_core)
-add_qgis_test(testqgsgeometryutilsbase.cpp MODULE core LINKEDLIBRARIES qgis_core)

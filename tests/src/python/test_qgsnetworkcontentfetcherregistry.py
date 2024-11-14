@@ -11,29 +11,24 @@ __author__ = 'Denis Rouzaud'
 __date__ = '27/04/2018'
 __copyright__ = 'Copyright 2018, The QGIS Project'
 
-import http.server
+import qgis  # NOQA
+
 import os
+from qgis.testing import unittest, start_app
+from qgis.core import QgsFetchedContent, QgsApplication
+from utilities import unitTestDataPath
+from qgis.PyQt.QtNetwork import QNetworkReply
 import socketserver
 import threading
-
-from qgis.PyQt.QtNetwork import QNetworkReply
-from qgis.core import (
-    QgsApplication,
-    QgsFetchedContent,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
-
-from utilities import unitTestDataPath
+import http.server
 
 app = start_app()
 
 
-class TestQgsNetworkContentFetcherTask(QgisTestCase):
+class TestQgsNetworkContentFetcherTask(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        super().setUpClass()
         # Bring up a simple HTTP server
         os.chdir(unitTestDataPath() + '')
         handler = http.server.SimpleHTTPRequestHandler
@@ -42,12 +37,12 @@ class TestQgsNetworkContentFetcherTask(QgisTestCase):
         cls.port = cls.httpd.server_address[1]
 
         cls.httpd_thread = threading.Thread(target=cls.httpd.serve_forever)
-        cls.httpd_thread.daemon = True
+        cls.httpd_thread.setDaemon(True)
         cls.httpd_thread.start()
 
     def __init__(self, methodName):
         """Run once on class initialization."""
-        QgisTestCase.__init__(self, methodName)
+        unittest.TestCase.__init__(self, methodName)
 
         self.loaded = False
         self.file_content = ''
@@ -58,8 +53,8 @@ class TestQgsNetworkContentFetcherTask(QgisTestCase):
         self.loaded = False
 
         def check_reply():
-            self.assertEqual(content.status(), QgsFetchedContent.ContentStatus.Failed)
-            self.assertNotEqual(content.error(), QNetworkReply.NetworkError.NoError)
+            self.assertEqual(content.status(), QgsFetchedContent.Failed)
+            self.assertNotEqual(content.error(), QNetworkReply.NoError)
             self.assertEqual(content.filePath(), '')
             self.loaded = True
 
@@ -76,8 +71,8 @@ class TestQgsNetworkContentFetcherTask(QgisTestCase):
 
         def check_reply():
             self.loaded = True
-            self.assertEqual(content.status(), QgsFetchedContent.ContentStatus.Finished)
-            self.assertEqual(content.error(), QNetworkReply.NetworkError.NoError)
+            self.assertEqual(content.status(), QgsFetchedContent.Finished)
+            self.assertEqual(content.error(), QNetworkReply.NoError)
             self.assertNotEqual(content.filePath(), '')
 
         content.fetched.connect(check_reply)
@@ -89,7 +84,7 @@ class TestQgsNetworkContentFetcherTask(QgisTestCase):
 
         # create new content with same URL
         contentV2 = registry.fetch(url)
-        self.assertEqual(contentV2.status(), QgsFetchedContent.ContentStatus.Finished)
+        self.assertEqual(contentV2.status(), QgsFetchedContent.Finished)
 
     def testFetchReloadUrl(self):
         def writeSimpleFile(content):
@@ -104,8 +99,8 @@ class TestQgsNetworkContentFetcherTask(QgisTestCase):
 
         def check_reply():
             self.loaded = True
-            self.assertEqual(content.status(), QgsFetchedContent.ContentStatus.Finished)
-            self.assertEqual(content.error(), QNetworkReply.NetworkError.NoError)
+            self.assertEqual(content.status(), QgsFetchedContent.Finished)
+            self.assertEqual(content.error(), QNetworkReply.NoError)
             self.assertNotEqual(content.filePath(), '')
             with open(content.filePath(), encoding="utf-8") as file:
                 self.assertEqual(file.readline().rstrip(), self.file_content)

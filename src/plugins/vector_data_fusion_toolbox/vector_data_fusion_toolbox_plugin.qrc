@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/vector_data_fusion_toolbox">
+        <file>icons/vector_data_fusion_toolbox.png</file>
+        <file>icons/semantic_fusion.png</file>
+    </qresource>
+</RCC>

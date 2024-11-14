@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/textrenderer/qgstextmasksettings.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -15,7 +15,6 @@ class QgsTextMaskSettings
 {
 %Docstring(signature="appended")
 Container for settings relating to a selective masking around a text.
-
 A selective masking only makes sense in contexts where the text is rendered over some other map layers, especially for labeling.
 
 .. note::
@@ -38,6 +37,12 @@ A selective masking only makes sense in contexts where the text is rendered over
     QgsTextMaskSettings();
 
     QgsTextMaskSettings( const QgsTextMaskSettings &other );
+%Docstring
+Copy constructor.
+
+:param other: source settings
+%End
+
 
     ~QgsTextMaskSettings();
 
@@ -90,7 +95,7 @@ Sets the size of the buffer. The size units are specified using :py:func:`~QgsTe
 .. seealso:: :py:func:`setSizeUnit`
 %End
 
-    Qgis::RenderUnit sizeUnit() const;
+    QgsUnitTypes::RenderUnit sizeUnit() const;
 %Docstring
 Returns the units for the buffer size.
 
@@ -99,7 +104,7 @@ Returns the units for the buffer size.
 .. seealso:: :py:func:`setSizeUnit`
 %End
 
-    void setSizeUnit( Qgis::RenderUnit unit );
+    void setSizeUnit( QgsUnitTypes::RenderUnit unit );
 %Docstring
 Sets the units used for the buffer size.
 
@@ -235,5 +240,5 @@ Returns all field names referenced by the configuration (e.g. from data defined 
  *                                                                      *
  * src/core/textrenderer/qgstextmasksettings.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

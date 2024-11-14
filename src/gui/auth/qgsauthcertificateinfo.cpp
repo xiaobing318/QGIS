@@ -16,7 +16,6 @@
 
 
 #include "qgsauthcertificateinfo.h"
-#include "moc_qgsauthcertificateinfo.cpp"
 #include "ui_qgsauthcertificateinfo.h"
 
 #include <QtCrypto>
@@ -193,7 +192,7 @@ bool QgsAuthCertInfo::populateCertChain()
 
   if ( mACertChain.isEmpty() )
   {
-    QgsDebugError( QStringLiteral( "Could not populate QCA certificate chain" ) );
+    QgsDebugMsg( QStringLiteral( "Could not populate QCA certificate chain" ) );
     mACertChain = certchain;
   }
 
@@ -841,7 +840,7 @@ void QgsAuthCertInfo::btnSaveTrust_clicked()
   const QgsAuthCertUtils::CertTrustPolicy newpolicy( cmbbxTrust->trustPolicy() );
   if ( !QgsApplication::authManager()->storeCertTrustPolicy( mCurrentQCert, newpolicy ) )
   {
-    QgsDebugError( QStringLiteral( "Could not set trust policy for certificate" ) );
+    QgsDebugMsg( QStringLiteral( "Could not set trust policy for certificate" ) );
   }
   mCurrentTrustPolicy = newpolicy;
   decorateCertTreeItem( mCurrentQCert, newpolicy, nullptr );

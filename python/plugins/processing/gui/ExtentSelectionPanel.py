@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     ExtentSelectionPanel.py
@@ -36,8 +38,7 @@ from qgis.PyQt.QtCore import QCoreApplication, pyqtSignal
 
 from qgis.gui import QgsMapLayerComboBox
 from qgis.utils import iface
-from qgis.core import (Qgis,
-                       QgsProcessingParameterDefinition,
+from qgis.core import (QgsProcessingParameterDefinition,
                        QgsProcessingParameters,
                        QgsProject,
                        QgsReferencedRectangle,
@@ -64,12 +65,12 @@ class LayerSelectionDialog(QDialog):
         vl.addWidget(QLabel(self.tr('Use extent from')))
         self.combo = QgsMapLayerComboBox()
         self.combo.setFilters(
-            Qgis.LayerFilter.HasGeometry | Qgis.LayerFilter.RasterLayer | Qgis.LayerFilter.MeshLayer)
+            QgsMapLayerProxyModel.HasGeometry | QgsMapLayerProxyModel.RasterLayer | QgsMapLayerProxyModel.MeshLayer)
         self.combo.setShowCrs(ProcessingConfig.getSetting(ProcessingConfig.SHOW_CRS_DEF))
         vl.addWidget(self.combo)
 
         self.button_box = QDialogButtonBox()
-        self.button_box.setStandardButtons(QDialogButtonBox.StandardButton.Cancel | QDialogButtonBox.StandardButton.Ok)
+        self.button_box.setStandardButtons(QDialogButtonBox.Cancel | QDialogButtonBox.Ok)
         self.button_box.accepted.connect(self.accept)
         self.button_box.rejected.connect(self.reject)
 
@@ -84,7 +85,7 @@ class ExtentSelectionPanel(BASE, WIDGET):
     hasChanged = pyqtSignal()
 
     def __init__(self, dialog, param):
-        super().__init__(None)
+        super(ExtentSelectionPanel, self).__init__(None)
         self.setupUi(self)
 
         self.leText.textChanged.connect(lambda: self.hasChanged.emit())
@@ -93,7 +94,7 @@ class ExtentSelectionPanel(BASE, WIDGET):
         self.param = param
         self.crs = QgsProject.instance().crs()
 
-        if self.param.flags() & QgsProcessingParameterDefinition.Flag.FlagOptional:
+        if self.param.flags() & QgsProcessingParameterDefinition.FlagOptional:
             if hasattr(self.leText, 'setPlaceholderText'):
                 self.leText.setPlaceholderText(
                     self.tr('[Leave blank to use min covering extent]'))
@@ -144,7 +145,7 @@ class ExtentSelectionPanel(BASE, WIDGET):
         useLayerExtentAction.triggered.connect(self.useLayerExtent)
         useCanvasExtentAction.triggered.connect(self.useCanvasExtent)
 
-        if self.param.flags() & QgsProcessingParameterDefinition.Flag.FlagOptional:
+        if self.param.flags() & QgsProcessingParameterDefinition.FlagOptional:
             useMincoveringExtentAction = QAction(
                 self.tr('Use Min Covering Extent from Input Layers'),
                 self.btnSelect)
@@ -152,14 +153,14 @@ class ExtentSelectionPanel(BASE, WIDGET):
                 self.useMinCoveringExtent)
             popupmenu.addAction(useMincoveringExtentAction)
 
-        popupmenu.exec(QCursor.pos())
+        popupmenu.exec_(QCursor.pos())
 
     def useMinCoveringExtent(self):
         self.leText.setText('')
 
     def useLayerExtent(self):
         dlg = LayerSelectionDialog(self)
-        if dlg.exec():
+        if dlg.exec_():
             layer = dlg.selected_layer()
             self.setValueFromRect(QgsReferencedRectangle(layer.extent(), layer.crs()))
 

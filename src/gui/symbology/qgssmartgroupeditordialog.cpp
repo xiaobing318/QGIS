@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgssmartgroupeditordialog.h"
-#include "moc_qgssmartgroupeditordialog.cpp"
 
 #include "qgsstyle.h"
 #include "qgsapplication.h"

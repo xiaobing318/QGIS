@@ -47,9 +47,9 @@ QString QgsFixGeometriesAlgorithm::groupId() const
   return QStringLiteral( "vectorgeometry" );
 }
 
-Qgis::ProcessingFeatureSourceFlags QgsFixGeometriesAlgorithm::sourceFlags() const
+QgsProcessingFeatureSource::Flag QgsFixGeometriesAlgorithm::sourceFlags() const
 {
-  return Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks;
+  return QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks;
 }
 
 QString QgsFixGeometriesAlgorithm::outputName() const
@@ -57,7 +57,7 @@ QString QgsFixGeometriesAlgorithm::outputName() const
   return QObject::tr( "Fixed geometries" );
 }
 
-Qgis::WkbType QgsFixGeometriesAlgorithm::outputWkbType( Qgis::WkbType type ) const
+QgsWkbTypes::Type QgsFixGeometriesAlgorithm::outputWkbType( QgsWkbTypes::Type type ) const
 {
   return QgsWkbTypes::promoteNonPointTypesToMulti( type );
 }
@@ -109,7 +109,7 @@ bool QgsFixGeometriesAlgorithm::prepareAlgorithm( const QVariantMap &parameters,
 #if GEOS_VERSION_MAJOR==3 && GEOS_VERSION_MINOR<10
   if ( mMethod == Qgis::MakeValidMethod::Structure )
   {
-    throw QgsProcessingException( QObject::tr( "The structured method to make geometries valid requires a QGIS build based on GEOS 3.10 or later" ) );
+    throw QgsProcessingException( "The structured method to make geometries valid requires a QGIS build based on GEOS 3.10 or later" );
   }
 #endif
   return true;
@@ -130,8 +130,8 @@ QgsFeatureList QgsFixGeometriesAlgorithm::processFeature( const QgsFeature &feat
     return QgsFeatureList() << outputFeature;
   }
 
-  if ( outputGeometry.wkbType() == Qgis::WkbType::Unknown ||
-       QgsWkbTypes::flatType( outputGeometry.wkbType() ) == Qgis::WkbType::GeometryCollection )
+  if ( outputGeometry.wkbType() == QgsWkbTypes::Unknown ||
+       QgsWkbTypes::flatType( outputGeometry.wkbType() ) == QgsWkbTypes::GeometryCollection )
   {
     // keep only the parts of the geometry collection with correct type
     const QVector< QgsGeometry > tmpGeometries = outputGeometry.asGeometryCollection();
@@ -147,7 +147,7 @@ QgsFeatureList QgsFixGeometriesAlgorithm::processFeature( const QgsFeature &feat
       outputGeometry = QgsGeometry();
   }
 
-  if ( outputGeometry.type() != Qgis::GeometryType::Point )
+  if ( outputGeometry.type() != QgsWkbTypes::GeometryType::PointGeometry )
   {
     // some data providers are picky about the geometries we pass to them: we can't add single-part geometries
     // when we promised multi-part geometries, so ensure we have the right type

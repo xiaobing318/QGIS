@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/layout/qgslayoutmultiframe.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -15,6 +15,8 @@ class QgsLayoutMultiFrame: QgsLayoutObject, QgsLayoutUndoObjectInterface
 %Docstring(signature="appended")
 Abstract base class for layout items with the ability to distribute the content to
 several frames (:py:class:`QgsLayoutFrame` items).
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -361,7 +363,7 @@ method is useful for multiframes which implement a :py:func:`~QgsLayoutMultiFram
 .. seealso:: :py:func:`recalculateFrameSizes`
 %End
 
-    virtual void refreshDataDefinedProperty( QgsLayoutObject::DataDefinedProperty property = QgsLayoutObject::DataDefinedProperty::AllProperties );
+    virtual void refreshDataDefinedProperty( QgsLayoutObject::DataDefinedProperty property = QgsLayoutObject::AllProperties );
 %Docstring
 Refreshes a data defined ``property`` for the multi frame by reevaluating the property's value
 and redrawing the item with this new value. If ``property`` is set to
@@ -421,5 +423,5 @@ in :py:func:`~QgsLayoutMultiFrame.finalizeRestoreFromXml`, not :py:func:`~QgsLay
  *                                                                      *
  * src/core/layout/qgslayoutmultiframe.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

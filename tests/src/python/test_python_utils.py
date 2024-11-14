@@ -14,17 +14,15 @@ __copyright__ = 'Copyright 2021, The QGIS Project'
 import os
 
 from qgis import utils
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import unittest, start_app
 
 from utilities import unitTestDataPath
 
 
-class TestPythonUtils(QgisTestCase):
+class TestPythonUtils(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        super().setUpClass()
         start_app()
 
     def test_update_available_plugins(self):

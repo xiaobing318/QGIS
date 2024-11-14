@@ -39,11 +39,15 @@ class QgsGraphVertex;
  * \ingroup analysis
  * \class QgsGraphEdge
  * \brief This class implements a graph edge
+ * \since QGIS 3.0
  */
 class ANALYSIS_EXPORT QgsGraphEdge
 {
   public:
 
+    /**
+     * Constructor for QgsGraphEdge.
+     */
     QgsGraphEdge() = default;
 
     /**
@@ -86,11 +90,15 @@ typedef QList< int > QgsGraphEdgeIds;
  * \ingroup analysis
  * \class QgsGraphVertex
  * \brief This class implements a graph vertex
+ * \since QGIS 3.0
  */
 class ANALYSIS_EXPORT QgsGraphVertex
 {
   public:
 
+    /**
+     * Default constructor. It is needed for Qt's container, e.g. QVector
+     */
     QgsGraphVertex() = default;
 
     /**
@@ -128,12 +136,16 @@ class ANALYSIS_EXPORT QgsGraphVertex
  * \ingroup analysis
  * \class QgsGraph
  * \brief Mathematical graph representation
+ * \since QGIS 3.0
  */
 
 class ANALYSIS_EXPORT QgsGraph
 {
   public:
 
+    /**
+     * Constructor for QgsGraph.
+     */
     QgsGraph() = default;
 
     // Graph constructing methods

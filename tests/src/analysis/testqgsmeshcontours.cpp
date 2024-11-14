@@ -22,16 +22,19 @@ Email                : zilolv at gmail dot com
 #include "qgsmeshdataprovider.h"
 #include "qgsmeshlayer.h"
 #include "qgsapplication.h"
+#include "qgsproject.h"
+#include "qgsmeshmemorydataprovider.h"
+#include "qgslinesegment.h"
+#include "qgsmultilinestring.h"
+#include "qgslinestring.h"
 #include "qgsgeometryfactory.h"
 
-class TestQgsMeshContours : public QgsTest
+class TestQgsMeshContours : public QObject
 {
     Q_OBJECT
 
   public:
-    TestQgsMeshContours()
-      : QgsTest( QStringLiteral( "Mesh Contours Tests" ) )
-    {}
+    TestQgsMeshContours() = default;
 
   private slots:
     void initTestCase();// will be called before the first testfunction is executed.
@@ -132,7 +135,7 @@ void TestQgsMeshContours::testQuadAndTriangleVertexScalarLine()
 
   QgsMeshContours contours( mpMeshLayer.get() );
 
-  const QgsGeometry res = contours.exportLines( datasetIndex, value, QgsMeshRendererScalarSettings::NoResampling );
+  const QgsGeometry res = contours.exportLines( datasetIndex, value, QgsMeshRendererScalarSettings::None );
   equals( res, expected );
 }
 
@@ -190,7 +193,7 @@ void TestQgsMeshContours::testQuadAndTriangleVertexScalarPoly()
 
   QgsMeshContours contours( mpMeshLayer.get() );
 
-  const QgsGeometry res = contours.exportPolygons( datasetIndex, min_value, max_value, QgsMeshRendererScalarSettings::NoResampling );
+  const QgsGeometry res = contours.exportPolygons( datasetIndex, min_value, max_value, QgsMeshRendererScalarSettings::None );
   equals( res, expected );
 }
 

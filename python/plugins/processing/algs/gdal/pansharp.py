@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     pansharp.py
@@ -20,6 +22,8 @@ __date__ = 'March 2019'
 __copyright__ = '(C) 2019, Alexander Bruy'
 
 import os
+
+from qgis.PyQt.QtGui import QIcon
 
 from qgis.core import (QgsRasterFileWriter,
                        QgsProcessingException,
@@ -49,10 +53,10 @@ class pansharp(GdalAlgorithm):
 
     def initAlgorithm(self, config=None):
         self.methods = ((self.tr('Nearest Neighbour'), 'nearest'),
-                        (self.tr('Bilinear (2x2 Kernel)'), 'bilinear'),
-                        (self.tr('Cubic (4x4 Kernel)'), 'cubic'),
-                        (self.tr('Cubic B-Spline (4x4 Kernel)'), 'cubicspline'),
-                        (self.tr('Lanczos (6x6 Kernel)'), 'lanczos'),
+                        (self.tr('Bilinear'), 'bilinear'),
+                        (self.tr('Cubic'), 'cubic'),
+                        (self.tr('Cubic Spline'), 'cubicspline'),
+                        (self.tr('Lanczos Windowed Sinc'), 'lanczos'),
                         (self.tr('Average'), 'average'))
 
         self.addParameter(QgsProcessingParameterRasterLayer(self.SPECTRAL,
@@ -64,22 +68,24 @@ class pansharp(GdalAlgorithm):
                                                       self.tr('Resampling algorithm'),
                                                       options=[i[0] for i in self.methods],
                                                       defaultValue=2)
-        resampling_param.setFlags(resampling_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        resampling_param.setFlags(resampling_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(resampling_param)
 
         options_param = QgsProcessingParameterString(self.OPTIONS,
                                                      self.tr('Additional creation options'),
                                                      defaultValue='',
                                                      optional=True)
-        options_param.setFlags(options_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
-        options_param.setMetadata({'widget_wrapper': {'widget_type': 'rasteroptions'}})
+        options_param.setFlags(options_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        options_param.setMetadata({
+            'widget_wrapper': {
+                'class': 'processing.algs.gdal.ui.RasterOptionsWidget.RasterOptionsWidgetWrapper'}})
         self.addParameter(options_param)
 
         extra_param = QgsProcessingParameterString(self.EXTRA,
                                                    self.tr('Additional command-line parameters'),
                                                    defaultValue=None,
                                                    optional=True)
-        extra_param.setFlags(extra_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        extra_param.setFlags(extra_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(extra_param)
 
         self.addParameter(QgsProcessingParameterRasterDestination(self.OUTPUT,
@@ -104,33 +110,23 @@ class pansharp(GdalAlgorithm):
         spectral = self.parameterAsRasterLayer(parameters, self.SPECTRAL, context)
         if spectral is None:
             raise QgsProcessingException(self.invalidRasterError(parameters, self.SPECTRAL))
-        spectral_input_details = GdalUtils.gdal_connection_details_from_layer(spectral)
 
         panchromatic = self.parameterAsRasterLayer(parameters, self.PANCHROMATIC, context)
         if panchromatic is None:
             raise QgsProcessingException(self.invalidRasterError(parameters, self.PANCHROMATIC))
-        panchromatic_input_details = GdalUtils.gdal_connection_details_from_layer(
-            panchromatic)
 
         out = self.parameterAsOutputLayer(parameters, self.OUTPUT, context)
         self.setOutputValue(self.OUTPUT, out)
 
-        output_format = QgsRasterFileWriter.driverForExtension(os.path.splitext(out)[1])
-        if not output_format:
-            raise QgsProcessingException(self.tr('Output format is invalid'))
-
         arguments = [
-            panchromatic_input_details.connection_string,
-            spectral_input_details.connection_string,
+            panchromatic.source(),
+            spectral.source(),
             out,
             '-r',
             self.methods[self.parameterAsEnum(parameters, self.RESAMPLING, context)][1],
             '-of',
-            output_format
+            QgsRasterFileWriter.driverForExtension(os.path.splitext(out)[1])
         ]
-
-        if panchromatic_input_details.credential_options:
-            arguments.extend(panchromatic_input_details.credential_options_as_arguments())
 
         options = self.parameterAsString(parameters, self.OPTIONS, context)
         if options:

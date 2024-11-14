@@ -18,10 +18,13 @@
 #ifndef QGSCOPCPROVIDER_H
 #define QGSCOPCPROVIDER_H
 
+#include "qgis_core.h"
 #include "qgspointclouddataprovider.h"
 #include "qgsprovidermetadata.h"
 
 #include <memory>
+
+#include "qgis_sip.h"
 
 ///@cond PRIVATE
 #define SIP_NO_FILE
@@ -35,12 +38,12 @@ class QgsCopcProvider: public QgsPointCloudDataProvider
   public:
     QgsCopcProvider( const QString &uri,
                      const QgsDataProvider::ProviderOptions &providerOptions,
-                     Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() );
+                     QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() );
 
     ~QgsCopcProvider();
 
     QgsCoordinateReferenceSystem crs() const override;
-    Qgis::DataProviderFlags flags() const override;
+
     QgsRectangle extent() const override;
     QgsPointCloudAttributeCollection attributes() const override;
     bool isValid() const override;
@@ -57,6 +60,7 @@ class QgsCopcProvider: public QgsPointCloudDataProvider
     std::unique_ptr<QgsPointCloudIndex> mIndex;
 
     QgsRectangle mExtent;
+    uint64_t mPointCount;
     QgsCoordinateReferenceSystem mCrs;
 };
 
@@ -67,15 +71,15 @@ class QgsCopcProviderMetadata : public QgsProviderMetadata
     QgsCopcProviderMetadata();
     QIcon icon() const override;
     QgsProviderMetadata::ProviderMetadataCapabilities capabilities() const override;
-    QgsCopcProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() ) override;
+    QgsCopcProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() ) override;
     QList< QgsProviderSublayerDetails > querySublayers( const QString &uri, Qgis::SublayerQueryFlags flags = Qgis::SublayerQueryFlags(), QgsFeedback *feedback = nullptr ) const override;
     int priorityForUri( const QString &uri ) const override;
-    QList< Qgis::LayerType > validLayerTypesForUri( const QString &uri ) const override;
+    QList< QgsMapLayerType > validLayerTypesForUri( const QString &uri ) const override;
     QString encodeUri( const QVariantMap &parts ) const override;
     QVariantMap decodeUri( const QString &uri ) const override;
-    QString filters( Qgis::FileFilterType type ) override;
+    QString filters( FilterType type ) override;
     ProviderCapabilities providerCapabilities() const override;
-    QList< Qgis::LayerType > supportedLayerTypes() const override;
+    QList< QgsMapLayerType > supportedLayerTypes() const override;
 };
 
 ///@endcond

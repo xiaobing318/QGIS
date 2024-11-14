@@ -111,37 +111,37 @@ class GUI_EXPORT QgsAbstractFileContentSourceLineEdit : public QWidget SIP_ABSTR
     /**
      * Returns the widget's file filter string.
      */
-    virtual QString fileFilter() const = 0;  // cppcheck-suppress pureVirtualCall
+    virtual QString fileFilter() const = 0;
 
     /**
      * Returns the translated title to use for the select file dialog.
      */
-    virtual QString selectFileTitle() const = 0;  // cppcheck-suppress pureVirtualCall
+    virtual QString selectFileTitle() const = 0;
 
     /**
      * Returns the translated title to use for the file from URL dialog.
      */
-    virtual QString fileFromUrlTitle() const = 0;  // cppcheck-suppress pureVirtualCall
+    virtual QString fileFromUrlTitle() const = 0;
 
     /**
      * Returns the translated descriptive text to use for the file from URL dialog.
      */
-    virtual QString fileFromUrlText() const = 0;  // cppcheck-suppress pureVirtualCall
+    virtual QString fileFromUrlText() const = 0;
 
     /**
      * Returns the translated title to use for the embed file dialog.
      */
-    virtual QString embedFileTitle() const = 0;  // cppcheck-suppress pureVirtualCall
+    virtual QString embedFileTitle() const = 0;
 
     /**
      * Returns the translated title to use for the extract file dialog.
      */
-    virtual QString extractFileTitle() const = 0;  // cppcheck-suppress pureVirtualCall
+    virtual QString extractFileTitle() const = 0;
 
     /**
      * Returns the default settings key to use for the widget's settings.
      */
-    virtual QString defaultSettingsKey() const = 0;  // cppcheck-suppress pureVirtualCall
+    virtual QString defaultSettingsKey() const = 0;
 
 ///@endcond
 #endif
@@ -199,7 +199,7 @@ class GUI_EXPORT QgsPictureSourceLineEditBase : public QgsAbstractFileContentSou
     {
       Svg, //!< SVG image
       Image, //!< Raster image
-      AnimatedImage, //!< Animated image \since QGIS 3.26
+      AnimatedImage, //!< Animated image (since QGIS 3.26)
     };
 
     /**

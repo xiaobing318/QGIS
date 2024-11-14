@@ -18,6 +18,7 @@
 #include "qgssettings.h"
 #include "qgssettingsentryimpl.h"
 #include "qgssettingsentryenumflag.h"
+#include "qgsunittypes.h"
 #include "qgsmaplayerproxymodel.h"
 #include "qgstest.h"
 
@@ -39,7 +40,6 @@ class TestQgsSettingsEntry : public QObject
     void enumValue();
     void flagValue();
     void testFormerValue();
-    void testChanged();
 };
 
 void TestQgsSettingsEntry::settingsKey()
@@ -80,83 +80,77 @@ void TestQgsSettingsEntry::enumValue()
   // Make sure the setting is not existing
   QgsSettings().remove( settingsKey );
 
-  const QgsSettingsEntryEnumFlag settingsEntryEnum( settingsKey, mSettingsSection, Qgis::LayoutUnit::Meters, QStringLiteral( "Layout unit" ) );
+  const QgsSettingsEntryEnumFlag settingsEntryEnum( settingsKey, mSettingsSection, QgsUnitTypes::LayoutMeters, QStringLiteral( "Layout unit" ) );
 
   // Check default value
-  QCOMPARE( settingsEntryEnum.defaultValue(), Qgis::LayoutUnit::Meters );
+  QCOMPARE( settingsEntryEnum.defaultValue(), QgsUnitTypes::LayoutMeters );
 
   // Check set value
   {
-    const bool success = settingsEntryEnum.setValue( Qgis::LayoutUnit::Feet );
+    const bool success = settingsEntryEnum.setValue( QgsUnitTypes::LayoutFeet );
     QCOMPARE( success, true );
-    const Qgis::LayoutUnit qgsSettingsValue = QgsSettings().enumValue( QStringLiteral( "%1/%2" ).arg( mSettingsSection, settingsKey ), Qgis::LayoutUnit::Meters );
-    QCOMPARE( qgsSettingsValue, Qgis::LayoutUnit::Feet );
+    const QgsUnitTypes::LayoutUnit qgsSettingsValue = QgsSettings().enumValue( QStringLiteral( "%1/%2" ).arg( mSettingsSection, settingsKey ), QgsUnitTypes::LayoutMeters );
+    QCOMPARE( qgsSettingsValue, QgsUnitTypes::LayoutFeet );
   }
 
   // Check get value
-  QgsSettings().setEnumValue( QStringLiteral( "%1/%2" ).arg( mSettingsSection, settingsKey ), Qgis::LayoutUnit::Picas );
-  QCOMPARE( settingsEntryEnum.value(), Qgis::LayoutUnit::Picas );
+  QgsSettings().setEnumValue( QStringLiteral( "%1/%2" ).arg( mSettingsSection, settingsKey ), QgsUnitTypes::LayoutPicas );
+  QCOMPARE( settingsEntryEnum.value(), QgsUnitTypes::LayoutPicas );
 
   // Check settings type
   QCOMPARE( settingsEntryEnum.settingsType(), Qgis::SettingsType::EnumFlag );
 
   // assign to inexisting value
   {
-    const bool success = settingsEntryEnum.setValue( static_cast<Qgis::LayoutUnit>( -1 ) );
+    const bool success = settingsEntryEnum.setValue( static_cast<QgsUnitTypes::LayoutUnit>( -1 ) );
     QCOMPARE( success, false );
 
     // Current value should not have changed
-    const Qgis::LayoutUnit qgsSettingsValue = QgsSettings().enumValue( QStringLiteral( "%1/%2" ).arg( mSettingsSection, settingsKey ), Qgis::LayoutUnit::Meters );
-    QCOMPARE( qgsSettingsValue, Qgis::LayoutUnit::Picas );
+    const QgsUnitTypes::LayoutUnit qgsSettingsValue = QgsSettings().enumValue( QStringLiteral( "%1/%2" ).arg( mSettingsSection, settingsKey ), QgsUnitTypes::LayoutMeters );
+    QCOMPARE( qgsSettingsValue, QgsUnitTypes::LayoutPicas );
   }
 
   // check that value is stored as string
-  QCOMPARE( settingsEntryEnum.valueAsVariant().toString(), QMetaEnum::fromType<Qgis::LayoutUnit>().key( static_cast< int >( Qgis::LayoutUnit::Picas ) ) );
+  QCOMPARE( settingsEntryEnum.valueAsVariant().toString(), QMetaEnum::fromType<QgsUnitTypes::LayoutUnit>().key( QgsUnitTypes::LayoutPicas ) );
 
   // auto conversion of old settings (int to str)
-  QSettings().setValue( QStringLiteral( "%1/%2" ).arg( mSettingsSection, settingsKey ), static_cast<int>( Qgis::LayoutUnit::Centimeters ) );
-  QCOMPARE( settingsEntryEnum.valueAsVariant().toInt(), static_cast< int >( Qgis::LayoutUnit::Centimeters ) );
-  QCOMPARE( settingsEntryEnum.value(), Qgis::LayoutUnit::Centimeters );
+  QSettings().setValue( QStringLiteral( "%1/%2" ).arg( mSettingsSection, settingsKey ), static_cast<int>( QgsUnitTypes::LayoutCentimeters ) );
+  QCOMPARE( settingsEntryEnum.valueAsVariant().toInt(), QgsUnitTypes::LayoutCentimeters );
+  QCOMPARE( settingsEntryEnum.value(), QgsUnitTypes::LayoutCentimeters );
 
   // save as int instead of string
-  const QgsSettingsEntryEnumFlag settingsEntryEnumAsInteger( settingsKey, mSettingsSection, Qgis::LayoutUnit::Meters, QStringLiteral( "Layout unit" ), Qgis::SettingsOption::SaveEnumFlagAsInt );
+  const QgsSettingsEntryEnumFlag settingsEntryEnumAsInteger( settingsKey, mSettingsSection, QgsUnitTypes::LayoutMeters, QStringLiteral( "Layout unit" ), Qgis::SettingsOption::SaveEnumFlagAsInt );
   settingsEntryEnumAsInteger.remove();
   {
     int qgsSettingsValue = static_cast<int>( settingsEntryEnumAsInteger.value() );
-    QCOMPARE( qgsSettingsValue, static_cast<int>( Qgis::LayoutUnit::Meters ) );
-    const bool success = settingsEntryEnumAsInteger.setValue( Qgis::LayoutUnit::Feet );
+    QCOMPARE( qgsSettingsValue, static_cast<int>( QgsUnitTypes::LayoutMeters ) );
+    const bool success = settingsEntryEnumAsInteger.setValue( QgsUnitTypes::LayoutFeet );
     QCOMPARE( success, true );
-    qgsSettingsValue = QgsSettings().value( QStringLiteral( "%1/%2" ).arg( mSettingsSection, settingsKey ), static_cast<int>( Qgis::LayoutUnit::Meters ) ).toInt();
-    QCOMPARE( qgsSettingsValue, static_cast<int>( Qgis::LayoutUnit::Feet ) );
+    qgsSettingsValue = QgsSettings().value( QStringLiteral( "%1/%2" ).arg( mSettingsSection, settingsKey ), static_cast<int>( QgsUnitTypes::LayoutMeters ) ).toInt();
+    QCOMPARE( qgsSettingsValue, static_cast<int>( QgsUnitTypes::LayoutFeet ) );
   }
 }
 
 void TestQgsSettingsEntry::flagValue()
 {
   const QString settingsKey( QStringLiteral( "my_flag_value_for_units" ) );
-  const Qgis::LayerFilters pointAndLine = Qgis::LayerFilters( Qgis::LayerFilter::PointLayer | Qgis::LayerFilter::LineLayer );
-  const Qgis::LayerFilters pointAndPolygon = Qgis::LayerFilters( Qgis::LayerFilter::PointLayer | Qgis::LayerFilter::PolygonLayer );
-  const Qgis::LayerFilters hasGeometry = Qgis::LayerFilters( Qgis::LayerFilter::HasGeometry );
+  const QgsMapLayerProxyModel::Filters pointAndLine = QgsMapLayerProxyModel::Filters( QgsMapLayerProxyModel::PointLayer | QgsMapLayerProxyModel::LineLayer );
+  const QgsMapLayerProxyModel::Filters pointAndPolygon = QgsMapLayerProxyModel::Filters( QgsMapLayerProxyModel::PointLayer | QgsMapLayerProxyModel::PolygonLayer );
+  const QgsMapLayerProxyModel::Filters hasGeometry = QgsMapLayerProxyModel::Filters( QgsMapLayerProxyModel::HasGeometry );
 
   // Make sure the setting is not existing
   QgsSettings().remove( settingsKey );
 
-  const QgsSettingsEntryEnumFlag settingsEntryFlag( settingsKey, mSettingsSection, Qgis::LayerFilters(), QStringLiteral( "Filters" ) );
+  const QgsSettingsEntryEnumFlag settingsEntryFlag( settingsKey, mSettingsSection, pointAndLine, QStringLiteral( "Filters" ) );
 
   // Check default value
-  QCOMPARE( settingsEntryFlag.defaultValue(), Qgis::LayerFilters() );
-
-  // check no value
-  QCOMPARE( settingsEntryFlag.exists(), false );
-  QCOMPARE( settingsEntryFlag.value(), Qgis::LayerFilters() );
-
-  QCOMPARE( settingsEntryFlag.valueWithDefaultOverride( pointAndLine ), pointAndLine );
+  QCOMPARE( settingsEntryFlag.defaultValue(), pointAndLine );
 
   // Check set value
   {
     const bool success = settingsEntryFlag.setValue( hasGeometry );
     QCOMPARE( success, true );
-    const Qgis::LayerFilters qgsSettingsValue = QgsSettings().flagValue( QStringLiteral( "%1/%2" ).arg( mSettingsSection, settingsKey ), pointAndLine );
+    const QgsMapLayerProxyModel::Filters qgsSettingsValue = QgsSettings().flagValue( QStringLiteral( "%1/%2" ).arg( mSettingsSection, settingsKey ), pointAndLine );
     QCOMPARE( qgsSettingsValue, hasGeometry );
   }
 
@@ -168,7 +162,7 @@ void TestQgsSettingsEntry::flagValue()
   QCOMPARE( settingsEntryFlag.settingsType(), Qgis::SettingsType::EnumFlag );
 
   // check that value is stored as string
-  QCOMPARE( settingsEntryFlag.valueAsVariant().toByteArray(), QMetaEnum::fromType<Qgis::LayerFilters>().valueToKeys( pointAndLine ) );
+  QCOMPARE( settingsEntryFlag.valueAsVariant().toByteArray(), QMetaEnum::fromType<QgsMapLayerProxyModel::Filters>().valueToKeys( pointAndLine ) );
 
   // auto conversion of old settings (int to str)
   QSettings().setValue( QStringLiteral( "%1/%2" ).arg( mSettingsSection, settingsKey ), static_cast<int>( pointAndPolygon ) );
@@ -209,26 +203,6 @@ void TestQgsSettingsEntry::testFormerValue()
 
   settingsEntryInteger.setValue( 2 );
   QCOMPARE( settingsEntryInteger.formerValue(), 3 );
-}
-
-void TestQgsSettingsEntry::testChanged()
-{
-  const QString settingsKey( QStringLiteral( "settingsEntryInteger/integer-value" ) );
-  QgsSettings().remove( QStringLiteral( "%1/%2" ).arg( mSettingsSection, settingsKey ) );
-  int defaultValue = 111;
-
-  QgsSettings().setValue( QStringLiteral( "testSetting" ), 1 );
-
-  QgsSettingsEntryInteger settingsEntryInteger = QgsSettingsEntryInteger( settingsKey, mSettingsSection, defaultValue );
-  QVERIFY( !settingsEntryInteger.hasChanged() );
-  settingsEntryInteger.copyValueToKeyIfChanged( QStringLiteral( "testSetting" ) );
-  QCOMPARE( QgsSettings().value( QStringLiteral( "testSetting" ) ).toInt(), 1 );
-
-  settingsEntryInteger.setValue( 11111 );
-  QVERIFY( settingsEntryInteger.hasChanged() );
-
-  settingsEntryInteger.copyValueToKeyIfChanged( QStringLiteral( "testSetting" ) );
-  QCOMPARE( QgsSettings().value( QStringLiteral( "testSetting" ) ).toInt(), 11111 );
 }
 
 

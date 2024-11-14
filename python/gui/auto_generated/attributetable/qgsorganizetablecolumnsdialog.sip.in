@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/attributetable/qgsorganizetablecolumnsdialog.h               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -15,6 +15,8 @@ class QgsOrganizeTableColumnsDialog : QDialog
 {
 %Docstring(signature="appended")
 Dialog for organising (hiding and reordering) columns in the attributes table.
+
+.. versionadded:: 2.16
 %End
 
 %TypeHeaderCode
@@ -59,13 +61,6 @@ showAll checks all the  fields to show them all in the attribute table
 hideAll unchecks all the fields to hide them all in the attribute table
 %End
 
-    void toggleSelection();
-%Docstring
-Toggle the check state of selected fields to hide or show them in the attribute table
-
-.. versionadded:: 3.36
-%End
-
 };
 
 /************************************************************************
@@ -73,5 +68,5 @@ Toggle the check state of selected fields to hide or show them in the attribute 
  *                                                                      *
  * src/gui/attributetable/qgsorganizetablecolumnsdialog.h               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

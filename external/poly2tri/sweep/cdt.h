@@ -29,13 +29,12 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#pragma once
+#ifndef CDT_H
+#define CDT_H
 
 #include "advancing_front.h"
 #include "sweep_context.h"
 #include "sweep.h"
-
-#include "../common/dll_symbol.h"
 
 /**
  *
@@ -45,60 +44,62 @@
 
 namespace p2t {
 
-class P2T_DLL_SYMBOL CDT
+class CDT
 {
 public:
 
-    /**
+  /**
    * Constructor - add polyline with non repeating points
    *
    * @param polyline
    */
-    CDT(const std::vector<Point*>& polyline);
+  CDT(const std::vector<Point*>& polyline);
 
-    /**
+   /**
    * Destructor - clean up memory
    */
-    ~CDT();
+  ~CDT();
 
-    /**
+  /**
    * Add a hole
    *
    * @param polyline
    */
-    void AddHole(const std::vector<Point*>& polyline);
+  void AddHole(const std::vector<Point*>& polyline);
 
-    /**
+  /**
    * Add a steiner point
    *
    * @param point
    */
-    void AddPoint(Point* point);
+  void AddPoint(Point* point);
 
-    /**
+  /**
    * Triangulate - do this AFTER you've added the polyline, holes, and Steiner points
    */
-    void Triangulate();
+  void Triangulate();
 
-    /**
+  /**
    * Get CDT triangles
    */
-    std::vector<Triangle*> GetTriangles();
+  std::vector<Triangle*> GetTriangles();
 
-    /**
+  /**
    * Get triangle map
    */
-    std::list<Triangle*> GetMap();
+  std::list<Triangle*> GetMap();
 
-private:
+  private:
 
-    /**
+  /**
    * Internals
    */
 
-    SweepContext* sweep_context_;
-    Sweep* sweep_;
+  SweepContext* sweep_context_;
+  Sweep* sweep_;
 
 };
 
 }
+
+#endif

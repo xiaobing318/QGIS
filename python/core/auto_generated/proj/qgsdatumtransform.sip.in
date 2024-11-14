@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/proj/qgsdatumtransform.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -18,6 +18,8 @@ Contains methods and classes relating the datum transformations.
 .. seealso:: :py:class:`QgsCoordinateTransformContext`
 
 .. seealso:: :py:class:`QgsCoordinateTransform`
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -149,9 +151,8 @@ Returns a list of datum transformations which are available for the given ``sour
 
 .. seealso:: :py:func:`datumTransformInfo`
 
-.. deprecated:: 3.40
-
-   Not used for builds based on Proj >= 6.0.
+.. deprecated::
+   Not used for builds based on Proj >= 6.0
 %End
 
  static QString datumTransformToProj( int datumTransformId ) /Deprecated/;
@@ -164,9 +165,8 @@ Returns a proj string representing the specified ``datumTransformId`` datum tran
 
 .. seealso:: :py:func:`projStringToDatumTransformId`
 
-.. deprecated:: 3.40
-
-   Not used for builds based on Proj >= 6.0.
+.. deprecated::
+   Not used for builds based on Proj >= 6.0
 %End
 
  static int projStringToDatumTransformId( const QString &string ) /Deprecated/;
@@ -176,9 +176,8 @@ Returns -1 if matching datum ID was not found.
 
 .. seealso:: :py:func:`datumTransformToProj`
 
-.. deprecated:: 3.40
-
-   Not used for builds based on Proj >= 6.0.
+.. deprecated::
+   Not used for builds based on Proj >= 6.0
 %End
 
  static QgsDatumTransform::TransformInfo datumTransformInfo( int datumTransformId ) /Deprecated/;
@@ -191,9 +190,8 @@ If ``datumTransformId`` was not a valid transform ID, a TransformInfo with Trans
 
 .. seealso:: :py:func:`datumTransformToProj`
 
-.. deprecated:: 3.40
-
-   Not used for builds based on Proj >= 6.0.
+.. deprecated::
+   Not used for builds based on Proj >= 6.0
 %End
 
 
@@ -204,5 +202,5 @@ If ``datumTransformId`` was not a valid transform ID, a TransformInfo with Trans
  *                                                                      *
  * src/core/proj/qgsdatumtransform.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

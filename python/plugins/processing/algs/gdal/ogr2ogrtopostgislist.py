@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     ogr2ogrtopostgislist.py
@@ -47,8 +49,7 @@ class Ogr2OgrToPostGisList(GdalAlgorithm):
     SHAPE_ENCODING = 'SHAPE_ENCODING'
     GTYPE = 'GTYPE'
     GEOMTYPE = ['', 'NONE', 'GEOMETRY', 'POINT', 'LINESTRING', 'POLYGON', 'GEOMETRYCOLLECTION', 'MULTIPOINT',
-                'MULTIPOLYGON', 'MULTILINESTRING', 'CIRCULARSTRING', 'COMPOUNDCURVE', 'CURVEPOLYGON', 'MULTICURVE',
-                'MULTISURFACE', 'CONVERT_TO_LINEAR', 'CONVERT_TO_CURVE']
+                'MULTIPOLYGON', 'MULTILINESTRING', 'CIRCULARSTRING', 'COMPOUNDCURVE', 'CURVEPOLYGON', 'MULTICURVE', 'MULTISURFACE']
     S_SRS = 'S_SRS'
     T_SRS = 'T_SRS'
     A_SRS = 'A_SRS'
@@ -77,7 +78,6 @@ class Ogr2OgrToPostGisList(GdalAlgorithm):
     INDEX = 'INDEX'
     SKIPFAILURES = 'SKIPFAILURES'
     PRECISION = 'PRECISION'
-    MAKEVALID = 'MAKEVALID'
     PROMOTETOMULTI = 'PROMOTETOMULTI'
     OPTIONS = 'OPTIONS'
 
@@ -92,7 +92,7 @@ class Ogr2OgrToPostGisList(GdalAlgorithm):
         self.addParameter(db_param)
         self.addParameter(QgsProcessingParameterFeatureSource(self.INPUT,
                                                               self.tr('Input layer'),
-                                                              types=[QgsProcessing.SourceType.TypeVector]))
+                                                              types=[QgsProcessing.TypeVector]))
         self.addParameter(QgsProcessingParameterString(self.SHAPE_ENCODING,
                                                        self.tr('Shape encoding'), "", optional=True))
         self.addParameter(QgsProcessingParameterEnum(self.GTYPE,
@@ -108,14 +108,12 @@ class Ogr2OgrToPostGisList(GdalAlgorithm):
 
         schema_param = QgsProcessingParameterDatabaseSchema(
             self.SCHEMA,
-            self.tr('Schema (schema name)'), defaultValue='public', connectionParameterName=self.DATABASE,
-            optional=True)
+            self.tr('Schema (schema name)'), defaultValue='public', connectionParameterName=self.DATABASE, optional=True)
         self.addParameter(schema_param)
 
         table_param = QgsProcessingParameterDatabaseTable(
             self.TABLE,
-            self.tr('Table to import to (leave blank to use layer name)'), defaultValue=None,
-            connectionParameterName=self.DATABASE,
+            self.tr('Table to import to (leave blank to use layer name)'), defaultValue=None, connectionParameterName=self.DATABASE,
             schemaParameterName=self.SCHEMA, optional=True, allowNewTableNames=True)
         self.addParameter(table_param)
 
@@ -169,10 +167,6 @@ class Ogr2OgrToPostGisList(GdalAlgorithm):
                                                         self.tr(
                                                             'Continue after a failure, skipping the failed feature'),
                                                         defaultValue=False))
-        self.addParameter(QgsProcessingParameterBoolean(self.MAKEVALID,
-                                                        self.tr(
-                                                            'Validate geometries based on Simple Features specification'),
-                                                        defaultValue=False))
         self.addParameter(QgsProcessingParameterBoolean(self.PROMOTETOMULTI,
                                                         self.tr('Promote to Multipart'),
                                                         defaultValue=True))
@@ -214,12 +208,11 @@ class Ogr2OgrToPostGisList(GdalAlgorithm):
             md = QgsProviderRegistry.instance().providerMetadata('postgres')
             conn = md.createConnection(connection_name)
         except QgsProviderConnectionException:
-            raise QgsProcessingException(
-                self.tr('Could not retrieve connection details for {}').format(connection_name))
+            raise QgsProcessingException(self.tr('Could not retrieve connection details for {}').format(connection_name))
 
         uri = conn.uri()
 
-        input_details = self.getOgrCompatibleSource(self.INPUT, parameters, context, feedback, executing)
+        ogrLayer, layername = self.getOgrCompatibleSource(self.INPUT, parameters, context, feedback, executing)
         shapeEncoding = self.parameterAsString(parameters, self.SHAPE_ENCODING, context)
         ssrs = self.parameterAsCrs(parameters, self.S_SRS, context)
         tsrs = self.parameterAsCrs(parameters, self.T_SRS, context)
@@ -248,7 +241,6 @@ class Ogr2OgrToPostGisList(GdalAlgorithm):
         index = self.parameterAsBoolean(parameters, self.INDEX, context)
         indexstring = "-lco SPATIAL_INDEX=OFF"
         skipfailures = self.parameterAsBoolean(parameters, self.SKIPFAILURES, context)
-        make_valid = self.parameterAsBoolean(parameters, self.MAKEVALID, context)
         promotetomulti = self.parameterAsBoolean(parameters, self.PROMOTETOMULTI, context)
         precision = self.parameterAsBoolean(parameters, self.PRECISION, context)
         options = self.parameterAsString(parameters, self.OPTIONS, context)
@@ -269,17 +261,13 @@ class Ogr2OgrToPostGisList(GdalAlgorithm):
         arguments.append('PG:{}'.format(' '.join(connection_parts)))
 
         arguments.append(dimstring)
-        arguments.append(input_details.connection_string)
-        arguments.append(input_details.layer_name)
+        arguments.append(ogrLayer)
+        arguments.append(layername)
         if index:
             arguments.append(indexstring)
         if launder:
             arguments.append(launderstring)
-        if append and overwrite:
-            raise QgsProcessingException(
-                self.tr(
-                    'Only one of "Overwrite existing table" or "Append to existing table" can be enabled at a time.'))
-        elif append:
+        if append:
             arguments.append('-append')
         if addfields:
             arguments.append('-addfields')
@@ -295,9 +283,9 @@ class Ogr2OgrToPostGisList(GdalAlgorithm):
         elif primary_key:
             arguments.append("-lco FID=" + primary_key)
         if len(table) == 0:
-            table = input_details.layer_name.lower()
+            table = layername.lower()
         if schema:
-            table = f'{schema}.{table}'
+            table = '{}.{}'.format(schema, table)
         arguments.append('-nln')
         arguments.append(table)
         if ssrs.isValid():
@@ -330,27 +318,10 @@ class Ogr2OgrToPostGisList(GdalAlgorithm):
         if len(gt) > 0:
             arguments.append('-gt')
             arguments.append(gt)
-        if make_valid:
-            arguments.append('-makevalid')
-        if promotetomulti and self.GEOMTYPE[self.parameterAsEnum(parameters, self.GTYPE, context)]:
-            if self.GEOMTYPE[self.parameterAsEnum(parameters, self.GTYPE, context)] == 'CONVERT_TO_LINEAR':
-                arguments.append('-nlt PROMOTE_TO_MULTI')
-            else:
-                raise QgsProcessingException(
-                    self.tr(
-                        'Only one of "Promote to Multipart" or "Output geometry type" (excluding Convert to Linear) can be enabled.'))
-
-        elif promotetomulti and not self.GEOMTYPE[self.parameterAsEnum(parameters, self.GTYPE, context)]:
+        if promotetomulti:
             arguments.append('-nlt PROMOTE_TO_MULTI')
         if precision is False:
             arguments.append('-lco PRECISION=NO')
-
-        if input_details.open_options:
-            arguments.extend(input_details.open_options_as_arguments())
-
-        if input_details.credential_options:
-            arguments.extend(input_details.credential_options_as_arguments())
-
         if len(options) > 0:
             arguments.append(options)
 

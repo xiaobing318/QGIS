@@ -62,7 +62,7 @@ class GUI_EXPORT QgsOWSSourceSelect : public QgsAbstractDataSourceWidget, protec
     };
 
     //! Constructor
-    QgsOWSSourceSelect( const QString &service, QWidget *parent SIP_TRANSFERTHIS = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::Standalone );
+    QgsOWSSourceSelect( const QString &service, QWidget *parent SIP_TRANSFERTHIS = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::None );
 
     //! Triggered when the provider's connections need to be refreshed
     void refresh() override;
@@ -136,6 +136,8 @@ class GUI_EXPORT QgsOWSSourceSelect : public QgsAbstractDataSourceWidget, protec
 
     /**
      * \brief Populate the layer list.
+     *
+     * \returns FALSE if the layers could not be retrieved or parsed
      */
     virtual void populateLayerList();
 
@@ -238,6 +240,9 @@ class GUI_EXPORT QgsOWSSourceSelect : public QgsAbstractDataSourceWidget, protec
 
     //! Map mime type labels to supported formats
     QMap<QString, QString> mMimeLabelMap;
+
+    //! Layer specific settings widget
+    QgsOWSSourceWidget *mSourceWidget = nullptr;
 
   private slots:
     void mTilesetsTableWidget_itemClicked( QTableWidgetItem *item );

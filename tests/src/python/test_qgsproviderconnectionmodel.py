@@ -9,20 +9,26 @@ the Free Software Foundation; either version 2 of the License, or
 __author__ = 'Nyall Dawson'
 __date__ = '07/08/2020'
 __copyright__ = 'Copyright 2019, The QGIS Project'
+# This will get replaced with a git SHA1 when you do a git archive
+__revision__ = '252ad49ddcbc4a0dcfe9eb9381503de0fde9e0ed'
 
 import os
 import shutil
 import tempfile
 
-from qgis.PyQt.QtCore import QCoreApplication, QModelIndex, Qt
+from qgis.PyQt.QtCore import (
+    QModelIndex,
+    Qt,
+    QCoreApplication
+)
 from qgis.core import (
-    QgsProviderConnectionModel,
-    QgsProviderRegistry,
     QgsVectorLayer,
+    QgsProviderRegistry,
+    QgsProviderConnectionModel,
 )
 from qgis.testing import unittest
 
-from utilities import start_app, unitTestDataPath
+from utilities import unitTestDataPath, start_app
 
 TEST_DATA_DIR = unitTestDataPath()
 
@@ -32,7 +38,6 @@ class TestPyQgsProviderConnectionModel(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
-        super().setUpClass()
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain(cls.__name__)
         QCoreApplication.setApplicationName(cls.__name__)
@@ -56,7 +61,6 @@ class TestPyQgsProviderConnectionModel(unittest.TestCase):
         """Run after all tests"""
         os.unlink(cls.gpkg_path)
         os.unlink(cls.gpkg_path2)
-        super().tearDownClass()
 
     def test_model(self):
         """Test model functionality"""
@@ -68,31 +72,31 @@ class TestPyQgsProviderConnectionModel(unittest.TestCase):
         model = QgsProviderConnectionModel('ogr')
         self.assertEqual(model.rowCount(), 1)
         self.assertEqual(model.columnCount(), 1)
-        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), Qt.ItemDataRole.DisplayRole), 'qgis_test1')
-        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), Qt.ItemDataRole.ToolTipRole), self.gpkg_path)
-        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleConnectionName), 'qgis_test1')
-        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleUri), self.gpkg_path)
-        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleConfiguration), {})
+        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), Qt.DisplayRole), 'qgis_test1')
+        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), Qt.ToolTipRole), self.gpkg_path)
+        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.RoleConnectionName), 'qgis_test1')
+        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.RoleUri), self.gpkg_path)
+        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.RoleConfiguration), {})
 
         md.saveConnection(conn, 'qgis_test1')
         self.assertEqual(model.rowCount(), 1)
-        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), Qt.ItemDataRole.DisplayRole), 'qgis_test1')
+        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), Qt.DisplayRole), 'qgis_test1')
 
         conn2 = md.createConnection(self.gpkg_path2, {})
         md.saveConnection(conn2, 'qgis_test2')
         self.assertEqual(model.rowCount(), 2)
-        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), Qt.ItemDataRole.DisplayRole), 'qgis_test1')
-        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), Qt.ItemDataRole.ToolTipRole), self.gpkg_path)
-        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleConnectionName), 'qgis_test1')
-        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleUri), self.gpkg_path)
-        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), Qt.ItemDataRole.DisplayRole), 'qgis_test2')
-        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), Qt.ItemDataRole.ToolTipRole), self.gpkg_path2)
-        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleConnectionName), 'qgis_test2')
-        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleUri), self.gpkg_path2)
+        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), Qt.DisplayRole), 'qgis_test1')
+        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), Qt.ToolTipRole), self.gpkg_path)
+        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.RoleConnectionName), 'qgis_test1')
+        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.RoleUri), self.gpkg_path)
+        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), Qt.DisplayRole), 'qgis_test2')
+        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), Qt.ToolTipRole), self.gpkg_path2)
+        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), QgsProviderConnectionModel.RoleConnectionName), 'qgis_test2')
+        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), QgsProviderConnectionModel.RoleUri), self.gpkg_path2)
 
         md.deleteConnection('qgis_test1')
         self.assertEqual(model.rowCount(), 1)
-        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), Qt.ItemDataRole.DisplayRole), 'qgis_test2')
+        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), Qt.DisplayRole), 'qgis_test2')
 
         md.deleteConnection('qgis_test2')
 
@@ -102,8 +106,8 @@ class TestPyQgsProviderConnectionModel(unittest.TestCase):
         self.assertEqual(model.rowCount(), 0)
         model.setAllowEmptyConnection(True)
         self.assertEqual(model.rowCount(), 1)
-        self.assertFalse(model.data(model.index(0, 0, QModelIndex()), Qt.ItemDataRole.DisplayRole))
-        self.assertTrue(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleEmpty))
+        self.assertFalse(model.data(model.index(0, 0, QModelIndex()), Qt.DisplayRole))
+        self.assertTrue(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.RoleEmpty))
         md = QgsProviderRegistry.instance().providerMetadata('ogr')
         conn = md.createConnection(self.gpkg_path, {})
         md.saveConnection(conn, 'qgis_test1')
@@ -113,72 +117,72 @@ class TestPyQgsProviderConnectionModel(unittest.TestCase):
 
         self.assertEqual(model.rowCount(), 1)
         self.assertEqual(model.columnCount(), 1)
-        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), Qt.ItemDataRole.DisplayRole), 'qgis_test1')
-        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), Qt.ItemDataRole.ToolTipRole), self.gpkg_path)
-        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleConnectionName), 'qgis_test1')
-        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleUri), self.gpkg_path)
-        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleConfiguration), {})
-        self.assertFalse(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleEmpty))
+        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), Qt.DisplayRole), 'qgis_test1')
+        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), Qt.ToolTipRole), self.gpkg_path)
+        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.RoleConnectionName), 'qgis_test1')
+        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.RoleUri), self.gpkg_path)
+        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.RoleConfiguration), {})
+        self.assertFalse(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.RoleEmpty))
 
         model.setAllowEmptyConnection(True)
         model.setAllowEmptyConnection(True)
         self.assertEqual(model.rowCount(), 2)
-        self.assertFalse(model.data(model.index(0, 0, QModelIndex()), Qt.ItemDataRole.DisplayRole))
-        self.assertFalse(model.data(model.index(0, 0, QModelIndex()), Qt.ItemDataRole.ToolTipRole))
-        self.assertFalse(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleConnectionName))
-        self.assertFalse(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleUri))
-        self.assertFalse(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleConfiguration))
-        self.assertTrue(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleEmpty))
-        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), Qt.ItemDataRole.DisplayRole), 'qgis_test1')
-        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), Qt.ItemDataRole.ToolTipRole), self.gpkg_path)
-        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleConnectionName), 'qgis_test1')
-        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleUri), self.gpkg_path)
-        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleConfiguration), {})
-        self.assertFalse(model.data(model.index(1, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleEmpty))
+        self.assertFalse(model.data(model.index(0, 0, QModelIndex()), Qt.DisplayRole))
+        self.assertFalse(model.data(model.index(0, 0, QModelIndex()), Qt.ToolTipRole))
+        self.assertFalse(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.RoleConnectionName))
+        self.assertFalse(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.RoleUri))
+        self.assertFalse(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.RoleConfiguration))
+        self.assertTrue(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.RoleEmpty))
+        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), Qt.DisplayRole), 'qgis_test1')
+        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), Qt.ToolTipRole), self.gpkg_path)
+        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), QgsProviderConnectionModel.RoleConnectionName), 'qgis_test1')
+        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), QgsProviderConnectionModel.RoleUri), self.gpkg_path)
+        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), QgsProviderConnectionModel.RoleConfiguration), {})
+        self.assertFalse(model.data(model.index(1, 0, QModelIndex()), QgsProviderConnectionModel.RoleEmpty))
 
         md.saveConnection(conn, 'qgis_test1')
         self.assertEqual(model.rowCount(), 2)
-        self.assertFalse(model.data(model.index(0, 0, QModelIndex()), Qt.ItemDataRole.DisplayRole))
-        self.assertTrue(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleEmpty))
-        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), Qt.ItemDataRole.DisplayRole), 'qgis_test1')
-        self.assertFalse(model.data(model.index(1, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleEmpty))
+        self.assertFalse(model.data(model.index(0, 0, QModelIndex()), Qt.DisplayRole))
+        self.assertTrue(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.RoleEmpty))
+        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), Qt.DisplayRole), 'qgis_test1')
+        self.assertFalse(model.data(model.index(1, 0, QModelIndex()), QgsProviderConnectionModel.RoleEmpty))
 
         model.setAllowEmptyConnection(False)
         self.assertEqual(model.rowCount(), 1)
-        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), Qt.ItemDataRole.DisplayRole), 'qgis_test1')
-        self.assertFalse(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleEmpty))
+        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), Qt.DisplayRole), 'qgis_test1')
+        self.assertFalse(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.RoleEmpty))
         model.setAllowEmptyConnection(True)
 
         conn2 = md.createConnection(self.gpkg_path2, {})
         md.saveConnection(conn2, 'qgis_test2')
         self.assertEqual(model.rowCount(), 3)
-        self.assertFalse(model.data(model.index(0, 0, QModelIndex()), Qt.ItemDataRole.DisplayRole))
-        self.assertTrue(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleEmpty))
-        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), Qt.ItemDataRole.DisplayRole), 'qgis_test1')
-        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), Qt.ItemDataRole.ToolTipRole), self.gpkg_path)
-        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleConnectionName), 'qgis_test1')
-        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleUri), self.gpkg_path)
-        self.assertFalse(model.data(model.index(1, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleEmpty))
-        self.assertEqual(model.data(model.index(2, 0, QModelIndex()), Qt.ItemDataRole.DisplayRole), 'qgis_test2')
-        self.assertEqual(model.data(model.index(2, 0, QModelIndex()), Qt.ItemDataRole.ToolTipRole), self.gpkg_path2)
-        self.assertEqual(model.data(model.index(2, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleConnectionName), 'qgis_test2')
-        self.assertEqual(model.data(model.index(2, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleUri), self.gpkg_path2)
-        self.assertFalse(model.data(model.index(2, 0, QModelIndex()), QgsProviderConnectionModel.Role.RoleEmpty))
+        self.assertFalse(model.data(model.index(0, 0, QModelIndex()), Qt.DisplayRole))
+        self.assertTrue(model.data(model.index(0, 0, QModelIndex()), QgsProviderConnectionModel.RoleEmpty))
+        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), Qt.DisplayRole), 'qgis_test1')
+        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), Qt.ToolTipRole), self.gpkg_path)
+        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), QgsProviderConnectionModel.RoleConnectionName), 'qgis_test1')
+        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), QgsProviderConnectionModel.RoleUri), self.gpkg_path)
+        self.assertFalse(model.data(model.index(1, 0, QModelIndex()), QgsProviderConnectionModel.RoleEmpty))
+        self.assertEqual(model.data(model.index(2, 0, QModelIndex()), Qt.DisplayRole), 'qgis_test2')
+        self.assertEqual(model.data(model.index(2, 0, QModelIndex()), Qt.ToolTipRole), self.gpkg_path2)
+        self.assertEqual(model.data(model.index(2, 0, QModelIndex()), QgsProviderConnectionModel.RoleConnectionName), 'qgis_test2')
+        self.assertEqual(model.data(model.index(2, 0, QModelIndex()), QgsProviderConnectionModel.RoleUri), self.gpkg_path2)
+        self.assertFalse(model.data(model.index(2, 0, QModelIndex()), QgsProviderConnectionModel.RoleEmpty))
 
         model.setAllowEmptyConnection(False)
         self.assertEqual(model.rowCount(), 2)
-        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), Qt.ItemDataRole.DisplayRole), 'qgis_test1')
-        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), Qt.ItemDataRole.DisplayRole), 'qgis_test2')
+        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), Qt.DisplayRole), 'qgis_test1')
+        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), Qt.DisplayRole), 'qgis_test2')
         model.setAllowEmptyConnection(True)
 
         md.deleteConnection('qgis_test1')
         self.assertEqual(model.rowCount(), 2)
-        self.assertFalse(model.data(model.index(0, 0, QModelIndex()), Qt.ItemDataRole.DisplayRole))
-        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), Qt.ItemDataRole.DisplayRole), 'qgis_test2')
+        self.assertFalse(model.data(model.index(0, 0, QModelIndex()), Qt.DisplayRole))
+        self.assertEqual(model.data(model.index(1, 0, QModelIndex()), Qt.DisplayRole), 'qgis_test2')
 
         model.setAllowEmptyConnection(False)
         self.assertEqual(model.rowCount(), 1)
-        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), Qt.ItemDataRole.DisplayRole), 'qgis_test2')
+        self.assertEqual(model.data(model.index(0, 0, QModelIndex()), Qt.DisplayRole), 'qgis_test2')
 
 
 if __name__ == '__main__':

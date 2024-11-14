@@ -453,9 +453,9 @@ json QgsLandingPageUtils::projectInfo( const QString &projectUri, const QgsServe
           { "name", l->name().toStdString() },
           { "id", l->id().toStdString() },
           { "crs", l->crs().authid().toStdString() },
-          { "type", l->type() ==  Qgis::LayerType::Vector ? "vector" : "raster" },
+          { "type", l->type() ==  QgsMapLayerType::VectorLayer ? "vector" : "raster" },
         };
-        if ( l->type() == Qgis::LayerType::Vector )
+        if ( l->type() == QgsMapLayerType::VectorLayer )
         {
           const QgsVectorLayer *vl = static_cast<const QgsVectorLayer *>( l );
           wmsLayer[ "pk" ] = vl->primaryKeyAttributes();
@@ -464,7 +464,7 @@ json QgsLandingPageUtils::projectInfo( const QString &projectUri, const QgsServe
           const QgsFields &cFields { vl->fields() };
           for ( const QgsField &field : cFields )
           {
-            if ( field.configurationFlags().testFlag( Qgis::FieldConfigurationFlag::HideFromWfs ) )
+            if ( field.configurationFlags().testFlag( QgsField::ConfigurationFlag::HideFromWfs ) )
             {
               ++fieldIdx;
               continue;
@@ -499,8 +499,8 @@ json QgsLandingPageUtils::projectInfo( const QString &projectUri, const QgsServe
         wmsLayer[ "extent" ] = { l->extent().xMinimum(), l->extent().yMinimum(), l->extent().xMaximum(), l->extent().yMaximum() };
 
         // Fill maps
-        const QString layerTitle { l->serverProperties()->title().isEmpty() ? l->name() : l->serverProperties()->title() };
-        const QString shortName { ! l->serverProperties()->shortName().isEmpty() ? l->serverProperties()->shortName() : l->name() };
+        const QString layerTitle { l->title().isEmpty() ? l->name() : l->title() };
+        const QString shortName { ! l->shortName().isEmpty() ? l->shortName() : l->name() };
         const std::string layerIdentifier { useIds ? l->id().toStdString() : shortName.toStdString() };
         wmsLayersTypenameIdMap[ layerIdentifier ] = l->id().toStdString();
         wmsLayersTitleIdMap[ layerTitle.toStdString() ] = layerIdentifier;
@@ -593,7 +593,7 @@ json QgsLandingPageUtils::layerTree( const QgsProject &project, const QStringLis
     if ( QgsLayerTree::isLayer( node ) )
     {
       const QgsLayerTreeLayer *l { static_cast<const QgsLayerTreeLayer *>( node ) };
-      if ( l->layer() && ( l->layer()->type() == Qgis::LayerType::Vector || l->layer()->type() == Qgis::LayerType::Raster )
+      if ( l->layer() && ( l->layer()->type() == QgsMapLayerType::VectorLayer || l->layer()->type() == QgsMapLayerType::RasterLayer )
            && ! wmsRestrictedLayers.contains( l->name() ) )
       {
         rec[ "id" ] = l->layerId().toStdString();
@@ -601,12 +601,12 @@ json QgsLandingPageUtils::layerTree( const QgsProject &project, const QStringLis
         rec[ "queryable" ] = wmsLayersQueryable.contains( l->layerId() );
         rec[ "searchable" ] = wmsLayersSearchable.contains( l->layerId() );
         rec[ "wfs_enabled" ] = wfsLayerIds.contains( l->layerId() );
-        const QString layerName { l->layer()->serverProperties()->shortName().isEmpty() ? l->layer()->name() : l->layer()->serverProperties()->shortName()};
+        const QString layerName { l->layer()->shortName().isEmpty() ? l->layer()->name() : l->layer()->shortName()};
         rec[ "typename" ] = useIds ? l->layer()->id().toStdString() : layerName.toStdString();
         // Override title
-        if ( ! l->layer()->serverProperties()->title().isEmpty() )
+        if ( ! l->layer()->title().isEmpty() )
         {
-          title = l->layer()->serverProperties()->title();
+          title = l->layer()->title();
         }
       }
       else
@@ -621,7 +621,7 @@ json QgsLandingPageUtils::layerTree( const QgsProject &project, const QStringLis
         rec["max_scale"] = l->layer()->maximumScale();
       }
       rec[ "is_layer" ] = true;
-      rec[ "layer_type" ] = l->layer()->type() == Qgis::LayerType::Vector ? "vector" : "raster";
+      rec[ "layer_type" ] = l->layer()->type() == QgsMapLayerType::VectorLayer ? "vector" : "raster";
     }
     else
     {

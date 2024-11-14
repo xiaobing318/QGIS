@@ -44,14 +44,6 @@ QgsSingleSymbolRenderer::QgsSingleSymbolRenderer( QgsSymbol *symbol )
   Q_ASSERT( symbol );
 }
 
-Qgis::FeatureRendererFlags QgsSingleSymbolRenderer::flags() const
-{
-  Qgis::FeatureRendererFlags res;
-  if ( mSymbol && mSymbol->flags().testFlag( Qgis::SymbolFlag::AffectsLabeling ) )
-    res.setFlag( Qgis::FeatureRendererFlag::AffectsLabeling );
-  return res;
-}
-
 QgsSingleSymbolRenderer::~QgsSingleSymbolRenderer() = default;
 
 QgsSymbol *QgsSingleSymbolRenderer::symbolForFeature( const QgsFeature &, QgsRenderContext & ) const
@@ -193,7 +185,7 @@ QgsFeatureRenderer *QgsSingleSymbolRenderer::create( QDomElement &element, const
   return r;
 }
 
-QgsFeatureRenderer *QgsSingleSymbolRenderer::createFromSld( QDomElement &element, Qgis::GeometryType geomType )
+QgsFeatureRenderer *QgsSingleSymbolRenderer::createFromSld( QDomElement &element, QgsWkbTypes::GeometryType geomType )
 {
   // XXX this renderer can handle only one Rule!
 
@@ -201,7 +193,7 @@ QgsFeatureRenderer *QgsSingleSymbolRenderer::createFromSld( QDomElement &element
   const QDomElement ruleElem = element.firstChildElement( QStringLiteral( "Rule" ) );
   if ( ruleElem.isNull() )
   {
-    QgsDebugError( QStringLiteral( "no Rule elements found!" ) );
+    QgsDebugMsg( QStringLiteral( "no Rule elements found!" ) );
     return nullptr;
   }
 
@@ -260,20 +252,20 @@ QgsFeatureRenderer *QgsSingleSymbolRenderer::createFromSld( QDomElement &element
   std::unique_ptr< QgsSymbol > symbol;
   switch ( geomType )
   {
-    case Qgis::GeometryType::Line:
+    case QgsWkbTypes::LineGeometry:
       symbol = std::make_unique< QgsLineSymbol >( layers );
       break;
 
-    case Qgis::GeometryType::Polygon:
+    case QgsWkbTypes::PolygonGeometry:
       symbol = std::make_unique< QgsFillSymbol >( layers );
       break;
 
-    case Qgis::GeometryType::Point:
+    case QgsWkbTypes::PointGeometry:
       symbol = std::make_unique< QgsMarkerSymbol >( layers );
       break;
 
     default:
-      QgsDebugError( QStringLiteral( "invalid geometry type: found %1" ).arg( qgsEnumValueToKey( geomType ) ) );
+      QgsDebugMsg( QStringLiteral( "invalid geometry type: found %1" ).arg( geomType ) );
       return nullptr;
   }
 

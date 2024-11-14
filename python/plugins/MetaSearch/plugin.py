@@ -1,10 +1,12 @@
+from builtins import object
+# -*- coding: utf-8 -*-
 ###############################################################################
 #
 # Copyright (C) 2010 NextGIS (http://nextgis.org),
 #                    Alexander Bruy (alexander.bruy@gmail.com),
 #                    Maxim Dubinin (sim@gis-lab.info),
 #
-# Copyright (C) 2024 Tom Kralidis (tomkralidis@gmail.com)
+# Copyright (C) 2014 Tom Kralidis (tomkralidis@gmail.com)
 #
 # This source is free software; you can redistribute it and/or modify it under
 # the terms of the GNU General Public License as published by the Free
@@ -28,12 +30,14 @@ from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtWidgets import QAction
 from qgis.PyQt.QtGui import QIcon
 
-from qgis.core import Qgis, QgsApplication
+from qgis.core import QgsApplication
 from MetaSearch.dialogs.maindialog import MetaSearchDialog
-from MetaSearch.util import get_help_url, log_message, open_url, StaticContext
+from MetaSearch.util import get_help_url, open_url, StaticContext
+
+LOGGER = logging.getLogger('MetaSearch')
 
 
-class MetaSearchPlugin:
+class MetaSearchPlugin(object):
     """base plugin"""
 
     def __init__(self, iface):
@@ -50,9 +54,8 @@ class MetaSearchPlugin:
         """startup"""
 
         # run
-        log_message('Initializing plugin', Qgis.MessageLevel.Info)
-
-        run_icon = QIcon('{}/{}'.format(self.context.ppath, 'images/MetaSearch.svg'))
+        run_icon = QIcon('%s/%s' % (self.context.ppath,
+                                    'images/MetaSearch.svg'))
         self.action_run = QAction(run_icon, 'MetaSearch',
                                   self.iface.mainWindow())
         self.action_run.setWhatsThis(
@@ -82,8 +85,6 @@ class MetaSearchPlugin:
     def unload(self):
         """teardown"""
 
-        log_message('Unloading plugin', Qgis.MessageLevel.Info)
-
         # remove the plugin menu item and icon
         self.iface.removePluginWebMenu(self.web_menu, self.action_run)
         self.iface.removePluginWebMenu(self.web_menu, self.action_help)
@@ -92,9 +93,7 @@ class MetaSearchPlugin:
     def run(self):
         """open MetaSearch"""
 
-        log_message('Running plugin', Qgis.MessageLevel.Info)
-
-        self.dialog.exec()
+        self.dialog.exec_()
 
     def help(self):
         """open help in user's default web browser"""

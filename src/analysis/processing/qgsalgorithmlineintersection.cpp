@@ -17,7 +17,6 @@
 
 #include "qgsalgorithmlineintersection.h"
 #include "qgsgeometryengine.h"
-#include "qgsspatialindex.h"
 
 ///@cond PRIVATE
 
@@ -49,36 +48,31 @@ QString QgsLineIntersectionAlgorithm::groupId() const
 void QgsLineIntersectionAlgorithm::initAlgorithm( const QVariantMap & )
 {
   addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ),
-                QObject::tr( "Input layer" ), QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::VectorLine ) ) );
+                QObject::tr( "Input layer" ), QList< int >() << QgsProcessing::TypeVectorLine ) );
   addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INTERSECT" ),
-                QObject::tr( "Intersect layer" ), QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::VectorLine ) ) );
+                QObject::tr( "Intersect layer" ), QList< int >() << QgsProcessing::TypeVectorLine ) );
 
   addParameter( new QgsProcessingParameterField(
                   QStringLiteral( "INPUT_FIELDS" ),
                   QObject::tr( "Input fields to keep (leave empty to keep all fields)" ), QVariant(),
-                  QStringLiteral( "INPUT" ), Qgis::ProcessingFieldParameterDataType::Any,
+                  QStringLiteral( "INPUT" ), QgsProcessingParameterField::Any,
                   true, true ) );
   addParameter( new QgsProcessingParameterField(
                   QStringLiteral( "INTERSECT_FIELDS" ),
                   QObject::tr( "Intersect fields to keep (leave empty to keep all fields)" ), QVariant(),
-                  QStringLiteral( "INTERSECT" ), Qgis::ProcessingFieldParameterDataType::Any,
+                  QStringLiteral( "INTERSECT" ), QgsProcessingParameterField::Any,
                   true, true ) );
 
   std::unique_ptr< QgsProcessingParameterString > prefix = std::make_unique< QgsProcessingParameterString >( QStringLiteral( "INTERSECT_FIELDS_PREFIX" ), QObject::tr( "Intersect fields prefix" ), QString(), false, true );
-  prefix->setFlags( prefix->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  prefix->setFlags( prefix->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( prefix.release() );
 
-  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Intersections" ), Qgis::ProcessingSourceType::VectorPoint ) );
+  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Intersections" ), QgsProcessing::TypeVectorPoint ) );
 }
 
 QString QgsLineIntersectionAlgorithm::shortHelpString() const
 {
   return QObject::tr( "This algorithm creates point features where the lines in the Intersect layer intersect the lines in the Input layer." );
-}
-
-Qgis::ProcessingAlgorithmDocumentationFlags QgsLineIntersectionAlgorithm::documentationFlags() const
-{
-  return Qgis::ProcessingAlgorithmDocumentationFlag::RegeneratesPrimaryKey;
 }
 
 QgsLineIntersectionAlgorithm *QgsLineIntersectionAlgorithm::createInstance() const
@@ -96,8 +90,8 @@ QVariantMap QgsLineIntersectionAlgorithm::processAlgorithm( const QVariantMap &p
   if ( !sourceB )
     throw QgsProcessingException( invalidSourceError( parameters, QStringLiteral( "INTERSECT" ) ) );
 
-  const QStringList fieldsA = parameterAsStrings( parameters, QStringLiteral( "INPUT_FIELDS" ), context );
-  const QStringList fieldsB = parameterAsStrings( parameters, QStringLiteral( "INTERSECT_FIELDS" ), context );
+  const QStringList fieldsA = parameterAsFields( parameters, QStringLiteral( "INPUT_FIELDS" ), context );
+  const QStringList fieldsB = parameterAsFields( parameters, QStringLiteral( "INTERSECT_FIELDS" ), context );
 
   QgsAttributeList fieldIndicesA = QgsProcessingUtils::fieldNamesToIndices( fieldsA, sourceA->fields() );
   QgsAttributeList fieldIndicesB = QgsProcessingUtils::fieldNamesToIndices( fieldsB, sourceB->fields() );
@@ -109,7 +103,7 @@ QVariantMap QgsLineIntersectionAlgorithm::processAlgorithm( const QVariantMap &p
                           intersectFieldsPrefix );
 
   QString dest;
-  std::unique_ptr< QgsFeatureSink > sink( parameterAsSink( parameters, QStringLiteral( "OUTPUT" ), context, dest, outFields, Qgis::WkbType::Point,  sourceA->sourceCrs(), QgsFeatureSink::RegeneratePrimaryKey ) );
+  std::unique_ptr< QgsFeatureSink > sink( parameterAsSink( parameters, QStringLiteral( "OUTPUT" ), context, dest, outFields, QgsWkbTypes::Point,  sourceA->sourceCrs(), QgsFeatureSink::RegeneratePrimaryKey ) );
   if ( !sink )
     throw QgsProcessingException( invalidSinkError( parameters, QStringLiteral( "OUTPUT" ) ) );
 
@@ -165,12 +159,12 @@ QVariantMap QgsLineIntersectionAlgorithm::processAlgorithm( const QVariantMap &p
           {
             outAttributes.append( inFeatureB.attribute( b ) );
           }
-          if ( QgsWkbTypes::flatType( intersectGeom.wkbType() ) == Qgis::WkbType::GeometryCollection )
+          if ( QgsWkbTypes::flatType( intersectGeom.wkbType() ) == QgsWkbTypes::GeometryCollection )
           {
             const QVector<QgsGeometry> geomCollection = intersectGeom.asGeometryCollection();
             for ( const QgsGeometry &part : geomCollection )
             {
-              if ( part.type() == Qgis::GeometryType::Point )
+              if ( part.type() == QgsWkbTypes::PointGeometry )
               {
                 if ( part.isMultipart() )
                 {
@@ -183,7 +177,7 @@ QVariantMap QgsLineIntersectionAlgorithm::processAlgorithm( const QVariantMap &p
               }
             }
           }
-          else if ( intersectGeom.type() == Qgis::GeometryType::Point )
+          else if ( intersectGeom.type() == QgsWkbTypes::PointGeometry )
           {
             if ( intersectGeom.isMultipart() )
             {
@@ -208,8 +202,6 @@ QVariantMap QgsLineIntersectionAlgorithm::processAlgorithm( const QVariantMap &p
     feedback->setProgress( i * step );
 
   }
-
-  sink->finalize();
 
   QVariantMap outputs;
   outputs.insert( QStringLiteral( "OUTPUT" ), dest );

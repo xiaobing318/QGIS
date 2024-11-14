@@ -20,15 +20,14 @@
 #include "qgis_core.h"
 #include "qgis_sip.h"
 #include "qgscoordinatereferencesystem.h"
-#include "qgsgeometry.h"
-#include "qgscallout.h"
+#include "qgslinestring.h"
+#include "qgspolygon.h"
 
 class QgsFeedback;
 class QgsMarkerSymbol;
 class QgsLineSymbol;
 class QgsFillSymbol;
 class QgsAnnotationItemNode;
-class QgsAnnotationItemEditContext;
 class QgsAbstractAnnotationItemEditOperation;
 class QgsAnnotationItemEditOperationTransientResults;
 class QgsRenderContext;
@@ -61,18 +60,6 @@ class CORE_EXPORT QgsAnnotationItem
     {
       sipType = sipType_QgsAnnotationPointTextItem;
     }
-    else if ( sipCpp->type() == QLatin1String( "linetext" ) )
-    {
-      sipType = sipType_QgsAnnotationLineTextItem;
-    }
-    else if ( sipCpp->type() == QLatin1String( "recttext" ) )
-    {
-      sipType = sipType_QgsAnnotationRectangleTextItem;
-    }
-    else if ( sipCpp->type() == QLatin1String( "picture" ) )
-    {
-      sipType = sipType_QgsAnnotationPictureItem;
-    }
     else
     {
       sipType = 0;
@@ -82,14 +69,19 @@ class CORE_EXPORT QgsAnnotationItem
 
   public:
 
-    QgsAnnotationItem();
+    /**
+     * Constructor for an annotation item.
+     */
+    QgsAnnotationItem() = default;
 
 #ifndef SIP_RUN
+    //! QgsAnnotationItem cannot be copied
     QgsAnnotationItem( const QgsAnnotationItem &other ) = delete;
+    //! QgsAnnotationItem cannot be copied
     QgsAnnotationItem &operator=( const QgsAnnotationItem &other ) = delete;
 #endif
 
-    virtual ~QgsAnnotationItem();
+    virtual ~QgsAnnotationItem() = default;
 
     /**
      * Returns item flags.
@@ -105,7 +97,7 @@ class CORE_EXPORT QgsAnnotationItem
      *
      * \see copyCommonProperties()
      */
-    virtual QgsAnnotationItem *clone() const = 0 SIP_FACTORY;
+    virtual QgsAnnotationItem *clone() = 0 SIP_FACTORY;
 
     /**
      * Returns a unique (untranslated) string identifying the type of item.
@@ -153,30 +145,16 @@ class CORE_EXPORT QgsAnnotationItem
     /**
      * Applies an edit \a operation to the item.
      *
-     * \deprecated QGIS 3.40. Use applyEditV2() instead.
+     * \since QGIS 3.22
      */
-    Q_DECL_DEPRECATED virtual Qgis::AnnotationItemEditOperationResult applyEdit( QgsAbstractAnnotationItemEditOperation *operation ) SIP_DEPRECATED;
-
-    /**
-     * Applies an edit \a operation to the item.
-     *
-     * \since QGIS 3.40
-     */
-    virtual Qgis::AnnotationItemEditOperationResult applyEditV2( QgsAbstractAnnotationItemEditOperation *operation, const QgsAnnotationItemEditContext &context );
+    virtual Qgis::AnnotationItemEditOperationResult applyEdit( QgsAbstractAnnotationItemEditOperation *operation );
 
     /**
      * Retrieves the results of a transient (in progress) edit \a operation on the item.
      *
-     * \deprecated QGIS 3.40. Use transientEditResultsV2() instead.
+     * \since QGIS 3.22
      */
-    Q_DECL_DEPRECATED virtual QgsAnnotationItemEditOperationTransientResults *transientEditResults( QgsAbstractAnnotationItemEditOperation *operation ) SIP_FACTORY;
-
-    /**
-     * Retrieves the results of a transient (in progress) edit \a operation on the item.
-     *
-     * \since QGIS 3.40
-     */
-    virtual QgsAnnotationItemEditOperationTransientResults *transientEditResultsV2( QgsAbstractAnnotationItemEditOperation *operation, const QgsAnnotationItemEditContext &context ) SIP_FACTORY;
+    virtual QgsAnnotationItemEditOperationTransientResults *transientEditResults( QgsAbstractAnnotationItemEditOperation *operation ) SIP_FACTORY;
 
     /**
      * Returns the item's z index, which controls the order in which annotation items
@@ -195,34 +173,11 @@ class CORE_EXPORT QgsAnnotationItem
     void setZIndex( int index ) { mZIndex = index; }
 
     /**
-     * Returns TRUE if the item is enabled and will be rendered in the layer.
-     *
-     * \see setEnabled()
-     * \since QGIS 3.36
-     */
-    bool enabled() const { return mEnabled; }
-
-    /**
-     * Sets if the item will be rendered or not in the layer.
-     *
-     * \see enabled()
-     * \since QGIS 3.36
-     */
-    void setEnabled( bool enabled ) { mEnabled = enabled; }
-
-    /**
      * Returns the nodes for the item, used for editing the item.
      *
-     * \deprecated QGIS 3.40. Use nodesV2() instead.
+     * \since QGIS 3.22
      */
-    Q_DECL_DEPRECATED virtual QList< QgsAnnotationItemNode > nodes() const SIP_DEPRECATED;
-
-    /**
-     * Returns the nodes for the item, used for editing the item.
-     *
-     * \since QGIS 3.40
-     */
-    virtual QList< QgsAnnotationItemNode > nodesV2( const QgsAnnotationItemEditContext &context ) const;
+    virtual QList< QgsAnnotationItemNode > nodes() const;
 
     /**
      * Returns TRUE if the annotation item uses a symbology reference scale.
@@ -274,114 +229,6 @@ class CORE_EXPORT QgsAnnotationItem
      */
     void setSymbologyReferenceScale( double scale ) { mReferenceScale = scale; }
 
-    /**
-     * Returns the item's callout renderer, responsible for drawing item callouts.
-     *
-     * Ownership is not transferred.
-     *
-     * By default items do not have a callout, and it is necessary to be explicitly set
-     * a callout style (via setCallout() ) and set the callout anchor geometry (via set
-     * setCalloutAnchor() ).
-     *
-     * \note Callouts are only supported by items which return Qgis::AnnotationItemFlag::SupportsCallouts from flags().
-     *
-     * \see setCallout()
-     * \see calloutAnchor()
-     * \since QGIS 3.40
-     */
-    QgsCallout *callout() const;
-
-    /**
-     * Sets the item's \a callout renderer, responsible for drawing item callouts.
-     *
-     * Ownership of \a callout is transferred to the item.
-     *
-     * \note Callouts are only supported by items which return Qgis::AnnotationItemFlag::SupportsCallouts from flags().
-     *
-     * \see callout()
-     * \see setCalloutAnchor()
-     * \since QGIS 3.40
-     */
-    void setCallout( QgsCallout *callout SIP_TRANSFER );
-
-    /**
-     * Returns the callout's anchor geometry.
-     *
-     * The anchor dictates the geometry which the option item callout() should connect to. Depending on the
-     * callout subclass and anchor geometry type, the actual shape of the rendered callout may vary.
-     *
-     * The callout anchor geometry is in the parent layer's coordinate reference system.
-     *
-     * \see callout()
-     * \see setCalloutAnchor()
-     *
-     * \since QGIS 3.40
-     */
-    QgsGeometry calloutAnchor() const;
-
-    /**
-     * Sets the callout's \a anchor geometry.
-     *
-     * The anchor dictates the geometry which the option item callout() should connect to. Depending on the
-     * callout subclass and anchor geometry type, the actual shape of the rendered callout may vary.
-     *
-     * The callout \a anchor geometry must be specified in the parent layer's coordinate reference system.
-     *
-     * \see setCallout()
-     * \see calloutAnchor()
-     *
-     * \since QGIS 3.40
-     */
-    void setCalloutAnchor( const QgsGeometry &anchor );
-
-    /**
-     * Returns the (optional) offset of the annotation item from the calloutAnchor().
-     *
-     * Some annotation item subclasses support placement relative to the callout anchor. For these
-     * items, the offset from callout defines how far (in screen/page units) the item should be
-     * placed from the anchor point.
-     *
-     * Units are defined by offsetFromCalloutUnit()
-     *
-     * \see setOffsetFromCallout()
-     * \since QGIS 3.40
-     */
-    QSizeF offsetFromCallout() const;
-
-    /**
-     * Sets the offset of the annotation item from the calloutAnchor().
-     *
-     * Some annotation item subclasses support placement relative to the callout anchor. For these
-     * items, the offset from callout defines how far (in screen/page units) the item should be
-     * placed from the anchor point.
-     *
-     * Units are defined by offsetFromCalloutUnit()
-     *
-     * \see offsetFromCallout()
-     * \since QGIS 3.40
-     */
-    void setOffsetFromCallout( const QSizeF &offset );
-
-    /**
-     * Returns the units for the offsetFromCallout().
-     *
-     * \see offsetFromCallout()
-     * \see setOffsetFromCalloutUnit()
-     *
-     * \since QGIS 3.40
-     */
-    Qgis::RenderUnit offsetFromCalloutUnit() const;
-
-    /**
-     * Sets the \a unit for the offsetFromCallout().
-     *
-     * \see setOffsetFromCallout()
-     * \see offsetFromCalloutUnit()
-     *
-     * \since QGIS 3.40
-     */
-    void setOffsetFromCalloutUnit( Qgis::RenderUnit unit );
-
   protected:
 
     /**
@@ -389,7 +236,7 @@ class CORE_EXPORT QgsAnnotationItem
      *
      * \since QGIS 3.22
      */
-    virtual void copyCommonProperties( const QgsAnnotationItem *other );
+    void copyCommonProperties( const QgsAnnotationItem *other );
 
     /**
      * Writes common properties from the base class into an XML \a element.
@@ -397,7 +244,7 @@ class CORE_EXPORT QgsAnnotationItem
      * \see writeXml()
      * \since QGIS 3.22
      */
-    virtual bool writeCommonProperties( QDomElement &element, QDomDocument &document, const QgsReadWriteContext &context ) const;
+    bool writeCommonProperties( QDomElement &element, QDomDocument &document, const QgsReadWriteContext &context ) const;
 
     /**
      * Reads common properties from the base class from the given DOM \a element.
@@ -405,28 +252,14 @@ class CORE_EXPORT QgsAnnotationItem
      * \see readXml()
      * \since QGIS 3.22
      */
-    virtual bool readCommonProperties( const QDomElement &element, const QgsReadWriteContext &context );
-
-    /**
-     * Renders the item's callout.
-     *
-     * The item must have valid callout() set.
-     *
-     * \since QGIS 3.40
-     */
-    void renderCallout( QgsRenderContext &context, const QRectF &rect, double angle, QgsCallout::QgsCalloutContext &calloutContext, QgsFeedback *feedback );
+    bool readCommonProperties( const QDomElement &element, const QgsReadWriteContext &context );
 
   private:
 
     int mZIndex = 0;
-    bool mEnabled = true;
+
     bool mUseReferenceScale = false;
     double mReferenceScale = 0;
-
-    std::unique_ptr< QgsCallout > mCallout;
-    QgsGeometry mCalloutAnchor;
-    QSizeF mOffsetFromCallout;
-    Qgis::RenderUnit mOffsetFromCalloutUnit = Qgis::RenderUnit::Millimeters;
 
 #ifdef SIP_RUN
     QgsAnnotationItem( const QgsAnnotationItem &other );

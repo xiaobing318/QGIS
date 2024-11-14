@@ -25,7 +25,6 @@ def metaEnumFromValue(enumValue, baseClass=None, raiseException=True):
     """
     Returns the QMetaEnum for an enum value.
     The enum must have declared using the Q_ENUM macro
-
     :param enumValue: the enum value
     :param baseClass: the enum base class. If not given, it will try to get it by using `enumValue.__class__.baseClass`
     :param raiseException: if False, no exception will be raised and None will be return in case of failure
@@ -38,7 +37,6 @@ def metaEnumFromType(enumClass, baseClass=None, raiseException=True):
     """
     Returns the QMetaEnum for an enum type.
     The enum must have declared using the Q_ENUM macro
-
     :param enumClass: the enum class
     :param baseClass: the enum base class. If not given, it will try to get it by using `enumValue.__class__.baseClass`
     :param raiseException: if False, no exception will be raised and None will be return in case of failure

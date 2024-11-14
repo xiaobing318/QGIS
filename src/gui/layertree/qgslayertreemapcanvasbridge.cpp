@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgslayertreemapcanvasbridge.h"
-#include "moc_qgslayertreemapcanvasbridge.cpp"
 
 #include "qgslayertree.h"
 #include "qgslayertreeutils.h"
@@ -160,8 +159,7 @@ void QgsLayerTreeMapCanvasBridge::setCanvasLayers( QgsLayerTreeNode *node, QList
     {
       if ( QgsGroupLayer *groupLayer = QgsLayerTree::toGroup( child )->groupLayer() )
       {
-        if ( child->isVisible() )
-          canvasLayers << groupLayer;
+        canvasLayers << groupLayer;
         continue;
       }
     }

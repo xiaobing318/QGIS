@@ -1,31 +1,24 @@
-# Find poly2tri
-# ~~~~~~~~~~~~~
+# Find Poly2Tri
+# ~~~~~~~~~
 # Copyright (c) 2020, Peter Petrik <zilolv at gmail dot com>
 # Redistribution and use is allowed according to the terms of the BSD license.
 # For details see the accompanying COPYING-CMAKE-SCRIPTS file.
 #
 #
 # Once run this will define: 
-#  poly2tri_FOUND - System has poly2tri
-#  poly2tri::poly2tri - Target
+#  Poly2Tri_FOUND - System has Poly2Tri
+#  Poly2Tri_INCLUDE_DIR - The Poly2Tri include directory
+#  Poly2Tri_LIBRARY - The library needed to use Poly2Tri
 
-find_package(poly2tri CONFIG)
-if(NOT poly2tri_FOUND)
-  find_path(poly2tri_INCLUDE_DIR poly2tri.h
-            HINTS $ENV{LIB_DIR}/include)
-  
-  find_library(poly2tri_LIBRARY NAMES poly2tri libpoly2tri
-               HINTS $ENV{LIB_DIR}/lib)
-  
-  include(FindPackageHandleStandardArgs)
-  
-  find_package_handle_standard_args(poly2tri DEFAULT_MSG
-                                    poly2tri_LIBRARY poly2tri_INCLUDE_DIR)
+find_path(Poly2Tri_INCLUDE_DIR poly2tri.h
+          HINTS $ENV{LIB_DIR}/include)
 
-  
-  add_library(poly2tri::poly2tri UNKNOWN IMPORTED)
-  target_link_libraries(poly2tri::poly2tri INTERFACE ${poly2tri_LIBRARY})
-  target_include_directories(poly2tri::poly2tri INTERFACE ${poly2tri_INCLUDE_DIR})
-  set_target_properties(poly2tri::poly2tri PROPERTIES IMPORTED_LOCATION ${poly2tri_LIBRARY})
-  mark_as_advanced(poly2tri_INCLUDE_DIR poly2tri_LIBRARY)
-endif()
+find_library(Poly2Tri_LIBRARY NAMES poly2tri libpoly2tri
+             HINTS $ENV{LIB_DIR}/lib)
+
+include(FindPackageHandleStandardArgs)
+
+find_package_handle_standard_args(Poly2Tri DEFAULT_MSG
+                                  Poly2Tri_LIBRARY Poly2Tri_INCLUDE_DIR)
+
+mark_as_advanced( Poly2Tri_INCLUDE_DIR Poly2Tri_LIBRARY )

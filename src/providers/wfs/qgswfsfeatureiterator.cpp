@@ -24,17 +24,18 @@
 #include "qgsmultipolygon.h"
 #include "qgsogcutils.h"
 #include "qgswfsfeatureiterator.h"
-#include "moc_qgswfsfeatureiterator.cpp"
+#include "qgswfsprovider.h"
 #include "qgswfsshareddata.h"
 #include "qgswfsutils.h"
 #include "qgslogger.h"
 #include "qgssettings.h"
+#include "qgsexception.h"
+#include "qgsfeedback.h"
 
 #include <algorithm>
 #include <QDir>
 #include <QTimer>
 #include <QUrlQuery>
-#include <QTransform>
 
 QgsWFSFeatureHitsAsyncRequest::QgsWFSFeatureHitsAsyncRequest( QgsWFSDataSourceURI &uri )
   : QgsWfsRequest( uri )
@@ -173,14 +174,14 @@ QUrl QgsWFSFeatureDownloaderImpl::buildURL( qint64 startIndex, long long maxFeat
     query.addQueryItem( QStringLiteral( "SRSNAME" ), srsName );
   }
 
+  const QgsRectangle &rect = mShared->currentRect();
+
   // In case we must issue a BBOX and we have a filter, we must combine
   // both as a single filter, as both BBOX and FILTER aren't supported together
-  std::vector<QString> filters;
-  if ( !mShared->mServerExpression.isEmpty() )
-    filters.push_back( mShared->mServerExpression );
-
-  const QgsRectangle &rect = mShared->currentRect();
-  if ( !rect.isNull() && ( !mShared->mWFSFilter.isEmpty() || !mShared->mServerExpression.isEmpty() || !mShared->mWFSGeometryTypeFilter.isEmpty() ) )
+  if ( ( !rect.isNull() && !mShared->mWFSFilter.isEmpty() )
+       || ( !mShared->mServerExpression.isEmpty() && !mShared->mWFSFilter.isEmpty() )
+       || ( !rect.isNull() && !mShared->mServerExpression.isEmpty() )
+     )
   {
     QgsOgcUtils::GMLVersion gmlVersion;
     QgsOgcUtils::FilterVersion filterVersion;
@@ -202,49 +203,95 @@ QUrl QgsWFSFeatureDownloaderImpl::buildURL( qint64 startIndex, long long maxFeat
       gmlVersion = QgsOgcUtils::GML_3_2_1;
       filterVersion = QgsOgcUtils::FILTER_FES_2_0;
     }
+
+    QDomDocument bboxDoc;
+    QDomDocument filterDoc;
+    QDomDocument expressionDoc;
+
     QString geometryAttribute( mShared->mGeometryAttribute );
     if ( mShared->mLayerPropertiesList.size() > 1 )
       geometryAttribute = mShared->mURI.typeName() + "/" + geometryAttribute;
 
+    QDomNode bboxNode;
+    QDomNode filterNode;
+    QDomNode expressionNode;
 
-    double minx = rect.xMinimum();
-    double miny = rect.yMinimum();
-    double maxx = rect.xMaximum();
-    double maxy = rect.yMaximum();
-    QString filterBbox( QStringLiteral( "intersects_bbox($geometry, geomFromWKT('LINESTRING(%1 %2,%3 %4)'))" ).
-                        arg( minx ).arg( miny ).arg( maxx ).arg( maxy ) );
-    QgsExpression bboxExp( filterBbox );
-    QDomDocument bboxDoc;
+    QDomDocument envelopeFilterDoc;
 
-    QMap<QString, QString> fieldNameToXPathMap;
-    if ( !mShared->mFieldNameToXPathAndIsNestedContentMap.isEmpty() )
+    //having a filter
+    if ( !mShared->mWFSFilter.isEmpty() )
     {
-      for ( auto iterFieldName = mShared->mFieldNameToXPathAndIsNestedContentMap.constBegin(); iterFieldName != mShared->mFieldNameToXPathAndIsNestedContentMap.constEnd(); ++iterFieldName )
+      ( void )filterDoc.setContent( mShared->mWFSFilter, true );
+      filterNode = filterDoc.firstChildElement().firstChildElement();
+      filterNode = filterDoc.firstChildElement().removeChild( filterNode );
+      envelopeFilterDoc = filterDoc;
+    }
+
+    //having an expression
+    if ( !mShared->mServerExpression.isEmpty() )
+    {
+      ( void )expressionDoc.setContent( mShared->mServerExpression, true );
+      expressionNode = expressionDoc.firstChildElement().firstChildElement();
+      expressionNode = expressionDoc.firstChildElement().removeChild( expressionNode );
+      envelopeFilterDoc = expressionDoc;
+    }
+
+    //having a bbox
+    if ( !rect.isNull() )
+    {
+      double minx = rect.xMinimum();
+      double miny = rect.yMinimum();
+      double maxx = rect.xMaximum();
+      double maxy = rect.yMaximum();
+      QString filterBbox( QStringLiteral( "intersects_bbox($geometry, geomFromWKT('LINESTRING(%1 %2,%3 %4)'))" ).
+                          arg( minx ).arg( miny ).arg( maxx ).arg( maxy ) );
+      QgsExpression bboxExp( filterBbox );
+      QDomElement bboxElem = QgsOgcUtils::expressionToOgcFilter( bboxExp, bboxDoc,
+                             gmlVersion, filterVersion,
+                             mShared->mLayerPropertiesList.size() == 1 ? mShared->mLayerPropertiesList[0].mNamespacePrefix : QString(),
+                             mShared->mLayerPropertiesList.size() == 1 ? mShared->mLayerPropertiesList[0].mNamespaceURI : QString(),
+                             geometryAttribute, mShared->srsName(),
+                             honourAxisOrientation, mShared->mURI.invertAxisOrientation() );
+      bboxDoc.appendChild( bboxElem );
+
+      bboxNode = bboxElem.firstChildElement();
+      bboxNode = bboxElem.removeChild( bboxNode );
+      envelopeFilterDoc = bboxDoc;
+    }
+
+    QDomElement andElem = envelopeFilterDoc.createElement( ( filterVersion == QgsOgcUtils::FILTER_FES_2_0 ) ? "fes:And" : "ogc:And" );
+    if ( !expressionNode.isNull() )
+      andElem.appendChild( expressionNode );
+    if ( !bboxNode.isNull() )
+      andElem.appendChild( bboxNode );
+    if ( !filterNode.isNull() )
+      andElem.appendChild( filterNode );
+
+    envelopeFilterDoc.firstChildElement().appendChild( andElem );
+
+    if ( mShared->mLayerPropertiesList.size() == 1 &&
+         envelopeFilterDoc.firstChildElement().hasAttribute( QStringLiteral( "xmlns:" ) + mShared->mLayerPropertiesList[0].mNamespacePrefix ) )
+    {
+      // nothing to do
+    }
+    else
+    {
+      // add xmls:PREFIX=URI attributes to top element
+      QSet<QString> setNamespaceURI;
+      for ( const QgsOgcUtils::LayerProperties &props : std::as_const( mShared->mLayerPropertiesList ) )
       {
-        const QString &fieldName = iterFieldName.key();
-        const auto &value = iterFieldName.value();
-        fieldNameToXPathMap[fieldName] = value.first;
+        if ( !props.mNamespacePrefix.isEmpty() && !props.mNamespaceURI.isEmpty() &&
+             !setNamespaceURI.contains( props.mNamespaceURI ) )
+        {
+          setNamespaceURI.insert( props.mNamespaceURI );
+          QDomAttr attr = envelopeFilterDoc.createAttribute( QStringLiteral( "xmlns:" ) + props.mNamespacePrefix );
+          attr.setValue( props.mNamespaceURI );
+          envelopeFilterDoc.firstChildElement().setAttributeNode( attr );
+        }
       }
     }
 
-    QDomElement bboxElem = QgsOgcUtils::expressionToOgcFilter( bboxExp, bboxDoc,
-                           gmlVersion, filterVersion,
-                           mShared->mLayerPropertiesList.size() == 1 ? mShared->mLayerPropertiesList[0].mNamespacePrefix : QString(),
-                           mShared->mLayerPropertiesList.size() == 1 ? mShared->mLayerPropertiesList[0].mNamespaceURI : QString(),
-                           geometryAttribute, mShared->srsName(),
-                           honourAxisOrientation, mShared->mURI.invertAxisOrientation(), nullptr, fieldNameToXPathMap, mShared->mNamespacePrefixToURIMap );
-    bboxDoc.appendChild( bboxElem );
-
-    filters.push_back( bboxDoc.toString() );
-  }
-  if ( !mShared->mWFSFilter.isEmpty() )
-    filters.push_back( mShared->mWFSFilter );
-  if ( !mShared->mWFSGeometryTypeFilter.isEmpty() )
-    filters.push_back( mShared->mWFSGeometryTypeFilter );
-
-  if ( filters.size() >= 2 )
-  {
-    query.addQueryItem( QStringLiteral( "FILTER" ), sanitizeFilter( mShared->combineWFSFilters( filters ) ) );
+    query.addQueryItem( QStringLiteral( "FILTER" ), sanitizeFilter( envelopeFilterDoc.toString() ) );
   }
   else if ( !rect.isNull() )
   {
@@ -291,11 +338,6 @@ QUrl QgsWFSFeatureDownloaderImpl::buildURL( qint64 startIndex, long long maxFeat
   {
     query.addQueryItem( QStringLiteral( "FILTER" ), sanitizeFilter( mShared->mServerExpression ) );
   }
-  else if ( !mShared->mWFSGeometryTypeFilter.isEmpty() )
-  {
-    query.addQueryItem( QStringLiteral( "FILTER" ), sanitizeFilter( mShared->mWFSGeometryTypeFilter ) );
-  }
-
 
   if ( !mShared->mSortBy.isEmpty() && !forHits )
   {
@@ -350,6 +392,13 @@ void QgsWFSFeatureDownloaderImpl::gotHitsResponse()
   }
   if ( mNumberMatched >= 0 )
   {
+    if ( mTotalDownloadedFeatureCount == 0 )
+    {
+      // We get at this point after the 4 second delay to emit the hits request
+      // and the delay to get its response. If we don't still have downloaded
+      // any feature at this point, it is high time to give some visual feedback
+      mProgressDialogShowImmediately = true;
+    }
     // If the request didn't include any BBOX, then we can update the layer
     // feature count
     if ( mShared->currentRect().isNull() )
@@ -370,10 +419,10 @@ void QgsWFSFeatureDownloaderImpl::startHitsRequest()
   }
 }
 
-void QgsWFSFeatureDownloaderImpl::createProgressTask()
+void QgsWFSFeatureDownloaderImpl::createProgressDialog()
 {
-  QgsFeatureDownloaderImpl::createProgressTask( mNumberMatched );
-  CONNECT_PROGRESS_TASK( QgsWFSFeatureDownloaderImpl );
+  QgsFeatureDownloaderImpl::createProgressDialog( mNumberMatched );
+  CONNECT_PROGRESS_DIALOG( QgsWFSFeatureDownloaderImpl );
 }
 
 void QgsWFSFeatureDownloaderImpl::run( bool serializeFeatures, long long maxFeatures )
@@ -520,7 +569,7 @@ void QgsWFSFeatureDownloaderImpl::run( bool serializeFeatures, long long maxFeat
         if ( mPageSize > 0 && mTotalDownloadedFeatureCount == 0 &&
              parser->exceptionText().contains( QLatin1String( "Cannot do natural order without a primary key" ) ) )
         {
-          QgsDebugError( QStringLiteral( "Got exception %1. Re-trying with paging disabled" ).arg( parser->exceptionText() ) );
+          QgsDebugMsg( QStringLiteral( "Got exception %1. Re-trying with paging disabled" ).arg( parser->exceptionText() ) );
           mPageSize = 0;
           mShared->mPageSize = 0;
         }
@@ -528,7 +577,7 @@ void QgsWFSFeatureDownloaderImpl::run( bool serializeFeatures, long long maxFeat
         // the examples in the WFS 2.0 spec showing that
         else if ( !mRemoveNSPrefix && parser->exceptionText().contains( QLatin1String( "more than one feature type" ) ) )
         {
-          QgsDebugError( QStringLiteral( "Got exception %1. Re-trying by removing namespace prefix" ).arg( parser->exceptionText() ) );
+          QgsDebugMsg( QStringLiteral( "Got exception %1. Re-trying by removing namespace prefix" ).arg( parser->exceptionText() ) );
           mRemoveNSPrefix = true;
         }
 
@@ -577,7 +626,7 @@ void QgsWFSFeatureDownloaderImpl::run( bool serializeFeatures, long long maxFeat
           if ( mShared->supportsFastFeatureCount() )
             disconnect( &timerForHits, &QTimer::timeout, this, &QgsWFSFeatureDownloaderImpl::startHitsRequest );
 
-          CREATE_PROGRESS_TASK( QgsWFSFeatureDownloaderImpl );
+          CREATE_PROGRESS_DIALOG( QgsWFSFeatureDownloaderImpl );
         }
       }
 
@@ -611,7 +660,7 @@ void QgsWFSFeatureDownloaderImpl::run( bool serializeFeatures, long long maxFeat
             if ( mShared->mCapabilityExtent.contains( invertedRectangle ) )
             {
               mShared->mGetFeatureEPSGDotHonoursEPSGOrder = true;
-              QgsDebugMsgLevel( QStringLiteral( "Server is likely MapServer. Using mGetFeatureEPSGDotHonoursEPSGOrder mode" ), 2 );
+              QgsDebugMsg( QStringLiteral( "Server is likely MapServer. Using mGetFeatureEPSGDotHonoursEPSGOrder mode" ) );
             }
           }
         }
@@ -629,7 +678,7 @@ void QgsWFSFeatureDownloaderImpl::run( bool serializeFeatures, long long maxFeat
             gmlId = QgsBackgroundCachedSharedData::getMD5( f );
             if ( !mShared->mHasWarnedAboutMissingFeatureId )
             {
-              QgsDebugError( QStringLiteral( "Server returns features without fid/gml:id. Computing a fake one using feature attributes" ) );
+              QgsDebugMsg( QStringLiteral( "Server returns features without fid/gml:id. Computing a fake one using feature attributes" ) );
               mShared->mHasWarnedAboutMissingFeatureId = true;
             }
           }
@@ -640,7 +689,7 @@ void QgsWFSFeatureDownloaderImpl::run( bool serializeFeatures, long long maxFeat
           else if ( pagingIter == 2 && featureCountForThisResponse == 0 && gmlIdFirstFeatureFirstIter == gmlId )
           {
             disablePaging = true;
-            QgsDebugError( QStringLiteral( "Server does not seem to properly support paging since it returned the same first feature for 2 different page requests. Disabling paging" ) );
+            QgsDebugMsg( QStringLiteral( "Server does not seem to properly support paging since it returned the same first feature for 2 different page requests. Disabling paging" ) );
           }
 
           if ( mShared->mGetFeatureEPSGDotHonoursEPSGOrder && f.hasGeometry() )
@@ -653,12 +702,12 @@ void QgsWFSFeatureDownloaderImpl::run( bool serializeFeatures, long long maxFeat
           // If receiving a geometry collection, but expecting a multipoint/...,
           // then try to convert it
           if ( f.hasGeometry() &&
-               f.geometry().wkbType() == Qgis::WkbType::GeometryCollection &&
-               ( mShared->mWKBType == Qgis::WkbType::MultiPoint ||
-                 mShared->mWKBType == Qgis::WkbType::MultiLineString ||
-                 mShared->mWKBType == Qgis::WkbType::MultiPolygon ) )
+               f.geometry().wkbType() == QgsWkbTypes::GeometryCollection &&
+               ( mShared->mWKBType == QgsWkbTypes::MultiPoint ||
+                 mShared->mWKBType == QgsWkbTypes::MultiLineString ||
+                 mShared->mWKBType == QgsWkbTypes::MultiPolygon ) )
           {
-            Qgis::WkbType singleType = QgsWkbTypes::singleType( mShared->mWKBType );
+            QgsWkbTypes::Type singleType = QgsWkbTypes::singleType( mShared->mWKBType );
             auto g = f.geometry().constGet();
             auto gc = qgsgeometry_cast<QgsGeometryCollection *>( g );
             bool allExpectedType = true;
@@ -673,11 +722,11 @@ void QgsWFSFeatureDownloaderImpl::run( bool serializeFeatures, long long maxFeat
             if ( allExpectedType )
             {
               QgsGeometryCollection *newGC;
-              if ( mShared->mWKBType == Qgis::WkbType::MultiPoint )
+              if ( mShared->mWKBType == QgsWkbTypes::MultiPoint )
               {
                 newGC =  new QgsMultiPoint();
               }
-              else if ( mShared->mWKBType == Qgis::WkbType::MultiLineString )
+              else if ( mShared->mWKBType == QgsWkbTypes::MultiLineString )
               {
                 newGC = new QgsMultiLineString();
               }
@@ -692,13 +741,6 @@ void QgsWFSFeatureDownloaderImpl::run( bool serializeFeatures, long long maxFeat
               }
               f.setGeometry( QgsGeometry( newGC ) );
             }
-          }
-          else if ( f.hasGeometry() && !mShared->mWFSGeometryTypeFilter.isEmpty() &&
-                    QgsWkbTypes::flatType( f.geometry().wkbType() ) != mShared->mWKBType )
-          {
-            QgsGeometry g = f.geometry();
-            g.convertToCurvedMultiType();
-            f.setGeometry( g );
           }
 
           featureList.push_back( QgsFeatureUniqueIdPair( f, gmlId ) );

@@ -32,7 +32,7 @@ class QFont;
  * \ingroup gui
  * \brief A custom model/view delegate that can display an icon, heading
  * and detail sections.
- * \see QgsDetailedItemData
+ * \see also QgsDetailedItemData
  */
 class GUI_EXPORT QgsDetailedItemDelegate : public QAbstractItemDelegate
 {

@@ -44,22 +44,21 @@
 
 #include "qgsgpxfeatureiterator.h"
 #include "qgsgpxprovider.h"
-#include "moc_qgsgpxprovider.cpp"
 #include "gpsdata.h"
 
 const QStringList QgsGPXProvider::sAttributeNames = { "name", "elevation", "symbol", "number",
                                                       "comment", "description", "source",
-                                                      "url", "url name", "time"
+                                                      "url", "url name"
                                                     };
-const QList< QMetaType::Type > QgsGPXProvider::sAttributeTypes = { QMetaType::Type::QString, QMetaType::Type::Double, QMetaType::Type::QString, QMetaType::Type::Int,
-                                                                   QMetaType::Type::QString, QMetaType::Type::QString, QMetaType::Type::QString,
-                                                                   QMetaType::Type::QString, QMetaType::Type::QString, QMetaType::Type::QDateTime,
-                                                                 };
+const QList< QVariant::Type > QgsGPXProvider::sAttributeTypes = { QVariant::String, QVariant::Double, QVariant::String, QVariant::Int,
+                                                                  QVariant::String, QVariant::String, QVariant::String,
+                                                                  QVariant::String, QVariant::String
+                                                                };
 const QList< QgsGPXProvider::DataType > QgsGPXProvider::sAttributedUsedForLayerType =
 {
   QgsGPXProvider::AllType, QgsGPXProvider::WaypointType, QgsGPXProvider::TrkRteType, QgsGPXProvider::TrkRteType,
   QgsGPXProvider::AllType, QgsGPXProvider::AllType, QgsGPXProvider::AllType, QgsGPXProvider::AllType,
-  QgsGPXProvider::AllType, QgsGPXProvider::AllType, QgsGPXProvider::WaypointType,
+  QgsGPXProvider::AllType, QgsGPXProvider::AllType
 };
 
 const QString GPX_KEY = QStringLiteral( "gpx" );
@@ -67,7 +66,7 @@ const QString GPX_KEY = QStringLiteral( "gpx" );
 const QString GPX_DESCRIPTION = QObject::tr( "GPS eXchange format provider" );
 
 
-QgsGPXProvider::QgsGPXProvider( const QString &uri, const ProviderOptions &options, Qgis::DataProviderReadFlags flags )
+QgsGPXProvider::QgsGPXProvider( const QString &uri, const ProviderOptions &options, QgsDataProvider::ReadFlags flags )
   : QgsVectorDataProvider( uri, options, flags )
 {
   // we always use UTF-8
@@ -94,7 +93,7 @@ QgsGPXProvider::QgsGPXProvider( const QString &uri, const ProviderOptions &optio
   {
     if ( sAttributedUsedForLayerType[i] & mFeatureType )
     {
-      const QString attrTypeName = ( sAttributeTypes[i] == QMetaType::Type::Int ? "int" : ( sAttributeTypes[i] == QMetaType::Type::Double ? "double" : "text" ) );
+      const QString attrTypeName = ( sAttributeTypes[i] == QVariant::Int ? "int" : ( sAttributeTypes[i] == QVariant::Double ? "double" : "text" ) );
       mAttributeFields.append( QgsField( sAttributeNames[i], sAttributeTypes[i], attrTypeName ) );
       mIndexToAttr.append( i );
     }
@@ -123,11 +122,11 @@ QString QgsGPXProvider::storageType() const
   return tr( "GPS eXchange file" );
 }
 
-Qgis::VectorProviderCapabilities QgsGPXProvider::capabilities() const
+QgsVectorDataProvider::Capabilities QgsGPXProvider::capabilities() const
 {
-  return Qgis::VectorProviderCapability::AddFeatures |
-         Qgis::VectorProviderCapability::DeleteFeatures |
-         Qgis::VectorProviderCapability::ChangeAttributeValues;
+  return QgsVectorDataProvider::AddFeatures |
+         QgsVectorDataProvider::DeleteFeatures |
+         QgsVectorDataProvider::ChangeAttributeValues;
 }
 
 QgsRectangle QgsGPXProvider::extent() const
@@ -137,15 +136,15 @@ QgsRectangle QgsGPXProvider::extent() const
   return QgsRectangle();
 }
 
-Qgis::WkbType QgsGPXProvider::wkbType() const
+QgsWkbTypes::Type QgsGPXProvider::wkbType() const
 {
   if ( mFeatureType == WaypointType )
-    return Qgis::WkbType::Point;
+    return QgsWkbTypes::Point;
 
   if ( mFeatureType == RouteType || mFeatureType == TrackType )
-    return Qgis::WkbType::LineString;
+    return QgsWkbTypes::LineString;
 
-  return Qgis::WkbType::Unknown;
+  return QgsWkbTypes::Unknown;
 }
 
 long long QgsGPXProvider::featureCount() const
@@ -206,13 +205,13 @@ bool QgsGPXProvider::addFeature( QgsFeature &f, Flags )
 
   const QByteArray wkb( f.geometry().asWkb() );
   const char *geo = wkb.constData();
-  const Qgis::WkbType wkbType = f.geometry().wkbType();
+  const QgsWkbTypes::Type wkbType = f.geometry().wkbType();
   bool success = false;
   QgsGpsObject *obj = nullptr;
   const QgsAttributes attrs = f.attributes();
 
   // is it a waypoint?
-  if ( mFeatureType == WaypointType && geo && wkbType == Qgis::WkbType::Point )
+  if ( mFeatureType == WaypointType && geo && wkbType == QgsWkbTypes::Point )
   {
 
     // add geometry
@@ -242,7 +241,7 @@ bool QgsGPXProvider::addFeature( QgsFeature &f, Flags )
   }
 
   // is it a route?
-  if ( mFeatureType == RouteType && geo && wkbType == Qgis::WkbType::LineString )
+  if ( mFeatureType == RouteType && geo && wkbType == QgsWkbTypes::LineString )
   {
 
     QgsRoute rte;
@@ -289,7 +288,7 @@ bool QgsGPXProvider::addFeature( QgsFeature &f, Flags )
   }
 
   // is it a track?
-  if ( mFeatureType == TrackType && geo && wkbType == Qgis::WkbType::LineString )
+  if ( mFeatureType == TrackType && geo && wkbType == QgsWkbTypes::LineString )
   {
 
     QgsTrack trk;
@@ -570,7 +569,7 @@ QGISEXTERN QgsProviderMetadata *providerMetadataFactory()
   return new QgsGpxProviderMetadata();
 }
 
-QgsDataProvider *QgsGpxProviderMetadata::createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags )
+QgsDataProvider *QgsGpxProviderMetadata::createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags )
 {
   return new QgsGPXProvider( uri, options, flags );
 }
@@ -590,25 +589,7 @@ QVariantMap QgsGpxProviderMetadata::decodeUri( const QString &uri ) const
   return QgsGPXProvider::decodeUri( uri );
 }
 
-QString QgsGpxProviderMetadata::absoluteToRelativeUri( const QString &uri, const QgsReadWriteContext &context ) const
+QList<QgsMapLayerType> QgsGpxProviderMetadata::supportedLayerTypes() const
 {
-  QString src = uri;
-  QStringList theURIParts = src.split( '?' );
-  theURIParts[0] = context.pathResolver().writePath( theURIParts[0] );
-  src = theURIParts.join( QLatin1Char( '?' ) );
-  return src;
-}
-
-QString QgsGpxProviderMetadata::relativeToAbsoluteUri( const QString &uri, const QgsReadWriteContext &context ) const
-{
-  QString src = uri;
-  QStringList theURIParts = src.split( '?' );
-  theURIParts[0] = context.pathResolver().readPath( theURIParts[0] );
-  src = theURIParts.join( QLatin1Char( '?' ) );
-  return src;
-}
-
-QList<Qgis::LayerType> QgsGpxProviderMetadata::supportedLayerTypes() const
-{
-  return { Qgis::LayerType::Vector };
+  return { QgsMapLayerType::VectorLayer };
 }

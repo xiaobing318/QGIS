@@ -7,7 +7,6 @@ set (HANA_SRCS
   qgshanaconnectionpool.cpp
   qgshanaconnectionstringbuilder.cpp
   qgshanadataitems.cpp
-  qgshanadatatypes.cpp
   qgshanadriver.cpp
   qgshanaexpressioncompiler.cpp
   qgshanafeatureiterator.cpp
@@ -35,7 +34,6 @@ set(HANA_HDRS
   qgshanaconnection.h
   qgshanaconnectionpool.h
   qgshanaconnectionstringbuilder.h
-  qgshanadatatypes.h
   qgshanadriver.h
   qgshanaexception.h
   qgshanaexpressioncompiler.h
@@ -69,6 +67,8 @@ include_directories(
 )
 
 include_directories (SYSTEM
+  ${PROJ_INCLUDE_DIR}
+  ${GDAL_INCLUDE_DIR}
   ${ODBC_INCLUDE_DIRS}
   ${QCA_INCLUDE_DIR}
   ${QTKEYCHAIN_INCLUDE_DIR}

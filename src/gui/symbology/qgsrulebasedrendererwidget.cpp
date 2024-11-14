@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsrulebasedrendererwidget.h"
-#include "moc_qgsrulebasedrendererwidget.cpp"
 
 #include "qgsrulebasedrenderer.h"
 #include "qgsfeatureiterator.h"
@@ -26,6 +25,8 @@
 #include "qgssymbolselectordialog.h"
 #include "qgslogger.h"
 #include "qgsreadwritecontext.h"
+#include "qstring.h"
+#include "qgssinglesymbolrenderer.h"
 #include "qgspanelwidget.h"
 #include "qgsmapcanvas.h"
 #include "qgssettings.h"
@@ -38,8 +39,6 @@
 #include <QVBoxLayout>
 #include <QMessageBox>
 #include <QClipboard>
-#include <QPointer>
-#include <QScreen>
 
 #ifdef ENABLE_MODELTEST
 #include "modeltest.h"
@@ -77,7 +76,7 @@ QgsRuleBasedRendererWidget::QgsRuleBasedRendererWidget( QgsVectorLayer *layer, Q
   setupUi( this );
   this->layout()->setContentsMargins( 0, 0, 0, 0 );
 
-  mModel = new QgsRuleBasedRendererModel( mRenderer.get(), viewRules, screen() );
+  mModel = new QgsRuleBasedRendererModel( mRenderer.get(), viewRules );
 #ifdef ENABLE_MODELTEST
   new ModelTest( mModel, this ); // for model validity checking
 #endif
@@ -225,11 +224,11 @@ void QgsRuleBasedRendererWidget::editRule( const QModelIndex &index )
 void QgsRuleBasedRendererWidget::removeRule()
 {
   QItemSelection sel = viewRules->selectionModel()->selection();
-  QgsDebugMsgLevel( QStringLiteral( "REMOVE RULES!!! ranges: %1" ).arg( sel.count() ), 2 );
+  QgsDebugMsg( QStringLiteral( "REMOVE RULES!!! ranges: %1" ).arg( sel.count() ) );
   const auto constSel = sel;
   for ( const QItemSelectionRange &range : constSel )
   {
-    QgsDebugMsgLevel( QStringLiteral( "RANGE: r %1 - %2" ).arg( range.top() ).arg( range.bottom() ), 2 );
+    QgsDebugMsg( QStringLiteral( "RANGE: r %1 - %2" ).arg( range.top() ).arg( range.bottom() ) );
     if ( range.isValid() )
       mModel->removeRows( range.top(), range.bottom() - range.top() + 1, range.parent() );
   }
@@ -698,7 +697,7 @@ void QgsRuleBasedRendererWidget::countFeatures()
   const auto constKeys = countMap.keys();
   for ( QgsRuleBasedRenderer::Rule *rule : constKeys )
   {
-    QgsDebugMsgLevel( QStringLiteral( "rule: %1 count %2" ).arg( rule->label() ).arg( countMap[rule].count ), 2 );
+    QgsDebugMsg( QStringLiteral( "rule: %1 count %2" ).arg( rule->label() ).arg( countMap[rule].count ) );
   }
 #endif
 
@@ -868,7 +867,7 @@ void QgsRendererRulePropsWidget::testFilter()
   QApplication::setOverrideCursor( Qt::WaitCursor );
 
   QgsFeatureRequest req = QgsFeatureRequest().setNoAttributes()
-                          .setFlags( Qgis::FeatureRequestFlag::NoGeometry )
+                          .setFlags( QgsFeatureRequest::NoGeometry )
                           .setFilterExpression( editFilter->text() )
                           .setExpressionContext( context );
 
@@ -915,10 +914,9 @@ void QgsRendererRulePropsWidget::setDockMode( bool dockMode )
 
 /////
 
-QgsRuleBasedRendererModel::QgsRuleBasedRendererModel( QgsRuleBasedRenderer *renderer, QObject *parent, QScreen *screen )
+QgsRuleBasedRendererModel::QgsRuleBasedRendererModel( QgsRuleBasedRenderer *renderer, QObject *parent )
   : QAbstractItemModel( parent )
   , mR( renderer )
-  , mScreen( screen )
 {
 }
 
@@ -1004,7 +1002,7 @@ QVariant QgsRuleBasedRendererModel::data( const QModelIndex &index, int role ) c
   else if ( role == Qt::DecorationRole && index.column() == 0 && rule->symbol() )
   {
     const int iconSize = QgsGuiUtils::scaleIconSize( 16 );
-    return QgsSymbolLayerUtils::symbolPreviewIcon( rule->symbol(), QSize( iconSize, iconSize ), 0, nullptr, QgsScreenProperties( mScreen.data() ) );
+    return QgsSymbolLayerUtils::symbolPreviewIcon( rule->symbol(), QSize( iconSize, iconSize ) );
   }
   else if ( role == Qt::TextAlignmentRole )
   {
@@ -1262,7 +1260,7 @@ bool QgsRuleBasedRendererModel::dropMimeData( const QMimeData *data,
     QDomElement ruleElem = rootElem.firstChildElement( QStringLiteral( "rule" ) );
     if ( rootElem.attribute( QStringLiteral( "type" ) ) == QLatin1String( "labeling" ) )
       _labeling2rendererRules( ruleElem );
-    QgsRuleBasedRenderer::Rule *rule = QgsRuleBasedRenderer::Rule::create( ruleElem, symbolMap, false );
+    QgsRuleBasedRenderer::Rule *rule = QgsRuleBasedRenderer::Rule::create( ruleElem, symbolMap );
 
     insertRule( parent, row + rows, rule );
 
@@ -1285,7 +1283,7 @@ bool QgsRuleBasedRendererModel::removeRows( int row, int count, const QModelInde
   if ( row < 0 || row >= parentRule->children().count() )
     return false;
 
-  QgsDebugMsgLevel( QStringLiteral( "Called: row %1 count %2 parent ~~%3~~" ).arg( row ).arg( count ).arg( parentRule->dump() ), 2 );
+  QgsDebugMsg( QStringLiteral( "Called: row %1 count %2 parent ~~%3~~" ).arg( row ).arg( count ).arg( parentRule->dump() ) );
 
   beginRemoveRows( parent, row, row + count - 1 );
 
@@ -1299,7 +1297,7 @@ bool QgsRuleBasedRendererModel::removeRows( int row, int count, const QModelInde
     }
     else
     {
-      QgsDebugError( QStringLiteral( "trying to remove invalid index - this should not happen!" ) );
+      QgsDebugMsg( QStringLiteral( "trying to remove invalid index - this should not happen!" ) );
     }
   }
 
@@ -1313,7 +1311,7 @@ void QgsRuleBasedRendererModel::insertRule( const QModelIndex &parent, int befor
 {
   beginInsertRows( parent, before, before );
 
-  QgsDebugMsgLevel( QStringLiteral( "insert before %1 rule: %2" ).arg( before ).arg( newrule->dump() ), 2 );
+  QgsDebugMsg( QStringLiteral( "insert before %1 rule: %2" ).arg( before ).arg( newrule->dump() ) );
 
   QgsRuleBasedRenderer::Rule *parentRule = ruleForIndex( parent );
   parentRule->insertChild( before, newrule );

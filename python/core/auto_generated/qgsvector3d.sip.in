@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsvector3d.h                                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -14,6 +14,8 @@ class QgsVector3D
 %Docstring(signature="appended")
 Class for storage of 3D vectors similar to QVector3D, with the difference that it uses double precision
 instead of single precision floating point numbers.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -33,100 +35,77 @@ Constructs a vector from given coordinates
 %Docstring
 Constructs a vector from single-precision QVector3D
 %End
-    bool isNull() const /HoldGIL/;
+    bool isNull() const;
 %Docstring
 Returns ``True`` if all three coordinates are zero
 %End
 
-    double x() const /HoldGIL/;
+    double x() const;
 %Docstring
 Returns X coordinate
 %End
-    double y() const /HoldGIL/;
+    double y() const;
 %Docstring
 Returns Y coordinate
 %End
-    double z() const /HoldGIL/;
+    double z() const;
 %Docstring
 Returns Z coordinate
 %End
 
-    void setX( double x ) /HoldGIL/;
-%Docstring
-Sets X coordinate
-
-.. versionadded:: 3.34
-%End
-
-    void setY( double y ) /HoldGIL/;
-%Docstring
-Sets Y coordinate
-
-.. versionadded:: 3.34
-%End
-
-    void setZ( double z ) /HoldGIL/;
-%Docstring
-Sets Z coordinate
-
-.. versionadded:: 3.34
-%End
-
-    void set( double x, double y, double z ) /HoldGIL/;
+    void set( double x, double y, double z );
 %Docstring
 Sets vector coordinates
 %End
 
-    bool operator==( const QgsVector3D &other ) const /HoldGIL/;
-    bool operator!=( const QgsVector3D &other ) const /HoldGIL/;
+    bool operator==( const QgsVector3D &other ) const;
+    bool operator!=( const QgsVector3D &other ) const;
 
-    QgsVector3D operator+( const QgsVector3D &other ) const /HoldGIL/;
+    QgsVector3D operator+( const QgsVector3D &other ) const;
 
-    QgsVector3D operator-( const QgsVector3D &other ) const /HoldGIL/;
+    QgsVector3D operator-( const QgsVector3D &other ) const;
 
-    const QgsVector3D operator-() const /HoldGIL/;
+    QgsVector3D operator *( const double factor ) const;
 
-    QgsVector3D operator *( const double factor ) const /HoldGIL/;
+    QgsVector3D operator /( const double factor ) const;
 
-    QgsVector3D operator /( const double factor ) const /HoldGIL/;
-
-    static double dotProduct( const QgsVector3D &v1, const QgsVector3D &v2 ) /HoldGIL/;
+    static double dotProduct( const QgsVector3D &v1, const QgsVector3D &v2 );
 %Docstring
 Returns the dot product of two vectors
 %End
 
-    static QgsVector3D crossProduct( const QgsVector3D &v1, const QgsVector3D &v2 ) /HoldGIL/;
+    static QgsVector3D crossProduct( const QgsVector3D &v1, const QgsVector3D &v2 );
 %Docstring
 Returns the cross product of two vectors
 %End
 
-    double length() const /HoldGIL/;
+    double length() const;
 %Docstring
 Returns the length of the vector
 %End
 
-    void normalize() /HoldGIL/;
+    void normalize();
 %Docstring
 Normalizes the current vector in place.
 %End
 
-    double distance( const QgsVector3D &other ) const /HoldGIL/;
+    double distance( const QgsVector3D &other ) const;
 %Docstring
-Returns the distance with the ``other`` QgsVector3D
+Returns the distance with the ``other`` :py:class:`QgsVector3`
 %End
 
-    static QgsVector3D perpendicularPoint( const QgsVector3D &v1, const QgsVector3D &v2, const QgsVector3D &vp ) /HoldGIL/;
+    static QgsVector3D perpendicularPoint( const QgsVector3D &v1, const QgsVector3D &v2, const QgsVector3D &vp );
 %Docstring
 Returns the perpendicular point of vector ``vp`` from [``v1`` - ``v2``]
 %End
 
-    QString toString( int precision = 17 ) const /HoldGIL/;
+    QString toString( int precision = 17 ) const;
 %Docstring
 Returns a string representation of the 3D vector.
 Members will be truncated to the specified ``precision``.
 %End
 
-    QVector3D toVector3D() const /HoldGIL/;
+    QVector3D toVector3D() const;
 %Docstring
 Converts the current object to QVector3D
 
@@ -149,5 +128,5 @@ Converts the current object to QVector3D
  *                                                                      *
  * src/core/qgsvector3d.h                                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

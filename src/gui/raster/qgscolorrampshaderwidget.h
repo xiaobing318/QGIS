@@ -19,14 +19,14 @@
 #define QGSCOLORRAMPSHADERWIDGET_H
 
 #include <QStyledItemDelegate>
-#include <QPointer>
 
 #include "qgis_sip.h"
-#include "qgis_gui.h"
-#include "qgscolorramplegendnodesettings.h"
-#include "qgsrectangle.h"
 #include "qgscolorrampshader.h"
+#include "qgsrasterrenderer.h"
 #include "ui_qgscolorrampshaderwidgetbase.h"
+#include "qgis_gui.h"
+#include "qgsrasterrendererwidget.h"
+#include "qgscolorramplegendnodesettings.h"
 
 class QgsRasterDataProvider;
 class QgsLocaleAwareNumericLineEditDelegate;
@@ -51,7 +51,6 @@ class GUI_EXPORT QgsColorRampShaderWidget: public QWidget, protected Ui::QgsColo
 
     //! Creates new color ramp shader widget
     QgsColorRampShaderWidget( QWidget *parent = nullptr );
-    ~QgsColorRampShaderWidget() override;
 
     //! Allows quantile classification mode for raster layers
     void initializeForUseWithRasterLayer();
@@ -91,7 +90,7 @@ class GUI_EXPORT QgsColorRampShaderWidget: public QWidget, protected Ui::QgsColo
     void widgetChanged();
 
     //! Classification mode changed
-    void classificationModeChanged( Qgis::ShaderClassificationMethod mode );
+    void classificationModeChanged( QgsColorRampShader::ClassificationMode mode );
 
   public slots:
 
@@ -141,7 +140,7 @@ class GUI_EXPORT QgsColorRampShaderWidget: public QWidget, protected Ui::QgsColo
     void mLoadFromBandButton_clicked();
     void mLoadFromFileButton_clicked();
     void mExportToFileButton_clicked();
-    void mUnitLineEdit_textEdited( const QString &text );
+    void mUnitLineEdit_textEdited( const QString &text ) { Q_UNUSED( text ) autoLabel(); }
     void mColormapTreeWidget_itemDoubleClicked( QTreeWidgetItem *item, int column );
     void mColormapTreeWidget_itemEdited( QTreeWidgetItem *item, int column );
     void mColorInterpolationComboBox_currentIndexChanged( int index );
@@ -171,8 +170,6 @@ class GUI_EXPORT QgsColorRampShaderWidget: public QWidget, protected Ui::QgsColo
     QgsRectangle mExtent;
     QgsLocaleAwareNumericLineEditDelegate *mValueDelegate = nullptr;
     QgsColorRampLegendNodeSettings mLegendSettings;
-
-    int mBlockChanges = 0;
 
 
 };

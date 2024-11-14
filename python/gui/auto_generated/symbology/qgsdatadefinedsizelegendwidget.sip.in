@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/symbology/qgsdatadefinedsizelegendwidget.h                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -16,6 +16,8 @@ class QgsDataDefinedSizeLegendWidget : QgsPanelWidget
 {
 %Docstring(signature="appended")
 Widget for configuration of appearance of legend for marker symbols with data-defined size.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -47,5 +49,5 @@ Returns configuration as set up in the dialog (may be ``None``). Ownership is pa
  *                                                                      *
  * src/gui/symbology/qgsdatadefinedsizelegendwidget.h                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

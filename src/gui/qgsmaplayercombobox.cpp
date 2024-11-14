@@ -14,12 +14,10 @@
 ***************************************************************************/
 
 #include "qgsmaplayercombobox.h"
-#include "moc_qgsmaplayercombobox.cpp"
 #include "qgsmaplayermodel.h"
 #include "qgsmimedatautils.h"
 #include <QDragEnterEvent>
 #include <QPainter>
-
 
 QgsMapLayerComboBox::QgsMapLayerComboBox( QWidget *parent )
   : QComboBox( parent )

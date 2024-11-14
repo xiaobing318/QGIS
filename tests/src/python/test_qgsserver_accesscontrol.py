@@ -14,16 +14,12 @@ import shutil
 import tempfile
 from math import sqrt
 
+import qgis  # NOQA
 from osgeo import gdal
 from osgeo.gdalconst import GA_ReadOnly
 from qgis.PyQt.QtCore import QSize
 from qgis.core import QgsRenderChecker
-from qgis.server import (
-    QgsAccessControlFilter,
-    QgsBufferServerRequest,
-    QgsBufferServerResponse,
-    QgsServerRequest,
-)
+from qgis.server import QgsAccessControlFilter, QgsServerRequest, QgsBufferServerRequest, QgsBufferServerResponse
 
 from test_qgsserver import QgsServerTestBase
 from utilities import unitTestDataPath
@@ -231,7 +227,8 @@ class TestQgsServerAccessControl(QgsServerTestBase):
 
     def _img_diff_error(self, response, headers, image, max_diff=10, max_size_diff=QSize()):
         super()._img_diff_error(response, headers, image, max_diff=max_diff,
-                                max_size_diff=max_size_diff)
+                                max_size_diff=max_size_diff,
+                                unittest_data_path='qgis_server_accesscontrol')
 
     def _geo_img_diff(self, image_1, image_2):
         if os.name == 'nt':
@@ -274,4 +271,4 @@ class TestQgsServerAccessControl(QgsServerTestBase):
             )
             self.assertTrue(
                 str(response).find(f"<qgs:color>{color}</qgs:color>") != -1,
-                f"Wrong color in result\n{response}")
+                "Wrong color in result\n%s" % response)

@@ -27,18 +27,12 @@
 class QCloseEvent;
 class QgsMeasureTool;
 class QgsMapCanvas;
-class QgsSettingsEntryBool;
-class QgsSettingsEntryString;
 
 class APP_EXPORT QgsMeasureDialog : public QDialog, private Ui::QgsMeasureBase
 {
     Q_OBJECT
 
   public:
-
-    static const QgsSettingsEntryBool *settingClipboardHeader;
-    static const QgsSettingsEntryString *settingClipboardSeparator;
-    static const QgsSettingsEntryBool *settingClipboardAlwaysUseDecimalPoint;
 
     //! Constructor
     QgsMeasureDialog( QgsMeasureTool *tool, Qt::WindowFlags f = Qt::WindowFlags() );
@@ -85,22 +79,11 @@ class APP_EXPORT QgsMeasureDialog : public QDialog, private Ui::QgsMeasureBase
 
   private:
 
-    //! \since QGIS 3.32 columns
-    enum Columns
-    {
-      X = 0,
-      Y,
-      Distance,
-    };
-
     //! formats distance to most appropriate units
     QString formatDistance( double distance, bool convertUnits = true ) const;
 
     //! formats area to most appropriate units
     QString formatArea( double area, bool convertUnits = true ) const;
-
-    //! update units-related members passed on selected area/distance unit type
-    void updateUnitsMembers();
 
     //! shows/hides table, shows correct units
     void updateUi();
@@ -111,9 +94,9 @@ class APP_EXPORT QgsMeasureDialog : public QDialog, private Ui::QgsMeasureBase
      */
     void repopulateComboBoxUnits( bool isArea );
 
-    double convertLength( double length, Qgis::DistanceUnit toUnit ) const;
+    double convertLength( double length, QgsUnitTypes::DistanceUnit toUnit ) const;
 
-    double convertArea( double area, Qgis::AreaUnit toUnit ) const;
+    double convertArea( double area, QgsUnitTypes::AreaUnit toUnit ) const;
 
     double mTotal = 0.0;
 
@@ -129,20 +112,17 @@ class APP_EXPORT QgsMeasureDialog : public QDialog, private Ui::QgsMeasureBase
     //! Number of decimal places we want.
     int mDecimalPlaces = 3;
 
-    //! Number of decimal places we want for the coordinates.
-    int mDecimalPlacesCoordinates = 3;
-
     //! Current unit for input values
-    Qgis::DistanceUnit mCanvasUnits = Qgis::DistanceUnit::Unknown;
+    QgsUnitTypes::DistanceUnit mCanvasUnits = QgsUnitTypes::DistanceUnknownUnit;
 
     //! Current unit for distance values
-    Qgis::DistanceUnit mDistanceUnits  = Qgis::DistanceUnit::Unknown;
+    QgsUnitTypes::DistanceUnit mDistanceUnits  = QgsUnitTypes::DistanceUnknownUnit;
 
     //! Current map unit for distance values
-    Qgis::DistanceUnit mMapDistanceUnits  = Qgis::DistanceUnit::Unknown;
+    QgsUnitTypes::DistanceUnit mMapDistanceUnits  = QgsUnitTypes::DistanceUnknownUnit;
 
     //! Current unit for area values
-    Qgis::AreaUnit mAreaUnits  = Qgis::AreaUnit::Unknown;
+    QgsUnitTypes::AreaUnit mAreaUnits  = QgsUnitTypes::AreaUnknownUnit;
 
     //! Our measurement object
     QgsDistanceArea mDa;

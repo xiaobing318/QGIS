@@ -21,27 +21,22 @@ os.environ['QT_HASH_SEED'] = '1'
 
 import time
 import urllib.parse
-
-import tempfile
 from shutil import copyfile
-
 from qgis.core import QgsApplication
 from qgis.server import QgsServer
 from qgis.testing import unittest
-from test_qgsserver import QgsServerTestBase
 from utilities import unitTestDataPath
+from test_qgsserver import QgsServerTestBase
 
 
 class TestQgsServerSecurity(QgsServerTestBase):
 
     @classmethod
     def setUpClass(cls):
-        super().setUpClass()
         cls.testdatapath = unitTestDataPath('qgis_server_security') + '/'
         cls.db = os.path.join(cls.testdatapath, 'db.sqlite')
-        cls.db_clone = os.path.join(tempfile.gettempdir(), 'db_clone.sqlite')
+        cls.db_clone = os.path.join(cls.testdatapath, 'db_clone.sqlite')
         cls.project = os.path.join(cls.testdatapath, 'project.qgs')
-        cls.project_clone = os.path.join(tempfile.gettempdir(), 'project.qgs')
         cls.app = QgsApplication([], False)
 
     @classmethod
@@ -52,12 +47,9 @@ class TestQgsServerSecurity(QgsServerTestBase):
         except OSError:
             pass
 
-        super().tearDownClass()
-
     def setUp(self):
         self.server = QgsServer()
         copyfile(self.db, self.db_clone)
-        copyfile(self.project, self.project_clone)
 
     def test_wms_getfeatureinfo_filter_and_based_blind(self):
         """
@@ -76,7 +68,7 @@ class TestQgsServerSecurity(QgsServerTestBase):
         query = f"{filter_sql} {injection_sql}"
         d, h = self.handle_request_wms_getfeatureinfo(query)
 
-        self.assertNotIn(b"name = 'b'", d)
+        self.assertFalse(b"name = 'b'" in d)
 
     def test_wms_getfeatureinfo_filter_time_based_blind(self):
         """
@@ -154,7 +146,7 @@ class TestQgsServerSecurity(QgsServerTestBase):
         query = f"{filter_sql} {injection_sql}"
         d, h = self.handle_request_wms_getfeatureinfo(query)
 
-        self.assertNotIn(b'SpatialIndex', d)
+        self.assertFalse(b'SpatialIndex' in d)
 
     def test_wms_getfeatureinfo_filter_union_1(self):
         """
@@ -171,7 +163,7 @@ class TestQgsServerSecurity(QgsServerTestBase):
         query = f"{filter_sql} {injection_sql}"
         d, h = self.handle_request_wms_getfeatureinfo(query)
 
-        self.assertNotIn(b'private_value', d)
+        self.assertFalse(b'private_value' in d)
 
     def test_wms_getfeatureinfo_filter_unicode(self):
         """
@@ -359,7 +351,7 @@ class TestQgsServerSecurity(QgsServerTestBase):
 
     def handle_request_wfs_getfeature_filter(self, filter_xml):
         qs = "?" + "&".join(["%s=%s" % i for i in {
-            "MAP": urllib.parse.quote(self.project_clone),
+            "MAP": urllib.parse.quote(self.project),
             "SERVICE": "WFS",
             "VERSION": "1.1.1",
             "REQUEST": "GetFeature",
@@ -372,7 +364,7 @@ class TestQgsServerSecurity(QgsServerTestBase):
 
     def handle_request_wms_getfeatureinfo(self, filter_sql):
         qs = "?" + "&".join(["%s=%s" % i for i in {
-            "MAP": urllib.parse.quote(self.project_clone),
+            "MAP": urllib.parse.quote(self.project),
             "SERVICE": "WMS",
             "VERSION": "1.1.1",
             "REQUEST": "GetFeatureInfo",
@@ -390,7 +382,7 @@ class TestQgsServerSecurity(QgsServerTestBase):
 
     def handle_request_wms_getmap(self, sld=None, filter=None):
         params = {
-            "MAP": urllib.parse.quote(self.project_clone),
+            "MAP": urllib.parse.quote(self.project),
             "SERVICE": "WMS",
             "VERSION": "1.0.0",
             "REQUEST": "GetMap",

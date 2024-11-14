@@ -30,7 +30,6 @@ class QgsMapToolSelectionHandler;
 class QgsRasterLayer;
 class QgsVectorLayer;
 class QgsFeatureStore;
-class QgsMapLayerActionContext;
 
 /**
  * \brief Map tool for identifying features layers and showing results
@@ -50,10 +49,15 @@ class APP_EXPORT QgsMapToolIdentifyAction : public QgsMapToolIdentify
 
     ~QgsMapToolIdentifyAction() override;
 
+    //! Overridden mouse move event
     void canvasMoveEvent( QgsMapMouseEvent *e ) override;
+
+    //! Overridden mouse press event
     void canvasPressEvent( QgsMapMouseEvent *e ) override;
+
+    //! Overridden mouse release event
     void canvasReleaseEvent( QgsMapMouseEvent *e ) override;
-    void keyReleaseEvent( QKeyEvent *e ) override;
+
     void activate() override;
 
     void deactivate() override;
@@ -79,7 +83,7 @@ class APP_EXPORT QgsMapToolIdentifyAction : public QgsMapToolIdentify
     void copyToClipboard( QgsFeatureStore & );
 
   private slots:
-    void showAttributeTable( QgsMapLayer *layer, const QList<QgsFeature> &featureList, const QgsMapLayerActionContext &context );
+    void showAttributeTable( QgsMapLayer *layer, const QList<QgsFeature> &featureList );
 
     void identifyFromGeometry();
 
@@ -92,11 +96,13 @@ class APP_EXPORT QgsMapToolIdentifyAction : public QgsMapToolIdentify
 
     QgsIdentifyResultsDialog *resultsDialog();
 
-    Qgis::DistanceUnit displayDistanceUnits() const override;
-    Qgis::AreaUnit displayAreaUnits() const override;
+    QgsUnitTypes::DistanceUnit displayDistanceUnits() const override;
+    QgsUnitTypes::AreaUnit displayAreaUnits() const override;
     void setClickContextScope( const QgsPointXY &point );
 
-    friend class TestQgsIdentify;
+    void keyReleaseEvent( QKeyEvent *e ) override;
+
+    friend class TestQgsMapToolIdentifyAction;
 };
 
 #endif

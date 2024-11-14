@@ -44,7 +44,7 @@ namespace QgsWmts
 
     QgsRectangle extent;
 
-    Qgis::DistanceUnit unit = Qgis::DistanceUnit::Meters;
+    QgsUnitTypes::DistanceUnit unit = QgsUnitTypes::DistanceMeters;
 
     bool hasAxisInverted = false;
 
@@ -76,7 +76,7 @@ namespace QgsWmts
 
     QgsRectangle extent;
 
-    Qgis::DistanceUnit unit;
+    QgsUnitTypes::DistanceUnit unit;
 
     bool hasAxisInverted = false;
 

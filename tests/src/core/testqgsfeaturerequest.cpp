@@ -21,7 +21,9 @@
 #include "qgsfeature.h"
 #include "qgsfield.h"
 #include "qgsgeometry.h"
+#include "qgssymbol.h"
 #include "qgssimplifymethod.h"
+#include "qgslinesymbol.h"
 #include "qgsexpressioncontextutils.h"
 
 class TestQgsFeatureRequest: public QObject
@@ -68,7 +70,7 @@ void TestQgsFeatureRequest::cleanup()
 void TestQgsFeatureRequest::testDefaultConstructed( const QgsFeatureRequest &f )
 {
   // Test public getter members
-  QCOMPARE( f.filterType(), Qgis::FeatureRequestFilterType::NoFilter );
+  QCOMPARE( f.filterType(), QgsFeatureRequest::FilterType::FilterNone );
   QCOMPARE( f.spatialFilterType(), Qgis::SpatialFilterType::NoFilter );
   QCOMPARE( f.filterRect(), QgsRectangle() );
   QVERIFY( f.referenceGeometry().isEmpty() );
@@ -78,7 +80,7 @@ void TestQgsFeatureRequest::testDefaultConstructed( const QgsFeatureRequest &f )
   //       behavior encoded in a default constructor
   QCOMPARE( f.filterFid(), -1 ); // I think FID_NULL should be used
   QCOMPARE( f.filterFids(), QgsFeatureIds() );
-  QCOMPARE( f.invalidGeometryCheck(), Qgis::InvalidGeometryCheck::NoCheck );
+  QCOMPARE( f.invalidGeometryCheck(), QgsFeatureRequest::InvalidGeometryCheck::GeometryNoCheck );
   QCOMPARE( f.invalidGeometryCallback(), nullptr );
   QCOMPARE( f.filterExpression(), nullptr );
   // Disabled because:
@@ -88,7 +90,7 @@ void TestQgsFeatureRequest::testDefaultConstructed( const QgsFeatureRequest &f )
   //QCOMPARE( *const_cast< QgsFeatureRequest & > (f).expressionContext(), QgsExpressionContext() );
   QCOMPARE( f.orderBy(), QgsFeatureRequest::OrderBy() );
   QCOMPARE( f.limit(), -1LL ); // I think 0 could be used to mean no limit
-  QCOMPARE( f.flags(), Qgis::FeatureRequestFlags() );
+  QCOMPARE( f.flags(), QgsFeatureRequest::Flags() );
   QCOMPARE( f.subsetOfAttributes(), QgsAttributeList() );
   QCOMPARE( f.simplifyMethod(), QgsSimplifyMethod() );
   QCOMPARE( f.destinationCrs(), QgsCoordinateReferenceSystem() );
@@ -122,14 +124,14 @@ void TestQgsFeatureRequest::assignmentOperatorTest()
   f2.setDistanceWithin( QgsGeometry::fromWkt( "POINT(10 15)" ), 12 );
   f2.setFilterFid( 52 );
   f2.setFilterFids( {3, 4} );
-  f2.setInvalidGeometryCheck( Qgis::InvalidGeometryCheck::SkipInvalid );
+  f2.setInvalidGeometryCheck( QgsFeatureRequest::InvalidGeometryCheck::GeometrySkipInvalid );
   f2.setInvalidGeometryCallback( []( const QgsFeature & ) {} );
   f2.setFilterExpression( "this not that" );
   QgsExpressionContextScope *scope = QgsExpressionContextUtils::globalScope();
   f2.setExpressionContext( QgsExpressionContext( { scope } ) );
   f2.addOrderBy( "someField" );
   f2.setLimit( 5 );
-  f2.setFlags( Qgis::FeatureRequestFlag::NoGeometry );
+  f2.setFlags( QgsFeatureRequest::NoGeometry );
   f2.setSubsetOfAttributes( {1, 2} );
   QgsSimplifyMethod sm;
   sm.setMethodType( QgsSimplifyMethod::PreserveTopology );

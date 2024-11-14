@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/raster/qgsrasterprojector.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -16,11 +16,9 @@
 class QgsRasterProjector : QgsRasterInterface
 {
 %Docstring(signature="appended")
-Implements approximate projection support for optimised raster transformation.
-
-:py:class:`QgsRasterProjector` calculates a grid of points in the source CRS for a specific target CRS and extent.
-These are used to calculate affine transformation matrices, which can be used instead of raw
-PROJ transformations for optimised bulk reprojection of points.
+:py:class:`QgsRasterProjector` implements approximate projection support for
+it calculates grid of points in source CRS for target CRS + extent
+which are used to calculate affine transformation matrices.
 %End
 
 %TypeHeaderCode
@@ -53,9 +51,8 @@ PROJ transformations for optimised bulk reprojection of points.
 %Docstring
 Sets the source and destination CRS
 
-.. deprecated:: 3.8
-
-   Use transformContext version instead.
+.. deprecated:: QGIS 3.8
+  use transformContext version instead
 %End
 
     void setCrs( const QgsCoordinateReferenceSystem &srcCRS, const QgsCoordinateReferenceSystem &destCRS,
@@ -106,5 +103,5 @@ Calculate destination extent and size from source extent and size
  *                                                                      *
  * src/core/raster/qgsrasterprojector.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

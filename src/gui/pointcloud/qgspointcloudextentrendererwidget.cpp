@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgspointcloudextentrendererwidget.h"
-#include "moc_qgspointcloudextentrendererwidget.cpp"
 #include "qgscontrastenhancement.h"
 #include "qgspointcloudlayer.h"
 #include "qgspointcloudextentrenderer.h"

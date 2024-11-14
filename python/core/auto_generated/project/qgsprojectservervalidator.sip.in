@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/project/qgsprojectservervalidator.h                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -24,6 +24,9 @@ Validates the server specific parts of the configuration of a QGIS project.
   public:
 
     QgsProjectServerValidator();
+%Docstring
+Constructor for QgsProjectServerValidator.
+%End
 
     enum ValidationError
     {
@@ -75,5 +78,5 @@ items describing why the validation failed and what needs to be rectified
  *                                                                      *
  * src/core/project/qgsprojectservervalidator.h                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

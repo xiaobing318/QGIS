@@ -270,7 +270,7 @@ void QgsVectorLayerUndoCommandChangeAttribute::undo()
       QgsFeature tmp;
       QgsFeatureRequest request;
       request.setFilterFid( mFid );
-      request.setFlags( Qgis::FeatureRequestFlag::NoGeometry );
+      request.setFlags( QgsFeatureRequest::NoGeometry );
       request.setSubsetOfAttributes( QgsAttributeList() << mFieldIndex );
       QgsFeatureIterator fi = layer()->getFeatures( request );
       if ( fi.nextFeature( tmp ) )
@@ -315,7 +315,7 @@ QgsVectorLayerUndoCommandAddAttribute::QgsVectorLayerUndoCommandAddAttribute( Qg
 {
   const QgsFields &fields = layer()->fields();
   int i;
-  for ( i = 0; i < fields.count() && fields.fieldOrigin( i ) != Qgis::FieldOrigin::Join; i++ )
+  for ( i = 0; i < fields.count() && fields.fieldOrigin( i ) != QgsFields::OriginJoin; i++ )
     ;
   mFieldIndex = i;
 }
@@ -346,9 +346,9 @@ QgsVectorLayerUndoCommandDeleteAttribute::QgsVectorLayerUndoCommandDeleteAttribu
   , mFieldIndex( fieldIndex )
 {
   const QgsFields &fields = layer()->fields();
-  const Qgis::FieldOrigin origin = fields.fieldOrigin( mFieldIndex );
+  const QgsFields::FieldOrigin origin = fields.fieldOrigin( mFieldIndex );
   mOriginIndex = fields.fieldOriginIndex( mFieldIndex );
-  mProviderField = ( origin == Qgis::FieldOrigin::Provider );
+  mProviderField = ( origin == QgsFields::OriginProvider );
   mFieldName = fields.field( mFieldIndex ).name();
 
   if ( !mProviderField )
@@ -447,9 +447,9 @@ QgsVectorLayerUndoCommandRenameAttribute::QgsVectorLayerUndoCommandRenameAttribu
   , mNewName( newName )
 {
   const QgsFields &fields = layer()->fields();
-  const Qgis::FieldOrigin origin = fields.fieldOrigin( mFieldIndex );
+  const QgsFields::FieldOrigin origin = fields.fieldOrigin( mFieldIndex );
   mOriginIndex = fields.fieldOriginIndex( mFieldIndex );
-  mProviderField = ( origin == Qgis::FieldOrigin::Provider );
+  mProviderField = ( origin == QgsFields::OriginProvider );
 }
 
 void QgsVectorLayerUndoCommandRenameAttribute::undo()

@@ -16,18 +16,16 @@
 #include "qgsmanageconnectionsdialog.h"
 #include "qgsmssqlconnection.h"
 #include "qgsmssqldataitemguiprovider.h"
-#include "moc_qgsmssqldataitemguiprovider.cpp"
 #include "qgsmssqldataitems.h"
 #include "qgsmssqlnewconnection.h"
 #include "qgsmssqlsourceselect.h"
-#include "qgsdataitemguiproviderutils.h"
 
 #include <QFileDialog>
 #include <QInputDialog>
 #include <QMessageBox>
 
 
-void QgsMssqlDataItemGuiProvider::populateContextMenu( QgsDataItem *item, QMenu *menu, const QList<QgsDataItem *> &selection, QgsDataItemGuiContext context )
+void QgsMssqlDataItemGuiProvider::populateContextMenu( QgsDataItem *item, QMenu *menu, const QList<QgsDataItem *> &, QgsDataItemGuiContext )
 {
   if ( QgsMssqlRootItem *rootItem = qobject_cast< QgsMssqlRootItem * >( item ) )
   {
@@ -60,19 +58,8 @@ void QgsMssqlDataItemGuiProvider::populateContextMenu( QgsDataItem *item, QMenu 
     connect( actionEdit, &QAction::triggered, this, [connItem] { editConnection( connItem ); } );
     menu->addAction( actionEdit );
 
-    QAction *actionDuplicate = new QAction( tr( "Duplicate Connection" ), menu );
-    connect( actionDuplicate, &QAction::triggered, this, [connItem] { duplicateConnection( connItem ); } );
-    menu->addAction( actionDuplicate );
-
-    const QList< QgsMssqlConnectionItem * > mssqlConnectionItems = QgsDataItem::filteredItems<QgsMssqlConnectionItem>( selection );
-    QAction *actionDelete = new QAction( mssqlConnectionItems.size() > 1 ? tr( "Remove Connections…" ) : tr( "Remove Connection…" ), menu );
-    connect( actionDelete, &QAction::triggered, this, [mssqlConnectionItems, context]
-    {
-      QgsDataItemGuiProviderUtils::deleteConnections( mssqlConnectionItems, []( const QString & connectionName )
-      {
-        QgsMssqlSourceSelect::deleteConnection( connectionName );
-      }, context );
-    } );
+    QAction *actionDelete = new QAction( tr( "Remove Connection" ), menu );
+    connect( actionDelete, &QAction::triggered, this, [connItem] { deleteConnection( connItem ); } );
     menu->addAction( actionDelete );
 
     menu->addSeparator();
@@ -192,22 +179,17 @@ void QgsMssqlDataItemGuiProvider::editConnection( QgsDataItem *item )
   }
 }
 
-void QgsMssqlDataItemGuiProvider::duplicateConnection( QgsDataItem *item )
+void QgsMssqlDataItemGuiProvider::deleteConnection( QgsDataItem *item )
 {
-  const QString connectionName = item->name();
-  QgsSettings settings;
-  settings.beginGroup( QStringLiteral( "/MSSQL/connections" ) );
-  const QStringList connections = settings.childGroups();
-  settings.endGroup();
+  if ( QMessageBox::question( nullptr, QObject::tr( "Remove Connection" ),
+                              QObject::tr( "Are you sure you want to remove the connection to %1?" ).arg( item->name() ),
+                              QMessageBox::Yes | QMessageBox::No, QMessageBox::No ) != QMessageBox::Yes )
+    return;
 
-  const QString newConnectionName = QgsDataItemGuiProviderUtils::uniqueName( connectionName, connections );
-
-  QgsMssqlConnection::duplicateConnection( connectionName, newConnectionName );
-
+  QgsMssqlSourceSelect::deleteConnection( item->name() );
+  // the parent should be updated
   item->parent()->refreshConnections();
-  item->refresh();
 }
-
 
 void QgsMssqlDataItemGuiProvider::createSchema( QgsMssqlConnectionItem *connItem )
 {

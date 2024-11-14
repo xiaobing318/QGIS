@@ -9,33 +9,40 @@ __author__ = 'Nyall Dawson'
 __date__ = '04/12/2020'
 __copyright__ = 'Copyright 2020, The QGIS Project'
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import QDir, QSize, Qt
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import (
+    QgsProviderRegistry,
+    QgsPointCloudLayer,
+    QgsPointCloudExtentRenderer,
+    QgsReadWriteContext,
+    QgsMultiRenderChecker,
+    QgsMapSettings,
+    QgsRectangle,
     QgsCoordinateReferenceSystem,
     QgsFillSymbol,
-    QgsLayerTreeLayer,
-    QgsMapSettings,
-    QgsPointCloudExtentRenderer,
-    QgsPointCloudLayer,
-    QgsProviderRegistry,
-    QgsReadWriteContext,
-    QgsRectangle,
+    QgsLayerTreeLayer
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
 start_app()
 
 
-class TestQgsPointCloudExtentRenderer(QgisTestCase):
+class TestQgsPointCloudExtentRenderer(unittest.TestCase):
 
     @classmethod
-    def control_path_prefix(cls):
-        return "pointcloudrenderer"
+    def setUpClass(cls):
+        cls.report = "<h1>Python QgsPointCloudExtentRenderer Tests</h1>\n"
+
+    @classmethod
+    def tearDownClass(cls):
+        report_file_path = "%s/qgistest.html" % QDir.tempPath()
+        with open(report_file_path, 'a') as report_file:
+            report_file.write(cls.report)
 
     def testBasic(self):
         renderer = QgsPointCloudExtentRenderer(QgsFillSymbol.createSimple({'color': '#ff00ff', 'outline_color': 'black'}))
@@ -61,7 +68,7 @@ class TestQgsPointCloudExtentRenderer(QgisTestCase):
         layer_tree_layer = QgsLayerTreeLayer(layer)
         nodes = renderer.createLegendNodes(layer_tree_layer)
         self.assertEqual(len(nodes), 1)
-        self.assertEqual(nodes[0].data(Qt.ItemDataRole.DisplayRole), 'test')
+        self.assertEqual(nodes[0].data(Qt.DisplayRole), 'test')
         self.assertTrue(nodes[0].isEmbeddedInParent())
 
     @unittest.skipIf('ept' not in QgsProviderRegistry.instance().providerList(), 'EPT provider not available')
@@ -79,9 +86,13 @@ class TestQgsPointCloudExtentRenderer(QgisTestCase):
         mapsettings.setExtent(QgsRectangle(498061, 7050991, 498069, 7050999))
         mapsettings.setLayers([layer])
 
-        self.assertTrue(
-            self.render_map_settings_check('extent_render', 'extent_render', mapsettings)
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(mapsettings)
+        renderchecker.setControlPathPrefix('pointcloudrenderer')
+        renderchecker.setControlName('expected_extent_render')
+        result = renderchecker.runTest('expected_extent_render')
+        TestQgsPointCloudExtentRenderer.report += renderchecker.report()
+        self.assertTrue(result)
 
     @unittest.skipIf('ept' not in QgsProviderRegistry.instance().providerList(), 'EPT provider not available')
     def testRenderCrsTransform(self):
@@ -98,10 +109,13 @@ class TestQgsPointCloudExtentRenderer(QgisTestCase):
         mapsettings.setDestinationCrs(QgsCoordinateReferenceSystem('EPSG:4326'))
         mapsettings.setExtent(QgsRectangle(152.980508492, -26.662023491, 152.980586020, -26.662071137).buffered(0.00001))
         mapsettings.setLayers([layer])
-
-        self.assertTrue(
-            self.render_map_settings_check('extent_render_crs_transform', 'extent_render_crs_transform', mapsettings)
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(mapsettings)
+        renderchecker.setControlPathPrefix('pointcloudrenderer')
+        renderchecker.setControlName('expected_extent_render_crs_transform')
+        result = renderchecker.runTest('expected_extent_render_crs_transform')
+        TestQgsPointCloudExtentRenderer.report += renderchecker.report()
+        self.assertTrue(result)
 
 
 if __name__ == '__main__':

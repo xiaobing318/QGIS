@@ -84,6 +84,7 @@ class GUI_EXPORT QgsAttributeTableView : public QgsTableView
     /**
      * Set the attribute table config which should be used to control
      * the appearance of the attribute table.
+     * \since QGIS 2.16
      */
     void setAttributeTableConfig( const QgsAttributeTableConfig &config );
 
@@ -103,12 +104,6 @@ class GUI_EXPORT QgsAttributeTableView : public QgsTableView
      */
     void scrollToFeature( const QgsFeatureId &fid, int column = -1 );
 
-    /**
-     * Closes the editor delegate for the current item, committing its changes to the model.
-     *
-     * \since QGIS 3.30
-     */
-    void closeCurrentEditor();
   protected:
 
     /**
@@ -161,6 +156,7 @@ class GUI_EXPORT QgsAttributeTableView : public QgsTableView
   signals:
 
     /**
+     * \brief
      * Emitted in order to provide a hook to add additional* menu entries to the context menu.
      *
      * \param menu     If additional QMenuItems are added, they will show up in the context menu.
@@ -173,13 +169,11 @@ class GUI_EXPORT QgsAttributeTableView : public QgsTableView
      * Emitted when a column in the view has been resized.
      * \param column column index (starts at 0)
      * \param width new width in pixel
+     * \since QGIS 2.16
      */
     void columnResized( int column, int width );
 
-    /**
-     * \deprecated QGIS 3.40. No longer used.
-     */
-    Q_DECL_DEPRECATED void finished() SIP_DEPRECATED;
+    void finished();
 
   public slots:
     void repaintRequested( const QModelIndexList &indexes );

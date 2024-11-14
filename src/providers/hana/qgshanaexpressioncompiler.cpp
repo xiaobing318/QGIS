@@ -18,7 +18,6 @@
 #include "qgshanaexpressioncompiler.h"
 #include "qgshanautils.h"
 #include "qgssqlexpressioncompiler.h"
-#include "qgslogger.h"
 
 QgsHanaExpressionCompiler::QgsHanaExpressionCompiler( QgsHanaFeatureSource *source, bool ignoreStaticNodes )
   : QgsSqlExpressionCompiler( source->mFields, QgsSqlExpressionCompiler::IntegerDivisionResultsInInteger |
@@ -161,9 +160,9 @@ QgsSqlExpressionCompiler::Result QgsHanaExpressionCompiler::compileNode(
     case QgsExpressionNode::ntLiteral:
     {
       const QgsExpressionNodeLiteral *n = static_cast<const QgsExpressionNodeLiteral *>( node );
-      switch ( n->value().userType() )
+      switch ( n->value().type() )
       {
-        case QMetaType::Type::Bool:
+        case QVariant::Bool:
           result = n->value().toBool() ? QStringLiteral( "(1=1)" ) : QStringLiteral( "(1=0)" );
           return Complete;
         default:
@@ -236,7 +235,7 @@ QgsSqlExpressionCompiler::Result QgsHanaExpressionCompiler::compileNode(
           {
             if ( binOp->opLeft()->nodeType() != QgsExpressionNode::ntColumnRef )
             {
-              QgsDebugError( "Failing IS NULL/IS NOT NULL with non-column on left: " + opLeft );
+              QgsDebugMsg( "Failing IS NULL/IS NOT NULL with non-column on left: " + opLeft );
               return Fail;
             }
           }

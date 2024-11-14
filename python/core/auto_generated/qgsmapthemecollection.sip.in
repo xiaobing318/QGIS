@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsmapthemecollection.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -16,6 +16,8 @@ class QgsMapThemeCollection : QObject
 %Docstring(signature="appended")
 Container class that allows storage of map themes consisting of visible
 map layers and layer styles.
+
+.. versionadded:: 2.12
 %End
 
 %TypeHeaderCode
@@ -27,6 +29,8 @@ map layers and layer styles.
 {
 %Docstring(signature="appended")
 Individual record of a visible layer in a map theme record.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -67,6 +71,8 @@ Sets the map layer for this record
 {
 %Docstring(signature="appended")
 Individual map theme record of visible layers and styles.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -106,13 +112,6 @@ and thus whether :py:func:`~MapThemeRecord.expandedGroupNodes` and expandedLegen
 .. versionadded:: 3.2
 %End
 
-        bool hasCheckedStateInfo() const;
-%Docstring
-Returns whether information about checked/unchecked state of groups has been recorded
-and thus whether :py:func:`~MapThemeRecord.checkedGroupNodes` is valid.
-
-.. versionadded:: 3.10.1
-%End
         void setHasExpandedStateInfo( bool hasInfo );
 %Docstring
 Sets whether the map theme contains valid expanded/collapsed state of nodes
@@ -120,12 +119,6 @@ Sets whether the map theme contains valid expanded/collapsed state of nodes
 .. versionadded:: 3.2
 %End
 
-        void setHasCheckedStateInfo( bool hasInfo );
-%Docstring
-Sets whether the map theme contains valid checked/unchecked state of group nodes
-
-.. versionadded:: 3.10.1
-%End
         QSet<QString> expandedGroupNodes() const;
 %Docstring
 Returns a set of group identifiers for group nodes that should have expanded state (other group nodes should be collapsed).
@@ -170,6 +163,8 @@ Create map theme collection that handles themes of the given project.
     bool hasMapTheme( const QString &name ) const;
 %Docstring
 Returns whether a map theme with a matching name exists.
+
+.. versionadded:: 3.0
 %End
 
     void insert( const QString &name, const QgsMapThemeCollection::MapThemeRecord &state );
@@ -192,6 +187,8 @@ Updates a map theme within the collection.
     void removeMapTheme( const QString &name );
 %Docstring
 Removes an existing map theme from collection.
+
+.. versionadded:: 3.0
 %End
 
     bool renameMapTheme( const QString &name, const QString &newName );
@@ -210,11 +207,15 @@ Removes all map themes from the collection.
     QStringList mapThemes() const;
 %Docstring
 Returns a list of existing map theme names.
+
+.. versionadded:: 3.0
 %End
 
     QgsMapThemeCollection::MapThemeRecord mapThemeState( const QString &name ) const;
 %Docstring
 Returns the recorded state of a map theme.
+
+.. versionadded:: 3.0
 %End
 
     QStringList mapThemeVisibleLayerIds( const QString &name ) const;
@@ -225,6 +226,8 @@ Returns the list of layer IDs that are visible for the specified map theme.
 
    The order of the returned list is not guaranteed to reflect the order of layers
    in the canvas.
+
+.. versionadded:: 3.0
 %End
 
     QList<QgsMapLayer *> mapThemeVisibleLayers( const QString &name ) const;
@@ -235,11 +238,15 @@ Returns the list of layers that are visible for the specified map theme.
 
    The order of the returned list is not guaranteed to reflect the order of layers
    in the canvas.
+
+.. versionadded:: 3.0
 %End
 
     QMap<QString, QString> mapThemeStyleOverrides( const QString &name );
 %Docstring
 Gets layer style overrides (for :py:class:`QgsMapSettings`) of the visible layers for given map theme.
+
+.. versionadded:: 3.0
 %End
 
     void readXml( const QDomDocument &doc );
@@ -264,30 +271,30 @@ Writes the map theme collection state to XML.
 %Docstring
 Static method to create theme from the current state of layer visibilities in layer tree,
 current style of layers and check state of legend items (from a layer tree model).
+
+.. versionadded:: 3.0
 %End
 
     void applyTheme( const QString &name, QgsLayerTreeGroup *root, QgsLayerTreeModel *model );
 %Docstring
 Apply theme given by its name and modify layer tree, current style of layers and checked
 legend items of passed layer tree model.
+
+.. versionadded:: 3.0
 %End
 
     QgsProject *project();
 %Docstring
-Returns the :py:class:`QgsProject` on which this map theme collection works.
+The :py:class:`QgsProject` on which this map theme collection works.
 
-.. seealso:: :py:func:`setProject`
-
-.. seealso:: :py:func:`projectChanged`
+.. versionadded:: 3.0
 %End
 
     void setProject( QgsProject *project );
 %Docstring
-Sets the ``project`` on which this map theme collection works.
+\copydoc :py:func:`~QgsMapThemeCollection.project`
 
-.. seealso:: :py:func:`project`
-
-.. seealso:: :py:func:`projectChanged`
+.. versionadded:: 3.0
 %End
 
     QList< QgsMapLayer * > masterLayerOrder() const;
@@ -296,6 +303,8 @@ Returns the master layer order (this will always match the project's :py:func:`Q
 All map themes will maintain the same layer order as the master layer order.
 
 .. seealso:: :py:func:`masterVisibleLayers`
+
+.. versionadded:: 3.0
 %End
 
     QList< QgsMapLayer * > masterVisibleLayers() const;
@@ -305,6 +314,8 @@ of :py:func:`~QgsMapThemeCollection.masterLayerOrder`, but the returned layers a
 in the project's layer tree.
 
 .. seealso:: :py:func:`masterLayerOrder`
+
+.. versionadded:: 3.0
 %End
 
   signals:
@@ -312,11 +323,15 @@ in the project's layer tree.
     void mapThemesChanged();
 %Docstring
 Emitted when map themes within the collection are changed.
+
+.. versionadded:: 3.0
 %End
 
     void mapThemeChanged( const QString &theme );
 %Docstring
 Emitted when a map theme changes definition.
+
+.. versionadded:: 3.0
 %End
 
     void mapThemeRenamed( const QString &name, const QString &newName );
@@ -330,9 +345,9 @@ Emitted when a map theme within the collection is renamed.
 %Docstring
 Emitted when the project changes
 
-.. seealso:: :py:func:`project`
+\copydoc :py:func:`~QgsMapThemeCollection.project`
 
-.. seealso:: :py:func:`setProject`
+.. versionadded:: 3.0
 %End
 
 };
@@ -343,5 +358,5 @@ Emitted when the project changes
  *                                                                      *
  * src/core/qgsmapthemecollection.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

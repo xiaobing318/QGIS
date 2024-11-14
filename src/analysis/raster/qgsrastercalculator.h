@@ -35,6 +35,7 @@ class QgsFeedback;
  * \ingroup analysis
  * \class QgsRasterCalculatorEntry
  * \brief Represents an individual raster layer/band number entry within a raster calculation.
+ * \since QGIS 2.18
 */
 class ANALYSIS_EXPORT QgsRasterCalculatorEntry
 {
@@ -137,7 +138,7 @@ class ANALYSIS_EXPORT QgsRasterCalculator
     * \param nOutputColumns number of columns in output raster
     * \param nOutputRows number of rows in output raster
     * \param rasterEntries list of referenced raster layers
-    * \deprecated QGIS 3.8. Use the version with transformContext instead.
+    * \deprecated since QGIS 3.8, use the version with transformContext instead
     */
     Q_DECL_DEPRECATED QgsRasterCalculator( const QString &formulaString, const QString &outputFile, const QString &outputFormat,
                                            const QgsRectangle &outputExtent, int nOutputColumns, int nOutputRows, const QVector<QgsRasterCalculatorEntry> &rasterEntries ) SIP_DEPRECATED;
@@ -152,7 +153,8 @@ class ANALYSIS_EXPORT QgsRasterCalculator
      * \param nOutputColumns number of columns in output raster
      * \param nOutputRows number of rows in output raster
      * \param rasterEntries list of referenced raster layers
-     * \deprecated QGIS 3.8. Use the version with transformContext instead.
+     * \deprecated since QGIS 3.8, use the version with transformContext instead
+     * \since QGIS 2.10
      */
     Q_DECL_DEPRECATED QgsRasterCalculator( const QString &formulaString, const QString &outputFile, const QString &outputFormat,
                                            const QgsRectangle &outputExtent, const QgsCoordinateReferenceSystem &outputCrs, int nOutputColumns, int nOutputRows, const QVector<QgsRasterCalculatorEntry> &rasterEntries ) SIP_DEPRECATED;

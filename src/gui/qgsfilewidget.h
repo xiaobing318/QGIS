@@ -283,6 +283,7 @@ class GUI_EXPORT QgsFileWidget : public QWidget
     /**
      * Returns a pointer to the widget's line edit, which can be used to customize
      * the appearance and behavior of the line edit portion of the widget.
+     * \since QGIS 3.0
      */
     QgsFilterLineEdit *lineEdit();
 
@@ -347,10 +348,6 @@ class GUI_EXPORT QgsFileWidget : public QWidget
 
     //! Returns a filePath with relative path options applied (or not) !
     QString relativePath( const QString &filePath, bool removeRelative ) const;
-
-    // QWidget interface
-  public:
-    QSize minimumSizeHint() const override;
 
     friend class TestQgsFileWidget;
     friend class TestQgsExternalStorageFileWidget;

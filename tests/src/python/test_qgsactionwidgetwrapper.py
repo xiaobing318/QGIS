@@ -11,38 +11,38 @@ __author__ = 'Alessandro Pasotti'
 __date__ = '16/08/2021'
 __copyright__ = 'Copyright 2021, The QGIS Project'
 
+import qgis  # NOQA switch sip api
 from qgis.PyQt.QtCore import QUuid
 from qgis.PyQt.QtWidgets import QPushButton, QWidget
-from qgis.core import QgsAction, QgsVectorLayer
+from qgis.core import (QgsVectorLayer,
+                       QgsAction,
+                       )
 from qgis.gui import QgsActionWidgetWrapper
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 start_app()
 
 from qgis.testing import QGISAPP
 
 
-class TestQgsActionWidgetWrapper(QgisTestCase):
+class TestQgsActionWidgetWrapper(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        super().setUpClass()
         cls.layer = QgsVectorLayer("Point?field=fldtxt:string&field=fldint:integer&field=flddate:datetime",
                                    "test_layer", "memory")
 
         cls.action_id1 = QUuid.createUuid()
         cls.action_id2 = QUuid.createUuid()
         cls.action_id3 = QUuid.createUuid()
-        cls.action1 = QgsAction(cls.action_id1, QgsAction.ActionType.GenericPython, 'Test Action 1 Desc', 'i=1', '', False, 'Test Action 1 Short Title')
-        cls.action2 = QgsAction(cls.action_id2, QgsAction.ActionType.GenericPython, 'Test Action 2 Desc', 'i=2', QGISAPP.appIconPath(), False, 'Test Action 2 Short Title')
-        cls.action3 = QgsAction(cls.action_id3, QgsAction.ActionType.GenericPython, 'Test Action 3 Desc', 'i=3', '', False)
+        cls.action1 = QgsAction(cls.action_id1, QgsAction.GenericPython, 'Test Action 1 Desc', 'i=1', '', False, 'Test Action 1 Short Title')
+        cls.action2 = QgsAction(cls.action_id2, QgsAction.GenericPython, 'Test Action 2 Desc', 'i=2', QGISAPP.appIconPath(), False, 'Test Action 2 Short Title')
+        cls.action3 = QgsAction(cls.action_id3, QgsAction.GenericPython, 'Test Action 3 Desc', 'i=3', '', False)
 
     @classmethod
     def tearDownClass(cls):
         cls.layer = None
         cls.manager = None
-        super().tearDownClass()
 
     def testWrapper(self):
 

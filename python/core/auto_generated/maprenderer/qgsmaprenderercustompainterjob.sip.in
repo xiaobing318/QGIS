@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/maprenderer/qgsmaprenderercustompainterjob.h                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -47,6 +47,8 @@ Job implementation that renders everything sequentially using a custom painter.
 Also supports synchronous rendering in main thread for cases when rendering in background
 is not an option because of some technical limitations (e.g. printing to printer on some
 platforms).
+
+.. versionadded:: 2.4
 %End
 
 %TypeHeaderCode
@@ -130,5 +132,5 @@ and an alternative to :py:func:`~QgsMapRendererCustomPainterJob.renderSynchronou
  *                                                                      *
  * src/core/maprenderer/qgsmaprenderercustompainterjob.h                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

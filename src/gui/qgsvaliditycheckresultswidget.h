@@ -30,7 +30,7 @@ class QgsValidityCheckContext;
 /**
  * \class QgsValidityCheckResultsModel
  * \ingroup gui
- * \brief A QAbstractItemModel subclass for displaying the results from a QgsAbstractValidityCheck.
+ * \brief A QAbstractItemModel subclass for displaying the results from a QgsAbtractValidityCheck.
  *
  * \since QGIS 3.6
  */
@@ -39,20 +39,11 @@ class GUI_EXPORT QgsValidityCheckResultsModel : public QAbstractItemModel
     Q_OBJECT
   public:
 
-    // *INDENT-OFF*
-
-    /**
-     * Custom model roles.
-     *
-     * \note Prior to QGIS 3.36 this was available as QgsValidityCheckResultsModel::Roles
-     * \since QGIS 3.36
-     */
-    enum class CustomRole SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsValidityCheckResultsModel, Roles ) : int
+    //! Model roles
+    enum Roles
     {
-      Description SIP_MONKEYPATCH_COMPAT_NAME(DescriptionRole) = Qt::UserRole + 1, //!< Result detailed description
+      DescriptionRole = Qt::UserRole + 1, //!< Result detailed description
     };
-    Q_ENUM( CustomRole )
-    // *INDENT-ON*
 
     /**
      * Constructor for QgsValidityCheckResultsModel, showing the specified list of checks \a results.

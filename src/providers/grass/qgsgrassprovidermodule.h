@@ -282,10 +282,10 @@ class QgsGrassProviderMetadata: public QgsProviderMetadata
   public:
     QgsGrassProviderMetadata();
     QIcon icon() const override;
-    QgsDataProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() ) override;
+    QgsDataProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() ) override;
     QList< QgsDataItemProvider * > dataItemProviders() const override;
     void initProvider() override;
-    QList< Qgis::LayerType > supportedLayerTypes() const override;
+    QList< QgsMapLayerType > supportedLayerTypes() const override;
 };
 
 #endif // QGSGRASSPROVIDERMODULE_H

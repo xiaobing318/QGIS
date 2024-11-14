@@ -16,7 +16,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgis.h"
-#include "moc_qgis.cpp"
 #ifndef QGSVERSION
 #include "qgsversion.h"
 #endif
@@ -28,7 +27,6 @@
 #include <QDateTime>
 #include "qgsconfig.h"
 #include "qgslogger.h"
-#include "qgsgdalutils.h"
 #include "qgswkbtypes.h"
 
 #include <gdal.h>
@@ -62,7 +60,7 @@ const double Qgis::DEFAULT_M_COORDINATE = 0.0;
 
 const double Qgis::DEFAULT_SNAP_TOLERANCE = 12.0;
 
-const Qgis::MapToolUnit Qgis::DEFAULT_SNAP_UNITS = Qgis::MapToolUnit::Pixels;
+const QgsTolerance::UnitType Qgis::DEFAULT_SNAP_UNITS = QgsTolerance::Pixels;
 
 #ifdef Q_OS_WIN
 const double Qgis::UI_SCALE_FACTOR = 1.5;
@@ -95,20 +93,20 @@ void *qgsMalloc( size_t size )
 {
   if ( size == 0 )
   {
-    QgsDebugError( QStringLiteral( "Zero size requested" ) );
+    QgsDebugMsg( QStringLiteral( "Zero size requested" ) );
     return nullptr;
   }
 
   if ( ( size >> ( 8 * sizeof( size ) - 1 ) ) != 0 )
   {
-    QgsDebugError( QStringLiteral( "qgsMalloc - bad size requested: %1" ).arg( size ) );
+    QgsDebugMsg( QStringLiteral( "qgsMalloc - bad size requested: %1" ).arg( size ) );
     return nullptr;
   }
 
   void *p = malloc( size );
   if ( !p )
   {
-    QgsDebugError( QStringLiteral( "Allocation of %1 bytes failed." ).arg( size ) );
+    QgsDebugMsg( QStringLiteral( "Allocation of %1 bytes failed." ).arg( size ) );
   }
   return p;
 }
@@ -128,36 +126,36 @@ bool qgsVariantLessThan( const QVariant &lhs, const QVariant &rhs )
   else if ( !rhs.isValid() || rhs.isNull() )
     return false;
 
-  switch ( lhs.userType() )
+  switch ( lhs.type() )
   {
-    case QMetaType::Type::Int:
+    case QVariant::Int:
       return lhs.toInt() < rhs.toInt();
-    case QMetaType::Type::UInt:
+    case QVariant::UInt:
       return lhs.toUInt() < rhs.toUInt();
-    case QMetaType::Type::LongLong:
+    case QVariant::LongLong:
       return lhs.toLongLong() < rhs.toLongLong();
-    case QMetaType::Type::ULongLong:
+    case QVariant::ULongLong:
       return lhs.toULongLong() < rhs.toULongLong();
-    case QMetaType::Type::Double:
+    case QVariant::Double:
       return lhs.toDouble() < rhs.toDouble();
-    case QMetaType::Type::QChar:
+    case QVariant::Char:
       return lhs.toChar() < rhs.toChar();
-    case QMetaType::Type::QDate:
+    case QVariant::Date:
       return lhs.toDate() < rhs.toDate();
-    case QMetaType::Type::QTime:
+    case QVariant::Time:
       return lhs.toTime() < rhs.toTime();
-    case QMetaType::Type::QDateTime:
+    case QVariant::DateTime:
       return lhs.toDateTime() < rhs.toDateTime();
-    case QMetaType::Type::Bool:
+    case QVariant::Bool:
       return lhs.toBool() < rhs.toBool();
 
-    case QMetaType::Type::QVariantList:
+    case QVariant::List:
     {
       const QList<QVariant> &lhsl = lhs.toList();
       const QList<QVariant> &rhsl = rhs.toList();
 
       int i, n = std::min( lhsl.size(), rhsl.size() );
-      for ( i = 0; i < n && lhsl[i].userType() == rhsl[i].userType() && qgsVariantEqual( lhsl[i], rhsl[i] ); i++ )
+      for ( i = 0; i < n && lhsl[i].type() == rhsl[i].type() && qgsVariantEqual( lhsl[i], rhsl[i] ); i++ )
         ;
 
       if ( i == n )
@@ -166,7 +164,7 @@ bool qgsVariantLessThan( const QVariant &lhs, const QVariant &rhs )
         return qgsVariantLessThan( lhsl[i], rhsl[i] );
     }
 
-    case QMetaType::Type::QStringList:
+    case QVariant::StringList:
     {
       const QStringList &lhsl = lhs.toStringList();
       const QStringList &rhsl = rhs.toStringList();
@@ -193,7 +191,27 @@ bool qgsVariantGreaterThan( const QVariant &lhs, const QVariant &rhs )
 
 QString qgsVsiPrefix( const QString &path )
 {
-  return QgsGdalUtils::vsiPrefixForPath( path );
+  if ( path.startsWith( QLatin1String( "/vsizip/" ), Qt::CaseInsensitive ) )
+    return QStringLiteral( "/vsizip/" );
+  else if ( path.endsWith( QLatin1String( ".shp.zip" ), Qt::CaseInsensitive ) )
+  {
+    // GDAL 3.1 Shapefile driver directly handles .shp.zip files
+    if ( GDALIdentifyDriverEx( path.toUtf8().constData(), GDAL_OF_VECTOR, nullptr, nullptr ) )
+      return QString();
+    return QStringLiteral( "/vsizip/" );
+  }
+  else if ( path.endsWith( QLatin1String( ".zip" ), Qt::CaseInsensitive ) )
+    return QStringLiteral( "/vsizip/" );
+  else if ( path.startsWith( QLatin1String( "/vsitar/" ), Qt::CaseInsensitive ) ||
+            path.endsWith( QLatin1String( ".tar" ), Qt::CaseInsensitive ) ||
+            path.endsWith( QLatin1String( ".tar.gz" ), Qt::CaseInsensitive ) ||
+            path.endsWith( QLatin1String( ".tgz" ), Qt::CaseInsensitive ) )
+    return QStringLiteral( "/vsitar/" );
+  else if ( path.startsWith( QLatin1String( "/vsigzip/" ), Qt::CaseInsensitive ) ||
+            path.endsWith( QLatin1String( ".gz" ), Qt::CaseInsensitive ) )
+    return QStringLiteral( "/vsigzip/" );
+  else
+    return QString();
 }
 
 uint qHash( const QVariant &variant )
@@ -201,41 +219,41 @@ uint qHash( const QVariant &variant )
   if ( !variant.isValid() || variant.isNull() )
     return std::numeric_limits<uint>::max();
 
-  switch ( variant.userType() )
+  switch ( variant.type() )
   {
-    case QMetaType::Type::Int:
+    case QVariant::Int:
       return qHash( variant.toInt() );
-    case QMetaType::Type::UInt:
+    case QVariant::UInt:
       return qHash( variant.toUInt() );
-    case QMetaType::Type::Bool:
+    case QVariant::Bool:
       return qHash( variant.toBool() );
-    case QMetaType::Type::Double:
+    case QVariant::Double:
       return qHash( variant.toDouble() );
-    case QMetaType::Type::LongLong:
+    case QVariant::LongLong:
       return qHash( variant.toLongLong() );
-    case QMetaType::Type::ULongLong:
+    case QVariant::ULongLong:
       return qHash( variant.toULongLong() );
-    case QMetaType::Type::QString:
+    case QVariant::String:
       return qHash( variant.toString() );
-    case QMetaType::Type::QChar:
+    case QVariant::Char:
       return qHash( variant.toChar() );
-    case QMetaType::Type::QVariantList:
+    case QVariant::List:
       return qHash( variant.toList() );
-    case QMetaType::Type::QStringList:
+    case QVariant::StringList:
       return qHash( variant.toStringList() );
-    case QMetaType::Type::QByteArray:
+    case QVariant::ByteArray:
       return qHash( variant.toByteArray() );
-    case QMetaType::Type::QDate:
+    case QVariant::Date:
       return qHash( variant.toDate() );
-    case QMetaType::Type::QTime:
+    case QVariant::Time:
       return qHash( variant.toTime() );
-    case QMetaType::Type::QDateTime:
+    case QVariant::DateTime:
       return qHash( variant.toDateTime() );
-    case QMetaType::Type::QUrl:
-    case QMetaType::Type::QLocale:
-    case QMetaType::Type::QRegularExpression:
+    case QVariant::Url:
+    case QVariant::Locale:
+    case QVariant::RegularExpression:
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    case QMetaType::Type::QRegExp:
+    case QVariant::RegExp:
 #endif
       return qHash( variant.toString() );
     default:

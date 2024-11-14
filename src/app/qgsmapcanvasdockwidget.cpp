@@ -13,7 +13,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsmapcanvasdockwidget.h"
-#include "moc_qgsmapcanvasdockwidget.cpp"
 #include "qgsmapcanvas.h"
 #include "qgsexception.h"
 #include "qgsprojectionselectiondialog.h"
@@ -23,6 +22,7 @@
 #include "qgsmaptoolpan.h"
 #include "qgsmapthemecollection.h"
 #include "qgsproject.h"
+#include "qgsmapthemes.h"
 #include "qgslayertreeview.h"
 #include "qgslayertreeviewdefaultactions.h"
 #include "qgisapp.h"
@@ -30,10 +30,6 @@
 #include "qgsrubberband.h"
 #include "qgsvectorlayer.h"
 #include "qgsapplication.h"
-#include "qgsdockablewidgethelper.h"
-#include "qgsprojectviewsettings.h"
-#include "canvas/qgsappcanvasfiltering.h"
-
 #include <QMessageBox>
 #include <QMenu>
 #include <QToolBar>
@@ -41,28 +37,26 @@
 #include <QRadioButton>
 
 
-QgsMapCanvasDockWidget::QgsMapCanvasDockWidget( const QString &name, QWidget *parent, bool isDocked )
-  : QWidget( parent )
-  , mCanvasName( name )
+QgsMapCanvasDockWidget::QgsMapCanvasDockWidget( const QString &name, QWidget *parent )
+  : QgsDockWidget( parent )
 {
   setupUi( this );
   setAttribute( Qt::WA_DeleteOnClose );
 
-  layout()->setContentsMargins( 0, 0, 0, 0 );
-  qgis::down_cast< QVBoxLayout * >( layout() )->setSpacing( 0 );
+  mContents->layout()->setContentsMargins( 0, 0, 0, 0 );
+  static_cast< QVBoxLayout * >( mContents->layout() )->setSpacing( 0 );
 
-  setWindowTitle( mCanvasName );
+  setWindowTitle( name );
   mToolbar->setIconSize( QgisApp::instance()->iconSize( true ) );
 
   mMapCanvas = new QgsMapCanvas( this );
-  mMapCanvas->setFlags( Qgis::MapCanvasFlag::ShowMainAnnotationLayer );
   mXyMarker = new QgsVertexMarker( mMapCanvas );
   mXyMarker->setIconType( QgsVertexMarker::ICON_CIRCLE );
   mXyMarker->setIconSize( 6 );
   mXyMarker->setColor( QColor( 30, 30, 30, 225 ) );
   mXyMarker->setFillColor( QColor( 255, 255, 255, 225 ) );
 
-  mExtentRubberBand = new QgsRubberBand( mMapCanvas, Qgis::GeometryType::Polygon );
+  mExtentRubberBand = new QgsRubberBand( mMapCanvas, QgsWkbTypes::PolygonGeometry );
   mExtentRubberBand->setStrokeColor( Qt::red );
   mExtentRubberBand->setSecondaryStrokeColor( QColor( 255, 255, 255, 225 ) );
   mExtentRubberBand->setFillColor( Qt::transparent );
@@ -113,15 +107,9 @@ QgsMapCanvasDockWidget::QgsMapCanvasDockWidget( const QString &name, QWidget *pa
   settingsMenu->addAction( mActionShowCursor );
   settingsMenu->addAction( mActionShowExtent );
   settingsMenu->addAction( mActionShowLabels );
-  settingsMenu->addAction( mActionElevationController );
   settingsMenu->addSeparator();
   settingsMenu->addAction( mActionSetCrs );
   settingsMenu->addAction( mActionRename );
-
-  if ( QgisApp *app = QgisApp::instance() )
-  {
-    app->canvasFiltering()->setupElevationControllerAction( mActionElevationController, mMapCanvas );
-  }
 
   connect( settingsMenu, &QMenu::aboutToShow, this, &QgsMapCanvasDockWidget::settingsMenuAboutToShow );
 
@@ -253,25 +241,6 @@ QgsMapCanvasDockWidget::QgsMapCanvasDockWidget( const QString &name, QWidget *pa
   } );
 
   connect( QgsProject::instance()->mapThemeCollection(), &QgsMapThemeCollection::mapThemeRenamed, this, &QgsMapCanvasDockWidget::currentMapThemeRenamed );
-
-  mDockableWidgetHelper = new QgsDockableWidgetHelper( isDocked, mCanvasName, this, QgisApp::instance(), Qt::RightDockWidgetArea );
-  QToolButton *toggleButton = mDockableWidgetHelper->createDockUndockToolButton();
-  toggleButton->setToolTip( tr( "Dock 2D Map View" ) );
-  mToolbar->addWidget( toggleButton );
-  connect( mDockableWidgetHelper, &QgsDockableWidgetHelper::closed, this, [ = ]()
-  {
-    close();
-  } );
-}
-
-QgsMapCanvasDockWidget::~QgsMapCanvasDockWidget()
-{
-  delete mDockableWidgetHelper;
-}
-
-QgsDockableWidgetHelper *QgsMapCanvasDockWidget::dockableWidgetHelper()
-{
-  return mDockableWidgetHelper;
 }
 
 void QgsMapCanvasDockWidget::setMainCanvas( QgsMapCanvas *canvas )
@@ -298,12 +267,6 @@ void QgsMapCanvasDockWidget::setMainCanvas( QgsMapCanvas *canvas )
 QgsMapCanvas *QgsMapCanvasDockWidget::mapCanvas()
 {
   return mMapCanvas;
-}
-
-void QgsMapCanvasDockWidget::setCanvasName( const QString &name )
-{
-  mCanvasName = name;
-  mDockableWidgetHelper->setWindowTitle( name );
 }
 
 void QgsMapCanvasDockWidget::setViewCenterSynchronized( bool enabled )
@@ -600,17 +563,6 @@ QgsMapSettingsAction::QgsMapSettingsAction( QWidget *parent )
   gLayout->addWidget( label, 2, 0 );
 
   mScaleCombo = new QgsScaleComboBox();
-  // use either global scales or project scales
-  if ( QgsProject::instance()->viewSettings()->useProjectScales() )
-  {
-    mScaleCombo->setPredefinedScales( QgsProject::instance()->viewSettings()->mapScales() );
-  }
-  else
-  {
-    // use global scales
-    mScaleCombo->updateScales();
-  }
-
   gLayout->addWidget( mScaleCombo, 2, 1 );
 
   mRotationWidget = new QgsDoubleSpinBox();

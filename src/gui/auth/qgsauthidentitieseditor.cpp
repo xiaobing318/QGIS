@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgsauthidentitieseditor.h"
-#include "moc_qgsauthidentitieseditor.cpp"
 #include "ui_qgsauthidentitieseditor.h"
 
 #include <QMenu>
@@ -50,8 +49,8 @@ QgsAuthIdentitiesEditor::QgsAuthIdentitiesEditor( QWidget *parent )
     connect( btnInfoIdentity, &QToolButton::clicked, this, &QgsAuthIdentitiesEditor::btnInfoIdentity_clicked );
     connect( btnGroupByOrg, &QToolButton::toggled, this, &QgsAuthIdentitiesEditor::btnGroupByOrg_toggled );
 
-    connect( QgsApplication::authManager(), &QgsAuthManager::messageLog,
-             this, &QgsAuthIdentitiesEditor::authMessageLog );
+    connect( QgsApplication::authManager(), &QgsAuthManager::messageOut,
+             this, &QgsAuthIdentitiesEditor::authMessageOut );
 
     connect( QgsApplication::authManager(), &QgsAuthManager::authDatabaseChanged,
              this, &QgsAuthIdentitiesEditor::refreshIdentitiesView );
@@ -229,7 +228,7 @@ void QgsAuthIdentitiesEditor::showCertInfo( QTreeWidgetItem *item )
 
   if ( !QgsApplication::authManager()->existsCertIdentity( digest ) )
   {
-    QgsDebugError( QStringLiteral( "Certificate identity does not exist in database" ) );
+    QgsDebugMsg( QStringLiteral( "Certificate identity does not exist in database" ) );
     return;
   }
 
@@ -321,7 +320,7 @@ void QgsAuthIdentitiesEditor::btnRemoveIdentity_clicked()
 
   if ( !item )
   {
-    QgsDebugMsgLevel( QStringLiteral( "Current tree widget item not set" ), 2 );
+    QgsDebugMsg( QStringLiteral( "Current tree widget item not set" ) );
     return;
   }
 
@@ -336,7 +335,7 @@ void QgsAuthIdentitiesEditor::btnRemoveIdentity_clicked()
 
   if ( !QgsApplication::authManager()->existsCertIdentity( digest ) )
   {
-    QgsDebugError( QStringLiteral( "Certificate identity does not exist in database" ) );
+    QgsDebugMsg( QStringLiteral( "Certificate identity does not exist in database" ) );
     return;
   }
 
@@ -375,16 +374,17 @@ void QgsAuthIdentitiesEditor::btnGroupByOrg_toggled( bool checked )
 {
   if ( !QgsApplication::authManager()->storeAuthSetting( QStringLiteral( "identitiessortby" ), QVariant( checked ) ) )
   {
-    authMessageLog( QObject::tr( "Could not store sort by preference." ),
+    authMessageOut( QObject::tr( "Could not store sort by preference." ),
                     QObject::tr( "Authentication Identities" ),
-                    Qgis::MessageLevel::Warning );
+                    QgsAuthManager::WARNING );
   }
   populateIdentitiesView();
 }
 
-void QgsAuthIdentitiesEditor::authMessageLog( const QString &message, const QString &authtag, Qgis::MessageLevel level )
+void QgsAuthIdentitiesEditor::authMessageOut( const QString &message, const QString &authtag, QgsAuthManager::MessageLevel level )
 {
-  messageBar()->pushMessage( authtag, message, level, 7 );
+  const int levelint = static_cast<int>( level );
+  messageBar()->pushMessage( authtag, message, ( Qgis::MessageLevel )levelint, 7 );
 }
 
 void QgsAuthIdentitiesEditor::showEvent( QShowEvent *e )

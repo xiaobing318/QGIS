@@ -24,14 +24,11 @@
  ***************************************************************************/
 """
 
-from pathlib import Path
-
-from qgis.PyQt import uic
 from qgis.gui import QgsAuthConfigSelect
 from qgis.PyQt.QtWidgets import QDialog, QDialogButtonBox, QVBoxLayout
 from qgis.PyQt.QtCore import Qt
 
-Ui_QgsPluginInstallerRepositoryDetailsDialogBase, _ = uic.loadUiType(Path(__file__).parent / 'qgsplugininstallerrepositorybase.ui')
+from .ui_qgsplugininstallerrepositorybase import Ui_QgsPluginInstallerRepositoryDetailsDialogBase
 
 
 class QgsPluginInstallerRepositoryDialog(QDialog, Ui_QgsPluginInstallerRepositoryDetailsDialogBase):
@@ -50,21 +47,21 @@ class QgsPluginInstallerRepositoryDialog(QDialog, Ui_QgsPluginInstallerRepositor
     # ----------------------------------------- #
     def textChanged(self, string):
         enable = (len(self.editName.text()) > 0 and len(self.editURL.text()) > 0)
-        self.buttonBox.button(QDialogButtonBox.StandardButton.Ok).setEnabled(enable)
+        self.buttonBox.button(QDialogButtonBox.Ok).setEnabled(enable)
 
     def editAuthCfgId(self):
         dlg = QDialog(self)
-        dlg.setWindowModality(Qt.WindowModality.WindowModal)
+        dlg.setWindowModality(Qt.WindowModal)
         layout = QVBoxLayout()
         selector = QgsAuthConfigSelect(self)
         if self.editAuthCfg.text():
             selector.setConfigId(self.editAuthCfg.text())
         layout.addWidget(selector)
-        buttonBox = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Close)
+        buttonBox = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Close)
         buttonBox.accepted.connect(dlg.accept)
         buttonBox.rejected.connect(dlg.reject)
         layout.addWidget(buttonBox)
         dlg.setLayout(layout)
-        if dlg.exec():
+        if dlg.exec_():
             self.editAuthCfg.setText(selector.configId())
         del dlg

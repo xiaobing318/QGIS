@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/metadata/qgslayermetadatavalidator.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -15,6 +15,8 @@ class QgsAbstractMetadataBaseValidator
 {
 %Docstring(signature="appended")
 Abstract base class for metadata validators.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -26,6 +28,8 @@ Abstract base class for metadata validators.
 {
 %Docstring(signature="appended")
 Contains the parameters describing a metadata validation failure.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -41,7 +45,9 @@ Constructor for ValidationResult.
         QString section;
 
 
-        QVariant identifier() const /PyName=_identifier/;
+%Property( name = identifier, get = _identifier, set = _setIdentifier )
+
+        QVariant _identifier() const;
 %Docstring
 Returns the optional identifier for the failed metadata item.
 For instance, in list type metadata elements this
@@ -49,7 +55,7 @@ will be set to the list index of the failed metadata
 item.
 %End
 
-        void setIdentifier( const QVariant &identifier );
+        void _setIdentifier( QVariant identifier );
 %Docstring
 Sets the optional ``identifier`` for the failed metadata item.
 For instance, in list type metadata elements this
@@ -89,6 +95,9 @@ A validator for the native base QGIS metadata schema definition.
   public:
 
     QgsNativeMetadataBaseValidator();
+%Docstring
+Constructor for QgsNativeMetadataBaseValidator.
+%End
 
     virtual bool validate( const QgsAbstractMetadataBase *metadata, QList< QgsAbstractMetadataBaseValidator::ValidationResult > &results /Out/ ) const;
 
@@ -101,13 +110,19 @@ class QgsNativeMetadataValidator : QgsNativeMetadataBaseValidator
 {
 %Docstring(signature="appended")
 A validator for the native QGIS layer metadata schema definition.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
 #include "qgslayermetadatavalidator.h"
 %End
   public:
+
     QgsNativeMetadataValidator();
+%Docstring
+Constructor for QgsNativeMetadataValidator.
+%End
 
     virtual bool validate( const QgsAbstractMetadataBase *metadata, QList< QgsAbstractMetadataBaseValidator::ValidationResult > &results /Out/ ) const;
 
@@ -129,6 +144,9 @@ A validator for the native QGIS project metadata schema definition.
   public:
 
     QgsNativeProjectMetadataValidator();
+%Docstring
+Constructor for QgsNativeProjectMetadataValidator.
+%End
 
     virtual bool validate( const QgsAbstractMetadataBase *metadata, QList< QgsAbstractMetadataBaseValidator::ValidationResult > &results /Out/ ) const;
 
@@ -140,5 +158,5 @@ A validator for the native QGIS project metadata schema definition.
  *                                                                      *
  * src/core/metadata/qgslayermetadatavalidator.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

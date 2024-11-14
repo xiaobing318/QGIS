@@ -14,16 +14,15 @@
  ***************************************************************************/
 
 #include "qgsdecorationtitledialog.h"
-#include "moc_qgsdecorationtitledialog.cpp"
 #include "qgsdecorationtitle.h"
 
 #include "qgisapp.h"
+#include "qgsexpression.h"
 #include "qgsexpressionbuilderdialog.h"
 #include "qgsexpressioncontext.h"
 #include "qgshelp.h"
 #include "qgsmapcanvas.h"
 #include "qgsgui.h"
-#include "qgsexpressionfinder.h"
 
 #include <QColorDialog>
 #include <QColor>
@@ -83,12 +82,7 @@ QgsDecorationTitleDialog::QgsDecorationTitleDialog( QgsDecorationTitle &deco, QW
   spnHorizontal->setClearValue( 0 );
   spnHorizontal->setValue( mDeco.mMarginHorizontal );
   spnVertical->setValue( mDeco.mMarginVertical );
-  wgtUnitSelection->setUnits(
-  {
-    Qgis::RenderUnit::Millimeters,
-    Qgis::RenderUnit::Percentage,
-    Qgis::RenderUnit::Pixels
-  } );
+  wgtUnitSelection->setUnits( QgsUnitTypes::RenderUnitList() << QgsUnitTypes::RenderMillimeters << QgsUnitTypes::RenderPercentage << QgsUnitTypes::RenderPixels );
   wgtUnitSelection->setUnit( mDeco.mMarginUnit );
 
   // font settings
@@ -110,13 +104,20 @@ void QgsDecorationTitleDialog::buttonBox_rejected()
 
 void QgsDecorationTitleDialog::mInsertExpressionButton_clicked()
 {
-  QString expression = QgsExpressionFinder::findAndSelectActiveExpression( txtTitleText );
-  QgsExpressionBuilderDialog exprDlg( nullptr, expression, this, QStringLiteral( "generic" ), QgisApp::instance()->mapCanvas()->mapSettings().expressionContext() );
+  QString selText = txtTitleText->textCursor().selectedText();
+
+  // edit the selected expression if there's one
+  if ( selText.startsWith( QLatin1String( "[%" ) ) && selText.endsWith( QLatin1String( "%]" ) ) )
+    selText = selText.mid( 2, selText.size() - 4 );
+
+  selText = selText.replace( QChar( 0x2029 ), QChar( '\n' ) );
+
+  QgsExpressionBuilderDialog exprDlg( nullptr, selText, this, QStringLiteral( "generic" ), QgisApp::instance()->mapCanvas()->mapSettings().expressionContext() );
 
   exprDlg.setWindowTitle( QObject::tr( "Insert Expression" ) );
   if ( exprDlg.exec() == QDialog::Accepted )
   {
-    expression = exprDlg.expressionText().trimmed();
+    const QString expression = exprDlg.expressionText();
     if ( !expression.isEmpty() )
     {
       txtTitleText->insertPlainText( "[%" + expression + "%]" );

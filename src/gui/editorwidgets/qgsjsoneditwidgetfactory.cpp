@@ -35,11 +35,11 @@ QgsEditorConfigWidget *QgsJsonEditWidgetFactory::configWidget( QgsVectorLayer *v
 
 unsigned int QgsJsonEditWidgetFactory::fieldScore( const QgsVectorLayer *vl, int fieldIdx ) const
 {
-  const QMetaType::Type type = vl->fields().field( fieldIdx ).type();
+  const QVariant::Type type = vl->fields().field( fieldIdx ).type();
 
   switch ( type )
   {
-    case QMetaType::Type::QVariantMap:
+    case QVariant::Map:
     {
       const QString typeName = vl->fields().field( fieldIdx ).typeName();
       if ( typeName == QLatin1String( "json" ) || typeName == QLatin1String( "jsonb" ) )
@@ -47,7 +47,7 @@ unsigned int QgsJsonEditWidgetFactory::fieldScore( const QgsVectorLayer *vl, int
       return 15;
     }
     break;
-    case QMetaType::Type::QVariantList:
+    case QVariant::List:
       return 10;
       break;
     default:

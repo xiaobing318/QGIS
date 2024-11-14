@@ -57,7 +57,7 @@ class GUI_EXPORT QgsLabelEngineConfigWidget : public QgsPanelWidget, private Ui:
     QgsMessageBar *mMessageBar = nullptr;
     QMenu *mWidgetMenu = nullptr;
 
-    Qgis::LabelPlacementEngineVersion mPreviousEngineVersion = Qgis::LabelPlacementEngineVersion::Version2;
+    QgsLabelingEngineSettings::PlacementEngineVersion mPreviousEngineVersion = QgsLabelingEngineSettings::PlacementEngineVersion2;
 };
 
 /**

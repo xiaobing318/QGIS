@@ -24,7 +24,6 @@
 
 class QgsVectorLayer;
 class QgsPropertyOverrideButton;
-class QgsProjectionSelectionWidget;
 
 class QgsVectorElevationPropertiesWidget : public QgsMapLayerConfigWidget, private Ui::QgsVectorElevationPropertiesWidgetBase, private QgsExpressionContextGenerator
 {
@@ -33,7 +32,7 @@ class QgsVectorElevationPropertiesWidget : public QgsMapLayerConfigWidget, priva
 
     QgsVectorElevationPropertiesWidget( QgsVectorLayer *layer, QgsMapCanvas *canvas, QWidget *parent );
 
-    void syncToLayer( QgsMapLayer *layer ) final;
+    void syncToLayer( QgsMapLayer *layer ) override;
 
     QgsExpressionContext createExpressionContext() const override;
 
@@ -47,7 +46,6 @@ class QgsVectorElevationPropertiesWidget : public QgsMapLayerConfigWidget, priva
     void bindingChanged();
     void toggleSymbolWidgets();
     void updateProperty();
-    void updateVerticalCrsOptions();
 
   private:
 
@@ -69,9 +67,6 @@ class QgsVectorElevationPropertiesWidget : public QgsMapLayerConfigWidget, priva
      * Updates a specific property override \a button to reflect the widgets's current properties.
      */
     void updateDataDefinedButton( QgsPropertyOverrideButton *button );
-
-    QgsProjectionSelectionWidget *mVerticalCrsWidget = nullptr;
-
     QgsPropertyCollection mPropertyCollection;
 
     QgsVectorLayer *mLayer = nullptr;

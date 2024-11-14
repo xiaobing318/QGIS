@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/labeling/qgspallabeling.h                                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -26,8 +26,32 @@ Contains settings for how a map layer will be labeled.
     ~QgsPalLayerSettings();
 
 
-    enum class Property
-      {
+
+    enum LinePlacementFlags
+    {
+      OnLine,
+      AboveLine,
+      BelowLine,
+      MapOrientation,
+    };
+
+    enum DirectionSymbols
+    {
+      SymbolLeftRight,
+      SymbolAbove,
+      SymbolBelow
+    };
+
+
+    enum ObstacleType
+    {
+      PolygonInterior,
+      PolygonBoundary,
+      PolygonWhole
+    };
+
+    enum Property
+    {
       // text style
       Size,
       Bold,
@@ -52,7 +76,6 @@ Contains settings for how a map layer will be labeled.
       MultiLineHeight,
       MultiLineAlignment,
       TextOrientation,
-      TabStopDistance,
       DirSymbDraw,
       DirSymbLeft,
       DirSymbRight,
@@ -122,7 +145,6 @@ Contains settings for how a map layer will be labeled.
       OffsetXY,
       OffsetUnits,
       LabelDistance,
-      MaximumDistance,
       DistanceUnits,
       OffsetRotation,
       CurvedCharAngleInOut,
@@ -168,6 +190,7 @@ Contains settings for how a map layer will be labeled.
       Show,
       AlwaysShow
     };
+
 
     bool prepare( QgsRenderContext &context, QSet<QString> &attributeNames /In,Out/, const QgsFields &fields, const QgsMapSettings &mapSettings, const QgsCoordinateReferenceSystem &crs );
 %Docstring
@@ -219,6 +242,8 @@ such as blend modes, which require output in raster formats to be fully respecte
     static const QgsPropertiesDefinition &propertyDefinitions();
 %Docstring
 Returns the labeling property definitions.
+
+.. versionadded:: 3.0
 %End
 
     bool drawLabels;
@@ -256,7 +281,7 @@ Returns the :py:class:`QgsExpression` for this label settings. May be ``None`` i
 
     Qgis::LabelPlacement placement;
 
-    Qgis::LabelPolygonPlacementFlags polygonPlacementFlags() const;
+    QgsLabeling::PolygonPlacementFlags polygonPlacementFlags() const;
 %Docstring
 Returns the polygon placement flags, which dictate how polygon labels can be placed.
 
@@ -265,7 +290,7 @@ Returns the polygon placement flags, which dictate how polygon labels can be pla
 .. versionadded:: 3.14
 %End
 
-    void setPolygonPlacementFlags( Qgis::LabelPolygonPlacementFlags flags );
+    void setPolygonPlacementFlags( QgsLabeling::PolygonPlacementFlags flags );
 %Docstring
 Sets the polygon placement ``flags``, which dictate how polygon labels can be placed.
 
@@ -278,11 +303,12 @@ Sets the polygon placement ``flags``, which dictate how polygon labels can be pl
 
     bool centroidInside;
 
+
     bool fitInPolygonOnly;
 
     double dist;
 
-    Qgis::RenderUnit distUnits;
+    QgsUnitTypes::RenderUnit distUnits;
 
     QgsMapUnitScale distMapUnitScale;
 
@@ -290,15 +316,17 @@ Sets the polygon placement ``flags``, which dictate how polygon labels can be pl
 
     double repeatDistance;
 
-    Qgis::RenderUnit repeatDistanceUnit;
+    QgsUnitTypes::RenderUnit repeatDistanceUnit;
 
     QgsMapUnitScale repeatDistanceMapUnitScale;
+
+    Qgis::LabelQuadrantPosition quadOffset;
 
     double xOffset;
 
     double yOffset;
 
-    Qgis::RenderUnit offsetUnits;
+    QgsUnitTypes::RenderUnit offsetUnits;
 
     QgsMapUnitScale labelOffsetMapUnitScale;
 
@@ -306,7 +334,7 @@ Sets the polygon placement ``flags``, which dictate how polygon labels can be pl
 
     bool preserveRotation;
 
-    Qgis::AngleUnit rotationUnit() const;
+    QgsUnitTypes::AngleUnit rotationUnit() const;
 %Docstring
 Unit for rotation of labels.
 
@@ -315,7 +343,7 @@ Unit for rotation of labels.
 .. versionadded:: 3.22
 %End
 
-    void setRotationUnit( Qgis::AngleUnit angleUnit );
+    void setRotationUnit( QgsUnitTypes::AngleUnit angleUnit );
 %Docstring
 Set unit for rotation of labels.
 
@@ -347,15 +375,70 @@ Set unit for rotation of labels.
 
     bool labelPerPart;
 
+
+%Property( name = limitNumLabels, get = _limitNumLabels, set = _setLimitNumLabels )
+%Property( name = maxNumLabels, get = _maxNumLabels, set = _setMaxNumLabels )
+%Property( name = minFeatureSize, get = _minFeatureSize, set = _setMinFeatureSize )
+%Property( name = obstacle, get = _getIsObstacle, set = _setIsObstacle )
+%Property( name = obstacleFactor, get = _getObstacleFactor, set = _setObstacleFactor )
+%Property( name = obstacleType, get = _getObstacleType, set = _setObstacleType )
+%Property( name = placementFlags, get = _getLinePlacementFlags, set = _setLinePlacementFlags )
+%Property( name = mergeLines, get = _getMergeLines, set = _setMergeLines )
+%Property( name = addDirectionSymbol, get = _getAddDirectionSymbol, set = _setAddDirectionSymbol )
+%Property( name = leftDirectionSymbol, get = _getLeftDirectionSymbol, set = _setLeftDirectionSymbol )
+%Property( name = rightDirectionSymbol, get = _getRightDirectionSymbol, set = _setRightDirectionSymbol )
+%Property( name = reverseDirectionSymbol, get = _getReverseDirectionSymbol, set = _setReverseDirectionSymbol )
+%Property( name = placeDirectionSymbol, get = _getPlaceDirectionSymbol, set = _setPlaceDirectionSymbol )
+
+%Property( name = overrunDistance, get = _getOverrunDistance, set = _setOverrunDistance )
+%Property( name = overrunDistanceUnit, get = _getOverrunDistanceUnit, set = _setOverrunDistanceUnit )
+%Property( name = overrunDistanceMapUnitScale, get = _getOverrunDistanceMapUnitScale, set = _setOverrunDistanceMapUnitScale )
+%Property( name = displayAll, get = _getDisplayAll, set = _setDisplayAll )
+
+    bool _limitNumLabels() const;
+    void _setLimitNumLabels( bool limit );
+    int _maxNumLabels() const;
+    void _setMaxNumLabels( int max );
+    double _minFeatureSize() const;
+    void _setMinFeatureSize( double size );
+    bool _getIsObstacle() const;
+    void _setIsObstacle( bool obstacle );
+    double _getObstacleFactor() const;
+    void _setObstacleFactor( double factor );
+    ObstacleType _getObstacleType() const;
+    void _setObstacleType( ObstacleType type );
+    unsigned int _getLinePlacementFlags() const;
+    void _setLinePlacementFlags( unsigned int flags );
+    bool _getMergeLines() const;
+    void _setMergeLines( bool merge );
+    bool _getAddDirectionSymbol() const;
+    void _setAddDirectionSymbol( bool add );
+    QString _getLeftDirectionSymbol() const;
+    void _setLeftDirectionSymbol( const QString &symbol );
+    QString _getRightDirectionSymbol() const;
+    void _setRightDirectionSymbol( const QString &symbol );
+    bool _getReverseDirectionSymbol() const;
+    void _setReverseDirectionSymbol( bool reverse );
+    DirectionSymbols _getPlaceDirectionSymbol() const;
+    void _setPlaceDirectionSymbol( DirectionSymbols placement );
+    double _getOverrunDistance() const;
+    void _setOverrunDistance( double distance );
+    QgsUnitTypes::RenderUnit _getOverrunDistanceUnit() const;
+    void _setOverrunDistanceUnit( QgsUnitTypes::RenderUnit unit );
+    QgsMapUnitScale _getOverrunDistanceMapUnitScale() const;
+    void _setOverrunDistanceMapUnitScale( const QgsMapUnitScale &scale );
+    bool _getDisplayAll() const;
+    void _setDisplayAll( bool display );
+
     double zIndex;
 
     QString geometryGenerator;
 
-    Qgis::GeometryType geometryGeneratorType;
+    QgsWkbTypes::GeometryType geometryGeneratorType;
 
     bool geometryGeneratorEnabled;
 
-    Qgis::GeometryType layerType;
+    QgsWkbTypes::GeometryType layerType;
 
     void setLegendString( const QString &legendString );
 %Docstring
@@ -371,22 +454,12 @@ legendString
 :return: the string to show in the legend and in the preview icon
 %End
 
- void calculateLabelSize( const QFontMetricsF *fm, const QString &text, double &labelX, double &labelY, const QgsFeature *f = 0, QgsRenderContext *context = 0, double *rotatedLabelX /Out/ = 0, double *rotatedLabelY /Out/ = 0 ) /Deprecated/;
+    void calculateLabelSize( const QFontMetricsF *fm, const QString &text, double &labelX, double &labelY, const QgsFeature *f = 0, QgsRenderContext *context = 0, double *rotatedLabelX /Out/ = 0, double *rotatedLabelY /Out/ = 0 );
 %Docstring
 Calculates the space required to render the provided ``text`` in map units.
 Results will be written to ``labelX`` and ``labelY``.
-
 If the text orientation is set to rotation-based, the spaced taken to render
-vertically oriented text will be written to ``rotatedLabelX`` and ``rotatedLabelY``.
-
-.. warning::
-
-   This method only returns an approximate label size, and eg will not consider
-   HTML formatted text correctly.
-
-.. deprecated:: 3.40
-
-   Will be removed from public API in QGIS 4.0.
+vertically oriented text will be written to ``rotatedLabelX`` and ``rotatedLabelY`` .
 %End
 
     void registerFeature( const QgsFeature &f, QgsRenderContext &context );
@@ -407,11 +480,15 @@ Registers a feature for labeling.
     void readXml( const QDomElement &elem, const QgsReadWriteContext &context );
 %Docstring
 Read settings from a DOM element
+
+.. versionadded:: 2.12
 %End
 
     QDomElement writeXml( QDomDocument &doc, const QgsReadWriteContext &context ) const;
 %Docstring
 Write settings into a DOM element
+
+.. versionadded:: 2.12
 %End
 
     QgsPropertyCollection &dataDefinedProperties();
@@ -419,6 +496,8 @@ Write settings into a DOM element
 Returns a reference to the label's property collection, used for data defined overrides.
 
 .. seealso:: :py:func:`setDataDefinedProperties`
+
+.. versionadded:: 3.0
 %End
 
 
@@ -431,6 +510,8 @@ Sets the label's property collection, used for data defined overrides.
 .. seealso:: :py:func:`dataDefinedProperties`
 
 .. seealso:: Property
+
+.. versionadded:: 3.0
 %End
 
     const QgsTextFormat &format() const;
@@ -438,6 +519,8 @@ Sets the label's property collection, used for data defined overrides.
 Returns the label text formatting settings, e.g., font settings, buffer settings, etc.
 
 .. seealso:: :py:func:`setFormat`
+
+.. versionadded:: 3.0
 %End
 
     void setFormat( const QgsTextFormat &format );
@@ -447,6 +530,8 @@ Sets the label text formatting settings, e.g., font settings, buffer settings, e
 :param format: label text format
 
 .. seealso:: :py:func:`format`
+
+.. versionadded:: 3.0
 %End
 
     QgsCallout *callout() const;
@@ -492,29 +577,6 @@ a "perimeter" style mode).
 .. seealso:: :py:func:`lineSettings`
 
 .. versionadded:: 3.16
-%End
-
-
-    QgsLabelPointSettings &pointSettings();
-%Docstring
-Returns the label point settings, which contain settings related to how the label
-engine places and formats labels for point features, or polygon features which are
-labeled in the "around" or "over" centroid placement modes.
-
-.. seealso:: :py:func:`setPointSettings`
-
-.. versionadded:: 3.38
-%End
-
-    void setPointSettings( const QgsLabelPointSettings &settings );
-%Docstring
-Sets the label point ``settings``, which contain settings related to how the label
-engine places and formats labels for point features, or polygon features which are
-labeled in the "around" or "over" centroid placement modes.
-
-.. seealso:: :py:func:`pointSettings`
-
-.. versionadded:: 3.38
 %End
 
 
@@ -574,7 +636,7 @@ Sets the label placement ``settings``.
 .. versionadded:: 3.26
 %End
 
-    static QPixmap labelSettingsPreviewPixmap( const QgsPalLayerSettings &settings, QSize size, const QString &previewText = QString(), int padding = 0, const QgsScreenProperties &screen = QgsScreenProperties() );
+    static QPixmap labelSettingsPreviewPixmap( const QgsPalLayerSettings &settings, QSize size, const QString &previewText = QString(), int padding = 0 );
 %Docstring
 Returns a pixmap preview for label ``settings``.
 
@@ -582,7 +644,6 @@ Returns a pixmap preview for label ``settings``.
 :param size: target pixmap size
 :param previewText: text to render in preview, or empty for default text
 :param padding: space between icon edge and color ramp
-:param screen: can be used to specify the destination screen properties for the icon. This allows the icon to be generated using the correct DPI and device pixel ratio for the target screen (since QGIS 3.32)
 
 .. versionadded:: 3.10
 %End
@@ -650,6 +711,8 @@ PAL labeling utilities.
     static bool staticWillUseLayer( const QgsMapLayer *layer );
 %Docstring
 Called to find out whether a specified ``layer`` is used for labeling.
+
+.. versionadded:: 2.4
 %End
 
 
@@ -664,6 +727,8 @@ Prepares a geometry for registration with PAL. Handles reprojection, rotation, c
 :param mergeLines: ``True`` if touching lines from this layer will be merged and treated as single features during labeling
 
 :return: prepared geometry
+
+.. versionadded:: 2.9
 %End
 
     static bool geometryRequiresPreparation( const QgsGeometry &geometry, QgsRenderContext &context, const QgsCoordinateTransform &ct, const QgsGeometry &clipGeometry = QgsGeometry(), bool mergeLines = false );
@@ -677,6 +742,8 @@ Checks whether a geometry requires preparation before registration with PAL
 :param mergeLines: ``True`` if touching lines from this layer will be merged and treated as single features during labeling
 
 :return: ``True`` if geometry requires preparation
+
+.. versionadded:: 2.9
 %End
 
     static QStringList splitToLines( const QString &text, const QString &wrapCharacter, int autoWrapLength = 0, bool useMaxLineLengthWhenAutoWrapping = true );
@@ -689,6 +756,8 @@ wrap text to (automatic wrapping is disabled if ``autoWrapLength`` is 0). This a
 after processing wrapping using ``wrapCharacter``. When auto wrapping is enabled, the ``useMaxLineLengthWhenAutoWrapping``
 argument controls whether the lines should be wrapped to an ideal maximum of ``autoWrapLength`` characters, or
 if ``False`` then the lines are wrapped to an ideal minimum length of ``autoWrapLength`` characters.
+
+.. versionadded:: 2.9
 %End
 
     static QStringList splitToGraphemes( const QString &text );
@@ -700,6 +769,8 @@ allowed to be split apart (e.g., Arabic and Indic based scripts)
 :param text: string to split
 
 :return: list of graphemes
+
+.. versionadded:: 2.10
 %End
 
 };
@@ -710,5 +781,5 @@ allowed to be split apart (e.g., Arabic and Indic based scripts)
  *                                                                      *
  * src/core/labeling/qgspallabeling.h                                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

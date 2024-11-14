@@ -53,6 +53,9 @@ namespace QgsWms
       };
       Q_DECLARE_FLAGS( Flags, Flag )
 
+      /**
+       * Destructor for QgsWmsRenderContext.
+       */
       ~QgsWmsRenderContext();
 
       /**
@@ -267,18 +270,6 @@ namespace QgsWms
        */
       bool isExternalLayer( const QString &name ) const;
 
-      /**
-       * Sets the response feedback.
-       * \since QGIS 3.36
-       */
-      void setSocketFeedback( QgsFeedback *feedback );
-
-      /**
-       * Returns the response feedback if any
-       * \since QGIS 3.36
-       */
-      QgsFeedback *socketFeedback() const;
-
     private:
       void initNicknameLayers();
       void initRestrictedLayers();
@@ -289,17 +280,7 @@ namespace QgsWms
       void searchLayersToRenderStyle();
       void removeUnwantedLayers();
 
-      /**
-       * Adds the layer to the list of layers to be rendered if the layer is readable
-       * Returns true if the layer is readable, false otherwise
-       */
-      bool addLayerToRender( QgsMapLayer *layer );
-
-      /**
-       * Check layer read permissions
-       * Returns true if the layer is readable, false otherwise
-       */
-      bool checkLayerReadPermissions( QgsMapLayer *layer ) const;
+      void checkLayerReadPermissions();
 
       bool layerScaleVisibility( const QString &name ) const;
 
@@ -325,8 +306,6 @@ namespace QgsWms
 
       // list for external layers
       QList<QgsMapLayer *> mExternalLayers;
-
-      QgsFeedback *mSocketFeedback = nullptr;
   };
 };
 

@@ -13,9 +13,12 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsinvertedpolygonrendererwidget.h"
-#include "moc_qgsinvertedpolygonrendererwidget.cpp"
 #include "qgsinvertedpolygonrenderer.h"
 #include "qgsrendererregistry.h"
+
+#include "qgssymbol.h"
+
+#include "qgslogger.h"
 #include "qgsvectorlayer.h"
 #include "qgsapplication.h"
 
@@ -32,10 +35,10 @@ QgsInvertedPolygonRendererWidget::QgsInvertedPolygonRendererWidget( QgsVectorLay
     return;
   }
 
-  const Qgis::WkbType type = QgsWkbTypes::singleType( QgsWkbTypes::flatType( layer->wkbType() ) );
+  const QgsWkbTypes::Type type = QgsWkbTypes::singleType( QgsWkbTypes::flatType( layer->wkbType() ) );
 
   // the renderer only applies to polygon vector layers
-  if ( type != Qgis::WkbType::Polygon && type != Qgis::WkbType::CurvePolygon )
+  if ( type != QgsWkbTypes::Polygon && type != QgsWkbTypes::CurvePolygon )
   {
     //setup blank dialog
     mRenderer.reset( nullptr );

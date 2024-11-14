@@ -3,7 +3,7 @@
  *                                                                      *
  * src/3d/materials/qgsphongmaterialsettings.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -20,6 +20,8 @@ with three color components: ambient, diffuse and specular.
 
    This is not considered stable API, and may change in future QGIS releases. It is
    exposed to the Python bindings as a tech preview only.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -28,6 +30,9 @@ with three color components: ambient, diffuse and specular.
   public:
 
     QgsPhongMaterialSettings();
+%Docstring
+Constructor for QgsPhongMaterialSettings.
+%End
 
     virtual QString type() const;
 
@@ -57,55 +62,16 @@ Returns diffuse color component
 %Docstring
 Returns specular color component
 %End
-    double shininess() const;
+    float shininess() const;
 %Docstring
 Returns shininess of the surface
 %End
 
-    double opacity() const;
+    float opacity() const;
 %Docstring
 Returns the opacity of the surface
 
 .. versionadded:: 3.26
-%End
-
-    double ambientCoefficient() const;
-%Docstring
-Returns the coefficient for the ambient color contribution (ie strength factor of the ambient color).
-
-.. seealso:: :py:func:`setAmbientCoefficient`
-
-.. seealso:: :py:func:`diffuseCoefficient`
-
-.. seealso:: :py:func:`specularCoefficient`
-
-.. versionadded:: 3.36
-%End
-
-    double diffuseCoefficient() const;
-%Docstring
-Returns the coefficient for the diffuse color contribution (ie strength factor of the diffuse color).
-
-.. seealso:: :py:func:`setDiffuseCoefficient`
-
-.. seealso:: :py:func:`ambientCoefficient`
-
-.. seealso:: :py:func:`specularCoefficient`
-
-.. versionadded:: 3.36
-%End
-
-    double specularCoefficient() const;
-%Docstring
-Returns the coefficient for the specular color contribution (ie strength factor of the specular color).
-
-.. seealso:: :py:func:`setSpecularCoefficient`
-
-.. seealso:: :py:func:`diffuseCoefficient`
-
-.. seealso:: :py:func:`ambientCoefficient`
-
-.. versionadded:: 3.36
 %End
 
     virtual QMap<QString, QString> toExportParameters() const;
@@ -123,56 +89,19 @@ Sets diffuse color component
 %Docstring
 Sets specular color component
 %End
-    void setShininess( double shininess );
+    void setShininess( float shininess );
 %Docstring
 Sets shininess of the surface
 %End
 
-    void setOpacity( double opacity );
+    void setOpacity( float opacity );
 %Docstring
 Sets opacity of the surface
 
 .. versionadded:: 3.26
 %End
 
-    void setAmbientCoefficient( double coefficient );
-%Docstring
-Sets the ``coefficient`` for the ambient color contribution (ie strength factor of the ambient color).
 
-.. seealso:: :py:func:`ambientCoefficient`
-
-.. seealso:: :py:func:`setDiffuseCoefficient`
-
-.. seealso:: :py:func:`setSpecularCoefficient`
-
-.. versionadded:: 3.36
-%End
-
-    void setDiffuseCoefficient( double coefficient );
-%Docstring
-Sets the ``coefficient`` for the diffuse color contribution (ie strength factor of the diffuse color).
-
-.. seealso:: :py:func:`diffuseCoefficient`
-
-.. seealso:: :py:func:`setAmbientCoefficient`
-
-.. seealso:: :py:func:`setSpecularCoefficient`
-
-.. versionadded:: 3.36
-%End
-
-    void setSpecularCoefficient( double coefficient );
-%Docstring
-Sets the ``coefficient`` for the specular color contribution (ie strength factor of the specular color).
-
-.. seealso:: :py:func:`specularCoefficient`
-
-.. seealso:: :py:func:`setDiffuseCoefficient`
-
-.. seealso:: :py:func:`setAmbientCoefficient`
-
-.. versionadded:: 3.36
-%End
 
     virtual void readXml( const QDomElement &elem, const QgsReadWriteContext &context );
 
@@ -190,5 +119,5 @@ Sets the ``coefficient`` for the specular color contribution (ie strength factor
  *                                                                      *
  * src/3d/materials/qgsphongmaterialsettings.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

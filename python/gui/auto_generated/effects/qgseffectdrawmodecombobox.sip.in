@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/effects/qgseffectdrawmodecombobox.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -13,6 +13,8 @@ class QgsEffectDrawModeComboBox : QComboBox
 {
 %Docstring(signature="appended")
 A combo box allowing selection of paint effect draw modes
+
+.. versionadded:: 2.9
 %End
 
 %TypeHeaderCode
@@ -43,5 +45,5 @@ Sets the currently selected draw mode for the combo box
  *                                                                      *
  * src/gui/effects/qgseffectdrawmodecombobox.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

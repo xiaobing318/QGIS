@@ -52,11 +52,6 @@ QString QgsUnionAlgorithm::shortHelpString() const
                         "for non-overlapping features, and attribute values from both layers for overlapping features." );
 }
 
-Qgis::ProcessingAlgorithmDocumentationFlags QgsUnionAlgorithm::documentationFlags() const
-{
-  return Qgis::ProcessingAlgorithmDocumentationFlag::RegeneratesPrimaryKey;
-}
-
 QgsProcessingAlgorithm *QgsUnionAlgorithm::createInstance() const
 {
   return new QgsUnionAlgorithm();
@@ -68,14 +63,14 @@ void QgsUnionAlgorithm::initAlgorithm( const QVariantMap & )
   addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "OVERLAY" ), QObject::tr( "Overlay layer" ), QList< int >(), QVariant(), true ) );
 
   std::unique_ptr< QgsProcessingParameterString > prefix = std::make_unique< QgsProcessingParameterString >( QStringLiteral( "OVERLAY_FIELDS_PREFIX" ), QObject::tr( "Overlay fields prefix" ), QString(), false, true );
-  prefix->setFlags( prefix->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  prefix->setFlags( prefix->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( prefix.release() );
 
   addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Union" ) ) );
 
   std::unique_ptr< QgsProcessingParameterNumber > gridSize = std::make_unique< QgsProcessingParameterNumber >( QStringLiteral( "GRID_SIZE" ),
-      QObject::tr( "Grid size" ), Qgis::ProcessingNumberParameterType::Double, QVariant(), true, 0 );
-  gridSize->setFlags( gridSize->flags() | Qgis::ProcessingParameterFlag::Advanced );
+      QObject::tr( "Grid size" ), QgsProcessingParameterNumber::Double, QVariant(), true, 0 );
+  gridSize->setFlags( gridSize->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( gridSize.release() );
 }
 
@@ -89,7 +84,7 @@ QVariantMap QgsUnionAlgorithm::processAlgorithm( const QVariantMap &parameters, 
   if ( parameters.value( QStringLiteral( "OVERLAY" ) ).isValid() && !sourceB )
     throw QgsProcessingException( invalidSourceError( parameters, QStringLiteral( "OVERLAY" ) ) );
 
-  const Qgis::WkbType geomType = QgsWkbTypes::multiType( sourceA->wkbType() );
+  const QgsWkbTypes::Type geomType = QgsWkbTypes::multiType( sourceA->wkbType() );
 
   const QString overlayFieldsPrefix = parameterAsString( parameters, QStringLiteral( "OVERLAY_FIELDS_PREFIX" ), context );
   const QgsFields fields = sourceB ? QgsProcessingUtils::combineFields( sourceA->fields(), sourceB->fields(), overlayFieldsPrefix ) : sourceA->fields();
@@ -130,8 +125,6 @@ QVariantMap QgsUnionAlgorithm::processAlgorithm( const QVariantMap &parameters, 
     return outputs;
 
   QgsOverlayUtils::difference( *sourceB, *sourceA, *sink, context, feedback, count, total, QgsOverlayUtils::OutputBA, geometryParameters );
-
-  sink->finalize();
 
   return outputs;
 }

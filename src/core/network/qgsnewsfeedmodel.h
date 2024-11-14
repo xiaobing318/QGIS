@@ -35,15 +35,10 @@ class CORE_EXPORT QgsNewsFeedModel : public QAbstractItemModel
     Q_OBJECT
   public:
 
-    // *INDENT-OFF*
-
     /**
      * Custom model roles.
-     *
-     * \note Prior to QGIS 3.36 this was available as QgsNewsFeedModel::Role
-     * \since QGIS 3.36
      */
-    enum class CustomRole SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsNewsFeedModel, Role ) : int
+    enum Role
     {
       Key = Qt::UserRole + 1, //!< Entry unique key
       Title, //!< Entry title
@@ -53,8 +48,6 @@ class CORE_EXPORT QgsNewsFeedModel : public QAbstractItemModel
       Link, //!< Optional entry URL link
       Sticky, //!< Whether entry is sticky
     };
-    Q_ENUM( CustomRole )
-    // *INDENT-ON*
 
     /**
      * Constructor for QgsNewsFeedModel, with the specified \a parent object.
@@ -75,7 +68,6 @@ class CORE_EXPORT QgsNewsFeedModel : public QAbstractItemModel
 
     void onEntryAdded( const QgsNewsFeedParser::Entry &entry );
     void onEntryRemoved( const QgsNewsFeedParser::Entry &entry );
-    void onEntryUpdated( const QgsNewsFeedParser::Entry &entry );
     void onImageFetched( int key, const QPixmap &pixmap );
 
   private:

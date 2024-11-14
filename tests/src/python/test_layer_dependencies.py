@@ -12,32 +12,41 @@ __copyright__ = 'Copyright 2016, The QGIS Project'
 import os
 import tempfile
 
-from qgis.PyQt.QtCore import QPoint, QSize
+import qgis  # NOQA
+from qgis.PyQt.QtCore import QSize, QPoint
 from qgis.PyQt.QtTest import QSignalSpy
-from qgis.core import (
-    Qgis,
-    QgsFeature,
-    QgsGeometry,
-    QgsLayerDefinition,
-    QgsMapLayerDependency,
-    QgsMapSettings,
-    QgsPointXY,
-    QgsProject,
-    QgsRectangle,
-    QgsSnappingConfig,
-    QgsSnappingUtils,
-    QgsTolerance,
-    QgsVectorLayer,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsProject,
+                       QgsVectorLayer,
+                       QgsMapSettings,
+                       QgsSnappingConfig,
+                       QgsSnappingUtils,
+                       Qgis,
+                       QgsTolerance,
+                       QgsRectangle,
+                       QgsPointXY,
+                       QgsFeature,
+                       QgsGeometry,
+                       QgsLayerDefinition,
+                       QgsMapLayerDependency
+                       )
+from qgis.testing import start_app, unittest
 from qgis.utils import spatialite_connect
 
 # Convenience instances in case you may need them
 start_app()
 
 
-class TestLayerDependencies(QgisTestCase):
+class TestLayerDependencies(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        """Run before all tests"""
+        pass
+
+    @classmethod
+    def tearDownClass(cls):
+        """Run after all tests"""
+        pass
 
     def setUp(self):
         """Run before each test."""
@@ -62,11 +71,11 @@ class TestLayerDependencies(QgisTestCase):
         con.commit()
         con.close()
 
-        self.pointsLayer = QgsVectorLayer(f"dbname='{fn}' table=\"node\" (geom) sql=", "points", "spatialite")
+        self.pointsLayer = QgsVectorLayer("dbname='%s' table=\"node\" (geom) sql=" % fn, "points", "spatialite")
         assert (self.pointsLayer.isValid())
-        self.linesLayer = QgsVectorLayer(f"dbname='{fn}' table=\"section\" (geom) sql=", "lines", "spatialite")
+        self.linesLayer = QgsVectorLayer("dbname='%s' table=\"section\" (geom) sql=" % fn, "lines", "spatialite")
         assert (self.linesLayer.isValid())
-        self.pointsLayer2 = QgsVectorLayer(f"dbname='{fn}' table=\"node2\" (geom) sql=", "_points2", "spatialite")
+        self.pointsLayer2 = QgsVectorLayer("dbname='%s' table=\"node2\" (geom) sql=" % fn, "_points2", "spatialite")
         assert (self.pointsLayer2.isValid())
         QgsProject.instance().addMapLayers([self.pointsLayer, self.linesLayer, self.pointsLayer2])
 
@@ -100,7 +109,7 @@ class TestLayerDependencies(QgisTestCase):
         cfg.setMode(Qgis.SnappingMode.AdvancedConfiguration)
         cfg.setIndividualLayerSettings(self.pointsLayer,
                                        QgsSnappingConfig.IndividualLayerSettings(True,
-                                                                                 Qgis.SnappingType.Vertex, 20, Qgis.MapToolUnit.Pixels, 0.0, 0.0))
+                                                                                 Qgis.SnappingType.Vertex, 20, QgsTolerance.Pixels, 0.0, 0.0))
         u.setConfig(cfg)
 
         m = u.snapToMap(QPoint(95, 100))
@@ -143,7 +152,7 @@ class TestLayerDependencies(QgisTestCase):
         # test chained layer dependencies A -> B -> C
         cfg.setIndividualLayerSettings(self.pointsLayer2,
                                        QgsSnappingConfig.IndividualLayerSettings(True,
-                                                                                 Qgis.SnappingType.Vertex, 20, Qgis.MapToolUnit.Pixels, 0.0, 0.0))
+                                                                                 Qgis.SnappingType.Vertex, 20, QgsTolerance.Pixels, 0.0, 0.0))
         u.setConfig(cfg)
         self.pointsLayer.setDependencies([QgsMapLayerDependency(self.linesLayer.id())])
         self.pointsLayer2.setDependencies([QgsMapLayerDependency(self.pointsLayer.id())])
@@ -260,7 +269,7 @@ class TestLayerDependencies(QgisTestCase):
                 newLinesLayer = l.layer()
         self.assertIsNotNone(newPointsLayer)
         self.assertIsNotNone(newLinesLayer)
-        self.assertIn(newLinesLayer.id(), [dep.layerId() for dep in newPointsLayer.dependencies()])
+        self.assertTrue(newLinesLayer.id() in [dep.layerId() for dep in newPointsLayer.dependencies()])
 
         self.pointsLayer.setDependencies([])
 
@@ -268,12 +277,12 @@ class TestLayerDependencies(QgisTestCase):
         # remove all layers
         QgsProject.instance().removeAllMapLayers()
         # set dependencies and add back layers
-        self.pointsLayer = QgsVectorLayer(f"dbname='{self.fn}' table=\"node\" (geom) sql=", "points", "spatialite")
-        self.assertTrue(self.pointsLayer.isValid())
-        self.linesLayer = QgsVectorLayer(f"dbname='{self.fn}' table=\"section\" (geom) sql=", "lines", "spatialite")
-        self.assertTrue(self.linesLayer.isValid())
-        self.pointsLayer2 = QgsVectorLayer(f"dbname='{self.fn}' table=\"node2\" (geom) sql=", "_points2", "spatialite")
-        self.assertTrue(self.pointsLayer2.isValid())
+        self.pointsLayer = QgsVectorLayer("dbname='%s' table=\"node\" (geom) sql=" % self.fn, "points", "spatialite")
+        assert (self.pointsLayer.isValid())
+        self.linesLayer = QgsVectorLayer("dbname='%s' table=\"section\" (geom) sql=" % self.fn, "lines", "spatialite")
+        assert (self.linesLayer.isValid())
+        self.pointsLayer2 = QgsVectorLayer("dbname='%s' table=\"node2\" (geom) sql=" % self.fn, "_points2", "spatialite")
+        assert (self.pointsLayer2.isValid())
         self.pointsLayer.setDependencies([QgsMapLayerDependency(self.linesLayer.id())])
         self.pointsLayer2.setDependencies([QgsMapLayerDependency(self.pointsLayer.id())])
         # this should update connections between layers
@@ -293,10 +302,10 @@ class TestLayerDependencies(QgisTestCase):
         cfg.setMode(Qgis.SnappingMode.AdvancedConfiguration)
         cfg.setIndividualLayerSettings(self.pointsLayer,
                                        QgsSnappingConfig.IndividualLayerSettings(True,
-                                                                                 Qgis.SnappingType.Vertex, 20, Qgis.MapToolUnit.Pixels, 0.0, 0.0))
+                                                                                 Qgis.SnappingType.Vertex, 20, QgsTolerance.Pixels, 0.0, 0.0))
         cfg.setIndividualLayerSettings(self.pointsLayer2,
                                        QgsSnappingConfig.IndividualLayerSettings(True,
-                                                                                 Qgis.SnappingType.Vertex, 20, Qgis.MapToolUnit.Pixels, 0.0, 0.0))
+                                                                                 Qgis.SnappingType.Vertex, 20, QgsTolerance.Pixels, 0.0, 0.0))
         u.setConfig(cfg)
         # add another line
         f = QgsFeature(self.linesLayer.fields())

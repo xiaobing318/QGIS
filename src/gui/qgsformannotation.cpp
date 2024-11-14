@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsformannotation.h"
-#include "moc_qgsformannotation.cpp"
 #include "qgsattributeeditorcontext.h"
 #include "qgseditorwidgetregistry.h"
 #include "qgseditorwidgetwrapper.h"
@@ -120,7 +119,7 @@ QWidget *QgsFormAnnotation::createDesignerWidget( const QString &filePath )
 
 void QgsFormAnnotation::renderAnnotation( QgsRenderContext &context, QSizeF size ) const
 {
-  if ( !mDesignerWidget || !context.painter() || ( context.feedback() && context.feedback()->isCanceled() ) )
+  if ( !mDesignerWidget )
     return;
 
   // scale painter back to 96 dpi, so that forms look good even in layout prints

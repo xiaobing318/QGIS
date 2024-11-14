@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgscadutils.h                                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -15,6 +15,8 @@ class QgsCadUtils
 {
 %Docstring(signature="appended")
 The :py:class:`QgsCadUtils` class provides routines for CAD editing.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -26,6 +28,8 @@ The :py:class:`QgsCadUtils` class provides routines for CAD editing.
 {
 %Docstring(signature="appended")
 Structure with details of one constraint
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -47,6 +51,8 @@ Constructor for AlignMapPointConstraint.
 {
 %Docstring(signature="appended")
 Structure returned from :py:func:`~QgsCadUtils.alignMapPoint` method
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -72,6 +78,8 @@ Structure returned from :py:func:`~QgsCadUtils.alignMapPoint` method
 {
 %Docstring(signature="appended")
 Defines constraints for the :py:func:`QgsCadUtils.alignMapPoint()` method.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -93,8 +101,6 @@ Defines constraints for the :py:func:`QgsCadUtils.alignMapPoint()` method.
 
         QgsCadUtils::AlignMapPointConstraint lineExtensionConstraint;
         QgsCadUtils::AlignMapPointConstraint xyVertexConstraint;
-
-        bool snappingToFeaturesOverridesCommonAngle;
 
 
         QList< QgsPoint > cadPoints() const;
@@ -132,6 +138,7 @@ Returns the recent CAD point at the specified ``index`` (in map coordinates).
 
 .. versionadded:: 3.22
 %End
+
 %Property( name = cadPointList, get = _cadPointList, set = _setCadPointList )
         void _setCadPointList( const QList< QgsPointXY > &list );
         QList< QgsPointXY > _cadPointList() const;
@@ -152,5 +159,5 @@ some extra information.
  *                                                                      *
  * src/core/qgscadutils.h                                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

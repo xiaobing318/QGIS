@@ -21,15 +21,14 @@ __copyright__ = '(C) 2016, Nyall Dawson'
 
 import os
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import QSize
-from qgis.core import (
-    QgsNullSymbolRenderer,
-    QgsProject,
-    QgsRectangle,
-    QgsVectorLayer,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsVectorLayer,
+                       QgsProject,
+                       QgsRectangle,
+                       QgsMultiRenderChecker,
+                       QgsNullSymbolRenderer)
+from qgis.testing import start_app, unittest
 from qgis.testing.mocked import get_iface
 
 from utilities import unitTestDataPath
@@ -40,11 +39,7 @@ start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestQgsNullSymbolRenderer(QgisTestCase):
-
-    @classmethod
-    def control_path_prefix(cls):
-        return 'null_renderer'
+class TestQgsNullSymbolRenderer(unittest.TestCase):
 
     def setUp(self):
         self.iface = get_iface()
@@ -67,16 +62,22 @@ class TestQgsNullSymbolRenderer(QgisTestCase):
 
     def testRender(self):
         # test no features are rendered
-        self.assertTrue(
-            self.render_map_settings_check('nullrenderer_render', 'nullrenderer_render', self.mapsettings)
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(self.mapsettings)
+        renderchecker.setControlPathPrefix('null_renderer')
+        renderchecker.setControlName('expected_nullrenderer_render')
+        result = renderchecker.runTest('nullrenderer_render')
+        assert result
 
     def testSelected(self):
         # select a feature and render
         self.layer.select([1, 2, 3])
-        self.assertTrue(
-            self.render_map_settings_check('nullrenderer_selected', 'nullrenderer_selected', self.mapsettings)
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(self.mapsettings)
+        renderchecker.setControlPathPrefix('null_renderer')
+        renderchecker.setControlName('expected_nullrenderer_selected')
+        result = renderchecker.runTest('nullrenderer_selected')
+        assert result
 
 
 if __name__ == '__main__':

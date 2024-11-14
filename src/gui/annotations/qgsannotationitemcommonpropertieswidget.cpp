@@ -14,11 +14,7 @@
  ***************************************************************************/
 
 #include "qgsannotationitemcommonpropertieswidget.h"
-#include "moc_qgsannotationitemcommonpropertieswidget.cpp"
 #include "qgsannotationitem.h"
-#include "qgscalloutpanelwidget.h"
-#include "qgsapplication.h"
-#include "qgscalloutsregistry.h"
 
 QgsAnnotationItemCommonPropertiesWidget::QgsAnnotationItemCommonPropertiesWidget( QWidget *parent )
   : QWidget( parent )
@@ -42,25 +38,13 @@ QgsAnnotationItemCommonPropertiesWidget::QgsAnnotationItemCommonPropertiesWidget
     if ( !mBlockChangedSignal )
       emit itemChanged();
   } );
-  connect( mCalloutCheckBox, &QCheckBox::toggled, this, [ = ]
-  {
-    if ( !mBlockChangedSignal )
-      emit itemChanged();
-  } );
-
-  connect( mCalloutPropertiesButton, &QToolButton::clicked, this, &QgsAnnotationItemCommonPropertiesWidget::openCalloutProperties );
 }
-
-QgsAnnotationItemCommonPropertiesWidget::~QgsAnnotationItemCommonPropertiesWidget() = default;
 
 void QgsAnnotationItemCommonPropertiesWidget::setItem( QgsAnnotationItem *item )
 {
   mSpinZIndex->setValue( item->zIndex() );
   mReferenceScaleGroup->setChecked( item->useSymbologyReferenceScale() );
   mReferenceScaleWidget->setScale( item->symbologyReferenceScale() );
-  mReferenceScaleGroup->setVisible( item->flags() & Qgis::AnnotationItemFlag::SupportsReferenceScale );
-  mCalloutCheckBox->setChecked( item->callout() );
-  mCallout.reset( item->callout() ? item->callout()->clone() : nullptr );
 }
 
 void QgsAnnotationItemCommonPropertiesWidget::updateItem( QgsAnnotationItem *item )
@@ -68,7 +52,6 @@ void QgsAnnotationItemCommonPropertiesWidget::updateItem( QgsAnnotationItem *ite
   item->setZIndex( mSpinZIndex->value() );
   item->setUseSymbologyReferenceScale( mReferenceScaleGroup->isChecked() );
   item->setSymbologyReferenceScale( mReferenceScaleWidget->scale() );
-  item->setCallout( mCallout && mCalloutCheckBox->isChecked() ? mCallout->clone() : nullptr );
 }
 
 void QgsAnnotationItemCommonPropertiesWidget::setContext( const QgsSymbolWidgetContext &context )
@@ -82,24 +65,4 @@ void QgsAnnotationItemCommonPropertiesWidget::setContext( const QgsSymbolWidgetC
 QgsSymbolWidgetContext QgsAnnotationItemCommonPropertiesWidget::context() const
 {
   return mContext;
-}
-
-void QgsAnnotationItemCommonPropertiesWidget::openCalloutProperties()
-{
-  QgsCalloutPanelWidget *widget = new QgsCalloutPanelWidget();
-  if ( !mCallout )
-    mCallout.reset( QgsApplication::calloutRegistry()->defaultCallout() );
-  widget->setCallout( mCallout.get() );
-
-  connect( widget, &QgsCalloutPanelWidget::calloutChanged, this, [this, widget]
-  {
-    mCallout.reset( widget->callout()->clone() );
-    if ( !mBlockChangedSignal )
-      emit itemChanged();
-  } );
-
-  if ( QgsPanelWidget *panel = QgsPanelWidget::findParentPanel( this ) )
-  {
-    panel->openPanel( widget );
-  }
 }

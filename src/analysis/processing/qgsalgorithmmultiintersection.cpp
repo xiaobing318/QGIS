@@ -17,6 +17,8 @@
 
 #include "qgsalgorithmmultiintersection.h"
 
+#include "qgsgeometrycollection.h"
+#include "qgsgeometryengine.h"
 #include "qgsoverlayutils.h"
 #include "qgsvectorlayer.h"
 
@@ -55,11 +57,6 @@ QString QgsMultiIntersectionAlgorithm::shortHelpString() const
                       "from both the Input and Overlay layers." );
 }
 
-Qgis::ProcessingAlgorithmDocumentationFlags QgsMultiIntersectionAlgorithm::documentationFlags() const
-{
-  return Qgis::ProcessingAlgorithmDocumentationFlag::RegeneratesPrimaryKey;
-}
-
 QgsProcessingAlgorithm *QgsMultiIntersectionAlgorithm::createInstance() const
 {
   return new QgsMultiIntersectionAlgorithm();
@@ -68,10 +65,10 @@ QgsProcessingAlgorithm *QgsMultiIntersectionAlgorithm::createInstance() const
 void QgsMultiIntersectionAlgorithm::initAlgorithm( const QVariantMap & )
 {
   addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ), QObject::tr( "Input layer" ) ) );
-  addParameter( new QgsProcessingParameterMultipleLayers( QStringLiteral( "OVERLAYS" ), QObject::tr( "Overlay layers" ), Qgis::ProcessingSourceType::VectorAnyGeometry ) );
+  addParameter( new QgsProcessingParameterMultipleLayers( QStringLiteral( "OVERLAYS" ), QObject::tr( "Overlay layers" ), QgsProcessing::TypeVectorAnyGeometry ) );
 
   std::unique_ptr< QgsProcessingParameterString > prefix = std::make_unique< QgsProcessingParameterString >( QStringLiteral( "OVERLAY_FIELDS_PREFIX" ), QObject::tr( "Overlay fields prefix" ), QString(), false, true );
-  prefix->setFlags( prefix->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  prefix->setFlags( prefix->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( prefix.release() );
 
   addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Intersection" ) ) );
@@ -95,7 +92,7 @@ QVariantMap QgsMultiIntersectionAlgorithm::processAlgorithm( const QVariantMap &
     if ( !layer )
       throw QgsProcessingException( QObject::tr( "Error retrieving map layer." ) );
 
-    if ( layer->type() != Qgis::LayerType::Vector )
+    if ( layer->type() != QgsMapLayerType::VectorLayer )
       throw QgsProcessingException( QObject::tr( "All layers must be vector layers!" ) );
 
     totalLayerCount++;
@@ -103,7 +100,7 @@ QVariantMap QgsMultiIntersectionAlgorithm::processAlgorithm( const QVariantMap &
 
   const QString overlayFieldsPrefix = parameterAsString( parameters, QStringLiteral( "OVERLAY_FIELDS_PREFIX" ), context );
 
-  const Qgis::WkbType geometryType = QgsWkbTypes::multiType( sourceA->wkbType() );
+  const QgsWkbTypes::Type geometryType = QgsWkbTypes::multiType( sourceA->wkbType() );
   const QgsCoordinateReferenceSystem crs = sourceA->sourceCrs();
   std::unique_ptr< QgsFeatureSink > sink;
   long count = 0;
@@ -133,8 +130,6 @@ QVariantMap QgsMultiIntersectionAlgorithm::processAlgorithm( const QVariantMap &
 
     const long total = sourceA->featureCount();
     QgsOverlayUtils::intersection( *sourceA, *overlayLayer, *sink, context, feedback, count, total, fieldIndicesA, fieldIndicesB );
-
-    sink->finalize();
   }
   else
   {

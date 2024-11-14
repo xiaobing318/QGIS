@@ -11,19 +11,19 @@ __copyright__ = 'Copyright 2019, The QGIS Project'
 
 import random
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import QLocale
 from qgis.core import (
-    QgsClassificationFixedInterval,
-    QgsClassificationJenks,
-    QgsClassificationLogarithmic,
     QgsClassificationMethod,
+    QgsClassificationLogarithmic,
+    QgsClassificationJenks,
+    QgsClassificationFixedInterval,
     QgsFeature,
-    QgsGeometry,
-    QgsPointXY,
     QgsVectorLayer,
+    QgsPointXY,
+    QgsGeometry
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import unittest, start_app
 
 start_app()
 
@@ -52,7 +52,7 @@ def createMemoryLayer(values):
     return ml
 
 
-class TestQgsClassificationMethods(QgisTestCase):
+class TestQgsClassificationMethods(unittest.TestCase):
 
     def testQgsClassificationLogarithmic(self):
         values = [2746.71,
@@ -102,13 +102,13 @@ class TestQgsClassificationMethods(QgisTestCase):
         vl = createMemoryLayer(values)
         m = QgsClassificationLogarithmic()
 
-        m.setParameterValues({'ZERO_NEG_VALUES_HANDLE': QgsClassificationLogarithmic.NegativeValueHandling.Discard})
+        m.setParameterValues({'ZERO_NEG_VALUES_HANDLE': QgsClassificationLogarithmic.Discard})
         r = m.classes(vl, 'value', 4)
         self.assertEqual(len(r), 4)
         self.assertEqual(r[0].label(), '1 - 10^1')
         self.assertEqual(QgsClassificationMethod.rangesToBreaks(r), [10.0, 100.0, 1000.0, 10000.0])
 
-        m.setParameterValues({'ZERO_NEG_VALUES_HANDLE': QgsClassificationLogarithmic.NegativeValueHandling.PrependBreak})
+        m.setParameterValues({'ZERO_NEG_VALUES_HANDLE': QgsClassificationLogarithmic.PrependBreak})
         r = m.classes(vl, 'value', 4)
         self.assertEqual(r[0].label(), '-2 - 10^0')
         self.assertEqual(QgsClassificationMethod.rangesToBreaks(r), [1.0, 10.0, 100.0, 1000.0, 10000.0])

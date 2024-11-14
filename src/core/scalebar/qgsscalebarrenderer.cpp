@@ -47,16 +47,16 @@ void QgsScaleBarRenderer::drawDefaultLabels( QgsRenderContext &context, const Qg
   const QFontMetricsF fontMetrics = QgsTextRenderer::fontMetrics( context, format );
   const double xOffset = fontMetrics.horizontalAdvance( firstLabel ) / 2.0;
 
-  const double scaledBoxContentSpace = context.convertToPainterUnits( settings.boxContentSpace(), Qgis::RenderUnit::Millimeters );
-  const double scaledLabelBarSpace = context.convertToPainterUnits( settings.labelBarSpace(), Qgis::RenderUnit::Millimeters );
+  const double scaledBoxContentSpace = context.convertToPainterUnits( settings.boxContentSpace(), QgsUnitTypes::RenderMillimeters );
+  const double scaledLabelBarSpace = context.convertToPainterUnits( settings.labelBarSpace(), QgsUnitTypes::RenderMillimeters );
   double scaledHeight;
   if ( ( scaleContext.flags & Flag::FlagUsesSubdivisionsHeight ) && ( settings.numberOfSubdivisions() > 1 ) && ( settings.subdivisionsHeight() > settings.height() ) )
   {
-    scaledHeight = context.convertToPainterUnits( settings.subdivisionsHeight(), Qgis::RenderUnit::Millimeters );
+    scaledHeight = context.convertToPainterUnits( settings.subdivisionsHeight(), QgsUnitTypes::RenderMillimeters );
   }
   else
   {
-    scaledHeight = context.convertToPainterUnits( settings.height(), Qgis::RenderUnit::Millimeters );
+    scaledHeight = context.convertToPainterUnits( settings.height(), QgsUnitTypes::RenderMillimeters );
   }
 
   double currentLabelNumber = 0.0;
@@ -70,10 +70,10 @@ void QgsScaleBarRenderer::drawDefaultLabels( QgsRenderContext &context, const Qg
   bool drawZero = true;
   switch ( settings.labelHorizontalPlacement() )
   {
-    case Qgis::ScaleBarDistanceLabelHorizontalPlacement::CenteredSegment:
+    case QgsScaleBarSettings::LabelCenteredSegment:
       drawZero = false;
       break;
-    case Qgis::ScaleBarDistanceLabelHorizontalPlacement::CenteredEdge:
+    case QgsScaleBarSettings::LabelCenteredEdge:
       drawZero = true;
       break;
   }
@@ -102,23 +102,23 @@ void QgsScaleBarRenderer::drawDefaultLabels( QgsRenderContext &context, const Qg
     {
       scaleScope->addVariable( QgsExpressionContextScope::StaticVariable( QStringLiteral( "scale_value" ), currentNumericLabel, true, false ) );
       QPointF pos;
-      if ( settings.labelHorizontalPlacement() == Qgis::ScaleBarDistanceLabelHorizontalPlacement::CenteredSegment )
+      if ( settings.labelHorizontalPlacement() == QgsScaleBarSettings::LabelCenteredSegment )
       {
         if ( segmentCounter == 0 )
         {
           // if the segment counter is zero with a non zero label, this is the left-of-zero label
-          pos.setX( context.convertToPainterUnits( positions.at( i ) + ( scaleContext.segmentWidth / 2 ), Qgis::RenderUnit::Millimeters ) );
+          pos.setX( context.convertToPainterUnits( positions.at( i ) + ( scaleContext.segmentWidth / 2 ), QgsUnitTypes::RenderMillimeters ) );
         }
         else
         {
-          pos.setX( context.convertToPainterUnits( positions.at( i ) - ( scaleContext.segmentWidth / 2 ), Qgis::RenderUnit::Millimeters ) );
+          pos.setX( context.convertToPainterUnits( positions.at( i ) - ( scaleContext.segmentWidth / 2 ), QgsUnitTypes::RenderMillimeters ) );
         }
       }
       else
       {
-        pos.setX( context.convertToPainterUnits( positions.at( i ), Qgis::RenderUnit::Millimeters ) + xOffset );
+        pos.setX( context.convertToPainterUnits( positions.at( i ), QgsUnitTypes::RenderMillimeters ) + xOffset );
       }
-      pos.setY( fontMetrics.ascent() + scaledBoxContentSpace + ( settings.labelVerticalPlacement() == Qgis::ScaleBarDistanceLabelVerticalPlacement::BelowSegment ? scaledHeight + scaledLabelBarSpace : 0 ) );
+      pos.setY( fontMetrics.ascent() + scaledBoxContentSpace + ( settings.labelVerticalPlacement() == QgsScaleBarSettings::LabelBelowSegment ? scaledHeight + scaledLabelBarSpace : 0 ) );
       QgsTextRenderer::drawText( pos, 0, Qgis::TextHorizontalAlignment::Center, QStringList() << currentNumericLabel, context, format );
     }
 
@@ -138,15 +138,15 @@ void QgsScaleBarRenderer::drawDefaultLabels( QgsRenderContext &context, const Qg
     currentNumericLabel = settings.numericFormat()->formatDouble( currentLabelNumber / settings.mapUnitsPerScaleBarUnit(), numericContext );
     scaleScope->addVariable( QgsExpressionContextScope::StaticVariable( QStringLiteral( "scale_value" ), currentNumericLabel, true, false ) );
     QPointF pos;
-    pos.setY( fontMetrics.ascent() + scaledBoxContentSpace + ( settings.labelVerticalPlacement() == Qgis::ScaleBarDistanceLabelVerticalPlacement::BelowSegment ? scaledHeight + scaledLabelBarSpace : 0 ) );
-    if ( settings.labelHorizontalPlacement() == Qgis::ScaleBarDistanceLabelHorizontalPlacement::CenteredSegment )
+    pos.setY( fontMetrics.ascent() + scaledBoxContentSpace + ( settings.labelVerticalPlacement() == QgsScaleBarSettings::LabelBelowSegment ? scaledHeight + scaledLabelBarSpace : 0 ) );
+    if ( settings.labelHorizontalPlacement() == QgsScaleBarSettings::LabelCenteredSegment )
     {
-      pos.setX( context.convertToPainterUnits( positions.at( positions.size() - 1 ) + ( scaleContext.segmentWidth / 2 ), Qgis::RenderUnit::Millimeters ) + xOffset );
+      pos.setX( context.convertToPainterUnits( positions.at( positions.size() - 1 ) + ( scaleContext.segmentWidth / 2 ), QgsUnitTypes::RenderMillimeters ) + xOffset );
       QgsTextRenderer::drawText( pos, 0, Qgis::TextHorizontalAlignment::Center, QStringList() << ( currentNumericLabel + ' ' + settings.unitLabel() ), context, format );
     }
     else
     {
-      pos.setX( context.convertToPainterUnits( positions.at( positions.size() - 1 ) + scaleContext.segmentWidth, Qgis::RenderUnit::Millimeters ) + xOffset
+      pos.setX( context.convertToPainterUnits( positions.at( positions.size() - 1 ) + scaleContext.segmentWidth, QgsUnitTypes::RenderMillimeters ) + xOffset
                 - fontMetrics.horizontalAdvance( currentNumericLabel ) / 2.0 );
       QgsTextRenderer::drawText( pos, 0, Qgis::TextHorizontalAlignment::Left, QStringList() << ( currentNumericLabel + ' ' + settings.unitLabel() ), context, format );
     }
@@ -172,7 +172,7 @@ QSizeF QgsScaleBarRenderer::calculateBoxSize( const QgsScaleBarSettings &setting
 
   //consider centered first label
   double firstLabelWidth = QgsLayoutUtils::textWidthMM( font, firstLabelString( settings ) );
-  if ( settings.labelHorizontalPlacement() == Qgis::ScaleBarDistanceLabelHorizontalPlacement::CenteredSegment )
+  if ( settings.labelHorizontalPlacement() == QgsScaleBarSettings::LabelCenteredSegment )
   {
     if ( firstLabelWidth > scaleContext.segmentWidth )
     {
@@ -193,7 +193,7 @@ QSizeF QgsScaleBarRenderer::calculateBoxSize( const QgsScaleBarSettings &setting
   const QString largestNumberLabel = settings.numericFormat()->formatDouble( largestLabelNumber, QgsNumericFormatContext() );
   const QString largestLabel = largestNumberLabel + ' ' + settings.unitLabel();
   double largestLabelWidth;
-  if ( settings.labelHorizontalPlacement() == Qgis::ScaleBarDistanceLabelHorizontalPlacement::CenteredSegment )
+  if ( settings.labelHorizontalPlacement() == QgsScaleBarSettings::LabelCenteredSegment )
   {
     largestLabelWidth = QgsLayoutUtils::textWidthMM( font, largestLabel );
     if ( largestLabelWidth > scaleContext.segmentWidth )
@@ -224,11 +224,11 @@ QSizeF QgsScaleBarRenderer::calculateBoxSize( const QgsScaleBarSettings &setting
 
 QSizeF QgsScaleBarRenderer::calculateBoxSize( QgsRenderContext &context, const QgsScaleBarSettings &settings, const QgsScaleBarRenderer::ScaleBarContext &scaleContext ) const
 {
-  const double painterToMm = 1.0 / context.convertToPainterUnits( 1, Qgis::RenderUnit::Millimeters );
+  const double painterToMm = 1.0 / context.convertToPainterUnits( 1, QgsUnitTypes::RenderMillimeters );
   //consider centered first label
   double firstLabelWidth = QgsTextRenderer::textWidth( context, settings.textFormat(), QStringList() << firstLabelString( settings ) ) * painterToMm;
 
-  if ( settings.labelHorizontalPlacement() == Qgis::ScaleBarDistanceLabelHorizontalPlacement::CenteredSegment && !std::isnan( scaleContext.segmentWidth ) )
+  if ( settings.labelHorizontalPlacement() == QgsScaleBarSettings::LabelCenteredSegment )
   {
     if ( firstLabelWidth > scaleContext.segmentWidth )
     {
@@ -246,10 +246,10 @@ QSizeF QgsScaleBarRenderer::calculateBoxSize( QgsRenderContext &context, const Q
 
   //consider last number and label
   const double largestLabelNumber = settings.numberOfSegments() * settings.unitsPerSegment() / settings.mapUnitsPerScaleBarUnit();
-  const QString largestNumberLabel = std::isnan( largestLabelNumber ) ? QString() : settings.numericFormat()->formatDouble( largestLabelNumber, QgsNumericFormatContext() );
+  const QString largestNumberLabel = settings.numericFormat()->formatDouble( largestLabelNumber, QgsNumericFormatContext() );
   const QString largestLabel = largestNumberLabel + ' ' + settings.unitLabel();
   double largestLabelWidth;
-  if ( settings.labelHorizontalPlacement() == Qgis::ScaleBarDistanceLabelHorizontalPlacement::CenteredSegment && !std::isnan( scaleContext.segmentWidth ) )
+  if ( settings.labelHorizontalPlacement() == QgsScaleBarSettings::LabelCenteredSegment )
   {
     largestLabelWidth = QgsTextRenderer::textWidth( context, settings.textFormat(), QStringList() << largestLabel ) * painterToMm;
 
@@ -268,13 +268,11 @@ QSizeF QgsScaleBarRenderer::calculateBoxSize( QgsRenderContext &context, const Q
                          -  QgsTextRenderer::textWidth( context, settings.textFormat(), QStringList() << largestNumberLabel ) * painterToMm / 2;
   }
 
-  // segmentWidth can be NaN in extreme cases, eg trying to make a scalebar for a global map with a very small segment size (eg meters)
-  const double totalBarLength =  std::isnan( scaleContext.segmentWidth ) ? 0
-                                 :  scaleContext.segmentWidth * ( settings.numberOfSegments() + ( settings.numberOfSegmentsLeft() > 0 ? 1 : 0 ) );
+  const double totalBarLength = scaleContext.segmentWidth * ( settings.numberOfSegments() + ( settings.numberOfSegmentsLeft() > 0 ? 1 : 0 ) );
 
   double lineWidth = QgsSymbolLayerUtils::estimateMaxSymbolBleed( settings.lineSymbol(), context ) * 2;
   // need to convert to mm
-  lineWidth /= context.convertToPainterUnits( 1, Qgis::RenderUnit::Millimeters );
+  lineWidth /= context.convertToPainterUnits( 1, QgsUnitTypes::RenderMillimeters );
 
   const double width = firstLabelWidth + totalBarLength + 2 * lineWidth + largestLabelWidth + 2 * settings.boxContentSpace();
   double height;
@@ -322,7 +320,7 @@ double QgsScaleBarRenderer::firstLabelXOffset( const QgsScaleBarSettings &settin
 {
   const QString firstLabel = firstLabelString( settings );
   double firstLabelWidth = QgsTextRenderer::textWidth( context, settings.textFormat(), QStringList() << firstLabel );
-  if ( settings.labelHorizontalPlacement() == Qgis::ScaleBarDistanceLabelHorizontalPlacement::CenteredSegment )
+  if ( settings.labelHorizontalPlacement() == QgsScaleBarSettings::LabelCenteredSegment )
   {
     if ( firstLabelWidth > scaleContext.segmentWidth )
     {
@@ -373,7 +371,7 @@ QList<double> QgsScaleBarRenderer::segmentPositions( QgsRenderContext &context, 
 
   double lineWidth = QgsSymbolLayerUtils::estimateMaxSymbolBleed( settings.lineSymbol(), context ) * 2.0;
   // need to convert to mm
-  lineWidth /= context.convertToPainterUnits( 1, Qgis::RenderUnit::Millimeters );
+  lineWidth /= context.convertToPainterUnits( 1, QgsUnitTypes::RenderMillimeters );
 
   double currentXCoord = lineWidth + settings.boxContentSpace();
 
@@ -417,9 +415,4 @@ QList<double> QgsScaleBarRenderer::segmentWidths( const ScaleBarContext &scaleCo
   }
 
   return widths;
-}
-
-bool QgsScaleBarRenderer::ScaleBarContext::isValid() const
-{
-  return !std::isnan( segmentWidth );
 }

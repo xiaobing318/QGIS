@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     SetRasterStyle.py
@@ -45,7 +47,7 @@ class SetRasterStyle(QgisAlgorithm):
         super().__init__()
 
     def flags(self):
-        return super().flags() | QgsProcessingAlgorithm.Flag.FlagNoThreading | QgsProcessingAlgorithm.Flag.FlagDeprecated | QgsProcessingAlgorithm.Flag.FlagNotAvailableInStandaloneTool
+        return super().flags() | QgsProcessingAlgorithm.FlagNoThreading | QgsProcessingAlgorithm.FlagDeprecated | QgsProcessingAlgorithm.FlagNotAvailableInStandaloneTool
 
     def initAlgorithm(self, config=None):
         self.addParameter(QgsProcessingParameterRasterLayer(self.INPUT,

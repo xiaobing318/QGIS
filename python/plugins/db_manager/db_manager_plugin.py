@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 /***************************************************************************
 Name                 : DB Manager
@@ -17,6 +19,7 @@ email                : brush.tyler@gmail.com
  *                                                                         *
  ***************************************************************************/
 """
+from builtins import object
 
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtWidgets import QAction, QApplication
@@ -29,8 +32,10 @@ from qgis.core import (
     QgsApplication
 )
 
+from . import resources_rc  # NOQA
 
-class DBManagerPlugin:
+
+class DBManagerPlugin(object):
 
     def __init__(self, iface):
         self.iface = iface
@@ -87,7 +92,7 @@ class DBManagerPlugin:
             self.dlg.destroyed.connect(self.onDestroyed)
         self.dlg.show()
         self.dlg.raise_()
-        self.dlg.setWindowState(self.dlg.windowState() & ~Qt.WindowState.WindowMinimized)
+        self.dlg.setWindowState(self.dlg.windowState() & ~Qt.WindowMinimized)
         self.dlg.activateWindow()
 
     def onDestroyed(self, obj):

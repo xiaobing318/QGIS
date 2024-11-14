@@ -20,7 +20,6 @@
 #include <QRegularExpression>
 
 #include "qgspointcloudlayersaveasdialog.h"
-#include "moc_qgspointcloudlayersaveasdialog.cpp"
 #include "qgsgui.h"
 #include "qgsmapcanvas.h"
 #include "qgsdatums.h"
@@ -124,7 +123,7 @@ void QgsPointCloudLayerSaveAsDialog::setup()
   mExtentGroupBox->setCollapsed( true );
 
   // polygon layer filter group box
-  mFilterGeometryLayerComboBox->setFilters( Qgis::LayerFilter::PolygonLayer );
+  mFilterGeometryLayerComboBox->setFilters( QgsMapLayerProxyModel::PolygonLayer );
 
   // ZRange group box
   mMinimumZSpinBox->setRange( std::numeric_limits<double>::lowest(), std::numeric_limits<double>::max() );
@@ -373,7 +372,7 @@ void QgsPointCloudLayerSaveAsDialog::mFormatComboBox_currentIndexChanged( int id
     // to avoid double extensions like .gpkg.shp
     if ( !mLastUsedFilename.isEmpty() )
     {
-      const thread_local QRegularExpression rx( "\\.(.*?)[\\s]" );
+      QRegularExpression rx( "\\.(.*?)[\\s]" );
       QString ext;
       ext = rx.match( getFilterForFormat( format ) ).captured( 1 );
       if ( !ext.isEmpty() )

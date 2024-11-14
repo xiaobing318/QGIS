@@ -114,10 +114,6 @@ struct CORE_EXPORT QgsMesh
   QVector<QgsMeshFace> faces SIP_SKIP;
 };
 
-// we need to declare metatype so QgsMesh can be passed as QVariant for expressions
-Q_DECLARE_METATYPE( QgsMesh );
-
-
 /**
  * \ingroup core
  *
@@ -139,7 +135,7 @@ Q_DECLARE_METATYPE( QgsMesh );
 class CORE_EXPORT QgsMeshDataSourceInterface SIP_ABSTRACT
 {
   public:
-
+    //! Dtor
     virtual ~QgsMeshDataSourceInterface() = default;
 
     /**
@@ -215,6 +211,7 @@ class CORE_EXPORT QgsMeshDatasetSourceInterface SIP_ABSTRACT
 {
   public:
     QgsMeshDatasetSourceInterface();
+    //! Dtor
     virtual ~QgsMeshDatasetSourceInterface() = default;
 
     /**
@@ -296,7 +293,7 @@ class CORE_EXPORT QgsMeshDatasetSourceInterface SIP_ABSTRACT
      *
      * \since QGIS 3.12
      */
-    virtual QgsMesh3DDataBlock dataset3dValues( QgsMeshDatasetIndex index, int faceIndex, int count ) const = 0;
+    virtual QgsMesh3dDataBlock dataset3dValues( QgsMeshDatasetIndex index, int faceIndex, int count ) const = 0;
 
     /**
      * \brief Returns whether the face is active for particular dataset
@@ -443,7 +440,7 @@ class CORE_EXPORT QgsMeshDataProvider: public QgsDataProvider, public QgsMeshDat
     //! Ctor
     QgsMeshDataProvider( const QString &uri,
                          const QgsDataProvider::ProviderOptions &providerOptions,
-                         Qgis::DataProviderReadFlags = Qgis::DataProviderReadFlags() );
+                         QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() );
 
     QgsMeshDataProviderTemporalCapabilities *temporalCapabilities() override;
     const QgsMeshDataProviderTemporalCapabilities *temporalCapabilities() const override SIP_SKIP;
@@ -455,7 +452,7 @@ class CORE_EXPORT QgsMeshDataProvider: public QgsDataProvider, public QgsMeshDat
      *
      * \since QGIS 3.14
      */
-    void setTemporalUnit( Qgis::TemporalUnit unit );
+    void setTemporalUnit( QgsUnitTypes::TemporalUnit unit );
 
 
     /**

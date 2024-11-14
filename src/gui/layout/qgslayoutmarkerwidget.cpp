@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgslayoutmarkerwidget.h"
-#include "moc_qgslayoutmarkerwidget.cpp"
 #include "qgsstyle.h"
 #include "qgslayoutitemmarker.h"
 #include "qgslayout.h"
@@ -24,7 +23,6 @@
 #include "qgsvectorlayer.h"
 #include "qgslayoutitemmap.h"
 #include "qgsmarkersymbol.h"
-#include "qgslayoutreportcontext.h"
 
 QgsLayoutMarkerWidget::QgsLayoutMarkerWidget( QgsLayoutItemMarker *marker )
   : QgsLayoutItemBaseWidget( nullptr, marker )

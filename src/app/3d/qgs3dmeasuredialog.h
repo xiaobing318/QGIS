@@ -21,6 +21,7 @@
 
 #include "ui_qgsmeasurebase.h"
 #include "qgs3dmaptoolmeasureline.h"
+#include "qgs3dmapcanvas.h"
 #include "qgsunittypes.h"
 
 
@@ -86,13 +87,13 @@ class Qgs3DMeasureDialog : public QDialog, private Ui::QgsMeasureBase
     int mDecimalPlaces = 3;
 
     //! Distance unit of the map
-    Qgis::DistanceUnit mMapDistanceUnit  = Qgis::DistanceUnit::Unknown;
+    QgsUnitTypes::DistanceUnit mMapDistanceUnit  = QgsUnitTypes::DistanceUnknownUnit;
 
     //! Distance unit of the displayed value
-    Qgis::DistanceUnit mDisplayedDistanceUnit  = Qgis::DistanceUnit::Unknown;
+    QgsUnitTypes::DistanceUnit mDisplayedDistanceUnit  = QgsUnitTypes::DistanceUnknownUnit;
 
     //! Convert from mMapDistanceUnit to mDisplayedDistanceUnit
-    double convertLength( double length, Qgis::DistanceUnit toUnit ) const;
+    double convertLength( double length, QgsUnitTypes::DistanceUnit toUnit ) const;
 
     //! formats distance to most appropriate units
     QString formatDistance( double distance ) const;

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     ProjectProvider.py
@@ -51,10 +53,7 @@ class ProjectProvider(QgsProcessingProvider):
         self.project.writeProject.connect(self.write_project)
         self.project.cleared.connect(self.clear)
 
-    def on_provider_added(self, provider_id):
-        if provider_id == self.id():
-            return
-
+    def on_provider_added(self, _):
         self.refreshAlgorithms()
 
     def load(self):
@@ -161,6 +160,6 @@ class ProjectProvider(QgsProcessingProvider):
             else:
                 QgsMessageLog.logMessage(
                     self.tr('Could not load model from project', 'ProjectProvider'),
-                    self.tr('Processing'), Qgis.MessageLevel.Critical)
+                    self.tr('Processing'), Qgis.Critical)
 
         self.is_loading = False

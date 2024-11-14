@@ -15,15 +15,13 @@
 
 #include "qgsgcplist.h"
 #include "qgsgcplistmodel.h"
-#include "moc_qgsgcplistmodel.cpp"
 #include "qgis.h"
 #include "qgsgeorefdatapoint.h"
 #include "qgsgeoreftransform.h"
 #include "qgssettings.h"
-#include "qgsdoublevalidator.h"
+#include "qgsproject.h"
 
 #include <cmath>
-#include <QLocale>
 
 QgsGCPListModel::QgsGCPListModel( QObject *parent )
   : QAbstractTableModel( parent )
@@ -256,9 +254,9 @@ bool QgsGCPListModel::setData( const QModelIndex &index, const QVariant &value, 
     {
       QgsPointXY sourcePoint = point->sourcePoint();
       if ( column == QgsGCPListModel::Column::SourceX )
-        sourcePoint.setX( QgsDoubleValidator::toDouble( value.toString() ) );
+        sourcePoint.setX( value.toDouble() );
       else
-        sourcePoint.setY( QgsDoubleValidator::toDouble( value.toString() ) );
+        sourcePoint.setY( value.toDouble() );
       point->setSourcePoint( sourcePoint );
       emit dataChanged( index, index );
       updateResiduals();
@@ -272,9 +270,9 @@ bool QgsGCPListModel::setData( const QModelIndex &index, const QVariant &value, 
       // as this is what we were showing to users
       QgsPointXY destinationPoint = point->transformedDestinationPoint( mTargetCrs, mTransformContext );
       if ( column == QgsGCPListModel::Column::DestinationX )
-        destinationPoint.setX( QgsDoubleValidator::toDouble( value.toString() ) );
+        destinationPoint.setX( value.toDouble() );
       else
-        destinationPoint.setY( QgsDoubleValidator::toDouble( value.toString() ) );
+        destinationPoint.setY( value.toDouble() );
       point->setDestinationPoint( destinationPoint );
       // we also have to update the destination point crs to the target crs, as the point is now in a different CRS
       point->setDestinationPointCrs( mTargetCrs );
@@ -338,19 +336,19 @@ QVariant QgsGCPListModel::headerData( int section, Qt::Orientation orientation, 
           QString residualUnitType;
           switch ( residualUnit() )
           {
-            case Qgis::RenderUnit::MapUnits:
+            case QgsUnitTypes::RenderMapUnits:
               residualUnitType = tr( "map units" );
               break;
-            case Qgis::RenderUnit::Pixels:
+            case QgsUnitTypes::RenderPixels:
               residualUnitType = tr( "pixels" );
               break;
 
-            case Qgis::RenderUnit::Millimeters:
-            case Qgis::RenderUnit::Percentage:
-            case Qgis::RenderUnit::Points:
-            case Qgis::RenderUnit::Inches:
-            case Qgis::RenderUnit::Unknown:
-            case Qgis::RenderUnit::MetersInMapUnits:
+            case QgsUnitTypes::RenderMillimeters:
+            case QgsUnitTypes::RenderPercentage:
+            case QgsUnitTypes::RenderPoints:
+            case QgsUnitTypes::RenderInches:
+            case QgsUnitTypes::RenderUnknownUnit:
+            case QgsUnitTypes::RenderMetersInMapUnits:
               break;
           }
 
@@ -406,7 +404,7 @@ QVariant QgsGCPListModel::headerData( int section, Qt::Orientation orientation, 
   return QVariant();
 }
 
-Qgis::RenderUnit QgsGCPListModel::residualUnit() const
+QgsUnitTypes::RenderUnit QgsGCPListModel::residualUnit() const
 {
   bool mapUnitsPossible = false;
   if ( mGeorefTransform )
@@ -416,11 +414,11 @@ Qgis::RenderUnit QgsGCPListModel::residualUnit() const
 
   if ( mapUnitsPossible && QgsSettings().value( QStringLiteral( "/Plugin-GeoReferencer/Config/ResidualUnits" ) ) == "mapUnits" )
   {
-    return Qgis::RenderUnit::MapUnits;
+    return QgsUnitTypes::RenderUnit::RenderMapUnits;
   }
   else
   {
-    return Qgis::RenderUnit::Pixels;
+    return QgsUnitTypes::RenderUnit::RenderPixels;
   }
 }
 
@@ -442,7 +440,7 @@ QString QgsGCPListModel::formatNumber( double number )
   else if ( std::fabs( number ) < 1000 )
     decimalPlaces = 6;
 
-  return QLocale().toString( number, 'f', decimalPlaces );
+  return QString::number( number, 'f', decimalPlaces );
 }
 
 

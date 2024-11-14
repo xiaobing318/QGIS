@@ -64,7 +64,7 @@ QgsSplitVectorLayerAlgorithm *QgsSplitVectorLayerAlgorithm::createInstance() con
 
 void QgsSplitVectorLayerAlgorithm::initAlgorithm( const QVariantMap & )
 {
-  addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ), QObject::tr( "Input layer" ), QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::Vector ) ) );
+  addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ), QObject::tr( "Input layer" ), QList<int>() << QgsProcessing::TypeVector ) );
   addParameter( new QgsProcessingParameterField( QStringLiteral( "FIELD" ), QObject::tr( "Unique ID field" ),
                 QVariant(), QStringLiteral( "INPUT" ) ) );
   std::unique_ptr< QgsProcessingParameterBoolean > prefixFieldParam = std::make_unique< QgsProcessingParameterBoolean >( QStringLiteral( "PREFIX_FIELD" ),
@@ -73,7 +73,7 @@ void QgsSplitVectorLayerAlgorithm::initAlgorithm( const QVariantMap & )
 
   const QStringList options = QgsVectorFileWriter::supportedFormatExtensions();
   auto fileTypeParam = std::make_unique < QgsProcessingParameterEnum >( QStringLiteral( "FILE_TYPE" ), QObject::tr( "Output file type" ), options, false, 0, true );
-  fileTypeParam->setFlags( fileTypeParam->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  fileTypeParam->setFlags( fileTypeParam->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( fileTypeParam.release() );
 
   addParameter( new QgsProcessingParameterFolderDestination( QStringLiteral( "OUTPUT" ), QObject::tr( "Output directory" ) ) );
@@ -102,11 +102,11 @@ QVariantMap QgsSplitVectorLayerAlgorithm::processAlgorithm( const QVariantMap &p
   }
 
   if ( !QDir().mkpath( outputDir ) )
-    throw QgsProcessingException( QObject::tr( "Failed to create output directory." ) );
+    throw QgsProcessingException( QStringLiteral( "Failed to create output directory." ) );
 
   const QgsFields fields = source->fields();
   const QgsCoordinateReferenceSystem crs = source->sourceCrs();
-  const Qgis::WkbType geometryType = source->wkbType();
+  const QgsWkbTypes::Type geometryType = source->wkbType();
   const int fieldIndex = fields.lookupField( fieldName );
   const QSet< QVariant > uniqueValues = source->uniqueValues( fieldIndex );
   QString baseName = outputDir + QDir::separator();
@@ -146,7 +146,7 @@ QVariantMap QgsSplitVectorLayerAlgorithm::processAlgorithm( const QVariantMap &p
 
     sink.reset( QgsProcessingUtils::createFeatureSink( fileName, context, fields, geometryType, crs ) );
     const QString expr = QgsExpression::createFieldEqualityExpression( fieldName, *it );
-    QgsFeatureIterator features = source->getFeatures( QgsFeatureRequest().setFilterExpression( expr ), Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks );
+    QgsFeatureIterator features = source->getFeatures( QgsFeatureRequest().setFilterExpression( expr ), QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks );
     count = 0;
     while ( features.nextFeature( feat ) )
     {
@@ -157,7 +157,6 @@ QVariantMap QgsSplitVectorLayerAlgorithm::processAlgorithm( const QVariantMap &p
         throw QgsProcessingException( writeFeatureError( sink.get(), parameters, QStringLiteral( "OUTPUT" ) ) );
       count += 1;
     }
-    sink->finalize();
 
     feedback->pushInfo( QObject::tr( "Added %n feature(s) to layer", nullptr, count ) );
     outputLayers << fileName;

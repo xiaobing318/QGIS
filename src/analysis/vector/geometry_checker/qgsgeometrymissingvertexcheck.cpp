@@ -20,6 +20,7 @@
 #include "qgsmultipolygon.h"
 #include "qgscurvepolygon.h"
 #include "qgscurve.h"
+#include "qgslinestring.h"
 #include "qgsgeometryengine.h"
 #include "qgsgeometryutils.h"
 #include "qgsapplication.h"
@@ -130,17 +131,17 @@ void QgsGeometryMissingVertexCheck::processPolygon( const QgsCurvePolygon *polyg
   const QgsFeature &currentFeature = layerFeature.feature();
   std::unique_ptr<QgsMultiPolygon> boundaries = std::make_unique<QgsMultiPolygon>();
 
-  std::unique_ptr< QgsGeometryEngine > geomEngine( QgsGeometry::createGeometryEngine( polygon->exteriorRing()->clone(), mContext->tolerance ) );
+  std::unique_ptr< QgsGeometryEngine > geomEngine = QgsGeometryCheckerUtils::createGeomEngine( polygon->exteriorRing()->clone(), mContext->tolerance );
   boundaries->addGeometry( geomEngine->buffer( mContext->tolerance, 5 ) );
 
   const int numRings = polygon->numInteriorRings();
   for ( int i = 0; i < numRings; ++i )
   {
-    geomEngine.reset( QgsGeometry::createGeometryEngine( polygon->interiorRing( i ), mContext->tolerance ) );
+    geomEngine = QgsGeometryCheckerUtils::createGeomEngine( polygon->interiorRing( i ), mContext->tolerance );
     boundaries->addGeometry( geomEngine->buffer( mContext->tolerance, 5 ) );
   }
 
-  geomEngine.reset( QgsGeometry::createGeometryEngine( boundaries.get(), mContext->tolerance ) );
+  geomEngine = QgsGeometryCheckerUtils::createGeomEngine( boundaries.get(), mContext->tolerance );
   geomEngine->prepareGeometry();
 
   const QgsFeatureIds fids = featurePool->getIntersects( boundaries->boundingBox() );
@@ -218,7 +219,7 @@ QString QgsGeometryMissingVertexCheck::id() const
   return factoryId();
 }
 
-QList<Qgis::GeometryType> QgsGeometryMissingVertexCheck::compatibleGeometryTypes() const
+QList<QgsWkbTypes::GeometryType> QgsGeometryMissingVertexCheck::compatibleGeometryTypes() const
 {
   return factoryCompatibleGeometryTypes();
 }
@@ -234,9 +235,9 @@ QgsGeometryCheck::CheckType QgsGeometryMissingVertexCheck::checkType() const
 }
 
 ///@cond private
-QList<Qgis::GeometryType> QgsGeometryMissingVertexCheck::factoryCompatibleGeometryTypes()
+QList<QgsWkbTypes::GeometryType> QgsGeometryMissingVertexCheck::factoryCompatibleGeometryTypes()
 {
-  return {Qgis::GeometryType::Polygon};
+  return {QgsWkbTypes::PolygonGeometry};
 }
 
 bool QgsGeometryMissingVertexCheck::factoryIsCompatible( QgsVectorLayer *layer ) SIP_SKIP

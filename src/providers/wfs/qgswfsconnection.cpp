@@ -14,11 +14,9 @@
  ***************************************************************************/
 
 #include "qgswfsconnection.h"
-#include "moc_qgswfsconnection.cpp"
 #include "qgswfsconstants.h"
 #include "qgslogger.h"
-#include "qgssettingsentryimpl.h"
-
+#include "qgssettings.h"
 
 static const QString SERVICE_WFS = QStringLiteral( "WFS" );
 
@@ -27,38 +25,38 @@ QgsWfsConnection::QgsWfsConnection( const QString &connName )
   : QgsOwsConnection( SERVICE_WFS, connName )
 {
   const QStringList detailsParameters = {service().toLower(), connName};
-  const QString version = settingsVersion->value( detailsParameters );
+  const QString version = settingsConnectionVersion.value( detailsParameters );
   if ( !version.isEmpty() )
   {
     mUri.removeParam( QgsWFSConstants::URI_PARAM_VERSION ); // setParam allow for duplicates!
     mUri.setParam( QgsWFSConstants::URI_PARAM_VERSION, version );
   }
 
-  const QString maxnumfeatures = settingsMaxNumFeatures->value( detailsParameters );
+  const QString maxnumfeatures = settingsConnectionMaxNumFeatures.value( detailsParameters );
   if ( !maxnumfeatures.isEmpty() )
   {
     mUri.removeParam( QgsWFSConstants::URI_PARAM_MAXNUMFEATURES ); // setParam allow for duplicates!
     mUri.setParam( QgsWFSConstants::URI_PARAM_MAXNUMFEATURES, maxnumfeatures );
   }
 
-  const QString pagesize = settingsPagesize->value( detailsParameters );
+  const QString pagesize = settingsConnectionPagesize.value( detailsParameters );
   if ( !pagesize.isEmpty() )
   {
     mUri.removeParam( QgsWFSConstants::URI_PARAM_PAGE_SIZE ); // setParam allow for duplicates!
     mUri.setParam( QgsWFSConstants::URI_PARAM_PAGE_SIZE, pagesize );
   }
 
-  if ( settingsPagingEnabled->exists( detailsParameters ) )
+  if ( settingsConnectionPagingEnabled.exists( detailsParameters ) )
   {
     mUri.removeParam( QgsWFSConstants::URI_PARAM_PAGING_ENABLED ); // setParam allow for duplicates!
-    mUri.setParam( QgsWFSConstants::URI_PARAM_PAGING_ENABLED, settingsPagingEnabled->value( detailsParameters ) );
+    mUri.setParam( QgsWFSConstants::URI_PARAM_PAGING_ENABLED, settingsConnectionPagingEnabled.value( detailsParameters ) ? QStringLiteral( "true" ) : QStringLiteral( "false" ) );
   }
 
-  if ( settingsPreferCoordinatesForWfsT11->exists( detailsParameters ) )
+  if ( settingsConnectionPreferCoordinatesForWfsT11.exists( detailsParameters ) )
   {
     mUri.removeParam( QgsWFSConstants::URI_PARAM_WFST_1_1_PREFER_COORDINATES ); // setParam allow for duplicates!
     mUri.setParam( QgsWFSConstants::URI_PARAM_WFST_1_1_PREFER_COORDINATES,
-                   settingsPreferCoordinatesForWfsT11->value( detailsParameters ) ? QStringLiteral( "true" ) : QStringLiteral( "false" ) );
+                   settingsConnectionPreferCoordinatesForWfsT11.value( detailsParameters ) ? QStringLiteral( "true" ) : QStringLiteral( "false" ) );
   }
 
   QgsDebugMsgLevel( QStringLiteral( "WFS full uri: '%1'." ).arg( QString( mUri.uri() ) ), 4 );

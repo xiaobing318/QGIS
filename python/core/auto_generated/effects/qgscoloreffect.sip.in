@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/effects/qgscoloreffect.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -14,6 +14,8 @@ class QgsColorEffect : QgsPaintEffect /NoDefaultCtors/
 %Docstring(signature="appended")
 A paint effect which alters the colors (e.g., brightness, contrast) in a
 source picture.
+
+.. versionadded:: 2.9
 %End
 
 %TypeHeaderCode
@@ -259,5 +261,5 @@ Returns the blend mode for the effect
  *                                                                      *
  * src/core/effects/qgscoloreffect.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

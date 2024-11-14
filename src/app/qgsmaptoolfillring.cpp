@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgsmaptoolfillring.h"
-#include "moc_qgsmaptoolfillring.cpp"
 #include "qgsgeometry.h"
 #include "qgsfeatureiterator.h"
 #include "qgsmapcanvas.h"
@@ -24,7 +23,7 @@
 #include "qgisapp.h"
 #include "qgsvectorlayerutils.h"
 #include "qgsmapmouseevent.h"
-#include "qgscurvepolygon.h"
+#include "qgspolygon.h"
 
 #include <limits>
 
@@ -130,10 +129,7 @@ void QgsMapToolFillRing::createFeature( const QgsGeometry &geometry, QgsFeatureI
   if ( fit.nextFeature( f ) )
   {
     //create QgsFeature with wkb representation
-    const QgsFeature ft1 = QgsVectorLayerUtils::createFeature( vlayer, geometry, f.attributes().toMap(), &context );
-
-    // make feature compatible with layer
-    QgsFeature ft { QgsVectorLayerUtils::makeFeatureCompatible( ft1, vlayer ).at( 0 ) };
+    QgsFeature ft = QgsVectorLayerUtils::createFeature( vlayer, geometry, f.attributes().toMap(), &context );
 
     bool res = false;
     if ( QApplication::keyboardModifiers() == Qt::ControlModifier )
@@ -184,7 +180,7 @@ void QgsMapToolFillRing::fillRingUnderPoint( const QgsPointXY &p )
   while ( fit.nextFeature( f ) )
   {
     const QgsGeometry g = f.geometry();
-    if ( g.isNull() || QgsWkbTypes::geometryType( g.wkbType() ) != Qgis::GeometryType::Polygon )
+    if ( g.isNull() || QgsWkbTypes::geometryType( g.wkbType() ) != QgsWkbTypes::PolygonGeometry )
       continue;
 
     QgsMultiPolygonXY pol;

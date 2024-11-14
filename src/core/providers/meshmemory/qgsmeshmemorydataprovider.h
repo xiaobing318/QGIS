@@ -84,7 +84,7 @@ class CORE_EXPORT QgsMeshMemoryDataProvider final: public QgsMeshDataProvider
      * \endcode
      */
     QgsMeshMemoryDataProvider( const QString &uri, const QgsDataProvider::ProviderOptions &providerOptions,
-                               Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() );
+                               QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() );
 
     bool isValid() const override;
     QString name() const override;
@@ -135,7 +135,7 @@ class CORE_EXPORT QgsMeshMemoryDataProvider final: public QgsMeshDataProvider
     QgsMeshDatasetMetadata datasetMetadata( QgsMeshDatasetIndex index ) const override;
     QgsMeshDatasetValue datasetValue( QgsMeshDatasetIndex index, int valueIndex ) const override;
     QgsMeshDataBlock datasetValues( QgsMeshDatasetIndex index, int valueIndex, int count ) const override;
-    QgsMesh3DDataBlock dataset3dValues( QgsMeshDatasetIndex index, int faceIndex, int count ) const override;
+    QgsMesh3dDataBlock dataset3dValues( QgsMeshDatasetIndex index, int faceIndex, int count ) const override;
 
     bool isFaceActive( QgsMeshDatasetIndex index, int faceIndex ) const override;
     QgsMeshDataBlock areFacesActive( QgsMeshDatasetIndex index, int faceIndex, int count ) const override;
@@ -194,8 +194,8 @@ class QgsMeshMemoryProviderMetadata final: public QgsProviderMetadata
   public:
     QgsMeshMemoryProviderMetadata();
     QIcon icon() const override;
-    QgsDataProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() ) override;
-    QList< Qgis::LayerType > supportedLayerTypes() const override;
+    QgsDataProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() ) override;
+    QList< QgsMapLayerType > supportedLayerTypes() const override;
 };
 
 ///@endcond

@@ -52,7 +52,6 @@ target_include_directories(provider_postgres_a PUBLIC
 
 # require c++17
 target_compile_features(provider_postgres_a PRIVATE cxx_std_17)
-target_compile_definitions(provider_postgres_a PRIVATE "CMAKE_SOURCE_DIR=\"${CMAKE_SOURCE_DIR}\"")
 
 target_link_libraries (provider_postgres_a
   qgis_core
@@ -78,7 +77,6 @@ if (WITH_GUI)
 
   # require c++17
   target_compile_features(provider_postgres_gui_a PRIVATE cxx_std_17)
-  target_compile_definitions(provider_postgres_gui_a PRIVATE "CMAKE_SOURCE_DIR=\"${CMAKE_SOURCE_DIR}\"")
 
   target_link_libraries(provider_postgres_gui_a
     qgis_gui
@@ -112,7 +110,6 @@ target_include_directories(provider_postgresraster_a PUBLIC
 
 # require c++17
 target_compile_features(provider_postgresraster_a PRIVATE cxx_std_17)
-target_compile_definitions(provider_postgresraster_a PRIVATE "CMAKE_SOURCE_DIR=\"${CMAKE_SOURCE_DIR}\"")
 
 target_link_libraries (provider_postgresraster_a
     qgis_core
@@ -154,8 +151,6 @@ else()
   # require c++17
   target_compile_features(provider_postgres PRIVATE cxx_std_17)
   target_compile_features(provider_postgresraster PRIVATE cxx_std_17)
-  target_compile_definitions(provider_postgres PRIVATE "CMAKE_SOURCE_DIR=\"${CMAKE_SOURCE_DIR}\"")
-  target_compile_definitions(provider_postgresraster PRIVATE "CMAKE_SOURCE_DIR=\"${CMAKE_SOURCE_DIR}\"")
 
   target_link_libraries(provider_postgres
     qgis_core

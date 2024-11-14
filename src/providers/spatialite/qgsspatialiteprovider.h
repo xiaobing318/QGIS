@@ -28,6 +28,13 @@ extern "C"
 #include "qgsvectordataprovider.h"
 #include "qgsrectangle.h"
 #include "qgsfields.h"
+#include "qgswkbtypes.h"
+
+#include <list>
+#include <queue>
+#include <fstream>
+#include <set>
+
 #include "qgsprovidermetadata.h"
 
 class QgsFeature;
@@ -61,7 +68,7 @@ class QgsSpatiaLiteProvider final: public QgsVectorDataProvider
     static Qgis::VectorExportResult createEmptyLayer(
       const QString &uri,
       const QgsFields &fields,
-      Qgis::WkbType wkbType,
+      QgsWkbTypes::Type wkbType,
       const QgsCoordinateReferenceSystem &srs,
       bool overwrite,
       QMap<int, int> *oldToNewAttrIdxMap,
@@ -74,21 +81,18 @@ class QgsSpatiaLiteProvider final: public QgsVectorDataProvider
      * \param uri uniform resource locator (URI) for a dataset
      * \param options generic data provider options
      */
-    explicit QgsSpatiaLiteProvider( QString const &uri, const QgsDataProvider::ProviderOptions &providerOptions, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() );
+    explicit QgsSpatiaLiteProvider( QString const &uri, const QgsDataProvider::ProviderOptions &providerOptions, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() );
 
     ~ QgsSpatiaLiteProvider() override;
 
-    Qgis::DataProviderFlags flags() const override;
     QgsAbstractFeatureSource *featureSource() const override;
     QString storageType() const override;
     QgsCoordinateReferenceSystem crs() const override;
     QgsFeatureIterator getFeatures( const QgsFeatureRequest &request ) const override;
     QString subsetString() const override;
     bool setSubsetString( const QString &theSQL, bool updateFeatureCount = true ) override;
-    bool supportsSubsetString() const override;
-    QString subsetStringDialect() const override;
-    QString subsetStringHelpUrl() const override;
-    Qgis::WkbType wkbType() const override;
+    bool supportsSubsetString() const override { return true; }
+    QgsWkbTypes::Type wkbType() const override;
     //! Return the table schema condition
     static QString tableSchemaCondition( const QgsDataSourceUri &dsUri );
 
@@ -101,7 +105,6 @@ class QgsSpatiaLiteProvider final: public QgsVectorDataProvider
 
     long long featureCount() const override;
     QgsRectangle extent() const override;
-    QgsBox3D extent3D() const override;
     void updateExtents() override;
     QgsFields fields() const override;
     QVariant minimumValue( int index ) const override;
@@ -111,18 +114,18 @@ class QgsSpatiaLiteProvider final: public QgsVectorDataProvider
                                        QgsFeedback *feedback = nullptr ) const override;
 
     bool isValid() const override;
-    Qgis::ProviderStyleStorageCapabilities styleStorageCapabilities() const override;
+    bool isSaveAndLoadStyleToDatabaseSupported() const override;
     bool addFeatures( QgsFeatureList &flist, QgsFeatureSink::Flags flags = QgsFeatureSink::Flags() ) override;
     bool deleteFeatures( const QgsFeatureIds &id ) override;
     bool truncate() override;
     bool addAttributes( const QList<QgsField> &attributes ) override;
     bool changeAttributeValues( const QgsChangedAttributesMap &attr_map ) override;
     bool changeGeometryValues( const QgsGeometryMap &geometry_map ) override;
-    Qgis::VectorProviderCapabilities capabilities() const override;
+    QgsVectorDataProvider::Capabilities capabilities() const override;
     QVariant defaultValue( int fieldId ) const override;
     bool skipConstraintCheck( int fieldIndex, QgsFieldConstraints::Constraint constraint, const QVariant &value = QVariant() ) const override;
     bool createAttributeIndex( int field ) override;
-    Qgis::SpatialIndexPresence hasSpatialIndex() const override;
+    SpatialIndexPresence hasSpatialIndex() const override;
 
     /**
      * The SpatiaLite provider does its own transforms so we return
@@ -288,7 +291,7 @@ class QgsSpatiaLiteProvider final: public QgsVectorDataProvider
     QString mIndexGeometry;
 
     //! Geometry type
-    Qgis::WkbType mGeomType = Qgis::WkbType::Unknown;
+    QgsWkbTypes::Type mGeomType = QgsWkbTypes::Unknown;
 
     //! SQLite handle
     sqlite3 *mSqliteHandle = nullptr;
@@ -309,7 +312,7 @@ class QgsSpatiaLiteProvider final: public QgsVectorDataProvider
     QString mProj4text;
 
     //! Rectangle that contains the extent (bounding box) of the layer
-    QgsBox3D mLayerExtent;
+    QgsRectangle mLayerExtent;
 
     //! Number of features in the layer
     long long mNumberFeatures = 0;
@@ -320,7 +323,7 @@ class QgsSpatiaLiteProvider final: public QgsVectorDataProvider
     //! this Geometry is supported by an MBR cache spatial index
     bool mSpatialIndexMbrCache = false;
 
-    Qgis::VectorProviderCapabilities mEnabledCapabilities;
+    QgsVectorDataProvider::Capabilities mEnabledCapabilities = QgsVectorDataProvider::Capabilities();
 
     QgsField field( int index ) const;
 
@@ -384,10 +387,10 @@ class QgsSpatiaLiteProvider final: public QgsVectorDataProvider
                              unsigned char **wkb, int *geom_size,
                              int dims );
     int computeSizeFromGeosWKB3D( const unsigned char *blob, int size,
-                                  Qgis::WkbType type, int nDims, int little_endian,
+                                  QgsWkbTypes::Type type, int nDims, int little_endian,
                                   int endian_arch );
     int computeSizeFromGeosWKB2D( const unsigned char *blob, int size,
-                                  Qgis::WkbType type, int nDims, int little_endian,
+                                  QgsWkbTypes::Type type, int nDims, int little_endian,
                                   int endian_arch );
 
     void fetchConstraints();
@@ -430,19 +433,16 @@ class QgsSpatiaLiteProviderMetadata final: public QgsProviderMetadata
                     const QString &styleName, const QString &styleDescription,
                     const QString &uiFileContent, bool useAsDefault, QString &errCause ) override;
     QString loadStyle( const QString &uri, QString &errCause ) override;
-    virtual QString loadStoredStyle( const QString &uri, QString &styleName, QString &errCause ) override;
     int listStyles( const QString &uri, QStringList &ids, QStringList &names,
                     QStringList &descriptions, QString &errCause ) override;
     QVariantMap decodeUri( const QString &uri ) const override;
     QString encodeUri( const QVariantMap &parts ) const override;
-    QString absoluteToRelativeUri( const QString &uri, const QgsReadWriteContext &context ) const override;
-    QString relativeToAbsoluteUri( const QString &uri, const QgsReadWriteContext &context ) const override;
     ProviderCapabilities providerCapabilities() const override;
-    QgsSpatiaLiteProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() ) override;
-    QList< Qgis::LayerType > supportedLayerTypes() const override;
+    QgsSpatiaLiteProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() ) override;
+    QList< QgsMapLayerType > supportedLayerTypes() const override;
 
     Qgis::VectorExportResult createEmptyLayer( const QString &uri, const QgsFields &fields,
-        Qgis::WkbType wkbType, const QgsCoordinateReferenceSystem &srs,
+        QgsWkbTypes::Type wkbType, const QgsCoordinateReferenceSystem &srs,
         bool overwrite, QMap<int, int> &oldToNewAttrIdxMap, QString &errorMessage,
         const QMap<QString, QVariant> *options ) override;
     bool createDb( const QString &dbPath, QString &errCause ) override;

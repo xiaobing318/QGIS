@@ -16,18 +16,22 @@
  ***************************************************************************/
 
 #include "qgslayoutmapgridwidget.h"
-#include "moc_qgslayoutmapgridwidget.cpp"
-#include "qgssettingsregistrycore.h"
+#include "qgssymbolselectordialog.h"
 #include "qgssymbol.h"
 #include "qgslayoutitemmap.h"
 #include "qgsproject.h"
+#include "qgssymbollayerutils.h"
+#include "qgsstyle.h"
+#include "qgsprojectionselectiondialog.h"
 #include "qgslayout.h"
+#include "qgsmapsettings.h"
 #include "qgsexpressionbuilderdialog.h"
 #include "qgsvectorlayer.h"
 #include "qgsprojectviewsettings.h"
+#include "qgstextformatwidget.h"
+#include "qgsguiutils.h"
 #include "qgsmarkersymbol.h"
 #include "qgslinesymbol.h"
-#include "qgslayoutreportcontext.h"
 
 QgsLayoutMapGridWidget::QgsLayoutMapGridWidget( QgsLayoutItemMapGrid *mapGrid, QgsLayoutItemMap *map )
   : QgsLayoutItemBaseWidget( nullptr, mapGrid )
@@ -176,24 +180,24 @@ QgsLayoutMapGridWidget::QgsLayoutMapGridWidget( QgsLayoutItemMapGrid *mapGrid, Q
   //set initial state of frame style controls
   toggleFrameControls( false, false, false, false );
 
-  registerDataDefinedButton( mEnabledDDBtn, QgsLayoutObject::DataDefinedProperty::MapGridEnabled );
-  registerDataDefinedButton( mIntervalXDDBtn, QgsLayoutObject::DataDefinedProperty::MapGridIntervalX );
-  registerDataDefinedButton( mIntervalYDDBtn, QgsLayoutObject::DataDefinedProperty::MapGridIntervalY );
-  registerDataDefinedButton( mOffsetXDDBtn, QgsLayoutObject::DataDefinedProperty::MapGridOffsetX );
-  registerDataDefinedButton( mOffsetYDDBtn, QgsLayoutObject::DataDefinedProperty::MapGridOffsetY );
-  registerDataDefinedButton( mFrameSizeDDBtn, QgsLayoutObject::DataDefinedProperty::MapGridFrameSize );
-  registerDataDefinedButton( mFrameMarginDDBtn, QgsLayoutObject::DataDefinedProperty::MapGridFrameMargin );
-  registerDataDefinedButton( mLabelDistDDBtn, QgsLayoutObject::DataDefinedProperty::MapGridLabelDistance );
-  registerDataDefinedButton( mCrossWidthDDBtn, QgsLayoutObject::DataDefinedProperty::MapGridCrossSize );
-  registerDataDefinedButton( mFrameLineThicknessDDBtn, QgsLayoutObject::DataDefinedProperty::MapGridFrameLineThickness );
-  registerDataDefinedButton( mAnnotationDisplayLeftDDBtn, QgsLayoutObject::DataDefinedProperty::MapGridAnnotationDisplayLeft );
-  registerDataDefinedButton( mAnnotationDisplayRightDDBtn, QgsLayoutObject::DataDefinedProperty::MapGridAnnotationDisplayRight );
-  registerDataDefinedButton( mAnnotationDisplayTopDDBtn, QgsLayoutObject::DataDefinedProperty::MapGridAnnotationDisplayTop );
-  registerDataDefinedButton( mAnnotationDisplayBottomDDBtn, QgsLayoutObject::DataDefinedProperty::MapGridAnnotationDisplayBottom );
-  registerDataDefinedButton( mFrameDivisionsLeftDDBtn, QgsLayoutObject::DataDefinedProperty::MapGridFrameDivisionsLeft );
-  registerDataDefinedButton( mFrameDivisionsRightDDBtn, QgsLayoutObject::DataDefinedProperty::MapGridFrameDivisionsRight );
-  registerDataDefinedButton( mFrameDivisionsTopDDBtn, QgsLayoutObject::DataDefinedProperty::MapGridFrameDivisionsTop );
-  registerDataDefinedButton( mFrameDivisionsBottomDDBtn, QgsLayoutObject::DataDefinedProperty::MapGridFrameDivisionsBottom );
+  registerDataDefinedButton( mEnabledDDBtn, QgsLayoutObject::MapGridEnabled );
+  registerDataDefinedButton( mIntervalXDDBtn, QgsLayoutObject::MapGridIntervalX );
+  registerDataDefinedButton( mIntervalYDDBtn, QgsLayoutObject::MapGridIntervalY );
+  registerDataDefinedButton( mOffsetXDDBtn, QgsLayoutObject::MapGridOffsetX );
+  registerDataDefinedButton( mOffsetYDDBtn, QgsLayoutObject::MapGridOffsetY );
+  registerDataDefinedButton( mFrameSizeDDBtn, QgsLayoutObject::MapGridFrameSize );
+  registerDataDefinedButton( mFrameMarginDDBtn, QgsLayoutObject::MapGridFrameMargin );
+  registerDataDefinedButton( mLabelDistDDBtn, QgsLayoutObject::MapGridLabelDistance );
+  registerDataDefinedButton( mCrossWidthDDBtn, QgsLayoutObject::MapGridCrossSize );
+  registerDataDefinedButton( mFrameLineThicknessDDBtn, QgsLayoutObject::MapGridFrameLineThickness );
+  registerDataDefinedButton( mAnnotationDisplayLeftDDBtn, QgsLayoutObject::MapGridAnnotationDisplayLeft );
+  registerDataDefinedButton( mAnnotationDisplayRightDDBtn, QgsLayoutObject::MapGridAnnotationDisplayRight );
+  registerDataDefinedButton( mAnnotationDisplayTopDDBtn, QgsLayoutObject::MapGridAnnotationDisplayTop );
+  registerDataDefinedButton( mAnnotationDisplayBottomDDBtn, QgsLayoutObject::MapGridAnnotationDisplayBottom );
+  registerDataDefinedButton( mFrameDivisionsLeftDDBtn, QgsLayoutObject::MapGridFrameDivisionsLeft );
+  registerDataDefinedButton( mFrameDivisionsRightDDBtn, QgsLayoutObject::MapGridFrameDivisionsRight );
+  registerDataDefinedButton( mFrameDivisionsTopDDBtn, QgsLayoutObject::MapGridFrameDivisionsTop );
+  registerDataDefinedButton( mFrameDivisionsBottomDDBtn, QgsLayoutObject::MapGridFrameDivisionsBottom );
 
   // call to initially populate mAnnotationFormatComboBox
   onCrsChanged();
@@ -473,8 +477,10 @@ bool QgsLayoutMapGridWidget::hasPredefinedScales() const
   if ( !hasProjectScales || scales.isEmpty() )
   {
     // default to global map tool scales
-    const QStringList scales = QgsSettingsRegistryCore::settingsMapScales->value();
-    return !scales.isEmpty() && !scales[0].isEmpty();
+    const QgsSettings settings;
+    const QString scalesStr( settings.value( QStringLiteral( "Map/scales" ), Qgis::defaultProjectScales() ).toString() );
+    QStringList myScalesList = scalesStr.split( ',' );
+    return !myScalesList.isEmpty() && !myScalesList[0].isEmpty();
   }
   return true;
 }
@@ -1092,58 +1098,18 @@ void QgsLayoutMapGridWidget::onCrsChanged()
   const QgsCoordinateReferenceSystem crs = mMapGrid->crs().isValid() ? mMapGrid->crs() : mMap->crs();
   switch ( crs.mapUnits() )
   {
-    case Qgis::DistanceUnit::Meters:
-    case Qgis::DistanceUnit::Kilometers:
-    case Qgis::DistanceUnit::Feet:
-    case Qgis::DistanceUnit::NauticalMiles:
-    case Qgis::DistanceUnit::Yards:
-    case Qgis::DistanceUnit::Miles:
-    case Qgis::DistanceUnit::Centimeters:
-    case Qgis::DistanceUnit::Millimeters:
-    case Qgis::DistanceUnit::Inches:
-    case Qgis::DistanceUnit::ChainsInternational:
-    case Qgis::DistanceUnit::ChainsBritishBenoit1895A:
-    case Qgis::DistanceUnit::ChainsBritishBenoit1895B:
-    case Qgis::DistanceUnit::ChainsBritishSears1922Truncated:
-    case Qgis::DistanceUnit::ChainsBritishSears1922:
-    case Qgis::DistanceUnit::ChainsClarkes:
-    case Qgis::DistanceUnit::ChainsUSSurvey:
-    case Qgis::DistanceUnit::FeetBritish1865:
-    case Qgis::DistanceUnit::FeetBritish1936:
-    case Qgis::DistanceUnit::FeetBritishBenoit1895A:
-    case Qgis::DistanceUnit::FeetBritishBenoit1895B:
-    case Qgis::DistanceUnit::FeetBritishSears1922Truncated:
-    case Qgis::DistanceUnit::FeetBritishSears1922:
-    case Qgis::DistanceUnit::FeetClarkes:
-    case Qgis::DistanceUnit::FeetGoldCoast:
-    case Qgis::DistanceUnit::FeetIndian:
-    case Qgis::DistanceUnit::FeetIndian1937:
-    case Qgis::DistanceUnit::FeetIndian1962:
-    case Qgis::DistanceUnit::FeetIndian1975:
-    case Qgis::DistanceUnit::FeetUSSurvey:
-    case Qgis::DistanceUnit::LinksInternational:
-    case Qgis::DistanceUnit::LinksBritishBenoit1895A:
-    case Qgis::DistanceUnit::LinksBritishBenoit1895B:
-    case Qgis::DistanceUnit::LinksBritishSears1922Truncated:
-    case Qgis::DistanceUnit::LinksBritishSears1922:
-    case Qgis::DistanceUnit::LinksClarkes:
-    case Qgis::DistanceUnit::LinksUSSurvey:
-    case Qgis::DistanceUnit::YardsBritishBenoit1895A:
-    case Qgis::DistanceUnit::YardsBritishBenoit1895B:
-    case Qgis::DistanceUnit::YardsBritishSears1922Truncated:
-    case Qgis::DistanceUnit::YardsBritishSears1922:
-    case Qgis::DistanceUnit::YardsClarkes:
-    case Qgis::DistanceUnit::YardsIndian:
-    case Qgis::DistanceUnit::YardsIndian1937:
-    case Qgis::DistanceUnit::YardsIndian1962:
-    case Qgis::DistanceUnit::YardsIndian1975:
-    case Qgis::DistanceUnit::MilesUSSurvey:
-    case Qgis::DistanceUnit::Fathoms:
-    case Qgis::DistanceUnit::MetersGermanLegal:
+    case QgsUnitTypes::DistanceMeters:
+    case QgsUnitTypes::DistanceKilometers:
+    case QgsUnitTypes::DistanceFeet:
+    case QgsUnitTypes::DistanceNauticalMiles:
+    case QgsUnitTypes::DistanceYards:
+    case QgsUnitTypes::DistanceMiles:
+    case QgsUnitTypes::DistanceCentimeters:
+    case QgsUnitTypes::DistanceMillimeters:
       break;
 
-    case Qgis::DistanceUnit::Degrees:
-    case Qgis::DistanceUnit::Unknown:
+    case QgsUnitTypes::DistanceDegrees:
+    case QgsUnitTypes::DistanceUnknownUnit:
       mAnnotationFormatComboBox->addItem( tr( "Degree, Minute" ), QgsLayoutItemMapGrid::DegreeMinuteNoSuffix );
       mAnnotationFormatComboBox->addItem( tr( "Degree, Minute with Suffix" ), QgsLayoutItemMapGrid::DegreeMinute );
       mAnnotationFormatComboBox->addItem( tr( "Degree, Minute Aligned" ), QgsLayoutItemMapGrid::DegreeMinutePadded );

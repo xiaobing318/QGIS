@@ -59,7 +59,7 @@ class QgsCalculateVectorOverlapsAlgorithm : public QgsProcessingAlgorithm
     QStringList mLayerNames;
     std::vector< std::unique_ptr< QgsVectorLayerFeatureSource > > mOverlayerSources;
     QgsFields mOutputFields;
-    Qgis::WkbType mOutputType = Qgis::WkbType::Unknown;
+    QgsWkbTypes::Type mOutputType = QgsWkbTypes::Unknown;
     QgsCoordinateReferenceSystem mCrs;
     QgsFeatureIterator mInputFeatures;
     long mInputCount = 0;

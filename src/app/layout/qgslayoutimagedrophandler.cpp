@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgslayoutimagedrophandler.h"
-#include "moc_qgslayoutimagedrophandler.cpp"
 #include "qgslayoutdesignerinterface.h"
 #include "qgslayout.h"
 #include "qgslayoutview.h"
@@ -63,7 +62,7 @@ bool QgsLayoutImageDropHandler::handleFileDrop( QgsLayoutDesignerInterface *ifac
 
   const QgsLayoutPoint layoutPoint = iface->layout()->convertFromLayoutUnits( point, iface->layout()->units() );
 
-  item->setPicturePath( file, svg ? Qgis::PictureFormat::SVG : Qgis::PictureFormat::Raster );
+  item->setPicturePath( file, svg ? QgsLayoutItemPicture::FormatSVG : QgsLayoutItemPicture::FormatRaster );
 
   // force a resize to the image's actual size
   item->setResizeMode( QgsLayoutItemPicture::FrameToImageSize );
@@ -104,7 +103,7 @@ bool QgsLayoutImageDropHandler::handlePaste( QgsLayoutDesignerInterface *iface, 
   QString path( encoded );
   path.prepend( QLatin1String( "base64:" ) );
 
-  item->setPicturePath( path, Qgis::PictureFormat::Raster );
+  item->setPicturePath( path, QgsLayoutItemPicture::FormatRaster );
 
   // force a resize to the image's actual size
   item->setResizeMode( QgsLayoutItemPicture::FrameToImageSize );

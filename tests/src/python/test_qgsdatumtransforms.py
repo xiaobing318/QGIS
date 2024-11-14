@@ -10,12 +10,13 @@ __date__ = '2019-05-25'
 __copyright__ = 'Copyright 2019, The QGIS Project'
 
 from qgis.core import (
-    QgsCoordinateReferenceSystem,
-    QgsDatumTransform,
     QgsProjUtils,
+    QgsCoordinateReferenceSystem,
+    QgsDatumTransform
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import (start_app,
+                          unittest,
+                          )
 
 from utilities import unitTestDataPath
 
@@ -23,7 +24,7 @@ start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestPyQgsDatumTransform(QgisTestCase):
+class TestPyQgsDatumTransform(unittest.TestCase):
 
     def testOperations(self):
         ops = QgsDatumTransform.operations(QgsCoordinateReferenceSystem(),
@@ -225,7 +226,7 @@ class TestPyQgsDatumTransform(QgisTestCase):
         self.assertTrue(ops[op3_index].grids[0].directDownload)
         self.assertTrue(ops[op3_index].grids[0].openLicense)
 
-    @unittest.skipIf(QgsProjUtils.projVersionMajor() > 9 or (QgsProjUtils.projVersionMajor() == 9 and QgsProjUtils.projVersionMinor() >= 2), 'NADCON5 support added in Proj 9.2')
+    @unittest.skipIf(QgsProjUtils.projVersionMajor() < 7, 'Not a proj >= 7 build')
     def testNoLasLos(self):
         """
         Test that operations which rely on an NADCON5 grid shift file (which are unsupported by Proj... at time of writing !) are not returned

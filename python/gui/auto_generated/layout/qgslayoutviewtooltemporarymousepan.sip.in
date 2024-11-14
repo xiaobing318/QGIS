@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/layout/qgslayoutviewtooltemporarymousepan.h                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -12,6 +12,8 @@ class QgsLayoutViewToolTemporaryMousePan : QgsLayoutViewTool
 {
 %Docstring(signature="appended")
 Layout view tool for temporarily panning a layout while a mouse button is depressed.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -38,5 +40,5 @@ Constructor for QgsLayoutViewToolTemporaryMousePan.
  *                                                                      *
  * src/gui/layout/qgslayoutviewtooltemporarymousepan.h                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsfontutils.h                                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -12,9 +12,6 @@
 
 class QgsFontUtils
 {
-%Docstring(signature="appended")
-Contains utility functions for working with fonts.
-%End
 
 %TypeHeaderCode
 #include "qgsfontutils.h"
@@ -49,6 +46,8 @@ Check whether font family on system has specific style
 :param style: The style to test for
 
 :return: Whether family has style
+
+.. versionadded:: 2.1
 %End
 
     static QString resolveFontStyleName( const QFont &font );
@@ -93,6 +92,8 @@ Updates font with named style and retain all font properties
     static QString standardTestFontFamily();
 %Docstring
 Gets standard test font family
+
+.. versionadded:: 2.1
 %End
 
     static bool loadStandardTestFonts( const QStringList &loadstyles );
@@ -106,6 +107,8 @@ Loads standard test fonts from filesystem or qrc resource
 .. note::
 
    Done by default on debug app/server startup to ensure fonts available for unit tests (Roman and Bold)
+
+.. versionadded:: 2.1
 %End
 
     static QFont getStandardTestFont( const QString &style = "Roman", int pointsize = 12 );
@@ -116,6 +119,8 @@ Gets standard test font with specific style
 :param pointsize: Font point size to set
 
 :return: QFont
+
+.. versionadded:: 2.1
 %End
 
     static QDomElement toXmlElement( const QFont &font, QDomDocument &document, const QString &elementName );
@@ -129,6 +134,8 @@ Returns a DOM element containing the properties of the font.
 :return: DOM element containing font settings
 
 .. seealso:: :py:func:`setFromXmlElement`
+
+.. versionadded:: 2.10
 %End
 
     static bool setFromXmlElement( QFont &font, const QDomElement &element );
@@ -144,6 +151,8 @@ this will overwrite the current properties of the font.
 .. seealso:: :py:func:`toXmlElement`
 
 .. seealso:: :py:func:`setFromXmlChildNode`
+
+.. versionadded:: 2.10
 %End
 
     static bool setFromXmlChildNode( QFont &font, const QDomElement &element, const QString &childNode );
@@ -160,6 +169,8 @@ this will overwrite the current properties of the font.
 .. seealso:: :py:func:`setFromXmlElement`
 
 .. seealso:: :py:func:`toXmlElement`
+
+.. versionadded:: 2.10
 %End
 
     static QMimeData *toMimeData( const QFont &font ) /Factory/;
@@ -168,6 +179,8 @@ Returns new mime data representing the specified ``font`` settings.
 Caller takes responsibility for deleting the returned object.
 
 .. seealso:: :py:func:`fromMimeData`
+
+.. versionadded:: 3.0
 %End
 
     static QFont fromMimeData( const QMimeData *data, bool *ok /Out/ = 0 );
@@ -176,6 +189,8 @@ Attempts to parse the provided mime ``data`` as a QFont.
 If data can be parsed as a QFont, ``ok`` will be set to ``True``.
 
 .. seealso:: :py:func:`toMimeData`
+
+.. versionadded:: 3.0
 %End
 
     static QString translateNamedStyle( const QString &namedStyle );
@@ -187,6 +202,8 @@ Returns the localized named style of a font, if such a translation is available.
 :return: The localized named style
 
 .. seealso:: :py:func:`untranslateNamedStyle`
+
+.. versionadded:: 2.12
 %End
 
     static QString untranslateNamedStyle( const QString &namedStyle );
@@ -198,6 +215,8 @@ Returns the english named style of a font, if possible.
 :return: The english named style
 
 .. seealso:: :py:func:`translateNamedStyle`
+
+.. versionadded:: 2.12
 %End
 
     static QString asCSS( const QFont &font, double pointToPixelMultiplier = 1.0 );
@@ -211,6 +230,8 @@ Returns a CSS string representing the specified font as closely as possible.
                                destination DPI)
 
 :return: partial CSS string, e.g., "font-family: Comic Sans; font-size: 12px;"
+
+.. versionadded:: 2.16
 %End
 
     static void addRecentFontFamily( const QString &family );
@@ -218,6 +239,8 @@ Returns a CSS string representing the specified font as closely as possible.
 Adds a font ``family`` to the list of recently used font families.
 
 .. seealso:: :py:func:`recentFontFamilies`
+
+.. versionadded:: 3.0
 %End
 
     static QStringList recentFontFamilies();
@@ -225,24 +248,8 @@ Adds a font ``family`` to the list of recently used font families.
 Returns a list of recently used font families.
 
 .. seealso:: :py:func:`addRecentFontFamily`
-%End
 
-    static void setFontFamily( QFont &font, const QString &family );
-%Docstring
-Sets the ``family`` for a ``font`` object.
-
-Applies some workarounds for specific font quirks.
-
-.. versionadded:: 3.34
-%End
-
-    static QFont createFont( const QString &family, int pointSize = -1, int weight = -1, bool italic = false );
-%Docstring
-Creates a font with the specified ``family``.
-
-Applies some workarounds for specific font quirks.
-
-.. versionadded:: 3.34
+.. versionadded:: 3.0
 %End
 };
 
@@ -252,5 +259,5 @@ Applies some workarounds for specific font quirks.
  *                                                                      *
  * src/core/qgsfontutils.h                                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

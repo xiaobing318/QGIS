@@ -31,6 +31,7 @@ class QgsLayout;
  * QgsLayoutAligner contains methods for automatically aligning and distributing
  * sets of layout items, e.g. aligning a group of items to top or left sides.
  *
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsLayoutAligner
 {

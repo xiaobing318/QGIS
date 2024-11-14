@@ -9,29 +9,20 @@ __author__ = 'Matthias Kuhn'
 __date__ = '20/05/2015'
 __copyright__ = 'Copyright 2015, The QGIS Project'
 
-from qgis.PyQt.QtCore import QVariant
-from qgis.PyQt.QtWidgets import QTextEdit
-from qgis.core import (
-    NULL,
-    QgsFeature,
-    QgsField,
-    QgsGeometry,
-    QgsPointXY,
-    QgsProject,
-    QgsVectorLayer,
-)
+import qgis  # NOQA
+from qgis.PyQt.QtCore import Qt, QVariant
+from qgis.PyQt.QtWidgets import QTextEdit, QTableWidgetItem
+from qgis.core import (QgsProject, QgsFeature, QgsGeometry, QgsPointXY, QgsVectorLayer, NULL, QgsField)
 from qgis.gui import QgsGui
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsTextEditWidget(QgisTestCase):
+class TestQgsTextEditWidget(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        super().setUpClass()
         QgsGui.editorWidgetRegistry().initEditors()
 
     def createLayerWithOnePoint(self):
@@ -116,7 +107,7 @@ class TestQgsTextEditWidget(QgisTestCase):
         self.assertFalse(editwidget.widget().toPlainText())
 
 
-class TestQgsValueRelationWidget(QgisTestCase):
+class TestQgsValueRelationWidget(unittest.TestCase):
 
     def test_enableDisable(self):
         reg = QgsGui.editorWidgetRegistry()
@@ -130,6 +121,24 @@ class TestQgsValueRelationWidget(QgisTestCase):
         self.assertFalse(widget.isEnabled())
         wrapper.setEnabled(True)
         self.assertTrue(widget.isEnabled())
+
+    def test_enableDisableOnTableWidget(self):
+        reg = QgsGui.editorWidgetRegistry()
+        layer = QgsVectorLayer("none?field=number:integer", "layer", "memory")
+        wrapper = reg.create('ValueRelation', layer, 0, {'AllowMulti': 'True'}, None, None)
+
+        widget = wrapper.widget()
+        item = QTableWidgetItem('first item')
+        widget.setItem(0, 0, item)
+
+        # does not change the state the whole widget but the single items instead
+        wrapper.setEnabled(False)
+        # widget still true, but items false
+        self.assertTrue(widget.isEnabled())
+        self.assertNotEqual(widget.item(0, 0).flags(), widget.item(0, 0).flags() | Qt.ItemIsEnabled)
+        wrapper.setEnabled(True)
+        self.assertTrue(widget.isEnabled())
+        self.assertEqual(widget.item(0, 0).flags(), widget.item(0, 0).flags() | Qt.ItemIsEnabled)
 
     def test_value_relation_set_value_not_in_map(self):
         """
@@ -209,7 +218,7 @@ class TestQgsValueRelationWidget(QgisTestCase):
         QgsProject.instance().removeAllMapLayers()
 
 
-class TestQgsValueMapEditWidget(QgisTestCase):
+class TestQgsValueMapEditWidget(unittest.TestCase):
     VALUEMAP_NULL_TEXT = "{2839923C-8B7D-419E-B84B-CA2FE9B80EC7}"
 
     def test_ValueMap_set_get(self):
@@ -292,7 +301,7 @@ class TestQgsValueMapEditWidget(QgisTestCase):
         QgsProject.instance().removeAllMapLayers()
 
 
-class TestQgsUuidWidget(QgisTestCase):
+class TestQgsUuidWidget(unittest.TestCase):
 
     def test_create_uuid(self):
         layer = QgsVectorLayer("none?field=text_no_limit:text(0)&field=text_limit:text(10)&field=text_38:text(38)", "layer", "memory")

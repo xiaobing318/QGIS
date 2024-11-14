@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgscolorschemeregistry.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -16,6 +16,8 @@ Registry of color schemes
 
 A registry of :py:class:`QgsColorScheme` color schemes. This class can be created directly, or
 accessed via a :py:func:`QgsApplication.colorSchemeRegistry()`.
+
+.. versionadded:: 2.5
 %End
 
 %TypeHeaderCode
@@ -175,5 +177,5 @@ This method is thread safe.
  *                                                                      *
  * src/core/qgscolorschemeregistry.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

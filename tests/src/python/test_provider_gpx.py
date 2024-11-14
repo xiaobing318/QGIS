@@ -9,29 +9,26 @@ __author__ = 'Nyall Dawson'
 __date__ = '2021-07-30'
 __copyright__ = 'Copyright 2021, The QGIS Project'
 
-import os
-
-from qgis.PyQt.QtCore import Qt, QDateTime, QVariant, QTime, QDate
-
 from qgis.core import (
-    QgsFeature,
-    QgsPathResolver,
-    QgsPoint,
-    QgsProviderRegistry,
-    QgsReadWriteContext,
     QgsVectorLayer,
+    QgsFeature,
+    QgsPoint,
+    QgsProviderRegistry
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import (
+    start_app,
+    unittest
+)
 
 from providertestbase import ProviderTestCase
-from utilities import unitTestDataPath
+from utilities import (
+    unitTestDataPath
+)
 
 start_app()
-TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestPyQgsGpxProvider(QgisTestCase, ProviderTestCase):
+class TestPyQgsGpxProvider(unittest.TestCase, ProviderTestCase):
 
     @classmethod
     def createLayer(cls):
@@ -44,11 +41,14 @@ class TestPyQgsGpxProvider(QgisTestCase, ProviderTestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
-        super(TestPyQgsGpxProvider, cls).setUpClass()
         # Create test layer
         cls.vl = cls.createLayer()
         assert (cls.vl.isValid())
         cls.source = cls.vl.dataProvider()
+
+    @classmethod
+    def tearDownClass(cls):
+        """Run after all tests"""
 
     @property
     def pk_name(self):
@@ -61,10 +61,6 @@ class TestPyQgsGpxProvider(QgisTestCase, ProviderTestCase):
 
     @unittest.skip('Base provider test is not suitable for GPX provider')
     def testGetFeaturesDestinationCrs(self):
-        pass
-
-    @unittest.skip('Base provider test is not suitable for GPX provider')
-    def testGetFeaturesCoordinateTransform(self):
         pass
 
     @unittest.skip('Base provider test is not suitable for GPX provider')
@@ -212,26 +208,6 @@ class TestPyQgsGpxProvider(QgisTestCase, ProviderTestCase):
                                              'layerName': 'routes'}), '/home/me/test.gpx?type=routes')
         self.assertEqual(metadata.decodeUri('/home/me/test.gpx?type=routes'), {'path': '/home/me/test.gpx',
                                                                                'layerName': 'routes'})
-
-    def test_absolute_relative_uri(self):
-        context = QgsReadWriteContext()
-        context.setPathResolver(QgsPathResolver(os.path.join(TEST_DATA_DIR, "project.qgs")))
-
-        absolute_uri = os.path.join(TEST_DATA_DIR, 'gpx_test_suite.gpx') + '?type=waypoint'
-        relative_uri = './gpx_test_suite.gpx?type=waypoint'
-
-        meta = QgsProviderRegistry.instance().providerMetadata("gpx")
-        assert meta is not None
-
-        self.assertEqual(meta.absoluteToRelativeUri(absolute_uri, context), relative_uri)
-        self.assertEqual(meta.relativeToAbsoluteUri(relative_uri, context), absolute_uri)
-
-    def test_waypoint_layer(self):
-        vl = QgsVectorLayer(f'{unitTestDataPath()}/gpx_test_suite.gpx' + "?type=waypoint", 'test2', 'gpx')
-        self.assertTrue(vl.isValid())
-        self.assertEqual(vl.fields().field("time").type(), QVariant.DateTime)
-        values = [f["time"] for f in vl.getFeatures()]
-        self.assertEqual(values[0], QDateTime(QDate(2023, 4, 25), QTime(9, 52, 14, 0), Qt.TimeSpec(1)))
 
 
 if __name__ == '__main__':

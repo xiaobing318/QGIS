@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     FixedTablePanel.py
@@ -37,7 +39,7 @@ with warnings.catch_warnings():
 class FixedTablePanel(BASE, WIDGET):
 
     def __init__(self, param, parent=None):
-        super().__init__(parent)
+        super(FixedTablePanel, self).__init__(parent)
         self.setupUi(self)
 
         self.leText.setEnabled(False)
@@ -65,7 +67,7 @@ class FixedTablePanel(BASE, WIDGET):
 
     def showFixedTableDialog(self):
         dlg = FixedTableDialog(self.param, self.table)
-        dlg.exec()
+        dlg.exec_()
         if dlg.rettable is not None:
             self.setValue(dlg.rettable)
         dlg.deleteLater()

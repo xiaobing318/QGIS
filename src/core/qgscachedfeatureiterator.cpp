@@ -23,7 +23,10 @@ QgsCachedFeatureIterator::QgsCachedFeatureIterator( QgsVectorLayerCache *vlCache
   : QgsAbstractFeatureIterator( featureRequest )
   , mVectorLayerCache( vlCache )
 {
-  mTransform = mRequest.calculateTransform( mVectorLayerCache->sourceCrs() );
+  if ( mRequest.destinationCrs().isValid() && mRequest.destinationCrs() != mVectorLayerCache->sourceCrs() )
+  {
+    mTransform = QgsCoordinateTransform( mVectorLayerCache->sourceCrs(), mRequest.destinationCrs(), mRequest.transformContext() );
+  }
   try
   {
     mFilterRect = filterRectToSourceCrs( mTransform );
@@ -61,20 +64,26 @@ QgsCachedFeatureIterator::QgsCachedFeatureIterator( QgsVectorLayerCache *vlCache
 
   switch ( featureRequest.filterType() )
   {
-    case Qgis::FeatureRequestFilterType::Fids:
+    case QgsFeatureRequest::FilterFids:
     {
       const QgsFeatureIds filterFids = featureRequest.filterFids();
       mFeatureIds = QList< QgsFeatureId >( filterFids.begin(), filterFids.end() );
       break;
     }
 
-    case Qgis::FeatureRequestFilterType::Fid:
+    case QgsFeatureRequest::FilterFid:
       mFeatureIds = QList< QgsFeatureId >() << featureRequest.filterFid();
       break;
 
-    case Qgis::FeatureRequestFilterType::Expression:
-    case Qgis::FeatureRequestFilterType::NoFilter:
+    default:
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+      mFeatureIds.clear();
+      mFeatureIds.reserve( static_cast< int >( mVectorLayerCache->mCacheOrderedKeys.size() ) );
+      for ( auto it = mVectorLayerCache->mCacheOrderedKeys.begin(); it != mVectorLayerCache->mCacheOrderedKeys.end(); ++it )
+        mFeatureIds << *it;
+#else
       mFeatureIds = QList( mVectorLayerCache->mCacheOrderedKeys.begin(), mVectorLayerCache->mCacheOrderedKeys.end() );
+#endif
       break;
   }
 
@@ -90,7 +99,7 @@ bool QgsCachedFeatureIterator::fetchFeature( QgsFeature &f )
 {
   f.setValid( false );
 
-  if ( mClosed || !mVectorLayerCache )
+  if ( mClosed )
     return false;
 
   while ( mFeatureIdIterator != mFeatureIds.constEnd() )
@@ -140,7 +149,10 @@ QgsCachedFeatureWriterIterator::QgsCachedFeatureWriterIterator( QgsVectorLayerCa
   : QgsAbstractFeatureIterator( featureRequest )
   , mVectorLayerCache( vlCache )
 {
-  mTransform = mRequest.calculateTransform( mVectorLayerCache->sourceCrs() );
+  if ( mRequest.destinationCrs().isValid() && mRequest.destinationCrs() != mVectorLayerCache->sourceCrs() )
+  {
+    mTransform = QgsCoordinateTransform( mVectorLayerCache->sourceCrs(), mRequest.destinationCrs(), mRequest.transformContext() );
+  }
   try
   {
     mFilterRect = filterRectToSourceCrs( mTransform );
@@ -162,7 +174,7 @@ QgsCachedFeatureWriterIterator::QgsCachedFeatureWriterIterator( QgsVectorLayerCa
 
 bool QgsCachedFeatureWriterIterator::fetchFeature( QgsFeature &f )
 {
-  if ( mClosed || !mVectorLayerCache )
+  if ( mClosed )
   {
     f.setValid( false );
     return false;
@@ -170,7 +182,7 @@ bool QgsCachedFeatureWriterIterator::fetchFeature( QgsFeature &f )
   if ( mFeatIt.nextFeature( f ) )
   {
     // As long as features can be fetched from the provider: Write them to cache
-    mVectorLayerCache->cacheFeature( f, ! mRequest.flags().testFlag( Qgis::FeatureRequestFlag::SubsetOfAttributes ) );
+    mVectorLayerCache->cacheFeature( f );
     mFids.insert( f.id() );
     geometryToDestinationCrs( f, mTransform );
     return true;

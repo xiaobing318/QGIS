@@ -57,7 +57,6 @@ namespace QgsWms
     context.setFlag( QgsWmsRenderContext::UseScaleDenominator );
     context.setFlag( QgsWmsRenderContext::SetAccessControl );
     context.setParameters( parameters );
-    context.setSocketFeedback( response.feedback() );
 
     const QString infoFormat = request.parameters().value( QStringLiteral( "INFO_FORMAT" ), QStringLiteral( "text/plain" ) );
     response.setHeader( QStringLiteral( "Content-Type" ), infoFormat + QStringLiteral( "; charset=utf-8" ) );

@@ -30,6 +30,7 @@ namespace QgsWms
    * \ingroup server
    * \class QgsWms::QgsMapRendererJobProxy
    * \brief Proxy for sequential or parallel map render job
+   * \since QGIS 3.0
    */
   class QgsMapRendererJobProxy
   {
@@ -52,9 +53,8 @@ namespace QgsWms
        * Sequential or parallel map rendering.
        * \param mapSettings Passed to MapRendererJob
        * \param image The resulting image
-       * \param feedback socket feedback (since QGIS 3.36)
        */
-      void render( const QgsMapSettings &mapSettings, QImage *image, const QgsFeedback *feedback );
+      void render( const QgsMapSettings &mapSettings, QImage *image );
 
       /**
        * Takes ownership of the painter used for rendering.

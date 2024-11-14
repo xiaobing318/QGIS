@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsgradientstopeditor.h                                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -15,6 +15,8 @@ class QgsGradientStopEditor : QWidget
 %Docstring(signature="appended")
 An interactive editor for previewing a gradient color ramp and modifying the position of color
 stops along the gradient.
+
+.. versionadded:: 2.16
 %End
 
 %TypeHeaderCode
@@ -188,5 +190,5 @@ Emitted when the current selected stop changes.
  *                                                                      *
  * src/gui/qgsgradientstopeditor.h                                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

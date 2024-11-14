@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/editorwidgets/core/qgssearchwidgetwrapper.h                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -95,6 +95,8 @@ Shows a search widget on a filter form.
 Returns a list of exclusive filter flags, which cannot be combined with other flags (e.g., EqualTo/NotEqualTo)
 
 .. seealso:: :py:func:`nonExclusiveFilterFlags`
+
+.. versionadded:: 2.16
 %End
 
     static QList< QgsSearchWidgetWrapper::FilterFlag > nonExclusiveFilterFlags();
@@ -102,6 +104,8 @@ Returns a list of exclusive filter flags, which cannot be combined with other fl
 Returns a list of non-exclusive filter flags, which can be combined with other flags (e.g., CaseInsensitive)
 
 .. seealso:: :py:func:`exclusiveFilterFlags`
+
+.. versionadded:: 2.16
 %End
 
     static QString toString( QgsSearchWidgetWrapper::FilterFlag flag );
@@ -109,6 +113,8 @@ Returns a list of non-exclusive filter flags, which can be combined with other f
 Returns a translated string representing a filter flag.
 
 :param flag: flag to convert to string
+
+.. versionadded:: 2.16
 %End
 
     explicit QgsSearchWidgetWrapper( QgsVectorLayer *vl, int fieldIdx, QWidget *parent /TransferThis/ = 0 );
@@ -125,6 +131,8 @@ Create a new widget wrapper
 Returns filter flags supported by the search widget.
 
 .. seealso:: :py:func:`defaultFlags`
+
+.. versionadded:: 2.16
 %End
 
     virtual FilterFlags defaultFlags() const;
@@ -132,6 +140,8 @@ Returns filter flags supported by the search widget.
 Returns the filter flags which should be set by default for the search widget.
 
 .. seealso:: :py:func:`supportedFlags`
+
+.. versionadded:: 2.16
 %End
 
     virtual QString expression() const = 0;
@@ -160,6 +170,8 @@ and the specified filter flags.
 :param flags: filter flags
 
 :return: filter expression
+
+.. versionadded:: 2.16
 %End
 
     QString createFieldIdentifier() const;
@@ -167,18 +179,24 @@ and the specified filter flags.
 Gets a field name or expression to use as field comparison.
 If in SearchMode returns a quoted field identifier.
 If in AggregateSearchMode returns an appropriate aggregate expression.
+
+.. versionadded:: 3.0
 %End
 
     QString aggregate() const;
 %Docstring
 If in AggregateSearch mode, which aggregate should be used to construct
 the filter expression. Is a Null String if none.
+
+.. versionadded:: 3.0
 %End
 
     void setAggregate( const QString &aggregate );
 %Docstring
 If in AggregateSearch mode, which aggregate should be used to construct
 the filter expression. Is a Null String if none.
+
+.. versionadded:: 3.0
 %End
 
     int fieldIndex() const;
@@ -193,6 +211,8 @@ Returns the field index
     virtual void clearWidget();
 %Docstring
 Clears the widget's current value and resets it back to the default state
+
+.. versionadded:: 2.16
 %End
 
     virtual void setEnabled( bool enabled );
@@ -214,12 +234,16 @@ Emitted whenever the expression changes
     void valueChanged();
 %Docstring
 Emitted when a user changes the value of the search widget.
+
+.. versionadded:: 2.16
 %End
 
     void valueCleared();
 %Docstring
 Emitted when a user changes the value of the search widget back
 to an empty, default state.
+
+.. versionadded:: 2.16
 %End
 
   protected slots:
@@ -249,5 +273,5 @@ QFlags<QgsSearchWidgetWrapper::FilterFlag> operator|(QgsSearchWidgetWrapper::Fil
  *                                                                      *
  * src/gui/editorwidgets/core/qgssearchwidgetwrapper.h                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

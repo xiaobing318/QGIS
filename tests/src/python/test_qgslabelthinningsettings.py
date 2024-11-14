@@ -9,15 +9,17 @@ __author__ = 'Nyall Dawson'
 __date__ = '2019-12-07'
 __copyright__ = 'Copyright 2019, The QGIS Project'
 
+import qgis  # NOQA
 
-from qgis.core import QgsLabelThinningSettings, QgsPalLayerSettings
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsPalLayerSettings,
+                       QgsLabelThinningSettings)
+
+from qgis.testing import unittest, start_app
 
 start_app()
 
 
-class TestQgsLabelThinningSettings(QgisTestCase):
+class TestQgsLabelThinningSettings(unittest.TestCase):
 
     def test_thinning_settings(self):
         """

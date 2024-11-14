@@ -13,7 +13,8 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsspatialitedataitems.h"
-#include "moc_qgsspatialitedataitems.cpp"
+
+#include "qgsapplication.h"
 #include "qgsspatialiteprovider.h"
 #include "qgsspatialiteconnection.h"
 #include "qgsfieldsitem.h"
@@ -23,6 +24,8 @@
 #endif
 
 #include "qgslogger.h"
+#include "qgsvectorlayerexporter.h"
+#include "qgsvectorlayer.h"
 
 #include <QDir>
 #include <QFileInfo>
@@ -30,7 +33,7 @@
 
 bool SpatiaLiteUtils::deleteLayer( const QString &dbPath, const QString &tableName, QString &errCause )
 {
-  QgsDebugMsgLevel( "deleting layer " + tableName, 2 );
+  QgsDebugMsg( "deleting layer " + tableName );
 
   QgsSqliteHandle *hndl = QgsSqliteHandle::openDb( dbPath );
   if ( !hndl )
@@ -53,7 +56,7 @@ bool SpatiaLiteUtils::deleteLayer( const QString &dbPath, const QString &tableNa
   ret = sqlite3_exec( sqlite_handle, "VACUUM", nullptr, nullptr, nullptr );
   if ( ret != SQLITE_OK )
   {
-    QgsDebugError( "Failed to run VACUUM after deleting table on database " + dbPath );
+    QgsDebugMsg( "Failed to run VACUUM after deleting table on database " + dbPath );
   }
 
   QgsSqliteHandle::closeDb( hndl );
@@ -241,11 +244,11 @@ static bool initializeSpatialMetadata( sqlite3 *sqlite_handle, QString &errCause
 
 bool SpatiaLiteUtils::createDb( const QString &dbPath, QString &errCause )
 {
-  QgsDebugMsgLevel( QStringLiteral( "creating a new db" ), 2 );
+  QgsDebugMsg( QStringLiteral( "creating a new db" ) );
 
   const QFileInfo fullPath = QFileInfo( dbPath );
   const QDir path = fullPath.dir();
-  QgsDebugMsgLevel( QStringLiteral( "making this dir: %1" ).arg( path.absolutePath() ), 2 );
+  QgsDebugMsg( QStringLiteral( "making this dir: %1" ).arg( path.absolutePath() ) );
 
   // Must be sure there is destination directory ~/.qgis
   QDir().mkpath( path.absolutePath() );
@@ -286,9 +289,9 @@ QString QgsSpatiaLiteDataItemProvider::dataProviderKey() const
   return QStringLiteral( "spatialite" );
 }
 
-Qgis::DataItemProviderCapabilities QgsSpatiaLiteDataItemProvider::capabilities() const
+int QgsSpatiaLiteDataItemProvider::capabilities() const
 {
-  return Qgis::DataItemProviderCapability::Databases;
+  return QgsDataProvider::Database;
 }
 
 QgsDataItem *QgsSpatiaLiteDataItemProvider::createDataItem( const QString &pathIn, QgsDataItem *parentItem )

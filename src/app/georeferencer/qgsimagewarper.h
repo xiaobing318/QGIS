@@ -20,15 +20,14 @@
 
 #include <gdalwarper.h>
 #include <vector>
-
-#include"qgis_app.h"
+#include "qgis_app.h"
+#include "qgspointxy.h"
 #include "qgscoordinatereferencesystem.h"
 #include "qgsogrutils.h"
 #include "qgstaskmanager.h"
 
 class QgsGeorefTransform;
 class QgsFeedback;
-
 
 class APP_EXPORT QgsImageWarper
 {
@@ -177,6 +176,7 @@ class QgsImageWarperTask : public QgsTask
     std::unique_ptr< QgsFeedback > mFeedback;
 
     QgsImageWarper::Result mResult = QgsImageWarper::Result::Success;
+    double mLastProgress = 0;
 };
 
 

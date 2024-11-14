@@ -19,7 +19,6 @@
  */
 
 #include "qgsmapboxglstyleconverter.h"
-#include "moc_qgsmapboxglstyleconverter.cpp"
 #include "qgsvectortilebasicrenderer.h"
 #include "qgsvectortilebasiclabeling.h"
 #include "qgssymbollayer.h"
@@ -181,7 +180,7 @@ void QgsMapBoxGlStyleConverter::parseLayers( const QVariantList &layers, QgsMapB
     else
     {
       mWarnings << QObject::tr( "%1: Skipping unknown layer type %2" ).arg( context->layerId(), layerType );
-      QgsDebugError( mWarnings.constLast() );
+      QgsDebugMsg( mWarnings.constLast() );
       continue;
     }
 
@@ -230,8 +229,6 @@ bool QgsMapBoxGlStyleConverter::parseFillLayer( const QVariantMap &jsonLayer, Qg
   QgsPropertyCollection ddProperties;
   QgsPropertyCollection ddRasterProperties;
 
-  bool colorIsDataDefined = false;
-
   std::unique_ptr< QgsSymbol > symbol( std::make_unique< QgsFillSymbol >() );
 
   // fill color
@@ -239,25 +236,24 @@ bool QgsMapBoxGlStyleConverter::parseFillLayer( const QVariantMap &jsonLayer, Qg
   if ( jsonPaint.contains( isBackgroundStyle ? QStringLiteral( "background-color" ) : QStringLiteral( "fill-color" ) ) )
   {
     const QVariant jsonFillColor = jsonPaint.value( isBackgroundStyle ? QStringLiteral( "background-color" ) : QStringLiteral( "fill-color" ) );
-    switch ( jsonFillColor.userType() )
+    switch ( jsonFillColor.type() )
     {
-      case QMetaType::Type::QVariantMap:
-        ddProperties.setProperty( QgsSymbolLayer::Property::FillColor, parseInterpolateColorByZoom( jsonFillColor.toMap(), context, &fillColor ) );
+      case QVariant::Map:
+        ddProperties.setProperty( QgsSymbolLayer::PropertyFillColor, parseInterpolateColorByZoom( jsonFillColor.toMap(), context, &fillColor ) );
         break;
 
-      case QMetaType::Type::QVariantList:
-      case QMetaType::Type::QStringList:
-        colorIsDataDefined = true;
-        ddProperties.setProperty( QgsSymbolLayer::Property::FillColor, parseValueList( jsonFillColor.toList(), PropertyType::Color, context, 1, 255, &fillColor ) );
+      case QVariant::List:
+      case QVariant::StringList:
+        ddProperties.setProperty( QgsSymbolLayer::PropertyFillColor, parseValueList( jsonFillColor.toList(), PropertyType::Color, context, 1, 255, &fillColor ) );
         break;
 
-      case QMetaType::Type::QString:
+      case QVariant::String:
         fillColor = parseColor( jsonFillColor.toString(), context );
         break;
 
       default:
       {
-        context.pushWarning( QObject::tr( "%1: Skipping unsupported fill-color type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonFillColor.userType() ) ) ) );
+        context.pushWarning( QObject::tr( "%1: Skipping unsupported fill-color type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonFillColor.type() ) ) );
         break;
       }
     }
@@ -277,29 +273,29 @@ bool QgsMapBoxGlStyleConverter::parseFillLayer( const QVariantMap &jsonLayer, Qg
         fillOutlineColor = fillColor;
 
       // match fill color data defined property when active
-      if ( ddProperties.isActive( QgsSymbolLayer::Property::FillColor ) )
-        ddProperties.setProperty( QgsSymbolLayer::Property::StrokeColor,  ddProperties.property( QgsSymbolLayer::Property::FillColor ) );
+      if ( ddProperties.isActive( QgsSymbolLayer::PropertyFillColor ) )
+        ddProperties.setProperty( QgsSymbolLayer::PropertyStrokeColor,  ddProperties.property( QgsSymbolLayer::PropertyFillColor ) );
     }
     else
     {
       const QVariant jsonFillOutlineColor = jsonPaint.value( QStringLiteral( "fill-outline-color" ) );
-      switch ( jsonFillOutlineColor.userType() )
+      switch ( jsonFillOutlineColor.type() )
       {
-        case QMetaType::Type::QVariantMap:
-          ddProperties.setProperty( QgsSymbolLayer::Property::StrokeColor, parseInterpolateColorByZoom( jsonFillOutlineColor.toMap(), context, &fillOutlineColor ) );
+        case QVariant::Map:
+          ddProperties.setProperty( QgsSymbolLayer::PropertyStrokeColor, parseInterpolateColorByZoom( jsonFillOutlineColor.toMap(), context, &fillOutlineColor ) );
           break;
 
-        case QMetaType::Type::QVariantList:
-        case QMetaType::Type::QStringList:
-          ddProperties.setProperty( QgsSymbolLayer::Property::StrokeColor, parseValueList( jsonFillOutlineColor.toList(), PropertyType::Color, context, 1, 255, &fillOutlineColor ) );
+        case QVariant::List:
+        case QVariant::StringList:
+          ddProperties.setProperty( QgsSymbolLayer::PropertyStrokeColor, parseValueList( jsonFillOutlineColor.toList(), PropertyType::Color, context, 1, 255, &fillOutlineColor ) );
           break;
 
-        case QMetaType::Type::QString:
+        case QVariant::String:
           fillOutlineColor = parseColor( jsonFillOutlineColor.toString(), context );
           break;
 
         default:
-          context.pushWarning( QObject::tr( "%1: Skipping unsupported fill-outline-color type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonFillOutlineColor.userType() ) ) ) );
+          context.pushWarning( QObject::tr( "%1: Skipping unsupported fill-outline-color type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonFillOutlineColor.type() ) ) );
           break;
       }
     }
@@ -310,44 +306,44 @@ bool QgsMapBoxGlStyleConverter::parseFillLayer( const QVariantMap &jsonLayer, Qg
   if ( jsonPaint.contains( isBackgroundStyle ? QStringLiteral( "background-opacity" ) : QStringLiteral( "fill-opacity" ) ) )
   {
     const QVariant jsonFillOpacity = jsonPaint.value( isBackgroundStyle ? QStringLiteral( "background-opacity" ) : QStringLiteral( "fill-opacity" ) );
-    switch ( jsonFillOpacity.userType() )
+    switch ( jsonFillOpacity.type() )
     {
-      case QMetaType::Type::Int:
-      case QMetaType::Type::LongLong:
-      case QMetaType::Type::Double:
+      case QVariant::Int:
+      case QVariant::LongLong:
+      case QVariant::Double:
         fillOpacity = jsonFillOpacity.toDouble();
         rasterOpacity = fillOpacity;
         break;
 
-      case QMetaType::Type::QVariantMap:
-        if ( ddProperties.isActive( QgsSymbolLayer::Property::FillColor ) )
+      case QVariant::Map:
+        if ( ddProperties.isActive( QgsSymbolLayer::PropertyFillColor ) )
         {
-          symbol->setDataDefinedProperty( QgsSymbol::Property::Opacity, parseInterpolateByZoom( jsonFillOpacity.toMap(), context, 100 ) );
+          symbol->setDataDefinedProperty( QgsSymbol::PropertyOpacity, parseInterpolateByZoom( jsonFillOpacity.toMap(), context, 100 ) );
         }
         else
         {
-          ddProperties.setProperty( QgsSymbolLayer::Property::FillColor, parseInterpolateOpacityByZoom( jsonFillOpacity.toMap(), fillColor.isValid() ? fillColor.alpha() : 255, &context ) );
-          ddProperties.setProperty( QgsSymbolLayer::Property::StrokeColor, parseInterpolateOpacityByZoom( jsonFillOpacity.toMap(), fillOutlineColor.isValid() ? fillOutlineColor.alpha() : 255, &context ) );
-          ddRasterProperties.setProperty( QgsSymbolLayer::Property::Opacity, parseInterpolateByZoom( jsonFillOpacity.toMap(), context, 100, &rasterOpacity ) );
+          ddProperties.setProperty( QgsSymbolLayer::PropertyFillColor, parseInterpolateOpacityByZoom( jsonFillOpacity.toMap(), fillColor.isValid() ? fillColor.alpha() : 255, &context ) );
+          ddProperties.setProperty( QgsSymbolLayer::PropertyStrokeColor, parseInterpolateOpacityByZoom( jsonFillOpacity.toMap(), fillOutlineColor.isValid() ? fillOutlineColor.alpha() : 255, &context ) );
+          ddRasterProperties.setProperty( QgsSymbolLayer::PropertyOpacity, parseInterpolateByZoom( jsonFillOpacity.toMap(), context, 100, &rasterOpacity ) );
         }
         break;
 
-      case QMetaType::Type::QVariantList:
-      case QMetaType::Type::QStringList:
-        if ( ddProperties.isActive( QgsSymbolLayer::Property::FillColor ) )
+      case QVariant::List:
+      case QVariant::StringList:
+        if ( ddProperties.isActive( QgsSymbolLayer::PropertyFillColor ) )
         {
-          symbol->setDataDefinedProperty( QgsSymbol::Property::Opacity, parseValueList( jsonFillOpacity.toList(), PropertyType::Numeric, context, 100, 100 ) );
+          symbol->setDataDefinedProperty( QgsSymbol::PropertyOpacity, parseValueList( jsonFillOpacity.toList(), PropertyType::Numeric, context, 100, 100 ) );
         }
         else
         {
-          ddProperties.setProperty( QgsSymbolLayer::Property::FillColor, parseValueList( jsonFillOpacity.toList(), PropertyType::Opacity, context, 1, fillColor.isValid() ? fillColor.alpha() : 255 ) );
-          ddProperties.setProperty( QgsSymbolLayer::Property::StrokeColor, parseValueList( jsonFillOpacity.toList(), PropertyType::Opacity, context, 1, fillOutlineColor.isValid() ? fillOutlineColor.alpha() : 255 ) );
-          ddRasterProperties.setProperty( QgsSymbolLayer::Property::Opacity, parseValueList( jsonFillOpacity.toList(), PropertyType::Numeric, context, 100, 255, nullptr, &rasterOpacity ) );
+          ddProperties.setProperty( QgsSymbolLayer::PropertyFillColor, parseValueList( jsonFillOpacity.toList(), PropertyType::Opacity, context, 1, fillColor.isValid() ? fillColor.alpha() : 255 ) );
+          ddProperties.setProperty( QgsSymbolLayer::PropertyStrokeColor, parseValueList( jsonFillOpacity.toList(), PropertyType::Opacity, context, 1, fillOutlineColor.isValid() ? fillOutlineColor.alpha() : 255 ) );
+          ddRasterProperties.setProperty( QgsSymbolLayer::PropertyOpacity, parseValueList( jsonFillOpacity.toList(), PropertyType::Numeric, context, 100, 255, nullptr, &rasterOpacity ) );
         }
         break;
 
       default:
-        context.pushWarning( QObject::tr( "%1: Skipping unsupported fill-opacity type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonFillOpacity.userType() ) ) ) );
+        context.pushWarning( QObject::tr( "%1: Skipping unsupported fill-opacity type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonFillOpacity.type() ) ) );
         break;
     }
   }
@@ -357,21 +353,21 @@ bool QgsMapBoxGlStyleConverter::parseFillLayer( const QVariantMap &jsonLayer, Qg
   if ( jsonPaint.contains( QStringLiteral( "fill-translate" ) ) )
   {
     const QVariant jsonFillTranslate = jsonPaint.value( QStringLiteral( "fill-translate" ) );
-    switch ( jsonFillTranslate.userType() )
+    switch ( jsonFillTranslate.type() )
     {
 
-      case QMetaType::Type::QVariantMap:
-        ddProperties.setProperty( QgsSymbolLayer::Property::Offset, parseInterpolatePointByZoom( jsonFillTranslate.toMap(), context, context.pixelSizeConversionFactor(), &fillTranslate ) );
+      case QVariant::Map:
+        ddProperties.setProperty( QgsSymbolLayer::PropertyOffset, parseInterpolatePointByZoom( jsonFillTranslate.toMap(), context, context.pixelSizeConversionFactor(), &fillTranslate ) );
         break;
 
-      case QMetaType::Type::QVariantList:
-      case QMetaType::Type::QStringList:
+      case QVariant::List:
+      case QVariant::StringList:
         fillTranslate = QPointF( jsonFillTranslate.toList().value( 0 ).toDouble() * context.pixelSizeConversionFactor(),
                                  jsonFillTranslate.toList().value( 1 ).toDouble() * context.pixelSizeConversionFactor() );
         break;
 
       default:
-        context.pushWarning( QObject::tr( "%1: Skipping unsupported fill-translate type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonFillTranslate.userType() ) ) ) );
+        context.pushWarning( QObject::tr( "%1: Skipping unsupported fill-translate type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonFillTranslate.type() ) ) );
         break;
     }
   }
@@ -405,14 +401,14 @@ bool QgsMapBoxGlStyleConverter::parseFillLayer( const QVariantMap &jsonLayer, Qg
 
     QSize spriteSize;
     QString spriteProperty, spriteSizeProperty;
-    const QString sprite = retrieveSpriteAsBase64WithProperties( fillPatternJson, context, spriteSize, spriteProperty, spriteSizeProperty );
+    const QString sprite = retrieveSpriteAsBase64( fillPatternJson, context, spriteSize, spriteProperty, spriteSizeProperty );
     if ( !sprite.isEmpty() )
     {
       // when fill-pattern exists, set and insert QgsRasterFillSymbolLayer
       QgsRasterFillSymbolLayer *rasterFill = new QgsRasterFillSymbolLayer();
       rasterFill->setImageFilePath( sprite );
       rasterFill->setWidth( spriteSize.width() );
-      rasterFill->setSizeUnit( context.targetUnit() );
+      rasterFill->setWidthUnit( context.targetUnit() );
       rasterFill->setCoordinateMode( Qgis::SymbolCoordinateReference::Viewport );
 
       if ( rasterOpacity >= 0 )
@@ -422,8 +418,8 @@ bool QgsMapBoxGlStyleConverter::parseFillLayer( const QVariantMap &jsonLayer, Qg
 
       if ( !spriteProperty.isEmpty() )
       {
-        ddRasterProperties.setProperty( QgsSymbolLayer::Property::File, QgsProperty::fromExpression( spriteProperty ) );
-        ddRasterProperties.setProperty( QgsSymbolLayer::Property::Width, QgsProperty::fromExpression( spriteSizeProperty ) );
+        ddRasterProperties.setProperty( QgsSymbolLayer::PropertyFile, QgsProperty::fromExpression( spriteProperty ) );
+        ddRasterProperties.setProperty( QgsSymbolLayer::PropertyWidth, QgsProperty::fromExpression( spriteSizeProperty ) );
       }
 
       rasterFill->setDataDefinedProperties( ddRasterProperties );
@@ -438,18 +434,8 @@ bool QgsMapBoxGlStyleConverter::parseFillLayer( const QVariantMap &jsonLayer, Qg
     symbol->setOpacity( fillOpacity );
   }
 
-  // some complex logic here!
-  // by default a MapBox fill style will share the same stroke color as the fill color.
-  // This is generally desirable and the 1px stroke can help to hide boundaries between features which
-  // would otherwise be visible due to antialiasing effects.
-  // BUT if the outline color is semi-transparent, then drawing the stroke will result in a double rendering
-  // of strokes for adjacent polygons, resulting in visible seams between tiles. Accordingly, we only
-  // set the stroke color if it's a completely different color to the fill (ie the style designer explicitly
-  // wants a visible stroke) OR the stroke color is opaque and the double-rendering artifacts aren't an issue
-  if ( fillOutlineColor.isValid() && ( fillOutlineColor.alpha() == 255 || fillOutlineColor != fillColor ) )
+  if ( fillOutlineColor.isValid() )
   {
-    // mapbox fill strokes are always 1 px wide
-    fillSymbol->setStrokeWidth( 0 );
     fillSymbol->setStrokeColor( fillOutlineColor );
   }
   else
@@ -461,16 +447,12 @@ bool QgsMapBoxGlStyleConverter::parseFillLayer( const QVariantMap &jsonLayer, Qg
   {
     fillSymbol->setFillColor( fillColor );
   }
-  else if ( colorIsDataDefined )
-  {
-    fillSymbol->setFillColor( QColor( Qt::transparent ) );
-  }
   else
   {
     fillSymbol->setBrushStyle( Qt::NoBrush );
   }
 
-  style.setGeometryType( Qgis::GeometryType::Polygon );
+  style.setGeometryType( QgsWkbTypes::PolygonGeometry );
   style.setSymbol( symbol.release() );
   return true;
 }
@@ -490,20 +472,20 @@ bool QgsMapBoxGlStyleConverter::parseLineLayer( const QVariantMap &jsonLayer, Qg
   if ( jsonPaint.contains( QStringLiteral( "line-pattern" ) ) )
   {
     const QVariant jsonLinePattern = jsonPaint.value( QStringLiteral( "line-pattern" ) );
-    switch ( jsonLinePattern.userType() )
+    switch ( jsonLinePattern.type() )
     {
-      case QMetaType::Type::QVariantMap:
-      case QMetaType::Type::QString:
+      case QVariant::Map:
+      case QVariant::String:
       {
         QSize spriteSize;
         QString spriteProperty, spriteSizeProperty;
-        rasterLineSprite = retrieveSpriteAsBase64WithProperties( jsonLinePattern, context, spriteSize, spriteProperty, spriteSizeProperty );
-        ddProperties.setProperty( QgsSymbolLayer::Property::File, QgsProperty::fromExpression( spriteProperty ) );
+        rasterLineSprite = retrieveSpriteAsBase64( jsonLinePattern, context, spriteSize, spriteProperty, spriteSizeProperty );
+        ddProperties.setProperty( QgsSymbolLayer::PropertyFile, QgsProperty::fromExpression( spriteProperty ) );
         break;
       }
 
-      case QMetaType::Type::QVariantList:
-      case QMetaType::Type::QStringList:
+      case QVariant::List:
+      case QVariant::StringList:
       default:
         break;
     }
@@ -521,25 +503,25 @@ bool QgsMapBoxGlStyleConverter::parseLineLayer( const QVariantMap &jsonLayer, Qg
   if ( jsonPaint.contains( QStringLiteral( "line-color" ) ) )
   {
     const QVariant jsonLineColor = jsonPaint.value( QStringLiteral( "line-color" ) );
-    switch ( jsonLineColor.userType() )
+    switch ( jsonLineColor.type() )
     {
-      case QMetaType::Type::QVariantMap:
-        ddProperties.setProperty( QgsSymbolLayer::Property::FillColor, parseInterpolateColorByZoom( jsonLineColor.toMap(), context, &lineColor ) );
-        ddProperties.setProperty( QgsSymbolLayer::Property::StrokeColor, ddProperties.property( QgsSymbolLayer::Property::FillColor ) );
+      case QVariant::Map:
+        ddProperties.setProperty( QgsSymbolLayer::PropertyFillColor, parseInterpolateColorByZoom( jsonLineColor.toMap(), context, &lineColor ) );
+        ddProperties.setProperty( QgsSymbolLayer::PropertyStrokeColor, ddProperties.property( QgsSymbolLayer::PropertyFillColor ) );
         break;
 
-      case QMetaType::Type::QVariantList:
-      case QMetaType::Type::QStringList:
-        ddProperties.setProperty( QgsSymbolLayer::Property::FillColor, parseValueList( jsonLineColor.toList(), PropertyType::Color, context, 1, 255, &lineColor ) );
-        ddProperties.setProperty( QgsSymbolLayer::Property::StrokeColor, ddProperties.property( QgsSymbolLayer::Property::FillColor ) );
+      case QVariant::List:
+      case QVariant::StringList:
+        ddProperties.setProperty( QgsSymbolLayer::PropertyFillColor, parseValueList( jsonLineColor.toList(), PropertyType::Color, context, 1, 255, &lineColor ) );
+        ddProperties.setProperty( QgsSymbolLayer::PropertyStrokeColor, ddProperties.property( QgsSymbolLayer::PropertyFillColor ) );
         break;
 
-      case QMetaType::Type::QString:
+      case QVariant::String:
         lineColor = parseColor( jsonLineColor.toString(), context );
         break;
 
       default:
-        context.pushWarning( QObject::tr( "%1: Skipping unsupported line-color type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonLineColor.userType() ) ) ) );
+        context.pushWarning( QObject::tr( "%1: Skipping unsupported line-color type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonLineColor.type() ) ) );
         break;
     }
   }
@@ -555,40 +537,28 @@ bool QgsMapBoxGlStyleConverter::parseLineLayer( const QVariantMap &jsonLayer, Qg
   if ( jsonPaint.contains( QStringLiteral( "line-width" ) ) )
   {
     const QVariant jsonLineWidth = jsonPaint.value( QStringLiteral( "line-width" ) );
-    switch ( jsonLineWidth.userType() )
+    switch ( jsonLineWidth.type() )
     {
-      case QMetaType::Type::Int:
-      case QMetaType::Type::LongLong:
-      case QMetaType::Type::Double:
+      case QVariant::Int:
+      case QVariant::LongLong:
+      case QVariant::Double:
         lineWidth = jsonLineWidth.toDouble() * context.pixelSizeConversionFactor();
         break;
 
-      case QMetaType::Type::QVariantMap:
-      {
+      case QVariant::Map:
         lineWidth = -1;
         lineWidthProperty = parseInterpolateByZoom( jsonLineWidth.toMap(), context, context.pixelSizeConversionFactor(), &lineWidth );
-        ddProperties.setProperty( QgsSymbolLayer::Property::StrokeWidth, lineWidthProperty );
-        // set symbol layer visibility depending on line width since QGIS displays line with 0 width as hairlines
-        QgsProperty layerEnabledProperty = QgsProperty( lineWidthProperty );
-        layerEnabledProperty.setExpressionString( QStringLiteral( "(%1) > 0" ).arg( lineWidthProperty.expressionString() ) );
-        ddProperties.setProperty( QgsSymbolLayer::Property::LayerEnabled, layerEnabledProperty );
+        ddProperties.setProperty( QgsSymbolLayer::PropertyStrokeWidth, lineWidthProperty );
         break;
-      }
 
-      case QMetaType::Type::QVariantList:
-      case QMetaType::Type::QStringList:
-      {
+      case QVariant::List:
+      case QVariant::StringList:
         lineWidthProperty = parseValueList( jsonLineWidth.toList(), PropertyType::Numeric, context, context.pixelSizeConversionFactor(), 255, nullptr, &lineWidth );
-        ddProperties.setProperty( QgsSymbolLayer::Property::StrokeWidth, lineWidthProperty );
-        // set symbol layer visibility depending on line width since QGIS displays line with 0 width as hairlines
-        QgsProperty layerEnabledProperty = QgsProperty( lineWidthProperty );
-        layerEnabledProperty.setExpressionString( QStringLiteral( "(%1) > 0" ).arg( lineWidthProperty.expressionString() ) );
-        ddProperties.setProperty( QgsSymbolLayer::Property::LayerEnabled, layerEnabledProperty );
+        ddProperties.setProperty( QgsSymbolLayer::PropertyStrokeWidth, lineWidthProperty );
         break;
-      }
 
       default:
-        context.pushWarning( QObject::tr( "%1: Skipping unsupported fill-width type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonLineWidth.userType() ) ) ) );
+        context.pushWarning( QObject::tr( "%1: Skipping unsupported fill-width type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonLineWidth.type() ) ) );
         break;
     }
   }
@@ -597,71 +567,67 @@ bool QgsMapBoxGlStyleConverter::parseLineLayer( const QVariantMap &jsonLayer, Qg
   if ( jsonPaint.contains( QStringLiteral( "line-offset" ) ) )
   {
     const QVariant jsonLineOffset = jsonPaint.value( QStringLiteral( "line-offset" ) );
-    switch ( jsonLineOffset.userType() )
+    switch ( jsonLineOffset.type() )
     {
-      case QMetaType::Type::Int:
-      case QMetaType::Type::LongLong:
-      case QMetaType::Type::Double:
+      case QVariant::Int:
+      case QVariant::LongLong:
+      case QVariant::Double:
         lineOffset = -jsonLineOffset.toDouble() * context.pixelSizeConversionFactor();
         break;
 
-      case QMetaType::Type::QVariantMap:
+      case QVariant::Map:
         lineWidth = -1;
-        ddProperties.setProperty( QgsSymbolLayer::Property::Offset, parseInterpolateByZoom( jsonLineOffset.toMap(), context, context.pixelSizeConversionFactor() * -1, &lineOffset ) );
+        ddProperties.setProperty( QgsSymbolLayer::PropertyOffset, parseInterpolateByZoom( jsonLineOffset.toMap(), context, context.pixelSizeConversionFactor() * -1, &lineOffset ) );
         break;
 
-      case QMetaType::Type::QVariantList:
-      case QMetaType::Type::QStringList:
-        ddProperties.setProperty( QgsSymbolLayer::Property::Offset, parseValueList( jsonLineOffset.toList(), PropertyType::Numeric, context, context.pixelSizeConversionFactor() * -1, 255, nullptr, &lineOffset ) );
+      case QVariant::List:
+      case QVariant::StringList:
+        ddProperties.setProperty( QgsSymbolLayer::PropertyOffset, parseValueList( jsonLineOffset.toList(), PropertyType::Numeric, context, context.pixelSizeConversionFactor() * -1, 255, nullptr, &lineOffset ) );
         break;
 
       default:
-        context.pushWarning( QObject::tr( "%1: Skipping unsupported line-offset type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonLineOffset.userType() ) ) ) );
+        context.pushWarning( QObject::tr( "%1: Skipping unsupported line-offset type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonLineOffset.type() ) ) );
         break;
     }
   }
 
   double lineOpacity = -1.0;
-  QgsProperty lineOpacityProperty;
   if ( jsonPaint.contains( QStringLiteral( "line-opacity" ) ) )
   {
     const QVariant jsonLineOpacity = jsonPaint.value( QStringLiteral( "line-opacity" ) );
-    switch ( jsonLineOpacity.userType() )
+    switch ( jsonLineOpacity.type() )
     {
-      case QMetaType::Type::Int:
-      case QMetaType::Type::LongLong:
-      case QMetaType::Type::Double:
+      case QVariant::Int:
+      case QVariant::LongLong:
+      case QVariant::Double:
         lineOpacity = jsonLineOpacity.toDouble();
         break;
 
-      case QMetaType::Type::QVariantMap:
-        if ( ddProperties.isActive( QgsSymbolLayer::Property::StrokeColor ) )
+      case QVariant::Map:
+        if ( ddProperties.isActive( QgsSymbolLayer::PropertyStrokeColor ) )
         {
-          double defaultValue = 1.0;
-          lineOpacityProperty = parseInterpolateByZoom( jsonLineOpacity.toMap(), context, 100, &defaultValue );
+          context.pushWarning( QObject::tr( "%1: Could not set opacity of layer, opacity already defined in stroke color" ).arg( context.layerId() ) );
         }
         else
         {
-          ddProperties.setProperty( QgsSymbolLayer::Property::StrokeColor, parseInterpolateOpacityByZoom( jsonLineOpacity.toMap(), lineColor.isValid() ? lineColor.alpha() : 255, &context ) );
+          ddProperties.setProperty( QgsSymbolLayer::PropertyStrokeColor, parseInterpolateOpacityByZoom( jsonLineOpacity.toMap(), lineColor.isValid() ? lineColor.alpha() : 255, &context ) );
         }
         break;
 
-      case QMetaType::Type::QVariantList:
-      case QMetaType::Type::QStringList:
-        if ( ddProperties.isActive( QgsSymbolLayer::Property::StrokeColor ) )
+      case QVariant::List:
+      case QVariant::StringList:
+        if ( ddProperties.isActive( QgsSymbolLayer::PropertyStrokeColor ) )
         {
-          double defaultValue = 1.0;
-          QColor invalidColor;
-          lineOpacityProperty = parseValueList( jsonLineOpacity.toList(), PropertyType::Numeric, context, 100, 255, &invalidColor, &defaultValue );
+          context.pushWarning( QObject::tr( "%1: Could not set opacity of layer, opacity already defined in stroke color" ).arg( context.layerId() ) );
         }
         else
         {
-          ddProperties.setProperty( QgsSymbolLayer::Property::StrokeColor, parseValueList( jsonLineOpacity.toList(), PropertyType::Opacity, context, 1, lineColor.isValid() ? lineColor.alpha() : 255 ) );
+          ddProperties.setProperty( QgsSymbolLayer::PropertyStrokeColor, parseValueList( jsonLineOpacity.toList(), PropertyType::Opacity, context, 1, lineColor.isValid() ? lineColor.alpha() : 255 ) );
         }
         break;
 
       default:
-        context.pushWarning( QObject::tr( "%1: Skipping unsupported line-opacity type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonLineOpacity.userType() ) ) ) );
+        context.pushWarning( QObject::tr( "%1: Skipping unsupported line-opacity type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonLineOpacity.type() ) ) );
         break;
     }
   }
@@ -670,9 +636,9 @@ bool QgsMapBoxGlStyleConverter::parseLineLayer( const QVariantMap &jsonLayer, Qg
   if ( jsonPaint.contains( QStringLiteral( "line-dasharray" ) ) )
   {
     const QVariant jsonLineDashArray = jsonPaint.value( QStringLiteral( "line-dasharray" ) );
-    switch ( jsonLineDashArray.userType() )
+    switch ( jsonLineDashArray.type() )
     {
-      case QMetaType::Type::QVariantMap:
+      case QVariant::Map:
       {
         QString arrayExpression;
         if ( !lineWidthProperty.asExpression().isEmpty() )
@@ -685,7 +651,7 @@ bool QgsMapBoxGlStyleConverter::parseLineLayer( const QVariantMap &jsonLayer, Qg
         {
           arrayExpression = QStringLiteral( "array_to_string(%1, ';')" ).arg( parseArrayStops( jsonLineDashArray.toMap().value( QStringLiteral( "stops" ) ).toList(), context, lineWidth ) );
         }
-        ddProperties.setProperty( QgsSymbolLayer::Property::CustomDash, QgsProperty::fromExpression( arrayExpression ) );
+        ddProperties.setProperty( QgsSymbolLayer::PropertyCustomDash, QgsProperty::fromExpression( arrayExpression ) );
 
         const QVariantList dashSource = jsonLineDashArray.toMap().value( QStringLiteral( "stops" ) ).toList().first().toList().value( 1 ).toList();
         for ( const QVariant &v : dashSource )
@@ -695,74 +661,58 @@ bool QgsMapBoxGlStyleConverter::parseLineLayer( const QVariantMap &jsonLayer, Qg
         break;
       }
 
-      case QMetaType::Type::QVariantList:
-      case QMetaType::Type::QStringList:
+      case QVariant::List:
+      case QVariant::StringList:
       {
         const QVariantList dashSource = jsonLineDashArray.toList();
 
-        if ( dashSource.at( 0 ).userType() == QMetaType::Type::QString )
+        QVector< double > rawDashVectorSizes;
+        rawDashVectorSizes.reserve( dashSource.size() );
+        for ( const QVariant &v : dashSource )
         {
-          QgsProperty property = parseValueList( dashSource, PropertyType::NumericArray, context, 1, 255, nullptr, nullptr );
-          if ( !lineWidthProperty.asExpression().isEmpty() )
-          {
-            property = QgsProperty::fromExpression( QStringLiteral( "array_to_string(array_foreach(%1,@element * (%2)), ';')" ) // skip-keyword-check
-                                                    .arg( property.asExpression(), lineWidthProperty.asExpression() ) );
-          }
-          else
-          {
-            property = QgsProperty::fromExpression( QStringLiteral( "array_to_string(%1, ';')" ).arg( property.asExpression() ) );
-          }
-          ddProperties.setProperty( QgsSymbolLayer::Property::CustomDash, property );
+          rawDashVectorSizes << v.toDouble();
         }
-        else
+
+        // handle non-compliant dash vector patterns
+        if ( rawDashVectorSizes.size() == 1 )
         {
-          QVector< double > rawDashVectorSizes;
-          rawDashVectorSizes.reserve( dashSource.size() );
-          for ( const QVariant &v : dashSource )
-          {
-            rawDashVectorSizes << v.toDouble();
-          }
+          // match behavior of MapBox style rendering -- if a user makes a line dash array with one element, it's ignored
+          rawDashVectorSizes.clear();
+        }
+        else if ( rawDashVectorSizes.size() % 2 == 1 )
+        {
+          // odd number of dash pattern sizes -- this isn't permitted by Qt/QGIS, but isn't explicitly blocked by the MapBox specs
+          // MapBox seems to add the extra dash element to the first dash size
+          rawDashVectorSizes[0] = rawDashVectorSizes[0] + rawDashVectorSizes[rawDashVectorSizes.size() - 1];
+          rawDashVectorSizes.resize( rawDashVectorSizes.size() - 1 );
+        }
 
-          // handle non-compliant dash vector patterns
-          if ( rawDashVectorSizes.size() == 1 )
-          {
-            // match behavior of MapBox style rendering -- if a user makes a line dash array with one element, it's ignored
-            rawDashVectorSizes.clear();
-          }
-          else if ( rawDashVectorSizes.size() % 2 == 1 )
-          {
-            // odd number of dash pattern sizes -- this isn't permitted by Qt/QGIS, but isn't explicitly blocked by the MapBox specs
-            // MapBox seems to add the extra dash element to the first dash size
-            rawDashVectorSizes[0] = rawDashVectorSizes[0] + rawDashVectorSizes[rawDashVectorSizes.size() - 1];
-            rawDashVectorSizes.resize( rawDashVectorSizes.size() - 1 );
-          }
-
-          if ( !rawDashVectorSizes.isEmpty() && ( !lineWidthProperty.asExpression().isEmpty() ) )
-          {
-            QStringList dashArrayStringParts;
-            dashArrayStringParts.reserve( rawDashVectorSizes.size() );
-            for ( double v : std::as_const( rawDashVectorSizes ) )
-            {
-              dashArrayStringParts << qgsDoubleToString( v );
-            }
-
-            QString arrayExpression = QStringLiteral( "array_to_string(array_foreach(array(%1),@element * (%2)), ';')" ) // skip-keyword-check
-                                      .arg( dashArrayStringParts.join( ',' ),
-                                            lineWidthProperty.asExpression() );
-            ddProperties.setProperty( QgsSymbolLayer::Property::CustomDash, QgsProperty::fromExpression( arrayExpression ) );
-          }
-
-          // dash vector sizes for QGIS symbols must be multiplied by the target line width
+        if ( !rawDashVectorSizes.isEmpty() && ( !lineWidthProperty.asExpression().isEmpty() ) )
+        {
+          QStringList dashArrayStringParts;
+          dashArrayStringParts.reserve( rawDashVectorSizes.size() );
           for ( double v : std::as_const( rawDashVectorSizes ) )
           {
-            dashVector << v *lineWidth;
+            dashArrayStringParts << qgsDoubleToString( v );
           }
+
+          QString arrayExpression = QStringLiteral( "array_to_string(array_foreach(array(%1),@element * (%2)), ';')" ) // skip-keyword-check
+                                    .arg( dashArrayStringParts.join( ',' ),
+                                          lineWidthProperty.asExpression() );
+          ddProperties.setProperty( QgsSymbolLayer::PropertyCustomDash, QgsProperty::fromExpression( arrayExpression ) );
         }
+
+        // dash vector sizes for QGIS symbols must be multiplied by the target line width
+        for ( double v : std::as_const( rawDashVectorSizes ) )
+        {
+          dashVector << v *lineWidth;
+        }
+
         break;
       }
 
       default:
-        context.pushWarning( QObject::tr( "%1: Skipping unsupported line-dasharray type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonLineDashArray.userType() ) ) ) );
+        context.pushWarning( QObject::tr( "%1: Skipping unsupported line-dasharray type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonLineDashArray.type() ) ) );
         break;
     }
   }
@@ -799,12 +749,6 @@ bool QgsMapBoxGlStyleConverter::parseLineLayer( const QVariantMap &jsonLayer, Qg
     {
       symbol->setOpacity( lineOpacity );
     }
-    if ( !lineOpacityProperty.asExpression().isEmpty() )
-    {
-      QgsPropertyCollection ddProperties;
-      ddProperties.setProperty( QgsSymbol::Property::Opacity, lineOpacityProperty );
-      symbol->setDataDefinedProperties( ddProperties );
-    }
     if ( lineWidth != -1 )
     {
       lineSymbol->setWidth( lineWidth );
@@ -828,12 +772,6 @@ bool QgsMapBoxGlStyleConverter::parseLineLayer( const QVariantMap &jsonLayer, Qg
     {
       symbol->setOpacity( lineOpacity );
     }
-    if ( !lineOpacityProperty.asExpression().isEmpty() )
-    {
-      QgsPropertyCollection ddProperties;
-      ddProperties.setProperty( QgsSymbol::Property::Opacity, lineOpacityProperty );
-      symbol->setDataDefinedProperties( ddProperties );
-    }
     if ( lineColor.isValid() )
     {
       lineSymbol->setColor( lineColor );
@@ -849,7 +787,7 @@ bool QgsMapBoxGlStyleConverter::parseLineLayer( const QVariantMap &jsonLayer, Qg
     }
   }
 
-  style.setGeometryType( Qgis::GeometryType::Line );
+  style.setGeometryType( QgsWkbTypes::LineGeometry );
   style.setSymbol( symbol.release() );
   return true;
 }
@@ -870,23 +808,23 @@ bool QgsMapBoxGlStyleConverter::parseCircleLayer( const QVariantMap &jsonLayer, 
   if ( jsonPaint.contains( QStringLiteral( "circle-color" ) ) )
   {
     const QVariant jsonCircleColor = jsonPaint.value( QStringLiteral( "circle-color" ) );
-    switch ( jsonCircleColor.userType() )
+    switch ( jsonCircleColor.type() )
     {
-      case QMetaType::Type::QVariantMap:
-        ddProperties.setProperty( QgsSymbolLayer::Property::FillColor, parseInterpolateColorByZoom( jsonCircleColor.toMap(), context, &circleFillColor ) );
+      case QVariant::Map:
+        ddProperties.setProperty( QgsSymbolLayer::PropertyFillColor, parseInterpolateColorByZoom( jsonCircleColor.toMap(), context, &circleFillColor ) );
         break;
 
-      case QMetaType::Type::QVariantList:
-      case QMetaType::Type::QStringList:
-        ddProperties.setProperty( QgsSymbolLayer::Property::FillColor, parseValueList( jsonCircleColor.toList(), PropertyType::Color, context, 1, 255, &circleFillColor ) );
+      case QVariant::List:
+      case QVariant::StringList:
+        ddProperties.setProperty( QgsSymbolLayer::PropertyFillColor, parseValueList( jsonCircleColor.toList(), PropertyType::Color, context, 1, 255, &circleFillColor ) );
         break;
 
-      case QMetaType::Type::QString:
+      case QVariant::String:
         circleFillColor = parseColor( jsonCircleColor.toString(), context );
         break;
 
       default:
-        context.pushWarning( QObject::tr( "%1: Skipping unsupported circle-color type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonCircleColor.userType() ) ) ) );
+        context.pushWarning( QObject::tr( "%1: Skipping unsupported circle-color type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonCircleColor.type() ) ) );
         break;
     }
   }
@@ -901,26 +839,26 @@ bool QgsMapBoxGlStyleConverter::parseCircleLayer( const QVariantMap &jsonLayer, 
   if ( jsonPaint.contains( QStringLiteral( "circle-radius" ) ) )
   {
     const QVariant jsonCircleRadius = jsonPaint.value( QStringLiteral( "circle-radius" ) );
-    switch ( jsonCircleRadius.userType() )
+    switch ( jsonCircleRadius.type() )
     {
-      case QMetaType::Type::Int:
-      case QMetaType::Type::LongLong:
-      case QMetaType::Type::Double:
+      case QVariant::Int:
+      case QVariant::LongLong:
+      case QVariant::Double:
         circleDiameter = jsonCircleRadius.toDouble() * context.pixelSizeConversionFactor() * 2;
         break;
 
-      case QMetaType::Type::QVariantMap:
+      case QVariant::Map:
         circleDiameter = -1;
-        ddProperties.setProperty( QgsSymbolLayer::Property::Width, parseInterpolateByZoom( jsonCircleRadius.toMap(), context, context.pixelSizeConversionFactor() * 2, &circleDiameter ) );
+        ddProperties.setProperty( QgsSymbolLayer::PropertyWidth, parseInterpolateByZoom( jsonCircleRadius.toMap(), context, context.pixelSizeConversionFactor() * 2, &circleDiameter ) );
         break;
 
-      case QMetaType::Type::QVariantList:
-      case QMetaType::Type::QStringList:
-        ddProperties.setProperty( QgsSymbolLayer::Property::Width, parseValueList( jsonCircleRadius.toList(), PropertyType::Numeric, context, context.pixelSizeConversionFactor() * 2, 255, nullptr, &circleDiameter ) );
+      case QVariant::List:
+      case QVariant::StringList:
+        ddProperties.setProperty( QgsSymbolLayer::PropertyWidth, parseValueList( jsonCircleRadius.toList(), PropertyType::Numeric, context, context.pixelSizeConversionFactor() * 2, 255, nullptr, &circleDiameter ) );
         break;
 
       default:
-        context.pushWarning( QObject::tr( "%1: Skipping unsupported circle-radius type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonCircleRadius.userType() ) ) ) );
+        context.pushWarning( QObject::tr( "%1: Skipping unsupported circle-radius type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonCircleRadius.type() ) ) );
         break;
     }
   }
@@ -929,25 +867,25 @@ bool QgsMapBoxGlStyleConverter::parseCircleLayer( const QVariantMap &jsonLayer, 
   if ( jsonPaint.contains( QStringLiteral( "circle-opacity" ) ) )
   {
     const QVariant jsonCircleOpacity = jsonPaint.value( QStringLiteral( "circle-opacity" ) );
-    switch ( jsonCircleOpacity.userType() )
+    switch ( jsonCircleOpacity.type() )
     {
-      case QMetaType::Type::Int:
-      case QMetaType::Type::LongLong:
-      case QMetaType::Type::Double:
+      case QVariant::Int:
+      case QVariant::LongLong:
+      case QVariant::Double:
         circleOpacity = jsonCircleOpacity.toDouble();
         break;
 
-      case QMetaType::Type::QVariantMap:
-        ddProperties.setProperty( QgsSymbolLayer::Property::FillColor, parseInterpolateOpacityByZoom( jsonCircleOpacity.toMap(), circleFillColor.isValid() ? circleFillColor.alpha() : 255, &context ) );
+      case QVariant::Map:
+        ddProperties.setProperty( QgsSymbolLayer::PropertyFillColor, parseInterpolateOpacityByZoom( jsonCircleOpacity.toMap(), circleFillColor.isValid() ? circleFillColor.alpha() : 255, &context ) );
         break;
 
-      case QMetaType::Type::QVariantList:
-      case QMetaType::Type::QStringList:
-        ddProperties.setProperty( QgsSymbolLayer::Property::FillColor, parseValueList( jsonCircleOpacity.toList(), PropertyType::Opacity, context, 1, circleFillColor.isValid() ? circleFillColor.alpha() : 255 ) );
+      case QVariant::List:
+      case QVariant::StringList:
+        ddProperties.setProperty( QgsSymbolLayer::PropertyFillColor, parseValueList( jsonCircleOpacity.toList(), PropertyType::Opacity, context, 1, circleFillColor.isValid() ? circleFillColor.alpha() : 255 ) );
         break;
 
       default:
-        context.pushWarning( QObject::tr( "%1: Skipping unsupported circle-opacity type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonCircleOpacity.userType() ) ) ) );
+        context.pushWarning( QObject::tr( "%1: Skipping unsupported circle-opacity type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonCircleOpacity.type() ) ) );
         break;
     }
   }
@@ -961,23 +899,23 @@ bool QgsMapBoxGlStyleConverter::parseCircleLayer( const QVariantMap &jsonLayer, 
   if ( jsonPaint.contains( QStringLiteral( "circle-stroke-color" ) ) )
   {
     const QVariant jsonCircleStrokeColor = jsonPaint.value( QStringLiteral( "circle-stroke-color" ) );
-    switch ( jsonCircleStrokeColor.userType() )
+    switch ( jsonCircleStrokeColor.type() )
     {
-      case QMetaType::Type::QVariantMap:
-        ddProperties.setProperty( QgsSymbolLayer::Property::StrokeColor, parseInterpolateColorByZoom( jsonCircleStrokeColor.toMap(), context, &circleStrokeColor ) );
+      case QVariant::Map:
+        ddProperties.setProperty( QgsSymbolLayer::PropertyStrokeColor, parseInterpolateColorByZoom( jsonCircleStrokeColor.toMap(), context, &circleStrokeColor ) );
         break;
 
-      case QMetaType::Type::QVariantList:
-      case QMetaType::Type::QStringList:
-        ddProperties.setProperty( QgsSymbolLayer::Property::StrokeColor, parseValueList( jsonCircleStrokeColor.toList(), PropertyType::Color, context, 1, 255, &circleStrokeColor ) );
+      case QVariant::List:
+      case QVariant::StringList:
+        ddProperties.setProperty( QgsSymbolLayer::PropertyStrokeColor, parseValueList( jsonCircleStrokeColor.toList(), PropertyType::Color, context, 1, 255, &circleStrokeColor ) );
         break;
 
-      case QMetaType::Type::QString:
+      case QVariant::String:
         circleStrokeColor = parseColor( jsonCircleStrokeColor.toString(), context );
         break;
 
       default:
-        context.pushWarning( QObject::tr( "%1: Skipping unsupported circle-stroke-color type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonCircleStrokeColor.userType() ) ) ) );
+        context.pushWarning( QObject::tr( "%1: Skipping unsupported circle-stroke-color type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonCircleStrokeColor.type() ) ) );
         break;
     }
   }
@@ -987,26 +925,26 @@ bool QgsMapBoxGlStyleConverter::parseCircleLayer( const QVariantMap &jsonLayer, 
   if ( jsonPaint.contains( QStringLiteral( "circle-stroke-width" ) ) )
   {
     const QVariant circleStrokeWidthJson = jsonPaint.value( QStringLiteral( "circle-stroke-width" ) );
-    switch ( circleStrokeWidthJson.userType() )
+    switch ( circleStrokeWidthJson.type() )
     {
-      case QMetaType::Type::Int:
-      case QMetaType::Type::LongLong:
-      case QMetaType::Type::Double:
+      case QVariant::Int:
+      case QVariant::LongLong:
+      case QVariant::Double:
         circleStrokeWidth = circleStrokeWidthJson.toDouble() * context.pixelSizeConversionFactor();
         break;
 
-      case QMetaType::Type::QVariantMap:
+      case QVariant::Map:
         circleStrokeWidth = -1.0;
-        ddProperties.setProperty( QgsSymbolLayer::Property::StrokeWidth, parseInterpolateByZoom( circleStrokeWidthJson.toMap(), context, context.pixelSizeConversionFactor(), &circleStrokeWidth ) );
+        ddProperties.setProperty( QgsSymbolLayer::PropertyStrokeWidth, parseInterpolateByZoom( circleStrokeWidthJson.toMap(), context, context.pixelSizeConversionFactor(), &circleStrokeWidth ) );
         break;
 
-      case QMetaType::Type::QVariantList:
-      case QMetaType::Type::QStringList:
-        ddProperties.setProperty( QgsSymbolLayer::Property::StrokeWidth, parseValueList( circleStrokeWidthJson.toList(), PropertyType::Numeric, context, context.pixelSizeConversionFactor(), 255, nullptr, &circleStrokeWidth ) );
+      case QVariant::List:
+      case QVariant::StringList:
+        ddProperties.setProperty( QgsSymbolLayer::PropertyStrokeWidth, parseValueList( circleStrokeWidthJson.toList(), PropertyType::Numeric, context, context.pixelSizeConversionFactor(), 255, nullptr, &circleStrokeWidth ) );
         break;
 
       default:
-        context.pushWarning( QObject::tr( "%1: Skipping unsupported circle-stroke-width type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( circleStrokeWidthJson.userType() ) ) ) );
+        context.pushWarning( QObject::tr( "%1: Skipping unsupported circle-stroke-width type (%2)" ).arg( context.layerId(), QMetaType::typeName( circleStrokeWidthJson.type() ) ) );
         break;
     }
   }
@@ -1015,25 +953,25 @@ bool QgsMapBoxGlStyleConverter::parseCircleLayer( const QVariantMap &jsonLayer, 
   if ( jsonPaint.contains( QStringLiteral( "circle-stroke-opacity" ) ) )
   {
     const QVariant jsonCircleStrokeOpacity = jsonPaint.value( QStringLiteral( "circle-stroke-opacity" ) );
-    switch ( jsonCircleStrokeOpacity.userType() )
+    switch ( jsonCircleStrokeOpacity.type() )
     {
-      case QMetaType::Type::Int:
-      case QMetaType::Type::LongLong:
-      case QMetaType::Type::Double:
+      case QVariant::Int:
+      case QVariant::LongLong:
+      case QVariant::Double:
         circleStrokeOpacity = jsonCircleStrokeOpacity.toDouble();
         break;
 
-      case QMetaType::Type::QVariantMap:
-        ddProperties.setProperty( QgsSymbolLayer::Property::StrokeColor, parseInterpolateOpacityByZoom( jsonCircleStrokeOpacity.toMap(), circleStrokeColor.isValid() ? circleStrokeColor.alpha() : 255, &context ) );
+      case QVariant::Map:
+        ddProperties.setProperty( QgsSymbolLayer::PropertyStrokeColor, parseInterpolateOpacityByZoom( jsonCircleStrokeOpacity.toMap(), circleStrokeColor.isValid() ? circleStrokeColor.alpha() : 255, &context ) );
         break;
 
-      case QMetaType::Type::QVariantList:
-      case QMetaType::Type::QStringList:
-        ddProperties.setProperty( QgsSymbolLayer::Property::StrokeColor, parseValueList( jsonCircleStrokeOpacity.toList(), PropertyType::Opacity, context, 1, circleStrokeColor.isValid() ? circleStrokeColor.alpha() : 255 ) );
+      case QVariant::List:
+      case QVariant::StringList:
+        ddProperties.setProperty( QgsSymbolLayer::PropertyStrokeColor, parseValueList( jsonCircleStrokeOpacity.toList(), PropertyType::Opacity, context, 1, circleStrokeColor.isValid() ? circleStrokeColor.alpha() : 255 ) );
         break;
 
       default:
-        context.pushWarning( QObject::tr( "%1: Skipping unsupported circle-stroke-opacity type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonCircleStrokeOpacity.userType() ) ) ) );
+        context.pushWarning( QObject::tr( "%1: Skipping unsupported circle-stroke-opacity type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonCircleStrokeOpacity.type() ) ) );
         break;
     }
   }
@@ -1047,21 +985,21 @@ bool QgsMapBoxGlStyleConverter::parseCircleLayer( const QVariantMap &jsonLayer, 
   if ( jsonPaint.contains( QStringLiteral( "circle-translate" ) ) )
   {
     const QVariant jsonCircleTranslate = jsonPaint.value( QStringLiteral( "circle-translate" ) );
-    switch ( jsonCircleTranslate.userType() )
+    switch ( jsonCircleTranslate.type() )
     {
 
-      case QMetaType::Type::QVariantMap:
-        ddProperties.setProperty( QgsSymbolLayer::Property::Offset, parseInterpolatePointByZoom( jsonCircleTranslate.toMap(), context, context.pixelSizeConversionFactor(), &circleTranslate ) );
+      case QVariant::Map:
+        ddProperties.setProperty( QgsSymbolLayer::PropertyOffset, parseInterpolatePointByZoom( jsonCircleTranslate.toMap(), context, context.pixelSizeConversionFactor(), &circleTranslate ) );
         break;
 
-      case QMetaType::Type::QVariantList:
-      case QMetaType::Type::QStringList:
+      case QVariant::List:
+      case QVariant::StringList:
         circleTranslate = QPointF( jsonCircleTranslate.toList().value( 0 ).toDouble() * context.pixelSizeConversionFactor(),
                                    jsonCircleTranslate.toList().value( 1 ).toDouble() * context.pixelSizeConversionFactor() );
         break;
 
       default:
-        context.pushWarning( QObject::tr( "%1: Skipping unsupported circle-translate type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonCircleTranslate.userType() ) ) ) );
+        context.pushWarning( QObject::tr( "%1: Skipping unsupported circle-translate type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonCircleTranslate.type() ) ) );
         break;
     }
   }
@@ -1099,7 +1037,7 @@ bool QgsMapBoxGlStyleConverter::parseCircleLayer( const QVariantMap &jsonLayer, 
     markerSymbolLayer->setStrokeWidthUnit( context.targetUnit() );
   }
 
-  style.setGeometryType( Qgis::GeometryType::Point );
+  style.setGeometryType( QgsWkbTypes::PointGeometry );
   style.setSymbol( symbol.release() );
   return true;
 }
@@ -1130,34 +1068,34 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
   if ( jsonLayout.contains( QStringLiteral( "text-size" ) ) )
   {
     const QVariant jsonTextSize = jsonLayout.value( QStringLiteral( "text-size" ) );
-    switch ( jsonTextSize.userType() )
+    switch ( jsonTextSize.type() )
     {
-      case QMetaType::Type::Int:
-      case QMetaType::Type::LongLong:
-      case QMetaType::Type::Double:
+      case QVariant::Int:
+      case QVariant::LongLong:
+      case QVariant::Double:
         textSize = jsonTextSize.toDouble() * context.pixelSizeConversionFactor();
         break;
 
-      case QMetaType::Type::QVariantMap:
+      case QVariant::Map:
         textSize = -1;
         textSizeProperty = parseInterpolateByZoom( jsonTextSize.toMap(), context, context.pixelSizeConversionFactor(), &textSize );
 
         break;
 
-      case QMetaType::Type::QVariantList:
-      case QMetaType::Type::QStringList:
+      case QVariant::List:
+      case QVariant::StringList:
         textSize = -1;
         textSizeProperty = parseValueList( jsonTextSize.toList(), PropertyType::Numeric, context, context.pixelSizeConversionFactor(), 255, nullptr, &textSize );
         break;
 
       default:
-        context.pushWarning( QObject::tr( "%1: Skipping unsupported text-size type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonTextSize.userType() ) ) ) );
+        context.pushWarning( QObject::tr( "%1: Skipping unsupported text-size type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonTextSize.type() ) ) );
         break;
     }
 
     if ( textSizeProperty )
     {
-      ddLabelProperties.setProperty( QgsPalLayerSettings::Property::Size, textSizeProperty );
+      ddLabelProperties.setProperty( QgsPalLayerSettings::Size, textSizeProperty );
     }
   }
 
@@ -1168,25 +1106,25 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
   if ( jsonLayout.contains( QStringLiteral( "text-max-width" ) ) )
   {
     const QVariant jsonTextMaxWidth = jsonLayout.value( QStringLiteral( "text-max-width" ) );
-    switch ( jsonTextMaxWidth.userType() )
+    switch ( jsonTextMaxWidth.type() )
     {
-      case QMetaType::Type::Int:
-      case QMetaType::Type::LongLong:
-      case QMetaType::Type::Double:
+      case QVariant::Int:
+      case QVariant::LongLong:
+      case QVariant::Double:
         textMaxWidth = jsonTextMaxWidth.toDouble() * EM_TO_CHARS;
         break;
 
-      case QMetaType::Type::QVariantMap:
-        ddLabelProperties.setProperty( QgsPalLayerSettings::Property::AutoWrapLength, parseInterpolateByZoom( jsonTextMaxWidth.toMap(), context, EM_TO_CHARS, &textMaxWidth ) );
+      case QVariant::Map:
+        ddLabelProperties.setProperty( QgsPalLayerSettings::AutoWrapLength, parseInterpolateByZoom( jsonTextMaxWidth.toMap(), context, EM_TO_CHARS, &textMaxWidth ) );
         break;
 
-      case QMetaType::Type::QVariantList:
-      case QMetaType::Type::QStringList:
-        ddLabelProperties.setProperty( QgsPalLayerSettings::Property::AutoWrapLength, parseValueList( jsonTextMaxWidth.toList(), PropertyType::Numeric, context, EM_TO_CHARS, 255, nullptr, &textMaxWidth ) );
+      case QVariant::List:
+      case QVariant::StringList:
+        ddLabelProperties.setProperty( QgsPalLayerSettings::AutoWrapLength, parseValueList( jsonTextMaxWidth.toList(), PropertyType::Numeric, context, EM_TO_CHARS, 255, nullptr, &textMaxWidth ) );
         break;
 
       default:
-        context.pushWarning( QObject::tr( "%1: Skipping unsupported text-max-width type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonTextMaxWidth.userType() ) ) ) );
+        context.pushWarning( QObject::tr( "%1: Skipping unsupported text-max-width type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonTextMaxWidth.type() ) ) );
         break;
     }
   }
@@ -1200,25 +1138,25 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
   if ( jsonLayout.contains( QStringLiteral( "text-letter-spacing" ) ) )
   {
     const QVariant jsonTextLetterSpacing = jsonLayout.value( QStringLiteral( "text-letter-spacing" ) );
-    switch ( jsonTextLetterSpacing.userType() )
+    switch ( jsonTextLetterSpacing.type() )
     {
-      case QMetaType::Type::Int:
-      case QMetaType::Type::LongLong:
-      case QMetaType::Type::Double:
+      case QVariant::Int:
+      case QVariant::LongLong:
+      case QVariant::Double:
         textLetterSpacing = jsonTextLetterSpacing.toDouble();
         break;
 
-      case QMetaType::Type::QVariantMap:
-        ddLabelProperties.setProperty( QgsPalLayerSettings::Property::FontLetterSpacing, parseInterpolateByZoom( jsonTextLetterSpacing.toMap(), context, 1, &textLetterSpacing ) );
+      case QVariant::Map:
+        ddLabelProperties.setProperty( QgsPalLayerSettings::FontLetterSpacing, parseInterpolateByZoom( jsonTextLetterSpacing.toMap(), context, 1, &textLetterSpacing ) );
         break;
 
-      case QMetaType::Type::QVariantList:
-      case QMetaType::Type::QStringList:
-        ddLabelProperties.setProperty( QgsPalLayerSettings::Property::FontLetterSpacing, parseValueList( jsonTextLetterSpacing.toList(), PropertyType::Numeric, context, 1, 255, nullptr, &textLetterSpacing ) );
+      case QVariant::List:
+      case QVariant::StringList:
+        ddLabelProperties.setProperty( QgsPalLayerSettings::FontLetterSpacing, parseValueList( jsonTextLetterSpacing.toList(), PropertyType::Numeric, context, 1, 255, nullptr, &textLetterSpacing ) );
         break;
 
       default:
-        context.pushWarning( QObject::tr( "%1: Skipping unsupported text-letter-spacing type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonTextLetterSpacing.userType() ) ) ) );
+        context.pushWarning( QObject::tr( "%1: Skipping unsupported text-letter-spacing type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonTextLetterSpacing.type() ) ) );
         break;
     }
   }
@@ -1286,25 +1224,25 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
     };
 
     const QVariant jsonTextFont = jsonLayout.value( QStringLiteral( "text-font" ) );
-    if ( jsonTextFont.userType() != QMetaType::Type::QVariantList && jsonTextFont.userType() != QMetaType::Type::QStringList && jsonTextFont.userType() != QMetaType::Type::QString
-         && jsonTextFont.userType() != QMetaType::Type::QVariantMap )
+    if ( jsonTextFont.type() != QVariant::List && jsonTextFont.type() != QVariant::StringList && jsonTextFont.type() != QVariant::String
+         && jsonTextFont.type() != QVariant::Map )
     {
-      context.pushWarning( QObject::tr( "%1: Skipping unsupported text-font type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonTextFont.userType() ) ) ) );
+      context.pushWarning( QObject::tr( "%1: Skipping unsupported text-font type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonTextFont.type() ) ) );
     }
     else
     {
-      switch ( jsonTextFont.userType() )
+      switch ( jsonTextFont.type() )
       {
-        case QMetaType::Type::QVariantList:
-        case QMetaType::Type::QStringList:
+        case QVariant::List:
+        case QVariant::StringList:
           fontName = jsonTextFont.toList().value( 0 ).toString();
           break;
 
-        case QMetaType::Type::QString:
+        case QVariant::String:
           fontName = jsonTextFont.toString();
           break;
 
-        case QMetaType::Type::QVariantMap:
+        case QVariant::Map:
         {
           QString familyCaseString = QStringLiteral( "CASE " );
           QString styleCaseString = QStringLiteral( "CASE " );
@@ -1316,8 +1254,8 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
           {
             // bottom zoom and value
             const QVariant bz = stops.value( i ).toList().value( 0 );
-            const QString bv = stops.value( i ).toList().value( 1 ).userType() == QMetaType::Type::QString ? stops.value( i ).toList().value( 1 ).toString() : stops.value( i ).toList().value( 1 ).toList().value( 0 ).toString();
-            if ( bz.userType() == QMetaType::Type::QVariantList || bz.userType() == QMetaType::Type::QStringList )
+            const QString bv = stops.value( i ).toList().value( 1 ).type() == QVariant::String ? stops.value( i ).toList().value( 1 ).toString() : stops.value( i ).toList().value( 1 ).toList().value( 0 ).toString();
+            if ( bz.type() == QVariant::List || bz.type() == QVariant::StringList )
             {
               context.pushWarning( QObject::tr( "%1: Expressions in interpolation function are not supported, skipping." ).arg( context.layerId() ) );
               error = true;
@@ -1326,7 +1264,7 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
 
             // top zoom
             const QVariant tz = stops.value( i + 1 ).toList().value( 0 );
-            if ( tz.userType() == QMetaType::Type::QVariantList || tz.userType() == QMetaType::Type::QStringList )
+            if ( tz.type() == QVariant::List || tz.type() == QVariant::StringList )
             {
               context.pushWarning( QObject::tr( "%1: Expressions in interpolation function are not supported, skipping." ).arg( context.layerId() ) );
               error = true;
@@ -1352,7 +1290,7 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
           if ( error )
             break;
 
-          const QString bv = stops.constLast().toList().value( 1 ).userType() == QMetaType::Type::QString ? stops.constLast().toList().value( 1 ).toString() : stops.constLast().toList().value( 1 ).toList().value( 0 ).toString();
+          const QString bv = stops.constLast().toList().value( 1 ).type() == QVariant::String ? stops.constLast().toList().value( 1 ).toString() : stops.constLast().toList().value( 1 ).toList().value( 0 ).toString();
           if ( splitFontFamily( bv, fontFamily, fontStyleName ) )
           {
             familyCaseString += QStringLiteral( "ELSE %1 END" ).arg( QgsExpression::quotedValue( fontFamily ) );
@@ -1363,8 +1301,8 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
             context.pushWarning( QObject::tr( "%1: Referenced font %2 is not available on system" ).arg( context.layerId(), bv ) );
           }
 
-          ddLabelProperties.setProperty( QgsPalLayerSettings::Property::Family, QgsProperty::fromExpression( familyCaseString ) );
-          ddLabelProperties.setProperty( QgsPalLayerSettings::Property::FontStyle, QgsProperty::fromExpression( styleCaseString ) );
+          ddLabelProperties.setProperty( QgsPalLayerSettings::Family, QgsProperty::fromExpression( familyCaseString ) );
+          ddLabelProperties.setProperty( QgsPalLayerSettings::FontStyle, QgsProperty::fromExpression( styleCaseString ) );
 
           foundFont = true;
           fontName = fontFamily;
@@ -1379,7 +1317,7 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
       QString fontFamily;
       if ( splitFontFamily( fontName, fontFamily, fontStyleName ) )
       {
-        textFont = QgsFontUtils::createFont( fontFamily );
+        textFont = QFont( fontFamily );
         if ( !fontStyleName.isEmpty() )
           textFont.setStyleName( fontStyleName );
         foundFont = true;
@@ -1392,7 +1330,7 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
     if ( QgsFontUtils::fontFamilyHasStyle( QStringLiteral( "Open Sans" ), QStringLiteral( "Regular" ) ) )
     {
       fontName = QStringLiteral( "Open Sans" );
-      textFont = QgsFontUtils::createFont( fontName );
+      textFont = QFont( fontName );
       textFont.setStyleName( QStringLiteral( "Regular" ) );
       fontStyleName = QStringLiteral( "Regular" );
       foundFont = true;
@@ -1400,7 +1338,7 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
     else if ( QgsFontUtils::fontFamilyHasStyle( QStringLiteral( "Arial Unicode MS" ), QStringLiteral( "Regular" ) ) )
     {
       fontName = QStringLiteral( "Arial Unicode MS" );
-      textFont = QgsFontUtils::createFont( fontName );
+      textFont = QFont( fontName );
       textFont.setStyleName( QStringLiteral( "Regular" ) );
       fontStyleName = QStringLiteral( "Regular" );
       foundFont = true;
@@ -1420,23 +1358,23 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
   if ( jsonPaint.contains( QStringLiteral( "text-color" ) ) )
   {
     const QVariant jsonTextColor = jsonPaint.value( QStringLiteral( "text-color" ) );
-    switch ( jsonTextColor.userType() )
+    switch ( jsonTextColor.type() )
     {
-      case QMetaType::Type::QVariantMap:
-        ddLabelProperties.setProperty( QgsPalLayerSettings::Property::Color, parseInterpolateColorByZoom( jsonTextColor.toMap(), context, &textColor ) );
+      case QVariant::Map:
+        ddLabelProperties.setProperty( QgsPalLayerSettings::Color, parseInterpolateColorByZoom( jsonTextColor.toMap(), context, &textColor ) );
         break;
 
-      case QMetaType::Type::QVariantList:
-      case QMetaType::Type::QStringList:
-        ddLabelProperties.setProperty( QgsPalLayerSettings::Property::Color, parseValueList( jsonTextColor.toList(), PropertyType::Color, context, 1, 255, &textColor ) );
+      case QVariant::List:
+      case QVariant::StringList:
+        ddLabelProperties.setProperty( QgsPalLayerSettings::Color, parseValueList( jsonTextColor.toList(), PropertyType::Color, context, 1, 255, &textColor ) );
         break;
 
-      case QMetaType::Type::QString:
+      case QVariant::String:
         textColor = parseColor( jsonTextColor.toString(), context );
         break;
 
       default:
-        context.pushWarning( QObject::tr( "%1: Skipping unsupported text-color type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonTextColor.userType() ) ) ) );
+        context.pushWarning( QObject::tr( "%1: Skipping unsupported text-color type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonTextColor.type() ) ) );
         break;
     }
   }
@@ -1451,23 +1389,23 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
   if ( jsonPaint.contains( QStringLiteral( "text-halo-color" ) ) )
   {
     const QVariant jsonBufferColor = jsonPaint.value( QStringLiteral( "text-halo-color" ) );
-    switch ( jsonBufferColor.userType() )
+    switch ( jsonBufferColor.type() )
     {
-      case QMetaType::Type::QVariantMap:
-        ddLabelProperties.setProperty( QgsPalLayerSettings::Property::BufferColor, parseInterpolateColorByZoom( jsonBufferColor.toMap(), context, &bufferColor ) );
+      case QVariant::Map:
+        ddLabelProperties.setProperty( QgsPalLayerSettings::BufferColor, parseInterpolateColorByZoom( jsonBufferColor.toMap(), context, &bufferColor ) );
         break;
 
-      case QMetaType::Type::QVariantList:
-      case QMetaType::Type::QStringList:
-        ddLabelProperties.setProperty( QgsPalLayerSettings::Property::BufferColor, parseValueList( jsonBufferColor.toList(), PropertyType::Color, context, 1, 255, &bufferColor ) );
+      case QVariant::List:
+      case QVariant::StringList:
+        ddLabelProperties.setProperty( QgsPalLayerSettings::BufferColor, parseValueList( jsonBufferColor.toList(), PropertyType::Color, context, 1, 255, &bufferColor ) );
         break;
 
-      case QMetaType::Type::QString:
+      case QVariant::String:
         bufferColor = parseColor( jsonBufferColor.toString(), context );
         break;
 
       default:
-        context.pushWarning( QObject::tr( "%1: Skipping unsupported text-halo-color type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonBufferColor.userType() ) ) ) );
+        context.pushWarning( QObject::tr( "%1: Skipping unsupported text-halo-color type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonBufferColor.type() ) ) );
         break;
     }
   }
@@ -1480,60 +1418,28 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
   if ( jsonPaint.contains( QStringLiteral( "text-halo-width" ) ) )
   {
     const QVariant jsonHaloWidth = jsonPaint.value( QStringLiteral( "text-halo-width" ) );
-    QString bufferSizeDataDefined;
-    switch ( jsonHaloWidth.userType() )
+    switch ( jsonHaloWidth.type() )
     {
-      case QMetaType::Type::Int:
-      case QMetaType::Type::LongLong:
-      case QMetaType::Type::Double:
+      case QVariant::Int:
+      case QVariant::LongLong:
+      case QVariant::Double:
         bufferSize = jsonHaloWidth.toDouble() * context.pixelSizeConversionFactor() * BUFFER_SIZE_SCALE;
         break;
 
-      case QMetaType::Type::QVariantMap:
+      case QVariant::Map:
         bufferSize = 1;
-        bufferSizeDataDefined = parseInterpolateByZoom( jsonHaloWidth.toMap(), context, context.pixelSizeConversionFactor() * BUFFER_SIZE_SCALE, &bufferSize ).asExpression();
+        ddLabelProperties.setProperty( QgsPalLayerSettings::BufferSize, parseInterpolateByZoom( jsonHaloWidth.toMap(), context, context.pixelSizeConversionFactor() * BUFFER_SIZE_SCALE, &bufferSize ) );
         break;
 
-      case QMetaType::Type::QVariantList:
-      case QMetaType::Type::QStringList:
+      case QVariant::List:
+      case QVariant::StringList:
         bufferSize = 1;
-        bufferSizeDataDefined = parseValueList( jsonHaloWidth.toList(), PropertyType::Numeric, context, context.pixelSizeConversionFactor() * BUFFER_SIZE_SCALE, 255, nullptr, &bufferSize ).asExpression();
+        ddLabelProperties.setProperty( QgsPalLayerSettings::BufferSize, parseValueList( jsonHaloWidth.toList(), PropertyType::Numeric, context, context.pixelSizeConversionFactor() * BUFFER_SIZE_SCALE, 255, nullptr, &bufferSize ) );
         break;
 
       default:
-        context.pushWarning( QObject::tr( "%1: Skipping unsupported text-halo-width type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonHaloWidth.userType() ) ) ) );
+        context.pushWarning( QObject::tr( "%1: Skipping unsupported text-halo-width type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonHaloWidth.type() ) ) );
         break;
-    }
-
-    // from the specs halo should not be larger than 1/4 of the text-size
-    // https://docs.mapbox.com/style-spec/reference/layers/#paint-symbol-text-halo-width
-    if ( bufferSize > 0 )
-    {
-      if ( textSize > 0 && bufferSizeDataDefined.isEmpty() )
-      {
-        bufferSize = std::min( bufferSize, textSize * BUFFER_SIZE_SCALE / 4 );
-      }
-      else if ( textSize > 0 && !bufferSizeDataDefined.isEmpty() )
-      {
-        bufferSizeDataDefined = QStringLiteral( "min(%1/4, %2)" ).arg( textSize * BUFFER_SIZE_SCALE ).arg( bufferSizeDataDefined );
-        ddLabelProperties.setProperty( QgsPalLayerSettings::Property::BufferSize, QgsProperty::fromExpression( bufferSizeDataDefined ) );
-      }
-      else if ( !bufferSizeDataDefined.isEmpty() )
-      {
-        bufferSizeDataDefined = QStringLiteral( "min(%1*%2/4, %3)" )
-                                .arg( textSizeProperty.asExpression() )
-                                .arg( BUFFER_SIZE_SCALE )
-                                .arg( bufferSizeDataDefined );
-        ddLabelProperties.setProperty( QgsPalLayerSettings::Property::BufferSize, QgsProperty::fromExpression( bufferSizeDataDefined ) );
-      }
-      else if ( bufferSizeDataDefined.isEmpty() )
-      {
-        bufferSizeDataDefined = QStringLiteral( "min(%1*%2/4, %3)" )
-                                .arg( textSizeProperty.asExpression() )
-                                .arg( BUFFER_SIZE_SCALE )
-                                .arg( bufferSize );
-        ddLabelProperties.setProperty( QgsPalLayerSettings::Property::BufferSize, QgsProperty::fromExpression( bufferSizeDataDefined ) );
-      }
     }
   }
 
@@ -1541,18 +1447,18 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
   if ( jsonPaint.contains( QStringLiteral( "text-halo-blur" ) ) )
   {
     const QVariant jsonTextHaloBlur = jsonPaint.value( QStringLiteral( "text-halo-blur" ) );
-    switch ( jsonTextHaloBlur.userType() )
+    switch ( jsonTextHaloBlur.type() )
     {
-      case QMetaType::Type::Int:
-      case QMetaType::Type::LongLong:
-      case QMetaType::Type::Double:
+      case QVariant::Int:
+      case QVariant::LongLong:
+      case QVariant::Double:
       {
         haloBlurSize = jsonTextHaloBlur.toDouble() * context.pixelSizeConversionFactor();
         break;
       }
 
       default:
-        context.pushWarning( QObject::tr( "%1: Skipping unsupported text-halo-blur type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonTextHaloBlur.userType() ) ) ) );
+        context.pushWarning( QObject::tr( "%1: Skipping unsupported text-halo-blur type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonTextHaloBlur.type() ) ) );
         break;
     }
   }
@@ -1613,16 +1519,16 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
   if ( jsonLayout.contains( QStringLiteral( "text-field" ) ) )
   {
     const QVariant jsonTextField = jsonLayout.value( QStringLiteral( "text-field" ) );
-    switch ( jsonTextField.userType() )
+    switch ( jsonTextField.type() )
     {
-      case QMetaType::Type::QString:
+      case QVariant::String:
       {
         labelSettings.fieldName = processLabelField( jsonTextField.toString(), labelSettings.isExpression );
         break;
       }
 
-      case QMetaType::Type::QVariantList:
-      case QMetaType::Type::QStringList:
+      case QVariant::List:
+      case QVariant::StringList:
       {
         const QVariantList textFieldList = jsonTextField.toList();
         /*
@@ -1661,7 +1567,7 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
         break;
       }
 
-      case QMetaType::Type::QVariantMap:
+      case QVariant::Map:
       {
         const QVariantList stops = jsonTextField.toMap().value( QStringLiteral( "stops" ) ).toList();
         if ( !stops.empty() )
@@ -1677,33 +1583,7 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
       }
 
       default:
-        context.pushWarning( QObject::tr( "%1: Skipping unsupported text-field type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonTextField.userType() ) ) ) );
-        break;
-    }
-  }
-
-  if ( jsonLayout.contains( QStringLiteral( "text-rotate" ) ) )
-  {
-    const QVariant jsonTextRotate = jsonLayout.value( QStringLiteral( "text-rotate" ) );
-    switch ( jsonTextRotate.userType() )
-    {
-      case QMetaType::Type::Double:
-      case QMetaType::Type::Int:
-      {
-        labelSettings.angleOffset = jsonTextRotate.toDouble();
-        break;
-      }
-
-      case QMetaType::Type::QVariantList:
-      case QMetaType::Type::QStringList:
-      {
-        const QgsProperty property = parseValueList( jsonTextRotate.toList(), PropertyType::Numeric, context );
-        ddLabelProperties.setProperty( QgsPalLayerSettings::Property::LabelRotation, property );
-        break;
-      }
-
-      default:
-        context.pushWarning( QObject::tr( "%1: Skipping unsupported text-rotate type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonTextRotate.userType() ) ) ) );
+        context.pushWarning( QObject::tr( "%1: Skipping unsupported text-field type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonTextField.type() ) ) );
         break;
     }
   }
@@ -1723,15 +1603,15 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
   }
 
   labelSettings.placement = Qgis::LabelPlacement::OverPoint;
-  Qgis::GeometryType geometryType = Qgis::GeometryType::Point;
+  QgsWkbTypes::GeometryType geometryType = QgsWkbTypes::PointGeometry;
   if ( jsonLayout.contains( QStringLiteral( "symbol-placement" ) ) )
   {
     const QString symbolPlacement = jsonLayout.value( QStringLiteral( "symbol-placement" ) ).toString();
     if ( symbolPlacement == QLatin1String( "line" ) )
     {
       labelSettings.placement = Qgis::LabelPlacement::Curved;
-      labelSettings.lineSettings().setPlacementFlags( Qgis::LabelLinePlacementFlag::OnLine );
-      geometryType = Qgis::GeometryType::Line;
+      labelSettings.lineSettings().setPlacementFlags( QgsLabeling::OnLine );
+      geometryType = QgsWkbTypes::LineGeometry;
 
       if ( jsonLayout.contains( QStringLiteral( "text-rotation-alignment" ) ) )
       {
@@ -1751,29 +1631,29 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
           const QVariant jsonTextOffset = jsonLayout.value( QStringLiteral( "text-offset" ) );
 
           // units are ems!
-          switch ( jsonTextOffset.userType() )
+          switch ( jsonTextOffset.type() )
           {
-            case QMetaType::Type::QVariantMap:
+            case QVariant::Map:
               textOffsetProperty = parseInterpolatePointByZoom( jsonTextOffset.toMap(), context, !textSizeProperty ? textSize : 1.0, &textOffset );
               if ( !textSizeProperty )
               {
-                ddLabelProperties.setProperty( QgsPalLayerSettings::Property::LabelDistance, QStringLiteral( "abs(array_get(%1,1))-%2" ).arg( textOffsetProperty.asExpression() ).arg( textSize ) );
+                ddLabelProperties.setProperty( QgsPalLayerSettings::LabelDistance, QStringLiteral( "abs(array_get(%1,1))-%2" ).arg( textOffsetProperty ).arg( textSize ) );
               }
               else
               {
-                ddLabelProperties.setProperty( QgsPalLayerSettings::Property::LabelDistance, QStringLiteral( "with_variable('text_size',%2,abs(array_get(%1,1))*@text_size-@text_size)" ).arg( textOffsetProperty.asExpression(), textSizeProperty.asExpression() ) );
+                ddLabelProperties.setProperty( QgsPalLayerSettings::LabelDistance, QStringLiteral( "with_variable('text_size',%2,abs(array_get(%1,1))*@text_size-@text_size)" ).arg( textOffsetProperty.asExpression(), textSizeProperty.asExpression() ) );
               }
-              ddLabelProperties.setProperty( QgsPalLayerSettings::Property::LinePlacementOptions, QStringLiteral( "if(array_get(%1,1)>0,'BL','AL')" ).arg( textOffsetProperty.asExpression() ) );
+              ddLabelProperties.setProperty( QgsPalLayerSettings::LinePlacementOptions, QStringLiteral( "if(array_get(%1,1)>0,'BL','AL')" ).arg( textOffsetProperty ) );
               break;
 
-            case QMetaType::Type::QVariantList:
-            case QMetaType::Type::QStringList:
+            case QVariant::List:
+            case QVariant::StringList:
               textOffset = QPointF( jsonTextOffset.toList().value( 0 ).toDouble() * textSize,
                                     jsonTextOffset.toList().value( 1 ).toDouble() * textSize );
               break;
 
             default:
-              context.pushWarning( QObject::tr( "%1: Skipping unsupported text-offset type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonTextOffset.userType() ) ) ) );
+              context.pushWarning( QObject::tr( "%1: Skipping unsupported text-offset type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonTextOffset.type() ) ) );
               break;
           }
 
@@ -1781,17 +1661,17 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
           {
             labelSettings.distUnits = context.targetUnit();
             labelSettings.dist = std::abs( textOffset.y() ) - textSize;
-            labelSettings.lineSettings().setPlacementFlags( textOffset.y() > 0.0 ? Qgis::LabelLinePlacementFlag::BelowLine : Qgis::LabelLinePlacementFlag::AboveLine );
+            labelSettings.lineSettings().setPlacementFlags( textOffset.y() > 0.0 ? QgsLabeling::BelowLine : QgsLabeling::AboveLine );
             if ( textSizeProperty && !textOffsetProperty )
             {
-              ddLabelProperties.setProperty( QgsPalLayerSettings::Property::LabelDistance, QStringLiteral( "with_variable('text_size',%2,%1*@text_size-@text_size)" ).arg( std::abs( textOffset.y() / textSize ) ).arg( textSizeProperty.asExpression() ) );
+              ddLabelProperties.setProperty( QgsPalLayerSettings::LabelDistance, QStringLiteral( "with_variable('text_size',%2,%1*@text_size-@text_size)" ).arg( std::abs( textOffset.y() / textSize ) ).arg( textSizeProperty.asExpression() ) );
             }
           }
         }
 
         if ( textOffset.isNull() )
         {
-          labelSettings.lineSettings().setPlacementFlags( Qgis::LabelLinePlacementFlag::OnLine );
+          labelSettings.lineSettings().setPlacementFlags( QgsLabeling::OnLine );
         }
       }
     }
@@ -1812,22 +1692,22 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
       { QStringLiteral( "auto" ), QStringLiteral( "follow" ) }
     };
 
-    switch ( jsonTextJustify.userType() )
+    switch ( jsonTextJustify.type() )
     {
-      case QMetaType::Type::QString:
+      case QVariant::String:
         textAlign = jsonTextJustify.toString();
         break;
 
-      case QMetaType::Type::QVariantList:
-        ddLabelProperties.setProperty( QgsPalLayerSettings::Property::OffsetQuad, QgsProperty::fromExpression( parseStringStops( jsonTextJustify.toList(), context, conversionMap, &textAlign ) ) );
+      case QVariant::List:
+        ddLabelProperties.setProperty( QgsPalLayerSettings::OffsetQuad, QgsProperty::fromExpression( parseStringStops( jsonTextJustify.toList(), context, conversionMap, &textAlign ) ) );
         break;
 
-      case QMetaType::Type::QVariantMap:
-        ddLabelProperties.setProperty( QgsPalLayerSettings::Property::OffsetQuad, parseInterpolateStringByZoom( jsonTextJustify.toMap(), context, conversionMap, &textAlign ) );
+      case QVariant::Map:
+        ddLabelProperties.setProperty( QgsPalLayerSettings::OffsetQuad, parseInterpolateStringByZoom( jsonTextJustify.toMap(), context, conversionMap, &textAlign ) );
         break;
 
       default:
-        context.pushWarning( QObject::tr( "%1: Skipping unsupported text-justify type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonTextJustify.userType() ) ) ) );
+        context.pushWarning( QObject::tr( "%1: Skipping unsupported text-justify type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonTextJustify.type() ) ) );
         break;
     }
 
@@ -1865,43 +1745,43 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
         { QStringLiteral( "bottom-right" ), 0 },
       };
 
-      switch ( jsonTextAnchor.userType() )
+      switch ( jsonTextAnchor.type() )
       {
-        case QMetaType::Type::QString:
+        case QVariant::String:
           textAnchor = jsonTextAnchor.toString();
           break;
 
-        case QMetaType::Type::QVariantList:
-          ddLabelProperties.setProperty( QgsPalLayerSettings::Property::OffsetQuad, QgsProperty::fromExpression( parseStringStops( jsonTextAnchor.toList(), context, conversionMap, &textAnchor ) ) );
+        case QVariant::List:
+          ddLabelProperties.setProperty( QgsPalLayerSettings::OffsetQuad, QgsProperty::fromExpression( parseStringStops( jsonTextAnchor.toList(), context, conversionMap, &textAnchor ) ) );
           break;
 
-        case QMetaType::Type::QVariantMap:
-          ddLabelProperties.setProperty( QgsPalLayerSettings::Property::OffsetQuad, parseInterpolateStringByZoom( jsonTextAnchor.toMap(), context, conversionMap, &textAnchor ) );
+        case QVariant::Map:
+          ddLabelProperties.setProperty( QgsPalLayerSettings::OffsetQuad, parseInterpolateStringByZoom( jsonTextAnchor.toMap(), context, conversionMap, &textAnchor ) );
           break;
 
         default:
-          context.pushWarning( QObject::tr( "%1: Skipping unsupported text-anchor type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonTextAnchor.userType() ) ) ) );
+          context.pushWarning( QObject::tr( "%1: Skipping unsupported text-anchor type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonTextAnchor.type() ) ) );
           break;
       }
 
       if ( textAnchor == QLatin1String( "center" ) )
-        labelSettings.pointSettings().setQuadrant( Qgis::LabelQuadrantPosition::Over );
+        labelSettings.quadOffset = Qgis::LabelQuadrantPosition::Over;
       else if ( textAnchor == QLatin1String( "left" ) )
-        labelSettings.pointSettings().setQuadrant( Qgis::LabelQuadrantPosition::Right );
+        labelSettings.quadOffset = Qgis::LabelQuadrantPosition::Right;
       else if ( textAnchor == QLatin1String( "right" ) )
-        labelSettings.pointSettings().setQuadrant( Qgis::LabelQuadrantPosition::Left );
+        labelSettings.quadOffset = Qgis::LabelQuadrantPosition::Left;
       else if ( textAnchor == QLatin1String( "top" ) )
-        labelSettings.pointSettings().setQuadrant( Qgis::LabelQuadrantPosition::Below );
+        labelSettings.quadOffset = Qgis::LabelQuadrantPosition::Below;
       else if ( textAnchor == QLatin1String( "bottom" ) )
-        labelSettings.pointSettings().setQuadrant( Qgis::LabelQuadrantPosition::Above );
+        labelSettings.quadOffset = Qgis::LabelQuadrantPosition::Above;
       else if ( textAnchor == QLatin1String( "top-left" ) )
-        labelSettings.pointSettings().setQuadrant( Qgis::LabelQuadrantPosition::BelowRight );
+        labelSettings.quadOffset = Qgis::LabelQuadrantPosition::BelowRight;
       else if ( textAnchor == QLatin1String( "top-right" ) )
-        labelSettings.pointSettings().setQuadrant( Qgis::LabelQuadrantPosition::BelowLeft );
+        labelSettings.quadOffset = Qgis::LabelQuadrantPosition::BelowLeft;
       else if ( textAnchor == QLatin1String( "bottom-left" ) )
-        labelSettings.pointSettings().setQuadrant( Qgis::LabelQuadrantPosition::AboveRight );
+        labelSettings.quadOffset = Qgis::LabelQuadrantPosition::AboveRight;
       else if ( textAnchor == QLatin1String( "bottom-right" ) )
-        labelSettings.pointSettings().setQuadrant( Qgis::LabelQuadrantPosition::AboveLeft );
+        labelSettings.quadOffset = Qgis::LabelQuadrantPosition::AboveLeft;
     }
 
     QPointF textOffset;
@@ -1910,20 +1790,20 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
       const QVariant jsonTextOffset = jsonLayout.value( QStringLiteral( "text-offset" ) );
 
       // units are ems!
-      switch ( jsonTextOffset.userType() )
+      switch ( jsonTextOffset.type() )
       {
-        case QMetaType::Type::QVariantMap:
-          ddLabelProperties.setProperty( QgsPalLayerSettings::Property::OffsetXY, parseInterpolatePointByZoom( jsonTextOffset.toMap(), context, textSize, &textOffset ) );
+        case QVariant::Map:
+          ddLabelProperties.setProperty( QgsPalLayerSettings::OffsetXY, parseInterpolatePointByZoom( jsonTextOffset.toMap(), context, textSize, &textOffset ) );
           break;
 
-        case QMetaType::Type::QVariantList:
-        case QMetaType::Type::QStringList:
+        case QVariant::List:
+        case QVariant::StringList:
           textOffset = QPointF( jsonTextOffset.toList().value( 0 ).toDouble() * textSize,
                                 jsonTextOffset.toList().value( 1 ).toDouble() * textSize );
           break;
 
         default:
-          context.pushWarning( QObject::tr( "%1: Skipping unsupported text-offset type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonTextOffset.userType() ) ) ) );
+          context.pushWarning( QObject::tr( "%1: Skipping unsupported text-offset type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonTextOffset.type() ) ) );
           break;
       }
 
@@ -1941,57 +1821,9 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
   {
     QSize spriteSize;
     QString spriteProperty, spriteSizeProperty;
-    const QString sprite = retrieveSpriteAsBase64WithProperties( jsonLayout.value( QStringLiteral( "icon-image" ) ), context, spriteSize, spriteProperty, spriteSizeProperty );
+    const QString sprite = retrieveSpriteAsBase64( jsonLayout.value( QStringLiteral( "icon-image" ) ), context, spriteSize, spriteProperty, spriteSizeProperty );
     if ( !sprite.isEmpty() )
     {
-      double size = 1.0;
-      if ( jsonLayout.contains( QStringLiteral( "icon-size" ) ) )
-      {
-        QgsProperty property;
-        const QVariant jsonIconSize = jsonLayout.value( QStringLiteral( "icon-size" ) );
-        switch ( jsonIconSize.userType() )
-        {
-          case QMetaType::Type::Int:
-          case QMetaType::Type::LongLong:
-          case QMetaType::Type::Double:
-          {
-            size = jsonIconSize.toDouble();
-            if ( !spriteSizeProperty.isEmpty() )
-            {
-              ddLabelProperties.setProperty( QgsPalLayerSettings::Property::ShapeSizeX,
-                                             QgsProperty::fromExpression( QStringLiteral( "with_variable('marker_size',%1,%2*@marker_size)" ).arg( spriteSizeProperty ).arg( size ) ) );
-            }
-            break;
-          }
-
-          case QMetaType::Type::QVariantMap:
-            property = parseInterpolateByZoom( jsonIconSize.toMap(), context, 1, &size );
-            break;
-
-          case QMetaType::Type::QVariantList:
-          case QMetaType::Type::QStringList:
-            property = parseValueList( jsonIconSize.toList(), PropertyType::Numeric, context );
-            break;
-          default:
-            context.pushWarning( QObject::tr( "%1: Skipping non-implemented icon-size type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonIconSize.userType() ) ) ) );
-            break;
-        }
-
-        if ( !property.expressionString().isEmpty() )
-        {
-          if ( !spriteSizeProperty.isEmpty() )
-          {
-            ddLabelProperties.setProperty( QgsPalLayerSettings::Property::ShapeSizeX,
-                                           QgsProperty::fromExpression( QStringLiteral( "with_variable('marker_size',%1,(%2)*@marker_size)" ).arg( spriteSizeProperty ).arg( property.expressionString() ) ) );
-          }
-          else
-          {
-            ddLabelProperties.setProperty( QgsPalLayerSettings::Property::ShapeSizeX,
-                                           QgsProperty::fromExpression( QStringLiteral( "(%2)*%1" ).arg( spriteSize.width() ).arg( property.expressionString() ) ) );
-          }
-        }
-      }
-
       QgsRasterMarkerSymbolLayer *markerLayer = new QgsRasterMarkerSymbolLayer( );
       markerLayer->setPath( sprite );
       markerLayer->setSize( spriteSize.width() );
@@ -2000,14 +1832,16 @@ void QgsMapBoxGlStyleConverter::parseSymbolLayer( const QVariantMap &jsonLayer, 
       if ( !spriteProperty.isEmpty() )
       {
         QgsPropertyCollection markerDdProperties;
-        markerDdProperties.setProperty( QgsSymbolLayer::Property::Name, QgsProperty::fromExpression( spriteProperty ) );
+        markerDdProperties.setProperty( QgsSymbolLayer::PropertyName, QgsProperty::fromExpression( spriteProperty ) );
         markerLayer->setDataDefinedProperties( markerDdProperties );
+
+        ddLabelProperties.setProperty( QgsPalLayerSettings::ShapeSizeX, QgsProperty::fromExpression( spriteSizeProperty ) );
       }
 
       QgsTextBackgroundSettings backgroundSettings;
       backgroundSettings.setEnabled( true );
       backgroundSettings.setType( QgsTextBackgroundSettings::ShapeMarkerSymbol );
-      backgroundSettings.setSize( spriteSize * size );
+      backgroundSettings.setSize( spriteSize );
       backgroundSettings.setSizeUnit( context.targetUnit() );
       backgroundSettings.setSizeType( QgsTextBackgroundSettings::SizeFixed );
       backgroundSettings.setMarkerSymbol( new QgsMarkerSymbol( QgsSymbolLayerList() << markerLayer ) );
@@ -2053,25 +1887,25 @@ bool QgsMapBoxGlStyleConverter::parseSymbolLayerAsRenderer( const QVariantMap &j
     if ( jsonLayout.contains( QStringLiteral( "symbol-spacing" ) ) )
     {
       const QVariant jsonSpacing = jsonLayout.value( QStringLiteral( "symbol-spacing" ) );
-      switch ( jsonSpacing.userType() )
+      switch ( jsonSpacing.type() )
       {
-        case QMetaType::Type::Int:
-        case QMetaType::Type::LongLong:
-        case QMetaType::Type::Double:
+        case QVariant::Int:
+        case QVariant::LongLong:
+        case QVariant::Double:
           spacing = jsonSpacing.toDouble() * context.pixelSizeConversionFactor();
           break;
 
-        case QMetaType::Type::QVariantMap:
-          ddProperties.setProperty( QgsSymbolLayer::Property::Interval, parseInterpolateByZoom( jsonSpacing.toMap(), context, context.pixelSizeConversionFactor(), &spacing ) );
+        case QVariant::Map:
+          ddProperties.setProperty( QgsSymbolLayer::PropertyInterval, parseInterpolateByZoom( jsonSpacing.toMap(), context, context.pixelSizeConversionFactor(), &spacing ) );
           break;
 
-        case QMetaType::Type::QVariantList:
-        case QMetaType::Type::QStringList:
-          ddProperties.setProperty( QgsSymbolLayer::Property::Interval, parseValueList( jsonSpacing.toList(), PropertyType::Numeric, context, context.pixelSizeConversionFactor(), 255, nullptr, &spacing ) );
+        case QVariant::List:
+        case QVariant::StringList:
+          ddProperties.setProperty( QgsSymbolLayer::PropertyInterval, parseValueList( jsonSpacing.toList(), PropertyType::Numeric, context, context.pixelSizeConversionFactor(), 255, nullptr, &spacing ) );
           break;
 
         default:
-          context.pushWarning( QObject::tr( "%1: Skipping unsupported symbol-spacing type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonSpacing.userType() ) ) ) );
+          context.pushWarning( QObject::tr( "%1: Skipping unsupported symbol-spacing type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonSpacing.type() ) ) );
           break;
       }
     }
@@ -2100,25 +1934,25 @@ bool QgsMapBoxGlStyleConverter::parseSymbolLayerAsRenderer( const QVariantMap &j
     if ( jsonLayout.contains( QStringLiteral( "icon-rotate" ) ) )
     {
       const QVariant jsonIconRotate = jsonLayout.value( QStringLiteral( "icon-rotate" ) );
-      switch ( jsonIconRotate.userType() )
+      switch ( jsonIconRotate.type() )
       {
-        case QMetaType::Type::Int:
-        case QMetaType::Type::LongLong:
-        case QMetaType::Type::Double:
+        case QVariant::Int:
+        case QVariant::LongLong:
+        case QVariant::Double:
           rotation = jsonIconRotate.toDouble();
           break;
 
-        case QMetaType::Type::QVariantMap:
-          markerDdProperties.setProperty( QgsSymbolLayer::Property::Angle, parseInterpolateByZoom( jsonIconRotate.toMap(), context, context.pixelSizeConversionFactor(), &rotation ) );
+        case QVariant::Map:
+          markerDdProperties.setProperty( QgsSymbolLayer::PropertyAngle, parseInterpolateByZoom( jsonIconRotate.toMap(), context, context.pixelSizeConversionFactor(), &rotation ) );
           break;
 
-        case QMetaType::Type::QVariantList:
-        case QMetaType::Type::QStringList:
-          markerDdProperties.setProperty( QgsSymbolLayer::Property::Angle, parseValueList( jsonIconRotate.toList(), PropertyType::Numeric, context, context.pixelSizeConversionFactor(), 255, nullptr, &rotation ) );
+        case QVariant::List:
+        case QVariant::StringList:
+          markerDdProperties.setProperty( QgsSymbolLayer::PropertyAngle, parseValueList( jsonIconRotate.toList(), PropertyType::Numeric, context, context.pixelSizeConversionFactor(), 255, nullptr, &rotation ) );
           break;
 
         default:
-          context.pushWarning( QObject::tr( "%1: Skipping unsupported icon-rotate type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonIconRotate.userType() ) ) ) );
+          context.pushWarning( QObject::tr( "%1: Skipping unsupported icon-rotate type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonIconRotate.type() ) ) );
           break;
       }
     }
@@ -2135,7 +1969,7 @@ bool QgsMapBoxGlStyleConverter::parseSymbolLayerAsRenderer( const QVariantMap &j
     QgsRasterMarkerSymbolLayer *markerLayer = new QgsRasterMarkerSymbolLayer( );
     QSize spriteSize;
     QString spriteProperty, spriteSizeProperty;
-    const QString sprite = retrieveSpriteAsBase64WithProperties( jsonLayout.value( QStringLiteral( "icon-image" ) ), context, spriteSize, spriteProperty, spriteSizeProperty );
+    const QString sprite = retrieveSpriteAsBase64( jsonLayout.value( QStringLiteral( "icon-image" ) ), context, spriteSize, spriteProperty, spriteSizeProperty );
     if ( !sprite.isNull() )
     {
       markerLayer->setPath( sprite );
@@ -2144,8 +1978,8 @@ bool QgsMapBoxGlStyleConverter::parseSymbolLayerAsRenderer( const QVariantMap &j
 
       if ( !spriteProperty.isEmpty() )
       {
-        markerDdProperties.setProperty( QgsSymbolLayer::Property::Name, QgsProperty::fromExpression( spriteProperty ) );
-        markerDdProperties.setProperty( QgsSymbolLayer::Property::Width, QgsProperty::fromExpression( spriteSizeProperty ) );
+        markerDdProperties.setProperty( QgsSymbolLayer::PropertyName, QgsProperty::fromExpression( spriteProperty ) );
+        markerDdProperties.setProperty( QgsSymbolLayer::PropertyWidth, QgsProperty::fromExpression( spriteSizeProperty ) );
       }
     }
 
@@ -2154,31 +1988,29 @@ bool QgsMapBoxGlStyleConverter::parseSymbolLayerAsRenderer( const QVariantMap &j
       const QVariant jsonIconSize = jsonLayout.value( QStringLiteral( "icon-size" ) );
       double size = 1.0;
       QgsProperty property;
-      switch ( jsonIconSize.userType() )
+      switch ( jsonIconSize.type() )
       {
-        case QMetaType::Type::Int:
-        case QMetaType::Type::LongLong:
-        case QMetaType::Type::Double:
+        case QVariant::Int:
+        case QVariant::LongLong:
+        case QVariant::Double:
         {
           size = jsonIconSize.toDouble();
           if ( !spriteSizeProperty.isEmpty() )
           {
-            markerDdProperties.setProperty( QgsSymbolLayer::Property::Width,
+            markerDdProperties.setProperty( QgsSymbolLayer::PropertyWidth,
                                             QgsProperty::fromExpression( QStringLiteral( "with_variable('marker_size',%1,%2*@marker_size)" ).arg( spriteSizeProperty ).arg( size ) ) );
           }
           break;
         }
 
-        case QMetaType::Type::QVariantMap:
+        case QVariant::Map:
           property = parseInterpolateByZoom( jsonIconSize.toMap(), context, 1, &size );
           break;
 
-        case QMetaType::Type::QVariantList:
-        case QMetaType::Type::QStringList:
-          property = parseValueList( jsonIconSize.toList(), PropertyType::Numeric, context );
-          break;
+        case QVariant::List:
+        case QVariant::StringList:
         default:
-          context.pushWarning( QObject::tr( "%1: Skipping non-implemented icon-size type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonIconSize.userType() ) ) ) );
+          context.pushWarning( QObject::tr( "%1: Skipping non-implemented icon-size type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonIconSize.type() ) ) );
           break;
       }
       markerLayer->setSize( size * spriteSize.width() );
@@ -2186,12 +2018,12 @@ bool QgsMapBoxGlStyleConverter::parseSymbolLayerAsRenderer( const QVariantMap &j
       {
         if ( !spriteSizeProperty.isEmpty() )
         {
-          markerDdProperties.setProperty( QgsSymbolLayer::Property::Width,
+          markerDdProperties.setProperty( QgsSymbolLayer::PropertyWidth,
                                           QgsProperty::fromExpression( QStringLiteral( "with_variable('marker_size',%1,(%2)*@marker_size)" ).arg( spriteSizeProperty ).arg( property.expressionString() ) ) );
         }
         else
         {
-          markerDdProperties.setProperty( QgsSymbolLayer::Property::Width,
+          markerDdProperties.setProperty( QgsSymbolLayer::PropertyWidth,
                                           QgsProperty::fromExpression( QStringLiteral( "(%2)*%1" ).arg( spriteSize.width() ).arg( property.expressionString() ) ) );
         }
       }
@@ -2207,7 +2039,7 @@ bool QgsMapBoxGlStyleConverter::parseSymbolLayerAsRenderer( const QVariantMap &j
     symbol->setOutputUnit( context.targetUnit() );
     lineSymbol->setOutputUnit( context.targetUnit() );
 
-    rendererStyle.setGeometryType( Qgis::GeometryType::Line );
+    rendererStyle.setGeometryType( QgsWkbTypes::LineGeometry );
     rendererStyle.setSymbol( symbol.release() );
     return true;
   }
@@ -2217,8 +2049,8 @@ bool QgsMapBoxGlStyleConverter::parseSymbolLayerAsRenderer( const QVariantMap &j
 
     QSize spriteSize;
     QString spriteProperty, spriteSizeProperty;
-    const QString sprite = retrieveSpriteAsBase64WithProperties( jsonLayout.value( QStringLiteral( "icon-image" ) ), context, spriteSize, spriteProperty, spriteSizeProperty );
-    if ( !sprite.isEmpty() || !spriteProperty.isEmpty() )
+    const QString sprite = retrieveSpriteAsBase64( jsonLayout.value( QStringLiteral( "icon-image" ) ), context, spriteSize, spriteProperty, spriteSizeProperty );
+    if ( !sprite.isEmpty() )
     {
       QgsRasterMarkerSymbolLayer *rasterMarker = new QgsRasterMarkerSymbolLayer( );
       rasterMarker->setPath( sprite );
@@ -2228,8 +2060,8 @@ bool QgsMapBoxGlStyleConverter::parseSymbolLayerAsRenderer( const QVariantMap &j
       QgsPropertyCollection markerDdProperties;
       if ( !spriteProperty.isEmpty() )
       {
-        markerDdProperties.setProperty( QgsSymbolLayer::Property::Name, QgsProperty::fromExpression( spriteProperty ) );
-        markerDdProperties.setProperty( QgsSymbolLayer::Property::Width, QgsProperty::fromExpression( spriteSizeProperty ) );
+        markerDdProperties.setProperty( QgsSymbolLayer::PropertyName, QgsProperty::fromExpression( spriteProperty ) );
+        markerDdProperties.setProperty( QgsSymbolLayer::PropertyWidth, QgsProperty::fromExpression( spriteSizeProperty ) );
       }
 
       if ( jsonLayout.contains( QStringLiteral( "icon-size" ) ) )
@@ -2237,31 +2069,29 @@ bool QgsMapBoxGlStyleConverter::parseSymbolLayerAsRenderer( const QVariantMap &j
         const QVariant jsonIconSize = jsonLayout.value( QStringLiteral( "icon-size" ) );
         double size = 1.0;
         QgsProperty property;
-        switch ( jsonIconSize.userType() )
+        switch ( jsonIconSize.type() )
         {
-          case QMetaType::Type::Int:
-          case QMetaType::Type::LongLong:
-          case QMetaType::Type::Double:
+          case QVariant::Int:
+          case QVariant::LongLong:
+          case QVariant::Double:
           {
             size = jsonIconSize.toDouble();
             if ( !spriteSizeProperty.isEmpty() )
             {
-              markerDdProperties.setProperty( QgsSymbolLayer::Property::Width,
+              markerDdProperties.setProperty( QgsSymbolLayer::PropertyWidth,
                                               QgsProperty::fromExpression( QStringLiteral( "with_variable('marker_size',%1,%2*@marker_size)" ).arg( spriteSizeProperty ).arg( size ) ) );
             }
             break;
           }
 
-          case QMetaType::Type::QVariantMap:
+          case QVariant::Map:
             property = parseInterpolateByZoom( jsonIconSize.toMap(), context, 1, &size );
             break;
 
-          case QMetaType::Type::QVariantList:
-          case QMetaType::Type::QStringList:
-            property = parseValueList( jsonIconSize.toList(), PropertyType::Numeric, context );
-            break;
+          case QVariant::List:
+          case QVariant::StringList:
           default:
-            context.pushWarning( QObject::tr( "%1: Skipping non-implemented icon-size type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonIconSize.userType() ) ) ) );
+            context.pushWarning( QObject::tr( "%1: Skipping non-implemented icon-size type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonIconSize.type() ) ) );
             break;
         }
         rasterMarker->setSize( size * spriteSize.width() );
@@ -2269,12 +2099,12 @@ bool QgsMapBoxGlStyleConverter::parseSymbolLayerAsRenderer( const QVariantMap &j
         {
           if ( !spriteSizeProperty.isEmpty() )
           {
-            markerDdProperties.setProperty( QgsSymbolLayer::Property::Width,
+            markerDdProperties.setProperty( QgsSymbolLayer::PropertyWidth,
                                             QgsProperty::fromExpression( QStringLiteral( "with_variable('marker_size',%1,(%2)*@marker_size)" ).arg( spriteSizeProperty ).arg( property.expressionString() ) ) );
           }
           else
           {
-            markerDdProperties.setProperty( QgsSymbolLayer::Property::Width,
+            markerDdProperties.setProperty( QgsSymbolLayer::PropertyWidth,
                                             QgsProperty::fromExpression( QStringLiteral( "(%2)*%1" ).arg( spriteSize.width() ).arg( property.expressionString() ) ) );
           }
         }
@@ -2284,25 +2114,25 @@ bool QgsMapBoxGlStyleConverter::parseSymbolLayerAsRenderer( const QVariantMap &j
       if ( jsonLayout.contains( QStringLiteral( "icon-rotate" ) ) )
       {
         const QVariant jsonIconRotate = jsonLayout.value( QStringLiteral( "icon-rotate" ) );
-        switch ( jsonIconRotate.userType() )
+        switch ( jsonIconRotate.type() )
         {
-          case QMetaType::Type::Int:
-          case QMetaType::Type::LongLong:
-          case QMetaType::Type::Double:
+          case QVariant::Int:
+          case QVariant::LongLong:
+          case QVariant::Double:
             rotation = jsonIconRotate.toDouble();
             break;
 
-          case QMetaType::Type::QVariantMap:
-            markerDdProperties.setProperty( QgsSymbolLayer::Property::Angle, parseInterpolateByZoom( jsonIconRotate.toMap(), context, context.pixelSizeConversionFactor(), &rotation ) );
+          case QVariant::Map:
+            markerDdProperties.setProperty( QgsSymbolLayer::PropertyAngle, parseInterpolateByZoom( jsonIconRotate.toMap(), context, context.pixelSizeConversionFactor(), &rotation ) );
             break;
 
-          case QMetaType::Type::QVariantList:
-          case QMetaType::Type::QStringList:
-            markerDdProperties.setProperty( QgsSymbolLayer::Property::Angle, parseValueList( jsonIconRotate.toList(), PropertyType::Numeric, context, context.pixelSizeConversionFactor(), 255, nullptr, &rotation ) );
+          case QVariant::List:
+          case QVariant::StringList:
+            markerDdProperties.setProperty( QgsSymbolLayer::PropertyAngle, parseValueList( jsonIconRotate.toList(), PropertyType::Numeric, context, context.pixelSizeConversionFactor(), 255, nullptr, &rotation ) );
             break;
 
           default:
-            context.pushWarning( QObject::tr( "%1: Skipping unsupported icon-rotate type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonIconRotate.userType() ) ) ) );
+            context.pushWarning( QObject::tr( "%1: Skipping unsupported icon-rotate type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonIconRotate.type() ) ) );
             break;
         }
       }
@@ -2311,25 +2141,25 @@ bool QgsMapBoxGlStyleConverter::parseSymbolLayerAsRenderer( const QVariantMap &j
       if ( jsonPaint.contains( QStringLiteral( "icon-opacity" ) ) )
       {
         const QVariant jsonIconOpacity = jsonPaint.value( QStringLiteral( "icon-opacity" ) );
-        switch ( jsonIconOpacity.userType() )
+        switch ( jsonIconOpacity.type() )
         {
-          case QMetaType::Type::Int:
-          case QMetaType::Type::LongLong:
-          case QMetaType::Type::Double:
+          case QVariant::Int:
+          case QVariant::LongLong:
+          case QVariant::Double:
             iconOpacity = jsonIconOpacity.toDouble();
             break;
 
-          case QMetaType::Type::QVariantMap:
-            markerDdProperties.setProperty( QgsSymbolLayer::Property::Opacity, parseInterpolateByZoom( jsonIconOpacity.toMap(), context, 100, &iconOpacity ) );
+          case QVariant::Map:
+            markerDdProperties.setProperty( QgsSymbolLayer::PropertyOpacity, parseInterpolateByZoom( jsonIconOpacity.toMap(), context, 100, &iconOpacity ) );
             break;
 
-          case QMetaType::Type::QVariantList:
-          case QMetaType::Type::QStringList:
-            markerDdProperties.setProperty( QgsSymbolLayer::Property::Opacity, parseValueList( jsonIconOpacity.toList(), PropertyType::Numeric, context, 100, 255, nullptr, &iconOpacity ) );
+          case QVariant::List:
+          case QVariant::StringList:
+            markerDdProperties.setProperty( QgsSymbolLayer::PropertyOpacity, parseValueList( jsonIconOpacity.toList(), PropertyType::Numeric, context, 100, 255, nullptr, &iconOpacity ) );
             break;
 
           default:
-            context.pushWarning( QObject::tr( "%1: Skipping unsupported icon-opacity type (%2)" ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( jsonIconOpacity.userType() ) ) ) );
+            context.pushWarning( QObject::tr( "%1: Skipping unsupported icon-opacity type (%2)" ).arg( context.layerId(), QMetaType::typeName( jsonIconOpacity.type() ) ) );
             break;
         }
       }
@@ -2341,7 +2171,7 @@ bool QgsMapBoxGlStyleConverter::parseSymbolLayerAsRenderer( const QVariantMap &j
 
       QgsMarkerSymbol *markerSymbol = new QgsMarkerSymbol( QgsSymbolLayerList() << rasterMarker );
       rendererStyle.setSymbol( markerSymbol );
-      rendererStyle.setGeometryType( Qgis::GeometryType::Point );
+      rendererStyle.setGeometryType( QgsWkbTypes::PointGeometry );
       return true;
     }
   }
@@ -2419,22 +2249,18 @@ QgsProperty QgsMapBoxGlStyleConverter::parseInterpolateColorByZoom( const QVaria
   // top color
   const QString tz = stops.last().toList().value( 0 ).toString();
   const QVariant tcVariant = stops.last().toList().value( 1 );
-  QColor topColor;
-  if ( tcVariant.userType() == QMetaType::Type::QString )
+  const QColor topColor = parseColor( stops.last().toList().value( 1 ), context );
+  if ( topColor.isValid() )
   {
-    topColor = parseColor( tcVariant, context );
-    if ( topColor.isValid() )
-    {
-      int tcHue;
-      int tcSat;
-      int tcLight;
-      int tcAlpha;
-      colorAsHslaComponents( topColor, tcHue, tcSat, tcLight, tcAlpha );
-      caseString += QStringLiteral( "WHEN @vector_tile_zoom >= %1 THEN color_hsla(%2, %3, %4, %5) "
-                                    "ELSE color_hsla(%2, %3, %4, %5) END" ).arg( tz ).arg( tcHue ).arg( tcSat ).arg( tcLight ).arg( tcAlpha );
-    }
+    int tcHue;
+    int tcSat;
+    int tcLight;
+    int tcAlpha;
+    colorAsHslaComponents( topColor, tcHue, tcSat, tcLight, tcAlpha );
+    caseString += QStringLiteral( "WHEN @vector_tile_zoom >= %1 THEN color_hsla(%2, %3, %4, %5) "
+                                  "ELSE color_hsla(%2, %3, %4, %5) END" ).arg( tz ).arg( tcHue ).arg( tcSat ).arg( tcLight ).arg( tcAlpha );
   }
-  else if ( tcVariant.userType() == QMetaType::QVariantList )
+  else
   {
     const QString topColorExpr = parseColorExpression( tcVariant, context );
 
@@ -2459,12 +2285,10 @@ QgsProperty QgsMapBoxGlStyleConverter::parseInterpolateByZoom( const QVariantMap
   QString scaleExpression;
   if ( stops.size() <= 2 )
   {
-    scaleExpression = interpolateExpression(
-                        stops.value( 0 ).toList().value( 0 ).toDouble(), // zoomMin
-                        stops.last().toList().value( 0 ).toDouble(), // zoomMax
-                        stops.value( 0 ).toList().value( 1 ), // valueMin
-                        stops.last().toList().value( 1 ), // valueMax
-                        base, multiplier, &context );
+    scaleExpression = interpolateExpression( stops.value( 0 ).toList().value( 0 ).toDouble(),
+                      stops.last().toList().value( 0 ).toDouble(),
+                      stops.value( 0 ).toList().value( 1 ),
+                      stops.last().toList().value( 1 ), base, multiplier, &context );
   }
   else
   {
@@ -2498,11 +2322,10 @@ QgsProperty QgsMapBoxGlStyleConverter::parseInterpolateOpacityByZoom( const QVar
     double top = 0.0;
     const bool numeric = numericArgumentsOnly( bv, tv, bottom, top );
     scaleExpression = QStringLiteral( "set_color_part(@symbol_color, 'alpha', %1)" )
-                      .arg( interpolateExpression(
-                              stops.value( 0 ).toList().value( 0 ).toDouble(),
-                              stops.last().toList().value( 0 ).toDouble(),
-                              numeric ? QString::number( bottom * maxOpacity ) : QString( "(%1) * %2" ).arg( parseValue( bv, context ) ).arg( maxOpacity ),
-                              numeric ? QString::number( top * maxOpacity ) : QString( "(%1) * %2" ).arg( parseValue( tv, context ) ).arg( maxOpacity ), base, 1, &context ) );
+                      .arg( interpolateExpression( stops.value( 0 ).toList().value( 0 ).toDouble(),
+                            stops.last().toList().value( 0 ).toDouble(),
+                            numeric ? QString::number( bottom * maxOpacity ) : QString( "(%1) * %2" ).arg( parseValue( bv, context ) ).arg( maxOpacity ),
+                            numeric ? QString::number( top * maxOpacity ) : QString( "(%1) * %2" ).arg( parseValue( tv, context ) ).arg( maxOpacity ), base, 1, &context ) );
   }
   else
   {
@@ -2529,24 +2352,17 @@ QString QgsMapBoxGlStyleConverter::parseOpacityStops( double base, const QVarian
                                   "THEN set_color_part(@symbol_color, 'alpha', %3)" )
                   .arg( stops.value( i ).toList().value( 0 ).toString(),
                         stops.value( i + 1 ).toList().value( 0 ).toString(),
-                        interpolateExpression(
-                          stops.value( i ).toList().value( 0 ).toDouble(),
-                          stops.value( i + 1 ).toList().value( 0 ).toDouble(),
-                          numeric ? QString::number( bottom * maxOpacity ) : QString( "(%1) * %2" ).arg( parseValue( bv, context ) ).arg( maxOpacity ),
-                          numeric ? QString::number( top * maxOpacity ) : QString( "(%1) * %2" ).arg( parseValue( tv, context ) ).arg( maxOpacity ),
-                          base, 1, &context ) );
+                        interpolateExpression( stops.value( i ).toList().value( 0 ).toDouble(),
+                            stops.value( i + 1 ).toList().value( 0 ).toDouble(),
+                            numeric ? QString::number( bottom * maxOpacity ) : QString( "(%1) * %2" ).arg( parseValue( bv, context ) ).arg( maxOpacity ),
+                            numeric ? QString::number( top * maxOpacity ) : QString( "(%1) * %2" ).arg( parseValue( tv, context ) ).arg( maxOpacity ),
+                            base, 1, &context ) );
   }
 
-
-  bool numeric = false;
-  const QVariant vv = stops.last().toList().value( 1 );
-  double dv = vv.toDouble( &numeric );
-
   caseString += QStringLiteral( " WHEN @vector_tile_zoom >= %1 "
-                                "THEN set_color_part(@symbol_color, 'alpha', %2) END" ).arg(
-                  stops.last().toList().value( 0 ).toString(),
-                  numeric ? QString::number( dv * maxOpacity ) : QString( "(%1) * %2" ).arg( parseValue( vv, context ) ).arg( maxOpacity )
-                );
+                                "THEN set_color_part(@symbol_color, 'alpha', %2) END" )
+                .arg( stops.last().toList().value( 0 ).toString() )
+                .arg( stops.last().toList().value( 1 ).toDouble() * maxOpacity );
   return caseString;
 }
 
@@ -2603,18 +2419,18 @@ QString QgsMapBoxGlStyleConverter::parsePointStops( double base, const QVariantL
     // bottom zoom and value
     const QVariant bz = stops.value( i ).toList().value( 0 );
     const QVariant bv = stops.value( i ).toList().value( 1 );
-    if ( bv.userType() != QMetaType::Type::QVariantList && bv.userType() != QMetaType::Type::QStringList )
+    if ( bv.type() != QVariant::List && bv.type() != QVariant::StringList )
     {
-      context.pushWarning( QObject::tr( "%1: Skipping unsupported offset interpolation type (%2)." ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( bz.userType() ) ) ) );
+      context.pushWarning( QObject::tr( "%1: Skipping unsupported offset interpolation type (%2)." ).arg( context.layerId(), QMetaType::typeName( bz.type() ) ) );
       return QString();
     }
 
     // top zoom and value
     const QVariant tz = stops.value( i + 1 ).toList().value( 0 );
     const QVariant tv = stops.value( i + 1 ).toList().value( 1 );
-    if ( tv.userType() != QMetaType::Type::QVariantList && tv.userType() != QMetaType::Type::QStringList )
+    if ( tv.type() != QVariant::List && tv.type() != QVariant::StringList )
     {
-      context.pushWarning( QObject::tr( "%1: Skipping unsupported offset interpolation type (%2)." ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( tz.userType() ) ) ) );
+      context.pushWarning( QObject::tr( "%1: Skipping unsupported offset interpolation type (%2)." ).arg( context.layerId(), QMetaType::typeName( tz.type() ) ) );
       return QString();
     }
 
@@ -2633,40 +2449,43 @@ QString QgsMapBoxGlStyleConverter::parseArrayStops( const QVariantList &stops, Q
   if ( stops.length() < 2 )
     return QString();
 
-  QString caseString = QStringLiteral( "CASE" );
+  QString caseString = QStringLiteral( "CASE " );
 
-  for ( int i = 0; i < stops.length(); ++i )
+  for ( int i = 0; i < stops.length() - 1; ++i )
   {
-    caseString += QLatin1String( " WHEN " );
-    QStringList conditions;
-    if ( i > 0 )
-    {
-      const QVariant bottomZoom = stops.value( i ).toList().value( 0 );
-      conditions << QStringLiteral( "@vector_tile_zoom > %1" ).arg( bottomZoom.toString() );
-    }
-    if ( i < stops.length() - 1 )
-    {
-      const QVariant topZoom = stops.value( i + 1 ).toList().value( 0 );
-      conditions << QStringLiteral( "@vector_tile_zoom <= %1" ).arg( topZoom.toString() );
-    }
-
-    const QVariantList values = stops.value( i ).toList().value( 1 ).toList();
-    QStringList valuesFixed;
+    // bottom zoom and value
+    const QVariant bz = stops.value( i ).toList().value( 0 );
+    const QList<QVariant> bv = stops.value( i ).toList().value( 1 ).toList();
+    QStringList bl;
     bool ok = false;
-    for ( const QVariant &value : values )
+    for ( const QVariant &value : bv )
     {
       const double number = value.toDouble( &ok );
       if ( ok )
-        valuesFixed << QString::number( number * multiplier );
+        bl << QString::number( number * multiplier );
     }
 
     // top zoom and value
-    caseString += QStringLiteral( "%1 THEN array(%3)" ).arg(
-                    conditions.join( QLatin1String( " AND " ) ),
-                    valuesFixed.join( ',' )
-                  );
+    const QVariant tz = stops.value( i + 1 ).toList().value( 0 );
+    caseString += QStringLiteral( "WHEN @vector_tile_zoom > %1 AND @vector_tile_zoom <= %2 "
+                                  "THEN array(%3) " ).arg( bz.toString(),
+                                      tz.toString(),
+                                      bl.join( ',' ) );
   }
-  caseString += QLatin1String( " END" );
+  const QVariant lz = stops.value( stops.length() - 1 ).toList().value( 0 );
+  const QList<QVariant> lv = stops.value( stops.length() - 1 ).toList().value( 1 ).toList();
+  QStringList ll;
+  bool ok = false;
+  for ( const QVariant &value : lv )
+  {
+    const double number = value.toDouble( &ok );
+    if ( ok )
+      ll << QString::number( number * multiplier );
+  }
+  caseString += QStringLiteral( "WHEN @vector_tile_zoom > %1 "
+                                "THEN array(%2) " ).arg( lz.toString(),
+                                    ll.join( ',' ) );
+  caseString += QLatin1String( "END" );
   return caseString;
 }
 
@@ -2679,7 +2498,7 @@ QString QgsMapBoxGlStyleConverter::parseStops( double base, const QVariantList &
     // bottom zoom and value
     const QVariant bz = stops.value( i ).toList().value( 0 );
     const QVariant bv = stops.value( i ).toList().value( 1 );
-    if ( bz.userType() == QMetaType::Type::QVariantList || bz.userType() == QMetaType::Type::QStringList )
+    if ( bz.type() == QVariant::List || bz.type() == QVariant::StringList )
     {
       context.pushWarning( QObject::tr( "%1: Expressions in interpolation function are not supported, skipping." ).arg( context.layerId() ) );
       return QString();
@@ -2688,7 +2507,7 @@ QString QgsMapBoxGlStyleConverter::parseStops( double base, const QVariantList &
     // top zoom and value
     const QVariant tz = stops.value( i + 1 ).toList().value( 0 );
     const QVariant tv = stops.value( i + 1 ).toList().value( 1 );
-    if ( tz.userType() == QMetaType::Type::QVariantList || tz.userType() == QMetaType::Type::QStringList )
+    if ( tz.type() == QVariant::List || tz.type() == QVariant::StringList )
     {
       context.pushWarning( QObject::tr( "%1: Expressions in interpolation function are not supported, skipping." ).arg( context.layerId() ) );
       return QString();
@@ -2706,7 +2525,7 @@ QString QgsMapBoxGlStyleConverter::parseStops( double base, const QVariantList &
   const QVariant z = stops.last().toList().value( 0 );
   const QVariant v = stops.last().toList().value( 1 );
   QString vStr = v.toString();
-  if ( ( QMetaType::Type )v.userType() == QMetaType::QVariantList )
+  if ( ( QMetaType::Type )v.type() == QMetaType::QVariantList )
   {
     vStr = parseExpression( v.toList(), context );
     caseString += QStringLiteral( "WHEN @vector_tile_zoom > %1 "
@@ -2730,7 +2549,7 @@ QString QgsMapBoxGlStyleConverter::parseStringStops( const QVariantList &stops, 
     // bottom zoom and value
     const QVariant bz = stops.value( i ).toList().value( 0 );
     const QString bv = stops.value( i ).toList().value( 1 ).toString();
-    if ( bz.userType() == QMetaType::Type::QVariantList || bz.userType() == QMetaType::Type::QStringList )
+    if ( bz.type() == QVariant::List || bz.type() == QVariant::StringList )
     {
       context.pushWarning( QObject::tr( "%1: Expressions in interpolation function are not supported, skipping." ).arg( context.layerId() ) );
       return QString();
@@ -2738,7 +2557,7 @@ QString QgsMapBoxGlStyleConverter::parseStringStops( const QVariantList &stops, 
 
     // top zoom
     const QVariant tz = stops.value( i + 1 ).toList().value( 0 );
-    if ( tz.userType() == QMetaType::Type::QVariantList || tz.userType() == QMetaType::Type::QStringList )
+    if ( tz.type() == QVariant::List || tz.type() == QVariant::StringList )
     {
       context.pushWarning( QObject::tr( "%1: Expressions in interpolation function are not supported, skipping." ).arg( context.layerId() ) );
       return QString();
@@ -2765,7 +2584,7 @@ QString QgsMapBoxGlStyleConverter::parseLabelStops( const QVariantList &stops, Q
   {
     // bottom zoom and value
     const QVariant bz = stops.value( i ).toList().value( 0 );
-    if ( bz.userType() == QMetaType::Type::QVariantList || bz.userType() == QMetaType::Type::QStringList )
+    if ( bz.type() == QVariant::List || bz.type() == QVariant::StringList )
     {
       context.pushWarning( QObject::tr( "%1: Lists in label interpolation function are not supported, skipping." ).arg( context.layerId() ) );
       return QString();
@@ -2773,7 +2592,7 @@ QString QgsMapBoxGlStyleConverter::parseLabelStops( const QVariantList &stops, Q
 
     // top zoom
     const QVariant tz = stops.value( i + 1 ).toList().value( 0 );
-    if ( tz.userType() == QMetaType::Type::QVariantList || tz.userType() == QMetaType::Type::QStringList )
+    if ( tz.type() == QVariant::List || tz.type() == QVariant::StringList )
     {
       context.pushWarning( QObject::tr( "%1: Lists in label interpolation function are not supported, skipping." ).arg( context.layerId() ) );
       return QString();
@@ -2793,7 +2612,7 @@ QString QgsMapBoxGlStyleConverter::parseLabelStops( const QVariantList &stops, Q
 
   {
     const QVariant bz = stops.constLast().toList().value( 0 );
-    if ( bz.userType() == QMetaType::Type::QVariantList || bz.userType() == QMetaType::Type::QStringList )
+    if ( bz.type() == QVariant::List || bz.type() == QVariant::StringList )
     {
       context.pushWarning( QObject::tr( "%1: Lists in label interpolation function are not supported, skipping." ).arg( context.layerId() ) );
       return QString();
@@ -2831,10 +2650,6 @@ QgsProperty QgsMapBoxGlStyleConverter::parseValueList( const QVariantList &json,
   {
     return parseMatchList( json, type, context, multiplier, maxOpacity, defaultColor, defaultNumber );
   }
-  else if ( method == QLatin1String( "step" ) )
-  {
-    return parseStepList( json, type, context, multiplier, maxOpacity, defaultColor, defaultNumber );
-  }
   else
   {
     return QgsProperty::fromExpression( parseExpression( json, context ) );
@@ -2854,12 +2669,7 @@ QgsProperty QgsMapBoxGlStyleConverter::parseMatchList( const QVariantList &json,
 
   for ( int i = 2; i < json.length() - 1; i += 2 )
   {
-    QVariantList keys;
-    QVariant variantKeys = json.value( i );
-    if ( variantKeys.userType() == QMetaType::Type::QVariantList || variantKeys.userType() == QMetaType::Type::QStringList )
-      keys = variantKeys.toList();
-    else
-      keys = {variantKeys};
+    const QVariantList keys = json.value( i ).toList();
 
     QStringList matchString;
     for ( const QVariant &key : keys )
@@ -2874,15 +2684,8 @@ QgsProperty QgsMapBoxGlStyleConverter::parseMatchList( const QVariantList &json,
     {
       case PropertyType::Color:
       {
-        if ( value.userType() == QMetaType::Type::QVariantList || value.userType() == QMetaType::Type::QStringList )
-        {
-          valueString = parseMatchList( value.toList(), PropertyType::Color, context, multiplier, maxOpacity, defaultColor, defaultNumber ).asExpression();
-        }
-        else
-        {
-          const QColor color = parseColor( value, context );
-          valueString = QgsExpression::quotedString( color.name() );
-        }
+        const QColor color = parseColor( value, context );
+        valueString = QgsExpression::quotedString( color.name() );
         break;
       }
 
@@ -2907,184 +2710,54 @@ QgsProperty QgsMapBoxGlStyleConverter::parseMatchList( const QVariantList &json,
         break;
       }
 
-      case PropertyType::NumericArray:
-      {
-        if ( value.toList().count() == 2 && value.toList().first().toString() == QLatin1String( "literal" ) )
-        {
-          valueString = QStringLiteral( "array(%1)" ).arg( value.toList().at( 1 ).toStringList().join( ',' ) );
-        }
-        else
-        {
-          valueString = QStringLiteral( "array(%1)" ).arg( value.toStringList().join( ',' ) );
-        }
-        break;
-      }
     }
 
-    if ( matchString.count() == 1 )
-    {
-      caseString += QStringLiteral( "WHEN %1 IS %2 THEN %3 " ).arg( attribute, matchString.at( 0 ), valueString );
-    }
-    else
-    {
-      caseString += QStringLiteral( "WHEN %1 IN (%2) THEN %3 " ).arg( attribute, matchString.join( ',' ), valueString );
-    }
+    caseString += QStringLiteral( "WHEN %1 IN (%2) THEN %3 " ).arg( attribute,
+                  matchString.join( ',' ), valueString );
   }
 
-  QVariant lastValue = json.constLast();
+
   QString elseValue;
-
-  switch ( lastValue.userType() )
+  switch ( type )
   {
-    case QMetaType::Type::QVariantList:
-    case QMetaType::Type::QStringList:
-      elseValue = parseValueList( lastValue.toList(), type, context, multiplier, maxOpacity, defaultColor, defaultNumber ).asExpression();
-      break;
-
-    default:
+    case PropertyType::Color:
     {
-      switch ( type )
-      {
-        case PropertyType::Color:
-        {
-          const QColor color = parseColor( lastValue, context );
-          if ( defaultColor )
-            *defaultColor = color;
+      const QColor color = parseColor( json.constLast(), context );
+      if ( defaultColor )
+        *defaultColor = color;
 
-          elseValue = QgsExpression::quotedString( color.name() );
-          break;
-        }
-
-        case PropertyType::Numeric:
-        {
-          const double v = json.constLast().toDouble() * multiplier;
-          if ( defaultNumber )
-            *defaultNumber = v;
-          elseValue = QString::number( v );
-          break;
-        }
-
-        case PropertyType::Opacity:
-        {
-          const double v = json.constLast().toDouble() * maxOpacity;
-          if ( defaultNumber )
-            *defaultNumber = v;
-          elseValue = QString::number( v );
-          break;
-        }
-
-        case PropertyType::Point:
-        {
-          elseValue = QStringLiteral( "array(%1,%2)" )
-                      .arg( json.constLast().toList().value( 0 ).toDouble() * multiplier )
-                      .arg( json.constLast().toList().value( 0 ).toDouble() * multiplier );
-          break;
-        }
-
-        case PropertyType::NumericArray:
-        {
-          if ( json.constLast().toList().count() == 2 && json.constLast().toList().first().toString() == QLatin1String( "literal" ) )
-          {
-            elseValue = QStringLiteral( "array(%1)" ).arg( json.constLast().toList().at( 1 ).toStringList().join( ',' ) );
-          }
-          else
-          {
-            elseValue = QStringLiteral( "array(%1)" ).arg( json.constLast().toStringList().join( ',' ) );
-          }
-          break;
-        }
-
-      }
+      elseValue = QgsExpression::quotedString( color.name() );
       break;
     }
+
+    case PropertyType::Numeric:
+    {
+      const double v = json.constLast().toDouble() * multiplier;
+      if ( defaultNumber )
+        *defaultNumber = v;
+      elseValue = QString::number( v );
+      break;
+    }
+
+    case PropertyType::Opacity:
+    {
+      const double v = json.constLast().toDouble() * maxOpacity;
+      if ( defaultNumber )
+        *defaultNumber = v;
+      elseValue = QString::number( v );
+      break;
+    }
+
+    case PropertyType::Point:
+    {
+      elseValue = QStringLiteral( "array(%1,%2)" ).arg( json.constLast().toList().value( 0 ).toDouble() * multiplier,
+                  json.constLast().toList().value( 0 ).toDouble() * multiplier );
+      break;
+    }
+
   }
 
   caseString += QStringLiteral( "ELSE %1 END" ).arg( elseValue );
-  return QgsProperty::fromExpression( caseString );
-}
-
-QgsProperty QgsMapBoxGlStyleConverter::parseStepList( const QVariantList &json, PropertyType type, QgsMapBoxGlStyleConversionContext &context, double multiplier, int maxOpacity, QColor *defaultColor, double *defaultNumber )
-{
-  const QString expression = parseExpression( json.value( 1 ).toList(), context );
-  if ( expression.isEmpty() )
-  {
-    context.pushWarning( QObject::tr( "%1: Could not interpret step list" ).arg( context.layerId() ) );
-    return QgsProperty();
-  }
-
-  QString caseString = QStringLiteral( "CASE " );
-
-
-  for ( int i = json.length() - 2; i > 0; i -= 2 )
-  {
-    const QVariant stepValue = json.value( i + 1 );
-
-    QString valueString;
-    if ( stepValue.canConvert<QVariantList>()
-         && ( stepValue.toList().count() != 2 || type != PropertyType::Point )
-         && type != PropertyType::NumericArray )
-    {
-      valueString = parseValueList( stepValue.toList(), type, context, multiplier, maxOpacity, defaultColor, defaultNumber ).expressionString();
-    }
-    else
-    {
-      switch ( type )
-      {
-        case PropertyType::Color:
-        {
-          const QColor color = parseColor( stepValue, context );
-          valueString = QgsExpression::quotedString( color.name() );
-          break;
-        }
-
-        case PropertyType::Numeric:
-        {
-          const double v = stepValue.toDouble() * multiplier;
-          valueString = QString::number( v );
-          break;
-        }
-
-        case PropertyType::Opacity:
-        {
-          const double v = stepValue.toDouble() * maxOpacity;
-          valueString = QString::number( v );
-          break;
-        }
-
-        case PropertyType::Point:
-        {
-          valueString = QStringLiteral( "array(%1,%2)" ).arg(
-                          stepValue.toList().value( 0 ).toDouble() * multiplier ).arg(
-                          stepValue.toList().value( 0 ).toDouble() * multiplier
-                        );
-          break;
-        }
-
-        case PropertyType::NumericArray:
-        {
-          if ( stepValue.toList().count() == 2 && stepValue.toList().first().toString() == QLatin1String( "literal" ) )
-          {
-            valueString = QStringLiteral( "array(%1)" ).arg( stepValue.toList().at( 1 ).toStringList().join( ',' ) );
-          }
-          else
-          {
-            valueString = QStringLiteral( "array(%1)" ).arg( stepValue.toStringList().join( ',' ) );
-          }
-          break;
-        }
-      }
-    }
-
-    if ( i > 1 )
-    {
-      const QString stepKey = QgsExpression::quotedValue( json.value( i ) );
-      caseString += QStringLiteral( " WHEN %1 >= %2 THEN (%3) " ).arg( expression, stepKey, valueString );
-    }
-    else
-    {
-      caseString += QStringLiteral( "ELSE (%1) END" ).arg( valueString );
-    }
-  }
   return QgsProperty::fromExpression( caseString );
 }
 
@@ -3142,18 +2815,13 @@ QgsProperty QgsMapBoxGlStyleConverter::parseInterpolateListByZoom( const QVarian
 
     case PropertyType::Point:
       return parseInterpolatePointByZoom( props, context, multiplier );
-
-    case PropertyType::NumericArray:
-      context.pushWarning( QObject::tr( "%1: Skipping unsupported numeric array in interpolate" ).arg( context.layerId() ) );
-      return QgsProperty();
-
   }
   return QgsProperty();
 }
 
 QString QgsMapBoxGlStyleConverter::parseColorExpression( const QVariant &colorExpression, QgsMapBoxGlStyleConversionContext &context )
 {
-  if ( ( QMetaType::Type )colorExpression.userType() == QMetaType::QVariantList )
+  if ( ( QMetaType::Type )colorExpression.type() == QMetaType::QVariantList )
   {
     return parseExpression( colorExpression.toList(), context, true );
   }
@@ -3162,7 +2830,7 @@ QString QgsMapBoxGlStyleConverter::parseColorExpression( const QVariant &colorEx
 
 QColor QgsMapBoxGlStyleConverter::parseColor( const QVariant &color, QgsMapBoxGlStyleConversionContext &context )
 {
-  if ( color.userType() != QMetaType::Type::QString )
+  if ( color.type() != QVariant::String )
   {
     context.pushWarning( QObject::tr( "%1: Could not parse non-string color %2, skipping" ).arg( context.layerId(), color.toString() ) );
     return QColor();
@@ -3187,7 +2855,7 @@ QString QgsMapBoxGlStyleConverter::interpolateExpression( double zoomMin, double
     context = *contextPtr;
   }
 
-  // special case where min = max !
+  // special case!
   if ( valueMin.canConvert( QMetaType::Double ) && valueMax.canConvert( QMetaType::Double ) )
   {
     bool minDoubleOk = true;
@@ -3202,34 +2870,39 @@ QString QgsMapBoxGlStyleConverter::interpolateExpression( double zoomMin, double
 
   QString minValueExpr = valueMin.toString();
   QString maxValueExpr = valueMax.toString();
-  if ( valueMin.userType() == QMetaType::Type::QVariantList )
+  if ( ( QMetaType::Type )valueMin.type() == QMetaType::QVariantList )
   {
     minValueExpr = parseExpression( valueMin.toList(), context );
   }
-  if ( valueMax.userType() == QMetaType::Type::QVariantList )
+  if ( ( QMetaType::Type )valueMax.type() == QMetaType::QVariantList )
   {
     maxValueExpr = parseExpression( valueMax.toList(), context );
   }
 
-  QString expression;
   if ( minValueExpr == maxValueExpr )
   {
-    expression = minValueExpr;
+    return minValueExpr;
+  }
+
+  QString expression;
+  if ( base == 1 )
+  {
+    expression = QStringLiteral( "scale_linear(@vector_tile_zoom,%1,%2,%3,%4)" ).arg( zoomMin )
+                 .arg( zoomMax )
+                 .arg( minValueExpr )
+                 .arg( maxValueExpr );
   }
   else
   {
-    if ( base == 1 )
-    {
-      expression = QStringLiteral( "scale_linear(@vector_tile_zoom,%1,%2,%3,%4)" ).arg( zoomMin ).arg( zoomMax ).arg( minValueExpr ).arg( maxValueExpr );
-    }
-    else
-    {
-      expression = QStringLiteral( "scale_exponential(@vector_tile_zoom,%1,%2,%3,%4,%5)" ).arg( zoomMin ).arg( zoomMax ).arg( minValueExpr ).arg( maxValueExpr ).arg( base );
-    }
+    expression = QStringLiteral( "scale_exp(@vector_tile_zoom,%1,%2,%3,%4,%5)" ).arg( zoomMin )
+                 .arg( zoomMax )
+                 .arg( minValueExpr )
+                 .arg( maxValueExpr )
+                 .arg( base );
   }
 
   if ( multiplier != 1 )
-    return QStringLiteral( "(%1) * %2" ).arg( expression ).arg( multiplier );
+    return QStringLiteral( "%1 * %2" ).arg( expression ).arg( multiplier );
   else
     return expression;
 }
@@ -3259,9 +2932,7 @@ QString QgsMapBoxGlStyleConverter::parseExpression( const QVariantList &expressi
   QString op = expression.value( 0 ).toString();
   if ( op == QLatin1String( "%" ) && expression.size() >= 3 )
   {
-    return QStringLiteral( "%1 %2 %3" ).arg( parseValue( expression.value( 1 ), context ),
-           op,
-           parseValue( expression.value( 2 ), context ) );
+    return QStringLiteral( "%1 %2 %3" ).arg( parseValue( expression.value( 1 ), context ) ).arg( op ).arg( parseValue( expression.value( 2 ), context ) );
   }
   else if ( op == QLatin1String( "to-number" ) )
   {
@@ -3333,18 +3004,9 @@ QString QgsMapBoxGlStyleConverter::parseExpression( const QVariantList &expressi
   {
     const QString key = parseKey( expression.value( 1 ), context );
     QStringList parts;
-
-    QVariantList values = expression.mid( 2 );
-    if ( expression.size() == 3
-         && expression.at( 2 ).userType() == QMetaType::Type::QVariantList && expression.at( 2 ).toList().count() > 1
-         && expression.at( 2 ).toList().at( 0 ).toString() == QLatin1String( "literal" ) )
+    for ( int i = 2; i < expression.size(); ++i )
     {
-      values = expression.at( 2 ).toList().at( 1 ).toList();
-    }
-
-    for ( const QVariant &value : std::as_const( values ) )
-    {
-      const QString part = parseValue( value, context );
+      const QString part = parseValue( expression.at( i ), context );
       if ( part.isEmpty() )
       {
         context.pushWarning( QObject::tr( "%1: Skipping unsupported expression" ).arg( context.layerId() ) );
@@ -3366,11 +3028,11 @@ QString QgsMapBoxGlStyleConverter::parseExpression( const QVariantList &expressi
     const QString attribute = expression.value( 1 ).toList().value( 1 ).toString();
 
     if ( expression.size() == 5
-         && expression.at( 3 ).userType() == QMetaType::Type::Bool && expression.at( 3 ).toBool() == true
-         && expression.at( 4 ).userType() == QMetaType::Type::Bool && expression.at( 4 ).toBool() == false )
+         && expression.at( 3 ).type() == QVariant::Bool && expression.at( 3 ).toBool() == true
+         && expression.at( 4 ).type() == QVariant::Bool && expression.at( 4 ).toBool() == false )
     {
       // simple case, make a nice simple expression instead of a CASE statement
-      if ( expression.at( 2 ).userType() == QMetaType::Type::QVariantList || expression.at( 2 ).userType() == QMetaType::Type::QStringList )
+      if ( expression.at( 2 ).type() == QVariant::List || expression.at( 2 ).type() == QVariant::StringList )
       {
         QStringList parts;
         for ( const QVariant &p : expression.at( 2 ).toList() )
@@ -3383,8 +3045,8 @@ QString QgsMapBoxGlStyleConverter::parseExpression( const QVariantList &expressi
         else
           return QgsExpression::createFieldEqualityExpression( attribute, expression.at( 2 ).toList().value( 0 ) );
       }
-      else if ( expression.at( 2 ).userType() == QMetaType::Type::QString || expression.at( 2 ).userType() == QMetaType::Type::Int
-                || expression.at( 2 ).userType() == QMetaType::Type::Double || expression.at( 2 ).userType() == QMetaType::Type::LongLong )
+      else if ( expression.at( 2 ).type() == QVariant::String || expression.at( 2 ).type() == QVariant::Int
+                || expression.at( 2 ).type() == QVariant::Double || expression.at( 2 ).type() == QVariant::LongLong )
       {
         return QgsExpression::createFieldEqualityExpression( attribute, expression.at( 2 ) );
       }
@@ -3399,7 +3061,7 @@ QString QgsMapBoxGlStyleConverter::parseExpression( const QVariantList &expressi
       QString caseString = QStringLiteral( "CASE " );
       for ( int i = 2; i < expression.size() - 2; i += 2 )
       {
-        if ( expression.at( i ).userType() == QMetaType::Type::QVariantList || expression.at( i ).userType() == QMetaType::Type::QStringList )
+        if ( expression.at( i ).type() == QVariant::List || expression.at( i ).type() == QVariant::StringList )
         {
           QStringList parts;
           for ( const QVariant &p : expression.at( i ).toList() )
@@ -3412,8 +3074,8 @@ QString QgsMapBoxGlStyleConverter::parseExpression( const QVariantList &expressi
           else
             caseString += QStringLiteral( "WHEN %1 " ).arg( QgsExpression::createFieldEqualityExpression( attribute, expression.at( i ).toList().value( 0 ) ) );
         }
-        else if ( expression.at( i ).userType() == QMetaType::Type::QString || expression.at( i ).userType() == QMetaType::Type::Int
-                  || expression.at( i ).userType() == QMetaType::Type::Double || expression.at( i ).userType() == QMetaType::Type::LongLong )
+        else if ( expression.at( i ).type() == QVariant::String || expression.at( i ).type() == QVariant::Int
+                  || expression.at( i ).type() == QVariant::Double || expression.at( i ).type() == QVariant::LongLong )
         {
           caseString += QStringLiteral( "WHEN (%1) " ).arg( QgsExpression::createFieldEqualityExpression( attribute, expression.at( i ) ) );
         }
@@ -3428,68 +3090,9 @@ QString QgsMapBoxGlStyleConverter::parseExpression( const QVariantList &expressi
   {
     return QStringLiteral( "to_string(%1)" ).arg( parseExpression( expression.value( 1 ).toList(), context ) );
   }
-  else if ( op == QLatin1String( "case" ) )
-  {
-    QString caseString = QStringLiteral( "CASE" );
-    for ( int i = 1; i < expression.size() - 2; i += 2 )
-    {
-      const QString condition = parseExpression( expression.value( i ).toList(), context );
-      const QString value = parseValue( expression.value( i + 1 ), context );
-      caseString += QStringLiteral( " WHEN (%1) THEN %2" ).arg( condition, value );
-    }
-    const QString value = parseValue( expression.constLast(), context );
-    caseString += QStringLiteral( " ELSE %1 END" ).arg( value );
-    return caseString;
-  }
-  else if ( op == QLatin1String( "zoom" ) && expression.count() == 1 )
-  {
-    return QStringLiteral( "@vector_tile_zoom" );
-  }
-  else if ( op == QLatin1String( "concat" ) )
-  {
-    QString concatString = QStringLiteral( "concat(" );
-    for ( int i = 1; i < expression.size(); i++ )
-    {
-      if ( i > 1 )
-        concatString += QLatin1String( ", " );
-      concatString += parseValue( expression.value( i ), context );
-    }
-    concatString += QLatin1Char( ')' );
-    return concatString;
-  }
-  else if ( op == QLatin1String( "length" ) )
-  {
-    return QStringLiteral( "length(%1)" ).arg( parseExpression( expression.value( 1 ).toList(), context ) );
-  }
-  else if ( op == QLatin1String( "step" ) )
-  {
-    const QString stepExpression = parseExpression( expression.value( 1 ).toList(), context );
-    if ( stepExpression.isEmpty() )
-    {
-      context.pushWarning( QObject::tr( "%1: Could not interpret step list" ).arg( context.layerId() ) );
-      return QString();
-    }
-
-    QString caseString = QStringLiteral( "CASE " );
-
-    for ( int i = expression.length() - 2; i > 0; i -= 2 )
-    {
-      const QString stepValue = parseValue( expression.value( i + 1 ), context, colorExpected );
-      if ( i > 1 )
-      {
-        const QString stepKey = QgsExpression::quotedValue( expression.value( i ) );
-        caseString += QStringLiteral( " WHEN %1 >= %2 THEN (%3) " ).arg( stepExpression, stepKey, stepValue );
-      }
-      else
-      {
-        caseString += QStringLiteral( "ELSE (%1) END" ).arg( stepValue );
-      }
-    }
-    return caseString;
-  }
   else
   {
-    context.pushWarning( QObject::tr( "%1: Skipping unsupported expression \"%2\"" ).arg( context.layerId(), op ) );
+    context.pushWarning( QObject::tr( "%1: Skipping unsupported expression" ).arg( context.layerId() ) );
     return QString();
   }
 }
@@ -3523,7 +3126,7 @@ QImage QgsMapBoxGlStyleConverter::retrieveSprite( const QString &name, QgsMapBox
   return sprite;
 }
 
-QString QgsMapBoxGlStyleConverter::retrieveSpriteAsBase64WithProperties( const QVariant &value, QgsMapBoxGlStyleConversionContext &context, QSize &spriteSize, QString &spriteProperty, QString &spriteSizeProperty )
+QString QgsMapBoxGlStyleConverter::retrieveSpriteAsBase64( const QVariant &value, QgsMapBoxGlStyleConversionContext &context, QSize &spriteSize, QString &spriteProperty, QString &spriteSizeProperty )
 {
   QString spritePath;
 
@@ -3544,12 +3147,12 @@ QString QgsMapBoxGlStyleConverter::retrieveSpriteAsBase64WithProperties( const Q
     return path;
   };
 
-  switch ( value.userType() )
+  switch ( value.type() )
   {
-    case QMetaType::Type::QString:
+    case QVariant::String:
     {
       QString spriteName = value.toString();
-      const thread_local QRegularExpression fieldNameMatch( QStringLiteral( "{([^}]+)}" ) );
+      const QRegularExpression fieldNameMatch( QStringLiteral( "{([^}]+)}" ) );
       QRegularExpressionMatch match = fieldNameMatch.match( spriteName );
       if ( match.hasMatch() )
       {
@@ -3598,7 +3201,7 @@ QString QgsMapBoxGlStyleConverter::retrieveSpriteAsBase64WithProperties( const Q
       break;
     }
 
-    case QMetaType::Type::QVariantMap:
+    case QVariant::Map:
     {
       const QVariantList stops = value.toMap().value( QStringLiteral( "stops" ) ).toList();
       if ( stops.size() == 0 )
@@ -3649,147 +3252,61 @@ QString QgsMapBoxGlStyleConverter::retrieveSpriteAsBase64WithProperties( const Q
       break;
     }
 
-    case QMetaType::Type::QVariantList:
+    case QVariant::List:
     {
       const QVariantList json = value.toList();
       const QString method = json.value( 0 ).toString();
-
-      if ( method == QLatin1String( "match" ) )
-      {
-        const QString attribute = parseExpression( json.value( 1 ).toList(), context );
-        if ( attribute.isEmpty() )
-        {
-          context.pushWarning( QObject::tr( "%1: Could not interpret match list" ).arg( context.layerId() ) );
-          break;
-        }
-
-        spriteProperty = QStringLiteral( "CASE" );
-        spriteSizeProperty = QStringLiteral( "CASE" );
-
-        for ( int i = 2; i < json.length() - 1; i += 2 )
-        {
-          const QVariant matchKey = json.value( i );
-          const QVariant matchValue = json.value( i + 1 );
-          QString matchString;
-          switch ( matchKey.userType() )
-          {
-            case QMetaType::Type::QVariantList:
-            case QMetaType::Type::QStringList:
-            {
-              const QVariantList keys = matchKey.toList();
-              QStringList matchStringList;
-              for ( const QVariant &key : keys )
-              {
-                matchStringList << QgsExpression::quotedValue( key );
-              }
-              matchString = matchStringList.join( ',' );
-              break;
-            }
-
-            case QMetaType::Type::Bool:
-            case QMetaType::Type::QString:
-            case QMetaType::Type::Int:
-            case QMetaType::Type::LongLong:
-            case QMetaType::Type::Double:
-            {
-              matchString = QgsExpression::quotedValue( matchKey );
-              break;
-            }
-
-            default:
-              context.pushWarning( QObject::tr( "%1: Skipping unsupported sprite type (%2)." ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( value.userType() ) ) ) );
-              break;
-
-          }
-
-          const QImage sprite = retrieveSprite( matchValue.toString(), context, spriteSize );
-          spritePath = prepareBase64( sprite );
-
-          spriteProperty += QStringLiteral( " WHEN %1 IN (%2) "
-                                            "THEN '%3'" ).arg( attribute,
-                                                matchString,
-                                                spritePath );
-
-          spriteSizeProperty += QStringLiteral( " WHEN %1 IN (%2) "
-                                                "THEN %3" ).arg( attribute,
-                                                    matchString ).arg( spriteSize.width() );
-        }
-
-        if ( !json.constLast().toString().isEmpty() )
-        {
-          const QImage sprite = retrieveSprite( json.constLast().toString(), context, spriteSize );
-          spritePath = prepareBase64( sprite );
-        }
-        else
-        {
-          spritePath = QString();
-        }
-
-        spriteProperty += QStringLiteral( " ELSE '%1' END" ).arg( spritePath );
-        spriteSizeProperty += QStringLiteral( " ELSE %3 END" ).arg( spriteSize.width() );
-        break;
-      }
-      else if ( method == QLatin1String( "step" ) )
-      {
-        const QString expression = parseExpression( json.value( 1 ).toList(), context );
-        if ( expression.isEmpty() )
-        {
-          context.pushWarning( QObject::tr( "%1: Could not interpret step list" ).arg( context.layerId() ) );
-          break;
-        }
-
-        spriteProperty = QStringLiteral( "CASE" );
-        spriteSizeProperty = QStringLiteral( "CASE" );
-        for ( int i = json.length() - 2; i > 2; i -= 2 )
-        {
-          const QString stepKey = QgsExpression::quotedValue( json.value( i ) );
-          const QString stepValue = json.value( i + 1 ).toString();
-
-          const QImage sprite = retrieveSprite( stepValue, context, spriteSize );
-          spritePath = prepareBase64( sprite );
-
-          spriteProperty += QStringLiteral( " WHEN %1 >= %2 THEN '%3' " ).arg( expression, stepKey, spritePath );
-          spriteSizeProperty += QStringLiteral( " WHEN %1 >= %2 THEN %3 " ).arg( expression ).arg( stepKey ).arg( spriteSize.width() );
-        }
-
-        const QImage sprite = retrieveSprite( json.at( 2 ).toString(), context, spriteSize );
-        spritePath = prepareBase64( sprite );
-
-        spriteProperty += QStringLiteral( "ELSE '%1' END" ).arg( spritePath );
-        spriteSizeProperty += QStringLiteral( "ELSE %3 END" ).arg( spriteSize.width() );
-        break;
-      }
-      else if ( method == QLatin1String( "case" ) )
-      {
-        spriteProperty = QStringLiteral( "CASE" );
-        spriteSizeProperty = QStringLiteral( "CASE" );
-        for ( int i = 1; i < json.length() - 2; i += 2 )
-        {
-          const QString caseExpression = parseExpression( json.value( i ).toList(), context );
-          const QString caseValue = json.value( i + 1 ).toString();
-
-          const QImage sprite = retrieveSprite( caseValue, context, spriteSize );
-          spritePath = prepareBase64( sprite );
-
-          spriteProperty += QStringLiteral( " WHEN %1 THEN '%2' " ).arg( caseExpression, spritePath );
-          spriteSizeProperty += QStringLiteral( " WHEN %1 THEN %2 " ).arg( caseExpression ).arg( spriteSize.width() );
-        }
-        const QImage sprite = retrieveSprite( json.last().toString(), context, spriteSize );
-        spritePath = prepareBase64( sprite );
-
-        spriteProperty += QStringLiteral( "ELSE '%1' END" ).arg( spritePath );
-        spriteSizeProperty += QStringLiteral( "ELSE %3 END" ).arg( spriteSize.width() );
-        break;
-      }
-      else
+      if ( method != QLatin1String( "match" ) )
       {
         context.pushWarning( QObject::tr( "%1: Could not interpret sprite value list with method %2" ).arg( context.layerId(), method ) );
         break;
       }
+
+      const QString attribute = parseExpression( json.value( 1 ).toList(), context );
+      if ( attribute.isEmpty() )
+      {
+        context.pushWarning( QObject::tr( "%1: Could not interpret match list" ).arg( context.layerId() ) );
+        break;
+      }
+
+      spriteProperty = QStringLiteral( "CASE " );
+      spriteSizeProperty = QStringLiteral( "CASE " );
+
+      for ( int i = 2; i < json.length() - 1; i += 2 )
+      {
+        const QVariantList keys = json.value( i ).toList();
+
+        QStringList matchString;
+        for ( const QVariant &key : keys )
+        {
+          matchString << QgsExpression::quotedValue( key );
+        }
+
+        const QVariant value = json.value( i + 1 );
+
+        const QImage sprite = retrieveSprite( value.toString(), context, spriteSize );
+        spritePath = prepareBase64( sprite );
+
+        spriteProperty += QStringLiteral( " WHEN %1 IN (%2) "
+                                          "THEN '%3' " ).arg( attribute,
+                                              matchString.join( ',' ),
+                                              spritePath );
+
+        spriteSizeProperty += QStringLiteral( " WHEN %1 IN (%2) "
+                                              "THEN %3 " ).arg( attribute,
+                                                  matchString.join( ',' ) ).arg( spriteSize.width() );
+      }
+
+      const QImage sprite = retrieveSprite( json.constLast().toString(), context, spriteSize );
+      spritePath = prepareBase64( sprite );
+
+      spriteProperty += QStringLiteral( "ELSE %1 END" ).arg( spritePath );
+      spriteSizeProperty += QStringLiteral( "ELSE %3 END" ).arg( spriteSize.width() );
+      break;
     }
 
     default:
-      context.pushWarning( QObject::tr( "%1: Skipping unsupported sprite type (%2)." ).arg( context.layerId(), QMetaType::typeName( static_cast<QMetaType::Type>( value.userType() ) ) ) );
+      context.pushWarning( QObject::tr( "%1: Skipping unsupported sprite type (%2)." ).arg( context.layerId(), QMetaType::typeName( value.type() ) ) );
       break;
   }
 
@@ -3799,14 +3316,14 @@ QString QgsMapBoxGlStyleConverter::retrieveSpriteAsBase64WithProperties( const Q
 QString QgsMapBoxGlStyleConverter::parseValue( const QVariant &value, QgsMapBoxGlStyleConversionContext &context, bool colorExpected )
 {
   QColor c;
-  switch ( value.userType() )
+  switch ( value.type() )
   {
-    case QMetaType::Type::QVariantList:
-    case QMetaType::Type::QStringList:
+    case QVariant::List:
+    case QVariant::StringList:
       return parseExpression( value.toList(), context, colorExpected );
 
-    case QMetaType::Type::Bool:
-    case QMetaType::Type::QString:
+    case QVariant::Bool:
+    case QVariant::String:
       if ( colorExpected )
       {
         QColor c = parseColor( value, context );
@@ -3817,12 +3334,12 @@ QString QgsMapBoxGlStyleConverter::parseValue( const QVariant &value, QgsMapBoxG
       }
       return QgsExpression::quotedValue( value );
 
-    case QMetaType::Type::Int:
-    case QMetaType::Type::LongLong:
-    case QMetaType::Type::Double:
+    case QVariant::Int:
+    case QVariant::LongLong:
+    case QVariant::Double:
       return value.toString();
 
-    case QMetaType::Type::QColor:
+    case QVariant::Color:
       c = value.value<QColor>();
       return QString( "color_rgba(%1,%2,%3,%4)" ).arg( c.red() ).arg( c.green() ).arg( c.blue() ).arg( c.alpha() );
 
@@ -3843,7 +3360,7 @@ QString QgsMapBoxGlStyleConverter::parseKey( const QVariant &value, QgsMapBoxGlS
   {
     return QStringLiteral( "level" );
   }
-  else if ( ( value.userType() == QMetaType::Type::QVariantList && value.toList().size() == 1 ) || value.userType() == QMetaType::Type::QStringList )
+  else if ( ( value.type() == QVariant::List && value.toList().size() == 1 ) || value.type() == QVariant::StringList )
   {
     if ( value.toList().size() > 1 )
       return value.toList().at( 1 ).toString();
@@ -3857,7 +3374,7 @@ QString QgsMapBoxGlStyleConverter::parseKey( const QVariant &value, QgsMapBoxGlS
       return valueString;
     }
   }
-  else if ( value.userType() == QMetaType::Type::QVariantList && value.toList().size() > 1 )
+  else if ( value.type() == QVariant::List && value.toList().size() > 1 )
   {
     return parseExpression( value.toList(), context );
   }
@@ -3868,7 +3385,7 @@ QString QgsMapBoxGlStyleConverter::processLabelField( const QString &string, boo
 {
   // {field_name} is permitted in string -- if multiple fields are present, convert them to an expression
   // but if single field is covered in {}, return it directly
-  const thread_local QRegularExpression singleFieldRx( QStringLiteral( "^{([^}]+)}$" ) );
+  const QRegularExpression singleFieldRx( QStringLiteral( "^{([^}]+)}$" ) );
   const QRegularExpressionMatch match = singleFieldRx.match( string );
   if ( match.hasMatch() )
   {
@@ -3876,7 +3393,7 @@ QString QgsMapBoxGlStyleConverter::processLabelField( const QString &string, boo
     return match.captured( 1 );
   }
 
-  const thread_local QRegularExpression multiFieldRx( QStringLiteral( "(?={[^}]+})" ) );
+  const QRegularExpression multiFieldRx( QStringLiteral( "(?={[^}]+})" ) );
   const QStringList parts = string.split( multiFieldRx );
   if ( parts.size() > 1 )
   {
@@ -4002,7 +3519,7 @@ void QgsMapBoxGlStyleConverter::parseSources( const QVariantMap &sources, QgsMap
       case Qgis::MapBoxGlStyleSourceType::Image:
       case Qgis::MapBoxGlStyleSourceType::Video:
       case Qgis::MapBoxGlStyleSourceType::Unknown:
-        QgsDebugError( QStringLiteral( "Ignoring vector tile style source %1 (%2)" ).arg( name, qgsEnumValueToKey( type ) ) );
+        QgsDebugMsg( QStringLiteral( "Ignoring vector tile style source %1 (%2)" ).arg( name, qgsEnumValueToKey( type ) ) );
         continue;
     }
   }
@@ -4039,16 +3556,16 @@ bool QgsMapBoxGlStyleConverter::numericArgumentsOnly( const QVariant &bottomVari
 //
 void QgsMapBoxGlStyleConversionContext::pushWarning( const QString &warning )
 {
-  QgsDebugError( warning );
+  QgsDebugMsg( warning );
   mWarnings << warning;
 }
 
-Qgis::RenderUnit QgsMapBoxGlStyleConversionContext::targetUnit() const
+QgsUnitTypes::RenderUnit QgsMapBoxGlStyleConversionContext::targetUnit() const
 {
   return mTargetUnit;
 }
 
-void QgsMapBoxGlStyleConversionContext::setTargetUnit( Qgis::RenderUnit targetUnit )
+void QgsMapBoxGlStyleConversionContext::setTargetUnit( QgsUnitTypes::RenderUnit targetUnit )
 {
   mTargetUnit = targetUnit;
 }

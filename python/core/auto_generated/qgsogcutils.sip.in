@@ -3,9 +3,8 @@
  *                                                                      *
  * src/core/qgsogcutils.h                                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
-
 
 
 
@@ -80,6 +79,8 @@ Read rectangle from GML3 Envelope
 Exports the geometry to GML
 
 :return: QDomElement
+
+.. versionadded:: 2.16
 %End
 
     static QDomElement geometryToGML( const QgsGeometry &geometry, QDomDocument &doc, const QString &format, int precision = 17 );
@@ -111,6 +112,8 @@ Exports the rectangle to GML2 Box
 Exports the rectangle to GML2 Box
 
 :return: QDomElement
+
+.. versionadded:: 2.16
 %End
 
     static QDomElement rectangleToGMLEnvelope( QgsRectangle *env, QDomDocument &doc, int precision = 17 );
@@ -128,6 +131,8 @@ Exports the rectangle to GML3 Envelope
 Exports the rectangle to GML3 Envelope
 
 :return: QDomElement
+
+.. versionadded:: 2.16
 %End
 
 
@@ -197,9 +202,7 @@ Creates an ElseFilter from ``doc``
         bool honourAxisOrientation,
         bool invertAxisOrientation,
         QString *errorMessage = 0,
-        bool requiresFilterElement = false,
-        const QMap<QString, QString> &fieldNameToXPathMap = QMap<QString, QString>(),
-        const QMap<QString, QString> &namespacePrefixToUriMap = QMap<QString, QString>() );
+        bool requiresFilterElement = false );
 %Docstring
 Creates an OGC expression XML element from the ``exp`` expression.
 
@@ -217,5 +220,5 @@ Creates an OGC expression XML element from the ``exp`` expression.
  *                                                                      *
  * src/core/qgsogcutils.h                                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

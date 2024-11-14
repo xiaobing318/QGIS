@@ -26,13 +26,15 @@ QWidget:item:selected
 
 QWebView, QTextBrowser
 {
-    color: @text;
-    background-color: @itemdarkbackground;
+    color: #000000;
+    background-color: #ffffff;
 }
 
 QToolTip
 {
     border: 1px solid #222;
+    background-color: @itemdarkbackground;
+    color: @text;
 }
 
 QMenuBar {
@@ -62,12 +64,13 @@ QMenuBar::item:pressed
 /* ==================================================================================== */
 
 QAbstractSpinBox {
-    padding: 0.12em;
+    padding: 0em;
     border: 1px solid @itemdarkbackground;
     background-color: @itembackground;
     selection-background-color: @selection;
     selection-color: @textlight;
     color: @textlight;
+    contents-margin: 0.12em;
 }
 
 QAbstractSpinBox:no-frame {
@@ -260,7 +263,7 @@ QPushButton
     border-color: @itembackground;
     border-style: solid;
     border-radius: 0px;
-    background-color:@darkgradient;
+    background-color:@background;
     color:@text;
 }
 
@@ -333,22 +336,13 @@ QToolButton::menu-indicator:disabled
     width: 0.8em;
     height: 1.2em;
 }
-
-QToolBox::tab {
-    color: @text;
-}
-
 QToolBar QToolButton, QToolButton::menu-button
 {
     border-color: rgba(0,0,0,0);
     background-color: none;
 }
 
-QPushButton:hover {
-    background-color: @darkgradient;
-}
-
-QToolButton:hover {
+QPushButton:hover, QToolButton:hover {
     background-color: @itemdarkbackground;
 }
 
@@ -794,20 +788,13 @@ QCheckBox::indicator {
     height:0.8em;
 }
 
-QCheckBox::indicator:intermediary {
-    background-color: @toggleoff;
-    image: url(@theme_path/icons/qcheckbox-intermediary.svg);
-}
-
 QCheckBox::indicator:unchecked {
     background-color: @toggleoff;
-    image: none;
 }
 
 QCheckBox::indicator:unchecked:disabled {
     border-color: @itemdarkbackground;
     background-color: rgba(0, 0, 0, 0);
-    image: none;
 }
 
 QCheckBox::indicator:checked {
@@ -1187,10 +1174,6 @@ QSlider::handle:horizontal:focus, QSlider::handle:vertical:focus {
     border: 1px solid @focus;
 }
 
-QVideoWidget QWidget {
-    background-color: #000000 !important;
-}
-
 /* ==================================================================================== */
 /* QGIS-SPECIFIC TWEAKS                                                                 */
 /* ==================================================================================== */
@@ -1252,6 +1235,16 @@ QgsMessageBar QScrollBar::down-arrow:vertical {
     image: url(@theme_path/icons/arrow-down.svg);
 }
 
+QgsPropertyOverrideButton, QgsPropertyOverrideButton:hover, QgsPropertyOverrideButton:pressed {
+    background: none;
+    border: 1px solid rgba(0, 0, 0, 0%);
+    padding: 0px;
+}
+
+QgsPropertyOverrideButton:focus {
+    border:1px solid @focusdark;
+}
+
 QListWidget#mOptionsListWidget {
     background-color: @itembackground;
     color: @text;
@@ -1286,22 +1279,4 @@ QFrame#mUserInputContainer {
 
 QgsLayoutRuler {
     color: @textlight;
-}
-
-QgsAttributeFormWidget QComboBox:disabled {
-    border: none;
-    background-color: @itembackground;
-    color: @textlight;
-}
-
-QgsAttributeFormWidget QComboBox::down-arrow:disabled {
-     image: none;
-}
-
-QWidget#mCadWidget QLineEdit {
-    color: @textlight;
-}
-
-QWidget#mCadWidget QLineEdit:disabled {
-    color: @text;
 }

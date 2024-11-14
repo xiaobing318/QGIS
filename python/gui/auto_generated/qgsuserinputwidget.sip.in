@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsuserinputwidget.h                                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -20,6 +20,8 @@ It can be used by map tools, plugins, etc.
 Several widgets can be displayed at once, they will be separated by a separator.
 Widgets will be either layout horizontally or vertically.
 The widget is automatically hidden if it contains no widget.
+
+.. versionadded:: 2.10
 %End
 
 %TypeHeaderCode
@@ -50,5 +52,5 @@ Add a widget to be displayed in the dock.
  *                                                                      *
  * src/gui/qgsuserinputwidget.h                                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

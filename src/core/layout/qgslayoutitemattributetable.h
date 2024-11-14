@@ -29,6 +29,7 @@ class QgsVectorLayer;
 /**
  * \ingroup core
  * \brief A layout table subclass that displays attributes from a vector layer.
+ * \since QGIS 3.0
 */
 class CORE_EXPORT QgsLayoutItemAttributeTable: public QgsLayoutTable
 {
@@ -284,7 +285,7 @@ class CORE_EXPORT QgsLayoutItemAttributeTable: public QgsLayoutTable
     QgsExpressionContext createExpressionContext() const override;
     void finalizeRestoreFromXml() override;
 
-    void refreshDataDefinedProperty( QgsLayoutObject::DataDefinedProperty property = QgsLayoutObject::DataDefinedProperty::AllProperties ) override;
+    void refreshDataDefinedProperty( QgsLayoutObject::DataDefinedProperty property = QgsLayoutObject::AllProperties ) override;
 
     /**
      * Returns TRUE if the attribute table will be rendered using the conditional styling

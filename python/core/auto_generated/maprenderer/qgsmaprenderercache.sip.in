@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/maprenderer/qgsmaprenderercache.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -26,6 +26,8 @@ for particular layers between the first render update and the moment the layer
 actually has partially rendered something in the resulting image.
 
 The class is thread-safe (multiple classes can access the same instance safely).
+
+.. versionadded:: 2.4
 %End
 
 %TypeHeaderCode
@@ -49,9 +51,8 @@ parameters have changed since last initialization.
 
 :return: flag whether the parameters are the same as last time
 
-.. deprecated:: 3.18
-
-   Will be removed in QGIS 4.0. Use the :py:func:`~QgsMapRendererCache.updateParameters` and :py:func:`~QgsMapRendererCache.clear`.
+.. deprecated:: QGIS 3.18
+   - will be removed in QGIS 4.0. Use the :py:func:`~QgsMapRendererCache.updateParameters` and :py:func:`~QgsMapRendererCache.clear`
 %End
 
     bool updateParameters( const QgsRectangle &extent, const QgsMapToPixel &mtp );
@@ -104,6 +105,8 @@ Returns ``True`` if the cache contains an image with the specified ``cacheKey``
 that has the same extent and scale as the cache's global extent and scale
 
 .. seealso:: :py:func:`cacheImage`
+
+.. versionadded:: 3.0
 %End
 
     bool hasAnyCacheImage( const QString &cacheKey, double minimumScaleThreshold = 0, double maximumScaleThreshold = 0 ) const;
@@ -149,6 +152,8 @@ Returns a null image if it is not cached.
     QList< QgsMapLayer * > dependentLayers( const QString &cacheKey ) const;
 %Docstring
 Returns a list of map layers on which an image in the cache depends.
+
+.. versionadded:: 3.0
 %End
 
     void clearCacheImage( const QString &cacheKey );
@@ -173,5 +178,5 @@ Invalidates cached images which relate to the specified map ``layer``.
  *                                                                      *
  * src/core/maprenderer/qgsmaprenderercache.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

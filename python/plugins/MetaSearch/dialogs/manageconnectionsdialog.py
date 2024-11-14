@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ###############################################################################
 #
 # CSW Client
@@ -56,13 +57,13 @@ class ManageConnectionsDialog(QDialog, BASE_CLASS):
 
         if self.mode == 1:
             self.label.setText(self.tr('Load from file'))
-            self.buttonBox.button(QDialogButtonBox.StandardButton.Ok).setText(self.tr('Load'))
+            self.buttonBox.button(QDialogButtonBox.Ok).setText(self.tr('Load'))
         else:
             self.label.setText(self.tr('Save to file'))
-            self.buttonBox.button(QDialogButtonBox.StandardButton.Ok).setText(self.tr('Save'))
+            self.buttonBox.button(QDialogButtonBox.Ok).setText(self.tr('Save'))
             self.populate()
 
-        self.buttonBox.button(QDialogButtonBox.StandardButton.Ok).setEnabled(False)
+        self.buttonBox.button(QDialogButtonBox.Ok).setEnabled(False)
 
     def select_file(self):
         """select file ops"""
@@ -90,7 +91,7 @@ class ManageConnectionsDialog(QDialog, BASE_CLASS):
         if self.mode == 1:
             self.populate()
 
-        self.buttonBox.button(QDialogButtonBox.StandardButton.Ok).setEnabled(True)
+        self.buttonBox.button(QDialogButtonBox.Ok).setEnabled(True)
 
     def populate(self):
         """populate connections list from settings"""
@@ -159,15 +160,14 @@ class ManageConnectionsDialog(QDialog, BASE_CLASS):
                     conn_name)
                 res = QMessageBox.warning(self, self.tr('Loading Connections'),
                                           label,
-                                          QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-                if res != QMessageBox.StandardButton.Yes:
+                                          QMessageBox.Yes | QMessageBox.No)
+                if res != QMessageBox.Yes:
                     continue
 
             # no dups detected or overwrite is allowed
             url = '/MetaSearch/%s/url' % conn_name
-            type_ = '/MetaSearch/%s/catalog-type' % conn_name
             self.settings.setValue(url, catalog.attrib.get('url'))
-            self.settings.setValue(type_, catalog.attrib.get('catalog-type', 'OGC CSW 2.0.2'))
+            self.settings.setValue(url, catalog.attrib.get('catalog-type', 'OGC CSW 2.0.2'))
 
     def accept(self):
         """accept connections"""
@@ -188,7 +188,7 @@ class ManageConnectionsDialog(QDialog, BASE_CLASS):
         self.filename = None
         self.leFileName.clear()
         self.listConnections.clear()
-        self.buttonBox.button(QDialogButtonBox.StandardButton.Ok).setEnabled(False)
+        self.buttonBox.button(QDialogButtonBox.Ok).setEnabled(False)
 
     def reject(self):
         """back out of manage connections dialogue"""

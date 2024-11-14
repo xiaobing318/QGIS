@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/proj/qgscoordinatetransform.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -76,12 +76,15 @@ which dictate the behavior of the transformation.
 
 .. warning::
 
-   Do NOT use an empty/default constructed :py:class:`QgsCoordinateTransformContext`()
+   Do NOT use an empty/default constructed QgsCoordinateTransformContext()
    object when creating QgsCoordinateTransform objects. This prevents correct
    datum transform handling and may result in inaccurate transformations. Always
    ensure that the :py:class:`QgsCoordinateTransformContext` object is correctly retrieved
    based on the current code context, or use the constructor variant which
    accepts a :py:class:`QgsProject` argument instead.
+
+
+.. versionadded:: 3.0
 %End
 
     explicit QgsCoordinateTransform( const QgsCoordinateReferenceSystem &source,
@@ -109,11 +112,14 @@ correctly respected during coordinate transforms. E.g.
 Since QGIS 3.26 the optional ``flags`` argument can be used to specify flags
 which dictate the behavior of the transformation.
 
+
 .. warning::
 
    Since QGIS 3.20 The QgsCoordinateTransform class can perform time-dependent transformations
    between a static and dynamic CRS based on either the source OR destination CRS coordinate epoch,
    however dynamic CRS to dynamic CRS transformations are not currently supported.
+
+.. versionadded:: 3.0
 %End
 
  explicit QgsCoordinateTransform( const QgsCoordinateReferenceSystem &source,
@@ -125,17 +131,19 @@ Constructs a QgsCoordinateTransform to transform from the ``source``
 to ``destination`` coordinate reference system, with the specified
 datum transforms (see :py:class:`QgsDatumTransform`).
 
-.. deprecated:: 3.40
+.. deprecated::
+   will be removed in QGIS 4.0. Use the constructor with a :py:class:`QgsCoordinateTransformContext` argument instead.
 
-   Will be removed in QGIS 4.0. Use the constructor with a :py:class:`QgsCoordinateTransformContext` argument instead.
+.. versionadded:: 3.0
 %End
 
     QgsCoordinateTransform( const QgsCoordinateTransform &o );
+%Docstring
+Copy constructor
+%End
+
 
     ~QgsCoordinateTransform();
-
-    bool operator==( const QgsCoordinateTransform &other ) const;
-    bool operator!=( const QgsCoordinateTransform &other ) const;
 
     static bool isTransformationPossible( const QgsCoordinateReferenceSystem &source, const QgsCoordinateReferenceSystem &destination );
 %Docstring
@@ -157,6 +165,8 @@ a transformation between them will never be possible.
 %Docstring
 Returns ``True`` if the coordinate transform is valid, ie both the source and destination
 CRS have been set and are valid.
+
+.. versionadded:: 3.0
 %End
 
     void setSourceCrs( const QgsCoordinateReferenceSystem &crs );
@@ -187,6 +197,8 @@ Sets the ``context`` in which the coordinate transform should be
 calculated.
 
 .. seealso:: :py:func:`context`
+
+.. versionadded:: 3.0
 %End
 
     QgsCoordinateTransformContext context() const;
@@ -229,11 +241,9 @@ otherwise points are transformed from destination to source CRS.
 :param direction: transform direction (defaults to ForwardTransform)
 
 :return: transformed point
-
-:raises QgsCsException: if the transformation fails
 %End
 
-    QgsPointXY transform( double x, double y, Qgis::TransformDirection direction = Qgis::TransformDirection::Forward ) const throw( QgsCsException );
+    QgsPointXY transform( double x, double y, Qgis::TransformDirection direction = Qgis::TransformDirection::Forward ) const;
 %Docstring
 Transform the point specified by x,y from the source CRS to the destination CRS.
 If the direction is ForwardTransform then coordinates are transformed from source to destination,
@@ -244,11 +254,9 @@ otherwise points are transformed from destination to source CRS.
 :param direction: transform direction (defaults to ForwardTransform)
 
 :return: transformed point
-
-:raises QgsCsException: if the transformation fails
 %End
 
-    QgsVector3D transform( const QgsVector3D &point, Qgis::TransformDirection direction = Qgis::TransformDirection::Forward ) const throw( QgsCsException );
+    QgsVector3D transform( const QgsVector3D &point, Qgis::TransformDirection direction = Qgis::TransformDirection::Forward ) const;
 %Docstring
 Transform the point specified in 3D coordinates from the source CRS to the destination CRS.
 If the direction is ForwardTransform then coordinates are transformed from source to destination,
@@ -258,8 +266,6 @@ otherwise points are transformed from destination to source CRS.
 :param direction: transform direction (defaults to ForwardTransform)
 
 :return: transformed point
-
-:raises QgsCsException: if the transformation fails
 
 .. versionadded:: 3.18
 %End
@@ -279,8 +285,6 @@ the returned rectangle.
                            crossing the 180 degree longitude line is required
 
 :return: rectangle in destination CRS
-
-:raises QgsCsException: if the transformation fails
 %End
 
     void transformInPlace( double &x, double &y, double &z, Qgis::TransformDirection direction = Qgis::TransformDirection::Forward ) const throw( QgsCsException );
@@ -295,8 +299,6 @@ otherwise points are transformed from destination to source CRS.
           must represent height relative to the vertical datum of the source CRS (generally ellipsoidal
           heights) and must be expressed in its vertical units (generally meters)
 :param direction: transform direction (defaults to ForwardTransform)
-
-:raises QgsCsException: if the transformation fails
 %End
 
 
@@ -309,8 +311,6 @@ Transforms a polygon to the destination coordinate system.
 
 :param polygon: polygon to transform (occurs in place)
 :param direction: transform direction (defaults to forward transformation)
-
-:raises QgsCsException: if the transformation fails
 %End
 
     QgsRectangle transform( const QgsRectangle &rectangle, Qgis::TransformDirection direction = Qgis::TransformDirection::Forward ) const throw( QgsCsException );
@@ -323,8 +323,6 @@ otherwise points are transformed from destination to source CRS.
 :param direction: transform direction (defaults to ForwardTransform)
 
 :return: transformed rectangle
-
-:raises QgsCsException: if the transformation fails
 %End
 
     void transformCoords( int numPoint, double *x, double *y, double *z, Qgis::TransformDirection direction = Qgis::TransformDirection::Forward ) const throw( QgsCsException );
@@ -338,21 +336,11 @@ otherwise points are transformed from destination to source CRS.
 :param y: array of y coordinates to transform
 :param z: array of z coordinates to transform
 :param direction: transform direction (defaults to ForwardTransform)
-
-:raises QgsCsException: if the transformation fails
 %End
 
     bool isShortCircuited() const;
 %Docstring
 Returns ``True`` if the transform short circuits because the source and destination are equivalent.
-%End
-
-    bool hasVerticalComponent() const;
-%Docstring
-Returns ``True`` if the transform includes a vertical component, i.e. if both the :py:func:`~QgsCoordinateTransform.sourceCrs`
-and :py:func:`~QgsCoordinateTransform.destinationCrs` have a vertical axis.
-
-.. versionadded:: 3.40
 %End
 
     QString coordinateOperation() const;
@@ -371,6 +359,7 @@ coordinates.
 
    Requires Proj 6.0 or later. Builds based on earlier Proj versions will always return
    an empty string, and the deprecated :py:func:`~QgsCoordinateTransform.sourceDatumTransformId` or :py:func:`~QgsCoordinateTransform.destinationDatumTransformId` methods should be used instead.
+
 
 .. seealso:: :py:func:`instantiatedCoordinateOperationDetails`
 
@@ -412,6 +401,7 @@ coordinates.
    Requires Proj 6.0 or later. Builds based on earlier Proj versions will ignore this setting,
    and the deprecated :py:func:`~QgsCoordinateTransform.setSourceDatumTransformId` or :py:func:`~QgsCoordinateTransform.setDestinationDatumTransformId` methods should be used instead.
 
+
 .. seealso:: :py:func:`coordinateOperation`
 
 .. versionadded:: 3.8
@@ -431,6 +421,7 @@ are transformed). See :py:func:`~QgsCoordinateTransform.fallbackOperationOccurre
 
    If :py:func:`~QgsCoordinateTransform.setBallparkTransformsAreAppropriate` is set to ``True``, this setting will be ignored
    and fallback transformations will always be permitted.
+
 
 .. seealso:: :py:func:`allowFallbackTransforms`
 
@@ -490,6 +481,7 @@ and fallback transforms will always be allowed when required.
 
    Requires Proj 6.0 or later. Builds based on earlier Proj versions will ignore this setting.
 
+
 .. versionadded:: 3.12
 %End
 
@@ -508,6 +500,7 @@ operation occurred by testing :py:func:`~QgsCoordinateTransform.fallbackOperatio
 .. note::
 
    Requires Proj 6.0 or later. Builds based on earlier Proj versions will never perform fallback operations.
+
 
 .. seealso:: :py:func:`fallbackOperationOccurred`
 
@@ -541,9 +534,8 @@ but can be manually overwritten by a call to :py:func:`~QgsCoordinateTransform.s
 
 .. seealso:: :py:func:`destinationDatumTransformId`
 
-.. deprecated:: 3.40
-
-   Unused on builds based on Proj 6.0 or later.
+.. deprecated::
+   Unused on builds based on Proj 6.0 or later
 %End
 
  void setSourceDatumTransformId( int datumId ) /Deprecated/;
@@ -560,9 +552,8 @@ Calling this method will overwrite any automatically calculated datum transform.
 
 .. seealso:: :py:func:`setDestinationDatumTransformId`
 
-.. deprecated:: 3.40
-
-   Unused on builds based on Proj 6.0 or later.
+.. deprecated::
+   Unused on builds based on Proj 6.0 or later
 %End
 
  int destinationDatumTransformId() const /Deprecated/;
@@ -579,9 +570,8 @@ but can be manually overwritten by a call to :py:func:`~QgsCoordinateTransform.s
 
 .. seealso:: :py:func:`sourceDatumTransformId`
 
-.. deprecated:: 3.40
-
-   Unused on builds based on Proj 6.0 or later.
+.. deprecated::
+   Unused on builds based on Proj 6.0 or later
 %End
 
  void setDestinationDatumTransformId( int datumId ) /Deprecated/;
@@ -598,9 +588,8 @@ Calling this method will overwrite any automatically calculated datum transform.
 
 .. seealso:: :py:func:`setSourceDatumTransformId`
 
-.. deprecated:: 3.40
-
-   Unused on builds based on Proj 6.0 or later.
+.. deprecated::
+   Unused on builds based on Proj 6.0 or later
 %End
 
 
@@ -609,6 +598,8 @@ Calling this method will overwrite any automatically calculated datum transform.
 Clears the internal cache used to initialize QgsCoordinateTransform objects.
 This should be called whenever the srs database has
 been modified in order to ensure that outdated CRS transforms are not created.
+
+.. versionadded:: 3.0
 %End
 
     double scaleFactor( const QgsRectangle &referenceExtent ) const;
@@ -639,5 +630,5 @@ sourceUnits * scaleFactor = destinationUnits
  *                                                                      *
  * src/core/proj/qgscoordinatetransform.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

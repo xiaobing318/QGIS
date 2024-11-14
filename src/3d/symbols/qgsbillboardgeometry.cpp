@@ -30,7 +30,6 @@ typedef Qt3DCore::QBuffer Qt3DQBuffer;
 #endif
 
 #include "qgsbillboardgeometry.h"
-#include "moc_qgsbillboardgeometry.cpp"
 
 QgsBillboardGeometry::QgsBillboardGeometry( Qt3DCore::QNode *parent )
   : QGeometry( parent )

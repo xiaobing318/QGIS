@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgslayoutlocatorfilter.h"
-#include "moc_qgslayoutlocatorfilter.cpp"
 #include "qgsproject.h"
 #include "qgsmasterlayoutinterface.h"
 #include "qgslayoutmanager.h"
@@ -43,7 +42,7 @@ void QgsLayoutLocatorFilter::fetchResults( const QString &string, const QgsLocat
 
     QgsLocatorResult result;
     result.displayString = layout->name();
-    result.setUserData( layout->name() );
+    result.userData = layout->name();
 
     if ( context.usingPrefix && string.isEmpty() )
     {
@@ -60,7 +59,7 @@ void QgsLayoutLocatorFilter::fetchResults( const QString &string, const QgsLocat
 
 void QgsLayoutLocatorFilter::triggerResult( const QgsLocatorResult &result )
 {
-  const QString layoutName = result.userData().toString();
+  const QString layoutName = result.userData.toString();
   QgsMasterLayoutInterface *layout = QgsProject::instance()->layoutManager()->layoutByName( layoutName );
   if ( !layout )
     return;

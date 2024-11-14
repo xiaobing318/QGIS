@@ -17,7 +17,6 @@
 #include "qgsguiutils.h"
 #include "qgsjsonutils.h"
 #include "qgsqueryloggerpanelwidget.h"
-#include "moc_qgsqueryloggerpanelwidget.cpp"
 #include "qgsdatabasequeryloggernode.h"
 #include "qgsappquerylogger.h"
 #include "qgssettings.h"
@@ -30,7 +29,6 @@
 #include <QToolButton>
 #include <QCheckBox>
 #include <QTextStream>
-#include <QHeaderView>
 
 #include <nlohmann/json.hpp>
 
@@ -47,23 +45,7 @@ QgsDatabaseQueryLoggerTreeView::QgsDatabaseQueryLoggerTreeView( QgsAppQueryLogge
   setFont( QFontDatabase::systemFont( QFontDatabase::FixedFont ) );
 
   mProxyModel = new QgsDatabaseQueryLoggerProxyModel( mLogger, this );
-  mProxyModel->setSortRole( QgsDevToolsModelNode::RoleSort );
   setModel( mProxyModel );
-
-  connect( mProxyModel, &QAbstractItemModel::rowsInserted, this, [this]( const QModelIndex & parent, int first, int last )
-  {
-    // we want all second level items to be spanned
-    for ( int row = first; row <= last; ++row )
-    {
-      setFirstColumnSpanned( row, parent, parent.isValid() );
-
-      const QModelIndex childIndex = mProxyModel->index( row, 0, parent );
-      for ( int childRow = 0; childRow < mProxyModel->rowCount( childIndex ); ++childRow )
-      {
-        setFirstColumnSpanned( childRow, childIndex, true );
-      }
-    }
-  } );
 
   setContextMenuPolicy( Qt::CustomContextMenu );
   connect( this, &QgsDatabaseQueryLoggerTreeView::customContextMenuRequested, this, &QgsDatabaseQueryLoggerTreeView::contextMenu );
@@ -100,7 +82,7 @@ QgsDatabaseQueryLoggerTreeView::QgsDatabaseQueryLoggerTreeView( QgsAppQueryLogge
       mLogger->removeRequestRows( rowsToTrim );
     }
 
-    if ( mAutoScroll && isVisible() )
+    if ( mAutoScroll )
       scrollToBottom();
   } );
 
@@ -170,10 +152,6 @@ QgsDatabaseQueryLoggerPanelWidget::QgsDatabaseQueryLoggerPanelWidget( QgsAppQuer
   setupUi( this );
 
   mTreeView = new QgsDatabaseQueryLoggerTreeView( mLogger );
-  mTreeView->setItemDelegateForColumn( 1, new QueryCostDelegate( QgsDevToolsModelNode::RoleElapsedTime, QgsDevToolsModelNode::RoleMaximumTime, mTreeView ) );
-  mTreeView->setSortingEnabled( true );
-  mTreeView->sortByColumn( 0, Qt::SortOrder::AscendingOrder );
-
   verticalLayout->addWidget( mTreeView );
   mToolbar->setIconSize( QgsGuiUtils::iconSize( true ) );
 
@@ -214,13 +192,4 @@ QgsDatabaseQueryLoggerPanelWidget::QgsDatabaseQueryLoggerPanelWidget( QgsAppQuer
 
     fout << json;
   } );
-
-  QgsSettings settings;
-  mTreeView->header()->restoreState( settings.value( QStringLiteral( "UI/queryLogger/treeState" ), QByteArray(), QgsSettings::Gui ).toByteArray() );
-}
-
-QgsDatabaseQueryLoggerPanelWidget::~QgsDatabaseQueryLoggerPanelWidget()
-{
-  QgsSettings settings;
-  settings.setValue( QStringLiteral( "UI/queryLogger/treeState" ), mTreeView->header()->saveState(), QgsSettings::Gui );
 }

@@ -59,9 +59,9 @@ void QgsRasterAnalysisUtils::cellInfoForBBox( const QgsRectangle &rasterBBox, co
                                     rasterBBox.yMaximum() - ( nCellsY + offsetY ) * cellSizeY );
 }
 
-void QgsRasterAnalysisUtils::statisticsFromMiddlePointTest( QgsRasterInterface *rasterInterface, int rasterBand, const QgsGeometry &poly, int nCellsX, int nCellsY, double cellSizeX, double cellSizeY, const QgsRectangle &rasterBBox,  const std::function<void( double, const QgsPointXY & )> &addValue, bool skipNodata )
+void QgsRasterAnalysisUtils::statisticsFromMiddlePointTest( QgsRasterInterface *rasterInterface, int rasterBand, const QgsGeometry &poly, int nCellsX, int nCellsY, double cellSizeX, double cellSizeY, const QgsRectangle &rasterBBox,  const std::function<void( double )> &addValue, bool skipNodata )
 {
-  std::unique_ptr< QgsGeos > polyEngine = std::make_unique< QgsGeos >( poly.constGet( ) );
+  std::unique_ptr< QgsGeometryEngine > polyEngine( QgsGeometry::createGeometryEngine( poly.constGet( ) ) );
   if ( !polyEngine )
   {
     return;
@@ -90,9 +90,10 @@ void QgsRasterAnalysisUtils::statisticsFromMiddlePointTest( QgsRasterInterface *
         const double pixelValue = block->valueAndNoData( row, col, isNoData );
         if ( validPixel( pixelValue ) && ( !skipNodata || !isNoData ) )
         {
-          if ( polyEngine->contains( cellCenterX, cellCenterY ) )
+          QgsPoint cellCenter( cellCenterX, cellCenterY );
+          if ( polyEngine->contains( &cellCenter ) )
           {
-            addValue( pixelValue, QgsPointXY( cellCenterX, cellCenterY ) );
+            addValue( pixelValue );
           }
         }
         cellCenterX += cellSizeX;
@@ -102,7 +103,7 @@ void QgsRasterAnalysisUtils::statisticsFromMiddlePointTest( QgsRasterInterface *
   }
 }
 
-void QgsRasterAnalysisUtils::statisticsFromPreciseIntersection( QgsRasterInterface *rasterInterface, int rasterBand, const QgsGeometry &poly, int nCellsX, int nCellsY, double cellSizeX, double cellSizeY, const QgsRectangle &rasterBBox,  const std::function<void( double, double, const QgsPointXY & )> &addValue, bool skipNodata )
+void QgsRasterAnalysisUtils::statisticsFromPreciseIntersection( QgsRasterInterface *rasterInterface, int rasterBand, const QgsGeometry &poly, int nCellsX, int nCellsY, double cellSizeX, double cellSizeY, const QgsRectangle &rasterBBox,  const std::function<void( double, double )> &addValue, bool skipNodata )
 {
   QgsGeometry pixelRectGeometry;
 
@@ -152,7 +153,7 @@ void QgsRasterAnalysisUtils::statisticsFromPreciseIntersection( QgsRasterInterfa
               if ( intersectionArea > 0.0 )
               {
                 weight = intersectionArea / pixelArea;
-                addValue( pixelValue, weight, QgsPointXY( currentX, currentY ) );
+                addValue( pixelValue, weight );
               }
             }
           }
@@ -198,7 +199,6 @@ void populateDataTypes()
     sDataTypes.append( qMakePair( QStringLiteral( "CInt32" ), Qgis::DataType::CInt32 ) );
     sDataTypes.append( qMakePair( QStringLiteral( "CFloat32" ), Qgis::DataType::CFloat32 ) );
     sDataTypes.append( qMakePair( QStringLiteral( "CFloat64" ), Qgis::DataType::CFloat64 ) );
-    sDataTypes.append( qMakePair( QStringLiteral( "Int8" ), Qgis::DataType::Int8 ) );
   }
 }
 

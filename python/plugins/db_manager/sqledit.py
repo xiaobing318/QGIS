@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     ScriptEdit.py
@@ -51,11 +53,11 @@ class SqlEdit(QsciScintilla):
         self.setFont(font)
         self.setMarginsFont(font)
 
-        self.setBraceMatching(QsciScintilla.BraceMatch.SloppyBraceMatch)
+        self.setBraceMatching(QsciScintilla.SloppyBraceMatch)
 
-        self.setWrapMode(QsciScintilla.WrapMode.WrapWord)
-        self.setWrapVisualFlags(QsciScintilla.WrapVisualFlag.WrapFlagByText,
-                                QsciScintilla.WrapVisualFlag.WrapFlagNone, 4)
+        self.setWrapMode(QsciScintilla.WrapWord)
+        self.setWrapVisualFlags(QsciScintilla.WrapFlagByText,
+                                QsciScintilla.WrapFlagNone, 4)
 
         self.setSelectionForegroundColor(QColor('#2e3436'))
         self.setSelectionBackgroundColor(QColor('#babdb6'))
@@ -71,11 +73,11 @@ class SqlEdit(QsciScintilla):
         self.setCaretLineBackgroundColor(QColor('#d3d7cf'))
 
         # Folding
-        self.setFolding(QsciScintilla.FoldStyle.BoxedTreeFoldStyle)
+        self.setFolding(QsciScintilla.BoxedTreeFoldStyle)
         self.setFoldMarginColors(QColor('#d3d7cf'), QColor('#d3d7cf'))
 
         # Mark column 80 with vertical line
-        self.setEdgeMode(QsciScintilla.EdgeMode.EdgeLine)
+        self.setEdgeMode(QsciScintilla.EdgeLine)
         self.setEdgeColumn(80)
         self.setEdgeColor(QColor('#eeeeec'))
 
@@ -89,7 +91,7 @@ class SqlEdit(QsciScintilla):
 
         # Autocomletion
         self.setAutoCompletionThreshold(2)
-        self.setAutoCompletionSource(QsciScintilla.AutoCompletionSource.AcsAPIs)
+        self.setAutoCompletionSource(QsciScintilla.AcsAPIs)
         self.setAutoCompletionCaseSensitivity(False)
 
         # Load font from Python console settings
@@ -100,7 +102,7 @@ class SqlEdit(QsciScintilla):
         self.defaultFont = QFont(fontName)
         self.defaultFont.setFixedPitch(True)
         self.defaultFont.setPointSize(fontSize)
-        self.defaultFont.setStyleHint(QFont.StyleHint.TypeWriter)
+        self.defaultFont.setStyleHint(QFont.TypeWriter)
         self.defaultFont.setBold(False)
 
         self.boldFont = QFont(self.defaultFont)
@@ -128,9 +130,9 @@ class SqlEdit(QsciScintilla):
         # self.SendScintilla(QsciScintilla.SCI_CLEARCMDKEY, ord("Y") + ctrl)
 
         # Use Ctrl+Space for autocompletion
-        self.shortcutAutocomplete = QShortcut(QKeySequence(Qt.Modifier.CTRL +
-                                                           Qt.Key.Key_Space), self)
-        self.shortcutAutocomplete.setContext(Qt.ShortcutContext.WidgetShortcut)
+        self.shortcutAutocomplete = QShortcut(QKeySequence(Qt.CTRL +
+                                                           Qt.Key_Space), self)
+        self.shortcutAutocomplete.setContext(Qt.WidgetShortcut)
         self.shortcutAutocomplete.activated.connect(self.autoComplete)
 
     def autoComplete(self):

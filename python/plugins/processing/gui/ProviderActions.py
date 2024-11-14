@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     ProviderActions.py
@@ -20,7 +22,7 @@ __date__ = 'April 2017'
 __copyright__ = '(C) 2017, Nyall Dason'
 
 
-class ProviderActions:
+class ProviderActions(object):
     actions = {}
 
     @staticmethod
@@ -35,7 +37,7 @@ class ProviderActions:
             del ProviderActions.actions[provider.id()]
 
 
-class ProviderContextMenuActions:
+class ProviderContextMenuActions(object):
     # All the registered context menu actions for the toolbox
     actions = []
 

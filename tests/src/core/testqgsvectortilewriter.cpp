@@ -23,7 +23,6 @@
 #include "qgsproject.h"
 #include "qgstiles.h"
 #include "qgsvectorlayer.h"
-#include "qgsvectortileloader.h"
 #include "qgsvectortilemvtdecoder.h"
 #include "qgsvectortilelayer.h"
 #include "qgsvectortilewriter.h"
@@ -115,9 +114,9 @@ void TestQgsVectorTileWriter::test_basic()
 
   QgsVectorTileLayer *vtLayer = new QgsVectorTileLayer( ds.encodedUri(), "output" );
 
-  const QgsVectorTileRawData tile0 = vtLayer->getRawTile( QgsTileXYZ( 0, 0, 0 ) );
+  const QByteArray tile0 = vtLayer->getRawTile( QgsTileXYZ( 0, 0, 0 ) );
   QgsVectorTileMVTDecoder decoder( QgsVectorTileMatrixSet::fromWebMercator() );
-  const bool resDecode0 = decoder.decode( tile0 );
+  const bool resDecode0 = decoder.decode( QgsTileXYZ( 0, 0, 0 ), tile0 );
   QVERIFY( resDecode0 );
   const QStringList layerNames = decoder.layers();
   QCOMPARE( layerNames, QStringList() << "points" << "lines" << "polys" );
@@ -125,7 +124,7 @@ void TestQgsVectorTileWriter::test_basic()
   QCOMPARE( fieldNamesLines, QStringList() << "Name" << "Value" );
 
   QgsFields fieldsPolys;
-  fieldsPolys.append( QgsField( "Name", QMetaType::Type::QString ) );
+  fieldsPolys.append( QgsField( "Name", QVariant::String ) );
   QMap<QString, QgsFields> perLayerFields;
   perLayerFields["polys"] = fieldsPolys;
   perLayerFields["lines"] = QgsFields();
@@ -135,9 +134,9 @@ void TestQgsVectorTileWriter::test_basic()
   QCOMPARE( features0["lines"].count(), 6 );
   QCOMPARE( features0["polys"].count(), 10 );
 
-  QCOMPARE( features0["points"][0].geometry().wkbType(), Qgis::WkbType::Point );
-  QCOMPARE( features0["lines"][0].geometry().wkbType(), Qgis::WkbType::LineString );
-  QCOMPARE( features0["polys"][0].geometry().wkbType(), Qgis::WkbType::MultiPolygon );   // source geoms in shp are multipolygons
+  QCOMPARE( features0["points"][0].geometry().wkbType(), QgsWkbTypes::Point );
+  QCOMPARE( features0["lines"][0].geometry().wkbType(), QgsWkbTypes::LineString );
+  QCOMPARE( features0["polys"][0].geometry().wkbType(), QgsWkbTypes::MultiPolygon );   // source geoms in shp are multipolygons
 
   QgsAttributes attrsPolys0_0 = features0["polys"][0].attributes();
   QCOMPARE( attrsPolys0_0.count(), 1 );
@@ -184,9 +183,9 @@ void TestQgsVectorTileWriter::test_mbtiles()
 
   QgsVectorTileLayer *vtLayer = new QgsVectorTileLayer( ds.encodedUri(), "output" );
 
-  const QgsVectorTileRawData tile0 = vtLayer->getRawTile( QgsTileXYZ( 0, 0, 0 ) );
+  const QByteArray tile0 = vtLayer->getRawTile( QgsTileXYZ( 0, 0, 0 ) );
   QgsVectorTileMVTDecoder decoder( QgsVectorTileMatrixSet::fromWebMercator() );
-  const bool resDecode0 = decoder.decode( tile0 );
+  const bool resDecode0 = decoder.decode( QgsTileXYZ( 0, 0, 0 ), tile0 );
   QVERIFY( resDecode0 );
   const QStringList layerNames = decoder.layers();
   QCOMPARE( layerNames, QStringList() << "points" << "lines" << "polys" );
@@ -194,7 +193,7 @@ void TestQgsVectorTileWriter::test_mbtiles()
   QCOMPARE( fieldNamesLines, QStringList() << "Name" << "Value" );
 
   QgsFields fieldsPolys;
-  fieldsPolys.append( QgsField( "Name", QMetaType::Type::QString ) );
+  fieldsPolys.append( QgsField( "Name", QVariant::String ) );
   QMap<QString, QgsFields> perLayerFields;
   perLayerFields["polys"] = fieldsPolys;
   perLayerFields["lines"] = QgsFields();
@@ -204,9 +203,9 @@ void TestQgsVectorTileWriter::test_mbtiles()
   QCOMPARE( features0["lines"].count(), 6 );
   QCOMPARE( features0["polys"].count(), 10 );
 
-  QCOMPARE( features0["points"][0].geometry().wkbType(), Qgis::WkbType::Point );
-  QCOMPARE( features0["lines"][0].geometry().wkbType(), Qgis::WkbType::LineString );
-  QCOMPARE( features0["polys"][0].geometry().wkbType(), Qgis::WkbType::MultiPolygon );   // source geoms in shp are multipolygons
+  QCOMPARE( features0["points"][0].geometry().wkbType(), QgsWkbTypes::Point );
+  QCOMPARE( features0["lines"][0].geometry().wkbType(), QgsWkbTypes::LineString );
+  QCOMPARE( features0["polys"][0].geometry().wkbType(), QgsWkbTypes::MultiPolygon );   // source geoms in shp are multipolygons
 
   QgsAttributes attrsPolys0_0 = features0["polys"][0].attributes();
   QCOMPARE( attrsPolys0_0.count(), 1 );
@@ -300,9 +299,9 @@ void TestQgsVectorTileWriter::test_filtering()
 
   QgsVectorTileLayer *vtLayer = new QgsVectorTileLayer( ds.encodedUri(), "output" );
 
-  const QgsVectorTileRawData tile0 = vtLayer->getRawTile( QgsTileXYZ( 0, 0, 0 ) );
+  const QByteArray tile0 = vtLayer->getRawTile( QgsTileXYZ( 0, 0, 0 ) );
   QgsVectorTileMVTDecoder decoder( QgsVectorTileMatrixSet::fromWebMercator() );
-  const bool resDecode0 = decoder.decode( tile0 );
+  const bool resDecode0 = decoder.decode( QgsTileXYZ( 0, 0, 0 ), tile0 );
   QVERIFY( resDecode0 );
   const QStringList layerNames = decoder.layers();
   QCOMPARE( layerNames, QStringList() << "b52" << "lines" );
@@ -363,9 +362,9 @@ void TestQgsVectorTileWriter::test_z0TileMatrix3857()
 
   QgsVectorTileLayer *vtLayer = new QgsVectorTileLayer( ds.encodedUri(), "output" );
 
-  const QgsVectorTileRawData tile0 = vtLayer->getRawTile( QgsTileXYZ( 0, 0, 0 ) );
+  const QByteArray tile0 = vtLayer->getRawTile( QgsTileXYZ( 0, 0, 0 ) );
   QgsVectorTileMVTDecoder decoder( QgsVectorTileMatrixSet::fromWebMercator() );
-  const bool resDecode0 = decoder.decode( tile0 );
+  const bool resDecode0 = decoder.decode( QgsTileXYZ( 0, 0, 0 ), tile0 );
   QVERIFY( resDecode0 );
   const QStringList layerNames = decoder.layers();
   QCOMPARE( layerNames, QStringList() << "points" << "lines" << "polys" );
@@ -373,7 +372,7 @@ void TestQgsVectorTileWriter::test_z0TileMatrix3857()
   QCOMPARE( fieldNamesLines, QStringList() << "Name" << "Value" );
 
   QgsFields fieldsPolys;
-  fieldsPolys.append( QgsField( "Name", QMetaType::Type::QString ) );
+  fieldsPolys.append( QgsField( "Name", QVariant::String ) );
   QMap<QString, QgsFields> perLayerFields;
   perLayerFields["polys"] = fieldsPolys;
   perLayerFields["lines"] = QgsFields();
@@ -383,9 +382,9 @@ void TestQgsVectorTileWriter::test_z0TileMatrix3857()
   QCOMPARE( features0["lines"].count(), 6 );
   QCOMPARE( features0["polys"].count(), 10 );
 
-  QCOMPARE( features0["points"][0].geometry().wkbType(), Qgis::WkbType::Point );
-  QCOMPARE( features0["lines"][0].geometry().wkbType(), Qgis::WkbType::LineString );
-  QCOMPARE( features0["polys"][0].geometry().wkbType(), Qgis::WkbType::MultiPolygon );   // source geoms in shp are multipolygons
+  QCOMPARE( features0["points"][0].geometry().wkbType(), QgsWkbTypes::Point );
+  QCOMPARE( features0["lines"][0].geometry().wkbType(), QgsWkbTypes::LineString );
+  QCOMPARE( features0["polys"][0].geometry().wkbType(), QgsWkbTypes::MultiPolygon );   // source geoms in shp are multipolygons
 
   QgsAttributes attrsPolys0_0 = features0["polys"][0].attributes();
   QCOMPARE( attrsPolys0_0.count(), 1 );
@@ -449,9 +448,9 @@ void TestQgsVectorTileWriter::test_z0TileMatrix2154()
 
   QgsVectorTileLayer *vtLayer = new QgsVectorTileLayer( ds.encodedUri(), "output" );
 
-  const QgsVectorTileRawData tile0 = vtLayer->getRawTile( QgsTileXYZ( 0, 0, 0 ) );
+  const QByteArray tile0 = vtLayer->getRawTile( QgsTileXYZ( 0, 0, 0 ) );
   QgsVectorTileMVTDecoder decoder( QgsVectorTileMatrixSet::fromWebMercator() );
-  const bool resDecode0 = decoder.decode( tile0 );
+  const bool resDecode0 = decoder.decode( QgsTileXYZ( 0, 0, 0 ), tile0 );
   QVERIFY( resDecode0 );
   const QStringList layerNames = decoder.layers();
   QCOMPARE( layerNames, QStringList() << "points" << "lines" << "polys" );
@@ -459,7 +458,7 @@ void TestQgsVectorTileWriter::test_z0TileMatrix2154()
   QCOMPARE( fieldNamesLines, QStringList() << "Name" << "Value" );
 
   QgsFields fieldsPolys;
-  fieldsPolys.append( QgsField( "Name", QMetaType::Type::QString ) );
+  fieldsPolys.append( QgsField( "Name", QVariant::String ) );
   QMap<QString, QgsFields> perLayerFields;
   perLayerFields["polys"] = fieldsPolys;
   perLayerFields["lines"] = QgsFields();
@@ -469,9 +468,9 @@ void TestQgsVectorTileWriter::test_z0TileMatrix2154()
   QCOMPARE( features0["lines"].count(), 6 );
   QCOMPARE( features0["polys"].count(), 10 );
 
-  QCOMPARE( features0["points"][0].geometry().wkbType(), Qgis::WkbType::Point );
-  QCOMPARE( features0["lines"][0].geometry().wkbType(), Qgis::WkbType::LineString );
-  QCOMPARE( features0["polys"][0].geometry().wkbType(), Qgis::WkbType::MultiPolygon );   // source geoms in shp are multipolygons
+  QCOMPARE( features0["points"][0].geometry().wkbType(), QgsWkbTypes::Point );
+  QCOMPARE( features0["lines"][0].geometry().wkbType(), QgsWkbTypes::LineString );
+  QCOMPARE( features0["polys"][0].geometry().wkbType(), QgsWkbTypes::MultiPolygon );   // source geoms in shp are multipolygons
 
   QgsAttributes attrsPolys0_0 = features0["polys"][0].attributes();
   QCOMPARE( attrsPolys0_0.count(), 1 );

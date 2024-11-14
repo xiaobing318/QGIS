@@ -24,7 +24,13 @@ class QgsPdalIndexingTask: public QgsTask
     Q_OBJECT
 
   public:
-    QgsPdalIndexingTask( const QString &file, const QString &outputPath, const QString &name = QString() );
+    enum class OutputFormat
+    {
+      Ept,
+      Copc
+    };
+
+    QgsPdalIndexingTask( const QString &file, const QString &outputPath, OutputFormat outputFormat = OutputFormat::Ept, const QString &name = QString() );
     bool run() override;
 
     QString untwineExecutableBinary() const;
@@ -42,6 +48,7 @@ class QgsPdalIndexingTask: public QgsTask
     QString mUntwineExecutableBinary;
     QString mOutputPath;
     QString mFile;
+    OutputFormat mOutputFormat = OutputFormat::Copc;
     QString mErrorMessage;
 };
 

@@ -35,6 +35,7 @@ class QgsSymbol;
  *
  * \note this class is not a part of public API yet. See notes in QgsLabelingEngine
  * \note not available in Python bindings
+ * \since QGIS 2.12
  */
 class CORE_EXPORT QgsVectorLayerLabelProvider : public QgsAbstractLabelProvider
 {
@@ -48,7 +49,7 @@ class CORE_EXPORT QgsVectorLayerLabelProvider : public QgsAbstractLabelProvider
                                           const QString &layerName = QString() );
 
     //! Constructor to initialize the provider from any map layer (e.g. vector tile layer)
-    explicit QgsVectorLayerLabelProvider( Qgis::GeometryType geometryType,
+    explicit QgsVectorLayerLabelProvider( QgsWkbTypes::GeometryType geometryType,
                                           const QgsFields &fields,
                                           const QgsCoordinateReferenceSystem &crs,
                                           const QString &providerId,
@@ -99,6 +100,7 @@ class CORE_EXPORT QgsVectorLayerLabelProvider : public QgsAbstractLabelProvider
      * \param fet point feature
      * \param context render context
      * \param symbols symbols rendered for point feature
+     * \since QGIS 2.14
      */
     static QgsGeometry getPointObstacleGeometry( QgsFeature &fet, QgsRenderContext &context, const QgsSymbolList &symbols );
 
@@ -126,7 +128,7 @@ class CORE_EXPORT QgsVectorLayerLabelProvider : public QgsAbstractLabelProvider
     //! Layer's labeling configuration
     QgsPalLayerSettings mSettings;
     //! Geometry type of layer
-    Qgis::GeometryType mLayerGeometryType;
+    QgsWkbTypes::GeometryType mLayerGeometryType;
 
     QgsFeatureRenderer *mRenderer = nullptr;
 

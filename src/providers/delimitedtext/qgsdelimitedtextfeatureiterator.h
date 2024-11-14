@@ -34,7 +34,7 @@ class QgsDelimitedTextFeatureSource final: public QgsAbstractFeatureSource
     QgsDelimitedTextProvider::GeomRepresentationType mGeomRep;
     std::unique_ptr< QgsExpression > mSubsetExpression;
     QgsExpressionContext mExpressionContext;
-    QgsBox3D mExtent;
+    QgsRectangle mExtent;
     bool mUseSpatialIndex;
     std::unique_ptr< QgsSpatialIndex > mSpatialIndex;
     bool mUseSubsetIndex;
@@ -48,7 +48,7 @@ class QgsDelimitedTextFeatureSource final: public QgsAbstractFeatureSource
     int mMFieldIndex;
     int mWktFieldIndex;
     bool mWktHasPrefix;
-    Qgis::GeometryType mGeometryType;
+    QgsWkbTypes::GeometryType mGeometryType;
     QString mDecimalPoint;
     bool mXyDms;
     QList<int> attributeColumns;

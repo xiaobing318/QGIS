@@ -3,7 +3,7 @@
  *                                                                      *
  * src/server/qgsserverogcapi.h                                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -28,6 +28,9 @@ as instances of :py:class:`QgsServerOgcApiHandler`.
      api = QgsServerOgcApi(serverInterface(), "/api1", "apione", "A firs API", "1.0")
      api.registerHandler(h)
      server.serverInterface().serviceRegistry().registerApi(api)
+
+
+
 
 .. versionadded:: 3.10
 %End
@@ -129,20 +132,9 @@ Returns the string representation of a ``ct`` (Content-Type) attribute.
 Returns the file extension for a ``ct`` (Content-Type).
 %End
 
- static QgsServerOgcApi::ContentType contenTypeFromExtension( const std::string &extension ) /Deprecated/;
+    static QgsServerOgcApi::ContentType contenTypeFromExtension( const std::string &extension );
 %Docstring
 Returns the Content-Type value corresponding to ``extension``.
-
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsServerOgcApi.contentTypeFromExtension`.
-%End
-
-    static QgsServerOgcApi::ContentType contentTypeFromExtension( const std::string &extension );
-%Docstring
-Returns the Content-Type value corresponding to ``extension``.
-
-.. versionadded:: 3.38
 %End
 
     static std::string mimeType( const QgsServerOgcApi::ContentType &contentType );
@@ -158,5 +150,5 @@ Returns the mime-type for the ``contentType`` or an empty string if not found
  *                                                                      *
  * src/server/qgsserverogcapi.h                                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

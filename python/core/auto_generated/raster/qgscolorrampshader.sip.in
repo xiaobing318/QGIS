@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/raster/qgscolorrampshader.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -22,7 +22,21 @@ A ramp shader will color a raster pixel based on a list of values ranges in a ra
 %End
   public:
 
-    QgsColorRampShader( double minimumValue = 0.0, double maximumValue = 255.0, QgsColorRamp *colorRamp /Transfer/ = 0, Qgis::ShaderInterpolationMethod type = Qgis::ShaderInterpolationMethod::Linear, Qgis::ShaderClassificationMethod classificationMode = Qgis::ShaderClassificationMethod::Continuous );
+    enum Type
+    {
+      Interpolated,
+      Discrete,
+      Exact
+    };
+
+    enum ClassificationMode
+    {
+      Continuous,
+      EqualInterval,
+      Quantile
+    };
+
+    QgsColorRampShader( double minimumValue = 0.0, double maximumValue = 255.0, QgsColorRamp *colorRamp /Transfer/ = 0, Type type = Interpolated, ClassificationMode classificationMode = Continuous );
 %Docstring
 Creates a new color ramp shader.
 
@@ -31,18 +45,26 @@ Creates a new color ramp shader.
 :param type: interpolation type used
 :param classificationMode: method used to classify the color ramp shader
 :param colorRamp: vector color ramp used to classify the color ramp shader. Ownership is transferred to the shader.
+
+:return: new QgsColorRampShader
 %End
 
     ~QgsColorRampShader();
 
     QgsColorRampShader( const QgsColorRampShader &other );
+%Docstring
+Copy constructor
+%End
+
 
     bool operator==( const QgsColorRampShader &other ) const;
 
     struct ColorRampItem
     {
-
       ColorRampItem();
+%Docstring
+default constructor
+%End
       ColorRampItem( double val, const QColor &col, const QString &lbl = QString() );
 %Docstring
 convenience constructor
@@ -59,16 +81,12 @@ convenience constructor
 
     QList<QgsColorRampShader::ColorRampItem> colorRampItemList() const;
 %Docstring
-Returns the custom color map.
-
-.. seealso:: :py:func:`setColorRampItemList`
+Returns the custom colormap.
 %End
 
-    Qgis::ShaderInterpolationMethod colorRampType() const;
+    Type colorRampType() const;
 %Docstring
-Returns the color ramp interpolation method.
-
-.. seealso:: :py:func:`setColorRampType`
+Returns the color ramp type.
 %End
 
     QString colorRampTypeAsQString() const;
@@ -78,11 +96,9 @@ Returns the color ramp type as a string.
 
     void setColorRampItemList( const QList<QgsColorRampShader::ColorRampItem> &list ); //TODO: sort on set
 
-    void setColorRampType( Qgis::ShaderInterpolationMethod colorRampType );
+    void setColorRampType( QgsColorRampShader::Type colorRampType );
 %Docstring
-Sets the color ramp interpolation method.
-
-.. seealso:: :py:func:`colorRampType`
+Sets the color ramp type
 %End
 
     bool isEmpty() const;
@@ -97,6 +113,8 @@ Whether the color ramp contains any items
 Returns the source color ramp.
 
 .. seealso:: :py:func:`setSourceColorRamp`
+
+.. versionadded:: 3.0
 %End
 
     QgsColorRamp *createColorRamp() const /Factory/;
@@ -111,6 +129,8 @@ Creates a gradient color ramp from shader settings.
 Set the source color ramp. Ownership is transferred to the shader.
 
 .. seealso:: :py:func:`sourceColorRamp`
+
+.. versionadded:: 3.0
 %End
 
     void setColorRampType( const QString &type );
@@ -139,10 +159,18 @@ Classify color ramp shader
 
     virtual bool shade( double value, int *returnRedValue /Out/, int *returnGreenValue /Out/, int *returnBlueValue /Out/, int *returnAlphaValue /Out/ ) const;
 
+%Docstring
+Generates and new RGB value based on one input value
+%End
+
      virtual bool shade( double redValue, double greenValue,
                 double blueValue, double alphaValue,
                 int *returnRedValue /Out/, int *returnGreenValue /Out/,
                 int *returnBlueValue /Out/, int *returnAlphaValue /Out/ ) const;
+%Docstring
+Generates and new RGB value based on original RGB value
+%End
+
     virtual void legendSymbologyItems( QList< QPair< QString, QColor > > &symbolItems /Out/ ) const;
 
 
@@ -160,18 +188,14 @@ Reads configuration from the given DOM element
 .. versionadded:: 3.4
 %End
 
-    void setClassificationMode( Qgis::ShaderClassificationMethod classificationMode );
+    void setClassificationMode( ClassificationMode classificationMode );
 %Docstring
-Sets the classification mode.
-
-.. seealso:: :py:func:`classificationMode`
+Sets classification mode
 %End
 
-    Qgis::ShaderClassificationMethod classificationMode() const;
+    ClassificationMode classificationMode() const;
 %Docstring
-Returns the classification mode.
-
-.. seealso:: :py:func:`setClassificationMode`
+Returns the classification mode
 %End
 
     void setClip( bool clip );
@@ -220,5 +244,5 @@ Ownership of ``settings`` is transferred.
  *                                                                      *
  * src/core/raster/qgscolorrampshader.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsaggregatecalculator.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -14,13 +14,12 @@
 class QgsAggregateCalculator
 {
 %Docstring(signature="appended")
-Utility class for calculating aggregates for a field (or expression) over the features from a vector layer.
+Utility class for calculating aggregates for a field (or expression) over the features
+from a vector layer. It is recommended that :py:func:`QgsVectorLayer.aggregate()` is used rather then
+directly using this class, as the :py:class:`QgsVectorLayer` method can handle delegating aggregate calculation
+to a data provider for remote calculation.
 
-.. note::
-
-   It is recommended that :py:func:`QgsVectorLayer.aggregate()` is used rather then
-   directly using this class, as the :py:class:`QgsVectorLayer` method can handle delegating aggregate calculation
-   to a data provider for remote calculation.
+.. versionadded:: 2.16
 %End
 
 %TypeHeaderCode
@@ -32,7 +31,33 @@ Utility class for calculating aggregates for a field (or expression) over the fe
     {
       QString function;
       QString name;
-      QSet<QMetaType::Type> supportedTypes;
+      QSet<QVariant::Type> supportedTypes;
+    };
+
+    enum Aggregate
+    {
+      Count,
+      CountDistinct,
+      CountMissing,
+      Min,
+      Max,
+      Sum,
+      Mean,
+      Median,
+      StDev,
+      StDevSample,
+      Range,
+      Minority,
+      Majority,
+      FirstQuartile,
+      ThirdQuartile,
+      InterQuartileRange,
+      StringMinimumLength,
+      StringMaximumLength,
+      StringConcatenate,
+      GeometryCollect,
+      ArrayAggregate,
+      StringConcatenateUnique
     };
 
     struct AggregateParameters
@@ -113,7 +138,7 @@ Returns the delimiter used for joining values with the StringConcatenate aggrega
 .. seealso:: :py:func:`setDelimiter`
 %End
 
-    QVariant calculate( Qgis::Aggregate aggregate, const QString &fieldOrExpression,
+    QVariant calculate( Aggregate aggregate, const QString &fieldOrExpression,
                         QgsExpressionContext *context = 0, bool *ok = 0, QgsFeedback *feedback = 0 ) const;
 %Docstring
 Calculates the value of an aggregate.
@@ -129,7 +154,7 @@ Calculates the value of an aggregate.
 :return: calculated aggregate value
 %End
 
-    static Qgis::Aggregate stringToAggregate( const QString &string, bool *ok = 0 );
+    static Aggregate stringToAggregate( const QString &string, bool *ok = 0 );
 %Docstring
 Converts a string to a aggregate type.
 
@@ -139,7 +164,7 @@ Converts a string to a aggregate type.
 :return: aggregate type
 %End
 
-    static QString displayName( Qgis::Aggregate aggregate );
+    static QString displayName( Aggregate aggregate );
 %Docstring
 Returns the friendly display name for a ``aggregate``.
 
@@ -160,5 +185,5 @@ Structured information for available aggregates.
  *                                                                      *
  * src/core/qgsaggregatecalculator.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

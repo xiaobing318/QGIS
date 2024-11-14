@@ -455,7 +455,7 @@ namespace QgsWfs
       {
         continue;
       }
-      if ( layer->type() != Qgis::LayerType::Vector )
+      if ( layer->type() != QgsMapLayerType::VectorLayer )
       {
         continue;
       }
@@ -475,7 +475,7 @@ namespace QgsWfs
 
       //create Title
       QDomElement titleElem = doc.createElement( QStringLiteral( "Title" ) );
-      QString title = layer->serverProperties()->wfsTitle();
+      QString title = layer->title();
       if ( title.isEmpty() )
       {
         title = layer->name();
@@ -485,7 +485,7 @@ namespace QgsWfs
       layerElem.appendChild( titleElem );
 
       //create Abstract
-      const QString abstract = layer->serverProperties()->abstract();
+      const QString abstract = layer->abstract();
       if ( !abstract.isEmpty() )
       {
         QDomElement abstractElem = doc.createElement( QStringLiteral( "Abstract" ) );
@@ -495,7 +495,7 @@ namespace QgsWfs
       }
 
       //create keywords
-      const QString keywords = layer->serverProperties()->keywordList();
+      const QString keywords = layer->keywordList();
       if ( !keywords.isEmpty() )
       {
         QDomElement keywordsElem = doc.createElement( QStringLiteral( "ows:Keywords" ) );
@@ -545,7 +545,7 @@ namespace QgsWfs
       {
         QgsVectorLayer *vlayer = qobject_cast<QgsVectorLayer *>( layer );
         QgsVectorDataProvider *provider = vlayer->dataProvider();
-        if ( ( provider->capabilities() & Qgis::VectorProviderCapability::AddFeatures ) && wfstInsertLayersId.contains( layer->id() ) )
+        if ( ( provider->capabilities() & QgsVectorDataProvider::AddFeatures ) && wfstInsertLayersId.contains( layer->id() ) )
         {
           //wfs:Insert element
           QDomElement operationElement = doc.createElement( QStringLiteral( "Operation" ) );
@@ -554,8 +554,8 @@ namespace QgsWfs
           operationsElement.appendChild( operationElement );
         }
 
-        if ( ( provider->capabilities() & Qgis::VectorProviderCapability::ChangeAttributeValues ) &&
-             ( provider->capabilities() & Qgis::VectorProviderCapability::ChangeGeometries ) &&
+        if ( ( provider->capabilities() & QgsVectorDataProvider::ChangeAttributeValues ) &&
+             ( provider->capabilities() & QgsVectorDataProvider::ChangeGeometries ) &&
              wfstUpdateLayersId.contains( layer->id() ) )
         {
           //wfs:Update element
@@ -565,7 +565,7 @@ namespace QgsWfs
           operationsElement.appendChild( operationElement );
         }
 
-        if ( ( provider->capabilities() & Qgis::VectorProviderCapability::DeleteFeatures ) && wfstDeleteLayersId.contains( layer->id() ) )
+        if ( ( provider->capabilities() & QgsVectorDataProvider::DeleteFeatures ) && wfstDeleteLayersId.contains( layer->id() ) )
         {
           //wfs:Delete element
           QDomElement operationElement = doc.createElement( QStringLiteral( "Operation" ) );
@@ -582,7 +582,7 @@ namespace QgsWfs
       //transform the layers native CRS into WGS84
       const QgsCoordinateReferenceSystem wgs84 = QgsCoordinateReferenceSystem::fromOgcWmsCrs( geoEpsgCrsAuthId() );
       const int wgs84precision = 6;
-      QgsRectangle wgs84BoundingRect( 0, 0, 0, 0 );
+      QgsRectangle wgs84BoundingRect;
       if ( !layerExtent.isNull() )
       {
         const QgsCoordinateTransform exGeoTransform( layer->crs(), wgs84, project );
@@ -592,7 +592,7 @@ namespace QgsWfs
         }
         catch ( const QgsCsException & )
         {
-          wgs84BoundingRect = QgsRectangle( 0, 0, 0, 0 );
+          wgs84BoundingRect = QgsRectangle();
         }
       }
 

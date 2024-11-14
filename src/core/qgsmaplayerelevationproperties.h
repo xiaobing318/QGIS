@@ -28,9 +28,6 @@
 #include <QObject>
 #include <QDomElement>
 
-class QgsMapLayer;
-
-
 /**
  * \class QgsMapLayerElevationProperties
  * \ingroup core
@@ -48,7 +45,6 @@ class CORE_EXPORT QgsMapLayerElevationProperties : public QObject
 #include "qgsrasterlayerelevationproperties.h"
 #include "qgsvectorlayerelevationproperties.h"
 #include "qgsmeshlayerelevationproperties.h"
-#include "qgstiledscenelayerelevationproperties.h"
 #endif
 
     Q_OBJECT
@@ -71,10 +67,6 @@ class CORE_EXPORT QgsMapLayerElevationProperties : public QObject
     {
       sipType = sipType_QgsMeshLayerElevationProperties;
     }
-    else if ( qobject_cast<QgsTiledSceneLayerElevationProperties *>( sipCpp ) )
-    {
-      sipType = sipType_QgsTiledSceneLayerElevationProperties;
-    }
     else
     {
       sipType = 0;
@@ -84,25 +76,20 @@ class CORE_EXPORT QgsMapLayerElevationProperties : public QObject
 
   public:
 
-    // *INDENT-OFF*
-
     /**
      * Data definable properties.
      * \since QGIS 3.26
      */
-    enum class Property SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsMapLayerElevationProperties, Property ) : int
-      {
-      ZOffset, //!< Z offset
+    enum Property
+    {
+      ZOffset, //! Z offset
       ExtrusionHeight, //!< Extrusion height
-      RasterPerBandLowerElevation, //!< Lower elevation for each raster band \since QGIS 3.38
-      RasterPerBandUpperElevation, //!< Upper elevation for each raster band \since QGIS 3.38
     };
-    // *INDENT-ON*
 
     /**
      * Flags attached to the elevation property.
      */
-    enum Flag SIP_ENUM_BASETYPE( IntFlag )
+    enum Flag
     {
       FlagDontInvalidateCachedRendersWhenRangeChanges = 1  //!< Any cached rendering will not be invalidated when z range context is modified.
     };
@@ -155,10 +142,8 @@ class CORE_EXPORT QgsMapLayerElevationProperties : public QObject
 
     /**
      * Returns TRUE if the layer should be visible and rendered for the specified z \a range.
-     *
-     * Since QGIS 3.38 the \a layer argument can be used to specify the target layer.
      */
-    virtual bool isVisibleInZRange( const QgsDoubleRange &range, QgsMapLayer *layer = nullptr ) const;
+    virtual bool isVisibleInZRange( const QgsDoubleRange &range ) const;
 
     /**
      * Returns flags associated to the elevation properties.
@@ -172,16 +157,6 @@ class CORE_EXPORT QgsMapLayerElevationProperties : public QObject
      * May return an infinite range if the extent could not be calculated.
      */
     virtual QgsDoubleRange calculateZRange( QgsMapLayer *layer ) const;
-
-    /**
-     * Returns a list of significant elevation/z-values for the specified \a layer, using
-     * the settings defined by this elevation properties object.
-     *
-     * These values will be highlighted in elevation related widgets for the layer.
-     *
-     * \since QGIS 3.38
-     */
-    virtual QList< double > significantZValues( QgsMapLayer *layer ) const;
 
     /**
      * Returns TRUE if the layer should be visible by default in newly created elevation

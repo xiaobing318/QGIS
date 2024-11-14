@@ -92,10 +92,7 @@ class GUI_EXPORT QgsGeometryRubberBand: public QgsMapCanvasItem
       ICON_FULL_BOX
     };
 
-    /**
-     * Constructor for QgsGeometryRubberBand of the given \a geomType, shown in the specified \a mapCanvas.
-     */
-    QgsGeometryRubberBand( QgsMapCanvas *mapCanvas, Qgis::GeometryType geomType = Qgis::GeometryType::Line );
+    QgsGeometryRubberBand( QgsMapCanvas *mapCanvas, QgsWkbTypes::GeometryType geomType = QgsWkbTypes::LineGeometry );
     ~QgsGeometryRubberBand() override;
 
     //! Sets geometry (takes ownership). Geometry is expected to be in map coordinates
@@ -124,10 +121,10 @@ class GUI_EXPORT QgsGeometryRubberBand: public QgsMapCanvasItem
     void paint( QPainter *painter ) override;
 
     //! Returns which geometry is handled by the rubber band, polygon or line
-    Qgis::GeometryType geometryType() const;
+    QgsWkbTypes::GeometryType geometryType() const;
 
     //! Sets which geometry is handled by the rubber band, polygon or line
-    void setGeometryType( Qgis::GeometryType geometryType );
+    void setGeometryType( const QgsWkbTypes::GeometryType &geometryType );
 
   private:
     std::unique_ptr<QgsAbstractGeometry> mGeometry = nullptr;
@@ -135,7 +132,7 @@ class GUI_EXPORT QgsGeometryRubberBand: public QgsMapCanvasItem
     QPen mPen;
     int mIconSize;
     IconType mIconType;
-    Qgis::GeometryType mGeometryType;
+    QgsWkbTypes::GeometryType mGeometryType;
     bool mDrawVertices = true;
 
     void drawVertex( QPainter *p, double x, double y );

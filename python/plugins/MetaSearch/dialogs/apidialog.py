@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 ###############################################################################
 #
 # CSW Client
@@ -22,17 +23,9 @@
 #
 ###############################################################################
 
-import json
+from qgis.PyQt.QtWidgets import QDialog
 
-from qgis.PyQt.QtWidgets import (
-    QDialog,
-    QVBoxLayout
-)
-from qgis.gui import (
-    QgsCodeEditorJson,
-    QgsCodeEditorHTML
-)
-from MetaSearch.util import get_ui_class, prettify_xml
+from MetaSearch.util import get_ui_class
 
 BASE_CLASS = get_ui_class('apidialog.ui')
 
@@ -40,32 +33,8 @@ BASE_CLASS = get_ui_class('apidialog.ui')
 class APIRequestResponseDialog(QDialog, BASE_CLASS):
     """Raw XML Dialogue"""
 
-    def __init__(self, request, response, mime_type: str):
+    def __init__(self):
         """init"""
-        super().__init__()
 
+        QDialog.__init__(self)
         self.setupUi(self)
-
-        if mime_type == 'json':
-            self.txtbrAPIRequest = QgsCodeEditorJson()
-            self.txtbrAPIResponse = QgsCodeEditorJson()
-            self.txtbrAPIRequest.setText(json.dumps(request, indent=4))
-            self.txtbrAPIResponse.setText(json.dumps(response, indent=4))
-        else:
-            self.txtbrAPIRequest = QgsCodeEditorHTML()
-            self.txtbrAPIResponse = QgsCodeEditorHTML()
-            self.txtbrAPIRequest.setText(prettify_xml(request))
-            self.txtbrAPIResponse.setText(prettify_xml(response))
-
-        self.txtbrAPIRequest.setReadOnly(True)
-        self.txtbrAPIResponse.setReadOnly(True)
-
-        request_layout = QVBoxLayout()
-        request_layout.setContentsMargins(0, 0, 0, 0)
-        request_layout.addWidget(self.txtbrAPIRequest)
-        self.txtbrAPIRequestFrame.setLayout(request_layout)
-
-        response_layout = QVBoxLayout()
-        response_layout.setContentsMargins(0, 0, 0, 0)
-        response_layout.addWidget(self.txtbrAPIResponse)
-        self.txtbrAPIResponseFrame.setLayout(response_layout)

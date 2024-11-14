@@ -96,20 +96,6 @@ class _3D_EXPORT QgsMesh3DSymbol : public QgsAbstract3DSymbol
      */
     void setEnabled( bool enabled );
 
-    /**
-     * Returns culling mode
-     *
-     * \since QGIS 3.34
-     */
-    Qgs3DTypes::CullingMode cullingMode() const;
-
-    /**
-     * Sets culling mode
-     *
-     * \since QGIS 3.34
-     */
-    void setCullingMode( const Qgs3DTypes::CullingMode &mode );
-
     //! Returns method that determines altitude (whether to clamp to feature to terrain)
     Qgis::AltitudeClamping altitudeClamping() const { return mAltClamping; }
     //! Sets method that determines altitude (whether to clamp to feature to terrain)
@@ -120,15 +106,15 @@ class _3D_EXPORT QgsMesh3DSymbol : public QgsAbstract3DSymbol
     //! Sets height (altitude) of the symbol (in map units)
     void setHeight( float height ) { mHeight = height; }
 
-    //! Returns material settings used for shading of the symbol
-    QgsAbstractMaterialSettings *materialSettings() const;
+    //! Returns material used for shading of the symbol
+    QgsAbstractMaterialSettings *material() const;
 
     /**
      * Sets the \a material settings used for shading of the symbol.
      *
      * Ownership of \a material is transferred to the symbol.
      */
-    void setMaterialSettings( QgsAbstractMaterialSettings *materialSettings SIP_TRANSFER );
+    void setMaterial( QgsAbstractMaterialSettings *material SIP_TRANSFER );
 
     /**
      * Returns whether also triangles facing the other side will be created. Useful if input data have inconsistent order of vertices
@@ -361,12 +347,10 @@ class _3D_EXPORT QgsMesh3DSymbol : public QgsAbstract3DSymbol
     //! how to handle altitude of vector features
     Qgis::AltitudeClamping mAltClamping = Qgis::AltitudeClamping::Relative;
     float mHeight = 0.0f;           //!< Base height of triangles
-    std::unique_ptr< QgsAbstractMaterialSettings > mMaterialSettings;  //!< Defines appearance of objects
+    std::unique_ptr< QgsAbstractMaterialSettings > mMaterial;  //!< Defines appearance of objects
     bool mAddBackFaces = false;
 
     bool mEnabled = true;
-
-    Qgs3DTypes::CullingMode mCullingMode = Qgs3DTypes::NoCulling;
 
     //! Triangles settings
     bool mSmoothedTriangles = false;

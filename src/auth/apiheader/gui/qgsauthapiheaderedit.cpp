@@ -15,10 +15,9 @@
  ***************************************************************************/
 
 #include "qgsauthapiheaderedit.h"
-#include "moc_qgsauthapiheaderedit.cpp"
 #include "ui_qgsauthapiheaderedit.h"
 
-#include "qgslogger.h"
+#include "qgsapplication.h"
 
 QgsAuthApiHeaderEdit::QgsAuthApiHeaderEdit( QWidget *parent )
   : QgsAuthMethodEdit( parent )

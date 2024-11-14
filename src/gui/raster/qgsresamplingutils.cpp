@@ -20,7 +20,6 @@
 #include "qgsrasterresampler.h"
 #include "qgsrasterresamplefilter.h"
 #include "qgsresamplingutils.h"
-#include "moc_qgsresamplingutils.cpp"
 #include "qgsbilinearrasterresampler.h"
 #include "qgscubicrasterresampler.h"
 
@@ -48,8 +47,8 @@ void QgsResamplingUtils::initWidgets( QgsRasterLayer *rasterLayer,
   for ( QComboBox *combo :  {mZoomedInResamplingComboBox, mZoomedOutResamplingComboBox } )
   {
     combo->addItem( QObject::tr( "Nearest Neighbour" ), static_cast<int>( QgsRasterDataProvider::ResamplingMethod::Nearest ) );
-    combo->addItem( QObject::tr( "Bilinear (2x2 Kernel)" ), static_cast<int>( QgsRasterDataProvider::ResamplingMethod::Bilinear ) );
-    combo->addItem( QObject::tr( "Cubic (4x4 Kernel)" ), static_cast<int>( QgsRasterDataProvider::ResamplingMethod::Cubic ) );
+    combo->addItem( QObject::tr( "Bilinear" ), static_cast<int>( QgsRasterDataProvider::ResamplingMethod::Bilinear ) );
+    combo->addItem( QObject::tr( "Cubic" ), static_cast<int>( QgsRasterDataProvider::ResamplingMethod::Cubic ) );
   }
 
   if ( mCbEarlyResampling->isChecked() )
@@ -70,7 +69,7 @@ void QgsResamplingUtils::refreshWidgetsFromLayer()
 {
   QgsRasterDataProvider *provider = mRasterLayer->dataProvider();
   mCbEarlyResampling->setVisible(
-    provider && ( provider->providerCapabilities() & Qgis::RasterProviderCapability::ProviderHintCanPerformProviderResampling ) );
+    provider && ( provider->providerCapabilities() & QgsRasterDataProvider::ProviderHintCanPerformProviderResampling ) );
   mCbEarlyResampling->setChecked( mRasterLayer->resamplingStage() == Qgis::RasterResamplingStage::Provider );
 
   switch ( mRasterLayer->resamplingStage() )
@@ -223,8 +222,8 @@ void QgsResamplingUtils::addExtraEarlyResamplingMethodsToCombos()
 
   for ( QComboBox *combo : {mZoomedInResamplingComboBox, mZoomedOutResamplingComboBox } )
   {
-    combo->addItem( QObject::tr( "Cubic B-Spline (4x4 Kernel)" ), static_cast<int>( QgsRasterDataProvider::ResamplingMethod::CubicSpline ) );
-    combo->addItem( QObject::tr( "Lanczos (6x6 Kernel)" ), static_cast<int>( QgsRasterDataProvider::ResamplingMethod::Lanczos ) );
+    combo->addItem( QObject::tr( "Cubic Spline" ), static_cast<int>( QgsRasterDataProvider::ResamplingMethod::CubicSpline ) );
+    combo->addItem( QObject::tr( "Lanczos" ), static_cast<int>( QgsRasterDataProvider::ResamplingMethod::Lanczos ) );
     combo->addItem( QObject::tr( "Average" ), static_cast<int>( QgsRasterDataProvider::ResamplingMethod::Average ) );
     combo->addItem( QObject::tr( "Mode" ), static_cast<int>( QgsRasterDataProvider::ResamplingMethod::Mode ) );
     combo->addItem( QObject::tr( "Gauss" ), static_cast<int>( QgsRasterDataProvider::ResamplingMethod::Gauss ) );

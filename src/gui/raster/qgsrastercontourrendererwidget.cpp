@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsrastercontourrendererwidget.h"
-#include "moc_qgsrastercontourrendererwidget.cpp"
 
 #include "qgsrastercontourrenderer.h"
 #include "qgsrasterlayer.h"

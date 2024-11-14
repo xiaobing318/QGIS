@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgsauthcertificatemanager.h"
-#include "moc_qgsauthcertificatemanager.cpp"
 #include "qgssettings.h"
 
 #include <QDialog>

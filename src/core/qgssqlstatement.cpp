@@ -141,10 +141,9 @@ QgsSQLStatement::QgsSQLStatement( const QString &expr, bool allowFragments )
 }
 
 QgsSQLStatement::QgsSQLStatement( const QgsSQLStatement &other )
-  : mAllowFragments( other.mAllowFragments )
-  , mStatement( other.mStatement )
 {
-  mRootNode = ::parse( mStatement, mParserErrorString, mAllowFragments );
+  mRootNode = ::parse( other.mStatement, mParserErrorString, other.mAllowFragments );
+  mStatement = other.mStatement;
 }
 
 QgsSQLStatement &QgsSQLStatement::operator=( const QgsSQLStatement &other )
@@ -153,9 +152,8 @@ QgsSQLStatement &QgsSQLStatement::operator=( const QgsSQLStatement &other )
   {
     delete mRootNode;
     mParserErrorString.clear();
+    mRootNode = ::parse( other.mStatement, mParserErrorString, other.mAllowFragments );
     mStatement = other.mStatement;
-    mAllowFragments = other.mAllowFragments;
-    mRootNode = ::parse( mStatement, mParserErrorString, mAllowFragments );
   }
   return *this;
 }
@@ -485,17 +483,17 @@ QString QgsSQLStatement::NodeLiteral::dump() const
   if ( QgsVariantUtils::isNull( mValue ) )
     return QStringLiteral( "NULL" );
 
-  switch ( mValue.userType() )
+  switch ( mValue.type() )
   {
-    case QMetaType::Type::Int:
+    case QVariant::Int:
       return QString::number( mValue.toInt() );
-    case QMetaType::Type::LongLong:
+    case QVariant::LongLong:
       return QString::number( mValue.toLongLong() );
-    case QMetaType::Type::Double:
+    case QVariant::Double:
       return QString::number( mValue.toDouble() );
-    case QMetaType::Type::QString:
+    case QVariant::String:
       return quotedString( mValue.toString() );
-    case QMetaType::Type::Bool:
+    case QVariant::Bool:
       return mValue.toBool() ? "TRUE" : "FALSE";
     default:
       return tr( "[unsupported type: %1; value: %2]" ).arg( mValue.typeName(), mValue.toString() );

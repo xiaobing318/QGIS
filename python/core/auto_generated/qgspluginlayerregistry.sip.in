@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgspluginlayerregistry.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -35,6 +35,8 @@ Returns new layer of this type. Return ``None`` on error
     virtual QgsPluginLayer *createLayer( const QString &uri ) /Factory/;
 %Docstring
 Returns new layer of this type, using layer URI (specific to this plugin layer type). Return ``None`` on error.
+
+.. versionadded:: 2.10
 %End
 
     virtual bool showLayerProperties( QgsPluginLayer *layer );
@@ -61,6 +63,9 @@ A registry of plugin layers types.
   public:
 
     QgsPluginLayerRegistry();
+%Docstring
+Constructor for QgsPluginLayerRegistry.
+%End
     ~QgsPluginLayerRegistry();
 
 
@@ -102,5 +107,5 @@ Returns new layer if corresponding plugin has been found else returns ``None``.
  *                                                                      *
  * src/core/qgspluginlayerregistry.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

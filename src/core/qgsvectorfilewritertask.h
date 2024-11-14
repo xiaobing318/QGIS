@@ -30,6 +30,7 @@
  * QGIS interface.
  * \see QgsVectorLayerExporterTask
  * \see QgsRasterFileWriterTask
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsVectorFileWriterTask : public QgsTask
 {
@@ -40,13 +41,10 @@ class CORE_EXPORT QgsVectorFileWriterTask : public QgsTask
     /**
      * Constructor for QgsVectorFileWriterTask. Takes a source \a layer, destination \a fileName
      * and save \a options.
-     *
-     * Since QGIS 3.40 the \a sinkFlags can be specified.
      */
     QgsVectorFileWriterTask( QgsVectorLayer *layer,
                              const QString &fileName,
-                             const QgsVectorFileWriter::SaveVectorOptions &options,
-                             QgsFeatureSink::SinkFlags sinkFlags = QgsFeatureSink::SinkFlags() );
+                             const QgsVectorFileWriter::SaveVectorOptions &options );
 
     void cancel() override;
 
@@ -82,7 +80,6 @@ class CORE_EXPORT QgsVectorFileWriterTask : public QgsTask
     QString mDestFileName;
 
     std::unique_ptr< QgsFeedback > mOwnedFeedback;
-    QgsFeatureSink::SinkFlags mSinkFlags;
     QgsVectorFileWriter::WriterError mError = QgsVectorFileWriter::NoError;
 
     QString mNewFilename;

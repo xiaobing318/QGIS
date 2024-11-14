@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgsfilewidget.h"
-#include "moc_qgsfilewidget.cpp"
 
 #include <QLineEdit>
 #include <QToolButton>
@@ -83,8 +82,12 @@ QString QgsFileWidget::filePath()
 QStringList QgsFileWidget::splitFilePaths( const QString &path )
 {
   QStringList paths;
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+  const QStringList pathParts = path.split( QRegExp( "\"\\s+\"" ), QString::SkipEmptyParts );
+#else
   const thread_local QRegularExpression partsRegex = QRegularExpression( QStringLiteral( "\"\\s+\"" ) );
   const QStringList pathParts = path.split( partsRegex, Qt::SkipEmptyParts );
+#endif
 
   const thread_local QRegularExpression cleanRe( QStringLiteral( "(^\\s*\")|(\"\\s*)" ) );
   paths.reserve( pathParts.size() );
@@ -441,15 +444,6 @@ QString QgsFileWidget::relativePath( const QString &filePath, bool removeRelativ
   return filePath;
 }
 
-QSize QgsFileWidget::minimumSizeHint() const
-{
-  QSize size { mLineEdit->minimumSizeHint() };
-  const QSize btnSize { mFileWidgetButton->minimumSizeHint() };
-  size.setWidth( size.width() + btnSize.width() );
-  size.setHeight( std::max( size.height(), btnSize.height() ) );
-  return size;
-}
-
 
 QString QgsFileWidget::toUrl( const QString &path ) const
 {
@@ -503,7 +497,7 @@ void QgsFileDropEdit::setFilters( const QString &filters )
   if ( filters.contains( QStringLiteral( "*.*" ) ) )
     return; // everything is allowed!
 
-  const thread_local QRegularExpression rx( QStringLiteral( "\\*\\.(\\w+)" ) );
+  QRegularExpression rx( QStringLiteral( "\\*\\.(\\w+)" ) );
   QRegularExpressionMatchIterator i = rx.globalMatch( filters );
   while ( i.hasNext() )
   {

@@ -18,7 +18,6 @@
 #include "qgssqliteutils.h"
 
 #include <QDir>
-#include <QFileInfo>
 #include <QTextStream>
 #include <QSettings>
 #include <sqlite3.h>
@@ -127,16 +126,12 @@ QgsError QgsUserProfile::setAlias( const QString &alias ) const
 
 const QIcon QgsUserProfile::icon() const
 {
-  const QStringList extensions = {".svg", ".png", ".jpg", ".jpeg", ".gif", ".bmp"};
-  const QString basename = mProfileFolder + QDir::separator() + "icon";
-
-  for ( const QString &extension : extensions )
+  const QString path = mProfileFolder + QDir::separator() + "icon.svg";
+  if ( !QDir( path ).exists() )
   {
-    const QString path = basename + extension;
-    if ( QFileInfo::exists( path ) )
-      return QIcon( path );
+    return QgsApplication::getThemeIcon( "user.svg" );
   }
-  return QgsApplication::getThemeIcon( "user.svg" );
+  return QIcon( path );
 }
 
 QString QgsUserProfile::qgisDB() const

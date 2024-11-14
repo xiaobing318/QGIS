@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsfieldformatter.h                                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -23,6 +23,9 @@ A context for field formatter containing information like the project
   public:
 
     QgsFieldFormatterContext();
+%Docstring
+Constructor
+%End
 
     QgsProject *project() const;
 %Docstring
@@ -52,6 +55,8 @@ Field kits normally have one single instance which is managed by the
 field formatters for use within code should normally be obtained from there.
 
 This is an abstract base class and will always need to be subclassed.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -60,6 +65,9 @@ This is an abstract base class and will always need to be subclassed.
   public:
 
     QgsFieldFormatter();
+%Docstring
+Default constructor
+%End
 
     virtual ~QgsFieldFormatter();
 
@@ -83,6 +91,8 @@ This id matches the id of a :py:class:`QgsEditorWidgetFactory`.
 Create a pretty String representation of the value.
 
 :return: By default the string representation of the provided value as implied by the field definition is returned.
+
+.. versionadded:: 3.0
 %End
 
     virtual QVariant sortValue( QgsVectorLayer *layer, int fieldIndex, const QVariantMap &config, const QVariant &cache, const QVariant &value ) const;
@@ -90,12 +100,16 @@ Create a pretty String representation of the value.
 If the default sort order should be overwritten for this widget, you can transform the value in here.
 
 :return: an unmodified value by default.
+
+.. versionadded:: 3.0
 %End
 
     virtual Qt::AlignmentFlag alignmentFlag( QgsVectorLayer *layer, int fieldIndex, const QVariantMap &config ) const;
 %Docstring
 Returns the alignment for a particular field. By default this will consider the field type but can be overwritten if mapped
 values are represented.
+
+.. versionadded:: 3.0
 %End
 
     virtual QVariant createCache( QgsVectorLayer *layer, int fieldIndex, const QVariantMap &config ) const;
@@ -109,6 +123,8 @@ For example, the attribute table will create a cache once for each field and the
 cache for representation. The :py:class:`QgsValueRelationFieldFormatter` and :py:class:`QgsValueRelationEditorWidget`
 implement this functionality to create a lookuptable once (a QVariantMap / dict) and are
 make use of a cache if present.
+
+.. versionadded:: 3.0
 %End
 
 
@@ -142,5 +158,5 @@ Sets the ``flags``
  *                                                                      *
  * src/core/qgsfieldformatter.h                                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

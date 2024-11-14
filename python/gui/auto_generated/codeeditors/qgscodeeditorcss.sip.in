@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/codeeditors/qgscodeeditorcss.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -17,6 +17,8 @@ class QgsCodeEditorCSS : QgsCodeEditor
 %Docstring(signature="appended")
 A CSS editor based on QScintilla2. Adds syntax highlighting and
 code autocompletion.
+
+.. versionadded:: 2.6
 %End
 
 %TypeHeaderCode
@@ -28,8 +30,6 @@ code autocompletion.
 %Docstring
 Constructor for QgsCodeEditorCSS
 %End
-    virtual Qgis::ScriptLanguage language() const;
-
 
   protected:
     virtual void initializeLexer();
@@ -41,5 +41,5 @@ Constructor for QgsCodeEditorCSS
  *                                                                      *
  * src/gui/codeeditors/qgscodeeditorcss.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsprocessingenummodelerwidget.h"
-#include "moc_qgsprocessingenummodelerwidget.cpp"
 #include "qgsgui.h"
 #include <QMessageBox>
 #include <QToolButton>
@@ -147,18 +146,18 @@ void QgsProcessingEnumModelerWidget::setDefaultOptions( const QVariant &defaultV
 
   QVariant val = defaultValue;
   QList< int > values;
-  if ( val.userType() == QMetaType::Type::QVariantList || val.userType() == QMetaType::Type::QStringList )
+  if ( val.type() == QVariant::List || val.type() == QVariant::StringList )
   {
     for ( const QVariant &var : val.toList() )
       values << var.toInt();
   }
-  else if ( val.userType() == QMetaType::Type::QString )
+  else if ( val.type() == QVariant::String )
   {
     QStringList split = val.toString().split( ',' );
     for ( const QString &var : split )
       values << var.toInt();
   }
-  else if ( val.userType() == QMetaType::Type::Int )
+  else if ( val.type() == QVariant::Int )
   {
     values << val.toInt();
   }

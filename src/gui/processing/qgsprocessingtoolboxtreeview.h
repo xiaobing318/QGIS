@@ -24,7 +24,6 @@
 class QgsProcessingRegistry;
 class QgsProcessingRecentAlgorithmLog;
 class QgsProcessingAlgorithm;
-class QgsProcessingFavoriteAlgorithmManager;
 
 ///@cond PRIVATE
 
@@ -49,28 +48,20 @@ class GUI_EXPORT QgsProcessingToolboxTreeView : public QTreeView
      *
      * If \a recentLog is specified then it will be used to create a "Recently used" top
      * level group containing recently used algorithms.
-     *
-     * If \a favoriteManager is specified then it will be used to create a "Favorites" top
-     * level group containing favorite algorithms. Since QGIS 3.40
      */
     QgsProcessingToolboxTreeView( QWidget *parent SIP_TRANSFERTHIS = nullptr,
                                   QgsProcessingRegistry *registry = nullptr,
-                                  QgsProcessingRecentAlgorithmLog *recentLog = nullptr,
-                                  QgsProcessingFavoriteAlgorithmManager *favoriteManager = nullptr );
+                                  QgsProcessingRecentAlgorithmLog *recentLog = nullptr );
 
     /**
      * Sets the processing \a registry associated with the view.
      *
      * If \a recentLog is specified then it will be used to create a "Recently used" top
      * level group containing recently used algorithms.
-     *
-     * If \a favoriteManager is specified then it will be used to create a "Favorites" top
-     * level group containing favorite algorithms. Since QGIS 3.40
      */
     void setRegistry(
       QgsProcessingRegistry *registry,
-      QgsProcessingRecentAlgorithmLog *recentLog = nullptr,
-      QgsProcessingFavoriteAlgorithmManager *favoriteManager = nullptr );
+      QgsProcessingRecentAlgorithmLog *recentLog = nullptr );
 
     /**
      * Sets the toolbox proxy model used to drive the view.

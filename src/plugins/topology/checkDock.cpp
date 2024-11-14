@@ -19,9 +19,9 @@
 #include <QProgressDialog>
 
 #include "checkDock.h"
-#include "moc_checkDock.cpp"
 
 #include "qgsfeatureiterator.h"
+#include "qgsvectordataprovider.h"
 #include "qgsvectorlayer.h"
 #include "qgsmaplayer.h"
 #include "qgsproject.h"
@@ -30,10 +30,12 @@
 #include "qgsfeature.h"
 #include "qgsmapcanvas.h"
 #include "qgsrubberband.h"
+#include "qgsproviderregistry.h"
+#include "qgslogger.h"
+#include "qgsspatialindex.h"
 #include "qgisinterface.h"
 #include "qgsmessagelog.h"
 #include "qgssettings.h"
-#include "qgsstringutils.h"
 
 #include "topolTest.h"
 #include "rulesDialog.h"
@@ -53,8 +55,7 @@ checkDock::checkDock( QgisInterface *qIface, QWidget *parent )
   mFixButton->hide();
   mFixBox->hide();
 
-  mErrorListModel = new DockFilterModel( parent );
-  mErrorListModel->setFilterCaseSensitivity( Qt::CaseInsensitive );
+  mErrorListModel = new DockModel( mErrorList, parent );
   mErrorTableView->setModel( mErrorListModel );
   mErrorTableView->setSelectionBehavior( QAbstractItemView::SelectRows );
   mErrorTableView->verticalHeader()->setDefaultSectionSize( 20 );
@@ -94,8 +95,6 @@ checkDock::checkDock( QgisInterface *qIface, QWidget *parent )
   connect( qgsInterface, &QgisInterface::newProjectCreated, mConfigureDialog, &rulesDialog::clearRules );
   connect( qgsInterface, &QgisInterface::newProjectCreated, this, &checkDock::deleteErrors );
 
-  updateFilterComboBox();
-  connect( mFilterComboBox, &QComboBox::currentTextChanged, this, &checkDock::filterErrors );
 }
 
 checkDock::~checkDock()
@@ -129,11 +128,6 @@ void checkDock::clearVertexMarkers()
   }
 }
 
-void checkDock::filterErrors()
-{
-  mErrorListModel->setFilterFixedString( mFilterComboBox->currentIndex() > 0 ? mFilterComboBox->currentText() : QString() );
-}
-
 void checkDock::updateRubberBands( bool visible )
 {
   if ( !visible )
@@ -153,19 +147,11 @@ void checkDock::deleteErrors()
 {
   qDeleteAll( mErrorList );
 
-  mErrorNames.clear();
-  updateFilterComboBox();
-
   mErrorList.clear();
-  updateModel();
+  mErrorListModel->resetModel();
 
   qDeleteAll( mRbErrorMarkers );
   mRbErrorMarkers.clear();
-}
-
-void checkDock::updateModel()
-{
-  mErrorListModel->setErrors( mErrorList );
 }
 
 void checkDock::parseErrorListByLayer( const QString &layerId )
@@ -185,7 +171,7 @@ void checkDock::parseErrorListByLayer( const QString &layerId )
       ++it;
   }
 
-  updateModel();
+  mErrorListModel->resetModel();
   mComment->setText( tr( "No errors were found" ) );
 }
 
@@ -206,7 +192,7 @@ void checkDock::parseErrorListByFeature( int featureId )
   }
 
   mComment->setText( tr( "No errors were found" ) );
-  updateModel();
+  mErrorListModel->resetModel();
 }
 
 void checkDock::configure()
@@ -252,7 +238,7 @@ void checkDock::errorListClicked( const QModelIndex &index )
 
   // use vertex marker when highlighting a point
   // and rubber band otherwise
-  if ( g.type() == Qgis::GeometryType::Point )
+  if ( g.type() == QgsWkbTypes::PointGeometry )
   {
     mVMFeature1 = new QgsVertexMarker( canvas );
     mVMFeature1->setIconType( QgsVertexMarker::ICON_X );
@@ -281,7 +267,7 @@ void checkDock::errorListClicked( const QModelIndex &index )
     return;
   }
 
-  if ( g.type() == Qgis::GeometryType::Point )
+  if ( g.type() == QgsWkbTypes::PointGeometry )
   {
     mVMFeature2 = new QgsVertexMarker( canvas );
     mVMFeature2->setIconType( QgsVertexMarker::ICON_BOX );
@@ -299,7 +285,7 @@ void checkDock::errorListClicked( const QModelIndex &index )
     return;
   }
 
-  if ( mErrorList.at( row )->conflict().type() == Qgis::GeometryType::Point )
+  if ( mErrorList.at( row )->conflict().type() == QgsWkbTypes::PointGeometry )
   {
     mVMConflict = new QgsVertexMarker( canvas );
     mVMConflict->setIconType( QgsVertexMarker::ICON_BOX );
@@ -329,7 +315,7 @@ void checkDock::fix()
   if ( mErrorList.at( row )->fix( fixName ) )
   {
     mErrorList.removeAt( row );
-    updateModel();
+    mErrorListModel->resetModel();
     //parseErrorListByFeature();
     mComment->setText( tr( "%n error(s) were found", nullptr, mErrorList.count() ) );
     qgsInterface->mapCanvas()->refresh();
@@ -346,9 +332,6 @@ void checkDock::runTests( ValidateType type )
   {
     if ( mTest->testCanceled() )
       break;
-
-    if ( mTestTable->item( i, 0 )->checkState() != Qt::Checked )
-      continue;
 
     const QString testName = mTestTable->item( i, 0 )->text();
     const QString layer1Str = mTestTable->item( i, 3 )->text();
@@ -382,48 +365,31 @@ void checkDock::runTests( ValidateType type )
     for ( it = errors.begin(); it != errors.end(); ++it )
     {
       TopolError *te = *it;
-      const QgsSettings settings;
-      const QVector<QgsGeometry> geoms = te->conflict().asGeometryCollection();
+      te->conflict();
 
-      for ( const QgsGeometry &g : std::as_const( geoms ) )
+      const QgsSettings settings;
+      if ( te->conflict().type() == QgsWkbTypes::PolygonGeometry )
       {
-        rb = new QgsRubberBand( qgsInterface->mapCanvas(), g.type() );
-        rb->setColor( "red" );
-        rb->setWidth( 4 );
-        rb->setToGeometry( g, layer1 );
-        rb->show();
-        mRbErrorMarkers << rb;
+        rb = new QgsRubberBand( qgsInterface->mapCanvas(), QgsWkbTypes::PolygonGeometry );
       }
+      else
+      {
+        rb = new QgsRubberBand( qgsInterface->mapCanvas(), te->conflict().type() );
+      }
+      rb->setColor( "red" );
+      rb->setWidth( 4 );
+      rb->setToGeometry( te->conflict(), layer1 );
+      rb->show();
+      mRbErrorMarkers << rb;
     }
     mErrorList << errors;
   }
-
-  for ( TopolError *error : std::as_const( mErrorList ) )
-  {
-    if ( !mErrorNames.contains( error->name() ) )
-    {
-      mErrorNames << error->name();
-    }
-  }
-  updateFilterComboBox();
-
   mToggleRubberband->setChecked( true );
-  updateModel();
-}
-
-void checkDock::updateFilterComboBox()
-{
-  mFilterComboBox->clear();
-  mFilterComboBox->addItem( tr( "All Errors" ) );
-  for ( const QString &name : mErrorNames )
-  {
-    mFilterComboBox->addItem( QgsStringUtils::capitalize( name, Qgis::Capitalization::TitleCase ) );
-  }
+  mErrorListModel->resetModel();
 }
 
 void checkDock::validate( ValidateType type )
 {
-  mErrorNames.clear();
   mErrorList.clear();
 
   qDeleteAll( mRbErrorMarkers );

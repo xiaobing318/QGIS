@@ -3,7 +3,7 @@
  *                                                                      *
  * src/3d/materials/qgsabstractmaterialsettings.h                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -81,6 +81,8 @@ Abstract base class for material settings.
 
    This is not considered stable API, and may change in future QGIS releases. It is
    exposed to the Python bindings as a tech preview only.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -147,5 +149,5 @@ Writes settings to a DOM ``element``
  *                                                                      *
  * src/3d/materials/qgsabstractmaterialsettings.h                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

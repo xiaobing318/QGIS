@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsrelationeditorwidget.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -98,9 +98,8 @@ Returns the buttons which are shown
 %Docstring
 Duplicates a feature
 
-.. deprecated:: 3.18
-
-   Use :py:func:`~QgsRelationEditorWidget.duplicateSelectedFeatures` instead.
+.. deprecated:: QGIS 3.18
+  use :py:func:`~QgsRelationEditorWidget.duplicateSelectedFeatures` instead
 %End
 
     void duplicateSelectedFeatures();
@@ -176,26 +175,20 @@ Create a new configuration widget
 :param parent: A parent widget
 %End
 
-    virtual QVariantMap config();
-
+    QVariantMap config();
 %Docstring
 Create a configuration from the current GUI state
 
 :return: A widget configuration
 %End
 
-    virtual void setConfig( const QVariantMap &config );
-
+    void setConfig( const QVariantMap &config );
 %Docstring
 Update the configuration widget to represent the given configuration.
 
 :param config: The configuration which should be represented by this widget
 %End
 
-    void mEditExpression_clicked();
-%Docstring
-Opens an expression dialog and sets its value as filter expression for the linking dialog
-%End
 };
 
 
@@ -206,5 +199,5 @@ Opens an expression dialog and sets its value as filter expression for the linki
  *                                                                      *
  * src/gui/qgsrelationeditorwidget.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

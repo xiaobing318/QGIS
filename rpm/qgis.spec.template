@@ -84,7 +84,6 @@ BuildRequires:  fcgi-devel
 BuildRequires:  protobuf-compiler
 BuildRequires:  protobuf-devel
 BuildRequires:  protobuf-lite-devel
-BuildRequires:  draco-devel
 
 # OpenCL
 BuildRequires:  opencl-headers
@@ -92,6 +91,7 @@ BuildRequires:  ocl-icd-devel
 
 # Python stuff
 BuildRequires:  python3-devel
+BuildRequires:  python3-future
 BuildRequires:  python3-jinja2
 BuildRequires:  python3-OWSLib
 BuildRequires:  python3-psycopg2
@@ -100,8 +100,12 @@ BuildRequires:  python3-PyYAML
 BuildRequires:  python3-qscintilla-qt5
 BuildRequires:  python3-qscintilla-qt5-devel
 BuildRequires:  python3-qt5-devel
+%if 0%{?fedora} >= 35
 BuildRequires:  sip6
 BuildRequires:  PyQt-builder
+%else
+BuildRequires:  python3-sip-devel
+%endif
 
 # Qca stuff
 BuildRequires:  qca-qt5-devel
@@ -110,7 +114,6 @@ BuildRequires:  qscintilla-qt5-devel
 
 # Qt5 stuff
 BuildRequires:  qt5-qtlocation-devel
-BuildRequires:  qt5-qtmultimedia-devel
 BuildRequires:  qt5-qtsvg-devel
 BuildRequires:  qt5-qttools-static
 BuildRequires:  qt5-qtwebkit-devel
@@ -120,6 +123,8 @@ BuildRequires:  qt5-qt3d-devel
 BuildRequires:  qt5-qtbase-private-devel
 
 # Qwt stuff
+BuildRequires:  qwt-devel
+BuildRequires:  qwt-qt5-devel
 BuildRequires:  qwt-qt5-devel
 
 # GDAL must be explicit. It is required by some raster tools
@@ -177,6 +182,7 @@ Requires:       python3-gdal
 Requires:       gdal-python3
 %endif
 Requires:       gdal-python-tools
+Requires:       python3-future
 Requires:       python3-jinja2
 Requires:       python3-OWSLib
 Requires:       python3-psycopg2
@@ -322,7 +328,7 @@ rm -f %{buildroot}%{_datadir}/%{name}/doc/INSTALL*
 %exclude %{python3_sitearch}/%{name}/_server.so
 
 %files server
-%doc %{name}-server-README.fedora
+%doc src/server/admin.sld src/server/wms_metadata.xml %{name}-server-README.fedora
 %doc %{name}-server-httpd.conf %{name}-server-nginx.conf %{name}-server-fcgi.socket %{name}-server-fcgi.service
 %{_bindir}/%{name}_mapserver
 %{_libdir}/%{name}/server/

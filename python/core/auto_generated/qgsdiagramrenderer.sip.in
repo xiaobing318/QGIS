@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsdiagramrenderer.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -46,9 +46,8 @@ Stores the settings for rendering of all diagrams for a layer.
     typedef QFlags<QgsDiagramLayerSettings::LinePlacementFlag> LinePlacementFlags;
 
 
-
-    enum class Property
-      {
+    enum Property
+    {
       BackgroundColor,
       StrokeColor,
       StrokeWidth,
@@ -63,20 +62,22 @@ Stores the settings for rendering of all diagrams for a layer.
       StartAngle,
     };
 
-    enum DiagramType
-    {
-      Single,
-      Stacked
-    };
-
     static const QgsPropertiesDefinition &propertyDefinitions();
 %Docstring
 Returns the diagram property definitions.
+
+.. versionadded:: 3.0
 %End
 
     QgsDiagramLayerSettings();
+%Docstring
+Constructor for QgsDiagramLayerSettings.
+%End
 
     QgsDiagramLayerSettings( const QgsDiagramLayerSettings &rh );
+%Docstring
+Copy constructor
+%End
 
 
     ~QgsDiagramLayerSettings();
@@ -86,6 +87,8 @@ Returns the diagram property definitions.
 Returns the diagram placement.
 
 .. seealso:: :py:func:`setPlacement`
+
+.. versionadded:: 2.16
 %End
 
     void setPlacement( Placement value );
@@ -95,6 +98,8 @@ Sets the diagram placement.
 :param value: placement value
 
 .. seealso:: :py:func:`placement`
+
+.. versionadded:: 2.16
 %End
 
     LinePlacementFlags linePlacementFlags() const;
@@ -103,6 +108,8 @@ Returns the diagram placement flags. These are only used if the diagram placemen
 is set to a line type.
 
 .. seealso:: :py:func:`setLinePlacementFlags`
+
+.. versionadded:: 2.16
 %End
 
     void setLinePlacementFlags( LinePlacementFlags flags );
@@ -113,6 +120,8 @@ is set to a line type.
 :param flags: placement value
 
 .. seealso:: :py:func:`linePlacementFlags`
+
+.. versionadded:: 2.16
 %End
 
     int priority() const;
@@ -127,6 +136,8 @@ Returns the diagram priority.
    and vice-versa
 
 .. seealso:: :py:func:`setPriority`
+
+.. versionadded:: 2.16
 %End
 
     void setPriority( int value );
@@ -136,6 +147,8 @@ Sets the diagram priority.
 :param value: priority, where 0 = low and 10 = high
 
 .. seealso:: :py:func:`priority`
+
+.. versionadded:: 2.16
 %End
 
     double zIndex() const;
@@ -149,6 +162,8 @@ with a lower z-index.
    with a low z-index and vice-versa
 
 .. seealso:: :py:func:`setZIndex`
+
+.. versionadded:: 2.16
 %End
 
     void setZIndex( double index );
@@ -159,6 +174,8 @@ with a lower z-index.
 :param index: diagram z-index
 
 .. seealso:: :py:func:`zIndex`
+
+.. versionadded:: 2.16
 %End
 
     bool isObstacle() const;
@@ -166,6 +183,8 @@ with a lower z-index.
 Returns whether the feature associated with a diagram acts as an obstacle for other labels or diagrams.
 
 .. seealso:: :py:func:`setIsObstacle`
+
+.. versionadded:: 2.16
 %End
 
     void setIsObstacle( bool isObstacle );
@@ -175,6 +194,8 @@ Sets whether the feature associated with a diagram acts as an obstacle for other
 :param isObstacle: set to ``True`` for feature to act as obstacle
 
 .. seealso:: :py:func:`isObstacle`
+
+.. versionadded:: 2.16
 %End
 
     double distance() const;
@@ -182,6 +203,8 @@ Sets whether the feature associated with a diagram acts as an obstacle for other
 Returns the distance between the diagram and the feature (in mm).
 
 .. seealso:: :py:func:`setDistance`
+
+.. versionadded:: 2.16
 %End
 
     void setDistance( double distance );
@@ -191,6 +214,8 @@ Sets the distance between the diagram and the feature.
 :param distance: distance in mm
 
 .. seealso:: :py:func:`distance`
+
+.. versionadded:: 2.16
 %End
 
     QgsDiagramRenderer *renderer();
@@ -198,6 +223,8 @@ Sets the distance between the diagram and the feature.
 Returns the diagram renderer associated with the layer.
 
 .. seealso:: :py:func:`setRenderer`
+
+.. versionadded:: 2.16
 %End
 
 
@@ -208,6 +235,8 @@ Sets the diagram renderer associated with the layer.
 :param diagramRenderer: diagram renderer. Ownership is transferred to the object.
 
 .. seealso:: :py:func:`renderer`
+
+.. versionadded:: 2.16
 %End
 
     QgsCoordinateTransform coordinateTransform() const;
@@ -216,6 +245,8 @@ Returns the coordinate transform associated with the layer, or an
 invalid transform if no transformation is required.
 
 .. seealso:: :py:func:`setCoordinateTransform`
+
+.. versionadded:: 2.16
 %End
 
     void setCoordinateTransform( const QgsCoordinateTransform &transform );
@@ -225,6 +256,8 @@ Sets the coordinate transform associated with the layer.
 :param transform: coordinate transform. Ownership is transferred to the object.
 
 .. seealso:: :py:func:`coordinateTransform`
+
+.. versionadded:: 2.16
 %End
 
     bool showAllDiagrams() const;
@@ -232,6 +265,8 @@ Sets the coordinate transform associated with the layer.
 Returns whether the layer should show all diagrams, including overlapping diagrams
 
 .. seealso:: :py:func:`setShowAllDiagrams`
+
+.. versionadded:: 2.16
 %End
 
     void setShowAllDiagrams( bool showAllDiagrams );
@@ -241,6 +276,8 @@ Sets whether the layer should show all diagrams, including overlapping diagrams
 :param showAllDiagrams: set to ``True`` to show all diagrams
 
 .. seealso:: :py:func:`showAllDiagrams`
+
+.. versionadded:: 2.16
 %End
 
     void readXml( const QDomElement &elem );
@@ -262,6 +299,8 @@ Writes the diagram settings to a DOM element.
 Prepares the diagrams for a specified expression context. Calling prepare before rendering
 multiple diagrams allows precalculation of expensive setup tasks such as parsing expressions.
 Returns ``True`` if preparation was successful.
+
+.. versionadded:: 3.0
 %End
 
     QSet< QString > referencedFields( const QgsExpressionContext &context = QgsExpressionContext() ) const;
@@ -269,6 +308,8 @@ Returns ``True`` if preparation was successful.
 Returns the set of any fields referenced by the layer's diagrams.
 
 :param context: expression context the diagrams will be drawn using
+
+.. versionadded:: 2.16
 %End
 
     QgsPropertyCollection &dataDefinedProperties();
@@ -276,6 +317,8 @@ Returns the set of any fields referenced by the layer's diagrams.
 Returns a reference to the diagram's property collection, used for data defined overrides.
 
 .. seealso:: :py:func:`setDataDefinedProperties`
+
+.. versionadded:: 3.0
 %End
 
 
@@ -288,6 +331,8 @@ Sets the diagram's property collection, used for data defined overrides.
 .. seealso:: :py:func:`dataDefinedProperties`
 
 .. seealso:: Property
+
+.. versionadded:: 3.0
 %End
 
 };
@@ -299,7 +344,7 @@ class QgsDiagramSettings
 Stores the settings for rendering a single diagram.
 
 :py:class:`QgsDiagramSettings` stores the settings related to rendering the individual diagrams themselves, while
-:py:class:`QgsDiagramLayerSettings` stores settings which control how ALL diagrams within a layer are rendered.
+QgsDiagramLayerSettings stores settings which control how ALL diagrams within a layer are rendered.
 %End
 
 %TypeHeaderCode
@@ -327,15 +372,16 @@ Stores the settings for rendering a single diagram.
       Counterclockwise,
     };
 
-    enum StackedDiagramMode
-    {
-      Horizontal,
-      Vertical
-    };
-
     QgsDiagramSettings();
+%Docstring
+Constructor for QgsDiagramSettings
+%End
     ~QgsDiagramSettings();
+
     QgsDiagramSettings( const QgsDiagramSettings &other );
+%Docstring
+Copy constructor
+%End
 
 
     bool enabled;
@@ -345,11 +391,11 @@ Stores the settings for rendering a single diagram.
     QList< QString > categoryLabels;
     QSizeF size; //size
 
-    Qgis::RenderUnit sizeType;
+    QgsUnitTypes::RenderUnit sizeType;
 
     QgsMapUnitScale sizeScale;
 
-    Qgis::RenderUnit lineSizeUnit;
+    QgsUnitTypes::RenderUnit lineSizeUnit;
 
     QgsMapUnitScale lineSizeScale;
 
@@ -358,7 +404,6 @@ Stores the settings for rendering a single diagram.
     double penWidth;
     LabelPlacementMethod labelPlacementMethod;
     DiagramOrientation diagramOrientation;
-    StackedDiagramMode stackedDiagramMode;
     double barWidth;
 
     double opacity;
@@ -405,7 +450,7 @@ Spacing units are set via :py:func:`~QgsDiagramSettings.setSpacingUnit`.
 .. versionadded:: 3.12
 %End
 
-    void setSpacingUnit( Qgis::RenderUnit unit );
+    void setSpacingUnit( QgsUnitTypes::RenderUnit unit );
 %Docstring
 Sets the ``unit`` for the content spacing.
 
@@ -418,7 +463,7 @@ Sets the ``unit`` for the content spacing.
 .. versionadded:: 3.12
 %End
 
-    Qgis::RenderUnit spacingUnit() const;
+    QgsUnitTypes::RenderUnit spacingUnit() const;
 %Docstring
 Returns the units for the content spacing.
 
@@ -457,88 +502,6 @@ Returns the map unit scale for the content spacing.
 .. versionadded:: 3.12
 %End
 
-    double stackedDiagramSpacing() const;
-%Docstring
-Returns the spacing between subdiagrams in a stacked diagram.
-
-Spacing units can be retrieved by calling :py:func:`~QgsDiagramSettings.stackedDiagramSpacingUnit`.
-
-.. seealso:: :py:func:`setStackedDiagramSpacing`
-
-.. seealso:: :py:func:`stackedDiagramSpacingUnit`
-
-.. seealso:: :py:func:`stackedDiagramSpacingMapUnitScale`
-
-.. versionadded:: 3.40
-%End
-
-    void setStackedDiagramSpacing( double spacing );
-%Docstring
-Sets the ``spacing`` between subdiagrams in a stacked diagram.
-
-Spacing units are set via :py:func:`~QgsDiagramSettings.setStackedDiagramSpacingUnit`.
-
-.. seealso:: :py:func:`stackedDiagramSpacing`
-
-.. seealso:: :py:func:`setStackedDiagramSpacingUnit`
-
-.. seealso:: :py:func:`setStackedDiagramSpacingMapUnitScale`
-
-.. versionadded:: 3.40
-%End
-
-    void setStackedDiagramSpacingUnit( Qgis::RenderUnit unit );
-%Docstring
-Sets the ``unit`` for the spacing between subdiagrams in a stacked diagram.
-
-.. seealso:: :py:func:`stackedDiagramSpacingUnit`
-
-.. seealso:: :py:func:`setStackedDiagramSpacing`
-
-.. seealso:: :py:func:`setStackedDiagramSpacingMapUnitScale`
-
-.. versionadded:: 3.40
-%End
-
-    Qgis::RenderUnit stackedDiagramSpacingUnit() const;
-%Docstring
-Returns the units for the spacing between subdiagrams in a stacked diagram.
-
-.. seealso:: :py:func:`setStackedDiagramSpacingUnit`
-
-.. seealso:: :py:func:`stackedDiagramSpacing`
-
-.. seealso:: :py:func:`stackedDiagramSpacingMapUnitScale`
-
-.. versionadded:: 3.40
-%End
-
-    void setStackedDiagramSpacingMapUnitScale( const QgsMapUnitScale &scale );
-%Docstring
-Sets the map unit ``scale`` for the spacing between subdiagrams in a stacked diagram.
-
-.. seealso:: :py:func:`stackedDiagramSpacingMapUnitScale`
-
-.. seealso:: :py:func:`setStackedDiagramSpacing`
-
-.. seealso:: :py:func:`setStackedDiagramSpacingUnit`
-
-.. versionadded:: 3.40
-%End
-
-    const QgsMapUnitScale &stackedDiagramSpacingMapUnitScale() const;
-%Docstring
-Returns the map unit scale for the spacing between subdiagrams in a stacked diagram.
-
-.. seealso:: :py:func:`setStackedDiagramSpacingMapUnitScale` ;
-
-.. seealso:: :py:func:`stackedDiagramSpacing`
-
-.. seealso:: :py:func:`stackedDiagramSpacingUnit`
-
-.. versionadded:: 3.40
-%End
-
     Direction direction() const;
 %Docstring
 Returns the chart's angular direction.
@@ -573,6 +536,8 @@ Returns list of legend nodes for the diagram
 .. note::
 
    caller is responsible for deletion of :py:class:`QgsLayerTreeModelLegendNodes`
+
+.. versionadded:: 2.10
 %End
 
     QgsLineSymbol *axisLineSymbol() const;
@@ -680,19 +645,22 @@ Evaluates and returns the diagram settings relating to a diagram for a specific 
       sipType = sipType_QgsSingleCategoryDiagramRenderer;
     else if ( sipCpp->rendererName() == QLatin1String( "LinearlyInterpolated" ) )
       sipType = sipType_QgsLinearlyInterpolatedDiagramRenderer;
-    else if ( sipCpp->rendererName() == QLatin1String( "Stacked" ) )
-      sipType = sipType_QgsStackedDiagramRenderer;
     else
       sipType = NULL;
 %End
   public:
 
     QgsDiagramRenderer();
+%Docstring
+Constructor for QgsDiagramRenderer.
+%End
     virtual ~QgsDiagramRenderer();
 
     virtual QgsDiagramRenderer *clone() const = 0 /Factory/;
 %Docstring
 Returns new instance that is equivalent to this one
+
+.. versionadded:: 2.4
 %End
 
     virtual QSizeF sizeMapUnits( const QgsFeature &feature, const QgsRenderContext &c ) const;
@@ -712,9 +680,11 @@ Returns attribute indices needed for diagram rendering
 Returns the set of any fields required for diagram rendering
 
 :param context: expression context the diagrams will be drawn using
+
+.. versionadded:: 2.16
 %End
 
-    virtual void renderDiagram( const QgsFeature &feature, QgsRenderContext &c, QPointF pos, const QgsPropertyCollection &properties = QgsPropertyCollection() ) const;
+    void renderDiagram( const QgsFeature &feature, QgsRenderContext &c, QPointF pos, const QgsPropertyCollection &properties = QgsPropertyCollection() ) const;
 %Docstring
 Renders the diagram for a specified feature at a specific position in the passed render context.
 %End
@@ -750,6 +720,8 @@ Returns list of legend nodes for the diagram
 .. note::
 
    caller is responsible for deletion of :py:class:`QgsLayerTreeModelLegendNodes`
+
+.. versionadded:: 2.10
 %End
 
     bool attributeLegend() const;
@@ -757,6 +729,8 @@ Returns list of legend nodes for the diagram
 Returns ``True`` if renderer will show legend items for diagram attributes.
 
 .. seealso:: :py:func:`setAttributeLegend`
+
+.. versionadded:: 2.16
 %End
 
     void setAttributeLegend( bool enabled );
@@ -766,6 +740,8 @@ Sets whether the renderer will show legend items for diagram attributes.
 :param enabled: set to ``True`` to show diagram attribute legend
 
 .. seealso:: :py:func:`attributeLegend`
+
+.. versionadded:: 2.16
 %End
 
   protected:
@@ -780,12 +756,9 @@ Returns diagram settings for a feature (or ``False`` if the diagram for the feat
 :param s: out: diagram settings for the feature
 %End
 
-    virtual QSizeF diagramSize( const QgsFeature &feature, const QgsRenderContext &c ) const = 0;
+    virtual QSizeF diagramSize( const QgsFeature &features, const QgsRenderContext &c ) const = 0;
 %Docstring
 Returns size of the diagram (in painter units) or an invalid size in case of error
-
-:param feature: the feature
-:param c: render context
 %End
 
     void convertSizeToMapUnits( QSizeF &size, const QgsRenderContext &context ) const;
@@ -814,7 +787,6 @@ Writes internal QgsDiagramRenderer diagram state to a DOM element.
 %End
 
 
-
 };
 
 class QgsSingleCategoryDiagramRenderer : QgsDiagramRenderer
@@ -829,6 +801,9 @@ Renders the diagrams for all features with the same settings
   public:
 
     QgsSingleCategoryDiagramRenderer();
+%Docstring
+Constructor for QgsSingleCategoryDiagramRenderer
+%End
 
     virtual QgsSingleCategoryDiagramRenderer *clone() const /Factory/;
 
@@ -861,18 +836,17 @@ Renders the diagrams for all features with the same settings
 
 class QgsLinearlyInterpolatedDiagramRenderer : QgsDiagramRenderer
 {
-%Docstring(signature="appended")
-Alters the size of rendered diagrams using a linear scaling.
-%End
 
 %TypeHeaderCode
 #include "qgsdiagramrenderer.h"
 %End
   public:
-
     QgsLinearlyInterpolatedDiagramRenderer();
     ~QgsLinearlyInterpolatedDiagramRenderer();
     QgsLinearlyInterpolatedDiagramRenderer( const QgsLinearlyInterpolatedDiagramRenderer &other );
+%Docstring
+Copy constructor
+%End
 
 
     virtual QgsLinearlyInterpolatedDiagramRenderer *clone() const /Factory/;
@@ -911,6 +885,8 @@ Returns list with all diagram settings in the renderer
 Returns the field name used for interpolating the diagram size.
 
 .. seealso:: :py:func:`setClassificationField`
+
+.. versionadded:: 3.0
 %End
 
     void setClassificationField( const QString &field );
@@ -918,6 +894,8 @@ Returns the field name used for interpolating the diagram size.
 Sets the field name used for interpolating the diagram size.
 
 .. seealso:: :py:func:`classificationField`
+
+.. versionadded:: 3.0
 %End
 
     QString classificationAttributeExpression() const;
@@ -937,11 +915,15 @@ Sets the field name used for interpolating the diagram size.
     void setDataDefinedSizeLegend( QgsDataDefinedSizeLegend *settings /Transfer/ );
 %Docstring
 Configures appearance of legend. Takes ownership of the passed settings objects.
+
+.. versionadded:: 3.0
 %End
 
     QgsDataDefinedSizeLegend *dataDefinedSizeLegend() const;
 %Docstring
 Returns configuration of appearance of legend. Will return ``None`` if no configuration has been set.
+
+.. versionadded:: 3.0
 %End
 
   protected:
@@ -952,120 +934,11 @@ Returns configuration of appearance of legend. Will return ``None`` if no config
 
 
 };
-
-class QgsStackedDiagramRenderer : QgsDiagramRenderer
-{
-%Docstring(signature="appended")
-Renders diagrams using mixed diagram render types. The size of
-the rendered diagram is given by a combination of subrenderers.
-
-.. versionadded:: 3.40
-%End
-
-%TypeHeaderCode
-#include "qgsdiagramrenderer.h"
-%End
-  public:
-
-    QgsStackedDiagramRenderer();
-    ~QgsStackedDiagramRenderer();
-
-    QgsStackedDiagramRenderer( const QgsStackedDiagramRenderer &other );
-
-
-    virtual QgsStackedDiagramRenderer *clone() const /Factory/;
-
-
-    virtual QSizeF sizeMapUnits( const QgsFeature &feature, const QgsRenderContext &c ) const;
-%Docstring
-Returns size of the diagram for a feature in map units. Returns an invalid QSizeF in case of error
-%End
-
-    virtual void renderDiagram( const QgsFeature &feature, QgsRenderContext &c, QPointF pos, const QgsPropertyCollection &properties = QgsPropertyCollection() ) const;
-%Docstring
-Renders the diagram for a specified feature at a specific position in the
-passed render context, taking all renderers and their own diagrams into account.
-Diagram rendering is delegated to renderer's diagram.
-%End
-
-    virtual QList<QgsDiagramSettings> diagramSettings() const;
-
-%Docstring
-Returns list with all diagram settings in the renderer
-%End
-
-    void setDiagramSettings( const QgsDiagramSettings &s );
-
-    virtual QList<QString> diagramAttributes() const;
-
-
-    virtual QString rendererName() const;
-
-    virtual void readXml( const QDomElement &elem, const QgsReadWriteContext &context );
-
-    virtual void writeXml( QDomElement &layerElem, QDomDocument &doc, const QgsReadWriteContext &context ) const;
-
-
-    void _readXmlSubRenderers( const QDomElement &elem, const QgsReadWriteContext &context );
-%Docstring
-Reads stacked renderers state from a DOM element.
-
-.. seealso:: _writeXmlSubRenderers
-%End
-
-    void _writeXmlSubRenderers( QDomElement &rendererElem, QDomDocument &doc, const QgsReadWriteContext &context ) const;
-%Docstring
-Writes stacked renderers state to a DOM element.
-
-.. seealso:: _readXmlSubRenderers
-%End
-
-    virtual QList< QgsLayerTreeModelLegendNode * > legendItems( QgsLayerTreeLayer *nodeLayer ) const /Factory/;
-
-
-    QList< QgsDiagramRenderer * > renderers( bool sortByDiagramMode = false ) const;
-%Docstring
-Returns an ordered list with the renderers of the stacked renderer object.
-Does not transfer ownership.
-
-:param sortByDiagramMode: If true, the list is returned backwards for vertical orientation.
-%End
-
-    void addRenderer( QgsDiagramRenderer *renderer /Transfer/ );
-%Docstring
-Adds a renderer to the stacked renderer object. Takes ownership.
-
-Renderers added first will render their diagrams first, i.e., more to
-the left (horizontal mode) or more to the top (vertical mode).
-
-:param renderer: diagram renderer to be added to the stacked renderer
-%End
-
-    const QgsDiagramRenderer *renderer( const int index ) const;
-%Docstring
-Returns the renderer at the given ``index``. Does not transfer ownership.
-
-:param index: index of the desired renderer in the stacked renderer
-%End
-
-    int rendererCount() const;
-%Docstring
-Returns the number of sub renderers in the stacked diagram renderer
-%End
-
-  protected:
-    virtual bool diagramSettings( const QgsFeature &feature, const QgsRenderContext &c, QgsDiagramSettings &s ) const;
-
-    virtual QSizeF diagramSize( const QgsFeature &, const QgsRenderContext &c ) const;
-
-
-};
-
 
 /************************************************************************
  * This file has been generated automatically from                      *
  *                                                                      *
  * src/core/qgsdiagramrenderer.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

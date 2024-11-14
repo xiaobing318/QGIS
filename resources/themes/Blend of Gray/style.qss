@@ -26,14 +26,15 @@ QWidget:item:selected
 
 QWebView, QTextBrowser
 {
-    color: @text;
-    background-color: @itembackground;
+    color: #000000;
+    background-color: #ffffff;
 }
 
 QToolTip
 {
     border: 1px solid #222;
-    background: @itembackground;
+    background-color: @itemdarkbackground;
+    color: @itembackground;
 }
 
 QMenuBar {
@@ -63,13 +64,16 @@ QMenuBar::item:pressed
 /* ==================================================================================== */
 
 QAbstractSpinBox {
-    padding: 0.12em;
-    border: 1px solid @itemdarkbackground;
+    padding: 0em;
+    border-width: 1px;
+    border-color: @itemdarkbackground;
+    border-style: solid;
     border-radius: 0.2em;
     background-color:@itembackground;
     selection-background-color: @selection;
     selection-color: @itemdarkbackground;
     color: @text;
+    contents-margin: 0.12em;
 }
 
 QAbstractSpinBox:no-frame {
@@ -788,10 +792,6 @@ QCheckBox::indicator
     height:0.8em;
 }
 
-QCheckBox::indicator:intermediary {
-    image: url(@theme_path/icons/qcheckbox-intermediary.svg);
-}
-
 QCheckBox::indicator:unchecked {
     image: url(@theme_path/icons/qcheckbox-unchecked.svg);
 }
@@ -1116,10 +1116,6 @@ QSlider::handle:horizontal:focus, QSlider::handle:vertical:focus {
     border: 1px solid @focus;
 }
 
-QVideoWidget QWidget {
-    background-color: #000000 !important;
-}
-
 /* ==================================================================================== */
 /* QGIS-SPECIFIC TWEAKS                                                                 */
 /* ==================================================================================== */
@@ -1181,6 +1177,17 @@ QgsMessageBar QScrollBar::down-arrow:vertical {
     image: url(@theme_path/icons/arrow-down.svg);
 }
 
+QgsPropertyOverrideButton, QgsPropertyOverrideButton:hover, QgsPropertyOverrideButton:pressed {
+    background: none;
+    border: 1px solid rgba(0, 0, 0, 0%);
+    padding: 0px;
+}
+
+QgsPropertyOverrideButton:focus {
+    border:1px solid @focusdark;
+    border-radius: 0.2em;
+}
+
 QListWidget#mOptionsListWidget {
     background-color: @itemdarkbackground;
     color: @itembackground;
@@ -1201,14 +1208,4 @@ QWidget#QgsRasterCalcDialogBase QWidget#mOperatorsGroupBox QPushButton {
 
 QFrame#mUserInputContainer { 
     background-color: @background;
-}
-
-QgsAttributeFormWidget QComboBox:disabled {
-    border: none;
-    background-color: @itembackground;
-    color: @text;
-}
-
-QgsAttributeFormWidget QComboBox::down-arrow:disabled {
-     image: none;
 }

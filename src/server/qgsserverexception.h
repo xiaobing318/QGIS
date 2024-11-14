@@ -36,6 +36,7 @@ using namespace nlohmann;
  * \ingroup server
  * \class  QgsServerException
  * \brief Exception base class for server exceptions.
+ * \since QGIS 3.0
  */
 #ifndef SIP_RUN
 class SERVER_EXPORT QgsServerException : public QgsException
@@ -75,6 +76,7 @@ class SERVER_EXPORT QgsServerException
  * Note that this exception is associated with a default return code 200 which may be
  * not appropriate in some situations.
  *
+ * \since QGIS 3.0
  */
 #ifndef SIP_RUN
 class SERVER_EXPORT QgsOgcServiceException : public QgsServerException

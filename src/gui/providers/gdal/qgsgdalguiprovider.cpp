@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsgdalguiprovider.h"
-#include "moc_qgsgdalguiprovider.cpp"
 ///@cond PRIVATE
 
 #include <QList>
@@ -36,7 +35,6 @@
 #include "qgsgdalfilesourcewidget.h"
 #include "qgsabstractdatabaseproviderconnection.h"
 #include "qgslayeritem.h"
-#include "qgsgdalclouddataitemguiprovider.h"
 
 static QString PROVIDER_KEY = QStringLiteral( "gdal" );
 
@@ -180,10 +178,6 @@ class QgsGdalRasterSourceSelectProvider : public QgsSourceSelectProvider
     {
       return new QgsGdalSourceSelect( parent, fl, widgetMode );
     }
-    QgsSourceSelectProvider::Capabilities capabilities() override
-    {
-      return QgsSourceSelectProvider::Capability::ConfigureFromUri;
-    };
 };
 
 //
@@ -242,11 +236,9 @@ QList<QgsSourceSelectProvider *> QgsGdalGuiProviderMetadata::sourceSelectProvide
 
 QList<QgsDataItemGuiProvider *> QgsGdalGuiProviderMetadata::dataItemGuiProviders()
 {
-  return
-  {
-    new QgsGdalItemGuiProvider(),
-    new QgsGdalCloudDataItemGuiProvider()
-  };
+  QList<QgsDataItemGuiProvider *> providers;
+  providers << new QgsGdalItemGuiProvider();
+  return providers;
 }
 
 QList<QgsProviderSourceWidgetProvider *> QgsGdalGuiProviderMetadata::sourceWidgetProviders()

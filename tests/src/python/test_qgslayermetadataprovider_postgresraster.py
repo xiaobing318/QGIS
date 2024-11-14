@@ -13,7 +13,10 @@ __copyright__ = 'Copyright 2022, ItOpen'
 
 import os
 
-from qgis.core import QgsProviderRegistry, QgsRasterLayer
+from qgis.core import (
+    QgsRasterLayer,
+    QgsProviderRegistry,
+)
 from qgis.testing import unittest
 
 from qgslayermetadataprovidertestbase import LayerMetadataProviderTestBase

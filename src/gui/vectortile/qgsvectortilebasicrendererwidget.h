@@ -20,6 +20,8 @@
 
 #include "ui_qgsvectortilebasicrendererwidget.h"
 
+#include "qgswkbtypes.h"
+
 #include <memory>
 #include <QSortFilterProxyModel>
 
@@ -33,7 +35,6 @@ class QgsVectorTileLayer;
 class QgsMapCanvas;
 class QgsMessageBar;
 class QgsVectorTileBasicRendererProxyModel;
-class QgsSymbolSelectorWidget;
 
 /**
  * \ingroup gui
@@ -48,19 +49,20 @@ class GUI_EXPORT QgsVectorTileBasicRendererWidget : public QgsMapLayerConfigWidg
     QgsVectorTileBasicRendererWidget( QgsVectorTileLayer *layer, QgsMapCanvas *canvas, QgsMessageBar *messageBar, QWidget *parent = nullptr );
     ~QgsVectorTileBasicRendererWidget() override;
 
-    void syncToLayer( QgsMapLayer *mapLayer ) final;
+    void setLayer( QgsVectorTileLayer *layer );
 
   public slots:
     //! Applies the settings made in the dialog
     void apply() override;
 
   private slots:
-    void addStyle( Qgis::GeometryType geomType );
+    void addStyle( QgsWkbTypes::GeometryType geomType );
     void editStyle();
     void editStyleAtIndex( const QModelIndex &index );
     void removeStyle();
 
-    void updateSymbolsFromWidget( QgsSymbolSelectorWidget *widget );
+    void updateSymbolsFromWidget();
+    void cleanUpSymbolSelector( QgsPanelWidget *container );
 
   private:
     QPointer< QgsVectorTileLayer > mVTLayer;
@@ -88,7 +90,7 @@ class QgsVectorTileBasicRendererListModel : public QAbstractListModel
       Filter
     };
 
-    QgsVectorTileBasicRendererListModel( QgsVectorTileBasicRenderer *r, QObject *parent = nullptr, QScreen *screen = nullptr );
+    QgsVectorTileBasicRendererListModel( QgsVectorTileBasicRenderer *r, QObject *parent = nullptr );
 
     int rowCount( const QModelIndex &parent = QModelIndex() ) const override;
     int columnCount( const QModelIndex &parent = QModelIndex() ) const override;
@@ -109,7 +111,6 @@ class QgsVectorTileBasicRendererListModel : public QAbstractListModel
 
   private:
     QgsVectorTileBasicRenderer *mRenderer = nullptr;
-    QPointer< QScreen > mScreen;
 };
 
 class QgsVectorTileBasicRendererProxyModel : public QSortFilterProxyModel

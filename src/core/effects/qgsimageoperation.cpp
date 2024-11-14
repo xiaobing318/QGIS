@@ -260,7 +260,7 @@ void QgsImageOperation::adjustBrightnessContrast( QImage &image, const int brigh
   runPixelOperation( image, operation, feedback );
 }
 
-void QgsImageOperation::BrightnessContrastPixelOperation::operator()( QRgb &rgb, const int x, const int y ) const
+void QgsImageOperation::BrightnessContrastPixelOperation::operator()( QRgb &rgb, const int x, const int y )
 {
   Q_UNUSED( x )
   Q_UNUSED( y )
@@ -344,11 +344,7 @@ void QgsImageOperation::multiplyOpacity( QImage &image, const double factor, Qgs
     //decreasing opacity - we can use the faster DestinationIn composition mode
     //to reduce the alpha channel
     QColor transparentFillColor = QColor( 0, 0, 0, 255 * factor );
-    if ( image.format() == QImage::Format_Indexed8 )
-      image = image.convertToFormat( QImage::Format_ARGB32 );
-    else
-      image.detach();
-
+    image.detach();
     QPainter painter( &image );
     painter.setCompositionMode( QPainter::CompositionMode_DestinationIn );
     painter.fillRect( 0, 0, image.width(), image.height(), transparentFillColor );
@@ -392,7 +388,7 @@ void QgsImageOperation::distanceTransform( QImage &image, const DistanceTransfor
 {
   if ( ! properties.ramp )
   {
-    QgsDebugError( QStringLiteral( "no color ramp specified for distance transform" ) );
+    QgsDebugMsg( QStringLiteral( "no color ramp specified for distance transform" ) );
     return;
   }
 

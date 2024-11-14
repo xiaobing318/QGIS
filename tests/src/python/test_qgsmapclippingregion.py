@@ -9,8 +9,12 @@ __author__ = 'Nyall Dawson'
 __date__ = '2020-06'
 __copyright__ = 'Copyright 2020, The QGIS Project'
 
-
-from qgis.core import QgsGeometry, QgsMapClippingRegion, QgsVectorLayer
+import qgis  # NOQA
+from qgis.core import (
+    QgsMapClippingRegion,
+    QgsGeometry,
+    QgsVectorLayer
+)
 from qgis.testing import unittest
 
 

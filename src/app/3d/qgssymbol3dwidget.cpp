@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgssymbol3dwidget.h"
-#include "moc_qgssymbol3dwidget.cpp"
 #include "qgsabstractmaterialsettings.h"
 #include "qgsstyleitemslistwidget.h"
 #include "qgsstylesavedialog.h"

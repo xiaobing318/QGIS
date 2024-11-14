@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/annotations/qgsannotationitemnode.h                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -23,8 +23,11 @@ Contains information about a node used for editing an annotation item.
   public:
 
     QgsAnnotationItemNode();
+%Docstring
+Default constructor
+%End
 
-    QgsAnnotationItemNode( const QgsVertexId &id, const QgsPointXY &point, Qgis::AnnotationItemNodeType type, Qt::CursorShape cursor = Qt::CursorShape::ArrowCursor );
+    QgsAnnotationItemNode( const QgsVertexId &id, const QgsPointXY &point, Qgis::AnnotationItemNodeType type );
 %Docstring
 Constructor for QgsAnnotationItemNode, with the specified ``id``, ``point`` and ``type``.
 %End
@@ -75,24 +78,6 @@ Sets the node type.
 .. seealso:: :py:func:`type`
 %End
 
-    Qt::CursorShape cursor() const;
-%Docstring
-Returns the mouse cursor shape to use when hovering the node.
-
-.. seealso:: :py:func:`setCursor`
-
-.. versionadded:: 3.34
-%End
-
-    void setCursor( Qt::CursorShape shape );
-%Docstring
-Sets the mouse cursor ``shape`` to use when hovering the node.
-
-.. seealso:: :py:func:`cursor`
-
-.. versionadded:: 3.34
-%End
-
     bool operator==( const QgsAnnotationItemNode &other ) const;
 
     bool operator!=( const QgsAnnotationItemNode &other ) const;
@@ -104,5 +89,5 @@ Sets the mouse cursor ``shape`` to use when hovering the node.
  *                                                                      *
  * src/core/annotations/qgsannotationitemnode.h                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

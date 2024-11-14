@@ -24,14 +24,9 @@
 #include "qgs3d.h"
 
 
-class TestQgs3dMaterial : public QgsTest
+class TestQgs3dMaterial : public QObject
 {
     Q_OBJECT
-
-  public:
-    TestQgs3dMaterial()
-      : QgsTest( QStringLiteral( "3D Material Tests" ), QStringLiteral( "3d" ) )
-    {}
 
   private slots:
     void initTestCase();
@@ -118,25 +113,25 @@ void TestQgs3dMaterial::colorDataDefinedPhong()
   yellowProperty.setExpressionString( QStringLiteral( "'yellow'" ) );
   yellowProperty.setActive( false );
 
-  setColorProperty( redProperty, QgsAbstractMaterialSettings::Property::Diffuse, propertyCollection, phongSettings );
+  setColorProperty( redProperty, QgsAbstractMaterialSettings::Diffuse, propertyCollection, phongSettings );
   QCOMPARE( phongSettings.dataDefinedVertexColorsAsByte( expressionContext ), colorByteArrayAllBlack );
 
   redProperty.setActive( true );
-  setColorProperty( redProperty, QgsAbstractMaterialSettings::Property::Diffuse, propertyCollection, phongSettings );
+  setColorProperty( redProperty, QgsAbstractMaterialSettings::Diffuse, propertyCollection, phongSettings );
   QCOMPARE( phongSettings.dataDefinedVertexColorsAsByte( expressionContext ), colorByteArray_1 );
 
-  setColorProperty( blueProperty, QgsAbstractMaterialSettings::Property::Ambient, propertyCollection, phongSettings );
+  setColorProperty( blueProperty, QgsAbstractMaterialSettings::Ambient, propertyCollection, phongSettings );
   QCOMPARE( phongSettings.dataDefinedVertexColorsAsByte( expressionContext ), colorByteArray_1 );
 
   blueProperty.setActive( true );
-  setColorProperty( blueProperty, QgsAbstractMaterialSettings::Property::Ambient, propertyCollection, phongSettings );
+  setColorProperty( blueProperty, QgsAbstractMaterialSettings::Ambient, propertyCollection, phongSettings );
   QCOMPARE( phongSettings.dataDefinedVertexColorsAsByte( expressionContext ), colorByteArray_2 );
 
-  setColorProperty( yellowProperty, QgsAbstractMaterialSettings::Property::Specular, propertyCollection, phongSettings );
+  setColorProperty( yellowProperty, QgsAbstractMaterialSettings::Specular, propertyCollection, phongSettings );
   QCOMPARE( phongSettings.dataDefinedVertexColorsAsByte( expressionContext ), colorByteArray_2 );
 
   yellowProperty.setActive( true );
-  setColorProperty( yellowProperty, QgsAbstractMaterialSettings::Property::Specular, propertyCollection, phongSettings );
+  setColorProperty( yellowProperty, QgsAbstractMaterialSettings::Specular, propertyCollection, phongSettings );
   QCOMPARE( phongSettings.dataDefinedVertexColorsAsByte( expressionContext ), colorByteArray_3 );
 }
 
@@ -194,32 +189,32 @@ void TestQgs3dMaterial::colorDataDefinedGooch()
   whiteProperty.setExpressionString( QStringLiteral( "'white'" ) );
   whiteProperty.setActive( false );
 
-  setColorProperty( redProperty, QgsAbstractMaterialSettings::Property::Diffuse, propertyCollection, goochSettings );
+  setColorProperty( redProperty, QgsAbstractMaterialSettings::Diffuse, propertyCollection, goochSettings );
   QCOMPARE( goochSettings.dataDefinedVertexColorsAsByte( expressionContext ), colorByteArrayAllBlack );
 
   redProperty.setActive( true );
-  setColorProperty( redProperty, QgsAbstractMaterialSettings::Property::Diffuse, propertyCollection, goochSettings );
+  setColorProperty( redProperty, QgsAbstractMaterialSettings::Diffuse, propertyCollection, goochSettings );
   QCOMPARE( goochSettings.dataDefinedVertexColorsAsByte( expressionContext ), colorByteArray_1 );
 
-  setColorProperty( blueProperty, QgsAbstractMaterialSettings::Property::Warm, propertyCollection, goochSettings );
+  setColorProperty( blueProperty, QgsAbstractMaterialSettings::Warm, propertyCollection, goochSettings );
   QCOMPARE( goochSettings.dataDefinedVertexColorsAsByte( expressionContext ), colorByteArray_1 );
 
   blueProperty.setActive( true );
-  setColorProperty( blueProperty, QgsAbstractMaterialSettings::Property::Warm, propertyCollection, goochSettings );
+  setColorProperty( blueProperty, QgsAbstractMaterialSettings::Warm, propertyCollection, goochSettings );
   QCOMPARE( goochSettings.dataDefinedVertexColorsAsByte( expressionContext ), colorByteArray_2 );
 
-  setColorProperty( yellowProperty, QgsAbstractMaterialSettings::Property::Cool, propertyCollection, goochSettings );
+  setColorProperty( yellowProperty, QgsAbstractMaterialSettings::Cool, propertyCollection, goochSettings );
   QCOMPARE( goochSettings.dataDefinedVertexColorsAsByte( expressionContext ), colorByteArray_2 );
 
   yellowProperty.setActive( true );
-  setColorProperty( yellowProperty, QgsAbstractMaterialSettings::Property::Cool, propertyCollection, goochSettings );
+  setColorProperty( yellowProperty, QgsAbstractMaterialSettings::Cool, propertyCollection, goochSettings );
   QCOMPARE( goochSettings.dataDefinedVertexColorsAsByte( expressionContext ), colorByteArray_3 );
 
-  setColorProperty( whiteProperty, QgsAbstractMaterialSettings::Property::Specular, propertyCollection, goochSettings );
+  setColorProperty( whiteProperty, QgsAbstractMaterialSettings::Specular, propertyCollection, goochSettings );
   QCOMPARE( goochSettings.dataDefinedVertexColorsAsByte( expressionContext ), colorByteArray_3 );
 
   whiteProperty.setActive( true );
-  setColorProperty( whiteProperty, QgsAbstractMaterialSettings::Property::Specular, propertyCollection, goochSettings );
+  setColorProperty( whiteProperty, QgsAbstractMaterialSettings::Specular, propertyCollection, goochSettings );
   QCOMPARE( goochSettings.dataDefinedVertexColorsAsByte( expressionContext ), colorByteArray_4 );
 }
 

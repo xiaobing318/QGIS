@@ -10,8 +10,10 @@ __author__ = 'Matthias Kuhn'
 __date__ = '26.9.2017'
 __copyright__ = 'Copyright 2017, The QGIS Project'
 
+import qgis  # NOQA
 
-from qgis.core import QgsDefaultValue
+
+from qgis.core import (QgsDefaultValue)
 from qgis.testing import unittest
 
 

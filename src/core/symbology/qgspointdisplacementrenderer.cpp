@@ -18,12 +18,12 @@
 #include "qgspointdisplacementrenderer.h"
 #include "qgssymbollayerutils.h"
 #include "qgsfontutils.h"
+#include "qgspainteffectregistry.h"
+#include "qgspainteffect.h"
 #include "qgspointclusterrenderer.h"
 #include "qgsstyleentityvisitor.h"
 #include "qgsrenderedfeaturehandlerinterface.h"
 #include "qgsmarkersymbol.h"
-#include "qgsunittypes.h"
-#include "qgscolorutils.h"
 
 #include <QPainter>
 #include <cmath>
@@ -33,16 +33,6 @@ QgsPointDisplacementRenderer::QgsPointDisplacementRenderer( const QString &label
   , mCircleColor( QColor( 125, 125, 125 ) )
 {
   mCenterSymbol.reset( new QgsMarkerSymbol() );
-}
-
-Qgis::FeatureRendererFlags QgsPointDisplacementRenderer::flags() const
-{
-  Qgis::FeatureRendererFlags res;
-  if ( mCenterSymbol && mCenterSymbol->flags().testFlag( Qgis::SymbolFlag::AffectsLabeling ) )
-    res.setFlag( Qgis::FeatureRendererFlag::AffectsLabeling );
-  if ( mRenderer && mRenderer->flags().testFlag( Qgis::FeatureRendererFlag::AffectsLabeling ) )
-    res.setFlag( Qgis::FeatureRendererFlag::AffectsLabeling );
-  return res;
 }
 
 QgsPointDisplacementRenderer *QgsPointDisplacementRenderer::clone() const
@@ -94,7 +84,7 @@ void QgsPointDisplacementRenderer::drawGroup( QPointF centerPoint, QgsRenderCont
     groupPosition++;
   }
 
-  QgsSymbolRenderContext symbolContext( context, Qgis::RenderUnit::Millimeters, 1.0, false );
+  QgsSymbolRenderContext symbolContext( context, QgsUnitTypes::RenderMillimeters, 1.0, false );
 
   QList<QPointF> symbolPositions;
   QList<QPointF> labelPositions;
@@ -107,16 +97,12 @@ void QgsPointDisplacementRenderer::drawGroup( QPointF centerPoint, QgsRenderCont
   //only draw circle/grid if there's a pen present - otherwise skip drawing transparent grids
   if ( mCircleColor.isValid() && mCircleColor.alpha() > 0 )
   {
-    switch ( mPlacement )
-    {
-      case Ring:
-      case ConcentricRings:
-        drawCircle( circleRadius, symbolContext, centerPoint, group.size() );
-        break;
-      case Grid:
-        drawGrid( gridSize, symbolContext, symbolPositions, group.size() );
-        break;
-    }
+    //draw circle
+    if ( circleRadius > 0 )
+      drawCircle( circleRadius, symbolContext, centerPoint, group.size() );
+    //draw grid
+    else
+      drawGrid( gridSize, symbolContext, symbolPositions, group.size() );
   }
 
   if ( group.size() > 1 )
@@ -129,7 +115,7 @@ void QgsPointDisplacementRenderer::drawGroup( QPointF centerPoint, QgsRenderCont
     }
     else
     {
-      const double rectSize = symbolContext.renderContext().convertToPainterUnits( 1, Qgis::RenderUnit::Millimeters );
+      const double rectSize = symbolContext.renderContext().convertToPainterUnits( 1, QgsUnitTypes::RenderMillimeters );
       context.painter()->drawRect( QRectF( centerPoint.x() - rectSize, centerPoint.y() - rectSize, rectSize * 2, rectSize * 2 ) );
     }
   }
@@ -175,8 +161,8 @@ QgsFeatureRenderer *QgsPointDisplacementRenderer::create( QDomElement &symbology
   r->setLabelFont( labelFont );
   r->setPlacement( static_cast< Placement >( symbologyElem.attribute( QStringLiteral( "placement" ), QStringLiteral( "0" ) ).toInt() ) );
   r->setCircleWidth( symbologyElem.attribute( QStringLiteral( "circleWidth" ), QStringLiteral( "0.4" ) ).toDouble() );
-  r->setCircleColor( QgsColorUtils::colorFromString( symbologyElem.attribute( QStringLiteral( "circleColor" ), QString() ) ) );
-  r->setLabelColor( QgsColorUtils::colorFromString( symbologyElem.attribute( QStringLiteral( "labelColor" ), QString() ) ) );
+  r->setCircleColor( QgsSymbolLayerUtils::decodeColor( symbologyElem.attribute( QStringLiteral( "circleColor" ), QString() ) ) );
+  r->setLabelColor( QgsSymbolLayerUtils::decodeColor( symbologyElem.attribute( QStringLiteral( "labelColor" ), QString() ) ) );
   r->setCircleRadiusAddition( symbologyElem.attribute( QStringLiteral( "circleRadiusAddition" ), QStringLiteral( "0.0" ) ).toDouble() );
   r->setLabelDistanceFactor( symbologyElem.attribute( QStringLiteral( "labelDistanceFactor" ), QStringLiteral( "0.5" ) ).toDouble() );
   r->setMinimumLabelScale( symbologyElem.attribute( QStringLiteral( "maxLabelScaleDenominator" ), QStringLiteral( "-1" ) ).toDouble() );
@@ -212,8 +198,8 @@ QDomElement QgsPointDisplacementRenderer::save( QDomDocument &doc, const QgsRead
   rendererElement.setAttribute( QStringLiteral( "labelAttributeName" ), mLabelAttributeName );
   rendererElement.appendChild( QgsFontUtils::toXmlElement( mLabelFont, doc, QStringLiteral( "labelFontProperties" ) ) );
   rendererElement.setAttribute( QStringLiteral( "circleWidth" ), QString::number( mCircleWidth ) );
-  rendererElement.setAttribute( QStringLiteral( "circleColor" ), QgsColorUtils::colorToString( mCircleColor ) );
-  rendererElement.setAttribute( QStringLiteral( "labelColor" ), QgsColorUtils::colorToString( mLabelColor ) );
+  rendererElement.setAttribute( QStringLiteral( "circleColor" ), QgsSymbolLayerUtils::encodeColor( mCircleColor ) );
+  rendererElement.setAttribute( QStringLiteral( "labelColor" ), QgsSymbolLayerUtils::encodeColor( mLabelColor ) );
   rendererElement.setAttribute( QStringLiteral( "circleRadiusAddition" ), QString::number( mCircleRadiusAddition ) );
   rendererElement.setAttribute( QStringLiteral( "labelDistanceFactor" ), QString::number( mLabelDistanceFactor ) );
   rendererElement.setAttribute( QStringLiteral( "placement" ), static_cast< int >( mPlacement ) );
@@ -285,7 +271,7 @@ void QgsPointDisplacementRenderer::calculateSymbolAndLabelPositions( QgsSymbolRe
     return;
   }
 
-  const double circleAdditionPainterUnits = symbolContext.renderContext().convertToPainterUnits( mCircleRadiusAddition, Qgis::RenderUnit::Millimeters );
+  const double circleAdditionPainterUnits = symbolContext.renderContext().convertToPainterUnits( mCircleRadiusAddition, QgsUnitTypes::RenderMillimeters );
 
   switch ( mPlacement )
   {
@@ -421,7 +407,7 @@ void QgsPointDisplacementRenderer::drawGrid( int gridSizeUnits, QgsSymbolRenderC
   }
 
   QPen gridPen( mCircleColor );
-  gridPen.setWidthF( context.renderContext().convertToPainterUnits( mCircleWidth, Qgis::RenderUnit::Millimeters ) );
+  gridPen.setWidthF( context.renderContext().convertToPainterUnits( mCircleWidth, QgsUnitTypes::RenderMillimeters ) );
   p->setPen( gridPen );
 
   for ( int i = 0; i < pointSymbolPositions.size(); ++i )
@@ -450,7 +436,7 @@ void QgsPointDisplacementRenderer::drawCircle( double radiusPainterUnits, QgsSym
 
   //draw Circle
   QPen circlePen( mCircleColor );
-  circlePen.setWidthF( context.renderContext().convertToPainterUnits( mCircleWidth, Qgis::RenderUnit::Millimeters ) );
+  circlePen.setWidthF( context.renderContext().convertToPainterUnits( mCircleWidth, QgsUnitTypes::RenderMillimeters ) );
   p->setPen( circlePen );
   p->drawArc( QRectF( centerPoint.x() - radiusPainterUnits, centerPoint.y() - radiusPainterUnits, 2 * radiusPainterUnits, 2 * radiusPainterUnits ), 0, 5760 );
 }
@@ -502,6 +488,8 @@ QgsPointDisplacementRenderer *QgsPointDisplacementRenderer::convertFromRenderer(
     pointRenderer->setTolerance( clusterRenderer->tolerance() );
     pointRenderer->setToleranceUnit( clusterRenderer->toleranceUnit() );
     pointRenderer->setToleranceMapUnitScale( clusterRenderer->toleranceMapUnitScale() );
+    if ( const_cast< QgsPointClusterRenderer * >( clusterRenderer )->clusterSymbol() )
+      pointRenderer->setCenterSymbol( const_cast< QgsPointClusterRenderer * >( clusterRenderer )->clusterSymbol()->clone() );
     renderer->copyRendererData( pointRenderer );
     return pointRenderer;
   }

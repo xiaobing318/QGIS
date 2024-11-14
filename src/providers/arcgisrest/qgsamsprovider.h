@@ -72,11 +72,10 @@ class QgsAmsProvider : public QgsRasterDataProvider
     static const QString AMS_PROVIDER_KEY;
     static const QString AMS_PROVIDER_DESCRIPTION;
 
-    QgsAmsProvider( const QString &uri, const QgsDataProvider::ProviderOptions &providerOptions, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() );
+    QgsAmsProvider( const QString &uri, const QgsDataProvider::ProviderOptions &providerOptions, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() );
 
     explicit QgsAmsProvider( const QgsAmsProvider &other, const QgsDataProvider::ProviderOptions &providerOptions );
-    Qgis::DataProviderFlags flags() const override;
-    Qgis::RasterProviderCapabilities providerCapabilities() const override;
+    QgsRasterDataProvider::ProviderCapabilities providerCapabilities() const override;
     /* Inherited from QgsDataProvider */
     bool isValid() const override { return mValid; }
     QString name() const override;
@@ -94,7 +93,7 @@ class QgsAmsProvider : public QgsRasterDataProvider
 
     /* Inherited from QgsRasterInterface */
     int bandCount() const override { return 1; }
-    Qgis::RasterInterfaceCapabilities capabilities() const override;
+    int capabilities() const override { return Identify | IdentifyText | IdentifyFeature | Prefetch; }
 
     /* Inherited from QgsRasterDataProvider */
     QgsRectangle extent() const override { return mExtent; }
@@ -103,11 +102,11 @@ class QgsAmsProvider : public QgsRasterDataProvider
     Qgis::DataType dataType( int /*bandNo*/ ) const override { return Qgis::DataType::ARGB32; }
     Qgis::DataType sourceDataType( int /*bandNo*/ ) const override { return Qgis::DataType::ARGB32; }
     QgsAmsProvider *clone() const override;
-    QString htmlMetadata() const override;
+    QString htmlMetadata() override;
     bool supportsLegendGraphic() const override { return true; }
     QImage getLegendGraphic( double scale = 0, bool forceRefresh = false, const QgsRectangle *visibleExtent = nullptr ) override;
     QgsImageFetcher *getLegendGraphicFetcher( const QgsMapSettings *mapSettings ) override;
-    QgsRasterIdentifyResult identify( const QgsPointXY &point, Qgis::RasterIdentifyFormat format, const QgsRectangle &extent = QgsRectangle(), int width = 0, int height = 0, int dpi = 96 ) override;
+    QgsRasterIdentifyResult identify( const QgsPointXY &point, QgsRaster::IdentifyFormat format, const QgsRectangle &extent = QgsRectangle(), int width = 0, int height = 0, int dpi = 96 ) override;
     QList< double > nativeResolutions() const override;
     bool ignoreExtents() const override { return true; }
 
@@ -162,7 +161,6 @@ class QgsAmsProvider : public QgsRasterDataProvider
     int mMaxImageHeight = 4096;
     QgsLayerMetadata mLayerMetadata;
     QList< double > mResolutions;
-    QString mUrlPrefix;
 
     /**
      * Resets cached image
@@ -176,7 +174,7 @@ class QgsAmsTiledImageDownloadHandler : public QObject
     Q_OBJECT
   public:
 
-    QgsAmsTiledImageDownloadHandler( const QString &auth,  const QgsHttpHeaders &requestHeaders, int reqNo, const QgsAmsProvider::TileRequests &requests, QImage *image, const QgsRectangle &viewExtent, QgsRasterBlockFeedback *feedback, const QString &urlPrefix );
+    QgsAmsTiledImageDownloadHandler( const QString &auth,  const QgsHttpHeaders &requestHeaders, int reqNo, const QgsAmsProvider::TileRequests &requests, QImage *image, const QgsRectangle &viewExtent, QgsRasterBlockFeedback *feedback );
     ~QgsAmsTiledImageDownloadHandler() override;
 
     void downloadBlocking();
@@ -220,7 +218,6 @@ class QgsAmsTiledImageDownloadHandler : public QObject
     QList<QNetworkReply *> mReplies;
 
     QgsRasterBlockFeedback *mFeedback = nullptr;
-    QString mUrlPrefix;
 };
 
 class QgsAmsProviderMetadata: public QgsProviderMetadata
@@ -229,10 +226,10 @@ class QgsAmsProviderMetadata: public QgsProviderMetadata
   public:
     QgsAmsProviderMetadata();
     QIcon icon() const override;
-    QgsAmsProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() ) override;
+    QgsAmsProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() ) override;
     QVariantMap decodeUri( const QString &uri ) const override;
     QString encodeUri( const QVariantMap &parts ) const override;
-    QList< Qgis::LayerType > supportedLayerTypes() const override;
+    QList< QgsMapLayerType > supportedLayerTypes() const override;
 };
 
 #endif // QGSMAPSERVERPROVIDER_H

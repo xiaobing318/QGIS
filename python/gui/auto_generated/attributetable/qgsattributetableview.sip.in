@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/attributetable/qgsattributetableview.h                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -56,6 +56,8 @@ which can be slow due to recurring canvas repaints.
 %Docstring
 Set the attribute table config which should be used to control
 the appearance of the attribute table.
+
+.. versionadded:: 2.16
 %End
 
     QList<QgsFeatureId> selectedFeaturesIds() const;
@@ -76,12 +78,6 @@ Optionally a ``column`` can be specified, which will also bring that column into
 .. versionadded:: 3.16
 %End
 
-    void closeCurrentEditor();
-%Docstring
-Closes the editor delegate for the current item, committing its changes to the model.
-
-.. versionadded:: 3.30
-%End
   protected:
 
     virtual void mousePressEvent( QMouseEvent *event );
@@ -154,15 +150,11 @@ Emitted when a column in the view has been resized.
 
 :param column: column index (starts at 0)
 :param width: new width in pixel
+
+.. versionadded:: 2.16
 %End
 
- void finished() /Deprecated/;
-%Docstring
-
-.. deprecated:: 3.40
-
-   No longer used.
-%End
+    void finished();
 
   public slots:
     void repaintRequested( const QModelIndexList &indexes );
@@ -179,5 +171,5 @@ Emitted when a column in the view has been resized.
  *                                                                      *
  * src/gui/attributetable/qgsattributetableview.h                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

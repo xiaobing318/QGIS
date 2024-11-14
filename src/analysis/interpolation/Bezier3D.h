@@ -35,7 +35,7 @@ class ANALYSIS_EXPORT Bezier3D: public ParametricLine
   protected:
 
   public:
-
+    //! Default constructor
     Bezier3D() = default;
     //! Constructor, par is a pointer to the parent, controlpoly a controlpolygon
     Bezier3D( ParametricLine *par, QVector<QgsPoint *> *controlpoly );
@@ -84,13 +84,13 @@ inline Bezier3D::Bezier3D( ParametricLine *parent, QVector<QgsPoint *> *controlp
 inline void Bezier3D::add( ParametricLine *pl )
 {
   Q_UNUSED( pl )
-  QgsDebugError( QStringLiteral( "Error!!!!! A Bezier-curve can not be parent of a ParametricLine." ) );
+  QgsDebugMsg( QStringLiteral( "Error!!!!! A Bezier-curve can not be parent of a ParametricLine." ) );
 }
 
 inline void Bezier3D::remove( int i )
 {
   Q_UNUSED( i )
-  QgsDebugError( QStringLiteral( "Error!!!!! A Bezier-curve has no children to remove." ) );
+  QgsDebugMsg( QStringLiteral( "Error!!!!! A Bezier-curve has no children to remove." ) );
 }
 
 //-----------------------------------------------setters and getters---------------------------------------------------------------

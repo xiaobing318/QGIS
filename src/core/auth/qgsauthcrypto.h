@@ -28,6 +28,7 @@
  * \ingroup core
  * \brief Functions for hashing/checking master password and encrypt/decrypting data with password
  * \note not available in Python bindings
+ * \since 2.8
  */
 class CORE_EXPORT QgsAuthCrypto
 {

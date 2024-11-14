@@ -23,6 +23,15 @@
    <iconset>
     <normaloff>.</normaloff>.</iconset>
   </property>
+  <property name="toolTip">
+   <string/>
+  </property>
+  <property name="statusTip">
+   <string/>
+  </property>
+  <property name="whatsThis">
+   <string/>
+  </property>
   <layout class="QVBoxLayout" name="verticalLayout_17" stretch="0,0,0,0">
    <item>
     <widget class="QWidget" name="widget_3" native="true">
@@ -103,6 +112,9 @@
           <property name="toolTip">
            <string>Name to display in the map legend</string>
           </property>
+          <property name="whatsThis">
+           <string>Name displayed in the map legend</string>
+          </property>
          </widget>
         </item>
         <item>
@@ -118,6 +130,9 @@
            <string>Select the file encoding</string>
           </property>
           <property name="statusTip">
+           <string>Select the file encoding</string>
+          </property>
+          <property name="whatsThis">
            <string>Select the file encoding</string>
           </property>
           <property name="insertPolicy">
@@ -209,6 +224,9 @@
               <property name="statusTip">
                <string>Fields are defined by the specified delimiter, quote, and escape characters</string>
               </property>
+              <property name="whatsThis">
+               <string>Fields are defined by the specified delimiter, quote, and escape characters</string>
+              </property>
               <property name="text">
                <string>Custom delimiters</string>
               </property>
@@ -231,6 +249,9 @@
               <property name="statusTip">
                <string>The file is a comma separated value file, fields delimited by commas and quoted by &quot;</string>
               </property>
+              <property name="whatsThis">
+               <string>The file is a comma separated value file, fields delimited by commas and quoted by &quot;</string>
+              </property>
               <property name="text">
                <string>CSV (comma separated values)</string>
               </property>
@@ -251,6 +272,9 @@
                <string>Each line in the file is split using a regular expression to define the end of each field</string>
               </property>
               <property name="statusTip">
+               <string>Each line in the file is split using a regular expression to define the end of each field</string>
+              </property>
+              <property name="whatsThis">
                <string>Each line in the file is split using a regular expression to define the end of each field</string>
               </property>
               <property name="text">
@@ -366,6 +390,9 @@
                      <property name="statusTip">
                       <string>Semicolon character is one of the delimiters</string>
                      </property>
+                     <property name="whatsThis">
+                      <string>Semicolon character is one of the delimiters</string>
+                     </property>
                      <property name="text">
                       <string>Semicolon</string>
                      </property>
@@ -377,6 +404,9 @@
                       <string>Tab character is one of the delimiters</string>
                      </property>
                      <property name="statusTip">
+                      <string>Tab character is one of the delimiters</string>
+                     </property>
+                     <property name="whatsThis">
                       <string>Tab character is one of the delimiters</string>
                      </property>
                      <property name="text">
@@ -393,6 +423,9 @@
                       <string>Comma character is one of the delimiters</string>
                      </property>
                      <property name="statusTip">
+                      <string>Comma character is one of the delimiters</string>
+                     </property>
+                     <property name="whatsThis">
                       <string>Comma character is one of the delimiters</string>
                      </property>
                      <property name="text">
@@ -414,6 +447,9 @@
                      <property name="statusTip">
                       <string>The quote character(s) enclose fields which may include delimiters and new lines</string>
                      </property>
+                     <property name="whatsThis">
+                      <string>The quote character(s) enclose fields which may include delimiters and new lines</string>
+                     </property>
                      <property name="text">
                       <string>&quot;</string>
                      </property>
@@ -428,6 +464,9 @@
                       <string>Colon character is one of the delimiters</string>
                      </property>
                      <property name="statusTip">
+                      <string>Colon character is one of the delimiters</string>
+                     </property>
+                     <property name="whatsThis">
                       <string>Colon character is one of the delimiters</string>
                      </property>
                      <property name="text">
@@ -447,6 +486,9 @@
                       <string>The escape character(s) force the next character to be treated as a normal character (that is not a delimiter, quote, or new line character). If the escape character is the same as a quote character, it only escapes itself and only within quotes.</string>
                      </property>
                      <property name="statusTip">
+                      <string>The escape character(s) force the next character to be treated as a normal character (that is not a delimiter, quote, or new line character). If the escape character is the same as a quote character, it only escapes itself and only within quotes.</string>
+                     </property>
+                     <property name="whatsThis">
                       <string>The escape character(s) force the next character to be treated as a normal character (that is not a delimiter, quote, or new line character). If the escape character is the same as a quote character, it only escapes itself and only within quotes.</string>
                      </property>
                      <property name="text">
@@ -480,6 +522,9 @@
                      <property name="statusTip">
                       <string>Delimiters to use when splitting fields in the text file. The delimiter can be more than one character. These characters are used in addition to the comma, tab, space, colon, and semicolon options.</string>
                      </property>
+                     <property name="whatsThis">
+                      <string>Delimiters to use when splitting fields in the text file. The delimiter can be more than one character. These characters are used in addition to the comma, tab, space, colon, and semicolon options.</string>
+                     </property>
                      <property name="maxLength">
                       <number>10</number>
                      </property>
@@ -510,6 +555,9 @@
                       <string>Space character is one of the delimiters</string>
                      </property>
                      <property name="statusTip">
+                      <string>Space character is one of the delimiters</string>
+                     </property>
+                     <property name="whatsThis">
                       <string>Space character is one of the delimiters</string>
                      </property>
                      <property name="text">
@@ -580,6 +628,9 @@
                    <property name="statusTip">
                     <string>Regular expression used to split each line into fields</string>
                    </property>
+                   <property name="whatsThis">
+                    <string>Regular expression used to split each line into fields</string>
+                   </property>
                   </widget>
                  </item>
                  <item>
@@ -623,6 +674,9 @@
              <string>Trim leading and trailing spaces from fields</string>
             </property>
             <property name="statusTip">
+             <string>Trim leading and trailing spaces from fields</string>
+            </property>
+            <property name="whatsThis">
              <string>Trim leading and trailing spaces from fields</string>
             </property>
             <property name="text">
@@ -671,6 +725,9 @@
               <property name="statusTip">
                <string>The number of lines to discard from the beginning of the file</string>
               </property>
+              <property name="whatsThis">
+               <string>The number of lines to discard from the beginning of the file</string>
+              </property>
               <property name="wrapping">
                <bool>false</bool>
               </property>
@@ -690,6 +747,9 @@
              <string>Discard empty fields in each record</string>
             </property>
             <property name="statusTip">
+             <string>Discard empty fields in each record</string>
+            </property>
+            <property name="whatsThis">
              <string>Discard empty fields in each record</string>
             </property>
             <property name="text">
@@ -718,6 +778,9 @@
             <property name="statusTip">
              <string>Number fields use comma for a decimal separator</string>
             </property>
+            <property name="whatsThis">
+             <string>Number fields use comma for a decimal separator</string>
+            </property>
             <property name="text">
              <string>Decimal separator is comma</string>
             </property>
@@ -729,6 +792,9 @@
              <string>Field names are read from the first record. If not selected then fields are numbered</string>
             </property>
             <property name="statusTip">
+             <string>Field names are read from the first record. If not selected then fields are numbered</string>
+            </property>
+            <property name="whatsThis">
              <string>Field names are read from the first record. If not selected then fields are numbered</string>
             </property>
             <property name="text">
@@ -824,6 +890,9 @@
               <property name="statusTip">
                <string>Geometry is a point defined by X and Y coordinate fields</string>
               </property>
+              <property name="whatsThis">
+               <string>Geometry is a point defined by X and Y coordinate fields</string>
+              </property>
               <property name="text">
                <string>Point coordinates</string>
               </property>
@@ -843,6 +912,9 @@
               <property name="statusTip">
                <string>Geometry is read as a well known text string from the selected fields</string>
               </property>
+              <property name="whatsThis">
+               <string>Geometry is read as a well known text string from the selected fields</string>
+              </property>
               <property name="text">
                <string>Well known text (WKT)</string>
               </property>
@@ -854,6 +926,9 @@
                <string>The file contains only attribute information - it will not be displayed on the map</string>
               </property>
               <property name="statusTip">
+               <string>The file contains only attribute information - it will not be displayed on the map</string>
+              </property>
+              <property name="whatsThis">
                <string>The file contains only attribute information - it will not be displayed on the map</string>
               </property>
               <property name="text">
@@ -972,6 +1047,9 @@
                     <property name="statusTip">
                      <string>Name of the field containing y values</string>
                     </property>
+                    <property name="whatsThis">
+                     <string>Name of the field containing y values</string>
+                    </property>
                     <property name="editable">
                      <bool>false</bool>
                     </property>
@@ -983,6 +1061,9 @@
                      <string>X and Y coordinates are expressed in degrees/minutes/seconds</string>
                     </property>
                     <property name="statusTip">
+                     <string>X and Y coordinates are expressed in degrees/minutes/seconds</string>
+                    </property>
+                    <property name="whatsThis">
                      <string>X and Y coordinates are expressed in degrees/minutes/seconds</string>
                     </property>
                     <property name="text">
@@ -1011,6 +1092,9 @@
                      <string>Name of the field containing z values</string>
                     </property>
                     <property name="statusTip">
+                     <string>Name of the field containing z values</string>
+                    </property>
+                    <property name="whatsThis">
                      <string>Name of the field containing z values</string>
                     </property>
                     <property name="editable">
@@ -1060,6 +1144,9 @@
                     <property name="statusTip">
                      <string>Name of the field containing m values</string>
                     </property>
+                    <property name="whatsThis">
+                     <string>Name of the field containing m values</string>
+                    </property>
                     <property name="editable">
                      <bool>false</bool>
                     </property>
@@ -1086,6 +1173,9 @@
                      <string>Name of the field containing x values</string>
                     </property>
                     <property name="statusTip">
+                     <string>Name of the field containing x values</string>
+                    </property>
+                    <property name="whatsThis">
                      <string>Name of the field containing x values</string>
                     </property>
                     <property name="editable">
@@ -1201,6 +1291,9 @@
                     <property name="statusTip">
                      <string>Name of the field containing well known text value</string>
                     </property>
+                    <property name="whatsThis">
+                     <string>Name of the field containing well known text value</string>
+                    </property>
                     <property name="editable">
                      <bool>false</bool>
                     </property>
@@ -1289,6 +1382,9 @@
               <property name="statusTip">
                <string>Use a spatial index to improve performance of displaying and spatially selecting features</string>
               </property>
+              <property name="whatsThis">
+               <string>Use a spatial index to improve performance of displaying and spatially selecting features</string>
+              </property>
               <property name="text">
                <string>Use spatial index</string>
               </property>
@@ -1302,6 +1398,9 @@
               <property name="statusTip">
                <string>Use an index to improve performance of subset filters (set in layer properties)</string>
               </property>
+              <property name="whatsThis">
+               <string>Use an index to improve performance of subset filters (set in layer properties)</string>
+              </property>
               <property name="text">
                <string>Use subset index</string>
               </property>
@@ -1313,6 +1412,9 @@
                <string>Watch for changes to the file by other applications while QGIS is running</string>
               </property>
               <property name="statusTip">
+               <string>Watch for changes to the file by other applications while QGIS is running</string>
+              </property>
+              <property name="whatsThis">
                <string>Watch for changes to the file by other applications while QGIS is running</string>
               </property>
               <property name="text">

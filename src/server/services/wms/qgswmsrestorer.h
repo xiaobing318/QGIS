@@ -26,12 +26,12 @@
 #include "qgswmsrendercontext.h"
 
 class QgsMapLayer;
-class QgsAbstractVectorLayerLabeling;
 
 /**
  * \ingroup server
  * \brief RAII class to restore layer configuration on destruction (opacity,
  * filters, ...)
+ * \since QGIS 3.0
  */
 class QgsLayerRestorer
 {
@@ -56,13 +56,12 @@ class QgsLayerRestorer
     {
       QString name;
       double mOpacity;
-      std::unique_ptr<QgsAbstractVectorLayerLabeling> mLabeling;
       QString mNamedStyle;
       QString mFilter;
       QgsFeatureIds mSelectedFeatureIds;
     };
 
-    std::map<QgsMapLayer *, QgsLayerSettings> mLayerSettings;
+    QMap<QgsMapLayer *, QgsLayerSettings> mLayerSettings;
 };
 
 namespace QgsWms
@@ -83,6 +82,9 @@ namespace QgsWms
        */
       QgsWmsRestorer( const QgsWmsRenderContext &context );
 
+      /**
+       * Default destructor.
+       */
       ~QgsWmsRestorer() = default;
 
     private:

@@ -9,17 +9,15 @@ __author__ = 'Nyall Dawson'
 __date__ = '14/06/2019'
 __copyright__ = 'Copyright 2019, The QGIS Project'
 
-from qgis.PyQt.QtCore import QCoreApplication, QEvent
-from qgis.PyQt.QtTest import QSignalSpy
-from qgis.core import (
-    Qgis,
-    QgsMeshLayer,
-    QgsProject,
-    QgsVectorLayer,
+import qgis  # NOQA
+from qgis.PyQt.QtCore import (
+    QCoreApplication,
+    QEvent
 )
+from qgis.PyQt.QtTest import QSignalSpy
+from qgis.core import QgsVectorLayer, QgsMeshLayer, QgsProject, QgsMapLayerProxyModel
 from qgis.gui import QgsMapLayerComboBox
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 start_app()
 
@@ -35,7 +33,7 @@ def create_mesh_layer(name):
     return layer
 
 
-class TestQgsMapLayerComboBox(QgisTestCase):
+class TestQgsMapLayerComboBox(unittest.TestCase):
 
     def testGettersSetters(self):
         """ test combo getters/setters """
@@ -45,8 +43,8 @@ class TestQgsMapLayerComboBox(QgisTestCase):
         l2 = create_layer('l2')
         QgsProject.instance().addMapLayer(l2)
 
-        m.setFilters(Qgis.LayerFilter.LineLayer | Qgis.LayerFilter.WritableLayer)
-        self.assertEqual(m.filters(), Qgis.LayerFilters(Qgis.LayerFilter.LineLayer | Qgis.LayerFilter.WritableLayer))
+        m.setFilters(QgsMapLayerProxyModel.LineLayer | QgsMapLayerProxyModel.WritableLayer)
+        self.assertEqual(m.filters(), QgsMapLayerProxyModel.LineLayer | QgsMapLayerProxyModel.WritableLayer)
 
         m.setExceptedLayerList([l2])
         self.assertEqual(m.exceptedLayerList(), [l2])
@@ -61,8 +59,8 @@ class TestQgsMapLayerComboBox(QgisTestCase):
         l2 = create_layer('l2')
         QgsProject.instance().addMapLayer(l2)
 
-        m.setFilters(Qgis.LayerFilter.MeshLayer)
-        self.assertEqual(m.filters(), Qgis.LayerFilter.MeshLayer)
+        m.setFilters(QgsMapLayerProxyModel.MeshLayer)
+        self.assertEqual(m.filters(), QgsMapLayerProxyModel.MeshLayer)
 
         self.assertEqual(m.count(), 1)
         self.assertEqual(m.itemText(0), 'l1')
@@ -84,39 +82,39 @@ class TestQgsMapLayerComboBox(QgisTestCase):
                             'layer 4', "memory")
         QgsProject.instance().addMapLayer(l4)
 
-        m.setFilters(Qgis.LayerFilter.PolygonLayer)
+        m.setFilters(QgsMapLayerProxyModel.PolygonLayer)
         self.assertEqual(m.count(), 1)
         self.assertEqual(m.itemText(0), 'layer 2')
 
-        m.setFilters(Qgis.LayerFilter.PointLayer)
+        m.setFilters(QgsMapLayerProxyModel.PointLayer)
         self.assertEqual(m.count(), 1)
         self.assertEqual(m.itemText(0), 'layer 1')
 
-        m.setFilters(Qgis.LayerFilter.LineLayer)
+        m.setFilters(QgsMapLayerProxyModel.LineLayer)
         self.assertEqual(m.count(), 1)
         self.assertEqual(m.itemText(0), 'layer 4')
 
-        m.setFilters(Qgis.LayerFilter.NoGeometry)
+        m.setFilters(QgsMapLayerProxyModel.NoGeometry)
         self.assertEqual(m.count(), 1)
         self.assertEqual(m.itemText(0), 'layer 3')
 
-        m.setFilters(Qgis.LayerFilter.HasGeometry)
+        m.setFilters(QgsMapLayerProxyModel.HasGeometry)
         self.assertEqual(m.count(), 3)
         self.assertEqual(m.itemText(0), 'layer 1')
         self.assertEqual(m.itemText(1), 'layer 2')
         self.assertEqual(m.itemText(2), 'layer 4')
 
-        m.setFilters(Qgis.LayerFilter.VectorLayer)
+        m.setFilters(QgsMapLayerProxyModel.VectorLayer)
         self.assertEqual(m.count(), 4)
         self.assertEqual(m.itemText(0), 'layer 1')
         self.assertEqual(m.itemText(1), 'layer 2')
         self.assertEqual(m.itemText(2), 'layer 3')
         self.assertEqual(m.itemText(3), 'layer 4')
 
-        m.setFilters(Qgis.LayerFilter.PluginLayer)
+        m.setFilters(QgsMapLayerProxyModel.PluginLayer)
         self.assertEqual(m.count(), 0)
 
-        m.setFilters(Qgis.LayerFilter.RasterLayer)
+        m.setFilters(QgsMapLayerProxyModel.RasterLayer)
         self.assertEqual(m.count(), 0)
 
     def testFilterByLayer(self):
@@ -222,7 +220,7 @@ class TestQgsMapLayerComboBox(QgisTestCase):
         self.assertEqual(m.itemText(6), 'b')
 
         l3.deleteLater()
-        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
         self.assertEqual(m.count(), 6)
         self.assertFalse(m.itemText(0))
         self.assertEqual(m.itemText(1), 'l1')

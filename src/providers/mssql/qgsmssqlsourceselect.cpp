@@ -17,13 +17,15 @@
  ***************************************************************************/
 
 #include "qgsmssqlsourceselect.h"
-#include "moc_qgsmssqlsourceselect.cpp"
 
 #include "qgslogger.h"
+#include "qgsapplication.h"
 #include "qgsmssqlgeomcolumntypethread.h"
+#include "qgsmssqlprovider.h"
 #include "qgsmssqlnewconnection.h"
 #include "qgsmanageconnectionsdialog.h"
 #include "qgsquerybuilder.h"
+#include "qgsdatasourceuri.h"
 #include "qgsvectorlayer.h"
 #include "qgssettings.h"
 #include "qgsmssqlconnection.h"
@@ -31,7 +33,7 @@
 #include "qgsproject.h"
 #include "qgsgui.h"
 #include "qgsiconutils.h"
-#include "qgsmssqlprovider.h"
+#include "qgsdbfilterproxymodel.h"
 
 #include <QFileDialog>
 #include <QInputDialog>
@@ -56,36 +58,18 @@ QWidget *QgsMssqlSourceSelectDelegate::createEditor( QWidget *parent, const QSty
   if ( index.column() == QgsMssqlTableModel::DbtmType && index.data( Qt::UserRole + 1 ).toBool() )
   {
     QComboBox *cb = new QComboBox( parent );
-    for ( const Qgis::WkbType type :
+    for ( const QgsWkbTypes::Type type :
           {
-            Qgis::WkbType::Point,
-            Qgis::WkbType::PointZ,
-            Qgis::WkbType::PointM,
-            Qgis::WkbType::PointZM,
-            Qgis::WkbType::LineString,
-            Qgis::WkbType::LineStringZ,
-            Qgis::WkbType::LineStringM,
-            Qgis::WkbType::LineStringZM,
-            Qgis::WkbType::Polygon,
-            Qgis::WkbType::PolygonZ,
-            Qgis::WkbType::PolygonM,
-            Qgis::WkbType::PolygonZM,
-            Qgis::WkbType::MultiPoint,
-            Qgis::WkbType::MultiPointZ,
-            Qgis::WkbType::MultiPointM,
-            Qgis::WkbType::MultiPointZM,
-            Qgis::WkbType::MultiLineString,
-            Qgis::WkbType::MultiLineStringZ,
-            Qgis::WkbType::MultiLineStringM,
-            Qgis::WkbType::MultiLineStringZM,
-            Qgis::WkbType::MultiPolygon,
-            Qgis::WkbType::MultiPolygonZ,
-            Qgis::WkbType::MultiPolygonM,
-            Qgis::WkbType::MultiPolygonZM,
-            Qgis::WkbType::NoGeometry
+            QgsWkbTypes::Point,
+            QgsWkbTypes::LineString,
+            QgsWkbTypes::Polygon,
+            QgsWkbTypes::MultiPoint,
+            QgsWkbTypes::MultiLineString,
+            QgsWkbTypes::MultiPolygon,
+            QgsWkbTypes::NoGeometry
           } )
     {
-      cb->addItem( QgsIconUtils::iconForWkbType( type ), QgsWkbTypes::translatedDisplayString( type ), static_cast< quint32>( type ) );
+      cb->addItem( QgsIconUtils::iconForWkbType( type ), QgsWkbTypes::translatedDisplayString( type ), type );
     }
     cb->setCurrentIndex( cb->findData( index.data( Qt::UserRole + 2 ).toInt() ) );
     return cb;
@@ -122,11 +106,11 @@ void QgsMssqlSourceSelectDelegate::setModelData( QWidget *editor, QAbstractItemM
   {
     if ( index.column() == QgsMssqlTableModel::DbtmType )
     {
-      const Qgis::WkbType type = static_cast< Qgis::WkbType >( cb->currentData().toInt() );
+      const QgsWkbTypes::Type type = static_cast< QgsWkbTypes::Type >( cb->currentData().toInt() );
 
       model->setData( index, QgsIconUtils::iconForWkbType( type ), Qt::DecorationRole );
-      model->setData( index, type != Qgis::WkbType::Unknown ? QgsWkbTypes::translatedDisplayString( type ) : tr( "Select…" ) );
-      model->setData( index, static_cast< quint32>( type ), Qt::UserRole + 2 );
+      model->setData( index, type != QgsWkbTypes::Unknown ? QgsWkbTypes::translatedDisplayString( type ) : tr( "Select…" ) );
+      model->setData( index, type, Qt::UserRole + 2 );
     }
     else if ( index.column() == QgsMssqlTableModel::DbtmPkCol )
     {
@@ -156,7 +140,7 @@ QgsMssqlSourceSelect::QgsMssqlSourceSelect( QWidget *parent, Qt::WindowFlags fl,
   setupButtons( buttonBox );
   connect( buttonBox, &QDialogButtonBox::helpRequested, this, &QgsMssqlSourceSelect::showHelp );
 
-  if ( widgetMode() != QgsProviderRegistry::WidgetMode::Standalone )
+  if ( widgetMode() != QgsProviderRegistry::WidgetMode::None )
   {
     mHoldDialogOpen->hide();
   }
@@ -318,7 +302,7 @@ void QgsMssqlSourceSelect::populateConnectionList()
 // Slot for performing action when the Add button is clicked
 void QgsMssqlSourceSelect::addButtonClicked()
 {
-  QgsDebugMsgLevel( QStringLiteral( "mConnInfo:%1" ).arg( mConnInfo ), 2 );
+  QgsDebugMsg( QStringLiteral( "mConnInfo:%1" ).arg( mConnInfo ) );
   mSelectedTables.clear();
 
   const bool disableInvalidGeometryHandling = QgsMssqlConnection::isInvalidGeometryHandlingDisabled( cmbConnections->currentText() );
@@ -343,7 +327,7 @@ void QgsMssqlSourceSelect::addButtonClicked()
   else
   {
     emit addDatabaseLayers( mSelectedTables, QStringLiteral( "mssql" ) );
-    if ( !mHoldDialogOpen->isChecked() && widgetMode() == QgsProviderRegistry::WidgetMode::Standalone )
+    if ( !mHoldDialogOpen->isChecked() && widgetMode() == QgsProviderRegistry::WidgetMode::None )
     {
       accept();
     }
@@ -396,7 +380,7 @@ void QgsMssqlSourceSelect::btnConnect_clicked()
   if ( !service.isEmpty() )
     mConnInfo += " service='" + service + '\'';
 
-  QgsDebugMsgLevel( QStringLiteral( "GetDatabase" ), 2 );
+  QgsDebugMsg( QStringLiteral( "GetDatabase" ) );
   std::shared_ptr<QgsMssqlDatabase> db = QgsMssqlDatabase::connectDb( service, host, database, username, password );
 
   if ( !db->isValid() )
@@ -447,11 +431,10 @@ void QgsMssqlSourceSelect::btnConnect_clicked()
       layer.tableName = q.value( 1 ).toString();
       layer.geometryColName = q.value( 2 ).toString();
       layer.srid = q.value( 3 ).toString();
+      layer.type = q.value( 4 ).toString();
       layer.isView = q.value( 5 ).toBool();
       layer.pkCols = QStringList(); //TODO
       layer.isGeography = false;
-      const int dimensions { q.value( 6 ).toInt( ) };
-      layer.type = QgsMssqlProvider::typeFromMetadata( q.value( 4 ).toString().toUpper(), dimensions );
 
       QString type = layer.type;
       QString srid = layer.srid;
@@ -545,7 +528,7 @@ void QgsMssqlSourceSelect::setSql( const QModelIndex &index )
 {
   if ( !index.parent().isValid() )
   {
-    QgsDebugMsgLevel( QStringLiteral( "schema item found" ), 2 );
+    QgsDebugMsg( QStringLiteral( "schema item found" ) );
     return;
   }
 

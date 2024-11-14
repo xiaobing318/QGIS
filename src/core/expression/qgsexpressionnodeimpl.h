@@ -575,7 +575,9 @@ class CORE_EXPORT QgsExpressionNodeCondition : public QgsExpressionNode
         WhenThen( QgsExpressionNode *whenExp, QgsExpressionNode *thenExp );
         ~WhenThen();
 
+        //! WhenThen nodes cannot be copied.
         WhenThen( const WhenThen &rh ) = delete;
+        //! WhenThen nodes cannot be copied.
         WhenThen &operator=( const WhenThen &rh ) = delete;
 
         /**

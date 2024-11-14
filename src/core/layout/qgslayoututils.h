@@ -32,6 +32,7 @@ class QStyleOptionGraphicsItem;
 /**
  * \ingroup core
  * \brief Utilities for layouts.
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsLayoutUtils
 {
@@ -208,7 +209,7 @@ class CORE_EXPORT QgsLayoutUtils
     /**
      * Extracts the scale factor from an item \a style.
      *
-     * \deprecated QGIS 3.40. Use the variant with a QPainter argument instead.
+     * \deprecated Use the variant with a QPainter argument instead
      */
     Q_DECL_DEPRECATED static double scaleFactorFromItemStyle( const QStyleOptionGraphicsItem *style ) SIP_DEPRECATED;
 

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     AlgorithmLocatorFilter.py
@@ -40,7 +42,7 @@ from processing.core.ProcessingConfig import ProcessingConfig
 class AlgorithmLocatorFilter(QgsLocatorFilter):
 
     def __init__(self, parent=None):
-        super().__init__(parent)
+        super(AlgorithmLocatorFilter, self).__init__(parent)
 
     def clone(self):
         return AlgorithmLocatorFilter()
@@ -52,22 +54,22 @@ class AlgorithmLocatorFilter(QgsLocatorFilter):
         return self.tr('Processing Algorithms')
 
     def priority(self):
-        return QgsLocatorFilter.Priority.Low
+        return QgsLocatorFilter.Low
 
     def prefix(self):
         return 'a'
 
     def flags(self):
-        return QgsLocatorFilter.Flag.FlagFast
+        return QgsLocatorFilter.FlagFast
 
     def fetchResults(self, string, context, feedback):
         # collect results in main thread, since this method is inexpensive and
         # accessing the processing registry is not thread safe
         for a in QgsApplication.processingRegistry().algorithms():
-            if a.flags() & QgsProcessingAlgorithm.Flag.FlagHideFromToolbox:
+            if a.flags() & QgsProcessingAlgorithm.FlagHideFromToolbox:
                 continue
             if not ProcessingConfig.getSetting(ProcessingConfig.SHOW_ALGORITHMS_KNOWN_ISSUES) and \
-                    a.flags() & QgsProcessingAlgorithm.Flag.FlagKnownIssues:
+                    a.flags() & QgsProcessingAlgorithm.FlagKnownIssues:
                 continue
 
             result = QgsLocatorResult()
@@ -111,7 +113,7 @@ class AlgorithmLocatorFilter(QgsLocatorFilter):
                 dlg = MessageDialog()
                 dlg.setTitle(self.tr('Missing dependency'))
                 dlg.setMessage(message)
-                dlg.exec()
+                dlg.exec_()
                 return
             dlg = alg.createCustomParametersWidget(parent=iface.mainWindow())
             if not dlg:
@@ -119,7 +121,7 @@ class AlgorithmLocatorFilter(QgsLocatorFilter):
             canvas = iface.mapCanvas()
             prevMapTool = canvas.mapTool()
             dlg.show()
-            dlg.exec()
+            dlg.exec_()
             if canvas.mapTool() != prevMapTool:
                 try:
                     canvas.mapTool().reset()
@@ -146,13 +148,13 @@ class InPlaceAlgorithmLocatorFilter(QgsLocatorFilter):
         return self.tr('Edit Selected Features')
 
     def priority(self):
-        return QgsLocatorFilter.Priority.Low
+        return QgsLocatorFilter.Low
 
     def prefix(self):
         return 'ef'
 
     def flags(self):
-        return QgsLocatorFilter.Flag.FlagFast
+        return QgsLocatorFilter.FlagFast
 
     def fetchResults(self, string, context, feedback):
         # collect results in main thread, since this method is inexpensive and
@@ -162,7 +164,7 @@ class InPlaceAlgorithmLocatorFilter(QgsLocatorFilter):
             return
 
         for a in QgsApplication.processingRegistry().algorithms():
-            if not a.flags() & QgsProcessingAlgorithm.Flag.FlagSupportsInPlaceEdits:
+            if not a.flags() & QgsProcessingAlgorithm.FlagSupportsInPlaceEdits:
                 continue
 
             if not a.supportInPlaceEdit(iface.activeLayer()):
@@ -210,7 +212,7 @@ class InPlaceAlgorithmLocatorFilter(QgsLocatorFilter):
                 dlg = MessageDialog()
                 dlg.setTitle(self.tr('Missing dependency'))
                 dlg.setMessage(message)
-                dlg.exec()
+                dlg.exec_()
                 return
 
             in_place_input_parameter_name = 'INPUT'
@@ -225,7 +227,7 @@ class InPlaceAlgorithmLocatorFilter(QgsLocatorFilter):
                 canvas = iface.mapCanvas()
                 prevMapTool = canvas.mapTool()
                 dlg.show()
-                dlg.exec()
+                dlg.exec_()
                 if canvas.mapTool() != prevMapTool:
                     try:
                         canvas.mapTool().reset()

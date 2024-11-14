@@ -3,14 +3,15 @@
  *                                                                      *
  * src/core/project/qgsprojecttranslator.h                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
+
 
 
 class QgsProjectTranslator
 {
 %Docstring(signature="appended")
-An interface for objects which can translate project strings.
+Wherever an object of this class is available, the derived translate function can be called from.
 
 .. versionadded:: 3.4
 %End
@@ -20,24 +21,23 @@ An interface for objects which can translate project strings.
 %End
   public:
 
-    virtual ~QgsProjectTranslator();
 
     virtual QString translate( const QString &context, const QString &sourceText, const char *disambiguation = 0, int n = -1 ) const = 0;
 %Docstring
-Translates a string using the Qt QTranslator mechanism.
+The derived :py:func:`~QgsProjectTranslator.translate` translates with QTranslator and qm file the sourceText.
+It
+:return: the result string and in case there is no QTranslator loaded, the sourceText.
+           This function can be called from wherever the :py:class:`QgsReadWriteContext` is available.
 
-This function can be called from wherever the :py:class:`QgsReadWriteContext` is available.
-
-:param context: describes the context of the translation, eg the corresponding map layer
-:param sourceText: the identifier of the text to translate (usually the original untranslated string)
-:param disambiguation: optional string providing additional context for the translation
-:param n: optional "object count", which can alter the translation to account for plural forms
-
-:return: the translated string. In the case that there is no QTranslator available, the ``sourceText`` will be returned unchanged.
+:param context: describing layer etc.
+:param sourceText: is the identifier of this text
+:param disambiguation: it's the disambiguation
+:param n: if -1 uses the appropriate form
 
 .. versionadded:: 3.4
 %End
 
+    virtual ~QgsProjectTranslator();
 };
 
 /************************************************************************
@@ -45,5 +45,5 @@ This function can be called from wherever the :py:class:`QgsReadWriteContext` is
  *                                                                      *
  * src/core/project/qgsprojecttranslator.h                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

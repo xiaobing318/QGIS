@@ -54,7 +54,7 @@ class QgsOapifItemsRequest : public QgsBaseNetworkRequest
     const QgsFields &fields() const { return mFields; }
 
     //! Return geometry type.
-    Qgis::WkbType wkbType() const { return mWKBType; }
+    QgsWkbTypes::Type wkbType() const { return mWKBType; }
 
     //! Return features.
     const std::vector<QgsFeatureUniqueIdPair> &features() const { return mFeatures; }
@@ -67,12 +67,6 @@ class QgsOapifItemsRequest : public QgsBaseNetworkRequest
 
     //! Return the url of the next page
     const QString &nextUrl() const { return mNextUrl; }
-
-    //! Return if an "id" is present at top level of features
-    bool foundIdTopLevel() const { return mFoundIdTopLevel; }
-
-    //! Return if an "id" is present in the "properties" object of features
-    bool foundIdInProperties() const { return mFoundIdInProperties; }
 
   signals:
     //! emitted when the capabilities have been fully parsed, or an error occurred
@@ -91,7 +85,7 @@ class QgsOapifItemsRequest : public QgsBaseNetworkRequest
 
     QgsFields mFields;
 
-    Qgis::WkbType mWKBType = Qgis::WkbType::Unknown;
+    QgsWkbTypes::Type mWKBType = QgsWkbTypes::Unknown;
 
     std::vector<QgsFeatureUniqueIdPair> mFeatures;
 
@@ -103,9 +97,6 @@ class QgsOapifItemsRequest : public QgsBaseNetworkRequest
 
     ApplicationLevelError mAppLevelError = ApplicationLevelError::NoError;
 
-    bool mFoundIdTopLevel = false;
-
-    bool mFoundIdInProperties = false;
 };
 
 #endif // QGSOAPIFITEMSREQUEST_H

@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgslayertreeviewindicator.h"
-#include "moc_qgslayertreeviewindicator.cpp"
 
 QgsLayerTreeViewIndicator::QgsLayerTreeViewIndicator( QObject *parent )
   : QObject( parent )

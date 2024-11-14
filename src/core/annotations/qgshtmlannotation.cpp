@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgshtmlannotation.h"
-#include "moc_qgshtmlannotation.cpp"
 #include "qgsfeature.h"
 #include "qgsfeatureiterator.h"
 #include "qgslogger.h"
@@ -46,11 +45,6 @@ QgsHtmlAnnotation::QgsHtmlAnnotation( QObject *parent )
   mWebPage->mainFrame()->setScrollBarPolicy( Qt::Horizontal, Qt::ScrollBarAlwaysOff );
   mWebPage->mainFrame()->setScrollBarPolicy( Qt::Vertical, Qt::ScrollBarAlwaysOff );
   mWebPage->setNetworkAccessManager( QgsNetworkAccessManager::instance() );
-
-  // Make QWebPage transparent so that the background color of the annotation frame is used
-  QPalette palette = mWebPage->palette();
-  palette.setBrush( QPalette::Base, Qt::transparent );
-  mWebPage->setPalette( palette );
 
   connect( mWebPage->mainFrame(), &QWebFrame::javaScriptWindowObjectCleared, this, &QgsHtmlAnnotation::javascript );
 }
@@ -95,7 +89,7 @@ void QgsHtmlAnnotation::setHtmlSource( const QString &htmlSource )
 
 void QgsHtmlAnnotation::renderAnnotation( QgsRenderContext &context, QSizeF size ) const
 {
-  if ( !context.painter() || ( context.feedback() && context.feedback()->isCanceled() ) )
+  if ( !context.painter() )
   {
     return;
   }
@@ -151,7 +145,7 @@ void QgsHtmlAnnotation::readXml( const QDomElement &itemElem, const QgsReadWrite
   // upgrade old layer
   if ( !mapLayer() && itemElem.hasAttribute( QStringLiteral( "vectorLayer" ) ) )
   {
-    setMapLayer( QgsProject::instance()->mapLayer( itemElem.attribute( QStringLiteral( "vectorLayer" ) ) ) ); // skip-keyword-check
+    setMapLayer( QgsProject::instance()->mapLayer( itemElem.attribute( QStringLiteral( "vectorLayer" ) ) ) );
   }
 
   if ( mWebPage )
@@ -192,3 +186,6 @@ void QgsHtmlAnnotation::javascript()
   QWebFrame *frame = mWebPage->mainFrame();
   frame->addToJavaScriptWindowObject( QStringLiteral( "layer" ), mapLayer() );
 }
+
+
+

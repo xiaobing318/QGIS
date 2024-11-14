@@ -67,24 +67,21 @@ bool QgsServerPlugins::initPlugins( QgsServerInterface *interface )
   if ( !pythonlib_inst )
   {
     //using stderr on purpose because we want end users to see this [TS]
-    QgsDebugError( QStringLiteral( "Couldn't resolve python support library's instance() symbol." ) );
+    QgsDebugMsg( QStringLiteral( "Couldn't resolve python support library's instance() symbol." ) );
     return false;
   }
 
-  QgsDebugMsgLevel( QStringLiteral( "Python support library's instance() symbol resolved." ), 2 );
+  QgsDebugMsg( QStringLiteral( "Python support library's instance() symbol resolved." ) );
   sPythonUtils = pythonlib_inst();
-  if ( sPythonUtils )
-  {
-    sPythonUtils->initServerPython( interface );
-  }
+  sPythonUtils->initServerPython( interface );
 
   if ( sPythonUtils && sPythonUtils->isEnabled() )
   {
-    QgsDebugMsgLevel( QStringLiteral( "Python support ENABLED :-)" ), 2 );
+    QgsDebugMsg( QStringLiteral( "Python support ENABLED :-)" ) );
   }
   else
   {
-    QgsDebugError( QStringLiteral( "Python support FAILED :-(" ) );
+    QgsDebugMsg( QStringLiteral( "Python support FAILED :-(" ) );
     return false;
   }
 

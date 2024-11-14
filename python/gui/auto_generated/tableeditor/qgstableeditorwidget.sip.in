@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/tableeditor/qgstableeditorwidget.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -87,9 +87,8 @@ invalid color will be returned.
 
 .. seealso:: :py:func:`selectionBackgroundColor`
 
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsTableEditorWidget.selectionTextFormat` instead.
+.. deprecated::
+   use :py:func:`~QgsTableEditorWidget.selectionTextFormat` instead.
 %End
 
     QColor selectionBackgroundColor();
@@ -212,23 +211,9 @@ Returns the table header values.
 .. seealso:: :py:func:`setTableHeaders`
 %End
 
-    bool isHeaderCellSelected() const;
+    bool isHeaderCellSelected();
 %Docstring
 Returns ``True`` if any header cells are selected.
-%End
-
-    bool canMergeSelection() const;
-%Docstring
-Returns ``True`` if a selection has been made which can be merged.
-
-.. versionadded:: 3.40
-%End
-
-    bool canSplitSelection() const;
-%Docstring
-Returns ``True`` if a selection has been made which can be split.
-
-.. versionadded:: 3.40
 %End
 
   public slots:
@@ -304,8 +289,7 @@ Sets the foreground color for the currently selected cells.
 
 .. seealso:: :py:func:`setSelectionBackgroundColor`
 
-.. deprecated:: 3.40
-
+.. deprecated::
    Use :py:func:`~QgsTableEditorWidget.setSelectionTextFormat` instead.
 %End
 
@@ -380,24 +364,6 @@ Sets the table ``headers``.
 .. seealso:: :py:func:`tableHeaders`
 %End
 
-    void mergeSelectedCells();
-%Docstring
-Merges selected table cells.
-
-.. seealso:: :py:func:`splitSelectedCells`
-
-.. versionadded:: 3.40
-%End
-
-    void splitSelectedCells();
-%Docstring
-Splits (un-merges) selected table cells.
-
-.. seealso:: :py:func:`mergeSelectedCells`
-
-.. versionadded:: 3.40
-%End
-
   protected:
     virtual void keyPressEvent( QKeyEvent *event );
 
@@ -421,5 +387,5 @@ Emitted whenever the active (or selected) cell changes in the widget.
  *                                                                      *
  * src/gui/tableeditor/qgstableeditorwidget.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

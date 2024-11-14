@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/processing/qgsprocessingparametertype.h                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -22,6 +22,14 @@ Makes metadata of processing parameters available.
 #include "qgsprocessingparametertype.h"
 %End
   public:
+
+    enum ParameterFlag
+    {
+      ExposeToModeler
+    };
+    typedef QFlags<QgsProcessingParameterType::ParameterFlag> ParameterFlags;
+
+
 
     virtual QgsProcessingParameterDefinition *create( const QString &name ) const = 0 /Factory/;
 %Docstring
@@ -69,7 +77,7 @@ Returns the corresponding class name for the parameter type.
 A static id for this type which will be used for storing this parameter type.
 %End
 
-    virtual Qgis::ProcessingParameterTypeFlags flags() const;
+    virtual ParameterFlags flags() const;
 %Docstring
 Determines if this parameter is available in the modeler.
 The default implementation returns ``True``.
@@ -108,10 +116,13 @@ Extra explanatory help can be used (which must be translated), eg "a comma delim
 %End
 };
 
+QFlags<QgsProcessingParameterType::ParameterFlag> operator|(QgsProcessingParameterType::ParameterFlag f1, QFlags<QgsProcessingParameterType::ParameterFlag> f2);
+
+
 /************************************************************************
  * This file has been generated automatically from                      *
  *                                                                      *
  * src/core/processing/qgsprocessingparametertype.h                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

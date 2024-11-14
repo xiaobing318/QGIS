@@ -9,23 +9,21 @@ __author__ = 'Nyall Dawson'
 __date__ = '08/06/2017'
 __copyright__ = 'Copyright 2017, The QGIS Project'
 
-from qgis.PyQt.QtCore import QDate, QDateTime, QTime
-from qgis.core import (
-    NULL,
-    QgsFeature,
-    QgsGeometry,
-    QgsVectorLayer,
-    QgsVectorLayerCache,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+import qgis  # NOQA
+from qgis.PyQt.QtCore import QDateTime, QDate, QTime
+from qgis.core import (QgsVectorLayer,
+                       QgsVectorLayerCache,
+                       QgsFeature,
+                       QgsGeometry,
+                       NULL)
+from qgis.testing import start_app, unittest
 
 from featuresourcetestbase import FeatureSourceTestCase
 
 start_app()
 
 
-class TestQgsVectorLayerCache(QgisTestCase, FeatureSourceTestCase):
+class TestQgsVectorLayerCache(unittest.TestCase, FeatureSourceTestCase):
 
     @classmethod
     def getSource(cls):
@@ -35,7 +33,6 @@ class TestQgsVectorLayerCache(QgisTestCase, FeatureSourceTestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
-        super(TestQgsVectorLayerCache, cls).setUpClass()
         # Create test layer for FeatureSourceTestCase
         cls.vl = QgsVectorLayer(
             'Point?crs=epsg:4326&field=pk:integer&field=cnt:integer&field=name:string(0)&field=name2:string(0)&field=num_char:string&field=dt:datetime&field=date:date&field=time:time&key=pk',
@@ -93,12 +90,6 @@ class TestQgsVectorLayerCache(QgisTestCase, FeatureSourceTestCase):
 
     def testAllFeatureIds(self):
         """ Skip allFeatureIds test - not implemented by the cache (yet)
-        """
-        pass
-
-    def testOpenIteratorAfterSourceRemoval(self):
-        """
-        Skip this test -- the iterators from the cache CANNOT be used after the cache is deleted
         """
         pass
 

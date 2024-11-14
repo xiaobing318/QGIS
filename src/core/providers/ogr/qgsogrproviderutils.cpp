@@ -27,8 +27,6 @@ email                : nyall dot dawson at gmail dot com
 #include "qgsogrdbconnection.h"
 #include "qgsfileutils.h"
 #include "qgsvariantutils.h"
-#include "qgssettings.h"
-#include "qgssqlstatement.h"
 
 #include <ogr_srs_api.h>
 #include <cpl_port.h>
@@ -73,7 +71,7 @@ QString QgsOgrProviderUtils::analyzeURI( QString const &uri,
     QString &layerName,
     QString &subsetString,
     OGRwkbGeometryType &ogrGeometryTypeFilter,
-    QStringList &openOptions, QVariantMap &credentialOptions )
+    QStringList &openOptions )
 {
   isSubLayer = false;
   layerIndex = 0;
@@ -117,8 +115,6 @@ QString QgsOgrProviderUtils::analyzeURI( QString const &uri,
   {
     openOptions = parts.value( QStringLiteral( "openOptions" ) ).toStringList();
   }
-
-  credentialOptions = parts.value( QStringLiteral( "credentialOptions" ) ).toMap();
 
   const QString fullPath = parts.value( QStringLiteral( "vsiPrefix" ) ).toString()
                            + parts.value( QStringLiteral( "path" ) ).toString()
@@ -219,7 +215,7 @@ QString createFilters( const QString &type )
     // Grind through all the drivers and their respective metadata.
     // We'll add a file filter for those drivers that have a file
     // extension defined for them; the others, welll, even though
-    // theoretically we can open those files because there exists a
+    // theoreticaly we can open those files because there exists a
     // driver for them, the user will have to use the "All Files" to
     // open datasets with no explicitly defined file name extension.
     QgsDebugMsgLevel( QStringLiteral( "Driver count: %1" ).arg( OGRGetDriverCount() ), 3 );
@@ -586,7 +582,11 @@ QString createFilters( const QString &type )
         QString myGdalDriverLongName = GDALGetMetadataItem( driver, GDAL_DMD_LONGNAME, "" );
         if ( !( myGdalDriverExtensions.isEmpty() || myGdalDriverLongName.isEmpty() ) )
         {
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+          const QStringList splitExtensions = myGdalDriverExtensions.split( ' ', QString::SkipEmptyParts );
+#else
           const QStringList splitExtensions = myGdalDriverExtensions.split( ' ', Qt::SkipEmptyParts );
+#endif
           QString glob;
 
           for ( const QString &ext : splitExtensions )
@@ -620,7 +620,11 @@ QString createFilters( const QString &type )
 
     // sort file filters alphabetically
     QgsDebugMsgLevel( "myFileFilters: " + sFileFilters, 2 );
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+    QStringList filters = sFileFilters.split( QStringLiteral( ";;" ), QString::SkipEmptyParts );
+#else
     QStringList filters = sFileFilters.split( QStringLiteral( ";;" ), Qt::SkipEmptyParts );
+#endif
     filters.sort();
     sFileFilters = filters.join( QLatin1String( ";;" ) ) + ";;";
     QgsDebugMsgLevel( "myFileFilters: " + sFileFilters, 2 );
@@ -722,27 +726,10 @@ QStringList QgsOgrProviderUtils::wildcards()
   return createFilters( QStringLiteral( "wildcards" ) ).split( '|' );
 }
 
-QStringList QgsOgrProviderUtils::tableNamesFromSelectSQL( const QString &sql )
-{
-  QStringList tableNames;
-  const QgsSQLStatement statement { sql };
-  const QgsSQLStatement::NodeSelect *nodeSelect { dynamic_cast<const QgsSQLStatement::NodeSelect *>( statement.rootNode() ) };
-  if ( nodeSelect )
-  {
-    const QList<QgsSQLStatement::NodeTableDef *> tables { nodeSelect->tables() };
-    for ( auto table : std::as_const( tables ) )
-    {
-      tableNames.push_back( table->name() );
-    }
-  }
-
-  return tableNames;
-}
-
 bool QgsOgrProviderUtils::createEmptyDataSource( const QString &uri,
     const QString &format,
     const QString &encoding,
-    Qgis::WkbType vectortype,
+    QgsWkbTypes::Type vectortype,
     const QList< QPair<QString, QString> > &attributes,
     const QgsCoordinateReferenceSystem &srs,
     QString &errorMessage )
@@ -766,7 +753,7 @@ bool QgsOgrProviderUtils::createEmptyDataSource( const QString &uri,
          !uri.endsWith( QLatin1String( ".dbf" ), Qt::CaseInsensitive ) )
     {
       errorMessage = QObject::tr( "URI %1 doesn't end with .shp or .dbf" ).arg( uri );
-      QgsDebugError( errorMessage );
+      QgsDebugMsg( errorMessage );
       return false;
     }
 
@@ -819,11 +806,11 @@ bool QgsOgrProviderUtils::createEmptyDataSource( const QString &uri,
   OGRwkbGeometryType OGRvectortype = wkbUnknown;
   switch ( vectortype )
   {
-    case Qgis::WkbType::GeometryCollection:
-    case Qgis::WkbType::GeometryCollectionZ:
-    case Qgis::WkbType::GeometryCollectionM:
-    case Qgis::WkbType::GeometryCollectionZM:
-    case Qgis::WkbType::Unknown:
+    case QgsWkbTypes::GeometryCollection:
+    case QgsWkbTypes::GeometryCollectionZ:
+    case QgsWkbTypes::GeometryCollectionM:
+    case QgsWkbTypes::GeometryCollectionZM:
+    case QgsWkbTypes::Unknown:
     {
       errorMessage = QObject::tr( "Unknown vector type of %1" ).arg( static_cast< int >( vectortype ) );
       QgsMessageLog::logMessage( errorMessage, QObject::tr( "OGR" ) );
@@ -1031,8 +1018,8 @@ GDALDatasetH QgsOgrProviderUtils::GDALOpenWrapper( const char *pszPath, bool bUp
     // to indicate that we should not enable WAL.
     // And NOLOCK=ON will be set in read-only attempts.
     // Only enable it when enterUpdateMode() has been executed.
-    if ( !CSLFetchNameValue( papszOpenOptions, "DO_NOT_ENABLE_WAL" ) &&
-         !CSLFetchNameValue( papszOpenOptions, "NOLOCK" ) )
+    if ( CSLFetchNameValue( papszOpenOptions, "DO_NOT_ENABLE_WAL" ) == nullptr &&
+         CSLFetchNameValue( papszOpenOptions, "NOLOCK" ) == nullptr )
     {
       // For GeoPackage, we force opening of the file in WAL (Write Ahead Log)
       // mode so as to avoid readers blocking writer(s), and vice-versa.
@@ -1052,7 +1039,7 @@ GDALDatasetH QgsOgrProviderUtils::GDALOpenWrapper( const char *pszPath, bool bUp
     CPLSetThreadLocalConfigOption( "OGR_SQLITE_JOURNAL", "DELETE" );
   }
 
-  if ( CSLFetchNameValue( papszOpenOptions, "DO_NOT_ENABLE_WAL" ) )
+  if ( CSLFetchNameValue( papszOpenOptions, "DO_NOT_ENABLE_WAL" ) != nullptr )
   {
     papszOpenOptions = CSLSetNameValue( papszOpenOptions, "DO_NOT_ENABLE_WAL", nullptr );
   }
@@ -1249,7 +1236,7 @@ void QgsOgrProviderUtils::GDALCloseWrapper( GDALDatasetH hDS )
           }
           else if ( CPLGetLastErrorType() != CE_None )
           {
-            QgsDebugError( QStringLiteral( "Return: %1" ).arg( CPLGetLastErrorMsg() ) );
+            QgsDebugMsg( QStringLiteral( "Return: %1" ).arg( CPLGetLastErrorMsg() ) );
           }
           GDALDatasetReleaseResultSet( hDS, hSqlLyr );
           CPLPopErrorHandler();
@@ -1280,10 +1267,10 @@ void QgsOgrProviderUtils::GDALCloseWrapper( GDALDatasetH hDS )
                               "PRAGMA journal_mode",
                               nullptr, nullptr );
           CPLPopErrorHandler();
-          if ( hSqlLyr )
+          if ( hSqlLyr != nullptr )
           {
             gdal::ogr_feature_unique_ptr hFeat( OGR_L_GetNextFeature( hSqlLyr ) );
-            if ( hFeat )
+            if ( hFeat != nullptr )
             {
               const char *pszRet = OGR_F_GetFieldAsString( hFeat.get(), 0 );
               QgsDebugMsgLevel( QStringLiteral( "Return: %1" ).arg( pszRet ), 2 );
@@ -1314,11 +1301,6 @@ QByteArray QgsOgrProviderUtils::quotedIdentifier( QByteArray field, const QStrin
     field.replace( '`', "``" );
     return field.prepend( '`' ).append( '`' );
   }
-  else if ( driverName == QLatin1String( "GPKG" ) || driverName == QLatin1String( "SQLite" ) )
-  {
-    field.replace( '"', "\"\"" );
-    return field.prepend( '\"' ).append( '\"' );
-  }
   else
   {
     field.replace( '\\', "\\\\" );
@@ -1333,19 +1315,19 @@ QString QgsOgrProviderUtils::quotedValue( const QVariant &value )
   if ( QgsVariantUtils::isNull( value ) )
     return QStringLiteral( "NULL" );
 
-  switch ( value.userType() )
+  switch ( value.type() )
   {
-    case QMetaType::Type::Int:
-    case QMetaType::Type::LongLong:
-    case QMetaType::Type::Double:
+    case QVariant::Int:
+    case QVariant::LongLong:
+    case QVariant::Double:
       return value.toString();
 
-    case QMetaType::Type::Bool:
+    case QVariant::Bool:
       //OGR does not support boolean literals
       return value.toBool() ? "1" : "0";
 
     default:
-    case QMetaType::Type::QString:
+    case QVariant::String:
       QString v = value.toString();
       v.replace( '\'', QLatin1String( "''" ) );
       if ( v.contains( '\\' ) )
@@ -1355,7 +1337,7 @@ QString QgsOgrProviderUtils::quotedValue( const QVariant &value )
   }
 }
 
-QString QgsOgrProviderUtils::cleanSubsetString( const QString &subsetString )
+OGRLayerH QgsOgrProviderUtils::setSubsetString( OGRLayerH layer, GDALDatasetH ds, QTextCodec *encoding, const QString &subsetString )
 {
   // Remove any comments
   QStringList lines {subsetString.split( QChar( '\n' ) )};
@@ -1371,15 +1353,10 @@ QString QgsOgrProviderUtils::cleanSubsetString( const QString &subsetString )
     QChar literalChar { ' ' };
     for ( int i = 0; i < line.length(); ++i )
     {
-      if ( !inLiteral && ( line[i] == QChar( '\'' ) || line[i] == QChar( '"' ) ) )
+      if ( ( ( line[i] == QChar( '\'' ) || line[i] == QChar( '"' ) ) && ( i == 0 || line[i - 1] != QChar( '\\' ) ) ) && ( line[i] != literalChar ) )
       {
-        inLiteral = true;
-        literalChar = line[i];
-      }
-      else if ( inLiteral && line[i] == literalChar && line[i - 1] != QChar( '\\' ) )
-      {
-        inLiteral = false;
-        literalChar = QChar( ' ' );
+        inLiteral = !inLiteral;
+        literalChar = inLiteral ? line[i] : QChar( ' ' );
       }
       if ( !inLiteral && line.mid( i ).startsWith( QLatin1String( "--" ) ) )
       {
@@ -1389,12 +1366,7 @@ QString QgsOgrProviderUtils::cleanSubsetString( const QString &subsetString )
     }
   }
 
-  return lines.join( QChar( '\n' ) ).trimmed();
-}
-
-OGRLayerH QgsOgrProviderUtils::setSubsetString( OGRLayerH layer, GDALDatasetH ds, QTextCodec *encoding, const QString &subsetString )
-{
-  const QString cleanedSubsetString {cleanSubsetString( subsetString )};
+  const QString cleanedSubsetString {lines.join( QChar( '\n' ) ).trimmed() };
 
   QByteArray layerName = OGR_FD_GetName( OGR_L_GetLayerDefn( layer ) );
   GDALDriverH driver = GDALGetDatasetDriver( ds );
@@ -1411,8 +1383,7 @@ OGRLayerH QgsOgrProviderUtils::setSubsetString( OGRLayerH layer, GDALDatasetH ds
     }
   }
   OGRLayerH subsetLayer = nullptr;
-  if ( cleanedSubsetString.startsWith( QLatin1String( "SELECT " ), Qt::CaseInsensitive ) ||
-       cleanedSubsetString.startsWith( QLatin1String( "WITH " ), Qt::CaseInsensitive ) )
+  if ( cleanedSubsetString.startsWith( QLatin1String( "SELECT " ), Qt::CaseInsensitive ) )
   {
     QByteArray sql = encoding->fromUnicode( cleanedSubsetString );
 
@@ -1456,7 +1427,6 @@ static GDALDatasetH OpenHelper( const QString &dsName,
     papszOpenOptions = CSLAddString( papszOpenOptions,
                                      option.toUtf8().constData() );
   }
-
   GDALDatasetH hDS = QgsOgrProviderUtils::GDALOpenWrapper(
                        QgsOgrProviderUtils::expandAuthConfig( dsName ).toUtf8().constData(), updateMode, papszOpenOptions, nullptr );
   CSLDestroy( papszOpenOptions );
@@ -1496,7 +1466,7 @@ QgsOgrDatasetSharedPtr QgsOgrProviderUtils::getAlreadyOpenedDataset( const QStri
       auto &datasetList = iter.value();
       for ( const auto &ds : datasetList )
       {
-        Q_ASSERT( sDeferDatasetClosingCounter > 0 || ds->refCount > 0 );
+        Q_ASSERT( ds->refCount > 0 );
         return QgsOgrDataset::create( ident, ds );
       }
     }
@@ -1521,7 +1491,7 @@ QgsOgrLayerUniquePtr QgsOgrProviderUtils::getLayer( const QString &dsName,
       {
         if ( !ds->canBeShared )
           continue;
-        Q_ASSERT( sDeferDatasetClosingCounter > 0 || ds->refCount > 0 );
+        Q_ASSERT( ds->refCount > 0 );
 
         QString layerName;
         OGRLayerH hLayer;
@@ -1654,7 +1624,7 @@ QgsOgrLayerUniquePtr QgsOgrProviderUtils::getLayer( const QString &dsName,
       {
         if ( !ds->canBeShared )
           continue;
-        Q_ASSERT( sDeferDatasetClosingCounter > 0 || ds->refCount > 0 );
+        Q_ASSERT( ds->refCount > 0 );
 
         auto iter2 = ds->setLayers.find( layerName );
         if ( iter2 == ds->setLayers.end() )
@@ -1710,295 +1680,259 @@ void QgsOgrProviderUtils::invalidateCachedLastModifiedDate( const QString &dsNam
   }
 }
 
-OGRwkbGeometryType QgsOgrProviderUtils::ogrTypeFromQgisType( Qgis::WkbType type )
+OGRwkbGeometryType QgsOgrProviderUtils::ogrTypeFromQgisType( QgsWkbTypes::Type type )
 {
   switch ( type )
   {
-    case Qgis::WkbType::Point:
+    case QgsWkbTypes::Point:
       return wkbPoint;
-    case Qgis::WkbType::Point25D:
-    case Qgis::WkbType::PointZ:
+    case QgsWkbTypes::Point25D:
+    case QgsWkbTypes::PointZ:
       return wkbPoint25D;
-    case Qgis::WkbType::PointM:
+    case QgsWkbTypes::PointM:
       return wkbPointM;
-    case Qgis::WkbType::PointZM:
+    case QgsWkbTypes::PointZM:
       return wkbPointZM;
 
-    case Qgis::WkbType::LineString:
+    case QgsWkbTypes::LineString:
       return wkbLineString;
-    case Qgis::WkbType::LineString25D:
-    case Qgis::WkbType::LineStringZ:
+    case QgsWkbTypes::LineString25D:
+    case QgsWkbTypes::LineStringZ:
       return wkbLineString25D;
-    case Qgis::WkbType::LineStringM:
+    case QgsWkbTypes::LineStringM:
       return wkbLineStringM;
-    case Qgis::WkbType::LineStringZM:
+    case QgsWkbTypes::LineStringZM:
       return wkbLineStringZM;
 
-    case Qgis::WkbType::Polygon:
+    case QgsWkbTypes::Polygon:
       return wkbPolygon;
-    case Qgis::WkbType::Polygon25D:
-    case Qgis::WkbType::PolygonZ:
+    case QgsWkbTypes::Polygon25D:
+    case QgsWkbTypes::PolygonZ:
       return wkbPolygon25D;
-    case Qgis::WkbType::PolygonM:
+    case QgsWkbTypes::PolygonM:
       return wkbPolygonM;
-    case Qgis::WkbType::PolygonZM:
+    case QgsWkbTypes::PolygonZM:
       return wkbPolygonZM;
 
-    case Qgis::WkbType::MultiPoint:
+    case QgsWkbTypes::MultiPoint:
       return wkbMultiPoint;
-    case Qgis::WkbType::MultiPoint25D:
-    case Qgis::WkbType::MultiPointZ:
+    case QgsWkbTypes::MultiPoint25D:
+    case QgsWkbTypes::MultiPointZ:
       return wkbMultiPoint25D;
-    case Qgis::WkbType::MultiPointM:
+    case QgsWkbTypes::MultiPointM:
       return wkbMultiPointM;
-    case Qgis::WkbType::MultiPointZM:
+    case QgsWkbTypes::MultiPointZM:
       return wkbMultiPointZM;
 
-    case Qgis::WkbType::MultiLineString:
+    case QgsWkbTypes::MultiLineString:
       return wkbMultiLineString;
-    case Qgis::WkbType::MultiLineString25D:
-    case Qgis::WkbType::MultiLineStringZ:
+    case QgsWkbTypes::MultiLineString25D:
+    case QgsWkbTypes::MultiLineStringZ:
       return wkbMultiLineString25D;
-    case Qgis::WkbType::MultiLineStringM:
+    case QgsWkbTypes::MultiLineStringM:
       return wkbMultiLineStringM;
-    case Qgis::WkbType::MultiLineStringZM:
+    case QgsWkbTypes::MultiLineStringZM:
       return wkbMultiLineStringZM;
 
-    case Qgis::WkbType::MultiPolygon:
+    case QgsWkbTypes::MultiPolygon:
       return wkbMultiPolygon;
-    case Qgis::WkbType::MultiPolygon25D:
-    case Qgis::WkbType::MultiPolygonZ:
+    case QgsWkbTypes::MultiPolygon25D:
+    case QgsWkbTypes::MultiPolygonZ:
       return wkbMultiPolygon25D;
-    case Qgis::WkbType::MultiPolygonM:
+    case QgsWkbTypes::MultiPolygonM:
       return wkbMultiPolygonM;
-    case Qgis::WkbType::MultiPolygonZM:
+    case QgsWkbTypes::MultiPolygonZM:
       return wkbMultiPolygonZM;
 
-    case Qgis::WkbType::CircularString:
+    case QgsWkbTypes::CircularString:
       return wkbCircularString;
-    case Qgis::WkbType::CircularStringZ:
+    case QgsWkbTypes::CircularStringZ:
       return wkbCircularStringZ;
-    case Qgis::WkbType::CircularStringM:
+    case QgsWkbTypes::CircularStringM:
       return wkbCircularStringM;
-    case Qgis::WkbType::CircularStringZM:
+    case QgsWkbTypes::CircularStringZM:
       return wkbCircularStringZM;
 
-    case Qgis::WkbType::CompoundCurve:
+    case QgsWkbTypes::CompoundCurve:
       return wkbCompoundCurve;
-    case Qgis::WkbType::CompoundCurveZ:
+    case QgsWkbTypes::CompoundCurveZ:
       return wkbCompoundCurveZ;
-    case Qgis::WkbType::CompoundCurveM:
+    case QgsWkbTypes::CompoundCurveM:
       return wkbCompoundCurveM;
-    case Qgis::WkbType::CompoundCurveZM:
+    case QgsWkbTypes::CompoundCurveZM:
       return wkbCompoundCurveZM;
 
-    case Qgis::WkbType::CurvePolygon:
+    case QgsWkbTypes::CurvePolygon:
       return wkbCurvePolygon;
-    case Qgis::WkbType::CurvePolygonZ:
+    case QgsWkbTypes::CurvePolygonZ:
       return wkbCurvePolygonZ;
-    case Qgis::WkbType::CurvePolygonM:
+    case QgsWkbTypes::CurvePolygonM:
       return wkbCurvePolygonM;
-    case Qgis::WkbType::CurvePolygonZM:
+    case QgsWkbTypes::CurvePolygonZM:
       return wkbCurvePolygonZM;
 
-    case Qgis::WkbType::MultiCurve:
+    case QgsWkbTypes::MultiCurve:
       return wkbMultiCurve;
-    case Qgis::WkbType::MultiCurveZ:
+    case QgsWkbTypes::MultiCurveZ:
       return wkbMultiCurveZ;
-    case Qgis::WkbType::MultiCurveM:
+    case QgsWkbTypes::MultiCurveM:
       return wkbMultiCurveM;
-    case Qgis::WkbType::MultiCurveZM:
+    case QgsWkbTypes::MultiCurveZM:
       return wkbMultiCurveZM;
 
-    case Qgis::WkbType::MultiSurface:
+    case QgsWkbTypes::MultiSurface:
       return wkbMultiSurface;
-    case Qgis::WkbType::MultiSurfaceZ:
+    case QgsWkbTypes::MultiSurfaceZ:
       return wkbMultiSurfaceZ;
-    case Qgis::WkbType::MultiSurfaceM:
+    case QgsWkbTypes::MultiSurfaceM:
       return wkbMultiSurfaceM;
-    case Qgis::WkbType::MultiSurfaceZM:
+    case QgsWkbTypes::MultiSurfaceZM:
       return wkbMultiSurfaceZM;
 
-    case Qgis::WkbType::Triangle:
+    case QgsWkbTypes::Triangle:
       return wkbTriangle;
-    case Qgis::WkbType::TriangleZ:
+    case QgsWkbTypes::TriangleZ:
       return wkbTriangleZ;
-    case Qgis::WkbType::TriangleM:
+    case QgsWkbTypes::TriangleM:
       return wkbTriangleM;
-    case Qgis::WkbType::TriangleZM:
+    case QgsWkbTypes::TriangleZM:
       return wkbTriangleZM;
 
-    case Qgis::WkbType::PolyhedralSurface:
-      return wkbPolyhedralSurface;
-    case Qgis::WkbType::PolyhedralSurfaceZ:
-      return wkbPolyhedralSurfaceZ;
-    case Qgis::WkbType::PolyhedralSurfaceM:
-      return wkbPolyhedralSurfaceM;
-    case Qgis::WkbType::PolyhedralSurfaceZM:
-      return wkbPolyhedralSurfaceZM;
-
-    case Qgis::WkbType::TIN:
-      return wkbTIN;
-    case Qgis::WkbType::TINZ:
-      return wkbTINZ;
-    case Qgis::WkbType::TINM:
-      return wkbTINM;
-    case Qgis::WkbType::TINZM:
-      return wkbTINZM;
-
-    case Qgis::WkbType::NoGeometry:
+    case QgsWkbTypes::NoGeometry:
       return wkbNone;
 
-    case Qgis::WkbType::GeometryCollection:
+    case QgsWkbTypes::GeometryCollection:
       return wkbGeometryCollection;
-    case Qgis::WkbType::GeometryCollectionZ:
+    case QgsWkbTypes::GeometryCollectionZ:
       return wkbGeometryCollection25D;
-    case Qgis::WkbType::GeometryCollectionM:
+    case QgsWkbTypes::GeometryCollectionM:
       return wkbGeometryCollectionM;
-    case Qgis::WkbType::GeometryCollectionZM:
+    case QgsWkbTypes::GeometryCollectionZM:
       return wkbGeometryCollectionZM;
 
-    case Qgis::WkbType::Unknown:
+    case QgsWkbTypes::Unknown:
       return wkbUnknown;
   }
   // no warnings!
   return wkbUnknown;
 }
 
-Qgis::WkbType QgsOgrProviderUtils::qgisTypeFromOgrType( OGRwkbGeometryType type )
+QgsWkbTypes::Type QgsOgrProviderUtils::qgisTypeFromOgrType( OGRwkbGeometryType type )
 {
   switch ( type )
   {
     case wkbUnknown:
-      return Qgis::WkbType::Unknown;
+      return QgsWkbTypes::Unknown;
     case wkbPoint:
-      return Qgis::WkbType::Point;
+      return QgsWkbTypes::Point;
     case wkbLineString:
-      return Qgis::WkbType::LineString;
+      return QgsWkbTypes::LineString;
     case wkbPolygon:
-      return Qgis::WkbType::Polygon;
+      return QgsWkbTypes::Polygon;
     case wkbMultiPoint:
-      return Qgis::WkbType::MultiPoint;
+      return QgsWkbTypes::MultiPoint;
     case wkbMultiLineString:
-      return Qgis::WkbType::MultiLineString;
+      return QgsWkbTypes::MultiLineString;
     case wkbMultiPolygon:
-      return Qgis::WkbType::MultiPolygon;
+      return QgsWkbTypes::MultiPolygon;
     case wkbGeometryCollection:
-      return Qgis::WkbType::GeometryCollection;
+      return QgsWkbTypes::GeometryCollection;
     case wkbCircularString:
-      return Qgis::WkbType::CircularString;
+      return QgsWkbTypes::CircularString;
     case wkbCompoundCurve:
-      return Qgis::WkbType::CompoundCurve;
+      return QgsWkbTypes::CompoundCurve;
     case wkbCurvePolygon:
-      return Qgis::WkbType::CurvePolygon;
+      return QgsWkbTypes::CurvePolygon;
     case wkbMultiCurve:
-      return Qgis::WkbType::MultiCurve;
+      return QgsWkbTypes::MultiCurve;
     case wkbMultiSurface:
-      return Qgis::WkbType::MultiSurface;
+      return QgsWkbTypes::MultiSurface;
     case wkbTriangle:
-      return Qgis::WkbType::Triangle;
+      return QgsWkbTypes::Triangle;
     case wkbNone:
-      return Qgis::WkbType::NoGeometry;
+      return QgsWkbTypes::NoGeometry;
 
     case wkbCircularStringZ:
-      return Qgis::WkbType::CircularStringZ;
+      return QgsWkbTypes::CircularStringZ;
     case wkbCompoundCurveZ:
-      return Qgis::WkbType::CompoundCurveZ;
+      return QgsWkbTypes::CompoundCurveZ;
     case wkbCurvePolygonZ:
-      return Qgis::WkbType::PolygonZ;
+      return QgsWkbTypes::PolygonZ;
     case wkbMultiCurveZ:
-      return Qgis::WkbType::MultiCurveZ;
+      return QgsWkbTypes::MultiCurveZ;
     case wkbMultiSurfaceZ:
-      return Qgis::WkbType::MultiSurfaceZ;
+      return QgsWkbTypes::MultiSurfaceZ;
     case wkbTriangleZ:
-      return Qgis::WkbType::TriangleZ;
+      return QgsWkbTypes::TriangleZ;
 
     case wkbPointM:
-      return Qgis::WkbType::PointM;
+      return QgsWkbTypes::PointM;
     case wkbLineStringM:
-      return Qgis::WkbType::LineStringM;
+      return QgsWkbTypes::LineStringM;
     case wkbPolygonM:
-      return Qgis::WkbType::PolygonM;
+      return QgsWkbTypes::PolygonM;
     case wkbMultiPointM:
-      return Qgis::WkbType::PointM;
+      return QgsWkbTypes::PointM;
     case wkbMultiLineStringM:
-      return Qgis::WkbType::LineStringM;
+      return QgsWkbTypes::LineStringM;
     case wkbMultiPolygonM:
-      return Qgis::WkbType::PolygonM;
+      return QgsWkbTypes::PolygonM;
     case wkbGeometryCollectionM:
-      return Qgis::WkbType::GeometryCollectionM;
+      return QgsWkbTypes::GeometryCollectionM;
     case wkbCircularStringM:
-      return Qgis::WkbType::CircularStringM;
+      return QgsWkbTypes::CircularStringM;
     case wkbCompoundCurveM:
-      return Qgis::WkbType::CompoundCurveM;
+      return QgsWkbTypes::CompoundCurveM;
     case wkbCurvePolygonM:
-      return Qgis::WkbType::PolygonM;
+      return QgsWkbTypes::PolygonM;
     case wkbMultiCurveM:
-      return Qgis::WkbType::MultiCurveM;
+      return QgsWkbTypes::MultiCurveM;
     case wkbMultiSurfaceM:
-      return Qgis::WkbType::MultiSurfaceM;
+      return QgsWkbTypes::MultiSurfaceM;
     case wkbTriangleM:
-      return Qgis::WkbType::TriangleM;
+      return QgsWkbTypes::TriangleM;
 
     case wkbPointZM:
-      return Qgis::WkbType::PointZM;
+      return QgsWkbTypes::PointZM;
     case wkbLineStringZM:
-      return Qgis::WkbType::LineStringZM;
+      return QgsWkbTypes::LineStringZM;
     case wkbPolygonZM:
-      return Qgis::WkbType::PolygonZM;
+      return QgsWkbTypes::PolygonZM;
     case wkbMultiPointZM:
-      return Qgis::WkbType::MultiPointZM;
+      return QgsWkbTypes::MultiPointZM;
     case wkbMultiLineStringZM:
-      return Qgis::WkbType::MultiLineStringZM;
+      return QgsWkbTypes::MultiLineStringZM;
     case wkbMultiPolygonZM:
-      return Qgis::WkbType::MultiPolygonZM;
+      return QgsWkbTypes::MultiPolygonZM;
     case wkbGeometryCollectionZM:
-      return Qgis::WkbType::GeometryCollectionZM;
+      return QgsWkbTypes::GeometryCollectionZM;
     case wkbCircularStringZM:
-      return Qgis::WkbType::CircularStringZM;
+      return QgsWkbTypes::CircularStringZM;
     case wkbCompoundCurveZM:
-      return Qgis::WkbType::CompoundCurveZM;
+      return QgsWkbTypes::CompoundCurveZM;
     case wkbCurvePolygonZM:
-      return Qgis::WkbType::CurvePolygonZM;
+      return QgsWkbTypes::CurvePolygonZM;
     case wkbMultiCurveZM:
-      return Qgis::WkbType::MultiCurveZM;
+      return QgsWkbTypes::MultiCurveZM;
     case wkbMultiSurfaceZM:
-      return Qgis::WkbType::MultiSurfaceZM;
+      return QgsWkbTypes::MultiSurfaceZM;
     case wkbTriangleZM:
-      return Qgis::WkbType::TriangleZM;
-
-    case wkbPolyhedralSurface:
-      return Qgis::WkbType::PolyhedralSurface;
-    case wkbPolyhedralSurfaceZ:
-      return Qgis::WkbType::PolyhedralSurfaceZ;
-    case wkbPolyhedralSurfaceM:
-      return Qgis::WkbType::PolyhedralSurfaceM;
-    case wkbPolyhedralSurfaceZM:
-      return Qgis::WkbType::PolyhedralSurfaceZM;
-
-    case wkbTIN:
-      return Qgis::WkbType::TIN;
-    case wkbTINZ:
-      return Qgis::WkbType::TINZ;
-    case wkbTINM:
-      return Qgis::WkbType::TINM;
-    case wkbTINZM:
-      return Qgis::WkbType::TINZM;
+      return QgsWkbTypes::TriangleZM;
 
     case wkbPoint25D:
-      return Qgis::WkbType::Point25D;
+      return QgsWkbTypes::Point25D;
     case wkbLineString25D:
-      return Qgis::WkbType::LineString25D;
+      return QgsWkbTypes::LineString25D;
     case wkbPolygon25D:
-      return Qgis::WkbType::Polygon25D;
+      return QgsWkbTypes::Polygon25D;
     case wkbMultiPoint25D:
-      return Qgis::WkbType::MultiPoint25D;
+      return QgsWkbTypes::MultiPoint25D;
     case wkbMultiLineString25D:
-      return Qgis::WkbType::MultiLineString25D;
+      return QgsWkbTypes::MultiLineString25D;
     case wkbMultiPolygon25D:
-      return Qgis::WkbType::MultiPolygon25D;
+      return QgsWkbTypes::MultiPolygon25D;
     case wkbGeometryCollection25D:
-      return Qgis::WkbType::GeometryCollectionZ;
+      return QgsWkbTypes::GeometryCollectionZ;
 
     case wkbCurve:
     case wkbSurface:
@@ -2008,12 +1942,20 @@ Qgis::WkbType QgsOgrProviderUtils::qgisTypeFromOgrType( OGRwkbGeometryType type 
     case wkbSurfaceM:
     case wkbCurveZM:
     case wkbSurfaceZM:
-      return Qgis::WkbType::Unknown; // abstract types - no direct mapping to QGIS types
+      return QgsWkbTypes::Unknown; // abstract types - no direct mapping to QGIS types
 
     case wkbLinearRing:
-      return Qgis::WkbType::Unknown; // unsupported types
+    case wkbTIN:
+    case wkbTINZ:
+    case wkbTINM:
+    case wkbTINZM:
+    case wkbPolyhedralSurface:
+    case wkbPolyhedralSurfaceZ:
+    case wkbPolyhedralSurfaceM:
+    case wkbPolyhedralSurfaceZM:
+      return QgsWkbTypes::Unknown; // unsupported types
   }
-  return Qgis::WkbType::Unknown;
+  return QgsWkbTypes::Unknown;
 }
 
 OGRwkbGeometryType QgsOgrProviderUtils::ogrWkbGeometryTypeFromName( const QString &typeName )
@@ -2069,7 +2011,7 @@ OGRwkbGeometryType QgsOgrProviderUtils::ogrWkbGeometryTypeFromName( const QStrin
   else if ( typeName == QLatin1String( "MultiSurfaceZ" ) )
     return wkbMultiSurfaceZ;
 
-  QgsDebugError( QStringLiteral( "unknown geometry type: %1" ).arg( typeName ) );
+  QgsDebugMsg( QStringLiteral( "unknown geometry type: %1" ).arg( typeName ) );
   return wkbUnknown;
 }
 
@@ -2213,13 +2155,6 @@ QString QgsOgrProviderUtils::ogrWkbGeometryTypeName( OGRwkbGeometryType type )
   return geom;
 }
 
-static bool isMultiPatchAsGeomCollectionZOfTinZ( const QString &driverName )
-{
-  return driverName == QLatin1String( "ESRI Shapefile" ) ||
-         driverName == QLatin1String( "OpenFileGDB" ) ||
-         driverName == QLatin1String( "FileGDB" );
-}
-
 OGRwkbGeometryType QgsOgrProviderUtils::resolveGeometryTypeForFeature( OGRFeatureH feature, const QString &driverName )
 {
   if ( OGRGeometryH geom = OGR_F_GetGeometryRef( feature ) )
@@ -2228,7 +2163,7 @@ OGRwkbGeometryType QgsOgrProviderUtils::resolveGeometryTypeForFeature( OGRFeatur
 
     // ESRI MultiPatch can be reported as GeometryCollectionZ of TINZ
     if ( wkbFlatten( gType ) == wkbGeometryCollection &&
-         isMultiPatchAsGeomCollectionZOfTinZ( driverName ) &&
+         ( driverName == QLatin1String( "ESRI Shapefile" ) || driverName == QLatin1String( "OpenFileGDB" ) || driverName == QLatin1String( "FileGDB" ) ) &&
          OGR_G_GetGeometryCount( geom ) >= 1 &&
          wkbFlatten( OGR_G_GetGeometryType( OGR_G_GetGeometryRef( geom, 0 ) ) ) == wkbTIN )
     {
@@ -2246,7 +2181,7 @@ QString QgsOgrProviderUtils::expandAuthConfig( const QString &dsName )
 {
   QString uri( dsName );
   // Check for authcfg
-  const thread_local QRegularExpression authcfgRe( " authcfg='([^']+)'" );
+  QRegularExpression authcfgRe( " authcfg='([^']+)'" );
   QRegularExpressionMatch match;
   if ( uri.contains( authcfgRe, &match ) )
   {
@@ -2322,7 +2257,7 @@ QgsOgrLayerUniquePtr QgsOgrProviderUtils::getLayer( const QString &dsName,
 
   if ( checkModificationDateAgainstCache && !canUseOpenedDatasets( dsName ) )
   {
-    QgsDebugMsgLevel( QStringLiteral( "Cannot reuse existing opened dataset(s) %1 on %2 since it has been modified" ).arg( layerName, dsName ), 2 );
+    QgsDebugMsg( QStringLiteral( "Cannot reuse existing opened dataset(s) on %1 since it has been modified" ).arg( dsName ) );
     invalidateCachedDatasets( dsName );
   }
 
@@ -2558,8 +2493,7 @@ QList< QgsProviderSublayerDetails > QgsOgrProviderUtils::querySubLayerList( int 
   }
 
   Qgis::SublayerFlags layerFlags;
-  const thread_local QRegularExpression sqliteSystemTableRegEx( QStringLiteral( "idx_.*_geom(etry)?($|_.*)" ), QRegularExpression::PatternOption::CaseInsensitiveOption );
-  if ( ( driverName == QLatin1String( "SQLite" ) && layerName.contains( sqliteSystemTableRegEx ) )
+  if ( ( driverName == QLatin1String( "SQLite" ) && layerName.contains( QRegularExpression( QStringLiteral( "idx_.*_geom(etry)?($|_.*)" ), QRegularExpression::PatternOption::CaseInsensitiveOption ) ) )
        || privateLayerNames.contains( layerName ) )
   {
     layerFlags |= Qgis::SublayerFlag::SystemTable;
@@ -2585,7 +2519,7 @@ QList< QgsProviderSublayerDetails > QgsOgrProviderUtils::querySubLayerList( int 
   // TODO: add support for multiple
   QString geometryColumnName;
   OGRwkbGeometryType layerGeomType = wkbUnknown;
-  const bool slowGeomTypeRetrieval = driverName == QLatin1String( "OAPIF" ) || driverName == QLatin1String( "WFS3" ) ;
+  const bool slowGeomTypeRetrieval = driverName == QLatin1String( "OAPIF" ) || driverName == QLatin1String( "WFS3" );
   if ( !slowGeomTypeRetrieval )
   {
     QgsOgrFeatureDefn &fdef = layer->GetLayerDefn();
@@ -2653,85 +2587,30 @@ QList< QgsProviderSublayerDetails > QgsOgrProviderUtils::querySubLayerList( int 
     QgsDebugMsgLevel( QStringLiteral( "Unknown geometry type, count features for each geometry type" ), 2 );
     // Add virtual sublayers for supported geometry types if layer type is unknown
     // Count features for geometry types
-    QMap<OGRwkbGeometryType, int64_t> fCount;
+    QMap<OGRwkbGeometryType, int> fCount;
     QSet<OGRwkbGeometryType> fHasZ;
     // TODO: avoid reading attributes, setRelevantFields cannot be called here because it is not constant
 
+    layer->ResetReading();
+    gdal::ogr_feature_unique_ptr fet;
     long long layerFeatureCount = 0;
-    const bool limitScanToOneFeature = driverName == QLatin1String( "OGCAPI" );
-
-#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,6,0)
-    if ( !limitScanToOneFeature )
+    while ( fet.reset( layer->GetNextFeature() ), fet )
     {
-      int nEntryCount = 0;
-      OGRGeometryTypeCounter *pasCounter = nullptr;
+      ++layerFeatureCount;
+      OGRwkbGeometryType gType =  resolveGeometryTypeForFeature( fet.get(), driverName );
+      if ( gType != wkbNone )
       {
-        QRecursiveMutex *mutex;
-        OGRLayerH hLayer = layer->getHandleAndMutex( mutex );
-        QMutexLocker locker( mutex );
+        bool hasZ = wkbHasZ( gType );
+        gType = QgsOgrProviderUtils::ogrWkbSingleFlatten( gType );
+        fCount[gType] = fCount.value( gType ) + 1;
+        if ( hasZ )
+          fHasZ.insert( gType );
+      }
 
-        constexpr int iGeomField = 0;
-        GDALProgressFunc pfnProgress = nullptr;
-        if ( feedback )
-        {
-          pfnProgress = []( double, const char *, void *pData )
-          {
-            return static_cast<QgsFeedback *>( pData )->isCanceled() ? 0 : 1;
-          };
-        }
-        int flags = 0;
-        if ( isMultiPatchAsGeomCollectionZOfTinZ( driverName ) )
-          flags |= OGR_GGT_GEOMCOLLECTIONZ_TINZ;
-        pasCounter = OGR_L_GetGeometryTypes(
-                       hLayer, iGeomField, flags, &nEntryCount,
-                       pfnProgress, feedback );
-      }
-      if ( pasCounter )
-      {
-        for ( int i = 0; i < nEntryCount; ++i )
-        {
-          layerFeatureCount += pasCounter[i].nCount;
-          OGRwkbGeometryType gType = pasCounter[i].eGeomType;
-          if ( gType != wkbNone )
-          {
-            if ( gType == wkbTINZ )
-              gType = wkbMultiPolygon25D;
-            bool hasZ = wkbHasZ( gType );
-            gType = QgsOgrProviderUtils::ogrWkbSingleFlatten( gType );
-            fCount[gType] = fCount.value( gType ) + pasCounter[i].nCount;
-            if ( hasZ )
-              fHasZ.insert( gType );
-          }
-        }
-        CPLFree( pasCounter );
-      }
+      if ( feedback && feedback->isCanceled() )
+        break;
     }
-    else
-#endif
-    {
-      layer->ResetReading();
-      gdal::ogr_feature_unique_ptr fet;
-      while ( fet.reset( layer->GetNextFeature() ), fet )
-      {
-        ++layerFeatureCount;
-        OGRwkbGeometryType gType =  resolveGeometryTypeForFeature( fet.get(), driverName );
-        if ( gType != wkbNone )
-        {
-          bool hasZ = wkbHasZ( gType );
-          gType = QgsOgrProviderUtils::ogrWkbSingleFlatten( gType );
-          fCount[gType] = fCount.value( gType ) + 1;
-          if ( hasZ )
-            fHasZ.insert( gType );
-        }
-
-        if ( limitScanToOneFeature )
-          break;
-        if ( feedback && feedback->isCanceled() )
-          break;
-      }
-      layer->ResetReading();
-    }
-
+    layer->ResetReading();
     if ( fCount.isEmpty() )
     {
       if ( layerFeatureCount > 0 )
@@ -2777,7 +2656,7 @@ QList< QgsProviderSublayerDetails > QgsOgrProviderUtils::querySubLayerList( int 
     res.reserve( fCount.size() );
 
     bool bIs25D = wkbHasZ( layerGeomType );
-    QMap<OGRwkbGeometryType, int64_t>::const_iterator countIt = fCount.constBegin();
+    QMap<OGRwkbGeometryType, int>::const_iterator countIt = fCount.constBegin();
     for ( ; countIt != fCount.constEnd(); ++countIt )
     {
       if ( feedback && feedback->isCanceled() )
@@ -2803,8 +2682,7 @@ QList< QgsProviderSublayerDetails > QgsOgrProviderUtils::querySubLayerList( int 
 
       const OGRwkbGeometryType eOGRGeomType = ( bIs25D || fHasZ.contains( countIt.key() ) ) ? wkbSetZ( countIt.key() ) : countIt.key();
 
-      if ( !limitScanToOneFeature )
-        details.setFeatureCount( fCount.value( countIt.key() ) );
+      details.setFeatureCount( fCount.value( countIt.key() ) );
       details.setWkbType( QgsOgrUtils::ogrGeometryTypeToQgsWkbType( eOGRGeomType ) );
       details.setGeometryColumnName( geometryColumnName );
       details.setDescription( longDescription );
@@ -2815,14 +2693,13 @@ QList< QgsProviderSublayerDetails > QgsOgrProviderUtils::querySubLayerList( int 
       // if we had to iterate through the table to find geometry types, make sure to include these
       // in the uri for the sublayers (otherwise we'll be forced to re-do this iteration whenever
       // the uri from the sublayer is used to construct an actual vector layer)
-      if ( details.wkbType() != Qgis::WkbType::Unknown )
+      if ( details.wkbType() != QgsWkbTypes::Unknown )
       {
         parts.insert( QStringLiteral( "geometryType" ),
                       ogrWkbGeometryTypeName( eOGRGeomType ) );
         if ( fCount.size() == 1 )
         {
-          if ( !limitScanToOneFeature )
-            details.setFeatureCount( layerFeatureCount );
+          details.setFeatureCount( layerFeatureCount );
           parts.insert( QStringLiteral( "uniqueGeometryType" ), QStringLiteral( "yes" ) );
         }
       }
@@ -3165,151 +3042,11 @@ GIntBig QgsOgrLayer::GetTotalFeatureCountFromMetaData() const
   return -1;
 }
 
-OGRErr QgsOgrLayer::isSpatialiteEnabled()
-{
-  OGRErr err = OGRERR_NONE;
-  // if sqlite, check if we support spatialite
-  QString driverName = GDALGetDriverShortName( GDALGetDatasetDriver( ds->hDS ) );
-  if ( driverName == QLatin1String( "SQLite" ) )
-  {
-    CPLPushErrorHandler( CPLQuietErrorHandler );
-    QgsOgrLayerUniquePtr l = ExecuteSQL( "select * from sqlite_master where type='table' and name='spatialite_history'" );
-    CPLPopErrorHandler();
-    if ( l )
-    {
-      gdal::ogr_feature_unique_ptr f( l->GetNextFeature() );
-      if ( f )
-      {
-        QgsDebugMsgLevel( QStringLiteral( "Sqlite layer has spatialite extension!" ), 3 );
-      }
-      else
-      {
-        QgsDebugMsgLevel( QStringLiteral( "Sqlite layer does NOT have spatialite extension!" ), 3 );
-        err = OGRERR_UNSUPPORTED_OPERATION;
-      }
-    }
-    else
-    {
-      QgsDebugMsgLevel( QStringLiteral( "Unable to read sqlite_master from Sqlite layer!" ), 3 );
-      err = OGRERR_UNSUPPORTED_OPERATION;
-    }
-  }
-  else
-  {
-    // not a sqlite layer
-    err = OGRERR_NONE;
-  }
-  return err;
-}
-
 OGRErr QgsOgrLayer::GetExtent( OGREnvelope *psExtent, bool bForce )
 {
   QMutexLocker locker( &ds->mutex );
   return OGR_L_GetExtent( hLayer, psExtent, bForce );
 }
-
-OGRErr QgsOgrLayer::GetExtent3D( OGREnvelope3D *psExtent3D, bool bForce )
-{
-  QMutexLocker locker( &ds->mutex );
-#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,9,0)
-  return OGR_L_GetExtent3D( hLayer, /* iGeomField = */ 0, psExtent3D, bForce );
-#else
-
-  QString driverName = GDALGetDriverShortName( GDALGetDatasetDriver( ds->hDS ) );
-  OGRErr err = OGRERR_UNSUPPORTED_OPERATION;
-  const char *geomCol = OGR_L_GetGeometryColumn( hLayer );
-  if ( geomCol && strlen( geomCol ) > 0 )
-  {
-    QgsDebugMsgLevel( QStringLiteral( "WITH geomCol: %1" ).arg( geomCol ), 3 );
-
-    psExtent3D->MinZ = std::numeric_limits<double>::quiet_NaN();
-    psExtent3D->MaxZ = std::numeric_limits<double>::quiet_NaN();
-
-    err = OGR_L_GetExtent( hLayer, psExtent3D, bForce );
-    if ( err == OGRERR_NONE )
-      err = isSpatialiteEnabled();
-
-    if ( err == OGRERR_NONE )
-    {
-      // try to retrieve minZ/maxZ
-      err = OGRERR_UNSUPPORTED_OPERATION;
-      ResetReading();
-      QByteArray geomColQuoted = QgsOgrProviderUtils::quotedIdentifier( geomCol, driverName );
-      QByteArray sql = "SELECT MIN(ST_MinZ("
-                       + geomColQuoted
-                       + ")), MAX(ST_MaxZ("
-                       + geomColQuoted
-                       + ")) FROM "
-                       + QgsOgrProviderUtils::quotedIdentifier( name(), driverName );
-      QgsDebugMsgLevel( QStringLiteral( "sql: %1" ).arg( sql.toStdString().c_str() ), 3 );
-
-      CPLPushErrorHandler( CPLQuietErrorHandler );
-      QgsOgrLayerUniquePtr l = ExecuteSQL( sql );
-      CPLPopErrorHandler();
-      if ( l )
-      {
-        gdal::ogr_feature_unique_ptr f( l->GetNextFeature() );
-        if ( f )
-        {
-          psExtent3D->MinZ = OGR_F_GetFieldAsDouble( f.get(), 0 );
-          psExtent3D->MaxZ = OGR_F_GetFieldAsDouble( f.get(), 1 );
-          QgsDebugMsgLevel( QStringLiteral( "done with Z! %1/%2" ).arg( psExtent3D->MinZ ).arg( psExtent3D->MaxZ ), 3 );
-          err = OGRERR_NONE;
-        }
-        ResetReading();
-      }
-    }
-  }
-
-  if ( err != OGRERR_NONE )
-  {
-    // previous attempts failed, try slow version
-    QgsDebugMsgLevel( QStringLiteral( "Will computeExtent3DSlowly!" ), 3 );
-    err = computeExtent3DSlowly( psExtent3D );
-  }
-
-  return err;
-#endif
-}
-
-OGRErr QgsOgrLayer::computeExtent3DSlowly( OGREnvelope3D *extent )
-{
-  OGRErr err = OGRERR_NONE;
-  gdal::ogr_feature_unique_ptr f;
-
-  extent->MinX = std::numeric_limits<double>::quiet_NaN();
-  extent->MaxX = std::numeric_limits<double>::quiet_NaN();
-  extent->MinY = std::numeric_limits<double>::quiet_NaN();
-  extent->MaxY = std::numeric_limits<double>::quiet_NaN();
-  extent->MinZ = std::numeric_limits<double>::quiet_NaN();
-  extent->MaxZ = std::numeric_limits<double>::quiet_NaN();
-
-  ResetReading();
-  while ( f.reset( GetNextFeature() ), ( err == OGRERR_NONE && f ) )
-  {
-    OGRGeometryH g = OGR_F_GetGeometryRef( f.get() );
-    if ( g && !OGR_G_IsEmpty( g ) )
-    {
-      OGREnvelope3D env;
-      OGR_G_GetEnvelope3D( g, &env );
-
-      extent->MinX = std::isnan( extent->MinX ) ? env.MinX : std::min( extent->MinX, env.MinX );
-      extent->MinY = std::isnan( extent->MinY ) ? env.MinY : std::min( extent->MinY, env.MinY );
-      extent->MaxX = std::isnan( extent->MaxX ) ? env.MaxX : std::max( extent->MaxX, env.MaxX );
-      extent->MaxY = std::isnan( extent->MaxY ) ? env.MaxY : std::max( extent->MaxY, env.MaxY );
-      if ( OGR_G_Is3D( g ) )
-      {
-        extent->MinZ = std::isnan( extent->MinZ ) ? env.MinZ : std::min( extent->MinZ, env.MinZ );
-        extent->MaxZ = std::isnan( extent->MaxZ ) ? env.MaxZ : std::max( extent->MaxZ, env.MaxZ );
-      }
-    }
-    else
-      err = OGRERR_UNSUPPORTED_GEOMETRY_TYPE;
-  }
-  ResetReading();
-  return err;
-}
-
 
 OGRGeometryH QgsOgrLayer::GetSpatialFilter()
 {
@@ -3346,14 +3083,6 @@ OGRErr QgsOgrLayer::SetFeature( OGRFeatureH hFeature )
   QMutexLocker locker( &ds->mutex );
   return OGR_L_SetFeature( hLayer, hFeature );
 }
-
-#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,7,0)
-OGRErr QgsOgrLayer::UpdateFeature( OGRFeatureH hFeature, int nUpdatedFieldsCount, const int *panUpdatedFieldsIdx, int nUpdatedGeomFieldsCount, const int *panUpdatedGeomFieldsIdx, bool bUpdateStyleString )
-{
-  QMutexLocker locker( &ds->mutex );
-  return OGR_L_UpdateFeature( hLayer, hFeature, nUpdatedFieldsCount, panUpdatedFieldsIdx, nUpdatedGeomFieldsCount, panUpdatedGeomFieldsIdx, bUpdateStyleString );
-}
-#endif
 
 OGRErr QgsOgrLayer::DeleteFeature( GIntBig fid )
 {
@@ -3508,15 +3237,14 @@ bool QgsOgrProviderUtils::deleteLayer( const QString &uri, QString &errCause )
   QString subsetString;
   OGRwkbGeometryType ogrGeometryType;
   QStringList openOptions;
-  QVariantMap credentialOptions;
   QString filePath = analyzeURI( uri,
                                  isSubLayer,
                                  layerIndex,
                                  layerName,
                                  subsetString,
                                  ogrGeometryType,
-                                 openOptions,
-                                 credentialOptions );
+                                 openOptions );
+
 
   gdal::dataset_unique_ptr hDS( GDALOpenEx( filePath.toUtf8().constData(), GDAL_OF_RASTER | GDAL_OF_VECTOR | GDAL_OF_UPDATE, nullptr, nullptr, nullptr ) );
   if ( hDS  && ( ! layerName.isEmpty() || layerIndex != -1 ) )

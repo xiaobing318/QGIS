@@ -16,7 +16,6 @@ email                : nyall dot dawson at gmail dot com
  ***************************************************************************/
 
 #include "qgslayoutnortharrowhandler.h"
-#include "moc_qgslayoutnortharrowhandler.cpp"
 #include "qgslayoutitemmap.h"
 #include "qgslayout.h"
 #include "qgsbearingutils.h"
@@ -66,7 +65,7 @@ void QgsLayoutNorthArrowHandler::updateMapRotation()
       catch ( QgsException &e )
       {
         Q_UNUSED( e )
-        QgsDebugError( QStringLiteral( "Caught exception %1" ).arg( e.what() ) );
+        QgsDebugMsg( QStringLiteral( "Caught exception %1" ).arg( e.what() ) );
       }
       break;
     }

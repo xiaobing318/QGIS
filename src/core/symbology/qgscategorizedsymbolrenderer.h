@@ -36,6 +36,9 @@ class CORE_EXPORT QgsRendererCategory
 {
   public:
 
+    /**
+     * Constructor for QgsRendererCategory.
+     */
     QgsRendererCategory() = default;
 
     /**
@@ -48,20 +51,15 @@ class CORE_EXPORT QgsRendererCategory
     * The \a label argument specifies the label used for this category in legends and the layer tree.
     *
     * The \a render argument indicates whether the category should initially be rendered and appear checked in the layer tree.
-    *
-    * The optional \a uuid argument manually set the UUID key identifier for the category (since QGIS 3.34).
     */
-    QgsRendererCategory( const QVariant &value, QgsSymbol *symbol SIP_TRANSFER, const QString &label, bool render = true, const QString &uuid = QString() );
+    QgsRendererCategory( const QVariant &value, QgsSymbol *symbol SIP_TRANSFER, const QString &label, bool render = true );
 
+    /**
+     * Copy constructor.
+     */
     QgsRendererCategory( const QgsRendererCategory &cat );
     QgsRendererCategory &operator=( QgsRendererCategory cat );
     ~QgsRendererCategory();
-
-    /**
-     * Returns the unique identifier for this category.
-     * \since QGIS 3.34
-     */
-    QString uuid() const;
 
     /**
      * Returns the value corresponding to this category.
@@ -113,12 +111,14 @@ class CORE_EXPORT QgsRendererCategory
     /**
      * Returns TRUE if the category is currently enabled and should be rendered.
      * \see setRenderState()
+     * \since QGIS 2.5
      */
     bool renderState() const;
 
     /**
      * Sets whether the category is currently enabled and should be rendered.
      * \see renderState()
+     * \since QGIS 2.5
      */
     void setRenderState( bool render );
 
@@ -151,7 +151,8 @@ class CORE_EXPORT QgsRendererCategory
     std::unique_ptr<QgsSymbol> mSymbol;
     QString mLabel;
     bool mRender = true;
-    QString mUuid;
+
+    void swap( QgsRendererCategory &other );
 };
 
 typedef QList<QgsRendererCategory> QgsCategoryList;
@@ -175,7 +176,6 @@ class CORE_EXPORT QgsCategorizedSymbolRenderer : public QgsFeatureRenderer
     QgsCategorizedSymbolRenderer( const QString &attrName = QString(), const QgsCategoryList &categories = QgsCategoryList() );
     ~QgsCategorizedSymbolRenderer() override;
 
-    Qgis::FeatureRendererFlags flags() const override;
     QgsSymbol *symbolForFeature( const QgsFeature &feature, QgsRenderContext &context ) const override;
     QgsSymbol *originalSymbolForFeature( const QgsFeature &feature, QgsRenderContext &context ) const override;
     void startRender( QgsRenderContext &context, const QgsFields &fields ) override;
@@ -210,6 +210,7 @@ class CORE_EXPORT QgsCategorizedSymbolRenderer : public QgsFeatureRenderer
 
     /**
      * Returns the index of the category with the specified label (or -1 if the label was not found, or is not unique).
+     * \since QGIS 2.5
      */
     int categoryIndexForLabel( const QString &val );
 
@@ -257,6 +258,7 @@ class CORE_EXPORT QgsCategorizedSymbolRenderer : public QgsFeatureRenderer
      * \see updateCategorySymbol()
      * \see updateCategoryLabel()
      *
+     * \since QGIS 2.5
      */
     bool updateCategoryRenderState( int catIndex, bool render );
 
@@ -380,6 +382,7 @@ class CORE_EXPORT QgsCategorizedSymbolRenderer : public QgsFeatureRenderer
     /**
      * Update the color ramp used and all symbols colors.
       * \param ramp color ramp. Ownership is transferred to the renderer
+      * \since QGIS 2.5
       */
     void updateColorRamp( QgsColorRamp *ramp SIP_TRANSFER );
 
@@ -395,6 +398,7 @@ class CORE_EXPORT QgsCategorizedSymbolRenderer : public QgsFeatureRenderer
      * Since QGIS 3.20, the optional \a layer parameter is required for conversions of some renderer types.
      *
      * \returns a new renderer if the conversion was possible, otherwise NULLPTR.
+     * \since QGIS 2.5
      */
     static QgsCategorizedSymbolRenderer *convertFromRenderer( const QgsFeatureRenderer *renderer, QgsVectorLayer *layer = nullptr ) SIP_FACTORY;
 
@@ -406,12 +410,14 @@ class CORE_EXPORT QgsCategorizedSymbolRenderer : public QgsFeatureRenderer
      * When renderer does not use data-defined size or does not use marker symbols, these settings will be ignored.
      * Takes ownership of the passed settings objects. NULLPTR is a valid input that disables data-defined
      * size legend.
+     * \since QGIS 3.0
      */
     void setDataDefinedSizeLegend( QgsDataDefinedSizeLegend *settings SIP_TRANSFER );
 
     /**
      * Returns configuration of appearance of legend when using data-defined size for marker symbols.
      * Will return NULLPTR if the functionality is disabled.
+     * \since QGIS 3.0
      */
     QgsDataDefinedSizeLegend *dataDefinedSizeLegend() const;
 
@@ -479,13 +485,13 @@ class CORE_EXPORT QgsCategorizedSymbolRenderer : public QgsFeatureRenderer
     void rebuildHash();
 
     /**
-     * \deprecated QGIS 3.40. No longer used, will be removed in QGIS 4.0.
+     * \deprecated No longer used, will be removed in QGIS 4.0
      */
     Q_DECL_DEPRECATED QgsSymbol *skipRender() SIP_DEPRECATED;
 
     /**
      * Returns the matching symbol corresponding to an attribute \a value.
-     * \deprecated QGIS 3.40. Use variant which takes a second bool argument instead.
+     * \deprecated use variant which takes a second bool argument instead.
      */
     Q_DECL_DEPRECATED QgsSymbol *symbolForValue( const QVariant &value ) const SIP_DEPRECATED;
 

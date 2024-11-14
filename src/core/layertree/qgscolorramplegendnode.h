@@ -43,12 +43,9 @@ class CORE_EXPORT QgsColorRampLegendNode : public QgsLayerTreeModelLegendNode
      * \param minimumLabel label text to render for the minimum value in the ramp
      * \param maximumLabel label text to render for the maximum value in the ramp
      * \param parent attach a parent QObject to the legend node.
-     * \param key rule key. optional identifier to allow a unique ID to be assigned to the node by a renderer (since QGIS 3.40)
-     * \param parentKey rule key of parent (since QGIS 3.40)
      */
     QgsColorRampLegendNode( QgsLayerTreeLayer *nodeLayer, QgsColorRamp *ramp SIP_TRANSFER,
-                            const QString &minimumLabel, const QString &maximumLabel, QObject *parent SIP_TRANSFERTHIS = nullptr,
-                            const QString &key = QString(), const QString &parentKey = QString() );
+                            const QString &minimumLabel, const QString &maximumLabel, QObject *parent SIP_TRANSFERTHIS = nullptr );
 
     /**
      * Constructor for QgsColorRampLegendNode.
@@ -58,19 +55,15 @@ class CORE_EXPORT QgsColorRampLegendNode : public QgsLayerTreeModelLegendNode
      * \param minimumValue value associated with minimum of ramp
      * \param maximumValue value associated with maximum of ramp
      * \param parent attach a parent QObject to the legend node.
-     * \param key rule key. optional identifier to allow a unique ID to be assigned to the node by a renderer (since QGIS 3.40)
-     * \param parentKey rule key of parent (since QGIS 3.40)
      */
     QgsColorRampLegendNode( QgsLayerTreeLayer *nodeLayer, QgsColorRamp *ramp SIP_TRANSFER,
                             const QgsColorRampLegendNodeSettings &settings, double minimumValue,
-                            double maximumValue, QObject *parent SIP_TRANSFERTHIS = nullptr,
-                            const QString &key = QString(), const QString &parentKey = QString() );
+                            double maximumValue, QObject *parent SIP_TRANSFERTHIS = nullptr );
 
 
     QVariant data( int role ) const override;
     QSizeF drawSymbol( const QgsLegendSettings &settings, ItemContext *ctx, double itemHeight ) const override;
     QSizeF drawSymbolText( const QgsLegendSettings &settings, ItemContext *ctx, QSizeF symbolSize ) const override;
-    QJsonObject exportSymbolToJson( const QgsLegendSettings &settings, const QgsRenderContext &context ) const override;
 
     /**
      * Set the icon \a size, which controls how large the ramp will render in a layer tree widget.
@@ -119,8 +112,7 @@ class CORE_EXPORT QgsColorRampLegendNode : public QgsLayerTreeModelLegendNode
     QgsColorRampLegendNodeSettings mSettings;
     double mMinimumValue = 0;
     double mMaximumValue = 0;
-    QString mKey;
-    QString mParentKey;
+
 };
 
 

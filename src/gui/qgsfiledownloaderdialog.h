@@ -32,6 +32,7 @@ class QgsFileDownloader;
  *
  * \note Until QGIS 3.0 this functionality was available via QgsFileDownloader.
  *
+ * \since QGIS 3.0
  */
 class GUI_EXPORT QgsFileDownloaderDialog : public QProgressDialog
 {

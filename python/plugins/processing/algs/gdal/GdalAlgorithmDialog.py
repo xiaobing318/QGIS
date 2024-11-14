@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     GdalAlgorithmDialog.py
@@ -127,13 +129,13 @@ class GdalParametersPanel(ParametersPanel):
             parameters = {} if self.dialog.mainWidget() is None else self.dialog.mainWidget().createProcessingParameters()
             for output in self.algorithm().destinationParameterDefinitions():
                 if not output.name() in parameters or parameters[output.name()] is None:
-                    if not output.flags() & QgsProcessingParameterDefinition.Flag.FlagOptional:
+                    if not output.flags() & QgsProcessingParameterDefinition.FlagOptional:
                         parameters[output.name()] = self.tr("[temporary file]")
             for p in self.algorithm().parameterDefinitions():
-                if p.flags() & QgsProcessingParameterDefinition.Flag.FlagHidden:
+                if p.flags() & QgsProcessingParameterDefinition.FlagHidden:
                     continue
 
-                if p.flags() & QgsProcessingParameterDefinition.Flag.FlagOptional and p.name() not in parameters:
+                if p.flags() & QgsProcessingParameterDefinition.FlagOptional and p.name() not in parameters:
                     continue
 
                 if p.name() not in parameters or not p.checkValueIsAcceptable(parameters[p.name()]):

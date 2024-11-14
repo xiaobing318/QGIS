@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsmodelviewmousehandles.h"
-#include "moc_qgsmodelviewmousehandles.cpp"
 #include "qgis.h"
 #include "qgslogger.h"
 #include "qgsproject.h"

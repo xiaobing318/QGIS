@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/layout/qgslayoutitemmapoverview.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -18,6 +18,8 @@ A collection of overviews which are drawn above the map content in a
 order they are drawn in.
 
 .. seealso:: :py:class:`QgsLayoutItemMapOverview`
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -117,6 +119,8 @@ An individual overview which is drawn above the map content in a
 :py:class:`QgsLayoutItemMap`, and shows the extent of another :py:class:`QgsLayoutItemMap`.
 
 .. seealso:: :py:class:`QgsLayoutItemMapOverviewStack`
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -254,5 +258,5 @@ Handles recentering of the map and redrawing of the map's overview
  *                                                                      *
  * src/core/layout/qgslayoutitemmapoverview.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

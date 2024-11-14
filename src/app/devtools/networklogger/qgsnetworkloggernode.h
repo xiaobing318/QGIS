@@ -112,11 +112,6 @@ class QgsNetworkLoggerRequestGroup final : public QgsDevToolsModelGroup
     QUrl url() const { return mUrl; }
 
     /**
-     * Sets the request's URL.
-     */
-    void setUrl( const QUrl &url );
-
-    /**
      * Returns TRUE if the request was served directly from local cache.
      */
     bool replyFromCache() const { return mReplyFromCache; }
@@ -163,7 +158,6 @@ class QgsNetworkLoggerRequestGroup final : public QgsDevToolsModelGroup
     QUrl mUrl;
     int mRequestId = 0;
     QNetworkAccessManager::Operation mOperation;
-    QString mVerb;
     QElapsedTimer mTimer;
     qint64 mTotalTime = 0;
     int mHttpStatus = -1;

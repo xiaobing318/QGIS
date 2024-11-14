@@ -22,6 +22,7 @@
 #include "qgsabstractdatabaseproviderconnection.h"
 #include "qgsprovidermetadata.h"
 #include "qgsproviderregistry.h"
+#include "qgsreferencedgeometry.h"
 #include "qgslogger.h"
 #include "qgsmaplayer.h"
 #include "qgscoordinatetransform.h"
@@ -31,7 +32,7 @@ QgsRectangle QgsMapLayerUtils::combinedExtent( const QList<QgsMapLayer *> &layer
 {
   // We can't use a constructor since QgsRectangle normalizes the rectangle upon construction
   QgsRectangle fullExtent;
-  fullExtent.setNull();
+  fullExtent.setMinimal();
 
   // iterate through the map layers and test each layers extent
   // against the current min and max values
@@ -57,7 +58,7 @@ QgsRectangle QgsMapLayerUtils::combinedExtent( const QList<QgsMapLayer *> &layer
     }
     catch ( QgsCsException & )
     {
-      QgsDebugError( QStringLiteral( "Could not reproject layer extent" ) );
+      QgsDebugMsg( QStringLiteral( "Could not reproject layer extent" ) );
     }
   }
 
@@ -109,7 +110,7 @@ QgsAbstractDatabaseProviderConnection *QgsMapLayerUtils::databaseConnection( con
   }
   catch ( const QgsProviderConnectionException &ex )
   {
-    QgsDebugError( QStringLiteral( "Error retrieving database connection for layer %1: %2" ).arg( layer->name(), ex.what() ) );
+    QgsDebugMsg( QStringLiteral( "Error retrieving database connection for layer %1: %2" ).arg( layer->name(), ex.what() ) );
     return nullptr;
   }
 }
@@ -138,12 +139,12 @@ bool QgsMapLayerUtils::updateLayerSourcePath( QgsMapLayer *layer, const QString 
   return true;
 }
 
-QList<QgsMapLayer *> QgsMapLayerUtils::sortLayersByType( const QList<QgsMapLayer *> &layers, const QList<Qgis::LayerType> &order )
+QList<QgsMapLayer *> QgsMapLayerUtils::sortLayersByType( const QList<QgsMapLayer *> &layers, const QList<QgsMapLayerType> &order )
 {
   QList< QgsMapLayer * > res = layers;
   std::sort( res.begin(), res.end(), [&order]( const QgsMapLayer * a, const QgsMapLayer * b ) -> bool
   {
-    for ( Qgis::LayerType type : order )
+    for ( QgsMapLayerType type : order )
     {
       if ( a->type() == type && b->type() != type )
         return true;
@@ -165,21 +166,4 @@ QString QgsMapLayerUtils::launderLayerName( const QString &name )
   laundered.replace( sRxRemoveChars, QString() );
 
   return laundered;
-}
-
-bool QgsMapLayerUtils::isOpenStreetMapLayer( QgsMapLayer *layer )
-{
-  if ( layer->providerType() == QLatin1String( "wms" ) )
-  {
-    if ( const QgsProviderMetadata *metadata = layer->providerMetadata() )
-    {
-      QVariantMap details = metadata->decodeUri( layer->source() );
-      QUrl url( details.value( QStringLiteral( "url" ) ).toString() );
-      if ( url.host().endsWith( QLatin1String( ".openstreetmap.org" ) ) || url.host().endsWith( QLatin1String( ".osm.org" ) ) )
-      {
-        return true;
-      }
-    }
-  }
-  return false;
 }

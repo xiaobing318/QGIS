@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/mesh/qgsmeshrenderersettings.h                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -54,14 +54,14 @@ Returns color used for rendering
 Sets color used for rendering of the mesh
 %End
 
-    Qgis::RenderUnit lineWidthUnit() const;
+    QgsUnitTypes::RenderUnit lineWidthUnit() const;
 %Docstring
 Returns units of the width of the mesh frame
 
 .. versionadded:: 3.14
 %End
 
-    void setLineWidthUnit( Qgis::RenderUnit lineWidthUnit );
+    void setLineWidthUnit( const QgsUnitTypes::RenderUnit &lineWidthUnit );
 %Docstring
 Sets units of the width of the mesh frame
 
@@ -100,7 +100,7 @@ Represents a mesh renderer settings for scalar datasets
     enum DataResamplingMethod
     {
 
-      NoResampling,
+      None,
 
       NeighbourAverage,
     };
@@ -166,14 +166,14 @@ Sets the stroke width used to render edges scalar dataset
 .. versionadded:: 3.14
 %End
 
-    Qgis::RenderUnit edgeStrokeWidthUnit() const;
+    QgsUnitTypes::RenderUnit edgeStrokeWidthUnit() const;
 %Docstring
 Returns the stroke width unit used to render edges scalar dataset
 
 .. versionadded:: 3.14
 %End
 
-    void setEdgeStrokeWidthUnit( Qgis::RenderUnit edgeStrokeWidthUnit );
+    void setEdgeStrokeWidthUnit( const QgsUnitTypes::RenderUnit &edgeStrokeWidthUnit );
 %Docstring
 Sets the stroke width unit used to render edges scalar dataset
 
@@ -399,11 +399,11 @@ Returns particles count
 %Docstring
 Sets particles count
 %End
-    Qgis::RenderUnit maximumTailLengthUnit() const;
+    QgsUnitTypes::RenderUnit maximumTailLengthUnit() const;
 %Docstring
 Returns the maximum tail length unit
 %End
-    void setMaximumTailLengthUnit( Qgis::RenderUnit maximumTailLengthUnit );
+    void setMaximumTailLengthUnit( const QgsUnitTypes::RenderUnit &maximumTailLengthUnit );
 %Docstring
 Sets the maximum tail length unit
 %End
@@ -417,88 +417,7 @@ Reads configuration from the given DOM element
 Writes configuration to a new DOM element
 %End
 
-};
 
-class QgsMeshRendererVectorWindBarbSettings
-{
-%Docstring(signature="appended")
-
-Represents a mesh renderer settings for vector datasets displayed with wind barbs
-
-.. note::
-
-   The API is considered EXPERIMENTAL and can be changed without a notice
-
-.. versionadded:: 3.38
-%End
-
-%TypeHeaderCode
-#include "qgsmeshrenderersettings.h"
-%End
-  public:
-    enum class WindSpeedUnit
-    {
-      MetersPerSecond,
-      KilometersPerHour,
-      Knots,
-      MilesPerHour,
-      FeetPerSecond,
-      OtherUnit
-    };
-
-    double magnitudeMultiplier() const;
-%Docstring
-Returns the multiplier for the magnitude to convert it to knots, according to the units set with :py:func:`~QgsMeshRendererVectorWindBarbSettings.setMagnitudeUnits`
-A custom multiplier can be set with :py:func:`~QgsMeshRendererVectorWindBarbSettings.setMagnitudeMultiplier` for the case when units are set to OtherUnit
-%End
-
-    void setMagnitudeMultiplier( double magnitudeMultiplier );
-%Docstring
-Sets a multiplier for the magnitude to convert it to knots
-%End
-
-    double shaftLength() const;
-%Docstring
-Returns the shaft length (in millimeters)
-%End
-
-    void setShaftLength( double shaftLength );
-%Docstring
-Sets the shaft length  (in millimeters)
-%End
-
-    Qgis::RenderUnit shaftLengthUnits() const;
-%Docstring
-Returns the units for the shaft length.
-
-.. seealso:: :py:func:`setShaftLengthUnits`
-%End
-
-    void setShaftLengthUnits( Qgis::RenderUnit shaftLengthUnit );
-%Docstring
-Sets the units for the shaft length.
-
-.. seealso:: :py:func:`shaftLengthUnits`
-%End
-
-    WindSpeedUnit magnitudeUnits() const;
-%Docstring
-Returns the units that the data are in
-%End
-
-    void setMagnitudeUnits( WindSpeedUnit units );
-%Docstring
-Sets the units that the data are in
-%End
-
-    QDomElement writeXml( QDomDocument &doc ) const;
-%Docstring
-Writes configuration to a new DOM element
-%End
-    void readXml( const QDomElement &elem );
-%Docstring
-Reads configuration from the given DOM element
-%End
 
 };
 
@@ -527,9 +446,7 @@ Represents a renderer settings for vector datasets
       //! Displaying vector dataset with streamlines
       Streamlines,
       //! Displaying vector dataset with particle traces
-      Traces,
-      //! Displaying vector dataset with wind barbs
-      WindBarbs
+      Traces
     };
 
     double lineWidth() const;
@@ -696,20 +613,6 @@ Sets settings for vector rendered with traces
 .. versionadded:: 3.12
 %End
 
-    QgsMeshRendererVectorWindBarbSettings windBarbSettings() const;
-%Docstring
-Returns settings for vector rendered with wind barbs
-
-.. versionadded:: 3.38
-%End
-
-    void setWindBarbSettings( const QgsMeshRendererVectorWindBarbSettings &windBarbSettings );
-%Docstring
-Sets settings for vector rendered with wind barbs
-
-.. versionadded:: 3.38
-%End
-
     QDomElement writeXml( QDomDocument &doc, const QgsReadWriteContext &context = QgsReadWriteContext() ) const;
 %Docstring
 Writes configuration to a new DOM element
@@ -781,24 +684,9 @@ Sets new edge mesh renderer settings
 %Docstring
 Returns renderer settings
 %End
-
     void setScalarSettings( int groupIndex, const QgsMeshRendererScalarSettings &settings );
 %Docstring
 Sets new renderer settings
-%End
-
-    bool hasScalarSettings( int groupIndex ) const;
-%Docstring
-Returns whether ``groupIndex`` has existing scalar settings
-
-.. versionadded:: 3.30.2
-%End
-
-    bool removeScalarSettings( int groupIndex );
-%Docstring
-Removes scalar settings with ``groupIndex``
-
-.. versionadded:: 3.30.2
 %End
 
     QgsMeshRendererVectorSettings vectorSettings( int groupIndex ) const;
@@ -810,28 +698,14 @@ Returns renderer settings
 Sets new renderer settings
 %End
 
-    bool hasVectorSettings( int groupIndex ) const;
-%Docstring
-Returns whether ``groupIndex`` has existing vector settings
-
-.. versionadded:: 3.30.2
-%End
-
-    bool removeVectorSettings( int groupIndex );
-%Docstring
-Removes vector settings for ``groupIndex``
-
-.. versionadded:: 3.30.2
-%End
-
-    QgsMesh3DAveragingMethod *averagingMethod() const;
+    QgsMesh3dAveragingMethod *averagingMethod() const;
 %Docstring
 Returns averaging method for conversion of 3d stacked mesh data to 2d data
 
 Caller does not own the resulting pointer
 %End
 
-    void setAveragingMethod( QgsMesh3DAveragingMethod *method );
+    void setAveragingMethod( QgsMesh3dAveragingMethod *method );
 %Docstring
 Sets averaging method for conversion of 3d stacked mesh data to 2d data
 
@@ -889,5 +763,5 @@ Returns whether the group with ``index`` has render settings (scalar or vector)
  *                                                                      *
  * src/core/mesh/qgsmeshrenderersettings.h                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

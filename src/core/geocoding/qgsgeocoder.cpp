@@ -24,7 +24,7 @@ QList<QgsGeocoderResult> QgsGeocoderInterface::geocodeFeature( const QgsFeature 
 
 QgsFields QgsGeocoderInterface::appendedFields() const { return QgsFields(); }
 
-Qgis::WkbType QgsGeocoderInterface::wkbType() const { return Qgis::WkbType::Unknown; }
+QgsWkbTypes::Type QgsGeocoderInterface::wkbType() const { return QgsWkbTypes::Unknown; }
 
 QList<QgsGeocoderResult> QgsGeocoderInterface::geocodeString( const QString &string, const QgsGeocoderContext &context, QgsFeedback * ) const
 {

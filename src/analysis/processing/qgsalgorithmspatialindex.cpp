@@ -46,9 +46,9 @@ QString QgsSpatialIndexAlgorithm::groupId() const
   return QStringLiteral( "vectorgeneral" );
 }
 
-Qgis::ProcessingAlgorithmFlags QgsSpatialIndexAlgorithm::flags() const
+QgsProcessingAlgorithm::Flags QgsSpatialIndexAlgorithm::flags() const
 {
-  return QgsProcessingAlgorithm::flags() | Qgis::ProcessingAlgorithmFlag::NoThreading;
+  return QgsProcessingAlgorithm::flags() | QgsProcessingAlgorithm::FlagNoThreading;
 }
 
 
@@ -81,7 +81,7 @@ QVariantMap QgsSpatialIndexAlgorithm::processAlgorithm( const QVariantMap &param
 
   QgsVectorDataProvider *provider = layer->dataProvider();
 
-  if ( provider->capabilities() & Qgis::VectorProviderCapability::CreateSpatialIndex )
+  if ( provider->capabilities() & QgsVectorDataProvider::CreateSpatialIndex )
   {
     if ( !provider->createSpatialIndex() )
     {

@@ -32,7 +32,6 @@
 #include "qgsproviderregistry.h"
 #include "qgswmsconnection.h"
 #include "qgswmssourceselect.h"
-#include "moc_qgswmssourceselect.cpp"
 #include "qgswmtsdimensions.h"
 #include "qgsnetworkaccessmanager.h"
 #include "qgswmscapabilities.h"
@@ -311,7 +310,7 @@ bool QgsWMSSourceSelect::populateLayerList( const QgsWmsCapabilities &capabiliti
     int id = mMimeMap.value( encoding, -1 );
     if ( id < 0 )
     {
-      QgsDebugError( QStringLiteral( "encoding %1 not supported." ).arg( encoding ) );
+      QgsDebugMsg( QStringLiteral( "encoding %1 not supported." ).arg( encoding ) );
       continue;
     }
     // Different mime-types can map to the same label. Just add the first
@@ -470,20 +469,6 @@ void QgsWMSSourceSelect::btnConnect_clicked()
   QgsWMSConnection connection( cmbConnections->currentText() );
   mUri = connection.uri();
 
-  bool featureCountSet { };
-  if ( connection.uri().hasParam( QStringLiteral( "featureCount" ) ) )
-  {
-    connection.uri().param( QStringLiteral( "featureCount" ) ).toInt( &featureCountSet );
-    if ( featureCountSet )
-      mFeatureCount->setText( connection.uri().param( QStringLiteral( "featureCount" ) ) );
-  }
-
-  // Original default for old connections with no default feature count set
-  if ( ! featureCountSet )
-  {
-    mFeatureCount->setText( QStringLiteral( "10" ) );
-  }
-
   QgsWmsSettings wmsSettings;
   if ( !wmsSettings.parseUri( mUri.encodedUri() ) )
   {
@@ -523,7 +508,7 @@ void QgsWMSSourceSelect::btnConnect_clicked()
     return;
   }
 
-  mFeatureCount->setEnabled( caps.identifyCapabilities() != Qgis::RasterInterfaceCapabilities( Qgis::RasterInterfaceCapability::NoCapabilities ) );
+  mFeatureCount->setEnabled( caps.identifyCapabilities() != QgsRasterInterface::NoCapabilities );
 
   populateLayerList( caps );
 }
@@ -615,9 +600,6 @@ void QgsWMSSourceSelect::addButtonClicked()
   uri.setParam( QStringLiteral( "crs" ), crs );
   QgsDebugMsgLevel( QStringLiteral( "crs=%2 " ).arg( crs ), 2 );
 
-  // Remove in case the default value from the connection settings
-  // is being overridden here
-  uri.removeParam( QStringLiteral( "featureCount" ) );
   if ( mFeatureCount->text().toInt() > 0 )
   {
     uri.setParam( QStringLiteral( "featureCount" ), mFeatureCount->text() );
@@ -636,14 +618,9 @@ void QgsWMSSourceSelect::addButtonClicked()
       individualUri.setParam( QStringLiteral( "layers" ), layers.at( i ) );
       individualUri.setParam( QStringLiteral( "styles" ), styles.at( i ) );
 
-      Q_NOWARN_DEPRECATED_PUSH
       emit addRasterLayer( individualUri.encodedUri(),
                            titles.at( i ),
                            QStringLiteral( "wms" ) );
-      Q_NOWARN_DEPRECATED_POP
-      emit addLayer( Qgis::LayerType::Raster, individualUri.encodedUri(),
-                     titles.at( i ),
-                     QStringLiteral( "wms" ) );
     }
 
   }
@@ -652,14 +629,9 @@ void QgsWMSSourceSelect::addButtonClicked()
     uri.setParam( QStringLiteral( "layers" ), layers );
     uri.setParam( QStringLiteral( "styles" ), styles );
 
-    Q_NOWARN_DEPRECATED_PUSH
     emit addRasterLayer( uri.encodedUri(),
                          leLayerName->text().isEmpty() ? titles.join( QLatin1Char( '/' ) ) : leLayerName->text(),
                          QStringLiteral( "wms" ) );
-    Q_NOWARN_DEPRECATED_POP
-    emit addLayer( Qgis::LayerType::Raster, uri.encodedUri(),
-                   leLayerName->text().isEmpty() ? titles.join( QLatin1Char( '/' ) ) : leLayerName->text(),
-                   QStringLiteral( "wms" ) );
   }
 }
 
@@ -1075,6 +1047,7 @@ QString QgsWMSSourceSelect::connName()
 void QgsWMSSourceSelect::collectSelectedLayers( QStringList &layers, QStringList &styles, QStringList &titles )
 {
   //go through list in layer order tab
+  QStringList selectedLayerList;
   for ( int i = mLayerOrderTreeWidget->topLevelItemCount() - 1; i >= 0; --i )
   {
     layers << mLayerOrderTreeWidget->topLevelItem( i )->text( 0 );
@@ -1192,12 +1165,9 @@ void QgsWMSSourceSelect::filterLayers( const QString &searchText )
   {
     // show everything and reset tree nesting
     setChildrenVisible( lstLayers->invisibleRootItem(), true );
-    for ( auto it = mTreeInitialExpand.constBegin(); it != mTreeInitialExpand.constEnd(); it++ )
-    {
-      QTreeWidgetItem *item = it.key();
+    for ( QTreeWidgetItem *item : mTreeInitialExpand.keys() )
       if ( item )
-        item->setExpanded( it.value() );
-    }
+        item->setExpanded( mTreeInitialExpand.value( item ) );
     mTreeInitialExpand.clear();
   }
   else
@@ -1388,10 +1358,6 @@ void QgsWmsInterpretationComboBox::setInterpretation( const QString &interpretat
       setCurrentIndex( 0 );
     else
       setCurrentIndex( index );
-  }
-  else
-  {
-    setCurrentIndex( 0 );
   }
 }
 

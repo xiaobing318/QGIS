@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgssearchquerybuilder.h                                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -15,9 +15,8 @@ class QgsSearchQueryBuilder : QDialog
 %Docstring(signature="appended")
 Query Builder for search strings
 
-.. deprecated:: 3.40
-
-   Will be removed in QGIS 4.
+.. deprecated::
+   Will be removed in QGIS 4
 %End
 
 %TypeHeaderCode
@@ -52,5 +51,5 @@ change search string shown in text field
  *                                                                      *
  * src/gui/qgssearchquerybuilder.h                                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -17,9 +17,12 @@
 #include <QIcon>
 
 #include "qgsfieldmodel.h"
+#include "qgsmaplayermodel.h"
+#include "qgsmaplayerproxymodel.h"
+#include "qgslogger.h"
+#include "qgsapplication.h"
 #include "qgsvectorlayer.h"
 #include "qgsvectorlayerjoinbuffer.h"
-#include "moc_qgsfieldmodel.cpp"
 
 QgsFieldModel::QgsFieldModel( QObject *parent )
   : QAbstractItemModel( parent )
@@ -280,7 +283,7 @@ QVariant QgsFieldModel::data( const QModelIndex &index, int role ) const
 
   switch ( role )
   {
-    case static_cast< int >( QgsFieldModel::CustomRole::FieldName ):
+    case FieldNameRole:
     {
       if ( isEmpty || exprIdx >= 0 )
       {
@@ -290,7 +293,7 @@ QVariant QgsFieldModel::data( const QModelIndex &index, int role ) const
       return field.name();
     }
 
-    case static_cast< int >( QgsFieldModel::CustomRole::Expression ):
+    case ExpressionRole:
     {
       if ( exprIdx >= 0 )
       {
@@ -307,7 +310,7 @@ QVariant QgsFieldModel::data( const QModelIndex &index, int role ) const
       }
     }
 
-    case static_cast< int >( QgsFieldModel::CustomRole::FieldIndex ):
+    case FieldIndexRole:
     {
       if ( isEmpty || exprIdx >= 0 )
       {
@@ -316,12 +319,12 @@ QVariant QgsFieldModel::data( const QModelIndex &index, int role ) const
       return index.row() - fieldOffset;
     }
 
-    case static_cast< int >( QgsFieldModel::CustomRole::IsExpression ):
+    case IsExpressionRole:
     {
       return exprIdx >= 0;
     }
 
-    case static_cast< int >( QgsFieldModel::CustomRole::ExpressionValidity ):
+    case ExpressionValidityRole:
     {
       if ( exprIdx >= 0 )
       {
@@ -336,7 +339,7 @@ QVariant QgsFieldModel::data( const QModelIndex &index, int role ) const
       return true;
     }
 
-    case static_cast< int >( QgsFieldModel::CustomRole::FieldType ):
+    case FieldTypeRole:
     {
       if ( exprIdx < 0 && !isEmpty )
       {
@@ -346,7 +349,7 @@ QVariant QgsFieldModel::data( const QModelIndex &index, int role ) const
       return QVariant();
     }
 
-    case static_cast< int >( QgsFieldModel::CustomRole::FieldOrigin ):
+    case FieldOriginRole:
     {
       if ( exprIdx < 0 && !isEmpty )
       {
@@ -355,12 +358,12 @@ QVariant QgsFieldModel::data( const QModelIndex &index, int role ) const
       return QVariant();
     }
 
-    case static_cast< int >( QgsFieldModel::CustomRole::IsEmpty ):
+    case IsEmptyRole:
     {
       return isEmpty;
     }
 
-    case static_cast< int >( QgsFieldModel::CustomRole::EditorWidgetType ):
+    case EditorWidgetType:
     {
       if ( exprIdx < 0 && !isEmpty )
       {
@@ -369,11 +372,11 @@ QVariant QgsFieldModel::data( const QModelIndex &index, int role ) const
       return QVariant();
     }
 
-    case static_cast< int >( QgsFieldModel::CustomRole::JoinedFieldIsEditable ):
+    case JoinedFieldIsEditable:
     {
       if ( exprIdx < 0 && !isEmpty )
       {
-        if ( mLayer && mFields.fieldOrigin( index.row() - fieldOffset ) == Qgis::FieldOrigin::Join )
+        if ( mLayer && mFields.fieldOrigin( index.row() - fieldOffset ) == QgsFields::OriginJoin )
         {
           int srcFieldIndex;
           const QgsVectorLayerJoinInfo *info = mLayer->joinBuffer()->joinForFieldIndex( index.row() - fieldOffset, mLayer->fields(), srcFieldIndex );
@@ -387,7 +390,7 @@ QVariant QgsFieldModel::data( const QModelIndex &index, int role ) const
       return QVariant();
     }
 
-    case static_cast< int >( QgsFieldModel::CustomRole::FieldIsWidgetEditable ):
+    case FieldIsWidgetEditable:
     {
       return !( mLayer->editFormConfig().readOnly( index.row() - fieldOffset ) );
     }
@@ -503,7 +506,7 @@ QString QgsFieldModel::fieldToolTipExtended( const QgsField &field, const QgsVec
   if ( fieldIdx < 0 )
     return QString();
 
-  const QString expressionString = fields.fieldOrigin( fieldIdx ) == Qgis::FieldOrigin::Expression
+  const QString expressionString = fields.fieldOrigin( fieldIdx ) == QgsFields::OriginExpression
                                    ? layer->expressionField( fieldIdx )
                                    : QString();
 

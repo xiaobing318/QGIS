@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/layout/qgslayoutpoint.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -24,6 +24,8 @@ for use in QGIS layouts. Measurement units are stored alongside the position.
    to believe that addition of two :py:class:`QgsLayoutPoints` with different unit types would automatically convert
    units. Instead, all unit conversion must be handled by a :py:class:`QgsLayoutMeasurementConverter` so that
    conversion between paper and screen units can be correctly performed.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -31,17 +33,17 @@ for use in QGIS layouts. Measurement units are stored alongside the position.
 %End
   public:
 
-    QgsLayoutPoint( double x, double y, Qgis::LayoutUnit units = Qgis::LayoutUnit::Millimeters );
+    QgsLayoutPoint( double x, double y, QgsUnitTypes::LayoutUnit units = QgsUnitTypes::LayoutMillimeters );
 %Docstring
 Constructor for QgsLayoutPoint.
 %End
 
-    explicit QgsLayoutPoint( QPointF point, Qgis::LayoutUnit units = Qgis::LayoutUnit::Millimeters );
+    explicit QgsLayoutPoint( QPointF point, QgsUnitTypes::LayoutUnit units = QgsUnitTypes::LayoutMillimeters );
 %Docstring
 Constructor for QgsLayoutPoint.
 %End
 
-    explicit QgsLayoutPoint( Qgis::LayoutUnit units = Qgis::LayoutUnit::Millimeters );
+    explicit QgsLayoutPoint( QgsUnitTypes::LayoutUnit units = QgsUnitTypes::LayoutMillimeters );
 %Docstring
 Constructor for an empty point, where both x and y are set to 0.
 
@@ -95,14 +97,14 @@ Sets y coordinate of point.
 .. seealso:: :py:func:`setX`
 %End
 
-    Qgis::LayoutUnit units() const;
+    QgsUnitTypes::LayoutUnit units() const;
 %Docstring
 Returns the units for the point.
 
 .. seealso:: :py:func:`setUnits`
 %End
 
-    void setUnits( const Qgis::LayoutUnit units );
+    void setUnits( const QgsUnitTypes::LayoutUnit units );
 %Docstring
 Sets the ``units`` for the point. Does not alter the stored coordinates,
 ie. no conversion is done.
@@ -164,5 +166,5 @@ Decodes a point from a ``string``.
  *                                                                      *
  * src/core/layout/qgslayoutpoint.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

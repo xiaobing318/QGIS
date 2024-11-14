@@ -31,7 +31,6 @@
 
 
 #include "qgsfields.h"
-#include "qgsunsetattributevalue.h"
 #include "qgsvariantutils.h"
 
 
@@ -60,6 +59,7 @@ class QgsAttributes : public QVector<QVariant>
 {
   public:
 
+    //! Constructor for QgsAttributes
     QgsAttributes() = default;
 
     /**
@@ -109,7 +109,7 @@ class QgsAttributes : public QVector<QVariant>
       // QVariant == comparisons do some weird things, like reporting that a QDateTime(2021, 2, 10, 0, 0) variant is equal
       // to a QString "2021-02-10 00:00" variant!
       while ( i != b )
-        if ( !( QgsVariantUtils::isNull( *( --i ) ) == QgsVariantUtils::isNull( *( --j ) ) && ( QgsVariantUtils::isNull( *i ) || i->userType() == j->userType() ) && *i == *j ) )
+        if ( !( QgsVariantUtils::isNull( *( --i ) ) == QgsVariantUtils::isNull( *( --j ) ) && ( QgsVariantUtils::isNull( *i ) || i->type() == j->type() ) && *i == *j ) )
           return false;
       return true;
     }
@@ -118,6 +118,7 @@ class QgsAttributes : public QVector<QVariant>
      * Returns a QgsAttributeMap of the attribute values. Null values are
      * excluded from the map.
      * \note not available in Python bindings
+     * \since QGIS 3.0
      */
     CORE_EXPORT QgsAttributeMap toMap() const SIP_SKIP;
 
@@ -131,7 +132,7 @@ class QgsAttributes : public QVector<QVariant>
       if ( index < 0 || index >= size() )
         return false;
 
-      return at( index ).userType() == qMetaTypeId<QgsUnsetAttributeValue>();
+      return at( index ).userType() == QMetaType::type( "QgsUnsetAttributeValue" );
     }
 
     inline bool operator!=( const QgsAttributes &v ) const { return !( *this == v ); }
@@ -190,37 +191,16 @@ typedef QVector<QVariant> QgsAttributes;
     return 1;
   }
 
+  QgsAttributes *qv = new QgsAttributes;
   SIP_SSIZE_T listSize = PyList_GET_SIZE( sipPy );
-  // Initialize attributes to null. This has two motivations:
-  // 1. It speeds up the QVector construction, as otherwise we are creating n default QVariant objects (default QVariant constructor is not free!)
-  // 2. It lets us shortcut in the loop below when a Py_None is encountered in the list
-  const QVariant nullVariant( QVariant::Int );
-  QgsAttributes *qv = new QgsAttributes( listSize, nullVariant );
-  QVariant *outData = qv->data();
+  qv->reserve( listSize );
 
   for ( SIP_SSIZE_T i = 0; i < listSize; ++i )
   {
     PyObject *obj = PyList_GET_ITEM( sipPy, i );
     if ( obj == Py_None )
     {
-      // outData was already initialized to null values
-      *outData++;
-    }
-    else if ( PyBool_Check( obj ) )
-    {
-      *outData++ = QVariant( PyObject_IsTrue( obj ) == 1 );
-    }
-    else if ( PyLong_Check( obj ) )
-    {
-      *outData++ = QVariant( PyLong_AsLongLong( obj ) );
-    }
-    else if ( PyFloat_Check( obj ) )
-    {
-      *outData++ = QVariant( PyFloat_AsDouble( obj ) );
-    }
-    else if ( PyUnicode_Check( obj ) )
-    {
-      *outData++ = QVariant( QString::fromUtf8( PyUnicode_AsUTF8( obj ) ) );
+      qv->append( QVariant( QVariant::Int ) );
     }
     else
     {
@@ -235,7 +215,7 @@ typedef QVector<QVariant> QgsAttributes;
         return 0;
       }
 
-      *outData++ = *t;
+      qv->append( *t );
       sipReleaseType( t, sipType_QVariant, state );
     }
   }

@@ -84,12 +84,12 @@
   <customwidget>
    <class>QgsRasterBandComboBox</class>
    <extends>QComboBox</extends>
-   <header>qgsrasterbandcombobox.h</header>
+   <header>raster/qgsrasterbandcombobox.h</header>
   </customwidget>
   <customwidget>
    <class>QgsColorRampShaderWidget</class>
    <extends>QWidget</extends>
-   <header>qgscolorrampshaderwidget.h</header>
+   <header>raster/qgscolorrampshaderwidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

@@ -15,9 +15,6 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef QGSSLIDER_H
-#define QGSSLIDER_H
-
 #include <QSlider>
 #include "qgis_sip.h"
 #include <QVariant>
@@ -60,5 +57,3 @@ class GUI_EXPORT QgsSlider : public QSlider
 
     QVariant mMin, mMax, mStep, mValue;
 };
-
-#endif // QGSSLIDER_H

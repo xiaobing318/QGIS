@@ -10,23 +10,45 @@ __date__ = '2017-01'
 __copyright__ = 'Copyright 2017, The QGIS Project'
 
 
-from qgis.PyQt.QtGui import QColor, QImage, QPainter
-from qgis.core import (
-    QgsFeature,
-    QgsFillSymbol,
-    QgsGeometry,
-    QgsMapSettings,
-    QgsRenderContext,
-    QgsSimpleLineSymbolLayer,
-)
-from qgis.testing import QgisTestCase, unittest
+import qgis  # NOQA
+from qgis.PyQt.QtCore import QDir
+from qgis.PyQt.QtGui import (QImage,
+                             QPainter,
+                             QColor)
+from qgis.core import (QgsRenderChecker,
+                       QgsSimpleLineSymbolLayer,
+                       QgsMapSettings,
+                       QgsFillSymbol,
+                       QgsGeometry,
+                       QgsFeature,
+                       QgsRenderContext)
+from qgis.testing import unittest
 
 
-class TestQgsFillSymbolLayers(QgisTestCase):
+class TestQgsFillSymbolLayers(unittest.TestCase):
 
-    @classmethod
-    def control_path_prefix(cls):
-        return "symbol_layer"
+    def setUp(self):
+        self.report = "<h1>Python QgsFillSymbolLayer Tests</h1>\n"
+
+    def tearDown(self):
+        report_file_path = "%s/qgistest.html" % QDir.tempPath()
+        with open(report_file_path, 'a') as report_file:
+            report_file.write(self.report)
+
+    def imageCheck(self, name, reference_image, image):
+        self.report += f"<h2>Render {name}</h2>\n"
+        temp_dir = QDir.tempPath() + '/'
+        file_name = temp_dir + 'symbollayer_' + name + ".png"
+        image.save(file_name, "PNG")
+        checker = QgsRenderChecker()
+        checker.setControlPathPrefix("symbol_layer")
+        checker.setControlName("expected_" + reference_image)
+        checker.setRenderedImage(file_name)
+        checker.setColorTolerance(2)
+        result = checker.compareImages(name, 0)
+        self.report += checker.report()
+        print(self.report)
+        return result
 
     def testSimpleLineWithOffset(self):
         """ test that rendering a polygon with simple line symbol with offset results in closed line"""
@@ -37,7 +59,7 @@ class TestQgsFillSymbolLayers(QgisTestCase):
         symbol = QgsFillSymbol()
         symbol.changeSymbolLayer(0, layer)
 
-        image = QImage(200, 200, QImage.Format.Format_RGB32)
+        image = QImage(200, 200, QImage.Format_RGB32)
         painter = QPainter()
         ms = QgsMapSettings()
 
@@ -63,15 +85,7 @@ class TestQgsFillSymbolLayers(QgisTestCase):
         symbol.stopRender(context)
         painter.end()
 
-        self.assertTrue(
-            self.image_check(
-                'symbol_layer',
-                'fill_simpleline_offset',
-                image,
-                color_tolerance=2,
-                allowed_mismatch=0
-            )
-        )
+        self.assertTrue(self.imageCheck('symbol_layer', 'fill_simpleline_offset', image))
 
 
 if __name__ == '__main__':

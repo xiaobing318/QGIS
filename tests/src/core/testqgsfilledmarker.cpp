@@ -35,6 +35,8 @@
 #include "qgsfillsymbol.h"
 #include "qgsmarkersymbol.h"
 
+//qgis test includes
+#include "qgsrenderchecker.h"
 
 /**
  * \ingroup UnitTests
@@ -45,7 +47,7 @@ class TestQgsFilledMarkerSymbol : public QgsTest
     Q_OBJECT
 
   public:
-    TestQgsFilledMarkerSymbol() : QgsTest( QStringLiteral( "Filled Marker Tests" ), QStringLiteral( "symbol_filledmarker" ) ) {}
+    TestQgsFilledMarkerSymbol() : QgsTest( QStringLiteral( "Filled Marker Tests" ) ) {}
 
   private slots:
     void initTestCase();// will be called before the first testfunction is executed.
@@ -60,6 +62,7 @@ class TestQgsFilledMarkerSymbol : public QgsTest
   private:
     bool mTestHasError =  false ;
 
+    bool imageCheck( const QString &type );
     QgsMapSettings mMapSettings;
     QgsVectorLayer *mpPointsLayer = nullptr;
     QgsFilledMarkerSymbolLayer *mFilledMarkerLayer = nullptr;
@@ -127,20 +130,16 @@ void TestQgsFilledMarkerSymbol::filledMarkerSymbol()
 {
   mFilledMarkerLayer->setShape( Qgis::MarkerShape::Circle );
   mFilledMarkerLayer->setSize( 15 );
-  mMapSettings.setExtent( mpPointsLayer->extent() );
-  mMapSettings.setOutputDpi( 96 );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( "filledmarker", "filledmarker", mMapSettings );
+  QVERIFY( imageCheck( "filledmarker" ) );
 }
 
 void TestQgsFilledMarkerSymbol::dataDefinedShape()
 {
   mFilledMarkerLayer->setShape( Qgis::MarkerShape::Circle );
   mFilledMarkerLayer->setSize( 10 );
-  mFilledMarkerLayer->setDataDefinedProperty( QgsSymbolLayer::Property::Name, QgsProperty::fromExpression( QStringLiteral( "if(\"class\"='Jet','square','star')" ) ) );
-  mMapSettings.setExtent( mpPointsLayer->extent() );
-  mMapSettings.setOutputDpi( 96 );
-  const bool result = QGSRENDERMAPSETTINGSCHECK( "filledmarker_datadefinedshape", "filledmarker_datadefinedshape", mMapSettings );
-  mFilledMarkerLayer->setDataDefinedProperty( QgsSymbolLayer::Property::Name, QgsProperty() );
+  mFilledMarkerLayer->setDataDefinedProperty( QgsSymbolLayer::PropertyName, QgsProperty::fromExpression( QStringLiteral( "if(\"class\"='Jet','square','star')" ) ) );
+  const bool result = imageCheck( QStringLiteral( "filledmarker_datadefinedshape" ) );
+  mFilledMarkerLayer->setDataDefinedProperty( QgsSymbolLayer::PropertyName, QgsProperty() );
   QVERIFY( result );
 }
 
@@ -149,14 +148,12 @@ void TestQgsFilledMarkerSymbol::bounds()
   mFilledMarkerLayer->setColor( QColor( 200, 200, 200 ) );
   mFilledMarkerLayer->setShape( Qgis::MarkerShape::Circle );
   mFilledMarkerLayer->setSize( 5 );
-  mFilledMarkerLayer->setDataDefinedProperty( QgsSymbolLayer::Property::Size, QgsProperty::fromExpression( QStringLiteral( "min(\"importance\" * 2, 6)" ) ) );
+  mFilledMarkerLayer->setDataDefinedProperty( QgsSymbolLayer::PropertySize, QgsProperty::fromExpression( QStringLiteral( "min(\"importance\" * 2, 6)" ) ) );
 
   mMapSettings.setFlag( Qgis::MapSettingsFlag::DrawSymbolBounds, true );
-  mMapSettings.setExtent( mpPointsLayer->extent() );
-  mMapSettings.setOutputDpi( 96 );
-  const bool result = QGSRENDERMAPSETTINGSCHECK( "filledmarker_bounds", "filledmarker_bounds", mMapSettings );
+  const bool result = imageCheck( QStringLiteral( "filledmarker_bounds" ) );
   mMapSettings.setFlag( Qgis::MapSettingsFlag::DrawSymbolBounds, false );
-  mFilledMarkerLayer->setDataDefinedProperty( QgsSymbolLayer::Property::Size, QgsProperty() );
+  mFilledMarkerLayer->setDataDefinedProperty( QgsSymbolLayer::PropertySize, QgsProperty() );
   QVERIFY( result );
 }
 
@@ -164,18 +161,15 @@ void TestQgsFilledMarkerSymbol::opacityWithDataDefinedColor()
 {
   qgis::down_cast< QgsGradientFillSymbolLayer * >( mFilledMarkerLayer->subSymbol()->symbolLayer( 0 ) )->setColor( QColor( 200, 200, 200 ) );
   qgis::down_cast< QgsGradientFillSymbolLayer * >( mFilledMarkerLayer->subSymbol()->symbolLayer( 0 ) )->setColor2( QColor( 0, 0, 0 ) );
-  qgis::down_cast< QgsGradientFillSymbolLayer * >( mFilledMarkerLayer->subSymbol()->symbolLayer( 0 ) )->setDataDefinedProperty( QgsSymbolLayer::Property::FillColor, QgsProperty::fromExpression( QStringLiteral( "if(importance > 2, 'red', 'green')" ) ) );
-  qgis::down_cast< QgsGradientFillSymbolLayer * >( mFilledMarkerLayer->subSymbol()->symbolLayer( 0 ) )->setDataDefinedProperty( QgsSymbolLayer::Property::SecondaryColor, QgsProperty::fromExpression( QStringLiteral( "if(importance > 2, 'blue', 'magenta')" ) ) );
+  qgis::down_cast< QgsGradientFillSymbolLayer * >( mFilledMarkerLayer->subSymbol()->symbolLayer( 0 ) )->setDataDefinedProperty( QgsSymbolLayer::PropertyFillColor, QgsProperty::fromExpression( QStringLiteral( "if(importance > 2, 'red', 'green')" ) ) );
+  qgis::down_cast< QgsGradientFillSymbolLayer * >( mFilledMarkerLayer->subSymbol()->symbolLayer( 0 ) )->setDataDefinedProperty( QgsSymbolLayer::PropertySecondaryColor, QgsProperty::fromExpression( QStringLiteral( "if(importance > 2, 'blue', 'magenta')" ) ) );
   mMarkerSymbol->setOpacity( 0.8 );
   // set opacity on both the symbol AND sub symbol to test that both are applied
   mFilledMarkerLayer->subSymbol()->setOpacity( 0.6 );
 
-  mMapSettings.setExtent( mpPointsLayer->extent() );
-  mMapSettings.setOutputDpi( 96 );
-  const bool result = QGSRENDERMAPSETTINGSCHECK( "filledmarker_opacityddcolor", "filledmarker_opacityddcolor", mMapSettings );
-
-  mFilledMarkerLayer->setDataDefinedProperty( QgsSymbolLayer::Property::FillColor, QgsProperty() );
-  mFilledMarkerLayer->setDataDefinedProperty( QgsSymbolLayer::Property::StrokeColor, QgsProperty() );
+  const bool result = imageCheck( QStringLiteral( "filledmarker_opacityddcolor" ) );
+  mFilledMarkerLayer->setDataDefinedProperty( QgsSymbolLayer::PropertyFillColor, QgsProperty() );
+  mFilledMarkerLayer->setDataDefinedProperty( QgsSymbolLayer::PropertyStrokeColor, QgsProperty() );
   mMarkerSymbol->setOpacity( 1.0 );
   mFilledMarkerLayer->subSymbol()->setOpacity( 1.0 );
   QVERIFY( result );
@@ -185,18 +179,35 @@ void TestQgsFilledMarkerSymbol::dataDefinedOpacity()
 {
   qgis::down_cast< QgsGradientFillSymbolLayer * >( mFilledMarkerLayer->subSymbol()->symbolLayer( 0 ) )->setColor( QColor( 200, 200, 200 ) );
   qgis::down_cast< QgsGradientFillSymbolLayer * >( mFilledMarkerLayer->subSymbol()->symbolLayer( 0 ) )->setColor2( QColor( 0, 0, 0 ) );
-  qgis::down_cast< QgsGradientFillSymbolLayer * >( mFilledMarkerLayer->subSymbol()->symbolLayer( 0 ) )->setDataDefinedProperty( QgsSymbolLayer::Property::FillColor, QgsProperty::fromExpression( QStringLiteral( "if(importance > 2, 'red', 'green')" ) ) );
-  qgis::down_cast< QgsGradientFillSymbolLayer * >( mFilledMarkerLayer->subSymbol()->symbolLayer( 0 ) )->setDataDefinedProperty( QgsSymbolLayer::Property::SecondaryColor, QgsProperty::fromExpression( QStringLiteral( "if(importance > 2, 'blue', 'magenta')" ) ) );
-  mMarkerSymbol->setDataDefinedProperty( QgsSymbol::Property::Opacity, QgsProperty::fromExpression( QStringLiteral( "if(\"Heading\" > 100, 25, 50)" ) ) );
+  qgis::down_cast< QgsGradientFillSymbolLayer * >( mFilledMarkerLayer->subSymbol()->symbolLayer( 0 ) )->setDataDefinedProperty( QgsSymbolLayer::PropertyFillColor, QgsProperty::fromExpression( QStringLiteral( "if(importance > 2, 'red', 'green')" ) ) );
+  qgis::down_cast< QgsGradientFillSymbolLayer * >( mFilledMarkerLayer->subSymbol()->symbolLayer( 0 ) )->setDataDefinedProperty( QgsSymbolLayer::PropertySecondaryColor, QgsProperty::fromExpression( QStringLiteral( "if(importance > 2, 'blue', 'magenta')" ) ) );
+  mMarkerSymbol->setDataDefinedProperty( QgsSymbol::PropertyOpacity, QgsProperty::fromExpression( QStringLiteral( "if(\"Heading\" > 100, 25, 50)" ) ) );
 
+  const bool result = imageCheck( QStringLiteral( "filledmarker_ddopacity" ) );
+  qgis::down_cast< QgsGradientFillSymbolLayer * >( mFilledMarkerLayer->subSymbol()->symbolLayer( 0 ) )->setDataDefinedProperty( QgsSymbolLayer::PropertyFillColor, QgsProperty() );
+  qgis::down_cast< QgsGradientFillSymbolLayer * >( mFilledMarkerLayer->subSymbol()->symbolLayer( 0 ) )->setDataDefinedProperty( QgsSymbolLayer::PropertyStrokeColor, QgsProperty() );
+  mMarkerSymbol->setDataDefinedProperty( QgsSymbol::PropertyOpacity, QgsProperty() );
+  QVERIFY( result );
+}
+
+//
+// Private helper functions not called directly by CTest
+//
+
+
+bool TestQgsFilledMarkerSymbol::imageCheck( const QString &testType )
+{
+  //use the QgsRenderChecker test utility class to
+  //ensure the rendered output matches our control image
   mMapSettings.setExtent( mpPointsLayer->extent() );
   mMapSettings.setOutputDpi( 96 );
-  const bool result = QGSRENDERMAPSETTINGSCHECK( "filledmarker_ddopacity", "filledmarker_ddopacity", mMapSettings );
-
-  qgis::down_cast< QgsGradientFillSymbolLayer * >( mFilledMarkerLayer->subSymbol()->symbolLayer( 0 ) )->setDataDefinedProperty( QgsSymbolLayer::Property::FillColor, QgsProperty() );
-  qgis::down_cast< QgsGradientFillSymbolLayer * >( mFilledMarkerLayer->subSymbol()->symbolLayer( 0 ) )->setDataDefinedProperty( QgsSymbolLayer::Property::StrokeColor, QgsProperty() );
-  mMarkerSymbol->setDataDefinedProperty( QgsSymbol::Property::Opacity, QgsProperty() );
-  QVERIFY( result );
+  QgsRenderChecker myChecker;
+  myChecker.setControlPathPrefix( QStringLiteral( "symbol_filledmarker" ) );
+  myChecker.setControlName( "expected_" + testType );
+  myChecker.setMapSettings( mMapSettings );
+  const bool myResultFlag = myChecker.runTest( testType );
+  mReport += myChecker.report();
+  return myResultFlag;
 }
 
 QGSTEST_MAIN( TestQgsFilledMarkerSymbol )

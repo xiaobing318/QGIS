@@ -19,6 +19,7 @@
 #include "qgis_sip.h"
 #include "qgis_core.h"
 #include "qgstextblock.h"
+#include "qgsunittypes.h"
 #include "qgsmapunitscale.h"
 #include "qgis.h"
 
@@ -36,6 +37,7 @@ class QFontMetricsF;
   * \ingroup core
   * \brief Handles rendering text using rich formatting options, including drop shadows, buffers
   * and background shapes.
+  * \since QGIS 3.0
  */
 class CORE_EXPORT QgsTextRenderer
 {
@@ -65,13 +67,13 @@ class CORE_EXPORT QgsTextRenderer
      * \param mapUnitScale a mapUnitScale clamper
      * \returns font pixel size
      */
-    static int sizeToPixel( double size, const QgsRenderContext &c, Qgis::RenderUnit unit, const QgsMapUnitScale &mapUnitScale = QgsMapUnitScale() );
+    static int sizeToPixel( double size, const QgsRenderContext &c, QgsUnitTypes::RenderUnit unit, const QgsMapUnitScale &mapUnitScale = QgsMapUnitScale() );
 
     // TODO QGIS 4.0 -- remove drawAsOutlines from below methods!
 
     /**
      * Draws text within a rectangle using the specified settings.
-     * \param rect destination rectangle for text, in painter units
+     * \param rect destination rectangle for text
      * \param rotation text rotation
      * \param alignment horizontal alignment
      * \param textLines list of lines of text to draw
@@ -83,52 +85,15 @@ class CORE_EXPORT QgsTextRenderer
      * as of QGIS 3.4.3 and the text format should be set using QgsRenderContext::setTextRenderFormat() instead.
      * \param vAlignment vertical alignment (since QGIS 3.16)
      * \param flags text rendering flags (since QGIS 3.24)
-     * \param mode text layout mode. Only Qgis::TextLayoutMode::Rectangle, Qgis::TextLayoutMode::RectangleCapHeightBased and Qgis::TextLayoutMode::RectangleAscentBased are accepted (since QGIS 3.30)
-     *
-     * \see drawDocument(), which is more efficient if the text document and metrics have already been calculated.
      */
     static void drawText( const QRectF &rect, double rotation, Qgis::TextHorizontalAlignment alignment, const QStringList &textLines,
                           QgsRenderContext &context, const QgsTextFormat &format,
                           bool drawAsOutlines = true, Qgis::TextVerticalAlignment vAlignment = Qgis::TextVerticalAlignment::Top,
-                          Qgis::TextRendererFlags flags = Qgis::TextRendererFlags(),
-                          Qgis::TextLayoutMode mode = Qgis::TextLayoutMode::Rectangle );
-
-    /**
-     * Draws a text document within a rectangle using the specified settings.
-     *
-     * Calling this method is more efficient than calling drawText() if the text document and metrics have already
-     * been calculated.
-     *
-     * \warning Unlike drawText(), this method does not automatically update data defined properties in the text \a format. This
-     * is the caller's responsibility to do, and must be done prior to generating the text \a document and \a metrics.
-     *
-     * \param rect destination rectangle for text, in painter units
-     * \param format base text format
-     * \param document text document to draw
-     * \param metrics precalculated text metrics
-     * \param context destination render context
-     * \param horizontalAlignment horizontal alignment
-     * \param verticalAlignment vertical alignment
-     * \param rotation text rotation
-     * \param mode text layout mode. Only Qgis::TextLayoutMode::Rectangle, Qgis::TextLayoutMode::RectangleCapHeightBased and Qgis::TextLayoutMode::RectangleAscentBased are accepted.
-     * \param flags text rendering flags
-     *
-     * \since QGIS 3.30
-     */
-    static void drawDocument( const QRectF &rect,
-                              const QgsTextFormat &format,
-                              const QgsTextDocument &document,
-                              const QgsTextDocumentMetrics &metrics,
-                              QgsRenderContext &context,
-                              Qgis::TextHorizontalAlignment horizontalAlignment = Qgis::TextHorizontalAlignment::Left,
-                              Qgis::TextVerticalAlignment verticalAlignment = Qgis::TextVerticalAlignment::Top,
-                              double rotation = 0,
-                              Qgis::TextLayoutMode mode = Qgis::TextLayoutMode::Rectangle,
-                              Qgis::TextRendererFlags flags = Qgis::TextRendererFlags() );
+                          Qgis::TextRendererFlags flags = Qgis::TextRendererFlags() );
 
     /**
      * Draws text at a point origin using the specified settings.
-     * \param point origin of text, in painter units
+     * \param point origin of text
      * \param rotation text rotation
      * \param alignment horizontal alignment
      * \param textLines list of lines of text to draw
@@ -144,70 +109,8 @@ class CORE_EXPORT QgsTextRenderer
                           bool drawAsOutlines = true );
 
     /**
-     * Draws a text document at a point origin using the specified settings.
-     *
-     * Calling this method is more efficient than calling drawText() if the text document and metrics have already
-     * been calculated.
-     *
-     * \warning Unlike drawText(), this method does not automatically update data defined properties in the text \a format. This
-     * is the caller's responsibility to do, and must be done prior to generating the text \a document and \a metrics.
-     *
-     * \param point origin of text, in painter units
-     * \param format base text format
-     * \param document text document to draw
-     * \param metrics precalculated text metrics
-     * \param context destination render context
-     * \param alignment horizontal alignment
-     * \param rotation text rotation
-     *
-     * \since QGIS 3.40
-     */
-    static void drawDocument( QPointF point,
-                              const QgsTextFormat &format,
-                              const QgsTextDocument &document,
-                              const QgsTextDocumentMetrics &metrics,
-                              QgsRenderContext &context,
-                              Qgis::TextHorizontalAlignment alignment,
-                              double rotation );
-
-    /**
-     * Draws text along a line using the specified settings.
-     *
-     * \param line line to render text along, in painter units
-     * \param text text to draw
-     * \param context render context
-     * \param format text format
-     * \param offsetAlongLine offset along the line (in painter units) to start text at
-     * \param offsetFromLine offset from the line (in painter units). Negative values will shift the text to the left of the line, positive values will shift the text to the right.
-     *
-     * \since QGIS 3.32
-     */
-    static void drawTextOnLine( const QPolygonF &line, const QString &text,
-                                QgsRenderContext &context, const QgsTextFormat &format,
-                                double offsetAlongLine = 0, double offsetFromLine = 0 );
-
-    /**
-     * Draws a text document along a line using the specified settings.
-     *
-     * \param line line to render text along, in painter units
-     * \param format text format
-     * \param document text document to draw
-     * \param context render context
-     * \param offsetAlongLine offset along the line (in painter units) to start text at
-     * \param offsetFromLine offset from the line (in painter units). Negative values will shift the text to the left of the line, positive values will shift the text to the right.
-     *
-     * \since QGIS 3.32
-     */
-    static void drawDocumentOnLine( const QPolygonF &line,
-                                    const QgsTextFormat &format,
-                                    const QgsTextDocument &document,
-                                    QgsRenderContext &context,
-                                    double offsetAlongLine = 0,
-                                    double offsetFromLine = 0 );
-
-    /**
      * Draws a single component of rendered text using the specified settings.
-     * \param rect destination rectangle for text, in painter units
+     * \param rect destination rectangle for text
      * \param rotation text rotation
      * \param alignment horizontal alignment
      * \param textLines list of lines of text to draw
@@ -221,7 +124,7 @@ class CORE_EXPORT QgsTextRenderer
      * rendering and may result in side effects like misaligned text buffers. This setting is deprecated and has no effect
      * as of QGIS 3.4.3 and the text format should be set using QgsRenderContext::setTextRenderFormat() instead.
      *
-     * \deprecated QGIS 3.40. Private API only, will be removed in 4.0.
+     * \deprecated Private API only, will be removed in 4.0
      */
     Q_DECL_DEPRECATED static void drawPart( const QRectF &rect, double rotation, Qgis::TextHorizontalAlignment alignment, const QStringList &textLines,
                                             QgsRenderContext &context, const QgsTextFormat &format,
@@ -229,7 +132,7 @@ class CORE_EXPORT QgsTextRenderer
 
     /**
      * Draws a single component of rendered text using the specified settings.
-     * \param origin origin for start of text, in painter units. Y coordinate will be used as baseline.
+     * \param origin origin for start of text. Y coordinate will be used as baseline.
      * \param rotation text rotation
      * \param alignment horizontal alignment
      * \param textLines list of lines of text to draw
@@ -243,7 +146,7 @@ class CORE_EXPORT QgsTextRenderer
      * rendering and may result in side effects like misaligned text buffers. This setting is deprecated and has no effect
      * as of QGIS 3.4.3 and the text format should be set using QgsRenderContext::setTextRenderFormat() instead.
      *
-     * \deprecated QGIS 3.40. Private API only, will be removed in 4.0.
+     * \deprecated Private API only, will be removed in 4.0
      */
     Q_DECL_DEPRECATED static void drawPart( QPointF origin, double rotation, Qgis::TextHorizontalAlignment alignment, const QStringList &textLines,
                                             QgsRenderContext &context, const QgsTextFormat &format,
@@ -255,7 +158,7 @@ class CORE_EXPORT QgsTextRenderer
      * all scaling required by the render context.
      *
      * The optional \a scaleFactor argument can specify a font size scaling factor. It is recommended to set this to
-     * QgsTextRenderer::calculateScaleFactorForFormat() and then manually scale painter devices or calculations
+     * QgsTextRenderer::FONT_WORKAROUND_SCALE and then manually scale painter devices or calculations
      * based on the resultant font metrics. Failure to do so will result in poor quality text rendering
      * at small font sizes.
      *
@@ -321,30 +224,9 @@ class CORE_EXPORT QgsTextRenderer
      * Using this scale factor and manually adjusting any font metric based calculations results in more stable
      * font metrics and sizes for small font sizes.
      *
-     * \warning Deprecated, use calculateScaleFactorForFormat() instead.
-     *
      * \since QGIS 3.16
      */
     static constexpr double FONT_WORKAROUND_SCALE = 10;
-
-    /**
-     * Returns the scale factor used for upscaling font sizes and downscaling destination painter devices.
-     *
-     * Using this scale factor and manually adjusting any font metric based calculations results in more stable
-     * font metrics and sizes for small font sizes.
-     *
-     * \since QGIS 3.40
-     */
-    static double calculateScaleFactorForFormat( const QgsRenderContext &context, const QgsTextFormat &format );
-
-    // to match QTextEngine handling of superscript/subscript font sizes
-
-    /**
-     * Scale factor to use for super or subscript text which doesn't have an explicit font size set.
-     *
-     * \since QGIS 3.32
-     */
-    static constexpr double SUPERSCRIPT_SUBSCRIPT_FONT_SIZE_SCALING_FACTOR = 2.0 / 3.0;
 
   private:
 
@@ -355,9 +237,6 @@ class CORE_EXPORT QgsTextRenderer
 
       //! Index of block
       int blockIndex = 0;
-
-      //! Index of first fragment in block
-      int firstFragmentIndex = 0;
 
       //! Current origin point for painting (generally current painter rotation point)
       QPointF origin;
@@ -457,7 +336,6 @@ class CORE_EXPORT QgsTextRenderer
     static void drawMask( QgsRenderContext &context,
                           const Component &component,
                           const QgsTextFormat &format,
-                          const QgsTextDocumentMetrics &metrics,
                           Qgis::TextLayoutMode mode );
 
     static void drawText( QgsRenderContext &context,
@@ -503,22 +381,13 @@ class CORE_EXPORT QgsTextRenderer
                                           Qgis::TextVerticalAlignment vAlignment,
                                           double rotation );
 
-    static void renderBlockHorizontal( const QgsTextBlock &block, int blockIndex,
-                                       const QgsTextDocumentMetrics &metrics, QgsRenderContext &context,
-                                       const QgsTextFormat &format,
-                                       QPainter *painter, bool usePaths,
-                                       double fontScale, double extraWordSpace, double extraLetterSpace,
-                                       Qgis::TextLayoutMode mode );
+    static double calculateScaleFactorForFormat( const QgsRenderContext &context, const QgsTextFormat &format );
 
     friend class QgsVectorLayerLabelProvider;
     friend class QgsLabelPreview;
 
     static QgsTextFormat updateShadowPosition( const QgsTextFormat &format );
 
-    /**
-     * Returns TRUE if paths should be used to render a document
-     */
-    static bool usePathsToRender( const QgsRenderContext &context, const QgsTextFormat &format, const QgsTextDocument &document );
 };
 
 #endif // QGSTEXTRENDERER_H

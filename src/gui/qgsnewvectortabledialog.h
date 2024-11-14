@@ -69,7 +69,7 @@ class GUI_EXPORT QgsNewVectorTableDialog : public QDialog, private Ui_QgsNewVect
     /**
      * Sets the geometry \a type
      */
-    void setGeometryType( Qgis::WkbType type );
+    void setGeometryType( QgsWkbTypes::Type type );
 
     /**
      * Sets the CRS to \a crs
@@ -104,7 +104,7 @@ class GUI_EXPORT QgsNewVectorTableDialog : public QDialog, private Ui_QgsNewVect
     /**
      * Returns the geometry type
      */
-    Qgis::WkbType geometryType() const;
+    QgsWkbTypes::Type geometryType() const;
 
     /**
      * Sets the fields to \a fields
@@ -112,7 +112,8 @@ class GUI_EXPORT QgsNewVectorTableDialog : public QDialog, private Ui_QgsNewVect
     void setFields( const QgsFields &fields );
 
     /**
-     * Returns TRUE if spatialindex checkbox is checked.
+     * Returns TRUE if spatialindex checkbox is cheched
+     * @return
      */
     bool createSpatialIndex();
 
@@ -129,8 +130,6 @@ class GUI_EXPORT QgsNewVectorTableDialog : public QDialog, private Ui_QgsNewVect
     // Used by validator
     QStringList mTableNames;
     QStringList mValidationErrors;
-
-    QSet<QString> mIllegalFieldNames;
 
     void updateButtons();
     void selectRow( int row );
@@ -202,7 +201,7 @@ class QgsNewVectorTableFieldModel: public QgsFieldModel
 
     const QList< QgsVectorDataProvider::NativeType> mNativeTypes;
     QString typeDesc( const QString &typeName ) const;
-    QMetaType::Type type( const QString &typeName ) const;
+    QVariant::Type type( const QString &typeName ) const;
 
 };
 

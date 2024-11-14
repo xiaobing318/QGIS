@@ -224,19 +224,19 @@ int QgsTinInterpolator::insertData( const QgsFeature &f, QgsInterpolator::ValueS
     {
       switch ( QgsWkbTypes::geometryType( g.wkbType() ) )
       {
-        case Qgis::GeometryType::Point:
+        case QgsWkbTypes::PointGeometry:
         {
           if ( addPointsFromGeometry( g, source, attributeValue ) != 0 )
             return -1;
           break;
         }
 
-        case Qgis::GeometryType::Line:
-        case Qgis::GeometryType::Polygon:
+        case QgsWkbTypes::LineGeometry:
+        case QgsWkbTypes::PolygonGeometry:
         {
           // need to extract all rings from input geometry
           std::vector<const QgsCurve *> curves;
-          if ( QgsWkbTypes::geometryType( g.wkbType() ) == Qgis::GeometryType::Polygon )
+          if ( QgsWkbTypes::geometryType( g.wkbType() ) == QgsWkbTypes::PolygonGeometry )
           {
             std::vector< const QgsCurvePolygon * > polygons;
             if ( g.isMultipart() )
@@ -315,8 +315,8 @@ int QgsTinInterpolator::insertData( const QgsFeature &f, QgsInterpolator::ValueS
           }
           break;
         }
-        case Qgis::GeometryType::Unknown:
-        case Qgis::GeometryType::Null:
+        case QgsWkbTypes::UnknownGeometry:
+        case QgsWkbTypes::NullGeometry:
           break;
       }
       break;

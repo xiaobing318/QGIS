@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgspainteffectpropertieswidget.h"
-#include "moc_qgspainteffectpropertieswidget.cpp"
 
 #include <QFile>
 #include <QStandardItem>
@@ -35,13 +34,13 @@ static bool _initWidgetFunction( const QString &name, QgsPaintEffectWidgetFunc f
   QgsPaintEffectAbstractMetadata *abstractMetadata = registry->effectMetadata( name );
   if ( !abstractMetadata )
   {
-    QgsDebugError( QStringLiteral( "Failed to find paint effect entry in registry: %1" ).arg( name ) );
+    QgsDebugMsg( QStringLiteral( "Failed to find paint effect entry in registry: %1" ).arg( name ) );
     return false;
   }
   QgsPaintEffectMetadata *metadata = dynamic_cast<QgsPaintEffectMetadata *>( abstractMetadata );
   if ( !metadata )
   {
-    QgsDebugError( QStringLiteral( "Failed to cast paint effect's metadata: " ) .arg( name ) );
+    QgsDebugMsg( QStringLiteral( "Failed to cast paint effect's metadata: " ) .arg( name ) );
     return false;
   }
   metadata->setWidgetFunction( f );

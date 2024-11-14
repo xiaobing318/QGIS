@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsxyzconnectiondialog.h"
-#include "moc_qgsxyzconnectiondialog.cpp"
 #include "qgsxyzconnection.h"
 #include "qgsgui.h"
 #include "qgshelp.h"

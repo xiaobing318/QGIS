@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgscheckboxsearchwidgetwrapper.h"
-#include "moc_qgscheckboxsearchwidgetwrapper.cpp"
 
 #include "qgsfields.h"
 #include "qgscheckboxwidgetfactory.h"
@@ -61,7 +60,7 @@ QgsSearchWidgetWrapper::FilterFlags QgsCheckboxSearchWidgetWrapper::defaultFlags
 
 QString QgsCheckboxSearchWidgetWrapper::createExpression( QgsSearchWidgetWrapper::FilterFlags flags ) const
 {
-  const QMetaType::Type fldType = layer()->fields().at( mFieldIdx ).type();
+  const QVariant::Type fldType = layer()->fields().at( mFieldIdx ).type();
   const QString fieldName = createFieldIdentifier();
 
   //clear any unsupported flags
@@ -78,12 +77,12 @@ QString QgsCheckboxSearchWidgetWrapper::createExpression( QgsSearchWidgetWrapper
 
   switch ( fldType )
   {
-    case QMetaType::Type::Int:
-    case QMetaType::Type::UInt:
-    case QMetaType::Type::Double:
-    case QMetaType::Type::LongLong:
-    case QMetaType::Type::ULongLong:
-    case QMetaType::Type::Bool:
+    case QVariant::Int:
+    case QVariant::UInt:
+    case QVariant::Double:
+    case QVariant::LongLong:
+    case QVariant::ULongLong:
+    case QVariant::Bool:
     {
       if ( flags & EqualTo )
         return fieldName + '=' + v.toString();

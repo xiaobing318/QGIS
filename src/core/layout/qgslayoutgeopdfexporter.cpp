@@ -18,12 +18,15 @@
 #include "qgsrenderedfeaturehandlerinterface.h"
 #include "qgsfeaturerequest.h"
 #include "qgslayout.h"
+#include "qgslogger.h"
 #include "qgsgeometry.h"
 #include "qgsvectorlayer.h"
+#include "qgsvectorfilewriter.h"
 #include "qgslayertree.h"
-#include "qgslayoutrendercontext.h"
 
 #include <gdal.h>
+#include "qgsgdalutils.h"
+#include "cpl_string.h"
 #include "qgslayoutpagecollection.h"
 
 #include <QMutex>
@@ -32,11 +35,11 @@
 #include <QDomElement>
 
 ///@cond PRIVATE
-class QgsGeospatialPdfRenderedFeatureHandler: public QgsRenderedFeatureHandlerInterface
+class QgsGeoPdfRenderedFeatureHandler: public QgsRenderedFeatureHandlerInterface
 {
   public:
 
-    QgsGeospatialPdfRenderedFeatureHandler( QgsLayoutItemMap *map, QgsLayoutGeospatialPdfExporter *exporter, const QStringList &layerIds )
+    QgsGeoPdfRenderedFeatureHandler( QgsLayoutItemMap *map, QgsLayoutGeoPdfExporter *exporter, const QStringList &layerIds )
       : mExporter( exporter )
       , mMap( map )
       , mLayerIds( layerIds )
@@ -44,7 +47,7 @@ class QgsGeospatialPdfRenderedFeatureHandler: public QgsRenderedFeatureHandlerIn
       // get page size
       const QgsLayoutSize pageSize = map->layout()->pageCollection()->page( map->page() )->pageSize();
       QSizeF pageSizeLayoutUnits = map->layout()->convertToLayoutUnits( pageSize );
-      const QgsLayoutSize pageSizeInches = map->layout()->renderContext().measurementConverter().convert( pageSize, Qgis::LayoutUnit::Inches );
+      const QgsLayoutSize pageSizeInches = map->layout()->renderContext().measurementConverter().convert( pageSize, QgsUnitTypes::LayoutInches );
 
       // PDF assumes 72 dpi -- this is hardcoded!!
       const double pageHeightPdfUnits = pageSizeInches.height() * 72;
@@ -88,7 +91,7 @@ class QgsGeospatialPdfRenderedFeatureHandler: public QgsRenderedFeatureHandlerIn
       // always convert to multitype, to make things consistent
       transformed.convertToMultiType();
 
-      mExporter->pushRenderedFeature( layerId, QgsLayoutGeospatialPdfExporter::RenderedFeature( feature, transformed ), theme );
+      mExporter->pushRenderedFeature( layerId, QgsLayoutGeoPdfExporter::RenderedFeature( feature, transformed ), theme );
     }
 
     QSet<QString> usedAttributes( QgsVectorLayer *, const QgsRenderContext & ) const override
@@ -99,13 +102,13 @@ class QgsGeospatialPdfRenderedFeatureHandler: public QgsRenderedFeatureHandlerIn
   private:
     QTransform mMapToLayoutTransform;
     QTransform mLayoutToPdfTransform;
-    QgsLayoutGeospatialPdfExporter *mExporter = nullptr;
+    QgsLayoutGeoPdfExporter *mExporter = nullptr;
     QgsLayoutItemMap *mMap = nullptr;
     QStringList mLayerIds;
 };
 ///@endcond
 
-QgsLayoutGeospatialPdfExporter::QgsLayoutGeospatialPdfExporter( QgsLayout *layout )
+QgsLayoutGeoPdfExporter::QgsLayoutGeoPdfExporter( QgsLayout *layout )
   : mLayout( layout )
 {
   // build a list of exportable feature layers in advance
@@ -117,7 +120,7 @@ QgsLayoutGeospatialPdfExporter::QgsLayoutGeospatialPdfExporter( QgsLayout *layou
     {
       const QVariant visibility = ml->customProperty( QStringLiteral( "geopdf/initiallyVisible" ), true );
       mInitialLayerVisibility.insert( ml->id(), !visibility.isValid() ? true : visibility.toBool() );
-      if ( ml->type() == Qgis::LayerType::Vector )
+      if ( ml->type() == QgsMapLayerType::VectorLayer )
       {
         const QVariant v = ml->customProperty( QStringLiteral( "geopdf/includeFeatures" ) );
         if ( !v.isValid() || v.toBool() )
@@ -137,21 +140,19 @@ QgsLayoutGeospatialPdfExporter::QgsLayoutGeospatialPdfExporter( QgsLayout *layou
   mLayout->layoutItems( maps );
   for ( QgsLayoutItemMap *map : std::as_const( maps ) )
   {
-    QgsGeospatialPdfRenderedFeatureHandler *handler = new QgsGeospatialPdfRenderedFeatureHandler( map, this, exportableLayerIds );
+    QgsGeoPdfRenderedFeatureHandler *handler = new QgsGeoPdfRenderedFeatureHandler( map, this, exportableLayerIds );
     mMapHandlers.insert( map, handler );
     map->addRenderedFeatureHandler( handler );
   }
 
-  mLayerTreeGroupOrder = mLayout->customProperty( QStringLiteral( "pdfGroupOrder" ) ).toStringList();
-
   // start with project layer order, and then apply custom layer order if set
-  QStringList geospatialPdfLayerOrder;
+  QStringList geoPdfLayerOrder;
   const QString presetLayerOrder = mLayout->customProperty( QStringLiteral( "pdfLayerOrder" ) ).toString();
   if ( !presetLayerOrder.isEmpty() )
-    geospatialPdfLayerOrder = presetLayerOrder.split( QStringLiteral( "~~~" ) );
+    geoPdfLayerOrder = presetLayerOrder.split( QStringLiteral( "~~~" ) );
 
   QList< QgsMapLayer * > layerOrder = mLayout->project()->layerTreeRoot()->layerOrder();
-  for ( auto it = geospatialPdfLayerOrder.rbegin(); it != geospatialPdfLayerOrder.rend(); ++it )
+  for ( auto it = geoPdfLayerOrder.rbegin(); it != geoPdfLayerOrder.rend(); ++it )
   {
     for ( int i = 0; i < layerOrder.size(); ++i )
     {
@@ -167,7 +168,7 @@ QgsLayoutGeospatialPdfExporter::QgsLayoutGeospatialPdfExporter( QgsLayout *layou
     mLayerOrder << layer->id();
 }
 
-QgsLayoutGeospatialPdfExporter::~QgsLayoutGeospatialPdfExporter()
+QgsLayoutGeoPdfExporter::~QgsLayoutGeoPdfExporter()
 {
   // cleanup - remove rendered feature handler from all maps
   for ( auto it = mMapHandlers.constBegin(); it != mMapHandlers.constEnd(); ++it )
@@ -177,7 +178,7 @@ QgsLayoutGeospatialPdfExporter::~QgsLayoutGeospatialPdfExporter()
   }
 }
 
-QgsAbstractGeospatialPdfExporter::VectorComponentDetail QgsLayoutGeospatialPdfExporter::componentDetailForLayerId( const QString &layerId )
+QgsAbstractGeoPdfExporter::VectorComponentDetail QgsLayoutGeoPdfExporter::componentDetailForLayerId( const QString &layerId )
 {
   QgsProject *project = mLayout->project();
   VectorComponentDetail detail;

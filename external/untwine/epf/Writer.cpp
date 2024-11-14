@@ -20,8 +20,6 @@
 #include "../untwine/Common.hpp"
 #include "../untwine/VoxelKey.hpp"
 
-#include <stringconv.hpp>  // untwine/os
-
 using namespace pdal;
 
 namespace untwine
@@ -32,7 +30,6 @@ namespace epf
 Writer::Writer(const std::string& directory, int numThreads, size_t pointSize) :
     m_directory(directory), m_pool(numThreads), m_stop(false), m_pointSize(pointSize)
 {
-    m_pool.trap(true);
     std::function<void()> f = std::bind(&Writer::run, this);
     while (numThreads--)
         m_pool.add(f);
@@ -57,9 +54,6 @@ DataVecPtr Writer::fetchBuffer()
 {
     std::unique_lock<std::mutex> lock(m_mutex);
 
-    if (m_stop)
-        return nullptr;
-
     // If there are fewer items in the queue than we have FileProcessors, we may choose not
     // to block and return a nullptr, expecting that the caller will flush outstanding cells.
     return m_bufferCache.fetch(lock, m_queue.size() < NumFileProcessors);
@@ -69,9 +63,6 @@ DataVecPtr Writer::fetchBuffer()
 DataVecPtr Writer::fetchBufferBlocking()
 {
     std::unique_lock<std::mutex> lock(m_mutex);
-
-    if (m_stop)
-        return nullptr;
 
     return m_bufferCache.fetch(lock, false);
 }
@@ -146,21 +137,15 @@ void Writer::run()
 
         // Open the file. Write the data. Stick the buffer back on the cache.
         // Remove the key from the active key list.
-        std::ofstream out(os::toNative(path(wd.key)), std::ios::app | std::ios::binary);
+        std::ofstream out(toNative(path(wd.key)), std::ios::app | std::ios::binary);
         out.write(reinterpret_cast<const char *>(wd.data->data()), wd.dataSize);
         out.close();
+        if (!out)
+            throw FatalError("Failure writing to '" + path(wd.key) + "'.");
 
         std::lock_guard<std::mutex> lock(m_mutex);
-        if (!out)
-        {
-            m_pool.setError("Failure writing to file '" + path(wd.key) + "'.");
-            m_stop = true;
-        }
-        else
-        {
-            m_bufferCache.replace(std::move(wd.data));
-            m_active.remove(wd.key);
-        }
+        m_bufferCache.replace(std::move(wd.data));
+        m_active.remove(wd.key);
     }
 }
 

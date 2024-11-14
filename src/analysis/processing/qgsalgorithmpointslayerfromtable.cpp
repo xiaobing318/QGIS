@@ -56,11 +56,6 @@ QString QgsPointsLayerFromTableAlgorithm::shortHelpString() const
                         "the resulting layer will be the input table." );
 }
 
-Qgis::ProcessingAlgorithmDocumentationFlags QgsPointsLayerFromTableAlgorithm::documentationFlags() const
-{
-  return Qgis::ProcessingAlgorithmDocumentationFlag::RegeneratesPrimaryKey;
-}
-
 QgsPointsLayerFromTableAlgorithm *QgsPointsLayerFromTableAlgorithm::createInstance() const
 {
   return new QgsPointsLayerFromTableAlgorithm();
@@ -69,18 +64,18 @@ QgsPointsLayerFromTableAlgorithm *QgsPointsLayerFromTableAlgorithm::createInstan
 void QgsPointsLayerFromTableAlgorithm::initAlgorithm( const QVariantMap & )
 {
   addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ), QObject::tr( "Input layer" ),
-                QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::Vector ) ) );
+                QList< int >() << QgsProcessing::TypeVector ) );
   addParameter( new QgsProcessingParameterField( QStringLiteral( "XFIELD" ), QObject::tr( "X field" ), QVariant(),
-                QStringLiteral( "INPUT" ), Qgis::ProcessingFieldParameterDataType::Any ) );
+                QStringLiteral( "INPUT" ), QgsProcessingParameterField::Any ) );
   addParameter( new QgsProcessingParameterField( QStringLiteral( "YFIELD" ), QObject::tr( "Y field" ), QVariant(),
-                QStringLiteral( "INPUT" ), Qgis::ProcessingFieldParameterDataType::Any ) );
+                QStringLiteral( "INPUT" ), QgsProcessingParameterField::Any ) );
   addParameter( new QgsProcessingParameterField( QStringLiteral( "ZFIELD" ), QObject::tr( "Z field" ), QVariant(),
-                QStringLiteral( "INPUT" ), Qgis::ProcessingFieldParameterDataType::Any, false, true ) );
+                QStringLiteral( "INPUT" ), QgsProcessingParameterField::Any, false, true ) );
   addParameter( new QgsProcessingParameterField( QStringLiteral( "MFIELD" ), QObject::tr( "M field" ), QVariant(),
-                QStringLiteral( "INPUT" ), Qgis::ProcessingFieldParameterDataType::Any, false, true ) );
+                QStringLiteral( "INPUT" ), QgsProcessingParameterField::Any, false, true ) );
   addParameter( new QgsProcessingParameterCrs( QStringLiteral( "TARGET_CRS" ), QObject::tr( "Target CRS" ), QStringLiteral( "EPSG:4326" ) ) );
 
-  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Points from table" ), Qgis::ProcessingSourceType::VectorPoint ) );
+  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Points from table" ), QgsProcessing::TypeVectorPoint ) );
 }
 
 QVariantMap QgsPointsLayerFromTableAlgorithm::processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback )
@@ -103,7 +98,7 @@ QVariantMap QgsPointsLayerFromTableAlgorithm::processAlgorithm( const QVariantMa
   if ( !fieldName.isEmpty() )
     mFieldIndex = fields.lookupField( fieldName );
 
-  Qgis::WkbType outputWkbType = Qgis::WkbType::Point;
+  QgsWkbTypes::Type outputWkbType = QgsWkbTypes::Point;
   if ( zFieldIndex >= 0 )
     outputWkbType = QgsWkbTypes::addZ( outputWkbType );
   if ( mFieldIndex >= 0 )
@@ -119,8 +114,8 @@ QVariantMap QgsPointsLayerFromTableAlgorithm::processAlgorithm( const QVariantMa
   const double step = featureSource->featureCount() > 0 ? 100.0 / featureSource->featureCount() : 1;
 
   QgsFeatureRequest req;
-  req.setFlags( Qgis::FeatureRequestFlag::NoGeometry );
-  QgsFeatureIterator fi = featureSource->getFeatures( req, Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks );
+  req.setFlags( QgsFeatureRequest::NoGeometry );
+  QgsFeatureIterator fi = featureSource->getFeatures( req, QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks );
   QgsFeature f;
   int current = 0;
 
@@ -156,8 +151,6 @@ QVariantMap QgsPointsLayerFromTableAlgorithm::processAlgorithm( const QVariantMa
     feedback->setProgress( current * step );
     current++;
   }
-
-  sink->finalize();
 
   QVariantMap outputs;
   outputs.insert( QStringLiteral( "OUTPUT" ), dest );

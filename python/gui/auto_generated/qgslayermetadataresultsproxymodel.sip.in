@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgslayermetadataresultsproxymodel.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -48,7 +48,7 @@ Sets the map layer type filter status to ``enabled``.
 Sets the extent filter to ``extent``.
 %End
 
-    void setFilterGeometryType( Qgis::GeometryType geometryType );
+    void setFilterGeometryType( const QgsWkbTypes::GeometryType geometryType );
 %Docstring
 Sets the geometry type filter to ``geometryType``.
 %End
@@ -58,7 +58,7 @@ Sets the geometry type filter to ``geometryType``.
 Sets the text filter to ``filterString``.
 %End
 
-    void setFilterMapLayerType( const Qgis::LayerType mapLayerType );
+    void setFilterMapLayerType( const QgsMapLayerType mapLayerType );
 %Docstring
 Sets the map layer type filter to ``mapLayerType``.
 %End
@@ -75,5 +75,5 @@ Sets the map layer type filter to ``mapLayerType``.
  *                                                                      *
  * src/gui/qgslayermetadataresultsproxymodel.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

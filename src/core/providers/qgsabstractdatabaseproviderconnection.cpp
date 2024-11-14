@@ -14,7 +14,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsabstractdatabaseproviderconnection.h"
-#include "moc_qgsabstractdatabaseproviderconnection.cpp"
 #include "qgsvectorlayer.h"
 #include "qgsexception.h"
 #include "qgsweakrelation.h"
@@ -35,15 +34,9 @@ QgsAbstractDatabaseProviderConnection::QgsAbstractDatabaseProviderConnection( co
 {
 
 }
-
 QgsAbstractDatabaseProviderConnection::Capabilities QgsAbstractDatabaseProviderConnection::capabilities() const
 {
   return mCapabilities;
-}
-
-Qgis::DatabaseProviderConnectionCapabilities2 QgsAbstractDatabaseProviderConnection::capabilities2() const
-{
-  return mCapabilities2;
 }
 
 QgsAbstractDatabaseProviderConnection::GeometryColumnCapabilities QgsAbstractDatabaseProviderConnection::geometryColumnCapabilities()
@@ -76,20 +69,13 @@ void QgsAbstractDatabaseProviderConnection::checkCapability( QgsAbstractDatabase
   }
 }
 
-void QgsAbstractDatabaseProviderConnection::checkCapability( Qgis::DatabaseProviderConnectionCapability2 capability ) const
-{
-  if ( ! mCapabilities2.testFlag( capability ) )
-  {
-    throw QgsProviderConnectionException( QObject::tr( "Operation '%1' is not supported for this connection" ).arg( qgsEnumValueToKey( capability ) ) );
-  }
-}
-
-///@endcond
-
 QString QgsAbstractDatabaseProviderConnection::providerKey() const
 {
   return mProviderKey;
 }
+
+///@endcond
+
 
 QMultiMap<Qgis::SqlKeywordCategory, QStringList> QgsAbstractDatabaseProviderConnection::sqlDictionary()
 {
@@ -1029,32 +1015,7 @@ QMultiMap<Qgis::SqlKeywordCategory, QStringList> QgsAbstractDatabaseProviderConn
   };
 }
 
-QSet<QString> QgsAbstractDatabaseProviderConnection::illegalFieldNames() const
-{
-  return mIllegalFieldNames;
-}
-
 QList<Qgis::FieldDomainType> QgsAbstractDatabaseProviderConnection::supportedFieldDomainTypes() const
-{
-  return {};
-}
-
-QList<Qgis::RelationshipCardinality> QgsAbstractDatabaseProviderConnection::supportedRelationshipCardinalities() const
-{
-  return {};
-}
-
-QList<Qgis::RelationshipStrength> QgsAbstractDatabaseProviderConnection::supportedRelationshipStrengths() const
-{
-  return {};
-}
-
-Qgis::RelationshipCapabilities QgsAbstractDatabaseProviderConnection::supportedRelationshipCapabilities() const
-{
-  return Qgis::RelationshipCapabilities();
-}
-
-QStringList QgsAbstractDatabaseProviderConnection::relatedTableTypes() const
 {
   return {};
 }
@@ -1067,7 +1028,7 @@ QgsProviderSqlQueryBuilder *QgsAbstractDatabaseProviderConnection::queryBuilder(
 void QgsAbstractDatabaseProviderConnection::createVectorTable( const QString &schema,
     const QString &name,
     const QgsFields &fields,
-    Qgis::WkbType wkbType,
+    QgsWkbTypes::Type wkbType,
     const QgsCoordinateReferenceSystem &srs,
     bool overwrite,
     const QMap<QString, QVariant> *
@@ -1271,17 +1232,17 @@ void QgsAbstractDatabaseProviderConnection::renameField( const QString &schema, 
   }
 }
 
-QList<QgsAbstractDatabaseProviderConnection::TableProperty> QgsAbstractDatabaseProviderConnection::tables( const QString &, const QgsAbstractDatabaseProviderConnection::TableFlags &, QgsFeedback * ) const
+QList<QgsAbstractDatabaseProviderConnection::TableProperty> QgsAbstractDatabaseProviderConnection::tables( const QString &, const QgsAbstractDatabaseProviderConnection::TableFlags & ) const
 {
   checkCapability( Capability::Tables );
   return QList<QgsAbstractDatabaseProviderConnection::TableProperty>();
 }
 
 
-QgsAbstractDatabaseProviderConnection::TableProperty QgsAbstractDatabaseProviderConnection::table( const QString &schema, const QString &name, QgsFeedback *feedback ) const
+QgsAbstractDatabaseProviderConnection::TableProperty QgsAbstractDatabaseProviderConnection::table( const QString &schema, const QString &name ) const
 {
   checkCapability( Capability::Tables );
-  const QList<QgsAbstractDatabaseProviderConnection::TableProperty> constTables { tables( schema, TableFlags(), feedback ) };
+  const QList<QgsAbstractDatabaseProviderConnection::TableProperty> constTables { tables( schema ) };
   for ( const auto &t : constTables )
   {
     if ( t.tableName() == name )
@@ -1315,7 +1276,7 @@ void QgsAbstractDatabaseProviderConnection::TableProperty::setTableName( const Q
   mTableName = name;
 }
 
-void QgsAbstractDatabaseProviderConnection::TableProperty::addGeometryColumnType( Qgis::WkbType type, const QgsCoordinateReferenceSystem &crs )
+void QgsAbstractDatabaseProviderConnection::TableProperty::addGeometryColumnType( const QgsWkbTypes::Type &type, const QgsCoordinateReferenceSystem &crs )
 {
   // Do not add the type if it's already present
   const QgsAbstractDatabaseProviderConnection::TableProperty::GeometryColumnType toAdd { type, crs };
@@ -1335,7 +1296,7 @@ QList<QgsAbstractDatabaseProviderConnection::TableProperty::GeometryColumnType> 
 }
 
 
-QgsFields QgsAbstractDatabaseProviderConnection::fields( const QString &schema, const QString &tableName, QgsFeedback * ) const
+QgsFields QgsAbstractDatabaseProviderConnection::fields( const QString &schema, const QString &tableName ) const
 {
   QgsVectorLayer::LayerOptions options { false, true };
   options.skipCrsValidation = true;
@@ -1373,35 +1334,10 @@ void QgsAbstractDatabaseProviderConnection::addFieldDomain( const QgsFieldDomain
   checkCapability( Capability::AddFieldDomain );
 }
 
-void QgsAbstractDatabaseProviderConnection::setFieldAlias( const QString &, const QString &, const QString &, const QString & ) const
-{
-  checkCapability( Qgis::DatabaseProviderConnectionCapability2::SetFieldAlias );
-}
-
-void QgsAbstractDatabaseProviderConnection::setFieldComment( const QString &, const QString &, const QString &, const QString & ) const
-{
-  checkCapability( Qgis::DatabaseProviderConnectionCapability2::SetFieldComment );
-}
-
 QList< QgsWeakRelation > QgsAbstractDatabaseProviderConnection::relationships( const QString &, const QString & ) const
 {
   checkCapability( Capability::RetrieveRelationships );
   return {};
-}
-
-void QgsAbstractDatabaseProviderConnection::addRelationship( const QgsWeakRelation & ) const
-{
-  checkCapability( Capability::AddRelationship );
-}
-
-void QgsAbstractDatabaseProviderConnection::updateRelationship( const QgsWeakRelation & ) const
-{
-  checkCapability( Capability::UpdateRelationship );
-}
-
-void QgsAbstractDatabaseProviderConnection::deleteRelationship( const QgsWeakRelation & ) const
-{
-  checkCapability( Capability::DeleteRelationship );
 }
 
 QString QgsAbstractDatabaseProviderConnection::TableProperty::defaultName() const

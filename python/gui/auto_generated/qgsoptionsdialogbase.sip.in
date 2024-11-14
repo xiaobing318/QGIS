@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsoptionsdialogbase.h                                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -25,8 +25,8 @@ and connecting QDialogButtonBox's accepted/rejected signals to dialog's accept/r
 
 To use:
 
-- Start with copy of qgsoptionsdialog_template.ui and build options/properties dialog.
-- In source file for dialog, inherit this class instead of QDialog, then in constructor:
+# Start with copy of qgsoptionsdialog_template.ui and build options/properties dialog.
+# In source file for dialog, inherit this class instead of QDialog, then in constructor:
   ...
   setupUi( this ); // set up .ui file objects
   initOptionsBase( ``False`` ); // set up this class to use .ui objects, optionally restoring base ui
@@ -96,7 +96,7 @@ Sets the dialog ``page`` (by object name) to show.
 .. versionadded:: 3.14
 %End
 
-    void addPage( const QString &title, const QString &tooltip, const QIcon &icon, QWidget *widget /Transfer/, const QStringList &path = QStringList(), const QString &key = QString() );
+    void addPage( const QString &title, const QString &tooltip, const QIcon &icon, QWidget *widget /Transfer/, const QStringList &path = QStringList() );
 %Docstring
 Adds a new page to the dialog pages.
 
@@ -107,15 +107,12 @@ The page content is specified via the ``widget`` argument. Ownership of ``widget
 Since QGIS 3.22, the optional ``path`` argument can be used to set the path of the item's entry in the tree view
 (for dialogs which show a tree view of options pages only).
 
-Since QGIS 3.32, the optional ``key`` argument can be used to set an untranslated key that ``path`` can refer to
-in following calls. Default to ``title``.
-
 .. seealso:: :py:func:`insertPage`
 
 .. versionadded:: 3.14
 %End
 
-    void insertPage( const QString &title, const QString &tooltip, const QIcon &icon, QWidget *widget /Transfer/, const QString &before, const QStringList &path = QStringList(), const QString &key = QString() );
+    void insertPage( const QString &title, const QString &tooltip, const QIcon &icon, QWidget *widget /Transfer/, const QString &before, const QStringList &path = QStringList() );
 %Docstring
 Inserts a new page into the dialog pages.
 
@@ -129,9 +126,6 @@ before the matching page.
 Since QGIS 3.22, the optional ``path`` argument can be used to set the path of the item's entry in the tree view
 (for dialogs which show a tree view of options pages only).
 
-Since QGIS 3.32, the optional ``key`` argument can be used to set an untranslated key that ``path`` can refer to
-in following calls. Default to ``title``.
-
 .. seealso:: :py:func:`addPage`
 
 .. versionadded:: 3.14
@@ -144,6 +138,8 @@ in following calls. Default to ``title``.
 searchText searches for a text in all the pages of the stacked widget and highlight the results
 
 :param text: the text to search
+
+.. versionadded:: 3.0
 %End
 
   protected slots:
@@ -174,6 +170,8 @@ Remove tab and unregister widgets on page remove
 %Docstring
 register widgets in the dialog to search for text in it
 it is automatically called if a line edit has "mSearchLineEdit" as object name.
+
+.. versionadded:: 3.0
 %End
 
 
@@ -187,5 +185,5 @@ it is automatically called if a line edit has "mSearchLineEdit" as object name.
  *                                                                      *
  * src/gui/qgsoptionsdialogbase.h                                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

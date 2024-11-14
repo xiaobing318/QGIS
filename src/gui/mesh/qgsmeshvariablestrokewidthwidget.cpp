@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsmeshvariablestrokewidthwidget.h"
-#include "moc_qgsmeshvariablestrokewidthwidget.cpp"
 
 #include <QDialog>
 #include <QDialogButtonBox>

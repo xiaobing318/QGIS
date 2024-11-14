@@ -51,8 +51,8 @@ class GUI_EXPORT QgsPointCloudRendererPropertiesWidget : public QgsMapLayerConfi
      */
     void setContext( const QgsSymbolWidgetContext &context );
 
-    void syncToLayer( QgsMapLayer *layer ) final;
-    void setDockMode( bool dockMode ) final;
+    void syncToLayer( QgsMapLayer *layer ) override;
+    void setDockMode( bool dockMode ) override;
 
   public slots:
 
@@ -65,8 +65,6 @@ class GUI_EXPORT QgsPointCloudRendererPropertiesWidget : public QgsMapLayerConfi
     void emitWidgetChanged();
 
   private:
-
-    static void initRendererWidgetFunctions();
 
     QgsPointCloudLayer *mLayer = nullptr;
     QgsStyle *mStyle = nullptr;

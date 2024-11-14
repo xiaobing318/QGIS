@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsmemoryprovider.h"
-#include "moc_qgsmemoryprovider.cpp"
 #include "qgsmemoryfeatureiterator.h"
 
 #include "qgsfeature.h"
@@ -36,7 +35,7 @@
 #define TEXT_PROVIDER_KEY QStringLiteral( "memory" )
 #define TEXT_PROVIDER_DESCRIPTION QStringLiteral( "Memory provider" )
 
-QgsMemoryProvider::QgsMemoryProvider( const QString &uri, const ProviderOptions &options, Qgis::DataProviderReadFlags flags )
+QgsMemoryProvider::QgsMemoryProvider( const QString &uri, const ProviderOptions &options, QgsDataProvider::ReadFlags flags )
   : QgsVectorDataProvider( uri, options, flags )
 {
   // Initialize the geometry with the uri to support old style uri's
@@ -55,7 +54,7 @@ QgsMemoryProvider::QgsMemoryProvider( const QString &uri, const ProviderOptions 
 
   if ( geometry.compare( QLatin1String( "none" ), Qt::CaseInsensitive ) == 0 )
   {
-    mWkbType = Qgis::WkbType::NoGeometry;
+    mWkbType = QgsWkbTypes::NoGeometry;
   }
   else
   {
@@ -77,50 +76,49 @@ QgsMemoryProvider::QgsMemoryProvider( const QString &uri, const ProviderOptions 
   mNextFeatureId = 1;
 
   setNativeTypes( QList< NativeType >()
-                  << QgsVectorDataProvider::NativeType( tr( "Whole Number (integer)" ), QStringLiteral( "integer" ), QMetaType::Type::Int, 0, 10 )
+                  << QgsVectorDataProvider::NativeType( tr( "Whole Number (integer)" ), QStringLiteral( "integer" ), QVariant::Int, 0, 10 )
                   // Decimal number from OGR/Shapefile/dbf may come with length up to 32 and
                   // precision up to length-2 = 30 (default, if width is not specified in dbf is length = 24 precision = 15)
                   // We know that double (QVariant::Double) has only 15-16 significant numbers,
                   // but setting that correct limits would disable the use of memory provider with
                   // data from Shapefiles. In any case, the data are handled as doubles.
                   // So the limits set here are not correct but enable use of data from Shapefiles.
-                  << QgsVectorDataProvider::NativeType( tr( "Decimal Number (real)" ), QStringLiteral( "double" ), QMetaType::Type::Double, 0, 32, 0, 30 )
-                  << QgsVectorDataProvider::NativeType( tr( "Text (string)" ), QStringLiteral( "string" ), QMetaType::Type::QString, 0, 255 )
+                  << QgsVectorDataProvider::NativeType( tr( "Decimal Number (real)" ), QStringLiteral( "double" ), QVariant::Double, 0, 32, 0, 30 )
+                  << QgsVectorDataProvider::NativeType( tr( "Text (string)" ), QStringLiteral( "string" ), QVariant::String, 0, 255 )
 
                   // date type
-                  << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QMetaType::Type::QDate ), QStringLiteral( "date" ), QMetaType::Type::QDate, -1, -1, -1, -1 )
-                  << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QMetaType::Type::QTime ), QStringLiteral( "time" ), QMetaType::Type::QTime, -1, -1, -1, -1 )
-                  << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QMetaType::Type::QDateTime ), QStringLiteral( "datetime" ), QMetaType::Type::QDateTime, -1, -1, -1, -1 )
+                  << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QVariant::Date ), QStringLiteral( "date" ), QVariant::Date, -1, -1, -1, -1 )
+                  << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QVariant::Time ), QStringLiteral( "time" ), QVariant::Time, -1, -1, -1, -1 )
+                  << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QVariant::DateTime ), QStringLiteral( "datetime" ), QVariant::DateTime, -1, -1, -1, -1 )
 
                   // integer types
-                  << QgsVectorDataProvider::NativeType( tr( "Whole Number (smallint - 16bit)" ), QStringLiteral( "int2" ), QMetaType::Type::Int, -1, -1, 0, 0 )
-                  << QgsVectorDataProvider::NativeType( tr( "Whole Number (integer - 32bit)" ), QStringLiteral( "int4" ), QMetaType::Type::Int, -1, -1, 0, 0 )
-                  << QgsVectorDataProvider::NativeType( tr( "Whole Number (integer - 64bit)" ), QStringLiteral( "int8" ), QMetaType::Type::LongLong, -1, -1, 0, 0 )
-                  << QgsVectorDataProvider::NativeType( tr( "Decimal Number (numeric)" ), QStringLiteral( "numeric" ), QMetaType::Type::Double, 1, 20, 0, 20 )
-                  << QgsVectorDataProvider::NativeType( tr( "Decimal Number (decimal)" ), QStringLiteral( "decimal" ), QMetaType::Type::Double, 1, 20, 0, 20 )
+                  << QgsVectorDataProvider::NativeType( tr( "Whole Number (smallint - 16bit)" ), QStringLiteral( "int2" ), QVariant::Int, -1, -1, 0, 0 )
+                  << QgsVectorDataProvider::NativeType( tr( "Whole Number (integer - 32bit)" ), QStringLiteral( "int4" ), QVariant::Int, -1, -1, 0, 0 )
+                  << QgsVectorDataProvider::NativeType( tr( "Whole Number (integer - 64bit)" ), QStringLiteral( "int8" ), QVariant::LongLong, -1, -1, 0, 0 )
+                  << QgsVectorDataProvider::NativeType( tr( "Decimal Number (numeric)" ), QStringLiteral( "numeric" ), QVariant::Double, 1, 20, 0, 20 )
+                  << QgsVectorDataProvider::NativeType( tr( "Decimal Number (decimal)" ), QStringLiteral( "decimal" ), QVariant::Double, 1, 20, 0, 20 )
 
                   // floating point
-                  << QgsVectorDataProvider::NativeType( tr( "Decimal Number (real)" ), QStringLiteral( "real" ), QMetaType::Type::Double, -1, -1, -1, -1 )
-                  << QgsVectorDataProvider::NativeType( tr( "Decimal Number (double)" ), QStringLiteral( "double precision" ), QMetaType::Type::Double, -1, -1, -1, -1 )
+                  << QgsVectorDataProvider::NativeType( tr( "Decimal Number (real)" ), QStringLiteral( "real" ), QVariant::Double, -1, -1, -1, -1 )
+                  << QgsVectorDataProvider::NativeType( tr( "Decimal Number (double)" ), QStringLiteral( "double precision" ), QVariant::Double, -1, -1, -1, -1 )
 
                   // string types
-                  << QgsVectorDataProvider::NativeType( tr( "Text, unlimited length (text)" ), QStringLiteral( "text" ), QMetaType::Type::QString, -1, -1, -1, -1 )
+                  << QgsVectorDataProvider::NativeType( tr( "Text, unlimited length (text)" ), QStringLiteral( "text" ), QVariant::String, -1, -1, -1, -1 )
 
                   // boolean
-                  << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QMetaType::Type::Bool ), QStringLiteral( "boolean" ), QMetaType::Type::Bool )
+                  << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QVariant::Bool ), QStringLiteral( "boolean" ), QVariant::Bool )
 
                   // blob
-                  << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QMetaType::Type::QByteArray ), QStringLiteral( "binary" ), QMetaType::Type::QByteArray )
+                  << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QVariant::ByteArray ), QStringLiteral( "binary" ), QVariant::ByteArray )
 
                   // list types
-                  << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QMetaType::Type::QStringList ), QStringLiteral( "stringlist" ), QMetaType::Type::QStringList, 0, 0, 0, 0, QMetaType::Type::QString )
-                  << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QMetaType::Type::QVariantList, QMetaType::Type::Int ), QStringLiteral( "integerlist" ), QMetaType::Type::QVariantList, 0, 0, 0, 0, QMetaType::Type::Int )
-                  << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QMetaType::Type::QVariantList, QMetaType::Type::Double ), QStringLiteral( "doublelist" ), QMetaType::Type::QVariantList, 0, 0, 0, 0, QMetaType::Type::Double )
-                  << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QMetaType::Type::QVariantList, QMetaType::Type::LongLong ), QStringLiteral( "integer64list" ), QMetaType::Type::QVariantList, 0, 0, 0, 0, QMetaType::Type::LongLong )
+                  << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QVariant::StringList ), QStringLiteral( "stringlist" ), QVariant::StringList, 0, 0, 0, 0, QVariant::String )
+                  << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QVariant::List, QVariant::Int ), QStringLiteral( "integerlist" ), QVariant::List, 0, 0, 0, 0, QVariant::Int )
+                  << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QVariant::List, QVariant::Double ), QStringLiteral( "doublelist" ), QVariant::List, 0, 0, 0, 0, QVariant::Double )
+                  << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QVariant::List, QVariant::LongLong ), QStringLiteral( "integer64list" ), QVariant::List, 0, 0, 0, 0, QVariant::LongLong )
 
                   // complex types
-                  << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QMetaType::Type::QVariantMap ), QStringLiteral( "map" ), QMetaType::Type::QVariantMap, -1, -1, -1, -1 )
-                  << QgsVectorDataProvider::NativeType( tr( "Geometry" ), QStringLiteral( "geometry" ), QMetaType::Type::User )
+                  << QgsVectorDataProvider::NativeType( QgsVariantUtils::typeToDisplayString( QVariant::Map ), QStringLiteral( "map" ), QVariant::Map, -1, -1, -1, -1 )
                 );
 
   if ( query.hasQueryItem( QStringLiteral( "field" ) ) )
@@ -140,8 +138,8 @@ QgsMemoryProvider::QgsMemoryProvider( const QString &uri, const ProviderOptions 
       const QRegularExpressionMatch regularExpressionMatch = reFieldDef.match( name );
 
       // If no match -> use string as type
-      QMetaType::Type type = QMetaType::Type::QString;
-      QMetaType::Type subType = QMetaType::Type::UnknownType;
+      QVariant::Type type = QVariant::String;
+      QVariant::Type subType = QVariant::Invalid;
       QString typeName( QStringLiteral( "string" ) );
       int length = 255;
       int precision = 0;
@@ -171,23 +169,23 @@ QgsMemoryProvider::QgsMemoryProvider( const QString &uri, const ProviderOptions 
         {
           if ( typeName == QLatin1String( "int" ) )
           {
-            type = QMetaType::Type::Int;
+            type = QVariant::Int;
             typeName = QStringLiteral( "integer" );
           }
           else if ( typeName == QLatin1String( "long" ) )
           {
-            type = QMetaType::Type::LongLong;
+            type = QVariant::LongLong;
             typeName = QStringLiteral( "int8" );
           }
           else if ( typeName == QLatin1String( "bool" ) )
           {
-            type = QMetaType::Type::Bool;
+            type = QVariant::Bool;
             typeName = QStringLiteral( "boolean" );
           }
           else
           {
             QgsLogger::warning( tr( "Unsupported typeName '%1'. Will be handled as string." ).arg( typeName ) );
-            type = QMetaType::Type::QString;
+            type = QVariant::String;
             typeName = QStringLiteral( "string" );
           }
         }
@@ -208,11 +206,11 @@ QgsMemoryProvider::QgsMemoryProvider( const QString &uri, const ProviderOptions 
         // Array
         if ( !regularExpressionMatch.captured( 4 ).isEmpty() )
         {
-          if ( subType == QMetaType::Type::UnknownType )
+          if ( subType == QVariant::Invalid )
             subType = type;
 
-          if ( type != QMetaType::Type::QVariantList && type != QMetaType::Type::QStringList )
-            type = type == QMetaType::Type::QString ? QMetaType::Type::QStringList : QMetaType::Type::QVariantList;
+          if ( type != QVariant::List && type != QVariant::StringList )
+            type = type == QVariant::String ? QVariant::StringList : QVariant::List;
 
           const QLatin1String listSuffix( "list" );
           if ( !typeName.endsWith( listSuffix ) )
@@ -271,7 +269,7 @@ QString QgsMemoryProvider::dataSourceUri( bool expandAuthConfig ) const
     }
     else
     {
-      crsDef = QStringLiteral( "wkt:%1" ).arg( mCrs.toWkt( Qgis::CrsWktVariant::Preferred ) );
+      crsDef = QStringLiteral( "wkt:%1" ).arg( mCrs.toWkt( QgsCoordinateReferenceSystem::WKT_PREFERRED ) );
     }
     query.addQueryItem( QStringLiteral( "crs" ), crsDef );
   }
@@ -288,23 +286,23 @@ QString QgsMemoryProvider::dataSourceUri( bool expandAuthConfig ) const
 
     QString typeName = field.typeName();
     bool isList = false;
-    if ( field.type() == QMetaType::Type::QVariantList || field.type() == QMetaType::Type::QStringList )
+    if ( field.type() == QVariant::List || field.type() == QVariant::StringList )
     {
       switch ( field.subType() )
       {
-        case QMetaType::Type::Int:
+        case QVariant::Int:
           typeName = QStringLiteral( "integer" );
           break;
 
-        case QMetaType::Type::LongLong:
+        case QVariant::LongLong:
           typeName = QStringLiteral( "long" );
           break;
 
-        case QMetaType::Type::Double:
+        case QVariant::Double:
           typeName = QStringLiteral( "double" );
           break;
 
-        case QMetaType::Type::QString:
+        case QVariant::String:
           typeName = QStringLiteral( "string" );
           break;
 
@@ -338,7 +336,7 @@ QgsRectangle QgsMemoryProvider::extent() const
 {
   if ( mExtent.isEmpty() && !mFeatures.isEmpty() )
   {
-    mExtent.setNull();
+    mExtent.setMinimal();
     if ( mSubsetString.isEmpty() )
     {
       // fast way - iterate through all features
@@ -362,13 +360,13 @@ QgsRectangle QgsMemoryProvider::extent() const
   }
   else if ( mFeatures.isEmpty() )
   {
-    mExtent.setNull();
+    mExtent.setMinimal();
   }
 
   return mExtent;
 }
 
-Qgis::WkbType QgsMemoryProvider::wkbType() const
+QgsWkbTypes::Type QgsMemoryProvider::wkbType() const
 {
   return mWkbType;
 }
@@ -396,7 +394,7 @@ QgsFields QgsMemoryProvider::fields() const
 
 bool QgsMemoryProvider::isValid() const
 {
-  return ( mWkbType != Qgis::WkbType::Unknown );
+  return ( mWkbType != QgsWkbTypes::Unknown );
 }
 
 QgsCoordinateReferenceSystem QgsMemoryProvider::crs() const
@@ -434,28 +432,27 @@ bool QgsMemoryProvider::addFeatures( QgsFeatureList &flist, Flags flags )
   {
     it->setId( mNextFeatureId );
     it->setValid( true );
-    const int attributeCount = it->attributeCount();
-    if ( attributeCount < fieldCount )
+    if ( it->attributes().count() < fieldCount )
     {
       // ensure features have the correct number of attributes by padding
       // them with null attributes for missing values
       QgsAttributes attributes = it->attributes();
-      for ( int i = attributeCount; i < mFields.count(); ++i )
+      for ( int i = it->attributes().count(); i < mFields.count(); ++i )
       {
-        attributes.append( QgsVariantUtils::createNullVariant( mFields.at( i ).type() ) );
+        attributes.append( QVariant( mFields.at( i ).type() ) );
       }
       it->setAttributes( attributes );
     }
-    else if ( attributeCount > fieldCount )
+    else if ( it->attributes().count() > fieldCount )
     {
       // too many attributes
-      pushError( tr( "Feature has too many attributes (expecting %1, received %2)" ).arg( fieldCount ).arg( attributeCount ) );
+      pushError( tr( "Feature has too many attributes (expecting %1, received %2)" ).arg( fieldCount ).arg( it->attributes().count() ) );
       QgsAttributes attributes = it->attributes();
       attributes.resize( mFields.count() );
       it->setAttributes( attributes );
     }
 
-    if ( it->hasGeometry() && mWkbType == Qgis::WkbType::NoGeometry )
+    if ( it->hasGeometry() && mWkbType == QgsWkbTypes::NoGeometry )
     {
       it->clearGeometry();
     }
@@ -487,7 +484,7 @@ bool QgsMemoryProvider::addFeatures( QgsFeatureList &flist, Flags flags )
         conversionError = true;
         continue;
       }
-      else if ( attrValue.userType() != originalValue.userType() )
+      else if ( attrValue.type() != originalValue.type() )
       {
         // convertCompatible has resulted in a data type conversion
         it->setAttribute( i, attrValue );
@@ -571,7 +568,7 @@ bool QgsMemoryProvider::addAttributes( const QList<QgsField> &attributes )
 
     // Make sure added attributes typeName correspond to a native type name
     bool isNativeTypeName = false;
-    NativeType nativeTypeCandidate( QString(), QString(), QMetaType::Type::UnknownType );
+    NativeType nativeTypeCandidate( QString(), QString(), QVariant::Invalid );
     const QList<QgsVectorDataProvider::NativeType> nativeTypesList( nativeTypes() );
     for ( const NativeType &nativeType : nativeTypesList )
     {
@@ -582,12 +579,12 @@ bool QgsMemoryProvider::addAttributes( const QList<QgsField> &attributes )
       }
 
       if ( nativeType.mType == field.type()
-           && nativeTypeCandidate.mType == QMetaType::Type::UnknownType )
+           && nativeTypeCandidate.mType == QVariant::Invalid )
         nativeTypeCandidate = nativeType;
     }
     if ( !isNativeTypeName )
     {
-      if ( nativeTypeCandidate.mType == QMetaType::Type::UnknownType )
+      if ( nativeTypeCandidate.mType == QVariant::Invalid )
       {
         QgsLogger::warning( "Field type not supported: " + field.typeName() );
         continue;
@@ -760,26 +757,10 @@ bool QgsMemoryProvider::setSubsetString( const QString &theSQL, bool updateFeatu
 
   mSubsetString = theSQL;
   clearMinMaxCache();
-  mExtent.setNull();
+  mExtent.setMinimal();
 
   emit dataChanged();
   return true;
-}
-
-bool QgsMemoryProvider::supportsSubsetString() const
-{
-  return true;
-}
-
-QString QgsMemoryProvider::subsetStringDialect() const
-{
-  return tr( "QGIS expression" );
-}
-
-QString QgsMemoryProvider::subsetStringHelpUrl() const
-{
-  // unfortunately we can't access QgsHelp here, that's a GUI class!
-  return QString();
 }
 
 bool QgsMemoryProvider::createSpatialIndex()
@@ -797,29 +778,29 @@ bool QgsMemoryProvider::createSpatialIndex()
   return true;
 }
 
-Qgis::SpatialIndexPresence QgsMemoryProvider::hasSpatialIndex() const
+QgsFeatureSource::SpatialIndexPresence QgsMemoryProvider::hasSpatialIndex() const
 {
-  return mSpatialIndex ? Qgis::SpatialIndexPresence::Present : Qgis::SpatialIndexPresence::NotPresent;
+  return mSpatialIndex ? SpatialIndexPresent : SpatialIndexNotPresent;
 }
 
-Qgis::VectorProviderCapabilities QgsMemoryProvider::capabilities() const
+QgsVectorDataProvider::Capabilities QgsMemoryProvider::capabilities() const
 {
-  return Qgis::VectorProviderCapability::AddFeatures | Qgis::VectorProviderCapability::DeleteFeatures | Qgis::VectorProviderCapability::ChangeGeometries |
-         Qgis::VectorProviderCapability::ChangeAttributeValues | Qgis::VectorProviderCapability::AddAttributes | Qgis::VectorProviderCapability::DeleteAttributes | Qgis::VectorProviderCapability::RenameAttributes | Qgis::VectorProviderCapability::CreateSpatialIndex |
-         Qgis::VectorProviderCapability::SelectAtId | Qgis::VectorProviderCapability::CircularGeometries | Qgis::VectorProviderCapability::FastTruncate;
+  return AddFeatures | DeleteFeatures | ChangeGeometries |
+         ChangeAttributeValues | AddAttributes | DeleteAttributes | RenameAttributes | CreateSpatialIndex |
+         SelectAtId | CircularGeometries | FastTruncate;
 }
 
 bool QgsMemoryProvider::truncate()
 {
   mFeatures.clear();
   clearMinMaxCache();
-  mExtent.setNull();
+  mExtent.setMinimal();
   return true;
 }
 
 void QgsMemoryProvider::updateExtents()
 {
-  mExtent.setNull();
+  mExtent.setMinimal();
 }
 
 QString QgsMemoryProvider::name() const
@@ -843,14 +824,14 @@ QIcon QgsMemoryProviderMetadata::icon() const
   return QgsApplication::getThemeIcon( QStringLiteral( "mIconMemory.svg" ) );
 }
 
-QgsDataProvider *QgsMemoryProviderMetadata::createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags )
+QgsDataProvider *QgsMemoryProviderMetadata::createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags )
 {
   return new QgsMemoryProvider( uri, options, flags );
 }
 
-QList<Qgis::LayerType> QgsMemoryProviderMetadata::supportedLayerTypes() const
+QList<QgsMapLayerType> QgsMemoryProviderMetadata::supportedLayerTypes() const
 {
-  return { Qgis::LayerType::Vector };
+  return { QgsMapLayerType::VectorLayer };
 }
 
 ///@endcond

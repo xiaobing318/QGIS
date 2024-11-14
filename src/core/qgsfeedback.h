@@ -39,6 +39,7 @@
  * subclass and available with QgsMapLayerRenderer::feedback() method. When a map rendering job
  * gets canceled, the cancel() method is called on the feedback object of all layers.
  *
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsFeedback : public QObject
 {
@@ -57,6 +58,7 @@ class CORE_EXPORT QgsFeedback : public QObject
      * argument is in percentage and valid values range from 0-100.
      * \see progress()
      * \see progressChanged()
+     * \since QGIS 3.0
      */
     void setProgress( double progress )
     {
@@ -73,6 +75,7 @@ class CORE_EXPORT QgsFeedback : public QObject
      * is in percentage and ranges from 0-100.
      * \see setProgress()
      * \see progressChanged()
+     * \since QGIS 3.0
      */
     double progress() const SIP_HOLDGIL { return mProgress; }
 
@@ -120,6 +123,7 @@ class CORE_EXPORT QgsFeedback : public QObject
      * argument is in percentage and ranges from 0-100.
      * \see setProgress()
      * \see progress()
+     * \since QGIS 3.0
      */
     void progressChanged( double progress );
 

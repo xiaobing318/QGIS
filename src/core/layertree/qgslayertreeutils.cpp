@@ -16,6 +16,7 @@
 #include "qgslayertreeutils.h"
 #include "qgslayertree.h"
 #include "qgsvectorlayer.h"
+#include "qgsmeshlayer.h"
 #include "qgsproject.h"
 #include "qgslogger.h"
 
@@ -96,7 +97,7 @@ bool QgsLayerTreeUtils::readOldLegendLayerOrder( const QDomElement &legendElem, 
   const auto constLayerIndexes = layerIndexes;
   for ( const QString &layerId : constLayerIndexes )
   {
-    QgsDebugMsgLevel( layerId, 2 );
+    QgsDebugMsg( layerId );
     order.append( layerId );
   }
 
@@ -321,7 +322,7 @@ void QgsLayerTreeUtils::storeOriginalLayersProperties( QgsLayerTreeGroup *group,
       if ( QgsMapLayer *l = QgsLayerTree::toLayer( node )->layer() )
       {
         // no need to store for annotation layers, they can never break!
-        if ( l->type() == Qgis::LayerType::Annotation )
+        if ( l->type() == QgsMapLayerType::AnnotationLayer )
           return;
 
         QDomElement layerElement { projectLayersElement.firstChildElement( QStringLiteral( "maplayer" ) ) };
@@ -528,174 +529,4 @@ QgsLayerTreeGroup *QgsLayerTreeUtils::firstGroupWithoutCustomProperty( QgsLayerT
       Q_ASSERT( false );
   }
   return group;
-}
-
-QgsLayerTreeLayer *QgsLayerTreeUtils::insertLayerAtOptimalPlacement( QgsLayerTreeGroup *group, QgsMapLayer *layer )
-{
-  int vectorLineIndex = 0;
-  int vectorPolygonIndex = 0;
-  int pointCloudIndex = 0;
-  int meshIndex = 0;
-  int rasterIndex = 0;
-  int basemapIndex = 0;
-
-  const QList<QgsLayerTreeNode *> children = group->children();
-  int nodeIdx = 0;
-  for ( const QgsLayerTreeNode *child : children )
-  {
-    if ( QgsLayerTree::isLayer( child ) )
-    {
-      nodeIdx++;
-      const QgsMapLayer *childLayer = qobject_cast<const QgsLayerTreeLayer *>( child )->layer();
-      if ( !childLayer )
-        continue;
-
-      switch ( childLayer->type() )
-      {
-        case Qgis::LayerType::Vector:
-        {
-          const QgsVectorLayer *vlayer = static_cast<const QgsVectorLayer *>( childLayer );
-          if ( vlayer->geometryType() == Qgis::GeometryType::Point )
-          {
-            if ( vectorLineIndex < nodeIdx )
-              vectorLineIndex = nodeIdx;
-            if ( vectorPolygonIndex < nodeIdx )
-              vectorPolygonIndex = nodeIdx;
-            if ( pointCloudIndex < nodeIdx )
-              pointCloudIndex = nodeIdx;
-            if ( meshIndex < nodeIdx )
-              meshIndex = nodeIdx;
-            if ( rasterIndex < nodeIdx )
-              rasterIndex = nodeIdx;
-            if ( basemapIndex < nodeIdx )
-              basemapIndex = nodeIdx;
-          }
-          else if ( vlayer->geometryType() == Qgis::GeometryType::Line )
-          {
-            if ( vectorPolygonIndex < nodeIdx )
-              vectorPolygonIndex = nodeIdx;
-            if ( pointCloudIndex < nodeIdx )
-              pointCloudIndex = nodeIdx;
-            if ( meshIndex < nodeIdx )
-              meshIndex = nodeIdx;
-            if ( rasterIndex < nodeIdx )
-              rasterIndex = nodeIdx;
-            if ( basemapIndex < nodeIdx )
-              basemapIndex = nodeIdx;
-          }
-          else if ( vlayer->geometryType() == Qgis::GeometryType::Polygon )
-          {
-            if ( pointCloudIndex < nodeIdx )
-              pointCloudIndex = nodeIdx;
-            if ( meshIndex < nodeIdx )
-              meshIndex = nodeIdx;
-            if ( rasterIndex < nodeIdx )
-              rasterIndex = nodeIdx;
-            if ( basemapIndex < nodeIdx )
-              basemapIndex = nodeIdx;
-          }
-          break;
-        }
-
-        case Qgis::LayerType::PointCloud:
-        {
-          if ( meshIndex < nodeIdx )
-            meshIndex = nodeIdx;
-          if ( rasterIndex < nodeIdx )
-            rasterIndex = nodeIdx;
-          if ( basemapIndex < nodeIdx )
-            basemapIndex = nodeIdx;
-          break;
-        }
-
-        case Qgis::LayerType::Mesh:
-        {
-          if ( rasterIndex < nodeIdx )
-            rasterIndex = nodeIdx;
-          if ( basemapIndex < nodeIdx )
-            basemapIndex = nodeIdx;
-          break;
-        }
-
-        case Qgis::LayerType::Raster:
-        {
-          if ( childLayer->dataProvider() && childLayer->dataProvider()->name() == QLatin1String( "gdal" ) )
-          {
-            // Assume non-gdal raster layers are most likely to be base maps (e.g. XYZ raster)
-            // Admittedly a gross assumption, but better than nothing
-            if ( basemapIndex < nodeIdx )
-              basemapIndex = nodeIdx;
-          }
-          break;
-        }
-
-        case Qgis::LayerType::VectorTile:
-        case Qgis::LayerType::Annotation:
-        case Qgis::LayerType::Group:
-        case Qgis::LayerType::Plugin:
-        default:
-          break;
-      }
-    }
-  }
-
-  int index = 0;
-  switch ( layer->type() )
-  {
-    case Qgis::LayerType::Vector:
-    {
-      QgsVectorLayer *vlayer = static_cast<QgsVectorLayer *>( layer );
-      if ( vlayer->geometryType() == Qgis::GeometryType::Point )
-      {
-        index = 0;
-      }
-      else if ( vlayer->geometryType() == Qgis::GeometryType::Line )
-      {
-        index = vectorLineIndex;
-      }
-      else if ( vlayer->geometryType() == Qgis::GeometryType::Polygon )
-      {
-        index = vectorPolygonIndex;
-      }
-      break;
-    }
-
-    case Qgis::LayerType::PointCloud:
-    {
-      index = pointCloudIndex;
-      break;
-    }
-
-    case Qgis::LayerType::Mesh:
-    {
-      index = meshIndex;
-      break;
-    }
-
-    case Qgis::LayerType::Raster:
-    {
-      if ( layer->dataProvider() && layer->dataProvider()->name() == QLatin1String( "gdal" ) )
-      {
-        index = rasterIndex;
-      }
-      else
-      {
-        index = basemapIndex;
-      }
-      break;
-    }
-
-    case Qgis::LayerType::VectorTile:
-    {
-      index = basemapIndex;
-      break;
-    }
-
-    case Qgis::LayerType::Annotation:
-    case Qgis::LayerType::Group:
-    case Qgis::LayerType::Plugin:
-    default:
-      break;
-  }
-  return group->insertLayer( index, layer );
 }

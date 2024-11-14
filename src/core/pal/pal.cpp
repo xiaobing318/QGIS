@@ -31,6 +31,7 @@
 #include "pal.h"
 #include "layer.h"
 #include "palexception.h"
+#include "palstat.h"
 #include "costcalculator.h"
 #include "feature.h"
 #include "geomfunction.h"
@@ -40,28 +41,20 @@
 #include "internalexception.h"
 #include "util.h"
 #include "palrtree.h"
+#include "qgssettings.h"
 #include "qgslabelingengine.h"
 #include "qgsrendercontext.h"
-#include "qgssettingsentryimpl.h"
-#include "qgsruntimeprofiler.h"
-#include "qgslabelingenginerule.h"
-
 #include <cfloat>
 #include <list>
 
-
 using namespace pal;
-
-const QgsSettingsEntryInteger *Pal::settingsRenderingLabelCandidatesLimitPoints = new QgsSettingsEntryInteger( QStringLiteral( "label-candidates-limit-points" ), sTreePal, 0 );
-const QgsSettingsEntryInteger *Pal::settingsRenderingLabelCandidatesLimitLines = new QgsSettingsEntryInteger( QStringLiteral( "label-candidates-limit-lines" ), sTreePal, 0 );
-const QgsSettingsEntryInteger *Pal::settingsRenderingLabelCandidatesLimitPolygons = new QgsSettingsEntryInteger( QStringLiteral( "label-candidates-limit-polygons" ), sTreePal, 0 );
-
 
 Pal::Pal()
 {
-  mGlobalCandidatesLimitPoint = Pal::settingsRenderingLabelCandidatesLimitPoints->value();
-  mGlobalCandidatesLimitLine = Pal::settingsRenderingLabelCandidatesLimitLines->value();
-  mGlobalCandidatesLimitPolygon = Pal::settingsRenderingLabelCandidatesLimitPolygons->value();
+  QgsSettings settings;
+  mGlobalCandidatesLimitPoint = settings.value( QStringLiteral( "rendering/label_candidates_limit_points" ), 0, QgsSettings::Core ).toInt();
+  mGlobalCandidatesLimitLine = settings.value( QStringLiteral( "rendering/label_candidates_limit_lines" ), 0, QgsSettings::Core ).toInt();
+  mGlobalCandidatesLimitPolygon = settings.value( QStringLiteral( "rendering/label_candidates_limit_polygons" ), 0, QgsSettings::Core ).toInt();
 }
 
 Pal::~Pal() = default;
@@ -95,22 +88,12 @@ Layer *Pal::addLayer( QgsAbstractLabelProvider *provider, const QString &layerNa
   mLayers.insert( std::pair<QgsAbstractLabelProvider *, std::unique_ptr< Layer >>( provider, std::move( layer ) ) );
   mMutex.unlock();
 
-  // cppcheck-suppress returnDanglingLifetime
   return res;
 }
 
 std::unique_ptr<Problem> Pal::extractProblem( const QgsRectangle &extent, const QgsGeometry &mapBoundary, QgsRenderContext &context )
 {
   QgsLabelingEngineFeedback *feedback = qobject_cast< QgsLabelingEngineFeedback * >( context.feedback() );
-  QgsLabelingEngineContext labelContext( context );
-  labelContext.setExtent( extent );
-  labelContext.setMapBoundaryGeometry( mapBoundary );
-
-  std::unique_ptr< QgsScopedRuntimeProfile > extractionProfile;
-  if ( context.flags() & Qgis::RenderContextFlag::RecordProfile )
-  {
-    extractionProfile = std::make_unique< QgsScopedRuntimeProfile >( QObject::tr( "Placing labels" ), QStringLiteral( "rendering" ) );
-  }
 
   // expand out the incoming buffer by 1000x -- that's the visible map extent, yet we may be getting features which exceed this extent
   // (while 1000x may seem excessive here, this value is only used for scaling coordinates in the spatial indexes
@@ -137,7 +120,7 @@ std::unique_ptr<Problem> Pal::extractProblem( const QgsRectangle &extent, const 
 
   // prepare map boundary
   geos::unique_ptr mapBoundaryGeos( QgsGeos::asGeos( mapBoundary ) );
-  geos::prepared_unique_ptr mapBoundaryPrepared( GEOSPrepare_r( QgsGeosContext::get(), mapBoundaryGeos.get() ) );
+  geos::prepared_unique_ptr mapBoundaryPrepared( GEOSPrepare_r( QgsGeos::getGEOSHandler(), mapBoundaryGeos.get() ) );
 
   int obstacleCount = 0;
 
@@ -152,12 +135,6 @@ std::unique_ptr<Problem> Pal::extractProblem( const QgsRectangle &extent, const 
 
   double step = !mLayers.empty() ? 100.0 / mLayers.size() : 1;
   int index = -1;
-  std::unique_ptr< QgsScopedRuntimeProfile > candidateProfile;
-  if ( context.flags() & Qgis::RenderContextFlag::RecordProfile )
-  {
-    candidateProfile = std::make_unique< QgsScopedRuntimeProfile >( QObject::tr( "Generating label candidates" ), QStringLiteral( "rendering" ) );
-  }
-
   for ( const auto &it : mLayers )
   {
     index++;
@@ -177,12 +154,6 @@ std::unique_ptr<Problem> Pal::extractProblem( const QgsRectangle &extent, const 
 
     if ( feedback )
       feedback->emit candidateCreationAboutToBegin( it.first );
-
-    std::unique_ptr< QgsScopedRuntimeProfile > layerProfile;
-    if ( context.flags() & Qgis::RenderContextFlag::RecordProfile )
-    {
-      layerProfile = std::make_unique< QgsScopedRuntimeProfile >( it.first->providerId(), QStringLiteral( "rendering" ) );
-    }
 
     // check for connected features with the same label text and join them
     if ( layer->mergeConnectedLines() )
@@ -229,30 +200,13 @@ std::unique_ptr<Problem> Pal::extractProblem( const QgsRectangle &extent, const 
       if ( isCanceled() )
         break;
 
-      // purge candidates that violate known constraints, eg
-      // - they are outside the bbox
-      // - they violate a labeling rule
-      candidates.erase( std::remove_if( candidates.begin(), candidates.end(), [&mapBoundaryPrepared, &labelContext, this]( std::unique_ptr< LabelPosition > &candidate )
+      // purge candidates that are outside the bbox
+      candidates.erase( std::remove_if( candidates.begin(), candidates.end(), [&mapBoundaryPrepared, this]( std::unique_ptr< LabelPosition > &candidate )
       {
         if ( showPartialLabels() )
-        {
-          if ( !candidate->intersects( mapBoundaryPrepared.get() ) )
-            return true;
-        }
+          return !candidate->intersects( mapBoundaryPrepared.get() );
         else
-        {
-          if ( !candidate->within( mapBoundaryPrepared.get() ) )
-            return true;
-        }
-
-        for ( QgsAbstractLabelingEngineRule *rule : std::as_const( mRules ) )
-        {
-          if ( rule->candidateIsIllegal( candidate.get(), labelContext ) )
-          {
-            return true;
-          }
-        }
-        return false;
+          return !candidate->within( mapBoundaryPrepared.get() );
       } ), candidates.end() );
 
       if ( isCanceled() )
@@ -335,9 +289,6 @@ std::unique_ptr<Problem> Pal::extractProblem( const QgsRectangle &extent, const 
     if ( feedback )
       feedback->emit candidateCreationFinished( it.first );
   }
-
-  candidateProfile.reset();
-
   palLocker.unlock();
 
   if ( isCanceled() )
@@ -348,33 +299,14 @@ std::unique_ptr<Problem> Pal::extractProblem( const QgsRectangle &extent, const 
 
   prob->mFeatureCount = features.size();
   prob->mTotalCandidates = 0;
-  prob->mCandidateCountForFeature.resize( prob->mFeatureCount );
-  prob->mFirstCandidateIndexForFeature.resize( prob->mFeatureCount );
-  prob->mUnlabeledCostForFeature.resize( prob->mFeatureCount );
+  prob->mFeatNbLp.resize( prob->mFeatureCount );
+  prob->mFeatStartId.resize( prob->mFeatureCount );
+  prob->mInactiveCost.resize( prob->mFeatureCount );
 
   if ( !features.empty() )
   {
     if ( feedback )
       feedback->emit obstacleCostingAboutToBegin();
-
-    std::unique_ptr< QgsScopedRuntimeProfile > costingProfile;
-    if ( context.flags() & Qgis::RenderContextFlag::RecordProfile )
-    {
-      costingProfile = std::make_unique< QgsScopedRuntimeProfile >( QObject::tr( "Assigning label costs" ), QStringLiteral( "rendering" ) );
-    }
-
-    // allow rules to alter candidate costs
-    for ( const auto &feature : features )
-    {
-      for ( auto &candidate : feature->candidates )
-      {
-        for ( QgsAbstractLabelingEngineRule *rule : std::as_const( mRules ) )
-        {
-          rule->alterCandidateCost( candidate.get(), labelContext );
-        }
-      }
-    }
-
     // Filtering label positions against obstacles
     index = -1;
     step = !allObstacleParts.empty() ? 100.0 / allObstacleParts.size() : 1;
@@ -404,13 +336,13 @@ std::unique_ptr<Problem> Pal::extractProblem( const QgsRectangle &extent, const 
         }
 
         CostCalculator::addObstacleCostPenalty( const_cast< LabelPosition * >( candidatePosition ), obstaclePart, this );
+
         return true;
       } );
     }
 
     if ( feedback )
       feedback->emit obstacleCostingFinished();
-    costingProfile.reset();
 
     if ( isCanceled() )
     {
@@ -421,24 +353,17 @@ std::unique_ptr<Problem> Pal::extractProblem( const QgsRectangle &extent, const 
     if ( feedback )
       feedback->emit calculatingConflictsAboutToBegin();
 
-    std::unique_ptr< QgsScopedRuntimeProfile > conflictProfile;
-    if ( context.flags() & Qgis::RenderContextFlag::RecordProfile )
-    {
-      conflictProfile = std::make_unique< QgsScopedRuntimeProfile >( QObject::tr( "Calculating conflicts" ), QStringLiteral( "rendering" ) );
-    }
-
-    int currentLabelPositionIndex = 0;
-    // loop through all the features registered in the problem
-    for ( std::size_t featureIndex = 0; featureIndex < prob->mFeatureCount; featureIndex++ )
+    int idlp = 0;
+    for ( std::size_t i = 0; i < prob->mFeatureCount; i++ ) /* for each feature into prob */
     {
       if ( feedback )
-        feedback->setProgress( static_cast< double >( featureIndex ) * step );
+        feedback->setProgress( i * step );
 
       std::unique_ptr< Feats > feat = std::move( features.front() );
       features.pop_front();
 
-      prob->mFirstCandidateIndexForFeature[featureIndex] = currentLabelPositionIndex;
-      prob->mUnlabeledCostForFeature[featureIndex] = std::pow( 2, 10 - 10 * feat->priority );
+      prob->mFeatStartId[i] = idlp;
+      prob->mInactiveCost[i] = std::pow( 2, 10 - 10 * feat->priority );
 
       std::size_t maxCandidates = 0;
       switch ( feat->feature->getGeosType() )
@@ -464,10 +389,10 @@ std::unique_ptr<Problem> Pal::extractProblem( const QgsRectangle &extent, const 
       {
         switch ( mPlacementVersion )
         {
-          case Qgis::LabelPlacementEngineVersion::Version1:
+          case QgsLabelingEngineSettings::PlacementEngineVersion1:
             break;
 
-          case Qgis::LabelPlacementEngineVersion::Version2:
+          case QgsLabelingEngineSettings::PlacementEngineVersion2:
           {
             // v2 placement rips out candidates where the candidate cost is too high when compared to
             // their inactive cost
@@ -552,14 +477,14 @@ std::unique_ptr<Problem> Pal::extractProblem( const QgsRectangle &extent, const 
         return nullptr;
 
       // update problem's # candidate
-      prob->mCandidateCountForFeature[featureIndex] = static_cast< int >( feat->candidates.size() );
+      prob->mFeatNbLp[i] = static_cast< int >( feat->candidates.size() );
       prob->mTotalCandidates += static_cast< int >( feat->candidates.size() );
 
       // add all candidates into a rtree (to speed up conflicts searching)
       for ( std::unique_ptr< LabelPosition > &candidate : feat->candidates )
       {
         candidate->insertIntoIndex( prob->allCandidatesIndex() );
-        candidate->setProblemIds( static_cast< int >( featureIndex ), currentLabelPositionIndex++ );
+        candidate->setProblemIds( static_cast< int >( i ), idlp++ );
       }
       features.emplace_back( std::move( feat ) );
     }
@@ -567,18 +492,13 @@ std::unique_ptr<Problem> Pal::extractProblem( const QgsRectangle &extent, const 
     if ( feedback )
       feedback->emit calculatingConflictsFinished();
 
-    conflictProfile.reset();
-
     int nbOverlaps = 0;
+
+    double amin[2];
+    double amax[2];
 
     if ( feedback )
       feedback->emit finalizingCandidatesAboutToBegin();
-
-    std::unique_ptr< QgsScopedRuntimeProfile > finalizingProfile;
-    if ( context.flags() & Qgis::RenderContextFlag::RecordProfile )
-    {
-      finalizingProfile = std::make_unique< QgsScopedRuntimeProfile >( QObject::tr( "Finalizing labels" ), QStringLiteral( "rendering" ) );
-    }
 
     index = -1;
     step = !features.empty() ? 100.0 / features.size() : 1;
@@ -606,8 +526,8 @@ std::unique_ptr<Problem> Pal::extractProblem( const QgsRectangle &extent, const 
         //prob->feat[idlp] = j;
 
         // lookup for overlapping candidate
-        const QgsRectangle searchBounds = lp->boundingBoxForCandidateConflicts( this );
-        prob->allCandidatesIndex().intersects( searchBounds, [&lp, this]( const LabelPosition * lp2 )->bool
+        lp->getBoundingBox( amin, amax );
+        prob->allCandidatesIndex().intersects( QgsRectangle( amin[0], amin[1], amax[0], amax[1] ), [&lp, this]( const LabelPosition * lp2 )->bool
         {
           if ( candidatesAreConflicting( lp.get(), lp2 ) )
           {
@@ -629,8 +549,6 @@ std::unique_ptr<Problem> Pal::extractProblem( const QgsRectangle &extent, const 
 
     if ( feedback )
       feedback->emit finalizingCandidatesFinished();
-
-    finalizingProfile.reset();
 
     nbOverlaps /= 2;
     prob->mAllNblp = prob->mTotalCandidates;
@@ -654,24 +572,10 @@ QList<LabelPosition *> Pal::solveProblem( Problem *prob, QgsRenderContext &conte
   if ( !prob )
     return QList<LabelPosition *>();
 
-  std::unique_ptr< QgsScopedRuntimeProfile > calculatingProfile;
-  if ( context.flags() & Qgis::RenderContextFlag::RecordProfile )
-  {
-    calculatingProfile = std::make_unique< QgsScopedRuntimeProfile >( QObject::tr( "Calculating optimal labeling" ), QStringLiteral( "rendering" ) );
-  }
-
   if ( feedback )
     feedback->emit reductionAboutToBegin();
 
-  {
-    std::unique_ptr< QgsScopedRuntimeProfile > reductionProfile;
-    if ( context.flags() & Qgis::RenderContextFlag::RecordProfile )
-    {
-      reductionProfile = std::make_unique< QgsScopedRuntimeProfile >( QObject::tr( "Reducing labeling" ), QStringLiteral( "rendering" ) );
-    }
-
-    prob->reduce();
-  }
+  prob->reduce();
 
   if ( feedback )
     feedback->emit reductionFinished();
@@ -679,20 +583,13 @@ QList<LabelPosition *> Pal::solveProblem( Problem *prob, QgsRenderContext &conte
   if ( feedback )
     feedback->emit solvingPlacementAboutToBegin();
 
+  try
   {
-    std::unique_ptr< QgsScopedRuntimeProfile > solvingProfile;
-    if ( context.flags() & Qgis::RenderContextFlag::RecordProfile )
-    {
-      solvingProfile = std::make_unique< QgsScopedRuntimeProfile >( QObject::tr( "Solving labeling" ), QStringLiteral( "rendering" ) );
-    }
-    try
-    {
-      prob->chainSearch( context );
-    }
-    catch ( InternalException::Empty & )
-    {
-      return QList<LabelPosition *>();
-    }
+    prob->chainSearch( context );
+  }
+  catch ( InternalException::Empty & )
+  {
+    return QList<LabelPosition *>();
   }
 
   if ( feedback )
@@ -739,12 +636,12 @@ void Pal::setShowPartialLabels( bool show )
   this->mShowPartialLabels = show;
 }
 
-Qgis::LabelPlacementEngineVersion Pal::placementVersion() const
+QgsLabelingEngineSettings::PlacementEngineVersion Pal::placementVersion() const
 {
   return mPlacementVersion;
 }
 
-void Pal::setPlacementVersion( Qgis::LabelPlacementEngineVersion placementVersion )
+void Pal::setPlacementVersion( QgsLabelingEngineSettings::PlacementEngineVersion placementVersion )
 {
   mPlacementVersion = placementVersion;
 }
@@ -754,34 +651,15 @@ bool Pal::candidatesAreConflicting( const LabelPosition *lp1, const LabelPositio
   // we cache the value -- this can be costly to calculate, and we check this multiple times
   // per candidate during the labeling problem solving
 
-  if ( lp1->getProblemFeatureId() == lp2->getProblemFeatureId() )
-    return false;
-
   // conflicts are commutative - so we always store them in the cache using the smaller id as the first element of the key pair
   auto key = qMakePair( std::min( lp1->globalId(), lp2->globalId() ), std::max( lp1->globalId(), lp2->globalId() ) );
   auto it = mCandidateConflicts.constFind( key );
   if ( it != mCandidateConflicts.constEnd() )
     return *it;
 
-  bool res = false;
-  for ( QgsAbstractLabelingEngineRule *rule : mRules )
-  {
-    if ( rule->candidatesAreConflicting( lp1, lp2 ) )
-    {
-      res = true;
-      break;
-    }
-  }
-
-  res |= lp1->isInConflict( lp2 );
-
+  const bool res = lp1->isInConflict( lp2 );
   mCandidateConflicts.insert( key, res );
   return res;
-}
-
-void Pal::setRules( const QList<QgsAbstractLabelingEngineRule *> &rules )
-{
-  mRules = rules;
 }
 
 int Pal::getMinIt() const

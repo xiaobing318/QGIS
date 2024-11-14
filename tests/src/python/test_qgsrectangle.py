@@ -9,16 +9,16 @@ __author__ = 'Tim Sutton'
 __date__ = '20/08/2012'
 __copyright__ = 'Copyright 2012, The QGIS Project'
 
-from qgis.core import QgsPointXY, QgsRectangle, QgsVector
-import unittest
-from qgis.testing import start_app, QgisTestCase
+import qgis  # NOQA
+from qgis.core import QgsRectangle, QgsPointXY, QgsVector
+from qgis.testing import start_app, unittest
 
 from utilities import compareWkt
 
 start_app()
 
 
-class TestQgsRectangle(QgisTestCase):
+class TestQgsRectangle(unittest.TestCase):
 
     def testCtor(self):
         rect = QgsRectangle(5.0, 5.0, 10.0, 10.0)
@@ -43,14 +43,6 @@ class TestQgsRectangle(QgisTestCase):
         self.assertEqual(rect.perimeter(), 58.0)
 
     def testIntersection(self):
-        rect1 = QgsRectangle()
-        rect2 = QgsRectangle()
-
-        # both rectangle are null, they do not intersect
-        self.assertTrue(rect1.isNull())
-        self.assertTrue(rect2.isNull())
-        self.assertFalse(rect2.intersects(rect1))
-
         rect1 = QgsRectangle(0.0, 0.0, 5.0, 5.0)
         rect2 = QgsRectangle(2.0, 2.0, 7.0, 7.0)
 
@@ -115,24 +107,26 @@ class TestQgsRectangle(QgisTestCase):
         myExpectedWkt = ('0 0, '
                          '5 5')
         myWkt = rect1.asWktCoordinates()
-        myMessage = f'Expected: {myExpectedWkt}\nGot: {myWkt}\n'
+        myMessage = ('Expected: %s\nGot: %s\n' %
+                     (myExpectedWkt, myWkt))
         self.assertTrue(compareWkt(myWkt, myExpectedWkt), myMessage)
 
     def testAsWktPolygon(self):
         """Test that we can get a proper rect wkt polygon representation for rect"""
         rect1 = QgsRectangle(0.0, 0.0, 5.0, 5.0)
-        myExpectedWkt = ('Polygon ((0 0, '
+        myExpectedWkt = ('POLYGON((0 0, '
                          '5 0, '
                          '5 5, '
                          '0 5, '
                          '0 0))')
         myWkt = rect1.asWktPolygon()
-        myMessage = f'Expected: {myExpectedWkt}\nGot: {myWkt}\n'
+        myMessage = ('Expected: %s\nGot: %s\n' %
+                     (myExpectedWkt, myWkt))
         self.assertTrue(compareWkt(myWkt, myExpectedWkt), myMessage)
 
     def testToString(self):
         """Test the different string representations"""
-        self.assertEqual(QgsRectangle().toString(), 'Null')
+        self.assertEqual(QgsRectangle().toString(), 'Empty')
         rect = QgsRectangle(0, 0.1, 0.2, 0.3)
         self.assertEqual(rect.toString(), '0.0000000000000000,0.1000000000000000 : 0.2000000000000000,0.3000000000000000')
 
@@ -150,7 +144,7 @@ class TestQgsRectangle(QgisTestCase):
 
     def testAsPolygon(self):
         """Test string representation as polygon"""
-        self.assertEqual(QgsRectangle().asPolygon(), 'EMPTY')
+        self.assertEqual(QgsRectangle().asPolygon(), '0.00000000 0.00000000, 0.00000000 0.00000000, 0.00000000 0.00000000, 0.00000000 0.00000000, 0.00000000 0.00000000')
         self.assertEqual(QgsRectangle(0, 0.1, 0.2, 0.3).asPolygon(), '0.00000000 0.10000000, 0.00000000 0.30000000, 0.20000000 0.30000000, 0.20000000 0.10000000, 0.00000000 0.10000000')
 
     def testToBox3d(self):

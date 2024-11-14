@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsalgorithmfiledownloader.h"
-#include "moc_qgsalgorithmfiledownloader.cpp"
 #include "qgsprocessingparameters.h"
 #include "qgis.h"
 #include "qgsfiledownloader.h"
@@ -36,17 +35,12 @@ QString QgsFileDownloaderAlgorithm::name() const
 
 QString QgsFileDownloaderAlgorithm::displayName() const
 {
-  return tr( "Download file via HTTP(S)" );
-}
-
-QString QgsFileDownloaderAlgorithm::shortDescription() const
-{
-  return tr( "Downloads a URL to the file system with an HTTP(S) GET or POST request" );
+  return tr( "Download file" );
 }
 
 QStringList QgsFileDownloaderAlgorithm::tags() const
 {
-  return tr( "file,downloader,internet,url,fetch,get,post,request,https" ).split( ',' );
+  return tr( "file,downloader,internet,url,fetch,get,https" ).split( ',' );
 }
 
 QString QgsFileDownloaderAlgorithm::group() const
@@ -61,7 +55,7 @@ QString QgsFileDownloaderAlgorithm::groupId() const
 
 QString QgsFileDownloaderAlgorithm::shortHelpString() const
 {
-  return tr( "This algorithm downloads a URL to the file system with an HTTP(S) GET or POST request" );
+  return tr( "This algorithm downloads a URL on the file system." );
 }
 
 QgsFileDownloaderAlgorithm *QgsFileDownloaderAlgorithm::createInstance() const
@@ -83,16 +77,17 @@ void QgsFileDownloaderAlgorithm::initAlgorithm( const QVariantMap & )
         0
       );
   methodParam->setHelp( QObject::tr( "The HTTP method to use for the request" ) );
-  methodParam->setFlags( methodParam->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  methodParam->setFlags( methodParam->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( methodParam.release() );
 
   std::unique_ptr< QgsProcessingParameterString > dataParam = std::make_unique < QgsProcessingParameterString >(
         QStringLiteral( "DATA" ), tr( "Data" ), QVariant(), false, true );
   dataParam->setHelp( QObject::tr( "The data to add in the body if the request is a POST" ) );
-  dataParam->setFlags( dataParam->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  dataParam->setFlags( dataParam->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( dataParam.release() );
+
   addParameter( new QgsProcessingParameterFileDestination( QStringLiteral( "OUTPUT" ),
-                tr( "File destination" ), QObject::tr( "All files (*.*)" ), QVariant(), false ) );
+                tr( "File destination" ), QObject::tr( "All files (*.*)" ), QVariant(), true ) );
 }
 
 QVariantMap QgsFileDownloaderAlgorithm::processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback )
@@ -141,7 +136,7 @@ QVariantMap QgsFileDownloaderAlgorithm::processAlgorithm( const QVariantMap &par
   url = downloadedUrl.toDisplayString();
   feedback->pushInfo( QObject::tr( "Successfully downloaded %1" ).arg( url ) );
 
-  if ( outputFile.startsWith( QgsProcessingUtils::tempFolder( &context ) ) )
+  if ( outputFile.startsWith( QgsProcessingUtils::tempFolder() ) )
   {
     // the output is temporary and its file name automatically generated, try to add a file extension
     const int length = url.size();

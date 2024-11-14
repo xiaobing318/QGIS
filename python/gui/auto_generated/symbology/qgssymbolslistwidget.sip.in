@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/symbology/qgssymbolslistwidget.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -40,6 +40,8 @@ Sets the context in which the symbol widget is shown, e.g., the associated map c
 :param context: symbol widget context
 
 .. seealso:: :py:func:`context`
+
+.. versionadded:: 3.0
 %End
 
     QgsSymbolWidgetContext context() const;
@@ -47,11 +49,15 @@ Sets the context in which the symbol widget is shown, e.g., the associated map c
 Returns the context in which the symbol widget is shown, e.g., the associated map canvas and expression contexts.
 
 .. seealso:: :py:func:`setContext`
+
+.. versionadded:: 3.0
 %End
 
     const QgsVectorLayer *layer() const;
 %Docstring
 Returns the vector layer associated with the widget.
+
+.. versionadded:: 2.12
 %End
 
   public slots:
@@ -68,11 +74,7 @@ Returns the vector layer associated with the widget.
     void updateDataDefinedLineWidth();
 
   signals:
-
     void changed();
-%Docstring
-Emitted when the symbol is modified in the widget.
-%End
 
 };
 
@@ -84,5 +86,5 @@ Emitted when the symbol is modified in the widget.
  *                                                                      *
  * src/gui/symbology/qgssymbolslistwidget.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

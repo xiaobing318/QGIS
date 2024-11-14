@@ -18,17 +18,14 @@
 #include "qgsexpressioncontextutils.h"
 #include "qgsexpressionutils.h"
 #include "qgslayouttable.h"
-#include "moc_qgslayouttable.cpp"
 #include "qgslayoututils.h"
 #include "qgslayouttablecolumn.h"
-#include "qgscolorutils.h"
+#include "qgssymbollayerutils.h"
 #include "qgslayoutframe.h"
 #include "qgsfontutils.h"
 #include "qgslayoutpagecollection.h"
 #include "qgstextrenderer.h"
-#include "qgslayoutrendercontext.h"
 
-#include <set>
 //
 // QgsLayoutTableStyle
 //
@@ -36,14 +33,14 @@
 bool QgsLayoutTableStyle::writeXml( QDomElement &styleElem, QDomDocument &doc ) const
 {
   Q_UNUSED( doc )
-  styleElem.setAttribute( QStringLiteral( "cellBackgroundColor" ), QgsColorUtils::colorToString( cellBackgroundColor ) );
+  styleElem.setAttribute( QStringLiteral( "cellBackgroundColor" ), QgsSymbolLayerUtils::encodeColor( cellBackgroundColor ) );
   styleElem.setAttribute( QStringLiteral( "enabled" ), enabled );
   return true;
 }
 
 bool QgsLayoutTableStyle::readXml( const QDomElement &styleElem )
 {
-  cellBackgroundColor = QgsColorUtils::colorFromString( styleElem.attribute( QStringLiteral( "cellBackgroundColor" ), QStringLiteral( "255,255,255,255" ) ) );
+  cellBackgroundColor = QgsSymbolLayerUtils::decodeColor( styleElem.attribute( QStringLiteral( "cellBackgroundColor" ), QStringLiteral( "255,255,255,255" ) ) );
   enabled = ( styleElem.attribute( QStringLiteral( "enabled" ), QStringLiteral( "0" ) ) != QLatin1String( "0" ) );
   return true;
 }
@@ -87,11 +84,11 @@ bool QgsLayoutTable::writePropertiesToElement( QDomElement &elem, QDomDocument &
   contentElem.appendChild( contentTextElem );
   elem.appendChild( contentElem );
   elem.setAttribute( QStringLiteral( "gridStrokeWidth" ), QString::number( mGridStrokeWidth ) );
-  elem.setAttribute( QStringLiteral( "gridColor" ), QgsColorUtils::colorToString( mGridColor ) );
+  elem.setAttribute( QStringLiteral( "gridColor" ), QgsSymbolLayerUtils::encodeColor( mGridColor ) );
   elem.setAttribute( QStringLiteral( "horizontalGrid" ), mHorizontalGrid );
   elem.setAttribute( QStringLiteral( "verticalGrid" ), mVerticalGrid );
   elem.setAttribute( QStringLiteral( "showGrid" ), mShowGrid );
-  elem.setAttribute( QStringLiteral( "backgroundColor" ), QgsColorUtils::colorToString( mBackgroundColor ) );
+  elem.setAttribute( QStringLiteral( "backgroundColor" ), QgsSymbolLayerUtils::encodeColor( mBackgroundColor ) );
   elem.setAttribute( QStringLiteral( "wrapBehavior" ), QString::number( static_cast< int >( mWrapBehavior ) ) );
 
   // display columns
@@ -152,17 +149,17 @@ bool QgsLayoutTable::readPropertiesFromElement( const QDomElement &itemElem, con
     {
       headerFont.fromString( itemElem.attribute( QStringLiteral( "headerFont" ), QString() ) );
     }
-    QColor headerFontColor = QgsColorUtils::colorFromString( itemElem.attribute( QStringLiteral( "headerFontColor" ), QStringLiteral( "0,0,0,255" ) ) );
+    QColor headerFontColor = QgsSymbolLayerUtils::decodeColor( itemElem.attribute( QStringLiteral( "headerFontColor" ), QStringLiteral( "0,0,0,255" ) ) );
     mHeaderTextFormat.setFont( headerFont );
     if ( headerFont.pointSizeF() > 0 )
     {
       mHeaderTextFormat.setSize( headerFont.pointSizeF() );
-      mHeaderTextFormat.setSizeUnit( Qgis::RenderUnit::Points );
+      mHeaderTextFormat.setSizeUnit( QgsUnitTypes::RenderPoints );
     }
     else if ( headerFont.pixelSize() > 0 )
     {
       mHeaderTextFormat.setSize( headerFont.pixelSize() );
-      mHeaderTextFormat.setSizeUnit( Qgis::RenderUnit::Pixels );
+      mHeaderTextFormat.setSizeUnit( QgsUnitTypes::RenderPixels );
     }
     mHeaderTextFormat.setColor( headerFontColor );
   }
@@ -184,17 +181,17 @@ bool QgsLayoutTable::readPropertiesFromElement( const QDomElement &itemElem, con
     {
       contentFont.fromString( itemElem.attribute( QStringLiteral( "contentFont" ), QString() ) );
     }
-    QColor contentFontColor = QgsColorUtils::colorFromString( itemElem.attribute( QStringLiteral( "contentFontColor" ), QStringLiteral( "0,0,0,255" ) ) );
+    QColor contentFontColor = QgsSymbolLayerUtils::decodeColor( itemElem.attribute( QStringLiteral( "contentFontColor" ), QStringLiteral( "0,0,0,255" ) ) );
     mContentTextFormat.setFont( contentFont );
     if ( contentFont.pointSizeF() > 0 )
     {
       mContentTextFormat.setSize( contentFont.pointSizeF() );
-      mContentTextFormat.setSizeUnit( Qgis::RenderUnit::Points );
+      mContentTextFormat.setSizeUnit( QgsUnitTypes::RenderPoints );
     }
     else if ( contentFont.pixelSize() > 0 )
     {
       mContentTextFormat.setSize( contentFont.pixelSize() );
-      mContentTextFormat.setSizeUnit( Qgis::RenderUnit::Pixels );
+      mContentTextFormat.setSizeUnit( QgsUnitTypes::RenderPixels );
     }
     mContentTextFormat.setColor( contentFontColor );
   }
@@ -204,8 +201,8 @@ bool QgsLayoutTable::readPropertiesFromElement( const QDomElement &itemElem, con
   mHorizontalGrid = itemElem.attribute( QStringLiteral( "horizontalGrid" ), QStringLiteral( "1" ) ).toInt();
   mVerticalGrid = itemElem.attribute( QStringLiteral( "verticalGrid" ), QStringLiteral( "1" ) ).toInt();
   mShowGrid = itemElem.attribute( QStringLiteral( "showGrid" ), QStringLiteral( "1" ) ).toInt();
-  mGridColor = QgsColorUtils::colorFromString( itemElem.attribute( QStringLiteral( "gridColor" ), QStringLiteral( "0,0,0,255" ) ) );
-  mBackgroundColor = QgsColorUtils::colorFromString( itemElem.attribute( QStringLiteral( "backgroundColor" ), QStringLiteral( "255,255,255,0" ) ) );
+  mGridColor = QgsSymbolLayerUtils::decodeColor( itemElem.attribute( QStringLiteral( "gridColor" ), QStringLiteral( "0,0,0,255" ) ) );
+  mBackgroundColor = QgsSymbolLayerUtils::decodeColor( itemElem.attribute( QStringLiteral( "backgroundColor" ), QStringLiteral( "255,255,255,0" ) ) );
   mWrapBehavior = QgsLayoutTable::WrapBehavior( itemElem.attribute( QStringLiteral( "wrapBehavior" ), QStringLiteral( "0" ) ).toInt() );
 
   //restore display column specifications
@@ -314,7 +311,7 @@ int QgsLayoutTable::rowsVisible( QgsRenderContext &context, double frameHeight, 
   if ( includeEmptyRows && contentHeight > 0 )
   {
     const QFontMetricsF emptyRowContentFontMetrics = QgsTextRenderer::fontMetrics( context, mContentTextFormat, QgsTextRenderer::FONT_WORKAROUND_SCALE );
-    double rowHeight = ( mShowGrid && mHorizontalGrid ? mGridStrokeWidth : 0 ) + 2 * mCellMargin + emptyRowContentFontMetrics.ascent() / context.convertToPainterUnits( 1, Qgis::RenderUnit::Millimeters ) / QgsTextRenderer::FONT_WORKAROUND_SCALE;
+    double rowHeight = ( mShowGrid && mHorizontalGrid ? mGridStrokeWidth : 0 ) + 2 * mCellMargin + emptyRowContentFontMetrics.ascent() / context.convertToPainterUnits( 1, QgsUnitTypes::RenderMillimeters ) / QgsTextRenderer::FONT_WORKAROUND_SCALE;
     currentRow += std::max( std::floor( contentHeight / rowHeight ), 0.0 );
   }
 
@@ -389,7 +386,7 @@ void QgsLayoutTable::render( QgsLayoutItemRenderContext &context, const QRectF &
   double gridSizeX = mShowGrid && mVerticalGrid ? mGridStrokeWidth : 0;
   double gridSizeY = mShowGrid && mHorizontalGrid ? mGridStrokeWidth : 0;
   double cellHeaderHeight = mMaxRowHeightMap[0] + 2 * mCellMargin;
-  double cellBodyHeightForEmptyRows = QgsTextRenderer::fontMetrics( context.renderContext(), mContentTextFormat, QgsTextRenderer::FONT_WORKAROUND_SCALE ).ascent() / context.renderContext().convertToPainterUnits( 1, Qgis::RenderUnit::Millimeters ) / QgsTextRenderer::FONT_WORKAROUND_SCALE + 2 * mCellMargin;
+  double cellBodyHeightForEmptyRows = QgsTextRenderer::fontMetrics( context.renderContext(), mContentTextFormat, QgsTextRenderer::FONT_WORKAROUND_SCALE ).ascent() / context.renderContext().convertToPainterUnits( 1, QgsUnitTypes::RenderMillimeters ) / QgsTextRenderer::FONT_WORKAROUND_SCALE + 2 * mCellMargin;
   QRectF cell;
 
   //calculate whether a header is required
@@ -492,7 +489,6 @@ void QgsLayoutTable::render( QgsLayoutItemRenderContext &context, const QRectF &
 
   //now draw the body cells
   int rowsDrawn = 0;
-  std::set< std::pair< int, int > > spannedCells;
   if ( drawContents )
   {
     //draw the attribute values
@@ -502,95 +498,61 @@ void QgsLayoutTable::render( QgsLayoutItemRenderContext &context, const QRectF &
       currentX = gridSizeX;
       int col = 0;
 
+      //calculate row height
+      double rowHeight = mMaxRowHeightMap[row + 1] + 2 * mCellMargin;
+
       for ( const QgsLayoutTableColumn &column : std::as_const( mColumns ) )
       {
         ( void )column;
-
-        bool isSpanned = false;
-        QRectF fullCell;
-
-        double cellHeight = 0;
-        double cellWidth = 0;
-        const int rowsSpan = rowSpan( row, col );
-        const int colsSpan = columnSpan( row, col );
-        if ( spannedCells.find( std::make_pair( row, col ) ) != spannedCells.end() )
-        {
-          isSpanned = true;
-        }
-        else
-        {
-          for ( int spannedRow = row; spannedRow < row + rowsSpan; ++spannedRow )
-          {
-            cellHeight += mMaxRowHeightMap[spannedRow + 1] + 2 * mCellMargin
-                          + ( spannedRow > row ? gridSizeY : 0 );
-            for ( int spannedCol = col; spannedCol < col + colsSpan; ++spannedCol )
-            {
-              spannedCells.insert( std::make_pair( spannedRow, spannedCol ) );
-            }
-          }
-          for ( int spannedCol = col; spannedCol < col + colsSpan; ++spannedCol )
-          {
-            cellWidth += mMaxColumnWidthMap[spannedCol] + 2 * mCellMargin
-                         + ( spannedCol > col ? gridSizeX : 0 );
-          }
-        }
-
-        fullCell = QRectF( currentX, currentY, cellWidth, cellHeight );
-
-        if ( !isSpanned )
-        {
-          //draw background
-          p->save();
-          p->setPen( Qt::NoPen );
-          p->setBrush( backgroundColor( row, col, rowsSpan, colsSpan ) );
-          p->drawRect( fullCell );
-          p->restore();
-        }
+        const QRectF fullCell( currentX, currentY, mMaxColumnWidthMap[col] + 2 * mCellMargin, rowHeight );
+        //draw background
+        p->save();
+        p->setPen( Qt::NoPen );
+        p->setBrush( backgroundColor( row, col ) );
+        p->drawRect( fullCell );
+        p->restore();
 
         // currentY = gridSize;
         currentX += mCellMargin;
 
-        if ( !isSpanned )
+        QVariant cellContents = mTableContents.at( row ).at( col );
+        const QString localizedString { QgsExpressionUtils::toLocalizedString( cellContents ) };
+        const QStringList str = localizedString.split( '\n' );
+
+        QgsTextFormat cellFormat = textFormatForCell( row, col );
+        QgsExpressionContextScopePopper popper( context.renderContext().expressionContext(), scopeForCell( row, col ) );
+        cellFormat.updateDataDefinedProperties( context.renderContext() );
+
+        p->save();
+        p->setClipRect( fullCell );
+        const QRectF textCell = QRectF( currentX, currentY + mCellMargin, mMaxColumnWidthMap[col], rowHeight - 2 * mCellMargin );
+
+        const QgsConditionalStyle style = conditionalCellStyle( row, col );
+        QColor foreColor = cellFormat.color();
+        if ( style.textColor().isValid() )
+          foreColor = style.textColor();
+
+        cellFormat.setColor( foreColor );
+
+        // scale to dots
         {
-          QVariant cellContents = mTableContents.at( row ).at( col );
-          const QString localizedString { QgsExpressionUtils::toLocalizedString( cellContents ) };
-          const QStringList str = localizedString.split( '\n' );
-
-          QgsTextFormat cellFormat = textFormatForCell( row, col );
-          QgsExpressionContextScopePopper popper( context.renderContext().expressionContext(), scopeForCell( row, col ) );
-          cellFormat.updateDataDefinedProperties( context.renderContext() );
-
-          p->save();
-          p->setClipRect( fullCell );
-          const QRectF textCell = QRectF( currentX, currentY + mCellMargin, cellWidth - 2 * mCellMargin, cellHeight - 2 * mCellMargin );
-
-          const QgsConditionalStyle style = conditionalCellStyle( row, col );
-          QColor foreColor = cellFormat.color();
-          if ( style.textColor().isValid() )
-            foreColor = style.textColor();
-
-          cellFormat.setColor( foreColor );
-
-          // scale to dots
-          {
-            QgsScopedRenderContextScaleToPixels scale( context.renderContext() );
-            QgsTextRenderer::drawText( QRectF( textCell.left() * context.renderContext().scaleFactor(),
-                                               textCell.top() * context.renderContext().scaleFactor(),
-                                               textCell.width() * context.renderContext().scaleFactor(),
-                                               textCell.height() * context.renderContext().scaleFactor() ), 0,
-                                       QgsTextRenderer::convertQtHAlignment( horizontalAlignmentForCell( row, col ) ), str, context.renderContext(), cellFormat, true,
-                                       QgsTextRenderer::convertQtVAlignment( verticalAlignmentForCell( row, col ) ),
-                                       mWrapBehavior == WrapText ? Qgis::TextRendererFlag::WrapLines : Qgis::TextRendererFlags() );
-          }
-          p->restore();
+          QgsScopedRenderContextScaleToPixels scale( context.renderContext() );
+          QgsTextRenderer::drawText( QRectF( textCell.left() * context.renderContext().scaleFactor(),
+                                             textCell.top() * context.renderContext().scaleFactor(),
+                                             textCell.width() * context.renderContext().scaleFactor(),
+                                             textCell.height() * context.renderContext().scaleFactor() ), 0,
+                                     QgsTextRenderer::convertQtHAlignment( horizontalAlignmentForCell( row, col ) ), str, context.renderContext(), cellFormat, true,
+                                     QgsTextRenderer::convertQtVAlignment( verticalAlignmentForCell( row, col ) ),
+                                     mWrapBehavior == WrapText ? Qgis::TextRendererFlag::WrapLines : Qgis::TextRendererFlags() );
         }
+        p->restore();
 
         currentX += mMaxColumnWidthMap[ col ];
         currentX += mCellMargin;
         currentX += gridSizeX;
         col++;
       }
-      currentY += mMaxRowHeightMap[row + 1] + 2 * mCellMargin;
+      currentY += rowHeight;
       currentY += gridSizeY;
     }
   }
@@ -641,7 +603,6 @@ void QgsLayoutTable::render( QgsLayoutItemRenderContext &context, const QRectF &
     gridPen.setWidthF( mGridStrokeWidth );
     gridPen.setColor( mGridColor );
     gridPen.setJoinStyle( Qt::MiterJoin );
-    gridPen.setCapStyle( Qt::FlatCap );
     p->setPen( gridPen );
     if ( mHorizontalGrid )
     {
@@ -737,12 +698,12 @@ void QgsLayoutTable::setHeaderFont( const QFont &font )
   if ( font.pointSizeF() > 0 )
   {
     mHeaderTextFormat.setSize( font.pointSizeF() );
-    mHeaderTextFormat.setSizeUnit( Qgis::RenderUnit::Points );
+    mHeaderTextFormat.setSizeUnit( QgsUnitTypes::RenderPoints );
   }
   else if ( font.pixelSize() > 0 )
   {
     mHeaderTextFormat.setSize( font.pixelSize() );
-    mHeaderTextFormat.setSizeUnit( Qgis::RenderUnit::Pixels );
+    mHeaderTextFormat.setSizeUnit( QgsUnitTypes::RenderPixels );
   }
 
   //since font attributes have changed, we need to recalculate the table size
@@ -821,12 +782,12 @@ void QgsLayoutTable::setContentFont( const QFont &font )
   if ( font.pointSizeF() > 0 )
   {
     mContentTextFormat.setSize( font.pointSizeF() );
-    mContentTextFormat.setSizeUnit( Qgis::RenderUnit::Points );
+    mContentTextFormat.setSizeUnit( QgsUnitTypes::RenderPoints );
   }
   else if ( font.pixelSize() > 0 )
   {
     mContentTextFormat.setSize( font.pixelSize() );
-    mContentTextFormat.setSizeUnit( Qgis::RenderUnit::Pixels );
+    mContentTextFormat.setSizeUnit( QgsUnitTypes::RenderPixels );
   }
 
   //since font attributes have changed, we need to recalculate the table size
@@ -1028,16 +989,6 @@ QgsExpressionContextScope *QgsLayoutTable::scopeForCell( int row, int column ) c
   return cellScope.release();
 }
 
-int QgsLayoutTable::rowSpan( int, int ) const
-{
-  return 1;
-}
-
-int QgsLayoutTable::columnSpan( int, int ) const
-{
-  return 1;
-}
-
 QgsConditionalStyle QgsLayoutTable::conditionalCellStyle( int, int ) const
 {
   return QgsConditionalStyle();
@@ -1061,7 +1012,7 @@ QSizeF QgsLayoutTable::minFrameSize( const int frameIndex ) const
     //header required, force frame to be high enough for header
     for ( int col = 0; col < mColumns.size(); ++ col )
     {
-      height = std::max( height, 2 * ( mShowGrid ? mGridStrokeWidth : 0 ) + 2 * mCellMargin + QgsTextRenderer::fontMetrics( context, textFormatForHeader( col ), QgsTextRenderer::FONT_WORKAROUND_SCALE ).ascent() / QgsTextRenderer::FONT_WORKAROUND_SCALE / context.convertToPainterUnits( 1, Qgis::RenderUnit::Millimeters ) );
+      height = std::max( height, 2 * ( mShowGrid ? mGridStrokeWidth : 0 ) + 2 * mCellMargin + QgsTextRenderer::fontMetrics( context, textFormatForHeader( col ), QgsTextRenderer::FONT_WORKAROUND_SCALE ).ascent() / QgsTextRenderer::FONT_WORKAROUND_SCALE / context.convertToPainterUnits( 1, QgsUnitTypes::RenderMillimeters ) );
     }
   }
   return QSizeF( 0, height );
@@ -1140,7 +1091,7 @@ bool QgsLayoutTable::calculateMaxColumnWidths()
 
       //column width set to automatic, so check content size
       const QStringList multiLineSplit = col.heading().split( '\n' );
-      currentCellTextWidth = QgsTextRenderer::textWidth( context, textFormatForHeader( i ), multiLineSplit ) / context.convertToPainterUnits( 1, Qgis::RenderUnit::Millimeters );
+      currentCellTextWidth = QgsTextRenderer::textWidth( context, textFormatForHeader( i ), multiLineSplit ) / context.convertToPainterUnits( 1, QgsUnitTypes::RenderMillimeters );
       widths[i] = currentCellTextWidth;
     }
     else
@@ -1168,7 +1119,7 @@ bool QgsLayoutTable::calculateMaxColumnWidths()
         QgsExpressionContextScopePopper popper( context.expressionContext(), scopeForCell( row - 1, col ) );
         cellFormat.updateDataDefinedProperties( context );
 
-        currentCellTextWidth = QgsTextRenderer::textWidth( context, cellFormat, multiLineSplit ) / context.convertToPainterUnits( 1, Qgis::RenderUnit::Millimeters );
+        currentCellTextWidth = QgsTextRenderer::textWidth( context, cellFormat, multiLineSplit ) / context.convertToPainterUnits( 1, QgsUnitTypes::RenderMillimeters );
         widths[ row * cols + col ] = currentCellTextWidth;
       }
       else
@@ -1216,7 +1167,7 @@ bool QgsLayoutTable::calculateMaxRowHeights()
     QgsExpressionContextScopePopper popper( context.expressionContext(), headerCellScope.release() );
 
     const QgsTextFormat cellFormat = textFormatForHeader( i );
-    const double headerDescentMm = QgsTextRenderer::fontMetrics( context, cellFormat, QgsTextRenderer::FONT_WORKAROUND_SCALE ).descent() / QgsTextRenderer::FONT_WORKAROUND_SCALE  / context.convertToPainterUnits( 1, Qgis::RenderUnit::Millimeters );
+    const double headerDescentMm = QgsTextRenderer::fontMetrics( context, cellFormat, QgsTextRenderer::FONT_WORKAROUND_SCALE ).descent() / QgsTextRenderer::FONT_WORKAROUND_SCALE  / context.convertToPainterUnits( 1, QgsUnitTypes::RenderMillimeters );
     //height
     if ( mHeaderMode == QgsLayoutTable::NoHeaders )
     {
@@ -1229,9 +1180,9 @@ bool QgsLayoutTable::calculateMaxRowHeights()
                    QStringList() << col.heading(), Qgis::TextLayoutMode::Rectangle,
                    nullptr,
                    mWrapBehavior == WrapText ? Qgis::TextRendererFlag::WrapLines : Qgis::TextRendererFlags(),
-                   context.convertToPainterUnits( mColumns.at( i ).width(), Qgis::RenderUnit::Millimeters )
+                   context.convertToPainterUnits( mColumns.at( i ).width(), QgsUnitTypes::RenderMillimeters )
                                               )
-                   / context.convertToPainterUnits( 1, Qgis::RenderUnit::Millimeters )
+                   / context.convertToPainterUnits( 1, QgsUnitTypes::RenderMillimeters )
                    - headerDescentMm;
     }
     i++;
@@ -1249,7 +1200,7 @@ bool QgsLayoutTable::calculateMaxRowHeights()
       QgsTextFormat cellFormat = textFormatForCell( row - 1, i );
       QgsExpressionContextScopePopper popper( context.expressionContext(), scopeForCell( row - 1, i ) );
       cellFormat.updateDataDefinedProperties( context );
-      const double contentDescentMm = QgsTextRenderer::fontMetrics( context, cellFormat, QgsTextRenderer::FONT_WORKAROUND_SCALE ).descent() / QgsTextRenderer::FONT_WORKAROUND_SCALE  / context.convertToPainterUnits( 1, Qgis::RenderUnit::Millimeters );
+      const double contentDescentMm = QgsTextRenderer::fontMetrics( context, cellFormat, QgsTextRenderer::FONT_WORKAROUND_SCALE ).descent() / QgsTextRenderer::FONT_WORKAROUND_SCALE  / context.convertToPainterUnits( 1, QgsUnitTypes::RenderMillimeters );
       const QString localizedString { QgsExpressionUtils::toLocalizedString( *colIt ) };
 
       heights[ row * cols + i ] = QgsTextRenderer::textHeight( context,
@@ -1258,8 +1209,8 @@ bool QgsLayoutTable::calculateMaxRowHeights()
                                   Qgis::TextLayoutMode::Rectangle,
                                   nullptr,
                                   mWrapBehavior == WrapText ? Qgis::TextRendererFlag::WrapLines : Qgis::TextRendererFlags(),
-                                  context.convertToPainterUnits( mColumns.at( i ).width(), Qgis::RenderUnit::Millimeters )
-                                                             ) / context.convertToPainterUnits( 1, Qgis::RenderUnit::Millimeters ) - contentDescentMm;
+                                  context.convertToPainterUnits( mColumns.at( i ).width(), QgsUnitTypes::RenderMillimeters )
+                                                             ) / context.convertToPainterUnits( 1, QgsUnitTypes::RenderMillimeters ) - contentDescentMm;
 
       i++;
     }
@@ -1387,79 +1338,27 @@ void QgsLayoutTable::drawHorizontalGridLines( QgsLayoutItemRenderContext &contex
 
   QPainter *painter = context.renderContext().painter();
 
-  double cellBodyHeightForEmptyRows = QgsTextRenderer::fontMetrics( context.renderContext(), mContentTextFormat, QgsTextRenderer::FONT_WORKAROUND_SCALE ).ascent() / QgsTextRenderer::FONT_WORKAROUND_SCALE / context.renderContext().convertToPainterUnits( 1, Qgis::RenderUnit::Millimeters );
+  double cellBodyHeightForEmptyRows = QgsTextRenderer::fontMetrics( context.renderContext(), mContentTextFormat, QgsTextRenderer::FONT_WORKAROUND_SCALE ).ascent() / QgsTextRenderer::FONT_WORKAROUND_SCALE / context.renderContext().convertToPainterUnits( 1, QgsUnitTypes::RenderMillimeters );
   double halfGridStrokeWidth = ( mShowGrid ? mGridStrokeWidth : 0 ) / 2.0;
-  double currentY = halfGridStrokeWidth;
+  double currentY = 0;
+  currentY = halfGridStrokeWidth;
   if ( drawHeaderLines )
   {
-    painter->drawLine( QPointF( 0, currentY ), QPointF( mTableSize.width(), currentY ) );
+    painter->drawLine( QPointF( halfGridStrokeWidth, currentY ), QPointF( mTableSize.width() - halfGridStrokeWidth, currentY ) );
     currentY += ( mShowGrid ? mGridStrokeWidth : 0 );
     currentY += mMaxRowHeightMap[0] + 2 * mCellMargin;
   }
-
-  QHash< QPair< int, int >, bool > skippedCellBottomBorders;
-  for ( int row = 0; row < lastRow; ++row )
-  {
-    for ( int col = 0; col < mColumns.size(); ++col )
-    {
-      if ( skippedCellBottomBorders.constFind( qMakePair( row, col ) ) != skippedCellBottomBorders.constEnd() )
-        continue;
-
-      const int rowsSpan = rowSpan( row, col );
-      const int colsSpan = columnSpan( row, col );
-      skippedCellBottomBorders.insert( qMakePair( row, col ), rowsSpan > 1 );
-      for ( int rowDelta = 0; rowDelta < rowsSpan - 1; ++rowDelta )
-      {
-        for ( int colDelta = 0; colDelta < colsSpan; ++colDelta )
-        {
-          if ( rowDelta != 0 || colDelta != 0 )
-            skippedCellBottomBorders.insert( qMakePair( row + rowDelta, col + colDelta ), true );
-        }
-      }
-    }
-  }
-
   for ( int row = firstRow; row < lastRow; ++row )
   {
-    double startX = 0;
-    double endX = startX;
-
-    for ( int col = 0; col < mColumns.size(); ++col )
-    {
-      const double colWidth = mMaxColumnWidthMap.value( col ) + 2 * mCellMargin;
-
-      if ( skippedCellBottomBorders.value( qMakePair( row - 1, col ) ) )
-      {
-        // flush existing line
-        if ( !qgsDoubleNear( startX, endX ) )
-        {
-          painter->drawLine( QPointF( startX, currentY ), QPointF( endX, currentY ) );
-        }
-        endX += colWidth;
-        endX += ( mShowGrid && mVerticalGrid ? mGridStrokeWidth : 0 );
-        startX = endX;
-      }
-      else
-      {
-        endX += colWidth;
-        endX += ( mShowGrid && mVerticalGrid ? mGridStrokeWidth : 0 );
-      }
-    }
-
-    // flush last line
-    if ( !qgsDoubleNear( startX, endX ) )
-    {
-      painter->drawLine( QPointF( startX, currentY ), QPointF( endX, currentY ) );
-    }
-
+    painter->drawLine( QPointF( halfGridStrokeWidth, currentY ), QPointF( mTableSize.width() - halfGridStrokeWidth, currentY ) );
     currentY += ( mShowGrid ? mGridStrokeWidth : 0 );
     double rowHeight = row < mTableContents.count() ? mMaxRowHeightMap[row + 1] : cellBodyHeightForEmptyRows;
     currentY += ( rowHeight + 2 * mCellMargin );
   }
-  painter->drawLine( QPointF( 0, currentY ), QPointF( mTableSize.width(), currentY ) );
+  painter->drawLine( QPointF( halfGridStrokeWidth, currentY ), QPointF( mTableSize.width() - halfGridStrokeWidth, currentY ) );
 }
 
-QColor QgsLayoutTable::backgroundColor( int row, int column, int rowSpan, int columnSpan ) const
+QColor QgsLayoutTable::backgroundColor( int row, int column ) const
 {
   QColor color = mBackgroundColor;
   if ( QgsLayoutTableStyle *style = mCellStyles.value( OddColumns ) )
@@ -1478,7 +1377,7 @@ QColor QgsLayoutTable::backgroundColor( int row, int column, int rowSpan, int co
     if ( style->enabled && column == 0 )
       color = style->cellBackgroundColor;
   if ( QgsLayoutTableStyle *style = mCellStyles.value( LastColumn ) )
-    if ( style->enabled && ( column + columnSpan == mColumns.count() ) )
+    if ( style->enabled && column == mColumns.count() - 1 )
       color = style->cellBackgroundColor;
   if ( QgsLayoutTableStyle *style = mCellStyles.value( HeaderRow ) )
     if ( style->enabled && row == -1 )
@@ -1487,7 +1386,7 @@ QColor QgsLayoutTable::backgroundColor( int row, int column, int rowSpan, int co
     if ( style->enabled && row == 0 )
       color = style->cellBackgroundColor;
   if ( QgsLayoutTableStyle *style = mCellStyles.value( LastRow ) )
-    if ( style->enabled && ( row + rowSpan == mTableContents.count() ) )
+    if ( style->enabled && row == mTableContents.count() - 1 )
       color = style->cellBackgroundColor;
 
   if ( row >= 0 )
@@ -1508,105 +1407,40 @@ void QgsLayoutTable::drawVerticalGridLines( QgsLayoutItemRenderContext &context,
     return;
   }
 
-  QHash< QPair< int, int >, bool > skippedCellRightBorders;
-  for ( int row = 0; row < lastRow; ++row )
-  {
-    for ( int col = 0; col < mColumns.size(); ++col )
-    {
-      if ( skippedCellRightBorders.constFind( qMakePair( row, col ) ) != skippedCellRightBorders.constEnd() )
-        continue;
-
-      const int rowsSpan = rowSpan( row, col );
-      const int colsSpan = columnSpan( row, col );
-      skippedCellRightBorders.insert( qMakePair( row, col ), colsSpan > 1 );
-
-      for ( int colDelta = 0; colDelta < colsSpan - 1; ++colDelta )
-      {
-        for ( int rowDelta = 0; rowDelta < rowsSpan; ++rowDelta )
-        {
-          if ( rowDelta != 0 || colDelta != 0 )
-            skippedCellRightBorders.insert( qMakePair( row + rowDelta, col + colDelta ), true );
-        }
-      }
-    }
-  }
-
   QPainter *painter = context.renderContext().painter();
 
   //calculate height of table within frame
   double tableHeight = 0;
-  QList< double > rowHeights;
   if ( hasHeader )
   {
-    rowHeights << mCellMargin * 2 + mMaxRowHeightMap[0];
     tableHeight += ( mShowGrid && mHorizontalGrid ? mGridStrokeWidth : 0 ) + mCellMargin * 2 + mMaxRowHeightMap[0];
-  }
-  else
-  {
-    rowHeights << 0;
   }
   tableHeight += ( mShowGrid && mHorizontalGrid ? mGridStrokeWidth : 0 );
   double headerHeight = tableHeight;
 
-  double cellBodyHeightForEmptyRows = QgsTextRenderer::fontMetrics( context.renderContext(), mContentTextFormat, QgsTextRenderer::FONT_WORKAROUND_SCALE ).ascent() / QgsTextRenderer::FONT_WORKAROUND_SCALE / context.renderContext().convertToPainterUnits( 1, Qgis::RenderUnit::Millimeters );
+  double cellBodyHeightForEmptyRows = QgsTextRenderer::fontMetrics( context.renderContext(), mContentTextFormat, QgsTextRenderer::FONT_WORKAROUND_SCALE ).ascent() / QgsTextRenderer::FONT_WORKAROUND_SCALE / context.renderContext().convertToPainterUnits( 1, QgsUnitTypes::RenderMillimeters );
   for ( int row = firstRow; row < lastRow; ++row )
   {
     double rowHeight = row < mTableContents.count() ? mMaxRowHeightMap[row + 1] : cellBodyHeightForEmptyRows;
-    rowHeights << rowHeight + mCellMargin * 2;
     tableHeight += rowHeight + ( mShowGrid && mHorizontalGrid ? mGridStrokeWidth : 0 ) + mCellMargin * 2;
   }
 
-  double currentX = ( mShowGrid && mVerticalGrid ? mGridStrokeWidth : 0 ) / 2.0;;
-  // left border of table
-  painter->drawLine( QPointF( currentX, 0 ), QPointF( currentX, tableHeight ) );
+  double halfGridStrokeWidth = ( mShowGrid && mVerticalGrid ? mGridStrokeWidth : 0 ) / 2.0;
+  double currentX = halfGridStrokeWidth;
+  painter->drawLine( QPointF( currentX, halfGridStrokeWidth ), QPointF( currentX, tableHeight - halfGridStrokeWidth ) );
   currentX += ( mShowGrid && mVerticalGrid ? mGridStrokeWidth : 0 );
   QMap<int, double>::const_iterator maxColWidthIt = maxWidthMap.constBegin();
   int col = 1;
   for ( ; maxColWidthIt != maxWidthMap.constEnd(); ++maxColWidthIt )
   {
     currentX += ( maxColWidthIt.value() + 2 * mCellMargin );
-    if ( col == maxWidthMap.size() )
+    if ( col == maxWidthMap.size() || !mergeCells )
     {
-      // right border of table, always drawn
-      painter->drawLine( QPointF( currentX, 0 ), QPointF( currentX, tableHeight ) );
+      painter->drawLine( QPointF( currentX, halfGridStrokeWidth ), QPointF( currentX, tableHeight - halfGridStrokeWidth ) );
     }
-    else
+    else if ( hasHeader )
     {
-      if ( !mergeCells )
-      {
-        double startY = 0;
-        double endY = startY + ( hasHeader ? ( rowHeights.value( 0 ) + ( mShowGrid && mHorizontalGrid ? mGridStrokeWidth : 0 ) ) : 0 );
-        for ( int row = firstRow; row < lastRow; ++row )
-        {
-          const double rowHeight = rowHeights.value( row - firstRow + 1 );
-          if ( skippedCellRightBorders.value( qMakePair( row, col - 1 ) ) )
-          {
-            // flush existing line
-            if ( !qgsDoubleNear( startY, endY ) )
-            {
-              painter->drawLine( QPointF( currentX, startY ), QPointF( currentX, endY ) );
-            }
-            endY += rowHeight;
-            endY += ( mShowGrid && mHorizontalGrid ? mGridStrokeWidth : 0 );
-            startY = endY;
-          }
-          else
-          {
-            endY += rowHeight;
-            endY += ( mShowGrid && mHorizontalGrid ? mGridStrokeWidth : 0 );
-          }
-        }
-
-        // flush last line
-        if ( !qgsDoubleNear( startY, endY ) )
-        {
-          painter->drawLine( QPointF( currentX, startY ), QPointF( currentX, endY ) );
-        }
-      }
-      else if ( hasHeader )
-      {
-        painter->drawLine( QPointF( currentX, 0 ), QPointF( currentX, headerHeight ) );
-      }
+      painter->drawLine( QPointF( currentX, halfGridStrokeWidth ), QPointF( currentX, headerHeight - halfGridStrokeWidth ) );
     }
 
     currentX += ( mShowGrid && mVerticalGrid ? mGridStrokeWidth : 0 );

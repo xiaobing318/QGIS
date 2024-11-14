@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/vector/qgsvectorlayerelevationproperties.h                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -42,7 +42,7 @@ Constructor for QgsVectorLayerElevationProperties, with the specified ``parent``
 
     virtual QString htmlSummary() const;
 
-    virtual bool isVisibleInZRange( const QgsDoubleRange &range, QgsMapLayer *layer = 0 ) const;
+    virtual bool isVisibleInZRange( const QgsDoubleRange &range ) const;
 
     virtual QgsDoubleRange calculateZRange( QgsMapLayer *layer ) const;
 
@@ -253,7 +253,7 @@ Returns the symbology option used to render the vector profile in elevation prof
 
 .. note::
 
-   This setting is only used when :py:func:`~QgsVectorLayerElevationProperties.type` is :py:class:`Qgis`.VectorProfileType.ContinuousSurface.
+   This setting is only used when :py:func:`~QgsVectorLayerElevationProperties.type` is Qgis.VectorProfileType.ContinuousSurface.
 
 .. seealso:: :py:func:`setProfileSymbology`
 %End
@@ -264,35 +264,9 @@ Sets the ``symbology`` option used to render the vector profile in elevation pro
 
 .. note::
 
-   This setting is only used when :py:func:`~QgsVectorLayerElevationProperties.type` is :py:class:`Qgis`.VectorProfileType.ContinuousSurface.
+   This setting is only used when :py:func:`~QgsVectorLayerElevationProperties.type` is Qgis.VectorProfileType.ContinuousSurface.
 
 .. seealso:: :py:func:`setProfileSymbology`
-%End
-
-    double elevationLimit() const;
-%Docstring
-Returns the elevation limit, which is used when :py:func:`~QgsVectorLayerElevationProperties.profileSymbology` is
-:py:class:`Qgis`.ProfileSurfaceSymbology.FillBelow or :py:class:`Qgis`.ProfileSurfaceSymbology.FillAbove
-to limit the fill to a specific elevation range.
-
-By default this is NaN, which indicates that there is no elevation limit.
-
-.. seealso:: :py:func:`setElevationLimit`
-
-.. versionadded:: 3.32
-%End
-
-    void setElevationLimit( double limit );
-%Docstring
-Sets the elevation ``limit``, which is used when :py:func:`~QgsVectorLayerElevationProperties.profileSymbology` is
-:py:class:`Qgis`.ProfileSurfaceSymbology.FillBelow or :py:class:`Qgis`.ProfileSurfaceSymbology.FillAbove
-to limit the fill to a specific elevation range.
-
-Set to NaN to indicate that there is no elevation limit.
-
-.. seealso:: :py:func:`elevationLimit`
-
-.. versionadded:: 3.32
 %End
 
     bool showMarkerSymbolInSurfacePlots() const;
@@ -301,18 +275,18 @@ Returns ``True`` if the marker symbol should also be shown in continuous surface
 
 .. note::
 
-   This setting is only used when :py:func:`~QgsVectorLayerElevationProperties.type` is :py:class:`Qgis`.VectorProfileType.ContinuousSurface.
+   This setting is only used when :py:func:`~QgsVectorLayerElevationProperties.type` is Qgis.VectorProfileType.ContinuousSurface.
 
 .. seealso:: :py:func:`setShowMarkerSymbolInSurfacePlots`
 %End
 
     void setShowMarkerSymbolInSurfacePlots( bool show );
 %Docstring
-Sets whether the marker symbol should also be shown in continuous surface plots.
+Sets whehter the marker symbol should also be shown in continuous surface plots.
 
 .. note::
 
-   This setting is only used when :py:func:`~QgsVectorLayerElevationProperties.type` is :py:class:`Qgis`.VectorProfileType.ContinuousSurface.
+   This setting is only used when :py:func:`~QgsVectorLayerElevationProperties.type` is Qgis.VectorProfileType.ContinuousSurface.
 
 .. seealso:: :py:func:`showMarkerSymbolInSurfacePlots`
 %End
@@ -324,5 +298,5 @@ Sets whether the marker symbol should also be shown in continuous surface plots.
  *                                                                      *
  * src/core/vector/qgsvectorlayerelevationproperties.h                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

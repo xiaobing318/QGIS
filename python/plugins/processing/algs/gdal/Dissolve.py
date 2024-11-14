@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     Dissolve.py
@@ -53,7 +55,7 @@ class Dissolve(GdalAlgorithm):
                                                       self.tr('Dissolve field'),
                                                       None,
                                                       self.INPUT,
-                                                      QgsProcessingParameterField.DataType.Any, optional=True))
+                                                      QgsProcessingParameterField.Any, optional=True))
         self.addParameter(QgsProcessingParameterString(self.GEOMETRY,
                                                        self.tr('Geometry column name'),
                                                        defaultValue='geometry'))
@@ -77,7 +79,7 @@ class Dissolve(GdalAlgorithm):
                                         self.tr('Numeric attribute to calculate statistics on'),
                                         None,
                                         self.INPUT,
-                                        QgsProcessingParameterField.DataType.Numeric,
+                                        QgsProcessingParameterField.Numeric,
                                         optional=True),
             QgsProcessingParameterString(self.OPTIONS,
                                          self.tr('Additional creation options'),
@@ -85,7 +87,7 @@ class Dissolve(GdalAlgorithm):
                                          optional=True)
         ]
         for param in params:
-            param.setFlags(param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+            param.setFlags(param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
             self.addParameter(param)
 
         self.addParameter(QgsProcessingParameterVectorDestination(self.OUTPUT,
@@ -112,7 +114,7 @@ class Dissolve(GdalAlgorithm):
             raise QgsProcessingException(self.invalidSourceError(parameters, self.INPUT))
 
         fields = source.fields()
-        input_details = self.getOgrCompatibleSource(self.INPUT, parameters, context, feedback, executing)
+        ogrLayer, layerName = self.getOgrCompatibleSource(self.INPUT, parameters, context, feedback, executing)
         geometry = self.parameterAsString(parameters, self.GEOMETRY, context)
         fieldName = self.parameterAsString(parameters, self.FIELD, context)
 
@@ -120,7 +122,7 @@ class Dissolve(GdalAlgorithm):
         outFile = self.parameterAsOutputLayer(parameters, self.OUTPUT, context)
         self.setOutputValue(self.OUTPUT, outFile)
 
-        output_details = GdalUtils.gdal_connection_details_from_uri(outFile, context)
+        output, outputFormat = GdalUtils.ogrConnectionStringAndFormat(outFile, context)
 
         other_fields_exist = any(
             True for f in fields
@@ -130,8 +132,8 @@ class Dissolve(GdalAlgorithm):
         other_fields = ',*' if other_fields_exist else ''
 
         arguments = [
-            output_details.connection_string,
-            input_details.connection_string,
+            output,
+            ogrLayer,
             '-nlt PROMOTE_TO_MULTI',
             '-dialect',
             'sqlite',
@@ -140,7 +142,7 @@ class Dissolve(GdalAlgorithm):
 
         tokens = []
         if self.parameterAsBoolean(parameters, self.COUNT_FEATURES, context):
-            tokens.append(f'COUNT({geometry}) AS count')
+            tokens.append('COUNT({}) AS count'.format(geometry))
 
         if self.parameterAsBoolean(parameters, self.COMPUTE_AREA, context):
             tokens.append('SUM(ST_Area({0})) AS area, ST_Perimeter(ST_Union({0})) AS perimeter'.format(geometry))
@@ -155,29 +157,23 @@ class Dissolve(GdalAlgorithm):
 
         group_by = ''
         if fieldName:
-            group_by = f' GROUP BY "{fieldName}"'
+            group_by = ' GROUP BY "{}"'.format(fieldName)
 
         if self.parameterAsBoolean(parameters, self.KEEP_ATTRIBUTES, context):
-            sql = f'SELECT ST_Union({geometry}) AS {geometry}{other_fields}{params} FROM "{input_details.layer_name}"{group_by}'
+            sql = 'SELECT ST_Union({}) AS {}{}{} FROM "{}"{}'.format(geometry, geometry, other_fields, params, layerName, group_by)
         else:
-            sql = 'SELECT ST_Union({}) AS {}{}{} FROM "{}"{}'.format(geometry, geometry, f', "{fieldName}"' if fieldName else '',
-                                                                     params, input_details.layer_name, group_by)
+            sql = 'SELECT ST_Union({}) AS {}{}{} FROM "{}"{}'.format(geometry, geometry, ', "{}"'.format(fieldName) if fieldName else '',
+                                                                     params, layerName, group_by)
 
         arguments.append(sql)
 
         if self.parameterAsBoolean(parameters, self.EXPLODE_COLLECTIONS, context):
             arguments.append('-explodecollections')
 
-        if input_details.open_options:
-            arguments.extend(input_details.open_options_as_arguments())
-
-        if input_details.credential_options:
-            arguments.extend(input_details.credential_options_as_arguments())
-
         if options:
             arguments.append(options)
 
-        if output_details.format:
-            arguments.append(f'-f {output_details.format}')
+        if outputFormat:
+            arguments.append('-f {}'.format(outputFormat))
 
         return [self.commandName(), GdalUtils.escapeAndJoin(arguments)]

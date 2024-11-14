@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/symbology/qgsinvertedpolygonrenderer.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -20,6 +20,8 @@ Most of the methods are then only proxies to the embedded renderer.
 
 Features are collected to form one "inverted" polygon
 during :py:func:`~renderFeature` and rendered on :py:func:`~stopRender`.
+
+.. versionadded:: 2.4
 %End
 
 %TypeHeaderCode
@@ -73,6 +75,8 @@ Creates a renderer out of an XML, for loading
 Creates a QgsInvertedPolygonRenderer by a conversion from an existing renderer.
 
 :return: a new renderer if the conversion was possible, otherwise ``None``.
+
+.. versionadded:: 2.5
 %End
 
 };
@@ -83,5 +87,5 @@ Creates a QgsInvertedPolygonRenderer by a conversion from an existing renderer.
  *                                                                      *
  * src/core/symbology/qgsinvertedpolygonrenderer.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

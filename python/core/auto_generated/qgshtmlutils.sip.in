@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgshtmlutils.h                                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -13,6 +13,8 @@ class QgsHtmlUtils
 {
 %Docstring(signature="appended")
 Class for HTML utilities.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -32,5 +34,5 @@ This will return a HTML "ul" element.
  *                                                                      *
  * src/core/qgshtmlutils.h                                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

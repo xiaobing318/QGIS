@@ -60,7 +60,6 @@ class GUI_EXPORT QgsAdvancedDigitizingCanvasItem : public QgsMapCanvasItem
     QPen mSnapPen;
     QPen mSnapLinePen;
     QPen mCursorPen;
-    QPen mConstructionGuidesPen;
     QgsAdvancedDigitizingDockWidget *mAdvancedDigitizingDockWidget = nullptr;
 };
 

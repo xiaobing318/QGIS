@@ -49,7 +49,6 @@ class QgsCoordinateTransformContextPrivate : public QSharedData
 
     QgsCoordinateTransformContextPrivate( const QgsCoordinateTransformContextPrivate &other )
       : QSharedData( other )
-      , mLock{}
     {
       other.mLock.lockForRead();
       mSourceDestDatumTransforms = other.mSourceDestDatumTransforms;

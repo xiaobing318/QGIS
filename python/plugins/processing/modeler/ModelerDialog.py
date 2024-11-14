@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     ModelerDialog.py
@@ -96,10 +98,11 @@ class ModelerDialog(QgsModelDesignerDialog):
         self.setModelScene(scene)
 
         self.view().ensureVisible(0, 0, 10, 10)
-        self.view().scale(self.logicalDpiX() / 96, self.logicalDpiY() / 96)
+        self.view().scale(QgsApplication.desktop().logicalDpiX() / 96, QgsApplication.desktop().logicalDpiX() / 96)
 
         self.actionOpen().triggered.connect(self.openModel)
         self.actionSaveInProject().triggered.connect(self.saveInProject)
+        self.actionRun().triggered.connect(self.runModel)
 
         if model is not None:
             _model = model.create()
@@ -121,9 +124,37 @@ class ModelerDialog(QgsModelDesignerDialog):
 
         self.context_generator = ContextGenerator(self.processing_context)
 
-    def createExecutionDialog(self):
+    def runModel(self):
+        valid, errors = self.model().validate()
+        if not valid:
+            message_box = QMessageBox()
+            message_box.setWindowTitle(self.tr('Model is Invalid'))
+            message_box.setIcon(QMessageBox.Warning)
+            message_box.setText(self.tr('This model is not valid and contains one or more issues. Are you sure you want to run it in this state?'))
+            message_box.setStandardButtons(QMessageBox.Yes | QMessageBox.Cancel)
+            message_box.setDefaultButton(QMessageBox.Cancel)
+
+            error_string = ''
+            for e in errors:
+                e = re.sub(r'<[^>]*>', '', e)
+                error_string += '• {}\n'.format(e)
+
+            message_box.setDetailedText(error_string)
+            if message_box.exec_() == QMessageBox.Cancel:
+                return
+
+        def on_finished(successful, results):
+            self.setLastRunChildAlgorithmResults(dlg.results().get('CHILD_RESULTS', {}))
+            self.setLastRunChildAlgorithmInputs(dlg.results().get('CHILD_INPUTS', {}))
+
         dlg = AlgorithmDialog(self.model().create(), parent=self)
-        return dlg
+        dlg.setLogLevel(QgsProcessingContext.Verbose)
+        dlg.setParameters(self.model().designerParameterValues())
+        dlg.algorithmFinished.connect(on_finished)
+        dlg.exec_()
+
+        if dlg.wasExecuted():
+            self.model().setDesignerParameterValues(dlg.createProcessingParameters(flags=QgsProcessingParametersGenerator.Flags(QgsProcessingParametersGenerator.Flag.SkipDefaultValueParameters)))
 
     def saveInProject(self):
         if not self.validateSave(QgsModelDesignerDialog.SaveAction.SaveInProject):
@@ -135,7 +166,7 @@ class ModelerDialog(QgsModelDesignerDialog):
         project_provider.add_model(self.model())
 
         self.update_model.emit()
-        self.messageBar().pushMessage("", self.tr("Model was saved inside current project"), level=Qgis.MessageLevel.Success,
+        self.messageBar().pushMessage("", self.tr("Model was saved inside current project"), level=Qgis.Success,
                                       duration=5)
 
         self.setDirty(False)
@@ -187,7 +218,7 @@ class ModelerDialog(QgsModelDesignerDialog):
         self.update_model.emit()
         if saveAs:
             self.messageBar().pushMessage("", self.tr("Model was saved to <a href=\"{}\">{}</a>").format(
-                QUrl.fromLocalFile(filename).toString(), QDir.toNativeSeparators(filename)), level=Qgis.MessageLevel.Success,
+                QUrl.fromLocalFile(filename).toString(), QDir.toNativeSeparators(filename)), level=Qgis.Success,
                 duration=5)
 
         self.setDirty(False)
@@ -214,11 +245,11 @@ class ModelerDialog(QgsModelDesignerDialog):
                                   self.CANVAS_SIZE))
 
         if not showControls:
-            scene.setFlag(QgsModelGraphicsScene.Flag.FlagHideControls)
+            scene.setFlag(QgsModelGraphicsScene.FlagHideControls)
 
         showComments = QgsSettings().value("/Processing/Modeler/ShowComments", True, bool)
         if not showComments:
-            scene.setFlag(QgsModelGraphicsScene.Flag.FlagHideComments)
+            scene.setFlag(QgsModelGraphicsScene.FlagHideComments)
 
         context = createContext()
         self.setModelScene(scene)
@@ -258,7 +289,7 @@ class ModelerDialog(QgsModelDesignerDialog):
         comment = None
         if ModelerParameterDefinitionDialog.use_legacy_dialog(paramType=paramType):
             dlg = ModelerParameterDefinitionDialog(self.model(), paramType)
-            if dlg.exec():
+            if dlg.exec_():
                 new_param = dlg.param
                 comment = dlg.comments()
         else:
@@ -270,7 +301,7 @@ class ModelerDialog(QgsModelDesignerDialog):
                                                          widgetContext=widget_context,
                                                          algorithm=self.model())
             dlg.registerProcessingContextGenerator(self.context_generator)
-            if dlg.exec():
+            if dlg.exec_():
                 new_param = dlg.createParameter()
                 self.autogenerate_parameter_name(new_param)
                 comment = dlg.comments()
@@ -312,7 +343,7 @@ class ModelerDialog(QgsModelDesignerDialog):
             return
 
         dlg = ModelerParametersDialog(alg, self.model())
-        if dlg.exec():
+        if dlg.exec_():
             alg = dlg.createAlgorithm()
             if pos is None or not pos:
                 alg.setPosition(self.getPositionForAlgorithmItem())
@@ -340,7 +371,7 @@ class ModelerDialog(QgsModelDesignerDialog):
                     QCoreApplication.translate('ModelerDialog', 'Algorithm “{}” is invalid').format(alg.description()),
                     self.tr('Algorithm is Invalid'),
                     QCoreApplication.translate('ModelerDialog', "<p>The “{}” algorithm is invalid, because:</p><ul><li>{}</li></ul>").format(alg.description(), '</li><li>'.join(errors)),
-                    level=Qgis.MessageLevel.Warning
+                    level=Qgis.Warning
                 )
             else:
                 self.view().scene().messageBar().clearWidgets()
@@ -361,7 +392,7 @@ class ModelerDialog(QgsModelDesignerDialog):
         return QPointF(newX, newY)
 
     def exportAsScriptAlgorithm(self):
-        dlg = ScriptEditorDialog(parent=iface.mainWindow())
+        dlg = ScriptEditorDialog(None)
 
-        dlg.editor.setText('\n'.join(self.model().asPythonCode(QgsProcessing.PythonOutputType.PythonQgsProcessingAlgorithmSubclass, 4)))
+        dlg.editor.setText('\n'.join(self.model().asPythonCode(QgsProcessing.PythonQgsProcessingAlgorithmSubclass, 4)))
         dlg.show()

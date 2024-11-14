@@ -19,7 +19,6 @@
 #include "qgspainteffectregistry.h"
 #include "qgsrendercontext.h"
 #include "qgsapplication.h"
-#include "qgspainting.h"
 #include <QPicture>
 
 QgsEffectStack::QgsEffectStack( const QgsEffectStack &other )
@@ -137,7 +136,9 @@ void QgsEffectStack::draw( QgsRenderContext &context )
     QPicture *pic = results.takeLast();
     if ( mEffectList.at( i )->drawMode() != QgsPaintEffect::Modifier )
     {
-      QgsPainting::drawPicture( context.painter(), QPointF( 0, 0 ), *pic );
+      const QgsScopedQPainterState painterState( context.painter() );
+      fixQPictureDpi( context.painter() );
+      context.painter()->drawPicture( 0, 0, *pic );
     }
     delete pic;
   }

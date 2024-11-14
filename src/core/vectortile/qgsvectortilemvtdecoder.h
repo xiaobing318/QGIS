@@ -29,8 +29,6 @@ class QgsFeature;
 #include "qgsvectortilematrixset.h"
 
 
-class QgsVectorTileRawData;
-
 /**
  * \ingroup core
  * \brief This class is responsible for decoding raw tile data written with Mapbox Vector Tiles encoding.
@@ -48,7 +46,7 @@ class CORE_EXPORT QgsVectorTileMVTDecoder
     ~QgsVectorTileMVTDecoder();
 
     //! Tries to decode raw tile data, returns true on success
-    bool decode( const QgsVectorTileRawData &rawTileData );
+    bool decode( QgsTileXYZ tileID, const QByteArray &rawTileData );
 
     //! Returns a list of sub-layer names in a tile. It can only be called after a successful decode()
     QStringList layers() const;
@@ -65,11 +63,10 @@ class CORE_EXPORT QgsVectorTileMVTDecoder
                                          const QSet< QString > *layerSubset = nullptr ) const;
 
   private:
-    //! map of tiles for each source
-    QMap<QString, vector_tile::Tile> tiles;
+    vector_tile::Tile tile;
     QgsTileXYZ mTileID;
     QgsVectorTileMatrixSet mStructure;
-    QMap<QString, QMap<QString, int>> mLayerNameToIndex;
+    QMap<QString, int> mLayerNameToIndex;
 };
 
 #endif // QGSVECTORTILEMVTDECODER_H

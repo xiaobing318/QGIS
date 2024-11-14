@@ -15,7 +15,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgssvgselectorwidget.h"
-#include "moc_qgssvgselectorwidget.cpp"
 
 #include "qgsapplication.h"
 #include "qgslogger.h"
@@ -84,7 +83,7 @@ void QgsSvgSelectorLoader::loadPath( const QString &path )
   if ( mCanceled )
     return;
 
-  QgsDebugMsgLevel( QStringLiteral( "loading path: %1" ).arg( path ), 2 );
+  // QgsDebugMsg( QStringLiteral( "loading path: %1" ).arg( path ) );
 
   if ( path.isEmpty() )
   {
@@ -122,7 +121,7 @@ void QgsSvgSelectorLoader::loadPath( const QString &path )
 
       QString newPath = dir.path() + '/' + item;
       loadPath( newPath );
-      QgsDebugMsgLevel( QStringLiteral( "added path: %1" ).arg( newPath ), 2 );
+      // QgsDebugMsg( QStringLiteral( "added path: %1" ).arg( newPath ) );
     }
   }
 }
@@ -138,7 +137,7 @@ void QgsSvgSelectorLoader::loadImages( const QString &path )
 
     // TODO test if it is correct SVG
     QString svgPath = dir.path() + '/' + item;
-    // QgsDebugMsgLevel( QStringLiteral( "adding svg: %1" ).arg( svgPath ), 2 );
+    // QgsDebugMsg( QStringLiteral( "adding svg: %1" ).arg( svgPath ) );
 
     // add it to the list of queued SVGs
     mQueuedSvgs << svgPath;
@@ -289,8 +288,8 @@ QVariant QgsSvgSelectorListModel::data( const QModelIndex &index, int role ) con
 
   if ( role == Qt::DecorationRole ) // icon
   {
-    QPixmap pixmap;
-    if ( !QPixmapCache::find( entry, &pixmap ) )
+    QPixmap *pixmap = nullptr;
+    if ( !QPixmapCache::find( entry, pixmap ) || !pixmap )
     {
       QPixmap newPixmap = createPreview( entry );
       QPixmapCache::insert( entry, newPixmap );
@@ -298,7 +297,7 @@ QVariant QgsSvgSelectorListModel::data( const QModelIndex &index, int role ) con
     }
     else
     {
-      return pixmap;
+      return *pixmap;
     }
   }
   else if ( role == Qt::UserRole || role == Qt::ToolTipRole )
@@ -772,3 +771,5 @@ void QgsSvgParameterValueDelegate::updateEditorGeometry( QWidget *editor, const 
 }
 
 ///@endcond
+
+

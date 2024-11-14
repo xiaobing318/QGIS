@@ -29,6 +29,9 @@ class CORE_EXPORT QgsFallbackNumericFormat : public QgsNumericFormat
 {
   public:
 
+    /**
+      * Default constructor
+      */
     QgsFallbackNumericFormat() = default;
     QString id() const override;
     QString visibleName() const override;

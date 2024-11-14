@@ -17,7 +17,6 @@
  ***************************************************************************/
 
 #include "qgsdecorationlayoutextent.h"
-#include "moc_qgsdecorationlayoutextent.cpp"
 #include "qgsdecorationlayoutextentdialog.h"
 
 #include "qgslayoutitemmap.h"
@@ -38,7 +37,7 @@ QgsDecorationLayoutExtent::QgsDecorationLayoutExtent( QObject *parent )
   : QgsDecorationItem( parent )
 {
   mPlacement = BottomRight;
-  mMarginUnit = Qgis::RenderUnit::Millimeters;
+  mMarginUnit = QgsUnitTypes::RenderMillimeters;
 
   setDisplayName( tr( "Layout Extent" ) );
   mConfigurationName = QStringLiteral( "LayoutExtent" );

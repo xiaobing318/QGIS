@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsdatadefinedsizelegendwidget.h"
-#include "moc_qgsdatadefinedsizelegendwidget.cpp"
 
 #include <QInputDialog>
 #include <QStyledItemDelegate>
@@ -26,6 +25,7 @@
 #include "qgssinglesymbolrenderer.h"
 #include "qgsstyle.h"
 #include "qgssymbol.h"
+#include "qgssymbollayer.h"
 #include "qgssymbolselectordialog.h"
 #include "qgsvectorlayer.h"
 #include "qgsexpressioncontextutils.h"
@@ -82,7 +82,7 @@ QgsDataDefinedSizeLegendWidget::QgsDataDefinedSizeLegendWidget( const QgsDataDef
 
   btnChangeSymbol->setEnabled( !mOverrideSymbol );
 
-  const QIcon icon = QgsSymbolLayerUtils::symbolPreviewIcon( mSourceSymbol.get(), btnChangeSymbol->iconSize(), 0, nullptr, QgsScreenProperties( screen() ) );
+  const QIcon icon = QgsSymbolLayerUtils::symbolPreviewIcon( mSourceSymbol.get(), btnChangeSymbol->iconSize() );
   btnChangeSymbol->setIcon( icon );
 
   editTitle->setText( ddsLegend ? ddsLegend->title() : QString() );
@@ -191,17 +191,11 @@ void QgsDataDefinedSizeLegendWidget::changeSymbol()
     context.setMapCanvas( mMapCanvas );
 
   QgsExpressionContext ec;
+  ec << QgsExpressionContextUtils::globalScope()
+     << QgsExpressionContextUtils::projectScope( QgsProject::instance() )
+     << QgsExpressionContextUtils::atlasScope( nullptr );
   if ( mMapCanvas )
-  {
-    ec = mMapCanvas->createExpressionContext();
-  }
-  else
-  {
-    ec << QgsExpressionContextUtils::globalScope()
-       << QgsExpressionContextUtils::projectScope( QgsProject::instance() )
-       << QgsExpressionContextUtils::atlasScope( nullptr )
-       << QgsExpressionContextUtils::mapSettingsScope( QgsMapSettings() );
-  }
+    ec << QgsExpressionContextUtils::mapSettingsScope( mMapCanvas->mapSettings() );
   context.setExpressionContext( &ec );
 
   const QString crsAuthId = mMapCanvas ? mMapCanvas->mapSettings().destinationCrs().authid() : QString();
@@ -218,7 +212,7 @@ void QgsDataDefinedSizeLegendWidget::changeSymbol()
     return;
 
   mSourceSymbol = std::move( newSymbol );
-  const QIcon icon = QgsSymbolLayerUtils::symbolPreviewIcon( mSourceSymbol.get(), btnChangeSymbol->iconSize(), 0, nullptr, QgsScreenProperties( screen() ) );
+  const QIcon icon = QgsSymbolLayerUtils::symbolPreviewIcon( mSourceSymbol.get(), btnChangeSymbol->iconSize() );
   btnChangeSymbol->setIcon( icon );
 
   emit widgetChanged();

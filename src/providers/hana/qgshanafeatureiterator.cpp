@@ -63,7 +63,7 @@ namespace
   {
     QString typeName = field.typeName();
     QString fieldName = QgsHanaUtils::quotedIdentifier( field.name() );
-    if ( field.type() == QMetaType::Type::QString &&
+    if ( field.type() == QVariant::String &&
          ( typeName == QLatin1String( "ST_GEOMETRY" ) || typeName == QLatin1String( "ST_POINT" ) ) )
       return QStringLiteral( "%1.ST_ASWKT()" ).arg( fieldName );
     return fieldName;
@@ -85,7 +85,8 @@ QgsHanaFeatureIterator::QgsHanaFeatureIterator(
     return;
   }
 
-  mTransform = mRequest.calculateTransform( mSource->mCrs );
+  if ( mRequest.destinationCrs().isValid() && mRequest.destinationCrs() != mSource->mCrs )
+    mTransform = QgsCoordinateTransform( mSource->mCrs, mRequest.destinationCrs(), mRequest.transformContext() );
 
   try
   {
@@ -174,7 +175,7 @@ bool QgsHanaFeatureIterator::fetchFeature( QgsFeature &feature )
 
     // Read feature id
     QgsFeatureId fid = FID_NULL;
-    bool subsetOfAttributes = mRequest.flags() & Qgis::FeatureRequestFlag::SubsetOfAttributes;
+    bool subsetOfAttributes = mRequest.flags() & QgsFeatureRequest::SubsetOfAttributes;
     QgsAttributeList fetchAttributes = mRequest.subsetOfAttributes();
 
     if ( !mSource->mPrimaryKeyAttrs.isEmpty() )
@@ -302,12 +303,14 @@ bool QgsHanaFeatureIterator::prepareOrderBy( const QList<QgsFeatureRequest::Orde
 
 QString QgsHanaFeatureIterator::buildSqlQuery( const QgsFeatureRequest &request )
 {
-  const bool geometryRequested = ( request.flags() & Qgis::FeatureRequestFlag::NoGeometry ) == 0
+  const bool geometryRequested = ( request.flags() & QgsFeatureRequest::NoGeometry ) == 0
                                  || !mFilterRect.isNull()
                                  || request.spatialFilterType() == Qgis::SpatialFilterType::DistanceWithin;
   bool limitAtProvider = ( request.limit() >= 0 ) && mRequest.spatialFilterType() != Qgis::SpatialFilterType::DistanceWithin;
 
   QgsRectangle filterRect = mFilterRect;
+  if ( !mSource->mSrsExtent.isEmpty() )
+    filterRect = mSource->mSrsExtent.intersect( filterRect );
 
   if ( !filterRect.isFinite() )
     QgsMessageLog::logMessage( QObject::tr( "Infinite filter rectangle specified" ), QObject::tr( "SAP HANA" ) );
@@ -351,13 +354,13 @@ QString QgsHanaFeatureIterator::buildSqlQuery( const QgsFeatureRequest &request 
   if ( !mOrderByCompiled )
     limitAtProvider = false;
 
-  bool subsetOfAttributes = mRequest.flags() & Qgis::FeatureRequestFlag::SubsetOfAttributes;
+  bool subsetOfAttributes = mRequest.flags() & QgsFeatureRequest::SubsetOfAttributes;
   QgsAttributeIds attrIds = qgis::listToSet( subsetOfAttributes ?
                             request.subsetOfAttributes() : mSource->mFields.allAttributesList() );
 
   if ( subsetOfAttributes )
   {
-    if ( mRequest.filterType() == Qgis::FeatureRequestFilterType::Expression )
+    if ( mRequest.filterType() == QgsFeatureRequest::FilterExpression )
       // Ensure that all attributes required for expression filter are fetched
       attrIds.unite( request.filterExpression()->referencedAttributeIndexes( mSource->mFields ) );
 
@@ -388,7 +391,7 @@ QString QgsHanaFeatureIterator::buildSqlQuery( const QgsFeatureRequest &request 
 
   // Add geometry column
   if ( mSource->isSpatial() &&
-       ( geometryRequested || ( request.filterType() == Qgis::FeatureRequestFilterType::Expression &&
+       ( geometryRequested || ( request.filterType() == QgsFeatureRequest::FilterExpression &&
                                 request.filterExpression()->needsGeometry() ) ) )
   {
     sqlFields += QgsHanaUtils::quotedIdentifier( mSource->mGeometryColumn );
@@ -406,14 +409,14 @@ QString QgsHanaFeatureIterator::buildSqlQuery( const QgsFeatureRequest &request 
   // Set fid filter
   if ( !mSource->mPrimaryKeyAttrs.isEmpty() )
   {
-    if ( request.filterType() == Qgis::FeatureRequestFilterType::Fid )
+    if ( request.filterType() == QgsFeatureRequest::FilterFid )
     {
       QString fidWhereClause = QgsHanaPrimaryKeyUtils::buildWhereClause( request.filterFid(), mSource->mFields, mSource->mPrimaryKeyType, mSource->mPrimaryKeyAttrs, *mSource->mPrimaryKeyCntx );
       if ( fidWhereClause.isEmpty() )
         throw QgsHanaException( QStringLiteral( "Key values for feature %1 not found." ).arg( request.filterFid() ) );
       sqlFilter.push_back( fidWhereClause );
     }
-    else if ( request.filterType() == Qgis::FeatureRequestFilterType::Fids && !mRequest.filterFids().isEmpty() )
+    else if ( request.filterType() == QgsFeatureRequest::FilterFids && !mRequest.filterFids().isEmpty() )
     {
       QString fidsWhereClause = QgsHanaPrimaryKeyUtils::buildWhereClause( request.filterFids(), mSource->mFields, mSource->mPrimaryKeyType, mSource->mPrimaryKeyAttrs, *mSource->mPrimaryKeyCntx );
       if ( fidsWhereClause.isEmpty() )
@@ -425,11 +428,11 @@ QString QgsHanaFeatureIterator::buildSqlQuery( const QgsFeatureRequest &request 
   //IMPORTANT - this MUST be the last clause added
   mExpressionCompiled = false;
   mCompileStatus = NoCompilation;
-  if ( request.filterType() == Qgis::FeatureRequestFilterType::Expression )
+  if ( request.filterType() == QgsFeatureRequest::FilterExpression )
   {
     if ( QgsSettings().value( QStringLiteral( "qgis/compileExpressions" ), true ).toBool() )
     {
-      QgsHanaExpressionCompiler compiler = QgsHanaExpressionCompiler( mSource, request.flags() & Qgis::FeatureRequestFlag::IgnoreStaticNodesDuringExpressionCompilation );
+      QgsHanaExpressionCompiler compiler = QgsHanaExpressionCompiler( mSource, request.flags() & QgsFeatureRequest::IgnoreStaticNodesDuringExpressionCompilation );
       QgsSqlExpressionCompiler::Result result = compiler.compile( request.filterExpression() );
       switch ( result )
       {
@@ -448,8 +451,8 @@ QString QgsHanaFeatureIterator::buildSqlQuery( const QgsFeatureRequest &request 
         }
         break;
         case QgsSqlExpressionCompiler::Result::Fail:
-          QgsDebugError( QStringLiteral( "Unable to compile filter expression: '%1'" )
-                         .arg( request.filterExpression()->expression() ).toStdString().c_str() );
+          QgsDebugMsg( QStringLiteral( "Unable to compile filter expression: '%1'" )
+                       .arg( request.filterExpression()->expression() ).toStdString().c_str() );
           break;
         case QgsSqlExpressionCompiler::Result::None:
           break;
@@ -508,6 +511,7 @@ QgsHanaFeatureSource::QgsHanaFeatureSource( const QgsHanaProvider *p )
   , mGeometryColumn( p->mGeometryColumn )
   , mGeometryType( p->wkbType() )
   , mSrid( p->mSrid )
+  , mSrsExtent( p->mSrsExtent )
   , mCrs( p->crs() )
 {
   if ( p->mHasSrsPlanarEquivalent && p->mDatabaseVersion.majorVersion() <= 1 )

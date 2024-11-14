@@ -18,10 +18,10 @@
 #define QGSHANACONNECTION_H
 
 #include "qgscoordinatereferencesystem.h"
-#include "qgshanadatatypes.h"
 #include "qgsdatasourceuri.h"
 #include "qgshanatablemodel.h"
 #include "qgshanaresultset.h"
+#include "qgslogger.h"
 #include "qgsvectordataprovider.h"
 
 #include "odbc/Forwards.h"
@@ -31,7 +31,7 @@ struct AttributeField
   QString schemaName;
   QString tableName;
   QString name;
-  QgsHanaDataType type = QgsHanaDataType::Unknown;
+  short type = 0;
   int srid = -1;
   QString typeName;
   int size = 0;
@@ -41,6 +41,8 @@ struct AttributeField
   bool isSigned = false;
   bool isUnique = false;
   QString comment;
+
+  bool isGeometry() const { return type == 29812; /* ST_GEOMETRY, ST_POINT */ }
 
   QgsField toQgsField() const;
 };
@@ -71,7 +73,6 @@ class QgsHanaConnection : public QObject
 
     QList<QgsVectorDataProvider::NativeType> getNativeTypes();
     const QString &getDatabaseVersion();
-    const QString &getDatabaseCloudVersion();
     const QString &getUserName();
     QgsCoordinateReferenceSystem getCrs( int srid );
     QVector<QgsHanaLayerProperty> getLayers(
@@ -89,8 +90,8 @@ class QgsHanaConnection : public QObject
     void readTableFields( const QString &schemaName, const QString &tableName, const std::function<void( const AttributeField &field )> &callback );
     QVector<QgsHanaSchemaProperty> getSchemas( const QString &ownerName );
     QStringList getLayerPrimaryKey( const QString &schemaName, const QString &tableName );
-    Qgis::WkbType getColumnGeometryType( const QString &querySource, const QString &columnName );
-    Qgis::WkbType getColumnGeometryType( const QString &schemaName, const QString &tableName, const QString &columnName );
+    QgsWkbTypes::Type getColumnGeometryType( const QString &querySource, const QString &columnName );
+    QgsWkbTypes::Type getColumnGeometryType( const QString &schemaName, const QString &tableName, const QString &columnName );
     QString getColumnDataType( const QString &schemaName, const QString &tableName, const QString &columnName );
     int getColumnSrid( const QString &schemaName, const QString &tableName, const QString &columnName );
     int getColumnSrid( const QString &sql, const QString &columnName );
@@ -114,7 +115,6 @@ class QgsHanaConnection : public QObject
     NS_ODBC::ConnectionRef mConnection;
     const QgsDataSourceUri mUri;
     QString mDatabaseVersion;
-    QString mDatabaseCloudVersion;
     QString mUserName;
 };
 

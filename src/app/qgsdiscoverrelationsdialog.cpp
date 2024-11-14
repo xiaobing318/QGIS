@@ -13,7 +13,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsdiscoverrelationsdialog.h"
-#include "moc_qgsdiscoverrelationsdialog.cpp"
 #include "qgsvectorlayer.h"
 #include "qgsrelationmanager.h"
 #include "qgshelp.h"

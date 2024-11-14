@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/vectortile/qgsvectortilebasicrenderer.h                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -34,12 +34,14 @@ zoom levels, or by disabling it.
 #include "qgsvectortilebasicrenderer.h"
 %End
   public:
-    QgsVectorTileBasicRendererStyle( const QString &stName = QString(), const QString &laName = QString(), Qgis::GeometryType geomType = Qgis::GeometryType::Unknown );
+    QgsVectorTileBasicRendererStyle( const QString &stName = QString(), const QString &laName = QString(), QgsWkbTypes::GeometryType geomType = QgsWkbTypes::UnknownGeometry );
 %Docstring
 Constructs a style object
 %End
-
     QgsVectorTileBasicRendererStyle( const QgsVectorTileBasicRendererStyle &other );
+%Docstring
+Constructs a style object as a copy of another style
+%End
     ~QgsVectorTileBasicRendererStyle();
 
     void setStyleName( const QString &name );
@@ -60,11 +62,11 @@ Sets name of the sub-layer to render (empty layer means that all layers match)
 Returns name of the sub-layer to render (empty layer means that all layers match)
 %End
 
-    void setGeometryType( Qgis::GeometryType geomType );
+    void setGeometryType( QgsWkbTypes::GeometryType geomType );
 %Docstring
 Sets type of the geometry that will be used (point / line / polygon)
 %End
-    Qgis::GeometryType geometryType() const;
+    QgsWkbTypes::GeometryType geometryType() const;
 %Docstring
 Returns type of the geometry that will be used (point / line / polygon)
 %End
@@ -251,5 +253,5 @@ Returns a list of styles to render all layers, using random colors
  *                                                                      *
  * src/core/vectortile/qgsvectortilebasicrenderer.h                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

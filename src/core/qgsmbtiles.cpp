@@ -31,14 +31,11 @@ bool QgsMbTiles::open()
   if ( mDatabase )
     return true;  // already opened
 
-  if ( mFilename.isEmpty() )
-    return false;
-
   const sqlite3_database_unique_ptr database;
   const int result = mDatabase.open_v2( mFilename, SQLITE_OPEN_READONLY, nullptr );
   if ( result != SQLITE_OK )
   {
-    QgsDebugError( QStringLiteral( "Can't open MBTiles database: %1" ).arg( database.errorMessage() ) );
+    QgsDebugMsg( QStringLiteral( "Can't open MBTiles database: %1" ).arg( database.errorMessage() ) );
     return false;
   }
   return true;
@@ -61,7 +58,7 @@ bool QgsMbTiles::create()
   int result = mDatabase.open_v2( mFilename, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, nullptr );
   if ( result != SQLITE_OK )
   {
-    QgsDebugError( QStringLiteral( "Can't create MBTiles database: %1" ).arg( database.errorMessage() ) );
+    QgsDebugMsg( QStringLiteral( "Can't create MBTiles database: %1" ).arg( database.errorMessage() ) );
     return false;
   }
 
@@ -73,7 +70,7 @@ bool QgsMbTiles::create()
   result = mDatabase.exec( sql, errorMessage );
   if ( result != SQLITE_OK )
   {
-    QgsDebugError( QStringLiteral( "Failed to initialize MBTiles database: " ) + errorMessage );
+    QgsDebugMsg( QStringLiteral( "Failed to initialize MBTiles database: " ) + errorMessage );
     return false;
   }
 
@@ -84,7 +81,7 @@ QString QgsMbTiles::metadataValue( const QString &key ) const
 {
   if ( !mDatabase )
   {
-    QgsDebugError( QStringLiteral( "MBTiles database not open: " ) + mFilename );
+    QgsDebugMsg( QStringLiteral( "MBTiles database not open: " ) + mFilename );
     return QString();
   }
 
@@ -93,13 +90,13 @@ QString QgsMbTiles::metadataValue( const QString &key ) const
   sqlite3_statement_unique_ptr preparedStatement = mDatabase.prepare( sql, result );
   if ( result != SQLITE_OK )
   {
-    QgsDebugError( QStringLiteral( "MBTile failed to prepare statement: " ) + sql );
+    QgsDebugMsg( QStringLiteral( "MBTile failed to prepare statement: " ) + sql );
     return QString();
   }
 
   if ( preparedStatement.step() != SQLITE_ROW )
   {
-    QgsDebugError( QStringLiteral( "MBTile metadata value not found: " ) + key );
+    QgsDebugMsg( QStringLiteral( "MBTile metadata value not found: " ) + key );
     return QString();
   }
 
@@ -110,7 +107,7 @@ void QgsMbTiles::setMetadataValue( const QString &key, const QString &value ) co
 {
   if ( !mDatabase )
   {
-    QgsDebugError( QStringLiteral( "MBTiles database not open: " ) + mFilename );
+    QgsDebugMsg( QStringLiteral( "MBTiles database not open: " ) + mFilename );
     return;
   }
 
@@ -119,13 +116,13 @@ void QgsMbTiles::setMetadataValue( const QString &key, const QString &value ) co
   sqlite3_statement_unique_ptr preparedStatement = mDatabase.prepare( sql, result );
   if ( result != SQLITE_OK )
   {
-    QgsDebugError( QStringLiteral( "MBTile failed to prepare statement: " ) + sql );
+    QgsDebugMsg( QStringLiteral( "MBTile failed to prepare statement: " ) + sql );
     return;
   }
 
   if ( preparedStatement.step() != SQLITE_DONE )
   {
-    QgsDebugError( QStringLiteral( "MBTile metadata value failed to be set: " ) + key );
+    QgsDebugMsg( QStringLiteral( "MBTile metadata value failed to be set: " ) + key );
     return;
   }
 }
@@ -147,7 +144,7 @@ QByteArray QgsMbTiles::tileData( int z, int x, int y ) const
 {
   if ( !mDatabase )
   {
-    QgsDebugError( QStringLiteral( "MBTiles database not open: " ) + mFilename );
+    QgsDebugMsg( QStringLiteral( "MBTiles database not open: " ) + mFilename );
     return QByteArray();
   }
 
@@ -156,7 +153,7 @@ QByteArray QgsMbTiles::tileData( int z, int x, int y ) const
   sqlite3_statement_unique_ptr preparedStatement = mDatabase.prepare( sql, result );
   if ( result != SQLITE_OK )
   {
-    QgsDebugError( QStringLiteral( "MBTile failed to prepare statement: " ) + sql );
+    QgsDebugMsg( QStringLiteral( "MBTile failed to prepare statement: " ) + sql );
     return QByteArray();
   }
 
@@ -176,7 +173,7 @@ QImage QgsMbTiles::tileDataAsImage( int z, int x, int y ) const
   const QByteArray tileBlob = tileData( z, x, y );
   if ( !tileImage.loadFromData( tileBlob ) )
   {
-    QgsDebugError( QStringLiteral( "MBTile data failed to load: z=%1 x=%2 y=%3" ).arg( z ).arg( x ).arg( y ) );
+    QgsDebugMsg( QStringLiteral( "MBTile data failed to load: z=%1 x=%2 y=%3" ).arg( z ).arg( x ).arg( y ) );
     return QImage();
   }
   return tileImage;
@@ -186,7 +183,7 @@ void QgsMbTiles::setTileData( int z, int x, int y, const QByteArray &data ) cons
 {
   if ( !mDatabase )
   {
-    QgsDebugError( QStringLiteral( "MBTiles database not open: " ) + mFilename );
+    QgsDebugMsg( QStringLiteral( "MBTiles database not open: " ) + mFilename );
     return;
   }
 
@@ -195,7 +192,7 @@ void QgsMbTiles::setTileData( int z, int x, int y, const QByteArray &data ) cons
   sqlite3_statement_unique_ptr preparedStatement = mDatabase.prepare( sql, result );
   if ( result != SQLITE_OK )
   {
-    QgsDebugError( QStringLiteral( "MBTile failed to prepare statement: " ) + sql );
+    QgsDebugMsg( QStringLiteral( "MBTile failed to prepare statement: " ) + sql );
     return;
   }
 
@@ -203,7 +200,7 @@ void QgsMbTiles::setTileData( int z, int x, int y, const QByteArray &data ) cons
 
   if ( preparedStatement.step() != SQLITE_DONE )
   {
-    QgsDebugError( QStringLiteral( "MBTile tile failed to be set: %1,%2,%3" ).arg( z ).arg( x ).arg( y ) );
+    QgsDebugMsg( QStringLiteral( "MBTile tile failed to be set: %1,%2,%3" ).arg( z ).arg( x ).arg( y ) );
     return;
   }
 }

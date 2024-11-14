@@ -22,16 +22,13 @@
 #define QGSHTTPHEADERS_H
 
 #include <QMap>
-#include <QVariant>
-
 #include "qgis_core.h"
 #include "qgis_sip.h"
-
+#include "qgssettingsentry.h"
 
 class QNetworkRequest;
 class QUrlQuery;
 class QDomElement;
-class QgsSettings;
 
 /**
  * \ingroup core
@@ -59,17 +56,19 @@ class CORE_EXPORT QgsHttpHeaders
      * \brief Constructor from map
      * \param headers
      */
-    QgsHttpHeaders( const QVariantMap &headers );
+    QgsHttpHeaders( const QMap<QString, QVariant> &headers );
 
+    /**
+     * \brief default constructor
+     */
     QgsHttpHeaders();
 
     /**
      * \brief Constructor from QgsSettings \a settings object and root \a key
      * \param settings
      * \param key
-     * \deprecated QGIS 3.30. Use a variant map settings and the default constructor instead.
      */
-    Q_DECL_DEPRECATED QgsHttpHeaders( const QgsSettings &settings, const QString &key = QString() ) SIP_DEPRECATED;
+    QgsHttpHeaders( const QgsSettings &settings, const QString &key = QString() );
 
     /**
      * \brief Constructor from default QgsSettings object and root \a key
@@ -87,12 +86,6 @@ class CORE_EXPORT QgsHttpHeaders
     virtual ~QgsHttpHeaders();
 
     /**
-     * \brief Returns the headers as a variant map
-     * \since QGIS 3.30
-     */
-    QVariantMap headers() const {return mHeaders;}
-
-    /**
      * \brief Updates the \a settings by adding all the http headers in the path "key/PATH_PREFIX/"
      *
      * KEY_REFERER value will be available at path "key/PATH_PREFIX/KEY_REFERER" and path "key/KEY_REFERER" (for backward compatibility)
@@ -100,9 +93,8 @@ class CORE_EXPORT QgsHttpHeaders
      * \param settings
      * \param key sub group path
      * \return TRUE if the update succeed
-     * \deprecated QGIS 3.30. Directly use a variant setting instead.
      */
-    Q_DECL_DEPRECATED bool updateSettings( QgsSettings &settings, const QString &key = QString() ) const SIP_DEPRECATED;
+    bool updateSettings( QgsSettings &settings, const QString &key = QString() ) const;
 
     /**
      * \brief Updates a \a request by adding all the HTTP headers

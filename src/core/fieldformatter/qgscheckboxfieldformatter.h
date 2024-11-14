@@ -41,6 +41,9 @@ class CORE_EXPORT QgsCheckBoxFieldFormatter : public QgsFieldFormatter
       ShowStoredValues, //!< Shows actual stored field value
     };
 
+    /**
+     * Constructor for QgsCheckBoxFieldFormatter.
+     */
     QgsCheckBoxFieldFormatter() = default;
 
     QString id() const override;

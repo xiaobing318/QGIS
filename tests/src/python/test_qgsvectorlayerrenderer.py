@@ -11,31 +11,28 @@ __copyright__ = 'Copyright 2020, The QGIS Project'
 
 import os
 
-from qgis.PyQt.QtCore import QDir, QSize
-from qgis.PyQt.QtGui import QColor
+import qgis  # NOQA
+from qgis.PyQt.QtCore import QSize, QDir
+from qgis.core import (QgsVectorLayer,
+                       QgsMapClippingRegion,
+                       QgsRectangle,
+                       QgsMultiRenderChecker,
+                       QgsGeometry,
+                       QgsSingleSymbolRenderer,
+                       QgsMapSettings,
+                       QgsFillSymbol,
+                       QgsCoordinateReferenceSystem,
+                       QgsRuleBasedRenderer,
+                       QgsFeatureRendererGenerator,
+                       QgsCategorizedSymbolRenderer,
+                       QgsRendererCategory,
+                       QgsCentroidFillSymbolLayer,
+                       QgsMarkerSymbol,
+                       QgsLineSymbol
+                       )
+from qgis.testing import start_app, unittest
 
-from qgis.core import (
-    Qgis,
-    QgsCategorizedSymbolRenderer,
-    QgsCentroidFillSymbolLayer,
-    QgsCoordinateReferenceSystem,
-    QgsFeatureRendererGenerator,
-    QgsFillSymbol,
-    QgsGeometry,
-    QgsLineSymbol,
-    QgsMapClippingRegion,
-    QgsMapSettings,
-    QgsMarkerSymbol,
-    QgsRectangle,
-    QgsRendererCategory,
-    QgsRuleBasedRenderer,
-    QgsSingleSymbolRenderer,
-    QgsVectorLayer,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
-
-from utilities import unitTestDataPath
+from utilities import (unitTestDataPath)
 
 # Convenience instances in case you may need them
 # not used in this test
@@ -43,11 +40,15 @@ start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestQgsVectorLayerRenderer(QgisTestCase):
+class TestQgsVectorLayerRenderer(unittest.TestCase):
 
-    @classmethod
-    def control_path_prefix(cls):
-        return 'vectorlayerrenderer'
+    def setUp(self):
+        self.report = "<h1>Python QgsVectorLayerRenderer Tests</h1>\n"
+
+    def tearDown(self):
+        report_file_path = "%s/qgistest.html" % QDir.tempPath()
+        with open(report_file_path, 'a') as report_file:
+            report_file.write(self.report)
 
     def testRenderWithIntersectsRegions(self):
         poly_layer = QgsVectorLayer(os.path.join(TEST_DATA_DIR, 'polys.shp'))
@@ -71,25 +72,25 @@ class TestQgsVectorLayerRenderer(QgisTestCase):
         mapsettings.addClippingRegion(region)
         mapsettings.addClippingRegion(region2)
 
-        self.assertTrue(
-            self.render_map_settings_check(
-                'intersects_region',
-                'intersects_region',
-                mapsettings
-            )
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(mapsettings)
+        renderchecker.setControlPathPrefix('vectorlayerrenderer')
+        renderchecker.setControlName('expected_intersects_region')
+        result = renderchecker.runTest('expected_intersects_region')
+        self.report += renderchecker.report()
+        self.assertTrue(result)
 
         # also try with symbol levels
         renderer.setUsingSymbolLevels(True)
         poly_layer.setRenderer(renderer)
 
-        self.assertTrue(
-            self.render_map_settings_check(
-                'intersects_region',
-                'intersects_region',
-                mapsettings
-            )
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(mapsettings)
+        renderchecker.setControlPathPrefix('vectorlayerrenderer')
+        renderchecker.setControlName('expected_intersects_region')
+        result = renderchecker.runTest('expected_intersects_region')
+        self.report += renderchecker.report()
+        self.assertTrue(result)
 
     def testRenderWithIntersectionRegions(self):
         poly_layer = QgsVectorLayer(os.path.join(TEST_DATA_DIR, 'polys.shp'))
@@ -113,25 +114,25 @@ class TestQgsVectorLayerRenderer(QgisTestCase):
         mapsettings.addClippingRegion(region)
         mapsettings.addClippingRegion(region2)
 
-        self.assertTrue(
-            self.render_map_settings_check(
-                'intersection_region',
-                'intersection_region',
-                mapsettings
-            )
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(mapsettings)
+        renderchecker.setControlPathPrefix('vectorlayerrenderer')
+        renderchecker.setControlName('expected_intersection_region')
+        result = renderchecker.runTest('expected_intersection_region')
+        self.report += renderchecker.report()
+        self.assertTrue(result)
 
         # also try with symbol levels
         renderer.setUsingSymbolLevels(True)
         poly_layer.setRenderer(renderer)
 
-        self.assertTrue(
-            self.render_map_settings_check(
-                'intersection_region',
-                'intersection_region',
-                mapsettings
-            )
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(mapsettings)
+        renderchecker.setControlPathPrefix('vectorlayerrenderer')
+        renderchecker.setControlName('expected_intersection_region')
+        result = renderchecker.runTest('expected_intersection_region')
+        self.report += renderchecker.report()
+        self.assertTrue(result)
 
     def testIntersectionRuleBased(self):
         """
@@ -170,25 +171,25 @@ class TestQgsVectorLayerRenderer(QgisTestCase):
         mapsettings.addClippingRegion(region)
         mapsettings.addClippingRegion(region2)
 
-        self.assertTrue(
-            self.render_map_settings_check(
-                'intersection_rule_based',
-                'intersection_rule_based',
-                mapsettings
-            )
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(mapsettings)
+        renderchecker.setControlPathPrefix('vectorlayerrenderer')
+        renderchecker.setControlName('expected_intersection_rule_based')
+        result = renderchecker.runTest('expected_intersection_rule_based')
+        self.report += renderchecker.report()
+        self.assertTrue(result)
 
         # also try with symbol levels
         renderer.setUsingSymbolLevels(True)
         poly_layer.setRenderer(renderer)
 
-        self.assertTrue(
-            self.render_map_settings_check(
-                'intersection_rule_based',
-                'intersection_rule_based',
-                mapsettings
-            )
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(mapsettings)
+        renderchecker.setControlPathPrefix('vectorlayerrenderer')
+        renderchecker.setControlName('expected_intersection_rule_based')
+        result = renderchecker.runTest('expected_intersection_rule_based')
+        self.report += renderchecker.report()
+        self.assertTrue(result)
 
     def testRenderWithPainterClipRegions(self):
         poly_layer = QgsVectorLayer(os.path.join(TEST_DATA_DIR, 'polys.shp'))
@@ -212,25 +213,25 @@ class TestQgsVectorLayerRenderer(QgisTestCase):
         mapsettings.addClippingRegion(region)
         mapsettings.addClippingRegion(region2)
 
-        self.assertTrue(
-            self.render_map_settings_check(
-                'painterclip_region',
-                'painterclip_region',
-                mapsettings
-            )
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(mapsettings)
+        renderchecker.setControlPathPrefix('vectorlayerrenderer')
+        renderchecker.setControlName('expected_painterclip_region')
+        result = renderchecker.runTest('expected_painterclip_region')
+        self.report += renderchecker.report()
+        self.assertTrue(result)
 
         # also try with symbol levels
         renderer.setUsingSymbolLevels(True)
         poly_layer.setRenderer(renderer)
 
-        self.assertTrue(
-            self.render_map_settings_check(
-                'painterclip_region',
-                'painterclip_region',
-                mapsettings
-            )
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(mapsettings)
+        renderchecker.setControlPathPrefix('vectorlayerrenderer')
+        renderchecker.setControlName('expected_painterclip_region')
+        result = renderchecker.runTest('expected_painterclip_region')
+        self.report += renderchecker.report()
+        self.assertTrue(result)
 
     def testRenderWithPainterClipRegionsMultiPolygon(self):
         poly_layer = QgsVectorLayer(os.path.join(TEST_DATA_DIR, 'polys.shp'))
@@ -252,25 +253,25 @@ class TestQgsVectorLayerRenderer(QgisTestCase):
         region.setFeatureClip(QgsMapClippingRegion.FeatureClippingType.ClipPainterOnly)
         mapsettings.addClippingRegion(region)
 
-        self.assertTrue(
-            self.render_map_settings_check(
-                'painterclip_region_multi',
-                'painterclip_region_multi',
-                mapsettings
-            )
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(mapsettings)
+        renderchecker.setControlPathPrefix('vectorlayerrenderer')
+        renderchecker.setControlName('expected_painterclip_region_multi')
+        result = renderchecker.runTest('expected_painterclip_region_multi')
+        self.report += renderchecker.report()
+        self.assertTrue(result)
 
         # also try with symbol levels
         renderer.setUsingSymbolLevels(True)
         poly_layer.setRenderer(renderer)
 
-        self.assertTrue(
-            self.render_map_settings_check(
-                'painterclip_region_multi',
-                'painterclip_region_multi',
-                mapsettings
-            )
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(mapsettings)
+        renderchecker.setControlPathPrefix('vectorlayerrenderer')
+        renderchecker.setControlName('expected_painterclip_region_multi')
+        result = renderchecker.runTest('expected_painterclip_region_multi')
+        self.report += renderchecker.report()
+        self.assertTrue(result)
 
     def testRenderMultipleRenderersBelow(self):
         poly_layer = QgsVectorLayer(os.path.join(TEST_DATA_DIR, 'polys.shp'))
@@ -336,25 +337,25 @@ class TestQgsVectorLayerRenderer(QgisTestCase):
         mapsettings.setExtent(QgsRectangle(-13875783.2, 2266009.4, -8690110.7, 6673344.5))
         mapsettings.setLayers([poly_layer])
 
-        self.assertTrue(
-            self.render_map_settings_check(
-                'multiple_renderers_below',
-                'multiple_renderers_below',
-                mapsettings
-            )
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(mapsettings)
+        renderchecker.setControlPathPrefix('vectorlayerrenderer')
+        renderchecker.setControlName('expected_multiple_renderers_below')
+        result = renderchecker.runTest('expected_multiple_renderers_below')
+        self.report += renderchecker.report()
+        self.assertTrue(result)
 
         # also try with symbol levels
         renderer.setUsingSymbolLevels(True)
         poly_layer.setRenderer(renderer)
 
-        self.assertTrue(
-            self.render_map_settings_check(
-                'multiple_renderers_below',
-                'multiple_renderers_below',
-                mapsettings
-            )
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(mapsettings)
+        renderchecker.setControlPathPrefix('vectorlayerrenderer')
+        renderchecker.setControlName('expected_multiple_renderers_below')
+        result = renderchecker.runTest('expected_multiple_renderers_below')
+        self.report += renderchecker.report()
+        self.assertTrue(result)
 
         poly_layer.removeFeatureRendererGenerator('Gen3')
         self.assertEqual([g.id() for g in poly_layer.featureRendererGenerators()], ['Gen1', 'Gen2'])
@@ -441,25 +442,25 @@ class TestQgsVectorLayerRenderer(QgisTestCase):
         mapsettings.setExtent(QgsRectangle(-13875783.2, 2266009.4, -8690110.7, 6673344.5))
         mapsettings.setLayers([poly_layer])
 
-        self.assertTrue(
-            self.render_map_settings_check(
-                'multiple_renderers_above',
-                'multiple_renderers_above',
-                mapsettings
-            )
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(mapsettings)
+        renderchecker.setControlPathPrefix('vectorlayerrenderer')
+        renderchecker.setControlName('expected_multiple_renderers_above')
+        result = renderchecker.runTest('expected_multiple_renderers_above')
+        self.report += renderchecker.report()
+        self.assertTrue(result)
 
         # also try with symbol levels
         renderer.setUsingSymbolLevels(True)
         poly_layer.setRenderer(renderer)
 
-        self.assertTrue(
-            self.render_map_settings_check(
-                'multiple_renderers_above',
-                'multiple_renderers_above',
-                mapsettings
-            )
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(mapsettings)
+        renderchecker.setControlPathPrefix('vectorlayerrenderer')
+        renderchecker.setControlName('expected_multiple_renderers_above')
+        result = renderchecker.runTest('expected_multiple_renderers_above')
+        self.report += renderchecker.report()
+        self.assertTrue(result)
 
     def testRenderMultipleRenderersAboveAndBelow(self):
         poly_layer = QgsVectorLayer(os.path.join(TEST_DATA_DIR, 'polys.shp'))
@@ -580,25 +581,25 @@ class TestQgsVectorLayerRenderer(QgisTestCase):
         mapsettings.setExtent(QgsRectangle(-13875783.2, 2266009.4, -8690110.7, 6673344.5))
         mapsettings.setLayers([poly_layer])
 
-        self.assertTrue(
-            self.render_map_settings_check(
-                'multiple_renderers_both_above_below',
-                'multiple_renderers_both_above_below',
-                mapsettings
-            )
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(mapsettings)
+        renderchecker.setControlPathPrefix('vectorlayerrenderer')
+        renderchecker.setControlName('expected_multiple_renderers_both_above_below')
+        result = renderchecker.runTest('expected_multiple_renderers_both_above_below')
+        self.report += renderchecker.report()
+        self.assertTrue(result)
 
         # also try with symbol levels
         renderer.setUsingSymbolLevels(True)
         poly_layer.setRenderer(renderer)
 
-        self.assertTrue(
-            self.render_map_settings_check(
-                'multiple_renderers_both_above_below',
-                'multiple_renderers_both_above_below',
-                mapsettings
-            )
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(mapsettings)
+        renderchecker.setControlPathPrefix('vectorlayerrenderer')
+        renderchecker.setControlName('expected_multiple_renderers_both_above_below')
+        result = renderchecker.runTest('expected_multiple_renderers_both_above_below')
+        self.report += renderchecker.report()
+        self.assertTrue(result)
 
     def testRenderMultipleRenderersSelection(self):
         """
@@ -644,25 +645,25 @@ class TestQgsVectorLayerRenderer(QgisTestCase):
         mapsettings.setExtent(QgsRectangle(-13875783.2, 2266009.4, -8690110.7, 6673344.5))
         mapsettings.setLayers([poly_layer])
 
-        self.assertTrue(
-            self.render_map_settings_check(
-                'multiple_renderers_selection',
-                'multiple_renderers_selection',
-                mapsettings
-            )
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(mapsettings)
+        renderchecker.setControlPathPrefix('vectorlayerrenderer')
+        renderchecker.setControlName('expected_multiple_renderers_selection')
+        result = renderchecker.runTest('expected_multiple_renderers_selection')
+        self.report += renderchecker.report()
+        self.assertTrue(result)
 
         # also try with symbol levels
         renderer.setUsingSymbolLevels(True)
         poly_layer.setRenderer(renderer)
 
-        self.assertTrue(
-            self.render_map_settings_check(
-                'multiple_renderers_selection',
-                'multiple_renderers_selection',
-                mapsettings
-            )
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(mapsettings)
+        renderchecker.setControlPathPrefix('vectorlayerrenderer')
+        renderchecker.setControlName('expected_multiple_renderers_selection')
+        result = renderchecker.runTest('expected_multiple_renderers_selection')
+        self.report += renderchecker.report()
+        self.assertTrue(result)
 
     def test_reference_scale(self):
         """
@@ -684,110 +685,36 @@ class TestQgsVectorLayerRenderer(QgisTestCase):
         mapsettings.setLayers([layer])
         self.assertAlmostEqual(mapsettings.scale(), 22738556, -5)
 
-        self.assertTrue(
-            self.render_map_settings_check(
-                'reference_scale_not_set',
-                'reference_scale_not_set',
-                mapsettings
-            )
-        )
+        # Setup rendering check
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(mapsettings)
+        renderchecker.setControlPathPrefix('vectorlayerrenderer')
+        renderchecker.setControlName('expected_reference_scale_not_set')
+        result = renderchecker.runTest('expected_reference_scale_not_set')
+        self.report += renderchecker.report()
+        self.assertTrue(result)
 
         # Set the reference scale as half the map scale -- the lines should be double as wide
         # as their preset width
         renderer.setReferenceScale(22738556 * 2)
-        self.assertTrue(
-            self.render_map_settings_check(
-                'reference_scale_double',
-                'reference_scale_double',
-                mapsettings
-            )
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(mapsettings)
+        renderchecker.setControlPathPrefix('vectorlayerrenderer')
+        renderchecker.setControlName('expected_reference_scale_double')
+        result = renderchecker.runTest('expected_reference_scale_double')
+        self.report += renderchecker.report()
+        self.assertTrue(result)
 
         # Set the reference scale as double the map scale -- the lines should be half as wide
         # as their preset width
         renderer.setReferenceScale(22738556 / 2)
-        self.assertTrue(
-            self.render_map_settings_check(
-                'reference_scale_half',
-                'reference_scale_half',
-                mapsettings
-            )
-        )
-
-    def testRenderWithSelectedFeatureColor(self):
-        poly_layer = QgsVectorLayer(os.path.join(TEST_DATA_DIR, 'polys.shp'))
-        self.assertTrue(poly_layer.isValid())
-
-        sym1 = QgsFillSymbol.createSimple({'color': '#ff00ff', 'outline_color': '#000000', 'outline_width': '1'})
-        renderer = QgsSingleSymbolRenderer(sym1)
-        poly_layer.setRenderer(renderer)
-
-        poly_layer.selectAll()
-        poly_layer.selectionProperties().setSelectionColor(
-            QColor(255, 0, 0)
-        )
-        poly_layer.selectionProperties().setSelectionRenderingMode(
-            Qgis.SelectionRenderingMode.CustomColor
-        )
-
-        mapsettings = QgsMapSettings()
-        mapsettings.setOutputSize(QSize(400, 400))
-        mapsettings.setOutputDpi(96)
-        mapsettings.setDestinationCrs(QgsCoordinateReferenceSystem('EPSG:3857'))
-        mapsettings.setExtent(QgsRectangle(-13875783.2, 2266009.4, -8690110.7, 6673344.5))
-        mapsettings.setLayers([poly_layer])
-
-        self.assertTrue(
-            self.render_map_settings_check(
-                'selection_color',
-                'selection_color',
-                mapsettings
-            )
-        )
-
-    def testRenderWithSelectedFeatureSymbol(self):
-        poly_layer = QgsVectorLayer(os.path.join(TEST_DATA_DIR, 'polys.shp'))
-        self.assertTrue(poly_layer.isValid())
-
-        sym1 = QgsFillSymbol.createSimple({'color': '#ff00ff', 'outline_color': '#000000', 'outline_width': '1'})
-        renderer = QgsSingleSymbolRenderer(sym1)
-        poly_layer.setRenderer(renderer)
-
-        poly_layer.selectAll()
-
-        poly_layer.selectionProperties().setSelectionSymbol(
-            QgsFillSymbol.createSimple({'style': 'no', 'outline_color': '#6666ff', 'outline_width': '3'})
-        )
-        poly_layer.selectionProperties().setSelectionRenderingMode(
-            Qgis.SelectionRenderingMode.CustomSymbol
-        )
-
-        mapsettings = QgsMapSettings()
-        mapsettings.setOutputSize(QSize(400, 400))
-        mapsettings.setOutputDpi(96)
-        mapsettings.setDestinationCrs(QgsCoordinateReferenceSystem('EPSG:3857'))
-        mapsettings.setExtent(QgsRectangle(-13875783.2, 2266009.4, -8690110.7, 6673344.5))
-        mapsettings.setLayers([poly_layer])
-
-        self.assertTrue(
-            self.render_map_settings_check(
-                'selection_symbol',
-                'selection_symbol',
-                mapsettings
-            )
-        )
-
-        # also try with symbol levels
-        renderer.setUsingSymbolLevels(True)
-        poly_layer.setRenderer(renderer)
-
-        self.assertTrue(
-            self.render_map_settings_check(
-                'selection_symbol',
-                'selection_symbol',
-                mapsettings
-            )
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(mapsettings)
+        renderchecker.setControlPathPrefix('vectorlayerrenderer')
+        renderchecker.setControlName('expected_reference_scale_half')
+        result = renderchecker.runTest('expected_reference_scale_half')
+        self.report += renderchecker.report()
+        self.assertTrue(result)
 
 
 if __name__ == '__main__':

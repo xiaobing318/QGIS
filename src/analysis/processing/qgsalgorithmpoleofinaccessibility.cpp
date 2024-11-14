@@ -74,25 +74,25 @@ QString QgsPoleOfInaccessibilityAlgorithm::outputName() const
 
 QList<int> QgsPoleOfInaccessibilityAlgorithm::inputLayerTypes() const
 {
-  return QList<int>() << static_cast< int>( Qgis::ProcessingSourceType::VectorPolygon );
+  return QList<int>() << QgsProcessing::TypeVectorPolygon;
 }
 
-Qgis::ProcessingSourceType QgsPoleOfInaccessibilityAlgorithm::outputLayerType() const
+QgsProcessing::SourceType QgsPoleOfInaccessibilityAlgorithm::outputLayerType() const
 {
-  return Qgis::ProcessingSourceType::VectorPoint;
+  return QgsProcessing::TypeVectorPoint;
 }
 
-Qgis::WkbType QgsPoleOfInaccessibilityAlgorithm::outputWkbType( Qgis::WkbType inputWkbType ) const
+QgsWkbTypes::Type QgsPoleOfInaccessibilityAlgorithm::outputWkbType( QgsWkbTypes::Type inputWkbType ) const
 {
   Q_UNUSED( inputWkbType );
 
-  return Qgis::WkbType::Point;
+  return QgsWkbTypes::Point;
 }
 
 QgsFields QgsPoleOfInaccessibilityAlgorithm::outputFields( const QgsFields &inputFields ) const
 {
   QgsFields outputFields = inputFields;
-  outputFields.append( QgsField( QStringLiteral( "dist_pole" ), QMetaType::Type::Double ) );
+  outputFields.append( QgsField( QStringLiteral( "dist_pole" ), QVariant::Double ) );
 
   return outputFields;
 }

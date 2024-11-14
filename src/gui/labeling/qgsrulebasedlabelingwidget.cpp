@@ -13,7 +13,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsrulebasedlabelingwidget.h"
-#include "moc_qgsrulebasedlabelingwidget.cpp"
 
 #include "qgsapplication.h"
 #include "qgsexpressionbuilderdialog.h"
@@ -34,22 +33,23 @@
 
 const double ICON_PADDING_FACTOR = 0.16;
 
-QgsExpressionContext QgsLabelingRulePropsWidget::createExpressionContext( QgsMapCanvas *mapCanvas, const QgsMapLayer *layer )
+static QList<QgsExpressionContextScope *> _globalProjectAtlasMapLayerScopes( QgsMapCanvas *mapCanvas, const QgsMapLayer *layer )
 {
-  QgsExpressionContext context;
+  QList<QgsExpressionContextScope *> scopes;
+  scopes << QgsExpressionContextUtils::globalScope()
+         << QgsExpressionContextUtils::projectScope( QgsProject::instance() )
+         << QgsExpressionContextUtils::atlasScope( nullptr );
   if ( mapCanvas )
   {
-    context = mapCanvas->createExpressionContext();
+    scopes << QgsExpressionContextUtils::mapSettingsScope( mapCanvas->mapSettings() )
+           << new QgsExpressionContextScope( mapCanvas->expressionContextScope() );
   }
   else
   {
-    context << QgsExpressionContextUtils::globalScope()
-            << QgsExpressionContextUtils::projectScope( QgsProject::instance() )
-            << QgsExpressionContextUtils::atlasScope( nullptr )
-            << QgsExpressionContextUtils::mapSettingsScope( QgsMapSettings() );
+    scopes << QgsExpressionContextUtils::mapSettingsScope( QgsMapSettings() );
   }
-  context << QgsExpressionContextUtils::layerScope( layer );
-  return context;
+  scopes << QgsExpressionContextUtils::layerScope( layer );
+  return scopes;
 }
 
 
@@ -595,7 +595,7 @@ bool QgsRuleBasedLabelingModel::dropMimeData( const QMimeData *data, Qt::DropAct
     QDomElement ruleElem = rootElem.firstChildElement( QStringLiteral( "rule" ) );
     if ( rootElem.attribute( QStringLiteral( "type" ) ) == QLatin1String( "renderer" ) )
       _renderer2labelingRules( ruleElem ); // do some modifications so that we load the rules more nicely
-    QgsRuleBasedLabeling::Rule *rule = QgsRuleBasedLabeling::Rule::create( ruleElem, QgsReadWriteContext(), false );
+    QgsRuleBasedLabeling::Rule *rule = QgsRuleBasedLabeling::Rule::create( ruleElem, QgsReadWriteContext() );
 
     insertRule( parent, row + rows, rule );
 
@@ -621,7 +621,7 @@ bool QgsRuleBasedLabelingModel::removeRows( int row, int count, const QModelInde
     }
     else
     {
-      QgsDebugError( QStringLiteral( "trying to remove invalid index - this should not happen!" ) );
+      QgsDebugMsg( QStringLiteral( "trying to remove invalid index - this should not happen!" ) );
     }
   }
 
@@ -739,7 +739,7 @@ void QgsLabelingRulePropsWidget::testFilter()
     return;
   }
 
-  QgsExpressionContext context( createExpressionContext( mMapCanvas, mLayer ) );
+  QgsExpressionContext context( _globalProjectAtlasMapLayerScopes( mMapCanvas, mLayer ) );
 
   if ( !filter.prepare( &context ) )
   {
@@ -772,7 +772,7 @@ void QgsLabelingRulePropsWidget::testFilter()
 
 void QgsLabelingRulePropsWidget::buildExpression()
 {
-  const QgsExpressionContext context( createExpressionContext( mMapCanvas, mLayer ) );
+  const QgsExpressionContext context( _globalProjectAtlasMapLayerScopes( mMapCanvas, mLayer ) );
 
   QgsExpressionBuilderDialog dlg( mLayer, editFilter->text(), this, QStringLiteral( "generic" ), context );
 

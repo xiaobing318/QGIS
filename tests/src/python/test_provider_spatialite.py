@@ -16,35 +16,31 @@ import sys
 import tempfile
 from datetime import datetime
 
+import qgis  # NOQA
 from osgeo import ogr
-from qgis.PyQt.QtCore import QByteArray, QVariant
-from qgis.core import (
-    Qgis,
-    QgsBox3D,
-    QgsDataSourceUri,
-    QgsDefaultValue,
-    QgsFeature,
-    QgsFeatureRequest,
-    QgsFieldConstraints,
-    QgsGeometry,
-    QgsPathResolver,
-    QgsPointXY,
-    QgsProject,
-    QgsProviderRegistry,
-    QgsReadWriteContext,
-    QgsRectangle,
-    QgsSettings,
-    QgsVectorDataProvider,
-    QgsVectorLayer,
-    QgsVectorLayerExporter,
-    QgsVectorLayerUtils,
-    QgsWkbTypes, NULL)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.PyQt.QtCore import QVariant, QByteArray
+from qgis.core import (Qgis,
+                       QgsProviderRegistry,
+                       QgsDataSourceUri,
+                       QgsVectorLayer,
+                       QgsVectorDataProvider,
+                       QgsPointXY,
+                       QgsFeature,
+                       QgsGeometry,
+                       QgsProject,
+                       QgsFieldConstraints,
+                       QgsVectorLayerUtils,
+                       QgsSettings,
+                       QgsDefaultValue,
+                       QgsFeatureRequest,
+                       QgsRectangle,
+                       QgsVectorLayerExporter,
+                       QgsWkbTypes)
+from qgis.testing import start_app, unittest
 from qgis.utils import spatialite_connect
 
 from providertestbase import ProviderTestCase
-from utilities import unitTestDataPath, compareWkt
+from utilities import unitTestDataPath
 
 # Pass no_exit=True: for some reason this crashes sometimes on exit on Travis
 start_app(True)
@@ -66,12 +62,11 @@ def count_opened_filedescriptors(filename_to_test):
     return count
 
 
-class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
+class TestQgsSpatialiteProvider(unittest.TestCase, ProviderTestCase):
 
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
-        super(TestQgsSpatialiteProvider, cls).setUpClass()
         print(' ### Setup Spatialite Provider Test Class')
         # setup provider for base tests
         cls.vl = QgsVectorLayer(
@@ -107,7 +102,7 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
         sql += "VALUES (1, 'toto 1', GeomFromText('POLYGON((0 0,1 0,1 1,0 1,0 0))', 4326))"
         cur.execute(sql)
 
-        # table with Z dimension geometry, 1 point
+        # table with Z dimension geometry
         sql = "CREATE TABLE test_z (id INTEGER NOT NULL PRIMARY KEY, name TEXT NOT NULL)"
         cur.execute(sql)
         sql = "SELECT AddGeometryColumn('test_z', 'geometry', 4326, 'POINT', 'XYZ')"
@@ -115,16 +110,6 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
         sql = "INSERT INTO test_z (id, name, geometry) "
         sql += "VALUES (1, 'toto 2', GeomFromText('POINT Z (0 0 1)', 4326))"
         cur.execute(sql)
-
-        # table with Z dimension geometry, multiple points
-        sql = "CREATE TABLE test_z2 (id INTEGER NOT NULL PRIMARY KEY, name TEXT NOT NULL)"
-        cur.execute(sql)
-        sql = "SELECT AddGeometryColumn('test_z2', 'geometry', 4326, 'POINT', 'XYZ')"
-        cur.execute(sql)
-        for i in range(2, 12):
-            sql = "INSERT INTO test_z2 (id, name, geometry) "
-            sql += f"VALUES ({i - 1}, 'toto 2', GeomFromText('POINT Z ({i - 4} {i + 1} {i})', 4326))"
-            cur.execute(sql)
 
         # table with M value geometry
         sql = "CREATE TABLE test_m (id INTEGER NOT NULL PRIMARY KEY, name TEXT NOT NULL)"
@@ -302,13 +287,6 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
         sql = "INSERT INTO \"test_transactions2\" VALUES (NULL)"
         cur.execute(sql)
 
-        # table to test getQueryGeometryDetails() for geometries with Z, M and ZM
-        sql = "CREATE TABLE test_querygeometry (id INTEGER PRIMARY KEY, x DECIMAL, y DECIMAL, z DECIMAL, m DECIMAL, srid INTEGER)"
-        cur.execute(sql)
-        sql = "INSERT INTO test_querygeometry (id, x, y, z, m, srid) "
-        sql += "VALUES (1, 16, 41, 100, 10, 4326)"
-        cur.execute(sql)
-
         # Commit all test data
         cur.execute("COMMIT")
         con.close()
@@ -325,7 +303,6 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
         #    os.remove(cls.dbname)
         for dirname in cls.dirs_to_cleanup:
             shutil.rmtree(dirname, True)
-        super(TestQgsSpatialiteProvider, cls).tearDownClass()
 
     def getSource(self):
         tmpdir = tempfile.mkdtemp()
@@ -335,7 +312,8 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
         shutil.copy(os.path.join(srcpath, 'spatialite.db'), datasource)
 
         vl = QgsVectorLayer(
-            f'dbname=\'{datasource}\' table="somedata" (geom) sql=', 'test',
+            'dbname=\'{}\' table="somedata" (geom) sql='.format(
+                datasource), 'test',
             'spatialite')
         return vl
 
@@ -482,7 +460,7 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
         Test that constraint detection does not crash
         """
         # should be no crash!
-        QgsVectorLayer(f"dbname={TEST_DATA_DIR + '/views_test.sqlite'} table=KNN", "KNN",
+        QgsVectorLayer("dbname={} table=KNN".format(TEST_DATA_DIR + '/views_test.sqlite'), "KNN",
                        "spatialite")
 
     def test_queries(self):
@@ -490,7 +468,7 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
 
         # a query with a geometry, but no unique id
         # the id will be autoincremented
-        l = QgsVectorLayer(f"dbname={self.dbname} table='(select * from test_q)' (geometry)", "test_pg_query1",
+        l = QgsVectorLayer("dbname=%s table='(select * from test_q)' (geometry)" % self.dbname, "test_pg_query1",
                            "spatialite")
         self.assertTrue(l.isValid())
         # the id() is autoincremented
@@ -501,7 +479,7 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
         self.assertEqual(sum_id2, 32)  # 11 + 21
 
         # and now with an id declared
-        l = QgsVectorLayer(f"dbname={self.dbname} table='(select * from test_q)' (geometry) key='id'",
+        l = QgsVectorLayer("dbname=%s table='(select * from test_q)' (geometry) key='id'" % self.dbname,
                            "test_pg_query1", "spatialite")
         self.assertTrue(l.isValid())
         sum_id1 = sum(f.id() for f in l.getFeatures())
@@ -510,7 +488,7 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
         self.assertEqual(sum_id2, 32)
 
         # a query, but no geometry
-        l = QgsVectorLayer(f"dbname={self.dbname} table='(select id,name from test_q)' key='id'", "test_pg_query1",
+        l = QgsVectorLayer("dbname=%s table='(select id,name from test_q)' key='id'" % self.dbname, "test_pg_query1",
                            "spatialite")
         self.assertTrue(l.isValid())
         sum_id1 = sum(f.id() for f in l.getFeatures())
@@ -553,7 +531,7 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
         self.assertTrue(l.isValid())
         self.assertEqual(l.dataProvider().fields().count(), 2)
         fields = [f.name() for f in l.dataProvider().fields()]
-        self.assertNotIn('Geometry', fields)
+        self.assertTrue('Geometry' not in fields)
 
     def test_invalid_iterator(self):
         """ Test invalid iterator """
@@ -722,10 +700,10 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
         read_back = l.getFeature(new_f['id'])
 
     def test_discover_relation(self):
-        artist = QgsVectorLayer(f"dbname={self.dbname} table=test_relation_a (geometry)", "test_relation_a",
+        artist = QgsVectorLayer("dbname=%s table=test_relation_a (geometry)" % self.dbname, "test_relation_a",
                                 "spatialite")
         self.assertTrue(artist.isValid())
-        track = QgsVectorLayer(f"dbname={self.dbname} table=test_relation_b (geometry)", "test_relation_b",
+        track = QgsVectorLayer("dbname=%s table=test_relation_b (geometry)" % self.dbname, "test_relation_b",
                                "spatialite")
         self.assertTrue(track.isValid())
         QgsProject.instance().addMapLayer(artist)
@@ -747,7 +725,7 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
             QgsProject.instance().removeMapLayer(artist.id())
 
     def testNotNullConstraint(self):
-        vl = QgsVectorLayer(f"dbname={self.dbname} table=test_constraints key='id'", "test_constraints",
+        vl = QgsVectorLayer("dbname=%s table=test_constraints key='id'" % self.dbname, "test_constraints",
                             "spatialite")
         self.assertTrue(vl.isValid())
         self.assertEqual(len(vl.fields()), 5)
@@ -759,37 +737,37 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
             1001), QgsFieldConstraints.Constraints())
 
         self.assertTrue(vl.dataProvider().fieldConstraints(0) &
-                        QgsFieldConstraints.Constraint.ConstraintNotNull)
+                        QgsFieldConstraints.ConstraintNotNull)
         self.assertTrue(vl.dataProvider().fieldConstraints(1) &
-                        QgsFieldConstraints.Constraint.ConstraintNotNull)
+                        QgsFieldConstraints.ConstraintNotNull)
         self.assertFalse(vl.dataProvider().fieldConstraints(2)
-                         & QgsFieldConstraints.Constraint.ConstraintNotNull)
+                         & QgsFieldConstraints.ConstraintNotNull)
         self.assertFalse(vl.dataProvider().fieldConstraints(3)
-                         & QgsFieldConstraints.Constraint.ConstraintNotNull)
+                         & QgsFieldConstraints.ConstraintNotNull)
         self.assertTrue(vl.dataProvider().fieldConstraints(4) &
-                        QgsFieldConstraints.Constraint.ConstraintNotNull)
+                        QgsFieldConstraints.ConstraintNotNull)
 
         # test that constraints have been saved to fields correctly
         fields = vl.fields()
         self.assertTrue(fields.at(0).constraints().constraints()
-                        & QgsFieldConstraints.Constraint.ConstraintNotNull)
-        self.assertEqual(fields.at(0).constraints().constraintOrigin(QgsFieldConstraints.Constraint.ConstraintNotNull),
-                         QgsFieldConstraints.ConstraintOrigin.ConstraintOriginProvider)
+                        & QgsFieldConstraints.ConstraintNotNull)
+        self.assertEqual(fields.at(0).constraints().constraintOrigin(QgsFieldConstraints.ConstraintNotNull),
+                         QgsFieldConstraints.ConstraintOriginProvider)
         self.assertTrue(fields.at(1).constraints().constraints()
-                        & QgsFieldConstraints.Constraint.ConstraintNotNull)
-        self.assertEqual(fields.at(1).constraints().constraintOrigin(QgsFieldConstraints.Constraint.ConstraintNotNull),
-                         QgsFieldConstraints.ConstraintOrigin.ConstraintOriginProvider)
+                        & QgsFieldConstraints.ConstraintNotNull)
+        self.assertEqual(fields.at(1).constraints().constraintOrigin(QgsFieldConstraints.ConstraintNotNull),
+                         QgsFieldConstraints.ConstraintOriginProvider)
         self.assertFalse(fields.at(2).constraints().constraints()
-                         & QgsFieldConstraints.Constraint.ConstraintNotNull)
+                         & QgsFieldConstraints.ConstraintNotNull)
         self.assertFalse(fields.at(3).constraints().constraints()
-                         & QgsFieldConstraints.Constraint.ConstraintNotNull)
+                         & QgsFieldConstraints.ConstraintNotNull)
         self.assertTrue(fields.at(4).constraints().constraints()
-                        & QgsFieldConstraints.Constraint.ConstraintNotNull)
-        self.assertEqual(fields.at(4).constraints().constraintOrigin(QgsFieldConstraints.Constraint.ConstraintNotNull),
-                         QgsFieldConstraints.ConstraintOrigin.ConstraintOriginProvider)
+                        & QgsFieldConstraints.ConstraintNotNull)
+        self.assertEqual(fields.at(4).constraints().constraintOrigin(QgsFieldConstraints.ConstraintNotNull),
+                         QgsFieldConstraints.ConstraintOriginProvider)
 
     def testUniqueConstraint(self):
-        vl = QgsVectorLayer(f"dbname={self.dbname} table=test_constraints key='id'", "test_constraints",
+        vl = QgsVectorLayer("dbname=%s table=test_constraints key='id'" % self.dbname, "test_constraints",
                             "spatialite")
         self.assertTrue(vl.isValid())
         self.assertEqual(len(vl.fields()), 5)
@@ -801,44 +779,44 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
             1001), QgsFieldConstraints.Constraints())
 
         self.assertTrue(vl.dataProvider().fieldConstraints(0)
-                        & QgsFieldConstraints.Constraint.ConstraintUnique)
+                        & QgsFieldConstraints.ConstraintUnique)
         self.assertFalse(vl.dataProvider().fieldConstraints(1)
-                         & QgsFieldConstraints.Constraint.ConstraintUnique)
+                         & QgsFieldConstraints.ConstraintUnique)
         self.assertTrue(vl.dataProvider().fieldConstraints(2)
-                        & QgsFieldConstraints.Constraint.ConstraintUnique)
+                        & QgsFieldConstraints.ConstraintUnique)
         self.assertFalse(vl.dataProvider().fieldConstraints(3)
-                         & QgsFieldConstraints.Constraint.ConstraintUnique)
+                         & QgsFieldConstraints.ConstraintUnique)
         self.assertTrue(vl.dataProvider().fieldConstraints(4)
-                        & QgsFieldConstraints.Constraint.ConstraintUnique)
+                        & QgsFieldConstraints.ConstraintUnique)
 
         # test that constraints have been saved to fields correctly
         fields = vl.fields()
         self.assertTrue(fields.at(0).constraints().constraints()
-                        & QgsFieldConstraints.Constraint.ConstraintUnique)
-        self.assertEqual(fields.at(0).constraints().constraintOrigin(QgsFieldConstraints.Constraint.ConstraintUnique),
-                         QgsFieldConstraints.ConstraintOrigin.ConstraintOriginProvider)
+                        & QgsFieldConstraints.ConstraintUnique)
+        self.assertEqual(fields.at(0).constraints().constraintOrigin(QgsFieldConstraints.ConstraintUnique),
+                         QgsFieldConstraints.ConstraintOriginProvider)
         self.assertFalse(fields.at(1).constraints().constraints()
-                         & QgsFieldConstraints.Constraint.ConstraintUnique)
+                         & QgsFieldConstraints.ConstraintUnique)
         self.assertTrue(fields.at(2).constraints().constraints()
-                        & QgsFieldConstraints.Constraint.ConstraintUnique)
-        self.assertEqual(fields.at(2).constraints().constraintOrigin(QgsFieldConstraints.Constraint.ConstraintUnique),
-                         QgsFieldConstraints.ConstraintOrigin.ConstraintOriginProvider)
+                        & QgsFieldConstraints.ConstraintUnique)
+        self.assertEqual(fields.at(2).constraints().constraintOrigin(QgsFieldConstraints.ConstraintUnique),
+                         QgsFieldConstraints.ConstraintOriginProvider)
         self.assertFalse(fields.at(3).constraints().constraints()
-                         & QgsFieldConstraints.Constraint.ConstraintUnique)
+                         & QgsFieldConstraints.ConstraintUnique)
         self.assertTrue(fields.at(4).constraints().constraints()
-                        & QgsFieldConstraints.Constraint.ConstraintUnique)
-        self.assertEqual(fields.at(4).constraints().constraintOrigin(QgsFieldConstraints.Constraint.ConstraintUnique),
-                         QgsFieldConstraints.ConstraintOrigin.ConstraintOriginProvider)
+                        & QgsFieldConstraints.ConstraintUnique)
+        self.assertEqual(fields.at(4).constraints().constraintOrigin(QgsFieldConstraints.ConstraintUnique),
+                         QgsFieldConstraints.ConstraintOriginProvider)
 
     def testSkipConstraintCheck(self):
-        vl = QgsVectorLayer(f"dbname={self.dbname} table=test_autoincrement", "test_autoincrement",
+        vl = QgsVectorLayer("dbname=%s table=test_autoincrement" % self.dbname, "test_autoincrement",
                             "spatialite")
         self.assertTrue(vl.isValid())
 
         self.assertTrue(
-            vl.dataProvider().skipConstraintCheck(0, QgsFieldConstraints.Constraint.ConstraintUnique, "Autogenerate"))
+            vl.dataProvider().skipConstraintCheck(0, QgsFieldConstraints.ConstraintUnique, "Autogenerate"))
         self.assertFalse(vl.dataProvider().skipConstraintCheck(
-            0, QgsFieldConstraints.Constraint.ConstraintUnique, 123))
+            0, QgsFieldConstraints.ConstraintUnique, 123))
 
     # This test would fail. It would require turning on WAL
     def XXXXXtestLocking(self):
@@ -897,7 +875,7 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
         vl = QgsVectorLayer("dbname=%s table='test_defaults' key='id'" %
                             self.dbname, "test_defaults", "spatialite")
         self.assertTrue(vl.dataProvider().capabilities() &
-                        QgsVectorDataProvider.Capability.CreateAttributeIndex)
+                        QgsVectorDataProvider.CreateAttributeIndex)
         self.assertFalse(vl.dataProvider().createAttributeIndex(-1))
         self.assertFalse(vl.dataProvider().createAttributeIndex(100))
         self.assertTrue(vl.dataProvider().createAttributeIndex(1))
@@ -934,7 +912,7 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
     def testSubsetStringRegexp(self):
         """Check that the provider supports the REGEXP syntax"""
 
-        testPath = f"dbname={self.dbname} table='test_filter' (geometry) key='id'"
+        testPath = "dbname=%s table='test_filter' (geometry) key='id'" % self.dbname
         vl = QgsVectorLayer(testPath, 'test', 'spatialite')
         self.assertTrue(vl.isValid())
         vl.setSubsetString('"name" REGEXP \'[txe]{3}\'')
@@ -948,10 +926,10 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
         def _lessdigits(s):
             return re.sub(r'(\d+\.\d{3})\d+', r'\1', s)
 
-        testPath = f"dbname={self.dbname} table='test_filter' (geometry) key='id'"
+        testPath = "dbname=%s table='test_filter' (geometry) key='id'" % self.dbname
 
         subSetString = '"name" = \'int\''
-        subSet = f' sql={subSetString}'
+        subSet = ' sql=%s' % subSetString
 
         # unfiltered
         vl = QgsVectorLayer(testPath, 'test', 'spatialite')
@@ -1052,7 +1030,8 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
 
             cur.execute("COMMIT")
 
-            testPath = f"dbname={dbname} table='{table_name}' (geometry)"
+            testPath = "dbname={} table='{}' (geometry)".format(
+                dbname, table_name)
             vl = QgsVectorLayer(testPath, 'test', 'spatialite')
             self.assertTrue(vl.isValid())
             self.assertEqual(vl.featureCount(), 1)
@@ -1097,7 +1076,7 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
         cur.execute("COMMIT")
         con.close()
 
-        testPath = f"dbname={dbname} table='test_pg' (geometry) key='id'"
+        testPath = "dbname=%s table='test_pg' (geometry) key='id'" % dbname
         vl = QgsVectorLayer(testPath, 'test', 'spatialite')
         self.assertTrue(vl.isValid())
         self.assertEqual(vl.featureCount(), 1)
@@ -1112,8 +1091,7 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
         # First test with invalid URI
         vl = QgsVectorLayer('/idont/exist.sqlite', 'test', 'spatialite')
 
-        self.assertEqual(int(vl.dataProvider().styleStorageCapabilities()) & Qgis.ProviderStyleStorageCapability.LoadFromDatabase, 0)
-        self.assertEqual(int(vl.dataProvider().styleStorageCapabilities()) & Qgis.ProviderStyleStorageCapability.SaveToDatabase, 0)
+        self.assertFalse(vl.dataProvider().isSaveAndLoadStyleToDatabaseSupported())
 
         res, err = QgsProviderRegistry.instance().styleExists('spatialite', '/idont/exist.sqlite', '')
         self.assertFalse(res)
@@ -1163,12 +1141,11 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
         cur.execute("COMMIT")
         con.close()
 
-        testPath = f"dbname={dbname} table='test_pg' (geometry) key='id'"
+        testPath = "dbname=%s table='test_pg' (geometry) key='id'" % dbname
         vl = QgsVectorLayer(testPath, 'test', 'spatialite')
         self.assertTrue(vl.isValid())
 
-        self.assertEqual(int(vl.dataProvider().styleStorageCapabilities()) & Qgis.ProviderStyleStorageCapability.LoadFromDatabase, Qgis.ProviderStyleStorageCapability.LoadFromDatabase)
-        self.assertEqual(int(vl.dataProvider().styleStorageCapabilities()) & Qgis.ProviderStyleStorageCapability.SaveToDatabase, Qgis.ProviderStyleStorageCapability.SaveToDatabase)
+        self.assertTrue(vl.dataProvider().isSaveAndLoadStyleToDatabaseSupported())
 
         # style tables don't exist yet
         res, err = QgsProviderRegistry.instance().styleExists('spatialite', vl.source(), '')
@@ -1298,7 +1275,7 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
                 dbname, sql), 'test', 'spatialite')
             self.assertTrue(
                 vl.isValid(), f'dbname: {dbname} - sql: {sql}')
-            self.assertGreater(vl.featureCount(), 1)
+            self.assertTrue(vl.featureCount() > 1)
             self.assertTrue(vl.isSpatial())
 
     def testPkLessQuery(self):
@@ -1327,14 +1304,14 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
 
         def _make_table(table_name):
             # simple table without primary key
-            sql = f"CREATE TABLE \"{table_name}\" (name TEXT NOT NULL)"
+            sql = "CREATE TABLE \"%s\" (name TEXT NOT NULL)" % table_name
             cur.execute(sql)
 
-            sql = f"SELECT AddGeometryColumn('{table_name}', 'geom', 4326, 'POINT', 'XY')"
+            sql = "SELECT AddGeometryColumn('%s', 'geom', 4326, 'POINT', 'XY')" % table_name
             cur.execute(sql)
 
             for i in range(11, 21):
-                sql = f"INSERT INTO \"{table_name}\" (name, geom) "
+                sql = "INSERT INTO \"%s\" (name, geom) " % table_name
                 sql += "VALUES ('name {id}', GeomFromText('POINT({id} {id})', 4326))".format(id=i)
                 cur.execute(sql)
 
@@ -1361,17 +1338,17 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
                                  'Point ({id} {id})'.format(id=i))
                 i += 1
 
-        vl_pk = QgsVectorLayer(f'dbname=\'{dbname}\' table="(select * from \\"test pk\\")" (geometry) sql=', 'pk',
+        vl_pk = QgsVectorLayer('dbname=\'%s\' table="(select * from \\"test pk\\")" (geometry) sql=' % dbname, 'pk',
                                'spatialite')
         self.assertTrue(vl_pk.isValid())
         _check_features(vl_pk, 0)
 
-        vl_no_pk = QgsVectorLayer(f'dbname=\'{dbname}\' table="(select * from somedata)" (geom) sql=', 'pk',
+        vl_no_pk = QgsVectorLayer('dbname=\'%s\' table="(select * from somedata)" (geom) sql=' % dbname, 'pk',
                                   'spatialite')
         self.assertTrue(vl_no_pk.isValid())
         _check_features(vl_no_pk, 10)
 
-        vl_no_pk = QgsVectorLayer(f'dbname=\'{dbname}\' table="(select * from \\"some data\\")" (geom) sql=', 'pk',
+        vl_no_pk = QgsVectorLayer('dbname=\'%s\' table="(select * from \\"some data\\")" (geom) sql=' % dbname, 'pk',
                                   'spatialite')
         self.assertTrue(vl_no_pk.isValid())
         _check_features(vl_no_pk, 10)
@@ -1423,7 +1400,7 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
             f = next(vl.getFeatures())
             self.assertTrue(f.isValid())
             fid = f.id()
-            self.assertGreater(fid, 0)
+            self.assertTrue(fid > 0)
             self.assertTrue(vl.getFeature(fid).isValid())
             f2 = next(vl.getFeatures(QgsFeatureRequest().setFilterFid(fid)))
             self.assertTrue(f2.isValid())
@@ -1435,13 +1412,13 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
                 self.assertTrue(vl.getFeature(f.id()).isValid())
                 self.assertEqual(vl.getFeature(f.id()).id(), f.id())
 
-        testPath = f"dbname={dbname} table='test_pg' (geometry) key='id'"
+        testPath = "dbname=%s table='test_pg' (geometry) key='id'" % dbname
         _test_db(testPath)
-        testPath = f"dbname={dbname} table='test_pg' (geometry)"
+        testPath = "dbname=%s table='test_pg' (geometry)" % dbname
         _test_db(testPath)
-        testPath = f"dbname={dbname} table='test_pg' key='id'"
+        testPath = "dbname=%s table='test_pg' key='id'" % dbname
         _test_db(testPath)
-        testPath = f"dbname={dbname} table='test_pg'"
+        testPath = "dbname=%s table='test_pg'" % dbname
         _test_db(testPath)
 
     def testGeometryTypes(self):
@@ -1461,36 +1438,36 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
         cur.execute("COMMIT")
         con.close()
 
-        tests = [('Point', 'Point (0 0)', QgsWkbTypes.Type.Point),
-                 ('PointZ', 'PointZ (0 0 10)', QgsWkbTypes.Type.PointZ),
-                 ('Point25D', 'PointZ (0 0 10)', QgsWkbTypes.Type.PointZ),
-                 ('MultiPoint', 'MultiPoint (0 0, 0 1)', QgsWkbTypes.Type.MultiPoint),
+        tests = [('Point', 'Point (0 0)', QgsWkbTypes.Point),
+                 ('PointZ', 'PointZ (0 0 10)', QgsWkbTypes.PointZ),
+                 ('Point25D', 'PointZ (0 0 10)', QgsWkbTypes.PointZ),
+                 ('MultiPoint', 'MultiPoint (0 0, 0 1)', QgsWkbTypes.MultiPoint),
                  ('MultiPointZ', 'MultiPointZ ((0 0 10, 0 1 10))',
-                  QgsWkbTypes.Type.MultiPointZ),
+                  QgsWkbTypes.MultiPointZ),
                  ('MultiPoint25D', 'MultiPointZ ((0 0 10, 0 1 10))',
-                  QgsWkbTypes.Type.MultiPointZ),
-                 ('LineString', 'LineString (0 0, 0 1)', QgsWkbTypes.Type.LineString),
+                  QgsWkbTypes.MultiPointZ),
+                 ('LineString', 'LineString (0 0, 0 1)', QgsWkbTypes.LineString),
                  ('LineStringZ', 'LineStringZ (0 0 10, 0 1 10)',
-                  QgsWkbTypes.Type.LineStringZ),
+                  QgsWkbTypes.LineStringZ),
                  ('LineString25D', 'LineStringZ (0 0 10, 0 1 10)',
-                  QgsWkbTypes.Type.LineStringZ),
+                  QgsWkbTypes.LineStringZ),
                  ('MultiLineString', 'MultiLineString (0 0, 0 1)',
-                  QgsWkbTypes.Type.MultiLineString),
+                  QgsWkbTypes.MultiLineString),
                  ('MultiLineStringZ', 'MultiLineStringZ ((0 0 10, 0 1 10))',
-                  QgsWkbTypes.Type.MultiLineStringZ),
+                  QgsWkbTypes.MultiLineStringZ),
                  ('MultiLineString25D', 'MultiLineStringZ ((0 0 10, 0 1 10))',
-                  QgsWkbTypes.Type.MultiLineStringZ),
-                 ('Polygon', 'Polygon ((0 0, 0 1, 1 1, 1 0, 0 0))', QgsWkbTypes.Type.Polygon),
+                  QgsWkbTypes.MultiLineStringZ),
+                 ('Polygon', 'Polygon ((0 0, 0 1, 1 1, 1 0, 0 0))', QgsWkbTypes.Polygon),
                  ('PolygonZ', 'PolygonZ ((0 0 10, 0 1 10, 1 1 10, 1 0 10, 0 0 10))',
-                  QgsWkbTypes.Type.PolygonZ),
+                  QgsWkbTypes.PolygonZ),
                  ('Polygon25D', 'PolygonZ ((0 0 10, 0 1 10, 1 1 10, 1 0 10, 0 0 10))',
-                  QgsWkbTypes.Type.PolygonZ),
+                  QgsWkbTypes.PolygonZ),
                  ('MultiPolygon', 'MultiPolygon (((0 0, 0 1, 1 1, 1 0, 0 0)))',
-                  QgsWkbTypes.Type.MultiPolygon),
+                  QgsWkbTypes.MultiPolygon),
                  ('MultiPolygonZ', 'MultiPolygonZ (((0 0 10, 0 1 10, 1 1 10, 1 0 10, 0 0 10)))',
-                  QgsWkbTypes.Type.MultiPolygonZ),
+                  QgsWkbTypes.MultiPolygonZ),
                  ('MultiPolygon25D', 'MultiPolygonZ (((0 0 10, 0 1 10, 1 1 10, 1 0 10, 0 0 10)))',
-                  QgsWkbTypes.Type.MultiPolygonZ)
+                  QgsWkbTypes.MultiPolygonZ)
                  ]
         for typeStr, wkt, qgisType in tests:
             ml = QgsVectorLayer(
@@ -1513,7 +1490,7 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
                                                                              {},
                                                                              )
             self.assertEqual(
-                write_result, QgsVectorLayerExporter.ExportError.NoError, error_message)
+                write_result, QgsVectorLayerExporter.NoError, error_message)
 
             vl = QgsVectorLayer(uri, typeStr, 'spatialite')
             self.assertTrue(vl.isValid())
@@ -1522,7 +1499,7 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
     def testBigint(self):
         """Test unique values bigint, see GH #33585"""
 
-        l = QgsVectorLayer(f"dbname={self.dbname} table='test_bigint' (position) key='id'", "test_bigint",
+        l = QgsVectorLayer("dbname=%s table='test_bigint' (position) key='id'" % self.dbname, "test_bigint",
                            "spatialite")
         self.assertTrue(l.isValid())
         self.assertEqual(l.uniqueValues(1), {1, 2})
@@ -1559,7 +1536,7 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
         cur.execute("COMMIT")
         con.close()
 
-        vl = QgsVectorLayer(f"dbname='{dbname}' table='test_table_default_values'", 'test_table_default_values',
+        vl = QgsVectorLayer("dbname='%s' table='test_table_default_values'" % dbname, 'test_table_default_values',
                             'spatialite')
         self.assertTrue(vl.isValid())
 
@@ -1568,8 +1545,9 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
 
         # Test default values
         dp = vl.dataProvider()
-        self.assertEqual(dp.defaultValue(0), NULL)
-        self.assertEqual(dp.defaultValue(1), NULL)
+        # FIXME: should it be None?
+        self.assertTrue(dp.defaultValue(0).isNull())
+        self.assertIsNone(dp.defaultValue(1))
         # FIXME: This fails because there is no backend-side evaluation in this provider
         # self.assertTrue(dp.defaultValue(2).startswith(now.strftime('%Y-%m-%d')))
         self.assertTrue(dp.defaultValue(
@@ -1597,7 +1575,7 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
         del (vl)
 
         # Verify
-        vl2 = QgsVectorLayer(f"dbname='{dbname}' table='test_table_default_values'", 'test_table_default_values',
+        vl2 = QgsVectorLayer("dbname='%s' table='test_table_default_values'" % dbname, 'test_table_default_values',
                              'spatialite')
         self.assertTrue(vl2.isValid())
         feature = next(vl2.getFeatures())
@@ -1632,7 +1610,7 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
         cur.execute("COMMIT")
         con.close()
 
-        vl = QgsVectorLayer(f"dbname='{dbname}' table='test_aspatial_multiple_edits'", 'test_aspatial_multiple_edits',
+        vl = QgsVectorLayer("dbname='%s' table='test_aspatial_multiple_edits'" % dbname, 'test_aspatial_multiple_edits',
                             'spatialite')
         self.assertTrue(vl.isValid())
 
@@ -1671,7 +1649,7 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
 
     def testBLOBType(self):
         """Test binary field"""
-        vl = QgsVectorLayer(f'dbname={self.dbname} table="blob_table" sql=', "testBLOBType", "spatialite")
+        vl = QgsVectorLayer('dbname=%s table="blob_table" sql=' % self.dbname, "testBLOBType", "spatialite")
         self.assertTrue(vl.isValid())
 
         fields = vl.dataProvider().fields()
@@ -1826,61 +1804,6 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
         self.assertEqual(vl.dataProvider().defaultValueClause(0), '')
         self.assertEqual(vl.dataProvider().defaultValue(0), 1)
 
-    def testGetQueryGeometryDetails(self):
-        """Test getQueryGeometryDetails() for geometries with Z, M and ZM"""
-
-        query = "SELECT id, srid, x, y, MakePoint(x,y,srid) as geom FROM test_querygeometry"
-        vl = QgsVectorLayer(f"dbname={self.dbname} table='({query})' (geom) key='id'",
-                            "QueryGeometryXY", "spatialite")
-        self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.Point)
-        self.assertEqual(vl.featureCount(), 1)
-        feature = vl.getFeature(1)
-        self.assertEqual(vl.crs().postgisSrid(), feature.attributes()[1])
-        geom = feature.geometry().constGet()
-        self.assertEqual(geom.x(), feature.attributes()[2])
-        self.assertEqual(geom.y(), feature.attributes()[3])
-
-        query = "SELECT id, srid, x, y, z, MakePointZ(x,y,z,srid) as geom FROM test_querygeometry"
-        vl = QgsVectorLayer(f"dbname={self.dbname} table='({query})' (geom) key='id'",
-                            "QueryGeometryXYZ", "spatialite")
-        self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.PointZ)
-        self.assertEqual(vl.featureCount(), 1)
-        feature = vl.getFeature(1)
-        self.assertEqual(vl.crs().postgisSrid(), feature.attributes()[1])
-        geom = feature.geometry().constGet()
-        self.assertEqual(geom.x(), feature.attributes()[2])
-        self.assertEqual(geom.y(), feature.attributes()[3])
-        self.assertEqual(geom.z(), feature.attributes()[4])
-
-        query = "SELECT id, srid, x, y, m, MakePointM(x,y,m,srid) as geom FROM test_querygeometry"
-        vl = QgsVectorLayer(f"dbname={self.dbname} table='({query})' (geom) key='id'",
-                            "QueryGeometryXYM", "spatialite")
-        self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.PointM)
-        self.assertEqual(vl.featureCount(), 1)
-        feature = vl.getFeature(1)
-        self.assertEqual(vl.crs().postgisSrid(), feature.attributes()[1])
-        geom = feature.geometry().constGet()
-        self.assertEqual(geom.x(), feature.attributes()[2])
-        self.assertEqual(geom.y(), feature.attributes()[3])
-        self.assertEqual(geom.m(), feature.attributes()[4])
-
-        query = "SELECT id, srid, x, y, z, m, MakePointZM(x,y,z,m,srid) as geom FROM test_querygeometry"
-        vl = QgsVectorLayer(f"dbname={self.dbname} table='({query})' (geom) key='id'",
-                            "QueryGeometryXYZM", "spatialite")
-        self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.PointZM)
-        self.assertEqual(vl.featureCount(), 1)
-        feature = vl.getFeature(1)
-        self.assertEqual(vl.crs().postgisSrid(), feature.attributes()[1])
-        geom = feature.geometry().constGet()
-        self.assertEqual(geom.x(), feature.attributes()[2])
-        self.assertEqual(geom.y(), feature.attributes()[3])
-        self.assertEqual(geom.z(), feature.attributes()[4])
-        self.assertEqual(geom.m(), feature.attributes()[5])
-
     def testViewsExtentFilter(self):
         """Test extent filtering of a views-based spatialite layer"""
 
@@ -1918,7 +1841,7 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
 
         # Check NOT NULL constraint on atttext
         field = layer.fields().at(1)
-        self.assertTrue(bool(field.constraints().constraints() & QgsFieldConstraints.Constraint.ConstraintNotNull))
+        self.assertTrue(bool(field.constraints().constraints() & QgsFieldConstraints.ConstraintNotNull))
 
         self.assertTrue(layer.startEditing())
 
@@ -1929,7 +1852,7 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
         f.setGeometry(g)
         f.fields()
         f.fields().names()
-        f.setAttribute(1, NULL)
+        f.setAttribute(1, QVariant(QVariant.String))
         f.setAttribute(0, 'Autogenerate')
         self.assertTrue(layer.addFeatures([f]))
         self.assertFalse(layer.commitChanges())
@@ -1943,73 +1866,6 @@ class TestQgsSpatialiteProvider(QgisTestCase, ProviderTestCase):
         layer = QgsVectorLayer(
             f'dbname=\'{self.dbname}\' table="table50523" (position) sql=', 'test', 'spatialite')
         self.assertEqual(len([f for f in layer.getFeatures()]), 1)
-
-    def test_absolute_relative_uri(self):
-        context = QgsReadWriteContext()
-        context.setPathResolver(QgsPathResolver(os.path.join(TEST_DATA_DIR, "project.qgs")))
-
-        absolute_uri = 'dbname=\'{}\' table="somedata" (geom)'.format(os.path.join(TEST_DATA_DIR, 'provider', 'spatialite.db'))
-        relative_uri = 'dbname=\'./provider/spatialite.db\' table="somedata" (geom)'
-
-        meta = QgsProviderRegistry.instance().providerMetadata("spatialite")
-        assert meta is not None
-
-        self.assertEqual(meta.absoluteToRelativeUri(absolute_uri, context), relative_uri)
-        self.assertEqual(meta.relativeToAbsoluteUri(relative_uri, context), absolute_uri)
-
-    def testRegression54622Multisurface(self):
-
-        con = spatialite_connect(self.dbname, isolation_level=None)
-        cur = con.cursor()
-        cur.execute("BEGIN")
-        sql = sql = """CREATE TABLE table54622 (
-            _id INTEGER PRIMARY KEY AUTOINCREMENT)"""
-        cur.execute(sql)
-        sql = "SELECT AddGeometryColumn('table54622', 'geometry', 25832, 'MULTIPOLYGON', 'XY', 0)"
-        cur.execute(sql)
-        cur.execute("COMMIT")
-        con.close()
-
-        def _check_feature():
-            layer = QgsVectorLayer(
-                'dbname=\'{}\' table="table54622" (geometry) sql='.format(self.dbname), 'test', 'spatialite')
-            feature = next(layer.getFeatures())
-            self.assertFalse(feature.geometry().isNull())
-            self.assertTrue(compareWkt(feature.geometry().asWkt(), 'MultiPolygon (((-0.886 0.135, -0.886 -0.038, -0.448 -0.070, -0.426 0.143, -0.886 0.135)))', 0.01))
-
-        layer = QgsVectorLayer(
-            'dbname=\'{}\' table="table54622" (geometry) sql='.format(self.dbname), 'test', 'spatialite')
-
-        self.assertTrue(layer.isValid())
-        feature = QgsFeature(layer.fields())
-        geom = QgsGeometry.fromWkt('MULTISURFACE(CURVEPOLYGON(COMPOUNDCURVE((-0.886 0.135,-0.886 -0.038,-0.448 -0.070,-0.427 0.144,-0.886 0.135))))')
-        feature.setGeometry(geom)
-        self.assertTrue(layer.dataProvider().addFeatures([feature]))
-
-        _check_feature()
-
-        self.assertTrue(layer.dataProvider().changeFeatures({}, {feature.id(): geom}))
-
-        _check_feature()
-
-        self.assertTrue(layer.dataProvider().changeGeometryValues({feature.id(): geom}))
-
-        _check_feature()
-
-    def test_extent(self):
-        layer2D = QgsVectorLayer(
-            f"dbname={self.dbname} table='(select * from test_q)' (geometry)",
-            "test_pg_query1", "spatialite")
-        self.assertTrue(layer2D.isValid())
-        self.assertEqual(layer2D.extent(), QgsRectangle(0, 0, 1, 1))
-        self.assertEqual(layer2D.extent3D(), QgsBox3D(0, 0, float('nan'), 1, 1, float('nan')))
-
-        layer3D = QgsVectorLayer(
-            f"dbname={self.dbname} table='test_z2' (geometry) key='id'",
-            "test_z2", "spatialite")
-        self.assertTrue(layer3D.isValid())
-        self.assertEqual(layer3D.extent(), QgsRectangle(-2, 3, 7, 12))
-        self.assertEqual(layer3D.extent3D(), QgsBox3D(-2, 3, 2, 7, 12, 11))
 
 
 if __name__ == '__main__':

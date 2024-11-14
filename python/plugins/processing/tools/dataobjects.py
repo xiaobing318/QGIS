@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     dataobject.py
@@ -51,19 +53,23 @@ TYPE_FILE = 4
 TYPE_TABLE = 5
 
 
-# changing this signature? make sure you update the signature in
-# python/processing/__init__.py too!
-# Docstring for this function is in python/processing/__init__.py
 def createContext(feedback=None):
+    """
+    Creates a default processing context
+
+    :param feedback: Optional existing QgsProcessingFeedback object, or None to use a default feedback object
+    :type feedback: Optional[QgsProcessingFeedback]
+
+    :returns: New QgsProcessingContext object
+    :rtype: QgsProcessingContext
+    """
     context = QgsProcessingContext()
     context.setProject(QgsProject.instance())
     context.setFeedback(feedback)
 
     invalid_features_method = ProcessingConfig.getSetting(ProcessingConfig.FILTER_INVALID_GEOMETRIES)
     if invalid_features_method is None:
-        invalid_features_method = QgsFeatureRequest.InvalidGeometryCheck.GeometryAbortOnInvalid
-    else:
-        invalid_features_method = QgsFeatureRequest.InvalidGeometryCheck(int(invalid_features_method))
+        invalid_features_method = QgsFeatureRequest.GeometryAbortOnInvalid
     context.setInvalidGeometryCheck(invalid_features_method)
 
     settings = QgsSettings()
@@ -138,9 +144,9 @@ def load(fileName, name=None, crs=None, style=None, isRaster=False):
             if crs is not None and qgslayer.crs() is None:
                 qgslayer.setCrs(crs, False)
             if style is None:
-                if qgslayer.geometryType() == QgsWkbTypes.GeometryType.PointGeometry:
+                if qgslayer.geometryType() == QgsWkbTypes.PointGeometry:
                     style = ProcessingConfig.getSetting(ProcessingConfig.VECTOR_POINT_STYLE)
-                elif qgslayer.geometryType() == QgsWkbTypes.GeometryType.LineGeometry:
+                elif qgslayer.geometryType() == QgsWkbTypes.LineGeometry:
                     style = ProcessingConfig.getSetting(ProcessingConfig.VECTOR_LINE_STYLE)
                 else:
                     style = ProcessingConfig.getSetting(ProcessingConfig.VECTOR_POLYGON_STYLE)
@@ -187,10 +193,10 @@ def getRasterSublayer(path, param):
 
             # Use QgsSublayersDialog
             # Would be good if QgsSublayersDialog had an option to allow only one sublayer to be selected
-            chooseSublayersDialog = QgsSublayersDialog(QgsSublayersDialog.ProviderType.Gdal, "gdal")
+            chooseSublayersDialog = QgsSublayersDialog(QgsSublayersDialog.Gdal, "gdal")
             chooseSublayersDialog.populateLayerTable(layers)
 
-            if chooseSublayersDialog.exec():
+            if chooseSublayersDialog.exec_():
                 return layer.subLayers()[chooseSublayersDialog.selectionIndexes()[0]]
             else:
                 # If user pressed cancel then just return the input path

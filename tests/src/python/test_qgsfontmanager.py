@@ -12,31 +12,31 @@ __copyright__ = 'Copyright 2022, The QGIS Project'
 import os.path
 import tempfile
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import QCoreApplication, QUrl
 from qgis.PyQt.QtGui import QFont
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import (
-    QgsApplication,
     QgsFontManager,
-    QgsReadWriteContext,
     QgsSettings,
+    QgsApplication,
     QgsTextFormat,
+    QgsReadWriteContext
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
-from utilities import getTestFont, unitTestDataPath
+from utilities import getTestFont
+from utilities import unitTestDataPath
 
 start_app()
 
 
-class TestQgsFontManager(QgisTestCase):
+class TestQgsFontManager(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
-        super().setUpClass()
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain("QGIS_TestQgsFontManager.com")
         QCoreApplication.setApplicationName("QGIS_TestQgsFontManager")
@@ -187,64 +187,58 @@ class TestQgsFontManager(QgisTestCase):
 
             self.assertEqual(manager.userFontToFamilyMap(), {os.path.join(user_font_dir, 'Fresca-Regular.ttf'): ['Fresca']})
 
-    def test_font_download_urls(self):
+    def test_font_download_url(self):
         manager = QgsFontManager()
         self.assertEqual(manager.urlForFontDownload('xxx'), ('', ''))
-        self.assertFalse(manager.detailsForFontDownload('xxx')[0].isValid())
-        self.assertEqual(manager.urlForFontDownload('Alegreya SC'), ('https://github.com/google/fonts/raw/main/ofl/alegreyasc/AlegreyaSC-Regular.ttf', 'Alegreya SC'))
-        self.assertEqual(manager.urlForFontDownload('AlegreyaSC'), ('https://github.com/google/fonts/raw/main/ofl/alegreyasc/AlegreyaSC-Regular.ttf', 'Alegreya SC'))
-        self.assertEqual(manager.urlForFontDownload('alegreya_sc'), ('https://github.com/google/fonts/raw/main/ofl/alegreyasc/AlegreyaSC-Regular.ttf', 'Alegreya SC'))
-
-        self.assertTrue(manager.detailsForFontDownload('Alegreya SC')[0].isValid())
-        self.assertEqual(manager.detailsForFontDownload('Alegreya SC')[0].fontUrls(), ['https://github.com/google/fonts/raw/main/ofl/alegreyasc/AlegreyaSC-Regular.ttf', 'https://github.com/google/fonts/raw/main/ofl/alegreyasc/AlegreyaSC-Italic.ttf', 'https://github.com/google/fonts/raw/main/ofl/alegreyasc/AlegreyaSC-Medium.ttf', 'https://github.com/google/fonts/raw/main/ofl/alegreyasc/AlegreyaSC-MediumItalic.ttf', 'https://github.com/google/fonts/raw/main/ofl/alegreyasc/AlegreyaSC-Bold.ttf', 'https://github.com/google/fonts/raw/main/ofl/alegreyasc/AlegreyaSC-BoldItalic.ttf', 'https://github.com/google/fonts/raw/main/ofl/alegreyasc/AlegreyaSC-ExtraBold.ttf', 'https://github.com/google/fonts/raw/main/ofl/alegreyasc/AlegreyaSC-ExtraBoldItalic.ttf', 'https://github.com/google/fonts/raw/main/ofl/alegreyasc/AlegreyaSC-Black.ttf', 'https://github.com/google/fonts/raw/main/ofl/alegreyasc/AlegreyaSC-BlackItalic.ttf'])
-        self.assertEqual(manager.detailsForFontDownload('Alegreya SC')[0].licenseUrl(), 'https://github.com/google/fonts/raw/main/ofl/alegreyasc/OFL.txt')
+        self.assertEqual(manager.urlForFontDownload('Alegreya SC'), ('https://fonts.google.com/download?family=Alegreya+SC', 'Alegreya SC'))
+        self.assertEqual(manager.urlForFontDownload('AlegreyaSC'), ('https://fonts.google.com/download?family=Alegreya+SC', 'Alegreya SC'))
+        self.assertEqual(manager.urlForFontDownload('alegreya_sc'), ('https://fonts.google.com/download?family=Alegreya+SC', 'Alegreya SC'))
 
         self.assertEqual(manager.urlForFontDownload('Roboto'),
-                         ('https://github.com/google/fonts/raw/main/ofl/roboto/Roboto%5Bwdth,wght%5D.ttf', 'Roboto'))
+                         ('https://fonts.google.com/download?family=Roboto', 'Roboto'))
 
         self.assertEqual(manager.urlForFontDownload('Open Sans'),
-                         ('https://github.com/google/fonts/raw/main/ofl/opensans/OpenSans%5Bwdth,wght%5D.ttf', 'Open Sans'))
+                         ('https://fonts.google.com/download?family=Open+Sans', 'Open Sans'))
 
-        # not available via github?
-        # self.assertEqual(manager.urlForFontDownload('Open Sans Condensed'),
-        #                 ('https://fonts.google.com/download?family=Open+Sans+Condensed', 'Open Sans Condensed'))
+        self.assertEqual(manager.urlForFontDownload('Open Sans Condensed'),
+                         ('https://fonts.google.com/download?family=Open+Sans+Condensed', 'Open Sans Condensed'))
 
         self.assertEqual(manager.urlForFontDownload('Noto Sans'),
-                         ('https://github.com/google/fonts/raw/main/ofl/notosans/NotoSans%5Bwdth,wght%5D.ttf', 'Noto Sans'))
+                         ('https://fonts.google.com/download?family=Noto+Sans', 'Noto Sans'))
 
-        self.assertEqual(manager.urlForFontDownload('Roboto Condensed'), ('https://github.com/google/fonts/raw/main/ofl/robotocondensed/RobotoCondensed%5Bwght%5D.ttf', 'Roboto Condensed'))
+        self.assertEqual(manager.urlForFontDownload('Roboto Condensed'), ('https://fonts.google.com/download?family=Roboto+Condensed', 'Roboto Condensed'))
 
         # variants for font names typically seen in vector tile styles
-        self.assertEqual(manager.urlForFontDownload('RobotoCondensedRegular'), ('https://github.com/google/fonts/raw/main/ofl/robotocondensed/RobotoCondensed%5Bwght%5D.ttf', 'Roboto Condensed'))
-        self.assertEqual(manager.urlForFontDownload('Roboto Condensed Regular'), ('https://github.com/google/fonts/raw/main/ofl/robotocondensed/RobotoCondensed%5Bwght%5D.ttf', 'Roboto Condensed'))
+        self.assertEqual(manager.urlForFontDownload('RobotoCondensedRegular'), ('https://fonts.google.com/download?family=Roboto+Condensed', 'Roboto Condensed'))
+        self.assertEqual(manager.urlForFontDownload('Roboto Condensed Regular'), ('https://fonts.google.com/download?family=Roboto+Condensed', 'Roboto Condensed'))
         self.assertEqual(manager.urlForFontDownload('Roboto_Condensed_Regular'),
-                         ('https://github.com/google/fonts/raw/main/ofl/robotocondensed/RobotoCondensed%5Bwght%5D.ttf', 'Roboto Condensed'))
+                         ('https://fonts.google.com/download?family=Roboto+Condensed', 'Roboto Condensed'))
 
         # with style names
         self.assertEqual(manager.urlForFontDownload('Roboto Black'),
-                         ('https://github.com/google/fonts/raw/main/ofl/roboto/Roboto%5Bwdth,wght%5D.ttf', 'Roboto'))
+                         ('https://fonts.google.com/download?family=Roboto', 'Roboto'))
         self.assertEqual(manager.urlForFontDownload('Roboto Black Italic'),
-                         ('https://github.com/google/fonts/raw/main/ofl/roboto/Roboto%5Bwdth,wght%5D.ttf', 'Roboto'))
+                         ('https://fonts.google.com/download?family=Roboto', 'Roboto'))
         self.assertEqual(manager.urlForFontDownload('Roboto Bold'),
-                         ('https://github.com/google/fonts/raw/main/ofl/roboto/Roboto%5Bwdth,wght%5D.ttf', 'Roboto'))
+                         ('https://fonts.google.com/download?family=Roboto', 'Roboto'))
         self.assertEqual(manager.urlForFontDownload('Roboto Bold Italic'),
-                         ('https://github.com/google/fonts/raw/main/ofl/roboto/Roboto%5Bwdth,wght%5D.ttf', 'Roboto'))
+                         ('https://fonts.google.com/download?family=Roboto', 'Roboto'))
         self.assertEqual(manager.urlForFontDownload('Roboto Italic'),
-                         ('https://github.com/google/fonts/raw/main/ofl/roboto/Roboto%5Bwdth,wght%5D.ttf', 'Roboto'))
+                         ('https://fonts.google.com/download?family=Roboto', 'Roboto'))
         self.assertEqual(manager.urlForFontDownload('Roboto Light'),
-                         ('https://github.com/google/fonts/raw/main/ofl/roboto/Roboto%5Bwdth,wght%5D.ttf', 'Roboto'))
+                         ('https://fonts.google.com/download?family=Roboto', 'Roboto'))
         self.assertEqual(manager.urlForFontDownload('Roboto Light Italic'),
-                         ('https://github.com/google/fonts/raw/main/ofl/roboto/Roboto%5Bwdth,wght%5D.ttf', 'Roboto'))
+                         ('https://fonts.google.com/download?family=Roboto', 'Roboto'))
         self.assertEqual(manager.urlForFontDownload('Roboto Medium'),
-                         ('https://github.com/google/fonts/raw/main/ofl/roboto/Roboto%5Bwdth,wght%5D.ttf', 'Roboto'))
+                         ('https://fonts.google.com/download?family=Roboto', 'Roboto'))
         self.assertEqual(manager.urlForFontDownload('Roboto Medium Italic'),
-                         ('https://github.com/google/fonts/raw/main/ofl/roboto/Roboto%5Bwdth,wght%5D.ttf', 'Roboto'))
+                         ('https://fonts.google.com/download?family=Roboto', 'Roboto'))
         self.assertEqual(manager.urlForFontDownload('Roboto Regular'),
-                         ('https://github.com/google/fonts/raw/main/ofl/roboto/Roboto%5Bwdth,wght%5D.ttf', 'Roboto'))
+                         ('https://fonts.google.com/download?family=Roboto', 'Roboto'))
         self.assertEqual(manager.urlForFontDownload('Roboto Thin'),
-                         ('https://github.com/google/fonts/raw/main/ofl/roboto/Roboto%5Bwdth,wght%5D.ttf', 'Roboto'))
+                         ('https://fonts.google.com/download?family=Roboto', 'Roboto'))
         self.assertEqual(manager.urlForFontDownload('Roboto Thin Italic'),
-                         ('https://github.com/google/fonts/raw/main/ofl/roboto/Roboto%5Bwdth,wght%5D.ttf', 'Roboto'))
+                         ('https://fonts.google.com/download?family=Roboto', 'Roboto'))
 
 
 if __name__ == '__main__':

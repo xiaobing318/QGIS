@@ -44,6 +44,7 @@ class QgsQsciLexerCSS : public QsciLexerCSS
  * \ingroup gui
  * \brief A CSS editor based on QScintilla2. Adds syntax highlighting and
  * code autocompletion.
+ * \since QGIS 2.6
  */
 class GUI_EXPORT QgsCodeEditorCSS : public QgsCodeEditor
 {
@@ -53,7 +54,6 @@ class GUI_EXPORT QgsCodeEditorCSS : public QgsCodeEditor
 
     //! Constructor for QgsCodeEditorCSS
     QgsCodeEditorCSS( QWidget *parent SIP_TRANSFERTHIS = nullptr );
-    Qgis::ScriptLanguage language() const override;
 
   protected:
     void initializeLexer() override;

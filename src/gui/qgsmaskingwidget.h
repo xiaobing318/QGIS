@@ -50,6 +50,13 @@ class GUI_EXPORT QgsMaskingWidget: public QgsPanelWidget, private Ui::QgsMasking
     //! Applies the changes
     void apply();
 
+    //! Widget has been populated or not
+    bool hasBeenPopulated();
+
+  protected:
+
+    void showEvent( QShowEvent * ) override;
+
   private slots:
 
     /**
@@ -63,8 +70,7 @@ class GUI_EXPORT QgsMaskingWidget: public QgsPanelWidget, private Ui::QgsMasking
     void populate();
 
     QPointer<QgsMessageBarItem> mMessageBarItem;
-
-    friend class TestQgsMaskingWidget;
+    bool mMustPopulate = false;
 };
 
 
@@ -78,7 +84,7 @@ class GUI_EXPORT QgsMaskingWidget: public QgsPanelWidget, private Ui::QgsMasking
 class SymbolLayerVisitor : public QgsStyleEntityVisitorInterface
 {
   public:
-    typedef std::function<void( const QgsSymbolLayer *, const QString & )> SymbolLayerCallback;
+    typedef std::function<void( const QgsSymbolLayer *, const QgsSymbolLayerId & )> SymbolLayerCallback;
 
     //! constructor
     SymbolLayerVisitor( SymbolLayerCallback callback );

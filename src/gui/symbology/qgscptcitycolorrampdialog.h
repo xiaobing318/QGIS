@@ -37,6 +37,7 @@ class UngroupProxyModel;
  * \ingroup gui
  * \class QgsCptCityColorRampDialog
  * \brief A dialog which allows users to modify the properties of a QgsCptCityColorRamp.
+ * \since QGIS 3.0
  */
 class GUI_EXPORT QgsCptCityColorRampDialog : public QDialog, private Ui::QgsCptCityColorRampDialogBase
 {

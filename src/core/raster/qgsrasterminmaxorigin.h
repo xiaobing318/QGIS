@@ -28,6 +28,7 @@
  * \ingroup core
  * \brief This class describes the origin of min/max values. It does not store by
  * itself the min/max values.
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsRasterMinMaxOrigin
 {
@@ -83,8 +84,10 @@ class CORE_EXPORT QgsRasterMinMaxOrigin
       Estimated
     };
 
+    //! \brief Default constructor.
     QgsRasterMinMaxOrigin();
 
+    //! \brief Equality operator.
     bool operator ==( const QgsRasterMinMaxOrigin &other ) const;
 
     //////// Getter methods /////////////////////

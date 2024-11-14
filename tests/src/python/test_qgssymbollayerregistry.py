@@ -9,16 +9,10 @@ __author__ = 'Denis Rouzaud'
 __date__ = '26/11/2021'
 __copyright__ = 'Copyright 2015, The QGIS Project'
 
+import qgis  # NOQA
 from qgis.PyQt import sip
-from qgis.core import (
-    Qgis,
-    QgsApplication,
-    QgsSimpleMarkerSymbolLayer,
-    QgsSymbolLayer,
-    QgsSymbolLayerAbstractMetadata,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import Qgis, QgsApplication, QgsSymbolLayerAbstractMetadata, QgsSymbolLayer, QgsSimpleMarkerSymbolLayer
+from qgis.testing import start_app, unittest
 
 start_app()
 
@@ -31,7 +25,7 @@ class MySuperMarkerMetadata(QgsSymbolLayerAbstractMetadata):
         return QgsSimpleMarkerSymbolLayer()
 
 
-class TestQgsSymbolLayerRegistry(QgisTestCase):
+class TestQgsSymbolLayerRegistry(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -39,7 +33,6 @@ class TestQgsSymbolLayerRegistry(QgisTestCase):
         Setup the involved layers and relations for a n:m relation
         :return:
         """
-        super().setUpClass()
         cls.registry = QgsApplication.instance().symbolLayerRegistry()
 
     def testCreateInstance(self):

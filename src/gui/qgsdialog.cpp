@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsdialog.h"
-#include "moc_qgsdialog.cpp"
 
 QgsDialog::QgsDialog( QWidget *parent, Qt::WindowFlags fl,
                       QDialogButtonBox::StandardButtons buttons,
@@ -29,13 +28,13 @@ QgsDialog::QgsDialog( QWidget *parent, Qt::WindowFlags fl,
   connect( mButtonBox, &QDialogButtonBox::rejected, this, &QDialog::reject );
 
   // layout
-  QBoxLayout *layout = nullptr;
+  QLayout *layout = nullptr;
   if ( orientation == Qt::Horizontal )
     layout = new QVBoxLayout();
   else
     layout = new QHBoxLayout();
   mLayout = new QVBoxLayout();
-  layout->addLayout( mLayout );
+  layout->addItem( mLayout );
   layout->addWidget( mButtonBox );
   setLayout( layout );
 }

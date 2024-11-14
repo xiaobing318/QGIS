@@ -44,13 +44,13 @@ class QgsRasterStackPositionAlgorithmBase : public QgsProcessingAlgorithm
 
   private:
     std::vector< QgsRasterAnalysisUtils::RasterLogicInput > mInputs;
-    bool mIgnoreNoData = false;
-    int mLayerWidth = 0;
-    int mLayerHeight = 0;
+    bool mIgnoreNoData;
+    int mLayerWidth;
+    int mLayerHeight;
     QgsRectangle mExtent;
     QgsCoordinateReferenceSystem mCrs;
-    double mRasterUnitsPerPixelX = 0;
-    double mRasterUnitsPerPixelY = 0;
+    double mRasterUnitsPerPixelX;
+    double mRasterUnitsPerPixelY;
 };
 
 class QgsRasterStackLowestPositionAlgorithm : public QgsRasterStackPositionAlgorithmBase

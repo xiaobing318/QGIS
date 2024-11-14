@@ -3,8 +3,9 @@
  *                                                                      *
  * src/core/annotations/qgsannotationlayer.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
+
 
 
 
@@ -103,7 +104,7 @@ This map contains references to items owned by the layer, and ownership of these
 with the layer.
 %End
 
-    QgsAnnotationItem *item( const QString &id ) const;
+    QgsAnnotationItem *item( const QString &id );
 %Docstring
 Returns the item with the specified ``id``, or ``None`` if no matching item was found.
 
@@ -120,24 +121,13 @@ The optional ``feedback`` argument can be used to cancel the search early.
 .. versionadded:: 3.22
 %End
 
- Qgis::AnnotationItemEditOperationResult applyEdit( QgsAbstractAnnotationItemEditOperation *operation ) /Deprecated/;
+    Qgis::AnnotationItemEditOperationResult applyEdit( QgsAbstractAnnotationItemEditOperation *operation );
 %Docstring
 Applies an edit ``operation`` to the layer.
 
 Returns ``True`` if the operation was successfully applied.
 
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsAnnotationLayer.applyEditV2` instead.
-%End
-
-    Qgis::AnnotationItemEditOperationResult applyEditV2( QgsAbstractAnnotationItemEditOperation *operation, const QgsAnnotationItemEditContext &context );
-%Docstring
-Applies an edit ``operation`` to the layer.
-
-Returns ``True`` if the operation was successfully applied.
-
-.. versionadded:: 3.40
+.. versionadded:: 3.22
 %End
 
     virtual Qgis::MapLayerProperties properties() const;
@@ -158,10 +148,6 @@ Returns ``True`` if the operation was successfully applied.
 
     virtual bool readSymbology( const QDomNode &node, QString &errorMessage, QgsReadWriteContext &context, StyleCategories categories = AllStyleCategories );
 
-    virtual bool writeStyle( QDomNode &node, QDomDocument &doc, QString &errorMessage, const QgsReadWriteContext &context, StyleCategories categories ) const;
-
-    virtual bool readStyle( const QDomNode &node, QString &errorMessage, QgsReadWriteContext &context, StyleCategories categories );
-
     virtual bool isEditable() const;
 
     virtual bool supportsEditing() const;
@@ -169,8 +155,6 @@ Returns ``True`` if the operation was successfully applied.
     virtual QgsDataProvider *dataProvider();
 
     virtual QString htmlMetadata() const;
-
-    virtual void resolveReferences( QgsProject *project );
 
 
     QgsPaintEffect *paintEffect() const;
@@ -193,26 +177,6 @@ Ownership is transferred to the renderer.
 .. versionadded:: 3.22
 %End
 
-    QgsMapLayer *linkedVisibilityLayer();
-%Docstring
-Returns a linked layer, where the items in this annotation layer
-will only be visible when the linked layer is also visible.
-
-.. seealso:: :py:func:`setLinkedVisibilityLayer`
-
-.. versionadded:: 3.40
-%End
-
-    void setLinkedVisibilityLayer( QgsMapLayer *layer );
-%Docstring
-Sets a linked ``layer``, where the items in this annotation layer
-will only be visible when the linked layer is also visible.
-
-.. seealso:: :py:func:`linkedVisibilityLayer`
-
-.. versionadded:: 3.40
-%End
-
 };
 
 
@@ -221,5 +185,5 @@ will only be visible when the linked layer is also visible.
  *                                                                      *
  * src/core/annotations/qgsannotationlayer.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/layout/qgspagesizeregistry.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -13,6 +13,8 @@ class QgsPageSize
 {
 %Docstring(signature="appended")
 A named page size for layouts.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -24,8 +26,8 @@ A named page size for layouts.
 
     QgsPageSize( const QString &name, const QgsLayoutSize &size, const QString &displayName = QString() );
 %Docstring
-Constructor for QgsPageSize, accepting the ``name`` of the page size, the
-page ``size`` and the ``displayName``.
+Constructor for QgsPageSize, accepting the ``name`` of the page size and
+page ``size``.
 %End
 
     QgsPageSize( const QgsLayoutSize &size );
@@ -50,6 +52,8 @@ A registry for known page sizes.
 
 :py:class:`QgsPageSizeRegistry` is not usually directly created, but rather accessed through
 :py:func:`QgsApplication.pageSizeRegistry()`.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -102,5 +106,5 @@ The decoded page size will be stored in the ``size`` argument.
  *                                                                      *
  * src/core/layout/qgspagesizeregistry.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

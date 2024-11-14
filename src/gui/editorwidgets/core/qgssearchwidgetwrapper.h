@@ -89,8 +89,9 @@ class GUI_EXPORT QgsSearchWidgetWrapper : public QgsWidgetWrapper
 
     /**
      * Flags which indicate what types of filtering and searching is possible using the widget
+     * \since QGIS 2.16
      */
-    enum FilterFlag SIP_ENUM_BASETYPE( IntFlag )
+    enum FilterFlag
     {
       EqualTo = 1 << 1, //!< Supports equal to
       NotEqualTo = 1 << 2, //!< Supports not equal to
@@ -113,18 +114,21 @@ class GUI_EXPORT QgsSearchWidgetWrapper : public QgsWidgetWrapper
     /**
      * Returns a list of exclusive filter flags, which cannot be combined with other flags (e.g., EqualTo/NotEqualTo)
      * \see nonExclusiveFilterFlags()
+     * \since QGIS 2.16
      */
     static QList< QgsSearchWidgetWrapper::FilterFlag > exclusiveFilterFlags();
 
     /**
      * Returns a list of non-exclusive filter flags, which can be combined with other flags (e.g., CaseInsensitive)
      * \see exclusiveFilterFlags()
+     * \since QGIS 2.16
      */
     static QList< QgsSearchWidgetWrapper::FilterFlag > nonExclusiveFilterFlags();
 
     /**
      * Returns a translated string representing a filter flag.
      * \param flag flag to convert to string
+     * \since QGIS 2.16
      */
     static QString toString( QgsSearchWidgetWrapper::FilterFlag flag );
 
@@ -140,12 +144,14 @@ class GUI_EXPORT QgsSearchWidgetWrapper : public QgsWidgetWrapper
     /**
      * Returns filter flags supported by the search widget.
      * \see defaultFlags()
+     * \since QGIS 2.16
      */
     virtual FilterFlags supportedFlags() const;
 
     /**
      * Returns the filter flags which should be set by default for the search widget.
      * \see supportedFlags()
+     * \since QGIS 2.16
      */
     virtual FilterFlags defaultFlags() const;
 
@@ -173,6 +179,7 @@ class GUI_EXPORT QgsSearchWidgetWrapper : public QgsWidgetWrapper
      * and the specified filter flags.
      * \param flags filter flags
      * \returns filter expression
+     * \since QGIS 2.16
      */
     virtual QString createExpression( FilterFlags flags ) const { Q_UNUSED( flags ) return QStringLiteral( "TRUE" ); }
 
@@ -181,6 +188,7 @@ class GUI_EXPORT QgsSearchWidgetWrapper : public QgsWidgetWrapper
      * If in SearchMode returns a quoted field identifier.
      * If in AggregateSearchMode returns an appropriate aggregate expression.
      *
+     * \since QGIS 3.0
      */
     QString createFieldIdentifier() const;
 
@@ -188,6 +196,7 @@ class GUI_EXPORT QgsSearchWidgetWrapper : public QgsWidgetWrapper
      * If in AggregateSearch mode, which aggregate should be used to construct
      * the filter expression. Is a Null String if none.
      *
+     * \since QGIS 3.0
      */
     QString aggregate() const;
 
@@ -195,6 +204,7 @@ class GUI_EXPORT QgsSearchWidgetWrapper : public QgsWidgetWrapper
      * If in AggregateSearch mode, which aggregate should be used to construct
      * the filter expression. Is a Null String if none.
      *
+     * \since QGIS 3.0
      */
     void setAggregate( const QString &aggregate );
 
@@ -208,6 +218,7 @@ class GUI_EXPORT QgsSearchWidgetWrapper : public QgsWidgetWrapper
 
     /**
      * Clears the widget's current value and resets it back to the default state
+     * \since QGIS 2.16
      */
     virtual void clearWidget() {}
 
@@ -227,12 +238,14 @@ class GUI_EXPORT QgsSearchWidgetWrapper : public QgsWidgetWrapper
 
     /**
      * Emitted when a user changes the value of the search widget.
+     * \since QGIS 2.16
      */
     void valueChanged();
 
     /**
      * Emitted when a user changes the value of the search widget back
      * to an empty, default state.
+     * \since QGIS 2.16
      */
     void valueCleared();
 

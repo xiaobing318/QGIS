@@ -34,7 +34,7 @@ class QgsCollectorAlgorithm : public QgsProcessingAlgorithm
   protected:
 
     QVariantMap processCollection( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback,
-                                   const std::function<QgsGeometry( const QVector<QgsGeometry>& )> &collector, int maxQueueLength = 0, Qgis::ProcessingFeatureSourceFlags sourceFlags = Qgis::ProcessingFeatureSourceFlags(),
+                                   const std::function<QgsGeometry( const QVector<QgsGeometry>& )> &collector, int maxQueueLength = 0, QgsProcessingFeatureSource::Flags sourceFlags = QgsProcessingFeatureSource::Flags(),
                                    bool separateDisjoint = false );
 };
 
@@ -56,7 +56,6 @@ class QgsDissolveAlgorithm : public QgsCollectorAlgorithm
     QString group() const override;
     QString groupId() const override;
     QString shortHelpString() const override;
-    Qgis::ProcessingAlgorithmDocumentationFlags documentationFlags() const override;
     QgsDissolveAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
@@ -84,7 +83,6 @@ class QgsCollectAlgorithm : public QgsCollectorAlgorithm
     QString group() const override;
     QString groupId() const override;
     QString shortHelpString() const override;
-    Qgis::ProcessingAlgorithmDocumentationFlags documentationFlags() const override;
     QgsCollectAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:

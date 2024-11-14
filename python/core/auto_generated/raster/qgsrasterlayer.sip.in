@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/raster/qgsrasterlayer.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -35,7 +35,6 @@ Sample usage of the :py:class:`QgsRasterLayer` class:
 #include "qgsrasterlayer.h"
 %End
   public:
-
 
     static const double SAMPLE_SIZE;
 
@@ -104,10 +103,29 @@ Returns a new instance equivalent to this one. A new provider is
 created for the same data source and renderer is cloned too.
 
 :return: a new layer instance
+
+.. versionadded:: 3.0
 %End
 
     virtual QgsAbstractProfileGenerator *createProfileGenerator( const QgsProfileRequest &request ) /Factory/;
 
+
+    enum ColorShadingAlgorithm
+    {
+      UndefinedShader,
+      PseudoColorShader,
+      FreakOutShader,
+      ColorRampShader,
+      UserDefinedShader
+    };
+
+    enum LayerType
+    {
+      GrayOrUndefined,
+      Palette,
+      Multiband,
+      ColorLayer
+    };
 
     static bool isValidRasterFileName( const QString &fileNameQString, QString &retError );
 %Docstring
@@ -128,12 +146,11 @@ Returns time stamp for given file name
 %Docstring
 Set the data provider.
 
-.. deprecated:: 3.40
-
+.. deprecated::
    Use the version with ProviderOptions instead.
 %End
 
-    void setDataProvider( const QString &provider, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() );
+    void setDataProvider( const QString &provider, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() );
 %Docstring
 Set the data provider.
 
@@ -144,7 +161,7 @@ Set the data provider.
 .. versionadded:: 3.2
 %End
 
-    Qgis::RasterLayerType rasterType() const;
+    LayerType rasterType();
 %Docstring
 Returns the raster layer type (which is a read only property).
 %End
@@ -237,27 +254,6 @@ Returns the number of bands in this layer.
 Returns the name of a band given its number.
 %End
 
-    QgsRasterAttributeTable *attributeTable( int bandNumber ) const;
-%Docstring
-Returns the (possibly NULL) raster attribute table for the given band ``bandNumber``.
-
-.. versionadded:: 3.30
-%End
-
-    int attributeTableCount( ) const;
-%Docstring
-Returns the number of attribute tables for the raster by counting the number of bands that have an associated attribute table.
-
-.. versionadded:: 3.30
-%End
-
-    bool canCreateRasterAttributeTable( );
-%Docstring
-Returns ``True`` if the raster renderer is suitable for creation of a raster attribute table. The supported renderers are :py:class:`QgsPalettedRasterRenderer` and :py:class:`QgsSingleBandPseudoColorRenderer`.
-
-.. versionadded:: 3.30
-%End
-
     virtual QgsRasterDataProvider *dataProvider();
 
 %Docstring
@@ -290,9 +286,8 @@ This is an overloaded version of the :py:func:`~QgsRasterLayer.draw` function th
 %Docstring
 Returns a list with classification items (Text and color).
 
-.. deprecated:: 3.40
-
-   Use :py:func:`QgsRasterRenderer.createLegendNodes()` instead.
+.. deprecated::
+   use :py:func:`QgsRasterRenderer.createLegendNodes()` instead.
 %End
 
     virtual bool isSpatial() const;
@@ -390,6 +385,8 @@ Sets the default contrast enhancement
                            QImage::Format format = QImage::Format_ARGB32_Premultiplied );
 %Docstring
 Draws a preview of the rasterlayer into a QImage
+
+.. versionadded:: 2.4
 %End
 
     virtual void setLayerOrder( const QStringList &layers );
@@ -449,6 +446,7 @@ Emitted when the layer's subset string has changed.
 .. versionadded:: 3.12
 %End
 
+
   protected:
     virtual bool readSymbology( const QDomNode &node, QString &errorMessage, QgsReadWriteContext &context, QgsMapLayer::StyleCategories categories = QgsMapLayer::AllStyleCategories );
 
@@ -475,5 +473,5 @@ Emitted when the layer's subset string has changed.
  *                                                                      *
  * src/core/raster/qgsrasterlayer.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

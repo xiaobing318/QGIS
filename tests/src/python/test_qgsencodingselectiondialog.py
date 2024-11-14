@@ -9,20 +9,18 @@ __author__ = 'Nyall Dawson'
 __date__ = '21/11/2017'
 __copyright__ = 'Copyright 2017, The QGIS Project'
 
+import qgis  # NOQA
 
-import unittest
-
-from qgis.gui import QgsEncodingSelectionDialog
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsEncodingSelectionDialog(QgisTestCase):
+class TestQgsEncodingSelectionDialog(unittest.TestCase):
 
     def testGettersSetters(self):
         """ test dialog getters/setters """
-        dlg = QgsEncodingSelectionDialog(encoding='UTF-16')
+        dlg = qgis.gui.QgsEncodingSelectionDialog(encoding='UTF-16')
         self.assertEqual(dlg.encoding(), 'UTF-16')
         dlg.setEncoding('UTF-8')
         self.assertEqual(dlg.encoding(), 'UTF-8')

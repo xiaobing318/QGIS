@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 /***************************************************************************
 Name                 : DB Manager
@@ -17,15 +19,14 @@ email                : brush.tyler@gmail.com
  *                                                                         *
  ***************************************************************************/
 """
+from builtins import str
+from builtins import map
+from builtins import range
 
 # this will disable the dbplugin if the connector raise an ImportError
 from .connector import PostGisDBConnector
 
-from qgis.PyQt.QtCore import (
-    Qt,
-    QRegularExpression,
-    QCoreApplication
-)
+from qgis.PyQt.QtCore import Qt, QRegExp, QCoreApplication
 from qgis.PyQt.QtGui import QIcon
 from qgis.PyQt.QtWidgets import QAction, QApplication, QMessageBox
 from qgis.core import Qgis, QgsApplication, QgsSettings
@@ -69,7 +70,7 @@ class PostGisDBPlugin(DBPlugin):
     def connect(self, parent=None):
         conn_name = self.connectionName()
         settings = QgsSettings()
-        settings.beginGroup("/%s/%s" % (self.connectionSettingsKey(), conn_name))
+        settings.beginGroup(u"/%s/%s" % (self.connectionSettingsKey(), conn_name))
 
         if not settings.contains("database"):  # non-existent entry?
             raise InvalidDataException(self.tr('There is no defined database connection "{0}".').format(conn_name))
@@ -79,13 +80,13 @@ class PostGisDBPlugin(DBPlugin):
         uri = QgsDataSourceUri()
 
         settingsList = ["service", "host", "port", "database", "username", "password", "authcfg"]
-        service, host, port, database, username, password, authcfg = (settings.value(x, "", type=str) for x in settingsList)
+        service, host, port, database, username, password, authcfg = [settings.value(x, "", type=str) for x in settingsList]
 
         useEstimatedMetadata = settings.value("estimatedMetadata", False, type=bool)
         try:
-            sslmode = settings.enumValue("sslmode", QgsDataSourceUri.SslMode.SslPrefer)
+            sslmode = settings.enumValue("sslmode", QgsDataSourceUri.SslPrefer)
         except TypeError:
-            sslmode = QgsDataSourceUri.SslMode.SslPrefer
+            sslmode = QgsDataSourceUri.SslPrefer
 
         settings.endGroup()
 
@@ -157,11 +158,11 @@ class PGDatabase(Database):
         QApplication.restoreOverrideCursor()
         try:
             if not isinstance(item, Table) or item.isView:
-                parent.infoBar.pushMessage(self.tr("Select a table for vacuum analyze."), Qgis.MessageLevel.Info,
+                parent.infoBar.pushMessage(self.tr("Select a table for vacuum analyze."), Qgis.Info,
                                            parent.iface.messageTimeout())
                 return
         finally:
-            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            QApplication.setOverrideCursor(Qt.WaitCursor)
 
         item.runVacuumAnalyze()
 
@@ -169,11 +170,11 @@ class PGDatabase(Database):
         QApplication.restoreOverrideCursor()
         try:
             if not isinstance(item, PGTable) or item._relationType != 'm':
-                parent.infoBar.pushMessage(self.tr("Select a materialized view for refresh."), Qgis.MessageLevel.Info,
+                parent.infoBar.pushMessage(self.tr("Select a materialized view for refresh."), Qgis.Info,
                                            parent.iface.messageTimeout())
                 return
         finally:
-            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            QApplication.setOverrideCursor(Qt.WaitCursor)
 
         item.runRefreshMaterializedView()
 
@@ -199,7 +200,7 @@ class PGTable(Table):
     def __init__(self, row, db, schema=None):
         Table.__init__(self, db, schema)
         self.name, schema_name, self._relationType, self.owner, self.estimatedRowCount, self.pages, self.comment = row
-        self.isView = self._relationType in {'v', 'm'}
+        self.isView = self._relationType in set(['v', 'm'])
         self.estimatedRowCount = int(self.estimatedRowCount)
 
     def runVacuumAnalyze(self):
@@ -227,16 +228,16 @@ class PGTable(Table):
             rule_name = parts[1]
             rule_action = parts[2]
 
-            msg = self.tr("Do you want to {0} rule {1}?").format(rule_action, rule_name)
+            msg = self.tr(u"Do you want to {0} rule {1}?").format(rule_action, rule_name)
 
             QApplication.restoreOverrideCursor()
 
             try:
                 if QMessageBox.question(None, self.tr("Table rule"), msg,
-                                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No) == QMessageBox.StandardButton.No:
+                                        QMessageBox.Yes | QMessageBox.No) == QMessageBox.No:
                     return False
             finally:
-                QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+                QApplication.setOverrideCursor(Qt.WaitCursor)
 
             if rule_action == "delete":
                 self.aboutToChange.emit()
@@ -344,12 +345,12 @@ class PGRasterTable(PGTable, RasterTable):
 
         if not uri:
             uri = self.database().uri()
-        service = ('service=\'%s\'' % uri.service()) if uri.service() else ''
-        dbname = ('dbname=\'%s\'' % uri.database()) if uri.database() else ''
-        host = ('host=%s' % uri.host()) if uri.host() else ''
-        user = ('user=%s' % uri.username()) if uri.username() else ''
-        passw = ('password=%s' % uri.password()) if uri.password() else ''
-        port = ('port=%s' % uri.port()) if uri.port() else ''
+        service = (u'service=\'%s\'' % uri.service()) if uri.service() else ''
+        dbname = (u'dbname=\'%s\'' % uri.database()) if uri.database() else ''
+        host = (u'host=%s' % uri.host()) if uri.host() else ''
+        user = (u'user=%s' % uri.username()) if uri.username() else ''
+        passw = (u'password=%s' % uri.password()) if uri.password() else ''
+        port = (u'port=%s' % uri.port()) if uri.port() else ''
 
         schema = self.schemaName() if self.schemaName() else 'public'
         table = '"%s"."%s"' % (schema, self.name)
@@ -358,23 +359,23 @@ class PGRasterTable(PGTable, RasterTable):
             # postgresraster provider *requires* a dbname
             connector = self.database().connector
             r = connector._execute(None, "SELECT current_database()")
-            dbname = ('dbname=\'%s\'' % connector._fetchone(r)[0])
+            dbname = (u'dbname=\'%s\'' % connector._fetchone(r)[0])
             connector._close_cursor(r)
 
         # Find first raster field
         col = ''
         for fld in self.fields():
             if fld.dataType == "raster":
-                col = 'column=\'%s\'' % fld.name
+                col = u'column=\'%s\'' % fld.name
                 break
 
-        uri = '%s %s %s %s %s %s %s table=%s' % \
+        uri = u'%s %s %s %s %s %s %s table=%s' % \
             (service, dbname, host, user, passw, port, col, table)
 
         return uri
 
     def mimeUri(self):
-        uri = "raster:postgresraster:{}:{}".format(self.name, re.sub(":", r"\:", self.uri()))
+        uri = u"raster:postgresraster:{}:{}".format(self.name, re.sub(":", r"\:", self.uri()))
         return uri
 
     def toMapLayer(self, geometryType=None, crs=None):
@@ -398,7 +399,7 @@ class PGRasterTable(PGTable, RasterTable):
                         break
 
         if rl.isValid():
-            rl.setContrastEnhancement(QgsContrastEnhancement.ContrastEnhancementAlgorithm.StretchToMinimumMaximum)
+            rl.setContrastEnhancement(QgsContrastEnhancement.StretchToMinimumMaximum)
         return rl
 
 
@@ -411,10 +412,10 @@ class PGTableField(TableField):
 
         # get modifier (e.g. "precision,scale") from formatted type string
         trimmedTypeStr = typeStr.strip()
-        regex = QRegularExpression(r"\((.+)\)$")
-        match = regex.match(trimmedTypeStr)
-        if match.hasMatch():
-            self.modifier = match.captured(1).strip()
+        regex = QRegExp("\\((.+)\\)$")
+        startpos = regex.indexIn(trimmedTypeStr)
+        if startpos >= 0:
+            self.modifier = regex.cap(1).strip()
         else:
             self.modifier = None
 

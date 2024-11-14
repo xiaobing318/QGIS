@@ -9,19 +9,9 @@ __author__ = 'Nathan Woodrow'
 __date__ = '4/11/2012'
 __copyright__ = 'Copyright 2012, The QGIS Project'
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import QVariant
-from qgis.core import (
-    NULL,
-    QgsCoordinateReferenceSystem,
-    QgsExpression,
-    QgsExpressionContext,
-    QgsExpressionContextUtils,
-    QgsFeatureRequest,
-    QgsFields,
-    QgsFeature,
-    QgsField,
-    QgsVectorLayer,
-)
+from qgis.core import QgsExpression, QgsFeatureRequest, QgsFields, QgsExpressionContext, NULL
 from qgis.testing import unittest
 from qgis.utils import qgsfunction
 
@@ -31,7 +21,11 @@ class TestQgsExpressionCustomFunctions(unittest.TestCase):
     @qgsfunction(1, 'testing', register=False)
     def testfun(values, feature, parent):
         """ Function help """
-        return f"Testing_{values[0]}"
+        return "Testing_%s" % values[0]
+
+    @qgsfunction(args="auto", group='testing', register=False)
+    def autocount(value1, value2, value3, feature, parent):
+        pass
 
     @qgsfunction(args="auto", group='testing', register=False)
     def expandargs(value1, value2, value3, feature, parent):
@@ -79,34 +73,6 @@ class TestQgsExpressionCustomFunctions(unittest.TestCase):
         # an undefined variable
         foo  # noqa: F821
 
-    @qgsfunction(group='testing', register=False)
-    def simple_sum(val1, val2):
-        return val1 + val2
-
-    @qgsfunction(group='testing', register=False)
-    def sum_vargs(val1, *args):
-        return val1 + sum(args)
-
-    @qgsfunction(group='testing', args=-1, register=False)
-    def func_params_as_list_legacy(values, feature, parent):
-        return values
-
-    @qgsfunction(group='testing', params_as_list=True, register=False)
-    def func_params_as_list(values):
-        return values
-
-    @qgsfunction(group='testing', register=False)
-    def func_params_no_list(values):
-        return values
-
-    @qgsfunction(group='testing', register=False)
-    def func_feature(*args, feature):
-        return (feature["a"] + sum(args)) * feature["b"]
-
-    @qgsfunction(group='testing', register=False)
-    def func_layer_name_operation(operation="upper", context=None):
-        return getattr(context.variable("layer_name"), operation)()
-
     def tearDown(self):
         QgsExpression.unregisterFunction('testfun')
 
@@ -114,6 +80,11 @@ class TestQgsExpressionCustomFunctions(unittest.TestCase):
         QgsExpression.registerFunction(self.testfun)
         index = QgsExpression.functionIndex('testfun')
         self.assertNotEqual(index, -1)
+
+    def testAutoCountsCorrectArgs(self):
+        function = self.autocount
+        args = function.params()
+        self.assertEqual(args, 3)
 
     def testHelpPythonFunction(self):
         """Test help about python function."""
@@ -135,6 +106,8 @@ class TestQgsExpressionCustomFunctions(unittest.TestCase):
 
     def testAutoArgsAreExpanded(self):
         function = self.expandargs
+        args = function.params()
+        self.assertEqual(args, 3)
         values = [1, 2, 3]
         exp = QgsExpression("")
         result = function.func(values, None, exp, None)
@@ -169,6 +142,7 @@ class TestQgsExpressionCustomFunctions(unittest.TestCase):
         func = self.testfun
         self.assertEqual(func.name(), 'testfun')
         self.assertEqual(func.group(), 'testing')
+        self.assertEqual(func.params(), 1)
 
     def testCantReregister(self):
         QgsExpression.registerFunction(self.testfun)
@@ -272,13 +246,13 @@ class TestQgsExpressionCustomFunctions(unittest.TestCase):
 
         # test when value is null
         field = "myfield"
-        value = NULL
+        value = QVariant()
         res = '"myfield" IS NULL'
         self.assertEqual(e.createFieldEqualityExpression(field, value), res)
 
         # test when value is null and field name has a quote
         field = "my'field"
-        value = NULL
+        value = QVariant()
         res = '"my\'field" IS NULL'
         self.assertEqual(e.createFieldEqualityExpression(field, value), res)
 
@@ -324,23 +298,6 @@ class TestQgsExpressionCustomFunctions(unittest.TestCase):
         exp = QgsExpression("True is False")  # the result does not matter
         self.assertEqual(exp.evalErrorString(), "")
 
-    def testEvalTemplate(self):
-        layer = QgsVectorLayer("Point?field=a:int&field=b:string", "test eval-template", "memory")
-        context = layer.createExpressionContext()
-
-        expression = QgsExpression("eval_template('123 [% \"b\" %] 789')")
-        expression.prepare(context)
-        columns = expression.referencedColumns()
-
-        # Insure prepare has returned all attributes as referenced columns with feature-less context
-        self.assertTrue(QgsFeatureRequest.ALL_ATTRIBUTES in columns)
-
-        feature = QgsFeature(layer.fields())
-        feature.setAttributes([1, '456'])
-        context.setFeature(feature)
-
-        self.assertEqual(expression.evaluate(context), '123 456 789')
-
     def testExceptionDuringEvalReturnsTraceback(self):
         QgsExpression.registerFunction(self.raise_exception)
         exp = QgsExpression('raise_exception()')
@@ -349,11 +306,9 @@ class TestQgsExpressionCustomFunctions(unittest.TestCase):
         regex = (
             "name 'foo' is not defined:<pre>Traceback \\(most recent call last\\):\n"
             "  File \".*qgsfunction.py\", line [0-9]+, in func\n"
-            "    return self.function\\(\\*values, \\*\\*kwvalues\\)\n"
-            "(.*?\n)?"
+            "    return self.function\\(\\*values\\)\n"
             "  File \".*test_qgsexpression.py\", line [0-9]+, in raise_exception\n"
             "    foo  # noqa: F821\n"
-            "(.*?\n)?"
             "NameError: name \'foo\' is not defined"
             "\n</pre>"
         )
@@ -366,124 +321,6 @@ class TestQgsExpressionCustomFunctions(unittest.TestCase):
         self.assertTrue(e.isValid(), e.parserErrorString())
         e.setExpression("'b' between 'a' AND 'c'")
         self.assertTrue(e.isValid(), e.parserErrorString())
-
-    def testSimpleSum(self):
-
-        QgsExpression.registerFunction(self.simple_sum)
-
-        e = QgsExpression()
-        e.setExpression("simple_sum(4, 5)")
-        self.assertEqual(e.evaluate(), 9)
-
-        # Not enough parameters
-        e.setExpression("simple_sum(4)")
-        self.assertEqual(e.evaluate(), None)
-
-        # Too many parameters
-        e.setExpression("simple_sum(4, 7, 8)")
-        self.assertEqual(e.evaluate(), None)
-
-    def testSumVargs(self):
-
-        QgsExpression.registerFunction(self.sum_vargs)
-
-        e = QgsExpression()
-
-        # Not enough parameters
-        e.setExpression("sum_vargs()")
-        self.assertEqual(e.evaluate(), None)
-
-        e.setExpression("sum_vargs(4)")
-        self.assertEqual(e.evaluate(), 4)
-
-        e.setExpression("sum_vargs(4, 5)")
-        self.assertEqual(e.evaluate(), 9)
-
-        e.setExpression("sum_vargs(4, 5, 6, 7)")
-        self.assertEqual(e.evaluate(), 22)
-
-    def testListNoList(self):
-        QgsExpression.registerFunction(self.func_params_as_list_legacy)
-        QgsExpression.registerFunction(self.func_params_as_list)
-        QgsExpression.registerFunction(self.func_params_no_list)
-
-        e = QgsExpression()
-        e.setExpression("func_params_as_list_legacy('a', 'b', 'c')")
-        self.assertEqual(e.evaluate(), ["a", "b", "c"])
-
-        e.setExpression("func_params_as_list('a', 'b', 'c')")
-        self.assertEqual(e.evaluate(), ["a", "b", "c"])
-
-        e.setExpression("func_params_as_list('a')")
-        self.assertEqual(e.evaluate(), ["a"])
-
-        e.setExpression("func_params_no_list('a')")
-        self.assertEqual(e.evaluate(), "a")
-
-    def testFeature(self):
-        QgsExpression.registerFunction(self.func_feature)
-        context = QgsExpressionContext()
-        feature = QgsFeature(id=10)
-        fields = QgsFields()
-        fields.append(QgsField("a", QVariant.Int))
-        fields.append(QgsField("b", QVariant.String))
-
-        feature.setFields(fields)
-        feature["a"] = 4
-        feature["b"] = "world"
-
-        context.setFeature(feature)
-
-        e = QgsExpression()
-        e.setExpression("func_feature()")
-        self.assertEqual(e.evaluate(context), "worldworldworldworld")
-        e.setExpression("func_feature(-1, -1)")
-        self.assertEqual(e.evaluate(context), "worldworld")
-
-        feature["a"] = 2
-        feature["b"] = "_"
-
-        context.setFeature(feature)
-        e.setExpression("func_feature()")
-        self.assertEqual(e.evaluate(context), "__")
-        e.setExpression("func_feature(3)")
-        self.assertEqual(e.evaluate(context), "_____")
-
-    def testContext(self):
-        QgsExpression.registerFunction(self.func_layer_name_operation)
-        context = QgsExpressionContext()
-
-        layer = QgsVectorLayer("Point?field=a:int&field=b:string", "test context", "memory")
-        context.appendScope(QgsExpressionContextUtils.layerScope(layer))
-
-        e = QgsExpression()
-        e.setExpression("func_layer_name_operation()")
-        self.assertEqual(e.evaluate(context), "TEST CONTEXT")
-        e.setExpression("func_layer_name_operation('title')")
-        self.assertEqual(e.evaluate(context), "Test Context")
-        e.setExpression("func_layer_name_operation('split')")
-        self.assertEqual(e.evaluate(context), ["test", "context"])
-
-    def testLayerScopeVerticalCrs(self):
-        layer = QgsVectorLayer("Point?field=fldtxt:string", "layer", "memory")
-
-        # vertical crs info should be present in layer expression context scope
-        layer.setVerticalCrs(QgsCoordinateReferenceSystem('EPSG:5703'))
-        scope = QgsExpressionContextUtils.layerScope(layer)
-        self.assertEqual(scope.variable('layer_vertical_crs'), 'EPSG:5703')
-        self.assertEqual(scope.variable('layer_vertical_crs_definition'),
-                         '+vunits=m +no_defs')
-        self.assertEqual(scope.variable('layer_vertical_crs_description'),
-                         'NAVD88 height')
-        self.assertEqual(scope.variable('layer_vertical_crs_wkt')[:7],
-                         'VERTCRS')
-
-        layer.setVerticalCrs(QgsCoordinateReferenceSystem())
-        scope = QgsExpressionContextUtils.layerScope(layer)
-        self.assertFalse(scope.variable('layer_vertical_crs'))
-        self.assertFalse(scope.variable('layer_vertical_crs_definition'))
-        self.assertFalse(scope.variable('layer_vertical_crs_description'))
-        self.assertFalse(scope.variable('layer_vertical_crs_wkt'))
 
 
 if __name__ == "__main__":

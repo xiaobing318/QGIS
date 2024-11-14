@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsreadwritecontext.h                                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -14,6 +14,8 @@ class QgsReadWriteContext
 {
 %Docstring(signature="appended")
 The class is used as a container of context for various read/write operations on other objects.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -172,5 +174,5 @@ Creates a popper
  *                                                                      *
  * src/core/qgsreadwritecontext.h                                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

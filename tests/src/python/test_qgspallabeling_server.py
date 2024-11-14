@@ -14,23 +14,21 @@ __author__ = 'Larry Shaffer'
 __date__ = '07/12/2013'
 __copyright__ = 'Copyright 2013, The QGIS Project'
 
+import glob
+import os
+import shutil
 import sys
 
-from qgis.PyQt.QtGui import QImage
-from qgis.core import (
-    QgsProject,
-    QgsVectorLayerSimpleLabeling
-)
+import qgis  # NOQA
+from qgis.PyQt.QtCore import qDebug
+from qgis.core import QgsProject, QgsApplication, QgsSettings
 
-from qgis.server import (
-    QgsBufferServerRequest,
-    QgsBufferServerResponse,
-    QgsServer,
-    QgsServerRequest,
-)
-
+from qgis_local_server import getLocalServer
 from test_qgspallabeling_base import TestQgsPalLabeling, runSuite
-from test_qgspallabeling_tests import TestLineBase, TestPointBase, suiteTests
+from test_qgspallabeling_tests import TestPointBase, TestLineBase, suiteTests
+from utilities import mapSettingsString
+
+MAPSERV = getLocalServer()
 
 
 class TestServerBase(TestQgsPalLabeling):
@@ -46,38 +44,76 @@ class TestServerBase(TestQgsPalLabeling):
     def setUpClass(cls):
         if not cls._BaseSetup:
             TestQgsPalLabeling.setUpClass()
-
-        cls.server = QgsServer()
+        MAPSERV.startup()
+        MAPSERV.web_dir_install(glob.glob(cls._PalDataDir + os.sep + '*.qml'))
+        MAPSERV.web_dir_install(glob.glob(cls._PalDataDir + os.sep + '*.qgs'))
 
         # noinspection PyArgumentList
-        cls._TestProj = QgsProject()
+        cls._TestProj = QgsProject.instance()
+        cls._TestProjName = 'test-labeling.qgs'
+        cls._TestProj.setFileName(
+            os.path.join(MAPSERV.web_dir(), cls._TestProjName))
 
         # the blue background (set via layer style) to match renderchecker's
-        background_layer = TestQgsPalLabeling.loadFeatureLayer('background', True)
-        if background_layer:
-            cls._TestProj.addMapLayer(background_layer)
+        TestQgsPalLabeling.loadFeatureLayer('background', True)
+
+        settings = QgsSettings()
+        # noinspection PyArgumentList
+        cls._CacheDir = settings.value(
+            "cache/directory",
+            os.path.join(str(QgsApplication.qgisSettingsDirPath()),
+                         "cache"),
+            type=str)
+
+    @classmethod
+    def tearDownClass(cls):
+        """Run after all tests"""
+        TestQgsPalLabeling.tearDownClass()
+        cls.removeMapLayer(cls.layer)
+        cls.layer = None
+        # layers removed, save empty project file
+        cls._TestProj.write()
+        if "PAL_SERVER_TEMP" in os.environ:
+            MAPSERV.stop_processes()
+            MAPSERV.open_temp_dir()
+        else:
+            MAPSERV.shutdown()
 
     def setUp(self):
         """Run before each test."""
         # web server stays up across all tests
+        # MAPSERV.fcgi_server_process().stop()
+        # self.deleteCache()
         super().setUp()
+        self._TestImage = ''
         # ensure per test map settings stay encapsulated
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
+        self._Mismatch = 0
+        self._ColorTol = 0
+        self._Mismatches.clear()
+        self._ColorTols.clear()
 
     # noinspection PyPep8Naming
-    def get_request_params(self) -> str:
+    def delete_cache(self):
+        for item in os.listdir(self._CacheDir):
+            shutil.rmtree(os.path.join(self._CacheDir, item),
+                          ignore_errors=True)
+
+    # noinspection PyPep8Naming
+    def get_request_params(self):
         # TODO: support other types of servers, besides WMS
         ms = self._TestMapSettings
         osize = ms.outputSize()
         dpi = str(int(ms.outputDpi()))
         lyrs = [str(layer.name()) for layer in ms.layers()]
         lyrs.reverse()
-        return "?" + "&".join(["%s=%s" % i for i in list({
+        params = {
             'SERVICE': 'WMS',
             'VERSION': '1.3.0',
             'REQUEST': 'GetMap',
+            'MAP': self._TestProjName,
             # layer stacking order for rendering: bottom,to,top
-            'LAYERS': ','.join(lyrs),  # or 'name,name'
+            'LAYERS': lyrs,  # or 'name,name'
             'STYLES': ',',
             # authid str or QgsCoordinateReferenceSystem obj
             'CRS': str(ms.destinationCrs().authid()),
@@ -91,49 +127,49 @@ class TestServerBase(TestQgsPalLabeling):
             'FORMAT_OPTIONS': f'dpi:{dpi}',
             'TRANSPARENT': 'FALSE',
             'IgnoreGetMapUrl': '1'
-        }.items())])
-
-    def _result(self, data):
-        headers = {}
-        for line in data[0].decode('UTF-8').split("\n"):
-            if line != "":
-                header = line.split(":")
-                self.assertEqual(len(header), 2, line)
-                headers[str(header[0])] = str(header[1]).strip()
-
-        return data[1], headers
-
-    def _execute_request_project(self, qs: str, project: QgsProject, requestMethod=QgsServerRequest.GetMethod, data=None):
-        request = QgsBufferServerRequest(qs, requestMethod, {}, data)
-        response = QgsBufferServerResponse()
-        self.server.handleRequest(request, response, project)
-        headers = []
-        rh = response.headers()
-        rk = sorted(rh.keys())
-        for k in rk:
-            headers.append((f"{k}: {rh[k]}").encode())
-        return b"\n".join(headers) + b"\n\n", bytes(response.body())
+        }
+        # print params
+        return params
 
     def checkTest(self, **kwargs):
-        self.layer.setLabeling(QgsVectorLayerSimpleLabeling(self.lyr))
+        self.lyr.writeToLayer(self.layer)
+        # save project file
+        self._TestProj.write()
+        # always restart FCGI before tests, so settings can be applied
+        # MAPSERV.fcgi_server_process().start()
+        # get server results
+        # print self.params.__repr__()
 
-        headers, response = self._execute_request_project(
-            self.get_request_params(), self._TestProj
-        )
-        rendered_image = QImage.fromData(response)
-        self.assertFalse(rendered_image.isNull())
+        ms = self._MapSettings  # class settings
+        settings_type = 'Class'
+        if self._TestMapSettings is not None:
+            ms = self._TestMapSettings  # per test settings
+            settings_type = 'Test'
+        if 'PAL_VERBOSE' in os.environ:
+            qDebug(f'MapSettings type: {settings_type}')
+            qDebug(mapSettingsString(ms))
 
-        self.assertTrue(
-            self.image_check(
-                self._Test,
-                self._Test,
-                rendered_image,
-                self._Test,
-                color_tolerance=0,
-                allowed_mismatch=0,
-                control_path_prefix='expected_' + self._TestGroupPrefix
-            )
-        )
+        res_m, self._TestImage, url = MAPSERV.get_map(self.get_request_params(), False)
+        # print self._TestImage.__repr__()
+        if 'PAL_VERBOSE' in os.environ:
+            qDebug(f'GetMap request:\n  {url}\n')
+        self.saveControlImage(self._TestImage)
+        self.assertTrue(res_m, 'Failed to retrieve/save image from test server')
+        mismatch = 0
+        if 'PAL_NO_MISMATCH' not in os.environ:
+            # some mismatch expected
+            mismatch = self._Mismatch if self._Mismatch else 20
+            if self._TestGroup in self._Mismatches:
+                mismatch = self._Mismatches[self._TestGroup]
+        colortol = 0
+        if 'PAL_NO_COLORTOL' not in os.environ:
+            # some mismatch expected
+            # colortol = self._ColorTol if self._ColorTol else 10
+            if self._TestGroup in self._ColorTols:
+                colortol = self._ColorTols[self._TestGroup]
+        self.assertTrue(*self.renderCheck(mismatch=mismatch,
+                                          colortol=colortol,
+                                          imgpath=self._TestImage))
 
 
 class TestServerBasePoint(TestServerBase):
@@ -142,7 +178,6 @@ class TestServerBasePoint(TestServerBase):
     def setUpClass(cls):
         TestServerBase.setUpClass()
         cls.layer = TestQgsPalLabeling.loadFeatureLayer('point')
-        cls._TestProj.addMapLayer(cls.layer)
 
 
 class TestServerPoint(TestServerBasePoint, TestPointBase):
@@ -151,20 +186,12 @@ class TestServerPoint(TestServerBasePoint, TestPointBase):
         super().setUp()
         self.configTest('pal_server', 'sp')
 
-    def test_partials_labels_disabled(self):
-        # these are ALWAYS enabled for server
-        pass
-
 
 class TestServerVsCanvasPoint(TestServerBasePoint, TestPointBase):
 
     def setUp(self):
         super().setUp()
         self.configTest('pal_canvas', 'sp')
-
-    def test_partials_labels_disabled(self):
-        # these are ALWAYS enabled for server
-        pass
 
 
 class TestServerBaseLine(TestServerBase):
@@ -173,7 +200,6 @@ class TestServerBaseLine(TestServerBase):
     def setUpClass(cls):
         TestServerBase.setUpClass()
         cls.layer = TestQgsPalLabeling.loadFeatureLayer('line')
-        cls._TestProj.addMapLayer(cls.layer)
 
 
 class TestServerLine(TestServerBaseLine, TestLineBase):

@@ -20,21 +20,23 @@
 #include <QToolButton>
 #include <QHBoxLayout>
 
+#include "qgssettings.h"
 #include "qgsactionmanager.h"
 #include "qgsattributetableview.h"
-#include "moc_qgsattributetableview.cpp"
 #include "qgsattributetablemodel.h"
 #include "qgsattributetabledelegate.h"
 #include "qgsattributetablefiltermodel.h"
 #include "qgsvectorlayer.h"
 #include "qgsvectorlayercache.h"
 #include "qgsvectorlayerselectionmanager.h"
+#include "qgsvectordataprovider.h"
+#include "qgslogger.h"
+#include "qgsmapcanvas.h"
 #include "qgsfeatureselectionmodel.h"
 #include "qgsmaplayeractionregistry.h"
 #include "qgsfeatureiterator.h"
 #include "qgsstringutils.h"
 #include "qgsgui.h"
-#include "qgsmaplayeraction.h"
 
 QgsAttributeTableView::QgsAttributeTableView( QWidget *parent )
   : QgsTableView( parent )
@@ -125,10 +127,6 @@ void QgsAttributeTableView::setAttributeTableConfig( const QgsAttributeTableConf
         horizontalHeader()->setSortIndicatorShown( true );
         horizontalHeader()->setSortIndicator( columns.value( refCols.constFirst() ), config.sortOrder() );
       }
-      else
-      {
-        horizontalHeader()->setSortIndicatorShown( false );
-      }
     }
   }
   mSortExpression = config.sortExpression();
@@ -151,7 +149,7 @@ QList<QgsFeatureId> QgsAttributeTableView::selectedFeaturesIds() const
   QList<QgsFeatureId> ids;
   for ( const QModelIndex &index : indexList )
   {
-    const QgsFeatureId id = mFilterModel->data( index, static_cast< int >( QgsAttributeTableModel::CustomRole::FeatureId ) ).toLongLong();
+    const QgsFeatureId id = mFilterModel->data( index, QgsAttributeTableModel::FeatureIdRole ).toLongLong();
     ids.append( id );
   }
   return ids;
@@ -253,8 +251,7 @@ QWidget *QgsAttributeTableView::createActionWidget( QgsFeatureId fid )
       defaultAction = act;
   }
 
-  QgsMapLayerActionContext context;
-  const QList< QgsMapLayerAction * > mapLayerActions = QgsGui::mapLayerActionRegistry()->mapLayerActions( mFilterModel->layer(), Qgis::MapLayerActionTarget::SingleFeature, context );
+  const auto mapLayerActions {QgsGui::mapLayerActionRegistry()->mapLayerActions( mFilterModel->layer(), QgsMapLayerAction::SingleFeature ) };
   // next add any registered actions for this layer
   for ( QgsMapLayerAction *mapLayerAction : mapLayerActions )
   {
@@ -331,7 +328,7 @@ void QgsAttributeTableView::mouseReleaseEvent( QMouseEvent *event )
   {
     const QModelIndex index = indexAt( event->pos() );
     const QVariant data = model()->data( index, Qt::DisplayRole );
-    if ( data.userType() == QMetaType::Type::QString )
+    if ( data.type() == QVariant::String )
     {
       const QString textVal = data.toString();
       if ( QgsStringUtils::isUrl( textVal ) )
@@ -500,11 +497,7 @@ void QgsAttributeTableView::actionTriggered()
     QgsMapLayerAction *layerAction = qobject_cast<QgsMapLayerAction *>( object );
     if ( layerAction )
     {
-      QgsMapLayerActionContext context;
-      Q_NOWARN_DEPRECATED_PUSH
       layerAction->triggerForFeature( mFilterModel->layer(), f );
-      Q_NOWARN_DEPRECATED_POP
-      layerAction->triggerForFeature( mFilterModel->layer(), f, context );
     }
   }
 }
@@ -519,7 +512,7 @@ void QgsAttributeTableView::onActionColumnItemPainted( const QModelIndex &index 
 {
   if ( !indexWidget( index ) )
   {
-    QWidget *widget = createActionWidget( mFilterModel->data( index, static_cast< int >( QgsAttributeTableModel::CustomRole::FeatureId ) ).toLongLong() );
+    QWidget *widget = createActionWidget( mFilterModel->data( index, QgsAttributeTableModel::FeatureIdRole ).toLongLong() );
     mActionWidgets.insert( index, widget );
     setIndexWidget( index, widget );
   }
@@ -553,11 +546,4 @@ void QgsAttributeTableView::scrollToFeature( const QgsFeatureId &fid, int col )
     return;
 
   selectionModel()->setCurrentIndex( index, QItemSelectionModel::SelectCurrent );
-}
-
-void QgsAttributeTableView::closeCurrentEditor()
-{
-  QWidget *editor = indexWidget( currentIndex() );
-  commitData( editor );
-  closeEditor( editor, QAbstractItemDelegate::NoHint );
 }

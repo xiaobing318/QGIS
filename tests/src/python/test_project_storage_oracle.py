@@ -13,14 +13,14 @@ __copyright__ = 'Copyright 2022, The QGIS Project'
 
 import os
 
-from qgis.PyQt.QtCore import QUrl, QUrlQuery
+import qgis  # NOQA
+from PyQt5.QtCore import QUrl, QUrlQuery
 from qgis.PyQt.QtSql import QSqlDatabase, QSqlQuery
 from qgis.core import (
     QgsDataSourceUri,
     QgsVectorLayer,
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 from test_project_storage_base import TestPyQgsProjectStorageBase
 from utilities import unitTestDataPath
@@ -29,12 +29,13 @@ QGISAPP = start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestPyQgsProjectStorageOracle(QgisTestCase, TestPyQgsProjectStorageBase):
+class TestPyQgsProjectStorageOracle(TestPyQgsProjectStorageBase, unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
-        super(TestPyQgsProjectStorageOracle, cls).setUpClass()
+
+        super().setUpClass()
 
         cls.dbconn = "host=localhost dbname=XEPDB1 port=1521 user='QGIS' password='qgis'"
         if 'QGIS_ORACLETEST_DB' in os.environ:
@@ -59,10 +60,14 @@ class TestPyQgsProjectStorageOracle(QgisTestCase, TestPyQgsProjectStorageBase):
 
         assert cls.con.open()
 
+    @classmethod
+    def tearDownClass(cls):
+        """Run after all tests"""
+
     def execSQLCommand(self, sql, ignore_errors=False):
         self.assertTrue(self.con)
         query = QSqlQuery(self.con)
-        res = query.exec(sql)
+        res = query.exec_(sql)
         if not ignore_errors:
             self.assertTrue(res, sql + ': ' + query.lastError().text())
         query.finish()
@@ -87,7 +92,7 @@ class TestPyQgsProjectStorageOracle(QgisTestCase, TestPyQgsProjectStorageBase):
             urlQuery.addQueryItem("service", ds_uri.service())
         if ds_uri.authConfigId() != '':
             urlQuery.addQueryItem("authcfg", ds_uri.authConfigId())
-        if ds_uri.sslMode() != QgsDataSourceUri.SslMode.SslPrefer:
+        if ds_uri.sslMode() != QgsDataSourceUri.SslPrefer:
             urlQuery.addQueryItem("sslmode", QgsDataSourceUri.encodeSslMode(ds_uri.sslMode()))
 
         urlQuery.addQueryItem("dbname", ds_uri.database())

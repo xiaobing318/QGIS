@@ -27,8 +27,9 @@
 // version without notice, or even be removed.
 //
 
-#include "qgschunkloader.h"
-#include "qgschunkedentity.h"
+#include "qgschunkloader_p.h"
+#include "qgsfeature3dhandler_p.h"
+#include "qgschunkedentity_p.h"
 #include "qgspointcloud3dsymbol.h"
 #include "qgspointcloud3dsymbol_p.h"
 #include "qgspointcloudlayer3drenderer.h"
@@ -43,6 +44,7 @@
 #include <Qt3DCore/QGeometry>
 #include <Qt3DCore/QBuffer>
 #endif
+#include <Qt3DRender/QMaterial>
 #include <QVector3D>
 
 #define SIP_NO_FILE
@@ -64,7 +66,7 @@ class QgsPointCloudLayerChunkLoaderFactory : public QgsChunkLoaderFactory
      * Constructs the factory
      * The factory takes ownership over the passed \a symbol
      */
-    QgsPointCloudLayerChunkLoaderFactory( const Qgs3DRenderContext &context, const QgsCoordinateTransform &coordinateTransform, QgsPointCloudIndex *pc, QgsPointCloud3DSymbol *symbol,
+    QgsPointCloudLayerChunkLoaderFactory( const Qgs3DMapSettings &map, const QgsCoordinateTransform &coordinateTransform, QgsPointCloudIndex *pc, QgsPointCloud3DSymbol *symbol,
                                           double zValueScale, double zValueOffset, int pointBudget );
 
     //! Creates loader for the given chunk node. Ownership of the returned is passed to the caller.
@@ -72,7 +74,7 @@ class QgsPointCloudLayerChunkLoaderFactory : public QgsChunkLoaderFactory
     virtual QgsChunkNode *createRootNode() const override;
     virtual QVector<QgsChunkNode *> createChildren( QgsChunkNode *node ) const override;
     virtual int primitivesCount( QgsChunkNode *node ) const override;
-    Qgs3DRenderContext mRenderContext;
+    const Qgs3DMapSettings &mMap;
     QgsCoordinateTransform mCoordinateTransform;
     QgsPointCloudIndex *mPointCloudIndex;
     std::unique_ptr< QgsPointCloud3DSymbol > mSymbol;
@@ -80,7 +82,6 @@ class QgsPointCloudLayerChunkLoaderFactory : public QgsChunkLoaderFactory
     double mZValueOffset = 0;
     int mPointBudget = 1000000;
     bool mTriangulate = false;
-    QgsRectangle mExtent; //!< This should hold the map's extent in layer's crs
 };
 
 
@@ -131,10 +132,8 @@ class QgsPointCloudLayerChunkedEntity : public QgsChunkedEntity
 {
     Q_OBJECT
   public:
-    explicit QgsPointCloudLayerChunkedEntity( Qgs3DMapSettings *map, QgsPointCloudIndex *pc, const QgsCoordinateTransform &coordinateTransform, QgsPointCloud3DSymbol *symbol, float maxScreenError, bool showBoundingBoxes,
+    explicit QgsPointCloudLayerChunkedEntity( QgsPointCloudIndex *pc, const Qgs3DMapSettings &map, const QgsCoordinateTransform &coordinateTransform, QgsPointCloud3DSymbol *symbol, float maxScreenError, bool showBoundingBoxes,
         double zValueScale, double zValueOffset, int pointBudget );
-
-    QVector<QgsRayCastingUtils::RayHit> rayIntersection( const QgsRayCastingUtils::Ray3D &ray, const QgsRayCastingUtils::RayCastContext &context ) const override;
 
     ~QgsPointCloudLayerChunkedEntity();
 };

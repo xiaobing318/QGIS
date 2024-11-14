@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsdatasourceselectdialog.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -33,7 +33,7 @@ will return a (possibly invalid) :py:class:`QgsMimeDataUtils`.Uri.
 
     QgsDataSourceSelectWidget( QgsBrowserGuiModel *browserModel = 0,
                                bool setFilterByLayerType = false,
-                               Qgis::LayerType layerType = Qgis::LayerType::Vector,
+                               QgsMapLayerType layerType = QgsMapLayerType::VectorLayer,
                                QWidget *parent = 0 );
 %Docstring
 Constructs a QgsDataSourceSelectWidget, optionally filtering by layer type
@@ -47,7 +47,7 @@ Constructs a QgsDataSourceSelectWidget, optionally filtering by layer type
 
     ~QgsDataSourceSelectWidget();
 
-    void setLayerTypeFilter( Qgis::LayerType layerType );
+    void setLayerTypeFilter( QgsMapLayerType layerType );
 %Docstring
 Sets layer type filter to ``layerType`` and activates the filtering
 %End
@@ -65,13 +65,11 @@ Sets a description label
 .. versionadded:: 3.8
 %End
 
-    void expandPath( const QString &path, bool selectPath = false );
+    void expandPath( const QString &path );
 %Docstring
 Expands out a file ``path`` in the view.
 
 The ``path`` must correspond to a valid directory existing on the file system.
-
-Since QGIS 3.38 the ``selectPath`` argument can be used to automatically select the path too.
 
 .. versionadded:: 3.28
 %End
@@ -102,11 +100,6 @@ Apply filter to the model
 %Docstring
 Scroll to last selected index and expand it's children
 %End
-
-    virtual void dragEnterEvent( QDragEnterEvent *event );
-
-    virtual void dropEvent( QDropEvent *event );
-
 
   signals:
 
@@ -141,7 +134,7 @@ type can be restricted by setting a layer type filter with
 setLayerTypeFilter(layerType) or by activating the filter
 directly from the constructor.
 
-To retrieve the selected data source, :py:func:`~uri` can be called and it
+To retrieve the selected data source, :py:func:`~QgsDataSourceSelectWidget.uri` can be called and it
 will return a (possibly invalid) :py:class:`QgsMimeDataUtils`.Uri.
 
 .. versionadded:: 3.6
@@ -154,7 +147,7 @@ will return a (possibly invalid) :py:class:`QgsMimeDataUtils`.Uri.
 
     QgsDataSourceSelectDialog( QgsBrowserGuiModel *browserModel = 0,
                                bool setFilterByLayerType = false,
-                               Qgis::LayerType layerType = Qgis::LayerType::Vector,
+                               QgsMapLayerType layerType = QgsMapLayerType::VectorLayer,
                                QWidget *parent = 0 );
 %Docstring
 Constructs a QgsDataSourceSelectDialog, optionally filtering by layer type
@@ -165,7 +158,7 @@ Constructs a QgsDataSourceSelectDialog, optionally filtering by layer type
 :param parent: the object
 %End
 
-    void setLayerTypeFilter( Qgis::LayerType layerType );
+    void setLayerTypeFilter( QgsMapLayerType layerType );
 %Docstring
 Sets layer type filter to ``layerType`` and activates the filtering
 %End
@@ -183,13 +176,11 @@ Sets a description label
 .. versionadded:: 3.8
 %End
 
-    void expandPath( const QString &path, bool selectPath = false );
+    void expandPath( const QString &path );
 %Docstring
 Expands out a file ``path`` in the view.
 
 The ``path`` must correspond to a valid directory existing on the file system.
-
-Since QGIS 3.38 the ``selectPath`` argument can be used to automatically select the path too.
 
 .. versionadded:: 3.28
 %End
@@ -223,5 +214,5 @@ Apply filter to the model
  *                                                                      *
  * src/gui/qgsdatasourceselectdialog.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

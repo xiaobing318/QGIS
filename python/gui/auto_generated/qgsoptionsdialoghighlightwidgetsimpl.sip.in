@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsoptionsdialoghighlightwidgetsimpl.h                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -17,6 +17,8 @@ class QgsOptionsDialogHighlightLabel : QgsOptionsDialogHighlightWidget
 %Docstring(signature="appended")
 A highlight widget for labels.
 This is used to search and highlight text in :py:class:`QgsOptionsDialogBase` implementations.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -41,6 +43,8 @@ class QgsOptionsDialogHighlightCheckBox : QgsOptionsDialogHighlightWidget
 %Docstring(signature="appended")
 A highlight widget for checkboxes.
 This is used to search and highlight text in :py:class:`QgsOptionsDialogBase` implementations.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -65,6 +69,8 @@ class QgsOptionsDialogHighlightButton : QgsOptionsDialogHighlightWidget
 %Docstring(signature="appended")
 A highlight widget for buttons.
 This is used to search and highlight text in :py:class:`QgsOptionsDialogBase` implementations.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -89,6 +95,8 @@ class QgsOptionsDialogHighlightGroupBox : QgsOptionsDialogHighlightWidget
 %Docstring(signature="appended")
 A highlight widget for group boxes.
 This is used to search and highlight text in :py:class:`QgsOptionsDialogBase` implementations.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -115,6 +123,8 @@ A highlight widget for trees.
 This is used to search and highlight text in :py:class:`QgsOptionsDialogBase` implementations.
 Highlighting is only available for tree widgets only while searching can be performed
 in any tree view or inherited class.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -164,5 +174,5 @@ constructs a highlight widget for a table view or widget.
  *                                                                      *
  * src/gui/qgsoptionsdialoghighlightwidgetsimpl.h                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

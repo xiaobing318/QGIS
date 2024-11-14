@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/layout/qgslayoutitemattributetable.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -14,6 +14,8 @@ class QgsLayoutItemAttributeTable: QgsLayoutTable
 {
 %Docstring(signature="appended")
 A layout table subclass that displays attributes from a vector layer.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -308,7 +310,7 @@ Queries the attribute table's vector layer for attributes to show in the table.
     virtual void finalizeRestoreFromXml();
 
 
-    virtual void refreshDataDefinedProperty( QgsLayoutObject::DataDefinedProperty property = QgsLayoutObject::DataDefinedProperty::AllProperties );
+    virtual void refreshDataDefinedProperty( QgsLayoutObject::DataDefinedProperty property = QgsLayoutObject::AllProperties );
 
 
     bool useConditionalStyling() const;
@@ -345,5 +347,5 @@ properties of the linked vector layer.
  *                                                                      *
  * src/core/layout/qgslayoutitemattributetable.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

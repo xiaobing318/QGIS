@@ -17,10 +17,6 @@
 #include <QFileDialog>
 #include <QFileInfo>
 #include <QMessageBox>
-#include <QRegularExpression>
-#include <QRegularExpressionValidator>
-#include <QRegularExpressionMatch>
-
 #include "qgssettings.h"
 
 #include "qgis.h"
@@ -36,7 +32,6 @@
 #include "qgsgrassmodule.h"
 #include "qgsgrassmoduleinput.h"
 #include "qgsgrassmoduleparam.h"
-#include "moc_qgsgrassmoduleparam.cpp"
 #include "qgsgrassplugin.h"
 #include "qgsgrassprovider.h"
 
@@ -144,7 +139,7 @@ QString QgsGrassModuleParam::getDescPrompt( QDomElement descDomElement, const QS
 
 QDomNode QgsGrassModuleParam::nodeByKey( QDomElement descDomElement, QString key )
 {
-  QgsDebugMsgLevel( "called with key=" + key, 3 );
+  QgsDebugMsg( "called with key=" + key );
   QDomNode n = descDomElement.firstChild();
 
   while ( !n.isNull() )
@@ -339,7 +334,11 @@ QgsGrassModuleOption::QgsGrassModuleOption( QgsGrassModule *module, QString key,
       }
 
       // List of values to be excluded
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+      QStringList exclude = qdesc.attribute( QStringLiteral( "exclude" ) ).split( ',', QString::SkipEmptyParts );
+#else
       QStringList exclude = qdesc.attribute( QStringLiteral( "exclude" ) ).split( ',', Qt::SkipEmptyParts );
+#endif
 
       QDomNode valueNode = valuesElem.firstChild();
 
@@ -401,7 +400,7 @@ QgsGrassModuleOption::QgsGrassModuleOption( QgsGrassModule *module, QString key,
 
       // Output option may have missing gisprompt if output may be both vector and raster according to other options (e.g. v.kernel)
       // outputType qgm attribute allow forcing an output type
-      QgsDebugMsgLevel( "outputType = " + qdesc.attribute( "outputType" ), 3 );
+      QgsDebugMsg( "outputType = " + qdesc.attribute( "outputType" ) );
       if ( qdesc.hasAttribute( QStringLiteral( "outputType" ) ) )
       {
         QString outputType = qdesc.attribute( QStringLiteral( "outputType" ) );
@@ -467,7 +466,7 @@ QgsGrassModuleOption::QgsGrassModuleOption( QgsGrassModule *module, QString key,
           QDomNode nodeItem = keydescs.at( k );
           QString itemDesc = nodeItem.toElement().text().trimmed();
           //QString itemDesc = nodeItem.firstChild().toText().data();
-          QgsDebugMsgLevel( "keydesc item = " + itemDesc, 3 );
+          QgsDebugMsg( "keydesc item = " + itemDesc );
 
           addRow();
         }
@@ -492,13 +491,13 @@ QgsGrassModuleOption::QgsGrassModuleOption( QgsGrassModule *module, QString key,
   }
   else
   {
-    QgsDebugMsgLevel( "\n\n\n\n**************************", 3 );
-    QgsDebugMsgLevel( QString( "isOutput = %1" ).arg( isOutput() ), 3 );
-    QgsDebugMsgLevel( QString( "mOutputType = %1" ).arg( mOutputType ), 3 );
+    QgsDebugMsg( "\n\n\n\n**************************" );
+    QgsDebugMsg( QString( "isOutput = %1" ).arg( isOutput() ) );
+    QgsDebugMsg( QString( "mOutputType = %1" ).arg( mOutputType ) );
     if ( isOutput() && mOutputType == Raster )
       mUsesRegion = true;
   }
-  QgsDebugMsgLevel( QString( "mUsesRegion = %1" ).arg( mUsesRegion ), 3 );
+  QgsDebugMsg( QString( "mUsesRegion = %1" ).arg( mUsesRegion ) );
 }
 
 void QgsGrassModuleOption::addRow()
@@ -535,7 +534,7 @@ void QgsGrassModuleOption::addRow()
   }
   else if ( mIsOutput )
   {
-    QRegularExpression rx;
+    QRegExp rx;
     if ( mOutputType == Vector )
     {
       rx.setPattern( QStringLiteral( "[A-Za-z_][A-Za-z0-9_]+" ) );
@@ -544,7 +543,7 @@ void QgsGrassModuleOption::addRow()
     {
       rx.setPattern( QStringLiteral( "[A-Za-z0-9_.]+" ) );
     }
-    mValidator = new QRegularExpressionValidator( rx, this );
+    mValidator = new QRegExpValidator( rx, this );
 
     lineEdit->setValidator( mValidator );
   }
@@ -602,9 +601,9 @@ QString QgsGrassModuleOption::outputExists()
 
   QLineEdit *lineEdit = mLineEdits.at( 0 );
   QString value = lineEdit->text().trimmed();
-  QgsDebugMsgLevel( "mKey = " + mKey, 3 );
-  QgsDebugMsgLevel( "value = " + value, 3 );
-  QgsDebugMsgLevel( "mOutputElement = " + mOutputElement, 3 );
+  QgsDebugMsg( "mKey = " + mKey );
+  QgsDebugMsg( "value = " + value );
+  QgsDebugMsg( "mOutputElement = " + mOutputElement );
 
   if ( value.length() == 0 )
     return QString();
@@ -666,29 +665,27 @@ QString QgsGrassModuleOption::value()
 
 bool QgsGrassModuleOption::checkVersion( const QString &version_min, const QString &version_max, QStringList &errors )
 {
-  QgsDebugMsgLevel( "version_min = " + version_min, 3 );
-  QgsDebugMsgLevel( "version_max = " + version_max, 3 );
+  QgsDebugMsg( "version_min = " + version_min );
+  QgsDebugMsg( "version_max = " + version_max );
 
   bool minOk = true;
   bool maxOk = true;
-  const thread_local QRegularExpression rxVersionMajor( "^(\\d+)$" );
-  const thread_local QRegularExpression rxVersion( "^(\\d+)\\.(\\d+)$" );
+  QRegExp rxVersionMajor( "(\\d+)" );
+  QRegExp rxVersion( "(\\d+)\\.(\\d+)" );
   if ( !version_min.isEmpty() )
   {
-    const QRegularExpressionMatch versionMatch = rxVersion.match( version_min );
-    const QRegularExpressionMatch versionMajorMatch = rxVersionMajor.match( version_min );
-    if ( versionMatch.hasMatch() )
+    if ( rxVersion.exactMatch( version_min ) )
     {
-      int versionMajorMin = versionMatch.captured( 1 ).toInt();
-      int versionMinorMin = versionMatch.captured( 2 ).toInt();
+      int versionMajorMin = rxVersion.cap( 1 ).toInt();
+      int versionMinorMin = rxVersion.cap( 2 ).toInt();
       if ( QgsGrass::versionMajor() < versionMajorMin || ( QgsGrass::versionMajor() == versionMajorMin && QgsGrass::versionMinor() < versionMinorMin ) )
       {
         minOk = false;
       }
     }
-    else if ( versionMajorMatch.hasMatch() )
+    else if ( rxVersionMajor.exactMatch( version_min ) )
     {
-      int versionMajorMin = versionMajorMatch.captured( 1 ).toInt();
+      int versionMajorMin = rxVersionMajor.cap( 1 ).toInt();
       if ( QgsGrass::versionMajor() < versionMajorMin )
       {
         minOk = false;
@@ -702,21 +699,18 @@ bool QgsGrassModuleOption::checkVersion( const QString &version_min, const QStri
 
   if ( !version_max.isEmpty() )
   {
-    const QRegularExpressionMatch versionMatch = rxVersion.match( version_max );
-    const QRegularExpressionMatch versionMajorMatch = rxVersionMajor.match( version_max );
-
-    if ( versionMatch.hasMatch() )
+    if ( rxVersion.exactMatch( version_max ) )
     {
-      int versionMajorMax = versionMatch.captured( 1 ).toInt();
-      int versionMinorMax = versionMatch.captured( 2 ).toInt();
+      int versionMajorMax = rxVersion.cap( 1 ).toInt();
+      int versionMinorMax = rxVersion.cap( 2 ).toInt();
       if ( QgsGrass::versionMajor() > versionMajorMax || ( QgsGrass::versionMajor() == versionMajorMax && QgsGrass::versionMinor() > versionMinorMax ) )
       {
         maxOk = false;
       }
     }
-    else if ( versionMajorMatch.hasMatch() )
+    else if ( rxVersionMajor.exactMatch( version_max ) )
     {
-      int versionMajorMax = versionMajorMatch.captured( 1 ).toInt();
+      int versionMajorMax = rxVersionMajor.cap( 1 ).toInt();
       if ( QgsGrass::versionMajor() > versionMajorMax )
       {
         maxOk = false;
@@ -745,7 +739,7 @@ QStringList QgsGrassModuleOption::options()
 
 QString QgsGrassModuleOption::ready()
 {
-  QgsDebugMsgLevel( "key = " + key(), 3 );
+  QgsDebugMsg( "key = " + key() );
 
   QString error;
 
@@ -878,7 +872,7 @@ void QgsGrassModuleGdalInput::updateQgisLayers()
   {
     if ( !layer ) continue;
 
-    if ( mType == Ogr && layer->type() == Qgis::LayerType::Vector )
+    if ( mType == Ogr && layer->type() == QgsMapLayerType::VectorLayer )
     {
       QgsVectorLayer *vector = qobject_cast<QgsVectorLayer *>( layer );
       if ( !vector ||
@@ -948,8 +942,8 @@ void QgsGrassModuleGdalInput::updateQgisLayers()
         }
       }
 
-      QgsDebugMsgLevel( "uri = " + uri, 3 );
-      QgsDebugMsgLevel( "ogrLayer = " + ogrLayer, 3 );
+      QgsDebugMsg( "uri = " + uri );
+      QgsDebugMsg( "ogrLayer = " + ogrLayer );
 
       mLayerComboBox->addItem( layer->name() );
       if ( layer->name() == current )
@@ -959,7 +953,7 @@ void QgsGrassModuleGdalInput::updateQgisLayers()
       mOgrLayers.push_back( ogrLayer );
       mOgrWheres.push_back( ogrWhere );
     }
-    else if ( mType == Gdal && layer->type() == Qgis::LayerType::Raster )
+    else if ( mType == Gdal && layer->type() == QgsMapLayerType::RasterLayer )
     {
       QString uri = layer->source();
       mLayerComboBox->addItem( layer->name() );
@@ -1016,7 +1010,7 @@ QString QgsGrassModuleGdalInput::ready()
 
   QString error;
 
-  QgsDebugMsgLevel( QString( "count = %1" ).arg( mLayerComboBox->count() ), 3 );
+  QgsDebugMsg( QString( "count = %1" ).arg( mLayerComboBox->count() ) );
   if ( mLayerComboBox->count() == 0 )
   {
     error.append( tr( "%1:&nbsp;no input" ).arg( title() ) );
@@ -1118,7 +1112,7 @@ void QgsGrassModuleVectorField::updateFields()
     QString current = comboBox->currentText();
     comboBox->clear();
 
-    if ( !mLayerInput )
+    if ( mLayerInput == nullptr )
     {
       continue;
     }
@@ -1129,7 +1123,7 @@ void QgsGrassModuleVectorField::updateFields()
       if ( mType.contains( field.typeName() ) )
       {
         comboBox->addItem( field.name() );
-        QgsDebugMsgLevel( "current = " +  current + " field = " + field.name(), 3 );
+        QgsDebugMsg( "current = " +  current + " field = " + field.name() );
         if ( field.name() == current )
         {
           comboBox->setCurrentIndex( index );
@@ -1225,7 +1219,7 @@ void QgsGrassModuleSelection::onLayerChanged()
     if ( vectorLayer && vectorLayer->providerType() == QLatin1String( "grass" ) )
     {
       QString uri = vectorLayer->dataProvider()->dataSourceUri();
-      QgsDebugMsgLevel( "uri = " + uri, 3 );
+      QgsDebugMsg( "uri = " + uri );
       QString layerCode = uri.split( '/' ).last();
       if ( mLayerInput->currentLayerCodes().contains( layerCode ) )
       {
@@ -1271,7 +1265,7 @@ void QgsGrassModuleSelection::onLayerChanged()
         mModeComboBox->addItem( tr( "Add to canvas layer" ) + " " +  mLayerInput->currentMap() + " " + layerCode, AddLayer );
         QgsGrassObject grassObject = mLayerInput->currentLayer()->grassObject();
         QString uri = grassObject.mapsetPath() + "/" + grassObject.name() + "/" + layerCode;
-        QgsDebugMsgLevel( "uri = " + uri, 3 );
+        QgsDebugMsg( "uri = " + uri );
         // Qt::UserRole+1 may be also layer id (Layer) but hardly matching layer uri
         if ( mModeComboBox->findData( uri, Qt::UserRole + 1 ) == -1 )
         {
@@ -1313,7 +1307,7 @@ void QgsGrassModuleSelection::onModeChanged()
   {
     QString uri = mModeComboBox->itemData( index, Qt::UserRole + 1 ).toString();
     QString name = mModeComboBox->itemData( index, Qt::UserRole + 2 ).toString();
-    QgsDebugMsgLevel( "uri = " + uri, 3 );
+    QgsDebugMsg( "uri = " + uri );
 
     QgsVectorLayer *layer = new QgsVectorLayer( uri, name, QStringLiteral( "grass" ) );
     QgsProject::instance()->addMapLayer( layer );
@@ -1506,7 +1500,7 @@ void QgsGrassModuleFile::browse()
 
 QString QgsGrassModuleFile::ready()
 {
-  QgsDebugMsgLevel( "key = " + key(), 3 );
+  QgsDebugMsg( "key = " + key() );
 
   QString error;
   QString path = mLineEdit->text().trimmed();

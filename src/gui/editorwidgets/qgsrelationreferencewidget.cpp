@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsrelationreferencewidget.h"
-#include "moc_qgsrelationreferencewidget.cpp"
 
 #include <QPushButton>
 #include <QDialog>
@@ -23,20 +22,28 @@
 #include <QCompleter>
 
 #include "qgsattributeform.h"
+#include "qgsattributetablefiltermodel.h"
 #include "qgsattributedialog.h"
 #include "qgsapplication.h"
 #include "qgscollapsiblegroupbox.h"
+#include "qgseditorwidgetfactory.h"
 #include "qgsexpression.h"
+#include "qgsfeaturelistmodel.h"
 #include "qgsfields.h"
 #include "qgsgeometry.h"
 #include "qgshighlight.h"
 #include "qgsmapcanvas.h"
 #include "qgsmessagebar.h"
+#include "qgsrelationreferenceconfigdlg.h"
 #include "qgsvectorlayer.h"
+#include "qgsattributetablemodel.h"
 #include "qgsmaptoolidentifyfeature.h"
 #include "qgsmaptooldigitizefeature.h"
 #include "qgsfeatureiterator.h"
 #include "qgsfeaturelistcombobox.h"
+#include "qgsexpressioncontextutils.h"
+#include "qgsfeaturefiltermodel.h"
+#include "qgsidentifymenu.h"
 #include "qgsvectorlayerutils.h"
 
 
@@ -188,7 +195,6 @@ void QgsRelationReferenceWidget::setRelation( const QgsRelation &relation, bool 
       mComboBox->setSourceLayer( mReferencedLayer );
       mComboBox->setIdentifierFields( mReferencedFields );
       mComboBox->setFilterExpression( mFilterExpression );
-      mComboBox->setFetchLimit( mFetchLimit );
     }
     mAttributeEditorFrame->setObjectName( QStringLiteral( "referencing/" ) + relation.name() );
 
@@ -314,7 +320,7 @@ QVariant QgsRelationReferenceWidget::foreignKey() const
 {
   QVariantList fkeys;
   if ( fkeys.isEmpty() )
-    return QgsVariantUtils::createNullVariant( QMetaType::Type::Int );
+    return QVariant( QVariant::Int );
   else
     return fkeys.at( 0 );
 }
@@ -365,6 +371,11 @@ void QgsRelationReferenceWidget::setAllowMapIdentification( bool allowMapIdentif
   mHighlightFeatureButton->setVisible( allowMapIdentification );
   mMapIdentificationButton->setVisible( allowMapIdentification );
   mAllowMapIdentification = allowMapIdentification;
+}
+
+void QgsRelationReferenceWidget::setOrderByValue( bool orderByValue )
+{
+  mOrderByValue = orderByValue;
 }
 
 void QgsRelationReferenceWidget::setFilterFields( const QStringList &filterFields )
@@ -421,7 +432,7 @@ void QgsRelationReferenceWidget::init()
         QVariantList uniqueValues = qgis::setToList( mReferencedLayer->uniqueValues( idx ) );
         cb->addItem( mReferencedLayer->attributeDisplayName( idx ) );
         QVariant nullValue = QgsApplication::nullRepresentation();
-        cb->addItem( nullValue.toString(), QgsVariantUtils::createNullVariant( mReferencedLayer->fields().at( idx ).type() ) );
+        cb->addItem( nullValue.toString(), QVariant( mReferencedLayer->fields().at( idx ).type() ) );
 
         std::sort( uniqueValues.begin(), uniqueValues.end(), qgsVariantLessThan );
         const auto constUniqueValues = uniqueValues;
@@ -476,7 +487,6 @@ void QgsRelationReferenceWidget::init()
     mComboBox->setDisplayExpression( mReferencedLayer->displayExpression() );
     mComboBox->setAllowNull( mAllowNull );
     mComboBox->setIdentifierFields( mReferencedFields );
-    mComboBox->setFetchLimit( mFetchLimit );
 
     if ( ! mFilterExpression.isEmpty() )
       mComboBox->setFilterExpression( mFilterExpression );
@@ -495,8 +505,6 @@ void QgsRelationReferenceWidget::init()
 
     // Only connect after iterating, to have only one iterator on the referenced table at once
     connect( mComboBox, &QgsFeatureListComboBox::currentFeatureChanged, this, &QgsRelationReferenceWidget::comboReferenceChanged );
-    // To avoid wrongly signaling a foreign key change, handle model feature found state following feature gathering separately
-    connect( mComboBox, &QgsFeatureListComboBox::currentFeatureFoundChanged, this, &QgsRelationReferenceWidget::comboReferenceFoundChanged );
 
     QApplication::restoreOverrideCursor();
 
@@ -576,7 +584,7 @@ void QgsRelationReferenceWidget::highlightFeature( QgsFeature f, CanvasExtent ca
   // highlight
   deleteHighlight();
   mHighlight = new QgsHighlight( mCanvas, f, mReferencedLayer );
-  mHighlight->applyDefaultStyle();
+  QgsIdentifyMenu::styleHighlight( mHighlight );
   mHighlight->show();
 
   QTimer *timer = new QTimer( this );
@@ -627,13 +635,6 @@ void QgsRelationReferenceWidget::comboReferenceChanged()
   updateAttributeEditorFrame( mFeature );
 
   emitForeignKeysChanged( mComboBox->identifierValues() );
-}
-
-void QgsRelationReferenceWidget::comboReferenceFoundChanged( bool )
-{
-  mReferencedLayer->getFeatures( mComboBox->currentFeatureRequest() ).nextFeature( mFeature );
-  highlightFeature( mFeature );
-  updateAttributeEditorFrame( mFeature );
 }
 
 void QgsRelationReferenceWidget::updateAttributeEditorFrame( const QgsFeature &feature )
@@ -807,11 +808,11 @@ void QgsRelationReferenceWidget::filterChanged()
           QgsAttributeList subset = attrs;
 
           QString expression = filterExpression;
-          if ( ! filterExpression.isEmpty() && ! filtersAttrs.isEmpty() )
+          if ( ! filterExpression.isEmpty() && ! filtersAttrs.values().isEmpty() )
             expression += QLatin1String( " AND " );
 
           expression += filtersAttrs.isEmpty() ? QString() : QStringLiteral( " ( " );
-          expression += qgsMapJoinValues( filtersAttrs, QLatin1String( " AND " ) );
+          expression += filtersAttrs.values().join( QLatin1String( " AND " ) );
           expression += filtersAttrs.isEmpty() ? QString() : QStringLiteral( " ) " );
 
           subset << mReferencedLayer->fields().lookupField( fieldName );
@@ -843,11 +844,11 @@ void QgsRelationReferenceWidget::filterChanged()
     }
   }
 
-  if ( ! filterExpression.isEmpty() && ! filters.isEmpty() )
+  if ( ! filterExpression.isEmpty() && ! filters.values().isEmpty() )
     filterExpression += QLatin1String( " AND " );
 
   filterExpression += filters.isEmpty() ? QString() : QStringLiteral( " ( " );
-  filterExpression += qgsMapJoinValues( filters, QLatin1String( " AND " ) );
+  filterExpression += filters.values().join( QLatin1String( " AND " ) );
   filterExpression += filters.isEmpty() ? QString() : QStringLiteral( " ) " );
 
   mComboBox->setFilterExpression( filterExpression );
@@ -865,7 +866,7 @@ void QgsRelationReferenceWidget::addEntry()
     return;
 
   // no geometry, skip the digitizing
-  if ( mReferencedLayer->geometryType() == Qgis::GeometryType::Unknown || mReferencedLayer->geometryType() == Qgis::GeometryType::Null )
+  if ( mReferencedLayer->geometryType() == QgsWkbTypes::UnknownGeometry || mReferencedLayer->geometryType() == QgsWkbTypes::NullGeometry )
   {
     QgsFeature f( mReferencedLayer->fields() );
     entryAdded( f );

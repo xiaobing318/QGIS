@@ -3,7 +3,7 @@
  *                                                                      *
  * src/analysis/network/qgsnetworkstrategy.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -22,6 +22,8 @@ class QgsNetworkStrategy
 take into account travel distance, amount of time or money. Currently there are two strategies
 implemented in the analysis library: :py:class:`QgsNetworkDistanceStrategy` and :py:class:`QgsNetworkSpeedStrategy`.
 :py:class:`QgsNetworkStrategy` implemented using "strategy" design pattern.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -38,6 +40,9 @@ implemented in the analysis library: :py:class:`QgsNetworkDistanceStrategy` and 
   public:
 
     QgsNetworkStrategy();
+%Docstring
+Default constructor
+%End
 
     virtual ~QgsNetworkStrategy();
 
@@ -58,5 +63,5 @@ Returns edge cost
  *                                                                      *
  * src/analysis/network/qgsnetworkstrategy.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

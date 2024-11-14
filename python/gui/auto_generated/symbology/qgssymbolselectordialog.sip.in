@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/symbology/qgssymbolselectordialog.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -43,8 +43,6 @@ Symbol selector widget that can be used to select and build a symbol
    The ownership of the symbol is not transferred and must exist for the lifetime of the widget.
 %End
 
-
-
     QMenu *advancedMenu();
 %Docstring
 Returns menu for "advanced" button - create it if doesn't exist and show the advanced button
@@ -57,6 +55,8 @@ Sets the context in which the symbol widget is shown, e.g., the associated map c
 :param context: symbol widget context
 
 .. seealso:: :py:func:`context`
+
+.. versionadded:: 3.0
 %End
 
     QgsSymbolWidgetContext context() const;
@@ -64,6 +64,8 @@ Sets the context in which the symbol widget is shown, e.g., the associated map c
 Returns the context in which the symbol widget is shown, e.g., the associated map canvas and expression contexts.
 
 .. seealso:: :py:func:`setContext`
+
+.. versionadded:: 3.0
 %End
 
     QgsSymbol *symbol();
@@ -105,6 +107,8 @@ Lock the current active symbol layer.
     void duplicateLayer();
 %Docstring
 Duplicates the current symbol layer and places the duplicated layer above the current symbol layer
+
+.. versionadded:: 2.14
 %End
 
     void layerChanged();
@@ -130,11 +134,8 @@ Slot to update tree when a new symbol from style
 
     void changeLayer( QgsSymbolLayer *layer );
 %Docstring
-Alters tree and sets proper widget when Layer Type is changed
-
-.. note::
-
-   The layer is received from the LayerPropertiesWidget
+alters tree and sets proper widget when Layer Type is changed
+\note: The layer is received from the LayerPropertiesWidget
 %End
 
   signals:
@@ -148,9 +149,6 @@ Emitted when a symbol is modified in the widget.
 
 class QgsSymbolSelectorDialog : QDialog
 {
-%Docstring(signature="appended")
-A dialog that can be used to select and build a symbol.
-%End
 
 %TypeHeaderCode
 #include "qgssymbolselectordialog.h"
@@ -180,6 +178,8 @@ Sets the context in which the symbol widget is shown, e.g., the associated map c
 :param context: symbol widget context
 
 .. seealso:: :py:func:`context`
+
+.. versionadded:: 3.0
 %End
 
     QgsSymbolWidgetContext context() const;
@@ -187,6 +187,8 @@ Sets the context in which the symbol widget is shown, e.g., the associated map c
 Returns the context in which the symbol widget is shown, e.g., the associated map canvas and expression contexts.
 
 .. seealso:: :py:func:`setContext`
+
+.. versionadded:: 3.0
 %End
 
     QgsSymbol *symbol();
@@ -217,6 +219,8 @@ Returns a reference to the dialog's button box.
     void duplicateLayer();
 %Docstring
 Duplicates the current symbol layer and places the duplicated layer above the current symbol layer
+
+.. versionadded:: 2.14
 %End
 
     void layerChanged();
@@ -231,11 +235,8 @@ Slot to update tree when a new symbol from style
 
     void changeLayer( QgsSymbolLayer *layer );
 %Docstring
-Alters tree and sets proper widget when Layer Type is changed
-
-.. note::
-
-   The layer is received from the LayerPropertiesWidget
+alters tree and sets proper widget when Layer Type is changed
+\note: The layer is received from the LayerPropertiesWidget
 %End
 
   protected:
@@ -246,9 +247,6 @@ Alters tree and sets proper widget when Layer Type is changed
   signals:
 
     void symbolModified();
-%Docstring
-Emitted when the symbol defined in the dialog is modified.
-%End
 
 };
 
@@ -257,5 +255,5 @@ Emitted when the symbol defined in the dialog is modified.
  *                                                                      *
  * src/gui/symbology/qgssymbolselectordialog.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

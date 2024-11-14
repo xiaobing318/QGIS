@@ -62,7 +62,7 @@ void QgsLayoutItemUndoCommand::saveState( QDomDocument &stateDoc ) const
   }
   else
   {
-    QgsDebugError( QStringLiteral( "QgsLayoutItemUndoCommand::saveState: could not retrieve item %1 for saving state" ).arg( mItemUuid ) );
+    QgsDebugMsg( QStringLiteral( "QgsLayoutItemUndoCommand::saveState: could not retrieve item %1 for saving state" ).arg( mItemUuid ) );
   }
 }
 

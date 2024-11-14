@@ -60,11 +60,6 @@ QString QgsCreateArrayOffsetLinesAlgorithm::shortDescription() const
   return QObject::tr( "Creates multiple offset copies of lines from a layer." );
 }
 
-Qgis::ProcessingAlgorithmDocumentationFlags QgsCreateArrayOffsetLinesAlgorithm::documentationFlags() const
-{
-  return Qgis::ProcessingAlgorithmDocumentationFlag::RegeneratesPrimaryKey;
-}
-
 QgsCreateArrayOffsetLinesAlgorithm *QgsCreateArrayOffsetLinesAlgorithm::createInstance() const
 {
   return new QgsCreateArrayOffsetLinesAlgorithm();
@@ -73,7 +68,7 @@ QgsCreateArrayOffsetLinesAlgorithm *QgsCreateArrayOffsetLinesAlgorithm::createIn
 void QgsCreateArrayOffsetLinesAlgorithm::initParameters( const QVariantMap & )
 {
   std::unique_ptr< QgsProcessingParameterNumber > count = std::make_unique< QgsProcessingParameterNumber >( QStringLiteral( "COUNT" ),
-      QObject::tr( "Number of features to create" ), Qgis::ProcessingNumberParameterType::Integer,
+      QObject::tr( "Number of features to create" ), QgsProcessingParameterNumber::Integer,
       10, false, 1 );
   count->setIsDynamic( true );
   count->setDynamicPropertyDefinition( QgsPropertyDefinition( QStringLiteral( "COUNT" ), QObject::tr( "Number of features to create" ), QgsPropertyDefinition::IntegerPositiveGreaterZero ) );
@@ -88,22 +83,22 @@ void QgsCreateArrayOffsetLinesAlgorithm::initParameters( const QVariantMap & )
   offset->setDynamicLayerParameterName( QStringLiteral( "INPUT" ) );
   addParameter( offset.release() );
 
-  auto segmentParam = std::make_unique< QgsProcessingParameterNumber >( QStringLiteral( "SEGMENTS" ), QObject::tr( "Segments" ), Qgis::ProcessingNumberParameterType::Integer, 8, false, 1 );
-  segmentParam->setFlags( segmentParam->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  auto segmentParam = std::make_unique< QgsProcessingParameterNumber >( QStringLiteral( "SEGMENTS" ), QObject::tr( "Segments" ), QgsProcessingParameterNumber::Integer, 8, false, 1 );
+  segmentParam->setFlags( segmentParam->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( segmentParam.release() );
 
   auto joinStyleParam = std::make_unique< QgsProcessingParameterEnum>( QStringLiteral( "JOIN_STYLE" ), QObject::tr( "Join style" ), QStringList() << QObject::tr( "Round" ) << QObject::tr( "Miter" ) << QObject::tr( "Bevel" ), false, 0 );
-  joinStyleParam->setFlags( joinStyleParam->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  joinStyleParam->setFlags( joinStyleParam->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( joinStyleParam.release() );
 
-  auto miterLimitParam = std::make_unique< QgsProcessingParameterNumber >( QStringLiteral( "MITER_LIMIT" ), QObject::tr( "Miter limit" ), Qgis::ProcessingNumberParameterType::Double, 2, false, 1 );
-  miterLimitParam->setFlags( miterLimitParam->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  auto miterLimitParam = std::make_unique< QgsProcessingParameterNumber >( QStringLiteral( "MITER_LIMIT" ), QObject::tr( "Miter limit" ), QgsProcessingParameterNumber::Double, 2, false, 1 );
+  miterLimitParam->setFlags( miterLimitParam->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( miterLimitParam.release() );
 }
 
 QList<int> QgsCreateArrayOffsetLinesAlgorithm::inputLayerTypes() const
 {
-  return QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::VectorLine );
+  return QList< int >() << QgsProcessing::TypeVectorLine;
 }
 
 bool QgsCreateArrayOffsetLinesAlgorithm::prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback * )
@@ -177,8 +172,8 @@ QgsFeatureList QgsCreateArrayOffsetLinesAlgorithm::processFeature( const QgsFeat
 QgsFields QgsCreateArrayOffsetLinesAlgorithm::outputFields( const QgsFields &inputFields ) const
 {
   QgsFields output = inputFields;
-  output.append( QgsField( QStringLiteral( "instance" ), QMetaType::Type::Int ) );
-  output.append( QgsField( QStringLiteral( "offset" ), QMetaType::Type::Double ) );
+  output.append( QgsField( QStringLiteral( "instance" ), QVariant::Int ) );
+  output.append( QgsField( QStringLiteral( "offset" ), QVariant::Double ) );
   return output;
 }
 

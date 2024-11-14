@@ -77,14 +77,14 @@ bool QgsPromoteToMultipartAlgorithm::supportInPlaceEdit( const QgsMapLayer *l ) 
   return QgsWkbTypes::isMultiType( layer->wkbType() );
 }
 
-Qgis::WkbType QgsPromoteToMultipartAlgorithm::outputWkbType( Qgis::WkbType inputWkbType ) const
+QgsWkbTypes::Type QgsPromoteToMultipartAlgorithm::outputWkbType( QgsWkbTypes::Type inputWkbType ) const
 {
   return QgsWkbTypes::multiType( inputWkbType );
 }
 
-Qgis::ProcessingFeatureSourceFlags QgsPromoteToMultipartAlgorithm::sourceFlags() const
+QgsProcessingFeatureSource::Flag QgsPromoteToMultipartAlgorithm::sourceFlags() const
 {
-  return Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks;
+  return QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks;
 }
 
 QgsFeatureList QgsPromoteToMultipartAlgorithm::processFeature( const QgsFeature &feature, QgsProcessingContext &, QgsProcessingFeedback * )

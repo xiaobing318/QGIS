@@ -17,6 +17,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import QSize
 from qgis.testing import unittest
 

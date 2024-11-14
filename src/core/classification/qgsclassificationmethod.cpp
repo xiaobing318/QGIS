@@ -23,7 +23,6 @@
 #include "qgsapplication.h"
 #include "qgsclassificationmethodregistry.h"
 #include "qgsxmlutils.h"
-#include "qgsmessagelog.h"
 
 const int QgsClassificationMethod::MAX_PRECISION = 15;
 const int QgsClassificationMethod::MIN_PRECISION = -6;
@@ -209,12 +208,6 @@ void QgsClassificationMethod::setParameterValues( const QVariantMap &values )
 
 QList<QgsClassificationRange> QgsClassificationMethod::classes( const QgsVectorLayer *layer, const QString &expression, int nclasses )
 {
-  QString error;
-  return classesV2( layer, expression, nclasses, error );
-}
-
-QList<QgsClassificationRange> QgsClassificationMethod::classesV2( const QgsVectorLayer *layer, const QString &expression, int nclasses, QString &error )
-{
   if ( expression.isEmpty() )
     return QList<QgsClassificationRange>();
 
@@ -249,7 +242,7 @@ QList<QgsClassificationRange> QgsClassificationMethod::classesV2( const QgsVecto
   }
 
   // get the breaks, minimum and maximum might be updated by implementation
-  QList<double> breaks = calculateBreaks( minimum, maximum, values, nclasses, error );
+  QList<double> breaks = calculateBreaks( minimum, maximum, values, nclasses );
   breaks.insert( 0, minimum );
   // create classes
   return breaksToClasses( breaks );
@@ -262,10 +255,7 @@ QList<QgsClassificationRange> QgsClassificationMethod::classes( const QList<doub
   double maximum = *result.second;
 
   // get the breaks
-  QString error;
-  QList<double> breaks = calculateBreaks( minimum, maximum, values, nclasses, error );
-  ( void )error;
-
+  QList<double> breaks = calculateBreaks( minimum, maximum, values, nclasses );
   breaks.insert( 0, minimum );
   // create classes
   return breaksToClasses( breaks );
@@ -275,14 +265,11 @@ QList<QgsClassificationRange> QgsClassificationMethod::classes( double minimum, 
 {
   if ( valuesRequired() )
   {
-    QgsDebugError( QStringLiteral( "The classification method %1 tries to calculate classes without values while they are required." ).arg( name() ) );
+    QgsDebugMsg( QStringLiteral( "The classification method %1 tries to calculate classes without values while they are required." ).arg( name() ) );
   }
 
   // get the breaks
-  QString error;
-  QList<double> breaks = calculateBreaks( minimum, maximum, QList<double>(), nclasses, error );
-  ( void )error;
-
+  QList<double> breaks = calculateBreaks( minimum, maximum, QList<double>(), nclasses );
   breaks.insert( 0, minimum );
   // create classes
   return breaksToClasses( breaks );
@@ -356,5 +343,5 @@ QString QgsClassificationMethod::labelForRange( const double lowerValue, const d
   const QString lowerLabel = valueToLabel( lowerValue );
   const QString upperLabel = valueToLabel( upperValue );
 
-  return labelFormat().replace( QLatin1String( "%1" ), lowerLabel ).replace( QLatin1String( "%2" ), upperLabel );
+  return labelFormat().replace( QStringLiteral( "%1" ), lowerLabel ).replace( QStringLiteral( "%2" ), upperLabel );
 }

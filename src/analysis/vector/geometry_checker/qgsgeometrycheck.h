@@ -161,7 +161,7 @@ class ANALYSIS_EXPORT QgsGeometryCheck
     /**
      * Flags for geometry checks.
      */
-    enum Flag SIP_ENUM_BASETYPE( IntFlag )
+    enum Flag
     {
       AvailableInValidation = 1 << 1 //!< This geometry check should be available in layer validation on the vector layer peroperties
     };
@@ -189,12 +189,12 @@ class ANALYSIS_EXPORT QgsGeometryCheck
       /**
        * What level this change affects.
        */
-      QgsGeometryCheck::ChangeWhat what = QgsGeometryCheck::ChangeWhat::ChangeFeature;
+      QgsGeometryCheck::ChangeWhat what;
 
       /**
        * What action this change performs.
        */
-      QgsGeometryCheck::ChangeType type = QgsGeometryCheck::ChangeType::ChangeAdded;
+      QgsGeometryCheck::ChangeType type;
 
       /**
        * The index of the part / ring / vertex, depending on \see what.
@@ -258,7 +258,7 @@ class ANALYSIS_EXPORT QgsGeometryCheck
      *
      * \since QGIS 3.4
      */
-    virtual QList<Qgis::GeometryType> compatibleGeometryTypes() const = 0;
+    virtual QList<QgsWkbTypes::GeometryType> compatibleGeometryTypes() const = 0;
 
     /**
      * Flags for this geometry check.
@@ -295,7 +295,7 @@ class ANALYSIS_EXPORT QgsGeometryCheck
      * Returns a list of descriptions for available resolutions for errors.
      * The index will be passed as ``method`` to \see fixError().
      *
-     * \deprecated QGIS 3.12. Use availableResolutionMethods() instead.
+     * \deprecated since QGIS 3.12, use availableResolutionMethods() instead
      * \since QGIS 3.4
      */
     Q_DECL_DEPRECATED virtual QStringList resolutionMethods() const SIP_DEPRECATED;

@@ -52,28 +52,20 @@ class GUI_EXPORT QgsHttpHeaderWidget : public QWidget, private Ui::QgsHttpHeader
     QgsHttpHeaders httpHeaders() const;
 
     /**
-     * Sets the widget from the headers
-     * \since QGIS 3.30
-     */
-    void setHeaders( const QgsHttpHeaders &headers );
-
-    /**
      * \brief fill the inner header map from the settings defined at \a key
-     * \see QgsHttpHeaders::setFromSettings()
+     * \see QgsHttpHeaders::setFromSettings( const QgsSettings &settings, const QString &key )
      * \param settings
      * \param key
-     * \deprecated QGIS 3.30. Use setFromHeaders instead.
      */
-    Q_DECL_DEPRECATED void setFromSettings( const QgsSettings &settings, const QString &key ) SIP_DEPRECATED;
+    void setFromSettings( const QgsSettings &settings, const QString &key );
 
     /**
      * \brief update the \a settings with the http headers present in the inner map.
-     * \see QgsHttpHeaders::updateSettings()
+     * \see QgsHttpHeaders::updateSettings( QgsSettings &settings, const QString &key ) const
      * \param settings
      * \param key
-     * \deprecated QGIS 3.30. Use a variant map for settinds directly.
      */
-    Q_DECL_DEPRECATED void updateSettings( QgsSettings &settings, const QString &key ) const SIP_DEPRECATED;
+    void updateSettings( QgsSettings &settings, const QString &key ) const;
 
   private slots:
 

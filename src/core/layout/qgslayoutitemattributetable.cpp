@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgslayoutitemattributetable.h"
-#include "moc_qgslayoutitemattributetable.cpp"
 #include "qgslayout.h"
 #include "qgslayouttablecolumn.h"
 #include "qgslayoutitemmap.h"
@@ -30,14 +29,13 @@
 #include "qgsfieldformatterregistry.h"
 #include "qgsgeometry.h"
 #include "qgsexception.h"
-#include "qgslayoutreportcontext.h"
+#include "qgsmapsettings.h"
 #include "qgsexpressioncontextutils.h"
 #include "qgsexpressionnodeimpl.h"
 #include "qgsgeometryengine.h"
 #include "qgsconditionalstyle.h"
 #include "qgsfontutils.h"
 #include "qgsvariantutils.h"
-#include "qgslayoutrendercontext.h"
 
 //
 // QgsLayoutItemAttributeTable
@@ -473,10 +471,6 @@ bool QgsLayoutItemAttributeTable::getTableContents( QgsLayoutTableContents &cont
       atlasGeometryEngine.reset( QgsGeometry::createGeometryEngine( atlasGeometry.constGet() ) );
       atlasGeometryEngine->prepareGeometry();
     }
-    else
-    {
-      return false;
-    }
   }
 
   if ( mSource == QgsLayoutItemAttributeTable::RelationChildren )
@@ -486,10 +480,10 @@ bool QgsLayoutItemAttributeTable::getTableContents( QgsLayoutTableContents &cont
     req = relation.getRelatedFeaturesRequest( atlasFeature );
   }
 
-  if ( !selectionRect.isNull() )
+  if ( !selectionRect.isEmpty() )
     req.setFilterRect( selectionRect );
 
-  req.setFlags( mShowOnlyVisibleFeatures ? Qgis::FeatureRequestFlag::ExactIntersect : Qgis::FeatureRequestFlag::NoFlags );
+  req.setFlags( mShowOnlyVisibleFeatures ? QgsFeatureRequest::ExactIntersect : QgsFeatureRequest::NoFlags );
 
   if ( mSource == QgsLayoutItemAttributeTable::AtlasFeature )
   {
@@ -538,9 +532,9 @@ bool QgsLayoutItemAttributeTable::getTableContents( QgsLayoutTableContents &cont
     }
 
     //check against atlas feature intersection
-    if ( atlasGeometryEngine )
+    if ( mFilterToAtlasIntersection )
     {
-      if ( !f.hasGeometry() )
+      if ( !f.hasGeometry() || !atlasGeometryEngine )
       {
         continue;
       }
@@ -682,7 +676,7 @@ QgsTextFormat QgsLayoutItemAttributeTable::textFormatForCell( int row, int colum
     {
       QFont newFont = format.font();
       // we want to keep all the other font settings, like word/letter spacing
-      QgsFontUtils::setFontFamily( newFont, styleFont.family() );
+      newFont.setFamily( styleFont.family() );
 
       // warning -- there's a potential trap here! We can't just read QFont::styleName(), as that may be blank even when
       // the font has the bold or italic attributes set! Reading the style name via QFontInfo avoids this and always returns
@@ -750,7 +744,7 @@ void QgsLayoutItemAttributeTable::refreshDataDefinedProperty( const QgsLayoutObj
   QgsExpressionContext context = createExpressionContext();
 
   if ( mSource == QgsLayoutItemAttributeTable::LayerAttributes &&
-       ( property == QgsLayoutObject::DataDefinedProperty::AttributeTableSourceLayer || property == QgsLayoutObject::DataDefinedProperty::AllProperties ) )
+       ( property == QgsLayoutObject::AttributeTableSourceLayer || property == QgsLayoutObject::AllProperties ) )
   {
     mDataDefinedVectorLayer = nullptr;
 
@@ -758,7 +752,7 @@ void QgsLayoutItemAttributeTable::refreshDataDefinedProperty( const QgsLayoutObj
     if ( QgsVectorLayer *currentLayer = mVectorLayer.get() )
       currentLayerIdentifier = currentLayer->id();
 
-    const QString layerIdentifier = mDataDefinedProperties.valueAsString( QgsLayoutObject::DataDefinedProperty::AttributeTableSourceLayer, context, currentLayerIdentifier );
+    const QString layerIdentifier = mDataDefinedProperties.valueAsString( QgsLayoutObject::AttributeTableSourceLayer, context, currentLayerIdentifier );
     QgsVectorLayer *ddLayer = qobject_cast< QgsVectorLayer * >( QgsLayoutUtils::mapLayerFromString( layerIdentifier, mLayout->project() ) );
     if ( ddLayer )
       mDataDefinedVectorLayer = ddLayer;

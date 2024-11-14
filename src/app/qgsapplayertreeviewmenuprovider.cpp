@@ -17,7 +17,6 @@
 
 #include "qgisapp.h"
 #include "qgsapplayertreeviewmenuprovider.h"
-#include "moc_qgsapplayertreeviewmenuprovider.cpp"
 #include "qgsapplication.h"
 #include "qgsclipboard.h"
 #include "qgscolorschemeregistry.h"
@@ -30,6 +29,7 @@
 #include "qgslayertree.h"
 #include "qgslayertreemodel.h"
 #include "qgslayertreemodellegendnode.h"
+#include "qgslayertreeregistrybridge.h"
 #include "qgslayertreeviewdefaultactions.h"
 #include "qgsmapcanvas.h"
 #include "qgsmaplayerstylecategoriesmodel.h"
@@ -53,11 +53,7 @@
 #include "qgsxmlutils.h"
 #include "qgsmeshlayer.h"
 #include "qgsmapcanvasutils.h"
-#include "qgsmaplayeraction.h"
-#include "qgsvectortilelayer.h"
-#include "qgsvectortiledataprovider.h"
-#include "qgsproviderregistry.h"
-#include "qgsprovidermetadata.h"
+
 
 QgsAppLayerTreeViewMenuProvider::QgsAppLayerTreeViewMenuProvider( QgsLayerTreeView *view, QgsMapCanvas *canvas )
   : mView( view )
@@ -162,7 +158,6 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
       QgsVectorLayer *vlayer = qobject_cast<QgsVectorLayer *>( layer );
       QgsPointCloudLayer *pcLayer = qobject_cast<QgsPointCloudLayer * >( layer );
       QgsMeshLayer *meshLayer = qobject_cast<QgsMeshLayer * >( layer );
-      QgsVectorTileLayer *vectorTileLayer = qobject_cast<QgsVectorTileLayer * >( layer );
 
       if ( layer && layer->isSpatial() )
       {
@@ -200,18 +195,13 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
         QAction *showFeatureCount = actions->actionShowFeatureCount( menu );
         menu->addAction( showFeatureCount );
         showFeatureCount->setEnabled( vlayer->isValid() );
-      }
 
-      if ( vlayer || vectorTileLayer || meshLayer )
-      {
-        const QString iconName = vectorTileLayer || ( vlayer && vlayer->labeling() && vlayer->labeling()->type() == QLatin1String( "rule-based" ) )
+        const QString iconName = vlayer && vlayer->labeling() && vlayer->labeling()->type() == QLatin1String( "rule-based" )
                                  ? QStringLiteral( "labelingRuleBased.svg" )
                                  : QStringLiteral( "labelingSingle.svg" );
         QAction *actionShowLabels = new QAction( QgsApplication::getThemeIcon( iconName ), tr( "Show &Labels" ), menu );
         actionShowLabels->setCheckable( true );
-        actionShowLabels->setChecked( vectorTileLayer ? vectorTileLayer->labelsEnabled()
-                                      : meshLayer ? meshLayer->labelsEnabled()
-                                      : vlayer->labelsEnabled() );
+        actionShowLabels->setChecked( vlayer->labelsEnabled() );
         connect( actionShowLabels, &QAction::toggled, this, &QgsAppLayerTreeViewMenuProvider::toggleLabels );
         menu->addAction( actionShowLabels );
       }
@@ -227,23 +217,11 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
         QAction *zoomToNative = menu->addAction( QgsApplication::getThemeIcon( QStringLiteral( "/mActionZoomActual.svg" ) ), tr( "Zoom to Nat&ive Resolution (100%)" ), QgisApp::instance(), &QgisApp::legendLayerZoomNative );
         zoomToNative->setEnabled( rlayer->isValid() );
 
-        if ( rlayer->rasterType() != Qgis::RasterLayerType::Palette )
+        if ( rlayer->rasterType() != QgsRasterLayer::Palette )
         {
           QAction *stretch = menu->addAction( tr( "&Stretch Using Current Extent" ), QgisApp::instance(), &QgisApp::legendLayerStretchUsingCurrentExtent );
           stretch->setEnabled( rlayer->isValid() );
         }
-
-        if ( rlayer->attributeTableCount() > 0 )
-        {
-          // Open RAT action
-          menu->addAction( QgsApplication::getThemeIcon( QStringLiteral( "/mActionOpenTable.svg" ) ), tr( "Open Raster Attribute Table" ), QgisApp::instance(), &QgisApp::openRasterAttributeTable );
-        }
-        else if ( rlayer->canCreateRasterAttributeTable() )
-        {
-          menu->addAction( QgsApplication::getThemeIcon( QStringLiteral( "/mActionCreateTable.svg" ) ), tr( "Create Raster Attribute Table" ), QgisApp::instance(), &QgisApp::createRasterAttributeTable );
-        }
-
-        menu->addAction( QgsApplication::getThemeIcon( QStringLiteral( "/mActionAddTable.svg" ) ), tr( "Load Raster Attribute Table from VAT.DBF" ), QgisApp::instance(), &QgisApp::loadRasterAttributeTableFromFile );
       }
 
       // No raster support in createSqlVectorLayer (yet)
@@ -308,7 +286,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
       }
 
       addCustomLayerActions( menu, layer );
-      if ( layer && layer->type() == Qgis::LayerType::Vector && static_cast<QgsVectorLayer *>( layer )->providerType() == QLatin1String( "virtual" ) )
+      if ( layer && layer->type() == QgsMapLayerType::VectorLayer && static_cast<QgsVectorLayer *>( layer )->providerType() == QLatin1String( "virtual" ) )
       {
         menu->addAction( QgsApplication::getThemeIcon( QStringLiteral( "/mActionAddVirtualLayer.svg" ) ), tr( "Edit Virtual Layer…" ), QgisApp::instance(), &QgisApp::addVirtualLayer );
       }
@@ -392,16 +370,8 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
         menu->addAction( tr( "&Filter…" ), QgisApp::instance(), qOverload<>( &QgisApp::layerSubsetString ) );
       }
 
-      // change data source is only supported for vectors, rasters, point clouds, mesh, some vector tile layers
-      bool supportsChangeDataSource = vlayer || rlayer || pcLayer || meshLayer;
-      if ( vectorTileLayer )
-      {
-        if ( const QgsProviderMetadata *metadata = QgsProviderRegistry::instance()->providerMetadata( vectorTileLayer->providerType() ) )
-        {
-          supportsChangeDataSource = metadata->providerCapabilities() & QgsProviderMetadata::FileBasedUris;
-        }
-      }
-      if ( supportsChangeDataSource )
+      // change data source is only supported for vectors, rasters, point clouds, mesh
+      if ( vlayer || rlayer || pcLayer || meshLayer )
       {
 
         QAction *a = new QAction( layer->isValid() ? tr( "C&hange Data Source…" ) : tr( "Repair Data Source…" ), menu );
@@ -426,34 +396,25 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
       if ( vlayer && vlayer->selectedFeatureCount() > 0 )
       {
         const int selectionCount = vlayer->selectedFeatureCount();
-        const Qgis::MapLayerActionTarget target = selectionCount == 1 ? Qgis::MapLayerActionTarget::SingleFeature : Qgis::MapLayerActionTarget::MultipleFeatures;
+        QgsMapLayerAction::Target target;
+        if ( selectionCount == 1 )
+          target = QgsMapLayerAction::Target::SingleFeature;
+        else
+          target = QgsMapLayerAction::Target::MultipleFeatures;
 
-        QgsMapLayerActionContext context;
-        const QList<QgsMapLayerAction *> constRegisteredActions = QgsGui::mapLayerActionRegistry()->mapLayerActions( vlayer, target, context );
+        const QList<QgsMapLayerAction *> constRegisteredActions = QgsGui::mapLayerActionRegistry()->mapLayerActions( vlayer, target );
         if ( !constRegisteredActions.isEmpty() )
         {
           QMenu *actionMenu = menu->addMenu( tr( "Actions on Selection (%1)" ).arg( selectionCount ) );
           for ( QgsMapLayerAction *action : constRegisteredActions )
           {
-            if ( target == Qgis::MapLayerActionTarget::SingleFeature )
+            if ( target == QgsMapLayerAction::Target::SingleFeature )
             {
-              actionMenu->addAction( action->text(), action, [ = ]()
-              {
-                Q_NOWARN_DEPRECATED_PUSH
-                action->triggerForFeature( vlayer,  vlayer->selectedFeatures().at( 0 ) );
-                Q_NOWARN_DEPRECATED_POP
-                action->triggerForFeature( vlayer,  vlayer->selectedFeatures().at( 0 ), context );
-              } );
+              actionMenu->addAction( action->text(), action, [ = ]() { action->triggerForFeature( vlayer,  vlayer->selectedFeatures().at( 0 ) ); } );
             }
-            else if ( target == Qgis::MapLayerActionTarget::MultipleFeatures )
+            else if ( target == QgsMapLayerAction::Target::MultipleFeatures )
             {
-              actionMenu->addAction( action->text(), action, [ = ]()
-              {
-                Q_NOWARN_DEPRECATED_PUSH
-                action->triggerForFeatures( vlayer, vlayer->selectedFeatures() );
-                Q_NOWARN_DEPRECATED_POP
-                action->triggerForFeatures( vlayer, vlayer->selectedFeatures(), context );
-              } );
+              actionMenu->addAction( action->text(), action, [ = ]() {action->triggerForFeatures( vlayer, vlayer->selectedFeatures() );} );
             }
           }
         }
@@ -466,8 +427,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
         // set layer scale visibility
         menu->addAction( tr( "Set Layer Scale &Visibility…" ), QgisApp::instance(), &QgisApp::setLayerScaleVisibility );
 
-        if ( !layer->isInScaleRange( mCanvas->scale() ) && ( layer->minimumScale() - layer->maximumScale() >= 1 ) )
-          // Only show if we can make sure there's a scale where layer is visible
+        if ( !layer->isInScaleRange( mCanvas->scale() ) )
           menu->addAction( tr( "Zoom to &Visible Scale" ), QgisApp::instance(), &QgisApp::zoomToLayerScale );
 
         QMenu *menuSetCRS = new QMenu( tr( "Layer CRS" ), menu );
@@ -511,7 +471,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
           menuSetCRS->addAction( actionSetProjectCrs );
         }
 
-        const QList< QgsCoordinateReferenceSystem> recentProjections = QgsApplication::coordinateReferenceSystemRegistry()->recentCrs();
+        const QList< QgsCoordinateReferenceSystem> recentProjections = QgsCoordinateReferenceSystem::recentCoordinateReferenceSystems();
         if ( !recentProjections.isEmpty() )
         {
           menuSetCRS->addSeparator();
@@ -521,7 +481,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
             if ( crs == layer->crs() )
               continue;
 
-            QAction *action = menuSetCRS->addAction( tr( "Set to %1" ).arg( crs.userFriendlyIdentifier( Qgis::CrsIdentifierType::ShortString ) ) );
+            QAction *action = menuSetCRS->addAction( tr( "Set to %1" ).arg( crs.userFriendlyIdentifier( QgsCoordinateReferenceSystem::ShortString ) ) );
             connect( action, &QAction::triggered, this, [ = ]
             {
               setLayerCrs( crs );
@@ -549,7 +509,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
       {
         switch ( layer->type() )
         {
-          case Qgis::LayerType::Vector:
+          case QgsMapLayerType::VectorLayer:
             if ( vlayer )
             {
               if ( vlayer->isTemporary() )
@@ -582,11 +542,10 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
             }
             break;
 
-          case Qgis::LayerType::Raster:
-          case Qgis::LayerType::Mesh:
-          case Qgis::LayerType::VectorTile:
-          case Qgis::LayerType::PointCloud:
-          case Qgis::LayerType::TiledScene:
+          case QgsMapLayerType::RasterLayer:
+          case QgsMapLayerType::MeshLayer:
+          case QgsMapLayerType::VectorTileLayer:
+          case QgsMapLayerType::PointCloudLayer:
           {
             bool enableSaveAs = ( pcLayer && pcLayer->isValid() && pcLayer->dataProvider()->hasValidIndex() ) ||
                                 ( rlayer && rlayer->isValid() );
@@ -606,11 +565,11 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
           }
           break;
 
-          case Qgis::LayerType::Annotation:
-          case Qgis::LayerType::Group:
+          case QgsMapLayerType::AnnotationLayer:
+          case QgsMapLayerType::GroupLayer:
             break;
 
-          case Qgis::LayerType::Plugin:
+          case QgsMapLayerType::PluginLayer:
             if ( mView->selectedLayerNodes().count() == 1 )
             {
               // disable duplication of plugin layers
@@ -634,7 +593,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
         }
 
         QgisApp *app = QgisApp::instance();
-        if ( layer->type() == Qgis::LayerType::Vector || layer->type() == Qgis::LayerType::Raster )
+        if ( layer->type() == QgsMapLayerType::VectorLayer )
         {
           QMenu *copyStyleMenu = menuStyleManager->addMenu( tr( "Copy Style" ) );
           copyStyleMenu->setToolTipsVisible( true );
@@ -644,7 +603,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
           {
             const QModelIndex index = model->index( row, 0 );
             const QgsMapLayer::StyleCategory category = model->data( index, Qt::UserRole ).value<QgsMapLayer::StyleCategory>();
-            const QString name = model->data( index, static_cast< int >( QgsMapLayerStyleCategoriesModel::Role::NameRole ) ).toString();
+            const QString name = model->data( index, Qt::DisplayRole ).toString();
             const QString tooltip = model->data( index, Qt::ToolTipRole ).toString();
             const QIcon icon = model->data( index, Qt::DecorationRole ).value<QIcon>();
             QAction *copyAction = new QAction( icon, name, copyStyleMenu );
@@ -662,7 +621,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
 
         if ( layer && app->clipboard()->hasFormat( QGSCLIPBOARD_STYLE_MIME ) )
         {
-          if ( layer->type() == Qgis::LayerType::Vector || layer->type() == Qgis::LayerType::Raster )
+          if ( layer->type() == QgsMapLayerType::VectorLayer )
           {
             QDomDocument doc( QStringLiteral( "qgis" ) );
             QString errorMsg;
@@ -683,7 +642,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
                 {
                   const QModelIndex index = model->index( row, 0 );
                   const QgsMapLayer::StyleCategory category = model->data( index, Qt::UserRole ).value<QgsMapLayer::StyleCategory>();
-                  const QString name = model->data( index, static_cast< int >( QgsMapLayerStyleCategoriesModel::Role::NameRole ) ).toString();
+                  const QString name = model->data( index, Qt::DisplayRole ).toString();
                   const QString tooltip = model->data( index, Qt::ToolTipRole ).toString();
                   const QIcon icon = model->data( index, Qt::DecorationRole ).value<QIcon>();
                   QAction *pasteAction = new QAction( icon, name, pasteStyleMenu );
@@ -831,9 +790,9 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
       QgsMapLayer *layer = QgsLayerTree::toLayer( node->layerNode() )->layer();
 
       const QString layerId = symbolNode->layerNode()->layerId();
-      const QString ruleKey = symbolNode->data( static_cast< int >( QgsLayerTreeModelLegendNode::CustomRole::RuleKey ) ).toString();
+      const QString ruleKey = symbolNode->data( QgsLayerTreeModelLegendNode::RuleKeyRole ).toString();
 
-      if ( layer && layer->type() == Qgis::LayerType::Vector )
+      if ( layer && layer->type() == QgsMapLayerType::VectorLayer )
       {
         QAction *selectMatching = new QAction( QgsApplication::getThemeIcon( QStringLiteral( "/mIconSelected.svg" ) ), tr( "Select Features" ), menu );
         menu->addAction( selectMatching );
@@ -889,7 +848,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
         menu->addSeparator();
       }
 
-      if ( layer && layer->type() == Qgis::LayerType::Vector && symbolNode->symbol() )
+      if ( layer && layer->type() == QgsMapLayerType::VectorLayer && symbolNode->symbol() )
       {
         QgsColorWheel *colorWheel = new QgsColorWheel( menu );
         colorWheel->setColor( symbolNode->symbol()->color() );
@@ -899,7 +858,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
         //store the layer id and rule key in action, so we can later retrieve the corresponding
         //legend node, if it still exists
         colorAction->setProperty( "layerId", symbolNode->layerNode()->layerId() );
-        colorAction->setProperty( "ruleKey", symbolNode->data( static_cast< int >( QgsLayerTreeModelLegendNode::CustomRole::RuleKey ) ).toString() );
+        colorAction->setProperty( "ruleKey", symbolNode->data( QgsLayerTreeModelLegendNode::RuleKeyRole ).toString() );
         menu->addAction( colorAction );
 
         //add recent colors action
@@ -909,7 +868,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
         {
           QgsColorSwatchGridAction *recentColorAction = new QgsColorSwatchGridAction( recentSchemes.at( 0 ), menu, QStringLiteral( "symbology" ), menu );
           recentColorAction->setProperty( "layerId", symbolNode->layerNode()->layerId() );
-          recentColorAction->setProperty( "ruleKey", symbolNode->data( static_cast< int >( QgsLayerTreeModelLegendNode::CustomRole::RuleKey ) ).toString() );
+          recentColorAction->setProperty( "ruleKey", symbolNode->data( QgsLayerTreeModelLegendNode::RuleKeyRole ).toString() );
           recentColorAction->setDismissOnColorSelection( false );
           menu->addAction( recentColorAction );
           connect( recentColorAction, &QgsColorSwatchGridAction::colorChanged, this, &QgsAppLayerTreeViewMenuProvider::setSymbolLegendNodeColor );
@@ -918,7 +877,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
         menu->addSeparator();
       }
 
-      if ( layer && layer->type() == Qgis::LayerType::Vector )
+      if ( layer && layer->type() == QgsMapLayerType::VectorLayer )
       {
         QAction *editSymbolAction = new QAction( tr( "Edit Symbol…" ), menu );
         connect( editSymbolAction, &QAction::triggered, this, [this, layerId, ruleKey ]
@@ -935,7 +894,7 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
       } );
       menu->addAction( copySymbolAction );
 
-      if ( layer && layer->type() == Qgis::LayerType::Vector )
+      if ( layer && layer->type() == QgsMapLayerType::VectorLayer )
       {
         bool enablePaste = false;
         const std::unique_ptr< QgsSymbol > tempSymbol( QgsSymbolLayerUtils::symbolFromMimeData( QApplication::clipboard()->mimeData() ) );
@@ -957,14 +916,14 @@ QMenu *QgsAppLayerTreeViewMenuProvider::createContextMenu()
 }
 
 void QgsAppLayerTreeViewMenuProvider::addLegendLayerAction( QAction *action, const QString &menu,
-    Qgis::LayerType type, bool allLayers )
+    QgsMapLayerType type, bool allLayers )
 {
   mLegendLayerActionMap[type].append( LegendLayerAction( action, menu, allLayers ) );
 }
 
 bool QgsAppLayerTreeViewMenuProvider::removeLegendLayerAction( QAction *action )
 {
-  QMap< Qgis::LayerType, QList< LegendLayerAction > >::iterator it;
+  QMap< QgsMapLayerType, QList< LegendLayerAction > >::iterator it;
   for ( it = mLegendLayerActionMap.begin();
         it != mLegendLayerActionMap.end(); ++it )
   {
@@ -989,7 +948,7 @@ void QgsAppLayerTreeViewMenuProvider::addLegendLayerActionForLayer( QAction *act
   if ( !mLegendLayerActionMap.contains( layer->type() ) )
     return;
 
-  const QMap< Qgis::LayerType, QList< LegendLayerAction > >::iterator it
+  const QMap< QgsMapLayerType, QList< LegendLayerAction > >::iterator it
     = mLegendLayerActionMap.find( layer->type() );
   for ( int i = 0; i < it->count(); i++ )
   {
@@ -1006,7 +965,7 @@ void QgsAppLayerTreeViewMenuProvider::removeLegendLayerActionsForLayer( QgsMapLa
   if ( ! layer || ! mLegendLayerActionMap.contains( layer->type() ) )
     return;
 
-  const QMap< Qgis::LayerType, QList< LegendLayerAction > >::iterator it
+  const QMap< QgsMapLayerType, QList< LegendLayerAction > >::iterator it
     = mLegendLayerActionMap.find( layer->type() );
   for ( int i = 0; i < it->count(); i++ )
   {
@@ -1014,7 +973,7 @@ void QgsAppLayerTreeViewMenuProvider::removeLegendLayerActionsForLayer( QgsMapLa
   }
 }
 
-QList< LegendLayerAction > QgsAppLayerTreeViewMenuProvider::legendLayerActions( Qgis::LayerType type ) const
+QList< LegendLayerAction > QgsAppLayerTreeViewMenuProvider::legendLayerActions( QgsMapLayerType type ) const
 {
 #ifdef QGISDEBUG
   if ( mLegendLayerActionMap.contains( type ) )
@@ -1109,22 +1068,11 @@ void QgsAppLayerTreeViewMenuProvider::editVectorSymbol( const QString &layerId )
     return;
 
   QgsSingleSymbolRenderer *singleRenderer = dynamic_cast< QgsSingleSymbolRenderer * >( layer->renderer() );
-  std::unique_ptr< QgsSymbol > newSymbol;
-  if ( singleRenderer && singleRenderer->symbol() )
-    newSymbol.reset( singleRenderer->symbol()->clone() );
-
-  const QgsSingleSymbolRenderer *embeddedRenderer = nullptr;
-  if ( !newSymbol && layer->renderer() && layer->renderer()->embeddedRenderer() )
-  {
-    embeddedRenderer = dynamic_cast< const QgsSingleSymbolRenderer * >( layer->renderer()->embeddedRenderer() );
-    if ( embeddedRenderer && embeddedRenderer->symbol() )
-      newSymbol.reset( embeddedRenderer->symbol()->clone() );
-  }
-
-  if ( !newSymbol )
+  if ( !singleRenderer )
     return;
 
-  QgsSymbolSelectorDialog dlg( newSymbol.get(), QgsStyle::defaultStyle(), layer, mView->window() );
+  std::unique_ptr< QgsSymbol > symbol( singleRenderer->symbol() ? singleRenderer->symbol()->clone() : nullptr );
+  QgsSymbolSelectorDialog dlg( symbol.get(), QgsStyle::defaultStyle(), layer, mView->window() );
   dlg.setWindowTitle( tr( "Symbol Selector" ) );
   QgsSymbolWidgetContext context;
   context.setMapCanvas( mCanvas );
@@ -1132,17 +1080,7 @@ void QgsAppLayerTreeViewMenuProvider::editVectorSymbol( const QString &layerId )
   dlg.setContext( context );
   if ( dlg.exec() )
   {
-    if ( singleRenderer )
-    {
-      singleRenderer->setSymbol( newSymbol.release() );
-    }
-    else if ( embeddedRenderer )
-    {
-      QgsSingleSymbolRenderer *newRenderer = embeddedRenderer->clone();
-      newRenderer->setSymbol( newSymbol.release() );
-      layer->renderer()->setEmbeddedRenderer( newRenderer );
-    }
-
+    singleRenderer->setSymbol( symbol.release() );
     layer->triggerRepaint();
     mView->refreshLayerSymbology( layer->id() );
     layer->emitStyleChanged();
@@ -1156,16 +1094,11 @@ void QgsAppLayerTreeViewMenuProvider::copyVectorSymbol( const QString &layerId )
   if ( !layer )
     return;
 
-  const QgsSingleSymbolRenderer *singleRenderer = dynamic_cast< const QgsSingleSymbolRenderer * >( layer->renderer() );
-  if ( !singleRenderer && layer->renderer() && layer->renderer()->embeddedRenderer() )
-  {
-    singleRenderer = dynamic_cast< const QgsSingleSymbolRenderer * >( layer->renderer()->embeddedRenderer() );
-  }
+  QgsSingleSymbolRenderer *singleRenderer = dynamic_cast< QgsSingleSymbolRenderer * >( layer->renderer() );
+  if ( !singleRenderer )
+    return;
 
-  if ( singleRenderer )
-  {
-    QApplication::clipboard()->setMimeData( QgsSymbolLayerUtils::symbolToMimeData( singleRenderer->symbol() ) );
-  }
+  QApplication::clipboard()->setMimeData( QgsSymbolLayerUtils::symbolToMimeData( singleRenderer->symbol() ) );
 }
 
 void QgsAppLayerTreeViewMenuProvider::pasteVectorSymbol( const QString &layerId )
@@ -1175,35 +1108,17 @@ void QgsAppLayerTreeViewMenuProvider::pasteVectorSymbol( const QString &layerId 
     return;
 
   QgsSingleSymbolRenderer *singleRenderer = dynamic_cast< QgsSingleSymbolRenderer * >( layer->renderer() );
-  const QgsSymbol *originalSymbol = nullptr;
-  if ( singleRenderer )
-    originalSymbol = singleRenderer->symbol();
+  if ( !singleRenderer )
+    return;
 
-  const QgsSingleSymbolRenderer *embeddedRenderer = nullptr;
-  if ( !singleRenderer && layer->renderer() && layer->renderer()->embeddedRenderer() )
-  {
-    embeddedRenderer = dynamic_cast< const QgsSingleSymbolRenderer * >( layer->renderer()->embeddedRenderer() );
-    if ( embeddedRenderer )
-      originalSymbol = embeddedRenderer->symbol();
-  }
   std::unique_ptr< QgsSymbol > tempSymbol( QgsSymbolLayerUtils::symbolFromMimeData( QApplication::clipboard()->mimeData() ) );
   if ( !tempSymbol )
     return;
 
-  if ( !originalSymbol || originalSymbol->type() != tempSymbol->type() )
+  if ( !singleRenderer->symbol() || singleRenderer->symbol()->type() != tempSymbol->type() )
     return;
 
-  if ( singleRenderer )
-  {
-    singleRenderer->setSymbol( tempSymbol.release() );
-  }
-  else if ( embeddedRenderer )
-  {
-    QgsSingleSymbolRenderer *newRenderer = embeddedRenderer->clone();
-    newRenderer->setSymbol( tempSymbol.release() );
-    layer->renderer()->setEmbeddedRenderer( newRenderer );
-  }
-
+  singleRenderer->setSymbol( tempSymbol.release() );
   layer->triggerRepaint();
   layer->emitStyleChanged();
   mView->refreshLayerSymbology( layer->id() );
@@ -1387,36 +1302,22 @@ void QgsAppLayerTreeViewMenuProvider::toggleLabels( bool enabled )
   const QList<QgsLayerTreeLayer *> selectedLayerNodes = mView->selectedLayerNodes();
   for ( QgsLayerTreeLayer *l : selectedLayerNodes )
   {
-    if ( QgsVectorLayer *vlayer = qobject_cast< QgsVectorLayer * >( l->layer() ) )
-    {
-      if ( !vlayer->isSpatial() )
-        continue;
+    QgsVectorLayer *vlayer = qobject_cast< QgsVectorLayer * >( l->layer() );
+    if ( !vlayer || !vlayer->isSpatial() )
+      continue;
 
-      if ( enabled && !vlayer->labeling() )
-      {
-        // no labeling setup - create default labeling for layer
-        const QgsPalLayerSettings settings = QgsAbstractVectorLayerLabeling::defaultSettingsForLayer( vlayer );
-        vlayer->setLabeling( new QgsVectorLayerSimpleLabeling( settings ) );
-        vlayer->setLabelsEnabled( true );
-      }
-      else
-      {
-        vlayer->setLabelsEnabled( enabled );
-      }
-      vlayer->emitStyleChanged();
-      vlayer->triggerRepaint();
-    }
-    else if ( QgsVectorTileLayer *vectorTilelayer = qobject_cast< QgsVectorTileLayer * >( l->layer() ) )
+    if ( enabled && !vlayer->labeling() )
     {
-      vectorTilelayer->setLabelsEnabled( enabled );
-      vectorTilelayer->emitStyleChanged();
-      vectorTilelayer->triggerRepaint();
+      // no labeling setup - create default labeling for layer
+      const QgsPalLayerSettings settings = QgsAbstractVectorLayerLabeling::defaultSettingsForLayer( vlayer );
+      vlayer->setLabeling( new QgsVectorLayerSimpleLabeling( settings ) );
+      vlayer->setLabelsEnabled( true );
     }
-    else if ( QgsMeshLayer *meshLayer = qobject_cast< QgsMeshLayer * >( l->layer() ) )
+    else
     {
-      meshLayer->setLabelsEnabled( enabled );
-      meshLayer->emitStyleChanged();
-      meshLayer->triggerRepaint();
+      vlayer->setLabelsEnabled( enabled );
     }
+    vlayer->emitStyleChanged();
+    vlayer->triggerRepaint();
   }
 }

@@ -34,7 +34,7 @@ class QgsTruncateTableAlgorithm : public QgsProcessingAlgorithm
   public:
 
     QgsTruncateTableAlgorithm() = default;
-    Qgis::ProcessingAlgorithmFlags flags() const override;
+    Flags flags() const override;
     QString name() const override;
     QString displayName() const override;
     QStringList tags() const override;

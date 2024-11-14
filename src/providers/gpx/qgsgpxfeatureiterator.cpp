@@ -19,6 +19,7 @@
 #include "qgsapplication.h"
 #include "qgsgeometry.h"
 #include "qgslogger.h"
+#include "qgsmessagelog.h"
 #include "qgsexception.h"
 #include "qgsgeometryengine.h"
 
@@ -35,7 +36,10 @@ QgsGPXFeatureIterator::QgsGPXFeatureIterator( QgsGPXFeatureSource *source, bool 
     return;
   }
 
-  mTransform = mRequest.calculateTransform( mSource->mCrs );
+  if ( mRequest.destinationCrs().isValid() && mRequest.destinationCrs() != mSource->mCrs )
+  {
+    mTransform = QgsCoordinateTransform( mSource->mCrs, mRequest.destinationCrs(), mRequest.transformContext() );
+  }
   try
   {
     mFilterRect = filterRectToSourceCrs( mTransform );
@@ -77,7 +81,7 @@ bool QgsGPXFeatureIterator::rewind()
   if ( mClosed )
     return false;
 
-  if ( mRequest.filterType() == Qgis::FeatureRequestFilterType::Fid )
+  if ( mRequest.filterType() == QgsFeatureRequest::FilterFid )
   {
     mFetchedFid = false;
   }
@@ -112,7 +116,7 @@ bool QgsGPXFeatureIterator::fetchFeature( QgsFeature &feature )
   if ( mClosed )
     return false;
 
-  if ( mRequest.filterType() == Qgis::FeatureRequestFilterType::Fid )
+  if ( mRequest.filterType() == QgsFeatureRequest::FilterFid )
   {
     bool res = readFid( feature );
     close();
@@ -261,7 +265,7 @@ bool QgsGPXFeatureIterator::readWaypoint( const QgsWaypoint &wpt, QgsFeature &fe
   }
 
   // some wkb voodoo
-  if ( !( mRequest.flags() & Qgis::FeatureRequestFlag::NoGeometry ) || !mFilterRect.isNull() )
+  if ( !( mRequest.flags() & QgsFeatureRequest::NoGeometry ) || !mFilterRect.isNull() )
   {
     QgsGeometry *g = readWaypointGeometry( wpt );
     feature.setGeometry( *g );
@@ -301,7 +305,7 @@ bool QgsGPXFeatureIterator::readRoute( const QgsRoute &rte, QgsFeature &feature 
     }
   }
 
-  if ( !( mRequest.flags() & Qgis::FeatureRequestFlag::NoGeometry ) || !mFilterRect.isNull() )
+  if ( !( mRequest.flags() & QgsFeatureRequest::NoGeometry ) || !mFilterRect.isNull() )
   {
     feature.setGeometry( *geometry );
     delete geometry;
@@ -323,7 +327,7 @@ bool QgsGPXFeatureIterator::readRoute( const QgsRoute &rte, QgsFeature &feature 
 
 bool QgsGPXFeatureIterator::readTrack( const QgsTrack &trk, QgsFeature &feature )
 {
-  //QgsDebugMsgLevel( QStringLiteral( "GPX feature track segments: %1" ).arg( trk.segments.size() ), 2 );
+  //QgsDebugMsg( QStringLiteral( "GPX feature track segments: %1" ).arg( trk.segments.size() ) );
 
   QgsGeometry *geometry = readTrackGeometry( trk );
 
@@ -343,7 +347,7 @@ bool QgsGPXFeatureIterator::readTrack( const QgsTrack &trk, QgsFeature &feature 
     }
   }
 
-  if ( !( mRequest.flags() & Qgis::FeatureRequestFlag::NoGeometry ) || !mFilterRect.isNull() )
+  if ( !( mRequest.flags() & QgsFeatureRequest::NoGeometry ) || !mFilterRect.isNull() )
   {
     feature.setGeometry( *geometry );
     delete geometry;
@@ -394,9 +398,6 @@ void QgsGPXFeatureIterator::readAttributes( QgsFeature &feature, const QgsWaypoi
         break;
       case QgsGPXProvider::URLNameAttr:
         feature.setAttribute( i, QVariant( wpt.urlname ) );
-        break;
-      case QgsGPXProvider::TimeAttr:
-        feature.setAttribute( i, QVariant( wpt.time ) );
         break;
     }
   }
@@ -476,7 +477,7 @@ QgsGeometry *QgsGPXFeatureIterator::readWaypointGeometry( const QgsWaypoint &wpt
   unsigned char *geo = new unsigned char[size];
 
   QgsWkbPtr wkbPtr( geo, size );
-  wkbPtr << ( char ) QgsApplication::endian() << Qgis::WkbType::Point << wpt.lon << wpt.lat;
+  wkbPtr << ( char ) QgsApplication::endian() << QgsWkbTypes::Point << wpt.lon << wpt.lat;
 
   QgsGeometry *g = new QgsGeometry();
   g->fromWkb( geo, size );
@@ -491,7 +492,7 @@ QgsGeometry *QgsGPXFeatureIterator::readRouteGeometry( const QgsRoute &rte )
   unsigned char *geo = new unsigned char[size];
 
   QgsWkbPtr wkbPtr( geo, size );
-  wkbPtr << ( char ) QgsApplication::endian() << Qgis::WkbType::LineString << rte.points.size();
+  wkbPtr << ( char ) QgsApplication::endian() << QgsWkbTypes::LineString << rte.points.size();
 
   for ( int i = 0; i < rte.points.size(); ++i )
   {
@@ -521,19 +522,19 @@ QgsGeometry *QgsGPXFeatureIterator::readTrackGeometry( const QgsTrack &trk )
   if ( totalPoints == 0 )
     return nullptr;
 
-  //QgsDebugMsgLevel( "GPX feature track total points: " + QString::number( totalPoints ), 2 );
+  //QgsDebugMsg( "GPX feature track total points: " + QString::number( totalPoints ) );
 
   // some wkb voodoo
   const int size = 1 + 2 * sizeof( int ) + 2 * sizeof( double ) * totalPoints;
   unsigned char *geo = new unsigned char[size];
   if ( !geo )
   {
-    QgsDebugError( QStringLiteral( "Track too large!" ) );
+    QgsDebugMsg( QStringLiteral( "Track too large!" ) );
     return nullptr;
   }
 
   QgsWkbPtr wkbPtr( geo, size );
-  wkbPtr << ( char ) QgsApplication::endian() << Qgis::WkbType::LineString << totalPoints;
+  wkbPtr << ( char ) QgsApplication::endian() << QgsWkbTypes::LineString << totalPoints;
 
   for ( int k = 0; k < trk.segments.size(); k++ )
   {

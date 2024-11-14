@@ -10,26 +10,30 @@ __date__ = '2018-07-05'
 __copyright__ = 'Copyright 2018, The QGIS Project'
 
 
-from qgis.PyQt.QtCore import QDate, QDateTime, QTime
+from qgis.PyQt.QtCore import QDateTime, QDate, QTime
 from qgis.core import (
-    NULL,
-    QgsFeature,
-    QgsFeatureRequest,
-    QgsGeometry,
     QgsVectorLayer,
-    QgsVectorLayerSelectedFeatureSource,
+    QgsFeatureRequest,
+    QgsFeature,
+    QgsGeometry,
+    NULL,
+    QgsVectorLayerSelectedFeatureSource
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import (
+    start_app,
+    unittest
+)
 
 from featuresourcetestbase import FeatureSourceTestCase
-from utilities import unitTestDataPath
+from utilities import (
+    unitTestDataPath
+)
 
 start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestPyQgsVectorLayerSelectedFeatureSource(QgisTestCase, FeatureSourceTestCase):
+class TestPyQgsVectorLayerSelectedFeatureSource(unittest.TestCase, FeatureSourceTestCase):
 
     @classmethod
     def createLayer(cls):
@@ -82,7 +86,6 @@ class TestPyQgsVectorLayerSelectedFeatureSource(QgisTestCase, FeatureSourceTestC
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
-        super(TestPyQgsVectorLayerSelectedFeatureSource, cls).setUpClass()
         # Create test layer
         cls.vl = cls.createLayer()
         assert (cls.vl.isValid())
@@ -92,6 +95,10 @@ class TestPyQgsVectorLayerSelectedFeatureSource(QgisTestCase, FeatureSourceTestC
 
         cls.vl.selectByIds(ids)
         cls.source = QgsVectorLayerSelectedFeatureSource(cls.vl)
+
+    @classmethod
+    def tearDownClass(cls):
+        """Run after all tests"""
 
     def testGetFeaturesSubsetAttributes2(self):
         """ Override and skip this test for memory provider, as it's actually more efficient for the memory provider to return

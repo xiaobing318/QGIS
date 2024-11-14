@@ -16,12 +16,12 @@
  ***************************************************************************/
 
 #include "qgslayeritem.h"
-#include "moc_qgslayeritem.cpp"
+#include "qgsapplication.h"
 #include "qgsmaplayer.h"
 #include "qgsvectorlayer.h"
 #include "qgsiconutils.h"
 
-QIcon QgsLayerItem::iconForWkbType( Qgis::WkbType type )
+QIcon QgsLayerItem::iconForWkbType( QgsWkbTypes::Type type )
 {
   return QgsIconUtils::iconForWkbType( type );
 }
@@ -99,27 +99,24 @@ QgsLayerItem::QgsLayerItem( QgsDataItem *parent, const QString &name, const QStr
   mIconName = iconName( layerType );
 }
 
-Qgis::LayerType QgsLayerItem::mapLayerType() const
+QgsMapLayerType QgsLayerItem::mapLayerType() const
 {
   switch ( mLayerType )
   {
     case Qgis::BrowserLayerType::Raster:
-      return Qgis::LayerType::Raster;
+      return QgsMapLayerType::RasterLayer;
 
     case Qgis::BrowserLayerType::Mesh:
-      return Qgis::LayerType::Mesh;
+      return QgsMapLayerType::MeshLayer;
 
     case Qgis::BrowserLayerType::VectorTile:
-      return Qgis::LayerType::VectorTile;
+      return QgsMapLayerType::VectorTileLayer;
 
     case Qgis::BrowserLayerType::Plugin:
-      return Qgis::LayerType::Plugin;
+      return QgsMapLayerType::PluginLayer;
 
     case Qgis::BrowserLayerType::PointCloud:
-      return Qgis::LayerType::PointCloud;
-
-    case Qgis::BrowserLayerType::TiledScene:
-      return Qgis::LayerType::TiledScene;
+      return QgsMapLayerType::PointCloudLayer;
 
     case Qgis::BrowserLayerType::NoType:
     case Qgis::BrowserLayerType::Vector:
@@ -129,53 +126,51 @@ Qgis::LayerType QgsLayerItem::mapLayerType() const
     case Qgis::BrowserLayerType::TableLayer:
     case Qgis::BrowserLayerType::Table:
     case Qgis::BrowserLayerType::Database:
-      return Qgis::LayerType::Vector;
+      return QgsMapLayerType::VectorLayer;
   }
 
-  return Qgis::LayerType::Vector; // no warnings
+  return QgsMapLayerType::VectorLayer; // no warnings
 }
 
 Qgis::BrowserLayerType QgsLayerItem::typeFromMapLayer( QgsMapLayer *layer )
 {
   switch ( layer->type() )
   {
-    case Qgis::LayerType::Vector:
+    case QgsMapLayerType::VectorLayer:
     {
       switch ( qobject_cast< QgsVectorLayer * >( layer )->geometryType() )
       {
-        case Qgis::GeometryType::Point:
+        case QgsWkbTypes::PointGeometry:
           return Qgis::BrowserLayerType::Point;
 
-        case Qgis::GeometryType::Line:
+        case QgsWkbTypes::LineGeometry:
           return Qgis::BrowserLayerType::Line;
 
-        case Qgis::GeometryType::Polygon:
+        case QgsWkbTypes::PolygonGeometry:
           return Qgis::BrowserLayerType::Polygon;
 
-        case Qgis::GeometryType::Null:
+        case QgsWkbTypes::NullGeometry:
           return Qgis::BrowserLayerType::TableLayer;
 
-        case Qgis::GeometryType::Unknown:
+        case QgsWkbTypes::UnknownGeometry:
           return Qgis::BrowserLayerType::Vector;
       }
 
       return Qgis::BrowserLayerType::Vector; // no warnings
     }
 
-    case Qgis::LayerType::Raster:
+    case QgsMapLayerType::RasterLayer:
       return Qgis::BrowserLayerType::Raster;
-    case Qgis::LayerType::Plugin:
+    case QgsMapLayerType::PluginLayer:
       return Qgis::BrowserLayerType::Plugin;
-    case Qgis::LayerType::Mesh:
+    case QgsMapLayerType::MeshLayer:
       return Qgis::BrowserLayerType::Mesh;
-    case Qgis::LayerType::PointCloud:
+    case QgsMapLayerType::PointCloudLayer:
       return Qgis::BrowserLayerType::PointCloud;
-    case Qgis::LayerType::VectorTile:
+    case QgsMapLayerType::VectorTileLayer:
       return Qgis::BrowserLayerType::VectorTile;
-    case Qgis::LayerType::TiledScene:
-      return Qgis::BrowserLayerType::TiledScene;
-    case Qgis::LayerType::Annotation:
-    case Qgis::LayerType::Group:
+    case QgsMapLayerType::AnnotationLayer:
+    case QgsMapLayerType::GroupLayer:
       return Qgis::BrowserLayerType::Vector; // will never happen!
   }
   return Qgis::BrowserLayerType::Vector; // no warnings
@@ -207,17 +202,9 @@ QString QgsLayerItem::iconName( Qgis::BrowserLayerType layerType )
       return QStringLiteral( "/mIconMeshLayer.svg" );
     case Qgis::BrowserLayerType::PointCloud:
       return QStringLiteral( "/mIconPointCloudLayer.svg" );
-    case Qgis::BrowserLayerType::VectorTile:
-      return QStringLiteral( "/mIconVectorTileLayer.svg" );
-    case Qgis::BrowserLayerType::TiledScene:
-      return QStringLiteral( "/mIconTiledSceneLayer.svg" );
-
-    case Qgis::BrowserLayerType::NoType:
-    case Qgis::BrowserLayerType::Database:
-    case Qgis::BrowserLayerType::Plugin:
+    default:
       return QStringLiteral( "/mIconLayer.png" );
   }
-  BUILTIN_UNREACHABLE
 }
 
 bool QgsLayerItem::deleteLayer()
@@ -246,21 +233,21 @@ QgsMimeDataUtils::UriList QgsLayerItem::mimeUris() const
 
   switch ( mapLayerType() )
   {
-    case Qgis::LayerType::Vector:
+    case QgsMapLayerType::VectorLayer:
       u.layerType = QStringLiteral( "vector" );
       switch ( mLayerType )
       {
         case Qgis::BrowserLayerType::Point:
-          u.wkbType = Qgis::WkbType::Point;
+          u.wkbType = QgsWkbTypes::Point;
           break;
         case Qgis::BrowserLayerType::Line:
-          u.wkbType = Qgis::WkbType::LineString;
+          u.wkbType = QgsWkbTypes::LineString;
           break;
         case Qgis::BrowserLayerType::Polygon:
-          u.wkbType = Qgis::WkbType::Polygon;
+          u.wkbType = QgsWkbTypes::Polygon;
           break;
         case Qgis::BrowserLayerType::TableLayer:
-          u.wkbType = Qgis::WkbType::NoGeometry;
+          u.wkbType = QgsWkbTypes::NoGeometry;
           break;
 
         case Qgis::BrowserLayerType::Database:
@@ -272,32 +259,28 @@ QgsMimeDataUtils::UriList QgsLayerItem::mimeUris() const
         case Qgis::BrowserLayerType::Mesh:
         case Qgis::BrowserLayerType::PointCloud:
         case Qgis::BrowserLayerType::VectorTile:
-        case Qgis::BrowserLayerType::TiledScene:
           break;
       }
       break;
-    case Qgis::LayerType::Raster:
+    case QgsMapLayerType::RasterLayer:
       u.layerType = QStringLiteral( "raster" );
       break;
-    case Qgis::LayerType::Mesh:
+    case QgsMapLayerType::MeshLayer:
       u.layerType = QStringLiteral( "mesh" );
       break;
-    case Qgis::LayerType::VectorTile:
+    case QgsMapLayerType::VectorTileLayer:
       u.layerType = QStringLiteral( "vector-tile" );
       break;
-    case Qgis::LayerType::PointCloud:
+    case QgsMapLayerType::PointCloudLayer:
       u.layerType = QStringLiteral( "pointcloud" );
       break;
-    case Qgis::LayerType::TiledScene:
-      u.layerType = QStringLiteral( "tiled-scene" );
-      break;
-    case Qgis::LayerType::Plugin:
+    case QgsMapLayerType::PluginLayer:
       u.layerType = QStringLiteral( "plugin" );
       break;
-    case Qgis::LayerType::Group:
+    case QgsMapLayerType::GroupLayer:
       u.layerType = QStringLiteral( "group" );
       break;
-    case Qgis::LayerType::Annotation:
+    case QgsMapLayerType::AnnotationLayer:
       u.layerType = QStringLiteral( "annotation" );
       break;
   }

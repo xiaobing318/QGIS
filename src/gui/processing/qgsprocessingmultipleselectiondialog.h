@@ -20,7 +20,6 @@
 #include "qgis_gui.h"
 #include "ui_qgsprocessingmultipleselectiondialogbase.h"
 #include "qgsprocessingparameters.h"
-#include "qgsmimedatautils.h"
 #include <QDialog>
 
 class QStandardItemModel;
@@ -125,10 +124,6 @@ class GUI_EXPORT QgsProcessingMultipleSelectionPanelWidget : public QgsPanelWidg
     QStandardItemModel *mModel = nullptr;
     //! Value formatter
     std::function< QString( const QVariant & )> mValueFormatter;
-
-    void dragEnterEvent( QDragEnterEvent *event ) override;
-    void dropEvent( QDropEvent *event ) override;
-
   private slots:
 
     void selectAll( bool checked );
@@ -142,15 +137,10 @@ class GUI_EXPORT QgsProcessingMultipleSelectionPanelWidget : public QgsPanelWidg
 
     QList< QStandardItem * > currentItems();
 
+
     void populateList( const QVariantList &availableOptions, const QVariantList &selectedOptions );
 
     friend class TestProcessingGui;
-
-    /**
-     * Returns a map layer, compatible with the filters set for the combo box, from
-     * the specified mime \a data (if possible!).
-     */
-    QList<int> existingMapLayerFromMimeData( const QMimeData *data ) const;
 };
 
 
@@ -251,32 +241,13 @@ class GUI_EXPORT QgsProcessingMultipleInputPanelWidget : public QgsProcessingMul
      */
     void setProject( QgsProject *project );
 
-    /**
-     * Returns a list of layer URIs compatible with the \a parameter, from mime data.
-     *
-     * \since QGIS 3.40
-     */
-    static QStringList compatibleUrisFromMimeData(
-      const QgsProcessingParameterMultipleLayers *parameter,
-      const QMimeData *data,
-      const QgsMimeDataUtils::UriList &skipUrls ) SIP_SKIP;
-
   private slots:
 
     void addFiles();
     void addDirectory();
 
-  protected:
-    void dragEnterEvent( QDragEnterEvent *event ) override;
-    void dropEvent( QDropEvent *event ) override;
-
   private:
 
-    /**
-     * Returns a map layer, compatible with the filters set for the combo box, from
-     * the specified mime \a data (if possible!).
-     */
-    QList<int> existingMapLayerFromMimeData( const QMimeData *data, QgsMimeDataUtils::UriList &handledUrls ) const;
     void populateFromProject( QgsProject *project );
 
     const QgsProcessingParameterMultipleLayers *mParameter = nullptr;

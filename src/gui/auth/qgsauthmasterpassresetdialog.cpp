@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgsauthmasterpassresetdialog.h"
-#include "moc_qgsauthmasterpassresetdialog.cpp"
 
 #include <QLineEdit>
 #include <QPushButton>
@@ -52,7 +51,7 @@ bool QgsMasterPasswordResetDialog::requestMasterPasswordReset( QString *newpass,
     leMasterPassCurrent->setFocus();
 
     const bool ok = ( exec() == QDialog::Accepted );
-    //QgsDebugMsgLevel( QStringLiteral( "exec(): %1" ).arg( ok ? "true" : "false" ), 2 );
+    //QgsDebugMsg( QStringLiteral( "exec(): %1" ).arg( ok ? "true" : "false" ) );
 
     if ( ok )
     {

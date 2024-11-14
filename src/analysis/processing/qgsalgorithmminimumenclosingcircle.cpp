@@ -50,14 +50,14 @@ QString QgsMinimumEnclosingCircleAlgorithm::outputName() const
   return QObject::tr( "Minimum enclosing circles" );
 }
 
-Qgis::WkbType QgsMinimumEnclosingCircleAlgorithm::outputWkbType( Qgis::WkbType ) const
+QgsWkbTypes::Type QgsMinimumEnclosingCircleAlgorithm::outputWkbType( QgsWkbTypes::Type ) const
 {
-  return Qgis::WkbType::Polygon;
+  return QgsWkbTypes::Type::Polygon;
 }
 
 void QgsMinimumEnclosingCircleAlgorithm::initParameters( const QVariantMap & )
 {
-  addParameter( new QgsProcessingParameterNumber( QStringLiteral( "SEGMENTS" ), QObject::tr( "Number of segments in circles" ), Qgis::ProcessingNumberParameterType::Integer,
+  addParameter( new QgsProcessingParameterNumber( QStringLiteral( "SEGMENTS" ), QObject::tr( "Number of segments in circles" ), QgsProcessingParameterNumber::Integer,
                 72, false, 8, 100000 ) );
 }
 
@@ -88,8 +88,8 @@ bool QgsMinimumEnclosingCircleAlgorithm::supportInPlaceEdit( const QgsMapLayer *
 QgsFields QgsMinimumEnclosingCircleAlgorithm::outputFields( const QgsFields &inputFields ) const
 {
   QgsFields fields = inputFields;
-  fields.append( QgsField( QStringLiteral( "radius" ), QMetaType::Type::Double, QString(), 20, 6 ) );
-  fields.append( QgsField( QStringLiteral( "area" ), QMetaType::Type::Double, QString(), 20, 6 ) );
+  fields.append( QgsField( QStringLiteral( "radius" ), QVariant::Double, QString(), 20, 6 ) );
+  fields.append( QgsField( QStringLiteral( "area" ), QVariant::Double, QString(), 20, 6 ) );
   return fields;
 }
 

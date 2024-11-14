@@ -66,10 +66,10 @@ bool QgsDifferenceAlgorithm::supportInPlaceEdit( const QgsMapLayer *l ) const
   return layer->isSpatial();
 }
 
-Qgis::ProcessingAlgorithmFlags QgsDifferenceAlgorithm::flags() const
+QgsProcessingAlgorithm::Flags QgsDifferenceAlgorithm::flags() const
 {
-  Qgis::ProcessingAlgorithmFlags f = QgsProcessingAlgorithm::flags();
-  f |= Qgis::ProcessingAlgorithmFlag::SupportsInPlaceEdits;
+  Flags f = QgsProcessingAlgorithm::flags();
+  f |= QgsProcessingAlgorithm::FlagSupportsInPlaceEdits;
   return f;
 }
 
@@ -85,8 +85,8 @@ void QgsDifferenceAlgorithm::initAlgorithm( const QVariantMap & )
   addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Difference" ) ) );
 
   std::unique_ptr< QgsProcessingParameterNumber > gridSize = std::make_unique< QgsProcessingParameterNumber >( QStringLiteral( "GRID_SIZE" ),
-      QObject::tr( "Grid size" ), Qgis::ProcessingNumberParameterType::Double, QVariant(), true, 0 );
-  gridSize->setFlags( gridSize->flags() | Qgis::ProcessingParameterFlag::Advanced );
+      QObject::tr( "Grid size" ), QgsProcessingParameterNumber::Double, QVariant(), true, 0 );
+  gridSize->setFlags( gridSize->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( gridSize.release() );
 }
 
@@ -101,7 +101,7 @@ QVariantMap QgsDifferenceAlgorithm::processAlgorithm( const QVariantMap &paramet
   if ( !sourceB )
     throw QgsProcessingException( invalidSourceError( parameters, QStringLiteral( "OVERLAY" ) ) );
 
-  const Qgis::WkbType geomType = QgsWkbTypes::promoteNonPointTypesToMulti( sourceA->wkbType() );
+  const QgsWkbTypes::Type geomType = QgsWkbTypes::promoteNonPointTypesToMulti( sourceA->wkbType() );
 
   QString dest;
   std::unique_ptr< QgsFeatureSink > sink( parameterAsSink( parameters, QStringLiteral( "OUTPUT" ), context, dest, sourceA->fields(), geomType, sourceA->sourceCrs() ) );
@@ -122,7 +122,6 @@ QVariantMap QgsDifferenceAlgorithm::processAlgorithm( const QVariantMap &paramet
 
   QgsOverlayUtils::difference( *sourceA, *sourceB, *sink, context, feedback, count, total, QgsOverlayUtils::OutputA, geometryParameters, QgsOverlayUtils::SanitizeFlag::DontPromotePointGeometryToMultiPoint );
 
-  sink->finalize();
   return outputs;
 }
 

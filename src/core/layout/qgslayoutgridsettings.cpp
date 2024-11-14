@@ -17,7 +17,7 @@
 #include "qgslayoutgridsettings.h"
 #include "qgsreadwritecontext.h"
 #include "qgslayout.h"
-#include "qgsunittypes.h"
+#include "qgsproject.h"
 #include "qgslayoutundostack.h"
 #include "qgslayoutpagecollection.h"
 #include "qgssettings.h"
@@ -82,10 +82,10 @@ void QgsLayoutGridSettings::loadFromSettings()
     mGridStyle = StyleLines;
   }
 
-  mGridResolution = QgsLayoutMeasurement( s.value( QStringLiteral( "LayoutDesigner/defaultSnapGridResolution" ), 10.0, QgsSettings::Gui ).toDouble(), Qgis::LayoutUnit::Millimeters );
+  mGridResolution = QgsLayoutMeasurement( s.value( QStringLiteral( "LayoutDesigner/defaultSnapGridResolution" ), 10.0, QgsSettings::Gui ).toDouble(), QgsUnitTypes::LayoutMillimeters );
 //  mSnapToleranceSpinBox->setValue( mSettings->value( QStringLiteral( "LayoutDesigner/defaultSnapTolerancePixels" ), 5, QgsSettings::Gui ).toInt() );
   mGridOffset = QgsLayoutPoint( s.value( QStringLiteral( "LayoutDesigner/defaultSnapGridOffsetX" ), 0, QgsSettings::Gui ).toDouble(),
-                                s.value( QStringLiteral( "LayoutDesigner/defaultSnapGridOffsetY" ), 0, QgsSettings::Gui ).toDouble(), Qgis::LayoutUnit::Millimeters );
+                                s.value( QStringLiteral( "LayoutDesigner/defaultSnapGridOffsetY" ), 0, QgsSettings::Gui ).toDouble(), QgsUnitTypes::LayoutMillimeters );
 }
 
 bool QgsLayoutGridSettings::writeXml( QDomElement &parentElement, QDomDocument &document, const QgsReadWriteContext & ) const
@@ -117,12 +117,12 @@ bool QgsLayoutGridSettings::readXml( const QDomElement &e, const QDomDocument &,
   }
 
   const double res = element.attribute( QStringLiteral( "resolution" ), QStringLiteral( "10" ) ).toDouble();
-  const Qgis::LayoutUnit resUnit = QgsUnitTypes::decodeLayoutUnit( element.attribute( QStringLiteral( "resUnits" ) ) );
+  const QgsUnitTypes::LayoutUnit resUnit = QgsUnitTypes::decodeLayoutUnit( element.attribute( QStringLiteral( "resUnits" ) ) );
   mGridResolution = QgsLayoutMeasurement( res, resUnit );
 
   const double offsetX = element.attribute( QStringLiteral( "offsetX" ) ).toDouble();
   const double offsetY = element.attribute( QStringLiteral( "offsetY" ) ).toDouble();
-  const Qgis::LayoutUnit offsetUnit = QgsUnitTypes::decodeLayoutUnit( element.attribute( QStringLiteral( "offsetUnits" ) ) );
+  const QgsUnitTypes::LayoutUnit offsetUnit = QgsUnitTypes::decodeLayoutUnit( element.attribute( QStringLiteral( "offsetUnits" ) ) );
   mGridOffset = QgsLayoutPoint( offsetX, offsetY, offsetUnit );
 
   mLayout->pageCollection()->redraw();

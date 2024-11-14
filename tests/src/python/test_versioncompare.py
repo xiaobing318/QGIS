@@ -14,15 +14,14 @@ test_versioncompare.py
  ***************************************************************************/
 '''
 
-
+import qgis  # NOQA
 from pyplugin_installer.version_compare import compareVersions
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import unittest, start_app
 
 start_app()
 
 
-class TestVersionCompare(QgisTestCase):
+class TestVersionCompare(unittest.TestCase):
 
     def setUp(self):
         """Run before each test."""

@@ -24,6 +24,7 @@
 #include "qgsrasterlayer.h"
 #include "qgsrasterfilewriter.h"
 #include "qgsrasterpipe.h"
+#include "qgsgui.h"
 
 class TestQgsRasterLayerSaveAsDialog : public QObject
 {
@@ -121,7 +122,7 @@ QString TestQgsRasterLayerSaveAsDialog::prepareDb()
 
   QgsVectorFileWriter::SaveVectorOptions saveOptions;
   saveOptions.fileEncoding = QStringLiteral( "UTF-8" );
-  const std::unique_ptr< QgsVectorFileWriter > writer( QgsVectorFileWriter::create( fileName, vl.fields(), Qgis::WkbType::Point, vl.crs(), QgsCoordinateTransformContext(), saveOptions ) );
+  const std::unique_ptr< QgsVectorFileWriter > writer( QgsVectorFileWriter::create( fileName, vl.fields(), QgsWkbTypes::Point, vl.crs(), QgsCoordinateTransformContext(), saveOptions ) );
 
   QgsFeature f { vl.fields() };
   f.setAttribute( 0, QString( 1024, 'x' ) );

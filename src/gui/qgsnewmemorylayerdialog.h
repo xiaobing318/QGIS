@@ -50,11 +50,12 @@ class GUI_EXPORT QgsNewMemoryLayerDialog: public QDialog, private Ui::QgsNewMemo
     QgsNewMemoryLayerDialog( QWidget *parent SIP_TRANSFERTHIS = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags );
 
     //! Returns the selected geometry type
-    Qgis::WkbType selectedType() const;
+    QgsWkbTypes::Type selectedType() const;
 
     /**
      * Sets the \a crs value for the new layer in the dialog.
      * \see crs()
+     * \since QGIS 3.0
      */
     void setCrs( const QgsCoordinateReferenceSystem &crs );
 
@@ -73,8 +74,6 @@ class GUI_EXPORT QgsNewMemoryLayerDialog: public QDialog, private Ui::QgsNewMemo
      */
     QgsFields fields() const;
 
-    void accept() override;
-
   private:
 
     QString mCrsId;
@@ -89,8 +88,6 @@ class GUI_EXPORT QgsNewMemoryLayerDialog: public QDialog, private Ui::QgsNewMemo
     void mRemoveAttributeButton_clicked();
     void selectionChanged();
     void showHelp();
-    void moveFieldsUp();
-    void moveFieldsDown();
 };
 
 #endif //QGSNEWMEMORYLAYERDIALOG_H

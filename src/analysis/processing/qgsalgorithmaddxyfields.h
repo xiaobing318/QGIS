@@ -43,7 +43,6 @@ class QgsAddXYFieldsAlgorithm : public QgsProcessingFeatureBasedAlgorithm
     QString shortDescription() const override;
     QList<int> inputLayerTypes() const override;
     QgsAddXYFieldsAlgorithm *createInstance() const override SIP_FACTORY;
-    bool supportInPlaceEdit( const QgsMapLayer *layer ) const override;
 
   protected:
 
@@ -51,10 +50,11 @@ class QgsAddXYFieldsAlgorithm : public QgsProcessingFeatureBasedAlgorithm
     QString outputName() const override;
     QgsFields outputFields( const QgsFields &inputFields ) const override;
     QgsCoordinateReferenceSystem outputCrs( const QgsCoordinateReferenceSystem &inputCrs ) const override;
-    Qgis::ProcessingFeatureSourceFlags sourceFlags() const override;
+    QgsProcessingFeatureSource::Flag sourceFlags() const override;
 
     bool prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
     QgsFeatureList processFeature( const QgsFeature &feature,  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
+    bool supportInPlaceEdit( const QgsMapLayer *layer ) const override;
 
   private:
 

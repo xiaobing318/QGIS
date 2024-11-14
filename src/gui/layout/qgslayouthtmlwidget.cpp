@@ -13,7 +13,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgslayouthtmlwidget.h"
-#include "moc_qgslayouthtmlwidget.cpp"
 #include "qgslayoutframe.h"
 #include "qgslayoutitemhtml.h"
 #include "qgslayout.h"
@@ -22,7 +21,6 @@
 #include "qgscodeeditorcss.h"
 #include "qgssettings.h"
 #include "qgslayoutundostack.h"
-#include "qgsexpressionfinder.h"
 
 #include <QFileDialog>
 #include <QUrl>
@@ -83,7 +81,7 @@ QgsLayoutHtmlWidget::QgsLayoutHtmlWidget( QgsLayoutFrame *frame )
 
   //connections for data defined buttons
   connect( mUrlDDBtn, &QgsPropertyOverrideButton::activated, mUrlLineEdit, &QLineEdit::setDisabled );
-  registerDataDefinedButton( mUrlDDBtn, QgsLayoutObject::DataDefinedProperty::SourceUrl );
+  registerDataDefinedButton( mUrlDDBtn, QgsLayoutObject::SourceUrl );
 }
 
 void QgsLayoutHtmlWidget::setMasterLayout( QgsMasterLayoutInterface *masterLayout )
@@ -344,22 +342,43 @@ void QgsLayoutHtmlWidget::mInsertExpressionButton_clicked()
     return;
   }
 
-  QString expression = QgsExpressionFinder::findAndSelectActiveExpression( mHtmlEditor );
+  int line = 0;
+  int index = 0;
+  QString selText;
+  if ( mHtmlEditor->hasSelectedText() )
+  {
+    selText = mHtmlEditor->selectedText();
+
+    // edit the selected expression if there's one
+    if ( selText.startsWith( QLatin1String( "[%" ) ) && selText.endsWith( QLatin1String( "%]" ) ) )
+      selText = selText.mid( 2, selText.size() - 4 );
+  }
+  else
+  {
+    mHtmlEditor->getCursorPosition( &line, &index );
+  }
 
   // use the atlas coverage layer, if any
   QgsVectorLayer *layer = coverageLayer();
 
   const QgsExpressionContext context = mHtml->createExpressionContext();
-  QgsExpressionBuilderDialog exprDlg( layer, expression, this, QStringLiteral( "generic" ), context );
+  QgsExpressionBuilderDialog exprDlg( layer, selText, this, QStringLiteral( "generic" ), context );
   exprDlg.setWindowTitle( tr( "Insert Expression" ) );
   if ( exprDlg.exec() == QDialog::Accepted )
   {
-    expression = exprDlg.expressionText();
+    const QString expression = exprDlg.expressionText();
     if ( !expression.isEmpty() )
     {
       blockSignals( true );
       mHtml->beginCommand( tr( "Change HTML Source" ) );
-      mHtmlEditor->insertText( "[%" + expression.trimmed() + "%]" );
+      if ( mHtmlEditor->hasSelectedText() )
+      {
+        mHtmlEditor->replaceSelectedText( "[%" + expression + "%]" );
+      }
+      else
+      {
+        mHtmlEditor->insertAt( "[%" + expression + "%]", line, index );
+      }
       mHtml->setHtml( mHtmlEditor->text() );
       mHtml->endCommand();
       blockSignals( false );

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsprovidersourcewidget.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -41,15 +41,6 @@ Returns the source URI as currently defined by the widget.
 .. seealso:: :py:func:`setSourceUri`
 %End
 
-    virtual QString groupTitle() const;
-%Docstring
-Returns an optional group title for the source settings, for use in layer properties dialogs.
-
-If not specified, a default title will be used.
-
-.. versionadded:: 3.36
-%End
-
     virtual void setMapCanvas( QgsMapCanvas *mapCanvas );
 %Docstring
 Sets a map ``canvas`` associated with the widget.
@@ -74,18 +65,11 @@ If ``isValid`` is ``False`` then the widget is not valid, and any dialog using t
 being accepted.
 %End
 
-    void changed();
-%Docstring
-Emitted whenever the configuration of the widget changes.
-
-.. versionadded:: 3.30
-%End
-
 };
 /************************************************************************
  * This file has been generated automatically from                      *
  *                                                                      *
  * src/gui/qgsprovidersourcewidget.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

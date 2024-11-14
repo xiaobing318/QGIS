@@ -14,12 +14,13 @@
  ***************************************************************************/
 
 #include "qgsmaptooldeletering.h"
-#include "moc_qgsmaptooldeletering.cpp"
 
 #include "qgsmapcanvas.h"
 #include "qgsfeatureiterator.h"
 #include "qgsgeometry.h"
+#include "qgsvertexmarker.h"
 #include "qgsvectorlayer.h"
+#include "qgisapp.h"
 #include "qgsrubberband.h"
 #include "qgsmapmouseevent.h"
 
@@ -65,7 +66,7 @@ void QgsMapToolDeleteRing::canvasPressEvent( QgsMapMouseEvent *e )
     return;
   }
 
-  if ( vlayer->geometryType() != Qgis::GeometryType::Polygon )
+  if ( vlayer->geometryType() != QgsWkbTypes::PolygonGeometry )
   {
     emit messageEmitted( tr( "Delete ring can only be used in a polygon layer." ) );
     return;
@@ -81,7 +82,7 @@ void QgsMapToolDeleteRing::canvasPressEvent( QgsMapMouseEvent *e )
 
   const QgsGeometry ringGeom = ringUnderPoint( p, mPressedFid, mPressedPartNum, mPressedRingNum );
 
-  if ( mPressedRingNum != -1 )
+  if ( mPressedFid != -1 )
   {
     QgsFeature f;
     vlayer->getFeatures( QgsFeatureRequest().setFilterFid( mPressedFid ) ).nextFeature( f );
@@ -89,12 +90,6 @@ void QgsMapToolDeleteRing::canvasPressEvent( QgsMapMouseEvent *e )
 
     mRubberBand->setToGeometry( ringGeom, vlayer );
     mRubberBand->show();
-  }
-  else if ( vlayer->selectedFeatureCount() > 0 )
-  {
-    emit messageEmitted(
-      tr( "If there are selected features, the delete ring tool only applies to those. Clear the selection and try again." ),
-      Qgis::MessageLevel::Warning );
   }
 }
 
@@ -136,15 +131,10 @@ QgsGeometry QgsMapToolDeleteRing::ringUnderPoint( const QgsPointXY &p, QgsFeatur
   QgsPolygonXY tempPol;
   QgsGeometry tempGeom;
   double area = std::numeric_limits<double>::max();
-  const QgsFeatureIds selectedFeatureIds = vlayer->selectedFeatureIds();
   while ( fit.nextFeature( f ) )
   {
-    if ( !selectedFeatureIds.isEmpty() &&
-         !selectedFeatureIds.contains( f.id() ) )
-      continue;
-
     g = f.geometry();
-    if ( g.isNull() || QgsWkbTypes::geometryType( g.wkbType() ) != Qgis::GeometryType::Polygon )
+    if ( g.isNull() || QgsWkbTypes::geometryType( g.wkbType() ) != QgsWkbTypes::PolygonGeometry )
       continue;
 
     if ( !QgsWkbTypes::isMultiType( g.wkbType() ) )
@@ -187,10 +177,10 @@ void QgsMapToolDeleteRing::deleteRing( QgsFeatureId fId, int beforeVertexNr, Qgs
   vlayer->getFeatures( QgsFeatureRequest().setFilterFid( fId ) ).nextFeature( f );
 
   const QgsGeometry g = f.geometry();
-  const Qgis::WkbType wkbtype = g.wkbType();
+  const QgsWkbTypes::Type wkbtype = g.wkbType();
   int ringNum, partNum = 0;
 
-  if ( QgsWkbTypes::geometryType( wkbtype ) != Qgis::GeometryType::Polygon )
+  if ( QgsWkbTypes::geometryType( wkbtype ) != QgsWkbTypes::PolygonGeometry )
     return;
 
   if ( !QgsWkbTypes::isMultiType( wkbtype ) )

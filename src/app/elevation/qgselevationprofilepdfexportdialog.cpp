@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgselevationprofilepdfexportdialog.h"
-#include "moc_qgselevationprofilepdfexportdialog.cpp"
 #include "qgsplot.h"
 #include "qgselevationprofileexportsettingswidget.h"
 #include "qgsgui.h"
@@ -83,7 +82,7 @@ void QgsElevationProfilePdfExportDialog::updatePlotSettings( Qgs2DPlot &plot )
 
 QgsLayoutSize QgsElevationProfilePdfExportDialog::pageSizeMM() const
 {
-  return mConverter.convert( QgsLayoutSize( mWidthSpin->value(), mHeightSpin->value(), mSizeUnitsComboBox->unit() ), Qgis::LayoutUnit::Millimeters );
+  return mConverter.convert( QgsLayoutSize( mWidthSpin->value(), mHeightSpin->value(), mSizeUnitsComboBox->unit() ), QgsUnitTypes::LayoutMillimeters );
 }
 
 void QgsElevationProfilePdfExportDialog::pageSizeChanged( int )

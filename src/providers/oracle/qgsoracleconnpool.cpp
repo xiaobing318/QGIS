@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsoracleconnpool.h"
-#include "moc_qgsoracleconnpool.cpp"
 #include "qgsoracleconn.h"
 #include "qgslogger.h"
 

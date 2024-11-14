@@ -154,7 +154,7 @@ class QgsGrassPlugin : public QObject, public QgisPlugin
     //! GRASS tools
     QgsGrassTools *mTools = nullptr;
     //! Pointer to QgsGrassNewMapset
-    QPointer< QgsGrassNewMapset > mNewMapset;
+    QgsGrassNewMapset *mNewMapset = nullptr;
 
     QgsCoordinateReferenceSystem mCrs;
     QgsCoordinateTransform mCoordinateTransform;
@@ -183,7 +183,7 @@ class QgsGrassPlugin : public QObject, public QgisPlugin
     // Names of layer styles before editing started
     QMap<QgsVectorLayer *, QString> mOldStyles;
     // Original layer form suppress
-    QMap<QgsVectorLayer *, Qgis::AttributeFormSuppression > mFormSuppress;
+    QMap<QgsVectorLayer *, QgsEditFormConfig::FeatureFormSuppress> mFormSuppress;
 };
 
 #endif // QGSGRASSPLUGIN_H

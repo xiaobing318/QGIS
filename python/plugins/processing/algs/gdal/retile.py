@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     retile.py
@@ -20,7 +22,6 @@ __date__ = 'January 2016'
 __copyright__ = '(C) 2016, Médéric Ribreux'
 
 from qgis.core import (QgsProcessing,
-                       QgsProcessingException,
                        QgsProcessingParameterDefinition,
                        QgsProcessingParameterMultipleLayers,
                        QgsProcessingParameterCrs,
@@ -54,39 +55,39 @@ class retile(GdalAlgorithm):
     OUTPUT = 'OUTPUT'
     OUTPUT_CSV = 'OUTPUT_CSV'
 
-    TYPES = ['Byte', 'Int16', 'UInt16', 'UInt32', 'Int32', 'Float32', 'Float64', 'CInt16', 'CInt32', 'CFloat32', 'CFloat64', 'Int8']
+    TYPES = ['Byte', 'Int16', 'UInt16', 'UInt32', 'Int32', 'Float32', 'Float64', 'CInt16', 'CInt32', 'CFloat32', 'CFloat64']
 
     def __init__(self):
         super().__init__()
 
     def initAlgorithm(self, config=None):
         self.methods = ((self.tr('Nearest Neighbour'), 'near'),
-                        (self.tr('Bilinear (2x2 Kernel)'), 'bilinear'),
-                        (self.tr('Cubic (4x4 Kernel)'), 'cubic'),
-                        (self.tr('Cubic B-Spline (4x4 Kernel)'), 'cubicspline'),
-                        (self.tr('Lanczos (6x6 Kernel)'), 'lanczos'),)
+                        (self.tr('Bilinear'), 'bilinear'),
+                        (self.tr('Cubic'), 'cubic'),
+                        (self.tr('Cubic Spline'), 'cubicspline'),
+                        (self.tr('Lanczos Windowed Sinc'), 'lanczos'),)
 
         self.addParameter(QgsProcessingParameterMultipleLayers(self.INPUT,
                                                                self.tr('Input files'),
-                                                               QgsProcessing.SourceType.TypeRaster))
+                                                               QgsProcessing.TypeRaster))
         self.addParameter(QgsProcessingParameterNumber(self.TILE_SIZE_X,
                                                        self.tr('Tile width'),
-                                                       type=QgsProcessingParameterNumber.Type.Integer,
+                                                       type=QgsProcessingParameterNumber.Integer,
                                                        minValue=0,
                                                        defaultValue=256))
         self.addParameter(QgsProcessingParameterNumber(self.TILE_SIZE_Y,
                                                        self.tr('Tile height'),
-                                                       type=QgsProcessingParameterNumber.Type.Integer,
+                                                       type=QgsProcessingParameterNumber.Integer,
                                                        minValue=0,
                                                        defaultValue=256))
         self.addParameter(QgsProcessingParameterNumber(self.OVERLAP,
                                                        self.tr('Overlap in pixels between consecutive tiles'),
-                                                       type=QgsProcessingParameterNumber.Type.Integer,
+                                                       type=QgsProcessingParameterNumber.Integer,
                                                        minValue=0,
                                                        defaultValue=0))
         self.addParameter(QgsProcessingParameterNumber(self.LEVELS,
                                                        self.tr('Number of pyramids levels to build'),
-                                                       type=QgsProcessingParameterNumber.Type.Integer,
+                                                       type=QgsProcessingParameterNumber.Integer,
                                                        minValue=0,
                                                        defaultValue=1))
 
@@ -110,7 +111,9 @@ class retile(GdalAlgorithm):
                                                      self.tr('Additional creation options'),
                                                      defaultValue='',
                                                      optional=True)
-        options_param.setMetadata({'widget_wrapper': {'widget_type': 'rasteroptions'}})
+        options_param.setMetadata({
+            'widget_wrapper': {
+                'class': 'processing.algs.gdal.ui.RasterOptionsWidget.RasterOptionsWidgetWrapper'}})
         params.append(options_param)
 
         params.append(QgsProcessingParameterString(self.EXTRA,
@@ -132,7 +135,7 @@ class retile(GdalAlgorithm):
                                                     defaultValue=False))
 
         for param in params:
-            param.setFlags(param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+            param.setFlags(param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
             self.addParameter(param)
 
         self.addParameter(QgsProcessingParameterFolderDestination(self.OUTPUT,
@@ -181,11 +184,8 @@ class retile(GdalAlgorithm):
         arguments.append('-r')
         arguments.append(self.methods[self.parameterAsEnum(parameters, self.RESAMPLING, context)][1])
 
-        data_type = self.parameterAsEnum(parameters, self.DATA_TYPE, context)
-        if self.TYPES[data_type] == 'Int8' and GdalUtils.version() < 3070000:
-            raise QgsProcessingException(self.tr('Int8 data type requires GDAL version 3.7 or later'))
-
-        arguments.append('-ot ' + self.TYPES[data_type])
+        arguments.append('-ot')
+        arguments.append(self.TYPES[self.parameterAsEnum(parameters, self.DATA_TYPE, context)])
 
         options = self.parameterAsString(parameters, self.OPTIONS, context)
         if options:
@@ -213,17 +213,7 @@ class retile(GdalAlgorithm):
         arguments.append('-targetDir')
         arguments.append(self.parameterAsString(parameters, self.OUTPUT, context))
 
-        input_layers = self.parameterAsLayerList(parameters, self.INPUT, context)
-        layers = []
-        credential_options = []
-        for layer in input_layers:
-            layer_details = GdalUtils.gdal_connection_details_from_layer(layer)
-            layers.append(layer_details.connection_string)
-
-            if layer_details.credential_options:
-                credential_options.extend(
-                    layer_details.credential_options_as_arguments())
+        layers = [l.source() for l in self.parameterAsLayerList(parameters, self.INPUT, context)]
         arguments.extend(layers)
-        arguments.extend(credential_options)
 
         return [self.commandName() + ('.bat' if isWindows() else '.py'), GdalUtils.escapeAndJoin(arguments)]

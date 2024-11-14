@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/processing/qgsprocessingwidgetwrapper.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -88,6 +88,9 @@ to fine-tune its behavior.
   public:
 
     QgsProcessingParameterWidgetContext();
+%Docstring
+Constructor for QgsProcessingParameterWidgetContext.
+%End
 
     void setMapCanvas( QgsMapCanvas *canvas );
 %Docstring
@@ -231,7 +234,7 @@ use in a standard algorithm dialog, a batch processing dialog, or a modeler dial
 
 Individual widget wrappers are not usually created directly, instead they are
 constructed through the central registry, via calls to
-:py:func:`QgsGui.processingGuiRegistry()`->:py:func:`~createParameterWidgetWrapper`.
+:py:func:`QgsGui.processingGuiRegistry()`->:py:func:`~QgsProcessingParameterWidgetContext.createParameterWidgetWrapper`.
 
 .. versionadded:: 3.4
 %End
@@ -455,9 +458,9 @@ class QgsProcessingParameterWidgetFactoryInterface
 
 An interface for Processing widget wrapper factories.
 
-Widget wrapper factories allow creation of :py:class:`QgsAbstractProcessingParameterWidgetWrapper` objects.
+Widget wrapper factories allow creation of QgsAbstractProcessingParameterWidgetWrapper objects.
 They are centrally managed by :py:class:`QgsProcessingGuiRegistry`. Usually, individual factories
-are not directly utilized, rather the :py:func:`QgsGui.processingGuiRegistry()`->:py:func:`~createParameterWidgetWrapper`
+are not directly utilized, rather the :py:func:`QgsGui.processingGuiRegistry()`->:py:func:`~QgsAbstractProcessingParameterWidgetWrapper.createParameterWidgetWrapper`
 method is used to create widget wrappers.
 
 .. versionadded:: 3.4
@@ -599,7 +602,7 @@ and should give helpful text to users to indicate the expected results from the 
 This is purely a text format and no expression validation is made against it.
 %End
 
-    virtual Qgis::ProcessingModelChildParameterSource defaultModelSource( const QgsProcessingParameterDefinition *parameter ) const;
+    virtual QgsProcessingModelChildParameterSource::Source defaultModelSource( const QgsProcessingParameterDefinition *parameter ) const;
 %Docstring
 Returns the default source type to use for the widget for the specified ``parameter``.
 
@@ -660,5 +663,5 @@ Sets the vector layer linked to the wrapper.
  *                                                                      *
  * src/gui/processing/qgsprocessingwidgetwrapper.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

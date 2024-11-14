@@ -10,6 +10,7 @@ __date__ = '2017-01'
 __copyright__ = 'Copyright 2017, The QGIS Project'
 
 
+import qgis  # NOQA
 from qgis.core import QgsMargins
 from qgis.testing import unittest
 
@@ -33,10 +34,6 @@ class TestQgsOptional(unittest.TestCase):
         margins.setRight(5.5)
         self.assertFalse(margins.isNull())
         self.assertEqual(margins, QgsMargins(5.5, 0.0, 5.5, 0.0))
-
-    def test_repr(self):
-        self.assertEqual(str(QgsMargins(12.1, 14.1, 16.1, 18.1)),
-                         '<QgsMargins: 12.1 14.1 16.1 18.1>')
 
     def testOperators(self):
         m1 = QgsMargins(12.1, 14.1, 16.1, 18.1)

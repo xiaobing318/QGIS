@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsexternalresourcewidget.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -42,9 +42,7 @@ It can also be used to display a picture or a web page.
     {
       NoContent,
       Image,
-      Web,
-      Audio,
-      Video,
+      Web
     };
 
     explicit QgsExternalResourceWidget( QWidget *parent /TransferThis/ = 0 );
@@ -55,24 +53,12 @@ Both part of the widget are optional.
 .. seealso:: :py:class:`QgsFileWidget`
 %End
 
-    QVariant documentPath( QMetaType::Type type = QMetaType::Type::QString ) const;
+    QVariant documentPath( QVariant::Type type = QVariant::String ) const;
 %Docstring
 documentPath returns the path of the current document in the widget
 
 :param type: determines the type of the returned null variant if the document is not defined yet
 %End
-
- QVariant documentPath( QVariant::Type type ) const /Deprecated/;
-%Docstring
-documentPath returns the path of the current document in the widget
-
-:param type: determines the type of the returned null variant if the document is not defined yet
-
-.. deprecated:: 3.38
-
-   Use the method with a QMetaType.Type argument instead.
-%End
-
     void setDocumentPath( const QVariant &documentPath );
 
     QgsExternalStorageFileWidget *fileWidget();
@@ -201,9 +187,9 @@ Returns message bar used to report messages
 %End
 
   signals:
-    void valueChanged( const QString &value );
+    void valueChanged( const QString & );
 %Docstring
-Emitted as soon as the current document changes
+emitteed as soon as the current document changes
 %End
 
 };
@@ -213,5 +199,5 @@ Emitted as soon as the current document changes
  *                                                                      *
  * src/gui/qgsexternalresourcewidget.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

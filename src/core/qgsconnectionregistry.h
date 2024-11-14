@@ -46,7 +46,9 @@ class CORE_EXPORT QgsConnectionRegistry : public QObject
      */
     QgsConnectionRegistry( QObject *parent SIP_TRANSFERTHIS = nullptr );
 
+    //! Registry cannot be copied
     QgsConnectionRegistry( const QgsConnectionRegistry &other ) = delete;
+    //! Registry cannot be copied
     QgsConnectionRegistry &operator=( const QgsConnectionRegistry &other ) = delete;
 
     /**

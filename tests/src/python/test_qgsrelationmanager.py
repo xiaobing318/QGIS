@@ -9,16 +9,15 @@ __author__ = 'Nyall Dawson'
 __date__ = '17/05/2016'
 __copyright__ = 'Copyright 2016, The QGIS Project'
 
+import qgis  # NOQA
 
-from qgis.core import (
-    QgsPolymorphicRelation,
-    QgsProject,
-    QgsRelation,
-    QgsRelationManager,
-    QgsVectorLayer,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsVectorLayer,
+                       QgsRelation,
+                       QgsPolymorphicRelation,
+                       QgsRelationManager,
+                       QgsProject
+                       )
+from qgis.testing import start_app, unittest
 
 start_app()
 
@@ -36,7 +35,7 @@ def createReferencedLayer():
     return layer
 
 
-class TestQgsRelationManager(QgisTestCase):
+class TestQgsRelationManager(unittest.TestCase):
 
     def setUp(self):
         self.referencedLayer = createReferencedLayer()

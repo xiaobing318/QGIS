@@ -9,18 +9,17 @@ __author__ = 'Denis Rouzaud'
 __date__ = '2018-01-04'
 __copyright__ = 'Copyright 2017, The QGIS Project'
 
-from qgis.PyQt.QtCore import QDate, QDateTime, Qt, QTime
-from qgis.gui import QgsDateEdit, QgsDateTimeEdit, QgsTimeEdit
-import unittest
-from qgis.testing import start_app, QgisTestCase
+import qgis  # NOQA
+from qgis.PyQt.QtCore import Qt, QDateTime, QDate, QTime
+from qgis.gui import QgsDateTimeEdit, QgsDateEdit, QgsTimeEdit
+from qgis.testing import start_app, unittest
 
 start_app()
 
-DATE = QDateTime.fromString('2018-01-01 01:02:03', Qt.DateFormat.ISODate)
-DATE_Z = QDateTime.fromString('2018-01-01 01:02:03Z', Qt.DateFormat.ISODate)
+DATE = QDateTime.fromString('2018-01-01 01:02:03', Qt.ISODate)
 
 
-class TestQgsDateTimeEdit(QgisTestCase):
+class TestQgsDateTimeEdit(unittest.TestCase):
 
     def testSettersGetters(self):
         """ test widget handling of null values """
@@ -32,17 +31,6 @@ class TestQgsDateTimeEdit(QgisTestCase):
         # date should remain when setting an invalid date
         w.setDateTime(QDateTime())
         self.assertEqual(w.dateTime(), DATE)
-
-    def testSettersGetters_DATE_Z(self):
-        """ test widget handling with Z time spec """
-        w = QgsDateTimeEdit()
-        w.setAllowNull(False)
-
-        w.setDateTime(DATE_Z)
-        self.assertEqual(w.dateTime(), DATE_Z)
-        # date should remain when setting an invalid date
-        w.setDateTime(QDateTime())
-        self.assertEqual(w.dateTime(), DATE_Z)
 
     def testNullValueHandling(self):
         """ test widget handling of null values """
@@ -62,7 +50,7 @@ class TestQgsDateTimeEdit(QgisTestCase):
         self.assertTrue(w.dateTime().isValid())
 
 
-class TestQgsDateEdit(QgisTestCase):
+class TestQgsDateEdit(unittest.TestCase):
 
     def testSettersGetters(self):
         """ test widget handling of null values """
@@ -93,7 +81,7 @@ class TestQgsDateEdit(QgisTestCase):
         self.assertTrue(w.date().isValid())
 
 
-class TestQgsTimeEdit(QgisTestCase):
+class TestQgsTimeEdit(unittest.TestCase):
 
     def testSettersGetters(self):
         """ test widget handling of null values """

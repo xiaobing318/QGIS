@@ -50,7 +50,7 @@ class QgsSpatiaLiteSourceSelect:  public QgsAbstractDbSourceSelect
     static bool newConnection( QWidget *parent );
 
     //! Constructor
-    QgsSpatiaLiteSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::Standalone );
+    QgsSpatiaLiteSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::None );
 
     ~QgsSpatiaLiteSourceSelect() override;
     //! Populate the connection list combo box
@@ -84,8 +84,8 @@ class QgsSpatiaLiteSourceSelect:  public QgsAbstractDbSourceSelect
     void treeWidgetSelectionChanged( const QItemSelection &selected, const QItemSelection &deselected );
     //!Sets a new regular expression to the model
     void setSearchExpression( const QString &regexp );
+
     void showHelp();
-    bool configureFromUri( const QString &uri ) override;
 
   protected slots:
     void setSql( const QModelIndex &index ) override;
@@ -120,7 +120,6 @@ class QgsSpatiaLiteSourceSelect:  public QgsAbstractDbSourceSelect
 
     QString layerURI( const QModelIndex &index );
     QPushButton *mStatsButton = nullptr;
-
 };
 
 #endif // QGSSPATIALITESOURCESELECT_H

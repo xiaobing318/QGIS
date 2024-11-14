@@ -70,19 +70,19 @@ bool QgsDropGeometryAlgorithm::supportInPlaceEdit( const QgsMapLayer *l ) const
   return qobject_cast< const QgsVectorLayer * >( l );
 }
 
-Qgis::WkbType QgsDropGeometryAlgorithm::outputWkbType( Qgis::WkbType ) const
+QgsWkbTypes::Type QgsDropGeometryAlgorithm::outputWkbType( QgsWkbTypes::Type ) const
 {
-  return Qgis::WkbType::NoGeometry;
+  return QgsWkbTypes::NoGeometry;
 }
 
-Qgis::ProcessingFeatureSourceFlags QgsDropGeometryAlgorithm::sourceFlags() const
+QgsProcessingFeatureSource::Flag QgsDropGeometryAlgorithm::sourceFlags() const
 {
-  return Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks;
+  return QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks;
 }
 
 QgsFeatureRequest QgsDropGeometryAlgorithm::request() const
 {
-  return QgsFeatureRequest().setFlags( Qgis::FeatureRequestFlag::NoGeometry );
+  return QgsFeatureRequest().setFlags( QgsFeatureRequest::NoGeometry );
 }
 
 QgsFeatureList QgsDropGeometryAlgorithm::processFeature( const QgsFeature &feature, QgsProcessingContext &, QgsProcessingFeedback * )

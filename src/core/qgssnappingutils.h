@@ -45,6 +45,7 @@ class QgsSnappingConfig;
  * When working with map canvas, it may be useful to use derived class QgsMapCanvasSnappingUtils
  * which keeps the configuration in sync with map canvas (e.g. current view, active layer).
  *
+ * \since QGIS 2.8
  */
 class CORE_EXPORT QgsSnappingUtils : public QObject
 {
@@ -127,8 +128,8 @@ class CORE_EXPORT QgsSnappingUtils : public QObject
        * \code{.py}
        * snapper = QgsMapCanvasSnappingUtils(mapCanvas)
        *
-       * snapping_layer1 = QgsSnappingUtils.LayerConfig(layer1, QgsPointLocator.Vertex, 10, Qgis::MapToolUnit::Pixels)
-       * snapping_layer2 = QgsSnappingUtils.LayerConfig(layer2, QgsPointLocator.Vertex and QgsPointLocator.Edge, 10, Qgis::MapToolUnit::Pixels)
+       * snapping_layer1 = QgsSnappingUtils.LayerConfig(layer1, QgsPointLocator.Vertex, 10, QgsTolerance.Pixels)
+       * snapping_layer2 = QgsSnappingUtils.LayerConfig(layer2, QgsPointLocator.Vertex and QgsPointLocator.Edge, 10, QgsTolerance.Pixels)
        *
        * snapper.setLayers([snapping_layer1, snapping_layer2])
        * \endcode
@@ -138,7 +139,7 @@ class CORE_EXPORT QgsSnappingUtils : public QObject
        * \param tol The tolerance radius in which the snapping will trigger
        * \param u   The unit in which the tolerance is specified
        */
-      LayerConfig( QgsVectorLayer *l, QgsPointLocator::Types t, double tol, Qgis::MapToolUnit u )
+      LayerConfig( QgsVectorLayer *l, QgsPointLocator::Types t, double tol, QgsTolerance::UnitType u )
         : layer( l )
         , type( t )
         , tolerance( tol )
@@ -162,7 +163,7 @@ class CORE_EXPORT QgsSnappingUtils : public QObject
       //! The range around snapping targets in which snapping should occur.
       double tolerance;
       //! The units in which the tolerance is specified.
-      Qgis::MapToolUnit unit;
+      QgsTolerance::UnitType unit;
     };
 
     //! Query layers used for snapping
@@ -170,6 +171,7 @@ class CORE_EXPORT QgsSnappingUtils : public QObject
 
     /**
      * Gets extra information about the instance
+     * \since QGIS 2.14
      */
     QString dump();
 
@@ -239,6 +241,7 @@ class CORE_EXPORT QgsSnappingUtils : public QObject
     /**
      * Toggles the state of snapping
      *
+     * \since QGIS 3.0
      */
     void toggleEnabled();
 

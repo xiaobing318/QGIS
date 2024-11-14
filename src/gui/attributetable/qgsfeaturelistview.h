@@ -19,6 +19,7 @@
 #include <QListView>
 #include "qgis_sip.h"
 #include <qdebug.h>
+#include "qgsactionmenu.h"
 
 #include "qgsfeature.h" // For QgsFeatureIds
 #include "qgis_gui.h"
@@ -33,7 +34,6 @@ class QgsVectorLayer;
 class QgsVectorLayerCache;
 class QgsFeatureListViewDelegate;
 class QRect;
-class QgsActionMenu;
 
 /**
  * \ingroup gui
@@ -221,7 +221,7 @@ class GUI_EXPORT QgsFeatureListView : public QListView
 
 
   private slots:
-    void editSelectionChanged( const QItemSelection &selected, const QItemSelection &deselected );
+    void editSelectionChanged( const QItemSelection &deselected, const QItemSelection &selected );
 
     /**
      * Make sure, there is an edit selection. If there is none, choose the first item.
@@ -233,8 +233,6 @@ class GUI_EXPORT QgsFeatureListView : public QListView
 
   private:
     void selectRow( const QModelIndex &index, bool anchor );
-
-    void updateEditSelection( bool inSelection = false );
 
     enum PositionInList
     {
@@ -266,10 +264,7 @@ class GUI_EXPORT QgsFeatureListView : public QListView
     int mRowAnchor = 0;
     QItemSelectionModel::SelectionFlags mCtrlDragSelectionFlag;
 
-    QTimer mUpdateEditSelectionTimerWithSelection;
-    QTimer mUpdateEditSelectionTimerWithoutSelection;
-
-    QgsFeatureId mLastEditSelectionFid;
+    QTimer mUpdateEditSelectionTimer;
 
     friend class QgsDualView;
 };

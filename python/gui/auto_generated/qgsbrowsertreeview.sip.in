@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsbrowsertreeview.h                                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -20,6 +20,8 @@ class QgsBrowserTreeView : QTreeView
 The :py:class:`QgsBrowserTreeView` class extends QTreeView with save/restore tree state functionality.
 
 .. seealso:: :py:class:`QgsBrowserModel`
+
+.. versionadded:: 2.8
 %End
 
 %TypeHeaderCode
@@ -66,13 +68,11 @@ Returns ``True`` if the item was found and could be selected.
 .. versionadded:: 3.28
 %End
 
-    void expandPath( const QString &path, bool selectPath = false );
+    void expandPath( const QString &path );
 %Docstring
 Expands out a file ``path`` in the view.
 
 The ``path`` must correspond to a valid directory existing on the file system.
-
-Since QGIS 3.38 the ``selectPath`` argument can be used to automatically select the path too.
 
 .. versionadded:: 3.28
 %End
@@ -93,5 +93,5 @@ Since QGIS 3.38 the ``selectPath`` argument can be used to automatically select 
  *                                                                      *
  * src/gui/qgsbrowsertreeview.h                                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

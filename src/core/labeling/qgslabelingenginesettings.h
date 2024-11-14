@@ -18,21 +18,32 @@
 #include "qgis_core.h"
 #include "qgis_sip.h"
 #include "qgis.h"
+#include <QFlags>
 #include <QColor>
 
 class QgsProject;
-class QgsAbstractLabelingEngineRule;
-class QDomDocument;
-class QDomElement;
-class QgsReadWriteContext;
 
 /**
  * \ingroup core
  * \brief Stores global configuration for labeling engine
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsLabelingEngineSettings
 {
   public:
+    //! Various flags that affect drawing and placement of labels
+    enum Flag
+    {
+      UseAllLabels          = 1 << 1,  //!< Whether to draw all labels even if there would be collisions
+      UsePartialCandidates  = 1 << 2,  //!< Whether to use also label candidates that are partially outside of the map view
+      // TODO QGIS 4.0: remove
+      RenderOutlineLabels   = 1 << 3,  //!< Whether to render labels as text or outlines. Deprecated and of QGIS 3.4.3 - use defaultTextRenderFormat() instead.
+      DrawLabelRectOnly     = 1 << 4,  //!< Whether to only draw the label rect and not the actual label text (used for unit tests)
+      DrawCandidates        = 1 << 5,  //!< Whether to draw rectangles of generated candidates (good for debugging)
+      DrawUnplacedLabels    = 1 << 6,  //!< Whether to render unplaced labels as an indicator/warning for users
+      CollectUnplacedLabels = 1 << 7,  //!< Whether unplaced labels should be collected in the labeling results (regardless of whether they are being rendered). Since QGIS 3.20
+    };
+    Q_DECLARE_FLAGS( Flags, Flag )
 
     // TODO QGIS 4 - remove
 
@@ -49,23 +60,30 @@ class CORE_EXPORT QgsLabelingEngineSettings
       Falp
     };
 
-    QgsLabelingEngineSettings();
-    ~QgsLabelingEngineSettings();
+    /**
+     * Placement engine version.
+     *
+     * \since QGIS 3.10.2
+     */
+    enum PlacementEngineVersion
+    {
+      PlacementEngineVersion1, //!< Version 1, matches placement from QGIS <= 3.10.1
+      PlacementEngineVersion2, //!< Version 2 (default for new projects since QGIS 3.12)
+    };
 
-    QgsLabelingEngineSettings( const QgsLabelingEngineSettings &other );
-    QgsLabelingEngineSettings &operator=( const QgsLabelingEngineSettings &other );
+    QgsLabelingEngineSettings();
 
     //! Returns the configuration to the defaults
     void clear();
 
     //! Sets flags of the labeling engine
-    void setFlags( Qgis::LabelingFlags flags ) { mFlags = flags; }
+    void setFlags( Flags flags ) { mFlags = flags; }
     //! Gets flags of the labeling engine
-    Qgis::LabelingFlags flags() const { return mFlags; }
+    Flags flags() const { return mFlags; }
     //! Test whether a particular flag is enabled
-    bool testFlag( Qgis::LabelingFlag f ) const { return mFlags.testFlag( f ); }
+    bool testFlag( Flag f ) const { return mFlags.testFlag( f ); }
     //! Sets whether a particual flag is enabled
-    void setFlag( Qgis::LabelingFlag f, bool enabled = true ) { if ( enabled ) mFlags |= f; else mFlags &= ~static_cast< int >( f ); }
+    void setFlag( Flag f, bool enabled = true ) { if ( enabled ) mFlags |= f; else mFlags &= ~f; }
 
     /**
      * Returns the maximum number of line label candidate positions per centimeter.
@@ -101,7 +119,7 @@ class CORE_EXPORT QgsLabelingEngineSettings
 
     /**
      * Gets number of candidate positions that will be generated for each label feature.
-     * \deprecated QGIS 3.12. Use maximumPolygonCandidatesPerCmSquared() and maximumLineCandidatesPerCm() instead.
+     * \deprecated since QGIS 3.12 use maximumPolygonCandidatesPerCmSquared() and maximumLineCandidatesPerCm() instead.
      */
     Q_DECL_DEPRECATED void numCandidatePositions( int &candPoint, int &candLine, int &candPolygon ) const SIP_DEPRECATED
     {
@@ -112,7 +130,7 @@ class CORE_EXPORT QgsLabelingEngineSettings
 
     /**
      * Sets the number of candidate positions that will be generated for each label feature.
-     * \deprecated QGIS 3.12. Use setMaximumPolygonCandidatesPerCmSquared() and setMaximumLineCandidatesPerCm() instead.
+     * \deprecated since QGIS 3.12 use setMaximumPolygonCandidatesPerCmSquared() and setMaximumLineCandidatesPerCm() instead.
      */
     Q_DECL_DEPRECATED void setNumCandidatePositions( int candPoint, int candLine, int candPolygon ) SIP_DEPRECATED
     {
@@ -123,66 +141,20 @@ class CORE_EXPORT QgsLabelingEngineSettings
 
     /**
      * Used to set which search method to use for removal collisions between labels
-     * \deprecated QGIS 3.10. Chain is always used.
+     * \deprecated since QGIS 3.10 - Chain is always used.
      */
     Q_DECL_DEPRECATED void setSearchMethod( Search s ) SIP_DEPRECATED { Q_UNUSED( s ) }
 
     /**
      * Which search method to use for removal collisions between labels
-     * \deprecated QGIS 3.10. Chain is always used.
+     * \deprecated since QGIS 3.10 - Chain is always used.
      */
     Q_DECL_DEPRECATED Search searchMethod() const SIP_DEPRECATED { return Chain; }
 
-    // TODO QGIS 4.0 -- remove these, and just use read/writeXml directly:
-
-    /**
-     * Read configuration of the labeling engine from a project
-     *
-     * \note Both this method and readXml() must be called to completely restore the object's state from a project.
-     */
+    //! Read configuration of the labeling engine from a project
     void readSettingsFromProject( QgsProject *project );
-
-    /**
-     * Write configuration of the labeling engine to a project.
-     *
-     * \note Both this method and writeXml() must be called to completely store the object's state in a project.
-     */
+    //! Write configuration of the labeling engine to a project
     void writeSettingsToProject( QgsProject *project );
-
-    /**
-     * Writes the label engine settings to an XML \a element.
-     *
-     * \note Both this method and writeSettingsToProject() must be called to completely store the object's state in a project.
-     *
-     * \see readXml()
-     * \see writeSettingsToProject()
-     *
-     * \since QGIS 3.40
-     */
-    void writeXml( QDomDocument &doc, QDomElement &element, const QgsReadWriteContext &context ) const;
-
-    /**
-     * Reads the label engine settings from an XML \a element.
-     *
-     * \note Both this method and readSettingsFromProject() must be called to completely restore the object's state from a project.
-     *
-     * \note resolveReferences() must be called following this method.
-     *
-     * \see writeXml()
-     * \see readSettingsFromProject()
-     *
-     * \since QGIS 3.40
-     */
-    void readXml( const QDomElement &element, const QgsReadWriteContext &context );
-
-    /**
-     * Resolves reference to layers from stored layer ID.
-     *
-     * Should be called following a call readXml().
-     *
-     * \since QGIS 3.40
-     */
-    void resolveReferences( const QgsProject *project ); // cppcheck-suppress functionConst
 
     // TODO QGIS 4.0: In reality the text render format settings don't only apply to labels, but also
     // ANY text rendered using QgsTextRenderer (including some non-label text items in layouts).
@@ -232,7 +204,7 @@ class CORE_EXPORT QgsLabelingEngineSettings
      * \see setPlacementVersion()
      * \since QGIS 3.10.2
      */
-    Qgis::LabelPlacementEngineVersion placementVersion() const;
+    PlacementEngineVersion placementVersion() const;
 
     /**
      * Sets the placement engine \a version, which dictates how the label placement problem is solved.
@@ -240,55 +212,11 @@ class CORE_EXPORT QgsLabelingEngineSettings
      * \see placementVersion()
      * \since QGIS 3.10.2
      */
-    void setPlacementVersion( Qgis::LabelPlacementEngineVersion version );
-
-    /**
-     * Returns a list of labeling engine rules which must be satifisfied
-     * while placing labels.
-     *
-     * \see addRule()
-     * \see setRules()
-     * \since QGIS 3.40
-     */
-    QList< QgsAbstractLabelingEngineRule * > rules();
-
-    /**
-     * Returns a list of labeling engine rules which must be satifisfied
-     * while placing labels.
-     *
-     * \see addRule()
-     * \see setRules()
-     * \since QGIS 3.40
-     */
-    QList< const QgsAbstractLabelingEngineRule * > rules() const SIP_SKIP;
-
-    /**
-     * Adds a labeling engine \a rule which must be satifisfied
-     * while placing labels.
-     *
-     * Ownership of the rule is transferred to the settings.
-     *
-     * \see rules()
-     * \see setRules()
-     * \since QGIS 3.40
-     */
-    void addRule( QgsAbstractLabelingEngineRule *rule SIP_TRANSFER );
-
-    /**
-     * Sets the labeling engine \a rules which must be satifisfied
-     * while placing labels.
-     *
-     * Ownership of the rules are transferred to the settings.
-     *
-     * \see addRule()
-     * \see rules()
-     * \since QGIS 3.40
-     */
-    void setRules( const QList< QgsAbstractLabelingEngineRule * > &rules SIP_TRANSFER );
+    void setPlacementVersion( PlacementEngineVersion version );
 
   private:
     //! Flags
-    Qgis::LabelingFlags mFlags = Qgis::LabelingFlag::UsePartialCandidates;
+    Flags mFlags;
     //! search method to use for removal collisions between labels
     Search mSearchMethod = Chain;
 
@@ -298,12 +226,12 @@ class CORE_EXPORT QgsLabelingEngineSettings
 
     QColor mUnplacedLabelColor = QColor( 255, 0, 0 );
 
-    Qgis::LabelPlacementEngineVersion mPlacementVersion = Qgis::LabelPlacementEngineVersion::Version2;
+    PlacementEngineVersion mPlacementVersion = PlacementEngineVersion2;
 
     Qgis::TextRenderFormat mDefaultTextRenderFormat = Qgis::TextRenderFormat::AlwaysOutlines;
 
-    std::vector< std::unique_ptr< QgsAbstractLabelingEngineRule > > mEngineRules;
-
 };
+
+Q_DECLARE_OPERATORS_FOR_FLAGS( QgsLabelingEngineSettings::Flags )
 
 #endif // QGSLABELINGENGINESETTINGS_H

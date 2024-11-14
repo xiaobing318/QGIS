@@ -9,50 +9,49 @@ __author__ = 'Nyall Dawson'
 __date__ = '05/07/2017'
 __copyright__ = 'Copyright 2017, The QGIS Project'
 
-from qgis.PyQt.QtGui import QColor, QPen
+import qgis  # NOQA
+from qgis.PyQt.QtGui import (QPen,
+                             QColor)
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (
-    QgsLayout,
-    QgsLayoutGridSettings,
-    QgsLayoutMeasurement,
-    QgsLayoutPoint,
-    QgsProject,
-    QgsReadWriteContext,
-    QgsUnitTypes,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsProject,
+                       QgsLayout,
+                       QgsLayoutGridSettings,
+                       QgsLayoutMeasurement,
+                       QgsUnitTypes,
+                       QgsLayoutPoint,
+                       QgsReadWriteContext)
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsLayoutGridSettings(QgisTestCase):
+class TestQgsLayoutGridSettings(unittest.TestCase):
 
     def testGettersSetters(self):
         p = QgsProject()
         l = QgsLayout(p)
         s = QgsLayoutGridSettings(l)
-        s.setResolution(QgsLayoutMeasurement(5, QgsUnitTypes.LayoutUnit.LayoutPoints))
+        s.setResolution(QgsLayoutMeasurement(5, QgsUnitTypes.LayoutPoints))
         self.assertEqual(s.resolution().length(), 5.0)
-        self.assertEqual(s.resolution().units(), QgsUnitTypes.LayoutUnit.LayoutPoints)
+        self.assertEqual(s.resolution().units(), QgsUnitTypes.LayoutPoints)
 
-        s.setOffset(QgsLayoutPoint(6, 7, QgsUnitTypes.LayoutUnit.LayoutPixels))
+        s.setOffset(QgsLayoutPoint(6, 7, QgsUnitTypes.LayoutPixels))
         self.assertEqual(s.offset().x(), 6.0)
         self.assertEqual(s.offset().y(), 7.0)
-        self.assertEqual(s.offset().units(), QgsUnitTypes.LayoutUnit.LayoutPixels)
+        self.assertEqual(s.offset().units(), QgsUnitTypes.LayoutPixels)
 
         s.setPen(QPen(QColor(255, 0, 255)))
         self.assertEqual(s.pen().color().name(), QColor(255, 0, 255).name())
 
-        s.setStyle(QgsLayoutGridSettings.Style.StyleDots)
-        self.assertEqual(s.style(), QgsLayoutGridSettings.Style.StyleDots)
+        s.setStyle(QgsLayoutGridSettings.StyleDots)
+        self.assertEqual(s.style(), QgsLayoutGridSettings.StyleDots)
 
     def testReadWriteXml(self):
         p = QgsProject()
         l = QgsLayout(p)
         s = QgsLayoutGridSettings(l)
-        s.setResolution(QgsLayoutMeasurement(5, QgsUnitTypes.LayoutUnit.LayoutPoints))
-        s.setOffset(QgsLayoutPoint(6, 7, QgsUnitTypes.LayoutUnit.LayoutPixels))
+        s.setResolution(QgsLayoutMeasurement(5, QgsUnitTypes.LayoutPoints))
+        s.setOffset(QgsLayoutPoint(6, 7, QgsUnitTypes.LayoutPixels))
 
         doc = QDomDocument("testdoc")
         elem = doc.createElement("test")
@@ -62,58 +61,58 @@ class TestQgsLayoutGridSettings(QgisTestCase):
         self.assertTrue(s2.readXml(elem.firstChildElement(), doc, QgsReadWriteContext()))
 
         self.assertEqual(s2.resolution().length(), 5.0)
-        self.assertEqual(s2.resolution().units(), QgsUnitTypes.LayoutUnit.LayoutPoints)
+        self.assertEqual(s2.resolution().units(), QgsUnitTypes.LayoutPoints)
         self.assertEqual(s2.offset().x(), 6.0)
         self.assertEqual(s2.offset().y(), 7.0)
-        self.assertEqual(s2.offset().units(), QgsUnitTypes.LayoutUnit.LayoutPixels)
+        self.assertEqual(s2.offset().units(), QgsUnitTypes.LayoutPixels)
 
     def testUndoRedo(self):
         p = QgsProject()
         l = QgsLayout(p)
         g = l.gridSettings()
-        g.setResolution(QgsLayoutMeasurement(15, QgsUnitTypes.LayoutUnit.LayoutPoints))
+        g.setResolution(QgsLayoutMeasurement(15, QgsUnitTypes.LayoutPoints))
 
         # these two commands should be 'collapsed'
-        g.setOffset(QgsLayoutPoint(555, 10, QgsUnitTypes.LayoutUnit.LayoutPoints))
-        g.setOffset(QgsLayoutPoint(5, 10, QgsUnitTypes.LayoutUnit.LayoutPoints))
+        g.setOffset(QgsLayoutPoint(555, 10, QgsUnitTypes.LayoutPoints))
+        g.setOffset(QgsLayoutPoint(5, 10, QgsUnitTypes.LayoutPoints))
 
         # these two commands should be 'collapsed'
-        g.setResolution(QgsLayoutMeasurement(45, QgsUnitTypes.LayoutUnit.LayoutInches))
-        g.setResolution(QgsLayoutMeasurement(35, QgsUnitTypes.LayoutUnit.LayoutInches))
+        g.setResolution(QgsLayoutMeasurement(45, QgsUnitTypes.LayoutInches))
+        g.setResolution(QgsLayoutMeasurement(35, QgsUnitTypes.LayoutInches))
 
         self.assertEqual(g.offset().x(), 5.0)
         self.assertEqual(g.offset().y(), 10.0)
-        self.assertEqual(g.offset().units(), QgsUnitTypes.LayoutUnit.LayoutPoints)
+        self.assertEqual(g.offset().units(), QgsUnitTypes.LayoutPoints)
         self.assertEqual(g.resolution().length(), 35.0)
-        self.assertEqual(g.resolution().units(), QgsUnitTypes.LayoutUnit.LayoutInches)
+        self.assertEqual(g.resolution().units(), QgsUnitTypes.LayoutInches)
 
         l.undoStack().stack().undo()
         self.assertEqual(g.offset().x(), 5.0)
         self.assertEqual(g.offset().y(), 10.0)
-        self.assertEqual(g.offset().units(), QgsUnitTypes.LayoutUnit.LayoutPoints)
+        self.assertEqual(g.offset().units(), QgsUnitTypes.LayoutPoints)
         self.assertEqual(g.resolution().length(), 15.0)
-        self.assertEqual(g.resolution().units(), QgsUnitTypes.LayoutUnit.LayoutPoints)
+        self.assertEqual(g.resolution().units(), QgsUnitTypes.LayoutPoints)
 
         l.undoStack().stack().undo()
         self.assertEqual(g.offset().x(), 0.0)
         self.assertEqual(g.offset().y(), 0.0)
-        self.assertEqual(g.offset().units(), QgsUnitTypes.LayoutUnit.LayoutMillimeters)
+        self.assertEqual(g.offset().units(), QgsUnitTypes.LayoutMillimeters)
         self.assertEqual(g.resolution().length(), 15.0)
-        self.assertEqual(g.resolution().units(), QgsUnitTypes.LayoutUnit.LayoutPoints)
+        self.assertEqual(g.resolution().units(), QgsUnitTypes.LayoutPoints)
 
         l.undoStack().stack().redo()
         self.assertEqual(g.offset().x(), 5.0)
         self.assertEqual(g.offset().y(), 10.0)
-        self.assertEqual(g.offset().units(), QgsUnitTypes.LayoutUnit.LayoutPoints)
+        self.assertEqual(g.offset().units(), QgsUnitTypes.LayoutPoints)
         self.assertEqual(g.resolution().length(), 15.0)
-        self.assertEqual(g.resolution().units(), QgsUnitTypes.LayoutUnit.LayoutPoints)
+        self.assertEqual(g.resolution().units(), QgsUnitTypes.LayoutPoints)
 
         l.undoStack().stack().redo()
         self.assertEqual(g.offset().x(), 5.0)
         self.assertEqual(g.offset().y(), 10.0)
-        self.assertEqual(g.offset().units(), QgsUnitTypes.LayoutUnit.LayoutPoints)
+        self.assertEqual(g.offset().units(), QgsUnitTypes.LayoutPoints)
         self.assertEqual(g.resolution().length(), 35.0)
-        self.assertEqual(g.resolution().units(), QgsUnitTypes.LayoutUnit.LayoutInches)
+        self.assertEqual(g.resolution().units(), QgsUnitTypes.LayoutInches)
 
 
 if __name__ == '__main__':

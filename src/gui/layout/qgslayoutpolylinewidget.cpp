@@ -15,13 +15,14 @@
  ***************************************************************************/
 
 #include "qgslayoutpolylinewidget.h"
-#include "moc_qgslayoutpolylinewidget.cpp"
+#include "qgssymbolselectordialog.h"
+#include "qgsstyle.h"
+#include "qgssymbollayerutils.h"
 #include "qgslayoutitemregistry.h"
 #include "qgslayout.h"
 #include "qgslayoutundostack.h"
 #include "qgsvectorlayer.h"
 #include "qgslinesymbol.h"
-#include "qgslayoutreportcontext.h"
 
 #include <QButtonGroup>
 #include <QFileDialog>

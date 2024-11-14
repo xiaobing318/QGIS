@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgsgrassplugin.h"
-#include "moc_qgsgrassplugin.cpp"
 #include "qgis.h"
 #include "qgsgrass.h"
 #include "qgsgrassprovider.h"
@@ -38,6 +37,7 @@
 #include "qgsmaplayerstylemanager.h"
 #include "qgsrubberband.h"
 #include "qgsproject.h"
+#include "qgsproviderregistry.h"
 #include "qgsrendererregistry.h"
 #include "qgsvectorlayer.h"
 #include "qgssettings.h"
@@ -46,8 +46,6 @@
 #include <QFileInfo>
 #include <QMessageBox>
 #include <QToolBar>
-#include <QActionGroup>
-#include <QRegularExpression>
 
 extern "C"
 {
@@ -55,7 +53,7 @@ extern "C"
 #include <grass/version.h>
 }
 
-static const QString pluginName = QObject::tr( "GRASS %1 (deprecated plugin)" ).arg( GRASS_VERSION_MAJOR );
+static const QString pluginName = QObject::tr( "GRASS %1" ).arg( GRASS_VERSION_MAJOR );
 static const QString pluginDescription = QObject::tr( "GRASS %1 (Geographic Resources Analysis Support System)" ).arg( GRASS_VERSION_MAJOR );
 static const QString pluginCategory = QObject::tr( "Plugins" );
 static const QString pluginVersion = QObject::tr( "Version 2.0" );
@@ -124,7 +122,7 @@ void QgsGrassPlugin::initGui()
   mCanvas = qGisInterface->mapCanvas();
 
   // Create region rubber band
-  mRegionBand = new QgsRubberBand( mCanvas, Qgis::GeometryType::Polygon );
+  mRegionBand = new QgsRubberBand( mCanvas, QgsWkbTypes::PolygonGeometry );
   mRegionBand->setZValue( 20 );
 
   // Create the action for tool (the icons are set later by calling setCurrentTheme)
@@ -309,7 +307,7 @@ void QgsGrassPlugin::onGisbaseChanged()
 
 void QgsGrassPlugin::onLayerWasAdded( QgsMapLayer *mapLayer )
 {
-  QgsDebugMsgLevel( "name = " + mapLayer->name(), 2 );
+  QgsDebugMsg( "name = " + mapLayer->name() );
   QgsVectorLayer *vectorLayer = qobject_cast<QgsVectorLayer *>( mapLayer );
   if ( !vectorLayer )
     return;
@@ -317,7 +315,7 @@ void QgsGrassPlugin::onLayerWasAdded( QgsMapLayer *mapLayer )
   if ( !grassProvider )
     return;
 
-  QgsDebugMsgLevel( "connect editing", 3 );
+  QgsDebugMsg( "connect editing" );
   connect( vectorLayer, &QgsVectorLayer::editingStarted, this, &QgsGrassPlugin::onEditingStarted );
 }
 
@@ -363,7 +361,7 @@ void QgsGrassPlugin::onEditingStarted()
   QgsVectorLayer *vectorLayer = qobject_cast<QgsVectorLayer *>( sender() );
   if ( !vectorLayer )
     return;
-  QgsDebugMsgLevel( "started editing of layer " + vectorLayer->name(), 2 );
+  QgsDebugMsg( "started editing of layer " + vectorLayer->name() );
 
   // Set editing renderer
   QgsGrassProvider *grassProvider = dynamic_cast<QgsGrassProvider *>( vectorLayer->dataProvider() );
@@ -380,12 +378,12 @@ void QgsGrassPlugin::onEditingStarted()
 
   if ( vectorLayer->styleManager()->styles().contains( editStyleName ) )
   {
-    QgsDebugMsgLevel( editStyleName + " style exists -> set as current", 2 );
+    QgsDebugMsg( editStyleName + " style exists -> set as current" );
     vectorLayer->styleManager()->setCurrentStyle( editStyleName );
   }
   else
   {
-    QgsDebugMsgLevel( "create and set style " + editStyleName, 2 );
+    QgsDebugMsg( "create and set style " + editStyleName );
     vectorLayer->styleManager()->addStyleFromLayer( editStyleName );
 
     //vectorLayer->styleManager()->addStyle( editStyleName, QgsMapLayerStyle() );
@@ -413,7 +411,7 @@ void QgsGrassPlugin::onEditingStopped()
     QString style = mOldStyles.value( vectorLayer );
     if ( vectorLayer->styleManager()->currentStyle() == QLatin1String( "GRASS Edit" ) ) // not changed by user
     {
-      QgsDebugMsgLevel( "reset style to " + style, 2 );
+      QgsDebugMsg( "reset style to " + style );
       vectorLayer->styleManager()->setCurrentStyle( style );
     }
   }
@@ -428,12 +426,11 @@ void QgsGrassPlugin::onFieldsChanged()
     return;
   }
   QString uri = grassProvider->dataSourceUri();
-  const thread_local QRegularExpression rx = QRegularExpression( QStringLiteral( "[^_]*$" ) );
-  uri.remove( rx );
-  QgsDebugMsgLevel( "uri = " + uri, 3 );
+  uri.remove( QRegExp( "[^_]*$" ) );
+  QgsDebugMsg( "uri = " + uri );
   for ( QgsMapLayer *layer : QgsProject::instance()->mapLayers().values() )
   {
-    if ( !layer || layer->type() != Qgis::LayerType::Vector )
+    if ( !layer || layer->type() != QgsMapLayerType::VectorLayer )
     {
       continue;
     }
@@ -459,10 +456,10 @@ void QgsGrassPlugin::addFeature()
   }
   if ( !grassProvider )
   {
-    QgsDebugError( "grassProvider is null" );
+    QgsDebugMsg( "grassProvider is null" );
     return;
   }
-  Qgis::AttributeFormSuppression formSuppress = mFormSuppress.value( vectorLayer );
+  QgsEditFormConfig::FeatureFormSuppress formSuppress = mFormSuppress.value( vectorLayer );
   if ( sender() == mAddPointAction )
   {
     qGisInterface->mapCanvas()->setMapTool( mAddPoint );
@@ -477,7 +474,7 @@ void QgsGrassPlugin::addFeature()
   {
     qGisInterface->mapCanvas()->setMapTool( mAddBoundary );
     grassProvider->setNewFeatureType( GV_BOUNDARY );
-    formSuppress = Qgis::AttributeFormSuppression::On;
+    formSuppress = QgsEditFormConfig::SuppressOn;
   }
   else if ( sender() == mAddCentroidAction )
   {
@@ -488,7 +485,7 @@ void QgsGrassPlugin::addFeature()
   {
     qGisInterface->mapCanvas()->setMapTool( mAddArea );
     grassProvider->setNewFeatureType( GV_AREA );
-    formSuppress = Qgis::AttributeFormSuppression::On;
+    formSuppress = QgsEditFormConfig::SuppressOn;
   }
   QgsEditFormConfig formConfig = vectorLayer->editFormConfig();
   formConfig.setSuppress( formSuppress );
@@ -507,7 +504,7 @@ void QgsGrassPlugin::onSplitFeaturesTriggered( bool checked )
     }
     if ( !grassProvider )
     {
-      QgsDebugError( "grassProvider is null" );
+      QgsDebugMsg( "grassProvider is null" );
       return;
     }
     grassProvider->setNewFeatureType( QgsGrassProvider::sLastType );
@@ -541,10 +538,10 @@ void QgsGrassPlugin::mapsetChanged()
     catch ( QgsGrass::Exception &e )
     {
       Q_UNUSED( e )
-      QgsDebugError( "Cannot read GRASS CRS : " + QString( e.what() ) );
+      QgsDebugMsg( "Cannot read GRASS CRS : " + QString( e.what() ) );
       mCrs = QgsCoordinateReferenceSystem();
     }
-    QgsDebugMsgLevel( "mCrs: " + mCrs.toWkt(), 2 );
+    QgsDebugMsg( "mCrs: " + mCrs.toWkt() );
     setTransform();
     redrawRegion();
   }
@@ -617,7 +614,7 @@ void QgsGrassPlugin::newVector()
 
 void QgsGrassPlugin::onNewLayer( QString uri, QString name )
 {
-  QgsDebugMsgLevel( "uri = " + uri + " name = " + name, 2 );
+  QgsDebugMsg( "uri = " + uri + " name = " + name );
   QgsVectorLayer *vectorLayer = qGisInterface->addVectorLayer( uri, name, QStringLiteral( "grass" ) );
   if ( vectorLayer )
   {
@@ -716,7 +713,7 @@ void QgsGrassPlugin::closeMapset()
 
 void QgsGrassPlugin::newMapset()
 {
-  if ( !mNewMapset )
+  if ( !QgsGrassNewMapset::isRunning() )
   {
     mNewMapset = new QgsGrassNewMapset( qGisInterface,
                                         this, qGisInterface->mainWindow() );
@@ -743,7 +740,7 @@ void QgsGrassPlugin::projectRead()
     return;
   }
 
-  QgsDebugMsgLevel( "Working mapset specified", 2 );
+  QgsDebugMsg( "Working mapset specified" );
 
   QString currentPath = QgsGrass::getDefaultGisdbase() + "/"
                         + QgsGrass::getDefaultLocation() + "/"
@@ -797,7 +794,7 @@ void QgsGrassPlugin::unload()
 
   for ( QgsMapLayer *layer : QgsProject::instance()->mapLayers().values() )
   {
-    if ( !layer || layer->type() != Qgis::LayerType::Vector )
+    if ( !layer || layer->type() != QgsMapLayerType::VectorLayer )
     {
       continue;
     }
@@ -890,8 +887,8 @@ void QgsGrassPlugin::setTransform()
 {
   if ( mCrs.isValid() && mCanvas->mapSettings().destinationCrs().isValid() )
   {
-    QgsDebugMsgLevel( "srcCrs: " + mCrs.toWkt(), 2 );
-    QgsDebugMsgLevel( "destCrs " + mCanvas->mapSettings().destinationCrs().toWkt(), 2 );
+    QgsDebugMsg( "srcCrs: " + mCrs.toWkt() );
+    QgsDebugMsg( "destCrs " + mCanvas->mapSettings().destinationCrs().toWkt() );
     mCoordinateTransform.setSourceCrs( mCrs );
     mCoordinateTransform.setDestinationCrs( mCanvas->mapSettings().destinationCrs() );
   }

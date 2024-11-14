@@ -59,7 +59,7 @@ QString QgsConvertGpxFeatureTypeAlgorithm::groupId() const
 
 void QgsConvertGpxFeatureTypeAlgorithm::initAlgorithm( const QVariantMap & )
 {
-  addParameter( new QgsProcessingParameterFile( QStringLiteral( "INPUT" ), QObject::tr( "Input file" ), Qgis::ProcessingFileParameterBehavior::File, QString(), QVariant(), false,
+  addParameter( new QgsProcessingParameterFile( QStringLiteral( "INPUT" ), QObject::tr( "Input file" ), QgsProcessingParameterFile::File, QString(), QVariant(), false,
                 QObject::tr( "GPX files" ) + QStringLiteral( " (*.gpx *.GPX)" ) ) );
 
   addParameter( new QgsProcessingParameterEnum( QStringLiteral( "CONVERSION" ), QObject::tr( "Conversion" ),
@@ -98,12 +98,14 @@ QgsConvertGpxFeatureTypeAlgorithm *QgsConvertGpxFeatureTypeAlgorithm::createInst
 
 QVariantMap QgsConvertGpxFeatureTypeAlgorithm::processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback )
 {
+  const QStringList convertStrings;
+
   const QString inputPath = parameterAsString( parameters, QStringLiteral( "INPUT" ), context );
   const QString outputPath = parameterAsString( parameters, QStringLiteral( "OUTPUT" ), context );
 
   const ConversionType convertType = static_cast< ConversionType >( parameterAsEnum( parameters, QStringLiteral( "CONVERSION" ), context ) );
 
-  QString babelPath = QgsSettingsRegistryCore::settingsGpsBabelPath->value();
+  QString babelPath = QgsSettingsRegistryCore::settingsGpsBabelPath.value();
   if ( babelPath.isEmpty() )
     babelPath = QStringLiteral( "gpsbabel" );
 
@@ -255,7 +257,7 @@ QString QgsConvertGpsDataAlgorithm::groupId() const
 
 void QgsConvertGpsDataAlgorithm::initAlgorithm( const QVariantMap & )
 {
-  addParameter( new QgsProcessingParameterFile( QStringLiteral( "INPUT" ), QObject::tr( "Input file" ), Qgis::ProcessingFileParameterBehavior::File, QString(), QVariant(), false,
+  addParameter( new QgsProcessingParameterFile( QStringLiteral( "INPUT" ), QObject::tr( "Input file" ), QgsProcessingParameterFile::File, QString(), QVariant(), false,
                 QgsApplication::gpsBabelFormatRegistry()->importFileFilter() + QStringLiteral( ";;%1" ).arg( QObject::tr( "All files (*.*)" ) ) ) );
 
   std::unique_ptr< QgsProcessingParameterString > formatParam = std::make_unique< QgsProcessingParameterString >( QStringLiteral( "FORMAT" ), QObject::tr( "Format" ) );
@@ -312,12 +314,14 @@ QgsConvertGpsDataAlgorithm *QgsConvertGpsDataAlgorithm::createInstance() const
 
 QVariantMap QgsConvertGpsDataAlgorithm::processAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback )
 {
+  const QStringList convertStrings;
+
   const QString inputPath = parameterAsString( parameters, QStringLiteral( "INPUT" ), context );
   const QString outputPath = parameterAsString( parameters, QStringLiteral( "OUTPUT" ), context );
 
   const Qgis::GpsFeatureType featureType = static_cast< Qgis::GpsFeatureType >( parameterAsEnum( parameters, QStringLiteral( "FEATURE_TYPE" ), context ) );
 
-  QString babelPath = QgsSettingsRegistryCore::settingsGpsBabelPath->value();
+  QString babelPath = QgsSettingsRegistryCore::settingsGpsBabelPath.value();
   if ( babelPath.isEmpty() )
     babelPath = QStringLiteral( "gpsbabel" );
 
@@ -536,7 +540,7 @@ QVariantMap QgsDownloadGpsDataAlgorithm::processAlgorithm( const QVariantMap &pa
   const QString outputPath = parameterAsString( parameters, QStringLiteral( "OUTPUT" ), context );
   const Qgis::GpsFeatureType featureType = static_cast< Qgis::GpsFeatureType >( parameterAsEnum( parameters, QStringLiteral( "FEATURE_TYPE" ), context ) );
 
-  QString babelPath = QgsSettingsRegistryCore::settingsGpsBabelPath->value();
+  QString babelPath = QgsSettingsRegistryCore::settingsGpsBabelPath.value();
   if ( babelPath.isEmpty() )
     babelPath = QStringLiteral( "gpsbabel" );
 
@@ -699,7 +703,7 @@ QString QgsUploadGpsDataAlgorithm::groupId() const
 
 void QgsUploadGpsDataAlgorithm::initAlgorithm( const QVariantMap & )
 {
-  addParameter( new QgsProcessingParameterFile( QStringLiteral( "INPUT" ), QObject::tr( "Input file" ), Qgis::ProcessingFileParameterBehavior::File, QString(), QVariant(), false,
+  addParameter( new QgsProcessingParameterFile( QStringLiteral( "INPUT" ), QObject::tr( "Input file" ), QgsProcessingParameterFile::File, QString(), QVariant(), false,
                 QObject::tr( "GPX files" ) + QStringLiteral( " (*.gpx *.GPX)" ) ) );
 
   std::unique_ptr< QgsProcessingParameterString > deviceParam = std::make_unique< QgsProcessingParameterString >( QStringLiteral( "DEVICE" ), QObject::tr( "Device" ) );
@@ -771,7 +775,7 @@ QVariantMap QgsUploadGpsDataAlgorithm::processAlgorithm( const QVariantMap &para
   const QString inputPath = parameterAsString( parameters, QStringLiteral( "INPUT" ), context );
   const Qgis::GpsFeatureType featureType = static_cast< Qgis::GpsFeatureType >( parameterAsEnum( parameters, QStringLiteral( "FEATURE_TYPE" ), context ) );
 
-  QString babelPath = QgsSettingsRegistryCore::settingsGpsBabelPath->value();
+  QString babelPath = QgsSettingsRegistryCore::settingsGpsBabelPath.value();
   if ( babelPath.isEmpty() )
     babelPath = QStringLiteral( "gpsbabel" );
 

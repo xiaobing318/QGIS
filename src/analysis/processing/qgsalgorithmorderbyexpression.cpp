@@ -49,7 +49,7 @@ QString QgsOrderByExpressionAlgorithm::groupId() const
 
 void QgsOrderByExpressionAlgorithm::initAlgorithm( const QVariantMap & )
 {
-  addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ), QObject::tr( "Input layer" ), QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::Vector ) ) );
+  addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ), QObject::tr( "Input layer" ), QList< int >() << QgsProcessing::TypeVector ) );
   addParameter( new QgsProcessingParameterExpression( QStringLiteral( "EXPRESSION" ), QObject::tr( "Expression" ), QVariant(), QStringLiteral( "INPUT" ) ) );
   addParameter( new QgsProcessingParameterBoolean( QStringLiteral( "ASCENDING" ), QObject::tr( "Sort ascending" ), true ) );
   addParameter( new QgsProcessingParameterBoolean( QStringLiteral( "NULLS_FIRST" ), QObject::tr( "Sort nulls first" ), false ) );
@@ -94,7 +94,7 @@ QVariantMap QgsOrderByExpressionAlgorithm::processAlgorithm( const QVariantMap &
   request.addOrderBy( expressionString, ascending, nullsFirst );
 
   QgsFeature inFeature;
-  QgsFeatureIterator features = source->getFeatures( request, Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks );
+  QgsFeatureIterator features = source->getFeatures( request, QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks );
   while ( features.nextFeature( inFeature ) )
   {
     if ( feedback->isCanceled() )
@@ -106,8 +106,6 @@ QVariantMap QgsOrderByExpressionAlgorithm::processAlgorithm( const QVariantMap &
     feedback->setProgress( current * step );
     current++;
   }
-
-  sink->finalize();
 
   QVariantMap outputs;
   outputs.insert( QStringLiteral( "OUTPUT" ), sinkId );

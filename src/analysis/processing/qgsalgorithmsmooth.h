@@ -48,7 +48,7 @@ class QgsSmoothAlgorithm : public QgsProcessingFeatureBasedAlgorithm
     QString outputName() const override;
     bool prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
     QgsFeatureList processFeature( const QgsFeature &feature,  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
-    Qgis::ProcessingFeatureSourceFlags sourceFlags() const override;
+    QgsProcessingFeatureSource::Flag sourceFlags() const override;
 
   private:
     int mIterations = 1;

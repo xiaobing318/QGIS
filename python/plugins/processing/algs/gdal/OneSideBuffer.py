@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     OneSideBuffer.py
@@ -27,6 +29,7 @@ from qgis.core import (QgsProcessing,
                        QgsProcessingParameterEnum,
                        QgsProcessingParameterField,
                        QgsProcessingParameterString,
+                       QgsProcessingParameterNumber,
                        QgsProcessingParameterBoolean,
                        QgsProcessingParameterVectorDestination)
 from processing.algs.gdal.GdalAlgorithm import GdalAlgorithm
@@ -52,7 +55,7 @@ class OneSideBuffer(GdalAlgorithm):
 
         self.addParameter(QgsProcessingParameterFeatureSource(self.INPUT,
                                                               self.tr('Input layer'),
-                                                              [QgsProcessing.SourceType.TypeVectorLine]))
+                                                              [QgsProcessing.TypeVectorLine]))
         self.addParameter(QgsProcessingParameterString(self.GEOMETRY,
                                                        self.tr('Geometry column name'),
                                                        defaultValue='geometry'))
@@ -69,7 +72,7 @@ class OneSideBuffer(GdalAlgorithm):
                                                       self.tr('Dissolve by attribute'),
                                                       None,
                                                       self.INPUT,
-                                                      QgsProcessingParameterField.DataType.Any,
+                                                      QgsProcessingParameterField.Any,
                                                       optional=True))
         self.addParameter(QgsProcessingParameterBoolean(self.DISSOLVE,
                                                         self.tr('Dissolve all results'),
@@ -82,12 +85,12 @@ class OneSideBuffer(GdalAlgorithm):
                                                      self.tr('Additional creation options'),
                                                      defaultValue='',
                                                      optional=True)
-        options_param.setFlags(options_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        options_param.setFlags(options_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(options_param)
 
         self.addParameter(QgsProcessingParameterVectorDestination(self.OUTPUT,
                                                                   self.tr('One-sided buffer'),
-                                                                  QgsProcessing.SourceType.TypeVectorPolygon))
+                                                                  QgsProcessing.TypeVectorPolygon))
 
     def name(self):
         return 'onesidebuffer'
@@ -110,7 +113,7 @@ class OneSideBuffer(GdalAlgorithm):
             raise QgsProcessingException(self.invalidSourceError(parameters, self.INPUT))
 
         fields = source.fields()
-        input_details = self.getOgrCompatibleSource(self.INPUT, parameters, context, feedback, executing)
+        ogrLayer, layerName = self.getOgrCompatibleSource(self.INPUT, parameters, context, feedback, executing)
         geometry = self.parameterAsString(parameters, self.GEOMETRY, context)
         distance = self.parameterAsDouble(parameters, self.DISTANCE, context)
         side = self.parameterAsEnum(parameters, self.BUFFER_SIDE, context)
@@ -120,7 +123,7 @@ class OneSideBuffer(GdalAlgorithm):
         outFile = self.parameterAsOutputLayer(parameters, self.OUTPUT, context)
         self.setOutputValue(self.OUTPUT, outFile)
 
-        output_details = GdalUtils.gdal_connection_details_from_uri(outFile, context)
+        output, outputFormat = GdalUtils.ogrConnectionStringAndFormat(outFile, context)
 
         other_fields_exist = any(
             True for f in fields
@@ -130,36 +133,30 @@ class OneSideBuffer(GdalAlgorithm):
         other_fields = ',*' if other_fields_exist else ''
 
         arguments = [
-            output_details.connection_string,
-            input_details.connection_string,
+            output,
+            ogrLayer,
             '-dialect',
             'sqlite',
             '-sql'
         ]
 
         if dissolve or fieldName:
-            sql = f'SELECT ST_Union(ST_SingleSidedBuffer({geometry}, {distance}, {side})) AS {geometry}{other_fields} FROM "{input_details.layer_name}"'
+            sql = 'SELECT ST_Union(ST_SingleSidedBuffer({}, {}, {})) AS {}{} FROM "{}"'.format(geometry, distance, side, geometry, other_fields, layerName)
         else:
-            sql = f'SELECT ST_SingleSidedBuffer({geometry}, {distance}, {side}) AS {geometry}{other_fields} FROM "{input_details.layer_name}"'
+            sql = 'SELECT ST_SingleSidedBuffer({}, {}, {}) AS {}{} FROM "{}"'.format(geometry, distance, side, geometry, other_fields, layerName)
 
         if fieldName:
-            sql = f'{sql} GROUP BY "{fieldName}"'
+            sql = '{} GROUP BY "{}"'.format(sql, fieldName)
 
         arguments.append(sql)
 
         if self.parameterAsBoolean(parameters, self.EXPLODE_COLLECTIONS, context):
             arguments.append('-explodecollections')
 
-        if input_details.open_options:
-            arguments.extend(input_details.open_options_as_arguments())
-
-        if input_details.credential_options:
-            arguments.extend(input_details.credential_options_as_arguments())
-
         if options:
             arguments.append(options)
 
-        if output_details.format:
-            arguments.append(f'-f {output_details.format}')
+        if outputFormat:
+            arguments.append('-f {}'.format(outputFormat))
 
         return ['ogr2ogr', GdalUtils.escapeAndJoin(arguments)]

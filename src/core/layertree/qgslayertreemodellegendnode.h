@@ -35,9 +35,6 @@ class QgsLegendSettings;
 class QgsMapSettings;
 class QgsSymbol;
 class QgsRenderContext;
-class QgsTextFormat;
-class QgsTextDocument;
-class QgsTextDocumentMetrics;
 
 /**
  * \ingroup core
@@ -47,6 +44,7 @@ class QgsTextDocumentMetrics;
  * The objects are used in QgsLayerTreeModel. Custom implementations may offer additional interactivity
  * and customized look.
  *
+ * \since QGIS 2.6
  */
 class CORE_EXPORT QgsLayerTreeModelLegendNode : public QObject
 {
@@ -79,23 +77,13 @@ class CORE_EXPORT QgsLayerTreeModelLegendNode : public QObject
 
   public:
 
-    // *INDENT-OFF*
-
-    /**
-     * Legend node data roles
-     *
-     * \note Prior to QGIS 3.36 this was available as QgsLayerTreeModelLegendNode::LegendNodeRoles
-     * \since QGIS 3.36
-     */
-    enum class CustomRole SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsLayerTreeModelLegendNode, LegendNodeRoles ) : int
+    //! Legend node data roles
+    enum LegendNodeRoles
     {
-      RuleKey SIP_MONKEYPATCH_COMPAT_NAME( RuleKeyRole ) = Qt::UserRole, //!< Rule key of the node (QString)
-      ParentRuleKey SIP_MONKEYPATCH_COMPAT_NAME( ParentRuleKeyRole ), //!< Rule key of the parent legend node - for legends with tree hierarchy (QString). Added in 2.8
-      NodeType SIP_MONKEYPATCH_COMPAT_NAME( NodeTypeRole ), //!< Type of node. Added in 3.16
-      IsDataDefinedSize SIP_MONKEYPATCH_COMPAT_NAME( IsDataDefinedSizeRole ), //!< Set when a node is related to data defined size (title or separated legend items). Added in 3.38
+      RuleKeyRole = Qt::UserRole, //!< Rule key of the node (QString)
+      ParentRuleKeyRole, //!< Rule key of the parent legend node - for legends with tree hierarchy (QString). Added in 2.8
+      NodeTypeRole, //!< Type of node. Added in 3.16
     };
-    Q_ENUM( CustomRole )
-    // *INDENT-ON*
 
     //! Types of legend nodes
     enum NodeTypes
@@ -107,7 +95,7 @@ class CORE_EXPORT QgsLayerTreeModelLegendNode : public QObject
       WmsLegend, //!< WMS legend node type
       DataDefinedSizeLegend, //!< Marker symbol legend node type
       EmbeddedWidget, //!< Embedded widget placeholder node type
-      ColorRampLegend, //!< Color ramp legend \since QGIS 3.18
+      ColorRampLegend, //!< Color ramp legend (since QGIS 3.18)
     };
 
     //! Returns pointer to the parent layer node
@@ -190,13 +178,13 @@ class CORE_EXPORT QgsLayerTreeModelLegendNode : public QObject
 
       /**
        * Top-left corner of the legend item.
-       * \deprecated QGIS 3.40. Use top, columnLeft, columnRight instead.
+       * \deprecated Use top, columnLeft, columnRight instead.
        */
       Q_DECL_DEPRECATED QPointF point;
 
       /**
        * Offset from the left side where label should start.
-       * \deprecated QGIS 3.40. Use columnLeft, columnRight instead.
+       * \deprecated use columnLeft, columnRight instead.
        */
       Q_DECL_DEPRECATED double labelXOffset = 0.0;
 
@@ -244,28 +232,6 @@ class CORE_EXPORT QgsLayerTreeModelLegendNode : public QObject
        * \since QGIS 3.14
        */
       QSizeF patchSize;
-
-      /**
-       * Optional text document
-       *
-       * \since QGIS 3.30
-       */
-      const QgsTextDocument *textDocument = nullptr;
-
-      /**
-       * Optional text document metrics.
-       *
-       * \since QGIS 3.30
-       */
-      const QgsTextDocumentMetrics *textDocumentMetrics = nullptr;
-
-      /**
-       * Destination screen properties.
-       *
-       * \since QGIS 3.32
-       */
-      QgsScreenProperties screenProperties;
-
     };
 
     struct ItemMetrics
@@ -316,14 +282,6 @@ class CORE_EXPORT QgsLayerTreeModelLegendNode : public QObject
      * \returns Size of the label (may span multiple lines)
      */
     virtual QSizeF drawSymbolText( const QgsLegendSettings &settings, ItemContext *ctx, QSizeF symbolSize ) const;
-
-#ifdef SIP_RUN
-    SIP_PYOBJECT __repr__();
-    % MethodCode
-    QString str = QStringLiteral( "<QgsLayerTreeModelLegendNode: \"%1\">" ).arg( sipCpp->data( Qt::DisplayRole ).toString() );
-    sipRes = PyUnicode_FromString( str.toUtf8().constData() );
-    % End
-#endif
 
   public slots:
 
@@ -395,6 +353,7 @@ Q_DECLARE_METATYPE( QgsLayerTreeModelLegendNode::NodeTypes )
  * \brief Implementation of legend node interface for displaying preview of vector symbols and their labels
  * and allowing interaction with the symbol / renderer.
  *
+ * \since QGIS 2.6
  */
 class CORE_EXPORT QgsSymbolLegendNode : public QgsLayerTreeModelLegendNode
 {
@@ -432,8 +391,10 @@ class CORE_EXPORT QgsSymbolLegendNode : public QgsLayerTreeModelLegendNode
 
     /**
      * Set the icon size
+     * \since QGIS 2.10
      */
-    void setIconSize( QSize sz );
+    void setIconSize( QSize sz ) { mIconSize = sz; }
+    //! \since QGIS 2.10
     QSize iconSize() const { return mIconSize; }
 
     /**
@@ -441,6 +402,7 @@ class CORE_EXPORT QgsSymbolLegendNode : public QgsLayerTreeModelLegendNode
      * the size for multiple icons it is more efficient to create a single
      * render context in advance and use the variant which accepts a QgsRenderContext
      * argument.
+     * \since QGIS 2.10
      */
     QSize minimumIconSize() const;
 
@@ -448,12 +410,14 @@ class CORE_EXPORT QgsSymbolLegendNode : public QgsLayerTreeModelLegendNode
      * Calculates the minimum icon size to prevent cropping. When evaluating
      * the size for multiple icons it is more efficient to create a single
      * render context in advance and call this method instead of minimumIconSize().
+     * \since QGIS 2.18
      */
     QSize minimumIconSize( QgsRenderContext *context ) const;
 
     /**
      * Returns the symbol used by the legend node.
      * \see setSymbol()
+     * \since QGIS 2.14
      */
     const QgsSymbol *symbol() const;
 
@@ -462,6 +426,7 @@ class CORE_EXPORT QgsSymbolLegendNode : public QgsLayerTreeModelLegendNode
      * to the associated vector layer's renderer.
      * \param symbol new symbol for node. Ownership is transferred.
      * \see symbol()
+     * \since QGIS 2.14
      */
     void setSymbol( QgsSymbol *symbol SIP_TRANSFER );
 
@@ -543,25 +508,6 @@ class CORE_EXPORT QgsSymbolLegendNode : public QgsLayerTreeModelLegendNode
      */
     QString evaluateLabel( const QgsExpressionContext &context = QgsExpressionContext(), const QString &label = QString() );
 
-    /**
-     * Create an expression context scope containing symbol related variables.
-     *
-     * The caller takes ownership of the returned object.
-     *
-     * \since QGIS 3.36
-     */
-    QgsExpressionContextScope *createSymbolScope() const SIP_FACTORY;
-
-#ifdef SIP_RUN
-    SIP_PYOBJECT __repr__();
-    % MethodCode
-    QString str = QStringLiteral( "<QgsSymbolLegendNode: %1 \"%2\"" ).arg(
-                    sipCpp->data( static_cast< int >( QgsLayerTreeModelLegendNode::CustomRole::RuleKey ) ).toString(),
-                    sipCpp->data( Qt::DisplayRole ).toString() );
-    sipRes = PyUnicode_FromString( str.toUtf8().constData() );
-    % End
-#endif
-
   private:
     void updateLabel();
 
@@ -581,6 +527,12 @@ class CORE_EXPORT QgsSymbolLegendNode : public QgsLayerTreeModelLegendNode
     // ident the symbol icon to make it look like a tree structure
     static const int INDENT_SIZE = 20;
 
+    /**
+     * Create an expressionContextScope containing symbol related variables
+     * \since QGIS 3.10
+     */
+    QgsExpressionContextScope *createSymbolScope() const SIP_FACTORY;
+
 };
 
 
@@ -588,6 +540,7 @@ class CORE_EXPORT QgsSymbolLegendNode : public QgsLayerTreeModelLegendNode
  * \ingroup core
  * \brief Implementation of legend node interface for displaying arbitrary label with icon.
  *
+ * \since QGIS 2.6
  */
 class CORE_EXPORT QgsSimpleLegendNode : public QgsLayerTreeModelLegendNode
 {
@@ -607,14 +560,6 @@ class CORE_EXPORT QgsSimpleLegendNode : public QgsLayerTreeModelLegendNode
 
     QVariant data( int role ) const override;
 
-#ifdef SIP_RUN
-    SIP_PYOBJECT __repr__();
-    % MethodCode
-    QString str = QStringLiteral( "<QgsSimpleLegendNode: \"%1\">" ).arg( sipCpp->data( Qt::DisplayRole ).toString() );
-    sipRes = PyUnicode_FromString( str.toUtf8().constData() );
-    % End
-#endif
-
   private:
     QString mLabel;
     QString mId;
@@ -627,6 +572,7 @@ class CORE_EXPORT QgsSimpleLegendNode : public QgsLayerTreeModelLegendNode
  * \ingroup core
  * \brief Implementation of legend node interface for displaying arbitrary raster image
  *
+ * \since QGIS 2.6
  */
 class CORE_EXPORT QgsImageLegendNode : public QgsLayerTreeModelLegendNode
 {
@@ -648,14 +594,6 @@ class CORE_EXPORT QgsImageLegendNode : public QgsLayerTreeModelLegendNode
 
     QJsonObject exportSymbolToJson( const QgsLegendSettings &settings, const QgsRenderContext &context ) const override;
 
-#ifdef SIP_RUN
-    SIP_PYOBJECT __repr__();
-    % MethodCode
-    QString str = QStringLiteral( "<QgsImageLegendNode: \"%1\">" ).arg( sipCpp->data( Qt::DisplayRole ).toString() );
-    sipRes = PyUnicode_FromString( str.toUtf8().constData() );
-    % End
-#endif
-
   private:
     QImage mImage;
 };
@@ -664,6 +602,7 @@ class CORE_EXPORT QgsImageLegendNode : public QgsLayerTreeModelLegendNode
  * \ingroup core
  * \brief Implementation of legend node interface for displaying raster legend entries
  *
+ * \since QGIS 2.6
  */
 class CORE_EXPORT QgsRasterSymbolLegendNode : public QgsLayerTreeModelLegendNode
 {
@@ -679,10 +618,8 @@ class CORE_EXPORT QgsRasterSymbolLegendNode : public QgsLayerTreeModelLegendNode
      * \param parent attach a parent QObject to the legend node.
      * \param isCheckable set to TRUE to enable the checkbox for the node (since QGIS 3.18)
      * \param ruleKey optional identifier to allow a unique ID to be assigned to the node by a renderer (since QGIS 3.18)
-     * \param parentRuleKey rule key of parent (since QGIS 3.40)
      */
-    QgsRasterSymbolLegendNode( QgsLayerTreeLayer *nodeLayer, const QColor &color, const QString &label, QObject *parent SIP_TRANSFERTHIS = nullptr,
-                               bool isCheckable = false, const QString &ruleKey = QString(), const QString &parentRuleKey = QString() );
+    QgsRasterSymbolLegendNode( QgsLayerTreeLayer *nodeLayer, const QColor &color, const QString &label, QObject *parent SIP_TRANSFERTHIS = nullptr, bool isCheckable = false, const QString &ruleKey = QString() );
 
     Qt::ItemFlags flags() const override;
     QVariant data( int role ) const override;
@@ -704,20 +641,11 @@ class CORE_EXPORT QgsRasterSymbolLegendNode : public QgsLayerTreeModelLegendNode
      */
     bool isCheckable() const { return mCheckable; }
 
-#ifdef SIP_RUN
-    SIP_PYOBJECT __repr__();
-    % MethodCode
-    QString str = QStringLiteral( "<QgsRasterSymbolLegendNode: \"%1\">" ).arg( sipCpp->data( Qt::DisplayRole ).toString() );
-    sipRes = PyUnicode_FromString( str.toUtf8().constData() );
-    % End
-#endif
-
   private:
     QColor mColor;
     QString mLabel;
     bool mCheckable = false;
     QString mRuleKey;
-    QString mParentRuleKey;
 };
 
 class QgsImageFetcher;
@@ -726,6 +654,7 @@ class QgsImageFetcher;
  * \ingroup core
  * \brief Implementation of legend node interface for displaying WMS legend entries
  *
+ * \since QGIS 2.8
  */
 class CORE_EXPORT QgsWmsLegendNode : public QgsLayerTreeModelLegendNode
 {
@@ -750,21 +679,6 @@ class CORE_EXPORT QgsWmsLegendNode : public QgsLayerTreeModelLegendNode
 
     void invalidateMapBasedData() override;
 
-    /**
-     *  Fetches the image from the server and returns it.
-     *  \since QGIS 3.40
-     */
-    QImage getLegendGraphicBlocking( ) const;
-
-
-#ifdef SIP_RUN
-    SIP_PYOBJECT __repr__();
-    % MethodCode
-    QString str = QStringLiteral( "<QgsWmsLegendNode: \"%1\">" ).arg( sipCpp->data( Qt::DisplayRole ).toString() );
-    sipRes = PyUnicode_FromString( str.toUtf8().constData() );
-    % End
-#endif
-
   private slots:
 
     void getLegendGraphicFinished( const QImage & );
@@ -773,8 +687,8 @@ class CORE_EXPORT QgsWmsLegendNode : public QgsLayerTreeModelLegendNode
 
   private:
 
-    // Lazy loading of the image
-    QImage getLegendGraphic( bool synchronous = false ) const;
+    // Lazily initializes mImage
+    QImage getLegendGraphic() const;
 
     QImage renderMessage( const QString &msg ) const;
 
@@ -789,6 +703,7 @@ class CORE_EXPORT QgsWmsLegendNode : public QgsLayerTreeModelLegendNode
 /**
  * \ingroup core
  * \brief Produces legend node with a marker symbol
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsDataDefinedSizeLegendNode : public QgsLayerTreeModelLegendNode
 {
@@ -802,14 +717,6 @@ class CORE_EXPORT QgsDataDefinedSizeLegendNode : public QgsLayerTreeModelLegendN
     QVariant data( int role ) const override;
 
     ItemMetrics draw( const QgsLegendSettings &settings, ItemContext *ctx ) override;
-
-#ifdef SIP_RUN
-    SIP_PYOBJECT __repr__();
-    % MethodCode
-    QString str = QStringLiteral( "<QgsDataDefinedSizeLegendNode: \"%1\">" ).arg( sipCpp->data( Qt::DisplayRole ).toString() );
-    sipRes = PyUnicode_FromString( str.toUtf8().constData() );
-    % End
-#endif
 
   private:
     void cacheImage() const;
@@ -859,14 +766,6 @@ class CORE_EXPORT QgsVectorLabelLegendNode : public QgsLayerTreeModelLegendNode
      * \returns the json object
      */
     QJsonObject exportSymbolToJson( const QgsLegendSettings &settings, const QgsRenderContext &context ) const override;
-
-#ifdef SIP_RUN
-    SIP_PYOBJECT __repr__();
-    % MethodCode
-    QString str = QStringLiteral( "<QgsVectorLabelLegendNode: \"%1\">" ).arg( sipCpp->data( Qt::DisplayRole ).toString() );
-    sipRes = PyUnicode_FromString( str.toUtf8().constData() );
-    % End
-#endif
 
   private:
     QgsPalLayerSettings mLabelSettings;

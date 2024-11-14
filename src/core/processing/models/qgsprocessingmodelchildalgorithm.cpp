@@ -175,10 +175,9 @@ bool QgsProcessingModelChildAlgorithm::loadVariant( const QVariant &child )
   mActive = map.value( QStringLiteral( "active" ) ).toBool();
 
   mDependencies.clear();
-  if ( map.value( QStringLiteral( "dependencies" ) ).userType() == QMetaType::Type::QStringList )
+  if ( map.value( QStringLiteral( "dependencies" ) ).type() == QVariant::StringList )
   {
     const QStringList dependencies = map.value( QStringLiteral( "dependencies" ) ).toStringList();
-    mDependencies.reserve( dependencies.size() );
     for ( const QString &dependency : dependencies )
     {
       QgsProcessingModelChildDependency dep;
@@ -189,7 +188,6 @@ bool QgsProcessingModelChildAlgorithm::loadVariant( const QVariant &child )
   else
   {
     const QVariantList dependencies = map.value( QStringLiteral( "dependencies" ) ).toList();
-    mDependencies.reserve( dependencies.size() );
     for ( const QVariant &dependency : dependencies )
     {
       QgsProcessingModelChildDependency dep;
@@ -207,7 +205,6 @@ bool QgsProcessingModelChildAlgorithm::loadVariant( const QVariant &child )
   {
     QgsProcessingModelChildParameterSources sources;
     const auto constToList = paramIt->toList();
-    sources.reserve( constToList.size() );
     for ( const QVariant &sourceVar : constToList )
     {
       QgsProcessingModelChildParameterSource param;

@@ -25,7 +25,6 @@
 #include "qgsnetworkaccessmanager.h"
 #include "qgswcsprovider.h"
 #include "qgswcssourceselect.h"
-#include "moc_qgswcssourceselect.cpp"
 #include "qgswcscapabilities.h"
 #include "qgstreewidgetitem.h"
 
@@ -79,12 +78,12 @@ void QgsWCSSourceSelect::populateLayerList()
         coverage != coverages.end();
         ++coverage )
   {
-    QgsDebugMsgLevel( QStringLiteral( "coverage orderId = %1 identifier = %2" ).arg( coverage->orderId ).arg( coverage->identifier ), 2 );
+    QgsDebugMsg( QStringLiteral( "coverage orderId = %1 identifier = %2" ).arg( coverage->orderId ).arg( coverage->identifier ) );
 
     QgsTreeWidgetItem *lItem = createItem( coverage->orderId, QStringList() << coverage->identifier << coverage->title << coverage->abstract, items, coverageAndStyleCount, coverageParents, coverageParentNames );
 
     lItem->setData( 0, Qt::UserRole + 0, coverage->identifier );
-    lItem->setData( 0, Qt::UserRole + 1, coverage->title );
+    lItem->setData( 0, Qt::UserRole + 1, "" );
 
     // Make only leaves selectable
     if ( coverageParents.contains( coverage->orderId ) )
@@ -102,22 +101,13 @@ void QgsWCSSourceSelect::populateLayerList()
   }
 }
 
-QString QgsWCSSourceSelect::selectedIdentifier() const
+QString QgsWCSSourceSelect::selectedIdentifier()
 {
   const QList<QTreeWidgetItem *> selectionList = mLayersTreeWidget->selectedItems();
   if ( selectionList.size() < 1 ) return QString(); // should not happen
   QString identifier = selectionList.value( 0 )->data( 0, Qt::UserRole + 0 ).toString();
-  QgsDebugMsgLevel( " identifier = " + identifier, 2 );
+  QgsDebugMsg( " identifier = " + identifier );
   return identifier;
-}
-
-QString QgsWCSSourceSelect::selectedTitle() const
-{
-  const QList<QTreeWidgetItem *> selectionList = mLayersTreeWidget->selectedItems();
-  if ( selectionList.empty() ) return QString(); // should not happen
-  QString title = selectionList.value( 0 )->data( 0, Qt::UserRole + 1 ).toString();
-  QgsDebugMsgLevel( " title = " + title, 2 );
-  return title;
 }
 
 void QgsWCSSourceSelect::addButtonClicked()
@@ -139,13 +129,13 @@ void QgsWCSSourceSelect::addButtonClicked()
   uri.setParam( QStringLiteral( "crs" ), selectedCrs() );
   //}
 
-  QgsDebugMsgLevel( "selectedFormat = " +  selectedFormat(), 2 );
+  QgsDebugMsg( "selectedFormat = " +  selectedFormat() );
   if ( !selectedFormat().isEmpty() )
   {
     uri.setParam( QStringLiteral( "format" ), selectedFormat() );
   }
 
-  QgsDebugMsgLevel( "selectedTime = " +  selectedTime(), 2 );
+  QgsDebugMsg( "selectedTime = " +  selectedTime() );
   if ( !selectedTime().isEmpty() )
   {
     uri.setParam( QStringLiteral( "time" ), selectedTime() );
@@ -170,18 +160,11 @@ void QgsWCSSourceSelect::addButtonClicked()
   }
 
   QString cache;
-  QgsDebugMsgLevel( QStringLiteral( "selectedCacheLoadControl = %1" ).arg( selectedCacheLoadControl() ), 2 );
+  QgsDebugMsg( QStringLiteral( "selectedCacheLoadControl = %1" ).arg( selectedCacheLoadControl() ) );
   cache = QgsNetworkAccessManager::cacheLoadControlName( selectedCacheLoadControl() );
   uri.setParam( QStringLiteral( "cache" ), cache );
 
-  QString title = selectedTitle();
-  if ( title.isEmpty() )
-    title = identifier;
-
-  Q_NOWARN_DEPRECATED_PUSH
-  emit addRasterLayer( uri.encodedUri(), title, QStringLiteral( "wcs" ) );
-  Q_NOWARN_DEPRECATED_POP
-  emit addLayer( Qgis::LayerType::Raster, uri.encodedUri(), title, QStringLiteral( "wcs" ) );
+  emit addRasterLayer( uri.encodedUri(), identifier, QStringLiteral( "wcs" ) );
 }
 
 
@@ -254,7 +237,7 @@ QStringList QgsWCSSourceSelect::selectedLayersFormats()
   const QgsWcsCoverageSummary c = mCapabilities.coverage( identifier );
   if ( !c.valid ) { return QStringList(); }
 
-  QgsDebugMsgLevel( "supportedFormat = " + c.supportedFormat.join( "," ), 2 );
+  QgsDebugMsg( "supportedFormat = " + c.supportedFormat.join( "," ) );
   return c.supportedFormat;
 }
 
@@ -278,7 +261,7 @@ QStringList QgsWCSSourceSelect::selectedLayersTimes()
   const QgsWcsCoverageSummary c = mCapabilities.coverage( identifier );
   if ( !c.valid ) { return QStringList(); }
 
-  QgsDebugMsgLevel( "times = " + c.times.join( "," ), 2 );
+  QgsDebugMsg( "times = " + c.times.join( "," ) );
   return c.times;
 }
 

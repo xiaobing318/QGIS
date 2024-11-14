@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/symbology/qgsmarkersymbollayer.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -16,6 +16,8 @@ class QgsSimpleMarkerSymbolLayerBase : QgsMarkerSymbolLayer
 %Docstring(signature="appended")
 Abstract base class for simple marker symbol layers. Handles creation of the symbol shapes but
 leaves the actual drawing of the symbols to subclasses.
+
+.. versionadded:: 2.16
 %End
 
 %TypeHeaderCode
@@ -214,8 +216,6 @@ Creates a new QgsSimpleMarkerSymbolLayer from an SLD XML element.
 
     virtual QString layerType() const;
 
-    virtual Qgis::SymbolLayerFlags flags() const;
-
     virtual void startRender( QgsSymbolRenderContext &context );
 
     virtual void renderPoint( QPointF point, QgsSymbolRenderContext &context );
@@ -230,9 +230,9 @@ Creates a new QgsSimpleMarkerSymbolLayer from an SLD XML element.
 
     virtual bool writeDxf( QgsDxfExport &e, double mmMapUnitScaleFactor, const QString &layerName, QgsSymbolRenderContext &context, QPointF shift = QPointF( 0.0, 0.0 ) ) const;
 
-    virtual void setOutputUnit( Qgis::RenderUnit unit );
+    virtual void setOutputUnit( QgsUnitTypes::RenderUnit unit );
 
-    virtual Qgis::RenderUnit outputUnit() const;
+    virtual QgsUnitTypes::RenderUnit outputUnit() const;
 
     virtual void setMapUnitScale( const QgsMapUnitScale &scale );
 
@@ -283,6 +283,8 @@ Returns the marker's stroke style (e.g., solid, dashed, etc)
 .. seealso:: :py:func:`strokeColor`
 
 .. seealso:: :py:func:`penJoinStyle`
+
+.. versionadded:: 2.4
 %End
 
     void setStrokeStyle( Qt::PenStyle strokeStyle );
@@ -296,6 +298,8 @@ Sets the marker's stroke style (e.g., solid, dashed, etc)
 .. seealso:: :py:func:`setStrokeColor`
 
 .. seealso:: :py:func:`setPenJoinStyle`
+
+.. versionadded:: 2.4
 %End
 
     Qt::PenJoinStyle penJoinStyle() const;
@@ -309,6 +313,8 @@ Returns the marker's stroke join style (e.g., miter, bevel, etc).
 .. seealso:: :py:func:`strokeColor`
 
 .. seealso:: :py:func:`strokeStyle`
+
+.. versionadded:: 2.16
 %End
 
     void setPenJoinStyle( Qt::PenJoinStyle style );
@@ -324,6 +330,8 @@ Sets the marker's stroke join style (e.g., miter, bevel, etc).
 .. seealso:: :py:func:`setStrokeColor`
 
 .. seealso:: :py:func:`setStrokeStyle`
+
+.. versionadded:: 2.16
 %End
 
     Qt::PenCapStyle penCapStyle() const;
@@ -380,7 +388,7 @@ Sets the width of the marker's stroke.
 .. seealso:: :py:func:`setStrokeWidthMapUnitScale`
 %End
 
-    void setStrokeWidthUnit( Qgis::RenderUnit u );
+    void setStrokeWidthUnit( QgsUnitTypes::RenderUnit u );
 %Docstring
 Sets the unit for the width of the marker's stroke.
 
@@ -393,7 +401,7 @@ Sets the unit for the width of the marker's stroke.
 .. seealso:: :py:func:`setStrokeWidthMapUnitScale`
 %End
 
-    Qgis::RenderUnit strokeWidthUnit() const;
+    QgsUnitTypes::RenderUnit strokeWidthUnit() const;
 %Docstring
 Returns the unit for the width of the marker's stroke.
 
@@ -463,6 +471,8 @@ class QgsFilledMarkerSymbolLayer : QgsSimpleMarkerSymbolLayerBase
 %Docstring(signature="appended")
 Filled marker symbol layer, consisting of a shape which is rendered using a :py:class:`QgsFillSymbol`. This allows
 the symbol to support advanced styling of the interior and stroke of the shape.
+
+.. versionadded:: 2.16
 %End
 
 %TypeHeaderCode
@@ -520,7 +530,7 @@ Creates a new QgsFilledMarkerSymbolLayer.
 
     virtual bool usesMapUnits() const;
 
-    virtual void setOutputUnit( Qgis::RenderUnit unit );
+    virtual void setOutputUnit( QgsUnitTypes::RenderUnit unit );
 
 
   private:
@@ -559,24 +569,30 @@ Creates the symbol
 %Docstring
 Turns relative paths in properties map to absolute when reading and vice versa when writing.
 Used internally when reading/writing symbols.
+
+.. versionadded:: 3.0
 %End
 
 
     virtual QString layerType() const;
 
-    virtual Qgis::SymbolLayerFlags flags() const;
 
     virtual void startRender( QgsSymbolRenderContext &context );
 
+
     virtual void stopRender( QgsSymbolRenderContext &context );
 
+
     virtual void renderPoint( QPointF point, QgsSymbolRenderContext &context );
+
 
     virtual QVariantMap properties() const;
 
     virtual bool usesMapUnits() const;
 
+
     virtual QgsSvgMarkerSymbolLayer *clone() const /Factory/;
+
 
     virtual void writeSldMarker( QDomDocument &doc, QDomElement &element, const QVariantMap &props ) const;
 
@@ -637,8 +653,6 @@ Returns the marker aspect ratio between width and height to be used in rendering
 if the value set is lower or equal to 0 the aspect ratio will be preserved in rendering
 
 .. seealso:: :py:func:`setFixedAspectRatio`
-
-.. seealso:: :py:class:`QgsSvgCache`
 %End
 
     void setFixedAspectRatio( double ratio );
@@ -649,8 +663,6 @@ if the value set is lower or equal to 0 the aspect ratio will be preserved in re
 :param ratio: Fixed Aspect Ratio
 
 .. seealso:: :py:func:`fixedAspectRatio`
-
-.. seealso:: :py:class:`QgsSvgCache`
 %End
 
     virtual QColor fillColor() const;
@@ -676,7 +688,7 @@ Sets the dynamic SVG parameters
 .. versionadded:: 3.18
 %End
 
-    void setStrokeWidthUnit( Qgis::RenderUnit unit );
+    void setStrokeWidthUnit( QgsUnitTypes::RenderUnit unit );
 %Docstring
 Sets the units for the stroke width.
 
@@ -685,7 +697,7 @@ Sets the units for the stroke width.
 .. seealso:: :py:func:`strokeWidthUnit`
 %End
 
-    Qgis::RenderUnit strokeWidthUnit() const;
+    QgsUnitTypes::RenderUnit strokeWidthUnit() const;
 %Docstring
 Returns the units for the stroke width.
 
@@ -695,9 +707,9 @@ Returns the units for the stroke width.
     void setStrokeWidthMapUnitScale( const QgsMapUnitScale &scale );
     const QgsMapUnitScale &strokeWidthMapUnitScale() const;
 
-    virtual void setOutputUnit( Qgis::RenderUnit unit );
+    virtual void setOutputUnit( QgsUnitTypes::RenderUnit unit );
 
-    virtual Qgis::RenderUnit outputUnit() const;
+    virtual QgsUnitTypes::RenderUnit outputUnit() const;
 
 
     virtual void setMapUnitScale( const QgsMapUnitScale &scale );
@@ -770,12 +782,13 @@ Creates a raster marker symbol layer from a string map of properties.
 %Docstring
 Turns relative paths in properties map to absolute when reading and vice versa when writing.
 Used internally when reading/writing symbols.
+
+.. versionadded:: 3.0
 %End
 
 
     virtual QString layerType() const;
 
-    virtual Qgis::SymbolLayerFlags flags() const;
 
     virtual void renderPoint( QPointF point, QgsSymbolRenderContext &context );
 
@@ -871,8 +884,6 @@ Returns the marker aspect ratio between width and height to be used in rendering
 if the value set is lower or equal to 0 the aspect ratio will be preserved in rendering
 
 .. seealso:: :py:func:`setFixedAspectRatio`
-
-.. seealso:: :py:class:`QgsSvgCache`
 %End
 
     void setFixedAspectRatio( double ratio );
@@ -883,8 +894,6 @@ if the value set is lower or equal to 0 the aspect ratio will be preserved in re
 :param ratio: Fixed Aspect Ratio
 
 .. seealso:: :py:func:`fixedAspectRatio`
-
-.. seealso:: :py:class:`QgsSvgCache`
 %End
 
     virtual void setMapUnitScale( const QgsMapUnitScale &scale );
@@ -960,8 +969,6 @@ required fonts are not available on the system.
 
     virtual QString layerType() const;
 
-    virtual Qgis::SymbolLayerFlags flags() const;
-
 
     virtual void startRender( QgsSymbolRenderContext &context );
 
@@ -982,7 +989,7 @@ required fonts are not available on the system.
 
     virtual bool usesMapUnits() const;
 
-    virtual void setOutputUnit( Qgis::RenderUnit unit );
+    virtual void setOutputUnit( QgsUnitTypes::RenderUnit unit );
 
 
 
@@ -1044,6 +1051,8 @@ Returns the marker's stroke width. Units are retrieved by :py:func:`~QgsFontMark
 .. seealso:: :py:func:`strokeWidthUnit`
 
 .. seealso:: :py:func:`strokeWidthMapUnitScale`
+
+.. versionadded:: 2.16
 %End
 
     void setStrokeWidth( double width );
@@ -1055,9 +1064,11 @@ Set's the marker's stroke ``width``. Units are set by :py:func:`~QgsFontMarkerSy
 .. seealso:: :py:func:`setStrokeWidthUnit`
 
 .. seealso:: :py:func:`setStrokeWidthMapUnitScale`
+
+.. versionadded:: 2.16
 %End
 
-    Qgis::RenderUnit strokeWidthUnit() const;
+    QgsUnitTypes::RenderUnit strokeWidthUnit() const;
 %Docstring
 Returns the stroke width unit.
 
@@ -1066,9 +1077,11 @@ Returns the stroke width unit.
 .. seealso:: :py:func:`strokeWidth`
 
 .. seealso:: :py:func:`strokeWidthMapUnitScale`
+
+.. versionadded:: 2.16
 %End
 
-    void setStrokeWidthUnit( Qgis::RenderUnit unit );
+    void setStrokeWidthUnit( QgsUnitTypes::RenderUnit unit );
 %Docstring
 Sets the stroke width ``unit``.
 
@@ -1077,6 +1090,8 @@ Sets the stroke width ``unit``.
 .. seealso:: :py:func:`setStrokeWidth`
 
 .. seealso:: :py:func:`setStrokeWidthMapUnitScale`
+
+.. versionadded:: 2.16
 %End
 
     const QgsMapUnitScale &strokeWidthMapUnitScale() const;
@@ -1088,6 +1103,8 @@ Returns the stroke width map unit scale.
 .. seealso:: :py:func:`strokeWidth`
 
 .. seealso:: :py:func:`strokeWidthUnit`
+
+.. versionadded:: 2.16
 %End
 
     void setStrokeWidthMapUnitScale( const QgsMapUnitScale &scale );
@@ -1099,6 +1116,8 @@ Sets the stroke width map unit ``scale``.
 .. seealso:: :py:func:`setStrokeWidth`
 
 .. seealso:: :py:func:`setStrokeWidthUnit`
+
+.. versionadded:: 2.16
 %End
 
     Qt::PenJoinStyle penJoinStyle() const;
@@ -1106,6 +1125,8 @@ Sets the stroke width map unit ``scale``.
 Returns the stroke join style.
 
 .. seealso:: :py:func:`setPenJoinStyle`
+
+.. versionadded:: 2.16
 %End
 
     void setPenJoinStyle( Qt::PenJoinStyle style );
@@ -1113,6 +1134,8 @@ Returns the stroke join style.
 Sets the stroke join ``style``.
 
 .. seealso:: :py:func:`penJoinStyle`
+
+.. versionadded:: 2.16
 %End
 
     virtual QRectF bounds( QPointF point, QgsSymbolRenderContext &context );
@@ -1189,5 +1212,5 @@ Returns the marker frame rate in frame per second.
  *                                                                      *
  * src/core/symbology/qgsmarkersymbollayer.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

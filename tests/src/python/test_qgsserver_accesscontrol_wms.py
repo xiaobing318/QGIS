@@ -19,9 +19,9 @@ import urllib.request
 
 from qgis.core import QgsProject
 from qgis.server import (
-    QgsAccessControlFilter,
     QgsBufferServerRequest,
     QgsBufferServerResponse,
+    QgsAccessControlFilter
 )
 from qgis.testing import unittest
 
@@ -43,25 +43,21 @@ class TestQgsServerAccessControlWMS(TestQgsServerAccessControl):
         response, headers = self._get_fullaccess(query_string)
         self.assertTrue(
             str(response).find("<Name>Hello</Name>") != -1,
-            f"No Hello layer in GetCapabilities\n{response}")
-        self.assertTrue(
-            str(response).find("<Name>Country_grp</Name>") != -1,
-            f"Unexpected Country_grp layer in GetCapabilities\n{response}")
+            "No Hello layer in GetCapabilities\n%s" % response)
         self.assertTrue(
             str(response).find("<Name>Country</Name>") != -1,
-            f"No Country layer in GetCapabilities\n{response}")
+            "No Country layer in GetCapabilities\n%s" % response)
 
         response, headers = self._get_restricted(query_string)
         self.assertTrue(
             str(response).find("<Name>Hello</Name>") != -1,
-            f"No Hello layer in GetCapabilities\n{response}")
-        self.assertFalse(
-            str(response).find("<Name>Country_grp</Name>") != -1,
-            f"Unexpected Country_grp layer in GetCapabilities\n{response}")
+            "No Hello layer in GetCapabilities\n%s" % response)
         self.assertFalse(
             str(response).find("<Name>Country</Name>") != -1,
-            f"Unexpected Country layer in GetCapabilities\n{response}")
+            "Unexpected Country layer in GetCapabilities\n%s" % response)
 
+    # This test hasn't run yet
+    @unittest.expectedFailure
     def test_wms_getprojectsettings(self):
         query_string = "&".join(["%s=%s" % i for i in list({
             "MAP": urllib.parse.quote(self.projectPath),
@@ -73,32 +69,32 @@ class TestQgsServerAccessControlWMS(TestQgsServerAccessControl):
         response, headers = self._get_fullaccess(query_string)
         self.assertTrue(
             str(response).find("<TreeName>Hello</TreeName>") != -1,
-            f"No Hello layer in GetProjectSettings\n{response}")
+            "No Hello layer in GetProjectSettings\n%s" % response)
         self.assertTrue(
             str(response).find("<TreeName>Country</TreeName>") != -1,
-            f"No Country layer in GetProjectSettings\n{response}")
+            "No Country layer in GetProjectSettings\n%s" % response)
         self.assertTrue(
             str(response).find("<TreeName>Country_grp</TreeName>") != -1,
-            f"No Country_grp layer in GetProjectSettings\n{response}")
+            "No Country_grp layer in GetProjectSettings\n%s" % response)
         self.assertTrue(
             str(response).find(
-                "<LayerDrawingOrder>Country_Diagrams,Country_Labels,Country,dem,Hello_Filter_SubsetString,Hello_Project_SubsetString,Hello_SubsetString,Hello_Filter,Hello_OnOff,Hello,db_point</LayerDrawingOrder>") != -1,
-            f"LayerDrawingOrder in GetProjectSettings\n{response}")
+                "<LayerDrawingOrder>Country_Diagrams,Country_Labels,Country,dem,Hello_Filter_SubsetString,Hello_Project_SubsetString,Hello_SubsetString,Hello,db_point</LayerDrawingOrder>") != -1,
+            "LayerDrawingOrder in GetProjectSettings\n%s" % response)
 
         response, headers = self._get_restricted(query_string)
         self.assertTrue(
             str(response).find("<TreeName>Hello</TreeName>") != -1,
-            f"No Hello layer in GetProjectSettings\n{response}")
+            "No Hello layer in GetProjectSettings\n%s" % response)
         self.assertFalse(
             str(response).find("<TreeName>Country</TreeName>") != -1,
-            f"Unexpected Country layer in GetProjectSettings\n{response}")
+            "Unexpected Country layer in GetProjectSettings\n%s" % response)
         self.assertFalse(
             str(response).find("<TreeName>Country_grp</TreeName>") != -1,
-            f"Unexpected Country_grp layer in GetProjectSettings\n{response}")
+            "Unexpected Country_grp layer in GetProjectSettings\n%s" % response)
         self.assertTrue(
             str(response).find(
-                "<LayerDrawingOrder>Country_Diagrams,Country_Labels,dem,Hello_Filter_SubsetString,Hello_Project_SubsetString,Hello_SubsetString,Hello_Filter,Hello,db_point</LayerDrawingOrder>") != -1,
-            f"Wrong LayerDrawingOrder in GetProjectSettings\n{response}")
+                "<LayerDrawingOrder>Country_Diagrams,Country_Labels,dem,Hello_Filter_SubsetString,Hello_Project_SubsetString,Hello_SubsetString,Hello,db_point</LayerDrawingOrder>") != -1,
+            "Wrong LayerDrawingOrder in GetProjectSettings\n%s" % response)
 
     def test_wms_getcontext(self):
         query_string = "&".join(["%s=%s" % i for i in list({
@@ -111,22 +107,22 @@ class TestQgsServerAccessControlWMS(TestQgsServerAccessControl):
         response, headers = self._get_fullaccess(query_string)
         self.assertTrue(
             str(response).find("name=\"Hello\"") != -1,
-            f"No Hello layer in GetContext\n{response}")
+            "No Hello layer in GetContext\n%s" % response)
         self.assertTrue(
             str(response).find("name=\"Country\"") != -1,
-            f"No Country layer in GetProjectSettings\n{response}")
+            "No Country layer in GetProjectSettings\n%s" % response)
         self.assertTrue(
             str(response).find("name=\"Country\"")
             < str(response).find("name=\"Hello\""),
-            f"Hello layer not after Country layer\n{response}")
+            "Hello layer not after Country layer\n%s" % response)
 
         response, headers = self._get_restricted(query_string)
         self.assertTrue(
             str(response).find("name=\"Hello\"") != -1,
-            f"No Hello layer in GetContext\n{response}")
+            "No Hello layer in GetContext\n%s" % response)
         self.assertFalse(
             str(response).find("name=\"Country\"") != -1,
-            f"Unexpected Country layer in GetProjectSettings\n{response}")
+            "Unexpected Country layer in GetProjectSettings\n%s" % response)
 
     def test_wms_describelayer_hello(self):
         query_string = "&".join(["%s=%s" % i for i in list({
@@ -141,12 +137,12 @@ class TestQgsServerAccessControlWMS(TestQgsServerAccessControl):
         response, headers = self._get_fullaccess(query_string)
         self.assertTrue(
             str(response).find("<se:FeatureTypeName>Hello</se:FeatureTypeName>") != -1,
-            f"No Hello layer in DescribeLayer\n{response}")
+            "No Hello layer in DescribeLayer\n%s" % response)
 
         response, headers = self._get_restricted(query_string)
         self.assertTrue(
             str(response).find("<se:FeatureTypeName>Hello</se:FeatureTypeName>") != -1,
-            f"No Hello layer in DescribeLayer\n{response}")
+            "No Hello layer in DescribeLayer\n%s" % response)
 
     def test_wms_describelayer_country(self):
         query_string = "&".join(["%s=%s" % i for i in list({
@@ -161,12 +157,12 @@ class TestQgsServerAccessControlWMS(TestQgsServerAccessControl):
         response, headers = self._get_fullaccess(query_string)
         self.assertTrue(
             str(response).find("<se:FeatureTypeName>Country</se:FeatureTypeName>") != -1,
-            f"No Country layer in DescribeLayer\n{response}")
+            "No Country layer in DescribeLayer\n%s" % response)
 
         response, headers = self._get_restricted(query_string)
         self.assertFalse(
             str(response).find("<se:FeatureTypeName>Country</se:FeatureTypeName>") != -1,
-            f"Unexpected Country layer in DescribeLayer\n{response}")
+            "Unexpected Country layer in DescribeLayer\n%s" % response)
 
     def test_wms_getmap(self):
         query_string = "&".join(["%s=%s" % i for i in list({
@@ -218,7 +214,7 @@ class TestQgsServerAccessControlWMS(TestQgsServerAccessControl):
         response, headers = self._get_restricted(query_string)
         self.assertEqual(
             headers.get("Content-Type"), "text/xml; charset=utf-8",
-            f"Content type for GetMap is wrong: {headers.get('Content-Type')}")
+            "Content type for GetMap is wrong: %s" % headers.get("Content-Type"))
         self.assertTrue(
             str(response).find('<ServiceException code="Security">') != -1,
             "Not allowed do a GetMap on Country"
@@ -274,32 +270,11 @@ class TestQgsServerAccessControlWMS(TestQgsServerAccessControl):
         response, headers = self._get_restricted(query_string)
         self.assertEqual(
             headers.get("Content-Type"), "text/xml; charset=utf-8",
-            f"Content type for GetMap is wrong: {headers.get('Content-Type')}")
+            "Content type for GetMap is wrong: %s" % headers.get("Content-Type"))
         self.assertTrue(
-            str(response).find('<ServiceException code="LayerNotDefined">') != -1,
+            str(response).find('<ServiceException code="Security">') != -1,
             "Not allowed do a GetMap on Country_grp"
         )
-
-        # Check group ACL.
-        # The whole group should not fail since it contains
-        # allowed layers.
-        query_string = "&".join(["%s=%s" % i for i in list({
-            "MAP": urllib.parse.quote(self.projectPath),
-            "SERVICE": "WMS",
-            "VERSION": "1.1.1",
-            "REQUEST": "GetMap",
-            "LAYERS": "project_grp",
-            "STYLES": "",
-            "FORMAT": "image/png",
-            "BBOX": "-16817707,-6318936.5,5696513,16195283.5",
-            "HEIGHT": "500",
-            "WIDTH": "500",
-            "SRS": "EPSG:3857"
-        }.items())])
-        response, headers = self._get_restricted(query_string)
-        self.assertEqual(
-            headers.get("Content-Type"), "image/png",
-            f"Content type for GetMap is wrong: {headers.get('Content-Type')}")
 
     def test_wms_getfeatureinfo_hello(self):
         query_string = "&".join(["%s=%s" % i for i in list({
@@ -324,15 +299,15 @@ class TestQgsServerAccessControlWMS(TestQgsServerAccessControl):
         response, headers = self._get_fullaccess(query_string)
         self.assertTrue(
             str(response).find("<qgs:pk>1</qgs:pk>") != -1,
-            f"No result in GetFeatureInfo\n{response}")
+            "No result in GetFeatureInfo\n%s" % response)
         self.assertTrue(
             str(response).find("<qgs:color>red</qgs:color>") != -1,  # spellok
-            f"No color in result of GetFeatureInfo\n{response}")
+            "No color in result of GetFeatureInfo\n%s" % response)
 
         response, headers = self._get_restricted(query_string)
         self.assertEqual(
             headers.get("Content-Type"), "text/xml; charset=utf-8",
-            f"Content type for GetFeatureInfo is wrong: {headers.get('Content-Type')}")
+            "Content type for GetFeatureInfo is wrong: %s" % headers.get("Content-Type"))
         self.assertTrue(
             str(response).find('<ServiceException code="Security">') != -1,
             "Not allowed do a GetFeatureInfo on Country"
@@ -359,13 +334,13 @@ class TestQgsServerAccessControlWMS(TestQgsServerAccessControl):
         response, headers = self._get_restricted(query_string)
         self.assertTrue(
             str(response).find("<qgs:pk>1</qgs:pk>") != -1,
-            f"No result in GetFeatureInfo\n{response}")
+            "No result in GetFeatureInfo\n%s" % response)
         self.assertFalse(
             str(response).find("<qgs:color>red</qgs:color>") != -1,  # spellok
-            f"Unexpected color in result of GetFeatureInfo\n{response}")
+            "Unexpected color in result of GetFeatureInfo\n%s" % response)
         self.assertFalse(
             str(response).find("<qgs:color>NULL</qgs:color>") != -1,  # spellok
-            f"Unexpected color NULL in result of GetFeatureInfo\n{response}")
+            "Unexpected color NULL in result of GetFeatureInfo\n%s" % response)
 
     def test_wms_getfeatureinfo_hello_grp(self):
         query_string = "&".join(["%s=%s" % i for i in list({
@@ -390,12 +365,12 @@ class TestQgsServerAccessControlWMS(TestQgsServerAccessControl):
         response, headers = self._get_fullaccess(query_string)
         self.assertFalse(
             str(response).find("Layer \'Hello_grp\' is not queryable") != -1,
-            f"The WMS layer group are queryable GetFeatureInfo\n{response}")
+            "The WMS layer group are queryable GetFeatureInfo\n%s" % response)
 
         response, headers = self._get_restricted(query_string)
         self.assertFalse(
             str(response).find("Layer \'Hello_grp\' is not queryable") != -1,
-            f"The WMS layer group are queryable GetFeatureInfo\n{response}")
+            "The WMS layer group are queryable GetFeatureInfo\n%s" % response)
 
     def test_wms_getfeatureinfo_hello2(self):
         query_string = "&".join(["%s=%s" % i for i in list({
@@ -420,12 +395,12 @@ class TestQgsServerAccessControlWMS(TestQgsServerAccessControl):
         response, headers = self._get_fullaccess(query_string)
         self.assertTrue(
             str(response).find("<qgs:pk>2</qgs:pk>") != -1,
-            f"No result in GetFeatureInfo\n{response}")
+            "No result in GetFeatureInfo\n%s" % response)
 
         response, headers = self._get_restricted(query_string)
         self.assertFalse(
             str(response).find("<qgs:pk>2</qgs:pk>") != -1,
-            f"Unexpected result in GetFeatureInfo\n{response}")
+            "Unexpected result in GetFeatureInfo\n%s" % response)
 
     def test_wms_getfeatureinfo_country(self):
         query_string = "&".join(["%s=%s" % i for i in list({
@@ -450,12 +425,12 @@ class TestQgsServerAccessControlWMS(TestQgsServerAccessControl):
         response, headers = self._get_fullaccess(query_string)
         self.assertTrue(
             str(response).find("<qgs:pk>1</qgs:pk>") != -1,
-            f"No result in GetFeatureInfo\n{response}")
+            "No result in GetFeatureInfo\n%s" % response)
 
         response, headers = self._get_restricted(query_string)
         self.assertFalse(
             str(response).find("<qgs:pk>1</qgs:pk>") != -1,
-            f"Unexpected result in GetFeatureInfo\n{response}")
+            "Unexpected result in GetFeatureInfo\n%s" % response)
 
     def test_wms_getfeatureinfo_country_grp(self):
         query_string = "&".join(["%s=%s" % i for i in list({
@@ -480,12 +455,12 @@ class TestQgsServerAccessControlWMS(TestQgsServerAccessControl):
         response, headers = self._get_fullaccess(query_string)
         self.assertTrue(
             str(response).find("<qgs:pk>1</qgs:pk>") != -1,
-            f"No result in GetFeatureInfo\n{response}")
+            "No result in GetFeatureInfo\n%s" % response)
 
         response, headers = self._get_restricted(query_string)
         self.assertFalse(
             str(response).find("<qgs:pk>1</qgs:pk>") != -1,
-            f"Unexpected result in GetFeatureInfo\n{response}")
+            "Unexpected result in GetFeatureInfo\n%s" % response)
 
     # # Subset String # #
 
@@ -645,15 +620,15 @@ class TestQgsServerAccessControlWMS(TestQgsServerAccessControl):
         response, headers = self._get_fullaccess(query_string)
         self.assertTrue(
             str(response).find("<qgs:pk>") != -1,
-            f"No result in GetFeatureInfo Hello/1\n{response}")
+            "No result in GetFeatureInfo Hello/1\n%s" % response)
         self.assertTrue(
             str(response).find("<qgs:pk>1</qgs:pk>") != -1,
-            f"No good result in GetFeatureInfo Hello/1\n{response}")
+            "No good result in GetFeatureInfo Hello/1\n%s" % response)
 
         response, headers = self._get_restricted(query_string)
         self.assertEqual(
             headers.get("Content-Type"), "text/xml; charset=utf-8",
-            f"Content type for GetFeatureInfo is wrong: {headers.get('Content-Type')}")
+            "Content type for GetFeatureInfo is wrong: %s" % headers.get("Content-Type"))
         self.assertTrue(
             str(response).find('<ServiceException code="Security">') != -1,
             "Not allowed do a GetFeatureInfo on Country"
@@ -680,10 +655,10 @@ class TestQgsServerAccessControlWMS(TestQgsServerAccessControl):
         response, headers = self._get_restricted(query_string)
         self.assertTrue(
             str(response).find("<qgs:pk>") != -1,
-            f"No result in GetFeatureInfo Hello/1\n{response}")
+            "No result in GetFeatureInfo Hello/1\n%s" % response)
         self.assertTrue(
             str(response).find("<qgs:pk>1</qgs:pk>") != -1,
-            f"No good result in GetFeatureInfo Hello/1\n{response}")
+            "No good result in GetFeatureInfo Hello/1\n%s" % response)
 
     def test_wms_getfeatureinfo_subsetstring2(self):
         query_string = "&".join(["%s=%s" % i for i in list({
@@ -708,15 +683,15 @@ class TestQgsServerAccessControlWMS(TestQgsServerAccessControl):
         response, headers = self._get_fullaccess(query_string)
         self.assertTrue(
             str(response).find("<qgs:pk>") != -1,
-            f"No result result in GetFeatureInfo Hello/2\n{response}")
+            "No result result in GetFeatureInfo Hello/2\n%s" % response)
         self.assertTrue(
             str(response).find("<qgs:pk>2</qgs:pk>") != -1,
-            f"No good result result in GetFeatureInfo Hello/2\n{response}")
+            "No good result result in GetFeatureInfo Hello/2\n%s" % response)
 
         response, headers = self._get_restricted(query_string)
         self.assertFalse(
             str(response).find("<qgs:pk>") != -1,
-            f"Unexpected result result in GetFeatureInfo Hello/2\n{response}")
+            "Unexpected result result in GetFeatureInfo Hello/2\n%s" % response)
 
     def test_wms_getfeatureinfo_projectsubsetstring(self):
         """test that layer subsetStrings set in projects are honored. This test checks for a feature which should be filtered
@@ -744,12 +719,12 @@ class TestQgsServerAccessControlWMS(TestQgsServerAccessControl):
         response, headers = self._get_fullaccess(query_string)
         self.assertFalse(
             str(response).find("<qgs:pk>") != -1,
-            f"Project set layer subsetString not honored in WMS GetFeatureInfo/1\n{response}")
+            "Project set layer subsetString not honored in WMS GetFeatureInfo/1\n%s" % response)
 
         response, headers = self._get_restricted(query_string)
         self.assertFalse(
             str(response).find("<qgs:pk>") != -1,
-            f"Project set layer subsetString not honored in WMS GetFeatureInfo when access control applied/1\n{response}")
+            "Project set layer subsetString not honored in WMS GetFeatureInfo when access control applied/1\n%s" % response)
 
     def test_wms_getfeatureinfo_projectsubsetstring5(self):
         """test that layer subsetStrings set in projects are honored. This test checks for a feature which should pass
@@ -777,18 +752,18 @@ class TestQgsServerAccessControlWMS(TestQgsServerAccessControl):
         response, headers = self._get_fullaccess(query_string)
         self.assertTrue(
             str(response).find("<qgs:pk>") != -1,
-            f"No result result in GetFeatureInfo Hello/2\n{response}")
+            "No result result in GetFeatureInfo Hello/2\n%s" % response)
         self.assertTrue(
             str(response).find("<qgs:pk>7</qgs:pk>") != -1,
-            f"No good result result in GetFeatureInfo Hello/2\n{response}")
+            "No good result result in GetFeatureInfo Hello/2\n%s" % response)
 
         response, headers = self._get_restricted(query_string)
         self.assertTrue(
             str(response).find("<qgs:pk>") != -1,
-            f"No result result in GetFeatureInfo Hello/2\n{response}")
+            "No result result in GetFeatureInfo Hello/2\n%s" % response)
         self.assertTrue(
             str(response).find("<qgs:pk>7</qgs:pk>") != -1,
-            f"No good result result in GetFeatureInfo Hello/2\n{response}")
+            "No good result result in GetFeatureInfo Hello/2\n%s" % response)
 
     def test_wms_getfeatureinfo_projectsubsetstring3(self):
         """test that layer subsetStrings set in projects are honored. This test checks for a feature which should pass
@@ -816,15 +791,15 @@ class TestQgsServerAccessControlWMS(TestQgsServerAccessControl):
         response, headers = self._get_fullaccess(query_string)
         self.assertTrue(
             str(response).find("<qgs:pk>") != -1,
-            f"No result result in GetFeatureInfo Hello/2\n{response}")
+            "No result result in GetFeatureInfo Hello/2\n%s" % response)
         self.assertTrue(
             str(response).find("<qgs:pk>8</qgs:pk>") != -1,
-            f"No good result result in GetFeatureInfo Hello/2\n{response}")
+            "No good result result in GetFeatureInfo Hello/2\n%s" % response)
 
         response, headers = self._get_restricted(query_string)
         self.assertFalse(
             str(response).find("<qgs:pk>") != -1,
-            f"Unexpected result from GetFeatureInfo Hello/2\n{response}")
+            "Unexpected result from GetFeatureInfo Hello/2\n%s" % response)
 
     def test_wms_getfeatureinfo_subsetstring_with_filter(self):
         """test that request filters are honored. This test checks for a feature which should be filtered
@@ -853,12 +828,12 @@ class TestQgsServerAccessControlWMS(TestQgsServerAccessControl):
         response, headers = self._get_fullaccess(query_string)
         self.assertFalse(
             str(response).find("<qgs:pk>") != -1,
-            f"Request filter not honored in WMS GetFeatureInfo/1\n{response}")
+            "Request filter not honored in WMS GetFeatureInfo/1\n%s" % response)
 
         response, headers = self._get_restricted(query_string)
         self.assertFalse(
             str(response).find("<qgs:pk>") != -1,
-            f"Request filter not honored in WMS GetFeatureInfo when access control applied/1\n{response}")
+            "Request filter not honored in WMS GetFeatureInfo when access control applied/1\n%s" % response)
 
     def test_wms_getfeatureinfo_projectsubsetstring4(self):
         """test that request filters are honored. This test checks for a feature which should pass
@@ -887,18 +862,18 @@ class TestQgsServerAccessControlWMS(TestQgsServerAccessControl):
         response, headers = self._get_fullaccess(query_string)
         self.assertTrue(
             str(response).find("<qgs:pk>") != -1,
-            f"No result result in GetFeatureInfo Hello/2\n{response}")
+            "No result result in GetFeatureInfo Hello/2\n%s" % response)
         self.assertTrue(
             str(response).find("<qgs:pk>7</qgs:pk>") != -1,
-            f"No good result result in GetFeatureInfo Hello/2\n{response}")
+            "No good result result in GetFeatureInfo Hello/2\n%s" % response)
 
         response, headers = self._get_restricted(query_string)
         self.assertTrue(
             str(response).find("<qgs:pk>") != -1,
-            f"No result result in GetFeatureInfo Hello/2\n{response}")
+            "No result result in GetFeatureInfo Hello/2\n%s" % response)
         self.assertTrue(
             str(response).find("<qgs:pk>7</qgs:pk>") != -1,
-            f"No good result result in GetFeatureInfo Hello/2\n{response}")
+            "No good result result in GetFeatureInfo Hello/2\n%s" % response)
 
     def test_wms_getfeatureinfo_projectsubsetstring2(self):
         """test that request filters are honored. This test checks for a feature which should pass
@@ -927,15 +902,15 @@ class TestQgsServerAccessControlWMS(TestQgsServerAccessControl):
         response, headers = self._get_fullaccess(query_string)
         self.assertTrue(
             str(response).find("<qgs:pk>") != -1,
-            f"No result result in GetFeatureInfo Hello/2\n{response}")
+            "No result result in GetFeatureInfo Hello/2\n%s" % response)
         self.assertTrue(
             str(response).find("<qgs:pk>8</qgs:pk>") != -1,
-            f"No good result result in GetFeatureInfo Hello/2\n{response}")
+            "No good result result in GetFeatureInfo Hello/2\n%s" % response)
 
         response, headers = self._get_restricted(query_string)
         self.assertFalse(
             str(response).find("<qgs:pk>") != -1,
-            f"Unexpected result from GetFeatureInfo Hello/2\n{response}")
+            "Unexpected result from GetFeatureInfo Hello/2\n%s" % response)
 
     def test_security_issue_gh32475(self):
         """Test access control security issue GH 32475"""

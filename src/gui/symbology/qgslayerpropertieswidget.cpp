@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgslayerpropertieswidget.h"
-#include "moc_qgslayerpropertieswidget.cpp"
 
 #include <QFile>
 #include <QStandardItem>
@@ -57,13 +56,13 @@ static bool _initWidgetFunction( const QString &name, QgsSymbolLayerWidgetFunc f
   QgsSymbolLayerAbstractMetadata *abstractMetadata = reg->symbolLayerMetadata( name );
   if ( !abstractMetadata )
   {
-    QgsDebugError( "Failed to find symbol layer's entry in registry: " + name );
+    QgsDebugMsg( "Failed to find symbol layer's entry in registry: " + name );
     return false;
   }
   QgsSymbolLayerMetadata *metadata = dynamic_cast<QgsSymbolLayerMetadata *>( abstractMetadata );
   if ( !metadata )
   {
-    QgsDebugError( "Failed to cast symbol layer's metadata: " + name );
+    QgsDebugMsg( "Failed to cast symbol layer's metadata: " + name );
     return false;
   }
   metadata->setWidgetFunction( f );
@@ -83,8 +82,6 @@ static void _initWidgetFunctions()
   _initWidgetFunction( QStringLiteral( "InterpolatedLine" ), QgsInterpolatedLineSymbolLayerWidget::create );
   _initWidgetFunction( QStringLiteral( "RasterLine" ), QgsRasterLineSymbolLayerWidget::create );
   _initWidgetFunction( QStringLiteral( "Lineburst" ), QgsLineburstSymbolLayerWidget::create );
-  _initWidgetFunction( QStringLiteral( "FilledLine" ), QgsFilledLineSymbolLayerWidget::create );
-  _initWidgetFunction( QStringLiteral( "LinearReferencing" ), QgsLinearReferencingSymbolLayerWidget::create );
 
   _initWidgetFunction( QStringLiteral( "SimpleMarker" ), QgsSimpleMarkerSymbolLayerWidget::create );
   _initWidgetFunction( QStringLiteral( "FilledMarker" ), QgsFilledMarkerSymbolLayerWidget::create );
@@ -158,7 +155,7 @@ QgsLayerPropertiesWidget::QgsLayerPropertiesWidget( QgsSymbolLayer *layer, const
   }
   mEffectWidget->setPaintEffect( mLayer->paintEffect() );
 
-  registerDataDefinedButton( mEnabledDDBtn, QgsSymbolLayer::Property::LayerEnabled );
+  registerDataDefinedButton( mEnabledDDBtn, QgsSymbolLayer::PropertyLayerEnabled );
 }
 
 void QgsLayerPropertiesWidget::setContext( const QgsSymbolWidgetContext &context )
@@ -247,16 +244,22 @@ QgsExpressionContext QgsLayerPropertiesWidget::createExpressionContext() const
     return *lExpressionContext;
 
   QgsExpressionContext expContext;
+  expContext << QgsExpressionContextUtils::globalScope()
+             << QgsExpressionContextUtils::projectScope( QgsProject::instance() )
+             << QgsExpressionContextUtils::atlasScope( nullptr );
+
   if ( auto *lMapCanvas = mContext.mapCanvas() )
   {
-    expContext = lMapCanvas->createExpressionContext();
+    expContext << QgsExpressionContextUtils::mapSettingsScope( lMapCanvas->mapSettings() )
+               << new QgsExpressionContextScope( lMapCanvas->expressionContextScope() );
+    if ( const QgsExpressionContextScopeGenerator *generator = dynamic_cast< const QgsExpressionContextScopeGenerator * >( lMapCanvas->temporalController() ) )
+    {
+      expContext << generator->createExpressionContextScope();
+    }
   }
   else
   {
-    expContext << QgsExpressionContextUtils::globalScope()
-               << QgsExpressionContextUtils::projectScope( QgsProject::instance() )
-               << QgsExpressionContextUtils::atlasScope( nullptr )
-               << QgsExpressionContextUtils::mapSettingsScope( QgsMapSettings() );
+    expContext << QgsExpressionContextUtils::mapSettingsScope( QgsMapSettings() );
   }
 
   expContext << QgsExpressionContextUtils::layerScope( mVectorLayer );
@@ -303,7 +306,7 @@ QgsExpressionContext QgsLayerPropertiesWidget::createExpressionContext() const
 
 void QgsLayerPropertiesWidget::registerDataDefinedButton( QgsPropertyOverrideButton *button, QgsSymbolLayer::Property key )
 {
-  button->init( static_cast< int >( key ), mLayer->dataDefinedProperties(), QgsSymbolLayer::propertyDefinitions(), mVectorLayer );
+  button->init( key, mLayer->dataDefinedProperties(), QgsSymbolLayer::propertyDefinitions(), mVectorLayer );
   connect( button, &QgsPropertyOverrideButton::changed, this, &QgsLayerPropertiesWidget::updateProperty );
   button->registerExpressionContextGenerator( this );
 }
@@ -447,7 +450,7 @@ void QgsLayerPropertiesWidget::emitSignalChanged()
     mLayer->paintEffect()->setEnabled( false );
     paintEffectToggled = true;
   }
-  mEffectWidget->setPreviewPicture( QgsSymbolLayerUtils::symbolLayerPreviewPicture( mLayer, Qgis::RenderUnit::Millimeters, QSize( 60, 60 ), QgsMapUnitScale(), mSymbol ? mSymbol->type() : Qgis::SymbolType::Hybrid ) );
+  mEffectWidget->setPreviewPicture( QgsSymbolLayerUtils::symbolLayerPreviewPicture( mLayer, QgsUnitTypes::RenderMillimeters, QSize( 60, 60 ), QgsMapUnitScale(), mSymbol ? mSymbol->type() : Qgis::SymbolType::Hybrid ) );
   if ( paintEffectToggled )
   {
     mLayer->paintEffect()->setEnabled( true );

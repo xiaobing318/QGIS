@@ -17,7 +17,6 @@
  ***************************************************************************/
 
 #include "qgsunitselectionwidget.h"
-#include "moc_qgsunitselectionwidget.cpp"
 #include "qgshelp.h"
 #include <QDialogButtonBox>
 
@@ -159,49 +158,49 @@ void QgsUnitSelectionWidget::setUnits( const QgsUnitTypes::RenderUnitList &units
   //to ensure that the widget always keeps the same order for units, regardless of the
   //order specified in the units list
   mMapUnitIdx = -1;
-  if ( units.contains( Qgis::RenderUnit::Millimeters ) )
+  if ( units.contains( QgsUnitTypes::RenderMillimeters ) )
   {
-    mUnitCombo->addItem( tr( "Millimeters" ), static_cast< int >( Qgis::RenderUnit::Millimeters ) );
+    mUnitCombo->addItem( tr( "Millimeters" ), QgsUnitTypes::RenderMillimeters );
   }
-  if ( units.contains( Qgis::RenderUnit::Points ) )
+  if ( units.contains( QgsUnitTypes::RenderPoints ) )
   {
-    mUnitCombo->addItem( tr( "Points" ), static_cast< int >( Qgis::RenderUnit::Points ) );
+    mUnitCombo->addItem( tr( "Points" ), QgsUnitTypes::RenderPoints );
   }
-  if ( units.contains( Qgis::RenderUnit::Pixels ) )
+  if ( units.contains( QgsUnitTypes::RenderPixels ) )
   {
-    mUnitCombo->addItem( tr( "Pixels" ), static_cast< int >( Qgis::RenderUnit::Pixels ) );
+    mUnitCombo->addItem( tr( "Pixels" ), QgsUnitTypes::RenderPixels );
   }
-  if ( units.contains( Qgis::RenderUnit::MetersInMapUnits ) )
+  if ( units.contains( QgsUnitTypes::RenderMetersInMapUnits ) )
   {
-    mUnitCombo->addItem( tr( "Meters at Scale" ), static_cast< int >( Qgis::RenderUnit::MetersInMapUnits ) );
+    mUnitCombo->addItem( tr( "Meters at Scale" ), QgsUnitTypes::RenderMetersInMapUnits );
   }
-  if ( units.contains( Qgis::RenderUnit::MapUnits ) )
+  if ( units.contains( QgsUnitTypes::RenderMapUnits ) )
   {
-    mUnitCombo->addItem( tr( "Map Units" ), static_cast< int >( Qgis::RenderUnit::MapUnits ) );
+    mUnitCombo->addItem( tr( "Map Units" ), QgsUnitTypes::RenderMapUnits );
   }
-  if ( units.contains( Qgis::RenderUnit::Percentage ) )
+  if ( units.contains( QgsUnitTypes::RenderPercentage ) )
   {
-    mUnitCombo->addItem( tr( "Percentage" ), static_cast< int >( Qgis::RenderUnit::Percentage ) );
+    mUnitCombo->addItem( tr( "Percentage" ), QgsUnitTypes::RenderPercentage );
   }
-  if ( units.contains( Qgis::RenderUnit::Inches ) )
+  if ( units.contains( QgsUnitTypes::RenderInches ) )
   {
-    mUnitCombo->addItem( tr( "Inches" ), static_cast< int >( Qgis::RenderUnit::Inches ) );
+    mUnitCombo->addItem( tr( "Inches" ), QgsUnitTypes::RenderInches );
   }
   blockSignals( false );
 }
 
-Qgis::RenderUnit QgsUnitSelectionWidget::unit() const
+QgsUnitTypes::RenderUnit QgsUnitSelectionWidget::unit() const
 {
   if ( mUnitCombo->count() == 0 )
-    return Qgis::RenderUnit::Unknown;
+    return QgsUnitTypes::RenderUnknownUnit;
 
   const QVariant currentData = mUnitCombo->currentData();
   if ( currentData.isValid() )
   {
-    return static_cast< Qgis::RenderUnit >( currentData.toInt() );
+    return static_cast< QgsUnitTypes::RenderUnit >( currentData.toInt() );
   }
   //unknown
-  return Qgis::RenderUnit::Unknown;
+  return QgsUnitTypes::RenderUnknownUnit;
 }
 
 void QgsUnitSelectionWidget::setUnit( int unitIndex )
@@ -211,7 +210,7 @@ void QgsUnitSelectionWidget::setUnit( int unitIndex )
   blockSignals( false );
 }
 
-void QgsUnitSelectionWidget::setUnit( Qgis::RenderUnit unit )
+void QgsUnitSelectionWidget::setUnit( QgsUnitTypes::RenderUnit unit )
 {
   const int idx = mUnitCombo->findData( QVariant( static_cast< int >( unit ) ) );
   mUnitCombo->setCurrentIndex( idx == -1 ? 0 : idx );
@@ -251,9 +250,9 @@ void QgsUnitSelectionWidget::showDialog()
 
 void QgsUnitSelectionWidget::toggleUnitRangeButton()
 {
-  if ( unit() != Qgis::RenderUnit::Unknown )
+  if ( unit() != QgsUnitTypes::RenderUnknownUnit )
   {
-    mMapScaleButton->setVisible( mShowMapScaleButton && unit() == Qgis::RenderUnit::MapUnits );
+    mMapScaleButton->setVisible( mShowMapScaleButton && unit() == QgsUnitTypes::RenderMapUnits );
   }
   else
   {

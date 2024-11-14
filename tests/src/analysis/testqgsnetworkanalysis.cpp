@@ -15,6 +15,7 @@ Email                : nyall dot dawson at gmail dot com
 #include "qgstest.h"
 
 //header for class being tested
+#include "qgsgeometrysnapper.h"
 #include "qgsgeometry.h"
 #include <qgsapplication.h>
 #include "qgsvectordataprovider.h"
@@ -25,15 +26,11 @@ Email                : nyall dot dawson at gmail dot com
 #include "qgsgraph.h"
 #include "qgsgraphanalyzer.h"
 
-class TestQgsNetworkAnalysis : public QgsTest
+class TestQgsNetworkAnalysis : public QObject
 {
     Q_OBJECT
 
   public:
-
-    TestQgsNetworkAnalysis()
-      : QgsTest( QStringLiteral( "Network Analysis Tests" ) )
-    {}
 
   private slots:
     void initTestCase();// will be called before the first testfunction is executed.

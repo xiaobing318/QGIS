@@ -214,6 +214,7 @@ class GUI_EXPORT QgsMessageBar: public QFrame
      * \param title title string for message
      * \param message The message to be displayed
      *
+     * \since QGIS 2.8
      */
     void pushSuccess( const QString &title, const QString &message );
 
@@ -223,6 +224,7 @@ class GUI_EXPORT QgsMessageBar: public QFrame
      * \param title title string for message
      * \param message The message to be displayed
      *
+     * \since QGIS 2.8
      */
     void pushInfo( const QString &title, const QString &message );
 
@@ -232,6 +234,7 @@ class GUI_EXPORT QgsMessageBar: public QFrame
      * \param title title string for message
      * \param message The message to be displayed
      *
+     * \since QGIS 2.8
      */
     void pushWarning( const QString &title, const QString &message );
 
@@ -241,6 +244,7 @@ class GUI_EXPORT QgsMessageBar: public QFrame
      * \param title title string for message
      * \param message The message to be displayed
      *
+     * \since QGIS 2.8
      */
     void pushCritical( const QString &title, const QString &message );
 

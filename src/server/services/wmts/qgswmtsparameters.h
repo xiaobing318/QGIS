@@ -106,7 +106,7 @@ namespace QgsWmts
       * \param defaultValue Default value of the parameter
        */
       QgsWmtsParameter( const QgsWmtsParameter::Name name = QgsWmtsParameter::UNKNOWN,
-                        const QMetaType::Type type = QMetaType::Type::QString,
+                        const QVariant::Type type = QVariant::String,
                         const QVariant defaultValue = QVariant( "" ) );
 
       /**

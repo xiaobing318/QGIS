@@ -26,6 +26,7 @@
 #include "qgis_sip.h"
 #include "qgsprocessinggui.h"
 #include "qgsvectorlayer.h"
+#include "qgsprocessingmodelchildparametersource.h"
 
 class QgsProcessingParameterDefinition;
 class QgsProcessingContext;
@@ -81,7 +82,7 @@ class GUI_EXPORT QgsProcessingParametersGenerator
      *
      * \since QGIS 3.24
      */
-    enum class Flag : int SIP_ENUM_BASETYPE( IntFlag )
+    enum class Flag : int
     {
       SkipDefaultValueParameters = 1 << 0, //!< Parameters which are unchanged from their default values should not be included
     };
@@ -115,6 +116,9 @@ class GUI_EXPORT QgsProcessingParameterWidgetContext
 {
   public:
 
+    /**
+     * Constructor for QgsProcessingParameterWidgetContext.
+     */
     QgsProcessingParameterWidgetContext() = default;
 
     /**
@@ -663,7 +667,7 @@ class GUI_EXPORT QgsProcessingParameterWidgetFactoryInterface
      *
      * \since QGIS 3.24
      */
-    virtual Qgis::ProcessingModelChildParameterSource defaultModelSource( const QgsProcessingParameterDefinition *parameter ) const;
+    virtual QgsProcessingModelChildParameterSource::Source defaultModelSource( const QgsProcessingParameterDefinition *parameter ) const;
 
 };
 

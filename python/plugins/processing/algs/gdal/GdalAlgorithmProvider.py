@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     GdalAlgorithmProvider.py
@@ -82,7 +84,7 @@ from .Dissolve import Dissolve
 from .ExecuteSql import ExecuteSql
 from .OffsetCurve import OffsetCurve
 from .ogr2ogr import ogr2ogr
-from .ogrinfo import ogrinfo, ogrinfojson
+from .ogrinfo import ogrinfo
 from .OgrToPostGis import OgrToPostGis
 from .ogr2ogrtopostgislist import Ogr2OgrToPostGisList
 from .OneSideBuffer import OneSideBuffer
@@ -92,8 +94,6 @@ from .PointsAlongLines import PointsAlongLines
 
 pluginPath = os.path.normpath(os.path.join(
     os.path.split(os.path.dirname(__file__))[0], os.pardir))
-
-gdal.UseExceptions()
 
 
 class GdalAlgorithmProvider(QgsProcessingProvider):
@@ -126,7 +126,7 @@ class GdalAlgorithmProvider(QgsProcessingProvider):
 
     def longName(self):
         version = GdalUtils.readableVersion()
-        return f'GDAL ({version})'
+        return 'GDAL ({})'.format(version)
 
     def id(self):
         return 'gdal'
@@ -204,9 +204,6 @@ class GdalAlgorithmProvider(QgsProcessingProvider):
 
         if int(gdal.VersionInfo()) > 3010000:
             self.algs.append(viewshed())
-
-        if int(gdal.VersionInfo()) >= 3070000:
-            self.algs.append(ogrinfojson())
 
         for a in self.algs:
             self.addAlgorithm(a)

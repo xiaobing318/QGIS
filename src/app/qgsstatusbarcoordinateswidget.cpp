@@ -26,7 +26,6 @@
 #include <QRandomGenerator>
 
 #include "qgsstatusbarcoordinateswidget.h"
-#include "moc_qgsstatusbarcoordinateswidget.cpp"
 #include "qgsapplication.h"
 #include "qgsmapcanvas.h"
 #include "qgsproject.h"
@@ -61,7 +60,9 @@ QgsStatusBarCoordinatesWidget::QgsStatusBarCoordinatesWidget( QWidget *parent )
   mLineEdit->setAlignment( Qt::AlignCenter );
   connect( mLineEdit, &QLineEdit::returnPressed, this, &QgsStatusBarCoordinatesWidget::validateCoordinates );
 
-  mLineEdit->setToolTip( tr( "Current map coordinate (longitude latitude or east north)" ) );
+  const QRegularExpression coordValidator( "[+-]?\\d+\\.?\\d*\\s*,\\s*[+-]?\\d+\\.?\\d*" );
+  mCoordsEditValidator = new QRegularExpressionValidator( coordValidator, this );
+  mLineEdit->setToolTip( tr( "Current map coordinate (longitude,latitude or east,north)" ) );
 
   //toggle to switch between mouse pos and extents display in status bar widget
   mToggleExtentsViewButton = new QToolButton( this );
@@ -172,7 +173,6 @@ void QgsStatusBarCoordinatesWidget::validateCoordinates()
   QString coordText = mLineEdit->text();
   const thread_local QRegularExpression sMultipleWhitespaceRx( QStringLiteral( " {2,}" ) );
   coordText.replace( sMultipleWhitespaceRx, QStringLiteral( " " ) );
-  coordText.remove( QStringLiteral( "°" ) );
 
   QStringList parts = coordText.split( ',' );
   if ( parts.size() == 2 )
@@ -191,17 +191,6 @@ void QgsStatusBarCoordinatesWidget::validateCoordinates()
     }
   }
 
-  // Use locale
-  if ( !xOk || !yOk )
-  {
-    parts = coordText.split( ' ' );
-    if ( parts.size() == 2 )
-    {
-      first = QLocale().toDouble( parts.at( 0 ), &xOk );
-      second = QLocale().toDouble( parts.at( 1 ),  &yOk );
-    }
-  }
-
   if ( !xOk || !yOk )
     return;
 
@@ -213,31 +202,12 @@ void QgsStatusBarCoordinatesWidget::validateCoordinates()
   {
     case Qgis::CoordinateOrder::Default:
     case Qgis::CoordinateOrder::XY:
+      mMapCanvas->setCenter( QgsPointXY( first, second ) );
       break;
     case Qgis::CoordinateOrder::YX:
-      std::swap( first, second );
+      mMapCanvas->setCenter( QgsPointXY( second, first ) );
       break;
   }
-
-  QgsPointXY centerPoint { first, second };
-
-  const QgsCoordinateReferenceSystem displayCrs = QgsProject::instance()->displaySettings()->coordinateCrs();
-  const QgsCoordinateReferenceSystem canvasCrs = mMapCanvas->mapSettings().destinationCrs();
-  if ( displayCrs.isValid() && canvasCrs.isValid() &&  displayCrs != canvasCrs )
-  {
-    const QgsCoordinateTransform ct { displayCrs, canvasCrs, QgsProject::instance()->transformContext() };
-    try
-    {
-
-      centerPoint = ct.transform( centerPoint );
-    }
-    catch ( const QgsCsException & )
-    {
-      return;
-    }
-  }
-
-  mMapCanvas->setCenter( centerPoint );
 
   mMapCanvas->refresh();
 }
@@ -277,7 +247,7 @@ void QgsStatusBarCoordinatesWidget::contributors()
   // Register this layer with the layers registry
   QgsProject::instance()->addMapLayer( layer );
   layer->setAutoRefreshInterval( 500 );
-  layer->setAutoRefreshMode( Qgis::AutoRefreshMode::RedrawOnly );
+  layer->setAutoRefreshEnabled( true );
 }
 
 void QgsStatusBarCoordinatesWidget::world()
@@ -309,6 +279,8 @@ void QgsStatusBarCoordinatesWidget::hackfests()
       tr( "QGIS Hackfests" ), QStringLiteral( "ogr" ), options );
   // Register this layer with the layers registry
   QgsProject::instance()->addMapLayer( layer );
+  layer->setAutoRefreshInterval( 500 );
+  layer->setAutoRefreshEnabled( true );
 }
 
 void QgsStatusBarCoordinatesWidget::userGroups()
@@ -399,32 +371,13 @@ void QgsStatusBarCoordinatesWidget::showExtent()
 
 void QgsStatusBarCoordinatesWidget::ensureCoordinatesVisible()
 {
+
   //ensure the label is big (and small) enough
   const int width = std::max( mLineEdit->fontMetrics().boundingRect( mLineEdit->text() ).width() + 16, mMinimumWidth );
-
-  bool allowResize = false;
-  if ( mIsFirstSizeChange )
-  {
-    allowResize = true;
-  }
-  else if ( mLineEdit->minimumWidth() < width )
-  {
-    // always immediately grow to fit
-    allowResize = true;
-  }
-  else if ( ( mLineEdit->minimumWidth() - width ) > mTwoCharSize )
-  {
-    // only allow shrinking when a sufficient time has expired since we last resized.
-    // this avoids extraneous shrinking/growing resulting in distracting UI changes
-    allowResize = mLastSizeChangeTimer.hasExpired( 2000 );
-  }
-
-  if ( allowResize )
+  if ( mLineEdit->minimumWidth() < width || ( mLineEdit->minimumWidth() - width ) > mTwoCharSize )
   {
     mLineEdit->setMinimumWidth( width );
     mLineEdit->setMaximumWidth( width );
-    mLastSizeChangeTimer.restart();
-    mIsFirstSizeChange = false;
   }
 }
 

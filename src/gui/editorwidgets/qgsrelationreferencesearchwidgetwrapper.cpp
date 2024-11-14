@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsrelationreferencesearchwidgetwrapper.h"
-#include "moc_qgsrelationreferencesearchwidgetwrapper.cpp"
 
 #include "qgsfields.h"
 #include "qgsvaluerelationwidgetfactory.h"
@@ -93,13 +92,13 @@ QString QgsRelationReferenceSearchWidgetWrapper::createExpression( QgsSearchWidg
   if ( !v.isValid() )
     return QString();
 
-  switch ( v.userType() )
+  switch ( v.type() )
   {
-    case QMetaType::Type::Int:
-    case QMetaType::Type::UInt:
-    case QMetaType::Type::Double:
-    case QMetaType::Type::LongLong:
-    case QMetaType::Type::ULongLong:
+    case QVariant::Int:
+    case QVariant::UInt:
+    case QVariant::Double:
+    case QVariant::LongLong:
+    case QVariant::ULongLong:
     {
       if ( flags & EqualTo )
       {
@@ -210,14 +209,9 @@ void QgsRelationReferenceSearchWidgetWrapper::initWidget( QWidget *editor )
   mWidget->setEmbedForm( false );
   mWidget->setReadOnlySelector( false );
   mWidget->setAllowMapIdentification( config( QStringLiteral( "MapIdentification" ), false ).toBool() );
+  mWidget->setOrderByValue( config( QStringLiteral( "OrderByValue" ), false ).toBool() );
   mWidget->setAllowAddFeatures( false );
   mWidget->setOpenFormButtonVisible( false );
-
-  const bool fetchLimitActive = config( QStringLiteral( "FetchLimitActive" ), QgsSettings().value( QStringLiteral( "maxEntriesRelationWidget" ), 100, QgsSettings::Gui ).toInt() > 0 ).toBool();
-  if ( fetchLimitActive )
-  {
-    mWidget->setFetchLimit( config( QStringLiteral( "FetchLimitNumber" ), QgsSettings().value( QStringLiteral( "maxEntriesRelationWidget" ), 100, QgsSettings::Gui ) ).toInt() );
-  }
 
   if ( config( QStringLiteral( "FilterFields" ), QVariant() ).isValid() )
   {

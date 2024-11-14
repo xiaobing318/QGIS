@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/symbology/qgssymbollevelsdialog.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -15,6 +15,8 @@ class QgsSymbolLevelsWidget : QgsPanelWidget
 A widget which allows the user to modify the rendering order of symbol layers.
 
 .. seealso:: :py:class:`QgsSymbolLevelsDialog`
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -59,8 +61,7 @@ Sets whether the level ordering is always forced on and hide the checkbox (used 
 %Docstring
 Apply button.
 
-.. deprecated:: 3.20
-
+.. deprecated:: QGIS 3.20.
    Use :py:func:`~QgsSymbolLevelsWidget.symbolLevels` and manually apply the changes to the renderer as appropriate.
 %End
 
@@ -109,5 +110,5 @@ Returns the current legend symbols with rendering passes set, as defined in the 
  *                                                                      *
  * src/gui/symbology/qgssymbollevelsdialog.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

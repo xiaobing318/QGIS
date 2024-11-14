@@ -37,7 +37,6 @@ class TestQgsLayoutContext: public QgsTest
 
   private slots:
 
-    void cleanupTestCase();
     void creation(); //test creation of QgsLayout
     void flags(); //test QgsLayout flags
     void feature();
@@ -49,14 +48,8 @@ class TestQgsLayoutContext: public QgsTest
     void geometry();
     void scales();
     void simplifyMethod();
-    void maskRenderSettings();
 
 };
-
-void TestQgsLayoutContext::cleanupTestCase()
-{
-  QgsApplication::exitQgis();
-}
 
 void TestQgsLayoutContext::creation()
 {
@@ -128,9 +121,7 @@ void TestQgsLayoutContext::layer()
   l.reportContext().setLayer( layer );
   //test that expression context created for layout contains report context layer scope
   const QgsExpressionContext expContext  = l.createExpressionContext();
-  Q_NOWARN_DEPRECATED_PUSH
-  QCOMPARE( QgsExpressionUtils::getVectorLayer( expContext.variable( "layer" ), &expContext, nullptr ), layer );
-  Q_NOWARN_DEPRECATED_POP
+  QCOMPARE( QgsExpressionUtils::getVectorLayer( expContext.variable( "layer" ), nullptr ), layer );
 
   delete layer;
 }
@@ -254,22 +245,11 @@ void TestQgsLayoutContext::simplifyMethod()
   QgsLayout l( QgsProject::instance() );
   QgsLayoutRenderContext context( &l );
   // must default to no simplification
-  QCOMPARE( context.simplifyMethod().simplifyHints(), Qgis::VectorRenderingSimplificationFlag::NoSimplification );
+  QCOMPARE( context.simplifyMethod().simplifyHints(), QgsVectorSimplifyMethod::NoSimplification );
   QgsVectorSimplifyMethod simplify;
-  simplify.setSimplifyHints( Qgis::VectorRenderingSimplificationFlag::GeometrySimplification );
+  simplify.setSimplifyHints( QgsVectorSimplifyMethod::GeometrySimplification );
   context.setSimplifyMethod( simplify );
-  QCOMPARE( context.simplifyMethod().simplifyHints(), Qgis::VectorRenderingSimplificationFlag::GeometrySimplification );
-}
-
-void TestQgsLayoutContext::maskRenderSettings()
-{
-  QgsLayout l( QgsProject::instance() );
-  QgsLayoutRenderContext context( &l );
-  QCOMPARE( context.maskSettings().simplifyTolerance(), 0 );
-  QgsMaskRenderSettings settings2;
-  settings2.setSimplificationTolerance( 11 );
-  context.setMaskSettings( settings2 );
-  QCOMPARE( context.maskSettings().simplifyTolerance(), 11 );
+  QCOMPARE( context.simplifyMethod().simplifyHints(), QgsVectorSimplifyMethod::GeometrySimplification );
 }
 
 QGSTEST_MAIN( TestQgsLayoutContext )

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     r_statistics.py
@@ -20,7 +22,7 @@ __date__ = 'September 2017'
 __copyright__ = '(C) 2017, Médéric Ribreux'
 
 from qgis.core import QgsProcessingParameterString
-from grassprovider.grass_utils import GrassUtils
+from grassprovider.Grass7Utils import Grass7Utils
 
 
 def processCommand(alg, parameters, context, feedback):
@@ -47,6 +49,6 @@ def processOutputs(alg, parameters, context, feedback):
     grassName = 'correctedoutput{}'.format(alg.uniqueSuffix)
     fileName = alg.parameterAsOutputLayer(
         parameters, 'routput', context)
-    outFormat = GrassUtils.getRasterFormatFromFilename(fileName)
+    outFormat = Grass7Utils.getRasterFormatFromFilename(fileName)
     alg.exportRasterLayer(grassName, fileName, True,
                           outFormat, createOpt, metaOpt)

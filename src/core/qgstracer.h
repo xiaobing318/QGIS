@@ -39,6 +39,7 @@ class QgsRenderContext;
  * layers and provides shortest path search for tracing of existing
  * features.
  *
+ * \since QGIS 2.14
  */
 class CORE_EXPORT QgsTracer : public QObject
 {
@@ -82,12 +83,14 @@ class CORE_EXPORT QgsTracer : public QObject
     /**
      * Gets offset in map units that should be applied to the traced paths returned from findShortestPath().
      * Positive offset for right side, negative offset for left side.
+     * \since QGIS 3.0
      */
     double offset() const { return mOffset; }
 
     /**
      * Set offset in map units that should be applied to the traced paths returned from findShortestPath().
      * Positive offset for right side, negative offset for left side.
+     * \since QGIS 3.0
      */
     void setOffset( double offset );
 
@@ -95,6 +98,7 @@ class CORE_EXPORT QgsTracer : public QObject
 
     /**
      * Gets extra parameters for offset curve algorithm (used when offset is non-zero)
+     * \since QGIS 3.0
      */
     void offsetParameters( int &quadSegments SIP_OUT, int &joinStyle SIP_OUT, double &miterLimit SIP_OUT );
 
@@ -102,6 +106,7 @@ class CORE_EXPORT QgsTracer : public QObject
 
     /**
      * Set extra parameters for offset curve algorithm (used when offset is non-zero)
+     * \since QGIS 3.0
      */
     void setOffsetParameters( int quadSegments, int joinStyle, double miterLimit );
 
@@ -124,6 +129,7 @@ class CORE_EXPORT QgsTracer : public QObject
     /**
      * Whether there was an error during graph creation due to noding exception,
      * indicating some input data topology problems
+     * \since QGIS 2.16
      */
     bool hasTopologyProblem() const { return mHasTopologyProblem; }
 
@@ -147,19 +153,6 @@ class CORE_EXPORT QgsTracer : public QObject
     //! Find out whether the point is snapped to a vertex or edge (i.e. it can be used for tracing start/stop)
     bool isPointSnapped( const QgsPointXY &pt );
 
-    /**
-     * When \a enable is TRUE, the shortest path's straight segments will include vertices where the input layers intersect, even if
-     * no such vertex existed on the input layers
-     * \since QGIS 3.40
-     */
-    void setAddPointsOnIntersectionsEnabled( bool enable );
-
-    /**
-     * Returns whether the shortest path's straight segments will include vertices where the input layers intersect, even if
-     * no such vertex existed on the input layers
-     * \since QGIS 3.40
-     */
-    bool addPointsOnIntersectionsEnabled() const { return mAddPointsOnIntersections; }
   protected:
 
     /**
@@ -198,10 +191,6 @@ class CORE_EXPORT QgsTracer : public QObject
     std::unique_ptr<QgsRenderContext> mRenderContext;
     //! Extent for graph building (empty extent means no limit)
     QgsRectangle mExtent;
-    //! If FALSE, no vertices will be added on intersections unless they exist in the original layers
-    bool mAddPointsOnIntersections = false;
-    //! Holds the input layers' intersections. Only populated when mAddPointsOnIntersections == false
-    QgsGeometry mIntersections;
 
     //! Offset in map units that should be applied to the traced paths
     double mOffset = 0;

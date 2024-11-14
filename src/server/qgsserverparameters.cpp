@@ -17,7 +17,6 @@
 
 #include "qgsblockingnetworkrequest.h"
 #include "qgsserverparameters.h"
-#include "moc_qgsserverparameters.cpp"
 #include "qgsserverexception.h"
 #include "qgsmessagelog.h"
 #include "qgsvariantutils.h"
@@ -30,15 +29,10 @@
 //
 // QgsServerParameterDefinition
 //
-QgsServerParameterDefinition::QgsServerParameterDefinition( const QMetaType::Type type,
+QgsServerParameterDefinition::QgsServerParameterDefinition( const QVariant::Type type,
     const QVariant defaultValue )
   : mType( type )
   , mDefaultValue( defaultValue )
-{
-}
-
-QgsServerParameterDefinition::QgsServerParameterDefinition( const QVariant::Type type, const QVariant defaultValue )
-  : QgsServerParameterDefinition( QgsVariantUtils::variantTypeToMetaType( type ), defaultValue )
 {
 }
 
@@ -83,14 +77,22 @@ QStringList QgsServerParameterDefinition::toStringList( const char delimiter, co
 {
   if ( skipEmptyParts )
   {
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+    return toString().split( delimiter, QString::SkipEmptyParts );
+#else
     return toString().split( delimiter, Qt::SkipEmptyParts );
+#endif
   }
   else
   {
     QStringList list;
     if ( !toString().isEmpty() )
     {
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+      list = toString().split( delimiter, QString::KeepEmptyParts );
+#else
       list = toString().split( delimiter, Qt::KeepEmptyParts );
+#endif
     }
     return list;
   }
@@ -168,7 +170,7 @@ QStringList QgsServerParameterDefinition::toExpressionList() const
 
   auto isOgcFilter = [filter]()
   {
-    return filter.contains( QStringLiteral( "<Filter>" ) ) || filter.contains( QStringLiteral( "()" ) );
+    return filter.contains( QStringLiteral( "<Filter>" ) ) or filter.contains( QStringLiteral( "()" ) );
   };
 
   while ( pos < filter.size() )
@@ -419,16 +421,9 @@ void QgsServerParameterDefinition::raiseError( const QString &msg )
 // QgsServerParameter
 //
 QgsServerParameter::QgsServerParameter( const QgsServerParameter::Name name,
-                                        const QMetaType::Type type, const QVariant defaultValue )
+                                        const QVariant::Type type, const QVariant defaultValue )
   : QgsServerParameterDefinition( type, defaultValue )
   , mName( name )
-{
-}
-
-QgsServerParameter::QgsServerParameter( const QgsServerParameter::Name name,
-                                        const QVariant::Type type,
-                                        const QVariant defaultValue )
-  : QgsServerParameter( name, QgsVariantUtils::variantTypeToMetaType( type ), defaultValue )
 {
 }
 

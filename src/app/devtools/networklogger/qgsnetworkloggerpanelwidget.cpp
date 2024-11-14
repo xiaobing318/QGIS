@@ -17,7 +17,6 @@
 #include "qgsguiutils.h"
 #include "qgsjsonutils.h"
 #include "qgsnetworkloggerpanelwidget.h"
-#include "moc_qgsnetworkloggerpanelwidget.cpp"
 #include "qgsnetworkloggernode.h"
 #include "qgsnetworklogger.h"
 #include "qgssettings.h"
@@ -83,7 +82,7 @@ QgsNetworkLoggerTreeView::QgsNetworkLoggerTreeView( QgsNetworkLogger *logger, QW
       mLogger->removeRequestRows( rowsToTrim );
     }
 
-    if ( mAutoScroll && isVisible() )
+    if ( mAutoScroll )
       scrollToBottom();
   } );
 

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     FixedTableDialog.py
@@ -50,8 +52,8 @@ class FixedTableDialog(BASE, WIDGET):
 
         QgsGui.instance().enableAutoGeometryRestore(self)
 
-        self.tblView.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self.tblView.setSelectionMode(QAbstractItemView.SelectionMode.ExtendedSelection)
+        self.tblView.setSelectionBehavior(QAbstractItemView.SelectRows)
+        self.tblView.setSelectionMode(QAbstractItemView.ExtendedSelection)
 
         self.param = param
         self.rettable = None
@@ -59,13 +61,13 @@ class FixedTableDialog(BASE, WIDGET):
         # Additional buttons
         self.btnAdd = QPushButton(self.tr('Add row'))
         self.buttonBox.addButton(self.btnAdd,
-                                 QDialogButtonBox.ButtonRole.ActionRole)
+                                 QDialogButtonBox.ActionRole)
         self.btnRemove = QPushButton(self.tr('Remove row(s)'))
         self.buttonBox.addButton(self.btnRemove,
-                                 QDialogButtonBox.ButtonRole.ActionRole)
+                                 QDialogButtonBox.ActionRole)
         self.btnRemoveAll = QPushButton(self.tr('Remove all'))
         self.buttonBox.addButton(self.btnRemoveAll,
-                                 QDialogButtonBox.ButtonRole.ActionRole)
+                                 QDialogButtonBox.ActionRole)
 
         self.btnAdd.clicked.connect(self.addRow)
         self.btnRemove.clicked.connect(lambda: self.removeRows())

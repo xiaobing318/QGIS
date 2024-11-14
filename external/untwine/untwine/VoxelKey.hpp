@@ -10,10 +10,9 @@
  *                                                                           *
  ****************************************************************************/
 
-#include <cstdint>
 #include <string>
 #include <algorithm>
-
+#include <cstdint>
 #pragma once
 
 namespace untwine

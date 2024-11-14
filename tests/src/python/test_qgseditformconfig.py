@@ -14,34 +14,24 @@ import os
 import socketserver
 import threading
 
+import qgis  # NOQA
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (
-    QgsApplication,
-    QgsAttributeEditorContainer,
-    QgsAttributeEditorElement,
-    QgsEditFormConfig,
-    QgsFeature,
-    QgsFetchedContent,
-    QgsNetworkContentFetcherRegistry,
-    QgsReadWriteContext,
-    QgsSettings,
-    QgsVectorLayer,
-)
+from qgis.core import (QgsApplication, QgsVectorLayer, QgsReadWriteContext, QgsEditFormConfig,
+                       QgsFetchedContent, QgsAttributeEditorContainer, QgsFeature, QgsSettings,
+                       QgsNetworkContentFetcherRegistry, QgsAttributeEditorElement)
 from qgis.gui import QgsGui
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
 app = start_app()
 
 
-class TestQgsEditFormConfig(QgisTestCase):
+class TestQgsEditFormConfig(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        super().setUpClass()
         QgsGui.editorWidgetRegistry().initEditors()
         QgsSettings().clear()
 
@@ -53,7 +43,7 @@ class TestQgsEditFormConfig(QgisTestCase):
         cls.port = cls.httpd.server_address[1]
 
         cls.httpd_thread = threading.Thread(target=cls.httpd.serve_forever)
-        cls.httpd_thread.daemon = True
+        cls.httpd_thread.setDaemon(True)
         cls.httpd_thread.start()
 
     def createLayer(self):
@@ -94,32 +84,32 @@ class TestQgsEditFormConfig(QgisTestCase):
         layer = self.createLayer()
         config = layer.editFormConfig()
 
-        config.setLayout(QgsEditFormConfig.EditorLayout.GeneratedLayout)
-        self.assertEqual(config.layout(), QgsEditFormConfig.EditorLayout.GeneratedLayout)
+        config.setLayout(QgsEditFormConfig.GeneratedLayout)
+        self.assertEqual(config.layout(), QgsEditFormConfig.GeneratedLayout)
 
         uiLocal = os.path.join(
             unitTestDataPath(), '/qgis_local_server/layer_attribute_form.ui')
         config.setUiForm(uiLocal)
-        self.assertEqual(config.layout(), QgsEditFormConfig.EditorLayout.UiFileLayout)
+        self.assertEqual(config.layout(), QgsEditFormConfig.UiFileLayout)
 
-        config.setLayout(QgsEditFormConfig.EditorLayout.GeneratedLayout)
-        self.assertEqual(config.layout(), QgsEditFormConfig.EditorLayout.GeneratedLayout)
+        config.setLayout(QgsEditFormConfig.GeneratedLayout)
+        self.assertEqual(config.layout(), QgsEditFormConfig.GeneratedLayout)
 
         uiUrl = 'http://localhost:' + \
             str(self.port) + '/qgis_local_server/layer_attribute_form.ui'
         config.setUiForm(uiUrl)
-        self.assertEqual(config.layout(), QgsEditFormConfig.EditorLayout.UiFileLayout)
-        content = QgsApplication.networkContentFetcherRegistry().fetch(uiUrl, QgsNetworkContentFetcherRegistry.FetchingMode.DownloadImmediately)
+        self.assertEqual(config.layout(), QgsEditFormConfig.UiFileLayout)
+        content = QgsApplication.networkContentFetcherRegistry().fetch(uiUrl, QgsNetworkContentFetcherRegistry.DownloadImmediately)
         self.assertTrue(content is not None)
         while True:
-            if content.status() in (QgsFetchedContent.ContentStatus.Finished, QgsFetchedContent.ContentStatus.Failed):
+            if content.status() in (QgsFetchedContent.Finished, QgsFetchedContent.Failed):
                 break
             app.processEvents()
-        self.assertEqual(content.status(), QgsFetchedContent.ContentStatus.Finished)
+        self.assertEqual(content.status(), QgsFetchedContent.Finished)
 
     # Failing on Travis, seg fault in event loop, no idea why
     """
-    @QgisTestCase.expectedFailure
+    @unittest.expectedFailure
     def testFormPy(self):
         layer = self.createLayer()
         config = layer.editFormConfig()
@@ -133,7 +123,7 @@ class TestQgsEditFormConfig(QgisTestCase):
         pyUrl = 'http://localhost:' + \
             str(self.port) + '/qgis_local_server/layer_attribute_form.py'
 
-        QgsSettings().setEnumValue('qgis/enablePythonEmbedded', Qgis.Always)
+        QgsSettings().setEnumValue('qgis/enableMacros', Qgis.Always)
 
         config.setInitFilePath(pyUrl)
         config.setInitFunction('formOpen')

@@ -23,9 +23,7 @@
 #include <cmath>
 
 #include "qgsadvanceddigitizingdockwidget.h"
-#include "qgsavoidintersectionsoperation.h"
 #include "qgsmaptoolrotatefeature.h"
-#include "moc_qgsmaptoolrotatefeature.cpp"
 #include "qgsfeatureiterator.h"
 #include "qgsgeometry.h"
 #include "qgslogger.h"
@@ -305,8 +303,7 @@ void QgsMapToolRotateFeature::cadCanvasReleaseEvent( QgsMapMouseEvent *e )
       mRotatedFeatures << cf.id(); //todo: take the closest feature, not the first one...
 
       mRubberBand = createRubberBand( vlayer->geometryType() );
-      mGeom = cf.geometry();
-      mRubberBand->setToGeometry( mGeom, vlayer );
+      mRubberBand->setToGeometry( cf.geometry(), vlayer );
     }
     else
     {
@@ -316,13 +313,12 @@ void QgsMapToolRotateFeature::cadCanvasReleaseEvent( QgsMapMouseEvent *e )
 
       QgsFeature feat;
       QgsFeatureIterator it = vlayer->getSelectedFeatures();
-      QVector <QgsGeometry> selectedGeometries;
       while ( it.nextFeature( feat ) )
       {
-        selectedGeometries << feat.geometry();
+        mRubberBand->addGeometry( feat.geometry(), vlayer, false );
       }
-      mGeom = QgsGeometry::collectGeometry( selectedGeometries );
-      mRubberBand->setToGeometry( mGeom, vlayer );
+      mRubberBand->updatePosition();
+      mRubberBand->update();
     }
 
     mRubberBand->show();
@@ -367,28 +363,15 @@ void QgsMapToolRotateFeature::updateRubberband( double rotation )
   if ( mRotationActive )
   {
     mRotation = rotation;
+
     mStPoint = toCanvasCoordinates( mStartPointMapCoords );
+    const double offsetX = mStPoint.x() - mRubberBand->x();
+    const double offsetY = mStPoint.y() - mRubberBand->y();
 
     if ( mRubberBand )
     {
-      QgsVectorLayer *vlayer = currentVectorLayer();
-
-      // When MapCanvas crs == layer crs, fast rubberband rotation
-      if ( vlayer->crs() == canvas()->mapSettings().destinationCrs() )
-      {
-        const double offsetX = mStPoint.x() - mRubberBand->x();
-        const double offsetY = mStPoint.y() - mRubberBand->y();
-        mRubberBand->setTransform( QTransform().translate( offsetX, offsetY ).rotate( mRotation ).translate( -1 * offsetX, -1 * offsetY ) );
-        mRubberBand->update();
-      }
-      // Else, recreate the rubber band from the rotated geometries
-      else
-      {
-        const QgsPointXY anchorPoint = toLayerCoordinates( vlayer, mStartPointMapCoords );
-        QgsGeometry geom = mGeom;
-        geom.rotate( mRotation, anchorPoint );
-        mRubberBand->setToGeometry( geom, vlayer );
-      }
+      mRubberBand->setTransform( QTransform().translate( offsetX, offsetY ).rotate( mRotation ).translate( -1 * offsetX, -1 * offsetY ) );
+      mRubberBand->update();
     }
   }
 }
@@ -416,37 +399,11 @@ void QgsMapToolRotateFeature::applyRotation( double rotation )
   request.setFilterFids( mRotatedFeatures ).setNoAttributes();
   QgsFeatureIterator fi = vlayer->getFeatures( request );
   QgsFeature f;
-
-  QgsAvoidIntersectionsOperation avoidIntersections;
-  connect( &avoidIntersections, &QgsAvoidIntersectionsOperation::messageEmitted, this, &QgsMapTool::messageEmitted );
-
-  // when removing intersections don't check for intersections with selected features
-  const QHash<QgsVectorLayer *, QSet<QgsFeatureId> > ignoreFeatures {{vlayer, mRotatedFeatures}};
-
   while ( fi.nextFeature( f ) )
   {
     const QgsFeatureId id = f.id();
     QgsGeometry geom = f.geometry();
     geom.rotate( mRotation, anchorPoint );
-
-    if ( vlayer->geometryType() == Qgis::GeometryType::Polygon )
-    {
-      const QgsAvoidIntersectionsOperation::Result res = avoidIntersections.apply( vlayer, id, geom, ignoreFeatures );
-
-      if ( res.operationResult == Qgis::GeometryOperationResult::InvalidInputGeometryType || geom.isEmpty() )
-      {
-        const QString errorMessage = ( geom.isEmpty() ) ?
-                                     tr( "The feature cannot be rotated because the resulting geometry would be empty" ) :
-                                     tr( "An error was reported during intersection removal" );
-
-        emit messageEmitted( errorMessage, Qgis::MessageLevel::Warning );
-        vlayer->destroyEditCommand();
-        deleteRotationWidget();
-        deleteRubberband();
-        return;
-      }
-    }
-
     vlayer->changeGeometry( id, geom );
   }
 
@@ -503,7 +460,6 @@ void QgsMapToolRotateFeature::deleteRubberband()
 {
   delete mRubberBand;
   mRubberBand = nullptr;
-  mGeom  = QgsGeometry();
 }
 
 void QgsMapToolRotateFeature::deactivate()

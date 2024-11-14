@@ -39,7 +39,7 @@ namespace Qt3DRender
   class QFrameGraphNode;
 }
 
-class QgsFrameGraph;
+class QgsShadowRenderingFrameGraph;
 
 /**
  * \ingroup 3d
@@ -109,7 +109,7 @@ class _3D_EXPORT QgsAbstract3DEngine : public QObject
      *
      * \since QGIS 3.18
      */
-    QgsFrameGraph *frameGraph() { return mFrameGraph; }
+    QgsShadowRenderingFrameGraph *frameGraph() { return mFrameGraph; }
 
     /**
      * Sets whether it will be possible to render to an image
@@ -125,18 +125,6 @@ class _3D_EXPORT QgsAbstract3DEngine : public QObject
      * \since QGIS 3.18
      */
     bool renderCaptureEnabled() const;
-
-    /**
-     * Dump the current frame graph and scene graph to the console
-     */
-    void dumpFrameGraphToConsole() const;
-
-    //! Dump frame graph as string
-    QString dumpFrameGraph() const;
-
-    //! Dump scene graph as string
-    QString dumpSceneGraph() const;
-
   signals:
     //! Emitted after a call to requestCaptureImage() to return the captured image.
     void imageCaptured( const QImage &image );
@@ -147,14 +135,8 @@ class _3D_EXPORT QgsAbstract3DEngine : public QObject
      *  \since QGIS 3.24
      */
     void depthBufferCaptured( const QImage &image );
-
-    /**
-     *  Emitted after a call to setSize()
-     *  \since QGIS 3.30
-     */
-    void sizeChanged();
   protected:
-    QgsFrameGraph *mFrameGraph = nullptr;
+    QgsShadowRenderingFrameGraph *mFrameGraph = nullptr;
 };
 
 

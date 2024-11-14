@@ -11,24 +11,23 @@ __copyright__ = 'Copyright 2020, The QGIS Project'
 
 import sys
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QColor, QFont
-from qgis.core import QgsApplication, QgsSettings
+from qgis.core import QgsSettings, QgsApplication
 from qgis.gui import QgsCodeEditor, QgsCodeEditorColorScheme
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 from utilities import getTestFont
 
 start_app()
 
 
-class TestQgsCodeEditor(QgisTestCase):
+class TestQgsCodeEditor(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
-        super().setUpClass()
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain("QGIS_TestPyQgsColorScheme.com")
         QCoreApplication.setApplicationName("QGIS_TestPyQgsColorScheme")
@@ -56,22 +55,22 @@ class TestQgsCodeEditor(QgisTestCase):
         QgsApplication.setUITheme('Night Mapping')
         self.assertEqual(QgsCodeEditor.color(QgsCodeEditorColorScheme.ColorRole.Keyword).name(), '#6cbcf7')
 
-        QgsSettings().setValue('codeEditor/colorScheme', 'solarized', QgsSettings.Section.Gui)
+        QgsSettings().setValue('codeEditor/colorScheme', 'solarized', QgsSettings.Gui)
         self.assertEqual(QgsCodeEditor.color(QgsCodeEditorColorScheme.ColorRole.Keyword).name(), '#859900')
         self.assertEqual(QgsCodeEditor.color(QgsCodeEditorColorScheme.ColorRole.Background).name(), '#fdf6e3')
-        QgsSettings().setValue('codeEditor/colorScheme', 'solarized_dark', QgsSettings.Section.Gui)
+        QgsSettings().setValue('codeEditor/colorScheme', 'solarized_dark', QgsSettings.Gui)
         self.assertEqual(QgsCodeEditor.color(QgsCodeEditorColorScheme.ColorRole.Keyword).name(), '#859900')
         self.assertEqual(QgsCodeEditor.color(QgsCodeEditorColorScheme.ColorRole.Background).name(), '#002b36')
 
-        QgsSettings().setValue('codeEditor/overrideColors', True, QgsSettings.Section.Gui)
+        QgsSettings().setValue('codeEditor/overrideColors', True, QgsSettings.Gui)
         QgsCodeEditor.setColor(QgsCodeEditorColorScheme.ColorRole.Keyword, QColor('#cc11bb'))
         self.assertEqual(QgsCodeEditor.color(QgsCodeEditorColorScheme.ColorRole.Keyword).name(), '#cc11bb')
 
     def testFontFamily(self):
         f = QgsCodeEditor().getMonospaceFont()
-        self.assertTrue(f.styleHint() & QFont.StyleHint.Monospace)
+        self.assertTrue(f.styleHint() & QFont.Monospace)
 
-        QgsSettings().setValue('codeEditor/fontfamily', getTestFont().family(), QgsSettings.Section.Gui)
+        QgsSettings().setValue('codeEditor/fontfamily', getTestFont().family(), QgsSettings.Gui)
         f = QgsCodeEditor().getMonospaceFont()
         self.assertEqual(f.family(), 'QGIS Vera Sans')
 
@@ -80,7 +79,7 @@ class TestQgsCodeEditor(QgisTestCase):
         f = QgsCodeEditor().getMonospaceFont()
         self.assertEqual(f.pointSize(), 10)
 
-        QgsSettings().setValue('codeEditor/fontsize', 14, QgsSettings.Section.Gui)
+        QgsSettings().setValue('codeEditor/fontsize', 14, QgsSettings.Gui)
         f = QgsCodeEditor().getMonospaceFont()
         self.assertEqual(f.pointSize(), 14)
 

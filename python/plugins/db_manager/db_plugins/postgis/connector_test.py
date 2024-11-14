@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     connector_test.py
@@ -20,8 +22,8 @@ __date__ = 'May 2017'
 __copyright__ = '(C) 2017, Sandro Santilli'
 
 import os
-import unittest
-from qgis.testing import start_app, QgisTestCase
+import qgis
+from qgis.testing import start_app, unittest
 from qgis.core import QgsDataSourceUri
 from qgis.utils import iface
 from qgis.PyQt.QtCore import QObject
@@ -31,7 +33,7 @@ start_app()
 from db_manager.db_plugins.postgis.connector import PostGisDBConnector
 
 
-class TestDBManagerPostgisConnector(QgisTestCase):
+class TestDBManagerPostgisConnector(unittest.TestCase):
 
     # def setUpClass():
 

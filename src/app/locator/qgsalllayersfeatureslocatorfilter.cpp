@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsalllayersfeatureslocatorfilter.h"
-#include "moc_qgsalllayersfeatureslocatorfilter.cpp"
 #include "qgssettings.h"
 #include "qgsproject.h"
 #include "qgsvectorlayer.h"
@@ -66,7 +65,7 @@ QStringList QgsAllLayersFeaturesLocatorFilter::prepare( const QString &string, c
     QgsFeatureRequest req;
     req.setSubsetOfAttributes( qgis::setToList( expression.referencedAttributeIndexes( layer->fields() ) ) );
     if ( !expression.needsGeometry() )
-      req.setFlags( Qgis::FeatureRequestFlag::NoGeometry );
+      req.setFlags( QgsFeatureRequest::NoGeometry );
     QString enhancedSearch = string;
     enhancedSearch.replace( ' ', '%' );
     req.setFilterExpression( QStringLiteral( "%1 ILIKE '%%2%'" )
@@ -121,7 +120,7 @@ void QgsAllLayersFeaturesLocatorFilter::fetchResults( const QString &string, con
 
       result.displayString = preparedLayer->expression.evaluate( &( preparedLayer->context ) ).toString();
 
-      result.setUserData( ResultData( f.id(), preparedLayer->layerId, preparedLayer->layerIsSpatial ).toVariant() );
+      result.userData = ResultData( f.id(), preparedLayer->layerId, preparedLayer->layerIsSpatial ).toVariant();
       foundFeatureIds << f.id();
       result.icon = preparedLayer->layerIcon;
       result.score = static_cast< double >( string.length() ) / result.displayString.size();
@@ -155,7 +154,7 @@ void QgsAllLayersFeaturesLocatorFilter::fetchResults( const QString &string, con
 
       result.displayString = preparedLayer->expression.evaluate( &( preparedLayer->context ) ).toString();
 
-      result.setUserData( ResultData( f.id(), preparedLayer->layerId, preparedLayer->layerIsSpatial ).toVariant() );
+      result.userData = ResultData( f.id(), preparedLayer->layerId, preparedLayer->layerIsSpatial ).toVariant();
       result.icon = preparedLayer->layerIcon;
       result.score = static_cast< double >( string.length() ) / result.displayString.size();
 
@@ -180,7 +179,7 @@ void QgsAllLayersFeaturesLocatorFilter::triggerResult( const QgsLocatorResult &r
 
 void QgsAllLayersFeaturesLocatorFilter::triggerResultFromAction( const QgsLocatorResult &result, const int actionId )
 {
-  ResultData data = ResultData::fromVariant( result.userData() );
+  ResultData data = ResultData::fromVariant( result.userData );
   QgsFeatureId fid = data.id();
   QString layerId = data.layerId();
   bool layerIsSpatial = data.layerIsSpatial();

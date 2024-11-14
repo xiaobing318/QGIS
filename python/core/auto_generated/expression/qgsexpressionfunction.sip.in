@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/expression/qgsexpressionfunction.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -27,6 +27,8 @@ A abstract base class for defining :py:class:`QgsExpression` functions.
 {
 %Docstring(signature="appended")
 Represents a single parameter passed to a function.
+
+.. versionadded:: 2.16
 %End
 
 %TypeHeaderCode
@@ -96,6 +98,8 @@ Constructor for function which uses unnamed parameters
                            bool isContextual = false );
 %Docstring
 Constructor for function which uses unnamed parameters and group list
+
+.. versionadded:: 3.0
 %End
 
     QgsExpressionFunction( const QString &fnname,
@@ -107,6 +111,8 @@ Constructor for function which uses unnamed parameters and group list
                            bool isContextual = false );
 %Docstring
 Constructor for function which uses named parameter list.
+
+.. versionadded:: 2.16
 %End
 
     QgsExpressionFunction( const QString &fnname,
@@ -118,6 +124,8 @@ Constructor for function which uses named parameter list.
                            bool isContextual = false );
 %Docstring
 Constructor for function which uses named parameter list and group list.
+
+.. versionadded:: 3.0
 %End
 
     virtual ~QgsExpressionFunction();
@@ -140,6 +148,8 @@ The minimum number of parameters this function takes.
     const QgsExpressionFunction::ParameterList &parameters() const;
 %Docstring
 Returns the list of named parameters for the function, if set.
+
+.. versionadded:: 2.16
 %End
 
     virtual bool usesGeometry( const QgsExpressionNodeFunction *node ) const;
@@ -153,6 +163,8 @@ Returns a list of possible aliases for the function. These include
 other permissible names for the function, e.g., deprecated names.
 
 :return: list of known aliases
+
+.. versionadded:: 2.9
 %End
 
     bool lazyEval() const;
@@ -170,6 +182,8 @@ attributes and/or geometry.
 
 By default this will return ``True``, if all arguments that have been passed to the function
 are also static.
+
+.. versionadded:: 3.0
 %End
 
     virtual bool prepare( const QgsExpressionNodeFunction *node, QgsExpression *parent, const QgsExpressionContext *context ) const;
@@ -178,6 +192,8 @@ This will be called during the prepare :py:func:`~QgsExpressionFunction.step` of
 
 This can be used by functions to do any preparation steps that might help to speedup the upcoming
 evaluation.
+
+.. versionadded:: 3.0
 %End
 
     virtual QSet<QString> referencedColumns( const QgsExpressionNodeFunction *node ) const;
@@ -186,17 +202,23 @@ Returns a set of field names which are required for this function.
 May contain :py:class:`QgsFeatureRequest`.AllAttributes to signal that all
 attributes are required.
 If in doubt this will return more fields than strictly required.
+
+.. versionadded:: 3.0
 %End
 
     bool isContextual() const;
 %Docstring
 Returns whether the function is only available if provided by a :py:class:`QgsExpressionContext` object.
+
+.. versionadded:: 2.12
 %End
 
     virtual bool isDeprecated() const;
 %Docstring
 Returns ``True`` if the function is deprecated and should not be presented as a valid option
 to users in expression builders.
+
+.. versionadded:: 3.0
 %End
 
     QString group() const;
@@ -213,6 +235,8 @@ Returns the first group which the function belongs to.
 Returns a list of the groups the function belongs to.
 
 .. seealso:: :py:func:`group`
+
+.. versionadded:: 3.0
 %End
 
     const QString helpText() const;
@@ -255,6 +279,8 @@ constraints imposed by the ``context`` within the given ``parent``.
 
 This can be used as callback for custom implementations of subclasses. It is the default for implementation
 for StaticFunction.isStatic.
+
+.. versionadded:: 3.0
 %End
 
 };
@@ -265,5 +291,5 @@ for StaticFunction.isStatic.
  *                                                                      *
  * src/core/expression/qgsexpressionfunction.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

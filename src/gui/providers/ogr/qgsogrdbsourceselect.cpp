@@ -16,7 +16,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsogrdbsourceselect.h"
-#include "moc_qgsogrdbsourceselect.cpp"
 ///@cond PRIVATE
 
 #include "qgsogrdbconnection.h"
@@ -58,7 +57,7 @@ QgsOgrDbSourceSelect::QgsOgrDbSourceSelect( const QString &theSettingsKey, const
   btnSave->hide();
   btnLoad->hide();
 
-  if ( widgetMode() != QgsProviderRegistry::WidgetMode::Standalone )
+  if ( widgetMode() != QgsProviderRegistry::WidgetMode::None )
   {
     mHoldDialogOpen->hide();
   }
@@ -109,7 +108,7 @@ void QgsOgrDbSourceSelect::populateConnectionList()
   for ( const QString &name : QgsOgrDbConnection::connectionList( ogrDriverName( ) ) )
   {
     // retrieving the SQLite DB name and full path
-    const QString text = name + tr( "@" ) + QgsOgrDbConnection( name, ogrDriverName( ) ).path();
+    QString text = name + tr( "@" ) + QgsOgrDbConnection( name, ogrDriverName( ) ).path();
     cmbConnections->addItem( text );
   }
 
@@ -217,20 +216,13 @@ void QgsOgrDbSourceSelect::addButtonClicked()
     // Use OGR
     for ( const LayerInfo &info : std::as_const( selectedVectors ) )
     {
-      Q_NOWARN_DEPRECATED_PUSH
       emit addVectorLayer( info.first, info.second );
-      Q_NOWARN_DEPRECATED_POP
-      emit addLayer( Qgis::LayerType::Vector, info.first, info.second, QStringLiteral( "ogr" ) );
-
     }
     for ( const LayerInfo &info : std::as_const( selectedRasters ) )
     {
-      Q_NOWARN_DEPRECATED_PUSH
       emit addRasterLayer( info.first, info.second, QStringLiteral( "gdal" ) );
-      Q_NOWARN_DEPRECATED_POP
-      emit addLayer( Qgis::LayerType::Raster, info.first, info.second, QStringLiteral( "gdal" ) );
     }
-    if ( widgetMode() == QgsProviderRegistry::WidgetMode::Standalone && ! mHoldDialogOpen->isChecked() )
+    if ( widgetMode() == QgsProviderRegistry::WidgetMode::None && ! mHoldDialogOpen->isChecked() )
     {
       accept();
     }
@@ -263,29 +255,29 @@ void QgsOgrDbSourceSelect::btnConnect_clicked()
 
   for ( const QgsProviderSublayerDetails &layer : sublayers )
   {
-    if ( cbxAllowGeometrylessTables->isChecked() || layer.wkbType() != Qgis::WkbType::NoGeometry )
+    if ( cbxAllowGeometrylessTables->isChecked() || layer.wkbType() != QgsWkbTypes::NoGeometry )
     {
       Qgis::BrowserLayerType layerType = Qgis::BrowserLayerType::Vector;
 
       switch ( QgsWkbTypes::geometryType( layer.wkbType() ) )
       {
-        case Qgis::GeometryType::Point:
+        case QgsWkbTypes::PointGeometry:
           layerType = Qgis::BrowserLayerType::Point;
           break;
 
-        case Qgis::GeometryType::Line:
+        case QgsWkbTypes::LineGeometry:
           layerType = Qgis::BrowserLayerType::Line;
           break;
 
-        case Qgis::GeometryType::Polygon:
+        case QgsWkbTypes::PolygonGeometry:
           layerType = Qgis::BrowserLayerType::Polygon;
           break;
 
-        case Qgis::GeometryType::Null:
+        case QgsWkbTypes::NullGeometry:
           layerType = Qgis::BrowserLayerType::TableLayer;
           break;
 
-        case Qgis::GeometryType::Unknown:
+        case QgsWkbTypes::UnknownGeometry:
           layerType = Qgis::BrowserLayerType::Vector;
           break;
       }
@@ -376,79 +368,6 @@ void QgsOgrDbSourceSelect::treeWidgetSelectionChanged( const QItemSelection &sel
 void QgsOgrDbSourceSelect::showHelp()
 {
   QgsHelp::openHelp( QStringLiteral( "managing_data_source/opening_data.html#GeoPackage-layers" ) );
-}
-
-bool QgsOgrDbSourceSelect::configureFromUri( const QString &uri )
-{
-  bool isSubLayer;
-  int layerIndex;
-  QString layerName;
-  QString subsetString;
-  OGRwkbGeometryType ogrGeometryType;
-  QStringList openOptions;
-  QVariantMap credentialOptions;
-  const QString filePath = QgsOgrProviderUtils::analyzeURI( uri,
-                           isSubLayer,
-                           layerIndex,
-                           layerName,
-                           subsetString,
-                           ogrGeometryType,
-                           openOptions,
-                           credentialOptions );
-
-  QFileInfo pathInfo { filePath };
-  const QString connectionName { pathInfo.fileName() };
-  const QString connectionText { connectionName + tr( "@" ) + filePath };
-  int idx { cmbConnections->findText( connectionText ) };
-
-  if ( idx < 0 && QgsOgrProviderUtils::saveConnection( filePath, QStringLiteral( "GPKG" ) ) )
-  {
-    populateConnectionList();
-    idx = cmbConnections->findText( connectionText );
-  }
-
-  if ( idx >= 0 )
-  {
-    cmbConnections->setCurrentIndex( idx );
-    if ( ! layerName.isEmpty() || layerIndex >= 0 )
-    {
-      btnConnect_clicked();
-      // Find table/layer
-      QModelIndex index;
-      if ( !layerName.isEmpty() )
-      {
-        const QModelIndex parentIndex { mTableModel->index( 0, 0, mTableModel->invisibleRootItem()->index() )};
-        const QModelIndexList indexList { mTableModel->match( mTableModel->index( 0, 0, parentIndex ), Qt::DisplayRole, layerName, 1, Qt::MatchFlag::MatchExactly ) };
-        if ( ! indexList.isEmpty() )
-        {
-          index = indexList.first();
-        }
-      }
-      else if ( layerIndex >= 0 )
-      {
-        const QModelIndex parentIndex { mTableModel->index( 0, 0, mTableModel->invisibleRootItem()->index() )};
-        index = proxyModel()->mapFromSource( mTableModel->index( layerIndex, 0, parentIndex ) );
-      }
-
-      if ( index.isValid() )
-      {
-        const QModelIndex proxyIndex { proxyModel()->mapFromSource( index ) };
-        mTablesTreeView->selectionModel()->setCurrentIndex( proxyIndex, QItemSelectionModel::SelectionFlag::Rows | QItemSelectionModel::SelectionFlag::ClearAndSelect );
-        mTablesTreeView->scrollTo( proxyIndex );
-        // Set filter
-        if ( !subsetString.isEmpty() )
-        {
-          mTableModel->setSql( index, subsetString );
-        }
-      }
-
-    }
-    return true;
-  }
-  else
-  {
-    return false;
-  }
 }
 
 ///@endcond

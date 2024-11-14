@@ -9,27 +9,27 @@ __author__ = 'Nyall Dawson'
 __date__ = '2020-06'
 __copyright__ = 'Copyright 2020, The QGIS Project'
 
-
+import qgis  # NOQA
 from qgis.core import (
-    QgsCoordinateReferenceSystem,
-    QgsCoordinateTransform,
-    QgsGeometry,
     QgsMapClippingRegion,
     QgsMapClippingUtils,
-    QgsMapLayerType,
     QgsMapSettings,
-    QgsMapToPixel,
-    QgsProject,
     QgsRenderContext,
+    QgsGeometry,
     QgsVectorLayer,
+    QgsCoordinateTransform,
+    QgsCoordinateReferenceSystem,
+    QgsProject,
+    QgsMapToPixel,
+    QgsMapLayerType
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app
+from qgis.testing import unittest
 
 start_app()
 
 
-class TestQgsMapClippingUtils(QgisTestCase):
+class TestQgsMapClippingUtils(unittest.TestCase):
 
     def testClippingRegionsForLayer(self):
         layer = QgsVectorLayer("Point?field=fldtxt:string&field=fldint:integer",

@@ -23,74 +23,68 @@
 #include "qgsvectortilelayer.h"
 #include "qgsannotationlayer.h"
 #include "qgsgrouplayer.h"
-#include "qgstiledscenelayer.h"
 
-Qgis::LayerType QgsMapLayerFactory::typeFromString( const QString &string, bool &ok )
+QgsMapLayerType QgsMapLayerFactory::typeFromString( const QString &string, bool &ok )
 {
   ok = true;
   if ( string.compare( QLatin1String( "vector" ), Qt::CaseInsensitive ) == 0 )
-    return Qgis::LayerType::Vector;
+    return QgsMapLayerType::VectorLayer;
   else if ( string.compare( QLatin1String( "raster" ), Qt::CaseInsensitive ) == 0 )
-    return Qgis::LayerType::Raster;
+    return QgsMapLayerType::RasterLayer;
   else if ( string.compare( QLatin1String( "mesh" ), Qt::CaseInsensitive ) == 0 )
-    return Qgis::LayerType::Mesh;
+    return QgsMapLayerType::MeshLayer;
   else if ( string.compare( QLatin1String( "vector-tile" ), Qt::CaseInsensitive ) == 0 )
-    return Qgis::LayerType::VectorTile;
+    return QgsMapLayerType::VectorTileLayer;
   else if ( string.compare( QLatin1String( "point-cloud" ), Qt::CaseInsensitive ) == 0 )
-    return Qgis::LayerType::PointCloud;
+    return QgsMapLayerType::PointCloudLayer;
   else if ( string.compare( QLatin1String( "plugin" ), Qt::CaseInsensitive ) == 0 )
-    return Qgis::LayerType::Plugin;
+    return QgsMapLayerType::PluginLayer;
   else if ( string.compare( QLatin1String( "annotation" ), Qt::CaseInsensitive ) == 0 )
-    return Qgis::LayerType::Annotation;
+    return QgsMapLayerType::AnnotationLayer;
   else if ( string.compare( QLatin1String( "group" ), Qt::CaseInsensitive ) == 0 )
-    return Qgis::LayerType::Group;
-  else if ( string.compare( QLatin1String( "tiled-scene" ), Qt::CaseInsensitive ) == 0 )
-    return Qgis::LayerType::TiledScene;
+    return QgsMapLayerType::GroupLayer;
 
   ok = false;
-  return Qgis::LayerType::Vector;
+  return QgsMapLayerType::VectorLayer;
 }
 
-QString QgsMapLayerFactory::typeToString( Qgis::LayerType type )
+QString QgsMapLayerFactory::typeToString( QgsMapLayerType type )
 {
   switch ( type )
   {
-    case Qgis::LayerType::Vector:
+    case QgsMapLayerType::VectorLayer:
       return QStringLiteral( "vector" );
-    case Qgis::LayerType::Raster:
+    case QgsMapLayerType::RasterLayer:
       return QStringLiteral( "raster" );
-    case Qgis::LayerType::Plugin:
+    case QgsMapLayerType::PluginLayer:
       return QStringLiteral( "plugin" );
-    case Qgis::LayerType::Mesh:
+    case QgsMapLayerType::MeshLayer:
       return QStringLiteral( "mesh" );
-    case Qgis::LayerType::VectorTile:
+    case QgsMapLayerType::VectorTileLayer:
       return QStringLiteral( "vector-tile" );
-    case Qgis::LayerType::Annotation:
+    case QgsMapLayerType::AnnotationLayer:
       return QStringLiteral( "annotation" );
-    case Qgis::LayerType::PointCloud:
+    case QgsMapLayerType::PointCloudLayer:
       return QStringLiteral( "point-cloud" );
-    case Qgis::LayerType::Group:
+    case QgsMapLayerType::GroupLayer:
       return QStringLiteral( "group" );
-    case Qgis::LayerType::TiledScene:
-      return QStringLiteral( "tiled-scene" );
   }
   return QString();
 }
 
-QgsMapLayer *QgsMapLayerFactory::createLayer( const QString &uri, const QString &name, Qgis::LayerType type, const LayerOptions &options, const QString &provider )
+QgsMapLayer *QgsMapLayerFactory::createLayer( const QString &uri, const QString &name, QgsMapLayerType type, const LayerOptions &options, const QString &provider )
 {
   switch ( type )
   {
-    case Qgis::LayerType::Vector:
+    case QgsMapLayerType::VectorLayer:
     {
       QgsVectorLayer::LayerOptions vectorOptions;
       vectorOptions.transformContext = options.transformContext;
       vectorOptions.loadDefaultStyle = options.loadDefaultStyle;
-      vectorOptions.loadAllStoredStyles = options.loadAllStoredStyles;
       return new QgsVectorLayer( uri, name, provider, vectorOptions );
     }
 
-    case Qgis::LayerType::Raster:
+    case QgsMapLayerType::RasterLayer:
     {
       QgsRasterLayer::LayerOptions rasterOptions;
       rasterOptions.transformContext = options.transformContext;
@@ -98,7 +92,7 @@ QgsMapLayer *QgsMapLayerFactory::createLayer( const QString &uri, const QString 
       return new QgsRasterLayer( uri, name, provider, rasterOptions );
     }
 
-    case Qgis::LayerType::Mesh:
+    case QgsMapLayerType::MeshLayer:
     {
       QgsMeshLayer::LayerOptions meshOptions;
       meshOptions.transformContext = options.transformContext;
@@ -106,25 +100,25 @@ QgsMapLayer *QgsMapLayerFactory::createLayer( const QString &uri, const QString 
       return new QgsMeshLayer( uri, name, provider, meshOptions );
     }
 
-    case Qgis::LayerType::VectorTile:
+    case QgsMapLayerType::VectorTileLayer:
     {
       const QgsVectorTileLayer::LayerOptions vectorTileOptions( options.transformContext );
       return new QgsVectorTileLayer( uri, name, vectorTileOptions );
     }
 
-    case Qgis::LayerType::Annotation:
+    case QgsMapLayerType::AnnotationLayer:
     {
       const QgsAnnotationLayer::LayerOptions annotationOptions( options.transformContext );
       return new QgsAnnotationLayer( name, annotationOptions );
     }
 
-    case Qgis::LayerType::Group:
+    case QgsMapLayerType::GroupLayer:
     {
       const QgsGroupLayer::LayerOptions groupOptions( options.transformContext );
       return new QgsGroupLayer( name, groupOptions );
     }
 
-    case Qgis::LayerType::PointCloud:
+    case QgsMapLayerType::PointCloudLayer:
     {
       QgsPointCloudLayer::LayerOptions pointCloudOptions;
       pointCloudOptions.loadDefaultStyle = options.loadDefaultStyle;
@@ -132,15 +126,7 @@ QgsMapLayer *QgsMapLayerFactory::createLayer( const QString &uri, const QString 
       return new QgsPointCloudLayer( uri, name, provider, pointCloudOptions );
     }
 
-    case Qgis::LayerType::TiledScene:
-    {
-      QgsTiledSceneLayer::LayerOptions tiledSceneOptions;
-      tiledSceneOptions.loadDefaultStyle = options.loadDefaultStyle;
-      tiledSceneOptions.transformContext = options.transformContext;
-      return new QgsTiledSceneLayer( uri, name, provider, tiledSceneOptions );
-    }
-
-    case Qgis::LayerType::Plugin:
+    case QgsMapLayerType::PluginLayer:
       break;
   }
   return nullptr;

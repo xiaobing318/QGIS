@@ -15,12 +15,10 @@
 
 #include <QPainter>
 
-#include "qgsgeometryutils_base.h"
 #include "qgsinterpolatedlinerenderer.h"
+#include "qgscolorramplegendnode.h"
 #include "qgssymbollayerutils.h"
 #include "qgsstyle.h"
-#include "qgsunittypes.h"
-#include "qgscolorutils.h"
 
 
 void QgsInterpolatedLineRenderer::setInterpolatedWidth( const QgsInterpolatedLineWidth &strokeWidth )
@@ -43,12 +41,12 @@ QgsInterpolatedLineColor QgsInterpolatedLineRenderer::interpolatedColor() const
   return mStrokeColoring;
 }
 
-void QgsInterpolatedLineRenderer::setWidthUnit( Qgis::RenderUnit strokeWidthUnit )
+void QgsInterpolatedLineRenderer::setWidthUnit( QgsUnitTypes::RenderUnit strokeWidthUnit )
 {
   mStrokeWidthUnit = strokeWidthUnit;
 }
 
-Qgis::RenderUnit QgsInterpolatedLineRenderer::widthUnit() const
+QgsUnitTypes::RenderUnit QgsInterpolatedLineRenderer::widthUnit() const
 {
   return mStrokeWidthUnit;
 }
@@ -508,7 +506,7 @@ QDomElement QgsInterpolatedLineColor::writeXml( QDomDocument &doc, const QgsRead
 {
   QDomElement elem = doc.createElement( QStringLiteral( "mesh-stroke-color" ) );
 
-  elem.setAttribute( QStringLiteral( "single-color" ), QgsColorUtils::colorToString( mSingleColor ) );
+  elem.setAttribute( QStringLiteral( "single-color" ), QgsSymbolLayerUtils::encodeColor( mSingleColor ) );
   elem.setAttribute( QStringLiteral( "coloring-method" ), mColoringMethod );
   elem.appendChild( mColorRampShader.writeXml( doc ) );
 
@@ -520,7 +518,7 @@ void QgsInterpolatedLineColor::readXml( const QDomElement &elem, const QgsReadWr
   QDomElement shaderElem = elem.firstChildElement( QStringLiteral( "colorrampshader" ) );
   mColorRampShader.readXml( shaderElem );
 
-  mSingleColor = QgsColorUtils::colorFromString( elem.attribute( QStringLiteral( "single-color" ) ) );
+  mSingleColor = QgsSymbolLayerUtils::decodeColor( elem.attribute( QStringLiteral( "single-color" ) ) );
   mColoringMethod = static_cast<QgsInterpolatedLineColor::ColoringMethod>(
                       elem.attribute( QStringLiteral( "coloring-method" ) ).toInt() );
 }
@@ -538,13 +536,13 @@ void QgsInterpolatedLineColor::graduatedColors( double value1, double value2, QL
 
   switch ( mColorRampShader.colorRampType() )
   {
-    case Qgis::ShaderInterpolationMethod::Linear:
+    case QgsColorRampShader::Interpolated:
       graduatedColorsInterpolated( value1, value2, breakValues, breakColors, gradients );
       break;
-    case Qgis::ShaderInterpolationMethod::Discrete:
+    case QgsColorRampShader::Discrete:
       graduatedColorsDiscrete( value1, value2, breakValues, breakColors, gradients );
       break;
-    case Qgis::ShaderInterpolationMethod::Exact:
+    case QgsColorRampShader::Exact:
       graduatedColorsExact( value1, value2, breakValues, breakColors, gradients );
       break;
   }
@@ -572,7 +570,7 @@ int QgsInterpolatedLineColor::itemColorIndexInf( double value ) const
   if ( itemList.isEmpty() || itemList.first().value > value )
     return -1;
 
-  if ( mColorRampShader.colorRampType() == Qgis::ShaderInterpolationMethod::Discrete )
+  if ( mColorRampShader.colorRampType() == QgsColorRampShader::Discrete )
     itemList.removeLast(); //remove the inf value
 
   if ( value > itemList.last().value )
@@ -600,7 +598,7 @@ int QgsInterpolatedLineColor::itemColorIndexInf( double value ) const
 
 void QgsInterpolatedLineColor::graduatedColorsExact( double value1, double value2, QList<double> &breakValues, QList<QColor> &breakColors, const QList<QLinearGradient> &gradients ) const
 {
-  Q_ASSERT( mColorRampShader.colorRampType() == Qgis::ShaderInterpolationMethod::Exact );
+  Q_ASSERT( mColorRampShader.colorRampType() == QgsColorRampShader::Exact );
   Q_ASSERT( breakValues.isEmpty() );
   Q_ASSERT( breakColors.isEmpty() );
   Q_ASSERT( gradients.isEmpty() );
@@ -630,7 +628,7 @@ void QgsInterpolatedLineColor::graduatedColorsExact( double value1, double value
 
 void QgsInterpolatedLineColor::graduatedColorsInterpolated( double value1, double value2, QList<double> &breakValues, QList<QColor> &breakColors, QList<QLinearGradient> &gradients ) const
 {
-  Q_ASSERT( mColorRampShader.colorRampType() == Qgis::ShaderInterpolationMethod::Linear );
+  Q_ASSERT( mColorRampShader.colorRampType() == QgsColorRampShader::Interpolated );
   Q_ASSERT( breakValues.isEmpty() );
   Q_ASSERT( breakColors.isEmpty() );
   Q_ASSERT( gradients.isEmpty() );
@@ -731,7 +729,7 @@ void QgsInterpolatedLineColor::graduatedColorsInterpolated( double value1, doubl
 
 void QgsInterpolatedLineColor::graduatedColorsDiscrete( double value1, double value2, QList<double> &breakValues, QList<QColor> &breakColors, QList<QLinearGradient> &gradients ) const
 {
-  Q_ASSERT( mColorRampShader.colorRampType() == Qgis::ShaderInterpolationMethod::Discrete );
+  Q_ASSERT( mColorRampShader.colorRampType() == QgsColorRampShader::Discrete );
   Q_ASSERT( breakValues.isEmpty() );
   Q_ASSERT( breakColors.isEmpty() );
   Q_ASSERT( gradients.isEmpty() );
@@ -827,14 +825,14 @@ QgsSymbolLayer *QgsInterpolatedLineSymbolLayer::create( const QVariantMap &prope
   symbolLayer.reset( new QgsInterpolatedLineSymbolLayer() );
 
   if ( properties.contains( QStringLiteral( "start_width_expression" ) ) )
-    symbolLayer->setDataDefinedProperty( QgsSymbolLayer::Property::LineStartWidthValue, QgsProperty::fromExpression( properties.value( QStringLiteral( "start_width_expression" ) ).toString() ) );
+    symbolLayer->setDataDefinedProperty( QgsSymbolLayer::PropertyLineStartWidthValue, QgsProperty::fromExpression( properties.value( QStringLiteral( "start_width_expression" ) ).toString() ) );
   if ( properties.contains( QStringLiteral( "end_width_expression" ) ) )
-    symbolLayer->setDataDefinedProperty( QgsSymbolLayer::Property::LineEndWidthValue, QgsProperty::fromExpression( properties.value( QStringLiteral( "end_width_expression" ) ).toString() ) );
+    symbolLayer->setDataDefinedProperty( QgsSymbolLayer::PropertyLineEndWidthValue, QgsProperty::fromExpression( properties.value( QStringLiteral( "end_width_expression" ) ).toString() ) );
 
   if ( properties.contains( QStringLiteral( "start_color_expression" ) ) )
-    symbolLayer->setDataDefinedProperty( QgsSymbolLayer::Property::LineStartColorValue, QgsProperty::fromExpression( properties.value( QStringLiteral( "start_color_expression" ) ).toString() ) );
+    symbolLayer->setDataDefinedProperty( QgsSymbolLayer::PropertyLineStartColorValue, QgsProperty::fromExpression( properties.value( QStringLiteral( "start_color_expression" ) ).toString() ) );
   if ( properties.contains( QStringLiteral( "end_color_expression" ) ) )
-    symbolLayer->setDataDefinedProperty( QgsSymbolLayer::Property::LineEndColorValue, QgsProperty::fromExpression( properties.value( QStringLiteral( "end_color_expression" ) ).toString() ) );
+    symbolLayer->setDataDefinedProperty( QgsSymbolLayer::PropertyLineEndColorValue, QgsProperty::fromExpression( properties.value( QStringLiteral( "end_color_expression" ) ).toString() ) );
 
   if ( properties.contains( QStringLiteral( "line_width" ) ) )
     symbolLayer->mLineRender.mStrokeWidth.setFixedStrokeWidth( properties.value( QStringLiteral( "line_width" ) ).toDouble() ) ;
@@ -856,7 +854,7 @@ QgsSymbolLayer *QgsInterpolatedLineSymbolLayer::create( const QVariantMap &prope
     symbolLayer->mLineRender.mStrokeWidth.setIsVariableWidth( properties.value( QStringLiteral( "width_varying_is_variable_width" ) ).toInt() );
 
   if ( properties.contains( QStringLiteral( "single_color" ) ) )
-    symbolLayer->mLineRender.mStrokeColoring.setColor( QgsColorUtils::colorFromString( properties.value( QStringLiteral( "single_color" ) ).toString() ) );
+    symbolLayer->mLineRender.mStrokeColoring.setColor( QgsSymbolLayerUtils::decodeColor( properties.value( QStringLiteral( "single_color" ) ).toString() ) );
   if ( properties.contains( QStringLiteral( "color_ramp_shader" ) ) )
     symbolLayer->mLineRender.mStrokeColoring.setColor( createColorRampShaderFromProperties( properties.value( QStringLiteral( "color_ramp_shader" ) ) ) );
   if ( properties.contains( QStringLiteral( "coloring_method" ) ) )
@@ -868,9 +866,7 @@ QgsSymbolLayer *QgsInterpolatedLineSymbolLayer::create( const QVariantMap &prope
 
 Qgis::SymbolLayerFlags QgsInterpolatedLineSymbolLayer::flags() const
 {
-  return QgsLineSymbolLayer::flags()
-         | Qgis::SymbolLayerFlag::DisableFeatureClipping
-         | Qgis::SymbolLayerFlag::CanCalculateMaskGeometryPerFeature;
+  return Qgis::SymbolLayerFlag::DisableFeatureClipping;
 }
 
 QVariantMap QgsInterpolatedLineSymbolLayer::properties() const
@@ -890,7 +886,7 @@ QVariantMap QgsInterpolatedLineSymbolLayer::properties() const
 
   // Color varying
   props.insert( QStringLiteral( "coloring_method" ), mLineRender.mStrokeColoring.coloringMethod() );
-  props.insert( QStringLiteral( "single_color" ), QgsColorUtils::colorToString( mLineRender.mStrokeColoring.singleColor() ) );
+  props.insert( QStringLiteral( "single_color" ), QgsSymbolLayerUtils::encodeColor( mLineRender.mStrokeColoring.singleColor() ) );
   props.insert( QStringLiteral( "color_ramp_shader" ), colorRampShaderProperties() );
 
   return props;
@@ -945,32 +941,32 @@ QColor QgsInterpolatedLineSymbolLayer::color() const
 void QgsInterpolatedLineSymbolLayer::setExpressionsStringForWidth( const QString &start, const QString &end )
 {
   if ( start.isEmpty() )
-    mDataDefinedProperties.setProperty( QgsSymbolLayer::Property::LineStartWidthValue, QgsProperty() );
+    mDataDefinedProperties.setProperty( QgsSymbolLayer::PropertyLineStartWidthValue, QgsProperty() );
   else
-    mDataDefinedProperties.setProperty( QgsSymbolLayer::Property::LineStartWidthValue, QgsProperty::fromExpression( start ) );
+    mDataDefinedProperties.setProperty( QgsSymbolLayer::PropertyLineStartWidthValue, QgsProperty::fromExpression( start ) );
 
   if ( end.isEmpty() )
-    mDataDefinedProperties.setProperty( QgsSymbolLayer::Property::LineEndWidthValue, QgsProperty() );
+    mDataDefinedProperties.setProperty( QgsSymbolLayer::PropertyLineEndWidthValue, QgsProperty() );
   else
-    mDataDefinedProperties.setProperty( QgsSymbolLayer::Property::LineEndWidthValue, QgsProperty::fromExpression( end ) );
+    mDataDefinedProperties.setProperty( QgsSymbolLayer::PropertyLineEndWidthValue, QgsProperty::fromExpression( end ) );
 }
 
 QString QgsInterpolatedLineSymbolLayer::startValueExpressionForWidth() const
 {
-  return mDataDefinedProperties.property( QgsSymbolLayer::Property::LineStartWidthValue ).asExpression();
+  return mDataDefinedProperties.property( QgsSymbolLayer::PropertyLineStartWidthValue ).asExpression();
 }
 
 QString QgsInterpolatedLineSymbolLayer::endValueExpressionForWidth() const
 {
-  return mDataDefinedProperties.property( QgsSymbolLayer::Property::LineEndWidthValue ).asExpression();
+  return mDataDefinedProperties.property( QgsSymbolLayer::PropertyLineEndWidthValue ).asExpression();
 }
 
-void QgsInterpolatedLineSymbolLayer::setWidthUnit( Qgis::RenderUnit strokeWidthUnit ) // cppcheck-suppress duplInheritedMember
+void QgsInterpolatedLineSymbolLayer::setWidthUnit( QgsUnitTypes::RenderUnit strokeWidthUnit )
 {
   mLineRender.mStrokeWidthUnit = strokeWidthUnit;
 }
 
-Qgis::RenderUnit QgsInterpolatedLineSymbolLayer::widthUnit() const {return mLineRender.widthUnit();} // cppcheck-suppress duplInheritedMember
+QgsUnitTypes::RenderUnit QgsInterpolatedLineSymbolLayer::widthUnit() const {return mLineRender.widthUnit();}
 
 void QgsInterpolatedLineSymbolLayer::setInterpolatedWidth( const QgsInterpolatedLineWidth &interpolatedLineWidth )
 {
@@ -982,24 +978,24 @@ QgsInterpolatedLineWidth QgsInterpolatedLineSymbolLayer::interpolatedWidth() con
 void QgsInterpolatedLineSymbolLayer::setExpressionsStringForColor( const QString &start, const QString &end )
 {
   if ( start.isEmpty() )
-    mDataDefinedProperties.setProperty( QgsSymbolLayer::Property::LineStartColorValue, QgsProperty() );
+    mDataDefinedProperties.setProperty( QgsSymbolLayer::PropertyLineStartColorValue, QgsProperty() );
   else
-    mDataDefinedProperties.setProperty( QgsSymbolLayer::Property::LineStartColorValue, QgsProperty::fromExpression( start ) );
+    mDataDefinedProperties.setProperty( QgsSymbolLayer::PropertyLineStartColorValue, QgsProperty::fromExpression( start ) );
 
   if ( end.isEmpty() )
-    mDataDefinedProperties.setProperty( QgsSymbolLayer::Property::LineEndColorValue, QgsProperty() );
+    mDataDefinedProperties.setProperty( QgsSymbolLayer::PropertyLineEndColorValue, QgsProperty() );
   else
-    mDataDefinedProperties.setProperty( QgsSymbolLayer::Property::LineEndColorValue, QgsProperty::fromExpression( end ) );
+    mDataDefinedProperties.setProperty( QgsSymbolLayer::PropertyLineEndColorValue, QgsProperty::fromExpression( end ) );
 }
 
 QString QgsInterpolatedLineSymbolLayer::startValueExpressionForColor() const
 {
-  return mDataDefinedProperties.property( QgsSymbolLayer::Property::LineStartColorValue ).asExpression();
+  return mDataDefinedProperties.property( QgsSymbolLayer::PropertyLineStartColorValue ).asExpression();
 }
 
 QString QgsInterpolatedLineSymbolLayer::endValueExpressionForColor() const
 {
-  return mDataDefinedProperties.property( QgsSymbolLayer::Property::LineEndColorValue ).asExpression();
+  return mDataDefinedProperties.property( QgsSymbolLayer::PropertyLineEndColorValue ).asExpression();
 }
 
 void QgsInterpolatedLineSymbolLayer::setInterpolatedColor( const QgsInterpolatedLineColor &interpolatedLineColor )
@@ -1019,8 +1015,8 @@ QVariant QgsInterpolatedLineSymbolLayer::colorRampShaderProperties() const
   QVariantMap props;
   if ( colorRampShader.sourceColorRamp() )
     props.insert( QStringLiteral( "color_ramp_source" ), QgsSymbolLayerUtils::colorRampToVariant( QString(), colorRampShader.sourceColorRamp() ) );
-  props.insert( QStringLiteral( "color_ramp_shader_type" ), static_cast< int >( colorRampShader.colorRampType() ) );
-  props.insert( QStringLiteral( "color_ramp_shader_classification_mode" ), static_cast< int >( colorRampShader.classificationMode() ) );
+  props.insert( QStringLiteral( "color_ramp_shader_type" ), colorRampShader.colorRampType() );
+  props.insert( QStringLiteral( "color_ramp_shader_classification_mode" ), colorRampShader.classificationMode() );
   QVariantList colorRampItemListVariant;
 
   const QList<QgsColorRampShader::ColorRampItem> colorRampItemList = colorRampShader.colorRampItemList();
@@ -1028,7 +1024,7 @@ QVariant QgsInterpolatedLineSymbolLayer::colorRampShaderProperties() const
   {
     QVariantMap itemVar;
     itemVar[QStringLiteral( "label" )] = item.label;
-    itemVar[QStringLiteral( "color" )] = QgsColorUtils::colorToString( item.color );
+    itemVar[QStringLiteral( "color" )] = QgsSymbolLayerUtils::encodeColor( item.color );
     itemVar[QStringLiteral( "value" )] = item.value;
     colorRampItemListVariant.append( itemVar );
   }
@@ -1046,7 +1042,7 @@ QgsColorRampShader QgsInterpolatedLineSymbolLayer::createColorRampShaderFromProp
 {
   QgsColorRampShader colorRampShader;
 
-  if ( properties.userType() != QMetaType::Type::QVariantMap )
+  if ( properties.type() != QVariant::Map )
     return colorRampShader;
 
   QVariantMap shaderVariantMap = properties.toMap();
@@ -1055,29 +1051,29 @@ QgsColorRampShader QgsInterpolatedLineSymbolLayer::createColorRampShaderFromProp
     colorRampShader.setSourceColorRamp( QgsSymbolLayerUtils::loadColorRamp( shaderVariantMap.value( QStringLiteral( "color_ramp_source" ) ) ) );
 
   if ( shaderVariantMap.contains( QStringLiteral( "color_ramp_shader_type" ) ) )
-    colorRampShader.setColorRampType( static_cast<Qgis::ShaderInterpolationMethod>( shaderVariantMap.value( QStringLiteral( "color_ramp_shader_type" ) ).toInt() ) );
+    colorRampShader.setColorRampType( static_cast<QgsColorRampShader::Type>( shaderVariantMap.value( QStringLiteral( "color_ramp_shader_type" ) ).toInt() ) );
   if ( shaderVariantMap.contains( QStringLiteral( "color_ramp_shader_classification_mode" ) ) )
-    colorRampShader.setClassificationMode( static_cast<Qgis::ShaderClassificationMethod>(
+    colorRampShader.setClassificationMode( static_cast<QgsColorRampShader::ClassificationMode>(
         shaderVariantMap.value( QStringLiteral( "color_ramp_shader_classification_mode" ) ).toInt() ) );
 
   if ( shaderVariantMap.contains( QStringLiteral( "color_ramp_shader_items_list" ) ) )
   {
     QVariant colorRampItemsVar = shaderVariantMap.value( QStringLiteral( "color_ramp_shader_items_list" ) );
-    if ( colorRampItemsVar.userType() == QMetaType::Type::QVariantList )
+    if ( colorRampItemsVar.type() == QVariant::List )
     {
       QVariantList itemVariantList = colorRampItemsVar.toList();
       QList<QgsColorRampShader::ColorRampItem> colorRampItemList;
       for ( const QVariant &itemVar : std::as_const( itemVariantList ) )
       {
         QgsColorRampShader::ColorRampItem item;
-        if ( itemVar.userType() != QMetaType::Type::QVariantMap )
+        if ( itemVar.type() != QVariant::Map )
           continue;
         QVariantMap itemVarMap = itemVar.toMap();
         if ( !itemVarMap.contains( QStringLiteral( "label" ) ) || !itemVarMap.contains( QStringLiteral( "color" ) ) || !itemVarMap.contains( QStringLiteral( "value" ) ) )
           continue;
 
         item.label = itemVarMap.value( QStringLiteral( "label" ) ).toString();
-        item.color = QgsColorUtils::colorFromString( itemVarMap.value( QStringLiteral( "color" ) ).toString() );
+        item.color = QgsSymbolLayerUtils::decodeColor( itemVarMap.value( QStringLiteral( "color" ) ).toString() );
         item.value = itemVarMap.value( QStringLiteral( "value" ) ).toDouble();
 
         colorRampItemList.append( item );
@@ -1143,17 +1139,17 @@ void QgsInterpolatedLineSymbolLayer::render( const QVector< QPolygonF > &parts, 
 
   if ( mLineRender.interpolatedLineWidth().isVariableWidth() )
   {
-    if ( mDataDefinedProperties.isActive( QgsSymbolLayer::Property::LineStartWidthValue ) )
+    if ( mDataDefinedProperties.isActive( QgsSymbolLayer::PropertyLineStartWidthValue ) )
     {
-      startValWidth = mDataDefinedProperties.valueAsDouble( QgsSymbolLayer::Property::LineStartWidthValue, context.expressionContext(), 0, &ok );
+      startValWidth = mDataDefinedProperties.valueAsDouble( QgsSymbolLayer::PropertyLineStartWidthValue, context.expressionContext(), 0, &ok );
       if ( !ok )
         return;
     }
 
     double endValWidth = 0;
-    if ( mDataDefinedProperties.isActive( QgsSymbolLayer::Property::LineEndWidthValue ) )
+    if ( mDataDefinedProperties.isActive( QgsSymbolLayer::PropertyLineEndWidthValue ) )
     {
-      endValWidth = mDataDefinedProperties.valueAsDouble( QgsSymbolLayer::Property::LineEndWidthValue, context.expressionContext(), 0, &ok );
+      endValWidth = mDataDefinedProperties.valueAsDouble( QgsSymbolLayer::PropertyLineEndWidthValue, context.expressionContext(), 0, &ok );
       if ( !ok )
         return;
     }
@@ -1163,17 +1159,17 @@ void QgsInterpolatedLineSymbolLayer::render( const QVector< QPolygonF > &parts, 
 
   if ( mLineRender.interpolatedColor().coloringMethod() == QgsInterpolatedLineColor::ColorRamp )
   {
-    if ( mDataDefinedProperties.isActive( QgsSymbolLayer::Property::LineStartColorValue ) )
+    if ( mDataDefinedProperties.isActive( QgsSymbolLayer::PropertyLineStartColorValue ) )
     {
-      startValColor = mDataDefinedProperties.valueAsDouble( QgsSymbolLayer::Property::LineStartColorValue, context.expressionContext(), 0, &ok );
+      startValColor = mDataDefinedProperties.valueAsDouble( QgsSymbolLayer::PropertyLineStartColorValue, context.expressionContext(), 0, &ok );
       if ( !ok )
         return;
     }
 
     double endValColor = 0;
-    if ( mDataDefinedProperties.isActive( QgsSymbolLayer::Property::LineEndColorValue ) )
+    if ( mDataDefinedProperties.isActive( QgsSymbolLayer::PropertyLineEndColorValue ) )
     {
-      endValColor = mDataDefinedProperties.valueAsDouble( QgsSymbolLayer::Property::LineEndColorValue, context.expressionContext(), 0, &ok );
+      endValColor = mDataDefinedProperties.valueAsDouble( QgsSymbolLayer::PropertyLineEndColorValue, context.expressionContext(), 0, &ok );
       if ( !ok )
         return;
     }
@@ -1191,7 +1187,7 @@ void QgsInterpolatedLineSymbolLayer::render( const QVector< QPolygonF > &parts, 
 
       const double v1c = startValColor + variationPerMapUnitColor * lengthFromStart;
       const double v1w = startValWidth + variationPerMapUnitWidth * lengthFromStart;
-      lengthFromStart += QgsGeometryUtilsBase::distance2D( p1.x(), p1.y(), p2.x(), p2.y() );
+      lengthFromStart += std::sqrt( ( p1.x() - p2.x() ) * ( p1.x() - p2.x() ) + ( p1.y() - p2.y() ) * ( p1.y() - p2.y() ) );
       const double v2c = startValColor + variationPerMapUnitColor * lengthFromStart;
       const double v2w = startValWidth + variationPerMapUnitWidth * lengthFromStart;
       mLineRender.renderInDeviceCoordinates( v1c, v2c, v1w, v2w, p1, p2, context );

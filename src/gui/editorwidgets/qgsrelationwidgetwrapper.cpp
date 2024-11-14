@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsrelationwidgetwrapper.h"
-#include "moc_qgsrelationwidgetwrapper.cpp"
 
 #include "qgsrelationeditorwidget.h"
 #include "qgsattributeeditorcontext.h"

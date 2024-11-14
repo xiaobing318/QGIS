@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgspointcloudlayer3drendererwidget.h"
-#include "moc_qgspointcloudlayer3drendererwidget.cpp"
 
 #include "qgspointcloud3dsymbolwidget.h"
 #include "qgspointcloudlayer3drenderer.h"
@@ -45,7 +44,7 @@ QgsPointCloudLayer3DRendererWidget::QgsPointCloudLayer3DRendererWidget( QgsPoint
 
 void QgsPointCloudLayer3DRendererWidget::setRenderer( const QgsPointCloudLayer3DRenderer *renderer )
 {
-  if ( renderer )
+  if ( renderer != nullptr )
   {
     mWidgetPointCloudSymbol->setSymbol( const_cast<QgsPointCloud3DSymbol *>( renderer->symbol() ) );
     mWidgetPointCloudSymbol->setPointBudget( renderer->pointRenderingBudget() );
@@ -92,6 +91,7 @@ void QgsPointCloudLayer3DRendererWidget::syncToLayer( QgsMapLayer *layer )
   if ( r && r->type() == QLatin1String( "pointcloud" ) )
   {
     pointCloudRenderer = static_cast<QgsPointCloudLayer3DRenderer *>( r );
+    pointCloudRenderer->setSymbol( mWidgetPointCloudSymbol->symbol() );
   }
   setRenderer( pointCloudRenderer );
   mWidgetPointCloudSymbol->setEnabled( true );
@@ -131,7 +131,7 @@ bool QgsPointCloudLayer3DRendererWidgetFactory::supportLayerPropertiesDialog() c
 
 bool QgsPointCloudLayer3DRendererWidgetFactory::supportsLayer( QgsMapLayer *layer ) const
 {
-  return layer->type() == Qgis::LayerType::PointCloud;
+  return layer->type() == QgsMapLayerType::PointCloudLayer;
 }
 
 QString QgsPointCloudLayer3DRendererWidgetFactory::layerPropertiesPagePositionHint() const

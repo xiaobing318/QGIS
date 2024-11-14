@@ -21,6 +21,7 @@
 #include "ui_qgspointdisplacementrendererwidgetbase.h"
 #include "qgis_sip.h"
 #include "qgsrendererwidget.h"
+#include "qgsexpressioncontextgenerator.h"
 #include "qgis_gui.h"
 
 class QgsPointDisplacementRenderer;
@@ -29,7 +30,7 @@ class QgsPointDisplacementRenderer;
  * \ingroup gui
  * \class QgsPointDisplacementRendererWidget
  */
-class GUI_EXPORT QgsPointDisplacementRendererWidget: public QgsRendererWidget, private Ui::QgsPointDisplacementRendererWidgetBase
+class GUI_EXPORT QgsPointDisplacementRendererWidget: public QgsRendererWidget, public QgsExpressionContextGenerator, private Ui::QgsPointDisplacementRendererWidgetBase
 {
     Q_OBJECT
   public:

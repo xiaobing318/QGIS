@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsmenuheader.h                                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -14,6 +14,8 @@ class QgsMenuHeader : QWidget
 Custom widget for displaying subheaders within a QMenu in a standard style.
 
 .. seealso:: :py:class:`QgsMenuHeaderWidgetAction`
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -44,6 +46,8 @@ class QgsMenuHeaderWidgetAction: QWidgetAction
 Custom QWidgetAction for displaying subheaders within a QMenu in a standard style.
 
 .. seealso:: :py:class:`QgsMenuHeader`
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -63,5 +67,5 @@ Constructor for QgsMenuHeaderWidgetAction, showing the specified ``text``.
  *                                                                      *
  * src/gui/qgsmenuheader.h                                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -10,46 +10,43 @@ __date__ = '2016-07-06'
 __copyright__ = 'Copyright 2016, The QGIS Project'
 
 import os
-import re
 
-from qgis.PyQt.QtCore import QDate, QDateTime, QTime, QVariant
+import qgis  # NOQA
+from qgis.PyQt.QtCore import QDate, QTime, QDateTime, QVariant
 from qgis.PyQt.QtSql import QSqlDatabase, QSqlQuery
 from qgis.core import (
-    NULL,
     Qgis,
-    QgsCoordinateReferenceSystem,
-    QgsCredentials,
-    QgsDataProvider,
-    QgsFeature,
+    QgsSettings,
+    QgsVectorLayer,
     QgsFeatureRequest,
+    NULL,
+    QgsProject,
+    QgsTransactionGroup,
+    QgsFeature,
+    QgsGeometry,
+    QgsWkbTypes,
+    QgsDataProvider,
+    QgsVectorLayerExporter,
     QgsField,
     QgsFields,
-    QgsGeometry,
-    QgsProject,
+    QgsCoordinateReferenceSystem,
     QgsProjUtils,
-    QgsProviderRegistry,
-    QgsSettings,
-    QgsTransactionGroup,
-    QgsVectorLayer,
-    QgsVectorLayerExporter,
-    QgsWkbTypes,
+    QgsProviderRegistry
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 from providertestbase import ProviderTestCase
-from utilities import compareWkt, unitTestDataPath
+from utilities import unitTestDataPath, compareWkt
 
 start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestPyQgsOracleProvider(QgisTestCase, ProviderTestCase):
+class TestPyQgsOracleProvider(unittest.TestCase, ProviderTestCase):
 
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
-        super(TestPyQgsOracleProvider, cls).setUpClass()
         cls.dbconn = "host=localhost dbname=XEPDB1 port=1521 user='QGIS' password='qgis'"
         if 'QGIS_ORACLETEST_DB' in os.environ:
             cls.dbconn = os.environ['QGIS_ORACLETEST_DB']
@@ -71,10 +68,14 @@ class TestPyQgsOracleProvider(QgisTestCase, ProviderTestCase):
         cls.conn.setPassword('qgis')
         assert cls.conn.open()
 
+    @classmethod
+    def tearDownClass(cls):
+        """Run after all tests"""
+
     def execSQLCommand(self, sql, ignore_errors=False):
         self.assertTrue(self.conn)
         query = QSqlQuery(self.conn)
-        res = query.exec(sql)
+        res = query.exec_(sql)
         if not ignore_errors:
             self.assertTrue(res, sql + ': ' + query.lastError().text())
         query.finish()
@@ -249,81 +250,6 @@ class TestPyQgsOracleProvider(QgisTestCase, ProviderTestCase):
         self.assertEqual(self.source.defaultValue(2), "'qgis'")
         self.assertEqual(self.source.defaultValue(3), "'qgis'")
 
-    def testValidLayerDiscoverRelationsSimple(self):
-        """
-        Test implicit relations that can be discovers between tables, based on declared foreign keys.
-        """
-        vl = QgsVectorLayer(f'{self.dbconn} table="QGIS"."REFERENCING_TABLE_SIMPLE" sql=', "test_referencing_table_simple", "oracle")
-        self.assertTrue(vl.isValid())
-        QgsProject.instance().addMapLayer(vl)
-        vls = [
-            QgsVectorLayer(f'{self.dbconn} table="QGIS"."REFERENCED_TABLE_1" sql=', "test_referenced_table_1", "oracle"),
-        ]
-        for lyr in vls:
-            self.assertTrue(lyr.isValid())
-            QgsProject.instance().addMapLayer(lyr)
-        relations = vl.dataProvider().discoverRelations(vl, vls)
-        self.assertEqual(len(relations), 1)
-        for i, r in enumerate(relations):
-            self.assertEqual(r.referencedLayer(), vls[i])
-
-    def testValidLayerDiscoverRelationsMulti(self):
-        """
-        Test implicit relations that can be discovers between tables, based on declared foreign keys.
-        The test also checks that three distinct relations can be discovered when three foreign keys are declared
-        - two fk referencing the same layer
-        - the third fk referencing another layer
-        """
-        vl = QgsVectorLayer(f'{self.dbconn} table="QGIS"."REFERENCING_TABLE_MULTI" sql=', "test_referencing_table_multi", "oracle")
-        QgsProject.instance().addMapLayer(vl)
-        self.assertTrue(vl.isValid())
-        vls = [
-            QgsVectorLayer(f'{self.dbconn} table="QGIS"."REFERENCED_TABLE_1" sql=', "test_referenced_table_1", "oracle"),
-            QgsVectorLayer(f'{self.dbconn} table="QGIS"."REFERENCED_TABLE_2" sql=', "test_referenced_table_2", "oracle"),
-            QgsVectorLayer(f'{self.dbconn} table="QGIS"."POINT_DATA" (GEOM) srid=4326 type=POINT sql=', "testpoints", "oracle")
-        ]
-        for lyr in vls:
-            self.assertTrue(lyr.isValid())
-            QgsProject.instance().addMapLayer(lyr)
-        relations = vl.dataProvider().discoverRelations(vl, vls)
-        self.assertEqual(len(relations), 3)
-
-    def testValidLayerDiscoverRelationsComposite(self):
-        """
-        Test implicit relations that can be discovers between tables, based on composite declared foreign keys.
-        """
-        vl = QgsVectorLayer(f'{self.dbconn} table="QGIS"."REFERENCING_TABLE_COMPOSITE" sql=', "test_referencing_table_composite", "oracle")
-        QgsProject.instance().addMapLayer(vl)
-        self.assertTrue(vl.isValid())
-        vls = [
-            QgsVectorLayer(f'{self.dbconn} table="QGIS"."REFERENCED_TABLE_COMPOSITE" sql=', "test_referenced_table_composite", "oracle"),
-            QgsVectorLayer(f'{self.dbconn} table="QGIS"."REFERENCED_TABLE_2" sql=', "test_referenced_table_2", "oracle"),
-            QgsVectorLayer(f'{self.dbconn} table="QGIS"."POINT_DATA" (GEOM) srid=4326 type=POINT sql=', "testpoints", "oracle")
-        ]
-        for lyr in vls:
-            self.assertTrue(lyr.isValid())
-            QgsProject.instance().addMapLayer(lyr)
-        relations = vl.dataProvider().discoverRelations(vl, vls)
-        self.assertEqual(len(relations), 1)
-        self.assertEqual(len(relations[0].fieldPairs()), 2)
-
-    def testInvalidLayerDiscoverRelations(self):
-        """
-        Test that discover relations feature can be used on invalid layer.
-        """
-        vl = QgsVectorLayer(f'{self.dbconn} table="QGIS"."invalid_layer"', "invalid_layer", "oracle")
-        self.assertFalse(vl.isValid())
-        self.assertEqual(vl.dataProvider().discoverRelations(vl, []), [])
-
-    def testValidLayerDiscoverRelationsNone(self):
-        """
-        Test checks that discover relation feature can be used on a layer that has no relation.
-        """
-        vl = QgsVectorLayer('%s table="QGIS"."POINT_DATA" (GEOM) srid=4326 type=POINT sql=' %
-                            (self.dbconn), "testpoints", "oracle")
-        self.assertTrue(vl.isValid())
-        self.assertEqual(vl.dataProvider().discoverRelations(vl, []), [])
-
     def testPoints(self):
         vl = QgsVectorLayer('%s table="QGIS"."POINT_DATA" (GEOM) srid=4326 type=POINT sql=' %
                             (self.dbconn), "testpoints", "oracle")
@@ -331,10 +257,10 @@ class TestPyQgsOracleProvider(QgisTestCase, ProviderTestCase):
 
         features = [f for f in vl.getFeatures()]
         self.assertEqual(features[0].geometry().asWkt(), 'Point (1 2)')
-        self.assertEqual(features[1].geometry().asWkt(), 'Point Z (1 2 3)')
-        self.assertEqual(features[2].geometry().asWkt(), 'MultiPoint Z ((1 2 3),(4 5 6))')
+        self.assertEqual(features[1].geometry().asWkt(), 'PointZ (1 2 3)')
+        self.assertEqual(features[2].geometry().asWkt(), 'MultiPointZ ((1 2 3),(4 5 6))')
         self.assertEqual(features[3].geometry().asWkt(), 'MultiPoint ((1 2),(3 4))')
-        self.assertEqual(features[4].geometry().asWkt(), 'MultiPoint Z ((1 2 3),(4 5 6))')
+        self.assertEqual(features[4].geometry().asWkt(), 'MultiPointZ ((1 2 3),(4 5 6))')
         self.assertEqual(features[5].geometry().asWkt(), 'Point (1 2)')
         self.assertEqual(features[6].geometry().asWkt(), 'Point (3 4)')
         self.assertEqual(features[7].geometry().asWkt(), 'Point (5 6)')
@@ -359,7 +285,7 @@ class TestPyQgsOracleProvider(QgisTestCase, ProviderTestCase):
         self.assertTrue(points_z.isValid())
 
         fid += 1
-        self.check_geom(points_z, fid, 'Point Z (1 2 3)')
+        self.check_geom(points_z, fid, 'PointZ (1 2 3)')
 
         multipoints = QgsVectorLayer(
             self.dbconn + ' sslmode=disable key=\'pk\' srid=3857 type=MultiPoint table="QGIS"."EDIT_POINTS_DATA" (GEOM) sql=',
@@ -450,7 +376,7 @@ class TestPyQgsOracleProvider(QgisTestCase, ProviderTestCase):
             self.assertTrue(self.conn)
             query = QSqlQuery(self.conn)
             sql = f"""select p.GEOM.st_isvalid() from QGIS.{table} p where "pk" = {pk}"""
-            res = query.exec(sql)
+            res = query.exec_(sql)
             self.assertTrue(res, sql + ': ' + query.lastError().text())
             query.next()
             valid = query.value(0)
@@ -1035,7 +961,7 @@ class TestPyQgsOracleProvider(QgisTestCase, ProviderTestCase):
         attributes = [feat.attributes() for feat in vl.getFeatures()]
         self.assertEqual(attributes, [[1, 'qgis'], [2, 'test']])
 
-        vl.dataProvider().setProviderProperty(QgsDataProvider.ProviderProperty.EvaluateDefaultValues, True)
+        vl.dataProvider().setProviderProperty(QgsDataProvider.EvaluateDefaultValues, True)
 
         # feature with already evaluated default value
         feat1 = QgsFeature(vl.fields())
@@ -1056,7 +982,7 @@ class TestPyQgsOracleProvider(QgisTestCase, ProviderTestCase):
         self.execSQLCommand("DELETE FROM user_sdo_geom_metadata  where TABLE_NAME='EMPTY_LAYER'", ignore_errors=True)
 
         uri = self.dbconn + "srid=4326 type=POINT table=\"EMPTY_LAYER\" (GEOM)"
-        exporter = QgsVectorLayerExporter(uri=uri, provider='oracle', fields=QgsFields(), geometryType=QgsWkbTypes.Type.Point, crs=QgsCoordinateReferenceSystem('EPSG:4326'), overwrite=True)
+        exporter = QgsVectorLayerExporter(uri=uri, provider='oracle', fields=QgsFields(), geometryType=QgsWkbTypes.Point, crs=QgsCoordinateReferenceSystem('EPSG:4326'), overwrite=True)
         self.assertEqual(exporter.errorCount(), 0)
         self.assertEqual(exporter.errorCode(), 0)
 
@@ -1065,7 +991,7 @@ class TestPyQgsOracleProvider(QgisTestCase, ProviderTestCase):
 
         # check that metadata table has been correctly populated
         query = QSqlQuery(self.conn)
-        self.assertTrue(query.exec("SELECT column_name, srid FROM user_sdo_geom_metadata WHERE table_name = 'EMPTY_LAYER'"))
+        self.assertTrue(query.exec_("SELECT column_name, srid FROM user_sdo_geom_metadata WHERE table_name = 'EMPTY_LAYER'"))
         self.assertTrue(query.next())
         self.assertEqual(query.value(0), "GEOM")
         # Cannot work with proj version < 7 because it cannot identify properly EPSG:4326
@@ -1091,7 +1017,7 @@ class TestPyQgsOracleProvider(QgisTestCase, ProviderTestCase):
         vl.dataProvider().addFeatures([f])
 
         query = QSqlQuery(self.conn)
-        self.assertTrue(query.exec('SELECT "l"."GEOM"."SDO_SRID" from "QGIS"."EMPTY_LAYER" "l"'))
+        self.assertTrue(query.exec_('SELECT "l"."GEOM"."SDO_SRID" from "QGIS"."EMPTY_LAYER" "l"'))
         self.assertTrue(query.next())
         # Cannot work with proj version < 7 because it cannot identify properly EPSG:4326
         # TODO remove this when PROJ will be >= 7
@@ -1119,7 +1045,7 @@ class TestPyQgsOracleProvider(QgisTestCase, ProviderTestCase):
         fields.append(QgsField("INTEGER_T", QVariant.Int))
 
         uri = self.dbconn + "table=\"ASPATIAL_LAYER\""
-        exporter = QgsVectorLayerExporter(uri=uri, provider='oracle', fields=fields, geometryType=QgsWkbTypes.Type.NoGeometry, crs=QgsCoordinateReferenceSystem(), overwrite=True)
+        exporter = QgsVectorLayerExporter(uri=uri, provider='oracle', fields=fields, geometryType=QgsWkbTypes.NoGeometry, crs=QgsCoordinateReferenceSystem(), overwrite=True)
         self.assertEqual(exporter.errorCount(), 0)
         self.assertEqual(exporter.errorCode(), 0)
 
@@ -1140,8 +1066,8 @@ class TestPyQgsOracleProvider(QgisTestCase, ProviderTestCase):
         fields = QgsFields()
 
         uri = self.dbconn + "table=\"INVALID_LAYER\""
-        exporter = QgsVectorLayerExporter(uri=uri, provider='oracle', fields=fields, geometryType=QgsWkbTypes.Type.NoGeometry, crs=QgsCoordinateReferenceSystem(), overwrite=True)
-        self.assertEqual(exporter.errorCode(), QgsVectorLayerExporter.ExportError.ErrCreateDataSource)
+        exporter = QgsVectorLayerExporter(uri=uri, provider='oracle', fields=fields, geometryType=QgsWkbTypes.NoGeometry, crs=QgsCoordinateReferenceSystem(), overwrite=True)
+        self.assertEqual(exporter.errorCode(), QgsVectorLayerExporter.ErrCreateDataSource)
 
     def testAddEmptyFeature(self):
         """
@@ -1151,7 +1077,7 @@ class TestPyQgsOracleProvider(QgisTestCase, ProviderTestCase):
         def countFeature(table_name):
             self.assertTrue(self.conn)
             query = QSqlQuery(self.conn)
-            res = query.exec(f'SELECT count(*) FROM "QGIS"."{table_name}"')
+            res = query.exec_(f'SELECT count(*) FROM "QGIS"."{table_name}"')
             self.assertTrue(query.next())
             count = query.value(0)
             query.finish()
@@ -1200,7 +1126,7 @@ class TestPyQgsOracleProvider(QgisTestCase, ProviderTestCase):
         fields.append(QgsField(long_name, QVariant.Int))
 
         uri = self.dbconn + "table=\"LONGFIELD_LAYER\""
-        exporter = QgsVectorLayerExporter(uri=uri, provider='oracle', fields=fields, geometryType=QgsWkbTypes.Type.Point, crs=QgsCoordinateReferenceSystem("EPSG:4326"), overwrite=True)
+        exporter = QgsVectorLayerExporter(uri=uri, provider='oracle', fields=fields, geometryType=QgsWkbTypes.Point, crs=QgsCoordinateReferenceSystem("EPSG:4326"), overwrite=True)
         self.assertEqual(exporter.errorCount(), 0)
         self.assertEqual(exporter.errorCode(), 0)
 
@@ -1222,7 +1148,7 @@ class TestPyQgsOracleProvider(QgisTestCase, ProviderTestCase):
         fields.append(QgsField("test", QVariant.Int))
 
         uri = self.dbconn + "table=\"lowercase_layer\" (GEOM)"
-        exporter = QgsVectorLayerExporter(uri=uri, provider='oracle', fields=fields, geometryType=QgsWkbTypes.Type.Point, crs=QgsCoordinateReferenceSystem("EPSG:4326"), overwrite=True)
+        exporter = QgsVectorLayerExporter(uri=uri, provider='oracle', fields=fields, geometryType=QgsWkbTypes.Point, crs=QgsCoordinateReferenceSystem("EPSG:4326"), overwrite=True)
         self.assertEqual(exporter.errorCode(), 2)
 
         # geom column is lower case -> fails
@@ -1232,7 +1158,7 @@ class TestPyQgsOracleProvider(QgisTestCase, ProviderTestCase):
         fields.append(QgsField("test", QVariant.Int))
 
         uri = self.dbconn + "table=\"LOWERCASEGEOM\" (geom)"
-        exporter = QgsVectorLayerExporter(uri=uri, provider='oracle', fields=fields, geometryType=QgsWkbTypes.Type.Point, crs=QgsCoordinateReferenceSystem("EPSG:4326"), overwrite=True)
+        exporter = QgsVectorLayerExporter(uri=uri, provider='oracle', fields=fields, geometryType=QgsWkbTypes.Point, crs=QgsCoordinateReferenceSystem("EPSG:4326"), overwrite=True)
         self.assertEqual(exporter.errorCode(), 2)
 
         # table and geom column are uppercase -> success
@@ -1244,7 +1170,7 @@ class TestPyQgsOracleProvider(QgisTestCase, ProviderTestCase):
 
         uri = self.dbconn + "table=\"UPPERCASEGEOM_LAYER\" (GEOM)"
 
-        exporter = QgsVectorLayerExporter(uri=uri, provider='oracle', fields=fields, geometryType=QgsWkbTypes.Type.Point, crs=QgsCoordinateReferenceSystem("EPSG:4326"), overwrite=True)
+        exporter = QgsVectorLayerExporter(uri=uri, provider='oracle', fields=fields, geometryType=QgsWkbTypes.Point, crs=QgsCoordinateReferenceSystem("EPSG:4326"), overwrite=True)
         print(exporter.errorMessage())
         self.assertEqual(exporter.errorCount(), 0)
         self.assertEqual(exporter.errorCode(), 0)
@@ -1255,27 +1181,27 @@ class TestPyQgsOracleProvider(QgisTestCase, ProviderTestCase):
         """
 
         testdata = [
-            ("POINT", 2, "SDO_GEOMETRY( 2001,5698,SDO_POINT_TYPE(1, 2, NULL), NULL, NULL)", QgsWkbTypes.Type.Point),
-            ("POINTZ", 3, "SDO_GEOMETRY( 3001,5698,SDO_POINT_TYPE(1, 2, 3), NULL, NULL)", QgsWkbTypes.Type.PointZ),
+            ("POINT", 2, "SDO_GEOMETRY( 2001,5698,SDO_POINT_TYPE(1, 2, NULL), NULL, NULL)", QgsWkbTypes.Point),
+            ("POINTZ", 3, "SDO_GEOMETRY( 3001,5698,SDO_POINT_TYPE(1, 2, 3), NULL, NULL)", QgsWkbTypes.PointZ),
             # there is difference between line and curve so everything is a compoundcurve to cover both
             # https://docs.oracle.com/database/121/SPATL/sdo_geometry-object-type.htm
-            ("LINE", 2, "SDO_GEOMETRY( 2002,5698,NULL, SDO_ELEM_INFO_ARRAY(1,2,1), SDO_ORDINATE_ARRAY(1,2,3,4,5,6))", QgsWkbTypes.Type.CompoundCurve),
-            ("LINEZ", 3, "SDO_GEOMETRY(3002,5698,NULL, SDO_ELEM_INFO_ARRAY(1,2,1), SDO_ORDINATE_ARRAY(1,2,3,4,5,6,7,8,9))", QgsWkbTypes.Type.CompoundCurveZ),
-            ("CURVE", 2, "SDO_GEOMETRY(2002,5698,NULL, SDO_ELEM_INFO_ARRAY(1, 2, 2), SDO_ORDINATE_ARRAY(1, 2, 5, 4, 7, 2.2, 10, .1, 13, 4))", QgsWkbTypes.Type.CompoundCurve),
-            ("CURVEZ", 3, "SDO_GEOMETRY(3002,5698,NULL, SDO_ELEM_INFO_ARRAY(1, 2, 2), SDO_ORDINATE_ARRAY(1, 2, 1, 5, 4, 2, 7, 2.2, 3, 10, 0.1, 4, 13, 4, 5))", QgsWkbTypes.Type.CompoundCurveZ),
-            ("POLYGON", 2, "SDO_GEOMETRY(2003,5698,NULL, SDO_ELEM_INFO_ARRAY(1,1003,1), SDO_ORDINATE_ARRAY(1, 2, 11, 2, 11, 22, 1, 22, 1, 2))", QgsWkbTypes.Type.Polygon),
-            ("POLYGONZ", 3, "SDO_GEOMETRY(3003,5698,NULL, SDO_ELEM_INFO_ARRAY(1,1003,1), SDO_ORDINATE_ARRAY(1, 2, 3, 11, 2, 13, 11, 22, 15, 1, 22, 7, 1, 2, 3))", QgsWkbTypes.Type.PolygonZ),
+            ("LINE", 2, "SDO_GEOMETRY( 2002,5698,NULL, SDO_ELEM_INFO_ARRAY(1,2,1), SDO_ORDINATE_ARRAY(1,2,3,4,5,6))", QgsWkbTypes.CompoundCurve),
+            ("LINEZ", 3, "SDO_GEOMETRY(3002,5698,NULL, SDO_ELEM_INFO_ARRAY(1,2,1), SDO_ORDINATE_ARRAY(1,2,3,4,5,6,7,8,9))", QgsWkbTypes.CompoundCurveZ),
+            ("CURVE", 2, "SDO_GEOMETRY(2002,5698,NULL, SDO_ELEM_INFO_ARRAY(1, 2, 2), SDO_ORDINATE_ARRAY(1, 2, 5, 4, 7, 2.2, 10, .1, 13, 4))", QgsWkbTypes.CompoundCurve),
+            ("CURVEZ", 3, "SDO_GEOMETRY(3002,5698,NULL, SDO_ELEM_INFO_ARRAY(1, 2, 2), SDO_ORDINATE_ARRAY(1, 2, 1, 5, 4, 2, 7, 2.2, 3, 10, 0.1, 4, 13, 4, 5))", QgsWkbTypes.CompoundCurveZ),
+            ("POLYGON", 2, "SDO_GEOMETRY(2003,5698,NULL, SDO_ELEM_INFO_ARRAY(1,1003,1), SDO_ORDINATE_ARRAY(1, 2, 11, 2, 11, 22, 1, 22, 1, 2))", QgsWkbTypes.Polygon),
+            ("POLYGONZ", 3, "SDO_GEOMETRY(3003,5698,NULL, SDO_ELEM_INFO_ARRAY(1,1003,1), SDO_ORDINATE_ARRAY(1, 2, 3, 11, 2, 13, 11, 22, 15, 1, 22, 7, 1, 2, 3))", QgsWkbTypes.PolygonZ),
 
-            ("MULTIPOINT", 2, "SDO_GEOMETRY( 2005,5698,NULL, sdo_elem_info_array (1,1,1, 3,1,1), sdo_ordinate_array (1,2, 3,4))", QgsWkbTypes.Type.MultiPoint),
-            ("MULTIPOINTZ", 3, "SDO_GEOMETRY( 3005,5698,NULL, sdo_elem_info_array (1,1,2), sdo_ordinate_array (1,2,3, 4,5,6))", QgsWkbTypes.Type.MultiPointZ),
+            ("MULTIPOINT", 2, "SDO_GEOMETRY( 2005,5698,NULL, sdo_elem_info_array (1,1,1, 3,1,1), sdo_ordinate_array (1,2, 3,4))", QgsWkbTypes.MultiPoint),
+            ("MULTIPOINTZ", 3, "SDO_GEOMETRY( 3005,5698,NULL, sdo_elem_info_array (1,1,2), sdo_ordinate_array (1,2,3, 4,5,6))", QgsWkbTypes.MultiPointZ),
             # there is difference between line and curve so everything is a compoundcurve to cover both
             # https://docs.oracle.com/database/121/SPATL/sdo_geometry-object-type.htm
-            ("MULTILINE", 2, "SDO_GEOMETRY(2006,5698,NULL, SDO_ELEM_INFO_ARRAY(1,2,1, 5,2,1), SDO_ORDINATE_ARRAY(1, 2, 3, 4, 5, 6, 7, 8, 9, 10))", QgsWkbTypes.Type.MultiCurve),
-            ("MULTILINEZ", 3, "SDO_GEOMETRY(3006,5698,NULL, SDO_ELEM_INFO_ARRAY(1,2,1, 7,2,1), SDO_ORDINATE_ARRAY(1, 2, 11, 3, 4, -11, 5, 6, 9, 7, 8, 1, 9, 10, -3))", QgsWkbTypes.Type.MultiCurveZ),
-            ("MULTICURVE", 2, "SDO_GEOMETRY(2006,5698,NULL, SDO_ELEM_INFO_ARRAY(1,2,2, 11,2,2), SDO_ORDINATE_ARRAY(1, 2, 5, 4, 7, 2.2, 10, .1, 13, 4, -11, -3, 5, 7, 10, -1))", QgsWkbTypes.Type.MultiCurve),
-            ("MULTICURVEZ", 3, "SDO_GEOMETRY(3006,5698,NULL, SDO_ELEM_INFO_ARRAY(1,2,2, 16,2,2), SDO_ORDINATE_ARRAY(1, 2, 1, 5, 4, 2, 7, 2.2, 3, 10, .1, 4, 13, 4, 5, -11, -3, 6, 5, 7, 8, 10, -1, 9))", QgsWkbTypes.Type.MultiCurveZ),
-            ("MULTIPOLYGON", 2, "SDO_GEOMETRY(2007,5698,NULL, SDO_ELEM_INFO_ARRAY(1,1003,1, 11,1003,1, 21,2003,1, 29,2003,1), SDO_ORDINATE_ARRAY(1, 2, 11, 2, 11, 22, 1, 22, 1, 2, 1, 2, 11, 2, 11, 22, 1, 22, 1, 2, 5, 6, 8, 9, 8, 6, 5, 6, 3, 4, 5, 6, 3, 6, 3, 4))", QgsWkbTypes.Type.MultiPolygon),
-            ("MULTIPOLYGONZ", 3, "SDO_GEOMETRY(3007,5698,NULL, SDO_ELEM_INFO_ARRAY(1,1003,1, 16,1003,1, 31,2003,1), SDO_ORDINATE_ARRAY(1, 2, 3, 11, 2, 13, 11, 22, 15, 1, 22, 7, 1, 2, 3, 1, 2, 3, 11, 2, 13, 11, 22, 15, 1, 22, 7, 1, 2, 3, 5, 6, 1, 8, 9, -1, 8, 6, 2, 5, 6, 1))", QgsWkbTypes.Type.MultiPolygonZ)
+            ("MULTILINE", 2, "SDO_GEOMETRY(2006,5698,NULL, SDO_ELEM_INFO_ARRAY(1,2,1, 5,2,1), SDO_ORDINATE_ARRAY(1, 2, 3, 4, 5, 6, 7, 8, 9, 10))", QgsWkbTypes.MultiCurve),
+            ("MULTILINEZ", 3, "SDO_GEOMETRY(3006,5698,NULL, SDO_ELEM_INFO_ARRAY(1,2,1, 7,2,1), SDO_ORDINATE_ARRAY(1, 2, 11, 3, 4, -11, 5, 6, 9, 7, 8, 1, 9, 10, -3))", QgsWkbTypes.MultiCurveZ),
+            ("MULTICURVE", 2, "SDO_GEOMETRY(2006,5698,NULL, SDO_ELEM_INFO_ARRAY(1,2,2, 11,2,2), SDO_ORDINATE_ARRAY(1, 2, 5, 4, 7, 2.2, 10, .1, 13, 4, -11, -3, 5, 7, 10, -1))", QgsWkbTypes.MultiCurve),
+            ("MULTICURVEZ", 3, "SDO_GEOMETRY(3006,5698,NULL, SDO_ELEM_INFO_ARRAY(1,2,2, 16,2,2), SDO_ORDINATE_ARRAY(1, 2, 1, 5, 4, 2, 7, 2.2, 3, 10, .1, 4, 13, 4, 5, -11, -3, 6, 5, 7, 8, 10, -1, 9))", QgsWkbTypes.MultiCurveZ),
+            ("MULTIPOLYGON", 2, "SDO_GEOMETRY(2007,5698,NULL, SDO_ELEM_INFO_ARRAY(1,1003,1, 11,1003,1, 21,2003,1, 29,2003,1), SDO_ORDINATE_ARRAY(1, 2, 11, 2, 11, 22, 1, 22, 1, 2, 1, 2, 11, 2, 11, 22, 1, 22, 1, 2, 5, 6, 8, 9, 8, 6, 5, 6, 3, 4, 5, 6, 3, 6, 3, 4))", QgsWkbTypes.MultiPolygon),
+            ("MULTIPOLYGONZ", 3, "SDO_GEOMETRY(3007,5698,NULL, SDO_ELEM_INFO_ARRAY(1,1003,1, 16,1003,1, 31,2003,1), SDO_ORDINATE_ARRAY(1, 2, 3, 11, 2, 13, 11, 22, 15, 1, 22, 7, 1, 2, 3, 1, 2, 3, 11, 2, 13, 11, 22, 15, 1, 22, 7, 1, 2, 3, 5, 6, 1, 8, 9, -1, 8, 6, 2, 5, 6, 1))", QgsWkbTypes.MultiPolygonZ)
         ]
 
         for name, dim, geom, wkb_type in testdata:
@@ -1290,61 +1216,6 @@ class TestPyQgsOracleProvider(QgisTestCase, ProviderTestCase):
             self.assertEqual(layer.wkbType(), wkb_type)
 
             self.execSQLCommand(f'DROP TABLE "QGIS"."DETECT_{name}"')
-
-    def testCredentialsCache(self):
-        """
-        Test that credentials are correctly cached when using
-        """
-        # self.dbconn remove user/pwd
-
-        # get username/password from uri
-
-        user_pattern = "user='([^']*)'"
-        pwd_pattern = "password='([^']*)'"
-
-        rematch = re.search(user_pattern, self.dbconn)
-        self.assertTrue(rematch)
-        self.assertEqual(len(rematch.groups()), 1)
-        username = rematch.groups()[0]
-
-        rematch = re.search(pwd_pattern, self.dbconn)
-        self.assertTrue(rematch)
-        self.assertEqual(len(rematch.groups()), 1)
-        password = rematch.groups()[0]
-
-        conn_wo_login_pwd = re.sub(user_pattern, "", self.dbconn)
-        conn_wo_login_pwd = re.sub(pwd_pattern, "", conn_wo_login_pwd)
-
-        class TestCredentials(QgsCredentials):
-
-            def __init__(self, username, pwd):
-                super().__init__()
-                self.setInstance(self)
-                self.nbCall = 0
-                self.username = username
-                self.pwd = pwd
-
-            def request(self, realm, username, pwd, msg):
-                self.nbCall += 1
-                return (True, self.username, self.pwd)
-
-        credentials = TestCredentials(username, password)
-        self.assertEqual(credentials, QgsCredentials.instance())
-
-        # no user/pwd -> credential is called
-        transaction = QgsProviderRegistry.instance().createTransaction("oracle", conn_wo_login_pwd)
-        self.assertEqual(transaction.begin()[0], True)
-        self.assertEqual(credentials.nbCall, 1)
-
-        # no user/pwd second times -> use cache
-        transaction = QgsProviderRegistry.instance().createTransaction("oracle", conn_wo_login_pwd)
-        self.assertEqual(transaction.begin()[0], True)
-        self.assertEqual(credentials.nbCall, 1)
-
-        # same connection, different user, don't use cache (credentials.nbCall is incremented)
-        transaction = QgsProviderRegistry.instance().createTransaction("oracle", conn_wo_login_pwd + " user='titi'")
-        self.assertEqual(transaction.begin()[0], True)  # test credentials always return valid credentials so it's valid, but we don't care
-        self.assertEqual(credentials.nbCall, 2)
 
 
 if __name__ == '__main__':

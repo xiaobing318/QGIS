@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/symbology/qgssmartgroupeditordialog.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -46,11 +46,7 @@ sets the remove button hidden state to 'hide'
     void destruct();
 
   signals:
-
-    void removed( int id );
-%Docstring
-Emitted when the group with the specified ``id`` is removed.
-%End
+    void removed( int );
 
   protected:
 
@@ -112,5 +108,5 @@ slot to remove the condition with id int
  *                                                                      *
  * src/gui/symbology/qgssmartgroupeditordialog.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

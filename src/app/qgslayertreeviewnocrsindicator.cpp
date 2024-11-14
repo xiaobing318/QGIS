@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgslayertreeviewnocrsindicator.h"
-#include "moc_qgslayertreeviewnocrsindicator.cpp"
 #include "qgslayertreeview.h"
 #include "qgslayertree.h"
 #include "qgslayertreemodel.h"

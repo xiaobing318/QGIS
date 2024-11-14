@@ -40,7 +40,6 @@ class QgsMultiRingConstantBufferAlgorithm : public QgsProcessingFeatureBasedAlgo
     QString group() const override;
     QString groupId() const override;
     QString shortHelpString() const override;
-    Qgis::ProcessingAlgorithmDocumentationFlags documentationFlags() const override;
     QgsMultiRingConstantBufferAlgorithm *createInstance() const override SIP_FACTORY;
     void initParameters( const QVariantMap &configuration = QVariantMap() ) override;
     bool supportInPlaceEdit( const QgsMapLayer *layer ) const override;
@@ -49,10 +48,10 @@ class QgsMultiRingConstantBufferAlgorithm : public QgsProcessingFeatureBasedAlgo
 
     QString outputName() const override;
     QgsFields outputFields( const QgsFields &inputFields ) const override;
-    Qgis::ProcessingSourceType outputLayerType() const override { return Qgis::ProcessingSourceType::VectorPolygon; }
-    Qgis::ProcessingFeatureSourceFlags sourceFlags() const override;
+    QgsProcessing::SourceType outputLayerType() const override { return QgsProcessing::TypeVectorPolygon; }
+    QgsProcessingFeatureSource::Flag sourceFlags() const override;
     QgsFeatureSink::SinkFlags sinkFlags() const override;
-    Qgis::WkbType outputWkbType( Qgis::WkbType inputWkbType ) const override { Q_UNUSED( inputWkbType ) return Qgis::WkbType::MultiPolygon; }
+    QgsWkbTypes::Type outputWkbType( QgsWkbTypes::Type inputWkbType ) const override { Q_UNUSED( inputWkbType ) return QgsWkbTypes::MultiPolygon; }
     bool prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
     QgsFeatureList processFeature( const QgsFeature &feature,  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 

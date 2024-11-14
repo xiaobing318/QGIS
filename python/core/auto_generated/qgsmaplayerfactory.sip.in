@@ -3,10 +3,8 @@
  *                                                                      *
  * src/core/qgsmaplayerfactory.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
-
-
 
 
 
@@ -25,19 +23,20 @@ Contains utility functions for creating map layers.
 %End
   public:
 
-    static Qgis::LayerType typeFromString( const QString &string, bool &ok /Out/ );
+    static QgsMapLayerType typeFromString( const QString &string, bool &ok /Out/ );
 %Docstring
 Returns the map layer type corresponding a ``string`` value.
 
 :param string: string to convert to map layer type
 
 :return: - converted map layer type
-         - ok: ``True`` if ``string`` was successfully converted to a map layer type
+         - ok: will be set to ``True`` if ``string`` was successfully converted to a map layer type
+
 
 .. seealso:: :py:func:`typeToString`
 %End
 
-    static QString typeToString( Qgis::LayerType type );
+    static QString typeToString( QgsMapLayerType type );
 %Docstring
 Converts a map layer ``type`` to a string value.
 
@@ -55,11 +54,9 @@ Constructor for LayerOptions with ``transformContext``.
       QgsCoordinateTransformContext transformContext;
 
       bool loadDefaultStyle;
-
-      bool loadAllStoredStyles;
     };
 
-    static QgsMapLayer *createLayer( const QString &uri, const QString &name, Qgis::LayerType type, const LayerOptions &options,
+    static QgsMapLayer *createLayer( const QString &uri, const QString &name, QgsMapLayerType type, const LayerOptions &options,
                                      const QString &provider = QString() ) /Factory/;
 %Docstring
 Creates a map layer, given a ``uri``, ``name``, layer ``type`` and ``provider`` name.
@@ -76,5 +73,5 @@ Caller takes ownership of the returned layer.
  *                                                                      *
  * src/core/qgsmaplayerfactory.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -11,36 +11,38 @@ __author__ = '(C) 2020 by Nyall Dawson'
 __date__ = '29/07/2020'
 __copyright__ = 'Copyright 2020, The QGIS Project'
 
-from qgis.PyQt.QtCore import QSize
-from qgis.PyQt.QtGui import QColor, QImage, QPainter
+import qgis  # NOQA
+from qgis.PyQt.QtCore import (QSize,
+                              QDir)
+from qgis.PyQt.QtGui import (QImage,
+                             QPainter,
+                             QColor)
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (
-    Qgis,
-    QgsAnnotationItemEditContext,
-    QgsAnnotationItemEditOperationAddNode,
-    QgsAnnotationItemEditOperationDeleteNode,
-    QgsAnnotationItemEditOperationMoveNode,
-    QgsAnnotationItemEditOperationTranslateItem,
-    QgsAnnotationItemNode,
-    QgsAnnotationPolygonItem,
-    QgsCircularString,
-    QgsCoordinateReferenceSystem,
-    QgsCoordinateTransform,
-    QgsCurvePolygon,
-    QgsFillSymbol,
-    QgsLineString,
-    QgsMapSettings,
-    QgsPoint,
-    QgsPointXY,
-    QgsPolygon,
-    QgsProject,
-    QgsReadWriteContext,
-    QgsRectangle,
-    QgsRenderContext,
-    QgsVertexId,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsMapSettings,
+                       QgsCoordinateTransform,
+                       QgsProject,
+                       QgsPoint,
+                       QgsCoordinateReferenceSystem,
+                       QgsFillSymbol,
+                       QgsRenderChecker,
+                       QgsReadWriteContext,
+                       QgsRenderContext,
+                       QgsAnnotationPolygonItem,
+                       QgsRectangle,
+                       QgsLineString,
+                       QgsPolygon,
+                       QgsCurvePolygon,
+                       QgsCircularString,
+                       QgsAnnotationItemNode,
+                       Qgis,
+                       QgsPointXY,
+                       QgsVertexId,
+                       QgsAnnotationItemEditOperationMoveNode,
+                       QgsAnnotationItemEditOperationDeleteNode,
+                       QgsAnnotationItemEditOperationTranslateItem,
+                       QgsAnnotationItemEditOperationAddNode
+                       )
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -48,11 +50,17 @@ start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestQgsAnnotationPolygonItem(QgisTestCase):
+class TestQgsAnnotationPolygonItem(unittest.TestCase):
 
     @classmethod
-    def control_path_prefix(cls):
-        return "annotation_layer"
+    def setUpClass(cls):
+        cls.report = "<h1>Python QgsAnnotationPolygonItem Tests</h1>\n"
+
+    @classmethod
+    def tearDownClass(cls):
+        report_file_path = "%s/qgistest.html" % QDir.tempPath()
+        with open(report_file_path, 'a') as report_file:
+            report_file.write(cls.report)
 
     def testBasic(self):
         item = QgsAnnotationPolygonItem(QgsPolygon(QgsLineString([QgsPoint(12, 13), QgsPoint(14, 13), QgsPoint(14, 15), QgsPoint(12, 13)])))
@@ -73,15 +81,15 @@ class TestQgsAnnotationPolygonItem(QgisTestCase):
         """
         item = QgsAnnotationPolygonItem(QgsPolygon(QgsLineString([QgsPoint(12, 13), QgsPoint(14, 13), QgsPoint(14, 15), QgsPoint(12, 13)])))
         # nodes shouldn't form a closed ring
-        self.assertEqual(item.nodesV2(QgsAnnotationItemEditContext()), [QgsAnnotationItemNode(QgsVertexId(0, 0, 0), QgsPointXY(12, 13), Qgis.AnnotationItemNodeType.VertexHandle),
-                                                                        QgsAnnotationItemNode(QgsVertexId(0, 0, 1), QgsPointXY(14, 13), Qgis.AnnotationItemNodeType.VertexHandle),
-                                                                        QgsAnnotationItemNode(QgsVertexId(0, 0, 2), QgsPointXY(14, 15), Qgis.AnnotationItemNodeType.VertexHandle)])
+        self.assertEqual(item.nodes(), [QgsAnnotationItemNode(QgsVertexId(0, 0, 0), QgsPointXY(12, 13), Qgis.AnnotationItemNodeType.VertexHandle),
+                                        QgsAnnotationItemNode(QgsVertexId(0, 0, 1), QgsPointXY(14, 13), Qgis.AnnotationItemNodeType.VertexHandle),
+                                        QgsAnnotationItemNode(QgsVertexId(0, 0, 2), QgsPointXY(14, 15), Qgis.AnnotationItemNodeType.VertexHandle)])
 
     def test_transform(self):
         item = QgsAnnotationPolygonItem(QgsPolygon(QgsLineString([QgsPoint(12, 13), QgsPoint(14, 13), QgsPoint(14, 15), QgsPoint(12, 13)])))
         self.assertEqual(item.geometry().asWkt(), 'Polygon ((12 13, 14 13, 14 15, 12 13))')
 
-        self.assertEqual(item.applyEditV2(QgsAnnotationItemEditOperationTranslateItem('', 100, 200), QgsAnnotationItemEditContext()), Qgis.AnnotationItemEditOperationResult.Success)
+        self.assertEqual(item.applyEdit(QgsAnnotationItemEditOperationTranslateItem('', 100, 200)), Qgis.AnnotationItemEditOperationResult.Success)
         self.assertEqual(item.geometry().asWkt(), 'Polygon ((112 213, 114 213, 114 215, 112 213))')
 
     def test_apply_move_node_edit(self):
@@ -89,11 +97,11 @@ class TestQgsAnnotationPolygonItem(QgisTestCase):
             QgsPolygon(QgsLineString([QgsPoint(12, 13), QgsPoint(14, 13), QgsPoint(14, 15), QgsPoint(12, 13)])))
         self.assertEqual(item.geometry().asWkt(), 'Polygon ((12 13, 14 13, 14 15, 12 13))')
 
-        self.assertEqual(item.applyEditV2(QgsAnnotationItemEditOperationMoveNode('', QgsVertexId(0, 0, 1), QgsPoint(14, 13), QgsPoint(17, 18)), QgsAnnotationItemEditContext()), Qgis.AnnotationItemEditOperationResult.Success)
+        self.assertEqual(item.applyEdit(QgsAnnotationItemEditOperationMoveNode('', QgsVertexId(0, 0, 1), QgsPoint(14, 13), QgsPoint(17, 18))), Qgis.AnnotationItemEditOperationResult.Success)
         self.assertEqual(item.geometry().asWkt(), 'Polygon ((12 13, 17 18, 14 15, 12 13))')
-        self.assertEqual(item.applyEditV2(QgsAnnotationItemEditOperationMoveNode('', QgsVertexId(0, 0, 3), QgsPoint(12, 13), QgsPoint(19, 20)), QgsAnnotationItemEditContext()), Qgis.AnnotationItemEditOperationResult.Success)
+        self.assertEqual(item.applyEdit(QgsAnnotationItemEditOperationMoveNode('', QgsVertexId(0, 0, 3), QgsPoint(12, 13), QgsPoint(19, 20))), Qgis.AnnotationItemEditOperationResult.Success)
         self.assertEqual(item.geometry().asWkt(), 'Polygon ((19 20, 17 18, 14 15, 19 20))')
-        self.assertEqual(item.applyEditV2(QgsAnnotationItemEditOperationMoveNode('', QgsVertexId(0, 0, 4), QgsPoint(14, 15), QgsPoint(19, 20)), QgsAnnotationItemEditContext()), Qgis.AnnotationItemEditOperationResult.Invalid)
+        self.assertEqual(item.applyEdit(QgsAnnotationItemEditOperationMoveNode('', QgsVertexId(0, 0, 4), QgsPoint(14, 15), QgsPoint(19, 20))), Qgis.AnnotationItemEditOperationResult.Invalid)
         self.assertEqual(item.geometry().asWkt(), 'Polygon ((19 20, 17 18, 14 15, 19 20))')
 
     def test_apply_delete_node_edit(self):
@@ -101,14 +109,14 @@ class TestQgsAnnotationPolygonItem(QgisTestCase):
             QgsPolygon(QgsLineString([QgsPoint(12, 13), QgsPoint(14, 13), QgsPoint(14, 15), QgsPoint(14.5, 15.5), QgsPoint(14.5, 16.5), QgsPoint(14.5, 17.5), QgsPoint(12, 13)])))
         self.assertEqual(item.geometry().asWkt(), 'Polygon ((12 13, 14 13, 14 15, 14.5 15.5, 14.5 16.5, 14.5 17.5, 12 13))')
 
-        self.assertEqual(item.applyEditV2(QgsAnnotationItemEditOperationDeleteNode('', QgsVertexId(0, 0, 1), QgsPoint(14, 13)), QgsAnnotationItemEditContext()), Qgis.AnnotationItemEditOperationResult.Success)
+        self.assertEqual(item.applyEdit(QgsAnnotationItemEditOperationDeleteNode('', QgsVertexId(0, 0, 1), QgsPoint(14, 13))), Qgis.AnnotationItemEditOperationResult.Success)
         self.assertEqual(item.geometry().asWkt(), 'Polygon ((12 13, 14 15, 14.5 15.5, 14.5 16.5, 14.5 17.5, 12 13))')
-        self.assertEqual(item.applyEditV2(QgsAnnotationItemEditOperationDeleteNode('', QgsVertexId(0, 0, 2), QgsPoint(14.5, 15.5)), QgsAnnotationItemEditContext()), Qgis.AnnotationItemEditOperationResult.Success)
+        self.assertEqual(item.applyEdit(QgsAnnotationItemEditOperationDeleteNode('', QgsVertexId(0, 0, 2), QgsPoint(14.5, 15.5))), Qgis.AnnotationItemEditOperationResult.Success)
         self.assertEqual(item.geometry().asWkt(), 'Polygon ((12 13, 14 15, 14.5 16.5, 14.5 17.5, 12 13))')
-        self.assertEqual(item.applyEditV2(QgsAnnotationItemEditOperationDeleteNode('', QgsVertexId(0, 0, 7), QgsPoint(14, 15)), QgsAnnotationItemEditContext()), Qgis.AnnotationItemEditOperationResult.Invalid)
+        self.assertEqual(item.applyEdit(QgsAnnotationItemEditOperationDeleteNode('', QgsVertexId(0, 0, 7), QgsPoint(14, 15))), Qgis.AnnotationItemEditOperationResult.Invalid)
         self.assertEqual(item.geometry().asWkt(), 'Polygon ((12 13, 14 15, 14.5 16.5, 14.5 17.5, 12 13))')
-        self.assertEqual(item.applyEditV2(QgsAnnotationItemEditOperationDeleteNode('', QgsVertexId(0, 0, 0), QgsPoint(12, 13)), QgsAnnotationItemEditContext()), Qgis.AnnotationItemEditOperationResult.Success)
-        self.assertEqual(item.applyEditV2(QgsAnnotationItemEditOperationDeleteNode('', QgsVertexId(0, 0, 0), QgsPoint(12, 13)), QgsAnnotationItemEditContext()), Qgis.AnnotationItemEditOperationResult.ItemCleared)
+        self.assertEqual(item.applyEdit(QgsAnnotationItemEditOperationDeleteNode('', QgsVertexId(0, 0, 0), QgsPoint(12, 13))), Qgis.AnnotationItemEditOperationResult.Success)
+        self.assertEqual(item.applyEdit(QgsAnnotationItemEditOperationDeleteNode('', QgsVertexId(0, 0, 0), QgsPoint(12, 13))), Qgis.AnnotationItemEditOperationResult.ItemCleared)
         self.assertEqual(item.geometry().asWkt(), 'Polygon EMPTY')
 
     def test_apply_add_node_edit(self):
@@ -116,7 +124,7 @@ class TestQgsAnnotationPolygonItem(QgisTestCase):
             QgsPolygon(QgsLineString([QgsPoint(12, 13), QgsPoint(14, 13), QgsPoint(14, 15), QgsPoint(14.5, 15.5), QgsPoint(14.5, 16.5), QgsPoint(14.5, 17.5), QgsPoint(12, 13)])))
         self.assertEqual(item.geometry().asWkt(), 'Polygon ((12 13, 14 13, 14 15, 14.5 15.5, 14.5 16.5, 14.5 17.5, 12 13))')
 
-        self.assertEqual(item.applyEditV2(QgsAnnotationItemEditOperationAddNode('', QgsPoint(15, 16)), QgsAnnotationItemEditContext()), Qgis.AnnotationItemEditOperationResult.Success)
+        self.assertEqual(item.applyEdit(QgsAnnotationItemEditOperationAddNode('', QgsPoint(15, 16))), Qgis.AnnotationItemEditOperationResult.Success)
         self.assertEqual(item.geometry().asWkt(), 'Polygon ((12 13, 14 13, 14 15, 14.5 15.5, 14.5 16, 14.5 16.5, 14.5 17.5, 12 13))')
 
     def test_transient_move_operation(self):
@@ -124,7 +132,7 @@ class TestQgsAnnotationPolygonItem(QgisTestCase):
             QgsPolygon(QgsLineString([QgsPoint(12, 13), QgsPoint(14, 13), QgsPoint(14, 15), QgsPoint(12, 13)])))
         self.assertEqual(item.geometry().asWkt(), 'Polygon ((12 13, 14 13, 14 15, 12 13))')
 
-        res = item.transientEditResultsV2(QgsAnnotationItemEditOperationMoveNode('', QgsVertexId(0, 0, 1), QgsPoint(14, 13), QgsPoint(17, 18)), QgsAnnotationItemEditContext())
+        res = item.transientEditResults(QgsAnnotationItemEditOperationMoveNode('', QgsVertexId(0, 0, 1), QgsPoint(14, 13), QgsPoint(17, 18)))
         self.assertEqual(res.representativeGeometry().asWkt(), 'Polygon ((12 13, 17 18, 14 15, 12 13))')
 
     def test_transient_translate_operation(self):
@@ -132,7 +140,7 @@ class TestQgsAnnotationPolygonItem(QgisTestCase):
             QgsPolygon(QgsLineString([QgsPoint(12, 13), QgsPoint(14, 13), QgsPoint(14, 15), QgsPoint(12, 13)])))
         self.assertEqual(item.geometry().asWkt(), 'Polygon ((12 13, 14 13, 14 15, 12 13))')
 
-        res = item.transientEditResultsV2(QgsAnnotationItemEditOperationTranslateItem('', 100, 200), QgsAnnotationItemEditContext())
+        res = item.transientEditResults(QgsAnnotationItemEditOperationTranslateItem('', 100, 200))
         self.assertEqual(res.representativeGeometry().asWkt(), 'Polygon ((112 213, 114 213, 114 215, 112 213))')
 
     def testReadWriteXml(self):
@@ -179,10 +187,10 @@ class TestQgsAnnotationPolygonItem(QgisTestCase):
         settings.setExtent(QgsRectangle(10, 10, 18, 18))
         settings.setOutputSize(QSize(300, 300))
 
-        settings.setFlag(QgsMapSettings.Flag.Antialiasing, False)
+        settings.setFlag(QgsMapSettings.Antialiasing, False)
 
         rc = QgsRenderContext.fromMapSettings(settings)
-        image = QImage(200, 200, QImage.Format.Format_ARGB32)
+        image = QImage(200, 200, QImage.Format_ARGB32)
         image.setDotsPerMeterX(int(96 / 25.4 * 1000))
         image.setDotsPerMeterY(int(96 / 25.4 * 1000))
         image.fill(QColor(255, 255, 255))
@@ -194,7 +202,7 @@ class TestQgsAnnotationPolygonItem(QgisTestCase):
         finally:
             painter.end()
 
-        self.assertTrue(self.image_check('polygon_item', 'polygon_item', image))
+        self.assertTrue(self.imageCheck('polygon_item', 'polygon_item', image))
 
     def testRenderCurvePolygon(self):
         cs = QgsCircularString()
@@ -209,10 +217,10 @@ class TestQgsAnnotationPolygonItem(QgisTestCase):
         settings.setExtent(QgsRectangle(10, 10, 18, 18))
         settings.setOutputSize(QSize(300, 300))
 
-        settings.setFlag(QgsMapSettings.Flag.Antialiasing, False)
+        settings.setFlag(QgsMapSettings.Antialiasing, False)
 
         rc = QgsRenderContext.fromMapSettings(settings)
-        image = QImage(200, 200, QImage.Format.Format_ARGB32)
+        image = QImage(200, 200, QImage.Format_ARGB32)
         image.setDotsPerMeterX(int(96 / 25.4 * 1000))
         image.setDotsPerMeterY(int(96 / 25.4 * 1000))
         image.fill(QColor(255, 255, 255))
@@ -224,7 +232,7 @@ class TestQgsAnnotationPolygonItem(QgisTestCase):
         finally:
             painter.end()
 
-        self.assertTrue(self.image_check('curvepolygon_item', 'curvepolygon_item', image))
+        self.assertTrue(self.imageCheck('curvepolygon_item', 'curvepolygon_item', image))
 
     def testRenderWithTransform(self):
         item = QgsAnnotationPolygonItem(QgsPolygon(QgsLineString([QgsPoint(11.5, 13), QgsPoint(12, 13), QgsPoint(12, 13.5), QgsPoint(11.5, 13)])))
@@ -235,11 +243,11 @@ class TestQgsAnnotationPolygonItem(QgisTestCase):
         settings.setExtent(QgsRectangle(1250958, 1386945, 1420709, 1532518))
         settings.setOutputSize(QSize(300, 300))
 
-        settings.setFlag(QgsMapSettings.Flag.Antialiasing, False)
+        settings.setFlag(QgsMapSettings.Antialiasing, False)
 
         rc = QgsRenderContext.fromMapSettings(settings)
         rc.setCoordinateTransform(QgsCoordinateTransform(QgsCoordinateReferenceSystem('EPSG:4326'), settings.destinationCrs(), QgsProject.instance()))
-        image = QImage(200, 200, QImage.Format.Format_ARGB32)
+        image = QImage(200, 200, QImage.Format_ARGB32)
         image.setDotsPerMeterX(int(96 / 25.4 * 1000))
         image.setDotsPerMeterY(int(96 / 25.4 * 1000))
         image.fill(QColor(255, 255, 255))
@@ -251,7 +259,21 @@ class TestQgsAnnotationPolygonItem(QgisTestCase):
         finally:
             painter.end()
 
-        self.assertTrue(self.image_check('polygon_item_transform', 'polygon_item_transform', image))
+        self.assertTrue(self.imageCheck('polygon_item_transform', 'polygon_item_transform', image))
+
+    def imageCheck(self, name, reference_image, image):
+        TestQgsAnnotationPolygonItem.report += f"<h2>Render {name}</h2>\n"
+        temp_dir = QDir.tempPath() + '/'
+        file_name = temp_dir + 'patch_' + name + ".png"
+        image.save(file_name, "PNG")
+        checker = QgsRenderChecker()
+        checker.setControlPathPrefix("annotation_layer")
+        checker.setControlName("expected_" + reference_image)
+        checker.setRenderedImage(file_name)
+        checker.setColorTolerance(2)
+        result = checker.compareImages(name, 20)
+        TestQgsAnnotationPolygonItem.report += checker.report()
+        return result
 
 
 if __name__ == '__main__':

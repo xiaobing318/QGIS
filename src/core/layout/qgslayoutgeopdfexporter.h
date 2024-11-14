@@ -25,18 +25,18 @@
 #define SIP_NO_FILE
 
 class QgsLayout;
-class QgsGeospatialPdfRenderedFeatureHandler;
+class QgsGeoPdfRenderedFeatureHandler;
 
 /**
- * \class QgsLayoutGeospatialPdfExporter
+ * \class QgsLayoutGeoPdfExporter
  * \ingroup core
  *
- * \brief Handles geospatial PDF export specific setup, cleanup and processing steps.
+ * \brief Handles GeoPDF export specific setup, cleanup and processing steps.
  *
  * This class is a low level implementation detail only. Generally, you should use the high level interface exposed by
  * QgsLayoutExporter instead.
  *
- * \warning QgsLayoutGeospatialPdfExporter is designed to be a short lived object. It should be created for a
+ * \warning QgsLayoutGeoPdfExporter is designed to be a short lived object. It should be created for a
  * single layout export operation only, and then immediately destroyed. Failure to correctly
  * destroy the object after exporting a layout will leave the layout in an inconsistent, unstable state.
  *
@@ -44,21 +44,19 @@ class QgsGeospatialPdfRenderedFeatureHandler;
  *
  * \since QGIS 3.10
  */
-class CORE_EXPORT QgsLayoutGeospatialPdfExporter : public QgsAbstractGeospatialPdfExporter
+class CORE_EXPORT QgsLayoutGeoPdfExporter : public QgsAbstractGeoPdfExporter
 {
   public:
 
     /**
-     * Constructor for QgsLayoutGeospatialPdfExporter, associated with the specified \a layout.
+     * Constructor for QgsLayoutGeoPdfExporter, associated with the specified \a layout.
      */
-    QgsLayoutGeospatialPdfExporter( QgsLayout *layout );
+    QgsLayoutGeoPdfExporter( QgsLayout *layout );
 
-    ~QgsLayoutGeospatialPdfExporter() override;
+    ~QgsLayoutGeoPdfExporter() override;
 
     /**
      * Returns any custom layer tree groups defined in the layer's settings.
-     *
-     * \see layerTreeGroupOrder()
      */
     QMap< QString, QString > customLayerTreeGroups() const { return mCustomLayerTreeGroups; }
 
@@ -71,39 +69,25 @@ class CORE_EXPORT QgsLayoutGeospatialPdfExporter : public QgsAbstractGeospatialP
     QMap< QString, bool > initialLayerVisibility() const { return mInitialLayerVisibility; }
 
     /**
-     * Optional list of map layer IDs in the order they should be shown in the generated geospatial PDF layer tree.
-     * Layer IDs earlier in the list will appear higher in the geospatial PDF layer tree.
+     * Optional list of map layer IDs in the order they should be shown in the generated GeoPDF layer tree.
+     * Layer IDs earlier in the list will appear higher in the GeoPDF layer tree.
      *
-     * \see layerTreeGroupOrder()
      * \since QGIS 3.14
      */
     QStringList layerOrder() const { return mLayerOrder; }
-
-    /**
-     * Specifies the ordering of layer tree groups in the generated geospatial PDF file.
-     *
-     * Groups appearing earlier in the list will show earlier in the geospatial PDF layer tree list.
-     *
-     * \see layerOrder()
-     * \see customLayerTreeGroups()
-     *
-     * \since QGIS 3.38
-     */
-    QStringList layerTreeGroupOrder() const { return mLayerTreeGroupOrder; }
 
   private:
 
     VectorComponentDetail componentDetailForLayerId( const QString &layerId ) override;
 
     QgsLayout *mLayout = nullptr;
-    QHash< QgsLayoutItemMap *, QgsGeospatialPdfRenderedFeatureHandler * > mMapHandlers;
+    QHash< QgsLayoutItemMap *, QgsGeoPdfRenderedFeatureHandler * > mMapHandlers;
 
     QMap< QString, bool > mInitialLayerVisibility;
     QMap< QString, QString > mCustomLayerTreeGroups;
     QStringList mLayerOrder;
-    QStringList mLayerTreeGroupOrder;
 
-    friend class TestQgsLayoutGeospatialPdfExport;
+    friend class TestQgsLayoutGeoPdfExport;
 };
 
 #endif //QGSLAYOUTGEOPDFEXPORTER_H

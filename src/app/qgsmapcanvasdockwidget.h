@@ -17,6 +17,7 @@
 
 #include "ui_qgsmapcanvasdockwidgetbase.h"
 
+#include "qgsdockwidget.h"
 #include "qgspointxy.h"
 #include "qgis_app.h"
 #include <QWidgetAction>
@@ -32,20 +33,17 @@ class QgsVertexMarker;
 class QgsRubberBand;
 class QCheckBox;
 class QRadioButton;
-class QgsDockableWidgetHelper;
 
 /**
  * \class QgsMapCanvasDockWidget
  * A dock widget with an embedded map canvas, for additional map views.
+ * \since QGIS 3.0
  */
-class APP_EXPORT QgsMapCanvasDockWidget : public QWidget, private Ui::QgsMapCanvasWidgetBase
+class APP_EXPORT QgsMapCanvasDockWidget : public QgsDockWidget, private Ui::QgsMapCanvasDockWidgetBase
 {
     Q_OBJECT
   public:
-    explicit QgsMapCanvasDockWidget( const QString &name, QWidget *parent = nullptr, bool isDocked = true );
-    ~QgsMapCanvasDockWidget() override;
-
-    QgsDockableWidgetHelper *dockableWidgetHelper();
+    explicit QgsMapCanvasDockWidget( const QString &name, QWidget *parent = nullptr );
 
     /**
      * Sets the main app map canvas.
@@ -56,9 +54,6 @@ class APP_EXPORT QgsMapCanvasDockWidget : public QWidget, private Ui::QgsMapCanv
      * Returns the map canvas contained in the dock widget.
      */
     QgsMapCanvas *mapCanvas();
-
-    void setCanvasName( const QString &name );
-    QString canvasName() const { return mCanvasName; }
 
     /**
      * Sets whether the view center should be synchronized with the main canvas center.
@@ -173,7 +168,7 @@ class APP_EXPORT QgsMapCanvasDockWidget : public QWidget, private Ui::QgsMapCanv
 
 
   private:
-    QString mCanvasName;
+
     QgsMapCanvas *mMapCanvas = nullptr;
     QgsMapCanvas *mMainCanvas = nullptr;
     QMenu *mMenu = nullptr;
@@ -193,9 +188,6 @@ class APP_EXPORT QgsMapCanvasDockWidget : public QWidget, private Ui::QgsMapCanv
     QTimer mResizeTimer;
     QgsVertexMarker *mXyMarker = nullptr;
     QgsRubberBand *mExtentRubberBand = nullptr;
-
-    QgsDockableWidgetHelper *mDockableWidgetHelper = nullptr;
-
     void syncViewCenter( QgsMapCanvas *sourceCanvas );
     void syncSelection();
 
@@ -205,6 +197,7 @@ class APP_EXPORT QgsMapCanvasDockWidget : public QWidget, private Ui::QgsMapCanv
 /**
  * \class QgsMapSettingsAction
  * Allows embedding a scale, rotation and other map settings into a menu.
+ * \since QGIS 3.0
  */
 
 class QgsMapSettingsAction: public QWidgetAction

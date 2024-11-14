@@ -24,13 +24,12 @@
 #include <QDomElement>
 #include <QDomDocument>
 
+#include "qgsattributeeditorelement.h"
 #include "qgsreadwritecontext.h"
-#include "qgspropertycollection.h"
 
 class QgsRelationManager;
 class QgsEditFormConfigPrivate;
 class QgsAttributeEditorContainer;
-class QgsAttributeEditorElement;
 
 /**
  * \ingroup core
@@ -44,8 +43,18 @@ class CORE_EXPORT QgsEditFormConfig
 
   public:
 
+    //! The different types to layout the attribute editor.
+    enum EditorLayout
+    {
+      GeneratedLayout = 0, //!< Autogenerate a simple tabular layout for the form
+      TabLayout = 1,       //!< Use a layout with tabs and group boxes. Needs to be configured.
+      UiFileLayout = 2     //!< Load a .ui file for the layout. Needs to be configured.
+    };
+    Q_ENUM( EditorLayout )
+
     struct GroupData
     {
+      //! Constructor for GroupData
       GroupData() = default;
       GroupData( const QString &name, const QList<QString> &fields )
         : mName( name )
@@ -57,6 +66,7 @@ class CORE_EXPORT QgsEditFormConfig
 
     struct TabData
     {
+      //! Constructor for TabData
       TabData() = default;
       TabData( const QString &name, const QList<QString> &fields, const QList<QgsEditFormConfig::GroupData> &groups )
         : mName( name )
@@ -68,7 +78,28 @@ class CORE_EXPORT QgsEditFormConfig
       QList<QgsEditFormConfig::GroupData> mGroups;
     };
 
-    // *INDENT-OFF*
+    /**
+     * Types of feature form suppression after feature creation
+     */
+    enum FeatureFormSuppress
+    {
+      SuppressDefault = 0, //!< Use the application-wide setting
+      SuppressOn = 1,      //!< Suppress feature form
+      SuppressOff = 2      //!< Do not suppress feature form
+    };
+    Q_ENUM( FeatureFormSuppress )
+
+    /**
+     * The Python init code source options.
+     */
+    enum PythonInitCodeSource
+    {
+      CodeSourceNone = 0,             //!< Do not use Python code at all
+      CodeSourceFile = 1,             //!< Load the Python code from an external file
+      CodeSourceDialog = 2,           //!< Use the Python code provided in the dialog
+      CodeSourceEnvironment = 3       //!< Use the Python code available in the Python environment
+    };
+    Q_ENUM( PythonInitCodeSource )
 
     /**
      * Data defined properties.
@@ -77,15 +108,18 @@ class CORE_EXPORT QgsEditFormConfig
      * enum.
      * \since QGIS 3.14
      */
-    enum class DataDefinedProperty SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsEditFormConfig, DataDefinedProperty ) : int
-      {
+    enum DataDefinedProperty
+    {
       NoProperty = 0, //!< No property
       AllProperties = 1, //!< All properties for item
       Alias = 2, //!< Alias
-      Editable = 3, //!< Editable state \since QGIS 3.30
     };
-    // *INDENT-ON*
 
+    /**
+     * Copy constructor
+     *
+     * \since QGIS 3.0
+     */
     QgsEditFormConfig( const QgsEditFormConfig &o );
     ~QgsEditFormConfig();
 
@@ -118,10 +152,10 @@ class CORE_EXPORT QgsEditFormConfig
     QgsAttributeEditorContainer *invisibleRootContainer();
 
     //! Gets the active layout style for the attribute editor for this layer
-    Qgis::AttributeFormLayout layout() const;
+    EditorLayout layout() const;
 
     //! Sets the active layout style for the attribute editor for this layer
-    void setLayout( Qgis::AttributeFormLayout editorLayout );
+    void setLayout( EditorLayout editorLayout );
 
     /**
      * Returns the path or URL to the .ui form. Only meaningful with EditorLayout::UiFileLayout
@@ -267,15 +301,15 @@ class CORE_EXPORT QgsEditFormConfig
      *  (if it shall be loaded from a file, read from the
      *  provided dialog editor or inherited from the environment)
      */
-    Qgis::AttributeFormPythonInitCodeSource initCodeSource() const;
+    PythonInitCodeSource initCodeSource() const;
 
     //! Sets if Python code shall be used for edit form initialization and its origin
-    void setInitCodeSource( Qgis::AttributeFormPythonInitCodeSource initCodeSource );
+    void setInitCodeSource( PythonInitCodeSource initCodeSource );
 
     //! Type of feature form pop-up suppression after feature creation (overrides app setting)
-    Qgis::AttributeFormSuppression suppress() const;
+    FeatureFormSuppress suppress() const;
     //! Sets type of feature form pop-up suppression after feature creation (overrides app setting)
-    void setSuppress( Qgis::AttributeFormSuppression s );
+    void setSuppress( FeatureFormSuppress s );
 
     // Serialization
 
@@ -293,7 +327,7 @@ class CORE_EXPORT QgsEditFormConfig
 
     /**
      * Deserialize drag and drop designer elements.
-     * \deprecated QGIS 3.18. Use QgsAttributeEditorElement::create instead.
+     * \deprecated since QGIS 3.18 use QgsAttributeEditorElement::create instead
      */
     Q_DECL_DEPRECATED QgsAttributeEditorElement *attributeEditorElementFromDomElement( QDomElement &elem, QgsAttributeEditorElement *parent, const QString &layerId = QString(), const QgsReadWriteContext &context = QgsReadWriteContext() ) SIP_DEPRECATED;
 
@@ -314,6 +348,7 @@ class CORE_EXPORT QgsEditFormConfig
      */
     QgsPropertyCollection dataDefinedFieldProperties( const QString &fieldName ) const;
 
+
     /**
      * Returns data defined property definitions.
      * \since QGIS 3.14
@@ -331,7 +366,7 @@ class CORE_EXPORT QgsEditFormConfig
     /**
      * Will be called by friend class QgsVectorLayer
      */
-    void onRelationsLoaded(); // cppcheck-suppress functionConst
+    void onRelationsLoaded();
 
     /**
      * Used for the backwards compatibility of the api, on setting nmrel or force-suppress-popup for relations.
@@ -340,7 +375,7 @@ class CORE_EXPORT QgsEditFormConfig
     bool legacyUpdateRelationWidgetInTabs( QgsAttributeEditorContainer *container,  const QString &widgetName, const QVariantMap &config );
 
   private:
-    void fixLegacyConfig( QDomElement &el ) const;
+    void fixLegacyConfig( QDomElement &el );
 
     QExplicitlySharedDataPointer<QgsEditFormConfigPrivate> d;
 

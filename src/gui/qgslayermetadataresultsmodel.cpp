@@ -14,7 +14,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgslayermetadataresultsmodel.h"
-#include "moc_qgslayermetadataresultsmodel.cpp"
 #include "qgsfeedback.h"
 #include "qgsapplication.h"
 #include "qgslayermetadataproviderregistry.h"
@@ -71,11 +70,10 @@ QVariant QgsLayerMetadataResultsModel::data( const QModelIndex &index, int role 
           }
           case Sections::GeometryType:
           {
-            const QList<QgsLayerMetadataProviderResult> metadata = mResult.metadata();
-            const QgsLayerMetadataProviderResult &md { metadata.at( index.row() ) };
-            if ( md.layerType() == Qgis::LayerType::Raster )
+            const QgsLayerMetadataProviderResult &md { mResult.metadata().at( index.row() ) };
+            if ( md.layerType() == QgsMapLayerType::RasterLayer )
               return tr( "Raster" );
-            return md.geometryType() == Qgis::GeometryType::Unknown ? QgsWkbTypes::geometryDisplayString( Qgis::GeometryType::Null ) : QgsWkbTypes::geometryDisplayString( md.geometryType() );
+            return md.geometryType() == QgsWkbTypes::GeometryType::UnknownGeometry ? QgsWkbTypes::geometryDisplayString( QgsWkbTypes::GeometryType::NullGeometry ) : QgsWkbTypes::geometryDisplayString( md.geometryType() );
           }
           default:
             return QVariant();
@@ -94,15 +92,14 @@ QVariant QgsLayerMetadataResultsModel::data( const QModelIndex &index, int role 
       {
         if ( index.column() == 0 )
         {
-          const QList<QgsLayerMetadataProviderResult> metadata = mResult.metadata();
-          const QgsLayerMetadataProviderResult &md { metadata.at( index.row() ) };
-          if ( md.layerType() == Qgis::LayerType::Raster )
+          const QgsLayerMetadataProviderResult &md { mResult.metadata().at( index.row() ) };
+          if ( md.layerType() == QgsMapLayerType::RasterLayer )
             return QgsApplication::getThemeIcon( QStringLiteral( "mIconRaster.svg" ) );
-          return QgsIconUtils::iconForGeometryType( md.geometryType() == Qgis::GeometryType::Unknown ? Qgis::GeometryType::Null : md.geometryType() );
+          return QgsIconUtils::iconForGeometryType( md.geometryType() == QgsWkbTypes::GeometryType::UnknownGeometry ? QgsWkbTypes::GeometryType::NullGeometry : md.geometryType() );
         }
         break;
       }
-      case static_cast< int >( CustomRole::Metadata ):
+      case Roles::Metadata:
       {
         return QVariant::fromValue( mResult.metadata().at( index.row() ) );
       }

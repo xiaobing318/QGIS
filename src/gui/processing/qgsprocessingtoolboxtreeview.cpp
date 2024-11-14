@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsprocessingtoolboxtreeview.h"
-#include "moc_qgsprocessingtoolboxtreeview.cpp"
 #include "qgsprocessingtoolboxmodel.h"
 
 #include <QKeyEvent>
@@ -23,18 +22,17 @@
 
 QgsProcessingToolboxTreeView::QgsProcessingToolboxTreeView( QWidget *parent,
     QgsProcessingRegistry *registry,
-    QgsProcessingRecentAlgorithmLog *recentLog,
-    QgsProcessingFavoriteAlgorithmManager *favoriteManager )
+    QgsProcessingRecentAlgorithmLog *recentLog )
   : QTreeView( parent )
 {
-  mModel = new QgsProcessingToolboxProxyModel( this, registry, recentLog, favoriteManager );
+  mModel = new QgsProcessingToolboxProxyModel( this, registry, recentLog );
   mToolboxModel = mModel->toolboxModel();
   setModel( mModel );
 }
 
-void QgsProcessingToolboxTreeView::setRegistry( QgsProcessingRegistry *registry, QgsProcessingRecentAlgorithmLog *recentLog, QgsProcessingFavoriteAlgorithmManager *favoriteManager )
+void QgsProcessingToolboxTreeView::setRegistry( QgsProcessingRegistry *registry, QgsProcessingRecentAlgorithmLog *recentLog )
 {
-  QgsProcessingToolboxProxyModel *newModel = new QgsProcessingToolboxProxyModel( this, registry, recentLog, favoriteManager );
+  QgsProcessingToolboxProxyModel *newModel = new QgsProcessingToolboxProxyModel( this, registry, recentLog );
   mToolboxModel = newModel->toolboxModel();
   setModel( newModel );
   mModel->deleteLater();

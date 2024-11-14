@@ -17,16 +17,11 @@
 #define QGSATTRIBUTEEDITORELEMENT_H
 
 #include "qgis_core.h"
-#include "qgis_sip.h"
-#include "qgis.h"
+#include "qgsrelation.h"
+#include "qgsoptionalexpression.h"
+#include "qgspropertycollection.h"
 #include <QColor>
 #include <QFont>
-
-class QDomNode;
-class QDomElement;
-class QDomDocument;
-class QgsFields;
-class QgsReadWriteContext;
 
 /**
  * \ingroup core
@@ -46,16 +41,16 @@ class CORE_EXPORT QgsAttributeEditorElement SIP_ABSTRACT
     SIP_CONVERT_TO_SUBCLASS_CODE
     switch ( sipCpp->type() )
     {
-      case Qgis::AttributeEditorType::Container:
+      case QgsAttributeEditorElement::AeTypeContainer:
         sipType = sipType_QgsAttributeEditorContainer;
         break;
-      case Qgis::AttributeEditorType::Field:
+      case QgsAttributeEditorElement::AeTypeField:
         sipType = sipType_QgsAttributeEditorField;
         break;
-      case Qgis::AttributeEditorType::Relation:
+      case QgsAttributeEditorElement::AeTypeRelation:
         sipType = sipType_QgsAttributeEditorRelation;
         break;
-      case Qgis::AttributeEditorType::Action:
+      case QgsAttributeEditorElement::AeTypeAction:
         sipType = sipType_QgsAttributeEditorAction;
         break;
       default:
@@ -104,6 +99,18 @@ class CORE_EXPORT QgsAttributeEditorElement SIP_ABSTRACT
       bool operator==( LabelStyle const  &other ) const SIP_SKIP;
     };
 
+
+    enum AttributeEditorType
+    {
+      AeTypeContainer, //!< A container
+      AeTypeField,     //!< A field
+      AeTypeRelation,  //!< A relation
+      AeTypeInvalid,   //!< Invalid
+      AeTypeQmlElement, //!< A QML element
+      AeTypeHtmlElement, //!< A HTML element
+      AeTypeAction //!< A layer action element (since QGIS 3.22)
+    };
+
     /**
      * Constructor
      *
@@ -111,10 +118,11 @@ class CORE_EXPORT QgsAttributeEditorElement SIP_ABSTRACT
      * \param name
      * \param parent
      */
-    QgsAttributeEditorElement( Qgis::AttributeEditorType type, const QString &name, QgsAttributeEditorElement *parent = nullptr )
+    QgsAttributeEditorElement( AttributeEditorType type, const QString &name, QgsAttributeEditorElement *parent = nullptr )
       : mType( type )
       , mName( name )
       , mParent( parent )
+      , mShowLabel( true )
     {}
 
     virtual ~QgsAttributeEditorElement() = default;
@@ -138,11 +146,12 @@ class CORE_EXPORT QgsAttributeEditorElement SIP_ABSTRACT
      *
      * \returns The type
      */
-    Qgis::AttributeEditorType type() const { return mType; }
+    AttributeEditorType type() const { return mType; }
 
     /**
      * Gets the parent of this element.
      *
+     * \since QGIS 3.0
      */
     QgsAttributeEditorElement *parent() const { return mParent; }
 
@@ -158,59 +167,22 @@ class CORE_EXPORT QgsAttributeEditorElement SIP_ABSTRACT
     /**
      * Returns a clone of this element. To be implemented by subclasses.
      *
+     * \since QGIS 3.0
      */
     virtual QgsAttributeEditorElement *clone( QgsAttributeEditorElement *parent ) const = 0 SIP_FACTORY;
 
     /**
      * Controls if this element should be labeled with a title (field, relation or groupname).
      *
+     * \since QGIS 2.18
      */
     bool showLabel() const;
 
     /**
      * Controls if this element should be labeled with a title (field, relation or groupname).
+     * \since QGIS 2.18
      */
     void setShowLabel( bool showLabel );
-
-    /**
-     * Returns the horizontal stretch factor for the element.
-     *
-     * \see setHorizontalStretch()
-     * \see verticalStretch()
-     *
-     * \since QGIS 3.32
-     */
-    int horizontalStretch() const { return mHorizontalStretch; }
-
-    /**
-     * Sets the horizontal \a stretch factor for the element.
-     *
-     * \see horizontalStretch()
-     * \see setVerticalStretch()
-     *
-     * \since QGIS 3.32
-     */
-    void setHorizontalStretch( int stretch ) { mHorizontalStretch = stretch; }
-
-    /**
-     * Returns the vertical stretch factor for the element.
-     *
-     * \see setVerticalStretch()
-     * \see horizontalStretch()
-     *
-     * \since QGIS 3.32
-     */
-    int verticalStretch() const { return mVerticalStretch; }
-
-    /**
-     * Sets the vertical \a stretch factor for the element.
-     *
-     * \see verticalStretch()
-     * \see setHorizontalStretch()
-     *
-     * \since QGIS 3.32
-     */
-    void setVerticalStretch( int stretch ) { mVerticalStretch = stretch; }
 
     /**
      * Returns the label style.
@@ -229,12 +201,10 @@ class CORE_EXPORT QgsAttributeEditorElement SIP_ABSTRACT
 
   protected:
 #ifndef SIP_RUN
-    Qgis::AttributeEditorType mType = Qgis::AttributeEditorType::Invalid;
+    AttributeEditorType mType;
     QString mName;
     QgsAttributeEditorElement *mParent = nullptr;
-    bool mShowLabel = true;
-    int mHorizontalStretch = 0;
-    int mVerticalStretch = 0;
+    bool mShowLabel;
     LabelStyle mLabelStyle;
 #endif
 
@@ -243,6 +213,7 @@ class CORE_EXPORT QgsAttributeEditorElement SIP_ABSTRACT
     /**
      * Should be implemented by subclasses to save type specific configuration.
      *
+     * \since QGIS 2.18
      */
     virtual void saveConfiguration( QDomElement &elem, QDomDocument &doc ) const = 0;
 
@@ -256,6 +227,7 @@ class CORE_EXPORT QgsAttributeEditorElement SIP_ABSTRACT
      * All subclasses need to overwrite this method and return a type specific identifier.
      * Needs to be XML key compatible.
      *
+     * \since QGIS 2.18
      */
     virtual QString typeIdentifier() const = 0;
 

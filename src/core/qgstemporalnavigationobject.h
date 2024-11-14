@@ -47,33 +47,49 @@ class CORE_EXPORT QgsTemporalNavigationObject : public QgsTemporalController, pu
       */
     QgsTemporalNavigationObject( QObject *parent SIP_TRANSFERTHIS = nullptr );
 
+    //! Represents the current temporal navigation mode.
+    enum NavigationMode
+    {
+      NavigationOff, //!< Temporal navigation is disabled
+      Animated, //!< Temporal navigation relies on frames within a datetime range
+      FixedRange, //!< Temporal navigation relies on a fixed datetime range
+    };
+
+    //! Represents the current animation state.
+    enum AnimationState
+    {
+      Forward, //!< Animation is playing forward.
+      Reverse, //!< Animation is playing in reverse.
+      Idle, //!< Animation is paused.
+    };
+
     /**
      * Sets the current animation \a state.
      *
      * \see animationState()
      */
-    void setAnimationState( Qgis::AnimationState state );
+    void setAnimationState( AnimationState state );
 
     /**
      * Returns the current animation state.
      *
      * \see setAnimationState()
      */
-    Qgis::AnimationState animationState() const;
+    AnimationState animationState() const;
 
     /**
      * Sets the temporal navigation \a mode.
      *
      * \see navigationMode()
      */
-    void setNavigationMode( const Qgis::TemporalNavigationMode mode );
+    void setNavigationMode( const NavigationMode mode );
 
     /**
      * Returns the current temporal navigation mode.
      *
      * \see setNavigationMode()
      */
-    Qgis::TemporalNavigationMode navigationMode() const { return mNavigationMode; }
+    NavigationMode navigationMode() const { return mNavigationMode; }
 
     /**
      * Sets the navigation temporal \a extents, which dictate the earliest
@@ -216,41 +232,17 @@ class CORE_EXPORT QgsTemporalNavigationObject : public QgsTemporalController, pu
 
     QgsExpressionContextScope *createExpressionContextScope() const override SIP_FACTORY;
 
-    /**
-     * Returns the total number of frames for the movie.
-     *
-     * \note This is only used when the navigationMode() is set to Qgis::TemporalNavigationMode::Movie.
-     *
-     * \see setTotalMovieFrames()
-     * \see totalMovieFramesChanged()
-     *
-     * \since QGIS 3.36
-     */
-    long long totalMovieFrames() const;
-
-    /**
-     * Sets the total number of \a frames for the movie.
-     *
-     * \note This is only used when the navigationMode() is set to Qgis::TemporalNavigationMode::Movie.
-     *
-     * \see totalMovieFrames()
-     * \see totalMovieFramesChanged()
-     *
-     * \since QGIS 3.36
-     */
-    void setTotalMovieFrames( long long frames );
-
   signals:
 
     /**
      * Emitted whenever the animation \a state changes.
      */
-    void stateChanged( Qgis::AnimationState state );
+    void stateChanged( QgsTemporalNavigationObject::AnimationState state );
 
     /**
      * Emitted whenever the navigation \a mode changes.
      */
-    void navigationModeChanged( Qgis::TemporalNavigationMode mode );
+    void navigationModeChanged( QgsTemporalNavigationObject::NavigationMode mode );
 
     /**
      * Emitted whenever the temporalExtent \a extent changes.
@@ -262,17 +254,6 @@ class CORE_EXPORT QgsTemporalNavigationObject : public QgsTemporalController, pu
      */
     void temporalFrameDurationChanged( const QgsInterval &interval );
 
-    /**
-     * Emitted whenever the total number of \a frames in the movie is changed.
-     *
-     * \note This is only used when the navigationMode() is set to Qgis::TemporalNavigationMode::Movie.
-     *
-     * \see setTotalMovieFrames()
-     * \see totalMovieFrames()
-     *
-     * \since QGIS 3.36
-     */
-    void totalMovieFramesChanged( long long frames );
 
   public slots:
 
@@ -342,13 +323,13 @@ class CORE_EXPORT QgsTemporalNavigationObject : public QgsTemporalController, pu
     //! Complete list of time ranges with data available
     QList< QgsDateTimeRange > mAllRanges;
 
-    Qgis::TemporalNavigationMode mNavigationMode = Qgis::TemporalNavigationMode::Disabled;
+    NavigationMode mNavigationMode = NavigationOff;
 
     //! The current set frame value
     long long mCurrentFrameNumber = 0;
 
     //! Frame duration
-    QgsInterval mFrameDuration = QgsInterval( 1.0, Qgis::TemporalUnit::Hours );
+    QgsInterval mFrameDuration = QgsInterval( 1.0, QgsUnitTypes::TemporalUnit::TemporalHours );
 
     //! Member for frame rate
     double mFramesPerSecond = 1;
@@ -357,16 +338,13 @@ class CORE_EXPORT QgsTemporalNavigationObject : public QgsTemporalController, pu
     QTimer *mNewFrameTimer = nullptr;
 
     //! Navigation playback mode member
-    Qgis::AnimationState mPlayBackMode = Qgis::AnimationState::Idle;
+    AnimationState mPlayBackMode = Idle;
 
     bool mLoopAnimation = false;
 
     bool mCumulativeTemporalRange = false;
 
     int mBlockUpdateTemporalRangeSignal = 0;
-
-    //! Total frame count, for Movie mode only
-    long long mTotalMovieFrames = 100;
 
     QgsTemporalNavigationObject( const QgsTemporalNavigationObject & ) = delete;
     QgsTemporalNavigationObject &operator= ( const QgsTemporalNavigationObject & ) = delete;

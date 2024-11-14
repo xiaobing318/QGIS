@@ -17,6 +17,8 @@
 
 #include "qgsgcptransformer.h"
 #include "qgsapplication.h"
+#include "qgscoordinatereferencesystem.h"
+#include "qgsrectangle.h"
 #include "qgsgcpgeometrytransformer.h"
 #include "qgsgeometry.h"
 
@@ -24,14 +26,9 @@
 
 #include <gdal.h>
 
-class TestQgsGcpTransformer : public QgsTest
+class TestQgsGcpTransformer : public QObject
 {
     Q_OBJECT
-
-  public:
-    TestQgsGcpTransformer()
-      : QgsTest( QStringLiteral( "GCP Transformer Tests" ) )
-    {}
 
     QString SRC_FILE;
   private slots:
@@ -1152,13 +1149,8 @@ class TestQgsGcpTransformer : public QgsTest
       QGSCOMPARENEAR( x, 321209, 1 );
       QGSCOMPARENEAR( y, 124248, 1 );
       QVERIFY( transform.transform( x, y, true ) );
-#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,8,0)
-      QGSCOMPARENEAR( x, 288, 1 );
-      QGSCOMPARENEAR( y, 1000, 1 );
-#else
       QGSCOMPARENEAR( x, 290, 1 );
       QGSCOMPARENEAR( y, 680, 1 );
-#endif
 
       x = 2352;
       y = 1150;
@@ -1166,26 +1158,17 @@ class TestQgsGcpTransformer : public QgsTest
       QGSCOMPARENEAR( x, 322700, 1 );
       QGSCOMPARENEAR( y, 146609, 1 );
       QVERIFY( transform.transform( x, y, true ) );
-#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,8,0)
-      QGSCOMPARENEAR( x, 2352, 1 );
-      QGSCOMPARENEAR( y, 1150, 1 );
-#else
       QGSCOMPARENEAR( x, 2347, 1 );
       QGSCOMPARENEAR( y, 1636, 1 );
-#endif
+
       x = 2067;
       y = 2500;
       QVERIFY( transform.transform( x, y ) );
       QGSCOMPARENEAR( x, 322501, 1 );
       QGSCOMPARENEAR( y, 196160, 1 );
       QVERIFY( transform.transform( x, y, true ) );
-#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,8,0)
-      QGSCOMPARENEAR( x, 2067, 1 );
-      QGSCOMPARENEAR( y, 2500, 1 );
-#else
       QGSCOMPARENEAR( x, 2068, 1 );
       QGSCOMPARENEAR( y, 2273, 1 );
-#endif
 
       x = 1102;
       y = 2300;
@@ -1193,13 +1176,8 @@ class TestQgsGcpTransformer : public QgsTest
       QGSCOMPARENEAR( x, 321803, 1 );
       QGSCOMPARENEAR( y, 195999, 1 );
       QVERIFY( transform.transform( x, y, true ) );
-#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,8,0)
-      QGSCOMPARENEAR( x, 1102, 1 );
-      QGSCOMPARENEAR( y, 2300, 1 );
-#else
       QGSCOMPARENEAR( x, 1103, 1 );
       QGSCOMPARENEAR( y, 2177, 1 );
-#endif
     }
 
     void testTPSRasterYAxis()
@@ -1220,13 +1198,8 @@ class TestQgsGcpTransformer : public QgsTest
       QGSCOMPARENEAR( x, 321202, 1 );
       QGSCOMPARENEAR( y, 63505, 1 );
       QVERIFY( transform.transform( x, y, true ) );
-#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,8,0)
-      QGSCOMPARENEAR( x, 288, 1 );
-      QGSCOMPARENEAR( y, -716, 1 );
-#else
       QGSCOMPARENEAR( x, 297, 1 );
       QGSCOMPARENEAR( y, -705, 1 );
-#endif
 
       x = 2352;
       y = -1126;
@@ -1234,13 +1207,8 @@ class TestQgsGcpTransformer : public QgsTest
       QGSCOMPARENEAR( x, 322686, 1 );
       QGSCOMPARENEAR( y, 24959, 1 );
       QVERIFY( transform.transform( x, y, true ) );
-#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,8,0)
-      QGSCOMPARENEAR( x, 2352, 1 );
-      QGSCOMPARENEAR( y, -1126, 1 );
-#else
       QGSCOMPARENEAR( x, 2361, 1 );
       QGSCOMPARENEAR( y, -1116, 1 );
-#endif
 
       x = 2067;
       y = -2398;
@@ -1248,13 +1216,8 @@ class TestQgsGcpTransformer : public QgsTest
       QGSCOMPARENEAR( x, 322474, 1 );
       QGSCOMPARENEAR( y, -31676, 1 );
       QVERIFY( transform.transform( x, y, true ) );
-#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,8,0)
-      QGSCOMPARENEAR( x, 2067, 1 );
-      QGSCOMPARENEAR( y, -2398, 1 );
-#else
       QGSCOMPARENEAR( x, 2078, 1 );
       QGSCOMPARENEAR( y, -2385, 1 );
-#endif
 
       x = 1102;
       y = -2209;
@@ -1262,13 +1225,8 @@ class TestQgsGcpTransformer : public QgsTest
       QGSCOMPARENEAR( x, 321780, 1 );
       QGSCOMPARENEAR( y, -13787, 1 );
       QVERIFY( transform.transform( x, y, true ) );
-#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,8,0)
-      QGSCOMPARENEAR( x, 1102, 1 );
-      QGSCOMPARENEAR( y, -2209, 1 );
-#else
       QGSCOMPARENEAR( x, 1114, 1 );
       QGSCOMPARENEAR( y, -2195, 1 );
-#endif
     }
 
     void testTPSExact()

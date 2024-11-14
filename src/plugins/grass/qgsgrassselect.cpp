@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgsgrassselect.h"
-#include "moc_qgsgrassselect.cpp"
 #include "qgsgrass.h"
 
 #include "qgslogger.h"
@@ -35,7 +34,7 @@ QgsGrassSelect::QgsGrassSelect( QWidget *parent, int type )
   , QgsGrassSelectBase()
   , selectedType( 0 )
 {
-  QgsDebugMsgLevel( QString( "QgsGrassSelect() type = %1" ).arg( type ), 3 );
+  QgsDebugMsg( QString( "QgsGrassSelect() type = %1" ).arg( type ) );
 
   setupUi( this );
   connect( GisdbaseBrowse, &QPushButton::clicked, this, &QgsGrassSelect::GisdbaseBrowse_clicked );
@@ -191,7 +190,7 @@ void QgsGrassSelect::setLocations()
 
 void QgsGrassSelect::setMapsets()
 {
-  QgsDebugMsgLevel( "setMapsets()", 3 );
+  QgsDebugMsg( "setMapsets()" );
 
   emapset->clear();
   emap->clear();
@@ -234,7 +233,7 @@ void QgsGrassSelect::setMapsets()
 
 void QgsGrassSelect::setMaps()
 {
-  QgsDebugMsgLevel( "setMaps()", 3 );
+  QgsDebugMsg( "setMaps()" );
 
   // Replaced by text box to enable wild cards
   emap->clear();
@@ -332,7 +331,7 @@ void QgsGrassSelect::setMaps()
 
 void QgsGrassSelect::setLayers()
 {
-  QgsDebugMsgLevel( "setLayers()", 3 );
+  QgsDebugMsg( "setLayers()" );
 
   elayer->clear();
 
@@ -350,7 +349,7 @@ void QgsGrassSelect::setLayers()
   }
   catch ( QgsGrass::Exception &e )
   {
-    QgsDebugError( e.what() );
+    QgsDebugMsg( e.what() );
     return;
   }
 

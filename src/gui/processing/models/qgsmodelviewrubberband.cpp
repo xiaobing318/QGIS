@@ -15,7 +15,6 @@
 
 
 #include "qgsmodelviewrubberband.h"
-#include "moc_qgsmodelviewrubberband.cpp"
 #include "qgsmodelgraphicsview.h"
 #include "qgsmodelgraphicsscene.h"
 #include <QGraphicsRectItem>

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     extractprojection.py
@@ -32,9 +34,6 @@ from qgis.core import (QgsProcessingParameterRasterLayer,
                        QgsProcessingOutputFile)
 
 pluginPath = os.path.split(os.path.split(os.path.dirname(__file__))[0])[0]
-
-gdal.UseExceptions()
-osr.UseExceptions()
 
 
 class ExtractProjection(GdalAlgorithm):
@@ -101,14 +100,7 @@ class ExtractProjection(GdalAlgorithm):
         raster = None
         rasterDS = None
 
-        inFileName = os.path.splitext(str(rasterPath))
-        outFileName = inFileName[0]
-        # this is not a good idea as it won't work with an extension like .jpeg
-        # outFileExt = '.' + inFileName[1][1:4:2] + 'w'
-        if (len(inFileName[1]) < 4):
-            outFileExt = '.wld'
-        else:
-            outFileExt = inFileName[1][0:2] + inFileName[1][-1] + 'w'
+        outFileName = os.path.splitext(str(rasterPath))[0]
 
         results = {}
         if crs != '' and createPrj:
@@ -118,13 +110,13 @@ class ExtractProjection(GdalAlgorithm):
             crs = tmp.ExportToWkt()
             tmp = None
 
-            with open(outFileName + '.prj', 'w', encoding='utf-8') as prj:
+            with open(outFileName + '.prj', 'wt', encoding='utf-8') as prj:
                 prj.write(crs)
             results[self.PRJ_FILE] = outFileName + '.prj'
         else:
             results[self.PRJ_FILE] = None
 
-        with open(outFileName + outFileExt, 'w') as wld:
+        with open(outFileName + '.wld', 'wt') as wld:
             wld.write('%0.8f\n' % geotransform[1])
             wld.write('%0.8f\n' % geotransform[4])
             wld.write('%0.8f\n' % geotransform[2])
@@ -135,6 +127,6 @@ class ExtractProjection(GdalAlgorithm):
             wld.write('%0.8f\n' % (geotransform[3]
                                    + 0.5 * geotransform[4]
                                    + 0.5 * geotransform[5]))
-        results[self.WORLD_FILE] = outFileName + outFileExt
+        results[self.WORLD_FILE] = outFileName + '.wld'
 
         return results

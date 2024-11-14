@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsscrollarea.h"
-#include "moc_qgsscrollarea.cpp"
 
 #include <QEvent>
 #include <QMouseEvent>

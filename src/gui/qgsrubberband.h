@@ -18,7 +18,7 @@
 #include "qgsmapcanvasitem.h"
 #include "qgis_sip.h"
 #include "qgsgeometry.h"
-#include "qgscoordinatereferencesystem.h"
+#include "qgscoordinatetransform.h"
 
 #include <QBrush>
 #include <QVector>
@@ -29,9 +29,7 @@
 
 #include "qgis_gui.h"
 
-class QgsMapLayer;
 class QgsVectorLayer;
-class QgsMapLayer;
 class QPaintEvent;
 class QgsSymbol;
 
@@ -116,11 +114,13 @@ class GUI_EXPORT QgsRubberBand : public QgsMapCanvasItem
 
       /**
        * A diamond is used to highlight points (◇)
+       * \since QGIS 3.0
        */
       ICON_DIAMOND,
 
       /**
        * A diamond is used to highlight points (◆)
+       * \since QGIS 3.0
        */
       ICON_FULL_DIAMOND,
 
@@ -137,9 +137,9 @@ class GUI_EXPORT QgsRubberBand : public QgsMapCanvasItem
      *         Its CRS will be used to map points onto screen coordinates.
      * The ownership is transferred to this canvas.
      *  \param geometryType Defines how the data should be drawn onto the screen.
-     *         Qgis::GeometryType::Line, Qgis::GeometryType::Polygon or Qgis::GeometryType::Point
+     *         QgsWkbTypes::LineGeometry, QgsWkbTypes::PolygonGeometry or QgsWkbTypes::PointGeometry
      */
-    QgsRubberBand( QgsMapCanvas *mapCanvas SIP_TRANSFERTHIS, Qgis::GeometryType geometryType = Qgis::GeometryType::Line );
+    QgsRubberBand( QgsMapCanvas *mapCanvas SIP_TRANSFERTHIS, QgsWkbTypes::GeometryType geometryType = QgsWkbTypes::LineGeometry );
     ~QgsRubberBand() override;
 
     /**
@@ -152,6 +152,7 @@ class GUI_EXPORT QgsRubberBand : public QgsMapCanvasItem
     /**
      * Sets the fill color for the rubberband
      *  \param color  The color used to render this rubberband
+     *  \since QGIS 2.6
      */
     void setFillColor( const QColor &color );
 
@@ -163,6 +164,7 @@ class GUI_EXPORT QgsRubberBand : public QgsMapCanvasItem
     /**
      * Sets the stroke color for the rubberband
      *  \param color  The color used to render this rubberband
+     *  \since QGIS 2.6
      */
     void setStrokeColor( const QColor &color );
 
@@ -175,6 +177,7 @@ class GUI_EXPORT QgsRubberBand : public QgsMapCanvasItem
      * Sets a secondary stroke color for the rubberband which will be drawn under the main stroke color.
      * Set to an invalid color to avoid drawing the secondary stroke.
      *  \param color  The color used to render a secondary stroke color to this rubberband
+     *  \since QGIS 3.0
      */
     void setSecondaryStrokeColor( const QColor &color );
 
@@ -187,7 +190,7 @@ class GUI_EXPORT QgsRubberBand : public QgsMapCanvasItem
      * Sets the width of the line. Stroke width for polygon.
      *  \param width The width for any lines painted for this rubberband
      */
-    void setWidth( double width );
+    void setWidth( int width );
 
     /**
      * Returns the current width of the line or stroke width for polygon.
@@ -218,12 +221,12 @@ class GUI_EXPORT QgsRubberBand : public QgsMapCanvasItem
     /**
      * Sets the size of the point icons
      */
-    void setIconSize( double iconSize );
+    void setIconSize( int iconSize );
 
     /**
      * Returns the current icon size of the point icons.
      */
-    double iconSize() const { return mIconSize; }
+    int iconSize() const { return mIconSize; }
 
     /**
      * Sets the style of the line
@@ -240,7 +243,7 @@ class GUI_EXPORT QgsRubberBand : public QgsMapCanvasItem
      * Sets the representation type according to geometryType.
      *  \param geometryType Defines how the data should be drawn onto the screen. (Use Qgis::Line, Qgis::Polygon or Qgis::Point)
      */
-    void reset( Qgis::GeometryType geometryType = Qgis::GeometryType::Line );
+    void reset( QgsWkbTypes::GeometryType geometryType = QgsWkbTypes::LineGeometry );
 
     /**
      * Adds a vertex to the rubberband and update canvas.
@@ -259,6 +262,7 @@ class GUI_EXPORT QgsRubberBand : public QgsMapCanvasItem
      * \param doUpdate set to TRUE to update the map canvas immediately
      * \param geometryIndex The index of the feature part (in case of multipart geometries)
      * \param ringIndex     The index of the polygon ring (in case of polygons with holes)
+     * \since QGIS 2.16
      */
     void closePoints( bool doUpdate = true, int geometryIndex = 0, int ringIndex = 0 );
 
@@ -354,6 +358,7 @@ class GUI_EXPORT QgsRubberBand : public QgsMapCanvasItem
      * If additional geometries are to be added then set \a doUpdate to FALSE to defer costly repaint and bounding rectangle calculations for better performance.
      * After adding the final geometry updatePosition() should be called.
      *
+     * \since QGIS 3.0
      */
     void addGeometry( const QgsGeometry &geometry, const QgsCoordinateReferenceSystem &crs = QgsCoordinateReferenceSystem(), bool doUpdate = true );
 
@@ -449,7 +454,7 @@ class GUI_EXPORT QgsRubberBand : public QgsMapCanvasItem
     QPen mSecondaryPen;
 
     //! The size of the icon for points.
-    double mIconSize = 5;
+    int mIconSize = 5;
 
     //! Icon to be shown.
     IconType mIconType = ICON_CIRCLE;
@@ -462,7 +467,7 @@ class GUI_EXPORT QgsRubberBand : public QgsMapCanvasItem
      * Nested lists used for multitypes
      */
     QVector< QVector< QVector <QgsPointXY> > > mPoints;
-    Qgis::GeometryType mGeometryType = Qgis::GeometryType::Polygon;
+    QgsWkbTypes::GeometryType mGeometryType = QgsWkbTypes::PolygonGeometry;
     double mTranslationOffsetX = 0.0;
     double mTranslationOffsetY = 0.0;
 

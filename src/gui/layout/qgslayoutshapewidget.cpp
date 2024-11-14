@@ -16,14 +16,12 @@
  ***************************************************************************/
 
 #include "qgslayoutshapewidget.h"
-#include "moc_qgslayoutshapewidget.cpp"
+#include "qgsstyle.h"
 #include "qgslayoutitemshape.h"
 #include "qgslayout.h"
 #include "qgslayoutundostack.h"
 #include "qgsvectorlayer.h"
 #include "qgsfillsymbol.h"
-#include "qgslayoutrendercontext.h"
-#include "qgslayoutreportcontext.h"
 
 QgsLayoutShapeWidget::QgsLayoutShapeWidget( QgsLayoutItemShape *shape )
   : QgsLayoutItemBaseWidget( nullptr, shape )
@@ -62,7 +60,7 @@ QgsLayoutShapeWidget::QgsLayoutShapeWidget( QgsLayoutItemShape *shape )
   mShapeStyleButton->registerExpressionContextGenerator( mShape );
 
   connect( mShapeStyleButton, &QgsSymbolButton::changed, this, &QgsLayoutShapeWidget::symbolChanged );
-  connect( mRadiusUnitsComboBox, &QgsLayoutUnitsComboBox::unitChanged, this, &QgsLayoutShapeWidget::radiusUnitsChanged );
+  connect( mRadiusUnitsComboBox, &QgsLayoutUnitsComboBox::changed, this, &QgsLayoutShapeWidget::radiusUnitsChanged );
 
   mShapeStyleButton->setLayer( coverageLayer() );
   if ( mShape->layout() )

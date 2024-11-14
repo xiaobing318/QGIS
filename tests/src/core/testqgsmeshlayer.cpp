@@ -26,9 +26,8 @@
 #include "qgsproviderregistry.h"
 #include "qgsproject.h"
 #include "qgstriangularmesh.h"
-#include "qgsexpression.h"
-#include "qgsmeshlayertemporalproperties.h"
 #include "qgsmeshlayerutils.h"
+#include "qgsmeshlayertemporalproperties.h"
 
 #include "qgsmeshdataprovidertemporalcapabilities.h"
 #include "qgsprovidermetadata.h"
@@ -38,14 +37,12 @@
  * \ingroup UnitTests
  * This is a unit test for a mesh layer
  */
-class TestQgsMeshLayer : public QgsTest
+class TestQgsMeshLayer : public QObject
 {
     Q_OBJECT
 
   public:
-    TestQgsMeshLayer()
-      : QgsTest( QStringLiteral( "Mesh layer tests" ) )
-    {}
+    TestQgsMeshLayer() = default;
 
   private:
     QString mDataDir;
@@ -109,10 +106,7 @@ class TestQgsMeshLayer : public QgsTest
     void testSetDataSourceRetainStyle();
 
     void keepDatasetIndexConsistency();
-    void symbologyConsistencyWithName();
     void updateTimePropertiesWhenReloading();
-
-    void testHaveSameParentQuantity();
 };
 
 QString TestQgsMeshLayer::readFile( const QString &fname ) const
@@ -944,11 +938,11 @@ void TestQgsMeshLayer::test_extent()
 {
   const QgsRectangle expectedExtent( 1000.0, 2000.0, 3000.0, 3000.0 );
 
-  QCOMPARE( mMemoryLayer->extent(), expectedExtent );
-  QCOMPARE( mMemoryLayer->dataProvider()->extent(), expectedExtent );
+  QCOMPARE( expectedExtent, mMemoryLayer->extent() );
+  QCOMPARE( mMemoryLayer->dataProvider()->extent(), mMemoryLayer->extent() );
 
-  QCOMPARE( mMdalLayer->extent(), expectedExtent );
-  QCOMPARE( mMdalLayer->dataProvider()->extent(), expectedExtent );
+  QCOMPARE( expectedExtent, mMdalLayer->extent() );
+  QCOMPARE( mMdalLayer->dataProvider()->extent(), mMdalLayer->extent() );
 }
 
 void TestQgsMeshLayer::test_write_read_project()
@@ -1022,7 +1016,7 @@ void TestQgsMeshLayer::test_path()
   QCOMPARE( layers1.count(), 1 );
 
   // Check if the mesh is still here but invalid
-  QgsMeshLayer *meshLayer1 = qobject_cast<QgsMeshLayer *>( layers1.first() );
+  QgsMeshLayer *meshLayer1 = qobject_cast<QgsMeshLayer *>( layers1.values().at( 0 ) );
   QVERIFY( meshLayer1 );
   QVERIFY( !meshLayer1->isValid() );
   QCOMPARE( meshLayer1->name(), QStringLiteral( "mesh layer" ) );
@@ -1034,7 +1028,7 @@ void TestQgsMeshLayer::test_path()
   QMap<QString, QgsMapLayer *> layers2 = project2.mapLayers();
   QCOMPARE( layers2.count(), 1 );
 
-  QgsMeshLayer *meshLayer2 = qobject_cast<QgsMeshLayer *>( layers2.first() );
+  QgsMeshLayer *meshLayer2 = qobject_cast<QgsMeshLayer *>( layers2.values().at( 0 ) );
   QVERIFY( meshLayer2 );
   QVERIFY( meshLayer2->isValid() );
   QCOMPARE( meshLayer2->name(), QStringLiteral( "mesh layer" ) );
@@ -1706,7 +1700,7 @@ void TestQgsMeshLayer::test_setDataSource()
   QCOMPARE( firstLayer->dataProvider()->extraDatasets().count(), 3 );
   QCOMPARE( firstLayer->datasetGroupTreeRootItem()->childCount(), 5 );
 
-  firstLayer->dataProvider()->temporalCapabilities()->setTemporalUnit( Qgis::TemporalUnit::Minutes );
+  firstLayer->dataProvider()->temporalCapabilities()->setTemporalUnit( QgsUnitTypes::TemporalMinutes );
 
   QgsReadWriteContext readWriteContext;
   QDomDocument doc( "savedLayer" );
@@ -1722,7 +1716,7 @@ void TestQgsMeshLayer::test_setDataSource()
   QCOMPARE( layerWithGoodDataSource.datasetGroupTreeRootItem()->child( 1 )->description(), mDataDir + "/quad_and_triangle_vertex_scalar.dat" );
   QCOMPARE( layerWithGoodDataSource.datasetGroupTreeRootItem()->child( 2 )->description(), mDataDir + "/quad_and_triangle_vertex_vector.dat" );
   QCOMPARE( layerWithGoodDataSource.datasetGroupTreeRootItem()->child( 3 )->description(), mDataDir + "/quad_and_triangle_els_face_scalar.dat" );
-  QCOMPARE( layerWithGoodDataSource.dataProvider()->temporalCapabilities()->temporalUnit(), Qgis::TemporalUnit::Minutes );
+  QCOMPARE( layerWithGoodDataSource.dataProvider()->temporalCapabilities()->temporalUnit(), QgsUnitTypes::TemporalMinutes );
 
   QCOMPARE( QgsMeshDatasetValue( 30.0 ), layerWithGoodDataSource.datasetValue( QgsMeshDatasetIndex( 0, 0 ), 1 ) );
   QCOMPARE( QgsMeshDatasetValue( 2.0 ), layerWithGoodDataSource.datasetValue( QgsMeshDatasetIndex( 1, 0 ), 1 ) );
@@ -1757,7 +1751,7 @@ void TestQgsMeshLayer::test_setDataSource()
   QCOMPARE( layerWithBadDataSource.datasetGroupTreeRootItem()->child( 1 )->description(), mDataDir + "/quad_and_triangle_vertex_scalar.dat" );
   QCOMPARE( layerWithBadDataSource.datasetGroupTreeRootItem()->child( 2 )->description(), mDataDir + "/quad_and_triangle_vertex_vector.dat" );
   QCOMPARE( layerWithBadDataSource.datasetGroupTreeRootItem()->child( 3 )->description(), mDataDir + "/quad_and_triangle_els_face_scalar.dat" );
-  QCOMPARE( layerWithGoodDataSource.dataProvider()->temporalCapabilities()->temporalUnit(), Qgis::TemporalUnit::Minutes );
+  QCOMPARE( layerWithGoodDataSource.dataProvider()->temporalCapabilities()->temporalUnit(), QgsUnitTypes::TemporalMinutes );
 
   QCOMPARE( QgsMeshDatasetValue( 30.0 ), layerWithBadDataSource.datasetValue( QgsMeshDatasetIndex( 0, 0 ), 1 ) );
   QCOMPARE( QgsMeshDatasetValue( 2.0 ), layerWithBadDataSource.datasetValue( QgsMeshDatasetIndex( 1, 0 ), 1 ) );
@@ -1802,7 +1796,7 @@ void TestQgsMeshLayer::testMdalProviderQuerySublayers()
   QCOMPARE( res.at( 0 ).uri(), QStringLiteral( "ESRI_TIN:\"%1/esri_tin/tdenv9.adf\"" ).arg( TEST_DATA_DIR ) );
   QCOMPARE( res.at( 0 ).providerKey(), QStringLiteral( "mdal" ) );
   QCOMPARE( res.at( 0 ).driverName(), QStringLiteral( "ESRI_TIN" ) );
-  QCOMPARE( res.at( 0 ).type(), Qgis::LayerType::Mesh );
+  QCOMPARE( res.at( 0 ).type(), QgsMapLayerType::MeshLayer );
 
   // single layer mesh
   res = mdalMetadata->querySublayers( mDataDir + "/quad_and_triangle.2dm" );
@@ -1812,7 +1806,7 @@ void TestQgsMeshLayer::testMdalProviderQuerySublayers()
   QCOMPARE( res.at( 0 ).uri(), QStringLiteral( "2DM:\"%1/quad_and_triangle.2dm\"" ).arg( mDataDir ) );
   QCOMPARE( res.at( 0 ).providerKey(), QStringLiteral( "mdal" ) );
   QCOMPARE( res.at( 0 ).driverName(), QStringLiteral( "2DM" ) );
-  QCOMPARE( res.at( 0 ).type(), Qgis::LayerType::Mesh );
+  QCOMPARE( res.at( 0 ).type(), QgsMapLayerType::MeshLayer );
 
   // make sure result is valid to load layer from
   const QgsProviderSublayerDetails::LayerOptions options{ QgsCoordinateTransformContext() };
@@ -1826,7 +1820,7 @@ void TestQgsMeshLayer::testMdalProviderQuerySublayers()
   QCOMPARE( res.at( 0 ).name(), QStringLiteral( "quad_and_triangle" ) );
   QCOMPARE( res.at( 0 ).uri(), QStringLiteral( "2DM:\"%1/quad_and_triangle.2dm\"" ).arg( mDataDir ) );
   QCOMPARE( res.at( 0 ).providerKey(), QStringLiteral( "mdal" ) );
-  QCOMPARE( res.at( 0 ).type(), Qgis::LayerType::Mesh );
+  QCOMPARE( res.at( 0 ).type(), QgsMapLayerType::MeshLayer );
   QCOMPARE( res.at( 0 ).driverName(), "2DM" );
   ml.reset( qgis::down_cast< QgsMeshLayer * >( res.at( 0 ).toLayer( options ) ) );
   QVERIFY( ml->isValid() );
@@ -1838,7 +1832,7 @@ void TestQgsMeshLayer::testMdalProviderQuerySublayers()
   QCOMPARE( res.at( 0 ).name(), QStringLiteral( "mesh1d" ) );
   QCOMPARE( res.at( 0 ).uri(), QStringLiteral( "Ugrid:\"%1/manzese_1d2d_small_map.nc\":mesh1d" ).arg( mDataDir ) );
   QCOMPARE( res.at( 0 ).providerKey(), QStringLiteral( "mdal" ) );
-  QCOMPARE( res.at( 0 ).type(), Qgis::LayerType::Mesh );
+  QCOMPARE( res.at( 0 ).type(), QgsMapLayerType::MeshLayer );
   QCOMPARE( res.at( 0 ).driverName(), QStringLiteral( "Ugrid" ) );
   ml.reset( qgis::down_cast< QgsMeshLayer * >( res.at( 0 ).toLayer( options ) ) );
   QVERIFY( ml->isValid() );
@@ -1846,7 +1840,7 @@ void TestQgsMeshLayer::testMdalProviderQuerySublayers()
   QCOMPARE( res.at( 1 ).name(), QStringLiteral( "mesh2d" ) );
   QCOMPARE( res.at( 1 ).uri(), QStringLiteral( "Ugrid:\"%1/manzese_1d2d_small_map.nc\":mesh2d" ).arg( mDataDir ) );
   QCOMPARE( res.at( 1 ).providerKey(), QStringLiteral( "mdal" ) );
-  QCOMPARE( res.at( 1 ).type(), Qgis::LayerType::Mesh );
+  QCOMPARE( res.at( 1 ).type(), QgsMapLayerType::MeshLayer );
   QCOMPARE( res.at( 1 ).driverName(), QStringLiteral( "Ugrid" ) );
   ml.reset( qgis::down_cast< QgsMeshLayer * >( res.at( 1 ).toLayer( options ) ) );
   QVERIFY( ml->isValid() );
@@ -1858,7 +1852,7 @@ void TestQgsMeshLayer::testMdalProviderQuerySublayers()
   QCOMPARE( res.at( 0 ).name(), QStringLiteral( "mesh1d" ) );
   QCOMPARE( res.at( 0 ).uri(), QStringLiteral( "Ugrid:\"%1/manzese_1d2d_small_map.nc\":mesh1d" ).arg( mDataDir ) );
   QCOMPARE( res.at( 0 ).providerKey(), QStringLiteral( "mdal" ) );
-  QCOMPARE( res.at( 0 ).type(), Qgis::LayerType::Mesh );
+  QCOMPARE( res.at( 0 ).type(), QgsMapLayerType::MeshLayer );
   QCOMPARE( res.at( 0 ).driverName(), QStringLiteral( "Ugrid" ) );
   ml.reset( qgis::down_cast< QgsMeshLayer * >( res.at( 0 ).toLayer( options ) ) );
   QVERIFY( ml->isValid() );
@@ -1868,7 +1862,7 @@ void TestQgsMeshLayer::testMdalProviderQuerySublayers()
   QCOMPARE( res.at( 0 ).name(), QStringLiteral( "mesh2d" ) );
   QCOMPARE( res.at( 0 ).uri(), QStringLiteral( "Ugrid:\"%1/manzese_1d2d_small_map.nc\":mesh2d" ).arg( mDataDir ) );
   QCOMPARE( res.at( 0 ).providerKey(), QStringLiteral( "mdal" ) );
-  QCOMPARE( res.at( 0 ).type(), Qgis::LayerType::Mesh );
+  QCOMPARE( res.at( 0 ).type(), QgsMapLayerType::MeshLayer );
   QCOMPARE( res.at( 0 ).driverName(), QStringLiteral( "Ugrid" ) );
   ml.reset( qgis::down_cast< QgsMeshLayer * >( res.at( 0 ).toLayer( options ) ) );
   QVERIFY( ml->isValid() );
@@ -1894,7 +1888,7 @@ void TestQgsMeshLayer::testMdalProviderQuerySublayersFastScan()
   QCOMPARE( res.at( 0 ).name(), QStringLiteral( "quad_and_triangle" ) );
   QCOMPARE( res.at( 0 ).uri(), mDataDir + "/quad_and_triangle.2dm" );
   QCOMPARE( res.at( 0 ).providerKey(), QStringLiteral( "mdal" ) );
-  QCOMPARE( res.at( 0 ).type(), Qgis::LayerType::Mesh );
+  QCOMPARE( res.at( 0 ).type(), QgsMapLayerType::MeshLayer );
   QVERIFY( res.at( 0 ).skippedContainerScan() );
 
   // mesh with two layers
@@ -1904,7 +1898,7 @@ void TestQgsMeshLayer::testMdalProviderQuerySublayersFastScan()
   QCOMPARE( res.at( 0 ).name(), QStringLiteral( "manzese_1d2d_small_map" ) );
   QCOMPARE( res.at( 0 ).uri(), mDataDir + "/manzese_1d2d_small_map.nc" );
   QCOMPARE( res.at( 0 ).providerKey(), QStringLiteral( "mdal" ) );
-  QCOMPARE( res.at( 0 ).type(), Qgis::LayerType::Mesh );
+  QCOMPARE( res.at( 0 ).type(), QgsMapLayerType::MeshLayer );
   QVERIFY( res.at( 0 ).skippedContainerScan() );
 
   // even though mdal reports support for .adf files, these are not a mesh:
@@ -1930,7 +1924,7 @@ void TestQgsMeshLayer::testMdalProviderQuerySublayersFastScan()
   QCOMPARE( res.at( 0 ).name(), QStringLiteral( "esri_tin" ) );
   QCOMPARE( res.at( 0 ).uri(), QString( TEST_DATA_DIR ) + "/esri_tin/tdenv9.adf" );
   QCOMPARE( res.at( 0 ).providerKey(), QStringLiteral( "mdal" ) );
-  QCOMPARE( res.at( 0 ).type(), Qgis::LayerType::Mesh );
+  QCOMPARE( res.at( 0 ).type(), QgsMapLayerType::MeshLayer );
   // only tdenv?.adf file should report capabilities
   res = mdalMetadata->querySublayers( QString( TEST_DATA_DIR ) + "/esri_tin/thul.adf", Qgis::SublayerQueryFlag::FastScan );
   QVERIFY( res.empty() );
@@ -2110,81 +2104,6 @@ void TestQgsMeshLayer::keepDatasetIndexConsistency()
 
 }
 
-void TestQgsMeshLayer::symbologyConsistencyWithName()
-{
-  const QString uri_1( mDataDir + QStringLiteral( "/mesh_z_ws_d_vel.nc" ) ); //mesh with dataset group "Bed Elevation", "Water level", "Depth" and "Velocity"
-  const QString uri_2( mDataDir + QStringLiteral( "/mesh_z_ws_d.nc" ) ); //exactly the same mesh except without "Velocity"
-
-  std::unique_ptr< QgsMeshLayer > layer_1 = std::make_unique< QgsMeshLayer >( uri_1, QStringLiteral( "mesh" ), QStringLiteral( "mdal" ) );
-  std::unique_ptr< QgsMeshLayer > layer_2 = std::make_unique< QgsMeshLayer >( uri_2, QStringLiteral( "mesh" ), QStringLiteral( "mdal" ) );
-
-  QMap<QString, int> nameToindex_1;
-  QList<int> indexes = layer_1->datasetGroupsIndexes();
-  for ( int index : indexes )
-    nameToindex_1.insert( layer_1->datasetGroupMetadata( index ).name(), index );
-
-  QMap<QString, int> nameToindex_2;
-  indexes = layer_2->datasetGroupsIndexes();
-  for ( int index : std::as_const( indexes ) )
-    nameToindex_2.insert( layer_2->datasetGroupMetadata( index ).name(), index );
-
-  QStringList names_1 = nameToindex_1.keys();
-  QgsMeshRendererSettings settings_1 = layer_1->rendererSettings();
-  for ( int i = 0; i < names_1.count(); ++i )
-  {
-    const QString name = names_1.at( i );
-    int index = nameToindex_1.value( name );
-    QgsMeshRendererScalarSettings scalSettings = settings_1.scalarSettings( index );
-    QgsColorRampShader cl = scalSettings.colorRampShader();
-    cl.setClassificationMode( Qgis::ShaderClassificationMethod::EqualInterval );
-    cl.classifyColorRamp( 10 + i, -1 );
-    QCOMPARE( cl.colorRampItemList().count(), 10 + i );
-    scalSettings.setColorRampShader( cl );
-    settings_1.setScalarSettings( index, scalSettings );
-  }
-  layer_1->setRendererSettings( settings_1 );
-
-  QStringList names_2 = nameToindex_2.keys();
-  QgsMeshRendererSettings settings_2 = layer_2->rendererSettings();
-  for ( int i = 0; i < names_2.count(); ++i )
-  {
-    const QString name = names_2.at( i );
-    int index = nameToindex_2.value( name );
-    QgsMeshRendererScalarSettings scalSettings = settings_2.scalarSettings( index );
-    QgsColorRampShader cl = scalSettings.colorRampShader();
-    cl.setClassificationMode( Qgis::ShaderClassificationMethod::EqualInterval );
-    cl.classifyColorRamp( 30 + i, -1 );
-    QCOMPARE( cl.colorRampItemList().count(), 30 + i );
-    scalSettings.setColorRampShader( cl );
-    settings_2.setScalarSettings( index, scalSettings );
-  }
-  layer_2->setRendererSettings( settings_2 );
-
-  QDomDocument doc( QStringLiteral( "dataset-symbology" ) );
-  QDomElement elem_1 = doc.createElement( "dataset-symbology" );
-  QString err;
-  QgsReadWriteContext rwContext;
-  QVERIFY( layer_1->writeStyle( elem_1, doc, err, rwContext ) );
-
-  QDomElement elem_2 = doc.createElement( "dataset-symbology" );
-  QVERIFY( layer_2->writeStyle( elem_2, doc, err, rwContext ) );
-
-  QVERIFY( layer_2->readStyle( elem_1, err, rwContext ) );
-  QVERIFY( layer_1->readStyle( elem_2, err, rwContext ) );
-
-  settings_1 = layer_1->rendererSettings();
-  QCOMPARE( 30, settings_1.scalarSettings( nameToindex_1.value( names_1.at( 0 ) ) ).colorRampShader().colorRampItemList().count() );
-  // following group is not present in layer_2, so symbology is unchanged
-  QCOMPARE( 11, settings_1.scalarSettings( nameToindex_1.value( names_1.at( 1 ) ) ).colorRampShader().colorRampItemList().count() );
-  QCOMPARE( 31, settings_1.scalarSettings( nameToindex_1.value( names_1.at( 2 ) ) ).colorRampShader().colorRampItemList().count() );
-  QCOMPARE( 32, settings_1.scalarSettings( nameToindex_1.value( names_1.at( 3 ) ) ).colorRampShader().colorRampItemList().count() );
-
-  settings_2 = layer_2->rendererSettings();
-  QCOMPARE( 10, settings_2.scalarSettings( nameToindex_2.value( names_2.at( 0 ) ) ).colorRampShader().colorRampItemList().count() );
-  QCOMPARE( 12, settings_2.scalarSettings( nameToindex_2.value( names_2.at( 1 ) ) ).colorRampShader().colorRampItemList().count() );
-  QCOMPARE( 13, settings_2.scalarSettings( nameToindex_2.value( names_2.at( 2 ) ) ).colorRampShader().colorRampItemList().count() );
-}
-
 void TestQgsMeshLayer::test_temporal()
 {
   const qint64 relativeTime_0 = -1000;
@@ -2254,7 +2173,7 @@ void TestQgsMeshLayer::test_temporal()
   QCOMPARE( mMdal3DLayer->activeScalarDatasetAtTime( QgsDateTimeRange( time_1, time_2 ) ).dataset(), 17 );
   mMdal3DLayer->setTemporalMatchingMethod( QgsMeshDataProviderTemporalCapabilities::FindClosestDatasetFromStartRangeTime );
   QCOMPARE( mMdal3DLayer->activeScalarDatasetAtTime( QgsDateTimeRange( time_1, time_2 ) ).dataset(), 18 );
-  QCOMPARE( mMdal3DLayer->datasetIndexAtRelativeTime( QgsInterval( 3, Qgis::TemporalUnit::Hours ), 1 ), QgsMeshDatasetIndex( 1, 18 ) );
+  QCOMPARE( mMdal3DLayer->datasetIndexAtRelativeTime( QgsInterval( 3, QgsUnitTypes::TemporalHours ), 1 ), QgsMeshDatasetIndex( 1, 18 ) );
   // Next dataset
   mMdal3DLayer->setTemporalMatchingMethod( QgsMeshDataProviderTemporalCapabilities::FindClosestDatasetBeforeStartRangeTime );
   QCOMPARE( mMdal3DLayer->activeScalarDatasetAtTime( QgsDateTimeRange( time_1.addSecs( 400 ), time_2.addSecs( 400 ) ) ).dataset(), 18 );
@@ -2265,18 +2184,18 @@ void TestQgsMeshLayer::test_temporal()
   QgsMeshLayerTemporalProperties *tempProp = static_cast<QgsMeshLayerTemporalProperties *>( mMdal3DLayer->temporalProperties() );
   tempProp->setReferenceTime( QDateTime( QDate( 1980, 1, 1 ), QTime( 0, 0, 0 ), Qt::UTC ), mMdal3DLayer->dataProvider()->temporalCapabilities() );
   QCOMPARE( mMdal3DLayer->activeScalarDatasetAtTime( QgsDateTimeRange( time_1, time_2 ) ).dataset(), -1 );
-  QCOMPARE( mMdal3DLayer->datasetIndexAtRelativeTime( QgsInterval( 3, Qgis::TemporalUnit::Hours ), 1 ), QgsMeshDatasetIndex( 1, 18 ) );
+  QCOMPARE( mMdal3DLayer->datasetIndexAtRelativeTime( QgsInterval( 3, QgsUnitTypes::TemporalHours ), 1 ), QgsMeshDatasetIndex( 1, 18 ) );
   time_1 = QDateTime( QDate( 1980, 1, 1 ), QTime( 3, 0, 0 ), Qt::UTC );
   time_2 = time_1.addSecs( 300 );
   QCOMPARE( mMdal3DLayer->activeScalarDatasetAtTime( QgsDateTimeRange( time_1, time_2 ) ).dataset(), 18 );
-  QCOMPARE( mMdal3DLayer->datasetIndexAtRelativeTime( QgsInterval( 3, Qgis::TemporalUnit::Hours ), 1 ), QgsMeshDatasetIndex( 1, 18 ) );
+  QCOMPARE( mMdal3DLayer->datasetIndexAtRelativeTime( QgsInterval( 3, QgsUnitTypes::TemporalHours ), 1 ), QgsMeshDatasetIndex( 1, 18 ) );
 
   tempProp->setReferenceTime( QDateTime( QDate( 1995, 1, 1 ), QTime( 0, 0, 0 ), Qt::UTC ), mMdal3DLayer->dataProvider()->temporalCapabilities() );
   QCOMPARE( mMdal3DLayer->activeScalarDatasetAtTime( QgsDateTimeRange( time_1, time_2 ) ).dataset(), -1 );
   time_1 = QDateTime( QDate( 1995, 1, 1 ), QTime( 3, 0, 0 ), Qt::UTC );
   time_2 = time_1.addSecs( 300 );
   QCOMPARE( mMdal3DLayer->activeScalarDatasetAtTime( QgsDateTimeRange( time_1, time_2 ) ).dataset(), 18 );
-  QCOMPARE( mMdal3DLayer->datasetIndexAtRelativeTime( QgsInterval( 3, Qgis::TemporalUnit::Hours ), 1 ), QgsMeshDatasetIndex( 1, 18 ) );
+  QCOMPARE( mMdal3DLayer->datasetIndexAtRelativeTime( QgsInterval( 3, QgsUnitTypes::TemporalHours ), 1 ), QgsMeshDatasetIndex( 1, 18 ) );
 }
 
 
@@ -2342,28 +2261,6 @@ void TestQgsMeshLayer::updateTimePropertiesWhenReloading()
   layer->reload();
   QCOMPARE( referenceTime1, static_cast<QgsMeshLayerTemporalProperties *>( layer->temporalProperties() )->referenceTime() );
   QCOMPARE( timeExtent1, static_cast<QgsMeshLayerTemporalProperties *>( layer->temporalProperties() )->timeExtent() );
-}
-
-void TestQgsMeshLayer::testHaveSameParentQuantity()
-{
-  QgsMeshLayer layer1(
-    testDataPath( "mesh/netcdf_parent_quantity.nc" ),
-    QStringLiteral( "mesh" ),
-    QStringLiteral( "mdal" ) );
-  QVERIFY( layer1.isValid() );
-
-  QVERIFY( QgsMeshLayerUtils::haveSameParentQuantity( &layer1, QgsMeshDatasetIndex( 0 ), QgsMeshDatasetIndex( 1 ) ) );
-  QVERIFY( QgsMeshLayerUtils::haveSameParentQuantity( &layer1, QgsMeshDatasetIndex( 0 ), QgsMeshDatasetIndex( 2 ) ) );
-  QVERIFY( QgsMeshLayerUtils::haveSameParentQuantity( &layer1, QgsMeshDatasetIndex( 2 ), QgsMeshDatasetIndex( 3 ) ) );
-  QVERIFY( !QgsMeshLayerUtils::haveSameParentQuantity( &layer1, QgsMeshDatasetIndex( 0 ), QgsMeshDatasetIndex( 4 ) ) );
-
-  QgsMeshLayer layer2(
-    testDataPath( "mesh/mesh_z_ws_d.nc" ),
-    QStringLiteral( "mesh" ),
-    QStringLiteral( "mdal" ) );
-  QVERIFY( layer2.isValid() );
-
-  QVERIFY( !QgsMeshLayerUtils::haveSameParentQuantity( &layer2, QgsMeshDatasetIndex( 0 ), QgsMeshDatasetIndex( 1 ) ) );
 }
 
 QGSTEST_MAIN( TestQgsMeshLayer )

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     HubDistancePoints.py
@@ -19,7 +21,7 @@ __author__ = 'Michael Minn'
 __date__ = 'May 2010'
 __copyright__ = '(C) 2010, Michael Minn'
 
-from qgis.PyQt.QtCore import QMetaType
+from qgis.PyQt.QtCore import QVariant
 from qgis.core import (QgsField,
                        QgsGeometry,
                        QgsFeatureSink,
@@ -46,10 +48,10 @@ class HubDistancePoints(QgisAlgorithm):
     OUTPUT = 'OUTPUT'
     LAYER_UNITS = 'LAYER_UNITS'
 
-    UNITS = [QgsUnitTypes.DistanceUnit.DistanceMeters,
-             QgsUnitTypes.DistanceUnit.DistanceFeet,
-             QgsUnitTypes.DistanceUnit.DistanceMiles,
-             QgsUnitTypes.DistanceUnit.DistanceKilometers,
+    UNITS = [QgsUnitTypes.DistanceMeters,
+             QgsUnitTypes.DistanceFeet,
+             QgsUnitTypes.DistanceMiles,
+             QgsUnitTypes.DistanceKilometers,
              LAYER_UNITS
              ]
 
@@ -78,7 +80,7 @@ class HubDistancePoints(QgisAlgorithm):
         self.addParameter(QgsProcessingParameterEnum(self.UNIT,
                                                      self.tr('Measurement unit'), self.units))
 
-        self.addParameter(QgsProcessingParameterFeatureSink(self.OUTPUT, self.tr('Hub distance'), QgsProcessing.SourceType.TypeVectorPoint))
+        self.addParameter(QgsProcessingParameterFeatureSink(self.OUTPUT, self.tr('Hub distance'), QgsProcessing.TypeVectorPoint))
 
     def name(self):
         return 'distancetonearesthubpoints'
@@ -104,11 +106,11 @@ class HubDistancePoints(QgisAlgorithm):
         units = self.UNITS[self.parameterAsEnum(parameters, self.UNIT, context)]
 
         fields = point_source.fields()
-        fields.append(QgsField('HubName', QMetaType.Type.QString))
-        fields.append(QgsField('HubDist', QMetaType.Type.Double))
+        fields.append(QgsField('HubName', QVariant.String))
+        fields.append(QgsField('HubDist', QVariant.Double))
 
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context,
-                                               fields, QgsWkbTypes.Type.Point, point_source.sourceCrs())
+                                               fields, QgsWkbTypes.Point, point_source.sourceCrs())
         if sink is None:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
 
@@ -126,15 +128,12 @@ class HubDistancePoints(QgisAlgorithm):
                 break
 
             if not f.hasGeometry():
-                sink.addFeature(f, QgsFeatureSink.Flag.FastInsert)
+                sink.addFeature(f, QgsFeatureSink.FastInsert)
                 continue
 
             src = f.geometry().boundingBox().center()
 
             neighbors = index.nearestNeighbor(src, 1)
-            if len(neighbors) == 0:
-                continue
-
             ft = next(hub_source.getFeatures(QgsFeatureRequest().setFilterFid(neighbors[0]).setSubsetOfAttributes([fieldName], hub_source.fields()).setDestinationCrs(point_source.sourceCrs(), context.transformContext())))
             closest = ft.geometry().boundingBox().center()
             hubDist = distance.measureLine(src, closest)
@@ -153,8 +152,7 @@ class HubDistancePoints(QgisAlgorithm):
 
             feat.setGeometry(QgsGeometry.fromPointXY(src))
 
-            sink.addFeature(feat, QgsFeatureSink.Flag.FastInsert)
+            sink.addFeature(feat, QgsFeatureSink.FastInsert)
             feedback.setProgress(int(current * total))
 
-        sink.finalize()
         return {self.OUTPUT: dest_id}

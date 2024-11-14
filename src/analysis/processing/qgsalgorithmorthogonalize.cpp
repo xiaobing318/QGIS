@@ -69,7 +69,7 @@ QString QgsOrthogonalizeAlgorithm::outputName() const
 
 QList<int> QgsOrthogonalizeAlgorithm::inputLayerTypes() const
 {
-  return QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorPolygon ) << static_cast< int >( Qgis::ProcessingSourceType::VectorLine );
+  return QList<int>() << QgsProcessing::TypeVectorPolygon << QgsProcessing::TypeVectorLine;
 }
 
 QgsOrthogonalizeAlgorithm *QgsOrthogonalizeAlgorithm::createInstance() const
@@ -80,7 +80,7 @@ QgsOrthogonalizeAlgorithm *QgsOrthogonalizeAlgorithm::createInstance() const
 void QgsOrthogonalizeAlgorithm::initParameters( const QVariantMap & )
 {
   auto angleToleranceParam = std::make_unique < QgsProcessingParameterNumber >( QStringLiteral( "ANGLE_TOLERANCE" ), QObject::tr( "Maximum angle tolerance (degrees)" ),
-                             Qgis::ProcessingNumberParameterType::Double, 15.0, false, 0.0, 45.0 );
+                             QgsProcessingParameterNumber::Double, 15.0, false, 0.0, 45.0 );
   angleToleranceParam->setIsDynamic( true );
   angleToleranceParam->setDynamicPropertyDefinition( QgsPropertyDefinition( QStringLiteral( "Angle tolerance" ), QObject::tr( "Maximum angle tolerance (degrees)" ), QgsPropertyDefinition::Double ) );
   angleToleranceParam->setDynamicLayerParameterName( QStringLiteral( "INPUT" ) );
@@ -89,9 +89,9 @@ void QgsOrthogonalizeAlgorithm::initParameters( const QVariantMap & )
   std::unique_ptr< QgsProcessingParameterNumber> maxIterations = std::make_unique< QgsProcessingParameterNumber >(
         QStringLiteral( "MAX_ITERATIONS" ),
         QObject::tr( "Maximum algorithm iterations" ),
-        Qgis::ProcessingNumberParameterType::Integer,
+        QgsProcessingParameterNumber::Integer,
         1000, false, 1, 10000 );
-  maxIterations->setFlags( maxIterations->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  maxIterations->setFlags( maxIterations->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( maxIterations.release() );
 }
 

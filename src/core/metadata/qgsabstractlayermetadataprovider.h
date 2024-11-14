@@ -67,6 +67,9 @@ class CORE_EXPORT QgsLayerMetadataProviderResult: public QgsLayerMetadata
      */
     QgsLayerMetadataProviderResult( const QgsLayerMetadata &metadata );
 
+    /**
+     * Default constructor.
+     */
     QgsLayerMetadataProviderResult( ) = default;
 
     /**
@@ -82,12 +85,12 @@ class CORE_EXPORT QgsLayerMetadataProviderResult: public QgsLayerMetadata
     /**
      * Returns the layer geometry type.
      */
-    Qgis::GeometryType geometryType() const;
+    const QgsWkbTypes::GeometryType &geometryType() const;
 
     /**
      * Sets the layer geometry type to \a geometryType.
      */
-    void setGeometryType( Qgis::GeometryType geometryType );
+    void setGeometryType( const QgsWkbTypes::GeometryType &geometryType );
 
     /**
      * Returns the layer CRS authid.
@@ -122,12 +125,12 @@ class CORE_EXPORT QgsLayerMetadataProviderResult: public QgsLayerMetadata
     /**
      * Returns the layer type.
      */
-    Qgis::LayerType layerType() const;
+    QgsMapLayerType layerType() const;
 
     /**
      * Sets the layer type to \a layerType.
      */
-    void setLayerType( Qgis::LayerType layerType );
+    void setLayerType( QgsMapLayerType layerType );
 
     /**
      * Returns the metadata standard URI (usually "http://mrcc.com/qgis.dtd")
@@ -145,7 +148,7 @@ class CORE_EXPORT QgsLayerMetadataProviderResult: public QgsLayerMetadata
     //! Layer spatial extent of the layer in EPSG:4326
     QgsPolygon mGeographicExtent;
     //! Layer geometry type (Point, Polygon, Linestring)
-    Qgis::GeometryType mGeometryType;
+    QgsWkbTypes::GeometryType mGeometryType;
     //! Layer CRS authid
     QString mAuthid;
     //! Layer QgsDataSourceUri string
@@ -153,7 +156,7 @@ class CORE_EXPORT QgsLayerMetadataProviderResult: public QgsLayerMetadata
     //! Layer data provider name
     QString mDataProviderName;
     //! Layer type (vector, raster etc.)
-    Qgis::LayerType mLayerType;
+    QgsMapLayerType mLayerType;
     //! Metadata standard uri, QGIS QMD metadata format uses "http://mrcc.com/qgis.dtd"
     QString mStandardUri;
 };

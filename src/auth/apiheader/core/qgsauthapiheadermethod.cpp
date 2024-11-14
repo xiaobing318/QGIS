@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgsauthapiheadermethod.h"
-#include "moc_qgsauthapiheadermethod.cpp"
 
 #include "qgsauthmanager.h"
 #include "qgslogger.h"
@@ -70,7 +69,7 @@ bool QgsAuthApiHeaderMethod::updateNetworkRequest( QNetworkRequest &request, con
   const QgsAuthMethodConfig config = getMethodConfig( authcfg );
   if ( !config.isValid() )
   {
-    QgsDebugError( QStringLiteral( "Update request config FAILED for authcfg: %1: config invalid" ).arg( authcfg ) );
+    QgsDebugMsg( QStringLiteral( "Update request config FAILED for authcfg: %1: config invalid" ).arg( authcfg ) );
     return false;
   }
 
@@ -91,7 +90,7 @@ bool QgsAuthApiHeaderMethod::updateNetworkRequest( QNetworkRequest &request, con
     }
     else
     {
-      QgsDebugError( QStringLiteral( "The header key was empty, we shouldn't have empty header keys at this point" ) );
+      QgsDebugMsg( QStringLiteral( "The header key was empty, we shouldn't have empty header keys at this point" ) );
     }
   }
 
@@ -125,7 +124,7 @@ QgsAuthMethodConfig QgsAuthApiHeaderMethod::getMethodConfig( const QString &auth
   // else build basic bundle
   if ( !QgsApplication::authManager()->loadAuthenticationConfig( authcfg, config, fullconfig ) )
   {
-    QgsDebugError( QStringLiteral( "Retrieve config FAILED for authcfg: %1" ).arg( authcfg ) );
+    QgsDebugMsg( QStringLiteral( "Retrieve config FAILED for authcfg: %1" ).arg( authcfg ) );
     return QgsAuthMethodConfig();
   }
 

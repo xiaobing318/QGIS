@@ -93,6 +93,7 @@ QgsNative::NotificationResult QgsMacNative::showDesktopNotification( const QStri
   notification.title = summary.toNSString();
   notification.informativeText = body.toNSString();
   notification.soundName = NSUserNotificationDefaultSoundName;   //Will play a default sound
+  const QPixmap px = QPixmap::fromImage( settings.image );
   NSImage *image = nil;
   if ( settings.image.isNull() )
   {
@@ -103,7 +104,6 @@ QgsNative::NotificationResult QgsMacNative::showDesktopNotification( const QStri
   }
   else
   {
-    const QPixmap px = QPixmap::fromImage( settings.image );
     image = [[NSImage alloc] initWithCGImage:px.toImage().toCGImage() size:NSZeroSize];
   }
   notification.contentImage = image;

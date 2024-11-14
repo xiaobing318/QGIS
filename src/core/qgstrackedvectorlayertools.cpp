@@ -13,21 +13,19 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
-
 #include "qgstrackedvectorlayertools.h"
-#include "moc_qgstrackedvectorlayertools.cpp"
 #include "qgsvectorlayer.h"
-#include "qgsvectorlayertoolscontext.h"
 
 
-bool QgsTrackedVectorLayerTools::addFeatureV2( QgsVectorLayer *layer, const QgsAttributeMap &defaultValues, const QgsGeometry &defaultGeometry, QgsFeature *feature, const QgsVectorLayerToolsContext &context ) const
+bool QgsTrackedVectorLayerTools::addFeature( QgsVectorLayer *layer, const QgsAttributeMap &defaultValues, const QgsGeometry &defaultGeometry, QgsFeature *feature, QWidget *parentWidget, bool showModal, bool hideParent ) const
 {
   QgsFeature *f = feature;
   if ( !feature )
     f = new QgsFeature();
 
   const_cast<QgsVectorLayerTools *>( mBackend )->setForceSuppressFormPopup( forceSuppressFormPopup() );
-  if ( mBackend->addFeatureV2( layer, defaultValues, defaultGeometry, f, context ) )
+
+  if ( mBackend->addFeature( layer, defaultValues, defaultGeometry, f, parentWidget, showModal, hideParent ) )
   {
     mAddedFeatures[layer].insert( f->id() );
     if ( !feature )
@@ -57,9 +55,9 @@ bool QgsTrackedVectorLayerTools::saveEdits( QgsVectorLayer *layer ) const
   return mBackend->saveEdits( layer );
 }
 
-bool QgsTrackedVectorLayerTools::copyMoveFeatures( QgsVectorLayer *layer, QgsFeatureRequest &request, double dx, double dy, QString *errorMsg, const bool topologicalEditing, QgsVectorLayer *topologicalLayer, QString *childrenInfoMsg ) const
+bool QgsTrackedVectorLayerTools::copyMoveFeatures( QgsVectorLayer *layer, QgsFeatureRequest &request, double dx, double dy, QString *errorMsg, const bool topologicalEditing, QgsVectorLayer *topologicalLayer ) const
 {
-  return mBackend->copyMoveFeatures( layer, request, dx, dy, errorMsg, topologicalEditing, topologicalLayer, childrenInfoMsg );
+  return mBackend->copyMoveFeatures( layer, request, dx, dy, errorMsg, topologicalEditing, topologicalLayer );
 }
 
 void QgsTrackedVectorLayerTools::setVectorLayerTools( const QgsVectorLayerTools *tools )

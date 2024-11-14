@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/pointcloud/qgspointcloudrenderer.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -39,6 +39,7 @@ taken from the point cloud index.
 The ``zValueFixedOffset`` argument specifies any constant offset value which must be added to z values
 taken from the point cloud index.
 %End
+
 
 
     QgsRenderContext &renderContext();
@@ -193,6 +194,9 @@ Abstract base class for 2d point cloud renderers.
   public:
 
     QgsPointCloudRenderer();
+%Docstring
+Constructor for QgsPointCloudRenderer.
+%End
 
     virtual ~QgsPointCloudRenderer();
 
@@ -315,7 +319,7 @@ The point size units are retrieved by calling :py:func:`~QgsPointCloudRenderer.p
 .. seealso:: :py:func:`pointSizeMapUnitScale`
 %End
 
-    void setPointSizeUnit( const Qgis::RenderUnit units );
+    void setPointSizeUnit( const QgsUnitTypes::RenderUnit units );
 %Docstring
 Sets the ``units`` used for the point size.
 
@@ -326,7 +330,7 @@ Sets the ``units`` used for the point size.
 .. seealso:: :py:func:`setPointSizeMapUnitScale`
 %End
 
-    Qgis::RenderUnit pointSizeUnit() const;
+    QgsUnitTypes::RenderUnit pointSizeUnit() const;
 %Docstring
 Returns the units used for the point size.
 
@@ -417,7 +421,7 @@ Units are set via :py:func:`~QgsPointCloudRenderer.setMaximumScreenErrorUnit`.
 .. seealso:: :py:func:`setMaximumScreenErrorUnit`
 %End
 
-    Qgis::RenderUnit maximumScreenErrorUnit() const;
+    QgsUnitTypes::RenderUnit maximumScreenErrorUnit() const;
 %Docstring
 Returns the unit for the maximum screen error allowed when rendering the point cloud.
 
@@ -426,117 +430,13 @@ Returns the unit for the maximum screen error allowed when rendering the point c
 .. seealso:: :py:func:`setMaximumScreenErrorUnit`
 %End
 
-    void setMaximumScreenErrorUnit( Qgis::RenderUnit unit );
+    void setMaximumScreenErrorUnit( QgsUnitTypes::RenderUnit unit );
 %Docstring
 Sets the ``unit`` for the maximum screen error allowed when rendering the point cloud.
 
 .. seealso:: :py:func:`setMaximumScreenError`
 
 .. seealso:: :py:func:`maximumScreenErrorUnit`
-%End
-
-    bool renderAsTriangles() const;
-%Docstring
-Returns whether points are triangulated to render solid surface
-
-.. versionadded:: 3.36
-%End
-
-    void setRenderAsTriangles( bool asTriangles );
-%Docstring
-Sets whether points are triangulated to render solid surface
-
-.. versionadded:: 3.36
-%End
-
-    bool horizontalTriangleFilter() const;
-%Docstring
-Returns whether large triangles will get rendered. This only applies when :py:func:`~QgsPointCloudRenderer.renderAsTriangles`
-is enabled. When the triangle filtering is enabled, triangles where at least one side is
-horizontally longer than the threshold in :py:func:`~QgsPointCloudRenderer.horizontalTriangleFilterThreshold` do not get rendered.
-
-.. seealso:: :py:func:`horizontalTriangleFilterThreshold`
-
-.. seealso:: :py:func:`horizontalTriangleFilterUnit`
-
-.. seealso:: :py:func:`setHorizontalTriangleFilter`
-
-.. versionadded:: 3.36
-%End
-
-    void setHorizontalTriangleFilter( bool enabled );
-%Docstring
-Sets whether large triangles will get rendered. This only applies when :py:func:`~QgsPointCloudRenderer.renderAsTriangles`
-is enabled. When the triangle filtering is enabled, triangles where at least one side is
-horizontally longer than the threshold in :py:func:`~QgsPointCloudRenderer.horizontalTriangleFilterThreshold` do not get rendered.
-
-.. seealso:: :py:func:`setHorizontalTriangleFilterThreshold`
-
-.. seealso:: :py:func:`setHorizontalTriangleFilterUnit`
-
-.. seealso:: :py:func:`horizontalTriangleFilter`
-
-.. versionadded:: 3.36
-%End
-
-    double horizontalTriangleFilterThreshold() const;
-%Docstring
-Returns threshold for filtering of triangles. This only applies when :py:func:`~QgsPointCloudRenderer.renderAsTriangles` and
-:py:func:`~QgsPointCloudRenderer.horizontalTriangleFilter` are both enabled. If any edge of a triangle is horizontally longer
-than the threshold, such triangle will not get rendered. Units of the threshold value are
-given by :py:func:`~QgsPointCloudRenderer.horizontalTriangleFilterUnits`.
-
-.. seealso:: :py:func:`horizontalTriangleFilter`
-
-.. seealso:: :py:func:`horizontalTriangleFilterUnit`
-
-.. seealso:: :py:func:`setHorizontalTriangleFilterThreshold`
-
-.. versionadded:: 3.36
-%End
-
-    void setHorizontalTriangleFilterThreshold( double threshold );
-%Docstring
-Sets threshold for filtering of triangles. This only applies when :py:func:`~QgsPointCloudRenderer.renderAsTriangles` and
-:py:func:`~QgsPointCloudRenderer.horizontalTriangleFilter` are both enabled. If any edge of a triangle is horizontally longer
-than the threshold, such triangle will not get rendered. Units of the threshold value are
-given by :py:func:`~QgsPointCloudRenderer.horizontalTriangleFilterUnits`.
-
-.. seealso:: :py:func:`horizontalTriangleFilter`
-
-.. seealso:: :py:func:`horizontalTriangleFilterUnit`
-
-.. seealso:: :py:func:`horizontalTriangleFilterThreshold`
-
-.. versionadded:: 3.36
-%End
-
-    Qgis::RenderUnit horizontalTriangleFilterUnit() const;
-%Docstring
-Returns units of the threshold for filtering of triangles. This only applies when :py:func:`~QgsPointCloudRenderer.renderAsTriangles` and
-:py:func:`~QgsPointCloudRenderer.horizontalTriangleFilter` are both enabled.
-
-.. seealso:: :py:func:`horizontalTriangleFilter`
-
-.. seealso:: :py:func:`horizontalTriangleFilterThreshold`
-
-.. seealso:: :py:func:`setHorizontalTriangleFilterUnit`
-
-.. versionadded:: 3.36
-%End
-
-    void setHorizontalTriangleFilterUnit( Qgis::RenderUnit unit );
-%Docstring
-Sets units of the threshold for filtering of triangles. This only applies when :py:func:`~QgsPointCloudRenderer.renderAsTriangles` and
-:py:func:`~QgsPointCloudRenderer.horizontalTriangleFilter` are both enabled.
-
-.. seealso:: :py:func:`horizontalTriangleFilter`
-
-.. seealso:: :py:func:`horizontalTriangleFilterThreshold`
-
-.. seealso:: :py:func:`horizontalTriangleFilterUnit`
-
-.. versionadded:: 3.36
 %End
 
     virtual QList<QgsLayerTreeModelLegendNode *> createLegendNodes( QgsLayerTreeLayer *nodeLayer ) /Factory/;
@@ -547,6 +447,94 @@ Creates a set of legend nodes representing the renderer.
     virtual QStringList legendRuleKeys() const;
 %Docstring
 Returns a list of all rule keys for legend nodes created by the renderer.
+%End
+
+    bool eyeDomeLightingEnabled() const;
+%Docstring
+Returns whether eye dome lighting effect will be used
+
+.. note::
+
+   This is not a part of stable API - this function may be removed in a future release
+
+.. versionadded:: 3.28
+%End
+
+    void setEyeDomeLightingEnabled( bool enabled );
+%Docstring
+Sets whether eye dome lighting effect will be used
+
+.. note::
+
+   This is not a part of stable API - this function may be removed in a future release
+
+.. versionadded:: 3.28
+%End
+
+    double eyeDomeLightingStrength() const;
+%Docstring
+Returns the eye dome lighting strength value
+
+.. note::
+
+   This is not a part of stable API - this function may be removed in a future release
+
+.. versionadded:: 3.28
+%End
+
+    void setEyeDomeLightingStrength( double strength );
+%Docstring
+Sets the eye dome lighting strength value
+
+.. note::
+
+   This is not a part of stable API - this function may be removed in a future release
+
+.. versionadded:: 3.28
+%End
+
+    double eyeDomeLightingDistance() const;
+%Docstring
+Returns the eye dome lighting distance
+
+.. note::
+
+   This is not a part of stable API - this function may be removed in a future release
+
+.. versionadded:: 3.28
+%End
+
+    void setEyeDomeLightingDistance( double distance );
+%Docstring
+Sets the eye dome lighting distance
+
+.. note::
+
+   This is not a part of stable API - this function may be removed in a future release
+
+.. versionadded:: 3.28
+%End
+
+    QgsUnitTypes::RenderUnit eyeDomeLightingDistanceUnit() const;
+%Docstring
+Returns unit for the eye dome lighting distance
+
+.. note::
+
+   This is not a part of stable API - this function may be removed in a future release
+
+.. versionadded:: 3.28
+%End
+
+    void setEyeDomeLightingDistanceUnit( QgsUnitTypes::RenderUnit unit );
+%Docstring
+Sets unit for the eye dome lighting distance
+
+.. note::
+
+   This is not a part of stable API - this function may be removed in a future release
+
+.. versionadded:: 3.28
 %End
 
   protected:
@@ -566,20 +554,6 @@ Retrieves the z value for the point at index ``i``.
 Draws a point using a ``color`` at the specified ``x`` and ``y`` (in map coordinates).
 %End
 
-    void drawPoint( double x, double y, const QColor &color, int width, QgsPointCloudRenderContext &context ) const;
-%Docstring
-Draws a point using a ``color`` and painter ``width`` at the specified ``x`` and ``y`` (in map coordinates).
-
-.. versionadded:: 3.36
-%End
-
-
-    void addPointToTriangulation( double x, double y, double z, const QColor &color, QgsPointCloudRenderContext &context );
-%Docstring
-Adds a point to the list of points to be triangulated (only used when :py:func:`~QgsPointCloudRenderer.renderAsTriangles` is enabled)
-
-.. versionadded:: 3.36
-%End
 
     void copyCommonProperties( QgsPointCloudRenderer *destination ) const;
 %Docstring
@@ -611,5 +585,5 @@ specified DOM ``element``.
  *                                                                      *
  * src/core/pointcloud/qgspointcloudrenderer.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsfeaturefiltermodel.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -13,6 +13,8 @@ class QgsFeatureFilterModel : QgsFeaturePickerModelBase
 %Docstring(signature="appended")
 Provides a list of features based on filter conditions.
 Features are fetched asynchronously.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -31,9 +33,8 @@ The identifier field should be a unique field that can be used to identify indiv
 It is normally set to the primary key of the layer.
 If there are several identifier fields defined, the behavior is not guaranteed
 
-.. deprecated:: 3.10
-
-   Use identifierFields instead.
+.. deprecated:: QGIS 3.10
+   use identifierFields instead
 %End
 
     QStringList identifierFields() const;
@@ -106,5 +107,5 @@ still be available in the model.
  *                                                                      *
  * src/core/qgsfeaturefiltermodel.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

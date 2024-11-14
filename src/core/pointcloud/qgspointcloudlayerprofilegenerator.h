@@ -84,7 +84,7 @@ class CORE_EXPORT QgsPointCloudLayerProfileResults : public QgsAbstractProfileRe
     double maxZ = std::numeric_limits< double >::lowest();
 
     double pointSize = 1;
-    Qgis::RenderUnit pointSizeUnit = Qgis::RenderUnit::Millimeters;
+    QgsUnitTypes::RenderUnit pointSizeUnit = QgsUnitTypes::RenderMillimeters;
     Qgis::PointCloudSymbol pointSymbol = Qgis::PointCloudSymbol::Square;
     bool respectLayerColors = true;
     QColor pointColor;
@@ -95,7 +95,6 @@ class CORE_EXPORT QgsPointCloudLayerProfileResults : public QgsAbstractProfileRe
     QgsDoubleRange zRange() const override;
     QgsPointSequence sampledPoints() const override;
     QVector< QgsGeometry > asGeometries() const override;
-    QVector<  QgsAbstractProfileResults::Feature > asFeatures( Qgis::ProfileExportType type, QgsFeedback *feedback = nullptr ) const override;
     void renderResults( QgsProfileRenderContext &context ) override;
     QgsProfileSnapResult snapPoint( const QgsProfilePoint &point, const QgsProfileSnapContext &context ) override;
     QVector<QgsProfileIdentifyResults> identify( const QgsProfilePoint &point, const QgsProfileIdentifyContext &context ) override;
@@ -112,7 +111,6 @@ class CORE_EXPORT QgsPointCloudLayerProfileResults : public QgsAbstractProfileRe
     double mZOffset = 0;
     double mZScale = 1.0;
     double mMaxErrorInLayerCoordinates = 0;
-    QString mLayerId;
 
     friend class QgsPointCloudLayerProfileGenerator;
 };
@@ -153,10 +151,10 @@ class CORE_EXPORT QgsPointCloudLayerProfileGenerator : public QgsAbstractProfile
     QgsPointCloudAttributeCollection mLayerAttributes;
     std::unique_ptr< QgsPointCloudRenderer > mRenderer;
     double mMaximumScreenError = 0.3;
-    Qgis::RenderUnit mMaximumScreenErrorUnit = Qgis::RenderUnit::Millimeters;
+    QgsUnitTypes::RenderUnit mMaximumScreenErrorUnit = QgsUnitTypes::RenderMillimeters;
 
     double mPointSize = 1;
-    Qgis::RenderUnit mPointSizeUnit = Qgis::RenderUnit::Millimeters;
+    QgsUnitTypes::RenderUnit mPointSizeUnit = QgsUnitTypes::RenderMillimeters;
     Qgis::PointCloudSymbol mPointSymbol = Qgis::PointCloudSymbol::Square;
     QColor mPointColor;
     bool mOpacityByDistanceEffect = false;

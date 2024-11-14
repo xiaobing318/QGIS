@@ -21,8 +21,6 @@
 #include "ui_qgsprojectelevationsettingswidgetbase.h"
 
 class QgsVectorLayer;
-class QgsElevationShadingRendererSettingsWidget;
-class QgsProjectionSelectionWidget;
 
 class QgsProjectElevationSettingsWidget : public QgsOptionsPageWidget, private Ui::QgsProjectElevationSettingsWidgetBase
 {
@@ -37,12 +35,7 @@ class QgsProjectElevationSettingsWidget : public QgsOptionsPageWidget, private U
 
   private slots:
 
-    void updateVerticalCrsOptions();
     bool validate();
-
-  private:
-    QgsElevationShadingRendererSettingsWidget *mElevationShadingSettingsWidget = nullptr;
-    QgsProjectionSelectionWidget *mVerticalCrsWidget = nullptr;
 
 };
 

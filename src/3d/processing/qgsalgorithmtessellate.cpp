@@ -18,9 +18,7 @@
 #include "qgsalgorithmtessellate.h"
 #include "qgstessellator.h"
 #include "qgsmultipolygon.h"
-#include "qgspolygon.h"
-#include <geos_c.h>
-
+#include "qgstriangle.h"
 ///@cond PRIVATE
 
 QString QgsTessellateAlgorithm::name() const
@@ -53,14 +51,15 @@ QString QgsTessellateAlgorithm::outputName() const
   return QObject::tr( "Tessellated" );
 }
 
-Qgis::ProcessingSourceType QgsTessellateAlgorithm::outputLayerType() const
+QgsProcessing::SourceType QgsTessellateAlgorithm::outputLayerType() const
 {
-  return Qgis::ProcessingSourceType::VectorPolygon;
+  return QgsProcessing::TypeVectorPolygon;
 }
 
-Qgis::WkbType QgsTessellateAlgorithm::outputWkbType( Qgis::WkbType inputWkbType ) const
+QgsWkbTypes::Type QgsTessellateAlgorithm::outputWkbType( QgsWkbTypes::Type inputWkbType ) const
 {
-  return QgsWkbTypes::hasZ( inputWkbType ) ? Qgis::WkbType::MultiPolygonZ : Qgis::WkbType::MultiPolygon;
+  Q_UNUSED( inputWkbType )
+  return QgsWkbTypes::MultiPolygonZ;
 }
 
 QString QgsTessellateAlgorithm::shortHelpString() const
@@ -72,7 +71,7 @@ QString QgsTessellateAlgorithm::shortHelpString() const
 
 QList<int> QgsTessellateAlgorithm::inputLayerTypes() const
 {
-  return QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorPolygon );
+  return QList<int>() << QgsProcessing::TypeVectorPolygon;
 }
 
 QgsTessellateAlgorithm *QgsTessellateAlgorithm::createInstance() const
@@ -85,81 +84,37 @@ QgsFeatureList QgsTessellateAlgorithm::processFeature( const QgsFeature &feature
   QgsFeature f = feature;
   if ( f.hasGeometry() )
   {
-    if ( QgsWkbTypes::geometryType( f.geometry().wkbType() ) != Qgis::GeometryType::Polygon )
+    if ( QgsWkbTypes::geometryType( f.geometry().wkbType() ) != QgsWkbTypes::PolygonGeometry )
       f.clearGeometry();
     else
     {
-      const QgsGeometry inputGeometry = f.geometry();
-      bool tessellationComplete = false;
-#if (GEOS_VERSION_MAJOR==3 && GEOS_VERSION_MINOR>=11) || GEOS_VERSION_MAJOR>3
-      if ( !inputGeometry.constGet()->is3D() )
-      {
-        // on supported GEOS versions we prefer to use GEOS GEOSConstrainedDelaunayTriangulation
-        // for 2D triangulation, as it's more stable and tolerant to situations like polygon
-        // holes touching an exterior ring vs the poly2tri based tessellation
-        const QgsGeometry triangulation = inputGeometry.constrainedDelaunayTriangulation();
-        if ( triangulation.isEmpty() && !inputGeometry.isEmpty() )
-        {
-          if ( !triangulation.lastError().isEmpty() )
-          {
-            feedback->reportError( QObject::tr( "Feature ID %1 could not be tessellated: %2" ).arg( f.id() ).arg( triangulation.lastError() ) );
-          }
-          else
-          {
-            feedback->reportError( QObject::tr( "Feature ID %1 could not be tessellated" ).arg( f.id() ) );
-          }
-        }
-        else
-        {
-          f.setGeometry( triangulation );
-        }
-        tessellationComplete = true;
-      }
-#endif
+      const QgsRectangle bounds = f.geometry().boundingBox();
+      QgsTessellator t( bounds, false );
 
-      if ( !tessellationComplete )
+      if ( f.geometry().isMultipart() )
       {
-        // 3D case, or 2D case with unsupported GEOS version -- use less stable poly2tri backend
-        const QgsRectangle bounds = f.geometry().boundingBox();
-        QgsTessellator t( bounds, false );
-        t.setOutputZUp( true );
-
-        if ( f.geometry().isMultipart() )
+        const QgsMultiSurface *ms = qgsgeometry_cast< const QgsMultiSurface * >( f.geometry().constGet() );
+        for ( int i = 0; i < ms->numGeometries(); ++i )
         {
-          const QgsMultiSurface *ms = qgsgeometry_cast< const QgsMultiSurface * >( f.geometry().constGet() );
-          for ( int i = 0; i < ms->numGeometries(); ++i )
-          {
-            const std::unique_ptr< QgsPolygon > p( qgsgeometry_cast< QgsPolygon * >( ms->geometryN( i )->segmentize() ) );
-            t.addPolygon( *p, 0 );
-          }
-        }
-        else
-        {
-          const std::unique_ptr< QgsPolygon > p( qgsgeometry_cast< QgsPolygon * >( f.geometry().constGet()->segmentize() ) );
+          const std::unique_ptr< QgsPolygon > p( qgsgeometry_cast< QgsPolygon * >( ms->geometryN( i )->segmentize() ) );
           t.addPolygon( *p, 0 );
         }
-        QgsGeometry g( t.asMultiPolygon() );
-        if ( !g.isEmpty() )
-        {
-          if ( !t.error().isEmpty() )
-          {
-            feedback->reportError( QObject::tr( "Feature ID %1 was only partially tessellated: %2" ).arg( f.id() ).arg( t.error() ) );
-          }
-
-          g.translate( bounds.xMinimum(), bounds.yMinimum() );
-        }
-        else
-        {
-          if ( !t.error().isEmpty() )
-            feedback->reportError( QObject::tr( "Feature ID %1 could not be tessellated: %2" ).arg( f.id() ).arg( t.error() ) );
-          else
-            feedback->reportError( QObject::tr( "Feature ID %1 could not be divided into triangular components." ).arg( f.id() ) );
-        }
-        if ( !inputGeometry.constGet()->is3D() )
-          g.get()->dropZValue();
-
-        f.setGeometry( g );
       }
+      else
+      {
+        const std::unique_ptr< QgsPolygon > p( qgsgeometry_cast< QgsPolygon * >( f.geometry().constGet()->segmentize() ) );
+        t.addPolygon( *p, 0 );
+      }
+      QgsGeometry g( t.asMultiPolygon() );
+      if ( !g.isEmpty() )
+      {
+        g.translate( bounds.xMinimum(), bounds.yMinimum() );
+      }
+      else
+      {
+        feedback->reportError( QObject::tr( "Feature ID %1 could not be divided into triangular components." ).arg( f.id() ) );
+      }
+      f.setGeometry( g );
     }
   }
   return QgsFeatureList() << f;

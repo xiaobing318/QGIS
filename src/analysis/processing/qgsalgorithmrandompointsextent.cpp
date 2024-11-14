@@ -18,9 +18,7 @@
 //Disclaimer: The algorithm optimizes the original Random points in extent algorithm, (C) Alexander Bruy, 2014
 
 #include "qgsalgorithmrandompointsextent.h"
-#include "qgsspatialindex.h"
-
-#include <random>
+#include "random"
 
 ///@cond PRIVATE
 
@@ -53,15 +51,15 @@ void QgsRandomPointsExtentAlgorithm::initAlgorithm( const QVariantMap & )
 {
 
   addParameter( new QgsProcessingParameterExtent( QStringLiteral( "EXTENT" ), QObject::tr( "Input extent" ) ) );
-  addParameter( new QgsProcessingParameterNumber( QStringLiteral( "POINTS_NUMBER" ), QObject::tr( "Number of points" ), Qgis::ProcessingNumberParameterType::Integer, 1, false, 1 ) );
+  addParameter( new QgsProcessingParameterNumber( QStringLiteral( "POINTS_NUMBER" ), QObject::tr( "Number of points" ), QgsProcessingParameterNumber::Integer, 1, false, 1 ) );
   addParameter( new QgsProcessingParameterDistance( QStringLiteral( "MIN_DISTANCE" ), QObject::tr( "Minimum distance between points" ), 0, QStringLiteral( "TARGET_CRS" ), true, 0 ) );
   addParameter( new QgsProcessingParameterCrs( QStringLiteral( "TARGET_CRS" ), QObject::tr( "Target CRS" ), QStringLiteral( "ProjectCrs" ), false ) );
 
-  std::unique_ptr< QgsProcessingParameterNumber > maxAttempts_param = std::make_unique< QgsProcessingParameterNumber >( QStringLiteral( "MAX_ATTEMPTS" ), QObject::tr( "Maximum number of search attempts given the minimum distance" ), Qgis::ProcessingNumberParameterType::Integer, 200, true, 1 );
-  maxAttempts_param->setFlags( maxAttempts_param->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  std::unique_ptr< QgsProcessingParameterNumber > maxAttempts_param = std::make_unique< QgsProcessingParameterNumber >( QStringLiteral( "MAX_ATTEMPTS" ), QObject::tr( "Maximum number of search attempts given the minimum distance" ), QgsProcessingParameterNumber::Integer, 200, true, 1 );
+  maxAttempts_param->setFlags( maxAttempts_param->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( maxAttempts_param.release() );
 
-  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Random points" ), Qgis::ProcessingSourceType::VectorPoint ) );
+  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Random points" ), QgsProcessing::TypeVectorPoint ) );
 }
 
 QString QgsRandomPointsExtentAlgorithm::shortHelpString() const
@@ -96,10 +94,10 @@ QVariantMap QgsRandomPointsExtentAlgorithm::processAlgorithm( const QVariantMap 
 {
 
   QgsFields fields = QgsFields();
-  fields.append( QgsField( QStringLiteral( "id" ), QMetaType::Type::LongLong ) );
+  fields.append( QgsField( QStringLiteral( "id" ), QVariant::LongLong ) );
 
   QString dest;
-  std::unique_ptr< QgsFeatureSink > sink( parameterAsSink( parameters, QStringLiteral( "OUTPUT" ), context, dest, fields, Qgis::WkbType::Point, mCrs ) );
+  std::unique_ptr< QgsFeatureSink > sink( parameterAsSink( parameters, QStringLiteral( "OUTPUT" ), context, dest, fields, QgsWkbTypes::Point, mCrs ) );
   if ( !sink )
     throw QgsProcessingException( invalidSinkError( parameters, QStringLiteral( "OUTPUT" ) ) );
 
@@ -178,8 +176,6 @@ QVariantMap QgsRandomPointsExtentAlgorithm::processAlgorithm( const QVariantMap 
       }
     }
   }
-
-  sink->finalize();
 
   QVariantMap outputs;
   outputs.insert( QStringLiteral( "OUTPUT" ), dest );

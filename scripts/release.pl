@@ -136,13 +136,7 @@ if( $domajor ) {
 
 my $splashwidth;
 unless( defined $dopoint ) {
-	pod2usage("Splash images/splash/splash-${newmajor}.${newminor}rc.png not found") unless -r "images/splash/splash-${newmajor}.${newminor}rc.png";
-} elsif($newpatch == 1) {
-	pod2usage("Splash images/splash/splash-${newmajor}.${newminor}.png not found") unless -r "images/splash/splash-${newmajor}.${newminor}.png";
-} elsif($newpatch == 4) {	# TODO handle EPRs
-	if( system("git tag -l | grep -q '^ltr-${newmajor}_${newminor}'") == 0) {
-		pod2usage("Splash images/splash/splash-${newmajor}.${newminor}ltr.png not found") unless -r "images/splash/splash-${newmajor}.${newminor}ltr.png";
-	}
+	pod2usage("Splash images/splash/splash-$newmajor.$newminor.png not found") unless -r "images/splash/splash-$newmajor.$newminor.png";
 }
 
 print "Last pull rebase...\n";
@@ -187,15 +181,14 @@ unless( defined $dopoint ) {
 	run( "perl -i -pe 's/qgis-dev-deps/qgis-ltr-deps/;' INSTALL.md", "could not update osgeo4w deps package" ) if $doltr;
 	run( "perl -i -pe 's/qgis-dev-deps/qgis-rel-deps/;' INSTALL.md", "could not update osgeo4w deps package" ) unless $doltr;
 	run( "cp -v images/splash/splash-${newmajor}.${newminor}rc.png images/splash/splash.png", "splash png switch failed" );
-	run( "sed -i -e 's/r:qgis-application/r:$relbranch-qgis-application/' .tx/config", "update of transifex update failed" );
 	run( "git commit -n -a -m \"Release of $release ($newreleasename)\"", "release commit failed" );
 	run( "git tag $reltag -m 'Version $release'", "release tag failed" );
-	run( "for i in \$(seq 20); do tx push -s && exit 0; echo \"Retry \$i/20...\"; done; exit 1", "push translation for $relbranch branch" );
+	run( "for i in \$(seq 20); do tx push -s --branch $relbranch && exit 0; echo \"Retry \$i/20...\"; done; exit 1", "push translation for $relbranch branch" );
 } else {
 	if($newpatch == 1) {
 		run( "cp -v images/splash/splash-${newmajor}.${newminor}.png images/splash/splash.png", "splash png switch failed" );
 	} elsif($newpatch == 4) {	# TODO handle EPRs
-		if( system("git tag -l | grep -q '^ltr-${newmajor}_${newminor}'") == 0) {
+		if( system("git tag -l | grep -q '^ltr-${newmajor}_${newminor}$'") == 0) {
 			run( "cp -v images/splash/splash-${newmajor}.${newminor}ltr.png images/splash/splash.png", "splash png switch failed" );
 		}
 	}
@@ -211,7 +204,6 @@ run( "sha256sum qgis-$version.tar.bz2 >qgis-$version.tar.bz2.sha256", "sha256sum
 
 my @topush;
 unless( defined $dopoint ) {
-	my $apiv = "$newmajor.$newminor";
 	$newminor++;
 
 	print "Updating master...\n";
@@ -232,8 +224,6 @@ unless( defined $dopoint ) {
 		$newminor=99;
 	}
 
-	run( "perl -i -pe \"s#Earlier versions of the documentation are also available on the QGIS website:#\$&\\n<a href=\\\"https://qgis.org/api/$apiv\\\">$apiv" . ($doltr ? " (LTR)" : "") . "</a>,#\" doc/index.dox", "index.dox update failed");
-
 	updateCMakeLists($newmajor,$newminor,0,"Master");
 	run( "cp /tmp/changelog debian", "restore changelog failed" );
 	run( "dch -r ''", "dch failed" );
@@ -250,7 +240,8 @@ print "Push dry-run...\n";
 run( "git push -n --follow-tags origin $topush", "push dry run failed" );
 print "Now manually push and upload the tar balls:\n\tgit push --follow-tags origin $topush\n\trsync qgis-$version.tar.bz2* ssh.qgis.org:/var/www/downloads/\n";
 print "Update version-ltr.txt rewrite rule on website\n" if $doltr;
-unless( defined $dopoint ) {
+unless($dopoint) {
+	print "Create new transifex branch and push the translations.\n";
 	print "Update the versions and release name in release spreadsheet.\n";
 	print "Package and update the website afterwards.\n";
 }

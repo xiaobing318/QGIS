@@ -47,7 +47,7 @@ QString QgsExtractByAttributeAlgorithm::groupId() const
 void QgsExtractByAttributeAlgorithm::initAlgorithm( const QVariantMap & )
 {
   addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ), QObject::tr( "Input layer" ),
-                QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::Vector ) ) );
+                QList< int >() << QgsProcessing::TypeVector ) );
   addParameter( new QgsProcessingParameterField( QStringLiteral( "FIELD" ), QObject::tr( "Selection attribute" ), QVariant(), QStringLiteral( "INPUT" ) ) );
   addParameter( new QgsProcessingParameterEnum( QStringLiteral( "OPERATOR" ), QObject::tr( "Operator" ), QStringList()
                 << QObject::tr( "=" )
@@ -65,7 +65,7 @@ void QgsExtractByAttributeAlgorithm::initAlgorithm( const QVariantMap & )
 
   addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Extracted (attribute)" ) ) );
   QgsProcessingParameterFeatureSink *failOutput = new QgsProcessingParameterFeatureSink( QStringLiteral( "FAIL_OUTPUT" ),  QObject::tr( "Extracted (non-matching)" ),
-      Qgis::ProcessingSourceType::VectorAnyGeometry, QVariant(), true );
+      QgsProcessing::TypeVectorAnyGeometry, QVariant(), true );
   failOutput->setCreateByDefault( false );
   addParameter( failOutput );
 }
@@ -106,9 +106,9 @@ QVariantMap QgsExtractByAttributeAlgorithm::processAlgorithm( const QVariantMap 
   if ( idx < 0 )
     throw QgsProcessingException( QObject::tr( "Field '%1' was not found in INPUT source" ).arg( fieldName ) );
 
-  const QMetaType::Type fieldType = source->fields().at( idx ).type();
+  const QVariant::Type fieldType = source->fields().at( idx ).type();
 
-  if ( fieldType != QMetaType::Type::QString && ( op == BeginsWith || op == Contains || op == DoesNotContain ) )
+  if ( fieldType != QVariant::String && ( op == BeginsWith || op == Contains || op == DoesNotContain ) )
   {
     QString method;
     switch ( op )
@@ -190,7 +190,7 @@ QVariantMap QgsExtractByAttributeAlgorithm::processAlgorithm( const QVariantMap 
     req.setFilterExpression( expr );
     req.setExpressionContext( expressionContext );
 
-    QgsFeatureIterator it = source->getFeatures( req, Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks );
+    QgsFeatureIterator it = source->getFeatures( req, QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks );
     QgsFeature f;
     while ( it.nextFeature( f ) )
     {
@@ -212,7 +212,7 @@ QVariantMap QgsExtractByAttributeAlgorithm::processAlgorithm( const QVariantMap 
     expressionContext.setFields( source->fields() );
     expression.prepare( &expressionContext );
 
-    QgsFeatureIterator it = source->getFeatures( QgsFeatureRequest(), Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks );
+    QgsFeatureIterator it = source->getFeatures( QgsFeatureRequest(), QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks );
     QgsFeature f;
     while ( it.nextFeature( f ) )
     {
@@ -238,10 +238,6 @@ QVariantMap QgsExtractByAttributeAlgorithm::processAlgorithm( const QVariantMap 
     }
   }
 
-  if ( matchingSink )
-    matchingSink->finalize();
-  if ( nonMatchingSink )
-    nonMatchingSink->finalize();
 
   QVariantMap outputs;
   outputs.insert( QStringLiteral( "OUTPUT" ), matchingSinkId );

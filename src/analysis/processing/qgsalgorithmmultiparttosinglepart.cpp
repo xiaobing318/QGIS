@@ -35,7 +35,7 @@ QString QgsMultipartToSinglepartAlgorithm::outputName() const
   return QObject::tr( "Single parts" );
 }
 
-Qgis::WkbType QgsMultipartToSinglepartAlgorithm::outputWkbType( Qgis::WkbType inputWkbType ) const
+QgsWkbTypes::Type QgsMultipartToSinglepartAlgorithm::outputWkbType( QgsWkbTypes::Type inputWkbType ) const
 {
   return QgsWkbTypes::singleType( inputWkbType );
 }
@@ -62,21 +62,16 @@ QString QgsMultipartToSinglepartAlgorithm::shortHelpString() const
                       "contain, and the same attributes are used for each of them." );
 }
 
-Qgis::ProcessingAlgorithmDocumentationFlags QgsMultipartToSinglepartAlgorithm::documentationFlags() const
-{
-  return Qgis::ProcessingAlgorithmDocumentationFlag::RegeneratesPrimaryKey;
-}
-
 QgsMultipartToSinglepartAlgorithm *QgsMultipartToSinglepartAlgorithm::createInstance() const
 {
   return new QgsMultipartToSinglepartAlgorithm();
 }
 
 
-Qgis::ProcessingFeatureSourceFlags QgsMultipartToSinglepartAlgorithm::sourceFlags() const
+QgsProcessingFeatureSource::Flag QgsMultipartToSinglepartAlgorithm::sourceFlags() const
 {
   // skip geometry checks - this algorithm can be used to repair geometries
-  return Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks;
+  return QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks;
 }
 
 QgsFeatureSink::SinkFlags QgsMultipartToSinglepartAlgorithm::sinkFlags() const

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgshelp.h                                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -26,6 +26,8 @@ URI construction takes in account following information:
 
 If no help found, default error page with information how to setup
 help system will be shown.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -39,6 +41,8 @@ Opens help topic for the given help key using default system
 web browser. If help topic not found, builtin error page shown.
 
 :param key: key which identified help topic
+
+.. versionadded:: 3.0
 %End
 
     static QUrl helpUrl( const QString &key );
@@ -47,6 +51,8 @@ Returns URI of the help topic for the given key. If help topic
 not found, URI of the builtin error page returned.
 
 :param key: key which identified help topic
+
+.. versionadded:: 3.0
 %End
 
 };
@@ -56,5 +62,5 @@ not found, URI of the builtin error page returned.
  *                                                                      *
  * src/gui/qgshelp.h                                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

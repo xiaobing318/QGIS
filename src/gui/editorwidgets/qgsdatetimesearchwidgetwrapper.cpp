@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsdatetimesearchwidgetwrapper.h"
-#include "moc_qgsdatetimesearchwidgetwrapper.cpp"
 
 #include "qgsfields.h"
 #include "qgsdatetimeeditfactory.h"

@@ -47,10 +47,6 @@ class GUI_EXPORT QgsAttributeFormContainerEdit: public QWidget, private Ui_QgsAt
 
     void updateItemData();
 
-  private slots:
-
-    void containerTypeChanged();
-
   private:
     QTreeWidgetItem *mTreeItem = nullptr;
 };

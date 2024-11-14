@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/raster/qgsrasterminmaxwidget.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -45,6 +45,8 @@ set from calling :py:func:`~QgsRasterMinMaxWidget.setExtent`.
 :param canvas: map canvas
 
 .. seealso:: :py:func:`mapCanvas`
+
+.. versionadded:: 2.16
 %End
 
     QgsMapCanvas *mapCanvas();
@@ -52,6 +54,8 @@ set from calling :py:func:`~QgsRasterMinMaxWidget.setExtent`.
 Returns the map canvas associated with the widget.
 
 .. seealso:: :py:func:`setMapCanvas`
+
+.. versionadded:: 2.16
 %End
 
     void setBands( const QList<int> &bands );
@@ -122,5 +126,5 @@ signal emitted when new min/max values are computed from statistics.
  *                                                                      *
  * src/gui/raster/qgsrasterminmaxwidget.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

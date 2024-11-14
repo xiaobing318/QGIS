@@ -25,9 +25,21 @@
 #include <QImage>
 #include <QPainter>
 
-#include "qgsapplication.h"
-#include "qgsgeometry.h"
-#include "qgsmaptopixelgeometrysimplifier.h"
+//qgis includes...
+#include <qgsapplication.h>
+#include <qgsgeometry.h>
+#include <qgsmaptopixelgeometrysimplifier.h>
+#if 0
+#include <qgspoint.h>
+#include "qgsgeometryutils.h"
+#include "qgspoint.h"
+#include "qgslinestring.h"
+#include "qgspolygon.h"
+#include "qgscircularstring.h"
+#endif
+
+//qgs unit test utility class
+#include "qgsrenderchecker.h"
 
 /**
  * \ingroup UnitTests
@@ -63,10 +75,7 @@ class TestQgsMapToPixelGeometrySimplifier : public QObject
     void testIsGeneralizableByMapBoundingBox();
     void testWkbDimensionMismatch();
     void testCircularString();
-    void testSnapToGrid();
-    void testSnapToGridZM();
     void testVisvalingam();
-    void testVisvalingamZM();
     void testRingValidity();
     void testAbstractGeometrySimplify();
 
@@ -170,7 +179,7 @@ void TestQgsMapToPixelGeometrySimplifier::testWkbDimensionMismatch()
   // NOTE: wkb onwership transferred to QgsGeometry
   g12416.fromWkb( wkb, size );
   const QString wkt = g12416.asWkt();
-  QCOMPARE( wkt, QString( "MultiLineString Z ((0 0 0, 1 1 0, 2 0 0, 3 1 0, 10 0 -0.000001),(0 0 0, 0 0 0.000001))" ) );
+  QCOMPARE( wkt, QString( "MultiLineStringZ ((0 0 0, 1 1 0, 2 0 0, 3 1 0, 10 0 -0.000001),(0 0 0, 0 0 0.000001))" ) );
 
   const int fl = QgsMapToPixelSimplifier::SimplifyGeometry;
   const QgsMapToPixelSimplifier simplifier( fl, 20.0 );
@@ -187,46 +196,13 @@ void TestQgsMapToPixelGeometrySimplifier::testCircularString()
   QCOMPARE( simplifier.simplify( g ).asWkt(), WKT );
 }
 
-void TestQgsMapToPixelGeometrySimplifier::testSnapToGrid()
-{
-  const QString wkt( QStringLiteral( "LineString (0 0, 30 0, 31 30, 32 0, 40 0, 41 100, 42 0, 50 0)" ) );
-  const QgsGeometry g = QgsGeometry::fromWkt( wkt );
-
-  const QgsMapToPixelSimplifier simplifier( QgsMapToPixelSimplifier::SimplifyGeometry, 80, Qgis::VectorSimplificationAlgorithm::SnapToGrid );
-  const QString expectedWkt( QStringLiteral( "LineString (0 0, 30 0, 32 0, 41 100, 42 0, 50 0)" ) );
-
-  QCOMPARE( simplifier.simplify( g ).asWkt(), expectedWkt );
-}
-
-void TestQgsMapToPixelGeometrySimplifier::testSnapToGridZM()
-{
-  const QString wkt( QStringLiteral( "LineString (0 0 101 1, 30 0 102 2, 31 30 103 3, 32 0 104 4, 40 0 105 5, 41 100 106 6, 42 0 107 7, 50 0 108 8)" ) );
-  const QgsGeometry g = QgsGeometry::fromWkt( wkt );
-
-  const QgsMapToPixelSimplifier simplifier( QgsMapToPixelSimplifier::SimplifyGeometry, 80, Qgis::VectorSimplificationAlgorithm::SnapToGrid );
-  const QString expectedWkt( QStringLiteral( "LineString ZM (0 0 101 1, 30 0 102 2, 32 0 104 4, 41 100 106 6, 42 0 107 7, 50 0 108 8)" ) );
-
-  QCOMPARE( simplifier.simplify( g ).asWkt(), expectedWkt );
-}
-
 void TestQgsMapToPixelGeometrySimplifier::testVisvalingam()
 {
   const QString wkt( QStringLiteral( "LineString (0 0, 30 0, 31 30, 32 0, 40 0, 41 100, 42 0, 50 0)" ) );
   const QgsGeometry g = QgsGeometry::fromWkt( wkt );
 
-  const QgsMapToPixelSimplifier simplifier( QgsMapToPixelSimplifier::SimplifyGeometry, 7, Qgis::VectorSimplificationAlgorithm::Visvalingam );
+  const QgsMapToPixelSimplifier simplifier( QgsMapToPixelSimplifier::SimplifyGeometry, 7, QgsMapToPixelSimplifier::Visvalingam );
   const QString expectedWkt( QStringLiteral( "LineString (0 0, 40 0, 41 100, 42 0, 50 0)" ) );
-
-  QCOMPARE( simplifier.simplify( g ).asWkt(), expectedWkt );
-}
-
-void TestQgsMapToPixelGeometrySimplifier::testVisvalingamZM()
-{
-  const QString wkt( QStringLiteral( "LineString ZM (0 0 100 1, 30 0 100 1, 31 30 100 1, 32 0 100 1, 40 0 100 1, 41 100 100 1, 42 0 100 1, 50 0 100 1)" ) );
-  const QgsGeometry g = QgsGeometry::fromWkt( wkt );
-
-  const QgsMapToPixelSimplifier simplifier( QgsMapToPixelSimplifier::SimplifyGeometry, 7, Qgis::VectorSimplificationAlgorithm::Visvalingam );
-  const QString expectedWkt( QStringLiteral( "LineString ZM (0 0 100 1, 40 0 100 1, 41 100 100 1, 42 0 100 1, 50 0 100 1)" ) );
 
   QCOMPARE( simplifier.simplify( g ).asWkt(), expectedWkt );
 }

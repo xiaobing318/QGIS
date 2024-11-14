@@ -22,23 +22,28 @@
 #ifndef QGSWFSDESCRIBEFEATURETYPE_H
 #define QGSWFSDESCRIBEFEATURETYPE_H
 
+
+#include <QDomDocument>
+#include <QDomElement>
+
 #include "qgsserverinterface.h"
 #include "qgswfsparameters.h"
-
 
 namespace QgsWfs
 {
 
   /**
-   * Helper for returning the field type and type name
-   */
-  void getFieldAttributes( const QgsField &field, QString &fieldName, QString &fieldType );
+  * Returns the GML geometry type.
+  */
+  QString getGmlGeometryType( const QgsVectorLayer *layer, QgsWfsParameters::Format format );
+
+  void setSchemaLayer( QDomElement &parentElement, QDomDocument &doc, const QgsVectorLayer *layer, QgsWfsParameters::Format format );
 
   /**
-   * Helper for returning typename list from the request
+   * Create get capabilities document
    */
-  QStringList getRequestTypeNames( const QgsServerRequest &request, const QgsWfsParameters &wfsParams );
-
+  QDomDocument createDescribeFeatureTypeDocument( QgsServerInterface *serverIface, const QgsProject *project, const QString &version,
+      const QgsServerRequest &request );
 
   /**
    * Output WFS  GetCapabilities response

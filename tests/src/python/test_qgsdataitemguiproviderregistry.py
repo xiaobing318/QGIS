@@ -9,16 +9,14 @@ __author__ = 'Nyall Dawson'
 __date__ = '27/10/2018'
 __copyright__ = 'Copyright 2018, The QGIS Project'
 
+import qgis  # NOQA
 
-from qgis.gui import (
-    QgsDataItemGuiContext,
-    QgsDataItemGuiProvider,
-    QgsDataItemGuiProviderRegistry,
-    QgsGui,
-    QgsMessageBar,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.gui import (QgsGui,
+                      QgsDataItemGuiContext,
+                      QgsDataItemGuiProvider,
+                      QgsDataItemGuiProviderRegistry,
+                      QgsMessageBar)
+from qgis.testing import start_app, unittest
 
 app = start_app()
 
@@ -33,7 +31,7 @@ class TestProvider(QgsDataItemGuiProvider):
         return self._name
 
 
-class TestQgsDataItemGuiContext(QgisTestCase):
+class TestQgsDataItemGuiContext(unittest.TestCase):
 
     def testContext(self):
         context = QgsDataItemGuiContext()
@@ -44,7 +42,7 @@ class TestQgsDataItemGuiContext(QgisTestCase):
         self.assertEqual(context.messageBar(), mb)
 
 
-class TestQgsDataItemGuiProviderRegistry(QgisTestCase):
+class TestQgsDataItemGuiProviderRegistry(unittest.TestCase):
 
     def testAppRegistry(self):
         # ensure there is an application instance

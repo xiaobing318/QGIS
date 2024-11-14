@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsanimatedicon.h                                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -49,22 +49,30 @@ request the current icon and trigger UI updates.
 
 Connect to the frame changed signal with this method and not directly. This method
 makes sure the annimation is started.
+
+.. versionadded:: 3.0
 %End
 
     bool disconnectFrameChanged( const QObject *receiver, const char *method );
 %Docstring
 Convenience function to disconnect the same style that the frame change connection was established.
+
+.. versionadded:: 3.0
 %End
 
 
     int width() const;
 %Docstring
 The native width of the icon.
+
+.. versionadded:: 3.0
 %End
 
     int height() const;
 %Docstring
 The native height of the icon.
+
+.. versionadded:: 3.0
 %End
 
   signals:
@@ -85,5 +93,5 @@ Connecting to this signal directly will cause the animation not to be started.
  *                                                                      *
  * src/core/qgsanimatedicon.h                                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/vector/qgsvectorlayerundocommand.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -219,6 +219,8 @@ class QgsVectorLayerUndoCommandRenameAttribute : QgsVectorLayerUndoCommand
 {
 %Docstring(signature="appended")
 Undo command for renaming an existing attribute of a vector layer.
+
+.. versionadded:: 2.16
 %End
 
 %TypeHeaderCode
@@ -247,5 +249,5 @@ Constructor for QgsVectorLayerUndoCommandRenameAttribute
  *                                                                      *
  * src/core/vector/qgsvectorlayerundocommand.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

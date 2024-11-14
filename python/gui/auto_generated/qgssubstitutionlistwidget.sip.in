@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgssubstitutionlistwidget.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -15,6 +15,8 @@ A widget which allows users to specify a list of substitutions to apply to a str
 options for exporting and importing substitution lists.
 
 .. seealso:: :py:class:`QgsSubstitutionListDialog`
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -61,6 +63,8 @@ A dialog which allows users to specify a list of substitutions to apply to a str
 options for exporting and importing substitution lists.
 
 .. seealso:: :py:class:`QgsSubstitutionListWidget`
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -99,5 +103,5 @@ Returns the list of substitutions currently defined by the dialog.
  *                                                                      *
  * src/gui/qgssubstitutionlistwidget.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

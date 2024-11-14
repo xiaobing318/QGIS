@@ -108,10 +108,10 @@ QVariantMap QgsExplodeHstoreAlgorithm::processAlgorithm( const QVariantMap &para
       feedback->setProgress( progress );
 
     QVariantMap currentHStore = QgsHstoreUtils::parse( feat.attribute( fieldName ).toString() );
-    for ( auto key = currentHStore.keyBegin(); key != currentHStore.keyEnd(); key++ )
+    for ( const QString &key : currentHStore.keys() )
     {
-      if ( expectedFields.isEmpty() && ! fieldsToAdd.contains( *key ) )
-        fieldsToAdd.insert( 0, *key );
+      if ( expectedFields.isEmpty() && ! fieldsToAdd.contains( key ) )
+        fieldsToAdd.insert( 0, key );
     }
     hstoreFeatures.insert( feat.id(), currentHStore );
     features.append( feat );
@@ -125,7 +125,7 @@ QVariantMap QgsExplodeHstoreAlgorithm::processAlgorithm( const QVariantMap &para
   QgsFields hstoreFields;
   for ( const QString &fieldName : fieldsToAdd )
   {
-    hstoreFields.append( QgsField( fieldName, QMetaType::Type::QString ) );
+    hstoreFields.append( QgsField( fieldName, QVariant::String ) );
   }
 
   QgsFields outFields = QgsProcessingUtils::combineFields( source->fields(), hstoreFields );
@@ -176,8 +176,6 @@ QVariantMap QgsExplodeHstoreAlgorithm::processAlgorithm( const QVariantMap &para
     if ( !sink->addFeature( outFeature, QgsFeatureSink::FastInsert ) )
       throw QgsProcessingException( writeFeatureError( sink.get(), parameters, QStringLiteral( "OUTPUT" ) ) );
   }
-
-  sink->finalize();
 
   QVariantMap outputs;
   outputs.insert( QStringLiteral( "OUTPUT" ), sinkId );

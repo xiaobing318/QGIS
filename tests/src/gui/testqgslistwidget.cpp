@@ -73,7 +73,7 @@ class TestQgsListWidget : public QObject
       QVERIFY( wrapper );
       const QSignalSpy spy( wrapper, SIGNAL( valueChanged( const QVariant & ) ) );
 
-      QgsListWidget *widget = wrapper->widget()->findChild<QgsListWidget *>();
+      QgsListWidget *widget = qobject_cast< QgsListWidget * >( wrapper->widget() );
       QVERIFY( widget );
 
       QStringList initial;
@@ -81,7 +81,7 @@ class TestQgsListWidget : public QObject
       wrapper->setValues( initial, QVariantList() );
 
       const QVariant value = wrapper->value();
-      QCOMPARE( int( static_cast<QMetaType::Type>( value.userType() ) ), int( QMetaType::Type::QStringList ) );
+      QCOMPARE( int( value.type() ), int( QVariant::StringList ) );
       QCOMPARE( value.toStringList(), initial );
       QCOMPARE( spy.count(), 0 );
 
@@ -93,7 +93,7 @@ class TestQgsListWidget : public QObject
       QStringList expected = initial;
       expected[0] = QStringLiteral( "hello" );
       const QVariant eventValue = spy.at( 0 ).at( 0 ).value<QVariant>();
-      QCOMPARE( int( static_cast<QMetaType::Type>( eventValue.userType() ) ), int( QMetaType::Type::QStringList ) );
+      QCOMPARE( int( eventValue.type() ), int( QVariant::StringList ) );
       QCOMPARE( eventValue.toStringList(), expected );
       QCOMPARE( wrapper->value().toStringList(), expected );
       QCOMPARE( spy.count(), 1 );
@@ -108,7 +108,7 @@ class TestQgsListWidget : public QObject
       QVERIFY( wrapper );
       QSignalSpy spy( wrapper, SIGNAL( valueChanged( const QVariant & ) ) );
 
-      QgsListWidget *widget = wrapper->widget()->findChild<QgsListWidget *>();
+      QgsListWidget *widget = qobject_cast< QgsListWidget * >( wrapper->widget() );
       QVERIFY( widget );
 
       QVariantList initial;
@@ -116,7 +116,7 @@ class TestQgsListWidget : public QObject
       wrapper->setValues( initial, QVariantList() );
 
       const QVariant value = wrapper->value();
-      QCOMPARE( int( static_cast<QMetaType::Type>( value.userType() ) ), int( QMetaType::Type::QVariantList ) );
+      QCOMPARE( int( value.type() ), int( QVariant::List ) );
       QCOMPARE( value.toList(), initial );
       QCOMPARE( spy.count(), 0 );
 
@@ -128,7 +128,7 @@ class TestQgsListWidget : public QObject
       expected[0] = 3;
       QCOMPARE( spy.count(), 1 );
       QVariant eventValue = spy.at( 0 ).at( 0 ).value<QVariant>();
-      QCOMPARE( int( static_cast<QMetaType::Type>( eventValue.userType() ) ), int( QMetaType::Type::QVariantList ) );
+      QCOMPARE( int( eventValue.type() ), int( QVariant::List ) );
       QCOMPARE( eventValue.toList(), expected );
       QCOMPARE( wrapper->value().toList(), expected );
       QVERIFY( widget->valid() );
@@ -160,7 +160,7 @@ class TestQgsListWidget : public QObject
       QVERIFY( vl_array_int->isValid( ) );
 
       QgsListWidgetWrapper w_array_int( vl_array_int, vl_array_int->fields().indexOf( QLatin1String( "location" ) ), nullptr, nullptr );
-      QgsListWidget *widget = w_array_int.widget( )->findChild<QgsListWidget *>();
+      QgsListWidget *widget = qobject_cast< QgsListWidget * >( w_array_int.widget( ) );
 
       vl_array_int->startEditing( );
       QVariantList newList;
@@ -204,7 +204,7 @@ class TestQgsListWidget : public QObject
       QVERIFY( vl_array_str->isValid() );
 
       QgsListWidgetWrapper w_array_str( vl_array_str, vl_array_str->fields().indexOf( QLatin1String( "value" ) ), nullptr, nullptr );
-      widget = w_array_str.widget( )->findChild<QgsListWidget *>();
+      widget = qobject_cast< QgsListWidget * >( w_array_str.widget( ) );
       vl_array_str->startEditing( );
       QVariantList newListStr;
 

@@ -46,7 +46,7 @@ class QgsOgrDbSourceSelect: public QgsAbstractDbSourceSelect
      * and \a theName as string for describing the layers managed by the source select (e.g. : "GeoPackage" etc.)
      * The \a extensions is a string dscribing the accepted file extensions (e.g. : "GeoPackage Database (*.gpkg *.GPKG)")
      */
-    QgsOgrDbSourceSelect( const QString &theOgrDriverName, const QString &theName, const QString &theExtensions, QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode theWidgetMode = QgsProviderRegistry::WidgetMode::Standalone );
+    QgsOgrDbSourceSelect( const QString &theOgrDriverName, const QString &theName, const QString &theExtensions, QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode theWidgetMode = QgsProviderRegistry::WidgetMode::None );
 
     ~QgsOgrDbSourceSelect() override;
 
@@ -91,12 +91,12 @@ class QgsOgrDbSourceSelect: public QgsAbstractDbSourceSelect
     void treeWidgetSelectionChanged( const QItemSelection &selected, const QItemSelection &deselected );
     //!Sets a new regular expression to the model
     void setSearchExpression( const QString &regexp );
+
     void showHelp();
-    bool configureFromUri( const QString &uri ) override;
-    void setSql( const QModelIndex &index ) override;
 
   protected slots:
     void treeviewClicked( const QModelIndex &index ) override;
+    void setSql( const QModelIndex &index ) override;
     void treeviewDoubleClicked( const QModelIndex &index ) override;
 
   private:
@@ -107,7 +107,6 @@ class QgsOgrDbSourceSelect: public QgsAbstractDbSourceSelect
     QString mOgrDriverName;
     QString mName;
     QString mExtension;
-
 };
 
 ///@endcond

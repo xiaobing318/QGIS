@@ -13,7 +13,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsmapcanvastracer.h"
-#include "moc_qgsmapcanvastracer.cpp"
 
 #include "qgsapplication.h"
 #include "qgsmapcanvas.h"
@@ -51,7 +50,7 @@ QgsMapCanvasTracer::QgsMapCanvasTracer( QgsMapCanvas *canvas, QgsMessageBar *mes
 
   // arbitrarily chosen limit that should allow for fairly fast initialization
   // of the underlying graph structure
-  setMaxFeatureCount( QgsSettingsRegistryCore::settingsDigitizingTracingMaxFeatureCount->value() );
+  setMaxFeatureCount( QgsSettingsRegistryCore::settingsDigitizingTracingMaxFeatureCount.value() );
 }
 
 QgsMapCanvasTracer::~QgsMapCanvasTracer()

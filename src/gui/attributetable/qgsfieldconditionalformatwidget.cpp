@@ -13,7 +13,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsfieldconditionalformatwidget.h"
-#include "moc_qgsfieldconditionalformatwidget.cpp"
 
 #include "qgsexpressionbuilderdialog.h"
 #include "qgssymbol.h"
@@ -35,8 +34,8 @@ QgsFieldConditionalFormatWidget::QgsFieldConditionalFormatWidget( QWidget *paren
   setupUi( this );
   setPanelTitle( tr( "Conditional Styles" ) );
   connect( mFieldCombo, &QgsFieldComboBox::fieldChanged, this, &QgsFieldConditionalFormatWidget::fieldChanged );
-  connect( fieldRadio, &QAbstractButton::clicked, this, &QgsFieldConditionalFormatWidget::typeChanged );
-  connect( rowRadio, &QAbstractButton::clicked, this, &QgsFieldConditionalFormatWidget::typeChanged );
+  connect( fieldRadio, &QAbstractButton::clicked, this, &QgsFieldConditionalFormatWidget::reloadStyles );
+  connect( rowRadio, &QAbstractButton::clicked, this, &QgsFieldConditionalFormatWidget::reloadStyles );
   connect( mNewButton, &QAbstractButton::clicked, this, &QgsFieldConditionalFormatWidget::addNewRule );
   connect( listView, &QAbstractItemView::clicked, this, &QgsFieldConditionalFormatWidget::ruleClicked );
   mModel = new QStandardItemModel( listView );
@@ -104,11 +103,10 @@ void QgsFieldConditionalFormatWidget::editStyle( int editIndex, const QgsConditi
       fieldName = mFieldCombo->currentField();
       mLayer->conditionalStyles()->setFieldStyles( fieldName, styles );
     }
-    else if ( rowRadio->isChecked() )
+    if ( rowRadio->isChecked() )
     {
       mLayer->conditionalStyles()->setRowStyles( styles );
     }
-
     reloadStyles();
     emit rulesUpdated( fieldName );
   } );
@@ -144,11 +142,10 @@ QList<QgsConditionalStyle> QgsFieldConditionalFormatWidget::getStyles()
   {
     styles = mLayer->conditionalStyles()->fieldStyles( mFieldCombo->currentField() );
   }
-  else if ( rowRadio->isChecked() )
+  if ( rowRadio->isChecked() )
   {
     styles = mLayer->conditionalStyles()->rowStyles();
   }
-
   return styles;
 }
 
@@ -190,11 +187,6 @@ QList<QgsConditionalStyle> QgsFieldConditionalFormatWidget::defaultPresets()
   return styles;
 }
 
-void QgsFieldConditionalFormatWidget::typeChanged()
-{
-  reloadStyles();
-}
-
 void QgsFieldConditionalFormatWidget::reloadStyles()
 {
   mModel->clear();
@@ -232,7 +224,7 @@ void QgsFieldConditionalFormatWidget::deleteCurrentRule()
     fieldName = mFieldCombo->currentField();
     mLayer->conditionalStyles()->setFieldStyles( fieldName, styles );
   }
-  else if ( rowRadio->isChecked() )
+  if ( rowRadio->isChecked() )
   {
     mLayer->conditionalStyles()->setRowStyles( styles );
   }
@@ -294,7 +286,7 @@ QgsEditConditionalFormatRuleWidget::QgsEditConditionalFormatRuleWidget( QWidget 
   mPresetsList->setModel( mPresetsModel );
 
   btnChangeIcon->setSymbolType( Qgis::SymbolType::Marker );
-  btnChangeIcon->setSymbol( QgsSymbol::defaultSymbol( Qgis::GeometryType::Point ) );
+  btnChangeIcon->setSymbol( QgsSymbol::defaultSymbol( QgsWkbTypes::PointGeometry ) );
   connect( checkIcon, &QCheckBox::toggled, btnChangeIcon, &QWidget::setEnabled );
 }
 

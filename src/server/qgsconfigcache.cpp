@@ -15,7 +15,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsconfigcache.h"
-#include "moc_qgsconfigcache.cpp"
 #include "qgsmessagelog.h"
 #include "qgsserverexception.h"
 #include "qgsstorebadlayerinfo.h"
@@ -110,8 +109,7 @@ const QgsProject *QgsConfigCache::project( const QString &path, const QgsServerS
 
     // Always skip original styles storage
     Qgis::ProjectReadFlags readFlags = Qgis::ProjectReadFlag::DontStoreOriginalStyles
-                                       | Qgis::ProjectReadFlag::DontLoad3DViews
-                                       | Qgis::ProjectReadFlag::DontUpgradeAnnotations;
+                                       | Qgis::ProjectReadFlag::DontLoad3DViews;
     if ( settings )
     {
       // Activate trust layer metadata flag
@@ -184,19 +182,6 @@ const QgsProject *QgsConfigCache::project( const QString &path, const QgsServerS
   return entry ? entry->second.get() : nullptr;
 }
 
-QList<QgsProject *> QgsConfigCache::projects() const
-{
-  QList<QgsProject *> projects;
-
-  const auto constKeys {  mProjectCache.keys() };
-  for ( const auto &path : std::as_const( constKeys ) )
-  {
-    projects << mProjectCache[path]->second.get();
-  }
-
-  return projects;
-}
-
 QDomDocument *QgsConfigCache::xmlDocument( const QString &filePath )
 {
   //first open file
@@ -251,8 +236,6 @@ void QgsConfigCache::removeEntry( const QString &path )
   mXmlDocumentCache.remove( path );
 
   mStrategy->entryRemoved( path );
-
-  emit projectRemovedFromCache( path );
 }
 
 // slots

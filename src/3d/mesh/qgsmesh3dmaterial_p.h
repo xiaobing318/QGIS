@@ -19,11 +19,11 @@
 #define QGSMESH3DMATERIAL_H
 
 
+#include <Qt3DRender/QMaterial>
 #include <Qt3DRender/QRenderPassFilter>
 #include <Qt3DRender/QTechnique>
 #include <Qt3DRender/QAbstractTextureImage>
 
-#include "qgsmaterial.h"
 #include "qgsmesh3dsymbol.h"
 #include "qgsvector3d.h"
 
@@ -47,7 +47,7 @@ class QgsMeshLayer;
  * \brief Implementation of material used to render the mesh layer
  * \since QGIS 3.12
  */
-class QgsMesh3DMaterial : public QgsMaterial
+class QgsMesh3dMaterial : public Qt3DRender::QMaterial
 {
     Q_OBJECT
 
@@ -70,7 +70,7 @@ class QgsMesh3DMaterial : public QgsMaterial
     };
 
     //! Constructor
-    QgsMesh3DMaterial( QgsMeshLayer *layer,
+    QgsMesh3dMaterial( QgsMeshLayer *layer,
                        const QgsDateTimeRange &timeRange,
                        const QgsVector3D &origin,
                        const QgsMesh3DSymbol *symbol,

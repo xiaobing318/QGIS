@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/raster/qgssinglebandpseudocolorrenderer.h                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -57,12 +57,9 @@ Returns the raster shader
    available in Python as constShader
 %End
 
-    virtual bool canCreateRasterAttributeTable( ) const;
-
-
     void createShader( QgsColorRamp *colorRamp /Transfer/ = 0,
-                       Qgis::ShaderInterpolationMethod colorRampType = Qgis::ShaderInterpolationMethod::Linear,
-                       Qgis::ShaderClassificationMethod classificationMode = Qgis::ShaderClassificationMethod::Continuous,
+                       QgsColorRampShader::Type colorRampType  = QgsColorRampShader::Interpolated,
+                       QgsColorRampShader::ClassificationMode classificationMode = QgsColorRampShader::Continuous,
                        int classes = 0,
                        bool clip = false,
                        const QgsRectangle &extent = QgsRectangle() );
@@ -90,30 +87,21 @@ Creates a color ramp shader
     virtual bool accept( QgsStyleEntityVisitorInterface *visitor ) const;
 
 
- int band() const /Deprecated/;
+    int band() const;
 %Docstring
 Returns the band used by the renderer
 
-.. deprecated:: 3.38
-
-   Use :py:func:`~QgsSingleBandPseudoColorRenderer.inputBand` instead.
+.. versionadded:: 2.7
 %End
 
- void setBand( int bandNo ) /Deprecated/;
+    void setBand( int bandNo );
 %Docstring
 Sets the band used by the renderer.
 
 .. seealso:: :py:func:`band`
 
-.. deprecated:: 3.38
-
-   Use :py:func:`~QgsSingleBandPseudoColorRenderer.setInputBand` instead.
+.. versionadded:: 2.10
 %End
-
-    virtual int inputBand() const;
-
-    virtual bool setInputBand( int band );
-
 
     double classificationMin() const;
     double classificationMax() const;
@@ -130,5 +118,5 @@ Sets the band used by the renderer.
  *                                                                      *
  * src/core/raster/qgssinglebandpseudocolorrenderer.h                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

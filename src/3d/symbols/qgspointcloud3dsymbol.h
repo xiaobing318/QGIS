@@ -18,10 +18,10 @@
 
 #include "qgis_3d.h"
 
+#include <Qt3DRender/QMaterial>
 
 #include "qgsabstract3dsymbol.h"
 #include "qgscolorrampshader.h"
-#include "qgsmaterial.h"
 #include "qgspointcloudlayer.h"
 #include "qgscontrastenhancement.h"
 #include "qgspointcloudclassifiedrenderer.h"
@@ -56,7 +56,9 @@ class _3D_EXPORT QgsPointCloud3DSymbol : public QgsAbstract3DSymbol SIP_ABSTRACT
       Classification
     };
 
+    //! Constructor for QgsPointCloud3DSymbol
     QgsPointCloud3DSymbol();
+    //! Destructor for QgsPointCloud3DSymbol
     ~QgsPointCloud3DSymbol() override;
 
     QString type() const override { return "pointcloud"; }
@@ -81,7 +83,7 @@ class _3D_EXPORT QgsPointCloud3DSymbol : public QgsAbstract3DSymbol SIP_ABSTRACT
     //! Returns the byte stride for the geometries used to for the vertex buffer
     virtual unsigned int byteStride() = 0;
     //! Used to fill material object with necessary QParameters (and consequently opengl uniforms)
-    virtual void fillMaterial( QgsMaterial *material ) = 0 SIP_SKIP;
+    virtual void fillMaterial( Qt3DRender::QMaterial *material ) = 0 SIP_SKIP;
 
     /**
      * Returns whether points are triangulated to render solid surface
@@ -198,6 +200,7 @@ class _3D_EXPORT QgsPointCloud3DSymbol : public QgsAbstract3DSymbol SIP_ABSTRACT
 class _3D_EXPORT QgsSingleColorPointCloud3DSymbol : public QgsPointCloud3DSymbol
 {
   public:
+    //! Constructor for QgsSingleColorPointCloud3DSymbol
     QgsSingleColorPointCloud3DSymbol();
 
     QString symbolType() const override;
@@ -219,7 +222,7 @@ class _3D_EXPORT QgsSingleColorPointCloud3DSymbol : public QgsPointCloud3DSymbol
     void setSingleColor( QColor color );
 
     unsigned int byteStride() override { return 3 * sizeof( float ); }
-    void fillMaterial( QgsMaterial *material ) override SIP_SKIP;
+    void fillMaterial( Qt3DRender::QMaterial *material ) override SIP_SKIP;
 
 
   private:
@@ -238,6 +241,7 @@ class _3D_EXPORT QgsSingleColorPointCloud3DSymbol : public QgsPointCloud3DSymbol
 class _3D_EXPORT QgsColorRampPointCloud3DSymbol : public QgsPointCloud3DSymbol
 {
   public:
+    //! Constructor for QgsColorRampPointCloud3DSymbol
     QgsColorRampPointCloud3DSymbol();
 
     QgsAbstract3DSymbol *clone() const override SIP_FACTORY;
@@ -284,13 +288,12 @@ class _3D_EXPORT QgsColorRampPointCloud3DSymbol : public QgsPointCloud3DSymbol
 
     /**
      * Sets the minimum and maximum values used when classifying colors in the color ramp shader
-     * \see colorRampShaderMin()
-     * \see colorRampShaderMax()
+     * \see colorRampShaderMin() colorRampShaderMax()
      */
     void setColorRampShaderMinMax( double min, double max );
 
     unsigned int byteStride() override { return 4 * sizeof( float ); }
-    void fillMaterial( QgsMaterial *material ) override SIP_SKIP;
+    void fillMaterial( Qt3DRender::QMaterial *material ) override SIP_SKIP;
 
   private:
     QString mRenderingParameter;
@@ -311,6 +314,7 @@ class _3D_EXPORT QgsColorRampPointCloud3DSymbol : public QgsPointCloud3DSymbol
 class _3D_EXPORT QgsRgbPointCloud3DSymbol : public QgsPointCloud3DSymbol
 {
   public:
+    //! Constructor for QgsRGBPointCloud3DSymbol
     QgsRgbPointCloud3DSymbol();
 
     //! QgsRgbPointCloud3DSymbol cannot be copied - use clone() instead
@@ -326,7 +330,7 @@ class _3D_EXPORT QgsRgbPointCloud3DSymbol : public QgsPointCloud3DSymbol
     void readXml( const QDomElement &elem, const QgsReadWriteContext &context ) override;
 
     unsigned int byteStride() override { return 6 * sizeof( float ); }
-    void fillMaterial( QgsMaterial *material ) override SIP_SKIP;
+    void fillMaterial( Qt3DRender::QMaterial *material ) override SIP_SKIP;
 
     /**
      * Returns the attribute to use for the red channel.
@@ -470,6 +474,7 @@ class _3D_EXPORT QgsRgbPointCloud3DSymbol : public QgsPointCloud3DSymbol
 class _3D_EXPORT QgsClassificationPointCloud3DSymbol : public QgsPointCloud3DSymbol
 {
   public:
+    //! Constructor for QgsClassificationPointCloud3DSymbol
     QgsClassificationPointCloud3DSymbol();
 
     QgsAbstract3DSymbol *clone() const override SIP_FACTORY;
@@ -504,13 +509,12 @@ class _3D_EXPORT QgsClassificationPointCloud3DSymbol : public QgsPointCloud3DSym
 
     /**
      * Gets the list of categories of the classification that should not be rendered
-     * \see categoriesList()
-     * \see setCategoriesList()
+     * \see categoriesList() setCategoriesList()
      */
     QgsPointCloudCategoryList getFilteredOutCategories() const;
 
-    unsigned int byteStride() override { return 5 * sizeof( float ); }
-    void fillMaterial( QgsMaterial *material ) override SIP_SKIP;
+    unsigned int byteStride() override { return 4 * sizeof( float ); }
+    void fillMaterial( Qt3DRender::QMaterial *material ) override SIP_SKIP;
 
   private:
     QString mRenderingParameter;

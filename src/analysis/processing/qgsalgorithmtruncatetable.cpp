@@ -52,9 +52,9 @@ QString QgsTruncateTableAlgorithm::shortHelpString() const
          + QObject::tr( "Warning — this algorithm modifies the layer in place, and deleted features cannot be restored!" );
 }
 
-Qgis::ProcessingAlgorithmFlags QgsTruncateTableAlgorithm::flags() const
+QgsProcessingAlgorithm::Flags QgsTruncateTableAlgorithm::flags() const
 {
-  return QgsProcessingAlgorithm::flags() | Qgis::ProcessingAlgorithmFlag::NoThreading;
+  return QgsProcessingAlgorithm::flags() | QgsProcessingAlgorithm::FlagNoThreading;
 }
 
 QgsTruncateTableAlgorithm *QgsTruncateTableAlgorithm::createInstance() const
@@ -64,7 +64,7 @@ QgsTruncateTableAlgorithm *QgsTruncateTableAlgorithm::createInstance() const
 
 void QgsTruncateTableAlgorithm::initAlgorithm( const QVariantMap & )
 {
-  addParameter( new QgsProcessingParameterVectorLayer( QStringLiteral( "INPUT" ), QObject::tr( "Input layer" ), QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::Vector ) ) );
+  addParameter( new QgsProcessingParameterVectorLayer( QStringLiteral( "INPUT" ), QObject::tr( "Input layer" ) ) );
   addOutput( new QgsProcessingOutputVectorLayer( QStringLiteral( "OUTPUT" ), QObject::tr( "Truncated layer" ) ) );
 }
 

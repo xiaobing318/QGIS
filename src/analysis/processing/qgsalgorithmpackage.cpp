@@ -16,12 +16,11 @@
  ***************************************************************************/
 
 #include "qgsalgorithmpackage.h"
+#include "qgsgeometryengine.h"
 #include "qgsogrutils.h"
 #include "qgsvectorfilewriter.h"
 #include "qgsvectorlayer.h"
 #include "qgssettings.h"
-
-#include <QLocale>
 
 ///@cond PRIVATE
 
@@ -52,7 +51,7 @@ QString QgsPackageAlgorithm::groupId() const
 
 void QgsPackageAlgorithm::initAlgorithm( const QVariantMap & )
 {
-  addParameter( new QgsProcessingParameterMultipleLayers( QStringLiteral( "LAYERS" ), QObject::tr( "Input layers" ), Qgis::ProcessingSourceType::Vector ) );
+  addParameter( new QgsProcessingParameterMultipleLayers( QStringLiteral( "LAYERS" ), QObject::tr( "Input layers" ), QgsProcessing::TypeVector ) );
   QgsProcessingParameterFileDestination *outputParameter = new QgsProcessingParameterFileDestination( QStringLiteral( "OUTPUT" ), QObject::tr( "Destination GeoPackage" ), QObject::tr( "GeoPackage files (*.gpkg)" ) );
   outputParameter->setMetadata( QVariantMap( {{QStringLiteral( "widget_wrapper" ), QVariantMap( {{QStringLiteral( "dontconfirmoverwrite" ), true }} ) }} ) );
   addParameter( outputParameter );
@@ -341,17 +340,18 @@ QVariantMap QgsPackageAlgorithm::processAlgorithm( const QVariantMap &parameters
 
     switch ( layer->type() )
     {
-      case Qgis::LayerType::Vector:
+      case QgsMapLayerType::VectorLayer:
       {
         QgsVectorLayer *vectorLayer = qobject_cast<QgsVectorLayer *>( layer.get() );
-        if ( !packageVectorLayer( vectorLayer, packagePath, context, &multiStepFeedback, saveStyles, saveMetadata, selectedFeaturesOnly ) )
+        const bool onlySaveSelected = vectorLayer->selectedFeatureCount() > 0 && selectedFeaturesOnly;
+        if ( !packageVectorLayer( vectorLayer, packagePath, context, &multiStepFeedback, saveStyles, saveMetadata, onlySaveSelected ) )
           errored = true;
         else
           outputLayers.append( QStringLiteral( "%1|layername=%2" ).arg( packagePath, layer->name() ) );
         break;
       }
 
-      case Qgis::LayerType::Raster:
+      case QgsMapLayerType::RasterLayer:
       {
         //not supported
         feedback->pushDebugInfo( QObject::tr( "Packaging raster layers is not supported." ) );
@@ -359,45 +359,39 @@ QVariantMap QgsPackageAlgorithm::processAlgorithm( const QVariantMap &parameters
         break;
       }
 
-      case Qgis::LayerType::Plugin:
+      case QgsMapLayerType::PluginLayer:
         //not supported
         feedback->pushDebugInfo( QObject::tr( "Packaging plugin layers is not supported." ) );
         errored = true;
         break;
 
-      case Qgis::LayerType::Mesh:
+      case QgsMapLayerType::MeshLayer:
         //not supported
         feedback->pushDebugInfo( QObject::tr( "Packaging mesh layers is not supported." ) );
         errored = true;
         break;
 
-      case Qgis::LayerType::PointCloud:
+      case QgsMapLayerType::PointCloudLayer:
         //not supported
         feedback->pushDebugInfo( QObject::tr( "Packaging point cloud layers is not supported." ) );
         errored = true;
         break;
 
-      case Qgis::LayerType::VectorTile:
+      case QgsMapLayerType::VectorTileLayer:
         //not supported
         feedback->pushDebugInfo( QObject::tr( "Packaging vector tile layers is not supported." ) );
         errored = true;
         break;
 
-      case Qgis::LayerType::Annotation:
+      case QgsMapLayerType::AnnotationLayer:
         //not supported
         feedback->pushDebugInfo( QObject::tr( "Packaging annotation layers is not supported." ) );
         errored = true;
         break;
 
-      case Qgis::LayerType::Group:
+      case QgsMapLayerType::GroupLayer:
         //not supported
         feedback->pushDebugInfo( QObject::tr( "Packaging group layers is not supported." ) );
-        errored = true;
-        break;
-
-      case Qgis::LayerType::TiledScene:
-        //not supported
-        feedback->pushDebugInfo( QObject::tr( "Packaging tiled scene layers is not supported." ) );
         errored = true;
         break;
     }
@@ -437,13 +431,13 @@ bool QgsPackageAlgorithm::packageVectorLayer( QgsVectorLayer *layer, const QStri
   options.attributes = fields.allAttributesList();
   if ( fidIndex >= 0 )
   {
-    const QMetaType::Type fidType { layer->fields().field( fidIndex ).type() };
+    const QVariant::Type fidType { layer->fields().field( fidIndex ).type() };
     if ( ! layer->fieldConstraints( fidIndex ).testFlag( QgsFieldConstraints::Constraint::ConstraintUnique )
          && ! layer->fieldConstraints( fidIndex ).testFlag( QgsFieldConstraints::Constraint::ConstraintNotNull )
-         && fidType != QMetaType::Type::Int
-         && fidType != QMetaType::Type::UInt
-         && fidType != QMetaType::Type::LongLong
-         && fidType != QMetaType::Type::ULongLong )
+         && fidType != QVariant::Int
+         && fidType != QVariant::UInt
+         && fidType != QVariant::LongLong
+         && fidType != QVariant::ULongLong )
     {
       options.attributes.removeAll( fidIndex );
     }

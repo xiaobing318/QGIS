@@ -16,17 +16,12 @@
  ***************************************************************************/
 
 #include "qgsgdalsourceselect.h"
-#include "moc_qgsgdalsourceselect.cpp"
 ///@cond PRIVATE
 
 #include <QMessageBox>
 
 #include "qgsproviderregistry.h"
-#include "qgsgdalguiutils.h"
-#include "qgsgdalutils.h"
-#include "qgsgdalcredentialoptionswidget.h"
-#include "qgsspinbox.h"
-#include "qgsdoublespinbox.h"
+#include "ogr/qgsogrhelperfunctions.h"
 
 #include <gdal.h>
 #include <cpl_minixml.h>
@@ -38,10 +33,7 @@ QgsGdalSourceSelect::QgsGdalSourceSelect( QWidget *parent, Qt::WindowFlags fl, Q
   setupUi( this );
   setupButtons( buttonBox );
 
-  mOpenOptionsGroupBox->setCollapsed( false );
-
   connect( radioSrcFile, &QRadioButton::toggled, this, &QgsGdalSourceSelect::radioSrcFile_toggled );
-  connect( radioSrcOgcApi, &QRadioButton::toggled, this, &QgsGdalSourceSelect::radioSrcOgcApi_toggled );
   connect( radioSrcProtocol, &QRadioButton::toggled, this, &QgsGdalSourceSelect::radioSrcProtocol_toggled );
   connect( cmbProtocolTypes, &QComboBox::currentTextChanged, this, &QgsGdalSourceSelect::cmbProtocolTypes_currentIndexChanged );
   connect( buttonBox, &QDialogButtonBox::helpRequested, this, &QgsGdalSourceSelect::showHelp );
@@ -49,15 +41,16 @@ QgsGdalSourceSelect::QgsGdalSourceSelect( QWidget *parent, Qt::WindowFlags fl, Q
   whileBlocking( radioSrcFile )->setChecked( true );
   protocolGroupBox->hide();
 
-  QList< QgsGdalUtils::VsiNetworkFileSystemDetails > vsiDetails = QgsGdalUtils::vsiNetworkFileSystems();
-  std::sort( vsiDetails.begin(), vsiDetails.end(), []( const QgsGdalUtils::VsiNetworkFileSystemDetails & a, const QgsGdalUtils::VsiNetworkFileSystemDetails & b )
+  QStringList protocolTypes = QStringLiteral( "HTTP/HTTPS/FTP,vsicurl;AWS S3,vsis3;Google Cloud Storage,vsigs" ).split( ';' );
+  protocolTypes += QStringLiteral( "Microsoft Azure Blob,vsiaz;Alibaba Cloud OSS,vsioss;OpenStack Swift Object Storage,vsiswift" ).split( ';' );
+  for ( int i = 0; i < protocolTypes.count(); i++ )
   {
-    return QString::localeAwareCompare( a.name, b.name ) < 0;
-  } );
-  for ( const QgsGdalUtils::VsiNetworkFileSystemDetails &vsiDetail : std::as_const( vsiDetails ) )
-  {
-    cmbProtocolTypes->addItem( vsiDetail.name, vsiDetail.identifier );
+    QString protocol = protocolTypes.at( i );
+    if ( ( !protocol.isEmpty() ) && ( !protocol.isNull() ) )
+      cmbProtocolTypes->addItem( protocol.split( ',' ).at( 0 ) );
   }
+
+  mAuthWarning->setText( tr( " Additional credential options are required as documented <a href=\"%1\">here</a>." ).arg( QLatin1String( "https://gdal.org/user/virtual_file_systems.html#drivers-supporting-virtual-file-systems" ) ) );
 
   connect( protocolURI, &QLineEdit::textChanged, this, [ = ]( const QString & text )
   {
@@ -89,24 +82,26 @@ QgsGdalSourceSelect::QgsGdalSourceSelect( QWidget *parent, Qt::WindowFlags fl, Q
   mFileWidget->setOptions( QFileDialog::HideNameFilterDetails );
   connect( mFileWidget, &QgsFileWidget::fileChanged, this, [ = ]( const QString & path )
   {
-    mRasterPath = mIsOgcApi ? QStringLiteral( "OGCAPI:%1" ).arg( path ) : path;
+    mRasterPath = path;
     emit enableButtons( ! mRasterPath.isEmpty() );
     fillOpenOptions();
   } );
   mOpenOptionsGroupBox->setVisible( false );
-
-  mCredentialsWidget = new QgsGdalCredentialOptionsWidget();
-  mCredentialOptionsLayout->addWidget( mCredentialsWidget );
-  mCredentialOptionsGroupBox->setVisible( false );
-
-  connect( mCredentialsWidget, &QgsGdalCredentialOptionsWidget::optionsChanged, this, &QgsGdalSourceSelect::credentialOptionsChanged );
-
   mAuthSettingsProtocol->setDataprovider( QStringLiteral( "gdal" ) );
+}
+
+bool QgsGdalSourceSelect::isProtocolCloudType()
+{
+  return ( cmbProtocolTypes->currentText() == QLatin1String( "AWS S3" ) ||
+           cmbProtocolTypes->currentText() == QLatin1String( "Google Cloud Storage" ) ||
+           cmbProtocolTypes->currentText() == QLatin1String( "Microsoft Azure Blob" ) ||
+           cmbProtocolTypes->currentText() == QLatin1String( "Alibaba Cloud OSS" ) ||
+           cmbProtocolTypes->currentText() == QLatin1String( "OpenStack Swift Object Storage" ) );
 }
 
 void QgsGdalSourceSelect::setProtocolWidgetsVisibility()
 {
-  if ( QgsGdalUtils::vsiHandlerType( cmbProtocolTypes->currentData().toString() ) == Qgis::VsiHandlerType::Cloud )
+  if ( isProtocolCloudType() )
   {
     labelProtocolURI->hide();
     protocolURI->hide();
@@ -115,6 +110,7 @@ void QgsGdalSourceSelect::setProtocolWidgetsVisibility()
     mBucket->show();
     labelKey->show();
     mKey->show();
+    mAuthWarning->show();
   }
   else
   {
@@ -125,6 +121,7 @@ void QgsGdalSourceSelect::setProtocolWidgetsVisibility()
     mBucket->hide();
     labelKey->hide();
     mKey->hide();
+    mAuthWarning->hide();
   }
 }
 
@@ -135,30 +132,9 @@ void QgsGdalSourceSelect::radioSrcFile_toggled( bool checked )
     fileGroupBox->show();
     protocolGroupBox->hide();
     clearOpenOptions();
-    updateProtocolOptions();
 
     emit enableButtons( !mFileWidget->filePath().isEmpty() );
-  }
-}
 
-void QgsGdalSourceSelect::radioSrcOgcApi_toggled( bool checked )
-{
-  mIsOgcApi = checked;
-  radioSrcFile_toggled( checked );
-  if ( checked )
-  {
-    rasterDatasetLabel->setText( tr( "OGC API Endpoint" ) );
-    const QString vectorPath = mFileWidget->filePath();
-    emit enableButtons( ! vectorPath.isEmpty() );
-    if ( mRasterPath.isEmpty() )
-    {
-      mRasterPath = QStringLiteral( "OGCAPI:" );
-    }
-    fillOpenOptions();
-  }
-  else
-  {
-    rasterDatasetLabel->setText( tr( "Raster dataset(s)" ) );
   }
 }
 
@@ -170,7 +146,6 @@ void QgsGdalSourceSelect::radioSrcProtocol_toggled( bool checked )
     protocolGroupBox->show();
     setProtocolWidgetsVisibility();
     clearOpenOptions();
-    updateProtocolOptions();
 
     emit enableButtons( !protocolURI->text().isEmpty() );
   }
@@ -181,7 +156,6 @@ void QgsGdalSourceSelect::cmbProtocolTypes_currentIndexChanged( const QString &t
   Q_UNUSED( text )
   setProtocolWidgetsVisibility();
   clearOpenOptions();
-  updateProtocolOptions();
 }
 
 void QgsGdalSourceSelect::addButtonClicked()
@@ -191,123 +165,12 @@ void QgsGdalSourceSelect::addButtonClicked()
   if ( mDataSources.isEmpty() )
   {
     QMessageBox::information( this,
-                              tr( "Add Raster Layer" ),
+                              tr( "Add raster layer" ),
                               tr( "No layers selected." ) );
     return;
   }
 
-  // validate sources
-  QStringList sources;
-  enum class PromoteToVsiCurlStatus
-  {
-    NotAsked,
-    AutoPromote,
-    DontPromote
-  };
-
-  PromoteToVsiCurlStatus promoteToVsiCurlStatus = PromoteToVsiCurlStatus::NotAsked;
-
-  for ( const QString &originalSource : std::as_const( mDataSources ) )
-  {
-    QVariantMap parts = QgsProviderRegistry::instance()->decodeUri( QStringLiteral( "gdal" ), originalSource );
-
-    const QString vsiPrefix = parts.value( QStringLiteral( "vsiPrefix" ) ).toString();
-    const QString scheme = QUrl( parts.value( QStringLiteral( "path" ) ).toString() ).scheme();
-    const bool isRemoteNonVsiCurlUrl = vsiPrefix.isEmpty() && ( scheme.startsWith( QLatin1String( "http" ) ) || scheme == QLatin1String( "ftp" ) );
-    if ( isRemoteNonVsiCurlUrl )
-    {
-      if ( promoteToVsiCurlStatus == PromoteToVsiCurlStatus::NotAsked )
-      {
-        if ( QMessageBox::warning( this,
-                                   tr( "Add Raster Layer" ),
-                                   tr( "Directly adding HTTP(S) or FTP sources can be very slow, as it requires a full download of the dataset.\n\n"
-                                       "Would you like to use a streaming method to access this dataset instead (recommended)?" ), QMessageBox::Button::Yes | QMessageBox::Button::No, QMessageBox::Button::Yes )
-             == QMessageBox::Yes )
-        {
-          promoteToVsiCurlStatus = PromoteToVsiCurlStatus::AutoPromote;
-        }
-        else
-        {
-          promoteToVsiCurlStatus = PromoteToVsiCurlStatus::DontPromote;
-        }
-      }
-
-      if ( promoteToVsiCurlStatus == PromoteToVsiCurlStatus::AutoPromote )
-      {
-        parts.insert( QStringLiteral( "vsiPrefix" ), QStringLiteral( "/vsicurl/" ) );
-      }
-    }
-
-    sources << QgsProviderRegistry::instance()->encodeUri( QStringLiteral( "gdal" ), parts );
-  }
-
-  emit addRasterLayers( sources );
-}
-
-bool QgsGdalSourceSelect::configureFromUri( const QString &uri )
-{
-  mDataSources.clear();
-  mDataSources.append( uri );
-  const QVariantMap decodedUri = QgsProviderRegistry::instance()->decodeUri( QStringLiteral( "gdal" ), uri );
-  const QString layerName { decodedUri.value( QStringLiteral( "layerName" ) ).toString() };
-  mFileWidget->setFilePath( decodedUri.value( QStringLiteral( "path" ), QString() ).toString() );
-  QVariantMap openOptions = decodedUri.value( QStringLiteral( "openOptions" ) ).toMap();
-  // layerName becomes TABLE in some driver opening options (e.g. GPKG)
-  if ( !layerName.isEmpty() )
-  {
-    openOptions.insert( QStringLiteral( "TABLE" ), layerName );
-  }
-
-  if ( ! openOptions.isEmpty() )
-  {
-    for ( auto opt = openOptions.constBegin(); opt != openOptions.constEnd(); ++opt )
-    {
-      const auto widget { std::find_if( mOpenOptionsWidgets.cbegin(), mOpenOptionsWidgets.cend(), [ = ]( QWidget * widget )
-      {
-        return widget->objectName() == opt.key();
-      } ) };
-
-      if ( widget != mOpenOptionsWidgets.cend() )
-      {
-        if ( auto cb = qobject_cast<QComboBox *>( *widget ) )
-        {
-          const auto idx { cb->findText( opt.value().toString() ) };
-          if ( idx >= 0 )
-          {
-            cb->setCurrentIndex( idx );
-          }
-        }
-        else if ( QLineEdit *le = qobject_cast<QLineEdit *>( *widget ) )
-        {
-          le->setText( opt.value().toString() );
-        }
-        else if ( QgsSpinBox *intSpin = qobject_cast<QgsSpinBox *>( *widget ) )
-        {
-          if ( opt.value().toString().isEmpty() )
-          {
-            intSpin->clear();
-          }
-          else
-          {
-            intSpin->setValue( opt.value().toInt() );
-          }
-        }
-        else if ( QgsDoubleSpinBox *doubleSpin = qobject_cast<QgsDoubleSpinBox *>( *widget ) )
-        {
-          if ( opt.value().toString().isEmpty() )
-          {
-            doubleSpin->clear();
-          }
-          else
-          {
-            doubleSpin->setValue( opt.value().toDouble() );
-          }
-        }
-      }
-    }
-  }
-
-  return true;
+  emit addRasterLayers( mDataSources );
 }
 
 void QgsGdalSourceSelect::computeDataSources()
@@ -326,29 +189,13 @@ void QgsGdalSourceSelect::computeDataSources()
     {
       value = le->text();
     }
-    else if ( QgsSpinBox *intSpin = qobject_cast<QgsSpinBox *>( control ) )
-    {
-      if ( intSpin->value() != intSpin->clearValue() )
-      {
-        value = QString::number( intSpin->value() );
-      }
-    }
-    else if ( QgsDoubleSpinBox *doubleSpin = qobject_cast<QgsDoubleSpinBox *>( control ) )
-    {
-      if ( doubleSpin->value() != doubleSpin->clearValue() )
-      {
-        value = QString::number( doubleSpin->value() );
-      }
-    }
     if ( !value.isEmpty() )
     {
-      openOptions << QStringLiteral( "%1=%2" ).arg( control->objectName(), value );
+      openOptions << QStringLiteral( "%1=%2" ).arg( control->objectName() ).arg( value );
     }
   }
 
-  const QVariantMap credentialOptions = !mCredentialOptionsGroupBox->isHidden() ? mCredentialOptions : QVariantMap();
-
-  if ( radioSrcFile->isChecked() || radioSrcOgcApi->isChecked() )
+  if ( radioSrcFile->isChecked() )
   {
     for ( const auto &filePath : QgsFileWidget::splitFilePaths( mRasterPath ) )
     {
@@ -361,7 +208,7 @@ void QgsGdalSourceSelect::computeDataSources()
   }
   else if ( radioSrcProtocol->isChecked() )
   {
-    const bool cloudType = QgsGdalUtils::vsiHandlerType( cmbProtocolTypes->currentData().toString() ) == Qgis::VsiHandlerType::Cloud;
+    bool cloudType = isProtocolCloudType();
     if ( !cloudType && protocolURI->text().isEmpty() )
     {
       return;
@@ -384,14 +231,12 @@ void QgsGdalSourceSelect::computeDataSources()
     QVariantMap parts;
     if ( !openOptions.isEmpty() )
       parts.insert( QStringLiteral( "openOptions" ), openOptions );
-    if ( !credentialOptions.isEmpty() )
-      parts.insert( QStringLiteral( "credentialOptions" ), credentialOptions );
     parts.insert( QStringLiteral( "path" ),
-                  QgsGdalGuiUtils::createProtocolURI( cmbProtocolTypes->currentData().toString(),
-                      uri,
-                      mAuthSettingsProtocol->configId(),
-                      mAuthSettingsProtocol->username(),
-                      mAuthSettingsProtocol->password() ) );
+                  createProtocolURI( cmbProtocolTypes->currentText(),
+                                     uri,
+                                     mAuthSettingsProtocol->configId(),
+                                     mAuthSettingsProtocol->username(),
+                                     mAuthSettingsProtocol->password() ) );
     mDataSources << QgsProviderRegistry::instance()->encodeUri( QStringLiteral( "gdal" ), parts );
   }
 }
@@ -416,95 +261,103 @@ void QgsGdalSourceSelect::fillOpenOptions()
   if ( mDataSources.isEmpty() )
     return;
 
-  const QString firstDataSource = mDataSources.at( 0 );
-  const QString vsiPrefix = QgsGdalUtils::vsiPrefixForPath( firstDataSource );
-  const QString scheme = QUrl( firstDataSource ).scheme();
-  const bool isRemoteNonVsiCurlUrl = vsiPrefix.isEmpty() && ( scheme.startsWith( QLatin1String( "http" ) ) || scheme == QLatin1String( "ftp" ) );
-  if ( isRemoteNonVsiCurlUrl )
-  {
-    // it can be very expensive to determine open options for non /vsicurl/ http uris -- it may require a full download of the remote dataset,
-    // so just be safe and don't show any open options. Users can always manually append the /vsicurl/ prefix if they desire these, OR
-    // correctly use the HTTP "Protocol" option instead.
-    return;
-  }
-
-  QVariantMap parts = QgsProviderRegistry::instance()->decodeUri( QStringLiteral( "gdal" ), firstDataSource );
-  const QVariantMap credentialOptions = parts.value( QStringLiteral( "credentialOptions" ) ).toMap();
-  parts.remove( QStringLiteral( "credentialOptions" ) );
-  if ( !credentialOptions.isEmpty() && !vsiPrefix.isEmpty() )
-  {
-    const thread_local QRegularExpression bucketRx( QStringLiteral( "^(.*)/" ) );
-    const QRegularExpressionMatch bucketMatch = bucketRx.match( parts.value( QStringLiteral( "path" ) ).toString() );
-    if ( bucketMatch.hasMatch() )
-    {
-      QgsGdalUtils::applyVsiCredentialOptions( vsiPrefix, bucketMatch.captured( 1 ), credentialOptions );
-    }
-  }
-
-  const QString gdalUri = QgsProviderRegistry::instance()->encodeUri( QStringLiteral( "gdal" ), parts );
   GDALDriverH hDriver;
-  hDriver = GDALIdentifyDriverEx( gdalUri.toUtf8().toStdString().c_str(), GDAL_OF_RASTER, nullptr, nullptr );
-  if ( !hDriver )
+  hDriver = GDALIdentifyDriverEx( mDataSources[0].toUtf8().toStdString().c_str(), GDAL_OF_RASTER, nullptr, nullptr );
+  if ( hDriver == nullptr )
     return;
 
   const char *pszOpenOptionList = GDALGetMetadataItem( hDriver, GDAL_DMD_OPENOPTIONLIST, nullptr );
-  if ( !pszOpenOptionList )
+  if ( pszOpenOptionList == nullptr )
     return;
 
   CPLXMLNode *psDoc = CPLParseXMLString( pszOpenOptionList );
-  if ( !psDoc )
+  if ( psDoc == nullptr )
     return;
   CPLXMLNode *psOpenOptionList = CPLGetXMLNode( psDoc, "=OpenOptionList" );
-  if ( !psOpenOptionList )
+  if ( psOpenOptionList == nullptr )
   {
     CPLDestroyXMLNode( psDoc );
     return;
   }
 
-  const QList< QgsGdalOption > options = QgsGdalOption::optionsFromXml( psOpenOptionList );
-  CPLDestroyXMLNode( psDoc );
-
-  for ( const QgsGdalOption &option : options )
+  for ( auto psItem = psOpenOptionList->psChild; psItem != nullptr; psItem = psItem->psNext )
   {
+    if ( psItem->eType != CXT_Element || !EQUAL( psItem->pszValue, "Option" ) )
+      continue;
+
+    const char *pszOptionName = CPLGetXMLValue( psItem, "name", nullptr );
+    if ( pszOptionName == nullptr )
+      continue;
+
     // Exclude options that are not of raster scope
-    if ( !option.scope.isEmpty()
-         && option.scope.compare( QLatin1String( "raster" ), Qt::CaseInsensitive ) != 0 )
+    const char *pszScope = CPLGetXMLValue( psItem, "scope", nullptr );
+    if ( pszScope != nullptr && strstr( pszScope, "raster" ) == nullptr )
       continue;
 
-    QWidget *control = QgsGdalGuiUtils::createWidgetForOption( option, nullptr, true );
-    if ( !control )
-      continue;
-
-#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,8,0)
-    if ( QString( GDALGetDriverShortName( hDriver ) ).compare( QLatin1String( "BAG" ) ) == 0
-         && option.name == QLatin1String( "MODE" ) && option.options.contains( QLatin1String( "INTERPOLATED" ) ) )
+    const char *pszType = CPLGetXMLValue( psItem, "type", nullptr );
+    QStringList options;
+    if ( pszType && EQUAL( pszType, "string-select" ) )
     {
-      gdal::dataset_unique_ptr hSrcDS( GDALOpen( gdalUri.toUtf8().constData(), GA_ReadOnly ) );
-      if ( hSrcDS && QString{ GDALGetMetadataItem( hSrcDS.get(), "HAS_SUPERGRIDS", nullptr ) } == QLatin1String( "TRUE" ) )
+      for ( auto psOption = psItem->psChild; psOption != nullptr; psOption = psOption->psNext )
       {
-        if ( QComboBox *combo = qobject_cast< QComboBox * >( control ) )
+        if ( psOption->eType != CXT_Element ||
+             !EQUAL( psOption->pszValue, "Value" ) ||
+             psOption->psChild == nullptr )
         {
-          combo->setCurrentIndex( combo->findText( QLatin1String( "INTERPOLATED" ) ) );
+          continue;
         }
+        options << psOption->psChild->pszValue;
       }
     }
-#endif
 
-    control->setObjectName( option.name );
+    QLabel *label = new QLabel( pszOptionName );
+    QWidget *control = nullptr;
+    if ( pszType && EQUAL( pszType, "boolean" ) )
+    {
+      QComboBox *cb = new QComboBox();
+      cb->addItem( tr( "Yes" ), "YES" );
+      cb->addItem( tr( "No" ), "NO" );
+      cb->addItem( tr( "<Default>" ), QVariant( QVariant::String ) );
+      int idx = cb->findData( QVariant( QVariant::String ) );
+      cb->setCurrentIndex( idx );
+      control = cb;
+    }
+    else if ( !options.isEmpty() )
+    {
+      QComboBox *cb = new QComboBox();
+      for ( const QString &val : std::as_const( options ) )
+      {
+        cb->addItem( val, val );
+      }
+      cb->addItem( tr( "<Default>" ), QVariant( QVariant::String ) );
+      int idx = cb->findData( QVariant( QVariant::String ) );
+      cb->setCurrentIndex( idx );
+      control = cb;
+    }
+    else
+    {
+      QLineEdit *le = new QLineEdit( );
+      control = le;
+    }
+    control->setObjectName( pszOptionName );
     mOpenOptionsWidgets.push_back( control );
 
-    QLabel *label = new QLabel( option.name );
-    if ( !option.description.isEmpty() )
-      label->setToolTip( QStringLiteral( "<p>%1</p>" ).arg( option.description ) );
-
+    const char *pszDescription = CPLGetXMLValue( psItem, "description", nullptr );
+    if ( pszDescription )
+    {
+      label->setToolTip( QStringLiteral( "<p>%1</p>" ).arg( pszDescription ) );
+      control->setToolTip( QStringLiteral( "<p>%1</p>" ).arg( pszDescription ) );
+    }
     mOpenOptionsLayout->addRow( label, control );
   }
 
+  CPLDestroyXMLNode( psDoc );
+
   // Set label to point to driver help page
-  const QString helpTopic = QgsGdalUtils::gdalDocumentationUrlForDriver( hDriver );
-  if ( !helpTopic.isEmpty() )
+  const char *pszHelpTopic = GDALGetMetadataItem( hDriver, GDAL_DMD_HELPTOPIC, nullptr );
+  if ( pszHelpTopic )
   {
-    mOpenOptionsLabel->setText( tr( "Consult <a href=\"%1\">%2 driver help page</a> for detailed explanations on options" ).arg( helpTopic ).arg( GDALGetDriverShortName( hDriver ) ) );
+    mOpenOptionsLabel->setText( tr( "Consult <a href=\"https://gdal.org/%1\">%2 driver help page</a> for detailed explanations on options" ).arg( pszHelpTopic ).arg( GDALGetDriverShortName( hDriver ) ) );
     mOpenOptionsLabel->setTextInteractionFlags( Qt::TextBrowserInteraction );
     mOpenOptionsLabel->setOpenExternalLinks( true );
     mOpenOptionsLabel->setVisible( true );
@@ -520,30 +373,6 @@ void QgsGdalSourceSelect::fillOpenOptions()
 void QgsGdalSourceSelect::showHelp()
 {
   QgsHelp::openHelp( QStringLiteral( "managing_data_source/opening_data.html#loading-a-layer-from-a-file" ) );
-}
-
-void QgsGdalSourceSelect::updateProtocolOptions()
-{
-  const QString currentProtocol = cmbProtocolTypes->currentData().toString();
-  if ( radioSrcProtocol->isChecked() && QgsGdalUtils::vsiHandlerType( currentProtocol ) == Qgis::VsiHandlerType::Cloud )
-  {
-    mCredentialsWidget->setHandler( currentProtocol );
-    mCredentialOptionsGroupBox->setVisible( true );
-  }
-  else
-  {
-    mCredentialOptionsGroupBox->setVisible( false );
-  }
-}
-
-void QgsGdalSourceSelect::credentialOptionsChanged()
-{
-  const QVariantMap newCredentialOptions = mCredentialsWidget->credentialOptions();
-  if ( newCredentialOptions == mCredentialOptions )
-    return;
-
-  mCredentialOptions = newCredentialOptions;
-  fillOpenOptions();
 }
 
 ///@endcond

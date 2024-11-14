@@ -14,8 +14,8 @@
  ***************************************************************************/
 
 #include "qgsvectorlayer3drendererwidget.h"
-#include "moc_qgsvectorlayer3drendererwidget.cpp"
 
+#include "qgs3dutils.h"
 #include "qgsrulebased3drenderer.h"
 #include "qgsrulebased3drendererwidget.h"
 #include "qgssymbol3dwidget.h"
@@ -24,6 +24,7 @@
 #include "qgsvectorlayer3drenderer.h"
 #include "qgsapplication.h"
 #include "qgs3dsymbolregistry.h"
+#include "qgsabstractmaterialsettings.h"
 #include "qgsvscrollarea.h"
 
 #include <QBoxLayout>
@@ -231,7 +232,7 @@ bool QgsVectorLayer3DRendererWidgetFactory::supportLayerPropertiesDialog() const
 
 bool QgsVectorLayer3DRendererWidgetFactory::supportsLayer( QgsMapLayer *layer ) const
 {
-  return layer->type() == Qgis::LayerType::Vector;
+  return layer->type() == QgsMapLayerType::VectorLayer;
 }
 
 QString QgsVectorLayer3DRendererWidgetFactory::layerPropertiesPagePositionHint() const

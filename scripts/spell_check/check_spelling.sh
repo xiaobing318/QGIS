@@ -26,7 +26,7 @@
 EXCLUDE_SCRIPT_LIST='(\.(xml|sip|pl|sh|badquote|cmake(\.in)?)|^(debian/copyright|cmake_templates/.*|tests/testdata/labeling/README.rst|tests/testdata/font/QGIS-Vera/COPYRIGHT.TXT|doc/debian/build/))$'
 
 # always exclude these files
-EXCLUDE_EXTERNAL_LIST='((\.(svg|qgs|laz|las|png|lock|sip\.in))|resources/cpt-city-qgis-min/.*|resources/server/src/.*|resources/server/api/ogc/static/landingpage/js/.*|tests/testdata/.*|doc/api_break.dox|NEWS.md|python/.*/class_map.yaml)$'
+EXCLUDE_EXTERNAL_LIST='((\.(svg|qgs|laz|las|png|lock|sip\.in))|resources/cpt-city-qgis-min/.*|resources/server/src/.*|resources/server/api/ogc/static/landingpage/js/.*|tests/testdata/.*|doc/api_break.dox|NEWS.md)$'
 
 DIR=$(git rev-parse --show-toplevel)/scripts/spell_check
 
@@ -61,21 +61,9 @@ while getopts ":rdl:" opt; do
 done
 shift $((OPTIND - 1))
 
-# check pipe or command line
-if [ -p /dev/stdin ]; then
-  # with pipe input
-  read SCRIPT_INPUT
-  if [ -z "$SCRIPT_INPUT" ]; then
-    exit 0
-  fi
-else
-  # no pipe input
-  SCRIPT_INPUT="$@"
-fi
-
-if [ -n "$SCRIPT_INPUT" ]; then
+if [ $# -ne 0 ]; then
   EXCLUDE=$(${GP}sed -e 's/\s*#.*$//' -e '/^\s*$/d' $AGIGNORE | tr '\n' '|' | ${GP}sed -e 's/|$//')
-  INPUTFILES=$(echo "$SCRIPT_INPUT" | tr -s '[[:blank:]]' '\n' | ${GP}grep -Eiv "$EXCLUDE" | tr '\n' ' ' )
+  INPUTFILES=$(echo "$@" | tr -s '[[:blank:]]' '\n' | ${GP}grep -Eiv "$EXCLUDE" | tr '\n' ' ' )
   if [[ -z $INPUTFILES  ]]; then
     exit 0
   fi

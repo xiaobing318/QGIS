@@ -3,9 +3,8 @@
  *                                                                      *
  * src/core/labeling/qgslabelingresults.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
-
 
 
 
@@ -14,6 +13,8 @@ class QgsLabelingResults
 {
 %Docstring(signature="appended")
 Class that stores computed placement from labeling engine.
+
+.. versionadded:: 2.4
 %End
 
 %TypeHeaderCode
@@ -73,5 +74,5 @@ Sets the map ``settings`` associated with the labeling run.
  *                                                                      *
  * src/core/labeling/qgslabelingresults.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

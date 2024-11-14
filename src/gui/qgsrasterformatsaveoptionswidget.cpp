@@ -16,10 +16,10 @@
  ***************************************************************************/
 
 #include "qgsrasterformatsaveoptionswidget.h"
-#include "moc_qgsrasterformatsaveoptionswidget.cpp"
 #include "qgslogger.h"
 #include "qgsdialog.h"
 #include "qgsrasterlayer.h"
+#include "qgsproviderregistry.h"
 #include "qgsrasterdataprovider.h"
 #include "qgssettings.h"
 #include "qgsgdalutils.h"
@@ -27,9 +27,8 @@
 #include <QInputDialog>
 #include <QMessageBox>
 #include <QTextEdit>
-#include <QContextMenuEvent>
+#include <QMouseEvent>
 #include <QMenu>
-#include <QFileInfo>
 
 
 QMap< QString, QStringList > QgsRasterFormatSaveOptionsWidget::sBuiltinProfiles;
@@ -44,9 +43,7 @@ QgsRasterFormatSaveOptionsWidget::QgsRasterFormatSaveOptionsWidget( QWidget *par
   , mProvider( provider )
 {
   setupUi( this );
-
-  // Set the table minimum size to fit at least 4 rows
-  mOptionsTable->setMinimumSize( 200, mOptionsTable->verticalHeader()->defaultSectionSize() * 4 + mOptionsTable->horizontalHeader()->height() + 2 );
+  setMinimumSize( this->fontMetrics().height() * 5, 240 );
 
   connect( mProfileNewButton, &QPushButton::clicked, this, &QgsRasterFormatSaveOptionsWidget::mProfileNewButton_clicked );
   connect( mProfileDeleteButton, &QPushButton::clicked, this, &QgsRasterFormatSaveOptionsWidget::mProfileDeleteButton_clicked );
@@ -101,29 +98,15 @@ QgsRasterFormatSaveOptionsWidget::QgsRasterFormatSaveOptionsWidget( QWidget *par
   connect( mOptionsHelpButton, &QAbstractButton::clicked, this, &QgsRasterFormatSaveOptionsWidget::helpOptions );
   connect( mOptionsValidateButton, &QAbstractButton::clicked, this, [ = ] { validateOptions(); } );
 
-  // Install an eventFilter to customize the default QLineEdit contextMenu with an added swapOptionsUI action
+  // create eventFilter to map right click to swapOptionsUI()
+  // mOptionsLabel->installEventFilter( this );
   mOptionsLineEdit->installEventFilter( this );
-
-  // Use a Custom Context menu for the widget to swap between modes (table / lineedit)
-  setContextMenuPolicy( Qt::CustomContextMenu );
-  connect( this, &QWidget::customContextMenuRequested, this, [this]( QPoint pos )
-  {
-    QMenu menu( this );
-    QString text;
-    if ( mTableWidget->isVisible() )
-      text = tr( "Use Simple Interface" );
-    else
-      text = tr( "Use Table Interface" );
-    QAction *swapAction = menu.addAction( text );
-    connect( swapAction, &QAction::triggered, this, [this]() {swapOptionsUI( -1 ); } );
-    menu.exec( this->mapToGlobal( pos ) );
-  } );
-
+  mOptionsStackedWidget->installEventFilter( this );
 
   updateControls();
   updateProfiles();
 
-  QgsDebugMsgLevel( QStringLiteral( "done" ), 3 );
+  QgsDebugMsg( QStringLiteral( "done" ) );
 }
 
 void QgsRasterFormatSaveOptionsWidget::setFormat( const QString &format )
@@ -149,12 +132,15 @@ void QgsRasterFormatSaveOptionsWidget::setType( QgsRasterFormatSaveOptionsWidget
     const auto constWidgets = widgets;
     for ( QWidget *widget : constWidgets )
       widget->setVisible( false );
-    mOptionsWidget->setVisible( true );
+    mOptionsStackedWidget->setVisible( true );
+    const auto children { mOptionsStackedWidget->findChildren<QWidget *>() };
+    for ( QWidget *widget : children )
+      widget->setVisible( true );
 
     // show relevant page
     if ( type == Table )
       swapOptionsUI( 0 );
-    else
+    else if ( type == LineEdit )
       swapOptionsUI( 1 );
   }
   else
@@ -169,8 +155,6 @@ void QgsRasterFormatSaveOptionsWidget::setType( QgsRasterFormatSaveOptionsWidget
     // show elevant page
     if ( type == ProfileLineEdit )
       swapOptionsUI( 1 );
-    else
-      swapOptionsUI( 0 );
   }
 }
 
@@ -237,7 +221,11 @@ void QgsRasterFormatSaveOptionsWidget::updateOptions()
 {
   mBlockOptionUpdates++;
   QString myOptions = mOptionsMap.value( currentProfileKey() );
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+  QStringList myOptionsList = myOptions.trimmed().split( ' ', QString::SkipEmptyParts );
+#else
   QStringList myOptionsList = myOptions.trimmed().split( ' ', Qt::SkipEmptyParts );
+#endif
 
   // If the default JPEG compression profile was selected, remove PHOTOMETRIC_OVERVIEW=YCBCR
   // if the raster is not RGB. Otherwise this is bound to fail afterwards.
@@ -247,7 +235,7 @@ void QgsRasterFormatSaveOptionsWidget::updateOptions()
     myOptions = PYRAMID_JPEG_COMPRESSION;
   }
 
-  if ( mTableWidget->isVisible() )
+  if ( mOptionsStackedWidget->currentIndex() == 0 )
   {
     mOptionsTable->setRowCount( 0 );
     for ( int i = 0; i < myOptionsList.count(); i++ )
@@ -315,7 +303,7 @@ QString QgsRasterFormatSaveOptionsWidget::validateOptions( bool gui, bool report
   const QStringList createOptions = options();
   QString message;
 
-  QgsDebugMsgLevel( QStringLiteral( "layer: [%1] file: [%2] format: [%3]" ).arg( mRasterLayer ? mRasterLayer->id() : "none", mRasterFileName, mFormat ), 2 );
+  QgsDebugMsg( QStringLiteral( "layer: [%1] file: [%2] format: [%3]" ).arg( mRasterLayer ? mRasterLayer->id() : "none", mRasterFileName, mFormat ) );
   // if no rasterLayer is defined, but we have a raster fileName, then create a temp. rasterLayer to validate options
   // ideally we should keep it for future access, but this is trickier
   QgsRasterLayer *rasterLayer = mRasterLayer;
@@ -332,7 +320,7 @@ QString QgsRasterFormatSaveOptionsWidget::validateOptions( bool gui, bool report
   {
     if ( rasterLayer && rasterLayer->dataProvider() )
     {
-      QgsDebugMsgLevel( QStringLiteral( "calling validate pyramids on layer's data provider" ), 2 );
+      QgsDebugMsg( QStringLiteral( "calling validate pyramids on layer's data provider" ) );
       message = rasterLayer->dataProvider()->validatePyramidsConfigOptions( mPyramidsFormat, createOptions, mFormat );
     }
     else
@@ -344,7 +332,7 @@ QString QgsRasterFormatSaveOptionsWidget::validateOptions( bool gui, bool report
   {
     if ( rasterLayer && rasterLayer->dataProvider() )
     {
-      QgsDebugMsgLevel( QStringLiteral( "calling validate on layer's data provider" ), 2 );
+      QgsDebugMsg( QStringLiteral( "calling validate on layer's data provider" ) );
       message = rasterLayer->dataProvider()->validateCreationOptions( createOptions, mFormat );
     }
     else
@@ -491,7 +479,11 @@ QString QgsRasterFormatSaveOptionsWidget::currentProfileKey() const
 
 QStringList QgsRasterFormatSaveOptionsWidget::options() const
 {
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+  return mOptionsMap.value( currentProfileKey() ).trimmed().split( ' ', QString::SkipEmptyParts );
+#else
   return mOptionsMap.value( currentProfileKey() ).trimmed().split( ' ', Qt::SkipEmptyParts );
+#endif
 }
 
 QString QgsRasterFormatSaveOptionsWidget::createOptions( const QString &profileName ) const
@@ -542,12 +534,26 @@ QStringList QgsRasterFormatSaveOptionsWidget::profiles() const
 
 void QgsRasterFormatSaveOptionsWidget::swapOptionsUI( int newIndex )
 {
-  // If newIndex == -1, toggle option mode
-  // If newIndex == 0, set option mode to Table
-  // If newIndex == 1, set option to lineEdit
-  bool lineEditMode = mOptionsLineEdit->isVisible();
-  mOptionsLineEdit->setVisible( ( newIndex == -1 && !lineEditMode ) || newIndex == 1 );
-  mTableWidget->setVisible( ( newIndex == -1 && lineEditMode ) || newIndex == 0 );
+  // set new page
+  int oldIndex;
+  if ( newIndex == -1 )
+  {
+    oldIndex = mOptionsStackedWidget->currentIndex();
+    newIndex = ( oldIndex + 1 ) % 2;
+  }
+  else
+  {
+    oldIndex = ( newIndex + 1 ) % 2;
+  }
+
+  // resize pages to minimum - this works well with gdaltools merge ui, but not raster save as...
+  mOptionsStackedWidget->setCurrentIndex( newIndex );
+  mOptionsStackedWidget->widget( newIndex )->setSizePolicy(
+    QSizePolicy( QSizePolicy::Preferred, QSizePolicy::Preferred ) );
+  mOptionsStackedWidget->widget( oldIndex )->setSizePolicy(
+    QSizePolicy( QSizePolicy::Ignored, QSizePolicy::Ignored ) );
+  layout()->activate();
+
   updateOptions();
 }
 
@@ -561,19 +567,31 @@ void QgsRasterFormatSaveOptionsWidget::updateControls()
 // map options label left mouse click to optionsToggle()
 bool QgsRasterFormatSaveOptionsWidget::eventFilter( QObject *obj, QEvent *event )
 {
-  if ( event->type() == QEvent::ContextMenu )
+  if ( event->type() == QEvent::MouseButtonPress )
   {
-    QContextMenuEvent *contextEvent = static_cast<QContextMenuEvent *>( event );
-    QMenu *menu = nullptr;
-    menu = mOptionsLineEdit->createStandardContextMenu();
-    menu->addSeparator();
-    QAction *action = new QAction( tr( "Use Table Interface" ), menu );
-    menu->addAction( action );
-    connect( action, &QAction::triggered, this, [this] { swapOptionsUI( 0 ); } );
-    menu->exec( contextEvent->globalPos() );
-    delete menu;
-    return true;
-
+    QMouseEvent *mouseEvent = static_cast<QMouseEvent *>( event );
+    if ( mouseEvent && ( mouseEvent->button() == Qt::RightButton ) )
+    {
+      QMenu *menu = nullptr;
+      QString text;
+      if ( mOptionsStackedWidget->currentIndex() == 0 )
+        text = tr( "Use simple interface" );
+      else
+        text = tr( "Use table interface" );
+      if ( obj->objectName() == QLatin1String( "mOptionsLineEdit" ) )
+      {
+        menu = mOptionsLineEdit->createStandardContextMenu();
+        menu->addSeparator();
+      }
+      else
+        menu = new QMenu( this );
+      QAction *action = new QAction( text, menu );
+      menu->addAction( action );
+      connect( action, &QAction::triggered, this, &QgsRasterFormatSaveOptionsWidget::swapOptionsUI );
+      menu->exec( mouseEvent->globalPos() );
+      delete menu;
+      return true;
+    }
   }
   // standard event processing
   return QObject::eventFilter( obj, event );
@@ -583,7 +601,7 @@ void QgsRasterFormatSaveOptionsWidget::showEvent( QShowEvent *event )
 {
   Q_UNUSED( event )
   mOptionsTable->horizontalHeader()->resizeSection( 0, mOptionsTable->width() - 115 );
-  QgsDebugMsgLevel( QStringLiteral( "done" ), 3 );
+  QgsDebugMsg( QStringLiteral( "done" ) );
 }
 
 void QgsRasterFormatSaveOptionsWidget::setOptions( const QString &options )
@@ -591,7 +609,11 @@ void QgsRasterFormatSaveOptionsWidget::setOptions( const QString &options )
   mBlockOptionUpdates++;
   mOptionsTable->clearContents();
 
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+  const QStringList optionsList = options.trimmed().split( ' ', QString::SkipEmptyParts );
+#else
   const QStringList optionsList = options.trimmed().split( ' ', Qt::SkipEmptyParts );
+#endif
   for ( const QString &opt : optionsList )
   {
     const int rowCount = mOptionsTable->rowCount();

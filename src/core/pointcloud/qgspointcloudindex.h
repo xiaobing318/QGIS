@@ -25,7 +25,6 @@
 #include <QVector>
 #include <QList>
 #include <QMutex>
-#include <QCache>
 
 #include "qgis_core.h"
 #include "qgsrectangle.h"
@@ -34,8 +33,8 @@
 #include "qgspointcloudblock.h"
 #include "qgsrange.h"
 #include "qgspointcloudattribute.h"
+#include "qgsstatisticalsummary.h"
 #include "qgspointcloudexpression.h"
-#include "qgspointcloudrequest.h"
 
 #define SIP_NO_FILE
 
@@ -68,6 +67,7 @@ class CORE_EXPORT IndexedPointCloudNode
 
     // TODO c++20 - replace with = default
 
+    //! Compares nodes
     bool operator==( IndexedPointCloudNode other ) const
     {
       return mD == other.d() && mX == other.x() && mY == other.y() && mZ == other.z();
@@ -109,45 +109,6 @@ CORE_EXPORT uint qHash( IndexedPointCloudNode id );
 /**
  * \ingroup core
  *
- * \brief Container class for QgsPointCloudBlock cache keys
- *
- * \note The API is considered EXPERIMENTAL and can be changed without a notice
- *
- * \since QGIS 3.36
- */
-class CORE_EXPORT QgsPointCloudCacheKey
-{
-  public:
-    //! Ctor
-    QgsPointCloudCacheKey( const IndexedPointCloudNode &n, const QgsPointCloudRequest &request, const QgsPointCloudExpression &expression, const QString &uri );
-
-    bool operator==( const QgsPointCloudCacheKey &other ) const;
-
-    //! Returns the key's IndexedPointCloudNode
-    IndexedPointCloudNode node() const { return mNode; }
-
-    //! Returns the key's uri
-    QString uri() const { return mUri; }
-
-    //! Returns the key's QgsPointCloudRequest
-    QgsPointCloudRequest request() const { return mRequest; }
-
-    //! Returns the key's QgsPointCloudExpression
-    QgsPointCloudExpression filterExpression() const { return mFilterExpression; }
-
-  private:
-    IndexedPointCloudNode mNode;
-    QString mUri;
-    QgsPointCloudRequest mRequest;
-    QgsPointCloudExpression mFilterExpression;
-};
-
-//! Hash function for QgsPointCloudCacheKey
-uint qHash( const QgsPointCloudCacheKey &key );
-
-/**
- * \ingroup core
- *
  * \brief Represents packaged data bounds
  *
  * \note The API is considered EXPERIMENTAL and can be changed without a notice
@@ -160,25 +121,25 @@ class CORE_EXPORT QgsPointCloudDataBounds
     //! Constructs invalid bounds
     QgsPointCloudDataBounds();
     //! Constructs bounds
-    QgsPointCloudDataBounds( qint64 xmin, qint64 ymin, qint64 zmin, qint64 xmax, qint64 ymax, qint64 zmax );
+    QgsPointCloudDataBounds( qint32 xmin, qint32 ymin, qint32 zmin, qint32 xmax, qint32 ymax, qint32 zmax );
 
     //! Returns x min
-    qint64 xMin() const;
+    qint32 xMin() const;
 
     //! Returns y min
-    qint64 yMin() const;
+    qint32 yMin() const;
 
     //! Returns z min
-    qint64 zMin() const;
+    qint32 zMin() const;
 
     //! Returns x max
-    qint64 xMax() const;
+    qint32 xMax() const;
 
     //! Returns y max
-    qint64 yMax() const;
+    qint32 yMax() const;
 
     //! Returns z max
-    qint64 zMax() const;
+    qint32 zMax() const;
 
     //! Returns 2D rectangle in map coordinates
     QgsRectangle mapExtent( const QgsVector3D &offset, const QgsVector3D &scale ) const;
@@ -187,12 +148,7 @@ class CORE_EXPORT QgsPointCloudDataBounds
     QgsDoubleRange zRange( const QgsVector3D &offset, const QgsVector3D &scale ) const;
 
   private:
-    qint64 mXMin = 0;
-    qint64 mYMin = 0;
-    qint64 mZMin = 0;
-    qint64 mXMax = 0;
-    qint64 mYMax = 0;
-    qint64 mZMax = 0;
+    qint32 mXMin, mYMin, mZMin, mXMax, mYMax, mZMax;
 };
 
 /**
@@ -253,16 +209,16 @@ class CORE_EXPORT QgsPointCloudIndex: public QObject
     //! Returns whether the dataset contains metadata of statistics
     virtual bool hasStatisticsMetadata() const = 0;
     //! Returns the statistic \a statistic of \a attribute
-    virtual QVariant metadataStatistic( const QString &attribute, Qgis::Statistic statistic ) const;
+    virtual QVariant metadataStatistic( const QString &attribute, QgsStatisticalSummary::Statistic statistic ) const;
     //! Returns the classes of \a attribute
     virtual QVariantList metadataClasses( const QString &attribute ) const;
     //! Returns the statistic \a statistic of the class \a value of the attribute \a attribute
-    virtual QVariant metadataClassStatistic( const QString &attribute, const QVariant &value, Qgis::Statistic statistic ) const;
+    virtual QVariant metadataClassStatistic( const QString &attribute, const QVariant &value, QgsStatisticalSummary::Statistic statistic ) const;
     //! Returns the original metadata map
     virtual QVariantMap originalMetadata() const = 0;
 
     /**
-     * Returns the object containing the statistics metadata extracted from the dataset
+     * Returns the object containings the statistics metadata extracted from the dataset
      * \since QGIS 3.26
      */
     virtual QgsPointCloudStatistics metadataStatistics() const;
@@ -283,14 +239,16 @@ class CORE_EXPORT QgsPointCloudIndex: public QObject
     QgsPointCloudAttributeCollection attributes() const;
 
     /**
-     * Returns node data block.
+     * Returns node data block
      *
      * e.g. positions (needs to be scaled and offset applied to get coordinates) or
-     * classification, intensity or custom attributes.
+     * classification, intensity or custom attributes
+     *
+     * It is caller responsibility to free the block.
      *
      * May return nullptr in case the node is not present or any other problem with loading
      */
-    virtual std::unique_ptr< QgsPointCloudBlock > nodeData( const IndexedPointCloudNode &n, const QgsPointCloudRequest &request ) = 0;
+    virtual QgsPointCloudBlock *nodeData( const IndexedPointCloudNode &n, const QgsPointCloudRequest &request ) = 0;
 
     /**
      * Returns a handle responsible for loading a node data block
@@ -370,24 +328,6 @@ class CORE_EXPORT QgsPointCloudIndex: public QObject
      */
     void copyCommonProperties( QgsPointCloudIndex *destination ) const;
 
-    /**
-     * Fetches the requested node data from the cache for the specified \a node and \a request.
-     * If not found in the cache, nullptr is returned.
-     * Caller takes ownership of the returned object.
-     */
-    QgsPointCloudBlock *getNodeDataFromCache( const IndexedPointCloudNode &node, const QgsPointCloudRequest &request );
-
-    /**
-     * Stores existing \a data to the cache for the specified \a node and \a request. Ownership is not transferred, block gets cloned in the cache.
-     */
-    void storeNodeDataToCache( QgsPointCloudBlock *data, const IndexedPointCloudNode &node, const QgsPointCloudRequest &request );
-
-    /**
-     * Stores existing \a data to the cache for the specified \a node, \a request, \a expression and \a uri. Ownership is not transferred, block gets cloned in the cache.
-     */
-    static void storeNodeDataToCacheStatic( QgsPointCloudBlock *data, const IndexedPointCloudNode &node, const QgsPointCloudRequest &request,
-                                            const QgsPointCloudExpression &expression, const QString &uri );
-
   protected: //TODO private
     //! Sets native attributes of the data
     void setAttributes( const QgsPointCloudAttributeCollection &attributes );
@@ -401,13 +341,10 @@ class CORE_EXPORT QgsPointCloudIndex: public QObject
     QgsVector3D mOffset; //!< Offset of our int32 coordinates compared to CRS coords
     QgsPointCloudDataBounds mRootBounds;  //!< Bounds of the root node's cube (in int32 coordinates)
     QgsPointCloudAttributeCollection mAttributes; //! All native attributes stored in the file
-    int mSpan = 0;  //!< Number of points in one direction in a single node
+    int mSpan;  //!< Number of points in one direction in a single node
     QgsPointCloudExpression mFilterExpression;  //!< The filter expression to be evaluated when fetching node data
 
     QString mError;
-    QString mUri;
-    static QMutex sBlockCacheMutex;
-    static QCache<QgsPointCloudCacheKey, QgsPointCloudBlock> sBlockCache;
 };
 
 #endif // QGSPOINTCLOUDINDEX_H

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgspropertycollection.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -16,6 +16,8 @@ class QgsAbstractPropertyCollection
 {
 %Docstring(signature="appended")
 Abstract base class for :py:class:`QgsPropertyCollection` like objects.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -120,7 +122,7 @@ Calculates the current value of the property with the specified key and interpre
 :param defaultDateTime: default datetime to return if the property cannot be calculated as a datetime
 
 :return: - value parsed to datetime
-         - ok: ``True`` if conversion was successful
+         - ok: will be set to ``True`` if conversion was successful
 
 .. seealso:: :py:func:`value`
 
@@ -147,7 +149,7 @@ Calculates the current value of the property with the specified key and interpre
 :param defaultString: default string to return if the property cannot be calculated as a string
 
 :return: - value parsed to string
-         - ok: ``True`` if conversion was successful
+         - ok: will be set to ``True`` if conversion was successful
 
 .. seealso:: :py:func:`value`
 
@@ -172,7 +174,7 @@ Calculates the current value of the property with the specified key and interpre
 :param defaultColor: default color to return if the property cannot be calculated as a color
 
 :return: - value parsed to color
-         - ok: ``True`` if conversion was successful
+         - ok: will be set to ``True`` if conversion was successful
 
 .. seealso:: :py:func:`value`
 
@@ -197,7 +199,7 @@ Calculates the current value of the property with the specified key and interpre
 :param defaultValue: default double to return if the property cannot be calculated as a double
 
 :return: - value parsed to double
-         - ok: ``True`` if conversion was successful
+         - ok: will be set to ``True`` if conversion was successful
 
 .. seealso:: :py:func:`value`
 
@@ -222,7 +224,7 @@ Calculates the current value of the property with the specified key and interpre
 :param defaultValue: default integer to return if the property cannot be calculated as a integer
 
 :return: - value parsed to integer
-         - ok: ``True`` if conversion was successful
+         - ok: will be set to ``True`` if conversion was successful
 
 .. seealso:: :py:func:`value`
 
@@ -247,7 +249,7 @@ Calculates the current value of the property with the specified key and interpre
 :param defaultValue: default boolean to return if the property cannot be calculated as a boolean
 
 :return: - value parsed to bool
-         - ok: ``True`` if conversion was successful
+         - ok: will be set to ``True`` if conversion was successful
 
 .. seealso:: :py:func:`value`
 
@@ -339,7 +341,6 @@ You can use :py:class:`QgsXmlUtils`.readVariant to save it to an XML document.
 .. seealso:: :py:func:`toVariant`
 %End
 
-
 };
 
 
@@ -366,6 +367,8 @@ Examples of such enums are :
 .. seealso:: :py:func:`QgsPalLayerSettings.Property`
 
 .. seealso:: :py:func:`QgsWidgetWrapper.Property`
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -381,6 +384,9 @@ Constructor for QgsPropertyCollection
 %End
 
     QgsPropertyCollection( const QgsPropertyCollection &other );
+%Docstring
+Copy constructor.
+%End
 
 
     bool operator==( const QgsPropertyCollection &other ) const;
@@ -391,11 +397,11 @@ Constructor for QgsPropertyCollection
 Returns the number of properties contained within the collection.
 %End
 
-    QSet<int> propertyKeys() const final;
-    void clear() final;
-    bool hasProperty( int key ) const final;
+    virtual QSet<int> propertyKeys() const;
 
+    virtual void clear();
 
+    virtual bool hasProperty( int key ) const;
 
 
     virtual QgsProperty &property( int key );
@@ -410,20 +416,23 @@ Returns a reference to a matching property from the collection, if one exists.
 .. seealso:: :py:func:`hasProperty`
 %End
 
+    virtual QVariant value( int key, const QgsExpressionContext &context, const QVariant &defaultValue = QVariant() ) const;
 
-    QVariant value( int key, const QgsExpressionContext &context, const QVariant &defaultValue = QVariant() ) const final;
+    virtual bool prepare( const QgsExpressionContext &context = QgsExpressionContext() ) const;
+
+    virtual QSet< QString > referencedFields( const QgsExpressionContext &context = QgsExpressionContext(), bool ignoreContext = false ) const;
+
+    virtual bool isActive( int key ) const;
+
+    virtual bool hasActiveProperties() const;
+
+    virtual bool hasDynamicProperties() const;
 
 
-    bool prepare( const QgsExpressionContext &context = QgsExpressionContext() ) const final;
-    QSet< QString > referencedFields( const QgsExpressionContext &context = QgsExpressionContext(), bool ignoreContext = false ) const final;
-    bool isActive( int key ) const final;
+    virtual QVariant toVariant( const QgsPropertiesDefinition &definitions ) const;
 
+    virtual bool loadVariant( const QVariant &configuration, const QgsPropertiesDefinition &definitions );
 
-    bool hasActiveProperties() const final;
-    bool hasDynamicProperties() const final;
-
-    QVariant toVariant( const QgsPropertiesDefinition &definitions ) const final;
-    bool loadVariant( const QVariant &configuration, const QgsPropertiesDefinition &definitions ) final;
 
     void setProperty( int key, const QgsProperty &property );
 %Docstring
@@ -436,7 +445,6 @@ Adds a property to the collection and takes ownership of it.
                  will remove the property from the collection.
 %End
 
-
     void setProperty( int key, const QVariant &value );
 %Docstring
 Convenience method, creates a :py:class:`QgsStaticProperty` and stores it within the collection.
@@ -447,7 +455,6 @@ Convenience method, creates a :py:class:`QgsStaticProperty` and stores it within
 :param value: static value for property
 %End
 
-
 };
 
 
@@ -455,8 +462,10 @@ Convenience method, creates a :py:class:`QgsStaticProperty` and stores it within
 class QgsPropertyCollectionStack : QgsAbstractPropertyCollection
 {
 %Docstring(signature="appended")
-An ordered stack of :py:class:`QgsPropertyCollection` containers, where collections added later to the stack will take
+An ordered stack of QgsPropertyCollection containers, where collections added later to the stack will take
 priority over earlier collections.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -465,10 +474,16 @@ priority over earlier collections.
   public:
 
     QgsPropertyCollectionStack();
+%Docstring
+Constructor for QgsPropertyCollectionStack.
+%End
 
     ~QgsPropertyCollectionStack();
 
     QgsPropertyCollectionStack( const QgsPropertyCollectionStack &other );
+%Docstring
+Copy constructor
+%End
 
 
     int count() const;
@@ -476,7 +491,7 @@ priority over earlier collections.
 Returns the number of collections contained within the stack.
 %End
 
-    virtual void clear() ${SIP_FINAL};
+    virtual void clear();
 
 %Docstring
 Removes all collections from the stack.
@@ -598,5 +613,5 @@ Returns the set of any fields referenced by the active properties from the stack
  *                                                                      *
  * src/core/qgspropertycollection.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

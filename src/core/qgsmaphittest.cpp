@@ -14,207 +14,123 @@
  ***************************************************************************/
 
 #include "qgsmaphittest.h"
-#include "moc_qgsmaphittest.cpp"
 
 #include "qgsfeatureiterator.h"
+#include "qgsproject.h"
 #include "qgsrendercontext.h"
+#include "qgsmaplayerstylemanager.h"
 #include "qgsrenderer.h"
+#include "qgspointdisplacementrenderer.h"
 #include "qgsvectorlayer.h"
 #include "qgssymbollayerutils.h"
 #include "qgsgeometry.h"
 #include "qgsgeometryengine.h"
 #include "qgsexpressioncontextutils.h"
-#include "qgsmaplayerstyle.h"
-#include "qgsvectorlayerfeatureiterator.h"
+#include "qgsmarkersymbol.h"
 
 QgsMapHitTest::QgsMapHitTest( const QgsMapSettings &settings, const QgsGeometry &polygon, const LayerFilterExpression &layerFilterExpression )
-  : mSettings( QgsLayerTreeFilterSettings( settings ) )
+  : mSettings( settings )
+  , mLayerFilterExpression( layerFilterExpression )
+  , mOnlyExpressions( false )
 {
-  mSettings.setLayerFilterExpressions( layerFilterExpression );
-  mSettings.setFilterPolygon( polygon );
+  if ( !polygon.isNull() && polygon.type() == QgsWkbTypes::PolygonGeometry )
+  {
+    mPolygon = polygon;
+  }
 }
 
 QgsMapHitTest::QgsMapHitTest( const QgsMapSettings &settings, const LayerFilterExpression &layerFilterExpression )
-  : mSettings( QgsLayerTreeFilterSettings( settings ) )
-{
-  mSettings.setLayerFilterExpressions( layerFilterExpression );
-  mSettings.setFlags( Qgis::LayerTreeFilterFlag::SkipVisibilityCheck );
-}
-
-QgsMapHitTest::QgsMapHitTest( const QgsLayerTreeFilterSettings &settings )
   : mSettings( settings )
+  , mLayerFilterExpression( layerFilterExpression )
+  , mOnlyExpressions( true )
 {
-
 }
 
 void QgsMapHitTest::run()
 {
-  const QgsMapSettings &mapSettings = mSettings.mapSettings();
-
   // TODO: do we need this temp image?
-  QImage tmpImage( mapSettings.outputSize(), mapSettings.outputImageFormat() );
-  tmpImage.setDotsPerMeterX( static_cast< int >( std::round( mapSettings.outputDpi() * 25.4 ) ) );
-  tmpImage.setDotsPerMeterY( static_cast< int >( std::round( mapSettings.outputDpi() * 25.4 ) ) );
+  QImage tmpImage( mSettings.outputSize(), mSettings.outputImageFormat() );
+  tmpImage.setDotsPerMeterX( mSettings.outputDpi() * 25.4 );
+  tmpImage.setDotsPerMeterY( mSettings.outputDpi() * 25.4 );
   QPainter painter( &tmpImage );
 
-  QgsRenderContext context = QgsRenderContext::fromMapSettings( mapSettings );
+  QgsRenderContext context = QgsRenderContext::fromMapSettings( mSettings );
   context.setPainter( &painter ); // we are not going to draw anything, but we still need a working painter
 
-  const QList< QgsMapLayer * > layers = mSettings.layers();
-  for ( QgsMapLayer *layer : layers )
+  const auto constLayers = mSettings.layers( true );
+  for ( QgsMapLayer *layer : constLayers )
   {
     QgsVectorLayer *vl = qobject_cast<QgsVectorLayer *>( layer );
     if ( !vl || !vl->renderer() )
       continue;
 
-    QgsGeometry extent;
-    if ( !( mSettings.flags() & Qgis::LayerTreeFilterFlag::SkipVisibilityCheck ) )
+    if ( !mOnlyExpressions )
     {
-      if ( !vl->isInScaleRange( mapSettings.scale() ) )
+      if ( !vl->isInScaleRange( mSettings.scale() ) )
       {
+        mHitTest[vl] = SymbolSet(); // no symbols -> will not be shown
+        mHitTestRuleKey[vl] = SymbolSet();
         continue;
       }
 
-      extent = mSettings.combinedVisibleExtentForLayer( vl );
-
-      context.setCoordinateTransform( mapSettings.layerTransform( vl ) );
-      context.setExtent( extent.boundingBox() );
+      context.setCoordinateTransform( mSettings.layerTransform( vl ) );
+      context.setExtent( mSettings.outputExtentToLayerExtent( vl, mSettings.visibleExtent() ) );
     }
 
     context.expressionContext() << QgsExpressionContextUtils::layerScope( vl );
-    SymbolSet &usedSymbols = mHitTest[vl->id()];
-    SymbolSet &usedSymbolsRuleKey = mHitTestRuleKey[vl->id()];
-
-    QgsMapLayerStyleOverride styleOverride( vl );
-    if ( mapSettings.layerStyleOverrides().contains( vl->id() ) )
-      styleOverride.setOverrideStyle( mapSettings.layerStyleOverrides().value( vl->id() ) );
-
-    std::unique_ptr< QgsVectorLayerFeatureSource > source = std::make_unique< QgsVectorLayerFeatureSource >( vl );
-    runHitTestFeatureSource( source.get(),
-                             vl->id(), vl->fields(), vl->renderer(),
-                             usedSymbols, usedSymbolsRuleKey, context,
-                             nullptr, extent );
+    SymbolSet &usedSymbols = mHitTest[vl];
+    SymbolSet &usedSymbolsRuleKey = mHitTestRuleKey[vl];
+    runHitTestLayer( vl, usedSymbols, usedSymbolsRuleKey, context );
   }
 
   painter.end();
 }
 
-QMap<QString, QSet<QString> > QgsMapHitTest::results() const
-{
-  return mHitTestRuleKey;
-}
-
-///@cond PRIVATE
-QMap<QString, QList<QString> > QgsMapHitTest::resultsPy() const
-{
-  QMap<QString, QList<QString> > res;
-  for ( auto it = mHitTestRuleKey.begin(); it != mHitTestRuleKey.end(); ++it )
-  {
-    res.insert( it.key(), qgis::setToList( it.value() ) );
-  }
-  return res;
-}
-///@endcond PRIVATE
-
 bool QgsMapHitTest::symbolVisible( QgsSymbol *symbol, QgsVectorLayer *layer ) const
 {
-  if ( !symbol || !layer )
+  if ( !symbol || !layer || !mHitTest.contains( layer ) )
     return false;
 
-  auto it = mHitTest.constFind( layer->id() );
-  if ( it == mHitTest.constEnd() )
-    return false;
-
-  return it->contains( QgsSymbolLayerUtils::symbolProperties( symbol ) );
+  return mHitTest.value( layer ).contains( QgsSymbolLayerUtils::symbolProperties( symbol ) );
 }
 
 bool QgsMapHitTest::legendKeyVisible( const QString &ruleKey, QgsVectorLayer *layer ) const
 {
-  if ( !layer )
+  if ( !layer || !mHitTestRuleKey.contains( layer ) )
     return false;
 
-  auto it = mHitTestRuleKey.constFind( layer->id() );
-  if ( it == mHitTestRuleKey.constEnd() )
-    return false;
-
-  return it->contains( ruleKey );
+  return mHitTestRuleKey.value( layer ).contains( ruleKey );
 }
 
-void QgsMapHitTest::runHitTestFeatureSource( QgsAbstractFeatureSource *source,
-    const QString &layerId,
-    const QgsFields &fields,
-    const QgsFeatureRenderer *renderer,
-    SymbolSet &usedSymbols,
-    SymbolSet &usedSymbolsRuleKey,
-    QgsRenderContext &context,
-    QgsFeedback *feedback,
-    const QgsGeometry &visibleExtent )
+void QgsMapHitTest::runHitTestLayer( QgsVectorLayer *vl, SymbolSet &usedSymbols, SymbolSet &usedSymbolsRuleKey, QgsRenderContext &context )
 {
-  std::unique_ptr< QgsFeatureRenderer > r( renderer->clone() );
+  QgsMapLayerStyleOverride styleOverride( vl );
+  if ( mSettings.layerStyleOverrides().contains( vl->id() ) )
+    styleOverride.setOverrideStyle( mSettings.layerStyleOverrides().value( vl->id() ) );
+
+  std::unique_ptr< QgsFeatureRenderer > r( vl->renderer()->clone() );
   const bool moreSymbolsPerFeature = r->capabilities() & QgsFeatureRenderer::MoreSymbolsPerFeature;
-  r->startRender( context, fields );
+  r->startRender( context, vl->fields() );
 
-  // shortcut early if we know that there's nothing visible
-  if ( r->canSkipRender() )
+  QgsGeometry transformedPolygon = mPolygon;
+  if ( !mOnlyExpressions && !mPolygon.isNull() )
   {
-    r->stopRender( context );
-    return;
+    if ( mSettings.destinationCrs() != vl->crs() )
+    {
+      const QgsCoordinateTransform ct( mSettings.destinationCrs(), vl->crs(), mSettings.transformContext() );
+      transformedPolygon.transform( ct );
+    }
   }
 
-  // if there's no legend items for this layer, shortcut out early
-  QSet< QString > remainingKeysToFind = r->legendKeys();
-  if ( remainingKeysToFind.empty() )
-  {
-    r->stopRender( context );
-    return;
-  }
-
+  QgsFeature f;
   QgsFeatureRequest request;
-  if ( feedback )
-    request.setFeedback( feedback );
-
-  const QString rendererFilterExpression = r->filter( fields );
-  if ( !rendererFilterExpression.isEmpty() )
-  {
-    request.setFilterExpression( rendererFilterExpression );
-  }
-
-  request.setExpressionContext( context.expressionContext() );
-
-  QSet<QString> requiredAttributes = r->usedAttributes( context );
-
-  QgsGeometry transformedPolygon = visibleExtent;
-  if ( transformedPolygon.type() != Qgis::GeometryType::Polygon )
-  {
-    transformedPolygon = QgsGeometry();
-  }
-
-  if ( feedback && feedback->isCanceled() )
-  {
-    r->stopRender( context );
-    return;
-  }
-
-  const QMap<QString, QString> layerFilterExpressions = mSettings.layerFilterExpressions();
-  if ( auto it = layerFilterExpressions.constFind( layerId ); it != layerFilterExpressions.constEnd() )
-  {
-    const QString expression = *it;
-    QgsExpression expr( expression );
-    expr.prepare( &context.expressionContext() );
-
-    requiredAttributes.unite( expr.referencedColumns() );
-    request.combineFilterExpression( expression );
-  }
-
-  request.setSubsetOfAttributes( requiredAttributes, fields );
-
   std::unique_ptr< QgsGeometryEngine > polygonEngine;
-  if ( !( mSettings.flags() & Qgis::LayerTreeFilterFlag::SkipVisibilityCheck ) )
+  if ( !mOnlyExpressions )
   {
-    if ( transformedPolygon.isNull() )
+    if ( mPolygon.isNull() )
     {
       request.setFilterRect( context.extent() );
-      request.setFlags( Qgis::FeatureRequestFlag::ExactIntersect );
+      request.setFlags( QgsFeatureRequest::ExactIntersect );
     }
     else
     {
@@ -223,24 +139,21 @@ void QgsMapHitTest::runHitTestFeatureSource( QgsAbstractFeatureSource *source,
       polygonEngine->prepareGeometry();
     }
   }
+  QgsFeatureIterator fi = vl->getFeatures( request );
 
-  if ( feedback && feedback->isCanceled() )
+  SymbolSet lUsedSymbols;
+  SymbolSet lUsedSymbolsRuleKey;
+  bool allExpressionFalse = false;
+  const bool hasExpression = mLayerFilterExpression.contains( vl->id() );
+  std::unique_ptr<QgsExpression> expr;
+  if ( hasExpression )
   {
-    r->stopRender( context );
-    return;
+    expr.reset( new QgsExpression( mLayerFilterExpression[vl->id()] ) );
+    expr->prepare( &context.expressionContext() );
   }
-
-  QgsFeatureIterator fi = source->getFeatures( request );
-
-  usedSymbols.clear();
-  usedSymbolsRuleKey.clear();
-
-  QgsFeature f;
   while ( fi.nextFeature( f ) )
   {
-    if ( feedback && feedback->isCanceled() )
-      break;
-
+    context.expressionContext().setFeature( f );
     // filter out elements outside of the polygon
     if ( f.hasGeometry() && polygonEngine )
     {
@@ -250,170 +163,46 @@ void QgsMapHitTest::runHitTestFeatureSource( QgsAbstractFeatureSource *source,
       }
     }
 
-    context.expressionContext().setFeature( f );
+    // filter out elements where the expression is false
+    if ( hasExpression )
+    {
+      if ( !expr->evaluate( &context.expressionContext() ).toBool() )
+        continue;
+      else
+        allExpressionFalse = false;
+    }
 
     //make sure we store string representation of symbol, not pointer
     //otherwise layer style override changes will delete original symbols and leave hanging pointers
-    const QSet< QString > legendKeysForFeature = r->legendKeysForFeature( f, context );
-    for ( const QString &legendKey : legendKeysForFeature )
+    const auto constLegendKeysForFeature = r->legendKeysForFeature( f, context );
+    for ( const QString &legendKey : constLegendKeysForFeature )
     {
-      usedSymbolsRuleKey.insert( legendKey );
-      remainingKeysToFind.remove( legendKey );
+      lUsedSymbolsRuleKey.insert( legendKey );
     }
 
     if ( moreSymbolsPerFeature )
     {
-      const QgsSymbolList originalSymbolsForFeature = r->originalSymbolsForFeature( f, context );
-      for ( QgsSymbol *s : originalSymbolsForFeature )
+      const auto constOriginalSymbolsForFeature = r->originalSymbolsForFeature( f, context );
+      for ( QgsSymbol *s : constOriginalSymbolsForFeature )
       {
         if ( s )
-          usedSymbols.insert( QgsSymbolLayerUtils::symbolProperties( s ) );
+          lUsedSymbols.insert( QgsSymbolLayerUtils::symbolProperties( s ) );
       }
     }
     else
     {
       QgsSymbol *s = r->originalSymbolForFeature( f, context );
       if ( s )
-        usedSymbols.insert( QgsSymbolLayerUtils::symbolProperties( s ) );
-    }
-
-    if ( remainingKeysToFind.empty() )
-    {
-      // already found features for all legend items, no need to keep searching
-      break;
+        lUsedSymbols.insert( QgsSymbolLayerUtils::symbolProperties( s ) );
     }
   }
   r->stopRender( context );
-}
 
-
-//
-// QgsMapHitTestTask
-//
-
-QgsMapHitTestTask::QgsMapHitTestTask( const QgsLayerTreeFilterSettings &settings )
-  : QgsTask( tr( "Updating Legend" ), QgsTask::Flag::CanCancel | QgsTask::Flag::CancelWithoutPrompt | QgsTask::Flag::Silent )
-  , mSettings( settings )
-{
-  prepare();
-}
-
-QMap<QString, QSet<QString> > QgsMapHitTestTask::results() const
-{
-  return mResults;
-}
-
-///@cond PRIVATE
-QMap<QString, QList<QString> > QgsMapHitTestTask::resultsPy() const
-{
-  QMap<QString, QList<QString> > res;
-  for ( auto it = mResults.begin(); it != mResults.end(); ++it )
+  if ( !allExpressionFalse )
   {
-    res.insert( it.key(), qgis::setToList( it.value() ) );
+    // QSet is implicitly shared => constant time
+    usedSymbols = lUsedSymbols;
+    usedSymbolsRuleKey = lUsedSymbolsRuleKey;
   }
-  return res;
-}
-///@endcond PRIVATE
-
-void QgsMapHitTestTask::prepare()
-{
-  const QgsMapSettings &mapSettings = mSettings.mapSettings();
-
-  const QList< QgsMapLayer * > layers = mSettings.layers();
-  for ( QgsMapLayer *layer : layers )
-  {
-    QgsVectorLayer *vl = qobject_cast<QgsVectorLayer *>( layer );
-    if ( !vl || !vl->renderer() )
-      continue;
-
-    QgsMapLayerStyleOverride styleOverride( vl );
-    if ( mapSettings.layerStyleOverrides().contains( vl->id() ) )
-      styleOverride.setOverrideStyle( mapSettings.layerStyleOverrides().value( vl->id() ) );
-
-    QgsGeometry extent;
-    if ( !( mSettings.flags() & Qgis::LayerTreeFilterFlag::SkipVisibilityCheck ) )
-    {
-      if ( !vl->isInScaleRange( mapSettings.scale() ) )
-      {
-        continue;
-      }
-
-      extent = mSettings.combinedVisibleExtentForLayer( vl );
-    }
-
-    PreparedLayerData layerData;
-    layerData.source = std::make_unique< QgsVectorLayerFeatureSource >( vl );
-    layerData.layerId = vl->id();
-    layerData.fields = vl->fields();
-    layerData.renderer.reset( vl->renderer()->clone() );
-    layerData.transform = mapSettings.layerTransform( vl );
-    layerData.extent = extent;
-    layerData.layerScope.reset( QgsExpressionContextUtils::layerScope( vl ) );
-
-    mPreparedData.emplace_back( std::move( layerData ) );
-  }
-}
-
-void QgsMapHitTestTask::cancel()
-{
-  if ( mFeedback )
-    mFeedback->cancel();
-
-  QgsTask::cancel();
-}
-
-bool QgsMapHitTestTask::run()
-{
-  mFeedback = std::make_unique< QgsFeedback >();
-  connect( mFeedback.get(), &QgsFeedback::progressChanged, this, &QgsTask::progressChanged );
-
-  std::unique_ptr< QgsMapHitTest > hitTest = std::make_unique< QgsMapHitTest >( mSettings );
-
-  // TODO: do we need this temp image?
-  const QgsMapSettings &mapSettings = mSettings.mapSettings();
-
-  QImage tmpImage( mapSettings.outputSize(), mapSettings.outputImageFormat() );
-  tmpImage.setDotsPerMeterX( static_cast< int >( std::round( mapSettings.outputDpi() * 25.4 ) ) );
-  tmpImage.setDotsPerMeterY( static_cast< int >( std::round( mapSettings.outputDpi() * 25.4 ) ) );
-  QPainter painter( &tmpImage );
-
-  QgsRenderContext context = QgsRenderContext::fromMapSettings( mapSettings );
-
-  context.setPainter( &painter ); // we are not going to draw anything, but we still need a working painter
-
-  std::size_t layerIdx = 0;
-  const std::size_t totalCount = mPreparedData.size();
-  for ( auto &layerData : mPreparedData )
-  {
-    mFeedback->setProgress( static_cast< double >( layerIdx ) / static_cast< double >( totalCount ) * 100.0 );
-    if ( mFeedback->isCanceled() )
-      break;
-
-    QgsMapHitTest::SymbolSet &usedSymbols = hitTest->mHitTest[layerData.layerId];
-    QgsMapHitTest::SymbolSet &usedSymbolsRuleKey = hitTest->mHitTestRuleKey[layerData.layerId];
-
-    context.setCoordinateTransform( layerData.transform );
-    context.setExtent( layerData.extent.boundingBox() );
-
-    QgsExpressionContextScope *layerScope = layerData.layerScope.release();
-    QgsExpressionContextScopePopper scopePopper( context.expressionContext(), layerScope );
-
-    hitTest->runHitTestFeatureSource( layerData.source.get(),
-                                      layerData.layerId,
-                                      layerData.fields,
-                                      layerData.renderer.get(),
-                                      usedSymbols,
-                                      usedSymbolsRuleKey,
-                                      context,
-                                      mFeedback.get(),
-                                      layerData.extent );
-    layerIdx++;
-  }
-
-  mResults = hitTest->mHitTestRuleKey;
-
-  mFeedback.reset();
-
-  return true;
 }
 

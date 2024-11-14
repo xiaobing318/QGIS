@@ -55,14 +55,6 @@ class CORE_EXPORT QgsProviderSublayerTask : public QgsTask
      */
     QgsProviderSublayerTask( const QString &uri, bool includeSystemTables = false );
 
-    /**
-     * Constructor for QgsProviderSublayerTask, which retrieves sublayer details for the
-     * specified \a uri, restricted to a particular provider.
-     *
-     * \since QGIS 3.30
-     */
-    QgsProviderSublayerTask( const QString &uri, const QString &providerKey, bool includeSystemTables = false );
-
     ~QgsProviderSublayerTask() override;
 
     /**
@@ -79,8 +71,6 @@ class CORE_EXPORT QgsProviderSublayerTask : public QgsTask
   private:
 
     QString mUri;
-
-    QString mProviderKey;
 
     bool mIncludeSystemTables = false;
 

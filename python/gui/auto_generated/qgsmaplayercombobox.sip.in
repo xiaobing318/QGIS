@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsmaplayercombobox.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -15,6 +15,8 @@ class QgsMapLayerComboBox : QComboBox
 {
 %Docstring(signature="appended")
 The :py:class:`QgsMapLayerComboBox` class is a combo box which displays the list of layers
+
+.. versionadded:: 2.3
 %End
 
 %TypeHeaderCode
@@ -28,49 +30,24 @@ QgsMapLayerComboBox creates a combo box to display the list of layers (currently
 The layers can be filtered and/or ordered.
 %End
 
-    void setFilters( Qgis::LayerFilters filters );
+    void setFilters( QgsMapLayerProxyModel::Filters filters );
 %Docstring
-Sets ``filters`` for the layers displayed in the combo box.
-
-This method allows filtering layers according to layer type and/or geometry type.
-
-.. seealso:: :py:func:`filters`
+setFilters allows filtering according to layer type and/or geometry type.
 %End
 
- void setFilters( int filters ) /Deprecated/;
+    QgsMapLayerProxyModel::Filters filters() const;
 %Docstring
-Filters according to layer type and/or geometry type.
-
-.. note::
-
-   for API compatibility
-
-.. versionadded:: 3.34
-
-.. deprecated:: 3.34
-
-   Use the flag signature instead.
-%End
-
-    Qgis::LayerFilters filters() const;
-%Docstring
-Returns any currently used filters on the listed layers.
-
-.. seealso:: :py:func:`setFilters`
+currently used filter on list layers
 %End
 
     void setExceptedLayerList( const QList<QgsMapLayer *> &layerList );
 %Docstring
-Sets a list of layers which should be excluded from the combo box.
-
-.. seealso:: :py:func:`exceptedLayerList`
+except a list of layers not to be listed
 %End
 
     QList<QgsMapLayer *> exceptedLayerList() const;
 %Docstring
-Returns a list of layers which should be excluded from the combo box.
-
-.. seealso:: :py:func:`setExceptedLayerList`
+returns the list of excepted layers
 %End
 
     void setExcludedProviders( const QStringList &providers );
@@ -78,6 +55,8 @@ Returns a list of layers which should be excluded from the combo box.
 Sets a list of data providers which should be excluded from the combobox.
 
 .. seealso:: :py:func:`excludedProviders`
+
+.. versionadded:: 3.0
 %End
 
     QStringList excludedProviders() const;
@@ -85,6 +64,8 @@ Sets a list of data providers which should be excluded from the combobox.
 Returns the list of data providers which are excluded from the combobox.
 
 .. seealso:: :py:func:`setExcludedProviders`
+
+.. versionadded:: 3.0
 %End
 
     void setProject( QgsProject *project );
@@ -104,6 +85,8 @@ Sets whether an optional empty layer ("not set") option is shown in the combo bo
 Since QGIS 3.20, the optional ``text`` and ``icon`` arguments allows the text and icon for the empty layer item to be set.
 
 .. seealso:: :py:func:`allowEmptyLayer`
+
+.. versionadded:: 3.0
 %End
 
     bool allowEmptyLayer() const;
@@ -111,6 +94,8 @@ Since QGIS 3.20, the optional ``text`` and ``icon`` arguments allows the text an
 Returns ``True`` if the combo box allows the empty layer ("not set") choice.
 
 .. seealso:: :py:func:`setAllowEmptyLayer`
+
+.. versionadded:: 3.0
 %End
 
     void setShowCrs( bool showCrs );
@@ -118,6 +103,8 @@ Returns ``True`` if the combo box allows the empty layer ("not set") choice.
 Sets whether the CRS of layers is also included in the combo box text.
 
 .. seealso:: :py:func:`showCrs`
+
+.. versionadded:: 3.0
 %End
 
     bool showCrs() const;
@@ -125,6 +112,8 @@ Sets whether the CRS of layers is also included in the combo box text.
 Returns ``True`` if the combo box shows the layer's CRS.
 
 .. seealso:: :py:func:`setShowCrs`
+
+.. versionadded:: 3.0
 %End
 
     void setAdditionalItems( const QStringList &items );
@@ -134,6 +123,8 @@ These may represent additional layers such as layers which are not included in t
 layer registry, or paths to layers which have not yet been loaded into QGIS.
 
 .. seealso:: :py:func:`additionalItems`
+
+.. versionadded:: 3.0
 %End
 
     QStringList additionalItems() const;
@@ -141,6 +132,8 @@ layer registry, or paths to layers which have not yet been loaded into QGIS.
 Returns the list of additional (non map layer) items included at the end of the combo box.
 
 .. seealso:: :py:func:`setAdditionalItems`
+
+.. versionadded:: 3.0
 %End
 
     void setAdditionalLayers( const QList<QgsMapLayer *> &layers );
@@ -178,13 +171,14 @@ Returns the layer currently shown at the specified index within the combo box.
 :param layerIndex: position of layer to return
 
 .. seealso:: :py:func:`currentLayer`
+
+.. versionadded:: 2.10
 %End
 
   public slots:
-
     void setLayer( QgsMapLayer *layer );
 %Docstring
-Sets the current ``layer`` selected in the combo box.
+setLayer set the current layer selected in the combo
 %End
 
   signals:
@@ -215,5 +209,5 @@ Emitted whenever the currently selected layer changes.
  *                                                                      *
  * src/gui/qgsmaplayercombobox.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

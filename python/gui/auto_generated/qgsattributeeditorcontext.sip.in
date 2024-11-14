@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsattributeeditorcontext.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -53,6 +53,9 @@ showing an embedded form due to relations)
     };
 
     QgsAttributeEditorContext();
+%Docstring
+Constructor for QgsAttributeEditorContext
+%End
 
     QgsAttributeEditorContext( const QgsAttributeEditorContext &parentContext, FormMode formMode );
 
@@ -63,6 +66,8 @@ showing an embedded form due to relations)
 Sets distance area object, ``distanceArea``, for area/length calculations
 
 .. seealso:: :py:func:`distanceArea`
+
+.. versionadded:: 2.2
 %End
 
     const QgsDistanceArea &distanceArea() const;
@@ -70,6 +75,8 @@ Sets distance area object, ``distanceArea``, for area/length calculations
 Returns the distance area object used for area/length calculations.
 
 .. seealso:: :py:func:`setDistanceArea`
+
+.. versionadded:: 2.2
 %End
 
     void setMapCanvas( QgsMapCanvas *mapCanvas );
@@ -123,6 +130,8 @@ Sets the associated vector layer tools.
 :param vlTools: vector layer tools
 
 .. seealso:: :py:func:`vectorLayerTools`
+
+.. versionadded:: 2.2
 %End
 
     const QgsVectorLayerTools *vectorLayerTools() const;
@@ -130,6 +139,8 @@ Sets the associated vector layer tools.
 Returns the associated vector layer tools.
 
 .. seealso:: :py:func:`setVectorLayerTools`
+
+.. versionadded:: 2.2
 %End
 
     void setRelation( const QgsRelation &relation, RelationMode mode );
@@ -142,6 +153,8 @@ Set attribute relation and mode
 .. seealso:: :py:func:`relation`
 
 .. seealso:: :py:func:`relationMode`
+
+.. versionadded:: 2.6
 %End
 
     const QgsRelation &relation() const;
@@ -151,6 +164,8 @@ Returns the attribute relation.
 .. seealso:: :py:func:`setRelation`
 
 .. seealso:: :py:func:`relationMode`
+
+.. versionadded:: 2.6
 %End
 
     RelationMode relationMode() const;
@@ -160,6 +175,8 @@ Returns the attribute relation mode.
 .. seealso:: :py:func:`setRelation`
 
 .. seealso:: :py:func:`relation`
+
+.. versionadded:: 2.6
 %End
 
     FormMode formMode() const;
@@ -176,6 +193,8 @@ Sets the form mode.
 :param mode: form mode
 
 .. seealso:: :py:func:`formMode`
+
+.. versionadded:: 2.16
 %End
 
     bool allowCustomUi() const;
@@ -183,6 +202,8 @@ Sets the form mode.
 Returns ``True`` if the attribute editor should permit use of custom UI forms.
 
 .. seealso:: :py:func:`setAllowCustomUi`
+
+.. versionadded:: 2.16
 %End
 
     void setAllowCustomUi( bool allow );
@@ -193,6 +214,8 @@ Sets whether the attribute editor should permit use of custom UI forms.
               QGIS forms
 
 .. seealso:: :py:func:`allowCustomUi`
+
+.. versionadded:: 2.16
 %End
 
     const QgsAttributeEditorContext *parentContext() const;
@@ -275,5 +298,5 @@ Returns the main message bar
  *                                                                      *
  * src/gui/qgsattributeeditorcontext.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

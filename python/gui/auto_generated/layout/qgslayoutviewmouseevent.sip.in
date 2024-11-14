@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/layout/qgslayoutviewmouseevent.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -17,6 +17,8 @@ A :py:class:`QgsLayoutViewMouseEvent` is the result of a user interaction with t
 
 It is sent whenever the user moves, clicks, releases or double clicks the mouse.
 In addition to the coordinates in pixel space it also knows the coordinates the layout space.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -77,5 +79,5 @@ Returns ``True`` if point was snapped, e.g. to grid or guide lines.
  *                                                                      *
  * src/gui/layout/qgslayoutviewmouseevent.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

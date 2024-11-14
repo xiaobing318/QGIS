@@ -19,7 +19,6 @@
 #include "qgsvectorlayer.h"
 #include "qgsgeometryengine.h"
 #include "qgsdistancearea.h"
-#include "qgsspatialindex.h"
 
 ///@cond PRIVATE
 
@@ -50,13 +49,13 @@ QString QgsCalculateVectorOverlapsAlgorithm::groupId() const
 
 void QgsCalculateVectorOverlapsAlgorithm::initAlgorithm( const QVariantMap & )
 {
-  addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ), QObject::tr( "Input layer" ), QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::VectorPolygon ) ) );
-  addParameter( new QgsProcessingParameterMultipleLayers( QStringLiteral( "LAYERS" ), QObject::tr( "Overlay layers" ), Qgis::ProcessingSourceType::VectorPolygon ) );
+  addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ), QObject::tr( "Input layer" ), QList< int >() << QgsProcessing::TypeVectorPolygon ) );
+  addParameter( new QgsProcessingParameterMultipleLayers( QStringLiteral( "LAYERS" ), QObject::tr( "Overlay layers" ), QgsProcessing::TypeVectorPolygon ) );
   addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Overlap" ) ) );
 
   std::unique_ptr< QgsProcessingParameterNumber > gridSize = std::make_unique< QgsProcessingParameterNumber >( QStringLiteral( "GRID_SIZE" ),
-      QObject::tr( "Grid size" ), Qgis::ProcessingNumberParameterType::Double, QVariant(), true, 0 );
-  gridSize->setFlags( gridSize->flags() | Qgis::ProcessingParameterFlag::Advanced );
+      QObject::tr( "Grid size" ), QgsProcessingParameterNumber::Double, QVariant(), true, 0 );
+  gridSize->setFlags( gridSize->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( gridSize.release() );
 }
 
@@ -100,8 +99,8 @@ bool QgsCalculateVectorOverlapsAlgorithm::prepareAlgorithm( const QVariantMap &p
     {
       mLayerNames << layer->name();
       mOverlayerSources.emplace_back( std::make_unique< QgsVectorLayerFeatureSource >( vl ) );
-      mOutputFields.append( QgsField( QStringLiteral( "%1_area" ).arg( vl->name() ), QMetaType::Type::Double ) );
-      mOutputFields.append( QgsField( QStringLiteral( "%1_pc" ).arg( vl->name() ), QMetaType::Type::Double ) );
+      mOutputFields.append( QgsField( QStringLiteral( "%1_area" ).arg( vl->name() ), QVariant::Double ) );
+      mOutputFields.append( QgsField( QStringLiteral( "%1_pc" ).arg( vl->name() ), QVariant::Double ) );
     }
   }
 
@@ -155,16 +154,7 @@ QVariantMap QgsCalculateVectorOverlapsAlgorithm::processAlgorithm( const QVarian
     if ( feature.hasGeometry() && !qgsDoubleNear( feature.geometry().area(), 0.0 ) )
     {
       const QgsGeometry inputGeom = feature.geometry();
-
-      double inputArea = 0;
-      try
-      {
-        inputArea = da.measureArea( inputGeom );
-      }
-      catch ( QgsCsException & )
-      {
-        throw QgsProcessingException( QObject::tr( "An error occurred while calculating feature area" ) );
-      }
+      const double inputArea = da.measureArea( inputGeom );
 
       // prepare for lots of intersection tests (for speed)
       std::unique_ptr< QgsGeometryEngine > bufferGeomEngine( QgsGeometry::createGeometryEngine( inputGeom.constGet() ) );
@@ -204,16 +194,7 @@ QVariantMap QgsCalculateVectorOverlapsAlgorithm::processAlgorithm( const QVarian
 
         const QgsGeometry overlayIntersection = inputGeom.intersection( overlayDissolved, geometryParameters );
 
-        double overlayArea = 0;
-        try
-        {
-          overlayArea = da.measureArea( overlayIntersection );
-        }
-        catch ( QgsCsException & )
-        {
-          throw QgsProcessingException( QObject::tr( "An error occurred while calculating feature area" ) );
-        }
-
+        const double overlayArea = da.measureArea( overlayIntersection );
         outAttributes.append( overlayArea );
         outAttributes.append( 100 * overlayArea / inputArea );
       }
@@ -235,8 +216,6 @@ QVariantMap QgsCalculateVectorOverlapsAlgorithm::processAlgorithm( const QVarian
     i++;
     feedback->setProgress( i * step );
   }
-
-  sink->finalize();
 
   QVariantMap outputs;
   outputs.insert( QStringLiteral( "OUTPUT" ), destId );

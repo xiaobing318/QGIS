@@ -17,11 +17,7 @@
 
 #include "ui_qgsadvancedsettingswidget.h"
 #include "qgsoptionswidgetfactory.h"
-#include "qgssettingstree.h"
-#include "qgssettingsentryimpl.h"
-
-class QgsSettingsTreeWidget;
-class QgsSettingsTreeWidgetOld;
+#include "qgssettings.h"
 
 /**
  * \ingroup app
@@ -36,24 +32,18 @@ class QgsAdvancedSettingsWidget : public QgsOptionsPageWidget, private Ui::QgsAd
 
   public:
 
-    static inline QgsSettingsTreeNode *sTreeSettings = QgsSettingsTree::sTreeApp->createChildNode( QStringLiteral( "settings" ) );
-    static const QgsSettingsEntryBool *settingsUseNewTreeWidget;
-    static const QgsSettingsEntryBool *settingsShowWarning;
-
-
     /**
      * Constructor for QgsAdvancedSettingsWidget with the specified \a parent widget.
      */
     QgsAdvancedSettingsWidget( QWidget *parent );
     ~QgsAdvancedSettingsWidget() override;
-    QString helpKey() const override;
     void apply() override;
 
-  private:
-    void createSettingsTreeWidget( bool newWidget, bool oldWidget, bool hide );
+    QgsSettingsTree *settingsTree();
 
-    QgsSettingsTreeWidget *mTreeWidget = nullptr;
-    QgsSettingsTreeWidgetOld *mTreeWidgetOld = nullptr;
+  private:
+
+    QgsSettings mSettings;
 
 };
 

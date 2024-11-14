@@ -30,7 +30,7 @@ long QgsMapCanvasUtils::zoomToMatchingFeatures( QgsMapCanvas *canvas, QgsVectorL
   QgsFeatureIterator features = layer->getFeatures( request );
 
   QgsRectangle bbox;
-  bbox.setNull();
+  bbox.setMinimal();
   QgsFeature feat;
   int featureCount = 0;
   while ( features.nextFeature( feat ) )

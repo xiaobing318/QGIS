@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     RandomPointsPolygons.py
@@ -22,9 +24,8 @@ __copyright__ = '(C) 2014, Alexander Bruy'
 import os
 import random
 
-from qgis.PyQt.QtCore import QMetaType
-from qgis.core import (Qgis,
-                       QgsApplication,
+from qgis.PyQt.QtCore import QVariant
+from qgis.core import (QgsApplication,
                        QgsField,
                        QgsFeatureSink,
                        QgsFeature,
@@ -82,7 +83,7 @@ class RandomPointsPolygons(QgisAlgorithm):
 
         self.addParameter(QgsProcessingParameterFeatureSource(self.INPUT,
                                                               self.tr('Input layer'),
-                                                              [QgsProcessing.SourceType.TypeVectorPolygon]))
+                                                              [QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterEnum(self.STRATEGY,
                                                      self.tr('Sampling strategy'),
                                                      self.strategies,
@@ -90,20 +91,20 @@ class RandomPointsPolygons(QgisAlgorithm):
                                                      0))
         value_param = QgsProcessingParameterNumber(self.VALUE,
                                                    self.tr('Point count or density'),
-                                                   QgsProcessingParameterNumber.Type.Double,
+                                                   QgsProcessingParameterNumber.Double,
                                                    1,
                                                    minValue=0)
         value_param.setIsDynamic(True)
         value_param.setDynamicLayerParameterName(self.INPUT)
         value_param.setDynamicPropertyDefinition(
-            QgsPropertyDefinition("Value", self.tr("Point count or density"), QgsPropertyDefinition.StandardPropertyTemplate.Double))
+            QgsPropertyDefinition("Value", self.tr("Point count or density"), QgsPropertyDefinition.Double))
         self.addParameter(value_param)
 
         # deprecated expression parameter - overrides value parameter if set
         exp_param = QgsProcessingParameterExpression(self.EXPRESSION,
                                                      self.tr('Expression'), optional=True,
                                                      parentLayerParameterName=self.INPUT)
-        exp_param.setFlags(exp_param.flags() | QgsProcessingParameterDefinition.Flag.FlagHidden)
+        exp_param.setFlags(exp_param.flags() | QgsProcessingParameterDefinition.FlagHidden)
         self.addParameter(exp_param)
 
         self.addParameter(QgsProcessingParameterDistance(self.MIN_DISTANCE,
@@ -111,16 +112,13 @@ class RandomPointsPolygons(QgisAlgorithm):
                                                          None, self.INPUT, True, 0, 1000000000))
         self.addParameter(QgsProcessingParameterFeatureSink(self.OUTPUT,
                                                             self.tr('Random points'),
-                                                            type=QgsProcessing.SourceType.TypeVectorPoint))
+                                                            type=QgsProcessing.TypeVectorPoint))
 
     def name(self):
         return 'randompointsinsidepolygons'
 
     def displayName(self):
         return self.tr('Random points inside polygons')
-
-    def documentationFlags(self):
-        return Qgis.ProcessingAlgorithmDocumentationFlag.RegeneratesPrimaryKey
 
     def processAlgorithm(self, parameters, context, feedback):
         source = self.parameterAsSource(parameters, self.INPUT, context)
@@ -149,11 +147,11 @@ class RandomPointsPolygons(QgisAlgorithm):
             value = self.parameterAsDouble(parameters, self.VALUE, context)
 
         fields = QgsFields()
-        fields.append(QgsField('id', QMetaType.Type.Int, '', 10, 0))
+        fields.append(QgsField('id', QVariant.Int, '', 10, 0))
 
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context,
-                                               fields, QgsWkbTypes.Type.Point, source.sourceCrs(),
-                                               QgsFeatureSink.SinkFlag.RegeneratePrimaryKey)
+                                               fields, QgsWkbTypes.Point, source.sourceCrs(),
+                                               QgsFeatureSink.RegeneratePrimaryKey)
         if sink is None:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
 
@@ -197,7 +195,7 @@ class RandomPointsPolygons(QgisAlgorithm):
                 pointCount = int(round(this_value * da.measureArea(fGeom)))
 
             if pointCount == 0:
-                feedback.pushInfo(self.tr("Skip feature {} as number of points for it is 0.").format(f.id()))
+                feedback.pushInfo("Skip feature {} as number of points for it is 0.".format(f.id()))
                 continue
 
             index = None
@@ -228,7 +226,7 @@ class RandomPointsPolygons(QgisAlgorithm):
                     f.setFields(fields)
                     f.setAttribute('id', pointId)
                     f.setGeometry(geom)
-                    sink.addFeature(f, QgsFeatureSink.Flag.FastInsert)
+                    sink.addFeature(f, QgsFeatureSink.FastInsert)
                     if minDistance:
                         index.addFeature(f)
                     points[nPoints] = p
@@ -242,5 +240,5 @@ class RandomPointsPolygons(QgisAlgorithm):
                                           'points. Maximum number of attempts exceeded.'))
 
         feedback.setProgress(100)
-        sink.finalize()
+
         return {self.OUTPUT: dest_id}

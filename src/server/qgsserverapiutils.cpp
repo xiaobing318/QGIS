@@ -32,7 +32,11 @@
 
 QgsRectangle QgsServerApiUtils::parseBbox( const QString &bbox )
 {
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+  const QStringList parts { bbox.split( ',', QString::SplitBehavior::SkipEmptyParts ) };
+#else
   const QStringList parts { bbox.split( ',', Qt::SplitBehaviorFlags::SkipEmptyParts ) };
+#endif
   // Note: Z is ignored
   bool ok { true };
   if ( parts.count() == 4 ||  parts.count() == 6 )
@@ -85,7 +89,7 @@ QList< QgsMapLayerServerProperties::WmsDimensionInfo > QgsServerApiUtils::tempor
     {
       if ( f.isDateOrTime() )
       {
-        dimensions.append( QgsMapLayerServerProperties::WmsDimensionInfo( f.type() == QMetaType::Type::QDateTime ?
+        dimensions.append( QgsMapLayerServerProperties::WmsDimensionInfo( f.type() == QVariant::DateTime ?
                            QStringLiteral( "time" ) :
                            QStringLiteral( "date" ), f.name() ) );
         break;
@@ -116,11 +120,10 @@ template<typename T, class T2> T QgsServerApiUtils::parseTemporalInterval( const
     }
   };
   const QStringList parts { interval.split( '/' ) };
-  if ( parts.size() != 2 )
+  if ( parts.length() != 2 )
   {
     throw QgsServerApiBadRequestException( QStringLiteral( "%1 is not a valid datetime interval." ).arg( interval ), QStringLiteral( "Server" ) );
   }
-  // cppcheck-suppress containerOutOfBounds
   T result { parseDate( parts[0] ), parseDate( parts[1] ) };
   // Check validity
   if ( result.isEmpty() )
@@ -153,50 +156,50 @@ QgsExpression QgsServerApiUtils::temporalFilterExpression( const QgsVectorLayer 
   }
 
   // helper to get the field type from the field name
-  auto fieldTypeFromName = [ & ]( const QString & fieldName, const QgsVectorLayer * layer ) -> QMetaType::Type
+  auto fieldTypeFromName = [ & ]( const QString & fieldName, const QgsVectorLayer * layer ) -> QVariant::Type
   {
     int fieldIdx { layer->fields().lookupField( fieldName ) };
     if ( fieldIdx < 0 )
     {
-      return QMetaType::Type::UnknownType;
+      return QVariant::Type::Invalid;
     }
     const QgsField field { layer->fields().at( fieldIdx ) };
     return field.type();
   };
 
   // helper to cast the field value
-  auto refFieldCast = [ & ]( const QString & fieldName, QMetaType::Type queryType, QMetaType::Type fieldType ) -> QString
+  auto refFieldCast = [ & ]( const QString & fieldName, QVariant::Type queryType, QVariant::Type fieldType ) -> QString
   {
 
     const auto fieldRealType { fieldTypeFromName( fieldName, layer ) };
-    if ( fieldRealType == QMetaType::Type::UnknownType )
+    if ( fieldRealType == QVariant::Type::Invalid )
     {
       return QString();
     }
 
     // Downcast only datetime -> date
     // always cast strings
-    if ( fieldRealType == QMetaType::Type::QString )
+    if ( fieldRealType == QVariant::Type::String )
     {
       // Cast to query type but only downcast
-      if ( fieldType != queryType || fieldType == QMetaType::Type::QDate )
+      if ( fieldType != queryType || fieldType == QVariant::Type::Date )
       {
         return QStringLiteral( "to_date( %1 )" ).arg( QgsExpression::quotedColumnRef( fieldName ) );
       }
       else
       {
         return QStringLiteral( "%2( %1 )" ).arg( QgsExpression::quotedColumnRef( fieldName ) )
-               .arg( queryType == QMetaType::Type::QDate ? QStringLiteral( "to_date" ) : QStringLiteral( "to_datetime" ) );
+               .arg( queryType == QVariant::Type::Date ? QStringLiteral( "to_date" ) : QStringLiteral( "to_datetime" ) );
       }
     }
-    else if ( fieldType == queryType || fieldType == QMetaType::Type::QDate )
+    else if ( fieldType == queryType || fieldType == QVariant::Type::Date )
     {
       return QgsExpression::quotedColumnRef( fieldName );
     }
     else
     {
       return QStringLiteral( "%2( %1 )" ).arg( QgsExpression::quotedColumnRef( fieldName ) )
-             .arg( queryType == QMetaType::Type::QDate ? QStringLiteral( "to_date" ) : QStringLiteral( "to_datetime" ) );
+             .arg( queryType == QVariant::Type::Date ? QStringLiteral( "to_date" ) : QStringLiteral( "to_datetime" ) );
     }
   };
 
@@ -270,13 +273,12 @@ QgsExpression QgsServerApiUtils::temporalFilterExpression( const QgsVectorLayer 
     testType = parts[0];
     if ( testType.isEmpty() || testType == QLatin1String( ".." ) )
     {
-      // cppcheck-suppress containerOutOfBounds
       testType = parts[1];
     }
   }
   // Determine query input type: datetime is always longer than 10 chars
   const bool inputQueryIsDateTime { testType.length() > 10 };
-  const QMetaType::Type queryType { inputQueryIsDateTime ? QMetaType::Type::QDateTime : QMetaType::Type::QDate };
+  const QVariant::Type queryType { inputQueryIsDateTime ? QVariant::Type::DateTime : QVariant::Type::Date };
 
   // Is it an interval?
   if ( interval.contains( '/' ) )
@@ -289,7 +291,7 @@ QgsExpression QgsServerApiUtils::temporalFilterExpression( const QgsVectorLayer 
       {
 
         // Determine the field type from the dimension name "time"/"date"
-        const QMetaType::Type fieldType { dimension.name.toLower() == QLatin1String( "time" ) ? QMetaType::Type::QDateTime :  QMetaType::Type::QDate };
+        const QVariant::Type fieldType { dimension.name.toLower() == QLatin1String( "time" ) ? QVariant::Type::DateTime :  QVariant::Type::Date };
 
         const auto fieldBeginCasted { refFieldCast( dimension.fieldName, queryType, fieldType ) };
         if ( fieldBeginCasted.isEmpty() )
@@ -325,7 +327,7 @@ QgsExpression QgsServerApiUtils::temporalFilterExpression( const QgsVectorLayer 
       {
 
         // Determine the field type from the dimension name "time"/"date"
-        const QMetaType::Type fieldType { dimension.name.toLower() == QLatin1String( "time" ) ? QMetaType::Type::QDateTime :  QMetaType::Type::QDate };
+        const QVariant::Type fieldType { dimension.name.toLower() == QLatin1String( "time" ) ? QVariant::Type::DateTime :  QVariant::Type::Date };
 
         const auto fieldfBeginCasted { refFieldCast( dimension.fieldName, queryType, fieldType ) };
         if ( fieldfBeginCasted.isEmpty() )
@@ -347,7 +349,7 @@ QgsExpression QgsServerApiUtils::temporalFilterExpression( const QgsVectorLayer 
           QString beginQuery;
           QString endQuery;
           // Drop the time
-          if ( fieldType == QMetaType::Type::QDate )
+          if ( fieldType == QVariant::Type::Date )
           {
             beginQuery = dateTimeInterval.begin().date().toString( Qt::DateFormat::ISODate );
             endQuery = dateTimeInterval.end().date().toString( Qt::DateFormat::ISODate );
@@ -374,7 +376,7 @@ QgsExpression QgsServerApiUtils::temporalFilterExpression( const QgsVectorLayer 
     {
       // Determine the field type from the dimension name "time"/"date"
       const bool fieldIsDateTime { dimension.name.toLower() == QLatin1String( "time" ) };
-      const QMetaType::Type fieldType { fieldIsDateTime ? QMetaType::Type::QDateTime :  QMetaType::Type::QDate };
+      const QVariant::Type fieldType { fieldIsDateTime ? QVariant::Type::DateTime :  QVariant::Type::Date };
 
       const auto fieldRefBegin { refFieldCast( dimension.fieldName, queryType, fieldType ) };
       if ( fieldRefBegin.isEmpty() )

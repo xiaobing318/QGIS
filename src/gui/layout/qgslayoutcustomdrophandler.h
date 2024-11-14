@@ -28,6 +28,7 @@ class QgsLayoutItem;
  * \ingroup gui
  * \brief Abstract base class that may be implemented to handle new types of data to be dropped or pasted in QGIS layouts.
  *
+ * \since QGIS 3.0
  */
 class GUI_EXPORT QgsLayoutCustomDropHandler : public QObject
 {
@@ -47,7 +48,7 @@ class GUI_EXPORT QgsLayoutCustomDropHandler : public QObject
      *
      * The base class implementation does nothing.
      *
-     * \deprecated QGIS 3.40. Use the version which specifies a drop location instead.
+     * \deprecated use the version which specifies a drop location instead.
      */
     Q_DECL_DEPRECATED virtual bool handleFileDrop( QgsLayoutDesignerInterface *iface, const QString &file ) SIP_DEPRECATED;
 

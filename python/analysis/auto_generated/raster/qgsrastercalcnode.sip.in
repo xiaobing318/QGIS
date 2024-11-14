@@ -3,7 +3,7 @@
  *                                                                      *
  * src/analysis/raster/qgsrastercalcnode.h                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -62,6 +62,9 @@ Represents a node in a raster calculator.
     };
 
     QgsRasterCalcNode();
+%Docstring
+Constructor for QgsRasterCalcNode.
+%End
 
     QgsRasterCalcNode( double number );
     QgsRasterCalcNode( QgsRasterMatrix *matrix );
@@ -75,6 +78,9 @@ Constructor for the tFunction type
 
 
     Type type() const;
+%Docstring
+QgsRasterCalcNode cannot be copied
+%End
 
     void setLeft( QgsRasterCalcNode *left );
     void setRight( QgsRasterCalcNode *right );
@@ -98,7 +104,7 @@ Returns a list of nodes of a specific ``type``
 
     static QgsRasterCalcNode *parseRasterCalcString( const QString &str, QString &parserErrorMsg ) /Factory/;
 
-    QStringList referencedLayerNames() const;
+    QStringList referencedLayerNames( );
 %Docstring
 Returns a list of raster layer names that are referenced in the formula without the quotation marks.
 It uses QgsRasterCalcNode.cleanRasterReferences
@@ -108,7 +114,7 @@ It uses QgsRasterCalcNode.cleanRasterReferences
    since QGIS 3.22
 %End
 
-    QStringList cleanRasterReferences() const;
+    QStringList cleanRasterReferences();
 %Docstring
 Returns a list of raster layer references that are addressed in the formula, without quotation marks.
 
@@ -127,5 +133,5 @@ Returns a list of raster layer references that are addressed in the formula, wit
  *                                                                      *
  * src/analysis/raster/qgsrastercalcnode.h                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

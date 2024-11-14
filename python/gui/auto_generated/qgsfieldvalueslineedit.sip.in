@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsfieldvalueslineedit.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -18,6 +18,8 @@ class QgsFieldValuesLineEdit: QgsFilterLineEdit
 A line edit with an autocompleter which takes unique values from a vector layer's fields.
 The autocompleter is populated from the vector layer in the background to ensure responsive
 interaction with the widget.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -98,5 +100,5 @@ Emitted when the field associated with the widget changes.
  *                                                                      *
  * src/gui/qgsfieldvalueslineedit.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

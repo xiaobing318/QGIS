@@ -9,10 +9,17 @@ __author__ = 'Nyall Dawson'
 __date__ = '18/03/2022'
 __copyright__ = 'Copyright 2022, The QGIS Project'
 
+import qgis  # NOQA
+
 from qgis.PyQt.QtCore import QCoreApplication, QEvent, Qt
-from qgis.core import QgsStyle, QgsStyleModel, QgsTextFormat
-import unittest
-from qgis.testing import start_app, QgisTestCase
+
+from qgis.core import (
+    QgsStyle,
+    QgsTextFormat,
+    QgsStyleModel
+)
+
+from qgis.testing import start_app, unittest
 
 start_app()
 
@@ -22,7 +29,7 @@ except ImportError:
     QgsCombinedStyleModel = None
 
 
-class TestQgsCombinedStyleModel(QgisTestCase):
+class TestQgsCombinedStyleModel(unittest.TestCase):
 
     @unittest.skipIf(QgsCombinedStyleModel is None, "QgsCombinedStyleModel not available")
     def test_model(self):
@@ -37,24 +44,24 @@ class TestQgsCombinedStyleModel(QgisTestCase):
 
         model.addStyle(style1)
         self.assertEqual(model.styles(), [style1])
-        self.assertEqual(model.headerData(0, Qt.Orientation.Horizontal), 'Name')
-        self.assertEqual(model.headerData(1, Qt.Orientation.Horizontal), 'Tags')
+        self.assertEqual(model.headerData(0, Qt.Horizontal), 'Name')
+        self.assertEqual(model.headerData(1, Qt.Horizontal), 'Tags')
 
         self.assertEqual(model.columnCount(), 2)
         self.assertEqual(model.rowCount(), 1)
         self.assertEqual(model.data(model.index(0, 0)), 'first style')
-        self.assertTrue(model.data(model.index(0, 0), QgsStyleModel.Role.IsTitleRole))
-        self.assertEqual(model.data(model.index(0, 0), QgsStyleModel.Role.StyleName), 'first style')
-        self.assertEqual(model.data(model.index(0, 0), QgsStyleModel.Role.StyleFileName), '/home/my style1.db')
+        self.assertTrue(model.data(model.index(0, 0), QgsStyleModel.IsTitleRole))
+        self.assertEqual(model.data(model.index(0, 0), QgsStyleModel.StyleName), 'first style')
+        self.assertEqual(model.data(model.index(0, 0), QgsStyleModel.StyleFileName), '/home/my style1.db')
 
         style1.addTextFormat('format 1', QgsTextFormat(), True)
         self.assertEqual(model.rowCount(), 2)
         self.assertEqual(model.data(model.index(0, 0)), 'first style')
-        self.assertTrue(model.data(model.index(0, 0), QgsStyleModel.Role.IsTitleRole))
+        self.assertTrue(model.data(model.index(0, 0), QgsStyleModel.IsTitleRole))
         self.assertEqual(model.data(model.index(1, 0)), 'format 1')
-        self.assertFalse(model.data(model.index(1, 0), QgsStyleModel.Role.IsTitleRole))
-        self.assertEqual(model.data(model.index(1, 0), QgsStyleModel.Role.StyleName), 'first style')
-        self.assertEqual(model.data(model.index(1, 0), QgsStyleModel.Role.StyleFileName), '/home/my style1.db')
+        self.assertFalse(model.data(model.index(1, 0), QgsStyleModel.IsTitleRole))
+        self.assertEqual(model.data(model.index(1, 0), QgsStyleModel.StyleName), 'first style')
+        self.assertEqual(model.data(model.index(1, 0), QgsStyleModel.StyleFileName), '/home/my style1.db')
 
         style2 = QgsStyle()
         style2.createMemoryDatabase()
@@ -68,37 +75,37 @@ class TestQgsCombinedStyleModel(QgisTestCase):
 
         self.assertEqual(model.rowCount(), 5)
         self.assertEqual(model.data(model.index(0, 0)), 'first style')
-        self.assertTrue(model.data(model.index(0, 0), QgsStyleModel.Role.IsTitleRole))
-        self.assertEqual(model.data(model.index(0, 0), QgsStyleModel.Role.StyleName), 'first style')
-        self.assertEqual(model.data(model.index(0, 0), QgsStyleModel.Role.StyleFileName), '/home/my style1.db')
+        self.assertTrue(model.data(model.index(0, 0), QgsStyleModel.IsTitleRole))
+        self.assertEqual(model.data(model.index(0, 0), QgsStyleModel.StyleName), 'first style')
+        self.assertEqual(model.data(model.index(0, 0), QgsStyleModel.StyleFileName), '/home/my style1.db')
         self.assertEqual(model.data(model.index(1, 0)), 'format 1')
-        self.assertFalse(model.data(model.index(1, 0), QgsStyleModel.Role.IsTitleRole))
-        self.assertEqual(model.data(model.index(1, 0), QgsStyleModel.Role.StyleName), 'first style')
-        self.assertEqual(model.data(model.index(1, 0), QgsStyleModel.Role.StyleFileName), '/home/my style1.db')
+        self.assertFalse(model.data(model.index(1, 0), QgsStyleModel.IsTitleRole))
+        self.assertEqual(model.data(model.index(1, 0), QgsStyleModel.StyleName), 'first style')
+        self.assertEqual(model.data(model.index(1, 0), QgsStyleModel.StyleFileName), '/home/my style1.db')
         self.assertEqual(model.data(model.index(2, 0)), 'second style')
-        self.assertTrue(model.data(model.index(2, 0), QgsStyleModel.Role.IsTitleRole))
-        self.assertEqual(model.data(model.index(2, 0), QgsStyleModel.Role.StyleName), 'second style')
-        self.assertEqual(model.data(model.index(2, 0), QgsStyleModel.Role.StyleFileName), '/home/my style2.db')
+        self.assertTrue(model.data(model.index(2, 0), QgsStyleModel.IsTitleRole))
+        self.assertEqual(model.data(model.index(2, 0), QgsStyleModel.StyleName), 'second style')
+        self.assertEqual(model.data(model.index(2, 0), QgsStyleModel.StyleFileName), '/home/my style2.db')
         self.assertEqual(model.data(model.index(3, 0)), 'format 2')
-        self.assertFalse(model.data(model.index(3, 0), QgsStyleModel.Role.IsTitleRole))
-        self.assertEqual(model.data(model.index(3, 0), QgsStyleModel.Role.StyleName), 'second style')
-        self.assertEqual(model.data(model.index(3, 0), QgsStyleModel.Role.StyleFileName), '/home/my style2.db')
+        self.assertFalse(model.data(model.index(3, 0), QgsStyleModel.IsTitleRole))
+        self.assertEqual(model.data(model.index(3, 0), QgsStyleModel.StyleName), 'second style')
+        self.assertEqual(model.data(model.index(3, 0), QgsStyleModel.StyleFileName), '/home/my style2.db')
         self.assertEqual(model.data(model.index(4, 0)), 'format 3')
-        self.assertFalse(model.data(model.index(4, 0), QgsStyleModel.Role.IsTitleRole))
-        self.assertEqual(model.data(model.index(4, 0), QgsStyleModel.Role.StyleName), 'second style')
-        self.assertEqual(model.data(model.index(4, 0), QgsStyleModel.Role.StyleFileName), '/home/my style2.db')
+        self.assertFalse(model.data(model.index(4, 0), QgsStyleModel.IsTitleRole))
+        self.assertEqual(model.data(model.index(4, 0), QgsStyleModel.StyleName), 'second style')
+        self.assertEqual(model.data(model.index(4, 0), QgsStyleModel.StyleFileName), '/home/my style2.db')
 
         style1.deleteLater()
         style1 = None
-        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
 
         self.assertEqual(model.rowCount(), 3)
         self.assertEqual(model.data(model.index(0, 0)), 'second style')
-        self.assertTrue(model.data(model.index(0, 0), QgsStyleModel.Role.IsTitleRole))
+        self.assertTrue(model.data(model.index(0, 0), QgsStyleModel.IsTitleRole))
         self.assertEqual(model.data(model.index(1, 0)), 'format 2')
-        self.assertFalse(model.data(model.index(1, 0), QgsStyleModel.Role.IsTitleRole))
+        self.assertFalse(model.data(model.index(1, 0), QgsStyleModel.IsTitleRole))
         self.assertEqual(model.data(model.index(2, 0)), 'format 3')
-        self.assertFalse(model.data(model.index(2, 0), QgsStyleModel.Role.IsTitleRole))
+        self.assertFalse(model.data(model.index(2, 0), QgsStyleModel.IsTitleRole))
 
         model.removeStyle(style2)
         self.assertEqual(model.rowCount(), 0)

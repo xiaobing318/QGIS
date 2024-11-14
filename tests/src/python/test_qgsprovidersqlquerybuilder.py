@@ -9,20 +9,16 @@ __author__ = 'Nyall Dawson'
 __date__ = '25/08/2022'
 __copyright__ = 'Copyright 2022, The QGIS Project'
 
-import os
-import shutil
-import tempfile
-
 from qgis.core import QgsProviderSqlQueryBuilder
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
+
 from utilities import unitTestDataPath
 
 app = start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestQgsProviderSqlQueryBuilder(QgisTestCase):
+class TestQgsProviderSqlQueryBuilder(unittest.TestCase):
 
     def test_quoted_identifier(self):
         builder = QgsProviderSqlQueryBuilder()

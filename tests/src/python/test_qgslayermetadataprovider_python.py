@@ -19,21 +19,20 @@ from stat import S_IREAD, S_IRGRP, S_IROTH, S_IWUSR
 from qgis.PyQt.QtCore import QTemporaryDir
 from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import (
-    QgsAbstractLayerMetadataProvider,
-    QgsLayerMetadata,
-    QgsLayerMetadataProviderResult,
-    QgsLayerMetadataSearchResults,
-    QgsMapLayerType,
-    QgsMetadataSearchContext,
-    QgsNotSupportedException,
     QgsPolygon,
-    QgsProviderConnectionException,
-    QgsProviderRegistry,
-    QgsRectangle,
     QgsWkbTypes,
+    QgsRectangle,
+    QgsMapLayerType,
+    QgsProviderRegistry,
+    QgsAbstractLayerMetadataProvider,
+    QgsLayerMetadataSearchResults,
+    QgsLayerMetadataProviderResult,
+    QgsMetadataSearchContext,
+    QgsLayerMetadata,
+    QgsNotSupportedException,
+    QgsProviderConnectionException,
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import unittest, start_app
 
 from utilities import unitTestDataPath
 
@@ -117,7 +116,7 @@ class PythonLayerMetadataProvider(QgsAbstractLayerMetadataProvider):
 QGIS_APP = start_app()
 
 
-class TestPythonLayerMetadataProvider(QgisTestCase):
+class TestPythonLayerMetadataProvider(unittest.TestCase):
 
     def setUp(self):
 
@@ -150,7 +149,7 @@ class TestPythonLayerMetadataProvider(QgisTestCase):
         self.assertEqual(result.title(), 'QGIS Test Title')
         self.assertEqual(result.layerType(), QgsMapLayerType.VectorLayer)
         self.assertEqual(result.authid(), 'EPSG:4326')
-        self.assertEqual(result.geometryType(), QgsWkbTypes.GeometryType.PointGeometry)
+        self.assertEqual(result.geometryType(), QgsWkbTypes.PointGeometry)
         self.assertEqual(result.dataProviderName(), 'ogr')
         self.assertEqual(result.standardUri(), 'http://mrcc.com/qgis.dtd')
 

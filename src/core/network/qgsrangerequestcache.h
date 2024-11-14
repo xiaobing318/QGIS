@@ -43,6 +43,7 @@
 class CORE_EXPORT QgsRangeRequestCache
 {
   public:
+    //! Constructor
     QgsRangeRequestCache();
 
     //! Checks whether the range request exists in the cache

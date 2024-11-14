@@ -16,7 +16,6 @@
 #include "qgsapplication.h"
 #include "qgslogger.h"
 #include "qgscachedirectorymanager.h"
-#include "moc_qgscachedirectorymanager.cpp"
 #include "qgssettings.h"
 
 // 1 minute
@@ -25,11 +24,8 @@
 #include <QFile>
 #include <QDir>
 #include <QTimer>
-#include <QDateTime>
-
-#if not defined( Q_OS_ANDROID )
 #include <QSharedMemory>
-#endif
+#include <QDateTime>
 
 // -------------------------
 
@@ -64,7 +60,7 @@ QString QgsCacheDirectoryManager::getBaseCacheDirectory( bool createIfNotExistin
     const QMutexLocker locker( &mMutex );
     if ( !QDir( cacheDirectory ).exists( subDir ) )
     {
-      QgsDebugMsgLevel( QStringLiteral( "Creating main cache dir %1/%2" ).arg( cacheDirectory ). arg( subDir ), 2 );
+      QgsDebugMsg( QStringLiteral( "Creating main cache dir %1/%2" ).arg( cacheDirectory ). arg( subDir ) );
       QDir( cacheDirectory ).mkpath( subDir );
     }
   }
@@ -80,16 +76,14 @@ QString QgsCacheDirectoryManager::getCacheDirectory( bool createIfNotExisting )
     const QMutexLocker locker( &mMutex );
     if ( !QDir( baseDirectory ).exists( processPath ) )
     {
-      QgsDebugMsgLevel( QStringLiteral( "Creating our cache dir %1/%2" ).arg( baseDirectory, processPath ), 2 );
+      QgsDebugMsg( QStringLiteral( "Creating our cache dir %1/%2" ).arg( baseDirectory, processPath ) );
       QDir( baseDirectory ).mkpath( processPath );
     }
-#if not defined( Q_OS_ANDROID )
     if ( mCounter == 0 && mKeepAliveWorks )
     {
       mThread = new QgsCacheDirectoryManagerKeepAlive( createAndAttachSHM() );
       mThread->start();
     }
-#endif
     mCounter ++;
   }
   return QDir( baseDirectory ).filePath( processPath );
@@ -118,7 +112,7 @@ void QgsCacheDirectoryManager::releaseCacheDirectory()
     const QString tmpDirname( getCacheDirectory( false ) );
     if ( QDir( tmpDirname ).exists() )
     {
-      QgsDebugMsgLevel( QStringLiteral( "Removing our cache dir %1" ).arg( tmpDirname ), 2 );
+      QgsDebugMsg( QStringLiteral( "Removing our cache dir %1" ).arg( tmpDirname ) );
       removeDir( tmpDirname );
 
       const QString baseDirname( getBaseCacheDirectory( false ) );
@@ -126,12 +120,12 @@ void QgsCacheDirectoryManager::releaseCacheDirectory()
       const QFileInfoList fileList( baseDir.entryInfoList( QDir::NoDotAndDotDot | QDir::AllDirs | QDir::Files ) );
       if ( fileList.size() == 0 )
       {
-        QgsDebugMsgLevel( QStringLiteral( "Removing main cache dir %1" ).arg( baseDirname ), 2 );
+        QgsDebugMsg( QStringLiteral( "Removing main cache dir %1" ).arg( baseDirname ) );
         removeDir( baseDirname );
       }
       else
       {
-        QgsDebugMsgLevel( QStringLiteral( "%1 entries remaining in %2" ).arg( fileList.size() ).arg( baseDirname ), 2 );
+        QgsDebugMsg( QStringLiteral( "%1 entries remaining in %2" ).arg( fileList.size() ).arg( baseDirname ) );
       }
     }
   }
@@ -160,7 +154,6 @@ bool QgsCacheDirectoryManager::removeDir( const QString &dirName )
   return dir.rmdir( dirName );
 }
 
-#if not defined( Q_OS_ANDROID )
 std::unique_ptr<QSharedMemory> QgsCacheDirectoryManager::createAndAttachSHM()
 {
   std::unique_ptr<QSharedMemory> sharedMemory;
@@ -186,17 +179,12 @@ std::unique_ptr<QSharedMemory> QgsCacheDirectoryManager::createAndAttachSHM()
   }
   return nullptr;
 }
-#endif
 
 void QgsCacheDirectoryManager::init()
 {
-#if not defined( Q_OS_ANDROID )
   auto sharedMemory = createAndAttachSHM();
   mKeepAliveWorks = sharedMemory.get() != nullptr;
   sharedMemory.reset();
-#else
-  mKeepAliveWorks = false;
-#endif
 
   if ( mKeepAliveWorks )
   {
@@ -226,7 +214,6 @@ void QgsCacheDirectoryManager::init()
         {
           canDelete = true;
         }
-#if not defined( Q_OS_ANDROID )
         else if ( mKeepAliveWorks )
         {
           canDelete = true;
@@ -258,10 +245,9 @@ void QgsCacheDirectoryManager::init()
           }
           else
           {
-            QgsDebugError( QStringLiteral( "Cannot attach to shared memory segment of process %1. It must be ghost" ).arg( pid ) );
+            QgsDebugMsg( QStringLiteral( "Cannot attach to shared memory segment of process %1. It must be ghost" ).arg( pid ) );
           }
         }
-#endif
         else
         {
           // Fallback to a file timestamp based method, if for some reason,
@@ -291,7 +277,6 @@ void QgsCacheDirectoryManager::init()
 
 // -------------------------
 
-#if not defined( Q_OS_ANDROID )
 // We use a keep alive mechanism where every KEEP_ALIVE_DELAY ms we update
 // a shared memory segment with the current timestamp. This way, other QGIS
 // processes can check if the temporary directories of other process correspond
@@ -325,4 +310,3 @@ void QgsCacheDirectoryManagerKeepAlive::run()
   connect( &timer, &QTimer::timeout, this, &QgsCacheDirectoryManagerKeepAlive::updateTimestamp );
   QThread::exec();
 }
-#endif

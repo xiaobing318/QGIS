@@ -11,6 +11,8 @@ the Free Software Foundation; either version 2 of the License, or
 __author__ = 'Alessandro Pasotti'
 __date__ = '17/04/2019'
 __copyright__ = 'Copyright 2019, The QGIS Project'
+# This will get replaced with a git SHA1 when you do a git archive
+__revision__ = '252ad49ddcbc4a0dcfe9eb9381503de0fde9e0ed'
 
 import json
 import os
@@ -20,34 +22,36 @@ import shutil
 # Deterministic XML
 os.environ['QT_HASH_SEED'] = '1'
 
-from urllib import parse
-
-from qgis.core import (
-    QgsFeature,
-    QgsFeatureRequest,
-    QgsGeometry,
-    QgsProject,
-    QgsVectorLayer,
-    QgsVectorLayerServerProperties,
-)
-from qgis.PyQt import QtCore
 from qgis.server import (
     QgsBufferServerRequest,
     QgsBufferServerResponse,
     QgsServer,
     QgsServerApi,
     QgsServerApiBadRequestException,
+    QgsServerQueryStringParameter,
     QgsServerApiContext,
-    QgsServerApiUtils,
     QgsServerOgcApi,
     QgsServerOgcApiHandler,
-    QgsServerQueryStringParameter,
-    QgsServiceRegistry,
-    QgsAccessControlFilter,
+    QgsServerApiUtils,
+    QgsServiceRegistry
 )
+
+from qgis.core import (
+    QgsProject,
+    QgsVectorLayerServerProperties,
+    QgsFeatureRequest,
+    QgsVectorLayer,
+    QgsFeature,
+    QgsGeometry,
+)
+
+from qgis.PyQt import QtCore
+
 from qgis.testing import unittest
-from test_qgsserver import QgsServerTestBase
 from utilities import unitTestDataPath
+from urllib import parse
+
+from test_qgsserver import QgsServerTestBase
 
 
 class QgsServerAPIUtilsTest(QgsServerTestBase):
@@ -80,11 +84,11 @@ class QgsServerAPIUtilsTest(QgsServerTestBase):
         project = QgsProject()
         project.read(os.path.join(self.temporary_path, 'qgis_server', 'test_project_api.qgs'))
         crss = QgsServerApiUtils.publishedCrsList(project)
-        self.assertIn('http://www.opengis.net/def/crs/OGC/1.3/CRS84', crss)
-        self.assertIn(
-            'http://www.opengis.net/def/crs/EPSG/0/3857', crss)
-        self.assertIn(
-            'http://www.opengis.net/def/crs/EPSG/0/4326', crss)
+        self.assertTrue('http://www.opengis.net/def/crs/OGC/1.3/CRS84' in crss)
+        self.assertTrue(
+            'http://www.opengis.net/def/crs/EPSG/0/3857' in crss)
+        self.assertTrue(
+            'http://www.opengis.net/def/crs/EPSG/0/4326' in crss)
 
     def test_parse_crs(self):
         crs = QgsServerApiUtils.parseCrs(
@@ -268,7 +272,7 @@ class QgsServerAPITestBase(QgsServerTestBase):
             f = open(path.encode('utf8'), 'w+', encoding='utf8')
             f.write(result)
             f.close()
-            print(f"Reference file {path.encode('utf8')} regenerated!")
+            print("Reference file %s regenerated!" % path.encode('utf8'))
 
         with open(path.encode('utf8'), encoding='utf8') as f:
             if reference_file.endswith('json'):
@@ -289,27 +293,6 @@ class QgsServerAPITestBase(QgsServerTestBase):
     def setUpClass(cls):
         super().setUpClass()
         cls.maxDiff = None
-
-
-class RestrictedLayerAccessControl(QgsAccessControlFilter):
-    """Access control filter to exclude a list of layers by ID, used by WFS3 test"""
-
-    def __init__(self, server_iface, ecxluded_layers=[], can_delete=False, can_edit=False, can_insert=False):
-        self.excluded_layers = ecxluded_layers
-        self.can_delete = can_delete
-        self.can_edit = can_edit
-        self.can_insert = can_insert
-        super(QgsAccessControlFilter, self).__init__(server_iface)
-
-    def layerPermissions(self, layer):
-        """ Return the layer rights """
-
-        rights = QgsAccessControlFilter.LayerPermissions()
-        rights.canRead = layer.id() not in self.excluded_layers or self.can_edit or self.can_delete or self.can_insert
-        rights.canUpdate = layer.id() not in self.excluded_layers or self.can_edit
-        rights.canInsert = layer.id() not in self.excluded_layers or self.can_insert
-        rights.canDelete = layer.id() not in self.excluded_layers or self.can_delete
-        return rights
 
 
 class QgsServerAPITest(QgsServerAPITestBase):
@@ -446,48 +429,6 @@ class QgsServerAPITest(QgsServerAPITestBase):
         project.read(os.path.join(self.temporary_path, 'qgis_server', 'test_project_api.qgs'))
         self.compareApi(request, project, 'test_wfs3_api_project.json')
 
-    def test_wfs3_api_permissions(self):
-        """Test the API with different permissions on a layer"""
-
-        project = QgsProject()
-        project.read(os.path.join(self.temporary_path, 'qgis_server', 'test_project_api.qgs'))
-
-        server = QgsServer()
-
-        request = QgsBufferServerRequest(
-            'http://server.qgis.org/wfs3/api.openapi3')
-
-        response = QgsBufferServerResponse()
-        server.handleRequest(request, response, project)
-        self.assertEqual(response.statusCode(), 200)
-        result = bytes(response.body()).decode('utf8')
-        jresult = json.loads(result)
-        paths = jresult['paths']['/wfs3/collections/testlayer èé/items/{featureId}']
-
-        self.assertIn('get', paths)
-        self.assertIn('put', paths)
-        self.assertIn('delete', paths)
-        self.assertIn('patch', paths)
-
-        self.assertIn('post', jresult['paths']['/wfs3/collections/testlayer èé/items'])
-
-        # Access control filter to exclude a layer
-        acfilter = RestrictedLayerAccessControl(server.serverInterface(), ['testlayer20150528120452665'], can_edit=True, can_delete=False, can_insert=False)
-        server.serverInterface().registerAccessControl(acfilter, 100)
-
-        response = QgsBufferServerResponse()
-        server.handleRequest(request, response, project)
-        self.assertEqual(response.statusCode(), 200)
-        result = bytes(response.body()).decode('utf8')
-        jresult = json.loads(result)
-        paths = jresult['paths']['/wfs3/collections/testlayer èé/items/{featureId}']
-
-        self.assertIn('put', paths)
-        self.assertIn('patch', paths)
-        self.assertNotIn('delete', paths)
-
-        self.assertNotIn('post', jresult['paths']['/wfs3/collections/testlayer èé/items'])
-
     def test_wfs3_conformance(self):
         """Test WFS3 API"""
         request = QgsBufferServerRequest(
@@ -514,38 +455,6 @@ class QgsServerAPITest(QgsServerAPITestBase):
         project = QgsProject()
         project.read(os.path.join(self.temporary_path, 'qgis_server', 'test_project_api.qgs'))
         self.compareApi(request, project, 'test_wfs3_collections_project.json')
-
-    def test_wfs3_collections_json_excluded_layer(self):
-        """Test WFS3 API collections in json format with an excluded layer"""
-
-        request = QgsBufferServerRequest(
-            'http://server.qgis.org/wfs3/collections.json')
-        project = QgsProject()
-        project.read(os.path.join(self.temporary_path, 'qgis_server', 'test_project_api.qgs'))
-
-        server = QgsServer()
-
-        response = QgsBufferServerResponse()
-        server.handleRequest(request, response, project)
-        self.assertEqual(response.headers()['Content-Type'], 'application/json')
-        self.assertEqual(response.statusCode(), 200)
-        result = bytes(response.body()).decode('utf8')
-        jresult = json.loads(result)
-        ids = [l['id'] for l in jresult['collections']]
-        self.assertIn('layer1_with_short_name', ids)
-
-        # Access control filter to exclude a layer
-        acfilter = RestrictedLayerAccessControl(server.serverInterface(), ['testlayer_c0988fd7_97ca_451d_adbc_37ad6d10583a'])
-        server.serverInterface().registerAccessControl(acfilter, 100)
-
-        response = QgsBufferServerResponse()
-        server.handleRequest(request, response, project)
-        self.assertEqual(response.headers()['Content-Type'], 'application/json')
-        self.assertEqual(response.statusCode(), 200)
-        result = bytes(response.body()).decode('utf8')
-        jresult = json.loads(result)
-        ids = [l['id'] for l in jresult['collections']]
-        self.assertNotIn('layer1_with_short_name', ids)
 
     def test_wfs3_collections_html(self):
         """Test WFS3 API collections in html format"""
@@ -581,15 +490,6 @@ class QgsServerAPITest(QgsServerAPITestBase):
             'http://server.qgis.org/wfs3/collections/testlayer%20èé')
         self.compareApi(request, project,
                         'test_wfs3_collection_testlayer_èé.json')
-
-    def test_wfs3_collection_shortname_json(self):
-        """Test WFS3 API collection with short name"""
-        project = QgsProject()
-        project.read(os.path.join(self.temporary_path, 'qgis_server', 'test_project_api.qgs'))
-        request = QgsBufferServerRequest(
-            'http://server.qgis.org/wfs3/collections/layer1_with_short_name')
-        self.compareApi(request, project,
-                        'test_wfs3_collection_layer1_with_short_name.json')
 
     def test_wfs3_collection_temporal_extent_json(self):
         """Test collection with timefilter"""
@@ -642,48 +542,6 @@ class QgsServerAPITest(QgsServerAPITestBase):
             'http://server.qgis.org/wfs3/collections/testlayer%20èé/items.html')
         self.compareApi(request, project,
                         'test_wfs3_collections_items_testlayer_èé.html')
-
-    def test_wfs3_collection_items_html_limit_0(self):
-        """Test WFS3 API items limit=0"""
-        project = QgsProject()
-        project.read(os.path.join(self.temporary_path, 'qgis_server', 'test_project_api.qgs'))
-        request = QgsBufferServerRequest(
-            'http://server.qgis.org/wfs3/collections/testlayer%20èé/items.html?limit=0')
-        self.compareApi(request, project,
-                        'test_wfs3_collections_items_testlayer_èé_1.html')
-
-    def test_wfs3_collection_items_html_pagination(self):
-        """Test WFS3 API items pagination"""
-        project = QgsProject()
-        project.read(os.path.join(self.temporary_path, 'qgis_server', 'test_project_wms_grouped_nested_layers.qgs'))
-        request = QgsBufferServerRequest(
-            'http://server.qgis.org/wfs3/collections/as-areas-short-name/items.html?offset=0&limit=6')
-        self.compareApi(request, project,
-                        'test_wfs3_collections_items_as_areas_short_name_1.html')
-        request = QgsBufferServerRequest(
-            'http://server.qgis.org/wfs3/collections/as-areas-short-name/items.html?offset=6&limit=6')
-        self.compareApi(request, project,
-                        'test_wfs3_collections_items_as_areas_short_name_2.html')
-        request = QgsBufferServerRequest(
-            'http://server.qgis.org/wfs3/collections/as-areas-short-name/items.html?offset=12&limit=6')
-        self.compareApi(request, project,
-                        'test_wfs3_collections_items_as_areas_short_name_3.html')
-        request = QgsBufferServerRequest(
-            'http://server.qgis.org/wfs3/collections/as-areas-short-name/items.html?offset=18&limit=6')
-        self.compareApi(request, project,
-                        'test_wfs3_collections_items_as_areas_short_name_4.html')
-        request = QgsBufferServerRequest(
-            'http://server.qgis.org/wfs3/collections/as-areas-short-name/items.html?offset=24&limit=6')
-        self.compareApi(request, project,
-                        'test_wfs3_collections_items_as_areas_short_name_5.html')
-        request = QgsBufferServerRequest(
-            'http://server.qgis.org/wfs3/collections/as-areas-short-name/items.html?offset=30&limit=6')
-        self.compareApi(request, project,
-                        'test_wfs3_collections_items_as_areas_short_name_6.html')
-        request = QgsBufferServerRequest(
-            'http://server.qgis.org/wfs3/collections/as-areas-short-name/items.html?offset=36&limit=6')
-        self.compareApi(request, project,
-                        'test_wfs3_collections_items_as_areas_short_name_7.html')
 
     def test_wfs3_collection_items_crs(self):
         """Test WFS3 API items with CRS"""
@@ -740,15 +598,6 @@ class QgsServerAPITest(QgsServerAPITestBase):
         self.assertEqual(response.body(),
                          b'[{"code":"Bad request error","description":"Argument \'limit\' is not valid. Number of features to retrieve [0-10000]"}]')  # Bad request
 
-        # Test overflowing int32
-        request = QgsBufferServerRequest(
-            'http://server.qgis.org/wfs3/collections/testlayer%20èé/items?limit=' + str((1 << 32)))
-        response = QgsBufferServerResponse()
-        self.server.handleRequest(request, response, project)
-        self.assertEqual(response.statusCode(), 400)  # Bad request
-        self.assertEqual(response.body(),
-                         b'[{"code":"Bad request error","description":"Argument \'limit\' is not valid. Number of features to retrieve [0-10000]"}]')  # Bad request
-
     def test_wfs3_collection_items_limit(self):
         """Test WFS3 API item limits"""
         project = QgsProject()
@@ -789,15 +638,6 @@ class QgsServerAPITest(QgsServerAPITestBase):
             'http://server.qgis.org/wfs3/collections/testlayer%20èé/items?limit=1&offset=2')
         self.compareApi(
             request, project, 'test_wfs3_collections_items_testlayer_èé_limit_1_offset_2.json')
-
-    def test_wfs3_collection_items_limit_2(self):
-        """Test WFS3 API limit 2"""
-        project = QgsProject()
-        project.read(os.path.join(self.temporary_path, 'qgis_server', 'test_project_api.qgs'))
-        request = QgsBufferServerRequest(
-            'http://server.qgis.org/wfs3/collections/testlayer%20èé/items?limit=2')
-        self.compareApi(
-            request, project, 'test_wfs3_collections_items_testlayer_èé_limit_2.json')
 
     def test_wfs3_collection_items_bbox(self):
         """Test WFS3 API bbox"""
@@ -846,9 +686,9 @@ class QgsServerAPITest(QgsServerAPITestBase):
         response = QgsBufferServerResponse()
         self.server.handleRequest(request, response, None)
         body = bytes(response.body()).decode('utf8')
-        self.assertIn('Content-Length', response.headers())
+        self.assertTrue('Content-Length' in response.headers())
         self.assertEqual(response.headers()['Content-Type'], 'text/css')
-        self.assertGreater(len(body), 0)
+        self.assertTrue(len(body) > 0)
 
         request = QgsBufferServerRequest(
             'http://server.qgis.org/wfs3/static/does_not_exists.css')
@@ -879,7 +719,7 @@ class QgsServerAPITest(QgsServerAPITestBase):
 
         # Invalid request
         data = b'not json!'
-        request = QgsBufferServerRequest(f'http://server.qgis.org/wfs3/collections/{insert_layer}/items',
+        request = QgsBufferServerRequest('http://server.qgis.org/wfs3/collections/%s/items' % insert_layer,
                                          QgsBufferServerRequest.PostMethod,
                                          {'Content-Type': 'application/geo+json'},
                                          data
@@ -911,7 +751,7 @@ class QgsServerAPITest(QgsServerAPITestBase):
         },
         "type": "Feature"
         }"""
-        request = QgsBufferServerRequest(f'http://server.qgis.org/wfs3/collections/{insert_layer}/items',
+        request = QgsBufferServerRequest('http://server.qgis.org/wfs3/collections/%s/items' % insert_layer,
                                          QgsBufferServerRequest.PostMethod,
                                          {'Content-Type': 'application/geo+json'},
                                          data
@@ -958,7 +798,7 @@ class QgsServerAPITest(QgsServerAPITestBase):
 
         # Invalid request
         data = b'not json!'
-        request = QgsBufferServerRequest(f'http://server.qgis.org/wfs3/collections/{update_layer}/items/1',
+        request = QgsBufferServerRequest('http://server.qgis.org/wfs3/collections/%s/items/1' % update_layer,
                                          QgsBufferServerRequest.PutMethod,
                                          {'Content-Type': 'application/geo+json'},
                                          data
@@ -992,7 +832,7 @@ class QgsServerAPITest(QgsServerAPITestBase):
         }"""
 
         # Unauthorized layer
-        request = QgsBufferServerRequest(f'http://server.qgis.org/wfs3/collections/{insert_layer}/items/1',
+        request = QgsBufferServerRequest('http://server.qgis.org/wfs3/collections/%s/items/1' % insert_layer,
                                          QgsBufferServerRequest.PutMethod,
                                          {'Content-Type': 'application/geo+json'},
                                          data
@@ -1002,7 +842,7 @@ class QgsServerAPITest(QgsServerAPITestBase):
         self.assertEqual(response.statusCode(), 403)
 
         # Authorized layer
-        request = QgsBufferServerRequest(f'http://server.qgis.org/wfs3/collections/{update_layer}/items/1',
+        request = QgsBufferServerRequest('http://server.qgis.org/wfs3/collections/%s/items/1' % update_layer,
                                          QgsBufferServerRequest.PutMethod,
                                          {'Content-Type': 'application/geo+json'},
                                          data
@@ -1047,7 +887,7 @@ class QgsServerAPITest(QgsServerAPITestBase):
         },
         "type": "Feature"
         }"""
-        request = QgsBufferServerRequest(f'http://server.qgis.org/wfs3/collections/{update_layer}/items/1',
+        request = QgsBufferServerRequest('http://server.qgis.org/wfs3/collections/%s/items/1' % update_layer,
                                          QgsBufferServerRequest.PutMethod,
                                          {'Content-Type': 'application/geo+json'},
                                          data
@@ -1089,7 +929,7 @@ class QgsServerAPITest(QgsServerAPITestBase):
         },
         "type": "Feature"
         }"""
-        request = QgsBufferServerRequest(f'http://server.qgis.org/wfs3/collections/{hidden_text_2_layer}/items/1',
+        request = QgsBufferServerRequest('http://server.qgis.org/wfs3/collections/%s/items/1' % hidden_text_2_layer,
                                          QgsBufferServerRequest.PutMethod,
                                          {'Content-Type': 'application/geo+json'},
                                          data
@@ -1119,7 +959,7 @@ class QgsServerAPITest(QgsServerAPITestBase):
 
         # Valid request on unauthorized layer
         data = b''
-        request = QgsBufferServerRequest(f'http://server.qgis.org/wfs3/collections/{update_layer}/items/1',
+        request = QgsBufferServerRequest('http://server.qgis.org/wfs3/collections/%s/items/1' % update_layer,
                                          QgsBufferServerRequest.DeleteMethod)
         response = QgsBufferServerResponse()
         self.server.handleRequest(request, response, project)
@@ -1127,7 +967,7 @@ class QgsServerAPITest(QgsServerAPITestBase):
 
         # Valid request on authorized layer
         data = b''
-        request = QgsBufferServerRequest(f'http://server.qgis.org/wfs3/collections/{delete_layer}/items/1',
+        request = QgsBufferServerRequest('http://server.qgis.org/wfs3/collections/%s/items/1' % delete_layer,
                                          QgsBufferServerRequest.DeleteMethod)
         response = QgsBufferServerResponse()
         self.server.handleRequest(request, response, project)
@@ -1136,7 +976,7 @@ class QgsServerAPITest(QgsServerAPITestBase):
         # Check that it was really deleted
         layer = project.mapLayersByName(
             'test layer èé 3857 published delete')[0]
-        self.assertNotIn(1, layer.allFeatureIds())
+        self.assertFalse(1 in layer.allFeatureIds())
 
     def test_wfs3_collection_items_patch(self):
         """Test WFS3 API items PATCH"""
@@ -1159,7 +999,7 @@ class QgsServerAPITest(QgsServerAPITestBase):
 
         # Invalid request
         data = b'not json!'
-        request = QgsBufferServerRequest(f'http://server.qgis.org/wfs3/collections/{update_layer}/items/1',
+        request = QgsBufferServerRequest('http://server.qgis.org/wfs3/collections/%s/items/1' % update_layer,
                                          QgsBufferServerRequest.PutMethod,
                                          {'Content-Type': 'application/json'},
                                          data
@@ -1181,7 +1021,7 @@ class QgsServerAPITest(QgsServerAPITestBase):
             }
         }
         """
-        request = QgsBufferServerRequest(f'http://server.qgis.org/wfs3/collections/{update_layer}/items/1',
+        request = QgsBufferServerRequest('http://server.qgis.org/wfs3/collections/%s/items/1' % update_layer,
                                          QgsBufferServerRequest.PatchMethod,
                                          {'Content-Type': 'application/json'},
                                          data
@@ -1201,7 +1041,7 @@ class QgsServerAPITest(QgsServerAPITestBase):
         }"""
 
         # Unauthorized layer
-        request = QgsBufferServerRequest(f'http://server.qgis.org/wfs3/collections/{insert_layer}/items/1',
+        request = QgsBufferServerRequest('http://server.qgis.org/wfs3/collections/%s/items/1' % insert_layer,
                                          QgsBufferServerRequest.PatchMethod,
                                          {'Content-Type': 'application/json'},
                                          data
@@ -1211,7 +1051,7 @@ class QgsServerAPITest(QgsServerAPITestBase):
         self.assertEqual(response.statusCode(), 403)
 
         # Authorized layer
-        request = QgsBufferServerRequest(f'http://server.qgis.org/wfs3/collections/{update_layer}/items/1',
+        request = QgsBufferServerRequest('http://server.qgis.org/wfs3/collections/%s/items/1' % update_layer,
                                          QgsBufferServerRequest.PatchMethod,
                                          {'Content-Type': 'application/json'},
                                          data
@@ -1240,7 +1080,7 @@ class QgsServerAPITest(QgsServerAPITestBase):
             r'\.\d+', '', feature.geometry().asWkt().upper()), 'MULTIPOINT ((804542 5593348))')
 
         # Try to update a forbidden (unpublished) field
-        request = QgsBufferServerRequest(f'http://server.qgis.org/wfs3/collections/{hidden_text_2_layer}/items/1',
+        request = QgsBufferServerRequest('http://server.qgis.org/wfs3/collections/%s/items/1' % hidden_text_2_layer,
                                          QgsBufferServerRequest.PatchMethod,
                                          {'Content-Type': 'application/json'},
                                          data
@@ -1315,24 +1155,24 @@ class QgsServerAPITest(QgsServerAPITestBase):
             'http://server.qgis.org/wfs3/collections/testlayer%20èé/items?properties=name')
         self.server.handleRequest(request, response, project)
         j = json.loads(bytes(response.body()).decode('utf8'))
-        self.assertIn('name', j['features'][0]['properties'])
-        self.assertNotIn('id', j['features'][0]['properties'])
+        self.assertTrue('name' in j['features'][0]['properties'])
+        self.assertFalse('id' in j['features'][0]['properties'])
 
         response = QgsBufferServerResponse()
         request = QgsBufferServerRequest(
             'http://server.qgis.org/wfs3/collections/testlayer%20èé/items?properties=name,id')
         self.server.handleRequest(request, response, project)
         j = json.loads(bytes(response.body()).decode('utf8'))
-        self.assertIn('name', j['features'][0]['properties'])
-        self.assertIn('id', j['features'][0]['properties'])
+        self.assertTrue('name' in j['features'][0]['properties'])
+        self.assertTrue('id' in j['features'][0]['properties'])
 
         response = QgsBufferServerResponse()
         request = QgsBufferServerRequest(
             'http://server.qgis.org/wfs3/collections/testlayer%20èé/items?properties=id')
         self.server.handleRequest(request, response, project)
         j = json.loads(bytes(response.body()).decode('utf8'))
-        self.assertNotIn('name', j['features'][0]['properties'])
-        self.assertIn('id', j['features'][0]['properties'])
+        self.assertFalse('name' in j['features'][0]['properties'])
+        self.assertTrue('id' in j['features'][0]['properties'])
 
     def test_wfs3_field_filters_star(self):
         """Test field filters"""
@@ -1555,7 +1395,7 @@ class QgsServerAPITest(QgsServerAPITestBase):
         def _date_tester(project_path, datetime, expected, unexpected):
             # Test "created" date field exact
             request = QgsBufferServerRequest(
-                f'http://server.qgis.org/wfs3/collections/points/items?datetime={datetime}')
+                'http://server.qgis.org/wfs3/collections/points/items?datetime=%s' % datetime)
             response = QgsBufferServerResponse()
             project.read(project_path)
             self.server.handleRequest(request, response, project)

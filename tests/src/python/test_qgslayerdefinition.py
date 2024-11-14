@@ -12,11 +12,15 @@ __copyright__ = 'Copyright 2016, The QGIS Project'
 import os
 import shutil
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import QTemporaryDir
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import Qgis, QgsLayerDefinition, QgsProject, QgsVectorLayer
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsProject,
+                       QgsLayerDefinition,
+                       QgsVectorLayer,
+                       Qgis
+                       )
+from qgis.testing import unittest, start_app
 
 from utilities import unitTestDataPath
 
@@ -24,7 +28,7 @@ start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestQgsLayerDefinition(QgisTestCase):
+class TestQgsLayerDefinition(unittest.TestCase):
 
     def testDependency(self):
         inDoc = """
@@ -253,8 +257,8 @@ class TestQgsLayerDefinition(QgisTestCase):
         field = vl.fields().at(0)
         config = field.editorWidgetSetup().config()
 
-        self.assertFalse(config['Description'])
-        self.assertFalse(config['FilterExpression'])
+        self.assertEqual(config['Description'], '')
+        self.assertEqual(config['FilterExpression'], '')
 
 
 if __name__ == '__main__':

@@ -30,6 +30,8 @@
 #include <qgsmultibandcolorrenderer.h>
 #include <qgsrasterlayer.h>
 #include "qgsrasterdataprovider.h"
+//qgis test includes
+#include "qgsmultirenderchecker.h"
 
 /**
  * \ingroup UnitTests
@@ -58,6 +60,7 @@ class TestQgsBlendModes : public QgsTest
     void vectorLayerTransparency();
     void rasterBlending();
   private:
+    bool imageCheck( const QString &type ); //as above
     QgsMapSettings *mMapSettings = nullptr;
     QgsMapLayer *mpPointsLayer = nullptr;
     QgsVectorLayer *mpPolysLayer = nullptr;
@@ -79,7 +82,6 @@ void TestQgsBlendModes::initTestCase()
 
   mMapSettings = new QgsMapSettings();
 
-  mMapSettings->setOutputDpi( 96 );
   //create some objects that will be used in tests
 
   //create a point layer
@@ -97,7 +99,7 @@ void TestQgsBlendModes::initTestCase()
                                      myPolyFileInfo.completeBaseName(), QStringLiteral( "ogr" ) );
 
   QgsVectorSimplifyMethod simplifyMethod;
-  simplifyMethod.setSimplifyHints( Qgis::VectorRenderingSimplificationFlags() );
+  simplifyMethod.setSimplifyHints( QgsVectorSimplifyMethod::NoSimplification );
 
   mpPolysLayer->setSimplifyMethod( simplifyMethod );
 
@@ -144,7 +146,7 @@ void TestQgsBlendModes::vectorBlending()
   mpLinesLayer->setBlendMode( QPainter::CompositionMode_Difference );
   mpPolysLayer->setBlendMode( QPainter::CompositionMode_Difference );
   mMapSettings->setExtent( mExtent );
-  const bool res = QGSRENDERMAPSETTINGSCHECK( QStringLiteral( "vector_blendmodes" ), QStringLiteral( "vector_blendmodes" ), *mMapSettings, 20, 5 );
+  const bool res = imageCheck( QStringLiteral( "vector_blendmodes" ) );
 
   //Reset layers
   mpLinesLayer->setBlendMode( QPainter::CompositionMode_SourceOver );
@@ -164,7 +166,7 @@ void TestQgsBlendModes::featureBlending()
   //Set feature blending modes for point layer
   mpLinesLayer->setFeatureBlendMode( QPainter::CompositionMode_Plus );
   mMapSettings->setExtent( mExtent );
-  const bool res = QGSRENDERMAPSETTINGSCHECK( QStringLiteral( "vector_featureblendmodes" ), QStringLiteral( "vector_featureblendmodes" ), *mMapSettings, 20, 5 );
+  const bool res = imageCheck( QStringLiteral( "vector_featureblendmodes" ) );
 
   //Reset layers
   mpLinesLayer->setFeatureBlendMode( QPainter::CompositionMode_SourceOver );
@@ -183,7 +185,7 @@ void TestQgsBlendModes::vectorLayerTransparency()
   //Set feature blending modes for point layer
   mpLinesLayer->setOpacity( 0.50 );
   mMapSettings->setExtent( mExtent );
-  const bool res = QGSRENDERMAPSETTINGSCHECK( QStringLiteral( "vector_layertransparency" ), QStringLiteral( "vector_layertransparency" ), *mMapSettings, 20, 5 );
+  const bool res = imageCheck( QStringLiteral( "vector_layertransparency" ) );
 
   //Reset layers
   mpLinesLayer->setOpacity( 1.0 );
@@ -202,7 +204,25 @@ void TestQgsBlendModes::rasterBlending()
 
   // set blending mode for top layer
   mRasterLayer1->setBlendMode( QPainter::CompositionMode_Difference );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( QStringLiteral( "raster_blendmodes" ), QStringLiteral( "raster_blendmodes" ), *mMapSettings, 20, 5 );
+  QVERIFY( imageCheck( "raster_blendmodes" ) );
+}
+
+//
+// Private helper functions not called directly by CTest
+//
+
+bool TestQgsBlendModes::imageCheck( const QString &testType )
+{
+  //use the QgsRenderChecker test utility class to
+  //ensure the rendered output matches our control image
+  mMapSettings->setOutputDpi( 96 );
+  QgsMultiRenderChecker myChecker;
+  myChecker.setControlName( "expected_" + testType );
+  myChecker.setMapSettings( *mMapSettings );
+  myChecker.setColorTolerance( 5 );
+  const bool myResultFlag = myChecker.runTest( testType, 20 );
+  mReport += myChecker.report();
+  return myResultFlag;
 }
 
 QGSTEST_MAIN( TestQgsBlendModes )

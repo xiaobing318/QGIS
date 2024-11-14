@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsmaptopixel.h                                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -40,6 +40,8 @@ Constructor
 :param widthPixels: Output width, in pixels
 :param heightPixels: Output height, in pixels
 :param rotation: clockwise rotation in degrees
+
+.. versionadded:: 2.8
 %End
 
     QgsMapToPixel( double mapUnitsPerPixel );
@@ -49,7 +51,7 @@ Constructor
 :param mapUnitsPerPixel: Map units per pixel
 %End
 
-    static QgsMapToPixel fromScale( double scale, Qgis::DistanceUnit mapUnits, double dpi = 96 );
+    static QgsMapToPixel fromScale( double scale, QgsUnitTypes::DistanceUnit mapUnits, double dpi = 96 );
 %Docstring
 Returns a new QgsMapToPixel created using a specified ``scale`` and distance unit.
 
@@ -58,6 +60,8 @@ Returns a new QgsMapToPixel created using a specified ``scale`` and distance uni
 :param mapUnits: map units
 
 :return: matching QgsMapToPixel
+
+.. versionadded:: 3.0
 %End
 
     bool isValid() const;
@@ -94,20 +98,10 @@ Transforms the point specified by x,y from map (world) coordinates to device coo
 
     void transformInPlace( double &x, double &y ) const;
 %Docstring
-Transforms map coordinates to device coordinates.
+Transforms device coordinates to map coordinates.
 
 This method modifies the given coordinates in place. It is intended as a fast way to do the
 transform.
-%End
-
-    QRectF transformBounds( const QRectF &bounds ) const;
-%Docstring
-Transforms a bounding box from map coordinates to device coordinates.
-
-The returns bounding box will always completely enclose the transformed input bounding box (i.e. this
-method will grow the bounds wherever required).
-
-.. versionadded:: 3.40
 %End
 
 
@@ -135,9 +129,8 @@ Transforms device coordinates to map (world) coordinates.
 %Docstring
 Transforms device coordinates to map (world) coordinates.
 
-.. deprecated:: 3.4
-
-   Use toMapCoordinates instead.
+.. deprecated:: QGIS 3.4
+   use toMapCoordinates instead
 %End
 
     void setMapUnitsPerPixel( double mapUnitsPerPixel );
@@ -165,6 +158,8 @@ Returns the current map width in pixels.
 The information is only known if setRotation was used.
 
 .. seealso:: :py:func:`mapHeight`
+
+.. versionadded:: 2.8
 %End
 
     int mapHeight() const;
@@ -172,6 +167,8 @@ The information is only known if setRotation was used.
 Returns current map height in pixels
 
 .. seealso:: :py:func:`mapWidth`
+
+.. versionadded:: 2.8
 %End
 
     void setMapRotation( double degrees, double cx, double cy );
@@ -185,6 +182,8 @@ Calling this method will automatically set the object as valid.
 :param cy: Y ordinate of map center in geographical units
 
 .. seealso:: :py:func:`mapRotation`
+
+.. versionadded:: 2.8
 %End
 
     double mapRotation() const;
@@ -192,6 +191,8 @@ Calling this method will automatically set the object as valid.
 Returns the current map rotation in degrees (clockwise).
 
 .. seealso:: :py:func:`setMapRotation`
+
+.. versionadded:: 2.8
 %End
 
     void setParameters( double mapUnitsPerPixel, double centerX, double centerY, int widthPixels, int heightPixels, double rotation );
@@ -210,6 +211,8 @@ Calling this method will automatically set the object as valid.
 .. note::
 
    if the specified parameters result in an invalid transform then no changes will be applied to the object
+
+.. versionadded:: 2.8
 %End
 
 
@@ -228,6 +231,8 @@ Returns a QTransform encapsulating the map to pixel conversion.
 Returns the center x-coordinate for the transform.
 
 .. seealso:: :py:func:`yCenter`
+
+.. versionadded:: 3.0
 %End
 
     double yCenter() const;
@@ -235,6 +240,8 @@ Returns the center x-coordinate for the transform.
 Returns the center y-coordinate for the transform.
 
 .. seealso:: :py:func:`xCenter`
+
+.. versionadded:: 3.0
 %End
 
     bool operator==( const QgsMapToPixel &other ) const;
@@ -249,5 +256,5 @@ Returns the center y-coordinate for the transform.
  *                                                                      *
  * src/core/qgsmaptopixel.h                                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

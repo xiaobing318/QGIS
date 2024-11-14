@@ -14,7 +14,6 @@ email                : matthias@opengis.ch
  ***************************************************************************/
 
 #include "qgsvectorlayerfeaturepool.h"
-#include "moc_qgsvectorlayerfeaturepool.cpp"
 #include "qgsthreadingutils.h"
 
 #include "qgsfeaturerequest.h"

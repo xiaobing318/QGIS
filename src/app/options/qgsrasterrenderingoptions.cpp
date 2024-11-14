@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsrasterrenderingoptions.h"
-#include "moc_qgsrasterrenderingoptions.cpp"
 #include "qgssettings.h"
 #include "qgsapplication.h"
 #include "qgssettingsregistrycore.h"
@@ -40,21 +39,21 @@ QgsRasterRenderingOptionsWidget::QgsRasterRenderingOptionsWidget( QWidget *paren
   spnBlue->setClearValue( 3 );
 
   mZoomedInResamplingComboBox->insertItem( 0, tr( "Nearest Neighbour" ), QStringLiteral( "nearest neighbour" ) );
-  mZoomedInResamplingComboBox->insertItem( 1, tr( "Bilinear (2x2 Kernel)" ), QStringLiteral( "bilinear" ) );
-  mZoomedInResamplingComboBox->insertItem( 2, tr( "Cubic (4x4 Kernel)" ), QStringLiteral( "cubic" ) );
+  mZoomedInResamplingComboBox->insertItem( 1, tr( "Bilinear" ), QStringLiteral( "bilinear" ) );
+  mZoomedInResamplingComboBox->insertItem( 2, tr( "Cubic" ), QStringLiteral( "cubic" ) );
 
   mZoomedOutResamplingComboBox->insertItem( 0, tr( "Nearest Neighbour" ), QStringLiteral( "nearest neighbour" ) );
-  mZoomedOutResamplingComboBox->insertItem( 1, tr( "Bilinear (2x2 Kernel)" ), QStringLiteral( "bilinear" ) );
-  mZoomedOutResamplingComboBox->insertItem( 2, tr( "Cubic (4x4 Kernel)" ), QStringLiteral( "cubic" ) );
+  mZoomedOutResamplingComboBox->insertItem( 1, tr( "Bilinear" ), QStringLiteral( "bilinear" ) );
+  mZoomedOutResamplingComboBox->insertItem( 2, tr( "Cubic" ), QStringLiteral( "cubic" ) );
 
   QString zoomedInResampling = settings.value( QStringLiteral( "/Raster/defaultZoomedInResampling" ), QStringLiteral( "nearest neighbour" ) ).toString();
   mZoomedInResamplingComboBox->setCurrentIndex( mZoomedInResamplingComboBox->findData( zoomedInResampling ) );
   QString zoomedOutResampling = settings.value( QStringLiteral( "/Raster/defaultZoomedOutResampling" ), QStringLiteral( "nearest neighbour" ) ).toString();
   mZoomedOutResamplingComboBox->setCurrentIndex( mZoomedOutResamplingComboBox->findData( zoomedOutResampling ) );
 
-  spnOversampling->setValue( QgsRasterLayer::settingsRasterDefaultOversampling->value() );
+  spnOversampling->setValue( settings.value( QStringLiteral( "/Raster/defaultOversampling" ), 2.0 ).toDouble() );
   spnOversampling->setClearValue( 2.0 );
-  mCbEarlyResampling->setChecked( QgsRasterLayer::settingsRasterDefaultEarlyResampling->value() );
+  mCbEarlyResampling->setChecked( settings.value( QStringLiteral( "/Raster/defaultEarlyResampling" ), false ).toBool() );
 
   initContrastEnhancement( cboxContrastEnhancementAlgorithmSingleBand, QStringLiteral( "singleBand" ),
                            QgsContrastEnhancement::contrastEnhancementAlgorithmString( QgsRasterLayer::SINGLE_BAND_ENHANCEMENT_ALGORITHM ) );
@@ -79,11 +78,6 @@ QgsRasterRenderingOptionsWidget::QgsRasterRenderingOptionsWidget( QWidget *paren
   spnThreeBandStdDev->setClearValue( QgsRasterMinMaxOrigin::DEFAULT_STDDEV_FACTOR );
 }
 
-QString QgsRasterRenderingOptionsWidget::helpKey() const
-{
-  return QStringLiteral( "introduction/qgis_configuration.html#raster-rendering-options" );
-}
-
 void QgsRasterRenderingOptionsWidget::apply()
 {
   QgsSettings settings;
@@ -95,8 +89,8 @@ void QgsRasterRenderingOptionsWidget::apply()
   settings.setValue( QStringLiteral( "/Raster/defaultZoomedInResampling" ), mZoomedInResamplingComboBox->currentData().toString() );
   settings.setValue( QStringLiteral( "/Raster/defaultZoomedOutResampling" ), mZoomedOutResamplingComboBox->currentData().toString() );
 
-  QgsRasterLayer::settingsRasterDefaultOversampling->setValue( spnOversampling->value() );
-  QgsRasterLayer::settingsRasterDefaultEarlyResampling->setValue( mCbEarlyResampling->isChecked() );
+  settings.setValue( QStringLiteral( "/Raster/defaultOversampling" ), spnOversampling->value() );
+  settings.setValue( QStringLiteral( "/Raster/defaultEarlyResampling" ), mCbEarlyResampling->isChecked() );
 
   saveContrastEnhancement( cboxContrastEnhancementAlgorithmSingleBand, QStringLiteral( "singleBand" ) );
   saveContrastEnhancement( cboxContrastEnhancementAlgorithmMultiBandSingleByte, QStringLiteral( "multiBandSingleByte" ) );
@@ -165,7 +159,7 @@ void QgsRasterRenderingOptionsWidget::saveMinMaxLimits( QComboBox *cbox, const Q
 // QgsRasterRenderingOptionsFactory
 //
 QgsRasterRenderingOptionsFactory::QgsRasterRenderingOptionsFactory()
-  : QgsOptionsWidgetFactory( tr( "Raster" ), QIcon(), QStringLiteral( "raster" ) )
+  : QgsOptionsWidgetFactory( tr( "Raster" ), QIcon() )
 {
 
 }

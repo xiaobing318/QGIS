@@ -23,7 +23,6 @@
 /**
  * \ingroup core
  * \class QgsDartMeasurement
- * \brief Emits dart measurements for display in CDash reports.
  */
 class CORE_EXPORT QgsDartMeasurement
 {
@@ -35,6 +34,7 @@ class CORE_EXPORT QgsDartMeasurement
       Integer
     };
 
+    //! Constructor for QgsDartMeasurement
     QgsDartMeasurement() = default;
 
     QgsDartMeasurement( const QString &name, Type type, const QString &value );
@@ -47,6 +47,7 @@ class CORE_EXPORT QgsDartMeasurement
      * Convert a QgsDartMeasurement::Type enum to a string that is understood
      * by the system.
      *
+     * \since QGIS 2.something
      */
     static const QString typeToString( QgsDartMeasurement::Type type );
 

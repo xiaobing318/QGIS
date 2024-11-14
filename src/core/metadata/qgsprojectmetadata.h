@@ -54,6 +54,9 @@ class CORE_EXPORT QgsProjectMetadata : public QgsAbstractMetadataBase
 {
   public:
 
+    /**
+     * Constructor for QgsProjectMetadata.
+     */
     QgsProjectMetadata() = default;
 
     QgsProjectMetadata *clone() const override SIP_FACTORY;
@@ -99,6 +102,8 @@ class CORE_EXPORT QgsProjectMetadata : public QgsAbstractMetadataBase
      */
 
     QString mAuthor;
+
+    QDateTime mCreationDateTime;
 
     /*
      * IMPORTANT!!!!!!

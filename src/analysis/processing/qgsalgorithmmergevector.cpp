@@ -47,7 +47,7 @@ QString QgsMergeVectorAlgorithm::groupId() const
 
 void QgsMergeVectorAlgorithm::initAlgorithm( const QVariantMap & )
 {
-  addParameter( new QgsProcessingParameterMultipleLayers( QStringLiteral( "LAYERS" ), QObject::tr( "Input layers" ), Qgis::ProcessingSourceType::Vector ) );
+  addParameter( new QgsProcessingParameterMultipleLayers( QStringLiteral( "LAYERS" ), QObject::tr( "Input layers" ), QgsProcessing::TypeVector ) );
   addParameter( new QgsProcessingParameterCrs( QStringLiteral( "CRS" ), QObject::tr( "Destination CRS" ), QVariant(), true ) );
   addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Merged" ) ) );
 }
@@ -69,11 +69,6 @@ QString QgsMergeVectorAlgorithm::shortHelpString() const
                       "taken from the first input layer. All layers will all be reprojected to match this CRS." );
 }
 
-Qgis::ProcessingAlgorithmDocumentationFlags QgsMergeVectorAlgorithm::documentationFlags() const
-{
-  return Qgis::ProcessingAlgorithmDocumentationFlag::RegeneratesPrimaryKey;
-}
-
 QgsMergeVectorAlgorithm *QgsMergeVectorAlgorithm::createInstance() const
 {
   return new QgsMergeVectorAlgorithm();
@@ -85,7 +80,7 @@ QVariantMap QgsMergeVectorAlgorithm::processAlgorithm( const QVariantMap &parame
 
   QgsFields outputFields;
   long totalFeatureCount = 0;
-  Qgis::WkbType outputType = Qgis::WkbType::Unknown;
+  QgsWkbTypes::Type outputType = QgsWkbTypes::Unknown;
   QgsCoordinateReferenceSystem outputCrs = parameterAsCrs( parameters, QStringLiteral( "CRS" ), context );
 
   if ( outputCrs.isValid() )
@@ -109,40 +104,36 @@ QVariantMap QgsMergeVectorAlgorithm::processAlgorithm( const QVariantMap &parame
       continue;
     }
 
-    if ( layer->type() != Qgis::LayerType::Vector )
+    if ( layer->type() != QgsMapLayerType::VectorLayer )
       throw QgsProcessingException( QObject::tr( "All layers must be vector layers!" ) );
 
     QgsVectorLayer *vl = qobject_cast< QgsVectorLayer * >( layer );
 
-    const Qgis::WkbType layerWkbType = vl->wkbType();
-    const QgsCoordinateReferenceSystem layerCrs = vl->crs();
-    const QString layerName = vl->name();
-
-    if ( !outputCrs.isValid() && layerCrs.isValid() )
+    if ( !outputCrs.isValid() && vl->crs().isValid() )
     {
-      outputCrs = layerCrs;
+      outputCrs = vl->crs();
       feedback->pushInfo( QObject::tr( "Taking destination CRS %1 from layer" ).arg( outputCrs.authid() ) );
     }
 
     // check wkb type
-    if ( outputType != Qgis::WkbType::Unknown && outputType != Qgis::WkbType::NoGeometry )
+    if ( outputType != QgsWkbTypes::Unknown && outputType != QgsWkbTypes::NoGeometry )
     {
-      if ( QgsWkbTypes::geometryType( outputType ) != QgsWkbTypes::geometryType( layerWkbType ) )
+      if ( QgsWkbTypes::geometryType( outputType ) != QgsWkbTypes::geometryType( vl->wkbType() ) )
         throw QgsProcessingException( QObject::tr( "All layers must have same geometry type! Encountered a %1 layer when expecting a %2 layer." )
-                                      .arg( QgsWkbTypes::geometryDisplayString( QgsWkbTypes::geometryType( layerWkbType ) ),
+                                      .arg( QgsWkbTypes::geometryDisplayString( QgsWkbTypes::geometryType( vl->wkbType() ) ),
                                             QgsWkbTypes::geometryDisplayString( QgsWkbTypes::geometryType( outputType ) ) ) );
 
-      if ( QgsWkbTypes::hasM( layerWkbType ) && !QgsWkbTypes::hasM( outputType ) )
+      if ( QgsWkbTypes::hasM( vl->wkbType() ) && !QgsWkbTypes::hasM( outputType ) )
       {
         outputType = QgsWkbTypes::addM( outputType );
         feedback->pushInfo( QObject::tr( "Found a layer with M values, upgrading output type to %1" ).arg( QgsWkbTypes::displayString( outputType ) ) );
       }
-      if ( QgsWkbTypes::hasZ( layerWkbType ) && !QgsWkbTypes::hasZ( outputType ) )
+      if ( QgsWkbTypes::hasZ( vl->wkbType() ) && !QgsWkbTypes::hasZ( outputType ) )
       {
         outputType = QgsWkbTypes::addZ( outputType );
         feedback->pushInfo( QObject::tr( "Found a layer with Z values, upgrading output type to %1" ).arg( QgsWkbTypes::displayString( outputType ) ) );
       }
-      if ( QgsWkbTypes::isMultiType( layerWkbType ) && !QgsWkbTypes::isMultiType( outputType ) )
+      if ( QgsWkbTypes::isMultiType( vl->wkbType() ) && !QgsWkbTypes::isMultiType( outputType ) )
       {
         outputType = QgsWkbTypes::multiType( outputType );
         feedback->pushInfo( QObject::tr( "Found a layer with multiparts, upgrading output type to %1" ).arg( QgsWkbTypes::displayString( outputType ) ) );
@@ -150,7 +141,7 @@ QVariantMap QgsMergeVectorAlgorithm::processAlgorithm( const QVariantMap &parame
     }
     else
     {
-      outputType = layerWkbType;
+      outputType = vl->wkbType();
       feedback->pushInfo( QObject::tr( "Setting output type to %1" ).arg( QgsWkbTypes::displayString( outputType ) ) );
     }
 
@@ -169,9 +160,9 @@ QVariantMap QgsMergeVectorAlgorithm::processAlgorithm( const QVariantMap &parame
           {
             feedback->pushWarning( QObject::tr( "%1 field in layer %2 has different data type than the destination layer (%3 instead of %4). "
                                                 "%1 field will be converted to string type." )
-                                   .arg( sourceField.name(), layerName, sourceField.typeName(), destField.typeName() ) );
-            destField.setType( QMetaType::Type::QString );
-            destField.setSubType( QMetaType::Type::UnknownType );
+                                   .arg( sourceField.name(), vl->name(), sourceField.typeName(), destField.typeName() ) );
+            destField.setType( QVariant::String );
+            destField.setSubType( QVariant::Invalid );
             destField.setLength( 0 );
             destField.setPrecision( 0 );
           }
@@ -187,13 +178,13 @@ QVariantMap QgsMergeVectorAlgorithm::processAlgorithm( const QVariantMap &parame
   bool addLayerField = false;
   if ( outputFields.lookupField( QStringLiteral( "layer" ) ) < 0 )
   {
-    outputFields.append( QgsField( QStringLiteral( "layer" ), QMetaType::Type::QString, QString() ) );
+    outputFields.append( QgsField( QStringLiteral( "layer" ), QVariant::String, QString() ) );
     addLayerField = true;
   }
   bool addPathField = false;
   if ( outputFields.lookupField( QStringLiteral( "path" ) ) < 0 )
   {
-    outputFields.append( QgsField( QStringLiteral( "path" ), QMetaType::Type::QString, QString() ) );
+    outputFields.append( QgsField( QStringLiteral( "path" ), QVariant::String, QString() ) );
     addPathField = true;
   }
 
@@ -218,11 +209,7 @@ QVariantMap QgsMergeVectorAlgorithm::processAlgorithm( const QVariantMap &parame
     if ( !vl )
       continue;
 
-    const QString layerName = layer->name();
-    const QString layerSource = layer->publicSource();
-    const QgsFields layerFields = vl->fields();
-
-    feedback->pushInfo( QObject::tr( "Packaging layer %1/%2: %3" ).arg( layerNumber ).arg( layers.count() ).arg( layerName ) );
+    feedback->pushInfo( QObject::tr( "Packaging layer %1/%2: %3" ).arg( layerNumber ).arg( layers.count() ).arg( layer->name() ) );
 
     QgsFeatureIterator it = vl->getFeatures( QgsFeatureRequest().setDestinationCrs( outputCrs, context.transformContext() ) );
     QgsFeature f;
@@ -261,17 +248,17 @@ QVariantMap QgsMergeVectorAlgorithm::processAlgorithm( const QVariantMap &parame
       {
         if ( addLayerField && destField.name() == QLatin1String( "layer" ) )
         {
-          destAttributes.append( layerName );
+          destAttributes.append( layer->name() );
           continue;
         }
         else if ( addPathField && destField.name() == QLatin1String( "path" ) )
         {
-          destAttributes.append( layerSource );
+          destAttributes.append( layer->publicSource() );
           continue;
         }
 
         QVariant destAttribute;
-        const int sourceIndex = layerFields.lookupField( destField.name() );
+        const int sourceIndex = vl->fields().lookupField( destField.name() );
         if ( sourceIndex >= 0 )
         {
           destAttribute = f.attributes().at( sourceIndex );
@@ -289,8 +276,6 @@ QVariantMap QgsMergeVectorAlgorithm::processAlgorithm( const QVariantMap &parame
 
   if ( errored )
     throw QgsProcessingException( QObject::tr( "Error obtained while merging one or more layers." ) );
-
-  sink->finalize();
 
   QVariantMap outputs;
   outputs.insert( QStringLiteral( "OUTPUT" ), dest );

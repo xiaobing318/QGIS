@@ -33,6 +33,8 @@ namespace Qt3DRender
   class QCameraSelector;
   class QClearBuffers;
   class QRenderAspect;
+  class QRenderCapture;
+  class QRenderCaptureReply;
   class QRenderTarget;
   class QRenderTargetSelector;
   class QRenderTargetOutput;
@@ -46,6 +48,7 @@ namespace Qt3DLogic
   class QLogicAspect;
 }
 
+#include "qgsshadowrenderingframegraph.h"
 
 #define SIP_NO_FILE
 

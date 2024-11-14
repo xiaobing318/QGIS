@@ -18,7 +18,6 @@
 #include "qgsdial.h"
 #include "qgslogger.h"
 #include "qgsvariantutils.h"
-#include "moc_qgsdial.cpp"
 
 #include <QPaintEvent>
 #include <QPainter>
@@ -73,10 +72,10 @@ void QgsDial::update()
   if ( QgsVariantUtils::isNull( mValue ) )
     mValue = mMin;
 
-  if ( mMin.userType() == QMetaType::Type::Int &&
-       mMax.userType() == QMetaType::Type::Int &&
-       mStep.userType() == QMetaType::Type::Int &&
-       mValue.userType() == QMetaType::Type::Int )
+  if ( mMin.type() == QVariant::Int &&
+       mMax.type() == QVariant::Int &&
+       mStep.type() == QVariant::Int &&
+       mValue.type() == QVariant::Int )
   {
     QDial::setMinimum( mMin.toInt() );
     QDial::setMaximum( mMax.toInt() );
@@ -84,10 +83,10 @@ void QgsDial::update()
     QDial::setValue( mValue.toInt() );
   }
 
-  if ( mMin.userType() == QMetaType::Type::Double &&
-       mMax.userType() == QMetaType::Type::Double &&
-       mStep.userType() == QMetaType::Type::Double &&
-       mValue.userType() == QMetaType::Type::Double )
+  if ( mMin.type() == QVariant::Double &&
+       mMax.type() == QVariant::Double &&
+       mStep.type() == QVariant::Double &&
+       mValue.type() == QVariant::Double )
   {
     if ( minimum() != 0 )
       QDial::setMinimum( 0 );
@@ -116,17 +115,17 @@ void QgsDial::onValueChanged( int value )
   {
     mValue = QVariant();
   }
-  else if ( mMin.userType() == QMetaType::Type::Int &&
-            mMax.userType() == QMetaType::Type::Int &&
-            mStep.userType() == QMetaType::Type::Int &&
-            mValue.userType() == QMetaType::Type::Int )
+  else if ( mMin.type() == QVariant::Int &&
+            mMax.type() == QVariant::Int &&
+            mStep.type() == QVariant::Int &&
+            mValue.type() == QVariant::Int )
   {
     mValue = value;
   }
-  else if ( mMin.userType() == QMetaType::Type::Double &&
-            mMax.userType() == QMetaType::Type::Double &&
-            mStep.userType() == QMetaType::Type::Double &&
-            mValue.userType() == QMetaType::Type::Double )
+  else if ( mMin.type() == QVariant::Double &&
+            mMax.type() == QVariant::Double &&
+            mStep.type() == QVariant::Double &&
+            mValue.type() == QVariant::Double )
   {
     mValue = QVariant( mMin.toDouble() + value * mStep.toDouble() );
   }

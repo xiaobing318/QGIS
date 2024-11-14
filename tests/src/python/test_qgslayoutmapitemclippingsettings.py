@@ -9,22 +9,24 @@ __author__ = '(C) 2020 Nyall Dawson'
 __date__ = '03/07/2020'
 __copyright__ = 'Copyright 2020, The QGIS Project'
 
-from qgis.PyQt.QtCore import QCoreApplication, QEvent, QRectF
+import qgis  # NOQA
+from qgis.PyQt.QtCore import (
+    QCoreApplication,
+    QEvent,
+    QRectF
+)
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (
-    QgsLayout,
-    QgsLayoutItemMap,
-    QgsLayoutItemMapItemClipPathSettings,
-    QgsLayoutItemShape,
-    QgsMapClippingRegion,
-    QgsPrintLayout,
-    QgsProject,
-    QgsReadWriteContext,
-    QgsRectangle,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsLayoutItemMap,
+                       QgsLayout,
+                       QgsProject,
+                       QgsPrintLayout,
+                       QgsLayoutItemMapItemClipPathSettings,
+                       QgsMapClippingRegion,
+                       QgsLayoutItemShape,
+                       QgsReadWriteContext,
+                       QgsRectangle)
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -32,7 +34,7 @@ start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestQgsLayoutItemMapItemClipPathSettings(QgisTestCase):
+class TestQgsLayoutItemMapItemClipPathSettings(unittest.TestCase):
 
     def testSettings(self):
         p = QgsProject()
@@ -74,7 +76,7 @@ class TestQgsLayoutItemMapItemClipPathSettings(QgisTestCase):
         settings.setSourceItem(shape)
         self.assertEqual(len(spy), 6)
         shape.deleteLater()
-        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
         del shape
         self.assertIsNone(settings.sourceItem())
 
@@ -96,7 +98,7 @@ class TestQgsLayoutItemMapItemClipPathSettings(QgisTestCase):
         settings.setEnabled(True)
         self.assertTrue(settings.isActive())
         shape.deleteLater()
-        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
         del shape
         self.assertFalse(settings.isActive())
 
@@ -146,19 +148,15 @@ class TestQgsLayoutItemMapItemClipPathSettings(QgisTestCase):
         self.assertEqual(map2.itemClippingSettings().sourceItem(), shape2)
 
     def testClippedMapExtent(self):
-        # - we position a map and a triangle in a layout at specific layout/scene coordinates
-        # - the map is zoomed to a specific extent, defined in map/crs coordinates
-        # - we use the triangle to clip the map in the layout
-        #   and test if the triangle is converted to the correct clipped extent in map/crs coordinates
         p = QgsProject()
         l = QgsPrintLayout(p)
         map = QgsLayoutItemMap(l)
         shape = QgsLayoutItemShape(l)
         l.addLayoutItem(map)
         map.attemptSetSceneRect(QRectF(10, 20, 100, 80))
-        map.zoomToExtent(QgsRectangle(50, 40, 100, 200))
+        map.zoomToExtent(QgsRectangle(100, 200, 50, 40))
         l.addLayoutItem(shape)
-        shape.setShapeType(QgsLayoutItemShape.Shape.Triangle)
+        shape.setShapeType(QgsLayoutItemShape.Triangle)
         shape.attemptSetSceneRect(QRectF(20, 30, 70, 50))
 
         settings = map.itemClippingSettings()
@@ -169,10 +167,6 @@ class TestQgsLayoutItemMapItemClipPathSettings(QgisTestCase):
         self.assertEqual(geom.asWkt(), 'Polygon ((-5 80, 135 80, 65 180, -5 80))')
 
     def testToMapClippingRegion(self):
-        # - we position a map and a triangle in a layout at specific layout/scene coordinates
-        # - the map is zoomed to a specific extent, defined in map/crs coordinates
-        # - we use the triangle to clip the map in the layout
-        #   and test if the triangle is converted to the correct clipping shape in map/crs coordinates
         p = QgsProject()
         l = QgsPrintLayout(p)
         p.layoutManager().addLayout(l)
@@ -180,9 +174,9 @@ class TestQgsLayoutItemMapItemClipPathSettings(QgisTestCase):
         shape = QgsLayoutItemShape(l)
         l.addLayoutItem(map)
         map.attemptSetSceneRect(QRectF(10, 20, 100, 80))
-        map.zoomToExtent(QgsRectangle(50, 40, 100, 200))
+        map.zoomToExtent(QgsRectangle(100, 200, 50, 40))
         l.addLayoutItem(shape)
-        shape.setShapeType(QgsLayoutItemShape.Shape.Triangle)
+        shape.setShapeType(QgsLayoutItemShape.Triangle)
         shape.attemptSetSceneRect(QRectF(20, 30, 70, 50))
 
         settings = map.itemClippingSettings()

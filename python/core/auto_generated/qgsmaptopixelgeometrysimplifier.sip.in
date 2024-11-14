@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsmaptopixelgeometrysimplifier.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -23,8 +23,15 @@ This class enables simplify the geometries to be rendered in a MapCanvas target 
 #include "qgsmaptopixelgeometrysimplifier.h"
 %End
   public:
+    enum SimplifyAlgorithm
+    {
+      Distance,
+      SnapToGrid,
+      Visvalingam,
+      SnappedToGridGlobal,
+    };
 
-    QgsMapToPixelSimplifier( int simplifyFlags, double tolerance, Qgis::VectorSimplificationAlgorithm simplifyAlgorithm = Qgis::VectorSimplificationAlgorithm::Distance );
+    QgsMapToPixelSimplifier( int simplifyFlags, double tolerance, SimplifyAlgorithm simplifyAlgorithm = Distance );
 %Docstring
 Constructor
 %End
@@ -60,11 +67,11 @@ Gets the simplification hints of the vector layer managed
 Sets the simplification hints of the vector layer managed
 %End
 
-    Qgis::VectorSimplificationAlgorithm simplifyAlgorithm() const;
+    SimplifyAlgorithm simplifyAlgorithm() const;
 %Docstring
 Gets the local simplification algorithm of the vector layer managed
 %End
-    void setSimplifyAlgorithm( Qgis::VectorSimplificationAlgorithm simplifyAlgorithm );
+    void setSimplifyAlgorithm( SimplifyAlgorithm simplifyAlgorithm );
 %Docstring
 Sets the local simplification algorithm of the vector layer managed
 %End
@@ -97,5 +104,5 @@ Returns whether the envelope can be replaced by its BBOX when is applied the spe
  *                                                                      *
  * src/core/qgsmaptopixelgeometrysimplifier.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

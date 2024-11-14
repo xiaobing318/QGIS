@@ -68,12 +68,12 @@ QString QgsLineSubstringAlgorithm::shortDescription() const
 
 QList<int> QgsLineSubstringAlgorithm::inputLayerTypes() const
 {
-  return QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorLine );
+  return QList<int>() << QgsProcessing::TypeVectorLine;
 }
 
-Qgis::ProcessingSourceType QgsLineSubstringAlgorithm::outputLayerType() const
+QgsProcessing::SourceType QgsLineSubstringAlgorithm::outputLayerType() const
 {
-  return Qgis::ProcessingSourceType::VectorLine;
+  return QgsProcessing::TypeVectorLine;
 }
 
 QgsLineSubstringAlgorithm *QgsLineSubstringAlgorithm::createInstance() const
@@ -98,10 +98,10 @@ void QgsLineSubstringAlgorithm::initParameters( const QVariantMap & )
   addParameter( endDistance.release() );
 }
 
-Qgis::ProcessingFeatureSourceFlags QgsLineSubstringAlgorithm::sourceFlags() const
+QgsProcessingFeatureSource::Flag QgsLineSubstringAlgorithm::sourceFlags() const
 {
   // skip geometry checks - this algorithm doesn't care about invalid geometries
-  return Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks;
+  return QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks;
 }
 
 bool QgsLineSubstringAlgorithm::prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback * )

@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsdelimitedtextfile.h"
-#include "moc_qgsdelimitedtextfile.cpp"
 #include "qgslogger.h"
 
 #include <QtGlobal>
@@ -785,15 +784,6 @@ QgsDelimitedTextFile::Status QgsDelimitedTextFile::parseQuoted( QString &buffer,
   int cp = 0;          // Pointer to the next character in the buffer
   int cpmax = buffer.size(); // End of string
 
-  const bool isSingleCharDelim = mDelimChars.size() == 1;
-  const QChar firstDelimChar = isSingleCharDelim ? mDelimChars.at( 0 ) : QChar();
-  const bool isSingleCharQuote = mQuoteChar.size() == 1;
-  const QChar firstQuoteChar = isSingleCharQuote ? mQuoteChar.at( 0 ) : QChar();
-  const bool isSingleCharEscape = mEscapeChar.size() == 1;
-  const QChar firstEscapeChar = isSingleCharEscape ? mEscapeChar.at( 0 ) : QChar();
-
-  const QChar *bufferData = buffer.constData();
-
   while ( true )
   {
     // If end of line then if escaped or buffered then try to get more...
@@ -810,21 +800,19 @@ QgsDelimitedTextFile::Status QgsDelimitedTextFile::parseQuoted( QString &buffer,
         field.append( '\n' );
         cp = 0;
         cpmax = buffer.size();
-        bufferData = buffer.constData();
         escaped = false;
         continue;
       }
       break;
     }
 
-    const QChar *c = bufferData;
+    const QChar c = buffer[cp];
     cp++;
-    bufferData++;
 
     // If escaped, then just append the character
     if ( escaped )
     {
-      field.append( *c );
+      field.append( c );
       escaped = false;
       continue;
     }
@@ -839,14 +827,13 @@ QgsDelimitedTextFile::Status QgsDelimitedTextFile::parseQuoted( QString &buffer,
 
     bool isQuote = false;
     bool isEscape = false;
-    const bool isDelim = isSingleCharDelim ? firstDelimChar == *c : mDelimChars.contains( *c );
+    const bool isDelim = mDelimChars.contains( c );
     if ( ! isDelim )
     {
-      const bool isQuoteChar = isSingleCharQuote ? firstQuoteChar == *c : mQuoteChar.contains( *c );
-      isQuote = quoted ? *c == quoteChar : isQuoteChar;
-      isEscape = isSingleCharEscape ? firstEscapeChar == *c : mEscapeChar.contains( *c );
-      if ( isQuoteChar && isEscape )
-        isEscape = isQuote;
+      const bool isQuoteChar = mQuoteChar.contains( c );
+      isQuote = quoted ? c == quoteChar : isQuoteChar;
+      isEscape = mEscapeChar.contains( c );
+      if ( isQuoteChar && isEscape ) isEscape = isQuote;
     }
 
     // Start or end of quote ...
@@ -857,11 +844,10 @@ QgsDelimitedTextFile::Status QgsDelimitedTextFile::parseQuoted( QString &buffer,
       {
         // if is also escape and next character is quote, then
         // escape the quote..
-        if ( isEscape && cp < buffer.length() && *bufferData == quoteChar )
+        if ( isEscape && cp < buffer.length() && buffer[cp] == quoteChar )
         {
           field.append( quoteChar );
           cp++;
-          bufferData++;
         }
         // Otherwise end of quoted field
         else
@@ -874,7 +860,7 @@ QgsDelimitedTextFile::Status QgsDelimitedTextFile::parseQuoted( QString &buffer,
       else if ( ! started )
       {
         field.clear();
-        quoteChar = *c;
+        quoteChar = c;
         quoted = true;
         started = true;
       }
@@ -893,7 +879,7 @@ QgsDelimitedTextFile::Status QgsDelimitedTextFile::parseQuoted( QString &buffer,
     // If within quotes, then append to the string
     else if ( quoted )
     {
-      field.append( *c );
+      field.append( c );
     }
     // If it is a delimiter, then end of field...
     else if ( isDelim )
@@ -907,10 +893,9 @@ QgsDelimitedTextFile::Status QgsDelimitedTextFile::parseQuoted( QString &buffer,
     }
     // Whitespace is permitted before the start of a field, or
     // after the end..
-    else if ( c->isSpace() )
+    else if ( c.isSpace() )
     {
-      if ( ! ended )
-        field.append( *c );
+      if ( ! ended ) field.append( c );
     }
     // Other chars permitted if not after quoted field
     else
@@ -920,7 +905,7 @@ QgsDelimitedTextFile::Status QgsDelimitedTextFile::parseQuoted( QString &buffer,
         fields.clear();
         return RecordInvalid;
       }
-      field.append( *c );
+      field.append( c );
       started = true;
     }
   }

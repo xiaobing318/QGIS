@@ -20,7 +20,7 @@ from qgis.testing import unittest
 
 from utilities import unitTestDataPath
 
-DEFAULT_CACHE_SIZE = 0  # Smart cache size
+DEFAULT_CACHE_SIZE = 256 * 1024 * 1024
 
 
 class TestQgsServerSettings(unittest.TestCase):

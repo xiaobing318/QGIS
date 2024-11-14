@@ -18,9 +18,9 @@
 #include "qgsdatasourceuri.h"
 #include "qgsgui.h"
 #include "qgshanasourceselect.h"
-#include "moc_qgshanasourceselect.cpp"
 #include "qgshanaconnection.h"
 #include "qgshananewconnection.h"
+#include "qgshanaprovider.h"
 #include "qgshanatablemodel.h"
 #include "qgshanautils.h"
 #include "qgslogger.h"
@@ -29,6 +29,8 @@
 #include "qgsquerybuilder.h"
 #include "qgsvectorlayer.h"
 #include "qgssettings.h"
+#include "qgsdbfilterproxymodel.h"
+
 
 #include <QComboBox>
 #include <QFileDialog>
@@ -56,19 +58,19 @@ QWidget *QgsHanaSourceSelectDelegate::createEditor(
   if ( index.column() == QgsHanaTableModel::DbtmGeomType && index.data( Qt::UserRole + 1 ).toBool() )
   {
     QComboBox *cb = new QComboBox( parent );
-    for ( const Qgis::WkbType type :
-          QList<Qgis::WkbType>()
-          << Qgis::WkbType::Point
-          << Qgis::WkbType::LineString
-          << Qgis::WkbType::Polygon
-          << Qgis::WkbType::MultiPoint
-          << Qgis::WkbType::MultiLineString
-          << Qgis::WkbType::MultiPolygon
-          << Qgis::WkbType::CircularString
-          << Qgis::WkbType::GeometryCollection
-          << Qgis::WkbType::NoGeometry )
+    for ( const QgsWkbTypes::Type type :
+          QList<QgsWkbTypes::Type>()
+          << QgsWkbTypes::Point
+          << QgsWkbTypes::LineString
+          << QgsWkbTypes::Polygon
+          << QgsWkbTypes::MultiPoint
+          << QgsWkbTypes::MultiLineString
+          << QgsWkbTypes::MultiPolygon
+          << QgsWkbTypes::CircularString
+          << QgsWkbTypes::GeometryCollection
+          << QgsWkbTypes::NoGeometry )
     {
-      cb->addItem( QgsHanaTableModel::iconForWkbType( type ), QgsWkbTypes::displayString( type ), static_cast< quint32>( type ) );
+      cb->addItem( QgsHanaTableModel::iconForWkbType( type ), QgsWkbTypes::displayString( type ), type );
     }
     return cb;
   }
@@ -118,11 +120,11 @@ void QgsHanaSourceSelectDelegate::setModelData(
   {
     if ( index.column() == QgsHanaTableModel::DbtmGeomType )
     {
-      const Qgis::WkbType type = static_cast<Qgis::WkbType>( cb->currentData().toInt() );
+      const QgsWkbTypes::Type type = static_cast<QgsWkbTypes::Type>( cb->currentData().toInt() );
 
       model->setData( index, QgsHanaTableModel::iconForWkbType( type ), Qt::DecorationRole );
-      model->setData( index, type != Qgis::WkbType::Unknown ? QgsWkbTypes::displayString( type ) : tr( "Select…" ) );
-      model->setData( index, static_cast< quint32>( type ), Qt::UserRole + 2 );
+      model->setData( index, type != QgsWkbTypes::Unknown ? QgsWkbTypes::displayString( type ) : tr( "Select…" ) );
+      model->setData( index, type, Qt::UserRole + 2 );
     }
     else if ( index.column() == QgsHanaTableModel::DbtmPkCol )
     {
@@ -214,7 +216,7 @@ QgsHanaSourceSelect::QgsHanaSourceSelect(
   setupButtons( buttonBox );
   connect( buttonBox, &QDialogButtonBox::helpRequested, this, &QgsHanaSourceSelect::showHelp );
 
-  if ( widgetMode() != QgsProviderRegistry::WidgetMode::Standalone )
+  if ( widgetMode() != QgsProviderRegistry::WidgetMode::None )
     mHoldDialogOpen->hide();
   else
     setWindowTitle( tr( "Add SAP HANA Table(s)" ) );
@@ -408,7 +410,7 @@ void QgsHanaSourceSelect::addButtonClicked()
   else
   {
     emit addDatabaseLayers( mSelectedTables, QStringLiteral( "hana" ) );
-    if ( !mHoldDialogOpen->isChecked() && widgetMode() == QgsProviderRegistry::WidgetMode::Standalone )
+    if ( !mHoldDialogOpen->isChecked() && widgetMode() == QgsProviderRegistry::WidgetMode::None )
       accept();
   }
 }
@@ -499,14 +501,14 @@ void QgsHanaSourceSelect::setSql( const QModelIndex &index )
 {
   if ( !index.parent().isValid() )
   {
-    QgsDebugMsgLevel( "schema item found", 2 );
+    QgsDebugMsg( "schema item found" );
     return;
   }
 
   const QString uri = mTableModel->layerURI( index, mConnectionName, mConnectionInfo );
   if ( uri.isNull() )
   {
-    QgsDebugMsgLevel( "no uri", 2 );
+    QgsDebugMsg( "no uri" );
     return;
   }
 

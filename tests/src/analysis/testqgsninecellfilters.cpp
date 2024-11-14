@@ -21,6 +21,7 @@
 #include "qgsruggednessfilter.h"
 #include "qgstotalcurvaturefilter.h"
 #include "qgsapplication.h"
+#include "qgssettings.h"
 
 #ifdef HAVE_OPENCL
 #include "qgsopenclutils.h"
@@ -31,14 +32,9 @@
 // If true regenerate raster reference images
 const bool REGENERATE_REFERENCES = false;
 
-class TestNineCellFilters : public QgsTest
+class TestNineCellFilters : public QObject
 {
     Q_OBJECT
-
-  public:
-    TestNineCellFilters()
-      : QgsTest( QStringLiteral( "Nine Cell Filter Tests" ) )
-    {}
 
     QString SRC_FILE;
   private slots:

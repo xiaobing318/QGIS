@@ -66,9 +66,9 @@ void QgsConstantRasterAlgorithm::initAlgorithm( const QVariantMap & )
   addParameter( new QgsProcessingParameterExtent( QStringLiteral( "EXTENT" ), QObject::tr( "Desired extent" ) ) );
   addParameter( new QgsProcessingParameterCrs( QStringLiteral( "TARGET_CRS" ), QObject::tr( "Target CRS" ), QStringLiteral( "ProjectCrs" ) ) );
   addParameter( new QgsProcessingParameterNumber( QStringLiteral( "PIXEL_SIZE" ), QObject::tr( "Pixel size" ),
-                Qgis::ProcessingNumberParameterType::Double, 1, false, 0 ) );
+                QgsProcessingParameterNumber::Double, 0.00001, false, 0.01 ) );
   addParameter( new QgsProcessingParameterNumber( QStringLiteral( "NUMBER" ), QObject::tr( "Constant value" ),
-                Qgis::ProcessingNumberParameterType::Double, 1, false ) );
+                QgsProcessingParameterNumber::Double, 1, false ) );
 
   QStringList rasterDataTypes; //currently supported raster data types that can be handled QgsRasterBlock::writeValue()
   rasterDataTypes << QStringLiteral( "Byte" )
@@ -81,13 +81,8 @@ void QgsConstantRasterAlgorithm::initAlgorithm( const QVariantMap & )
 
   //QGIS3: parameter set to Float32 by default so that existing models/scripts don't break
   std::unique_ptr< QgsProcessingParameterDefinition > rasterTypeParameter = std::make_unique< QgsProcessingParameterEnum >( QStringLiteral( "OUTPUT_TYPE" ), QObject::tr( "Output raster data type" ),  rasterDataTypes, false, 5, false );
-  rasterTypeParameter->setFlags( Qgis::ProcessingParameterFlag::Advanced );
+  rasterTypeParameter->setFlags( QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( rasterTypeParameter.release() );
-
-  std::unique_ptr< QgsProcessingParameterString > createOptsParam = std::make_unique< QgsProcessingParameterString >( QStringLiteral( "CREATE_OPTIONS" ), QObject::tr( "Creation options" ), QVariant(), false, true );
-  createOptsParam->setMetadata( QVariantMap( {{QStringLiteral( "widget_wrapper" ), QVariantMap( {{QStringLiteral( "widget_type" ), QStringLiteral( "rasteroptions" ) }} ) }} ) );
-  createOptsParam->setFlags( createOptsParam->flags() | Qgis::ProcessingParameterFlag::Advanced );
-  addParameter( createOptsParam.release() );
 
   addParameter( new QgsProcessingParameterRasterDestination( QStringLiteral( "OUTPUT" ), QObject::tr( "Constant" ) ) );
 }
@@ -99,11 +94,6 @@ QVariantMap QgsConstantRasterAlgorithm::processAlgorithm( const QVariantMap &par
   const double pixelSize = parameterAsDouble( parameters, QStringLiteral( "PIXEL_SIZE" ), context );
   const double value = parameterAsDouble( parameters, QStringLiteral( "NUMBER" ), context );
   const int typeId = parameterAsInt( parameters, QStringLiteral( "OUTPUT_TYPE" ), context );
-
-  if ( pixelSize <= 0 )
-  {
-    throw QgsProcessingException( QObject::tr( "Pixel size must be greater than 0." ) );
-  }
 
   //implement warning if input float has decimal places but is written to integer raster
   double fractpart;
@@ -157,8 +147,6 @@ QVariantMap QgsConstantRasterAlgorithm::processAlgorithm( const QVariantMap &par
     default:
       break;
   }
-
-  const QString createOptions = parameterAsString( parameters, QStringLiteral( "CREATE_OPTIONS" ), context ).trimmed();
   const QString outputFile = parameterAsOutputLayer( parameters, QStringLiteral( "OUTPUT" ), context );
   const QFileInfo fi( outputFile );
   const QString outputFormat = QgsRasterFileWriter::driverForExtension( fi.suffix() );
@@ -172,10 +160,6 @@ QVariantMap QgsConstantRasterAlgorithm::processAlgorithm( const QVariantMap &par
 
   std::unique_ptr< QgsRasterFileWriter > writer = std::make_unique< QgsRasterFileWriter >( outputFile );
   writer->setOutputProviderKey( QStringLiteral( "gdal" ) );
-  if ( !createOptions.isEmpty() )
-  {
-    writer->setCreateOptions( createOptions.split( '|' ) );
-  }
   writer->setOutputFormat( outputFormat );
   std::unique_ptr<QgsRasterDataProvider > provider( writer->createOneBandRaster( rasterDataType, cols, rows, rasterExtent, crs ) );
   if ( !provider )

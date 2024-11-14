@@ -50,20 +50,20 @@ QString QgsKMeansClusteringAlgorithm::groupId() const
 void QgsKMeansClusteringAlgorithm::initAlgorithm( const QVariantMap & )
 {
   addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ),
-                QObject::tr( "Input layer" ), QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::VectorAnyGeometry ) ) );
+                QObject::tr( "Input layer" ), QList< int >() << QgsProcessing::TypeVectorAnyGeometry ) );
   addParameter( new QgsProcessingParameterNumber( QStringLiteral( "CLUSTERS" ), QObject::tr( "Number of clusters" ),
-                Qgis::ProcessingNumberParameterType::Integer, 5, false, 1 ) );
+                QgsProcessingParameterNumber::Integer, 5, false, 1 ) );
 
   auto fieldNameParam = std::make_unique<QgsProcessingParameterString>( QStringLiteral( "FIELD_NAME" ),
                         QObject::tr( "Cluster field name" ), QStringLiteral( "CLUSTER_ID" ) );
-  fieldNameParam->setFlags( fieldNameParam->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  fieldNameParam->setFlags( fieldNameParam->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( fieldNameParam.release() );
   auto sizeFieldNameParam = std::make_unique<QgsProcessingParameterString>( QStringLiteral( "SIZE_FIELD_NAME" ),
                             QObject::tr( "Cluster size field name" ), QStringLiteral( "CLUSTER_SIZE" ) );
-  sizeFieldNameParam->setFlags( sizeFieldNameParam->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  sizeFieldNameParam->setFlags( sizeFieldNameParam->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( sizeFieldNameParam.release() );
 
-  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Clusters" ), Qgis::ProcessingSourceType::VectorAnyGeometry ) );
+  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Clusters" ), QgsProcessing::TypeVectorAnyGeometry ) );
 }
 
 QString QgsKMeansClusteringAlgorithm::shortHelpString() const
@@ -88,9 +88,9 @@ QVariantMap QgsKMeansClusteringAlgorithm::processAlgorithm( const QVariantMap &p
   QgsFields outputFields = source->fields();
   QgsFields newFields;
   const QString clusterFieldName = parameterAsString( parameters, QStringLiteral( "FIELD_NAME" ), context );
-  newFields.append( QgsField( clusterFieldName, QMetaType::Type::Int ) );
+  newFields.append( QgsField( clusterFieldName, QVariant::Int ) );
   const QString clusterSizeFieldName = parameterAsString( parameters, QStringLiteral( "SIZE_FIELD_NAME" ), context );
-  newFields.append( QgsField( clusterSizeFieldName, QMetaType::Type::Int ) );
+  newFields.append( QgsField( clusterSizeFieldName, QVariant::Int ) );
   outputFields = QgsProcessingUtils::combineFields( outputFields, newFields );
 
   QString dest;
@@ -123,7 +123,7 @@ QVariantMap QgsKMeansClusteringAlgorithm::processAlgorithm( const QVariantMap &p
     featureWithGeometryCount++;
 
     QgsPointXY point;
-    if ( QgsWkbTypes::flatType( feat.geometry().wkbType() ) == Qgis::WkbType::Point )
+    if ( QgsWkbTypes::flatType( feat.geometry().wkbType() ) == QgsWkbTypes::Point )
       point = QgsPointXY( *qgsgeometry_cast< const QgsPoint * >( feat.geometry().constGet() ) );
     else
     {
@@ -192,8 +192,6 @@ QVariantMap QgsKMeansClusteringAlgorithm::processAlgorithm( const QVariantMap &p
     if ( !sink->addFeature( feat, QgsFeatureSink::FastInsert ) )
       throw QgsProcessingException( writeFeatureError( sink.get(), parameters, QStringLiteral( "OUTPUT" ) ) );
   }
-
-  sink->finalize();
 
   QVariantMap outputs;
   outputs.insert( QStringLiteral( "OUTPUT" ), dest );

@@ -119,7 +119,7 @@ inline Vector3D *NormVecDecorator::getNormal( int n ) const
   }
   else
   {
-    QgsDebugError( QStringLiteral( "warning, null pointer" ) );
+    QgsDebugMsg( QStringLiteral( "warning, null pointer" ) );
     return nullptr;
   }
 }

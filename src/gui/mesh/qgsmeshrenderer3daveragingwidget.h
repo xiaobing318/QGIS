@@ -24,18 +24,17 @@
 SIP_NO_FILE
 
 class QgsMeshLayer;
-class QgsMesh3DAveragingMethod;
+class QgsMesh3dAveragingMethod;
 class QgsScreenHelper;
 
 /**
  * \ingroup gui
- * \class QgsMeshRenderer3DAveragingWidget
+ * \class QgsMeshRenderer3dAveragingWidget
  *
  * \brief A widget for setup of the averaging method from 3d to 2d datasets on 3d stacked mesh.
  * The mesh layer must be connected
- *
  */
-class QgsMeshRenderer3DAveragingWidget : public QWidget, private Ui::QgsMeshRenderer3dAveragingWidgetBase
+class QgsMeshRenderer3dAveragingWidget : public QWidget, private Ui::QgsMeshRenderer3dAveragingWidgetBase
 {
     Q_OBJECT
 
@@ -45,7 +44,7 @@ class QgsMeshRenderer3DAveragingWidget : public QWidget, private Ui::QgsMeshRend
      * A widget to hold the renderer Vector settings for a mesh layer.
      * \param parent Parent object
      */
-    QgsMeshRenderer3DAveragingWidget( QWidget *parent = nullptr );
+    QgsMeshRenderer3dAveragingWidget( QWidget *parent = nullptr );
 
     //! Associates mesh layer with the widget
     void setLayer( QgsMeshLayer *layer );
@@ -55,7 +54,7 @@ class QgsMeshRenderer3DAveragingWidget : public QWidget, private Ui::QgsMeshRend
      *
      * Caller takes ownership
      */
-    std::unique_ptr<QgsMesh3DAveragingMethod> averagingMethod() const;
+    std::unique_ptr<QgsMesh3dAveragingMethod> averagingMethod() const;
 
     //! Synchronizes widgets state with associated mesh layer
     void syncToLayer();

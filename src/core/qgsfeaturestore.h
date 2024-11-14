@@ -32,6 +32,7 @@
 class CORE_EXPORT QgsFeatureStore : public QgsFeatureSink
 {
   public:
+    //! Constructor
     QgsFeatureStore() = default;
 
     //! Constructor

@@ -32,6 +32,7 @@ class QWindow;
  * \ingroup native
  * \brief Base class for implementing methods for native system calls that
  * are implemented in subclasses to provide platform abstraction.
+ * \since QGIS 3.0
  */
 class NATIVE_EXPORT QgsNative : public QObject
 {

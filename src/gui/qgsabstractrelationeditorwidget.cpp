@@ -16,11 +16,9 @@
  ***************************************************************************/
 
 #include "qgsabstractrelationeditorwidget.h"
-#include "moc_qgsabstractrelationeditorwidget.cpp"
 
 #include "qgsfeatureiterator.h"
 #include "qgsexpression.h"
-#include "qgsexpressioncontextutils.h"
 #include "qgsfeature.h"
 #include "qgsfeatureselectiondlg.h"
 #include "qgsrelation.h"
@@ -288,19 +286,13 @@ QgsFeatureIds QgsAbstractRelationEditorWidget::addFeature( const QgsGeometry &ge
     for ( const QgsRelation::FieldPair &fieldPair : constFieldPairs )
       keyAttrs.insert( fields.indexFromName( fieldPair.referencingField() ), mFeatureList.first().attribute( fieldPair.referencedField() ) );
 
-    QgsVectorLayerToolsContext context;
-    context.setParentWidget( this );
-    context.setShowModal( false );
-    context.setHideParent( true );
-    std::unique_ptr<QgsExpressionContextScope> scope( QgsExpressionContextUtils::parentFormScope( mFeatureList.first(), mEditorContext.attributeFormModeString() ) );
-    context.setAdditionalExpressionContextScope( scope.get() );
     QgsFeature linkFeature;
-    if ( !vlTools->addFeatureV2( mRelation.referencingLayer(), keyAttrs, geometry, &linkFeature, context ) )
+    if ( !vlTools->addFeature( mRelation.referencingLayer(), keyAttrs, geometry, &linkFeature, this, true, true ) )
       return QgsFeatureIds();
 
     addedFeatureIds.insert( linkFeature.id() );
 
-    // In multiedit add to other features to but without dialog
+    // In multiedit add to other features to but whitout dialog
     for ( const QgsFeature &feature : std::as_const( mFeatureList ) )
     {
       // First feature already added
@@ -349,7 +341,7 @@ void QgsAbstractRelationEditorWidget::deleteFeatures( const QgsFeatureIds &fids 
 
     QgsFeatureRequest deletedFeaturesRequest;
     deletedFeaturesRequest.setFilterFids( fids );
-    deletedFeaturesRequest.setFlags( Qgis::FeatureRequestFlag::NoGeometry );
+    deletedFeaturesRequest.setFlags( QgsFeatureRequest::NoGeometry );
     deletedFeaturesRequest.setSubsetOfAttributes( QgsAttributeList() << mNmRelation.referencedFields().first() );
 
     QgsFeatureIterator deletedFeatures = layer->getFeatures( deletedFeaturesRequest );
@@ -361,7 +353,7 @@ void QgsAbstractRelationEditorWidget::deleteFeatures( const QgsFeatureIds &fids 
     }
 
     QgsFeatureRequest linkingFeaturesRequest;
-    linkingFeaturesRequest.setFlags( Qgis::FeatureRequestFlag::NoGeometry );
+    linkingFeaturesRequest.setFlags( QgsFeatureRequest::NoGeometry );
     linkingFeaturesRequest.setNoAttributes();
 
     QString linkingFeaturesRequestExpression;
@@ -418,9 +410,8 @@ void QgsAbstractRelationEditorWidget::deleteFeatures( const QgsFeatureIds &fids 
     }
 
     // for extra safety to make sure we know that the delete can have impact on children and joins
-    const int res = QMessageBox::question( this, tr( "Delete at least %n feature(s) on other layer(s)", nullptr, childrenCount ),
-                                           tr( "Delete %n feature(s) on layer \"%1\", %2 as well and all of its other descendants.\nDelete these features?", nullptr, fids.count() )
-                                           .arg( layer->name() ).arg( childrenInfo ),
+    const int res = QMessageBox::question( this, tr( "Delete at least %1 feature(s) on other layer(s)" ).arg( childrenCount ),
+                                           tr( "Delete %1 feature(s) on layer \"%2\", %3 as well\nand all of its other descendants.\nDelete these features?" ).arg( fids.count() ).arg( layer->name() ).arg( childrenInfo ),
                                            QMessageBox::Yes | QMessageBox::No );
     if ( res != QMessageBox::Yes )
       deleteFeatures = false;
@@ -449,7 +440,7 @@ void QgsAbstractRelationEditorWidget::deleteFeatures( const QgsFeatureIds &fids 
   }
 }
 
-void QgsAbstractRelationEditorWidget::linkFeature( const QString &filterExpression )
+void QgsAbstractRelationEditorWidget::linkFeature()
 {
   QgsVectorLayer *layer = nullptr;
 
@@ -476,7 +467,6 @@ void QgsAbstractRelationEditorWidget::linkFeature( const QString &filterExpressi
 
   const QString displayString = QgsVectorLayerUtils::getFeatureDisplayString( mRelation.referencedLayer(), mFeatureList.first() );
   selectionDlg->setWindowTitle( tr( "Link existing child features for parent %1 \"%2\"" ).arg( mRelation.referencedLayer()->name(), displayString ) );
-  selectionDlg->setFilterExpression( filterExpression, QgsAttributeForm::ReplaceFilter );
 
   connect( selectionDlg, &QDialog::accepted, this, &QgsAbstractRelationEditorWidget::onLinkFeatureDlgAccepted );
   selectionDlg->show();
@@ -664,7 +654,7 @@ void QgsAbstractRelationEditorWidget::unlinkFeatures( const QgsFeatureIds &fids 
       const int idx = mRelation.referencingLayer()->fields().lookupField( fieldPair.referencingField() );
       if ( idx < 0 )
       {
-        QgsDebugError( QStringLiteral( "referencing field %1 not found" ).arg( fieldPair.referencingField() ) );
+        QgsDebugMsg( QStringLiteral( "referencing field %1 not found" ).arg( fieldPair.referencingField() ) );
         return;
       }
       const QgsField fld = mRelation.referencingLayer()->fields().at( idx );
@@ -685,7 +675,7 @@ void QgsAbstractRelationEditorWidget::unlinkFeatures( const QgsFeatureIds &fids 
 
           mRelation.referencingLayer()->changeAttributeValue( fid,
               referencingLayer->fields().indexFromName( polyRel.referencedLayerField() ),
-              QgsVariantUtils::createNullVariant( referencingLayer->fields().field( polyRel.referencedLayerField() ).type() ) );
+              referencingLayer->fields().field( polyRel.referencedLayerField() ).type() );
           break;
         }
         case Qgis::RelationshipType::Normal:
@@ -696,7 +686,7 @@ void QgsAbstractRelationEditorWidget::unlinkFeatures( const QgsFeatureIds &fids 
       while ( it.hasNext() )
       {
         it.next();
-        mRelation.referencingLayer()->changeAttributeValue( fid, it.key(), QgsVariantUtils::createNullVariant( it.value().type() ) );
+        mRelation.referencingLayer()->changeAttributeValue( fid, it.key(), QVariant( it.value().type() ) );
       }
     }
   }

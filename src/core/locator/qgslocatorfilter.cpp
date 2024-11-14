@@ -18,7 +18,6 @@
 #include <QThread>
 
 #include "qgslocatorfilter.h"
-#include "moc_qgslocatorfilter.cpp"
 #include "qgsstringutils.h"
 #include "qgsfeedback.h"
 #include "qgsmessagelog.h"
@@ -102,12 +101,7 @@ void QgsLocatorFilter::logMessage( const QString &message, Qgis::MessageLevel le
 }
 
 
-QVariant QgsLocatorResult::userData() const
+QVariant QgsLocatorResult::getUserData() const
 {
-  return mUserData;
-}
-
-void QgsLocatorResult::setUserData( const QVariant &userData )
-{
-  mUserData = userData;
+  return userData;
 }

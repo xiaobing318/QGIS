@@ -14,16 +14,16 @@ email                : matthias@opengis.ch
  ***************************************************************************/
 
 #include "qgsgeometryisvalidcheck.h"
+#include "qgsfeature.h"
 #include "qgssettingsregistrycore.h"
+#include "qgsgeos.h"
 #include "qgsgeometryvalidator.h"
-#include "qgssettingsentryimpl.h"
-
 
 QgsGeometryIsValidCheck::QgsGeometryIsValidCheck( const QgsGeometryCheckContext *context, const QVariantMap &configuration )
   : QgsSingleGeometryCheck( context, configuration )
 {}
 
-QList<Qgis::GeometryType> QgsGeometryIsValidCheck::compatibleGeometryTypes() const
+QList<QgsWkbTypes::GeometryType> QgsGeometryIsValidCheck::compatibleGeometryTypes() const
 {
   return factoryCompatibleGeometryTypes();
 }
@@ -33,7 +33,7 @@ QList<QgsSingleGeometryCheckError *> QgsGeometryIsValidCheck::processGeometry( c
   QVector<QgsGeometry::Error> errors;
 
   Qgis::GeometryValidationEngine method = Qgis::GeometryValidationEngine::QgisInternal;
-  if ( QgsSettingsRegistryCore::settingsDigitizingValidateGeometries->value() == 2 )
+  if ( QgsSettingsRegistryCore::settingsDigitizingValidateGeometries.value() == 2 )
     method = Qgis::GeometryValidationEngine::Geos;
 
   QgsGeometryValidator validator( geometry, &errors, method );
@@ -63,9 +63,9 @@ QStringList QgsGeometryIsValidCheck::resolutionMethods() const
   return QStringList();
 }
 ///@cond private
-QList<Qgis::GeometryType> QgsGeometryIsValidCheck::factoryCompatibleGeometryTypes()
+QList<QgsWkbTypes::GeometryType> QgsGeometryIsValidCheck::factoryCompatibleGeometryTypes()
 {
-  return {Qgis::GeometryType::Line, Qgis::GeometryType::Polygon};
+  return {QgsWkbTypes::LineGeometry, QgsWkbTypes::PolygonGeometry};
 }
 
 bool QgsGeometryIsValidCheck::factoryIsCompatible( QgsVectorLayer *layer ) SIP_SKIP

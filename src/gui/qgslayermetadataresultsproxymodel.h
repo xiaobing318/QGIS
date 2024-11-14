@@ -20,6 +20,7 @@
 #include <QObject>
 #include "qgis_gui.h"
 #include "qgsrectangle.h"
+#include "qgswkbtypes.h"
 
 /**
  * The QgsLayerMetadataResultsProxyModel class is a proxy model for QgsLayerMetadataResultsModel,
@@ -63,7 +64,7 @@ class GUI_EXPORT QgsLayerMetadataResultsProxyModel : public QSortFilterProxyMode
     /**
      * Sets the geometry type filter to \a geometryType.
      */
-    void setFilterGeometryType( Qgis::GeometryType geometryType );
+    void setFilterGeometryType( const QgsWkbTypes::GeometryType geometryType );
 
     /**
      * Sets the text filter to \a filterString.
@@ -73,7 +74,7 @@ class GUI_EXPORT QgsLayerMetadataResultsProxyModel : public QSortFilterProxyMode
     /**
      * Sets the map layer type filter to \a mapLayerType.
      */
-    void setFilterMapLayerType( const Qgis::LayerType mapLayerType );
+    void setFilterMapLayerType( const QgsMapLayerType mapLayerType );
 
     // QSortFilterProxyModel interface
   protected:
@@ -84,8 +85,8 @@ class GUI_EXPORT QgsLayerMetadataResultsProxyModel : public QSortFilterProxyMode
 
     QgsRectangle mFilterExtent;
     QString mFilterString;
-    Qgis::GeometryType mFilterGeometryType = Qgis::GeometryType::Point;
-    Qgis::LayerType mFilterMapLayerType = Qgis::LayerType::Vector;
+    QgsWkbTypes::GeometryType mFilterGeometryType = QgsWkbTypes::GeometryType::PointGeometry;
+    QgsMapLayerType mFilterMapLayerType = QgsMapLayerType::VectorLayer;
     bool mFilterGeometryTypeEnabled = false;
     bool mFilterMapLayerTypeEnabled = false;
 };

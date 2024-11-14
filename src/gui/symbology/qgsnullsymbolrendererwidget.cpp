@@ -13,7 +13,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsnullsymbolrendererwidget.h"
-#include "moc_qgsnullsymbolrendererwidget.cpp"
 
 #include "qgsnullsymbolrenderer.h"
 #include "qgssymbol.h"

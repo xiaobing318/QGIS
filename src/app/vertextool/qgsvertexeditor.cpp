@@ -16,8 +16,8 @@
  *                                                                         *
  ***************************************************************************/
 
+#include "qgsapplication.h"
 #include "qgsvertexeditor.h"
-#include "moc_qgsvertexeditor.cpp"
 #include "qgscoordinateutils.h"
 #include "qgsmapcanvas.h"
 #include "qgsmessagelog.h"
@@ -28,9 +28,6 @@
 #include "qgscoordinatetransform.h"
 #include "qgsdoublevalidator.h"
 #include "qgspanelwidgetstack.h"
-#include "qgssettingsentryimpl.h"
-#include "qgssettingstree.h"
-
 
 #include <QClipboard>
 #include <QLabel>
@@ -45,15 +42,13 @@
 #include <QStackedWidget>
 #include <QMenu>
 
-const QgsSettingsEntryBool *QgsVertexEditor::settingAutoPopupVertexEditorDock = new QgsSettingsEntryBool( QStringLiteral( "auto-popup-vertex-editor-dock" ), QgsSettingsTree::sTreeDigitizing, true, QStringLiteral( "Whether the auto-popup behavior of the vertex editor dock should be enabled" ) );
-
 static const int MIN_RADIUS_ROLE = Qt::UserRole + 1;
 
 
 QgsVertexEditorModel::QgsVertexEditorModel( QgsMapCanvas *canvas, QObject *parent )
   : QAbstractTableModel( parent )
+  , mCanvas( canvas )
 {
-  Q_UNUSED( canvas )
   QWidget *parentWidget = qobject_cast< QWidget * >( parent );
   if ( parentWidget )
     mWidgetFont = parentWidget->font();
@@ -66,7 +61,7 @@ void QgsVertexEditorModel::setFeature( QgsLockedFeature *lockedFeature )
   mLockedFeature = lockedFeature;
   if ( mLockedFeature && mLockedFeature->layer() )
   {
-    const Qgis::WkbType layerWKBType = mLockedFeature->layer()->wkbType();
+    const QgsWkbTypes::Type layerWKBType = mLockedFeature->layer()->wkbType();
 
     mHasZ = QgsWkbTypes::hasZ( layerWKBType );
     mHasM = QgsWkbTypes::hasM( layerWKBType );
@@ -272,7 +267,7 @@ bool QgsVertexEditorModel::setData( const QModelIndex &index, const QVariant &va
   }
   const double z = ( index.column() == mZCol ? doubleValue : mLockedFeature->vertexMap().at( index.row() )->point().z() );
   const double m = ( index.column() == mMCol ? doubleValue : mLockedFeature->vertexMap().at( index.row() )->point().m() );
-  const QgsPoint p( Qgis::WkbType::PointZM, x, y, z, m );
+  const QgsPoint p( QgsWkbTypes::PointZM, x, y, z, m );
 
   mLockedFeature->layer()->beginEditCommand( QObject::tr( "Moved vertices" ) );
   mLockedFeature->layer()->moveVertex( p, mLockedFeature->featureId(), index.row() );
@@ -373,10 +368,10 @@ QgsVertexEditorWidget::QgsVertexEditorWidget( QgsMapCanvas *canvas )
   mWidgetMenu = new QMenu( this );
   QAction *autoPopupAction = new QAction( tr( "Auto-open Table" ), this );
   autoPopupAction->setCheckable( true );
-  autoPopupAction->setChecked( QgsVertexEditor::settingAutoPopupVertexEditorDock->value() );
+  autoPopupAction->setChecked( QgsVertexEditor::settingAutoPopupVertexEditorDock.value() );
   connect( autoPopupAction, &QAction::toggled, this, [ = ]( bool checked )
   {
-    QgsVertexEditor::settingAutoPopupVertexEditorDock->setValue( checked );
+    QgsVertexEditor::settingAutoPopupVertexEditorDock.setValue( checked );
   } );
   mWidgetMenu->addAction( autoPopupAction );
 }

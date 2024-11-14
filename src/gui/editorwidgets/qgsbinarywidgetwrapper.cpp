@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsbinarywidgetwrapper.h"
-#include "moc_qgsbinarywidgetwrapper.cpp"
 #include "qgsvectorlayer.h"
 #include "qgsvectordataprovider.h"
 #include "qgsfileutils.h"
@@ -40,7 +39,7 @@ QgsBinaryWidgetWrapper::QgsBinaryWidgetWrapper( QgsVectorLayer *layer, int field
 
 QVariant QgsBinaryWidgetWrapper::value() const
 {
-  return mValue.isEmpty() || mValue.isNull() ? QgsVariantUtils::createNullVariant( QMetaType::Type::QByteArray ) : mValue;
+  return mValue.isEmpty() || mValue.isNull() ? QVariant( QVariant::ByteArray ) : mValue;
 }
 
 void QgsBinaryWidgetWrapper::showIndeterminateState()

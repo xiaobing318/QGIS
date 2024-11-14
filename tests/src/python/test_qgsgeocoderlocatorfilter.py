@@ -9,21 +9,25 @@ __author__ = 'Nyall Dawson'
 __date__ = '02/11/2020'
 __copyright__ = 'Copyright 2020, The QGIS Project'
 
+import qgis  # NOQA
+
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.core import (
-    QgsCoordinateReferenceSystem,
-    QgsFeedback,
     QgsGeocoderInterface,
+    QgsWkbTypes,
     QgsGeocoderResult,
     QgsGeometry,
-    QgsLocatorContext,
     QgsPointXY,
-    QgsRectangle,
-    QgsWkbTypes,
+    QgsCoordinateReferenceSystem,
+    QgsLocatorContext,
+    QgsFeedback,
+    QgsRectangle
 )
-from qgis.gui import QgsGeocoderLocatorFilter, QgsMapCanvas
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.gui import (
+    QgsMapCanvas,
+    QgsGeocoderLocatorFilter
+)
+from qgis.testing import start_app, unittest
 
 start_app()
 
@@ -31,10 +35,10 @@ start_app()
 class TestGeocoder(QgsGeocoderInterface):
 
     def flags(self):
-        return QgsGeocoderInterface.Flag.GeocodesStrings
+        return QgsGeocoderInterface.GeocodesStrings
 
     def wkbType(self):
-        return QgsWkbTypes.Type.Point
+        return QgsWkbTypes.Point
 
     def geocodeString(self, string, context, feedback):
         if string == 'a':
@@ -58,7 +62,7 @@ class TestGeocoder(QgsGeocoderInterface):
         return []
 
 
-class TestQgsGeocoderLocatorFilter(QgisTestCase):
+class TestQgsGeocoderLocatorFilter(unittest.TestCase):
 
     def test_geocode(self):
         geocoder = TestGeocoder()

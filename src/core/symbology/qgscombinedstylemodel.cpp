@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgscombinedstylemodel.h"
-#include "moc_qgscombinedstylemodel.cpp"
 #include "qgsstyle.h"
 #include "qgsstylemodel.h"
 #include "qgssingleitemmodel.h"
@@ -58,13 +57,13 @@ void QgsCombinedStyleModel::addStyle( QgsStyle *style )
     {
       { Qt::DisplayRole, style->name() },
       { Qt::ToolTipRole, style->name() },
-      { static_cast< int >( QgsStyleModel::CustomRole::IsTitle ), true },
-      { static_cast< int >( QgsStyleModel::CustomRole::StyleFileName ), style->fileName() },
-      { static_cast< int >( QgsStyleModel::CustomRole::StyleName ), style->name() },
+      { QgsStyleModel::IsTitleRole, true },
+      { QgsStyleModel::StyleFileName, style->fileName() },
+      { QgsStyleModel::StyleName, style->name() },
     }, {
-      { static_cast< int >( QgsStyleModel::CustomRole::IsTitle ), true },
-      { static_cast< int >( QgsStyleModel::CustomRole::StyleFileName ), style->fileName() },
-      { static_cast< int >( QgsStyleModel::CustomRole::StyleName ), style->name() }
+      { QgsStyleModel::IsTitleRole, true },
+      { QgsStyleModel::StyleFileName, style->fileName() },
+      { QgsStyleModel::StyleName, style->name() }
     }
   } );
   addSourceModel( titleModel );
@@ -75,11 +74,6 @@ void QgsCombinedStyleModel::addStyle( QgsStyle *style )
   for ( QSize size : std::as_const( mAdditionalSizes ) )
   {
     styleModel->addDesiredIconSize( size );
-  }
-
-  for ( auto it = mTargetScreenProperties.constBegin(); it != mTargetScreenProperties.constEnd(); ++it )
-  {
-    styleModel->addTargetScreenProperties( *it );
   }
 
   addSourceModel( styleModel );
@@ -106,7 +100,7 @@ void QgsCombinedStyleModel::removeStyle( QgsStyle *style )
 
 void QgsCombinedStyleModel::addDefaultStyle()
 {
-  QgsStyle *defaultStyle = QgsStyle::defaultStyle( false );
+  QgsStyle *defaultStyle = QgsStyle::defaultStyle();
   QgsStyleModel *styleModel = QgsApplication::defaultStyleModel();
   if ( !defaultStyle || !styleModel )
     return;
@@ -118,13 +112,13 @@ void QgsCombinedStyleModel::addDefaultStyle()
     {
       { Qt::DisplayRole, defaultStyle->name() },
       { Qt::ToolTipRole, defaultStyle->name() },
-      { static_cast< int >( QgsStyleModel::CustomRole::IsTitle ), true },
-      { static_cast< int >( QgsStyleModel::CustomRole::StyleFileName ), defaultStyle->fileName() },
-      { static_cast< int >( QgsStyleModel::CustomRole::StyleName ), defaultStyle->name() },
+      { QgsStyleModel::IsTitleRole, true },
+      { QgsStyleModel::StyleFileName, defaultStyle->fileName() },
+      { QgsStyleModel::StyleName, defaultStyle->name() },
     }, {
-      { static_cast< int >( QgsStyleModel::CustomRole::IsTitle ), true },
-      { static_cast< int >( QgsStyleModel::CustomRole::StyleFileName ), defaultStyle->fileName() },
-      { static_cast< int >( QgsStyleModel::CustomRole::StyleName ), defaultStyle->name() }
+      { QgsStyleModel::IsTitleRole, true },
+      { QgsStyleModel::StyleFileName, defaultStyle->fileName() },
+      { QgsStyleModel::StyleName, defaultStyle->name() }
     }
   } );
 
@@ -134,11 +128,6 @@ void QgsCombinedStyleModel::addDefaultStyle()
   for ( QSize size : std::as_const( mAdditionalSizes ) )
   {
     styleModel->addDesiredIconSize( size );
-  }
-
-  for ( auto it = mTargetScreenProperties.constBegin(); it != mTargetScreenProperties.constEnd(); ++it )
-  {
-    styleModel->addTargetScreenProperties( *it );
   }
 
   addSourceModel( styleModel );
@@ -162,21 +151,5 @@ void QgsCombinedStyleModel::addDesiredIconSize( QSize size )
   if ( mStyles.contains( QgsStyle::defaultStyle() ) )
   {
     QgsApplication::defaultStyleModel()->addDesiredIconSize( size );
-  }
-}
-
-void QgsCombinedStyleModel::addTargetScreenProperties( const QgsScreenProperties &properties )
-{
-  if ( !mTargetScreenProperties.contains( properties ) )
-    mTargetScreenProperties.insert( properties );
-
-  for ( auto it = mOwnedStyleModels.constBegin(); it != mOwnedStyleModels.constEnd(); ++it )
-  {
-    it.value()->addTargetScreenProperties( properties );
-  }
-
-  if ( mStyles.contains( QgsStyle::defaultStyle() ) )
-  {
-    QgsApplication::defaultStyleModel()->addTargetScreenProperties( properties );
   }
 }

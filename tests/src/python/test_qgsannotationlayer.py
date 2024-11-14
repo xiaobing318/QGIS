@@ -11,50 +11,58 @@ __author__ = '(C) 2020 by Nyall Dawson'
 __date__ = '29/07/2020'
 __copyright__ = 'Copyright 2020, The QGIS Project'
 
-from qgis.PyQt.QtCore import QSize, QTemporaryDir
-from qgis.PyQt.QtGui import QColor, QImage, QPainter
+import qgis  # NOQA
+from qgis.PyQt.QtCore import (QSize,
+                              QDir,
+                              QTemporaryDir)
+from qgis.PyQt.QtGui import (QImage,
+                             QPainter,
+                             QColor)
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (
-    Qgis,
-    QgsAnnotationItemEditOperationMoveNode,
-    QgsAnnotationLayer,
-    QgsAnnotationLineItem,
-    QgsAnnotationMarkerItem,
-    QgsAnnotationPolygonItem,
-    QgsCoordinateReferenceSystem,
-    QgsCoordinateTransform,
-    QgsFillSymbol,
-    QgsGeometry,
-    QgsLayerNotesUtils,
-    QgsLineString,
-    QgsLineSymbol,
-    QgsMapRendererParallelJob,
-    QgsMapRendererSequentialJob,
-    QgsMapSettings,
-    QgsMarkerSymbol,
-    QgsPoint,
-    QgsPolygon,
-    QgsProject,
-    QgsReadWriteContext,
-    QgsRectangle,
-    QgsRenderContext,
-    QgsVertexId,
-    QgsVectorLayer
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsMapSettings,
+                       QgsCoordinateTransform,
+                       QgsProject,
+                       QgsPoint,
+                       QgsCoordinateReferenceSystem,
+                       QgsFillSymbol,
+                       QgsRenderChecker,
+                       QgsReadWriteContext,
+                       QgsRenderContext,
+                       QgsAnnotationPolygonItem,
+                       QgsRectangle,
+                       QgsLineString,
+                       QgsPolygon,
+                       QgsAnnotationLayer,
+                       QgsAnnotationLineItem,
+                       QgsAnnotationMarkerItem,
+                       QgsLineSymbol,
+                       QgsMarkerSymbol,
+                       QgsMapRendererSequentialJob,
+                       QgsMapRendererParallelJob,
+                       QgsGeometry,
+                       QgsAnnotationItemEditOperationMoveNode,
+                       QgsVertexId,
+                       Qgis
+                       )
+from qgis.testing import start_app, unittest
 
-from utilities import compareWkt, unitTestDataPath
+from utilities import unitTestDataPath, compareWkt
 
 start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestQgsAnnotationLayer(QgisTestCase):
+class TestQgsAnnotationLayer(unittest.TestCase):
 
     @classmethod
-    def control_path_prefix(cls):
-        return 'annotation_layer'
+    def setUpClass(cls):
+        cls.report = "<h1>Python QgsAnnotationLayer Tests</h1>\n"
+
+    @classmethod
+    def tearDownClass(cls):
+        report_file_path = "%s/qgistest.html" % QDir.tempPath()
+        with open(report_file_path, 'a') as report_file:
+            report_file.write(cls.report)
 
     def testItems(self):
         layer = QgsAnnotationLayer('test', QgsAnnotationLayer.LayerOptions(QgsProject.instance().transformContext()))
@@ -141,7 +149,6 @@ class TestQgsAnnotationLayer(QgisTestCase):
         self.assertEqual(len(layer.items()), 0)
         self.assertEqual(layer.opacity(), 1.0)
         self.assertFalse(layer.crs().isValid())
-        self.assertEqual(layer.undoStackStyles().count(), 0)
 
     def testExtent(self):
         layer = QgsAnnotationLayer('test', QgsAnnotationLayer.LayerOptions(QgsProject.instance().transformContext()))
@@ -189,14 +196,6 @@ class TestQgsAnnotationLayer(QgisTestCase):
         self.assertTrue(layer.isValid())
 
         layer.setCrs(QgsCoordinateReferenceSystem('EPSG:4326'))
-        layer.setScaleBasedVisibility(True)
-        QgsLayerNotesUtils.setLayerNotes(layer, 'test layer notes')
-
-        other_layer = QgsVectorLayer('Point', 'test', 'memory')
-        QgsProject.instance().addMapLayer(other_layer)
-        layer.setLinkedVisibilityLayer(other_layer)
-        self.assertEqual(layer.linkedVisibilityLayer(), other_layer)
-
         polygon_item_id = layer.addItem(QgsAnnotationPolygonItem(
             QgsPolygon(QgsLineString([QgsPoint(12, 13), QgsPoint(14, 13), QgsPoint(14, 15), QgsPoint(12, 13)]))))
         linestring_item_id = layer.addItem(
@@ -208,11 +207,7 @@ class TestQgsAnnotationLayer(QgisTestCase):
 
         layer2 = QgsAnnotationLayer('test2', QgsAnnotationLayer.LayerOptions(QgsProject.instance().transformContext()))
         self.assertTrue(layer2.readLayerXml(elem, QgsReadWriteContext()))
-        layer2.resolveReferences(QgsProject.instance())
         self.assertEqual(layer2.crs().authid(), 'EPSG:4326')
-        self.assertTrue(layer2.hasScaleBasedVisibility())
-        self.assertEqual(QgsLayerNotesUtils.layerNotes(layer2), 'test layer notes')
-        self.assertEqual(layer2.linkedVisibilityLayer(), other_layer)
 
         self.assertEqual(len(layer2.items()), 3)
         self.assertIsInstance(layer2.items()[polygon_item_id], QgsAnnotationPolygonItem)
@@ -229,10 +224,6 @@ class TestQgsAnnotationLayer(QgisTestCase):
             QgsAnnotationLineItem(QgsLineString([QgsPoint(11, 13), QgsPoint(12, 13), QgsPoint(12, 15)])))
         marker_item_id = layer.addItem(QgsAnnotationMarkerItem(QgsPoint(12, 13)))
 
-        other_layer = QgsVectorLayer('Point', 'test', 'memory')
-        QgsProject.instance().addMapLayer(other_layer)
-        layer.setLinkedVisibilityLayer(other_layer)
-
         layer2 = layer.clone()
 
         self.assertEqual(len(layer2.items()), 3)
@@ -241,7 +232,6 @@ class TestQgsAnnotationLayer(QgisTestCase):
         self.assertNotEqual(layer.items()[polygon_item_id], layer2.items()[polygon_item_id])
         self.assertIsInstance(layer2.items()[linestring_item_id], QgsAnnotationLineItem)
         self.assertIsInstance(layer2.items()[marker_item_id], QgsAnnotationMarkerItem)
-        self.assertEqual(layer2.linkedVisibilityLayer(), other_layer)
 
     def testProjectMainAnnotationLayer(self):
         p = QgsProject()
@@ -344,10 +334,10 @@ class TestQgsAnnotationLayer(QgisTestCase):
         settings.setExtent(QgsRectangle(10, 10, 18, 18))
         settings.setOutputSize(QSize(300, 300))
 
-        settings.setFlag(QgsMapSettings.Flag.Antialiasing, False)
+        settings.setFlag(QgsMapSettings.Antialiasing, False)
 
         rc = QgsRenderContext.fromMapSettings(settings)
-        image = QImage(200, 200, QImage.Format.Format_ARGB32)
+        image = QImage(200, 200, QImage.Format_ARGB32)
         image.setDotsPerMeterX(int(96 / 25.4 * 1000))
         image.setDotsPerMeterY(int(96 / 25.4 * 1000))
         image.fill(QColor(255, 255, 255))
@@ -360,7 +350,7 @@ class TestQgsAnnotationLayer(QgisTestCase):
         finally:
             painter.end()
 
-        self.assertTrue(self.image_check('layer_render', 'layer_render', image))
+        self.assertTrue(self.imageCheck('layer_render', 'layer_render', image))
 
         # also check details of rendered items
         item_details = renderer.takeRenderedItemDetails()
@@ -401,13 +391,13 @@ class TestQgsAnnotationLayer(QgisTestCase):
         settings.setExtent(QgsRectangle(1250958, 1386945, 1420709, 1532518))
         settings.setOutputSize(QSize(300, 300))
 
-        settings.setFlag(QgsMapSettings.Flag.Antialiasing, False)
+        settings.setFlag(QgsMapSettings.Antialiasing, False)
 
         rc = QgsRenderContext.fromMapSettings(settings)
         rc.setCoordinateTransform(QgsCoordinateTransform(layer.crs(), settings.destinationCrs(), QgsProject.instance()))
         rc.setExtent(
-            rc.coordinateTransform().transformBoundingBox(settings.extent(), QgsCoordinateTransform.TransformDirection.ReverseTransform))
-        image = QImage(200, 200, QImage.Format.Format_ARGB32)
+            rc.coordinateTransform().transformBoundingBox(settings.extent(), QgsCoordinateTransform.ReverseTransform))
+        image = QImage(200, 200, QImage.Format_ARGB32)
         image.setDotsPerMeterX(int(96 / 25.4 * 1000))
         image.setDotsPerMeterY(int(96 / 25.4 * 1000))
         image.fill(QColor(255, 255, 255))
@@ -420,7 +410,7 @@ class TestQgsAnnotationLayer(QgisTestCase):
         finally:
             painter.end()
 
-        self.assertTrue(self.image_check('layer_render_transform', 'layer_render_transform', image))
+        self.assertTrue(self.imageCheck('layer_render_transform', 'layer_render_transform', image))
 
         # also check details of rendered items
         item_details = renderer.takeRenderedItemDetails()
@@ -460,7 +450,7 @@ class TestQgsAnnotationLayer(QgisTestCase):
         settings.setExtent(QgsRectangle(10, 10, 18, 18))
         settings.setOutputSize(QSize(300, 300))
 
-        settings.setFlag(QgsMapSettings.Flag.Antialiasing, False)
+        settings.setFlag(QgsMapSettings.Antialiasing, False)
 
         rc = QgsRenderContext.fromMapSettings(settings)
 
@@ -472,7 +462,7 @@ class TestQgsAnnotationLayer(QgisTestCase):
         layer.item(i3_id).setUseSymbologyReferenceScale(True)
         layer.item(i3_id).setSymbologyReferenceScale(rc.rendererScale() * 2)
 
-        image = QImage(200, 200, QImage.Format.Format_ARGB32)
+        image = QImage(200, 200, QImage.Format_ARGB32)
         image.setDotsPerMeterX(int(96 / 25.4 * 1000))
         image.setDotsPerMeterY(int(96 / 25.4 * 1000))
         image.fill(QColor(255, 255, 255))
@@ -485,7 +475,7 @@ class TestQgsAnnotationLayer(QgisTestCase):
         finally:
             painter.end()
 
-        self.assertTrue(self.image_check('layer_render_reference_scale', 'layer_render_reference_scale', image))
+        self.assertTrue(self.imageCheck('layer_render_reference_scale', 'layer_render_reference_scale', image))
 
         # also check details of rendered items
         item_details = renderer.takeRenderedItemDetails()
@@ -497,74 +487,6 @@ class TestQgsAnnotationLayer(QgisTestCase):
                          QgsRectangle(11, 13, 12, 15))
         self.assertEqual([i.boundingBox().toString(1) for i in item_details if i.itemId() == i3_id][0],
                          '11.4,12.4 : 12.6,13.6')
-
-    def testRenderLayerWithLinkedVisibility(self):
-        layer = QgsAnnotationLayer('test', QgsAnnotationLayer.LayerOptions(QgsProject.instance().transformContext()))
-        layer.setCrs(QgsCoordinateReferenceSystem('EPSG:4326'))
-        self.assertTrue(layer.isValid())
-
-        item = QgsAnnotationPolygonItem(
-            QgsPolygon(QgsLineString([QgsPoint(12, 13), QgsPoint(14, 13), QgsPoint(14, 15), QgsPoint(12, 13)])))
-        item.setSymbol(
-            QgsFillSymbol.createSimple({'color': '200,100,100', 'outline_color': 'black', 'outline_width': '2'}))
-        item.setZIndex(3)
-        i1_id = layer.addItem(item)
-
-        item = QgsAnnotationLineItem(QgsLineString([QgsPoint(11, 13), QgsPoint(12, 13), QgsPoint(12, 15)]))
-        item.setSymbol(QgsLineSymbol.createSimple({'color': '#ffff00', 'line_width': '3'}))
-        item.setZIndex(2)
-        i2_id = layer.addItem(item)
-
-        item = QgsAnnotationMarkerItem(QgsPoint(12, 13))
-        item.setSymbol(QgsMarkerSymbol.createSimple({'color': '100,200,200', 'size': '6', 'outline_color': 'black'}))
-        item.setZIndex(1)
-        i3_id = layer.addItem(item)
-
-        other_layer = QgsVectorLayer('Point', 'test', 'memory')
-        layer.setLinkedVisibilityLayer(None)
-
-        settings = QgsMapSettings()
-        settings.setDestinationCrs(QgsCoordinateReferenceSystem('EPSG:4326'))
-        settings.setExtent(QgsRectangle(10, 10, 18, 18))
-        settings.setOutputSize(QSize(300, 300))
-
-        settings.setFlag(QgsMapSettings.Flag.Antialiasing, False)
-
-        rc = QgsRenderContext.fromMapSettings(settings)
-        image = QImage(200, 200, QImage.Format.Format_ARGB32)
-        image.setDotsPerMeterX(int(96 / 25.4 * 1000))
-        image.setDotsPerMeterY(int(96 / 25.4 * 1000))
-        image.fill(QColor(255, 255, 255))
-        painter = QPainter(image)
-        rc.setPainter(painter)
-
-        try:
-            renderer = layer.createMapRenderer(rc)
-            renderer.render()
-        finally:
-            painter.end()
-
-        self.assertTrue(self.image_check('layer_render', 'layer_render', image))
-
-        # with linked visibility layer, annotations should not be drawn
-        layer.setLinkedVisibilityLayer(other_layer)
-
-        rc = QgsRenderContext.fromMapSettings(settings)
-        image = QImage(200, 200, QImage.Format.Format_ARGB32)
-        image.setDotsPerMeterX(int(96 / 25.4 * 1000))
-        image.setDotsPerMeterY(int(96 / 25.4 * 1000))
-        image.fill(QColor(255, 255, 255))
-        painter = QPainter(image)
-        rc.setPainter(painter)
-
-        try:
-            renderer = layer.createMapRenderer(rc)
-            renderer.render()
-        finally:
-            painter.end()
-
-        self.assertTrue(
-            self.image_check('layer_render_not_visible', 'layer_render_not_visible', image))
 
     def test_render_via_job(self):
         """
@@ -678,73 +600,19 @@ class TestQgsAnnotationLayer(QgisTestCase):
         self.assertTrue(compareWkt(result, expected, tol=1000), "mismatch Expected:\n{}\nGot:\n{}\n".format(expected,
                                                                                                             result))
 
-    def test_force_raster_render(self):
-        layer = QgsAnnotationLayer('test', QgsAnnotationLayer.LayerOptions(QgsProject.instance().transformContext()))
-        self.assertTrue(layer.isValid())
-        settings = QgsMapSettings()
-        rc = QgsRenderContext.fromMapSettings(settings)
-        renderer = layer.createMapRenderer(rc)
-        self.assertFalse(renderer.forceRasterRender())
-
-        # layer opacity should force raster render
-        layer.setOpacity(0.5)
-        renderer = layer.createMapRenderer(rc)
-        self.assertTrue(renderer.forceRasterRender())
-        layer.setOpacity(1.0)
-
-        # alternate blend mode should force raster render
-        layer.setBlendMode(QPainter.CompositionMode.CompositionMode_Multiply)
-        renderer = layer.createMapRenderer(rc)
-        self.assertTrue(renderer.forceRasterRender())
-
-    def testRenderWithDisabledItems(self):
-        layer = QgsAnnotationLayer('test', QgsAnnotationLayer.LayerOptions(QgsProject.instance().transformContext()))
-        self.assertTrue(layer.isValid())
-
-        item = QgsAnnotationPolygonItem(
-            QgsPolygon(QgsLineString([QgsPoint(11.5, 13), QgsPoint(12, 13), QgsPoint(12, 13.5), QgsPoint(11.5, 13)])))
-        item.setSymbol(
-            QgsFillSymbol.createSimple({'color': '200,100,100', 'outline_color': 'black', 'outline_width': '2'}))
-        item.setZIndex(1)
-        i1_id = layer.addItem(item)
-
-        item = QgsAnnotationLineItem(QgsLineString([QgsPoint(11, 13), QgsPoint(12, 13), QgsPoint(12, 15)]))
-        item.setSymbol(QgsLineSymbol.createSimple({'color': '#ffff00', 'line_width': '3'}))
-        item.setZIndex(2)
-        item.setEnabled(False)
-        i2_id = layer.addItem(item)
-
-        layer.setCrs(QgsCoordinateReferenceSystem('EPSG:4326'))
-
-        settings = QgsMapSettings()
-        settings.setDestinationCrs(QgsCoordinateReferenceSystem('EPSG:3857'))
-        settings.setExtent(QgsRectangle(1250958, 1386945, 1420709, 1532518))
-        settings.setOutputSize(QSize(300, 300))
-
-        settings.setFlag(QgsMapSettings.Flag.Antialiasing, False)
-
-        rc = QgsRenderContext.fromMapSettings(settings)
-        rc.setCoordinateTransform(QgsCoordinateTransform(layer.crs(), settings.destinationCrs(), QgsProject.instance()))
-        rc.setExtent(
-            rc.coordinateTransform().transformBoundingBox(settings.extent(), QgsCoordinateTransform.TransformDirection.ReverseTransform))
-        image = QImage(200, 200, QImage.Format.Format_ARGB32)
-        image.setDotsPerMeterX(int(96 / 25.4 * 1000))
-        image.setDotsPerMeterY(int(96 / 25.4 * 1000))
-        image.fill(QColor(255, 255, 255))
-        painter = QPainter(image)
-        rc.setPainter(painter)
-
-        try:
-            renderer = layer.createMapRenderer(rc)
-            renderer.render()
-        finally:
-            painter.end()
-
-        self.assertTrue(self.image_check('layer_render_disabled', 'layer_render_disabled', image))
-        # also check details of rendered items
-        item_details = renderer.takeRenderedItemDetails()
-        self.assertEqual([i.layerId() for i in item_details], [layer.id()] * 1)
-        self.assertCountEqual([i.itemId() for i in item_details], [i1_id])
+    def imageCheck(self, name, reference_image, image):
+        TestQgsAnnotationLayer.report += f"<h2>Render {name}</h2>\n"
+        temp_dir = QDir.tempPath() + '/'
+        file_name = temp_dir + 'patch_' + name + ".png"
+        image.save(file_name, "PNG")
+        checker = QgsRenderChecker()
+        checker.setControlPathPrefix("annotation_layer")
+        checker.setControlName("expected_" + reference_image)
+        checker.setRenderedImage(file_name)
+        checker.setColorTolerance(2)
+        result = checker.compareImages(name, 20)
+        TestQgsAnnotationLayer.report += checker.report()
+        return result
 
 
 if __name__ == '__main__':

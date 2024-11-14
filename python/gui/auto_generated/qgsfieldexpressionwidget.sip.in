@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsfieldexpressionwidget.h                                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -15,7 +15,7 @@
 class QgsFieldExpressionWidget : QWidget
 {
 %Docstring(signature="appended")
-The :py:class:`QgsFieldExpressionWidget` class creates a widget to choose fields and edit expressions
+The :py:class:`QgsFieldExpressionWidget` class reates a widget to choose fields and edit expressions
 It contains a combo box to display the fields and expression and a button to open the expression dialog.
 The combo box is editable, allowing expressions to be edited inline.
 The validity of the expression is checked live on key press, invalid expressions are displayed in red.
@@ -115,6 +115,8 @@ Returns the current text that is set in the expression area
 Returns the currently selected field or expression. If a field is currently selected, the returned
 value will be converted to a valid expression referencing this field (ie enclosing the field name with
 appropriate quotations).
+
+.. versionadded:: 2.14
 %End
 
     QString expression() const;
@@ -124,6 +126,8 @@ value will be converted to a valid expression referencing this field (ie enclosi
 appropriate quotations).
 
 Alias for :py:func:`~QgsFieldExpressionWidget.asExpression`
+
+.. versionadded:: 3.0
 %End
 
     QgsVectorLayer *layer() const;
@@ -140,74 +144,24 @@ an expression context for the widget.
 
 :param generator: A :py:class:`QgsExpressionContextGenerator` class that will be used to
                   create an expression context when required.
-%End
 
-
-    void setCustomPreviewGenerator( const QString &label, const QList< QPair< QString, QVariant > > &choices, SIP_PYCALLABLE );
-%Docstring
-Sets the widget to run using a custom preview generator.
-
-In this mode, the widget will call a callback function to generate a new :py:class:`QgsExpressionContext`
-as the previewed object changes. This can be used to provide custom preview values for different
-objects (i.e. for objects which aren't vector layer features).
-
-:param label: The label to display for the combo box presenting choices of objects. This should be a representative name, eg "Band" if the widget is showing choices of raster layer bands
-:param choices: A list of choices to present to the user. Each choice is a pair of a human-readable label and a QVariant representing the object to preview.
-:param previewContextGenerator: A function which takes a QVariant representing the object to preview, and returns a :py:class:`QgsExpressionContext` to use for previewing the object.
-
-.. versionadded:: 3.38
-%End
-%MethodCode
-    Py_XINCREF( a2 );
-    Py_BEGIN_ALLOW_THREADS
-    sipCpp->setCustomPreviewGenerator( *a0, *a1, [a2]( const QVariant &value )->QgsExpressionContext
-    {
-      QgsExpressionContext res;
-      SIP_BLOCK_THREADS
-      PyObject *s = sipCallMethod( NULL, a2, "D", &value, sipType_QVariant, NULL );
-      int state;
-      int sipIsError = 0;
-      QgsExpressionContext *t1 = reinterpret_cast<QgsExpressionContext *>( sipConvertToType( s, sipType_QgsExpressionContext, 0, SIP_NOT_NONE, &state, &sipIsError ) );
-      if ( sipIsError == 0 )
-      {
-        res = QgsExpressionContext( *t1 );
-      }
-      sipReleaseType( t1, sipType_QgsExpressionContext, state );
-      SIP_UNBLOCK_THREADS
-      return res;
-    } );
-
-    Py_END_ALLOW_THREADS
+.. versionadded:: 3.0
 %End
 
     bool allowEvalErrors() const;
 %Docstring
 Allow accepting expressions with evaluation errors. This can be useful when we are not able to
 provide an expression context of which we are sure it's completely populated.
+
+.. versionadded:: 3.0
 %End
 
     void setAllowEvalErrors( bool allowEvalErrors );
 %Docstring
 Allow accepting expressions with evaluation errors. This can be useful when we are not able to
 provide an expression context of which we are sure it's completely populated.
-%End
 
-    bool buttonVisible() const;
-%Docstring
-Returns the visibility of the button
-
-If button is hidden, the widget essentially becomes an editable combo box
-
-.. versionadded:: 3.36
-%End
-
-    void setButtonVisible( bool visible );
-%Docstring
-Set the visibility of the button
-
-If button is hidden, the widget essentially becomes an editable combo box
-
-.. versionadded:: 3.36
+.. versionadded:: 3.0
 %End
 
   signals:
@@ -225,13 +179,8 @@ fieldChanged signal with indication of the validity of the expression
 %Docstring
 Allow accepting expressions with evaluation errors. This can be useful when we are not able to
 provide an expression context of which we are sure it's completely populated.
-%End
 
-    void buttonVisibleChanged();
-%Docstring
-Emitted when the button visibility changes
-
-.. versionadded:: 3.36
+.. versionadded:: 3.0
 %End
 
   public slots:
@@ -264,6 +213,8 @@ Sets the fields used in the widget to ``fields``, this allows the widget to work
 %Docstring
 Sets the current expression text and if applicable also the field.
 Alias for setField.
+
+.. versionadded:: 3.0
 %End
 
   protected slots:
@@ -308,5 +259,5 @@ updateLineEditStyle will re-style (color/font) the line edit depending on conten
  *                                                                      *
  * src/gui/qgsfieldexpressionwidget.h                                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

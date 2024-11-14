@@ -27,7 +27,7 @@
 // version without notice, or even be removed.
 //
 
-#include "qgsraycastingutils.h"
+#include <QVector3D>
 
 #define SIP_NO_FILE
 
@@ -36,7 +36,6 @@ class QgsAABB;
 namespace Qt3DRender
 {
   class QCamera;
-  class QGeometryRenderer;
 }
 
 
@@ -105,19 +104,6 @@ namespace QgsRayCastingUtils
                                 QVector3D c,
                                 QVector3D &uvw,
                                 float &t );
-
-  /**
-   * Tests whether a triangular mesh is intersected by a ray. Returns whether an intersection
-   * was found. If found, it outputs the point at which the intersection happened and index
-   * of the intersecting triangle.
-   * \since QGIS 3.34
-   */
-  bool rayMeshIntersection( Qt3DRender::QGeometryRenderer *geometryRenderer,
-                            const QgsRayCastingUtils::Ray3D &r,
-                            const QMatrix4x4 &worldTransform,
-                            QVector3D &intPt,
-                            int &triangleIndex );
-
 }
 
 /// @endcond

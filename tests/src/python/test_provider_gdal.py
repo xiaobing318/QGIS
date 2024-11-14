@@ -22,8 +22,7 @@ from qgis.core import (
     QgsRasterLayer,
     QgsRectangle,
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -35,7 +34,7 @@ def GDAL_COMPUTE_VERSION(maj, min, rev):
     return ((maj) * 1000000 + (min) * 10000 + (rev) * 100)
 
 
-class PyQgsGdalProvider(QgisTestCase):
+class PyQgsGdalProvider(unittest.TestCase):
 
     def checkBlockContents(self, block, expected):
         res = []
@@ -110,23 +109,6 @@ class PyQgsGdalProvider(QgisTestCase):
         uri = '/my/raster.pdf|option:DPI=300|option:GIVEME=TWO'
         parts = QgsProviderRegistry.instance().decodeUri('gdal', uri)
         self.assertEqual(parts, {'path': '/my/raster.pdf', 'layerName': None, 'openOptions': ['DPI=300', 'GIVEME=TWO']})
-        encodedUri = QgsProviderRegistry.instance().encodeUri('gdal', parts)
-        self.assertEqual(encodedUri, uri)
-
-    def testDecodeEncodeUriCredentialOptions(self):
-        """Test decodeUri/encodeUri credential options support"""
-
-        uri = '/my/raster.pdf|option:AN=OPTION|credential:ANOTHER=BBB|credential:SOMEKEY=AAAAA'
-        parts = QgsProviderRegistry.instance().decodeUri('gdal', uri)
-        self.assertEqual(parts, {
-            'path': '/my/raster.pdf',
-            'layerName': None,
-            'credentialOptions': {
-                'ANOTHER': 'BBB',
-                'SOMEKEY': 'AAAAA'
-            },
-            'openOptions': ['AN=OPTION']
-        })
         encodedUri = QgsProviderRegistry.instance().encodeUri('gdal', parts)
         self.assertEqual(encodedUri, uri)
 
@@ -206,7 +188,7 @@ class PyQgsGdalProvider(QgisTestCase):
 
         raster_layer = QgsRasterLayer(tmpfile, 'test')
         self.assertTrue(raster_layer.isValid())
-        self.assertEqual(raster_layer.dataProvider().dataType(1), Qgis.DataType.Float64)
+        self.assertEqual(raster_layer.dataProvider().dataType(1), Qgis.Float64)
 
         extent = raster_layer.extent()
         block = raster_layer.dataProvider().block(1, extent, 2, 2)
@@ -244,7 +226,7 @@ class PyQgsGdalProvider(QgisTestCase):
 
         raster_layer = QgsRasterLayer(tmpfile, 'test')
         self.assertTrue(raster_layer.isValid())
-        self.assertEqual(raster_layer.dataProvider().dataType(1), Qgis.DataType.Float64)
+        self.assertEqual(raster_layer.dataProvider().dataType(1), Qgis.Float64)
 
         extent = raster_layer.extent()
         block = raster_layer.dataProvider().block(1, extent, 2, 2)
@@ -283,12 +265,12 @@ class PyQgsGdalProvider(QgisTestCase):
         vrtfilename = os.path.join(tmp_dir.path(), 'out.vrt')
         ds = gdal.BuildVRT(vrtfilename, [tmpfilename])
         ds = None
-        self.assertIn('OverviewList', open(vrtfilename).read())
+        assert 'OverviewList' in open(vrtfilename).read()
 
         raster_layer = QgsRasterLayer(vrtfilename, 'test')
         del raster_layer
 
-        self.assertNotIn('OverviewList', open(vrtfilename).read())
+        assert 'OverviewList' not in open(vrtfilename).read()
 
     @unittest.skipIf(int(gdal.VersionInfo('VERSION_NUM')) < GDAL_COMPUTE_VERSION(3, 7, 0), "GDAL 3.7.0 required")
     def testInt8(self):
@@ -302,7 +284,7 @@ class PyQgsGdalProvider(QgisTestCase):
 
         raster_layer = QgsRasterLayer(tmpfile, 'test')
         self.assertTrue(raster_layer.isValid())
-        self.assertEqual(raster_layer.dataProvider().dataType(1), Qgis.DataType.Int8)
+        self.assertEqual(raster_layer.dataProvider().dataType(1), Qgis.Int16)
 
         extent = raster_layer.extent()
         block = raster_layer.dataProvider().block(1, extent, 2, 2)
@@ -325,52 +307,6 @@ class PyQgsGdalProvider(QgisTestCase):
         pos = QgsPointXY(1, -1)
         value_sample = raster_layer.dataProvider().sample(pos, 1)[0]
         self.assertEqual(value_sample, full_content[3])
-
-    @unittest.skipIf(int(gdal.VersionInfo('VERSION_NUM')) < GDAL_COMPUTE_VERSION(3, 7, 0), "GDAL 3.7.0 required")
-    def testGdbMetadata(self):
-        """Test reading GDB layer metadata"""
-        path = os.path.join(unitTestDataPath(), 'raster_metadata.gdb')
-        rl = QgsRasterLayer(f'OpenFileGDB:{path}:int', 'gdb', 'gdal')
-        self.assertTrue(rl.isValid())
-
-        self.assertEqual(rl.metadata().identifier(), 'int')
-        self.assertEqual(rl.metadata().title(), 'Raster title')
-        self.assertEqual(rl.metadata().type(), 'dataset')
-        self.assertEqual(rl.metadata().abstract(), 'My description (abstract)\n\nmy raster summary')
-
-    def testBandDescription(self):
-        """Test band description getter"""
-
-        tmp_dir = QTemporaryDir()
-        tmpfile = os.path.join(tmp_dir.path(), 'testInt8.tif')
-        ds = gdal.GetDriverByName('GTiff').Create(tmpfile, 2, 2, 1, gdal.GDT_Byte)
-        ds.WriteRaster(0, 0, 2, 2, struct.pack('b' * 4, 1, 127, 0, -128))
-        band = ds.GetRasterBand(1)
-        band.SetDescription('my description')
-        ds.FlushCache()
-        ds = None
-
-        rl = QgsRasterLayer(tmpfile)
-        self.assertEqual(rl.dataProvider().bandDescription(1), 'my description')
-
-        ds = gdal.OpenEx(tmpfile)
-        band = ds.GetRasterBand(1)
-        band.SetMetadataItem('DESCRIPTION', 'my metadata description')
-        ds.FlushCache()
-        ds = None
-
-        rl = QgsRasterLayer(tmpfile)
-        self.assertEqual(rl.dataProvider().bandDescription(1), 'my metadata description')
-
-    def testDisplayBandNameBadLayer(self):
-        """Test crash from issue GH #54702"""
-
-        rl = QgsRasterLayer("https://FAKESERVER/ImageServer/WCSServer", "BadWCS", "wcs")
-        self.assertFalse(rl.isValid())
-        # This was triggering a std::bad_alloc exception:
-        self.assertEqual(rl.dataProvider().displayBandName(1), 'Band 1')
-        # This was triggering another crash:
-        self.assertEqual(rl.dataProvider().colorInterpretationName(1), 'Undefined')
 
 
 if __name__ == '__main__':

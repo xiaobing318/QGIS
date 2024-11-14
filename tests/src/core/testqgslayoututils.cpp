@@ -20,9 +20,9 @@
 #include "qgsproject.h"
 #include "qgslayoutitemmap.h"
 #include "qgsfontutils.h"
+#include "qgsrenderchecker.h"
 #include "qgsvectorlayer.h"
 #include "qgslayout.h"
-#include "qgslayoutrendercontext.h"
 
 #include <QStyleOptionGraphicsItem>
 
@@ -31,11 +31,10 @@ class TestQgsLayoutUtils: public QgsTest
     Q_OBJECT
 
   public:
-    TestQgsLayoutUtils() : QgsTest( QStringLiteral( "Layout Utils Tests" ), QStringLiteral( "composer_utils" ) ) {}
+    TestQgsLayoutUtils() : QgsTest( QStringLiteral( "Layout Utils Tests" ) ) {}
 
   private slots:
     void initTestCase();// will be called before the first testfunction is executed.
-    void cleanupTestCase();
     void rotate();
     void normalizedAngle(); //test normalised angle function
     void snappedAngle();
@@ -60,6 +59,8 @@ class TestQgsLayoutUtils: public QgsTest
 
   private:
 
+    bool renderCheck( const QString &testName, QImage &image, int mismatchCount = 0 );
+
     QFont mTestFont;
 };
 
@@ -68,11 +69,6 @@ void TestQgsLayoutUtils::initTestCase()
   QgsFontUtils::loadStandardTestFonts( QStringList() << QStringLiteral( "Oblique" ) );
   mTestFont = QgsFontUtils::getStandardTestFont( QStringLiteral( "Oblique " ) );
   mTestFont.setItalic( true );
-}
-
-void TestQgsLayoutUtils::cleanupTestCase()
-{
-  QgsApplication::exitQgis();
 }
 
 void TestQgsLayoutUtils::rotate()
@@ -493,7 +489,7 @@ void TestQgsLayoutUtils::drawTextPos()
   testPainter.begin( &testImage );
   QgsLayoutUtils::drawText( &testPainter, QPointF( 5, 15 ), QStringLiteral( "Abc123" ), mTestFont, Qt::white );
   testPainter.end();
-  QGSVERIFYIMAGECHECK( "composerutils_drawtext_pos", "composerutils_drawtext_pos", testImage, QString(), 100 );
+  QVERIFY( renderCheck( "composerutils_drawtext_pos", testImage, 100 ) );
 
   //test drawing with pen color set on painter and no specified color
   //text should be drawn using painter pen color
@@ -502,7 +498,7 @@ void TestQgsLayoutUtils::drawTextPos()
   testPainter.setPen( QPen( Qt::green ) );
   QgsLayoutUtils::drawText( &testPainter, QPointF( 5, 15 ), QStringLiteral( "Abc123" ), mTestFont );
   testPainter.end();
-  QGSVERIFYIMAGECHECK( "composerutils_drawtext_posnocolor", "composerutils_drawtext_posnocolor", testImage, QString(), 100 );
+  QVERIFY( renderCheck( "composerutils_drawtext_posnocolor", testImage, 100 ) );
 }
 
 void TestQgsLayoutUtils::drawTextRect()
@@ -518,7 +514,7 @@ void TestQgsLayoutUtils::drawTextRect()
   testPainter.begin( &testImage );
   QgsLayoutUtils::drawText( &testPainter, QRectF( 5, 15, 200, 50 ), QStringLiteral( "Abc123" ), mTestFont, Qt::white );
   testPainter.end();
-  QGSVERIFYIMAGECHECK( "composerutils_drawtext_rect", "composerutils_drawtext_rect", testImage, QString(), 100 );
+  QVERIFY( renderCheck( "composerutils_drawtext_rect", testImage, 100 ) );
 
   //test drawing with pen color set on painter and no specified color
   //text should be drawn using painter pen color
@@ -527,21 +523,21 @@ void TestQgsLayoutUtils::drawTextRect()
   testPainter.setPen( QPen( Qt::green ) );
   QgsLayoutUtils::drawText( &testPainter, QRectF( 5, 15, 200, 50 ), QStringLiteral( "Abc123" ), mTestFont );
   testPainter.end();
-  QGSVERIFYIMAGECHECK( "composerutils_drawtext_rectnocolor", "composerutils_drawtext_rectnocolor", testImage, QString(), 100 );
+  QVERIFY( renderCheck( "composerutils_drawtext_rectnocolor", testImage, 100 ) );
 
   //test alignment settings
   testImage.fill( qRgb( 152, 219, 249 ) );
   testPainter.begin( &testImage );
   QgsLayoutUtils::drawText( &testPainter, QRectF( 5, 15, 200, 50 ), QStringLiteral( "Abc123" ), mTestFont, Qt::black, Qt::AlignRight, Qt::AlignBottom );
   testPainter.end();
-  QGSVERIFYIMAGECHECK( "composerutils_drawtext_rectalign", "composerutils_drawtext_rectalign", testImage, QString(), 100 );
+  QVERIFY( renderCheck( "composerutils_drawtext_rectalign", testImage, 100 ) );
 
   //test extra flags - render without clipping
   testImage.fill( qRgb( 152, 219, 249 ) );
   testPainter.begin( &testImage );
   QgsLayoutUtils::drawText( &testPainter, QRectF( 5, 15, 20, 50 ), QStringLiteral( "Abc123" ), mTestFont, Qt::white, Qt::AlignLeft, Qt::AlignTop, Qt::TextDontClip );
   testPainter.end();
-  QGSVERIFYIMAGECHECK( "composerutils_drawtext_rectflag", "composerutils_drawtext_rectflag", testImage, QString(), 100 );
+  QVERIFY( renderCheck( "composerutils_drawtext_rectflag", testImage, 100 ) );
 }
 
 void TestQgsLayoutUtils::largestRotatedRect()
@@ -645,6 +641,21 @@ void TestQgsLayoutUtils::mapLayerFromString()
   QCOMPARE( QgsLayoutUtils::mapLayerFromString( l2->id(), &p ), l2 );
   QCOMPARE( QgsLayoutUtils::mapLayerFromString( l2a->id(), &p ), l2a );
   QVERIFY( !QgsLayoutUtils::mapLayerFromString( "none", &p ) );
+
+}
+
+bool TestQgsLayoutUtils::renderCheck( const QString &testName, QImage &image, int mismatchCount )
+{
+  const QString myTmpDir = QDir::tempPath() + '/';
+  const QString myFileName = myTmpDir + testName + ".png";
+  image.save( myFileName, "PNG" );
+  QgsRenderChecker myChecker;
+  myChecker.setControlPathPrefix( QStringLiteral( "composer_utils" ) );
+  myChecker.setControlName( "expected_" + testName );
+  myChecker.setRenderedImage( myFileName );
+  const bool myResultFlag = myChecker.compareImages( testName, mismatchCount );
+  mReport += myChecker.report();
+  return myResultFlag;
 }
 
 QGSTEST_MAIN( TestQgsLayoutUtils )

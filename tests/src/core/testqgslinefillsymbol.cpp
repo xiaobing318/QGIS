@@ -107,7 +107,7 @@ void TestQgsLineFillSymbol::initTestCase()
                                      myPolyFileInfo.completeBaseName(), QStringLiteral( "ogr" ) );
 
   QgsVectorSimplifyMethod simplifyMethod;
-  simplifyMethod.setSimplifyHints( Qgis::VectorRenderingSimplificationFlags() );
+  simplifyMethod.setSimplifyHints( QgsVectorSimplifyMethod::NoSimplification );
   mpPolysLayer->setSimplifyMethod( simplifyMethod );
 
   //setup gradient fill
@@ -170,7 +170,7 @@ void TestQgsLineFillSymbol::viewportLineFillSymbol()
   QVERIFY( layer->isValid() );
 
   QgsVectorSimplifyMethod simplifyMethod;
-  simplifyMethod.setSimplifyHints( Qgis::VectorRenderingSimplificationFlags() );
+  simplifyMethod.setSimplifyHints( QgsVectorSimplifyMethod::NoSimplification );
   layer->setSimplifyMethod( simplifyMethod );
 
   //setup gradient fill
@@ -467,7 +467,7 @@ void TestQgsLineFillSymbol::lineFillDataDefinedClip()
   lineFill->setSubSymbol( lineSymbol );
   lineFill->setDistance( 6 );
   lineFill->setDataDefinedProperty(
-    QgsSymbolLayer::Property::LineClipping,
+    QgsSymbolLayer::PropertyLineClipping,
     QgsProperty::fromExpression( QStringLiteral( "case when $id % 3 =0 then 'no' when $id % 3 = 1 then 'during_render' else 'before_render' end" ) ) );
 
   QVERIFY( imageCheck( QStringLiteral( "symbol_linefill_clip_data_defined" ), layer.get() ) );
@@ -480,7 +480,7 @@ void TestQgsLineFillSymbol::dataDefinedSubSymbol()
   properties.insert( QStringLiteral( "width" ), QStringLiteral( "1" ) );
   properties.insert( QStringLiteral( "capstyle" ), QStringLiteral( "flat" ) );
   QgsLineSymbol *lineSymbol = QgsLineSymbol::createSimple( properties );
-  lineSymbol->symbolLayer( 0 )->setDataDefinedProperty( QgsSymbolLayer::Property::StrokeColor, QgsProperty::fromExpression( QStringLiteral( "if(\"Name\" ='Lake','#ff0000','#ff00ff')" ) ) );
+  lineSymbol->symbolLayer( 0 )->setDataDefinedProperty( QgsSymbolLayer::PropertyStrokeColor, QgsProperty::fromExpression( QStringLiteral( "if(\"Name\" ='Lake','#ff0000','#ff00ff')" ) ) );
   mLineFill->setSubSymbol( lineSymbol );
   QVERIFY( imageCheck( QStringLiteral( "datadefined_subsymbol" ) ) );
 }

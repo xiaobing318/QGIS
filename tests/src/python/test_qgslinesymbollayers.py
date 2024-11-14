@@ -9,29 +9,46 @@ __author__ = 'Nyall Dawson'
 __date__ = '2017-01'
 __copyright__ = 'Copyright 2017, The QGIS Project'
 
-from qgis.PyQt.QtGui import QColor, QImage, QPainter
-from qgis.core import (
-    QgsFeature,
-    QgsGeometry,
-    QgsLineSymbol,
-    QgsMapSettings,
-    QgsRenderContext,
-    QgsSimpleLineSymbolLayer,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
 
-from utilities import unitTestDataPath
-
-start_app()
-TEST_DATA_DIR = unitTestDataPath()
+import qgis  # NOQA
+from qgis.PyQt.QtCore import QDir
+from qgis.PyQt.QtGui import (QImage,
+                             QPainter,
+                             QColor)
+from qgis.core import (QgsRenderChecker,
+                       QgsSimpleLineSymbolLayer,
+                       QgsMapSettings,
+                       QgsLineSymbol,
+                       QgsGeometry,
+                       QgsFeature,
+                       QgsRenderContext)
+from qgis.testing import unittest
 
 
-class TestQgsLineSymbolLayers(QgisTestCase):
+class TestQgsLineSymbolLayers(unittest.TestCase):
 
-    @classmethod
-    def control_path_prefix(cls):
-        return "symbol_layer"
+    def setUp(self):
+        self.report = "<h1>Python QgsLineSymbolLayer Tests</h1>\n"
+
+    def tearDown(self):
+        report_file_path = "%s/qgistest.html" % QDir.tempPath()
+        with open(report_file_path, 'a') as report_file:
+            report_file.write(self.report)
+
+    def imageCheck(self, name, reference_image, image):
+        self.report += f"<h2>Render {name}</h2>\n"
+        temp_dir = QDir.tempPath() + '/'
+        file_name = temp_dir + 'symbollayer_' + name + ".png"
+        image.save(file_name, "PNG")
+        checker = QgsRenderChecker()
+        checker.setControlPathPrefix("symbol_layer")
+        checker.setControlName("expected_" + reference_image)
+        checker.setRenderedImage(file_name)
+        checker.setColorTolerance(2)
+        result = checker.compareImages(name, 0)
+        self.report += checker.report()
+        print(self.report)
+        return result
 
     def testSimpleLineWithOffset(self):
         """ test that rendering a simple line symbol with offset"""
@@ -41,7 +58,7 @@ class TestQgsLineSymbolLayers(QgisTestCase):
         symbol = QgsLineSymbol()
         symbol.changeSymbolLayer(0, layer)
 
-        image = QImage(200, 200, QImage.Format.Format_RGB32)
+        image = QImage(200, 200, QImage.Format_RGB32)
         painter = QPainter()
         ms = QgsMapSettings()
 
@@ -67,15 +84,7 @@ class TestQgsLineSymbolLayers(QgisTestCase):
         symbol.stopRender(context)
         painter.end()
 
-        self.assertTrue(
-            self.image_check(
-                'symbol_layer',
-                'simpleline_offset',
-                image,
-                color_tolerance=2,
-                allowed_mismatch=0
-            )
-        )
+        self.assertTrue(self.imageCheck('symbol_layer', 'simpleline_offset', image))
 
     def testSimpleLineWithCustomDashPattern(self):
         """ test that rendering a simple line symbol with custom dash pattern"""
@@ -87,7 +96,7 @@ class TestQgsLineSymbolLayers(QgisTestCase):
         symbol = QgsLineSymbol()
         symbol.changeSymbolLayer(0, layer)
 
-        image = QImage(200, 200, QImage.Format.Format_RGB32)
+        image = QImage(200, 200, QImage.Format_RGB32)
         painter = QPainter()
         ms = QgsMapSettings()
 
@@ -113,15 +122,7 @@ class TestQgsLineSymbolLayers(QgisTestCase):
         symbol.stopRender(context)
         painter.end()
 
-        self.assertTrue(
-            self.image_check(
-                'simpleline_customdashpattern',
-                'simpleline_customdashpattern',
-                image,
-                color_tolerance=2,
-                allowed_mismatch=0
-            )
-        )
+        self.assertTrue(self.imageCheck('symbol_layer_simpleline_customdashpattern', 'simpleline_customdashpattern', image))
 
     def testSimpleLineWithCustomDashPatternHairline(self):
         """ test that rendering a simple line symbol with custom dash pattern"""
@@ -133,7 +134,7 @@ class TestQgsLineSymbolLayers(QgisTestCase):
         symbol = QgsLineSymbol()
         symbol.changeSymbolLayer(0, layer)
 
-        image = QImage(200, 200, QImage.Format.Format_RGB32)
+        image = QImage(200, 200, QImage.Format_RGB32)
         painter = QPainter()
         ms = QgsMapSettings()
 
@@ -159,15 +160,7 @@ class TestQgsLineSymbolLayers(QgisTestCase):
         symbol.stopRender(context)
         painter.end()
 
-        self.assertTrue(
-            self.image_check(
-                'simpleline_customdashpattern_hairline',
-                'simpleline_customdashpattern_hairline',
-                image,
-                color_tolerance=2,
-                allowed_mismatch=0
-            )
-        )
+        self.assertTrue(self.imageCheck('symbol_layer_simpleline_customdashpattern_hairline', 'simpleline_customdashpattern_hairline', image))
 
 
 if __name__ == '__main__':

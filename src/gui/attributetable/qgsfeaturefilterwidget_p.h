@@ -69,7 +69,6 @@ class GUI_EXPORT QgsFeatureFilterWidget : public QWidget, private Ui::QgsFeature
   public slots:
     void filterShowAll();
     void filterSelected();
-    void filterInvalid();
     void filterVisible();
     void filterEdited();
 

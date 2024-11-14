@@ -30,6 +30,7 @@ FILE3="sort_include_3.tmp"
 DoNotSort="(sqlite3.h)|(spatialite.h)"
 
 for file in $(find . \
+ ! -path "./src/plugins/grass/qtermwidget/*" \
  ! -path "./python/ext-libs/*" \
  ! -path "./external/astyle/*" \
  ! -path "./external/qwtpolar-*" \

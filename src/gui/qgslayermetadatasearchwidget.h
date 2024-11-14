@@ -41,7 +41,7 @@ class GUI_EXPORT QgsLayerMetadataSearchWidget : public QgsAbstractDataSourceWidg
     /**
      * Creates a new QgsLayerMetadataSearchWidget.
      */
-    explicit QgsLayerMetadataSearchWidget( QWidget *parent = nullptr, Qt::WindowFlags fl = Qt::WindowFlags(), QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::Standalone );
+    explicit QgsLayerMetadataSearchWidget( QWidget *parent = nullptr, Qt::WindowFlags fl = Qt::WindowFlags(), QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::None );
 
     void setMapCanvas( QgsMapCanvas *mapCanvas ) override;
 
@@ -62,6 +62,7 @@ class GUI_EXPORT QgsLayerMetadataSearchWidget : public QgsAbstractDataSourceWidg
     QgsLayerMetadataResultsProxyModel *mProxyModel = nullptr;
     bool mIsLoading = false;
     QgsLayerMetadataResultsModel *mSourceModel = nullptr;
+    unsigned long int mRowCount = 0;
 
     // QWidget interface
   protected:

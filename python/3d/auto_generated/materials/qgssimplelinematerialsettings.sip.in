@@ -3,7 +3,7 @@
  *                                                                      *
  * src/3d/materials/qgssimplelinematerialsettings.h                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -30,6 +30,9 @@ Basic shading material used for rendering simple lines as solid line components.
   public:
 
     QgsSimpleLineMaterialSettings();
+%Docstring
+Constructor for QgsSimpleLineMaterialSettings.
+%End
 
     virtual QString type() const;
 
@@ -78,5 +81,5 @@ Sets the ``ambient`` color component.
  *                                                                      *
  * src/3d/materials/qgssimplelinematerialsettings.h                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

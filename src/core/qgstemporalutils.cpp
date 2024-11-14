@@ -16,6 +16,12 @@
 #include "qgstemporalutils.h"
 #include "qgsproject.h"
 #include "qgsmaplayertemporalproperties.h"
+#include "qgsrasterlayer.h"
+#include "qgsmeshlayer.h"
+#include "qgsvectorlayer.h"
+#include "qgsvectorlayertemporalproperties.h"
+#include "qgsrasterlayertemporalproperties.h"
+#include "qgsmeshlayertemporalproperties.h"
 #include "qgstemporalnavigationobject.h"
 #include "qgsmapdecoration.h"
 #include "qgsmapsettings.h"
@@ -93,7 +99,7 @@ bool QgsTemporalUtils::exportAnimation( const QgsMapSettings &mapSettings, const
   QgsTemporalNavigationObject navigator;
   navigator.setTemporalExtents( settings.animationRange );
   navigator.setFrameDuration( settings.frameDuration );
-  if ( settings.frameDuration.originalUnit() == Qgis::TemporalUnit::IrregularStep )
+  if ( settings.frameDuration.originalUnit() == QgsUnitTypes::TemporalIrregularStep )
     navigator.setAvailableTemporalRanges( settings.availableTemporalRanges );
 
   QgsMapSettings ms = mapSettings;
@@ -131,8 +137,7 @@ bool QgsTemporalUtils::exportAnimation( const QgsMapSettings &mapSettings, const
     fileName.replace( token, frameNoPaddedLeft );
     const QString path = QDir( settings.outputDirectory ).filePath( fileName );
 
-    QImage img = QImage( ms.outputSize() * ms.devicePixelRatio(), ms.outputImageFormat() );
-    img.setDevicePixelRatio( ms.devicePixelRatio() );
+    QImage img = QImage( ms.outputSize(), ms.outputImageFormat() );
     img.setDotsPerMeterX( 1000 * ms.outputDpi() / 25.4 );
     img.setDotsPerMeterY( 1000 * ms.outputDpi() / 25.4 );
     img.fill( ms.backgroundColor().rgb() );
@@ -168,7 +173,7 @@ QDateTime QgsTemporalUtils::calculateFrameTime( const QDateTime &start, const lo
   double unused;
   const bool isFractional = !qgsDoubleNear( fabs( modf( interval.originalDuration(), &unused ) ), 0.0 );
 
-  if ( isFractional || interval.originalUnit() == Qgis::TemporalUnit::Unknown )
+  if ( isFractional || interval.originalUnit() == QgsUnitTypes::TemporalUnit::TemporalUnknownUnit )
   {
     const double duration = interval.seconds();
     return start.addMSecs( frame * duration * 1000 );
@@ -177,30 +182,30 @@ QDateTime QgsTemporalUtils::calculateFrameTime( const QDateTime &start, const lo
   {
     switch ( interval.originalUnit() )
     {
-      case Qgis::TemporalUnit::Milliseconds:
+      case QgsUnitTypes::TemporalUnit::TemporalMilliseconds:
         return start.addMSecs( frame * interval.originalDuration() );
-      case Qgis::TemporalUnit::Seconds:
+      case QgsUnitTypes::TemporalUnit::TemporalSeconds:
         return start.addSecs( frame * interval.originalDuration() );
-      case Qgis::TemporalUnit::Minutes:
+      case QgsUnitTypes::TemporalUnit::TemporalMinutes:
         return start.addSecs( 60 * frame * interval.originalDuration() );
-      case Qgis::TemporalUnit::Hours:
+      case QgsUnitTypes::TemporalUnit::TemporalHours:
         return start.addSecs( 3600 * frame * interval.originalDuration() );
-      case Qgis::TemporalUnit::Days:
+      case QgsUnitTypes::TemporalUnit::TemporalDays:
         return start.addDays( frame * interval.originalDuration() );
-      case Qgis::TemporalUnit::Weeks:
+      case QgsUnitTypes::TemporalUnit::TemporalWeeks:
         return start.addDays( 7 * frame * interval.originalDuration() );
-      case Qgis::TemporalUnit::Months:
+      case QgsUnitTypes::TemporalUnit::TemporalMonths:
         return start.addMonths( frame * interval.originalDuration() );
-      case Qgis::TemporalUnit::Years:
+      case QgsUnitTypes::TemporalUnit::TemporalYears:
         return start.addYears( frame * interval.originalDuration() );
-      case Qgis::TemporalUnit::Decades:
+      case QgsUnitTypes::TemporalUnit::TemporalDecades:
         return start.addYears( 10 * frame * interval.originalDuration() );
-      case Qgis::TemporalUnit::Centuries:
+      case QgsUnitTypes::TemporalUnit::TemporalCenturies:
         return start.addYears( 100 * frame * interval.originalDuration() );
-      case Qgis::TemporalUnit::Unknown:
+      case QgsUnitTypes::TemporalUnit::TemporalUnknownUnit:
         // handled above
         return QDateTime();
-      case Qgis::TemporalUnit::IrregularStep:
+      case QgsUnitTypes::TemporalUnit::TemporalIrregularStep:
         // not supported by this method
         return QDateTime();
     }

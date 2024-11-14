@@ -15,9 +15,8 @@ import tempfile
 from functools import partial
 
 from qgis.PyQt.QtCore import QEventLoop, QUrl
-from qgis.core import QgsFileDownloader
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsFileDownloader, )
+from qgis.testing import start_app, unittest
 
 __author__ = 'Alessandro Pasotti'
 __date__ = '08/11/2016'
@@ -26,7 +25,7 @@ __copyright__ = 'Copyright 2016, The QGIS Project'
 start_app()
 
 
-class TestQgsFileDownloader(QgisTestCase):
+class TestQgsFileDownloader(unittest.TestCase):
     """
     This class tests the QgsFileDownloader class
     """
@@ -52,7 +51,7 @@ class TestQgsFileDownloader(QgisTestCase):
         if cancel:
             downloader.downloadProgress.connect(downloader.cancelDownload)
 
-        loop.exec()
+        loop.exec_()
 
     @unittest.skipIf(os.environ.get('QGIS_CONTINUOUS_INTEGRATION_RUN', 'true'),
                      'Test with http://www.qgis.org unstable. Needs local server.')

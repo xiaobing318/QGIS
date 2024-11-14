@@ -21,26 +21,28 @@ __copyright__ = '(C) 2016, Hugo Mercier'
 
 import os
 
-from qgis.PyQt.QtCore import QSize
-from qgis.PyQt.QtGui import QColor, QImage, QPainter
+import qgis  # NOQA
+from qgis.PyQt.QtCore import QSize, QDir
+from qgis.PyQt.QtGui import QColor, QPainter, QImage
 from qgis.core import (
-    QgsArrowSymbolLayer,
-    QgsFeature,
-    QgsFillSymbol,
-    QgsGeometry,
-    QgsLineSymbol,
-    QgsMapSettings,
-    QgsProject,
-    QgsProperty,
-    QgsRectangle,
-    QgsRenderContext,
-    QgsSingleSymbolRenderer,
-    QgsSymbol,
-    QgsSymbolLayer,
     QgsVectorLayer,
+    QgsSingleSymbolRenderer,
+    QgsLineSymbol,
+    QgsFillSymbol,
+    QgsProject,
+    QgsRectangle,
+    QgsArrowSymbolLayer,
+    QgsMultiRenderChecker,
+    QgsProperty,
+    QgsSymbolLayer,
+    QgsMapSettings,
+    QgsSymbol,
+    QgsGeometry,
+    QgsFeature,
+    QgsRenderContext,
+    QgsRenderChecker
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 from qgis.testing.mocked import get_iface
 
 from utilities import unitTestDataPath
@@ -51,9 +53,11 @@ start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestQgsArrowSymbolLayer(QgisTestCase):
+class TestQgsArrowSymbolLayer(unittest.TestCase):
 
     def setUp(self):
+        self.report = "<h1>Python QgsArrowSymbolLayer Tests</h1>\n"
+
         self.iface = get_iface()
 
         lines_shp = os.path.join(TEST_DATA_DIR, 'lines.shp')
@@ -72,16 +76,19 @@ class TestQgsArrowSymbolLayer(QgisTestCase):
 
     def tearDown(self):
         QgsProject.instance().removeAllMapLayers()
+        report_file_path = "%s/qgistest.html" % QDir.tempPath()
+        with open(report_file_path, 'a') as report_file:
+            report_file.write(self.report)
 
     def test_1(self):
         sym = self.lines_layer.renderer().symbol()
         sym_layer = QgsArrowSymbolLayer.create({'head_length': '6.5', 'head_thickness': '6.5'})
         dd = QgsProperty.fromExpression("(@geometry_point_num % 4) * 2")
-        sym_layer.setDataDefinedProperty(QgsSymbolLayer.Property.PropertyArrowWidth, dd)
+        sym_layer.setDataDefinedProperty(QgsSymbolLayer.PropertyArrowWidth, dd)
         dd2 = QgsProperty.fromExpression("(@geometry_point_num % 4) * 2")
-        sym_layer.setDataDefinedProperty(QgsSymbolLayer.Property.PropertyArrowHeadLength, dd2)
+        sym_layer.setDataDefinedProperty(QgsSymbolLayer.PropertyArrowHeadLength, dd2)
         dd3 = QgsProperty.fromExpression("(@geometry_point_num % 4) * 2")
-        sym_layer.setDataDefinedProperty(QgsSymbolLayer.Property.PropertyArrowHeadThickness, dd3)
+        sym_layer.setDataDefinedProperty(QgsSymbolLayer.PropertyArrowHeadThickness, dd3)
         fill_sym = QgsFillSymbol.createSimple({'color': '#8bcfff', 'outline_color': '#000000', 'outline_style': 'solid', 'outline_width': '1'})
         sym_layer.setSubSymbol(fill_sym)
         sym.changeSymbolLayer(0, sym_layer)
@@ -89,13 +96,10 @@ class TestQgsArrowSymbolLayer(QgisTestCase):
         rendered_layers = [self.lines_layer]
         self.mapsettings.setLayers(rendered_layers)
 
-        self.assertTrue(
-            self.render_map_settings_check(
-                'arrowsymbollayer_1',
-                'arrowsymbollayer_1',
-                self.mapsettings
-            )
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(self.mapsettings)
+        renderchecker.setControlName('expected_arrowsymbollayer_1')
+        self.assertTrue(renderchecker.runTest('arrowsymbollayer_1'))
 
     def test_2(self):
         sym = self.lines_layer.renderer().symbol()
@@ -108,13 +112,10 @@ class TestQgsArrowSymbolLayer(QgisTestCase):
         rendered_layers = [self.lines_layer]
         self.mapsettings.setLayers(rendered_layers)
 
-        self.assertTrue(
-            self.render_map_settings_check(
-                'arrowsymbollayer_2',
-                'arrowsymbollayer_2',
-                self.mapsettings
-            )
-        )
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(self.mapsettings)
+        renderchecker.setControlName('expected_arrowsymbollayer_2')
+        self.assertTrue(renderchecker.runTest('arrowsymbollayer_2'))
 
     def test_3(self):
         sym = self.lines_layer.renderer().symbol()
@@ -127,15 +128,12 @@ class TestQgsArrowSymbolLayer(QgisTestCase):
         rendered_layers = [self.lines_layer]
         self.mapsettings.setLayers(rendered_layers)
 
+        renderchecker = QgsMultiRenderChecker()
         ms = self.mapsettings
         ms.setExtent(QgsRectangle(-101, 35, -99, 37))
-        self.assertTrue(
-            self.render_map_settings_check(
-                'arrowsymbollayer_3',
-                'arrowsymbollayer_3',
-                ms
-            )
-        )
+        renderchecker.setMapSettings(ms)
+        renderchecker.setControlName('expected_arrowsymbollayer_3')
+        self.assertTrue(renderchecker.runTest('arrowsymbollayer_3'))
 
     def test_unrepeated(self):
         sym = self.lines_layer.renderer().symbol()
@@ -150,16 +148,12 @@ class TestQgsArrowSymbolLayer(QgisTestCase):
         rendered_layers = [self.lines_layer]
         self.mapsettings.setLayers(rendered_layers)
 
+        renderchecker = QgsMultiRenderChecker()
         ms = self.mapsettings
         ms.setExtent(QgsRectangle(-119, 17, -82, 50))
-
-        self.assertTrue(
-            self.render_map_settings_check(
-                'arrowsymbollayer_4',
-                'arrowsymbollayer_4',
-                ms
-            )
-        )
+        renderchecker.setMapSettings(ms)
+        renderchecker.setControlName('expected_arrowsymbollayer_4')
+        self.assertTrue(renderchecker.runTest('arrowsymbollayer_4'))
 
     def testColors(self):
         """
@@ -180,17 +174,12 @@ class TestQgsArrowSymbolLayer(QgisTestCase):
         s3.appendSymbolLayer(
             QgsArrowSymbolLayer())
         s3.symbolLayer(0).setIsCurved(False)
-        s3.symbolLayer(0).subSymbol()[0].setDataDefinedProperty(QgsSymbolLayer.Property.PropertyFillColor,
+        s3.symbolLayer(0).subSymbol()[0].setDataDefinedProperty(QgsSymbolLayer.PropertyFillColor,
                                                                 QgsProperty.fromExpression('case when @geometry_ring_num=0 then \'green\' when @geometry_ring_num=1 then \'blue\' when @geometry_ring_num=2 then \'red\' end'))
 
         g = QgsGeometry.fromWkt('Polygon((0 0, 10 0, 10 10, 0 10, 0 0),(1 1, 1 2, 2 2, 2 1, 1 1),(8 8, 9 8, 9 9, 8 9, 8 8))')
         rendered_image = self.renderGeometry(s3, g)
-        self.assertTrue(
-            self.image_check('arrow_ring_num',
-                             'arrow_ring_num',
-                             rendered_image,
-                             control_path_prefix="symbol_arrow")
-        )
+        assert self.imageCheck('arrow_ring_num', 'arrow_ring_num', rendered_image)
 
     def testOpacityWithDataDefinedColor(self):
         line_shp = os.path.join(TEST_DATA_DIR, 'lines.shp')
@@ -200,9 +189,9 @@ class TestQgsArrowSymbolLayer(QgisTestCase):
         sym = QgsLineSymbol()
         sym_layer = QgsArrowSymbolLayer.create({'arrow_width': '7', 'head_length': '6', 'head_thickness': '8', 'head_type': '0', 'arrow_type': '0', 'is_repeated': '0', 'is_curved': '0'})
         fill_sym = QgsFillSymbol.createSimple({'color': '#8bcfff', 'outline_color': '#000000', 'outline_style': 'solid', 'outline_width': '1'})
-        fill_sym.symbolLayer(0).setDataDefinedProperty(QgsSymbolLayer.Property.PropertyFillColor, QgsProperty.fromExpression(
+        fill_sym.symbolLayer(0).setDataDefinedProperty(QgsSymbolLayer.PropertyFillColor, QgsProperty.fromExpression(
             "if(Name='Arterial', 'red', 'green')"))
-        fill_sym.symbolLayer(0).setDataDefinedProperty(QgsSymbolLayer.Property.PropertyStrokeColor, QgsProperty.fromExpression(
+        fill_sym.symbolLayer(0).setDataDefinedProperty(QgsSymbolLayer.PropertyStrokeColor, QgsProperty.fromExpression(
             "if(Name='Arterial', 'magenta', 'blue')"))
 
         sym_layer.setSubSymbol(fill_sym)
@@ -220,14 +209,14 @@ class TestQgsArrowSymbolLayer(QgisTestCase):
         ms.setExtent(QgsRectangle(-118.5, 19.0, -81.4, 50.4))
         ms.setLayers([line_layer])
 
-        self.assertTrue(
-            self.render_map_settings_check(
-                'arrow_opacityddcolor',
-                'arrow_opacityddcolor',
-                ms,
-                control_path_prefix='symbol_arrow'
-            )
-        )
+        # Test rendering
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(ms)
+        renderchecker.setControlPathPrefix('symbol_arrow')
+        renderchecker.setControlName('expected_arrow_opacityddcolor')
+        res = renderchecker.runTest('expected_arrow_opacityddcolor')
+        self.report += renderchecker.report()
+        self.assertTrue(res)
 
     def testDataDefinedOpacity(self):
         line_shp = os.path.join(TEST_DATA_DIR, 'lines.shp')
@@ -237,15 +226,15 @@ class TestQgsArrowSymbolLayer(QgisTestCase):
         sym = QgsLineSymbol()
         sym_layer = QgsArrowSymbolLayer.create({'arrow_width': '7', 'head_length': '6', 'head_thickness': '8', 'head_type': '0', 'arrow_type': '0', 'is_repeated': '0', 'is_curved': '0'})
         fill_sym = QgsFillSymbol.createSimple({'color': '#8bcfff', 'outline_color': '#000000', 'outline_style': 'solid', 'outline_width': '1'})
-        fill_sym.symbolLayer(0).setDataDefinedProperty(QgsSymbolLayer.Property.PropertyFillColor, QgsProperty.fromExpression(
+        fill_sym.symbolLayer(0).setDataDefinedProperty(QgsSymbolLayer.PropertyFillColor, QgsProperty.fromExpression(
             "if(Name='Arterial', 'red', 'green')"))
-        fill_sym.symbolLayer(0).setDataDefinedProperty(QgsSymbolLayer.Property.PropertyStrokeColor, QgsProperty.fromExpression(
+        fill_sym.symbolLayer(0).setDataDefinedProperty(QgsSymbolLayer.PropertyStrokeColor, QgsProperty.fromExpression(
             "if(Name='Arterial', 'magenta', 'blue')"))
 
         sym_layer.setSubSymbol(fill_sym)
         sym.changeSymbolLayer(0, sym_layer)
 
-        sym.setDataDefinedProperty(QgsSymbol.Property.PropertyOpacity, QgsProperty.fromExpression("if(\"Value\" = 1, 25, 50)"))
+        sym.setDataDefinedProperty(QgsSymbol.PropertyOpacity, QgsProperty.fromExpression("if(\"Value\" = 1, 25, 50)"))
 
         line_layer.setRenderer(QgsSingleSymbolRenderer(sym))
 
@@ -255,20 +244,20 @@ class TestQgsArrowSymbolLayer(QgisTestCase):
         ms.setExtent(QgsRectangle(-118.5, 19.0, -81.4, 50.4))
         ms.setLayers([line_layer])
 
-        self.assertTrue(
-            self.render_map_settings_check(
-                'arrow_ddopacity',
-                'arrow_ddopacity',
-                ms,
-                control_path_prefix='symbol_arrow'
-            )
-        )
+        # Test rendering
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(ms)
+        renderchecker.setControlPathPrefix('symbol_arrow')
+        renderchecker.setControlName('expected_arrow_ddopacity')
+        res = renderchecker.runTest('expected_arrow_ddopacity')
+        self.report += renderchecker.report()
+        self.assertTrue(res)
 
     def renderGeometry(self, symbol, geom):
         f = QgsFeature()
         f.setGeometry(geom)
 
-        image = QImage(200, 200, QImage.Format.Format_RGB32)
+        image = QImage(200, 200, QImage.Format_RGB32)
 
         painter = QPainter()
         ms = QgsMapSettings()
@@ -295,6 +284,21 @@ class TestQgsArrowSymbolLayer(QgisTestCase):
             painter.end()
 
         return image
+
+    def imageCheck(self, name, reference_image, image):
+        self.report += f"<h2>Render {name}</h2>\n"
+        temp_dir = QDir.tempPath() + '/'
+        file_name = temp_dir + 'symbol_' + name + ".png"
+        image.save(file_name, "PNG")
+        checker = QgsRenderChecker()
+        checker.setControlPathPrefix("symbol_arrow")
+        checker.setControlName("expected_" + reference_image)
+        checker.setRenderedImage(file_name)
+        checker.setColorTolerance(2)
+        result = checker.compareImages(name, 20)
+        self.report += checker.report()
+        print(self.report)
+        return result
 
 
 if __name__ == '__main__':

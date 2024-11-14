@@ -14,7 +14,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgslayermetadataresultsproxymodel.h"
-#include "moc_qgslayermetadataresultsproxymodel.cpp"
 #include "qgsabstractlayermetadataprovider.h"
 
 QgsLayerMetadataResultsProxyModel::QgsLayerMetadataResultsProxyModel( QObject *parent ) : QSortFilterProxyModel( parent )
@@ -27,7 +26,7 @@ void QgsLayerMetadataResultsProxyModel::setFilterExtent( const QgsRectangle &ext
   invalidateFilter();
 }
 
-void QgsLayerMetadataResultsProxyModel::setFilterGeometryType( const Qgis::GeometryType geometryType )
+void QgsLayerMetadataResultsProxyModel::setFilterGeometryType( const QgsWkbTypes::GeometryType geometryType )
 {
   mFilterGeometryType = geometryType;
   invalidateFilter();
@@ -39,7 +38,7 @@ void QgsLayerMetadataResultsProxyModel::setFilterString( const QString &filterSt
   invalidateFilter();
 }
 
-void QgsLayerMetadataResultsProxyModel::setFilterMapLayerType( const Qgis::LayerType mapLayerType )
+void QgsLayerMetadataResultsProxyModel::setFilterMapLayerType( const QgsMapLayerType mapLayerType )
 {
   mFilterMapLayerType = mapLayerType;
   invalidateFilter();
@@ -62,7 +61,7 @@ bool QgsLayerMetadataResultsProxyModel::filterAcceptsRow( int sourceRow, const Q
     if ( result && ! mFilterExtent.isEmpty() )
     {
       // Exclude aspatial from extent filter
-      result = result && ( metadataResult.geometryType() != Qgis::GeometryType::Unknown && metadataResult.geometryType() != Qgis::GeometryType::Null ) && mFilterExtent.intersects( metadataResult.geographicExtent().boundingBox() );
+      result = result && ( metadataResult.geometryType() != QgsWkbTypes::UnknownGeometry && metadataResult.geometryType() != QgsWkbTypes::NullGeometry ) && mFilterExtent.intersects( metadataResult.geographicExtent().boundingBox() );
     }
 
     if ( result && mFilterMapLayerTypeEnabled )
@@ -72,9 +71,9 @@ bool QgsLayerMetadataResultsProxyModel::filterAcceptsRow( int sourceRow, const Q
 
     if ( result && mFilterGeometryTypeEnabled )
     {
-      if ( mFilterGeometryType == Qgis::GeometryType::Unknown || mFilterGeometryType == Qgis::GeometryType::Null )
+      if ( mFilterGeometryType == QgsWkbTypes::UnknownGeometry || mFilterGeometryType == QgsWkbTypes::NullGeometry )
       {
-        result = result && ( metadataResult.geometryType() == Qgis::GeometryType::Unknown || metadataResult.geometryType() == Qgis::GeometryType::Null );
+        result = result && ( metadataResult.geometryType() == QgsWkbTypes::UnknownGeometry || metadataResult.geometryType() == QgsWkbTypes::NullGeometry );
       }
       else
       {

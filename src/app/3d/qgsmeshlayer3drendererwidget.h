@@ -24,7 +24,7 @@
 
 class QCheckBox;
 
-class QgsMesh3DSymbolWidget;
+class QgsMesh3dSymbolWidget;
 class QgsMeshLayer;
 class QgsMapCanvas;
 
@@ -36,7 +36,7 @@ class QgsMeshLayer3DRendererWidget : public QgsMapLayerConfigWidget
   public:
     explicit QgsMeshLayer3DRendererWidget( QgsMeshLayer *layer, QgsMapCanvas *canvas, QWidget *parent = nullptr );
 
-    void syncToLayer( QgsMapLayer *layer ) final;
+    void syncToLayer( QgsMapLayer *layer ) override;
 
     //! no transfer of ownership
     void setRenderer( const QgsMeshLayer3DRenderer *renderer );
@@ -51,7 +51,7 @@ class QgsMeshLayer3DRendererWidget : public QgsMapLayerConfigWidget
 
   private:
     QCheckBox *mChkEnabled = nullptr;
-    QgsMesh3DSymbolWidget *mWidgetMesh = nullptr;
+    QgsMesh3dSymbolWidget *mWidgetMesh = nullptr;
     std::unique_ptr<QgsMeshLayer3DRenderer> mRenderer;
 };
 

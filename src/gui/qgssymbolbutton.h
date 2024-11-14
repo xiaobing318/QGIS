@@ -30,7 +30,6 @@ class QgsPanelWidget;
 class QgsMessageBar;
 class QMimeData;
 class QgsSymbol;
-class QgsSymbolSelectorWidget;
 
 /**
  * \ingroup gui
@@ -40,6 +39,7 @@ class QgsSymbolSelectorWidget;
  * The button shows a preview icon for the current symbol, and will open a detailed symbol editor dialog (or
  * panel widget) when clicked.
  *
+ * \since QGIS 3.0
  */
 class GUI_EXPORT QgsSymbolButton : public QToolButton
 {
@@ -162,42 +162,6 @@ class GUI_EXPORT QgsSymbolButton : public QToolButton
      */
     void registerExpressionContextGenerator( QgsExpressionContextGenerator *generator );
 
-    /**
-     * Sets the default symbol for the button, which is shown in the button's drop-down menu for the
-     * "default symbol" option.
-     * \param symbol default symbol for the button. Set to NULLPTR to disable the default symbol
-     * option. Ownership of \a symbol is transferred to the button.
-     * \see defaultSymbol()
-     * \since QGIS 3.30
-     */
-    void setDefaultSymbol( QgsSymbol *symbol SIP_TRANSFER );
-
-    /**
-     * Returns the default symbol for the button, which is shown in the button's drop-down menu for the
-     * "default symbol" option.
-     * \returns default symbol for the button. Returns NULLPTR if the default symbol
-     * option is disabled.
-     * \see setDefaultSymbol()
-     * \since QGIS 3.30
-     */
-    const QgsSymbol *defaultSymbol() const;
-
-    /**
-     * Returns whether the set to null (clear) option is shown in the button's drop-down menu.
-     * \see setShowNull()
-     * \see isNull()
-     * \since QGIS 3.26
-     */
-    bool showNull() const;
-
-    /**
-     * Returns TRUE if the current symbol is null.
-     * \see setShowNull()
-     * \see showNull()
-     * \since QGIS 3.26
-     */
-    bool isNull() const;
-
   public slots:
 
     /**
@@ -250,24 +214,28 @@ class GUI_EXPORT QgsSymbolButton : public QToolButton
     void setShowNull( bool showNull );
 
     /**
+     * Returns whether the set to null (clear) option is shown in the button's drop-down menu.
+     * \see setShowNull()
+     * \see isNull()
+     * \since QGIS 3.26
+     */
+    bool showNull() const;
+
+    /**
+     * Returns TRUE if the current symbol is null.
+     * \see setShowNull()
+     * \see showNull()
+     * \since QGIS 3.26
+     */
+    bool isNull() const;
+
+    /**
      * Sets symbol to to null.
      * \see setShowNull()
-     * \see setToDefaultSymbol()
      * \see showNull()
      * \since QGIS 3.26
      */
     void setToNull();
-
-    /**
-     * Sets symbol to the button's default symbol, if set.
-     *
-     * \see setDefaultSymbol()
-     * \see defaultSymbol()
-     * \see setToNull()
-     *
-     * \since QGIS 3.30
-     */
-    void setToDefaultSymbol();
 
   signals:
 
@@ -304,7 +272,8 @@ class GUI_EXPORT QgsSymbolButton : public QToolButton
   private slots:
 
     void showSettingsDialog();
-    void updateSymbolFromWidget( QgsSymbolSelectorWidget *widget );
+    void updateSymbolFromWidget();
+    void cleanUpSymbolSelector( QgsPanelWidget *container );
 
     /**
      * Creates the drop-down menu entries
@@ -344,8 +313,6 @@ class GUI_EXPORT QgsSymbolButton : public QToolButton
     bool mPickingColor = false;
 
     bool mShowNull = false;
-
-    std::unique_ptr< QgsSymbol > mDefaultSymbol;
 
     /**
      * Regenerates the text preview. If \a color is specified, a temporary color preview

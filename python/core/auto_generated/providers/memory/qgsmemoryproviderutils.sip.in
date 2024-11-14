@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/providers/memory/qgsmemoryproviderutils.h                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -14,6 +14,8 @@ class QgsMemoryProviderUtils
 {
 %Docstring(signature="appended")
 Utility functions for use with the memory vector data provider.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -23,9 +25,8 @@ Utility functions for use with the memory vector data provider.
 
     static QgsVectorLayer *createMemoryLayer( const QString &name,
         const QgsFields &fields,
-        Qgis::WkbType geometryType = Qgis::WkbType::NoGeometry,
-        const QgsCoordinateReferenceSystem &crs = QgsCoordinateReferenceSystem(),
-        bool loadDefaultStyle = true ) /Factory/;
+        QgsWkbTypes::Type geometryType = QgsWkbTypes::NoGeometry,
+        const QgsCoordinateReferenceSystem &crs = QgsCoordinateReferenceSystem() ) /Factory/;
 %Docstring
 Creates a new memory layer using the specified parameters. The caller takes responsibility
 for deleting the newly created layer.
@@ -34,7 +35,6 @@ for deleting the newly created layer.
 :param fields: fields for layer
 :param geometryType: optional layer geometry type
 :param crs: optional layer CRS for layers with geometry
-:param loadDefaultStyle: optional load default style toggle
 %End
 };
 
@@ -45,5 +45,5 @@ for deleting the newly created layer.
  *                                                                      *
  * src/core/providers/memory/qgsmemoryproviderutils.h                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

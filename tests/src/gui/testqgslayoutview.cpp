@@ -26,6 +26,7 @@
 #include "qgslayout.h"
 #include <QtTest/QSignalSpy>
 #include <QSvgGenerator>
+#include <QPrinter>
 
 class TestQgsLayoutView: public QObject
 {

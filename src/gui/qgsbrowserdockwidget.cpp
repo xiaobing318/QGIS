@@ -13,7 +13,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsbrowserdockwidget.h"
-#include "moc_qgsbrowserdockwidget.cpp"
 #include "qgsbrowserdockwidget_p.h"
 #include "qgsbrowserwidget.h"
 #include "qgsbrowserproxymodel.h"
@@ -116,7 +115,7 @@ void QgsBrowserDockWidget::refresh()
 
 bool QgsBrowserDockWidget::addLayerAtIndex( const QModelIndex &index )
 {
-  QgsDebugMsgLevel( QStringLiteral( "rowCount() = %1" ).arg( mWidget->mModel->rowCount( mWidget->mProxyModel->mapToSource( index ) ) ), 2 );
+  QgsDebugMsg( QStringLiteral( "rowCount() = %1" ).arg( mWidget->mModel->rowCount( mWidget->mProxyModel->mapToSource( index ) ) ) );
   QgsDataItem *item = mWidget->mModel->dataItem( mWidget->mProxyModel->mapToSource( index ) );
 
   if ( item && item->type() == Qgis::BrowserItemType::Project )

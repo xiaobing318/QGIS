@@ -3,7 +3,7 @@
  *                                                                      *
  * src/analysis/network/qgsgraph.h                                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -16,6 +16,8 @@ class QgsGraphEdge
 {
 %Docstring(signature="appended")
 This class implements a graph edge
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -24,6 +26,9 @@ This class implements a graph edge
   public:
 
     QgsGraphEdge();
+%Docstring
+Constructor for QgsGraphEdge.
+%End
 
     QVariant cost( int strategyIndex ) const;
 %Docstring
@@ -60,6 +65,8 @@ class QgsGraphVertex
 {
 %Docstring(signature="appended")
 This class implements a graph vertex
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -68,6 +75,9 @@ This class implements a graph vertex
   public:
 
     QgsGraphVertex();
+%Docstring
+Default constructor. It is needed for Qt's container, e.g. QVector
+%End
 
 
     QgsGraphVertex( const QgsPointXY &point );
@@ -101,6 +111,8 @@ class QgsGraph
 {
 %Docstring(signature="appended")
 Mathematical graph representation
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -109,6 +121,9 @@ Mathematical graph representation
   public:
 
     QgsGraph();
+%Docstring
+Constructor for QgsGraph.
+%End
 
 
     int addVertex( const QgsPointXY &pt );
@@ -277,5 +292,5 @@ Returns whether the vertex of the given index exists.
  *                                                                      *
  * src/analysis/network/qgsgraph.h                                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

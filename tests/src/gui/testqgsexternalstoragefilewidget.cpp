@@ -640,7 +640,7 @@ void TestQgsExternalStorageFileWidget::testStoringChangeFeature()
   w.show();
 
   QgsFields fields;
-  fields.append( QgsField( QStringLiteral( "myfield" ), QMetaType::Type::QString ) );
+  fields.append( QgsField( QStringLiteral( "myfield" ), QVariant::String ) );
 
   QgsFeature f1( fields );
   f1.setAttribute( QStringLiteral( "myfield" ), QStringLiteral( "val1" ) );

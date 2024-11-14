@@ -88,7 +88,7 @@ void QgsTinMeshCreationAlgorithm::initAlgorithm( const QVariantMap &configuratio
 bool QgsTinMeshCreationAlgorithm::prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback )
 {
   const QVariant layersVariant = parameters.value( parameterDefinition( QStringLiteral( "SOURCE_DATA" ) )->name() );
-  if ( layersVariant.userType() != QMetaType::Type::QVariantList )
+  if ( layersVariant.type() != QVariant::List )
     return false;
 
   const QVariantList layersList = layersVariant.toList();
@@ -102,12 +102,12 @@ bool QgsTinMeshCreationAlgorithm::prepareAlgorithm( const QVariantMap &parameter
     if ( feedback && feedback->isCanceled() )
       return false;
 
-    if ( layer.userType() != QMetaType::Type::QVariantMap )
+    if ( layer.type() != QVariant::Map )
       continue;
     const QVariantMap layerMap = layer.toMap();
     const QString layerSource = layerMap.value( QStringLiteral( "source" ) ).toString();
-    const Qgis::ProcessingTinInputLayerType type =
-      static_cast<Qgis::ProcessingTinInputLayerType>( layerMap.value( QStringLiteral( "type" ) ).toInt() );
+    const QgsProcessingParameterTinInputLayers::Type type =
+      static_cast<QgsProcessingParameterTinInputLayers::Type>( layerMap.value( QStringLiteral( "type" ) ).toInt() );
     const int attributeIndex = layerMap.value( QStringLiteral( "attributeIndex" ) ).toInt();
 
     std::unique_ptr<QgsProcessingFeatureSource> featureSource( QgsProcessingUtils::variantToSource( layerSource, context ) );
@@ -119,10 +119,10 @@ bool QgsTinMeshCreationAlgorithm::prepareAlgorithm( const QVariantMap &parameter
     const long long featureCount = featureSource->featureCount();
     switch ( type )
     {
-      case Qgis::ProcessingTinInputLayerType::Vertices:
+      case QgsProcessingParameterTinInputLayers::Vertices:
         mVerticesLayer.append( {featureSource->getFeatures(), transform, attributeIndex, featureCount} );
         break;
-      case Qgis::ProcessingTinInputLayerType::BreakLines:
+      case QgsProcessingParameterTinInputLayers::BreakLines:
         mBreakLinesLayer.append( {featureSource->getFeatures(), transform, attributeIndex, featureCount} );
         break;
       default:

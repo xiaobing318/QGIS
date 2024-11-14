@@ -36,15 +36,15 @@ QString QgsProcessingParameterVectorTileWriterLayers::type() const
 bool QgsProcessingParameterVectorTileWriterLayers::checkValueIsAcceptable( const QVariant &input, QgsProcessingContext *context ) const
 {
   if ( !input.isValid() )
-    return mFlags & Qgis::ProcessingParameterFlag::Optional;
+    return mFlags & FlagOptional;
 
-  if ( input.userType() != QMetaType::Type::QVariantList )
+  if ( input.type() != QVariant::List )
     return false;
 
   const QVariantList inputList = input.toList();
   for ( const QVariant &inputItem : inputList )
   {
-    if ( inputItem.userType() != QMetaType::Type::QVariantMap )
+    if ( inputItem.type() != QVariant::Map )
       return false;
     QVariantMap inputItemMap = inputItem.toMap();
 
@@ -94,7 +94,7 @@ QString QgsProcessingParameterVectorTileWriterLayers::asPythonString( QgsProcess
 {
   switch ( outputType )
   {
-    case QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass:
+    case QgsProcessing::PythonQgsProcessingAlgorithmSubclass:
     {
       QString code = QStringLiteral( "QgsProcessingParameterVectorTileWriterLayers('%1', %2)" )
                      .arg( name(), QgsProcessingUtils::stringToPythonLiteral( description() ) );

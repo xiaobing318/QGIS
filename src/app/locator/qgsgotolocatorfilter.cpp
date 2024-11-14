@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsgotolocatorfilter.h"
-#include "moc_qgsgotolocatorfilter.cpp"
 #include "qgsfeedback.h"
 #include "qgisapp.h"
 #include "qgsmapcanvas.h"
@@ -135,7 +134,7 @@ void QgsGotoLocatorFilter::fetchResults( const QString &string, const QgsLocator
       result.displayString = tr( "Go to %1%2 %3%4 (Map CRS, %5)" ).arg( locale.toString( firstNumber, 'g', 10 ), firstSuffix,
                              locale.toString( secondNumber, 'g', 10 ), secondSuffix,
                              currentCrs.userFriendlyIdentifier() );
-      result.setUserData( data );
+      result.userData = data;
       result.score = 0.9;
       emit resultFetched( result );
     }
@@ -166,7 +165,7 @@ void QgsGotoLocatorFilter::fetchResults( const QString &string, const QgsLocator
       QgsLocatorResult result;
       result.filter = this;
       result.displayString = tr( "Go to %1°N %2°E (%3)" ).arg( locale.toString( point.y(), 'g', 10 ), locale.toString( point.x(), 'g', 10 ), wgs84Crs.userFriendlyIdentifier() );
-      result.setUserData( data );
+      result.userData = data;
       result.score = 1.0;
       emit resultFetched( result );
     }
@@ -231,7 +230,7 @@ void QgsGotoLocatorFilter::fetchResults( const QString &string, const QgsLocator
 
     if ( !okX && !okY )
     {
-      const thread_local QRegularExpression locationRx( QStringLiteral( "google.*\\/@([0-9\\-\\.\\,]*)(z|m|a)" ) );
+      const QRegularExpression locationRx( QStringLiteral( "google.*\\/@([0-9\\-\\.\\,]*)(z|m|a)" ) );
       match = locationRx.match( string );
       if ( match.hasMatch() )
       {
@@ -306,7 +305,7 @@ void QgsGotoLocatorFilter::fetchResults( const QString &string, const QgsLocator
       result.displayString = tr( "Go to %1°N %2°E %3(%4)" ).arg( locale.toString( point.y(), 'g', 10 ), locale.toString( point.x(), 'g', 10 ),
                              scale > 0.0 ? tr( "at scale 1:%1 " ).arg( scale ) : QString(),
                              wgs84Crs.userFriendlyIdentifier() );
-      result.setUserData( data );
+      result.userData = data;
       result.score = 1.0;
       emit resultFetched( result );
     }
@@ -317,7 +316,7 @@ void QgsGotoLocatorFilter::triggerResult( const QgsLocatorResult &result )
 {
   QgsMapCanvas *mapCanvas = QgisApp::instance()->mapCanvas();
 
-  QVariantMap data = result.userData().toMap();
+  QVariantMap data = result.userData.toMap();
   const QgsPointXY point = data[QStringLiteral( "point" )].value<QgsPointXY>();
   mapCanvas->setCenter( point );
   if ( data.contains( QStringLiteral( "scale" ) ) )

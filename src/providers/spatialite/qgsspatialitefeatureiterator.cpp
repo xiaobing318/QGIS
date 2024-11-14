@@ -24,9 +24,9 @@
 #include "qgslogger.h"
 #include "qgsmessagelog.h"
 #include "qgsjsonutils.h"
+#include "qgssettings.h"
 #include "qgsexception.h"
 #include "qgsgeometryengine.h"
-#include "qgsdbquerylog_p.h"
 
 QgsSpatiaLiteFeatureIterator::QgsSpatiaLiteFeatureIterator( QgsSpatiaLiteFeatureSource *source, bool ownSource, const QgsFeatureRequest &request )
   : QgsAbstractFeatureIteratorFromSource<QgsSpatiaLiteFeatureSource>( source, ownSource, request )
@@ -42,7 +42,7 @@ QgsSpatiaLiteFeatureIterator::QgsSpatiaLiteFeatureIterator( QgsSpatiaLiteFeature
     }
   }
 
-  mFetchGeometry = !mSource->mGeometryColumn.isNull() && !( mRequest.flags() & Qgis::FeatureRequestFlag::NoGeometry );
+  mFetchGeometry = !mSource->mGeometryColumn.isNull() && !( mRequest.flags() & QgsFeatureRequest::NoGeometry );
   mHasPrimaryKey = !mSource->mPrimaryKey.isEmpty();
   mRowNumber = 0;
 
@@ -51,7 +51,10 @@ QgsSpatiaLiteFeatureIterator::QgsSpatiaLiteFeatureIterator( QgsSpatiaLiteFeature
   QString fallbackWhereClause;
   QString whereClause;
 
-  mTransform = mRequest.calculateTransform( mSource->mCrs );
+  if ( mRequest.destinationCrs().isValid() && mRequest.destinationCrs() != mSource->mCrs )
+  {
+    mTransform = QgsCoordinateTransform( mSource->mCrs, mRequest.destinationCrs(), mRequest.transformContext() );
+  }
   try
   {
     mFilterRect = filterRectToSourceCrs( mTransform );
@@ -104,7 +107,7 @@ QgsSpatiaLiteFeatureIterator::QgsSpatiaLiteFeatureIterator( QgsSpatiaLiteFeature
     }
   }
 
-  if ( request.filterType() == Qgis::FeatureRequestFilterType::Fid )
+  if ( request.filterType() == QgsFeatureRequest::FilterFid )
   {
     whereClause = whereClauseFid();
     if ( ! whereClause.isEmpty() )
@@ -112,7 +115,7 @@ QgsSpatiaLiteFeatureIterator::QgsSpatiaLiteFeatureIterator( QgsSpatiaLiteFeature
       whereClauses.append( whereClause );
     }
   }
-  else if ( request.filterType() == Qgis::FeatureRequestFilterType::Fids )
+  else if ( request.filterType() == QgsFeatureRequest::FilterFids )
   {
     if ( request.filterFids().isEmpty() )
     {
@@ -124,10 +127,10 @@ QgsSpatiaLiteFeatureIterator::QgsSpatiaLiteFeatureIterator( QgsSpatiaLiteFeature
     }
   }
   //IMPORTANT - this MUST be the last clause added!
-  else if ( request.filterType() == Qgis::FeatureRequestFilterType::Expression )
+  else if ( request.filterType() == QgsFeatureRequest::FilterExpression )
   {
     // ensure that all attributes required for expression filter are being fetched
-    if ( mRequest.flags() & Qgis::FeatureRequestFlag::SubsetOfAttributes && request.filterType() == Qgis::FeatureRequestFilterType::Expression )
+    if ( mRequest.flags() & QgsFeatureRequest::SubsetOfAttributes && request.filterType() == QgsFeatureRequest::FilterExpression )
     {
       QgsAttributeList attrs = request.subsetOfAttributes();
       //ensure that all fields required for filter expressions are prepared
@@ -140,7 +143,7 @@ QgsSpatiaLiteFeatureIterator::QgsSpatiaLiteFeatureIterator( QgsSpatiaLiteFeature
       mFetchGeometry = true;
     }
 
-    QgsSpatialiteExpressionCompiler compiler = QgsSpatialiteExpressionCompiler( source->mFields, request.flags() & Qgis::FeatureRequestFlag::IgnoreStaticNodesDuringExpressionCompilation );
+    QgsSpatialiteExpressionCompiler compiler = QgsSpatialiteExpressionCompiler( source->mFields, request.flags() & QgsFeatureRequest::IgnoreStaticNodesDuringExpressionCompilation );
     QgsSqlExpressionCompiler::Result result = compiler.compile( request.filterExpression() );
     if ( result == QgsSqlExpressionCompiler::Complete || result == QgsSqlExpressionCompiler::Partial )
     {
@@ -174,7 +177,7 @@ QgsSpatiaLiteFeatureIterator::QgsSpatiaLiteFeatureIterator( QgsSpatiaLiteFeature
     const auto constOrderBy = request.orderBy();
     for ( const QgsFeatureRequest::OrderByClause &clause : constOrderBy )
     {
-      QgsSQLiteExpressionCompiler compiler = QgsSQLiteExpressionCompiler( source->mFields, request.flags() & Qgis::FeatureRequestFlag::IgnoreStaticNodesDuringExpressionCompilation );
+      QgsSQLiteExpressionCompiler compiler = QgsSQLiteExpressionCompiler( source->mFields, request.flags() & QgsFeatureRequest::IgnoreStaticNodesDuringExpressionCompilation );
       QgsExpression expression = clause.expression();
       if ( compiler.compile( &expression ) == QgsSqlExpressionCompiler::Complete )
       {
@@ -204,7 +207,7 @@ QgsSpatiaLiteFeatureIterator::QgsSpatiaLiteFeatureIterator( QgsSpatiaLiteFeature
       limitAtProvider = false;
 
     // also need attributes required by order by
-    if ( !mOrderByCompiled && mRequest.flags() & Qgis::FeatureRequestFlag::SubsetOfAttributes && !mRequest.orderBy().isEmpty() )
+    if ( !mOrderByCompiled && mRequest.flags() & QgsFeatureRequest::SubsetOfAttributes && !mRequest.orderBy().isEmpty() )
     {
       QSet<int> attributeIndexes;
       const auto usedAttributeIndices = mRequest.orderBy().usedAttributeIndices( mSource->mFields );
@@ -254,7 +257,7 @@ bool QgsSpatiaLiteFeatureIterator::fetchFeature( QgsFeature &feature )
 
   if ( !sqliteStatement )
   {
-    QgsDebugError( QStringLiteral( "Invalid current SQLite statement" ) );
+    QgsDebugMsg( QStringLiteral( "Invalid current SQLite statement" ) );
     close();
     return false;
   }
@@ -353,7 +356,7 @@ bool QgsSpatiaLiteFeatureIterator::prepareStatement( const QString &whereClause,
     QString sql = QStringLiteral( "SELECT %1" ).arg( mHasPrimaryKey ? quotedPrimaryKey() : QStringLiteral( "0" ) );
     int colIdx = 1; // column 0 is primary key
 
-    if ( mRequest.flags() & Qgis::FeatureRequestFlag::SubsetOfAttributes )
+    if ( mRequest.flags() & QgsFeatureRequest::SubsetOfAttributes )
     {
       QgsAttributeList fetchAttributes = mRequest.subsetOfAttributes();
       for ( QgsAttributeList::const_iterator it = fetchAttributes.constBegin(); it != fetchAttributes.constEnd(); ++it )
@@ -438,7 +441,7 @@ QString QgsSpatiaLiteFeatureIterator::whereClauseRect()
   QString whereClause;
 
   bool requiresGeom = false;
-  if ( mRequest.flags() & Qgis::FeatureRequestFlag::ExactIntersect )
+  if ( mRequest.flags() & QgsFeatureRequest::ExactIntersect )
   {
     // we are requested to evaluate a true INTERSECT relationship
     whereClause += QStringLiteral( "Intersects(%1, BuildMbr(%2)) AND " ).arg( QgsSqliteUtils::quotedIdentifier( mSource->mGeometryColumn ), mbr( mFilterRect ) );
@@ -517,7 +520,7 @@ QString QgsSpatiaLiteFeatureIterator::fieldName( const QgsField &fld )
 
 bool QgsSpatiaLiteFeatureIterator::getFeature( sqlite3_stmt *stmt, QgsFeature &feature )
 {
-  bool subsetAttributes = mRequest.flags() & Qgis::FeatureRequestFlag::SubsetOfAttributes;
+  bool subsetAttributes = mRequest.flags() & QgsFeatureRequest::SubsetOfAttributes;
 
   int ret = sqlite3_step( stmt );
   if ( ret == SQLITE_DONE )
@@ -590,11 +593,11 @@ bool QgsSpatiaLiteFeatureIterator::getFeature( sqlite3_stmt *stmt, QgsFeature &f
   return true;
 }
 
-QVariant QgsSpatiaLiteFeatureIterator::getFeatureAttribute( sqlite3_stmt *stmt, int ic, QMetaType::Type type, QMetaType::Type subType )
+QVariant QgsSpatiaLiteFeatureIterator::getFeatureAttribute( sqlite3_stmt *stmt, int ic, QVariant::Type type, QVariant::Type subType )
 {
   if ( sqlite3_column_type( stmt, ic ) == SQLITE_INTEGER )
   {
-    if ( type == QMetaType::Type::Int )
+    if ( type == QVariant::Int )
     {
       // INTEGER value
       return sqlite3_column_int( stmt, ic );
@@ -624,7 +627,7 @@ QVariant QgsSpatiaLiteFeatureIterator::getFeatureAttribute( sqlite3_stmt *stmt, 
   {
     // TEXT value
     const QString txt = QString::fromUtf8( ( const char * ) sqlite3_column_text( stmt, ic ) );
-    if ( type == QMetaType::Type::QVariantList || type == QMetaType::Type::QStringList )
+    if ( type == QVariant::List || type == QVariant::StringList )
     {
       // assume arrays are stored as JSON
       QVariant result = QVariant( QgsJsonUtils::parseArray( txt, subType ) );
@@ -634,7 +637,7 @@ QVariant QgsSpatiaLiteFeatureIterator::getFeatureAttribute( sqlite3_stmt *stmt, 
       }
       return result;
     }
-    else if ( type == QMetaType::Type::QDateTime )
+    else if ( type == QVariant::DateTime )
     {
       // first use the GDAL date format
       QDateTime dt = QDateTime::fromString( txt, Qt::ISODate );
@@ -646,7 +649,7 @@ QVariant QgsSpatiaLiteFeatureIterator::getFeatureAttribute( sqlite3_stmt *stmt, 
 
       return dt;
     }
-    else if ( type == QMetaType::Type::QDate )
+    else if ( type == QVariant::Date )
     {
       return QDate::fromString( txt, QStringLiteral( "yyyy-MM-dd" ) );
     }
@@ -654,7 +657,7 @@ QVariant QgsSpatiaLiteFeatureIterator::getFeatureAttribute( sqlite3_stmt *stmt, 
   }
 
   // assuming NULL
-  return QgsVariantUtils::createNullVariant( type );
+  return QVariant( type );
 }
 
 void QgsSpatiaLiteFeatureIterator::getFeatureGeometry( sqlite3_stmt *stmt, int ic, QgsFeature &feature )

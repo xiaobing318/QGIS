@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgscolorscheme.h                                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -20,6 +20,8 @@ Abstract base class for color schemes
 A color scheme for display in :py:class:`QgsColorButton`. Color schemes return lists
 of colors with an optional associated color name. The colors returned
 can be generated using an optional base color.
+
+.. versionadded:: 2.5
 %End
 
 %TypeHeaderCode
@@ -51,6 +53,9 @@ can be generated using an optional base color.
 
 
     QgsColorScheme();
+%Docstring
+Constructor for QgsColorScheme.
+%End
 
     virtual ~QgsColorScheme();
 
@@ -121,6 +126,8 @@ class QgsGplColorScheme : QgsColorScheme
 {
 %Docstring(signature="appended")
 A color scheme which stores its colors in a gpl palette file.
+
+.. versionadded:: 2.5
 %End
 
 %TypeHeaderCode
@@ -129,6 +136,9 @@ A color scheme which stores its colors in a gpl palette file.
   public:
 
     QgsGplColorScheme();
+%Docstring
+Constructor for QgsGplColorScheme.
+%End
 
      virtual QgsNamedColorList fetchColors( const QString &context = QString(),
                                    const QColor &baseColor = QColor() );
@@ -152,6 +162,8 @@ class QgsUserColorScheme : QgsGplColorScheme
 %Docstring(signature="appended")
 A color scheme which stores its colors in a gpl palette file within the "palettes"
 subfolder off the user's QGIS settings folder.
+
+.. versionadded:: 2.5
 %End
 
 %TypeHeaderCode
@@ -196,6 +208,8 @@ Erases the associated gpl palette file from the users "palettes" folder
 Sets whether a this scheme should be shown in color button menus.
 
 :param show: set to ``True`` to show in color button menus, or ``False`` to hide from menus
+
+.. versionadded:: 3.0
 %End
 
   protected:
@@ -212,6 +226,8 @@ class QgsRecentColorScheme : QgsColorScheme
 {
 %Docstring(signature="appended")
 A color scheme which contains the most recently used colors.
+
+.. versionadded:: 2.5
 %End
 
 %TypeHeaderCode
@@ -220,6 +236,9 @@ A color scheme which contains the most recently used colors.
   public:
 
     QgsRecentColorScheme();
+%Docstring
+Constructor for QgsRecentColorScheme.
+%End
 
     virtual QString schemeName() const;
 
@@ -238,6 +257,8 @@ Adds a color to the list of recent colors.
 :param color: color to add
 
 .. seealso:: :py:func:`lastUsedColor`
+
+.. versionadded:: 2.14
 %End
 
     static QColor lastUsedColor();
@@ -245,6 +266,8 @@ Adds a color to the list of recent colors.
 Returns the most recently used color.
 
 .. seealso:: :py:func:`addRecentColor`
+
+.. versionadded:: 3.0
 %End
 };
 
@@ -252,6 +275,8 @@ class QgsCustomColorScheme : QgsColorScheme
 {
 %Docstring(signature="appended")
 A color scheme which contains custom colors set through QGIS app options dialog.
+
+.. versionadded:: 2.5
 %End
 
 %TypeHeaderCode
@@ -260,6 +285,9 @@ A color scheme which contains custom colors set through QGIS app options dialog.
   public:
 
     QgsCustomColorScheme();
+%Docstring
+Constructor for QgsCustomColorScheme.
+%End
 
     virtual QString schemeName() const;
 
@@ -281,6 +309,8 @@ class QgsProjectColorScheme : QgsColorScheme
 {
 %Docstring(signature="appended")
 A color scheme which contains project specific colors set through project properties dialog.
+
+.. versionadded:: 2.5
 %End
 
 %TypeHeaderCode
@@ -289,6 +319,9 @@ A color scheme which contains project specific colors set through project proper
   public:
 
     QgsProjectColorScheme();
+%Docstring
+Constructor for QgsProjectColorScheme.
+%End
 
     virtual QString schemeName() const;
 
@@ -311,5 +344,5 @@ A color scheme which contains project specific colors set through project proper
  *                                                                      *
  * src/core/qgscolorscheme.h                                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

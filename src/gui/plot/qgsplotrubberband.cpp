@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsplotrubberband.h"
-#include "moc_qgsplotrubberband.cpp"
 #include "qgsplotcanvas.h"
 
 #include <QGraphicsScene>

@@ -47,7 +47,7 @@ int main( int argc, char *argv[] )
   // 2) Load QGIS Project
   QString dataDir( TEST_DATA_DIR );  // defined in CMakeLists.txt
   QString projectFile = dataDir + "/quickapp_project.qgs";
-  QgsDebugMsgLevel( QStringLiteral( "project file:  %1" ).arg( projectFile ), 2 );
+  QgsDebugMsg( QStringLiteral( "project file:  %1" ).arg( projectFile ) );
   QgsProject project;
   bool res = project.read( projectFile );
   Q_ASSERT( res );
@@ -62,29 +62,29 @@ int main( int argc, char *argv[] )
 
   if ( !component.errors().isEmpty() )
   {
-    QgsDebugError( QStringLiteral( "%s" ).arg( QgsApplication::showSettings().toLocal8Bit().data() ) );
+    QgsDebugMsg( QStringLiteral( "%s" ).arg( QgsApplication::showSettings().toLocal8Bit().data() ) );
 
-    QgsDebugError( QStringLiteral( "****************************************" ) );
-    QgsDebugError( QStringLiteral( "*****        QML errors:           *****" ) );
-    QgsDebugError( QStringLiteral( "****************************************" ) );
+    QgsDebugMsg( QStringLiteral( "****************************************" ) );
+    QgsDebugMsg( QStringLiteral( "*****        QML errors:           *****" ) );
+    QgsDebugMsg( QStringLiteral( "****************************************" ) );
     const QList<QQmlError> errors = component.errors();
     for ( const QQmlError &error : errors )
     {
       Q_UNUSED( error );
-      QgsDebugError( error.toString() );
+      QgsDebugMsg( error.toString() );
     }
-    QgsDebugError( QStringLiteral( "****************************************" ) );
-    QgsDebugError( QStringLiteral( "****************************************" ) );
+    QgsDebugMsg( QStringLiteral( "****************************************" ) );
+    QgsDebugMsg( QStringLiteral( "****************************************" ) );
   }
 
   if ( object == nullptr )
   {
-    QgsDebugError( QStringLiteral( "FATAL ERROR: unable to create main.qml" ) );
+    QgsDebugMsg( QStringLiteral( "FATAL ERROR: unable to create main.qml" ) );
     return EXIT_FAILURE;
   }
 
   // Add some data for debugging if needed
-  QgsDebugError( QStringLiteral( "data directory: %1" ).arg( dataDir ) );
+  QgsDebugMsg( QStringLiteral( "data directory: %1" ).arg( dataDir ) );
 
   return QgsApplication::exec();
 }

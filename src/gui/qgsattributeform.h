@@ -20,7 +20,6 @@
 #include "qgis_sip.h"
 #include "qgsattributeeditorcontext.h"
 #include "qgseditorwidgetwrapper.h"
-#include "qgsattributeeditorelement.h"
 
 #include <QWidget>
 #include <QLabel>
@@ -50,7 +49,7 @@ class GUI_EXPORT QgsAttributeForm : public QWidget
 
   public:
 
-    //! Form modes \deprecated QGIS 3.40. Use QgsAttributeEditorContext::Mode instead.
+    //! Form modes \deprecated Use QgsAttributeEditorContext::Mode instead.
     enum Mode
     {
       SingleEditMode, //!< Single edit mode, for editing a single feature
@@ -58,8 +57,8 @@ class GUI_EXPORT QgsAttributeForm : public QWidget
       will add a new feature when the form is accepted. */
       MultiEditMode, //!< Multi edit mode, for editing fields of multiple features at once
       SearchMode, //!< Form values are used for searching/filtering the layer
-      AggregateSearchMode, //!< Form is in aggregate search mode, show each widget in this mode
-      IdentifyMode //!< Identify the feature
+      AggregateSearchMode, //!< Form is in aggregate search mode, show each widget in this mode \since QGIS 3.0
+      IdentifyMode //!< Identify the feature \since QGIS 3.0
     };
 
     //! Filter types
@@ -141,6 +140,7 @@ class GUI_EXPORT QgsAttributeForm : public QWidget
     /**
      * Returns the current mode of the form.
      * \see setMode()
+     * \since QGIS 2.16
      */
     QgsAttributeEditorContext::Mode mode() const { return mMode; }
 
@@ -148,6 +148,7 @@ class GUI_EXPORT QgsAttributeForm : public QWidget
      * Sets the current mode of the form.
      * \param mode form mode
      * \see mode()
+     * \since QGIS 2.16
      */
     void setMode( QgsAttributeEditorContext::Mode mode );
 
@@ -171,6 +172,7 @@ class GUI_EXPORT QgsAttributeForm : public QWidget
     /**
      * Sets all feature IDs which are to be edited if the form is in multiedit mode
      * \param fids feature ID list
+     * \since QGIS 2.16
      */
     void setMultiEditFeatureIds( const QgsFeatureIds &fids );
 
@@ -178,6 +180,7 @@ class GUI_EXPORT QgsAttributeForm : public QWidget
      * Sets the message bar to display feedback from the form in. This is used in the search/filter
      * mode to display the count of selected features.
      * \param messageBar target message bar
+     * \since QGIS 2.16
      */
     void setMessageBar( QgsMessageBar *messageBar );
 
@@ -186,6 +189,7 @@ class GUI_EXPORT QgsAttributeForm : public QWidget
      * In this case it will return a combined expression according to the chosen filters
      * on all attribute widgets.
      *
+     * \since QGIS 3.0
      */
     QString aggregateFilter() const;
 
@@ -197,12 +201,6 @@ class GUI_EXPORT QgsAttributeForm : public QWidget
      */
     void setExtraContextScope( QgsExpressionContextScope *extraScope SIP_TRANSFER );
 
-    /**
-     * Returns TRUE if any of the form widgets need feature geometry
-     * \since QGIS 3.20
-     */
-    bool needsGeometry() const;
-
   signals:
 
     /**
@@ -211,7 +209,7 @@ class GUI_EXPORT QgsAttributeForm : public QWidget
      *
      * \param attribute The name of the attribute that changed.
      * \param value     The new value of the attribute.
-     * \deprecated QGIS 3.0
+     * \deprecated since 3.0
      */
     Q_DECL_DEPRECATED void attributeChanged( const QString &attribute, const QVariant &value ) SIP_DEPRECATED;
 
@@ -221,6 +219,7 @@ class GUI_EXPORT QgsAttributeForm : public QWidget
      * \param attribute The name of the attribute that changed.
      * \param value     The new value of the attribute.
      * \param attributeChanged If TRUE, it corresponds to an actual change of the feature attribute
+     * \since QGIS 3.0.1
      */
     void widgetValueChanged( const QString &attribute, const QVariant &value, bool attributeChanged );
 
@@ -243,6 +242,7 @@ class GUI_EXPORT QgsAttributeForm : public QWidget
      * Emitted when a filter expression is set using the form.
      * \param expression filter expression
      * \param type filter type
+     * \since QGIS 2.16
      */
     void filterExpressionSet( const QString &expression, QgsAttributeForm::FilterType type );
 
@@ -254,16 +254,19 @@ class GUI_EXPORT QgsAttributeForm : public QWidget
 
     /**
      * Emitted when the user selects the close option from the form's button bar.
+     * \since QGIS 2.16
      */
     void closed();
 
     /**
      * Emitted when the user chooses to zoom to a filtered set of features.
+     * \since QGIS 3.0
      */
     void zoomToFeatures( const QString &filter );
 
     /**
      * Emitted when the user chooses to flash a filtered set of features.
+     * \since QGIS 3.0
      */
     void flashFeatures( const QString &filter );
 
@@ -272,6 +275,7 @@ class GUI_EXPORT QgsAttributeForm : public QWidget
      * \since QGIS 3.24
      */
     void openFilteredFeaturesAttributeTable( const QString &filter );
+
 
   public slots:
 
@@ -283,13 +287,6 @@ class GUI_EXPORT QgsAttributeForm : public QWidget
      * \param hintText A hint text for non existent joined features
      */
     void changeAttribute( const QString &field, const QVariant &value, const QString &hintText = QString() );
-
-    /**
-     * Changes the \a geometry of the feature attached to the form.
-     *
-     * \since QGIS 3.30
-     */
-    void changeGeometry( const QgsGeometry &geometry );
 
     /**
      * Update all editors to correspond to a different feature.
@@ -323,6 +320,7 @@ class GUI_EXPORT QgsAttributeForm : public QWidget
 
     /**
      * Resets the search/filter form values.
+     * \since QGIS 2.16
      */
     void resetSearch();
 
@@ -341,6 +339,12 @@ class GUI_EXPORT QgsAttributeForm : public QWidget
      * \since QGIS 3.14
      */
     void parentFormValueChanged( const QString &attribute, const QVariant &newValue );
+
+    /**
+     * Returns TRUE if any of the form widgets need feature geometry
+     * \since QGIS 3.20
+     */
+    bool needsGeometry() const;
 
   private slots:
     void onAttributeChanged( const QVariant &value, const QVariantList &additionalFieldValues );
@@ -387,7 +391,6 @@ class GUI_EXPORT QgsAttributeForm : public QWidget
     void updateFieldDependenciesDefaultValue( QgsEditorWidgetWrapper *eww );
     void updateFieldDependenciesVirtualFields( QgsEditorWidgetWrapper *eww );
     void updateRelatedLayerFieldsDependencies( QgsEditorWidgetWrapper *eww = nullptr );
-    void updateFieldDependenciesParent( QgsEditorWidgetWrapper *eww );
 
     void setMultiEditFeatureIdsRelations( const QgsFeatureIds &fids );
 
@@ -423,7 +426,6 @@ class GUI_EXPORT QgsAttributeForm : public QWidget
     void updateValuesDependencies( const int originIdx );
     void updateValuesDependenciesDefaultValues( const int originIdx );
     void updateValuesDependenciesVirtualFields( const int originIdx );
-    void updateValuesDependenciesParent();
     void updateRelatedLayerFields();
 
     void clearMultiEditMessages();
@@ -440,7 +442,6 @@ class GUI_EXPORT QgsAttributeForm : public QWidget
     void updateContainersVisibility();
     void updateConstraint( const QgsFeature &ft, QgsEditorWidgetWrapper *eww );
     void updateLabels();
-    void updateEditableState();
     bool currentFormValuesFeature( QgsFeature &feature );
     bool currentFormValidConstraints( QStringList &invalidFields, QStringList &descriptions ) const;
     bool currentFormValidHardConstraints( QStringList &invalidFields, QStringList &descriptions ) const;
@@ -466,7 +467,6 @@ class GUI_EXPORT QgsAttributeForm : public QWidget
     QList< QgsAttributeFormWidget *> mFormWidgets;
     QMap<const QgsVectorLayerJoinInfo *, QgsFeature> mJoinedFeatures;
     QMap<QLabel *, QgsProperty> mLabelDataDefinedProperties;
-    QMap<QWidget *, QgsProperty> mEditableDataDefinedProperties;
     bool mValuesInitialized = false;
     bool mDirty = false;
     bool mIsSettingFeature = false;
@@ -557,8 +557,6 @@ class GUI_EXPORT QgsAttributeForm : public QWidget
      */
     QSet<QgsEditorWidgetWrapper *> mRelatedLayerFieldsDependencies;
 
-    QSet<QgsEditorWidgetWrapper *> mParentDependencies;
-
     //! List of updated fields to avoid recursion on the setting of defaultValues
     QList<int> mAlreadyUpdatedFields;
 
@@ -566,7 +564,6 @@ class GUI_EXPORT QgsAttributeForm : public QWidget
 
     friend class TestQgsDualView;
     friend class TestQgsAttributeForm;
-    friend class TestQgsValueRelationWidgetWrapper;
 };
 
 #endif // QGSATTRIBUTEFORM_H

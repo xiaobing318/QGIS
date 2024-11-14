@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/symbology/qgssvgselectorwidget.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -99,10 +99,6 @@ not block the GUI.
 
 class QgsSvgSelectorWidget : QWidget
 {
-%Docstring(signature="appended")
-
-A widget allowing selection of an SVG file, and configuration of SVG related parameters.
-%End
 
 %TypeHeaderCode
 #include "qgssvgselectorwidget.h"
@@ -137,22 +133,11 @@ Defines if the group box to fill parameters is visible
 .. versionadded:: 3.18
 %End
 
- bool allowParamerters() const /Deprecated/;
+    bool allowParamerters() const;
 %Docstring
 Returns if the group box to fill parameters is visible
 
 .. versionadded:: 3.18
-
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsSvgSelectorWidget.allowParameters`.
-%End
-
-    bool allowParameters() const;
-%Docstring
-Returns if the group box to fill parameters is visible
-
-.. versionadded:: 3.38
 %End
 
     void setBrowserVisible( bool visible );
@@ -190,11 +175,7 @@ Sets the dynamic parameters
 %End
 
   signals:
-
     void svgSelected( const QString &path );
-%Docstring
-Emitted when an SVG is selected in the widget.
-%End
 
     void svgParametersChanged( const QMap<QString, QgsProperty> &parameters );
 %Docstring
@@ -237,5 +218,5 @@ Returns pointer to the embedded SVG selector widget
  *                                                                      *
  * src/gui/symbology/qgssvgselectorwidget.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

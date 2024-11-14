@@ -188,7 +188,9 @@ class CORE_EXPORT QgsPointCloudRendererRegistry
     QgsPointCloudRendererRegistry();
     ~QgsPointCloudRendererRegistry();
 
+    //! QgsPointCloudRendererRegistry cannot be copied.
     QgsPointCloudRendererRegistry( const QgsPointCloudRendererRegistry &rh ) = delete;
+    //! QgsPointCloudRendererRegistry cannot be copied.
     QgsPointCloudRendererRegistry &operator=( const QgsPointCloudRendererRegistry &rh ) = delete;
 
     /**

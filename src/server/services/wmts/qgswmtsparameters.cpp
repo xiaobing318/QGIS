@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgswmtsparameters.h"
-#include "moc_qgswmtsparameters.cpp"
 #include "qgsmessagelog.h"
 
 namespace QgsWmts
@@ -40,7 +39,7 @@ namespace QgsWmts
   // QgsWmtsParameter
   //
   QgsWmtsParameter::QgsWmtsParameter( const QgsWmtsParameter::Name name,
-                                      const QMetaType::Type type,
+                                      const QVariant::Type type,
                                       const QVariant defaultValue )
     : QgsServerParameterDefinition( type, defaultValue )
     , mName( name )
@@ -94,17 +93,17 @@ namespace QgsWmts
     save( pFormat );
 
     const QgsWmtsParameter pTileMatrix = QgsWmtsParameter( QgsWmtsParameter::TILEMATRIX,
-                                         QMetaType::Type::Int,
+                                         QVariant::Int,
                                          QVariant( -1 ) );
     save( pTileMatrix );
 
     const QgsWmtsParameter pTileRow = QgsWmtsParameter( QgsWmtsParameter::TILEROW,
-                                      QMetaType::Type::Int,
+                                      QVariant::Int,
                                       QVariant( -1 ) );
     save( pTileRow );
 
     const QgsWmtsParameter pTileCol = QgsWmtsParameter( QgsWmtsParameter::TILECOL,
-                                      QMetaType::Type::Int,
+                                      QVariant::Int,
                                       QVariant( -1 ) );
     save( pTileCol );
 
@@ -112,12 +111,12 @@ namespace QgsWmts
     save( pInfoFormat );
 
     const QgsWmtsParameter pI( QgsWmtsParameter::I,
-                               QMetaType::Type::Int,
+                               QVariant::Int,
                                QVariant( -1 ) );
     save( pI );
 
     const QgsWmtsParameter pJ( QgsWmtsParameter::J,
-                               QMetaType::Type::Int,
+                               QVariant::Int,
                                QVariant( -1 ) );
     save( pJ );
   }

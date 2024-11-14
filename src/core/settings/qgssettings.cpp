@@ -21,13 +21,10 @@
 #include <QDir>
 
 #include "qgssettings.h"
-#include "moc_qgssettings.cpp"
 #include "qgsvariantutils.h"
-#include "qgssettingsproxy.h"
+#include "qgslogger.h"
 
 Q_GLOBAL_STATIC( QString, sGlobalSettingsPath )
-
-thread_local QgsSettings *sQgsSettingsThreadSettings = nullptr;
 
 bool QgsSettings::setGlobalSettingsPath( const QString &path )
 {
@@ -137,34 +134,24 @@ QStringList QgsSettings::childKeys() const
   return keys;
 }
 
-QStringList QgsSettings::childGroups( Qgis::SettingsOrigin origin ) const
+QStringList QgsSettings::childGroups() const
 {
-  switch ( origin )
+  QStringList keys = mUserSettings->childGroups();
+  if ( mGlobalSettings )
   {
-    case Qgis::SettingsOrigin::Any:
-    {
-      QStringList keys = mUserSettings->childGroups();
-      if ( mGlobalSettings )
-      {
-        const QStringList constChildGroups = mGlobalSettings->childGroups();
-        std::copy_if( constChildGroups.constBegin(), constChildGroups.constEnd(), std::back_inserter( keys ), [&keys]( const QString & key ) {return !keys.contains( key );} );
-      }
-      return keys;
-    }
-
-    case Qgis::SettingsOrigin::Local:
-      return mUserSettings->childGroups();
-
-    case Qgis::SettingsOrigin::Global:
-      return  mGlobalSettings ? mGlobalSettings->childGroups() : QStringList();
+    const QStringList constChildGroups = mGlobalSettings->childGroups();
+    std::copy_if( constChildGroups.constBegin(), constChildGroups.constEnd(), std::back_inserter( keys ), [&keys]( const QString & key ) {return !keys.contains( key );} );
   }
-
-  BUILTIN_UNREACHABLE
+  return keys;
 }
-
 QStringList QgsSettings::globalChildGroups() const
 {
-  return childGroups( Qgis::SettingsOrigin::Global );
+  QStringList keys;
+  if ( mGlobalSettings )
+  {
+    keys = mGlobalSettings->childGroups();
+  }
+  return keys;
 }
 
 QString QgsSettings::globalSettingsPath()
@@ -290,17 +277,6 @@ void QgsSettings::setArrayIndex( int i )
   }
 }
 
-Qgis::SettingsOrigin QgsSettings::origin( const QString &key ) const
-{
-  if ( mGlobalSettings && mGlobalSettings->contains( key ) )
-    return Qgis::SettingsOrigin::Global;
-
-  if ( mUserSettings->contains( key ) )
-    return Qgis::SettingsOrigin::Local;
-
-  return Qgis::SettingsOrigin::Any;
-}
-
 void QgsSettings::setValue( const QString &key, const QVariant &value, const QgsSettings::Section section )
 {
   // TODO: add valueChanged signal
@@ -333,24 +309,4 @@ QString QgsSettings::sanitizeKey( const QString &key ) const
 void QgsSettings::clear()
 {
   mUserSettings->clear();
-}
-
-
-void QgsSettings::holdFlush()
-{
-  if ( sQgsSettingsThreadSettings )
-    return;
-
-  sQgsSettingsThreadSettings = new QgsSettings();
-}
-
-void QgsSettings::releaseFlush()
-{
-  delete sQgsSettingsThreadSettings;
-  sQgsSettingsThreadSettings = nullptr;
-}
-
-QgsSettingsProxy QgsSettings::get()
-{
-  return QgsSettingsProxy( sQgsSettingsThreadSettings );
 }

@@ -15,20 +15,13 @@ import os
 import tempfile
 
 from qgis.PyQt.QtCore import QFileInfo, qDebug
-from qgis.PyQt.QtNetwork import QSsl, QSslCertificate, QSslError, QSslSocket, QSslConfiguration
+from qgis.PyQt.QtNetwork import QSsl, QSslError, QSslCertificate, QSslSocket
 from qgis.PyQt.QtTest import QTest
 from qgis.PyQt.QtWidgets import QDialog, QDialogButtonBox, QVBoxLayout
-from qgis.core import (
-    QgsApplication,
-    QgsAuthCertUtils,
-    QgsAuthConfigSslServer,
-    QgsAuthMethod,
-    QgsAuthMethodConfig,
-    QgsPkiBundle,
-)
+from qgis.core import QgsAuthCertUtils, QgsPkiBundle, QgsAuthMethodConfig, QgsAuthMethod, QgsAuthConfigSslServer, \
+    QgsApplication
 from qgis.gui import QgsAuthEditorWidgets
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -40,11 +33,10 @@ TESTDATA = os.path.join(unitTestDataPath(), 'auth_system')
 PKIDATA = os.path.join(TESTDATA, 'certs_keys')
 
 
-class TestQgsAuthManager(QgisTestCase):
+class TestQgsAuthManager(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        super().setUpClass()
         cls.authm = QgsApplication.authManager()
         assert not cls.authm.isDisabled(), cls.authm.disabledMessage()
 
@@ -57,22 +49,13 @@ class TestQgsAuthManager(QgisTestCase):
 
     def setUp(self):
         testid = self.id().split('.')
-        testheader = f'\n#####_____ {testid[1]}.{testid[2]} _____#####\n'
+        testheader = '\n#####_____ {0}.{1} _____#####\n'. \
+            format(testid[1], testid[2])
         qDebug(testheader)
 
         if (not self.authm.masterPasswordIsSet() or
                 not self.authm.masterPasswordHashInDatabase()):
             self.set_master_password()
-
-    def checkCA(self):
-        """For debugging the test"""
-
-        cert_ids = set([QgsAuthCertUtils.shaHexForCert(c) for c in QgsAuthCertUtils.certsFromFile(PKIDATA + '/chain_subissuer-issuer-root.pem')])
-        cfg = QSslConfiguration.defaultConfiguration()
-        # Get list of CA certificates
-        ids = set([QgsAuthCertUtils.shaHexForCert(c) for c in cfg.caCertificates()])
-        for c in cert_ids:
-            self.assertNotIn(c, ids, f'CA certificate {c} is already in the system')
 
     def widget_dialog(self, widget):
         dlg = QDialog()
@@ -80,7 +63,7 @@ class TestQgsAuthManager(QgisTestCase):
         layout = QVBoxLayout()
         layout.addWidget(widget)
         layout.setMargin(6)
-        button_box = QDialogButtonBox(QDialogButtonBox.StandardButton.Close)
+        button_box = QDialogButtonBox(QDialogButtonBox.Close)
         button_box.rejected.connect(dlg.close)
         layout.addWidget(button_box)
         dlg.setLayout(layout)
@@ -97,7 +80,7 @@ class TestQgsAuthManager(QgisTestCase):
     def show_editors_widget(self):
         editors = QgsAuthEditorWidgets()
         dlg = self.widget_dialog(editors)
-        dlg.exec()
+        dlg.exec_()
 
     def set_master_password(self):
         msg = 'Failed to store and verify master password in auth db'
@@ -148,8 +131,6 @@ class TestQgsAuthManager(QgisTestCase):
 
         msg = 'No system root CAs'
         self.assertIsNotNone(self.authm.systemRootCAs())
-
-        self.checkCA()
 
         # TODO: add more tests
         full_chain = 'chains_subissuer-issuer-root_issuer2-root2.pem'
@@ -207,18 +188,6 @@ class TestQgsAuthManager(QgisTestCase):
         msg = 'Stored authorities not in trusted authorities cache'
         self.assertFalse(not_cached, msg)
 
-        # Cleanup
-        msg = "Authority certs could not be removed from database"
-        for c in ca_certs:
-            self.assertTrue(self.authm.removeCertAuthority(c), msg)
-
-        rebuild_caches()
-        trusted_certs = trusted_ca_certs()
-
-        still_cached = any([ca in trusted_certs for ca in ca_certs])
-        msg = 'Stored authorities still in trusted authorities cache'
-        self.assertFalse(still_cached, msg)
-
         # dlg = QgsAuthTrustedCAsDialog()
         # dlg.exec_()
 
@@ -227,9 +196,6 @@ class TestQgsAuthManager(QgisTestCase):
 
     # noinspection PyArgumentList
     def test_060_identities(self):
-
-        self.checkCA()
-
         client_cert_path = os.path.join(PKIDATA, 'fra_cert.pem')
         client_key_path = os.path.join(PKIDATA, 'fra_key_w-pass.pem')
         client_key_pass = 'password'
@@ -344,9 +310,7 @@ class TestQgsAuthManager(QgisTestCase):
             self.authm.removeAuthenticationConfig(bundle_configid), msg)
 
     def test_070_servers(self):
-
-        self.checkCA()
-
+        # return
         ssl_cert_path = os.path.join(PKIDATA, 'localhost_ssl_cert.pem')
 
         ssl_cert = QgsAuthCertUtils.certsFromFile(ssl_cert_path)[0]
@@ -359,10 +323,10 @@ class TestQgsAuthManager(QgisTestCase):
         config = QgsAuthConfigSslServer()
         config.setSslCertificate(ssl_cert)
         config.setSslHostPort(hostport)
-        config.setSslIgnoredErrorEnums([QSslError.SslError.SelfSignedCertificate])
-        config.setSslPeerVerifyMode(QSslSocket.PeerVerifyMode.VerifyNone)
+        config.setSslIgnoredErrorEnums([QSslError.SelfSignedCertificate])
+        config.setSslPeerVerifyMode(QSslSocket.VerifyNone)
         config.setSslPeerVerifyDepth(3)
-        config.setSslProtocol(QSsl.SslProtocol.TlsV1_1)
+        config.setSslProtocol(QSsl.TlsV1_1)
 
         msg = 'SSL config is null'
         self.assertFalse(config.isNull(), msg)
@@ -388,8 +352,9 @@ class TestQgsAuthManager(QgisTestCase):
         msg = 'HostPort of retrieved SSL config does not match'
         self.assertEqual(config.sslHostPort(), config2.sslHostPort(), msg)
 
+        msg = 'IgnoredErrorEnums of retrieved SSL config does not match'
         enums = config2.sslIgnoredErrorEnums()
-        self.assertIn(QSslError.SslError.SelfSignedCertificate, enums)
+        self.assertTrue(QSslError.SelfSignedCertificate in enums, msg)
 
         msg = 'PeerVerifyMode of retrieved SSL config does not match'
         self.assertEqual(config.sslPeerVerifyMode(),
@@ -414,9 +379,6 @@ class TestQgsAuthManager(QgisTestCase):
             self.authm.existsSslCertCustomConfig(cert_sha, hostport), msg)
 
     def test_080_auth_configid(self):
-
-        self.checkCA()
-
         msg = 'Could not generate a config id'
         self.assertIsNotNone(self.authm.uniqueConfigId(), msg)
 
@@ -424,7 +386,10 @@ class TestQgsAuthManager(QgisTestCase):
         for _ in range(50):
             # time.sleep(0.01)  # or else the salt is not random enough
             uids.append(self.authm.uniqueConfigId())
-        msg = f'Generated 50 config ids are not unique:\n{uids}\n{list(set(uids))}'
+        msg = 'Generated 50 config ids are not unique:\n{}\n{}'.format(
+            uids,
+            list(set(uids))
+        )
         self.assertEqual(len(uids), len(list(set(uids))), msg)
 
     def config_list(self):
@@ -499,7 +464,8 @@ class TestQgsAuthManager(QgisTestCase):
             msg = f'Config id {configid} not in db'
             self.assertFalse(self.authm.configIdUnique(configid), msg)
 
-            self.assertIn(configid, self.authm.configIds())
+            msg = f'Could not retrieve {kind} config id from db'
+            self.assertTrue(configid in self.authm.configIds(), msg)
 
             msg = f'Could not retrieve method key for {kind} config'
             self.assertTrue(
@@ -541,8 +507,6 @@ class TestQgsAuthManager(QgisTestCase):
 
     def test_100_auth_db(self):
 
-        self.checkCA()
-
         for kind in self.config_list():
             config = self.config_obj(kind, base=False)
             msg = f'Could not store {kind} config'
@@ -553,7 +517,7 @@ class TestQgsAuthManager(QgisTestCase):
             (len(self.authm.configIds()) == len(self.config_list())), msg)
 
         msg = 'Could not retrieve available configs from auth db'
-        self.assertGreater(len(self.authm.availableAuthMethodConfigs()), 0)
+        self.assertTrue(len(self.authm.availableAuthMethodConfigs()) > 0, msg)
 
         backup = None
         resetpass, backup = self.authm.resetMasterPassword(
@@ -564,7 +528,7 @@ class TestQgsAuthManager(QgisTestCase):
         # qDebug('Backup db path: {0}'.format(backup))
         msg = 'Could not retrieve backup path for reset master password op'
         self.assertIsNotNone(backup)
-        self.assertNotEqual(backup, self.authm.authenticationDatabasePath())
+        self.assertTrue(backup != self.authm.authenticationDatabasePath(), msg)
 
         msg = 'Could not verify reset master password'
         self.assertTrue(self.authm.setMasterPassword('newpass', True), msg)
@@ -573,7 +537,7 @@ class TestQgsAuthManager(QgisTestCase):
         self.assertTrue(self.authm.removeAllAuthenticationConfigs(), msg)
 
         msg = 'Configs were not removed from auth db'
-        self.assertEqual(len(self.authm.configIds()), 0)
+        self.assertTrue(len(self.authm.configIds()) == 0, msg)
 
         msg = 'Auth db does not exist'
         self.assertTrue(os.path.exists(self.authm.authenticationDatabasePath()), msg)
@@ -589,15 +553,13 @@ class TestQgsAuthManager(QgisTestCase):
         # qDebug('Erase db backup db path: {0}'.format(backup))
         msg = 'Could not retrieve backup path for erase db op'
         self.assertIsNotNone(backup)
-        self.assertNotEqual(backup, self.authm.authenticationDatabasePath())
+        self.assertTrue(backup != self.authm.authenticationDatabasePath(), msg)
 
         msg = 'Master password not erased from auth db'
         self.assertTrue(not self.authm.masterPasswordIsSet() and
                         not self.authm.masterPasswordHashInDatabase(), msg)
 
         self.set_master_password()
-
-        self.checkCA()
 
     def test_110_pkcs12_cas(self):
         """Test if CAs can be read from a pkcs12 bundle"""
@@ -637,9 +599,9 @@ class TestQgsAuthManager(QgisTestCase):
         self.assertEqual(len(merged), 3)
 
         for c in extra:
-            self.assertIn(c, merged)
+            self.assertTrue(c in merged)
 
-        self.assertIn(trusted[0], merged)
+        self.assertTrue(trusted[0] in merged)
 
     def test_140_cas_remove_self_signed(self):
         """Test CAs merge """
@@ -662,16 +624,15 @@ class TestQgsAuthManager(QgisTestCase):
         def testChain(path):
 
             # Test that a chain with an untrusted CA is not valid
-            self.assertGreater(len(QgsAuthCertUtils.validateCertChain(QgsAuthCertUtils.certsFromFile(path))), 0)
+            self.assertTrue(len(QgsAuthCertUtils.validateCertChain(QgsAuthCertUtils.certsFromFile(path))) > 0)
 
             # Test that a chain with an untrusted CA is valid when the addRootCa argument is true
-            self.assertEqual(len(QgsAuthCertUtils.validateCertChain(QgsAuthCertUtils.certsFromFile(path), None, True)), 0)
+            self.assertTrue(len(QgsAuthCertUtils.validateCertChain(QgsAuthCertUtils.certsFromFile(path), None, True)) == 0)
 
             # Test that a chain with an untrusted CA is not valid when the addRootCa argument is true
-            # and a wrong domain is true
-            self.assertGreater(len(QgsAuthCertUtils.validateCertChain(QgsAuthCertUtils.certsFromFile(path), 'my.wrong.domain', True)), 0)
+            # and a wrong domainis true
+            self.assertTrue(len(QgsAuthCertUtils.validateCertChain(QgsAuthCertUtils.certsFromFile(path), 'my.wrong.domain', True)) > 0)
 
-        self.checkCA()
         testChain(PKIDATA + '/chain_subissuer-issuer-root.pem')
         testChain(PKIDATA + '/localhost_ssl_w-chain.pem')
         testChain(PKIDATA + '/fra_w-chain.pem')
@@ -680,15 +641,15 @@ class TestQgsAuthManager(QgisTestCase):
 
         # Test that a chain with an untrusted CA is not valid when the addRootCa argument is true
         # and a wrong domain is set
-        self.assertGreater(len(QgsAuthCertUtils.validateCertChain(QgsAuthCertUtils.certsFromFile(path), 'my.wrong.domain', True)), 0)
+        self.assertTrue(len(QgsAuthCertUtils.validateCertChain(QgsAuthCertUtils.certsFromFile(path), 'my.wrong.domain', True)) > 0)
 
         # Test that a chain with an untrusted CA is valid when the addRootCa argument is true
         # and a right domain is set
-        self.assertEqual(len(QgsAuthCertUtils.validateCertChain(QgsAuthCertUtils.certsFromFile(path), 'localhost', True)), 0)
+        self.assertTrue(len(QgsAuthCertUtils.validateCertChain(QgsAuthCertUtils.certsFromFile(path), 'localhost', True)) == 0)
 
         # Test that a chain with an untrusted CA is not valid when the addRootCa argument is false
         # and a right domain is set
-        self.assertGreater(len(QgsAuthCertUtils.validateCertChain(QgsAuthCertUtils.certsFromFile(path), 'localhost', False)), 0)
+        self.assertTrue(len(QgsAuthCertUtils.validateCertChain(QgsAuthCertUtils.certsFromFile(path), 'localhost', False)) > 0)
 
     def test_validate_pki_bundle(self):
         """Text the pki bundle validation"""
@@ -748,7 +709,7 @@ class TestQgsAuthManager(QgisTestCase):
         # Untrust this root
         root2 = QgsAuthCertUtils.certFromFile(PKIDATA + '/' + 'root2_ca_cert.pem')
         QgsApplication.authManager().storeCertAuthority(root2)
-        self.assertTrue(QgsApplication.authManager().storeCertTrustPolicy(root2, QgsAuthCertUtils.CertTrustPolicy.Untrusted))
+        self.assertTrue(QgsApplication.authManager().storeCertTrustPolicy(root2, QgsAuthCertUtils.Untrusted))
         QgsApplication.authManager().rebuildCaCertsCache()
         # Test valid with intermediates and untrusted root
         self.assertEqual(QgsAuthCertUtils.validatePKIBundle(bundle, True, True), ['The issuer certificate of a locally looked up certificate could not be found'])
@@ -760,7 +721,7 @@ class TestQgsAuthManager(QgisTestCase):
         cert = QSslCertificate()
         self.assertFalse(QgsAuthCertUtils.certIsCurrent(cert))
         res = QgsAuthCertUtils.certViabilityErrors(cert)
-        self.assertEqual(len(res), 0)
+        self.assertTrue(len(res) == 0)
         self.assertFalse(QgsAuthCertUtils.certIsViable(cert))
 
         cert.clear()
@@ -769,7 +730,7 @@ class TestQgsAuthManager(QgisTestCase):
         cert = QgsAuthCertUtils.certFromFile(PKIDATA + '/gerardus_cert.pem')
         self.assertTrue(QgsAuthCertUtils.certIsCurrent(cert))
         res = QgsAuthCertUtils.certViabilityErrors(cert)
-        self.assertEqual(len(res), 0)
+        self.assertTrue(len(res) == 0)
         self.assertTrue(QgsAuthCertUtils.certIsViable(cert))
 
         cert.clear()
@@ -778,8 +739,8 @@ class TestQgsAuthManager(QgisTestCase):
         cert = QgsAuthCertUtils.certFromFile(PKIDATA + '/marinus_cert-EXPIRED.pem')
         self.assertFalse(QgsAuthCertUtils.certIsCurrent(cert))
         res = QgsAuthCertUtils.certViabilityErrors(cert)
-        self.assertGreater(len(res), 0)
-        self.assertIn(QSslError(QSslError.SslError.CertificateExpired, cert), res)
+        self.assertTrue(len(res) > 0)
+        self.assertTrue(QSslError(QSslError.CertificateExpired, cert) in res)
         self.assertFalse(QgsAuthCertUtils.certIsViable(cert))
 
     def test_170_pki_key_encoding(self):

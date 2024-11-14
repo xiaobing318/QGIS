@@ -47,15 +47,20 @@ class CORE_EXPORT QgsLabelSearchTree
 {
   public:
 
+    /**
+     * Constructor for QgsLabelSearchTree.
+     */
     QgsLabelSearchTree();
     ~QgsLabelSearchTree();
 
+    //! QgsLabelSearchTree cannot be copied.
     QgsLabelSearchTree( const QgsLabelSearchTree &rh ) = delete;
+    //! QgsLabelSearchTree cannot be copied.
     QgsLabelSearchTree &operator=( const QgsLabelSearchTree &rh ) = delete;
 
     /**
      * Removes and deletes all the entries.
-     * \deprecated QGIS 3.40. Has no effect since QGIS 3.12.
+     * \deprecated has no effect since QGIS 3.12
      */
     Q_DECL_DEPRECATED void clear() SIP_DEPRECATED;
 
@@ -136,7 +141,9 @@ class CORE_EXPORT QgsLabelSearchTree
     QTransform mTransform;
 
 #ifdef SIP_RUN
+    //! QgsLabelSearchTree cannot be copied.
     QgsLabelSearchTree( const QgsLabelSearchTree &rh );
+    //! QgsLabelSearchTree cannot be copied.
     QgsLabelSearchTree &operator=( const QgsLabelSearchTree & );
 #endif
 };

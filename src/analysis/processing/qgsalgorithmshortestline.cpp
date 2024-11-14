@@ -19,7 +19,6 @@
 
 #include "qgsalgorithmshortestline.h"
 #include "qgsdistancearea.h"
-#include "qgsspatialindex.h"
 
 ///@cond PRIVATE
 
@@ -74,12 +73,12 @@ QgsShortestLineAlgorithm *QgsShortestLineAlgorithm::createInstance() const
 
 void QgsShortestLineAlgorithm::initAlgorithm( const QVariantMap & )
 {
-  addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "SOURCE" ), QObject::tr( "Source layer" ), QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorAnyGeometry ) ) );
-  addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "DESTINATION" ), QObject::tr( "Destination layer" ), QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorAnyGeometry ) ) );
+  addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "SOURCE" ), QObject::tr( "Source layer" ), QList<int>() << QgsProcessing::TypeVectorAnyGeometry ) );
+  addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "DESTINATION" ), QObject::tr( "Destination layer" ), QList<int>() << QgsProcessing::TypeVectorAnyGeometry ) );
   addParameter( new QgsProcessingParameterEnum( QStringLiteral( "METHOD" ), QObject::tr( "Method" ), QStringList() << "Distance to Nearest Point on feature" << "Distance to Feature Centroid", false, 0 ) );
-  addParameter( new QgsProcessingParameterNumber( QStringLiteral( "NEIGHBORS" ), QObject::tr( "Maximum number of neighbors" ), Qgis::ProcessingNumberParameterType::Integer, 1, false, 1 ) );
+  addParameter( new QgsProcessingParameterNumber( QStringLiteral( "NEIGHBORS" ), QObject::tr( "Maximum number of neighbors" ), QgsProcessingParameterNumber::Integer, 1, false, 1 ) );
   addParameter( new QgsProcessingParameterDistance( QStringLiteral( "DISTANCE" ), QObject::tr( "Maximum distance" ), QVariant(), QString( "SOURCE" ), true ) );
-  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Shortest lines" ), Qgis::ProcessingSourceType::VectorLine ) );
+  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Shortest lines" ), QgsProcessing::TypeVectorLine ) );
 }
 
 bool QgsShortestLineAlgorithm::prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback * )
@@ -107,10 +106,10 @@ QVariantMap QgsShortestLineAlgorithm::processAlgorithm( const QVariantMap &param
     mKNeighbors = mDestination->featureCount();
 
   QgsFields fields = QgsProcessingUtils::combineFields( mSource->fields(), mDestination->fields() );
-  fields.append( QgsField( QStringLiteral( "distance" ), QMetaType::Type::Double ) );
+  fields.append( QgsField( QStringLiteral( "distance" ), QVariant::Double ) );
 
   QString dest;
-  std::unique_ptr< QgsFeatureSink > sink( parameterAsSink( parameters, QStringLiteral( "OUTPUT" ), context, dest, fields, Qgis::WkbType::MultiLineString, mSource->sourceCrs() ) );
+  std::unique_ptr< QgsFeatureSink > sink( parameterAsSink( parameters, QStringLiteral( "OUTPUT" ), context, dest, fields, QgsWkbTypes::MultiLineString, mSource->sourceCrs() ) );
   if ( !sink )
     throw QgsProcessingException( invalidSinkError( parameters, QStringLiteral( "OUTPUT" ) ) );
 
@@ -155,16 +154,7 @@ QVariantMap QgsShortestLineAlgorithm::processAlgorithm( const QVariantMap &param
       }
 
       const QgsGeometry shortestLine = sourceGeom.shortestLine( destinationGeom );
-      double dist = 0;
-      try
-      {
-        dist = da.measureLength( shortestLine );
-      }
-      catch ( QgsCsException & )
-      {
-        throw QgsProcessingException( QObject::tr( "An error occurred while calculating shortest line length" ) );
-      }
-
+      double dist = da.measureLength( shortestLine );
       QgsFeature f;
       QgsAttributes attrs = sourceFeature.attributes();
       attrs << destinationAttributeCache.value( id ) << dist;
@@ -178,7 +168,6 @@ QVariantMap QgsShortestLineAlgorithm::processAlgorithm( const QVariantMap &param
     feedback->setProgress( i * step );
   }
 
-  sink->finalize();
 
   QVariantMap outputs;
   outputs.insert( QStringLiteral( "OUTPUT" ), dest );

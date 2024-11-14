@@ -93,7 +93,7 @@ class QgsDelimitedTextSourceSelect : public QgsAbstractDataSourceWidget, private
     Q_OBJECT
 
   public:
-    QgsDelimitedTextSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::Standalone );
+    QgsDelimitedTextSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::None );
 
   private:
     bool loadDelimitedFileDefinition();
@@ -111,7 +111,7 @@ class QgsDelimitedTextSourceSelect : public QgsAbstractDataSourceWidget, private
     int mExampleRowCount = 20;
     int mBadRowCount = 0;
     QgsFields mFields; //!< Stores the fields as returned by the provider to determine if their types were overridden
-    QMap<int, QString> mOverriddenFields; //!< Stores user-overridden field types
+    QSet<int> mOverriddenFields; //!< Stores user-overridden fields
     static constexpr int DEFAULT_MAX_FIELDS = 10000;
     int mMaxFields = DEFAULT_MAX_FIELDS; //!< To avoid Denial Of Service (at least in source select). Configurable through /max_fields settings sub-key.
     QString mSettingsKey;

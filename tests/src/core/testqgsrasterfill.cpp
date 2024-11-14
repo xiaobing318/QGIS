@@ -32,6 +32,8 @@
 #include <qgssinglesymbolrenderer.h>
 #include <qgsfillsymbollayer.h>
 #include "qgsfillsymbol.h"
+// qgis test includes
+#include "qgsmultirenderchecker.h"
 
 /**
  * \ingroup UnitTests
@@ -42,7 +44,7 @@ class TestQgsRasterFill : public QgsTest
     Q_OBJECT
 
   public:
-    TestQgsRasterFill() : QgsTest( QStringLiteral( "Raster Fill Renderer Tests" ), QStringLiteral( "symbol_rasterfill" ) ) {}
+    TestQgsRasterFill() : QgsTest( QStringLiteral( "Raster Fill Renderer Tests" ) ) {}
 
   private slots:
     void initTestCase();// will be called before the first testfunction is executed.
@@ -55,9 +57,6 @@ class TestQgsRasterFill : public QgsTest
     void alpha();
     void offset();
     void width();
-    void widthAndHeight();
-    void widthForHeight();
-    void percentageHeight();
 
     // Tests for percentage value of size unit.
     void percentage();
@@ -67,32 +66,40 @@ class TestQgsRasterFill : public QgsTest
     void percentageWidth();
 
   private:
+    bool mTestHasError = false;
+    bool setQml( const QString &type );
+    bool imageCheck( const QString &type );
     QgsMapSettings mMapSettings;
     QgsVectorLayer *mpPolysLayer = nullptr;
     QgsRasterFillSymbolLayer *mRasterFill = nullptr;
     QgsFillSymbol *mFillSymbol = nullptr;
     QgsSingleSymbolRenderer *mSymbolRenderer = nullptr;
+    QString mTestDataDir;
 };
 
 
 void TestQgsRasterFill::initTestCase()
 {
+  mTestHasError = false;
   // init QGIS's paths - true means that all path will be inited from prefix
   QgsApplication::init();
   QgsApplication::initQgis();
   QgsApplication::showSettings();
 
   //create some objects that will be used in all tests...
+  const QString myDataDir( TEST_DATA_DIR ); //defined in CmakeLists.txt
+  mTestDataDir = myDataDir + '/';
+
   //
   //create a poly layer that will be used in all tests...
   //
-  const QString myPolysFileName = testDataPath( "polys.shp" );
+  const QString myPolysFileName = mTestDataDir + "polys.shp";
   const QFileInfo myPolyFileInfo( myPolysFileName );
   mpPolysLayer = new QgsVectorLayer( myPolyFileInfo.filePath(),
                                      myPolyFileInfo.completeBaseName(), QStringLiteral( "ogr" ) );
 
   QgsVectorSimplifyMethod simplifyMethod;
-  simplifyMethod.setSimplifyHints( Qgis::VectorRenderingSimplificationFlags() );
+  simplifyMethod.setSimplifyHints( QgsVectorSimplifyMethod::NoSimplification );
   mpPolysLayer->setSimplifyMethod( simplifyMethod );
 
   // Register the layer with the registry
@@ -111,7 +118,6 @@ void TestQgsRasterFill::initTestCase()
   // and is more light weight
   //
   mMapSettings.setLayers( QList<QgsMapLayer *>() << mpPolysLayer );
-  mMapSettings.setOutputDpi( 96 );
 }
 
 void TestQgsRasterFill::cleanupTestCase()
@@ -121,12 +127,12 @@ void TestQgsRasterFill::cleanupTestCase()
 
 void TestQgsRasterFill::init()
 {
-  mRasterFill->setImageFilePath( testDataPath( QStringLiteral( "sample_image.png" ) ) );
+  mRasterFill->setImageFilePath( mTestDataDir + QStringLiteral( "sample_image.png" ) );
   mRasterFill->setWidth( 30.0 );
-  mRasterFill->setSizeUnit( Qgis::RenderUnit::Pixels );
+  mRasterFill->setWidthUnit( QgsUnitTypes::RenderPixels );
   mRasterFill->setCoordinateMode( Qgis::SymbolCoordinateReference::Feature );
   mRasterFill->setOpacity( 1.0 );
-  mRasterFill->setOffset( QPointF() );
+  mRasterFill->setOffset( QPointF( 0, 0 ) );
 }
 
 void TestQgsRasterFill::cleanup()
@@ -136,200 +142,116 @@ void TestQgsRasterFill::cleanup()
 
 void TestQgsRasterFill::rasterFillSymbol()
 {
-  mMapSettings.setExtent( mpPolysLayer->extent() );
-  QGSVERIFYRENDERMAPSETTINGSCHECK( QStringLiteral( "rasterfill" ), QStringLiteral( "rasterfill" ), mMapSettings, 500, 20 );
+  const bool result = imageCheck( QStringLiteral( "rasterfill" ) );
+  QVERIFY( result );
 }
 
 void TestQgsRasterFill::coordinateMode()
 {
   mRasterFill->setCoordinateMode( Qgis::SymbolCoordinateReference::Viewport );
-
-  mMapSettings.setExtent( mpPolysLayer->extent() );
-  const bool result = QGSRENDERMAPSETTINGSCHECK(
-                        QStringLiteral( "rasterfill_viewport" ), QStringLiteral( "rasterfill_viewport" ),
-                        mMapSettings, 500, 20 );
-
-  mRasterFill->setCoordinateMode( Qgis::SymbolCoordinateReference::Feature );
-
+  const bool result = imageCheck( QStringLiteral( "rasterfill_viewport" ) );
   QVERIFY( result );
 }
 
 void TestQgsRasterFill::alpha()
 {
   mRasterFill->setOpacity( 0.5 );
-
-  const bool result = QGSRENDERMAPSETTINGSCHECK(
-                        QStringLiteral( "rasterfill_alpha" ), QStringLiteral( "rasterfill_alpha" ),
-                        mMapSettings, 500, 20 );
-
-  mRasterFill->setOpacity( 1.0 );
-
+  const bool result = imageCheck( QStringLiteral( "rasterfill_alpha" ) );
   QVERIFY( result );
 }
 
 void TestQgsRasterFill::offset()
 {
   mRasterFill->setOffset( QPointF( 5, 10 ) );
-
-  const bool result = QGSRENDERMAPSETTINGSCHECK(
-                        QStringLiteral( "rasterfill_offset" ), QStringLiteral( "rasterfill_offset" ),
-                        mMapSettings, 500, 20 );
-
-  mRasterFill->setOffset( QPointF() );
-
+  const bool result = imageCheck( QStringLiteral( "rasterfill_offset" ) );
   QVERIFY( result );
 }
 
 void TestQgsRasterFill::width()
 {
-  mRasterFill->setSizeUnit( Qgis::RenderUnit::Millimeters );
+  mRasterFill->setWidthUnit( QgsUnitTypes::RenderMillimeters );
   mRasterFill->setWidth( 5.0 );
-
-  const bool result = QGSRENDERMAPSETTINGSCHECK(
-                        QStringLiteral( "rasterfill_width" ), QStringLiteral( "rasterfill_width" ),
-                        mMapSettings, 500, 20 );
-
-  mRasterFill->setSizeUnit( Qgis::RenderUnit::Pixels );
-  mRasterFill->setWidth( 0 );
-
-  QVERIFY( result );
-}
-
-void TestQgsRasterFill::widthAndHeight()
-{
-  mRasterFill->setSizeUnit( Qgis::RenderUnit::Millimeters );
-  mRasterFill->setWidth( 5.0 );
-
-  mRasterFill->setHeight( 15.0 );
-
-  const bool result = QGSRENDERMAPSETTINGSCHECK(
-                        QStringLiteral( "rasterfill_width_and_height" ), QStringLiteral( "rasterfill_width_and_height" ),
-                        mMapSettings, 500, 20 );
-
-  mRasterFill->setSizeUnit( Qgis::RenderUnit::Pixels );
-  mRasterFill->setWidth( 0 );
-  mRasterFill->setHeight( 0 );
-
-  QVERIFY( result );
-}
-
-void TestQgsRasterFill::widthForHeight()
-{
-  // width should match height respecting aspect ratio
-  mRasterFill->setWidth( 0.0 );
-
-  mRasterFill->setSizeUnit( Qgis::RenderUnit::Millimeters );
-  mRasterFill->setHeight( 15.0 );
-
-  const bool result = QGSRENDERMAPSETTINGSCHECK(
-                        QStringLiteral( "rasterfill_height" ), QStringLiteral( "rasterfill_height" ),
-                        mMapSettings, 500, 20 );
-
-  mRasterFill->setSizeUnit( Qgis::RenderUnit::Pixels );
-  mRasterFill->setWidth( 0 );
-  mRasterFill->setHeight( 0 );
-
-  QVERIFY( result );
-}
-
-void TestQgsRasterFill::percentageHeight()
-{
-  mRasterFill->setSizeUnit( Qgis::RenderUnit::Percentage );
-  mRasterFill->setWidth( 5.0 );
-  mRasterFill->setHeight( 10 );
-
-  const bool result = QGSRENDERMAPSETTINGSCHECK(
-                        QStringLiteral( "rasterfill_height_percentage" ), QStringLiteral( "rasterfill_height_percentage" ),
-                        mMapSettings, 500, 20 );
-
-  mRasterFill->setSizeUnit( Qgis::RenderUnit::Pixels );
-  mRasterFill->setWidth( 0 );
-  mRasterFill->setHeight( 0 );
-
+  const bool result = imageCheck( QStringLiteral( "rasterfill_width" ) );
   QVERIFY( result );
 }
 
 void TestQgsRasterFill::percentage()
 {
-  mRasterFill->setSizeUnit( Qgis::RenderUnit::Percentage );
+  mRasterFill->setWidthUnit( QgsUnitTypes::RenderPercentage );
   mRasterFill->setWidth( 6.3 );
-
-  const bool result = QGSRENDERMAPSETTINGSCHECK(
-                        QStringLiteral( "rasterfill_percentage" ), QStringLiteral( "rasterfill_percentage" ),
-                        mMapSettings, 500, 20 );
-
-  mRasterFill->setSizeUnit( Qgis::RenderUnit::Pixels );
-  mRasterFill->setWidth( 0 );
-
+  const bool result = imageCheck( QStringLiteral( "rasterfill_percentage" ) );
   QVERIFY( result );
 }
 
 void TestQgsRasterFill::percentageCoordinateMode()
 {
-  mRasterFill->setSizeUnit( Qgis::RenderUnit::Percentage );
+  mRasterFill->setWidthUnit( QgsUnitTypes::RenderPercentage );
   mRasterFill->setWidth( 6.3 );
   mRasterFill->setCoordinateMode( Qgis::SymbolCoordinateReference::Viewport );
-
-  const bool result = QGSRENDERMAPSETTINGSCHECK(
-                        QStringLiteral( "rasterfill_viewport_percentage" ), QStringLiteral( "rasterfill_viewport_percentage" ),
-                        mMapSettings, 500, 20 );
-
-  mRasterFill->setSizeUnit( Qgis::RenderUnit::Pixels );
-  mRasterFill->setWidth( 0 );
-  mRasterFill->setCoordinateMode( Qgis::SymbolCoordinateReference::Feature );
-
+  const bool result = imageCheck( QStringLiteral( "rasterfill_viewport_percentage" ) );
   QVERIFY( result );
 }
 
 void TestQgsRasterFill::percentageOffset()
 {
-  mRasterFill->setSizeUnit( Qgis::RenderUnit::Percentage );
+  mRasterFill->setWidthUnit( QgsUnitTypes::RenderPercentage );
   mRasterFill->setWidth( 6.3 );
-  mRasterFill->setOffsetUnit( Qgis::RenderUnit::Pixels );
+  mRasterFill->setOffsetUnit( QgsUnitTypes::RenderPixels );
   mRasterFill->setOffset( QPointF( 12, 15 ) );
-
-  const bool result = QGSRENDERMAPSETTINGSCHECK(
-                        QStringLiteral( "rasterfill_offset_percentage" ), QStringLiteral( "rasterfill_offset_percentage" ),
-                        mMapSettings, 500, 20 );
-
-  mRasterFill->setSizeUnit( Qgis::RenderUnit::Pixels );
-  mRasterFill->setWidth( 0 );
-  mRasterFill->setOffsetUnit( Qgis::RenderUnit::Millimeters );
-  mRasterFill->setOffset( QPointF() );
-
+  const bool result = imageCheck( QStringLiteral( "rasterfill_offset_percentage" ) );
   QVERIFY( result );
 }
 
 void TestQgsRasterFill::percentageAlpha()
 {
-  mRasterFill->setSizeUnit( Qgis::RenderUnit::Percentage );
+  mRasterFill->setWidthUnit( QgsUnitTypes::RenderPercentage );
   mRasterFill->setWidth( 6.3 );
   mRasterFill->setOpacity( 0.5 );
-
-  const bool result = QGSRENDERMAPSETTINGSCHECK(
-                        QStringLiteral( "rasterfill_alpha_percentage" ), QStringLiteral( "rasterfill_alpha_percentage" ),
-                        mMapSettings, 500, 20 );
-
-  mRasterFill->setSizeUnit( Qgis::RenderUnit::Pixels );
-  mRasterFill->setWidth( 0 );
-  mRasterFill->setOpacity( 1.0 );
-
+  const bool result = imageCheck( QStringLiteral( "rasterfill_alpha_percentage" ) );
   QVERIFY( result );
 }
 
 void TestQgsRasterFill::percentageWidth()
 {
-  mRasterFill->setSizeUnit( Qgis::RenderUnit::Percentage );
+  mRasterFill->setWidthUnit( QgsUnitTypes::RenderPercentage );
   mRasterFill->setWidth( 3.3 );
-
-  const bool result = QGSRENDERMAPSETTINGSCHECK(
-                        QStringLiteral( "rasterfill_width_percentage" ), QStringLiteral( "rasterfill_width_percentage" ),
-                        mMapSettings, 500, 20 );
-
-  mRasterFill->setSizeUnit( Qgis::RenderUnit::Pixels );
-  mRasterFill->setWidth( 0 );
-
+  const bool result = imageCheck( QStringLiteral( "rasterfill_width_percentage" ) );
   QVERIFY( result );
+}
+
+//
+// Private helper functions not called directly by CTest
+//
+
+bool TestQgsRasterFill::setQml( const QString &type )
+{
+  //load a qml style and apply to our layer
+  //the style will correspond to the renderer
+  //type we are testing
+  const QString myFileName = mTestDataDir + "polys_" + type + "_symbol.qml";
+  bool myStyleFlag = false;
+  const QString error = mpPolysLayer->loadNamedStyle( myFileName, myStyleFlag );
+  if ( !myStyleFlag )
+  {
+    qDebug( "%s", error.toLocal8Bit().constData() );
+  }
+  return myStyleFlag;
+}
+
+bool TestQgsRasterFill::imageCheck( const QString &testType )
+{
+  //use the QgsRenderChecker test utility class to
+  //ensure the rendered output matches our control image
+  mMapSettings.setExtent( mpPolysLayer->extent() );
+  mMapSettings.setOutputDpi( 96 );
+  QgsMultiRenderChecker myChecker;
+  myChecker.setControlPathPrefix( QStringLiteral( "symbol_rasterfill" ) );
+  myChecker.setControlName( "expected_" + testType );
+  myChecker.setMapSettings( mMapSettings );
+  myChecker.setColorTolerance( 20 );
+  const bool myResultFlag = myChecker.runTest( testType, 500 );
+  mReport += myChecker.report();
+  return myResultFlag;
 }
 
 QGSTEST_MAIN( TestQgsRasterFill )

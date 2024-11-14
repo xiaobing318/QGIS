@@ -48,9 +48,8 @@ class CORE_EXPORT QgsPointCloudLayerElevationProperties : public QgsMapLayerElev
     bool readXml( const QDomElement &element, const QgsReadWriteContext &context ) override;
     QgsPointCloudLayerElevationProperties *clone() const override SIP_FACTORY;
     QString htmlSummary() const override;
-    bool isVisibleInZRange( const QgsDoubleRange &range, QgsMapLayer *layer = nullptr ) const override;
+    bool isVisibleInZRange( const QgsDoubleRange &range ) const override;
     QgsDoubleRange calculateZRange( QgsMapLayer *layer ) const override;
-    QList< double > significantZValues( QgsMapLayer *layer ) const override;
     bool showByDefaultInElevationProfilePlots() const override;
 
     /**
@@ -89,7 +88,7 @@ class CORE_EXPORT QgsPointCloudLayerElevationProperties : public QgsMapLayerElev
      *
      * \since QGIS 3.26
      */
-    Qgis::RenderUnit maximumScreenErrorUnit() const { return mMaximumScreenErrorUnit; }
+    QgsUnitTypes::RenderUnit maximumScreenErrorUnit() const { return mMaximumScreenErrorUnit; }
 
     /**
      * Sets the \a unit for the maximum screen error allowed when generating elevation profiles for the point cloud.
@@ -99,7 +98,7 @@ class CORE_EXPORT QgsPointCloudLayerElevationProperties : public QgsMapLayerElev
      *
      * \since QGIS 3.26
      */
-    void setMaximumScreenErrorUnit( Qgis::RenderUnit unit );
+    void setMaximumScreenErrorUnit( QgsUnitTypes::RenderUnit unit );
 
     /**
      * Returns the symbol used drawing points in elevation profile charts.
@@ -182,7 +181,7 @@ class CORE_EXPORT QgsPointCloudLayerElevationProperties : public QgsMapLayerElev
      *
      * \since QGIS 3.26
      */
-    void setPointSizeUnit( const Qgis::RenderUnit units );
+    void setPointSizeUnit( const QgsUnitTypes::RenderUnit units );
 
     /**
      * Returns the units used for the point size used for drawing points in elevation profile charts.
@@ -191,7 +190,7 @@ class CORE_EXPORT QgsPointCloudLayerElevationProperties : public QgsMapLayerElev
      *
      * \since QGIS 3.26
      */
-    Qgis::RenderUnit pointSizeUnit() const { return mPointSizeUnit; }
+    QgsUnitTypes::RenderUnit pointSizeUnit() const { return mPointSizeUnit; }
 
     /**
      * Returns TRUE if layer coloring should be respected when rendering elevation profile plots.
@@ -210,10 +209,10 @@ class CORE_EXPORT QgsPointCloudLayerElevationProperties : public QgsMapLayerElev
   private:
 
     double mMaximumScreenError = 0.3;
-    Qgis::RenderUnit mMaximumScreenErrorUnit = Qgis::RenderUnit::Millimeters;
+    QgsUnitTypes::RenderUnit mMaximumScreenErrorUnit = QgsUnitTypes::RenderMillimeters;
 
     double mPointSize = 0.6;
-    Qgis::RenderUnit mPointSizeUnit = Qgis::RenderUnit::Millimeters;
+    QgsUnitTypes::RenderUnit mPointSizeUnit = QgsUnitTypes::RenderMillimeters;
     Qgis::PointCloudSymbol mPointSymbol = Qgis::PointCloudSymbol::Square;
     QColor mPointColor;
     bool mRespectLayerColors = true;

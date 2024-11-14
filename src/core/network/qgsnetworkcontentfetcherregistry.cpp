@@ -17,7 +17,6 @@
  ***************************************************************************/
 
 #include "qgsnetworkcontentfetcherregistry.h"
-#include "moc_qgsnetworkcontentfetcherregistry.cpp"
 
 #include "qgsapplication.h"
 #include <QUrl>
@@ -147,7 +146,11 @@ void QgsFetchedContent::cancel()
   if ( mFetchingTask && mFetchingTask->canCancel() )
   {
     mFetchingTask->cancel();
-    mStatus = ContentStatus::NotStarted;
+  }
+  if ( mFile )
+  {
+    mFile->deleteLater();
+    mFilePath = QString();
   }
 }
 

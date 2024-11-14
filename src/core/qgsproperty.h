@@ -40,6 +40,7 @@ class QgsPropertyPrivate;
  * handles descriptive names and help text for using the property. Definitions
  * can use one of the predefined standard templates to simplify definition of
  * commonly used property types, such as colors and blend modes.
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsPropertyDefinition
 {
@@ -222,11 +223,21 @@ class CORE_EXPORT QgsPropertyDefinition
  *
  * QgsProperty objects are implicitly shared and can be inexpensively copied.
  *
+ * \since QGIS 3.0
  */
 
 class CORE_EXPORT QgsProperty
 {
   public:
+
+    //! Property types
+    enum Type
+    {
+      InvalidProperty, //!< Invalid (not set) property
+      StaticProperty, //!< Static property (QgsStaticProperty)
+      FieldBasedProperty, //!< Field based property (QgsFieldBasedProperty)
+      ExpressionBasedProperty, //!< Expression based property (QgsExpressionBasedProperty)
+    };
 
     /**
      * Convert a map of QgsProperty to a map of QVariant
@@ -265,13 +276,15 @@ class CORE_EXPORT QgsProperty
      */
     static QgsProperty fromValue( const QVariant &value, bool isActive = true );
 
+    //! Copy constructor
     QgsProperty( const QgsProperty &other );
+
     QgsProperty &operator=( const QgsProperty &other );
 
     /**
      * Returns TRUE if the property is not an invalid type.
      */
-    explicit operator bool() const SIP_SKIP;
+    operator bool() const;
 
     bool operator==( const QgsProperty &other ) const;
     bool operator!=( const QgsProperty &other ) const;
@@ -279,7 +292,7 @@ class CORE_EXPORT QgsProperty
     /**
      * Returns the property type.
      */
-    Qgis::PropertyType propertyType() const;
+    Type propertyType() const;
 
     /**
      * Returns whether the property is currently active.
@@ -539,27 +552,27 @@ class CORE_EXPORT QgsProperty
     QString definitionString;
     switch ( sipCpp->propertyType() )
     {
-      case Qgis::PropertyType::Static:
+      case QgsProperty::StaticProperty:
         typeString = QStringLiteral( "static" );
         definitionString = sipCpp->staticValue().toString();
         break;
 
-      case Qgis::PropertyType::Field:
+      case QgsProperty::FieldBasedProperty:
         typeString = QStringLiteral( "field" );
         definitionString = sipCpp->field();
         break;
 
-      case Qgis::PropertyType::Expression:
+      case QgsProperty::ExpressionBasedProperty:
         typeString = QStringLiteral( "expression" );
         definitionString = sipCpp->expressionString();
         break;
 
-      case Qgis::PropertyType::Invalid:
+      case QgsProperty::InvalidProperty:
         typeString = QStringLiteral( "invalid" );
         break;
     }
 
-    QString str = QStringLiteral( "<QgsProperty: %1%2%3>" ).arg( !sipCpp->isActive() && sipCpp->propertyType() != Qgis::PropertyType::Invalid ? QStringLiteral( "INACTIVE " ) : QString(),
+    QString str = QStringLiteral( "<QgsProperty: %1%2%3>" ).arg( !sipCpp->isActive() && sipCpp->propertyType() != QgsProperty::InvalidProperty ? QStringLiteral( "INACTIVE " ) : QString(),
                   typeString,
                   definitionString.isEmpty() ? QString() : QStringLiteral( " (%1)" ).arg( definitionString ) );
     sipRes = PyUnicode_FromString( str.toUtf8().constData() );

@@ -9,6 +9,8 @@ the Free Software Foundation; either version 2 of the License, or
 __author__ = 'Alessandro Pasotti'
 __date__ = '28/10/2019'
 __copyright__ = 'Copyright 2019, The QGIS Project'
+# This will get replaced with a git SHA1 when you do a git archive
+__revision__ = '252ad49ddcbc4a0dcfe9eb9381503de0fde9e0ed'
 
 import os
 import shutil
@@ -16,13 +18,13 @@ import tempfile
 
 from qgis.core import (
     Qgis,
-    QgsAbstractDatabaseProviderConnection,
-    QgsCoordinateReferenceSystem,
-    QgsFields,
-    QgsProviderConnectionException,
-    QgsProviderRegistry,
-    QgsVectorLayer,
     QgsWkbTypes,
+    QgsAbstractDatabaseProviderConnection,
+    QgsProviderConnectionException,
+    QgsVectorLayer,
+    QgsProviderRegistry,
+    QgsFields,
+    QgsCoordinateReferenceSystem,
 )
 from qgis.testing import unittest
 
@@ -59,13 +61,12 @@ class TestPyQgsProviderConnectionSpatialite(unittest.TestCase, TestPyQgsProvider
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
-        super(TestPyQgsProviderConnectionSpatialite, cls).setUpClass()
         TestPyQgsProviderConnectionBase.setUpClass()
         cls.basetestpath = tempfile.mkdtemp()
         spatialite_original_path = f'{TEST_DATA_DIR}/qgis_server/test_project_wms_grouped_layers.sqlite'
         cls.spatialite_path = os.path.join(cls.basetestpath, 'test.sqlite')
         shutil.copy(spatialite_original_path, cls.spatialite_path)
-        cls.uri = f"dbname='{cls.spatialite_path}'"
+        cls.uri = "dbname=\'%s\'" % cls.spatialite_path
         vl = QgsVectorLayer(f'{cls.uri} table=\'cdb_lines\'', 'test', 'spatialite')
         assert vl.isValid()
 
@@ -73,7 +74,6 @@ class TestPyQgsProviderConnectionSpatialite(unittest.TestCase, TestPyQgsProvider
     def tearDownClass(cls):
         """Run after all tests"""
         os.unlink(cls.spatialite_path)
-        super(TestPyQgsProviderConnectionSpatialite, cls).tearDownClass()
 
     def test_spatialite_connections_from_uri(self):
         """Create a connection from a layer uri and retrieve it"""
@@ -107,26 +107,26 @@ class TestPyQgsProviderConnectionSpatialite(unittest.TestCase, TestPyQgsProvider
 
         # Retrieve capabilities
         capabilities = conn.capabilities()
-        self.assertTrue(bool(capabilities & QgsAbstractDatabaseProviderConnection.Capability.Tables))
-        self.assertFalse(bool(capabilities & QgsAbstractDatabaseProviderConnection.Capability.Schemas))
-        self.assertTrue(bool(capabilities & QgsAbstractDatabaseProviderConnection.Capability.CreateVectorTable))
-        self.assertTrue(bool(capabilities & QgsAbstractDatabaseProviderConnection.Capability.DropVectorTable))
-        self.assertTrue(bool(capabilities & QgsAbstractDatabaseProviderConnection.Capability.RenameVectorTable))
-        self.assertFalse(bool(capabilities & QgsAbstractDatabaseProviderConnection.Capability.RenameRasterTable))
+        self.assertTrue(bool(capabilities & QgsAbstractDatabaseProviderConnection.Tables))
+        self.assertFalse(bool(capabilities & QgsAbstractDatabaseProviderConnection.Schemas))
+        self.assertTrue(bool(capabilities & QgsAbstractDatabaseProviderConnection.CreateVectorTable))
+        self.assertTrue(bool(capabilities & QgsAbstractDatabaseProviderConnection.DropVectorTable))
+        self.assertTrue(bool(capabilities & QgsAbstractDatabaseProviderConnection.RenameVectorTable))
+        self.assertFalse(bool(capabilities & QgsAbstractDatabaseProviderConnection.RenameRasterTable))
 
         crs = QgsCoordinateReferenceSystem.fromEpsgId(3857)
-        typ = QgsWkbTypes.Type.LineString
-        conn.createVectorTable('', 'myNewAspatialTable', QgsFields(), QgsWkbTypes.Type.NoGeometry, crs, True, {})
+        typ = QgsWkbTypes.LineString
+        conn.createVectorTable('', 'myNewAspatialTable', QgsFields(), QgsWkbTypes.NoGeometry, crs, True, {})
         conn.createVectorTable('', 'myNewTable', QgsFields(), typ, crs, True, {})
 
-        table_names = self._table_names(conn.tables('', QgsAbstractDatabaseProviderConnection.TableFlag.View))
-        self.assertIn('my_view', table_names)
-        self.assertNotIn('myNewTable', table_names)
-        self.assertNotIn('myNewAspatialTable', table_names)
+        table_names = self._table_names(conn.tables('', QgsAbstractDatabaseProviderConnection.View))
+        self.assertTrue('my_view' in table_names)
+        self.assertFalse('myNewTable' in table_names)
+        self.assertFalse('myNewAspatialTable' in table_names)
 
-        table_names = self._table_names(conn.tables('', QgsAbstractDatabaseProviderConnection.TableFlag.Aspatial))
-        self.assertNotIn('myNewTable', table_names)
-        self.assertIn('myNewAspatialTable', table_names)
+        table_names = self._table_names(conn.tables('', QgsAbstractDatabaseProviderConnection.Aspatial))
+        self.assertFalse('myNewTable' in table_names)
+        self.assertTrue('myNewAspatialTable' in table_names)
 
     def test_spatialite_fields(self):
         """Test fields"""
@@ -151,7 +151,7 @@ class TestPyQgsProviderConnectionSpatialite(unittest.TestCase, TestPyQgsProvider
         vl = conn.createSqlVectorLayer(options)
         self.assertTrue(vl.isValid())
         self.assertTrue(vl.isSqlQuery())
-        self.assertEqual(vl.geometryType(), QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.assertEqual(vl.geometryType(), QgsWkbTypes.PolygonGeometry)
         features = [f for f in vl.getFeatures()]
         self.assertEqual(len(features), 2)
         self.assertEqual(features[0].attributes(), [8, 'Sülfeld'])
@@ -162,7 +162,7 @@ class TestPyQgsProviderConnectionSpatialite(unittest.TestCase, TestPyQgsProvider
         self.assertTrue(vl.isSqlQuery())
         # Test flags
         self.assertTrue(vl.vectorLayerTypeFlags() & Qgis.VectorLayerTypeFlag.SqlQuery)
-        self.assertEqual(vl.geometryType(), QgsWkbTypes.GeometryType.PolygonGeometry)
+        self.assertEqual(vl.geometryType(), QgsWkbTypes.PolygonGeometry)
         features = [f for f in vl.getFeatures()]
         self.assertEqual(len(features), 1)
         self.assertEqual(features[0].attributes(), [8, 'Sülfeld'])

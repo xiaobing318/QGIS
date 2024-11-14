@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsdefaultsearchwidgetwrapper.h"
-#include "moc_qgsdefaultsearchwidgetwrapper.cpp"
 
 #include "qgsfields.h"
 #include "qgsfieldvalidator.h"
@@ -55,8 +54,8 @@ void QgsDefaultSearchWidgetWrapper::setCaseString( int caseSensitiveCheckState )
 
 void QgsDefaultSearchWidgetWrapper::setExpression( const QString &expression )
 {
-  const QMetaType::Type fldType = layer()->fields().at( mFieldIdx ).type();
-  const bool numeric = ( fldType == QMetaType::Type::Int || fldType == QMetaType::Type::Double || fldType == QMetaType::Type::LongLong );
+  const QVariant::Type fldType = layer()->fields().at( mFieldIdx ).type();
+  const bool numeric = ( fldType == QVariant::Int || fldType == QVariant::Double || fldType == QVariant::LongLong );
 
   QString exp = expression;
   const QString nullValue = QgsApplication::nullRepresentation();
@@ -93,21 +92,21 @@ QgsSearchWidgetWrapper::FilterFlags QgsDefaultSearchWidgetWrapper::supportedFlag
 {
   FilterFlags flags = EqualTo | NotEqualTo | IsNull | IsNotNull;
 
-  const QMetaType::Type fldType = layer()->fields().at( mFieldIdx ).type();
+  const QVariant::Type fldType = layer()->fields().at( mFieldIdx ).type();
   switch ( fldType )
   {
-    case QMetaType::Type::Int:
-    case QMetaType::Type::UInt:
-    case QMetaType::Type::Double:
-    case QMetaType::Type::LongLong:
-    case QMetaType::Type::ULongLong:
-    case QMetaType::Type::QDate:
-    case QMetaType::Type::QDateTime:
-    case QMetaType::Type::QTime:
+    case QVariant::Int:
+    case QVariant::UInt:
+    case QVariant::Double:
+    case QVariant::LongLong:
+    case QVariant::ULongLong:
+    case QVariant::Date:
+    case QVariant::DateTime:
+    case QVariant::Time:
       flags |= GreaterThan | LessThan | GreaterThanOrEqualTo | LessThanOrEqualTo | Between | IsNotBetween;
       break;
 
-    case QMetaType::Type::QString:
+    case QVariant::String:
       flags |= Contains | DoesNotContain | StartsWith | EndsWith;
       break;
 
@@ -119,23 +118,23 @@ QgsSearchWidgetWrapper::FilterFlags QgsDefaultSearchWidgetWrapper::supportedFlag
 
 QgsSearchWidgetWrapper::FilterFlags QgsDefaultSearchWidgetWrapper::defaultFlags() const
 {
-  const QMetaType::Type fldType = layer()->fields().at( mFieldIdx ).type();
+  const QVariant::Type fldType = layer()->fields().at( mFieldIdx ).type();
   switch ( fldType )
   {
-    //numeric
-    case QMetaType::Type::Int:
-    case QMetaType::Type::UInt:
-    case QMetaType::Type::Double:
-    case QMetaType::Type::LongLong:
-    case QMetaType::Type::ULongLong:
-
-    // date
-    case QMetaType::Type::QDate:
-    case QMetaType::Type::QDateTime:
-    case QMetaType::Type::QTime:
+    case QVariant::Int:
+    case QVariant::UInt:
+    case QVariant::Double:
+    case QVariant::LongLong:
+    case QVariant::ULongLong:
+      //numeric
       return EqualTo;
 
-    case QMetaType::Type::QString:
+    case QVariant::Date:
+    case QVariant::DateTime:
+    case QVariant::Time:
+      return EqualTo;
+
+    case QVariant::String:
       return Contains;
 
     default:
@@ -149,7 +148,7 @@ QString QgsDefaultSearchWidgetWrapper::createExpression( QgsSearchWidgetWrapper:
   //clear any unsupported flags
   flags &= supportedFlags();
 
-  const QMetaType::Type fldType = layer()->fields().at( mFieldIdx ).type();
+  const QVariant::Type fldType = layer()->fields().at( mFieldIdx ).type();
   const QString fieldName = createFieldIdentifier();
 
   if ( flags & IsNull )
@@ -159,11 +158,11 @@ QString QgsDefaultSearchWidgetWrapper::createExpression( QgsSearchWidgetWrapper:
 
   switch ( fldType )
   {
-    case QMetaType::Type::Int:
-    case QMetaType::Type::UInt:
-    case QMetaType::Type::Double:
-    case QMetaType::Type::LongLong:
-    case QMetaType::Type::ULongLong:
+    case QVariant::Int:
+    case QVariant::UInt:
+    case QVariant::Double:
+    case QVariant::LongLong:
+    case QVariant::ULongLong:
     {
       if ( flags & EqualTo )
         return fieldName + '=' + mLineEdit->text();
@@ -180,9 +179,9 @@ QString QgsDefaultSearchWidgetWrapper::createExpression( QgsSearchWidgetWrapper:
       break;
     }
 
-    case QMetaType::Type::QDate:
-    case QMetaType::Type::QDateTime:
-    case QMetaType::Type::QTime:
+    case QVariant::Date:
+    case QVariant::DateTime:
+    case QVariant::Time:
     {
       if ( flags & EqualTo )
         return fieldName + "='" + mLineEdit->text() + '\'';
@@ -199,7 +198,7 @@ QString QgsDefaultSearchWidgetWrapper::createExpression( QgsSearchWidgetWrapper:
       break;
     }
 
-    case QMetaType::Type::QString:
+    case QVariant::String:
     {
       // case insensitive!
       if ( flags & EqualTo || flags & NotEqualTo )
@@ -257,9 +256,9 @@ void QgsDefaultSearchWidgetWrapper::initWidget( QWidget *widget )
   mContainer = widget;
   mContainer->setLayout( new QHBoxLayout() );
   mContainer->layout()->setContentsMargins( 0, 0, 0, 0 );
-  const QMetaType::Type fldType = layer()->fields().at( mFieldIdx ).type();
+  const QVariant::Type fldType = layer()->fields().at( mFieldIdx ).type();
 
-  if ( fldType == QMetaType::Type::QString )
+  if ( fldType == QVariant::String )
   {
     mLineEdit = new QgsFieldValuesLineEdit();
     static_cast< QgsFieldValuesLineEdit * >( mLineEdit )->setLayer( layer() );
@@ -272,7 +271,7 @@ void QgsDefaultSearchWidgetWrapper::initWidget( QWidget *widget )
   mContainer->layout()->addWidget( mLineEdit );
   mContainer->setFocusProxy( mLineEdit );
 
-  if ( fldType == QMetaType::Type::QString )
+  if ( fldType == QVariant::String )
   {
     mCheckbox = new QCheckBox( QStringLiteral( "Case sensitive" ) );
     mContainer->layout()->addWidget( mCheckbox );

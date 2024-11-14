@@ -18,9 +18,7 @@
 #include "qgsannotationpolygonitem.h"
 #include "qgssymbol.h"
 #include "qgssymbollayerutils.h"
-#include "qgscurvepolygon.h"
-#include "qgscurve.h"
-#include "qgspolygon.h"
+#include "qgssurface.h"
 #include "qgsfillsymbol.h"
 #include "qgsannotationitemnode.h"
 #include "qgsannotationitemeditoperation.h"
@@ -97,7 +95,7 @@ bool QgsAnnotationPolygonItem::writeXml( QDomElement &element, QDomDocument &doc
   return true;
 }
 
-QList<QgsAnnotationItemNode> QgsAnnotationPolygonItem::nodesV2( const QgsAnnotationItemEditContext & ) const
+QList<QgsAnnotationItemNode> QgsAnnotationPolygonItem::nodes() const
 {
   QList< QgsAnnotationItemNode > res;
 
@@ -124,7 +122,7 @@ QList<QgsAnnotationItemNode> QgsAnnotationPolygonItem::nodesV2( const QgsAnnotat
   return res;
 }
 
-Qgis::AnnotationItemEditOperationResult QgsAnnotationPolygonItem::applyEditV2( QgsAbstractAnnotationItemEditOperation *operation, const QgsAnnotationItemEditContext & )
+Qgis::AnnotationItemEditOperationResult QgsAnnotationPolygonItem::applyEdit( QgsAbstractAnnotationItemEditOperation *operation )
 {
   switch ( operation->type() )
   {
@@ -168,7 +166,7 @@ Qgis::AnnotationItemEditOperationResult QgsAnnotationPolygonItem::applyEditV2( Q
   return Qgis::AnnotationItemEditOperationResult::Invalid;
 }
 
-QgsAnnotationItemEditOperationTransientResults *QgsAnnotationPolygonItem::transientEditResultsV2( QgsAbstractAnnotationItemEditOperation *operation, const QgsAnnotationItemEditContext & )
+QgsAnnotationItemEditOperationTransientResults *QgsAnnotationPolygonItem::transientEditResults( QgsAbstractAnnotationItemEditOperation *operation )
 {
   switch ( operation->type() )
   {
@@ -199,11 +197,6 @@ QgsAnnotationItemEditOperationTransientResults *QgsAnnotationPolygonItem::transi
   return nullptr;
 }
 
-Qgis::AnnotationItemFlags QgsAnnotationPolygonItem::flags() const
-{
-  return Qgis::AnnotationItemFlag::SupportsReferenceScale;
-}
-
 QgsAnnotationPolygonItem *QgsAnnotationPolygonItem::create()
 {
   return new QgsAnnotationPolygonItem( new QgsPolygon() );
@@ -224,7 +217,7 @@ bool QgsAnnotationPolygonItem::readXml( const QDomElement &element, const QgsRea
   return true;
 }
 
-QgsAnnotationPolygonItem *QgsAnnotationPolygonItem::clone() const
+QgsAnnotationPolygonItem *QgsAnnotationPolygonItem::clone()
 {
   std::unique_ptr< QgsAnnotationPolygonItem > item = std::make_unique< QgsAnnotationPolygonItem >( mPolygon->clone() );
   item->setSymbol( mSymbol->clone() );
@@ -235,11 +228,6 @@ QgsAnnotationPolygonItem *QgsAnnotationPolygonItem::clone() const
 QgsRectangle QgsAnnotationPolygonItem::boundingBox() const
 {
   return mPolygon->boundingBox();
-}
-
-void QgsAnnotationPolygonItem::setGeometry( QgsCurvePolygon *geometry )
-{
-  mPolygon.reset( geometry );
 }
 
 const QgsFillSymbol *QgsAnnotationPolygonItem::symbol() const

@@ -42,23 +42,21 @@ class QgsVirtualLayerProvider final: public QgsVectorDataProvider
      * \param uri uniform resource locator (URI) for a dataset
      * \param options generic data provider options
      */
-    explicit QgsVirtualLayerProvider( QString const &uri, const ProviderOptions &coordinateTransformContext, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() );
+    explicit QgsVirtualLayerProvider( QString const &uri, const ProviderOptions &coordinateTransformContext, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() );
 
     QgsAbstractFeatureSource *featureSource() const override;
     QString storageType() const override;
     QgsCoordinateReferenceSystem crs() const override;
     QgsFeatureIterator getFeatures( const QgsFeatureRequest &request ) const override;
-    Qgis::WkbType wkbType() const override;
+    QgsWkbTypes::Type wkbType() const override;
     long long featureCount() const override;
     QgsRectangle extent() const override;
     QString subsetString() const override;
     bool setSubsetString( const QString &subset, bool updateFeatureCount = true ) override;
-    bool supportsSubsetString() const override;
-    QString subsetStringDialect() const override;
-    QString subsetStringHelpUrl() const override;
+    bool supportsSubsetString() const override { return true; }
     QgsFields fields() const override;
     bool isValid() const override;
-    Qgis::VectorProviderCapabilities capabilities() const override;
+    QgsVectorDataProvider::Capabilities capabilities() const override;
     QString name() const override;
     QString description() const override;
     QgsAttributeList pkAttributeIndexes() const override;
@@ -141,10 +139,8 @@ class QgsVirtualLayerProviderMetadata final: public QgsProviderMetadata
   public:
     QgsVirtualLayerProviderMetadata();
     QIcon icon() const override;
-    QgsVirtualLayerProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() ) override;
-    QString absoluteToRelativeUri( const QString &uri, const QgsReadWriteContext &context ) const override;
-    QString relativeToAbsoluteUri( const QString &uri, const QgsReadWriteContext &context ) const override;
-    QList< Qgis::LayerType > supportedLayerTypes() const override;
+    QgsVirtualLayerProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() ) override;
+    QList< QgsMapLayerType > supportedLayerTypes() const override;
 };
 
 // clazy:excludeall=qstring-allocations

@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsfilebaseddataitemprovider.h"
-#include "moc_qgsfilebaseddataitemprovider.cpp"
 #include "qgsdataprovider.h"
 #include "qgsproviderregistry.h"
 #include "qgslogger.h"
@@ -27,8 +26,9 @@
 #include "qgsfielddomainsitem.h"
 #include "qgsrelationshipsitem.h"
 #include "qgsproviderutils.h"
+#include "qgsmbtiles.h"
+#include "qgsvectortiledataitems.h"
 #include "qgsprovidermetadata.h"
-#include "qgsgdalutils.h"
 #include <QUrlQuery>
 
 //
@@ -43,14 +43,14 @@ QgsProviderSublayerItem::QgsProviderSublayerItem( QgsDataItem *parent, const QSt
   mToolTip = details.uri();
 
   // no children, except for vector layers, which will show the fields item
-  setState( details.type() == Qgis::LayerType::Vector ? Qgis::BrowserItemState::NotPopulated : Qgis::BrowserItemState::Populated );
+  setState( details.type() == QgsMapLayerType::VectorLayer ? Qgis::BrowserItemState::NotPopulated : Qgis::BrowserItemState::Populated );
 }
 
 QVector<QgsDataItem *> QgsProviderSublayerItem::createChildren()
 {
   QVector<QgsDataItem *> children;
 
-  if ( mDetails.type() == Qgis::LayerType::Vector )
+  if ( mDetails.type() == QgsMapLayerType::VectorLayer )
   {
     // sqlite gets special handling because it delegates to the dedicated spatialite provider
     if ( mDetails.driverName() == QLatin1String( "SQLite" ) )
@@ -126,48 +126,45 @@ Qgis::BrowserLayerType QgsProviderSublayerItem::layerTypeFromSublayer( const Qgs
 {
   switch ( sublayer.type() )
   {
-    case Qgis::LayerType::Vector:
+    case QgsMapLayerType::VectorLayer:
     {
       switch ( QgsWkbTypes::geometryType( sublayer.wkbType() ) )
       {
-        case Qgis::GeometryType::Point:
+        case QgsWkbTypes::PointGeometry:
           return Qgis::BrowserLayerType::Point;
 
-        case Qgis::GeometryType::Line:
+        case QgsWkbTypes::LineGeometry:
           return Qgis::BrowserLayerType::Line;
 
-        case Qgis::GeometryType::Polygon:
+        case QgsWkbTypes::PolygonGeometry:
           return Qgis::BrowserLayerType::Polygon;
 
-        case Qgis::GeometryType::Null:
+        case QgsWkbTypes::NullGeometry:
           return Qgis::BrowserLayerType::TableLayer;
 
-        case Qgis::GeometryType::Unknown:
+        case QgsWkbTypes::UnknownGeometry:
           return Qgis::BrowserLayerType::Vector;
       }
 
       break;
     }
-    case Qgis::LayerType::Raster:
+    case QgsMapLayerType::RasterLayer:
       return Qgis::BrowserLayerType::Raster;
 
-    case Qgis::LayerType::Plugin:
+    case QgsMapLayerType::PluginLayer:
       return Qgis::BrowserLayerType::Plugin;
 
-    case Qgis::LayerType::Mesh:
+    case QgsMapLayerType::MeshLayer:
       return Qgis::BrowserLayerType::Mesh;
 
-    case Qgis::LayerType::VectorTile:
+    case QgsMapLayerType::VectorTileLayer:
       return Qgis::BrowserLayerType::VectorTile;
 
-    case Qgis::LayerType::PointCloud:
+    case QgsMapLayerType::PointCloudLayer:
       return Qgis::BrowserLayerType::PointCloud;
 
-    case Qgis::LayerType::TiledScene:
-      return Qgis::BrowserLayerType::TiledScene;
-
-    case Qgis::LayerType::Annotation:
-    case Qgis::LayerType::Group:
+    case QgsMapLayerType::AnnotationLayer:
+    case QgsMapLayerType::GroupLayer:
       break;
   }
   return Qgis::BrowserLayerType::NoType;
@@ -214,17 +211,16 @@ QgsMimeDataUtils::UriList QgsFileDataCollectionGroupItem::mimeUris() const
 // QgsFileDataCollectionItem
 //
 
-QgsFileDataCollectionItem::QgsFileDataCollectionItem( QgsDataItem *parent, const QString &name, const QString &path, const QList<QgsProviderSublayerDetails> &sublayers, const QVariantMap &extraUriParts )
+QgsFileDataCollectionItem::QgsFileDataCollectionItem( QgsDataItem *parent, const QString &name, const QString &path, const QList<QgsProviderSublayerDetails> &sublayers )
   : QgsDataCollectionItem( parent, name, path )
   , mSublayers( sublayers )
-  , mExtraUriParts( extraUriParts )
 {
   if ( QgsProviderUtils::sublayerDetailsAreIncomplete( mSublayers, QgsProviderUtils::SublayerCompletenessFlag::IgnoreUnknownFeatureCount ) )
     setCapabilities( Qgis::BrowserItemCapability::Fertile );
   else
     setCapabilities( Qgis::BrowserItemCapability::Fast | Qgis::BrowserItemCapability::Fertile );
 
-  if ( QgsGdalUtils::vsiHandlerType( QgsGdalUtils::vsiPrefixForPath( path ) ) == Qgis::VsiHandlerType::Archive )
+  if ( !qgsVsiPrefix( path ).isEmpty() )
   {
     mIconName = QStringLiteral( "/mIconZip.svg" );
   }
@@ -233,37 +229,8 @@ QgsFileDataCollectionItem::QgsFileDataCollectionItem( QgsDataItem *parent, const
 QVector<QgsDataItem *> QgsFileDataCollectionItem::createChildren()
 {
   QList< QgsProviderSublayerDetails> sublayers;
-  if ( QgsProviderUtils::sublayerDetailsAreIncomplete( mSublayers, QgsProviderUtils::SublayerCompletenessFlag::IgnoreUnknownFeatureCount ) )
-  {
-    QSet< QString > providers;
-    for ( const QgsProviderSublayerDetails &details : std::as_const( mSublayers ) )
-    {
-      providers.insert( details.providerKey() );
-    }
-
-    for ( const QString &provider : std::as_const( providers ) )
-    {
-      if ( QgsProviderMetadata *metadata = QgsProviderRegistry::instance()->providerMetadata( provider ) )
-      {
-        if ( !mExtraUriParts.empty() )
-        {
-          QVariantMap uriParts = metadata->decodeUri( path() );
-          for ( auto it = mExtraUriParts.constBegin(); it != mExtraUriParts.constEnd(); ++it )
-          {
-            uriParts.insert( it.key(), it.value() );
-          }
-          const QString updatedUri = metadata->encodeUri( uriParts );
-
-          sublayers.append( metadata->querySublayers( updatedUri.isEmpty() ? path() : updatedUri, Qgis::SublayerQueryFlag::ResolveGeometryType ) );
-        }
-        else
-        {
-          sublayers.append( metadata->querySublayers( path(), Qgis::SublayerQueryFlag::ResolveGeometryType ) );
-        }
-      }
-    }
-  }
-  else if ( mSublayers.empty() )
+  if ( QgsProviderUtils::sublayerDetailsAreIncomplete( mSublayers, QgsProviderUtils::SublayerCompletenessFlag::IgnoreUnknownFeatureCount )
+       || mSublayers.empty() )
   {
     sublayers = QgsProviderRegistry::instance()->querySublayers( path(), Qgis::SublayerQueryFlag::ResolveGeometryType );
   }
@@ -328,7 +295,6 @@ QVector<QgsDataItem *> QgsFileDataCollectionItem::createChildren()
   if ( conn )
   {
     mCachedCapabilities = conn->capabilities();
-    mCachedCapabilities2 = conn->capabilities2();
     mHasCachedCapabilities = true;
   }
   if ( conn && ( mCachedCapabilities & QgsAbstractDatabaseProviderConnection::Capability::ListFieldDomains ) )
@@ -380,62 +346,6 @@ QVector<QgsDataItem *> QgsFileDataCollectionItem::createChildren()
 bool QgsFileDataCollectionItem::hasDragEnabled() const
 {
   return true;
-}
-
-bool QgsFileDataCollectionItem::canAddVectorLayers() const
-{
-  // if we've previously opened a connection for this item, we can use the previously
-  // determined capababilities to return an accurate answer.
-  if ( mHasCachedCapabilities )
-    return mCachedCapabilities & QgsAbstractDatabaseProviderConnection::Capability::CreateVectorTable;
-
-  if ( mHasCachedDropSupport )
-    return mCachedSupportsDrop;
-
-  // otherwise, we are limited to VERY VERY cheap calculations only!!
-  // DO NOT UNDER *****ANY***** CIRCUMSTANCES OPEN DATASETS HERE!!!!
-
-  mHasCachedDropSupport = true;
-  if ( !QFileInfo( path() ).isWritable() )
-  {
-    mCachedSupportsDrop = false;
-    return mCachedSupportsDrop;
-  }
-
-  GDALDriverH hDriver = GDALIdentifyDriverEx( path().toUtf8().constData(), GDAL_OF_VECTOR, nullptr, nullptr );
-  if ( !hDriver )
-  {
-    mCachedSupportsDrop = false;
-    return mCachedSupportsDrop;
-  }
-
-  // explicitly blocklist some drivers which we don't want to expose drop support for
-  const QString driverName = GDALGetDriverShortName( hDriver );
-  if ( driverName == QLatin1String( "PDF" )
-       || driverName == QLatin1String( "DXF" ) )
-  {
-    mCachedSupportsDrop = false;
-    return mCachedSupportsDrop;
-  }
-
-  // DO NOT UNDER *****ANY***** CIRCUMSTANCES OPEN DATASETS HERE!!!!
-#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,4,0)
-  const bool isSingleTableDriver = !GDALGetMetadataItem( hDriver, GDAL_DCAP_MULTIPLE_VECTOR_LAYERS, nullptr );
-#else
-  const QFileInfo pathInfo( path() );
-  const QString suffix = pathInfo.suffix().toLower();
-  const bool isSingleTableDriver = !QgsGdalUtils::multiLayerFileExtensions().contains( suffix );
-#endif
-
-  if ( isSingleTableDriver )
-  {
-    mCachedSupportsDrop = false;
-    return mCachedSupportsDrop;
-  }
-
-  // DO NOT UNDER *****ANY***** CIRCUMSTANCES OPEN DATASETS HERE!!!!
-  mCachedSupportsDrop = true;
-  return mCachedSupportsDrop;
 }
 
 QgsMimeDataUtils::UriList QgsFileDataCollectionItem::mimeUris() const
@@ -496,14 +406,6 @@ QgsAbstractDatabaseProviderConnection *QgsFileDataCollectionItem::databaseConnec
       conn = static_cast<QgsAbstractDatabaseProviderConnection *>( md->createConnection( md->encodeUri( parts ), {} ) );
     }
   }
-
-  if ( conn )
-  {
-    mCachedCapabilities = conn->capabilities();
-    mCachedCapabilities2 = conn->capabilities2();
-    mHasCachedCapabilities = true;
-  }
-
   return conn;
 }
 
@@ -516,30 +418,9 @@ QgsAbstractDatabaseProviderConnection::Capabilities QgsFileDataCollectionItem::d
   if ( conn )
   {
     mCachedCapabilities = conn->capabilities();
-    mCachedCapabilities2 = conn->capabilities2();
     mHasCachedCapabilities = true;
   }
   return mCachedCapabilities;
-}
-
-Qgis::DatabaseProviderConnectionCapabilities2 QgsFileDataCollectionItem::databaseConnectionCapabilities2() const
-{
-  if ( mHasCachedCapabilities )
-    return mCachedCapabilities2;
-
-  std::unique_ptr<QgsAbstractDatabaseProviderConnection> conn( databaseConnection() );
-  if ( conn )
-  {
-    mCachedCapabilities = conn->capabilities();
-    mCachedCapabilities2 = conn->capabilities2();
-    mHasCachedCapabilities = true;
-  }
-  return mCachedCapabilities2;
-}
-
-QList<QgsProviderSublayerDetails> QgsFileDataCollectionItem::sublayers() const
-{
-  return mSublayers;
 }
 
 //
@@ -551,22 +432,12 @@ QString QgsFileBasedDataItemProvider::name()
   return QStringLiteral( "files" );
 }
 
-Qgis::DataItemProviderCapabilities QgsFileBasedDataItemProvider::capabilities() const
+int QgsFileBasedDataItemProvider::capabilities() const
 {
-  return Qgis::DataItemProviderCapability::Files | Qgis::DataItemProviderCapability::Directories;
+  return QgsDataProvider::File | QgsDataProvider::Dir;
 }
 
 QgsDataItem *QgsFileBasedDataItemProvider::createDataItem( const QString &path, QgsDataItem *parentItem )
-{
-  return createDataItemForPathPrivate( path, parentItem, nullptr, Qgis::SublayerQueryFlags(), QVariantMap() );
-}
-
-QgsDataItem *QgsFileBasedDataItemProvider::createLayerItemForPath( const QString &path, QgsDataItem *parentItem, const QStringList &allowedProviders, const QVariantMap &extraUriParts, Qgis::SublayerQueryFlags queryFlags )
-{
-  return createDataItemForPathPrivate( path, parentItem, &allowedProviders, queryFlags, extraUriParts );
-}
-
-QgsDataItem *QgsFileBasedDataItemProvider::createDataItemForPathPrivate( const QString &path, QgsDataItem *parentItem, const QStringList *allowedProviders, Qgis::SublayerQueryFlags queryFlags, const QVariantMap &extraUriParts )
 {
   if ( path.isEmpty() )
     return nullptr;
@@ -613,12 +484,45 @@ QgsDataItem *QgsFileBasedDataItemProvider::createDataItemForPathPrivate( const Q
   {
     suffix = QStringLiteral( "shp.zip" );
   }
+  // special handling for mbtiles files
+  else if ( suffix == QLatin1String( "mbtiles" ) )
+  {
+    QgsMbTiles reader( path );
+    if ( reader.open() )
+    {
+      if ( reader.metadataValue( QStringLiteral( "format" ) ) == QLatin1String( "pbf" ) )
+      {
+        // these are vector tiles
+        QUrlQuery uq;
+        uq.addQueryItem( QStringLiteral( "type" ), QStringLiteral( "mbtiles" ) );
+        uq.addQueryItem( QStringLiteral( "url" ), path );
+        const QString encodedUri = uq.toString();
+        QgsVectorTileLayerItem *item = new QgsVectorTileLayerItem( parentItem, name, path, encodedUri );
+        item->setCapabilities( item->capabilities2() | Qgis::BrowserItemCapability::ItemRepresentsFile );
+        return item;
+      }
+      else
+      {
+        // handled by WMS provider
+        QUrlQuery uq;
+        uq.addQueryItem( QStringLiteral( "type" ), QStringLiteral( "mbtiles" ) );
+        uq.addQueryItem( QStringLiteral( "url" ), QUrl::fromLocalFile( path ).toString() );
+        const QString encodedUri = uq.toString();
+        QgsLayerItem *item = new QgsLayerItem( parentItem, name, path, encodedUri, Qgis::BrowserLayerType::Raster, QStringLiteral( "wms" ) );
+        item->setState( Qgis::BrowserItemState::Populated );
+        item->setCapabilities( item->capabilities2() | Qgis::BrowserItemCapability::ItemRepresentsFile );
+        return item;
+      }
+    }
+  }
 
   // hide blocklisted URIs, such as .aux.xml files
   if ( QgsProviderRegistry::instance()->uriIsBlocklisted( path ) )
     return nullptr;
 
   QgsSettings settings;
+
+  Qgis::SublayerQueryFlags queryFlags = Qgis::SublayerQueryFlags();
 
   // should we fast scan only?
   if ( ( settings.value( QStringLiteral( "qgis/scanItemsInBrowser2" ),
@@ -629,34 +533,7 @@ QgsDataItem *QgsFileBasedDataItemProvider::createDataItemForPathPrivate( const Q
     queryFlags |= Qgis::SublayerQueryFlag::FastScan;
   }
 
-  QList<QgsProviderSublayerDetails> sublayers;
-  if ( !allowedProviders )
-  {
-    sublayers = QgsProviderRegistry::instance()->querySublayers( path, queryFlags );
-  }
-  else
-  {
-    for ( const QString &provider : *allowedProviders )
-    {
-      if ( QgsProviderMetadata *metadata = QgsProviderRegistry::instance()->providerMetadata( provider ) )
-      {
-        if ( !extraUriParts.empty() )
-        {
-          QVariantMap uriParts = metadata->decodeUri( path );
-          for ( auto it = extraUriParts.constBegin(); it != extraUriParts.constEnd(); ++it )
-          {
-            uriParts.insert( it.key(), it.value() );
-          }
-
-          sublayers.append( metadata->querySublayers( metadata->encodeUri( uriParts ), queryFlags ) );
-        }
-        else
-        {
-          sublayers.append( metadata->querySublayers( path, queryFlags ) );
-        }
-      }
-    }
-  }
+  const QList<QgsProviderSublayerDetails> sublayers = QgsProviderRegistry::instance()->querySublayers( path, queryFlags );
 
   if ( sublayers.size() == 1
        && ( ( ( queryFlags & Qgis::SublayerQueryFlag::FastScan ) && !QgsProviderUtils::sublayerDetailsAreIncomplete( sublayers, QgsProviderUtils::SublayerCompletenessFlag::IgnoreUnknownFeatureCount | QgsProviderUtils::SublayerCompletenessFlag::IgnoreUnknownGeometryType ) )
@@ -669,7 +546,7 @@ QgsDataItem *QgsFileBasedDataItemProvider::createDataItemForPathPrivate( const Q
   }
   else if ( !sublayers.empty() )
   {
-    QgsFileDataCollectionItem *item = new QgsFileDataCollectionItem( parentItem, name, path, sublayers, extraUriParts );
+    QgsFileDataCollectionItem *item = new QgsFileDataCollectionItem( parentItem, name, path, sublayers );
     item->setCapabilities( item->capabilities2() | Qgis::BrowserItemCapability::ItemRepresentsFile );
     return item;
   }

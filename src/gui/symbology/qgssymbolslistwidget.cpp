@@ -13,8 +13,10 @@
  *                                                                         *
  ***************************************************************************/
 
+
 #include "qgssymbolslistwidget.h"
-#include "moc_qgssymbolslistwidget.cpp"
+
+#include "qgsstylemanagerdialog.h"
 #include "qgsstylesavedialog.h"
 #include "qgsstyleitemslistwidget.h"
 #include "qgsvectorlayer.h"
@@ -22,13 +24,11 @@
 #include "qgsauxiliarystorage.h"
 #include "qgsmarkersymbol.h"
 #include "qgslinesymbol.h"
+#include "qgsfillsymbol.h"
 #include "qgssymbolanimationsettingswidget.h"
-#include "qgssymbolbuffersettingswidget.h"
 #include "qgsprojectstylesettings.h"
 
 #include <QMessageBox>
-#include <QAction>
-#include <QMenu>
 
 QgsSymbolsListWidget::QgsSymbolsListWidget( QgsSymbol *symbol, QgsStyle *style, QMenu *menu, QWidget *parent, QgsVectorLayer *layer )
   : QWidget( parent )
@@ -52,10 +52,6 @@ QgsSymbolsListWidget::QgsSymbolsListWidget( QgsSymbol *symbol, QgsStyle *style, 
   mStandardizeRingsAction = new QAction( tr( "Force Right-Hand-Rule Orientation" ), this );
   mStandardizeRingsAction->setCheckable( true );
   connect( mStandardizeRingsAction, &QAction::toggled, this, &QgsSymbolsListWidget::forceRHRToggled );
-
-  mBufferSettingsAction = new QAction( tr( "Buffer Settings…" ), this );
-  connect( mBufferSettingsAction, &QAction::triggered, this, &QgsSymbolsListWidget::showBufferSettings );
-
   mAnimationSettingsAction = new QAction( tr( "Animation Settings…" ), this );
   connect( mAnimationSettingsAction, &QAction::triggered, this, &QgsSymbolsListWidget::showAnimationSettings );
 
@@ -73,9 +69,9 @@ QgsSymbolsListWidget::QgsSymbolsListWidget( QgsSymbol *symbol, QgsStyle *style, 
       mSymbolUnitWidget = mMarkerUnitWidget;
       connect( spinAngle, static_cast < void ( QDoubleSpinBox::* )( double ) > ( &QDoubleSpinBox::valueChanged ), this, &QgsSymbolsListWidget::setMarkerAngle );
       connect( spinSize, static_cast < void ( QDoubleSpinBox::* )( double ) > ( &QDoubleSpinBox::valueChanged ), this, &QgsSymbolsListWidget::setMarkerSize );
-      registerDataDefinedButton( mSizeDDBtn, QgsSymbolLayer::Property::Size );
+      registerDataDefinedButton( mSizeDDBtn, QgsSymbolLayer::PropertySize );
       connect( mSizeDDBtn, &QgsPropertyOverrideButton::changed, this, &QgsSymbolsListWidget::updateDataDefinedMarkerSize );
-      registerDataDefinedButton( mRotationDDBtn, QgsSymbolLayer::Property::Angle );
+      registerDataDefinedButton( mRotationDDBtn, QgsSymbolLayer::PropertyAngle );
       connect( mRotationDDBtn, &QgsPropertyOverrideButton::changed, this, &QgsSymbolsListWidget::updateDataDefinedMarkerAngle );
       break;
     }
@@ -89,7 +85,7 @@ QgsSymbolsListWidget::QgsSymbolsListWidget( QgsSymbol *symbol, QgsStyle *style, 
       mSymbolOpacityWidget = mLineOpacityWidget;
       mSymbolUnitWidget = mLineUnitWidget;
       connect( spinWidth, static_cast < void ( QDoubleSpinBox::* )( double ) > ( &QDoubleSpinBox::valueChanged ), this, &QgsSymbolsListWidget::setLineWidth );
-      registerDataDefinedButton( mWidthDDBtn, QgsSymbolLayer::Property::StrokeWidth );
+      registerDataDefinedButton( mWidthDDBtn, QgsSymbolLayer::PropertyStrokeWidth );
       connect( mWidthDDBtn, &QgsPropertyOverrideButton::changed, this, &QgsSymbolsListWidget::updateDataDefinedLineWidth );
       break;
     }
@@ -111,12 +107,8 @@ QgsSymbolsListWidget::QgsSymbolsListWidget( QgsSymbol *symbol, QgsStyle *style, 
 
   stackedWidget->setCurrentIndex( 0 );
 
-  mSymbolUnitWidget->setUnits( { Qgis::RenderUnit::Millimeters,
-                                 Qgis::RenderUnit::MetersInMapUnits,
-                                 Qgis::RenderUnit::MapUnits,
-                                 Qgis::RenderUnit::Pixels,
-                                 Qgis::RenderUnit::Points,
-                                 Qgis::RenderUnit::Inches } );
+  mSymbolUnitWidget->setUnits( QgsUnitTypes::RenderUnitList() << QgsUnitTypes::RenderMillimeters << QgsUnitTypes::RenderMetersInMapUnits << QgsUnitTypes::RenderMapUnits << QgsUnitTypes::RenderPixels
+                               << QgsUnitTypes::RenderPoints << QgsUnitTypes::RenderInches );
 
   if ( mSymbol )
   {
@@ -126,7 +118,7 @@ QgsSymbolsListWidget::QgsSymbolsListWidget( QgsSymbol *symbol, QgsStyle *style, 
   connect( mSymbolUnitWidget, &QgsUnitSelectionWidget::changed, this, &QgsSymbolsListWidget::mSymbolUnitWidget_changed );
   connect( mSymbolColorButton, &QgsColorButton::colorChanged, this, &QgsSymbolsListWidget::setSymbolColor );
 
-  registerSymbolDataDefinedButton( opacityDDBtn, QgsSymbol::Property::Opacity );
+  registerSymbolDataDefinedButton( opacityDDBtn, QgsSymbol::PropertyOpacity );
 
   connect( this, &QgsSymbolsListWidget::changed, this, &QgsSymbolsListWidget::updateAssistantSymbol );
   updateAssistantSymbol();
@@ -148,12 +140,11 @@ QgsSymbolsListWidget::~QgsSymbolsListWidget()
   mStyleItemsListWidget->advancedMenu()->removeAction( mClipFeaturesAction );
   mStyleItemsListWidget->advancedMenu()->removeAction( mStandardizeRingsAction );
   mStyleItemsListWidget->advancedMenu()->removeAction( mAnimationSettingsAction );
-  mStyleItemsListWidget->advancedMenu()->removeAction( mBufferSettingsAction );
 }
 
 void QgsSymbolsListWidget::registerDataDefinedButton( QgsPropertyOverrideButton *button, QgsSymbolLayer::Property key )
 {
-  button->setProperty( "propertyKey", static_cast< int >( key ) );
+  button->setProperty( "propertyKey", key );
   button->registerExpressionContextGenerator( this );
 
   connect( button, &QgsPropertyOverrideButton::createAuxiliaryField, this, &QgsSymbolsListWidget::createAuxiliaryField );
@@ -174,7 +165,7 @@ void QgsSymbolsListWidget::createAuxiliaryField()
 
   QgsPropertyOverrideButton *button = qobject_cast<QgsPropertyOverrideButton *>( sender() );
   const QgsSymbolLayer::Property key = static_cast<  QgsSymbolLayer::Property >( button->propertyKey() );
-  const QgsPropertyDefinition def = QgsSymbolLayer::propertyDefinitions()[static_cast< int >( key )];
+  const QgsPropertyDefinition def = QgsSymbolLayer::propertyDefinitions()[key];
 
   // create property in auxiliary storage if necessary
   if ( !mLayer->auxiliaryLayer()->exists( def ) )
@@ -191,12 +182,12 @@ void QgsSymbolsListWidget::createAuxiliaryField()
   QgsLineSymbol *lineSymbol = static_cast<QgsLineSymbol *>( mSymbol );
   switch ( key )
   {
-    case QgsSymbolLayer::Property::Angle:
+    case QgsSymbolLayer::PropertyAngle:
       if ( markerSymbol )
         markerSymbol->setDataDefinedAngle( button->toProperty() );
       break;
 
-    case QgsSymbolLayer::Property::Size:
+    case QgsSymbolLayer::PropertySize:
       if ( markerSymbol )
       {
         markerSymbol->setDataDefinedSize( button->toProperty() );
@@ -204,7 +195,7 @@ void QgsSymbolsListWidget::createAuxiliaryField()
       }
       break;
 
-    case QgsSymbolLayer::Property::StrokeWidth:
+    case QgsSymbolLayer::PropertyStrokeWidth:
       if ( lineSymbol )
         lineSymbol->setDataDefinedWidth( button->toProperty() );
       break;
@@ -231,7 +222,7 @@ void QgsSymbolsListWidget::createSymbolAuxiliaryField()
 
   QgsPropertyOverrideButton *button = qobject_cast<QgsPropertyOverrideButton *>( sender() );
   const QgsSymbol::Property key = static_cast<  QgsSymbol::Property >( button->propertyKey() );
-  const QgsPropertyDefinition def = QgsSymbol::propertyDefinitions()[static_cast< int >( key )];
+  const QgsPropertyDefinition def = QgsSymbol::propertyDefinitions()[key];
 
   // create property in auxiliary storage if necessary
   if ( !mLayer->auxiliaryLayer()->exists( def ) )
@@ -299,35 +290,6 @@ void QgsSymbolsListWidget::showAnimationSettings()
   }
 }
 
-void QgsSymbolsListWidget::showBufferSettings()
-{
-  QgsPanelWidget *panel = QgsPanelWidget::findParentPanel( this );
-  if ( panel && panel->dockMode() )
-  {
-    QgsSymbolBufferSettingsWidget *widget = new QgsSymbolBufferSettingsWidget( panel );
-    widget->setPanelTitle( tr( "Buffer Settings" ) );
-    if ( const QgsSymbolBufferSettings *settings = mSymbol->bufferSettings() )
-      widget->setBufferSettings( *settings );
-
-    connect( widget, &QgsPanelWidget::widgetChanged, this, [ this, widget ]()
-    {
-      mSymbol->setBufferSettings( new QgsSymbolBufferSettings( widget->bufferSettings() ) );
-      emit changed();
-    } );
-    panel->openPanel( widget );
-    return;
-  }
-
-  QgsSymbolBufferSettingsDialog d( this );
-  if ( const QgsSymbolBufferSettings *settings = mSymbol->bufferSettings() )
-    d.setBufferSettings( *settings );
-  if ( d.exec() == QDialog::Accepted )
-  {
-    mSymbol->setBufferSettings( new QgsSymbolBufferSettings( d.bufferSettings() ) );
-    emit changed();
-  }
-}
-
 void QgsSymbolsListWidget::saveSymbol()
 {
   QgsStyleSaveDialog saveDlg( this );
@@ -379,7 +341,7 @@ void QgsSymbolsListWidget::updateSymbolDataDefinedProperty()
 
 void QgsSymbolsListWidget::registerSymbolDataDefinedButton( QgsPropertyOverrideButton *button, QgsSymbol::Property key )
 {
-  button->init( static_cast< int >( key ), mSymbol ? mSymbol->dataDefinedProperties() : QgsPropertyCollection(), QgsSymbol::propertyDefinitions(), mLayer, true );
+  button->init( key, mSymbol ? mSymbol->dataDefinedProperties() : QgsPropertyCollection(), QgsSymbol::propertyDefinitions(), mLayer, true );
   connect( button, &QgsPropertyOverrideButton::changed, this, &QgsSymbolsListWidget::updateSymbolDataDefinedProperty );
   connect( button, &QgsPropertyOverrideButton::createAuxiliaryField, this, &QgsSymbolsListWidget::createSymbolAuxiliaryField );
 
@@ -568,10 +530,10 @@ void QgsSymbolsListWidget::updateSymbolInfo()
     if ( mLayer )
     {
       const QgsProperty ddSize( markerSymbol->dataDefinedSize() );
-      mSizeDDBtn->init( static_cast< int >( QgsSymbolLayer::Property::Size ), ddSize, QgsSymbolLayer::propertyDefinitions(), mLayer, true );
+      mSizeDDBtn->init( QgsSymbolLayer::PropertySize, ddSize, QgsSymbolLayer::propertyDefinitions(), mLayer, true );
       spinSize->setEnabled( !mSizeDDBtn->isActive() );
       const QgsProperty ddAngle( markerSymbol->dataDefinedAngle() );
-      mRotationDDBtn->init( static_cast< int >( QgsSymbolLayer::Property::Angle ), ddAngle, QgsSymbolLayer::propertyDefinitions(), mLayer, true );
+      mRotationDDBtn->init( QgsSymbolLayer::PropertyAngle, ddAngle, QgsSymbolLayer::propertyDefinitions(), mLayer, true );
       spinAngle->setEnabled( !mRotationDDBtn->isActive() );
     }
     else
@@ -588,7 +550,7 @@ void QgsSymbolsListWidget::updateSymbolInfo()
     if ( mLayer )
     {
       const QgsProperty dd( lineSymbol->dataDefinedWidth() );
-      mWidthDDBtn->init( static_cast< int >( QgsSymbolLayer::Property::StrokeWidth ), dd, QgsSymbolLayer::propertyDefinitions(), mLayer, true );
+      mWidthDDBtn->init( QgsSymbolLayer::PropertyStrokeWidth, dd, QgsSymbolLayer::propertyDefinitions(), mLayer, true );
       spinWidth->setEnabled( !mWidthDDBtn->isActive() );
     }
     else
@@ -606,21 +568,19 @@ void QgsSymbolsListWidget::updateSymbolInfo()
 
   // Clean up previous advanced symbol actions
   const QList<QAction *> actionList( mStyleItemsListWidget->advancedMenu()->actions() );
-  for ( QAction *action : actionList )
+  for ( const auto &action : actionList )
   {
-    for ( QAction *actionsToRemove :
-          {
-            mClipFeaturesAction,
-            mStandardizeRingsAction,
-            mAnimationSettingsAction,
-            mBufferSettingsAction
-          } )
+    if ( mClipFeaturesAction->text() == action->text() )
     {
-      if ( actionsToRemove->text() == action->text() )
-      {
-        mStyleItemsListWidget->advancedMenu()->removeAction( action );
-        break;
-      }
+      mStyleItemsListWidget->advancedMenu()->removeAction( action );
+    }
+    else if ( mStandardizeRingsAction->text() == action->text() )
+    {
+      mStyleItemsListWidget->advancedMenu()->removeAction( action );
+    }
+    else if ( mAnimationSettingsAction->text() == action->text() )
+    {
+      mStyleItemsListWidget->advancedMenu()->removeAction( action );
     }
   }
 
@@ -632,10 +592,6 @@ void QgsSymbolsListWidget::updateSymbolInfo()
   if ( mSymbol->type() == Qgis::SymbolType::Fill )
   {
     mStyleItemsListWidget->advancedMenu()->addAction( mStandardizeRingsAction );
-  }
-  if ( mSymbol->type() == Qgis::SymbolType::Marker )
-  {
-    mStyleItemsListWidget->advancedMenu()->addAction( mBufferSettingsAction );
   }
   mStyleItemsListWidget->advancedMenu()->addAction( mAnimationSettingsAction );
 

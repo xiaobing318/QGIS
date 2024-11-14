@@ -11,27 +11,27 @@ __copyright__ = 'Copyright 2021, The QGIS Project'
 
 import os
 
+import qgis  # NOQA
 from qgis.core import (
-    QgsAnnotationLayer,
-    QgsCoordinateTransformContext,
-    QgsDataSourceUri,
     QgsMapLayerFactory,
     QgsMapLayerType,
+    QgsVectorLayer,
+    QgsRasterLayer,
     QgsMeshLayer,
     QgsPointCloudLayer,
-    QgsRasterLayer,
-    QgsVectorLayer,
+    QgsAnnotationLayer,
     QgsVectorTileLayer,
+    QgsDataSourceUri,
+    QgsCoordinateTransformContext
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
 start_app()
 
 
-class TestQgsMapLayerFactory(QgisTestCase):
+class TestQgsMapLayerFactory(unittest.TestCase):
 
     def testTypeFromString(self):
         """
@@ -110,7 +110,7 @@ class TestQgsMapLayerFactory(QgisTestCase):
         # vector tile layer
         ds = QgsDataSourceUri()
         ds.setParam("type", "xyz")
-        ds.setParam("url", f"file://{os.path.join(unitTestDataPath(), 'vector_tile')}/{{z}}-{{x}}-{{y}}.pbf")
+        ds.setParam("url", "file://{}/{{z}}-{{x}}-{{y}}.pbf".format(os.path.join(unitTestDataPath(), 'vector_tile')))
         ds.setParam("zmax", "1")
         ml = QgsMapLayerFactory.createLayer(ds.encodedUri().data().decode(), 'vtl', QgsMapLayerType.VectorTileLayer, options)
         self.assertTrue(ml.isValid())

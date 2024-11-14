@@ -16,7 +16,6 @@
 
 #include "qgsauthcertificateinfo.h"
 #include "qgsauthsslerrorsdialog.h"
-#include "moc_qgsauthsslerrorsdialog.cpp"
 #include "qgsauthsslconfigwidget.h"
 
 #include <QDialogButtonBox>
@@ -105,12 +104,12 @@ void QgsAuthSslErrorsDialog::loadUnloadCertificate( bool load )
   grpbxSslErrors->setCollapsed( load );
   if ( !load )
   {
-    QgsDebugMsgLevel( QStringLiteral( "Unloading certificate and host:port" ), 2 );
+    QgsDebugMsg( QStringLiteral( "Unloading certificate and host:port" ) );
     clearCertificateConfig();
     return;
   }
   wdgtSslConfig->setEnabled( true );
-  QgsDebugMsgLevel( QStringLiteral( "Loading certificate for host:port = %1" ).arg( mHostPort ), 2 );
+  QgsDebugMsg( QStringLiteral( "Loading certificate for host:port = %1" ).arg( mHostPort ) );
   wdgtSslConfig->setSslCertificate( mSslConfiguration.peerCertificate(), mHostPort );
   if ( !mSslErrors.isEmpty() )
   {

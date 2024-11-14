@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsprocessingaggregatewidgets.h"
-#include "moc_qgsprocessingaggregatewidgets.cpp"
 #include "qgsexpressioncontextutils.h"
 #include "qgsfieldexpressionwidget.h"
 #include "qgsfieldmappingwidget.h"
@@ -258,6 +257,7 @@ void QgsAggregateMappingModel::setSourceFields( const QgsFields &sourceFields )
   if ( mExpressionContextGenerator )
     mExpressionContextGenerator->setSourceFields( mSourceFields );
 
+  const QStringList usedFields;
   beginResetModel();
   mMapping.clear();
 
@@ -270,7 +270,7 @@ void QgsAggregateMappingModel::setSourceFields( const QgsFields &sourceFields )
 
     if ( f.isNumeric() )
       aggregate.aggregate = QStringLiteral( "sum" );
-    else if ( f.type() == QMetaType::Type::QString || ( f.type() == QMetaType::Type::QVariantList && f.subType() == QMetaType::Type::QString ) )
+    else if ( f.type() == QVariant::String || ( f.type() == QVariant::List && f.subType() == QVariant::String ) )
       aggregate.aggregate = QStringLiteral( "concatenate" );
 
     aggregate.delimiter = ',';

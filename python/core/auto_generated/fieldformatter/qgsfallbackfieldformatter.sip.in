@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/fieldformatter/qgsfallbackfieldformatter.h                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -13,6 +13,8 @@ class QgsFallbackFieldFormatter : QgsFieldFormatter
 A default fallback field formatter in case no specialized field formatter is defined.
 
 The values will be returned unmodified.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -21,6 +23,9 @@ The values will be returned unmodified.
   public:
 
     QgsFallbackFieldFormatter();
+%Docstring
+Default constructor of field formatter as a fallback when no specialized formatter is defined.
+%End
     virtual QString id() const;
 
 };
@@ -30,5 +35,5 @@ The values will be returned unmodified.
  *                                                                      *
  * src/core/fieldformatter/qgsfallbackfieldformatter.h                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

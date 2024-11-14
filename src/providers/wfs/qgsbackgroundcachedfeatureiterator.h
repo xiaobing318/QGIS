@@ -21,7 +21,6 @@
 #include "qgsspatialindex.h"
 #include "qgsvectordataprovider.h"
 #include "qgscoordinatetransform.h"
-#include "qgstaskmanager.h"
 
 class QDataStream;
 class QFile;
@@ -29,6 +28,7 @@ class QPushButton;
 #include <QMutex>
 #include <QThread>
 #include <QWaitCondition>
+#include <QProgressDialog>
 #include <QTimer>
 
 struct QgsBackgroundCachedFeatureIteratorConstants
@@ -45,34 +45,23 @@ typedef QPair<QgsFeature, QString> QgsFeatureUniqueIdPair;
 
 class QgsFeatureDownloader;
 
-class QgsFeatureDownloaderProgressTask : public QgsTask
+
+//! Utility class for QgsFeatureDownloaderImpl
+class QgsFeatureDownloaderProgressDialog: public QProgressDialog
 {
     Q_OBJECT
-
   public:
+    //! Constructor
+    QgsFeatureDownloaderProgressDialog( const QString &labelText, const QString &cancelButtonText, int minimum, int maximum, QWidget *parent );
 
-    QgsFeatureDownloaderProgressTask( const QString &description, long long totalCount );
-
-    bool run() override;
-
-    void cancel() override;
-
-  public slots:
-
-    void finalize();
-    void setDownloaded( long long count );
+    void resizeEvent( QResizeEvent *ev ) override;
 
   signals:
-
-    void canceled();
+    void hideRequest();
 
   private:
-
-    long long mTotalCount = 0;
-    QWaitCondition mNotFinishedWaitCondition;
-    QMutex mNotFinishedMutex;
-    bool mAlreadyFinished = false;
-
+    QPushButton *mCancel = nullptr;
+    QPushButton *mHide = nullptr;
 };
 
 class QgsBackgroundCachedSharedData;
@@ -137,7 +126,8 @@ class QgsFeatureDownloaderImpl
 #endif
 
   protected:
-    QgsFeatureDownloaderProgressTask *mProgressTask = nullptr;
+    //! Progress dialog
+    QgsFeatureDownloaderProgressDialog *mProgressDialog = nullptr;
 
     //! Whether the download should stop
     bool mStop = false;
@@ -150,9 +140,10 @@ class QgsFeatureDownloaderImpl
 
     QTimer *mTimer = nullptr;
 
-    void createProgressTask( long long numberMatched );
+    void createProgressDialog( int numberMatched );
 
     void setStopFlag();
+    void hideProgressDialog();
 
     void endOfRun( bool serializeFeatures,
                    bool success, int totalDownloadedFeatureCount,
@@ -164,7 +155,8 @@ class QgsFeatureDownloaderImpl
   private:
     QgsBackgroundCachedSharedData *mSharedBase;
     QgsFeatureDownloader *mDownloader;
-    QMutex mMutexCreateProgressTask;
+    QWidget *mMainWindow = nullptr;
+    QMutex mMutexCreateProgressDialog;
 };
 
 // Sorry for ugliness. Due to QgsFeatureDownloaderImpl that cannot derive from QObject
@@ -203,35 +195,37 @@ class QgsFeatureDownloaderImpl
 #endif
 
 // Sorry for ugliness. Due to QgsFeatureDownloaderImpl that cannot derive from QObject
-#define CONNECT_PROGRESS_TASK(actual_downloader_impl_class) do { \
-    connect( mProgressTask, &QgsFeatureDownloaderProgressTask::canceled, this, &actual_downloader_impl_class::setStopFlag, Qt::DirectConnection ); \
-    connect( mProgressTask, &QgsFeatureDownloaderProgressTask::canceled, this, &actual_downloader_impl_class::stop ); \
+#define CONNECT_PROGRESS_DIALOG(actual_downloader_impl_class) do { \
+    connect( mProgressDialog, &QProgressDialog::canceled, this, &actual_downloader_impl_class::setStopFlag, Qt::DirectConnection ); \
+    connect( mProgressDialog, &QProgressDialog::canceled, this, &actual_downloader_impl_class::stop ); \
+    connect( mProgressDialog, &QgsFeatureDownloaderProgressDialog::hideRequest, this, &actual_downloader_impl_class::hideProgressDialog ); \
     \
-    /* Make sure the progress task has not been deleted by another thread */ \
-    if ( mProgressTask ) \
+    /* Make sure the progress dialog has not been deleted by another thread */ \
+    if ( mProgressDialog ) \
     {  \
-      connect( this, &actual_downloader_impl_class::updateProgress, mProgressTask, &QgsFeatureDownloaderProgressTask::setDownloaded ); \
+      connect( this, &actual_downloader_impl_class::updateProgress, mProgressDialog, &QProgressDialog::setValue );  \
     } \
   } while(0)
 
 // Sorry for ugliness. Due to QgsFeatureDownloaderImpl that cannot derive from QObject
-#define DEFINE_FEATURE_DOWNLOADER_IMPL_SLOTS \
+#define DEFINE_FEATURE_DOWLOADER_IMPL_SLOTS \
   protected: \
   void emitDoStop() override { emit doStop(); } \
   void setStopFlag() { QgsFeatureDownloaderImpl::setStopFlag(); } \
-  void stop() { QgsFeatureDownloaderImpl::stop(); }
+  void stop() { QgsFeatureDownloaderImpl::stop(); } \
+  void hideProgressDialog() { QgsFeatureDownloaderImpl::hideProgressDialog(); }
 
-#define CREATE_PROGRESS_TASK(actual_downloader_impl_class) \
+#define CREATE_PROGRESS_DIALOG(actual_downloader_impl_class) \
   do { \
-    /* This is a bit tricky. We want the createProgressTask() */ \
+    /* This is a bit tricky. We want the createProgressDialog() */ \
     /* method to be run into the GUI thread */ \
     mTimer = new QTimer(); \
     mTimer->setSingleShot( true ); \
     \
-    /* Direct connection, since we want createProgressTask() */  \
+    /* Direct connection, since we want createProgressDialog() */  \
     /* to be invoked from the same thread as timer, and not in the */  \
     /* thread of this */  \
-    connect( mTimer, &QTimer::timeout, this, &actual_downloader_impl_class::createProgressTask, Qt::DirectConnection );  \
+    connect( mTimer, &QTimer::timeout, this, &actual_downloader_impl_class::createProgressDialog, Qt::DirectConnection );  \
     \
     mTimer->moveToThread( qApp->thread() ); \
     QMetaObject::invokeMethod( mTimer, "start", Qt::QueuedConnection ); \

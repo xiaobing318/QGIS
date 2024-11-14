@@ -15,19 +15,38 @@
  ***************************************************************************/
 
 #include "qgshistoryproviderregistry.h"
-#include "moc_qgshistoryproviderregistry.cpp"
-#include "qgshistoryprovider.h"
+#include "history/qgshistoryprovider.h"
 #include "qgsapplication.h"
 #include "qgsruntimeprofiler.h"
 #include "qgslogger.h"
 #include "qgsxmlutils.h"
 #include "qgsprocessinghistoryprovider.h"
-#include "qgsprocessingutils.h"
-#include "qgshistoryentry.h"
-#include "qgsdbqueryhistoryprovider.h"
 
 #include <QFile>
 #include <sqlite3.h>
+
+//
+// QgsHistoryEntry
+//
+
+QgsHistoryEntry::QgsHistoryEntry( const QString &providerId, const QDateTime &timestamp, const QVariantMap &entry )
+  : timestamp( timestamp )
+  , providerId( providerId )
+  , entry( entry )
+{
+
+}
+
+QgsHistoryEntry::QgsHistoryEntry( const QVariantMap &entry )
+  : timestamp( QDateTime::currentDateTime() )
+  , entry( entry )
+{
+
+}
+
+//
+// QgsHistoryProviderRegistry
+//
 
 QgsHistoryProviderRegistry::QgsHistoryProviderRegistry( QObject *parent, bool useMemoryDatabase )
   : QObject( parent )
@@ -62,7 +81,6 @@ QgsHistoryProviderRegistry::~QgsHistoryProviderRegistry()
 void QgsHistoryProviderRegistry::addDefaultProviders()
 {
   addProvider( new QgsProcessingHistoryProvider() );
-  addProvider( new QgsDatabaseQueryHistoryProvider() );
 }
 
 bool QgsHistoryProviderRegistry::addProvider( QgsAbstractHistoryProvider *provider )
@@ -105,8 +123,7 @@ long long QgsHistoryProviderRegistry::addEntry( const QgsHistoryEntry &entry, bo
   if ( options.storageBackends & Qgis::HistoryProviderBackend::LocalProfile )
   {
     QDomDocument xmlDoc;
-    const QVariant cleanedMap = QgsProcessingUtils::removePointerValuesFromMap( entry.entry );
-    xmlDoc.appendChild( QgsXmlUtils::writeVariant( cleanedMap, xmlDoc ) );
+    xmlDoc.appendChild( QgsXmlUtils::writeVariant( entry.entry, xmlDoc ) );
     const QString entryXml = xmlDoc.toString();
     const QString dateTime = entry.timestamp.toString( QStringLiteral( "yyyy-MM-dd HH:mm:ss" ) );
 
@@ -114,16 +131,11 @@ long long QgsHistoryProviderRegistry::addEntry( const QgsHistoryEntry &entry, bo
                                          entry.providerId.toUtf8().constData(), entryXml.toUtf8().constData(), dateTime.toUtf8().constData() );
     if ( !runEmptyQuery( query ) )
     {
-      QgsDebugError( QStringLiteral( "Couldn't story history entry in database!" ) );
+      QgsDebugMsg( QStringLiteral( "Couldn't story history entry in database!" ) );
       ok = false;
       return -1;
     }
     id = static_cast< int >( sqlite3_last_insert_rowid( mLocalDB.get() ) );
-
-    QgsHistoryEntry addedEntry( entry );
-    addedEntry.id = id;
-
-    emit entryAdded( id, addedEntry, Qgis::HistoryProviderBackend::LocalProfile );
   }
 
   return id;
@@ -152,7 +164,7 @@ QgsHistoryEntry QgsHistoryProviderRegistry::entry( long long id, bool &ok, Qgis:
     {
       if ( !mLocalDB )
       {
-        QgsDebugError( QStringLiteral( "Cannot open database to query history entries" ) );
+        QgsDebugMsg( QStringLiteral( "Cannot open database to query history entries" ) );
         return QgsHistoryEntry( QVariantMap() );
       }
 
@@ -166,21 +178,19 @@ QgsHistoryEntry QgsHistoryProviderRegistry::entry( long long id, bool &ok, Qgis:
         QDomDocument doc;
         if ( !doc.setContent( statement.columnAsText( 1 ) ) )
         {
-          QgsDebugError( QStringLiteral( "Cannot read history entry" ) );
+          QgsDebugMsg( QStringLiteral( "Cannot read history entry" ) );
           return QgsHistoryEntry( QVariantMap() );
         }
 
         ok = true;
-        QgsHistoryEntry res = QgsHistoryEntry(
-                                statement.columnAsText( 0 ),
-                                QDateTime::fromString( statement.columnAsText( 2 ), QStringLiteral( "yyyy-MM-dd HH:mm:ss" ) ),
-                                QgsXmlUtils::readVariant( doc.documentElement() ).toMap()
-                              );
-        res.id = id;
-        return res;
+        return QgsHistoryEntry(
+                 statement.columnAsText( 0 ),
+                 QDateTime::fromString( statement.columnAsText( 2 ), QStringLiteral( "yyyy-MM-dd HH:mm:ss" ) ),
+                 QgsXmlUtils::readVariant( doc.documentElement() ).toMap()
+               );
       }
 
-      QgsDebugError( QStringLiteral( "Cannot find history item with matching ID" ) );
+      QgsDebugMsg( QStringLiteral( "Cannot find history item with matching ID" ) );
       return QgsHistoryEntry( QVariantMap() );
     }
   }
@@ -193,20 +203,17 @@ bool QgsHistoryProviderRegistry::updateEntry( long long id, const QVariantMap &e
   {
     case Qgis::HistoryProviderBackend::LocalProfile:
     {
-      const QVariantMap cleanedMap = QgsProcessingUtils::removePointerValuesFromMap( entry );
       QDomDocument xmlDoc;
-      xmlDoc.appendChild( QgsXmlUtils::writeVariant( cleanedMap, xmlDoc ) );
+      xmlDoc.appendChild( QgsXmlUtils::writeVariant( entry, xmlDoc ) );
       const QString entryXml = xmlDoc.toString();
 
       QString query = qgs_sqlite3_mprintf( "UPDATE history SET xml='%q' WHERE id = %d;",
                                            entryXml.toUtf8().constData(), id );
       if ( !runEmptyQuery( query ) )
       {
-        QgsDebugError( QStringLiteral( "Couldn't update history entry in database!" ) );
+        QgsDebugMsg( QStringLiteral( "Couldn't update history entry in database!" ) );
         return false;
       }
-
-      emit entryUpdated( id, entry, Qgis::HistoryProviderBackend::LocalProfile );
       return true;
     }
   }
@@ -220,11 +227,11 @@ QList<QgsHistoryEntry> QgsHistoryProviderRegistry::queryEntries( const QDateTime
   {
     if ( !mLocalDB )
     {
-      QgsDebugError( QStringLiteral( "Cannot open database to query history entries" ) );
+      QgsDebugMsg( QStringLiteral( "Cannot open database to query history entries" ) );
       return {};
     }
 
-    QString sql = QStringLiteral( "SELECT id, provider_id, xml, timestamp FROM history" );
+    QString sql = QStringLiteral( "SELECT provider_id, xml, timestamp FROM history" );
     QStringList whereClauses;
     if ( !providerId.isEmpty() )
     {
@@ -248,20 +255,17 @@ QList<QgsHistoryEntry> QgsHistoryProviderRegistry::queryEntries( const QDateTime
     while ( nErr == SQLITE_OK && sqlite3_step( statement.get() ) == SQLITE_ROW )
     {
       QDomDocument doc;
-      if ( !doc.setContent( statement.columnAsText( 2 ) ) )
+      if ( !doc.setContent( statement.columnAsText( 1 ) ) )
       {
-        QgsDebugError( QStringLiteral( "Cannot read history entry" ) );
+        QgsDebugMsg( QStringLiteral( "Cannot read history entry" ) );
         continue;
       }
 
-      QgsHistoryEntry entry(
-        statement.columnAsText( 1 ),
-        QDateTime::fromString( statement.columnAsText( 3 ), QStringLiteral( "yyyy-MM-dd HH:mm:ss" ) ),
-        QgsXmlUtils::readVariant( doc.documentElement() ).toMap()
-      );
-      entry.id = statement.columnAsInt64( 0 );
-
-      entries.append( entry );
+      entries.append( QgsHistoryEntry(
+                        statement.columnAsText( 0 ),
+                        QDateTime::fromString( statement.columnAsText( 2 ), QStringLiteral( "yyyy-MM-dd HH:mm:ss" ) ),
+                        QgsXmlUtils::readVariant( doc.documentElement() ).toMap()
+                      ) );
     }
   }
 
@@ -273,21 +277,14 @@ QString QgsHistoryProviderRegistry::userHistoryDbPath()
   return QgsApplication::qgisSettingsDirPath() + QStringLiteral( "user-history.db" );
 }
 
-bool QgsHistoryProviderRegistry::clearHistory( Qgis::HistoryProviderBackend backend, const QString &providerId )
+bool QgsHistoryProviderRegistry::clearHistory( Qgis::HistoryProviderBackend backend )
 {
   switch ( backend )
   {
     case Qgis::HistoryProviderBackend::LocalProfile:
-    {
-      if ( providerId.isEmpty() )
-        runEmptyQuery( QStringLiteral( "DELETE from history;" ) );
-      else
-        runEmptyQuery( QStringLiteral( "DELETE from history WHERE provider_id='%1'" )
-                       .arg( providerId ) );
+      runEmptyQuery( QStringLiteral( "DELETE from history;" ) );
       break;
-    }
   }
-  emit historyCleared( backend, providerId );
   return true;
 }
 
@@ -296,7 +293,7 @@ bool QgsHistoryProviderRegistry::createDatabase( const QString &filename, QStrin
   error.clear();
   if ( !openDatabase( filename, error ) )
   {
-    QgsDebugError( error );
+    QgsDebugMsg( error );
     return false;
   }
 
@@ -341,7 +338,7 @@ bool QgsHistoryProviderRegistry::runEmptyQuery( const QString &query )
 
   if ( nErr != SQLITE_OK )
   {
-    QgsDebugError( zErr );
+    QgsDebugMsg( zErr );
     sqlite3_free( zErr );
   }
 

@@ -18,11 +18,13 @@
 
 #include "qgsgrass.h"
 #include "qgsgrassfeatureiterator.h"
-#include "moc_qgsgrassfeatureiterator.cpp"
 #include "qgsgrassprovider.h"
 #include "qgsgrassvectormap.h"
+
+#include "qgsapplication.h"
 #include "qgsgeometry.h"
 #include "qgslogger.h"
+#include "qgsmessagelog.h"
 
 extern "C"
 {
@@ -64,12 +66,12 @@ QgsGrassFeatureIterator::QgsGrassFeatureIterator( QgsGrassFeatureSource *source,
 
   // Create selection
   int size = 1 + std::max( Vect_get_num_lines( mSource->map() ), Vect_get_num_areas( mSource->map() ) );
-  QgsDebugMsgLevel( QString( "mSelection.resize(%1)" ).arg( size ), 3 );
+  QgsDebugMsg( QString( "mSelection.resize(%1)" ).arg( size ) );
   mSelection.resize( size );
 
   if ( !request.filterRect().isNull() )
   {
-    setSelectionRect( request.filterRect(), request.flags() & Qgis::FeatureRequestFlag::ExactIntersect );
+    setSelectionRect( request.filterRect(), request.flags() & QgsFeatureRequest::ExactIntersect );
   }
   else
   {
@@ -83,7 +85,7 @@ QgsGrassFeatureIterator::QgsGrassFeatureIterator( QgsGrassFeatureSource *source,
   if ( mSource->mLayer->map()->thread() != thread() )
   {
     // Using BlockingQueuedConnection may be dangerous, if the iterator was later moved to maps thread, it would cause dead lock on emit closeIterators()
-    QgsDebugMsgLevel( "map and iterator are on different threads -> connect closeIterators() with BlockingQueuedConnection", 2 );
+    QgsDebugMsg( "map and iterator are on different threads -> connect closeIterators() with BlockingQueuedConnection" );
     connectionType = Qt::BlockingQueuedConnection;
   }
   connect( mSource->mLayer->map(), &QgsGrassVectorMap::closeIterators, this, &QgsGrassFeatureIterator::doClose, connectionType );
@@ -96,19 +98,19 @@ QgsGrassFeatureIterator::~QgsGrassFeatureIterator()
 
 void QgsGrassFeatureIterator::cancel()
 {
-  QgsDebugMsgLevel( "cancel", 3 );
+  QgsDebugMsg( "cancel" );
   mCanceled = true;
 }
 
 void QgsGrassFeatureIterator::doClose()
 {
-  QgsDebugMsgLevel( "doClose", 3 );
+  QgsDebugMsg( "doClose" );
   close();
 }
 
 void QgsGrassFeatureIterator::setSelectionRect( const QgsRectangle &rect, bool useIntersect )
 {
-  QgsDebugMsgLevel( QString( "useIntersect = %1 rect = %2" ).arg( useIntersect ).arg( rect.toString() ), 3 );
+  QgsDebugMsg( QString( "useIntersect = %1 rect = %2" ).arg( useIntersect ).arg( rect.toString() ) );
 
   // TODO: selection of edited lines
 
@@ -138,13 +140,13 @@ void QgsGrassFeatureIterator::setSelectionRect( const QgsRectangle &rect, bool u
          mSource->mLayerType == QgsGrassProvider::TopoPoint || mSource->mLayerType == QgsGrassProvider::TopoLine ||
          mSource->mEditing )
     {
-      QgsDebugMsgLevel( "Vect_select_lines_by_box", 3 );
+      QgsDebugMsg( "Vect_select_lines_by_box" );
       int type = mSource->mGrassType;
       if ( mSource->mEditing )
       {
         type = GV_POINTS | GV_LINES;
       }
-      QgsDebugMsgLevel( QString( "type = %1" ).arg( type ), 3 );
+      QgsDebugMsg( QString( "type = %1" ).arg( type ) );
       Vect_select_lines_by_box( mSource->map(), &box, type, list );
     }
     else if ( mSource->mLayerType == QgsGrassProvider::Polygon )
@@ -176,13 +178,13 @@ void QgsGrassFeatureIterator::setSelectionRect( const QgsRectangle &rect, bool u
          mSource->mLayerType == QgsGrassProvider::TopoPoint || mSource->mLayerType == QgsGrassProvider::TopoLine ||
          mSource->mEditing )
     {
-      QgsDebugMsgLevel( "Vect_select_lines_by_polygon", 3 );
+      QgsDebugMsg( "Vect_select_lines_by_polygon" );
       int type = mSource->mGrassType;
       if ( mSource->mEditing )
       {
         type = GV_POINTS | GV_LINES;
       }
-      QgsDebugMsgLevel( QString( "type = %1" ).arg( type ), 3 );
+      QgsDebugMsg( QString( "type = %1" ).arg( type ) );
       Vect_select_lines_by_polygon( mSource->map(), polygon, 0, nullptr, type, list );
     }
     else if ( mSource->mLayerType == QgsGrassProvider::Polygon )
@@ -202,14 +204,14 @@ void QgsGrassFeatureIterator::setSelectionRect( const QgsRectangle &rect, bool u
     int lid = list->value[i];
     if ( lid < 1 || lid >= mSelection.size() ) // should not happen
     {
-      QgsDebugError( QString( "lid %1 out of range <1,%2>" ).arg( lid ).arg( mSelection.size() ) );
+      QgsDebugMsg( QString( "lid %1 out of range <1,%2>" ).arg( lid ).arg( mSelection.size() ) );
       continue;
     }
     mSelection.setBit( lid );
   }
   Vect_destroy_list( list );
 
-  QgsDebugMsgLevel( QString( " %1 features selected" ).arg( list->n_values ), 3 );
+  QgsDebugMsg( QString( " %1 features selected" ).arg( list->n_values ) );
   QgsGrass::unlock();
 }
 
@@ -222,7 +224,7 @@ bool QgsGrassFeatureIterator::fetchFeature( QgsFeature &feature )
   }
   if ( mCanceled )
   {
-    QgsDebugMsgLevel( "iterator is canceled -> close", 3 );
+    QgsDebugMsg( "iterator is canceled -> close" );
     close();
     return false;
   }
@@ -232,7 +234,7 @@ bool QgsGrassFeatureIterator::fetchFeature( QgsFeature &feature )
   // TODO: locking each feature is too expensive. What happens with map structures if lines are
   // written/rewritten/deleted? Can be read simultaneously?
   mSource->mLayer->map()->lockReadWrite(); // locks only in editing mode
-  bool filterById = mRequest.filterType() == Qgis::FeatureRequestFilterType::Fid;
+  bool filterById = mRequest.filterType() == QgsFeatureRequest::FilterFid;
   int cat = 0;
   int type = 0;
   int lid = 0;
@@ -256,7 +258,7 @@ bool QgsGrassFeatureIterator::fetchFeature( QgsFeature &feature )
   {
     featureId = mRequest.filterFid();
     lid = lidFromFid( mRequest.filterFid() );
-    QgsDebugMsgLevel( QString( "featureId = %1 lid = %2" ).arg( featureId ).arg( lid ), 3 );
+    QgsDebugMsg( QString( "featureId = %1 lid = %2" ).arg( featureId ).arg( lid ) );
 
     if ( mSource->mEditing )
     {
@@ -264,18 +266,18 @@ bool QgsGrassFeatureIterator::fetchFeature( QgsFeature &feature )
       // topo_symbol from map if the newLine exists  read
       if ( mSource->mLayer->map()->oldGeometries().contains( lid ) )
       {
-        QgsDebugMsgLevel( QString( "use old geometry for lid = %1" ).arg( lid ), 3 );
+        QgsDebugMsg( QString( "use old geometry for lid = %1" ).arg( lid ) );
         oldGeometry = mSource->mLayer->map()->oldGeometries().value( lid );
         if ( !oldGeometry )
         {
-          QgsDebugMsgLevel( "oldGeometry is null", 3 );
+          QgsDebugMsg( "oldGeometry is null" );
         }
       }
       if ( mSource->mLayer->map()->newLids().contains( lid ) )
       {
         // newLid may be 0 if line was deleted, in such case use only the old geometry, topo_symbol cannot be read
         int newLid = mSource->mLayer->map()->newLids().value( lid );
-        QgsDebugMsgLevel( QString( "use newLid = %1 -> lid = %2" ).arg( newLid ).arg( lid ), 3 );
+        QgsDebugMsg( QString( "use newLid = %1 -> lid = %2" ).arg( newLid ).arg( lid ) );
         lid = newLid;
       }
     }
@@ -292,7 +294,7 @@ bool QgsGrassFeatureIterator::fetchFeature( QgsFeature &feature )
 
       // TODO real cat when line/cat was rewritten?!
       cat = catFromFid( mRequest.filterFid() );
-      QgsDebugMsgLevel( QString( "lid = %1 cat = %2" ).arg( lid ).arg( cat ), 2 );
+      QgsDebugMsg( QString( "lid = %1 cat = %2" ).arg( lid ).arg( cat ) );
     }
   }
   else
@@ -322,12 +324,12 @@ bool QgsGrassFeatureIterator::fetchFeature( QgsFeature &feature )
         if ( mSource->mLayer->map()->oldLids().contains( mNextLid ) )
         {
           oldLid = mSource->mLayer->map()->oldLids().value( mNextLid );
-          QgsDebugMsgLevel( QString( "mNextLid = %1 -> oldLid = %2" ).arg( mNextLid ).arg( oldLid ), 3 );
+          QgsDebugMsg( QString( "mNextLid = %1 -> oldLid = %2" ).arg( mNextLid ).arg( oldLid ) );
         }
 
         if ( oldLid < 0 )
         {
-          QgsDebugMsgLevel( QString( "skip new feature oldLid = %1" ).arg( oldLid ), 3 );
+          QgsDebugMsg( QString( "skip new feature oldLid = %1" ).arg( oldLid ) );
           mNextCidx = 0;
           mNextLid++;
           continue;
@@ -411,7 +413,7 @@ bool QgsGrassFeatureIterator::fetchFeature( QgsFeature &feature )
         int numFields = Vect_cidx_get_num_fields( mSource->map() );
         if ( cidxFieldIndex < 0 || cidxFieldIndex >= numFields )
         {
-          QgsDebugError( QString( "cidxFieldIndex %1 out of range (0,%2)" ).arg( cidxFieldIndex ).arg( numFields - 1 ) );
+          QgsDebugMsg( QString( "cidxFieldIndex %1 out of range (0,%2)" ).arg( cidxFieldIndex ).arg( numFields - 1 ) );
           break;
         }
 #if 0
@@ -458,14 +460,14 @@ bool QgsGrassFeatureIterator::fetchFeature( QgsFeature &feature )
                           mSource->mLayer->map()->numAreas() : mSource->mLayer->map()->numLines();
     if ( lid == 0 || lid > numLinesOrAreas )
     {
-      QgsDebugMsgLevel( QString( "lid = %1 > numLinesOrAreas = %2 -> close" ).arg( lid ).arg( numLinesOrAreas ), 3 );
+      QgsDebugMsg( QString( "lid = %1 > numLinesOrAreas = %2 -> close" ).arg( lid ).arg( numLinesOrAreas ) );
       close();
       mSource->mLayer->map()->unlockReadWrite();
       return false; // No more features
     }
     if ( type == 0 && mSource->mLayerType != QgsGrassProvider::TopoNode )
     {
-      QgsDebugError( "unknown type" );
+      QgsDebugMsg( "unknown type" );
       close();
       mSource->mLayer->map()->unlockReadWrite();
       return false;
@@ -478,7 +480,7 @@ bool QgsGrassFeatureIterator::fetchFeature( QgsFeature &feature )
   QgsDebugMsgLevel( QString( "mSource->mFields.size() = %1" ).arg( mSource->mFields.size() ), 3 );
   feature.setFields( mSource->mFields ); // allow name-based attribute lookups
 
-  if ( !( mRequest.flags() & Qgis::FeatureRequestFlag::NoGeometry ) )
+  if ( !( mRequest.flags() & QgsFeatureRequest::NoGeometry ) )
   {
     if ( oldGeometry )
     {
@@ -498,7 +500,7 @@ bool QgsGrassFeatureIterator::fetchFeature( QgsFeature &feature )
       symbol = mSource->mLayer->map()->topoSymbol( lid );
     }
 
-    if ( mRequest.flags() & Qgis::FeatureRequestFlag::SubsetOfAttributes )
+    if ( mRequest.flags() & QgsFeatureRequest::SubsetOfAttributes )
       setFeatureAttributes( cat, &feature, mRequest.subsetOfAttributes(), symbol );
     else
       setFeatureAttributes( cat, &feature, symbol );
@@ -538,7 +540,7 @@ bool QgsGrassFeatureIterator::fetchFeature( QgsFeature &feature )
       for ( int i = 0; i < nlines; i++ )
       {
         int line = Vect_get_node_line( mSource->map(), lid, i );
-        QgsDebugMsgLevel( "cancel", 3 );
+        QgsDebugMsg( "cancel" );
         if ( i > 0 ) lines += QLatin1Char( ',' );
         lines += QString::number( line );
       }
@@ -555,7 +557,7 @@ bool QgsGrassFeatureIterator::rewind()
 {
   if ( mClosed )
   {
-    QgsDebugMsgLevel( "closed", 3 );
+    QgsDebugMsg( "closed" );
     return false;
   }
 
@@ -569,14 +571,14 @@ bool QgsGrassFeatureIterator::close()
 {
   if ( mClosed )
   {
-    QgsDebugMsgLevel( "already closed", 3 );
+    QgsDebugMsg( "already closed" );
     return false;
   }
 
   iteratorClosed();
 
   mClosed = true;
-  QgsDebugMsgLevel( "closed", 3 );
+  QgsDebugMsg( "closed" );
   //sMutex.unlock();
   return true;
 }
@@ -600,7 +602,7 @@ void QgsGrassFeatureIterator::setFeatureGeometry( QgsFeature &feature, int id, i
   }
   else
   {
-    QgsDebugError( QString( "unknown type = %1" ).arg( type ) );
+    QgsDebugMsg( QString( "unknown type = %1" ).arg( type ) );
   }
   feature.setGeometry( QgsGeometry( geometry ) );
 }
@@ -704,7 +706,7 @@ void QgsGrassFeatureIterator::setFeatureAttributes( int cat, QgsFeature *feature
     if ( isEditedLayer )
     {
       value = mSource->mLayer->attribute( cat, *iter );
-      if ( value.userType() == QMetaType::Type::QByteArray )
+      if ( value.type() == QVariant::ByteArray )
       {
         value = QVariant( mSource->mEncoding->toUnicode( value.toByteArray() ) );
       }
@@ -756,7 +758,7 @@ QgsGrassFeatureSource::~QgsGrassFeatureSource()
 
 QgsFeatureIterator QgsGrassFeatureSource::getFeatures( const QgsFeatureRequest &request )
 {
-  QgsDebugMsgLevel( "QgsGrassFeatureSource::getFeatures", 3 );
+  QgsDebugMsg( "QgsGrassFeatureSource::getFeatures" );
   return QgsFeatureIterator( new QgsGrassFeatureIterator( this, false, request ) );
 }
 

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/editform/qgsattributeeditorcontainer.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -28,6 +28,7 @@ Creates a new attribute editor container
 :param backgroundColor: The optional background color of the container.
 %End
 
+
     ~QgsAttributeEditorContainer();
 
     virtual void addChildElement( QgsAttributeEditorElement *element /Transfer/ );
@@ -37,49 +38,23 @@ Add a child element to this container. This may be another container, a field or
 :param element: The element to add as child
 %End
 
-    void setType( Qgis::AttributeEditorContainerType type );
-%Docstring
-Sets the container type.
-
-.. seealso:: :py:func:`type`
-
-.. versionadded:: 3.32
-%End
-
-    Qgis::AttributeEditorContainerType type() const;
-%Docstring
-Returns the container type.
-
-.. seealso:: :py:func:`setType`
-
-.. versionadded:: 3.32
-%End
-
- virtual void setIsGroupBox( bool isGroupBox ) /Deprecated/;
+    virtual void setIsGroupBox( bool isGroupBox );
 %Docstring
 Determines if this container is rendered as collapsible group box or tab in a tabwidget
 
 :param isGroupBox: If ``True``, this will be a group box
-
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsAttributeEditorContainer.setType` instead.
 %End
 
- virtual bool isGroupBox() const /Deprecated/;
+    virtual bool isGroupBox() const;
 %Docstring
 Returns if this container is going to be a group box
 
 :return: ``True`` if it will be a group box, ``False`` if it will be a tab
-
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsAttributeEditorContainer.type` instead.
 %End
 
     bool collapsed() const;
 %Docstring
-For group box containers returns ``True`` if this group box is collapsed.
+For group box containers  returns if this group box is collapsed.
 
 :return: ``True`` if the group box is collapsed, ``False`` otherwise.
 
@@ -91,7 +66,7 @@ For group box containers returns ``True`` if this group box is collapsed.
 %End
     void setCollapsed( bool collapsed );
 %Docstring
-For group box containers sets if this group box is ``collapsed``.
+For group box containers  sets if this group box is ``collapsed``.
 
 .. seealso:: :py:func:`collapsed`
 
@@ -106,7 +81,7 @@ Gets a list of the children elements of this container
 :return: A list of elements
 %End
 
-    virtual QList<QgsAttributeEditorElement *> findElements( Qgis::AttributeEditorType type ) const;
+    virtual QList<QgsAttributeEditorElement *> findElements( AttributeEditorType type ) const;
 %Docstring
 Traverses the element tree to find any element of the specified type
 
@@ -122,27 +97,25 @@ Clear all children from this container.
 
     void setName( const QString &name );
 %Docstring
-Change the name of this container.
+Change the name of this container
 %End
 
     int columnCount() const;
 %Docstring
-Gets the number of columns in this group.
-
-.. seealso:: :py:func:`setColumnCount`
+Gets the number of columns in this group
 %End
 
     void setColumnCount( int columnCount );
 %Docstring
-Set the number of columns in this group.
-
-.. seealso:: :py:func:`columnCount`
+Set the number of columns in this group
 %End
 
     virtual QgsAttributeEditorElement *clone( QgsAttributeEditorElement *parent ) const /Factory/;
 
 %Docstring
 Creates a deep copy of this element. To be implemented by subclasses.
+
+.. versionadded:: 3.0
 %End
 
     QgsOptionalExpression visibilityExpression() const;
@@ -150,6 +123,8 @@ Creates a deep copy of this element. To be implemented by subclasses.
 The visibility expression is used in the attribute form to
 show or hide this container based on an expression incorporating
 the field value controlled by editor widgets.
+
+.. versionadded:: 3.0
 %End
 
     void setVisibilityExpression( const QgsOptionalExpression &visibilityExpression );
@@ -157,24 +132,24 @@ the field value controlled by editor widgets.
 The visibility expression is used in the attribute form to
 show or hide this container based on an expression incorporating
 the field value controlled by editor widgets.
+
+.. versionadded:: 3.0
 %End
 
 
 
     QColor backgroundColor() const;
 %Docstring
-Returns the background color of the container.
+backgroundColor
 
-.. seealso:: :py:func:`setBackgroundColor`
+:return: background color of the container
 
 .. versionadded:: 3.8
 %End
 
     void setBackgroundColor( const QColor &backgroundColor );
 %Docstring
-Sets the background color to ``backgroundColor``.
-
-.. seealso:: :py:func:`backgroundColor`
+Sets the background color to ``backgroundColor``
 %End
 
 };
@@ -185,5 +160,5 @@ Sets the background color to ``backgroundColor``.
  *                                                                      *
  * src/core/editform/qgsattributeeditorcontainer.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

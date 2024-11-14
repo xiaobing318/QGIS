@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     raster.py
@@ -24,8 +26,6 @@ import struct
 from osgeo import gdal
 
 from qgis.core import QgsProcessingException
-
-gdal.UseExceptions()
 
 
 def scanraster(layer, feedback, band_number=1):

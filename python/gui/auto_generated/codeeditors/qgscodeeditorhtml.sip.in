@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/codeeditors/qgscodeeditorhtml.h                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -18,6 +18,8 @@ code autocompletion.
 .. note::
 
    may not be available in Python bindings, depending on platform support
+
+.. versionadded:: 2.6
 %End
 
 %TypeHeaderCode
@@ -30,27 +32,8 @@ code autocompletion.
 Constructor for QgsCodeEditorHTML
 %End
 
-    virtual Qgis::ScriptLanguage language() const;
-
-    virtual Qgis::ScriptLanguageCapabilities languageCapabilities() const;
-
-
-  public slots:
-
-    virtual void toggleComment();
-
-%Docstring
-Toggle comment for the selected text.
-
-.. versionadded:: 3.32
-%End
-
-
   protected:
     virtual void initializeLexer();
-
-    virtual QString reformatCodeString( const QString &string );
-
 
 };
 
@@ -59,5 +42,5 @@ Toggle comment for the selected text.
  *                                                                      *
  * src/gui/codeeditors/qgscodeeditorhtml.h                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

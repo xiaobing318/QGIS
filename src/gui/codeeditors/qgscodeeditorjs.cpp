@@ -13,8 +13,8 @@
  *                                                                         *
  ***************************************************************************/
 
+#include "qgsapplication.h"
 #include "qgscodeeditorjs.h"
-#include "moc_qgscodeeditorjs.cpp"
 
 #include <QWidget>
 #include <QString>
@@ -34,11 +34,6 @@ QgsCodeEditorJavascript::QgsCodeEditorJavascript( QWidget *parent )
     setTitle( tr( "JavaScript Editor" ) );
   }
   QgsCodeEditorJavascript::initializeLexer();
-}
-
-Qgis::ScriptLanguage QgsCodeEditorJavascript::language() const
-{
-  return Qgis::ScriptLanguage::JavaScript;
 }
 
 void QgsCodeEditorJavascript::initializeLexer()

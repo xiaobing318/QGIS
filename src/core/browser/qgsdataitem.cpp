@@ -17,7 +17,6 @@
 
 #include "qgis.h"
 #include "qgsdataitem.h"
-#include "moc_qgsdataitem.cpp"
 #include "qgsapplication.h"
 #include "qgsdataitemprovider.h"
 #include "qgsdataitemproviderregistry.h"
@@ -80,7 +79,7 @@ QgsDataItem::~QgsDataItem()
   if ( mFutureWatcher && !mFutureWatcher->isFinished() )
   {
     // this should not usually happen (until the item was deleted directly when createChildren was running)
-    QgsDebugError( QStringLiteral( "mFutureWatcher not finished (should not happen) -> waitForFinished()" ) );
+    QgsDebugMsg( QStringLiteral( "mFutureWatcher not finished (should not happen) -> waitForFinished()" ) );
     mDeferredDelete = true;
     mFutureWatcher->waitForFinished();
   }
@@ -119,7 +118,7 @@ void QgsDataItem::deleteLater()
 
   if ( mFutureWatcher && !mFutureWatcher->isFinished() )
   {
-    QgsDebugMsgLevel( QStringLiteral( "mFutureWatcher not finished -> schedule to delete later" ), 2 );
+    QgsDebugMsg( QStringLiteral( "mFutureWatcher not finished -> schedule to delete later" ) );
     mDeferredDelete = true;
   }
   else
@@ -239,7 +238,7 @@ void QgsDataItem::childrenCreated()
 
   if ( deferredDelete() )
   {
-    QgsDebugMsgLevel( QStringLiteral( "Item was scheduled to be deleted later" ), 2 );
+    QgsDebugMsg( QStringLiteral( "Item was scheduled to be deleted later" ) );
     QObject::deleteLater();
     return;
   }

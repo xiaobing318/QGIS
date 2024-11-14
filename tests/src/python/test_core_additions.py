@@ -11,30 +11,24 @@ __author__ = 'Denis Rouzaud'
 __date__ = '15.5.2018'
 __copyright__ = 'Copyright 2015, The QGIS Project'
 
-
-from qgis.core import (
-    Qgis,
-    QgsMapLayer,
-    QgsTolerance,
-    metaEnumFromValue,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+import qgis  # NOQA
+from qgis.core import metaEnumFromValue, QgsTolerance, QgsMapLayer
+from qgis.testing import unittest, start_app
 
 start_app()
 
 
-class TestCoreAdditions(QgisTestCase):
+class TestCoreAdditions(unittest.TestCase):
 
     def testMetaEnum(self):
-        me = metaEnumFromValue(Qgis.MapToolUnit.Pixels)
+        me = metaEnumFromValue(QgsTolerance.Pixels)
         self.assertIsNotNone(me)
-        self.assertEqual(me.valueToKey(Qgis.MapToolUnit.Pixels), 'Pixels')
+        self.assertEqual(me.valueToKey(QgsTolerance.Pixels), 'Pixels')
 
         # check that using same variable twice doesn't segfault
-        me = metaEnumFromValue(Qgis.MapToolUnit.Pixels, QgsTolerance)
+        me = metaEnumFromValue(QgsTolerance.Pixels, QgsTolerance)
         self.assertIsNotNone(me)
-        self.assertEqual(me.valueToKey(Qgis.MapToolUnit.Pixels), 'Pixels')
+        self.assertEqual(me.valueToKey(QgsTolerance.Pixels), 'Pixels')
 
         # do not raise error
         self.assertIsNone(metaEnumFromValue(1, QgsTolerance, False))

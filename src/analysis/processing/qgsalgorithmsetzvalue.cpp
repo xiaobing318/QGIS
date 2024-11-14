@@ -73,19 +73,19 @@ bool QgsSetZValueAlgorithm::supportInPlaceEdit( const QgsMapLayer *l ) const
   return QgsProcessingFeatureBasedAlgorithm::supportInPlaceEdit( l ) && QgsWkbTypes::hasZ( layer->wkbType() );
 }
 
-Qgis::ProcessingFeatureSourceFlags QgsSetZValueAlgorithm::sourceFlags() const
+QgsProcessingFeatureSource::Flag QgsSetZValueAlgorithm::sourceFlags() const
 {
-  return Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks;
+  return QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks;
 }
 
-Qgis::WkbType QgsSetZValueAlgorithm::outputWkbType( Qgis::WkbType type ) const
+QgsWkbTypes::Type QgsSetZValueAlgorithm::outputWkbType( QgsWkbTypes::Type type ) const
 {
   return QgsWkbTypes::addZ( type );
 }
 
 void QgsSetZValueAlgorithm::initParameters( const QVariantMap & )
 {
-  auto zValueParam = std::make_unique < QgsProcessingParameterNumber >( QStringLiteral( "Z_VALUE" ), QObject::tr( "Z Value" ), Qgis::ProcessingNumberParameterType::Double, 0.0 );
+  auto zValueParam = std::make_unique < QgsProcessingParameterNumber >( QStringLiteral( "Z_VALUE" ), QObject::tr( "Z Value" ), QgsProcessingParameterNumber::Double, 0.0 );
   zValueParam->setIsDynamic( true );
   zValueParam->setDynamicPropertyDefinition( QgsPropertyDefinition( QStringLiteral( "Z_VALUE" ), QObject::tr( "Z Value" ), QgsPropertyDefinition::Double ) );
   zValueParam->setDynamicLayerParameterName( QStringLiteral( "INPUT" ) );

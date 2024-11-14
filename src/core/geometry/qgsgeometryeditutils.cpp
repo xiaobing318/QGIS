@@ -18,10 +18,12 @@ email                : marco.hugentobler at sourcepole dot com
 #include "qgscurve.h"
 #include "qgscurvepolygon.h"
 #include "qgspolygon.h"
+#include "qgsgeometryutils.h"
 #include "qgsgeometry.h"
-#include "qgsgeometryengine.h"
+#include "qgsgeos.h"
+#include "qgsmultisurface.h"
+#include "qgsproject.h"
 #include "qgsvectorlayer.h"
-#include "qgsgeometrycollection.h"
 #include <limits>
 
 Qgis::GeometryOperationResult QgsGeometryEditUtils::addRing( QgsAbstractGeometry *geom, std::unique_ptr<QgsCurve> ring )
@@ -113,15 +115,15 @@ Qgis::GeometryOperationResult QgsGeometryEditUtils::addPart( QgsAbstractGeometry
   }
 
   bool added = false;
-  if ( QgsWkbTypes::flatType( geom->wkbType() ) == Qgis::WkbType::MultiSurface
-       || QgsWkbTypes::flatType( geom->wkbType() ) == Qgis::WkbType::MultiPolygon )
+  if ( QgsWkbTypes::flatType( geom->wkbType() ) == QgsWkbTypes::MultiSurface
+       || QgsWkbTypes::flatType( geom->wkbType() ) == QgsWkbTypes::MultiPolygon )
   {
     QgsCurve *curve = qgsgeometry_cast<QgsCurve *>( part.get() );
 
     if ( curve && curve->isClosed() && curve->numPoints() >= 4 )
     {
       std::unique_ptr<QgsCurvePolygon> poly;
-      if ( QgsWkbTypes::flatType( curve->wkbType() ) == Qgis::WkbType::LineString )
+      if ( QgsWkbTypes::flatType( curve->wkbType() ) == QgsWkbTypes::LineString )
       {
         poly = std::make_unique< QgsPolygon >();
       }
@@ -132,13 +134,13 @@ Qgis::GeometryOperationResult QgsGeometryEditUtils::addPart( QgsAbstractGeometry
       poly->setExteriorRing( qgsgeometry_cast<QgsCurve *>( part.release() ) );
       added = geomCollection->addGeometry( poly.release() );
     }
-    else if ( QgsWkbTypes::flatType( part->wkbType() ) == Qgis::WkbType::Polygon
-              || QgsWkbTypes::flatType( part->wkbType() ) == Qgis::WkbType::Triangle
-              || QgsWkbTypes::flatType( part->wkbType() ) == Qgis::WkbType::CurvePolygon )
+    else if ( QgsWkbTypes::flatType( part->wkbType() ) == QgsWkbTypes::Polygon
+              || QgsWkbTypes::flatType( part->wkbType() ) == QgsWkbTypes::Triangle
+              || QgsWkbTypes::flatType( part->wkbType() ) == QgsWkbTypes::CurvePolygon )
     {
       if ( const QgsCurvePolygon *curvePolygon = qgsgeometry_cast< const QgsCurvePolygon *>( part.get() ) )
       {
-        if ( QgsWkbTypes::flatType( geom->wkbType() ) == Qgis::WkbType::MultiPolygon && curvePolygon->hasCurvedSegments() )
+        if ( QgsWkbTypes::flatType( geom->wkbType() ) == QgsWkbTypes::MultiPolygon && curvePolygon->hasCurvedSegments() )
         {
           //need to segmentize part as multipolygon does not support curves
           std::unique_ptr< QgsCurvePolygon > polygon( curvePolygon->toPolygon() );
@@ -151,8 +153,8 @@ Qgis::GeometryOperationResult QgsGeometryEditUtils::addPart( QgsAbstractGeometry
         added = geomCollection->addGeometry( part.release() );
       }
     }
-    else if ( QgsWkbTypes::flatType( part->wkbType() ) == Qgis::WkbType::MultiPolygon
-              ||  QgsWkbTypes::flatType( part->wkbType() ) == Qgis::WkbType::MultiSurface )
+    else if ( QgsWkbTypes::flatType( part->wkbType() ) == QgsWkbTypes::MultiPolygon
+              ||  QgsWkbTypes::flatType( part->wkbType() ) == QgsWkbTypes::MultiSurface )
     {
       std::unique_ptr<QgsGeometryCollection> parts( static_cast<QgsGeometryCollection *>( part.release() ) );
 
@@ -177,11 +179,11 @@ Qgis::GeometryOperationResult QgsGeometryEditUtils::addPart( QgsAbstractGeometry
       return Qgis::GeometryOperationResult::InvalidInputGeometryType;
     }
   }
-  else if ( QgsWkbTypes::flatType( geom->wkbType() ) == Qgis::WkbType::MultiLineString
-            || QgsWkbTypes::flatType( geom->wkbType() ) == Qgis::WkbType::MultiCurve )
+  else if ( QgsWkbTypes::flatType( geom->wkbType() ) == QgsWkbTypes::MultiLineString
+            || QgsWkbTypes::flatType( geom->wkbType() ) == QgsWkbTypes::MultiCurve )
   {
-    if ( QgsWkbTypes::flatType( part->wkbType() ) == Qgis::WkbType::MultiLineString
-         ||  QgsWkbTypes::flatType( part->wkbType() ) == Qgis::WkbType::MultiCurve )
+    if ( QgsWkbTypes::flatType( part->wkbType() ) == QgsWkbTypes::MultiLineString
+         ||  QgsWkbTypes::flatType( part->wkbType() ) == QgsWkbTypes::MultiCurve )
     {
       std::unique_ptr<QgsGeometryCollection> parts( qgsgeometry_cast<QgsGeometryCollection *>( part.release() ) );
 
@@ -205,7 +207,7 @@ Qgis::GeometryOperationResult QgsGeometryEditUtils::addPart( QgsAbstractGeometry
     {
       if ( QgsCurve *curve = qgsgeometry_cast<QgsCurve *>( part.get() ) )
       {
-        if ( QgsWkbTypes::flatType( geom->wkbType() ) == Qgis::WkbType::MultiLineString && curve->hasCurvedSegments() )
+        if ( QgsWkbTypes::flatType( geom->wkbType() ) == QgsWkbTypes::MultiLineString && curve->hasCurvedSegments() )
         {
           //need to segmentize part as multilinestring does not support curves
           std::unique_ptr< QgsCurve > line( curve->segmentize() );
@@ -288,11 +290,11 @@ std::unique_ptr<QgsAbstractGeometry> QgsGeometryEditUtils::avoidIntersections( c
   {
     return nullptr;
   }
-  const Qgis::WkbType geomTypeBeforeModification = geom.wkbType();
+  const QgsWkbTypes::Type geomTypeBeforeModification = geom.wkbType();
 
 
   //check if g has polygon type
-  if ( QgsWkbTypes::geometryType( geomTypeBeforeModification ) != Qgis::GeometryType::Polygon )
+  if ( QgsWkbTypes::geometryType( geomTypeBeforeModification ) != QgsWkbTypes::PolygonGeometry )
   {
     return nullptr;
   }
@@ -311,7 +313,7 @@ std::unique_ptr<QgsAbstractGeometry> QgsGeometryEditUtils::avoidIntersections( c
       ignoreIds = ignoreIt.value();
 
     QgsFeatureIterator fi = currentLayer->getFeatures( QgsFeatureRequest( geom.boundingBox() )
-                            .setFlags( Qgis::FeatureRequestFlag::ExactIntersect )
+                            .setFlags( QgsFeatureRequest::ExactIntersect )
                             .setNoAttributes() );
     QgsFeature f;
     while ( fi.nextFeature( f ) )
@@ -341,16 +343,9 @@ std::unique_ptr<QgsAbstractGeometry> QgsGeometryEditUtils::avoidIntersections( c
   }
 
   std::unique_ptr< QgsAbstractGeometry > diffGeom( geomEngine->difference( combinedGeometries.get() ) );
-  if ( !diffGeom || geomEngine->isEqual( diffGeom.get() ) )
+  if ( geomEngine->isEqual( diffGeom.get() ) )
   {
     return nullptr;
-  }
-
-  if ( QgsWkbTypes::isMultiType( geomTypeBeforeModification ) && QgsWkbTypes::isSingleType( diffGeom->wkbType() ) )
-  {
-    QgsGeometry geom( std::move( diffGeom ) );
-    geom.convertToMultiType();
-    diffGeom.reset( geom.constGet()->clone() );
   }
 
   return diffGeom;

@@ -20,9 +20,11 @@ os.environ['QT_HASH_SEED'] = '1'
 
 import urllib.parse
 
-from qgis.PyQt.QtCore import QSize
 from qgis.testing import unittest
+
 from test_qgsserver import QgsServerTestBase
+
+from qgis.PyQt.QtCore import QSize
 
 
 class TestQgsServerWMSGetPrint(QgsServerTestBase):
@@ -356,7 +358,7 @@ class TestQgsServerWMSGetPrint(QgsServerTestBase):
         }.items())])
         r, h = self._result(self._execute_request(qs))
 
-        self.assertIn(b"The TEMPLATE parameter is invalid", r)
+        self.assertTrue(b"The TEMPLATE parameter is invalid" in r)
 
     @unittest.skipIf(os.environ.get('QGIS_CONTINUOUS_INTEGRATION_RUN', 'true'),
                      'Can\'t rely on external resources for continuous integration')

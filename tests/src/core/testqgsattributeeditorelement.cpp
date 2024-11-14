@@ -20,7 +20,6 @@
 #include "qgseditformconfig.h"
 #include "qgsfontutils.h"
 #include "qgstest.h"
-#include "qgssettings.h"
 
 /**
  * \ingroup UnitTests
@@ -116,7 +115,7 @@ void TestQgsAttributeEditorElement::testLabelFontAndColor()
 
   container->addChildElement( field2 );
   editFormConfig.addTab( container );
-  editFormConfig.setLayout( Qgis::AttributeFormLayout::DragAndDrop );
+  editFormConfig.setLayout( QgsEditFormConfig::TabLayout );
 
   QDomDocument doc;
   QDomNode node = doc.createElement( "config" );

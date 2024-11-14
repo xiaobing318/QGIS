@@ -52,18 +52,18 @@ void QgsJoinByAttributeAlgorithm::initAlgorithm( const QVariantMap & )
           << QObject::tr( "Take attributes of the first matching feature only (one-to-one)" );
 
   addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ),
-                QObject::tr( "Input layer" ), QList< int>() << static_cast< int >( Qgis::ProcessingSourceType::Vector ) ) );
+                QObject::tr( "Input layer" ), QList< int>() << QgsProcessing::TypeVector ) );
   addParameter( new QgsProcessingParameterField( QStringLiteral( "FIELD" ),
                 QObject::tr( "Table field" ), QVariant(), QStringLiteral( "INPUT" ) ) );
 
   addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT_2" ),
-                QObject::tr( "Input layer 2" ), QList< int>() << static_cast< int >( Qgis::ProcessingSourceType::Vector ) ) );
+                QObject::tr( "Input layer 2" ), QList< int>() << QgsProcessing::TypeVector ) );
   addParameter( new QgsProcessingParameterField( QStringLiteral( "FIELD_2" ),
                 QObject::tr( "Table field 2" ), QVariant(), QStringLiteral( "INPUT_2" ) ) );
 
   addParameter( new QgsProcessingParameterField( QStringLiteral( "FIELDS_TO_COPY" ),
                 QObject::tr( "Layer 2 fields to copy (leave empty to copy all fields)" ),
-                QVariant(), QStringLiteral( "INPUT_2" ), Qgis::ProcessingFieldParameterDataType::Any,
+                QVariant(), QStringLiteral( "INPUT_2" ), QgsProcessingParameterField::Any,
                 true, true ) );
 
   addParameter( new QgsProcessingParameterEnum( QStringLiteral( "METHOD" ),
@@ -76,12 +76,12 @@ void QgsJoinByAttributeAlgorithm::initAlgorithm( const QVariantMap & )
   addParameter( new QgsProcessingParameterString( QStringLiteral( "PREFIX" ),
                 QObject::tr( "Joined field prefix" ), QVariant(), false, true ) );
 
-  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Joined layer" ), Qgis::ProcessingSourceType::VectorAnyGeometry, QVariant(), true, true ) );
+  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Joined layer" ), QgsProcessing::TypeVectorAnyGeometry, QVariant(), true, true ) );
 
   std::unique_ptr< QgsProcessingParameterFeatureSink > nonMatchingSink = std::make_unique< QgsProcessingParameterFeatureSink >(
-        QStringLiteral( "NON_MATCHING" ), QObject::tr( "Unjoinable features from first layer" ), Qgis::ProcessingSourceType::VectorAnyGeometry, QVariant(), true, false );
+        QStringLiteral( "NON_MATCHING" ), QObject::tr( "Unjoinable features from first layer" ), QgsProcessing::TypeVectorAnyGeometry, QVariant(), true, false );
   // TODO GUI doesn't support advanced outputs yet
-  //nonMatchingSink->setFlags(nonMatchingSink->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  //nonMatchingSink->setFlags(nonMatchingSink->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( nonMatchingSink.release() );
 
   addOutput( new QgsProcessingOutputNumber( QStringLiteral( "JOINED_COUNT" ), QObject::tr( "Number of joined features from input table" ) ) );
@@ -94,11 +94,6 @@ QString QgsJoinByAttributeAlgorithm::shortHelpString() const
                       "input one, with additional attributes in its attribute table.\n\n"
                       "The additional attributes and their values are taken from a second vector layer. An attribute is selected "
                       "in each of them to define the join criteria." );
-}
-
-Qgis::ProcessingAlgorithmDocumentationFlags QgsJoinByAttributeAlgorithm::documentationFlags() const
-{
-  return Qgis::ProcessingAlgorithmDocumentationFlag::RegeneratesPrimaryKey;
 }
 
 QgsJoinByAttributeAlgorithm *QgsJoinByAttributeAlgorithm::createInstance() const
@@ -123,15 +118,12 @@ QVariantMap QgsJoinByAttributeAlgorithm::processAlgorithm( const QVariantMap &pa
 
   const QString field1Name = parameterAsString( parameters, QStringLiteral( "FIELD" ), context );
   const QString field2Name = parameterAsString( parameters, QStringLiteral( "FIELD_2" ), context );
-  const QStringList fieldsToCopy = parameterAsStrings( parameters, QStringLiteral( "FIELDS_TO_COPY" ), context );
+  const QStringList fieldsToCopy = parameterAsFields( parameters, QStringLiteral( "FIELDS_TO_COPY" ), context );
 
   const int joinField1Index = input->fields().lookupField( field1Name );
-  if ( joinField1Index < 0 )
-    throw QgsProcessingException( QObject::tr( "Invalid join field from layer 1: “%1” does not exist" ).arg( field1Name ) );
-
   const int joinField2Index = input2->fields().lookupField( field2Name );
-  if ( joinField2Index < 0 )
-    throw QgsProcessingException( QObject::tr( "Invalid join field from layer 2: “%1” does not exist" ).arg( field2Name ) );
+  if ( joinField1Index < 0 || joinField2Index < 0 )
+    throw QgsProcessingException( QObject::tr( "Invalid join fields" ) );
 
   QgsFields outFields2;
   QgsAttributeList fields2Indices;
@@ -185,7 +177,7 @@ QVariantMap QgsJoinByAttributeAlgorithm::processAlgorithm( const QVariantMap &pa
 
   // cache attributes of input2
   QMultiHash< QVariant, QgsAttributes > input2AttributeCache;
-  QgsFeatureIterator features = input2->getFeatures( QgsFeatureRequest().setFlags( Qgis::FeatureRequestFlag::NoGeometry ).setSubsetOfAttributes( fields2Fetch ), Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks );
+  QgsFeatureIterator features = input2->getFeatures( QgsFeatureRequest().setFlags( QgsFeatureRequest::NoGeometry ).setSubsetOfAttributes( fields2Fetch ), QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks );
   double step = input2->featureCount() > 0 ? 50.0 / input2->featureCount() : 1;
   int i = 0;
   QgsFeature feat;
@@ -204,8 +196,7 @@ QVariantMap QgsJoinByAttributeAlgorithm::processAlgorithm( const QVariantMap &pa
 
     // only keep selected attributes
     QgsAttributes attributes;
-    const int attributeCount = feat.attributeCount();
-    for ( int j = 0; j < attributeCount; ++j )
+    for ( int j = 0; j < feat.attributes().count(); ++j )
     {
       if ( ! fields2Indices.contains( j ) )
         continue;
@@ -217,7 +208,7 @@ QVariantMap QgsJoinByAttributeAlgorithm::processAlgorithm( const QVariantMap &pa
 
   // Create output vector layer with additional attribute
   step = input->featureCount() > 0 ? 50.0 / input->featureCount() : 1;
-  features = input->getFeatures( QgsFeatureRequest(), Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks );
+  features = input->getFeatures( QgsFeatureRequest(), QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks );
   i = 0;
   long long joinedCount = 0;
   long long unjoinedCount = 0;
@@ -273,17 +264,11 @@ QVariantMap QgsJoinByAttributeAlgorithm::processAlgorithm( const QVariantMap &pa
 
   QVariantMap outputs;
   if ( sink )
-  {
-    sink->finalize();
     outputs.insert( QStringLiteral( "OUTPUT" ), dest );
-  }
   outputs.insert( QStringLiteral( "JOINED_COUNT" ), joinedCount );
   outputs.insert( QStringLiteral( "UNJOINABLE_COUNT" ), unjoinedCount );
   if ( sinkNonMatching1 )
-  {
-    sinkNonMatching1->finalize();
     outputs.insert( QStringLiteral( "NON_MATCHING" ), destNonMatching1 );
-  }
   return outputs;
 }
 

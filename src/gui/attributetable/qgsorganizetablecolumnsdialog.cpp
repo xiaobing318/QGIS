@@ -17,17 +17,24 @@
 #include <QMessageBox>
 
 #include "qgsorganizetablecolumnsdialog.h"
-#include "moc_qgsorganizetablecolumnsdialog.cpp"
+#include "qgsattributetablemodel.h"
+#include "qgsattributetablefiltermodel.h"
 #include "qgsattributetableview.h"
+#include "qgsdockwidget.h"
 
 #include "qgsapplication.h"
+#include "qgsvectordataprovider.h"
 #include "qgsvectorlayer.h"
 #include "qgsexpression.h"
 
 #include "qgssearchquerybuilder.h"
+#include "qgslogger.h"
 #include "qgsmapcanvas.h"
 #include "qgsproject.h"
+#include "qgsexpressionbuilderdialog.h"
 #include "qgsmessagebar.h"
+#include "qgsexpressionselectiondialog.h"
+#include "qgsfeaturelistmodel.h"
 #include "qgsrubberband.h"
 #include "qgsfields.h"
 #include "qgseditorwidgetregistry.h"
@@ -43,13 +50,11 @@ QgsOrganizeTableColumnsDialog::QgsOrganizeTableColumnsDialog( const QgsVectorLay
 
   connect( mShowAllButton, &QAbstractButton::clicked, this, &QgsOrganizeTableColumnsDialog::showAll );
   connect( mHideAllButton, &QAbstractButton::clicked, this, &QgsOrganizeTableColumnsDialog::hideAll );
-  connect( mToggleSelectionButton, &QAbstractButton::clicked, this, &QgsOrganizeTableColumnsDialog::toggleSelection );
 
   if ( vl )
   {
     mConfig = config;
-    const QgsFields fields = vl->fields();
-    mConfig.update( fields );
+    mConfig.update( vl->fields() );
 
     mFieldsList->clear();
 
@@ -64,9 +69,23 @@ QgsOrganizeTableColumnsDialog::QgsOrganizeTableColumnsDialog( const QgsVectorLay
       }
       else
       {
-        const int idx = fields.lookupField( columnConfig.name );
+        const int idx = vl->fields().lookupField( columnConfig.name );
         item = new QListWidgetItem( vl->attributeDisplayName( idx ), mFieldsList );
-        item->setIcon( fields.iconForField( idx, true ) );
+
+        switch ( vl->fields().fieldOrigin( idx ) )
+        {
+          case QgsFields::OriginExpression:
+            item->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mIconExpression.svg" ) ) );
+            break;
+
+          case QgsFields::OriginJoin:
+            item->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/propertyicons/join.svg" ) ) );
+            break;
+
+          default:
+            item->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/propertyicons/attributes.svg" ) ) );
+            break;
+        }
       }
 
       item->setCheckState( columnConfig.hidden ? Qt::Unchecked : Qt::Checked );
@@ -74,11 +93,10 @@ QgsOrganizeTableColumnsDialog::QgsOrganizeTableColumnsDialog( const QgsVectorLay
     }
   }
 
-  if ( !vl || mConfig.columns().count() < 5 )
+  if ( !vl || mConfig.columns().count() < 7 )
   {
     mShowAllButton->hide();
     mHideAllButton->hide();
-    mToggleSelectionButton->hide();
   }
 }
 
@@ -122,13 +140,5 @@ void QgsOrganizeTableColumnsDialog::hideAll()
   for ( int i = 0; i < mFieldsList->count() ; i++ )
   {
     mFieldsList->item( i )->setCheckState( Qt::Unchecked );
-  }
-}
-
-void QgsOrganizeTableColumnsDialog::toggleSelection()
-{
-  for ( QListWidgetItem *item : mFieldsList->selectedItems() )
-  {
-    item->setCheckState( item->checkState() == Qt::Checked ? Qt::Unchecked :  Qt::Checked );
   }
 }

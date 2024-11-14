@@ -67,17 +67,17 @@ QgsGeometryByExpressionAlgorithm *QgsGeometryByExpressionAlgorithm::createInstan
 
 QList<int> QgsGeometryByExpressionAlgorithm::inputLayerTypes() const
 {
-  return QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::Vector );
+  return QList< int >() << QgsProcessing::TypeVector;
 }
 
-Qgis::WkbType QgsGeometryByExpressionAlgorithm::outputWkbType( Qgis::WkbType ) const
+QgsWkbTypes::Type QgsGeometryByExpressionAlgorithm::outputWkbType( QgsWkbTypes::Type ) const
 {
   return mWkbType;
 }
 
-Qgis::ProcessingFeatureSourceFlags QgsGeometryByExpressionAlgorithm::sourceFlags() const
+QgsProcessingFeatureSource::Flag QgsGeometryByExpressionAlgorithm::sourceFlags() const
 {
-  return Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks;
+  return QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks;
 }
 
 void QgsGeometryByExpressionAlgorithm::initParameters( const QVariantMap & )
@@ -87,7 +87,7 @@ void QgsGeometryByExpressionAlgorithm::initParameters( const QVariantMap & )
   addParameter( new QgsProcessingParameterBoolean( QStringLiteral( "WITH_Z" ), QObject::tr( "Output geometry has z dimension" ), false ) );
   addParameter( new QgsProcessingParameterBoolean( QStringLiteral( "WITH_M" ), QObject::tr( "Output geometry has m values" ), false ) );
   addParameter( new QgsProcessingParameterExpression( QStringLiteral( "EXPRESSION" ), QObject::tr( "Geometry expression" ),
-                QStringLiteral( "@geometry" ), QStringLiteral( "INPUT" ) ) );
+                QStringLiteral( "$geometry" ), QStringLiteral( "INPUT" ) ) );
 }
 
 bool QgsGeometryByExpressionAlgorithm::prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback )
@@ -96,13 +96,13 @@ bool QgsGeometryByExpressionAlgorithm::prepareAlgorithm( const QVariantMap &para
   switch ( geometryType )
   {
     case 0:
-      mWkbType = Qgis::WkbType::Polygon;
+      mWkbType = QgsWkbTypes::Type::Polygon;
       break;
     case 1:
-      mWkbType = Qgis::WkbType::LineString;
+      mWkbType = QgsWkbTypes::Type::LineString;
       break;
     case 2:
-      mWkbType = Qgis::WkbType::Point;
+      mWkbType = QgsWkbTypes::Type::Point;
       break;
   }
 
@@ -145,7 +145,7 @@ QgsFeatureList QgsGeometryByExpressionAlgorithm::processFeature( const QgsFeatur
   }
   else
   {
-    if ( value.userType() == qMetaTypeId< QgsGeometry>() )
+    if ( value.userType() == QMetaType::type( "QgsGeometry" ) )
     {
       const QgsGeometry geom = value.value<QgsGeometry>();
       feature.setGeometry( geom );

@@ -9,20 +9,19 @@ __author__ = '(C) 2017 by Nyall Dawson'
 __date__ = '23/10/2017'
 __copyright__ = 'Copyright 2017, The QGIS Project'
 
+import qgis  # NOQA
 from qgis.core import QgsLayoutItemScaleBar
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 from test_qgslayoutitem import LayoutItemTestCase
 
 start_app()
 
 
-class TestQgsLayoutScaleBar(QgisTestCase, LayoutItemTestCase):
+class TestQgsLayoutScaleBar(unittest.TestCase, LayoutItemTestCase):
 
     @classmethod
     def setUpClass(cls):
-        super(TestQgsLayoutScaleBar, cls).setUpClass()
         cls.item_class = QgsLayoutItemScaleBar
 
 

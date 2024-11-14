@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/vectortile/qgsvectortilebasiclabeling.h                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -51,11 +51,11 @@ Sets name of the sub-layer to render (empty layer means that all layers match)
 Returns name of the sub-layer to render (empty layer means that all layers match)
 %End
 
-    void setGeometryType( Qgis::GeometryType geomType );
+    void setGeometryType( QgsWkbTypes::GeometryType geomType );
 %Docstring
 Sets type of the geometry that will be used (point / line / polygon)
 %End
-    Qgis::GeometryType geometryType() const;
+    QgsWkbTypes::GeometryType geometryType() const;
 %Docstring
 Returns type of the geometry that will be used (point / line / polygon)
 %End
@@ -208,5 +208,5 @@ Returns style definition at the particular index
  *                                                                      *
  * src/core/vectortile/qgsvectortilebasiclabeling.h                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

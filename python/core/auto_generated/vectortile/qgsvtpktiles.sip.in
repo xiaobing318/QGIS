@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/vectortile/qgsvtpktiles.h                                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -67,15 +67,6 @@ Returns the VTPK sprite image, if it exists.
 Reads layer metadata from the VTPK file.
 %End
 
-    QVariantMap rootTileMap() const;
-%Docstring
-Returns the root tilemap content, if it exists.
-
-This method returns the contents of the "tilemap/root.json" file.
-
-.. versionadded:: 3.32
-%End
-
     QgsVectorTileMatrixSet matrixSet() const;
 %Docstring
 Returns the vector tile matrix set representing the tiles.
@@ -94,14 +85,10 @@ Returns bounding box from metadata, given in the tiles :py:func:`~QgsVtpkTiles.c
     QByteArray tileData( int z, int x, int y );
 %Docstring
 Returns the raw tile data for the matching tile.
-
-Returns a null byte array if the requested tile does not exist.
-
-Will return an empty byte array (as opposed to a null byte array) if the tile
-exists but has a zero size.
 %End
 
   private:
+    //! QgsVtpkTiles cannot be copied
     QgsVtpkTiles( const QgsVtpkTiles &other );
 };
 
@@ -111,5 +98,5 @@ exists but has a zero size.
  *                                                                      *
  * src/core/vectortile/qgsvtpktiles.h                                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

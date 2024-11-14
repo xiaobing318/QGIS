@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsvaluemapconfigdlg.h"
-#include "moc_qgsvaluemapconfigdlg.cpp"
 
 #include "qgsattributetypeloaddialog.h"
 #include "qgsvaluemapfieldformatter.h"
@@ -33,9 +32,6 @@ QgsValueMapConfigDlg::QgsValueMapConfigDlg( QgsVectorLayer *vl, int fieldIdx, QW
   : QgsEditorConfigWidget( vl, fieldIdx, parent )
 {
   setupUi( this );
-
-  mValueMapErrorsLabel->setVisible( false );
-  mValueMapErrorsLabel->setStyleSheet( QStringLiteral( "QLabel { color : red; }" ) );
 
   tableWidget->insertRow( 0 );
 
@@ -94,13 +90,12 @@ void QgsValueMapConfigDlg::setConfig( const QVariantMap &config )
   }
 
   QList<QVariant> valueList = config.value( QStringLiteral( "map" ) ).toList();
-  QList<QPair<QString, QVariant>> orderedList;
 
   if ( valueList.count() > 0 )
   {
     for ( int i = 0, row = 0; i < valueList.count(); i++, row++ )
     {
-      orderedList.append( qMakePair( valueList[i].toMap().constBegin().value().toString(), valueList[i].toMap().constBegin().key() ) );
+      setRow( row, valueList[i].toMap().constBegin().value().toString(), valueList[i].toMap().constBegin().key() );
     }
   }
   else
@@ -110,14 +105,11 @@ void QgsValueMapConfigDlg::setConfig( const QVariantMap &config )
     for ( QVariantMap::ConstIterator mit = values.constBegin(); mit != values.constEnd(); mit++, row++ )
     {
       if ( QgsVariantUtils::isNull( mit.value() ) )
-        orderedList.append( qMakePair( mit.key(), QVariant() ) );
+        setRow( row, mit.key(), QString() );
       else
-        orderedList.append( qMakePair( mit.value().toString(), mit.key() ) );
+        setRow( row, mit.value().toString(), mit.key() );
     }
   }
-
-  updateMap( orderedList, false );
-
 }
 
 void QgsValueMapConfigDlg::vCellChanged( int row, int column )
@@ -127,24 +119,6 @@ void QgsValueMapConfigDlg::vCellChanged( int row, int column )
   {
     tableWidget->insertRow( row + 1 );
   } //else check type
-
-  if ( layer()->fields().exists( field() ) )
-  {
-    // check cell value
-    QTableWidgetItem *item = tableWidget->item( row, 0 );
-    if ( item )
-    {
-      const QString validValue = checkValueLength( item->text() );
-      if ( validValue.length() != item->text().length() )
-      {
-        const QString errorMessage = tr( "Value '%1' has been trimmed (maximum field length: %2)" )
-                                     .arg( item->text(), QString::number( layer()->fields().field( field() ).length() ) );
-        item->setText( validValue );
-        mValueMapErrorsLabel->setVisible( true );
-        mValueMapErrorsLabel->setText( QStringLiteral( "%1<br>%2" ).arg( errorMessage, mValueMapErrorsLabel->text() ) );
-      }
-    }
-  }
 
   emit changed();
 }
@@ -166,9 +140,9 @@ void QgsValueMapConfigDlg::removeSelectedButtonPushed()
       }
     }
   }
-  for ( const int rowToRemoved : rowsToRemove )
+  for ( i = 0; i < rowsToRemove.size(); i++ )
   {
-    tableWidget->removeRow( rowToRemoved - removed );
+    tableWidget->removeRow( rowsToRemove.values().at( i ) - removed );
     removed++;
   }
   emit changed();
@@ -189,8 +163,6 @@ void QgsValueMapConfigDlg::updateMap( const QMap<QString, QVariant> &map, bool i
 void QgsValueMapConfigDlg::updateMap( const QList<QPair<QString, QVariant>> &list, bool insertNull )
 {
   tableWidget->clearContents();
-  mValueMapErrorsLabel->setVisible( false );
-
   for ( int i = tableWidget->rowCount() - 1; i > 0; i-- )
   {
     tableWidget->removeRow( i );
@@ -203,60 +175,14 @@ void QgsValueMapConfigDlg::updateMap( const QList<QPair<QString, QVariant>> &lis
     ++row;
   }
 
-  constexpr int maxOverflowErrors { 5 };
-  QStringList reportedErrors;
-  const bool hasField { layer()->fields().exists( field() ) };
-  const QgsField mappedField { hasField ? layer()->fields().field( field() ) : QgsField() };
-
   for ( const auto &pair : list )
   {
     if ( QgsVariantUtils::isNull( pair.second ) )
       setRow( row, pair.first, QString() );
     else
-    {
-      const QString value { pair.first };
-      // Check value
-      const QString validValue = checkValueLength( value ) ;
-
-      if ( validValue.length() != value.length() )
-      {
-
-        if ( reportedErrors.length() < maxOverflowErrors )
-        {
-          reportedErrors.push_back( tr( "Value '%1' has been trimmed (maximum field length: %2)" )
-                                    .arg( value, QString::number( mappedField.length() ) ) );
-        }
-        else if ( reportedErrors.length() == maxOverflowErrors )
-        {
-          reportedErrors.push_back( tr( "Only first %1 errors have been reported." )
-                                    .arg( maxOverflowErrors ) );
-        }
-      }
-
-      setRow( row, validValue, pair.second.toString() );
-
-      // Show errors if any
-      if ( !reportedErrors.isEmpty() )
-      {
-        mValueMapErrorsLabel->setVisible( true );
-        mValueMapErrorsLabel->setText( reportedErrors.join( QLatin1String( "<br>" ) ) );
-      }
-    }
+      setRow( row, pair.first, pair.second.toString() );
     ++row;
   }
-}
-
-QString QgsValueMapConfigDlg::checkValueLength( const QString &value )
-{
-  if ( layer()->fields().exists( field() ) )
-  {
-    const QgsField mappedField { layer()->fields().field( field() ) };
-    if ( mappedField.length() > 0 && value.length() > mappedField.length() )
-    {
-      return value.mid( 0, mappedField.length() );
-    }
-  }
-  return value;
 }
 
 void QgsValueMapConfigDlg::populateComboBox( QComboBox *comboBox, const QVariantMap &config, bool skipNull )

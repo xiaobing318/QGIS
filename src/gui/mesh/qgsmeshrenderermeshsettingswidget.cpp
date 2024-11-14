@@ -14,11 +14,15 @@
  ***************************************************************************/
 
 #include "qgsmeshrenderermeshsettingswidget.h"
-#include "moc_qgsmeshrenderermeshsettingswidget.cpp"
 #include <QtGlobal>
 
 #include "qgis.h"
+#include "qgsmapcanvas.h"
 #include "qgsmeshlayer.h"
+#include "qgsrasterlayer.h"
+#include "raster/qgsrasterminmaxwidget.h"
+#include "qgsrasterminmaxorigin.h"
+#include "qgsmessagelog.h"
 #include "qgscolorbutton.h"
 #include "qgsdoublespinbox.h"
 
@@ -28,13 +32,11 @@ QgsMeshRendererMeshSettingsWidget::QgsMeshRendererMeshSettingsWidget( QWidget *p
 {
   setupUi( this );
 
-  mLineUnitsComboBox->setUnits(
-  {
-    Qgis::RenderUnit::Millimeters,
-    Qgis::RenderUnit::MetersInMapUnits,
-    Qgis::RenderUnit::Pixels,
-    Qgis::RenderUnit::Points
-  } );
+  mLineUnitsComboBox->setUnits( QgsUnitTypes::RenderUnitList()
+                                << QgsUnitTypes::RenderMillimeters
+                                << QgsUnitTypes::RenderMetersInMapUnits
+                                << QgsUnitTypes::RenderPixels
+                                << QgsUnitTypes::RenderPoints );
 
 
   connect( mColorWidget, &QgsColorButton::colorChanged, this, &QgsMeshRendererMeshSettingsWidget::widgetChanged );

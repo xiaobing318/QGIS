@@ -136,16 +136,6 @@ class GUI_EXPORT QgsScaleWidget : public QWidget
      */
     bool allowNull() const;
 
-    /**
-     * Sets the list of predefined \a scales to show in the widget. List elements
-     * are expected to be scale denominators, e.g. 1000.0 for a 1:1000 map.
-     *
-     * If \a scales is empty then the default user scale options will be used instead.
-     *
-     * \since QGIS 3.38
-    */
-    void setPredefinedScales( const QVector< double > &scales );
-
   public slots:
 
     /**
@@ -156,7 +146,7 @@ class GUI_EXPORT QgsScaleWidget : public QWidget
     void setScale( double scale );
 
     /**
-     * Sets the list of predefined \a scales to show in the widget. List elements
+     * Sets the list of predefined \a scales to show in the combobox. List elements
      * are expected to be valid scale strings, such as "1:1000000".
      */
     void updateScales( const QStringList &scales = QStringList() ) { mScaleComboBox->updateScales( scales ); }

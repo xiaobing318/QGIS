@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     ImportIntoSpatialite.py
@@ -62,13 +64,13 @@ class ImportIntoSpatialite(QgisAlgorithm):
 
     def initAlgorithm(self, config=None):
         self.addParameter(QgsProcessingParameterFeatureSource(self.INPUT, self.tr('Layer to import'),
-                                                              types=[QgsProcessing.SourceType.TypeVector]))
+                                                              types=[QgsProcessing.TypeVector]))
         self.addParameter(QgsProcessingParameterVectorLayer(self.DATABASE, self.tr('File database'), optional=False))
         self.addParameter(
             QgsProcessingParameterString(self.TABLENAME, self.tr('Table to import to (leave blank to use layer name)'),
                                          optional=True))
         self.addParameter(QgsProcessingParameterField(self.PRIMARY_KEY, self.tr('Primary key field'), None, self.INPUT,
-                                                      QgsProcessingParameterField.DataType.Any, False, True))
+                                                      QgsProcessingParameterField.Any, False, True))
         self.addParameter(QgsProcessingParameterString(self.GEOMETRY_COLUMN, self.tr('Geometry column'), 'geom'))
         self.addParameter(QgsProcessingParameterString(self.ENCODING, self.tr('Encoding'), 'UTF-8', optional=True))
         self.addParameter(QgsProcessingParameterBoolean(self.OVERWRITE, self.tr('Overwrite'), True))
@@ -82,7 +84,7 @@ class ImportIntoSpatialite(QgisAlgorithm):
                                                         False))
 
     def flags(self):
-        return super().flags() | QgsProcessingAlgorithm.Flag.FlagNoThreading
+        return super().flags() | QgsProcessingAlgorithm.FlagNoThreading
 
     def name(self):
         return 'importintospatialite'
@@ -151,7 +153,7 @@ class ImportIntoSpatialite(QgisAlgorithm):
             options['forceSinglePartGeometryType'] = True
 
         # Clear geometry column for non-geometry tables
-        if source.wkbType() == QgsWkbTypes.Type.NoGeometry:
+        if source.wkbType() == QgsWkbTypes.NoGeometry:
             geomColumn = None
 
         uri.setDataSource('', table, geomColumn, '', primaryKeyField)
@@ -162,7 +164,7 @@ class ImportIntoSpatialite(QgisAlgorithm):
         exporter = QgsVectorLayerExporter(uri.uri(), providerName, source.fields(),
                                           source.wkbType(), source.sourceCrs(), overwrite, options)
 
-        if exporter.errorCode() != QgsVectorLayerExporter.ExportError.NoError:
+        if exporter.errorCode() != QgsVectorLayerExporter.NoError:
             raise QgsProcessingException(
                 self.tr('Error importing to Spatialite\n{0}').format(exporter.errorMessage()))
 
@@ -172,13 +174,13 @@ class ImportIntoSpatialite(QgisAlgorithm):
             if feedback.isCanceled():
                 break
 
-            if not exporter.addFeature(f, QgsFeatureSink.Flag.FastInsert):
+            if not exporter.addFeature(f, QgsFeatureSink.FastInsert):
                 feedback.reportError(exporter.errorMessage())
 
             feedback.setProgress(int(current * total))
 
         exporter.flushBuffer()
-        if exporter.errorCode() != QgsVectorLayerExporter.ExportError.NoError:
+        if exporter.errorCode() != QgsVectorLayerExporter.NoError:
             raise QgsProcessingException(
                 self.tr('Error importing to Spatialite\n{0}').format(exporter.errorMessage()))
 

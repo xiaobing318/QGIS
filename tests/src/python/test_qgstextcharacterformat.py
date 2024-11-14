@@ -11,23 +11,22 @@ __author__ = 'Nyall Dawson'
 __date__ = '12/05/2020'
 __copyright__ = 'Copyright 2020, The QGIS Project'
 
-from qgis.PyQt.QtCore import QSizeF
+import qgis  # NOQA
 from qgis.PyQt.QtGui import QColor
 from qgis.core import (
-    Qgis,
     QgsFontUtils,
-    QgsRenderContext,
     QgsTextCharacterFormat,
+    QgsRenderContext
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsTextCharacterFormat(QgisTestCase):
+class TestQgsTextCharacterFormat(unittest.TestCase):
 
     def setUp(self):
+        self.report = "<h1>Python QgsTextRenderer Tests</h1>\n"
         QgsFontUtils.loadStandardTestFonts(['Bold', 'Oblique'])
 
     def testGettersSetters(self):
@@ -38,8 +37,6 @@ class TestQgsTextCharacterFormat(QgisTestCase):
         self.assertEqual(format.overline(), QgsTextCharacterFormat.BooleanValue.NotSet)
         self.assertEqual(format.fontPointSize(), -1)
         self.assertFalse(format.family())
-        self.assertFalse(format.hasVerticalAlignmentSet())
-        self.assertEqual(format.verticalAlignment(), Qgis.TextCharacterVerticalAlignment.Normal)
 
         format.setTextColor(QColor(255, 0, 0))
         self.assertTrue(format.textColor().isValid())
@@ -59,18 +56,6 @@ class TestQgsTextCharacterFormat(QgisTestCase):
 
         format.setFamily('comic sans')
         self.assertEqual(format.family(), 'comic sans')
-
-        format.setHasVerticalAlignmentSet(True)
-        self.assertTrue(format.hasVerticalAlignmentSet())
-        format.setVerticalAlignment(Qgis.TextCharacterVerticalAlignment.SuperScript)
-        self.assertEqual(format.verticalAlignment(), Qgis.TextCharacterVerticalAlignment.SuperScript)
-
-        self.assertFalse(format.imagePath())
-        self.assertEqual(format.imageSize(), QSizeF())
-        format.setImagePath('my.jpg')
-        format.setImageSize(QSizeF(40, 60))
-        self.assertEqual(format.imagePath(), 'my.jpg')
-        self.assertEqual(format.imageSize(), QSizeF(40, 60))
 
     def testUpdateFont(self):
         context = QgsRenderContext()

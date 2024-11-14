@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/annotations/qgsannotationitem.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -38,18 +38,6 @@ Abstract base class for annotation items which are drawn with :py:class:`QgsAnno
     {
       sipType = sipType_QgsAnnotationPointTextItem;
     }
-    else if ( sipCpp->type() == QLatin1String( "linetext" ) )
-    {
-      sipType = sipType_QgsAnnotationLineTextItem;
-    }
-    else if ( sipCpp->type() == QLatin1String( "recttext" ) )
-    {
-      sipType = sipType_QgsAnnotationRectangleTextItem;
-    }
-    else if ( sipCpp->type() == QLatin1String( "picture" ) )
-    {
-      sipType = sipType_QgsAnnotationPictureItem;
-    }
     else
     {
       sipType = 0;
@@ -58,6 +46,9 @@ Abstract base class for annotation items which are drawn with :py:class:`QgsAnno
   public:
 
     QgsAnnotationItem();
+%Docstring
+Constructor for an annotation item.
+%End
 
 
     virtual ~QgsAnnotationItem();
@@ -69,7 +60,7 @@ Returns item flags.
 .. versionadded:: 3.22
 %End
 
-    virtual QgsAnnotationItem *clone() const = 0 /Factory/;
+    virtual QgsAnnotationItem *clone() = 0 /Factory/;
 %Docstring
 Returns a clone of the item. Ownership is transferred to the caller.
 
@@ -123,36 +114,18 @@ Implementations should include a call to :py:func:`~QgsAnnotationItem.readCommon
 .. seealso:: :py:func:`readCommonProperties`
 %End
 
- virtual Qgis::AnnotationItemEditOperationResult applyEdit( QgsAbstractAnnotationItemEditOperation *operation ) /Deprecated/;
+    virtual Qgis::AnnotationItemEditOperationResult applyEdit( QgsAbstractAnnotationItemEditOperation *operation );
 %Docstring
 Applies an edit ``operation`` to the item.
 
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsAnnotationItem.applyEditV2` instead.
+.. versionadded:: 3.22
 %End
 
-    virtual Qgis::AnnotationItemEditOperationResult applyEditV2( QgsAbstractAnnotationItemEditOperation *operation, const QgsAnnotationItemEditContext &context );
-%Docstring
-Applies an edit ``operation`` to the item.
-
-.. versionadded:: 3.40
-%End
-
- virtual QgsAnnotationItemEditOperationTransientResults *transientEditResults( QgsAbstractAnnotationItemEditOperation *operation ) /Factory/;
+    virtual QgsAnnotationItemEditOperationTransientResults *transientEditResults( QgsAbstractAnnotationItemEditOperation *operation ) /Factory/;
 %Docstring
 Retrieves the results of a transient (in progress) edit ``operation`` on the item.
 
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsAnnotationItem.transientEditResultsV2` instead.
-%End
-
-    virtual QgsAnnotationItemEditOperationTransientResults *transientEditResultsV2( QgsAbstractAnnotationItemEditOperation *operation, const QgsAnnotationItemEditContext &context ) /Factory/;
-%Docstring
-Retrieves the results of a transient (in progress) edit ``operation`` on the item.
-
-.. versionadded:: 3.40
+.. versionadded:: 3.22
 %End
 
     int zIndex() const;
@@ -171,38 +144,11 @@ are rendered in the layer.
 .. seealso:: :py:func:`zIndex`
 %End
 
-    bool enabled() const;
-%Docstring
-Returns ``True`` if the item is enabled and will be rendered in the layer.
-
-.. seealso:: :py:func:`setEnabled`
-
-.. versionadded:: 3.36
-%End
-
-    void setEnabled( bool enabled );
-%Docstring
-Sets if the item will be rendered or not in the layer.
-
-.. seealso:: :py:func:`enabled`
-
-.. versionadded:: 3.36
-%End
-
- virtual QList< QgsAnnotationItemNode > nodes() const /Deprecated/;
+    virtual QList< QgsAnnotationItemNode > nodes() const;
 %Docstring
 Returns the nodes for the item, used for editing the item.
 
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsAnnotationItem.nodesV2` instead.
-%End
-
-    virtual QList< QgsAnnotationItemNode > nodesV2( const QgsAnnotationItemEditContext &context ) const;
-%Docstring
-Returns the nodes for the item, used for editing the item.
-
-.. versionadded:: 3.40
+.. versionadded:: 3.22
 %End
 
     bool useSymbologyReferenceScale() const;
@@ -259,138 +205,16 @@ exactly 2mm thick when a map is rendered at 1:1000, or 1mm thick when rendered a
 .. seealso:: :py:func:`setUseSymbologyReferenceScale`
 %End
 
-    QgsCallout *callout() const;
-%Docstring
-Returns the item's callout renderer, responsible for drawing item callouts.
-
-Ownership is not transferred.
-
-By default items do not have a callout, and it is necessary to be explicitly set
-a callout style (via :py:func:`~QgsAnnotationItem.setCallout` ) and set the callout anchor geometry (via set
-:py:func:`~QgsAnnotationItem.setCalloutAnchor` ).
-
-.. note::
-
-   Callouts are only supported by items which return :py:class:`Qgis`.AnnotationItemFlag.SupportsCallouts from :py:func:`~QgsAnnotationItem.flags`.
-
-.. seealso:: :py:func:`setCallout`
-
-.. seealso:: :py:func:`calloutAnchor`
-
-.. versionadded:: 3.40
-%End
-
-    void setCallout( QgsCallout *callout /Transfer/ );
-%Docstring
-Sets the item's ``callout`` renderer, responsible for drawing item callouts.
-
-Ownership of ``callout`` is transferred to the item.
-
-.. note::
-
-   Callouts are only supported by items which return :py:class:`Qgis`.AnnotationItemFlag.SupportsCallouts from :py:func:`~QgsAnnotationItem.flags`.
-
-.. seealso:: :py:func:`callout`
-
-.. seealso:: :py:func:`setCalloutAnchor`
-
-.. versionadded:: 3.40
-%End
-
-    QgsGeometry calloutAnchor() const;
-%Docstring
-Returns the callout's anchor geometry.
-
-The anchor dictates the geometry which the option item :py:func:`~QgsAnnotationItem.callout` should connect to. Depending on the
-callout subclass and anchor geometry type, the actual shape of the rendered callout may vary.
-
-The callout anchor geometry is in the parent layer's coordinate reference system.
-
-.. seealso:: :py:func:`callout`
-
-.. seealso:: :py:func:`setCalloutAnchor`
-
-.. versionadded:: 3.40
-%End
-
-    void setCalloutAnchor( const QgsGeometry &anchor );
-%Docstring
-Sets the callout's ``anchor`` geometry.
-
-The anchor dictates the geometry which the option item :py:func:`~QgsAnnotationItem.callout` should connect to. Depending on the
-callout subclass and anchor geometry type, the actual shape of the rendered callout may vary.
-
-The callout ``anchor`` geometry must be specified in the parent layer's coordinate reference system.
-
-.. seealso:: :py:func:`setCallout`
-
-.. seealso:: :py:func:`calloutAnchor`
-
-.. versionadded:: 3.40
-%End
-
-    QSizeF offsetFromCallout() const;
-%Docstring
-Returns the (optional) offset of the annotation item from the :py:func:`~QgsAnnotationItem.calloutAnchor`.
-
-Some annotation item subclasses support placement relative to the callout anchor. For these
-items, the offset from callout defines how far (in screen/page units) the item should be
-placed from the anchor point.
-
-Units are defined by :py:func:`~QgsAnnotationItem.offsetFromCalloutUnit`
-
-.. seealso:: :py:func:`setOffsetFromCallout`
-
-.. versionadded:: 3.40
-%End
-
-    void setOffsetFromCallout( const QSizeF &offset );
-%Docstring
-Sets the offset of the annotation item from the :py:func:`~QgsAnnotationItem.calloutAnchor`.
-
-Some annotation item subclasses support placement relative to the callout anchor. For these
-items, the offset from callout defines how far (in screen/page units) the item should be
-placed from the anchor point.
-
-Units are defined by :py:func:`~QgsAnnotationItem.offsetFromCalloutUnit`
-
-.. seealso:: :py:func:`offsetFromCallout`
-
-.. versionadded:: 3.40
-%End
-
-    Qgis::RenderUnit offsetFromCalloutUnit() const;
-%Docstring
-Returns the units for the :py:func:`~QgsAnnotationItem.offsetFromCallout`.
-
-.. seealso:: :py:func:`offsetFromCallout`
-
-.. seealso:: :py:func:`setOffsetFromCalloutUnit`
-
-.. versionadded:: 3.40
-%End
-
-    void setOffsetFromCalloutUnit( Qgis::RenderUnit unit );
-%Docstring
-Sets the ``unit`` for the :py:func:`~QgsAnnotationItem.offsetFromCallout`.
-
-.. seealso:: :py:func:`setOffsetFromCallout`
-
-.. seealso:: :py:func:`offsetFromCalloutUnit`
-
-.. versionadded:: 3.40
-%End
-
   protected:
 
-    virtual void copyCommonProperties( const QgsAnnotationItem *other );
+    void copyCommonProperties( const QgsAnnotationItem *other );
 %Docstring
 Copies common properties from the base class from an ``other`` item.
 
 .. versionadded:: 3.22
 %End
 
-    virtual bool writeCommonProperties( QDomElement &element, QDomDocument &document, const QgsReadWriteContext &context ) const;
+    bool writeCommonProperties( QDomElement &element, QDomDocument &document, const QgsReadWriteContext &context ) const;
 %Docstring
 Writes common properties from the base class into an XML ``element``.
 
@@ -399,22 +223,13 @@ Writes common properties from the base class into an XML ``element``.
 .. versionadded:: 3.22
 %End
 
-    virtual bool readCommonProperties( const QDomElement &element, const QgsReadWriteContext &context );
+    bool readCommonProperties( const QDomElement &element, const QgsReadWriteContext &context );
 %Docstring
 Reads common properties from the base class from the given DOM ``element``.
 
 .. seealso:: :py:func:`readXml`
 
 .. versionadded:: 3.22
-%End
-
-    void renderCallout( QgsRenderContext &context, const QRectF &rect, double angle, QgsCallout::QgsCalloutContext &calloutContext, QgsFeedback *feedback );
-%Docstring
-Renders the item's callout.
-
-The item must have valid :py:func:`~QgsAnnotationItem.callout` set.
-
-.. versionadded:: 3.40
 %End
 
   private:
@@ -426,5 +241,5 @@ The item must have valid :py:func:`~QgsAnnotationItem.callout` set.
  *                                                                      *
  * src/core/annotations/qgsannotationitem.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

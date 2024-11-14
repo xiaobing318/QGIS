@@ -25,6 +25,7 @@ SIP_NO_FILE
  * \ingroup gui
  * \brief Factory for widgets for editing a QVariantList or a QStringList
  * \note not available in Python bindings
+ * \since QGIS 3.0
  */
 class GUI_EXPORT QgsListWidgetFactory : public QgsEditorWidgetFactory
 {

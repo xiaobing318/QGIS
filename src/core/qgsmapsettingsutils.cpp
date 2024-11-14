@@ -39,7 +39,7 @@ QStringList QgsMapSettingsUtils::containsAdvancedEffects( const QgsMapSettings &
       {
         if ( flags & EffectsCheckFlag::IgnoreGeoPdfSupportedEffects )
         {
-          layerHasAdvancedBlendMode = !QgsAbstractGeospatialPdfExporter::compositionModeSupported( layer->blendMode() );
+          layerHasAdvancedBlendMode = !QgsAbstractGeoPdfExporter::compositionModeSupported( layer->blendMode() );
         }
         else
         {
@@ -54,6 +54,13 @@ QStringList QgsMapSettingsUtils::containsAdvancedEffects( const QgsMapSettings &
       // if vector layer, check labels and feature blend mode
       if ( QgsVectorLayer *currentVectorLayer = qobject_cast<QgsVectorLayer *>( layer ) )
       {
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+        // Qt < 5.15 does not correctly support layer level opacity in PDF exports -- see https://github.com/qgis/QGIS/issues/42698
+        if ( !qgsDoubleNear( currentVectorLayer->opacity(), 1.0 ) && !( flags & EffectsCheckFlag::IgnoreGeoPdfSupportedEffects ) )
+        {
+          layers << layer->name();
+        }
+#endif
         if ( currentVectorLayer->featureBlendMode() != QPainter::CompositionMode_SourceOver )
         {
           layers << layer->name();
@@ -93,11 +100,11 @@ void QgsMapSettingsUtils::worldFileParameters( const QgsMapSettings &mapSettings
 
   // scaling matrix
   double s[6];
-  s[0] = ms.mapUnitsPerPixel() / ms.devicePixelRatio();
+  s[0] = ms.mapUnitsPerPixel();
   s[1] = 0;
   s[2] = xOrigin;
   s[3] = 0;
-  s[4] = -ms.mapUnitsPerPixel() / ms.devicePixelRatio();
+  s[4] = -ms.mapUnitsPerPixel();
   s[5] = yOrigin;
 
   // rotation matrix

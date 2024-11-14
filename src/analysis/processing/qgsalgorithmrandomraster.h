@@ -64,8 +64,8 @@ class QgsRandomRasterAlgorithmBase : public QgsProcessingAlgorithm
   private:
     QgsRectangle mExtent;
     QgsCoordinateReferenceSystem mCrs;
-    double mPixelSize = 0;
-    Qgis::DataType mRasterDataType = Qgis::DataType::UnknownDataType;
+    double mPixelSize;
+    Qgis::DataType mRasterDataType;
 };
 
 
@@ -89,8 +89,8 @@ class QgsRandomUniformRasterAlgorithm : public QgsRandomRasterAlgorithmBase
     double generateRandomDoubleValue( std::mt19937 &mersenneTwister ) final;
 
   private:
-    double mRandomUpperBound = 0;
-    double mRandomLowerBound = 0;
+    double mRandomUpperBound;
+    double mRandomLowerBound;
     std::uniform_int_distribution<long> mRandomUniformIntDistribution;
     std::uniform_real_distribution<double> mRandomUniformDoubleDistribution;
 };

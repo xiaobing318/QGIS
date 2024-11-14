@@ -19,8 +19,8 @@
 #include "qgis_core.h"
 #include "qgis_sip.h"
 #include "qgslayoutitem.h"
-#include "qgsscalebarsettings.h"
-#include "qgsscalebarrenderer.h"
+#include "scalebar/qgsscalebarsettings.h"
+#include "scalebar/qgsscalebarrenderer.h"
 #include <QFont>
 #include <QPen>
 #include <QColor>
@@ -30,6 +30,7 @@ class QgsLayoutItemMap;
 /**
  * \ingroup core
  * \brief A layout item subclass for scale bars.
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsLayoutItemScaleBar: public QgsLayoutItem
 {
@@ -135,7 +136,7 @@ class CORE_EXPORT QgsLayoutItemScaleBar: public QgsLayoutItem
      * \see minimumBarWidth()
      * \see maximumBarWidth()
      */
-    Qgis::ScaleBarSegmentSizeMode segmentSizeMode() const { return mSettings.segmentSizeMode(); }
+    QgsScaleBarSettings::SegmentSizeMode segmentSizeMode() const { return mSettings.segmentSizeMode(); }
 
     /**
      * Sets the size \a mode for scale bar segments.
@@ -143,7 +144,7 @@ class CORE_EXPORT QgsLayoutItemScaleBar: public QgsLayoutItem
      * \see setMinimumBarWidth()
      * \see setMaximumBarWidth()
      */
-    void setSegmentSizeMode( Qgis::ScaleBarSegmentSizeMode mode );
+    void setSegmentSizeMode( QgsScaleBarSettings::SegmentSizeMode mode );
 
     /**
      * Returns the minimum width (in millimeters) for scale bar segments. This
@@ -338,14 +339,14 @@ class CORE_EXPORT QgsLayoutItemScaleBar: public QgsLayoutItem
     /**
      * Returns the font used for drawing text in the scalebar.
      * \see setFont()
-     * \deprecated QGIS 3.40. Use textFormat() instead.
+     * \deprecated use textFormat() instead
      */
     Q_DECL_DEPRECATED QFont font() const SIP_DEPRECATED;
 
     /**
      * Sets the \a font used for drawing text in the scalebar.
      * \see font()
-     * \deprecated QGIS 3.40. Use setTextFormat() instead.
+     * \deprecated use setTextFormat() instead
      */
     Q_DECL_DEPRECATED void setFont( const QFont &font ) SIP_DEPRECATED;
 
@@ -353,7 +354,7 @@ class CORE_EXPORT QgsLayoutItemScaleBar: public QgsLayoutItem
      * Returns the color used for drawing text in the scalebar.
      * \see setFontColor()
      * \see font()
-     * \deprecated QGIS 3.40. Use textFormat() instead.
+     * \deprecated use textFormat() instead
      */
     Q_DECL_DEPRECATED QColor fontColor() const SIP_DEPRECATED;
 
@@ -361,7 +362,7 @@ class CORE_EXPORT QgsLayoutItemScaleBar: public QgsLayoutItem
      * Sets the \a color used for drawing text in the scalebar.
      * \see fontColor()
      * \see setFont()
-     * \deprecated QGIS 3.40. Use setTextFormat() instead.
+     * \deprecated use setTextFormat() instead
      */
     Q_DECL_DEPRECATED void setFontColor( const QColor &color ) SIP_DEPRECATED;
 
@@ -369,7 +370,7 @@ class CORE_EXPORT QgsLayoutItemScaleBar: public QgsLayoutItem
      * Returns the color used for fills in the scalebar.
      * \see setFillColor()
      * \see fillColor2()
-     * \deprecated QGIS 3.40. Use fillSymbol() instead.
+     * \deprecated use fillSymbol() instead
      */
     Q_DECL_DEPRECATED QColor fillColor() const SIP_DEPRECATED;
 
@@ -377,7 +378,7 @@ class CORE_EXPORT QgsLayoutItemScaleBar: public QgsLayoutItem
      * Sets the \a color used for fills in the scalebar.
      * \see fillColor()
      * \see setFillColor2()
-     * \deprecated QGIS 3.40. Use setFillSymbol() instead.
+     * \deprecated use setFillSymbol() instead
      */
     Q_DECL_DEPRECATED void setFillColor( const QColor &color ) SIP_DEPRECATED;
 
@@ -385,7 +386,7 @@ class CORE_EXPORT QgsLayoutItemScaleBar: public QgsLayoutItem
      * Returns the secondary color used for fills in the scalebar.
      * \see setFillColor2()
      * \see fillColor()
-     * \deprecated QGIS 3.40. Use alternateFillSymbol() instead.
+     * \deprecated use alternateFillSymbol() instead
      */
     Q_DECL_DEPRECATED QColor fillColor2() const SIP_DEPRECATED;
 
@@ -393,42 +394,42 @@ class CORE_EXPORT QgsLayoutItemScaleBar: public QgsLayoutItem
      * Sets the secondary \a color used for fills in the scalebar.
      * \see fillColor2()
      * \see setFillColor2()
-     * \deprecated QGIS 3.40. Use setAlternateFillSymbol() instead.
+     * \deprecated use setAlternateFillSymbol() instead
      */
     Q_DECL_DEPRECATED void setFillColor2( const QColor &color ) SIP_DEPRECATED;
 
     /**
      * Returns the color used for lines in the scalebar.
      * \see setLineColor()
-     * \deprecated QGIS 3.40. Use lineSymbol() instead.
+     * \deprecated use lineSymbol() instead
      */
     Q_DECL_DEPRECATED QColor lineColor() const SIP_DEPRECATED;
 
     /**
      * Sets the \a color used for lines in the scalebar.
      * \see lineColor()
-     * \deprecated QGIS 3.40. Use setLineSymbol() instead.
+     * \deprecated use setLineSymbol() instead
      */
     Q_DECL_DEPRECATED void setLineColor( const QColor &color ) SIP_DEPRECATED;
 
     /**
      * Returns the line width in millimeters for lines in the scalebar.
      * \see setLineWidth()
-     * \deprecated QGIS 3.40. Use lineSymbol() instead.
+     * \deprecated use lineSymbol() instead
      */
     Q_DECL_DEPRECATED double lineWidth() const SIP_DEPRECATED;
 
     /**
      * Sets the line \a width in millimeters for lines in the scalebar.
      * \see lineWidth()
-     * \deprecated QGIS 3.40. Use setLineSymbol() instead.
+     * \deprecated use setLineSymbol() instead
      */
     Q_DECL_DEPRECATED void setLineWidth( double width ) SIP_DEPRECATED;
 
     /**
      * Returns the pen used for drawing outlines in the scalebar.
      * \see brush()
-     * \deprecated QGIS 3.40. Use lineSymbol() instead.
+     * \deprecated use lineSymbol() instead
      */
     Q_DECL_DEPRECATED QPen pen() const SIP_DEPRECATED;
 
@@ -437,7 +438,7 @@ class CORE_EXPORT QgsLayoutItemScaleBar: public QgsLayoutItem
      * \returns QBrush used for filling the scalebar
      * \see brush2
      * \see pen
-     * \deprecated QGIS 3.40. Use fillSymbol() instead.
+     * \deprecated use fillSymbol() instead
      */
     Q_DECL_DEPRECATED QBrush brush() const SIP_DEPRECATED;
 
@@ -446,7 +447,7 @@ class CORE_EXPORT QgsLayoutItemScaleBar: public QgsLayoutItem
      * as single and double box styles.
      * \returns QBrush used for secondary color areas
      * \see brush
-     * \deprecated QGIS 3.40. Use alternateFillSymbol() instead.
+     * \deprecated use alternateFillSymbol() instead
      */
     Q_DECL_DEPRECATED QBrush brush2() const SIP_DEPRECATED;
 
@@ -503,78 +504,78 @@ class CORE_EXPORT QgsLayoutItemScaleBar: public QgsLayoutItem
      * \see setLabelVerticalPlacement()
      * \since QGIS 3.10
      */
-    Qgis::ScaleBarDistanceLabelVerticalPlacement labelVerticalPlacement() const { return mSettings.labelVerticalPlacement(); }
+    QgsScaleBarSettings::LabelVerticalPlacement labelVerticalPlacement() const { return mSettings.labelVerticalPlacement(); }
 
     /**
      * Sets the vertical \a placement of text labels.
      * \see labelVerticalPlacement()
      * \since QGIS 3.10
      */
-    void setLabelVerticalPlacement( Qgis::ScaleBarDistanceLabelVerticalPlacement placement );
+    void setLabelVerticalPlacement( QgsScaleBarSettings::LabelVerticalPlacement placement );
 
     /**
      * Returns the horizontal placement of text labels.
      * \see setLabelHorizontalPlacement()
      * \since QGIS 3.10
      */
-    Qgis::ScaleBarDistanceLabelHorizontalPlacement labelHorizontalPlacement() const { return mSettings.labelHorizontalPlacement(); }
+    QgsScaleBarSettings::LabelHorizontalPlacement labelHorizontalPlacement() const { return mSettings.labelHorizontalPlacement(); }
 
     /**
      * Sets the horizontal \a placement of text labels.
      * \see labelHorizontalPlacement()
      * \since QGIS 3.10
      */
-    void setLabelHorizontalPlacement( Qgis::ScaleBarDistanceLabelHorizontalPlacement placement );
+    void setLabelHorizontalPlacement( QgsScaleBarSettings::LabelHorizontalPlacement placement );
 
     /**
      * Returns the scalebar alignment.
      * \see setAlignment()
      */
-    Qgis::ScaleBarAlignment alignment() const { return mSettings.alignment(); }
+    QgsScaleBarSettings::Alignment alignment() const { return mSettings.alignment(); }
 
     /**
      * Sets the scalebar \a alignment.
      * \see alignment()
      */
-    void setAlignment( Qgis::ScaleBarAlignment alignment );
+    void setAlignment( QgsScaleBarSettings::Alignment alignment );
 
     /**
      * Returns the distance units used by the scalebar.
      * \see setUnits()
      */
-    Qgis::DistanceUnit units() const { return mSettings.units(); }
+    QgsUnitTypes::DistanceUnit units() const { return mSettings.units(); }
 
     /**
      * Sets the distance \a units used by the scalebar.
      * \see units()
      */
-    void setUnits( Qgis::DistanceUnit units );
+    void setUnits( QgsUnitTypes::DistanceUnit units );
 
     /**
      * Returns the join style used for drawing lines in the scalebar.
      * \see setLineJoinStyle()
-     * \deprecated QGIS 3.40. Use lineSymbol() instead.
+     * \deprecated use lineSymbol() instead
      */
     Q_DECL_DEPRECATED Qt::PenJoinStyle lineJoinStyle() const SIP_DEPRECATED;
 
     /**
      * Sets the join \a style used when drawing the lines in the scalebar
      * \see lineJoinStyle()
-     * \deprecated QGIS 3.40. Use setLineSymbol() instead.
+     * \deprecated use setLineSymbol() instead
      */
     Q_DECL_DEPRECATED void setLineJoinStyle( Qt::PenJoinStyle style ) SIP_DEPRECATED;
 
     /**
      * Returns the cap style used for drawing lines in the scalebar.
      * \see setLineCapStyle()
-     * \deprecated QGIS 3.40. Use lineSymbol() instead.
+     * \deprecated use lineSymbol() instead
      */
     Q_DECL_DEPRECATED Qt::PenCapStyle lineCapStyle() const SIP_DEPRECATED;
 
     /**
      * Sets the cap \a style used when drawing the lines in the scalebar.
      * \see lineCapStyle()
-     * \deprecated QGIS 3.40. Use setLineSymbol() instead.
+     * \deprecated use setLineSymbol() instead
      */
     Q_DECL_DEPRECATED void setLineCapStyle( Qt::PenCapStyle style ) SIP_DEPRECATED;
 
@@ -600,13 +601,13 @@ class CORE_EXPORT QgsLayoutItemScaleBar: public QgsLayoutItem
      * This method also considers the linked map's CRS, in order to determine if
      * metric or imperial units are more appropriate.
      */
-    Qgis::DistanceUnit guessUnits() const;
+    QgsUnitTypes::DistanceUnit guessUnits() const;
 
     /**
      * Applies the default size to the scale bar (scale bar 1/5 of map item width)
      * \see applyDefaultSettings()
      */
-    void applyDefaultSize( Qgis::DistanceUnit units = Qgis::DistanceUnit::Meters );
+    void applyDefaultSize( QgsUnitTypes::DistanceUnit units = QgsUnitTypes::DistanceMeters );
 
     /**
      * Resizes the scale bar to its minimum width, without changing the height.
@@ -649,27 +650,11 @@ class CORE_EXPORT QgsLayoutItemScaleBar: public QgsLayoutItem
     void setNumericFormat( QgsNumericFormat *format SIP_TRANSFER );
 
     /**
-     * Returns the scale calculation method, which determines how the bar's scale will be calculated.
-     *
-     * \see setMethod()
-     * \since QGIS 3.40
-     */
-    Qgis::ScaleCalculationMethod method() const;
-
-    /**
-     * Sets the scale calculation \a method, which determines how the bar's scale will be calculated.
-     *
-     * \see method()
-     * \since QGIS 3.40
-     */
-    void setMethod( Qgis::ScaleCalculationMethod method );
-
-    /**
      * Adjusts the scale bar box size and updates the item.
      */
     void update();
 
-    void refreshDataDefinedProperty( QgsLayoutObject::DataDefinedProperty property = QgsLayoutObject::DataDefinedProperty::AllProperties ) override;
+    void refreshDataDefinedProperty( QgsLayoutObject::DataDefinedProperty property = QgsLayoutObject::AllProperties ) override;
     void finalizeRestoreFromXml() override;
     bool accept( QgsStyleEntityVisitorInterface *visitor ) const override;
     ExportLayerBehavior exportLayerBehavior() const override;
@@ -691,7 +676,6 @@ class CORE_EXPORT QgsLayoutItemScaleBar: public QgsLayoutItem
     QString mMapUuid;
 
     QgsScaleBarSettings mSettings;
-    Qgis::ScaleCalculationMethod mMethod = Qgis::ScaleCalculationMethod::HorizontalAverage;
 
     //! Scalebar style
     std::unique_ptr< QgsScaleBarRenderer > mStyle;
@@ -702,7 +686,7 @@ class CORE_EXPORT QgsLayoutItemScaleBar: public QgsLayoutItem
     //! Calculates width of a segment in mm and stores it in mSegmentMillimeters
     void refreshSegmentMillimeters();
 
-    //! Returns diagonal of layout map in selected units (map units / meters / feet / nautical miles), or NaN if width cannot be calculated.
+    //! Returns diagonal of layout map in selected units (map units / meters / feet / nautical miles)
     double mapWidth() const;
 
     QgsScaleBarRenderer::ScaleBarContext createScaleContext() const;

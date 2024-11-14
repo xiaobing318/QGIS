@@ -20,7 +20,6 @@
 #include "qgshanaconnectionpool.h"
 #include "qgshanaexception.h"
 #include "qgshanadataitems.h"
-#include "moc_qgshanadataitems.cpp"
 #include "qgshanasettings.h"
 #include "qgshanautils.h"
 #include "qgslogger.h"
@@ -176,7 +175,7 @@ bool QgsHanaConnectionItem::handleDrop( const QMimeData *data, const QString &to
         if ( geomColumn.isEmpty() )
         {
           bool fieldsInUpperCase = QgsHanaUtils::countFieldsWithFirstLetterInUppercase( srcLayer->fields() ) > srcLayer->fields().size() / 2;
-          geomColumn = ( srcLayer->geometryType() != Qgis::GeometryType::Null ) ? ( fieldsInUpperCase ? QStringLiteral( "GEOM" ) : QStringLiteral( "geom" ) ) : nullptr;
+          geomColumn = ( srcLayer->geometryType() != QgsWkbTypes::NullGeometry ) ? ( fieldsInUpperCase ? QStringLiteral( "GEOM" ) : QStringLiteral( "geom" ) ) : nullptr;
         }
 
         uri.setDataSource( toSchema, u.name, geomColumn, QString(), dsUri.keyColumn() );
@@ -265,7 +264,7 @@ QString QgsHanaLayerItem::createUri() const
 
   if ( !connItem )
   {
-    QgsDebugError( "Connection item not found." );
+    QgsDebugMsg( "Connection item not found." );
     return QString();
   }
 
@@ -291,7 +290,7 @@ QString QgsHanaLayerItem::createUri() const
   uri.setDataSource( mLayerProperty.schemaName, mLayerProperty.tableName,
                      mLayerProperty.geometryColName, mLayerProperty.sql, pkColumns.join( ',' ) );
   uri.setWkbType( mLayerProperty.type );
-  if ( uri.wkbType() != Qgis::WkbType::NoGeometry )
+  if ( uri.wkbType() != QgsWkbTypes::NoGeometry )
     uri.setSrid( QString::number( mLayerProperty.srid ) );
   QgsDebugMsgLevel( QStringLiteral( "layer uri: %1" ).arg( uri.uri( false ) ), 4 );
   return uri.uri( false );
@@ -375,16 +374,16 @@ QgsHanaLayerItem *QgsHanaSchemaItem::createLayer( const QgsHanaLayerProperty &la
     if ( !layerProperty.tableComment.isEmpty() )
       tip = layerProperty.tableComment + '\n' + tip;
 
-    Qgis::GeometryType geomType = QgsWkbTypes::geometryType( layerProperty.type );
+    QgsWkbTypes::GeometryType geomType = QgsWkbTypes::geometryType( layerProperty.type );
     switch ( geomType )
     {
-      case Qgis::GeometryType::Point:
+      case QgsWkbTypes::PointGeometry:
         layerType = Qgis::BrowserLayerType::Point;
         break;
-      case Qgis::GeometryType::Line:
+      case QgsWkbTypes::LineGeometry:
         layerType = Qgis::BrowserLayerType::Line;
         break;
-      case Qgis::GeometryType::Polygon:
+      case QgsWkbTypes::PolygonGeometry:
         layerType = Qgis::BrowserLayerType::Polygon;
         break;
       default:

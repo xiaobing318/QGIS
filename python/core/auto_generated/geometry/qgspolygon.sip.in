@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/geometry/qgspolygon.h                                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -14,6 +14,8 @@ class QgsPolygon: QgsCurvePolygon
 {
 %Docstring(signature="appended")
 Polygon geometry type.
+
+.. versionadded:: 2.10
 %End
 
 %TypeHeaderCode
@@ -48,8 +50,6 @@ Ownership of ``exterior`` and ``rings`` is transferred to the polygon.
 
     virtual QByteArray asWkb( QgsAbstractGeometry::WkbFlags flags = QgsAbstractGeometry::WkbFlags() ) const;
 
-    virtual QString asWkt( int precision = 17 ) const;
-
     virtual QgsPolygon *surfaceToPolygon() const /Factory/;
 
 
@@ -74,6 +74,8 @@ Returns the geometry converted to the more generic curve type :py:class:`QgsCurv
 Returns the distance from a point to the boundary of the polygon (either the
 exterior ring or any closer interior rings). The returned distance will be
 negative if the point lies outside the polygon.
+
+.. versionadded:: 3.0
 %End
 
 
@@ -98,5 +100,5 @@ negative if the point lies outside the polygon.
  *                                                                      *
  * src/core/geometry/qgspolygon.h                                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

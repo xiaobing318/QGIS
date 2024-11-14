@@ -18,7 +18,6 @@
 #include <QVersionNumber>
 
 #include "qgsexpressiontreeview.h"
-#include "moc_qgsexpressiontreeview.cpp"
 #include "qgis.h"
 #include "qgsvectorlayer.h"
 #include "qgsexpressioncontextutils.h"

@@ -51,11 +51,12 @@ class CORE_EXPORT QgsAuthMethodRegistry
     //! Means of accessing canonical single instance
     static QgsAuthMethodRegistry *instance( const QString &pluginPath = QString() );
 
+    //! Virtual dectructor
     virtual ~QgsAuthMethodRegistry();
 
     /**
     * Returns path for the library of the auth method
-    * \deprecated QGIS 3.22. Methods may not need to be loaded from a library (empty string returned).
+    * \deprecated since QGIS 3.22 - methods may not need to be loaded from a library (empty string returned)
     */
     Q_DECL_DEPRECATED QString library( const QString &authMethodKey ) const SIP_DEPRECATED;
 

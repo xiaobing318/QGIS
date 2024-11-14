@@ -21,9 +21,6 @@
 #include <attributetable/qgsdualview.h>
 #include <editform/qgsattributeeditorhtmlelement.h>
 #include "qgsattributeform.h"
-#include "qgsattributeeditorcontainer.h"
-#include "qgsattributeeditorfield.h"
-#include "qgsattributeformeditorwidget.h"
 #include <qgsapplication.h>
 #include "qgsfeatureiterator.h"
 #include <qgsvectorlayer.h>
@@ -60,8 +57,6 @@ class TestQgsDualView : public QObject
 
     void testAttributeFormSharedValueScanning();
     void testNoGeom();
-
-    void testDuplicateField();
 
 #ifdef WITH_QTWEBKIT
     void testHtmlWidget_data();
@@ -332,7 +327,7 @@ void TestQgsDualView::testNoGeom()
   // check that both master model AND cache are using geometry
   QgsAttributeTableModel *model = dv->masterModel();
   QVERIFY( model->layerCache()->cacheGeometry() );
-  QVERIFY( !( model->request().flags() & Qgis::FeatureRequestFlag::NoGeometry ) );
+  QVERIFY( !( model->request().flags() & QgsFeatureRequest::NoGeometry ) );
 
   // request with NO geometry, but using filter rect (which should override and request geom)
   req = QgsFeatureRequest().setFilterRect( QgsRectangle( 1, 2, 3, 4 ) );
@@ -340,26 +335,15 @@ void TestQgsDualView::testNoGeom()
   dv->init( mPointsLayer, mCanvas, req );
   model = dv->masterModel();
   QVERIFY( model->layerCache()->cacheGeometry() );
-  QVERIFY( !( model->request().flags() & Qgis::FeatureRequestFlag::NoGeometry ) );
+  QVERIFY( !( model->request().flags() & QgsFeatureRequest::NoGeometry ) );
 
   // request with NO geometry
-  req = QgsFeatureRequest().setFlags( Qgis::FeatureRequestFlag::NoGeometry );
+  req = QgsFeatureRequest().setFlags( QgsFeatureRequest::NoGeometry );
   dv.reset( new QgsDualView() );
   dv->init( mPointsLayer, mCanvas, req );
   model = dv->masterModel();
   QVERIFY( !model->layerCache()->cacheGeometry() );
-  QVERIFY( ( model->request().flags() & Qgis::FeatureRequestFlag::NoGeometry ) );
-
-  // request with NO geometry but with an ordering expression which does
-  req = QgsFeatureRequest().setFlags( Qgis::FeatureRequestFlag::NoGeometry );
-  dv.reset( new QgsDualView() );
-  dv->init( mPointsLayer, mCanvas, req );
-  auto config = mPointsLayer->attributeTableConfig();
-  config.setSortExpression( "$x" );
-  dv->setAttributeTableConfig( config );
-  model = dv->masterModel();
-  QVERIFY( model->layerCache()->cacheGeometry() );
-  QVERIFY( !( model->request().flags() & Qgis::FeatureRequestFlag::NoGeometry ) );
+  QVERIFY( ( model->request().flags() & QgsFeatureRequest::NoGeometry ) );
 }
 
 #ifdef WITH_QTWEBKIT
@@ -394,11 +378,11 @@ void TestQgsDualView::testHtmlWidget()
   QgsAttributeEditorHtmlElement *htmlElement = new QgsAttributeEditorHtmlElement( "HtmlWidget", nullptr );
   htmlElement->setHtmlCode( QStringLiteral( "The text is '<script>document.write(expression.evaluate(\"%1\"));</script>'" ).arg( expression ) );
   editFormConfig.addTab( htmlElement );
-  editFormConfig.setLayout( Qgis::AttributeFormLayout::DragAndDrop );
+  editFormConfig.setLayout( QgsEditFormConfig::TabLayout );
   layer.setEditFormConfig( editFormConfig );
 
   QgsFeatureRequest request;
-  request.setFlags( Qgis::FeatureRequestFlag::NoGeometry );
+  request.setFlags( QgsFeatureRequest::NoGeometry );
 
   QgsDualView dualView;
   dualView.setView( QgsDualView::AttributeEditor );
@@ -408,67 +392,6 @@ void TestQgsDualView::testHtmlWidget()
   QgsProject::instance()->removeMapLayer( &layer );
 }
 #endif
-
-void TestQgsDualView::testDuplicateField()
-{
-  // test updating same field appearing in different widget
-
-  // make a temporary vector layer
-  const QString def = QStringLiteral( "Point?field=col0:integer" );
-  QgsVectorLayer *layer = new QgsVectorLayer( def, QStringLiteral( "test" ), QStringLiteral( "memory" ) );
-  layer->setEditorWidgetSetup( 0, QgsEditorWidgetSetup( QStringLiteral( "Range" ), QVariantMap() ) );
-
-  // add same field twice so they get synced
-  QgsEditFormConfig editFormConfig = layer->editFormConfig();
-  editFormConfig.clearTabs();
-  editFormConfig.invisibleRootContainer()->addChildElement( new QgsAttributeEditorField( "col0", 0, editFormConfig.invisibleRootContainer() ) );
-  editFormConfig.invisibleRootContainer()->addChildElement( new QgsAttributeEditorField( "col0", 0, editFormConfig.invisibleRootContainer() ) );
-  editFormConfig.setLayout( Qgis::AttributeFormLayout::DragAndDrop );
-  layer->setEditFormConfig( editFormConfig );
-
-  // add a feature to the vector layer
-  QgsFeature ft( layer->dataProvider()->fields(), 1 );
-  ft.setAttribute( QStringLiteral( "col0" ), 1 );
-  layer->dataProvider()->addFeature( ft );
-
-  QgsDualView dualView;
-  dualView.init( layer, mCanvas );
-
-  layer->startEditing();
-
-  const QList<QgsAttributeFormEditorWidget *> formEditorWidgets = dualView.mAttributeForm->mFormEditorWidgets.values( 0 );
-
-  // reset mIsChanged state
-  formEditorWidgets[0]->changesCommitted();
-  formEditorWidgets[1]->changesCommitted();
-  QVERIFY( !formEditorWidgets[0]->hasChanged() );
-  QVERIFY( !formEditorWidgets[1]->hasChanged() );
-
-  formEditorWidgets[0]->editorWidget()->setValues( 20, QVariantList() );
-  QCOMPARE( formEditorWidgets[0]->editorWidget()->value().toInt(), 20 );
-  QCOMPARE( formEditorWidgets[1]->editorWidget()->value().toInt(), 20 );
-  QVERIFY( formEditorWidgets[0]->hasChanged() );
-  QVERIFY( formEditorWidgets[1]->hasChanged() );
-  ft = layer->getFeature( ft.id() );
-  QCOMPARE( ft.attribute( QStringLiteral( "col0" ) ).toInt(), 20 );
-
-  // reset mIsChanged state
-  formEditorWidgets[0]->changesCommitted();
-  formEditorWidgets[1]->changesCommitted();
-  QVERIFY( !formEditorWidgets[0]->hasChanged() );
-  QVERIFY( !formEditorWidgets[1]->hasChanged() );
-
-  formEditorWidgets[1]->editorWidget()->setValues( 21, QVariantList() );
-  QCOMPARE( formEditorWidgets[0]->editorWidget()->value().toInt(), 21 );
-  QCOMPARE( formEditorWidgets[1]->editorWidget()->value().toInt(), 21 );
-  QVERIFY( formEditorWidgets[0]->hasChanged() );
-  QVERIFY( formEditorWidgets[1]->hasChanged() );
-  ft = layer->getFeature( ft.id() );
-  QCOMPARE( ft.attribute( QStringLiteral( "col0" ) ).toInt(), 21 );
-
-  layer->rollBack();
-}
-
 
 QGSTEST_MAIN( TestQgsDualView )
 #include "testqgsdualview.moc"

@@ -15,6 +15,7 @@
 #include "qgstest.h"
 #include "qgsproject.h"
 #include "qgspointcloudlayer.h"
+#include "qgspointcloudattribute.h"
 #include "qgspointcloudlayerexporter.h"
 
 class TestQgsPointCloudLayerExporter: public QObject
@@ -90,7 +91,7 @@ void TestQgsPointCloudLayerExporter::testScratchLayer()
   QgsVectorLayer *result = qgis::down_cast<QgsVectorLayer *>( exp.takeExportedLayer() );
 
   QVERIFY( result->isValid() );
-  QCOMPARE( result->wkbType(), Qgis::WkbType::PointZ );
+  QCOMPARE( result->wkbType(), QgsWkbTypes::PointZ );
   QCOMPARE( result->featureCount(), 134 );
   QCOMPARE( result->dataProvider()->featureCount(), 134 );
   QCOMPARE( result->crs(), mLayer->crs() );
@@ -336,7 +337,7 @@ void TestQgsPointCloudLayerExporter::testScratchLayerCrs()
   QgsVectorLayer *result = qgis::down_cast<QgsVectorLayer *>( exp.takeExportedLayer() );
 
   QVERIFY( result->isValid() );
-  QCOMPARE( result->wkbType(), Qgis::WkbType::PointZ );
+  QCOMPARE( result->wkbType(), QgsWkbTypes::PointZ );
   QCOMPARE( result->featureCount(), 134 );
   QCOMPARE( result->dataProvider()->featureCount(), 134 );
   QCOMPARE( result->crs(), differentCrs );
@@ -381,7 +382,7 @@ void TestQgsPointCloudLayerExporter::testOgrFile()
   QgsVectorLayer *result = qgis::down_cast<QgsVectorLayer *>( exp.takeExportedLayer() );
 
   QVERIFY( result->isValid() );
-  QCOMPARE( result->wkbType(), Qgis::WkbType::PointZ );
+  QCOMPARE( result->wkbType(), QgsWkbTypes::PointZ );
   QCOMPARE( result->featureCount(), 134 );
   delete result;
 }

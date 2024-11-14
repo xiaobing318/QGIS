@@ -18,10 +18,9 @@
 #define QGSSETTINGSREGISTRYGUI_H
 
 #include "qgis_gui.h"
+#include "qgis_sip.h"
 #include "qgssettingsregistry.h"
-
-
-class QgsSettingsEntryBool;
+#include "qgssettingsentryimpl.h"
 
 /**
  * \ingroup gui
@@ -31,19 +30,26 @@ class QgsSettingsEntryBool;
  *
  * \since QGIS 3.22
  */
-Q_NOWARN_DEPRECATED_PUSH
 class GUI_EXPORT QgsSettingsRegistryGui : public QgsSettingsRegistry
 {
-    Q_NOWARN_UNREACHABLE_POP
-    // TODO QGIS 4 do not inherit QgsSettingsRegistry
   public:
 
+    /**
+     * Constructor for QgsSettingsRegistryGui.
+     */
     QgsSettingsRegistryGui();
+
+    /**
+     * Destructor for QgsSettingsRegistryGui.
+     */
     virtual ~QgsSettingsRegistryGui();
 
 #ifndef SIP_RUN
     //! Settings entry respect screen dpi
-    static const QgsSettingsEntryBool *settingsRespectScreenDPI;
+    static const inline QgsSettingsEntryBool settingsRespectScreenDPI = QgsSettingsEntryBool( QStringLiteral( "respect_screen_dpi" ), QgsSettings::Prefix::GUI_QGIS, false );
+
+    //! Check for plugin updates automatically on startup
+    static const inline QgsSettingsEntryBool settingsAutomaticallyCheckForPluginUpdates = QgsSettingsEntryBool( QStringLiteral( "automatically-check-for-updates" ), QgsSettings::Prefix::PLUGINS, true, QStringLiteral( "Automatically check for plugin updates on startup" ) );
 
 #endif
 

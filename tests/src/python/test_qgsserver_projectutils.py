@@ -20,8 +20,6 @@ from qgis.testing import unittest, start_app
 from unittest import mock
 from utilities import unitTestDataPath
 
-start_app()
-
 
 class TestQgsServerProjectUtils(unittest.TestCase):
 

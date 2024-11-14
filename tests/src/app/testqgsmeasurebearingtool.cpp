@@ -56,7 +56,7 @@ TestQgsMeasureBearingTool::TestQgsMeasureBearingTool() = default;
 //runs before all tests
 void TestQgsMeasureBearingTool::initTestCase()
 {
-  qDebug() << "TestQgsMeasureBearingTool::initTestCase()";
+  qDebug() << "TestQgisAppClipboard::initTestCase()";
   // init QGIS's paths - true means that all path will be inited from prefix
   QgsApplication::init();
   QgsApplication::initQgis();

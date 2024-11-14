@@ -11,34 +11,32 @@ __copyright__ = 'Copyright 2019, The QGIS Project'
 
 import os
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import QTemporaryDir
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (
-    Qgis,
-    QgsCoordinateReferenceSystem,
-    QgsFeature,
-    QgsGeometry,
-    QgsPointXY,
-    QgsProject,
-    QgsProjectViewSettings,
-    QgsRasterLayer,
-    QgsReadWriteContext,
-    QgsRectangle,
-    QgsReferencedRectangle,
-    QgsVectorLayer,
-)
+from qgis.core import (QgsProject,
+                       QgsProjectViewSettings,
+                       QgsReadWriteContext,
+                       QgsReferencedRectangle,
+                       QgsRectangle,
+                       QgsCoordinateReferenceSystem,
+                       QgsVectorLayer,
+                       QgsFeature,
+                       QgsGeometry,
+                       QgsPointXY,
+                       QgsRasterLayer,
+                       Qgis)
 from qgis.gui import QgsMapCanvas
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
-from utilities import unitTestDataPath
+from utilities import (unitTestDataPath)
 
 app = start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestQgsProjectViewSettings(QgisTestCase):
+class TestQgsProjectViewSettings(unittest.TestCase):
 
     def testMapScales(self):
         p = QgsProjectViewSettings()

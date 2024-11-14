@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgsauthesritokenmethod.h"
-#include "moc_qgsauthesritokenmethod.cpp"
 
 #include "qgsauthmanager.h"
 #include "qgslogger.h"
@@ -68,7 +67,7 @@ bool QgsAuthEsriTokenMethod::updateNetworkRequest( QNetworkRequest &request, con
   const QgsAuthMethodConfig config = getMethodConfig( authcfg );
   if ( !config.isValid() )
   {
-    QgsDebugError( QStringLiteral( "Update request config FAILED for authcfg: %1: config invalid" ).arg( authcfg ) );
+    QgsDebugMsg( QStringLiteral( "Update request config FAILED for authcfg: %1: config invalid" ).arg( authcfg ) );
     return false;
   }
 
@@ -105,14 +104,14 @@ QgsAuthMethodConfig QgsAuthEsriTokenMethod::getMethodConfig( const QString &auth
   if ( sAuthConfigCache.contains( authcfg ) )
   {
     mconfig = sAuthConfigCache.value( authcfg );
-    QgsDebugMsgLevel( QStringLiteral( "Retrieved config for authcfg: %1" ).arg( authcfg ), 2 );
+    QgsDebugMsg( QStringLiteral( "Retrieved config for authcfg: %1" ).arg( authcfg ) );
     return mconfig;
   }
 
   // else build basic bundle
   if ( !QgsApplication::authManager()->loadAuthenticationConfig( authcfg, mconfig, fullconfig ) )
   {
-    QgsDebugError( QStringLiteral( "Retrieve config FAILED for authcfg: %1" ).arg( authcfg ) );
+    QgsDebugMsg( QStringLiteral( "Retrieve config FAILED for authcfg: %1" ).arg( authcfg ) );
     return QgsAuthMethodConfig();
   }
 

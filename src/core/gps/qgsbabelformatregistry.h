@@ -17,8 +17,6 @@
 #define QGSBABELFORMATREGISTRY_H
 
 #include "qgis_core.h"
-#include "qgssettingstree.h"
-#include "qgssettingsentryimpl.h"
 #include "qgis.h"
 
 class QgsBabelSimpleImportFormat;
@@ -38,18 +36,6 @@ class CORE_EXPORT QgsBabelFormatRegistry
 {
   public:
 
-#ifndef SIP_RUN
-
-    static inline QgsSettingsTreeNamedListNode *sTreeBabelDevices = QgsSettingsTree::sTreeGps->createNamedListNode( QStringLiteral( "babel-devices" ) );
-
-    static const QgsSettingsEntryString *settingsBabelWptDownload;
-    static const QgsSettingsEntryString *settingsBabelWptUpload;
-    static const QgsSettingsEntryString *settingsBabelRteDownload;
-    static const QgsSettingsEntryString *settingsBabelRteUpload;
-    static const QgsSettingsEntryString *settingsBabelTrkDownload;
-    static const QgsSettingsEntryString *settingsBabelTrkUpload;
-#endif
-
     /**
      * Constructor for QgsBabelFormatRegistry.
      *
@@ -59,7 +45,9 @@ class CORE_EXPORT QgsBabelFormatRegistry
     QgsBabelFormatRegistry();
     ~QgsBabelFormatRegistry();
 
+    //! QgsBabelFormatRegistry cannot be copied.
     QgsBabelFormatRegistry( const QgsBabelFormatRegistry &rh ) = delete;
+    //! QgsBabelFormatRegistry cannot be copied.
     QgsBabelFormatRegistry &operator=( const QgsBabelFormatRegistry &rh ) = delete;
 
     /**

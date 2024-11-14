@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/layout/qgslayoutitemlabel.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -13,6 +13,8 @@ class QgsLayoutItemLabel: QgsLayoutItem
 {
 %Docstring(signature="appended")
 A layout item subclass for text labels.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -104,9 +106,8 @@ Returns the label's current font.
 
 .. seealso:: :py:func:`setFont`
 
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsLayoutItemLabel.textFormat` instead (since QGIS 3.24).
+.. deprecated::
+   use :py:func:`~QgsLayoutItemLabel.textFormat` instead (since QGIS 3.24)
 %End
 
  void setFont( const QFont &font ) /Deprecated/;
@@ -115,9 +116,8 @@ Sets the label's current ``font``.
 
 .. seealso:: :py:func:`font`
 
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsLayoutItemLabel.setTextFormat` instead (since QGIS 3.24).
+.. deprecated::
+   use :py:func:`~QgsLayoutItemLabel.setTextFormat` instead (since QGIS 3.24)
 %End
 
     Qt::AlignmentFlag vAlign() const;
@@ -216,9 +216,8 @@ Sets the label font ``color``.
 
 .. seealso:: :py:func:`fontColor`
 
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsLayoutItemLabel.setTextFormat` instead (since QGIS 3.24).
+.. deprecated::
+   Use :py:func:`~QgsLayoutItemLabel.setTextFormat` instead (since QGIS 3.24)
 %End
 
  QColor fontColor() const /Deprecated/;
@@ -227,16 +226,18 @@ Returns the label font color.
 
 .. seealso:: :py:func:`setFontColor`
 
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsLayoutItemLabel.textFormat` instead (since QGIS 3.24).
+.. deprecated::
+   use :py:func:`~QgsLayoutItemLabel.textFormat` instead (since QGIS 3.24)
 %End
 
     virtual QRectF boundingRect() const;
 
+
     virtual void setFrameEnabled( bool drawFrame );
 
+
     virtual void setFrameStrokeWidth( QgsLayoutMeasurement strokeWidth );
+
 
 
     QgsTextFormat textFormat() const;
@@ -285,5 +286,5 @@ and replacing them with their current values.
  *                                                                      *
  * src/core/layout/qgslayoutitemlabel.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

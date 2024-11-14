@@ -32,6 +32,7 @@ class QgsFields;
 /**
  * \ingroup analysis
  * \brief Interpolation in a triangular irregular network
+ * \since QGIS 3.0
 */
 class ANALYSIS_EXPORT QgsTinInterpolator: public QgsInterpolator
 {
@@ -59,6 +60,7 @@ class ANALYSIS_EXPORT QgsTinInterpolator: public QgsInterpolator
      * These fields should be used when creating
      * a suitable feature sink for setTriangulationSink()
      * \see setTriangulationSink()
+     * \since QGIS 3.0
      */
     static QgsFields triangulationFields();
 
@@ -69,6 +71,7 @@ class ANALYSIS_EXPORT QgsTinInterpolator: public QgsInterpolator
      * those returned by triangulationFields().
      *
      * \see triangulationFields()
+     *  \since QGIS 3.0
      */
     void setTriangulationSink( QgsFeatureSink *sink );
 

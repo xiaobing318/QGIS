@@ -22,8 +22,7 @@
 #include "qgis_app.h"
 #include "qgsgeometry.h"
 #include "qobjectuniqueptr.h"
-#include "qgselevationprofilelayertreeview.h"
-#include "ui_qgselevationprofileaddlayersdialogbase.h"
+#include "qgssettingsentryimpl.h"
 
 #include <QWidgetAction>
 #include <QElapsedTimer>
@@ -43,60 +42,21 @@ class QgsPlotToolZoom;
 class QgsPlotToolXAxisZoom;
 class QgsDoubleSpinBox;
 class QgsElevationProfileWidgetSettingsAction;
+class QgsElevationProfileLayerTreeView;
 class QgsLayerTree;
 class QgsLayerTreeRegistryBridge;
 class QgsElevationProfileToolIdentify;
 class QgsElevationProfileToolMeasure;
 class QLabel;
 class QgsProfilePoint;
-class QgsSettingsEntryDouble;
-class QgsSettingsEntryBool;
-class QgsSettingsEntryString;
-class QgsSettingsEntryColor;
-class QgsMapLayerProxyModel;
-
-class QgsAppElevationProfileLayerTreeView : public QgsElevationProfileLayerTreeView
-{
-    Q_OBJECT
-  public:
-
-    explicit QgsAppElevationProfileLayerTreeView( QgsLayerTree *rootNode, QWidget *parent = nullptr );
-
-  protected:
-
-    void contextMenuEvent( QContextMenuEvent *event ) override;
-};
-
-class QgsElevationProfileLayersDialog: public QDialog, private Ui::QgsElevationProfileAddLayersDialogBase
-{
-    Q_OBJECT
-
-  public:
-    QgsElevationProfileLayersDialog( QWidget *parent = nullptr );
-    void setVisibleLayers( const QList<QgsMapLayer *> &layers );
-    void setHiddenLayers( const QList<QgsMapLayer *> &layers );
-    QList< QgsMapLayer * > selectedLayers() const;
-
-  private slots:
-
-    void filterVisible( bool enabled );
-
-  private:
-
-    QgsMapLayerProxyModel *mModel = nullptr;
-    QList< QgsMapLayer * > mVisibleLayers;
-};
 
 class QgsElevationProfileWidget : public QWidget
 {
     Q_OBJECT
   public:
 
-    static const QgsSettingsEntryDouble *settingTolerance;
-    static const QgsSettingsEntryBool *settingShowLayerTree;
-    static const QgsSettingsEntryBool *settingLockAxis;
-    static const QgsSettingsEntryString *settingLastExportDir;
-    static const QgsSettingsEntryColor *settingBackgroundColor;
+    static const inline QgsSettingsEntryDouble settingTolerance = QgsSettingsEntryDouble( QStringLiteral( "tolerance" ), QgsSettings::Prefix::ELEVATION_PROFILE, 0.1, QStringLiteral( "Tolerance distance for elevation profile plots" ), Qgis::SettingsOptions(), 0 );
+    static const inline QgsSettingsEntryBool settingShowLayerTree = QgsSettingsEntryBool( QStringLiteral( "show-layer-tree" ), QgsSettings::Prefix::ELEVATION_PROFILE, true, QStringLiteral( "Whether the layer tree should be shown for elevation profile plots" ) );
 
     QgsElevationProfileWidget( const QString &name );
     ~QgsElevationProfileWidget();
@@ -108,8 +68,6 @@ class QgsElevationProfileWidget : public QWidget
 
     void setMainCanvas( QgsMapCanvas *canvas );
 
-    QgsElevationProfileCanvas *profileCanvas() { return mCanvas; }
-
     /**
      * Cancel any rendering job, in a blocking way. Used for application closing.
      */
@@ -119,8 +77,7 @@ class QgsElevationProfileWidget : public QWidget
     void toggleDockModeRequested( bool docked );
 
   private slots:
-    void addLayers();
-    void addLayersInternal( const QList<QgsMapLayer *> &layers );
+    void populateInitialLayers();
     void updateCanvasLayers();
     void onTotalPendingJobsCountChanged( int count );
     void setProfileCurve( const QgsGeometry &curve, bool resetView );
@@ -130,13 +87,9 @@ class QgsElevationProfileWidget : public QWidget
     void clear();
     void exportAsPdf();
     void exportAsImage();
-    void exportResults( Qgis::ProfileExportType type );
     void nudgeLeft();
     void nudgeRight();
     void nudgeCurve( Qgis::BufferSide side );
-    void axisScaleLockToggled( bool active );
-    void renameProfileTriggered();
-    void onProjectElevationPropertiesChanged();
 
   private:
     QgsElevationProfileCanvas *mCanvas = nullptr;
@@ -156,9 +109,6 @@ class QgsElevationProfileWidget : public QWidget
     QAction *mCaptureCurveFromFeatureAction = nullptr;
     QAction *mNudgeLeftAction = nullptr;
     QAction *mNudgeRightAction = nullptr;
-    QAction *mRenameProfileAction = nullptr;
-    QAction *mLockRatioAction = nullptr;
-    QMenu *mDistanceUnitMenu = nullptr;
 
     QgsDockableWidgetHelper *mDockableWidgetHelper = nullptr;
     std::unique_ptr< QgsMapToolProfileCurve > mCaptureCurveMapTool;

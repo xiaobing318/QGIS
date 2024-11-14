@@ -16,12 +16,10 @@
  ***************************************************************************/
 
 #include "qgsabout.h"
-#include "moc_qgsabout.cpp"
 #include "qgsapplication.h"
 #include "qgsauthmethodregistry.h"
 #include "qgsproviderregistry.h"
 #include "qgslogger.h"
-#include <QClipboard>
 #include <QDesktopServices>
 #include <QFile>
 #include <QTextStream>
@@ -31,30 +29,18 @@
 #include <QUrl>
 #include <QRegularExpression>
 
-#ifdef Q_OS_MACOS
-// Modeless dialog with close button only
-constexpr Qt::WindowFlags kAboutWindowFlags = Qt::WindowSystemMenuHint;
-#else
-// Normal dialog in non Mac-OS
-constexpr Qt::WindowFlags kAboutWindowFlags = Qt::WindowFlags();
-#endif
-
+#ifdef Q_OS_MACX
 QgsAbout::QgsAbout( QWidget *parent )
-  : QgsOptionsDialogBase( QStringLiteral( "about" ), parent, kAboutWindowFlags )
+  : QgsOptionsDialogBase( "about", parent, Qt::WindowSystemMenuHint )  // Modeless dialog with close button only
+#else
+QgsAbout::QgsAbout( QWidget * parent )
+  : QgsOptionsDialogBase( QStringLiteral( "about" ), parent )  // Normal dialog in non Mac-OS
+#endif
 {
   setupUi( this );
   connect( btnQgisUser, &QPushButton::clicked, this, &QgsAbout::btnQgisUser_clicked );
   connect( btnQgisHome, &QPushButton::clicked, this, &QgsAbout::btnQgisHome_clicked );
-  connect( btnCopyToClipboard, &QPushButton::clicked, this, &QgsAbout::btnCopyToClipboard_clicked );
-  if constexpr( QSysInfo::WordSize != 64 )
-  {
-    // 64 bit is the current standard. Only specify word size if it is not 64.
-    initOptionsBase( true, tr( "%1 - %2 Bit" ).arg( windowTitle() ).arg( QSysInfo::WordSize ) );
-  }
-  else
-  {
-    initOptionsBase( true );
-  }
+  initOptionsBase( true, QStringLiteral( "%1 - %2 Bit" ).arg( windowTitle() ).arg( QSysInfo::WordSize ) );
   init();
 }
 
@@ -102,7 +88,11 @@ void QgsAbout::init()
       //ignore the line if it starts with a hash....
       if ( !line.isEmpty() && line.at( 0 ) == '#' )
         continue;
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+      QStringList myTokens = line.split( '\t', QString::SkipEmptyParts );
+#else
       QStringList myTokens = line.split( '\t', Qt::SkipEmptyParts );
+#endif
       lines << myTokens[0];
     }
     file.close();
@@ -185,7 +175,7 @@ void QgsAbout::init()
     txtDonors->clear();
     txtDonors->document()->setDefaultStyleSheet( QgsApplication::reportStyleSheet() );
     txtDonors->setHtml( donorsHTML );
-    QgsDebugMsgLevel( QStringLiteral( "donorsHTML:%1" ).arg( donorsHTML.toLatin1().constData() ), 2 );
+    QgsDebugMsg( QStringLiteral( "donorsHTML:%1" ).arg( donorsHTML.toLatin1().constData() ) );
   }
 
   // read the TRANSLATORS file and populate the text widget
@@ -205,7 +195,7 @@ void QgsAbout::init()
       translatorHTML += translatorStream.readLine();
     }
     txtTranslators->setHtml( translatorHTML );
-    QgsDebugMsgLevel( QStringLiteral( "translatorHTML:%1" ).arg( translatorHTML.toLatin1().constData() ), 2 );
+    QgsDebugMsg( QStringLiteral( "translatorHTML:%1" ).arg( translatorHTML.toLatin1().constData() ) );
   }
   setWhatsNew();
   setLicence();
@@ -215,7 +205,10 @@ void QgsAbout::setLicence()
 {
   // read the DONORS file and populate the text widget
   QFile licenceFile( QgsApplication::licenceFilePath() );
-  QgsDebugMsgLevel( QStringLiteral( "Reading licence file %1" ).arg( licenceFile.fileName() ), 2 );
+#ifdef QGISDEBUG
+  printf( "Reading licence file %s.............................................\n",
+          licenceFile.fileName().toLocal8Bit().constData() );
+#endif
   if ( licenceFile.open( QIODevice::ReadOnly ) )
   {
     txtLicense->setText( licenceFile.readAll() );
@@ -227,7 +220,6 @@ void QgsAbout::setVersion( const QString &v )
   txtVersion->setBackgroundRole( QPalette::NoRole );
   txtVersion->setAutoFillBackground( true );
   txtVersion->setHtml( v );
-  mVersionString = v;
 }
 
 void QgsAbout::setWhatsNew()
@@ -273,11 +265,6 @@ void QgsAbout::setPluginInfo()
   txtProviders->clear();
   txtProviders->document()->setDefaultStyleSheet( myStyle );
   txtProviders->setText( myString );
-}
-
-void QgsAbout::btnCopyToClipboard_clicked()
-{
-  QGuiApplication::clipboard()->setText( mVersionString );
 }
 
 void QgsAbout::btnQgisUser_clicked()

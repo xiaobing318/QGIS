@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsmetadatawidget.h                                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -15,6 +15,8 @@ class QgsMetadataWidget : QWidget
 {
 %Docstring(signature="appended")
 A wizard to edit metadata on a map layer.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -120,14 +122,14 @@ Returns a list of licences available by default in the wizard.
 %Docstring
 Returns a list of link types available by default in the wizard.
 
-.. seealso:: https://github.com/OSGeo/Cat-Interop/blob/master/LinkPropertyLookupTable.csv
+.. seealso:: :py:func:`https`
 %End
 
     static QStringList parseMimeTypes();
 %Docstring
 Returns a list of MIME types available by default in the wizard.
 
-.. seealso:: https://fr.wikipedia.org/wiki/Type_MIME
+.. seealso:: :py:func:`https`
 %End
 
     static QMap<QString, QString> parseTypes();
@@ -184,5 +186,5 @@ Emitted when the ``title`` field is changed.
  *                                                                      *
  * src/gui/qgsmetadatawidget.h                                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

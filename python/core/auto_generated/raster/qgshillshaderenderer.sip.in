@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/raster/qgshillshaderenderer.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -16,6 +16,8 @@ class QgsHillshadeRenderer : QgsRasterRenderer
 {
 %Docstring(signature="appended")
 A renderer for generating live hillshade models.
+
+.. versionadded:: 2.16
 %End
 
 %TypeHeaderCode
@@ -56,33 +58,21 @@ Factory method to create a new renderer
 
     virtual QList<int> usesBands() const;
 
-    virtual int inputBand() const;
-
 
     virtual void toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props = QVariantMap() ) const;
 
 
- int band() const /Deprecated/;
+    int band() const;
 %Docstring
 Returns the band used by the renderer
-
-.. deprecated:: 3.38
-
-   Use :py:func:`~QgsHillshadeRenderer.inputBand` instead.
 %End
 
- void setBand( int bandNo ) /Deprecated/;
+    void setBand( int bandNo );
 %Docstring
 Sets the band used by the renderer.
 
 .. seealso:: :py:func:`band`
-
-.. deprecated:: 3.38
-
-   Use :py:func:`~QgsHillshadeRenderer.setInputBand` instead.
 %End
-    virtual bool setInputBand( int band );
-
 
     double azimuth() const;
 %Docstring
@@ -155,5 +145,5 @@ Sets whether to render using a multi-directional hillshade algorithm.
  *                                                                      *
  * src/core/raster/qgshillshaderenderer.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

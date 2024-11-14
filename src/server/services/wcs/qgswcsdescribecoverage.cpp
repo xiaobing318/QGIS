@@ -125,7 +125,7 @@ namespace QgsWcs
       {
         continue;
       }
-      if ( layer->type() != Qgis::LayerType::Raster )
+      if ( layer->type() != QgsMapLayerType::RasterLayer )
       {
         continue;
       }
@@ -136,8 +136,8 @@ namespace QgsWcs
       }
 #endif
       QString name = layer->name();
-      if ( !layer->serverProperties()->shortName().isEmpty() )
-        name = layer->serverProperties()->shortName();
+      if ( !layer->shortName().isEmpty() )
+        name = layer->shortName();
       name = name.replace( ' ', '_' );
 
       if ( coveNameList.size() == 0 || coveNameList.contains( name ) )

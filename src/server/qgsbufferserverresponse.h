@@ -32,12 +32,15 @@
  * \ingroup server
  * \class QgsBufferServerResponse
  * \brief Class defining buffered response
+ * \since QGIS 3.0
  */
 class SERVER_EXPORT QgsBufferServerResponse: public QgsServerResponse
 {
   public:
 
     QgsBufferServerResponse();
+
+    //! QgsBufferServerResponse cannot be copied
     QgsBufferServerResponse( const QgsBufferServerResponse & ) = delete;
 
     /**

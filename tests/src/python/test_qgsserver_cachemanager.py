@@ -18,16 +18,13 @@ import urllib.error
 import urllib.parse
 import urllib.request
 
-from qgis.PyQt.QtCore import QBuffer, QByteArray, QIODevice, QSize
+import qgis  # NOQA
+from qgis.PyQt.QtCore import QIODevice, QByteArray, QBuffer, QSize
 from qgis.PyQt.QtGui import QImage
 from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import QgsProject
-from qgis.server import (
-    QgsBufferServerRequest,
-    QgsBufferServerResponse,
-    QgsServerCacheFilter,
-    QgsServerRequest,
-)
+from qgis.server import QgsServerCacheFilter, QgsServerRequest, QgsBufferServerRequest, \
+    QgsBufferServerResponse
 from qgis.testing import unittest
 
 from test_qgsserver import QgsServerTestBase
@@ -115,7 +112,7 @@ class PyServerCache(QgsServerCacheFilter):
 
         ba = QByteArray()
         buff = QBuffer(ba)
-        buff.open(QIODevice.OpenModeFlag.WriteOnly)
+        buff.open(QIODevice.WriteOnly)
         img.save(buff, 'PNG')
         return ba
 
@@ -197,7 +194,7 @@ class TestQgsServerCacheManager(QgsServerTestBase):
         assert os.path.exists(project), "Project file not found: " + project
 
         # without cache
-        query_string = f"?MAP={urllib.parse.quote(project)}&SERVICE=WMS&VERSION=1.3.0&REQUEST=GetCapabilities"
+        query_string = '?MAP={}&SERVICE=WMS&VERSION=1.3.0&REQUEST={}'.format(urllib.parse.quote(project), 'GetCapabilities')
         header, body = self._execute_request(query_string)
         doc = QDomDocument("wms_getcapabilities_130.xml")
         doc.setContent(body)
@@ -205,25 +202,25 @@ class TestQgsServerCacheManager(QgsServerTestBase):
         header, body = self._execute_request(query_string)
 
         # without cache
-        query_string = f"?MAP={urllib.parse.quote(project)}&SERVICE=WMS&VERSION=1.1.1&REQUEST=GetCapabilities"
+        query_string = '?MAP={}&SERVICE=WMS&VERSION=1.1.1&REQUEST={}'.format(urllib.parse.quote(project), 'GetCapabilities')
         header, body = self._execute_request(query_string)
         # with cache
         header, body = self._execute_request(query_string)
 
         # without cache
-        query_string = f"?MAP={urllib.parse.quote(project)}&SERVICE=WFS&VERSION=1.1.0&REQUEST=GetCapabilities"
+        query_string = '?MAP={}&SERVICE=WFS&VERSION=1.1.0&REQUEST={}'.format(urllib.parse.quote(project), 'GetCapabilities')
         header, body = self._execute_request(query_string)
         # with cache
         header, body = self._execute_request(query_string)
 
         # without cache
-        query_string = f"?MAP={urllib.parse.quote(project)}&SERVICE=WFS&VERSION=1.0.0&REQUEST=GetCapabilities"
+        query_string = '?MAP={}&SERVICE=WFS&VERSION=1.0.0&REQUEST={}'.format(urllib.parse.quote(project), 'GetCapabilities')
         header, body = self._execute_request(query_string)
         # with cache
         header, body = self._execute_request(query_string)
 
         # without cache
-        query_string = f"?MAP={urllib.parse.quote(project)}&SERVICE=WCS&VERSION=1.0.0&REQUEST=GetCapabilities"
+        query_string = '?MAP={}&SERVICE=WCS&VERSION=1.0.0&REQUEST={}'.format(urllib.parse.quote(project), 'GetCapabilities')
         header, body = self._execute_request(query_string)
         # with cache
         header, body = self._execute_request(query_string)
@@ -248,7 +245,7 @@ class TestQgsServerCacheManager(QgsServerTestBase):
         prj = QgsProject()
         prj.read(project)
 
-        query_string = f"?MAP={urllib.parse.quote(project)}&SERVICE=WMS&VERSION=1.3.0&REQUEST=GetCapabilities"
+        query_string = '?MAP={}&SERVICE=WMS&VERSION=1.3.0&REQUEST={}'.format(urllib.parse.quote(project), 'GetCapabilities')
         request = QgsBufferServerRequest(query_string, QgsServerRequest.GetMethod, {}, None)
 
         accessControls = self._server_iface.accessControls()
@@ -270,7 +267,7 @@ class TestQgsServerCacheManager(QgsServerTestBase):
         assert os.path.exists(project), "Project file not found: " + project
 
         # without cache
-        query_string = f"?MAP={urllib.parse.quote(project)}&SERVICE=WMS&VERSION=1.3.0&REQUEST=GetContext"
+        query_string = '?MAP={}&SERVICE=WMS&VERSION=1.3.0&REQUEST={}'.format(urllib.parse.quote(project), 'GetContext')
         header, body = self._execute_request(query_string)
         # with cache
         header, body = self._execute_request(query_string)
@@ -333,13 +330,13 @@ class TestQgsServerCacheManager(QgsServerTestBase):
         r, h = self._result(self._execute_request(qs))
         self.assertEqual(
             h.get("Content-Type"), "image/png",
-            f"Content type is wrong: {h.get('Content-Type')}\n{r}")
+            "Content type is wrong: {}\n{}".format(h.get("Content-Type"), r))
         self._img_diff_error(r, h, "WMS_GetLegendGraphic_Basic", max_size_diff=QSize(1, 1))
         # with cache
         r, h = self._result(self._execute_request(qs))
         self.assertEqual(
             h.get("Content-Type"), "image/png",
-            f"Content type is wrong: {h.get('Content-Type')}\n{r}")
+            "Content type is wrong: {}\n{}".format(h.get("Content-Type"), r))
         self._img_diff_error(r, h, "WMS_GetLegendGraphic_Basic", max_size_diff=QSize(1, 1))
 
         filelist = [f for f in os.listdir(self._servercache._tile_cache_dir) if f.endswith(".png")]
@@ -374,12 +371,12 @@ class TestQgsServerCacheManager(QgsServerTestBase):
         r, h = self._result(self._execute_request(qs))
         self.assertEqual(
             h.get("Content-Type"), "image/png",
-            f"Content type is wrong: {h.get('Content-Type')}\n{r}")
+            "Content type is wrong: {}\n{}".format(h.get("Content-Type"), r))
         # with cache
         r, h = self._result(self._execute_request(qs))
         self.assertEqual(
             h.get("Content-Type"), "image/png",
-            f"Content type is wrong: {h.get('Content-Type')}\n{r}")
+            "Content type is wrong: {}\n{}".format(h.get("Content-Type"), r))
 
         qs = "?" + "&".join(["%s=%s" % i for i in list({
             "MAP": urllib.parse.quote(project),
@@ -399,12 +396,12 @@ class TestQgsServerCacheManager(QgsServerTestBase):
         r, h = self._result(self._execute_request(qs))
         self.assertEqual(
             h.get("Content-Type"), "image/png",
-            f"Content type is wrong: {h.get('Content-Type')}\n{r}")
+            "Content type is wrong: {}\n{}".format(h.get("Content-Type"), r))
         # with cache
         r, h = self._result(self._execute_request(qs))
         self.assertEqual(
             h.get("Content-Type"), "image/png",
-            f"Content type is wrong: {h.get('Content-Type')}\n{r}")
+            "Content type is wrong: {}\n{}".format(h.get("Content-Type"), r))
 
         qs = "?" + "&".join(["%s=%s" % i for i in list({
             "MAP": urllib.parse.quote(project),
@@ -424,13 +421,13 @@ class TestQgsServerCacheManager(QgsServerTestBase):
         r, h = self._result(self._execute_request(qs))
         self.assertEqual(
             h.get("Content-Type"), "image/png",
-            f"Content type is wrong: {h.get('Content-Type')}\n{r}")
+            "Content type is wrong: {}\n{}".format(h.get("Content-Type"), r))
         self._img_diff_error(r, h, "WMTS_GetTile_Project_3857_0", 20000)
         # with cache
         r, h = self._result(self._execute_request(qs))
         self.assertEqual(
             h.get("Content-Type"), "image/png",
-            f"Content type is wrong: {h.get('Content-Type')}\n{r}")
+            "Content type is wrong: {}\n{}".format(h.get("Content-Type"), r))
         self._img_diff_error(r, h, "WMTS_GetTile_Project_3857_0", 20000)
 
         qs = "?" + "&".join(["%s=%s" % i for i in list({
@@ -451,13 +448,13 @@ class TestQgsServerCacheManager(QgsServerTestBase):
         r, h = self._result(self._execute_request(qs))
         self.assertEqual(
             h.get("Content-Type"), "image/png",
-            f"Content type is wrong: {h.get('Content-Type')}\n{r}")
+            "Content type is wrong: {}\n{}".format(h.get("Content-Type"), r))
         self._img_diff_error(r, h, "WMTS_GetTile_Project_4326_0", 20000)
         # with cache
         r, h = self._result(self._execute_request(qs))
         self.assertEqual(
             h.get("Content-Type"), "image/png",
-            f"Content type is wrong: {h.get('Content-Type')}\n{r}")
+            "Content type is wrong: {}\n{}".format(h.get("Content-Type"), r))
         self._img_diff_error(r, h, "WMTS_GetTile_Project_4326_0", 20000)
 
         filelist = [f for f in os.listdir(self._servercache._tile_cache_dir) if f.endswith(".png")]

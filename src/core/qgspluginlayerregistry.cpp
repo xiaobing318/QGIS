@@ -56,7 +56,7 @@ QgsPluginLayerRegistry::~QgsPluginLayerRegistry()
 {
   if ( !mPluginLayerTypes.isEmpty() )
   {
-    QgsDebugMsgLevel( QStringLiteral( "QgsPluginLayerRegistry::~QgsPluginLayerRegistry(): creator list not empty" ), 2 );
+    QgsDebugMsg( QStringLiteral( "QgsPluginLayerRegistry::~QgsPluginLayerRegistry(): creator list not empty" ) );
     const QStringList keys = mPluginLayerTypes.keys();
     for ( const QString &key : keys )
     {
@@ -89,16 +89,16 @@ bool QgsPluginLayerRegistry::removePluginLayerType( const QString &typeName )
     return false;
 
   // remove all remaining layers of this type - to avoid invalid behavior
-  const QList<QgsMapLayer *> layers = QgsProject::instance()->mapLayers().values(); // skip-keyword-check
+  const QList<QgsMapLayer *> layers = QgsProject::instance()->mapLayers().values();
   const auto constLayers = layers;
   for ( QgsMapLayer *layer : constLayers )
   {
-    if ( layer->type() == Qgis::LayerType::Plugin )
+    if ( layer->type() == QgsMapLayerType::PluginLayer )
     {
       QgsPluginLayer *pl = qobject_cast<QgsPluginLayer *>( layer );
       if ( pl->pluginLayerType() == typeName )
       {
-        QgsProject::instance()->removeMapLayers( // skip-keyword-check
+        QgsProject::instance()->removeMapLayers(
           QStringList() << layer->id() );
       }
     }
@@ -119,7 +119,7 @@ QgsPluginLayer *QgsPluginLayerRegistry::createLayer( const QString &typeName, co
   QgsPluginLayerType *type = pluginLayerType( typeName );
   if ( !type )
   {
-    QgsDebugError( "Unknown plugin layer type: " + typeName );
+    QgsDebugMsg( "Unknown plugin layer type: " + typeName );
     return nullptr;
   }
 

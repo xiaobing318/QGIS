@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsvalidateddoublespinbox.h"
-#include "moc_qgsvalidateddoublespinbox.cpp"
 
 QgsValidatedDoubleSpinBox::QgsValidatedDoubleSpinBox( QWidget *widget )
   : QDoubleSpinBox( widget )

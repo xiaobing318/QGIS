@@ -14,13 +14,12 @@
  ***************************************************************************/
 
 #include "qgsmesh3dsymbol.h"
-#include "qgs3dtypes.h"
+#include "qgssymbollayerutils.h"
 #include "qgs3dutils.h"
-#include "qgscolorutils.h"
 #include "qgsphongmaterialsettings.h"
 
 QgsMesh3DSymbol::QgsMesh3DSymbol()
-  : mMaterialSettings( std::make_unique< QgsPhongMaterialSettings >() )
+  : mMaterial( std::make_unique< QgsPhongMaterialSettings >() )
 {
 
 }
@@ -33,9 +32,8 @@ QgsMesh3DSymbol *QgsMesh3DSymbol::clone() const
 
   result->mAltClamping = mAltClamping;
   result->mHeight = mHeight;
-  result->mMaterialSettings.reset( mMaterialSettings->clone() );
+  result->mMaterial.reset( mMaterial->clone() );
   result->mAddBackFaces = mAddBackFaces;
-  result->mCullingMode = mCullingMode;
   result->mEnabled = mEnabled;
   result->mSmoothedTriangles = mSmoothedTriangles;
   result->mWireframeEnabled = mWireframeEnabled;
@@ -69,17 +67,16 @@ void QgsMesh3DSymbol::writeXml( QDomElement &elem, const QgsReadWriteContext &co
   elem.appendChild( elemDataProperties );
 
   QDomElement elemMaterial = doc.createElement( QStringLiteral( "material" ) );
-  mMaterialSettings->writeXml( elemMaterial, context );
+  mMaterial->writeXml( elemMaterial, context );
   elem.appendChild( elemMaterial );
 
   //Advanced symbol
   QDomElement elemAdvancedSettings = doc.createElement( QStringLiteral( "advanced-settings" ) );
   elemAdvancedSettings.setAttribute( QStringLiteral( "renderer-3d-enabled" ), mEnabled ? QStringLiteral( "1" ) : QStringLiteral( "0" ) );
-  elemAdvancedSettings.setAttribute( QStringLiteral( "culling-mode" ), Qgs3DUtils::cullingModeToString( mCullingMode ) );
   elemAdvancedSettings.setAttribute( QStringLiteral( "smoothed-triangle" ), mSmoothedTriangles ? QStringLiteral( "1" ) : QStringLiteral( "0" ) );
   elemAdvancedSettings.setAttribute( QStringLiteral( "wireframe-enabled" ), mWireframeEnabled ? QStringLiteral( "1" ) : QStringLiteral( "0" ) );
   elemAdvancedSettings.setAttribute( QStringLiteral( "wireframe-line-width" ), mWireframeLineWidth );
-  elemAdvancedSettings.setAttribute( QStringLiteral( "wireframe-line-color" ), QgsColorUtils::colorToString( mWireframeLineColor ) );
+  elemAdvancedSettings.setAttribute( QStringLiteral( "wireframe-line-color" ), QgsSymbolLayerUtils::encodeColor( mWireframeLineColor ) );
   elemAdvancedSettings.setAttribute( QStringLiteral( "level-of-detail" ), mLevelOfDetailIndex );
   elemAdvancedSettings.setAttribute( QStringLiteral( "vertical-scale" ), mVerticalScale );
   elemAdvancedSettings.setAttribute( QStringLiteral( "vertical-group-index" ), mVerticalDatasetGroupIndex );
@@ -88,7 +85,7 @@ void QgsMesh3DSymbol::writeXml( QDomElement &elem, const QgsReadWriteContext &co
   elemAdvancedSettings.appendChild( mColorRampShader.writeXml( doc, context ) );
   elemAdvancedSettings.setAttribute( QStringLiteral( "min-color-ramp-shader" ), mColorRampShader.minimumValue() );
   elemAdvancedSettings.setAttribute( QStringLiteral( "max-color-ramp-shader" ), mColorRampShader.maximumValue() );
-  elemAdvancedSettings.setAttribute( QStringLiteral( "texture-single-color" ), QgsColorUtils::colorToString( mSingleColor ) );
+  elemAdvancedSettings.setAttribute( QStringLiteral( "texture-single-color" ), QgsSymbolLayerUtils::encodeColor( mSingleColor ) );
   elemAdvancedSettings.setAttribute( QStringLiteral( "arrows-enabled" ), mArrowsEnabled ? QStringLiteral( "1" ) : QStringLiteral( "0" ) );
   elemAdvancedSettings.setAttribute( QStringLiteral( "arrows-spacing" ), mArrowsSpacing );
   elemAdvancedSettings.setAttribute( QStringLiteral( "arrows-fixed-size" ), mArrowsFixedSize ? QStringLiteral( "1" ) : QStringLiteral( "0" ) );
@@ -108,16 +105,15 @@ void QgsMesh3DSymbol::readXml( const QDomElement &elem, const QgsReadWriteContex
   mAddBackFaces = elemDataProperties.attribute( QStringLiteral( "add-back-faces" ) ).toInt();
 
   const QDomElement elemMaterial = elem.firstChildElement( QStringLiteral( "material" ) );
-  mMaterialSettings->readXml( elemMaterial, context );
+  mMaterial->readXml( elemMaterial, context );
 
   //Advanced symbol
   const QDomElement elemAdvancedSettings = elem.firstChildElement( QStringLiteral( "advanced-settings" ) );
   mEnabled = elemAdvancedSettings.attribute( QStringLiteral( "renderer-3d-enabled" ) ).toInt();
-  mCullingMode = Qgs3DUtils::cullingModeFromString( elemAdvancedSettings.attribute( QStringLiteral( "culling-mode" ), QStringLiteral( "back" ) ) );
   mSmoothedTriangles = elemAdvancedSettings.attribute( QStringLiteral( "smoothed-triangle" ) ).toInt();
   mWireframeEnabled = elemAdvancedSettings.attribute( QStringLiteral( "wireframe-enabled" ) ).toInt();
   mWireframeLineWidth = elemAdvancedSettings.attribute( QStringLiteral( "wireframe-line-width" ) ).toDouble();
-  mWireframeLineColor = QgsColorUtils::colorFromString( elemAdvancedSettings.attribute( QStringLiteral( "wireframe-line-color" ) ) );
+  mWireframeLineColor = QgsSymbolLayerUtils::decodeColor( elemAdvancedSettings.attribute( QStringLiteral( "wireframe-line-color" ) ) );
   mLevelOfDetailIndex = elemAdvancedSettings.attribute( QStringLiteral( "level-of-detail" ) ).toInt();
   mVerticalScale = elemAdvancedSettings.attribute( "vertical-scale" ).toDouble();
   mVerticalDatasetGroupIndex = elemAdvancedSettings.attribute( "vertical-group-index" ).toInt();
@@ -126,7 +122,7 @@ void QgsMesh3DSymbol::readXml( const QDomElement &elem, const QgsReadWriteContex
   mColorRampShader.readXml( elemAdvancedSettings.firstChildElement( "colorrampshader" ), context );
   mColorRampShader.setMinimumValue( elemAdvancedSettings.attribute( QStringLiteral( "min-color-ramp-shader" ) ).toDouble() );
   mColorRampShader.setMaximumValue( elemAdvancedSettings.attribute( QStringLiteral( "max-color-ramp-shader" ) ).toDouble() );
-  mSingleColor = QgsColorUtils::colorFromString( elemAdvancedSettings.attribute( QStringLiteral( "texture-single-color" ) ) );
+  mSingleColor = QgsSymbolLayerUtils::decodeColor( elemAdvancedSettings.attribute( QStringLiteral( "texture-single-color" ) ) );
   mArrowsEnabled = elemAdvancedSettings.attribute( QStringLiteral( "arrows-enabled" ) ).toInt();
   if ( elemAdvancedSettings.hasAttribute( QStringLiteral( "arrows-spacing" ) ) )
     mArrowsSpacing = elemAdvancedSettings.attribute( QStringLiteral( "arrows-spacing" ) ).toDouble();
@@ -296,25 +292,16 @@ void QgsMesh3DSymbol::setEnabled( bool enabled )
   mEnabled = enabled;
 }
 
-Qgs3DTypes::CullingMode QgsMesh3DSymbol::cullingMode() const
+
+QgsAbstractMaterialSettings *QgsMesh3DSymbol::material() const
 {
-  return mCullingMode;
+  return mMaterial.get();
 }
 
-void QgsMesh3DSymbol::setCullingMode( const Qgs3DTypes::CullingMode &mode )
+void QgsMesh3DSymbol::setMaterial( QgsAbstractMaterialSettings *material )
 {
-  mCullingMode = mode;
-}
-
-QgsAbstractMaterialSettings *QgsMesh3DSymbol::materialSettings() const
-{
-  return mMaterialSettings.get();
-}
-
-void QgsMesh3DSymbol::setMaterialSettings( QgsAbstractMaterialSettings *materialSettings )
-{
-  if ( materialSettings == mMaterialSettings.get() )
+  if ( material == mMaterial.get() )
     return;
 
-  mMaterialSettings.reset( materialSettings );
+  mMaterial.reset( material );
 }

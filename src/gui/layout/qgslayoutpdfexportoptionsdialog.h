@@ -26,8 +26,8 @@
 #include "qgis.h"
 #include "ui_qgspdfexportoptions.h"
 
-class QgsGeospatialPdfLayerTreeModel;
-class QgsGeospatialPdfLayerFilteredTreeModel;
+class QgsGeoPdfLayerTreeModel;
+class QgsGeoPdfLayerFilteredTreeModel;
 
 /**
  * \ingroup gui
@@ -45,16 +45,16 @@ class GUI_EXPORT QgsLayoutPdfExportOptionsDialog: public QDialog, private Ui::Qg
     /**
      * Constructor for QgsLayoutPdfExportOptionsDialog
      * \param parent parent widget
-     * \param allowGeospatialPdfExport set to FALSE if geospatial PDF export is blocked
-     * \param geospatialPdfReason set to a descriptive translated string explaining why geospatial PDF export is not available if applicable
-     * \param geospatialPdfLayerOrder optional layer ID order list for layers in the geospatial PDF file. Any layers not present in this list
-     * will instead be appended to the end of the geospatial PDF layer list
+     * \param allowGeoPdfExport set to FALSE if geoPdf export is blocked
+     * \param geoPdfReason set to a descriptive translated string explaining why geopdf export is not available if applicable
+     * \param geoPdfLayerOrder optional layer ID order list for layers in the geopdf file. Any layers not present in this list
+     * will instead be appended to the end of the geopdf layer list
      * \param flags window flags
      */
     QgsLayoutPdfExportOptionsDialog( QWidget *parent = nullptr,
-                                     bool allowGeospatialPdfExport = true,
-                                     const QString &geospatialPdfReason = QString(),
-                                     const QStringList &geospatialPdfLayerOrder = QStringList(),
+                                     bool allowGeoPdfExport = true,
+                                     const QString &geoPdfReason = QString(),
+                                     const QStringList &geoPdfLayerOrder = QStringList(),
                                      Qt::WindowFlags flags = Qt::WindowFlags() );
 
     //! Sets the text render format
@@ -89,10 +89,10 @@ class GUI_EXPORT QgsLayoutPdfExportOptionsDialog: public QDialog, private Ui::Qg
     //! Returns whether lossless image compression is enabled
     bool losslessImageExport() const;
 
-    //! Sets whether to export a Geospatial PDF
-    void setExportGeospatialPdf( bool enabled );
-    //! Returns whether Geospatial PDF export is enabled
-    bool exportGeospatialPdf() const;
+    //! Sets whether to export a Geo-PDF
+    void setExportGeoPdf( bool enabled );
+    //! Returns whether Geo-PDF export is enabled
+    bool exportGeoPdf() const;
 
     //! Sets whether to use OGC best-practice format
     void setUseOgcBestPracticeFormat( bool enabled );
@@ -104,28 +104,20 @@ class GUI_EXPORT QgsLayoutPdfExportOptionsDialog: public QDialog, private Ui::Qg
     //! Returns the list of export themes
     QStringList exportThemes() const;
 
-    //! Returns a list of map layer IDs in the desired order they should appear in a generated Geospatial PDF file
-    QStringList geospatialPdfLayerOrder() const;
-
-    //! Returns a list of groups in the desired order they should appear in a generated Geospatial PDF file
-    QStringList geospatialPdfGroupOrder() const;
-
-    //! Sets whether to open the pdf after exporting it
-    void setOpenAfterExporting( bool enabled );
-    //! Returns whether the pdf should be opened after exporting it
-    bool openAfterExporting() const;
+    //! Returns a list of map layer IDs in the desired order they should appear in a generated GeoPDF file
+    QStringList geoPdfLayerOrder() const;
 
   private slots:
 
     void showHelp();
-    void showContextMenuForGeospatialPdfStructure( QPoint point, const QModelIndex &index );
+    void showContextMenuForGeoPdfStructure( QPoint point, const QModelIndex &index );
 
   private:
 
-    bool mGeospatialPdfAvailable = true;
-    QgsGeospatialPdfLayerTreeModel *mGeospatialPdfStructureModel = nullptr;
-    QgsGeospatialPdfLayerFilteredTreeModel *mGeospatialPdfStructureProxyModel = nullptr;
-    QMenu *mGeospatialPdfStructureTreeMenu = nullptr;
+    bool mGeopdfAvailable = true;
+    QgsGeoPdfLayerTreeModel *mGeoPdfStructureModel = nullptr;
+    QgsGeoPdfLayerFilteredTreeModel *mGeoPdfStructureProxyModel = nullptr;
+    QMenu *mGeoPdfStructureTreeMenu = nullptr;
 
 };
 

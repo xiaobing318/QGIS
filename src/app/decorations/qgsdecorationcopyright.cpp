@@ -22,7 +22,6 @@ email                : tim@linfiniti.com
 // includes
 
 #include "qgsdecorationcopyright.h"
-#include "moc_qgsdecorationcopyright.cpp"
 #include "qgsdecorationcopyrightdialog.h"
 
 #include "qgisapp.h"
@@ -48,7 +47,7 @@ QgsDecorationCopyright::QgsDecorationCopyright( QObject *parent )
   : QgsDecorationItem( parent )
 {
   mPlacement = BottomRight;
-  mMarginUnit = Qgis::RenderUnit::Millimeters;
+  mMarginUnit = QgsUnitTypes::RenderMillimeters;
 
   setDisplayName( tr( "Copyright Label" ) );
   mConfigurationName = QStringLiteral( "CopyrightLabel" );
@@ -126,15 +125,15 @@ void QgsDecorationCopyright::render( const QgsMapSettings &mapSettings, QgsRende
   const double textHeight = QgsTextRenderer::textHeight( context, mTextFormat, displayStringList, Qgis::TextLayoutMode::Point );
 
   QPaintDevice *device = context.painter()->device();
-  const float deviceHeight = static_cast<float>( device->height() ) / context.devicePixelRatio();
-  const float deviceWidth = static_cast<float>( device->width() ) / context.devicePixelRatio();
+  const int deviceHeight = device->height() / device->devicePixelRatioF();
+  const int deviceWidth = device->width() / device->devicePixelRatioF();
 
   float xOffset( 0 ), yOffset( 0 );
 
   // Set  margin according to selected units
   switch ( mMarginUnit )
   {
-    case Qgis::RenderUnit::Millimeters:
+    case QgsUnitTypes::RenderMillimeters:
     {
       const int pixelsInchX = context.painter()->device()->logicalDpiX();
       const int pixelsInchY = context.painter()->device()->logicalDpiY();
@@ -142,23 +141,23 @@ void QgsDecorationCopyright::render( const QgsMapSettings &mapSettings, QgsRende
       yOffset = pixelsInchY * INCHES_TO_MM * mMarginVertical;
       break;
     }
-    case Qgis::RenderUnit::Pixels:
+    case QgsUnitTypes::RenderPixels:
     {
       xOffset = mMarginHorizontal;
       yOffset = mMarginVertical;
       break;
     }
-    case Qgis::RenderUnit::Percentage:
+    case QgsUnitTypes::RenderPercentage:
     {
       xOffset = ( ( deviceWidth - textWidth ) / 100. ) * mMarginHorizontal;
       yOffset = ( ( deviceHeight - textHeight ) / 100. ) * mMarginVertical;
       break;
     }
-    case Qgis::RenderUnit::MapUnits:
-    case Qgis::RenderUnit::Points:
-    case Qgis::RenderUnit::Inches:
-    case Qgis::RenderUnit::Unknown:
-    case Qgis::RenderUnit::MetersInMapUnits:
+    case QgsUnitTypes::RenderMapUnits:
+    case QgsUnitTypes::RenderPoints:
+    case QgsUnitTypes::RenderInches:
+    case QgsUnitTypes::RenderUnknownUnit:
+    case QgsUnitTypes::RenderMetersInMapUnits:
       break;
   }
 
@@ -193,7 +192,7 @@ void QgsDecorationCopyright::render( const QgsMapSettings &mapSettings, QgsRende
       horizontalAlignment = Qgis::TextHorizontalAlignment::Center;
       break;
     default:
-      QgsDebugError( QStringLiteral( "Unsupported placement index of %1" ).arg( static_cast<int>( mPlacement ) ) );
+      QgsDebugMsg( QStringLiteral( "Unsupported placement index of %1" ).arg( static_cast<int>( mPlacement ) ) );
   }
 
   //Paint label to canvas

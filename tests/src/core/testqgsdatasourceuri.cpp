@@ -18,7 +18,7 @@
 //header for class being tested
 #include <qgsdatasourceuri.h>
 
-Q_DECLARE_METATYPE( Qgis::WkbType )
+Q_DECLARE_METATYPE( QgsWkbTypes::Type )
 Q_DECLARE_METATYPE( QgsDataSourceUri::SslMode )
 
 class TestQgsDataSourceUri: public QObject
@@ -35,8 +35,6 @@ class TestQgsDataSourceUri: public QObject
     void checkConnectionInfo_data();
     void checkAuthParams();
     void checkParameterKeys();
-    void checkRemovePassword();
-    void checkUnicodeUri();
 };
 
 void TestQgsDataSourceUri::checkparser_data()
@@ -47,7 +45,7 @@ void TestQgsDataSourceUri::checkparser_data()
   QTest::addColumn<QString>( "key" );
   QTest::addColumn<bool>( "estimatedmetadata" );
   QTest::addColumn<QString>( "srid" );
-  QTest::addColumn<Qgis::WkbType>( "type" );
+  QTest::addColumn<QgsWkbTypes::Type>( "type" );
   QTest::addColumn<bool>( "selectatid" );
   QTest::addColumn<QString>( "service" );
   QTest::addColumn<QString>( "user" );
@@ -70,7 +68,7 @@ void TestQgsDataSourceUri::checkparser_data()
       << "" // key
       << true // estimatedmetadata
       << "1000003007" // srid
-      << Qgis::WkbType::Unknown // type
+      << QgsWkbTypes::Unknown // type
       << false // selectatid
       << "" // service
       << "myname" // user
@@ -93,7 +91,7 @@ void TestQgsDataSourceUri::checkparser_data()
       << "" // key
       << true // estimatedmetadata
       << "3067" // srid
-      << Qgis::WkbType::Unknown // type
+      << QgsWkbTypes::Unknown // type
       << false // selectatid
       << "" // service
       << "myname" // user
@@ -116,7 +114,7 @@ void TestQgsDataSourceUri::checkparser_data()
       << "" // key
       << false // estimatedmetadata
       << "" // srid
-      << Qgis::WkbType::Unknown // type
+      << QgsWkbTypes::Unknown // type
       << false // selectatid
       << "" // service
       << "myname" // user
@@ -139,7 +137,7 @@ void TestQgsDataSourceUri::checkparser_data()
       << "" // key
       << false // estimatedmetadata
       << "" // srid
-      << Qgis::WkbType::Unknown // type
+      << QgsWkbTypes::Unknown // type
       << false // selectatid
       << "" // service
       << "myname" // user
@@ -162,7 +160,7 @@ void TestQgsDataSourceUri::checkparser_data()
       << "" // key
       << false // estimatedmetadata
       << "" // srid
-      << Qgis::WkbType::Unknown // type
+      << QgsWkbTypes::Unknown // type
       << false // selectatid
       << "" // service
       << "" // user
@@ -187,7 +185,7 @@ void TestQgsDataSourceUri::checkparser_data()
       << "" // key
       << false // estimatedmetadata
       << "" // srid
-      << Qgis::WkbType::MultiLineStringZ // type
+      << QgsWkbTypes::MultiLineStringZ // type
       << false // selectatid
       << "" // service
       << "myname" // user
@@ -210,7 +208,7 @@ void TestQgsDataSourceUri::checkparser_data()
       << "" // key
       << false // estimatedmetadata
       << "" // srid
-      << Qgis::WkbType::Unknown // type
+      << QgsWkbTypes::Unknown // type
       << false // selectatid
       << "" // service
       << "" // user
@@ -233,7 +231,7 @@ void TestQgsDataSourceUri::checkparser_data()
       << "" // key
       << false // estimatedmetadata
       << "" // srid
-      << Qgis::WkbType::Unknown // type
+      << QgsWkbTypes::Unknown // type
       << false // selectatid
       << "" // service
       << "" // user
@@ -256,7 +254,7 @@ void TestQgsDataSourceUri::checkparser_data()
       << "" // key
       << false // estimatedmetadata
       << "" // srid
-      << Qgis::WkbType::Unknown // type
+      << QgsWkbTypes::Unknown // type
       << false // selectatid
       << "" // service
       << "" // user
@@ -281,7 +279,7 @@ void TestQgsDataSourceUri::checkparser()
   QFETCH( QString, key );
   QFETCH( bool, estimatedmetadata );
   QFETCH( QString, srid );
-  QFETCH( Qgis::WkbType, type );
+  QFETCH( QgsWkbTypes::Type, type );
   QFETCH( bool, selectatid );
   QFETCH( QString, service );
   QFETCH( QString, user );
@@ -563,28 +561,6 @@ void TestQgsDataSourceUri::checkAuthParams()
   QCOMPARE( uri4.param( QStringLiteral( "password" ) ), QStringLiteral( "😁😂😍" ) );
   QCOMPARE( uri4.password(), QStringLiteral( "😁😂😍" ) );
 
-  // issue GH #53654
-  QgsDataSourceUri uri5;
-  uri5.setEncodedUri( QStringLiteral( "zmax=14&zmin=0&styleUrl=http://localhost:8000/&f=application%2Fvnd.geoserver.mbstyle%2Bjson" ) );
-  QCOMPARE( uri5.param( QStringLiteral( "f" ) ), QStringLiteral( "application%2Fvnd.geoserver.mbstyle%2Bjson" ) );
-
-  uri5.setEncodedUri( QStringLiteral( "zmax=14&zmin=0&styleUrl=http://localhost:8000/&f=application/vnd.geoserver.mbstyle+json" ) );
-  QCOMPARE( uri5.param( QStringLiteral( "f" ) ), QStringLiteral( "application/vnd.geoserver.mbstyle+json" ) );
-
-  // round trip through encodedUri/setEncodedUri should not lose "%2B" or "+"
-  QgsDataSourceUri uri6;
-  uri6.setParam( QStringLiteral( "percent" ), QStringLiteral( "application%2Fvnd.geoserver.mbstyle%2Bjson" ) );
-  uri6.setParam( QStringLiteral( "explicit" ), QStringLiteral( "application/vnd.geoserver.mbstyle+json" ) );
-  QCOMPARE( uri6.param( QStringLiteral( "percent" ) ), QStringLiteral( "application%2Fvnd.geoserver.mbstyle%2Bjson" ) );
-  QCOMPARE( uri6.param( QStringLiteral( "explicit" ) ), QStringLiteral( "application/vnd.geoserver.mbstyle+json" ) );
-
-  const QByteArray encodedTwo = uri6.encodedUri();
-
-  QgsDataSourceUri uri7;
-  uri7.setEncodedUri( encodedTwo );
-  QCOMPARE( uri7.param( QStringLiteral( "percent" ) ), QStringLiteral( "application%2Fvnd.geoserver.mbstyle%2Bjson" ) );
-  QCOMPARE( uri7.param( QStringLiteral( "explicit" ) ), QStringLiteral( "application/vnd.geoserver.mbstyle+json" ) );
-
 }
 
 void TestQgsDataSourceUri::checkParameterKeys()
@@ -594,26 +570,6 @@ void TestQgsDataSourceUri::checkParameterKeys()
   QVERIFY( uri.parameterKeys().contains( QLatin1String( "dbname" ) ) );
   QVERIFY( uri.parameterKeys().contains( QLatin1String( "bar" ) ) );
 }
-
-void TestQgsDataSourceUri::checkRemovePassword()
-{
-  const QString uri0 = QgsDataSourceUri::removePassword( QStringLiteral( "postgresql://user:password@127.0.0.1:5432?dbname=test" ) );
-  QCOMPARE( uri0, QStringLiteral( "postgresql://user@127.0.0.1:5432?dbname=test" ) );
-
-  const QString uri1 = QgsDataSourceUri::removePassword( QStringLiteral( "postgresql://user:password@127.0.0.1:5432?dbname=test" ), true );
-  QCOMPARE( uri1, QStringLiteral( "postgresql://user:XXXXXXXX@127.0.0.1:5432?dbname=test" ) );
-
-  const QString uri2 = QgsDataSourceUri::removePassword( QStringLiteral( "postgresql://user@127.0.0.1:5432?dbname=test" ) );
-  QCOMPARE( uri2, QStringLiteral( "postgresql://user@127.0.0.1:5432?dbname=test" ) );
-}
-
-void TestQgsDataSourceUri::checkUnicodeUri()
-{
-  QgsDataSourceUri uri;
-  uri.setEncodedUri( QStringLiteral( "url=file:///directory/テスト.mbtiles&type=mbtiles" ) );
-  QCOMPARE( uri.param( QStringLiteral( "url" ) ), QStringLiteral( "file:///directory/テスト.mbtiles" ) );
-}
-
 
 QGSTEST_MAIN( TestQgsDataSourceUri )
 #include "testqgsdatasourceuri.moc"

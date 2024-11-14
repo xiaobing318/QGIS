@@ -28,6 +28,7 @@
 #include <Qt3DCore/QGeometry>
 #include <Qt3DCore/QBuffer>
 #endif
+#include <Qt3DRender/QMaterial>
 #include <QVector3D>
 
 #define SIP_NO_FILE
@@ -35,20 +36,18 @@
 class IndexedPointCloudNode;
 class QgsAABB;
 
-class QgsPointCloud3DSymbolHandler
+class QgsPointCloud3DSymbolHandler // : public QgsFeature3DHandler
 {
   public:
     QgsPointCloud3DSymbolHandler();
 
     virtual ~QgsPointCloud3DSymbolHandler() = default;
 
-    struct PointData;
-
     virtual bool prepare( const QgsPointCloud3DRenderContext &context ) = 0;// override;
-    virtual void processNode( QgsPointCloudIndex *pc, const IndexedPointCloudNode &n, const QgsPointCloud3DRenderContext &context, PointData *output = nullptr ) = 0; // override;
+    virtual void processNode( QgsPointCloudIndex *pc, const IndexedPointCloudNode &n, const QgsPointCloud3DRenderContext &context ) = 0; // override;
     virtual void finalize( Qt3DCore::QEntity *parent, const QgsPointCloud3DRenderContext &context ) = 0;// override;
 
-    void triangulate( QgsPointCloudIndex *pc, const IndexedPointCloudNode &n, const QgsPointCloud3DRenderContext &context, const QgsBox3D &box3D );
+    void triangulate( QgsPointCloudIndex *pc, const IndexedPointCloudNode &n, const QgsPointCloud3DRenderContext &context, const QgsAABB &bbox );
 
     float zMinimum() const { return mZMin; }
     float zMaximum() const { return mZMax; }
@@ -56,13 +55,11 @@ class QgsPointCloud3DSymbolHandler
     //! temporary data we will pass to the tessellator
     struct PointData
     {
-      QgsVector3D positionsOrigin;   // All "positions" are relative to this point, defined in map coordinates (with double precision)
-      QVector<QVector3D> positions;  // Contains triplets of float x,y,z for each point. These are in map coordinates, relative to "positionsOrigin"
+      QVector<QVector3D> positions;  // contains triplets of float x,y,z for each point
       QVector<float> parameter;
-      QVector<float> pointSizes; // Contains point sizes, in case they are overridden for classification renderer
       QVector<QVector3D> colors;
-      QByteArray triangles; // In case of points triangulation, contains index of point in the array positions
-      QByteArray normals; // In case of points triangulation, contains the normals of the solid surface on each vertex
+      QByteArray triangles; // in case of points triangulation, contains index of point in the array positions
+      QByteArray normals; // in case of points triangulation, contains the normals of the solid surface on each vertex
     };
 
   protected:
@@ -76,14 +73,14 @@ class QgsPointCloud3DSymbolHandler
 #else
     virtual Qt3DCore::QGeometry *makeGeometry( Qt3DCore::QNode *parent, const QgsPointCloud3DSymbolHandler::PointData &data, unsigned int byteStride ) = 0;
 #endif
-    std::unique_ptr<QgsPointCloudBlock> pointCloudBlock( QgsPointCloudIndex *pc, const IndexedPointCloudNode &node, const QgsPointCloudRequest &request, const QgsPointCloud3DRenderContext &context );
+    QgsPointCloudBlock *pointCloudBlock( QgsPointCloudIndex *pc, const IndexedPointCloudNode &node, const QgsPointCloudRequest &request, const QgsPointCloud3DRenderContext &context );
 
     // outputs
     PointData outNormal;  //!< Features that are not selected
 
   private:
     //! Returns all vertices of the node \a n, and of its parents contained in \a bbox and in an extension of this box depending of the density of the points
-    std::vector<double> getVertices( QgsPointCloudIndex *pc, const IndexedPointCloudNode &n, const QgsPointCloud3DRenderContext &context, const QgsBox3D &box3D );
+    std::vector<double> getVertices( QgsPointCloudIndex *pc, const IndexedPointCloudNode &n, const QgsPointCloud3DRenderContext &context, const QgsAABB &bbox );
 
     //! Calculates the normals of triangles dedined by index contained in \a triangles. Must be used only in the method triangulate().
     void calculateNormals( const std::vector<size_t> &triangles );
@@ -91,12 +88,12 @@ class QgsPointCloud3DSymbolHandler
     /**
      * Applies a filter on triangles to improve the rendering:
      *
-     * - keeps only triangles that have a least one point in the bounding box \a box3D
-     * - if options are selected, skips triangles with horizontal or vertical size greater than a threshold
+     * - keeps only triangles that have a least one point in the bounding box \a bbox
+     * - if options are selected, skips triangles with horizontale or vertical size greater than a threshold
      *
      * Must be used only in the method triangulate().
      */
-    void filterTriangles( const std::vector<size_t> &triangleIndexes, const QgsPointCloud3DRenderContext &context, const QgsBox3D &box3D );
+    void filterTriangles( const std::vector<size_t> &triangleIndexes, const QgsPointCloud3DRenderContext &context, const QgsAABB &bbox );
 };
 
 class QgsSingleColorPointCloud3DSymbolHandler : public QgsPointCloud3DSymbolHandler
@@ -105,7 +102,7 @@ class QgsSingleColorPointCloud3DSymbolHandler : public QgsPointCloud3DSymbolHand
     QgsSingleColorPointCloud3DSymbolHandler();
 
     bool prepare( const QgsPointCloud3DRenderContext &context ) override;
-    void processNode( QgsPointCloudIndex *pc, const IndexedPointCloudNode &n, const QgsPointCloud3DRenderContext &context, PointData *output = nullptr ) override;
+    void processNode( QgsPointCloudIndex *pc, const IndexedPointCloudNode &n, const QgsPointCloud3DRenderContext &context ) override;
     void finalize( Qt3DCore::QEntity *parent, const QgsPointCloud3DRenderContext &context ) override;
 
   private:
@@ -122,7 +119,7 @@ class QgsColorRampPointCloud3DSymbolHandler : public QgsPointCloud3DSymbolHandle
     QgsColorRampPointCloud3DSymbolHandler();
 
     bool prepare( const QgsPointCloud3DRenderContext &context ) override;
-    void processNode( QgsPointCloudIndex *pc, const IndexedPointCloudNode &n, const QgsPointCloud3DRenderContext &context, PointData *output = nullptr ) override;
+    void processNode( QgsPointCloudIndex *pc, const IndexedPointCloudNode &n, const QgsPointCloud3DRenderContext &context ) override;
     void finalize( Qt3DCore::QEntity *parent, const QgsPointCloud3DRenderContext &context ) override;
 
   private:
@@ -139,7 +136,7 @@ class QgsRGBPointCloud3DSymbolHandler : public QgsPointCloud3DSymbolHandler
     QgsRGBPointCloud3DSymbolHandler();
 
     bool prepare( const QgsPointCloud3DRenderContext &context ) override;
-    void processNode( QgsPointCloudIndex *pc, const IndexedPointCloudNode &n, const QgsPointCloud3DRenderContext &context, PointData *output = nullptr ) override;
+    void processNode( QgsPointCloudIndex *pc, const IndexedPointCloudNode &n, const QgsPointCloud3DRenderContext &context ) override;
     void finalize( Qt3DCore::QEntity *parent, const QgsPointCloud3DRenderContext &context ) override;
 
   private:
@@ -156,7 +153,7 @@ class QgsClassificationPointCloud3DSymbolHandler : public QgsPointCloud3DSymbolH
     QgsClassificationPointCloud3DSymbolHandler();
 
     bool prepare( const QgsPointCloud3DRenderContext &context ) override;
-    void processNode( QgsPointCloudIndex *pc, const IndexedPointCloudNode &n, const QgsPointCloud3DRenderContext &context, PointData *output = nullptr ) override;
+    void processNode( QgsPointCloudIndex *pc, const IndexedPointCloudNode &n, const QgsPointCloud3DRenderContext &context ) override;
     void finalize( Qt3DCore::QEntity *parent, const QgsPointCloud3DRenderContext &context ) override;
 
   private:
@@ -184,7 +181,6 @@ class QgsPointCloud3DGeometry: public Qt3DCore::QGeometry
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     Qt3DRender::QAttribute *mPositionAttribute = nullptr;
     Qt3DRender::QAttribute *mParameterAttribute = nullptr;
-    Qt3DRender::QAttribute *mPointSizeAttribute = nullptr;
     Qt3DRender::QAttribute *mColorAttribute = nullptr;
     Qt3DRender::QAttribute *mTriangleIndexAttribute = nullptr;
     Qt3DRender::QAttribute *mNormalsAttribute = nullptr;
@@ -194,7 +190,6 @@ class QgsPointCloud3DGeometry: public Qt3DCore::QGeometry
 #else
     Qt3DCore::QAttribute *mPositionAttribute = nullptr;
     Qt3DCore::QAttribute *mParameterAttribute = nullptr;
-    Qt3DCore::QAttribute *mPointSizeAttribute = nullptr;
     Qt3DCore::QAttribute *mColorAttribute = nullptr;
     Qt3DCore::QAttribute *mTriangleIndexAttribute = nullptr;
     Qt3DCore::QAttribute *mNormalsAttribute = nullptr;
@@ -239,16 +234,7 @@ class QgsRGBPointCloud3DGeometry : public QgsPointCloud3DGeometry
     void makeVertexBuffer( const QgsPointCloud3DSymbolHandler::PointData &data ) override;
 };
 
-class QgsClassificationPointCloud3DGeometry : public QgsPointCloud3DGeometry
-{
-    Q_OBJECT
 
-  public:
-    QgsClassificationPointCloud3DGeometry( Qt3DCore::QNode *parent, const QgsPointCloud3DSymbolHandler::PointData &data, unsigned int byteStride );
-
-  private:
-    void makeVertexBuffer( const QgsPointCloud3DSymbolHandler::PointData &data ) override;
-};
 /// @endcond
 
 #endif // QGSPOINTCLOUD3DSYMBOL_P_H

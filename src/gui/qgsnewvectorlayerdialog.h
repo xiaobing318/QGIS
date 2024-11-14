@@ -17,6 +17,7 @@
 #ifndef qgsnewvectorlayerdialog_H
 #define qgsnewvectorlayerdialog_H
 
+#pragma region "包含头文件"
 #include "ui_qgsnewvectorlayerdialogbase.h"
 #include "qgsguiutils.h"
 #include "qgshelp.h"
@@ -24,7 +25,7 @@
 #include "qgswkbtypes.h"
 #include "qgis_gui.h"
 #include "qgis_sip.h"
-
+#pragma endregion
 /**
  * \ingroup gui
  * \class QgsNewVectorLayerDialog
@@ -42,7 +43,7 @@ class GUI_EXPORT QgsNewVectorLayerDialog: public QDialog, private Ui::QgsNewVect
      *
      * \returns fileName on success, empty string use aborted, QString() if creation failed
      *
-     * \deprecated QGIS 3.4.5. Use execAndCreateLayer() instead.
+     * \deprecated since QGIS 3.4.5 - use execAndCreateLayer() instead.
      */
     Q_DECL_DEPRECATED static QString runAndCreateLayer( QWidget *parent = nullptr, QString *enc = nullptr, const QgsCoordinateReferenceSystem &crs = QgsCoordinateReferenceSystem(),
         const QString &initialPath = QString() ) SIP_DEPRECATED;
@@ -75,7 +76,7 @@ class GUI_EXPORT QgsNewVectorLayerDialog: public QDialog, private Ui::QgsNewVect
      */
     QgsNewVectorLayerDialog( QWidget *parent SIP_TRANSFERTHIS = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags );
     //! Returns the selected geometry type
-    Qgis::WkbType selectedType() const;
+    QgsWkbTypes::Type selectedType() const;
     //! Appends the chosen attribute names and types to at
     void attributes( QList< QPair<QString, QString> > &at ) const;
     //! Returns the file format for storage
@@ -108,6 +109,7 @@ class GUI_EXPORT QgsNewVectorLayerDialog: public QDialog, private Ui::QgsNewVect
     /**
      * Sets the \a crs value for the new layer in the dialog.
      * \see crs()
+     * \since QGIS 3.0
      */
     void setCrs( const QgsCoordinateReferenceSystem &crs );
 
@@ -125,8 +127,6 @@ class GUI_EXPORT QgsNewVectorLayerDialog: public QDialog, private Ui::QgsNewVect
     void showHelp();
     void nameChanged( const QString & );
     void selectionChanged();
-    void moveFieldsUp();
-    void moveFieldsDown();
 
   private:
     QPushButton *mOkButton = nullptr;

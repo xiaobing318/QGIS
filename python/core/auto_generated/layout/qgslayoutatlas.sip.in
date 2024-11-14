@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/layout/qgslayoutatlas.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -19,6 +19,8 @@ directly with :py:class:`QgsLayoutExporter` to automatically output all pages fr
 For :py:class:`QgsPrintLayout` layouts, it is not necessary to manually construct a
 :py:class:`QgsLayoutAtlas` object. Instead, the atlas attached to the print layout
 should be used. This can be retrieved by calling :py:func:`QgsPrintLayout.atlas()`.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -360,7 +362,7 @@ Refreshes the current atlas feature, by refetching its attributes from the vecto
 Emitted when one of the atlas parameters changes.
 %End
 
-    void toggled( bool enabled );
+    void toggled( bool );
 %Docstring
 Emitted when atlas is enabled or disabled.
 %End
@@ -405,5 +407,5 @@ Emitted when atlas rendering has ended.
  *                                                                      *
  * src/core/layout/qgslayoutatlas.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

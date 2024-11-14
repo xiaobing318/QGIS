@@ -16,9 +16,13 @@
  ***************************************************************************/
 
 #include "qgslayertreeviewtemporalindicator.h"
-#include "moc_qgslayertreeviewtemporalindicator.cpp"
 #include "qgslayertreeview.h"
 #include "qgslayertree.h"
+#include "qgslayertreemodel.h"
+#include "qgslayertreeutils.h"
+#include "qgsmeshlayer.h"
+#include "qgsrasterlayer.h"
+#include "qgsrasterlayerproperties.h"
 #include "qgsmaplayertemporalproperties.h"
 #include "qgisapp.h"
 
@@ -47,21 +51,20 @@ void QgsLayerTreeViewTemporalIndicatorProvider::onIndicatorClicked( const QModel
 
   switch ( layer->type() )
   {
-    case Qgis::LayerType::Raster:
+    case QgsMapLayerType::RasterLayer:
       QgisApp::instance()->showLayerProperties( layer, QStringLiteral( "mOptsPage_Temporal" ) );
       break;
-    case Qgis::LayerType::Mesh:
+    case QgsMapLayerType::MeshLayer:
       QgisApp::instance()->showLayerProperties( layer, QStringLiteral( "mOptsPage_Temporal" ) );
       break;
-    case Qgis::LayerType::Vector:
+    case QgsMapLayerType::VectorLayer:
       QgisApp::instance()->showLayerProperties( layer, QStringLiteral( "mOptsPage_Temporal" ) );
       break;
-    case Qgis::LayerType::Plugin:
-    case Qgis::LayerType::VectorTile:
-    case Qgis::LayerType::Annotation:
-    case Qgis::LayerType::PointCloud:
-    case Qgis::LayerType::Group:
-    case Qgis::LayerType::TiledScene:
+    case QgsMapLayerType::PluginLayer:
+    case QgsMapLayerType::VectorTileLayer:
+    case QgsMapLayerType::AnnotationLayer:
+    case QgsMapLayerType::PointCloudLayer:
+    case QgsMapLayerType::GroupLayer:
       break;
   }
 }

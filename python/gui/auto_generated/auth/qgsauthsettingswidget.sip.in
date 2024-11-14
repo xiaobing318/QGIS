@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/auth/qgsauthsettingswidget.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -17,6 +17,8 @@ and by using QGIS Authentication Database and its authentication configurations.
 
 The widget also offers the functionality to convert username/password credentials
 to an authentication configuration.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -154,7 +156,7 @@ setStoreUsernameChecked check the "Store" checkbox for the username
 
     void setStorePasswordChecked( bool checked );
 %Docstring
-setStorePasswordChecked check the "Store" checkbox for the password
+setStorePasswordCheched check the "Store" checkbox for the password
 
 :param checked:
 
@@ -223,5 +225,5 @@ Emitted when the auth configuration ID selected in the dialog is changed.
  *                                                                      *
  * src/gui/auth/qgsauthsettingswidget.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

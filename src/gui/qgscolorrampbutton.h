@@ -31,6 +31,7 @@ class QgsStyle;
  * \brief A cross platform button subclass for selecting color ramps. Will open color ramp dialogs when clicked.
  * Offers live updates to button from color ramp dialog. An attached drop-down menu allows for access to
  * saved color ramps, as well as option to invert the current color ramp and create new ramps.
+ * \since QGIS 3.0
  */
 class GUI_EXPORT QgsColorRampButton : public QToolButton
 {
@@ -214,18 +215,14 @@ class GUI_EXPORT QgsColorRampButton : public QToolButton
      * Sets the current color ramp for the button. Will emit a colorRampChanged() signal if the color ramp is different
      * to the previous color ramp.
      * \param colorramp New color ramp for the button. The ramp will be cloned and ownership is not transferred.
-     * \see setRandomColorRamp
-     * \see setColorRampFromName
-     * \see colorRamp
+     * \see setRandomColorRamp, setColorRampFromName, colorRamp
      */
     void setColorRamp( QgsColorRamp *colorramp );
 
     /**
      * Sets the current color ramp for the button to random colors. Will emit a colorRampChanged() signal
      * if the color ramp is different to the previous color ramp.
-     * \see setColorRamp
-     * \see setColorRampFromName
-     * \see colorRamp
+     * \see setColorRamp, setColorRampFromName, colorRamp
      */
     void setRandomColorRamp();
 
@@ -233,9 +230,7 @@ class GUI_EXPORT QgsColorRampButton : public QToolButton
      * Sets the current color ramp for the button using a saved color ramp name. Will emit a colorRampChanged() signal
      * if the color ramp is different to the previous color ramp.
      * \param name Name of saved color ramp
-     * \see setColorRamp
-     * \see setRandomColorRamp
-     * \see colorRamp
+     * \see setColorRamp, setRandomColorRamp, colorRamp
      */
     void setColorRampFromName( const QString &name = QString() );
 

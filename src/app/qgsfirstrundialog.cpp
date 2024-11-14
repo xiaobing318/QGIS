@@ -14,7 +14,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsfirstrundialog.h"
-#include "moc_qgsfirstrundialog.cpp"
 #include "qgis.h"
 
 QgsFirstRunDialog::QgsFirstRunDialog( QWidget *parent ) : QDialog( parent )

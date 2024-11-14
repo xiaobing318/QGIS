@@ -34,7 +34,6 @@
 
 class QgsLabelingWidget;
 class QgsMaskingWidget;
-class QgsDiagramWidget;
 class QgsMapLayer;
 class QgsMapCanvas;
 class QgsRendererPropertiesDialog;
@@ -42,11 +41,9 @@ class QgsRendererRasterPropertiesWidget;
 class QgsRendererMeshPropertiesWidget;
 class QgsUndoWidget;
 class QgsRasterHistogramWidget;
-class QgsRasterAttributeTableWidget;
 class QgsMapLayerStyleManagerWidget;
 class QgsVectorLayer3DRendererWidget;
 class QgsMeshLayer3DRendererWidget;
-class QgsMeshLabelingWidget;
 class QgsPointCloudLayer3DRendererWidget;
 class QgsMessageBar;
 class QgsVectorTileBasicRendererWidget;
@@ -101,8 +98,6 @@ class APP_EXPORT QgsLayerStylingWidget : public QWidget, private Ui::QgsLayerSty
       RasterHistogram,
       History,
       Symbology3D,
-      RasterAttributeTables, //!< Raster attribute tables, since QGIS 3.30
-      VectorDiagram, //!< Vector diagram, since QGIS 3.40
     };
 
     QgsLayerStylingWidget( QgsMapCanvas *canvas, QgsMessageBar *messageBar, const QList<const QgsMapLayerConfigWidgetFactory *> &pages, QWidget *parent = nullptr );
@@ -155,7 +150,7 @@ class APP_EXPORT QgsLayerStylingWidget : public QWidget, private Ui::QgsLayerSty
   private slots:
 
     void layerAboutToBeRemoved( QgsMapLayer *layer );
-    void liveApplyToggled( bool liveUpdateEnabled );
+    void liveApplyToggled( bool value );
 
   private:
     void pushUndoItem( const QString &name, bool triggerRepaint = true );
@@ -171,16 +166,12 @@ class APP_EXPORT QgsLayerStylingWidget : public QWidget, private Ui::QgsLayerSty
     QgsUndoWidget *mUndoWidget = nullptr;
     QgsMapLayer *mCurrentLayer = nullptr;
     QgsLabelingWidget *mLabelingWidget = nullptr;
-    QgsMeshLabelingWidget *mMeshLabelingWidget = nullptr;
     QgsMaskingWidget *mMaskingWidget = nullptr;
 #ifdef HAVE_3D
     QgsVectorLayer3DRendererWidget *mVector3DWidget = nullptr;
     QgsMeshLayer3DRendererWidget *mMesh3DWidget = nullptr;
 #endif
-    QgsDiagramWidget *mDiagramWidget = nullptr;
     QgsRendererRasterPropertiesWidget *mRasterStyleWidget = nullptr;
-    QgsRasterAttributeTableWidget *mRasterAttributeTableWidget = nullptr;
-    QgsPanelWidget *mRasterAttributeTableDisabledWidget = nullptr;
     QgsRendererMeshPropertiesWidget *mMeshStyleWidget = nullptr;
     QgsVectorTileBasicRendererWidget *mVectorTileStyleWidget = nullptr;
     QgsVectorTileBasicLabelingWidget *mVectorTileLabelingWidget = nullptr;

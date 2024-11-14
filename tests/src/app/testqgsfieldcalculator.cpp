@@ -22,6 +22,8 @@
 #include "qgsvectordataprovider.h"
 #include "qgsfieldcalculator.h"
 #include "qgsproject.h"
+#include "qgsmapcanvas.h"
+#include "qgsunittypes.h"
 
 /**
  * \ingroup UnitTests
@@ -50,7 +52,7 @@ TestQgsFieldCalculator::TestQgsFieldCalculator() = default;
 //runs before all tests
 void TestQgsFieldCalculator::initTestCase()
 {
-  qDebug() << "TestQgsFieldCalculator::initTestCase()";
+  qDebug() << "TestQgisAppClipboard::initTestCase()";
   // init QGIS's paths - true means that all path will be inited from prefix
   QgsApplication::init();
   QgsApplication::initQgis();
@@ -83,7 +85,7 @@ void TestQgsFieldCalculator::testLengthCalculations()
   const QgsCoordinateReferenceSystem srs( QStringLiteral( "EPSG:3111" ) );
   QgsProject::instance()->setCrs( srs );
   QgsProject::instance()->setEllipsoid( QStringLiteral( "WGS84" ) );
-  QgsProject::instance()->setDistanceUnits( Qgis::DistanceUnit::Meters );
+  QgsProject::instance()->setDistanceUnits( QgsUnitTypes::DistanceMeters );
 
   // run length calculation
   tempLayer->startEditing();
@@ -105,7 +107,7 @@ void TestQgsFieldCalculator::testLengthCalculations()
   QGSCOMPARENEAR( f.attribute( "col1" ).toDouble(), expected, 0.001 );
 
   // change project length unit, check calculation respects unit
-  QgsProject::instance()->setDistanceUnits( Qgis::DistanceUnit::Feet );
+  QgsProject::instance()->setDistanceUnits( QgsUnitTypes::DistanceFeet );
   tempLayer->startEditing();
   std::unique_ptr< QgsFieldCalculator > calc2( new QgsFieldCalculator( tempLayer.get() ) );
   calc2->mUpdateExistingGroupBox->setChecked( true );
@@ -144,7 +146,7 @@ void TestQgsFieldCalculator::testAreaCalculations()
   const QgsCoordinateReferenceSystem srs( QStringLiteral( "EPSG:3111" ) );
   QgsProject::instance()->setCrs( srs );
   QgsProject::instance()->setEllipsoid( QStringLiteral( "WGS84" ) );
-  QgsProject::instance()->setAreaUnits( Qgis::AreaUnit::SquareMeters );
+  QgsProject::instance()->setAreaUnits( QgsUnitTypes::AreaSquareMeters );
 
   // run area calculation
   tempLayer->startEditing();
@@ -166,7 +168,7 @@ void TestQgsFieldCalculator::testAreaCalculations()
   QGSCOMPARENEAR( f.attribute( "col1" ).toDouble(), expected, 1.0 );
 
   // change project area unit, check calculation respects unit
-  QgsProject::instance()->setAreaUnits( Qgis::AreaUnit::SquareMiles );
+  QgsProject::instance()->setAreaUnits( QgsUnitTypes::AreaSquareMiles );
   tempLayer->startEditing();
   std::unique_ptr< QgsFieldCalculator > calc2( new QgsFieldCalculator( tempLayer.get() ) );
   calc2->mUpdateExistingGroupBox->setChecked( true );

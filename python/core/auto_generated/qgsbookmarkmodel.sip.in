@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsbookmarkmodel.h                                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -29,14 +29,12 @@ model data is a merge of the bookmarks stored in both managers.
 %End
   public:
 
-
-    enum class CustomRole
+    enum CustomRoles
     {
-      Extent,
-      Name,
-      Id,
-      Group,
-      Rotation,
+      RoleExtent,
+      RoleName,
+      RoleId,
+      RoleGroup,
     };
 
     enum Columns
@@ -47,7 +45,6 @@ model data is a merge of the bookmarks stored in both managers.
       ColumnYMin,
       ColumnXMax,
       ColumnYMax,
-      ColumnRotation,
       ColumnCrs,
       ColumnStore,
     };
@@ -82,7 +79,7 @@ class QgsBookmarkManagerProxyModel : QSortFilterProxyModel
 {
 %Docstring(signature="appended")
 
-A QSortFilterProxyModel subclass for sorting the entries in a :py:class:`QgsBookmarkManagerModel`.
+A QSortFilterProxyModel subclass for sorting the entries in a QgsBookmarkManagerModel.
 
 .. versionadded:: 3.10
 %End
@@ -106,5 +103,5 @@ and a secondary ``projectManager`` (a project based bookmark manager).
  *                                                                      *
  * src/core/qgsbookmarkmodel.h                                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -14,7 +14,6 @@
 ***************************************************************************/
 
 #include "qgsfieldcombobox.h"
-#include "moc_qgsfieldcombobox.cpp"
 #include "qgsfieldproxymodel.h"
 #include "qgsmaplayer.h"
 #include "qgsvectorlayer.h"
@@ -100,7 +99,7 @@ QString QgsFieldComboBox::currentField() const
     return QString();
   }
 
-  QString name = mFieldProxyModel->data( proxyIndex, static_cast< int >( QgsFieldModel::CustomRole::FieldName ) ).toString();
+  QString name = mFieldProxyModel->data( proxyIndex, QgsFieldModel::FieldNameRole ).toString();
   return name;
 }
 

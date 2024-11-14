@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgspanelwidgetstack.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -86,6 +86,8 @@ the widget will be deleted.
     QgsPanelWidget *currentPanel();
 %Docstring
 Returns the panel currently shown in the stack.
+
+.. versionadded:: 3.0
 %End
 
     virtual QSize sizeHint() const;
@@ -110,6 +112,8 @@ Accepts all panel widgets open in the stack in turn until only the :py:func:`~Qg
 remains.
 
 .. seealso:: :py:func:`acceptCurrentPanel`
+
+.. versionadded:: 3.0
 %End
 
     void showPanel( QgsPanelWidget *panel );
@@ -143,5 +147,5 @@ This slot is normally auto connected to panelAccepted when a panel is shown.
  *                                                                      *
  * src/gui/qgspanelwidgetstack.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -47,6 +47,37 @@ class ANALYSIS_EXPORT QgsZonalStatistics
 {
   public:
 
+    //! Enumeration of flags that specify statistics to be calculated
+    enum Statistic
+    {
+      Count       = 1,  //!< Pixel count
+      Sum    = 2,  //!< Sum of pixel values
+      Mean = 4,  //!< Mean of pixel values
+      Median = 8, //!< Median of pixel values
+      StDev = 16, //!< Standard deviation of pixel values
+      Min = 32,  //!< Min of pixel values
+      Max = 64,  //!< Max of pixel values
+      Range = 128, //!< Range of pixel values (max - min)
+      Minority = 256, //!< Minority of pixel values
+      Majority = 512, //!< Majority of pixel values
+      Variety = 1024, //!< Variety (count of distinct) pixel values
+      Variance = 2048, //!< Variance of pixel values
+      All = Count | Sum | Mean | Median | StDev | Max | Min | Range | Minority | Majority | Variety | Variance
+    };
+    Q_DECLARE_FLAGS( Statistics, Statistic )
+
+    //! Error codes for calculation
+    enum Result
+    {
+      Success = 0, //!< Success
+      LayerTypeWrong = 1, //!< Layer is not a polygon layer
+      LayerInvalid, //!< Layer is invalid
+      RasterInvalid, //!< Raster layer is invalid
+      RasterBandInvalid, //!< The raster band does not exist on the raster layer
+      FailedToCreateField = 8, //!< Output fields could not be created
+      Canceled = 9 //!< Algorithm was canceled
+    };
+
     /**
      * Convenience constructor for QgsZonalStatistics, using an input raster layer.
      *
@@ -59,7 +90,7 @@ class ANALYSIS_EXPORT QgsZonalStatistics
                         QgsRasterLayer *rasterLayer,
                         const QString &attributePrefix = QString(),
                         int rasterBand = 1,
-                        Qgis::ZonalStatistics stats = Qgis::ZonalStatistic::Default );
+                        QgsZonalStatistics::Statistics stats = QgsZonalStatistics::Statistics( QgsZonalStatistics::Count | QgsZonalStatistics::Sum | QgsZonalStatistics::Mean ) );
 
     /**
      * Constructor for QgsZonalStatistics, using a QgsRasterInterface.
@@ -94,27 +125,27 @@ class ANALYSIS_EXPORT QgsZonalStatistics
                         double rasterUnitsPerPixelY,
                         const QString &attributePrefix = QString(),
                         int rasterBand = 1,
-                        Qgis::ZonalStatistics stats = Qgis::ZonalStatistic::Default );
+                        QgsZonalStatistics::Statistics stats = QgsZonalStatistics::Statistics( QgsZonalStatistics::Count | QgsZonalStatistics::Sum | QgsZonalStatistics::Mean ) );
 
 
     /**
      * Runs the calculation.
      */
-    Qgis::ZonalStatisticResult calculateStatistics( QgsFeedback *feedback );
+    QgsZonalStatistics::Result calculateStatistics( QgsFeedback *feedback );
 
     /**
      * Returns the friendly display name for a \a statistic.
      * \see shortName()
      * \since QGIS 3.12
      */
-    static QString displayName( Qgis::ZonalStatistic statistic );
+    static QString displayName( QgsZonalStatistics::Statistic statistic );
 
     /**
      * Returns a short, friendly display name for a \a statistic, suitable for use in a field name.
      * \see displayName()
      * \since QGIS 3.12
      */
-    static QString shortName( Qgis::ZonalStatistic statistic );
+    static QString shortName( QgsZonalStatistics::Statistic statistic );
 
     /**
      * Calculates the specified \a statistics for the pixels of \a rasterBand
@@ -125,7 +156,7 @@ class ANALYSIS_EXPORT QgsZonalStatistics
      * \since QGIS 3.16
      */
 #ifndef SIP_RUN
-    static QMap<Qgis::ZonalStatistic, QVariant> calculateStatistics( QgsRasterInterface *rasterInterface, const QgsGeometry &geometry, double cellSizeX, double cellSizeY, int rasterBand, Qgis::ZonalStatistics statistics );
+    static QMap<QgsZonalStatistics::Statistic, QVariant> calculateStatistics( QgsRasterInterface *rasterInterface, const QgsGeometry &geometry, double cellSizeX, double cellSizeY, int rasterBand, QgsZonalStatistics::Statistics statistics );
 #endif
 
 ///@cond PRIVATE
@@ -139,7 +170,7 @@ class ANALYSIS_EXPORT QgsZonalStatistics
      *
      * \since QGIS 3.16
      */
-    static QMap<int, QVariant> calculateStatisticsInt( QgsRasterInterface *rasterInterface, const QgsGeometry &geometry, double cellSizeX, double cellSizeY, int rasterBand, Qgis::ZonalStatistics statistics ) SIP_PYNAME( calculateStatistics );
+    static QMap<int, QVariant> calculateStatisticsInt( QgsRasterInterface *rasterInterface, const QgsGeometry &geometry, double cellSizeX, double cellSizeY, int rasterBand, QgsZonalStatistics::Statistics statistics ) SIP_PYNAME( calculateStatistics );
 /// @endcond
 
   private:
@@ -164,7 +195,7 @@ class ANALYSIS_EXPORT QgsZonalStatistics
           values.clear();
         }
 
-        void addValue( double value, const QgsPointXY &point, double weight = 1.0 )
+        void addValue( double value, double weight = 1.0 )
         {
           if ( weight < 1.0 )
           {
@@ -176,16 +207,8 @@ class ANALYSIS_EXPORT QgsZonalStatistics
             sum += value;
             ++count;
           }
-          if ( value < min )
-          {
-            min = value;
-            minPoint = point;
-          }
-          if ( value > max )
-          {
-            max = value;
-            maxPoint = point;
-          }
+          min = std::min( min, value );
+          max = std::max( max, value );
           if ( mStoreValueCounts )
             valueCount.insert( value, valueCount.value( value, 0 ) + 1 );
           if ( mStoreValues )
@@ -195,8 +218,6 @@ class ANALYSIS_EXPORT QgsZonalStatistics
         double count = 0.0;
         double max = std::numeric_limits<double>::lowest();
         double min = std::numeric_limits<double>::max();
-        QgsPointXY minPoint;
-        QgsPointXY maxPoint;
         QMap< double, int > valueCount;
         QList< double > values;
 
@@ -217,8 +238,10 @@ class ANALYSIS_EXPORT QgsZonalStatistics
     int mRasterBand = 0;
     QgsVectorLayer *mPolygonLayer = nullptr;
     QString mAttributePrefix;
-    Qgis::ZonalStatistics mStatistics = Qgis::ZonalStatistic::All;
+    Statistics mStatistics = QgsZonalStatistics::All;
 };
+
+Q_DECLARE_OPERATORS_FOR_FLAGS( QgsZonalStatistics::Statistics )
 
 // clazy:excludeall=qstring-allocations
 

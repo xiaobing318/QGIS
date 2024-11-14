@@ -21,20 +21,18 @@
 
 #include "qgsfeature.h"
 #include "qgsexpression.h"
+#include "qgsvectorlayerfeatureiterator.h"
+#include "qgsrasterlayer.h"
+#include "qgsproject.h"
+#include "qgsrelationmanager.h"
+#include "qgsvectorlayer.h"
+#include "qgsmeshlayer.h"
 #include "qgsvariantutils.h"
-#include "qgsfeaturerequest.h"
-#include "qgsreferencedgeometry.h"
 
-#include <QDate>
-#include <QDateTime>
-#include <QTime>
 #include <QThread>
 #include <QLocale>
-#include <functional>
 
-class QgsMapLayer;
 class QgsGradientColorRamp;
-class QgsVectorLayerFeatureSource;
 
 #define ENSURE_NO_EVAL_ERROR   {  if ( parent->hasEvalError() ) return QVariant(); }
 #define SET_EVAL_ERROR(x)   { parent->setEvalErrorString( x ); return QVariant(); }
@@ -95,32 +93,27 @@ class CORE_EXPORT QgsExpressionUtils
         return Unknown;
 
       //handle some special cases
-      int userType = value.userType();
-      if ( value.type() == QVariant::UserType )
+      if ( value.userType() == QMetaType::type( "QgsGeometry" ) )
       {
-        if ( userType == qMetaTypeId< QgsGeometry>() || userType == qMetaTypeId<QgsReferencedGeometry>() )
-        {
-          //geom is false if empty
-          const QgsGeometry geom = getGeometry( value, nullptr );
-          return geom.isNull() ? False : True;
-        }
-        else if ( userType == qMetaTypeId<QgsFeature>() )
-        {
-          //feat is false if non-valid
-          const QgsFeature feat = value.value<QgsFeature>();
-          return feat.isValid() ? True : False;
-        }
+        //geom is false if empty
+        const QgsGeometry geom = value.value<QgsGeometry>();
+        return geom.isNull() ? False : True;
+      }
+      else if ( value.userType() == QMetaType::type( "QgsFeature" ) )
+      {
+        //feat is false if non-valid
+        const QgsFeature feat = value.value<QgsFeature>();
+        return feat.isValid() ? True : False;
       }
 
-      if ( userType == QMetaType::Type::Int )
+      if ( value.type() == QVariant::Int )
         return value.toInt() != 0 ? True : False;
 
       bool ok;
       const double x = value.toDouble( &ok );
       if ( !ok )
       {
-        if ( parent )
-          parent->setEvalErrorString( QObject::tr( "Cannot convert '%1' to boolean" ).arg( value.toString() ) );
+        parent->setEvalErrorString( QObject::tr( "Cannot convert '%1' to boolean" ).arg( value.toString() ) );
         return Unknown;
       }
       return !qgsDoubleNear( x, 0.0 ) ? True : False;
@@ -129,17 +122,17 @@ class CORE_EXPORT QgsExpressionUtils
 
     static inline bool isIntSafe( const QVariant &v )
     {
-      if ( v.userType() == QMetaType::Type::Int )
+      if ( v.type() == QVariant::Int )
         return true;
-      if ( v.userType() == QMetaType::Type::UInt )
+      if ( v.type() == QVariant::UInt )
         return true;
-      if ( v.userType() == QMetaType::Type::LongLong )
+      if ( v.type() == QVariant::LongLong )
         return true;
-      if ( v.userType() == QMetaType::Type::ULongLong )
+      if ( v.type() == QVariant::ULongLong )
         return true;
-      if ( v.userType() == QMetaType::Type::Double )
+      if ( v.type() == QVariant::Double )
         return false;
-      if ( v.userType() == QMetaType::Type::QString )
+      if ( v.type() == QVariant::String )
       {
         bool ok;
         v.toString().toInt( &ok );
@@ -150,17 +143,17 @@ class CORE_EXPORT QgsExpressionUtils
 
     static inline bool isDoubleSafe( const QVariant &v )
     {
-      if ( v.userType() == QMetaType::Type::Double )
+      if ( v.type() == QVariant::Double )
         return true;
-      if ( v.userType() == QMetaType::Type::Int )
+      if ( v.type() == QVariant::Int )
         return true;
-      if ( v.userType() == QMetaType::Type::UInt )
+      if ( v.type() == QVariant::UInt )
         return true;
-      if ( v.userType() == QMetaType::Type::LongLong )
+      if ( v.type() == QVariant::LongLong )
         return true;
-      if ( v.userType() == QMetaType::Type::ULongLong )
+      if ( v.type() == QVariant::ULongLong )
         return true;
-      if ( v.userType() == QMetaType::Type::QString )
+      if ( v.type() == QVariant::String )
       {
         bool ok;
         const double val = v.toString().toDouble( &ok );
@@ -172,19 +165,19 @@ class CORE_EXPORT QgsExpressionUtils
 
     static inline bool isDateTimeSafe( const QVariant &v )
     {
-      return v.userType() == QMetaType::Type::QDateTime
-             || v.userType() == QMetaType::Type::QDate
-             || v.userType() == QMetaType::Type::QTime;
+      return v.type() == QVariant::DateTime
+             || v.type() == QVariant::Date
+             || v.type() == QVariant::Time;
     }
 
     static inline bool isIntervalSafe( const QVariant &v )
     {
-      if ( v.userType() == qMetaTypeId<QgsInterval>() )
+      if ( v.userType() == QMetaType::type( "QgsInterval" ) )
       {
         return true;
       }
 
-      if ( v.userType() == QMetaType::Type::QString )
+      if ( v.type() == QVariant::String )
       {
         return QgsInterval::fromString( v.toString() ).isValid();
       }
@@ -198,7 +191,7 @@ class CORE_EXPORT QgsExpressionUtils
 
     static inline bool isList( const QVariant &v )
     {
-      return v.userType() == QMetaType::Type::QVariantList || v.userType() == QMetaType::Type::QStringList;
+      return v.type() == QVariant::List || v.type() == QVariant::StringList;
     }
 
 // implicit conversion to string
@@ -216,10 +209,9 @@ class CORE_EXPORT QgsExpressionUtils
      */
     static QByteArray getBinaryValue( const QVariant &value, QgsExpression *parent )
     {
-      if ( value.userType() != QMetaType::Type::QByteArray )
+      if ( value.type() != QVariant::ByteArray )
       {
-        if ( parent )
-          parent->setEvalErrorString( QObject::tr( "Value is not a binary value" ) );
+        parent->setEvalErrorString( QObject::tr( "Value is not a binary value" ) );
         return QByteArray();
       }
       return value.toByteArray();
@@ -231,8 +223,7 @@ class CORE_EXPORT QgsExpressionUtils
       const double x = value.toDouble( &ok );
       if ( !ok || std::isnan( x ) || !std::isfinite( x ) )
       {
-        if ( parent )
-          parent->setEvalErrorString( QObject::tr( "Cannot convert '%1' to double" ).arg( value.toString() ) );
+        parent->setEvalErrorString( QObject::tr( "Cannot convert '%1' to double" ).arg( value.toString() ) );
         return 0;
       }
       return x;
@@ -248,8 +239,7 @@ class CORE_EXPORT QgsExpressionUtils
       }
       else
       {
-        if ( parent )
-          parent->setEvalErrorString( QObject::tr( "Cannot convert '%1' to int" ).arg( value.toString() ) );
+        parent->setEvalErrorString( QObject::tr( "Cannot convert '%1' to int" ).arg( value.toString() ) );
         return 0;
       }
     }
@@ -264,8 +254,7 @@ class CORE_EXPORT QgsExpressionUtils
       }
       else
       {
-        if ( parent )
-          parent->setEvalErrorString( QObject::tr( "Cannot convert '%1' to native int" ).arg( value.toString() ) );
+        parent->setEvalErrorString( QObject::tr( "Cannot convert '%1' to native int" ).arg( value.toString() ) );
         return 0;
       }
     }
@@ -285,8 +274,7 @@ class CORE_EXPORT QgsExpressionUtils
           return QDateTime( QDate( 1, 1, 1 ), t );
         }
 
-        if ( parent )
-          parent->setEvalErrorString( QObject::tr( "Cannot convert '%1' to DateTime" ).arg( value.toString() ) );
+        parent->setEvalErrorString( QObject::tr( "Cannot convert '%1' to DateTime" ).arg( value.toString() ) );
         return QDateTime();
       }
     }
@@ -300,8 +288,7 @@ class CORE_EXPORT QgsExpressionUtils
       }
       else
       {
-        if ( parent )
-          parent->setEvalErrorString( QObject::tr( "Cannot convert '%1' to Date" ).arg( value.toString() ) );
+        parent->setEvalErrorString( QObject::tr( "Cannot convert '%1' to Date" ).arg( value.toString() ) );
         return QDate();
       }
     }
@@ -315,17 +302,14 @@ class CORE_EXPORT QgsExpressionUtils
       }
       else
       {
-        if ( parent )
-          parent->setEvalErrorString( QObject::tr( "Cannot convert '%1' to Time" ).arg( value.toString() ) );
+        parent->setEvalErrorString( QObject::tr( "Cannot convert '%1' to Time" ).arg( value.toString() ) );
         return QTime();
       }
     }
 
-    static QColor getColorValue( const QVariant &value, QgsExpression *parent, bool &isQColor );
-
     static QgsInterval getInterval( const QVariant &value, QgsExpression *parent, bool report_error = false )
     {
-      if ( value.userType() == qMetaTypeId<QgsInterval>() )
+      if ( value.userType() == QMetaType::type( "QgsInterval" ) )
         return value.value<QgsInterval>();
 
       QgsInterval inter = QgsInterval::fromString( value.toString() );
@@ -334,7 +318,7 @@ class CORE_EXPORT QgsExpressionUtils
         return inter;
       }
       // If we get here then we can't convert so we just error and return invalid.
-      if ( report_error && parent )
+      if ( report_error )
         parent->setEvalErrorString( QObject::tr( "Cannot convert '%1' to interval" ).arg( value.toString() ) );
 
       return QgsInterval();
@@ -342,26 +326,21 @@ class CORE_EXPORT QgsExpressionUtils
 
     static QgsGradientColorRamp getRamp( const QVariant &value, QgsExpression *parent, bool report_error = false );
 
-    static QgsGeometry getGeometry( const QVariant &value, QgsExpression *parent, bool tolerant = false )
+    static QgsGeometry getGeometry( const QVariant &value, QgsExpression *parent )
     {
-      if ( value.userType() == qMetaTypeId< QgsReferencedGeometry>() )
-        return value.value<QgsReferencedGeometry>();
-
-      if ( value.userType() == qMetaTypeId< QgsGeometry>() )
+      if ( value.userType() == QMetaType::type( "QgsGeometry" ) )
         return value.value<QgsGeometry>();
 
-      if ( !tolerant && parent )
-        parent->setEvalErrorString( QStringLiteral( "Cannot convert to geometry" ) );
+      parent->setEvalErrorString( QStringLiteral( "Cannot convert to geometry" ) );
       return QgsGeometry();
     }
 
     static QgsFeature getFeature( const QVariant &value, QgsExpression *parent )
     {
-      if ( value.userType() == qMetaTypeId<QgsFeature>() )
+      if ( value.userType() == QMetaType::type( "QgsFeature" ) )
         return value.value<QgsFeature>();
 
-      if ( parent )
-        parent->setEvalErrorString( QStringLiteral( "Cannot convert to feature" ) );
+      parent->setEvalErrorString( QStringLiteral( "Cannot convert to feature" ) );
       return 0;
     }
 
@@ -370,71 +349,106 @@ class CORE_EXPORT QgsExpressionUtils
       if ( value.canConvert<QgsExpressionNode *>() )
         return value.value<QgsExpressionNode *>();
 
-      if ( parent )
-        parent->setEvalErrorString( QStringLiteral( "Cannot convert to node" ) );
+      parent->setEvalErrorString( QStringLiteral( "Cannot convert to node" ) );
       return nullptr;
     }
 
-    /**
-     * \deprecated QGIS 3.40. Not actually deprecated, but this method is not thread safe -- use with extreme caution only when the thread safety has already been taken care of by the caller!.
-     */
-    Q_DECL_DEPRECATED static QgsMapLayer *getMapLayer( const QVariant &value, const QgsExpressionContext *context, QgsExpression * );
+    static QgsMapLayer *getMapLayer( const QVariant &value, QgsExpression * )
+    {
+      // First check if we already received a layer pointer
+      QgsMapLayer *ml = value.value< QgsWeakMapLayerPointer >().data();
+      if ( !ml )
+      {
+        ml = value.value< QgsMapLayer * >();
+#ifdef QGISDEBUG
+        if ( ml )
+        {
+          qWarning( "Raw map layer pointer stored in expression evaluation, switch to QgsWeakMapLayerPointer instead" );
+        }
+#endif
+      }
 
-    /**
-     * Executes a lambda \a function for a \a value which corresponds to a map layer, in a thread-safe way.
-     *
-     * \since QGIS 3.30
-     */
-    static void executeLambdaForMapLayer( const QVariant &value, const QgsExpressionContext *context, QgsExpression *expression, const std::function< void( QgsMapLayer * )> &function, bool &foundLayer );
+      QgsProject *project = QgsProject::instance();
 
-    /**
-     * Evaluates a \a value to a map layer, then runs a \a function on the layer in a thread safe way before returning the result of the function.
-     *
-     * \since QGIS 3.30
-     */
-    static QVariant runMapLayerFunctionThreadSafe( const QVariant &value, const QgsExpressionContext *context, QgsExpression *expression, const std::function<QVariant( QgsMapLayer * ) > &function, bool &foundLayer );
+      // No pointer yet, maybe it's a layer id?
+      if ( !ml )
+        ml = project->mapLayer( value.toString() );
 
-    /**
-     * Gets a vector layer feature source for a \a value which corresponds to a vector layer, in a thread-safe way.
-     */
-    static std::unique_ptr<QgsVectorLayerFeatureSource> getFeatureSource( const QVariant &value, const QgsExpressionContext *context, QgsExpression *e, bool &foundLayer );
+      // Still nothing? Check for layer name
+      if ( !ml )
+        ml = project->mapLayersByName( value.toString() ).value( 0 );
 
-    /**
-     * \deprecated QGIS 3.40. Not actually deprecated, but this method is not thread safe -- use with extreme caution only when the thread safety has already been taken care of by the caller!.
-     */
-    Q_DECL_DEPRECATED static QgsVectorLayer *getVectorLayer( const QVariant &value, const QgsExpressionContext *context, QgsExpression *e );
+      return ml;
+    }
+
+    static std::unique_ptr<QgsVectorLayerFeatureSource> getFeatureSource( const QVariant &value, QgsExpression *e )
+    {
+      std::unique_ptr<QgsVectorLayerFeatureSource> featureSource;
+
+      auto getFeatureSource = [ &value, e, &featureSource ]
+      {
+        QgsVectorLayer *layer = getVectorLayer( value, e );
+
+        if ( layer )
+        {
+          featureSource.reset( new QgsVectorLayerFeatureSource( layer ) );
+        }
+      };
+
+      // Make sure we only deal with the vector layer on the main thread where it lives.
+      // Anything else risks a crash.
+      if ( QThread::currentThread() == qApp->thread() )
+        getFeatureSource();
+      else
+        QMetaObject::invokeMethod( qApp, getFeatureSource, Qt::BlockingQueuedConnection );
+
+      return featureSource;
+    }
+
+    static QgsVectorLayer *getVectorLayer( const QVariant &value, QgsExpression *e )
+    {
+      return qobject_cast<QgsVectorLayer *>( getMapLayer( value, e ) );
+    }
+
+    static QgsRasterLayer *getRasterLayer( const QVariant &value, QgsExpression *e )
+    {
+      return qobject_cast<QgsRasterLayer *>( getMapLayer( value, e ) );
+    }
+
+    static QgsMeshLayer *getMeshLayer( const QVariant &value, QgsExpression *e )
+    {
+      return qobject_cast<QgsMeshLayer *>( getMapLayer( value, e ) );
+    }
 
     /**
      * Tries to convert a \a value to a file path.
      *
      * \since QGIS 3.24
      */
-    static QString getFilePathValue( const QVariant &value, const QgsExpressionContext *context, QgsExpression *parent );
+    static QString getFilePathValue( const QVariant &value, QgsExpression *parent );
 
     static QVariantList getListValue( const QVariant &value, QgsExpression *parent )
     {
-      if ( value.userType() == QMetaType::Type::QVariantList || value.userType() == QMetaType::Type::QStringList )
+      if ( value.type() == QVariant::List || value.type() == QVariant::StringList )
       {
         return value.toList();
       }
       else
       {
-        if ( parent )
-          parent->setEvalErrorString( QObject::tr( "Cannot convert '%1' to array" ).arg( value.toString() ) );
+        parent->setEvalErrorString( QObject::tr( "Cannot convert '%1' to array" ).arg( value.toString() ) );
         return QVariantList();
       }
     }
 
     static QVariantMap getMapValue( const QVariant &value, QgsExpression *parent )
     {
-      if ( value.userType() == QMetaType::Type::QVariantMap )
+      if ( value.type() == QVariant::Map )
       {
         return value.toMap();
       }
       else
       {
-        if ( parent )
-          parent->setEvalErrorString( QObject::tr( "Cannot convert '%1' to map" ).arg( value.toString() ) );
+        parent->setEvalErrorString( QObject::tr( "Cannot convert '%1' to map" ).arg( value.toString() ) );
         return QVariantMap();
       }
     }
@@ -447,12 +461,12 @@ class CORE_EXPORT QgsExpressionUtils
      */
     static QString toLocalizedString( const QVariant &value )
     {
-      if ( value.userType() == QMetaType::Type::Int || value.userType() == QMetaType::Type::UInt || value.userType() == QMetaType::Type::LongLong || value.userType() == QMetaType::Type::ULongLong )
+      if ( value.type() == QVariant::Int || value.type() == QVariant::UInt || value.type() == QVariant::LongLong || value.type() == QVariant::ULongLong )
       {
         bool ok;
         QString res;
 
-        if ( value.userType() == QMetaType::Type::ULongLong )
+        if ( value.type() == QVariant::ULongLong )
         {
           res = QLocale().toString( value.toULongLong( &ok ) );
         }
@@ -471,7 +485,7 @@ class CORE_EXPORT QgsExpressionUtils
         }
       }
       // Qt madness with QMetaType::Float :/
-      else if ( value.userType() == QMetaType::Type::Double || value.userType() == static_cast<QMetaType::Type>( QMetaType::Float ) )
+      else if ( value.type() == QVariant::Double || value.type() == static_cast<QVariant::Type>( QMetaType::Float ) )
       {
         bool ok;
         const QString strVal = value.toString();
@@ -504,14 +518,7 @@ class CORE_EXPORT QgsExpressionUtils
      * \param foundFeatures An optional boolean parameter that will be set when features are found.
      * \since QGIS 3.22
      */
-    static std::tuple<QMetaType::Type, int> determineResultType( const QString &expression, const QgsVectorLayer *layer, QgsFeatureRequest request = QgsFeatureRequest(), QgsExpressionContext context = QgsExpressionContext(), bool *foundFeatures = nullptr );
-
-  private:
-
-    /**
-     * \warning Only call when thread safety has been taken care of by the caller!
-     */
-    static QgsMapLayer *getMapLayerPrivate( const QVariant &value, const QgsExpressionContext *context, QgsExpression * );
+    static std::tuple<QVariant::Type, int> determineResultType( const QString &expression, const QgsVectorLayer *layer, QgsFeatureRequest request = QgsFeatureRequest(), QgsExpressionContext context = QgsExpressionContext(), bool *foundFeatures = nullptr );
 
 };
 

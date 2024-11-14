@@ -86,7 +86,6 @@ class GUI_EXPORT QgsLayoutMapWidget: public QgsLayoutItemBaseWidget, private Ui:
 
     void mAddGridPushButton_clicked();
     void mRemoveGridPushButton_clicked();
-    void mCopyGridPushButton_clicked();
     void mGridUpButton_clicked();
     void mGridDownButton_clicked();
 
@@ -110,9 +109,6 @@ class GUI_EXPORT QgsLayoutMapWidget: public QgsLayoutItemBaseWidget, private Ui:
 
     void mTemporalCheckBox_toggled( bool checked );
     void updateTemporalExtent();
-
-    void mElevationRangeCheckBox_toggled( bool checked );
-    void updateZRange();
 
   protected:
     bool setNewItem( QgsLayoutItem *item ) override;
@@ -239,7 +235,7 @@ class GUI_EXPORT QgsLayoutMapLabelingWidget: public QgsLayoutItemBaseWidget, pri
     explicit QgsLayoutMapLabelingWidget( QgsLayoutItemMap *map );
 
   protected:
-    bool setNewItem( QgsLayoutItem *item ) final;
+    bool setNewItem( QgsLayoutItem *item ) override;
 
   private slots:
     void updateGuiElements();
@@ -270,16 +266,12 @@ class GUI_EXPORT QgsLayoutMapClippingWidget: public QgsLayoutItemBaseWidget, pri
     void setReportTypeString( const QString &string ) override;
 
   protected:
-    bool setNewItem( QgsLayoutItem *item ) final;
+    bool setNewItem( QgsLayoutItem *item ) override;
 
   private slots:
     void updateGuiElements();
     void atlasLayerChanged( QgsVectorLayer *layer );
     void atlasToggled( bool atlasEnabled );
-    void selectAll();
-    void deselectAll();
-    void invertSelection();
-    void toggleLayersSelectionGui( bool toggled );
 
   private:
     QPointer< QgsLayoutItemMap > mMapItem;

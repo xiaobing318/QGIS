@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsmessagebar.h                                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -56,7 +56,7 @@ Display a ``widget`` as a message on the bar, after hiding the currently visible
 and putting it in a stack.
 
 :param widget: message widget to display
-:param level: is :py:class:`Qgis`.MessageLevel.Info, Warning, Critical or Success
+:param level: is Qgis.MessageLevel.Info, Warning, Critical or Success
 :param duration: timeout duration of message in seconds, 0 value indicates no timeout (i.e.
                  the message must be manually cleared by the user).
 %End
@@ -198,6 +198,8 @@ Pushes a success ``message`` with default timeout to the message bar.
 
 :param title: title string for message
 :param message: The message to be displayed
+
+.. versionadded:: 2.8
 %End
 
     void pushInfo( const QString &title, const QString &message );
@@ -206,6 +208,8 @@ Pushes a information ``message`` with default timeout to the message bar.
 
 :param title: title string for message
 :param message: The message to be displayed
+
+.. versionadded:: 2.8
 %End
 
     void pushWarning( const QString &title, const QString &message );
@@ -214,6 +218,8 @@ Pushes a warning ``message`` that must be manually dismissed by the user. Before
 
 :param title: title string for message
 :param message: The message to be displayed
+
+.. versionadded:: 2.8
 %End
 
     void pushCritical( const QString &title, const QString &message );
@@ -222,6 +228,8 @@ Pushes a critical warning ``message`` that must be manually dismissed by the use
 
 :param title: title string for message
 :param message: The message to be displayed
+
+.. versionadded:: 2.8
 %End
 
   protected:
@@ -235,5 +243,5 @@ Pushes a critical warning ``message`` that must be manually dismissed by the use
  *                                                                      *
  * src/gui/qgsmessagebar.h                                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

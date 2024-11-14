@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/pointcloud/qgspointcloudattributemodel.h                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -25,15 +25,14 @@ A model for display of available attributes from a point cloud.
 %End
   public:
 
-
-    enum class CustomRole
+    enum FieldRoles
     {
-      AttributeName,
-      AttributeIndex,
-      AttributeSize,
-      AttributeType,
-      IsEmpty,
-      IsNumeric,
+      AttributeNameRole,
+      AttributeIndexRole,
+      AttributeSizeRole,
+      AttributeTypeRole,
+      IsEmptyRole,
+      IsNumericRole,
     };
 
     explicit QgsPointCloudAttributeModel( QObject *parent /TransferThis/ = 0 );
@@ -182,5 +181,5 @@ QFlags<QgsPointCloudAttributeProxyModel::Filter> operator|(QgsPointCloudAttribut
  *                                                                      *
  * src/core/pointcloud/qgspointcloudattributemodel.h                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

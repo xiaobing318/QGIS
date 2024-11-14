@@ -65,10 +65,10 @@ QgsExtractBinaryFieldAlgorithm *QgsExtractBinaryFieldAlgorithm::createInstance()
 void QgsExtractBinaryFieldAlgorithm::initAlgorithm( const QVariantMap & )
 {
   addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ),
-                QObject::tr( "Input layer" ), QList< int>() << static_cast< int >( Qgis::ProcessingSourceType::Vector ) ) );
+                QObject::tr( "Input layer" ), QList< int>() << QgsProcessing::TypeVector ) );
 
   addParameter( new QgsProcessingParameterField( QStringLiteral( "FIELD" ), QObject::tr( "Binary field" ), QVariant(),
-                QStringLiteral( "INPUT" ), Qgis::ProcessingFieldParameterDataType::Any ) );
+                QStringLiteral( "INPUT" ), QgsProcessingParameterField::Any ) );
 
   addParameter( new QgsProcessingParameterExpression( QStringLiteral( "FILENAME" ), QObject::tr( "File name" ), QVariant(), QStringLiteral( "INPUT" ) ) );
 
@@ -87,8 +87,8 @@ QVariantMap QgsExtractBinaryFieldAlgorithm::processAlgorithm( const QVariantMap 
     throw QgsProcessingException( QObject::tr( "Invalid binary field" ) );
 
   const QString folder = parameterAsString( parameters, QStringLiteral( "FOLDER" ), context );
-  if ( !QDir().mkpath( folder ) )
-    throw QgsProcessingException( QObject::tr( "Failed to create output directory." ) );
+  if ( !QFileInfo::exists( folder ) )
+    throw QgsProcessingException( QObject::tr( "Destination folder %1 does not exist" ).arg( folder ) );
 
   const QDir dir( folder );
   const QString filenameExpressionString = parameterAsString( parameters, QStringLiteral( "FILENAME" ), context );
@@ -103,9 +103,9 @@ QVariantMap QgsExtractBinaryFieldAlgorithm::processAlgorithm( const QVariantMap 
   fields.unite( filenameExpression.referencedColumns() );
   request.setSubsetOfAttributes( fields, input->fields() );
   if ( !filenameExpression.needsGeometry() )
-    request.setFlags( Qgis::FeatureRequestFlag::NoGeometry );
+    request.setFlags( QgsFeatureRequest::NoGeometry );
 
-  QgsFeatureIterator features = input->getFeatures( request, Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks );
+  QgsFeatureIterator features = input->getFeatures( request, QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks );
   const double step = input->featureCount() > 0 ? 100.0 / input->featureCount() : 1;
   int i = 0;
   QgsFeature feat;

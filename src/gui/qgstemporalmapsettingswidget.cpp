@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgstemporalmapsettingswidget.h"
-#include "moc_qgstemporalmapsettingswidget.cpp"
 #include "qgsgui.h"
 #include "qgis.h"
 

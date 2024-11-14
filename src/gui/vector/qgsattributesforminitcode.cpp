@@ -14,11 +14,9 @@
  ***************************************************************************/
 
 #include "qgsattributesforminitcode.h"
-#include "moc_qgsattributesforminitcode.cpp"
 #include "ui_qgsattributesforminitcode.h"
 #include "qgssettings.h"
 #include "qgsgui.h"
-#include "qgshelp.h"
 
 #include <QFileDialog>
 
@@ -28,10 +26,10 @@ QgsAttributesFormInitCode::QgsAttributesFormInitCode()
   QgsGui::enableAutoGeometryRestore( this );
 
   // Init function stuff
-  mInitCodeSourceComboBox->addItem( QString(), QVariant::fromValue( Qgis::AttributeFormPythonInitCodeSource::NoSource ) );
-  mInitCodeSourceComboBox->addItem( tr( "Load from External File" ), QVariant::fromValue( Qgis::AttributeFormPythonInitCodeSource::File ) );
-  mInitCodeSourceComboBox->addItem( tr( "Provide Code in this Dialog" ), QVariant::fromValue( Qgis::AttributeFormPythonInitCodeSource::Dialog ) );
-  mInitCodeSourceComboBox->addItem( tr( "Load from the Environment" ), QVariant::fromValue( Qgis::AttributeFormPythonInitCodeSource::Environment ) );
+  mInitCodeSourceComboBox->addItem( QString() );
+  mInitCodeSourceComboBox->addItem( tr( "Load from External File" ) );
+  mInitCodeSourceComboBox->addItem( tr( "Provide Code in this Dialog" ) );
+  mInitCodeSourceComboBox->addItem( tr( "Load from the Environment" ) );
 
   const QgsSettings settings;
   mInitFileWidget->setDefaultRoot( settings.value( QStringLiteral( "style/lastInitFilePathDir" ), "." ).toString() );
@@ -42,9 +40,9 @@ QgsAttributesFormInitCode::QgsAttributesFormInitCode()
   connect( buttonBox, &QDialogButtonBox::helpRequested, this, &QgsAttributesFormInitCode::showHelp );
 }
 
-void QgsAttributesFormInitCode::setCodeSource( Qgis::AttributeFormPythonInitCodeSource initCodeSource )
+void QgsAttributesFormInitCode::setCodeSource( QgsEditFormConfig::PythonInitCodeSource initCodeSource )
 {
-  mInitCodeSourceComboBox->setCurrentIndex( mInitCodeSourceComboBox->findData( QVariant::fromValue( initCodeSource ) ) );
+  mInitCodeSourceComboBox->setCurrentIndex( initCodeSource );
   mInitCodeSourceComboBox_currentIndexChanged( mInitCodeSourceComboBox->currentIndex() );
 
 }
@@ -61,9 +59,9 @@ void QgsAttributesFormInitCode::setInitCode( const QString &initCode )
   mInitCodeEditorPython->setText( initCode );
 }
 
-Qgis::AttributeFormPythonInitCodeSource QgsAttributesFormInitCode::codeSource() const
+QgsEditFormConfig::PythonInitCodeSource QgsAttributesFormInitCode::codeSource() const
 {
-  return mInitCodeSourceComboBox->currentData().value< Qgis::AttributeFormPythonInitCodeSource >();
+  return ( QgsEditFormConfig::PythonInitCodeSource )mInitCodeSourceComboBox->currentIndex();
 }
 
 QString QgsAttributesFormInitCode::initFunction() const
@@ -79,13 +77,12 @@ QString QgsAttributesFormInitCode::initCode() const
   return mInitCodeEditorPython->text();
 }
 
-void QgsAttributesFormInitCode::mInitCodeSourceComboBox_currentIndexChanged( int )
+void QgsAttributesFormInitCode::mInitCodeSourceComboBox_currentIndexChanged( int codeSource )
 {
-  Qgis::AttributeFormPythonInitCodeSource codeSource = mInitCodeSourceComboBox->currentData().value< Qgis::AttributeFormPythonInitCodeSource >();
-  mInitFunctionContainer->setVisible( codeSource != Qgis::AttributeFormPythonInitCodeSource::NoSource );
-  mInitFilePathLabel->setVisible( codeSource == Qgis::AttributeFormPythonInitCodeSource::File );
-  mInitFileWidget->setVisible( codeSource == Qgis::AttributeFormPythonInitCodeSource::File );
-  mInitCodeEditorPython->setVisible( codeSource == Qgis::AttributeFormPythonInitCodeSource::Dialog );
+  mInitFunctionContainer->setVisible( codeSource != QgsEditFormConfig::CodeSourceNone );
+  mInitFilePathLabel->setVisible( codeSource == QgsEditFormConfig::CodeSourceFile );
+  mInitFileWidget->setVisible( codeSource == QgsEditFormConfig::CodeSourceFile );
+  mInitCodeEditorPython->setVisible( codeSource == QgsEditFormConfig::CodeSourceDialog );
 }
 
 void QgsAttributesFormInitCode::showHelp()

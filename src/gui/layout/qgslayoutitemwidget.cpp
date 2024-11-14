@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgslayoutitemwidget.h"
-#include "moc_qgslayoutitemwidget.cpp"
 #include "qgspropertyoverridebutton.h"
 #include "qgslayout.h"
 #include "qgsproject.h"
@@ -28,7 +27,6 @@
 #include "qgslayoutdesignerinterface.h"
 #include "qgslayoutpagecollection.h"
 #include "qgslayoutmultiframe.h"
-#include "qgsfilterlineedit.h"
 #include <QButtonGroup>
 
 //
@@ -58,12 +56,12 @@ void QgsLayoutConfigObject::updateDataDefinedProperty()
   {
     return;
   }
-  QgsLayoutObject::DataDefinedProperty key = QgsLayoutObject::DataDefinedProperty::NoProperty;
+  QgsLayoutObject::DataDefinedProperty key = QgsLayoutObject::NoProperty;
 
   if ( ddButton->propertyKey() >= 0 )
     key = static_cast< QgsLayoutObject::DataDefinedProperty >( ddButton->propertyKey() );
 
-  if ( key == QgsLayoutObject::DataDefinedProperty::NoProperty )
+  if ( key == QgsLayoutObject::NoProperty )
   {
     return;
   }
@@ -106,7 +104,7 @@ void QgsLayoutConfigObject::updateDataDefinedButtons()
 void QgsLayoutConfigObject::initializeDataDefinedButton( QgsPropertyOverrideButton *button, QgsLayoutObject::DataDefinedProperty key )
 {
   button->blockSignals( true );
-  button->init( static_cast< int >( key ), mLayoutObject->dataDefinedProperties(), QgsLayoutObject::propertyDefinitions(), coverageLayer() );
+  button->init( key, mLayoutObject->dataDefinedProperties(), QgsLayoutObject::propertyDefinitions(), coverageLayer() );
   connect( button, &QgsPropertyOverrideButton::changed, this, &QgsLayoutConfigObject::updateDataDefinedProperty, Qt::UniqueConnection );
   button->registerExpressionContextGenerator( mLayoutObject );
   button->blockSignals( false );
@@ -308,11 +306,6 @@ QgsLayoutItemPropertiesWidget::QgsLayoutItemPropertiesWidget( QWidget *parent, Q
   mStrokeUnitsComboBox->linkToWidget( mStrokeWidthSpinBox );
   mStrokeUnitsComboBox->setConverter( &item->layout()->renderContext().measurementConverter() );
 
-  QgsFilterLineEdit *exportGroupLineEdit = new QgsFilterLineEdit();
-  exportGroupLineEdit->setShowClearButton( true );
-  exportGroupLineEdit->setPlaceholderText( tr( "Not set" ) );
-  mExportGroupNameCombo->setLineEdit( exportGroupLineEdit );
-
   mPosUnitsComboBox->linkToWidget( mXPosSpin );
   mPosUnitsComboBox->linkToWidget( mYPosSpin );
   mSizeUnitsComboBox->linkToWidget( mWidthSpin );
@@ -332,19 +325,18 @@ QgsLayoutItemPropertiesWidget::QgsLayoutItemPropertiesWidget( QWidget *parent, Q
   connect( mFrameColorButton, &QgsColorButton::colorChanged, this, &QgsLayoutItemPropertiesWidget::mFrameColorButton_colorChanged );
   connect( mBackgroundColorButton, &QgsColorButton::colorChanged, this, &QgsLayoutItemPropertiesWidget::mBackgroundColorButton_colorChanged );
   connect( mStrokeWidthSpinBox, static_cast < void ( QDoubleSpinBox::* )( double ) > ( &QDoubleSpinBox::valueChanged ), this, &QgsLayoutItemPropertiesWidget::mStrokeWidthSpinBox_valueChanged );
-  connect( mStrokeUnitsComboBox, &QgsLayoutUnitsComboBox::unitChanged, this, &QgsLayoutItemPropertiesWidget::strokeUnitChanged );
+  connect( mStrokeUnitsComboBox, &QgsLayoutUnitsComboBox::changed, this, &QgsLayoutItemPropertiesWidget::strokeUnitChanged );
   connect( mFrameGroupBox, &QgsCollapsibleGroupBoxBasic::toggled, this, &QgsLayoutItemPropertiesWidget::mFrameGroupBox_toggled );
   connect( mFrameJoinStyleCombo, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, &QgsLayoutItemPropertiesWidget::mFrameJoinStyleCombo_currentIndexChanged );
   connect( mBackgroundGroupBox, &QgsCollapsibleGroupBoxBasic::toggled, this, &QgsLayoutItemPropertiesWidget::mBackgroundGroupBox_toggled );
   connect( mItemIdLineEdit, &QLineEdit::editingFinished, this, &QgsLayoutItemPropertiesWidget::mItemIdLineEdit_editingFinished );
-  connect( mExportGroupNameCombo, &QComboBox::currentTextChanged, this, &QgsLayoutItemPropertiesWidget::exportGroupNameEditingFinished );
   connect( mPageSpinBox, static_cast < void ( QSpinBox::* )( int ) > ( &QSpinBox::valueChanged ), this, &QgsLayoutItemPropertiesWidget::mPageSpinBox_valueChanged );
   connect( mXPosSpin, static_cast < void ( QDoubleSpinBox::* )( double ) > ( &QDoubleSpinBox::valueChanged ), this, &QgsLayoutItemPropertiesWidget::mXPosSpin_valueChanged );
   connect( mYPosSpin, static_cast < void ( QDoubleSpinBox::* )( double ) > ( &QDoubleSpinBox::valueChanged ), this, &QgsLayoutItemPropertiesWidget::mYPosSpin_valueChanged );
-  connect( mPosUnitsComboBox, &QgsLayoutUnitsComboBox::unitChanged, this, &QgsLayoutItemPropertiesWidget::positionUnitsChanged );
+  connect( mPosUnitsComboBox, &QgsLayoutUnitsComboBox::changed, this, &QgsLayoutItemPropertiesWidget::positionUnitsChanged );
   connect( mWidthSpin, static_cast < void ( QDoubleSpinBox::* )( double ) > ( &QDoubleSpinBox::valueChanged ), this, &QgsLayoutItemPropertiesWidget::mWidthSpin_valueChanged );
   connect( mHeightSpin, static_cast < void ( QDoubleSpinBox::* )( double ) > ( &QDoubleSpinBox::valueChanged ), this, &QgsLayoutItemPropertiesWidget::mHeightSpin_valueChanged );
-  connect( mSizeUnitsComboBox, &QgsLayoutUnitsComboBox::unitChanged, this, &QgsLayoutItemPropertiesWidget::sizeUnitsChanged );
+  connect( mSizeUnitsComboBox, &QgsLayoutUnitsComboBox::changed, this, &QgsLayoutItemPropertiesWidget::sizeUnitsChanged );
   connect( mUpperLeftRadioButton, &QRadioButton::toggled, this, &QgsLayoutItemPropertiesWidget::mUpperLeftCheckBox_stateChanged );
   connect( mUpperMiddleRadioButton, &QRadioButton::toggled, this, &QgsLayoutItemPropertiesWidget::mUpperMiddleCheckBox_stateChanged );
   connect( mUpperRightRadioButton, &QRadioButton::toggled, this, &QgsLayoutItemPropertiesWidget::mUpperRightCheckBox_stateChanged );
@@ -567,7 +559,7 @@ void QgsLayoutItemPropertiesWidget::mStrokeWidthSpinBox_valueChanged( double d )
   mItem->layout()->undoStack()->endCommand();
 }
 
-void QgsLayoutItemPropertiesWidget::strokeUnitChanged( Qgis::LayoutUnit unit )
+void QgsLayoutItemPropertiesWidget::strokeUnitChanged( QgsUnitTypes::LayoutUnit unit )
 {
   if ( !mItem )
   {
@@ -736,33 +728,51 @@ void QgsLayoutItemPropertiesWidget::setValuesForGuiNonPositionElements()
     return;
   }
 
-  whileBlocking( mBackgroundColorButton )->setColor( mItem->backgroundColor( false ) );
-  whileBlocking( mFrameColorButton )->setColor( mItem->frameStrokeColor() );
-  whileBlocking( mStrokeUnitsComboBox )->setUnit( mItem->frameStrokeWidth().units() );
-  whileBlocking( mStrokeWidthSpinBox )->setValue( mItem->frameStrokeWidth().length() );
-  whileBlocking( mFrameJoinStyleCombo )->setPenJoinStyle( mItem->frameJoinStyle() );
-  whileBlocking( mItemIdLineEdit )->setText( mItem->id() );
-  whileBlocking( mFrameGroupBox )->setChecked( mItem->frameEnabled() );
-  whileBlocking( mBackgroundGroupBox )->setChecked( mItem->hasBackground() );
-  whileBlocking( mBlendModeCombo )->setBlendMode( mItem->blendMode() );
-  whileBlocking( mOpacityWidget )->setOpacity( mItem->itemOpacity() );
-  whileBlocking( mItemRotationSpinBox )->setValue( mItem->itemRotation() );
-  whileBlocking( mExcludeFromPrintsCheckBox )->setChecked( mItem->excludeFromExports() );
-  whileBlocking( mExportGroupNameCombo )->setCurrentText( mItem->customProperty( QStringLiteral( "pdfExportGroup" ) ).toString() );
+  auto block = [ = ]( bool blocked )
+  {
+    mStrokeWidthSpinBox->blockSignals( blocked );
+    mStrokeUnitsComboBox->blockSignals( blocked );
+    mFrameGroupBox->blockSignals( blocked );
+    mBackgroundGroupBox->blockSignals( blocked );
+    mItemIdLineEdit->blockSignals( blocked );
+    mBlendModeCombo->blockSignals( blocked );
+    mOpacityWidget->blockSignals( blocked );
+    mFrameColorButton->blockSignals( blocked );
+    mFrameJoinStyleCombo->blockSignals( blocked );
+    mBackgroundColorButton->blockSignals( blocked );
+    mItemRotationSpinBox->blockSignals( blocked );
+    mExcludeFromPrintsCheckBox->blockSignals( blocked );
+  };
+  block( true );
+
+  mBackgroundColorButton->setColor( mItem->backgroundColor( false ) );
+  mFrameColorButton->setColor( mItem->frameStrokeColor() );
+  mStrokeUnitsComboBox->setUnit( mItem->frameStrokeWidth().units() );
+  mStrokeWidthSpinBox->setValue( mItem->frameStrokeWidth().length() );
+  mFrameJoinStyleCombo->setPenJoinStyle( mItem->frameJoinStyle() );
+  mItemIdLineEdit->setText( mItem->id() );
+  mFrameGroupBox->setChecked( mItem->frameEnabled() );
+  mBackgroundGroupBox->setChecked( mItem->hasBackground() );
+  mBlendModeCombo->setBlendMode( mItem->blendMode() );
+  mOpacityWidget->setOpacity( mItem->itemOpacity() );
+  mItemRotationSpinBox->setValue( mItem->itemRotation() );
+  mExcludeFromPrintsCheckBox->setChecked( mItem->excludeFromExports() );
+
+  block( false );
 }
 
 void QgsLayoutItemPropertiesWidget::initializeDataDefinedButtons()
 {
-  mConfigObject->initializeDataDefinedButton( mXPositionDDBtn, QgsLayoutObject::DataDefinedProperty::PositionX );
-  mConfigObject->initializeDataDefinedButton( mYPositionDDBtn, QgsLayoutObject::DataDefinedProperty::PositionY );
-  mConfigObject->initializeDataDefinedButton( mWidthDDBtn, QgsLayoutObject::DataDefinedProperty::ItemWidth );
-  mConfigObject->initializeDataDefinedButton( mHeightDDBtn, QgsLayoutObject::DataDefinedProperty::ItemHeight );
-  mConfigObject->initializeDataDefinedButton( mItemRotationDDBtn, QgsLayoutObject::DataDefinedProperty::ItemRotation );
-  mConfigObject->initializeDataDefinedButton( mOpacityDDBtn, QgsLayoutObject::DataDefinedProperty::Opacity );
-  mConfigObject->initializeDataDefinedButton( mBlendModeDDBtn, QgsLayoutObject::DataDefinedProperty::BlendMode );
-  mConfigObject->initializeDataDefinedButton( mExcludePrintsDDBtn, QgsLayoutObject::DataDefinedProperty::ExcludeFromExports );
-  mConfigObject->initializeDataDefinedButton( mItemFrameColorDDBtn, QgsLayoutObject::DataDefinedProperty::FrameColor );
-  mConfigObject->initializeDataDefinedButton( mItemBackgroundColorDDBtn, QgsLayoutObject::DataDefinedProperty::BackgroundColor );
+  mConfigObject->initializeDataDefinedButton( mXPositionDDBtn, QgsLayoutObject::PositionX );
+  mConfigObject->initializeDataDefinedButton( mYPositionDDBtn, QgsLayoutObject::PositionY );
+  mConfigObject->initializeDataDefinedButton( mWidthDDBtn, QgsLayoutObject::ItemWidth );
+  mConfigObject->initializeDataDefinedButton( mHeightDDBtn, QgsLayoutObject::ItemHeight );
+  mConfigObject->initializeDataDefinedButton( mItemRotationDDBtn, QgsLayoutObject::ItemRotation );
+  mConfigObject->initializeDataDefinedButton( mOpacityDDBtn, QgsLayoutObject::Opacity );
+  mConfigObject->initializeDataDefinedButton( mBlendModeDDBtn, QgsLayoutObject::BlendMode );
+  mConfigObject->initializeDataDefinedButton( mExcludePrintsDDBtn, QgsLayoutObject::ExcludeFromExports );
+  mConfigObject->initializeDataDefinedButton( mItemFrameColorDDBtn, QgsLayoutObject::FrameColor );
+  mConfigObject->initializeDataDefinedButton( mItemBackgroundColorDDBtn, QgsLayoutObject::BackgroundColor );
 }
 
 void QgsLayoutItemPropertiesWidget::populateDataDefinedButtons()
@@ -787,28 +797,6 @@ void QgsLayoutItemPropertiesWidget::setValuesForGuiElements()
   mFrameColorButton->setColorDialogTitle( tr( "Select Frame Color" ) );
   mFrameColorButton->setAllowOpacity( true );
   mFrameColorButton->setContext( QStringLiteral( "composer" ) );
-
-  if ( QgsLayout *layout = mItem->layout() )
-  {
-    // collect export groups from layout, so that we can offer auto completion in the PDF export group combo
-    QList< QgsLayoutItem * > items;
-    layout->layoutItems( items );
-    QStringList existingGroups;
-    for ( const QgsLayoutItem *item : std::as_const( items ) )
-    {
-      const QString groupName = item->customProperty( QStringLiteral( "pdfExportGroup" ) ).toString();
-      if ( !groupName.isEmpty() && !existingGroups.contains( groupName ) )
-        existingGroups.append( groupName );
-    }
-
-    std::sort( existingGroups.begin(), existingGroups.end(), [ = ]( const QString & a, const QString & b ) -> bool
-    {
-      return a.localeAwareCompare( b ) < 0;
-    } );
-
-    whileBlocking( mExportGroupNameCombo )->clear();
-    whileBlocking( mExportGroupNameCombo )->addItems( existingGroups );
-  }
 
   setValuesForGuiPositionElements();
   setValuesForGuiNonPositionElements();
@@ -849,16 +837,6 @@ void QgsLayoutItemPropertiesWidget::mItemIdLineEdit_editingFinished()
   }
 }
 
-void QgsLayoutItemPropertiesWidget::exportGroupNameEditingFinished()
-{
-  if ( mItem )
-  {
-    mItem->layout()->undoStack()->beginCommand( mItem, tr( "Change Export Group Name" ), QgsLayoutItem::UndoExportLayerName );
-    mItem->setCustomProperty( QStringLiteral( "pdfExportGroup" ), mExportGroupNameCombo->currentText() );
-    mItem->layout()->undoStack()->endCommand();
-  }
-}
-
 void QgsLayoutItemPropertiesWidget::mPageSpinBox_valueChanged( int )
 {
   mFreezePageSpin = true;
@@ -880,7 +858,7 @@ void QgsLayoutItemPropertiesWidget::mYPosSpin_valueChanged( double )
   mFreezeYPosSpin = false;
 }
 
-void QgsLayoutItemPropertiesWidget::positionUnitsChanged( Qgis::LayoutUnit )
+void QgsLayoutItemPropertiesWidget::positionUnitsChanged( QgsUnitTypes::LayoutUnit )
 {
   changeItemPosition();
 }
@@ -899,7 +877,7 @@ void QgsLayoutItemPropertiesWidget::mHeightSpin_valueChanged( double )
   mFreezeHeightSpin = false;
 }
 
-void QgsLayoutItemPropertiesWidget::sizeUnitsChanged( Qgis::LayoutUnit )
+void QgsLayoutItemPropertiesWidget::sizeUnitsChanged( QgsUnitTypes::LayoutUnit )
 {
   changeItemSize();
 }

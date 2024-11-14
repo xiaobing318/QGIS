@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/labeling/qgslabelobstaclesettingswidget.h                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -43,7 +43,7 @@ Returns the obstacle settings defined by the widget.
 .. seealso:: :py:func:`setSettings`
 %End
 
-    virtual void setGeometryType( Qgis::GeometryType type );
+    virtual void setGeometryType( QgsWkbTypes::GeometryType type );
 
 
     virtual void updateDataDefinedProperties( QgsPropertyCollection &properties );
@@ -56,5 +56,5 @@ Returns the obstacle settings defined by the widget.
  *                                                                      *
  * src/gui/labeling/qgslabelobstaclesettingswidget.h                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

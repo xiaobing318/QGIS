@@ -13,16 +13,16 @@ import os
 import shutil
 import tempfile
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import (
     QgsApplication,
-    QgsProviderConnectionException,
-    QgsProviderRegistry,
     QgsSettings,
+    QgsProviderConnectionException,
     QgsVectorLayer,
+    QgsProviderRegistry
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -32,12 +32,11 @@ start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestQgsConnectionRegistry(QgisTestCase):
+class TestQgsConnectionRegistry(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
-        super().setUpClass()
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain(cls.__name__)
         QCoreApplication.setApplicationName(cls.__name__)
@@ -55,7 +54,6 @@ class TestQgsConnectionRegistry(QgisTestCase):
     def tearDownClass(cls):
         """Run after all tests"""
         os.unlink(cls.gpkg_path)
-        super().tearDownClass()
 
     def testCreateConnectionBad(self):
         """

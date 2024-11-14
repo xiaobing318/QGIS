@@ -16,14 +16,12 @@
  ***************************************************************************/
 
 #include "qgsattributedialog.h"
-#include "moc_qgsattributedialog.cpp"
 
 #include "qgsattributeform.h"
 #include "qgshighlight.h"
+#include "qgsapplication.h"
 #include "qgssettings.h"
 #include "qgsmessagebar.h"
-#include "qgsactionmenu.h"
-#include "qgsmaplayeractioncontext.h"
 
 QgsAttributeDialog::QgsAttributeDialog( QgsVectorLayer *vl, QgsFeature *thepFeature, bool featureOwner, QWidget *parent, bool showDialogButtons, const QgsAttributeEditorContext &context )
   : QDialog( parent )
@@ -88,21 +86,8 @@ void QgsAttributeDialog::accept()
 void QgsAttributeDialog::show()
 {
   QDialog::show();
-
   raise();
   activateWindow();
-}
-
-void QgsAttributeDialog::showEvent( QShowEvent *event )
-{
-  QDialog::showEvent( event );
-  // We cannot call restoreGeometry() in the constructor or init because the dialog is not yet visible
-  // and the geometry restoration will not take the window decorations (frame) into account.
-  if ( mFirstShow )
-  {
-    mFirstShow = false;
-    restoreGeometry();
-  }
 }
 
 void QgsAttributeDialog::reject()
@@ -140,13 +125,14 @@ void QgsAttributeDialog::init( QgsVectorLayer *layer, QgsFeature *feature, const
   connect( layer, &QObject::destroyed, this, &QWidget::close );
 
   mMenu = new QgsActionMenu( layer, mAttributeForm->feature(), QStringLiteral( "Feature" ), this );
-  mMenu->setActionContextGenerator( this );
   if ( !mMenu->isEmpty() )
   {
     mMenuBar = new QMenuBar( this );
     mMenuBar->addMenu( mMenu );
     layout()->setMenuBar( mMenuBar );
   }
+
+  restoreGeometry();
   focusNextChild();
 }
 
@@ -183,12 +169,3 @@ void QgsAttributeDialog::setExtraContextScope( QgsExpressionContextScope *extraS
 {
   mAttributeForm->setExtraContextScope( extraScope );
 }
-
-QgsMapLayerActionContext QgsAttributeDialog::createActionContext()
-{
-  QgsMapLayerActionContext context;
-  context.setAttributeDialog( this );
-  context.setMessageBar( mMessageBar );
-  return context;
-}
-

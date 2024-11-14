@@ -17,13 +17,13 @@
 
 #include "qgsapplication.h"
 #include "qgsguiutils.h"
+#include "qgsrasterrendererregistry.h"
 #include "qgsrasterrendererwidget.h"
 #include "qgsrasterhistogramwidget.h"
-#include "moc_qgsrasterhistogramwidget.cpp"
 #include "qgsrasterminmaxwidget.h"
+#include "qgsrasterdataprovider.h"
 #include "qgsdoublevalidator.h"
 #include "qgssettings.h"
-#include "qgsrasterlayer.h"
 
 #include <QMenu>
 #include <QFileInfo>
@@ -100,7 +100,6 @@ QgsRasterHistogramWidget::QgsRasterHistogramWidget( QgsRasterLayer *lyr, QWidget
       cboHistoBand->addItem( mRasterLayer->bandName( myIteratorInt ) );
       const Qgis::DataType mySrcDataType = mRasterLayer->dataProvider()->sourceDataType( myIteratorInt );
       if ( !( mySrcDataType == Qgis::DataType::Byte ||
-              mySrcDataType == Qgis::DataType::Int8 ||
               mySrcDataType == Qgis::DataType::Int16 || mySrcDataType == Qgis::DataType::Int32 ||
               mySrcDataType == Qgis::DataType::UInt16 || mySrcDataType == Qgis::DataType::UInt32 ) )
         isInt = false;
@@ -294,9 +293,9 @@ static int getBinCount( QgsRasterInterface *rasterInterface,
 {
   const Qgis::DataType mySrcDataType = rasterInterface->sourceDataType( bandNo );
   const double statsMin = mySrcDataType == Qgis::DataType::Byte ? 0 :
-                          rasterInterface->bandStatistics( bandNo, Qgis::RasterBandStatistic::Min, QgsRectangle(), sampleSize ).minimumValue;
+                          rasterInterface->bandStatistics( bandNo, QgsRasterBandStats::Min, QgsRectangle(), sampleSize ).minimumValue;
   const double statsMax = mySrcDataType == Qgis::DataType::Byte ? 255 :
-                          rasterInterface->bandStatistics( bandNo, Qgis::RasterBandStatistic::Max, QgsRectangle(), sampleSize ).maximumValue;
+                          rasterInterface->bandStatistics( bandNo, QgsRasterBandStats::Max, QgsRectangle(), sampleSize ).maximumValue;
   const QgsRectangle extent( rasterInterface->extent() );
 
   // Calc resolution from sampleSize
@@ -304,7 +303,7 @@ static int getBinCount( QgsRasterInterface *rasterInterface,
   xRes = yRes = std::sqrt( ( static_cast<double>( extent.width( ) ) * extent.height() ) / sampleSize );
 
   // But limit by physical resolution
-  if ( rasterInterface->capabilities() & Qgis::RasterInterfaceCapability::Size )
+  if ( rasterInterface->capabilities() & QgsRasterInterface::Size )
   {
     const double srcXRes = extent.width() / rasterInterface->xSize();
     const double srcYRes = extent.height() / rasterInterface->ySize();
@@ -346,7 +345,7 @@ bool QgsRasterHistogramWidget::computeHistogram( bool forceComputeFlag )
       const int binCount = getBinCount( mRasterLayer->dataProvider(), myIteratorInt, sampleSize );
       if ( !mRasterLayer->dataProvider()->hasHistogram( myIteratorInt, binCount, std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(), QgsRectangle(), sampleSize ) )
       {
-        QgsDebugMsgLevel( QStringLiteral( "band %1 does not have cached histo" ).arg( myIteratorInt ), 2 );
+        QgsDebugMsg( QStringLiteral( "band %1 does not have cached histo" ).arg( myIteratorInt ) );
         return false;
       }
     }
@@ -392,7 +391,7 @@ void QgsRasterHistogramWidget::refreshHistogram()
 
   if ( ! computeHistogram( false ) )
   {
-    QgsDebugMsgLevel( QStringLiteral( "raster does not have cached histogram" ), 2 );
+    QgsDebugMsg( QStringLiteral( "raster does not have cached histogram" ) );
     stackedWidget2->setCurrentIndex( 2 );
     return;
   }
@@ -538,7 +537,7 @@ void QgsRasterHistogramWidget::refreshHistogram()
     const int binCount = getBinCount( mRasterLayer->dataProvider(), bandNumber, sampleSize );
     const QgsRasterHistogram myHistogram = mRasterLayer->dataProvider()->histogram( bandNumber, binCount, std::numeric_limits<double>::quiet_NaN(), std::numeric_limits<double>::quiet_NaN(), QgsRectangle(), sampleSize, false, feedback.get() );
 
-    QgsDebugMsgLevel( QStringLiteral( "got raster histo for band %1 : min=%2 max=%3 count=%4" ).arg( bandNumber ).arg( myHistogram.minimum ).arg( myHistogram.maximum ).arg( myHistogram.binCount ), 2 );
+    QgsDebugMsg( QStringLiteral( "got raster histo for band %1 : min=%2 max=%3 count=%4" ).arg( bandNumber ).arg( myHistogram.minimum ).arg( myHistogram.maximum ).arg( myHistogram.binCount ) );
 
     const Qgis::DataType mySrcDataType = mRasterLayer->dataProvider()->sourceDataType( bandNumber );
     bool myDrawLines = true;
@@ -610,7 +609,7 @@ void QgsRasterHistogramWidget::refreshHistogram()
     {
       mHistoMax = myHistogram.maximum;
     }
-    QgsDebugMsgLevel( QStringLiteral( "computed histo min = %1 max = %2" ).arg( mHistoMin ).arg( mHistoMax ), 2 );
+    QgsDebugMsg( QStringLiteral( "computed histo min = %1 max = %2" ).arg( mHistoMin ).arg( mHistoMax ) );
     myFirstIteration = false;
   }
 
@@ -692,7 +691,7 @@ bool QgsRasterHistogramWidget::histoSaveAsImage( const QString &filename,
   const QDir myDir( myInfo.dir() );
   if ( ! myDir.exists() )
   {
-    QgsDebugError( QStringLiteral( "Error, directory %1 non-existent (theFilename = %2)" ).arg( myDir.absolutePath(), filename ) );
+    QgsDebugMsg( QStringLiteral( "Error, directory %1 non-existent (theFilename = %2)" ).arg( myDir.absolutePath(), filename ) );
     return false;
   }
 
@@ -761,7 +760,7 @@ void QgsRasterHistogramWidget::histoAction( const QString &actionName, bool acti
     return;
 
   // this approach is a bit of a hack, but this way we don't have to define slots for each action
-  QgsDebugMsgLevel( QStringLiteral( "band = %1 action = %2" ).arg( cboHistoBand->currentIndex() + 1 ).arg( actionName ), 2 );
+  QgsDebugMsg( QStringLiteral( "band = %1 action = %2" ).arg( cboHistoBand->currentIndex() + 1 ).arg( actionName ) );
 
   // checkeable actions
   if ( actionName == QLatin1String( "Show markers" ) )
@@ -923,7 +922,7 @@ void QgsRasterHistogramWidget::histoAction( const QString &actionName, bool acti
   }
   else
   {
-    QgsDebugError( "Invalid action " + actionName );
+    QgsDebugMsg( "Invalid action " + actionName );
     return;
   }
 }
@@ -1068,7 +1067,7 @@ QString findClosestTickVal( double target, const QwtScaleDiv *scale, int div = 1
     }
   }
 
-  // QgsDebugMsgLevel( QStringLiteral( "target=%1 div=%2 closest=%3" ).arg( target ).arg( div ).arg( closest ), 2 );
+  // QgsDebugMsg( QStringLiteral( "target=%1 div=%2 closest=%3" ).arg( target ).arg( div ).arg( closest ) );
   return QLocale().toString( closest );
 }
 
@@ -1234,7 +1233,7 @@ QPair< QString, QString > QgsRasterHistogramWidget::rendererMinMax( int bandNo )
   if ( myMinMax.second.isEmpty() )
     myMinMax.second = QLocale().toString( mHistoMax );
 
-  QgsDebugMsgLevel( QStringLiteral( "bandNo %1 got min/max [%2] [%3]" ).arg( bandNo ).arg( myMinMax.first, myMinMax.second ), 2 );
+  QgsDebugMsg( QStringLiteral( "bandNo %1 got min/max [%2] [%3]" ).arg( bandNo ).arg( myMinMax.first, myMinMax.second ) );
 
   return myMinMax;
 }

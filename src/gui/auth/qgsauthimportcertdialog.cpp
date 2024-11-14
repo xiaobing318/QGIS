@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgsauthimportcertdialog.h"
-#include "moc_qgsauthimportcertdialog.cpp"
 
 #include <QDir>
 #include <QFileDialog>

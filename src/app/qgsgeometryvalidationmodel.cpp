@@ -14,7 +14,6 @@ email                : matthias@opengis.ch
  ***************************************************************************/
 
 #include "qgsgeometryvalidationmodel.h"
-#include "moc_qgsgeometryvalidationmodel.cpp"
 
 #include "qgsvectorlayer.h"
 #include "qgssinglegeometrycheck.h"

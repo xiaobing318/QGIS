@@ -19,7 +19,6 @@
 #include <QtGlobal>
 
 #include "qgsserverogcapi.h"
-#include "moc_qgsserverogcapi.cpp"
 #include "qgsserverogcapihandler.h"
 #include "qgsmessagelog.h"
 #include "qgsapplication.h"
@@ -153,7 +152,7 @@ QString QgsServerOgcApi::contentTypeToExtension( const ContentType &ct )
   return contentTypeToString( ct ).toLower();
 }
 
-QgsServerOgcApi::ContentType QgsServerOgcApi::contentTypeFromExtension( const std::string &extension )
+QgsServerOgcApi::ContentType QgsServerOgcApi::contenTypeFromExtension( const std::string &extension )
 {
   const QString exts = QString::fromStdString( extension );
   const auto constMimeTypes( QgsServerOgcApi::contentTypeMimes() );

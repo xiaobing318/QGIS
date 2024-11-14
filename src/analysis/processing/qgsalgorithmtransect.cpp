@@ -49,7 +49,7 @@ QString QgsTransectAlgorithm::groupId() const
 void QgsTransectAlgorithm::initAlgorithm( const QVariantMap & )
 {
   addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ),
-                QObject::tr( "Input layer" ), QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::VectorLine ) ) );
+                QObject::tr( "Input layer" ), QList< int >() << QgsProcessing::TypeVectorLine ) );
   std::unique_ptr< QgsProcessingParameterDistance > length = std::make_unique< QgsProcessingParameterDistance >( QStringLiteral( "LENGTH" ), QObject::tr( "Length of the transect" ),
       5.0, QStringLiteral( "INPUT" ), false, 0 );
   length->setIsDynamic( true );
@@ -57,7 +57,7 @@ void QgsTransectAlgorithm::initAlgorithm( const QVariantMap & )
   length->setDynamicLayerParameterName( QStringLiteral( "INPUT" ) );
   addParameter( length.release() );
 
-  std::unique_ptr< QgsProcessingParameterNumber > angle = std::make_unique< QgsProcessingParameterNumber >( QStringLiteral( "ANGLE" ), QObject::tr( "Angle in degrees from the original line at the vertices" ), Qgis::ProcessingNumberParameterType::Double,
+  std::unique_ptr< QgsProcessingParameterNumber > angle = std::make_unique< QgsProcessingParameterNumber >( QStringLiteral( "ANGLE" ), QObject::tr( "Angle in degrees from the original line at the vertices" ), QgsProcessingParameterNumber::Double,
       90.0, false, 0, 360 );
   angle->setIsDynamic( true );
   angle->setDynamicPropertyDefinition( QgsPropertyDefinition( QStringLiteral( "ANGLE" ), QObject::tr( "Angle in degrees" ), QgsPropertyDefinition::Double ) );
@@ -65,7 +65,7 @@ void QgsTransectAlgorithm::initAlgorithm( const QVariantMap & )
   addParameter( angle.release() );
 
   addParameter( new QgsProcessingParameterEnum( QStringLiteral( "SIDE" ), QObject::tr( "Side to create the transects" ), QStringList() << QObject::tr( "Left" ) << QObject::tr( "Right" ) << QObject::tr( "Both" ), false ) );
-  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Transect" ), Qgis::ProcessingSourceType::VectorLine ) );
+  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Transect" ), QgsProcessing::TypeVectorLine ) );
 
 }
 
@@ -83,11 +83,6 @@ QString QgsTransectAlgorithm::shortHelpString() const
          QObject::tr( "- TR_LENGTH: Total length of the transect returned\n" ) +
          QObject::tr( "- TR_ORIENT: Side of the transect (only on the left or right of the line, or both side)\n" );
 
-}
-
-Qgis::ProcessingAlgorithmDocumentationFlags QgsTransectAlgorithm::documentationFlags() const
-{
-  return Qgis::ProcessingAlgorithmDocumentationFlag::RegeneratesPrimaryKey;
 }
 
 QgsTransectAlgorithm *QgsTransectAlgorithm::createInstance() const
@@ -121,14 +116,14 @@ QVariantMap QgsTransectAlgorithm::processAlgorithm( const QVariantMap &parameter
 
   QgsFields fields = source->fields();
 
-  fields.append( QgsField( QStringLiteral( "TR_FID" ), QMetaType::Type::Int, QString(), 20 ) );
-  fields.append( QgsField( QStringLiteral( "TR_ID" ), QMetaType::Type::Int, QString(), 20 ) );
-  fields.append( QgsField( QStringLiteral( "TR_SEGMENT" ), QMetaType::Type::Int, QString(), 20 ) );
-  fields.append( QgsField( QStringLiteral( "TR_ANGLE" ), QMetaType::Type::Double, QString(), 5, 2 ) );
-  fields.append( QgsField( QStringLiteral( "TR_LENGTH" ), QMetaType::Type::Double, QString(), 20, 6 ) );
-  fields.append( QgsField( QStringLiteral( "TR_ORIENT" ), QMetaType::Type::Int, QString(), 1 ) );
+  fields.append( QgsField( QStringLiteral( "TR_FID" ), QVariant::Int, QString(), 20 ) );
+  fields.append( QgsField( QStringLiteral( "TR_ID" ), QVariant::Int, QString(), 20 ) );
+  fields.append( QgsField( QStringLiteral( "TR_SEGMENT" ), QVariant::Int, QString(), 20 ) );
+  fields.append( QgsField( QStringLiteral( "TR_ANGLE" ), QVariant::Double, QString(), 5, 2 ) );
+  fields.append( QgsField( QStringLiteral( "TR_LENGTH" ), QVariant::Double, QString(), 20, 6 ) );
+  fields.append( QgsField( QStringLiteral( "TR_ORIENT" ), QVariant::Int, QString(), 1 ) );
 
-  Qgis::WkbType outputWkb = Qgis::WkbType::LineString;
+  QgsWkbTypes::Type outputWkb = QgsWkbTypes::LineString;
   if ( QgsWkbTypes::hasZ( source->wkbType() ) )
     outputWkb = QgsWkbTypes::addZ( outputWkb );
   if ( QgsWkbTypes::hasM( source->wkbType() ) )
@@ -199,8 +194,6 @@ QVariantMap QgsTransectAlgorithm::processAlgorithm( const QVariantMap &parameter
       }
     }
   }
-
-  sink->finalize();
 
   QVariantMap outputs;
   outputs.insert( QStringLiteral( "OUTPUT" ), dest );

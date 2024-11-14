@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsmodeldesignerdialog.h"
-#include "moc_qgsmodeldesignerdialog.cpp"
 #include "qgssettings.h"
 #include "qgsapplication.h"
 #include "qgsfileutils.h"
@@ -31,20 +30,17 @@
 #include "qgsmodelcomponentgraphicitem.h"
 #include "processing/models/qgsprocessingmodelgroupbox.h"
 #include "processing/models/qgsmodelinputreorderwidget.h"
-#include "processing/models/qgsmodeloutputreorderwidget.h"
 #include "qgsmessageviewer.h"
 #include "qgsmessagebaritem.h"
 #include "qgspanelwidget.h"
 #include "qgsprocessingmultipleselectiondialog.h"
 #include "qgsprocessinghelpeditorwidget.h"
 #include "qgsscreenhelper.h"
-#include "qgsmessagelog.h"
-#include "qgsprocessingalgorithmdialogbase.h"
-#include "qgsproject.h"
+
 #include <QShortcut>
 #include <QKeySequence>
 #include <QFileDialog>
-#include <QPdfWriter>
+#include <QPrinter>
 #include <QSvgGenerator>
 #include <QToolButton>
 #include <QCloseEvent>
@@ -87,8 +83,6 @@ QgsModelDesignerDialog::QgsModelDesignerDialog( QWidget *parent, Qt::WindowFlags
   , mToolsActionGroup( new QActionGroup( this ) )
 {
   setupUi( this );
-
-  mLayerStore.setProject( QgsProject::instance() );
 
   mScreenHelper = new QgsScreenHelper( this );
 
@@ -158,11 +152,8 @@ QgsModelDesignerDialog::QgsModelDesignerDialog( QWidget *parent, Qt::WindowFlags
   connect( mActionSnapSelected, &QAction::triggered, mView, &QgsModelGraphicsView::snapSelected );
   connect( mActionValidate, &QAction::triggered, this, &QgsModelDesignerDialog::validate );
   connect( mActionReorderInputs, &QAction::triggered, this, &QgsModelDesignerDialog::reorderInputs );
-  connect( mActionReorderOutputs, &QAction::triggered, this, &QgsModelDesignerDialog::reorderOutputs );
   connect( mActionEditHelp, &QAction::triggered, this, &QgsModelDesignerDialog::editHelp );
   connect( mReorderInputsButton, &QPushButton::clicked, this, &QgsModelDesignerDialog::reorderInputs );
-  connect( mActionRun, &QAction::triggered, this, [this] { run(); } );
-  connect( mActionRunSelectedSteps, &QAction::triggered, this, &QgsModelDesignerDialog::runSelectedSteps );
 
   mActionSnappingEnabled->setChecked( settings.value( QStringLiteral( "/Processing/Modeler/enableSnapToGrid" ), false ).toBool() );
   connect( mActionSnappingEnabled, &QAction::toggled, this, [ = ]( bool enabled )
@@ -243,10 +234,10 @@ QgsModelDesignerDialog::QgsModelDesignerDialog( QWidget *parent, Qt::WindowFlags
   mAlgorithmsModel = new QgsModelerToolboxModel( this );
   mAlgorithmsTree->setToolboxProxyModel( mAlgorithmsModel );
 
-  QgsProcessingToolboxProxyModel::Filters filters = QgsProcessingToolboxProxyModel::Filter::Modeler;
+  QgsProcessingToolboxProxyModel::Filters filters = QgsProcessingToolboxProxyModel::FilterModeler;
   if ( settings.value( QStringLiteral( "Processing/Configuration/SHOW_ALGORITHMS_KNOWN_ISSUES" ), false ).toBool() )
   {
-    filters |= QgsProcessingToolboxProxyModel::Filter::ShowKnownIssues;
+    filters |= QgsProcessingToolboxProxyModel::FilterShowKnownIssues;
   }
   mAlgorithmsTree->setFilters( filters );
   mAlgorithmsTree->setDragDropMode( QTreeWidget::DragOnly );
@@ -312,7 +303,6 @@ QgsModelDesignerDialog::QgsModelDesignerDialog( QWidget *parent, Qt::WindowFlags
       beginUndoCommand( tr( "Change Model Group" ), GroupChanged );
       mModel->setGroup( group );
       endUndoCommand();
-      updateWindowTitle();
     }
   } );
 
@@ -496,7 +486,7 @@ void QgsModelDesignerDialog::setModelScene( QgsModelGraphicsScene *scene )
 
   mScene = scene;
   mScene->setParent( this );
-  mScene->setLastRunResult( mLastResult );
+  mScene->setChildAlgorithmResults( mChildResults );
   mScene->setModel( mModel.get() );
   mScene->setMessageBar( mMessageBar );
 
@@ -515,10 +505,6 @@ void QgsModelDesignerDialog::setModelScene( QgsModelGraphicsScene *scene )
   } );
   connect( mScene, &QgsModelGraphicsScene::componentAboutToChange, this, [ = ]( const QString & description, int id ) { beginUndoCommand( description, id ); } );
   connect( mScene, &QgsModelGraphicsScene::componentChanged, this, [ = ] { endUndoCommand(); } );
-  connect( mScene, &QgsModelGraphicsScene::runFromChild, this, &QgsModelDesignerDialog::runFromChild );
-  connect( mScene, &QgsModelGraphicsScene::runSelected, this, &QgsModelDesignerDialog::runSelectedSteps );
-  connect( mScene, &QgsModelGraphicsScene::showChildAlgorithmOutputs, this, &QgsModelDesignerDialog::showChildAlgorithmOutputs );
-  connect( mScene, &QgsModelGraphicsScene::showChildAlgorithmLog, this, &QgsModelDesignerDialog::showChildAlgorithmLog );
 
   mView->centerOn( center );
 
@@ -601,11 +587,18 @@ bool QgsModelDesignerDialog::checkForUnsavedChanges()
   }
 }
 
-void QgsModelDesignerDialog::setLastRunResult( const QgsProcessingModelResult &result )
+void QgsModelDesignerDialog::setLastRunChildAlgorithmResults( const QVariantMap &results )
 {
-  mLastResult.mergeWith( result );
+  mChildResults = results;
   if ( mScene )
-    mScene->setLastRunResult( mLastResult );
+    mScene->setChildAlgorithmResults( mChildResults );
+}
+
+void QgsModelDesignerDialog::setLastRunChildAlgorithmInputs( const QVariantMap &inputs )
+{
+  mChildInputs = inputs;
+  if ( mScene )
+    mScene->setChildAlgorithmInputs( mChildInputs );
 }
 
 void QgsModelDesignerDialog::setModelName( const QString &name )
@@ -666,9 +659,6 @@ void QgsModelDesignerDialog::exportToImage()
   QString filename = QFileDialog::getSaveFileName( this, tr( "Save Model as Image" ),
                      lastExportDir,
                      tr( "PNG files (*.png *.PNG)" ) );
-  // return dialog focus on Mac
-  activateWindow();
-  raise();
   if ( filename.isEmpty() )
     return;
 
@@ -706,9 +696,6 @@ void QgsModelDesignerDialog::exportToPdf()
   QString filename = QFileDialog::getSaveFileName( this, tr( "Save Model as PDF" ),
                      lastExportDir,
                      tr( "PDF files (*.pdf *.PDF)" ) );
-  // return dialog focus on Mac
-  activateWindow();
-  raise();
   if ( filename.isEmpty() )
     return;
 
@@ -723,7 +710,9 @@ void QgsModelDesignerDialog::exportToPdf()
   totalRect.adjust( -10, -10, 10, 10 );
   const QRectF printerRect = QRectF( 0, 0, totalRect.width(), totalRect.height() );
 
-  QPdfWriter pdfWriter( filename );
+  QPrinter printer;
+  printer.setOutputFormat( QPrinter::PdfFormat );
+  printer.setOutputFileName( filename );
 
   const double scaleFactor = 96 / 25.4; // based on 96 dpi sizes
 
@@ -731,9 +720,11 @@ void QgsModelDesignerDialog::exportToPdf()
                           QPageLayout::Portrait,
                           QMarginsF( 0, 0, 0, 0 ) );
   pageLayout.setMode( QPageLayout::FullPageMode );
-  pdfWriter.setPageLayout( pageLayout );
+  printer.setPageLayout( pageLayout );
 
-  QPainter painter( &pdfWriter );
+  printer.setFullPage( true );
+
+  QPainter painter( &printer );
   mView->scene()->render( &painter, printerRect, totalRect );
   painter.end();
 
@@ -750,9 +741,6 @@ void QgsModelDesignerDialog::exportToSvg()
   QString filename = QFileDialog::getSaveFileName( this, tr( "Save Model as SVG" ),
                      lastExportDir,
                      tr( "SVG files (*.svg *.SVG)" ) );
-  // return dialog focus on Mac
-  activateWindow();
-  raise();
   if ( filename.isEmpty() )
     return;
 
@@ -789,9 +777,6 @@ void QgsModelDesignerDialog::exportAsPython()
   QString filename = QFileDialog::getSaveFileName( this, tr( "Save Model as Python Script" ),
                      lastExportDir,
                      tr( "Processing scripts (*.py *.PY)" ) );
-  // return dialog focus on Mac
-  activateWindow();
-  raise();
   if ( filename.isEmpty() )
     return;
 
@@ -800,7 +785,7 @@ void QgsModelDesignerDialog::exportAsPython()
   const QFileInfo saveFileInfo( filename );
   settings.setValue( QStringLiteral( "lastModelDesignerExportDir" ), saveFileInfo.absolutePath(), QgsSettings::App );
 
-  const QString text = mModel->asPythonCode( QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass, 4 ).join( '\n' );
+  const QString text = mModel->asPythonCode( QgsProcessing::PythonQgsProcessingAlgorithmSubclass, 4 ).join( '\n' );
 
   QFile outFile( filename );
   if ( !outFile.open( QIODevice::WriteOnly | QIODevice::Truncate ) )
@@ -825,9 +810,7 @@ void QgsModelDesignerDialog::updateWindowTitle()
 {
   QString title = tr( "Model Designer" );
   if ( !mModel->name().isEmpty() )
-    title = mModel->group().isEmpty()
-            ? QStringLiteral( "%1: %2" ).arg( title, mModel->name() )
-            : QStringLiteral( "%1: %2 - %3" ).arg( title, mModel->group(), mModel->name() );
+    title = QStringLiteral( "%1 - %2" ).arg( title, mModel->name() );
 
   if ( isDirty() )
     title.prepend( '*' );
@@ -1000,229 +983,6 @@ void QgsModelDesignerDialog::editHelp()
   }
 }
 
-void QgsModelDesignerDialog::runSelectedSteps()
-{
-  QSet<QString> children;
-  const QList< QgsModelComponentGraphicItem * > items = mScene->selectedComponentItems();
-  for ( QgsModelComponentGraphicItem *item : items )
-  {
-    if ( QgsProcessingModelChildAlgorithm *childAlgorithm = dynamic_cast< QgsProcessingModelChildAlgorithm *>( item->component() ) )
-    {
-      children.insert( childAlgorithm->childId() );
-    }
-  }
-
-  if ( children.isEmpty() )
-  {
-    mMessageBar->pushWarning( QString(), tr( "No steps are selected" ) );
-    return;
-  }
-
-  run( children );
-}
-
-void QgsModelDesignerDialog::runFromChild( const QString &id )
-{
-  QSet<QString> children = mModel->dependentChildAlgorithms( id );
-  children.insert( id );
-  run( children );
-}
-
-void QgsModelDesignerDialog::run( const QSet<QString> &childAlgorithmSubset )
-{
-  QStringList errors;
-  const bool isValid = model()->validate( errors );
-  if ( !isValid )
-  {
-    QMessageBox messageBox;
-    messageBox.setWindowTitle( tr( "Model is Invalid" ) );
-    messageBox.setIcon( QMessageBox::Icon::Warning );
-    messageBox.setText( tr( "This model is not valid and contains one or more issues. Are you sure you want to run it in this state?" ) );
-    messageBox.setStandardButtons( QMessageBox::StandardButton::Yes | QMessageBox::StandardButton::Cancel );
-    messageBox.setDefaultButton( QMessageBox::StandardButton::Cancel );
-
-    QString errorString;
-    for ( const QString &error : std::as_const( errors ) )
-    {
-      QString cleanedError = error;
-      const thread_local QRegularExpression re( QStringLiteral( "<[^>]*>" ) );
-      cleanedError.replace( re, QString() );
-      errorString += QStringLiteral( "• %1\n" ).arg( cleanedError );
-    }
-
-    messageBox.setDetailedText( errorString );
-    if ( messageBox.exec() == QMessageBox::StandardButton::Cancel )
-      return;
-  }
-
-  if ( !childAlgorithmSubset.isEmpty() )
-  {
-    for ( const QString &child : childAlgorithmSubset )
-    {
-      // has user previously run all requirements for this step?
-      const QSet< QString > requirements = mModel->dependsOnChildAlgorithms( child );
-      for ( const QString &requirement : requirements )
-      {
-        if ( !mLastResult.executedChildIds().contains( requirement ) )
-        {
-          QMessageBox messageBox;
-          messageBox.setWindowTitle( tr( "Run Model" ) );
-          messageBox.setIcon( QMessageBox::Icon::Warning );
-          messageBox.setText( tr( "Prerequisite parts of this model have not yet been run (try running the full model first)." ) );
-          messageBox.setStandardButtons( QMessageBox::StandardButton::Ok );
-          messageBox.exec();
-          return;
-        }
-      }
-    }
-  }
-
-  std::unique_ptr< QgsProcessingAlgorithmDialogBase > dialog( createExecutionDialog() );
-  if ( !dialog )
-    return;
-
-  dialog->setLogLevel( Qgis::ProcessingLogLevel::ModelDebug );
-  dialog->setParameters( mModel->designerParameterValues() );
-
-  connect( dialog.get(), &QgsProcessingAlgorithmDialogBase::algorithmAboutToRun, this, [this, &childAlgorithmSubset]( QgsProcessingContext * context )
-  {
-    if ( ! childAlgorithmSubset.empty() )
-    {
-      // start from previous state
-      std::unique_ptr< QgsProcessingModelInitialRunConfig > modelConfig = std::make_unique< QgsProcessingModelInitialRunConfig >();
-      modelConfig->setChildAlgorithmSubset( childAlgorithmSubset );
-      modelConfig->setPreviouslyExecutedChildAlgorithms( mLastResult.executedChildIds() );
-      modelConfig->setInitialChildInputs( mLastResult.rawChildInputs() );
-      modelConfig->setInitialChildOutputs( mLastResult.rawChildOutputs() );
-
-      // add copies of layers from previous runs to context's layer store, so that they can be used
-      // when running the subset
-      const QMap<QString, QgsMapLayer *> previousOutputLayers = mLayerStore.temporaryLayerStore()->mapLayers();
-      std::unique_ptr<QgsMapLayerStore> previousResultStore = std::make_unique< QgsMapLayerStore >();
-      for ( auto it = previousOutputLayers.constBegin(); it != previousOutputLayers.constEnd(); ++it )
-      {
-        std::unique_ptr< QgsMapLayer > clone( it.value()->clone() );
-        clone->setId( it.value()->id() );
-        previousResultStore->addMapLayer( clone.release() );
-      }
-      previousResultStore->moveToThread( nullptr );
-      modelConfig->setPreviousLayerStore( std::move( previousResultStore ) );
-      context->setModelInitialRunConfig( std::move( modelConfig ) );
-    }
-  } );
-
-  connect( dialog.get(), &QgsProcessingAlgorithmDialogBase::algorithmFinished, this, [this, &dialog]( bool, const QVariantMap & )
-  {
-    QgsProcessingContext *context = dialog->processingContext();
-
-    setLastRunResult( context->modelResult() );
-
-    mModel->setDesignerParameterValues( dialog->createProcessingParameters( QgsProcessingParametersGenerator::Flag::SkipDefaultValueParameters ) );
-
-    // take child output layers
-    mLayerStore.temporaryLayerStore()->removeAllMapLayers();
-    mLayerStore.takeResultsFrom( *context );
-  } );
-
-  dialog->exec();
-}
-
-void QgsModelDesignerDialog::showChildAlgorithmOutputs( const QString &childId )
-{
-  const QString childDescription = mModel->childAlgorithm( childId ).description();
-
-  const QgsProcessingModelChildAlgorithmResult result = mLastResult.childResults().value( childId );
-  const QVariantMap childAlgorithmOutputs = result.outputs();
-  if ( childAlgorithmOutputs.isEmpty() )
-  {
-    mMessageBar->pushWarning( QString(), tr( "No results are available for %1" ).arg( childDescription ) );
-    return;
-  }
-
-  const QgsProcessingAlgorithm *algorithm = mModel->childAlgorithm( childId ).algorithm();
-  if ( !algorithm )
-  {
-    mMessageBar->pushCritical( QString(), tr( "Results cannot be shown for an invalid model component" ) );
-    return;
-  }
-
-  const QList< const QgsProcessingParameterDefinition * > outputParams = algorithm->destinationParameterDefinitions();
-  if ( outputParams.isEmpty() )
-  {
-    // this situation should not arise in normal use, we don't show the action in this case
-    QgsDebugError( "Cannot show results for algorithms with no outputs" );
-    return;
-  }
-
-  bool foundResults = false;
-  for ( const QgsProcessingParameterDefinition *outputParam : outputParams )
-  {
-    const QVariant output = childAlgorithmOutputs.value( outputParam->name() );
-    if ( !output.isValid() )
-      continue;
-
-    if ( output.type() == QVariant::String )
-    {
-      if ( QgsMapLayer *resultLayer = QgsProcessingUtils::mapLayerFromString( output.toString(), mLayerStore ) )
-      {
-        QgsDebugMsgLevel( QStringLiteral( "Loading previous result for %1: %2" ).arg( outputParam->name(), output.toString() ), 2 );
-
-        std::unique_ptr< QgsMapLayer > layer( resultLayer->clone() );
-
-        QString baseName;
-        if ( outputParams.size() > 1 )
-          baseName = tr( "%1 — %2" ).arg( childDescription, outputParam->name() );
-        else
-          baseName = childDescription;
-
-        // make name unique, so that's it's easy to see which is the most recent result.
-        // (this helps when running the model multiple times.)
-        QString name = baseName;
-        int counter = 1;
-        while ( !QgsProject::instance()->mapLayersByName( name ).empty() )
-        {
-          counter += 1;
-          name = tr( "%1 (%2)" ).arg( baseName ).arg( counter );
-        }
-
-        layer->setName( name );
-
-        QgsProject::instance()->addMapLayer( layer.release() );
-        foundResults = true;
-      }
-      else
-      {
-        // should not happen in normal operation
-        QgsDebugError( QStringLiteral( "Could not load previous result for %1: %2" ).arg( outputParam->name(), output.toString() ) );
-      }
-    }
-  }
-
-  if ( !foundResults )
-  {
-    mMessageBar->pushWarning( QString(), tr( "No results are available for %1" ).arg( childDescription ) );
-    return;
-  }
-}
-
-void QgsModelDesignerDialog::showChildAlgorithmLog( const QString &childId )
-{
-  const QString childDescription = mModel->childAlgorithm( childId ).description();
-
-  const QgsProcessingModelChildAlgorithmResult result = mLastResult.childResults().value( childId );
-  if ( result.htmlLog().isEmpty() )
-  {
-    mMessageBar->pushWarning( QString(), tr( "No log is available for %1" ).arg( childDescription ) );
-    return;
-  }
-
-  QgsMessageViewer m( this, QgsGuiUtils::ModalDialogFlags, false );
-  m.setWindowTitle( childDescription );
-  m.setCheckBoxVisible( false );
-  m.setMessageAsHtml( result.htmlLog() );
-  m.exec();
-}
-
 void QgsModelDesignerDialog::validate()
 {
   QStringList issues;
@@ -1268,20 +1028,6 @@ void QgsModelDesignerDialog::reorderInputs()
   }
 }
 
-void QgsModelDesignerDialog::reorderOutputs()
-{
-  QgsModelOutputReorderDialog dlg( this );
-  dlg.setModel( mModel.get() );
-  if ( dlg.exec() )
-  {
-    const QStringList outputOrder = dlg.outputOrder();
-    beginUndoCommand( tr( "Reorder Outputs" ) );
-    mModel->setOutputOrder( outputOrder );
-    mModel->setOutputGroup( dlg.outputGroup() );
-    endUndoCommand();
-  }
-}
-
 bool QgsModelDesignerDialog::isDirty() const
 {
   return mHasChanged && mUndoStack->index() != -1;
@@ -1300,7 +1046,7 @@ void QgsModelDesignerDialog::fillInputsTree()
 
   for ( QgsProcessingParameterType *param : std::as_const( available ) )
   {
-    if ( param->flags() & Qgis::ProcessingParameterTypeFlag::ExposeToModeler )
+    if ( param->flags() & QgsProcessingParameterType::ExposeToModeler )
     {
       std::unique_ptr< QTreeWidgetItem > paramItem = std::make_unique< QTreeWidgetItem >();
       paramItem->setText( 0, param->name() );

@@ -112,13 +112,10 @@ class GUI_EXPORT QgsProviderConnectionComboBox : public QComboBox
   private slots:
     void indexChanged( int i );
     void rowsChanged();
-    void rowsAboutToBeRemoved();
-    void rowsRemoved();
 
   private:
     QgsProviderConnectionModel *mModel = nullptr;
     QSortFilterProxyModel *mSortModel = nullptr;
-    QString mPreviousConnection;
 };
 
 #endif // QGSPROVIDERCONNECTIONCOMBOBOX_H

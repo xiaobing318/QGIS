@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsrenderpassquad.h"
-#include "moc_qgsrenderpassquad.cpp"
 
 #include <random>
 
@@ -44,7 +43,7 @@ typedef Qt3DCore::QGeometry Qt3DQGeometry;
 #include <QUrl>
 #include <QVector3D>
 
-QgsRenderPassQuad::QgsRenderPassQuad( Qt3DRender::QLayer *layer, QNode *parent )
+QgsRenderPassQuad::QgsRenderPassQuad( QNode *parent )
   : Qt3DCore::QEntity( parent )
 {
   Qt3DQGeometry *geom = new Qt3DQGeometry( this );
@@ -99,5 +98,8 @@ QgsRenderPassQuad::QgsRenderPassQuad( Qt3DRender::QLayer *layer, QNode *parent )
 
   addComponent( mMaterial );
 
-  addComponent( layer );
+  mLayer = new Qt3DRender::QLayer( this );
+  mLayer->setRecursive( true );
+  addComponent( mLayer );
 }
+

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsscalerangewidget.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -114,6 +114,8 @@ or 0 to indicate not set.
 Emitted when the scale range set in the widget is changed.
 The scale values indicates the scale denominator, e.g. 1000.0 for a 1:1000 map,
 or 0 to indicate not set.
+
+.. versionadded:: 2.16
 %End
 
 };
@@ -123,5 +125,5 @@ or 0 to indicate not set.
  *                                                                      *
  * src/gui/qgsscalerangewidget.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

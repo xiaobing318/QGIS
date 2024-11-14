@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsowssourcewidget.h"
-#include "moc_qgsowssourcewidget.cpp"
 #include "qgsproviderregistry.h"
 #include "qgsmapcanvas.h"
 

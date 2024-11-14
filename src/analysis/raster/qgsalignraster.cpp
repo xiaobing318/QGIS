@@ -48,6 +48,7 @@ static double fmod_with_tolerance( double num, double denom )
   return num - floor_with_tolerance( num / denom ) * denom;
 }
 
+
 static QgsRectangle transform_to_extent( const double *geotransform, double xSize, double ySize )
 {
   QgsRectangle r( geotransform[0],
@@ -57,6 +58,7 @@ static QgsRectangle transform_to_extent( const double *geotransform, double xSiz
   r.normalize();
   return r;
 }
+
 
 static int CPL_STDCALL _progress( double dfComplete, const char *pszMessage, void *pProgressArg )
 {
@@ -68,6 +70,7 @@ static int CPL_STDCALL _progress( double dfComplete, const char *pszMessage, voi
   else
     return true;
 }
+
 
 static CPLErr rescalePreWarpChunkProcessor( void *pKern, void *pArg )
 {
@@ -88,6 +91,7 @@ static CPLErr rescalePreWarpChunkProcessor( void *pKern, void *pArg )
   }
   return CE_None;
 }
+
 
 static CPLErr rescalePostWarpChunkProcessor( void *pKern, void *pArg )
 {
@@ -393,7 +397,7 @@ int QgsAlignRaster::suggestedReferenceLayer() const
   // would be a better a choice to more accurately compute areas?
   // (Why earth is not flat???)
   const QgsCoordinateReferenceSystem destCRS( QStringLiteral( "EPSG:4326" ) );
-  const QString destWkt = destCRS.toWkt( Qgis::CrsWktVariant::PreferredGdal );
+  const QString destWkt = destCRS.toWkt( QgsCoordinateReferenceSystem::WKT_PREFERRED_GDAL );
 
   const auto constMRasters = mRasters;
   for ( const Item &raster : constMRasters )

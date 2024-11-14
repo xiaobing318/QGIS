@@ -88,7 +88,7 @@ namespace QgsWcs
       {
         continue;
       }
-      if ( layer->type() != Qgis::LayerType::Raster )
+      if ( layer->type() != QgsMapLayerType::RasterLayer )
       {
         continue;
       }
@@ -99,8 +99,8 @@ namespace QgsWcs
       }
 #endif
       QString name = layer->name();
-      if ( !layer->serverProperties()->shortName().isEmpty() )
-        name = layer->serverProperties()->shortName();
+      if ( !layer->shortName().isEmpty() )
+        name = layer->shortName();
       name = name.replace( QLatin1String( " " ), QLatin1String( "_" ) );
 
       if ( name == coveName )
@@ -208,10 +208,10 @@ namespace QgsWcs
       }
     }
 
-    const Qgis::RasterFileWriterResult err = fileWriter.writeRaster( &pipe, width, height, rect, responseCRS, rLayer->transformContext() );
-    if ( err != Qgis::RasterFileWriterResult::Success )
+    const QgsRasterFileWriter::WriterError err = fileWriter.writeRaster( &pipe, width, height, rect, responseCRS, rLayer->transformContext() );
+    if ( err != QgsRasterFileWriter::NoError )
     {
-      throw QgsRequestNotWellFormedException( QStringLiteral( "Cannot write raster error code: %1" ).arg( qgsEnumValueToKey( err ) ) );
+      throw QgsRequestNotWellFormedException( QStringLiteral( "Cannot write raster error code: %1" ).arg( err ) );
     }
     return tempFile.readAll();
   }

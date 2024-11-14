@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/editorwidgets/qgssearchwidgettoolbutton.h                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -18,6 +18,8 @@ class QgsSearchWidgetToolButton : QToolButton
 A tool button widget which is displayed next to search widgets in forms, and
 allows for controlling how the widget behaves and how the filtering/searching
 operates.
+
+.. versionadded:: 2.16
 %End
 
 %TypeHeaderCode
@@ -158,5 +160,5 @@ Emitted when the active flags selected in the widget is changed
  *                                                                      *
  * src/gui/editorwidgets/qgssearchwidgettoolbutton.h                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

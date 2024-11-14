@@ -21,13 +21,15 @@
 #ifndef QGSRASTERLAYERPROPERTIES_H
 #define QGSRASTERLAYERPROPERTIES_H
 
-#include "qgslayerpropertiesdialog.h"
+#include "qgsoptionsdialogbase.h"
 #include "ui_qgsrasterlayerpropertiesbase.h"
 #include "qgsguiutils.h"
+#include "qgshelp.h"
+#include "qgsmaplayerstylemanager.h"
+#include "qgsmaptoolemitpoint.h"
 #include "qgis_gui.h"
 #include "qgsresamplingutils.h"
 #include "qgsrasterpipe.h"
-#include "qgsexpressioncontextgenerator.h"
 
 class QgsPointXY;
 class QgsMapLayer;
@@ -44,8 +46,7 @@ class QgsMapLayerConfigWidgetFactory;
 class QgsMapLayerConfigWidget;
 class QgsPropertyOverrideButton;
 class QgsRasterTransparencyWidget;
-class QgsRasterAttributeTableWidget;
-class QgsWebView;
+
 
 /**
  * \ingroup gui
@@ -54,7 +55,7 @@ class QgsWebView;
  * \since QGIS 3.12 (in the GUI API)
  */
 
-class GUI_EXPORT QgsRasterLayerProperties : public QgsLayerPropertiesDialog, private Ui::QgsRasterLayerPropertiesBase, private QgsExpressionContextGenerator
+class GUI_EXPORT QgsRasterLayerProperties : public QgsOptionsDialogBase, private Ui::QgsRasterLayerPropertiesBase, private QgsExpressionContextGenerator
 {
     Q_OBJECT
 
@@ -81,23 +82,17 @@ class GUI_EXPORT QgsRasterLayerProperties : public QgsLayerPropertiesDialog, pri
      */
     QgsRasterLayerProperties( QgsMapLayer *lyr, QgsMapCanvas *canvas, QWidget *parent = nullptr, Qt::WindowFlags = QgsGuiUtils::ModalDialogFlags );
 
-    void addPropertiesPageFactory( const QgsMapLayerConfigWidgetFactory *factory ) FINAL;
+    /**
+     * Adds a properties page factory to the raster layer properties dialog.
+     * \since QGIS 3.18
+     */
+    void addPropertiesPageFactory( const QgsMapLayerConfigWidgetFactory *factory );
 
     QgsExpressionContext createExpressionContext() const override;
 
-    bool eventFilter( QObject *obj, QEvent *ev ) override;
-
-    /**
-     * Saves the default style when appropriate button is pressed
-     *
-     * \deprecated QGIS 3.40. Use saveStyleAsDefault() instead.
-     */
-    Q_DECL_DEPRECATED void saveDefaultStyle() SIP_DEPRECATED;
-
   protected slots:
-    void optionsStackedWidget_CurrentChanged( int index ) FINAL;
-    void apply() FINAL;
-    void rollback() FINAL;
+    //! \brief auto slot executed when the active page in the main widget stack is changed
+    void optionsStackedWidget_CurrentChanged( int index ) override SIP_SKIP ;
 
   private:
 
@@ -130,6 +125,10 @@ class GUI_EXPORT QgsRasterLayerProperties : public QgsLayerPropertiesDialog, pri
 
     void updateProperty();
 
+    //! \brief Applies the settings made in the dialog without closing the box
+    void apply();
+    //! \brief Called when cancel button is pressed
+    void onCancel();
     //! \brief this slot asks the rasterlayer to construct pyramids
     void buttonBuildPyramids_clicked();
     //! \brief slot executed when user changes the layer's CRS
@@ -152,8 +151,26 @@ class GUI_EXPORT QgsRasterLayerProperties : public QgsLayerPropertiesDialog, pri
     void updateGammaSlider( double value );
 
     void mRenderTypeComboBox_currentIndexChanged( int index );
+    //! Load the default style when appropriate button is pressed.
+    void loadDefaultStyle_clicked();
+    //! Save the default style when appropriate button is pressed.
+    void saveDefaultStyle_clicked();
+    //! Load a saved style when appropriate button is pressed.
+    void loadStyle_clicked();
+    //! Save a style when appriate button is pressed.
+    void saveStyleAs_clicked();
     //! Restore dialog modality and focus, usually after a pixel clicked to pick transparency color
     void restoreWindowModality();
+
+
+    //! Load a saved metadata file.
+    void loadMetadata();
+    //! Save a metadata.
+    void saveMetadataAs();
+    //! Save the default metadata.
+    void saveDefaultMetadata();
+    //! Load the default metadata.
+    void loadDefaultMetadata();
 
     //! Help button
     void showHelp();
@@ -170,22 +187,26 @@ class GUI_EXPORT QgsRasterLayerProperties : public QgsLayerPropertiesDialog, pri
     //! Enable or disable colorize controls depending on checkbox
     void toggleColorizeControls( bool colorizeEnabled );
 
+    //! Transparency cell changed
+    void transparencyCellTextEdited( const QString &text );
+
     void aboutToShowStyleMenu();
 
     //! Make GUI reflect the layer's state
-    void syncToLayer() FINAL;
+    void syncToLayer();
 
-    // Update the preview of the map tip
-    void updateMapTipPreview();
-    // Resize the map tip preview
-    void resizeMapTip();
+    void urlClicked( const QUrl &url );
 
   private:
-
+    QPushButton *mBtnStyle = nullptr;
+    QPushButton *mBtnMetadata = nullptr;
     QAction *mActionLoadMetadata = nullptr;
     QAction *mActionSaveMetadataAs = nullptr;
 
     QStandardItemModel *mMetadataUrlModel = nullptr;
+
+    //! A list of additional pages provided by plugins
+    QList<QgsMapLayerConfigWidget *> mLayerPropertiesPages;
 
     //! \brief  A constant that signals property not used
     const QString TRSTRING_NOT_SET;
@@ -227,12 +248,13 @@ class GUI_EXPORT QgsRasterLayerProperties : public QgsLayerPropertiesDialog, pri
      */
     void updateInformationContent();
 
-    void setRendererWidget( const QString &rendererName );
+    void setTransparencyCell( int row, int column, double value );
+    void setTransparencyCellValue( int row, int column, double value );
+    double transparencyCellValue( int row, int column );
+    void setTransparencyToEdited( int row );
+    void adjustTransparencyCellWidth( int row, int column );
 
-    /**
-     * Setup or update the raster attribute table options page.
-     */
-    void updateRasterAttributeTableOptionsPage();
+    void setRendererWidget( const QString &rendererName );
 
     //TODO: we should move these gradient generators somewhere more generic
     //so they can be used generically throughout the app
@@ -244,7 +266,17 @@ class GUI_EXPORT QgsRasterLayerProperties : public QgsLayerPropertiesDialog, pri
     qreal mGradientHeight;
     qreal mGradientWidth;
 
+    QgsMapCanvas *mMapCanvas = nullptr;
+
     QgsRasterHistogramWidget *mHistogramWidget = nullptr;
+
+    QVector<bool> mTransparencyToEdited;
+
+    /**
+     * Previous layer style. Used to reset style to previous state if new style
+     * was loaded but dialog is canceled.
+    */
+    QgsMapLayerStyle mOldStyle;
 
     bool mDisableRenderTypeComboBoxCurrentIndexChanged = false;
 
@@ -264,11 +296,5 @@ class GUI_EXPORT QgsRasterLayerProperties : public QgsLayerPropertiesDialog, pri
     friend class QgsAppScreenShots;
 
     QgsCoordinateReferenceSystem mBackupCrs;
-
-    QgsRasterAttributeTableWidget *mRasterAttributeTableWidget = nullptr;
-
-    void initMapTipPreview();
-
-    QgsWebView *mMapTipPreview = nullptr;
 };
 #endif

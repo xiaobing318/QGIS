@@ -9,9 +9,10 @@ __author__ = '(C) 2022 by Nyall Dawson'
 __date__ = '13/06/2022'
 __copyright__ = 'Copyright 2022, The QGIS Project'
 
-from qgis.core import QgsLayoutTableColumn
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsLayoutTableColumn)
+from qgis.testing import (start_app,
+                          unittest
+                          )
 
 from utilities import unitTestDataPath
 
@@ -19,7 +20,7 @@ start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestQgsLayoutTable(QgisTestCase):
+class TestQgsLayoutTable(unittest.TestCase):
 
     def test_column(self):
         """Test initial size of legend with a symbol size in map units"""

@@ -18,7 +18,7 @@
 #include "qgslayoutmeasurementconverter.h"
 
 
-QgsLayoutMeasurement QgsLayoutMeasurementConverter::convert( const QgsLayoutMeasurement measurement, const Qgis::LayoutUnit targetUnits ) const
+QgsLayoutMeasurement QgsLayoutMeasurementConverter::convert( const QgsLayoutMeasurement measurement, const QgsUnitTypes::LayoutUnit targetUnits ) const
 {
   if ( measurement.units() == targetUnits )
   {
@@ -27,29 +27,29 @@ QgsLayoutMeasurement QgsLayoutMeasurementConverter::convert( const QgsLayoutMeas
 
   switch ( targetUnits )
   {
-    case Qgis::LayoutUnit::Millimeters:
-      return QgsLayoutMeasurement( convertToMillimeters( measurement ), Qgis::LayoutUnit::Millimeters );
-    case Qgis::LayoutUnit::Centimeters:
-      return QgsLayoutMeasurement( convertToCentimeters( measurement ), Qgis::LayoutUnit::Centimeters );
-    case Qgis::LayoutUnit::Meters:
-      return QgsLayoutMeasurement( convertToMeters( measurement ), Qgis::LayoutUnit::Meters );
-    case Qgis::LayoutUnit::Inches:
-      return QgsLayoutMeasurement( convertToInches( measurement ), Qgis::LayoutUnit::Inches );
-    case Qgis::LayoutUnit::Feet:
-      return QgsLayoutMeasurement( convertToFeet( measurement ), Qgis::LayoutUnit::Feet );
-    case Qgis::LayoutUnit::Points:
-      return QgsLayoutMeasurement( convertToPoints( measurement ), Qgis::LayoutUnit::Points );
-    case Qgis::LayoutUnit::Picas:
-      return QgsLayoutMeasurement( convertToPicas( measurement ), Qgis::LayoutUnit::Picas );
-    case Qgis::LayoutUnit::Pixels:
-      return QgsLayoutMeasurement( convertToPixels( measurement ), Qgis::LayoutUnit::Pixels );
+    case QgsUnitTypes::LayoutMillimeters:
+      return QgsLayoutMeasurement( convertToMillimeters( measurement ), QgsUnitTypes::LayoutMillimeters );
+    case QgsUnitTypes::LayoutCentimeters:
+      return QgsLayoutMeasurement( convertToCentimeters( measurement ), QgsUnitTypes::LayoutCentimeters );
+    case QgsUnitTypes::LayoutMeters:
+      return QgsLayoutMeasurement( convertToMeters( measurement ), QgsUnitTypes::LayoutMeters );
+    case QgsUnitTypes::LayoutInches:
+      return QgsLayoutMeasurement( convertToInches( measurement ), QgsUnitTypes::LayoutInches );
+    case QgsUnitTypes::LayoutFeet:
+      return QgsLayoutMeasurement( convertToFeet( measurement ), QgsUnitTypes::LayoutFeet );
+    case QgsUnitTypes::LayoutPoints:
+      return QgsLayoutMeasurement( convertToPoints( measurement ), QgsUnitTypes::LayoutPoints );
+    case QgsUnitTypes::LayoutPicas:
+      return QgsLayoutMeasurement( convertToPicas( measurement ), QgsUnitTypes::LayoutPicas );
+    case QgsUnitTypes::LayoutPixels:
+      return QgsLayoutMeasurement( convertToPixels( measurement ), QgsUnitTypes::LayoutPixels );
   }
 
   //will never be reached, but required to prevent warnings
-  return QgsLayoutMeasurement( convertToMillimeters( measurement ), Qgis::LayoutUnit::Millimeters );
+  return QgsLayoutMeasurement( convertToMillimeters( measurement ), QgsUnitTypes::LayoutMillimeters );
 }
 
-QgsLayoutSize QgsLayoutMeasurementConverter::convert( const QgsLayoutSize &size, const Qgis::LayoutUnit targetUnits ) const
+QgsLayoutSize QgsLayoutMeasurementConverter::convert( const QgsLayoutSize &size, const QgsUnitTypes::LayoutUnit targetUnits ) const
 {
   if ( size.units() == targetUnits )
   {
@@ -62,35 +62,35 @@ QgsLayoutSize QgsLayoutMeasurementConverter::convert( const QgsLayoutSize &size,
   const QgsLayoutMeasurement height = QgsLayoutMeasurement( size.height(), size.units() );
   switch ( targetUnits )
   {
-    case Qgis::LayoutUnit::Millimeters:
+    case QgsUnitTypes::LayoutMillimeters:
       result.setSize( convertToMillimeters( width ), convertToMillimeters( height ) );
       break;
-    case Qgis::LayoutUnit::Centimeters:
+    case QgsUnitTypes::LayoutCentimeters:
       result.setSize( convertToCentimeters( width ), convertToCentimeters( height ) );
       break;
-    case Qgis::LayoutUnit::Meters:
+    case QgsUnitTypes::LayoutMeters:
       result.setSize( convertToMeters( width ), convertToMeters( height ) );
       break;
-    case Qgis::LayoutUnit::Inches:
+    case QgsUnitTypes::LayoutInches:
       result.setSize( convertToInches( width ), convertToInches( height ) );
       break;
-    case Qgis::LayoutUnit::Feet:
+    case QgsUnitTypes::LayoutFeet:
       result.setSize( convertToFeet( width ), convertToFeet( height ) );
       break;
-    case Qgis::LayoutUnit::Points:
+    case QgsUnitTypes::LayoutPoints:
       result.setSize( convertToPoints( width ), convertToPoints( height ) );
       break;
-    case Qgis::LayoutUnit::Picas:
+    case QgsUnitTypes::LayoutPicas:
       result.setSize( convertToPicas( width ), convertToPicas( height ) );
       break;
-    case Qgis::LayoutUnit::Pixels:
+    case QgsUnitTypes::LayoutPixels:
       result.setSize( convertToPixels( width ), convertToPixels( height ) );
       break;
   }
   return result;
 }
 
-QgsLayoutPoint QgsLayoutMeasurementConverter::convert( const QgsLayoutPoint &point, const Qgis::LayoutUnit targetUnits ) const
+QgsLayoutPoint QgsLayoutMeasurementConverter::convert( const QgsLayoutPoint &point, const QgsUnitTypes::LayoutUnit targetUnits ) const
 {
   if ( point.units() == targetUnits )
   {
@@ -103,28 +103,28 @@ QgsLayoutPoint QgsLayoutMeasurementConverter::convert( const QgsLayoutPoint &poi
   const QgsLayoutMeasurement y = QgsLayoutMeasurement( point.y(), point.units() );
   switch ( targetUnits )
   {
-    case Qgis::LayoutUnit::Millimeters:
+    case QgsUnitTypes::LayoutMillimeters:
       result.setPoint( convertToMillimeters( x ), convertToMillimeters( y ) );
       break;
-    case Qgis::LayoutUnit::Centimeters:
+    case QgsUnitTypes::LayoutCentimeters:
       result.setPoint( convertToCentimeters( x ), convertToCentimeters( y ) );
       break;
-    case Qgis::LayoutUnit::Meters:
+    case QgsUnitTypes::LayoutMeters:
       result.setPoint( convertToMeters( x ), convertToMeters( y ) );
       break;
-    case Qgis::LayoutUnit::Inches:
+    case QgsUnitTypes::LayoutInches:
       result.setPoint( convertToInches( x ), convertToInches( y ) );
       break;
-    case Qgis::LayoutUnit::Feet:
+    case QgsUnitTypes::LayoutFeet:
       result.setPoint( convertToFeet( x ), convertToFeet( y ) );
       break;
-    case Qgis::LayoutUnit::Points:
+    case QgsUnitTypes::LayoutPoints:
       result.setPoint( convertToPoints( x ), convertToPoints( y ) );
       break;
-    case Qgis::LayoutUnit::Picas:
+    case QgsUnitTypes::LayoutPicas:
       result.setPoint( convertToPicas( x ), convertToPicas( y ) );
       break;
-    case Qgis::LayoutUnit::Pixels:
+    case QgsUnitTypes::LayoutPixels:
       result.setPoint( convertToPixels( x ), convertToPixels( y ) );
       break;
   }
@@ -135,21 +135,21 @@ double QgsLayoutMeasurementConverter::convertToMillimeters( const QgsLayoutMeasu
 {
   switch ( measurement.units() )
   {
-    case Qgis::LayoutUnit::Millimeters:
+    case QgsUnitTypes::LayoutMillimeters:
       return measurement.length();
-    case Qgis::LayoutUnit::Centimeters:
+    case QgsUnitTypes::LayoutCentimeters:
       return measurement.length() * 10.0;
-    case Qgis::LayoutUnit::Meters:
+    case QgsUnitTypes::LayoutMeters:
       return measurement.length() * 1000.0;
-    case Qgis::LayoutUnit::Inches:
+    case QgsUnitTypes::LayoutInches:
       return measurement.length() * 25.4;
-    case Qgis::LayoutUnit::Feet:
+    case QgsUnitTypes::LayoutFeet:
       return measurement.length() * 304.8;
-    case Qgis::LayoutUnit::Points:
+    case QgsUnitTypes::LayoutPoints:
       return measurement.length() * 0.352777778;
-    case Qgis::LayoutUnit::Picas:
+    case QgsUnitTypes::LayoutPicas:
       return measurement.length() * 4.23333333;
-    case Qgis::LayoutUnit::Pixels:
+    case QgsUnitTypes::LayoutPixels:
       return measurement.length() * 25.4 / mDpi;
   }
 

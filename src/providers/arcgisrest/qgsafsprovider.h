@@ -20,13 +20,12 @@
 
 #include <memory>
 #include "qgsvectordataprovider.h"
+#include "qgsdatasourceuri.h"
 #include "qgsafsshareddata.h"
 #include "qgscoordinatereferencesystem.h"
 #include "geometry/qgswkbtypes.h"
 #include "qgsfields.h"
 #include "qgslayermetadata.h"
-#include "qgssettings.h"
-#include "qgssettingsentryimpl.h"
 
 #include "qgsprovidermetadata.h"
 #include "qgshttpheaders.h"
@@ -40,16 +39,16 @@ class QgsAfsProvider : public QgsVectorDataProvider
 
   public:
 
-    static const inline QString AFS_PROVIDER_KEY = QStringLiteral( "arcgisfeatureserver" );
-    static const inline QString AFS_PROVIDER_DESCRIPTION = QStringLiteral( "ArcGIS Feature Service data provider" );
+    static const QString AFS_PROVIDER_KEY;
+    static const QString AFS_PROVIDER_DESCRIPTION;
 
-    QgsAfsProvider( const QString &uri, const QgsDataProvider::ProviderOptions &providerOptions, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() );
+    QgsAfsProvider( const QString &uri, const QgsDataProvider::ProviderOptions &providerOptions, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() );
 
     /* Inherited from QgsVectorDataProvider */
     QgsAbstractFeatureSource *featureSource() const override;
     QString storageType() const override { return QStringLiteral( "ArcGIS Feature Service" ); }
     QgsFeatureIterator getFeatures( const QgsFeatureRequest &request = QgsFeatureRequest() ) const override;
-    Qgis::WkbType wkbType() const override;
+    QgsWkbTypes::Type wkbType() const override;
     long long featureCount() const override;
     QgsFields fields() const override;
     QgsLayerMetadata layerMetadata() const override;
@@ -62,16 +61,15 @@ class QgsAfsProvider : public QgsVectorDataProvider
     bool deleteAttributes( const QgsAttributeIds &attributes ) override;
     bool createAttributeIndex( int field ) override;
 
-    Qgis::VectorProviderCapabilities capabilities() const override;
+    QgsVectorDataProvider::Capabilities capabilities() const override;
     QgsAttributeList pkAttributeIndexes() const override;
     QString defaultValueClause( int fieldId ) const override;
+    QgsAttrPalIndexNameHash palAttributeIndexNames() const override { return QgsAttrPalIndexNameHash(); }
     bool skipConstraintCheck( int fieldIndex, QgsFieldConstraints::Constraint constraint, const QVariant &value = QVariant() ) const override;
 
     QString subsetString() const override;
     bool setSubsetString( const QString &subset, bool updateFeatureCount = true ) override;
-    bool supportsSubsetString() const override;
-    QString subsetStringDialect() const override;
-    QString subsetStringHelpUrl() const override;
+    bool supportsSubsetString() const override { return true; }
 
     /* Inherited from QgsDataProvider */
     QgsCoordinateReferenceSystem crs() const override;
@@ -122,8 +120,8 @@ class QgsAfsProviderMetadata: public QgsProviderMetadata
     QList<QgsDataItemProvider *> dataItemProviders() const override;
     QVariantMap decodeUri( const QString &uri ) const override;
     QString encodeUri( const QVariantMap &parts ) const override;
-    QgsAfsProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() ) override;
-    QList< Qgis::LayerType > supportedLayerTypes() const override;
+    QgsAfsProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() ) override;
+    QList< QgsMapLayerType > supportedLayerTypes() const override;
 };
 
 #endif // QGSAFSPROVIDER_H

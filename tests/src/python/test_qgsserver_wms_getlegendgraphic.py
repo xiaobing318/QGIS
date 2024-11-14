@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 """QGIS Unit tests for QgsServer WMS GetLegendGraphic.
 
 From build dir, run: ctest -R PyQgsServerWMSGetLegendGraphic -V
@@ -37,17 +38,12 @@ from qgis.core import (
     QgsMarkerSymbol,
     QgsRuleBasedRenderer,
     QgsVectorLayer,
-    QgsRasterLayer,
 )
 
 from qgis.server import (
     QgsBufferServerRequest,
     QgsBufferServerResponse,
     QgsServer,
-)
-
-from utilities import (
-    unitTestDataPath,
 )
 
 # Strip path and content length because path may vary
@@ -73,10 +69,10 @@ class TestQgsServerWMSGetLegendGraphic(TestQgsServerWMSTestBase):
             # 'HEIGHT': '20', # optional
             'LAYER': 'testlayer%20èé',
         }
-        qs = '?' + '&'.join([f"{k}={v}" for k, v in parms.items()])
+        qs = '?' + '&'.join(["%s=%s" % (k, v) for k, v in parms.items()])
         h, r = self._execute_request(qs)
-        self.assertEqual(-1, h.find(b'Content-Type: text/xml; charset=utf-8'), f"Header: {h}\nResponse:\n{r}")
-        self.assertNotEqual(-1, h.find(b'Content-Type: image/png'), f"Header: {h}\nResponse:\n{r}")
+        self.assertEqual(-1, h.find(b'Content-Type: text/xml; charset=utf-8'), "Header: %s\nResponse:\n%s" % (h, r))
+        self.assertNotEqual(-1, h.find(b'Content-Type: image/png'), "Header: %s\nResponse:\n%s" % (h, r))
 
     def test_wms_GetLegendGraphic_LayerSpace(self):
         qs = "?" + "&".join(["%s=%s" % i for i in list({
@@ -146,8 +142,7 @@ class TestQgsServerWMSGetLegendGraphic(TestQgsServerWMSTestBase):
         }.items())])
 
         r, h = self._result(self._execute_request(qs))
-        self._img_diff_error(r, h, "WMS_GetLegendGraphic_LayerTitleSpace",
-                             max_size_diff=QSize(1, 5))
+        self._img_diff_error(r, h, "WMS_GetLegendGraphic_LayerTitleSpace")
 
     def test_wms_GetLegendGraphic_ShowFeatureCount(self):
         qs = "?" + "&".join(["%s=%s" % i for i in list({
@@ -196,7 +191,7 @@ class TestQgsServerWMSGetLegendGraphic(TestQgsServerWMSTestBase):
             'LAYERTITLE': 'TRUE',
             'RULELABEL': 'TRUE'
         }
-        qs = '?' + '&'.join([f"{k}={v}" for k, v in parms.items()])
+        qs = '?' + '&'.join(["%s=%s" % (k, v) for k, v in parms.items()])
         r, h = self._result(self._execute_request(qs))
         self._img_diff_error(r, h, "WMS_GetLegendGraphic_test", 250, QSize(15, 15))
 
@@ -217,7 +212,7 @@ class TestQgsServerWMSGetLegendGraphic(TestQgsServerWMSTestBase):
             'ITEMFONTSIZE': '20',
             'ITEMFONTFAMILY': self.fontFamily
         }
-        qs = '?' + '&'.join([f"{k}={v}" for k, v in parms.items()])
+        qs = '?' + '&'.join(["%s=%s" % (k, v) for k, v in parms.items()])
         r, h = self._result(self._execute_request(qs))
 
         self._img_diff_error(r, h, "WMS_GetLegendGraphic_test", 250, QSize(15, 15))
@@ -234,7 +229,7 @@ class TestQgsServerWMSGetLegendGraphic(TestQgsServerWMSTestBase):
             'LAYERTITLE': 'FALSE',
             'RULELABEL': 'FALSE'
         }
-        qs = '?' + '&'.join([f"{k}={v}" for k, v in parms.items()])
+        qs = '?' + '&'.join(["%s=%s" % (k, v) for k, v in parms.items()])
         r, h = self._result(self._execute_request(qs))
         self._img_diff_error(r, h, "WMS_GetLegendGraphic_test_layertitle_false", 250, QSize(15, 15))
 
@@ -255,7 +250,7 @@ class TestQgsServerWMSGetLegendGraphic(TestQgsServerWMSTestBase):
             'ITEMFONTFAMILY': self.fontFamily,
             'RULELABEL': 'FALSE'
         }
-        qs = '?' + '&'.join([f"{k}={v}" for k, v in parms.items()])
+        qs = '?' + '&'.join(["%s=%s" % (k, v) for k, v in parms.items()])
         r, h = self._result(self._execute_request(qs))
         self._img_diff_error(r, h, "WMS_GetLegendGraphic_rulelabel_false", 250, QSize(15, 15))
 
@@ -275,7 +270,7 @@ class TestQgsServerWMSGetLegendGraphic(TestQgsServerWMSTestBase):
             'LAYERTITLE': 'FALSE',
             'RULELABEL': 'TRUE'
         }
-        qs = '?' + '&'.join([f"{k}={v}" for k, v in parms.items()])
+        qs = '?' + '&'.join(["%s=%s" % (k, v) for k, v in parms.items()])
         r, h = self._result(self._execute_request(qs))
         self._img_diff_error(r, h, "WMS_GetLegendGraphic_rulelabel_true", 250, QSize(15, 15))
 
@@ -295,7 +290,7 @@ class TestQgsServerWMSGetLegendGraphic(TestQgsServerWMSTestBase):
             'ITEMFONTFAMILY': self.fontFamily,
             'LAYERTITLE': 'FALSE'
         }
-        qs = '?' + '&'.join([f"{k}={v}" for k, v in parms.items()])
+        qs = '?' + '&'.join(["%s=%s" % (k, v) for k, v in parms.items()])
         r, h = self._result(self._execute_request(qs))
         self._img_diff_error(r, h, "WMS_GetLegendGraphic_rulelabel_notset", 250, QSize(15, 15))
 
@@ -310,7 +305,7 @@ class TestQgsServerWMSGetLegendGraphic(TestQgsServerWMSTestBase):
             'LAYERTITLE': 'FALSE',
             'RULELABEL': 'AUTO'
         }
-        qs = '?' + '&'.join([f"{k}={v}" for k, v in parms.items()])
+        qs = '?' + '&'.join(["%s=%s" % (k, v) for k, v in parms.items()])
         r, h = self._result(self._execute_request(qs))
         self._img_diff_error(r, h, "WMS_GetLegendGraphic_rulelabel_auto", 250, QSize(15, 15))
 
@@ -327,7 +322,7 @@ class TestQgsServerWMSGetLegendGraphic(TestQgsServerWMSTestBase):
             'HEIGHT': '20',
             'RULE': 'rule0',
         }
-        qs = '?' + '&'.join([f"{k}={v}" for k, v in parms.items()])
+        qs = '?' + '&'.join(["%s=%s" % (k, v) for k, v in parms.items()])
         r, h = self._result(self._execute_request(qs))
         self._img_diff_error(r, h, "WMS_GetLegendGraphic_rule0", 250, QSize(15, 15))
 
@@ -342,7 +337,7 @@ class TestQgsServerWMSGetLegendGraphic(TestQgsServerWMSTestBase):
             'HEIGHT': '20',
             'RULE': 'rule1',
         }
-        qs = '?' + '&'.join([f"{k}={v}" for k, v in parms.items()])
+        qs = '?' + '&'.join(["%s=%s" % (k, v) for k, v in parms.items()])
         r, h = self._result(self._execute_request(qs))
         self._img_diff_error(r, h, "WMS_GetLegendGraphic_rule1", 250, QSize(15, 15))
 
@@ -495,8 +490,7 @@ class TestQgsServerWMSGetLegendGraphic(TestQgsServerWMSTestBase):
         }.items())])
 
         r, h = self._result(self._execute_request(qs))
-        self._img_diff_error(r, h, "WMS_GetLegendGraphic_SymbolSize",
-                             max_size_diff=QSize(1, 1))
+        self._img_diff_error(r, h, "WMS_GetLegendGraphic_SymbolSize")
 
     def test_wms_GetLegendGraphic_LayerFont(self):
         qs = "?" + "&".join(["%s=%s" % i for i in list({
@@ -638,8 +632,8 @@ class TestQgsServerWMSGetLegendGraphic(TestQgsServerWMSTestBase):
         }.items())])
 
         h, r = self._execute_request(qs)
-        self.assertEqual(-1, h.find(b'Content-Type: text/xml; charset=utf-8'), f"Header: {h}\nResponse:\n{r}")
-        self.assertNotEqual(-1, h.find(b'Content-Type: image/png'), f"Header: {h}\nResponse:\n{r}")
+        self.assertEqual(-1, h.find(b'Content-Type: text/xml; charset=utf-8'), "Header: %s\nResponse:\n%s" % (h, r))
+        self.assertNotEqual(-1, h.find(b'Content-Type: image/png'), "Header: %s\nResponse:\n%s" % (h, r))
 
     def test_wms_GetLegendGraphic_wmsRootName(self):
         """Test an unreported issue when a wmsRootName short name is set in the service capabilities"""
@@ -660,8 +654,8 @@ class TestQgsServerWMSGetLegendGraphic(TestQgsServerWMSTestBase):
         }.items())])
 
         h, r = self._execute_request(qs)
-        self.assertEqual(-1, h.find(b'Content-Type: text/xml; charset=utf-8'), f"Header: {h}\nResponse:\n{r}")
-        self.assertNotEqual(-1, h.find(b'Content-Type: image/png'), f"Header: {h}\nResponse:\n{r}")
+        self.assertEqual(-1, h.find(b'Content-Type: text/xml; charset=utf-8'), "Header: %s\nResponse:\n%s" % (h, r))
+        self.assertNotEqual(-1, h.find(b'Content-Type: image/png'), "Header: %s\nResponse:\n%s" % (h, r))
 
         # Then test with the wmsRootName short name:
         qs = "?" + "&".join(["%s=%s" % i for i in list({
@@ -679,8 +673,8 @@ class TestQgsServerWMSGetLegendGraphic(TestQgsServerWMSTestBase):
         }.items())])
 
         h, r = self._execute_request(qs)
-        self.assertEqual(-1, h.find(b'Content-Type: text/xml; charset=utf-8'), f"Header: {h}\nResponse:\n{r}")
-        self.assertNotEqual(-1, h.find(b'Content-Type: image/png'), f"Header: {h}\nResponse:\n{r}")
+        self.assertEqual(-1, h.find(b'Content-Type: text/xml; charset=utf-8'), "Header: %s\nResponse:\n%s" % (h, r))
+        self.assertNotEqual(-1, h.find(b'Content-Type: image/png'), "Header: %s\nResponse:\n%s" % (h, r))
 
     def test_wms_GetLegendGraphic_ScaleSymbol_Min(self):
         # 1:500000000 min
@@ -1118,7 +1112,7 @@ class TestQgsServerWMSGetLegendGraphic(TestQgsServerWMSTestBase):
         }.items())])
 
         r, h = self._result(self._execute_request(qs))
-        self.assertNotIn(b'Exception', r)
+        self.assertFalse(b'Exception' in r)
         self._img_diff_error(r, h, "WMS_GetLegendGraphic_NoWidthNoHeight", max_size_diff=QSize(10, 2))
 
     def testGetLegendGraphicRegression32020(self):
@@ -1148,7 +1142,7 @@ class TestQgsServerWMSGetLegendGraphic(TestQgsServerWMSTestBase):
         }.items())])
 
         r, h = self._result(self._execute_request(qs))
-        self.assertNotIn(b'Exception', r)
+        self.assertFalse(b'Exception' in r)
         self._img_diff_error(r, h, "WMS_GetLegendGraphic_Regression32020_type1", max_size_diff=QSize(10, 5))
 
         # Visible is "Type 2"
@@ -1171,7 +1165,7 @@ class TestQgsServerWMSGetLegendGraphic(TestQgsServerWMSTestBase):
         }.items())])
 
         r, h = self._result(self._execute_request(qs))
-        self.assertNotIn(b'Exception', r)
+        self.assertFalse(b'Exception' in r)
         self._img_diff_error(r, h, "WMS_GetLegendGraphic_Regression32020_type2", max_size_diff=QSize(10, 5))
 
         # Visible is "Type 2" and 3
@@ -1194,7 +1188,7 @@ class TestQgsServerWMSGetLegendGraphic(TestQgsServerWMSTestBase):
         }.items())])
 
         r, h = self._result(self._execute_request(qs))
-        self.assertNotIn(b'Exception', r)
+        self.assertFalse(b'Exception' in r)
         self._img_diff_error(r, h, "WMS_GetLegendGraphic_Regression32020_type2_and_3", max_size_diff=QSize(10, 5))
 
         # Visible is "Type 1" and 3
@@ -1217,7 +1211,7 @@ class TestQgsServerWMSGetLegendGraphic(TestQgsServerWMSTestBase):
         }.items())])
 
         r, h = self._result(self._execute_request(qs))
-        self.assertNotIn(b'Exception', r)
+        self.assertFalse(b'Exception' in r)
         self._img_diff_error(r, h, "WMS_GetLegendGraphic_Regression32020_type1_and_3", max_size_diff=QSize(10, 5))
 
         # Change CRS: 3857
@@ -1241,26 +1235,26 @@ class TestQgsServerWMSGetLegendGraphic(TestQgsServerWMSTestBase):
         }.items())])
 
         r, h = self._result(self._execute_request(qs))
-        self.assertNotIn(b'Exception', r)
+        self.assertFalse(b'Exception' in r)
         self._img_diff_error(r, h, "WMS_GetLegendGraphic_Regression32020_type2_3857", max_size_diff=QSize(10, 5))
 
     def test_wms_GetLegendGraphic_JSON(self):
         self.wms_request_compare("GetLegendGraphic",
                                  "&LAYERS=testlayer%20%C3%A8%C3%A9"
                                  "&FORMAT=application/json",
-                                 ["wms_getlegendgraphic_json", "wms_getlegendgraphic_json2"])
+                                 "wms_getlegendgraphic_json")
 
     def test_wms_GetLegendGraphic_JSON_multiple_layers(self):
         self.wms_request_compare("GetLegendGraphic",
                                  "&LAYERS=testlayer%20%C3%A8%C3%A9,testlayer3"
                                  "&FORMAT=application/json",
-                                 ["wms_getlegendgraphic_json_multiple_layers", "wms_getlegendgraphic_json_multiple_layers2", "wms_getlegendgraphic_json_multiple_layers3"])
+                                 "wms_getlegendgraphic_json_multiple_layers")
 
     def test_wms_GetLegendGraphic_JSON_multiple_symbol(self):
         self.wms_request_compare("GetLegendGraphic",
                                  "&LAYERS=cdb_lines"
                                  "&FORMAT=application/json",
-                                 ["wms_getlegendgraphic_json_multiple_symbol", "wms_getlegendgraphic_json_multiple_symbol2"],
+                                 "wms_getlegendgraphic_json_multiple_symbol",
                                  'test_project_wms_grouped_layers.qgs')
 
     def testJsonSymbolMaxMinScale(self):
@@ -1299,7 +1293,7 @@ class TestQgsServerWMSGetLegendGraphic(TestQgsServerWMSTestBase):
 
         # Rule with symbol
         high_scale_rule = QgsRuleBasedRenderer.Rule(
-            QgsSymbol.defaultSymbol(QgsWkbTypes.GeometryType.PointGeometry),
+            QgsSymbol.defaultSymbol(QgsWkbTypes.PointGeometry),
             minimumScale=25000, maximumScale=1000, label='high-scale')
         root_rule.appendChild(high_scale_rule)
 
@@ -1308,7 +1302,7 @@ class TestQgsServerWMSGetLegendGraphic(TestQgsServerWMSTestBase):
 
         # Sub-rule with a symbol
         sub_rule = QgsRuleBasedRenderer.Rule(
-            QgsSymbol.defaultSymbol(QgsWkbTypes.GeometryType.PointGeometry), label='low-scale-sub')
+            QgsSymbol.defaultSymbol(QgsWkbTypes.PointGeometry), label='low-scale-sub')
 
         low_scale_rule.appendChild(sub_rule)
         root_rule.appendChild(low_scale_rule)
@@ -1366,145 +1360,6 @@ class TestQgsServerWMSGetLegendGraphic(TestQgsServerWMSTestBase):
 
         r, h = self._result(self._execute_request(qs))
         self._img_diff_error(r, h, "WMS_GetLegendGraphic_Legend_Placeholder_Icon")
-
-    def test_wms_GetLegendGraphic_JSON_rule_details(self):
-
-        project = QgsProject()
-        layer = QgsVectorLayer("Point?field=fldtxt:string",
-                               "layer1", "memory")
-
-        symbol = QgsMarkerSymbol.createSimple(
-            {'name': 'square', 'color': 'red'})
-
-        scale_min = 10000
-        scale_max = 1000
-        rule = QgsRuleBasedRenderer.Rule(symbol, scale_min, scale_max, "fldtxt = 'one'", 'label1', 'description1')
-        rootrule = QgsRuleBasedRenderer.Rule(None)
-        rootrule.appendChild(rule)
-        layer.setRenderer(QgsRuleBasedRenderer(rootrule))
-
-        project.addMapLayers([layer])
-
-        server = QgsServer()
-        request = QgsBufferServerRequest("/?SERVICE=WMS&VERSION=1.30&REQUEST=GetLegendGraphic" +
-                                         "&LAYERS=layer1" +
-                                         "&FORMAT=application/json" +
-                                         "&SHOWRULEDETAILS=1")
-        response = QgsBufferServerResponse()
-        server.handleRequest(request, response, project)
-        j = json.loads(bytes(response.body()))
-        node = j['nodes'][0]
-        self.assertEqual(node['scaleMaxDenom'], 1000)
-        self.assertEqual(node['scaleMinDenom'], 10000)
-        self.assertEqual(node['rule'], "(fldtxt = 'one') AND (@map_scale <= 1000) AND (@map_scale >= 10000)")
-
-        # Add a second rule
-        project = QgsProject()
-        layer = QgsVectorLayer("Point?field=fldtxt:string",
-                               "layer1", "memory")
-
-        symbol1 = QgsMarkerSymbol.createSimple(
-            {'name': 'square', 'color': 'red'})
-        symbol2 = QgsMarkerSymbol.createSimple(
-            {'name': 'square', 'color': 'green'})
-
-        scale_min = 10000
-        scale_max = 1000
-
-        rootrule = QgsRuleBasedRenderer.Rule(None)
-        rule1 = QgsRuleBasedRenderer.Rule(symbol1, scale_min, scale_max, "fldtxt = 'one'", 'label1', 'description1')
-        rootrule.appendChild(rule1)
-        rule2 = QgsRuleBasedRenderer.Rule(symbol2, scale_min, scale_max, "fldtxt = 'two'", 'label2', 'description2')
-        rootrule.appendChild(rule2)
-        layer.setRenderer(QgsRuleBasedRenderer(rootrule))
-
-        project.addMapLayers([layer])
-
-        server = QgsServer()
-
-        request = QgsBufferServerRequest("/?SERVICE=WMS&VERSION=1.30&REQUEST=GetLegendGraphic" +
-                                         "&LAYERS=layer1" +
-                                         "&FORMAT=application/json" +
-                                         "&SHOWRULEDETAILS=1")
-        response = QgsBufferServerResponse()
-        server.handleRequest(request, response, project)
-        j = json.loads(bytes(response.body()))
-        node = j
-        self.assertEqual(node['nodes'][0]['symbols'][0]['rule'], "(fldtxt = 'one') AND (@map_scale <= 1000) AND (@map_scale >= 10000)")
-        self.assertEqual(node['nodes'][0]['symbols'][1]['rule'], "(fldtxt = 'two') AND (@map_scale <= 1000) AND (@map_scale >= 10000)")
-
-    def test_wms_GetLegendGraphic_JSON_rule_filter(self):
-
-        project = QgsProject()
-        layer = QgsVectorLayer("Point?field=fldtxt:string",
-                               "layer1", "memory")
-
-        symbol1 = QgsMarkerSymbol.createSimple(
-            {'name': 'square', 'color': 'red'})
-        symbol2 = QgsMarkerSymbol.createSimple(
-            {'name': 'square', 'color': 'green'})
-
-        scale_min = 10000
-        scale_max = 1000
-
-        rootrule = QgsRuleBasedRenderer.Rule(None)
-        rule1 = QgsRuleBasedRenderer.Rule(symbol1, scale_min, scale_max, "fldtxt = 'one'", 'label1', 'description1')
-        rootrule.appendChild(rule1)
-        rule2 = QgsRuleBasedRenderer.Rule(symbol2, scale_min, scale_max, "fldtxt = 'two'", 'label2', 'description2')
-        rootrule.appendChild(rule2)
-        layer.setRenderer(QgsRuleBasedRenderer(rootrule))
-
-        project.addMapLayers([layer])
-
-        server = QgsServer()
-        request = QgsBufferServerRequest("/?SERVICE=WMS&VERSION=1.30&REQUEST=GetLegendGraphic" +
-                                         "&LAYERS=layer1" +
-                                         "&FORMAT=application/json" +
-                                         "&RULE=label2" +
-                                         "&SHOWRULEDETAILS=1")
-        response = QgsBufferServerResponse()
-        server.handleRequest(request, response, project)
-        j = json.loads(bytes(response.body()))
-        node = j
-        self.assertEqual(node['scaleMaxDenom'], 1000)
-        self.assertEqual(node['scaleMinDenom'], 10000)
-        self.assertEqual(node['rule'], "(fldtxt = 'two') AND (@map_scale <= 1000) AND (@map_scale >= 10000)")
-
-        icon = node['icon']
-        request = QgsBufferServerRequest("/?SERVICE=WMS&VERSION=1.30&REQUEST=GetLegendGraphic" +
-                                         "&LAYERS=layer1" +
-                                         "&FORMAT=application/json" +
-                                         "&RULE=label2")
-        response = QgsBufferServerResponse()
-        server.handleRequest(request, response, project)
-        j = json.loads(bytes(response.body()))
-        node = j
-        self.assertEqual(node['icon'], icon)
-
-    def test_wms_GetLegendGraphic_JSON_raster_color_ramp(self):
-        """Test raster color ramp legend in JSON format"""
-
-        project = QgsProject()
-
-        path = os.path.join(unitTestDataPath('raster'),
-                            'byte.tif')
-
-        layer = QgsRasterLayer(path, "layer1")
-        self.assertTrue(layer.isValid())
-        project.addMapLayers([layer])
-
-        server = QgsServer()
-        request = QgsBufferServerRequest("/?SERVICE=WMS&VERSION=1.30&REQUEST=GetLegendGraphic" +
-                                         "&LAYERS=layer1" +
-                                         "&FORMAT=application/json")
-        response = QgsBufferServerResponse()
-        server.handleRequest(request, response, project)
-        j = json.loads(bytes(response.body()))
-        node = j
-        self.assertEqual(node['nodes'][0]['symbols'][0]['title'], 'Band 1 (Gray)')
-        self.assertEqual(node['nodes'][0]['symbols'][1]['max'], 255)
-        self.assertEqual(node['nodes'][0]['symbols'][1]['min'], 74)
-        self.assertNotEqual(node['nodes'][0]['symbols'][1]['icon'], '')
 
 
 if __name__ == '__main__':

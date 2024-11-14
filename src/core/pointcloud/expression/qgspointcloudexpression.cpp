@@ -207,11 +207,3 @@ bool QgsPointCloudExpression::checkExpression( const QgsExpression &expression, 
   errorMessage = exp.parserErrorString();
   return !exp.hasParserError();
 }
-
-QString QgsPointCloudExpression::asPdalExpression() const
-{
-  if ( !d->mRootNode )
-    return QString();
-
-  return d->mRootNode->toPdal();
-}

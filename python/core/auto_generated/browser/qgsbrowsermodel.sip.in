@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/browser/qgsbrowsermodel.h                                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -50,16 +50,14 @@ Constructor for QgsBrowserModel, with the specified ``parent`` object.
 
     ~QgsBrowserModel();
 
-
-    enum class CustomRole
-      {
-      Path,
-      Comment,
-      Sort,
-      ProviderKey,
-      LayerMetadata,
+    enum ItemDataRole
+    {
+      PathRole,
+      CommentRole,
+      SortRole,
+      ProviderKeyRole,
+      LayerMetadataRole,
     };
-
 
     virtual Qt::ItemFlags flags( const QModelIndex &index ) const;
 
@@ -145,9 +143,8 @@ items, i.e. it does not fetch children.
  void connectItem( QgsDataItem *item ) /Deprecated/;
 %Docstring
 
-.. deprecated:: 3.4
-
-   This method has no effect, and is dangerous to call in earlier QGIS versions. Any usage should be removed (and will have no harmful side-effects!).
+.. deprecated::
+   Deprecated since QGIS 3.4 -- this method has no effect, and is dangerous to call in earlier QGIS versions. Any usage should be removed (and will have no harmful side-effects!).
 %End
 
     bool initialized() const;
@@ -221,6 +218,8 @@ If ``name`` is specified, it will be used as the favorite's name. Otherwise
 the name will be set to match ``directory``.
 
 .. seealso:: :py:func:`removeFavorite`
+
+.. versionadded:: 3.0
 %End
 
     void removeFavorite( const QModelIndex &index );
@@ -228,6 +227,8 @@ the name will be set to match ``directory``.
 Removes a favorite directory from its corresponding model index.
 
 .. seealso:: :py:func:`addFavoriteDirectory`
+
+.. versionadded:: 3.0
 %End
 
 
@@ -260,5 +261,5 @@ Populates the model
  *                                                                      *
  * src/core/browser/qgsbrowsermodel.h                                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

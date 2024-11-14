@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/symbology/qgsmarkersymbol.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -51,6 +51,8 @@ multiple symbol layers, this will correspond just to the angle of
 the first symbol layer.
 
 .. seealso:: :py:func:`setAngle`
+
+.. versionadded:: 2.16
 %End
 
     void setDataDefinedAngle( const QgsProperty &property );
@@ -58,6 +60,8 @@ the first symbol layer.
 Set data defined angle for whole symbol (including all symbol layers).
 
 .. seealso:: :py:func:`dataDefinedAngle`
+
+.. versionadded:: 3.0
 %End
 
     QgsProperty dataDefinedAngle() const;
@@ -68,6 +72,8 @@ Returns data defined angle for whole symbol (including all symbol layers).
          at the marker level.
 
 .. seealso:: :py:func:`setDataDefinedAngle`
+
+.. versionadded:: 3.0
 %End
 
     void setLineAngle( double lineAngle ) const;
@@ -77,6 +83,8 @@ the marker's rotation and data defined rotation before rendering the symbol, and
 is usually used for orienting symbols to match a line's angle.
 
 :param lineAngle: Angle in degrees, valid values are between 0 and 360
+
+.. versionadded:: 2.9
 %End
 
     void setSize( double size ) const;
@@ -128,7 +136,7 @@ size of each symbol layer using the provided render ``context``.
 .. versionadded:: 3.4.5
 %End
 
-    void setSizeUnit( Qgis::RenderUnit unit ) const;
+    void setSizeUnit( QgsUnitTypes::RenderUnit unit ) const;
 %Docstring
 Sets the size units for the whole symbol (including all symbol layers).
 
@@ -139,9 +147,11 @@ Sets the size units for the whole symbol (including all symbol layers).
 .. seealso:: :py:func:`setSizeMapUnitScale`
 
 .. seealso:: :py:func:`setSize`
+
+.. versionadded:: 2.16
 %End
 
-    Qgis::RenderUnit sizeUnit() const;
+    QgsUnitTypes::RenderUnit sizeUnit() const;
 %Docstring
 Returns the size units for the whole symbol (including all symbol layers).
 
@@ -152,6 +162,8 @@ Returns the size units for the whole symbol (including all symbol layers).
 .. seealso:: :py:func:`sizeMapUnitScale`
 
 .. seealso:: :py:func:`size`
+
+.. versionadded:: 2.16
 %End
 
     void setSizeMapUnitScale( const QgsMapUnitScale &scale ) const;
@@ -165,6 +177,8 @@ Sets the size map unit scale for the whole symbol (including all symbol layers).
 .. seealso:: :py:func:`setSizeUnit`
 
 .. seealso:: :py:func:`setSize`
+
+.. versionadded:: 2.16
 %End
 
     QgsMapUnitScale sizeMapUnitScale() const;
@@ -178,6 +192,8 @@ for the first symbol layer.
 .. seealso:: :py:func:`sizeUnit`
 
 .. seealso:: :py:func:`size`
+
+.. versionadded:: 2.16
 %End
 
     void setDataDefinedSize( const QgsProperty &property ) const;
@@ -185,6 +201,8 @@ for the first symbol layer.
 Set data defined size for whole symbol (including all symbol layers).
 
 .. seealso:: :py:func:`dataDefinedSize`
+
+.. versionadded:: 3.0
 %End
 
     QgsProperty dataDefinedSize() const;
@@ -195,6 +213,8 @@ Returns data defined size for whole symbol (including all symbol layers).
          at the marker level.
 
 .. seealso:: :py:func:`setDataDefinedSize`
+
+.. versionadded:: 3.0
 %End
 
     void setScaleMethod( Qgis::ScaleMethod scaleMethod ) const;
@@ -239,6 +259,8 @@ and :py:func:`~QgsMarkerSymbol.stopRender` calls, or data defined rotation and o
                 include data defined parameters such as offset and rotation
 
 :return: approximate symbol bounds, in painter units
+
+.. versionadded:: 2.14
 %End
 
     virtual QgsMarkerSymbol *clone() const /Factory/;
@@ -252,5 +274,5 @@ and :py:func:`~QgsMarkerSymbol.stopRender` calls, or data defined rotation and o
  *                                                                      *
  * src/core/symbology/qgsmarkersymbol.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

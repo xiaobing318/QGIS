@@ -14,9 +14,9 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgs25drendererwidget.h"
-#include "moc_qgs25drendererwidget.cpp"
 #include "qgs25drenderer.h"
 #include "qgsvectorlayer.h"
+#include "qgsmaplayerstylemanager.h"
 #include "qgsexpressioncontextutils.h"
 #include "qgssymbol.h"
 
@@ -27,8 +27,8 @@ Qgs25DRendererWidget::Qgs25DRendererWidget( QgsVectorLayer *layer, QgsStyle *sty
   if ( !layer )
     return;
 
-  // the renderer only applies to polygon vector layers
-  if ( layer->geometryType() != Qgis::GeometryType::Polygon )
+  // the renderer only applies to point vector layers
+  if ( layer->geometryType() != QgsWkbTypes::PolygonGeometry )
   {
     //setup blank dialog
     QGridLayout *layout = new QGridLayout( this );

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/layertree/qgslayertreegroup.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -18,6 +18,8 @@ Group names do not need to be unique within one tree nor within one parent.
 
 While a layer tree group is typically used for hierarchical organisation of a :py:class:`QgsProject`,
 they can optionally be associated with a :py:class:`QgsGroupLayer` for map rendering purposes.
+
+.. versionadded:: 2.4
 %End
 
 %TypeHeaderCode
@@ -112,6 +114,8 @@ Remove all child nodes. The nodes will be deleted.
     QgsLayerTreeLayer *findLayer( QgsMapLayer *layer ) const;
 %Docstring
 Find layer node representing the map layer. Searches recursively the whole sub-tree.
+
+.. versionadded:: 3.0
 %End
 
     QgsLayerTreeLayer *findLayer( const QString &layerId ) const;
@@ -124,24 +128,6 @@ Find layer node representing the map layer specified by its ID. Searches recursi
 Find all layer nodes. Searches recursively the whole sub-tree.
 %End
 
-    void reorderGroupLayers( const QList< QgsMapLayer * > &order );
-%Docstring
-Reorders layers in the group to match the order specified by ``order``.
-
-Only layers which are direct children of this group will be reordered, other
-layers will be ignored.
-
-.. note::
-
-   This method does not recursively reorder child groups.
-
-.. note::
-
-   Matching layers will be moved to the start of the group, with any existing
-   non-matching layers and group nodes moved to sit after the re-ordered matching layers.
-
-.. versionadded:: 3.30
-%End
 
 
     QStringList findLayerIds() const;
@@ -169,6 +155,8 @@ Does not resolve textual references to layers. Call :py:func:`~QgsLayerTreeGroup
 %Docstring
 Read group (tree) from XML element <layer-tree-group> and return the newly created group (or ``None`` on error).
 Also resolves textual references to layers from the project (calls :py:func:`~QgsLayerTreeGroup.resolveReferences` internally).
+
+.. versionadded:: 3.0
 %End
 
     virtual void writeXml( QDomElement &parentElement, const QgsReadWriteContext &context );
@@ -199,6 +187,8 @@ Returns a clone of the group. The children are cloned too.
 
 %Docstring
 Calls :py:func:`~QgsLayerTreeGroup.resolveReferences` on child tree nodes
+
+.. versionadded:: 3.0
 %End
 
     virtual void setItemVisibilityCheckedRecursive( bool checked );
@@ -210,6 +200,8 @@ Check or uncheck a node and all its children (taking into account exclusion rule
     bool isMutuallyExclusive() const;
 %Docstring
 Returns whether the group is mutually exclusive (only one child can be checked at a time)
+
+.. versionadded:: 2.12
 %End
 
     void setIsMutuallyExclusive( bool enabled, int initialChildIndex = -1 );
@@ -217,6 +209,8 @@ Returns whether the group is mutually exclusive (only one child can be checked a
 Set whether the group is mutually exclusive (only one child can be checked at a time).
 The initial child index determines which child should be initially checked. The default value
 of -1 will determine automatically (either first one currently checked or none)
+
+.. versionadded:: 2.12
 %End
 
     QgsGroupLayer *groupLayer();
@@ -294,5 +288,5 @@ Copies are not allowed
  *                                                                      *
  * src/core/layertree/qgslayertreegroup.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

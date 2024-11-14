@@ -9,20 +9,19 @@ __author__ = '(C) 2017 by Nyall Dawson'
 __date__ = '23/10/2017'
 __copyright__ = 'Copyright 2017, The QGIS Project'
 
+import qgis  # NOQA
 from qgis.core import QgsLayoutFrame, QgsLayoutItemHtml
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 from test_qgslayoutitem import LayoutItemTestCase
 
 start_app()
 
 
-class TestQgsLayoutFrame(QgisTestCase, LayoutItemTestCase):
+class TestQgsLayoutFrame(unittest.TestCase, LayoutItemTestCase):
 
     @classmethod
     def setUpClass(cls):
-        super(TestQgsLayoutFrame, cls).setUpClass()
         cls.mf = None
 
     @classmethod

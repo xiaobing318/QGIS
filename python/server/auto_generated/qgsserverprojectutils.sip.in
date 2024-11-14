@@ -3,7 +3,7 @@
  *                                                                      *
  * src/server/qgsserverprojectutils.h                                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -245,26 +245,6 @@ Returns if the geometry has to be segmentize in GetFeatureInfo request.
 :param project: the QGIS project
 
 :return: if the geometry has to be segmentize in GetFeatureInfo request.
-%End
-
-  bool wmsAddLegendGroupsLegendGraphic( const QgsProject &project );
-%Docstring
-Returns if legend groups should be in the legend graphic response if GetLegendGraphic is called on a layer group.
-
-:param project: the QGIS project
-
-:return: if the GetLegendGraphic response has to contain legend groups
-%End
-
-  bool wmsSkipNameForGroup( const QgsProject &project );
-%Docstring
-Returns if name attribute should be skipped for groups in WMS capabilities document.
-
-:param project: the QGIS project
-
-:return: if name attribute should be skipped for groups in capabilities
-
-.. versionadded:: 3.36
 %End
 
   int wmsFeatureInfoPrecision( const QgsProject &project );
@@ -520,17 +500,17 @@ The URL defined in the project or if not defined the URL from serviceUrl.
   QString serviceUrl( const QString &service, const QgsServerRequest &request, const QgsServerSettings &settings );
 %Docstring
 Returns the service url defined in the environment variable or with HTTP header.
-This is calculated from (in order of precedence):
+The is calculated from, in the order:
 
-- Value defined in the project per service
-- The ``QGIS_SERVER_<service>_SERVICE_URL`` environment variable
-- The ``QGIS_SERVER_SERVICE_URL`` environment variable
-- The custom ``X-:py:class:`Qgis`-<service>-Service-Url`` header
-- The custom ``X-:py:class:`Qgis`-Service-Url`` header
-- Build from the standard ``Forwarded`` header
-- Build from the pseudo standard ``X-Forwarded-Host`` and ``X-Forwarded-Proto`` headers
-- Build from the standard ``Host`` header and the server protocol
-- Build from the server name and the server protocol.
+- Value defined in the project per service.
+- The ``<service>_SERVICE_URL`` environment variable.
+- The ``SERVICE_URL`` environment variable.
+- The custom ``X-Qgis-<service>-Servcie-Url`` header.
+- The custom ``X-Qgis-Service-Url`` header.
+- Build form the standard ``Forwarded`` header.
+- Build form the pseudo standard ``X-Forwarded-Host`` and ``X-Forwarded-Proto`` headers.
+- Build form the standard ``Host`` header and the server protocol.
+- Build form the server name and the server protocol.
 
 :param request: the request
 :param service: the used service
@@ -547,5 +527,5 @@ This is calculated from (in order of precedence):
  *                                                                      *
  * src/server/qgsserverprojectutils.h                                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

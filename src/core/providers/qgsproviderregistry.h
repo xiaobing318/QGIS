@@ -29,6 +29,9 @@
 #include "qgis_core.h"
 #include "qgis_sip.h"
 
+#include <vector>
+#include <memory>
+
 class QgsProviderMetadata;
 class QgsVectorLayer;
 class QgsCoordinateReferenceSystem;
@@ -72,7 +75,7 @@ class CORE_EXPORT QgsProviderRegistry
        * as GUI for individual "Add XXX layer" buttons in the main window.
        * Likely not used in live code anymore.
        */
-      Standalone,
+      None,
 
       /**
        * Used for the data source manager dialog where the widget is embedded as the main content
@@ -99,7 +102,7 @@ class CORE_EXPORT QgsProviderRegistry
      * If the provider uses direct provider function pointers instead of a library an empty string will
      * be returned.
      *
-     * \deprecated QGIS 3.10. Providers may not need to be loaded from a library (empty string returned).
+     * \deprecated QGIS 3.10 - providers may not need to be loaded from a library (empty string returned)
      */
     Q_DECL_DEPRECATED QString library( const QString &providerKey ) const SIP_DEPRECATED;
 
@@ -144,21 +147,22 @@ class CORE_EXPORT QgsProviderRegistry
     QgsDataProvider *createProvider( const QString &providerKey,
                                      const QString &dataSource,
                                      const QgsDataProvider::ProviderOptions &options = QgsDataProvider::ProviderOptions(),
-                                     Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() ) SIP_TRANSFERBACK;
+                                     QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() ) SIP_TRANSFERBACK;
 
     /**
      * Returns the provider capabilities
      * \param providerKey identifier of the provider
-     * \deprecated QGIS 3.10. Use instead capabilities() method of individual data item provider.
+     * \since QGIS 2.6
+     * \deprecated QGIS 3.10 (use instead capabilities() method of individual data item provider)
      */
-    Q_DECL_DEPRECATED Qgis::DataItemProviderCapabilities providerCapabilities( const QString &providerKey ) const SIP_DEPRECATED;
+    Q_DECL_DEPRECATED int providerCapabilities( const QString &providerKey ) const SIP_DEPRECATED;
 
     /**
      * Creates new empty vector layer
      * \note not available in Python bindings
      * \since QGIS 3.10
      */
-    SIP_SKIP Qgis::VectorExportResult createEmptyLayer( const QString &providerKey, const QString &uri, const QgsFields &fields, Qgis::WkbType wkbType, const QgsCoordinateReferenceSystem &srs, bool overwrite, QMap<int, int> &oldToNewAttrIdxMap, QString &errorMessage, const QMap<QString, QVariant> *options );
+    SIP_SKIP Qgis::VectorExportResult createEmptyLayer( const QString &providerKey, const QString &uri, const QgsFields &fields, QgsWkbTypes::Type wkbType, const QgsCoordinateReferenceSystem &srs, bool overwrite, QMap<int, int> &oldToNewAttrIdxMap, QString &errorMessage, const QMap<QString, QVariant> *options );
 
     /**
      * Creates new instance of raster data provider
@@ -206,38 +210,12 @@ class CORE_EXPORT QgsProviderRegistry
     QString encodeUri( const QString &providerKey, const QVariantMap &parts );
 
     /**
-     * Converts absolute path(s) to relative path(s) in the given provider-specific URI. and
-     * returns modified URI according to the context object's configuration.
-     * This is commonly used when writing project files.
-     * If a provider does not work with paths, unmodified URI will be returned.
-     * \returns modified URI with relative path(s)
-     * \note this function may not be supported by all providers. The default
-     *       implementation uses QgsPathResolver::writePath() on the whole URI.
-     * \see relativeToAbsoluteUri()
-     * \since QGIS 3.30
-     */
-    QString absoluteToRelativeUri( const QString &providerKey, const QString &uri, const QgsReadWriteContext &context ) const;
-
-    /**
-     * Converts relative path(s) to absolute path(s) in the given provider-specific URI. and
-     * returns modified URI according to the context object's configuration.
-     * This is commonly used when reading project files.
-     * If a provider does not work with paths, unmodified URI will be returned.
-     * \returns modified URI with absolute path(s)
-     * \note this function may not be supported by all providers. The default
-     *       implementation uses QgsPathResolver::readPath() on the whole URI.
-     * \see absoluteToRelativeUri()
-     * \since QGIS 3.30
-     */
-    QString relativeToAbsoluteUri( const QString &providerKey, const QString &uri, const QgsReadWriteContext &context ) const;
-
-    /**
      * Returns a new widget for selecting layers from a provider.
      * Either the \a parent widget must be set or the caller becomes
      * responsible for deleting the returned widget.
-     * \deprecated QGIS 3.10. Use QgsGui::sourceSelectProviderRegistry()->createDataSourceWidget() instead.
+     * \deprecated QGIS 3.10 - use QgsGui::sourceSelectProviderRegistry()->createDataSourceWidget() instead
      */
-    Q_DECL_DEPRECATED QWidget *createSelectionWidget( const QString &providerKey, QWidget *parent = nullptr, Qt::WindowFlags fl = Qt::WindowFlags(), QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::Standalone ) SIP_DEPRECATED;
+    Q_DECL_DEPRECATED QWidget *createSelectionWidget( const QString &providerKey, QWidget *parent = nullptr, Qt::WindowFlags fl = Qt::WindowFlags(), QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::None ) SIP_DEPRECATED;
 
     /**
      * Returns list of data item providers of the provider
@@ -298,21 +276,9 @@ class CORE_EXPORT QgsProviderRegistry
 
     /**
      * Loads a layer style defined by \a uri
-     * \returns the style QML (XML)
      * \since QGIS 3.10
      */
-    QString loadStyle( const QString &providerKey, const QString &uri, QString &errCause );
-
-    /**
-     * Loads a layer style from the provider storage, reporting its name.
-     * \param providerKey name of the data provider
-     * \param uri data source uri
-     * \param styleName the name of the style if available, empty otherwise
-     * \param errCause report errors
-     * \returns the style QML (XML)
-     * \since QGIS 3.30
-     */
-    QString loadStoredStyle( const QString &providerKey, const QString &uri, QString &styleName, QString &errCause );
+    QString loadStyle( const QString &providerKey,  const QString &uri, QString &errCause );
 
     /**
      * Saves \a metadata to the layer corresponding to the specified \a uri.
@@ -351,7 +317,7 @@ class CORE_EXPORT QgsProviderRegistry
      * \returns pointer to function or NULLPTR on error. If the provider uses direct provider
      * function pointers instead of a library NULLPTR will be returned.
      *
-     * \deprecated QGIS 3.10. Any provider functionality should be accessed through QgsProviderMetadata.
+     * \deprecated QGIS 3.10 - any provider functionality should be accessed through QgsProviderMetadata
      */
     Q_DECL_DEPRECATED QFunctionPointer function( const QString &providerKey, const QString &functionName ) const SIP_DEPRECATED;
 
@@ -362,7 +328,7 @@ class CORE_EXPORT QgsProviderRegistry
      * If the provider uses direct provider function pointers instead of a library NULLPTR will
      * be returned.
      *
-     * \deprecated QGIS 3.10. Providers may not need to be loaded from a library.
+     * \deprecated QGIS 3.10 - providers may not need to be loaded from a library
      */
     Q_DECL_DEPRECATED QLibrary *createProviderLibrary( const QString &providerKey ) const SIP_FACTORY SIP_DEPRECATED;
 
@@ -378,7 +344,7 @@ class CORE_EXPORT QgsProviderRegistry
      *
      * \since QGIS 3.26
      */
-    QSet< QString > providersForLayerType( Qgis::LayerType type ) const;
+    QSet< QString > providersForLayerType( QgsMapLayerType type ) const;
 
     /**
      * \ingroup core
@@ -395,7 +361,7 @@ class CORE_EXPORT QgsProviderRegistry
         /**
          * Constructor for ProviderCandidateDetails, with the specified provider \a metadata and valid candidate \a layerTypes.
          */
-        ProviderCandidateDetails( QgsProviderMetadata *metadata, const QList< Qgis::LayerType > &layerTypes )
+        ProviderCandidateDetails( QgsProviderMetadata *metadata, const QList< QgsMapLayerType > &layerTypes )
           : mMetadata( metadata )
           , mLayerTypes( layerTypes )
         {}
@@ -409,7 +375,7 @@ class CORE_EXPORT QgsProviderRegistry
          * Returns a list of map layer types which are valid options for opening the
          * target using this candidate provider.
          */
-        QList<Qgis::LayerType> layerTypes() const { return mLayerTypes; }
+        QList<QgsMapLayerType> layerTypes() const { return mLayerTypes; }
 
 #ifdef SIP_RUN
         SIP_PYOBJECT __repr__();
@@ -422,7 +388,7 @@ class CORE_EXPORT QgsProviderRegistry
       private:
         QgsProviderMetadata *mMetadata = nullptr;
 
-        QList< Qgis::LayerType > mLayerTypes;
+        QList< QgsMapLayerType > mLayerTypes;
 
     };
 
@@ -465,7 +431,7 @@ class CORE_EXPORT QgsProviderRegistry
          * The optional \a layerTypes argument can be used to specify layer types which are usually valid
          * options for opening the URI.
          */
-        UnusableUriDetails( const QString &uri = QString(), const QString &warning = QString(), const QList< Qgis::LayerType > &layerTypes = QList< Qgis::LayerType >() )
+        UnusableUriDetails( const QString &uri = QString(), const QString &warning = QString(), const QList< QgsMapLayerType > &layerTypes = QList< QgsMapLayerType >() )
           : uri( uri )
           , warning( warning )
           , layerTypes( layerTypes )
@@ -490,7 +456,7 @@ class CORE_EXPORT QgsProviderRegistry
          * Contains a list of map layer types which are usually valid options for opening the
          * target URI.
          */
-        QList<Qgis::LayerType> layerTypes;
+        QList<QgsMapLayerType> layerTypes;
 
 #ifdef SIP_RUN
         SIP_PYOBJECT __repr__();
@@ -625,8 +591,6 @@ class CORE_EXPORT QgsProviderRegistry
      * \see fileRasterFilters()
      * \see fileMeshFilters()
      * \see filePointCloudFilters()
-     * \see fileVectorTileFilters()
-     * \see fileTiledSceneFilters()
      */
     QString fileVectorFilters() const;
 
@@ -641,8 +605,6 @@ class CORE_EXPORT QgsProviderRegistry
      * \see fileVectorFilters()
      * \see fileMeshFilters()
      * \see filePointCloudFilters()
-     * \see fileVectorTileFilters()
-     * \see fileTiledSceneFilters()
      */
     QString fileRasterFilters() const;
 
@@ -656,8 +618,6 @@ class CORE_EXPORT QgsProviderRegistry
      * \see fileRasterFilters()
      * \see fileVectorFilters()
      * \see filePointCloudFilters()
-     * \see fileVectorTileFilters()
-     * \see fileTiledSceneFilters()
      *
      * \since QGIS 3.6
      */
@@ -684,44 +644,10 @@ class CORE_EXPORT QgsProviderRegistry
      * \see fileMeshFilters()
      * \see fileRasterFilters()
      * \see fileVectorFilters()
-     * \see fileVectorTileFilters()
-     * \see fileTiledSceneFilters()
      *
      * \since QGIS 3.18
      */
     QString filePointCloudFilters() const;
-
-    /**
-     * Returns a file filter string for supported vector tile files.
-     *
-     * Returns a string suitable for a QFileDialog of vector tile file formats
-     * supported by all data providers.
-     *
-     * \see fileMeshFilters()
-     * \see fileRasterFilters()
-     * \see fileVectorFilters()
-     * \see filePointCloudFilters()
-     * \see fileTiledSceneFilters()
-     *
-     * \since QGIS 3.32
-     */
-    QString fileVectorTileFilters() const;
-
-    /**
-     * Returns a file filter string for supported tiled scene files.
-     *
-     * Returns a string suitable for a QFileDialog of tiled scene file formats
-     * supported by all data providers.
-     *
-     * \see fileMeshFilters()
-     * \see fileRasterFilters()
-     * \see fileVectorFilters()
-     * \see filePointCloudFilters()
-     * \see fileVectorTileFilters()
-     *
-     * \since QGIS 3.34
-     */
-    QString fileTiledSceneFilters() const;
 
     //! Returns a string containing the available database drivers
     QString databaseDrivers() const;
@@ -731,7 +657,7 @@ class CORE_EXPORT QgsProviderRegistry
     QString protocolDrivers() const;
 
     /**
-     * \deprecated QGIS 3.10. Does nothing - use QgsGui::providerGuiRegistry().
+     * \deprecated since QGIS 3.10 - does nothing - use QgsGui::providerGuiRegistry()
      */
     Q_DECL_DEPRECATED void registerGuis( QWidget *widget ) SIP_DEPRECATED;
 
@@ -763,8 +689,6 @@ class CORE_EXPORT QgsProviderRegistry
     //! Directory in which provider plugins are installed
     QDir mLibraryDirectory;
 
-    void rebuildFilterStrings();
-
     /**
      * File filter string for vector files
      *
@@ -795,16 +719,6 @@ class CORE_EXPORT QgsProviderRegistry
      * File filter string for point cloud files
      */
     QString mPointCloudFileFilters;
-
-    /**
-     * File filter string for vector tile files
-     */
-    QString mVectorTileFileFilters;
-
-    /**
-     * File filter string for tiled scene files
-     */
-    QString mTiledSceneFileFilters;
 
     /**
      * Available database drivers string for vector databases

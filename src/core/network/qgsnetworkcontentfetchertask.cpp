@@ -17,7 +17,6 @@
  ***************************************************************************/
 
 #include "qgsnetworkcontentfetchertask.h"
-#include "moc_qgsnetworkcontentfetchertask.cpp"
 #include "qgsnetworkcontentfetcher.h"
 #include "qgsnetworkreply.h"
 #include <QEventLoop>
@@ -50,7 +49,7 @@ bool QgsNetworkContentFetcherTask::run()
   // different thread because they have been created in different thread.
 
   connect( mFetcher, &QgsNetworkContentFetcher::finished, &loop, &QEventLoop::quit );
-  connect( mFetcher, &QgsNetworkContentFetcher::downloadProgress, &loop, [this]( qint64 bytesReceived, qint64 bytesTotal )
+  connect( mFetcher, &QgsNetworkContentFetcher::downloadProgress, &loop, [ = ]( qint64 bytesReceived, qint64 bytesTotal )
   {
     if ( !isCanceled() && bytesTotal > 0 )
     {

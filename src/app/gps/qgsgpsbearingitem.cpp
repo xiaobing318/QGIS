@@ -18,7 +18,6 @@
 #include <QObject>
 
 #include "qgsgpsbearingitem.h"
-#include "moc_qgsgpsbearingitem.cpp"
 #include "qgscoordinatetransform.h"
 #include "qgsmapcanvas.h"
 #include "qgsexception.h"
@@ -88,17 +87,8 @@ void QgsGpsBearingItem::updateLine()
     QgsDistanceArea da1;
     da1.setSourceCrs( mMapCanvas->mapSettings().destinationCrs(), QgsProject::instance()->transformContext() );
     da1.setEllipsoid( QgsProject::instance()->ellipsoid() );
-    double totalLength = 0;
-    try
-    {
-      totalLength = 2 * da1.measureLine( mMapCanvas->mapSettings().extent().center(), QgsPointXY( mMapCanvas->mapSettings().extent().xMaximum(),
-                                         mMapCanvas->mapSettings().extent().yMaximum() ) );
-    }
-    catch ( QgsCsException & )
-    {
-      // TODO report errors to user
-      QgsDebugError( QStringLiteral( "An error occurred while calculating length" ) );
-    }
+    const double totalLength = 2 * da1.measureLine( mMapCanvas->mapSettings().extent().center(), QgsPointXY( mMapCanvas->mapSettings().extent().xMaximum(),
+                               mMapCanvas->mapSettings().extent().yMaximum() ) );
 
     QgsDistanceArea da;
     da.setSourceCrs( mWgs84CRS, QgsProject::instance()->transformContext() );
@@ -113,7 +103,7 @@ void QgsGpsBearingItem::updateLine()
   }
   catch ( QgsCsException & )
   {
-    QgsDebugError( QStringLiteral( "Coordinate exception encountered while drawing GPS bearing line" ) );
+    QgsDebugMsg( QStringLiteral( "Coordinate exception encountered while drawing GPS bearing line" ) );
     bearingLine.clear();
   }
 

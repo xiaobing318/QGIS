@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 /***************************************************************************
 Name                 : DB Manager
@@ -32,7 +34,7 @@ from .db_plugins.plugin import Table
 class LayerPreview(QgsMapCanvas):
 
     def __init__(self, parent=None):
-        super().__init__(parent)
+        super(LayerPreview, self).__init__(parent)
         self.parent = parent
         self.setCanvasColor(QColor(255, 255, 255))
 
@@ -89,7 +91,7 @@ class LayerPreview(QgsMapCanvas):
 
     def _loadTablePreview(self, table, limit=False):
         """ if has geometry column load to map canvas """
-        with OverrideCursor(Qt.CursorShape.WaitCursor):
+        with OverrideCursor(Qt.WaitCursor):
             self.freeze()
             vl = None
 
@@ -101,11 +103,11 @@ class LayerPreview(QgsMapCanvas):
                         self.parent.tabs.setCurrentWidget(self.parent.info)
                         self.parent.infoBar.pushMessage(
                             QApplication.translate("DBManagerPlugin", "Unable to find a valid unique field"),
-                            Qgis.MessageLevel.Warning, self.parent.iface.messageTimeout())
+                            Qgis.Warning, self.parent.iface.messageTimeout())
                         return
 
                     uri = table.database().uri()
-                    uri.setDataSource("", "(SELECT * FROM %s LIMIT 1000)" % table.quotedName(), table.geomColumn, "",
+                    uri.setDataSource("", u"(SELECT * FROM %s LIMIT 1000)" % table.quotedName(), table.geomColumn, "",
                                       uniqueField.name)
                     provider = table.database().dbplugin().providerName()
                     vl = QgsVectorLayer(uri.uri(False), table.name, provider)

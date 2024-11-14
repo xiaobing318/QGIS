@@ -31,7 +31,6 @@
 #include "qgslogger.h"
 #include "qgsmapserviceexception.h"
 #include "qgsnetworkaccessmanager.h"
-#include "qgsnetworkdiskcache.h"
 #include "qgsserverlogger.h"
 #include "qgsserverrequest.h"
 #include "qgsfilterresponsedecorator.h"
@@ -70,7 +69,7 @@ Q_GLOBAL_STATIC( QgsServerSettings, sSettings );
 QgsServer::QgsServer()
 {
   // QgsApplication must exist
-  if ( !qobject_cast<QgsApplication *>( qApp ) )
+  if ( qobject_cast<QgsApplication *>( qApp ) == nullptr )
   {
     qFatal( "A QgsApplication must exist before a QgsServer instance can be created." );
     abort();
@@ -89,9 +88,9 @@ void QgsServer::setupNetworkAccessManager()
   const QSettings settings;
   QgsNetworkAccessManager *nam = QgsNetworkAccessManager::instance();
   QNetworkDiskCache *cache = new QNetworkDiskCache( nullptr );
+  const qint64 cacheSize = sSettings()->cacheSize();
   const QString cacheDirectory = sSettings()->cacheDirectory();
   cache->setCacheDirectory( cacheDirectory );
-  qint64 cacheSize = sSettings()->cacheSize();
   cache->setMaximumCacheSize( cacheSize );
   QgsMessageLog::logMessage( QStringLiteral( "cacheDirectory: %1" ).arg( cache->cacheDirectory() ), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
   QgsMessageLog::logMessage( QStringLiteral( "maximumCacheSize: %1" ).arg( cache->maximumCacheSize() ), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
@@ -138,7 +137,7 @@ QString QgsServer::configPath( const QString &defaultConfigPath, const QString &
   if ( !projectFile.isEmpty() )
   {
     cfPath = projectFile;
-    QgsDebugMsgLevel( QStringLiteral( "QGIS_PROJECT_FILE:%1" ).arg( cfPath ), 2 );
+    QgsDebugMsg( QStringLiteral( "QGIS_PROJECT_FILE:%1" ).arg( cfPath ) );
   }
   else
   {
@@ -158,7 +157,7 @@ QString QgsServer::configPath( const QString &defaultConfigPath, const QString &
     else
     {
       cfPath = configPath;
-      QgsDebugMsgLevel( QStringLiteral( "MAP:%1" ).arg( cfPath ), 2 );
+      QgsDebugMsg( QStringLiteral( "MAP:%1" ).arg( cfPath ) );
     }
   }
   return cfPath;
@@ -228,8 +227,8 @@ bool QgsServer::init()
       const QgsDatumTransform::GridDetails & grid )
   {
     QgsServerLogger::instance()->logMessage( QStringLiteral( "Cannot use project transform between %1 and %2 - missing grid %3" )
-        .arg( sourceCrs.userFriendlyIdentifier( Qgis::CrsIdentifierType::ShortString ),
-              destinationCrs.userFriendlyIdentifier( Qgis::CrsIdentifierType::ShortString ),
+        .arg( sourceCrs.userFriendlyIdentifier( QgsCoordinateReferenceSystem::ShortString ),
+              destinationCrs.userFriendlyIdentifier( QgsCoordinateReferenceSystem::ShortString ),
               grid.shortName ),
         QStringLiteral( "QGIS Server" ), Qgis::MessageLevel::Warning );
   } );
@@ -248,8 +247,8 @@ bool QgsServer::init()
       }
     }
     QgsServerLogger::instance()->logMessage( QStringLiteral( "Cannot use project transform between %1 and %2 - %3.\n%4" )
-        .arg( sourceCrs.userFriendlyIdentifier( Qgis::CrsIdentifierType::ShortString ),
-              destinationCrs.userFriendlyIdentifier( Qgis::CrsIdentifierType::ShortString ),
+        .arg( sourceCrs.userFriendlyIdentifier( QgsCoordinateReferenceSystem::ShortString ),
+              destinationCrs.userFriendlyIdentifier( QgsCoordinateReferenceSystem::ShortString ),
               details.name,
               gridMessage ),
         QStringLiteral( "QGIS Server" ), Qgis::MessageLevel::Warning );
@@ -323,17 +322,16 @@ bool QgsServer::init()
   QgsMessageLog::logMessage( "Plugin  PATH: " + QgsApplication::pluginPath(), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
   QgsMessageLog::logMessage( "PkgData PATH: " + QgsApplication::pkgDataPath(), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
   QgsMessageLog::logMessage( "User DB PATH: " + QgsApplication::qgisUserDatabaseFilePath(), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
-  QgsMessageLog::logMessage( "Auth DB URI: " + QgsApplication::qgisAuthDatabaseUri(), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
+  QgsMessageLog::logMessage( "Auth DB PATH: " + QgsApplication::qgisAuthDatabaseFilePath(), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
   QgsMessageLog::logMessage( "SVG PATHS: " + QgsApplication::svgPaths().join( QDir::listSeparator() ), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
 
   QgsApplication::createDatabase(); //init qgis.db (e.g. necessary for user crs)
 
-  // Sets up the authentication system
+  // Initialize the authentication system
   //   creates or uses qgis-auth.db in ~/.qgis3/ or directory defined by QGIS_AUTH_DB_DIR_PATH env variable
-  //   or QGIS_AUTH_DB_URI env variable.
   //   set the master password as first line of file defined by QGIS_AUTH_PASSWORD_FILE env variable
   //   (QGIS_AUTH_PASSWORD_FILE variable removed from environment after accessing)
-  QgsApplication::authManager()->setup( QgsApplication::pluginPath(), QgsApplication::qgisAuthDatabaseUri() );
+  QgsApplication::authManager()->init( QgsApplication::pluginPath(), QgsApplication::qgisAuthDatabaseFilePath() );
 
   QString defaultConfigFilePath;
   const QFileInfo projectFileInfo = defaultProjectFile(); //try to find a .qgs/.qgz file in the server directory
@@ -354,7 +352,7 @@ bool QgsServer::init()
   sConfigFilePath = new QString( defaultConfigFilePath );
 
   //create cache for capabilities XML
-  sCapabilitiesCache = new QgsCapabilitiesCache( sSettings()->capabilitiesCacheSize() );
+  sCapabilitiesCache = new QgsCapabilitiesCache();
 
   QgsFontUtils::loadStandardTestFonts( QStringList() << QStringLiteral( "Roman" ) << QStringLiteral( "Bold" ) );
 
@@ -369,8 +367,6 @@ bool QgsServer::init()
 
   // Initialize config cache
   QgsConfigCache::initialize( sSettings );
-
-  QObject::connect( QgsConfigCache::instance(), &QgsConfigCache::projectRemovedFromCache, sCapabilitiesCache, &QgsCapabilitiesCache::removeCapabilitiesDocument );
 
   sInitialized = true;
   QgsMessageLog::logMessage( QStringLiteral( "Server initialized" ), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
@@ -448,7 +444,7 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
       sServerInterface->setConfigFilePath( project->fileName() );
     }
 
-    // Call requestReady() method (if enabled)
+    // Call  requestReady() method (if enabled)
     // This may also throw exceptions if there are errors in python plugins code
     try
     {
@@ -493,10 +489,6 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
         {
           sServerInterface->setConfigFilePath( QString() );
         }
-
-        // Call projectReady() method (if enabled)
-        // This may also throw exceptions if there are errors in python plugins code
-        responseDecorator.ready();
 
         // Note that at this point we still might not have set a valid project.
         // There are APIs that work without a project (e.g. the landing page catalog API that
@@ -580,9 +572,9 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
       {
         QgsMessageLog::logMessage( QStringLiteral( "Profile: %1%2, %3 : %4 ms" )
                                    .arg( level > 0 ? QString().fill( '-', level ) + ' ' : QString() )
-                                   .arg( QgsApplication::profiler()->data( idx, static_cast< int >( QgsRuntimeProfilerNode::CustomRole::Group ) ).toString() )
-                                   .arg( QgsApplication::profiler()->data( idx, static_cast< int >( QgsRuntimeProfilerNode::CustomRole::Name ) ).toString() )
-                                   .arg( QString::number( QgsApplication::profiler()->data( idx, static_cast< int >( QgsRuntimeProfilerNode::CustomRole::Elapsed ) ).toDouble() * 1000.0 ) ), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
+                                   .arg( QgsApplication::profiler()->data( idx, QgsRuntimeProfilerNode::Roles::Group ).toString() )
+                                   .arg( QgsApplication::profiler()->data( idx, QgsRuntimeProfilerNode::Roles::Name ).toString() )
+                                   .arg( QString::number( QgsApplication::profiler()->data( idx, QgsRuntimeProfilerNode::Roles::Elapsed ).toDouble() * 1000.0 ) ), QStringLiteral( "Server" ), Qgis::MessageLevel::Info );
 
         for ( int subRow = 0; subRow < QgsApplication::profiler()->rowCount( idx ); subRow++ )
         {
@@ -601,12 +593,8 @@ void QgsServer::handleRequest( QgsServerRequest &request, QgsServerResponse &res
   }
 
 
-  // Clear the profiler content after each request
-  QgsApplication::profiler()->clear( QStringLiteral( "startup" ) );
-  QgsApplication::profiler()->clear( QStringLiteral( "projectload" ) );
-  QgsApplication::profiler()->clear( QStringLiteral( "rendering" ) );
+  // Clear the profiler server section after each request
   QgsApplication::profiler()->clear( QStringLiteral( "server" ) );
-
 
 }
 
@@ -625,3 +613,4 @@ void QgsServer::initPython()
   }
 }
 #endif
+

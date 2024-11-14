@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgspresetcolorrampdialog.h                                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -13,6 +13,8 @@ class QgsPresetColorRampWidget : QgsPanelWidget
 {
 %Docstring(signature="appended")
 A widget which allows users to modify the properties of a :py:class:`QgsPresetSchemeColorRamp`.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -57,6 +59,8 @@ class QgsPresetColorRampDialog : QDialog
 {
 %Docstring(signature="appended")
 A dialog which allows users to modify the properties of a :py:class:`QgsPresetSchemeColorRamp`.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -109,5 +113,5 @@ Emitted when the dialog settings change
  *                                                                      *
  * src/gui/qgspresetcolorrampdialog.h                                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

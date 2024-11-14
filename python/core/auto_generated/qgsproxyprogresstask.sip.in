@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsproxyprogresstask.h                                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -32,7 +32,6 @@ task manager.
 %Docstring
 Constructor for QgsProxyProgressTask, with the specified ``description``.
 %End
-
 
     void finalize( bool result );
 %Docstring
@@ -87,7 +86,6 @@ when it goes out of scope.
 Constructor for QgsScopedProxyProgressTask, with the specified ``description``.
 %End
 
-
     ~QgsScopedProxyProgressTask();
 
     void setProgress( double progress );
@@ -95,8 +93,6 @@ Constructor for QgsScopedProxyProgressTask, with the specified ``description``.
 Sets the ``progress`` (from 0 to 100) for the proxied operation.
 %End
 
-  private:
-    QgsScopedProxyProgressTask( const QgsScopedProxyProgressTask &other );
 };
 
 /************************************************************************
@@ -104,5 +100,5 @@ Sets the ``progress`` (from 0 to 100) for the proxied operation.
  *                                                                      *
  * src/core/qgsproxyprogresstask.h                                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

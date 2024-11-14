@@ -18,7 +18,6 @@
 
 #include "qgis_3d.h"
 #include "qgsabstractmaterialsettings.h"
-#include "qgsmaterial.h"
 
 #include <QColor>
 
@@ -38,6 +37,9 @@ class _3D_EXPORT QgsGoochMaterialSettings : public QgsAbstractMaterialSettings
 {
   public:
 
+    /**
+     * Constructor for QgsGoochMaterialSettings.
+     */
     QgsGoochMaterialSettings() = default;
 
     QString type() const override;
@@ -97,8 +99,8 @@ class _3D_EXPORT QgsGoochMaterialSettings : public QgsAbstractMaterialSettings
     QMap<QString, QString> toExportParameters() const override;
 
 #ifndef SIP_RUN
-    QgsMaterial *toMaterial( QgsMaterialSettingsRenderingTechnique technique, const QgsMaterialContext &context ) const override;
-    void addParametersToEffect( Qt3DRender::QEffect *effect, const QgsMaterialContext &materialContext ) const override;
+    Qt3DRender::QMaterial *toMaterial( QgsMaterialSettingsRenderingTechnique technique, const QgsMaterialContext &context ) const override;
+    void addParametersToEffect( Qt3DRender::QEffect *effect ) const override;
 
     QByteArray dataDefinedVertexColorsAsByte( const QgsExpressionContext &expressionContext ) const override;
     int dataDefinedByteStride() const override;
@@ -132,7 +134,7 @@ class _3D_EXPORT QgsGoochMaterialSettings : public QgsAbstractMaterialSettings
     float mBeta = 0.5f;
 
     //! Constructs a material from shader files
-    QgsMaterial *buildMaterial( const QgsMaterialContext &context ) const;
+    Qt3DRender::QMaterial *dataDefinedMaterial() const;
 };
 
 

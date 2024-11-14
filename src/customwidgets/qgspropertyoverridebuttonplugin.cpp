@@ -15,7 +15,6 @@
 
 #include "qgiscustomwidgets.h"
 #include "qgspropertyoverridebuttonplugin.h"
-#include "moc_qgspropertyoverridebuttonplugin.cpp"
 #include "qgspropertyoverridebutton.h"
 
 

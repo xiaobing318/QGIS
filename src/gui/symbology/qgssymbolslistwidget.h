@@ -55,17 +55,20 @@ class GUI_EXPORT QgsSymbolsListWidget : public QWidget, private Ui::SymbolsListW
      * Sets the context in which the symbol widget is shown, e.g., the associated map canvas and expression contexts.
      * \param context symbol widget context
      * \see context()
+     * \since QGIS 3.0
      */
     void setContext( const QgsSymbolWidgetContext &context );
 
     /**
      * Returns the context in which the symbol widget is shown, e.g., the associated map canvas and expression contexts.
      * \see setContext()
+     * \since QGIS 3.0
      */
     QgsSymbolWidgetContext context() const;
 
     /**
      * Returns the vector layer associated with the widget.
+     * \since QGIS 2.12
      */
     const QgsVectorLayer *layer() const { return mLayer; }
 
@@ -83,10 +86,6 @@ class GUI_EXPORT QgsSymbolsListWidget : public QWidget, private Ui::SymbolsListW
     void updateDataDefinedLineWidth();
 
   signals:
-
-    /**
-     * Emitted when the symbol is modified in the widget.
-     */
     void changed();
 
   private slots:
@@ -98,7 +97,6 @@ class GUI_EXPORT QgsSymbolsListWidget : public QWidget, private Ui::SymbolsListW
     void createSymbolAuxiliaryField();
     void forceRHRToggled( bool checked );
     void showAnimationSettings();
-    void showBufferSettings();
     void saveSymbol();
     void updateSymbolDataDefinedProperty();
 
@@ -112,9 +110,9 @@ class GUI_EXPORT QgsSymbolsListWidget : public QWidget, private Ui::SymbolsListW
     QMenu *mAdvancedMenu = nullptr;
     QAction *mClipFeaturesAction = nullptr;
     QAction *mStandardizeRingsAction = nullptr;
-    QAction *mBufferSettingsAction = nullptr;
     QAction *mAnimationSettingsAction = nullptr;
     QgsVectorLayer *mLayer = nullptr;
+    QgsMapCanvas *mMapCanvas = nullptr;
 
     QgsColorButton *mSymbolColorButton = nullptr;
     QgsOpacityWidget *mSymbolOpacityWidget = nullptr;

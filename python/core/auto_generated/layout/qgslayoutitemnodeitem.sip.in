@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/layout/qgslayoutitemnodeitem.h                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -14,6 +14,8 @@ class QgsLayoutNodesItem: QgsLayoutItem
 %Docstring(signature="appended")
 An abstract layout item that provides generic methods for node based
 shapes such as polygon or polylines.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -41,7 +43,7 @@ Add a node in current shape.
 
 :param point: is the location of the new node (in scene coordinates)
 :param checkArea: is a flag to indicate if there's a space constraint.
-:param radius: is the space constraint and is used only if checkArea is
+:param radius: is the space contraint and is used only if checkArea is
                ``True``. Typically, if this flag is ``True``, the new node has to be nearer
                than radius to the shape to be added.
 %End
@@ -111,15 +113,6 @@ Deselects any selected nodes.
     virtual double estimatedFrameBleed() const;
 
 
-    virtual bool isValid() const = 0;
-%Docstring
-Must be reimplemented in subclasses.
-Typically a polyline is valid if it has at least 2 distinct nodes,
-while a polygon is valid if it has at least 3 distinct nodes.
-
-.. versionadded:: 3.40
-%End
-
   protected:
 
     QgsLayoutNodesItem( QgsLayout *layout );
@@ -134,7 +127,6 @@ Constructor for a QgsLayoutNodesItem with the given ``polygon`` nodes, attached 
 
     virtual void draw( QgsLayoutItemRenderContext &context );
 
-    virtual QgsLayoutItem::Flags itemFlags() const;
 
     virtual bool writePropertiesToElement( QDomElement &element, QDomDocument &document, const QgsReadWriteContext &context ) const;
 
@@ -200,5 +192,5 @@ currentRectangle in their implementations.
  *                                                                      *
  * src/core/layout/qgslayoutitemnodeitem.h                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

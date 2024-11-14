@@ -9,16 +9,17 @@ __author__ = 'Nyall Dawson'
 __date__ = '12/12/2021'
 __copyright__ = 'Copyright 2021, The QGIS Project'
 
+import qgis  # NOQA
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.core import QgsCoordinateReferenceSystem
-from qgis.gui import QgsCrsSelectionWidget
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.gui import (QgsCrsSelectionWidget)
+
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsCrsSelectionWidget(QgisTestCase):
+class TestQgsCrsSelectionWidget(unittest.TestCase):
 
     def testWidget(self):
         """

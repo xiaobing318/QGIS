@@ -21,6 +21,7 @@
 #include "qgis_core.h"
 #include "qgis_sip.h"
 #include "qgscolorramp.h"
+#include "qgscolorrampshader.h"
 #include "qgsrasterrenderer.h"
 #include "qgsrectangle.h"
 
@@ -59,8 +60,6 @@ class CORE_EXPORT QgsSingleBandPseudoColorRenderer: public QgsRasterRenderer
     //! \note available in Python as constShader
     const QgsRasterShader *shader() const SIP_PYNAME( constShader ) { return mShader.get(); }
 
-    bool canCreateRasterAttributeTable( ) const override;
-
     /**
      * Creates a color ramp shader
      * \param colorRamp vector color ramp. Ownership is transferred to the shader.
@@ -71,8 +70,8 @@ class CORE_EXPORT QgsSingleBandPseudoColorRenderer: public QgsRasterRenderer
      * \param extent extent used in classification (only used in quantile mode)
      */
     void createShader( QgsColorRamp *colorRamp SIP_TRANSFER = nullptr,
-                       Qgis::ShaderInterpolationMethod colorRampType = Qgis::ShaderInterpolationMethod::Linear,
-                       Qgis::ShaderClassificationMethod classificationMode = Qgis::ShaderClassificationMethod::Continuous,
+                       QgsColorRampShader::Type colorRampType  = QgsColorRampShader::Interpolated,
+                       QgsColorRampShader::ClassificationMode classificationMode = QgsColorRampShader::Continuous,
                        int classes = 0,
                        bool clip = false,
                        const QgsRectangle &extent = QgsRectangle() );
@@ -86,21 +85,16 @@ class CORE_EXPORT QgsSingleBandPseudoColorRenderer: public QgsRasterRenderer
 
     /**
      * Returns the band used by the renderer
-     *
-     * \deprecated QGIS 3.38. Use inputBand() instead.
+     * \since QGIS 2.7
      */
-    Q_DECL_DEPRECATED int band() const SIP_DEPRECATED { return mBand; }
+    int band() const { return mBand; }
 
     /**
      * Sets the band used by the renderer.
      * \see band
-     *
-     * \deprecated QGIS 3.38. Use setInputBand() instead.
+     * \since QGIS 2.10
      */
-    Q_DECL_DEPRECATED void setBand( int bandNo ) SIP_DEPRECATED;
-
-    int inputBand() const override;
-    bool setInputBand( int band ) override;
+    void setBand( int bandNo );
 
     double classificationMin() const { return mClassificationMin; }
     double classificationMax() const { return mClassificationMax; }

@@ -16,20 +16,21 @@
  ***************************************************************************/
 
 #include "qgsgrouplayer.h"
-#include "moc_qgsgrouplayer.cpp"
 #include "qgsmaplayerfactory.h"
 #include "qgspainting.h"
 #include "qgsmaplayerlistutils_p.h"
 #include "qgsgrouplayerrenderer.h"
 #include "qgsmaplayerref.h"
+#include "qgsvectorlayer.h"
+#include "qgscoordinatetransform.h"
 #include "qgspainteffect.h"
+#include "qgsmessagelog.h"
 #include "qgspainteffectregistry.h"
 #include "qgsapplication.h"
 #include "qgsmaplayerutils.h"
-#include "qgsthreadingutils.h"
 
 QgsGroupLayer::QgsGroupLayer( const QString &name, const LayerOptions &options )
-  : QgsMapLayer( Qgis::LayerType::Group, name )
+  : QgsMapLayer( QgsMapLayerType::GroupLayer, name )
   , mTransformContext( options.transformContext )
 {
   mShouldValidateCrs = false;
@@ -40,7 +41,7 @@ QgsGroupLayer::QgsGroupLayer( const QString &name, const LayerOptions &options )
 
   QgsDataProvider::ProviderOptions providerOptions;
   providerOptions.transformContext = options.transformContext;
-  mDataProvider = new QgsGroupLayerDataProvider( providerOptions, Qgis::DataProviderReadFlags() );
+  mDataProvider = new QgsGroupLayerDataProvider( providerOptions, QgsDataProvider::ReadFlags() );
 }
 
 QgsGroupLayer::~QgsGroupLayer()
@@ -51,8 +52,6 @@ QgsGroupLayer::~QgsGroupLayer()
 
 QgsGroupLayer *QgsGroupLayer::clone() const
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   const QgsGroupLayer::LayerOptions options( mTransformContext );
   std::unique_ptr< QgsGroupLayer > layer = std::make_unique< QgsGroupLayer >( name(), options );
   QgsMapLayer::clone( layer.get() );
@@ -63,22 +62,16 @@ QgsGroupLayer *QgsGroupLayer::clone() const
 
 QgsMapLayerRenderer *QgsGroupLayer::createMapRenderer( QgsRenderContext &context )
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   return new QgsGroupLayerRenderer( this, context );
 }
 
 QgsRectangle QgsGroupLayer::extent() const
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   return QgsMapLayerUtils::combinedExtent( childLayers(), crs(), mTransformContext );
 }
 
 void QgsGroupLayer::setTransformContext( const QgsCoordinateTransformContext &context )
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   if ( mDataProvider )
     mDataProvider->setTransformContext( context );
 
@@ -88,8 +81,6 @@ void QgsGroupLayer::setTransformContext( const QgsCoordinateTransformContext &co
 
 bool QgsGroupLayer::readXml( const QDomNode &layerNode, QgsReadWriteContext &context )
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   if ( mReadFlags & QgsMapLayer::FlagDontResolveLayers )
   {
     return false;
@@ -122,8 +113,6 @@ bool QgsGroupLayer::readXml( const QDomNode &layerNode, QgsReadWriteContext &con
 
 bool QgsGroupLayer::writeXml( QDomNode &layer_node, QDomDocument &doc, const QgsReadWriteContext &context ) const
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   // first get the layer element so that we can append the type attribute
   QDomElement mapLayerNode = layer_node.toElement();
 
@@ -133,7 +122,7 @@ bool QgsGroupLayer::writeXml( QDomNode &layer_node, QDomDocument &doc, const Qgs
     return false;
   }
 
-  mapLayerNode.setAttribute( QStringLiteral( "type" ), QgsMapLayerFactory::typeToString( Qgis::LayerType::Group ) );
+  mapLayerNode.setAttribute( QStringLiteral( "type" ), QgsMapLayerFactory::typeToString( QgsMapLayerType::GroupLayer ) );
 
   QDomElement childLayersElement = doc.createElement( QStringLiteral( "childLayers" ) );
   for ( auto it = mChildren.constBegin(); it != mChildren.constEnd(); ++it )
@@ -151,8 +140,6 @@ bool QgsGroupLayer::writeXml( QDomNode &layer_node, QDomDocument &doc, const Qgs
 
 bool QgsGroupLayer::writeSymbology( QDomNode &node, QDomDocument &doc, QString &, const QgsReadWriteContext &, QgsMapLayer::StyleCategories categories ) const
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   // add the layer opacity
   if ( categories.testFlag( Rendering ) )
   {
@@ -173,7 +160,7 @@ bool QgsGroupLayer::writeSymbology( QDomNode &node, QDomDocument &doc, QString &
   {
     // add the blend mode field
     QDomElement blendModeElem  = doc.createElement( QStringLiteral( "blendMode" ) );
-    const QDomText blendModeText = doc.createTextNode( QString::number( static_cast< int >( QgsPainting::getBlendModeEnum( blendMode() ) ) ) );
+    const QDomText blendModeText = doc.createTextNode( QString::number( QgsPainting::getBlendModeEnum( blendMode() ) ) );
     blendModeElem.appendChild( blendModeText );
     node.appendChild( blendModeElem );
   }
@@ -183,8 +170,6 @@ bool QgsGroupLayer::writeSymbology( QDomNode &node, QDomDocument &doc, QString &
 
 bool QgsGroupLayer::readSymbology( const QDomNode &node, QString &, QgsReadWriteContext &, QgsMapLayer::StyleCategories categories )
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   if ( categories.testFlag( Rendering ) )
   {
     const QDomNode layerOpacityNode = node.namedItem( QStringLiteral( "layerOpacity" ) );
@@ -215,7 +200,7 @@ bool QgsGroupLayer::readSymbology( const QDomNode &node, QString &, QgsReadWrite
     if ( !blendModeNode.isNull() )
     {
       const QDomElement e = blendModeNode.toElement();
-      setBlendMode( QgsPainting::getCompositionMode( static_cast< Qgis::BlendMode >( e.text().toInt() ) ) );
+      setBlendMode( QgsPainting::getCompositionMode( static_cast< QgsPainting::BlendMode >( e.text().toInt() ) ) );
     }
   }
 
@@ -224,22 +209,16 @@ bool QgsGroupLayer::readSymbology( const QDomNode &node, QString &, QgsReadWrite
 
 QgsDataProvider *QgsGroupLayer::dataProvider()
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   return mDataProvider;
 }
 
 const QgsDataProvider *QgsGroupLayer::dataProvider() const
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   return mDataProvider;
 }
 
 QString QgsGroupLayer::htmlMetadata() const
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   QString metadata = QStringLiteral( "<html>\n<body>\n<h1>" ) + tr( "General" ) + QStringLiteral( "</h1>\n<hr>\n" ) + QStringLiteral( "<table class=\"list-view\">\n" );
 
   metadata += QStringLiteral( "<tr><td class=\"highlight\">" ) + tr( "Name" ) + QStringLiteral( "</td><td>" ) + name() + QStringLiteral( "</td></tr>\n" );
@@ -254,8 +233,6 @@ QString QgsGroupLayer::htmlMetadata() const
 
 void QgsGroupLayer::resolveReferences( QgsProject *project )
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   QgsMapLayer::resolveReferences( project );
   for ( int i = 0; i < mChildren.size(); ++i )
   {
@@ -278,38 +255,19 @@ void QgsGroupLayer::resolveReferences( QgsProject *project )
 
 void QgsGroupLayer::setChildLayers( const QList< QgsMapLayer * > &layers )
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   const QList< QgsMapLayer * > currentLayers = _qgis_listRefToRaw( mChildren );
   for ( QgsMapLayer *layer : layers )
   {
     if ( !currentLayers.contains( layer ) )
     {
       connect( layer, &QgsMapLayer::repaintRequested, this, &QgsMapLayer::triggerRepaint, Qt::UniqueConnection );
-      if ( layer->blendMode() == QPainter::CompositionMode_SourceOver && layer->customProperty( QStringLiteral( "_prevGroupBlendMode" ) ).isValid() )
-      {
-        // try to restore previous group blend mode
-        layer->setBlendMode( static_cast< QPainter::CompositionMode >( layer->customProperty( QStringLiteral( "_prevGroupBlendMode" ) ).toInt() ) );
-      }
     }
   }
   for ( QgsMapLayer *layer : currentLayers )
   {
-    if ( layer && !layers.contains( layer ) )
+    if ( !layers.contains( layer ) )
     {
-      // layer removed from group
       disconnect( layer, &QgsMapLayer::repaintRequested, this, &QgsMapLayer::triggerRepaint );
-
-      const QPainter::CompositionMode groupBlendMode = layer->blendMode();
-      if ( QgsPainting::isClippingMode( QgsPainting::getBlendModeEnum( groupBlendMode ) ) )
-      {
-        layer->setBlendMode( QPainter::CompositionMode_SourceOver );
-        layer->setCustomProperty( QStringLiteral( "_prevGroupBlendMode" ), static_cast< int >( groupBlendMode ) );
-      }
-      else
-      {
-        layer->removeCustomProperty( QStringLiteral( "_prevGroupBlendMode" ) );
-      }
     }
   }
   mChildren = _qgis_listRawToRef( layers );
@@ -330,34 +288,17 @@ void QgsGroupLayer::setChildLayers( const QList< QgsMapLayer * > &layers )
 
 QList< QgsMapLayer * > QgsGroupLayer::childLayers() const
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   return _qgis_listRefToRaw( mChildren );
 }
 
 QgsPaintEffect *QgsGroupLayer::paintEffect() const
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   return mPaintEffect.get();
 }
 
 void QgsGroupLayer::setPaintEffect( QgsPaintEffect *effect )
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   mPaintEffect.reset( effect );
-}
-
-void QgsGroupLayer::prepareLayersForRemovalFromGroup()
-{
-  for ( const QgsMapLayerRef &child : std::as_const( mChildren ) )
-  {
-    if ( child.get() && QgsPainting::isClippingMode( QgsPainting::getBlendModeEnum( child->blendMode() ) ) )
-    {
-      child->setBlendMode( QPainter::CompositionMode_SourceOver );
-    }
-  }
 }
 
 //
@@ -366,49 +307,37 @@ void QgsGroupLayer::prepareLayersForRemovalFromGroup()
 ///@cond PRIVATE
 QgsGroupLayerDataProvider::QgsGroupLayerDataProvider(
   const ProviderOptions &options,
-  Qgis::DataProviderReadFlags flags )
+  QgsDataProvider::ReadFlags flags )
   : QgsDataProvider( QString(), options, flags )
 {}
 
 void QgsGroupLayerDataProvider::setCrs( const QgsCoordinateReferenceSystem &crs )
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   mCrs = crs;
 }
 
 QgsCoordinateReferenceSystem QgsGroupLayerDataProvider::crs() const
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   return mCrs;
 }
 
 QString QgsGroupLayerDataProvider::name() const
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   return QStringLiteral( "annotation" );
 }
 
 QString QgsGroupLayerDataProvider::description() const
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   return QString();
 }
 
 QgsRectangle QgsGroupLayerDataProvider::extent() const
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   return QgsRectangle();
 }
 
 bool QgsGroupLayerDataProvider::isValid() const
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   return true;
 }
 ///@endcond

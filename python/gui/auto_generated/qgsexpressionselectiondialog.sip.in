@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsexpressionselectiondialog.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -65,11 +65,15 @@ Sets the message bar to display feedback from the dialog. This is used when zoom
 features to display the count of selected features.
 
 :param messageBar: target message bar
+
+.. versionadded:: 3.0
 %End
 
     void setMapCanvas( QgsMapCanvas *canvas );
 %Docstring
 Sets a map canvas associated with the dialog.
+
+.. versionadded:: 3.0
 %End
 
   protected:
@@ -99,5 +103,5 @@ Calls close, so the window geometry gets saved and the object deleted.
  *                                                                      *
  * src/gui/qgsexpressionselectiondialog.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

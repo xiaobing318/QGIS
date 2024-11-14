@@ -24,7 +24,7 @@
 
 QgsPolygon::QgsPolygon()
 {
-  mWkbType = Qgis::WkbType::Polygon;
+  mWkbType = QgsWkbTypes::Polygon;
 }
 
 ///@cond DOXYGEN_SHUTTUP
@@ -59,7 +59,7 @@ QgsPolygon *QgsPolygon::clone() const
 void QgsPolygon::clear()
 {
   QgsCurvePolygon::clear();
-  mWkbType = Qgis::WkbType::Polygon;
+  mWkbType = QgsWkbTypes::Polygon;
 }
 
 bool QgsPolygon::fromWkb( QgsConstWkbPtr &wkbPtr )
@@ -70,30 +70,30 @@ bool QgsPolygon::fromWkb( QgsConstWkbPtr &wkbPtr )
     return false;
   }
 
-  Qgis::WkbType type = wkbPtr.readHeader();
-  if ( QgsWkbTypes::flatType( type ) != Qgis::WkbType::Polygon )
+  QgsWkbTypes::Type type = wkbPtr.readHeader();
+  if ( QgsWkbTypes::flatType( type ) != QgsWkbTypes::Polygon )
   {
     return false;
   }
   mWkbType = type;
 
-  Qgis::WkbType ringType;
+  QgsWkbTypes::Type ringType;
   switch ( mWkbType )
   {
-    case Qgis::WkbType::PolygonZ:
-      ringType = Qgis::WkbType::LineStringZ;
+    case QgsWkbTypes::PolygonZ:
+      ringType = QgsWkbTypes::LineStringZ;
       break;
-    case Qgis::WkbType::PolygonM:
-      ringType = Qgis::WkbType::LineStringM;
+    case QgsWkbTypes::PolygonM:
+      ringType = QgsWkbTypes::LineStringM;
       break;
-    case Qgis::WkbType::PolygonZM:
-      ringType = Qgis::WkbType::LineStringZM;
+    case QgsWkbTypes::PolygonZM:
+      ringType = QgsWkbTypes::LineStringZM;
       break;
-    case Qgis::WkbType::Polygon25D:
-      ringType = Qgis::WkbType::LineString25D;
+    case QgsWkbTypes::Polygon25D:
+      ringType = QgsWkbTypes::LineString25D;
       break;
     default:
-      ringType = Qgis::WkbType::LineString;
+      ringType = QgsWkbTypes::LineString;
       break;
   }
 
@@ -145,22 +145,22 @@ QByteArray QgsPolygon::asWkb( QgsAbstractGeometry::WkbFlags flags ) const
   QgsWkbPtr wkb( wkbArray );
   wkb << static_cast<char>( QgsApplication::endian() );
 
-  Qgis::WkbType type = wkbType();
+  QgsWkbTypes::Type type = wkbType();
   if ( flags & FlagExportTrianglesAsPolygons )
   {
     switch ( type )
     {
-      case Qgis::WkbType::Triangle:
-        type = Qgis::WkbType::Polygon;
+      case QgsWkbTypes::Triangle:
+        type = QgsWkbTypes::Polygon;
         break;
-      case Qgis::WkbType::TriangleZ:
-        type = Qgis::WkbType::PolygonZ;
+      case QgsWkbTypes::TriangleZ:
+        type = QgsWkbTypes::PolygonZ;
         break;
-      case Qgis::WkbType::TriangleM:
-        type = Qgis::WkbType::PolygonM;
+      case QgsWkbTypes::TriangleM:
+        type = QgsWkbTypes::PolygonM;
         break;
-      case Qgis::WkbType::TriangleZM:
-        type = Qgis::WkbType::PolygonZM;
+      case QgsWkbTypes::TriangleZM:
+        type = QgsWkbTypes::PolygonZM;
         break;
       default:
         break;
@@ -185,53 +185,6 @@ QByteArray QgsPolygon::asWkb( QgsAbstractGeometry::WkbFlags flags ) const
   return wkbArray;
 }
 
-QString QgsPolygon::asWkt( int precision ) const
-{
-  QString wkt = wktTypeStr();
-
-  if ( isEmpty() )
-    wkt += QLatin1String( " EMPTY" );
-  else
-  {
-    wkt += QLatin1String( " (" );
-    if ( mExteriorRing )
-    {
-      QString childWkt = mExteriorRing->asWkt( precision );
-      if ( qgsgeometry_cast<QgsLineString *>( mExteriorRing.get() ) )
-      {
-        // Type names of linear geometries are omitted
-        childWkt = childWkt.mid( childWkt.indexOf( '(' ) );
-      }
-      wkt += childWkt + ',';
-    }
-    for ( const QgsCurve *curve : mInteriorRings )
-    {
-      if ( !curve->isEmpty() )
-      {
-        QString childWkt;
-        if ( ! qgsgeometry_cast<QgsLineString *>( curve ) )
-        {
-          std::unique_ptr<QgsLineString> line( curve->curveToLine() );
-          childWkt = line->asWkt( precision );
-        }
-        else
-        {
-          childWkt = curve->asWkt( precision );
-        }
-        // Type names of linear geometries are omitted
-        childWkt = childWkt.mid( childWkt.indexOf( '(' ) );
-        wkt += childWkt + ',';
-      }
-    }
-    if ( wkt.endsWith( ',' ) )
-    {
-      wkt.chop( 1 ); // Remove last ','
-    }
-    wkt += ')';
-  }
-  return wkt;
-}
-
 void QgsPolygon::addInteriorRing( QgsCurve *ring )
 {
   if ( !ring )
@@ -251,9 +204,9 @@ void QgsPolygon::addInteriorRing( QgsCurve *ring )
     lineString->close();
   }
 
-  if ( mWkbType == Qgis::WkbType::Polygon25D )
+  if ( mWkbType == QgsWkbTypes::Polygon25D )
   {
-    ring->convertTo( Qgis::WkbType::LineString25D );
+    ring->convertTo( QgsWkbTypes::LineString25D );
     mInteriorRings.append( ring );
   }
   else
@@ -287,7 +240,7 @@ void QgsPolygon::setExteriorRing( QgsCurve *ring )
   mExteriorRing.reset( ring );
 
   //set proper wkb type
-  setZMTypeFromSubGeometry( ring, Qgis::WkbType::Polygon );
+  setZMTypeFromSubGeometry( ring, QgsWkbTypes::Polygon );
 
   //match dimensionality for rings
   for ( QgsCurve *ring : std::as_const( mInteriorRings ) )
@@ -348,7 +301,7 @@ double QgsPolygon::pointDistanceToBoundary( double x, double y ) const
            ( x < ( bX - aX ) * ( y - aY ) / ( bY - aY ) + aX ) )
         inside = !inside;
 
-      minimumDistance = std::min( minimumDistance, QgsGeometryUtilsBase::sqrDistToLine( x, y, aX, aY, bX, bY, minDistX, minDistY, 4 * std::numeric_limits<double>::epsilon() ) );
+      minimumDistance = std::min( minimumDistance, QgsGeometryUtils::sqrDistToLine( x, y, aX, aY, bX, bY, minDistX, minDistY, 4 * std::numeric_limits<double>::epsilon() ) );
     }
   }
 

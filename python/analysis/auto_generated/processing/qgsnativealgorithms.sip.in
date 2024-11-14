@@ -3,7 +3,7 @@
  *                                                                      *
  * src/analysis/processing/qgsnativealgorithms.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -13,6 +13,8 @@ class QgsNativeAlgorithms: QgsProcessingProvider
 {
 %Docstring(signature="appended")
 Native c++ processing algorithm provider.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -37,8 +39,6 @@ Constructor for QgsNativeAlgorithms.
 
     virtual bool supportsNonFileBasedOutput() const;
 
-    virtual Qgis::ProcessingProviderFlags flags() const;
-
 
   protected:
 
@@ -54,5 +54,5 @@ Constructor for QgsNativeAlgorithms.
  *                                                                      *
  * src/analysis/processing/qgsnativealgorithms.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

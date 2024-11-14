@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgshistogramwidget.h                                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -17,6 +17,8 @@ class QgsHistogramWidget : QWidget
 {
 %Docstring(signature="appended")
 Graphical histogram for displaying distributions of field values.
+
+.. versionadded:: 2.9
 %End
 
 %TypeHeaderCode
@@ -204,5 +206,5 @@ Updates and redraws the histogram.
  *                                                                      *
  * src/gui/qgshistogramwidget.h                                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

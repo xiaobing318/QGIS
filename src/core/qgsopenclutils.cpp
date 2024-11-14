@@ -14,7 +14,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsopenclutils.h"
-#include "moc_qgsopenclutils.cpp"
 #include "qgssettings.h"
 #include "qgsmessagelog.h"
 #include "qgslogger.h"
@@ -26,9 +25,6 @@
 #include <QDebug>
 
 #ifdef Q_OS_WIN
-#if defined(UNICODE) && !defined(_UNICODE)
-#define _UNICODE
-#endif
 #include <windows.h>
 #include <tchar.h>
 #endif
@@ -104,12 +100,7 @@ void QgsOpenClUtils::init()
     }
 
 #ifdef Q_OS_WIN
-#ifdef _UNICODE
-#define _T(x) L##x
-#else
-#define _T(x) x
-#endif
-    HMODULE hModule = GetModuleHandle( _T( "OpenCL.dll" ) );
+    HMODULE hModule = GetModuleHandle( "OpenCL.dll" );
     if ( hModule )
     {
       TCHAR pszFileName[1024];
@@ -123,13 +114,13 @@ void QgsOpenClUtils::init()
         DWORD dwLen = GetFileVersionInfoSize( pszFileName, &dwUseless );
         if ( dwLen )
         {
-          LPTSTR lpVI = ( LPTSTR ) malloc( dwLen * sizeof( TCHAR ) );
+          LPTSTR lpVI = ( LPSTR ) malloc( dwLen );
           if ( lpVI )
           {
-            if ( GetFileVersionInfo( pszFileName, 0, dwLen, lpVI ) )
+            if ( GetFileVersionInfo( pszFileName, NULL, dwLen, lpVI ) )
             {
               VS_FIXEDFILEINFO *lpFFI;
-              if ( VerQueryValue( lpVI, _T( "\\" ), ( LPVOID * ) &lpFFI, ( UINT * ) &dwUseless ) )
+              if ( VerQueryValue( lpVI, "\\", ( LPVOID * ) &lpFFI, ( UINT * ) &dwUseless ) )
               {
                 QgsMessageLog::logMessage( QObject::tr( "OpenCL Product version: %1.%2.%3.%4" )
                                            .arg( lpFFI->dwProductVersionMS >> 16 )
@@ -170,25 +161,15 @@ void QgsOpenClUtils::init()
                                      .arg( lpTranslate[0].wCodePage, 4, 16, QLatin1Char( '0' ) )
                                      .arg( d );
 
-                  QgsDebugMsgLevel( QString( "d:%1 subBlock:%2" ).arg( d ).arg( subBlock ), 2 );
+                  QgsDebugMsg( QString( "d:%1 subBlock:%2" ).arg( d ).arg( subBlock ) );
 
-                  BOOL r = VerQueryValue( lpVI,
-#ifdef UNICODE
-                                          subBlock.toStdWString().c_str(),
-#else
-                                          subBlock.toUtf8(),
-#endif
-                                          ( LPVOID * )&lpBuffer, ( UINT * )&dwUseless );
+                  BOOL r = VerQueryValue( lpVI, subBlock.toUtf8(), ( LPVOID * )&lpBuffer, ( UINT * )&dwUseless );
 
                   if ( r && lpBuffer && lpBuffer != INVALID_HANDLE_VALUE && dwUseless < 1023 )
                   {
                     QgsMessageLog::logMessage( QObject::tr( "Found OpenCL version info %1: %2" )
                                                .arg( d )
-#ifdef UNICODE
-                                               .arg( QString::fromUtf16( ( const ushort * ) lpBuffer ) ),
-#else
                                                .arg( QString::fromLocal8Bit( lpBuffer ) ),
-#endif
                                                LOGMESSAGE_TAG, Qgis::MessageLevel::Info );
                   }
                 }
@@ -355,7 +336,7 @@ bool QgsOpenClUtils::activate( const QString &preferredDeviceId )
       if ( deviceFound )
         break;
       const std::string platver = p.getInfo<CL_PLATFORM_VERSION>();
-      QgsDebugMsgLevel( QStringLiteral( "Found OpenCL platform %1: %2" ).arg( QString::fromStdString( platver ), QString::fromStdString( p.getInfo<CL_PLATFORM_NAME>() ) ), 2 );
+      QgsDebugMsg( QStringLiteral( "Found OpenCL platform %1: %2" ).arg( QString::fromStdString( platver ), QString::fromStdString( p.getInfo<CL_PLATFORM_NAME>() ) ) );
       if ( platver.find( "OpenCL " ) != std::string::npos )
       {
         std::vector<cl::Device> devices;
@@ -415,10 +396,10 @@ bool QgsOpenClUtils::activate( const QString &preferredDeviceId )
         }
         catch ( cl::Error &e )
         {
-          QgsDebugError( QStringLiteral( "Error %1 on platform %3 searching for OpenCL device: %2" )
-                         .arg( errorText( e.err() ),
-                               QString::fromStdString( e.what() ),
-                               QString::fromStdString( p.getInfo<CL_PLATFORM_NAME>() ) ) );
+          QgsDebugMsg( QStringLiteral( "Error %1 on platform %3 searching for OpenCL device: %2" )
+                       .arg( errorText( e.err() ),
+                             QString::fromStdString( e.what() ),
+                             QString::fromStdString( p.getInfo<CL_PLATFORM_NAME>() ) ) );
         }
 
       }

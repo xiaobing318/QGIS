@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsattributeformeditorwidget.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -16,6 +16,8 @@ A widget consisting of both an editor widget and additional widgets for controll
 of the editor widget depending on a number of possible modes. For instance, if the parent attribute
 form is in the multi edit mode, this widget will show both the editor widget and a tool button for
 controlling the multi edit results.
+
+.. versionadded:: 2.16
 %End
 
 %TypeHeaderCode
@@ -99,9 +101,8 @@ Emitted when the widget's value changes
 
 :param value: new widget value
 
-.. deprecated:: 3.10
-
-   Use valuesChanged instead.
+.. deprecated:: QGIS 3.10
+   use valuesChanged instead
 %End
 
     void valuesChanged( const QVariant &value, const QVariantList &additionalFieldValues );
@@ -121,5 +122,5 @@ Emitted when the widget's value changes
  *                                                                      *
  * src/gui/qgsattributeformeditorwidget.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

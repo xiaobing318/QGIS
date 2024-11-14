@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     AlgorithmDialog.py
@@ -19,6 +21,7 @@ __author__ = 'Victor Olaya'
 __date__ = 'August 2012'
 __copyright__ = '(C) 2012, Victor Olaya'
 
+from pprint import pformat
 import datetime
 import time
 
@@ -71,7 +74,7 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
             self.runAsBatchButton = QPushButton(QCoreApplication.translate("AlgorithmDialog", "Run as Batch Process…"))
             self.runAsBatchButton.clicked.connect(self.runAsBatch)
             self.buttonBox().addButton(self.runAsBatchButton,
-                                       QDialogButtonBox.ButtonRole.ResetRole)  # reset role to ensure left alignment
+                                       QDialogButtonBox.ResetRole)  # reset role to ensure left alignment
         else:
             in_place_input_parameter_name = 'INPUT'
             if hasattr(alg, 'inputParameterName'):
@@ -81,7 +84,7 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
 
             self.runAsBatchButton = None
             has_selection = self.active_layer and (self.active_layer.selectedFeatureCount() > 0)
-            self.buttonBox().button(QDialogButtonBox.StandardButton.Ok).setText(
+            self.buttonBox().button(QDialogButtonBox.Ok).setText(
                 QCoreApplication.translate("AlgorithmDialog", "Modify Selected Features")
                 if has_selection else QCoreApplication.translate("AlgorithmDialog", "Modify All Features"))
             self.setWindowTitle(self.windowTitle() + ' | ' + self.active_layer.name())
@@ -96,7 +99,7 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
         self.close()
         dlg = BatchAlgorithmDialog(self.algorithm().create(), parent=iface.mainWindow())
         dlg.show()
-        dlg.exec()
+        dlg.exec_()
 
     def resetAdditionalGui(self):
         if not self.in_place:
@@ -117,14 +120,14 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
             self.buttonBox().accepted.connect(lambda w=widget:
                                               w.setPalette(QPalette()))
             palette = widget.palette()
-            palette.setColor(QPalette.ColorRole.Base, QColor(255, 255, 0))
+            palette.setColor(QPalette.Base, QColor(255, 255, 0))
             widget.setPalette(palette)
         except:
             pass
         self.messageBar().clearWidgets()
         self.messageBar().pushMessage("", self.tr("Wrong or missing parameter value: {0}").format(
             message),
-            level=Qgis.MessageLevel.Warning, duration=5)
+            level=Qgis.Warning, duration=5)
 
     def flag_invalid_output_extension(self, message: str, widget):
         """
@@ -134,13 +137,13 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
             self.buttonBox().accepted.connect(lambda w=widget:
                                               w.setPalette(QPalette()))
             palette = widget.palette()
-            palette.setColor(QPalette.ColorRole.Base, QColor(255, 255, 0))
+            palette.setColor(QPalette.Base, QColor(255, 255, 0))
             widget.setPalette(palette)
         except:
             pass
         self.messageBar().clearWidgets()
         self.messageBar().pushMessage("", message,
-                                      level=Qgis.MessageLevel.Warning, duration=5)
+                                      level=Qgis.Warning, duration=5)
 
     def createProcessingParameters(self, flags=QgsProcessingParametersGenerator.Flags()):
         if self.mainWidget() is None:
@@ -158,15 +161,13 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
         if self.context is None:
             self.feedback = self.createFeedback()
             self.context = dataobjects.createContext(self.feedback)
-
-        self.applyContextOverrides(self.context)
+            self.context.setLogLevel(self.logLevel())
         return self.context
 
     def runAlgorithm(self):
         self.feedback = self.createFeedback()
         self.context = dataobjects.createContext(self.feedback)
-        self.applyContextOverrides(self.context)
-        self.algorithmAboutToRun.emit(self.context)
+        self.context.setLogLevel(self.logLevel())
 
         checkCRS = ProcessingConfig.getSetting(ProcessingConfig.WARN_UNMATCHING_CRS)
         try:
@@ -180,9 +181,9 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
                                              self.tr('Parameters do not all use the same CRS. This can '
                                                      'cause unexpected results.\nDo you want to '
                                                      'continue?'),
-                                             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                                             QMessageBox.StandardButton.No)
-                if reply == QMessageBox.StandardButton.No:
+                                             QMessageBox.Yes | QMessageBox.No,
+                                             QMessageBox.No)
+                if reply == QMessageBox.No:
                     return
             ok, msg = self.algorithm().checkParameterValues(parameters, self.context)
             if not ok:
@@ -198,7 +199,7 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
 
             for param in self.algorithm().parameterDefinitions():
                 if isinstance(parameters.get(param.name(), None), QgsProcessingFeatureSourceDefinition) and parameters[
-                        param.name()].flags & QgsProcessingFeatureSourceDefinition.Flag.FlagCreateIndividualOutputPerInputFeature:
+                        param.name()].flags & QgsProcessingFeatureSourceDefinition.FlagCreateIndividualOutputPerInputFeature:
                     self.iterateParam = param.name()
                     break
 
@@ -226,7 +227,7 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
             self.feedback.pushInfo('')
             start_time = time.time()
 
-            def elapsed_time(start_time) -> str:
+            def elapsed_time(start_time, result):
                 delta_t = time.time() - start_time
                 hours = int(delta_t / 3600)
                 minutes = int((delta_t % 3600) / 60)
@@ -237,14 +238,14 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
                 str_seconds = [self.tr("second"), self.tr("seconds")][seconds != 1]
 
                 if hours > 0:
-                    elapsed = '{0:0.2f} {1} ({2} {3} {4} {5} {6:0.0f} {1})'.format(
-                        delta_t, str_seconds, hours, str_hours, minutes, str_minutes, seconds)
+                    elapsed = '{0} {1:0.2f} {2} ({3} {4} {5} {6} {7:0.0f} {2})'.format(
+                        result, delta_t, str_seconds, hours, str_hours, minutes, str_minutes, seconds)
                 elif minutes > 0:
-                    elapsed = '{0:0.2f} {1} ({2} {3} {4:0.0f} {1})'.format(
-                        delta_t, str_seconds, minutes, str_minutes, seconds)
+                    elapsed = '{0} {1:0.2f} {2} ({3} {4} {5:0.0f} {2})'.format(
+                        result, delta_t, str_seconds, minutes, str_minutes, seconds)
                 else:
-                    elapsed = '{:0.2f} {}'.format(
-                        delta_t, str_seconds)
+                    elapsed = '{0} {1:0.2f} {2}'.format(
+                        result, delta_t, str_seconds)
 
                 return elapsed
 
@@ -256,10 +257,10 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
                 except:
                     pass
 
-                self.cancelButton().setEnabled(self.algorithm().flags() & QgsProcessingAlgorithm.Flag.FlagCanCancel)
+                self.cancelButton().setEnabled(self.algorithm().flags() & QgsProcessingAlgorithm.FlagCanCancel)
                 if executeIterating(self.algorithm(), parameters, self.iterateParam, self.context, self.feedback):
                     self.feedback.pushInfo(
-                        self.tr('Execution completed in {}').format(elapsed_time(start_time)))
+                        self.tr(elapsed_time(start_time, 'Execution completed in')))
                     self.cancelButton().setEnabled(False)
                     self.finish(True, parameters, self.context, self.feedback)
                 else:
@@ -277,22 +278,23 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
                 self.history_log_id, _ = QgsGui.historyProviderRegistry().addEntry('processing', self.history_details)
 
                 QgsGui.instance().processingRecentAlgorithmLog().push(self.algorithm().id())
-                self.cancelButton().setEnabled(self.algorithm().flags() & QgsProcessingAlgorithm.Flag.FlagCanCancel)
+                self.cancelButton().setEnabled(self.algorithm().flags() & QgsProcessingAlgorithm.FlagCanCancel)
 
                 def on_complete(ok, results):
                     if ok:
                         self.feedback.pushInfo(
-                            self.tr('Execution completed in {}').format(elapsed_time(start_time)))
-                        self.feedback.pushFormattedResults(self.algorithm(), self.context, results)
+                            self.tr(elapsed_time(start_time, 'Execution completed in')))
+                        self.feedback.pushInfo(self.tr('Results:'))
+                        r = {k: v for k, v in results.items() if k not in ('CHILD_RESULTS', 'CHILD_INPUTS')}
+                        self.feedback.pushCommandInfo(pformat(r))
                     else:
                         self.feedback.reportError(
-                            self.tr('Execution failed after {}').format(elapsed_time(start_time)))
+                            self.tr(elapsed_time(start_time, 'Execution failed after')))
                     self.feedback.pushInfo('')
 
                     if self.history_log_id is not None:
                         # can't deepcopy this!
                         self.history_details['results'] = {k: v for k, v in results.items() if k != 'CHILD_INPUTS'}
-                        self.history_details['log'] = self.feedback.htmlLog()
 
                         QgsGui.historyProviderRegistry().updateEntry(self.history_log_id, self.history_details)
 
@@ -308,7 +310,7 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
                     self.feedback = None
                     self.context = None
 
-                if not self.in_place and not (self.algorithm().flags() & QgsProcessingAlgorithm.Flag.FlagNoThreading):
+                if not self.in_place and not (self.algorithm().flags() & QgsProcessingAlgorithm.FlagNoThreading):
                     # Make sure the Log tab is visible before executing the algorithm
                     self.showLog()
 
@@ -341,7 +343,6 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
 
     def finish(self, successful, result, context, feedback, in_place=False):
         keepOpen = not successful or ProcessingConfig.getSetting(ProcessingConfig.KEEP_DIALOG_OPEN)
-        generated_html_outputs = False
 
         if not in_place and self.iterateParam is None:
 
@@ -351,12 +352,7 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
                     resultsList.addResult(icon=self.algorithm().icon(), name=out.description(),
                                           timestamp=time.localtime(),
                                           result=result[out.name()])
-                    generated_html_outputs = True
-            if not handleAlgorithmResults(
-                    self.algorithm(),
-                    context,
-                    feedback,
-                    result):
+            if not handleAlgorithmResults(self.algorithm(), context, feedback, not keepOpen, result):
                 self.resetGui()
                 return
 
@@ -369,7 +365,7 @@ class AlgorithmDialog(QgsProcessingAlgorithmDialogBase):
             self.close()
         else:
             self.resetGui()
-            if generated_html_outputs:
+            if self.algorithm().hasHtmlOutputs():
                 self.setInfo(
                     self.tr('HTML output has been generated by this algorithm.'
                             '\nOpen the results dialog to check it.'), escapeHtml=False)

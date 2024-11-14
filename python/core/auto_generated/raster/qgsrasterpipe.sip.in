@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/raster/qgsrasterpipe.h                                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -23,9 +23,8 @@ Contains a pipeline of raster interfaces for sequential raster processing.
 %End
   public:
 
-
-    enum class Property
-      {
+    enum Property
+    {
       RendererOpacity,
     };
 
@@ -255,5 +254,5 @@ Returns the definitions for data defined properties available for use in raster 
  *                                                                      *
  * src/core/raster/qgsrasterpipe.h                                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

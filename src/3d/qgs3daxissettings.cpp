@@ -14,9 +14,27 @@
  ***************************************************************************/
 
 #include "qgs3daxissettings.h"
-#include "qgsreadwritecontext.h"
 
 #include <QDomDocument>
+
+#include "qgsreadwritecontext.h"
+#include "qgssymbollayerutils.h"
+
+Qgs3DAxisSettings::Qgs3DAxisSettings( const Qgs3DAxisSettings &other )
+  : mMode( other.mMode )
+  , mHorizontalPosition( other.mHorizontalPosition )
+  , mVerticalPosition( other.mVerticalPosition )
+{
+
+}
+
+Qgs3DAxisSettings &Qgs3DAxisSettings::operator=( Qgs3DAxisSettings const &rhs )
+{
+  this->mMode = rhs.mMode;
+  this->mHorizontalPosition = rhs.mHorizontalPosition;
+  this->mVerticalPosition = rhs.mVerticalPosition;
+  return *this;
+}
 
 bool Qgs3DAxisSettings::operator==( Qgs3DAxisSettings const &rhs ) const
 {
@@ -24,9 +42,6 @@ bool Qgs3DAxisSettings::operator==( Qgs3DAxisSettings const &rhs ) const
   out &= this->mMode == rhs.mMode;
   out &= this->mHorizontalPosition == rhs.mHorizontalPosition;
   out &= this->mVerticalPosition == rhs.mVerticalPosition;
-  out &= this->mDefaultViewportSize == rhs.mDefaultViewportSize;
-  out &= this->mMaxViewportRatio == rhs.mMaxViewportRatio;
-  out &= this->mMinViewportRatio == rhs.mMinViewportRatio;
   return out;
 }
 

@@ -33,26 +33,19 @@ class TestQgsProcessExecutablePt2(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        super().setUpClass()
         cls.TMP_DIR = tempfile.mkdtemp()
         # print('TMP_DIR: ' + cls.TMP_DIR)
         # subprocess.call(['open', cls.TMP_DIR])
 
     @classmethod
     def tearDownClass(cls):
-        super().tearDownClass()
         shutil.rmtree(cls.TMP_DIR, ignore_errors=True)
 
     @staticmethod
     def _strip_ignorable_errors(output: str):
         return '\n'.join([e for e in output.splitlines() if e not in (
             'Problem with GRASS installation: GRASS was not found or is not correctly installed',
-            'QStandardPaths: wrong permissions on runtime directory /tmp, 0777 instead of 0700',
-            'MESA: error: ZINK: failed to choose pdev',
-            'MESA: error: ZINK: vkEnumeratePhysicalDevices failed (VK_ERROR_INITIALIZATION_FAILED)',
-            'glx: failed to create drisw screen',
-            'failed to load driver: zink',
-            'QML debugging is enabled. Only use this in a safe environment.'
+            'QStandardPaths: wrong permissions on runtime directory /tmp, 0777 instead of 0700'
         )
         ])
 
@@ -106,7 +99,7 @@ class TestQgsProcessExecutablePt2(unittest.TestCase):
 
     def testAlgorithmRunJson(self):
         output_file = self.TMP_DIR + '/polygon_centroid2.shp'
-        rc, output, err = self.run_process(['run', '--no-python', '--json', 'native:centroids', '--', f"INPUT={TEST_DATA_DIR + '/polys.shp'}", f'OUTPUT={output_file}'])
+        rc, output, err = self.run_process(['run', '--no-python', '--json', 'native:centroids', '--', 'INPUT={}'.format(TEST_DATA_DIR + '/polys.shp'), f'OUTPUT={output_file}'])
         res = json.loads(output)
 
         self.assertIn('gdal_version', res)
@@ -130,9 +123,9 @@ class TestQgsProcessExecutablePt2(unittest.TestCase):
         """
         output_file = self.TMP_DIR + '/package.gpkg'
         rc, output, err = self.run_process(['run', '--no-python', '--json', 'native:package', '--',
-                                            f"LAYERS={TEST_DATA_DIR + '/polys.shp'}",
-                                            f"LAYERS={TEST_DATA_DIR + '/points.shp'}",
-                                            f"LAYERS={TEST_DATA_DIR + '/lines.shp'}",
+                                            'LAYERS={}'.format(TEST_DATA_DIR + '/polys.shp'),
+                                            'LAYERS={}'.format(TEST_DATA_DIR + '/points.shp'),
+                                            'LAYERS={}'.format(TEST_DATA_DIR + '/lines.shp'),
                                             f'OUTPUT={output_file}'])
         res = json.loads(output)
 
@@ -164,7 +157,7 @@ class TestQgsProcessExecutablePt2(unittest.TestCase):
 
     def testModelRun(self):
         output_file = self.TMP_DIR + '/model_output.shp'
-        rc, output, err = self.run_process(['run', '--no-python', TEST_DATA_DIR + '/test_model.model3', '--', f"FEATS={TEST_DATA_DIR + '/polys.shp'}", f'native:centroids_1:CENTROIDS={output_file}'])
+        rc, output, err = self.run_process(['run', '--no-python', TEST_DATA_DIR + '/test_model.model3', '--', 'FEATS={}'.format(TEST_DATA_DIR + '/polys.shp'), f'native:centroids_1:CENTROIDS={output_file}'])
         self.assertFalse(self._strip_ignorable_errors(err))
         self.assertEqual(rc, 0)
         self.assertIn('0...10...20...30...40...50...60...70...80...90', output.lower())
@@ -197,7 +190,7 @@ class TestQgsProcessExecutablePt2(unittest.TestCase):
 
     def testModelRunJson(self):
         output_file = self.TMP_DIR + '/model_output2.shp'
-        rc, output, err = self.run_process(['run', TEST_DATA_DIR + '/test_model.model3', '--no-python', '--json', '--', f"FEATS={TEST_DATA_DIR + '/polys.shp'}", f'native:centroids_1:CENTROIDS={output_file}'])
+        rc, output, err = self.run_process(['run', TEST_DATA_DIR + '/test_model.model3', '--no-python', '--json', '--', 'FEATS={}'.format(TEST_DATA_DIR + '/polys.shp'), f'native:centroids_1:CENTROIDS={output_file}'])
         self.assertFalse(self._strip_ignorable_errors(err))
         self.assertEqual(rc, 0)
 
@@ -303,57 +296,6 @@ class TestQgsProcessExecutablePt2(unittest.TestCase):
 
         self.assertIn('OUTPUT:	abc:def', output)
         self.assertEqual(rc, 0)
-
-    def testLoadLayer(self):
-        rc, output, err = self.run_process(['run', '--no-python', 'native:raiseexception', '--MESSAGE=CONFIRMED', f"--CONDITION=layer_property(load_layer('{TEST_DATA_DIR + '/points.shp'}','ogr'),'feature_count')>10"])
-        self.assertIn('CONFIRMED', self._strip_ignorable_errors(err))
-
-        self.assertEqual(rc, 1)
-
-    def testDynamicParameters(self):
-        output_file = self.TMP_DIR + '/dynamic_out2.shp'
-
-        rc, output, err = self.run_process(
-            ['run', 'native:buffer', '--INPUT=' + TEST_DATA_DIR + '/points.shp', '--OUTPUT=' + output_file, '--DISTANCE=field:fid', '--json'])
-        self.assertFalse(self._strip_ignorable_errors(err))
-
-        self.assertEqual(rc, 0)
-
-        res = json.loads(output)
-        self.assertEqual(res['algorithm_details']['id'], 'native:buffer')
-        self.assertEqual(res['inputs']['DISTANCE'], 'field:fid')
-
-    def testDynamicParametersJson(self):
-        output_file = self.TMP_DIR + '/dynamic_out.shp'
-
-        params = {
-            'inputs':
-                {
-                    'INPUT': TEST_DATA_DIR + '/points.shp',
-                    'DISTANCE': {'type': 'data_defined', 'field': 'fid'},
-                    'OUTPUT': output_file
-                }
-        }
-
-        rc, output, err = self.run_process_stdin(
-            ['run', 'native:buffer', '-'], json.dumps(params))
-        self.assertFalse(self._strip_ignorable_errors(err))
-
-        self.assertEqual(rc, 0)
-
-        res = json.loads(output)
-        self.assertEqual(res['algorithm_details']['id'], 'native:buffer')
-        self.assertEqual(res['inputs']['DISTANCE'], {'field': 'fid', 'type': 'data_defined'})
-
-    def testStartupOptimisationsStyleLazyInitialized(self):
-        """
-        Ensure that the costly QgsStyle.defaultStyle() initialization is NOT
-        performed by default when running qgis_process commands
-        """
-        rc, output, err = self.run_process(['run', TEST_DATA_DIR + '/report_style_initialization_status.py'])
-        self.assertFalse(self._strip_ignorable_errors(err))
-        self.assertEqual(rc, 0)
-        self.assertIn('IS_INITIALIZED:	false', output)
 
 
 if __name__ == '__main__':

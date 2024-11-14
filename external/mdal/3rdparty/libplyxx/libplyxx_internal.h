@@ -50,7 +50,6 @@ SOFTWARE.
 
 #include <sstream>
 #include <iostream>
-#include <stdint.h>
 
 
 // a custom specialisation (and yes, you are allowed (and have to) put this in std)
@@ -107,27 +106,6 @@ namespace libply
     { Type::COORDINATE, 8}
   };
 
-  template <typename T>
-  T endian_convert( T w, uint32_t endian )
-  {
-    // This gets optimized out into if (endian == host_endian) return w;
-    union { uint64_t quad; uint32_t islittle; } t;
-    t.quad = 1;
-    if ( t.islittle ^ endian ) return w;
-
-    auto ptr = reinterpret_cast<std::uint8_t *>( &w );
-    std::array<std::uint8_t, sizeof( T )> raw_src, raw_dst;
-
-    for ( std::size_t i = 0; i < sizeof( T ); ++i )
-      raw_src[i] = ptr[i];
-
-    std::reverse_copy( raw_src.begin(), raw_src.end(), raw_dst.begin() );
-
-    for ( std::size_t i = 0; i < sizeof( T ); ++i )
-      ptr[i] = raw_dst[i];
-    return *reinterpret_cast<T *>( ptr );
-  };
-
   /// Type conversion functions.
 
   inline void convert_UINT( const textio::SubString &token, IProperty &property )
@@ -168,47 +146,47 @@ namespace libply
 
   /// Type casting functions.
 
-  inline void cast_UINT8( char *buffer, IProperty &property, uint32_t endian )
+  inline void cast_UINT8( char *buffer, IProperty &property )
   {
-    property = endian_convert( *reinterpret_cast<unsigned char *>( buffer ), endian );
+    property = *reinterpret_cast<unsigned char *>( buffer );
   }
 
-  inline void cast_INT8( char *buffer, IProperty &property, uint32_t endian )
+  inline void cast_INT8( char *buffer, IProperty &property )
   {
-    property = endian_convert( *reinterpret_cast< char *>( buffer ), endian );
+    property = *reinterpret_cast< char *>( buffer );
   }
 
-  inline void cast_UINT16( char *buffer, IProperty &property, uint32_t endian )
+  inline void cast_UINT16( char *buffer, IProperty &property )
   {
-    property = endian_convert( *reinterpret_cast<unsigned short *>( buffer ), endian );
+    property = *reinterpret_cast<unsigned short *>( buffer );
   }
 
-  inline void cast_INT16( char *buffer, IProperty &property, uint32_t endian )
+  inline void cast_INT16( char *buffer, IProperty &property )
   {
-    property = endian_convert( *reinterpret_cast<short *>( buffer ), endian );
+    property = *reinterpret_cast<short *>( buffer );
   }
 
-  inline void cast_UINT32( char *buffer, IProperty &property, uint32_t endian )
+  inline void cast_UINT32( char *buffer, IProperty &property )
   {
-    property = endian_convert( *reinterpret_cast<unsigned int *>( buffer ), endian );
+    property = *reinterpret_cast<unsigned int *>( buffer );
   }
 
-  inline void cast_INT32( char *buffer, IProperty &property, uint32_t endian )
+  inline void cast_INT32( char *buffer, IProperty &property )
   {
-    property = endian_convert( *reinterpret_cast<int *>( buffer ), endian );
+    property = *reinterpret_cast<int *>( buffer );
   }
 
-  inline void cast_FLOAT( char *buffer, IProperty &property, uint32_t endian )
+  inline void cast_FLOAT( char *buffer, IProperty &property )
   {
-    property = endian_convert( *reinterpret_cast<float *>( buffer ), endian );
+    property = *reinterpret_cast<float *>( buffer );
   }
 
-  inline void cast_DOUBLE( char *buffer, IProperty &property, uint32_t endian )
+  inline void cast_DOUBLE( char *buffer, IProperty &property )
   {
-    property = endian_convert( *reinterpret_cast<double *>( buffer ), endian );
+    property = *reinterpret_cast<double *>( buffer );
   }
 
-  typedef void( *CastFunction )( char *buffer, IProperty &, uint32_t endian );
+  typedef void( *CastFunction )( char *buffer, IProperty & );
   typedef std::unordered_map<Type, CastFunction> CastFunctionMap;
 
   const CastFunctionMap CAST_MAP =
@@ -244,7 +222,7 @@ namespace libply
 
   inline std::stringstream &write_convert_DOUBLE( IProperty &property, std::stringstream &ss )
   {
-    ss << MDAL::doubleToString( static_cast<double>( property ), 12 );
+    ss << MDAL::doubleToString( static_cast<double>( property ) );
     return ss;
   }
 
@@ -270,65 +248,41 @@ namespace libply
     { Type::COORDINATE, write_convert_COORDINATE }
   };
 
-  inline void write_cast_UINT8( IProperty &property, char *buffer, size_t &size, uint32_t endian )
+  inline void write_cast_UINT( IProperty &property, char *buffer, size_t &size )
   {
-    *reinterpret_cast<unsigned char *>( buffer ) = endian_convert( static_cast<unsigned char>( property ), endian );
+    *reinterpret_cast<unsigned int *>( buffer ) = static_cast<unsigned int>( property );
     size = sizeof( unsigned char );
   }
 
-  inline void write_cast_INT8( IProperty &property, char *buffer, size_t &size, uint32_t endian )
+  inline void write_cast_INT( IProperty &property, char *buffer, size_t &size )
   {
-    *reinterpret_cast<char *>( buffer ) = endian_convert( static_cast<char>( property ), endian );
-    size = sizeof( char );
-  }
-
-  inline void write_cast_UINT16( IProperty &property, char *buffer, size_t &size, uint32_t endian )
-  {
-    *reinterpret_cast<unsigned short *>( buffer ) = endian_convert( static_cast<unsigned short>( property ), endian );
-    size = sizeof( unsigned short );
-  }
-
-  inline void write_cast_INT16( IProperty &property, char *buffer, size_t &size, uint32_t endian )
-  {
-    *reinterpret_cast<short *>( buffer ) = endian_convert( static_cast<short>( property ), endian );
-    size = sizeof( short );
-  }
-
-  inline void write_cast_UINT32( IProperty &property, char *buffer, size_t &size, uint32_t endian )
-  {
-    *reinterpret_cast<unsigned int *>( buffer ) = endian_convert( static_cast<unsigned int>( property ), endian );
-    size = sizeof( unsigned int );
-  }
-
-  inline void write_cast_INT32( IProperty &property, char *buffer, size_t &size, uint32_t endian )
-  {
-    *reinterpret_cast<int *>( buffer ) = endian_convert( static_cast<int>( property ), endian );
+    *reinterpret_cast<int *>( buffer ) = static_cast<int>( property );
     size = sizeof( int );
   }
 
-  inline void write_cast_FLOAT( IProperty &property, char *buffer, size_t &size, uint32_t endian )
+  inline void write_cast_FLOAT( IProperty &property, char *buffer, size_t &size )
   {
-    *reinterpret_cast<float *>( buffer ) = endian_convert( static_cast<float>( property ), endian );
+    *reinterpret_cast<float *>( buffer ) = static_cast<float>( property );
     size = sizeof( float );
   }
 
-  inline void write_cast_DOUBLE( IProperty &property, char *buffer, size_t &size, uint32_t endian )
+  inline void write_cast_DOUBLE( IProperty &property, char *buffer, size_t &size )
   {
-    *reinterpret_cast<double *>( buffer ) = endian_convert( static_cast<double>( property ), endian );
+    *reinterpret_cast<double *>( buffer ) = static_cast<double>( property );
     size = sizeof( double );
   }
 
-  typedef void( *WriteCastFunction )( IProperty &property, char *buffer, size_t &size, uint32_t endian );
+  typedef void( *WriteCastFunction )( IProperty &property, char *buffer, size_t &size );
   typedef std::unordered_map<Type, WriteCastFunction> WriteCastFunctionMap;
 
   const WriteCastFunctionMap WRITE_CAST_MAP =
   {
-    { Type::INT8, write_cast_INT8 },
-    { Type::UINT8, write_cast_UINT8 },
-    { Type::INT16, write_cast_INT16 },
-    { Type::UINT16, write_cast_UINT16 },
-    { Type::INT32, write_cast_INT32 },
-    { Type::UINT32, write_cast_UINT32 },
+    { Type::INT8, write_cast_INT },
+    { Type::UINT8, write_cast_UINT },
+    { Type::INT16, write_cast_INT },
+    { Type::UINT16, write_cast_UINT },
+    { Type::INT32, write_cast_INT },
+    { Type::UINT32, write_cast_UINT },
     { Type::FLOAT32, write_cast_FLOAT },
     { Type::FLOAT64, write_cast_DOUBLE },
     { Type::COORDINATE, write_cast_DOUBLE }
@@ -390,7 +344,6 @@ namespace libply
 
       std::vector<Element> definitions() const;
       Metadata metadata;
-      File::Format format;
       //void setElementInserter(std::string elementName, IElementInserter* inserter);
       void setElementReadCallback( std::string elementName, ElementReadCallback &readCallback );
       void read();
@@ -398,13 +351,14 @@ namespace libply
     private:
       void readHeader();
       void parseLine( const textio::SubString &substr, const ElementDefinition &elementDefinition, ElementBuffer &buffer );
-      void readBinaryElement( std::ifstream &fs, const ElementDefinition &elementDefinition, ElementBuffer &buffer, File::Format format );
+      void readBinaryElement( std::ifstream &fs, const ElementDefinition &elementDefinition, ElementBuffer &buffer );
 
     private:
       typedef std::map<std::string, ElementReadCallback> CallbackMap;
 
     private:
       std::string m_filename;
+      File::Format m_format;
       std::streamsize m_dataOffset;
       textio::LineReader m_lineReader;
       textio::Tokenizer m_lineTokenizer;

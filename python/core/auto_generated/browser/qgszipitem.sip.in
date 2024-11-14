@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/browser/qgszipitem.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -47,13 +47,7 @@ Constructor
 
     static QStringList sProviderNames;
 
- static QString vsiPrefix( const QString &uri ) /Deprecated/;
-%Docstring
-
-.. deprecated:: 3.40
-
-   Will be removed in QGIS 4.0.
-%End
+    static QString vsiPrefix( const QString &uri );
 
     static QgsDataItem *itemFromPath( QgsDataItem *parent, const QString &path, const QString &name ) /Factory/;
 %Docstring
@@ -82,5 +76,5 @@ Creates a new data item from the specified path.
  *                                                                      *
  * src/core/browser/qgszipitem.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

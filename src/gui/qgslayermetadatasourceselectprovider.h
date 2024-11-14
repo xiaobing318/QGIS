@@ -39,7 +39,6 @@ class GUI_EXPORT QgsLayerMetadataSourceSelectProvider : public QgsSourceSelectPr
   public:
     QString providerKey() const override;
     QString text() const override;
-    QString toolTip() const override;
     QIcon icon() const override;
     QgsAbstractDataSourceWidget *createDataSourceWidget( QWidget *parent, Qt::WindowFlags fl, QgsProviderRegistry::WidgetMode widgetMode ) const override;
     int ordering() const override;

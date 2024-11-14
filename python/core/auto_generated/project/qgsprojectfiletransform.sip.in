@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/project/qgsprojectfiletransform.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -40,7 +40,7 @@ Create an instance from a Dom and a supplied version
 
     void dump();
 %Docstring
-Prints the contents to the console.
+Prints the contents via :py:class:`QgsDebugMsg`()
 %End
 
     static void convertRasterProperties( QDomDocument &doc, QDomNode &parentNode, QDomElement &rasterPropertiesElem, QgsRasterLayer *rlayer );
@@ -59,18 +59,8 @@ The current project version
 .. versionadded:: 3.12
 %End
 
- static void fixOldSymbolLayerReferences( const QMap<QString, QgsMapLayer *> &mapLayers );
-%Docstring
-:py:class:`QgsSymbolLayerReference` uses :py:class:`QgsSymbolLayer` unique uuid identifier since QGIS 3.30, instead of the symbol
-key (rule for :py:class:`QgsRuleBasedRenderer` for instance) and index path, so this method migrates ``mapLayers`` old references
-to new ones.
-
-.. versionadded:: 3.30
-
-.. deprecated:: 3.30
-%End
-
 };
+
 
 
 /************************************************************************
@@ -78,5 +68,5 @@ to new ones.
  *                                                                      *
  * src/core/project/qgsprojectfiletransform.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgstreewidgetitem.h                                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -17,6 +17,8 @@ QTreeWidgetItem subclass with custom handling for item sorting.
 
 :py:class:`QgsTreeWidgetItem` allows for items to be sorted using a specified user role, and
 also correctly handles sorting numeric or mixed text and numeric values.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -143,7 +145,9 @@ be placed above items with a higher priority.
 class QgsTreeWidgetItemObject: QObject, QgsTreeWidgetItem
 {
 %Docstring(signature="appended")
-Custom :py:class:`QgsTreeWidgetItem` with extra signals when item is edited.
+Custom QgsTreeWidgetItem with extra signals when item is edited.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -181,5 +185,5 @@ Emitted when the contents of the column in the specified item has been edited by
  *                                                                      *
  * src/gui/qgstreewidgetitem.h                                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

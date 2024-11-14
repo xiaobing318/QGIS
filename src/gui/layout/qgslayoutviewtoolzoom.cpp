@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgslayoutviewtoolzoom.h"
-#include "moc_qgslayoutviewtoolzoom.cpp"
 #include "qgslayoutviewmouseevent.h"
 #include "qgslayoutview.h"
 #include "qgslayoutviewrubberband.h"

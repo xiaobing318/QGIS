@@ -43,7 +43,7 @@ bool QgsCacheIndexFeatureId::getCacheIterator( QgsFeatureIterator &featureIterat
 {
   switch ( featureRequest.filterType() )
   {
-    case Qgis::FeatureRequestFilterType::Fid:
+    case QgsFeatureRequest::FilterFid:
     {
       if ( C->isFidCached( featureRequest.filterFid() ) )
       {
@@ -52,7 +52,7 @@ bool QgsCacheIndexFeatureId::getCacheIterator( QgsFeatureIterator &featureIterat
       }
       break;
     }
-    case Qgis::FeatureRequestFilterType::Fids:
+    case QgsFeatureRequest::FilterFids:
     {
       if ( C->cachedFeatureIds().contains( featureRequest.filterFids() ) )
       {
@@ -61,8 +61,8 @@ bool QgsCacheIndexFeatureId::getCacheIterator( QgsFeatureIterator &featureIterat
       }
       break;
     }
-    case Qgis::FeatureRequestFilterType::NoFilter:
-    case Qgis::FeatureRequestFilterType::Expression:
+    case QgsFeatureRequest::FilterNone:
+    case QgsFeatureRequest::FilterExpression:
     {
       if ( C->hasFullCache() )
       {

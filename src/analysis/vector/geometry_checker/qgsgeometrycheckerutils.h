@@ -19,8 +19,8 @@
 
 #include "qgis_analysis.h"
 #include "qgsfeature.h"
-#include "qgsabstractgeometry.h"
-#include "qgspoint.h"
+#include "geometry/qgsabstractgeometry.h"
+#include "geometry/qgspoint.h"
 #include "qgsgeometrycheckcontext.h"
 #include <qmath.h>
 
@@ -65,11 +65,6 @@ class ANALYSIS_EXPORT QgsGeometryCheckerUtils
          * The geometry will not be reprojected regardless of useMapCrs.
          */
         QgsFeature feature() const;
-
-        /**
-         * The layer CRS.
-         */
-        QgsCoordinateReferenceSystem layerCrs() const SIP_SKIP;
 
         /**
          * The layer.
@@ -124,7 +119,7 @@ class ANALYSIS_EXPORT QgsGeometryCheckerUtils
          */
         LayerFeatures( const QMap<QString, QgsFeaturePool *> &featurePools,
                        const QMap<QString, QgsFeatureIds> &featureIds,
-                       const QList<Qgis::GeometryType> &geometryTypes,
+                       const QList<QgsWkbTypes::GeometryType> &geometryTypes,
                        QgsFeedback *feedback,
                        const QgsGeometryCheckContext *context,
                        bool useMapCrs = false );
@@ -134,7 +129,7 @@ class ANALYSIS_EXPORT QgsGeometryCheckerUtils
          */
         LayerFeatures( const QMap<QString, QgsFeaturePool *> &featurePools,
                        const QList<QString> &layerIds, const QgsRectangle &extent,
-                       const QList<Qgis::GeometryType> &geometryTypes,
+                       const QList<QgsWkbTypes::GeometryType> &geometryTypes,
                        const QgsGeometryCheckContext *context );
 
         /**
@@ -153,6 +148,9 @@ class ANALYSIS_EXPORT QgsGeometryCheckerUtils
              */
             iterator( const QStringList::const_iterator &layerIt, const LayerFeatures *parent );
 
+            /**
+             * Copies the iterator \a rh.
+             */
             iterator( const iterator &rh );
             ~iterator();
 
@@ -206,13 +204,15 @@ class ANALYSIS_EXPORT QgsGeometryCheckerUtils
         QMap<QString, QgsFeatureIds> mFeatureIds;
         QList<QString> mLayerIds;
         QgsRectangle mExtent;
-        QList<Qgis::GeometryType> mGeometryTypes;
+        QList<QgsWkbTypes::GeometryType> mGeometryTypes;
         QgsFeedback *mFeedback = nullptr;
         const QgsGeometryCheckContext *mContext = nullptr;
         bool mUseMapCrs = true;
     };
 
 #ifndef SIP_RUN
+
+    static std::unique_ptr<QgsGeometryEngine> createGeomEngine( const QgsAbstractGeometry *geometry, double tolerance );
 
     static QgsAbstractGeometry *getGeomPart( QgsAbstractGeometry *geom, int partIdx );
     static const QgsAbstractGeometry *getGeomPart( const QgsAbstractGeometry *geom, int partIdx );
@@ -250,6 +250,19 @@ class ANALYSIS_EXPORT QgsGeometryCheckerUtils
     static QList<QgsPoint> lineIntersections( const QgsLineString *line1, const QgsLineString *line2, double tol );
 
     static double sharedEdgeLength( const QgsAbstractGeometry *geom1, const QgsAbstractGeometry *geom2, double tol );
+
+    /**
+       * \brief Determine whether two points are equal up to the specified tolerance
+       * \param p1 The first point
+       * \param p2 The second point
+       * \param tol The tolerance
+       * \returns Whether the points are equal
+       */
+    static inline bool pointsFuzzyEqual( const QgsPointXY &p1, const QgsPointXY &p2, double tol )
+    {
+      double dx = p1.x() - p2.x(), dy = p1.y() - p2.y();
+      return ( dx * dx + dy * dy ) < tol * tol;
+    }
 
     static inline bool canDeleteVertex( const QgsAbstractGeometry *geom, int iPart, int iRing )
     {

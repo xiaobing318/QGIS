@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgscurveeditorwidget.h                                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -15,6 +15,8 @@ class QgsCurveEditorWidget : QWidget
 {
 %Docstring(signature="appended")
 A widget for manipulating :py:class:`QgsCurveTransform` curves.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -115,5 +117,5 @@ Emitted when the widget curve changes
  *                                                                      *
  * src/gui/qgscurveeditorwidget.h                                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

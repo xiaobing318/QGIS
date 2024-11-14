@@ -16,7 +16,6 @@
 #include "qgiscustomwidgets.h"
 #include "qgsfieldcombobox.h"
 #include "qgsfieldcomboboxplugin.h"
-#include "moc_qgsfieldcomboboxplugin.cpp"
 
 
 QgsFieldComboBoxPlugin::QgsFieldComboBoxPlugin( QObject *parent )

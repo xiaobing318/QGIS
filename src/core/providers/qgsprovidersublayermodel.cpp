@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsprovidersublayermodel.h"
-#include "moc_qgsprovidersublayermodel.cpp"
 #include "qgsprovidersublayerdetails.h"
 #include "qgsiconutils.h"
 #include "qgsapplication.h"
@@ -80,7 +79,6 @@ QgsProviderSublayerModelNode *QgsProviderSublayerModelGroup::addChild( std::uniq
 
   QgsProviderSublayerModelNode *res = child.get();
   mChildren.emplace_back( std::move( child ) );
-  // cppcheck-suppress returnDanglingLifetime
   return res;
 }
 
@@ -203,7 +201,7 @@ QVariant QgsProviderSublayerModelSublayerNode::data( int role, int column ) cons
         {
           switch ( mSublayer.type() )
           {
-            case Qgis::LayerType::Vector:
+            case QgsMapLayerType::VectorLayer:
             {
               QString count;
               if ( mSublayer.featureCount() == static_cast< long long >( Qgis::FeatureCountState::Uncounted )
@@ -222,14 +220,13 @@ QVariant QgsProviderSublayerModelSublayerNode::data( int role, int column ) cons
                          count );
             }
 
-            case Qgis::LayerType::Raster:
-            case Qgis::LayerType::Plugin:
-            case Qgis::LayerType::Mesh:
-            case Qgis::LayerType::VectorTile:
-            case Qgis::LayerType::Annotation:
-            case Qgis::LayerType::PointCloud:
-            case Qgis::LayerType::Group:
-            case Qgis::LayerType::TiledScene:
+            case QgsMapLayerType::RasterLayer:
+            case QgsMapLayerType::PluginLayer:
+            case QgsMapLayerType::MeshLayer:
+            case QgsMapLayerType::VectorTileLayer:
+            case QgsMapLayerType::AnnotationLayer:
+            case QgsMapLayerType::PointCloudLayer:
+            case QgsMapLayerType::GroupLayer:
               return mSublayer.description();
           }
           break;
@@ -243,8 +240,8 @@ QVariant QgsProviderSublayerModelSublayerNode::data( int role, int column ) cons
     case Qt::DecorationRole:
     {
       if ( column == 0 )
-        return mSublayer.type() == Qgis::LayerType::Vector
-               ? ( mSublayer.wkbType() != Qgis::WkbType::Unknown ? QgsIconUtils::iconForWkbType( mSublayer.wkbType() ) : QVariant() )
+        return mSublayer.type() == QgsMapLayerType::VectorLayer
+               ? ( mSublayer.wkbType() != QgsWkbTypes::Unknown ? QgsIconUtils::iconForWkbType( mSublayer.wkbType() ) : QVariant() )
                : QgsIconUtils::iconForLayerType( mSublayer.type() );
       else
         return QVariant();
@@ -275,7 +272,7 @@ QVariant QgsProviderSublayerModelSublayerNode::data( int role, int column ) cons
       return mSublayer.featureCount();
 
     case static_cast< int >( QgsProviderSublayerModel::Role::WkbType ):
-      return static_cast< quint32>( mSublayer.wkbType() );
+      return mSublayer.wkbType();
 
     case static_cast< int >( QgsProviderSublayerModel::Role::GeometryColumnName ):
       return mSublayer.geometryColumnName();
@@ -676,7 +673,7 @@ bool QgsProviderSublayerProxyModel::filterAcceptsRow( int source_row, const QMod
   const QVariant wkbTypeVariant =  sourceModel()->data( sourceIndex, static_cast< int >( QgsProviderSublayerModel::Role::WkbType ) );
   if ( wkbTypeVariant.isValid() )
   {
-    const Qgis::WkbType wkbType = static_cast< Qgis::WkbType >( wkbTypeVariant.toUInt() );
+    const QgsWkbTypes::Type wkbType = static_cast< QgsWkbTypes::Type >( wkbTypeVariant.toInt() );
     if ( QgsWkbTypes::displayString( wkbType ).contains( mFilterString, Qt::CaseInsensitive ) )
       return true;
   }

@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgslimitedrandomcolorrampdialog.h"
-#include "moc_qgslimitedrandomcolorrampdialog.cpp"
 
 #include "qgssymbollayerutils.h"
 #include "qgscolorramp.h"

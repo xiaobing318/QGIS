@@ -9,17 +9,16 @@ __author__ = 'Nyall Dawson'
 __date__ = '07/06/2016'
 __copyright__ = 'Copyright 2016, The QGIS Project'
 
+import qgis  # NOQA
 
-from qgis.core import (
-    QgsApplication,
-    QgsFeature,
-    QgsGeometry,
-    QgsPointXY,
-    QgsRendererAbstractMetadata,
-    QgsVectorLayer,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsRendererAbstractMetadata,
+                       QgsApplication,
+                       QgsVectorLayer,
+                       QgsFeature,
+                       QgsGeometry,
+                       QgsPointXY
+                       )
+from qgis.testing import start_app, unittest
 
 start_app()
 
@@ -42,7 +41,7 @@ def createReferencingLayer():
 
 class TestRenderer(QgsRendererAbstractMetadata):
 
-    def __init__(self, name, layerTypes=QgsRendererAbstractMetadata.LayerType.All):
+    def __init__(self, name, layerTypes=QgsRendererAbstractMetadata.All):
         QgsRendererAbstractMetadata.__init__(self, name, "Test Renderer")
         self.types = layerTypes
 
@@ -61,19 +60,19 @@ def clearRegistry():
         QgsApplication.rendererRegistry().removeRenderer(r)
 
 
-class TestQgsRendererV2Registry(QgisTestCase):
+class TestQgsRendererV2Registry(unittest.TestCase):
 
     def testInstance(self):
         """ test retrieving global instance """
         self.assertTrue(QgsApplication.rendererRegistry())
 
         # instance should be initially populated with some default renderers
-        self.assertIn('singleSymbol', QgsApplication.rendererRegistry().renderersList())
+        self.assertTrue('singleSymbol' in QgsApplication.rendererRegistry().renderersList())
 
         # register a renderer to the singleton, to test that the same instance is always returned
-        self.assertNotIn('test', QgsApplication.rendererRegistry().renderersList())
+        self.assertFalse('test' in QgsApplication.rendererRegistry().renderersList())
         self.assertTrue(QgsApplication.rendererRegistry().addRenderer(TestRenderer('test')))
-        self.assertIn('test', QgsApplication.rendererRegistry().renderersList())
+        self.assertTrue('test' in QgsApplication.rendererRegistry().renderersList())
 
     def testAddRenderer(self):
         """ test adding renderers to registry """
@@ -81,11 +80,11 @@ class TestQgsRendererV2Registry(QgisTestCase):
 
         # add a renderer
         self.assertTrue(QgsApplication.rendererRegistry().addRenderer(TestRenderer('test2')))
-        self.assertIn('test2', QgsApplication.rendererRegistry().renderersList())
+        self.assertTrue('test2' in QgsApplication.rendererRegistry().renderersList())
 
         # try adding it again - should be rejected due to duplicate name
         self.assertFalse(QgsApplication.rendererRegistry().addRenderer(TestRenderer('test2')))
-        self.assertIn('test2', QgsApplication.rendererRegistry().renderersList())
+        self.assertTrue('test2' in QgsApplication.rendererRegistry().renderersList())
 
     def testRemoveRenderer(self):
         """ test removing renderers from registry """
@@ -96,11 +95,11 @@ class TestQgsRendererV2Registry(QgisTestCase):
 
         # now add it
         self.assertTrue(QgsApplication.rendererRegistry().addRenderer(TestRenderer('test3')))
-        self.assertIn('test3', QgsApplication.rendererRegistry().renderersList())
+        self.assertTrue('test3' in QgsApplication.rendererRegistry().renderersList())
 
         # try removing it again - should be OK this time
         self.assertTrue(QgsApplication.rendererRegistry().removeRenderer('test3'))
-        self.assertNotIn('test3', QgsApplication.rendererRegistry().renderersList())
+        self.assertFalse('test3' in QgsApplication.rendererRegistry().renderersList())
 
         # try removing it again - should be false since already removed
         self.assertFalse(QgsApplication.rendererRegistry().removeRenderer('test3'))
@@ -128,35 +127,35 @@ class TestQgsRendererV2Registry(QgisTestCase):
         self.assertEqual(QgsApplication.rendererRegistry().renderersList(), ['singleSymbol'])
 
         # add some renderers
-        r1 = TestRenderer('test1', QgsRendererAbstractMetadata.LayerType.PointLayer)
+        r1 = TestRenderer('test1', QgsRendererAbstractMetadata.PointLayer)
         self.assertTrue(QgsApplication.rendererRegistry().addRenderer(r1))
-        r2 = TestRenderer('test2', QgsRendererAbstractMetadata.LayerType.LineLayer)
+        r2 = TestRenderer('test2', QgsRendererAbstractMetadata.LineLayer)
         self.assertTrue(QgsApplication.rendererRegistry().addRenderer(r2))
-        r3 = TestRenderer('test3', QgsRendererAbstractMetadata.LayerType.PolygonLayer)
+        r3 = TestRenderer('test3', QgsRendererAbstractMetadata.PolygonLayer)
         self.assertTrue(QgsApplication.rendererRegistry().addRenderer(r3))
-        r4 = TestRenderer('test4', QgsRendererAbstractMetadata.LayerType.PointLayer | QgsRendererAbstractMetadata.LayerType.LineLayer)
+        r4 = TestRenderer('test4', QgsRendererAbstractMetadata.PointLayer | QgsRendererAbstractMetadata.LineLayer)
         self.assertTrue(QgsApplication.rendererRegistry().addRenderer(r4))
 
         self.assertEqual(QgsApplication.rendererRegistry().renderersList(), ['singleSymbol', 'test1', 'test2', 'test3', 'test4'])
 
         # test subsets
-        self.assertEqual(QgsApplication.rendererRegistry().renderersList(QgsRendererAbstractMetadata.LayerType.PointLayer), ['singleSymbol', 'test1', 'test4'])
-        self.assertEqual(QgsApplication.rendererRegistry().renderersList(QgsRendererAbstractMetadata.LayerType.LineLayer), ['singleSymbol', 'test2', 'test4'])
-        self.assertEqual(QgsApplication.rendererRegistry().renderersList(QgsRendererAbstractMetadata.LayerType.PolygonLayer), ['singleSymbol', 'test3'])
-        self.assertEqual(QgsApplication.rendererRegistry().renderersList(QgsRendererAbstractMetadata.LayerType.LineLayer | QgsRendererAbstractMetadata.LayerType.PolygonLayer), ['singleSymbol', 'test2', 'test3', 'test4'])
+        self.assertEqual(QgsApplication.rendererRegistry().renderersList(QgsRendererAbstractMetadata.PointLayer), ['singleSymbol', 'test1', 'test4'])
+        self.assertEqual(QgsApplication.rendererRegistry().renderersList(QgsRendererAbstractMetadata.LineLayer), ['singleSymbol', 'test2', 'test4'])
+        self.assertEqual(QgsApplication.rendererRegistry().renderersList(QgsRendererAbstractMetadata.PolygonLayer), ['singleSymbol', 'test3'])
+        self.assertEqual(QgsApplication.rendererRegistry().renderersList(QgsRendererAbstractMetadata.LineLayer | QgsRendererAbstractMetadata.PolygonLayer), ['singleSymbol', 'test2', 'test3', 'test4'])
 
     def testRenderersByLayerType(self):
         """ test retrieving compatible renderers by layer type """
         clearRegistry()
 
         # add some renderers
-        r1 = TestRenderer('test1', QgsRendererAbstractMetadata.LayerType.PointLayer)
+        r1 = TestRenderer('test1', QgsRendererAbstractMetadata.PointLayer)
         self.assertTrue(QgsApplication.rendererRegistry().addRenderer(r1))
-        r2 = TestRenderer('test2', QgsRendererAbstractMetadata.LayerType.LineLayer)
+        r2 = TestRenderer('test2', QgsRendererAbstractMetadata.LineLayer)
         self.assertTrue(QgsApplication.rendererRegistry().addRenderer(r2))
-        r3 = TestRenderer('test3', QgsRendererAbstractMetadata.LayerType.PolygonLayer)
+        r3 = TestRenderer('test3', QgsRendererAbstractMetadata.PolygonLayer)
         self.assertTrue(QgsApplication.rendererRegistry().addRenderer(r3))
-        r4 = TestRenderer('test4', QgsRendererAbstractMetadata.LayerType.PointLayer | QgsRendererAbstractMetadata.LayerType.LineLayer)
+        r4 = TestRenderer('test4', QgsRendererAbstractMetadata.PointLayer | QgsRendererAbstractMetadata.LineLayer)
         self.assertTrue(QgsApplication.rendererRegistry().addRenderer(r4))
 
         # make some layers

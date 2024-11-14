@@ -132,7 +132,7 @@ class QgsWcsCapabilities : public QObject
 
     void setUri( QgsDataSourceUri const &uri );
 
-    const QgsWcsCapabilitiesProperty &capabilities() const;
+    QgsWcsCapabilitiesProperty capabilities();
 
     /**
      * \brief   Returns a list of the supported layers of the WCS server
@@ -153,7 +153,7 @@ class QgsWcsCapabilities : public QObject
     QgsWcsCoverageSummary coverage( QString const &identifier );
 
     //! Gets list of all coverage summaries
-    QList<QgsWcsCoverageSummary> coverages() const;
+    QList<QgsWcsCoverageSummary> coverages();
 
     /**
      * \brief Prepare the URI so that we can later simply append param=value
@@ -273,7 +273,7 @@ class QgsWcsCapabilities : public QObject
     QgsWcsCoverageSummary *coverageSummary( QString const &identifier, QgsWcsCoverageSummary *parent = nullptr );
 
     //! Get list of all sub coverages
-    QList<QgsWcsCoverageSummary> coverageSummaries( const QgsWcsCoverageSummary *parent = nullptr ) const;
+    QList<QgsWcsCoverageSummary> coverageSummaries( QgsWcsCoverageSummary *parent = nullptr );
 
     void initCoverageSummary( QgsWcsCoverageSummary &coverageSummary );
 
@@ -288,7 +288,7 @@ class QgsWcsCapabilities : public QObject
     /**
      * \brief Retrieve and parse the (cached) Capabilities document from the server
      *
-     * \param preferredVersion optional version, e.g. 1.0.0, 1.1.0
+     * \param preferredVersion - optional version, e.g. 1.0.0, 1.1.0
      *
      * \returns false if the capabilities document could not be retrieved or parsed -
      *         see lastError() for more info

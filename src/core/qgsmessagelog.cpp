@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsmessagelog.h"
-#include "moc_qgsmessagelog.cpp"
 #include "qgsapplication.h"
 #include "qgslogger.h"
 #include <QDateTime>
@@ -27,19 +26,7 @@ class QgsMessageLogConsole;
 
 void QgsMessageLog::logMessage( const QString &message, const QString &tag, Qgis::MessageLevel level, bool notifyUser )
 {
-  switch ( level )
-  {
-    case Qgis::MessageLevel::Info:
-    case Qgis::MessageLevel::Success:
-    case Qgis::MessageLevel::NoLevel:
-      QgsDebugMsgLevel( QStringLiteral( "%1 %2[%3] %4" ).arg( QDateTime::currentDateTime().toString( Qt::ISODate ), tag ).arg( static_cast< int >( level ) ).arg( message ), 1 );
-      break;
-
-    case Qgis::MessageLevel::Warning:
-    case Qgis::MessageLevel::Critical:
-      QgsDebugError( QStringLiteral( "%1 %2[%3] %4" ).arg( QDateTime::currentDateTime().toString( Qt::ISODate ), tag ).arg( static_cast< int >( level ) ).arg( message ) );
-      break;
-  }
+  QgsDebugMsg( QStringLiteral( "%1 %2[%3] %4" ).arg( QDateTime::currentDateTime().toString( Qt::ISODate ), tag ).arg( static_cast< int >( level ) ).arg( message ) );
 
   QgsApplication::messageLog()->emitMessage( message, tag, level, notifyUser );
 }

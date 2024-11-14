@@ -41,11 +41,8 @@ if len(sys.argv) > 0:
     if sys.argv[1] == "4":
         from PyQt4.Qsci import QSCINTILLA_VERSION_STR
         VER = QSCINTILLA_VERSION_STR
-    if sys.argv[1] == "5":
-        from PyQt5.Qsci import QSCINTILLA_VERSION_STR
-        VER = QSCINTILLA_VERSION_STR
     else:
-        from PyQt6.Qsci import QSCINTILLA_VERSION_STR
+        from PyQt5.Qsci import QSCINTILLA_VERSION_STR
         VER = QSCINTILLA_VERSION_STR
 else:
     try:
@@ -56,10 +53,6 @@ else:
             from PyQt5.Qsci import QSCINTILLA_VERSION_STR
             VER = QSCINTILLA_VERSION_STR
         except ImportError:
-            try:
-                from PyQt6.Qsci import QSCINTILLA_VERSION_STR
-                VER = QSCINTILLA_VERSION_STR
-            except ImportError:
-                pass
+            pass
 
 print("qsci_version_str:%s" % VER)

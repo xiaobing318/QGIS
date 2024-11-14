@@ -9,15 +9,13 @@ __author__ = 'Nyall Dawson'
 __date__ = '23/12/2020'
 __copyright__ = 'Copyright 2020, The QGIS Project'
 
+import qgis  # NOQA
 
 from qgis.core import QgsVectorLayer
-from qgis.gui import (
-    QgsGui,
-    QgsProviderSourceWidget,
-    QgsProviderSourceWidgetProvider,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.gui import (QgsGui,
+                      QgsProviderSourceWidget,
+                      QgsProviderSourceWidgetProvider)
+from qgis.testing import start_app, unittest
 
 app = start_app()
 
@@ -51,7 +49,7 @@ class TestProvider(QgsProviderSourceWidgetProvider):
         return TestSourceWidget(parent)
 
 
-class TestQgsProviderSourceWidgetProviderRegistry(QgisTestCase):
+class TestQgsProviderSourceWidgetProviderRegistry(unittest.TestCase):
 
     def testGuiRegistry(self):
         # ensure there is an application instance

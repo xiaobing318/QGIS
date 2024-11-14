@@ -3,22 +3,21 @@
  *                                                                      *
  * src/core/qgsinterval.h                                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
 
 
 
-%ModuleHeaderCode
-#include "qgsunittypes.h"
-%End
 
 
 class QgsInterval
 {
 %Docstring(signature="appended")
 A representation of the interval between two datetime values.
+
+.. versionadded:: 2.16
 %End
 
 %TypeHeaderCode
@@ -45,8 +44,7 @@ Constructor for QgsInterval.
 :param seconds: duration of interval in seconds
 %End
 
-
-    QgsInterval( double duration, Qgis::TemporalUnit unit );
+    QgsInterval( double duration, QgsUnitTypes::TemporalUnit unit );
 %Docstring
 Constructor for QgsInterval, using the specified ``duration`` and ``units``.
 %End
@@ -67,18 +65,6 @@ Constructor for QgsInterval, using the specified ``years``, ``months``,
 .. versionadded:: 3.14
 %End
 
-    SIP_PYOBJECT __repr__();
-%MethodCode
-    QString str;
-    if ( ! sipCpp->isValid() )
-      str = QStringLiteral( "<QgsInterval: invalid>" );
-    else if ( sipCpp->originalUnit() != Qgis::TemporalUnit::Unknown )
-      str = QStringLiteral( "<QgsInterval: %1 %2>" ).arg( sipCpp->originalDuration() ).arg( QgsUnitTypes::toString( sipCpp->originalUnit() ) );
-    else
-      str = QStringLiteral( "<QgsInterval: %1 seconds>" ).arg( sipCpp->seconds() );
-    sipRes = PyUnicode_FromString( str.toUtf8().constData() );
-%End
-
     double years() const;
 %Docstring
 Returns the interval duration in years (based on an average year length)
@@ -95,7 +81,7 @@ otherwise it will be calculated using the average year length (31557600 seconds)
 Sets the interval duration in years.
 
 Replaces the interval size and changes the original interval unit
-and duration, :py:func:`originalDuration` and :py:func:`originalUnit`.
+and duration, :py:func:`originalDuration` and \see originalUnit().
 
 Changes the original unit to :py:class:`QgsUnitTypes`.TemporalYears
 
@@ -121,7 +107,7 @@ a month consists of exactly 30 days.
 Sets the interval duration in months.
 
 Replaces the interval size and changes the original interval unit
-and duration, :py:func:`originalDuration` and :py:func:`originalUnit`.
+and duration, :py:func:`originalDuration` and \see originalUnit().
 
 Changes the original unit to :py:class:`QgsUnitTypes`.TemporalMonths
 
@@ -146,7 +132,7 @@ otherwise it will be calculated using the QgsInterval.WEEKS constant.
 Sets the interval duration in weeks.
 
 Replaces the interval size and changes the original interval unit
-and duration, :py:func:`originalDuration` and :py:func:`originalUnit`.
+and duration, :py:func:`originalDuration` and \see originalUnit().
 
 Changes the original unit to :py:class:`QgsUnitTypes`.TemporalWeeks
 
@@ -171,7 +157,7 @@ otherwise it will be calculated using the QgsInterval.DAY constant.
 Sets the interval duration in days.
 
 Replaces the interval size and changes the original interval unit
-and duration, :py:func:`originalDuration` and :py:func:`originalUnit`.
+and duration, :py:func:`originalDuration` and \see originalUnit().
 
 Changes the original unit to :py:class:`QgsUnitTypes`.TemporalDays
 
@@ -196,7 +182,7 @@ otherwise it will be calculated using the QgsInterval.HOUR constant.
 Sets the interval duration in hours.
 
 Replaces the interval size and changes the original interval unit
-and duration, :py:func:`originalDuration` and :py:func:`originalUnit`.
+and duration, :py:func:`originalDuration` and \see originalUnit().
 
 The original unit to :py:class:`QgsUnitTypes`.TemporalHours
 
@@ -221,7 +207,7 @@ otherwise it will be calculated using the QgsInterval.MINUTE constant.
 Sets the interval duration in minutes.
 
 Replaces the interval size and changes the original interval unit
-and duration, :py:func:`originalDuration` and :py:func:`originalUnit`.
+and duration, :py:func:`originalDuration` and \see originalUnit().
 
 Changes the original unit to :py:class:`QgsUnitTypes`.TemporalMinutes
 
@@ -242,7 +228,7 @@ Returns the interval duration in seconds.
 Sets the interval duration in seconds.
 
 Replaces the interval size and changes the original interval unit
-and duration, :py:func:`originalDuration` and :py:func:`originalUnit`.
+and duration, :py:func:`originalDuration` and \see originalUnit().
 
 Changes the original unit to :py:class:`QgsUnitTypes`.TemporalSeconds
 
@@ -274,7 +260,7 @@ Returns the original interval duration.
 This original interval duration can be updated through calling
 QgsInterval setter methods.
 
-.. seealso:: :py:func:`originalUnit` for the corresponding unit.
+.. seealso:: :py:func:`originalUnit`
 
 If the original interval duration is not available or
 interval was set with a mix of units, calling :py:func:`~QgsInterval.originalUnit`
@@ -285,7 +271,7 @@ Returns 0.0 if the original duration was not set.
 .. versionadded:: 3.18
 %End
 
-    Qgis::TemporalUnit originalUnit() const;
+    QgsUnitTypes::TemporalUnit originalUnit() const;
 %Docstring
 Returns the original interval temporal unit.
 
@@ -324,5 +310,5 @@ Converts a string to an interval
  *                                                                      *
  * src/core/qgsinterval.h                                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

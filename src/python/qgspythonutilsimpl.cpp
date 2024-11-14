@@ -51,68 +51,16 @@ QgsPythonUtilsImpl::~QgsPythonUtilsImpl()
 bool QgsPythonUtilsImpl::checkSystemImports()
 {
   runString( QStringLiteral( "import sys" ) ); // import sys module (for display / exception hooks)
-  runString( QStringLiteral( "import os" ) ); // import os module (for environ variables)
-  runString( QStringLiteral( "import pathlib" ) ); // import pathlib module (for path manipulation)
+  runString( QStringLiteral( "import os" ) ); // import os module (for user paths)
 
   // support for PYTHONSTARTUP-like environment variable: PYQGIS_STARTUP
   // (unlike PYTHONHOME and PYTHONPATH, PYTHONSTARTUP is not supported for embedded interpreter by default)
   // this is different than user's 'startup.py' (below), since it is loaded just after Py_Initialize
   // it is very useful for cleaning sys.path, which may have undesirable paths, or for
   // isolating/loading the initial environ without requiring a virt env, e.g. homebrew or MacPorts installs on Mac
-  runString( QStringLiteral( "pyqgstart = os.getenv('PYQGIS_STARTUP')" ) );
-  runString( QStringLiteral( R""""(
-exec(
-    compile(
-        """
-class StartupScriptRunner:
-    def __init__(self):
-        self.info_messages: list[str] = []
-        self.warning_messages: list[str] = []
-
-    def run_startup_script(self, script_path: 'pathlib.Path | str | None') -> bool:
-        script_executed = False
-        if not script_path:
-            return script_executed
-
-        p1 = pathlib.Path(script_path)
-        if p1.exists():
-            self.info_messages.append(f"Executed startup script: {p1}")
-            code = compile(p1.read_text(), p1, 'exec')
-            exec(code, globals())
-            script_executed = True
-
-        p2 = pathlib.Path('%1') / script_path
-        if p2.exists() and p2 != p1:
-            self.info_messages.append(f"Executed startup script: {p2}")
-            code = compile(p2.read_text(), p2, 'exec')
-            exec(code, globals())
-            script_executed = True
-
-        if not script_executed:
-            self.warning_messages.append(
-                f"Startup script not executed - neither {p1} nor {p2} exist!"
-            )
-
-        return script_executed
-
-    def log_messages(self):
-        from qgis.core import Qgis, QgsMessageLog
-
-        for msg in self.info_messages:
-            QgsMessageLog.logMessage(msg, "QGIS", Qgis.MessageLevel.Info)
-
-        for msg in self.warning_messages:
-            QgsMessageLog.logMessage(msg, "QGIS", Qgis.MessageLevel.Warning)
-
-_ssr = StartupScriptRunner()
-        """,
-        'QgsPythonUtilsImpl::checkSystemImports [run_startup_script]',
-        'exec',
-    ),
-    globals(),
-)
-)"""" ).arg( pythonPath() ), QObject::tr( "Couldn't create run_startup_script." ), true );
-  runString( QStringLiteral( "is_startup_script_executed = _ssr.run_startup_script(pyqgstart)" ) );
+  runString( QStringLiteral( "pyqgstart = os.getenv('PYQGIS_STARTUP')\n" ) );
+  runString( QStringLiteral( "if pyqgstart is not None and os.path.exists(pyqgstart):\n    with open(pyqgstart) as f:\n        exec(f.read())\n" ) );
+  runString( QStringLiteral( "if pyqgstart is not None and os.path.exists(os.path.join('%1', pyqgstart)):\n    with open(os.path.join('%1', pyqgstart)) as f:\n        exec(f.read())\n" ).arg( pythonPath() ) );
 
 #ifdef Q_OS_WIN
   runString( "oldhome=None" );
@@ -163,7 +111,7 @@ _ssr = StartupScriptRunner()
   }
 
   // import Qt bindings
-  if ( !runString( QStringLiteral( "from qgis.PyQt import QtCore, QtGui" ),
+  if ( !runString( QStringLiteral( "from PyQt5 import QtCore, QtGui" ),
                    QObject::tr( "Couldn't load PyQt." ) + '\n' + QObject::tr( "Python support will be disabled." ) ) )
   {
     return false;
@@ -171,11 +119,7 @@ _ssr = StartupScriptRunner()
 
   // import QGIS bindings
   QString error_msg = QObject::tr( "Couldn't load PyQGIS." ) + '\n' + QObject::tr( "Python support will be disabled." );
-  if ( !runString( QStringLiteral( "from qgis.core import *" ), error_msg )
-#ifdef HAVE_GUI
-       || !runString( QStringLiteral( "from qgis.gui import *" ), error_msg )
-#endif
-     )
+  if ( !runString( QStringLiteral( "from qgis.core import *" ), error_msg ) || !runString( QStringLiteral( "from qgis.gui import *" ), error_msg ) )
   {
     return false;
   }
@@ -190,14 +134,11 @@ _ssr = StartupScriptRunner()
   // tell the utils script where to look for the plugins
   runString( QStringLiteral( "qgis.utils.plugin_paths = [%1]" ).arg( pluginpaths.join( ',' ) ) );
   runString( QStringLiteral( "qgis.utils.sys_plugin_path = \"%1\"" ).arg( pluginsPath() ) );
-  runString( QStringLiteral( "qgis.utils.HOME_PLUGIN_PATH = %1" ).arg( homePluginsPath() ) ); // note - homePluginsPath() returns a python expression, not a string literal
+  runString( QStringLiteral( "qgis.utils.home_plugin_path = %1" ).arg( homePluginsPath() ) ); // note - homePluginsPath() returns a python expression, not a string literal
 
 #ifdef Q_OS_WIN
   runString( "if oldhome: os.environ['HOME']=oldhome\n" );
 #endif
-
-  // now, after successful import of `qgis` module, we can show logs from `StartupScriptRunner`
-  runString( QStringLiteral( "_ssr.log_messages()" ));
 
   return true;
 }
@@ -283,10 +224,8 @@ void QgsPythonUtilsImpl::initPython( QgisInterface *interface, const bool instal
     QString escapedPath = faultHandlerLogPath;
     escapedPath.replace( '\\', QLatin1String( "\\\\" ) );
     escapedPath.replace( '\'', QLatin1String( "\\'" ) );
-    runString( QStringLiteral( "qgis.utils.__qgis_fault_handler_file_path='%1'" ).arg( escapedPath ) );
-    runString( QStringLiteral( "qgis.utils.__qgis_fault_handler_file=open('%1', 'wt')" ).arg( escapedPath ) );
-    runString( QStringLiteral( "faulthandler.enable(file=qgis.utils.__qgis_fault_handler_file)" ) );
-    mFaultHandlerLogPath = faultHandlerLogPath;
+    runString( QStringLiteral( "fault_handler_file=open('%1', 'wt')" ).arg( escapedPath ) );
+    runString( QStringLiteral( "faulthandler.enable(file=fault_handler_file)" ) );
   }
 
   if ( interface )
@@ -343,33 +282,8 @@ bool QgsPythonUtilsImpl::startServerPlugin( QString packageName )
 
 void QgsPythonUtilsImpl::exitPython()
 {
-  // don't try to gracefully cleanup faulthandler on windows -- see https://github.com/qgis/QGIS/issues/53473
-#ifndef Q_OS_WIN
-  if ( !mFaultHandlerLogPath.isEmpty() )
-  {
-    runString( QStringLiteral( "faulthandler.disable()" ) );
-    runString( QStringLiteral( "qgis.utils.__qgis_fault_handler_file.close()" ) );
-
-    // remove fault handler log file only if it's empty
-    QFile faultHandlerFile( mFaultHandlerLogPath );
-    bool faultHandlerLogEmpty = false;
-    if ( faultHandlerFile.open( QIODevice::ReadOnly ) )
-    {
-      faultHandlerLogEmpty = faultHandlerFile.size() == 0;
-      faultHandlerFile.close();
-    }
-    if ( faultHandlerLogEmpty )
-    {
-      QFile::remove( mFaultHandlerLogPath );
-    }
-
-    mFaultHandlerLogPath.clear();
-  }
-#endif
-
   if ( mErrorHookInstalled )
     uninstallErrorHook();
-
   // causes segfault!
   //Py_Finalize();
   mMainModule = nullptr;
@@ -536,12 +450,12 @@ QString QgsPythonUtilsImpl::getTypeAsString( PyObject *obj )
 
   if ( PyType_Check( obj ) )
   {
-    QgsDebugMsgLevel( QStringLiteral( "got type" ), 2 );
+    QgsDebugMsg( QStringLiteral( "got type" ) );
     return QString( ( ( PyTypeObject * )obj )->tp_name );
   }
   else
   {
-    QgsDebugMsgLevel( QStringLiteral( "got object" ), 2 );
+    QgsDebugMsg( QStringLiteral( "got object" ) );
     return PyObjectToQString( obj );
   }
 }
@@ -615,11 +529,47 @@ QString QgsPythonUtilsImpl::PyObjectToQString( PyObject *obj )
   }
 
   // some problem with conversion to Unicode string
-  QgsDebugError( QStringLiteral( "unable to convert PyObject to a QString!" ) );
+  QgsDebugMsg( QStringLiteral( "unable to convert PyObject to a QString!" ) );
   return QStringLiteral( "(qgis error)" );
 }
 
+/*
+* 杨小兵-2024-03-22
 
+一、解释
+  这个 `QgsPythonUtilsImpl::evalString` 函数是 QGIS 的一部分，用于执行一个字符串形式的 Python 命令并获取结果。这是 QGIS 与 Python 交互的一个例子，
+允许 QGIS 动态地执行 Python 代码。
+
+### 函数签名
+- **`bool QgsPythonUtilsImpl::evalString(const QString &command, QString &result)`**：这是一个成员函数，返回一个布尔值（成功执行返回 `true`，否
+则返回 `false`），接受两个参数：`command`（要执行的 Python 命令字符串）和`result`（执行结果，作为引用传递，用于存储执行命令得到的结果）。
+
+### 函数逻辑
+1. **获取全局解释器锁（GIL）**：
+   - **`PyGILState_STATE gstate;`**：声明一个 `PyGILState_STATE` 类型的变量，用于存储全局解释器锁的状态。
+   - **`gstate = PyGILState_Ensure();`**：调用 `PyGILState_Ensure()` 确保当前线程拥有全局解释器锁（GIL），这是必要的因为 Python 不是线程安全的，而
+且在多线程环境下与 Python 交互时需要确保操作的原子性和线程安全。
+
+2. **执行 Python 命令**：
+   - **`PyObject *res = PyRun_String(command.toUtf8().constData(), Py_eval_input, mMainDict, mMainDict);`**：使用 `PyRun_String` 函数执行传入的
+ 命令。`command.toUtf8().constData()` 将 `QString` 命令转换为 UTF-8 编码的 C 字符串。`Py_eval_input` 指定输入模式为表达式模式，`mMainDict` 是提供给
+ 执行环境的全局和局部命名空间字典。
+
+3. **检查执行结果**：
+   - **`const bool success = nullptr != res;`**：检查 `PyRun_String` 的返回值是否为 `nullptr`。如果不是 `nullptr`，说明命令成功执行，否则执行失败。
+
+4. **TODO：错误处理**：这里有一个待完成的任务，即错误处理。在实际应用中，应该添加对执行失败的处理逻辑，例如获取 Python 错误信息并记录或显示。
+
+5. **处理成功执行的情况**：
+   - 如果命令成功执行（`success` 为 `true`），则将结果转换为 `QString` 并保存到 `result` 参数中。这通过调用 `PyObjectToQString(res)` 实现，其中 `PyObjectToQString` 是一个将 `PyObject` 转换为 `QString` 的函数（尽管这个函数的实现没有在代码片段中给出，但可以假设它执行了必要的类型转换）。
+
+6. **释放 Python 对象**：
+   - **`Py_XDECREF(res);`**：使用 `Py_XDECREF` 函数减少 `res` 指向的 Python 对象的引用计数。如果引用计数变为0，对象将被销毁。这是防止内存泄漏的重要步骤。
+
+7. **释放全局解释器锁（GIL）**：
+   - **`PyGILState_Release(gstate);`**：调用 `PyGILState_Release` 并传入之前保存的状态变量 `gstate`，以释放当前线程持有的全局解释器锁。这标志着当前线程完成了与 Python 解释器的交互，允许其他线程访问 Python 对象。
+
+*/
 bool QgsPythonUtilsImpl::evalString( const QString &command, QString &result )
 {
   // acquire global interpreter lock to ensure we are in a consistent state
@@ -682,10 +632,18 @@ QStringList QgsPythonUtilsImpl::extraPluginsPaths() const
   const QString paths = QString::fromLocal8Bit( cpaths );
 #ifndef Q_OS_WIN
   if ( paths.contains( ':' ) )
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+    return paths.split( ':', QString::SkipEmptyParts );
+#else
     return paths.split( ':', Qt::SkipEmptyParts );
 #endif
+#endif
   if ( paths.contains( ';' ) )
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+    return paths.split( ';', QString::SkipEmptyParts );
+#else
     return paths.split( ';', Qt::SkipEmptyParts );
+#endif
   else
     return QStringList( paths );
 }
@@ -697,7 +655,11 @@ QStringList QgsPythonUtilsImpl::pluginList()
 
   QString output;
   evalString( QStringLiteral( "'\\n'.join(qgis.utils.available_plugins)" ), output );
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+  return output.split( QChar( '\n' ), QString::SkipEmptyParts );
+#else
   return output.split( QChar( '\n' ), Qt::SkipEmptyParts );
+#endif
 }
 
 QString QgsPythonUtilsImpl::getPluginMetadata( const QString &pluginName, const QString &function )
@@ -705,7 +667,7 @@ QString QgsPythonUtilsImpl::getPluginMetadata( const QString &pluginName, const 
   QString res;
   const QString str = QStringLiteral( "qgis.utils.pluginMetadata('%1', '%2')" ).arg( pluginName, function );
   evalString( str, res );
-  //QgsDebugMsgLevel("metadata "+pluginName+" - '"+function+"' = "+res, 2);
+  //QgsDebugMsg("metadata "+pluginName+" - '"+function+"' = "+res);
   return res;
 }
 
@@ -732,13 +694,6 @@ bool QgsPythonUtilsImpl::startProcessingPlugin( const QString &packageName )
 {
   QString output;
   evalString( QStringLiteral( "qgis.utils.startProcessingPlugin('%1')" ).arg( packageName ), output );
-  return ( output == QLatin1String( "True" ) );
-}
-
-bool QgsPythonUtilsImpl::finalizeProcessingStartup()
-{
-  QString output;
-  evalString( QStringLiteral( "qgis.utils.finalizeProcessingStartup()" ), output );
   return ( output == QLatin1String( "True" ) );
 }
 
@@ -772,14 +727,9 @@ QStringList QgsPythonUtilsImpl::listActivePlugins()
 {
   QString output;
   evalString( QStringLiteral( "'\\n'.join(qgis.utils.active_plugins)" ), output );
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+  return output.split( QChar( '\n' ), QString::SkipEmptyParts );
+#else
   return output.split( QChar( '\n' ), Qt::SkipEmptyParts );
-}
-
-void QgsPythonUtilsImpl::initGDAL()
-{
-  runString("from osgeo import gdal, ogr, osr");
-  // To avoid FutureWarning with GDAL >= 3.7.0
-  runString("gdal.UseExceptions()");
-  runString("ogr.UseExceptions()");
-  runString("osr.UseExceptions()");
+#endif
 }

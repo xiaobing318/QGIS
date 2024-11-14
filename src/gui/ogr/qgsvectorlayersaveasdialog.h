@@ -20,14 +20,20 @@
 
 #include "ui_qgsvectorlayersaveasdialogbase.h"
 #include <QDialog>
+#include "qgshelp.h"
+#include "qgsfields.h"
 #include "qgsvectorfilewriter.h"
 #include "qgis_gui.h"
+
+#define SIP_NO_FILE
 
 class QgsVectorLayer;
 
 /**
  * \ingroup gui
  * \brief Class to select destination file, type and CRS for ogr layers
+ * \note not available in Python bindings
+ * \since QGIS 1.0
  */
 class GUI_EXPORT QgsVectorLayerSaveAsDialog : public QDialog, private Ui::QgsVectorLayerSaveAsDialogBase
 {
@@ -35,10 +41,8 @@ class GUI_EXPORT QgsVectorLayerSaveAsDialog : public QDialog, private Ui::QgsVec
 
   public:
 
-    /**
-     * Available dialog options.
-     */
-    enum class Option : int SIP_ENUM_BASETYPE( IntFlag )
+    //! Bitmask of options to be shown
+    enum Option
     {
       Symbology = 1, //!< Show symbology options
       DestinationCrs = 1 << 2, //!< Show destination CRS (reprojection) option
@@ -50,88 +54,75 @@ class GUI_EXPORT QgsVectorLayerSaveAsDialog : public QDialog, private Ui::QgsVec
       Metadata = 1 << 8, //!< Show metadata options
       AllOptions = ~0 //!< Show all options
     };
-    Q_ENUM( Option )
-
-    /**
-     * Available dialog options.
-     */
     Q_DECLARE_FLAGS( Options, Option )
-    Q_FLAG( Options )
 
     /**
      * Construct a new QgsVectorLayerSaveAsDialog
      *
-     * \deprecated QGIS 3.14. Will be removed in QGIS 4.0.
+     * \deprecated since QGIS 3.14 - will be removed in QGIS 4.0
      */
-    Q_DECL_DEPRECATED QgsVectorLayerSaveAsDialog( long srsid, QWidget *parent = nullptr, Qt::WindowFlags fl = Qt::WindowFlags() ) SIP_SKIP;
+    Q_DECL_DEPRECATED QgsVectorLayerSaveAsDialog( long srsid, QWidget *parent = nullptr, Qt::WindowFlags fl = Qt::WindowFlags() );
 
     /**
      * Construct a new QgsVectorLayerSaveAsDialog
      */
-    QgsVectorLayerSaveAsDialog( QgsVectorLayer *layer, QgsVectorLayerSaveAsDialog::Options options = QgsVectorLayerSaveAsDialog::Option::AllOptions, QWidget *parent = nullptr, Qt::WindowFlags fl = Qt::WindowFlags() );
+    QgsVectorLayerSaveAsDialog( QgsVectorLayer *layer, Options options = AllOptions, QWidget *parent = nullptr, Qt::WindowFlags fl = Qt::WindowFlags() );
 
     /**
-     * Returns the selected format in which the export should be written.
-     *
+     * The format in which the export should be written.
      * \see QgsVectorFileWriter::filterForDriver()
      */
     QString format() const;
 
     /**
-     * Returns the selected encoding for the target file.
+     * The encoding of the target file.
      */
     QString encoding() const;
 
     /**
      * Returns the target filename.
-     *
-     * \see layerName()
      */
-    QString fileName() const;
+    QString filename() const;
 
     /**
-     * Returns the target layer name.
-     *
-     * \see fileName()
+     * Returns the target layer name
      */
-    QString layerName() const;
+    QString layername() const;
 
     /**
      * Returns a list of additional data source options which are passed to OGR.
      * Refer to the OGR documentation for the target format for available options.
-     *
-     * \see layerOptions()
      */
     QStringList datasourceOptions() const;
 
     /**
      * Returns a list of additional layer options which are passed to OGR.
      * Refer to the OGR documentation for the target format for available options.
-     *
-     * \see datasourceOptions()
      */
     QStringList layerOptions() const;
 
     /**
-     * Returns the CRS chosen for export.
-     *
+     * Returns the internal CRS ID.
+     * \see QgsCoordinateReferenceSystem::srsid()
+     * \deprecated since QGIS 3.14 - will be removed in QGIS 4.0. Use crsObject() instead.
+     */
+    Q_DECL_DEPRECATED long crs() const;
+
+    /**
+     * Returns the CRS chosen for export
      * \since QGIS 3.14
      */
-    QgsCoordinateReferenceSystem crs() const;
+    QgsCoordinateReferenceSystem crsObject() const;
 
     /**
      * Returns a list of attributes which are selected for saving.
      */
     QgsAttributeList selectedAttributes() const;
-
-    /**
-     * Returns selected attributes that must be exported with their displayed values instead of their raw values.
-     *
-     */
+    //! Returns selected attributes that must be exported with their displayed values instead of their raw values. Added in QGIS 2.16
     QgsAttributeList attributesAsDisplayedValues() const;
 
     /**
-     * Returns a list of export names for attributes.
+     * Returns a list of export names for attributes
      */
     QStringList attributesExportNames() const;
 
@@ -152,8 +143,11 @@ class GUI_EXPORT QgsVectorLayerSaveAsDialog : public QDialog, private Ui::QgsVec
 
     /**
      * Returns type of symbology export.
+     * 0: No symbology
+     * 1: Feature symbology
+     * 2: Symbol level symbology
      */
-    Qgis::FeatureSymbologyExport symbologyExport() const;
+    int symbologyExport() const;
 
     /**
      * Returns the specified map scale.
@@ -180,15 +174,11 @@ class GUI_EXPORT QgsVectorLayerSaveAsDialog : public QDialog, private Ui::QgsVec
 
     /**
      * Sets whether only selected features will be saved.
-     *
-     * \see onlySelected()
      */
     void setOnlySelected( bool onlySelected );
 
     /**
      * Returns whether only selected features will be saved.
-     *
-     * \see setOnlySelected()
      */
     bool onlySelected() const;
 
@@ -205,7 +195,7 @@ class GUI_EXPORT QgsVectorLayerSaveAsDialog : public QDialog, private Ui::QgsVec
      * \see forceMulti()
      * \see includeZ()
      */
-    Qgis::WkbType geometryType() const;
+    QgsWkbTypes::Type geometryType() const;
 
     /**
      * Returns TRUE if geometry type is set to automatic.
@@ -215,40 +205,28 @@ class GUI_EXPORT QgsVectorLayerSaveAsDialog : public QDialog, private Ui::QgsVec
 
     /**
      * Returns TRUE if force multi geometry type is checked.
-     *
      * \see includeZ()
-     * \see setForceMulti()
      */
     bool forceMulti() const;
 
     /**
      * Sets whether the force multi geometry checkbox should be checked.
-     *
-     * \see forceMulti()
      */
     void setForceMulti( bool checked );
 
     /**
      * Returns TRUE if include z dimension is checked.
-     *
      * \see forceMulti()
-     * \see setIncludeZ()
      */
     bool includeZ() const;
 
     /**
      * Sets whether the include z dimension checkbox should be checked.
-     *
-     * \see includeZ()
      */
     void setIncludeZ( bool checked );
 
-    /**
-     * Returns the creation action.
-     */
+    //! Returns creation action
     QgsVectorFileWriter::ActionOnExistingFile creationActionOnExistingFile() const;
-
-    void accept() override;
 
   private slots:
 
@@ -257,6 +235,7 @@ class GUI_EXPORT QgsVectorLayerSaveAsDialog : public QDialog, private Ui::QgsVec
     void showHelp();
     void mSymbologyExportComboBox_currentIndexChanged( const QString &text );
     void mGeometryTypeComboBox_currentIndexChanged( int index );
+    void accept() override;
     void mSelectAllAttributes_clicked();
     void mDeselectAllAttributes_clicked();
     void mUseAliasesForExportedName_stateChanged( int state );
@@ -283,9 +262,8 @@ class GUI_EXPORT QgsVectorLayerSaveAsDialog : public QDialog, private Ui::QgsVec
     QgsVectorLayer *mLayer = nullptr;
     QgsMapCanvas *mMapCanvas = nullptr;
     QgsVectorFileWriter::ActionOnExistingFile mActionOnExistingFile;
-    Options mOptions = Option::AllOptions;
+    Options mOptions = AllOptions;
     QString mDefaultOutputLayerNameFromInputLayerName;
-    bool mAddToCanvasStateOnOpenCompatibleDriver = true;
 };
 
 Q_DECLARE_OPERATORS_FOR_FLAGS( QgsVectorLayerSaveAsDialog::Options )

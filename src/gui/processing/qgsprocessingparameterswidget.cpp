@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsprocessingparameterswidget.h"
-#include "moc_qgsprocessingparameterswidget.cpp"
 #include "qgsprocessingalgorithm.h"
 #include "qgsprocessingparameters.h"
 
@@ -43,7 +42,7 @@ void QgsProcessingParametersWidget::initWidgets()
   const QgsProcessingParameterDefinitions defs = mAlgorithm->parameterDefinitions();
   for ( const QgsProcessingParameterDefinition *param : defs )
   {
-    if ( param->flags() & Qgis::ProcessingParameterFlag::Advanced )
+    if ( param->flags() & QgsProcessingParameterDefinition::FlagAdvanced )
     {
       grpAdvanced->show();
       break;
@@ -53,7 +52,7 @@ void QgsProcessingParametersWidget::initWidgets()
 
 void QgsProcessingParametersWidget::addParameterWidget( const QgsProcessingParameterDefinition *parameter, QWidget *widget, int stretch )
 {
-  if ( parameter->flags() & Qgis::ProcessingParameterFlag::Advanced )
+  if ( parameter->flags() & QgsProcessingParameterDefinition::FlagAdvanced )
     mAdvancedGroupLayout->addWidget( widget, stretch );
   else
     mScrollAreaLayout->insertWidget( mScrollAreaLayout->count() - 2, widget, stretch );
@@ -61,7 +60,7 @@ void QgsProcessingParametersWidget::addParameterWidget( const QgsProcessingParam
 
 void QgsProcessingParametersWidget::addParameterLabel( const QgsProcessingParameterDefinition *parameter, QWidget *label )
 {
-  if ( parameter->flags() & Qgis::ProcessingParameterFlag::Advanced )
+  if ( parameter->flags() & QgsProcessingParameterDefinition::FlagAdvanced )
     mAdvancedGroupLayout->addWidget( label );
   else
     mScrollAreaLayout->insertWidget( mScrollAreaLayout->count() - 2, label );

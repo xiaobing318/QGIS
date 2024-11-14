@@ -62,13 +62,12 @@ set(TESTS
  testqgsfilledmarker.cpp
  testqgsfontmarker.cpp
  testqgsfontutils.cpp
- testqgsgdalcloudconnection.cpp
  testqgsgdalprovider.cpp
  testqgsgdalutils.cpp
  testqgsgenericspatialindex.cpp
  testqgsgeometryimport.cpp
+ testqgsgeonodeconnection.cpp
  testqgsgeopdfexport.cpp
- testqgsgltfutils.cpp
  testqgsgml.cpp
  testqgsgradients.cpp
  testqgsgraduatedsymbolrenderer.cpp
@@ -82,7 +81,6 @@ set(TESTS
  testqgsjsonutils.cpp
  testqgslabelingengine.cpp
  testqgslayerdefinition.cpp
- testqgslayeredsymbollevel.cpp
  testqgslayertree.cpp
  testqgslayout.cpp
  testqgslayoutatlas.cpp
@@ -121,7 +119,6 @@ set(TESTS
  testqgsmaptopixel.cpp
  testqgsmaptopixelgeometrysimplifier.cpp
  testqgsmarkerlinesymbol.cpp
- testqgsmatrix4x4.cpp
  testqgsmesh3daveraging.cpp
  testqgsmesheditor.cpp
  testqgsmeshlayer.cpp
@@ -131,7 +128,6 @@ set(TESTS
  testqgsnetworkaccessmanager.cpp
  testqgsnetworkcontentfetcher.cpp
  testqgsnewsfeedparser.cpp
- testqgsnmeaconnection.cpp
  testqgsofflineediting.cpp
  testqgsogcutils.cpp
  testqgsogrprovider.cpp
@@ -153,7 +149,6 @@ set(TESTS
  testqgsprojutils.cpp
  testqgsproperty.cpp
  testqgsprovidermetadata.cpp
- testqgsquantizedmeshtiles.cpp
  testqgsrange.cpp
  testqgsrasterblock.cpp
  testqgsrastercontourrenderer.cpp
@@ -169,8 +164,6 @@ set(TESTS
  testqgsrenderers.cpp
  testqgsrulebasedrenderer.cpp
  testqgsruntimeprofiler.cpp
- testqgsscaleutils.cpp
- testqgssensorthingsconnection.cpp
  testqgssettings.cpp
  testqgssettingsentry.cpp
  testqgssettingsregistry.cpp
@@ -182,8 +175,6 @@ set(TESTS
  testqgsspatialindexkdbush.cpp
  testqgssqliteexpressioncompiler.cpp
  testqgssqliteutils.cpp
- testqgsstac.cpp
- testqgsstackeddiagram.cpp
  testqgsrelation.cpp
  testqgsstatisticalsummary.cpp
  testqgsstoredexpressionmanager.cpp
@@ -196,8 +187,6 @@ set(TESTS
  testqgstemporalnavigationobject.cpp
  testqgstemporalproperty.cpp
  testqgstemporalrangeobject.cpp
- testqgstiledsceneconnection.cpp
- testqgstiledscenerendererregistry.cpp
  testqgstiledownloadmanager.cpp
  testqgstracer.cpp
  testqgstranslateproject.cpp

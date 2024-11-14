@@ -68,6 +68,7 @@ class CORE_EXPORT QgsSymbolLayerAbstractMetadata
      * when saving is FALSE, paths are converted from relative to absolute.
      * This ensures that paths in project files can be relative, but in symbol layer
      * instances the paths are always absolute
+     * \since QGIS 3.0
      */
     virtual void resolvePaths( QVariantMap &properties, const QgsPathResolver &pathResolver, bool saving )
     {
@@ -186,7 +187,9 @@ class CORE_EXPORT QgsSymbolLayerRegistry
     QgsSymbolLayerRegistry();
     ~QgsSymbolLayerRegistry();
 
+    //! QgsSymbolLayerRegistry cannot be copied.
     QgsSymbolLayerRegistry( const QgsSymbolLayerRegistry &rh ) = delete;
+    //! QgsSymbolLayerRegistry cannot be copied.
     QgsSymbolLayerRegistry &operator=( const QgsSymbolLayerRegistry &rh ) = delete;
 
     //! Returns metadata for specified symbol layer. Returns NULLPTR if not found
@@ -211,6 +214,7 @@ class CORE_EXPORT QgsSymbolLayerRegistry
      * Resolve paths in properties of a particular symbol layer.
      * This normally means converting relative paths to absolute paths when loading
      * and converting absolute paths to relative paths when saving.
+     * \since QGIS 3.0
      */
     void resolvePaths( const QString &name, QVariantMap &properties, const QgsPathResolver &pathResolver, bool saving ) const;
 

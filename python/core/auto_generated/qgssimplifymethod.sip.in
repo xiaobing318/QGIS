@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgssimplifymethod.h                                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -13,6 +13,8 @@ class QgsSimplifyMethod
 {
 %Docstring(signature="appended")
 This class contains information about how to simplify geometries fetched from a :py:class:`QgsFeatureIterator`
+
+.. versionadded:: 2.2
 %End
 
 %TypeHeaderCode
@@ -73,6 +75,7 @@ Creates a geometry simplifier according to specified method
 %End
 
     bool operator==( const QgsSimplifyMethod &v ) const;
+
     bool operator!=( const QgsSimplifyMethod &v ) const;
 
   protected:
@@ -83,5 +86,5 @@ Creates a geometry simplifier according to specified method
  *                                                                      *
  * src/core/qgssimplifymethod.h                                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

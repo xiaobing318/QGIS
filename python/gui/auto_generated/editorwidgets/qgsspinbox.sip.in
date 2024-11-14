@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/editorwidgets/qgsspinbox.h                                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -74,6 +74,8 @@ Sets if the widget will allow entry of simple expressions, which are
 evaluated and then discarded.
 
 :param enabled: set to ``True`` to allow expression entry
+
+.. versionadded:: 2.7
 %End
 
     bool expressionsEnabled() const;
@@ -82,6 +84,8 @@ Returns whether the widget will allow entry of simple expressions, which are
 evaluated and then discarded.
 
 :return: ``True`` if spin box allows expression entry
+
+.. versionadded:: 2.7
 %End
 
     virtual void clear();
@@ -133,24 +137,6 @@ is equal to :py:func:`~QgsSpinBox.minimum`. Typical use is to indicate that this
 
     virtual QValidator::State validate( QString &input, int &pos ) const;
 
-    virtual void stepBy( int steps );
-
-
-  signals:
-
-    void returnPressed();
-%Docstring
-Emitted when the Return or Enter key is used in the line edit
-
-.. versionadded:: 3.40
-%End
-
-    void textEdited( const QString &text );
-%Docstring
-Emitted when the the value has been manually edited via line edit.
-
-.. versionadded:: 3.40
-%End
 
   protected:
 
@@ -170,5 +156,5 @@ Emitted when the the value has been manually edited via line edit.
  *                                                                      *
  * src/gui/editorwidgets/qgsspinbox.h                                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

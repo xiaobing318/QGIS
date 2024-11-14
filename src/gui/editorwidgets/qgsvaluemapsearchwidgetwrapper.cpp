@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsvaluemapsearchwidgetwrapper.h"
-#include "moc_qgsvaluemapsearchwidgetwrapper.cpp"
 #include "qgstexteditconfigdlg.h"
 #include "qgsvaluemapconfigdlg.h"
 #include "qgsvaluemapfieldformatter.h"
@@ -87,7 +86,7 @@ QString QgsValueMapSearchWidgetWrapper::createExpression( QgsSearchWidgetWrapper
   //clear any unsupported flags
   flags &= supportedFlags();
 
-  const QMetaType::Type fldType = layer()->fields().at( mFieldIdx ).type();
+  const QVariant::Type fldType = layer()->fields().at( mFieldIdx ).type();
   const QString fieldName = createFieldIdentifier();
 
   if ( flags & IsNull )
@@ -103,11 +102,11 @@ QString QgsValueMapSearchWidgetWrapper::createExpression( QgsSearchWidgetWrapper
 
   switch ( fldType )
   {
-    case QMetaType::Type::Int:
-    case QMetaType::Type::UInt:
-    case QMetaType::Type::Double:
-    case QMetaType::Type::LongLong:
-    case QMetaType::Type::ULongLong:
+    case QVariant::Int:
+    case QVariant::UInt:
+    case QVariant::Double:
+    case QVariant::LongLong:
+    case QVariant::ULongLong:
     {
       if ( flags & EqualTo )
         return fieldName + '=' + currentKey;

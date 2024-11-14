@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsscalevisibilitydialog.h                                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -54,24 +54,11 @@ The scale value indicates the scale denominator, e.g. 1000.0 for a 1:1000 map.
 
   public slots:
 
- void setScaleVisiblity( bool hasScaleVisibility ) /Deprecated/;
+    void setScaleVisiblity( bool hasScaleVisibility );
 %Docstring
 Set whether scale based visibility is enabled.
 
 .. seealso:: :py:func:`hasScaleVisibility`
-
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsScaleVisibilityDialog.setScaleVisibility`.
-%End
-
-    void setScaleVisibility( bool hasScaleVisibility );
-%Docstring
-Set whether scale based visibility is enabled.
-
-.. seealso:: :py:func:`hasScaleVisibility`
-
-.. versionadded:: 3.38
 %End
 
     void setMinimumScale( double scale );
@@ -102,5 +89,5 @@ The scale value indicates the scale denominator, e.g. 1000.0 for a 1:1000 map.
  *                                                                      *
  * src/gui/qgsscalevisibilitydialog.h                                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

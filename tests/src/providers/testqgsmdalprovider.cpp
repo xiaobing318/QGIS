@@ -50,8 +50,6 @@ class TestQgsMdalProvider : public QgsTest
     void load();
     void filters();
     void encodeDecodeUri();
-    void absoluteRelativeUri();
-    void preserveMeshMetadata();
 
   private:
     QString mTestDataDir;
@@ -121,25 +119,6 @@ void TestQgsMdalProvider::encodeDecodeUri()
   QCOMPARE( mdalMetadata->encodeUri( parts ), QStringLiteral( "ESRI_TIN:\"/home/data/tdenv9.adf\"" ) );
 }
 
-void TestQgsMdalProvider::absoluteRelativeUri()
-{
-  QgsReadWriteContext context;
-  context.setPathResolver( QgsPathResolver( QStringLiteral( TEST_DATA_DIR ) + QStringLiteral( "/project.qgs" ) ) );
-
-  QgsProviderMetadata *mdalMetadata = QgsProviderRegistry::instance()->providerMetadata( "mdal" );
-  QVERIFY( mdalMetadata );
-
-  QString absoluteUri = QStringLiteral( TEST_DATA_DIR ) + QStringLiteral( "/mesh/quad_flower.2dm" );
-  QString relativeUri = QStringLiteral( "./mesh/quad_flower.2dm" );
-  QCOMPARE( mdalMetadata->absoluteToRelativeUri( absoluteUri, context ), relativeUri );
-  QCOMPARE( mdalMetadata->relativeToAbsoluteUri( relativeUri, context ), absoluteUri );
-
-  absoluteUri = QStringLiteral( "2DM:\"%1/mesh/mesh_flower.2dm\"" ).arg( QStringLiteral( TEST_DATA_DIR ) );
-  relativeUri = QStringLiteral( "2DM:\"./mesh/mesh_flower.2dm\"" );
-  QCOMPARE( mdalMetadata->absoluteToRelativeUri( absoluteUri, context ), relativeUri );
-  QCOMPARE( mdalMetadata->relativeToAbsoluteUri( relativeUri, context ), absoluteUri );
-}
-
 void TestQgsMdalProvider::load()
 {
   {
@@ -168,43 +147,6 @@ void TestQgsMdalProvider::load()
     QVERIFY( !mp->isValid() );
     delete provider;
   }
-}
-
-void TestQgsMdalProvider::preserveMeshMetadata()
-{
-  QgsProviderMetadata *mdalMetadata = QgsProviderRegistry::instance()->providerMetadata( "mdal" );
-  QVERIFY( mdalMetadata );
-
-  QString uri = QStringLiteral( TEST_DATA_DIR ) + QStringLiteral( "/mesh/small.mesh" );
-
-  QDir dir( QDir::tempPath() + QStringLiteral( "/mesh_metadata_test" ) );
-  dir.mkpath( dir.path() );
-  Q_ASSERT( dir.exists() );
-  QFile meshFile( uri );
-  const QString copiedFile = dir.filePath( QStringLiteral( "small.mesh" ) );
-  meshFile.copy( copiedFile );
-
-  QgsDataProvider *provider = QgsProviderRegistry::instance()->createProvider(
-                                QStringLiteral( "mdal" ),
-                                copiedFile,
-                                QgsDataProvider::ProviderOptions()
-                              );
-
-  QgsMeshDataProvider *mp = dynamic_cast< QgsMeshDataProvider * >( provider );
-  QVERIFY( mp );
-  QVERIFY( mp->isValid() );
-
-  QgsMesh *mesh = new QgsMesh();
-  mp->populateMesh( mesh );
-  QVERIFY( mp->saveMeshFrame( *mesh ) );
-  mp->reloadData();
-
-  QVERIFY( mp->isValid() );
-
-  dir.removeRecursively();
-
-  delete provider;
-  delete mesh;
 }
 
 QGSTEST_MAIN( TestQgsMdalProvider )

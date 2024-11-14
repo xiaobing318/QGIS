@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 /***************************************************************************
 Name                 : DB Manager
@@ -25,11 +27,7 @@ from qgis.core import Qgis, QgsProject, QgsMessageLog
 from qgis.gui import QgsMessageBar, QgsMessageBarItem
 
 from .db_model import DBModel, PluginItem
-from .db_plugins.gpkg.plugin import GPKGRasterTable
 from .db_plugins.plugin import DBPlugin, Schema, Table
-from .db_plugins.vlayers.plugin import LTable
-
-from osgeo import gdal
 
 
 class DBTree(QTreeView):
@@ -41,7 +39,7 @@ class DBTree(QTreeView):
 
         self.setModel(DBModel(self))
         self.setHeaderHidden(True)
-        self.setEditTriggers(QTreeView.EditTrigger.EditKeyPressed | QTreeView.EditTrigger.SelectedClicked)
+        self.setEditTriggers(QTreeView.EditKeyPressed | QTreeView.SelectedClicked)
 
         self.setDragEnabled(True)
         self.setAcceptDrops(True)
@@ -124,9 +122,8 @@ class DBTree(QTreeView):
 
         menu = QMenu(self)
 
-        if isinstance(item, (Table, Schema)) and not isinstance(item, LTable):
-            if not (isinstance(item, GPKGRasterTable) and int(gdal.VersionInfo()) < 3100000):
-                menu.addAction(QCoreApplication.translate("DBTree", "Rename…"), self.rename)
+        if isinstance(item, (Table, Schema)):
+            menu.addAction(QCoreApplication.translate("DBTree", "Rename…"), self.rename)
             menu.addAction(QCoreApplication.translate("DBTree", "Delete…"), self.delete)
 
             if isinstance(item, Table) and item.canBeAddedToCanvas():
@@ -143,7 +140,7 @@ class DBTree(QTreeView):
             menu.addAction(QCoreApplication.translate("DBTree", "New Connection…"), self.newConnection)
 
         if not menu.isEmpty():
-            menu.exec(ev.globalPos())
+            menu.exec_(ev.globalPos())
 
         menu.deleteLater()
 
@@ -173,7 +170,7 @@ class DBTree(QTreeView):
                 msgLabel.setWordWrap(True)
                 msgLabel.linkActivated.connect(self.mainWindow.iface.mainWindow().findChild(QWidget, "MessageLog").show)
                 msgLabel.linkActivated.connect(self.mainWindow.iface.mainWindow().raise_)
-                self.mainWindow.infoBar.pushItem(QgsMessageBarItem(msgLabel, Qgis.MessageLevel.Warning))
+                self.mainWindow.infoBar.pushItem(QgsMessageBarItem(msgLabel, Qgis.Warning))
 
     def reconnect(self):
         db = self.currentDatabase()

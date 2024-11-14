@@ -3,7 +3,7 @@
  *                                                                      *
  * src/analysis/interpolation/qgsidwinterpolator.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -36,6 +36,8 @@ weighted with distance. Smaller values mean sharper peaks at the data points.
 Point values are weighted by 1 / ( distance ^ coefficient ).
 
 .. seealso:: :py:func:`distanceCoefficient`
+
+.. versionadded:: 3.0
 %End
 
     double distanceCoefficient() const;
@@ -47,6 +49,8 @@ The default is a coefficient of 2.
 Point values are weighted by 1 / ( distance ^ coefficient ).
 
 .. seealso:: :py:func:`setDistanceCoefficient`
+
+.. versionadded:: 3.0
 %End
 
 };
@@ -56,5 +60,5 @@ Point values are weighted by 1 / ( distance ^ coefficient ).
  *                                                                      *
  * src/analysis/interpolation/qgsidwinterpolator.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

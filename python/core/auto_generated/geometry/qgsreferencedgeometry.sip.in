@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/geometry/qgsreferencedgeometry.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -19,6 +19,8 @@ A base class for geometry primitives which are stored with an associated referen
 associated with them.
 
 .. seealso:: :py:class:`QgsReferencedRectangle`
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -53,6 +55,8 @@ class QgsReferencedRectangle : QgsRectangle, QgsReferencedGeometryBase
 {
 %Docstring(signature="appended")
 A :py:class:`QgsRectangle` with associated coordinate reference system.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -67,6 +71,9 @@ and ``crs``.
 %End
 
     QgsReferencedRectangle();
+%Docstring
+Constructor for QgsReferencedRectangle.
+%End
 
     operator QVariant() const;
 
@@ -86,6 +93,8 @@ class QgsReferencedPointXY : QgsPointXY, QgsReferencedGeometryBase
 {
 %Docstring(signature="appended")
 A :py:class:`QgsPointXY` with associated coordinate reference system.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -100,6 +109,9 @@ and ``crs``.
 %End
 
     QgsReferencedPointXY();
+%Docstring
+Constructor for QgsReferencedPointXY.
+%End
 
     operator QVariant() const;
 
@@ -135,11 +147,11 @@ and ``crs``.
 %End
 
     QgsReferencedGeometry();
+%Docstring
+Constructor for QgsReferencedGeometry.
+%End
 
     operator QVariant() const;
-
-    bool operator==( const QgsReferencedGeometry &other ) const;
-    bool operator!=( const QgsReferencedGeometry &other ) const;
 
     static QgsReferencedGeometry fromReferencedPointXY( const QgsReferencedPointXY &point );
 %Docstring
@@ -166,5 +178,5 @@ Construct a new QgsReferencedGeometry from referenced ``rectangle``
  *                                                                      *
  * src/core/geometry/qgsreferencedgeometry.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

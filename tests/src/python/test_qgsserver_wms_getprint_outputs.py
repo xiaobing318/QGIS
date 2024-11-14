@@ -18,18 +18,20 @@ import os
 # Needed on Qt 5 so that the serialization of XML is consistent among all executions
 os.environ['QT_HASH_SEED'] = '1'
 
-import subprocess
-import tempfile
 import urllib.parse
 
-import osgeo.gdal  # NOQA
-
-from qgis.core import QgsMultiRenderChecker
+from qgis.testing import unittest
 from qgis.PyQt.QtCore import QSize, Qt
 from qgis.PyQt.QtGui import QImage, QPainter
 from qgis.PyQt.QtSvg import QSvgRenderer
-from qgis.testing import unittest
+
+import osgeo.gdal  # NOQA
+import tempfile
+import base64
+import subprocess
+
 from test_qgsserver import QgsServerTestBase
+from qgis.core import QgsMultiRenderChecker
 from utilities import getExecutablePath, unitTestDataPath
 
 
@@ -75,7 +77,7 @@ class PyQgsServerWMSGetPrintOutputs(QgsServerTestBase):
         else:
             return False, ''
 
-        print(f"exportToPdf call: {' '.join(call)}")
+        print("exportToPdf call: {}".format(' '.join(call)))
         try:
             subprocess.check_call(call)
         except subprocess.CalledProcessError as e:
@@ -86,25 +88,21 @@ class PyQgsServerWMSGetPrintOutputs(QgsServerTestBase):
 
     def _pdf_diff(self, pdf, control_image, max_diff, max_size_diff=QSize(), dpi=96):
 
-        temp_pdf = os.path.join(tempfile.gettempdir(), f"{control_image}_result.pdf")
+        temp_pdf = os.path.join(tempfile.gettempdir(), "%s_result.pdf" % control_image)
 
         with open(temp_pdf, "wb") as f:
             f.write(pdf)
 
-        temp_image = os.path.join(tempfile.gettempdir(), f"{control_image}_result.png")
+        temp_image = os.path.join(tempfile.gettempdir(), "%s_result.png" % control_image)
         self._pdf_to_png(temp_pdf, temp_image, dpi=dpi, page=1)
 
-        rendered_image = QImage(temp_image)
-        return self.image_check(
-            control_image,
-            control_image,
-            rendered_image,
-            control_image,
-            color_tolerance=0,
-            allowed_mismatch=max_diff,
-            size_tolerance=max_size_diff,
-            control_path_prefix="qgis_server"
-        )
+        control = QgsMultiRenderChecker()
+        control.setControlPathPrefix("qgis_server")
+        control.setControlName(control_image)
+        control.setRenderedImage(temp_image)
+        if max_size_diff.isValid():
+            control.setSizeTolerance(max_size_diff.width(), max_size_diff.height())
+        return control.runTest(control_image, max_diff), control.report()
 
     def _pdf_diff_error(self, response, headers, image, max_diff=100, max_size_diff=QSize(),
                         unittest_data_path='control_images', dpi=96):
@@ -114,22 +112,51 @@ class PyQgsServerWMSGetPrintOutputs(QgsServerTestBase):
 
         self.assertEqual(
             headers.get("Content-Type"), 'application/pdf',
-            f"Content type is wrong: {headers.get('Content-Type')} instead of application/pdf\n{response}")
+            "Content type is wrong: {} instead of {}\n{}".format(headers.get("Content-Type"), 'application/pdf', response))
 
-        self.assertTrue(
-            self._pdf_diff(response, image, max_diff, max_size_diff, dpi)
-        )
+        test, report = self._pdf_diff(response, image, max_diff, max_size_diff, dpi)
+
+        with open(os.path.join(tempfile.gettempdir(), image + "_result.pdf"), "rb") as rendered_file:
+            if not os.environ.get('ENCODED_OUTPUT'):
+                message = "PDF is wrong: rendered file {}/{}_result.{}".format(tempfile.gettempdir(), image, 'pdf')
+            else:
+                encoded_rendered_file = base64.b64encode(rendered_file.read())
+                message = "PDF is wrong\n{}File:\necho '{}' | base64 -d >{}/{}_result.{}".format(
+                    report, encoded_rendered_file.strip().decode('utf8'), tempfile.gettempdir(), image, 'pdf'
+                )
+
+        with open(os.path.join(tempfile.gettempdir(), image + "_result.png"), "rb") as rendered_file:
+            if not os.environ.get('ENCODED_OUTPUT'):
+                message = "Image is wrong: rendered file {}/{}_result.{}".format(tempfile.gettempdir(), image, 'png')
+            else:
+                encoded_rendered_file = base64.b64encode(rendered_file.read())
+                message = "Image is wrong\n{}\nImage:\necho '{}' | base64 -d >{}/{}_result.{}".format(
+                    report, encoded_rendered_file.strip().decode('utf8'), tempfile.gettempdir(), image, 'png'
+                )
+
+        # If the failure is in image sizes the diff file will not exists.
+        if os.path.exists(os.path.join(tempfile.gettempdir(), image + "_result_diff.png")):
+            with open(os.path.join(tempfile.gettempdir(), image + "_result_diff.png"), "rb") as diff_file:
+                if not os.environ.get('ENCODED_OUTPUT'):
+                    message = "Image is wrong: diff file {}/{}_result_diff.{}".format(tempfile.gettempdir(), image, 'png')
+                else:
+                    encoded_diff_file = base64.b64encode(diff_file.read())
+                    message += "\nDiff:\necho '{}' | base64 -d > {}/{}_result_diff.{}".format(
+                        encoded_diff_file.strip().decode('utf8'), tempfile.gettempdir(), image, 'png'
+                    )
+
+        self.assertTrue(test, message)
 
     def _svg_to_png(svg_file_path, rendered_file_path, width):
         svgr = QSvgRenderer(svg_file_path)
 
         height = width / svgr.viewBoxF().width() * svgr.viewBoxF().height()
 
-        image = QImage(width, height, QImage.Format.Format_ARGB32)
-        image.fill(Qt.GlobalColor.transparent)
+        image = QImage(width, height, QImage.Format_ARGB32)
+        image.fill(Qt.transparent)
 
         p = QPainter(image)
-        p.setRenderHint(QPainter.RenderHint.Antialiasing, False)
+        p.setRenderHint(QPainter.Antialiasing, False)
         svgr.render(p)
         p.end()
 

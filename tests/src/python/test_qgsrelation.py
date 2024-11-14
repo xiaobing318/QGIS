@@ -11,18 +11,16 @@ __copyright__ = 'Copyright 2013, The QGIS Project'
 
 import os
 
-from qgis.core import (
-    QgsAttributeEditorElement,
-    QgsFeature,
-    QgsGeometry,
-    QgsPointXY,
-    QgsProject,
-    QgsRelation,
-    QgsVectorLayer,
-    QgsFieldConstraints,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+import qgis  # NOQA
+from qgis.core import (QgsVectorLayer,
+                       QgsFeature,
+                       QgsRelation,
+                       QgsGeometry,
+                       QgsPointXY,
+                       QgsAttributeEditorElement,
+                       QgsProject
+                       )
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -74,7 +72,7 @@ def formatAttributes(attrs):
     return repr([str(a) for a in attrs])
 
 
-class TestQgsRelation(QgisTestCase):
+class TestQgsRelation(unittest.TestCase):
 
     def setUp(self):
         self.referencedLayer = createReferencedLayer()
@@ -206,7 +204,7 @@ class TestQgsRelation(QgisTestCase):
         self.assertEqual(len(referencedLayer.editFormConfig().tabs()[0].children()), 7)
         for tab in referencedLayer.editFormConfig().tabs():
             for t in tab.children():
-                if (t.type() == QgsAttributeEditorElement.AttributeEditorType.AeTypeRelation):
+                if (t.type() == QgsAttributeEditorElement.AeTypeRelation):
                     valid = t.relation().isValid()
         self.assertTrue(valid)
 
@@ -233,7 +231,7 @@ class TestQgsRelation(QgisTestCase):
         valid = False
         for tab in referencedLayer.editFormConfig().tabs():
             for t in tab.children():
-                if (t.type() == QgsAttributeEditorElement.AttributeEditorType.AeTypeRelation):
+                if (t.type() == QgsAttributeEditorElement.AeTypeRelation):
                     valid = t.relation().isValid()
         self.assertTrue(valid)
 
@@ -250,24 +248,6 @@ class TestQgsRelation(QgisTestCase):
         rel = QgsRelation()
         # Check that it does not crash
         rel.generateId()
-
-    def test_referencingFieldsAllowNull(self):
-        rel = QgsRelation()
-
-        rel.setId('rel1')
-        rel.setName('Relation Number One')
-        rel.setReferencingLayer(self.referencingLayer.id())
-        rel.setReferencedLayer(self.referencedLayer.id())
-        rel.addFieldPair('foreignkey', 'y')
-
-        self.assertTrue(rel.referencingFieldsAllowNull())
-
-        referencingLayer = rel.referencingLayer()
-
-        # Set Not Null constraint on the field
-        referencingLayer.setFieldConstraint(referencingLayer.fields().indexFromName('foreignkey'), QgsFieldConstraints.Constraint.ConstraintNotNull)
-
-        self.assertFalse(rel.referencingFieldsAllowNull())
 
 
 if __name__ == '__main__':

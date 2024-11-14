@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsmanageconnectionsdialog.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -31,14 +31,11 @@ class QgsManageConnectionsDialog : QDialog
       WCS,
       Oracle,
       HANA,
+      GeoNode,
       XyzTiles,
       ArcgisMapServer,
       ArcgisFeatureServer,
-      VectorTile,
-      TiledScene,
-      SensorThings,
-      CloudStorage,
-      STAC,
+      VectorTile
     };
 
     QgsManageConnectionsDialog( QWidget *parent /TransferThis/ = 0, Mode mode = Export, Type type = WMS, const QString &fileName = QString() );
@@ -61,5 +58,5 @@ Constructor for QgsManageConnectionsDialog.
  *                                                                      *
  * src/gui/qgsmanageconnectionsdialog.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

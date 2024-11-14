@@ -22,7 +22,7 @@
 #define SIP_NO_FILE
 
 #include "qgsabstractdatasourcewidget.h"
-#include "ui_qgsvectortilesourceselectbase.h"
+#include "ui_qgstilesourceselectbase.h"
 
 /*!
  * \brief   Dialog to create connections to vector tile servers.
@@ -33,13 +33,13 @@
  * The user can then connect and add layers from the vector tile server
  * to the map canvas.
  */
-class QgsVectorTileSourceSelect : public QgsAbstractDataSourceWidget, private Ui::QgsVectorTileSourceSelectBase
+class QgsVectorTileSourceSelect : public QgsAbstractDataSourceWidget, private Ui::QgsTileSourceSelectBase
 {
     Q_OBJECT
 
   public:
     //! Constructor
-    QgsVectorTileSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::Standalone );
+    QgsVectorTileSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::None );
 
     //! Determines the layers the user selected
     void addButtonClicked() override;

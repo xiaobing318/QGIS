@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsproxystyle.h"
-#include "moc_qgsproxystyle.cpp"
 #include "qgsimageoperation.h"
 #include "qgis.h"
 #include <QStyleFactory>

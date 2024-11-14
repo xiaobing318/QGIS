@@ -16,23 +16,15 @@
  ***************************************************************************/
 
 #include "dockModel.h"
-#include "moc_dockModel.cpp"
 #include "topolError.h"
 #include "qgsvectorlayer.h"
 #include <qlogging.h>
 
-DockModel::DockModel( QObject *parent )
+DockModel::DockModel( ErrorList &errorList, QObject *parent = nullptr ) : mErrorlist( errorList )
 {
   Q_UNUSED( parent )
   mHeader << QObject::tr( "Error" ) << QObject::tr( "Layer" ) << QObject::tr( "Feature ID" );
 
-}
-
-void DockModel::setErrors( const ErrorList &errorList )
-{
-  beginResetModel();
-  mErrorlist = errorList;
-  endResetModel();
 }
 
 int DockModel::rowCount( const QModelIndex &parent ) const
@@ -55,13 +47,12 @@ QVariant DockModel::headerData( int section, Qt::Orientation orientation, int ro
     {
       return QVariant( section );
     }
-    else if ( section >= 0 && section < mHeader.count() )
+    else
     {
       return mHeader[section];
     }
   }
-
-  return QAbstractItemModel::headerData( section, orientation, role );
+  else return QVariant();
 }
 
 QVariant DockModel::data( const QModelIndex &index, int role ) const
@@ -126,30 +117,18 @@ Qt::ItemFlags DockModel::flags( const QModelIndex &index ) const
   if ( !index.isValid() )
     return Qt::ItemIsEnabled;
 
-  Qt::ItemFlags flags = QAbstractTableModel::flags( index );
+  Qt::ItemFlags flags = QAbstractItemModel::flags( index );
   return flags;
+}
+
+void DockModel::resetModel()
+{
+  beginResetModel();
+  endResetModel();
 }
 
 void DockModel::reload( const QModelIndex &index1, const QModelIndex &index2 )
 
 {
   emit dataChanged( index1, index2 );
-}
-
-DockFilterModel::DockFilterModel( QObject *parent )
-  : QSortFilterProxyModel( parent )
-  , mDockModel( new DockModel( parent ) )
-{
-  setSourceModel( mDockModel );
-  setFilterKeyColumn( 0 );
-}
-
-void DockFilterModel::setErrors( const ErrorList &errorList )
-{
-  mDockModel->setErrors( errorList );
-}
-
-void DockFilterModel::reload( const QModelIndex &index1, const QModelIndex &index2 )
-{
-  mDockModel->reload( index1, index2 );
 }

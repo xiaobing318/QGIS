@@ -11,22 +11,22 @@ __author__ = 'Nyall Dawson'
 __date__ = '19/03/2018'
 __copyright__ = 'Copyright 2018, The QGIS Project'
 
-from qgis.PyQt.QtCore import QDate, QDateTime, QTime
+import qgis  # NOQA
+from qgis.PyQt.QtCore import (QDate,
+                              QTime,
+                              QDateTime)
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (
-    QgsAbstractMetadataBase,
-    QgsNativeProjectMetadataValidator,
-    QgsProject,
-    QgsProjectMetadata,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsProjectMetadata,
+                       QgsAbstractMetadataBase,
+                       QgsProject,
+                       QgsNativeProjectMetadataValidator)
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsProjectMetadata(QgisTestCase):
+class TestQgsProjectMetadata(unittest.TestCase):
 
     def testGettersSetters(self):
         m = QgsProjectMetadata()

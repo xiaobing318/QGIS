@@ -54,16 +54,6 @@ QString QgsRectanglesOvalsDiamondsAlgorithm::shortHelpString() const
                       "to singleparts first." );
 }
 
-QIcon QgsRectanglesOvalsDiamondsAlgorithm::icon() const
-{
-  return QgsApplication::getThemeIcon( QStringLiteral( "/algorithms/mAlgorithmRectanglesOvalsDiamonds.svg" ) );
-}
-
-QString QgsRectanglesOvalsDiamondsAlgorithm::svgIconPath() const
-{
-  return QgsApplication::iconPath( QStringLiteral( "/algorithms/mAlgorithmRectanglesOvalsDiamonds.svg" ) );
-}
-
 QString QgsRectanglesOvalsDiamondsAlgorithm::outputName() const
 {
   return QObject::tr( "Polygon" );
@@ -71,17 +61,17 @@ QString QgsRectanglesOvalsDiamondsAlgorithm::outputName() const
 
 QList<int> QgsRectanglesOvalsDiamondsAlgorithm::inputLayerTypes() const
 {
-  return QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorPoint );
+  return QList<int>() << QgsProcessing::TypeVectorPoint;
 }
 
-Qgis::ProcessingSourceType QgsRectanglesOvalsDiamondsAlgorithm::outputLayerType() const
+QgsProcessing::SourceType QgsRectanglesOvalsDiamondsAlgorithm::outputLayerType() const
 {
-  return Qgis::ProcessingSourceType::VectorPolygon;
+  return QgsProcessing::TypeVectorPolygon;
 }
 
-Qgis::WkbType QgsRectanglesOvalsDiamondsAlgorithm::outputWkbType( Qgis::WkbType inputWkbType ) const
+QgsWkbTypes::Type QgsRectanglesOvalsDiamondsAlgorithm::outputWkbType( QgsWkbTypes::Type inputWkbType ) const
 {
-  Qgis::WkbType outputWkbType = Qgis::WkbType::Polygon;
+  QgsWkbTypes::Type outputWkbType = QgsWkbTypes::Polygon;
   if ( QgsWkbTypes::hasM( inputWkbType ) )
   {
     outputWkbType = QgsWkbTypes::addM( outputWkbType );
@@ -115,13 +105,13 @@ void QgsRectanglesOvalsDiamondsAlgorithm::initParameters( const QVariantMap & )
   heightParam->setDynamicLayerParameterName( QStringLiteral( "INPUT" ) );
   addParameter( heightParam.release() );
 
-  auto rotationParam = std::make_unique < QgsProcessingParameterNumber >( QStringLiteral( "ROTATION" ), QObject::tr( "Rotation" ), Qgis::ProcessingNumberParameterType::Double, 0.0, true, -360.0, 360.0 );
+  auto rotationParam = std::make_unique < QgsProcessingParameterNumber >( QStringLiteral( "ROTATION" ), QObject::tr( "Rotation" ), QgsProcessingParameterNumber::Double, 0.0, true, -360.0, 360.0 );
   rotationParam->setIsDynamic( true );
   rotationParam->setDynamicPropertyDefinition( QgsPropertyDefinition( QStringLiteral( "Rotation" ), QObject::tr( "Rotation" ), QgsPropertyDefinition::Double ) );
   rotationParam->setDynamicLayerParameterName( QStringLiteral( "INPUT" ) );
   addParameter( rotationParam.release() );
 
-  addParameter( new QgsProcessingParameterNumber( QStringLiteral( "SEGMENTS" ), QObject::tr( "Segments" ), Qgis::ProcessingNumberParameterType::Integer, 36, false, 1 ) );
+  addParameter( new QgsProcessingParameterNumber( QStringLiteral( "SEGMENTS" ), QObject::tr( "Segments" ), QgsProcessingParameterNumber::Integer, 5, false, 1 ) );
 }
 
 bool QgsRectanglesOvalsDiamondsAlgorithm::prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback * )

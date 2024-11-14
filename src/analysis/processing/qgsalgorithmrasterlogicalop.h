@@ -55,12 +55,12 @@ class ANALYSIS_EXPORT QgsRasterBooleanLogicAlgorithmBase : public QgsProcessingA
     std::vector< QgsRasterAnalysisUtils::RasterLogicInput > mInputs;
     Qgis::DataType mDataType = Qgis::DataType::Float32;
     double mNoDataValue = -9999;
-    int mLayerWidth = 0;
-    int mLayerHeight = 0;
+    int mLayerWidth;
+    int mLayerHeight;
     QgsRectangle mExtent;
     QgsCoordinateReferenceSystem mCrs;
-    double mRasterUnitsPerPixelX = 0;
-    double mRasterUnitsPerPixelY = 0;
+    double mRasterUnitsPerPixelX;
+    double mRasterUnitsPerPixelY;
     bool mTreatNodataAsFalse = false;
     friend class TestQgsProcessingAlgsPt1;
 };

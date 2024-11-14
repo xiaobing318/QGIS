@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsmaptoolshaperectangleabstract.h"
-#include "moc_qgsmaptoolshaperectangleabstract.cpp"
 #include "qgscompoundcurve.h"
 #include "qgscurvepolygon.h"
 #include "qgslinestring.h"

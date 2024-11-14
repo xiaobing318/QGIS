@@ -21,11 +21,10 @@
 #include "qgis_sip.h"
 #include "qgsmaplayer.h"
 #include "qgsmaplayerrenderer.h"
-#include "qgsmaplayerref.h"
+
 
 class QgsAnnotationItem;
 class QgsAbstractAnnotationItemEditOperation;
-class QgsAnnotationItemEditContext;
 class QgsPaintEffect;
 
 
@@ -139,7 +138,7 @@ class CORE_EXPORT QgsAnnotationLayer : public QgsMapLayer
      *
      * \since QGIS 3.22
      */
-    QgsAnnotationItem *item( const QString &id ) const;
+    QgsAnnotationItem *item( const QString &id );
 
     /**
      * Returns a list of the IDs of all annotation items within the specified \a bounds (in layer CRS), when
@@ -156,18 +155,9 @@ class CORE_EXPORT QgsAnnotationLayer : public QgsMapLayer
      *
      * Returns TRUE if the operation was successfully applied.
      *
-     * \deprecated QGIS 3.40. Use applyEditV2() instead.
+     * \since QGIS 3.22
      */
-    Q_DECL_DEPRECATED Qgis::AnnotationItemEditOperationResult applyEdit( QgsAbstractAnnotationItemEditOperation *operation ) SIP_DEPRECATED;
-
-    /**
-     * Applies an edit \a operation to the layer.
-     *
-     * Returns TRUE if the operation was successfully applied.
-     *
-     * \since QGIS 3.40
-     */
-    Qgis::AnnotationItemEditOperationResult applyEditV2( QgsAbstractAnnotationItemEditOperation *operation, const QgsAnnotationItemEditContext &context );
+    Qgis::AnnotationItemEditOperationResult applyEdit( QgsAbstractAnnotationItemEditOperation *operation );
 
     Qgis::MapLayerProperties properties() const override;
     QgsAnnotationLayer *clone() const override SIP_FACTORY;
@@ -178,14 +168,11 @@ class CORE_EXPORT QgsAnnotationLayer : public QgsMapLayer
     bool writeXml( QDomNode &layer_node, QDomDocument &doc, const QgsReadWriteContext &context ) const override;
     bool writeSymbology( QDomNode &node, QDomDocument &doc, QString &errorMessage, const QgsReadWriteContext &, StyleCategories categories = AllStyleCategories ) const override;
     bool readSymbology( const QDomNode &node, QString &errorMessage, QgsReadWriteContext &context, StyleCategories categories = AllStyleCategories ) override;
-    bool writeStyle( QDomNode &node, QDomDocument &doc, QString &errorMessage, const QgsReadWriteContext &context, StyleCategories categories ) const override;
-    bool readStyle( const QDomNode &node, QString &errorMessage, QgsReadWriteContext &context, StyleCategories categories ) override;
     bool isEditable() const override;
     bool supportsEditing() const override;
     QgsDataProvider *dataProvider() override;
     const QgsDataProvider *dataProvider() const override SIP_SKIP;
     QString htmlMetadata() const override;
-    void resolveReferences( QgsProject *project ) override;
 
     /**
      * Returns the current paint effect for the layer.
@@ -204,29 +191,9 @@ class CORE_EXPORT QgsAnnotationLayer : public QgsMapLayer
      */
     void setPaintEffect( QgsPaintEffect *effect SIP_TRANSFER );
 
-    /**
-     * Returns a linked layer, where the items in this annotation layer
-     * will only be visible when the linked layer is also visible.
-     *
-     * \see setLinkedVisibilityLayer()
-     * \since QGIS 3.40
-     */
-    QgsMapLayer *linkedVisibilityLayer();
-
-    /**
-     * Sets a linked \a layer, where the items in this annotation layer
-     * will only be visible when the linked layer is also visible.
-     *
-     * \see linkedVisibilityLayer()
-     * \since QGIS 3.40
-     */
-    void setLinkedVisibilityLayer( QgsMapLayer *layer );
-
   private:
 
     QStringList queryIndex( const QgsRectangle &bounds, QgsFeedback *feedback = nullptr ) const;
-    bool writeItems( QDomNode &node, QDomDocument &doc, QString &errorMessage, const QgsReadWriteContext &context, StyleCategories categories = AllStyleCategories ) const;
-    bool readItems( const QDomNode &node, QString &errorMessage, QgsReadWriteContext &context, StyleCategories categories = AllStyleCategories );
 
     QMap<QString, QgsAnnotationItem *> mItems;
     QgsCoordinateTransformContext mTransformContext;
@@ -237,8 +204,6 @@ class CORE_EXPORT QgsAnnotationLayer : public QgsMapLayer
     QgsDataProvider *mDataProvider = nullptr;
 
     std::unique_ptr< QgsPaintEffect > mPaintEffect;
-
-    QgsMapLayerRef mLinkedLayer;
 
     friend class QgsAnnotationLayerRenderer;
 
@@ -258,7 +223,7 @@ class QgsAnnotationLayerDataProvider : public QgsDataProvider
 
   public:
     QgsAnnotationLayerDataProvider( const QgsDataProvider::ProviderOptions &providerOptions,
-                                    Qgis::DataProviderReadFlags flags );
+                                    QgsDataProvider::ReadFlags flags );
     QgsCoordinateReferenceSystem crs() const override;
     QString name() const override;
     QString description() const override;

@@ -17,29 +17,28 @@ from processing.core.Processing import Processing
 from processing.core.ProcessingConfig import ProcessingConfig
 from processing.gui.AlgorithmExecutor import execute_in_place_run
 from processing.tools import dataobjects
-from qgis.PyQt.QtCore import QCoreApplication, QTemporaryDir, QVariant
+from qgis.PyQt.QtCore import QCoreApplication, QVariant, QTemporaryDir
 from qgis.analysis import QgsNativeAlgorithms
 from qgis.core import (
-    QgsApplication,
-    QgsCoordinateReferenceSystem,
     QgsFeature,
-    QgsFeatureRequest,
-    QgsFeatureSink,
+    QgsGeometry,
+    QgsSettings,
+    QgsApplication,
+    QgsMemoryProviderUtils,
+    QgsWkbTypes,
     QgsField,
     QgsFields,
-    QgsGeometry,
-    QgsMemoryProviderUtils,
     QgsProcessingContext,
-    QgsProcessingException,
     QgsProcessingFeedback,
+    QgsCoordinateReferenceSystem,
     QgsProject,
-    QgsProperty,
-    QgsSettings,
+    QgsProcessingException,
     QgsVectorLayer,
-    QgsVectorLayerUtils,
-    QgsWkbTypes, NULL)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+    QgsFeatureSink,
+    QgsProperty
+)
+from qgis.core import QgsVectorLayerUtils, QgsFeatureRequest
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -80,12 +79,10 @@ def _all_false():
     return {t: False for t in _all_true().keys()}
 
 
-class TestQgsProcessingInPlace(QgisTestCase):
+class TestQgsProcessingInPlace(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        super().setUpClass()
-
         """Run before all tests"""
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain(
@@ -98,7 +95,7 @@ class TestQgsProcessingInPlace(QgisTestCase):
         fields = QgsFields()
         fields.append(QgsField('int_f', QVariant.Int))
         cls.vl = QgsMemoryProviderUtils.createMemoryLayer(
-            'mylayer', fields, QgsWkbTypes.Type.Point, QgsCoordinateReferenceSystem('EPSG:4326'))
+            'mylayer', fields, QgsWkbTypes.Point, QgsCoordinateReferenceSystem('EPSG:4326'))
 
         f1 = QgsFeature(cls.vl.fields())
         f1['int_f'] = 1
@@ -114,7 +111,7 @@ class TestQgsProcessingInPlace(QgisTestCase):
         # Multipolygon layer
 
         cls.multipoly_vl = QgsMemoryProviderUtils.createMemoryLayer(
-            'mymultiplayer', fields, QgsWkbTypes.Type.MultiPolygon, QgsCoordinateReferenceSystem('EPSG:4326'))
+            'mymultiplayer', fields, QgsWkbTypes.MultiPolygon, QgsCoordinateReferenceSystem('EPSG:4326'))
 
         f3 = QgsFeature(cls.multipoly_vl.fields())
         f3.setGeometry(QgsGeometry.fromWkt(
@@ -134,7 +131,7 @@ class TestQgsProcessingInPlace(QgisTestCase):
         wkb_type = getattr(QgsWkbTypes, layer_wkb_name)
         fields.append(QgsField('int_f', QVariant.Int))
         layer = QgsMemoryProviderUtils.createMemoryLayer(
-            f'{layer_wkb_name}_layer', fields, wkb_type, QgsCoordinateReferenceSystem('EPSG:4326'))
+            '%s_layer' % layer_wkb_name, fields, wkb_type, QgsCoordinateReferenceSystem('EPSG:4326'))
         self.assertTrue(layer.isValid())
         self.assertEqual(layer.wkbType(), wkb_type)
         return layer
@@ -409,7 +406,7 @@ class TestQgsProcessingInPlace(QgisTestCase):
         fields.append(QgsField('int_f', QVariant.Int))
         fields.append(QgsField('str_f', QVariant.String))
         layer = QgsMemoryProviderUtils.createMemoryLayer(
-            'mkfca_layer', fields, QgsWkbTypes.Type.Point, QgsCoordinateReferenceSystem('EPSG:4326'))
+            'mkfca_layer', fields, QgsWkbTypes.Point, QgsCoordinateReferenceSystem('EPSG:4326'))
         self.assertTrue(layer.isValid())
         f1 = QgsFeature(layer.fields())
         f1['int_f'] = 1
@@ -423,16 +420,16 @@ class TestQgsProcessingInPlace(QgisTestCase):
         f1.setAttributes([])
         new_features = QgsVectorLayerUtils.makeFeaturesCompatible([f1], layer)
         self.assertEqual(len(new_features[0].attributes()), 2)
-        self.assertEqual(new_features[0].attributes()[0], NULL)
-        self.assertEqual(new_features[0].attributes()[1], NULL)
+        self.assertEqual(new_features[0].attributes()[0], QVariant())
+        self.assertEqual(new_features[0].attributes()[1], QVariant())
 
         # Test pad with 0 without fields
         f1 = QgsFeature()
         f1.setGeometry(QgsGeometry.fromWkt('Point(9 45)'))
         new_features = QgsVectorLayerUtils.makeFeaturesCompatible([f1], layer)
         self.assertEqual(len(new_features[0].attributes()), 2)
-        self.assertEqual(new_features[0].attributes()[0], NULL)
-        self.assertEqual(new_features[0].attributes()[1], NULL)
+        self.assertEqual(new_features[0].attributes()[0], QVariant())
+        self.assertEqual(new_features[0].attributes()[1], QVariant())
 
         # Test drop extra attrs
         f1 = QgsFeature(layer.fields())
@@ -455,7 +452,7 @@ class TestQgsProcessingInPlace(QgisTestCase):
         fields.append(QgsField('int_f2', QVariant.Int))
         fields.append(QgsField('int_f1', QVariant.Int))
         vl2 = QgsMemoryProviderUtils.createMemoryLayer(
-            'mymultiplayer', fields, QgsWkbTypes.Type.Point, QgsCoordinateReferenceSystem('EPSG:4326'))
+            'mymultiplayer', fields, QgsWkbTypes.Point, QgsCoordinateReferenceSystem('EPSG:4326'))
         new_features = QgsVectorLayerUtils.makeFeaturesCompatible([f1], vl2)
         self.assertEqual(new_features[0].attributes(), [None, 12345])
 
@@ -480,7 +477,7 @@ class TestQgsProcessingInPlace(QgisTestCase):
 
         # Make a geometry-less layer
         nogeom_layer = QgsMemoryProviderUtils.createMemoryLayer(
-            'nogeom_layer', layer.fields(), QgsWkbTypes.Type.NoGeometry, QgsCoordinateReferenceSystem('EPSG:4326'))
+            'nogeom_layer', layer.fields(), QgsWkbTypes.NoGeometry, QgsCoordinateReferenceSystem('EPSG:4326'))
         # Check that a geometry-less feature is accepted
         new_features = QgsVectorLayerUtils.makeFeaturesCompatible([f1], nogeom_layer)
         self.assertEqual(len(new_features), 1)
@@ -488,14 +485,14 @@ class TestQgsProcessingInPlace(QgisTestCase):
 
         # Make a geometry-less layer
         nogeom_layer = QgsMemoryProviderUtils.createMemoryLayer(
-            'nogeom_layer', layer.fields(), QgsWkbTypes.Type.NoGeometry, QgsCoordinateReferenceSystem('EPSG:4326'))
+            'nogeom_layer', layer.fields(), QgsWkbTypes.NoGeometry, QgsCoordinateReferenceSystem('EPSG:4326'))
         # Check that a Point feature is accepted but geometry was dropped
         f1.setGeometry(QgsGeometry.fromWkt('Point(9 45)'))
         new_features = QgsVectorLayerUtils.makeFeaturesCompatible([f1], nogeom_layer)
         self.assertEqual(len(new_features), 1)
         self.assertEqual(new_features[0].geometry().asWkt(), '')
 
-    def _alg_tester(self, alg_name, input_layer, parameters, invalid_geometry_policy=QgsFeatureRequest.InvalidGeometryCheck.GeometryNoCheck, retain_selection=False):
+    def _alg_tester(self, alg_name, input_layer, parameters, invalid_geometry_policy=QgsFeatureRequest.GeometryNoCheck, retain_selection=False):
 
         alg = self.registry.createAlgorithmById(alg_name)
 
@@ -715,7 +712,7 @@ class TestQgsProcessingInPlace(QgisTestCase):
     def test_clip(self):
 
         mask_layer = QgsMemoryProviderUtils.createMemoryLayer(
-            'mask_layer', self.vl.fields(), QgsWkbTypes.Type.Polygon, QgsCoordinateReferenceSystem('EPSG:4326'))
+            'mask_layer', self.vl.fields(), QgsWkbTypes.Polygon, QgsCoordinateReferenceSystem('EPSG:4326'))
         self.assertTrue(mask_layer.isValid())
         self.assertTrue(mask_layer.startEditing())
         f = QgsFeature(mask_layer.fields())
@@ -731,7 +728,7 @@ class TestQgsProcessingInPlace(QgisTestCase):
         mask_layer.rollBack()
 
         clip_layer = QgsMemoryProviderUtils.createMemoryLayer(
-            'clip_layer', self.vl.fields(), QgsWkbTypes.Type.LineString, QgsCoordinateReferenceSystem('EPSG:4326'))
+            'clip_layer', self.vl.fields(), QgsWkbTypes.LineString, QgsCoordinateReferenceSystem('EPSG:4326'))
         self.assertTrue(clip_layer.isValid())
         self.assertTrue(clip_layer.startEditing())
         f = QgsFeature(clip_layer.fields())
@@ -783,7 +780,7 @@ class TestQgsProcessingInPlace(QgisTestCase):
             polygon_layer,
             {
             },
-            QgsFeatureRequest.InvalidGeometryCheck.GeometrySkipInvalid
+            QgsFeatureRequest.GeometrySkipInvalid
         )
         self.assertEqual(polygon_layer.featureCount(), 3)
         geoms = [f.geometry() for f in new_features]
@@ -818,8 +815,8 @@ class TestQgsProcessingInPlace(QgisTestCase):
         geoms = [f.geometry() for f in new_features]
         [g.normalize() for g in geoms]
         wkt1, wkt2 = (g.asWkt() for g in geoms)
-        self.assertEqual(wkt1, 'Polygon Z ((0 0 1, 1 1 2.25, 2 0 4, 0 0 1))')
-        self.assertEqual(wkt2, 'Polygon Z ((0 2 3, 2 2 1, 1 1 2.25, 0 2 3))')
+        self.assertEqual(wkt1, 'PolygonZ ((0 0 1, 1 1 2.25, 2 0 4, 0 0 1))')
+        self.assertEqual(wkt2, 'PolygonZ ((0 2 3, 2 2 1, 1 1 2.25, 0 2 3))')
 
     def _test_difference_on_invalid_geometries(self, geom_option):
         polygon_layer = self._make_layer('Polygon')
@@ -940,7 +937,7 @@ class TestQgsProcessingInPlace(QgisTestCase):
         self.assertEqual([ff['fid'] for ff in res], [1])
 
         # if RegeneratePrimaryKey set then we should discard fid field
-        res = QgsVectorLayerUtils.makeFeatureCompatible(f, gpkg_layer, QgsFeatureSink.SinkFlag.RegeneratePrimaryKey)
+        res = QgsVectorLayerUtils.makeFeatureCompatible(f, gpkg_layer, QgsFeatureSink.RegeneratePrimaryKey)
         self.assertEqual([ff['fid'] for ff in res], [None])
 
     def test_datadefinedvalue(self):

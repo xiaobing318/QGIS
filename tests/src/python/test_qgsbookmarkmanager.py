@@ -11,21 +11,19 @@ __copyright__ = 'Copyright 2019, The QGIS Project'
 
 import os
 
-from qgis.PyQt.QtCore import QCoreApplication, QEvent, QLocale, QTemporaryDir
+import qgis  # NOQA
+from qgis.PyQt.QtCore import QCoreApplication, QLocale, QTemporaryDir, QEvent
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (
-    QgsApplication,
-    QgsBookmark,
-    QgsBookmarkManager,
-    QgsCoordinateReferenceSystem,
-    QgsProject,
-    QgsRectangle,
-    QgsReferencedRectangle,
-    QgsSettings,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsBookmark,
+                       QgsBookmarkManager,
+                       QgsProject,
+                       QgsReferencedRectangle,
+                       QgsRectangle,
+                       QgsCoordinateReferenceSystem,
+                       QgsSettings,
+                       QgsApplication)
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -33,17 +31,16 @@ start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestQgsBookmarkManager(QgisTestCase):
+class TestQgsBookmarkManager(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
-        super().setUpClass()
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain("QGIS_TestQgsBookmarkManager.com")
         QCoreApplication.setApplicationName("QGIS_TestQgsBookmarkManager")
         QgsSettings().clear()
-        QLocale.setDefault(QLocale(QLocale.Language.English))
+        QLocale.setDefault(QLocale(QLocale.English))
         start_app()
 
     def setUp(self):
@@ -67,8 +64,6 @@ class TestQgsBookmarkManager(QgisTestCase):
         self.assertEqual(b.group(), 'group')
         b.setExtent(QgsReferencedRectangle(QgsRectangle(1, 2, 3, 4), QgsCoordinateReferenceSystem('EPSG:3111')))
         self.assertEqual(b.extent(), QgsReferencedRectangle(QgsRectangle(1, 2, 3, 4), QgsCoordinateReferenceSystem('EPSG:3111')))
-        b.setRotation(45.4)
-        self.assertEqual(b.rotation(), 45.4)
 
     def testBookmarkEquality(self):
         b = QgsBookmark()
@@ -93,10 +88,6 @@ class TestQgsBookmarkManager(QgisTestCase):
         b2.setGroup('x')
         self.assertNotEqual(b, b2)
         b2.setGroup('group')
-        self.assertEqual(b, b2)
-        b2.setRotation(-1)
-        self.assertNotEqual(b, b2)
-        b2.setRotation(0)
         self.assertEqual(b, b2)
         b2.setExtent(QgsReferencedRectangle(QgsRectangle(1, 2, 3, 5), QgsCoordinateReferenceSystem('EPSG:3111')))
         self.assertNotEqual(b, b2)
@@ -315,20 +306,17 @@ class TestQgsBookmarkManager(QgisTestCase):
         b = QgsBookmark()
         b.setId('1')
         b.setName('b1')
-        b.setExtent(QgsReferencedRectangle(QgsRectangle(11, 21, 31, 41), QgsCoordinateReferenceSystem('EPSG:3857')))
-        b.setRotation(90)
+        b.setExtent(QgsReferencedRectangle(QgsRectangle(11, 21, 31, 41), QgsCoordinateReferenceSystem('EPSG:4326')))
 
         b2 = QgsBookmark()
         b2.setId('2')
         b2.setName('b2')
         b2.setExtent(QgsReferencedRectangle(QgsRectangle(12, 22, 32, 42), QgsCoordinateReferenceSystem('EPSG:4326')))
-        b2.setRotation(-1.1)
 
         b3 = QgsBookmark()
         b3.setId('3')
         b3.setName('b3')
         b3.setExtent(QgsReferencedRectangle(QgsRectangle(32, 32, 33, 43), QgsCoordinateReferenceSystem('EPSG:4326')))
-        b3.setRotation(280)
 
         manager.addBookmark(b)
         manager.addBookmark(b2)
@@ -345,22 +333,6 @@ class TestQgsBookmarkManager(QgisTestCase):
         self.assertTrue(manager2.readXml(elem, doc))
 
         self.assertEqual(len(manager2.bookmarks()), 3)
-
-        # Check b1 values
-        self.assertEqual(manager2.bookmarkById('1').name(), 'b1')
-        self.assertEqual(manager2.bookmarkById('1').extent(), QgsReferencedRectangle(QgsRectangle(11, 21, 31, 41), QgsCoordinateReferenceSystem('EPSG:3857')))
-        self.assertEqual(manager2.bookmarkById('1').rotation(), 90)
-
-        # Check b2 values
-        self.assertEqual(manager2.bookmarkById('2').name(), 'b2')
-        self.assertEqual(manager2.bookmarkById('2').extent(), QgsReferencedRectangle(QgsRectangle(12, 22, 32, 42), QgsCoordinateReferenceSystem('EPSG:4326')))
-        self.assertEqual(manager2.bookmarkById('2').rotation(), -1.1)
-
-        # Check b3 values
-        self.assertEqual(manager2.bookmarkById('3').name(), 'b3')
-        self.assertEqual(manager2.bookmarkById('3').extent(), QgsReferencedRectangle(QgsRectangle(32, 32, 33, 43), QgsCoordinateReferenceSystem('EPSG:4326')))
-        self.assertEqual(manager2.bookmarkById('3').rotation(), 280)
-
         names = [c.name() for c in manager2.bookmarks()]
         self.assertCountEqual(names, ['b1', 'b2', 'b3'])
 
@@ -456,7 +428,7 @@ class TestQgsBookmarkManager(QgisTestCase):
 
         # destroy manager, causes write to disk
         manager.deleteLater()
-        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
         del manager
 
         # create another new manager with same key, should contain existing bookmarks

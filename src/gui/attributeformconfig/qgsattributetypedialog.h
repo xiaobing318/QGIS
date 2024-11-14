@@ -177,22 +177,26 @@ class GUI_EXPORT QgsAttributeTypeDialog: public QWidget, private Ui::QgsAttribut
     /**
      * Setter for constraint expression description
      * \param desc the expression description
+     * \since QGIS 2.16
      */
     void setConstraintExpressionDescription( const QString &desc );
 
     /**
      * Getter for constraint expression description
      * \returns the expression description
+     * \since QGIS 2.16
      */
     QString constraintExpressionDescription();
 
     /**
      * Getter for the constraint expression
+     * \since QGIS 2.16
      */
     QString constraintExpression() const;
 
     /**
      * Setter for the constraint expression
+     * \since QGIS 2.16
      */
     void setConstraintExpression( const QString &str );
 
@@ -227,41 +231,6 @@ class GUI_EXPORT QgsAttributeTypeDialog: public QWidget, private Ui::QgsAttribut
     bool applyDefaultValueOnUpdate() const;
     void setApplyDefaultValueOnUpdate( bool applyDefaultValueOnUpdate );
 
-    /**
-     * Returns the field's split policy.
-     *
-     * \see setSplitPolicy()
-     *
-     * \since QGIS 3.32
-     */
-    Qgis::FieldDomainSplitPolicy splitPolicy() const;
-
-    /**
-     * Sets the field's split policy.
-     *
-     * \see splitPolicy()
-     *
-     * \since QGIS 3.32
-     */
-    void setSplitPolicy( Qgis::FieldDomainSplitPolicy policy );
-
-    /**
-     * Returns the field's duplicate policy.
-     *
-     * \see setDuplicatePolicy()
-     *
-     * \since QGIS 3.38
-     */
-    Qgis::FieldDuplicatePolicy duplicatePolicy() const;
-
-    /**
-     * Sets the field's duplicate policy.
-     *
-     * \see duplicatePolicy()
-     *
-     * \since QGIS 3.38
-     */
-    void setDuplicatePolicy( Qgis::FieldDuplicatePolicy policy );
 
   private slots:
 
@@ -272,10 +241,6 @@ class GUI_EXPORT QgsAttributeTypeDialog: public QWidget, private Ui::QgsAttribut
     void onCurrentWidgetChanged( int index );
 
     void defaultExpressionChanged();
-
-    void updateSplitPolicyLabel();
-
-    void updateDuplicatePolicyLabel();
 
   private:
     QgsVectorLayer *mLayer = nullptr;

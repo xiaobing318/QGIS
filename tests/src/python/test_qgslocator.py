@@ -11,35 +11,32 @@ __copyright__ = 'Copyright 2017, The QGIS Project'
 
 from time import sleep
 
+import qgis  # NOQA
 from qgis.PyQt import sip
 from qgis.PyQt.QtCore import QCoreApplication
-from qgis.core import (
-    QgsLocator,
-    QgsLocatorAutomaticModel,
-    QgsLocatorContext,
-    QgsLocatorFilter,
-    QgsLocatorModel,
-    QgsLocatorProxyModel,
-    QgsLocatorResult,
-    QgsSettings,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsLocator,
+                       QgsLocatorFilter,
+                       QgsLocatorContext,
+                       QgsLocatorResult,
+                       QgsLocatorModel,
+                       QgsLocatorProxyModel,
+                       QgsLocatorAutomaticModel,
+                       QgsSettings)
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
 class test_filter(QgsLocatorFilter):
 
-    def __init__(self, identifier, prefix=None, groupResult=False, groupScore=False, parent=None):
+    def __init__(self, identifier, prefix=None, groupResult=False, parent=None):
         super().__init__(parent)
         self.identifier = identifier
         self._prefix = prefix
         self.groupResult = groupResult
-        self.groupScore = groupScore
 
     def clone(self):
-        return test_filter(self.identifier, prefix=self.prefix, groupResult=self.groupResult, groupScore=self.groupScore)
+        return test_filter(self.identifier, self.prefix, self.groupResult)
 
     def name(self):
         return 'test_' + self.identifier
@@ -63,13 +60,9 @@ class test_filter(QgsLocatorFilter):
             result.displayString = self.identifier + str(i)
             if self.groupResult:
                 if i in (0, 1, 3, 5, 6):
-                    result.group = 'group a'
-                    if self.groupScore:
-                        result.groupScore = 1
+                    result.group = 'first group'
                 elif i in (4, 8):
-                    result.group = 'group b'
-                    if self.groupScore:
-                        result.groupScore = 10
+                    result.group = 'second group'
             self.resultFetched.emit(result)
 
     def triggerResult(self, result):
@@ -77,16 +70,16 @@ class test_filter(QgsLocatorFilter):
 
     def priority(self):
         if self.identifier == 'a':
-            return QgsLocatorFilter.Priority.High
+            return QgsLocatorFilter.High
         elif self.identifier == 'b':
-            return QgsLocatorFilter.Priority.Medium
+            return QgsLocatorFilter.Medium
         elif self.identifier == 'c':
-            return QgsLocatorFilter.Priority.Low
+            return QgsLocatorFilter.Low
         else:
-            return QgsLocatorFilter.Priority.Medium
+            return QgsLocatorFilter.Medium
 
 
-class TestQgsLocator(QgisTestCase):
+class TestQgsLocator(unittest.TestCase):
 
     def testRegisteringFilters(self):
         l = QgsLocator()
@@ -318,7 +311,7 @@ class TestQgsLocator(QgisTestCase):
         l.deregisterFilter(filter_c)
 
         # filter with custom prefix
-        QgsSettings().setValue("locator-filters/items/test_custom/prefix", 'xyz')
+        QgsSettings().setValue("locator_filters/prefix_test_custom", 'xyz', QgsSettings.Gui)
         filter_c = test_filter('custom', 'abc')
         l.registerFilter(filter_c)
         self.assertEqual(filter_c.prefix(), 'abc')
@@ -360,17 +353,17 @@ class TestQgsLocator(QgisTestCase):
         # 4 results - one is locator name
         self.assertEqual(p.rowCount(), 4)
         self.assertEqual(p.data(p.index(0, 0)), 'test_a')
-        self.assertEqual(p.data(p.index(0, 0), QgsLocatorModel.CustomRole.ResultType), 0)
-        self.assertEqual(p.data(p.index(0, 0), QgsLocatorModel.CustomRole.ResultFilterName), 'test_a')
+        self.assertEqual(p.data(p.index(0, 0), QgsLocatorModel.ResultTypeRole), 0)
+        self.assertEqual(p.data(p.index(0, 0), QgsLocatorModel.ResultFilterNameRole), 'test_a')
         self.assertEqual(p.data(p.index(1, 0)), 'a0')
-        self.assertEqual(p.data(p.index(1, 0), QgsLocatorModel.CustomRole.ResultType), 2)
-        self.assertEqual(p.data(p.index(1, 0), QgsLocatorModel.CustomRole.ResultFilterName), 'test_a')
+        self.assertEqual(p.data(p.index(1, 0), QgsLocatorModel.ResultTypeRole), QgsLocatorModel.NoGroup)
+        self.assertEqual(p.data(p.index(1, 0), QgsLocatorModel.ResultFilterNameRole), 'test_a')
         self.assertEqual(p.data(p.index(2, 0)), 'a1')
-        self.assertEqual(p.data(p.index(2, 0), QgsLocatorModel.CustomRole.ResultType), 2)
-        self.assertEqual(p.data(p.index(2, 0), QgsLocatorModel.CustomRole.ResultFilterName), 'test_a')
+        self.assertEqual(p.data(p.index(2, 0), QgsLocatorModel.ResultTypeRole), QgsLocatorModel.NoGroup)
+        self.assertEqual(p.data(p.index(2, 0), QgsLocatorModel.ResultFilterNameRole), 'test_a')
         self.assertEqual(p.data(p.index(3, 0)), 'a2')
-        self.assertEqual(p.data(p.index(3, 0), QgsLocatorModel.CustomRole.ResultType), 2)
-        self.assertEqual(p.data(p.index(3, 0), QgsLocatorModel.CustomRole.ResultFilterName), 'test_a')
+        self.assertEqual(p.data(p.index(3, 0), QgsLocatorModel.ResultTypeRole), QgsLocatorModel.NoGroup)
+        self.assertEqual(p.data(p.index(3, 0), QgsLocatorModel.ResultFilterNameRole), 'test_a')
 
         m.clear()
         self.assertEqual(p.rowCount(), 0)
@@ -396,7 +389,7 @@ class TestQgsLocator(QgisTestCase):
 
         # test with groups
         self.assertEqual(p.rowCount(), 0)
-        filter_b = test_filter('b', None, groupResult=True, groupScore=False)
+        filter_b = test_filter('b', None, True)
         l.registerFilter(filter_b)
         l.fetchResults('c', context)
         for i in range(200):
@@ -404,86 +397,38 @@ class TestQgsLocator(QgisTestCase):
             QCoreApplication.processEvents()
         self.assertEqual(p.rowCount(), 16)  # 1 title a + 3 results + 1 title b + 2 groups + 9 results
         self.assertEqual(p.data(p.index(0, 0)), 'test_a')
-        self.assertEqual(p.data(p.index(0, 0), QgsLocatorModel.CustomRole.ResultType), 0)
+        self.assertEqual(p.data(p.index(0, 0), QgsLocatorModel.ResultTypeRole), 0)
         self.assertEqual(p.data(p.index(1, 0)), 'a0')
-        self.assertEqual(p.data(p.index(1, 0), QgsLocatorModel.CustomRole.ResultType), 2)
+        self.assertEqual(p.data(p.index(1, 0), QgsLocatorModel.ResultTypeRole), QgsLocatorModel.NoGroup)
         self.assertEqual(p.data(p.index(2, 0)), 'a1')
-        self.assertEqual(p.data(p.index(2, 0), QgsLocatorModel.CustomRole.ResultType), 2)
+        self.assertEqual(p.data(p.index(2, 0), QgsLocatorModel.ResultTypeRole), QgsLocatorModel.NoGroup)
         self.assertEqual(p.data(p.index(3, 0)), 'a2')
-        self.assertEqual(p.data(p.index(3, 0), QgsLocatorModel.CustomRole.ResultType), 2)
+        self.assertEqual(p.data(p.index(3, 0), QgsLocatorModel.ResultTypeRole), QgsLocatorModel.NoGroup)
         self.assertEqual(p.data(p.index(4, 0)), 'test_b')
-        self.assertEqual(p.data(p.index(4, 0), QgsLocatorModel.CustomRole.ResultType), 0)
-        self.assertEqual(p.data(p.index(4, 0), QgsLocatorModel.CustomRole.ResultFilterName), 'test_b')
-        self.assertEqual(p.data(p.index(5, 0)).strip(), 'group a')
-        self.assertEqual(p.data(p.index(5, 0), QgsLocatorModel.CustomRole.ResultType), 1)
-        self.assertEqual(p.data(p.index(5, 0), QgsLocatorModel.CustomRole.ResultFilterGroupScore), 0)
+        self.assertEqual(p.data(p.index(4, 0), QgsLocatorModel.ResultTypeRole), 0)
+        self.assertEqual(p.data(p.index(4, 0), QgsLocatorModel.ResultFilterNameRole), 'test_b')
+        self.assertEqual(p.data(p.index(5, 0)).strip(), 'first group')
+        self.assertEqual(p.data(p.index(5, 0), QgsLocatorModel.ResultTypeRole), 1)
         self.assertEqual(p.data(p.index(6, 0)), 'b0')
-        self.assertEqual(p.data(p.index(6, 0), QgsLocatorModel.CustomRole.ResultType), 2)
-        self.assertEqual(p.data(p.index(6, 0), QgsLocatorModel.CustomRole.ResultFilterGroupScore), 0)
+        self.assertEqual(p.data(p.index(6, 0), QgsLocatorModel.ResultTypeRole), 1)
         self.assertEqual(p.data(p.index(7, 0)), 'b1')
-        self.assertEqual(p.data(p.index(7, 0), QgsLocatorModel.CustomRole.ResultType), 2)
+        self.assertEqual(p.data(p.index(7, 0), QgsLocatorModel.ResultTypeRole), 1)
         self.assertEqual(p.data(p.index(8, 0)), 'b3')
-        self.assertEqual(p.data(p.index(8, 0), QgsLocatorModel.CustomRole.ResultType), 2)
+        self.assertEqual(p.data(p.index(8, 0), QgsLocatorModel.ResultTypeRole), 1)
         self.assertEqual(p.data(p.index(9, 0)), 'b5')
-        self.assertEqual(p.data(p.index(9, 0), QgsLocatorModel.CustomRole.ResultType), 2)
+        self.assertEqual(p.data(p.index(9, 0), QgsLocatorModel.ResultTypeRole), 1)
         self.assertEqual(p.data(p.index(10, 0)), 'b6')
-        self.assertEqual(p.data(p.index(10, 0), QgsLocatorModel.CustomRole.ResultType), 2)
-        self.assertEqual(p.data(p.index(11, 0)).strip(), 'group b')
-        self.assertEqual(p.data(p.index(11, 0), QgsLocatorModel.CustomRole.ResultType), 1)
-        self.assertEqual(p.data(p.index(11, 0), QgsLocatorModel.CustomRole.ResultFilterGroupScore), 0)
+        self.assertEqual(p.data(p.index(10, 0), QgsLocatorModel.ResultTypeRole), 1)
+        self.assertEqual(p.data(p.index(11, 0)).strip(), 'second group')
+        self.assertEqual(p.data(p.index(11, 0), QgsLocatorModel.ResultTypeRole), 2)
         self.assertEqual(p.data(p.index(12, 0)), 'b4')
-        self.assertEqual(p.data(p.index(12, 0), QgsLocatorModel.CustomRole.ResultType), 2)
-        self.assertEqual(p.data(p.index(12, 0), QgsLocatorModel.CustomRole.ResultFilterGroupScore), 0)
+        self.assertEqual(p.data(p.index(12, 0), QgsLocatorModel.ResultTypeRole), 2)
         self.assertEqual(p.data(p.index(13, 0)), 'b8')
-        self.assertEqual(p.data(p.index(13, 0), QgsLocatorModel.CustomRole.ResultType), 2)
+        self.assertEqual(p.data(p.index(13, 0), QgsLocatorModel.ResultTypeRole), 2)
         self.assertEqual(p.data(p.index(14, 0)), 'b2')
-        self.assertEqual(p.data(p.index(14, 0), QgsLocatorModel.CustomRole.ResultType), 2)
+        self.assertEqual(p.data(p.index(14, 0), QgsLocatorModel.ResultTypeRole), QgsLocatorModel.NoGroup)
         self.assertEqual(p.data(p.index(15, 0)), 'b7')
-        self.assertEqual(p.data(p.index(15, 0), QgsLocatorModel.CustomRole.ResultType), 2)
-        self.assertEqual(p.data(p.index(15, 0), QgsLocatorModel.CustomRole.ResultFilterGroupScore), QgsLocatorModel.NoGroup)
-
-        # test with groups and group score
-        m.clear()
-        self.assertEqual(p.rowCount(), 0)
-        filter_b = test_filter('c', None, groupResult=True, groupScore=True)
-        l.registerFilter(filter_b)
-        l.fetchResults('c', context)
-        for i in range(200):
-            sleep(0.002)
-            QCoreApplication.processEvents()
-        self.assertEqual(p.rowCount(), 28)  # 4 for filter a, 12 for b, + 1 title c + 2 groups + 9 results
-        self.assertEqual(p.data(p.index(16, 0)), 'test_c')
-        self.assertEqual(p.data(p.index(16, 0), QgsLocatorModel.CustomRole.ResultType), 0)
-        self.assertEqual(p.data(p.index(16, 0), QgsLocatorModel.CustomRole.ResultFilterName), 'test_c')
-        self.assertEqual(p.data(p.index(17, 0)).strip(), 'group b')
-        self.assertEqual(p.data(p.index(17, 0), QgsLocatorModel.CustomRole.ResultType), 1)
-        self.assertEqual(p.data(p.index(17, 0), QgsLocatorModel.CustomRole.ResultFilterGroupScore), 10)
-        self.assertEqual(p.data(p.index(18, 0)), 'c4')
-        self.assertEqual(p.data(p.index(18, 0), QgsLocatorModel.CustomRole.ResultType), 2)
-        self.assertEqual(p.data(p.index(18, 0), QgsLocatorModel.CustomRole.ResultFilterGroupScore), 10)
-        self.assertEqual(p.data(p.index(19, 0)), 'c8')
-        self.assertEqual(p.data(p.index(19, 0), QgsLocatorModel.CustomRole.ResultType), 2)
-        self.assertEqual(p.data(p.index(20, 0)).strip(), 'group a')
-        self.assertEqual(p.data(p.index(20, 0), QgsLocatorModel.CustomRole.ResultType), 1)
-        self.assertEqual(p.data(p.index(20, 0), QgsLocatorModel.CustomRole.ResultFilterGroupScore), 1)
-        self.assertEqual(p.data(p.index(21, 0)), 'c0')
-        self.assertEqual(p.data(p.index(21, 0), QgsLocatorModel.CustomRole.ResultType), 2)
-        self.assertEqual(p.data(p.index(21, 0), QgsLocatorModel.CustomRole.ResultFilterGroupScore), 1)
-        self.assertEqual(p.data(p.index(22, 0)), 'c1')
-        self.assertEqual(p.data(p.index(22, 0), QgsLocatorModel.CustomRole.ResultType), 2)
-        self.assertEqual(p.data(p.index(23, 0)), 'c3')
-        self.assertEqual(p.data(p.index(23, 0), QgsLocatorModel.CustomRole.ResultType), 2)
-        self.assertEqual(p.data(p.index(24, 0)), 'c5')
-        self.assertEqual(p.data(p.index(24, 0), QgsLocatorModel.CustomRole.ResultType), 2)
-        self.assertEqual(p.data(p.index(25, 0)), 'c6')
-        self.assertEqual(p.data(p.index(25, 0), QgsLocatorModel.CustomRole.ResultType), 2)
-        # no groups
-        self.assertEqual(p.data(p.index(26, 0)), 'c2')
-        self.assertEqual(p.data(p.index(26, 0), QgsLocatorModel.CustomRole.ResultType), 2)
-        self.assertEqual(p.data(p.index(26, 0), QgsLocatorModel.CustomRole.ResultFilterGroupScore), QgsLocatorModel.NoGroup)
-        self.assertEqual(p.data(p.index(27, 0)), 'c7')
-        self.assertEqual(p.data(p.index(27, 0), QgsLocatorModel.CustomRole.ResultType), 2)
-        self.assertEqual(p.data(p.index(27, 0), QgsLocatorModel.CustomRole.ResultFilterGroupScore), QgsLocatorModel.NoGroup)
+        self.assertEqual(p.data(p.index(15, 0), QgsLocatorModel.ResultTypeRole), QgsLocatorModel.NoGroup)
 
     def testAutoModel(self):
         """
@@ -505,18 +450,17 @@ class TestQgsLocator(QgisTestCase):
         # 4 results - one is locator name
         self.assertEqual(m.rowCount(), 4)
         self.assertEqual(m.data(m.index(0, 0)), 'test_a')
-        self.assertEqual(m.data(m.index(0, 0), QgsLocatorModel.CustomRole.ResultType), 0)
-        self.assertEqual(m.data(m.index(0, 0), QgsLocatorModel.CustomRole.ResultFilterName), 'test_a')
+        self.assertEqual(m.data(m.index(0, 0), QgsLocatorModel.ResultTypeRole), 0)
+        self.assertEqual(m.data(m.index(0, 0), QgsLocatorModel.ResultFilterNameRole), 'test_a')
         self.assertEqual(m.data(m.index(1, 0)), 'a0')
-        self.assertEqual(m.data(m.index(1, 0), QgsLocatorModel.CustomRole.ResultType), 2)
-        self.assertEqual(m.data(m.index(1, 0), QgsLocatorModel.CustomRole.ResultFilterGroupScore), QgsLocatorModel.NoGroup)
-        self.assertEqual(m.data(m.index(1, 0), QgsLocatorModel.CustomRole.ResultFilterName), 'test_a')
+        self.assertEqual(m.data(m.index(1, 0), QgsLocatorModel.ResultTypeRole), QgsLocatorModel.NoGroup)
+        self.assertEqual(m.data(m.index(1, 0), QgsLocatorModel.ResultFilterNameRole), 'test_a')
         self.assertEqual(m.data(m.index(2, 0)), 'a1')
-        self.assertEqual(m.data(m.index(2, 0), QgsLocatorModel.CustomRole.ResultType), 2)
-        self.assertEqual(m.data(m.index(2, 0), QgsLocatorModel.CustomRole.ResultFilterName), 'test_a')
+        self.assertEqual(m.data(m.index(2, 0), QgsLocatorModel.ResultTypeRole), QgsLocatorModel.NoGroup)
+        self.assertEqual(m.data(m.index(2, 0), QgsLocatorModel.ResultFilterNameRole), 'test_a')
         self.assertEqual(m.data(m.index(3, 0)), 'a2')
-        self.assertEqual(m.data(m.index(3, 0), QgsLocatorModel.CustomRole.ResultType), 2)
-        self.assertEqual(m.data(m.index(3, 0), QgsLocatorModel.CustomRole.ResultFilterName), 'test_a')
+        self.assertEqual(m.data(m.index(3, 0), QgsLocatorModel.ResultTypeRole), QgsLocatorModel.NoGroup)
+        self.assertEqual(m.data(m.index(3, 0), QgsLocatorModel.ResultFilterNameRole), 'test_a')
 
         m.search('a')
 

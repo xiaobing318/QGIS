@@ -19,6 +19,7 @@
 #include <QVariant>
 
 #include "qgsfeature.h"
+#include "qgsfeaturerequest.h"
 #include "qgis_analysis.h"
 
 #ifdef SIP_RUN
@@ -35,6 +36,7 @@
  * take into account travel distance, amount of time or money. Currently there are two strategies
  * implemented in the analysis library: QgsNetworkDistanceStrategy and QgsNetworkSpeedStrategy.
  * QgsNetworkStrategy implemented using "strategy" design pattern.
+ * \since QGIS 3.0
  */
 
 class ANALYSIS_EXPORT QgsNetworkStrategy
@@ -53,6 +55,9 @@ class ANALYSIS_EXPORT QgsNetworkStrategy
 
   public:
 
+    /**
+     * Default constructor
+     */
     QgsNetworkStrategy() = default;
 
     virtual ~QgsNetworkStrategy() = default;

@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgslayoutitemguiregistry.h"
-#include "moc_qgslayoutitemguiregistry.cpp"
 #include "qgslayoutviewrubberband.h"
 #include "qgslayoutitemregistry.h"
 #include "qgslayoutframe.h"

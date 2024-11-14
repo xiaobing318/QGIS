@@ -13,15 +13,14 @@ __copyright__ = 'Copyright 2020, The QGIS Project'
 import os
 
 from qgis.core import QgsDataCollectionItem, QgsDirectoryItem
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
 app = start_app()
 
 
-class TestQgsDataItem(QgisTestCase):
+class TestQgsDataItem(unittest.TestCase):
 
     def test_databaseConnection(self):
 

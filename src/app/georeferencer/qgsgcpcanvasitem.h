@@ -16,15 +16,12 @@
 #ifndef QGSGCPCANVASITEM_H
 #define QGSGCPCANVASITEM_H
 
-#include <QBrush>
-#include <QPen>
-
+#include "qgsmapcanvas.h"
 #include "qgsmapcanvasitem.h"
 
-class QgsMapCanvas;
 class QgsGeorefDataPoint;
 
-class QgsGCPCanvasItem final: public QgsMapCanvasItem
+class QgsGCPCanvasItem : public QgsMapCanvasItem
 {
   public:
     QgsGCPCanvasItem( QgsMapCanvas *mapCanvas, QgsGeorefDataPoint *dataPoint, bool isGCPSource/* = true*/ );

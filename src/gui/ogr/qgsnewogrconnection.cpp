@@ -19,10 +19,9 @@
 #include <QRegularExpression>
 
 #include "qgsnewogrconnection.h"
-#include "moc_qgsnewogrconnection.cpp"
 #include "qgslogger.h"
 #include "qgsproviderregistry.h"
-#include "qgsgdalguiutils.h"
+#include "qgsogrhelperfunctions.h"
 #include "qgsapplication.h"
 #include "qgssettings.h"
 #include "qgsgui.h"
@@ -98,15 +97,16 @@ QgsNewOgrConnection::QgsNewOgrConnection( QWidget *parent, const QString &connTy
 
 void QgsNewOgrConnection::testConnection()
 {
-  QString uri = QgsGdalGuiUtils::createDatabaseURI( cmbDatabaseTypes->currentText(),
-                txtHost->text(),
-                txtDatabase->text(),
-                txtPort->text(),
-                mAuthSettingsDatabase->configId(),
-                mAuthSettingsDatabase->username(),
-                mAuthSettingsDatabase->password(),
-                true );
-  QgsDebugMsgLevel( "Connecting using uri = " + uri, 2 );
+  QString uri;
+  uri = createDatabaseURI( cmbDatabaseTypes->currentText(),
+                           txtHost->text(),
+                           txtDatabase->text(),
+                           txtPort->text(),
+                           mAuthSettingsDatabase->configId(),
+                           mAuthSettingsDatabase->username(),
+                           mAuthSettingsDatabase->password(),
+                           true );
+  QgsDebugMsg( "Connecting using uri = " + uri );
   OGRRegisterAll();
   OGRDataSourceH       poDS;
   OGRSFDriverH         pahDriver;

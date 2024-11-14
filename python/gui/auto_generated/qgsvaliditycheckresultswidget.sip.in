@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsvaliditycheckresultswidget.h                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -14,7 +14,7 @@
 class QgsValidityCheckResultsModel : QAbstractItemModel
 {
 %Docstring(signature="appended")
-A QAbstractItemModel subclass for displaying the results from a :py:class:`QgsAbstractValidityCheck`.
+A QAbstractItemModel subclass for displaying the results from a :py:class:`QgsAbtractValidityCheck`.
 
 .. versionadded:: 3.6
 %End
@@ -24,10 +24,9 @@ A QAbstractItemModel subclass for displaying the results from a :py:class:`QgsAb
 %End
   public:
 
-
-    enum class CustomRole
+    enum Roles
     {
-      Description,
+      DescriptionRole,
     };
 
     QgsValidityCheckResultsModel( const QList< QgsValidityCheckResult > &results, QObject *parent /TransferThis/ = 0 );
@@ -105,5 +104,5 @@ This method is a blocking method, and runs all checks in the main thread.
  *                                                                      *
  * src/gui/qgsvaliditycheckresultswidget.h                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

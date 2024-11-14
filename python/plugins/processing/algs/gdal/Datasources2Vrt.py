@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     Datasources2Vrt.py
@@ -69,7 +71,7 @@ class Datasources2Vrt(GdalAlgorithm):
     def initAlgorithm(self, config=None):
         self.addParameter(QgsProcessingParameterMultipleLayers(self.INPUT,
                                                                self.tr('Input datasources'),
-                                                               QgsProcessing.SourceType.TypeVector))
+                                                               QgsProcessing.TypeVector))
         self.addParameter(QgsProcessingParameterBoolean(self.UNIONED,
                                                         self.tr('Create "unioned" VRT'),
                                                         defaultValue=False))
@@ -93,7 +95,7 @@ class Datasources2Vrt(GdalAlgorithm):
                 return ['vrt']
 
             def isSupportedOutputValue(self, value, context):
-                output_path = QgsProcessingParameters.parameterAsOutputLayer(self, value, context, testOnly=True)
+                output_path = QgsProcessingParameters.parameterAsOutputLayer(self, value, context)
                 if pathlib.Path(output_path).suffix.lower() != '.vrt':
                     return False, QCoreApplication.translate("GdalAlgorithm", 'Output filename must use a .vrt extension')
                 return True, ''
@@ -117,13 +119,12 @@ class Datasources2Vrt(GdalAlgorithm):
             if feedback.isCanceled():
                 break
 
-            connection_details = GdalUtils.gdal_connection_details_from_layer(layer)
-            basePath = connection_details.connection_string
+            basePath = GdalUtils.ogrConnectionStringFromLayer(layer)
             layerName = GdalUtils.ogrLayerName(layer.source())
 
-            vrt += f'<OGRVRTLayer name="{html.escape(layerName, True)}">'
-            vrt += f'<SrcDataSource>{html.escape(basePath, True)}</SrcDataSource>'
-            vrt += f'<SrcLayer>{html.escape(layerName, True)}</SrcLayer>'
+            vrt += '<OGRVRTLayer name="{}">'.format(html.escape(layerName, True))
+            vrt += '<SrcDataSource>{}</SrcDataSource>'.format(html.escape(basePath, True))
+            vrt += '<SrcLayer>{}</SrcLayer>'.format(html.escape(layerName, True))
             vrt += '</OGRVRTLayer>'
 
             feedback.setProgress(int(current * total))

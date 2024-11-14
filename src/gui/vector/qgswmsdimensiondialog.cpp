@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgswmsdimensiondialog.h"
-#include "moc_qgswmsdimensiondialog.cpp"
 #include "qgsvectorlayer.h"
 #include "qgsfieldcombobox.h"
 
@@ -64,9 +63,9 @@ QgsWmsDimensionDialog::QgsWmsDimensionDialog( QgsVectorLayer *layer, QStringList
   // Set default display combobox
   mDefaultDisplayComboBox->clear();
   QMap<int, QString> defaultDisplayLabels = QgsMapLayerServerProperties::wmsDimensionDefaultDisplayLabels();
-  for ( auto it = defaultDisplayLabels.constBegin(); it != defaultDisplayLabels.constEnd(); it++ )
+  for ( const int &k : defaultDisplayLabels.keys() )
   {
-    mDefaultDisplayComboBox->addItem( it.value(), QVariant( it.key() ) );
+    mDefaultDisplayComboBox->addItem( defaultDisplayLabels[k], QVariant( k ) );
   }
   // Set default display to All values
   mDefaultDisplayComboBox->setCurrentIndex( mDefaultDisplayComboBox->findData( QVariant( QgsMapLayerServerProperties::WmsDimensionInfo::AllValues ) ) );

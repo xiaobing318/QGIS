@@ -17,7 +17,6 @@
 
 #include "qgsapplication.h"
 #include "qgsscalewidget.h"
-#include "moc_qgsscalewidget.cpp"
 #include "qgsmapcanvas.h"
 #include "qgsproject.h"
 #include "qgslayoutmanager.h"
@@ -77,11 +76,6 @@ void QgsScaleWidget::setAllowNull( bool allowNull )
 bool QgsScaleWidget::allowNull() const
 {
   return mScaleComboBox->allowNull();
-}
-
-void QgsScaleWidget::setPredefinedScales( const QVector<double> &scales )
-{
-  mScaleComboBox->setPredefinedScales( scales );
 }
 
 void QgsScaleWidget::setScaleFromCanvas()

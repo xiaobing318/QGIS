@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     EditModelAction.py
@@ -21,8 +23,6 @@ __copyright__ = '(C) 2019, Nyall Dawson'
 
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.core import QgsProcessingAlgorithm, QgsProcessing, QgsApplication
-from qgis.utils import iface
-
 from processing.gui.ContextAction import ContextAction
 from processing.script.ScriptEditorDialog import ScriptEditorDialog
 
@@ -41,7 +41,7 @@ class ExportModelAsPythonScriptAction(ContextAction):
 
     def execute(self):
         alg = self.itemData
-        dlg = ScriptEditorDialog(parent=iface.mainWindow())
+        dlg = ScriptEditorDialog(None)
 
-        dlg.editor.setText('\n'.join(alg.asPythonCode(QgsProcessing.PythonOutputType.PythonQgsProcessingAlgorithmSubclass, 4)))
+        dlg.editor.setText('\n'.join(alg.asPythonCode(QgsProcessing.PythonQgsProcessingAlgorithmSubclass, 4)))
         dlg.show()

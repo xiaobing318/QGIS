@@ -11,33 +11,30 @@ __copyright__ = 'Copyright 2020, The QGIS Project'
 
 import os
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import QTemporaryDir
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.PyQt.QtTest import QSignalSpy
 from qgis.core import (
-    QgsFlatTerrainProvider,
-    QgsMeshTerrainProvider,
-    QgsProject,
     QgsProjectElevationProperties,
-    QgsRasterDemTerrainProvider,
-    QgsRasterLayer,
     QgsReadWriteContext,
-    QgsDoubleRange,
+    QgsProject,
+    QgsFlatTerrainProvider,
+    QgsRasterDemTerrainProvider,
+    QgsMeshTerrainProvider,
+    QgsRasterLayer
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
 start_app()
 
 
-class TestQgsProjectElevationProperties(QgisTestCase):
+class TestQgsProjectElevationProperties(unittest.TestCase):
 
     def testBasic(self):
         props = QgsProjectElevationProperties(None)
         self.assertIsInstance(props.terrainProvider(), QgsFlatTerrainProvider)
-        self.assertTrue(props.elevationRange().isInfinite())
 
         provider = QgsRasterDemTerrainProvider()
         provider.setOffset(5)
@@ -45,16 +42,6 @@ class TestQgsProjectElevationProperties(QgisTestCase):
         props.setTerrainProvider(provider)
 
         self.assertIsInstance(props.terrainProvider(), QgsRasterDemTerrainProvider)
-
-        range_changed_spy = QSignalSpy(props.elevationRangeChanged)
-        props.setElevationRange(QgsDoubleRange(34.2, 78.6))
-        self.assertEqual(props.elevationRange(), QgsDoubleRange(34.2, 78.6))
-        self.assertEqual(len(range_changed_spy), 1)
-        self.assertEqual(range_changed_spy[-1][0], QgsDoubleRange(34.2, 78.6))
-
-        # no signal if not changed
-        props.setElevationRange(QgsDoubleRange(34.2, 78.6))
-        self.assertEqual(len(range_changed_spy), 1)
 
         doc = QDomDocument("testdoc")
         elem = props.writeXml(doc, QgsReadWriteContext())
@@ -64,7 +51,6 @@ class TestQgsProjectElevationProperties(QgisTestCase):
         self.assertIsInstance(props2.terrainProvider(), QgsRasterDemTerrainProvider)
         self.assertEqual(props2.terrainProvider().offset(), 5)
         self.assertEqual(props2.terrainProvider().scale(), 3)
-        self.assertEqual(props2.elevationRange(), QgsDoubleRange(34.2, 78.6))
 
         mesh_provider = QgsMeshTerrainProvider()
         mesh_provider.setOffset(2)

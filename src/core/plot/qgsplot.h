@@ -44,6 +44,9 @@ class CORE_EXPORT QgsPlot
 {
   public:
 
+    /**
+     * Constructor for QgsPlot.
+     */
     QgsPlot() = default;
 
     virtual ~QgsPlot();
@@ -51,12 +54,12 @@ class CORE_EXPORT QgsPlot
     /**
      * Writes the plot's properties into an XML \a element.
      */
-    virtual bool writeXml( QDomElement &element, QDomDocument &document, const QgsReadWriteContext &context ) const;
+    virtual bool writeXml( QDomElement &element, QDomDocument &document, QgsReadWriteContext &context ) const;
 
     /**
      * Reads the plot's properties from an XML \a element.
      */
-    virtual bool readXml( const QDomElement &element, const QgsReadWriteContext &context );
+    virtual bool readXml( const QDomElement &element, QgsReadWriteContext &context );
 
   private:
 
@@ -78,18 +81,20 @@ class CORE_EXPORT QgsPlotAxis
     QgsPlotAxis();
     ~QgsPlotAxis();
 
+    //! QgsPlotAxis cannot be copied
     QgsPlotAxis( const QgsPlotAxis &other ) = delete;
+    //! QgsPlotAxis cannot be copied
     QgsPlotAxis &operator=( const QgsPlotAxis &other ) = delete;
 
     /**
      * Writes the axis' properties into an XML \a element.
      */
-    bool writeXml( QDomElement &element, QDomDocument &document, const QgsReadWriteContext &context ) const;
+    bool writeXml( QDomElement &element, QDomDocument &document, QgsReadWriteContext &context ) const;
 
     /**
      * Reads the axis' properties from an XML \a element.
      */
-    bool readXml( const QDomElement &element, const QgsReadWriteContext &context );
+    bool readXml( const QDomElement &element, QgsReadWriteContext &context );
 
     /**
      * Returns the interval of minor grid lines for the axis.
@@ -195,46 +200,6 @@ class CORE_EXPORT QgsPlotAxis
      */
     void setNumericFormat( QgsNumericFormat *format SIP_TRANSFER );
 
-    /**
-     * Returns the axis label suffix, or an empty string if no label suffix is to be used.
-     *
-     * \see setLabelSuffix()
-     * \see labelSuffixPlacement()
-     *
-     * \since QGIS 3.32
-     */
-    QString labelSuffix() const;
-
-    /**
-     * Sets the axis label \a suffix. Set to an empty string if no label suffix is to be used.
-     *
-     * \see labelSuffix()
-     * \see setLabelSuffixPlacement()
-     *
-     * \since QGIS 3.32
-     */
-    void setLabelSuffix( const QString &suffix );
-
-    /**
-     * Returns the placement for the axis label suffixes.
-     *
-     * \see setLabelSuffixPlacement()
-     * \see labelSuffix()
-     *
-     * \since QGIS 3.32
-     */
-    Qgis::PlotAxisSuffixPlacement labelSuffixPlacement() const;
-
-    /**
-     * Sets the \a placement for the axis label suffixes.
-     *
-     * \see labelSuffixPlacement()
-     * \see setLabelSuffix()
-     *
-     * \since QGIS 3.32
-     */
-    void setLabelSuffixPlacement( Qgis::PlotAxisSuffixPlacement placement );
-
   private:
 
 #ifdef SIP_RUN
@@ -245,9 +210,6 @@ class CORE_EXPORT QgsPlotAxis
     double mGridIntervalMajor = 5;
 
     double mLabelInterval = 1;
-
-    QString mLabelSuffix;
-    Qgis::PlotAxisSuffixPlacement mSuffixPlacement = Qgis::PlotAxisSuffixPlacement::EveryLabel;
 
     std::unique_ptr< QgsNumericFormat > mNumericFormat;
 
@@ -280,11 +242,13 @@ class CORE_EXPORT Qgs2DPlot : public QgsPlot
 
     ~Qgs2DPlot() override;
 
+    //! Qgs2DPlot cannot be copied
     Qgs2DPlot( const Qgs2DPlot &other ) = delete;
+    //! Qgs2DPlot cannot be copied
     Qgs2DPlot &operator=( const Qgs2DPlot &other ) = delete;
 
-    bool writeXml( QDomElement &element, QDomDocument &document, const QgsReadWriteContext &context ) const override;
-    bool readXml( const QDomElement &element, const QgsReadWriteContext &context ) override;
+    bool writeXml( QDomElement &element, QDomDocument &document, QgsReadWriteContext &context ) const override;
+    bool readXml( const QDomElement &element, QgsReadWriteContext &context ) override;
 
     /**
      * Renders the plot.
@@ -410,6 +374,7 @@ class CORE_EXPORT Qgs2DPlot : public QgsPlot
      */
     QgsPlotAxis &yAxis() { return mYAxis; }
 
+
     /**
      * Returns a reference to the plot's y axis.
      *
@@ -483,53 +448,6 @@ class CORE_EXPORT Qgs2DPlot : public QgsPlot
 
     QgsPlotAxis mXAxis;
     QgsPlotAxis mYAxis;
-};
-
-/**
- * \brief Manages default settings for plot objects
- *
- * \warning This class is not considered stable API, and may change in future!
- *
- * \ingroup core
- * \since QGIS 3.30
- */
-class CORE_EXPORT QgsPlotDefaultSettings
-{
-  public:
-
-    /**
-     * Returns the default numeric format to use for plot axis labels.
-     */
-    static QgsNumericFormat *axisLabelNumericFormat() SIP_FACTORY;
-
-    /**
-     * Returns the default line symbol to use for axis major grid lines.
-     *
-     * \see axisGridMinorSymbol()
-     */
-    static QgsLineSymbol *axisGridMajorSymbol() SIP_FACTORY;
-
-    /**
-     * Returns the default line symbol to use for axis minor grid lines.
-     *
-     * \see axisGridMajorSymbol()
-     */
-    static QgsLineSymbol *axisGridMinorSymbol() SIP_FACTORY;
-
-    /**
-     * Returns the default fill symbol to use for the chart area background fill.
-     *
-     * \see chartBorderSymbol()
-     */
-    static QgsFillSymbol *chartBackgroundSymbol() SIP_FACTORY;
-
-    /**
-     * Returns the default fill symbol to use for the chart area border.
-     *
-     * \see chartBackgroundSymbol()
-     */
-    static QgsFillSymbol *chartBorderSymbol() SIP_FACTORY;
-
 };
 
 #endif // QGSPLOT_H

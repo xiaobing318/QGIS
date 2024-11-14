@@ -31,6 +31,7 @@ class QgsReadWriteContext;
  * \class QgsLayoutSnapper
  * \brief Manages snapping grids and preset snap lines in a layout, and handles
  * snapping points to the nearest grid coordinate/snap line when possible.
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsLayoutSnapper: public QgsLayoutSerializableObject
 {

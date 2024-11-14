@@ -37,10 +37,8 @@ class CORE_EXPORT QgsRasterIterator
 
     /**
      * Constructor for QgsRasterIterator, iterating over the specified \a input raster source.
-     *
-     * Since QGIS 3.34 the tileOverlapPixels can be used to specify a margin in pixels for retrieving pixels overlapping into neighbor cells.
      */
-    QgsRasterIterator( QgsRasterInterface *input, int tileOverlapPixels = 0 );
+    QgsRasterIterator( QgsRasterInterface *input );
 
     /**
      * Given an overall raster extent and width and height in pixels, calculates the sub region
@@ -117,10 +115,6 @@ class CORE_EXPORT QgsRasterIterator
      * \param topLeftCol top left column
      * \param topLeftRow top left row
      * \param blockExtent optional storage for exact extent of returned raster block
-     * \param tileColumns optional storage for number of columns in the iterated tile (excluding any tile overlap pixels)
-     * \param tileRows optional storage for number of rows in the iterated tile (excluding any tile overlap pixels)
-     * \param tileTopLeftColumn optional storage for the top left column in the iterated tile (excluding any tile overlap pixels)
-     * \param tileTopLeftRow optional storage for the top left row in the iterated tile (excluding any tile overlap pixels)
      * \returns FALSE if the last part was already returned
      * \note Not available in Python bindings
      * \since QGIS 3.2
@@ -129,8 +123,7 @@ class CORE_EXPORT QgsRasterIterator
                              int &nCols, int &nRows,
                              std::unique_ptr< QgsRasterBlock > &block,
                              int &topLeftCol, int &topLeftRow,
-                             QgsRectangle *blockExtent = nullptr,
-                             int *tileColumns = nullptr, int *tileRows = nullptr, int *tileTopLeftColumn = nullptr, int *tileTopLeftRow = nullptr ) SIP_SKIP;
+                             QgsRectangle *blockExtent = nullptr ) SIP_SKIP;
 
     /**
      * Cancels the raster iteration and resets the iterator.
@@ -170,40 +163,6 @@ class CORE_EXPORT QgsRasterIterator
      */
     int maximumTileHeight() const { return mMaximumTileHeight; }
 
-    /**
-     * Returns the total number of blocks which cover the width of the input raster.
-     *
-     * \see blockCount()
-     * \see blockCountHeight()
-     * \since QGIS 3.42
-     */
-    int blockCountWidth() const { return mNumberBlocksWidth; }
-
-    /**
-     * Returns the total number of blocks which cover the height of the input raster.
-     *
-     * \see blockCount()
-     * \see blockCountWidth()
-     * \since QGIS 3.42
-     */
-    int blockCountHeight() const { return mNumberBlocksWidth; }
-
-    /**
-     * Returns the total number of blocks required to iterate over the input raster.
-     *
-     * \see blockCountWidth()
-     * \see blockCountHeight()
-     * \since QGIS 3.42
-     */
-    qgssize blockCount() const { return static_cast< qgssize >( mNumberBlocksHeight ) * mNumberBlocksWidth; }
-
-    /**
-     * Returns the raster iteration progress as a fraction from 0 to 1.0, for the specified \a bandNumber.
-     *
-     * \since QGIS 3.42
-     */
-    double progress( int bandNumber ) const;
-
     //! Default maximum tile width
     static const int DEFAULT_MAXIMUM_TILE_WIDTH = 2000;
 
@@ -225,16 +184,12 @@ class CORE_EXPORT QgsRasterIterator
     QgsRectangle mExtent;
     QgsRasterBlockFeedback *mFeedback = nullptr;
 
-    int mTileOverlapPixels = 0;
     int mMaximumTileWidth;
     int mMaximumTileHeight;
 
-    int mNumberBlocksWidth = 0;
-    int mNumberBlocksHeight = 0;
-
     //! Remove part into and release memory
     void removePartInfo( int bandNumber );
-    bool readNextRasterPartInternal( int bandNumber, int &nCols, int &nRows, std::unique_ptr<QgsRasterBlock> *block, int &topLeftCol, int &topLeftRow, QgsRectangle *blockExtent, int &tileColumns, int &tileRows, int &tileTopLeftColumn, int &tileTopLeftRow );
+    bool readNextRasterPartInternal( int bandNumber, int &nCols, int &nRows, std::unique_ptr<QgsRasterBlock> *block, int &topLeftCol, int &topLeftRow, QgsRectangle *blockExtent );
 };
 
 #endif // QGSRASTERITERATOR_H

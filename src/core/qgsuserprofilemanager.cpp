@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsuserprofilemanager.h"
-#include "moc_qgsuserprofilemanager.cpp"
 #include "qgsuserprofile.h"
 #include "qgsapplication.h"
 #include "qgslogger.h"
@@ -118,28 +117,6 @@ void QgsUserProfileManager::setDefaultFromActive()
   setDefaultProfileName( userProfile()->name() );
 }
 
-QString QgsUserProfileManager::lastProfileName() const
-{
-  return mSettings->value( QStringLiteral( "/core/lastProfile" ), QString() ).toString();
-}
-
-void QgsUserProfileManager::updateLastProfileName( )
-{
-  mSettings->setValue( QStringLiteral( "/core/lastProfile" ), userProfile()->name() );
-  mSettings->sync();
-}
-
-Qgis::UserProfileSelectionPolicy QgsUserProfileManager::userProfileSelectionPolicy() const
-{
-  return static_cast< Qgis::UserProfileSelectionPolicy >( mSettings->value( QStringLiteral( "/core/selectionPolicy" ), 0 ).toInt() );
-}
-
-void QgsUserProfileManager::setUserProfileSelectionPolicy( Qgis::UserProfileSelectionPolicy policy )
-{
-  mSettings->setValue( QStringLiteral( "/core/selectionPolicy" ), static_cast< int >( policy ) );
-  mSettings->sync();
-}
-
 QStringList QgsUserProfileManager::allProfiles() const
 {
   return QDir( mRootProfilePath ).entryList( QDir::Dirs | QDir::NoDotAndDotDot );
@@ -165,11 +142,7 @@ QgsError QgsUserProfileManager::createUserProfile( const QString &name )
   const QDir folder( mRootProfilePath + QDir::separator() + name );
   if ( !folder.exists() )
   {
-    if ( !QDir().mkpath( folder.absolutePath() ) )
-    {
-      error.append( tr( "Cannot write '%1'" ).arg( folder.absolutePath() ) );
-      return error;
-    }
+    QDir().mkpath( folder.absolutePath() );
   }
 
   QFile qgisPrivateDbFile( folder.absolutePath() + QDir::separator() + "qgis.db" );
@@ -227,11 +200,6 @@ QString QgsUserProfileManager::settingsFile() const
   return  mRootProfilePath + QDir::separator() + "profiles.ini";
 }
 
-QSettings *QgsUserProfileManager::settings()
-{
-  return mSettings.get();
-}
-
 QgsUserProfile *QgsUserProfileManager::userProfile()
 {
   return mUserProfile.get();
@@ -248,7 +216,7 @@ void QgsUserProfileManager::loadUserProfile( const QString &name )
   // http://doc.qt.io/qt-5/qcoreapplication.html#arguments
   arguments.removeFirst();
   arguments << QStringLiteral( "--profile" ) << name;
-  QgsDebugMsgLevel( QStringLiteral( "Starting instance from %1 with %2" ).arg( path ).arg( arguments.join( " " ) ), 2 );
+  QgsDebugMsg( QStringLiteral( "Starting instance from %1 with %2" ).arg( path ).arg( arguments.join( " " ) ) );
   QProcess::startDetached( path, arguments, QDir::toNativeSeparators( QCoreApplication::applicationDirPath() ) );
 #else
   Q_UNUSED( name )

@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsmeshdatasetgrouptreeview.h"
-#include "moc_qgsmeshdatasetgrouptreeview.cpp"
 
 #include "qgis.h"
 #include "qgsapplication.h"
@@ -334,7 +333,7 @@ bool QgsMeshDatasetGroupProxyModel::filterAcceptsRow( int source_row, const QMod
 
 /////////////////////////////////////////////////////////////////////////////////////////
 
-QgsMeshDatasetGroupTreeItemDelegate::QgsMeshDatasetGroupTreeItemDelegate( QObject *parent )
+QgsMeshDatasetGroupTreeItemDelagate::QgsMeshDatasetGroupTreeItemDelagate( QObject *parent )
   : QStyledItemDelegate( parent )
   , mScalarSelectedPixmap( QStringLiteral( ":/images/themes/default/propertyicons/meshcontours.svg" ) )
   , mScalarDeselectedPixmap( QStringLiteral( ":/images/themes/default/propertyicons/meshcontoursoff.svg" ) )
@@ -343,7 +342,7 @@ QgsMeshDatasetGroupTreeItemDelegate::QgsMeshDatasetGroupTreeItemDelegate( QObjec
 {
 }
 
-void QgsMeshDatasetGroupTreeItemDelegate::paint( QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index ) const
+void QgsMeshDatasetGroupTreeItemDelagate::paint( QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index ) const
 {
   if ( !painter )
     return;
@@ -360,12 +359,12 @@ void QgsMeshDatasetGroupTreeItemDelegate::paint( QPainter *painter, const QStyle
   painter->drawPixmap( iconRect( option.rect, false ), isActive ? mScalarSelectedPixmap : mScalarDeselectedPixmap );
 }
 
-QRect QgsMeshDatasetGroupTreeItemDelegate::iconRect( const QRect &rect, bool isVector ) const
+QRect QgsMeshDatasetGroupTreeItemDelagate::iconRect( const QRect &rect, bool isVector ) const
 {
   return  iconRect( rect, isVector ? 1 : 2 );
 }
 
-QRect QgsMeshDatasetGroupTreeItemDelegate::iconRect( const QRect &rect, int pos ) const
+QRect QgsMeshDatasetGroupTreeItemDelagate::iconRect( const QRect &rect, int pos ) const
 {
   const int iw = mScalarSelectedPixmap.width();
   const int ih = mScalarSelectedPixmap.height();
@@ -373,7 +372,7 @@ QRect QgsMeshDatasetGroupTreeItemDelegate::iconRect( const QRect &rect, int pos 
   return QRect( rect.right() - pos * ( iw + margin ), rect.top() + margin, iw, ih );
 }
 
-QSize QgsMeshDatasetGroupTreeItemDelegate::sizeHint( const QStyleOptionViewItem &option, const QModelIndex &index ) const
+QSize QgsMeshDatasetGroupTreeItemDelagate::sizeHint( const QStyleOptionViewItem &option, const QModelIndex &index ) const
 {
   QSize hint = QStyledItemDelegate::sizeHint( option, index );
   if ( hint.height() < 16 )
@@ -653,7 +652,7 @@ QMenu *QgsMeshDatasetGroupTreeView::createContextMenu()
 
   switch ( item->datasetGroupType() )
   {
-    case QgsMeshDatasetGroup::Unknown:
+    case QgsMeshDatasetGroup::None:
       break;
     case QgsMeshDatasetGroup::Persistent:
       break;

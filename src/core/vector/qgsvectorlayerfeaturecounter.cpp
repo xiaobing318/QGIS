@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsvectorlayerfeaturecounter.h"
-#include "moc_qgsvectorlayerfeaturecounter.cpp"
 #include "qgsvectorlayer.h"
 #include "qgsfeatureid.h"
 #include "qgsfeedback.h"
@@ -64,7 +63,7 @@ bool QgsVectorLayerFeatureCounter::run()
 
     QgsFeatureRequest request;
     if ( !mRenderer->filterNeedsGeometry() )
-      request.setFlags( Qgis::FeatureRequestFlag::NoGeometry );
+      request.setFlags( QgsFeatureRequest::NoGeometry );
     request.setSubsetOfAttributes( mRenderer->usedAttributes( renderContext ), mSource->fields() );
 
     request.setFeedback( mFeedback.get() );

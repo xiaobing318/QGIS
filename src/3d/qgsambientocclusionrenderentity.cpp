@@ -14,14 +14,13 @@
  ***************************************************************************/
 
 #include "qgsambientocclusionrenderentity.h"
-#include "moc_qgsambientocclusionrenderentity.cpp"
 
 #include <random>
 
 #include <Qt3DRender/QParameter>
 
-QgsAmbientOcclusionRenderEntity::QgsAmbientOcclusionRenderEntity( Qt3DRender::QTexture2D *depthTexture, Qt3DRender::QLayer *layer, Qt3DRender::QCamera *camera, QNode *parent )
-  : QgsRenderPassQuad( layer, parent )
+QgsAmbientOcclusionRenderEntity::QgsAmbientOcclusionRenderEntity( Qt3DRender::QTexture2D *depthTexture, Qt3DRender::QCamera *camera, QNode *parent )
+  : QgsRenderPassQuad( parent )
 {
   mDepthTextureParameter = new Qt3DRender::QParameter( QStringLiteral( "depthTexture" ), depthTexture );
   mMaterial->addParameter( mDepthTextureParameter );

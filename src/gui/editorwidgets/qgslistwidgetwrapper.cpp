@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgslistwidgetwrapper.h"
-#include "moc_qgslistwidgetwrapper.cpp"
 #include "qgslistwidget.h"
 #include "qgsattributeform.h"
 
@@ -28,29 +27,22 @@ void QgsListWidgetWrapper::showIndeterminateState()
   mWidget->setList( QVariantList() );
 }
 
-void QgsListWidgetWrapper::setEnabled( bool enabled )
-{
-  if ( mWidget )
-  {
-    mWidget->setReadOnly( !enabled );
-  }
-}
-
 QWidget *QgsListWidgetWrapper::createWidget( QWidget *parent )
 {
-  QFrame *ret = new QFrame( parent );
-  ret->setFrameShape( QFrame::StyledPanel );
-  QHBoxLayout *layout = new QHBoxLayout( ret );
-  layout->setContentsMargins( 0, 0, 0, 0 );
-  QgsListWidget *widget = new QgsListWidget( field().subType(), ret );
-  layout->addWidget( widget );
-
   if ( isInTable( parent ) )
   {
-    // if to be put in a table, set a decent size
+    // if to be put in a table, draw a border and set a decent size
+    QFrame *ret = new QFrame( parent );
+    ret->setFrameShape( QFrame::StyledPanel );
+    QHBoxLayout *layout = new QHBoxLayout( ret );
+    layout->addWidget( new QgsListWidget( field().subType(), ret ) );
     ret->setMinimumSize( QSize( 320, 110 ) );
+    return ret;
   }
-  return ret;
+  else
+  {
+    return new QgsListWidget( field().subType(), parent );
+  }
 }
 
 void QgsListWidgetWrapper::initWidget( QWidget *editor )
@@ -76,14 +68,14 @@ void QgsListWidgetWrapper::updateValues( const QVariant &value, const QVariantLi
 
 QVariant QgsListWidgetWrapper::value() const
 {
-  const QMetaType::Type type = field().type();
-  if ( !mWidget ) return QgsVariantUtils::createNullVariant( type );
+  const QVariant::Type type = field().type();
+  if ( !mWidget ) return QVariant( type );
   const QVariantList list = mWidget->list();
   if ( list.size() == 0 && config( QStringLiteral( "EmptyIsNull" ) ).toBool() )
   {
     return QVariant( );
   }
-  if ( type == QMetaType::Type::QStringList )
+  if ( type == QVariant::StringList )
   {
     QStringList result;
     for ( QVariantList::const_iterator it = list.constBegin(); it != list.constEnd(); ++it )

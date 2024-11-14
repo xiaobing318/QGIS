@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/raster/qgscolorrampshaderwidget.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -32,7 +32,6 @@ The other mode is used to style mesh layer contours (scalar datasets)
 %Docstring
 Creates new color ramp shader widget
 %End
-    ~QgsColorRampShaderWidget();
 
     void initializeForUseWithRasterLayer();
 %Docstring
@@ -95,7 +94,7 @@ Color ramp tree has changed
 Widget changed
 %End
 
-    void classificationModeChanged( Qgis::ShaderClassificationMethod mode );
+    void classificationModeChanged( QgsColorRampShader::ClassificationMode mode );
 %Docstring
 Classification mode changed
 %End
@@ -126,5 +125,5 @@ Populates color ramp tree from ramp items
  *                                                                      *
  * src/gui/raster/qgscolorrampshaderwidget.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

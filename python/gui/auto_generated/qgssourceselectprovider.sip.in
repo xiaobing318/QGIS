@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgssourceselectprovider.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -13,14 +13,13 @@ class QgsSourceSelectProvider
 {
 %Docstring(signature="appended")
 This is the interface for those who want to add entries to the :py:class:`QgsDataSourceManagerDialog`
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
 #include "qgssourceselectprovider.h"
 %End
-  public:
-    static const QMetaObject staticMetaObject;
-
   public:
 
     enum Ordering
@@ -28,17 +27,10 @@ This is the interface for those who want to add entries to the :py:class:`QgsDat
       OrderLocalProvider,
       OrderDatabaseProvider,
       OrderRemoteProvider,
+      OrderGeoCmsProvider,
       OrderSearchProvider,
       OrderOtherProvider,
     };
-
-    enum class Capability
-    {
-      NoCapabilities,
-      ConfigureFromUri
-    };
-    typedef QFlags<QgsSourceSelectProvider::Capability> Capabilities;
-
 
     virtual ~QgsSourceSelectProvider();
 
@@ -84,18 +76,7 @@ the source selects (ascending) using this integer value
 Create a new instance of :py:class:`QgsAbstractDataSourceWidget` (or ``None``).
 Caller takes responsibility of deleting created.
 %End
-
-    virtual Capabilities capabilities();
-%Docstring
-Returns the source select provider capabilities.
-The default implementation returns no capabilities.
-
-.. versionadded:: 3.38
-%End
-
 };
-
-QFlags<QgsSourceSelectProvider::Capability> operator|(QgsSourceSelectProvider::Capability f1, QFlags<QgsSourceSelectProvider::Capability> f2);
 
 
 /************************************************************************
@@ -103,5 +84,5 @@ QFlags<QgsSourceSelectProvider::Capability> operator|(QgsSourceSelectProvider::C
  *                                                                      *
  * src/gui/qgssourceselectprovider.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

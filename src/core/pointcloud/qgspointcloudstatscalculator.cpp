@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgspointcloudstatscalculator.h"
-#include "moc_qgspointcloudstatscalculator.cpp"
 
 #include "qgspointcloudstatistics.h"
 
@@ -27,6 +26,8 @@
 
 #include "qgspointcloudrenderer.h"
 
+#include "qgsapplication.h"
+#include "qgspointcloudstatscalculationtask.h"
 #include "qgsfeedback.h"
 #include "qgspointcloudblockrequest.h"
 
@@ -59,13 +60,10 @@ struct StatsProcessor
 
     QgsPointCloudStatistics operator()( IndexedPointCloudNode node )
     {
-      if ( mIndex->nodePointCount( node ) < 1 )
-        return QgsPointCloudStatistics();
-
       std::unique_ptr<QgsPointCloudBlock> block = nullptr;
       if ( mIndex->accessType() == QgsPointCloudIndex::Local )
       {
-        block = mIndex->nodeData( node, mRequest );
+        block.reset( mIndex->nodeData( node, mRequest ) );
       }
       else
       {
@@ -75,12 +73,10 @@ struct StatsProcessor
         QObject::connect( mFeedback, &QgsFeedback::canceled, &loop, &QEventLoop::quit );
         loop.exec();
         if ( !mFeedback->isCanceled() )
+          block.reset( request->block() );
+        if ( !request->block() )
         {
-          block = request->takeBlock();
-          if ( !block )
-          {
-            QgsMessageLog::logMessage( QObject::tr( "Unable to calculate statistics for node %1, error: \"%2\"" ).arg( node.toString(), request->errorStr() ) );
-          }
+          QgsMessageLog::logMessage( QObject::tr( "Unable to calculate statistics for node %1, error: \"%2\"" ).arg( node.toString() ).arg( request->errorStr() ) );
         }
       }
 
@@ -122,11 +118,7 @@ struct StatsProcessor
              attribute.name() == QLatin1String( "ScanDirectionFlag" ) ||
              attribute.name() == QLatin1String( "Classification" ) ||
              attribute.name() == QLatin1String( "EdgeOfFlightLine" ) ||
-             attribute.name() == QLatin1String( "PointSourceId" ) ||
-             attribute.name() == QLatin1String( "Synthetic" ) ||
-             attribute.name() == QLatin1String( "KeyPoint" ) ||
-             attribute.name() == QLatin1String( "Withheld" ) ||
-             attribute.name() == QLatin1String( "Overlap" ) )
+             attribute.name() == QLatin1String( "PointSourceId" ) )
         {
           classifiableAttributesOffsetSet.insert( attributeOffset );
         }
@@ -217,7 +209,9 @@ bool QgsPointCloudStatsCalculator::calculateStats( QgsFeedback *feedback, const 
 
   feedback->setProgress( 0 );
 
+  QThreadPool::globalInstance()->releaseThread();
   QVector<QgsPointCloudStatistics> list = QtConcurrent::blockingMapped( nodes, StatsProcessor( mIndex.get(), mRequest, feedback, 100.0 / ( double )nodes.size() ) );
+  QThreadPool::globalInstance()->reserveThread();
 
   for ( QgsPointCloudStatistics &s : list )
   {

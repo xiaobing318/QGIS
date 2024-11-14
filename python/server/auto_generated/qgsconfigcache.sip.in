@@ -3,7 +3,7 @@
  *                                                                      *
  * src/server/qgsconfigcache.h                                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -16,6 +16,8 @@ class QgsConfigCache : QObject
 {
 %Docstring(signature="appended")
 Cache for server configuration.
+
+.. versionadded:: 2.8
 %End
 
 %TypeHeaderCode
@@ -55,6 +57,8 @@ value is ``False``).
 :param settings: QGIS server settings
 
 :return: the project or ``None`` if an error happened
+
+.. versionadded:: 3.0
 %End
 
     QString strategyName() const;
@@ -64,28 +68,12 @@ Returns the name of the current strategy
 .. versionadded:: 3.26
 %End
 
-    QList<QgsProject *> projects() const;
-%Docstring
-Returns projects currently in cache.
-
-.. versionadded:: 3.30
-%End
-
   public:
     QgsConfigCache( QgsServerSettings *settings );
 %Docstring
 Initialize from settings
 %End
 
-
-  signals:
-
-    void projectRemovedFromCache( const QString &path );
-%Docstring
-Emitted whenever a project is removed from the cache.
-
-.. versionadded:: 3.38
-%End
 
   private:
     QgsConfigCache();
@@ -109,5 +97,5 @@ Remove all changed cache entries
  *                                                                      *
  * src/server/qgsconfigcache.h                                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

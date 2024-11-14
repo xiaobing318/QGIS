@@ -13,25 +13,22 @@ __author__ = 'Nyall Dawson'
 __date__ = '2015-08-24'
 __copyright__ = 'Copyright 2015, The QGIS Project'
 
+import os
 import sys
 
-from qgis.core import (
-    Qgis,
-    QgsLabeling,
-    QgsLabelingEngineSettings,
-    QgsLabelObstacleSettings,
-    QgsMarkerSymbol,
-    QgsPalLayerSettings,
-    QgsProperty,
-    QgsSingleSymbolRenderer,
-    QgsVectorLayerSimpleLabeling,
-    QgsLabelingEngineRuleMinimumDistanceLabelToFeature,
-    QgsLabelingEngineRuleMaximumDistanceLabelToFeature,
-    QgsLabelingEngineRuleAvoidLabelOverlapWithFeature,
-    QgsLabelingEngineRuleMinimumDistanceLabelToLabel
-)
+import qgis  # NOQA
+from qgis.PyQt.QtCore import qDebug
+from qgis.core import (QgsLabelingEngineSettings,
+                       QgsPalLayerSettings,
+                       QgsSingleSymbolRenderer,
+                       QgsMarkerSymbol,
+                       QgsProperty,
+                       QgsVectorLayerSimpleLabeling,
+                       QgsLabelObstacleSettings,
+                       QgsLabeling)
 
 from test_qgspallabeling_base import TestQgsPalLabeling, runSuite
+from utilities import getTempfilePath, renderMapToImage, mapSettingsString
 
 
 # noinspection PyPep8Naming
@@ -42,16 +39,26 @@ class TestPlacementBase(TestQgsPalLabeling):
         if not cls._BaseSetup:
             TestQgsPalLabeling.setUpClass()
 
+    @classmethod
+    def tearDownClass(cls):
+        TestQgsPalLabeling.tearDownClass()
+
     def setUp(self):
         """Run before each test."""
         super().setUp()
         self.removeAllLayers()
         self.configTest('pal_placement', 'sp')
+        self._TestImage = ''
+
+        self._Mismatch = 0
+        self._ColorTol = 0
+        self._Mismatches.clear()
+        self._ColorTols.clear()
 
         # render only rectangles of the placed labels
         engine_settings = QgsLabelingEngineSettings()
-        engine_settings.setPlacementVersion(QgsLabelingEngineSettings.PlacementEngineVersion.PlacementEngineVersion2)
-        engine_settings.setFlag(QgsLabelingEngineSettings.Flag.DrawLabelRectOnly)
+        engine_settings.setPlacementVersion(QgsLabelingEngineSettings.PlacementEngineVersion2)
+        engine_settings.setFlag(QgsLabelingEngineSettings.DrawLabelRectOnly)
         self._MapSettings.setLabelingEngineSettings(engine_settings)
 
     def checkTest(self, **kwargs):
@@ -59,20 +66,35 @@ class TestPlacementBase(TestQgsPalLabeling):
             self.layer.setLabeling(QgsVectorLayerSimpleLabeling(self.lyr))
 
         ms = self._MapSettings  # class settings
+        settings_type = 'Class'
         if self._TestMapSettings is not None:
             ms = self._TestMapSettings  # per test settings
+            settings_type = 'Test'
+        if 'PAL_VERBOSE' in os.environ:
+            qDebug(f'MapSettings type: {settings_type}')
+            qDebug(mapSettingsString(ms))
 
-        self.assertTrue(
-            self.render_map_settings_check(
-                self._Test,
-                self._Test,
-                ms,
-                self._Test,
-                color_tolerance=0,
-                allowed_mismatch=0,
-                control_path_prefix='expected_' + self._TestGroupPrefix
-            )
-        )
+        img = renderMapToImage(ms, parallel=False)
+        self._TestImage = getTempfilePath('png')
+        if not img.save(self._TestImage, 'png'):
+            os.unlink(self._TestImage)
+            raise OSError('Failed to save output from map render job')
+        self.saveControlImage(self._TestImage)
+
+        mismatch = 0
+        if 'PAL_NO_MISMATCH' not in os.environ:
+            # some mismatch expected
+            mismatch = self._Mismatch if self._Mismatch else 0
+            if self._TestGroup in self._Mismatches:
+                mismatch = self._Mismatches[self._TestGroup]
+        colortol = 0
+        if 'PAL_NO_COLORTOL' not in os.environ:
+            colortol = self._ColorTol if self._ColorTol else 0
+            if self._TestGroup in self._ColorTols:
+                colortol = self._ColorTols[self._TestGroup]
+        self.assertTrue(*self.renderCheck(mismatch=mismatch,
+                                          colortol=colortol,
+                                          imgpath=self._TestImage))
 
 # noinspection PyPep8Naming
 
@@ -118,224 +140,6 @@ class TestPointPlacement(TestPlacementBase):
         self.removeMapLayer(self.layer)
         self.layer = None
 
-    def test_point_placement_around_max_distance_show_candidates(
-            self):
-        """
-        Around point placement with max distance, showing candidates
-        """
-        self.layer = TestQgsPalLabeling.loadFeatureLayer('point3')
-        self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        label_settings = self._TestMapSettings.labelingEngineSettings()
-        label_settings.setFlag(
-            Qgis.LabelingFlag.DrawCandidates
-        )
-        label_settings.setMaximumLineCandidatesPerCm(1)
-        self._TestMapSettings.setLabelingEngineSettings(label_settings)
-
-        self.lyr.fieldName = "'testing'"
-        self.lyr.isExpression = True
-        self.lyr.placement = Qgis.LabelPlacement.AroundPoint
-        self.lyr.pointSettings().setMaximumDistance(40)
-        f = self.lyr.format()
-        f.setSize(30)
-        self.lyr.setFormat(f)
-
-        self.checkTest()
-        self.removeMapLayer(self.layer)
-        self.layer = None
-
-    def test_point_placement_around_no_max_distance(
-            self):
-        """
-        Around point placement without max distance.
-
-        In this case no label can be placed for the point
-        """
-        self.layer = TestQgsPalLabeling.loadFeatureLayer('point')
-        poly_layer = TestQgsPalLabeling.loadFeatureLayer('polygon_with_bump')
-        obstacle_label_settings = QgsPalLayerSettings()
-        obstacle_label_settings.obstacle = True
-        obstacle_label_settings.drawLabels = False
-        obstacle_label_settings.obstacleFactor = 2
-        obstacle_label_settings.obstacleSettings().setType(
-            QgsLabelObstacleSettings.ObstacleType.PolygonInterior)
-        poly_layer.setLabeling(
-            QgsVectorLayerSimpleLabeling(obstacle_label_settings))
-        poly_layer.setLabelsEnabled(True)
-
-        self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-
-        self.lyr.fieldName = "'abc'"
-        self.lyr.isExpression = True
-        self.lyr.placement = Qgis.LabelPlacement.AroundPoint
-        self.lyr.priority = 1
-        self.lyr.pointSettings().setMaximumDistance(0)
-        f = self.lyr.format()
-        f.setSize(30)
-        self.lyr.setFormat(f)
-
-        self.checkTest()
-        self.removeMapLayer(self.layer)
-        self.removeMapLayer(poly_layer)
-        self.layer = None
-
-    def test_point_placement_around_max_distance(
-            self):
-        """
-        Around point placement with max distance.
-
-        In this case the label can be placed for the point at up to 80mm
-        from the point
-        """
-        self.layer = TestQgsPalLabeling.loadFeatureLayer('point')
-        poly_layer = TestQgsPalLabeling.loadFeatureLayer('polygon_with_bump')
-        obstacle_label_settings = QgsPalLayerSettings()
-        obstacle_label_settings.obstacle = True
-        obstacle_label_settings.drawLabels = False
-        obstacle_label_settings.obstacleFactor = 2
-        obstacle_label_settings.obstacleSettings().setType(
-            QgsLabelObstacleSettings.ObstacleType.PolygonInterior)
-        poly_layer.setLabeling(
-            QgsVectorLayerSimpleLabeling(obstacle_label_settings))
-        poly_layer.setLabelsEnabled(True)
-
-        self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-
-        self.lyr.fieldName = "'abc'"
-        self.lyr.isExpression = True
-        self.lyr.placement = Qgis.LabelPlacement.AroundPoint
-        self.lyr.priority = 1
-        self.lyr.pointSettings().setMaximumDistance(80)
-        f = self.lyr.format()
-        f.setSize(30)
-        self.lyr.setFormat(f)
-
-        self.checkTest()
-        self.removeMapLayer(self.layer)
-        self.removeMapLayer(poly_layer)
-        self.layer = None
-
-    def test_point_placement_cartographic_max_distance_show_candidates(
-            self):
-        """
-        Cartographic placement with max distance, showing candidates
-        """
-        self.layer = TestQgsPalLabeling.loadFeatureLayer('point3')
-        self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        label_settings = self._TestMapSettings.labelingEngineSettings()
-        label_settings.setFlag(
-            Qgis.LabelingFlag.DrawCandidates
-        )
-        label_settings.setMaximumLineCandidatesPerCm(1)
-        self._TestMapSettings.setLabelingEngineSettings(label_settings)
-
-        self.lyr.fieldName = "'testing'"
-        self.lyr.isExpression = True
-        self.lyr.placement = Qgis.LabelPlacement.OrderedPositionsAroundPoint
-        self.lyr.pointSettings().setMaximumDistance(40)
-        f = self.lyr.format()
-        f.setSize(30)
-        self.lyr.setFormat(f)
-
-        self.checkTest()
-        self.removeMapLayer(self.layer)
-        self.layer = None
-
-    def test_point_placement_cartographic_no_max_distance_prefer_ordering(
-            self):
-        """
-        Cartographic placement without max distance, prefer ordering
-
-        In this case the label for the top right feature MUST be
-        be placed in the second preference "top left" placement, because
-        we are not allowing a maximum distance and accordingly the label
-        cannot be placed in the preferred bottom left location.
-        """
-        self.layer = TestQgsPalLabeling.loadFeatureLayer('point3')
-        self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-
-        self.lyr.fieldName = "'testing'"
-        self.lyr.isExpression = True
-        self.lyr.placement = Qgis.LabelPlacement.OrderedPositionsAroundPoint
-        self.lyr.pointSettings().setMaximumDistance(0)
-        self.lyr.pointSettings().setPredefinedPositionOrder(
-            [Qgis.LabelPredefinedPointPosition.BottomLeft,
-             Qgis.LabelPredefinedPointPosition.TopLeft,
-             ]
-        )
-        self.lyr.placementSettings().setPrioritization(
-            Qgis.LabelPrioritization.PreferPositionOrdering)
-        f = self.lyr.format()
-        f.setSize(30)
-        self.lyr.setFormat(f)
-
-        self.checkTest()
-        self.removeMapLayer(self.layer)
-        self.layer = None
-
-    def test_point_placement_cartographic_max_distance_prefer_ordering(self):
-        """
-        Cartographic placement with max distance, prefer ordering.
-
-        In this case the label for the top right feature should always
-        be placed in the preferred "bottom left" placement, even though
-        it means pushing it right out toward the maximum distance of 80mm
-        from the point itself
-        """
-        self.layer = TestQgsPalLabeling.loadFeatureLayer('point3')
-        self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-
-        self.lyr.fieldName = "'testing'"
-        self.lyr.isExpression = True
-        self.lyr.placement = Qgis.LabelPlacement.OrderedPositionsAroundPoint
-        self.lyr.pointSettings().setMaximumDistance(80)
-        self.lyr.pointSettings().setPredefinedPositionOrder(
-            [Qgis.LabelPredefinedPointPosition.BottomLeft,
-             Qgis.LabelPredefinedPointPosition.TopLeft,
-             ]
-        )
-        self.lyr.placementSettings().setPrioritization(
-            Qgis.LabelPrioritization.PreferPositionOrdering)
-        f = self.lyr.format()
-        f.setSize(30)
-        self.lyr.setFormat(f)
-
-        self.checkTest()
-        self.removeMapLayer(self.layer)
-        self.layer = None
-
-    def test_point_placement_cartographic_max_distance_prefer_closer(self):
-        """
-        Cartographic placement with max distance, prefer closer.
-
-        In this case the label for the top right feature should
-        be placed in the second preference "top left" placement, even though
-        it could be placed 80 mm from the point in the first preference
-        bottom left mode. But we are using "prefer closer" prioritization,
-        so the closer candidate (top left) should be used instead.
-        """
-        self.layer = TestQgsPalLabeling.loadFeatureLayer('point3')
-        self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-
-        self.lyr.fieldName = "'testing'"
-        self.lyr.isExpression = True
-        self.lyr.placement = Qgis.LabelPlacement.OrderedPositionsAroundPoint
-        self.lyr.pointSettings().setMaximumDistance(80)
-        self.lyr.pointSettings().setPredefinedPositionOrder(
-            [Qgis.LabelPredefinedPointPosition.BottomLeft,
-             Qgis.LabelPredefinedPointPosition.TopLeft,
-             ]
-        )
-        self.lyr.placementSettings().setPrioritization(
-            Qgis.LabelPrioritization.PreferCloser)
-        f = self.lyr.format()
-        f.setSize(30)
-        self.lyr.setFormat(f)
-
-        self.checkTest()
-        self.removeMapLayer(self.layer)
-        self.layer = None
-
     def test_line_with_no_candidate_show_all(self):
         # A line too short to have any candidates, yet we need to show all labels for the layer
         self.layer = TestQgsPalLabeling.loadFeatureLayer('line_short')
@@ -356,7 +160,7 @@ class TestPointPlacement(TestPlacementBase):
         # is INSIDE the polygon
         self.layer = TestQgsPalLabeling.loadFeatureLayer('polygon_with_hole')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.Horizontal
+        self.lyr.placement = QgsPalLayerSettings.Horizontal
         self.checkTest()
         self.removeMapLayer(self.layer)
         self.layer = None
@@ -383,7 +187,7 @@ class TestPointPlacement(TestPlacementBase):
         obstacleLayer.setLabelsEnabled(True)
 
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.Horizontal
+        self.lyr.placement = QgsPalLayerSettings.Horizontal
         self.checkTest()
         self.removeMapLayer(obstacleLayer)
         self.removeMapLayer(self.layer)
@@ -395,7 +199,7 @@ class TestPointPlacement(TestPlacementBase):
         # to rings)
         self.layer = TestQgsPalLabeling.loadFeatureLayer('polygon_with_bump')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.Horizontal
+        self.lyr.placement = QgsPalLayerSettings.Horizontal
         self.checkTest()
         self.removeMapLayer(self.layer)
         self.layer = None
@@ -408,7 +212,7 @@ class TestPointPlacement(TestPlacementBase):
         # then we pick the one closest to the polygon's centroid
         self.layer = TestQgsPalLabeling.loadFeatureLayer('polygon_small_bump')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.Horizontal
+        self.lyr.placement = QgsPalLayerSettings.Horizontal
         self.checkTest()
         self.removeMapLayer(self.layer)
         self.layer = None
@@ -438,8 +242,8 @@ class TestPointPlacement(TestPlacementBase):
         # Test point offset from point, center placement
         self.layer = TestQgsPalLabeling.loadFeatureLayer('point')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.OverPoint
-        self.lyr.quadOffset = QgsPalLayerSettings.QuadrantPosition.QuadrantOver
+        self.lyr.placement = QgsPalLayerSettings.OverPoint
+        self.lyr.quadOffset = QgsPalLayerSettings.QuadrantOver
         self.checkTest()
         self.removeMapLayer(self.layer)
         self.layer = None
@@ -448,8 +252,8 @@ class TestPointPlacement(TestPlacementBase):
         # Test point offset from point, below left placement
         self.layer = TestQgsPalLabeling.loadFeatureLayer('point')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.OverPoint
-        self.lyr.quadOffset = QgsPalLayerSettings.QuadrantPosition.QuadrantBelowLeft
+        self.lyr.placement = QgsPalLayerSettings.OverPoint
+        self.lyr.quadOffset = QgsPalLayerSettings.QuadrantBelowLeft
         self.checkTest()
         self.removeMapLayer(self.layer)
         self.layer = None
@@ -467,8 +271,8 @@ class TestPointPlacement(TestPlacementBase):
         obstacleLayer.setLabelsEnabled(True)
 
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.OverPoint
-        self.lyr.quadOffset = QgsPalLayerSettings.QuadrantPosition.QuadrantAboveLeft
+        self.lyr.placement = QgsPalLayerSettings.OverPoint
+        self.lyr.quadOffset = QgsPalLayerSettings.QuadrantAboveLeft
         self.lyr.priority = 4
         self.lyr.displayAll = True
         self.checkTest()
@@ -491,11 +295,11 @@ class TestPointPlacement(TestPlacementBase):
                 obstacleLayer.setLabeling(QgsVectorLayerSimpleLabeling(obstacle_label_settings))
                 obstacleLayer.setLabelsEnabled(True)
 
-                self.assertEqual(self._MapSettings.labelingEngineSettings().placementVersion(), QgsLabelingEngineSettings.PlacementEngineVersion.PlacementEngineVersion2)
+                self.assertEqual(self._MapSettings.labelingEngineSettings().placementVersion(), QgsLabelingEngineSettings.PlacementEngineVersion2)
                 self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-                self.assertEqual(self._TestMapSettings.labelingEngineSettings().placementVersion(), QgsLabelingEngineSettings.PlacementEngineVersion.PlacementEngineVersion2)
-                self.lyr.placement = QgsPalLayerSettings.Placement.OverPoint
-                self.lyr.quadOffset = QgsPalLayerSettings.QuadrantPosition.QuadrantAboveRight
+                self.assertEqual(self._TestMapSettings.labelingEngineSettings().placementVersion(), QgsLabelingEngineSettings.PlacementEngineVersion2)
+                self.lyr.placement = QgsPalLayerSettings.OverPoint
+                self.lyr.quadOffset = QgsPalLayerSettings.QuadrantAboveRight
                 self.lyr.priority = label_priority
                 self.checkTest()
         self.removeMapLayer(obstacleLayer)
@@ -517,8 +321,8 @@ class TestPointPlacement(TestPlacementBase):
                 obstacleLayer.setLabelsEnabled(True)
 
                 self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-                self.lyr.placement = QgsPalLayerSettings.Placement.OverPoint
-                self.lyr.quadOffset = QgsPalLayerSettings.QuadrantPosition.QuadrantAboveRight
+                self.lyr.placement = QgsPalLayerSettings.OverPoint
+                self.lyr.quadOffset = QgsPalLayerSettings.QuadrantAboveRight
                 self.lyr.priority = label_priority
                 self.checkTest()
         self.removeMapLayer(obstacleLayer)
@@ -540,8 +344,8 @@ class TestPointPlacement(TestPlacementBase):
                 obstacleLayer.setLabelsEnabled(True)
 
                 self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-                self.lyr.placement = QgsPalLayerSettings.Placement.OverPoint
-                self.lyr.quadOffset = QgsPalLayerSettings.QuadrantPosition.QuadrantAboveLeft
+                self.lyr.placement = QgsPalLayerSettings.OverPoint
+                self.lyr.quadOffset = QgsPalLayerSettings.QuadrantAboveLeft
                 self.lyr.priority = label_priority
                 self.checkTest()
         self.removeMapLayer(obstacleLayer)
@@ -563,8 +367,8 @@ class TestPointPlacement(TestPlacementBase):
                 obstacleLayer.setLabelsEnabled(True)
 
                 self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-                self.lyr.placement = QgsPalLayerSettings.Placement.OverPoint
-                self.lyr.quadOffset = QgsPalLayerSettings.QuadrantPosition.QuadrantAboveLeft
+                self.lyr.placement = QgsPalLayerSettings.OverPoint
+                self.lyr.quadOffset = QgsPalLayerSettings.QuadrantAboveLeft
                 self.lyr.priority = label_priority
                 self.checkTest()
         self.removeMapLayer(obstacleLayer)
@@ -586,8 +390,8 @@ class TestPointPlacement(TestPlacementBase):
                 obstacleLayer.setLabelsEnabled(True)
 
                 self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-                self.lyr.placement = QgsPalLayerSettings.Placement.OverPoint
-                self.lyr.quadOffset = QgsPalLayerSettings.QuadrantPosition.QuadrantBelowRight
+                self.lyr.placement = QgsPalLayerSettings.OverPoint
+                self.lyr.quadOffset = QgsPalLayerSettings.QuadrantBelowRight
                 self.lyr.priority = label_priority
                 self.checkTest()
         self.removeMapLayer(obstacleLayer)
@@ -609,8 +413,8 @@ class TestPointPlacement(TestPlacementBase):
                 obstacleLayer.setLabelsEnabled(True)
 
                 self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-                self.lyr.placement = QgsPalLayerSettings.Placement.OverPoint
-                self.lyr.quadOffset = QgsPalLayerSettings.QuadrantPosition.QuadrantBelowRight
+                self.lyr.placement = QgsPalLayerSettings.OverPoint
+                self.lyr.quadOffset = QgsPalLayerSettings.QuadrantBelowRight
                 self.lyr.priority = label_priority
                 self.checkTest()
         self.removeMapLayer(obstacleLayer)
@@ -633,7 +437,7 @@ class TestPointPlacement(TestPlacementBase):
                 obstacleLayer.setLabelsEnabled(True)
 
                 self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-                self.lyr.placement = QgsPalLayerSettings.Placement.Line
+                self.lyr.placement = QgsPalLayerSettings.Line
                 self.lyr.priority = label_priority
                 self.checkTest()
         self.removeMapLayer(obstacleLayer)
@@ -656,7 +460,7 @@ class TestPointPlacement(TestPlacementBase):
                 obstacleLayer.setLabelsEnabled(True)
 
                 self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-                self.lyr.placement = QgsPalLayerSettings.Placement.Line
+                self.lyr.placement = QgsPalLayerSettings.Line
                 self.lyr.priority = label_priority
                 self.checkTest()
         self.removeMapLayer(obstacleLayer)
@@ -679,7 +483,7 @@ class TestPointPlacement(TestPlacementBase):
                 obstacleLayer.setLabelsEnabled(True)
 
                 self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-                self.lyr.placement = QgsPalLayerSettings.Placement.Line
+                self.lyr.placement = QgsPalLayerSettings.Line
                 self.lyr.priority = label_priority
                 self.checkTest()
         self.removeMapLayer(obstacleLayer)
@@ -702,7 +506,7 @@ class TestPointPlacement(TestPlacementBase):
                 obstacleLayer.setLabelsEnabled(True)
 
                 self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-                self.lyr.placement = QgsPalLayerSettings.Placement.Line
+                self.lyr.placement = QgsPalLayerSettings.Line
                 self.lyr.priority = label_priority
                 self.checkTest()
         self.removeMapLayer(obstacleLayer)
@@ -725,7 +529,7 @@ class TestPointPlacement(TestPlacementBase):
                 obstacleLayer.setLabelsEnabled(True)
 
                 self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-                self.lyr.placement = QgsPalLayerSettings.Placement.Line
+                self.lyr.placement = QgsPalLayerSettings.Line
                 self.lyr.priority = label_priority
                 self.checkTest()
         self.removeMapLayer(obstacleLayer)
@@ -748,7 +552,7 @@ class TestPointPlacement(TestPlacementBase):
                 obstacleLayer.setLabelsEnabled(True)
 
                 self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-                self.lyr.placement = QgsPalLayerSettings.Placement.Line
+                self.lyr.placement = QgsPalLayerSettings.Line
                 self.lyr.priority = label_priority
                 self.checkTest()
         self.removeMapLayer(obstacleLayer)
@@ -771,7 +575,7 @@ class TestPointPlacement(TestPlacementBase):
                 obstacleLayer.setLabelsEnabled(True)
 
                 self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-                self.lyr.placement = QgsPalLayerSettings.Placement.OverPoint
+                self.lyr.placement = QgsPalLayerSettings.OverPoint
                 self.lyr.priority = label_priority
                 self.checkTest()
         self.removeMapLayer(obstacleLayer)
@@ -794,7 +598,7 @@ class TestPointPlacement(TestPlacementBase):
                 obstacleLayer.setLabelsEnabled(True)
 
                 self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-                self.lyr.placement = QgsPalLayerSettings.Placement.OverPoint
+                self.lyr.placement = QgsPalLayerSettings.OverPoint
                 self.lyr.priority = label_priority
                 self.checkTest()
         self.removeMapLayer(obstacleLayer)
@@ -817,7 +621,7 @@ class TestPointPlacement(TestPlacementBase):
                 obstacleLayer.setLabelsEnabled(True)
 
                 self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-                self.lyr.placement = QgsPalLayerSettings.Placement.OverPoint
+                self.lyr.placement = QgsPalLayerSettings.OverPoint
                 self.lyr.priority = label_priority
                 self.checkTest()
         self.removeMapLayer(obstacleLayer)
@@ -840,7 +644,7 @@ class TestPointPlacement(TestPlacementBase):
                 obstacleLayer.setLabelsEnabled(True)
 
                 self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-                self.lyr.placement = QgsPalLayerSettings.Placement.OverPoint
+                self.lyr.placement = QgsPalLayerSettings.OverPoint
                 self.lyr.priority = label_priority
                 self.checkTest()
         self.removeMapLayer(obstacleLayer)
@@ -859,12 +663,12 @@ class TestPointPlacement(TestPlacementBase):
                 obstacle_label_settings.obstacle = True
                 obstacle_label_settings.drawLabels = False
                 obstacle_label_settings.obstacleFactor = obstacle_weight * 0.2
-                obstacle_label_settings.obstacleSettings().setType(QgsLabelObstacleSettings.ObstacleType.PolygonInterior)
+                obstacle_label_settings.obstacleSettings().setType(QgsLabelObstacleSettings.PolygonInterior)
                 obstacleLayer.setLabeling(QgsVectorLayerSimpleLabeling(obstacle_label_settings))
                 obstacleLayer.setLabelsEnabled(True)
 
                 self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-                self.lyr.placement = QgsPalLayerSettings.Placement.OverPoint
+                self.lyr.placement = QgsPalLayerSettings.OverPoint
                 self.lyr.priority = label_priority
                 self.checkTest()
         self.removeMapLayer(obstacleLayer)
@@ -883,12 +687,12 @@ class TestPointPlacement(TestPlacementBase):
                 obstacle_label_settings.obstacle = True
                 obstacle_label_settings.drawLabels = False
                 obstacle_label_settings.obstacleFactor = obstacle_weight * 0.2
-                obstacle_label_settings.obstacleSettings().setType(QgsLabelObstacleSettings.ObstacleType.PolygonInterior)
+                obstacle_label_settings.obstacleSettings().setType(QgsLabelObstacleSettings.PolygonInterior)
                 obstacleLayer.setLabeling(QgsVectorLayerSimpleLabeling(obstacle_label_settings))
                 obstacleLayer.setLabelsEnabled(True)
 
                 self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-                self.lyr.placement = QgsPalLayerSettings.Placement.OverPoint
+                self.lyr.placement = QgsPalLayerSettings.OverPoint
                 self.lyr.priority = label_priority
                 self.checkTest()
         self.removeMapLayer(obstacleLayer)
@@ -899,7 +703,7 @@ class TestPointPlacement(TestPlacementBase):
         # Test ordered placements for point
         self.layer = TestQgsPalLabeling.loadFeatureLayer('point_ordered_placement')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.OrderedPositionsAroundPoint
+        self.lyr.placement = QgsPalLayerSettings.OrderedPositionsAroundPoint
         self.lyr.dist = 2
         self.checkTest()
         self.removeMapLayer(self.layer)
@@ -910,7 +714,7 @@ class TestPointPlacement(TestPlacementBase):
         self.layer = TestQgsPalLabeling.loadFeatureLayer('point_ordered_placement')
         obstacleLayer = TestQgsPalLabeling.loadFeatureLayer('point_ordered_obstacle1')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.OrderedPositionsAroundPoint
+        self.lyr.placement = QgsPalLayerSettings.OrderedPositionsAroundPoint
         self.lyr.dist = 2
         self.checkTest()
         self.removeMapLayer(obstacleLayer)
@@ -922,7 +726,7 @@ class TestPointPlacement(TestPlacementBase):
         self.layer = TestQgsPalLabeling.loadFeatureLayer('point_ordered_placement')
         obstacleLayer = TestQgsPalLabeling.loadFeatureLayer('point_ordered_obstacle2')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.OrderedPositionsAroundPoint
+        self.lyr.placement = QgsPalLayerSettings.OrderedPositionsAroundPoint
         self.lyr.dist = 2
         self.checkTest()
         self.removeMapLayer(obstacleLayer)
@@ -934,7 +738,7 @@ class TestPointPlacement(TestPlacementBase):
         self.layer = TestQgsPalLabeling.loadFeatureLayer('point_ordered_placement')
         obstacleLayer = TestQgsPalLabeling.loadFeatureLayer('point_ordered_obstacle3')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.OrderedPositionsAroundPoint
+        self.lyr.placement = QgsPalLayerSettings.OrderedPositionsAroundPoint
         self.lyr.dist = 2
         self.checkTest()
         self.removeMapLayer(obstacleLayer)
@@ -945,12 +749,12 @@ class TestPointPlacement(TestPlacementBase):
         # Test ordered placements for point with data defined order
         self.layer = TestQgsPalLabeling.loadFeatureLayer('point_ordered_placement')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.OrderedPositionsAroundPoint
+        self.lyr.placement = QgsPalLayerSettings.OrderedPositionsAroundPoint
         self.lyr.dist = 2
-        self.lyr.dataDefinedProperties().setProperty(QgsPalLayerSettings.Property.PredefinedPositionOrder, QgsProperty.fromExpression("'T,B'"))
+        self.lyr.dataDefinedProperties().setProperty(QgsPalLayerSettings.PredefinedPositionOrder, QgsProperty.fromExpression("'T,B'"))
         self.checkTest()
         self.removeMapLayer(self.layer)
-        self.lyr.dataDefinedProperties().setProperty(QgsPalLayerSettings.Property.PredefinedPositionOrder, QgsProperty())
+        self.lyr.dataDefinedProperties().setProperty(QgsPalLayerSettings.PredefinedPositionOrder, QgsProperty())
         self.layer = None
 
     def test_point_dd_ordered_placement1(self):
@@ -958,25 +762,13 @@ class TestPointPlacement(TestPlacementBase):
         self.layer = TestQgsPalLabeling.loadFeatureLayer('point_ordered_placement')
         obstacleLayer = TestQgsPalLabeling.loadFeatureLayer('point_ordered_obstacle_top')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.OrderedPositionsAroundPoint
+        self.lyr.placement = QgsPalLayerSettings.OrderedPositionsAroundPoint
         self.lyr.dist = 2
-        self.lyr.dataDefinedProperties().setProperty(QgsPalLayerSettings.Property.PredefinedPositionOrder, QgsProperty.fromExpression("'T,B'"))
+        self.lyr.dataDefinedProperties().setProperty(QgsPalLayerSettings.PredefinedPositionOrder, QgsProperty.fromExpression("'T,B'"))
         self.checkTest()
         self.removeMapLayer(obstacleLayer)
         self.removeMapLayer(self.layer)
-        self.lyr.dataDefinedProperties().setProperty(QgsPalLayerSettings.Property.PredefinedPositionOrder, QgsProperty())
-        self.layer = None
-
-    def test_point_ordered_placement_over_point(self):
-        # Test ordered placements using over point placement
-        self.layer = TestQgsPalLabeling.loadFeatureLayer('point_ordered_placement')
-        self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.OrderedPositionsAroundPoint
-        self.lyr.dist = 2
-        self.lyr.dataDefinedProperties().setProperty(QgsPalLayerSettings.Property.PredefinedPositionOrder, QgsProperty.fromExpression("'O'"))
-        self.checkTest()
-        self.removeMapLayer(self.layer)
-        self.lyr.dataDefinedProperties().setProperty(QgsPalLayerSettings.Property.PredefinedPositionOrder, QgsProperty())
+        self.lyr.dataDefinedProperties().setProperty(QgsPalLayerSettings.PredefinedPositionOrder, QgsProperty())
         self.layer = None
 
     def test_point_ordered_symbol_bound_offset(self):
@@ -992,9 +784,9 @@ class TestPointPlacement(TestPlacementBase):
         renderer = QgsSingleSymbolRenderer(symbol)
         self.layer.setRenderer(renderer)
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.OrderedPositionsAroundPoint
+        self.lyr.placement = QgsPalLayerSettings.OrderedPositionsAroundPoint
         self.lyr.dist = 2
-        self.lyr.offsetType = QgsPalLayerSettings.OffsetType.FromSymbolBounds
+        self.lyr.offsetType = QgsPalLayerSettings.FromSymbolBounds
         self.checkTest()
         self.removeMapLayer(self.layer)
         self.layer = None
@@ -1003,8 +795,8 @@ class TestPointPlacement(TestPlacementBase):
         # Default polygon perimeter placement
         self.layer = TestQgsPalLabeling.loadFeatureLayer('polygon_perimeter')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.Line
-        self.lyr.placementFlags = QgsPalLayerSettings.LinePlacementFlags.AboveLine
+        self.lyr.placement = QgsPalLayerSettings.Line
+        self.lyr.placementFlags = QgsPalLayerSettings.AboveLine
         self.checkTest()
         self.removeMapLayer(self.layer)
         self.layer = None
@@ -1013,7 +805,7 @@ class TestPointPlacement(TestPlacementBase):
         # Default polygon perimeter placement for small polygon
         self.layer = TestQgsPalLabeling.loadFeatureLayer('polygon_small')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.Line
+        self.lyr.placement = QgsPalLayerSettings.Line
         self.checkTest()
         self.removeMapLayer(self.layer)
         self.layer = None
@@ -1022,7 +814,7 @@ class TestPointPlacement(TestPlacementBase):
         # Default polygon placement for small polygon with a large label
         self.layer = TestQgsPalLabeling.loadFeatureLayer('polygon_small')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.OverPoint
+        self.lyr.placement = QgsPalLayerSettings.OverPoint
         self.lyr.format().setSize(30)
         self.checkTest()
         self.removeMapLayer(self.layer)
@@ -1032,7 +824,7 @@ class TestPointPlacement(TestPlacementBase):
         # Default polygon placement for small polygon with a large label, with only placement of inside labels
         self.layer = TestQgsPalLabeling.loadFeatureLayer('polygon_small')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.OverPoint
+        self.lyr.placement = QgsPalLayerSettings.OverPoint
         self.lyr.fitInPolygonOnly = True
         self.checkTest()
         self.removeMapLayer(self.layer)
@@ -1043,8 +835,8 @@ class TestPointPlacement(TestPlacementBase):
         # we expect this to sit outside, because it CAN'T fit
         self.layer = TestQgsPalLabeling.loadFeatureLayer('polygon_small')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.OverPoint
-        self.lyr.setPolygonPlacementFlags(Qgis.LabelPolygonPlacementFlags(QgsLabeling.PolygonPlacementFlag.AllowPlacementOutsideOfPolygon | QgsLabeling.PolygonPlacementFlag.AllowPlacementInsideOfPolygon))
+        self.lyr.placement = QgsPalLayerSettings.OverPoint
+        self.lyr.setPolygonPlacementFlags(QgsLabeling.AllowPlacementOutsideOfPolygon | QgsLabeling.AllowPlacementInsideOfPolygon)
         self.checkTest()
         self.removeMapLayer(self.layer)
         self.layer = None
@@ -1054,8 +846,8 @@ class TestPointPlacement(TestPlacementBase):
         # we expect this to sit inside, because it CAN fit
         self.layer = TestQgsPalLabeling.loadFeatureLayer('polygon_small')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.OverPoint
-        self.lyr.setPolygonPlacementFlags(Qgis.LabelPolygonPlacementFlags(QgsLabeling.PolygonPlacementFlag.AllowPlacementOutsideOfPolygon | QgsLabeling.PolygonPlacementFlag.AllowPlacementInsideOfPolygon))
+        self.lyr.placement = QgsPalLayerSettings.OverPoint
+        self.lyr.setPolygonPlacementFlags(QgsLabeling.AllowPlacementOutsideOfPolygon | QgsLabeling.AllowPlacementInsideOfPolygon)
         f = self.lyr.format()
         f.setSize(8)
         self.lyr.setFormat(f)
@@ -1068,8 +860,8 @@ class TestPointPlacement(TestPlacementBase):
         # we expect this to sit outside, cos we are blocking inside placement
         self.layer = TestQgsPalLabeling.loadFeatureLayer('polygon_small')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.OverPoint
-        self.lyr.setPolygonPlacementFlags(Qgis.LabelPolygonPlacementFlags(QgsLabeling.PolygonPlacementFlag.AllowPlacementOutsideOfPolygon))
+        self.lyr.placement = QgsPalLayerSettings.OverPoint
+        self.lyr.setPolygonPlacementFlags(QgsLabeling.AllowPlacementOutsideOfPolygon)
         f = self.lyr.format()
         f.setSize(8)
         self.lyr.setFormat(f)
@@ -1081,8 +873,8 @@ class TestPointPlacement(TestPlacementBase):
         # Default data defined allow outside mode
         self.layer = TestQgsPalLabeling.loadFeatureLayer('polygon_small')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.Horizontal
-        self.lyr.dataDefinedProperties().setProperty(QgsPalLayerSettings.Property.PolygonLabelOutside, QgsProperty.fromValue(1))
+        self.lyr.placement = QgsPalLayerSettings.Horizontal
+        self.lyr.dataDefinedProperties().setProperty(QgsPalLayerSettings.PolygonLabelOutside, QgsProperty.fromValue(1))
         f = self.lyr.format()
         f.setSize(8)
         self.lyr.setFormat(f)
@@ -1094,8 +886,8 @@ class TestPointPlacement(TestPlacementBase):
         # Default data defined allow outside mode
         self.layer = TestQgsPalLabeling.loadFeatureLayer('polygon_small')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.Horizontal
-        self.lyr.dataDefinedProperties().setProperty(QgsPalLayerSettings.Property.PolygonLabelOutside, QgsProperty.fromValue('force'))
+        self.lyr.placement = QgsPalLayerSettings.Horizontal
+        self.lyr.dataDefinedProperties().setProperty(QgsPalLayerSettings.PolygonLabelOutside, QgsProperty.fromValue('force'))
         f = self.lyr.format()
         f.setSize(8)
         self.lyr.setFormat(f)
@@ -1107,8 +899,8 @@ class TestPointPlacement(TestPlacementBase):
         # Default data defined allow outside mode
         self.layer = TestQgsPalLabeling.loadFeatureLayer('polygon_small')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.Horizontal
-        self.lyr.dataDefinedProperties().setProperty(QgsPalLayerSettings.Property.PolygonLabelOutside, QgsProperty.fromValue(1))
+        self.lyr.placement = QgsPalLayerSettings.Horizontal
+        self.lyr.dataDefinedProperties().setProperty(QgsPalLayerSettings.PolygonLabelOutside, QgsProperty.fromValue(1))
         f = self.lyr.format()
         f.setSize(20)
         self.lyr.setFormat(f)
@@ -1120,7 +912,7 @@ class TestPointPlacement(TestPlacementBase):
         # Forced outside placement for polygon
         self.layer = TestQgsPalLabeling.loadFeatureLayer('polygon_small')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.OutsidePolygons
+        self.lyr.placement = QgsPalLayerSettings.OutsidePolygons
         f = self.lyr.format()
         f.setSize(8)
         self.lyr.setFormat(f)
@@ -1132,7 +924,7 @@ class TestPointPlacement(TestPlacementBase):
         # Forced outside placement for polygon with distance
         self.layer = TestQgsPalLabeling.loadFeatureLayer('polygon_small')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.OutsidePolygons
+        self.lyr.placement = QgsPalLayerSettings.OutsidePolygons
         self.lyr.dist = 10
         f = self.lyr.format()
         f.setSize(8)
@@ -1145,7 +937,7 @@ class TestPointPlacement(TestPlacementBase):
         # Polygon perimeter placement for small polygon when set to only show labels which fit in polygon
         self.layer = TestQgsPalLabeling.loadFeatureLayer('polygon_small')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.Line
+        self.lyr.placement = QgsPalLayerSettings.Line
         self.lyr.fitInPolygonOnly = True
         self.checkTest()
         self.removeMapLayer(self.layer)
@@ -1155,7 +947,7 @@ class TestPointPlacement(TestPlacementBase):
         # Polygon perimeter placement for small polygon when set to only show labels which fit in polygon
         self.layer = TestQgsPalLabeling.loadFeatureLayer('polygon_small')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.PerimeterCurved
+        self.lyr.placement = QgsPalLayerSettings.PerimeterCurved
         self.lyr.fitInPolygonOnly = True
         self.checkTest()
         self.removeMapLayer(self.layer)
@@ -1165,7 +957,7 @@ class TestPointPlacement(TestPlacementBase):
         # Polygon over point placement for small polygon when set to only show labels which fit in polygon
         self.layer = TestQgsPalLabeling.loadFeatureLayer('polygon_small')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.OverPoint
+        self.lyr.placement = QgsPalLayerSettings.OverPoint
         self.lyr.fitInPolygonOnly = True
         self.checkTest()
         self.removeMapLayer(self.layer)
@@ -1176,8 +968,8 @@ class TestPointPlacement(TestPlacementBase):
         # is preferred
         self.layer = TestQgsPalLabeling.loadFeatureLayer('line')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.Curved
-        self.lyr.placementFlags = QgsPalLayerSettings.LinePlacementFlags.AboveLine | QgsPalLayerSettings.LinePlacementFlags.BelowLine | QgsPalLayerSettings.LinePlacementFlags.MapOrientation
+        self.lyr.placement = QgsPalLayerSettings.Curved
+        self.lyr.placementFlags = QgsPalLayerSettings.AboveLine | QgsPalLayerSettings.BelowLine | QgsPalLayerSettings.MapOrientation
         self.checkTest()
         self.removeMapLayer(self.layer)
         self.layer = None
@@ -1187,8 +979,8 @@ class TestPointPlacement(TestPlacementBase):
         # is preferred
         self.layer = TestQgsPalLabeling.loadFeatureLayer('line')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.Curved
-        self.lyr.placementFlags = QgsPalLayerSettings.LinePlacementFlags.AboveLine | QgsPalLayerSettings.LinePlacementFlags.OnLine | QgsPalLayerSettings.LinePlacementFlags.MapOrientation
+        self.lyr.placement = QgsPalLayerSettings.Curved
+        self.lyr.placementFlags = QgsPalLayerSettings.AboveLine | QgsPalLayerSettings.OnLine | QgsPalLayerSettings.MapOrientation
         self.checkTest()
         self.removeMapLayer(self.layer)
         self.layer = None
@@ -1198,8 +990,8 @@ class TestPointPlacement(TestPlacementBase):
         # is preferred
         self.layer = TestQgsPalLabeling.loadFeatureLayer('line')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.Curved
-        self.lyr.placementFlags = QgsPalLayerSettings.LinePlacementFlags.BelowLine | QgsPalLayerSettings.LinePlacementFlags.OnLine | QgsPalLayerSettings.LinePlacementFlags.MapOrientation
+        self.lyr.placement = QgsPalLayerSettings.Curved
+        self.lyr.placementFlags = QgsPalLayerSettings.BelowLine | QgsPalLayerSettings.OnLine | QgsPalLayerSettings.MapOrientation
         self.checkTest()
         self.removeMapLayer(self.layer)
         self.layer = None
@@ -1209,8 +1001,8 @@ class TestPointPlacement(TestPlacementBase):
         # is preferred
         self.layer = TestQgsPalLabeling.loadFeatureLayer('line')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.Line
-        self.lyr.placementFlags = QgsPalLayerSettings.LinePlacementFlags.AboveLine | QgsPalLayerSettings.LinePlacementFlags.BelowLine | QgsPalLayerSettings.LinePlacementFlags.MapOrientation
+        self.lyr.placement = QgsPalLayerSettings.Line
+        self.lyr.placementFlags = QgsPalLayerSettings.AboveLine | QgsPalLayerSettings.BelowLine | QgsPalLayerSettings.MapOrientation
         self.checkTest()
         self.removeMapLayer(self.layer)
         self.layer = None
@@ -1220,8 +1012,8 @@ class TestPointPlacement(TestPlacementBase):
         # is preferred
         self.layer = TestQgsPalLabeling.loadFeatureLayer('line')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.Line
-        self.lyr.placementFlags = QgsPalLayerSettings.LinePlacementFlags.AboveLine | QgsPalLayerSettings.LinePlacementFlags.OnLine | QgsPalLayerSettings.LinePlacementFlags.MapOrientation
+        self.lyr.placement = QgsPalLayerSettings.Line
+        self.lyr.placementFlags = QgsPalLayerSettings.AboveLine | QgsPalLayerSettings.OnLine | QgsPalLayerSettings.MapOrientation
         self.checkTest()
         self.removeMapLayer(self.layer)
         self.layer = None
@@ -1231,8 +1023,8 @@ class TestPointPlacement(TestPlacementBase):
         # is preferred
         self.layer = TestQgsPalLabeling.loadFeatureLayer('line')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.Line
-        self.lyr.placementFlags = QgsPalLayerSettings.LinePlacementFlags.BelowLine | QgsPalLayerSettings.LinePlacementFlags.OnLine | QgsPalLayerSettings.LinePlacementFlags.MapOrientation
+        self.lyr.placement = QgsPalLayerSettings.Line
+        self.lyr.placementFlags = QgsPalLayerSettings.BelowLine | QgsPalLayerSettings.OnLine | QgsPalLayerSettings.MapOrientation
         self.checkTest()
         self.removeMapLayer(self.layer)
         self.layer = None
@@ -1242,7 +1034,7 @@ class TestPointPlacement(TestPlacementBase):
         # the line
         self.layer = TestQgsPalLabeling.loadFeatureLayer('line_placement_1')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.Line
+        self.lyr.placement = QgsPalLayerSettings.Line
         self.checkTest()
         self.removeMapLayer(self.layer)
         self.layer = None
@@ -1251,7 +1043,7 @@ class TestPointPlacement(TestPlacementBase):
         # Test that labeling a line using parallel labels will tend to place the labels over more horizontal sections
         self.layer = TestQgsPalLabeling.loadFeatureLayer('line_placement_2')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.Line
+        self.lyr.placement = QgsPalLayerSettings.Line
         self.checkTest()
         self.removeMapLayer(self.layer)
         self.layer = None
@@ -1260,7 +1052,7 @@ class TestPointPlacement(TestPlacementBase):
         # Test that labeling a line using parallel labels will place labels near center of straightish line
         self.layer = TestQgsPalLabeling.loadFeatureLayer('line_placement_3')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.Line
+        self.lyr.placement = QgsPalLayerSettings.Line
         self.checkTest()
         self.removeMapLayer(self.layer)
         self.layer = None
@@ -1269,7 +1061,7 @@ class TestPointPlacement(TestPlacementBase):
         # Test that labeling a line using parallel labels will try to place labels as close to center of line as possible
         self.layer = TestQgsPalLabeling.loadFeatureLayer('line_placement_4')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.Line
+        self.lyr.placement = QgsPalLayerSettings.Line
         self.checkTest()
         self.removeMapLayer(self.layer)
         self.layer = None
@@ -1278,7 +1070,7 @@ class TestPointPlacement(TestPlacementBase):
         # Test that labeling a line using parallel labels won't place labels over jaggy bits of line
         self.layer = TestQgsPalLabeling.loadFeatureLayer('line_placement_5')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.Line
+        self.lyr.placement = QgsPalLayerSettings.Line
         self.checkTest()
         self.removeMapLayer(self.layer)
         self.layer = None
@@ -1287,272 +1079,9 @@ class TestPointPlacement(TestPlacementBase):
         # Test that curved label work with zero-width characters
         self.layer = TestQgsPalLabeling.loadFeatureLayer('line')
         self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self.lyr.placement = QgsPalLayerSettings.Placement.Curved
-        self.lyr.placementFlags = QgsPalLayerSettings.LinePlacementFlags.OnLine
+        self.lyr.placement = QgsPalLayerSettings.Curved
+        self.lyr.placementFlags = QgsPalLayerSettings.OnLine
         self.lyr.fieldName = "'invisible​space'"
-        self.lyr.isExpression = True
-        self.checkTest()
-        self.removeMapLayer(self.layer)
-        self.layer = None
-
-    def test_label_rule_min_distance_label_to_feature(self):
-        self.layer = TestQgsPalLabeling.loadFeatureLayer('point')
-        feature_layer = TestQgsPalLabeling.loadFeatureLayer(
-            'multi_polygon')
-        feature_layer.setLabelsEnabled(False)
-
-        self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self._TestMapSettings.setLayers([self.layer, feature_layer])
-
-        rule = QgsLabelingEngineRuleMinimumDistanceLabelToFeature()
-        rule.setLabeledLayer(self.layer)
-        rule.setTargetLayer(feature_layer)
-        rule.setDistance(5)
-        rule.setDistanceUnit(Qgis.RenderUnit.Millimeters)
-        rule.setCost(10)
-
-        engine_settings = self._TestMapSettings.labelingEngineSettings()
-        engine_settings.setRules([rule])
-        self._TestMapSettings.setLabelingEngineSettings(engine_settings)
-
-        self.lyr.placement = Qgis.LabelPlacement.OrderedPositionsAroundPoint
-        self.lyr.fieldName = "'label'"
-        self.lyr.isExpression = True
-        self.checkTest()
-        self.removeMapLayer(self.layer)
-        self.layer = None
-
-    def test_label_rule_min_distance_label_to_feature_too_close(self):
-        """
-        Label can't be placed, there's no candidates available which satisfy
-        the rule
-        """
-        self.layer = TestQgsPalLabeling.loadFeatureLayer('point')
-        feature_layer = TestQgsPalLabeling.loadFeatureLayer(
-            'multi_polygon')
-        feature_layer.setLabelsEnabled(False)
-
-        self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self._TestMapSettings.setLayers([self.layer, feature_layer])
-
-        rule = QgsLabelingEngineRuleMinimumDistanceLabelToFeature()
-        rule.setLabeledLayer(self.layer)
-        rule.setTargetLayer(feature_layer)
-        rule.setDistance(15)
-        rule.setDistanceUnit(Qgis.RenderUnit.Millimeters)
-        rule.setCost(10)
-
-        engine_settings = self._TestMapSettings.labelingEngineSettings()
-        engine_settings.setRules([rule])
-        self._TestMapSettings.setLabelingEngineSettings(engine_settings)
-
-        self.lyr.placement = Qgis.LabelPlacement.OrderedPositionsAroundPoint
-        self.lyr.fieldName = "'label'"
-        self.lyr.isExpression = True
-        self.checkTest()
-        self.removeMapLayer(self.layer)
-        self.layer = None
-
-    def test_label_rule_min_distance_label_to_feature_too_close_low_cost(self):
-        """
-        Label can't be placed without incurring the cost, but still CAN
-        be placed
-        """
-        self.layer = TestQgsPalLabeling.loadFeatureLayer('point')
-        feature_layer = TestQgsPalLabeling.loadFeatureLayer(
-            'multi_polygon')
-        feature_layer.setLabelsEnabled(False)
-
-        self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self._TestMapSettings.setLayers([self.layer, feature_layer])
-
-        rule = QgsLabelingEngineRuleMinimumDistanceLabelToFeature()
-        rule.setLabeledLayer(self.layer)
-        rule.setTargetLayer(feature_layer)
-        rule.setDistance(15)
-        rule.setDistanceUnit(Qgis.RenderUnit.Millimeters)
-        rule.setCost(5)
-
-        engine_settings = self._TestMapSettings.labelingEngineSettings()
-        engine_settings.setRules([rule])
-        self._TestMapSettings.setLabelingEngineSettings(engine_settings)
-
-        self.lyr.placement = Qgis.LabelPlacement.OrderedPositionsAroundPoint
-        self.lyr.fieldName = "'label'"
-        self.lyr.isExpression = True
-        self.checkTest()
-        self.removeMapLayer(self.layer)
-        self.layer = None
-
-    def test_label_rule_max_distance_label_to_feature(self):
-        # worse placement position below point should be used, because
-        # above point placements are too far from the polygon and violate
-        # the rule
-        self.layer = TestQgsPalLabeling.loadFeatureLayer('point')
-        feature_layer = TestQgsPalLabeling.loadFeatureLayer(
-            'polygon_with_hole')
-        feature_layer.setLabelsEnabled(False)
-
-        self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self._TestMapSettings.setLayers([self.layer, feature_layer])
-
-        rule = QgsLabelingEngineRuleMaximumDistanceLabelToFeature()
-        rule.setLabeledLayer(self.layer)
-        rule.setTargetLayer(feature_layer)
-        rule.setDistance(10)
-        rule.setDistanceUnit(Qgis.RenderUnit.Millimeters)
-        rule.setCost(10)
-
-        engine_settings = self._TestMapSettings.labelingEngineSettings()
-        engine_settings.setRules([rule])
-        self._TestMapSettings.setLabelingEngineSettings(engine_settings)
-
-        self.lyr.placement = Qgis.LabelPlacement.OrderedPositionsAroundPoint
-        self.lyr.fieldName = "'label'"
-        self.lyr.isExpression = True
-        self.checkTest()
-        self.removeMapLayer(self.layer)
-        self.layer = None
-
-    def test_label_rule_max_distance_label_to_feature_too_far(self):
-        # label can't be placed, because all candidates are too far from
-        # the polygon layer
-        self.layer = TestQgsPalLabeling.loadFeatureLayer('point')
-        feature_layer = TestQgsPalLabeling.loadFeatureLayer(
-            'polygon_with_hole')
-        feature_layer.setLabelsEnabled(False)
-
-        self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self._TestMapSettings.setLayers([self.layer, feature_layer])
-
-        rule = QgsLabelingEngineRuleMaximumDistanceLabelToFeature()
-        rule.setLabeledLayer(self.layer)
-        rule.setTargetLayer(feature_layer)
-        rule.setDistance(2)
-        rule.setDistanceUnit(Qgis.RenderUnit.Millimeters)
-        rule.setCost(10)
-
-        engine_settings = self._TestMapSettings.labelingEngineSettings()
-        engine_settings.setRules([rule])
-        self._TestMapSettings.setLabelingEngineSettings(engine_settings)
-
-        self.lyr.placement = Qgis.LabelPlacement.OrderedPositionsAroundPoint
-        self.lyr.fieldName = "'label'"
-        self.lyr.isExpression = True
-        self.checkTest()
-        self.removeMapLayer(self.layer)
-        self.layer = None
-
-    def test_label_rule_max_distance_label_to_feature_too_far_low_cost(self):
-        """
-        All candidates violate the rule, but it's low cost and won't prevent
-        label placement
-        """
-        self.layer = TestQgsPalLabeling.loadFeatureLayer('point')
-        feature_layer = TestQgsPalLabeling.loadFeatureLayer(
-            'polygon_with_hole')
-        feature_layer.setLabelsEnabled(False)
-
-        self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self._TestMapSettings.setLayers([self.layer, feature_layer])
-
-        rule = QgsLabelingEngineRuleMaximumDistanceLabelToFeature()
-        rule.setLabeledLayer(self.layer)
-        rule.setTargetLayer(feature_layer)
-        rule.setDistance(2)
-        rule.setDistanceUnit(Qgis.RenderUnit.Millimeters)
-        rule.setCost(2)
-
-        engine_settings = self._TestMapSettings.labelingEngineSettings()
-        engine_settings.setRules([rule])
-        self._TestMapSettings.setLabelingEngineSettings(engine_settings)
-
-        self.lyr.placement = Qgis.LabelPlacement.OrderedPositionsAroundPoint
-        self.lyr.fieldName = "'label'"
-        self.lyr.isExpression = True
-        self.checkTest()
-        self.removeMapLayer(self.layer)
-        self.layer = None
-
-    def test_label_rule_avoid_overlap_with_feature(self):
-        self.layer = TestQgsPalLabeling.loadFeatureLayer('point')
-        feature_layer = TestQgsPalLabeling.loadFeatureLayer(
-            'multi_polygon')
-        feature_layer.setLabelsEnabled(False)
-
-        self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self._TestMapSettings.setLayers([self.layer, feature_layer])
-
-        rule = QgsLabelingEngineRuleAvoidLabelOverlapWithFeature()
-        rule.setLabeledLayer(self.layer)
-        rule.setTargetLayer(feature_layer)
-
-        engine_settings = self._TestMapSettings.labelingEngineSettings()
-        engine_settings.setRules([rule])
-        self._TestMapSettings.setLabelingEngineSettings(engine_settings)
-
-        self.lyr.placement = Qgis.LabelPlacement.OrderedPositionsAroundPoint
-        self.lyr.fieldName = "'label'"
-        self.lyr.isExpression = True
-        self.checkTest()
-        self.removeMapLayer(self.layer)
-        self.layer = None
-
-    def test_label_rule_min_distance_label_to_label(self):
-        self.layer = TestQgsPalLabeling.loadFeatureLayer('point_ordered_obstacle2')
-        feature_layer = TestQgsPalLabeling.loadFeatureLayer(
-            'point')
-        feature_layer.setLabelsEnabled(True)
-        feature_label_labeling = QgsPalLayerSettings(self.lyr)
-        feature_label_labeling.fieldName = "'label'"
-        feature_label_labeling.isExpression = True
-        feature_layer.setLabeling(QgsVectorLayerSimpleLabeling(
-            feature_label_labeling))
-
-        self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self._TestMapSettings.setLayers([self.layer, feature_layer])
-
-        rule = QgsLabelingEngineRuleMinimumDistanceLabelToLabel()
-        rule.setLabeledLayer(self.layer)
-        rule.setTargetLayer(feature_layer)
-        rule.setDistance(10)
-
-        engine_settings = self._TestMapSettings.labelingEngineSettings()
-        engine_settings.setRules([rule])
-        self._TestMapSettings.setLabelingEngineSettings(engine_settings)
-
-        self.lyr.placement = Qgis.LabelPlacement.OrderedPositionsAroundPoint
-        self.lyr.fieldName = "'label'"
-        self.lyr.isExpression = True
-        self.checkTest()
-        self.removeMapLayer(self.layer)
-        self.layer = None
-
-    def test_label_rule_min_distance_label_to_label_small(self):
-        self.layer = TestQgsPalLabeling.loadFeatureLayer('point_ordered_obstacle2')
-        feature_layer = TestQgsPalLabeling.loadFeatureLayer(
-            'point')
-        feature_layer.setLabelsEnabled(True)
-        feature_label_labeling = QgsPalLayerSettings(self.lyr)
-        feature_label_labeling.fieldName = "'label'"
-        feature_label_labeling.isExpression = True
-        feature_layer.setLabeling(QgsVectorLayerSimpleLabeling(
-            feature_label_labeling))
-
-        self._TestMapSettings = self.cloneMapSettings(self._MapSettings)
-        self._TestMapSettings.setLayers([self.layer, feature_layer])
-
-        rule = QgsLabelingEngineRuleMinimumDistanceLabelToLabel()
-        rule.setLabeledLayer(self.layer)
-        rule.setTargetLayer(feature_layer)
-        rule.setDistance(.1)
-
-        engine_settings = self._TestMapSettings.labelingEngineSettings()
-        engine_settings.setRules([rule])
-        self._TestMapSettings.setLabelingEngineSettings(engine_settings)
-
-        self.lyr.placement = Qgis.LabelPlacement.OrderedPositionsAroundPoint
-        self.lyr.fieldName = "'label'"
         self.lyr.isExpression = True
         self.checkTest()
         self.removeMapLayer(self.layer)

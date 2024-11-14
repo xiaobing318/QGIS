@@ -21,7 +21,7 @@
 #include "qgsmssqltransaction.h"
 #include "qgslogger.h"
 #include "qgsdbquerylog.h"
-#include "qgsdbquerylog_p.h"
+#include "qgssettings.h"
 #include "qgsexception.h"
 #include "qgsmssqldatabase.h"
 #include "qgsgeometryengine.h"
@@ -39,7 +39,10 @@ QgsMssqlFeatureIterator::QgsMssqlFeatureIterator( QgsMssqlFeatureSource *source,
 
   mParser.mIsGeography = mSource->mIsGeography;
 
-  mTransform = mRequest.calculateTransform( mSource->mCrs );
+  if ( mRequest.destinationCrs().isValid() && mRequest.destinationCrs() != mSource->mCrs )
+  {
+    mTransform = QgsCoordinateTransform( mSource->mCrs, mRequest.destinationCrs(), mRequest.transformContext() );
+  }
   try
   {
     mFilterRect = filterRectToSourceCrs( mTransform );
@@ -132,7 +135,7 @@ QString QgsMssqlFeatureIterator::whereClauseFid( QgsFeatureId featureId )
       }
       else
       {
-        QgsDebugError( QStringLiteral( "FAILURE: Key values for feature %1 not found." ).arg( featureId ) );
+        QgsDebugMsg( QStringLiteral( "FAILURE: Key values for feature %1 not found." ).arg( featureId ) );
         whereClause = QStringLiteral( "NULL IS NOT NULL" );
       }
     }
@@ -166,13 +169,13 @@ void QgsMssqlFeatureIterator::BuildStatement( const QgsFeatureRequest &request )
 
   mAttributesToFetch << mSource->mPrimaryKeyAttrs;
 
-  bool subsetOfAttributes = mRequest.flags() & Qgis::FeatureRequestFlag::SubsetOfAttributes;
+  bool subsetOfAttributes = mRequest.flags() & QgsFeatureRequest::SubsetOfAttributes;
   QgsAttributeList attrs = subsetOfAttributes ? mRequest.subsetOfAttributes() : mSource->mFields.allAttributesList();
 
   if ( subsetOfAttributes )
   {
     // ensure that all attributes required for expression filter are being fetched
-    if ( request.filterType() == Qgis::FeatureRequestFilterType::Expression )
+    if ( request.filterType() == QgsFeatureRequest::FilterExpression )
     {
       //ensure that all fields required for filter expressions are prepared
       QSet<int> attributeIndexes = request.filterExpression()->referencedAttributeIndexes( mSource->mFields );
@@ -200,9 +203,9 @@ void QgsMssqlFeatureIterator::BuildStatement( const QgsFeatureRequest &request )
   }
 
   // get geometry col
-  if ( ( !( request.flags() & Qgis::FeatureRequestFlag::NoGeometry )
+  if ( ( !( request.flags() & QgsFeatureRequest::NoGeometry )
          || ( request.spatialFilterType() == Qgis::SpatialFilterType::DistanceWithin )
-         || ( request.filterType() == Qgis::FeatureRequestFilterType::Expression && request.filterExpression()->needsGeometry() )
+         || ( request.filterType() == QgsFeatureRequest::FilterExpression && request.filterExpression()->needsGeometry() )
        )
        && mSource->isSpatial() )
   {
@@ -245,14 +248,14 @@ void QgsMssqlFeatureIterator::BuildStatement( const QgsFeatureRequest &request )
 
     // use the faster filter method only when we don't need an exact intersect test -- filter doesn't give exact
     // results when the layer has a spatial index
-    QString test = mRequest.flags() & Qgis::FeatureRequestFlag::ExactIntersect ? QStringLiteral( "STIntersects" ) : QStringLiteral( "Filter" );
+    QString test = mRequest.flags() & QgsFeatureRequest::ExactIntersect ? QStringLiteral( "STIntersects" ) : QStringLiteral( "Filter" );
     mStatement += QStringLiteral( "[%1].%2([%3]::STGeomFromText('POLYGON((%4))',%5)) = 1" ).arg(
                     mSource->mGeometryColName, test, mSource->mGeometryColType, r, QString::number( mSource->mSRId ) );
     filterAdded = true;
   }
 
   // set fid filter
-  if ( request.filterType() == Qgis::FeatureRequestFilterType::Fid && !mSource->mPrimaryKeyAttrs.isEmpty() )
+  if ( request.filterType() == QgsFeatureRequest::FilterFid && !mSource->mPrimaryKeyAttrs.isEmpty() )
   {
     if ( !filterAdded )
       mStatement += QLatin1String( " WHERE " );
@@ -290,7 +293,7 @@ void QgsMssqlFeatureIterator::BuildStatement( const QgsFeatureRequest &request )
 
     filterAdded = true;
   }
-  else if ( request.filterType() == Qgis::FeatureRequestFilterType::Fids && !mSource->mPrimaryKeyAttrs.isEmpty()
+  else if ( request.filterType() == QgsFeatureRequest::FilterFids && !mSource->mPrimaryKeyAttrs.isEmpty()
             && !mRequest.filterFids().isEmpty() )
   {
     if ( !filterAdded )
@@ -345,9 +348,9 @@ void QgsMssqlFeatureIterator::BuildStatement( const QgsFeatureRequest &request )
   //NOTE - must be last added!
   mExpressionCompiled = false;
   mCompileStatus = NoCompilation;
-  if ( request.filterType() == Qgis::FeatureRequestFilterType::Expression )
+  if ( request.filterType() == QgsFeatureRequest::FilterExpression )
   {
-    QgsMssqlExpressionCompiler compiler = QgsMssqlExpressionCompiler( mSource, request.flags() & Qgis::FeatureRequestFlag::IgnoreStaticNodesDuringExpressionCompilation );
+    QgsMssqlExpressionCompiler compiler = QgsMssqlExpressionCompiler( mSource, request.flags() & QgsFeatureRequest::IgnoreStaticNodesDuringExpressionCompilation );
     QgsSqlExpressionCompiler::Result result = compiler.compile( request.filterExpression() );
     if ( result == QgsSqlExpressionCompiler::Complete || result == QgsSqlExpressionCompiler::Partial )
     {
@@ -381,7 +384,7 @@ void QgsMssqlFeatureIterator::BuildStatement( const QgsFeatureRequest &request )
       break;
     }
 
-    QgsMssqlExpressionCompiler compiler = QgsMssqlExpressionCompiler( mSource, request.flags() & Qgis::FeatureRequestFlag::IgnoreStaticNodesDuringExpressionCompilation );
+    QgsMssqlExpressionCompiler compiler = QgsMssqlExpressionCompiler( mSource, request.flags() & QgsFeatureRequest::IgnoreStaticNodesDuringExpressionCompilation );
     QgsExpression expression = clause.expression();
     if ( compiler.compile( &expression ) == QgsSqlExpressionCompiler::Complete )
     {
@@ -426,7 +429,7 @@ void QgsMssqlFeatureIterator::BuildStatement( const QgsFeatureRequest &request )
 #if 0
   if ( fieldCount == 0 )
   {
-    QgsDebugError( QStringLiteral( "QgsMssqlProvider::select no fields have been requested" ) );
+    QgsDebugMsg( QStringLiteral( "QgsMssqlProvider::select no fields have been requested" ) );
     mStatement.clear();
   }
 #endif
@@ -453,8 +456,8 @@ bool QgsMssqlFeatureIterator::fetchFeature( QgsFeature &feature )
 
     if ( !mDatabase->isValid() )
     {
-      QgsDebugError( QStringLiteral( "Failed to open database" ) );
-      QgsDebugError( mDatabase->errorText() );
+      QgsDebugMsg( QStringLiteral( "Failed to open database" ) );
+      QgsDebugMsg( mDatabase->errorText() );
       return false;
     }
 
@@ -471,7 +474,7 @@ bool QgsMssqlFeatureIterator::fetchFeature( QgsFeature &feature )
 
   if ( !mQuery->isActive() )
   {
-    QgsDebugError( QStringLiteral( "Read attempt on inactive query" ) );
+    QgsDebugMsg( QStringLiteral( "Read attempt on inactive query" ) );
     return false;
   }
 
@@ -485,13 +488,13 @@ bool QgsMssqlFeatureIterator::fetchFeature( QgsFeature &feature )
       const QVariant originalValue = mQuery->value( i );
       QgsField fld = mSource->mFields.at( mAttributesToFetch.at( i ) );
       QVariant v = originalValue;
-      if ( fld.type() == QMetaType::Type::QTime )
+      if ( fld.type() == QVariant::Time )
         v = QgsMssqlProvider::convertTimeValue( v );
-      if ( v.userType() != fld.type() )
+      if ( v.type() != fld.type() )
         v = QgsVectorDataProvider::convertValue( fld.type(), originalValue.toString() );
 
       // second chance for time fields -- time fields are not correctly handled by sql server driver on linux (maybe win too?)
-      if ( QgsVariantUtils::isNull( v ) && fld.type() == QMetaType::Type::QTime && originalValue.isValid() && originalValue.userType() == QMetaType::Type::QByteArray )
+      if ( QgsVariantUtils::isNull( v ) && fld.type() == QVariant::Time && originalValue.isValid() && originalValue.type() == QVariant::ByteArray )
       {
         // time fields can be returned as byte arrays... woot
         const QByteArray ba = originalValue.toByteArray();
@@ -502,7 +505,7 @@ bool QgsMssqlFeatureIterator::fetchFeature( QgsFeature &feature )
           const int seconds = ba.at( 4 );
           v = QTime( hours, mins, seconds );
           if ( !v.isValid() ) // can't handle it
-            v = QgsVariantUtils::createNullVariant( QMetaType::Type::QTime );
+            v = QVariant( QVariant::Time );
         }
       }
 
@@ -528,9 +531,9 @@ bool QgsMssqlFeatureIterator::fetchFeature( QgsFeature &feature )
           QgsField fld = mSource->mFields.at( idx );
 
           QVariant v = mQuery->record().value( fld.name() );
-          if ( fld.type() == QMetaType::Type::QTime )
+          if ( fld.type() == QVariant::Time )
             v = QgsMssqlProvider::convertTimeValue( v );
-          if ( v.userType() != fld.type() )
+          if ( v.type() != fld.type() )
             v = QgsVectorDataProvider::convertValue( fld.type(), v.toString() );
           primaryKeyVals << v;
 
@@ -595,7 +598,7 @@ bool QgsMssqlFeatureIterator::rewind()
 
   if ( mStatement.isEmpty() )
   {
-    QgsDebugError( QStringLiteral( "QgsMssqlFeatureIterator::rewind on empty statement" ) );
+    QgsDebugMsg( QStringLiteral( "QgsMssqlFeatureIterator::rewind on empty statement" ) );
     return false;
   }
 
@@ -664,7 +667,7 @@ bool QgsMssqlFeatureIterator::rewind()
 
   if ( !result )
   {
-    QgsDebugError( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( mQuery->lastQuery(), mQuery->lastError().text() ) );
+    QgsDebugMsg( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( mQuery->lastQuery(), mQuery->lastError().text() ) );
     close();
     return false;
   }

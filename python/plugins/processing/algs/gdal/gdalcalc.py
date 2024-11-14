@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     gdalcalc.py
@@ -48,18 +50,13 @@ class gdalcalc(GdalAlgorithm):
     BAND_E = 'BAND_E'
     BAND_F = 'BAND_F'
     FORMULA = 'FORMULA'
-    # TODO QGIS 4.0 : Rename EXTENT_OPT to EXTENT
-    EXTENT_OPT = 'EXTENT_OPT'
-    EXTENT_OPTIONS = ['ignore', 'fail', 'union', 'intersect']
-    # TODO QGIS 4.0 : Rename EXTENT to PROJWIN or CUSTOM_EXTENT
     EXTENT = 'PROJWIN'
     OUTPUT = 'OUTPUT'
     NO_DATA = 'NO_DATA'
     OPTIONS = 'OPTIONS'
     EXTRA = 'EXTRA'
     RTYPE = 'RTYPE'
-
-    TYPE = ['Byte', 'Int16', 'UInt16', 'UInt32', 'Int32', 'Float32', 'Float64', 'CInt16', 'CInt32', 'CFloat32', 'CFloat64', 'Int8']
+    TYPE = ['Byte', 'Int16', 'UInt16', 'UInt32', 'Int32', 'Float32', 'Float64']
 
     def __init__(self):
         super().__init__()
@@ -139,19 +136,10 @@ class gdalcalc(GdalAlgorithm):
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.NO_DATA,
-                self.tr('Set output NoData value'),
-                type=QgsProcessingParameterNumber.Type.Double,
+                self.tr('Set output nodata value'),
+                type=QgsProcessingParameterNumber.Double,
                 defaultValue=None,
                 optional=True))
-
-        if GdalUtils.version() >= 3030000:
-            extent_opt_param = QgsProcessingParameterEnum(
-                self.EXTENT_OPT,
-                self.tr('Handling of extent differences'),
-                options=[o.title() for o in self.EXTENT_OPTIONS],
-                defaultValue=0)
-            extent_opt_param.setHelp(self.tr('This option determines how to handle rasters with different extents'))
-            self.addParameter(extent_opt_param)
 
         if GdalUtils.version() >= 3030000:
             extent_param = QgsProcessingParameterExtent(self.EXTENT,
@@ -171,15 +159,17 @@ class gdalcalc(GdalAlgorithm):
                                                      self.tr('Additional creation options'),
                                                      defaultValue='',
                                                      optional=True)
-        options_param.setFlags(options_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
-        options_param.setMetadata({'widget_wrapper': {'widget_type': 'rasteroptions'}})
+        options_param.setFlags(options_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        options_param.setMetadata({
+            'widget_wrapper': {
+                'class': 'processing.algs.gdal.ui.RasterOptionsWidget.RasterOptionsWidgetWrapper'}})
         self.addParameter(options_param)
 
         extra_param = QgsProcessingParameterString(self.EXTRA,
                                                    self.tr('Additional command-line parameters'),
                                                    defaultValue=None,
                                                    optional=True)
-        extra_param.setFlags(extra_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        extra_param.setFlags(extra_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(extra_param)
 
         self.addParameter(
@@ -202,6 +192,11 @@ class gdalcalc(GdalAlgorithm):
     def commandName(self):
         return 'gdal_calc'
 
+    def processAlgorithm(self, parameters, context, feedback):
+        if GdalUtils.version() < 3030000 and self.EXTENT in parameters.keys():
+            raise QgsProcessingException(self.tr('The output extent option is only available on GDAL 3.3 or later'))
+        return GdalAlgorithm.processAlgorithm(self, parameters, context, feedback)
+
     def getConsoleCommands(self, parameters, context, feedback, executing=True):
 
         out = self.parameterAsOutputLayer(parameters, self.OUTPUT, context)
@@ -217,57 +212,18 @@ class gdalcalc(GdalAlgorithm):
             f'--calc "{formula}"',
             '--format',
             GdalUtils.getFormatShortNameFromFilename(out),
+            '--type',
+            self.TYPE[self.parameterAsEnum(parameters, self.RTYPE, context)]
         ]
-
-        rtype = self.parameterAsEnum(parameters, self.RTYPE, context)
-        if self.TYPE[rtype] in ['CInt16', 'CInt32', 'CFloat32', 'CFloat64'] and GdalUtils.version() < 3050300:
-            raise QgsProcessingException(self.tr('{} data type requires GDAL version 3.5.3 or later').format(self.TYPE[rtype]))
-        if self.TYPE[rtype] == 'Int8' and GdalUtils.version() < 3070000:
-            raise QgsProcessingException(self.tr('Int8 data type requires GDAL version 3.7 or later'))
-
-        arguments.append('--type ' + self.TYPE[rtype])
 
         if noData is not None:
             arguments.append('--NoDataValue')
             arguments.append(noData)
-        layer_a = self.parameterAsRasterLayer(parameters, self.INPUT_A, context)
-        if layer_a is None:
+        layer = self.parameterAsRasterLayer(parameters, self.INPUT_A, context)
+        if layer is None:
             raise QgsProcessingException(self.invalidRasterError(parameters, self.INPUT_A))
-        layer_a_details = GdalUtils.gdal_connection_details_from_layer(layer_a)
 
-        def all_equal(iterator):
-            iterator = iter(iterator)
-            try:
-                first = next(iterator)
-            except StopIteration:
-                return True
-            return all(first == x for x in iterator)
-
-        # Check GDAL version for projwin and extent options (GDAL 3.3 is required)
-        if GdalUtils.version() < 3030000 and self.EXTENT in parameters.keys():
-            raise QgsProcessingException(self.tr('The custom output extent option (--projwin) is only available on GDAL 3.3 or later'))
-        if GdalUtils.version() < 3030000 and self.EXTENT_OPT in parameters.keys():
-            raise QgsProcessingException(self.tr('The output extent option (--extent) is only available on GDAL 3.3 or later'))
-        # --projwin and --extent option are mutually exclusive
-        if (self.EXTENT in parameters.keys() and parameters[self.EXTENT] is not None) and (self.EXTENT_OPT in parameters.keys() and parameters[self.EXTENT_OPT] != 0):
-            raise QgsProcessingException(self.tr('The custom output extent option (--projwin) and output extent option (--extent) are mutually exclusive'))
-        # If extent option is defined, pixel size and SRS of all input raster must be the same
-        if self.EXTENT_OPT in parameters.keys() and parameters[self.EXTENT_OPT] != 0:
-            pixel_size_X, pixel_size_Y, srs = [], [], []
-            for input_layer in [self.INPUT_A, self.INPUT_B, self.INPUT_C, self.INPUT_D, self.INPUT_E, self.INPUT_F]:
-                if input_layer in parameters and parameters[input_layer] is not None:
-                    layer = self.parameterAsRasterLayer(parameters, input_layer, context)
-                    pixel_size_X.append(layer.rasterUnitsPerPixelX())
-                    pixel_size_Y.append(layer.rasterUnitsPerPixelY())
-                    srs.append(layer.crs().authid())
-            if not (all_equal(pixel_size_X) and all_equal(pixel_size_Y) and all_equal(srs)):
-                raise QgsProcessingException(self.tr('For all output extent options, the pixel size (resolution) and SRS (Spatial Reference System) of all the input rasters must be the same'))
-
-        extent = self.EXTENT_OPTIONS[self.parameterAsEnum(parameters, self.EXTENT_OPT, context)]
-        if extent != 'ignore':
-            arguments.append(f'--extent={extent}')
-
-        bbox = self.parameterAsExtent(parameters, self.EXTENT, context, layer_a.crs())
+        bbox = self.parameterAsExtent(parameters, self.EXTENT, context, layer.crs())
         if not bbox.isNull():
             arguments.append('--projwin')
             arguments.append(str(bbox.xMinimum()))
@@ -276,62 +232,52 @@ class gdalcalc(GdalAlgorithm):
             arguments.append(str(bbox.yMinimum()))
 
         arguments.append('-A')
-        arguments.append(layer_a_details.connection_string)
+        arguments.append(layer.source())
         if self.parameterAsString(parameters, self.BAND_A, context):
             arguments.append('--A_band ' + self.parameterAsString(parameters, self.BAND_A, context))
 
         if self.INPUT_B in parameters and parameters[self.INPUT_B] is not None:
-            layer_b = self.parameterAsRasterLayer(parameters, self.INPUT_B, context)
-            if layer_b is None:
+            layer = self.parameterAsRasterLayer(parameters, self.INPUT_B, context)
+            if layer is None:
                 raise QgsProcessingException(self.invalidRasterError(parameters, self.INPUT_B))
-            input_b_details = GdalUtils.gdal_connection_details_from_layer(
-                layer_b)
             arguments.append('-B')
-            arguments.append(input_b_details.connection_string)
+            arguments.append(layer.source())
             if self.parameterAsString(parameters, self.BAND_B, context):
                 arguments.append('--B_band ' + self.parameterAsString(parameters, self.BAND_B, context))
 
         if self.INPUT_C in parameters and parameters[self.INPUT_C] is not None:
-            layer_c = self.parameterAsRasterLayer(parameters, self.INPUT_C, context)
-            if layer_c is None:
+            layer = self.parameterAsRasterLayer(parameters, self.INPUT_C, context)
+            if layer is None:
                 raise QgsProcessingException(self.invalidRasterError(parameters, self.INPUT_C))
-            input_c_details = GdalUtils.gdal_connection_details_from_layer(
-                layer_c)
             arguments.append('-C')
-            arguments.append(input_c_details.connection_string)
+            arguments.append(layer.source())
             if self.parameterAsString(parameters, self.BAND_C, context):
                 arguments.append('--C_band ' + self.parameterAsString(parameters, self.BAND_C, context))
 
         if self.INPUT_D in parameters and parameters[self.INPUT_D] is not None:
-            layer_d = self.parameterAsRasterLayer(parameters, self.INPUT_D, context)
-            if layer_d is None:
+            layer = self.parameterAsRasterLayer(parameters, self.INPUT_D, context)
+            if layer is None:
                 raise QgsProcessingException(self.invalidRasterError(parameters, self.INPUT_D))
-            input_d_details = GdalUtils.gdal_connection_details_from_layer(
-                layer_d)
             arguments.append('-D')
-            arguments.append(input_d_details.connection_string)
+            arguments.append(layer.source())
             if self.parameterAsString(parameters, self.BAND_D, context):
                 arguments.append('--D_band ' + self.parameterAsString(parameters, self.BAND_D, context))
 
         if self.INPUT_E in parameters and parameters[self.INPUT_E] is not None:
-            layer_e = self.parameterAsRasterLayer(parameters, self.INPUT_E, context)
-            if layer_e is None:
+            layer = self.parameterAsRasterLayer(parameters, self.INPUT_E, context)
+            if layer is None:
                 raise QgsProcessingException(self.invalidRasterError(parameters, self.INPUT_E))
-            input_e_details = GdalUtils.gdal_connection_details_from_layer(
-                layer_e)
             arguments.append('-E')
-            arguments.append(input_e_details.connection_string)
+            arguments.append(layer.source())
             if self.parameterAsString(parameters, self.BAND_E, context):
                 arguments.append('--E_band ' + self.parameterAsString(parameters, self.BAND_E, context))
 
         if self.INPUT_F in parameters and parameters[self.INPUT_F] is not None:
-            layer_f = self.parameterAsRasterLayer(parameters, self.INPUT_F, context)
-            if layer_f is None:
+            layer = self.parameterAsRasterLayer(parameters, self.INPUT_F, context)
+            if layer is None:
                 raise QgsProcessingException(self.invalidRasterError(parameters, self.INPUT_F))
-            input_f_details = GdalUtils.gdal_connection_details_from_layer(
-                layer_f)
             arguments.append('-F')
-            arguments.append(input_f_details.connection_string)
+            arguments.append(layer.source())
             if self.parameterAsString(parameters, self.BAND_F, context):
                 arguments.append('--F_band ' + self.parameterAsString(parameters, self.BAND_F, context))
 

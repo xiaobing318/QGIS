@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgseffectstackpropertieswidget.h"
-#include "moc_qgseffectstackpropertieswidget.cpp"
 #include "qgspainteffectregistry.h"
 #include "qgspainteffect.h"
 #include "qgseffectstack.h"

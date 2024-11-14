@@ -14,7 +14,7 @@
  ***************************************************************************/
 
 #include "qgsannotationitempropertieswidget.h"
-#include "moc_qgsannotationitempropertieswidget.cpp"
+#include "qgsstyle.h"
 #include "qgsapplication.h"
 #include "qgsmaplayer.h"
 #include "qgsannotationlayer.h"
@@ -143,8 +143,6 @@ void QgsAnnotationItemPropertiesWidget::onChanged()
 
     mLayer->replaceItem( mMapLayerConfigWidgetContext.annotationId(), newItem.release() );
   }
-
-  emit widgetChanged();
 }
 
 void QgsAnnotationItemPropertiesWidget::onLayerPropertyChanged()
@@ -196,8 +194,6 @@ void QgsAnnotationItemPropertiesWidget::setItemId( const QString &itemId )
         symbolWidgetContext.setMapCanvas( mMapLayerConfigWidgetContext.mapCanvas() );
         symbolWidgetContext.setMessageBar( mMapLayerConfigWidgetContext.messageBar() );
         mItemWidget->setContext( symbolWidgetContext );
-        mItemWidget->setLayer( mLayer );
-        mItemWidget->setItemId( itemId );
       }
     }
   }
@@ -243,6 +239,6 @@ bool QgsAnnotationItemPropertiesWidgetFactory::supportsStyleDock() const
 
 bool QgsAnnotationItemPropertiesWidgetFactory::supportsLayer( QgsMapLayer *layer ) const
 {
-  return layer->type() == Qgis::LayerType::Annotation;
+  return layer->type() == QgsMapLayerType::AnnotationLayer;
 }
 

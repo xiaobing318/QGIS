@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgsauthidentcertedit.h"
-#include "moc_qgsauthidentcertedit.cpp"
 #include "ui_qgsauthidentcertedit.h"
 
 #include "qgsapplication.h"

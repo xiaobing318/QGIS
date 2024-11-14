@@ -1,5 +1,5 @@
 /***************************************************************************
-    qgisexpressionbuilderdialog.h - A generic expression builder dialog.
+    qgisexpressionbuilderdialog.h - A generic expression string builder dialog.
      --------------------------------------
     Date                 :  29-May-2011
     Copyright            : (C) 2011 by Nathan Woodrow
@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsexpressionbuilderdialog.h"
-#include "moc_qgsexpressionbuilderdialog.cpp"
 #include "qgssettings.h"
 #include "qgsguiutils.h"
 #include "qgsgui.h"

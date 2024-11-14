@@ -17,13 +17,13 @@ __copyright__ = 'Copyright 2018, The QGIS Project'
 import os
 
 import psycopg2
-from qgis.PyQt.QtCore import QUrl, QUrlQuery
+import qgis  # NOQA
+from PyQt5.QtCore import QUrl, QUrlQuery
 from qgis.core import (
     QgsDataSourceUri,
     QgsVectorLayer,
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 from test_project_storage_base import TestPyQgsProjectStorageBase
 from utilities import unitTestDataPath
@@ -32,13 +32,13 @@ QGISAPP = start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestPyQgsProjectStoragePostgres(QgisTestCase, TestPyQgsProjectStorageBase):
+class TestPyQgsProjectStoragePostgres(TestPyQgsProjectStorageBase, unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
 
-        super(TestPyQgsProjectStoragePostgres, cls).setUpClass()
+        super().setUpClass()
 
         cls.dbconn = 'service=qgis_test'
         if 'QGIS_PGTEST_DB' in os.environ:
@@ -53,6 +53,10 @@ class TestPyQgsProjectStoragePostgres(QgisTestCase, TestPyQgsProjectStorageBase)
         cls.schema = 'qgis_test'
         cls.provider = 'postgres'
         cls.project_storage_type = 'postgresql'
+
+    @classmethod
+    def tearDownClass(cls):
+        """Run after all tests"""
 
     def execSQLCommand(self, sql):
         self.assertTrue(self.con)
@@ -82,7 +86,7 @@ class TestPyQgsProjectStoragePostgres(QgisTestCase, TestPyQgsProjectStorageBase)
             urlQuery.addQueryItem("service", ds_uri.service())
         if ds_uri.authConfigId() != '':
             urlQuery.addQueryItem("authcfg", ds_uri.authConfigId())
-        if ds_uri.sslMode() != QgsDataSourceUri.SslMode.SslPrefer:
+        if ds_uri.sslMode() != QgsDataSourceUri.SslPrefer:
             urlQuery.addQueryItem("sslmode", QgsDataSourceUri.encodeSslMode(ds_uri.sslMode()))
 
         urlQuery.addQueryItem("dbname", ds_uri.database())

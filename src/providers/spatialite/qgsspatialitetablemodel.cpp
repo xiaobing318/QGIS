@@ -16,7 +16,7 @@
  ***************************************************************************/
 
 #include "qgsspatialitetablemodel.h"
-#include "moc_qgsspatialitetablemodel.cpp"
+#include "qgsapplication.h"
 #include "qgsiconutils.h"
 
 QgsSpatiaLiteTableModel::QgsSpatiaLiteTableModel( QObject *parent )
@@ -64,7 +64,7 @@ void QgsSpatiaLiteTableModel::addTableEntry( const QString &type, const QString 
   }
 
   //path to icon for specified type
-  const Qgis::WkbType wkbType = qgisTypeFromDbType( type );
+  const QgsWkbTypes::Type wkbType = qgisTypeFromDbType( type );
   const QIcon iconFile = iconForType( wkbType );
 
   QList < QStandardItem * >childItemList;
@@ -157,7 +157,7 @@ void QgsSpatiaLiteTableModel::setGeometryTypesForTable( const QString &table, co
         return;
       }
 
-      const Qgis::WkbType wkbType = qgisTypeFromDbType( typeList.at( 0 ) );
+      const QgsWkbTypes::Type wkbType = qgisTypeFromDbType( typeList.at( 0 ) );
       const QIcon myIcon = iconForType( wkbType );
       itemFromIndex( currentTypeIndex )->setText( typeList.at( 0 ) ); //todo: add other rows
       itemFromIndex( currentTypeIndex )->setIcon( myIcon );
@@ -175,19 +175,19 @@ void QgsSpatiaLiteTableModel::setGeometryTypesForTable( const QString &table, co
   }
 }
 
-QIcon QgsSpatiaLiteTableModel::iconForType( Qgis::WkbType type ) const
+QIcon QgsSpatiaLiteTableModel::iconForType( QgsWkbTypes::Type type ) const
 {
-  if ( type == Qgis::WkbType::Point || type == Qgis::WkbType::Point25D || type == Qgis::WkbType::MultiPoint || type == Qgis::WkbType::MultiPoint25D )
+  if ( type == QgsWkbTypes::Point || type == QgsWkbTypes::Point25D || type == QgsWkbTypes::MultiPoint || type == QgsWkbTypes::MultiPoint25D )
   {
     return QgsIconUtils::iconPoint();
   }
-  else if ( type == Qgis::WkbType::LineString || type == Qgis::WkbType::LineString25D || type == Qgis::WkbType::MultiLineString
-            || type == Qgis::WkbType::MultiLineString25D )
+  else if ( type == QgsWkbTypes::LineString || type == QgsWkbTypes::LineString25D || type == QgsWkbTypes::MultiLineString
+            || type == QgsWkbTypes::MultiLineString25D )
   {
     return QgsIconUtils::iconLine();
   }
-  else if ( type == Qgis::WkbType::Polygon || type == Qgis::WkbType::Polygon25D || type == Qgis::WkbType::MultiPolygon
-            || type == Qgis::WkbType::MultiPolygon25D )
+  else if ( type == QgsWkbTypes::Polygon || type == QgsWkbTypes::Polygon25D || type == QgsWkbTypes::MultiPolygon
+            || type == QgsWkbTypes::MultiPolygon25D )
   {
     return QgsIconUtils::iconPolygon();
   }
@@ -195,60 +195,60 @@ QIcon QgsSpatiaLiteTableModel::iconForType( Qgis::WkbType type ) const
     return QIcon();
 }
 
-QString QgsSpatiaLiteTableModel::displayStringForType( Qgis::WkbType type ) const
+QString QgsSpatiaLiteTableModel::displayStringForType( QgsWkbTypes::Type type ) const
 {
-  if ( type == Qgis::WkbType::Point || type == Qgis::WkbType::Point25D )
+  if ( type == QgsWkbTypes::Point || type == QgsWkbTypes::Point25D )
   {
     return tr( "Point" );
   }
-  else if ( type == Qgis::WkbType::MultiPoint || type == Qgis::WkbType::MultiPoint25D )
+  else if ( type == QgsWkbTypes::MultiPoint || type == QgsWkbTypes::MultiPoint25D )
   {
     return tr( "Multipoint" );
   }
-  else if ( type == Qgis::WkbType::LineString || type == Qgis::WkbType::LineString25D )
+  else if ( type == QgsWkbTypes::LineString || type == QgsWkbTypes::LineString25D )
   {
     return tr( "Line" );
   }
-  else if ( type == Qgis::WkbType::MultiLineString || type == Qgis::WkbType::MultiLineString25D )
+  else if ( type == QgsWkbTypes::MultiLineString || type == QgsWkbTypes::MultiLineString25D )
   {
     return tr( "Multiline" );
   }
-  else if ( type == Qgis::WkbType::Polygon || type == Qgis::WkbType::Polygon25D )
+  else if ( type == QgsWkbTypes::Polygon || type == QgsWkbTypes::Polygon25D )
   {
     return tr( "Polygon" );
   }
-  else if ( type == Qgis::WkbType::MultiPolygon || type == Qgis::WkbType::MultiPolygon25D )
+  else if ( type == QgsWkbTypes::MultiPolygon || type == QgsWkbTypes::MultiPolygon25D )
   {
     return tr( "Multipolygon" );
   }
   return QStringLiteral( "Unknown" );
 }
 
-Qgis::WkbType QgsSpatiaLiteTableModel::qgisTypeFromDbType( const QString &dbType ) const
+QgsWkbTypes::Type QgsSpatiaLiteTableModel::qgisTypeFromDbType( const QString &dbType ) const
 {
   if ( dbType == QLatin1String( "POINT" ) )
   {
-    return Qgis::WkbType::Point;
+    return QgsWkbTypes::Point;
   }
   else if ( dbType == QLatin1String( "MULTIPOINT" ) )
   {
-    return Qgis::WkbType::MultiPoint;
+    return QgsWkbTypes::MultiPoint;
   }
   else if ( dbType == QLatin1String( "LINESTRING" ) )
   {
-    return Qgis::WkbType::LineString;
+    return QgsWkbTypes::LineString;
   }
   else if ( dbType == QLatin1String( "MULTILINESTRING" ) )
   {
-    return Qgis::WkbType::MultiLineString;
+    return QgsWkbTypes::MultiLineString;
   }
   else if ( dbType == QLatin1String( "POLYGON" ) )
   {
-    return Qgis::WkbType::Polygon;
+    return QgsWkbTypes::Polygon;
   }
   else if ( dbType == QLatin1String( "MULTIPOLYGON" ) )
   {
-    return Qgis::WkbType::MultiPolygon;
+    return QgsWkbTypes::MultiPolygon;
   }
-  return Qgis::WkbType::Unknown;
+  return QgsWkbTypes::Unknown;
 }

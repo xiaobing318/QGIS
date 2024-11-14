@@ -15,14 +15,13 @@
  ***************************************************************************/
 
 #include "qgslayoutitempage.h"
-#include "moc_qgslayoutitempage.cpp"
 #include "qgslayout.h"
 #include "qgslayoututils.h"
 #include "qgspagesizeregistry.h"
 #include "qgssymbollayerutils.h"
 #include "qgslayoutitemundocommand.h"
 #include "qgslayoutpagecollection.h"
-#include "qgslayoutrendercontext.h"
+#include "qgslayoutundostack.h"
 #include "qgsstyle.h"
 #include "qgsstyleentityvisitor.h"
 #include "qgsfillsymbol.h"
@@ -37,10 +36,10 @@ QgsLayoutItemPage::QgsLayoutItemPage( QgsLayout *layout )
   setFlag( QGraphicsItem::ItemIsMovable, false );
   setZValue( QgsLayout::ZPage );
 
-  connect( this, &QgsLayoutItem::sizePositionChanged, this, [this]
+  connect( this, &QgsLayoutItem::sizePositionChanged, this, [ = ]
   {
-    prepareGeometryChange();
     mBoundingRect = QRectF();
+    prepareGeometryChange();
   } );
 
   const QFont font;
@@ -109,7 +108,7 @@ QPageLayout QgsLayoutItemPage::pageLayout() const
   QPageLayout pageLayout;
   pageLayout.setMargins( {0, 0, 0, 0} );
   pageLayout.setMode( QPageLayout::FullPageMode );
-  const QSizeF size = layout()->renderContext().measurementConverter().convert( pageSize(), Qgis::LayoutUnit::Millimeters ).toQSizeF();
+  const QSizeF size = layout()->renderContext().measurementConverter().convert( pageSize(), QgsUnitTypes::LayoutMillimeters ).toQSizeF();
 
   if ( pageSize().width() > pageSize().height() )
   {
@@ -254,7 +253,7 @@ void QgsLayoutItemPage::draw( QgsLayoutItemRenderContext &context )
     return;
   }
 
-  const double scale = context.renderContext().convertToPainterUnits( 1, Qgis::RenderUnit::Millimeters );
+  const double scale = context.renderContext().convertToPainterUnits( 1, QgsUnitTypes::RenderMillimeters );
 
   const QgsExpressionContext expressionContext = createExpressionContext();
   context.renderContext().setExpressionContext( expressionContext );

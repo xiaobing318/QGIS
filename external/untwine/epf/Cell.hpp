@@ -10,6 +10,7 @@
  *                                                                           *
  ****************************************************************************/
 
+
 #pragma once
 
 #include <cstdint>
@@ -28,7 +29,6 @@ namespace epf
 {
 
 class Writer;
-class CellMgr;
 
 // A cell represents a voxel that contains points. All cells are the same size. A cell has
 // a buffer which is filled by points. When the buffer is filled, it's passed to the writer
@@ -38,19 +38,18 @@ class Cell
 public:
     using FlushFunc = std::function<void(Cell *)>;
 
-    Cell(const VoxelKey& key, int pointSize, Writer *writer, CellMgr *mgr, const Cell *lastCell) :
-        m_key(key), m_pointSize(pointSize), m_writer(writer), m_cellMgr(mgr)
+    Cell(const VoxelKey& key, int pointSize, Writer *writer, FlushFunc flush) :
+        m_key(key), m_pointSize(pointSize), m_writer(writer), m_flush(flush)
     {
         assert(pointSize < BufSize);
-        initialize(lastCell);
+        initialize();
     }
     ~Cell()
     {
-        if (m_buf)
-            write();
+        write();
     }
 
-    void initialize(const Cell *exclude);
+    void initialize();
     Point point()
         { return Point(m_pos); }
     VoxelKey key() const
@@ -62,31 +61,28 @@ public:
 private:
     DataVecPtr m_buf;
     VoxelKey m_key;
-    uint8_t *m_pos;
-    uint8_t *m_endPos;
     int m_pointSize;
     Writer *m_writer;
-    CellMgr *m_cellMgr;
+    uint8_t *m_pos;
+    uint8_t *m_endPos;
+    FlushFunc m_flush;
 
     void write();
 };
 
 class CellMgr
 {
-    friend class Cell;
 public:
     CellMgr(int pointSize, Writer *writer);
 
-    Cell *get(const VoxelKey& key, const Cell *lastCell = nullptr);
+    Cell *get(const VoxelKey& key);
+    void flush(Cell *exclude);
 
 private:
     using CellMap = std::unordered_map<VoxelKey, std::unique_ptr<Cell>>;
     int m_pointSize;
     Writer *m_writer;
     CellMap m_cells;
-
-    DataVecPtr getBuffer(const Cell* exclude);
-    void flush(const Cell *exclude);
 };
 
 

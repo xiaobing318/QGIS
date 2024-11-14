@@ -3,9 +3,8 @@
  *                                                                      *
  * src/core/settings/qgssettingsregistrycore.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
-
 
 
 
@@ -26,7 +25,12 @@ class QgsSettingsRegistryCore : QgsSettingsRegistry
   public:
 
     QgsSettingsRegistryCore();
+%Docstring
+Constructor for QgsSettingsRegistryCore.
+%End
+
     virtual ~QgsSettingsRegistryCore();
+
 
 };
 
@@ -35,5 +39,5 @@ class QgsSettingsRegistryCore : QgsSettingsRegistry
  *                                                                      *
  * src/core/settings/qgssettingsregistrycore.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

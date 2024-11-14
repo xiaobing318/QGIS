@@ -32,7 +32,7 @@
 #include <QWidget>
 #include <QThread>
 #include <QElapsedTimer>
-#include <QItemDelegate>
+#include <QStyledItemDelegate>
 
 
 class QCheckBox;
@@ -124,13 +124,13 @@ class GUI_EXPORT QgsSvgParametersModel : public QAbstractTableModel
  * \brief A delegate which will show a field expression widget to set the value of the SVG parameter
  * \since QGIS 3.18
  */
-class GUI_EXPORT QgsSvgParameterValueDelegate : public QItemDelegate
+class GUI_EXPORT QgsSvgParameterValueDelegate : public QStyledItemDelegate
 {
     Q_OBJECT
 
   public:
     QgsSvgParameterValueDelegate( QObject *parent = nullptr )
-      : QItemDelegate( parent )
+      : QStyledItemDelegate( parent )
     {}
 
     QWidget *createEditor( QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index ) const override;
@@ -145,6 +145,7 @@ class GUI_EXPORT QgsSvgParameterValueDelegate : public QItemDelegate
  * \ingroup gui
  * \class QgsSvgSelectorLoader
  * \brief Recursively loads SVG images from a path in a background thread.
+ * \since QGIS 2.18
  */
 class GUI_EXPORT QgsSvgSelectorLoader : public QThread
 {
@@ -210,6 +211,7 @@ class GUI_EXPORT QgsSvgSelectorLoader : public QThread
  * \ingroup gui
  * \class QgsSvgGroupLoader
  * \brief Recursively loads SVG paths in a background thread.
+ * \since QGIS 2.18
  */
 class GUI_EXPORT QgsSvgGroupLoader : public QThread
 {
@@ -343,7 +345,6 @@ class GUI_EXPORT QgsSvgSelectorListModel : public QAbstractListModel
      */
     void addSvgs( const QStringList &svgs );
 
-    friend class TestQgsSvgSelectorWidget;
 };
 
 
@@ -374,8 +375,6 @@ class GUI_EXPORT QgsSvgSelectorGroupsModel : public QStandardItemModel
 /**
  * \ingroup gui
  * \class QgsSvgSelectorWidget
- *
- * \brief A widget allowing selection of an SVG file, and configuration of SVG related parameters.
  */
 class GUI_EXPORT QgsSvgSelectorWidget : public QWidget, private Ui::WidgetSvgSelector
 {
@@ -409,15 +408,8 @@ class GUI_EXPORT QgsSvgSelectorWidget : public QWidget, private Ui::WidgetSvgSel
     /**
      * Returns if the group box to fill parameters is visible
      * \since QGIS 3.18
-     * \deprecated QGIS 3.40. Use allowParameters().
      */
-    Q_DECL_DEPRECATED bool allowParamerters() const SIP_DEPRECATED {return mAllowParameters;} // spellok
-
-    /**
-     * Returns if the group box to fill parameters is visible
-     * \since QGIS 3.38
-     */
-    bool allowParameters() const {return mAllowParameters;}
+    bool allowParamerters() const {return mAllowParameters;}
 
     /**
      * Defines if the SVG browser should be visible
@@ -448,10 +440,6 @@ class GUI_EXPORT QgsSvgSelectorWidget : public QWidget, private Ui::WidgetSvgSel
     void setSvgParameters( const QMap<QString, QgsProperty> &parameters );
 
   signals:
-
-    /**
-     * Emitted when an SVG is selected in the widget.
-     */
     void svgSelected( const QString &path );
 
     /**

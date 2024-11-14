@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     RasterCalculatorWidgets.py
@@ -55,7 +57,7 @@ WIDGET_ADD_NEW, BASE_ADD_NEW = uic.loadUiType(
 class AddNewExpressionDialog(BASE_ADD_NEW, WIDGET_ADD_NEW):
 
     def __init__(self, expression):
-        super().__init__()
+        super(AddNewExpressionDialog, self).__init__()
         self.setupUi(self)
 
         self.name = None
@@ -80,7 +82,7 @@ WIDGET_DLG, BASE_DLG = uic.loadUiType(
 class PredefinedExpressionDialog(BASE_DLG, WIDGET_DLG):
 
     def __init__(self, expression, options):
-        super().__init__()
+        super(PredefinedExpressionDialog, self).__init__()
         self.setupUi(self)
 
         self.filledExpression = None
@@ -97,7 +99,7 @@ class PredefinedExpressionDialog(BASE_DLG, WIDGET_DLG):
             self.groupBox.layout().addWidget(label)
             self.groupBox.layout().addWidget(combo)
 
-        verticalSpacer = QSpacerItem(20, 40, QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Expanding)
+        verticalSpacer = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
         self.groupBox.layout().addItem(verticalSpacer)
 
         self.buttonBox.rejected.connect(self.cancelPressed)
@@ -122,20 +124,20 @@ class ExpressionWidget(BASE, WIDGET):
     _expressions = {"NDVI": "([NIR] - [Red]) / ([NIR] + [Red])"}
 
     def __init__(self, options):
-        super().__init__(None)
+        super(ExpressionWidget, self).__init__(None)
         self.setupUi(self)
 
         self.setList(options)
 
         def doubleClicked(item):
-            self.text.insertPlainText(f'"{self.options[item.text()]}"')
+            self.text.insertPlainText('"{}"'.format(self.options[item.text()]))
 
         def addButtonText(text):
             if any(c for c in text if c.islower()):
-                self.text.insertPlainText(f" {text}()")
-                self.text.moveCursor(QTextCursor.MoveOperation.PreviousCharacter, QTextCursor.MoveMode.MoveAnchor)
+                self.text.insertPlainText(" {}()".format(text))
+                self.text.moveCursor(QTextCursor.PreviousCharacter, QTextCursor.MoveAnchor)
             else:
-                self.text.insertPlainText(f" {text} ")
+                self.text.insertPlainText(" {} ".format(text))
         buttons = [b for b in self.buttonsGroupBox.children()if isinstance(b, QPushButton)]
         for button in buttons:
             button.clicked.connect(partial(addButtonText, button.text()))
@@ -177,7 +179,7 @@ class ExpressionWidget(BASE, WIDGET):
     def addPredefined(self):
         expression = self.expressions[self.comboPredefined.currentText()]
         dlg = PredefinedExpressionDialog(expression, self.options)
-        dlg.exec()
+        dlg.exec_()
         if dlg.filledExpression:
             self.text.setPlainText(dlg.filledExpression)
 
@@ -189,7 +191,7 @@ class ExpressionWidget(BASE, WIDGET):
             exp = exp.replace(v, f'[{chr(97 + i)}]')
 
         dlg = AddNewExpressionDialog(exp)
-        dlg.exec()
+        dlg.exec_()
         if dlg.name:
             self.expressions[dlg.name] = dlg.expression
 
@@ -216,7 +218,7 @@ class ExpressionWidget(BASE, WIDGET):
             item = QListWidgetItem(name, self.listWidget)
             tooltip = _find_source(name)
             if tooltip:
-                item.setData(Qt.ItemDataRole.ToolTipRole, tooltip)
+                item.setData(Qt.ToolTipRole, tooltip)
             self.listWidget.addItem(item)
 
     def setValue(self, value):
@@ -247,7 +249,7 @@ class ExpressionWidgetWrapper(WidgetWrapper):
             return QLineEdit()
         else:
             layers = self.dialog.getAvailableValuesOfType([QgsProcessingParameterRasterLayer], [QgsProcessingOutputRasterLayer])
-            options = {self.dialog.resolveValueDescription(lyr): f"{self.dialog.resolveValueDescription(lyr)}@1" for lyr in layers}
+            options = {self.dialog.resolveValueDescription(lyr): "{}@1".format(self.dialog.resolveValueDescription(lyr)) for lyr in layers}
             self.widget = self._panel(options)
             return self.widget
 
@@ -302,6 +304,6 @@ class LayersListWidgetWrapper(WidgetWrapper):
         else:
             options = self._getOptions()
             values = [options[i] for i in self.widget.selectedoptions]
-            if len(values) == 0 and not self.parameterDefinition().flags() & QgsProcessingParameterDefinition.Flag.FlagOptional:
+            if len(values) == 0 and not self.parameterDefinition().flags() & QgsProcessingParameterDefinition.FlagOptional:
                 raise InvalidParameterValue()
             return values

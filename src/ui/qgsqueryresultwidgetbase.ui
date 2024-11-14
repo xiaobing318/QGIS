@@ -18,27 +18,14 @@
     <widget class="QgsMessageBar" name="mMessageBar" native="true"/>
    </item>
    <item>
-    <widget class="QWidget" name="mSqlEditorContainer" native="true"/>
+    <widget class="QgsCodeEditorSQL" name="mSqlEditor" native="true"/>
    </item>
    <item>
     <layout class="QHBoxLayout" name="horizontalLayout" stretch="0,0,0,1,0,0">
      <item>
-      <widget class="QPushButton" name="mExecuteButton">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
+      <widget class="QPushButton" name="mClearButton">
        <property name="text">
-        <string>Execute</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QPushButton" name="mStopButton">
-       <property name="enabled">
-        <bool>false</bool>
-       </property>
-       <property name="text">
-        <string>Stop</string>
+        <string>Clear</string>
        </property>
       </widget>
      </item>
@@ -70,19 +57,22 @@
       </widget>
      </item>
      <item>
-      <widget class="QToolButton" name="mClearButton">
-       <property name="toolTip">
-        <string>Clear</string>
+      <widget class="QPushButton" name="mExecuteButton">
+       <property name="enabled">
+        <bool>false</bool>
        </property>
        <property name="text">
-        <string>Clear</string>
+        <string>Execute</string>
        </property>
-       <property name="icon">
-        <iconset resource="../../images/images.qrc">
-         <normaloff>:/images/themes/default/console/iconClearConsole.svg</normaloff>:/images/themes/default/console/iconClearConsole.svg</iconset>
-       </property>
-       <property name="autoRaise">
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="mStopButton">
+       <property name="enabled">
         <bool>false</bool>
+       </property>
+       <property name="text">
+        <string>Stop</string>
        </property>
       </widget>
      </item>
@@ -254,8 +244,6 @@
   <tabstop>mLayerNameLineEdit</tabstop>
   <tabstop>mLoadLayerPushButton</tabstop>
  </tabstops>
- <resources>
-  <include location="../../images/images.qrc"/>
- </resources>
+ <resources/>
  <connections/>
 </ui>

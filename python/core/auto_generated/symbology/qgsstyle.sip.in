@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/symbology/qgsstyle.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -22,6 +22,57 @@ typedef QMap<QString, QgsPalLayerSettings > QgsLabelSettingsMap;
 typedef QMultiMap<QString, QString> QgsSmartConditionMap;
 
 
+enum SymbolTable
+{
+  SymbolId,
+  SymbolName,
+  SymbolXML,
+  SymbolFavoriteId,
+};
+
+enum TagTable
+{
+  TagId,
+  TagName,
+};
+
+enum TagmapTable
+{
+  TagmapTagId,
+  TagmapSymbolId,
+};
+
+enum ColorrampTable
+{
+  ColorrampId,
+  ColorrampName,
+  ColorrampXML,
+  ColorrampFavoriteId,
+};
+
+enum TextFormatTable
+{
+  TextFormatId,
+  TextFormatName,
+  TextFormatXML,
+  TextFormatFavoriteId,
+};
+
+enum LabelSettingsTable
+{
+  LabelSettingsId,
+  LabelSettingsName,
+  LabelSettingsXML,
+  LabelSettingsFavoriteId,
+};
+
+enum SmartgroupTable
+{
+  SmartgroupId,
+  SmartgroupName,
+  SmartgroupXML,
+};
+
 class QgsStyle : QObject
 {
 
@@ -29,57 +80,6 @@ class QgsStyle : QObject
 #include "qgsstyle.h"
 %End
   public:
-
-    enum class SymbolTableColumn
-    {
-      Id,
-      Name,
-      XML,
-      FavoriteId,
-    };
-
-    enum class TagTableColumn
-    {
-      Id,
-      Name,
-    };
-
-    enum class TagmapTableColumn
-    {
-      TagId,
-      SymbolId,
-    };
-
-    enum class ColorRampTableColumn
-    {
-      Id,
-      Name,
-      XML,
-      FavoriteId,
-    };
-
-    enum class TextFormatTableColumn
-    {
-      Id,
-      Name,
-      XML,
-      FavoriteId,
-    };
-
-    enum class LabelSettingsTableColumn
-    {
-      Id,
-      Name,
-      XML,
-      FavoriteId,
-    };
-
-    enum class SmartGroupTableColumn
-    {
-      Id,
-      Name,
-      XML,
-    };
 
     QgsStyle( QObject *parent /TransferThis/ = 0 );
 %Docstring
@@ -115,17 +115,6 @@ Sets the ``name`` of the style.
 .. seealso:: :py:func:`name`
 
 .. versionadded:: 3.26
-%End
-
-    bool isInitialized() const;
-%Docstring
-Returns ``True`` if the style is initialized and ready for use.
-
-Most instances of QgsStyle will already be initialized. However, if the
-style is the :py:func:`QgsStyle.defaultStyle()` object it may have been created using
-lazy initialization and will return ``False`` until it is :py:func:`~QgsStyle.initialized`.
-
-.. versionadded:: 3.36
 %End
 
     bool isReadOnly() const;
@@ -291,6 +280,8 @@ Adds a new smartgroup to the database and returns the id.
 Returns a list of all tags in the style database
 
 .. seealso:: :py:func:`addTag`
+
+.. versionadded:: 2.16
 %End
 
     void clear();
@@ -398,7 +389,7 @@ Returns count of 3D symbols in the style.
 .. versionadded:: 3.16
 %End
 
-    QList< Qgis::GeometryType > symbol3DCompatibleGeometryTypes( const QString &name ) const;
+    QList< QgsWkbTypes::GeometryType > symbol3DCompatibleGeometryTypes( const QString &name ) const;
 %Docstring
 Returns the list of the vector layer geometry types which are compatible with the 3D symbol
 with the specified ``name``, or an empty list if a matching 3d symbol is not present.
@@ -406,10 +397,10 @@ with the specified ``name``, or an empty list if a matching 3d symbol is not pre
 .. versionadded:: 3.16
 %End
 
-    Qgis::GeometryType labelSettingsLayerType( const QString &name ) const;
+    QgsWkbTypes::GeometryType labelSettingsLayerType( const QString &name ) const;
 %Docstring
 Returns the layer geometry type corresponding to the label settings
-with the specified ``name``, or :py:class:`Qgis`.GeometryType.Unknown
+with the specified ``name``, or :py:class:`QgsWkbTypes`.UnknownGeometry
 if matching label settings are not present.
 
 .. versionadded:: 3.10
@@ -437,14 +428,9 @@ Returns 0 if the label settings were not found.
 .. versionadded:: 3.10
 %End
 
-    static QgsStyle *defaultStyle( bool initialize = true );
+    static QgsStyle *defaultStyle();
 %Docstring
-Returns the default application-wide style.
-
-Since QGIS 3.36, the ``initialize`` argument can be set to ``False`` to temporarily
-defer the actual loading of the style's objects until they are first requested.
-This lazy-initialization can substantially improve application startup times,
-especially for standalone applications which do not utilize styles.
+Returns default application-wide style
 %End
 
 
@@ -819,6 +805,8 @@ This function creates a new on-disk permanent style database.
 :return: returns the success state of the database creation
 
 .. seealso:: :py:func:`createMemoryDatabase`
+
+.. versionadded:: 3.0
 %End
 
     bool createMemoryDatabase();
@@ -830,6 +818,8 @@ This function is used to create a temporary style database in case a permanent o
 :return: returns the success state of the temporary memory database creation
 
 .. seealso:: :py:func:`createDatabase`
+
+.. versionadded:: 3.0
 %End
 
     void createTables();
@@ -838,9 +828,13 @@ Creates tables structure for new database
 
 This function is used to create the tables structure in a newly-created database.
 
+:return: returns the success state of the temporary memory database creation
+
 .. seealso:: :py:func:`createDatabase`
 
 .. seealso:: :py:func:`createMemoryDatabase`
+
+.. versionadded:: 3.0
 %End
 
     bool load( const QString &filename );
@@ -872,8 +866,8 @@ The current :py:func:`~QgsStyle.fileName` will be used if no explicit ``filename
 
 .. seealso:: :py:func:`errorString`
 
-.. deprecated:: 3.40
 
+.. deprecated::
    This function has no effect.
 %End
 
@@ -1000,16 +994,6 @@ large xml files.
   public slots:
 
   signals:
-
-    void initialized();
-%Docstring
-Emitted when the style database has been fully initialized.
-
-This signals is only emitted by the :py:func:`QgsStyle.defaultStyle()` instance,
-and only when the :py:func:`~QgsStyle.defaultStyle` has been lazily initialized.
-
-.. versionadded:: 3.36
-%End
 
     void aboutToBeDestroyed();
 %Docstring
@@ -1158,6 +1142,7 @@ name or tag changes.
 .. versionadded:: 3.4
 %End
 
+
     void textFormatRenamed( const QString &oldName, const QString &newName );
 %Docstring
 Emitted whenever a text format has been renamed from ``oldName`` to ``newName``
@@ -1256,7 +1241,7 @@ Emitted whenever icon previews for entities in the style must be rebuilt.
 class QgsStyleEntityInterface
 {
 %Docstring(signature="appended")
-An interface for entities which can be placed in a :py:class:`QgsStyle` database.
+An interface for entities which can be placed in a QgsStyle database.
 
 .. versionadded:: 3.10
 %End
@@ -1481,5 +1466,5 @@ Returns the entity's symbol.
  *                                                                      *
  * src/core/symbology/qgsstyle.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

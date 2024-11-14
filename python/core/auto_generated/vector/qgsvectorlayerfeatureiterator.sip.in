@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/vector/qgsvectorlayerfeatureiterator.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -44,11 +44,15 @@ Constructor for QgsVectorLayerFeatureSource.
 %Docstring
 Returns the fields that will be available for features that are retrieved from
 this source.
+
+.. versionadded:: 3.0
 %End
 
     QgsCoordinateReferenceSystem crs() const;
 %Docstring
 Returns the coordinate reference system for features retrieved from this source.
+
+.. versionadded:: 3.0
 %End
 
     QString id() const;
@@ -79,9 +83,6 @@ typedef QgsAbstractFeatureIteratorFromSource<QgsVectorLayerFeatureSource> QgsAbs
 
 class QgsVectorLayerFeatureIterator : QgsAbstractFeatureIteratorFromSourceQgsVectorLayerFeatureSourceBase
 {
-%Docstring(signature="appended")
-A feature iterator which iterates over features from a :py:class:`QgsVectorLayer`.
-%End
 
 %TypeHeaderCode
 #include "qgsvectorlayerfeatureiterator.h"
@@ -171,6 +172,8 @@ class QgsVectorLayerSelectedFeatureSource : QgsFeatureSource, QgsExpressionConte
 {
 %Docstring(signature="appended")
 :py:class:`QgsFeatureSource` subclass for the selected features from a :py:class:`QgsVectorLayer`.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -192,7 +195,7 @@ the QgsVectorLayerSelectedFeatureSource will not be reflected.
 
     virtual QgsFields fields() const;
 
-    virtual Qgis::WkbType wkbType() const;
+    virtual QgsWkbTypes::Type wkbType() const;
 
     virtual long long featureCount() const;
 
@@ -200,7 +203,7 @@ the QgsVectorLayerSelectedFeatureSource will not be reflected.
 
     virtual QgsExpressionContextScope *createExpressionContextScope() const;
 
-    virtual Qgis::SpatialIndexPresence hasSpatialIndex() const;
+    virtual SpatialIndexPresence hasSpatialIndex() const;
 
 
   private:
@@ -215,5 +218,5 @@ the QgsVectorLayerSelectedFeatureSource will not be reflected.
  *                                                                      *
  * src/core/vector/qgsvectorlayerfeatureiterator.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

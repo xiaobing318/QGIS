@@ -21,6 +21,7 @@
 #include <QCompleter>
 
 #include "qgsfeature.h"
+#include "qgsfeaturerequest.h"
 #include "qgis_gui.h"
 
 class QToolButton;
@@ -227,6 +228,7 @@ class GUI_EXPORT QgsFeaturePickerWidget : public QWidget
     QgsFilterLineEdit *mLineEdit;
     bool mPopupRequested = false;
     bool mIsCurrentlyEdited = false;
+    bool mHasStoredEditState = false;
     bool mShowBrowserButtons = false;
 };
 

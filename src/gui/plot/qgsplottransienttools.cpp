@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsplottransienttools.h"
-#include "moc_qgsplottransienttools.cpp"
 #include "qgsplotcanvas.h"
 #include "qgsplotmouseevent.h"
 #include "qgsapplication.h"

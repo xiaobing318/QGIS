@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/layout/qgslayoutviewtooltemporarykeyzoom.h                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -12,6 +12,8 @@ class QgsLayoutViewToolTemporaryKeyZoom : QgsLayoutViewToolZoom
 {
 %Docstring(signature="appended")
 Layout view tool for temporarily zooming a layout while a key is depressed.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -40,5 +42,5 @@ Constructor for QgsLayoutViewToolTemporaryKeyZoom.
  *                                                                      *
  * src/gui/layout/qgslayoutviewtooltemporarykeyzoom.h                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

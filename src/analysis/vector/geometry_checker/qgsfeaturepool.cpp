@@ -20,6 +20,7 @@
 #include "qgsgeometry.h"
 #include "qgsvectorlayer.h"
 #include "qgsvectordataprovider.h"
+#include "qgsvectorlayerutils.h"
 #include "qgsreadwritelocker.h"
 
 #include <QMutexLocker>
@@ -32,11 +33,9 @@ QgsFeaturePool::QgsFeaturePool( QgsVectorLayer *layer )
   , mLayer( layer )
   , mGeometryType( layer->geometryType() )
   , mFeatureSource( std::make_unique<QgsVectorLayerFeatureSource>( layer ) )
-  , mLayerId( layer->id() )
   , mLayerName( layer->name() )
-  , mCrs( layer->crs() )
 {
-  Q_ASSERT( QThread::currentThread() == mLayer->thread() );
+
 }
 
 bool QgsFeaturePool::getFeature( QgsFeatureId id, QgsFeature &feature )
@@ -73,10 +72,9 @@ bool QgsFeaturePool::getFeature( QgsFeatureId id, QgsFeature &feature )
 
 QgsFeatureIds QgsFeaturePool::getFeatures( const QgsFeatureRequest &request, QgsFeedback *feedback )
 {
-  QgsReadWriteLocker locker( mCacheLock, QgsReadWriteLocker::Write );
+  QgsReadWriteLocker( mCacheLock, QgsReadWriteLocker::Write );
   Q_UNUSED( feedback )
-  Q_ASSERT( mLayer );
-  Q_ASSERT( QThread::currentThread() == mLayer->thread() );
+  Q_ASSERT( QThread::currentThread() == qApp->thread() );
 
   mFeatureCache.clear();
   mIndex = QgsSpatialIndex();
@@ -110,8 +108,7 @@ QgsFeatureIds QgsFeaturePool::getIntersects( const QgsRectangle &rect ) const
 
 QgsVectorLayer *QgsFeaturePool::layer() const
 {
-  if ( mLayer )
-    Q_ASSERT( QThread::currentThread() == mLayer->thread() );
+  Q_ASSERT( QThread::currentThread() == qApp->thread() );
 
   return mLayer.data();
 }
@@ -173,15 +170,17 @@ QString QgsFeaturePool::layerName() const
 
 QgsCoordinateReferenceSystem QgsFeaturePool::crs() const
 {
-  return mCrs;
+  QgsReadWriteLocker( mCacheLock, QgsReadWriteLocker::Read );
+  return mFeatureSource->crs();
 }
 
-Qgis::GeometryType QgsFeaturePool::geometryType() const
+QgsWkbTypes::GeometryType QgsFeaturePool::geometryType() const
 {
   return mGeometryType;
 }
 
 QString QgsFeaturePool::layerId() const
 {
-  return mLayerId;
+  QgsReadWriteLocker( mCacheLock, QgsReadWriteLocker::Read );
+  return mFeatureSource->id();
 }

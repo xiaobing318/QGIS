@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/textrenderer/qgstextformat.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -18,6 +18,8 @@ Container for all settings relating to text rendering.
 .. note::
 
    :py:class:`QgsTextFormat` objects are implicitly shared.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -32,6 +34,11 @@ set to an invalid state (see :py:func:`~QgsTextFormat.isValid`).
 %End
 
     QgsTextFormat( const QgsTextFormat &other );
+%Docstring
+Copy constructor.
+
+:param other: source QgsTextFormat
+%End
 
 
     ~QgsTextFormat();
@@ -151,14 +158,14 @@ of rendered text.
 .. seealso:: :py:func:`toQFont`
 %End
 
-    QFont scaledFont( const QgsRenderContext &context, double scaleFactor = 1.0 ) const;
+    QFont scaledFont( const QgsRenderContext &context, double scaleFactor = 1.0) const;
 %Docstring
 Returns a font with the size scaled to match the format's size settings (including
 units and map unit scale) for a specified render context.
 
 :param context: destination render context
 :param scaleFactor: optional font size scaling factor. It is recommended to set this to
-                    :py:func:`QgsTextRenderer.calculateScaleFactorForFormat()` and then manually scale painter devices or calculations
+                    :py:class:`QgsTextRenderer`.FONT_WORKAROUND_SCALE and then manually scale painter devices or calculations
                     based on the resultant font metrics. Failure to do so will result in poor quality text rendering
                     at small font sizes.
 
@@ -320,7 +327,7 @@ Sets the size for rendered text.
 .. seealso:: :py:func:`setSizeUnit`
 %End
 
-    Qgis::RenderUnit sizeUnit() const;
+    QgsUnitTypes::RenderUnit sizeUnit() const;
 %Docstring
 Returns the units for the size of rendered text.
 
@@ -331,7 +338,7 @@ Returns the units for the size of rendered text.
 .. seealso:: :py:func:`sizeMapUnitScale`
 %End
 
-    void setSizeUnit( Qgis::RenderUnit unit );
+    void setSizeUnit( QgsUnitTypes::RenderUnit unit );
 %Docstring
 Sets the units for the size of rendered text.
 
@@ -386,16 +393,6 @@ Returns the text's opacity. The opacity is a double value between 0 (fully trans
 opaque).
 
 .. seealso:: :py:func:`setOpacity`
-%End
-
-    void multiplyOpacity( double opacityFactor );
-%Docstring
-Multiply opacity by ``opacityFactor``.
-
-This method multiplies the opacity of all the labeling elements (text, shadow, buffer etc.)
-by ``opacityFactor`` effectively changing the opacity of the whole labeling.
-
-.. versionadded:: 3.32
 %End
 
     void setOpacity( double opacity );
@@ -480,7 +477,7 @@ Otherwise ``height`` is an absolute measurement in :py:func:`~QgsTextFormat.line
 .. seealso:: :py:func:`setLineHeightUnit`
 %End
 
-    Qgis::RenderUnit lineHeightUnit() const;
+    QgsUnitTypes::RenderUnit lineHeightUnit() const;
 %Docstring
 Returns the units for the line height for text.
 
@@ -491,7 +488,7 @@ Returns the units for the line height for text.
 .. versionadded:: 3.28
 %End
 
-    void setLineHeightUnit( Qgis::RenderUnit unit );
+    void setLineHeightUnit( QgsUnitTypes::RenderUnit unit );
 %Docstring
 Sets the ``unit`` for the line height for text.
 
@@ -500,174 +497,6 @@ Sets the ``unit`` for the line height for text.
 .. seealso:: :py:func:`setLineHeight`
 
 .. versionadded:: 3.28
-%End
-
-    double tabStopDistance() const;
-%Docstring
-Returns the distance for tab stops.
-
-.. note::
-
-   This value will be ignored if :py:func:`~QgsTextFormat.tabPositions` is non-empty.
-
-.. seealso:: :py:func:`tabPositions`
-
-.. seealso:: :py:func:`tabStopDistanceUnit`
-
-.. seealso:: :py:func:`setTabStopDistance`
-
-.. versionadded:: 3.38
-%End
-
-    void setTabStopDistance( double distance );
-%Docstring
-Sets the ``distance`` for tab stops.
-
-The units are specified using :py:func:`~QgsTextFormat.setTabStopDistanceUnit`.
-
-.. note::
-
-   This value will be ignored if :py:func:`~QgsTextFormat.tabPositions` is non-empty.
-
-.. seealso:: :py:func:`tabPositions`
-
-.. seealso:: :py:func:`tabStopDistance`
-
-.. seealso:: :py:func:`setTabStopDistanceUnit`
-
-.. versionadded:: 3.38
-%End
-
-    class Tab
-{
-%Docstring(signature="appended")
-Defines a tab position for a text format.
-
-.. versionadded:: 3.42
-%End
-
-%TypeHeaderCode
-#include "qgstextformat.h"
-%End
-      public:
-
-        explicit Tab( double position );
-%Docstring
-Constructor for a Tab at the specified ``position``.
-%End
-
-        void setPosition( double position );
-%Docstring
-Sets the tab position.
-
-.. seealso:: :py:func:`position`
-%End
-
-        double position() const;
-%Docstring
-Returns the tab position.
-
-.. seealso:: :py:func:`setPosition`
-%End
-
-        bool operator==( const QgsTextFormat::Tab &other ) const;
-
-        SIP_PYOBJECT __repr__();
-%MethodCode
-        const QString str = QStringLiteral( "<QgsTextFormat.Tab: %1>" ).arg( sipCpp->position() );
-        sipRes = PyUnicode_FromString( str.toUtf8().constData() );
-%End
-
-    };
-
-    QList< QgsTextFormat::Tab > tabPositions() const;
-%Docstring
-Returns the list of tab positions for tab stops.
-
-The units are specified using :py:func:`~QgsTextFormat.tabStopDistanceUnit`.
-
-.. note::
-
-   If non-empty, this list overrides any distance defined by :py:func:`~QgsTextFormat.tabStopDistance`.
-
-.. seealso:: :py:func:`setTabPositions`
-
-.. seealso:: :py:func:`tabStopDistance`
-
-.. seealso:: :py:func:`tabStopDistanceUnit`
-
-.. seealso:: :py:func:`setTabStopDistance`
-
-.. versionadded:: 3.42
-%End
-
-    void setTabPositions( const QList< QgsTextFormat::Tab > &positions );
-%Docstring
-Sets the list of tab ``positions`` for tab stops.
-
-The units are specified using :py:func:`~QgsTextFormat.setTabStopDistanceUnit`.
-
-.. note::
-
-   If non-empty, this list overrides any distance defined by :py:func:`~QgsTextFormat.setTabStopDistance`.
-
-.. seealso:: :py:func:`tabPositions`
-
-.. seealso:: :py:func:`setTabStopDistance`
-
-.. seealso:: :py:func:`setTabStopDistanceUnit`
-
-.. versionadded:: 3.42
-%End
-
-    Qgis::RenderUnit tabStopDistanceUnit() const;
-%Docstring
-Returns the units for the tab stop distance.
-
-.. seealso:: :py:func:`tabStopDistance`
-
-.. seealso:: :py:func:`tabPositions`
-
-.. seealso:: :py:func:`setTabStopDistanceUnit`
-
-.. versionadded:: 3.38
-%End
-
-    void setTabStopDistanceUnit( Qgis::RenderUnit unit );
-%Docstring
-Sets the ``unit`` used for the tab stop distance.
-
-.. seealso:: :py:func:`setTabStopDistance`
-
-.. seealso:: :py:func:`setTabPositions`
-
-.. seealso:: :py:func:`tabStopDistanceUnit`
-
-.. versionadded:: 3.38
-%End
-
-    QgsMapUnitScale tabStopDistanceMapUnitScale() const;
-%Docstring
-Returns the map unit scale object for the tab stop distance. This is only used if the
-tab stop distance is set to :py:class:`Qgis`.RenderUnit.MapUnits.
-
-.. seealso:: :py:func:`setTabStopDistanceMapUnitScale`
-
-.. seealso:: :py:func:`tabStopDistanceUnit`
-
-.. versionadded:: 3.38
-%End
-
-    void setTabStopDistanceMapUnitScale( const QgsMapUnitScale &scale );
-%Docstring
-Sets the map unit ``scale`` object for the tab stop distance. This is only used if the
-tab stop distance is set to :py:class:`Qgis`.RenderUnit.MapUnits.
-
-.. seealso:: :py:func:`tabStopDistanceMapUnitScale`
-
-.. seealso:: :py:func:`setTabStopDistanceUnit`
-
-.. versionadded:: 3.38
 %End
 
     Qgis::TextOrientation orientation() const;
@@ -879,7 +708,7 @@ Updates the format by evaluating current values of data defined properties.
 .. versionadded:: 3.10
 %End
 
-    static QPixmap textFormatPreviewPixmap( const QgsTextFormat &format, QSize size, const QString &previewText = QString(), int padding = 0, const QgsScreenProperties &screen = QgsScreenProperties() );
+    static QPixmap textFormatPreviewPixmap( const QgsTextFormat &format, QSize size, const QString &previewText = QString(), int padding = 0 );
 %Docstring
 Returns a pixmap preview for a text ``format``.
 
@@ -887,23 +716,8 @@ Returns a pixmap preview for a text ``format``.
 :param size: target pixmap size
 :param previewText: text to render in preview, or empty for default text
 :param padding: space between icon edge and color ramp
-:param screen: can be used to specify the destination screen properties for the icon. This allows the icon to be generated using the correct DPI and device pixel ratio for the target screen (since QGIS 3.32)
 
 .. versionadded:: 3.10
-%End
-
-    QString asCSS( double pointToPixelMultiplier = 1.0 ) const;
-%Docstring
-Returns a CSS string representing the specified text format as closely as possible.
-
-:param pointToPixelMultiplier: scaling factor to apply to convert point sizes to pixel font sizes.
-                               The CSS returned by this function will always use pixels for font sizes, so this parameter
-                               should be set to a suitable value to convert point sizes to pixels (e.g., taking into account
-                               destination DPI)
-
-:return: partial CSS string, e.g., "line-height: 120%;"
-
-.. versionadded:: 3.34
 %End
 
 };
@@ -914,5 +728,5 @@ Returns a CSS string representing the specified text format as closely as possib
  *                                                                      *
  * src/core/textrenderer/qgstextformat.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

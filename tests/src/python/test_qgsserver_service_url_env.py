@@ -10,16 +10,16 @@ import os
 # Deterministic XML
 os.environ['QT_HASH_SEED'] = '1'
 
-from qgis.core import QgsFontUtils
 from qgis.server import QgsServer
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import QgsFontUtils
+from qgis.testing import unittest, start_app
 from utilities import unitTestDataPath
+
 
 start_app()
 
 
-class TestQgsServerServiceUrlEnv(QgisTestCase):
+class TestQgsServerServiceUrlEnv(unittest.TestCase):
 
     def setUp(self):
         """Create the server instance"""

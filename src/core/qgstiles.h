@@ -28,9 +28,7 @@ class QgsRenderContext;
 
 /**
  * \ingroup core
- * \brief Stores coordinates of a tile in a tile matrix set.
- *
- * Tile matrix is identified
+ * \brief Stores coordinates of a tile in a tile matrix set. Tile matrix is identified
  * by the zoomLevel(), and the position within tile matrix is given by column()
  * and row().
  *
@@ -55,37 +53,11 @@ class CORE_EXPORT QgsTileXYZ
     //! Returns tile coordinates in a formatted string
     QString toString() const { return QStringLiteral( "X=%1 Y=%2 Z=%3" ).arg( mColumn ).arg( mRow ).arg( mZoomLevel ); }
 
-    bool operator==( const QgsTileXYZ &other ) const { return mColumn == other.mColumn && mRow == other.mRow && mZoomLevel == other.mZoomLevel; }
-    bool operator!=( const QgsTileXYZ &other ) const { return !( *this == other ); }
-
-#ifdef SIP_RUN
-    SIP_PYOBJECT __repr__();
-    % MethodCode
-    const QString str = QStringLiteral( "<QgsTileXYZ: %1, %2, %3>" ).arg( sipCpp->column() ).arg( sipCpp->row() ).arg( sipCpp->zoomLevel() );
-    sipRes = PyUnicode_FromString( str.toUtf8().constData() );
-    % End
-#endif
-
   private:
-    int mColumn = -1;
-    int mRow = -1;
-    int mZoomLevel = -1;
+    int mColumn;
+    int mRow;
+    int mZoomLevel;
 };
-
-/**
- * Returns a hash for a tile \a id.
- *
- * \since QGIS 3.32
- */
-CORE_EXPORT inline uint qHash( QgsTileXYZ id ) SIP_SKIP
-{
-  return id.column() + id.row() + id.zoomLevel();
-
-  const uint h1 = qHash( static_cast< quint64 >( id.column( ) ) );
-  const uint h2 = qHash( static_cast< quint64 >( id.row() ) );
-  const uint h3 = qHash( static_cast< quint64 >( id.zoomLevel() ) );
-  return h1 ^ ( h2 << 1 ) ^ ( h3 );
-}
 
 
 /**
@@ -115,10 +87,10 @@ class CORE_EXPORT QgsTileRange
     int endRow() const { return mEndRow; }
 
   private:
-    int mStartColumn = -1;
-    int mEndColumn = -1;
-    int mStartRow = -1;
-    int mEndRow = -1;
+    int mStartColumn;
+    int mEndColumn;
+    int mStartRow;
+    int mEndRow;
 };
 
 
@@ -226,17 +198,17 @@ class CORE_EXPORT QgsTileMatrix
     //! Zoom level index associated with the tile matrix
     int mZoomLevel = -1;
     //! Number of columns of the tile matrix
-    int mMatrixWidth = 0;
+    int mMatrixWidth;
     //! Number of rows of the tile matrix
-    int mMatrixHeight = 0;
+    int mMatrixHeight;
     //! Matrix extent in map units in the CRS of tile matrix set
     QgsRectangle mExtent;
     //! Scale denominator of the map scale associated with the tile matrix
-    double mScaleDenom = 0;
+    double mScaleDenom;
     //! Width of a single tile in map units (derived from extent and matrix size)
-    double mTileXSpan = 0;
+    double mTileXSpan;
     //! Height of a single tile in map units (derived from extent and matrix size)
-    double mTileYSpan = 0;
+    double mTileYSpan;
 
     friend class QgsTileMatrixSet;
 };
@@ -252,8 +224,6 @@ class CORE_EXPORT QgsTileMatrixSet
 {
 
   public:
-
-    QgsTileMatrixSet();
 
     virtual ~QgsTileMatrixSet() = default;
 
@@ -314,19 +284,6 @@ class CORE_EXPORT QgsTileMatrixSet
     void dropMatricesOutsideZoomRange( int minimumZoom, int maximumZoom );
 
     /**
-     * Returns the availability of the given tile in this matrix.
-     *
-     * This method can be used to determine whether a particular tile actually
-     * exists within the matrix, or is not available (e.g. due to holes within the matrix).
-     *
-     * This method returns Qgis::TileAvailability::Available by default, unless specific
-     * tile availability is known for the given \a id.
-     *
-     * \since QGIS 3.32
-     */
-    Qgis::TileAvailability tileAvailability( QgsTileXYZ id ) const;
-
-    /**
      * Returns the coordinate reference system associated with the tiles.
      *
      * In the case of a tile set containing mixed CRS at different zoom levels
@@ -342,13 +299,11 @@ class CORE_EXPORT QgsTileMatrixSet
     double scaleToZoom( double scale ) const;
 
     /**
-     * Finds the best fitting (integer) zoom level given a map \a scale denominator. An
-     * optional \a clamp parameter can be set to FALSE to disable clamping zoom level
-     * to the tile matrix set's minimum and maximum zoom level.
+     * Finds the best fitting (integer) zoom level given a map \a scale denominator.
      *
      * Values are constrained to the zoom levels between minimumZoom() and maximumZoom().
      */
-    int scaleToZoomLevel( double scale, bool clamp = true ) const;
+    int scaleToZoomLevel( double scale ) const;
 
     /**
      * Calculates the correct scale to use for the tiles when rendered using the specified render \a context.
@@ -395,16 +350,7 @@ class CORE_EXPORT QgsTileMatrixSet
      */
     void setScaleToTileZoomMethod( Qgis::ScaleToTileZoomLevelMethod method ) { mScaleToTileZoomMethod = method; }
 
-    /**
-     * Returns a list of tiles in the given tile range.
-     *
-     * \since QGIS 3.32
-     */
-    QVector<QgsTileXYZ> tilesInRange( QgsTileRange range, int zoomLevel ) const;
-
-  protected:
-    std::function< Qgis::TileAvailability( QgsTileXYZ id ) > mTileAvailabilityFunction;
-    std::function< Qgis::TileAvailability( QgsTileXYZ id, QgsTileXYZ &replacement ) > mTileReplacementFunction;
+  private:
 
     // Usually corresponds to zoom level 0, even if that zoom level is NOT present in the actual tile matrices for this set
     QgsTileMatrix mRootMatrix;

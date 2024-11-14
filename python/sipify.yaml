@@ -2,7 +2,8 @@
 
 class_headerfile:
   QgsAbstractFeatureIteratorFromSource: qgsfeatureiterator.h
-  QgsSettingsEntryBaseTemplate: qgssettingsentry.h
+  QgsSettingsEntryByReference: qgssettingsentry.h
+  QgsSettingsEntryByValue: qgssettingsentry.h
 
 
 no_export_macro:

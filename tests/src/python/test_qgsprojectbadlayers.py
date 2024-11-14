@@ -13,29 +13,28 @@ import filecmp
 import os
 from shutil import copyfile
 
-from qgis.PyQt.QtCore import QSize, QTemporaryDir
+import qgis  # NOQA
+from qgis.PyQt.QtCore import QTemporaryDir, QSize
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtXml import QDomDocument, QDomNode
-from qgis.core import (
-    QgsCoordinateReferenceSystem,
-    QgsDataProvider,
-    QgsMapSettings,
-    QgsProject,
-    QgsRasterLayer,
-    QgsReadWriteContext,
-    QgsRectangle,
-    QgsVectorLayer,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsProject,
+                       QgsVectorLayer,
+                       QgsMapSettings,
+                       QgsRasterLayer,
+                       QgsRectangle,
+                       QgsDataProvider,
+                       QgsReadWriteContext,
+                       QgsCoordinateReferenceSystem,
+                       )
+from qgis.testing import start_app, unittest
 
-from utilities import renderMapToImage, unitTestDataPath
+from utilities import (unitTestDataPath, renderMapToImage)
 
 app = start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestQgsProjectBadLayers(QgisTestCase):
+class TestQgsProjectBadLayers(unittest.TestCase):
 
     def setUp(self):
         p = QgsProject.instance()
@@ -51,9 +50,9 @@ class TestQgsProjectBadLayers(QgisTestCase):
         ms.setBackgroundColor(QColor(152, 219, 249))
         ms.setOutputSize(QSize(420, 280))
         ms.setOutputDpi(72)
-        ms.setFlag(QgsMapSettings.Flag.Antialiasing, True)
-        ms.setFlag(QgsMapSettings.Flag.UseAdvancedEffects, False)
-        ms.setFlag(QgsMapSettings.Flag.ForceVectorOutput, False)  # no caching?
+        ms.setFlag(QgsMapSettings.Antialiasing, True)
+        ms.setFlag(QgsMapSettings.UseAdvancedEffects, False)
+        ms.setFlag(QgsMapSettings.ForceVectorOutput, False)  # no caching?
         ms.setDestinationCrs(crs)
         return ms
 
@@ -91,7 +90,7 @@ class TestQgsProjectBadLayers(QgisTestCase):
         p = QgsProject.instance()
         temp_dir = QTemporaryDir()
         for ext in ('shp', 'dbf', 'shx', 'prj'):
-            copyfile(os.path.join(TEST_DATA_DIR, f'lines.{ext}'), os.path.join(temp_dir.path(), f'lines.{ext}'))
+            copyfile(os.path.join(TEST_DATA_DIR, 'lines.%s' % ext), os.path.join(temp_dir.path(), 'lines.%s' % ext))
         copyfile(os.path.join(TEST_DATA_DIR, 'raster', 'band1_byte_ct_epsg4326.tif'), os.path.join(temp_dir.path(), 'band1_byte_ct_epsg4326.tif'))
         copyfile(os.path.join(TEST_DATA_DIR, 'raster', 'band1_byte_ct_epsg4326.tif'), os.path.join(temp_dir.path(), 'band1_byte_ct_epsg4326_copy.tif'))
         l = QgsVectorLayer(os.path.join(temp_dir.path(), 'lines.shp'), 'lines', 'ogr')
@@ -113,9 +112,9 @@ class TestQgsProjectBadLayers(QgisTestCase):
         vector = list(p.mapLayersByName('lines'))[0]
         raster = list(p.mapLayersByName('raster'))[0]
         raster_copy = list(p.mapLayersByName('raster_copy'))[0]
-        self.assertTrue(vector.originalXmlProperties())
-        self.assertTrue(raster.originalXmlProperties())
-        self.assertTrue(raster_copy.originalXmlProperties())
+        self.assertTrue(vector.originalXmlProperties() != '')
+        self.assertTrue(raster.originalXmlProperties() != '')
+        self.assertTrue(raster_copy.originalXmlProperties() != '')
         # Test setter
         raster.setOriginalXmlProperties('pippo')
         self.assertEqual(raster.originalXmlProperties(), 'pippo')
@@ -169,7 +168,7 @@ class TestQgsProjectBadLayers(QgisTestCase):
         temp_dir = QTemporaryDir()
         p = QgsProject.instance()
         for ext in ('qgs', 'gpkg'):
-            copyfile(os.path.join(TEST_DATA_DIR, 'projects', f'relation_reference_test.{ext}'), os.path.join(temp_dir.path(), f'relation_reference_test.{ext}'))
+            copyfile(os.path.join(TEST_DATA_DIR, 'projects', 'relation_reference_test.%s' % ext), os.path.join(temp_dir.path(), 'relation_reference_test.%s' % ext))
 
         # Load the good project
         project_path = os.path.join(temp_dir.path(), 'relation_reference_test.qgs')

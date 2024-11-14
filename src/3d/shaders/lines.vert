@@ -1,21 +1,17 @@
 #version 150
 
 uniform mat4 modelViewProjection;
-uniform bool useVertexColors;
 
 in vec3 vertexPosition;
-in vec3 dataDefinedColor;
+//in vec3 ciColor;
 
-out DataColor {
-    vec3 mColor;
-} vs_out;
+//out VertexData{
+//	vec3 mColor;
+//} VertexOut;
+
 
 void main(void)
 {
-    if ( useVertexColors )
-    {
-      vs_out.mColor=dataDefinedColor;
-    }
-
+    //VertexOut.mColor = ciColor;
     gl_Position = modelViewProjection * vec4( vertexPosition, 1.0 );
 }

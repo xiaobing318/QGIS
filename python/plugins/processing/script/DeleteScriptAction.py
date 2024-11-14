@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     DeleteScriptAction.py
@@ -44,9 +46,9 @@ class DeleteScriptAction(ContextAction):
         reply = QMessageBox.question(None,
                                      self.tr("Delete Script"),
                                      self.tr("Are you sure you want to delete this script?"),
-                                     QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-                                     QMessageBox.StandardButton.No)
-        if reply == QMessageBox.StandardButton.Yes:
+                                     QMessageBox.Yes | QMessageBox.No,
+                                     QMessageBox.No)
+        if reply == QMessageBox.Yes:
             filePath = ScriptUtils.findAlgorithmSource(self.itemData.name())
             if filePath is not None:
                 os.remove(filePath)

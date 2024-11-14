@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     ScriptUtils.py
@@ -77,7 +79,7 @@ def loadAlgorithm(moduleName, filePath):
     except (ImportError, AttributeError, TypeError) as e:
         QgsMessageLog.logMessage(QCoreApplication.translate("ScriptUtils", "Could not import script algorithm '{}' from '{}'\n{}").format(moduleName, filePath, str(e)),
                                  QCoreApplication.translate("ScriptUtils", "Processing"),
-                                 Qgis.MessageLevel.Critical)
+                                 Qgis.Critical)
 
 
 def findAlgorithmSource(name):
@@ -98,7 +100,7 @@ def resetScriptFolder(folder):
 
     QgsMessageLog.logMessage(QgsApplication .translate("loadAlgorithms", "Script folder {} does not exist").format(newFolder),
                              QgsApplication.translate("loadAlgorithms", "Processing"),
-                             Qgis.MessageLevel.Warning)
+                             Qgis.Warning)
 
     if not os.path.isabs(newFolder):
         return None
@@ -126,6 +128,6 @@ def resetScriptFolder(folder):
 
         QgsMessageLog.logMessage(QgsApplication .translate("loadAlgorithms", "Script folder changed into {}").format(newFolder),
                                  QgsApplication.translate("loadAlgorithms", "Processing"),
-                                 Qgis.MessageLevel.Warning)
+                                 Qgis.Warning)
 
     return newFolder

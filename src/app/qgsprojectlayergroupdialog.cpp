@@ -13,7 +13,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsprojectlayergroupdialog.h"
-#include "moc_qgsprojectlayergroupdialog.cpp"
 #include "qgsproject.h"
 #include "qgisapp.h"
 #include "qgsapplication.h"
@@ -220,10 +219,10 @@ void QgsProjectLayerGroupDialog::changeProjectFile()
   int errorLine;
   if ( !projectDom.setContent( &projectFile, &errorMessage, &errorLine ) )
   {
-    QgsDebugError( QStringLiteral( "Error reading the project file %1 at line %2: %3" )
-                   .arg( projectFile.fileName() )
-                   .arg( errorLine )
-                   .arg( errorMessage ) );
+    QgsDebugMsg( QStringLiteral( "Error reading the project file %1 at line %2: %3" )
+                 .arg( projectFile.fileName() )
+                 .arg( errorLine )
+                 .arg( errorMessage ) );
     return;
   }
 

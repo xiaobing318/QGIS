@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgscustomdrophandler.h                                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -30,6 +30,8 @@ Implementations have three approaches they can use to handle drops.
   explorer to QGIS will lock the explorer window until the drop handling has
   been complete). Accordingly :py:func:`~handleMimeData` implementations must return
   quickly and defer any intensive or slow processing.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -85,9 +87,8 @@ Accordingly, only implementations must be lightweight and return ASAP.
 (For instance by copying the relevant parts of ``data`` and then handling
 the data after a short timeout).
 
-.. deprecated:: 3.10
-
-   Use :py:func:`~QgsCustomDropHandler.handleMimeDataV2` instead.
+.. deprecated:: QGIS 3.10
+   - use :py:func:`~QgsCustomDropHandler.handleMimeDataV2` instead.
 %End
 
     virtual bool handleMimeDataV2( const QMimeData *data );
@@ -173,5 +174,5 @@ Subclasses which implement this must also implement corresponding versions of
  *                                                                      *
  * src/gui/qgscustomdrophandler.h                                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

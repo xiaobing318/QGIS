@@ -15,6 +15,7 @@
 
 #include "qgsrastercontourrenderer.h"
 
+#include "qgslinesymbollayer.h"
 #include "qgsreadwritecontext.h"
 #include "qgssymbollayerutils.h"
 #include "qgslayertreemodellegendnode.h"
@@ -25,7 +26,7 @@
 QgsRasterContourRenderer::QgsRasterContourRenderer( QgsRasterInterface *input )
   : QgsRasterRenderer( input, QStringLiteral( "contour" ) )
 {
-  mContourSymbol.reset( static_cast<QgsLineSymbol *>( QgsLineSymbol::defaultSymbol( Qgis::GeometryType::Line ) ) );
+  mContourSymbol.reset( static_cast<QgsLineSymbol *>( QgsLineSymbol::defaultSymbol( QgsWkbTypes::LineGeometry ) ) );
 }
 
 QgsRasterContourRenderer::~QgsRasterContourRenderer() = default;
@@ -41,11 +42,6 @@ QgsRasterContourRenderer *QgsRasterContourRenderer::clone() const
   renderer->mInputBand = mInputBand;
   renderer->mDownscale = mDownscale;
   return renderer;
-}
-
-Qgis::RasterRendererFlags QgsRasterContourRenderer::flags() const
-{
-  return Qgis::RasterRendererFlag::UseNoDataForOutOfRangePixels;
 }
 
 QgsRasterRenderer *QgsRasterContourRenderer::create( const QDomElement &elem, QgsRasterInterface *input )
@@ -157,7 +153,7 @@ QgsRasterBlock *QgsRasterContourRenderer::block( int bandNo, const QgsRectangle 
   std::unique_ptr< QgsRasterBlock > inputBlock( mInput->block( mInputBand, extent, inputWidth, inputHeight, feedback ) );
   if ( !inputBlock || inputBlock->isEmpty() )
   {
-    QgsDebugError( QStringLiteral( "No raster data!" ) );
+    QgsDebugMsg( QStringLiteral( "No raster data!" ) );
     return outputBlock.release();
   }
 
@@ -235,26 +231,6 @@ QList<QgsLayerTreeModelLegendNode *> QgsRasterContourRenderer::createLegendNodes
   }
 
   return nodes;
-}
-
-int QgsRasterContourRenderer::inputBand() const
-{
-  return mInputBand;
-}
-
-bool QgsRasterContourRenderer::setInputBand( int band )
-{
-  if ( !mInput )
-  {
-    mInputBand = band;
-    return true;
-  }
-  else if ( band > 0 && band <= mInput->bandCount() )
-  {
-    mInputBand = band;
-    return true;
-  }
-  return false;
 }
 
 void QgsRasterContourRenderer::setContourSymbol( QgsLineSymbol *symbol )

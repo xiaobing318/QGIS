@@ -25,6 +25,7 @@ class QgsAbstractGeometry;
  * \ingroup core
  * \class QgsVertexId
  * \brief Utility class for identifying a unique vertex within a geometry.
+ * \since QGIS 2.10
  */
 struct CORE_EXPORT QgsVertexId
 {

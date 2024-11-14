@@ -34,6 +34,7 @@
  * associated with them.
  *
  * \see QgsReferencedRectangle
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsReferencedGeometryBase
 {
@@ -67,6 +68,7 @@ class CORE_EXPORT QgsReferencedGeometryBase
 /**
  * \ingroup core
  * \brief A QgsRectangle with associated coordinate reference system.
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsReferencedRectangle : public QgsRectangle, public QgsReferencedGeometryBase
 {
@@ -78,10 +80,13 @@ class CORE_EXPORT QgsReferencedRectangle : public QgsRectangle, public QgsRefere
      */
     QgsReferencedRectangle( const QgsRectangle &rectangle, const QgsCoordinateReferenceSystem &crs );
 
+    /**
+     * Constructor for QgsReferencedRectangle.
+     */
     QgsReferencedRectangle() = default;
 
     //! Allows direct construction of QVariants from rectangle.
-    operator QVariant() const // cppcheck-suppress duplInheritedMember
+    operator QVariant() const
     {
       return QVariant::fromValue( *this );
     }
@@ -104,6 +109,7 @@ Q_DECLARE_METATYPE( QgsReferencedRectangle )
 /**
  * \ingroup core
  * \brief A QgsPointXY with associated coordinate reference system.
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsReferencedPointXY : public QgsPointXY, public QgsReferencedGeometryBase
 {
@@ -115,6 +121,9 @@ class CORE_EXPORT QgsReferencedPointXY : public QgsPointXY, public QgsReferenced
      */
     QgsReferencedPointXY( const QgsPointXY &point, const QgsCoordinateReferenceSystem &crs );
 
+    /**
+     * Constructor for QgsReferencedPointXY.
+     */
     QgsReferencedPointXY() = default;
 
     //! Allows direct construction of QVariants from point.
@@ -153,16 +162,16 @@ class CORE_EXPORT QgsReferencedGeometry : public QgsGeometry, public QgsReferenc
      */
     QgsReferencedGeometry( const QgsGeometry &geometry, const QgsCoordinateReferenceSystem &crs );
 
+    /**
+     * Constructor for QgsReferencedGeometry.
+     */
     QgsReferencedGeometry() = default;
 
     //! Allows direct construction of QVariants from geometry.
-    operator QVariant() const // cppcheck-suppress duplInheritedMember
+    operator QVariant() const
     {
       return QVariant::fromValue( *this );
     }
-
-    bool operator==( const QgsReferencedGeometry &other ) const;
-    bool operator!=( const QgsReferencedGeometry &other ) const;
 
     /**
      * Construct a new QgsReferencedGeometry from referenced \a point

@@ -18,14 +18,17 @@
 #include <memory>
 
 #include "qgsmaptopixelgeometrysimplifier.h"
+#include "qgsapplication.h"
+#include "qgslogger.h"
 #include "qgsrectangle.h"
+#include "qgswkbptr.h"
 #include "qgsgeometry.h"
 #include "qgslinestring.h"
 #include "qgspolygon.h"
 #include "qgsgeometrycollection.h"
 #include "qgsvertexid.h"
 
-QgsMapToPixelSimplifier::QgsMapToPixelSimplifier( int simplifyFlags, double tolerance, Qgis::VectorSimplificationAlgorithm simplifyAlgorithm )
+QgsMapToPixelSimplifier::QgsMapToPixelSimplifier( int simplifyFlags, double tolerance, SimplifyAlgorithm simplifyAlgorithm )
   : mSimplifyFlags( simplifyFlags )
   , mSimplifyAlgorithm( simplifyAlgorithm )
   , mTolerance( tolerance )
@@ -67,15 +70,15 @@ bool QgsMapToPixelSimplifier::equalSnapToGrid( double x1, double y1, double x2, 
 
 //! Generalize the WKB-geometry using the BBOX of the original geometry
 static std::unique_ptr< QgsAbstractGeometry > generalizeWkbGeometryByBoundingBox(
-  Qgis::WkbType wkbType,
+  QgsWkbTypes::Type wkbType,
   const QgsAbstractGeometry &geometry,
   const QgsRectangle &envelope,
   bool isRing )
 {
-  const Qgis::WkbType geometryType = QgsWkbTypes::singleType( QgsWkbTypes::flatType( wkbType ) );
+  const unsigned int geometryType = QgsWkbTypes::singleType( QgsWkbTypes::flatType( wkbType ) );
 
   // If the geometry is already minimal skip the generalization
-  const int minimumSize = geometryType == Qgis::WkbType::LineString ? 2 : 5;
+  const int minimumSize = geometryType == QgsWkbTypes::LineString ? 2 : 5;
 
   if ( geometry.nCoordinates() <= minimumSize )
   {
@@ -88,7 +91,7 @@ static std::unique_ptr< QgsAbstractGeometry > generalizeWkbGeometryByBoundingBox
   const double y2 = envelope.yMaximum();
 
   // Write the generalized geometry
-  if ( geometryType == Qgis::WkbType::LineString && !isRing )
+  if ( geometryType == QgsWkbTypes::LineString && !isRing )
   {
     return std::make_unique< QgsLineString >( QVector<double>() << x1 << x2, QVector<double>() << y1 << y2 );
   }
@@ -105,7 +108,7 @@ static std::unique_ptr< QgsAbstractGeometry > generalizeWkbGeometryByBoundingBox
         << y2
         << y2
         << y1 );
-    if ( geometryType == Qgis::WkbType::LineString )
+    if ( geometryType == QgsWkbTypes::LineString )
       return std::move( ext );
     else
     {
@@ -117,12 +120,12 @@ static std::unique_ptr< QgsAbstractGeometry > generalizeWkbGeometryByBoundingBox
 }
 
 std::unique_ptr< QgsAbstractGeometry > QgsMapToPixelSimplifier::simplifyGeometry( int simplifyFlags,
-    Qgis::VectorSimplificationAlgorithm simplifyAlgorithm,
+    SimplifyAlgorithm simplifyAlgorithm,
     const QgsAbstractGeometry &geometry, double map2pixelTol,
     bool isaLinearRing )
 {
   bool isGeneralizable = true;
-  const Qgis::WkbType wkbType = geometry.wkbType();
+  const QgsWkbTypes::Type wkbType = geometry.wkbType();
 
   // Can replace the geometry by its BBOX ?
   const QgsRectangle envelope = geometry.boundingBox();
@@ -135,10 +138,10 @@ std::unique_ptr< QgsAbstractGeometry > QgsMapToPixelSimplifier::simplifyGeometry
   if ( !( simplifyFlags & QgsMapToPixelSimplifier::SimplifyGeometry ) )
     isGeneralizable = false;
 
-  const Qgis::WkbType flatType = QgsWkbTypes::flatType( wkbType );
+  const QgsWkbTypes::Type flatType = QgsWkbTypes::flatType( wkbType );
 
   // Write the geometry
-  if ( flatType == Qgis::WkbType::LineString || flatType == Qgis::WkbType::CircularString )
+  if ( flatType == QgsWkbTypes::LineString || flatType == QgsWkbTypes::CircularString )
   {
     const QgsCurve &srcCurve = dynamic_cast<const QgsCurve &>( geometry );
     const int numPoints = srcCurve.numPoints();
@@ -147,35 +150,25 @@ std::unique_ptr< QgsAbstractGeometry > QgsMapToPixelSimplifier::simplifyGeometry
 
     QVector< double > lineStringX;
     QVector< double > lineStringY;
-    QVector< double > lineStringZ;
-    QVector< double > lineStringM;
-    if ( flatType == Qgis::WkbType::LineString )
+    if ( flatType == QgsWkbTypes::LineString )
     {
       // if we are making a linestring, we do it in an optimised way by directly constructing
       // the final x/y vectors, which avoids calling the slower insertVertex method
       lineStringX.reserve( numPoints );
       lineStringY.reserve( numPoints );
-
-      if ( geometry.is3D() )
-        lineStringZ.reserve( numPoints );
-
-      if ( geometry.isMeasure() )
-        lineStringM.reserve( numPoints );
     }
     else
     {
       output.reset( qgsgeometry_cast< QgsCurve * >( srcCurve.createEmptyWithSameType() ) );
     }
 
-    double x = 0.0, y = 0.0, z = 0.0, m = 0.0, lastX = 0.0, lastY = 0.0;
+    double x = 0.0, y = 0.0, lastX = 0.0, lastY = 0.0;
 
     if ( numPoints <= ( isaLinearRing ? 4 : 2 ) )
       isGeneralizable = false;
 
     bool isLongSegment;
     bool hasLongSegments = false; //-> To avoid replace the simplified geometry by its BBOX when there are 'long' segments.
-    const bool is3D = geometry.is3D();
-    const bool isMeasure = geometry.isMeasure();
 
     // Check whether the LinearRing is really closed.
     if ( isaLinearRing )
@@ -187,7 +180,7 @@ std::unique_ptr< QgsAbstractGeometry > QgsMapToPixelSimplifier::simplifyGeometry
     // Process each vertex...
     switch ( simplifyAlgorithm )
     {
-      case Qgis::VectorSimplificationAlgorithm::SnapToGrid:
+      case SnapToGrid:
       {
         const double gridOriginX = envelope.xMinimum();
         const double gridOriginY = envelope.yMinimum();
@@ -197,18 +190,10 @@ std::unique_ptr< QgsAbstractGeometry > QgsMapToPixelSimplifier::simplifyGeometry
 
         const double *xData = nullptr;
         const double *yData = nullptr;
-        const double *zData = nullptr;
-        const double *mData = nullptr;
-        if ( flatType == Qgis::WkbType::LineString )
+        if ( flatType == QgsWkbTypes::LineString )
         {
           xData = qgsgeometry_cast< const QgsLineString * >( &srcCurve )->xData();
           yData = qgsgeometry_cast< const QgsLineString * >( &srcCurve )->yData();
-
-          if ( is3D )
-            zData = qgsgeometry_cast< const QgsLineString * >( &srcCurve )->zData();
-
-          if ( isMeasure )
-            mData = qgsgeometry_cast< const QgsLineString * >( &srcCurve )->mData();
         }
 
         for ( int i = 0; i < numPoints; ++i )
@@ -224,29 +209,17 @@ std::unique_ptr< QgsAbstractGeometry > QgsMapToPixelSimplifier::simplifyGeometry
             y = srcCurve.yAt( i );
           }
 
-          if ( is3D )
-            z = zData ? *zData++ : srcCurve.zAt( i );
-
-          if ( isMeasure )
-            m = mData ? *mData++ : srcCurve.mAt( i );
-
           if ( i == 0 ||
                !isGeneralizable ||
                !equalSnapToGrid( x, y, lastX, lastY, gridOriginX, gridOriginY, gridInverseSizeXY ) ||
                ( !isaLinearRing && ( i == 1 || i >= numPoints - 2 ) ) )
           {
             if ( output )
-              output->insertVertex( QgsVertexId( 0, 0, output->numPoints() ), QgsPoint( x, y, z, m ) );
+              output->insertVertex( QgsVertexId( 0, 0, output->numPoints() ), QgsPoint( x, y ) );
             else
             {
               lineStringX.append( x );
               lineStringY.append( y );
-
-              if ( is3D )
-                lineStringZ.append( z );
-
-              if ( isMeasure )
-                lineStringM.append( m );
             }
             lastX = x;
             lastY = y;
@@ -255,13 +228,13 @@ std::unique_ptr< QgsAbstractGeometry > QgsMapToPixelSimplifier::simplifyGeometry
         break;
       }
 
-      case Qgis::VectorSimplificationAlgorithm::SnappedToGridGlobal:
+      case SnappedToGridGlobal:
       {
         output.reset( qgsgeometry_cast< QgsCurve * >( srcCurve.snappedToGrid( map2pixelTol, map2pixelTol ) ) );
         break;
       }
 
-      case Qgis::VectorSimplificationAlgorithm::Visvalingam:
+      case Visvalingam:
       {
         map2pixelTol *= map2pixelTol; //-> Use mappixelTol for 'Area' calculations.
 
@@ -280,25 +253,19 @@ std::unique_ptr< QgsAbstractGeometry > QgsMapToPixelSimplifier::simplifyGeometry
             {
               lineStringX.append( ea.inpts.at( i ).x() );
               lineStringY.append( ea.inpts.at( i ).y() );
-
-              if ( is3D )
-                lineStringZ.append( ea.inpts.at( i ).z() );
-
-              if ( isMeasure )
-                lineStringM.append( ea.inpts.at( i ).m() );
             }
           }
         }
         break;
       }
 
-      case Qgis::VectorSimplificationAlgorithm::Distance:
+      case Distance:
       {
         map2pixelTol *= map2pixelTol; //-> Use mappixelTol for 'LengthSquare' calculations.
 
         const double *xData = nullptr;
         const double *yData = nullptr;
-        if ( flatType == Qgis::WkbType::LineString )
+        if ( flatType == QgsWkbTypes::LineString )
         {
           xData = qgsgeometry_cast< const QgsLineString * >( &srcCurve )->xData();
           yData = qgsgeometry_cast< const QgsLineString * >( &srcCurve )->yData();
@@ -342,7 +309,7 @@ std::unique_ptr< QgsAbstractGeometry > QgsMapToPixelSimplifier::simplifyGeometry
 
     if ( !output )
     {
-      output = std::make_unique< QgsLineString >( lineStringX, lineStringY, lineStringZ, lineStringM );
+      output = std::make_unique< QgsLineString >( lineStringX, lineStringY );
     }
     if ( output->numPoints() < ( isaLinearRing ? 4 : 2 ) )
     {
@@ -373,7 +340,7 @@ std::unique_ptr< QgsAbstractGeometry > QgsMapToPixelSimplifier::simplifyGeometry
 
     return std::move( output );
   }
-  else if ( flatType == Qgis::WkbType::Polygon )
+  else if ( flatType == QgsWkbTypes::Polygon )
   {
     const QgsPolygon &srcPolygon = dynamic_cast<const QgsPolygon &>( geometry );
     std::unique_ptr<QgsPolygon> polygon( new QgsPolygon() );
@@ -424,14 +391,14 @@ QgsGeometry QgsMapToPixelSimplifier::simplify( const QgsGeometry &geometry ) con
   }
 
   // Check whether the geometry can be simplified using the map2pixel context
-  const Qgis::WkbType singleType = QgsWkbTypes::singleType( geometry.wkbType() );
-  const Qgis::WkbType flatType = QgsWkbTypes::flatType( singleType );
-  if ( flatType == Qgis::WkbType::Point )
+  const QgsWkbTypes::Type singleType = QgsWkbTypes::singleType( geometry.wkbType() );
+  const QgsWkbTypes::Type flatType = QgsWkbTypes::flatType( singleType );
+  if ( flatType == QgsWkbTypes::Point )
   {
     return geometry;
   }
 
-  const bool isaLinearRing = flatType == Qgis::WkbType::Polygon;
+  const bool isaLinearRing = flatType == QgsWkbTypes::Polygon;
   const int numPoints = geometry.constGet()->nCoordinates();
 
   if ( numPoints <= ( isaLinearRing ? 6 : 3 ) )
@@ -468,14 +435,14 @@ QgsAbstractGeometry *QgsMapToPixelSimplifier::simplify( const QgsAbstractGeometr
   }
 
   // Check whether the geometry can be simplified using the map2pixel context
-  const Qgis::WkbType singleType = QgsWkbTypes::singleType( geometry->wkbType() );
-  const Qgis::WkbType flatType = QgsWkbTypes::flatType( singleType );
-  if ( flatType == Qgis::WkbType::Point )
+  const QgsWkbTypes::Type singleType = QgsWkbTypes::singleType( geometry->wkbType() );
+  const QgsWkbTypes::Type flatType = QgsWkbTypes::flatType( singleType );
+  if ( flatType == QgsWkbTypes::Point )
   {
     return nullptr;
   }
 
-  const bool isaLinearRing = flatType == Qgis::WkbType::Polygon;
+  const bool isaLinearRing = flatType == QgsWkbTypes::Polygon;
   const int numPoints = geometry->nCoordinates();
 
   if ( numPoints <= ( isaLinearRing ? 6 : 3 ) )

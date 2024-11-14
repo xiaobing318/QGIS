@@ -16,18 +16,22 @@
 #ifndef QGSWINDOW3DENGINE_H
 #define QGSWINDOW3DENGINE_H
 
-#include <QSize>
-
 #include "qgsabstract3dengine.h"
+#include "qgsshadowrenderingframegraph.h"
+#include "qgspostprocessingentity.h"
+#include "qgspreviewquad.h"
 
+namespace Qt3DRender
+{
+  class QRenderCapture;
+}
 
 namespace Qt3DExtras
 {
+  class Qt3DWindow;
   class QForwardRenderer;
 }
 
-
-class Qgs3DMapCanvas;
 class QWindow;
 
 
@@ -48,9 +52,9 @@ class _3D_EXPORT QgsWindow3DEngine : public QgsAbstract3DEngine
   public:
 
     /**
-     * Constructor for QgsWindow3DEngine with the specified \a parent Qgs3DMapCanvas.
+     * Constructor for QgsWindow3DEngine with the specified \a parent object.
      */
-    QgsWindow3DEngine( Qgs3DMapCanvas *parent );
+    QgsWindow3DEngine( QObject *parent = nullptr );
 
     //! Returns the internal 3D window where all the rendered output is displayed
     QWindow *window();
@@ -75,12 +79,13 @@ class _3D_EXPORT QgsWindow3DEngine : public QgsAbstract3DEngine
     void setSize( QSize s ) override;
   private:
     //! 3D window with all the 3D magic inside
-    Qgs3DMapCanvas *mMapCanvas3D = nullptr;
+    Qt3DExtras::Qt3DWindow *mWindow3D = nullptr;
     //! Frame graph node for render capture
     bool mShadowRenderingEnabled = false;
     Qt3DCore::QEntity *mRoot = nullptr;
     Qt3DCore::QEntity *mSceneRoot = nullptr;
 
+    QgsPreviewQuad *mPreviewQuad = nullptr;
     QSize mSize = QSize( 1024, 768 );
 };
 

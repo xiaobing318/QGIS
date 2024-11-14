@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgslayoutattributeselectiondialog.h"
-#include "moc_qgslayoutattributeselectiondialog.cpp"
 #include "qgslayoutitemattributetable.h"
 #include "qgsvectorlayer.h"
 #include "qgsfieldexpressionwidget.h"
@@ -599,6 +598,7 @@ QgsLayoutAttributeSelectionDialog::QgsLayoutAttributeSelectionDialog( QgsLayoutI
     QWidget *parent, Qt::WindowFlags f )
   : QDialog( parent, f )
   , mTable( table )
+  , mVectorLayer( vLayer )
 
 {
   setupUi( this );

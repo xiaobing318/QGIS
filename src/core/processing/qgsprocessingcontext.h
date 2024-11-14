@@ -22,10 +22,11 @@
 #include "qgis.h"
 #include "qgsproject.h"
 #include "qgsexpressioncontext.h"
+#include "qgsfeaturerequest.h"
+#include "qgsexception.h"
 #include "qgsprocessingfeedback.h"
 #include "qgsprocessingutils.h"
-#include "qgsprocessingmodelresult.h"
-#include "qgsprocessingmodelconfig.h"
+
 
 #include <QThread>
 #include <QPointer>
@@ -39,6 +40,7 @@ class QgsProcessingLayerPostProcessorInterface;
  *
  * Contextual information includes settings such as the associated project, and
  * expression context.
+ * \since QGIS 3.0
 */
 
 class CORE_EXPORT QgsProcessingContext
@@ -46,16 +48,32 @@ class CORE_EXPORT QgsProcessingContext
   public:
 
     //! Flags that affect how processing algorithms are run
-    enum Flag SIP_ENUM_BASETYPE( IntFlag )
+    enum Flag
     {
       // For future API flexibility only and to avoid sip issues, remove when real entries are added to flags.
       Unused = 1 << 0, //!< Temporary unused entry
     };
     Q_DECLARE_FLAGS( Flags, Flag )
 
+    /**
+     * Logging level for algorithms to use when pushing feedback messages.
+     *
+     * \since QGIS 3.20
+     */
+    enum LogLevel
+    {
+      DefaultLevel = 0, //!< Default logging level
+      Verbose, //!< Verbose logging
+    };
+
+    /**
+     * Constructor for QgsProcessingContext.
+     */
     QgsProcessingContext();
 
+    //! QgsProcessingContext cannot be copied
     QgsProcessingContext( const QgsProcessingContext &other ) = delete;
+    //! QgsProcessingContext cannot be copied
     QgsProcessingContext &operator=( const QgsProcessingContext &other ) = delete;
 
     ~QgsProcessingContext();
@@ -70,7 +88,6 @@ class CORE_EXPORT QgsProcessingContext
       mProject = other.mProject;
       mTransformContext = other.mTransformContext;
       mExpressionContext = other.mExpressionContext;
-      mExpressionContext.setLoadedLayerStore( &tempLayerStore );
       mInvalidGeometryCallback = other.mInvalidGeometryCallback;
       mUseDefaultInvalidGeometryCallback = other.mUseDefaultInvalidGeometryCallback;
       mInvalidGeometryCheck = other.mInvalidGeometryCheck;
@@ -83,28 +100,25 @@ class CORE_EXPORT QgsProcessingContext
       mDistanceUnit = other.mDistanceUnit;
       mAreaUnit = other.mAreaUnit;
       mLogLevel = other.mLogLevel;
-      mTemporaryFolderOverride = other.mTemporaryFolderOverride;
-      mMaximumThreads = other.mMaximumThreads;
-      mModelResult = other.mModelResult;
     }
 
     /**
      * Returns any flags set in the context.
      * \see setFlags()
      */
-    QgsProcessingContext::Flags flags() const SIP_HOLDGIL { return mFlags; }
+    QgsProcessingContext::Flags flags() const { return mFlags; }
 
     /**
      * Sets \a flags for the context.
      * \see flags()
      */
-    void setFlags( QgsProcessingContext::Flags flags ) SIP_HOLDGIL { mFlags = flags; }
+    void setFlags( QgsProcessingContext::Flags flags ) { mFlags = flags; }
 
     /**
      * Returns the project in which the algorithm is being executed.
      * \see setProject()
      */
-    QgsProject *project() const SIP_HOLDGIL { return mProject; }
+    QgsProject *project() const { return mProject; }
 
     /**
      * Sets the \a project in which the algorithm will be executed.
@@ -114,7 +128,7 @@ class CORE_EXPORT QgsProcessingContext
      *
      * \see project()
      */
-    void setProject( QgsProject *project ) SIP_HOLDGIL
+    void setProject( QgsProject *project )
     {
       mProject = project;
       if ( mProject )
@@ -122,9 +136,9 @@ class CORE_EXPORT QgsProcessingContext
         mTransformContext = mProject->transformContext();
         if ( mEllipsoid.isEmpty() )
           mEllipsoid = mProject->ellipsoid();
-        if ( mDistanceUnit == Qgis::DistanceUnit::Unknown )
+        if ( mDistanceUnit == QgsUnitTypes::DistanceUnknownUnit )
           mDistanceUnit = mProject->distanceUnits();
-        if ( mAreaUnit == Qgis::AreaUnit::Unknown )
+        if ( mAreaUnit == QgsUnitTypes::AreaUnknownUnit )
           mAreaUnit = mProject->areaUnits();
       }
     }
@@ -132,7 +146,7 @@ class CORE_EXPORT QgsProcessingContext
     /**
      * Returns the expression context.
      */
-    QgsExpressionContext &expressionContext() SIP_HOLDGIL { return mExpressionContext; }
+    QgsExpressionContext &expressionContext() { return mExpressionContext; }
 
     /**
      * Returns the expression context.
@@ -142,13 +156,13 @@ class CORE_EXPORT QgsProcessingContext
     /**
      * Sets the expression \a context.
      */
-    void setExpressionContext( const QgsExpressionContext &context );
+    void setExpressionContext( const QgsExpressionContext &context ) { mExpressionContext = context; }
 
     /**
      * Returns the coordinate transform context.
      * \see setTransformContext()
      */
-    QgsCoordinateTransformContext transformContext() const SIP_HOLDGIL { return mTransformContext; }
+    QgsCoordinateTransformContext transformContext() const { return mTransformContext; }
 
     /**
      * Sets the coordinate transform \a context.
@@ -158,7 +172,7 @@ class CORE_EXPORT QgsProcessingContext
      *
      * \see transformContext()
      */
-    void setTransformContext( const QgsCoordinateTransformContext &context ) SIP_HOLDGIL { mTransformContext = context; }
+    void setTransformContext( const QgsCoordinateTransformContext &context ) { mTransformContext = context; }
 
     /**
      * Returns the ellipsoid to use for distance and area calculations.
@@ -166,7 +180,7 @@ class CORE_EXPORT QgsProcessingContext
      * \see setEllipsoid()
      * \since QGIS 3.16
      */
-    QString ellipsoid() const SIP_HOLDGIL;
+    QString ellipsoid() const;
 
     /**
      * Sets a specified \a ellipsoid to use for distance and area calculations.
@@ -176,7 +190,7 @@ class CORE_EXPORT QgsProcessingContext
      * \see ellipsoid()
      * \since QGIS 3.16
      */
-    void setEllipsoid( const QString &ellipsoid ) SIP_HOLDGIL;
+    void setEllipsoid( const QString &ellipsoid );
 
     /**
      * Returns the distance unit to use for distance calculations.
@@ -185,7 +199,7 @@ class CORE_EXPORT QgsProcessingContext
      * \see areaUnit()
      * \since QGIS 3.16
      */
-    Qgis::DistanceUnit distanceUnit() const SIP_HOLDGIL;
+    QgsUnitTypes::DistanceUnit distanceUnit() const;
 
     /**
      * Sets the \a unit to use for distance calculations.
@@ -196,7 +210,7 @@ class CORE_EXPORT QgsProcessingContext
      * \see setAreaUnit()
      * \since QGIS 3.16
      */
-    void setDistanceUnit( Qgis::DistanceUnit unit ) SIP_HOLDGIL;
+    void setDistanceUnit( QgsUnitTypes::DistanceUnit unit );
 
     /**
      * Returns the area unit to use for area calculations.
@@ -205,7 +219,7 @@ class CORE_EXPORT QgsProcessingContext
      * \see distanceUnit()
      * \since QGIS 3.16
      */
-    Qgis::AreaUnit areaUnit() const SIP_HOLDGIL;
+    QgsUnitTypes::AreaUnit areaUnit() const;
 
     /**
      * Sets the \a unit to use for area calculations.
@@ -216,7 +230,7 @@ class CORE_EXPORT QgsProcessingContext
      * \see setDistanceUnit()
      * \since QGIS 3.16
      */
-    void setAreaUnit( Qgis::AreaUnit areaUnit ) SIP_HOLDGIL;
+    void setAreaUnit( QgsUnitTypes::AreaUnit areaUnit );
 
     /**
      * Returns the current time range to use for temporal operations.
@@ -224,7 +238,7 @@ class CORE_EXPORT QgsProcessingContext
      * \see setCurrentTimeRange()
      * \since QGIS 3.18
      */
-    QgsDateTimeRange currentTimeRange() const SIP_HOLDGIL;
+    QgsDateTimeRange currentTimeRange() const;
 
     /**
      * Sets the \a current time range to use for temporal operations.
@@ -232,17 +246,18 @@ class CORE_EXPORT QgsProcessingContext
      * \see currentTimeRange()
      * \since QGIS 3.18
      */
-    void setCurrentTimeRange( const QgsDateTimeRange &currentTimeRange ) SIP_HOLDGIL;
+    void setCurrentTimeRange( const QgsDateTimeRange &currentTimeRange );
 
     /**
      * Returns a reference to the layer store used for storing temporary layers during
      * algorithm execution.
      */
-    QgsMapLayerStore *temporaryLayerStore() SIP_HOLDGIL { return &tempLayerStore; }
+    QgsMapLayerStore *temporaryLayerStore() { return &tempLayerStore; }
 
     /**
      * \brief Details for layers to load into projects.
      * \ingroup core
+     * \since QGIS 3.0
      */
     class CORE_EXPORT LayerDetails
     {
@@ -258,6 +273,7 @@ class CORE_EXPORT QgsProcessingContext
           , project( project )
         {}
 
+        //! Default constructor
         LayerDetails() = default;
 
         /**
@@ -279,22 +295,6 @@ class CORE_EXPORT QgsProcessingContext
          * Associated output name from algorithm which generated the layer.
          */
         QString outputName;
-
-        /**
-         * Optional name for a layer tree group under which to place the layer when loading it into a project.
-         *
-         * \since QGIS 3.32
-         */
-        QString groupName;
-
-        /**
-         * Optional sorting key for sorting output layers when loading them into a project.
-         *
-         * Layers with a greater sort key will be placed over layers with a lesser sort key.
-         *
-         * \since QGIS 3.32
-         */
-        int layerSortKey = 0;
 
         /**
          * Layer type hint.
@@ -344,7 +344,7 @@ class CORE_EXPORT QgsProcessingContext
      * \see willLoadLayerOnCompletion()
      * \see layerToLoadOnCompletionDetails()
      */
-    QMap< QString, QgsProcessingContext::LayerDetails > layersToLoadOnCompletion() const SIP_HOLDGIL
+    QMap< QString, QgsProcessingContext::LayerDetails > layersToLoadOnCompletion() const
     {
       return mLayersToLoadOnCompletion;
     }
@@ -358,7 +358,7 @@ class CORE_EXPORT QgsProcessingContext
      * \see layerToLoadOnCompletionDetails()
      * \since QGIS 3.2
      */
-    bool willLoadLayerOnCompletion( const QString &layer ) const SIP_HOLDGIL
+    bool willLoadLayerOnCompletion( const QString &layer ) const
     {
       return mLayersToLoadOnCompletion.contains( layer );
     }
@@ -370,7 +370,7 @@ class CORE_EXPORT QgsProcessingContext
      * \see willLoadLayerOnCompletion()
      * \see layerToLoadOnCompletionDetails()
      */
-    void setLayersToLoadOnCompletion( const QMap< QString, QgsProcessingContext::LayerDetails > &layers ) SIP_HOLDGIL;
+    void setLayersToLoadOnCompletion( const QMap< QString, QgsProcessingContext::LayerDetails > &layers );
 
     /**
      * Adds a \a layer to load (by ID or datasource) into the canvas upon completion of the algorithm or model.
@@ -380,7 +380,7 @@ class CORE_EXPORT QgsProcessingContext
      * \see willLoadLayerOnCompletion()
      * \see layerToLoadOnCompletionDetails()
      */
-    void addLayerToLoadOnCompletion( const QString &layer, const QgsProcessingContext::LayerDetails &details ) SIP_HOLDGIL;
+    void addLayerToLoadOnCompletion( const QString &layer, const QgsProcessingContext::LayerDetails &details );
 
     /**
      * Returns a reference to the details for a given \a layer which is loaded on completion of the
@@ -395,7 +395,7 @@ class CORE_EXPORT QgsProcessingContext
      * \see layersToLoadOnCompletion()
      * \since QGIS 3.2
      */
-    QgsProcessingContext::LayerDetails &layerToLoadOnCompletionDetails( const QString &layer ) SIP_HOLDGIL
+    QgsProcessingContext::LayerDetails &layerToLoadOnCompletionDetails( const QString &layer )
     {
       return mLayersToLoadOnCompletion[ layer ];
     }
@@ -404,7 +404,7 @@ class CORE_EXPORT QgsProcessingContext
      * Returns the behavior used for checking invalid geometries in input layers.
      * \see setInvalidGeometryCheck()
      */
-    Qgis::InvalidGeometryCheck invalidGeometryCheck() const SIP_HOLDGIL { return mInvalidGeometryCheck; }
+    QgsFeatureRequest::InvalidGeometryCheck invalidGeometryCheck() const { return mInvalidGeometryCheck; }
 
     /**
      * Sets the behavior used for checking invalid geometries in input layers.
@@ -412,13 +412,14 @@ class CORE_EXPORT QgsProcessingContext
      * reset the invalidGeometryCallback() to a default implementation.
      * \see invalidGeometryCheck()
      */
-    void setInvalidGeometryCheck( Qgis::InvalidGeometryCheck check );
+    void setInvalidGeometryCheck( QgsFeatureRequest::InvalidGeometryCheck check );
 
     /**
      * Sets a callback function to use when encountering an invalid geometry and
      * invalidGeometryCheck() is set to GeometryAbortOnInvalid. This function will be
      * called using the feature with invalid geometry as a parameter.
      * \see invalidGeometryCallback()
+     * \since QGIS 3.0
      */
 #ifndef SIP_RUN
     void setInvalidGeometryCallback( const std::function< void( const QgsFeature & ) > &callback ) { mInvalidGeometryCallback = callback; mUseDefaultInvalidGeometryCallback = false; }
@@ -443,6 +444,7 @@ class CORE_EXPORT QgsProcessingContext
      * invalidGeometryCheck() is set to GeometryAbortOnInvalid.
      * \note not available in Python bindings
      * \see setInvalidGeometryCallback()
+     * \since QGIS 3.0
      */
     SIP_SKIP std::function< void( const QgsFeature & ) > invalidGeometryCallback( QgsFeatureSource *source = nullptr ) const;
 
@@ -451,13 +453,14 @@ class CORE_EXPORT QgsProcessingContext
      * \note not available in Python bindings
      * \since QGIS 3.14
      */
-    SIP_SKIP std::function< void( const QgsFeature & ) > defaultInvalidGeometryCallbackForCheck( Qgis::InvalidGeometryCheck check, QgsFeatureSource *source = nullptr ) const;
+    SIP_SKIP std::function< void( const QgsFeature & ) > defaultInvalidGeometryCallbackForCheck( QgsFeatureRequest::InvalidGeometryCheck check, QgsFeatureSource *source = nullptr ) const;
 
     /**
      * Sets a callback function to use when encountering a transform error when iterating
      * features. This function will be
      * called using the feature which encountered the transform error as a parameter.
      * \see transformErrorCallback()
+     * \since QGIS 3.0
      */
 #ifndef SIP_RUN
     void setTransformErrorCallback( const std::function< void( const QgsFeature & ) > &callback ) { mTransformErrorCallback = callback; }
@@ -482,6 +485,7 @@ class CORE_EXPORT QgsProcessingContext
      * features.
      * \note not available in Python bindings
      * \see setTransformErrorCallback()
+     * \since QGIS 3.0
      */
     std::function< void( const QgsFeature & ) > transformErrorCallback() const { return mTransformErrorCallback; } SIP_SKIP
 
@@ -489,19 +493,19 @@ class CORE_EXPORT QgsProcessingContext
      * Returns the default encoding to use for newly created files.
      * \see setDefaultEncoding()
      */
-    QString defaultEncoding() const SIP_HOLDGIL { return mDefaultEncoding; }
+    QString defaultEncoding() const { return mDefaultEncoding; }
 
     /**
      * Sets the default \a encoding to use for newly created files.
      * \see defaultEncoding()
      */
-    void setDefaultEncoding( const QString &encoding ) SIP_HOLDGIL { mDefaultEncoding = encoding; }
+    void setDefaultEncoding( const QString &encoding ) { mDefaultEncoding = encoding; }
 
     /**
      * Returns the associated feedback object.
      * \see setFeedback()
      */
-    QgsProcessingFeedback *feedback() SIP_HOLDGIL { return mFeedback; }
+    QgsProcessingFeedback *feedback() { return mFeedback; }
 
     /**
      * Sets an associated \a feedback object. This allows context related functions
@@ -511,13 +515,13 @@ class CORE_EXPORT QgsProcessingContext
      * Ownership of \a feedback is not transferred.
      * \see setFeedback()
      */
-    void setFeedback( QgsProcessingFeedback *feedback ) SIP_HOLDGIL { mFeedback = feedback; }
+    void setFeedback( QgsProcessingFeedback *feedback ) { mFeedback = feedback; }
 
     /**
      * Returns the thread in which the context lives.
      * \see pushToThread()
      */
-    QThread *thread() SIP_HOLDGIL { return tempLayerStore.thread(); }
+    QThread *thread() { return tempLayerStore.thread(); }
 
     /**
      * Pushes the thread affinity for the context (including all layers contained in the temporaryLayerStore()) into
@@ -581,7 +585,7 @@ class CORE_EXPORT QgsProcessingContext
      *
      * \since QGIS 3.10
      */
-    QString preferredVectorFormat() const SIP_HOLDGIL { return mPreferredVectorFormat; }
+    QString preferredVectorFormat() const { return mPreferredVectorFormat; }
 
     /**
      * Sets the preferred vector \a format to use for vector outputs.
@@ -598,7 +602,7 @@ class CORE_EXPORT QgsProcessingContext
      *
      * \since QGIS 3.10
      */
-    void setPreferredVectorFormat( const QString &format ) SIP_HOLDGIL { mPreferredVectorFormat = format; }
+    void setPreferredVectorFormat( const QString &format ) { mPreferredVectorFormat = format; }
 
     /**
      * Returns the preferred raster format to use for vector outputs.
@@ -618,7 +622,7 @@ class CORE_EXPORT QgsProcessingContext
      *
      * \since QGIS 3.10
      */
-    QString preferredRasterFormat() const SIP_HOLDGIL { return mPreferredRasterFormat; }
+    QString preferredRasterFormat() const { return mPreferredRasterFormat; }
 
     /**
      * Sets the preferred raster \a format to use for vector outputs.
@@ -635,7 +639,7 @@ class CORE_EXPORT QgsProcessingContext
      *
      * \since QGIS 3.10
      */
-    void setPreferredRasterFormat( const QString &format ) SIP_HOLDGIL { mPreferredRasterFormat = format; }
+    void setPreferredRasterFormat( const QString &format ) { mPreferredRasterFormat = format; }
 
     /**
      * Returns the logging level for algorithms to use when pushing feedback messages to users.
@@ -643,7 +647,7 @@ class CORE_EXPORT QgsProcessingContext
      * \see setLogLevel()
      * \since QGIS 3.20
      */
-    Qgis::ProcessingLogLevel logLevel() const SIP_HOLDGIL;
+    LogLevel logLevel() const;
 
     /**
      * Sets the logging \a level for algorithms to use when pushing feedback messages to users.
@@ -651,73 +655,21 @@ class CORE_EXPORT QgsProcessingContext
      * \see logLevel()
      * \since QGIS 3.20
      */
-    void setLogLevel( Qgis::ProcessingLogLevel level ) SIP_HOLDGIL;
-
-    /**
-     * Returns the (optional) temporary folder to use when running algorithms.
-     *
-     * If set, this overrides the standard global Processing temporary folder and should be used
-     * for all temporary files created during algorithm execution.
-     *
-     * \see setTemporaryFolder()
-     * \since QGIS 3.32
-     */
-    QString temporaryFolder() const SIP_HOLDGIL;
-
-    /**
-     * Sets the (optional) temporary \a folder to use when running algorithms.
-     *
-     * If set, this overrides the standard global Processing temporary folder and should be used
-     * for all temporary files created during algorithm execution.
-     *
-     * \see temporaryFolder()
-     * \since QGIS 3.32
-     */
-    void setTemporaryFolder( const QString &folder ) SIP_HOLDGIL;
-
-    /**
-     * Returns the (optional) number of threads to use when running algorithms.
-     *
-     * \warning Not all algorithms which support multithreaded execution will
-     * respect this setting, depending on the multi-threading framework in use.
-     * Multithreaded algorithms must check this value and adapt their thread
-     * handling accordingly -- the setting will not be automatically applied.
-     *
-     * \see setMaximumThreads()
-     * \since QGIS 3.32
-     */
-    int maximumThreads() const SIP_HOLDGIL;
-
-    /**
-     * Sets the (optional) number of \a threads to use when running algorithms.
-     *
-     * If set, this overrides the standard global Processing number of threads setting.
-     * Note that if algorithm implementation does not support multhreaded execution, this
-     * setting will be ignored.
-     *
-     * \warning Not all algorithms which support multithreaded execution will
-     * respect this setting, depending on the multi-threading framework in use.
-     * Multithreaded algorithms must check this value and adapt their thread
-     * handling accordingly -- the setting will not be automatically applied.
-     *
-     * \see maximumThreads()
-     * \since QGIS 3.32
-     */
-    void setMaximumThreads( int threads ) SIP_HOLDGIL;
+    void setLogLevel( LogLevel level );
 
     /**
      * Exports the context's settings to a variant map.
      *
      * \since QGIS 3.24
      */
-    QVariantMap exportToMap() const SIP_HOLDGIL;
+    QVariantMap exportToMap() const;
 
     /**
      * Flags controlling the results given by asQgisProcessArguments().
      *
      * \since QGIS 3.24
      */
-    enum class ProcessArgumentFlag : int SIP_ENUM_BASETYPE( IntFlag )
+    enum class ProcessArgumentFlag : int
     {
       IncludeProjectPath = 1 << 0, //!< Include the associated project path argument
     };
@@ -730,70 +682,6 @@ class CORE_EXPORT QgsProcessingContext
      */
     QStringList asQgisProcessArguments( QgsProcessingContext::ProcessArgumentFlags flags = QgsProcessingContext::ProcessArgumentFlags() ) const;
 
-    /**
-     * Returns a reference to the model initial run configuration, used
-     * to run a model algorithm.
-     *
-     * This may be NULLPTR, e.g. when the context is not being used to run a model.
-     *
-     * \note This configuration will only be used when running a "top-level" model algorithm, and
-     * will not be passed on to child models used within that initial top-level model.
-     *
-     * \note Not available in Python bindings
-     *
-     * \see setModelInitialRunConfig()
-     * \see takeModelInitialRunConfig()
-     *
-     * \since QGIS 3.38
-     */
-    QgsProcessingModelInitialRunConfig *modelInitialRunConfig() SIP_SKIP;
-
-    /**
-     * Takes the model initial run configuration from the context.
-     *
-     * May return NULLPTR, e.g. when the context is not being used to run a model.
-     *
-     * \note Not available in Python bindings
-     *
-     * \see modelInitialRunConfig()
-     * \see setModelInitialRunConfig()
-     *
-     * \since QGIS 3.38
-     */
-    std::unique_ptr< QgsProcessingModelInitialRunConfig > takeModelInitialRunConfig() SIP_SKIP;
-
-    /**
-     * Sets the model initial run configuration, used to run a model algorithm.
-     *
-     * \note This configuration will only be used when running a "top-level" model algorithm, and
-     * will not be passed on to child models used within that initial top-level model.
-     *
-     * \note Not available in Python bindings
-     *
-     * \see modelInitialRunConfig()
-     * \see takeModelInitialRunConfig()
-     *
-     * \since QGIS 3.38
-     */
-    void setModelInitialRunConfig( std::unique_ptr< QgsProcessingModelInitialRunConfig > config ) SIP_SKIP;
-
-    /**
-     * Returns the model results, populated when the context is used to run a model algorithm.
-     *
-     * \since QGIS 3.38
-     */
-    QgsProcessingModelResult modelResult() const { return mModelResult; }
-
-    /**
-     * Returns a reference to the model results, populated when the context is used
-     * to run a model algorithm.
-     *
-     * \note Not available in Python bindings
-
-     * \since QGIS 3.38
-     */
-    QgsProcessingModelResult &modelResult() SIP_SKIP { return mModelResult; }
-
   private:
 
     QgsProcessingContext::Flags mFlags = QgsProcessingContext::Flags();
@@ -801,8 +689,8 @@ class CORE_EXPORT QgsProcessingContext
     QgsCoordinateTransformContext mTransformContext;
 
     QString mEllipsoid;
-    Qgis::DistanceUnit mDistanceUnit = Qgis::DistanceUnit::Unknown;
-    Qgis::AreaUnit mAreaUnit = Qgis::AreaUnit::Unknown;
+    QgsUnitTypes::DistanceUnit mDistanceUnit = QgsUnitTypes::DistanceUnknownUnit;
+    QgsUnitTypes::AreaUnit mAreaUnit = QgsUnitTypes::AreaUnknownUnit;
 
     QgsDateTimeRange mCurrentTimeRange;
 
@@ -810,7 +698,7 @@ class CORE_EXPORT QgsProcessingContext
     QgsMapLayerStore tempLayerStore;
     QgsExpressionContext mExpressionContext;
 
-    Qgis::InvalidGeometryCheck mInvalidGeometryCheck = Qgis::InvalidGeometryCheck::NoCheck;
+    QgsFeatureRequest::InvalidGeometryCheck mInvalidGeometryCheck = QgsFeatureRequest::GeometryNoCheck;
     bool mUseDefaultInvalidGeometryCallback = true;
     std::function< void( const QgsFeature & ) > mInvalidGeometryCallback;
 
@@ -823,13 +711,7 @@ class CORE_EXPORT QgsProcessingContext
     QString mPreferredVectorFormat;
     QString mPreferredRasterFormat;
 
-    Qgis::ProcessingLogLevel mLogLevel = Qgis::ProcessingLogLevel::DefaultLevel;
-
-    QString mTemporaryFolderOverride;
-    int mMaximumThreads = QThread::idealThreadCount();
-
-    std::unique_ptr< QgsProcessingModelInitialRunConfig > mModelConfig;
-    QgsProcessingModelResult mModelResult;
+    LogLevel mLogLevel = DefaultLevel;
 
 #ifdef SIP_RUN
     QgsProcessingContext( const QgsProcessingContext &other );

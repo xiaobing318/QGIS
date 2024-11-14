@@ -3,7 +3,7 @@
  *                                                                      *
  * src/3d/symbols/qgspolygon3dsymbol.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -20,6 +20,8 @@ class QgsPolygon3DSymbol : QgsAbstract3DSymbol /NoDefaultCtors/
 
    This is not considered stable API, and may change in future QGIS releases. It is
    exposed to the Python bindings as a tech preview only.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -27,6 +29,9 @@ class QgsPolygon3DSymbol : QgsAbstract3DSymbol /NoDefaultCtors/
 %End
   public:
     QgsPolygon3DSymbol();
+%Docstring
+Constructor for QgsPolygon3DSymbol
+%End
     ~QgsPolygon3DSymbol();
 
     virtual QString type() const;
@@ -37,7 +42,7 @@ class QgsPolygon3DSymbol : QgsAbstract3DSymbol /NoDefaultCtors/
 
     virtual void readXml( const QDomElement &elem, const QgsReadWriteContext &context );
 
-    virtual QList< Qgis::GeometryType > compatibleGeometryTypes() const;
+    virtual QList< QgsWkbTypes::GeometryType > compatibleGeometryTypes() const;
 
     virtual void setDefaultPropertiesFromLayer( const QgsVectorLayer *layer );
 
@@ -67,36 +72,13 @@ Returns method that determines how altitude is bound to individual vertices
 Sets method that determines how altitude is bound to individual vertices
 %End
 
- float height() const /Deprecated/;
+    float height() const;
 %Docstring
 Returns height (altitude) of the symbol (in map units)
-
-.. deprecated:: 3.36
-
-   Use :py:func:`~QgsPolygon3DSymbol.offset` instead.
 %End
-
- void setHeight( float height ) /Deprecated/;
+    void setHeight( float height );
 %Docstring
 Sets height (altitude) of the symbol (in map units)
-
-.. deprecated:: 3.36
-
-   Use :py:func:`~QgsPolygon3DSymbol.setOffset` instead.
-%End
-
-    float offset() const;
-%Docstring
-Returns vertical offset of the symbol (in map units)
-
-.. versionadded:: 3.36
-%End
-
-    void setOffset( float offset );
-%Docstring
-Sets vertical offset of the symbol (in map units)
-
-.. versionadded:: 3.36
 %End
 
     float extrusionHeight() const;
@@ -108,12 +90,12 @@ Returns extrusion height (in map units)
 Sets extrusion height (in map units)
 %End
 
-    QgsAbstractMaterialSettings *materialSettings() const;
+    QgsAbstractMaterialSettings *material() const;
 %Docstring
-Returns material settings used for shading of the symbol
+Returns material used for shading of the symbol
 %End
 
-    void setMaterialSettings( QgsAbstractMaterialSettings *materialSettings /Transfer/ );
+    void setMaterial( QgsAbstractMaterialSettings *material /Transfer/ );
 %Docstring
 Sets the ``material`` settings used for shading of the symbol.
 
@@ -217,5 +199,5 @@ Returns which facade of the buildings is rendered (0 for None, 1 for Walls, 2 fo
  *                                                                      *
  * src/3d/symbols/qgspolygon3dsymbol.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

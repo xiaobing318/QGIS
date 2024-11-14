@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsstringutils.h                                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -15,6 +15,8 @@ class QgsStringReplacement
 {
 %Docstring(signature="appended")
 A representation of a single string replacement.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -87,7 +89,9 @@ Creates a new QgsStringReplacement from an encoded properties map.
 class QgsStringReplacementCollection
 {
 %Docstring(signature="appended")
-A collection of string replacements (specified using :py:class:`QgsStringReplacement` objects).
+A collection of string replacements (specified using QgsStringReplacement objects).
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -156,6 +160,8 @@ class QgsStringUtils
 {
 %Docstring(signature="appended")
 Utility functions for working with strings.
+
+.. versionadded:: 2.11
 %End
 
 %TypeHeaderCode
@@ -171,6 +177,8 @@ Converts a string by applying capitalization rules to the string.
 :param capitalization: capitalization type to apply
 
 :return: capitalized string
+
+.. versionadded:: 3.0
 %End
 
     static QString ampersandEncode( const QString &string );
@@ -259,6 +267,8 @@ links.
 :param foundLinks: if specified, will be set to ``True`` if any links were inserted into the string
 
 :return: string with inserted links
+
+.. versionadded:: 3.0
 %End
 
     static bool isUrl( const QString &string );
@@ -337,5 +347,5 @@ and replacing them with a horizontal ellipsis character.
  *                                                                      *
  * src/core/qgsstringutils.h                                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

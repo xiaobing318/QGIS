@@ -27,6 +27,7 @@
  * \ingroup core
  * \class QgsPageSize
  * \brief A named page size for layouts.
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsPageSize
 {
@@ -36,8 +37,8 @@ class CORE_EXPORT QgsPageSize
     QgsPageSize();
 
     /**
-     * Constructor for QgsPageSize, accepting the \a name of the page size, the
-     * page \a size and the \a displayName.
+     * Constructor for QgsPageSize, accepting the \a name of the page size and
+     * page \a size.
     */
     QgsPageSize( const QString &name, const QgsLayoutSize &size, const QString &displayName = QString() );
 
@@ -67,6 +68,7 @@ class CORE_EXPORT QgsPageSize
  * QgsPageSizeRegistry is not usually directly created, but rather accessed through
  * QgsApplication::pageSizeRegistry().
  *
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsPageSizeRegistry
 {

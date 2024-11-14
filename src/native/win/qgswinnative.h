@@ -15,8 +15,8 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef QGSWINNATIVE_H
-#define QGSWINNATIVE_H
+#ifndef QGSMACNATIVE_H
+#define QGSMACNATIVE_H
 
 #include "qgsnative.h"
 #include <QAbstractNativeEventFilter>
@@ -25,10 +25,8 @@
 #include <ShlObj.h>
 #pragma comment(lib,"Shell32.lib")
 
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 class QWinTaskbarButton;
 class QWinTaskbarProgress;
-#endif
 class QWindow;
 
 
@@ -37,11 +35,7 @@ class QgsWinNativeEventFilter : public QObject, public QAbstractNativeEventFilte
     Q_OBJECT
   public:
 
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     bool nativeEventFilter( const QByteArray &eventType, void *message, long * ) override;
-#else
-    bool nativeEventFilter( const QByteArray &eventType, void *message, qintptr *result ) override;
-#endif
 
   signals:
 
@@ -76,12 +70,10 @@ class NATIVE_EXPORT QgsWinNative : public QgsNative
     QWindow *mWindow = nullptr;
     Capabilities mCapabilities = NativeFilePropertiesDialog | NativeOpenTerminalAtPath;
     bool mWinToastInitialized = false;
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     QWinTaskbarButton *mTaskButton = nullptr;
     QWinTaskbarProgress *mTaskProgress = nullptr;
-#endif
     QgsWinNativeEventFilter *mNativeEventFilter = nullptr;
 
 };
 
-#endif // QGSWINNATIVE_H
+#endif // QGSMACNATIVE_H

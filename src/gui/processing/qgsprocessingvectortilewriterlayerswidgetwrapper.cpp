@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsprocessingvectortilewriterlayerswidgetwrapper.h"
-#include "moc_qgsprocessingvectortilewriterlayerswidgetwrapper.cpp"
 
 #include <QBoxLayout>
 #include <QLineEdit>
@@ -243,7 +242,7 @@ QgsProcessingVectorTileWriterLayersWidget::QgsProcessingVectorTileWriterLayersWi
 void QgsProcessingVectorTileWriterLayersWidget::setValue( const QVariant &value )
 {
   if ( value.isValid() )
-    mValue = value.userType() == QMetaType::Type::QVariantList ? value.toList() : QVariantList() << value;
+    mValue = value.type() == QVariant::List ? value.toList() : QVariantList() << value;
   else
     mValue.clear();
 

@@ -21,9 +21,6 @@ out treatedVertex {
     flat int configuration;
 } gs_out;
 
-#ifdef CLIPPING
-    #pragma include ../clipplane.shaderinc
-#endif
 
 const int infoA[]  = int[]( 0, 0, 0, 0, 1, 1, 2 );
 const int infoB[]  = int[]( 1, 1, 2, 0, 2, 1, 2 );
@@ -100,9 +97,6 @@ void main()
         gs_out.worldPosition = gs_in[0].worldPosition;
         gs_out.magnitude=gs_in[0].magnitude;
         gl_Position = gl_in[0].gl_Position;
-        #ifdef CLIPPING
-            setClipDistance(gs_in[0].worldPosition);
-        #endif
         EmitVertex();
 
         // Vertex 1 (b)
@@ -111,9 +105,6 @@ void main()
         gs_out.worldPosition = gs_in[1].worldPosition;
         gs_out.magnitude=gs_in[1].magnitude;
         gl_Position = gl_in[1].gl_Position;
-        #ifdef CLIPPING
-            setClipDistance(gs_in[1].worldPosition);
-        #endif
         EmitVertex();
 
         // Vertex 2 (c)
@@ -122,9 +113,6 @@ void main()
         gs_out.worldPosition = gs_in[2].worldPosition;
         gs_out.magnitude=gs_in[2].magnitude;
         gl_Position = gl_in[2].gl_Position;
-        #ifdef CLIPPING
-            setClipDistance(gs_in[2].worldPosition);
-        #endif
         EmitVertex();
 
         // Finish the primitive off
@@ -153,27 +141,18 @@ void main()
         gs_out.worldNormal = normal[0];
         gs_out.magnitude=gs_in[0].magnitude;
         gl_Position = gl_in[0].gl_Position;
-        #ifdef CLIPPING
-            setClipDistance(gs_in[0].worldPosition);
-        #endif
         EmitVertex();
 
         gs_out.worldPosition = gs_in[1].worldPosition;
         gs_out.worldNormal = normal[1];
         gs_out.magnitude=gs_in[1].magnitude;
         gl_Position = gl_in[1].gl_Position;
-        #ifdef CLIPPING
-            setClipDistance(gs_in[1].worldPosition);
-        #endif
         EmitVertex();
 
         gs_out.worldPosition = gs_in[2].worldPosition;
         gs_out.worldNormal = normal[2];
         gs_out.magnitude=gs_in[1].magnitude;
         gl_Position = gl_in[2].gl_Position;
-        #ifdef CLIPPING
-            setClipDistance(gs_in[2].worldPosition);
-        #endif
         EmitVertex();
 
         // Finish the primitive off

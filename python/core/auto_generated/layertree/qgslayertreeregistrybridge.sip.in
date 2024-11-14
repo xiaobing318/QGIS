@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/layertree/qgslayertreeregistrybridge.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -22,6 +22,8 @@ from registry will be removed from the layer tree.
 
 If a layer is completely removed from the layer tree, it will be also removed
 from the map layer registry.
+
+.. versionadded:: 2.4
 %End
 
 %TypeHeaderCode
@@ -55,9 +57,8 @@ Create the instance that synchronizes given project with a layer tree root
 Set where the new layers should be inserted - can be used to follow current selection.
 By default it is root group with zero index.
 
-.. deprecated:: 3.10
-
-   Use setLayerInsertionPoint( const InsertionPoint &insertionPoint ) instead.
+.. deprecated:: QGIS 3.10
+   use setLayerInsertionPoint( const InsertionPoint &insertionPoint ) instead
 %End
 
     void setLayerInsertionPoint( const InsertionPoint &insertionPoint );
@@ -68,25 +69,13 @@ By default it is root group with zero index.
 .. versionadded:: 3.10
 %End
 
-    void setLayerInsertionMethod( Qgis::LayerTreeInsertionMethod method );
-%Docstring
-Sets the insertion ``method`` used to add layers to the tree
-
-.. versionadded:: 3.30
-%End
-
-    Qgis::LayerTreeInsertionMethod layerInsertionMethod() const;
-%Docstring
-Returns the insertion method used to add layers to the tree
-
-.. versionadded:: 3.30
-%End
-
   signals:
 
     void addedLayersToLayerTree( const QList<QgsMapLayer *> &layers );
 %Docstring
 Tell others we have just added layers to the tree (used in QGIS to auto-select first newly added layer)
+
+.. versionadded:: 2.6
 %End
 
   protected slots:
@@ -107,5 +96,5 @@ Tell others we have just added layers to the tree (used in QGIS to auto-select f
  *                                                                      *
  * src/core/layertree/qgslayertreeregistrybridge.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

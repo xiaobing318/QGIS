@@ -34,11 +34,6 @@ QgsPointCloudBlock::QgsPointCloudBlock(
 {
 }
 
-QgsPointCloudBlock *QgsPointCloudBlock::clone() const
-{
-  return new QgsPointCloudBlock( *this );
-}
-
 const char *QgsPointCloudBlock::data() const
 {
   return mStorage.data();

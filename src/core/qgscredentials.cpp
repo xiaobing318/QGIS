@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgscredentials.h"
-#include "moc_qgscredentials.cpp"
 #include "qgslogger.h"
 
 #include <QTextStream>
@@ -26,7 +25,7 @@ void QgsCredentials::setInstance( QgsCredentials *instance )
 {
   if ( sInstance )
   {
-    QgsDebugError( QStringLiteral( "already registered an instance of QgsCredentials" ) );
+    QgsDebugMsg( QStringLiteral( "already registered an instance of QgsCredentials" ) );
   }
 
   sInstance = instance;
@@ -40,7 +39,7 @@ QgsCredentials *QgsCredentials::instance()
   return new QgsCredentialsNone();
 }
 
-bool QgsCredentials::get( const QString &realm, QString &username, QString &password, const QString &message, bool requestCredentials )
+bool QgsCredentials::get( const QString &realm, QString &username, QString &password, const QString &message )
 {
   {
     const QMutexLocker locker( &mCacheMutex );
@@ -56,7 +55,7 @@ bool QgsCredentials::get( const QString &realm, QString &username, QString &pass
     }
   }
 
-  if ( requestCredentials && request( realm, username, password, message ) )
+  if ( request( realm, username, password, message ) )
   {
     QgsDebugMsgLevel( QStringLiteral( "requested realm:%1 username:%2" ).arg( realm, username ), 2 );
     return true;

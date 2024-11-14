@@ -38,8 +38,9 @@ class GUI_EXPORT QgsNewHttpConnection : public QDialog, private Ui::QgsNewHttpCo
 
     /**
      * Available connection types for configuring in the dialog.
+     * \since QGIS 3.0
      */
-    enum ConnectionType SIP_ENUM_BASETYPE( IntFlag )
+    enum ConnectionType
     {
       ConnectionWfs = 1 << 1, //!< WFS connection
       ConnectionWms = 1 << 2, //!< WMS connection
@@ -50,8 +51,9 @@ class GUI_EXPORT QgsNewHttpConnection : public QDialog, private Ui::QgsNewHttpCo
 
     /**
      * Flags controlling dialog behavior.
+     * \since QGIS 3.0
      */
-    enum Flag SIP_ENUM_BASETYPE( IntFlag )
+    enum Flag
     {
       FlagShowTestConnection = 1 << 1, //!< Display the 'test connection' button
       FlagHideAuthenticationGroup = 1 << 2, //!< Hide the Authentication group
@@ -77,11 +79,13 @@ class GUI_EXPORT QgsNewHttpConnection : public QDialog, private Ui::QgsNewHttpCo
 
     /**
      * Returns the current connection name.
+     * \since QGIS 3.0
      */
     QString name() const;
 
     /**
      * Returns the current connection url.
+     * \since QGIS 3.0
      */
     QString url() const;
 
@@ -95,7 +99,7 @@ class GUI_EXPORT QgsNewHttpConnection : public QDialog, private Ui::QgsNewHttpCo
     void urlChanged( const QString & );
     void updateOkButtonState();
     void wfsVersionCurrentIndexChanged( int index );
-    void wfsFeaturePagingCurrentIndexChanged( int index );
+    void wfsFeaturePagingStateChanged( int state );
 
   protected:
 
@@ -109,24 +113,16 @@ class GUI_EXPORT QgsNewHttpConnection : public QDialog, private Ui::QgsNewHttpCo
       WFS_VERSION_API_FEATURES_1_0 = 4,
     };
 
-#ifndef SIP_RUN
-    //! Index of wfsFeaturePaging
-    enum class WfsFeaturePagingIndex
-    {
-      DEFAULT = 0,
-      ENABLED = 1,
-      DISABLED = 2,
-    };
-#endif
-
     /**
      * Returns TRUE if dialog settings are valid, or FALSE if current
      * settings are not valid and the dialog should not be acceptable.
+     * \since QGIS 3.0
      */
     virtual bool validate();
 
     /**
      * Returns the "test connection" button.
+     * \since QGIS 3.0
      */
     QPushButton *testConnectButton();
 
@@ -149,10 +145,10 @@ class GUI_EXPORT QgsNewHttpConnection : public QDialog, private Ui::QgsNewHttpCo
     QComboBox *wfsVersionComboBox() SIP_SKIP;
 
     /**
-     * Returns the "WFS paging" combobox
-     * \since QGIS 3.36
+     * Returns the "WFS paging enabled" checkbox
+     * \since QGIS 3.2
      */
-    QComboBox *wfsPagingComboBox() SIP_SKIP;
+    QCheckBox *wfsPagingEnabledCheckBox() SIP_SKIP;
 
     /**
      * Returns the "Use GML2 encoding for transactions" checkbox
@@ -175,18 +171,21 @@ class GUI_EXPORT QgsNewHttpConnection : public QDialog, private Ui::QgsNewHttpCo
     /**
      * Returns the QSettings key for WFS related settings for the connection.
      * \see wmsSettingsKey()
+     * \since QGIS 3.0
      */
     virtual QString wfsSettingsKey( const QString &base, const QString &connectionName ) const;
 
     /**
      * Returns the QSettings key for WMS related settings for the connection.
      * \see wfsSettingsKey()
+     * \since QGIS 3.0
      */
     virtual QString wmsSettingsKey( const QString &base, const QString &connectionName ) const;
 
     /**
      * Triggers a resync of the GUI widgets for the service specific settings (i.e. WFS
      * and WMS related settings).
+     * \since QGIS 3.0
      */
     void updateServiceSpecificSettings();
 

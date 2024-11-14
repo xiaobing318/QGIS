@@ -9,21 +9,22 @@ __author__ = 'Tim Sutton (tim@linfiniti.com)'
 __date__ = '20/01/2011'
 __copyright__ = 'Copyright 2012, The QGIS Project'
 
+import qgis  # NOQA
+from qgis.testing import start_app, unittest
 
-import unittest
-from qgis.testing import start_app, QgisTestCase
 
 QGISAPP = start_app()
 
 
-class TestPyQgsApplication(QgisTestCase):
+class TestPyQgsApplication(unittest.TestCase):
 
     def testInvalidThemeName(self):
         """Check using an invalid theme will fallback to  'default'"""
         QGISAPP.setUITheme('fooobar')
         myExpectedResult = 'default'
         myResult = QGISAPP.themeName()
-        myMessage = f'Expected:\n{myExpectedResult}\nGot:\n{myResult}\n'
+        myMessage = ('Expected:\n%s\nGot:\n%s\n' %
+                     (myExpectedResult, myResult))
         assert myExpectedResult == myResult, myMessage
 
 

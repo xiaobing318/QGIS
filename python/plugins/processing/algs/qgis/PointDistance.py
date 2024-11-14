@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     PointDistance.py
@@ -23,7 +25,7 @@ import os
 import math
 
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtCore import QMetaType
+from qgis.PyQt.QtCore import QVariant
 
 from qgis.core import (QgsApplication,
                        QgsFeatureRequest,
@@ -80,24 +82,24 @@ class PointDistance(QgisAlgorithm):
 
         self.addParameter(QgsProcessingParameterFeatureSource(self.INPUT,
                                                               self.tr('Input point layer'),
-                                                              [QgsProcessing.SourceType.TypeVectorPoint]))
+                                                              [QgsProcessing.TypeVectorPoint]))
         self.addParameter(QgsProcessingParameterField(self.INPUT_FIELD,
                                                       self.tr('Input unique ID field'),
                                                       parentLayerParameterName=self.INPUT,
-                                                      type=QgsProcessingParameterField.DataType.Any))
+                                                      type=QgsProcessingParameterField.Any))
         self.addParameter(QgsProcessingParameterFeatureSource(self.TARGET,
                                                               self.tr('Target point layer'),
-                                                              [QgsProcessing.SourceType.TypeVectorPoint]))
+                                                              [QgsProcessing.TypeVectorPoint]))
         self.addParameter(QgsProcessingParameterField(self.TARGET_FIELD,
                                                       self.tr('Target unique ID field'),
                                                       parentLayerParameterName=self.TARGET,
-                                                      type=QgsProcessingParameterField.DataType.Any))
+                                                      type=QgsProcessingParameterField.Any))
         self.addParameter(QgsProcessingParameterEnum(self.MATRIX_TYPE,
                                                      self.tr('Output matrix type'), options=self.mat_types, defaultValue=0))
         self.addParameter(QgsProcessingParameterNumber(self.NEAREST_POINTS,
-                                                       self.tr('Use only the nearest (k) target points'), type=QgsProcessingParameterNumber.Type.Integer, minValue=0, defaultValue=0))
+                                                       self.tr('Use only the nearest (k) target points'), type=QgsProcessingParameterNumber.Integer, minValue=0, defaultValue=0))
 
-        self.addParameter(QgsProcessingParameterFeatureSink(self.OUTPUT, self.tr('Distance matrix'), QgsProcessing.SourceType.TypeVectorPoint))
+        self.addParameter(QgsProcessingParameterFeatureSink(self.OUTPUT, self.tr('Distance matrix'), QgsProcessing.TypeVectorPoint))
 
     def name(self):
         return 'distancematrix'
@@ -161,12 +163,12 @@ class PointDistance(QgisAlgorithm):
             target_id_field = target_source.fields()[outIdx]
             target_id_field.setName('TargetID')
             fields.append(target_id_field)
-            fields.append(QgsField('Distance', QMetaType.Type.Double))
+            fields.append(QgsField('Distance', QVariant.Double))
         else:
-            fields.append(QgsField('MEAN', QMetaType.Type.Double))
-            fields.append(QgsField('STDDEV', QMetaType.Type.Double))
-            fields.append(QgsField('MIN', QMetaType.Type.Double))
-            fields.append(QgsField('MAX', QMetaType.Type.Double))
+            fields.append(QgsField('MEAN', QVariant.Double))
+            fields.append(QgsField('STDDEV', QVariant.Double))
+            fields.append(QgsField('MIN', QVariant.Double))
+            fields.append(QgsField('MAX', QVariant.Double))
 
         out_wkb = QgsWkbTypes.multiType(source.wkbType()) if matType == 0 else source.wkbType()
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context,
@@ -209,7 +211,7 @@ class PointDistance(QgisAlgorithm):
                     out_geom = QgsGeometry.unaryUnion([inFeat.geometry(), outFeat.geometry()])
                     out_feature.setGeometry(out_geom)
                     out_feature.setAttributes([inID, outID, dist])
-                    sink.addFeature(out_feature, QgsFeatureSink.Flag.FastInsert)
+                    sink.addFeature(out_feature, QgsFeatureSink.FastInsert)
                 else:
                     distList.append(float(dist))
 
@@ -222,11 +224,10 @@ class PointDistance(QgisAlgorithm):
                 out_feature = QgsFeature()
                 out_feature.setGeometry(inFeat.geometry())
                 out_feature.setAttributes([inID, mean, vari, min(distList), max(distList)])
-                sink.addFeature(out_feature, QgsFeatureSink.Flag.FastInsert)
+                sink.addFeature(out_feature, QgsFeatureSink.FastInsert)
 
             feedback.setProgress(int(current * total))
 
-        sink.finalize()
         return {self.OUTPUT: dest_id}
 
     def regularMatrix(self, parameters, context, source, inField, target_source, targetField,
@@ -259,7 +260,7 @@ class PointDistance(QgisAlgorithm):
                 input_id_field.setName('ID')
                 fields.append(input_id_field)
                 for f in target_source.getFeatures(QgsFeatureRequest().setFilterFids(featList).setSubsetOfAttributes([targetIdx]).setDestinationCrs(source.sourceCrs(), context.transformContext())):
-                    fields.append(QgsField(str(f[targetField]), QMetaType.Type.Double))
+                    fields.append(QgsField(str(f[targetField]), QVariant.Double))
 
                 (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context,
                                                        fields, source.wkbType(), source.sourceCrs())
@@ -278,7 +279,7 @@ class PointDistance(QgisAlgorithm):
             out_feature = QgsFeature()
             out_feature.setGeometry(inGeom)
             out_feature.setAttributes(data)
-            sink.addFeature(out_feature, QgsFeatureSink.Flag.FastInsert)
+            sink.addFeature(out_feature, QgsFeatureSink.FastInsert)
             feedback.setProgress(int(current * total))
 
         return {self.OUTPUT: dest_id}

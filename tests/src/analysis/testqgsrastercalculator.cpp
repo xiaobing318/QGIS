@@ -30,15 +30,12 @@ Email                : nyall dot dawson at gmail dot com
 
 Q_DECLARE_METATYPE( QgsRasterCalcNode::Operator )
 
-class TestQgsRasterCalculator : public QgsTest
+class TestQgsRasterCalculator : public QObject
 {
     Q_OBJECT
 
   public:
-
-    TestQgsRasterCalculator()
-      : QgsTest( QStringLiteral( "Raster Calculator Test" ) )
-    {}
+    TestQgsRasterCalculator() = default;
 
   private slots:
     void initTestCase();// will be called before the first testfunction is executed.

@@ -31,6 +31,7 @@
  * \brief A widget which allows users to specify a list of substitutions to apply to a string, with
  * options for exporting and importing substitution lists.
  * \see QgsSubstitutionListDialog
+ * \since QGIS 3.0
  */
 class GUI_EXPORT QgsSubstitutionListWidget : public QgsPanelWidget, private Ui::QgsSubstitutionListWidgetBase
 {
@@ -83,6 +84,7 @@ class GUI_EXPORT QgsSubstitutionListWidget : public QgsPanelWidget, private Ui::
  * \brief A dialog which allows users to specify a list of substitutions to apply to a string, with
  * options for exporting and importing substitution lists.
  * \see QgsSubstitutionListWidget
+ * \since QGIS 3.0
 */
 class GUI_EXPORT QgsSubstitutionListDialog : public QDialog
 {

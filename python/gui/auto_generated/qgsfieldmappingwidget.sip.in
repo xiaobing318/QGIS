@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsfieldmappingwidget.h                                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -146,13 +146,6 @@ Moves up currently selected field
 Moves down the currently selected field
 %End
 
-    void invertSelection( );
-%Docstring
-Invert the field selection state.
-
-.. versionadded:: 3.32
-%End
-
 };
 
 
@@ -163,5 +156,5 @@ Invert the field selection state.
  *                                                                      *
  * src/gui/qgsfieldmappingwidget.h                                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

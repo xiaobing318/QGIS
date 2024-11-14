@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgsvectorlayerdigitizingproperties.h"
-#include "moc_qgsvectorlayerdigitizingproperties.cpp"
 #include "qgsanalysis.h"
 #include "qgscollapsiblegroupbox.h"
 #include "qgsdoublespinbox.h"
@@ -25,7 +24,6 @@
 #include "qgsgeometryoptions.h"
 #include "qgsmaplayercombobox.h"
 #include "qgsproject.h"
-#include "qgsunittypes.h"
 
 #include <QFormLayout>
 
@@ -44,8 +42,9 @@ QgsVectorLayerDigitizingPropertiesPage::QgsVectorLayerDigitizingPropertiesPage( 
     mGeometryPrecisionLineEdit->setValidator( new QDoubleValidator( mGeometryPrecisionLineEdit ) );
 
     const double precision( vlayer->geometryOptions()->geometryPrecision() );
-    QString precisionStr( QLocale().toString( precision, 'g', 17 ) );
-    if ( precision == 0.0 )
+    const bool ok = true;
+    QString precisionStr( QLocale().toString( precision, ok ) );
+    if ( precision == 0.0 || ! ok )
       precisionStr = QString();
     mGeometryPrecisionLineEdit->setText( precisionStr );
 
@@ -104,7 +103,7 @@ QgsVectorLayerDigitizingPropertiesPage::QgsVectorLayerDigitizingPropertiesPage( 
         mGapCheckAllowExceptionsActivatedCheckBox->setLayout( layout );
         topologyCheckLayout->addWidget( mGapCheckAllowExceptionsActivatedCheckBox );
         mGapCheckAllowExceptionsLayerComboBox = new QgsMapLayerComboBox();
-        mGapCheckAllowExceptionsLayerComboBox->setFilters( Qgis::LayerFilter::PolygonLayer );
+        mGapCheckAllowExceptionsLayerComboBox->setFilters( QgsMapLayerProxyModel::PolygonLayer );
         mGapCheckAllowExceptionsLayerComboBox->setExceptedLayerList( QList<QgsMapLayer *> { vlayer } );
         mGapCheckAllowExceptionsLayerComboBox->setLayer( QgsProject::instance()->mapLayer( gapCheckConfig.value( QStringLiteral( "allowedGapsLayer" ) ).toString() ) );
         layout->addWidget( new QLabel( tr( "Layer" ) ), 0, 0 );
@@ -182,5 +181,5 @@ QgsMapLayerConfigWidget *QgsVectorLayerDigitizingPropertiesFactory::createWidget
 
 bool QgsVectorLayerDigitizingPropertiesFactory::supportsLayer( QgsMapLayer *layer ) const
 {
-  return layer->type() == Qgis::LayerType::Vector;
+  return layer->type() == QgsMapLayerType::VectorLayer;
 }

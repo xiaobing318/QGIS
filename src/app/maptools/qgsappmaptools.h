@@ -65,9 +65,11 @@ class QgsAppMapTools
       VertexToolActiveLayer,
       RotatePointSymbolsTool,
       OffsetPointSymbolTool,
-      Annotation, // Unused
+      Annotation,
       FormAnnotation,
       HtmlAnnotation,
+      SvgAnnotation,
+      TextAnnotation,
       PinLabels,
       ShowHideLabels,
       MoveLabel,

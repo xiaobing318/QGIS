@@ -80,6 +80,7 @@ class GUI_EXPORT QgsRasterFormatSaveOptionsWidget: public QWidget, private Ui::Q
      * Populate widget with user-defined options. String should contain
      * key=value pairs separated by spaces, e.g. "TILED=YES TFW=YES"
      * \see options()
+     * \since QGIS 3.0
      */
     void setOptions( const QString &options );
 
@@ -91,11 +92,8 @@ class GUI_EXPORT QgsRasterFormatSaveOptionsWidget: public QWidget, private Ui::Q
     /**
      * Set pyramids format to use
      */
-    void setPyramidsFormat( Qgis::RasterPyramidFormat format )
-    {
-      mPyramids = true;
-      mPyramidsFormat = format;
-    }
+    void setPyramidsFormat( QgsRaster::RasterPyramidsFormat format )
+    { mPyramids = true; mPyramidsFormat = format; }
 
   public slots:
 
@@ -135,10 +133,6 @@ class GUI_EXPORT QgsRasterFormatSaveOptionsWidget: public QWidget, private Ui::Q
     void showEvent( QShowEvent *event ) override;
 
   signals:
-
-    /**
-     * Emitted when the options configured in the widget are changed.
-     */
     void optionsChanged();
 
   private:
@@ -150,7 +144,7 @@ class GUI_EXPORT QgsRasterFormatSaveOptionsWidget: public QWidget, private Ui::Q
     QMap< QString, QString> mOptionsMap;
     static QMap< QString, QStringList > sBuiltinProfiles;
     bool mPyramids = false;
-    Qgis::RasterPyramidFormat mPyramidsFormat = Qgis::RasterPyramidFormat::GeoTiff;
+    QgsRaster::RasterPyramidsFormat mPyramidsFormat = QgsRaster::PyramidsGTiff;
     int mBlockOptionUpdates = 0;
 
     QString settingsKey( QString profile ) const SIP_FORCE;

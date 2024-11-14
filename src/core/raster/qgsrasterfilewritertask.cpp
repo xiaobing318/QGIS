@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsrasterfilewritertask.h"
-#include "moc_qgsrasterfilewritertask.cpp"
 #include "qgsrasterinterface.h"
 #include "qgsrasterdataprovider.h"
 #include "qgsrasterpipe.h"
@@ -65,7 +64,7 @@ bool QgsRasterFileWriterTask::run()
 
   mError = mWriter.writeRaster( mPipe.get(), mColumns, mRows, mExtent, mCrs, mTransformContext, mFeedback.get() );
 
-  return mError == Qgis::RasterFileWriterResult::Success;
+  return mError == QgsRasterFileWriter::NoError;
 }
 
 void QgsRasterFileWriterTask::finished( bool result )
@@ -74,11 +73,11 @@ void QgsRasterFileWriterTask::finished( bool result )
     emit writeComplete( mWriter.outputUrl() );
   else
   {
-    emit errorOccurred( static_cast< int >( mError ) );
+    emit errorOccurred( mError );
     QString errorMsg;
     if ( !mFeedback->errors().isEmpty() )
       errorMsg = mFeedback->errors().front();
-    emit errorOccurred( static_cast< int >( mError ), errorMsg );
+    emit errorOccurred( mError, errorMsg );
   }
 }
 

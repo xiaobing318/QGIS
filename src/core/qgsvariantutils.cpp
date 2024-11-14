@@ -34,125 +34,125 @@
 #include <QVector4D>
 #include <QQuaternion>
 
-QString QgsVariantUtils::typeToDisplayString( QMetaType::Type type, QMetaType::Type subType )
+QString QgsVariantUtils::typeToDisplayString( QVariant::Type type, QVariant::Type subType )
 {
   switch ( type )
   {
-    case QMetaType::Type::UnknownType:
+    case QVariant::Invalid:
       break;
-    case QMetaType::Type::Bool:
+    case QVariant::Bool:
       return QObject::tr( "Boolean" );
-    case QMetaType::Type::Int:
+    case QVariant::Int:
       return QObject::tr( "Integer (32 bit)" );
-    case QMetaType::Type::UInt:
+    case QVariant::UInt:
       return QObject::tr( "Integer (unsigned 32 bit)" );
-    case QMetaType::Type::LongLong:
+    case QVariant::LongLong:
       return QObject::tr( "Integer (64 bit)" );
-    case QMetaType::Type::ULongLong:
+    case QVariant::ULongLong:
       return QObject::tr( "Integer (unsigned 64 bit)" );
-    case QMetaType::Type::Double:
+    case QVariant::Double:
       return QObject::tr( "Decimal (double)" );
-    case QMetaType::Type::QChar:
+    case QVariant::Char:
       return QObject::tr( "Character" );
-    case QMetaType::Type::QVariantMap:
+    case QVariant::Map:
       return QObject::tr( "Map" );
-    case QMetaType::Type::QVariantList:
+    case QVariant::List:
     {
       switch ( subType )
       {
-        case QMetaType::Type::Int:
+        case QVariant::Int:
           return QObject::tr( "Integer List" );
-        case QMetaType::Type::LongLong:
+        case QVariant::LongLong:
           return QObject::tr( "Integer (64 bit) List" );
-        case QMetaType::Type::Double:
+        case QVariant::Double:
           return QObject::tr( "Decimal (double) List" );
         default:
           return QObject::tr( "List" );
       }
     }
-    case QMetaType::Type::QString:
+    case QVariant::String:
       return QObject::tr( "Text (string)" );
-    case QMetaType::Type::QStringList:
+    case QVariant::StringList:
       return QObject::tr( "String List" );
-    case QMetaType::Type::QByteArray:
+    case QVariant::ByteArray:
       return QObject::tr( "Binary Object (BLOB)" );
-    case QMetaType::Type::QBitArray:
+    case QVariant::BitArray:
       return QObject::tr( "Bit Array" );
-    case QMetaType::Type::QDate:
+    case QVariant::Date:
       return QObject::tr( "Date" );
-    case QMetaType::Type::QTime:
+    case QVariant::Time:
       return QObject::tr( "Time" );
-    case QMetaType::Type::QDateTime:
+    case QVariant::DateTime:
       return QObject::tr( "Date & Time" );
-    case QMetaType::Type::QUrl:
+    case QVariant::Url:
       return QObject::tr( "URL" );
-    case QMetaType::Type::QLocale:
+    case QVariant::Locale:
       return QObject::tr( "Locale" );
-    case QMetaType::Type::QRect:
-    case QMetaType::Type::QRectF:
+    case QVariant::Rect:
+    case QVariant::RectF:
       return QObject::tr( "Rectangle" );
-    case QMetaType::Type::QSize:
-    case QMetaType::Type::QSizeF:
+    case QVariant::Size:
+    case QVariant::SizeF:
       return QObject::tr( "Size" );
-    case QMetaType::Type::QLine:
-    case QMetaType::Type::QLineF:
+    case QVariant::Line:
+    case QVariant::LineF:
       return QObject::tr( "Line" );
-    case QMetaType::Type::QPoint:
-    case QMetaType::Type::QPointF:
+    case QVariant::Point:
+    case QVariant::PointF:
       return QObject::tr( "Point" );
-    case QMetaType::Type::QRegularExpression:
+    case QVariant::RegularExpression:
       return QObject::tr( "Regular Expression" );
-    case QMetaType::Type::QVariantHash:
+    case QVariant::Hash:
       return QObject::tr( "Hash" );
-    case QMetaType::Type::QEasingCurve:
+    case QVariant::EasingCurve:
       return QObject::tr( "Easing Curve" );
-    case QMetaType::Type::QUuid:
+    case QVariant::Uuid:
       return QObject::tr( "UUID" );
-    case QMetaType::Type::QModelIndex:
-    case QMetaType::Type::QPersistentModelIndex:
+    case QVariant::ModelIndex:
+    case QVariant::PersistentModelIndex:
       return QObject::tr( "Model Index" );
-    case QMetaType::Type::QFont:
+    case QVariant::Font:
       return QObject::tr( "Font" );
-    case QMetaType::Type::QPixmap:
+    case QVariant::Pixmap:
       return QObject::tr( "Pixmap" );
-    case QMetaType::Type::QBrush:
+    case QVariant::Brush:
       return QObject::tr( "Brush" );
-    case QMetaType::Type::QColor:
+    case QVariant::Color:
       return QObject::tr( "Color" );
-    case QMetaType::Type::QPalette:
+    case QVariant::Palette:
       return QObject::tr( "Palette" );
-    case QMetaType::Type::QImage:
+    case QVariant::Image:
       return QObject::tr( "Image" );
-    case QMetaType::Type::QPolygon:
-    case QMetaType::Type::QPolygonF:
+    case QVariant::Polygon:
+    case QVariant::PolygonF:
       return QObject::tr( "Polygon" );
-    case QMetaType::Type::QRegion:
+    case QVariant::Region:
       return QObject::tr( "Region" );
-    case QMetaType::Type::QBitmap:
+    case QVariant::Bitmap:
       return QObject::tr( "Bitmap" );
-    case QMetaType::Type::QCursor:
+    case QVariant::Cursor:
       return QObject::tr( "Cursor" );
-    case QMetaType::Type::QKeySequence:
+    case QVariant::KeySequence:
       return QObject::tr( "Key Sequence" );
-    case QMetaType::Type::QPen:
+    case QVariant::Pen:
       return QObject::tr( "Pen" );
-    case QMetaType::Type::QTextLength:
+    case QVariant::TextLength:
       return QObject::tr( "Text Length" );
-    case QMetaType::Type::QTextFormat:
+    case QVariant::TextFormat:
       return QObject::tr( "Text Format" );
-    case QMetaType::Type::QMatrix4x4:
+    case QVariant::Matrix4x4:
       return QObject::tr( "Matrix" );
-    case QMetaType::Type::QTransform:
+    case QVariant::Transform:
       return QObject::tr( "Transform" );
-    case QMetaType::Type::QVector2D:
-    case QMetaType::Type::QVector3D:
-    case QMetaType::Type::QVector4D:
+    case QVariant::Vector2D:
+    case QVariant::Vector3D:
+    case QVariant::Vector4D:
       return QObject::tr( "Vector" );
-    case QMetaType::Type::QQuaternion:
+    case QVariant::Quaternion:
       return QObject::tr( "Quaternion" );
-    case QMetaType::Type::QIcon:
+    case QVariant::Icon:
       return QObject::tr( "Icon" );
-    case QMetaType::Type::QSizePolicy:
+    case QVariant::SizePolicy:
       return QObject::tr( "Size Policy" );
 
     default:
@@ -161,308 +161,230 @@ QString QgsVariantUtils::typeToDisplayString( QMetaType::Type type, QMetaType::T
   return QString();
 }
 
-QString QgsVariantUtils::typeToDisplayString( QVariant::Type type, QVariant::Type subType )
+bool QgsVariantUtils::isNull( const QVariant &variant )
 {
-  return typeToDisplayString( QgsVariantUtils::variantTypeToMetaType( type ), QgsVariantUtils::variantTypeToMetaType( subType ) );
-}
-
-bool QgsVariantUtils::isNull( const QVariant &variant, bool silenceNullWarnings )
-{
-#ifndef QGISDEBUG
-  ( void )silenceNullWarnings;
-#endif
-
   if ( variant.isNull() || !variant.isValid() )
     return true;
 
-  switch ( variant.userType() )
+  switch ( variant.type() )
   {
-    case QMetaType::Type::UnknownType:
-    case QMetaType::Type::Bool:
-    case QMetaType::Type::Int:
-    case QMetaType::Type::UInt:
-    case QMetaType::Type::LongLong:
-    case QMetaType::Type::ULongLong:
-    case QMetaType::Type::Double:
-    case QMetaType::Type::QVariantMap:
-    case QMetaType::Type::QVariantList:
-    case QMetaType::Type::QStringList:
-    case QMetaType::Type::QUrl:
-    case QMetaType::Type::QLocale:
-    case QMetaType::Type::QRegularExpression:
-    case QMetaType::Type::QVariantHash:
-    case QMetaType::Type::QEasingCurve:
-    case QMetaType::Type::QModelIndex:
-    case QMetaType::Type::QPersistentModelIndex:
+    case QVariant::Invalid:
+    case QVariant::Bool:
+    case QVariant::Int:
+    case QVariant::UInt:
+    case QVariant::LongLong:
+    case QVariant::ULongLong:
+    case QVariant::Double:
+    case QVariant::Map:
+    case QVariant::List:
+    case QVariant::StringList:
+    case QVariant::Url:
+    case QVariant::Locale:
+    case QVariant::RegularExpression:
+    case QVariant::Hash:
+    case QVariant::EasingCurve:
+    case QVariant::ModelIndex:
+    case QVariant::PersistentModelIndex:
+
+    case QVariant::LastType:
 
       return false;
 
-    case QMetaType::Type::QDate:
+    case QVariant::Date:
       if ( variant.toDate().isNull() )
       {
-        if ( !silenceNullWarnings )
-        {
-          QgsDebugError( QStringLiteral( "NULL QDateTime was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
-        }
+        QgsDebugMsg( QStringLiteral( "NULL QDateTime was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
         return true;
       }
       return false;
-    case QMetaType::Type::QTime:
+    case QVariant::Time:
       if ( variant.toTime().isNull() )
       {
-        if ( !silenceNullWarnings )
-        {
-          QgsDebugError( QStringLiteral( "NULL QTime was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
-        }
+        QgsDebugMsg( QStringLiteral( "NULL QTime was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
         return true;
       }
       return false;
-    case QMetaType::Type::QDateTime:
+    case QVariant::DateTime:
       if ( variant.toDate().isNull() )
       {
-        if ( !silenceNullWarnings )
-        {
-          QgsDebugError( QStringLiteral( "NULL QDate was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
-        }
+        QgsDebugMsg( QStringLiteral( "NULL QDate was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
         return true;
       }
       return false;
-    case QMetaType::Type::QChar:
+    case QVariant::Char:
       if ( variant.toChar().isNull() )
       {
-        if ( !silenceNullWarnings )
-        {
-          QgsDebugError( QStringLiteral( "NULL QChar was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
-        }
+        QgsDebugMsg( QStringLiteral( "NULL QChar was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
         return true;
       }
       return false;
-    case QMetaType::Type::QString:
+    case QVariant::String:
       if ( variant.toString().isNull() )
       {
-        if ( !silenceNullWarnings )
-        {
-          QgsDebugError( QStringLiteral( "NULL QString was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
-        }
+        QgsDebugMsg( QStringLiteral( "NULL QString was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
         return true;
       }
       return false;
-    case QMetaType::Type::QByteArray:
+    case QVariant::ByteArray:
       if ( variant.toByteArray().isNull() )
       {
-        if ( !silenceNullWarnings )
-        {
-          QgsDebugError( QStringLiteral( "NULL QByteArray was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
-        }
+        QgsDebugMsg( QStringLiteral( "NULL QByteArray was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
         return true;
       }
       return false;
-    case QMetaType::Type::QBitArray:
+    case QVariant::BitArray:
       if ( variant.toBitArray().isNull() )
       {
-        if ( !silenceNullWarnings )
-        {
-          QgsDebugError( QStringLiteral( "NULL QBitArray was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
-        }
+        QgsDebugMsg( QStringLiteral( "NULL QBitArray was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
         return true;
       }
       return false;
-    case QMetaType::Type::QRect:
+    case QVariant::Rect:
       if ( variant.toRect().isNull() )
       {
-        if ( !silenceNullWarnings )
-        {
-          QgsDebugError( QStringLiteral( "NULL QRect was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
-        }
+        QgsDebugMsg( QStringLiteral( "NULL QRect was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
         return true;
       }
       return false;
-    case QMetaType::Type::QRectF:
+    case QVariant::RectF:
       if ( variant.toRectF().isNull() )
       {
-        if ( !silenceNullWarnings )
-        {
-          QgsDebugError( QStringLiteral( "NULL QRectF was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
-        }
+        QgsDebugMsg( QStringLiteral( "NULL QRectF was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
         return true;
       }
       return false;
-    case QMetaType::Type::QSize:
+    case QVariant::Size:
       if ( variant.toSize().isNull() )
       {
-        if ( !silenceNullWarnings )
-        {
-          QgsDebugError( QStringLiteral( "NULL QSize was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
-        }
+        QgsDebugMsg( QStringLiteral( "NULL QSize was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
         return true;
       }
       return false;
-    case QMetaType::Type::QSizeF:
+    case QVariant::SizeF:
       if ( variant.toSizeF().isNull() )
       {
-        if ( !silenceNullWarnings )
-        {
-          QgsDebugError( QStringLiteral( "NULL QSizeF was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
-        }
+        QgsDebugMsg( QStringLiteral( "NULL QSizeF was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
         return true;
       }
       return false;
-    case QMetaType::Type::QLine:
+    case QVariant::Line:
       if ( variant.toLine().isNull() )
       {
-        if ( !silenceNullWarnings )
-        {
-          QgsDebugError( QStringLiteral( "NULL QLine was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
-        }
+        QgsDebugMsg( QStringLiteral( "NULL QLine was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
         return true;
       }
       return false;
-    case QMetaType::Type::QLineF:
+    case QVariant::LineF:
       if ( variant.toLineF().isNull() )
       {
-        if ( !silenceNullWarnings )
-        {
-          QgsDebugError( QStringLiteral( "NULL QLineF was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
-        }
+        QgsDebugMsg( QStringLiteral( "NULL QLineF was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
         return true;
       }
       return false;
-    case QMetaType::Type::QPoint:
+    case QVariant::Point:
       if ( variant.toPoint().isNull() )
       {
-        if ( !silenceNullWarnings )
-        {
-          QgsDebugError( QStringLiteral( "NULL QPoint was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
-        }
+        QgsDebugMsg( QStringLiteral( "NULL QPoint was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
         return true;
       }
       return false;
-    case QMetaType::Type::QPointF:
+    case QVariant::PointF:
       if ( variant.toPointF().isNull() )
       {
-        if ( !silenceNullWarnings )
-        {
-          QgsDebugError( QStringLiteral( "NULL QPointF was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
-        }
+        QgsDebugMsg( QStringLiteral( "NULL QPointF was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
         return true;
       }
       return false;
-    case QMetaType::Type::QUuid:
+    case QVariant::Uuid:
       if ( variant.toUuid().isNull() )
       {
-        if ( !silenceNullWarnings )
-        {
-          QgsDebugError( QStringLiteral( "NULL QUuid was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
-        }
+        QgsDebugMsg( QStringLiteral( "NULL QUuid was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
         return true;
       }
       return false;
-    case QMetaType::Type::QPixmap:
+    case QVariant::Pixmap:
       if ( variant.value< QPixmap >().isNull() )
       {
-        if ( !silenceNullWarnings )
-        {
-          QgsDebugError( QStringLiteral( "NULL QPixmap was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
-        }
+        QgsDebugMsg( QStringLiteral( "NULL QPixmap was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
         return true;
       }
       return false;
-    case QMetaType::Type::QImage:
+    case QVariant::Image:
       if ( variant.value< QImage >().isNull() )
       {
-        if ( !silenceNullWarnings )
-        {
-          QgsDebugError( QStringLiteral( "NULL QImage was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
-        }
+        QgsDebugMsg( QStringLiteral( "NULL QImage was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
         return true;
       }
       return false;
-    case QMetaType::Type::QRegion:
+    case QVariant::Region:
       if ( variant.value< QRegion >().isNull() )
       {
-        if ( !silenceNullWarnings )
-        {
-          QgsDebugError( QStringLiteral( "NULL QRegion was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
-        }
+        QgsDebugMsg( QStringLiteral( "NULL QRegion was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
         return true;
       }
       return false;
-    case QMetaType::Type::QBitmap:
+    case QVariant::Bitmap:
       if ( variant.value< QBitmap >().isNull() )
       {
-        if ( !silenceNullWarnings )
-        {
-          QgsDebugError( QStringLiteral( "NULL QBitmap was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
-        }
+        QgsDebugMsg( QStringLiteral( "NULL QBitmap was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
         return true;
       }
       return false;
-    case QMetaType::Type::QIcon:
+    case QVariant::Icon:
       if ( variant.value< QIcon >().isNull() )
       {
-        if ( !silenceNullWarnings )
-        {
-          QgsDebugError( QStringLiteral( "NULL QIcon was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
-        }
+        QgsDebugMsg( QStringLiteral( "NULL QIcon was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
         return true;
       }
       return false;
-    case QMetaType::Type::QVector2D:
+    case QVariant::Vector2D:
       if ( variant.value< QVector2D >().isNull() )
       {
-        if ( !silenceNullWarnings )
-        {
-          QgsDebugError( QStringLiteral( "NULL QVector2D was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
-        }
+        QgsDebugMsg( QStringLiteral( "NULL QVector2D was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
         return true;
       }
       return false;
-    case QMetaType::Type::QVector3D:
+    case QVariant::Vector3D:
       if ( variant.value< QVector3D >().isNull() )
       {
-        if ( !silenceNullWarnings )
-        {
-          QgsDebugError( QStringLiteral( "NULL QVector3D was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
-        }
+        QgsDebugMsg( QStringLiteral( "NULL QVector3D was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
         return true;
       }
       return false;
-    case QMetaType::Type::QVector4D:
+    case QVariant::Vector4D:
       if ( variant.value< QVector4D >().isNull() )
       {
-        if ( !silenceNullWarnings )
-        {
-          QgsDebugError( QStringLiteral( "NULL QVector4D was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
-        }
+        QgsDebugMsg( QStringLiteral( "NULL QVector4D was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
         return true;
       }
       return false;
-    case QMetaType::Type::QQuaternion:
+    case QVariant::Quaternion:
       if ( variant.value< QQuaternion >().isNull() )
       {
-        if ( !silenceNullWarnings )
-        {
-          QgsDebugError( QStringLiteral( "NULL QQuaternion was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
-        }
+        QgsDebugMsg( QStringLiteral( "NULL QQuaternion was stored in a QVariant -- stop it! Always use an invalid QVariant() instead." ) );
         return true;
       }
       return false;
 
-    case QMetaType::Type::QColor:
-    case QMetaType::Type::QFont:
-    case QMetaType::Type::QBrush:
-    case QMetaType::Type::QPolygon:
-    case QMetaType::Type::QPalette:
-    case QMetaType::Type::QCursor:
-    case QMetaType::Type::QKeySequence:
-    case QMetaType::Type::QPen:
-    case QMetaType::Type::QTextLength:
-    case QMetaType::Type::QPolygonF:
-    case QMetaType::Type::QTextFormat:
-    case QMetaType::Type::QTransform:
-    case QMetaType::Type::QMatrix4x4:
-    case QMetaType::Type::QSizePolicy:
-    case QMetaType::Type::User:
+    case QVariant::Color:
+    case QVariant::Font:
+    case QVariant::Brush:
+    case QVariant::Polygon:
+    case QVariant::Palette:
+    case QVariant::Cursor:
+    case QVariant::KeySequence:
+    case QVariant::Pen:
+    case QVariant::TextLength:
+    case QVariant::PolygonF:
+    case QVariant::TextFormat:
+    case QVariant::Transform:
+    case QVariant::Matrix4x4:
+    case QVariant::SizePolicy:
+      break;
+
+    case QVariant::UserType:
+      break;
+
     default:
       break;
   }
@@ -470,159 +392,4 @@ bool QgsVariantUtils::isNull( const QVariant &variant, bool silenceNullWarnings 
   return false;
 }
 
-bool QgsVariantUtils::isNumericType( QMetaType::Type metaType )
-{
-  switch ( metaType )
-  {
-    case QMetaType::Type::Int:
-    case QMetaType::Type::UInt:
-    case QMetaType::Type::LongLong:
-    case QMetaType::Type::ULongLong:
-    case QMetaType::Type::Double:
-    case QMetaType::Type::Float:
-    case QMetaType::Type::Short:
-    case QMetaType::Type::UShort:
-    case QMetaType::Type::Char:
-    case QMetaType::Type::UChar:
-    case QMetaType::Type::SChar:
-      return true;
-    default:
-      return false;
-  }
-}
 
-QMetaType::Type QgsVariantUtils::variantTypeToMetaType( QVariant::Type variantType )
-{
-  // variant types can be directly mapped to meta types
-  return static_cast< QMetaType::Type >( variantType );
-}
-
-QVariant::Type QgsVariantUtils::metaTypeToVariantType( QMetaType::Type metaType )
-{
-  // NOLINTBEGIN(bugprone-branch-clone)
-  switch ( metaType )
-  {
-    // exact mapping, these are identical:
-    case QMetaType::Bool:
-    case QMetaType::Int:
-    case QMetaType::UInt:
-    case QMetaType::LongLong:
-    case QMetaType::ULongLong:
-    case QMetaType::Double:
-    case QMetaType::QChar:
-    case QMetaType::QVariantMap:
-    case QMetaType::QVariantList:
-    case QMetaType::QString:
-    case QMetaType::QStringList:
-    case QMetaType::QByteArray:
-    case QMetaType::QBitArray:
-    case QMetaType::QDate:
-    case QMetaType::QTime:
-    case QMetaType::QDateTime:
-    case QMetaType::QUrl:
-    case QMetaType::QLocale:
-    case QMetaType::QRect:
-    case QMetaType::QRectF:
-    case QMetaType::QSize:
-    case QMetaType::QSizeF:
-    case QMetaType::QLine:
-    case QMetaType::QLineF:
-    case QMetaType::QPoint:
-    case QMetaType::QPointF:
-    case QMetaType::QRegularExpression:
-    case QMetaType::QVariantHash:
-    case QMetaType::QEasingCurve:
-    case QMetaType::QUuid:
-    case QMetaType::QModelIndex:
-    case QMetaType::QPersistentModelIndex:
-    case QMetaType::QFont:
-    case QMetaType::QPixmap:
-    case QMetaType::QBrush:
-    case QMetaType::QColor:
-    case QMetaType::QPalette:
-    case QMetaType::QImage:
-    case QMetaType::QPolygon:
-    case QMetaType::QRegion:
-    case QMetaType::QBitmap:
-    case QMetaType::QCursor:
-    case QMetaType::QKeySequence:
-    case QMetaType::QPen:
-    case QMetaType::QTextLength:
-    case QMetaType::QTextFormat:
-    case QMetaType::QTransform:
-    case QMetaType::QMatrix4x4:
-    case QMetaType::QVector2D:
-    case QMetaType::QVector3D:
-    case QMetaType::QVector4D:
-    case QMetaType::QQuaternion:
-    case QMetaType::QPolygonF:
-    case QMetaType::QIcon:
-    case QMetaType::QSizePolicy:
-    case QMetaType::UnknownType:
-    case QMetaType::User:
-      return static_cast< QVariant::Type >( metaType );
-
-    // lossy, not exact mappings. We prefer to "expand" types
-    // to avoid truncation
-    case QMetaType::Long:
-      return QVariant::Type::LongLong;
-
-    case QMetaType::ULong:
-      return QVariant::Type::ULongLong;
-
-    case QMetaType::Char:
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-    case QMetaType::Char16:
-    case QMetaType::Char32:
-#endif
-    case QMetaType::Short:
-    case QMetaType::SChar:
-      return QVariant::Type::Int;
-
-    case QMetaType::UShort:
-    case QMetaType::UChar:
-      return QVariant::Type::UInt;
-
-    case QMetaType::Float:
-#if QT_VERSION >= QT_VERSION_CHECK(6, 5, 0)
-    case QMetaType::Float16:
-#endif
-      return QVariant::Type::Double;
-
-    // no mapping possible:
-    case QMetaType::Nullptr:
-    case QMetaType::QCborSimpleType:
-    case QMetaType::Void:
-    case QMetaType::VoidStar:
-    case QMetaType::QVariant:
-    case QMetaType::QJsonValue:
-    case QMetaType::QJsonObject:
-    case QMetaType::QJsonArray:
-    case QMetaType::QJsonDocument:
-    case QMetaType::QCborValue:
-    case QMetaType::QCborArray:
-    case QMetaType::QCborMap:
-    case QMetaType::QObjectStar:
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-    case QMetaType::QVariantPair:
-#endif
-    case QMetaType::QByteArrayList:
-    case QMetaType::QColorSpace:
-      break;
-
-    default:
-      break;
-  }
-  // NOLINTEND(bugprone-branch-clone)
-  return QVariant::Type::UserType;
-}
-
-QVariant QgsVariantUtils::createNullVariant( QMetaType::Type metaType )
-{
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-  return QVariant( QgsVariantUtils::metaTypeToVariantType( metaType ) );
-#else
-  return QVariant( QMetaType( metaType ) );
-#endif
-
-}

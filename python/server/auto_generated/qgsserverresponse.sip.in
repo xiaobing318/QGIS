@@ -3,7 +3,7 @@
  *                                                                      *
  * src/server/qgsserverresponse.h                                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -21,6 +21,10 @@ class QgsServerResponse
   public:
 
     QgsServerResponse();
+%Docstring
+constructor
+%End
+
     virtual ~QgsServerResponse();
 
     virtual void setHeader( const QString &key, const QString &value ) = 0;
@@ -141,13 +145,6 @@ Truncate data
 
 Clear internal buffer
 %End
-
-    virtual QgsFeedback *feedback() const;
-%Docstring
-Returns the socket feedback if any
-
-.. versionadded:: 3.36
-%End
 };
 
 /************************************************************************
@@ -155,5 +152,5 @@ Returns the socket feedback if any
  *                                                                      *
  * src/server/qgsserverresponse.h                                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

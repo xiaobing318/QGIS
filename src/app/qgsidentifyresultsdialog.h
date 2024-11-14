@@ -18,7 +18,6 @@
 #ifndef QGSIDENTIFYRESULTSDIALOG_H
 #define QGSIDENTIFYRESULTSDIALOG_H
 
-#include "qgis_app.h"
 #include "ui_qgsidentifyresultsbase.h"
 #include "qgshelp.h"
 #include "qgsfeature.h"
@@ -28,16 +27,16 @@
 #include "qgswebview.h"
 #include "qgsexpressioncontext.h"
 #include "qgsmaptoolselectionhandler.h"
-#include "qgsrelation.h"
+#include "qgssettingsentryimpl.h"
 
 #include <QWidget>
 #include <QList>
 #include <QNetworkRequest>
 #include <QNetworkReply>
 #include <QUrl>
+#include "qgis_app.h"
 
 class QCloseEvent;
-class QToolButton;
 class QTreeWidgetItem;
 class QAction;
 class QMenu;
@@ -51,8 +50,6 @@ class QgsMeshLayer;
 class QgsDockWidget;
 class QgsMapLayerAction;
 class QgsEditorWidgetSetup;
-class QgsSettingsEntryBool;
-class QgsTiledSceneLayer;
 
 class QwtPlotCurve;
 
@@ -87,31 +84,6 @@ class APP_EXPORT QgsIdentifyResultsFeatureItem: public QTreeWidgetItem
     QgsCoordinateReferenceSystem mCrs;
 };
 
-//! Tree widget item being the parent item of a referenced or referencing relation
-class APP_EXPORT QgsIdentifyResultsRelationItem: public QTreeWidgetItem
-{
-  public:
-    //! Constructor
-    QgsIdentifyResultsRelationItem( const QStringList &strings, const QgsRelation &relation, bool isReferencedRole, const QgsFeature &topFeature );
-
-    //! Return the relation
-    const QgsRelation &relation() const { return mRelation; }
-
-    /**
-     * Return true if getRelatedFeatures(mTopFeature) should be called on mRelation,
-      * or false if getReferencedFeature(mTopFeature) should be called.
-      */
-    bool isReferencedRole() const { return mIsReferencedRole; }
-
-    //! Return the feature that is the parent of this item.
-    const QgsFeature &topFeature() const { return mTopFeature; }
-
-  private:
-    QgsRelation mRelation;
-    bool mIsReferencedRole;
-    QgsFeature mTopFeature;
-};
-
 class APP_EXPORT QgsIdentifyResultsWebViewItem: public QObject, public QTreeWidgetItem
 {
     Q_OBJECT
@@ -120,6 +92,7 @@ class APP_EXPORT QgsIdentifyResultsWebViewItem: public QObject, public QTreeWidg
     QgsIdentifyResultsWebViewItem( QTreeWidget *treeWidget = nullptr );
     QgsIdentifyResultsWebView *webView() { return mWebView; }
     void setHtml( const QString &html );
+    //! \since QGIS 2.1
     void setContent( const QByteArray &data, const QString &mimeType = QString(), const QUrl &baseUrl = QUrl() );
 
   public slots:
@@ -153,14 +126,15 @@ class APP_EXPORT QgsIdentifyResultsDialog: public QDialog, private Ui::QgsIdenti
   public:
 
     /**
-     * Constructor
+     * Constructor -
+     * takes its own copy of the QgsAttributeAction so
+     * that it is independent of whoever created it.
      */
     QgsIdentifyResultsDialog( QgsMapCanvas *canvas, QWidget *parent = nullptr, Qt::WindowFlags f = Qt::WindowFlags() );
 
     ~QgsIdentifyResultsDialog() override;
 
-    static const QgsSettingsEntryBool *settingHideNullValues;
-    static const QgsSettingsEntryBool *settingShowRelations;
+    static const inline QgsSettingsEntryBool settingHideNullValues = QgsSettingsEntryBool( QStringLiteral( "hideNullValues" ), QgsSettings::Prefix::MAP, false, QStringLiteral( "Whether to hide attributes with NULL values in the identify feature result" ) );
 
     //! Adds feature from vector layer
     void addFeature( QgsVectorLayer *layer,
@@ -201,17 +175,7 @@ class APP_EXPORT QgsIdentifyResultsDialog: public QDialog, private Ui::QgsIdenti
      */
     void addFeature( QgsPointCloudLayer *layer,
                      const QString &label,
-                     const QMap< QString, QString > &attributes,
-                     const QMap< QString, QString > &derivedAttributes );
-
-    /**
-     * Adds results from tiled scene layer
-     * \since QGIS 3.34
-     */
-    void addFeature( QgsTiledSceneLayer *layer,
-                     const QString &label,
-                     const QMap< QString, QString > &attributes,
-                     const QMap< QString, QString > &derivedAttributes );
+                     const QMap< QString, QString > &attributes );
 
     //! Adds feature from identify results
     void addFeature( const QgsMapToolIdentify::IdentifyResult &result );
@@ -226,6 +190,7 @@ class APP_EXPORT QgsIdentifyResultsDialog: public QDialog, private Ui::QgsIdenti
      * Sets an expression context scope to consider for resolving underlying
      * actions.
      *
+     * \since QGIS 3.0
      */
     void setExpressionContextScope( const QgsExpressionContextScope &scope );
 
@@ -233,6 +198,7 @@ class APP_EXPORT QgsIdentifyResultsDialog: public QDialog, private Ui::QgsIdenti
      * Returns an expression context scope used for resolving underlying
      * actions.
      *
+     * \since QGIS 3.0
      */
     QgsExpressionContextScope expressionContextScope() const;
 
@@ -259,7 +225,6 @@ class APP_EXPORT QgsIdentifyResultsDialog: public QDialog, private Ui::QgsIdenti
     void show();
 
     void contextMenuEvent( QContextMenuEvent * ) override;
-    void keyPressEvent( QKeyEvent *e ) override;
 
     void layerDestroyed();
     void editingToggled();
@@ -268,7 +233,6 @@ class APP_EXPORT QgsIdentifyResultsDialog: public QDialog, private Ui::QgsIdenti
 
     void featureForm();
     void zoomToFeature();
-    void identifyFeature();
     void copyAttributeValue();
     void copyFeature();
     void toggleFeatureSelection();
@@ -283,15 +247,18 @@ class APP_EXPORT QgsIdentifyResultsDialog: public QDialog, private Ui::QgsIdenti
     void collapseAll();
     void selectFeatureByAttribute();
 
+    /**
+     * Called when an item is expanded so that we can ensure that the
+     * column width if expanded to show it.
+     */
+    void itemExpanded( QTreeWidgetItem * );
+
     //! sends signal if current feature id has changed
     void handleCurrentItemChanged( QTreeWidgetItem *current, QTreeWidgetItem *previous );
     /* Item in tree was clicked */
     void itemClicked( QTreeWidgetItem *lvi, int column );
 
-    void itemExpanded( QTreeWidgetItem *item );
-
-    QgsAttributeMap retrieveAttributes( QTreeWidgetItem *item );
-    QVariant retrieveAttribute( QTreeWidgetItem *item );
+    QTreeWidgetItem *retrieveAttributes( QTreeWidgetItem *item, QgsAttributeMap &attributes, int &currentIdx );
 
     void cmbIdentifyMode_currentIndexChanged( int index );
 
@@ -304,8 +271,6 @@ class APP_EXPORT QgsIdentifyResultsDialog: public QDialog, private Ui::QgsIdenti
     void mActionHideDerivedAttributes_toggled( bool checked );
 
     void mActionHideNullValues_toggled( bool checked );
-
-    void mActionShowRelations_toggled( bool checked );
 
     void mExpandAction_triggered( bool checked ) { Q_UNUSED( checked ) expandAll(); }
     void mCollapseAction_triggered( bool checked ) { Q_UNUSED( checked ) collapseAll(); }
@@ -338,12 +303,11 @@ class APP_EXPORT QgsIdentifyResultsDialog: public QDialog, private Ui::QgsIdenti
     QToolButton *mSelectModeButton = nullptr;
 
     QgsMapLayer *layer( QTreeWidgetItem *item );
-    static QgsVectorLayer *vectorLayer( QTreeWidgetItem *item );
+    QgsVectorLayer *vectorLayer( QTreeWidgetItem *item );
     QgsRasterLayer *rasterLayer( QTreeWidgetItem *item );
     QgsMeshLayer *meshLayer( QTreeWidgetItem *item );
     QgsVectorTileLayer *vectorTileLayer( QTreeWidgetItem *item );
     QgsPointCloudLayer *pointCloudLayer( QTreeWidgetItem *item );
-    QgsTiledSceneLayer *tiledSceneLayer( QTreeWidgetItem *item );
     QTreeWidgetItem *featureItem( QTreeWidgetItem *item );
     QTreeWidgetItem *layerItem( QTreeWidgetItem *item );
     QTreeWidgetItem *layerItem( QObject *layer );
@@ -373,11 +337,7 @@ class APP_EXPORT QgsIdentifyResultsDialog: public QDialog, private Ui::QgsIdenti
     void setSelectionMode();
 
     void initSelectionModes();
-    QgsIdentifyResultsFeatureItem *createFeatureItem( QgsVectorLayer *vlayer, const QgsFeature &f, const QMap<QString, QString> &derivedAttributes, QTreeWidgetItem *parentItem );
-
-    static bool isFeatureInAncestors( QTreeWidgetItem *item, const QgsVectorLayer *vlayer, const QgsFeature &f );
-
-    friend class TestQgsIdentify;
+    QgsIdentifyResultsFeatureItem *createFeatureItem( QgsVectorLayer *vlayer, const QgsFeature &f, const QMap<QString, QString> &derivedAttributes, bool includeRelations, QTreeWidgetItem *parentItem );
 };
 
 class QgsIdentifyResultsDialogMapLayerAction : public QAction

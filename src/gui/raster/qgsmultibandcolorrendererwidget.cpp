@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsmultibandcolorrendererwidget.h"
-#include "moc_qgsmultibandcolorrendererwidget.cpp"
 #include "qgsmultibandcolorrenderer.h"
 #include "qgsrasterlayer.h"
 #include "qgsrasterdataprovider.h"
@@ -253,7 +252,7 @@ void QgsMultiBandColorRendererWidget::minMaxModified()
 
 void QgsMultiBandColorRendererWidget::loadMinMax( int bandNo, double min, double max )
 {
-  QgsDebugMsgLevel( QStringLiteral( "theBandNo = %1 min = %2 max = %3" ).arg( bandNo ).arg( min ).arg( max ), 2 );
+  QgsDebugMsg( QStringLiteral( "theBandNo = %1 min = %2 max = %3" ).arg( bandNo ).arg( min ).arg( max ) );
 
   QLineEdit *myMinLineEdit, *myMaxLineEdit;
 
@@ -274,7 +273,7 @@ void QgsMultiBandColorRendererWidget::loadMinMax( int bandNo, double min, double
   }
   else // should not happen
   {
-    QgsDebugError( QStringLiteral( "Band not found" ) );
+    QgsDebugMsg( QStringLiteral( "Band not found" ) );
     return;
   }
 

@@ -8,7 +8,5 @@ Feature 2
 id = '3'
 name = 'three'
 utf8nameè = 'three èé↓'
-maptip = '<title>Maptip</title>
-Name: three'
-displayName = 'three'
+maptip = 'Name: three'
 

@@ -52,8 +52,8 @@ class GUI_EXPORT QgsAttributeEditorContext
       FixAttributeMode, //!< Fix feature mode, for modifying the feature attributes without saving. The updated feature is available via `feature()` after `save()`
       MultiEditMode, //!< Multi edit mode, for editing fields of multiple features at once
       SearchMode, //!< Form values are used for searching/filtering the layer
-      AggregateSearchMode, //!< Form is in aggregate search mode, show each widget in this mode
-      IdentifyMode //!< Identify the feature
+      AggregateSearchMode, //!< Form is in aggregate search mode, show each widget in this mode \since QGIS 3.0
+      IdentifyMode //!< Identify the feature \since QGIS 3.0
     };
     Q_ENUM( Mode )
 
@@ -74,6 +74,7 @@ class GUI_EXPORT QgsAttributeEditorContext
       Popup             //!< A widget was opened as a popup (e.g. attribute table editor widget)
     };
 
+    //! Constructor for QgsAttributeEditorContext
     QgsAttributeEditorContext() = default;
 
     QgsAttributeEditorContext( const QgsAttributeEditorContext &parentContext, FormMode formMode )
@@ -106,6 +107,7 @@ class GUI_EXPORT QgsAttributeEditorContext
     /**
      * Sets distance area object, \a distanceArea, for area/length calculations
      * \see distanceArea()
+     * \since QGIS 2.2
      */
     inline void setDistanceArea( const QgsDistanceArea &distanceArea )
     {
@@ -119,6 +121,7 @@ class GUI_EXPORT QgsAttributeEditorContext
     /**
      * Returns the distance area object used for area/length calculations.
      * \see setDistanceArea()
+     * \since QGIS 2.2
      */
     inline const QgsDistanceArea &distanceArea() const { return mDistanceArea; }
 
@@ -156,6 +159,7 @@ class GUI_EXPORT QgsAttributeEditorContext
      * Sets the associated vector layer tools.
      * \param vlTools vector layer tools
      * \see vectorLayerTools()
+     * \since QGIS 2.2
      */
     inline void setVectorLayerTools( QgsVectorLayerTools *vlTools ) { mVectorLayerTools = vlTools; }
     // TODO QGIS 4.0 - rename vlTools to tools
@@ -163,6 +167,7 @@ class GUI_EXPORT QgsAttributeEditorContext
     /**
      * Returns the associated vector layer tools.
      * \see setVectorLayerTools()
+     * \since QGIS 2.2
      */
     inline const QgsVectorLayerTools *vectorLayerTools() const { return mVectorLayerTools; }
 
@@ -172,6 +177,7 @@ class GUI_EXPORT QgsAttributeEditorContext
      * \param mode relation mode
      * \see relation()
      * \see relationMode()
+     * \since QGIS 2.6
      */
     inline void setRelation( const QgsRelation &relation, RelationMode mode ) { mRelation = relation; mRelationMode = mode; }
 
@@ -179,6 +185,7 @@ class GUI_EXPORT QgsAttributeEditorContext
      * Returns the attribute relation.
      * \see setRelation()
      * \see relationMode()
+     * \since QGIS 2.6
      */
     inline const QgsRelation &relation() const { return mRelation; }
 
@@ -186,6 +193,7 @@ class GUI_EXPORT QgsAttributeEditorContext
      * Returns the attribute relation mode.
      * \see setRelation()
      * \see relation()
+     * \since QGIS 2.6
      */
     inline RelationMode relationMode() const { return mRelationMode; }
 
@@ -199,12 +207,14 @@ class GUI_EXPORT QgsAttributeEditorContext
      * Sets the form mode.
      * \param mode form mode
      * \see formMode()
+     * \since QGIS 2.16
      */
     inline void setFormMode( FormMode mode ) { mFormMode = mode; }
 
     /**
      * Returns TRUE if the attribute editor should permit use of custom UI forms.
      * \see setAllowCustomUi()
+     * \since QGIS 2.16
      */
     bool allowCustomUi() const { return mAllowCustomUi; }
 
@@ -213,6 +223,7 @@ class GUI_EXPORT QgsAttributeEditorContext
      * \param allow set to TRUE to allow custom UI forms, or FALSE to disable them and use default generated
      * QGIS forms
      * \see allowCustomUi()
+     * \since QGIS 2.16
      */
     void setAllowCustomUi( bool allow ) { mAllowCustomUi = allow; }
 

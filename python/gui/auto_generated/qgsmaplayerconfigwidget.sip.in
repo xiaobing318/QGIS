@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsmaplayerconfigwidget.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -93,6 +93,8 @@ class QgsMapLayerConfigWidget : QgsPanelWidget
 {
 %Docstring(signature="appended")
 A panel widget that can be shown in the map style dock
+
+.. versionadded:: 2.16
 %End
 
 %TypeHeaderCode
@@ -164,5 +166,5 @@ Focuses the default widget for the page.
  *                                                                      *
  * src/gui/qgsmaplayerconfigwidget.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

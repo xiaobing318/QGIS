@@ -3,7 +3,7 @@
  *                                                                      *
  * src/analysis/network/qgsnetworkspeedstrategy.h                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -13,6 +13,8 @@ class QgsNetworkSpeedStrategy : QgsNetworkStrategy
 %Docstring(signature="appended")
 Strategy for calculating edge cost based on travel time. Should be
 used for finding fastest path between two points.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -37,5 +39,5 @@ Default constructor
  *                                                                      *
  * src/analysis/network/qgsnetworkspeedstrategy.h                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

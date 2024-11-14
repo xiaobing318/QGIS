@@ -1,0 +1,9 @@
+<RCC>
+    <qresource prefix="/odata_format_conversion_toolbox">
+        <file>images/odata_format_conversion_toolbox_icon.svg</file>
+		<file>images/odata2shp_icon.svg</file>
+        <file>images/se_text_files_gbk2utf8_icon.svg</file>
+		<file>images/annotation_reverse_extract_icon.svg</file>
+		<file>images/pbf2gpkg_icon.svg</file>
+    </qresource>
+</RCC>

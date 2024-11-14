@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/editorwidgets/qgsrelationwidgetwrapper.h                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -45,9 +45,10 @@ Constructor for QgsRelationWidgetWrapper
 Defines if a title label should be shown for this widget.
 Only has an effect after :py:func:`~QgsRelationWidgetWrapper.widget` has been called at least once.
 
-.. deprecated:: 3.20
+.. versionadded:: 2.18
 
-   Label is handled directly in :py:class:`QgsAttributeForm`.
+.. deprecated:: QGIS 3.20
+   label is handled directly in :py:class:`QgsAttributeForm`.
 %End
 
  void setShowLabel( bool showLabel ) /Deprecated/;
@@ -55,45 +56,50 @@ Only has an effect after :py:func:`~QgsRelationWidgetWrapper.widget` has been ca
 Defines if a title label should be shown for this widget.
 Only has an effect after :py:func:`~QgsRelationWidgetWrapper.widget` has been called at least once.
 
-.. deprecated:: 3.20
+.. versionadded:: 2.18
 
-   Label is handled directly in :py:class:`QgsAttributeForm`.
+.. deprecated:: QGIS 3.20
+   label is handled directly in :py:class:`QgsAttributeForm`.
 %End
 
  bool showLinkButton() const /Deprecated/;
 %Docstring
 Determines if the "link feature" button should be shown
 
-.. deprecated:: 3.16
+.. versionadded:: 2.18
 
-   Use :py:func:`~QgsRelationWidgetWrapper.visibleButtons` instead.
+.. deprecated:: QGIS 3.16
+   use :py:func:`~QgsRelationWidgetWrapper.visibleButtons` instead
 %End
 
  void setShowLinkButton( bool showLinkButton ) /Deprecated/;
 %Docstring
 Determines if the "link feature" button should be shown
 
-.. deprecated:: 3.16
+.. versionadded:: 2.18
 
-   Use :py:func:`~QgsRelationWidgetWrapper.setVisibleButtons` instead.
+.. deprecated:: QGIS 3.16
+   use :py:func:`~QgsRelationWidgetWrapper.setVisibleButtons` instead
 %End
 
  bool showUnlinkButton() const /Deprecated/;
 %Docstring
 Determines if the "unlink feature" button should be shown
 
-.. deprecated:: 3.16
+.. versionadded:: 2.18
 
-   Use :py:func:`~QgsRelationWidgetWrapper.visibleButtons` instead.
+.. deprecated:: QGIS 3.16
+   use :py:func:`~QgsRelationWidgetWrapper.visibleButtons` instead
 %End
 
  void setShowUnlinkButton( bool showUnlinkButton ) /Deprecated/;
 %Docstring
 Determines if the "unlink feature" button should be shown
 
-.. deprecated:: 3.16
+.. versionadded:: 2.18
 
-   Use :py:func:`~QgsRelationWidgetWrapper.setVisibleButtons` instead.
+.. deprecated:: QGIS 3.16
+   use :py:func:`~QgsRelationWidgetWrapper.setVisibleButtons` instead
 %End
 
  void setShowSaveChildEditsButton( bool showChildEdits ) /Deprecated/;
@@ -102,9 +108,8 @@ Determines if the "Save child layer edits" button should be shown
 
 .. versionadded:: 3.14
 
-.. deprecated:: 3.16
-
-   Use :py:func:`~QgsRelationWidgetWrapper.setVisibleButtons` instead.
+.. deprecated:: QGIS 3.16
+   use :py:func:`~QgsRelationWidgetWrapper.setVisibleButtons` instead
 %End
 
  bool showSaveChildEditsButton() const /Deprecated/;
@@ -113,9 +118,8 @@ Determines if the "Save child layer edits" button should be shown
 
 .. versionadded:: 3.14
 
-.. deprecated:: 3.16
-
-   Use :py:func:`~QgsRelationWidgetWrapper.visibleButtons` instead.
+.. deprecated:: QGIS 3.16
+   use :py:func:`~QgsRelationWidgetWrapper.visibleButtons` instead
 %End
 
  void setVisibleButtons( const QgsAttributeEditorRelation::Buttons &buttons ) /Deprecated/;
@@ -124,9 +128,8 @@ Defines the buttons which are shown
 
 .. versionadded:: 3.16
 
-.. deprecated:: 3.18
-
-   Use :py:func:`~QgsRelationWidgetWrapper.setWidgetConfig` instead.
+.. deprecated:: QGIS 3.18
+   use :py:func:`~QgsRelationWidgetWrapper.setWidgetConfig` instead
 %End
 
  QgsAttributeEditorRelation::Buttons visibleButtons() const /Deprecated/;
@@ -135,9 +138,8 @@ Returns the buttons which are shown
 
 .. versionadded:: 3.16
 
-.. deprecated:: 3.18
-
-   Use :py:func:`~QgsRelationWidgetWrapper.widgetConfig` instead.
+.. deprecated:: QGIS 3.18
+   use :py:func:`~QgsRelationWidgetWrapper.widgetConfig` instead
 %End
 
 
@@ -195,9 +197,8 @@ Determines the label of this element
 
 .. versionadded:: 3.16
 
-.. deprecated:: 3.20
-
-   Label is handled directly in :py:class:`QgsAttributeForm`.
+.. deprecated:: QGIS 3.20
+   label is handled directly in :py:class:`QgsAttributeForm`.
 %End
 
  void setLabel( const QString &label = QString() ) /Deprecated/;
@@ -207,14 +208,15 @@ If it's empty it takes the relation id as label
 
 .. versionadded:: 3.16
 
-.. deprecated:: 3.20
-
-   Label is handled directly in :py:class:`QgsAttributeForm`.
+.. deprecated:: QGIS 3.20
+   label is handled directly in :py:class:`QgsAttributeForm`.
 %End
 
     QgsRelation relation() const;
 %Docstring
 The relation for which this wrapper is created.
+
+.. versionadded:: 3.0
 %End
 
     void widgetValueChanged( const QString &attribute, const QVariant &newValue, bool attributeChanged );
@@ -269,6 +271,8 @@ Set multiple feature to edit simultaneously.
 Sets the visibility of the wrapper's widget.
 
 :param visible: set to ``True`` to show widget, ``False`` to hide widget
+
+.. versionadded:: 2.16
 %End
 
 };
@@ -278,5 +282,5 @@ Sets the visibility of the wrapper's widget.
  *                                                                      *
  * src/gui/editorwidgets/qgsrelationwidgetwrapper.h                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

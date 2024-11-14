@@ -9,16 +9,19 @@ __author__ = 'Nyall Dawson'
 __date__ = '08/11/2021'
 __copyright__ = 'Copyright 2021, The QGIS Project'
 
-
-from qgis.analysis import QgsGraph
-from qgis.core import QgsPointXY
-import unittest
-from qgis.testing import start_app, QgisTestCase
+import qgis  # NOQA
+from qgis.analysis import (
+    QgsGraph
+)
+from qgis.core import (
+    QgsPointXY
+)
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsGraph(QgisTestCase):
+class TestQgsGraph(unittest.TestCase):
 
     def test_empty_graph(self):
         graph = QgsGraph()

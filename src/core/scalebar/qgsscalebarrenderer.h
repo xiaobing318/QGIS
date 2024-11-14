@@ -33,6 +33,7 @@ class QgsScaleBarSettings;
  * Scalebar renderer subclasses implement custom drawing logic, with the possibility to implement
  * custom labeling.
  *
+ * \since QGIS 3.0
 */
 class CORE_EXPORT QgsScaleBarRenderer
 {
@@ -42,7 +43,7 @@ class CORE_EXPORT QgsScaleBarRenderer
      * Flags which control scalebar renderer behavior.
      * \since QGIS 3.14
      */
-    enum class Flag : int SIP_ENUM_BASETYPE( IntFlag )
+    enum class Flag
     {
       FlagUsesLineSymbol = 1 << 0, //!< Renderer utilizes the scalebar line symbol (see QgsScaleBarSettings::lineSymbol() )
       FlagUsesFillSymbol = 1 << 1, //!< Renderer utilizes the scalebar fill symbol (see QgsScaleBarSettings::fillSymbol() )
@@ -66,7 +67,7 @@ class CORE_EXPORT QgsScaleBarRenderer
      * Contains parameters regarding scalebar calculations.
      * \note The need to attribute the parameters vary depending on the targeted scalebar.
      */
-    struct CORE_EXPORT ScaleBarContext
+    struct ScaleBarContext
     {
 
       /**
@@ -88,21 +89,17 @@ class CORE_EXPORT QgsScaleBarRenderer
       //! Scalebar renderer flags
       Flags flags;
 
-      /**
-       * Returns TRUE if the context has valid settings.
-       *
-       * \since QGIS 3.40
-       */
-      bool isValid() const;
-
     };
 
+    /**
+     * Constructor for QgsScaleBarRenderer.
+     */
     QgsScaleBarRenderer() = default;
     virtual ~QgsScaleBarRenderer() = default;
 
     /**
      * Returns the unique name for this style.
-     * \deprecated QGIS 3.40. Use id() instead.
+     * \deprecated use id() instead
      */
     Q_DECL_DEPRECATED QString name() const SIP_DEPRECATED { return id(); }
 
@@ -146,7 +143,7 @@ class CORE_EXPORT QgsScaleBarRenderer
 
     /**
      * Calculates the required box size (in millimeters) for a scalebar using the specified \a settings and \a scaleContext.
-     * \deprecated QGIS 3.40. Use the version with a QgsRenderContext instead.
+     * \deprecated Use the version with a QgsRenderContext instead.
      */
     Q_DECL_DEPRECATED virtual QSizeF calculateBoxSize( const QgsScaleBarSettings &settings,
         const QgsScaleBarRenderer::ScaleBarContext &scaleContext ) const SIP_DEPRECATED;
@@ -185,7 +182,7 @@ class CORE_EXPORT QgsScaleBarRenderer
 
     /**
      * Returns the x-offset (in millimeters) used for the first label in the scalebar.
-     * \deprecated QGIS 3.40. Use the version with QgsRenderContext instead.
+     * \deprecated Use the version with QgsRenderContext instead.
      */
     Q_DECL_DEPRECATED double firstLabelXOffset( const QgsScaleBarSettings &settings ) const SIP_DEPRECATED;
 
@@ -197,7 +194,7 @@ class CORE_EXPORT QgsScaleBarRenderer
 
     /**
      * Returns a list of positions for each segment within the scalebar.
-     * \deprecated QGIS 3.40. Use the version with a QgsRenderContext instead.
+     * \deprecated use the version with a QgsRenderContext instead
      */
     Q_DECL_DEPRECATED QList<double> segmentPositions( const QgsScaleBarRenderer::ScaleBarContext &scaleContext, const QgsScaleBarSettings &settings ) const SIP_DEPRECATED;
 

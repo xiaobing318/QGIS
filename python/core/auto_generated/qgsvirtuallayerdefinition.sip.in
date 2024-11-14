@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsvirtuallayerdefinition.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -185,13 +185,13 @@ Gets the name of the geometry field. Empty if no geometry field
 Sets the name of the geometry field
 %End
 
-    Qgis::WkbType geometryWkbType() const;
+    QgsWkbTypes::Type geometryWkbType() const;
 %Docstring
 Gets the type of the geometry
 :py:class:`QgsWkbTypes`.NoGeometry to hide any geometry
 :py:class:`QgsWkbTypes`.Unknown for unknown types
 %End
-    void setGeometryWkbType( Qgis::WkbType t );
+    void setGeometryWkbType( QgsWkbTypes::Type t );
 %Docstring
 Sets the type of the geometry
 %End
@@ -251,5 +251,5 @@ Sets the ``subsetString``
  *                                                                      *
  * src/core/qgsvirtuallayerdefinition.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

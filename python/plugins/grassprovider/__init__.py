@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     __init__.py
@@ -21,5 +23,5 @@ __copyright__ = '(C) 2021, Alexander Bruy'
 
 
 def classFactory(iface):
-    from grassprovider.grass_plugin import GrassProviderPlugin
+    from grassprovider.GrassProviderPlugin import GrassProviderPlugin
     return GrassProviderPlugin()

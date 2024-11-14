@@ -21,7 +21,6 @@
 #include "qgis_analysis.h"
 #include "qgsgeometrytransformer.h"
 #include "qgsgcptransformer.h"
-#include "qgsfeedback.h"
 #include <memory>
 
 class QgsGeometry;
@@ -53,7 +52,10 @@ class ANALYSIS_EXPORT QgsGcpGeometryTransformer : public QgsAbstractGeometryTran
 
     ~QgsGcpGeometryTransformer() override;
 
+    //! QgsGcpGeometryTransformer cannot be copied
     QgsGcpGeometryTransformer( const QgsGcpGeometryTransformer &other ) = delete;
+
+    //! QgsGcpGeometryTransformer cannot be copied
     QgsGcpGeometryTransformer &operator=( const QgsGcpGeometryTransformer &other ) = delete;
 
     bool transformPoint( double &x SIP_INOUT, double &y SIP_INOUT, double &z SIP_INOUT, double &m SIP_INOUT ) override;

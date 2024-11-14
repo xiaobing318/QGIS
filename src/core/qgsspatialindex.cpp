@@ -456,16 +456,16 @@ bool QgsSpatialIndex::addFeature( QgsFeatureId id, const QgsRectangle &bounds )
   catch ( Tools::Exception &e )
   {
     Q_UNUSED( e )
-    QgsDebugError( QStringLiteral( "Tools::Exception caught: " ).arg( e.what().c_str() ) );
+    QgsDebugMsg( QStringLiteral( "Tools::Exception caught: " ).arg( e.what().c_str() ) );
   }
   catch ( const std::exception &e )
   {
     Q_UNUSED( e )
-    QgsDebugError( QStringLiteral( "std::exception caught: " ).arg( e.what() ) );
+    QgsDebugMsg( QStringLiteral( "std::exception caught: " ).arg( e.what() ) );
   }
   catch ( ... )
   {
-    QgsDebugError( QStringLiteral( "unknown spatial index exception caught" ) );
+    QgsDebugMsg( QStringLiteral( "unknown spatial index exception caught" ) );
   }
 
   return false;
@@ -482,17 +482,6 @@ bool QgsSpatialIndex::deleteFeature( const QgsFeature &f )
   // TODO: handle exceptions
   if ( d->mFlags & QgsSpatialIndex::FlagStoreFeatureGeometries )
     d->mGeometries.remove( f.id() );
-  return d->mRTree->deleteData( r, FID_TO_NUMBER( id ) );
-}
-
-bool QgsSpatialIndex::deleteFeature( QgsFeatureId id, const QgsRectangle &bounds )
-{
-  const SpatialIndex::Region r = QgsSpatialIndexUtils::rectangleToRegion( bounds );
-
-  const QMutexLocker locker( &d->mMutex );
-  // TODO: handle exceptions (if the comment in the other ::deleteFeature implementation is correct!)
-  if ( d->mFlags & QgsSpatialIndex::FlagStoreFeatureGeometries )
-    d->mGeometries.remove( id );
   return d->mRTree->deleteData( r, FID_TO_NUMBER( id ) );
 }
 

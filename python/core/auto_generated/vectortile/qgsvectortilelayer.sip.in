@@ -3,8 +3,10 @@
  *                                                                      *
  * src/core/vectortile/qgsvectortilelayer.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
+
+
 
 
 
@@ -13,7 +15,6 @@ class QgsVectorTileLayer : QgsMapLayer
 {
 %Docstring(signature="appended")
 Implements a map layer that is dedicated to rendering of vector tiles.
-
 Vector tiles compared to "ordinary" vector layers are pre-processed data
 optimized for fast rendering. A dataset is provided with a series of zoom levels
 for different map scales. Each zoom level has a matrix of tiles that contain
@@ -197,33 +198,6 @@ Sets labeling for the map layer.
 Returns currently assigned labeling
 %End
 
-    bool labelsEnabled() const;
-%Docstring
-Returns whether the layer contains labels which are enabled and should be drawn.
-
-:return: ``True`` if layer contains enabled labels
-
-.. seealso:: :py:func:`setLabelsEnabled`
-
-.. versionadded:: 3.34
-%End
-
-    void setLabelsEnabled( bool enabled );
-%Docstring
-Sets whether labels should be ``enabled`` for the layer.
-
-.. note::
-
-   Labels will only be rendered if :py:func:`~QgsVectorTileLayer.labelsEnabled` is ``True`` and a labeling
-   object is returned by :py:func:`~QgsVectorTileLayer.labeling`.
-
-.. seealso:: :py:func:`labelsEnabled`
-
-.. seealso:: :py:func:`labeling`
-
-.. versionadded:: 3.34
-%End
-
     void setTileBorderRenderingEnabled( bool enabled );
 %Docstring
 Sets whether to render also borders of tiles (useful for debugging)
@@ -307,10 +281,12 @@ Emitted whenever the selected features in the layer are changed.
 
 };
 
+
+
 /************************************************************************
  * This file has been generated automatically from                      *
  *                                                                      *
  * src/core/vectortile/qgsvectortilelayer.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

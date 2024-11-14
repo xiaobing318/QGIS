@@ -47,14 +47,14 @@ class QgsHanaProvider final : public QgsVectorDataProvider
     static const QString HANA_DESCRIPTION;
 
     QgsHanaProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options,
-                     Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() );
+                     QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() );
 
     /* Functions inherited from QgsVectorDataProvider */
 
     QgsAbstractFeatureSource *featureSource() const override;
     QString storageType() const override;
     QgsFeatureIterator getFeatures( const QgsFeatureRequest &request ) const override;
-    Qgis::WkbType wkbType() const override;
+    QgsWkbTypes::Type wkbType() const override;
     QgsLayerMetadata layerMetadata() const override;
     QString dataComment() const override;
     long long featureCount() const override;
@@ -65,9 +65,7 @@ class QgsHanaProvider final : public QgsVectorDataProvider
     QSet< QVariant > uniqueValues( int index, int limit = -1 ) const override;
     QString subsetString() const override;
     bool setSubsetString( const QString &subset, bool updateFeatureCount = true ) override;
-    bool supportsSubsetString() const override;
-    QString subsetStringDialect() const override;
-    QString subsetStringHelpUrl() const override;
+    bool supportsSubsetString() const override { return true; }
     bool addFeatures( QgsFeatureList &flist, QgsFeatureSink::Flags flags = QgsFeatureSink::Flags() ) override;
     bool deleteFeatures( const QgsFeatureIds &id ) override;
     bool truncate() override;
@@ -80,7 +78,7 @@ class QgsHanaProvider final : public QgsVectorDataProvider
       const QgsGeometryMap &geometryMap ) override;
     bool changeAttributeValues( const QgsChangedAttributesMap &attrMap ) override;
 
-    Qgis::VectorProviderCapabilities capabilities() const override;
+    QgsVectorDataProvider::Capabilities capabilities() const override;
     QVariant defaultValue( int fieldId ) const override;
 
     /* Functions inherited from QgsDataProvider */
@@ -96,7 +94,7 @@ class QgsHanaProvider final : public QgsVectorDataProvider
     static Qgis::VectorExportResult createEmptyLayer(
       const QString &uri,
       const QgsFields &fields,
-      Qgis::WkbType wkbType,
+      QgsWkbTypes::Type wkbType,
       const QgsCoordinateReferenceSystem &srs,
       bool overwrite,
       QMap<int, int> *oldToNewAttrIdxMap,
@@ -112,7 +110,7 @@ class QgsHanaProvider final : public QgsVectorDataProvider
     QString buildQuery( const QString &columns, const QString &where ) const;
     QString buildQuery( const QString &columns ) const;
     bool checkPermissionsAndSetCapabilities( QgsHanaConnection &conn );
-    QgsRectangle estimateExtent( bool useEstimatedMetadata ) const;
+    QgsRectangle estimateExtent() const;
     void readAttributeFields( QgsHanaConnection &conn );
     void readGeometryType( QgsHanaConnection &conn );
     void readMetadata( QgsHanaConnection &conn );
@@ -130,10 +128,10 @@ class QgsHanaProvider final : public QgsVectorDataProvider
     QgsDataSourceUri mUri;
     // Srid of the geometry column
     int mSrid = -1;
+    // Srs extent
+    QgsRectangle mSrsExtent;
     // Flag that shows the presence of a planar equivalent in a database
     bool mHasSrsPlanarEquivalent = false;
-    // Flag that shows whether estimated metadata should be used
-    bool mUseEstimatedMetadata = false;
     // Name of the table with no schema
     QString mTableName;
     // Name of the schema
@@ -145,8 +143,8 @@ class QgsHanaProvider final : public QgsVectorDataProvider
     // Name of the geometry column
     QString mGeometryColumn;
     // Spatial type
-    Qgis::WkbType mRequestedGeometryType = Qgis::WkbType::Unknown;
-    Qgis::WkbType mDetectedGeometryType = Qgis::WkbType::Unknown;
+    QgsWkbTypes::Type mRequestedGeometryType = QgsWkbTypes::Unknown;
+    QgsWkbTypes::Type mDetectedGeometryType = QgsWkbTypes::Unknown;
     // Layer extent
     mutable QgsRectangle mLayerExtent;
     // Source for sql query
@@ -161,7 +159,7 @@ class QgsHanaProvider final : public QgsVectorDataProvider
     QgsFields mFields;
     AttributeFields mAttributeFields;
     //Capabilities of the layer
-    Qgis::VectorProviderCapabilities mCapabilities;
+    QgsVectorDataProvider::Capabilities mCapabilities;
     // Default values of the result set
     QMap<int, QVariant> mDefaultValues;
     // Number of features in the layer
@@ -182,12 +180,12 @@ class QgsHanaProviderMetadata : public QgsProviderMetadata
 
     void cleanupProvider() override;
 
-    QgsHanaProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() ) override;
+    QgsHanaProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() ) override;
 
     Qgis::VectorExportResult createEmptyLayer(
       const QString &uri,
       const QgsFields &fields,
-      Qgis::WkbType wkbType,
+      QgsWkbTypes::Type wkbType,
       const QgsCoordinateReferenceSystem &srs,
       bool overwrite,
       QMap<int, int> &oldToNewAttrIdxMap,
@@ -206,7 +204,7 @@ class QgsHanaProviderMetadata : public QgsProviderMetadata
     // Data source URI API
     QVariantMap decodeUri( const QString &uri ) const override;
     QString encodeUri( const QVariantMap &parts ) const override;
-    QList< Qgis::LayerType > supportedLayerTypes() const override;
+    QList< QgsMapLayerType > supportedLayerTypes() const override;
 };
 
 #endif // QGSHANAPROVIDER_H

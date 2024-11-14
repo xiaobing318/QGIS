@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/labeling/qgsrulebasedlabeling.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -14,6 +14,8 @@ class QgsRuleBasedLabeling : QgsAbstractVectorLayerLabeling
 {
 %Docstring(signature="appended")
 Rule based labeling for a vector layer.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -27,6 +29,8 @@ Rule based labeling for a vector layer.
 {
 %Docstring(signature="appended")
 A child rule for QgsRuleBasedLabeling.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -68,6 +72,8 @@ A scale of 0 indicates no maximum scale visibility.
 .. seealso:: :py:func:`minimumScale`
 
 .. seealso:: :py:func:`setMaximumScale`
+
+.. versionadded:: 3.0
 %End
 
         double minimumScale() const;
@@ -79,6 +85,8 @@ A scale of 0 indicates no minimum scale visibility.
 .. seealso:: :py:func:`maximumScale`
 
 .. seealso:: :py:func:`setMinimumScale`
+
+.. versionadded:: 3.0
 %End
 
         QString filterExpression() const;
@@ -225,13 +233,12 @@ clone this rule, return new instance
 %End
 
 
-        static QgsRuleBasedLabeling::Rule *create( const QDomElement &ruleElem, const QgsReadWriteContext &context, bool reuseId = true ) /Factory/;
+        static QgsRuleBasedLabeling::Rule *create( const QDomElement &ruleElem, const QgsReadWriteContext &context ) /Factory/;
 %Docstring
 Create a rule from an XML definition
 
 :param ruleElem: The XML rule element
 :param context: reading context
-:param reuseId: set to ``True`` to create an exact copy of the original symbol or ``False`` to create a new rule with the same parameters as the original but a new unique :py:func:`~Rule.ruleKey`. (Since QGIS 3.30)
 
 :return: A new rule
 %End
@@ -302,18 +309,15 @@ Set pal settings for a specific provider (takes ownership).
 
 :param settings: Pal layer settings
 :param providerId: The id of the provider
+
+.. versionadded:: 3.0
 %End
     virtual bool requiresAdvancedEffects() const;
 
     virtual void toSld( QDomNode &parent, const QVariantMap &props ) const;
 
-    virtual void multiplyOpacity( double opacityFactor );
-
-
 
   protected:
-
-
 };
 
 
@@ -322,5 +326,5 @@ Set pal settings for a specific provider (takes ownership).
  *                                                                      *
  * src/core/labeling/qgsrulebasedlabeling.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

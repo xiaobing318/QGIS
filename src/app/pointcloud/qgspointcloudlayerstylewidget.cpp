@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgspointcloudlayerstylewidget.h"
-#include "moc_qgspointcloudlayerstylewidget.cpp"
 #include "qgspointcloudrendererpropertieswidget.h"
 #include "qgsstyle.h"
 #include "qgsapplication.h"
@@ -45,7 +44,7 @@ bool QgsPointCloudRendererWidgetFactory::supportsStyleDock() const
 
 bool QgsPointCloudRendererWidgetFactory::supportsLayer( QgsMapLayer *layer ) const
 {
-  return layer->type() == Qgis::LayerType::PointCloud;
+  return layer->type() == QgsMapLayerType::PointCloudLayer;
 }
 
 QString QgsPointCloudRendererWidgetFactory::layerPropertiesPagePositionHint() const

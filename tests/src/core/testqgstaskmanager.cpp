@@ -352,7 +352,6 @@ class TestQgsTaskManager : public QObject
     void activeTasks();
     void holdTask();
     void dependencies();
-    void lotsOfDependencies();
     void layerDependencies();
     void managerWithSubTasks();
     void managerWithSubTasks2();
@@ -362,7 +361,6 @@ class TestQgsTaskManager : public QObject
     void proxyTask2();
     void scopedProxyTask();
     void hiddenTask();
-    void testQgsTaskWithSerialSubTasks();
 };
 
 void TestQgsTaskManager::initTestCase()
@@ -628,10 +626,11 @@ void TestQgsTaskManager::subTaskGrandChildren()
 
 void TestQgsTaskManager::subTaskProgress()
 {
-  QgsTaskManager manager;
   // we need 3 threads to run this test (one for each task)
-  manager.threadPool()->setMaxThreadCount( 3 );
-  QCOMPARE( manager.threadPool()->maxThreadCount(), 3 );
+  QThreadPool::globalInstance()->setMaxThreadCount( 3 );
+  QCOMPARE( QThreadPool::globalInstance()->maxThreadCount(), 3 );
+
+  QgsTaskManager manager;
 
   // test parent task progress
   ProgressReportingTask *parent = new ProgressReportingTask( QStringLiteral( "sub_task_parent_task_3" ) );
@@ -715,11 +714,11 @@ void TestQgsTaskManager::subTaskCancelParent()
 
 void TestQgsTaskManager::subTaskTerminateSubTask()
 {
-  QgsTaskManager manager;
-
   // we need 3 threads to run this test (one for each task)
-  manager.threadPool()->setMaxThreadCount( 3 );
-  QCOMPARE( manager.threadPool()->maxThreadCount(), 3 );
+  QThreadPool::globalInstance()->setMaxThreadCount( 3 );
+  QCOMPARE( QThreadPool::globalInstance()->maxThreadCount(), 3 );
+
+  QgsTaskManager manager;
 
   // test that if a subtask terminates the parent task is canceled
   ProgressReportingTask *parent = new ProgressReportingTask( QStringLiteral( "sub_task_parent_task_5" ) );
@@ -755,11 +754,11 @@ void TestQgsTaskManager::subTaskTerminateSubTask()
 
 void TestQgsTaskManager::subTaskPartialComplete()
 {
-  QgsTaskManager manager;
-
   // we need 3 threads to run this test (one for each task)
-  manager.threadPool()->setMaxThreadCount( 3 );
-  QCOMPARE( manager.threadPool()->maxThreadCount(), 3 );
+  QThreadPool::globalInstance()->setMaxThreadCount( 3 );
+  QCOMPARE( QThreadPool::globalInstance()->maxThreadCount(), 3 );
+
+  QgsTaskManager manager;
 
   // test that a task is not marked complete until all subtasks are complete
   ProgressReportingTask *parent = new ProgressReportingTask( QStringLiteral( "sub_task_parent_task_6" ) );
@@ -805,11 +804,11 @@ void TestQgsTaskManager::subTaskPartialComplete()
 
 void TestQgsTaskManager::subTaskPartialComplete2()
 {
-  QgsTaskManager manager;
-
   // we need 3 threads to run this test (one for each task)
-  manager.threadPool()->setMaxThreadCount( 3 );
-  QCOMPARE( manager.threadPool()->maxThreadCount(), 3 );
+  QThreadPool::globalInstance()->setMaxThreadCount( 3 );
+  QCOMPARE( QThreadPool::globalInstance()->maxThreadCount(), 3 );
+
+  QgsTaskManager manager;
 
   // another test
   ProgressReportingTask *parent = new ProgressReportingTask( QStringLiteral( "sub_task_parent_task_7" ) );
@@ -902,10 +901,6 @@ void TestQgsTaskManager::waitForFinished()
   QCOMPARE( finishedTask->waitForFinished(), true );
   QCOMPARE( finishedTask->status(), QgsTask::Complete );
 
-  // check we can call waitForFinished several times
-  QCOMPARE( finishedTask->waitForFinished(), true );
-  QCOMPARE( finishedTask->status(), QgsTask::Complete );
-
   timerThread->quit();
 
   ProgressReportingTask *failedTask = new ProgressReportingTask();
@@ -959,10 +954,11 @@ void TestQgsTaskManager::waitForFinished()
 
 void TestQgsTaskManager::waitForFinishedBeforeStart()
 {
-  QgsTaskManager manager;
+  // backup max thread count and force it to 1 so there is only one slot in task manager queue
+  int maxThreadCount = QThreadPool::globalInstance()->maxThreadCount();
+  QThreadPool::globalInstance()->setMaxThreadCount( 1 );
 
-  // force max thread count to 1 so there is only one slot in task manager queue
-  manager.threadPool()->setMaxThreadCount( 1 );
+  QgsTaskManager manager;
 
   // add a wait task so the test task is not started when we call waitforfinished
   QPointer<QgsTask> waitTask = new WaitTask( "wait_task" );
@@ -984,6 +980,9 @@ void TestQgsTaskManager::waitForFinishedBeforeStart()
   {
     QCoreApplication::processEvents();
   }
+
+  // restore max thread count (for other tests)
+  QThreadPool::globalInstance()->setMaxThreadCount( maxThreadCount );
 
   flushEvents();
 }
@@ -1382,34 +1381,6 @@ void TestQgsTaskManager::dependencies()
   QCOMPARE( grandChildTask->status(), QgsTask::Terminated );
 }
 
-// Check that dependency resolution performs well (O(n*log(n))) with the number
-// of tasks
-void TestQgsTaskManager::lotsOfDependencies()
-{
-  QgsTaskManager manager;
-
-  QList<QPointer<CancelableTask>> tasks;
-  const int N_TASKS = 100;
-  for ( int i = 0; i < N_TASKS; ++i )
-  {
-    tasks.push_back( new CancelableTask() );
-  }
-
-  QList<long> taskIds;
-  taskIds.push_back( manager.addTask( tasks[0] ) );
-  for ( int i = 1; i < N_TASKS; ++i )
-  {
-    QgsTaskList taskList;
-    taskList << tasks[i - 1];
-    if ( ( i % 2 ) == 0 )
-      taskList << tasks[i - 2];
-    taskIds.push_back( manager.addTask( QgsTaskManager::TaskDefinition( tasks[i], taskList ) ) );
-  }
-
-  // check dependency resolution
-  QCOMPARE( manager.dependencies( taskIds.back() ).size(), N_TASKS - 1 );
-}
-
 void TestQgsTaskManager::layerDependencies()
 {
   //make some layers
@@ -1452,11 +1423,9 @@ void TestQgsTaskManager::layerDependencies()
 
 void TestQgsTaskManager::managerWithSubTasks()
 {
-  QgsTaskManager *manager = new QgsTaskManager();
-
   // we need 3 threads to run this test (one for each task)
-  manager->threadPool()->setMaxThreadCount( 3 );
-  QCOMPARE( manager->threadPool()->maxThreadCount(), 3 );
+  QThreadPool::globalInstance()->setMaxThreadCount( 3 );
+  QCOMPARE( QThreadPool::globalInstance()->maxThreadCount(), 3 );
 
   // parent with subtasks
   ProgressReportingTask *parent = new ProgressReportingTask( QStringLiteral( "parent" ) );
@@ -1465,6 +1434,7 @@ void TestQgsTaskManager::managerWithSubTasks()
   subTask->addSubTask( subsubTask );
   parent->addSubTask( subTask );
 
+  QgsTaskManager *manager = new QgsTaskManager();
   QSignalSpy spy( manager, &QgsTaskManager::taskAdded );
   QSignalSpy spyProgress( manager, &QgsTaskManager::progressChanged );
 
@@ -1600,15 +1570,13 @@ void TestQgsTaskManager::managerWithSubTasks3()
 
 void TestQgsTaskManager::cancelBeforeStart()
 {
-  QgsTaskManager manager;
-
-  manager.threadPool()->setMaxThreadCount( 3 );
-  QCOMPARE( manager.threadPool()->maxThreadCount(), 3 );
+  QThreadPool::globalInstance()->setMaxThreadCount( 3 );
+  QCOMPARE( QThreadPool::globalInstance()->maxThreadCount(), 3 );
 
   // add too much tasks to the manager, so that some are queued and can't start immediately
   // then cancel them all!
   QList< QgsTask * > tasks;
-
+  QgsTaskManager manager;
   for ( int i = 0; i < 10; ++i )
   {
     QgsTask *task = new CancelableTask();
@@ -1787,20 +1755,6 @@ void TestQgsTaskManager::hiddenTask()
     QCoreApplication::processEvents();
   }
   flushEvents();
-}
-
-void TestQgsTaskManager::testQgsTaskWithSerialSubTasks()
-{
-  QgsTaskWithSerialSubTasks *taskWithSerialSubTasks = new QgsTaskWithSerialSubTasks();
-  QPointer< QgsTask > p( taskWithSerialSubTasks );
-
-  auto task = new TestTask();
-  taskWithSerialSubTasks->addSubTask( task );
-  taskWithSerialSubTasks->start();
-
-  QVERIFY( task->runCalled );
-
-  taskWithSerialSubTasks->cancel();
 }
 
 QGSTEST_MAIN( TestQgsTaskManager )

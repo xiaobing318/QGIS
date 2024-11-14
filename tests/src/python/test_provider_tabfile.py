@@ -14,15 +14,9 @@ import shutil
 import tempfile
 
 import osgeo.gdal  # NOQA
-from qgis.PyQt.QtCore import QDate, QDateTime, QDir, QTime, QVariant
-from qgis.core import (
-    QgsFeatureRequest,
-    QgsField,
-    QgsVectorDataProvider,
-    QgsVectorLayer,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.PyQt.QtCore import QDate, QTime, QDateTime, QVariant, QDir
+from qgis.core import QgsVectorLayer, QgsFeatureRequest, QgsVectorDataProvider, QgsField
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -33,12 +27,11 @@ TEST_DATA_DIR = unitTestDataPath()
 # Note - doesn't implement ProviderTestCase as OGR provider is tested by the shapefile provider test
 
 
-class TestPyQgsTabfileProvider(QgisTestCase):
+class TestPyQgsTabfileProvider(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
-        super().setUpClass()
         cls.basetestpath = tempfile.mkdtemp()
         cls.dirs_to_cleanup = [cls.basetestpath]
 
@@ -47,7 +40,6 @@ class TestPyQgsTabfileProvider(QgisTestCase):
         """Run after all tests"""
         for dirname in cls.dirs_to_cleanup:
             shutil.rmtree(dirname, True)
-        super().tearDownClass()
 
     def testDateTimeFormats(self):
         # check that date and time formats are correctly interpreted
@@ -77,7 +69,7 @@ class TestPyQgsTabfileProvider(QgisTestCase):
         basetestfile = os.path.join(TEST_DATA_DIR, 'tab_file.tab')
         vl = QgsVectorLayer(f'{basetestfile}|layerid=0', 'test', 'ogr')
         caps = vl.dataProvider().capabilities()
-        self.assertTrue(caps & QgsVectorDataProvider.Capability.AddFeatures)
+        self.assertTrue(caps & QgsVectorDataProvider.AddFeatures)
 
         # We should be really opened in read-only mode even if write capabilities are declared
         self.assertEqual(vl.dataProvider().property("_debug_open_mode"), "read-only")
@@ -114,7 +106,7 @@ class TestPyQgsTabfileProvider(QgisTestCase):
         # symbols should not be fetched by default
         self.assertFalse(any(f.embeddedSymbol() for f in layer.getFeatures()))
 
-        symbols = [f.embeddedSymbol().clone() for f in layer.getFeatures(QgsFeatureRequest().setFlags(QgsFeatureRequest.Flag.EmbeddedSymbols))]
+        symbols = [f.embeddedSymbol().clone() for f in layer.getFeatures(QgsFeatureRequest().setFlags(QgsFeatureRequest.EmbeddedSymbols))]
         self.assertTrue(all(symbols))
         self.assertCountEqual([s.color().name() for s in symbols], ['#0040c0', '#ffb060', '#e03800'])
 

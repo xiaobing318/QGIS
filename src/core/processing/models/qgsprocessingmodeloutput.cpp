@@ -34,7 +34,7 @@ QVariant QgsProcessingModelOutput::toVariant() const
   QVariantMap map;
   map.insert( QStringLiteral( "name" ), mName );
 
-  if ( mDefaultValue.userType() == qMetaTypeId<QgsProcessingOutputLayerDefinition>() )
+  if ( mDefaultValue.userType() == QMetaType::type( "QgsProcessingOutputLayerDefinition" ) )
   {
     QVariantMap defaultMap = mDefaultValue.value<QgsProcessingOutputLayerDefinition>().toVariant().toMap();
     defaultMap.insert( QStringLiteral( "class" ), QStringLiteral( "QgsProcessingOutputLayerDefinition" ) );
@@ -57,7 +57,7 @@ bool QgsProcessingModelOutput::loadVariant( const QVariantMap &map )
   mName = map.value( QStringLiteral( "name" ) ).toString();
 
   const QVariant defaultValue = map.value( QStringLiteral( "default_value" ) );
-  if ( defaultValue.userType() == QMetaType::Type::QVariantMap )
+  if ( defaultValue.type() == QVariant::Map )
   {
     QVariantMap defaultMap = defaultValue.toMap();
     if ( defaultMap["class"] == QLatin1String( "QgsProcessingOutputLayerDefinition" ) )

@@ -19,7 +19,6 @@
 #include <QStyle>
 
 #include "qgsdoublespinbox.h"
-#include "moc_qgsdoublespinbox.cpp"
 #include "qgsexpression.h"
 #include "qgsapplication.h"
 #include "qgslogger.h"
@@ -41,7 +40,6 @@ QgsDoubleSpinBox::QgsDoubleSpinBox( QWidget *parent )
   : QDoubleSpinBox( parent )
 {
   mLineEdit = new QgsSpinBoxLineEdit();
-  connect( mLineEdit, &QLineEdit::returnPressed, this, &QgsDoubleSpinBox::returnPressed );
 
   // By default, group separator is off
   setLineEdit( mLineEdit );
@@ -116,20 +114,6 @@ void QgsDoubleSpinBox::paintEvent( QPaintEvent *event )
   QDoubleSpinBox::paintEvent( event );
 }
 
-void QgsDoubleSpinBox::stepBy( int steps )
-{
-  const bool wasNull = mShowClearButton && value() == clearValue();
-  if ( wasNull && minimum() < 0 && maximum() > 0 && !( specialValueText().isEmpty() || specialValueText() == SPECIAL_TEXT_WHEN_EMPTY ) )
-  {
-    // value is currently null, and range allows both positive and negative numbers
-    // in this case we DON'T do the default step, as that would add one step to the NULL value,
-    // which is usually the minimum acceptable value... so the user will get a very large negative number!
-    // Instead, treat the initial value as 0 instead, and then perform the step.
-    whileBlocking( this )->setValue( 0 );
-  }
-  QDoubleSpinBox::stepBy( steps );
-}
-
 void QgsDoubleSpinBox::changed( double value )
 {
   mLineEdit->setShowClearButton( shouldShowClearForValue( value ) );
@@ -144,11 +128,6 @@ void QgsDoubleSpinBox::clear()
 
 void QgsDoubleSpinBox::setClearValue( double customValue, const QString &specialValueText )
 {
-  if ( mClearValueMode == CustomValue && mCustomClearValue == customValue && QAbstractSpinBox::specialValueText() == specialValueText )
-  {
-    return;
-  }
-
   mClearValueMode = CustomValue;
   mCustomClearValue = customValue;
 
@@ -163,11 +142,6 @@ void QgsDoubleSpinBox::setClearValue( double customValue, const QString &special
 
 void QgsDoubleSpinBox::setClearValueMode( QgsDoubleSpinBox::ClearValueMode mode, const QString &clearValueText )
 {
-  if ( mClearValueMode == mode && mCustomClearValue == 0 && QAbstractSpinBox::specialValueText() == clearValueText )
-  {
-    return;
-  }
-
   mClearValueMode = mode;
   mCustomClearValue = 0;
 

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsattributeformwidget.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -15,6 +15,8 @@ class QgsAttributeFormWidget : QWidget /Abstract/
 
 Base class for all widgets shown on a :py:class:`QgsAttributeForm`.
 Consists of the widget which is visible in edit mode as well as the widget visible in search mode.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -35,8 +37,6 @@ Consists of the widget which is visible in edit mode as well as the widget visib
 A new form widget for the wrapper ``widget`` on ``form``.
 %End
 
-    ~QgsAttributeFormWidget();
-
     virtual void createSearchWidgetWrappers() = 0;
 %Docstring
 Creates the search widget wrappers for the widget used when the form is in
@@ -48,6 +48,8 @@ search mode.
 %Docstring
 Creates an expression matching the current search filter value and
 search properties represented in the widget.
+
+.. versionadded:: 2.16
 %End
 
 
@@ -137,13 +139,6 @@ this search widgte or defines the comparison operator to use.
 
 
 
-    void setVisiblePageForMode( QgsAttributeFormWidget::Mode mode );
-%Docstring
-Sets the visible page in the widget to the page matching the specified ``mode``.
-
-.. versionadded:: 3.32
-%End
-
 };
 
 /************************************************************************
@@ -151,5 +146,5 @@ Sets the visible page in the widget to the page matching the specified ``mode``.
  *                                                                      *
  * src/gui/qgsattributeformwidget.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -9,24 +9,25 @@ __author__ = 'Nyall Dawson'
 __date__ = '18/03/2022'
 __copyright__ = 'Copyright 2022, The QGIS Project'
 
+import qgis  # NOQA
 
 from qgis.core import (
+    QgsLineString,
+    QgsProfileRequest,
     QgsCoordinateReferenceSystem,
     QgsCoordinateTransformContext,
-    QgsExpressionContext,
-    QgsExpressionContextScope,
     QgsFlatTerrainProvider,
-    QgsLineString,
     QgsMeshTerrainProvider,
-    QgsProfileRequest,
+    QgsExpressionContext,
+    QgsExpressionContextScope
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsProfileRequest(QgisTestCase):
+class TestQgsProfileRequest(unittest.TestCase):
 
     def testBasic(self):
         req = QgsProfileRequest(QgsLineString([[1, 2], [3, 4]]))

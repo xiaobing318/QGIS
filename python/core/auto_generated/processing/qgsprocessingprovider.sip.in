@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/processing/qgsprocessingprovider.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -16,12 +16,21 @@ Abstract base class for processing providers.
 
 An algorithm provider is a set of related algorithms, typically from the same external application or related
 to a common area of analysis.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
 #include "qgsprocessingprovider.h"
 %End
   public:
+
+    enum Flag
+    {
+      FlagDeemphasiseSearchResults,
+    };
+    typedef QFlags<QgsProcessingProvider::Flag> Flags;
+
 
     QgsProcessingProvider( QObject *parent /TransferThis/ = 0 );
 %Docstring
@@ -31,21 +40,21 @@ Constructor for QgsProcessingProvider.
     ~QgsProcessingProvider();
 
 
-    virtual QIcon icon() const /HoldGIL/;
+    virtual QIcon icon() const;
 %Docstring
 Returns an icon for the provider.
 
 .. seealso:: :py:func:`svgIconPath`
 %End
 
-    virtual QString svgIconPath() const /HoldGIL/;
+    virtual QString svgIconPath() const;
 %Docstring
 Returns a path to an SVG version of the provider's icon.
 
 .. seealso:: :py:func:`icon`
 %End
 
-    virtual Qgis::ProcessingProviderFlags flags() const /HoldGIL/;
+    virtual Flags flags() const;
 %Docstring
 Returns the flags indicating how and when the provider operates and should be exposed to users.
 Default is no flags.
@@ -53,7 +62,7 @@ Default is no flags.
 .. versionadded:: 3.14
 %End
 
-    virtual QString id() const = 0 /HoldGIL/;
+    virtual QString id() const = 0;
 %Docstring
 Returns the unique provider id, used for identifying the provider. This string
 should be a unique, short, character only string, eg "qgis" or "gdal". This
@@ -64,7 +73,7 @@ string should not be localised.
 .. seealso:: :py:func:`helpId`
 %End
 
-    virtual QString helpId() const /HoldGIL/;
+    virtual QString helpId() const;
 %Docstring
 Returns the provider help id string, used for creating :py:class:`QgsHelp` urls for algorithms
 belong to this provider. By default, this returns an empty string, meaning that
@@ -73,7 +82,7 @@ no :py:class:`QgsHelp` url should be created for the provider's algorithms.
 .. seealso:: :py:func:`id`
 %End
 
-    virtual QString name() const = 0 /HoldGIL/;
+    virtual QString name() const = 0;
 %Docstring
 Returns the provider name, which is used to describe the provider within the GUI.
 This string should be short (e.g. "Lastools") and localised.
@@ -83,7 +92,7 @@ This string should be short (e.g. "Lastools") and localised.
 .. seealso:: :py:func:`id`
 %End
 
-    virtual QString longName() const /HoldGIL/;
+    virtual QString longName() const;
 %Docstring
 Returns the longer version of the provider name, which can include extra details
 such as version numbers. E.g. "Lastools LIDAR tools (version 2.2.1)".
@@ -96,7 +105,7 @@ The default implementation returns the same string as :py:func:`~QgsProcessingPr
 .. seealso:: :py:func:`id`
 %End
 
-    virtual QString versionInfo() const /HoldGIL/;
+    virtual QString versionInfo() const;
 %Docstring
 Returns a version information string for the provider, or an empty string if this
 is not applicable (e.g. for inbuilt Processing providers).
@@ -136,10 +145,6 @@ Returns ``True`` if the provider is active and able to run algorithms.
 Returns a list of the raster format file extensions supported by this provider.
 
 .. seealso:: :py:func:`supportedOutputVectorLayerExtensions`
-
-.. seealso:: :py:func:`supportedOutputPointCloudLayerExtensions`
-
-.. seealso:: :py:func:`supportedOutputVectorTileLayerExtensions`
 %End
 
     virtual QStringList supportedOutputVectorLayerExtensions() const;
@@ -155,8 +160,6 @@ Returns a list of the vector format file extensions supported by this provider.
 .. seealso:: :py:func:`supportsNonFileBasedOutput`
 
 .. seealso:: :py:func:`supportedOutputPointCloudLayerExtensions`
-
-.. seealso:: :py:func:`supportedOutputVectorTileLayerExtensions`
 %End
 
     virtual QStringList supportedOutputPointCloudLayerExtensions() const;
@@ -167,8 +170,6 @@ Returns a list of the point cloud format file extensions supported by this provi
 
 .. seealso:: :py:func:`supportedOutputRasterLayerExtensions`
 
-.. seealso:: :py:func:`supportedOutputVectorTileLayerExtensions`
-
 .. seealso:: :py:func:`supportedOutputTableExtensions`
 
 .. seealso:: :py:func:`defaultVectorFileExtension`
@@ -176,25 +177,6 @@ Returns a list of the point cloud format file extensions supported by this provi
 .. seealso:: :py:func:`supportsNonFileBasedOutput`
 
 .. versionadded:: 3.24
-%End
-
-    virtual QStringList supportedOutputVectorTileLayerExtensions() const;
-%Docstring
-Returns a list of the vector tile format file extensions supported by this provider.
-
-By default returns a list containing only "mbtiles" extension.
-
-.. seealso:: :py:func:`supportedOutputVectorLayerExtensions`
-
-.. seealso:: :py:func:`supportedOutputRasterLayerExtensions`
-
-.. seealso:: :py:func:`supportedOutputTableExtensions`
-
-.. seealso:: :py:func:`defaultVectorFileExtension`
-
-.. seealso:: :py:func:`supportsNonFileBasedOutput`
-
-.. versionadded:: 3.32
 %End
 
     virtual QStringList supportedOutputTableExtensions() const;
@@ -243,8 +225,6 @@ Otherwise the first reported supported vector format will be used.
 .. seealso:: :py:func:`defaultRasterFileExtension`
 
 .. seealso:: :py:func:`defaultPointCloudFileExtension`
-
-.. seealso:: :py:func:`defaultVectorTileFileExtension`
 %End
 
     virtual QString defaultRasterFileExtension() const;
@@ -261,8 +241,6 @@ Otherwise the first reported supported raster format will be used.
 .. seealso:: :py:func:`defaultVectorFileExtension`
 
 .. seealso:: :py:func:`defaultPointCloudFileExtension`
-
-.. seealso:: :py:func:`defaultVectorTileFileExtension`
 %End
 
     virtual QString defaultPointCloudFileExtension() const;
@@ -280,27 +258,7 @@ Otherwise the first reported supported point cloud format will be used.
 
 .. seealso:: :py:func:`defaultRasterFileExtension`
 
-.. seealso:: :py:func:`defaultVectorTileFileExtension`
-
 .. versionadded:: 3.24
-%End
-
-    virtual QString defaultVectorTileFileExtension() const;
-%Docstring
-Returns the default file extension to use for vector tile outputs created by the
-provider.
-
-The default implementation returns the user's default Processing vector tile output format
-setting, if it's supported by the provider (see :py:func:`~QgsProcessingProvider.supportedOutputVectorTileLayerExtensions`).
-Otherwise the first reported supported vector tile format will be used.
-
-.. seealso:: :py:func:`supportedOutputPointCloudLayerExtensions`
-
-.. seealso:: :py:func:`defaultVectorFileExtension`
-
-.. seealso:: :py:func:`defaultRasterFileExtension`
-
-.. versionadded:: 3.32
 %End
 
     virtual bool supportsNonFileBasedOutput() const;
@@ -385,6 +343,9 @@ Adds an ``algorithm`` to the provider. Ownership of the algorithm is transferred
     QgsProcessingProvider( const QgsProcessingProvider &other );
 };
 
+QFlags<QgsProcessingProvider::Flag> operator|(QgsProcessingProvider::Flag f1, QFlags<QgsProcessingProvider::Flag> f2);
+
+
 
 
 /************************************************************************
@@ -392,5 +353,5 @@ Adds an ``algorithm`` to the provider. Ownership of the algorithm is transferred
  *                                                                      *
  * src/core/processing/qgsprocessingprovider.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

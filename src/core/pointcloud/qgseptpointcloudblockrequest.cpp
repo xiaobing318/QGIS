@@ -16,14 +16,12 @@
  ***************************************************************************/
 
 #include "qgseptpointcloudblockrequest.h"
-#include "moc_qgseptpointcloudblockrequest.cpp"
 
 #include "qgstiledownloadmanager.h"
 #include "qgseptdecoder.h"
 #include "qgslazdecoder.h"
 #include "qgsapplication.h"
-#include "qgsnetworkaccessmanager.h"
-#include "qgssetrequestinitiator_p.h"
+#include "qgsremoteeptpointcloudindex.h"
 
 //
 // QgsEptPointCloudBlockRequest
@@ -33,13 +31,11 @@
 
 QgsEptPointCloudBlockRequest::QgsEptPointCloudBlockRequest( const IndexedPointCloudNode &node, const QString &uri, const QString &dataType,
     const QgsPointCloudAttributeCollection &attributes, const QgsPointCloudAttributeCollection &requestedAttributes,
-    const QgsVector3D &scale, const QgsVector3D &offset, const QgsPointCloudExpression &filterExpression, const QgsRectangle &filterRect )
-  : QgsPointCloudBlockRequest( node, uri, attributes, requestedAttributes, scale, offset, filterExpression, filterRect ),
+    const QgsVector3D &scale, const QgsVector3D &offset, const QgsPointCloudExpression &filterExpression )
+  : QgsPointCloudBlockRequest( node, uri, attributes, requestedAttributes, scale, offset, filterExpression ),
     mDataType( dataType )
 {
-  QNetworkRequest nr = QNetworkRequest( QUrl( mUri ) );
-  QgsSetRequestInitiatorClass( nr, QStringLiteral( "QgsEptPointCloudBlockRequest" ) );
-  QgsSetRequestInitiatorId( nr, node.toString() );
+  QNetworkRequest nr( mUri );
   nr.setAttribute( QNetworkRequest::CacheLoadControlAttribute, QNetworkRequest::PreferCache );
   nr.setAttribute( QNetworkRequest::CacheSaveControlAttribute, true );
   mTileDownloadManagerReply.reset( QgsApplication::tileDownloadManager()->get( nr ) );
@@ -57,26 +53,19 @@ void QgsEptPointCloudBlockRequest::blockFinishedLoading()
       mBlock = nullptr;
       if ( mDataType == QLatin1String( "binary" ) )
       {
-        mBlock = QgsEptDecoder::decompressBinary( mTileDownloadManagerReply->data(), mAttributes, mRequestedAttributes, mScale, mOffset, mFilterExpression, mFilterRect );
+        mBlock = QgsEptDecoder::decompressBinary( mTileDownloadManagerReply->data(), mAttributes, mRequestedAttributes, mScale, mOffset, mFilterExpression );
       }
       else if ( mDataType == QLatin1String( "zstandard" ) )
       {
-        mBlock = QgsEptDecoder::decompressZStandard( mTileDownloadManagerReply->data(), mAttributes, mRequestedAttributes, mScale, mOffset, mFilterExpression, mFilterRect );
+        mBlock = QgsEptDecoder::decompressZStandard( mTileDownloadManagerReply->data(), mAttributes, mRequestedAttributes, mScale, mOffset, mFilterExpression );
       }
       else if ( mDataType == QLatin1String( "laszip" ) )
       {
-        mBlock = QgsLazDecoder::decompressLaz( mTileDownloadManagerReply->data(), mRequestedAttributes, mFilterExpression, mFilterRect );
+        mBlock = QgsLazDecoder::decompressLaz( mTileDownloadManagerReply->data(), mRequestedAttributes, mFilterExpression );
       }
       else
       {
         error = QStringLiteral( "Unknown data type %1;" ).arg( mDataType );
-      }
-      if ( mBlock )
-      {
-        QgsPointCloudRequest req;
-        req.setAttributes( mRequestedAttributes );
-        req.setFilterRect( mFilterRect );
-        QgsPointCloudIndex::storeNodeDataToCacheStatic( mBlock.get(), mNode, req, mFilterExpression, mUri );
       }
     }
     catch ( std::exception &e )

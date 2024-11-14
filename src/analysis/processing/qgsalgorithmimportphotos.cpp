@@ -51,21 +51,21 @@ QString QgsImportPhotosAlgorithm::groupId() const
 
 void QgsImportPhotosAlgorithm::initAlgorithm( const QVariantMap & )
 {
-  addParameter( new QgsProcessingParameterFile( QStringLiteral( "FOLDER" ), QObject::tr( "Input folder" ), Qgis::ProcessingFileParameterBehavior::Folder ) );
+  addParameter( new QgsProcessingParameterFile( QStringLiteral( "FOLDER" ), QObject::tr( "Input folder" ), QgsProcessingParameterFile::Folder ) );
   addParameter( new QgsProcessingParameterBoolean( QStringLiteral( "RECURSIVE" ), QObject::tr( "Scan recursively" ), false ) );
 
-  std::unique_ptr< QgsProcessingParameterFeatureSink > output = std::make_unique< QgsProcessingParameterFeatureSink >( QStringLiteral( "OUTPUT" ), QObject::tr( "Photos" ), Qgis::ProcessingSourceType::VectorPoint, QVariant(), true );
+  std::unique_ptr< QgsProcessingParameterFeatureSink > output = std::make_unique< QgsProcessingParameterFeatureSink >( QStringLiteral( "OUTPUT" ), QObject::tr( "Photos" ), QgsProcessing::TypeVectorPoint, QVariant(), true );
   output->setCreateByDefault( true );
   addParameter( output.release() );
 
-  std::unique_ptr< QgsProcessingParameterFeatureSink > invalid = std::make_unique< QgsProcessingParameterFeatureSink >( QStringLiteral( "INVALID" ), QObject::tr( "Invalid photos table" ), Qgis::ProcessingSourceType::Vector, QVariant(), true );
+  std::unique_ptr< QgsProcessingParameterFeatureSink > invalid = std::make_unique< QgsProcessingParameterFeatureSink >( QStringLiteral( "INVALID" ), QObject::tr( "Invalid photos table" ), QgsProcessing::TypeVector, QVariant(), true );
   invalid->setCreateByDefault( false );
   addParameter( invalid.release() );
 }
 
 QString QgsImportPhotosAlgorithm::shortHelpString() const
 {
-  return QObject::tr( "Creates a point layer corresponding to the geotagged locations from JPEG or HEIF/HEIC images from a source folder. Optionally the folder can be recursively scanned.\n\n"
+  return QObject::tr( "Creates a point layer corresponding to the geotagged locations from JPEG images from a source folder. Optionally the folder can be recursively scanned.\n\n"
                       "The point layer will contain a single PointZ feature per input file from which the geotags could be read. Any altitude information from the geotags will be used "
                       "to set the point's Z value.\n\n"
                       "Optionally, a table of unreadable or non-geotagged photos can also be created." );
@@ -78,7 +78,7 @@ QgsImportPhotosAlgorithm *QgsImportPhotosAlgorithm::createInstance() const
 
 QVariant QgsImportPhotosAlgorithm::parseMetadataValue( const QString &value )
 {
-  const thread_local QRegularExpression numRx( QStringLiteral( "^\\s*\\(\\s*([-\\.\\d]+)\\s*\\)\\s*$" ) );
+  const QRegularExpression numRx( QStringLiteral( "^\\s*\\(\\s*([-\\.\\d]+)\\s*\\)\\s*$" ) );
   const QRegularExpressionMatch numMatch = numRx.match( value );
   if ( numMatch.hasMatch() )
   {
@@ -148,7 +148,7 @@ QVariant QgsImportPhotosAlgorithm::extractAltitudeFromMetadata( const QVariantMa
   {
     double alt = metadata.value( QStringLiteral( "EXIF_GPSAltitude" ) ).toDouble();
     if ( metadata.contains( QStringLiteral( "EXIF_GPSAltitudeRef" ) ) &&
-         ( ( metadata.value( QStringLiteral( "EXIF_GPSAltitudeRef" ) ).userType() == QMetaType::Type::QString && metadata.value( QStringLiteral( "EXIF_GPSAltitudeRef" ) ).toString().right( 1 ) == QLatin1String( "1" ) )
+         ( ( metadata.value( QStringLiteral( "EXIF_GPSAltitudeRef" ) ).type() == QVariant::String && metadata.value( QStringLiteral( "EXIF_GPSAltitudeRef" ) ).toString().right( 1 ) == QLatin1String( "1" ) )
            || metadata.value( QStringLiteral( "EXIF_GPSAltitudeRef" ) ).toDouble() < 0 ) )
       alt = -alt;
     altitude = alt;
@@ -221,7 +221,7 @@ QVariant QgsImportPhotosAlgorithm::extractTimestampFromMetadata( const QVariantM
   if ( !ts.isValid() )
     return ts;
 
-  const thread_local QRegularExpression dsRegEx( QStringLiteral( "(\\d+):(\\d+):(\\d+)\\s+(\\d+):(\\d+):(\\d+)" ) );
+  const QRegularExpression dsRegEx( QStringLiteral( "(\\d+):(\\d+):(\\d+)\\s+(\\d+):(\\d+):(\\d+)" ) );
   const QRegularExpressionMatch dsMatch = dsRegEx.match( ts.toString() );
   if ( dsMatch.hasMatch() )
   {
@@ -241,7 +241,7 @@ QVariant QgsImportPhotosAlgorithm::extractTimestampFromMetadata( const QVariantM
 
 QVariant QgsImportPhotosAlgorithm::parseCoord( const QString &string )
 {
-  const thread_local QRegularExpression coordRx( QStringLiteral( "^\\s*\\(\\s*([-\\.\\d]+)\\s*\\)\\s*\\(\\s*([-\\.\\d]+)\\s*\\)\\s*\\(\\s*([-\\.\\d]+)\\s*\\)\\s*$" ) );
+  const QRegularExpression coordRx( QStringLiteral( "^\\s*\\(\\s*([-\\.\\d]+)\\s*\\)\\s*\\(\\s*([-\\.\\d]+)\\s*\\)\\s*\\(\\s*([-\\.\\d]+)\\s*\\)\\s*$" ) );
   const QRegularExpressionMatch coordMatch = coordRx.match( string );
   if ( coordMatch.hasMatch() )
   {
@@ -259,7 +259,7 @@ QVariant QgsImportPhotosAlgorithm::parseCoord( const QString &string )
 QVariantMap QgsImportPhotosAlgorithm::parseMetadataList( const QStringList &input )
 {
   QVariantMap results;
-  const thread_local QRegularExpression splitRx( QStringLiteral( "(.*?)=(.*)" ) );
+  const QRegularExpression splitRx( QStringLiteral( "(.*?)=(.*)" ) );
   for ( const QString &item : input )
   {
     const QRegularExpressionMatch match = splitRx.match( item );
@@ -317,28 +317,28 @@ QVariantMap QgsImportPhotosAlgorithm::processAlgorithm( const QVariantMap &param
   const bool recurse = parameterAsBoolean( parameters, QStringLiteral( "RECURSIVE" ), context );
 
   QgsFields outFields;
-  outFields.append( QgsField( QStringLiteral( "photo" ), QMetaType::Type::QString ) );
-  outFields.append( QgsField( QStringLiteral( "filename" ), QMetaType::Type::QString ) );
-  outFields.append( QgsField( QStringLiteral( "directory" ), QMetaType::Type::QString ) );
-  outFields.append( QgsField( QStringLiteral( "altitude" ), QMetaType::Type::Double ) );
-  outFields.append( QgsField( QStringLiteral( "direction" ), QMetaType::Type::Double ) );
-  outFields.append( QgsField( QStringLiteral( "rotation" ), QMetaType::Type::Int ) );
-  outFields.append( QgsField( QStringLiteral( "longitude" ), QMetaType::Type::QString ) );
-  outFields.append( QgsField( QStringLiteral( "latitude" ), QMetaType::Type::QString ) );
-  outFields.append( QgsField( QStringLiteral( "timestamp" ), QMetaType::Type::QDateTime ) );
+  outFields.append( QgsField( QStringLiteral( "photo" ), QVariant::String ) );
+  outFields.append( QgsField( QStringLiteral( "filename" ), QVariant::String ) );
+  outFields.append( QgsField( QStringLiteral( "directory" ), QVariant::String ) );
+  outFields.append( QgsField( QStringLiteral( "altitude" ), QVariant::Double ) );
+  outFields.append( QgsField( QStringLiteral( "direction" ), QVariant::Double ) );
+  outFields.append( QgsField( QStringLiteral( "rotation" ), QVariant::Int ) );
+  outFields.append( QgsField( QStringLiteral( "longitude" ), QVariant::String ) );
+  outFields.append( QgsField( QStringLiteral( "latitude" ), QVariant::String ) );
+  outFields.append( QgsField( QStringLiteral( "timestamp" ), QVariant::DateTime ) );
   QString outputDest;
   std::unique_ptr< QgsFeatureSink > outputSink( parameterAsSink( parameters, QStringLiteral( "OUTPUT" ), context, outputDest, outFields,
-      Qgis::WkbType::PointZ, QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) ) ) );
+      QgsWkbTypes::PointZ, QgsCoordinateReferenceSystem( QStringLiteral( "EPSG:4326" ) ) ) );
 
   QgsFields invalidFields;
-  invalidFields.append( QgsField( QStringLiteral( "photo" ), QMetaType::Type::QString ) );
-  invalidFields.append( QgsField( QStringLiteral( "filename" ), QMetaType::Type::QString ) );
-  invalidFields.append( QgsField( QStringLiteral( "directory" ), QMetaType::Type::QString ) );
-  invalidFields.append( QgsField( QStringLiteral( "readable" ), QMetaType::Type::Bool ) );
+  invalidFields.append( QgsField( QStringLiteral( "photo" ), QVariant::String ) );
+  invalidFields.append( QgsField( QStringLiteral( "filename" ), QVariant::String ) );
+  invalidFields.append( QgsField( QStringLiteral( "directory" ), QVariant::String ) );
+  invalidFields.append( QgsField( QStringLiteral( "readable" ), QVariant::Bool ) );
   QString invalidDest;
   std::unique_ptr< QgsFeatureSink > invalidSink( parameterAsSink( parameters, QStringLiteral( "INVALID" ), context, invalidDest, invalidFields ) );
 
-  const QStringList nameFilters { "*.jpeg", "*.jpg", "*.heic" };
+  const QStringList nameFilters { "*.jpeg", "*.jpg" };
   QStringList files;
 
   if ( !recurse )
@@ -397,17 +397,7 @@ QVariantMap QgsImportPhotosAlgorithm::processAlgorithm( const QVariantMap &param
       continue;
     }
 
-    char **GDALmetadata = GDALGetMetadata( hDS.get(), nullptr );
-    if ( ! GDALmetadata )
-    {
-      GDALmetadata = GDALGetMetadata( hDS.get(), "EXIF" );
-    }
-    if ( ! GDALmetadata )
-    {
-      feedback->reportError( QObject::tr( "No metadata found in %1" ).arg( QDir::toNativeSeparators( file ) ) );
-      saveInvalidFile( attributes, true );
-    }
-    else
+    if ( char **GDALmetadata = GDALGetMetadata( hDS.get(), nullptr ) )
     {
       if ( !outputSink )
         continue;
@@ -425,7 +415,7 @@ QVariantMap QgsImportPhotosAlgorithm::processAlgorithm( const QVariantMap &param
       }
 
       const QVariant altitude = extractAltitudeFromMetadata( metadata );
-      const QgsGeometry p = QgsGeometry( new QgsPoint( tag.x(), tag.y(), altitude.toDouble(), 0, Qgis::WkbType::PointZ ) );
+      const QgsGeometry p = QgsGeometry( new QgsPoint( tag.x(), tag.y(), altitude.toDouble(), 0, QgsWkbTypes::PointZ ) );
       f.setGeometry( p );
 
       attributes
@@ -439,12 +429,16 @@ QVariantMap QgsImportPhotosAlgorithm::processAlgorithm( const QVariantMap &param
       if ( !outputSink->addFeature( f, QgsFeatureSink::FastInsert ) )
         throw QgsProcessingException( writeFeatureError( outputSink.get(), parameters, QStringLiteral( "OUTPUT" ) ) );
     }
+    else
+    {
+      feedback->reportError( QObject::tr( "No metadata found in %1" ).arg( QDir::toNativeSeparators( file ) ) );
+      saveInvalidFile( attributes, true );
+    }
   }
 
   QVariantMap outputs;
   if ( outputSink )
   {
-    outputSink->finalize();
     outputs.insert( QStringLiteral( "OUTPUT" ), outputDest );
 
     if ( context.willLoadLayerOnCompletion( outputDest ) )
@@ -454,10 +448,7 @@ QVariantMap QgsImportPhotosAlgorithm::processAlgorithm( const QVariantMap &param
   }
 
   if ( invalidSink )
-  {
-    invalidSink->finalize();
     outputs.insert( QStringLiteral( "INVALID" ), invalidDest );
-  }
   return outputs;
 }
 

@@ -35,7 +35,15 @@ die "directory $ARGV[0] not found" unless -d $ARGV[0];
 
 my %strings;
 
-for my $f (<python/plugins/grassprovider/description/*.txt>) {
+for my $f (<python/plugins/processing/algs/otb/description/*.xml>) {
+	my $xml = XMLin($f, ForceArray=>1);
+
+	foreach my $k (qw/longname group description/) {
+		$strings{"OTBAlgorithm"}{$xml->{$k}->[0]} = $f;
+	}
+}
+
+for my $f (<python/plugins/processing/algs/grass*/description/*.txt>) {
 	open I, $f;
 	binmode(I, ":utf8");
 	my $name = scalar(<I>);
@@ -55,6 +63,24 @@ for my $f (<python/plugins/grassprovider/description/*.txt>) {
 
 	$strings{"GrassAlgorithm"}{$desc} = $f;
 	$strings{"GrassAlgorithm"}{$group} = $f;
+}
+
+for my $f (<python/plugins/processing/algs/saga/description/*.txt>) {
+	open I, $f;
+	binmode(I, ":utf8");
+	my $desc = scalar(<I>);
+
+	while( my($class, $name, $description, $rest) = split /\|/, scalar(<I>) ) {
+		next unless defined $description;
+		$description =~ s/\s+$//;
+		$strings{"SAGAAlgorithm"}{$description} = $f
+	}
+
+	close I;
+
+	chop $desc;
+
+	$strings{"SAGAAlgorithm"}{$desc} = $f;
 }
 
 for my $f (<python/plugins/processing/algs/help/*.yaml>) {

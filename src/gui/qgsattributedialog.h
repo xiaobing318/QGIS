@@ -21,7 +21,7 @@
 #include "qgis_sip.h"
 #include "qgsattributeform.h"
 #include "qgstrackedvectorlayertools.h"
-#include "qgsmaplayeractioncontextgenerator.h"
+#include "qgsactionmenu.h"
 
 #include <QDialog>
 #include <QMenuBar>
@@ -29,13 +29,12 @@
 #include "qgis_gui.h"
 
 class QgsHighlight;
-class QgsActionMenu;
 
 /**
  * \ingroup gui
  * \class QgsAttributeDialog
  */
-class GUI_EXPORT QgsAttributeDialog : public QDialog, public QgsMapLayerActionContextGenerator
+class GUI_EXPORT QgsAttributeDialog : public QDialog
 {
     Q_OBJECT
 
@@ -96,8 +95,6 @@ class GUI_EXPORT QgsAttributeDialog : public QDialog, public QgsMapLayerActionCo
      */
     bool event( QEvent *e ) override;
 
-    void showEvent( QShowEvent *event ) override;
-
     /**
      * Sets \a extraScope as an additional expression context scope to be used
      * for calculations in this form.
@@ -105,8 +102,6 @@ class GUI_EXPORT QgsAttributeDialog : public QDialog, public QgsMapLayerActionCo
      * \since QGIS 3.16
      */
     void setExtraContextScope( QgsExpressionContextScope *extraScope SIP_TRANSFER );
-
-    QgsMapLayerActionContext createActionContext() override;
 
   public slots:
     void accept() override;
@@ -121,6 +116,8 @@ class GUI_EXPORT QgsAttributeDialog : public QDialog, public QgsMapLayerActionCo
     QString mSettingsPath;
     // Used to sync multiple widgets for the same field
     QgsHighlight *mHighlight = nullptr;
+    int mFormNr;
+    bool mShowDialogButtons;
     QString mReturnvarname;
     QgsAttributeForm *mAttributeForm = nullptr;
     QgsFeature *mOwnedFeature = nullptr;
@@ -128,12 +125,14 @@ class GUI_EXPORT QgsAttributeDialog : public QDialog, public QgsMapLayerActionCo
 
     QgsTrackedVectorLayerTools mTrackedVectorLayerTools;
 
+    // true if this dialog is editable
+    bool mEditable;
+
     QgsActionMenu *mMenu;
     QMenuBar *mMenuBar = nullptr;
 
     static int sFormCounter;
 
-    bool mFirstShow = true;
     void saveGeometry();
     void restoreGeometry();
 };

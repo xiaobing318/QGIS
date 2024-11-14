@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsauxiliarystorage.h                                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -34,6 +34,8 @@ it's an editable join to the original vector layer with some
 synchronisation mechanisms activated such as "Upsert On Edit" or "Delete
 Cascade". Thus, auxiliary fields are editable even if the
 source layer is not and edition of a joined field is also possible.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -245,6 +247,8 @@ class QgsAuxiliaryStorage
 
 
 Class providing some utility methods to manage auxiliary storage.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -258,7 +262,7 @@ Constructor.
 
 The project filename is used to build a database path at the same
 location, but with a different extension. Then, it's the same logic as
-described for :py:class:`QgsAuxiliaryStorage`.
+described for :py:class:`QgsAuxiliaryStorage`(const QString &, bool copy).
 
 :param project: The project for which the auxiliary storage has to be used
 :param copy: Parameter indicating if a copy of the database has to be used
@@ -390,5 +394,5 @@ Returns ``True`` if the auxiliary database yet exists for a project, ``False`` o
  *                                                                      *
  * src/core/qgsauxiliarystorage.h                                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -160,9 +160,9 @@ class CORE_EXPORT QgsVirtualLayerDefinition
      * QgsWkbTypes::NoGeometry to hide any geometry
      * QgsWkbTypes::Unknown for unknown types
      */
-    Qgis::WkbType geometryWkbType() const { return mGeometryWkbType; }
+    QgsWkbTypes::Type geometryWkbType() const { return mGeometryWkbType; }
     //! Sets the type of the geometry
-    void setGeometryWkbType( Qgis::WkbType t ) { mGeometryWkbType = t; }
+    void setGeometryWkbType( QgsWkbTypes::Type t ) { mGeometryWkbType = t; }
 
     //! Gets the SRID of the geometry
     long geometrySrid() const { return mGeometrySrid; }
@@ -183,7 +183,7 @@ class CORE_EXPORT QgsVirtualLayerDefinition
     //! Convenient method to test if the geometry is defined (not NoGeometry and not Unknown)
     bool hasDefinedGeometry() const
     {
-      return geometryWkbType() != Qgis::WkbType::NoGeometry && geometryWkbType() != Qgis::WkbType::Unknown;
+      return geometryWkbType() != QgsWkbTypes::NoGeometry && geometryWkbType() != QgsWkbTypes::Unknown;
     }
 
     /**
@@ -206,7 +206,7 @@ class CORE_EXPORT QgsVirtualLayerDefinition
     QString mFilePath;
     QgsFields mFields;
     bool mLazy = false;
-    Qgis::WkbType mGeometryWkbType = Qgis::WkbType::Unknown;
+    QgsWkbTypes::Type mGeometryWkbType = QgsWkbTypes::Unknown;
     long mGeometrySrid = 0;
     QString mSubsetString;
 };

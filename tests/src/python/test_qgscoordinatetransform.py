@@ -9,21 +9,19 @@ __author__ = '(C) 2012 by Tim Sutton'
 __date__ = '20/08/2012'
 __copyright__ = 'Copyright 2012, The QGIS Project'
 
+import qgis  # NOQA
 
-from qgis.core import (
-    QgsCoordinateReferenceSystem,
-    QgsCoordinateTransform,
-    QgsCoordinateTransformContext,
-    QgsProject,
-    QgsRectangle,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsRectangle,
+                       QgsCoordinateReferenceSystem,
+                       QgsCoordinateTransform,
+                       QgsCoordinateTransformContext,
+                       QgsProject)
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsCoordinateTransform(QgisTestCase):
+class TestQgsCoordinateTransform(unittest.TestCase):
 
     def testTransformBoundingBox(self):
         """Test that we can transform a rectangular bbox from utm56s to LonLat"""
@@ -59,7 +57,7 @@ class TestQgsCoordinateTransform(QgisTestCase):
         myUtmCrs = QgsCoordinateReferenceSystem('EPSG:3857')
         myXForm = QgsCoordinateTransform(myUtmCrs, myGeoCrs, QgsProject.instance())
         myTransformedExtent = myXForm.transform(myExtent)
-        myTransformedExtentForward = myXForm.transform(myExtent, QgsCoordinateTransform.TransformDirection.ForwardTransform)
+        myTransformedExtentForward = myXForm.transform(myExtent, QgsCoordinateTransform.ForwardTransform)
         self.assertAlmostEqual(myTransformedExtentForward.xMaximum(), myTransformedExtent.xMaximum())
         self.assertAlmostEqual(myTransformedExtentForward.xMinimum(), myTransformedExtent.xMinimum())
         self.assertAlmostEqual(myTransformedExtentForward.yMaximum(), myTransformedExtent.yMaximum())
@@ -68,7 +66,7 @@ class TestQgsCoordinateTransform(QgisTestCase):
         self.assertAlmostEqual(myTransformedExtentForward.xMinimum(), -16.14368685298181)
         self.assertAlmostEqual(myTransformedExtentForward.yMaximum(), 50.971783118386895)
         self.assertAlmostEqual(myTransformedExtentForward.yMinimum(), 36.66235970825241)
-        myTransformedExtentReverse = myXForm.transform(myTransformedExtent, QgsCoordinateTransform.TransformDirection.ReverseTransform)
+        myTransformedExtentReverse = myXForm.transform(myTransformedExtent, QgsCoordinateTransform.ReverseTransform)
         self.assertAlmostEqual(myTransformedExtentReverse.xMaximum(), myExtent.xMaximum())
         self.assertAlmostEqual(myTransformedExtentReverse.xMinimum(), myExtent.xMinimum())
         self.assertAlmostEqual(myTransformedExtentReverse.yMaximum(), myExtent.yMaximum())
@@ -160,53 +158,6 @@ class TestQgsCoordinateTransform(QgisTestCase):
         self.assertAlmostEqual(transformedExtent.yMinimum(), -44927335.427, delta=1e-3)
         self.assertAlmostEqual(transformedExtent.xMaximum(), 20037508.343, delta=1e-3)
         self.assertAlmostEqual(transformedExtent.yMaximum(), 44927335.427, delta=1e-3)
-
-    def test_has_vertical_component(self):
-        transform = QgsCoordinateTransform()
-        self.assertFalse(transform.hasVerticalComponent())
-
-        # 2d to 2d
-        transform = QgsCoordinateTransform(
-            QgsCoordinateReferenceSystem('EPSG:4326'),
-            QgsCoordinateReferenceSystem('EPSG:3857'),
-            QgsCoordinateTransformContext()
-        )
-        self.assertFalse(transform.hasVerticalComponent())
-
-        # 2d to 3d
-        transform = QgsCoordinateTransform(
-            QgsCoordinateReferenceSystem('EPSG:4326'),
-            QgsCoordinateReferenceSystem('EPSG:7843'),
-            QgsCoordinateTransformContext()
-        )
-        self.assertFalse(transform.hasVerticalComponent())
-
-        # 3d to 2d
-        transform = QgsCoordinateTransform(
-            QgsCoordinateReferenceSystem('EPSG:7843'),
-            QgsCoordinateReferenceSystem('EPSG:4326'),
-            QgsCoordinateTransformContext()
-        )
-        self.assertFalse(transform.hasVerticalComponent())
-
-        # 3d to 3d
-        transform = QgsCoordinateTransform(
-            QgsCoordinateReferenceSystem('EPSG:7843'),
-            QgsCoordinateReferenceSystem.createCompoundCrs(
-                QgsCoordinateReferenceSystem('EPSG:7844'),
-                QgsCoordinateReferenceSystem('EPSG:9458'))[0],
-            QgsCoordinateTransformContext()
-        )
-        self.assertTrue(transform.hasVerticalComponent())
-
-        transform = QgsCoordinateTransform(
-            QgsCoordinateReferenceSystem.createCompoundCrs(
-                QgsCoordinateReferenceSystem('EPSG:7844'),
-                QgsCoordinateReferenceSystem('EPSG:5711'))[0],
-            QgsCoordinateReferenceSystem('EPSG:7843'),
-            QgsCoordinateTransformContext()
-        )
-        self.assertTrue(transform.hasVerticalComponent())
 
 
 if __name__ == '__main__':

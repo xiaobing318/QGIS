@@ -3,7 +3,7 @@
  *                                                                      *
  * src/server/qgsservicemodule.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -20,6 +20,8 @@ This class acts as a service registrar for services.
 
 For dynamic modules, a :py:class:`QgsServiceModule` instance is returned from the
 QGS_ServiceModule_Init() entry point.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -28,6 +30,10 @@ QGS_ServiceModule_Init() entry point.
   public:
 
     QgsServiceModule();
+%Docstring
+Default constructor for QgsServiceModule.
+%End
+
     virtual ~QgsServiceModule();
 
     virtual void registerSelf( QgsServiceRegistry &registry,
@@ -45,5 +51,5 @@ Asks the module to register all provided services.
  *                                                                      *
  * src/server/qgsservicemodule.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

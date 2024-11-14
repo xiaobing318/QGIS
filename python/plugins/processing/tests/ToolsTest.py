@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     ToolsTest
@@ -23,8 +25,7 @@ import os
 import shutil
 
 from qgis.core import NULL, QgsVectorLayer
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 from processing.tests.TestData import points
 from processing.tools import vector
@@ -34,7 +35,7 @@ testDataPath = os.path.join(os.path.dirname(__file__), 'testdata')
 start_app()
 
 
-class VectorTest(QgisTestCase):
+class VectorTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):

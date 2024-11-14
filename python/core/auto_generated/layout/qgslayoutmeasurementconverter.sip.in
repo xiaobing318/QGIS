@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/layout/qgslayoutmeasurementconverter.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -14,13 +14,13 @@ class QgsLayoutMeasurementConverter
 {
 %Docstring(signature="appended")
 This class provides a method of converting :py:class:`QgsLayoutMeasurements` from
-one unit to another.
-
-Conversion to or from pixel units utilizes a specified
+one unit to another. Conversion to or from pixel units utilizes a specified
 dots per inch (DPI) property for the converter. Converters default to using
 300 DPI.
 
 .. seealso:: :py:class:`QgsLayoutMeasurement`
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -29,6 +29,9 @@ dots per inch (DPI) property for the converter. Converters default to using
   public:
 
     QgsLayoutMeasurementConverter();
+%Docstring
+Constructor for QgsLayoutMeasurementConverter.
+%End
 
     void setDpi( const double dpi );
 %Docstring
@@ -46,7 +49,7 @@ when converting measurements to and from pixels.
 .. seealso:: :py:func:`setDpi`
 %End
 
-    QgsLayoutMeasurement convert( QgsLayoutMeasurement measurement, Qgis::LayoutUnit targetUnits ) const;
+    QgsLayoutMeasurement convert( QgsLayoutMeasurement measurement, QgsUnitTypes::LayoutUnit targetUnits ) const;
 %Docstring
 Converts a measurement from one unit to another.
 
@@ -56,7 +59,7 @@ Converts a measurement from one unit to another.
 :return: measurement converted to target units
 %End
 
-    QgsLayoutSize convert( const QgsLayoutSize &size, Qgis::LayoutUnit targetUnits ) const;
+    QgsLayoutSize convert( const QgsLayoutSize &size, QgsUnitTypes::LayoutUnit targetUnits ) const;
 %Docstring
 Converts a layout size from one unit to another.
 
@@ -66,7 +69,7 @@ Converts a layout size from one unit to another.
 :return: size converted to target units
 %End
 
-    QgsLayoutPoint convert( const QgsLayoutPoint &point, Qgis::LayoutUnit targetUnits ) const;
+    QgsLayoutPoint convert( const QgsLayoutPoint &point, QgsUnitTypes::LayoutUnit targetUnits ) const;
 %Docstring
 Converts a layout point from one unit to another.
 
@@ -83,5 +86,5 @@ Converts a layout point from one unit to another.
  *                                                                      *
  * src/core/layout/qgslayoutmeasurementconverter.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

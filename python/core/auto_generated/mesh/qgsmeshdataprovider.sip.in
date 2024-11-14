@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/mesh/qgsmeshdataprovider.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -84,8 +84,6 @@ Compare two faces, return ``True`` if they are equivalent : same indexes and sam
 
 };
 
-
-
 class QgsMeshDataSourceInterface /Abstract/
 {
 %Docstring(signature="appended")
@@ -112,7 +110,6 @@ read on demand
 #include "qgsmeshdataprovider.h"
 %End
   public:
-
     virtual ~QgsMeshDataSourceInterface();
 
     bool contains( const QgsMesh::ElementType &type ) const;
@@ -168,6 +165,7 @@ Saves the ``mesh`` frame to the source.
 :param mesh: the mesh to save
 
 :return: ``True`` on success
+
 
 .. versionadded:: 3.22
 %End
@@ -267,7 +265,7 @@ need block for any type of data type
 .. versionadded:: 3.6
 %End
 
-    virtual QgsMesh3DDataBlock dataset3dValues( QgsMeshDatasetIndex index, int faceIndex, int count ) const = 0;
+    virtual QgsMesh3dDataBlock dataset3dValues( QgsMeshDatasetIndex index, int faceIndex, int count ) const = 0;
 %Docstring
 Returns N vector/scalar values from the face index from the dataset for 3d stacked meshes
 
@@ -324,9 +322,11 @@ On success, the mesh's dataset group count is changed
 
    Doesn't work if there is ":" in the path (e.g. Windows system)
 
+
 .. versionadded:: 3.6
 
-.. deprecated:: 3.12.3
+.. deprecated::
+   QGIS 3.12.3
 %End
 
     virtual bool persistDatasetGroup( const QString &outputFilePath,
@@ -373,6 +373,7 @@ On success, the mesh's dataset group count is changed
 
 :return: ``True`` on failure, ``False`` on success
 
+
 .. versionadded:: 3.16
 %End
 
@@ -405,6 +406,7 @@ Returns a list of dataset indexes of the dataset in a specific dataset group tha
 
 :return: the dataset index
 
+
 .. versionadded:: 3.22
 %End
 
@@ -432,7 +434,7 @@ Responsible for reading native mesh data
   public:
     QgsMeshDataProvider( const QString &uri,
                          const QgsDataProvider::ProviderOptions &providerOptions,
-                         Qgis::DataProviderReadFlags = Qgis::DataProviderReadFlags() );
+                         QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() );
 %Docstring
 Ctor
 %End
@@ -440,7 +442,7 @@ Ctor
     virtual QgsMeshDataProviderTemporalCapabilities *temporalCapabilities();
 
 
-    void setTemporalUnit( Qgis::TemporalUnit unit );
+    void setTemporalUnit( QgsUnitTypes::TemporalUnit unit );
 %Docstring
 Sets the temporal unit of the provider and reload data if it changes.
 
@@ -480,5 +482,5 @@ Emitted when some new dataset groups have been added
  *                                                                      *
  * src/core/mesh/qgsmeshdataprovider.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

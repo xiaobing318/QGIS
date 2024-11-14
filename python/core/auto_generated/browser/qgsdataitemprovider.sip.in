@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/browser/qgsdataitemprovider.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -19,10 +19,12 @@ This is the interface for those who want to add custom data items to the browser
 The method :py:func:`~createDataItem` is ever called only if :py:func:`~capabilities` return non-zero value.
 There are two occasions when :py:func:`~createDataItem` is called:
 
-- to create root items (passed path is empty, parent item is ``None``).
-- to create items in directory structure. For this capabilities have to return at least
+# to create root items (passed path is empty, parent item is ``None``).
+# to create items in directory structure. For this capabilities have to return at least
   of the following: :py:class:`QgsDataProvider`.Dir or :py:class:`QgsDataProvider`.File. Passed path is the file
   or directory being inspected, parent item is a valid :py:class:`QgsDirectoryItem`
+
+.. versionadded:: 2.10
 %End
 
 %TypeHeaderCode
@@ -43,7 +45,7 @@ the default implementation returns an empty string.
 
 .. versionadded:: 3.14
 %End
-    virtual Qgis::DataItemProviderCapabilities capabilities() const = 0;
+    virtual int capabilities() const = 0;
 %Docstring
 Returns combination of flags from :py:class:`QgsDataProvider`.DataCapabilities
 %End
@@ -69,6 +71,8 @@ population of directory items for the path will be avoided and it is left to the
 provider to correctly populate relevant entries for the path.
 
 The default implementation returns ``False`` for all paths.
+
+.. versionadded:: 3.0
 %End
 };
 
@@ -77,5 +81,5 @@ The default implementation returns ``False`` for all paths.
  *                                                                      *
  * src/core/browser/qgsdataitemprovider.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

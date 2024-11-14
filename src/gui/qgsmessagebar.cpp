@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsmessagebar.h"
-#include "moc_qgsmessagebar.cpp"
 #include "qgsmessagebaritem.h"
 #include "qgsapplication.h"
 #include "qgsmessagelog.h"

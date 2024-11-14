@@ -18,18 +18,17 @@ import tempfile
 import time
 from shutil import rmtree
 
-from plugins.db_manager.db_plugins import createDbPlugin, supportedDbTypes
+from plugins.db_manager.db_plugins import supportedDbTypes, createDbPlugin
 from qgis.PyQt.QtCore import QCoreApplication, QFile
 from qgis.PyQt.QtNetwork import QSslCertificate
 from qgis.core import (
     QgsApplication,
     QgsAuthMethodConfig,
     QgsDataSourceUri,
-    QgsProviderRegistry,
     QgsSettings,
+    QgsProviderRegistry,
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -71,7 +70,7 @@ host       all           all             ::1/32                 trust
 TEST_CONNECTION_NAME = 'test_connection'
 
 
-class TestPyQgsDBManagerPostgis(QgisTestCase):
+class TestPyQgsDBManagerPostgis(unittest.TestCase):
 
     @classmethod
     def setUpAuth(cls):
@@ -142,7 +141,7 @@ class TestPyQgsDBManagerPostgis(QgisTestCase):
 
         cls.server = subprocess.Popen([os.path.join(QGIS_POSTGRES_EXECUTABLE_PATH, 'postgres'), '-D',
                                        cls.data_path, '-c',
-                                       f"config_file={cls.pg_conf}"],
+                                       "config_file=%s" % cls.pg_conf],
                                       env=os.environ,
                                       stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE)
@@ -161,7 +160,7 @@ class TestPyQgsDBManagerPostgis(QgisTestCase):
         test_sql = os.path.join(unitTestDataPath('provider'), 'testdata_pg.sql')
         subprocess.check_call([os.path.join(QGIS_POSTGRES_EXECUTABLE_PATH, 'psql'), '-h', 'localhost', '-p', cls.port, '-f', test_sql, cls.dbname])
         # Create a role
-        subprocess.check_call([os.path.join(QGIS_POSTGRES_EXECUTABLE_PATH, 'psql'), '-h', 'localhost', '-p', cls.port, '-c', f'CREATE ROLE "{cls.username}" WITH SUPERUSER LOGIN', cls.dbname])
+        subprocess.check_call([os.path.join(QGIS_POSTGRES_EXECUTABLE_PATH, 'psql'), '-h', 'localhost', '-p', cls.port, '-c', 'CREATE ROLE "%s" WITH SUPERUSER LOGIN' % cls.username, cls.dbname])
 
     @classmethod
     def setUpProvider(cls, authId):
@@ -169,7 +168,7 @@ class TestPyQgsDBManagerPostgis(QgisTestCase):
         if 'QGIS_PGTEST_DB' in os.environ:
             cls.dbconn = os.environ['QGIS_PGTEST_DB']
         uri = QgsDataSourceUri()
-        uri.setConnection("localhost", cls.port, cls.dbname, "", "", QgsDataSourceUri.SslMode.SslVerifyFull, authId)
+        uri.setConnection("localhost", cls.port, cls.dbname, "", "", QgsDataSourceUri.SslVerifyFull, authId)
         uri.setKeyColumn('pk')
         uri.setSrid('EPSG:4326')
         uri.setDataSource('qgis_test', 'someData', "geom", "", "pk")
@@ -206,7 +205,6 @@ class TestPyQgsDBManagerPostgis(QgisTestCase):
     def setUpClass(cls):
         """Run before all tests"""
         # start ans setup server
-        super().setUpClass()
         cls.setUpServer()
 
         # start a standalone qgis application
@@ -226,7 +224,6 @@ class TestPyQgsDBManagerPostgis(QgisTestCase):
         rmtree(QGIS_AUTH_DB_DIR_PATH)
         rmtree(cls.tempfolder)
         QgsSettings().clear()
-        super().tearDownClass()
 
     ###########################################
 
@@ -271,7 +268,7 @@ class TestPyQgsDBManagerPostgis(QgisTestCase):
             pkies = glob.glob(os.path.join(tempfile.gettempdir(), 'tmp*_{*}.pem'))
             for fn in pkies:
                 f = QFile(fn)
-                f.setPermissions(QFile.Permission.WriteOwner)
+                f.setPermissions(QFile.WriteOwner)
                 f.remove()
 
         # remove any temppki in temporary path to check that no

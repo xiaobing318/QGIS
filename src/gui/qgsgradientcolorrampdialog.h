@@ -33,6 +33,7 @@ class QgsGradientPlotEventFilter;
  * \ingroup gui
  * \class QgsGradientColorRampDialog
  * \brief A dialog which allows users to modify the properties of a QgsGradientColorRamp.
+ * \since QGIS 3.0
  */
 class GUI_EXPORT QgsGradientColorRampDialog : public QDialog, private Ui::QgsGradientColorRampDialogBase
 {
@@ -121,9 +122,6 @@ class GUI_EXPORT QgsGradientColorRampDialog : public QDialog, private Ui::QgsGra
     void updatePlot();
     void addPlotMarker( double x, double y, const QColor &color, bool isSelected = false );
     void addMarkersForColor( double x, const QColor &color, bool isSelected = false );
-
-    // Returns TRUE if it's possible to edit direction regarding given colorSpec
-    static bool hasDirection( QColor::Spec colorSpec );
 };
 
 

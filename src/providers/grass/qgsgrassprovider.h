@@ -63,11 +63,11 @@ class GRASS_LIB_EXPORT QgsGrassProvider : public QgsVectorDataProvider
 
     ~QgsGrassProvider() override;
 
-    Qgis::VectorProviderCapabilities capabilities() const override;
+    QgsVectorDataProvider::Capabilities capabilities() const override;
     QgsAbstractFeatureSource *featureSource() const override;
     QString storageType() const override;
     QgsFeatureIterator getFeatures( const QgsFeatureRequest &request ) const override;
-    Qgis::WkbType wkbType() const override;
+    QgsWkbTypes::Type wkbType() const override;
     long long featureCount() const override;
     QgsRectangle extent() const override;
     QgsFields fields() const override;
@@ -426,7 +426,7 @@ class GRASS_LIB_EXPORT QgsGrassProvider : public QgsVectorDataProvider
     // grass feature type: GV_POINT, GV_LINE | GV_BOUNDARY, GV_AREA, ( GV_BOUNDARY, GV_CENTROID )
     int mGrassType = 0;
     // WKBPoint, WKBLineString, ...
-    Qgis::WkbType mQgisType = Qgis::WkbType::Unknown;
+    QgsWkbTypes::Type mQgisType = QgsWkbTypes::Unknown;
     QString mLayerName;
     QgsGrassVectorMapLayer *mLayer = nullptr;
     // The version of the map for which the instance was last time updated

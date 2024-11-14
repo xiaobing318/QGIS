@@ -14,7 +14,6 @@
  ***************************************************************************/
 #include "qgswkbptr.h"
 #include "qgsapplication.h"
-#include "qgswkbtypes.h"
 
 QgsWkbPtr::QgsWkbPtr( QByteArray &wkb )
 {
@@ -41,7 +40,7 @@ QgsConstWkbPtr::QgsConstWkbPtr( const QByteArray &wkb )
   mP = reinterpret_cast< unsigned char * >( const_cast<char *>( wkb.constData() ) );
   mEnd = mP + wkb.length();
   mEndianSwap = false;
-  mWkbType = Qgis::WkbType::Unknown;
+  mWkbType = QgsWkbTypes::Unknown;
 }
 
 QgsConstWkbPtr::QgsConstWkbPtr( const unsigned char *p, int size )
@@ -49,13 +48,13 @@ QgsConstWkbPtr::QgsConstWkbPtr( const unsigned char *p, int size )
   mP = const_cast< unsigned char * >( p );
   mEnd = mP + size;
   mEndianSwap = false;
-  mWkbType = Qgis::WkbType::Unknown;
+  mWkbType = QgsWkbTypes::Unknown;
 }
 
-Qgis::WkbType QgsConstWkbPtr::readHeader() const
+QgsWkbTypes::Type QgsConstWkbPtr::readHeader() const
 {
   if ( !mP )
-    return Qgis::WkbType::Unknown;
+    return QgsWkbTypes::Unknown;
 
   char wkbEndian;
   *this >> wkbEndian;
@@ -63,7 +62,7 @@ Qgis::WkbType QgsConstWkbPtr::readHeader() const
 
   int wkbType;
   *this >> wkbType;
-  mWkbType = static_cast<Qgis::WkbType>( wkbType );
+  mWkbType = static_cast<QgsWkbTypes::Type>( wkbType );
 
   return mWkbType;
 }

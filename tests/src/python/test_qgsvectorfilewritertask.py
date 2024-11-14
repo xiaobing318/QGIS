@@ -11,18 +11,18 @@ __copyright__ = 'Copyright 2017, The QGIS Project'
 
 import os
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import QCoreApplication, QDir
 from qgis.core import (
     QgsApplication,
+    QgsVectorLayer,
     QgsFeature,
     QgsGeometry,
     QgsPointXY,
     QgsVectorFileWriter,
-    QgsVectorFileWriterTask,
-    QgsVectorLayer,
+    QgsVectorFileWriterTask
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 start_app()
 
@@ -31,7 +31,7 @@ def create_temp_filename(base_file):
     return os.path.join(str(QDir.tempPath()), base_file)
 
 
-class TestQgsVectorFileWriterTask(QgisTestCase):
+class TestQgsVectorFileWriterTask(unittest.TestCase):
 
     def setUp(self):
         self.new_filename = ''

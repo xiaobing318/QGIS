@@ -14,9 +14,6 @@
  ***************************************************************************/
 
 #include "qgsratiolockbutton.h"
-#include "moc_qgsratiolockbutton.cpp"
-#include "qgsapplication.h"
-#include "qgssvgcache.h"
 #include "qgis.h"
 
 #include <QApplication>
@@ -45,7 +42,7 @@ void QgsRatioLockButton::setLocked( const bool locked )
 void QgsRatioLockButton::buttonClicked()
 {
   mLocked = !mLocked;
-  setChecked( mLocked );
+  setDown( mLocked );
 
   emit lockChanged( mLocked );
 
@@ -120,36 +117,24 @@ void QgsRatioLockButton::drawButton()
     return;
   }
 
-  const double pixelRatio = devicePixelRatioF();
-  QPixmap pm( currentIconSize * pixelRatio );
-  pm.setDevicePixelRatio( pixelRatio );
+  QPixmap pm;
+  pm = QPixmap( currentIconSize );
   pm.fill( Qt::transparent );
 
   QPainter painter;
-  QPen pen = QPen( QColor( 136, 136, 136 ) );
+  QPen pen  = ( QColor( 136, 136, 136 ) );
   pen.setWidth( 2 );
 
   painter.begin( &pm );
-  painter.setRenderHint( QPainter::Antialiasing, true );
   painter.setPen( pen );
 
-  painter.drawLine( QPointF( 1, 1 ), QPointF( currentIconSize.width() / 2, 1 ) );
-  painter.drawLine( QPointF( currentIconSize.width() / 2, 1 ), QPointF( currentIconSize.width() / 2, currentIconSize.height() / 2 - 13 ) );
-  painter.drawLine( QPointF( currentIconSize.width() / 2, currentIconSize.height() / 2 + 13 ), QPointF( currentIconSize.width() / 2, currentIconSize.height() - 2 ) );
-  painter.drawLine( QPointF( currentIconSize.width() / 2, currentIconSize.height() - 2 ), QPointF( 1, currentIconSize.height() - 2 ) );
+  painter.drawLine( 1, 1, currentIconSize.width() / 2, 1 );
+  painter.drawLine( currentIconSize.width() / 2, 1, currentIconSize.width() / 2, currentIconSize.height() / 2 - 13 );
+  painter.drawLine( currentIconSize.width() / 2, currentIconSize.height() / 2 + 13, currentIconSize.width() / 2, currentIconSize.height() - 2 );
+  painter.drawLine( currentIconSize.width() / 2, currentIconSize.height() - 2, 1, currentIconSize.height() - 2 );
 
-  const QString imageSource = mLocked ? QStringLiteral( ":/images/themes/default/lockedGray.svg" ) : QStringLiteral( ":/images/themes/default/unlockedGray.svg" );
-  bool fitsInCache = false;
-  QImage image = QgsApplication::svgCache()->svgAsImage(
-                   imageSource, 16 * pixelRatio, QColor(), QColor(), 0, 1, fitsInCache
-                 );
-  image.setDevicePixelRatio( pixelRatio );
-  painter.drawImage( QRectF(
-                       currentIconSize.width() / 2 - 8,
-                       currentIconSize.height() / 2 - 8,
-                       16,
-                       16 ),
-                     image );
+  const QImage image( mLocked ? QStringLiteral( ":/images/themes/default/lockedGray.svg" ) : QStringLiteral( ":/images/themes/default/unlockedGray.svg" ) );
+  painter.drawImage( QRectF( currentIconSize.width() / 2 - 8, currentIconSize.height() / 2 - 8, 16, 16 ), image, QRectF( 0, 0, 16, 16 ) );
 
   painter.end();
 

@@ -30,6 +30,7 @@
  * \ingroup gui
  * \class QgsFieldConditionalFormatWidget
  * \brief A widget for customizing conditional formatting options.
+ * \since QGIS 2.12
  */
 class GUI_EXPORT QgsFieldConditionalFormatWidget : public QgsPanelWidget, private Ui::QgsFieldConditionalWidget
 {
@@ -44,7 +45,7 @@ class GUI_EXPORT QgsFieldConditionalFormatWidget : public QgsPanelWidget, privat
     /**
      * Switches the widget to the rules page.
      *
-     * \deprecated QGIS 3.40. No longer used, will be removed in QGIS 4.0.
+     * \deprecated no longer used, will be removed in QGIS 4.0
      */
     Q_DECL_DEPRECATED void viewRules() SIP_DEPRECATED;
 
@@ -63,14 +64,14 @@ class GUI_EXPORT QgsFieldConditionalFormatWidget : public QgsPanelWidget, privat
     void editStyle( int index, const QgsConditionalStyle &style );
 
     /**
-     * \deprecated QGIS 3.40. No longer used, use QgsEditConditionalFormatRuleWidget::loadStyle instead.
+     * \deprecated no longer used, use QgsEditConditionalFormatRuleWidget::loadStyle instead.
      */
     Q_DECL_DEPRECATED void loadStyle( const QgsConditionalStyle &style ) SIP_DEPRECATED;
 
     /**
      * Resets the formatting options to their default state.
      *
-     * \deprecated QGIS 3.40. No longer used, will be removed in QGIS 4.0.
+     * \deprecated no longer used, will be removed in QGIS 4.0
      */
     Q_DECL_DEPRECATED void reset() SIP_DEPRECATED;
 
@@ -109,7 +110,6 @@ class GUI_EXPORT QgsFieldConditionalFormatWidget : public QgsPanelWidget, privat
 
   private slots:
 
-    void typeChanged();
     void ruleClicked( const QModelIndex &index );
     void reloadStyles();
     void addNewRule();
@@ -183,6 +183,9 @@ class GUI_EXPORT QgsEditConditionalFormatRuleWidget : public QgsPanelWidget, pri
 
   private:
     QgsVectorLayer *mLayer = nullptr;
+    int mEditIndex = 0;
+    bool mEditing = false;
+    QStandardItemModel *mModel = nullptr;
     QStandardItemModel *mPresetsModel = nullptr;
     QList<QgsConditionalStyle> mPresets;
 

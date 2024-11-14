@@ -127,7 +127,7 @@ struct VTable
       {
         throw std::runtime_error( ( "Provider error:" + mProvider->error().message() ).toUtf8().constData() );
       }
-      if ( mProvider->capabilities() & Qgis::VectorProviderCapability::SelectEncoding )
+      if ( mProvider->capabilities() & QgsVectorDataProvider::SelectEncoding )
       {
         mProvider->setEncoding( mEncoding );
       }
@@ -201,16 +201,16 @@ struct VTable
         QString typeName = QStringLiteral( "text" );
         switch ( field.type() )
         {
-          case QMetaType::Type::Int:
-          case QMetaType::Type::UInt:
-          case QMetaType::Type::Bool:
-          case QMetaType::Type::LongLong:
+          case QVariant::Int:
+          case QVariant::UInt:
+          case QVariant::Bool:
+          case QVariant::LongLong:
             typeName = QStringLiteral( "int" );
             break;
-          case QMetaType::Type::Double:
+          case QVariant::Double:
             typeName = QStringLiteral( "real" );
             break;
-          case QMetaType::Type::QString:
+          case QVariant::String:
           default:
             typeName = QStringLiteral( "text" );
             break;
@@ -221,15 +221,15 @@ struct VTable
       QgsVectorDataProvider *provider = mLayer ? mLayer->dataProvider() : mProvider;
 
       // spatialite doesn't support curved geometries, it will be converted to linear in qgsGeometryToSpatialiteBlob
-      Qgis::WkbType layerType = QgsWkbTypes::linearType( provider->wkbType() );
+      QgsWkbTypes::Type layerType = QgsWkbTypes::linearType( provider->wkbType() );
 
-      if ( layerType != Qgis::WkbType::NoGeometry )
+      if ( layerType != QgsWkbTypes::NoGeometry )
       {
         // we have here a convenient hack
         // the type of a column can be declared with two numeric arguments, usually for setting numeric precision
         // we are using them to set the geometry type and srid
         // these will be reused by the provider when it will introspect the query to detect types
-        sqlFields << QStringLiteral( "geometry geometry(%1,%2)" ).arg( static_cast< quint32>( layerType ) ).arg( provider->crs().postgisSrid() );
+        sqlFields << QStringLiteral( "geometry geometry(%1,%2)" ).arg( layerType ).arg( provider->crs().postgisSrid() );
 
         // add a hidden field for rtree filtering
         sqlFields << QStringLiteral( "_search_frame_ HIDDEN BLOB" );
@@ -319,10 +319,10 @@ struct VTableCursor
 void getGeometryType( const QgsVectorDataProvider *provider, QString &geometryTypeStr, int &geometryDim, int &geometryWkbType, long &srid )
 {
   srid = const_cast<QgsVectorDataProvider *>( provider )->crs().postgisSrid();
-  Qgis::WkbType t = provider->wkbType();
+  QgsWkbTypes::Type t = provider->wkbType();
   geometryTypeStr = QgsWkbTypes::displayString( t );
   geometryDim = QgsWkbTypes::coordDimensions( t );
-  if ( ( t != Qgis::WkbType::NoGeometry ) && ( t != Qgis::WkbType::Unknown ) )
+  if ( ( t != QgsWkbTypes::NoGeometry ) && ( t != QgsWkbTypes::Unknown ) )
     geometryWkbType = static_cast<int>( t );
   else
     geometryWkbType = 0;
@@ -364,7 +364,7 @@ int vtableCreateConnect( sqlite3 *sql, void *aux, int argc, const char *const *a
       layerid = layerid.mid( 1, layerid.size() - 2 );
     }
     QgsMapLayer *l = QgsProject::instance()->mapLayer( layerid );
-    if ( !l || l->type() != Qgis::LayerType::Vector )
+    if ( !l || l->type() != QgsMapLayerType::VectorLayer )
     {
       if ( outErr )
       {
@@ -698,19 +698,19 @@ int vtableColumn( sqlite3_vtab_cursor *cursor, sqlite3_context *ctxt, int idx )
   }
   else
   {
-    switch ( v.userType() )
+    switch ( v.type() )
     {
-      case QMetaType::Type::Int:
-      case QMetaType::Type::Bool:
+      case QVariant::Int:
+      case QVariant::Bool:
         // read signed integer
         sqlite3_result_int( ctxt, v.toInt() );
         break;
-      case QMetaType::Type::UInt:
-      case QMetaType::Type::LongLong:
+      case QVariant::UInt:
+      case QVariant::LongLong:
         // read 64 bits signed integer (or 32 bits unsigned one)
         sqlite3_result_int64( ctxt, v.toLongLong() );
         break;
-      case QMetaType::Type::Double:
+      case QVariant::Double:
         sqlite3_result_double( ctxt, v.toDouble() );
         break;
       default:
@@ -814,51 +814,50 @@ void qgisFunctionWrapper( sqlite3_context *ctxt, int nArgs, sqlite3_value **args
     return;
   }
 
-  switch ( ret.userType() )
+  switch ( ret.type() )
   {
-    case QMetaType::Type::Bool:
-    case QMetaType::Type::Int:
-    case QMetaType::Type::UInt:
-    case QMetaType::Type::LongLong:
+    case QVariant::Bool:
+    case QVariant::Int:
+    case QVariant::UInt:
+    case QVariant::LongLong:
       sqlite3_result_int64( ctxt, ret.toLongLong() );
       break;
-    case QMetaType::Type::Double:
+    case QVariant::Double:
       sqlite3_result_double( ctxt, ret.toDouble() );
       break;
-    case QMetaType::Type::QString:
+    case QVariant::String:
     {
       QByteArray ba( ret.toByteArray() );
       sqlite3_result_text( ctxt, ba.constData(), ba.size(), SQLITE_TRANSIENT );
       break;
     }
-
-    default:
+    case QVariant::UserType:
     {
-      if ( ret.userType() == qMetaTypeId< QgsGeometry>() )
+      if ( ret.userType() == QMetaType::type( "QgsGeometry" ) )
       {
         char *blob = nullptr;
         int size = 0;
         qgsGeometryToSpatialiteBlob( ret.value<QgsGeometry>(), /*srid*/0, blob, size );
         sqlite3_result_blob( ctxt, blob, size, deleteGeometryBlob );
       }
-      else if ( ret.userType() == qMetaTypeId<QgsInterval>() )
+      else if ( ret.userType() == QMetaType::type( "QgsInterval" ) )
       {
         sqlite3_result_double( ctxt, ret.value<QgsInterval>().seconds() );
       }
-      else
-      {
-        QBuffer buffer;
-        buffer.open( QBuffer::ReadWrite );
-        QDataStream ds( &buffer );
-        // something different from 0 (to distinguish from the first byte of a geometry blob)
-        char type = 1;
-        buffer.write( &type, 1 );
-        // then the serialized version of the variant
-        ds << ret;
-        buffer.close();
-        sqlite3_result_blob( ctxt, buffer.buffer().constData(), buffer.buffer().size(), SQLITE_TRANSIENT );
-      }
       break;
+    }
+    default:
+    {
+      QBuffer buffer;
+      buffer.open( QBuffer::ReadWrite );
+      QDataStream ds( &buffer );
+      // something different from 0 (to distinguish from the first byte of a geometry blob)
+      char type = 1;
+      buffer.write( &type, 1 );
+      // then the serialized version of the variant
+      ds << ret;
+      buffer.close();
+      sqlite3_result_blob( ctxt, buffer.buffer().constData(), buffer.buffer().size(), SQLITE_TRANSIENT );
     }
   };
 }

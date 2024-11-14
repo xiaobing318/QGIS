@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsfieldproxymodel.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -15,6 +15,8 @@ class QgsFieldProxyModel : QSortFilterProxyModel
 {
 %Docstring(signature="appended")
 The :py:class:`QgsFieldProxyModel` class provides an easy to use model to display the list of fields of a layer.
+
+.. versionadded:: 2.3
 %End
 
 %TypeHeaderCode
@@ -33,9 +35,6 @@ The :py:class:`QgsFieldProxyModel` class provides an easy to use model to displa
       Time,
       HideReadOnly,
       DateTime,
-      Binary,
-      Boolean,
-      OriginProvider,
       AllTypes,
     };
     typedef QFlags<QgsFieldProxyModel::Filter> Filters;
@@ -83,5 +82,5 @@ QFlags<QgsFieldProxyModel::Filter> operator|(QgsFieldProxyModel::Filter f1, QFla
  *                                                                      *
  * src/core/qgsfieldproxymodel.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

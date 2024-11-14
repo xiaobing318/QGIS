@@ -98,7 +98,7 @@ class QgsMeshEditForceByLineAction : public QWidgetAction
     double toleranceValue() const;
 
     //! Returns the tolerance unit
-    Qgis::RenderUnit toleranceUnit() const;
+    QgsUnitTypes::RenderUnit toleranceUnit() const;
 
   private slots:
     void updateSettings();
@@ -166,7 +166,6 @@ class APP_EXPORT QgsMapToolEditMeshFrame : public QgsMapToolAdvancedDigitizing
     void onZoomToSelected();
     void reindexMesh();
     void onUndoRedo();
-    void updateStatusBarMessage() const;
 
   private:
 
@@ -327,7 +326,7 @@ class APP_EXPORT QgsMapToolEditMeshFrame : public QgsMapToolAdvancedDigitizing
     //! menbers for refinement face
     int mRefinableFaceCount = 0;
 
-    // associated widget
+    // assiociated widget
     QgsZValueWidget *mZValueWidget = nullptr; //own by QgsUserInputWidget instance
 
     QgsMeshTransformCoordinatesDockWidget *mTransformDockWidget = nullptr; //own by the application

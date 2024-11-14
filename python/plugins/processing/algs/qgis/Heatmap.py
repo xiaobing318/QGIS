@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     Heatmap.py
@@ -77,18 +79,18 @@ class Heatmap(QgisAlgorithm):
         super().__init__()
 
     def initAlgorithm(self, config=None):
-        self.KERNELS = OrderedDict([(self.tr('Quartic'), QgsKernelDensityEstimation.KernelShape.KernelQuartic),
-                                    (self.tr('Triangular'), QgsKernelDensityEstimation.KernelShape.KernelTriangular),
-                                    (self.tr('Uniform'), QgsKernelDensityEstimation.KernelShape.KernelUniform),
-                                    (self.tr('Triweight'), QgsKernelDensityEstimation.KernelShape.KernelTriweight),
-                                    (self.tr('Epanechnikov'), QgsKernelDensityEstimation.KernelShape.KernelEpanechnikov)])
+        self.KERNELS = OrderedDict([(self.tr('Quartic'), QgsKernelDensityEstimation.KernelQuartic),
+                                    (self.tr('Triangular'), QgsKernelDensityEstimation.KernelTriangular),
+                                    (self.tr('Uniform'), QgsKernelDensityEstimation.KernelUniform),
+                                    (self.tr('Triweight'), QgsKernelDensityEstimation.KernelTriweight),
+                                    (self.tr('Epanechnikov'), QgsKernelDensityEstimation.KernelEpanechnikov)])
 
-        self.OUTPUT_VALUES = OrderedDict([(self.tr('Raw'), QgsKernelDensityEstimation.OutputValues.OutputRaw),
-                                          (self.tr('Scaled'), QgsKernelDensityEstimation.OutputValues.OutputScaled)])
+        self.OUTPUT_VALUES = OrderedDict([(self.tr('Raw'), QgsKernelDensityEstimation.OutputRaw),
+                                          (self.tr('Scaled'), QgsKernelDensityEstimation.OutputScaled)])
 
         self.addParameter(QgsProcessingParameterFeatureSource(self.INPUT,
                                                               self.tr('Point layer'),
-                                                              [QgsProcessing.SourceType.TypeVectorPoint]))
+                                                              [QgsProcessing.TypeVectorPoint]))
 
         self.addParameter(QgsProcessingParameterDistance(self.RADIUS,
                                                          self.tr('Radius'),
@@ -98,23 +100,23 @@ class Heatmap(QgisAlgorithm):
                                                          self.tr('Radius from field'),
                                                          None,
                                                          self.INPUT,
-                                                         QgsProcessingParameterField.DataType.Numeric,
+                                                         QgsProcessingParameterField.Numeric,
                                                          optional=True
                                                          )
-        radius_field_param.setFlags(radius_field_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        radius_field_param.setFlags(radius_field_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(radius_field_param)
 
         class ParameterHeatmapPixelSize(QgsProcessingParameterNumber):
 
             def __init__(self, name='', description='', parent_layer=None, radius_param=None, radius_field_param=None, minValue=None,
                          default=None, optional=False):
-                QgsProcessingParameterNumber.__init__(self, name, description, QgsProcessingParameterNumber.Type.Double, default, optional, minValue)
+                QgsProcessingParameterNumber.__init__(self, name, description, QgsProcessingParameterNumber.Double, default, optional, minValue)
                 self.parent_layer = parent_layer
                 self.radius_param = radius_param
                 self.radius_field_param = radius_field_param
 
             def clone(self):
-                return ParameterHeatmapPixelSize(self.name(), self.description(), self.parent_layer, self.radius_param, self.radius_field_param, self.minimum(), self.maximum(), self.defaultValue((), self.flags() & QgsProcessingParameterDefinition.Flag.FlagOptional))
+                return ParameterHeatmapPixelSize(self.name(), self.description(), self.parent_layer, self.radius_param, self.radius_field_param, self.minimum(), self.maximum(), self.defaultValue((), self.flags() & QgsProcessingParameterDefinition.FlagOptional))
 
         pixel_size_param = ParameterHeatmapPixelSize(self.PIXEL_SIZE,
                                                      self.tr('Output raster size'),
@@ -132,10 +134,10 @@ class Heatmap(QgisAlgorithm):
                                                          self.tr('Weight from field'),
                                                          None,
                                                          self.INPUT,
-                                                         QgsProcessingParameterField.DataType.Numeric,
+                                                         QgsProcessingParameterField.Numeric,
                                                          optional=True
                                                          )
-        weight_field_param.setFlags(weight_field_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        weight_field_param.setFlags(weight_field_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(weight_field_param)
 
         keys = list(self.KERNELS.keys())
@@ -144,14 +146,14 @@ class Heatmap(QgisAlgorithm):
                                                         keys,
                                                         allowMultiple=False,
                                                         defaultValue=0)
-        kernel_shape_param.setFlags(kernel_shape_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        kernel_shape_param.setFlags(kernel_shape_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(kernel_shape_param)
 
         decay_ratio = QgsProcessingParameterNumber(self.DECAY,
                                                    self.tr('Decay ratio (Triangular kernels only)'),
-                                                   QgsProcessingParameterNumber.Type.Double,
+                                                   QgsProcessingParameterNumber.Double,
                                                    0.0, True, -100.0, 100.0)
-        decay_ratio.setFlags(decay_ratio.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        decay_ratio.setFlags(decay_ratio.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(decay_ratio)
 
         keys = list(self.OUTPUT_VALUES.keys())
@@ -160,7 +162,7 @@ class Heatmap(QgisAlgorithm):
                                                     keys,
                                                     allowMultiple=False,
                                                     defaultValue=0)
-        output_scaling.setFlags(output_scaling.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        output_scaling.setFlags(output_scaling.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(output_scaling)
 
         self.addParameter(QgsProcessingParameterRasterDestination(self.OUTPUT, self.tr('Heatmap')))
@@ -201,7 +203,7 @@ class Heatmap(QgisAlgorithm):
 
         kde = QgsKernelDensityEstimation(kde_params, outputFile, output_format)
 
-        if kde.prepare() != QgsKernelDensityEstimation.Result.Success:
+        if kde.prepare() != QgsKernelDensityEstimation.Success:
             raise QgsProcessingException(
                 self.tr('Could not create destination layer'))
 
@@ -213,12 +215,12 @@ class Heatmap(QgisAlgorithm):
             if feedback.isCanceled():
                 break
 
-            if kde.addFeature(f) != QgsKernelDensityEstimation.Result.Success:
+            if kde.addFeature(f) != QgsKernelDensityEstimation.Success:
                 feedback.reportError(self.tr('Error adding feature with ID {} to heatmap').format(f.id()))
 
             feedback.setProgress(int(current * total))
 
-        if kde.finalise() != QgsKernelDensityEstimation.Result.Success:
+        if kde.finalise() != QgsKernelDensityEstimation.Success:
             raise QgsProcessingException(
                 self.tr('Could not save destination layer'))
 

@@ -49,12 +49,12 @@ class TestQgsServerAccessControlFixFilters(TestQgsServerAccessControl):
         response, headers = self._get_fullaccess(wfs_query_string)
         self.assertTrue(
             str(response).find("<qgs:pk>1</qgs:pk>") != -1,
-            f"No result in GetFeature\n{response}")
+            "No result in GetFeature\n%s" % response)
 
         # Execute a restricted WMS request
         # That will store the filter expression in cache
         response, headers = self._get_restricted(wms_query_string)
-        self.assertEqual(headers.get("Content-Type"), "image/png")
+        self.assertTrue(headers.get("Content-Type") == "image/png")
 
         # Execute an unrestricted wfs request again
         # We must have same result as the first time
@@ -64,7 +64,7 @@ class TestQgsServerAccessControlFixFilters(TestQgsServerAccessControl):
         response, headers = self._get_fullaccess(wfs_query_string)
         self.assertTrue(
             str(response).find("<qgs:pk>1</qgs:pk>") != -1,
-            f"No result in GetFeature\n{response}")
+            "No result in GetFeature\n%s" % response)
 
 
 if __name__ == "__main__":

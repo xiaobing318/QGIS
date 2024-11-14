@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgscoordinateformatter.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -21,6 +21,8 @@ no consideration for the validity of converting coordinates to the various displ
 is up to the caller to ensure that sensible formats are used for particular coordinates. For instance,
 ensuring that only geographic coordinates and not projected coordinates are formatted to degree
 based formats.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -109,5 +111,5 @@ QFlags<QgsCoordinateFormatter::FormatFlag> operator|(QgsCoordinateFormatter::For
  *                                                                      *
  * src/core/qgscoordinateformatter.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

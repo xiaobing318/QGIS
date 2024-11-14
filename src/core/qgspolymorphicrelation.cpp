@@ -14,10 +14,9 @@
  ***************************************************************************/
 
 #include "qgspolymorphicrelation.h"
-#include "qgsvectorlayer.h"
-#include "moc_qgspolymorphicrelation.cpp"
 #include "qgslogger.h"
 #include "qgsproject.h"
+#include "qgsvectorlayer.h"
 #include "qgspolymorphicrelation_p.h"
 
 #include <QApplication>
@@ -190,7 +189,7 @@ QgsAttributeList QgsPolymorphicRelation::referencedFields( const QString &layerI
 
   if ( d->mReferencedLayerIds.contains( layerId ) )
   {
-    QgsVectorLayer *vl = static_cast<QgsVectorLayer *>( QgsProject::instance()->mapLayer( layerId ) ); // skip-keyword-check
+    QgsVectorLayer *vl = static_cast<QgsVectorLayer *>( QgsProject::instance()->mapLayer( layerId ) );
 
     if ( vl && vl->isValid() )
     {
@@ -241,7 +240,7 @@ void QgsPolymorphicRelation::updateRelationStatus()
 
   if ( d->mRelationId.isEmpty() )
   {
-    QgsDebugError( QStringLiteral( "Invalid relation: no ID" ) );
+    QgsDebugMsg( QStringLiteral( "Invalid relation: no ID" ) );
     d->mValid = false;
     return;
   }
@@ -291,7 +290,7 @@ void QgsPolymorphicRelation::updateRelationStatus()
   {
     if ( d->mReferencingLayer->fields().lookupField( pair.first ) == -1 )
     {
-      QgsDebugError( QStringLiteral( "Invalid relation: field %1 does not exist in referencing layer %2" ).arg( pair.first, d->mReferencingLayer->name() ) );
+      QgsDebugMsg( QStringLiteral( "Invalid relation: field %1 does not exist in referencing layer %2" ).arg( pair.first, d->mReferencingLayer->name() ) );
       d->mValid = false;
       return;
     }
@@ -300,7 +299,7 @@ void QgsPolymorphicRelation::updateRelationStatus()
     {
       if ( d->mReferencedLayersMap[referencedLayerId]->fields().lookupField( pair.second ) == -1 )
       {
-        QgsDebugError( QStringLiteral( "Invalid relation: field %1 does not exist in referenced layer %2" ).arg( pair.second, d->mReferencedLayersMap[referencedLayerId]->name() ) );
+        QgsDebugMsg( QStringLiteral( "Invalid relation: field %1 does not exist in referenced layer %2" ).arg( pair.second, d->mReferencedLayersMap[referencedLayerId]->name() ) );
         d->mValid = false;
         return;
       }
@@ -386,9 +385,9 @@ QList<QgsRelation> QgsPolymorphicRelation::generateRelations() const
   for ( const QString &referencedLayerId : referencedLayerIds )
   {
     QgsRelation relation;
-    const QString referencedLayerName = d->mReferencedLayersMap[referencedLayerId]->name();
+    QString referencedLayerName = d->mReferencedLayersMap[referencedLayerId]->name();
 
-    relation.setId( QStringLiteral( "%1_%2" ).arg( d->mRelationId, referencedLayerId ) );
+    relation.setId( QStringLiteral( "%1_%2" ).arg( d->mRelationId, referencedLayerName ) );
     relation.setReferencedLayer( referencedLayerId );
     relation.setReferencingLayer( d->mReferencingLayerId );
     relation.setName( QStringLiteral( "Generated for \"%1\"" ).arg( referencedLayerName ) );
@@ -406,24 +405,6 @@ QList<QgsRelation> QgsPolymorphicRelation::generateRelations() const
   }
 
   return relations;
-}
-
-QString QgsPolymorphicRelation::upgradeGeneratedRelationId( const QString &oldRelationId ) const
-{
-  if ( !isValid() )
-    return QString();
-
-  const QStringList referencedLayerIds = d->mReferencedLayerIds;
-  for ( const QString &referencedLayerId : referencedLayerIds )
-  {
-    const QString referencedLayerName = d->mReferencedLayersMap[referencedLayerId]->name();
-    if ( oldRelationId == QStringLiteral( "%1_%2" ).arg( d->mRelationId, referencedLayerName ) )
-    {
-      return QStringLiteral( "%1_%2" ).arg( d->mRelationId, referencedLayerId );
-    }
-  }
-
-  return QString();
 }
 
 QString QgsPolymorphicRelation::layerRepresentation( const QgsVectorLayer *layer ) const

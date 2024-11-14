@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgssinglebandpseudocolorrendererwidget.h"
-#include "moc_qgssinglebandpseudocolorrendererwidget.cpp"
 #include "qgssinglebandpseudocolorrenderer.h"
 #include "qgsrasterlayer.h"
 #include "qgsrasterdataprovider.h"
@@ -146,9 +145,9 @@ void QgsSingleBandPseudoColorRendererWidget::setFromRenderer( const QgsRasterRen
   const QgsSingleBandPseudoColorRenderer *pr = dynamic_cast<const QgsSingleBandPseudoColorRenderer *>( r );
   if ( pr )
   {
-    mBandComboBox->setBand( pr->inputBand() );
-    mMinMaxWidget->setBands( QList< int >() << pr->inputBand() );
-    mColorRampShaderWidget->setRasterBand( pr->inputBand() );
+    mBandComboBox->setBand( pr->band() );
+    mMinMaxWidget->setBands( QList< int >() << pr->band() );
+    mColorRampShaderWidget->setRasterBand( pr->band() );
 
     // need to set min/max properties here because if we use the raster shader below,
     // we may set a new color ramp which needs to have min/max values defined.

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/symbology/qgsrulebasedrendererwidget.h                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -27,7 +27,7 @@ Tree model for the rules:
 %End
   public:
 
-    QgsRuleBasedRendererModel( QgsRuleBasedRenderer *renderer, QObject *parent, QScreen *screen = 0 );
+    QgsRuleBasedRendererModel( QgsRuleBasedRenderer *renderer, QObject *parent );
 %Docstring
 Constructor for QgsRuleBasedRendererModel, for the specified ``renderer``.
 %End
@@ -264,5 +264,5 @@ Constructor for QgsRendererRulePropsDialog
  *                                                                      *
  * src/gui/symbology/qgsrulebasedrendererwidget.h                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -21,8 +21,8 @@
 
 #include "qgis_gui.h"
 #include "qgis_sip.h"
+#include "qgsguiutils.h"
 
-class QgsMapLayer;
 class QgsProviderSourceWidget;
 class QgsProviderSourceWidgetProvider;
 class QgsProviderGuiRegistry;
@@ -43,7 +43,9 @@ class GUI_EXPORT QgsProviderSourceWidgetProviderRegistry
     QgsProviderSourceWidgetProviderRegistry();
     ~QgsProviderSourceWidgetProviderRegistry();
 
+    //! QgsProviderSourceWidgetProviderRegistry cannot be copied.
     QgsProviderSourceWidgetProviderRegistry( const QgsProviderSourceWidgetProviderRegistry &rh ) = delete;
+    //! QgsProviderSourceWidgetProviderRegistry cannot be copied.
     QgsProviderSourceWidgetProviderRegistry &operator=( const QgsProviderSourceWidgetProviderRegistry &rh ) = delete;
 
     //! Gets list of available providers

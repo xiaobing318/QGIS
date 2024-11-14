@@ -45,7 +45,7 @@ class QgsForceRHRAlgorithm : public QgsProcessingFeatureBasedAlgorithm
     QgsForceRHRAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
-    Qgis::ProcessingFeatureSourceFlags sourceFlags() const override;
+    QgsProcessingFeatureSource::Flag sourceFlags() const override;
     QString outputName() const override;
     QgsFeatureList processFeature( const QgsFeature &feature,  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
 

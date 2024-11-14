@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgslayoutpdfexportoptionsdialog.h"
-#include "moc_qgslayoutpdfexportoptionsdialog.cpp"
 #include "qgis.h"
 #include "qgssettings.h"
 #include "qgsgui.h"
@@ -30,35 +29,34 @@
 #include <QPushButton>
 #include <QMenu>
 
-QgsLayoutPdfExportOptionsDialog::QgsLayoutPdfExportOptionsDialog( QWidget *parent, bool allowGeospatialPdfExport, const QString &geospatialPdfReason, const QStringList &geospatialPdfLayerOrder, Qt::WindowFlags flags )
+QgsLayoutPdfExportOptionsDialog::QgsLayoutPdfExportOptionsDialog( QWidget *parent, bool allowGeoPdfExport, const QString &geoPdfReason, const QStringList &geoPdfLayerOrder, Qt::WindowFlags flags )
   : QDialog( parent, flags )
 {
   setupUi( this );
 
-  mGeospatialPdfStructureTreeMenu = new QMenu( this );
+  mGeoPdfStructureTreeMenu = new QMenu( this );
 
   mTextRenderFormatComboBox->addItem( tr( "Always Export Text as Paths (Recommended)" ), static_cast< int >( Qgis::TextRenderFormat::AlwaysOutlines ) );
   mTextRenderFormatComboBox->addItem( tr( "Always Export Text as Text Objects" ), static_cast< int >( Qgis::TextRenderFormat::AlwaysText ) );
-  mTextRenderFormatComboBox->addItem( tr( "Prefer Exporting Text as Text Objects" ), static_cast< int >( Qgis::TextRenderFormat::PreferText ) );
 
-  mGeospatialPdfAvailable = allowGeospatialPdfExport && QgsAbstractGeospatialPdfExporter::geospatialPDFCreationAvailable();
-  mGeospatialPDFGroupBox->setEnabled( mGeospatialPdfAvailable );
-  mGeospatialPDFGroupBox->setChecked( false );
-  if ( !mGeospatialPdfAvailable )
+  mGeopdfAvailable = allowGeoPdfExport && QgsAbstractGeoPdfExporter::geoPDFCreationAvailable();
+  mGeoPDFGroupBox->setEnabled( mGeopdfAvailable );
+  mGeoPDFGroupBox->setChecked( false );
+  if ( !mGeopdfAvailable )
   {
-    mGeospatialPDFOptionsStackedWidget->setCurrentIndex( 0 );
-    mGeospatialPdfUnavailableReason->setText( geospatialPdfReason.isEmpty() ? QgsAbstractGeospatialPdfExporter::geospatialPDFAvailabilityExplanation() : geospatialPdfReason );
+    mGeoPDFOptionsStackedWidget->setCurrentIndex( 0 );
+    mGeoPdfUnavailableReason->setText( geoPdfReason.isEmpty() ? QgsAbstractGeoPdfExporter::geoPDFAvailabilityExplanation() : geoPdfReason );
     // avoid showing reason in disabled text color - we want it to stand out
-    QPalette p = mGeospatialPdfUnavailableReason->palette();
+    QPalette p = mGeoPdfUnavailableReason->palette();
     p.setColor( QPalette::Disabled, QPalette::WindowText, QPalette::WindowText );
-    mGeospatialPdfUnavailableReason->setPalette( p );
-    mGeospatialPDFOptionsStackedWidget->removeWidget( mGeospatialPDFOptionsStackedWidget->widget( 1 ) );
+    mGeoPdfUnavailableReason->setPalette( p );
+    mGeoPDFOptionsStackedWidget->removeWidget( mGeoPDFOptionsStackedWidget->widget( 1 ) );
   }
   else
   {
-    mGeospatialPDFOptionsStackedWidget->setCurrentIndex( 1 );
-    mGeospatialPdfFormatComboBox->addItem( tr( "ISO 32000 Extension (recommended)" ) );
-    mGeospatialPdfFormatComboBox->addItem( tr( "OGC Best Practice" ) );
+    mGeoPDFOptionsStackedWidget->setCurrentIndex( 1 );
+    mGeoPdfFormatComboBox->addItem( tr( "ISO 32000 Extension (recommended)" ) );
+    mGeoPdfFormatComboBox->addItem( tr( "OGC Best Practice" ) );
   }
 
   mComboImageCompression->addItem( tr( "Lossy (JPEG)" ), false );
@@ -74,7 +72,7 @@ QgsLayoutPdfExportOptionsDialog::QgsLayoutPdfExportOptionsDialog( QWidget *paren
   }
 
   QList< QgsMapLayer * > order = QgsProject::instance()->layerTreeRoot()->layerOrder();
-  for ( auto it = geospatialPdfLayerOrder.rbegin(); it != geospatialPdfLayerOrder.rend(); ++it )
+  for ( auto it = geoPdfLayerOrder.rbegin(); it != geoPdfLayerOrder.rend(); ++it )
   {
     for ( int i = 0; i < order.size(); ++i )
     {
@@ -85,28 +83,28 @@ QgsLayoutPdfExportOptionsDialog::QgsLayoutPdfExportOptionsDialog( QWidget *paren
       }
     }
   }
-  mGeospatialPdfStructureModel = new QgsGeospatialPdfLayerTreeModel( order, this );
-  mGeospatialPdfStructureProxyModel = new QgsGeospatialPdfLayerFilteredTreeModel( mGeospatialPdfStructureModel, this );
-  mGeospatialPdfStructureTree->setModel( mGeospatialPdfStructureProxyModel );
-  mGeospatialPdfStructureTree->resizeColumnToContents( 0 );
-  mGeospatialPdfStructureTree->header()->show();
-  mGeospatialPdfStructureTree->setSelectionMode( QAbstractItemView::SingleSelection );
-  mGeospatialPdfStructureTree->setSelectionBehavior( QAbstractItemView::SelectRows );
+  mGeoPdfStructureModel = new QgsGeoPdfLayerTreeModel( order, this );
+  mGeoPdfStructureProxyModel = new QgsGeoPdfLayerFilteredTreeModel( mGeoPdfStructureModel, this );
+  mGeoPdfStructureTree->setModel( mGeoPdfStructureProxyModel );
+  mGeoPdfStructureTree->resizeColumnToContents( 0 );
+  mGeoPdfStructureTree->header()->show();
+  mGeoPdfStructureTree->setSelectionMode( QAbstractItemView::SingleSelection );
+  mGeoPdfStructureTree->setSelectionBehavior( QAbstractItemView::SelectRows );
 
-  mGeospatialPdfStructureTree->setDragEnabled( true );
-  mGeospatialPdfStructureTree->setAcceptDrops( true );
-  mGeospatialPdfStructureTree->setDragDropMode( QAbstractItemView::InternalMove );
-  mGeospatialPdfStructureTree->setDefaultDropAction( Qt::MoveAction );
+  mGeoPdfStructureTree->setDragEnabled( true );
+  mGeoPdfStructureTree->setAcceptDrops( true );
+  mGeoPdfStructureTree->setDragDropMode( QAbstractItemView::InternalMove );
+  mGeoPdfStructureTree->setDefaultDropAction( Qt::MoveAction );
 
-  mGeospatialPdfStructureTree->setContextMenuPolicy( Qt::CustomContextMenu );
-  connect( mGeospatialPdfStructureTree, &QTreeView::customContextMenuRequested, this, [ = ]( const QPoint & point )
+  mGeoPdfStructureTree->setContextMenuPolicy( Qt::CustomContextMenu );
+  connect( mGeoPdfStructureTree, &QTreeView::customContextMenuRequested, this, [ = ]( const QPoint & point )
   {
-    const QModelIndex index = mGeospatialPdfStructureTree->indexAt( point );
+    const QModelIndex index = mGeoPdfStructureTree->indexAt( point );
     if ( index.isValid() )
-      showContextMenuForGeospatialPdfStructure( point, mGeospatialPdfStructureProxyModel->mapToSource( index ) );
+      showContextMenuForGeoPdfStructure( point, mGeoPdfStructureProxyModel->mapToSource( index ) );
   } );
 
-  connect( mHelpButtonBox, &QDialogButtonBox::helpRequested, this, &QgsLayoutPdfExportOptionsDialog::showHelp );
+  connect( buttonBox, &QDialogButtonBox::helpRequested, this, &QgsLayoutPdfExportOptionsDialog::showHelp );
   QgsGui::enableAutoGeometryRestore( this );
 }
 
@@ -185,45 +183,45 @@ bool QgsLayoutPdfExportOptionsDialog::losslessImageExport() const
   return mComboImageCompression->currentData().toBool();
 }
 
-void QgsLayoutPdfExportOptionsDialog::setExportGeospatialPdf( bool enabled )
+void QgsLayoutPdfExportOptionsDialog::setExportGeoPdf( bool enabled )
 {
-  if ( !mGeospatialPdfAvailable )
+  if ( !mGeopdfAvailable )
     return;
 
-  mGeospatialPDFGroupBox->setChecked( enabled );
+  mGeoPDFGroupBox->setChecked( enabled );
 }
 
-bool QgsLayoutPdfExportOptionsDialog::exportGeospatialPdf() const
+bool QgsLayoutPdfExportOptionsDialog::exportGeoPdf() const
 {
-  if ( !mGeospatialPdfAvailable )
+  if ( !mGeopdfAvailable )
     return false;
 
-  return mGeospatialPDFGroupBox->isChecked();
+  return mGeoPDFGroupBox->isChecked();
 }
 
 void QgsLayoutPdfExportOptionsDialog::setUseOgcBestPracticeFormat( bool enabled )
 {
-  if ( !mGeospatialPdfAvailable )
+  if ( !mGeopdfAvailable )
     return;
 
   if ( enabled )
-    mGeospatialPdfFormatComboBox->setCurrentIndex( 1 );
+    mGeoPdfFormatComboBox->setCurrentIndex( 1 );
   else
-    mGeospatialPdfFormatComboBox->setCurrentIndex( 0 );
+    mGeoPdfFormatComboBox->setCurrentIndex( 0 );
 }
 
 bool QgsLayoutPdfExportOptionsDialog::useOgcBestPracticeFormat() const
 {
-  if ( !mGeospatialPdfAvailable )
+  if ( !mGeopdfAvailable )
     return false;
 
-  return mGeospatialPdfFormatComboBox->currentIndex() == 1;
+  return mGeoPdfFormatComboBox->currentIndex() == 1;
 }
 
 
 void QgsLayoutPdfExportOptionsDialog::setExportThemes( const QStringList &themes )
 {
-  if ( !mGeospatialPdfAvailable )
+  if ( !mGeopdfAvailable )
     return;
 
   mIncludeMapThemesCheck->setChecked( !themes.isEmpty() );
@@ -237,7 +235,7 @@ void QgsLayoutPdfExportOptionsDialog::setExportThemes( const QStringList &themes
 QStringList QgsLayoutPdfExportOptionsDialog::exportThemes() const
 {
   QStringList res;
-  if ( !mGeospatialPdfAvailable )
+  if ( !mGeopdfAvailable )
     return res;
 
   if ( !mIncludeMapThemesCheck || !mIncludeMapThemesCheck->isChecked() )
@@ -253,39 +251,14 @@ QStringList QgsLayoutPdfExportOptionsDialog::exportThemes() const
   return res;
 }
 
-QStringList QgsLayoutPdfExportOptionsDialog::geospatialPdfLayerOrder() const
+QStringList QgsLayoutPdfExportOptionsDialog::geoPdfLayerOrder() const
 {
   QStringList order;
-  for ( int row = 0; row < mGeospatialPdfStructureProxyModel->rowCount(); ++row )
+  for ( int row = 0; row < mGeoPdfStructureProxyModel->rowCount(); ++row )
   {
-    order << mGeospatialPdfStructureProxyModel->data( mGeospatialPdfStructureProxyModel->index( row, 0 ), static_cast< int >( QgsMapLayerModel::CustomRole::LayerId ) ).toString();
+    order << mGeoPdfStructureProxyModel->data( mGeoPdfStructureProxyModel->index( row, 0 ), QgsGeoPdfLayerTreeModel::LayerIdRole ).toString();
   }
   return order;
-}
-
-QStringList QgsLayoutPdfExportOptionsDialog::geospatialPdfGroupOrder() const
-{
-  // we don't explicitly expose a "group order" widget in the dialog -- rather
-  // we use the ordering of the layers, and build the group ordering based
-  // on grouped layers which appear first
-  QStringList groupOrder;
-  for ( int row = 0; row < mGeospatialPdfStructureProxyModel->rowCount(); ++row )
-  {
-    const QString group = mGeospatialPdfStructureProxyModel->data( mGeospatialPdfStructureProxyModel->index( row, QgsGeospatialPdfLayerTreeModel::GroupColumn ), Qt::DisplayRole ).toString().trimmed();
-    if ( !group.isEmpty() && !groupOrder.contains( group ) )
-      groupOrder << group;
-  }
-  return groupOrder;
-}
-
-void QgsLayoutPdfExportOptionsDialog::setOpenAfterExporting( bool enabled )
-{
-  mOpenAfterExportingCheckBox->setChecked( enabled );
-}
-
-bool QgsLayoutPdfExportOptionsDialog::openAfterExporting() const
-{
-  return mOpenAfterExportingCheckBox->isChecked();
 }
 
 void QgsLayoutPdfExportOptionsDialog::showHelp()
@@ -293,26 +266,26 @@ void QgsLayoutPdfExportOptionsDialog::showHelp()
   QgsHelp::openHelp( QStringLiteral( "print_composer/create_output.html" ) );
 }
 
-void QgsLayoutPdfExportOptionsDialog::showContextMenuForGeospatialPdfStructure( QPoint point, const QModelIndex &index )
+void QgsLayoutPdfExportOptionsDialog::showContextMenuForGeoPdfStructure( QPoint point, const QModelIndex &index )
 {
-  mGeospatialPdfStructureTreeMenu->clear();
+  mGeoPdfStructureTreeMenu->clear();
 
   switch ( index.column() )
   {
-    case QgsGeospatialPdfLayerTreeModel::IncludeVectorAttributes:
-    case QgsGeospatialPdfLayerTreeModel::InitiallyVisible:
+    case QgsGeoPdfLayerTreeModel::IncludeVectorAttributes:
+    case QgsGeoPdfLayerTreeModel::InitiallyVisible:
     {
-      QAction *selectAll = new QAction( tr( "Select All" ), mGeospatialPdfStructureTreeMenu );
-      mGeospatialPdfStructureTreeMenu->addAction( selectAll );
+      QAction *selectAll = new QAction( tr( "Select All" ), mGeoPdfStructureTreeMenu );
+      mGeoPdfStructureTreeMenu->addAction( selectAll );
       connect( selectAll, &QAction::triggered, this, [ = ]
       {
-        mGeospatialPdfStructureModel->checkAll( true, QModelIndex(), index.column() );
+        mGeoPdfStructureModel->checkAll( true, QModelIndex(), index.column() );
       } );
-      QAction *deselectAll = new QAction( tr( "Deselect All" ), mGeospatialPdfStructureTreeMenu );
-      mGeospatialPdfStructureTreeMenu->addAction( deselectAll );
+      QAction *deselectAll = new QAction( tr( "Deselect All" ), mGeoPdfStructureTreeMenu );
+      mGeoPdfStructureTreeMenu->addAction( deselectAll );
       connect( deselectAll, &QAction::triggered, this, [ = ]
       {
-        mGeospatialPdfStructureModel->checkAll( false, QModelIndex(), index.column() );
+        mGeoPdfStructureModel->checkAll( false, QModelIndex(), index.column() );
       } );
       break;
     }
@@ -321,8 +294,8 @@ void QgsLayoutPdfExportOptionsDialog::showContextMenuForGeospatialPdfStructure( 
       break;
   }
 
-  if ( !mGeospatialPdfStructureTreeMenu->actions().empty() )
+  if ( !mGeoPdfStructureTreeMenu->actions().empty() )
   {
-    mGeospatialPdfStructureTreeMenu->exec( mGeospatialPdfStructureTree->mapToGlobal( point ) );
+    mGeoPdfStructureTreeMenu->exec( mGeoPdfStructureTree->mapToGlobal( point ) );
   }
 }

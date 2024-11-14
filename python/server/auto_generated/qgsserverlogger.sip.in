@@ -3,7 +3,7 @@
  *                                                                      *
  * src/server/qgsserverlogger.h                                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -15,6 +15,8 @@ class QgsServerLogger : QgsMessageLogConsole
 {
 %Docstring(signature="appended")
 Writes message log into server logfile
+
+.. versionadded:: 2.8
 %End
 
 %TypeHeaderCode
@@ -32,6 +34,8 @@ Gets the singleton instance
 Gets the current log level
 
 :return: the log level
+
+.. versionadded:: 3.0
 %End
 
     void setLogLevel( Qgis::MessageLevel level );
@@ -39,6 +43,8 @@ Gets the current log level
 Set the current log level
 
 :param level: the log level
+
+.. versionadded:: 3.0
 %End
 
     void setLogFile( const QString &filename = QString() );
@@ -75,5 +81,5 @@ Log a message from the server context
  *                                                                      *
  * src/server/qgsserverlogger.h                                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -45,9 +45,9 @@ QString QgsFilterAlgorithm::groupId() const
   return QStringLiteral( "modelertools" );
 }
 
-Qgis::ProcessingAlgorithmFlags QgsFilterAlgorithm::flags() const
+QgsProcessingAlgorithm::Flags QgsFilterAlgorithm::flags() const
 {
-  return Qgis::ProcessingAlgorithmFlag::HideFromToolbox;
+  return FlagHideFromToolbox;
 }
 
 QString QgsFilterAlgorithm::shortHelpString() const
@@ -75,10 +75,10 @@ void QgsFilterAlgorithm::initAlgorithm( const QVariantMap &configuration )
     const QVariantMap outputDef = output.toMap();
     const QString name = QStringLiteral( "OUTPUT_%1" ).arg( outputDef.value( QStringLiteral( "name" ) ).toString() );
     QgsProcessingParameterFeatureSink *outputParam = new QgsProcessingParameterFeatureSink( name, outputDef.value( QStringLiteral( "name" ) ).toString() );
-    Qgis::ProcessingParameterFlags flags;
-    flags |= Qgis::ProcessingParameterFlag::Hidden;
+    QgsProcessingParameterDefinition::Flags flags = QgsProcessingParameterDefinition::Flags();
+    flags |= QgsProcessingParameterDefinition::FlagHidden;
     if ( outputDef.value( QStringLiteral( "isModelOutput" ) ).toBool() )
-      flags |= Qgis::ProcessingParameterFlag::IsModelOutput;
+      flags |= QgsProcessingParameterDefinition::FlagIsModelOutput;
     outputParam->setFlags( flags );
     addParameter( outputParam );
     mOutputs.append( new Output( name, outputDef.value( QStringLiteral( "expression" ) ).toString() ) );
@@ -104,7 +104,7 @@ QVariantMap QgsFilterAlgorithm::processAlgorithm( const QVariantMap &parameters,
   long count = source->featureCount();
 
   QgsFeature f;
-  QgsFeatureIterator it = source->getFeatures( QgsFeatureRequest(), Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks );
+  QgsFeatureIterator it = source->getFeatures( QgsFeatureRequest(), QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks );
 
   double step = count > 0 ? 100.0 / count : 1;
   int current = 0;

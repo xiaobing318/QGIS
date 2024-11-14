@@ -15,16 +15,17 @@
 
 #include <QTreeWidget>
 #include <QVBoxLayout>
-#include <QPointer>
-#include <QScreen>
 
 #include "qgssymbollayerselectionwidget.h"
-#include "moc_qgssymbollayerselectionwidget.cpp"
+#include "qgsproject.h"
 #include "qgsvectorlayer.h"
+#include "qgslegendsymbolitem.h"
 #include "symbology/qgsrenderer.h"
 #include "qgsstyleentityvisitor.h"
 #include "symbology/qgssymbollayerutils.h"
 #include "qgsguiutils.h"
+#include "qgslayertree.h"
+#include "qgslayertreelayer.h"
 
 QgsSymbolLayerSelectionWidget::QgsSymbolLayerSelectionWidget( QWidget *parent )
   : QWidget( parent )
@@ -51,11 +52,8 @@ void QgsSymbolLayerSelectionWidget::setLayer( const QgsVectorLayer *layer )
   class TreeFillVisitor : public QgsStyleEntityVisitorInterface
   {
     public:
-      TreeFillVisitor( QTreeWidgetItem *layerItem, const QgsVectorLayer *layer, QHash<QString, QTreeWidgetItem *> &items, QScreen *screen )
-        : mLayerItem( layerItem )
-        , mLayer( layer )
-        , mItems( items )
-        , mScreen( screen )
+      TreeFillVisitor( QTreeWidgetItem *layerItem, const QgsVectorLayer *layer, QHash<QgsSymbolLayerId, QTreeWidgetItem *> &items ):
+        mLayerItem( layerItem ), mLayer( layer ), mItems( items )
       {}
 
       bool visitEnter( const QgsStyleEntityVisitorInterface::Node &node ) override
@@ -84,7 +82,7 @@ void QgsSymbolLayerSelectionWidget::setLayer( const QgsVectorLayer *layer )
           indexPath.append( idx );
 
           QTreeWidgetItem *slItem = new QTreeWidgetItem();
-          const QIcon slIcon = QgsSymbolLayerUtils::symbolLayerPreviewIcon( sl, Qgis::RenderUnit::Millimeters, QSize( iconSize, iconSize ), QgsMapUnitScale(), symbol->type(), nullptr, QgsScreenProperties( mScreen.data() ) );
+          const QIcon slIcon = QgsSymbolLayerUtils::symbolLayerPreviewIcon( sl, QgsUnitTypes::RenderMillimeters, QSize( iconSize, iconSize ), QgsMapUnitScale(), symbol->type() );
           slItem->setData( 0, Qt::UserRole, idx );
           slItem->setIcon( 0, slIcon );
           auto flags = slItem->flags();
@@ -101,7 +99,7 @@ void QgsSymbolLayerSelectionWidget::setLayer( const QgsVectorLayer *layer )
           rootItem->addChild( slItem );
           slItem->setExpanded( true );
 
-          mItems[sl->id()] = slItem;
+          mItems[QgsSymbolLayerId( mCurrentIdentifier + identifier, indexPath )] = slItem;
 
           if ( subSymbol )
           {
@@ -122,7 +120,7 @@ void QgsSymbolLayerSelectionWidget::setLayer( const QgsVectorLayer *layer )
 
         // either leaf.description or mCurrentDescription is defined
         QTreeWidgetItem *symbolItem = new QTreeWidgetItem( QStringList() << ( mCurrentDescription + leaf.description ) );
-        const QIcon icon = QgsSymbolLayerUtils::symbolPreviewIcon( symbol, QSize( iconSize, iconSize ), 0, nullptr, QgsScreenProperties( mScreen.data() ) );
+        const QIcon icon = QgsSymbolLayerUtils::symbolPreviewIcon( symbol, QSize( iconSize, iconSize ) );
         symbolItem->setData( 0, Qt::UserRole, mCurrentIdentifier );
         symbolItem->setIcon( 0, icon );
         mLayerItem->addChild( symbolItem );
@@ -138,8 +136,7 @@ void QgsSymbolLayerSelectionWidget::setLayer( const QgsVectorLayer *layer )
       QString mCurrentIdentifier;
       QTreeWidgetItem *mLayerItem;
       const QgsVectorLayer *mLayer;
-      QHash<QString, QTreeWidgetItem *> &mItems;
-      QPointer< QScreen > mScreen;
+      QHash<QgsSymbolLayerId, QTreeWidgetItem *> &mItems;
   };
 
   // populate the tree
@@ -148,13 +145,13 @@ void QgsSymbolLayerSelectionWidget::setLayer( const QgsVectorLayer *layer )
   if ( ! mLayer->renderer() )
     return;
 
-  TreeFillVisitor visitor( mTree->invisibleRootItem(), mLayer, mItems, screen() );
+  TreeFillVisitor visitor( mTree->invisibleRootItem(), mLayer, mItems );
   mLayer->renderer()->accept( &visitor );
 }
 
-QSet<QString> QgsSymbolLayerSelectionWidget::selection() const
+QSet<QgsSymbolLayerId> QgsSymbolLayerSelectionWidget::selection() const
 {
-  QSet<QString> sel;
+  QSet<QgsSymbolLayerId> sel;
   for ( auto it = mItems.begin(); it != mItems.end(); it++ )
   {
     if ( it.value()->checkState( 0 ) == Qt::Checked )
@@ -163,7 +160,7 @@ QSet<QString> QgsSymbolLayerSelectionWidget::selection() const
   return sel;
 }
 
-void QgsSymbolLayerSelectionWidget::setSelection( const QSet<QString> &sel )
+void QgsSymbolLayerSelectionWidget::setSelection( const QSet<QgsSymbolLayerId> &sel )
 {
   // clear selection
   for ( auto it = mItems.begin(); it != mItems.end(); it++ )
@@ -173,7 +170,7 @@ void QgsSymbolLayerSelectionWidget::setSelection( const QSet<QString> &sel )
   }
 
   // apply selection passed in parameter
-  for ( const QString &lid : sel )
+  for ( const QgsSymbolLayerId &lid : sel )
   {
     const auto it = mItems.find( lid );
     if ( it != mItems.end() )

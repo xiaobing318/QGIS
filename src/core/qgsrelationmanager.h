@@ -101,6 +101,7 @@ class CORE_EXPORT QgsRelationManager : public QObject
      * \param name relation name to search for. Searching is case insensitive.
      * \returns a list of matching relations
      * \see relation()
+     * \since QGIS 2.16
      */
     QList<QgsRelation> relationsByName( const QString &name ) const;
 
@@ -134,6 +135,7 @@ class CORE_EXPORT QgsRelationManager : public QObject
      * \param existingRelations the existing relations to filter them out
      * \param layers the current layers
      * \returns the list of discovered relations
+     * \since QGIS 3.0
      */
     static QList<QgsRelation> discoverRelations( const QList<QgsRelation> &existingRelations, const QList<QgsVectorLayer *> &layers );
 
@@ -169,6 +171,7 @@ class CORE_EXPORT QgsRelationManager : public QObject
 
     /**
      * Emitted when relations are added or removed to the manager.
+     * \since QGIS 2.5
      */
     void changed();
 

@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgsauthmaptilerhmacsha256method.h"
-#include "moc_qgsauthmaptilerhmacsha256method.cpp"
 
 #include <QMessageAuthenticationCode>
 #include <QUrlQuery>
@@ -42,8 +41,7 @@ QgsAuthMapTilerHmacSha256Method::QgsAuthMapTilerHmacSha256Method()
   setExpansions( QgsAuthMethod::NetworkRequest );
   setDataProviders( QStringList()
                     << QStringLiteral( "wms" )
-                    << QStringLiteral( "vectortile" )
-                    << QStringLiteral( "xyzvectortiles" ) );
+                    << QStringLiteral( "vectortile" ) );
 
 }
 
@@ -69,7 +67,7 @@ bool QgsAuthMapTilerHmacSha256Method::updateNetworkRequest( QNetworkRequest &req
   const QgsAuthMethodConfig config = getMethodConfig( authcfg );
   if ( !config.isValid() )
   {
-    QgsDebugError( QStringLiteral( "Update request config FAILED for authcfg: %1: config invalid" ).arg( authcfg ) );
+    QgsDebugMsg( QStringLiteral( "Update request config FAILED for authcfg: %1: config invalid" ).arg( authcfg ) );
     return false;
   }
 
@@ -78,7 +76,7 @@ bool QgsAuthMapTilerHmacSha256Method::updateNetworkRequest( QNetworkRequest &req
 
   if ( splitToken.count() != 2 )
   {
-    QgsDebugError( QStringLiteral( "Update request config FAILED for authcfg: %1: config invalid" ).arg( authcfg ) );
+    QgsDebugMsg( QStringLiteral( "Update request config FAILED for authcfg: %1: config invalid" ).arg( authcfg ) );
     return false;
   }
 

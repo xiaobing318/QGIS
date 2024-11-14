@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/processing/models/qgsprocessingmodelalgorithm.h             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -14,6 +14,8 @@ class QgsProcessingModelAlgorithm : QgsProcessingAlgorithm
 {
 %Docstring(signature="appended")
 Model based algorithm with processing.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -31,8 +33,6 @@ Constructor for QgsProcessingModelAlgorithm.
 
     virtual void initAlgorithm( const QVariantMap &configuration = QVariantMap() );  //#spellok
 
-
-    virtual Qgis::ProcessingAlgorithmFlags flags() const;
 
     virtual QString name() const;
 
@@ -80,7 +80,7 @@ Validates the model, returning ``True`` if all child algorithms in the model are
 
 
 :return: - ``True`` if the child is valid
-         - issues: a list of issues encountered during the validation
+         - issues: will be set to a list of issues encountered during the validation
 
 .. versionadded:: 3.14
 %End
@@ -213,7 +213,7 @@ all mandatory inputs to the algorithm have valid values.
 :param childId: ID for child to validate
 
 :return: - ``True`` if the child is valid
-         - issues: a list of issues encountered during the validation
+         - issues: will be set to a list of issues encountered during the validation
 
 .. versionadded:: 3.14
 %End
@@ -340,45 +340,6 @@ model :py:func:`~QgsProcessingModelAlgorithm.parameterComponents`.
 .. seealso:: :py:func:`orderedParameters`
 
 .. versionadded:: 3.14
-%End
-
-    QList< QgsProcessingModelOutput > orderedOutputs() const;
-%Docstring
-Returns an ordered list of outputs for the model.
-
-.. seealso:: :py:func:`setOutputOrder`
-
-.. versionadded:: 3.32
-%End
-
-    void setOutputOrder( const QStringList &order );
-%Docstring
-Sets the ``order`` for sorting outputs for the model.
-
-The ``order`` list should consist of "output child algorithm id:output name" formatted strings corresponding to existing
-model outputs.
-
-.. seealso:: :py:func:`orderedOutputs`
-
-.. versionadded:: 3.32
-%End
-
-    QString outputGroup() const;
-%Docstring
-Returns the destination layer tree group name for outputs created by the model.
-
-.. seealso:: :py:func:`setOutputGroup`
-
-.. versionadded:: 3.32
-%End
-
-    void setOutputGroup( const QString &group );
-%Docstring
-Sets the destination layer tree ``group`` name for outputs created by the model.
-
-.. seealso:: :py:func:`outputGroup`
-
-.. versionadded:: 3.32
 %End
 
     void updateDestinationParameters();
@@ -518,6 +479,8 @@ sources to those with compatible data types for the parameter/outputs.
 {
 %Docstring(signature="appended")
 Definition of a expression context variable available during model execution.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -538,7 +501,7 @@ parameter ``source``, and ``description``.
         QString description;
     };
 
-    QMap< QString, QgsProcessingModelAlgorithm::VariableDefinition > variablesForChildAlgorithm( const QString &childId, QgsProcessingContext *context = 0, const QVariantMap &modelParameters = QVariantMap(),
+    QMap< QString, QgsProcessingModelAlgorithm::VariableDefinition > variablesForChildAlgorithm( const QString &childId, QgsProcessingContext &context, const QVariantMap &modelParameters = QVariantMap(),
         const QVariantMap &results = QVariantMap() ) const;
 %Docstring
 Returns a map of variable name to variable definition for expression context variables which are available
@@ -646,5 +609,5 @@ If ``capitalize`` is ``True`` then the string will be converted to a camel case 
  *                                                                      *
  * src/core/processing/models/qgsprocessingmodelalgorithm.h             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

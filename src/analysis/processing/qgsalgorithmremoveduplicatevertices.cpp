@@ -85,10 +85,10 @@ void QgsAlgorithmRemoveDuplicateVertices::initParameters( const QVariantMap & )
   addParameter( useZ.release() );
 }
 
-Qgis::ProcessingFeatureSourceFlags QgsAlgorithmRemoveDuplicateVertices::sourceFlags() const
+QgsProcessingFeatureSource::Flag QgsAlgorithmRemoveDuplicateVertices::sourceFlags() const
 {
   // skip geometry checks - this algorithm can be used to repair geometries
-  return Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks;
+  return QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks;
 }
 
 bool QgsAlgorithmRemoveDuplicateVertices::prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback * )

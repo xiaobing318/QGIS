@@ -25,8 +25,7 @@
 /**
  * \ingroup gui
  * \brief A widget renderer for detailed item views.
- * \see QgsDetailedItem
- * \see QgsDetailedItemData
+ * \see also QgsDetailedItem and QgsDetailedItemData.
  */
 class GUI_EXPORT QgsDetailedItemWidget : public QWidget, private Ui::QgsDetailedItemWidgetBase
 {

@@ -68,7 +68,7 @@ QgsProcessingAlgorithm *QgsMultiDifferenceAlgorithm::createInstance() const
 void QgsMultiDifferenceAlgorithm::initAlgorithm( const QVariantMap & )
 {
   addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ), QObject::tr( "Input layer" ) ) );
-  addParameter( new QgsProcessingParameterMultipleLayers( QStringLiteral( "OVERLAYS" ), QObject::tr( "Overlay layers" ), Qgis::ProcessingSourceType::VectorAnyGeometry ) );
+  addParameter( new QgsProcessingParameterMultipleLayers( QStringLiteral( "OVERLAYS" ), QObject::tr( "Overlay layers" ), QgsProcessing::TypeVectorAnyGeometry ) );
   addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Difference" ) ) );
 }
 
@@ -91,13 +91,13 @@ QVariantMap QgsMultiDifferenceAlgorithm::processAlgorithm( const QVariantMap &pa
     if ( !layer )
       throw QgsProcessingException( QObject::tr( "Error retrieving map layer." ) );
 
-    if ( layer->type() != Qgis::LayerType::Vector )
+    if ( layer->type() != QgsMapLayerType::VectorLayer )
       throw QgsProcessingException( QObject::tr( "All layers must be vector layers!" ) );
 
     totalLayerCount++;
   }
 
-  const Qgis::WkbType geometryType = QgsWkbTypes::multiType( sourceA->wkbType() );
+  const QgsWkbTypes::Type geometryType = QgsWkbTypes::multiType( sourceA->wkbType() );
   const QgsCoordinateReferenceSystem crs = sourceA->sourceCrs();
   std::unique_ptr< QgsFeatureSink > sink;
   long count = 0;
@@ -116,7 +116,6 @@ QVariantMap QgsMultiDifferenceAlgorithm::processAlgorithm( const QVariantMap &pa
 
     const long total = sourceA->featureCount();
     QgsOverlayUtils::difference( *sourceA, *overlayLayer, *sink, context, feedback, count, total, QgsOverlayUtils::OutputA );
-    sink->finalize();
   }
   else
   {

@@ -1,0 +1,1649 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>QgsImageMappingDlg_LayoutVectorization</class>
+ <widget class="QDialog" name="QgsImageMappingDlg_LayoutVectorization">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>844</width>
+    <height>837</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>影像图制图（整饰要素矢量化）</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout_3">
+   <item row="0" column="0" colspan="3">
+    <widget class="QGroupBox" name="groupBox">
+     <property name="title">
+      <string>制图方案选择</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout">
+      <item row="0" column="0">
+       <spacer name="horizontalSpacer_7">
+        <property name="orientation">
+         <enum>Qt::Horizontal</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>689</width>
+          <height>20</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+      <item row="0" column="1">
+       <widget class="QPushButton" name="pushButton_LoadMappingSchema">
+        <property name="toolTip">
+         <string>设置输出数据路径</string>
+        </property>
+        <property name="text">
+         <string>加载制图方案</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0" colspan="2">
+       <widget class="QListView" name="listView_ImageMappingSchema">
+        <property name="alternatingRowColors">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="2" column="0">
+    <widget class="QProgressBar" name="progressBar">
+     <property name="value">
+      <number>0</number>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="1">
+    <widget class="QPushButton" name="pushButton_ImageMapping">
+     <property name="text">
+      <string>生成影像图</string>
+     </property>
+    </widget>
+   </item>
+   <item row="2" column="2">
+    <widget class="QPushButton" name="pushButton_Close">
+     <property name="text">
+      <string>关闭</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0" colspan="3">
+    <widget class="QGroupBox" name="groupBox_2">
+     <property name="title">
+      <string>制图方案</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_2">
+      <item row="0" column="0">
+       <widget class="QTabWidget" name="tabWidget_ImageMappingScheme">
+        <property name="currentIndex">
+         <number>4</number>
+        </property>
+        <widget class="QWidget" name="tab_DataSource">
+         <attribute name="title">
+          <string>数据源</string>
+         </attribute>
+         <layout class="QGridLayout" name="gridLayout_7">
+          <item row="0" column="0">
+           <widget class="QGroupBox" name="groupBox_3">
+            <property name="title">
+             <string>矢量数据</string>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_4">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_VectorDataPath">
+               <property name="text">
+                <string>矢量数据路径</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QLineEdit" name="lineEdit_VectorDataPath"/>
+             </item>
+             <item row="0" column="2">
+              <widget class="QPushButton" name="pushButton_OpenVectorData">
+               <property name="toolTip">
+                <string>打开矢量数据存储路径</string>
+               </property>
+               <property name="text">
+                <string>浏览</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QGroupBox" name="groupBox_4">
+            <property name="title">
+             <string>影像数据</string>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_5">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_RasterDataPath">
+               <property name="text">
+                <string>影像数据路径</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QLineEdit" name="lineEdit_ImageDataPath"/>
+             </item>
+             <item row="0" column="2">
+              <widget class="QPushButton" name="pushButton_OpenImageData">
+               <property name="toolTip">
+                <string>打开影像数据存储路径</string>
+               </property>
+               <property name="text">
+                <string>浏览</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QGroupBox" name="groupBox_5">
+            <property name="title">
+             <string>镶嵌线数据</string>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_6">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_MosaicDataPath">
+               <property name="text">
+                <string>镶嵌数据路径</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1" colspan="2">
+              <widget class="QLineEdit" name="lineEdit_MosaicDataPath"/>
+             </item>
+             <item row="0" column="3">
+              <widget class="QPushButton" name="pushButton_OpenMosaicData">
+               <property name="toolTip">
+                <string>打开镶嵌数据存储路径</string>
+               </property>
+               <property name="text">
+                <string>浏览</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0" colspan="2">
+              <widget class="QLabel" name="label_MosaicDataRenderField">
+               <property name="toolTip">
+                <string/>
+               </property>
+               <property name="text">
+                <string>类别编号字段名称</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="2">
+              <widget class="QLineEdit" name="lineEdit_MosaicDataRenderField">
+               <property name="toolTip">
+                <string>请输入镶嵌线数据类别编号字段名称</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0" colspan="2">
+              <widget class="QLabel" name="label_MosaicDataAcqDataField">
+               <property name="toolTip">
+                <string/>
+               </property>
+               <property name="text">
+                <string>拍摄时间字段名称</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="2">
+              <widget class="QLineEdit" name="lineEdit_MosaicDataAcqDataField">
+               <property name="toolTip">
+                <string>请输入镶嵌线数据拍摄时间字段名称</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0" colspan="2">
+              <widget class="QLabel" name="label_MosaicDataSensorField">
+               <property name="toolTip">
+                <string/>
+               </property>
+               <property name="text">
+                <string>  传感器字段名称</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="2">
+              <widget class="QLineEdit" name="lineEdit_MosaicDataSensorField">
+               <property name="toolTip">
+                <string>请输入镶嵌线数据传感器字段名称</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <spacer name="verticalSpacer">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+            <property name="sizeType">
+             <enum>QSizePolicy::Expanding</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>313</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="tab_MappingRange">
+         <attribute name="title">
+          <string>制图范围</string>
+         </attribute>
+         <layout class="QGridLayout" name="gridLayout_14">
+          <item row="0" column="0">
+           <widget class="QGroupBox" name="groupBox_23">
+            <property name="title">
+             <string>输入方式</string>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_9">
+             <item row="0" column="0">
+              <widget class="QRadioButton" name="radioButton_LonLatRange">
+               <property name="text">
+                <string>经纬度范围</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QRadioButton" name="radioButton_SheetList">
+               <property name="text">
+                <string>图幅列表</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QGroupBox" name="groupBox_LonLatRange">
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="title">
+             <string>经纬度范围</string>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_8">
+             <item row="2" column="4">
+              <spacer name="horizontalSpacer_6">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>180</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item row="1" column="0" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_2">
+               <item>
+                <widget class="QLabel" name="label_3">
+                 <property name="text">
+                  <string>左边界经度</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLineEdit" name="lineEdit_Left">
+                 <property name="maximumSize">
+                  <size>
+                   <width>16777215</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="label_6">
+                 <property name="text">
+                  <string>度</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="2" column="1" colspan="3">
+              <layout class="QHBoxLayout" name="horizontalLayout_3">
+               <item>
+                <widget class="QLabel" name="label_2">
+                 <property name="text">
+                  <string>下边界纬度</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLineEdit" name="lineEdit_Bottom">
+                 <property name="maximumSize">
+                  <size>
+                   <width>16777215</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="label_8">
+                 <property name="text">
+                  <string>度</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="1" column="2">
+              <spacer name="horizontalSpacer_4">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>173</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item row="1" column="3" colspan="2">
+              <layout class="QHBoxLayout" name="horizontalLayout_4">
+               <item>
+                <widget class="QLabel" name="label_4">
+                 <property name="text">
+                  <string>右边界经度</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLineEdit" name="lineEdit_Right">
+                 <property name="maximumSize">
+                  <size>
+                   <width>16777215</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="label_7">
+                 <property name="text">
+                  <string>度</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="2" column="0">
+              <spacer name="horizontalSpacer_5">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>180</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item row="0" column="1" colspan="3">
+              <layout class="QHBoxLayout" name="horizontalLayout">
+               <item>
+                <widget class="QLabel" name="label">
+                 <property name="text">
+                  <string>上边界纬度</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLineEdit" name="lineEdit_Top">
+                 <property name="maximumSize">
+                  <size>
+                   <width>16777215</width>
+                   <height>16777215</height>
+                  </size>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QLabel" name="label_5">
+                 <property name="text">
+                  <string>度</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item row="0" column="0">
+              <spacer name="horizontalSpacer_2">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>180</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item row="0" column="4">
+              <spacer name="horizontalSpacer_3">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>180</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QGroupBox" name="groupBox_SheetList">
+            <property name="title">
+             <string>图幅列表</string>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_13">
+             <item row="0" column="0">
+              <spacer name="horizontalSpacer">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>395</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item row="0" column="1">
+              <widget class="QPushButton" name="pushButton_LoadSheetList">
+               <property name="toolTip">
+                <string>通过文件加载图幅列表</string>
+               </property>
+               <property name="text">
+                <string>从文件加载图幅列表</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0" colspan="2">
+              <widget class="QPlainTextEdit" name="plainTextEdit_SheetList"/>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="tab">
+         <attribute name="title">
+          <string>矢量要素选取</string>
+         </attribute>
+         <layout class="QGridLayout" name="gridLayout_10">
+          <item row="0" column="0">
+           <widget class="QTabWidget" name="tabWidget_LayerType">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="minimumSize">
+             <size>
+              <width>0</width>
+              <height>0</height>
+             </size>
+            </property>
+            <property name="maximumSize">
+             <size>
+              <width>16777215</width>
+              <height>16777215</height>
+             </size>
+            </property>
+            <property name="currentIndex">
+             <number>0</number>
+            </property>
+            <widget class="QWidget" name="tab_Layer_D">
+             <attribute name="title">
+              <string>陆地交通</string>
+             </attribute>
+             <layout class="QGridLayout" name="gridLayout_44">
+              <item row="0" column="0" colspan="2">
+               <widget class="QGroupBox" name="groupBox_D_FeatureClass">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="title">
+                 <string>陆地交通图层要素类选择</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_22">
+                 <item row="0" column="0">
+                  <widget class="QTabWidget" name="tabWidget_FeatureClass_D">
+                   <property name="currentIndex">
+                    <number>2</number>
+                   </property>
+                   <widget class="QWidget" name="tab_FeatureClass_TieLu">
+                    <attribute name="title">
+                     <string>铁路</string>
+                    </attribute>
+                    <layout class="QGridLayout" name="gridLayout_58">
+                     <item row="0" column="0">
+                      <widget class="QListWidget" name="listWidget_TieLu">
+                       <property name="maximumSize">
+                        <size>
+                         <width>16777215</width>
+                         <height>16777211</height>
+                        </size>
+                       </property>
+                       <property name="editTriggers">
+                        <set>QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed|QAbstractItemView::SelectedClicked</set>
+                       </property>
+                       <property name="selectionMode">
+                        <enum>QAbstractItemView::ExtendedSelection</enum>
+                       </property>
+                       <item>
+                        <property name="text">
+                         <string>标准轨复线铁路</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>标准轨单线铁路</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>城市轻轨</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
+                    </layout>
+                   </widget>
+                   <widget class="QWidget" name="tab_FeatureClass_GongLu">
+                    <attribute name="title">
+                     <string>公路</string>
+                    </attribute>
+                    <layout class="QGridLayout" name="gridLayout_60">
+                     <item row="0" column="0">
+                      <widget class="QListWidget" name="listWidget_GongLu">
+                       <property name="maximumSize">
+                        <size>
+                         <width>16777215</width>
+                         <height>16777211</height>
+                        </size>
+                       </property>
+                       <property name="editTriggers">
+                        <set>QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed|QAbstractItemView::SelectedClicked</set>
+                       </property>
+                       <property name="selectionMode">
+                        <enum>QAbstractItemView::ExtendedSelection</enum>
+                       </property>
+                       <item>
+                        <property name="text">
+                         <string>国家干线公路（国道）</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>省干线公路（省道）</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>县级公路（县道）</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>乡级公路（乡道）</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
+                    </layout>
+                   </widget>
+                   <widget class="QWidget" name="tab_FeatureClass_QiTaDaoLu">
+                    <attribute name="title">
+                     <string>其它道路</string>
+                    </attribute>
+                    <layout class="QGridLayout" name="gridLayout_61">
+                     <item row="0" column="0">
+                      <widget class="QListWidget" name="listWidget_QiTaDaoLu">
+                       <property name="maximumSize">
+                        <size>
+                         <width>16777215</width>
+                         <height>16777211</height>
+                        </size>
+                       </property>
+                       <property name="editTriggers">
+                        <set>QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed|QAbstractItemView::SelectedClicked</set>
+                       </property>
+                       <property name="selectionMode">
+                        <enum>QAbstractItemView::ExtendedSelection</enum>
+                       </property>
+                       <item>
+                        <property name="text">
+                         <string>大车路（机耕路）</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>小路、栈道</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
+                    </layout>
+                   </widget>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="tab_Layer_F">
+             <attribute name="title">
+              <string>水域/陆地</string>
+             </attribute>
+             <layout class="QGridLayout" name="gridLayout_67">
+              <item row="0" column="0" colspan="2">
+               <widget class="QGroupBox" name="groupBox_F_FeatureClass">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="title">
+                 <string>水域/陆地图层要素类选择</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_27">
+                 <item row="0" column="0">
+                  <widget class="QTabWidget" name="tabWidget_FeatureClass_F">
+                   <property name="currentIndex">
+                    <number>2</number>
+                   </property>
+                   <widget class="QWidget" name="tab_FeatureClass_HeLiu">
+                    <attribute name="title">
+                     <string>河流</string>
+                    </attribute>
+                    <layout class="QGridLayout" name="gridLayout_69">
+                     <item row="0" column="0">
+                      <widget class="QListWidget" name="listWidget_HeLiu">
+                       <property name="maximumSize">
+                        <size>
+                         <width>16777215</width>
+                         <height>16777211</height>
+                        </size>
+                       </property>
+                       <property name="editTriggers">
+                        <set>QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed|QAbstractItemView::SelectedClicked</set>
+                       </property>
+                       <property name="selectionMode">
+                        <enum>QAbstractItemView::ExtendedSelection</enum>
+                       </property>
+                       <item>
+                        <property name="text">
+                         <string>常年河</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>时令河</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
+                    </layout>
+                   </widget>
+                   <widget class="QWidget" name="tab_FeatureClass_HuPoShuiKuChiTang">
+                    <attribute name="title">
+                     <string>湖泊、水库、池塘</string>
+                    </attribute>
+                    <layout class="QGridLayout" name="gridLayout_71">
+                     <item row="0" column="0">
+                      <widget class="QListWidget" name="listWidget_HuPoShuiKuChiTang">
+                       <property name="maximumSize">
+                        <size>
+                         <width>16777215</width>
+                         <height>16777211</height>
+                        </size>
+                       </property>
+                       <property name="editTriggers">
+                        <set>QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed|QAbstractItemView::SelectedClicked</set>
+                       </property>
+                       <property name="selectionMode">
+                        <enum>QAbstractItemView::ExtendedSelection</enum>
+                       </property>
+                       <item>
+                        <property name="text">
+                         <string>常年湖</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>时令湖</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>水库</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
+                    </layout>
+                   </widget>
+                   <widget class="QWidget" name="tab_FeatureClass_LuDiHaiYangDaoYu">
+                    <attribute name="title">
+                     <string>陆地、海洋、岛屿</string>
+                    </attribute>
+                    <layout class="QGridLayout" name="gridLayout_78">
+                     <item row="0" column="0">
+                      <widget class="QListWidget" name="listWidget_LuDiDaoYuHaiYang">
+                       <property name="maximumSize">
+                        <size>
+                         <width>16777215</width>
+                         <height>16777211</height>
+                        </size>
+                       </property>
+                       <property name="editTriggers">
+                        <set>QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed|QAbstractItemView::SelectedClicked</set>
+                       </property>
+                       <property name="selectionMode">
+                        <enum>QAbstractItemView::ExtendedSelection</enum>
+                       </property>
+                       <item>
+                        <property name="text">
+                         <string>海洋</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
+                    </layout>
+                   </widget>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="tab_Layer_J">
+             <attribute name="title">
+              <string>陆地地貌及土质</string>
+             </attribute>
+             <layout class="QGridLayout" name="gridLayout_94">
+              <item row="0" column="0" colspan="2">
+               <widget class="QGroupBox" name="groupBox_J_FeatureClass">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="title">
+                 <string>陆地地貌及土质图层要素类选择</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_31">
+                 <item row="0" column="0">
+                  <widget class="QTabWidget" name="tabWidget_FeatureClass_J">
+                   <property name="currentIndex">
+                    <number>1</number>
+                   </property>
+                   <widget class="QWidget" name="tab_FeatureClass_DengGaoXian">
+                    <attribute name="title">
+                     <string>等高线</string>
+                    </attribute>
+                    <layout class="QGridLayout" name="gridLayout_95">
+                     <item row="0" column="0">
+                      <widget class="QListWidget" name="listWidget_DengGaoXian">
+                       <property name="maximumSize">
+                        <size>
+                         <width>16777215</width>
+                         <height>16777211</height>
+                        </size>
+                       </property>
+                       <property name="editTriggers">
+                        <set>QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed|QAbstractItemView::SelectedClicked</set>
+                       </property>
+                       <property name="selectionMode">
+                        <enum>QAbstractItemView::ExtendedSelection</enum>
+                       </property>
+                       <item>
+                        <property name="text">
+                         <string>计曲线</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
+                    </layout>
+                   </widget>
+                   <widget class="QWidget" name="tab_FeatureClass_DiMaoGaoCheng">
+                    <attribute name="title">
+                     <string>地貌高程</string>
+                    </attribute>
+                    <layout class="QGridLayout" name="gridLayout_96">
+                     <item row="0" column="0">
+                      <widget class="QListWidget" name="listWidget_DiMaoGaoCheng">
+                       <property name="maximumSize">
+                        <size>
+                         <width>16777215</width>
+                         <height>16777211</height>
+                        </size>
+                       </property>
+                       <property name="editTriggers">
+                        <set>QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed|QAbstractItemView::SelectedClicked</set>
+                       </property>
+                       <property name="selectionMode">
+                        <enum>QAbstractItemView::ExtendedSelection</enum>
+                       </property>
+                       <item>
+                        <property name="text">
+                         <string>高程点</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
+                    </layout>
+                   </widget>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="tab_Layer_K">
+             <attribute name="title">
+              <string>境界与政区</string>
+             </attribute>
+             <layout class="QGridLayout" name="gridLayout_103">
+              <item row="0" column="0" colspan="2">
+               <widget class="QGroupBox" name="groupBox_K_FeatureClass">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="title">
+                 <string>境界与政区图层要素类选择</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_32">
+                 <item row="0" column="0">
+                  <widget class="QTabWidget" name="tabWidget_FeatureClass_K">
+                   <property name="currentIndex">
+                    <number>1</number>
+                   </property>
+                   <widget class="QWidget" name="tab_FeatureClass_GuoJieJiLingHai">
+                    <attribute name="title">
+                     <string>国界及领海</string>
+                    </attribute>
+                    <layout class="QGridLayout" name="gridLayout_104">
+                     <item row="0" column="0">
+                      <widget class="QListWidget" name="listWidget_GuoJieJiLingHai">
+                       <property name="maximumSize">
+                        <size>
+                         <width>16777215</width>
+                         <height>16777211</height>
+                        </size>
+                       </property>
+                       <property name="editTriggers">
+                        <set>QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed|QAbstractItemView::SelectedClicked</set>
+                       </property>
+                       <property name="selectionMode">
+                        <enum>QAbstractItemView::ExtendedSelection</enum>
+                       </property>
+                       <item>
+                        <property name="text">
+                         <string>国界</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
+                    </layout>
+                   </widget>
+                   <widget class="QWidget" name="tab_FeatureClass_GuoNeiJingJie">
+                    <attribute name="title">
+                     <string>国内境界</string>
+                    </attribute>
+                    <layout class="QGridLayout" name="gridLayout_105">
+                     <item row="0" column="0">
+                      <widget class="QListWidget" name="listWidget_GuoNeiJingJie">
+                       <property name="maximumSize">
+                        <size>
+                         <width>16777215</width>
+                         <height>16777211</height>
+                        </size>
+                       </property>
+                       <property name="editTriggers">
+                        <set>QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed|QAbstractItemView::SelectedClicked</set>
+                       </property>
+                       <property name="selectionMode">
+                        <enum>QAbstractItemView::ExtendedSelection</enum>
+                       </property>
+                       <item>
+                        <property name="text">
+                         <string>省、自治区、直辖市界</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>地级市、地区、自治州、盟界</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>县（县级市、区）、自治县、旗界</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>乡、镇界</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
+                    </layout>
+                   </widget>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="tab_Layer_R">
+             <attribute name="title">
+              <string>注记</string>
+             </attribute>
+             <layout class="QGridLayout" name="gridLayout_156">
+              <item row="0" column="0" colspan="2">
+               <widget class="QGroupBox" name="groupBox_R_FeatureClass">
+                <property name="maximumSize">
+                 <size>
+                  <width>16777215</width>
+                  <height>16777215</height>
+                 </size>
+                </property>
+                <property name="title">
+                 <string>注记图层要素类选择</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_157">
+                 <item row="0" column="0">
+                  <widget class="QTabWidget" name="tabWidget_FeatureClass_R">
+                   <property name="currentIndex">
+                    <number>0</number>
+                   </property>
+                   <widget class="QWidget" name="tab_FeatureClass_JuMinDiMingCheng">
+                    <attribute name="title">
+                     <string>居民地名称</string>
+                    </attribute>
+                    <layout class="QGridLayout" name="gridLayout_158">
+                     <item row="0" column="0">
+                      <widget class="QListWidget" name="listWidget_JuMinDiMingCheng">
+                       <property name="maximumSize">
+                        <size>
+                         <width>16777215</width>
+                         <height>16777211</height>
+                        </size>
+                       </property>
+                       <property name="editTriggers">
+                        <set>QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed|QAbstractItemView::SelectedClicked</set>
+                       </property>
+                       <property name="selectionMode">
+                        <enum>QAbstractItemView::ExtendedSelection</enum>
+                       </property>
+                       <item>
+                        <property name="text">
+                         <string>首都名</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>省（自治区、直辖市、特别行政区）政府驻地名称</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>地级市（自治州、盟、地区）政府驻地名称</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>县级市（自治县、旗、自治旗、区）政府驻地名称</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>乡、镇政府驻地、街道办事处名称</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>乡政府驻地名</string>
+                        </property>
+                       </item>
+                       <item>
+                        <property name="text">
+                         <string>镇政府驻地名</string>
+                        </property>
+                       </item>
+                      </widget>
+                     </item>
+                    </layout>
+                   </widget>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="tab_LayoutTemplate">
+         <attribute name="title">
+          <string>布局模板</string>
+         </attribute>
+         <layout class="QGridLayout" name="gridLayout_11">
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_LayoutTemplate">
+            <property name="text">
+             <string>模板路径</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="lineEdit_LayoutTemplatePath"/>
+          </item>
+          <item row="1" column="0" colspan="2">
+           <widget class="QListWidget" name="listWidget_LayoutTemplate">
+            <property name="alternatingRowColors">
+             <bool>false</bool>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="tab_Decoration">
+         <attribute name="title">
+          <string>整饰要素</string>
+         </attribute>
+         <layout class="QGridLayout" name="gridLayout_12">
+          <item row="0" column="0">
+           <widget class="QTabWidget" name="tabWidget_DecorationItem">
+            <property name="currentIndex">
+             <number>0</number>
+            </property>
+            <widget class="QWidget" name="tab_SecurityClassification">
+             <attribute name="title">
+              <string>密级</string>
+             </attribute>
+             <layout class="QGridLayout" name="gridLayout_17">
+              <item row="0" column="0">
+               <widget class="QGroupBox" name="groupBox_8">
+                <property name="title">
+                 <string>密级设置</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_16">
+                 <item row="0" column="0">
+                  <widget class="QRadioButton" name="radioButton_JueMi">
+                   <property name="text">
+                    <string>绝密</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QRadioButton" name="radioButton_JiMi">
+                   <property name="text">
+                    <string>机密</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="2">
+                  <widget class="QRadioButton" name="radioButton_MiMi">
+                   <property name="text">
+                    <string>秘密</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <spacer name="verticalSpacer_4">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>315</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="tab_MapDetails">
+             <attribute name="title">
+              <string>地图说明</string>
+             </attribute>
+             <layout class="QGridLayout" name="gridLayout_15">
+              <item row="0" column="0">
+               <widget class="QTextEdit" name="textEdit_MapDetail"/>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="tab_MapAgency">
+             <attribute name="title">
+              <string>制图单位</string>
+             </attribute>
+             <layout class="QGridLayout" name="gridLayout_19">
+              <item row="0" column="0">
+               <widget class="QGroupBox" name="groupBox_9">
+                <property name="title">
+                 <string>图名设置</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_18">
+                 <item row="0" column="0" colspan="2">
+                  <widget class="QCheckBox" name="checkBox_MapAgency">
+                   <property name="text">
+                    <string>制图单位</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="2">
+                  <widget class="QLineEdit" name="lineEdit_MapAgency"/>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <spacer name="verticalSpacer_5">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>311</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="tab_SheetName">
+             <attribute name="title">
+              <string>图幅名称</string>
+             </attribute>
+             <layout class="QGridLayout" name="gridLayout_21">
+              <item row="0" column="0">
+               <widget class="QGroupBox" name="groupBox_10">
+                <property name="title">
+                 <string>图幅名称设置</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_20">
+                 <item row="0" column="0">
+                  <widget class="QCheckBox" name="checkBox_LeftTopSheet">
+                   <property name="text">
+                    <string>左上角图幅号</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QCheckBox" name="checkBox_RightBottomSheet">
+                   <property name="text">
+                    <string>右下角图幅号</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <spacer name="verticalSpacer_6">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>285</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="tab_Scale">
+             <attribute name="title">
+              <string>比例尺</string>
+             </attribute>
+             <layout class="QGridLayout" name="gridLayout_24">
+              <item row="0" column="0">
+               <widget class="QGroupBox" name="groupBox_11">
+                <property name="title">
+                 <string>比例尺设置</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_23">
+                 <item row="0" column="0">
+                  <widget class="QCheckBox" name="checkBox_Scale">
+                   <property name="text">
+                    <string>比例尺</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QLineEdit" name="lineEdit_Scale"/>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <spacer name="verticalSpacer_7">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>311</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="tab_KmNet">
+             <attribute name="title">
+              <string>方里网</string>
+             </attribute>
+             <layout class="QGridLayout" name="gridLayout_26">
+              <item row="0" column="0">
+               <widget class="QGroupBox" name="groupBox_12">
+                <property name="title">
+                 <string>方里网设置</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_25">
+                 <item row="0" column="0">
+                  <widget class="QCheckBox" name="checkBox_KmNet">
+                   <property name="text">
+                    <string>方里网</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <spacer name="verticalSpacer_8">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>315</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="tab_ThreeNorthLine">
+             <attribute name="title">
+              <string>三北方向线</string>
+             </attribute>
+             <layout class="QGridLayout" name="gridLayout_30">
+              <item row="0" column="0">
+               <widget class="QGroupBox" name="groupBox_14">
+                <property name="title">
+                 <string>三北方向线设置</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_29">
+                 <item row="0" column="0">
+                  <widget class="QCheckBox" name="checkBox_NorthDirectionLines">
+                   <property name="text">
+                    <string>三北方向线</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <spacer name="verticalSpacer_10">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>263</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="tab_SheetList">
+             <attribute name="title">
+              <string>接图表</string>
+             </attribute>
+             <layout class="QGridLayout" name="gridLayout_34">
+              <item row="0" column="0">
+               <widget class="QGroupBox" name="groupBox_15">
+                <property name="title">
+                 <string>接图表设置</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_33">
+                 <item row="0" column="0">
+                  <widget class="QCheckBox" name="checkBox_SheetList">
+                   <property name="text">
+                    <string>接图表</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <spacer name="verticalSpacer_11">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>315</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="tab_MosaicMap">
+             <attribute name="title">
+              <string>镶嵌线缩略图</string>
+             </attribute>
+             <layout class="QGridLayout" name="gridLayout_38">
+              <item row="0" column="0">
+               <widget class="QGroupBox" name="groupBox_17">
+                <property name="title">
+                 <string>镶嵌线缩略图设置</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_37">
+                 <item row="0" column="0">
+                  <widget class="QCheckBox" name="checkBox_MosaicMap">
+                   <property name="text">
+                    <string>镶嵌线缩略图</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <spacer name="verticalSpacer_13">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>315</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="tab_Legend">
+             <attribute name="title">
+              <string>图例</string>
+             </attribute>
+             <layout class="QGridLayout" name="gridLayout_36">
+              <item row="0" column="0">
+               <widget class="QGroupBox" name="groupBox_16">
+                <property name="title">
+                 <string>图例设置</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_35">
+                 <item row="0" column="0">
+                  <widget class="QCheckBox" name="checkBox_MainMapLegend">
+                   <property name="text">
+                    <string>主图图例</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="1">
+                  <widget class="QCheckBox" name="checkBox_MosaicMapLegend">
+                   <property name="text">
+                    <string>镶嵌线缩略图图例</string>
+                   </property>
+                  </widget>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <spacer name="verticalSpacer_12">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>229</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
+            </widget>
+            <widget class="QWidget" name="tab_Annotations">
+             <attribute name="title">
+              <string>附注</string>
+             </attribute>
+             <layout class="QGridLayout" name="gridLayout_45">
+              <item row="0" column="0">
+               <widget class="QGroupBox" name="groupBox_20">
+                <property name="title">
+                 <string>附注设置</string>
+                </property>
+                <layout class="QGridLayout" name="gridLayout_43">
+                 <item row="0" column="0" colspan="2">
+                  <widget class="QCheckBox" name="checkBox_Annotations">
+                   <property name="text">
+                    <string>附注</string>
+                   </property>
+                  </widget>
+                 </item>
+                 <item row="0" column="2">
+                  <widget class="QLineEdit" name="lineEdit_Annotations"/>
+                 </item>
+                </layout>
+               </widget>
+              </item>
+              <item row="1" column="0">
+               <spacer name="verticalSpacer_15">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>225</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
+            </widget>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+        <widget class="QWidget" name="tab_OutputPath">
+         <attribute name="title">
+          <string>输出</string>
+         </attribute>
+         <layout class="QGridLayout" name="gridLayout_28">
+          <item row="0" column="0">
+           <widget class="QGroupBox" name="groupBox_19">
+            <property name="title">
+             <string>地图格式</string>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_39">
+             <item row="0" column="0">
+              <widget class="QRadioButton" name="radioButton_GeoPDF">
+               <property name="text">
+                <string>GeoPDF</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QRadioButton" name="radioButton_PDF">
+               <property name="text">
+                <string>PDF</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="2">
+              <widget class="QRadioButton" name="radioButton_tiff">
+               <property name="text">
+                <string>tiff</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QGroupBox" name="groupBox_18">
+            <property name="title">
+             <string>路径设置</string>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_40">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_OutputDataPath">
+               <property name="text">
+                <string>输出路径</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QLineEdit" name="lineEdit_OutputDataPath"/>
+             </item>
+             <item row="0" column="2">
+              <widget class="QPushButton" name="pushButton_Save">
+               <property name="toolTip">
+                <string>设置输出数据路径</string>
+               </property>
+               <property name="text">
+                <string>浏览</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QGroupBox" name="groupBox_21">
+            <property name="title">
+             <string>制图方案</string>
+            </property>
+            <layout class="QGridLayout" name="gridLayout_41">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_OutputMappingSchemaPath">
+               <property name="text">
+                <string>保存路径</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QLineEdit" name="lineEdit_OutputMappingSchemaPath"/>
+             </item>
+             <item row="0" column="2">
+              <widget class="QPushButton" name="pushButton_SaveMappingSchema">
+               <property name="toolTip">
+                <string>设置输出数据路径</string>
+               </property>
+               <property name="text">
+                <string>浏览</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <spacer name="verticalSpacer_14">
+            <property name="orientation">
+             <enum>Qt::Vertical</enum>
+            </property>
+            <property name="sizeHint" stdset="0">
+             <size>
+              <width>20</width>
+              <height>265</height>
+             </size>
+            </property>
+           </spacer>
+          </item>
+         </layout>
+        </widget>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

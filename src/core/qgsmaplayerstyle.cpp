@@ -53,7 +53,7 @@ void QgsMapLayerStyle::readFromLayer( QgsMapLayer *layer )
   layer->exportNamedStyle( doc, errorMsg, context );
   if ( !errorMsg.isEmpty() )
   {
-    QgsDebugError( "Failed to export style from layer: " + errorMsg );
+    QgsDebugMsg( "Failed to export style from layer: " + errorMsg );
     return;
   }
 
@@ -72,14 +72,14 @@ void QgsMapLayerStyle::writeToLayer( QgsMapLayer *layer ) const
   QDomDocument doc( QStringLiteral( "qgis" ) );
   if ( !doc.setContent( mXmlData ) )
   {
-    QgsDebugError( QStringLiteral( "Failed to parse XML of previously stored XML data - this should not happen!" ) );
+    QgsDebugMsg( QStringLiteral( "Failed to parse XML of previously stored XML data - this should not happen!" ) );
     return;
   }
 
   QString errorMsg;
   if ( !layer->importNamedStyle( doc, errorMsg ) )
   {
-    QgsDebugError( "Failed to import style to layer: " + errorMsg );
+    QgsDebugMsg( "Failed to import style to layer: " + errorMsg );
   }
 }
 

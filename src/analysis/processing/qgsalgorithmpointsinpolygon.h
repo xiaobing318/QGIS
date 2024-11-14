@@ -46,9 +46,8 @@ class QgsPointsInPolygonAlgorithm : public QgsProcessingFeatureBasedAlgorithm
     QString shortDescription() const override;
     QgsPointsInPolygonAlgorithm *createInstance() const override SIP_FACTORY;
     QList<int> inputLayerTypes() const override;
-    Qgis::ProcessingSourceType outputLayerType() const override;
+    QgsProcessing::SourceType outputLayerType() const override;
     QgsCoordinateReferenceSystem outputCrs( const QgsCoordinateReferenceSystem &inputCrs ) const override;
-    bool supportInPlaceEdit( const QgsMapLayer *layer ) const override;
 
 
   protected:
@@ -58,6 +57,7 @@ class QgsPointsInPolygonAlgorithm : public QgsProcessingFeatureBasedAlgorithm
     bool prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
     QgsFeatureList processFeature( const QgsFeature &feature,  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
     QgsFields outputFields( const QgsFields &inputFields ) const override;
+    bool supportInPlaceEdit( const QgsMapLayer *layer ) const override;
 
   private:
     bool mIsInPlace = false;

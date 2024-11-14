@@ -14,16 +14,14 @@
  ***************************************************************************/
 
 #include "qgsdemterraintileloader_p.h"
-#include "moc_qgsdemterraintileloader_p.cpp"
 
 #include "qgs3dmapsettings.h"
-#include "qgs3dutils.h"
-#include "qgschunknode.h"
+#include "qgschunknode_p.h"
 #include "qgsdemterraingenerator.h"
 #include "qgsdemterraintilegeometry_p.h"
 #include "qgseventtracing.h"
 #include "qgsonlineterraingenerator.h"
-#include "qgsterrainentity.h"
+#include "qgsterrainentity_p.h"
 #include "qgsterraintexturegenerator_p.h"
 #include "qgsterraintileentity_p.h"
 #include "qgsterraingenerator.h"
@@ -95,32 +93,37 @@ Qt3DCore::QEntity *QgsDemTerrainTileLoader::createEntity( Qt3DCore::QEntity *par
     return nullptr;
   }
 
-  Qgs3DMapSettings *map = terrain()->mapSettings();
+  const Qgs3DMapSettings &map = terrain()->map3D();
   QgsChunkNodeId nodeId = mNode->tileId();
-  QgsRectangle extent = map->terrainGenerator()->tilingScheme().tileToExtent( nodeId );
+  QgsRectangle extent = map.terrainGenerator()->tilingScheme().tileToExtent( nodeId );
+  double x0 = extent.xMinimum() - map.origin().x();
+  double y0 = extent.yMinimum() - map.origin().y();
   double side = extent.width();
+  double half = side / 2;
+
 
   QgsTerrainTileEntity *entity = new QgsTerrainTileEntity( nodeId );
 
   // create geometry renderer
 
   Qt3DRender::QGeometryRenderer *mesh = new Qt3DRender::QGeometryRenderer;
-  mesh->setGeometry( new DemTerrainTileGeometry( mResolution, side, map->terrainVerticalScale(), mSkirtHeight, mHeightMap, mesh ) );
+  mesh->setGeometry( new DemTerrainTileGeometry( mResolution, side, map.terrainVerticalScale(), mSkirtHeight, mHeightMap, mesh ) );
   entity->addComponent( mesh ); // takes ownership if the component has no parent
 
   // create material
 
-  createTextureComponent( entity, map->isTerrainShadingEnabled(), map->terrainShadingMaterial(), !map->layers().empty() );
+  createTextureComponent( entity, map.isTerrainShadingEnabled(), map.terrainShadingMaterial(), !map.layers().empty() );
 
   // create transform
 
-  Qt3DCore::QTransform *transform = new Qt3DCore::QTransform();
-  QgsVector3D translation = Qgs3DUtils::mapToWorldCoordinates( QgsVector3D( extent.xMinimum(), extent.yMinimum(), 0 ), map->origin() );
-  transform->setTranslation( translation.toVector3D() );
+  Qt3DCore::QTransform *transform = nullptr;
+  transform = new Qt3DCore::QTransform();
   entity->addComponent( transform );
 
-  mNode->setExactBox3D( QgsBox3D( extent.xMinimum(), extent.yMinimum(), zMin * map->terrainVerticalScale(),
-                                  extent.xMinimum() + side, extent.yMinimum() + side, zMax * map->terrainVerticalScale() ) );
+  transform->setScale( side );
+  transform->setTranslation( QVector3D( x0 + half, 0, - ( y0 + half ) ) );
+
+  mNode->setExactBbox( QgsAABB( x0, zMin * map.terrainVerticalScale(), -y0, x0 + side, zMax * map.terrainVerticalScale(), -( y0 + side ) ) );
   mNode->updateParentBoundingBoxesRecursively();
 
   entity->setParent( parent );
@@ -149,7 +152,7 @@ void QgsDemTerrainTileLoader::onHeightMapReady( int jobId, const QByteArray &hei
 #include "qgsterraindownloader.h"
 
 QgsDemHeightMapGenerator::QgsDemHeightMapGenerator( QgsRasterLayer *dtm, const QgsTilingScheme &tilingScheme, int resolution, const QgsCoordinateTransformContext &transformContext )
-  : mDtmExtent( dtm ? dtm->extent() : QgsRectangle() )
+  : mDtm( dtm )
   , mClonedProvider( dtm ? qgis::down_cast<QgsRasterDataProvider *>( dtm->dataProvider()->clone() ) : nullptr )
   , mTilingScheme( tilingScheme )
   , mResolution( resolution )
@@ -165,7 +168,7 @@ QgsDemHeightMapGenerator::~QgsDemHeightMapGenerator()
 }
 
 
-static QByteArray _readDtmData( QgsRasterDataProvider *provider, const QgsRectangle &extent, int res, const QgsCoordinateReferenceSystem &destCrs, const QgsRectangle &clippingExtent )
+static QByteArray _readDtmData( QgsRasterDataProvider *provider, const QgsRectangle &extent, int res, const QgsCoordinateReferenceSystem &destCrs )
 {
   provider->moveToThread( QThread::currentThread() );
 
@@ -187,17 +190,6 @@ static QByteArray _readDtmData( QgsRasterDataProvider *provider, const QgsRectan
   if ( block )
   {
     block->convert( Qgis::DataType::Float32 ); // currently we expect just floats
-
-    // set noData outside our clippingExtent
-    const QRect subRect = QgsRasterBlock::subRect( extent, block->width(), block->height(), clippingExtent );
-    if ( !block->hasNoDataValue() )
-    {
-      // QgsRasterBlock::setIsNoDataExcept() misbehaves without a defined no data value
-      // see https://github.com/qgis/QGIS/issues/51285
-      block->setNoDataValue( std::numeric_limits<float>::lowest() );
-    }
-    block->setIsNoDataExcept( subRect );
-
     data = block->data();
     data.detach();  // this should make a deep copy
 
@@ -215,7 +207,8 @@ static QByteArray _readDtmData( QgsRasterDataProvider *provider, const QgsRectan
     }
   }
 
-  delete provider;
+  provider->moveToThread( nullptr );
+
   return data;
 }
 
@@ -232,9 +225,9 @@ int QgsDemHeightMapGenerator::render( const QgsChunkNodeId &nodeId )
   QgsRectangle extent = mTilingScheme.tileToExtent( nodeId );
   float mapUnitsPerPixel = extent.width() / mResolution;
   extent.grow( mapUnitsPerPixel / 2 );
-  // but make sure not to go beyond the root tile's full extent (returns invalid values)
-  QgsRectangle rootTileExtent = mTilingScheme.tileToExtent( 0, 0, 0 );
-  extent = extent.intersect( rootTileExtent );
+  // but make sure not to go beyond the full extent (returns invalid values)
+  QgsRectangle fullExtent = mTilingScheme.tileToExtent( 0, 0, 0 );
+  extent = extent.intersect( fullExtent );
 
   JobData jd;
   jd.jobId = ++mLastJobId;
@@ -244,12 +237,11 @@ int QgsDemHeightMapGenerator::render( const QgsChunkNodeId &nodeId )
   QFutureWatcher<QByteArray> *fw = new QFutureWatcher<QByteArray>( nullptr );
   connect( fw, &QFutureWatcher<QByteArray>::finished, this, &QgsDemHeightMapGenerator::onFutureFinished );
   connect( fw, &QFutureWatcher<QByteArray>::finished, fw, &QObject::deleteLater );
-  if ( mClonedProvider )
+  // make a clone of the data provider so it is safe to use in worker thread
+  if ( mDtm )
   {
-    // make a clone of the data provider so it is safe to use in worker thread
-    std::unique_ptr< QgsRasterDataProvider > clonedProviderClone( mClonedProvider->clone() );
-    clonedProviderClone->moveToThread( nullptr );
-    jd.future = QtConcurrent::run( _readDtmData, clonedProviderClone.release(), extent, mResolution, mTilingScheme.crs(), mTilingScheme.fullExtent() );
+    mClonedProvider->moveToThread( nullptr );
+    jd.future = QtConcurrent::run( _readDtmData, mClonedProvider, extent, mResolution, mTilingScheme.crs() );
   }
   else
   {
@@ -265,16 +257,14 @@ int QgsDemHeightMapGenerator::render( const QgsChunkNodeId &nodeId )
 
 void QgsDemHeightMapGenerator::waitForFinished()
 {
-  for ( auto it = mJobs.keyBegin(); it != mJobs.keyEnd(); it++ )
+  for ( QFutureWatcher<QByteArray> *fw : mJobs.keys() )
   {
-    QFutureWatcher<QByteArray> *fw = *it;
     disconnect( fw, &QFutureWatcher<QByteArray>::finished, this, &QgsDemHeightMapGenerator::onFutureFinished );
     disconnect( fw, &QFutureWatcher<QByteArray>::finished, fw, &QObject::deleteLater );
   }
   QVector<QFutureWatcher<QByteArray>*> toBeDeleted;
-  for ( auto it = mJobs.keyBegin(); it != mJobs.keyEnd(); it++ )
+  for ( QFutureWatcher<QByteArray> *fw : mJobs.keys() )
   {
-    QFutureWatcher<QByteArray> *fw = *it;
     fw->waitForFinished();
     JobData jobData = mJobs.value( fw );
     toBeDeleted.push_back( fw );
@@ -295,7 +285,7 @@ void QgsDemHeightMapGenerator::lazyLoadDtmCoarseData( int res, const QgsRectangl
   QMutexLocker locker( &mLazyLoadDtmCoarseDataMutex );
   if ( mDtmCoarseData.isEmpty() )
   {
-    std::unique_ptr< QgsRasterBlock > block( mClonedProvider->block( 1, rect, res, res ) );
+    std::unique_ptr< QgsRasterBlock > block( mDtm->dataProvider()->block( 1, rect, res, res ) );
     block->convert( Qgis::DataType::Float32 );
     mDtmCoarseData = block->data();
     mDtmCoarseData.detach();  // make a deep copy
@@ -304,15 +294,16 @@ void QgsDemHeightMapGenerator::lazyLoadDtmCoarseData( int res, const QgsRectangl
 
 float QgsDemHeightMapGenerator::heightAt( double x, double y )
 {
-  if ( !mClonedProvider )
+  if ( !mDtm )
     return 0;  // TODO: calculate heights for online DTM
 
   // TODO: this is quite a primitive implementation: better to use heightmaps currently in use
   int res = 1024;
-  lazyLoadDtmCoarseData( res, mDtmExtent );
+  QgsRectangle rect = mDtm->extent();
+  lazyLoadDtmCoarseData( res, rect );
 
-  int cellX = ( int )( ( x - mDtmExtent.xMinimum() ) / mDtmExtent.width() * res + .5f );
-  int cellY = ( int )( ( mDtmExtent.yMaximum() - y ) / mDtmExtent.height() * res + .5f );
+  int cellX = ( int )( ( x - rect.xMinimum() ) / rect.width() * res + .5f );
+  int cellY = ( int )( ( rect.yMaximum() - y ) / rect.height() * res + .5f );
   cellX = std::clamp( cellX, 0, res - 1 );
   cellY = std::clamp( cellY, 0, res - 1 );
 

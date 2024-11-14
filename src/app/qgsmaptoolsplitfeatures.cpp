@@ -17,7 +17,6 @@
 #include "qgsmessagebar.h"
 #include "qgsmapcanvas.h"
 #include "qgsmaptoolsplitfeatures.h"
-#include "moc_qgsmaptoolsplitfeatures.cpp"
 #include "qgsproject.h"
 #include "qgssnappingutils.h"
 #include "qgsvectorlayer.h"
@@ -70,7 +69,7 @@ void QgsMapToolSplitFeatures::cadCanvasReleaseEvent( QgsMapMouseEvent *e )
   {
     int error = 0;
     //If we snap the first point on a vertex of a line layer, we directly split the feature at this point
-    if ( vlayer->geometryType() == Qgis::GeometryType::Line && pointsZM().isEmpty() )
+    if ( vlayer->geometryType() == QgsWkbTypes::LineGeometry && pointsZM().isEmpty() )
     {
       const QgsPointLocator::Match m = mCanvas->snappingUtils()->snapToCurrentLayer( e->pos(), QgsPointLocator::Vertex );
       if ( m.isValid() )
@@ -146,8 +145,8 @@ void QgsMapToolSplitFeatures::cadCanvasReleaseEvent( QgsMapMouseEvent *e )
                  vectorLayer->isEditable() &&
                  vectorLayer->isSpatial() &&
                  vectorLayer != vlayer &&
-                 ( vectorLayer->geometryType() == Qgis::GeometryType::Line ||
-                   vectorLayer->geometryType() == Qgis::GeometryType::Polygon ) )
+                 ( vectorLayer->geometryType() == QgsWkbTypes::LineGeometry ||
+                   vectorLayer->geometryType() == QgsWkbTypes::PolygonGeometry ) )
             {
               vectorLayer->beginEditCommand( tr( "Topological points from Features split" ) );
               const int returnValue = vectorLayer->addTopologicalPoints( topologyTestPoints );

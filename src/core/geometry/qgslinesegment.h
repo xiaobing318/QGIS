@@ -57,7 +57,7 @@ class CORE_EXPORT QgsLineSegment2D
      */
     double length() const SIP_HOLDGIL
     {
-      return mStart.distance( mEnd );
+      return std::sqrt( ( mStart.x() - mEnd.x() ) * ( mStart.x() - mEnd.x() ) + ( mStart.y() - mEnd.y() ) * ( mStart.y() - mEnd.y() ) );
     }
 
     /**
@@ -66,7 +66,7 @@ class CORE_EXPORT QgsLineSegment2D
      */
     double lengthSquared() const SIP_HOLDGIL
     {
-      return mStart.sqrDist( mEnd );
+      return ( mStart.x() - mEnd.x() ) * ( mStart.x() - mEnd.x() ) + ( mStart.y() - mEnd.y() ) * ( mStart.y() - mEnd.y() );
     }
 
     /**
@@ -220,11 +220,13 @@ class CORE_EXPORT QgsLineSegment2D
 
     // TODO c++20 - replace with = default
 
+    //! Equality operator
     bool operator==( const QgsLineSegment2D &other ) const SIP_HOLDGIL
     {
       return mStart == other.mStart && mEnd == other.mEnd;
     }
 
+    //! Inequality operator
     bool operator!=( const QgsLineSegment2D &other ) const SIP_HOLDGIL
     {
       return mStart != other.mStart || mEnd != other.mEnd;

@@ -64,14 +64,9 @@ QString QgsSplitFeaturesByAttributeCharacterAlgorithm::shortDescription() const
   return QObject::tr( "Splits features into multiple output features by splitting a field by a character." );
 }
 
-Qgis::ProcessingAlgorithmDocumentationFlags QgsSplitFeaturesByAttributeCharacterAlgorithm::documentationFlags() const
-{
-  return Qgis::ProcessingAlgorithmDocumentationFlag::RegeneratesPrimaryKey;
-}
-
 QList<int> QgsSplitFeaturesByAttributeCharacterAlgorithm::inputLayerTypes() const
 {
-  return QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::Vector );
+  return QList<int>() << QgsProcessing::TypeVector;
 }
 
 void QgsSplitFeaturesByAttributeCharacterAlgorithm::initParameters( const QVariantMap & )
@@ -79,13 +74,13 @@ void QgsSplitFeaturesByAttributeCharacterAlgorithm::initParameters( const QVaria
   addParameter( new QgsProcessingParameterField( QStringLiteral( "FIELD" ), QObject::tr( "Split using values in field" ), QVariant(), QStringLiteral( "INPUT" ) ) );
   addParameter( new QgsProcessingParameterString( QStringLiteral( "CHAR" ), QObject::tr( "Split values using character" ) ) );
   std::unique_ptr< QgsProcessingParameterDefinition > regexParam = std::make_unique< QgsProcessingParameterBoolean >( QStringLiteral( "REGEX" ), QObject::tr( "Use regular expression separator" ) );
-  regexParam->setFlags( regexParam->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  regexParam->setFlags( regexParam->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( regexParam.release() );
 }
 
-Qgis::ProcessingSourceType QgsSplitFeaturesByAttributeCharacterAlgorithm::outputLayerType() const
+QgsProcessing::SourceType QgsSplitFeaturesByAttributeCharacterAlgorithm::outputLayerType() const
 {
-  return Qgis::ProcessingSourceType::Vector;
+  return QgsProcessing::TypeVector;
 }
 
 QgsSplitFeaturesByAttributeCharacterAlgorithm *QgsSplitFeaturesByAttributeCharacterAlgorithm::createInstance() const
@@ -106,7 +101,7 @@ QgsFields QgsSplitFeaturesByAttributeCharacterAlgorithm::outputFields( const Qgs
     else
     {
       // we need to convert the split field to a string field
-      outputFields.append( QgsField( inputFields.at( i ).name(), QMetaType::Type::QString ) );
+      outputFields.append( QgsField( inputFields.at( i ).name(), QVariant::String ) );
     }
   }
   return outputFields;

@@ -16,25 +16,25 @@
 #include "qgspointcloudlayer3drenderer.h"
 
 #include "qgs3dutils.h"
+#include "qgschunkedentity_p.h"
 #include "qgspointcloudlayerchunkloader_p.h"
 
 #include "qgspointcloudindex.h"
 #include "qgspointcloudlayer.h"
-#include "qgsvirtualpointcloudentity_p.h"
 #include "qgsxmlutils.h"
+#include "qgsapplication.h"
 #include "qgs3dsymbolregistry.h"
 #include "qgspointcloud3dsymbol.h"
 #include "qgspointcloudlayerelevationproperties.h"
 
-QgsPointCloud3DRenderContext::QgsPointCloud3DRenderContext( const Qgs3DRenderContext &context, const QgsCoordinateTransform &coordinateTransform, std::unique_ptr<QgsPointCloud3DSymbol> symbol, double zValueScale, double zValueFixedOffset )
-  : Qgs3DRenderContext( context )
+QgsPointCloud3DRenderContext::QgsPointCloud3DRenderContext( const Qgs3DMapSettings &map, const QgsCoordinateTransform &coordinateTransform, std::unique_ptr<QgsPointCloud3DSymbol> symbol, double zValueScale, double zValueFixedOffset )
+  : Qgs3DRenderContext( map )
   , mSymbol( std::move( symbol ) )
   , mZValueScale( zValueScale )
   , mZValueFixedOffset( zValueFixedOffset )
   , mCoordinateTransform( coordinateTransform )
   , mFeedback( new QgsFeedback )
 {
-  updateExtent();
 }
 
 void QgsPointCloud3DRenderContext::setAttributes( const QgsPointCloudAttributeCollection &attributes )
@@ -63,7 +63,6 @@ QSet<int> QgsPointCloud3DRenderContext::getFilteredOutValues() const
 void QgsPointCloud3DRenderContext::setCoordinateTransform( const QgsCoordinateTransform &coordinateTransform )
 {
   mCoordinateTransform = coordinateTransform;
-  updateExtent();
 }
 
 bool QgsPointCloud3DRenderContext::isCanceled() const
@@ -74,28 +73,6 @@ bool QgsPointCloud3DRenderContext::isCanceled() const
 void QgsPointCloud3DRenderContext::cancelRendering() const
 {
   mFeedback->cancel();
-}
-
-void QgsPointCloud3DRenderContext::updateExtent()
-{
-  if ( extent().isEmpty() )
-  {
-    // an empty extent means no filter, so let's pass it without transformation
-    mLayerExtent = QgsRectangle();
-  }
-  else
-  {
-    try
-    {
-      mLayerExtent = mCoordinateTransform.transformBoundingBox( extent(), Qgis::TransformDirection::Reverse );
-    }
-    catch ( const QgsCsException & )
-    {
-      // bad luck, can't reproject for some reason. Let's use an empty extent to skip filtering.
-      QgsDebugError( QStringLiteral( "Transformation of extent failed!" ) );
-      mLayerExtent = QgsRectangle();
-    }
-  }
 }
 // ---------
 
@@ -148,29 +125,19 @@ QgsPointCloudLayer3DRenderer *QgsPointCloudLayer3DRenderer::clone() const
   return r;
 }
 
-Qt3DCore::QEntity *QgsPointCloudLayer3DRenderer::createEntity( Qgs3DMapSettings *map ) const
+Qt3DCore::QEntity *QgsPointCloudLayer3DRenderer::createEntity( const Qgs3DMapSettings &map ) const
 {
   QgsPointCloudLayer *pcl = layer();
-  if ( !pcl || !pcl->dataProvider() )
+  if ( !pcl || !pcl->dataProvider() || !pcl->dataProvider()->index() )
     return nullptr;
   if ( !mSymbol )
     return nullptr;
 
-  const QgsCoordinateTransform coordinateTransform( pcl->crs3D(), map->crs(), map->transformContext() );
+  const QgsCoordinateTransform coordinateTransform( pcl->crs(), map.crs(), map.transformContext() );
 
-  Qt3DCore::QEntity *entity = nullptr;
-  if ( pcl->dataProvider()->index() )
-  {
-    entity = new QgsPointCloudLayerChunkedEntity( map, pcl->dataProvider()->index(), coordinateTransform, dynamic_cast<QgsPointCloud3DSymbol *>( mSymbol->clone() ), static_cast< float >( maximumScreenError() ), showBoundingBoxes(),
-        static_cast< const QgsPointCloudLayerElevationProperties * >( pcl->elevationProperties() )->zScale(),
-        static_cast< const QgsPointCloudLayerElevationProperties * >( pcl->elevationProperties() )->zOffset(), mPointBudget );
-  }
-  else if ( !pcl->dataProvider()->subIndexes().isEmpty() )
-  {
-    entity = new QgsVirtualPointCloudEntity( map, pcl, coordinateTransform, dynamic_cast<QgsPointCloud3DSymbol *>( mSymbol->clone() ), static_cast< float >( maximumScreenError() ), showBoundingBoxes(),
-        static_cast< const QgsPointCloudLayerElevationProperties * >( pcl->elevationProperties() )->zScale(),
-        static_cast< const QgsPointCloudLayerElevationProperties * >( pcl->elevationProperties() )->zOffset(), mPointBudget );
-  }
+  QgsPointCloudLayerChunkedEntity *entity = new QgsPointCloudLayerChunkedEntity( pcl->dataProvider()->index(), map, coordinateTransform, dynamic_cast<QgsPointCloud3DSymbol *>( mSymbol->clone() ), maximumScreenError(), showBoundingBoxes(),
+      static_cast< const QgsPointCloudLayerElevationProperties * >( pcl->elevationProperties() )->zScale(),
+      static_cast< const QgsPointCloudLayerElevationProperties * >( pcl->elevationProperties() )->zOffset(), mPointBudget );
   return entity;
 }
 

@@ -18,7 +18,6 @@
 #include "qgsgeocodercontext.h"
 #include "qgslogger.h"
 #include "qgsnetworkaccessmanager.h"
-#include "qgssetrequestinitiator_p.h"
 #include "qgscoordinatetransform.h"
 #include <QDateTime>
 #include <QUrl>
@@ -50,25 +49,25 @@ QgsGeocoderInterface::Flags QgsNominatimGeocoder::flags() const
 QgsFields QgsNominatimGeocoder::appendedFields() const
 {
   QgsFields fields;
-  fields.append( QgsField( QStringLiteral( "osm_type" ), QMetaType::Type::QString ) );
-  fields.append( QgsField( QStringLiteral( "display_name" ), QMetaType::Type::QString ) );
-  fields.append( QgsField( QStringLiteral( "place_id" ), QMetaType::Type::QString ) );
-  fields.append( QgsField( QStringLiteral( "class" ), QMetaType::Type::QString ) );
-  fields.append( QgsField( QStringLiteral( "type" ), QMetaType::Type::QString ) );
-  fields.append( QgsField( QStringLiteral( "road" ), QMetaType::Type::QString ) );
-  fields.append( QgsField( QStringLiteral( "village" ), QMetaType::Type::QString ) );
-  fields.append( QgsField( QStringLiteral( "city_district" ), QMetaType::Type::QString ) );
-  fields.append( QgsField( QStringLiteral( "town" ), QMetaType::Type::QString ) );
-  fields.append( QgsField( QStringLiteral( "city" ), QMetaType::Type::QString ) );
-  fields.append( QgsField( QStringLiteral( "state" ), QMetaType::Type::QString ) );
-  fields.append( QgsField( QStringLiteral( "country" ), QMetaType::Type::QString ) );
-  fields.append( QgsField( QStringLiteral( "postcode" ), QMetaType::Type::QString ) );
+  fields.append( QgsField( QStringLiteral( "osm_type" ), QVariant::String ) );
+  fields.append( QgsField( QStringLiteral( "display_name" ), QVariant::String ) );
+  fields.append( QgsField( QStringLiteral( "place_id" ), QVariant::String ) );
+  fields.append( QgsField( QStringLiteral( "class" ), QVariant::String ) );
+  fields.append( QgsField( QStringLiteral( "type" ), QVariant::String ) );
+  fields.append( QgsField( QStringLiteral( "road" ), QVariant::String ) );
+  fields.append( QgsField( QStringLiteral( "village" ), QVariant::String ) );
+  fields.append( QgsField( QStringLiteral( "city_district" ), QVariant::String ) );
+  fields.append( QgsField( QStringLiteral( "town" ), QVariant::String ) );
+  fields.append( QgsField( QStringLiteral( "city" ), QVariant::String ) );
+  fields.append( QgsField( QStringLiteral( "state" ), QVariant::String ) );
+  fields.append( QgsField( QStringLiteral( "country" ), QVariant::String ) );
+  fields.append( QgsField( QStringLiteral( "postcode" ), QVariant::String ) );
   return fields;
 }
 
-Qgis::WkbType QgsNominatimGeocoder::wkbType() const
+QgsWkbTypes::Type QgsNominatimGeocoder::wkbType() const
 {
-  return Qgis::WkbType::Point;
+  return QgsWkbTypes::Point;
 }
 
 QList<QgsGeocoderResult> QgsNominatimGeocoder::geocodeString( const QString &string, const QgsGeocoderContext &context, QgsFeedback *feedback ) const
@@ -85,7 +84,7 @@ QList<QgsGeocoderResult> QgsNominatimGeocoder::geocodeString( const QString &str
     }
     catch ( QgsCsException & )
     {
-      QgsDebugError( "Could not transform geocode bounds to WGS84" );
+      QgsDebugMsg( "Could not transform geocode bounds to WGS84" );
     }
   }
 
@@ -153,7 +152,10 @@ QUrl QgsNominatimGeocoder::requestUrl( const QString &address, const QgsRectangl
   query.addQueryItem( QStringLiteral( "addressdetails" ), QStringLiteral( "1" ) );
   if ( !bounds.isNull() && bounds.isFinite() )
   {
-    query.addQueryItem( QStringLiteral( "viewbox" ), bounds.toString( 7 ).replace( QLatin1String( " : " ), QLatin1String( "," ) ) );
+    query.addQueryItem( QStringLiteral( "viewbox" ), QStringLiteral( "%1,%2,%3,%4" ).arg( bounds.xMinimum() )
+                        .arg( bounds.yMinimum() )
+                        .arg( bounds.xMaximum() )
+                        .arg( bounds.yMaximum() ) );
   }
   if ( !mCountryCodes.isEmpty() )
   {

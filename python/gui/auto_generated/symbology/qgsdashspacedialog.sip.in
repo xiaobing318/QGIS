@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/symbology/qgsdashspacedialog.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -33,7 +33,7 @@ Constructor for QgsDashSpaceWidget
 Returns the dash pattern as a list of numbers
 %End
 
-    void setUnit( Qgis::RenderUnit unit );
+    void setUnit( QgsUnitTypes::RenderUnit unit );
 %Docstring
 Sets the unit type used for the dash space pattern (used to update interface labels)
 
@@ -63,7 +63,7 @@ Constructor for QgsDashSpaceDialog
 Returns the dash pattern as a list of numbers
 %End
 
-    void setUnit( Qgis::RenderUnit unit );
+    void setUnit( QgsUnitTypes::RenderUnit unit );
 %Docstring
 Sets the unit type used for the dash space pattern (used to update interface labels)
 
@@ -79,5 +79,5 @@ Sets the unit type used for the dash space pattern (used to update interface lab
  *                                                                      *
  * src/gui/symbology/qgsdashspacedialog.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

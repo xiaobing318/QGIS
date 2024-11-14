@@ -15,7 +15,6 @@
 
 #include "qgsterraindownloader.h"
 
-#include "qgs3dutils.h"
 #include "qgslogger.h"
 #include "qgsrasterlayer.h"
 #include "qgscoordinatetransform.h"
@@ -122,11 +121,19 @@ QByteArray QgsTerrainDownloader::getHeightMap( const QgsRectangle &extentOrig, i
 {
   if ( !mOnlineDtm || !mOnlineDtm->isValid() )
   {
-    QgsDebugError( "missing a valid data source" );
+    QgsDebugMsg( "missing a valid data source" );
     return QByteArray();
   }
 
-  QgsRectangle extentTr = Qgs3DUtils::tryReprojectExtent2D( extentOrig, destCrs, mOnlineDtm->crs(), context );
+  QgsRectangle extentTr = extentOrig;
+  if ( destCrs != mOnlineDtm->crs() )
+  {
+    // if in different CRS - need to reproject extent and resolution
+    QgsCoordinateTransform ct( destCrs, mOnlineDtm->crs(), context );
+    ct.setBallparkTransformsAreAppropriate( true );
+    extentTr = ct.transformBoundingBox( extentOrig );
+  }
+
   const double requestedMupp = extentTr.width() / res;
   const double finalMupp = findBestTileResolution( requestedMupp );
 
@@ -160,14 +167,14 @@ QByteArray QgsTerrainDownloader::getHeightMap( const QgsRectangle &extentOrig, i
 
   if ( !hSrcDS || !hDstDS )
   {
-    QgsDebugError( "failed to create GDAL dataset for heightmap" );
+    QgsDebugMsg( "failed to create GDAL dataset for heightmap" );
     return QByteArray();
   }
 
   const CPLErr err = GDALRasterIO( GDALGetRasterBand( hSrcDS.get(), 1 ), GF_Write, 0, 0, res, res, heightMap.data(), res, res, GDT_Float32, 0, 0 );
   if ( err != CE_None )
   {
-    QgsDebugError( "failed to write heightmap data to GDAL dataset" );
+    QgsDebugMsg( "failed to write heightmap data to GDAL dataset" );
     return QByteArray();
   }
 
@@ -184,7 +191,7 @@ QByteArray QgsTerrainDownloader::getHeightMap( const QgsRectangle &extentOrig, i
   const CPLErr err2 = GDALRasterIO( GDALGetRasterBand( hDstDS.get(), 1 ), GF_Read, 0, 0, resOrig, resOrig, data, resOrig, resOrig, GDT_Float32, 0, 0 );
   if ( err2 != CE_None )
   {
-    QgsDebugError( "failed to read heightmap data from GDAL dataset" );
+    QgsDebugMsg( "failed to read heightmap data from GDAL dataset" );
     return QByteArray();
   }
 

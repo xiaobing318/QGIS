@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgspluginsortfilterproxymodel.h"
-#include "moc_qgspluginsortfilterproxymodel.cpp"
 
 
 

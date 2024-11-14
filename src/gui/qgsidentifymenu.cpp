@@ -16,19 +16,18 @@
 #include <QMouseEvent>
 
 #include "qgsidentifymenu.h"
-#include "moc_qgsidentifymenu.cpp"
 #include "qgsapplication.h"
+#include "qgsactionmanager.h"
 #include "qgshighlight.h"
 #include "qgsmapcanvas.h"
 #include "qgsactionmenu.h"
 #include "qgsvectorlayer.h"
 #include "qgslogger.h"
+#include "qgssettings.h"
 #include "qgsgui.h"
 #include "qgsexpressioncontextutils.h"
 #include "qgsiconutils.h"
 #include "qgsmapmouseevent.h"
-#include "qgsmaplayeraction.h"
-#include "qgsmaplayeractionregistry.h"
 
 //TODO 4.0 add explicitly qobject parent to constructor
 QgsIdentifyMenu::QgsIdentifyMenu( QgsMapCanvas *canvas )
@@ -49,7 +48,7 @@ QgsIdentifyMenu::~QgsIdentifyMenu()
   deleteRubberBands();
 }
 
-QList<QgsMapToolIdentify::IdentifyResult> QgsIdentifyMenu::findFeaturesOnCanvas( QgsMapMouseEvent *event, QgsMapCanvas *canvas, const QList<Qgis::GeometryType> &geometryTypes )
+QList<QgsMapToolIdentify::IdentifyResult> QgsIdentifyMenu::findFeaturesOnCanvas( QgsMapMouseEvent *event, QgsMapCanvas *canvas, const QList<QgsWkbTypes::GeometryType> &geometryTypes )
 {
   QList<QgsMapToolIdentify::IdentifyResult> results;
   const QMap< QString, QString > derivedAttributes;
@@ -62,12 +61,12 @@ QList<QgsMapToolIdentify::IdentifyResult> QgsIdentifyMenu::findFeaturesOnCanvas(
   const QList<QgsMapLayer *> layers = canvas->layers( true );
   for ( QgsMapLayer *layer : layers )
   {
-    if ( layer->type() == Qgis::LayerType::Vector )
+    if ( layer->type() == QgsMapLayerType::VectorLayer )
     {
       QgsVectorLayer *vectorLayer = qobject_cast<QgsVectorLayer *>( layer );
 
       bool typeIsSelectable = false;
-      for ( Qgis::GeometryType type : geometryTypes )
+      for ( QgsWkbTypes::GeometryType type : geometryTypes )
       {
         if ( vectorLayer->geometryType() == type )
         {
@@ -87,12 +86,12 @@ QList<QgsMapToolIdentify::IdentifyResult> QgsIdentifyMenu::findFeaturesOnCanvas(
         }
         catch ( QgsCsException & )
         {
-          QgsDebugError( QStringLiteral( "Could not transform geometry to layer CRS" ) );
+          QgsDebugMsg( QStringLiteral( "Could not transform geometry to layer CRS" ) );
         }
 
         QgsFeatureIterator fit = vectorLayer->getFeatures( QgsFeatureRequest()
                                  .setFilterRect( rect )
-                                 .setFlags( Qgis::FeatureRequestFlag::ExactIntersect ) );
+                                 .setFlags( QgsFeatureRequest::ExactIntersect ) );
         QgsFeature f;
         while ( fit.nextFeature( f ) )
         {
@@ -109,7 +108,7 @@ void QgsIdentifyMenu::setMaxLayerDisplay( int maxLayerDisplay )
 {
   if ( maxLayerDisplay < 0 )
   {
-    QgsDebugError( QStringLiteral( "invalid value for number of layers displayed." ) );
+    QgsDebugMsg( QStringLiteral( "invalid value for number of layers displayed." ) );
   }
   mMaxLayerDisplay = maxLayerDisplay;
 }
@@ -119,7 +118,7 @@ void QgsIdentifyMenu::setMaxFeatureDisplay( int maxFeatureDisplay )
 {
   if ( maxFeatureDisplay < 0 )
   {
-    QgsDebugError( QStringLiteral( "invalid value for number of layers displayed." ) );
+    QgsDebugMsg( QStringLiteral( "invalid value for number of layers displayed." ) );
   }
   mMaxFeatureDisplay = maxFeatureDisplay;
 }
@@ -170,12 +169,12 @@ QList<QgsMapToolIdentify::IdentifyResult> QgsIdentifyMenu::exec( const QList<Qgs
     QgsMapLayer *layer = it.key();
     switch ( layer->type() )
     {
-      case Qgis::LayerType::Raster:
+      case QgsMapLayerType::RasterLayer:
       {
         addRasterLayer( layer );
         break;
       }
-      case Qgis::LayerType::Vector:
+      case QgsMapLayerType::VectorLayer:
       {
         QgsVectorLayer *vl = qobject_cast<QgsVectorLayer *>( layer );
         if ( !vl )
@@ -184,16 +183,15 @@ QList<QgsMapToolIdentify::IdentifyResult> QgsIdentifyMenu::exec( const QList<Qgs
         break;
       }
 
-      case Qgis::LayerType::VectorTile:
+      case QgsMapLayerType::VectorTileLayer:
         // TODO: add support
         break;
 
-      case Qgis::LayerType::Plugin:
-      case Qgis::LayerType::Annotation:
-      case Qgis::LayerType::Mesh:
-      case Qgis::LayerType::PointCloud:
-      case Qgis::LayerType::Group:
-      case Qgis::LayerType::TiledScene:
+      case QgsMapLayerType::PluginLayer:
+      case QgsMapLayerType::AnnotationLayer:
+      case QgsMapLayerType::MeshLayer:
+      case QgsMapLayerType::PointCloudLayer:
+      case QgsMapLayerType::GroupLayer:
         break;
     }
   }
@@ -240,8 +238,7 @@ void QgsIdentifyMenu::addRasterLayer( QgsMapLayer *layer )
   QMenu *layerMenu = nullptr;
 
   QList<QgsMapLayerAction *> separators = QList<QgsMapLayerAction *>();
-  QgsMapLayerActionContext context;
-  QList<QgsMapLayerAction *> layerActions = mCustomActionRegistry.mapLayerActions( layer, Qgis::MapLayerActionTarget::Layer, context );
+  QList<QgsMapLayerAction *> layerActions = mCustomActionRegistry.mapLayerActions( layer, QgsMapLayerAction::Layer );
   const int nCustomActions = layerActions.count();
   if ( nCustomActions )
   {
@@ -249,7 +246,7 @@ void QgsIdentifyMenu::addRasterLayer( QgsMapLayer *layer )
   }
   if ( mShowFeatureActions )
   {
-    layerActions.append( QgsGui::mapLayerActionRegistry()->mapLayerActions( layer, Qgis::MapLayerActionTarget::Layer, context ) );
+    layerActions.append( QgsGui::mapLayerActionRegistry()->mapLayerActions( layer, QgsMapLayerAction::Layer ) );
     if ( layerActions.count() > nCustomActions )
     {
       separators.append( layerActions[nCustomActions] );
@@ -306,11 +303,10 @@ void QgsIdentifyMenu::addVectorLayer( QgsVectorLayer *layer, const QList<QgsMapT
 
   // do not add actions with MultipleFeatures as target if only 1 feature is found for this layer
   // targets defines which actions will be shown
-  const Qgis::MapLayerActionTargets targets = results.count() > 1 ? ( Qgis::MapLayerActionTarget::Layer | Qgis::MapLayerActionTarget::MultipleFeatures ) : Qgis::MapLayerActionTarget::Layer;
+  const QgsMapLayerAction::Targets targets = results.count() > 1 ? QgsMapLayerAction::Layer | QgsMapLayerAction::MultipleFeatures : QgsMapLayerAction::Layer;
 
   QList<QgsMapLayerAction *> separators = QList<QgsMapLayerAction *>();
-  QgsMapLayerActionContext actionContext;
-  QList<QgsMapLayerAction *> layerActions = mCustomActionRegistry.mapLayerActions( layer, targets, actionContext );
+  QList<QgsMapLayerAction *> layerActions = mCustomActionRegistry.mapLayerActions( layer, targets );
   const int nCustomActions = layerActions.count();
   if ( nCustomActions )
   {
@@ -318,7 +314,7 @@ void QgsIdentifyMenu::addVectorLayer( QgsVectorLayer *layer, const QList<QgsMapT
   }
   if ( mShowFeatureActions )
   {
-    layerActions << QgsGui::mapLayerActionRegistry()->mapLayerActions( layer, targets, actionContext );
+    layerActions << QgsGui::mapLayerActionRegistry()->mapLayerActions( layer, targets );
 
     if ( layerActions.count() > nCustomActions )
     {
@@ -337,7 +333,7 @@ void QgsIdentifyMenu::addVectorLayer( QgsVectorLayer *layer, const QList<QgsMapT
   // i.e custom actions or map layer actions at feature level
   if ( !createMenu )
   {
-    createMenu = !mCustomActionRegistry.mapLayerActions( layer, Qgis::MapLayerActionTarget::SingleFeature, actionContext ).isEmpty();
+    createMenu = !mCustomActionRegistry.mapLayerActions( layer, QgsMapLayerAction::SingleFeature ).isEmpty();
     if ( !createMenu && mShowFeatureActions )
     {
       QgsActionMenu *featureActionMenu = new QgsActionMenu( layer, results[0].mFeature, QStringLiteral( "Feature" ), this );
@@ -414,7 +410,7 @@ void QgsIdentifyMenu::addVectorLayer( QgsVectorLayer *layer, const QList<QgsMapT
     QMenu *featureMenu = nullptr;
     QgsActionMenu *featureActionMenu = nullptr;
 
-    const QList<QgsMapLayerAction *> customFeatureActions = mCustomActionRegistry.mapLayerActions( layer, Qgis::MapLayerActionTarget::SingleFeature, actionContext );
+    const QList<QgsMapLayerAction *> customFeatureActions = mCustomActionRegistry.mapLayerActions( layer, QgsMapLayerAction::SingleFeature );
     if ( mShowFeatureActions )
     {
       featureActionMenu = new QgsActionMenu( layer, result.mFeature, QStringLiteral( "Feature" ), layerMenu );
@@ -505,7 +501,7 @@ void QgsIdentifyMenu::addVectorLayer( QgsVectorLayer *layer, const QList<QgsMapT
   for ( QgsMapLayerAction *mapLayerAction : constLayerActions )
   {
     QString title = mapLayerAction->text();
-    if ( mapLayerAction->targets().testFlag( Qgis::MapLayerActionTarget::MultipleFeatures ) )
+    if ( mapLayerAction->targets().testFlag( QgsMapLayerAction::MultipleFeatures ) )
       title.append( QStringLiteral( " (%1)" ).arg( results.count() ) );
     QAction *action = new QAction( mapLayerAction->icon(), title, layerMenu );
     action->setData( QVariant::fromValue<ActionData>( ActionData( layer, mapLayerAction ) ) );
@@ -532,19 +528,14 @@ void QgsIdentifyMenu::triggerMapLayerAction()
 
   if ( actData.mIsValid && actData.mMapLayerAction )
   {
-    QgsMapLayerActionContext context;
-
     // layer
-    if ( actData.mMapLayerAction->targets().testFlag( Qgis::MapLayerActionTarget::Layer ) )
+    if ( actData.mMapLayerAction->targets().testFlag( QgsMapLayerAction::Layer ) )
     {
-      Q_NOWARN_DEPRECATED_PUSH
       actData.mMapLayerAction->triggerForLayer( actData.mLayer );
-      Q_NOWARN_DEPRECATED_POP
-      actData.mMapLayerAction->triggerForLayer( actData.mLayer, context );
     }
 
     // multiples features
-    if ( actData.mMapLayerAction->targets().testFlag( Qgis::MapLayerActionTarget::MultipleFeatures ) )
+    if ( actData.mMapLayerAction->targets().testFlag( QgsMapLayerAction::MultipleFeatures ) )
     {
       QList<QgsFeature> featureList;
       const auto results { mLayerIdResults[actData.mLayer] };
@@ -552,28 +543,22 @@ void QgsIdentifyMenu::triggerMapLayerAction()
       {
         featureList << result.mFeature;
       }
-      Q_NOWARN_DEPRECATED_PUSH
       actData.mMapLayerAction->triggerForFeatures( actData.mLayer, featureList );
-      Q_NOWARN_DEPRECATED_POP
-      actData.mMapLayerAction->triggerForFeatures( actData.mLayer, featureList, context );
     }
 
     // single feature
-    if ( actData.mMapLayerAction->targets().testFlag( Qgis::MapLayerActionTarget::SingleFeature ) )
+    if ( actData.mMapLayerAction->targets().testFlag( QgsMapLayerAction::SingleFeature ) )
     {
       const auto results { mLayerIdResults[actData.mLayer] };
       for ( const QgsMapToolIdentify::IdentifyResult &result : results )
       {
         if ( result.mFeature.id() == actData.mFeatureId )
         {
-          Q_NOWARN_DEPRECATED_PUSH
           actData.mMapLayerAction->triggerForFeature( actData.mLayer, result.mFeature );
-          Q_NOWARN_DEPRECATED_POP
-          actData.mMapLayerAction->triggerForFeature( actData.mLayer, result.mFeature, context );
           return;
         }
       }
-      QgsDebugError( QStringLiteral( "Identify menu: could not retrieve feature for action %1" ).arg( action->text() ) );
+      QgsDebugMsg( QStringLiteral( "Identify menu: could not retrieve feature for action %1" ).arg( action->text() ) );
     }
   }
 }
@@ -594,7 +579,7 @@ QList<QgsMapToolIdentify::IdentifyResult> QgsIdentifyMenu::results( QAction *act
   const QVariant varData = action->data();
   if ( !varData.isValid() )
   {
-    QgsDebugError( QStringLiteral( "Identify menu: could not retrieve results from menu entry (invalid data)" ) );
+    QgsDebugMsg( QStringLiteral( "Identify menu: could not retrieve results from menu entry (invalid data)" ) );
     return idResults;
   }
 
@@ -611,7 +596,7 @@ QList<QgsMapToolIdentify::IdentifyResult> QgsIdentifyMenu::results( QAction *act
   if ( !hasData && varData.canConvert<QgsActionMenu::ActionData>() )
   {
     const QgsActionMenu::ActionData dataSrc = action->data().value<QgsActionMenu::ActionData>();
-    if ( dataSrc.actionType != Qgis::ActionType::Invalid )
+    if ( dataSrc.actionType != QgsActionMenu::Invalid )
     {
       externalAction = true;
       actData = ActionData( dataSrc.mapLayer, dataSrc.featureId );
@@ -621,7 +606,7 @@ QList<QgsMapToolIdentify::IdentifyResult> QgsIdentifyMenu::results( QAction *act
 
   if ( !hasData )
   {
-    QgsDebugError( QStringLiteral( "Identify menu: could not retrieve results from menu entry (no data found)" ) );
+    QgsDebugMsg( QStringLiteral( "Identify menu: could not retrieve results from menu entry (no data found)" ) );
     return idResults;
   }
 
@@ -640,7 +625,7 @@ QList<QgsMapToolIdentify::IdentifyResult> QgsIdentifyMenu::results( QAction *act
 
   if ( !mLayerIdResults.contains( actData.mLayer ) )
   {
-    QgsDebugError( QStringLiteral( "Identify menu: could not retrieve results from menu entry (layer not found)" ) );
+    QgsDebugMsg( QStringLiteral( "Identify menu: could not retrieve results from menu entry (layer not found)" ) );
     return idResults;
   }
 
@@ -662,7 +647,7 @@ QList<QgsMapToolIdentify::IdentifyResult> QgsIdentifyMenu::results( QAction *act
     }
   }
 
-  QgsDebugError( QStringLiteral( "Identify menu: could not retrieve results from menu entry (don't know what happened')" ) );
+  QgsDebugMsg( QStringLiteral( "Identify menu: could not retrieve results from menu entry (don't know what happened')" ) );
   return idResults;
 }
 
@@ -688,7 +673,7 @@ void QgsIdentifyMenu::handleMenuHover()
       continue;
 
     QgsHighlight *hl = new QgsHighlight( mCanvas, result.mFeature.geometry(), vl );
-    hl->applyDefaultStyle();
+    styleHighlight( hl );
     mRubberBands.append( hl );
     connect( vl, &QObject::destroyed, this, &QgsIdentifyMenu::layerDestroyed );
   }
@@ -696,7 +681,17 @@ void QgsIdentifyMenu::handleMenuHover()
 
 void QgsIdentifyMenu::styleHighlight( QgsHighlight *highlight )
 {
-  highlight->applyDefaultStyle();
+  const QgsSettings settings;
+  QColor color = QColor( settings.value( QStringLiteral( "Map/highlight/color" ), Qgis::DEFAULT_HIGHLIGHT_COLOR.name() ).toString() );
+  const int alpha = settings.value( QStringLiteral( "Map/highlight/colorAlpha" ), Qgis::DEFAULT_HIGHLIGHT_COLOR.alpha() ).toInt();
+  const double buffer = settings.value( QStringLiteral( "Map/highlight/buffer" ), Qgis::DEFAULT_HIGHLIGHT_BUFFER_MM ).toDouble();
+  const double minWidth = settings.value( QStringLiteral( "Map/highlight/minWidth" ), Qgis::DEFAULT_HIGHLIGHT_MIN_WIDTH_MM ).toDouble();
+
+  highlight->setColor( color ); // sets also fill with default alpha
+  color.setAlpha( alpha );
+  highlight->setFillColor( color ); // sets fill with alpha
+  highlight->setBuffer( buffer );
+  highlight->setMinWidth( minWidth );
 }
 
 void QgsIdentifyMenu::deleteRubberBands()

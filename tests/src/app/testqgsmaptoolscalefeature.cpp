@@ -49,7 +49,6 @@ class TestQgsMapToolScaleFeature: public QObject
     void testScaleFeatureWithAnchorSetAfterStart();
     void testScaleSelectedFeatures();
     void testScaleFeatureManualAnchorSnapping();
-    void testAvoidIntersectionsAndTopoEdit();
     void testScaleFeatureDifferentCrs();
 
   private:
@@ -239,9 +238,9 @@ void TestQgsMapToolScaleFeature::testScaleFeatureManualAnchorSnapping()
 
   QgsSnappingConfig cfg = mCanvas->snappingUtils()->config();
   const double tolerance = cfg.tolerance();
-  const Qgis::MapToolUnit units = cfg.units();
+  const QgsTolerance::UnitType units = cfg.units();
   cfg.setTolerance( 0.5 );
-  cfg.setUnits( Qgis::MapToolUnit::Layer );
+  cfg.setUnits( QgsTolerance::LayerUnits );
   mCanvas->snappingUtils()->setConfig( cfg );
 
   //set manual anchor point, should snap to (-2, -2)
@@ -266,33 +265,6 @@ void TestQgsMapToolScaleFeature::testScaleFeatureManualAnchorSnapping()
 
   // remove manual anchor point via right click
   utils.mouseClick( 10, 25, Qt::RightButton, Qt::KeyboardModifiers(), true );
-}
-
-void TestQgsMapToolScaleFeature::testAvoidIntersectionsAndTopoEdit()
-{
-  const bool topologicalEditing = QgsProject::instance()->topologicalEditing();
-  const Qgis::AvoidIntersectionsMode mode( QgsProject::instance()->avoidIntersectionsMode() );
-
-  QgsProject::instance()->setAvoidIntersectionsMode( Qgis::AvoidIntersectionsMode::AvoidIntersectionsCurrentLayer );
-  QgsProject::instance()->setTopologicalEditing( true );
-
-  TestQgsMapToolUtils utils( mScaleTool );
-
-  utils.mouseMove( -1, -1 );
-  utils.mouseClick( -1, -1, Qt::LeftButton, Qt::KeyboardModifiers(), true );
-  utils.mouseMove( 2.1, 0.8 );
-  utils.mouseClick( 2.1, 0.8, Qt::LeftButton, Qt::KeyboardModifiers(), true );
-
-  const QString wkt1 = "Polygon ((-4.52 1.52, 1.1 1.52, 1.1 0.8, 1.52 0.8, 1.52 -4.52, -4.52 -4.52, -4.52 1.52))";
-  QCOMPARE( mLayerBase->getFeature( 1 ).geometry().asWkt( 2 ), wkt1 );
-  const QString wkt2 = "Polygon ((1.1 0.8, 1.1 1.52, 1.1 5, 2.1 5, 2.1 0.8, 1.52 0.8, 1.1 0.8))";
-  QCOMPARE( mLayerBase->getFeature( 2 ).geometry().asWkt( 2 ), wkt2 );
-
-  mLayerBase->undoStack()->undo();
-
-  // restore settings
-  QgsProject::instance()->setTopologicalEditing( topologicalEditing );
-  QgsProject::instance()->setAvoidIntersectionsMode( mode );
 }
 
 void TestQgsMapToolScaleFeature::testScaleFeatureDifferentCrs()

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     Help2Html.py
@@ -61,7 +63,7 @@ def getHtmlFromHelpFile(alg, helpFile):
 
         content = getHtmlFromDescriptionsDict(alg, descriptions)
         algGroup, algName = alg.id().split(':')
-        filePath = os.path.join(system.tempHelpFolder(), f"{algGroup}_{algName}.html")
+        filePath = os.path.join(system.tempHelpFolder(), "{}_{}.html".format(algGroup, algName))
         with open(filePath, 'w', encoding='utf-8') as f:
             f.write(content)
         return QUrl.fromLocalFile(filePath).toString()

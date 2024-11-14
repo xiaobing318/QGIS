@@ -35,6 +35,9 @@
 #include <qgsproject.h>
 #include <qgssymbol.h>
 #include <qgssinglesymbolrenderer.h>
+//qgis test includes
+#include "qgsrenderchecker.h"
+
 
 /**
  * \ingroup UnitTests
@@ -234,7 +237,7 @@ void TestQgsVectorLayer::setRenderer()
 {
   const QSignalSpy spy( mpPointsLayer, &QgsVectorLayer::rendererChanged );
 
-  QgsSingleSymbolRenderer *symbolRenderer = new QgsSingleSymbolRenderer( QgsSymbol::defaultSymbol( Qgis::GeometryType::Point ) );
+  QgsSingleSymbolRenderer *symbolRenderer = new QgsSingleSymbolRenderer( QgsSymbol::defaultSymbol( QgsWkbTypes::PointGeometry ) );
 
   mpPointsLayer->setRenderer( symbolRenderer );
   QCOMPARE( spy.count(), 1 );
@@ -417,12 +420,12 @@ void TestQgsVectorLayer::testCopyPasteFieldConfiguration()
   QgsVectorLayer layer1( QStringLiteral( "Point?field=name:string" ), QStringLiteral( "layer1" ), QStringLiteral( "memory" ) );
   QVERIFY( layer1.isValid() );
   QVERIFY( layer1.editorWidgetSetup( 0 ).type().isEmpty() );
-  QCOMPARE( layer1.fieldConfigurationFlags( 0 ), Qgis::FieldConfigurationFlags() );
+  QCOMPARE( layer1.fieldConfigurationFlags( 0 ), QgsField::ConfigurationFlags() );
 
   layer1.setEditorWidgetSetup( 0, QgsEditorWidgetSetup( "ValueMap", QVariantMap() ) );
   QCOMPARE( layer1.editorWidgetSetup( 0 ).type(), QStringLiteral( "ValueMap" ) );
-  layer1.setFieldConfigurationFlags( 0, Qgis::FieldConfigurationFlag::NotSearchable );
-  QCOMPARE( layer1.fieldConfigurationFlags( 0 ), Qgis::FieldConfigurationFlag::NotSearchable );
+  layer1.setFieldConfigurationFlags( 0, QgsField::ConfigurationFlag::NotSearchable );
+  QCOMPARE( layer1.fieldConfigurationFlags( 0 ), QgsField::ConfigurationFlag::NotSearchable );
 
   // export given categories, import all
   QString errorMsg;
@@ -434,11 +437,11 @@ void TestQgsVectorLayer::testCopyPasteFieldConfiguration()
   QgsVectorLayer layer2( QStringLiteral( "Point?field=name:string" ), QStringLiteral( "layer2" ), QStringLiteral( "memory" ) );
   QVERIFY( layer2.isValid() );
   QVERIFY( layer2.editorWidgetSetup( 0 ).type().isEmpty() );
-  QCOMPARE( layer2.fieldConfigurationFlags( 0 ), Qgis::FieldConfigurationFlags() );
+  QCOMPARE( layer2.fieldConfigurationFlags( 0 ), QgsField::ConfigurationFlags() );
 
   QVERIFY( layer2.importNamedStyle( doc, errorMsg ) );
   QCOMPARE( layer2.editorWidgetSetup( 0 ).type(), categories.testFlag( QgsMapLayer::Forms ) ? QStringLiteral( "ValueMap" ) : QString( "" ) );
-  QCOMPARE( layer2.fieldConfigurationFlags( 0 ), categories.testFlag( QgsMapLayer::Fields ) ? Qgis::FieldConfigurationFlag::NotSearchable : Qgis::FieldConfigurationFlags() );
+  QCOMPARE( layer2.fieldConfigurationFlags( 0 ), categories.testFlag( QgsMapLayer::Fields ) ? QgsField::ConfigurationFlag::NotSearchable : QgsField::ConfigurationFlags() );
 
   // export all, import given categories
   QDomDocument doc2( QStringLiteral( "qgis" ) );
@@ -448,11 +451,11 @@ void TestQgsVectorLayer::testCopyPasteFieldConfiguration()
   QgsVectorLayer layer3( QStringLiteral( "Point?field=name:string" ), QStringLiteral( "layer3" ), QStringLiteral( "memory" ) );
   QVERIFY( layer3.isValid() );
   QVERIFY( layer3.editorWidgetSetup( 0 ).type().isEmpty() );
-  QCOMPARE( layer3.fieldConfigurationFlags( 0 ), Qgis::FieldConfigurationFlags() );
+  QCOMPARE( layer3.fieldConfigurationFlags( 0 ), QgsField::ConfigurationFlags() );
 
   QVERIFY( layer3.importNamedStyle( doc2, errorMsg, categories ) );
   QCOMPARE( layer3.editorWidgetSetup( 0 ).type(), categories.testFlag( QgsMapLayer::Forms ) ? QStringLiteral( "ValueMap" ) : QString( "" ) );
-  QCOMPARE( layer3.fieldConfigurationFlags( 0 ), categories.testFlag( QgsMapLayer::Fields ) ? Qgis::FieldConfigurationFlag::NotSearchable : Qgis::FieldConfigurationFlags() );
+  QCOMPARE( layer3.fieldConfigurationFlags( 0 ), categories.testFlag( QgsMapLayer::Fields ) ? QgsField::ConfigurationFlag::NotSearchable : QgsField::ConfigurationFlags() );
 }
 
 void TestQgsVectorLayer::testFieldExpression()
@@ -460,7 +463,7 @@ void TestQgsVectorLayer::testFieldExpression()
   QgsVectorLayer layer1( QStringLiteral( "Point?field=name:string" ), QStringLiteral( "layer1" ), QStringLiteral( "memory" ) );
   QVERIFY( layer1.isValid() );
 
-  layer1.addExpressionField( QStringLiteral( "'abc'" ), QgsField( QStringLiteral( "virtual_field" ), QMetaType::Type::QString ) );
+  layer1.addExpressionField( QStringLiteral( "'abc'" ), QgsField( QStringLiteral( "virtual_field" ), QVariant::String ) );
 
   QCOMPARE( layer1.expressionField( layer1.fields().lookupField( QStringLiteral( "virtual_field" ) ) ),  QStringLiteral( "'abc'" ) );
   QCOMPARE( layer1.expressionField( layer1.fields().lookupField( QStringLiteral( "name" ) ) ),  QString() );
@@ -469,12 +472,12 @@ void TestQgsVectorLayer::testFieldExpression()
 void TestQgsVectorLayer::testFieldAggregateExpression()
 {
   QString testPolysFile( TEST_DATA_DIR );
-  testPolysFile += QLatin1String( "/projects/communes.gpkg|layername=communes" );
+  testPolysFile += QStringLiteral( "/projects/communes.gpkg|layername=communes" );
 
   QgsVectorLayer layer( testPolysFile, QStringLiteral( "layer1" ), QStringLiteral( "ogr" ) );
   QVERIFY( layer.isValid() );
 
-  layer.addExpressionField( QStringLiteral( "sum($area)" ), QgsField( QStringLiteral( "virtual_field" ), QMetaType::Type::QString ) );
+  layer.addExpressionField( QStringLiteral( "sum($area)" ), QgsField( QStringLiteral( "virtual_field" ), QVariant::String ) );
 
   const int vfIndex = layer.fields().count() - 1;
   QCOMPARE( layer.fields().at( 0 ).name(), QStringLiteral( "fid" ) );

@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/vector_data_tile_customization_toolbox">
+    <file>images/url_jump.png</file>
+    <file>images/vector_data_tile_customization_toolbox.png</file>
+    </qresource>
+</RCC>

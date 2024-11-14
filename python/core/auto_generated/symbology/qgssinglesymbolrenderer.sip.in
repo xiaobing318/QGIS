@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/symbology/qgssinglesymbolrenderer.h                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -24,8 +24,6 @@ The same ``symbol`` will be used to render every feature. Ownership
 of ``symbol`` is transferred to the renderer.
 %End
     ~QgsSingleSymbolRenderer();
-
-    virtual Qgis::FeatureRendererFlags flags() const;
 
     virtual QgsSymbol *symbolForFeature( const QgsFeature &feature, QgsRenderContext &context ) const;
 
@@ -64,7 +62,7 @@ of the symbol is transferred to the renderer.
     virtual void toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props = QVariantMap() ) const;
 
 
-    static QgsFeatureRenderer *createFromSld( QDomElement &element, Qgis::GeometryType geomType ) /Factory/;
+    static QgsFeatureRenderer *createFromSld( QDomElement &element, QgsWkbTypes::GeometryType geomType ) /Factory/;
 %Docstring
 Creates a new single symbol renderer from an SLD ``element``.
 
@@ -100,6 +98,8 @@ The caller takes ownership of the returned renderer.
 Creates a new single symbol renderer from an existing ``renderer``.
 
 :return: a new renderer if the conversion was possible, otherwise ``None``.
+
+.. versionadded:: 2.5
 %End
 
     void setDataDefinedSizeLegend( QgsDataDefinedSizeLegend *settings /Transfer/ );
@@ -111,12 +111,16 @@ different symbol sizes collapsed in one legend node or separated across multiple
 When renderer does not use data-defined size or does not use marker symbols, these settings will be ignored.
 Takes ownership of the passed settings objects. ``None`` is a valid input that disables data-defined
 size legend.
+
+.. versionadded:: 3.0
 %End
 
     QgsDataDefinedSizeLegend *dataDefinedSizeLegend() const;
 %Docstring
 Returns configuration of appearance of legend when using data-defined size for marker symbols.
 Will return ``None`` if the functionality is disabled.
+
+.. versionadded:: 3.0
 %End
 
   protected:
@@ -132,5 +136,5 @@ Will return ``None`` if the functionality is disabled.
  *                                                                      *
  * src/core/symbology/qgssinglesymbolrenderer.h                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

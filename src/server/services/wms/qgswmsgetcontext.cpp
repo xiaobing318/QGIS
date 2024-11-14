@@ -28,7 +28,6 @@
 #include "qgslayertreelayer.h"
 #include "qgslayertree.h"
 #include "qgsmaplayerstylemanager.h"
-#include "qgscoordinatetransform.h"
 
 #include "qgsexception.h"
 
@@ -304,9 +303,9 @@ namespace QgsWms
           {
             wmsName = l->id();
           }
-          else if ( !l->serverProperties()->shortName().isEmpty() )
+          else if ( !l->shortName().isEmpty() )
           {
-            wmsName = l->serverProperties()->shortName();
+            wmsName = l->shortName();
           }
           // layer wms name
           layerElem.setAttribute( QStringLiteral( "name" ), wmsName );
@@ -316,7 +315,7 @@ namespace QgsWms
 
           // layer title
           QDomElement titleElem = doc.createElement( QStringLiteral( "ows:Title" ) );
-          QString title = l->serverProperties()->title();
+          QString title = l->title();
           if ( title.isEmpty() )
           {
             title = l->name();
@@ -348,7 +347,7 @@ namespace QgsWms
           serverElem.appendChild( orServerElem );
           layerElem.appendChild( serverElem );
 
-          const QString abstract = l->serverProperties()->abstract();
+          const QString abstract = l->abstract();
           if ( !abstract.isEmpty() )
           {
             QDomElement abstractElem = doc.createElement( QStringLiteral( "ows:Abstract" ) );
@@ -376,9 +375,9 @@ namespace QgsWms
           appendOwsLayerStyles( doc, layerElem, l );
 
           //keyword list
-          if ( !l->serverProperties()->keywordList().isEmpty() )
+          if ( !l->keywordList().isEmpty() )
           {
-            const QStringList keywordStringList = l->serverProperties()->keywordList().split( ',' );
+            const QStringList keywordStringList = l->keywordList().split( ',' );
             const bool sia2045 = QgsServerProjectUtils::wmsInfoFormatSia2045( *project );
 
             QDomElement keywordsElem = doc.createElement( QStringLiteral( "ows:Keywords" ) );
@@ -397,11 +396,11 @@ namespace QgsWms
           }
 
           // layer data URL
-          const QString dataUrl = l->serverProperties()->dataUrl();
+          const QString dataUrl = l->dataUrl();
           if ( !dataUrl.isEmpty() )
           {
             QDomElement dataUrlElem = doc.createElement( QStringLiteral( "DataURL" ) );
-            const QString dataUrlFormat = l->serverProperties()->dataUrlFormat();
+            const QString dataUrlFormat = l->dataUrlFormat();
             dataUrlElem.setAttribute( QStringLiteral( "format" ), dataUrlFormat );
             QDomElement dataORElem = doc.createElement( QStringLiteral( "OnlineResource" ) );
             dataORElem.setAttribute( QStringLiteral( "xmlns:xlink" ), QStringLiteral( "http://www.w3.org/1999/xlink" ) );

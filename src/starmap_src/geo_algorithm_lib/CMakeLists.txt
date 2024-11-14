@@ -1,0 +1,7 @@
+#add_subdirectory(ai)
+#add_subdirectory(big_data)
+add_subdirectory(dataprocess)
+#add_subdirectory(geoarithmetic)
+#add_subdirectory(navinfo)
+#add_subdirectory(project)
+#add_subdirectory(test)

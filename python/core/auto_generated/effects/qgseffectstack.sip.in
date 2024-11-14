@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/effects/qgseffectstack.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -25,6 +25,8 @@ picture for the following drop shadow effect without actually drawing the blurre
 picture to the paint device. If the blur effect had a Render drawMode then the
 blurred picture will be drawn on the paint device, but the following drop shadow
 effect will be drawn using the original picture, not the blurred version.
+
+.. versionadded:: 2.9
 %End
 
 %TypeHeaderCode
@@ -43,6 +45,9 @@ the map parameter, and always returns an empty effect stack.
 %End
 
     QgsEffectStack();
+%Docstring
+Constructor for empty QgsEffectStack.
+%End
 
     QgsEffectStack( const QgsEffectStack &other );
 
@@ -53,6 +58,8 @@ Creates a new QgsEffectStack effect from a single initial effect.
 
 :param effect: initial effect to add to the stack. The effect will
                be cloned, so ownership is not transferred to the stack.
+
+:return: new QgsEffectStack containing initial effect
 %End
 
     ~QgsEffectStack();
@@ -154,5 +161,5 @@ Returns a pointer to the effect at a specified index within the stack
  *                                                                      *
  * src/core/effects/qgseffectstack.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

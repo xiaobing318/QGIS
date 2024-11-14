@@ -34,6 +34,7 @@ class QgsFeature;
  * \class QgsKernelDensityEstimation
  * \ingroup analysis
  * \brief Performs Kernel Density Estimation ("heatmap") calculations on a vector layer.
+ * \since QGIS 3.0
  */
 class ANALYSIS_EXPORT QgsKernelDensityEstimation
 {
@@ -100,7 +101,9 @@ class ANALYSIS_EXPORT QgsKernelDensityEstimation
      */
     QgsKernelDensityEstimation( const Parameters &parameters, const QString &outputFile, const QString &outputFormat );
 
+    //! QgsKernelDensityEstimation cannot be copied.
     QgsKernelDensityEstimation( const QgsKernelDensityEstimation &other ) = delete;
+    //! QgsKernelDensityEstimation cannot be copied.
     QgsKernelDensityEstimation &operator=( const QgsKernelDensityEstimation &other ) = delete;
 
     /**

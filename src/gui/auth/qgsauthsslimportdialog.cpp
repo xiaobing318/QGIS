@@ -62,7 +62,6 @@
 
 #include "qgsauthcertificateinfo.h"
 #include "qgsauthsslimportdialog.h"
-#include "moc_qgsauthsslimportdialog.cpp"
 #include "qgsauthsslconfigwidget.h"
 #include "ui_qgsauthsslimporterrors.h"
 
@@ -242,7 +241,7 @@ void QgsAuthSslImportDialog::socketDisconnected()
 
 void QgsAuthSslImportDialog::socketEncrypted()
 {
-  QgsDebugMsgLevel( QStringLiteral( "socketEncrypted entered" ), 2 );
+  QgsDebugMsg( QStringLiteral( "socketEncrypted entered" ) );
   if ( !mSocket )
     return;  // might have disconnected already
 

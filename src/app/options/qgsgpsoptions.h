@@ -17,7 +17,6 @@
 
 #include "ui_qgsgpsoptionswidgetbase.h"
 #include "qgsoptionswidgetfactory.h"
-#include "qgis_app.h"
 
 /**
  * \ingroup app
@@ -26,7 +25,7 @@
  *
  * \since QGIS 3.28
  */
-class APP_EXPORT QgsGpsOptionsWidget : public QgsOptionsPageWidget, private Ui::QgsGpsOptionsWidgetBase
+class QgsGpsOptionsWidget : public QgsOptionsPageWidget, private Ui::QgsGpsOptionsWidgetBase
 {
     Q_OBJECT
 
@@ -36,23 +35,13 @@ class APP_EXPORT QgsGpsOptionsWidget : public QgsOptionsPageWidget, private Ui::
      * Constructor for QgsGpsOptionsWidget with the specified \a parent widget.
      */
     QgsGpsOptionsWidget( QWidget *parent );
-    QString helpKey() const override;
+
     void apply() override;
 
   private slots:
 
-    void refreshDevices();
-    void timestampFormatChanged( int index );
-
   private:
-
-    void updateTimeZones();
-
     bool mBlockStoringChanges = false;
-    QIntValidator *mAcquisitionIntValidator = nullptr;
-    QIntValidator *mDistanceThresholdValidator = nullptr;
-
-    friend class TestQgsGpsIntegration;
 };
 
 

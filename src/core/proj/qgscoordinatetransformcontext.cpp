@@ -17,12 +17,13 @@
 
 #include "qgscoordinatetransformcontext.h"
 #include "qgscoordinatetransformcontext_p.h"
+#include "qgscoordinatetransform.h"
 #include "qgssettings.h"
 #include "qgsprojutils.h"
 
 QString crsToKey( const QgsCoordinateReferenceSystem &crs )
 {
-  return crs.authid().isEmpty() ? crs.toWkt( Qgis::CrsWktVariant::Preferred ) : crs.authid();
+  return crs.authid().isEmpty() ? crs.toWkt( QgsCoordinateReferenceSystem::WKT_PREFERRED ) : crs.authid();
 }
 
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
@@ -144,17 +145,14 @@ QString QgsCoordinateTransformContext::calculateCoordinateOperation( const QgsCo
     return QString();
 
   d->mLock.lockForRead();
-
-  auto it = d->mSourceDestDatumTransforms.constFind( qMakePair( source, destination ) );
-  if ( it == d->mSourceDestDatumTransforms.constEnd() )
+  QgsCoordinateTransformContextPrivate::OperationDetails res = d->mSourceDestDatumTransforms.value( qMakePair( source, destination ), QgsCoordinateTransformContextPrivate::OperationDetails() );
+  if ( res.operation.isEmpty() )
   {
     // try to reverse
-    it = d->mSourceDestDatumTransforms.constFind( qMakePair( destination, source ) );
+    res = d->mSourceDestDatumTransforms.value( qMakePair( destination, source ), QgsCoordinateTransformContextPrivate::OperationDetails() );
   }
-
-  const QString result = it == d->mSourceDestDatumTransforms.constEnd() ? QString() : it.value().operation;
   d->mLock.unlock();
-  return result;
+  return res.operation;
 }
 
 bool QgsCoordinateTransformContext::allowFallbackTransform( const QgsCoordinateReferenceSystem &source, const QgsCoordinateReferenceSystem &destination ) const

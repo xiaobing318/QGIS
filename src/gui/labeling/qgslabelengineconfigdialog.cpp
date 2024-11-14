@@ -13,7 +13,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgslabelengineconfigdialog.h"
-#include "moc_qgslabelengineconfigdialog.cpp"
 
 #include "qgslabelingenginesettings.h"
 #include "qgsproject.h"
@@ -43,18 +42,17 @@ QgsLabelEngineConfigWidget::QgsLabelEngineConfigWidget( QgsMapCanvas *canvas, QW
 
   const QgsLabelingEngineSettings engineSettings = QgsProject::instance()->labelingEngineSettings();
 
-  mTextRenderFormatComboBox->addItem( tr( "Always Render Labels as Paths (Recommended)" ), QVariant::fromValue( Qgis::TextRenderFormat::AlwaysOutlines ) );
-  mTextRenderFormatComboBox->addItem( tr( "Always Render Labels as Text" ), QVariant::fromValue( Qgis::TextRenderFormat::AlwaysText ) );
-  mTextRenderFormatComboBox->addItem( tr( "Prefer Rendering Labels as Text" ), QVariant::fromValue( Qgis::TextRenderFormat::PreferText ) );
+  mTextRenderFormatComboBox->addItem( tr( "Always Render Labels as Paths (Recommended)" ), static_cast< int >( Qgis::TextRenderFormat::AlwaysOutlines ) );
+  mTextRenderFormatComboBox->addItem( tr( "Always Render Labels as Text" ), static_cast< int >( Qgis::TextRenderFormat::AlwaysText ) );
 
-  mPlacementVersionComboBox->addItem( tr( "Version 1" ), static_cast< int >( Qgis::LabelPlacementEngineVersion::Version1 ) );
-  mPlacementVersionComboBox->addItem( tr( "Version 2 (Recommended)" ), static_cast< int >( Qgis::LabelPlacementEngineVersion::Version2 ) );
+  mPlacementVersionComboBox->addItem( tr( "Version 1" ), QgsLabelingEngineSettings::PlacementEngineVersion1 );
+  mPlacementVersionComboBox->addItem( tr( "Version 2 (Recommended)" ), QgsLabelingEngineSettings::PlacementEngineVersion2 );
 
   mPreviousEngineVersion = engineSettings.placementVersion();
-  mPlacementVersionComboBox->setCurrentIndex( mPlacementVersionComboBox->findData( static_cast< int >( mPreviousEngineVersion ) ) );
+  mPlacementVersionComboBox->setCurrentIndex( mPlacementVersionComboBox->findData( mPreviousEngineVersion ) );
   connect( mPlacementVersionComboBox, &QComboBox::currentTextChanged, this, [ = ]()
   {
-    if ( static_cast< Qgis::LabelPlacementEngineVersion >( mPlacementVersionComboBox->currentData().toInt() ) != mPreviousEngineVersion )
+    if ( static_cast< QgsLabelingEngineSettings::PlacementEngineVersion >( mPlacementVersionComboBox->currentData().toInt() ) != mPreviousEngineVersion )
     {
       mMessageBar->pushMessage( QString(), tr( "Version changes will alter label placement in the project." ), Qgis::MessageLevel::Warning );
     }
@@ -67,18 +65,17 @@ QgsLabelEngineConfigWidget::QgsLabelEngineConfigWidget( QgsMapCanvas *canvas, QW
   spinCandLine->setValue( engineSettings.maximumLineCandidatesPerCm() );
   spinCandPolygon->setValue( engineSettings.maximumPolygonCandidatesPerCmSquared() );
 
-  chkShowCandidates->setChecked( engineSettings.testFlag( Qgis::LabelingFlag::DrawCandidates ) );
-  chkShowMetrics->setChecked( engineSettings.testFlag( Qgis::LabelingFlag::DrawLabelMetrics ) );
-  chkShowAllLabels->setChecked( engineSettings.testFlag( Qgis::LabelingFlag::UseAllLabels ) );
-  chkShowUnplaced->setChecked( engineSettings.testFlag( Qgis::LabelingFlag::DrawUnplacedLabels ) );
-  chkShowPartialsLabels->setChecked( engineSettings.testFlag( Qgis::LabelingFlag::UsePartialCandidates ) );
+  chkShowCandidates->setChecked( engineSettings.testFlag( QgsLabelingEngineSettings::DrawCandidates ) );
+  chkShowAllLabels->setChecked( engineSettings.testFlag( QgsLabelingEngineSettings::UseAllLabels ) );
+  chkShowUnplaced->setChecked( engineSettings.testFlag( QgsLabelingEngineSettings::DrawUnplacedLabels ) );
+  chkShowPartialsLabels->setChecked( engineSettings.testFlag( QgsLabelingEngineSettings::UsePartialCandidates ) );
 
   mUnplacedColorButton->setColor( engineSettings.unplacedLabelColor() );
   mUnplacedColorButton->setAllowOpacity( false );
   mUnplacedColorButton->setDefaultColor( QColor( 255, 0, 0 ) );
   mUnplacedColorButton->setWindowTitle( tr( "Unplaced Label Color" ) );
 
-  mTextRenderFormatComboBox->setCurrentIndex( mTextRenderFormatComboBox->findData( QVariant::fromValue( engineSettings.defaultTextRenderFormat() ) ) );
+  mTextRenderFormatComboBox->setCurrentIndex( mTextRenderFormatComboBox->findData( static_cast< int >( engineSettings.defaultTextRenderFormat() ) ) );
 
   connect( spinCandLine, qOverload<double>( &QgsDoubleSpinBox::valueChanged ), this, &QgsLabelEngineConfigWidget::widgetChanged );
   connect( spinCandPolygon, qOverload<double>( &QgsDoubleSpinBox::valueChanged ), this, &QgsLabelEngineConfigWidget::widgetChanged );
@@ -86,7 +83,6 @@ QgsLabelEngineConfigWidget::QgsLabelEngineConfigWidget( QgsMapCanvas *canvas, QW
   connect( chkShowAllLabels, &QCheckBox::toggled, this, &QgsLabelEngineConfigWidget::widgetChanged );
   connect( chkShowUnplaced, &QCheckBox::toggled, this, &QgsLabelEngineConfigWidget::widgetChanged );
   connect( chkShowPartialsLabels, &QCheckBox::toggled, this, &QgsLabelEngineConfigWidget::widgetChanged );
-  connect( chkShowMetrics, &QCheckBox::toggled, this, &QgsLabelEngineConfigWidget::widgetChanged );
   connect( mTextRenderFormatComboBox, qOverload<int>( &QComboBox::currentIndexChanged ), this, &QgsLabelEngineConfigWidget::widgetChanged );
   connect( mUnplacedColorButton, &QgsColorButton::colorChanged, this, &QgsLabelEngineConfigWidget::widgetChanged );
   connect( mPlacementVersionComboBox, qOverload<int>( &QComboBox::currentIndexChanged ), this, &QgsLabelEngineConfigWidget::widgetChanged );
@@ -112,23 +108,22 @@ QString QgsLabelEngineConfigWidget::menuButtonTooltip() const
 
 void QgsLabelEngineConfigWidget::apply()
 {
-  QgsLabelingEngineSettings engineSettings = QgsProject::instance()->labelingEngineSettings();
+  QgsLabelingEngineSettings engineSettings;
 
   // save
   engineSettings.setMaximumLineCandidatesPerCm( spinCandLine->value() );
   engineSettings.setMaximumPolygonCandidatesPerCmSquared( spinCandPolygon->value() );
 
-  engineSettings.setFlag( Qgis::LabelingFlag::DrawCandidates, chkShowCandidates->isChecked() );
-  engineSettings.setFlag( Qgis::LabelingFlag::UseAllLabels, chkShowAllLabels->isChecked() );
-  engineSettings.setFlag( Qgis::LabelingFlag::DrawUnplacedLabels, chkShowUnplaced->isChecked() );
-  engineSettings.setFlag( Qgis::LabelingFlag::UsePartialCandidates, chkShowPartialsLabels->isChecked() );
-  engineSettings.setFlag( Qgis::LabelingFlag::DrawLabelMetrics, chkShowMetrics->isChecked() );
+  engineSettings.setFlag( QgsLabelingEngineSettings::DrawCandidates, chkShowCandidates->isChecked() );
+  engineSettings.setFlag( QgsLabelingEngineSettings::UseAllLabels, chkShowAllLabels->isChecked() );
+  engineSettings.setFlag( QgsLabelingEngineSettings::DrawUnplacedLabels, chkShowUnplaced->isChecked() );
+  engineSettings.setFlag( QgsLabelingEngineSettings::UsePartialCandidates, chkShowPartialsLabels->isChecked() );
 
-  engineSettings.setDefaultTextRenderFormat( mTextRenderFormatComboBox->currentData().value< Qgis::TextRenderFormat >() );
+  engineSettings.setDefaultTextRenderFormat( static_cast< Qgis::TextRenderFormat >( mTextRenderFormatComboBox->currentData().toInt() ) );
 
   engineSettings.setUnplacedLabelColor( mUnplacedColorButton->color() );
 
-  engineSettings.setPlacementVersion( static_cast< Qgis::LabelPlacementEngineVersion>( mPlacementVersionComboBox->currentData().toInt() ) );
+  engineSettings.setPlacementVersion( static_cast< QgsLabelingEngineSettings::PlacementEngineVersion >( mPlacementVersionComboBox->currentData().toInt() ) );
 
   QgsProject::instance()->setLabelingEngineSettings( engineSettings );
   mCanvas->refreshAllLayers();
@@ -140,11 +135,10 @@ void QgsLabelEngineConfigWidget::setDefaults()
   spinCandLine->setValue( 5 );
   spinCandPolygon->setValue( 10 );
   chkShowCandidates->setChecked( false );
-  chkShowMetrics->setChecked( false );
   chkShowAllLabels->setChecked( false );
   chkShowPartialsLabels->setChecked( p.showPartialLabels() );
-  mTextRenderFormatComboBox->setCurrentIndex( mTextRenderFormatComboBox->findData( QVariant::fromValue( Qgis::TextRenderFormat::AlwaysOutlines ) ) );
-  mPlacementVersionComboBox->setCurrentIndex( mPlacementVersionComboBox->findData( static_cast< int >( Qgis::LabelPlacementEngineVersion::Version2 ) ) );
+  mTextRenderFormatComboBox->setCurrentIndex( mTextRenderFormatComboBox->findData( static_cast< int >( Qgis::TextRenderFormat::AlwaysOutlines ) ) );
+  mPlacementVersionComboBox->setCurrentIndex( mPlacementVersionComboBox->findData( QgsLabelingEngineSettings::PlacementEngineVersion2 ) );
 }
 
 void QgsLabelEngineConfigWidget::showHelp()

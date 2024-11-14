@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsstoredexpressionmanager.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -15,31 +15,21 @@
 %End
 
 
-class QgsStoredExpression
+struct QgsStoredExpression
 {
-%Docstring(signature="appended")
-Stored expression containing name, content (expression text) and a category tag.
 
-.. versionadded:: 3.10
-%End
-
-%TypeHeaderCode
-#include "qgsstoredexpressionmanager.h"
-%End
-  public:
-
-    enum Category
-    {
-      FilterExpression,
-      DefaultValueExpression,
-      All
-    };
+  enum Category
+  {
+    FilterExpression,
+    DefaultValueExpression,
+    All
+  };
 
 
-    QString id;
-    QString name;
-    QString expression;
-    Category tag;
+  QString id;
+  QString name;
+  QString expression;
+  Category tag;
 };
 
 class QgsStoredExpressionManager : QObject
@@ -56,6 +46,9 @@ Manages stored expressions regarding creation, modification and storing in the p
   public:
 
     QgsStoredExpressionManager();
+%Docstring
+Constructor for QgsStoredExpressionManager
+%End
 
     QString addStoredExpression( const QString &name, const QString &expression, const QgsStoredExpression::Category &tag =  QgsStoredExpression::Category::FilterExpression );
 %Docstring
@@ -141,5 +134,5 @@ Reads the  stored expressions in in XML format
  *                                                                      *
  * src/core/qgsstoredexpressionmanager.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

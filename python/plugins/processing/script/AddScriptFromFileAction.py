@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     EditScriptAction.py
@@ -56,7 +58,7 @@ class AddScriptFromFileAction(ToolboxAction):
                 except OSError as e:
                     QgsMessageLog.logMessage(self.tr("Could not copy script '{}'\n{}").format(f, str(e)),
                                              "Processing",
-                                             Qgis.MessageLevel.Warning)
+                                             Qgis.Warning)
 
             if valid > 0:
                 QgsApplication.processingRegistry().providerById("script").refreshAlgorithms()

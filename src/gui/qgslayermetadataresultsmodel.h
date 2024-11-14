@@ -20,7 +20,6 @@
 #include <QObject>
 #include <QThread>
 #include "qgis_gui.h"
-#include "qgis_sip.h"
 #include "qgsabstractlayermetadataprovider.h"
 
 class QgsFeedback;
@@ -97,20 +96,14 @@ class GUI_EXPORT QgsLayerMetadataResultsModel : public QAbstractTableModel
     //! Load/Reload model data asynchronously using threads.
     void reloadAsync( );
 
-    // *INDENT-OFF*
-
     /**
      * The Roles enum represents the user roles for the model.
-     *
-     * \note Prior to QGIS 3.36 this was available as QgsLayerMetadataResultsModel::Roles
-     * \since QGIS 3.36
      */
-    enum class CustomRole SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsLayerMetadataResultsModel, Roles ) : int
+    enum Roles
     {
-      Metadata = Qt::ItemDataRole::UserRole, //!< Layer metadata role
+      //! Layer metadata role
+      Metadata = Qt::ItemDataRole::UserRole
     };
-    Q_ENUM( CustomRole )
-    // *INDENT-ON*
 
     /**
      * The Sections enum represents the data columns.

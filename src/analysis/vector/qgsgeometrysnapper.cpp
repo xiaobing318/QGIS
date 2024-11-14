@@ -18,12 +18,13 @@
 #include "qgsgeometry.h"
 #include "qgsvectorlayer.h"
 #include "qgsgeometrysnapper.h"
-#include "moc_qgsgeometrysnapper.cpp"
 #include "qgsvectordataprovider.h"
 #include "qgsgeometryutils.h"
+#include "qgsmapsettings.h"
 #include "qgssurface.h"
 #include "qgsmultisurface.h"
 #include "qgscurve.h"
+#include "qgslinestring.h"
 
 #include <QtConcurrentMap>
 #include <geos_c.h>
@@ -100,17 +101,18 @@ bool QgsSnapIndex::SegmentSnapItem::getProjection( const QgsPoint &p, QgsPoint &
   return true;
 }
 
-bool QgsSnapIndex::SegmentSnapItem::withinSquaredDistance( const QgsPoint &p, const double squaredDistance )
+bool QgsSnapIndex::SegmentSnapItem::withinDistance( const QgsPoint &p, const double tolerance )
 {
   double minDistX, minDistY;
-  return QgsGeometryUtilsBase::sqrDistToLine( p.x(), p.y(), idxFrom->point().x(), idxFrom->point().y(), idxTo->point().x(), idxTo->point().y(), minDistX, minDistY, 4 * std::numeric_limits<double>::epsilon() ) <= squaredDistance;
+  const double distance = QgsGeometryUtils::sqrDistToLine( p.x(), p.y(), idxFrom->point().x(), idxFrom->point().y(), idxTo->point().x(), idxTo->point().y(), minDistX, minDistY, 4 * std::numeric_limits<double>::epsilon() );
+  return distance <= tolerance;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 QgsSnapIndex::QgsSnapIndex()
 {
-  mSTRTree = GEOSSTRtree_create_r( QgsGeosContext::get(), ( size_t )10 );
+  mSTRTree = GEOSSTRtree_create_r( QgsGeos::getGEOSHandler(), ( size_t )10 );
 }
 
 QgsSnapIndex::~QgsSnapIndex()
@@ -118,14 +120,14 @@ QgsSnapIndex::~QgsSnapIndex()
   qDeleteAll( mCoordIdxs );
   qDeleteAll( mSnapItems );
 
-  GEOSSTRtree_destroy_r( QgsGeosContext::get(), mSTRTree );
+  GEOSSTRtree_destroy_r( QgsGeos::getGEOSHandler(), mSTRTree );
 }
 
 void QgsSnapIndex::addPoint( const CoordIdx *idx, bool isEndPoint )
 {
   const QgsPoint p = idx->point();
 
-  GEOSContextHandle_t geosctxt = QgsGeosContext::get();
+  GEOSContextHandle_t geosctxt = QgsGeos::getGEOSHandler();
   geos::unique_ptr point( GEOSGeom_createPointFromXY_r( geosctxt, p.x(), p.y() ) );
 
   PointSnapItem *item = new PointSnapItem( idx, isEndPoint );
@@ -138,7 +140,7 @@ void QgsSnapIndex::addSegment( const CoordIdx *idxFrom, const CoordIdx *idxTo )
   const QgsPoint pointFrom = idxFrom->point();
   const QgsPoint pointTo = idxTo->point();
 
-  GEOSContextHandle_t geosctxt = QgsGeosContext::get();
+  GEOSContextHandle_t geosctxt = QgsGeos::getGEOSHandler();
 
   GEOSCoordSequence *coord = GEOSCoordSeq_create_r( geosctxt, 2, 2 );
   GEOSCoordSeq_setXY_r( geosctxt, coord, 0, pointFrom.x(), pointFrom.y() );
@@ -192,7 +194,7 @@ void _GEOSQueryCallback( void *item, void *userdata )
 
 QgsPoint QgsSnapIndex::getClosestSnapToPoint( const QgsPoint &startPoint, const QgsPoint &midPoint )
 {
-  GEOSContextHandle_t geosctxt = QgsGeosContext::get();
+  GEOSContextHandle_t geosctxt = QgsGeos::getGEOSHandler();
 
   // Look for intersections on segment from the target point to the point opposite to the point reference point
   // p2 = p1 + 2 * (q - p1)
@@ -232,7 +234,7 @@ QgsPoint QgsSnapIndex::getClosestSnapToPoint( const QgsPoint &startPoint, const 
 
 QgsSnapIndex::SnapItem *QgsSnapIndex::getSnapItem( const QgsPoint &pos, const double tolerance, QgsSnapIndex::PointSnapItem **pSnapPoint, QgsSnapIndex::SegmentSnapItem **pSnapSegment, bool endPointOnly ) const
 {
-  GEOSContextHandle_t geosctxt = QgsGeosContext::get();
+  GEOSContextHandle_t geosctxt = QgsGeos::getGEOSHandler();
 
   GEOSCoordSequence *coord = GEOSCoordSeq_create_r( geosctxt, 2, 2 );
   GEOSCoordSeq_setXY_r( geosctxt, coord, 0, pos.x() - tolerance, pos.y() - tolerance );
@@ -250,7 +252,6 @@ QgsSnapIndex::SnapItem *QgsSnapIndex::getSnapItem( const QgsPoint &pos, const do
   QgsSnapIndex::SegmentSnapItem *snapSegment = nullptr;
   QgsSnapIndex::PointSnapItem *snapPoint = nullptr;
 
-  const double squaredTolerance = tolerance * tolerance;
   const auto constItems = items;
   for ( QgsSnapIndex::SnapItem *item : constItems )
   {
@@ -265,7 +266,7 @@ QgsSnapIndex::SnapItem *QgsSnapIndex::getSnapItem( const QgsPoint &pos, const do
     }
     else if ( item->type == SnapSegment && !endPointOnly )
     {
-      if ( !static_cast<SegmentSnapItem *>( item )->withinSquaredDistance( pos, squaredTolerance ) )
+      if ( !static_cast<SegmentSnapItem *>( item )->withinDistance( pos, tolerance ) )
         continue;
 
       QgsPoint pProj;
@@ -280,8 +281,8 @@ QgsSnapIndex::SnapItem *QgsSnapIndex::getSnapItem( const QgsPoint &pos, const do
       }
     }
   }
-  snapPoint = minDistPoint < squaredTolerance ? snapPoint : nullptr;
-  snapSegment = minDistSegment < squaredTolerance ? snapSegment : nullptr;
+  snapPoint = minDistPoint < tolerance * tolerance ? snapPoint : nullptr;
+  snapSegment = minDistSegment < tolerance * tolerance ? snapSegment : nullptr;
   if ( pSnapPoint ) *pSnapPoint = snapPoint;
   if ( pSnapSegment ) *pSnapSegment = snapSegment;
   return minDistPoint < minDistSegment ? static_cast<QgsSnapIndex::SnapItem *>( snapPoint ) : static_cast<QgsSnapIndex::SnapItem *>( snapSegment );
@@ -362,7 +363,7 @@ QgsGeometry QgsGeometrySnapper::snapGeometry( const QgsGeometry &geometry, doubl
 
 QgsGeometry QgsGeometrySnapper::snapGeometry( const QgsGeometry &geometry, double snapTolerance, const QList<QgsGeometry> &referenceGeometries, QgsGeometrySnapper::SnapMode mode )
 {
-  if ( QgsWkbTypes::geometryType( geometry.wkbType() ) == Qgis::GeometryType::Polygon &&
+  if ( QgsWkbTypes::geometryType( geometry.wkbType() ) == QgsWkbTypes::PolygonGeometry &&
        ( mode == EndPointPreferClosest || mode == EndPointPreferNodes || mode == EndPointToEndPoint ) )
     return geometry;
 
@@ -391,7 +392,7 @@ QgsGeometry QgsGeometrySnapper::snapGeometry( const QgsGeometry &geometry, doubl
       for ( int iVert = 0, nVerts = polyLineSize( subjGeom, iPart, iRing ); iVert < nVerts; ++iVert )
       {
         if ( ( mode == EndPointPreferClosest || mode == EndPointPreferNodes || mode == EndPointToEndPoint ) &&
-             QgsWkbTypes::geometryType( subjGeom->wkbType() ) == Qgis::GeometryType::Line && ( iVert > 0 && iVert < nVerts - 1 ) )
+             QgsWkbTypes::geometryType( subjGeom->wkbType() ) == QgsWkbTypes::LineGeometry && ( iVert > 0 && iVert < nVerts - 1 ) )
         {
           //endpoint mode and not at an endpoint, skip
           subjPointFlags[iPart][iRing].append( Unsnapped );

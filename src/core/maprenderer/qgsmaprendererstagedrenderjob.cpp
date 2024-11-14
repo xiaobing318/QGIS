@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsmaprendererstagedrenderjob.h"
-#include "moc_qgsmaprendererstagedrenderjob.cpp"
 
 #include "qgsfeedback.h"
 #include "qgslabelingengine.h"
@@ -114,12 +113,6 @@ bool QgsMapRendererStagedRenderJob::renderCurrentPart( QPainter *painter )
       painter->setCompositionMode( job.blendMode );
     }
 
-    if ( job.previewRenderImage && !job.previewRenderImageInitialized )
-    {
-      job.previewRenderImage->fill( 0 );
-      job.previewRenderImageInitialized = true;
-    }
-
     if ( job.img )
     {
       job.img->fill( 0 );
@@ -164,7 +157,7 @@ bool QgsMapRendererStagedRenderJob::renderCurrentPart( QPainter *painter )
       mLabelJob.context.setPainter( painter );
       drawLabeling( mLabelJob.context, mLabelingEngineV2.get(), painter );
       mLabelJob.complete = true;
-      mLabelJob.participatingLayers = participatingLabelLayers( mLabelingEngineV2.get() );
+      mLabelJob.participatingLayers = _qgis_listRawToQPointer( mLabelingEngineV2->participatingLayers() );
       mLabelJob.context.setPainter( nullptr );
     }
   }

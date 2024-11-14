@@ -23,8 +23,32 @@
 #include "qgsmeshlayer.h"
 #include "qgstriangularmesh.h"
 #include "qgsterraingenerator.h"
+#include "qgsterraintileloader_p.h"
 
 #define SIP_NO_FILE
+
+///@cond PRIVATE
+
+//! Chunk loader for mesh terrain implementation
+class QgsMeshTerrainTileLoader: public QgsTerrainTileLoader
+{
+    Q_OBJECT
+  public:
+    //! Construct the loader for a node
+    QgsMeshTerrainTileLoader( QgsTerrainEntity *terrain,
+                              QgsChunkNode *node,
+                              const QgsTriangularMesh &triangularMesh,
+                              const QgsMesh3DSymbol *symbol );
+
+    //! Create the 3D entity and returns it
+    Qt3DCore::QEntity *createEntity( Qt3DCore::QEntity *parent ) override;
+
+  private:
+    QgsTriangularMesh mTriangularMesh;
+    std::unique_ptr< QgsMesh3DSymbol > mSymbol;
+};
+
+///@endcond
 
 /**
  * \ingroup 3d
@@ -58,10 +82,10 @@ class _3D_EXPORT QgsMeshTerrainGenerator: public QgsTerrainGenerator
     void resolveReferences( const QgsProject &project ) override;
     QgsTerrainGenerator *clone() const override SIP_FACTORY;
     Type type() const override;
-    QgsRectangle rootChunkExtent() const override;
+    QgsRectangle extent() const override;
     void writeXml( QDomElement &elem ) const override;
     void readXml( const QDomElement &elem ) override;
-    float heightAt( double x, double y, const Qgs3DRenderContext &context ) const override;
+    float heightAt( double x, double y, const Qgs3DMapSettings & ) const override;
 
   private slots:
     void updateTriangularMesh();

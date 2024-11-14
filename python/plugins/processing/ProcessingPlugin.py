@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     ProcessingPlugin.py
@@ -22,7 +24,6 @@ __copyright__ = '(C) 2012, Victor Olaya'
 import shutil
 import os
 import sys
-from typing import List
 from functools import partial
 
 from qgis.core import (QgsApplication,
@@ -37,31 +38,15 @@ from qgis.core import (QgsApplication,
                        QgsSettings)
 from qgis.gui import (QgsGui,
                       QgsOptionsWidgetFactory,
-                      QgsCustomDropHandler,
-                      QgsProcessingHistoryDialog)
-from qgis.PyQt.QtCore import (
-    QObject,
-    Qt,
-    QItemSelectionModel,
-    QCoreApplication,
-    QDir,
-    QFileInfo,
-    pyqtSlot,
-    QMetaObject
-)
-from qgis.PyQt.QtWidgets import (
-    QWidget,
-    QMenu,
-    QAction
-)
-from qgis.PyQt.QtGui import (
-    QIcon,
-    QKeySequence
-)
+                      QgsCustomDropHandler)
+from qgis.PyQt.QtCore import QObject, Qt, QItemSelectionModel, QCoreApplication, QDir, QFileInfo, pyqtSlot
+from qgis.PyQt.QtWidgets import QWidget, QMenu, QAction
+from qgis.PyQt.QtGui import QIcon, QKeySequence
 from qgis.utils import iface
 
 from processing.core.Processing import Processing
 from processing.gui.ProcessingToolbox import ProcessingToolbox
+from processing.gui.HistoryDialog import HistoryDialog
 from processing.gui.ConfigDialog import ConfigOptionsPage
 from processing.gui.ResultsDock import ResultsDock
 from processing.gui.MessageDialog import MessageDialog
@@ -72,7 +57,6 @@ from processing.gui.Postprocessing import handleAlgorithmResults
 from processing.gui.AlgorithmExecutor import execute, execute_in_place
 from processing.gui.AlgorithmDialog import AlgorithmDialog
 from processing.gui.BatchAlgorithmDialog import BatchAlgorithmDialog
-from processing.gui import TestTools
 from processing.modeler.ModelerDialog import ModelerDialog
 from processing.tools.system import tempHelpFolder
 from processing.tools import dataobjects
@@ -112,7 +96,7 @@ class ProcessingDropHandler(QgsCustomDropHandler):
         dlg.show()
         # do NOT remove!!!! if you do then sip forgets the python subclass of AlgorithmDialog and you get a broken
         # dialog
-        dlg.exec()
+        dlg.exec_()
         return True
 
     def customUriProviderKey(self):
@@ -126,8 +110,8 @@ class ProcessingDropHandler(QgsCustomDropHandler):
 class ProcessingModelItem(QgsDataItem):
 
     def __init__(self, parent, name, path):
-        super().__init__(QgsDataItem.Type.Custom, parent, name, path)
-        self.setState(QgsDataItem.State.Populated)  # no children
+        super(ProcessingModelItem, self).__init__(QgsDataItem.Custom, parent, name, path)
+        self.setState(QgsDataItem.Populated)  # no children
         self.setIconName(":/images/themes/default/processingModel.svg")
         self.setToolTip(QDir.toNativeSeparators(path))
 
@@ -165,13 +149,13 @@ class ProcessingModelItem(QgsDataItem):
 class ProcessingDataItemProvider(QgsDataItemProvider):
 
     def __init__(self):
-        super().__init__()
+        super(ProcessingDataItemProvider, self).__init__()
 
     def name(self):
         return 'processing'
 
     def capabilities(self):
-        return QgsDataProvider.DataCapability.File
+        return QgsDataProvider.File
 
     def createDataItem(self, path, parentItem):
         file_info = QFileInfo(path)
@@ -194,16 +178,12 @@ class ProcessingPlugin(QObject):
         self.locator_filter = None
         self.edit_features_locator_filter = None
         self.initialized = False
-        self._gui_connections: List[QMetaObject.Connection] = []
         self.initProcessing()
 
     def initProcessing(self):
         if not self.initialized:
             self.initialized = True
             Processing.initialize()
-
-    def finalizeStartup(self):
-        Processing.perform_deferred_model_initialization()
 
     def initGui(self):
         # port old log, ONCE ONLY!
@@ -224,28 +204,19 @@ class ProcessingPlugin(QObject):
         self.locator_filter = AlgorithmLocatorFilter()
         iface.registerLocatorFilter(self.locator_filter)
         # Invalidate the locator filter for in-place when active layer changes
-        self._gui_connections.append(
-            iface.currentLayerChanged.connect(lambda _: self.iface.invalidateLocatorResults())
-        )
+        iface.currentLayerChanged.connect(lambda _: self.iface.invalidateLocatorResults())
         self.edit_features_locator_filter = InPlaceAlgorithmLocatorFilter()
         iface.registerLocatorFilter(self.edit_features_locator_filter)
 
-        QgsGui.historyProviderRegistry().providerById('processing').executePython.connect(
-            self._execute_history_commands
-        )
-        QgsGui.historyProviderRegistry().providerById('processing').createTest.connect(
-            self.create_test
-        )
-
         self.toolbox = ProcessingToolbox()
-        self.iface.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.toolbox)
+        self.iface.addDockWidget(Qt.RightDockWidgetArea, self.toolbox)
         self.toolbox.hide()
         self.toolbox.visibilityChanged.connect(self.toolboxVisibilityChanged)
 
         self.toolbox.executeWithGui.connect(self.executeAlgorithm)
 
         self.resultsDock = ResultsDock()
-        self.iface.addDockWidget(Qt.DockWidgetArea.RightDockWidgetArea, self.resultsDock)
+        self.iface.addDockWidget(Qt.RightDockWidgetArea, self.resultsDock)
         self.resultsDock.hide()
 
         self.menu = QMenu(self.iface.mainWindow().menuBar())
@@ -258,18 +229,18 @@ class ProcessingPlugin(QObject):
         self.toolboxAction.setIcon(
             QgsApplication.getThemeIcon("/processingAlgorithm.svg"))
         self.iface.registerMainWindowAction(self.toolboxAction,
-                                            QKeySequence('Ctrl+Alt+T').toString(QKeySequence.SequenceFormat.NativeText))
+                                            QKeySequence('Ctrl+Alt+T').toString(QKeySequence.NativeText))
         self.toolboxAction.toggled.connect(self.openToolbox)
         self.iface.attributesToolBar().insertAction(self.iface.actionOpenStatisticalSummary(), self.toolboxAction)
         self.menu.addAction(self.toolboxAction)
 
         self.modelerAction = QAction(
             QgsApplication.getThemeIcon("/processingModel.svg"),
-            QCoreApplication.translate('ProcessingPlugin', '&Model Designer…'), self.iface.mainWindow())
+            QCoreApplication.translate('ProcessingPlugin', '&Graphical Modeler…'), self.iface.mainWindow())
         self.modelerAction.setObjectName('modelerAction')
         self.modelerAction.triggered.connect(self.openModeler)
         self.iface.registerMainWindowAction(self.modelerAction,
-                                            QKeySequence('Ctrl+Alt+G').toString(QKeySequence.SequenceFormat.NativeText))
+                                            QKeySequence('Ctrl+Alt+G').toString(QKeySequence.NativeText))
         self.menu.addAction(self.modelerAction)
 
         self.historyAction = QAction(
@@ -278,7 +249,7 @@ class ProcessingPlugin(QObject):
         self.historyAction.setObjectName('historyAction')
         self.historyAction.triggered.connect(self.openHistory)
         self.iface.registerMainWindowAction(self.historyAction,
-                                            QKeySequence('Ctrl+Alt+H').toString(QKeySequence.SequenceFormat.NativeText))
+                                            QKeySequence('Ctrl+Alt+H').toString(QKeySequence.NativeText))
         self.menu.addAction(self.historyAction)
         self.toolbox.processingToolbar.addAction(self.historyAction)
 
@@ -288,7 +259,7 @@ class ProcessingPlugin(QObject):
         self.resultsAction.setObjectName('resultsViewer')
         self.resultsAction.setCheckable(True)
         self.iface.registerMainWindowAction(self.resultsAction,
-                                            QKeySequence('Ctrl+Alt+R').toString(QKeySequence.SequenceFormat.NativeText))
+                                            QKeySequence('Ctrl+Alt+R').toString(QKeySequence.NativeText))
 
         self.menu.addAction(self.resultsAction)
         self.toolbox.processingToolbar.addAction(self.resultsAction)
@@ -326,19 +297,9 @@ class ProcessingPlugin(QObject):
         createButtons()
 
         # In-place editing button state sync
-
-        # we need to explicitly store and disconnect these connections
-        # on plugin unload -- they aren't cleaned up automatically (see
-        # https://github.com/qgis/QGIS/issues/53455)
-        self._gui_connections.append(
-            self.iface.currentLayerChanged.connect(self.sync_in_place_button_state)
-        )
-        self._gui_connections.append(
-            self.iface.mapCanvas().selectionChanged.connect(self.sync_in_place_button_state)
-        )
-        self._gui_connections.append(
-            self.iface.actionToggleEditing().triggered.connect(partial(self.sync_in_place_button_state, None))
-        )
+        self.iface.currentLayerChanged.connect(self.sync_in_place_button_state)
+        self.iface.mapCanvas().selectionChanged.connect(self.sync_in_place_button_state)
+        self.iface.actionToggleEditing().triggered.connect(partial(self.sync_in_place_button_state, None))
         self.sync_in_place_button_state()
 
         # Sync project models
@@ -347,9 +308,7 @@ class ProcessingPlugin(QObject):
         self.projectMenuSeparator = None
 
         self.projectProvider = QgsApplication.instance().processingRegistry().providerById("project")
-        self._gui_connections.append(
-            self.projectProvider.algorithmsLoaded.connect(self.updateProjectModelMenu)
-        )
+        self.projectProvider.algorithmsLoaded.connect(self.updateProjectModelMenu)
 
     def updateProjectModelMenu(self):
         """Add projects models to menu"""
@@ -368,7 +327,7 @@ class ProcessingPlugin(QObject):
             action = QAction(self.tr("Execute…"), modelSubMenu)
             action.triggered.connect(partial(self.executeAlgorithm, model.id(), self.projectModelsMenu, self.toolbox.in_place_mode))
             modelSubMenu.addAction(action)
-            if model.flags() & QgsProcessingAlgorithm.Flag.FlagSupportsBatch:
+            if model.flags() & QgsProcessingAlgorithm.FlagSupportsBatch:
                 action = QAction(self.tr("Execute as Batch Process…"), modelSubMenu)
                 modelSubMenu.addAction(action)
                 action.triggered.connect(partial(self.executeAlgorithm, model.id(), self.projectModelsMenu, self.toolbox.in_place_mode, True))
@@ -402,13 +361,13 @@ class ProcessingPlugin(QObject):
                 dlg.setMessage(
                     self.tr('<h3>This algorithm cannot '
                             'be run :-( </h3>\n{0}').format(message))
-                dlg.exec()
+                dlg.exec_()
                 return
 
             if as_batch:
                 dlg = BatchAlgorithmDialog(alg, iface.mainWindow())
                 dlg.show()
-                dlg.exec()
+                dlg.exec_()
             else:
                 in_place_input_parameter_name = 'INPUT'
                 if hasattr(alg, 'inputParameterName'):
@@ -432,7 +391,7 @@ class ProcessingPlugin(QObject):
                     canvas = iface.mapCanvas()
                     prevMapTool = canvas.mapTool()
                     dlg.show()
-                    dlg.exec()
+                    dlg.exec_()
                     if canvas.mapTool() != prevMapTool:
                         try:
                             canvas.mapTool().reset()
@@ -468,9 +427,6 @@ class ProcessingPlugin(QObject):
         self.iface.showOptionsDialog(self.iface.mainWindow(), currentPage='processingOptions')
 
     def unload(self):
-        for connection in self._gui_connections:
-            self.disconnect(connection)
-        self._gui_connections = []
         self.toolbox.setVisible(False)
         self.iface.removeDockWidget(self.toolbox)
         self.iface.attributesToolBar().removeAction(self.toolboxAction)
@@ -507,13 +463,6 @@ class ProcessingPlugin(QObject):
             self.iface.projectMenu().removeAction(self.projectMenuSeparator)
             self.projectMenuSeparator = None
 
-        QgsGui.historyProviderRegistry().providerById('processing').executePython.disconnect(
-            self._execute_history_commands
-        )
-        QgsGui.historyProviderRegistry().providerById('processing').createTest.disconnect(
-            self.create_test
-        )
-
         Processing.deinitialize()
 
     def openToolbox(self, show):
@@ -538,24 +487,11 @@ class ProcessingPlugin(QObject):
             self.resultsDock.show()
 
     def openHistory(self):
-        dlg = QgsProcessingHistoryDialog(self.iface.mainWindow())
-        dlg.setAttribute(Qt.WidgetAttribute.WA_DeleteOnClose)
-        dlg.show()
+        dlg = HistoryDialog()
+        dlg.exec_()
 
     def tr(self, message, disambiguation=None, n=-1):
         return QCoreApplication.translate('ProcessingPlugin', message, disambiguation=disambiguation, n=n)
 
     def editSelected(self, enabled):
         self.toolbox.set_in_place_edit_mode(enabled)
-
-    def _execute_history_commands(self, commands: str):
-        """
-        Executes Python commands from the history provider
-        """
-        exec(commands)
-
-    def create_test(self, command: str):
-        """
-        Starts the test creation process given a processing algorithm run command
-        """
-        TestTools.createTest(command)

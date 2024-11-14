@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/externalstorage/qgsexternalstorage.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -45,7 +45,7 @@ Returns a :py:class:`QgsExternalStorageStoredContent` to follow the status of th
 
 ``storingMode`` defines if the download will start immediately or shall be manually triggered
 calling :py:func:`QgsExternalStorageStoredContent.store()`. User should use
-:py:class:`Qgis`.ActionStart.Deferred if he needs to connect the :py:func:`~QgsExternalStorage.stored` signal.
+Qgis.ActionStart.Deferred if he needs to connect the :py:func:`~QgsExternalStorage.stored` signal.
 
 After using this method, user wait for :py:func:`QgsExternalStorageStoredContent.stored()`,
 :py:func:`QgsExternalStorageStoredContent.errorOccurred()` or :py:func:`QgsExternalStorageStoredContent.canceled()` signals.
@@ -63,7 +63,7 @@ Returns a :py:class:`QgsExternalStorageFetchedContent` to follow the status of t
 
 ``fetchingMode`` defines if the download will start immediately or shall be manually triggered
 calling :py:func:`QgsExternalStorageFetchedContent.fetch()`. User should use
-:py:class:`Qgis`.ActionStart.Deferred if he needs to connect the :py:func:`~QgsExternalStorage.fetched` signal.
+Qgis.ActionStart.Deferred if he needs to connect the :py:func:`~QgsExternalStorage.fetched` signal.
 
 After using this method, user should wait for :py:func:`QgsExternalStorageStoredContent.fetched()`,
 :py:func:`QgsExternalStorageStoredContent.errorOccurred()` or :py:func:`QgsExternalStorageStoredContent.canceled()` signals.
@@ -91,7 +91,7 @@ Fetches file from ``url`` using ``authCfg`` for this project external storage.
 class QgsExternalStorageContent : QObject
 {
 %Docstring(signature="appended")
-Base class for :py:class:`QgsExternalStorage` stored and fetched content
+Base class for QgsExternalStorage stored and fetched content
 
 .. versionadded:: 3.22
 %End
@@ -219,5 +219,5 @@ The signal is emitted when the resource has successfully been stored
  *                                                                      *
  * src/core/externalstorage/qgsexternalstorage.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

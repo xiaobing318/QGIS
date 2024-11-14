@@ -21,7 +21,7 @@
 #include "qgis_core.h"
 #include "qgis_sip.h"
 #include "qgsabstractgeometry.h"
-#include "qgsbox3d.h"
+#include "qgsrectangle.h"
 
 class QgsPolygon;
 
@@ -34,11 +34,17 @@ class CORE_EXPORT QgsSurface: public QgsAbstractGeometry
 {
   public:
 
-    QgsBox3D boundingBox3D() const override
+    /**
+     * Gets a polygon representation of this surface.
+     * Ownership is transferred to the caller.
+     */
+    virtual QgsPolygon *surfaceToPolygon() const = 0 SIP_FACTORY;
+
+    QgsRectangle boundingBox() const override
     {
       if ( mBoundingBox.isNull() )
       {
-        mBoundingBox = calculateBoundingBox3D();
+        mBoundingBox = calculateBoundingBox();
       }
       return mBoundingBox;
     }
@@ -53,16 +59,17 @@ class CORE_EXPORT QgsSurface: public QgsAbstractGeometry
      * Should be used by qgsgeometry_cast<QgsSurface *>( geometry ).
      *
      * \note Not available in Python. Objects will be automatically be converted to the appropriate target type.
+     * \since QGIS 3.0
      */
     inline static const QgsSurface *cast( const QgsAbstractGeometry *geom )
     {
       if ( !geom )
         return nullptr;
 
-      const Qgis::WkbType flatType = QgsWkbTypes::flatType( geom->wkbType() );
-      if ( flatType == Qgis::WkbType::CurvePolygon
-           || flatType == Qgis::WkbType::Polygon
-           || flatType == Qgis::WkbType::Triangle )
+      const QgsWkbTypes::Type flatType = QgsWkbTypes::flatType( geom->wkbType() );
+      if ( flatType == QgsWkbTypes::CurvePolygon
+           || flatType == QgsWkbTypes::Polygon
+           || flatType == QgsWkbTypes::Triangle )
         return static_cast<const QgsSurface *>( geom );
       return nullptr;
     }
@@ -71,7 +78,7 @@ class CORE_EXPORT QgsSurface: public QgsAbstractGeometry
 
     void clearCache() const override;
 
-    mutable QgsBox3D mBoundingBox;
+    mutable QgsRectangle mBoundingBox;
     mutable bool mHasCachedValidity = false;
     mutable QString mValidityFailureReason;
 };

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/effects/qgspainteffectpropertieswidget.h                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -15,6 +15,8 @@ class QgsPaintEffectPropertiesWidget : QWidget
 {
 %Docstring(signature="appended")
 A widget which modifies the properties of a :py:class:`QgsPaintEffect`
+
+.. versionadded:: 2.9
 %End
 
 %TypeHeaderCode
@@ -61,5 +63,5 @@ Emitted when paint effect type changes
  *                                                                      *
  * src/gui/effects/qgspainteffectpropertieswidget.h                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

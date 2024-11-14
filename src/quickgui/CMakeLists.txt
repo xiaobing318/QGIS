@@ -2,22 +2,16 @@
 # sources
 set(QGIS_QUICK_GUI_MOC_HDRS
   qgsquickcoordinatetransformer.h
-  qgsquickelevationprofilecanvas.h
   qgsquickmapcanvasmap.h
   qgsquickmapsettings.h
-  qgsquickmaptoscreen.h
   qgsquickmaptransform.h
-  qgsquickutils.h
 )
 
 set(QGIS_QUICK_GUI_SRC
   qgsquickcoordinatetransformer.cpp
-  qgsquickelevationprofilecanvas.cpp
   qgsquickmapcanvasmap.cpp
   qgsquickmapsettings.cpp
-  qgsquickmaptoscreen.cpp
   qgsquickmaptransform.cpp
-  qgsquickutils.cpp
 )
 
 include_directories(
@@ -26,14 +20,26 @@ include_directories(
 )
 
 include_directories(SYSTEM
+  ${GDAL_INCLUDE_DIR}
+  ${PROJ_INCLUDE_DIR}
   ${LIBZIP_INCLUDE_DIRS}
   ${SPATIALINDEX_INCLUDE_DIR}
+  ${GEOS_INCLUDE_DIR}
+  ${EXPAT_INCLUDE_DIR}
+  ${SQLITE3_INCLUDE_DIR}
+  ${SPATIALITE_INCLUDE_DIR}
   ${QCA_INCLUDE_DIR}
   ${QTKEYCHAIN_INCLUDE_DIR}
 )
 
 ############################################################
 # qgis_quick shared library
+if (BUILD_WITH_QT6)
+  QT6_WRAP_CPP(QGIS_QUICK_GUI_MOC_SRCS ${QGIS_QUICK_GUI_MOC_HDRS})
+else()
+  QT5_WRAP_CPP(QGIS_QUICK_GUI_MOC_SRCS ${QGIS_QUICK_GUI_MOC_HDRS})
+endif()
+
 if(MSVC)
   set_source_files_properties(${QGIS_QUICK_GUI_MOC_SRCS} PROPERTIES COMPILE_FLAGS "/wd4512 /wd4996" )
 else()
@@ -49,16 +55,18 @@ add_library(qgis_quick ${LIBRARY_TYPE}
 # require c++17
 target_compile_features(qgis_quick PRIVATE cxx_std_17)
 
-target_link_libraries(qgis_quick
-    ${QT_VERSION_BASE}::Quick
-    ${QT_VERSION_BASE}::Qml
-    ${QT_VERSION_BASE}::Xml
-    ${QT_VERSION_BASE}::Concurrent
-    ${QT_VERSION_BASE}::Positioning
-    qgis_core)
+if (BUILD_WITH_QT6)
+  target_link_libraries(qgis_quick Qt6::Quick Qt6::Qml Qt6::Xml Qt6::Concurrent Qt6::Positioning qgis_core)
+else()
+  target_link_libraries(qgis_quick Qt5::Quick Qt5::Qml Qt5::Xml Qt5::Concurrent Qt5::Positioning qgis_core)
+endif()
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Android")
-  target_link_libraries(qgis_quick ${QT_VERSION_BASE}::AndroidExtras)
+  if (BUILD_WITH_QT6)
+    target_link_libraries(qgis_quick Qt6::AndroidExtras)
+  else()
+    target_link_libraries(qgis_quick Qt5::AndroidExtras)
+  endif()
 endif()
 target_compile_definitions(qgis_quick PRIVATE "-DQT_NO_FOREACH")
 

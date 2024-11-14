@@ -83,7 +83,7 @@ bool QgsSetLayerEncodingAlgorithm::prepareAlgorithm( const QVariantMap &paramete
   mOutputId = layer->id();
   QgsVectorDataProvider *provider = layer->dataProvider();
 
-  if ( provider->capabilities() & Qgis::VectorProviderCapability::SelectEncoding )
+  if ( provider->capabilities() & QgsVectorDataProvider::SelectEncoding )
   {
     layer->setProviderEncoding( encoding );
   }

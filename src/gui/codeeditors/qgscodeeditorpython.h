@@ -21,10 +21,6 @@
 #include "qgis_gui.h"
 #include <Qsci/qscilexerpython.h>
 
-class QgsSettingsEntryInteger;
-class QgsSettingsEntryBool;
-template<class T> class QgsSettingsEntryEnumFlag;
-
 SIP_IF_MODULE( HAVE_QSCI_SIP )
 
 #ifndef SIP_RUN
@@ -47,6 +43,7 @@ class QgsQsciLexerPython : public QsciLexerPython
  * \brief A Python editor based on QScintilla2. Adds syntax highlighting and
  * code autocompletion.
  * \note may not be available in Python bindings, depending on platform support
+ * \since QGIS 2.6
  */
 class GUI_EXPORT QgsCodeEditorPython : public QgsCodeEditor
 {
@@ -54,32 +51,14 @@ class GUI_EXPORT QgsCodeEditorPython : public QgsCodeEditor
 
   public:
 
-#ifndef SIP_RUN
-///@cond PRIVATE
-    static inline QgsSettingsTreeNode *sTreePythonCodeEditor = QgsCodeEditor::sTreeCodeEditor->createChildNode( QStringLiteral( "python" ) );
-    static const QgsSettingsEntryString *settingCodeFormatter;
-    static const QgsSettingsEntryInteger *settingMaxLineLength;
-    static const QgsSettingsEntryBool *settingSortImports;
-    static const QgsSettingsEntryInteger *settingAutopep8Level;
-    static const QgsSettingsEntryBool *settingBlackNormalizeQuotes;
-    static const QgsSettingsEntryString *settingExternalPythonEditorCommand;
-    static const QgsSettingsEntryEnumFlag< Qgis::DocumentationBrowser > *settingContextHelpBrowser;
-///@endcond PRIVATE
-#endif
-
     /**
      * Construct a new Python editor.
      *
      * \param parent The parent QWidget
      * \param filenames The list of apis files to load for the Python lexer
-     * \param mode code editor mode (since QGIS 3.30)
-     * \param flags code editor flags (since QGIS 3.32)
+     * \since QGIS 2.6
      */
-    QgsCodeEditorPython( QWidget *parent SIP_TRANSFERTHIS = nullptr, const QList<QString> &filenames = QList<QString>(),
-                         QgsCodeEditor::Mode mode = QgsCodeEditor::Mode::ScriptEditor, QgsCodeEditor::Flags flags = QgsCodeEditor::Flag::CodeFolding );
-
-    Qgis::ScriptLanguage language() const override;
-    Qgis::ScriptLanguageCapabilities languageCapabilities() const override;
+    QgsCodeEditorPython( QWidget *parent SIP_TRANSFERTHIS = nullptr, const QList<QString> &filenames = QList<QString>() );
 
     /**
      * Load APIs from one or more files
@@ -88,39 +67,10 @@ class GUI_EXPORT QgsCodeEditorPython : public QgsCodeEditor
     void loadAPIs( const QList<QString> &filenames );
 
     /**
-     * Loads a \a script file.
+     * Load a script file
+     * \param script The script file to load
      */
     bool loadScript( const QString &script );
-
-    /**
-     * Check whether the current cursor position is inside a string literal or a comment
-     *
-     * \since QGIS 3.30
-     */
-    bool isCursorInsideStringLiteralOrComment() const;
-
-    /**
-     * Returns the character before the cursor, or an empty string if cursor is set at start
-     *
-     * \since QGIS 3.30
-     */
-    QString characterBeforeCursor() const;
-
-    /**
-     * Returns the character after the cursor, or an empty string if the cursor is set at end
-     *
-     * \since QGIS 3.30
-     */
-    QString characterAfterCursor() const;
-
-    /**
-     * Updates the editor capabilities.
-     *
-     * \since QGIS 3.32
-     */
-    void updateCapabilities();
-
-    bool checkSyntax() override;
 
   public slots:
 
@@ -131,26 +81,9 @@ class GUI_EXPORT QgsCodeEditorPython : public QgsCodeEditor
      */
     void searchSelectedTextInPyQGISDocs();
 
-    /**
-     * Displays the given text in the official APIs (PyQGIS, C++ QGIS or Qt) documentation.
-     *
-     * \since QGIS 3.42
-     */
-    virtual void showApiDocumentation( const QString &item );
-
-    /**
-     * Toggle comment for the selected text.
-     *
-     * \since QGIS 3.30
-     */
-    void toggleComment() override;
-
   protected:
 
     void initializeLexer() override;
-    virtual void keyPressEvent( QKeyEvent *event ) override;
-    QString reformatCodeString( const QString &string ) override;
-    void populateContextMenu( QMenu *menu ) override;
 
   protected slots:
 
@@ -165,13 +98,6 @@ class GUI_EXPORT QgsCodeEditorPython : public QgsCodeEditor
 
     QList<QString> mAPISFilesList;
     QString mPapFile;
-
-    Qgis::ScriptLanguageCapabilities mCapabilities;
-
-    static const QMap<QString, QString> sCompletionPairs;
-
-    // Only used for selected text
-    static const QStringList sCompletionSingleCharacters;
 
 };
 

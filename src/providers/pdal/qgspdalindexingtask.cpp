@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgspdalindexingtask.h"
-#include "moc_qgspdalindexingtask.cpp"
 
 #include <vector>
 #include <string>
@@ -29,10 +28,11 @@
 #include "qgsmessagelog.h"
 #include "qgis.h"
 
-QgsPdalIndexingTask::QgsPdalIndexingTask( const QString &file, const QString &outputPath, const QString &name )
+QgsPdalIndexingTask::QgsPdalIndexingTask( const QString &file, const QString &outputPath, OutputFormat outputFormat, const QString &name )
   : QgsTask( tr( "Indexing Point Cloud (%1)" ).arg( name ) )
   , mOutputPath( outputPath )
   , mFile( file )
+  , mOutputFormat( outputFormat )
 {
   mUntwineExecutableBinary = guessUntwineExecutableBinary();
 }
@@ -55,7 +55,16 @@ bool QgsPdalIndexingTask::run()
 
 void QgsPdalIndexingTask::cleanTemp()
 {
-  QDir tmpDir( mOutputPath + QStringLiteral( "_tmp" ) );
+  QDir tmpDir;
+  switch ( mOutputFormat )
+  {
+    case QgsPdalIndexingTask::OutputFormat::Ept:
+      tmpDir.setPath( mOutputPath + QDir::separator() + QStringLiteral( "tmp" ) );
+      break;
+    case QgsPdalIndexingTask::OutputFormat::Copc:
+      tmpDir.setPath( mOutputPath + QStringLiteral( "_tmp" ) );
+      break;
+  }
 
   if ( tmpDir.exists() )
   {
@@ -83,8 +92,11 @@ bool QgsPdalIndexingTask::runUntwine()
   // By default Untwine does not calculate stats for attributes, but they are very useful for us:
   // we can use them to set automatically set valid range for the data without having to scan the points again.
   options.push_back( { "stats", std::string() } );
-  // By default Untwine will generate an ept dataset, we use single_file flag to generate COPC files
-  options.push_back( { "single_file", std::string() } );
+  if ( mOutputFormat == OutputFormat::Copc )
+  {
+    // By default Untwine will generate an ept dataset, we use single_file flag to generate COPC files
+    options.push_back( { "single_file", std::string() } );
+  }
 
   const std::vector<std::string> files = {mFile.toStdString()};
   untwineProcess.start( files, mOutputPath.toStdString(), options );
@@ -119,7 +131,7 @@ bool QgsPdalIndexingTask::runUntwine()
       {
         // TODO: propagate the error message to GUI
         mErrorMessage = QStringLiteral( "Untwine error: %1" ).arg( QString::fromStdString( untwineProcess.errorMessage() ) );
-        QgsDebugError( mErrorMessage );
+        QgsDebugMsg( mErrorMessage );
         return false;
       }
 
@@ -159,17 +171,59 @@ QString QgsPdalIndexingTask::outputPath() const
 
 bool QgsPdalIndexingTask::prepareOutputPath()
 {
-  const QFileInfo fi( mOutputPath );
-  if ( fi.exists() )
+  switch ( mOutputFormat )
   {
-    QgsMessageLog::logMessage( tr( "File %1 is already indexed" ).arg( mFile ), QObject::tr( "Point clouds" ), Qgis::MessageLevel::Info );
-    return true;
-  }
-  QString tmpDir = mOutputPath + QStringLiteral( "_tmp" );
-  if ( QDir( tmpDir ).exists() )
-  {
-    QgsMessageLog::logMessage( tr( "Another indexing process is running (or finished with crash) in directory %1" ).arg( mOutputPath ), QObject::tr( "Point clouds" ), Qgis::MessageLevel::Warning );
-    return false;
+    case OutputFormat::Ept:
+    {
+      const QFileInfo fi( mOutputPath + "/ept.json" );
+      if ( fi.exists() )
+      {
+        QgsMessageLog::logMessage( tr( "File %1 is already indexed" ).arg( mFile ), QObject::tr( "Point clouds" ), Qgis::MessageLevel::Info );
+        return true;
+      }
+      if ( QDir( mOutputPath ).exists() )
+      {
+        if ( !QDir( mOutputPath ).isEmpty() )
+        {
+          if ( QDir( mOutputPath + "/temp" ).exists() )
+          {
+            QgsMessageLog::logMessage( tr( "Another indexing process is running (or finished with crash) in directory %1" ).arg( mOutputPath ), QObject::tr( "Point clouds" ), Qgis::MessageLevel::Warning );
+            return false;
+          }
+          else
+          {
+            QgsMessageLog::logMessage( tr( "Folder %1 is non-empty, but there isn't ept.json present." ).arg( mOutputPath ), QObject::tr( "Point clouds" ), Qgis::MessageLevel::Critical );
+            return false;
+          }
+        }
+        else
+        {
+          // untwine expects that the output directory does not exist at all
+          if ( !QDir().rmdir( mOutputPath ) )
+          {
+            QgsMessageLog::logMessage( tr( "Failed to remove empty directory %1" ).arg( mOutputPath ), QObject::tr( "Point clouds" ), Qgis::MessageLevel::Critical );
+            return false;
+          }
+        }
+      }
+      break;
+    }
+    case OutputFormat::Copc:
+    {
+      const QFileInfo fi( mOutputPath );
+      if ( fi.exists() )
+      {
+        QgsMessageLog::logMessage( tr( "File %1 is already indexed" ).arg( mFile ), QObject::tr( "Point clouds" ), Qgis::MessageLevel::Info );
+        return true;
+      }
+      QString tmpDir = mOutputPath + QStringLiteral( "_tmp" );
+      if ( QDir( tmpDir ).exists() )
+      {
+        QgsMessageLog::logMessage( tr( "Another indexing process is running (or finished with crash) in directory %1" ).arg( mOutputPath ), QObject::tr( "Point clouds" ), Qgis::MessageLevel::Warning );
+        return false;
+      }
+      break;
+    }
   }
   return true;
 }

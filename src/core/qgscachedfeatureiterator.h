@@ -20,8 +20,6 @@
 #include "qgsfeature.h"
 #include "qgsfeatureiterator.h"
 #include "qgscoordinatetransform.h"
-#include "qgsvectorlayercache.h"
-#include <QPointer>
 
 class QgsVectorLayerCache;
 
@@ -67,6 +65,8 @@ class CORE_EXPORT QgsCachedFeatureIterator : public QgsAbstractFeatureIterator
      *
      * \param f      Will write to this feature
      * \returns bool  TRUE if the operation was OK
+     *
+     * \see bool getFeature( QgsFeature& f )
      */
     bool fetchFeature( QgsFeature &f ) override;
 
@@ -84,7 +84,7 @@ class CORE_EXPORT QgsCachedFeatureIterator : public QgsAbstractFeatureIterator
 #endif
 
     QList< QgsFeatureId > mFeatureIds;
-    QPointer< QgsVectorLayerCache > mVectorLayerCache = nullptr;
+    QgsVectorLayerCache *mVectorLayerCache = nullptr;
     QList< QgsFeatureId >::ConstIterator mFeatureIdIterator;
     QgsCoordinateTransform mTransform;
     QgsRectangle mFilterRect;
@@ -133,12 +133,14 @@ class CORE_EXPORT QgsCachedFeatureWriterIterator : public QgsAbstractFeatureIter
      *
      * \param f      Will write to this feature
      * \returns bool  TRUE if the operation was OK
+     *
+     * \see bool getFeature( QgsFeature& f )
      */
     bool fetchFeature( QgsFeature &f ) override;
 
   private:
     QgsFeatureIterator mFeatIt;
-    QPointer< QgsVectorLayerCache > mVectorLayerCache;
+    QgsVectorLayerCache *mVectorLayerCache = nullptr;
     QgsFeatureIds mFids;
     QgsCoordinateTransform mTransform;
     QgsRectangle mFilterRect;

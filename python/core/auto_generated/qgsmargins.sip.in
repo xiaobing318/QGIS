@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsmargins.h                                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -124,12 +124,6 @@ if the string could not be interpreted as margins.
 .. seealso:: :py:func:`toString`
 %End
 
-    SIP_PYOBJECT __repr__();
-%MethodCode
-    const QString str = QStringLiteral( "<QgsMargins: %1 %2 %3 %4>" ).arg( sipCpp->left() ).arg( sipCpp->top() ).arg( sipCpp->right() ).arg( sipCpp->bottom() );
-    sipRes = PyUnicode_FromString( str.toUtf8().constData() );
-%End
-
 };
 
 
@@ -169,5 +163,5 @@ QgsMargins operator-( const QgsMargins &margins );
  *                                                                      *
  * src/core/qgsmargins.h                                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

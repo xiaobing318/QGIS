@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgsauthimportidentitydialog.h"
-#include "moc_qgsauthimportidentitydialog.cpp"
 #include "ui_qgsauthimportidentitydialog.h"
 
 #include <QFile>

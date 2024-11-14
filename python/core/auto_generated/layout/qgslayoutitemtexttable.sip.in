@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/layout/qgslayoutitemtexttable.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -13,6 +13,8 @@ class QgsLayoutItemTextTable : QgsLayoutTable
 {
 %Docstring(signature="appended")
 A text table item that reads text from string lists
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -73,5 +75,5 @@ Sets the contents of the text table.
  *                                                                      *
  * src/core/layout/qgslayoutitemtexttable.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

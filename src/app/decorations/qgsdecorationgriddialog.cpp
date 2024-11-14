@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsdecorationgriddialog.h"
-#include "moc_qgsdecorationgriddialog.cpp"
 
 #include "qgsdecorationgrid.h"
 

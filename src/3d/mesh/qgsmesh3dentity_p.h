@@ -21,7 +21,7 @@
 #include <Qt3DCore/QEntity>
 
 #include "mesh/qgsmesh3dgeometry_p.h"
-#include "qgs3drendercontext.h"
+#include "qgs3dmapsettings.h"
 #include "qgsmesh3dsymbol.h"
 #include "qgsterraintileentity_p.h"
 
@@ -42,23 +42,23 @@ class Qgs3DMapSettings;
 class QgsMesh3DSymbol;
 
 class QgsMeshLayer;
-class QgsMesh3DMaterial;
+class QgsMesh3dMaterial;
 
 //! Abstract class that handles rendering of mesh
-class QgsMesh3DEntity
+class QgsMesh3dEntity
 {
   public:
     //! Builds the geometry and the material
     void build();
   protected:
     //! Constructor
-    QgsMesh3DEntity( const Qgs3DRenderContext &context,
+    QgsMesh3dEntity( const Qgs3DMapSettings &map,
                      const QgsTriangularMesh &triangularMesh,
                      const QgsMesh3DSymbol *symbol );
 
-    virtual ~QgsMesh3DEntity() = default;
+    virtual ~QgsMesh3dEntity() = default;
 
-    Qgs3DRenderContext mRenderContext;
+    Qgs3DMapSettings mMapSettings;
     QgsTriangularMesh mTriangularMesh;
     std::unique_ptr< QgsMesh3DSymbol > mSymbol;
 
@@ -68,20 +68,20 @@ class QgsMesh3DEntity
 };
 
 //! Entity that handles rendering of dataset
-class QgsMeshDataset3DEntity: public Qt3DCore::QEntity, public QgsMesh3DEntity
+class QgsMeshDataset3dEntity: public Qt3DCore::QEntity, public QgsMesh3dEntity
 {
     Q_OBJECT
 
   public:
     //! Constructor
-    QgsMeshDataset3DEntity( const Qgs3DRenderContext &context,
+    QgsMeshDataset3dEntity( const Qgs3DMapSettings &map,
                             const QgsTriangularMesh &triangularMesh,
                             QgsMeshLayer *meshLayer,
                             const QgsMesh3DSymbol *symbol );
 
   private:
-    void buildGeometry() override;
-    void applyMaterial() override;
+    virtual void buildGeometry();
+    virtual void applyMaterial();
 
     QgsMeshLayer *layer() const;
     QgsMapLayerRef mLayerRef;
@@ -89,20 +89,20 @@ class QgsMeshDataset3DEntity: public Qt3DCore::QEntity, public QgsMesh3DEntity
 };
 
 //! Entity that handles rendering of terrain mesh
-class QgsMesh3DTerrainTileEntity: public QgsTerrainTileEntity, public QgsMesh3DEntity
+class QgsMesh3dTerrainTileEntity: public QgsTerrainTileEntity, public QgsMesh3dEntity
 {
     Q_OBJECT
 
   public:
-    QgsMesh3DTerrainTileEntity( const Qgs3DRenderContext &context,
+    QgsMesh3dTerrainTileEntity( const Qgs3DMapSettings &map,
                                 const QgsTriangularMesh &triangularMesh,
                                 const QgsMesh3DSymbol *symbol,
                                 QgsChunkNodeId nodeId,
                                 Qt3DCore::QNode *parent = nullptr );
 
   private:
-    void buildGeometry() override;
-    void applyMaterial() override;
+    virtual void buildGeometry();
+    virtual void applyMaterial();
 };
 
 ///@endcond

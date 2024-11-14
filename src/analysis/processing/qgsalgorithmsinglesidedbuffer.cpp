@@ -64,18 +64,18 @@ QString QgsSingleSidedBufferAlgorithm::outputName() const
 
 QList<int> QgsSingleSidedBufferAlgorithm::inputLayerTypes() const
 {
-  return QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorLine );
+  return QList<int>() << QgsProcessing::TypeVectorLine;
 }
 
-Qgis::ProcessingSourceType QgsSingleSidedBufferAlgorithm::outputLayerType() const
+QgsProcessing::SourceType QgsSingleSidedBufferAlgorithm::outputLayerType() const
 {
-  return Qgis::ProcessingSourceType::VectorPolygon;
+  return QgsProcessing::TypeVectorPolygon;
 }
 
-Qgis::WkbType QgsSingleSidedBufferAlgorithm::outputWkbType( Qgis::WkbType type ) const
+QgsWkbTypes::Type QgsSingleSidedBufferAlgorithm::outputWkbType( QgsWkbTypes::Type type ) const
 {
   Q_UNUSED( type );
-  return Qgis::WkbType::Polygon;
+  return QgsWkbTypes::Polygon;
 }
 
 QgsSingleSidedBufferAlgorithm *QgsSingleSidedBufferAlgorithm::createInstance() const
@@ -92,9 +92,9 @@ void QgsSingleSidedBufferAlgorithm::initParameters( const QVariantMap & )
   addParameter( bufferParam.release() );
 
   addParameter( new QgsProcessingParameterEnum( QStringLiteral( "SIDE" ), QObject::tr( "Side" ), QStringList() << QObject::tr( "Left" ) << QObject::tr( "Right" ), false, 0 ) );
-  addParameter( new QgsProcessingParameterNumber( QStringLiteral( "SEGMENTS" ), QObject::tr( "Segments" ), Qgis::ProcessingNumberParameterType::Integer, 8, false, 1 ) );
+  addParameter( new QgsProcessingParameterNumber( QStringLiteral( "SEGMENTS" ), QObject::tr( "Segments" ), QgsProcessingParameterNumber::Integer, 8, false, 1 ) );
   addParameter( new QgsProcessingParameterEnum( QStringLiteral( "JOIN_STYLE" ), QObject::tr( "Join style" ), QStringList() << QObject::tr( "Round" ) << QObject::tr( "Miter" ) << QObject::tr( "Bevel" ), false, 0 ) );
-  addParameter( new QgsProcessingParameterNumber( QStringLiteral( "MITER_LIMIT" ), QObject::tr( "Miter limit" ), Qgis::ProcessingNumberParameterType::Double, 2, false, 1 ) );
+  addParameter( new QgsProcessingParameterNumber( QStringLiteral( "MITER_LIMIT" ), QObject::tr( "Miter limit" ), QgsProcessingParameterNumber::Double, 2, false, 1 ) );
 }
 
 bool QgsSingleSidedBufferAlgorithm::prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback * )

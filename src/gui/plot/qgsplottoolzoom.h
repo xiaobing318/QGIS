@@ -91,15 +91,12 @@ class GUI_EXPORT QgsPlotToolZoom : public QgsPlotTool
     //! Will be TRUE will marquee zoom operation is in progress
     bool mMarqueeZoom = false;
 
-  protected:
+  private:
 
-    //! Start position for mouse drag
+    //! Start position for mouse press
     QPoint mMousePressStartPos;
 
-    //! Start position for drag, in scene coordinates
     QPointF mRubberBandStartPos;
-
-  private:
 
     //! Rubber band item
     std::unique_ptr< QgsPlotRectangularRubberBand > mRubberBand;

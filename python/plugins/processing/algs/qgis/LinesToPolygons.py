@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     LinesToPolygons.py
@@ -73,10 +75,10 @@ class LinesToPolygons(QgisFeatureBasedAlgorithm):
         return self.tr('Polygons')
 
     def outputType(self):
-        return QgsProcessing.SourceType.TypeVectorPolygon
+        return QgsProcessing.TypeVectorPolygon
 
     def inputLayerTypes(self):
-        return [QgsProcessing.SourceType.TypeVectorLine]
+        return [QgsProcessing.TypeVectorLine]
 
     def outputWkbType(self, input_wkb_type):
         return self.convertWkbToPolygons(input_wkb_type)
@@ -92,11 +94,11 @@ class LinesToPolygons(QgisFeatureBasedAlgorithm):
         return False
 
     def convertWkbToPolygons(self, wkb):
-        multi_wkb = QgsWkbTypes.Type.NoGeometry
-        if QgsWkbTypes.singleType(QgsWkbTypes.flatType(wkb)) == QgsWkbTypes.Type.LineString:
-            multi_wkb = QgsWkbTypes.Type.MultiPolygon
-        elif QgsWkbTypes.singleType(QgsWkbTypes.flatType(wkb)) == QgsWkbTypes.Type.CompoundCurve:
-            multi_wkb = QgsWkbTypes.Type.MultiSurface
+        multi_wkb = QgsWkbTypes.NoGeometry
+        if QgsWkbTypes.singleType(QgsWkbTypes.flatType(wkb)) == QgsWkbTypes.LineString:
+            multi_wkb = QgsWkbTypes.MultiPolygon
+        elif QgsWkbTypes.singleType(QgsWkbTypes.flatType(wkb)) == QgsWkbTypes.CompoundCurve:
+            multi_wkb = QgsWkbTypes.MultiSurface
         if QgsWkbTypes.hasM(wkb):
             multi_wkb = QgsWkbTypes.addM(multi_wkb)
         if QgsWkbTypes.hasZ(wkb):
@@ -108,7 +110,7 @@ class LinesToPolygons(QgisFeatureBasedAlgorithm):
         surfaces = self.getSurfaces(geometry.constGet())
         output_wkb = self.convertWkbToPolygons(geometry.wkbType())
         out_geom = None
-        if QgsWkbTypes.flatType(output_wkb) == QgsWkbTypes.Type.MultiPolygon:
+        if QgsWkbTypes.flatType(output_wkb) == QgsWkbTypes.MultiPolygon:
             out_geom = QgsMultiPolygon()
         else:
             out_geom = QgsMultiSurface()

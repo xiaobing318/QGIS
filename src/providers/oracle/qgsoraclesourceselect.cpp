@@ -17,10 +17,10 @@ email                : jef at norbit dot de
  ***************************************************************************/
 
 #include "qgsoraclesourceselect.h"
-#include "moc_qgsoraclesourceselect.cpp"
 
 #include "qgslogger.h"
 #include "qgsapplication.h"
+#include "qgsoracleprovider.h"
 #include "qgsoraclenewconnection.h"
 #include "qgsoracletablecache.h"
 #include "qgsmanageconnectionsdialog.h"
@@ -29,10 +29,12 @@ email                : jef at norbit dot de
 #include "qgsvectorlayer.h"
 #include "qgsoraclecolumntypetask.h"
 #include "qgssettings.h"
+#include "qgsproxyprogresstask.h"
 #include "qgsgui.h"
 #include "qgsiconutils.h"
 #include "qgsoracletablemodel.h"
-#include "qgsprovidermetadata.h"
+#include "qgsdbfilterproxymodel.h"
+
 
 #include <QFileDialog>
 #include <QInputDialog>
@@ -58,18 +60,18 @@ QWidget *QgsOracleSourceSelectDelegate::createEditor( QWidget *parent, const QSt
   if ( index.column() == QgsOracleTableModel::DbtmType && index.data( Qt::UserRole + 1 ).toBool() )
   {
     QComboBox *cb = new QComboBox( parent );
-    for ( Qgis::WkbType type :
+    for ( QgsWkbTypes::Type type :
           {
-            Qgis::WkbType::Point,
-            Qgis::WkbType::LineString,
-            Qgis::WkbType::Polygon,
-            Qgis::WkbType::MultiPoint,
-            Qgis::WkbType::MultiLineString,
-            Qgis::WkbType::MultiPolygon,
-            Qgis::WkbType::NoGeometry
+            QgsWkbTypes::Point,
+            QgsWkbTypes::LineString,
+            QgsWkbTypes::Polygon,
+            QgsWkbTypes::MultiPoint,
+            QgsWkbTypes::MultiLineString,
+            QgsWkbTypes::MultiPolygon,
+            QgsWkbTypes::NoGeometry
           } )
     {
-      cb->addItem( QgsIconUtils::iconForWkbType( type ), QgsWkbTypes::translatedDisplayString( type ), static_cast< quint32>( type ) );
+      cb->addItem( QgsIconUtils::iconForWkbType( type ), QgsWkbTypes::translatedDisplayString( type ), type );
     }
     return cb;
   }
@@ -142,11 +144,11 @@ void QgsOracleSourceSelectDelegate::setModelData( QWidget *editor, QAbstractItem
   {
     if ( index.column() == QgsOracleTableModel::DbtmType )
     {
-      Qgis::WkbType type = static_cast< Qgis::WkbType >( cb->currentData().toInt() );
+      QgsWkbTypes::Type type = static_cast< QgsWkbTypes::Type >( cb->currentData().toInt() );
 
       model->setData( index, QgsIconUtils::iconForWkbType( type ), Qt::DecorationRole );
-      model->setData( index, type != Qgis::WkbType::Unknown ? QgsWkbTypes::translatedDisplayString( type ) : tr( "Select…" ) );
-      model->setData( index, static_cast< quint32>( type ), Qt::UserRole + 2 );
+      model->setData( index, type != QgsWkbTypes::Unknown ? QgsWkbTypes::translatedDisplayString( type ) : tr( "Select…" ) );
+      model->setData( index, type, Qt::UserRole + 2 );
     }
     else if ( index.column() == QgsOracleTableModel::DbtmPkCol )
     {
@@ -187,7 +189,7 @@ QgsOracleSourceSelect::QgsOracleSourceSelect( QWidget *parent, Qt::WindowFlags f
   setupButtons( buttonBox );
   connect( buttonBox, &QDialogButtonBox::helpRequested, this, &QgsOracleSourceSelect::showHelp );
 
-  if ( widgetMode() != QgsProviderRegistry::WidgetMode::Standalone )
+  if ( widgetMode() != QgsProviderRegistry::WidgetMode::None )
   {
     mHoldDialogOpen->hide();
   }
@@ -295,7 +297,7 @@ void QgsOracleSourceSelect::cmbConnections_currentIndexChanged( const QString &t
   // populate the table list
   mConnInfo = QgsOracleConn::connUri( cmbConnections->currentText() );
 
-  QgsDebugMsgLevel( "Connection info: " + mConnInfo.uri(), 2 );
+  QgsDebugMsg( "Connection info: " + mConnInfo.uri() );
 
   loadTableFromCache();
 }
@@ -370,7 +372,7 @@ void QgsOracleSourceSelect::addButtonClicked()
   else
   {
     emit addDatabaseLayers( mSelectedTables, QStringLiteral( "oracle" ) );
-    if ( !mHoldDialogOpen->isChecked() && widgetMode() == QgsProviderRegistry::WidgetMode::Standalone )
+    if ( !mHoldDialogOpen->isChecked() && widgetMode() == QgsProviderRegistry::WidgetMode::None )
     {
       accept();
     }
@@ -466,7 +468,7 @@ void QgsOracleSourceSelect::setSql( const QModelIndex &index )
 {
   if ( !index.parent().isValid() )
   {
-    QgsDebugError( QStringLiteral( "no owner item found" ) );
+    QgsDebugMsg( QStringLiteral( "no owner item found" ) );
     return;
   }
 
@@ -475,7 +477,7 @@ void QgsOracleSourceSelect::setSql( const QModelIndex &index )
   QString uri = mTableModel->layerURI( index, mConnInfo );
   if ( uri.isNull() )
   {
-    QgsDebugMsgLevel( QStringLiteral( "no uri" ), 2 );
+    QgsDebugMsg( QStringLiteral( "no uri" ) );
     return;
   }
 

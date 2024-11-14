@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/geocoding/qgsgeocoder.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -58,7 +58,7 @@ These fields will include any extra content returned by the geocoder, such as fi
 match or correct attribute values.
 %End
 
-    virtual Qgis::WkbType wkbType() const;
+    virtual QgsWkbTypes::Type wkbType() const;
 %Docstring
 Returns the WKB type of geometries returned by the geocoder.
 
@@ -83,5 +83,5 @@ The optional ``feedback`` argument can be used to provider cancellation support.
  *                                                                      *
  * src/core/geocoding/qgsgeocoder.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

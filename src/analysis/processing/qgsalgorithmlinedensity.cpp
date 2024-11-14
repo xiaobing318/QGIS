@@ -49,15 +49,10 @@ QString QgsLineDensityAlgorithm::groupId() const
 
 void QgsLineDensityAlgorithm::initAlgorithm( const QVariantMap & )
 {
-  addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ), QObject::tr( "Input line layer" ), QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorLine ) ) );
-  addParameter( new QgsProcessingParameterField( QStringLiteral( "WEIGHT" ), QObject::tr( "Weight field " ), QVariant(), QStringLiteral( "INPUT" ), Qgis::ProcessingFieldParameterDataType::Numeric, false, true ) );
+  addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ), QObject::tr( "Input line layer" ), QList<int>() << QgsProcessing::TypeVectorLine ) );
+  addParameter( new QgsProcessingParameterField( QStringLiteral( "WEIGHT" ), QObject::tr( "Weight field " ), QVariant(), QStringLiteral( "INPUT" ), QgsProcessingParameterField::Numeric, false, true ) );
   addParameter( new QgsProcessingParameterDistance( QStringLiteral( "RADIUS" ), QObject::tr( "Search radius" ), 10, QStringLiteral( "INPUT" ), false, 0 ) );
   addParameter( new QgsProcessingParameterDistance( QStringLiteral( "PIXEL_SIZE" ), QObject::tr( "Pixel size" ), 10, QStringLiteral( "INPUT" ), false ) );
-
-  std::unique_ptr< QgsProcessingParameterString > createOptsParam = std::make_unique< QgsProcessingParameterString >( QStringLiteral( "CREATE_OPTIONS" ), QObject::tr( "Creation options" ), QVariant(), false, true );
-  createOptsParam->setMetadata( QVariantMap( {{QStringLiteral( "widget_wrapper" ), QVariantMap( {{QStringLiteral( "widget_type" ), QStringLiteral( "rasteroptions" ) }} ) }} ) );
-  createOptsParam->setFlags( createOptsParam->flags() | Qgis::ProcessingParameterFlag::Advanced );
-  addParameter( createOptsParam.release() );
 
   addParameter( new QgsProcessingParameterRasterDestination( QStringLiteral( "OUTPUT" ), QObject::tr( "Line density raster" ) ) );
 }
@@ -131,7 +126,6 @@ QVariantMap QgsLineDensityAlgorithm::processAlgorithm( const QVariantMap &parame
     }
   }
 
-  const QString createOptions = parameterAsString( parameters, QStringLiteral( "CREATE_OPTIONS" ), context ).trimmed();
   const QString outputFile = parameterAsOutputLayer( parameters, QStringLiteral( "OUTPUT" ), context );
   const QFileInfo fi( outputFile );
   const QString outputFormat = QgsRasterFileWriter::driverForExtension( fi.suffix() );
@@ -146,11 +140,6 @@ QVariantMap QgsLineDensityAlgorithm::processAlgorithm( const QVariantMap &parame
   QgsRasterFileWriter writer = QgsRasterFileWriter( outputFile );
   writer.setOutputProviderKey( QStringLiteral( "gdal" ) );
   writer.setOutputFormat( outputFormat );
-  if ( !createOptions.isEmpty() )
-  {
-    writer.setCreateOptions( createOptions.split( '|' ) );
-  }
-
   std::unique_ptr<QgsRasterDataProvider > provider( writer.createOneBandRaster( Qgis::DataType::Float32, cols, rows, rasterExtent, mCrs ) );
   if ( !provider )
     throw QgsProcessingException( QObject::tr( "Could not create raster output: %1" ).arg( outputFile ) );
@@ -190,16 +179,7 @@ QVariantMap QgsLineDensityAlgorithm::processAlgorithm( const QVariantMap &parame
 
           if ( engine->intersects( lineGeom.constGet() ) )
           {
-            double analysisLineLength = 0;
-            try
-            {
-              analysisLineLength =  mDa.measureLength( QgsGeometry( engine->intersection( mIndex.geometry( id ).constGet() ) ) );
-            }
-            catch ( QgsCsException & )
-            {
-              throw QgsProcessingException( QObject::tr( "An error occurred while calculating feature length" ) );
-            }
-
+            const double analysisLineLength =  mDa.measureLength( QgsGeometry( engine->intersection( mIndex.geometry( id ).constGet() ) ) );
             double weight = 1;
 
             if ( !mWeightField.isEmpty() )
@@ -215,16 +195,7 @@ QVariantMap QgsLineDensityAlgorithm::processAlgorithm( const QVariantMap &parame
         if ( absDensity > 0 )
         {
           //only calculate ellipsoidal area if abs density is greater 0
-          double analysisSearchGeometryArea = 0;
-          try
-          {
-            analysisSearchGeometryArea = mDa.measureArea( mSearchGeometry );
-          }
-          catch ( QgsCsException & )
-          {
-            throw QgsProcessingException( QObject::tr( "An error occurred while calculating feature area" ) );
-          }
-
+          const double analysisSearchGeometryArea = mDa.measureArea( mSearchGeometry );
           lineDensity = absDensity / analysisSearchGeometryArea;
         }
         rasterDataLine->setValue( 0, col, lineDensity );

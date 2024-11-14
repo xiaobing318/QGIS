@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/processing/qgsprocessinghistoryprovider.h                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -33,27 +33,6 @@ Ports the old text log to the history framework.
 This should only be called once -- calling multiple times will result in duplicate log entries
 %End
 
-    virtual QgsHistoryEntryNode *createNodeForEntry( const QgsHistoryEntry &entry, const QgsHistoryWidgetContext &context ) /Factory/;
-
-    virtual void updateNodeForEntry( QgsHistoryEntryNode *node, const QgsHistoryEntry &entry, const QgsHistoryWidgetContext &context );
-
-
-  signals:
-
-    void executePython( const QString &commands );
-%Docstring
-Emitted when the provider needs to execute python ``commands`` in the Processing context.
-
-.. versionadded:: 3.32
-%End
-
-    void createTest( const QString &command );
-%Docstring
-Emitted when the provider needs to create a Processing test with the given python ``command``.
-
-.. versionadded:: 3.32
-%End
-
 };
 
 
@@ -64,5 +43,5 @@ Emitted when the provider needs to create a Processing test with the given pytho
  *                                                                      *
  * src/gui/processing/qgsprocessinghistoryprovider.h                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

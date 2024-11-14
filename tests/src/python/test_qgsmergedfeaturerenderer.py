@@ -11,45 +11,40 @@ __copyright__ = 'Copyright 2020, The QGIS Project'
 
 import os
 
+import qgis  # NOQA
+from qgis.PyQt.QtCore import QDir
 from qgis.PyQt.QtGui import QColor
-from qgis.core import (
-    QgsCategorizedSymbolRenderer,
-    QgsFillSymbol,
-    QgsLineSymbol,
-    QgsMapSettings,
-    QgsMarkerLineSymbolLayer,
-    QgsMarkerSymbol,
-    QgsMergedFeatureRenderer,
-    QgsRendererCategory,
-    QgsSimpleFillSymbolLayer,
-    QgsSimpleLineSymbolLayer,
-    QgsSingleSymbolRenderer,
-    QgsTemplatedLineSymbolLayerBase,
-    QgsVectorLayer,
-)
-from qgis.testing import unittest, QgisTestCase
+from qgis.core import (QgsRenderChecker,
+                       QgsMapSettings,
+                       QgsVectorLayer,
+                       QgsMergedFeatureRenderer,
+                       QgsSingleSymbolRenderer,
+                       QgsFillSymbol,
+                       QgsSimpleFillSymbolLayer,
+                       QgsCategorizedSymbolRenderer,
+                       QgsRendererCategory,
+                       QgsSimpleLineSymbolLayer,
+                       QgsMarkerLineSymbolLayer,
+                       QgsLineSymbol,
+                       QgsTemplatedLineSymbolLayerBase,
+                       QgsMarkerSymbol
+                       )
+from qgis.testing import unittest
 
-from utilities import unitTestDataPath, start_app
+from utilities import unitTestDataPath
 
-start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestQgsMergedFeatureRenderer(QgisTestCase):
+class TestQgsMergedFeatureRenderer(unittest.TestCase):
 
-    @classmethod
-    def control_path_prefix(cls):
-        return "mergedfeaturerenderer"
+    def setUp(self):
+        self.report = "<h1>Python QgsMergedFeatureRenderer Tests</h1>\n"
 
-    def test_legend_keys(self):
-        symbol1 = QgsFillSymbol()
-        symbol2 = QgsFillSymbol()
-        sub_renderer = QgsCategorizedSymbolRenderer('cat', [QgsRendererCategory('cat1', symbol1, 'cat1', True, '0'),
-                                                            QgsRendererCategory('cat2', symbol2, 'cat2', True, '1')
-                                                            ])
-
-        renderer = QgsMergedFeatureRenderer(sub_renderer)
-        self.assertEqual(renderer.legendKeys(), {'0', '1'})
+    def tearDown(self):
+        report_file_path = "%s/qgistest.html" % QDir.tempPath()
+        with open(report_file_path, 'a') as report_file:
+            report_file.write(self.report)
 
     def testSinglePolys(self):
         source = QgsVectorLayer(os.path.join(TEST_DATA_DIR, 'polys_overlapping.shp'))
@@ -68,12 +63,7 @@ class TestQgsMergedFeatureRenderer(QgisTestCase):
         sub_renderer = QgsSingleSymbolRenderer(symbol)
         source.setRenderer(QgsMergedFeatureRenderer(sub_renderer))
 
-        map_settings.setOutputDpi(96)
-        self.assertTrue(
-            self.render_map_settings_check('single_subrenderer', 'single_subrenderer', map_settings,
-                                           color_tolerance=2,
-                                           allowed_mismatch=20)
-        )
+        self.assertTrue(self.imageCheck('single_subrenderer', 'single_subrenderer', map_settings))
 
     def testCategorizedPolys(self):
         source = QgsVectorLayer(os.path.join(TEST_DATA_DIR, 'polys_overlapping_with_cat.shp'))
@@ -102,12 +92,7 @@ class TestQgsMergedFeatureRenderer(QgisTestCase):
                                                             ])
         source.setRenderer(QgsMergedFeatureRenderer(sub_renderer))
 
-        map_settings.setOutputDpi(96)
-        self.assertTrue(
-            self.render_map_settings_check('polys_categorizedrenderer', 'polys_categorizedrenderer', map_settings,
-                                           color_tolerance=2,
-                                           allowed_mismatch=20)
-        )
+        self.assertTrue(self.imageCheck('polys_categorizedrenderer', 'polys_categorizedrenderer', map_settings))
 
     def testSingleLines(self):
         source = QgsVectorLayer(os.path.join(TEST_DATA_DIR, 'lines_touching.shp'))
@@ -123,7 +108,7 @@ class TestQgsMergedFeatureRenderer(QgisTestCase):
         symbol = QgsLineSymbol([layer])
 
         layer2 = QgsMarkerLineSymbolLayer()
-        layer2.setPlacement(QgsTemplatedLineSymbolLayerBase.Placement.FirstVertex)
+        layer2.setPlacement(QgsTemplatedLineSymbolLayerBase.FirstVertex)
         marker = QgsMarkerSymbol.createSimple({'size': '4', 'color': '255,0,0', 'outline_style': 'no'})
         layer2.setSubSymbol(marker)
         symbol.appendSymbolLayer(layer2)
@@ -131,12 +116,7 @@ class TestQgsMergedFeatureRenderer(QgisTestCase):
         sub_renderer = QgsSingleSymbolRenderer(symbol)
         source.setRenderer(QgsMergedFeatureRenderer(sub_renderer))
 
-        map_settings.setOutputDpi(96)
-        self.assertTrue(
-            self.render_map_settings_check('lines_single_subrenderer', 'lines_single_subrenderer', map_settings,
-                                           color_tolerance=2,
-                                           allowed_mismatch=20)
-        )
+        self.assertTrue(self.imageCheck('lines_single_subrenderer', 'lines_single_subrenderer', map_settings))
 
     def testLinesCategorized(self):
         source = QgsVectorLayer(os.path.join(TEST_DATA_DIR, 'lines_touching.shp'))
@@ -153,7 +133,7 @@ class TestQgsMergedFeatureRenderer(QgisTestCase):
         symbol1.changeSymbolLayer(0, layer.clone())
 
         layer2 = QgsMarkerLineSymbolLayer()
-        layer2.setPlacement(QgsTemplatedLineSymbolLayerBase.Placement.FirstVertex)
+        layer2.setPlacement(QgsTemplatedLineSymbolLayerBase.FirstVertex)
         marker = QgsMarkerSymbol.createSimple({'size': '4', 'color': '255,0,0', 'outline_style': 'no'})
         layer2.setSubSymbol(marker)
         symbol1.appendSymbolLayer(layer2)
@@ -161,7 +141,7 @@ class TestQgsMergedFeatureRenderer(QgisTestCase):
         symbol2 = QgsLineSymbol()
         symbol2.changeSymbolLayer(0, layer.clone())
         layer2 = QgsMarkerLineSymbolLayer()
-        layer2.setPlacement(QgsTemplatedLineSymbolLayerBase.Placement.FirstVertex)
+        layer2.setPlacement(QgsTemplatedLineSymbolLayerBase.FirstVertex)
         marker = QgsMarkerSymbol.createSimple({'size': '4', 'color': '0,255,0', 'outline_style': 'no'})
         layer2.setSubSymbol(marker)
         symbol2.appendSymbolLayer(layer2)
@@ -172,12 +152,7 @@ class TestQgsMergedFeatureRenderer(QgisTestCase):
 
         source.setRenderer(QgsMergedFeatureRenderer(sub_renderer))
 
-        map_settings.setOutputDpi(96)
-        self.assertTrue(
-            self.render_map_settings_check('lines_categorized_subrenderer', 'lines_categorized_subrenderer', map_settings,
-                                           color_tolerance=2,
-                                           allowed_mismatch=20)
-        )
+        self.assertTrue(self.imageCheck('lines_categorized_subrenderer', 'lines_categorized_subrenderer', map_settings))
 
     def test_legend_key_to_expression(self):
         sym1 = QgsFillSymbol.createSimple({'color': '#fdbf6f', 'outline_color': 'black'})
@@ -191,6 +166,20 @@ class TestQgsMergedFeatureRenderer(QgisTestCase):
 
         exp, ok = renderer.legendKeyToExpression('xxxx', None)
         self.assertFalse(ok)
+
+    def imageCheck(self, name, reference_image, map_settings):
+        map_settings.setOutputDpi(96)
+        self.report += f"<h2>Render {name}</h2>\n"
+
+        checker = QgsRenderChecker()
+        checker.setControlPathPrefix("mergedfeaturerenderer")
+        checker.setControlName("expected_" + reference_image)
+        checker.setMapSettings(map_settings)
+        checker.setColorTolerance(2)
+        result = checker.runTest(name, 20)
+        self.report += checker.report()
+        print(self.report)
+        return result
 
 
 if __name__ == '__main__':

@@ -18,6 +18,7 @@
 #include <QTextStream>
 
 #include "qgslayerdefinition.h"
+#include "qgslayertree.h"
 #include "qgslogger.h"
 #include "qgsmaplayer.h"
 #include "qgspathresolver.h"
@@ -28,17 +29,15 @@
 #include "qgsreadwritecontext.h"
 #include "qgsvectorlayer.h"
 #include "qgsvectortilelayer.h"
-#include "qgstiledscenelayer.h"
 #include "qgsapplication.h"
 #include "qgsmaplayerfactory.h"
 #include "qgsmeshlayer.h"
 #include "qgspointcloudlayer.h"
+#include "qgsannotationlayer.h"
 #include "qgsfileutils.h"
 #include "qgsgrouplayer.h"
-#include "qgslayertreegroup.h"
-#include "qgslayertreelayer.h"
 
-bool QgsLayerDefinition::loadLayerDefinition( const QString &path, QgsProject *project, QgsLayerTreeGroup *rootGroup, QString &errorMessage, Qgis::LayerTreeInsertionMethod insertMethod, const QgsLayerTreeRegistryBridge::InsertionPoint *insertPoint )
+bool QgsLayerDefinition::loadLayerDefinition( const QString &path, QgsProject *project, QgsLayerTreeGroup *rootGroup, QString &errorMessage )
 {
   QFile file( path );
   if ( !file.open( QIODevice::ReadOnly ) )
@@ -62,10 +61,10 @@ bool QgsLayerDefinition::loadLayerDefinition( const QString &path, QgsProject *p
   context.setPathResolver( QgsPathResolver( path ) );
   context.setProjectTranslator( project );
 
-  return loadLayerDefinition( doc, project, rootGroup, errorMessage, context, insertMethod, insertPoint );
+  return loadLayerDefinition( doc, project, rootGroup, errorMessage, context );
 }
 
-bool QgsLayerDefinition::loadLayerDefinition( QDomDocument doc, QgsProject *project, QgsLayerTreeGroup *rootGroup, QString &errorMessage, QgsReadWriteContext &context, Qgis::LayerTreeInsertionMethod insertMethod, const QgsLayerTreeRegistryBridge::InsertionPoint *insertPoint )
+bool QgsLayerDefinition::loadLayerDefinition( QDomDocument doc, QgsProject *project, QgsLayerTreeGroup *rootGroup, QString &errorMessage, QgsReadWriteContext &context )
 {
   errorMessage.clear();
 
@@ -195,31 +194,14 @@ bool QgsLayerDefinition::loadLayerDefinition( QDomDocument doc, QgsProject *proj
   root->abandonChildren();
   delete root;
 
-  switch ( insertMethod )
-  {
-    case Qgis::LayerTreeInsertionMethod::AboveInsertionPoint:
-      if ( insertPoint )
-      {
-        insertPoint->group->insertChildNodes( insertPoint->position, nodes );
-      }
-      else
-      {
-        rootGroup->insertChildNodes( -1, nodes );
-      }
-      break;
-    case Qgis::LayerTreeInsertionMethod::TopOfTree:
-      rootGroup->insertChildNodes( 0, nodes );
-      break;
-    default: //Keep current behavior for Qgis::LayerTreeInsertionMethod::OptimalInInsertionGroup
-      rootGroup->insertChildNodes( -1, nodes );
-  }
+  rootGroup->insertChildNodes( -1, nodes );
 
   return true;
 }
 
 bool QgsLayerDefinition::exportLayerDefinition( const QString &path, const QList<QgsLayerTreeNode *> &selectedTreeNodes, QString &errorMessage )
 {
-  return exportLayerDefinition( path, selectedTreeNodes, QgsProject::instance()->filePathStorage(), errorMessage ); // skip-keyword-check
+  return exportLayerDefinition( path, selectedTreeNodes, QgsProject::instance()->filePathStorage(), errorMessage );
 }
 
 bool QgsLayerDefinition::exportLayerDefinition( const QString &p, const QList<QgsLayerTreeNode *> &selectedTreeNodes, Qgis::FilePathType pathType, QString &errorMessage )
@@ -325,47 +307,43 @@ QList<QgsMapLayer *> QgsLayerDefinition::loadLayerDefinitionLayersInternal( QDom
     QgsMapLayer *layer = nullptr;
 
     bool ok = false;
-    const Qgis::LayerType layerType = QgsMapLayerFactory::typeFromString( type, ok );
+    const QgsMapLayerType layerType = QgsMapLayerFactory::typeFromString( type, ok );
     if ( ok )
     {
       switch ( layerType )
       {
-        case Qgis::LayerType::Vector:
+        case QgsMapLayerType::VectorLayer:
           layer = new QgsVectorLayer();
           break;
 
-        case Qgis::LayerType::Raster:
+        case QgsMapLayerType::RasterLayer:
           layer = new QgsRasterLayer();
           break;
 
-        case Qgis::LayerType::Plugin:
+        case QgsMapLayerType::PluginLayer:
         {
           const QString typeName = layerElem.attribute( QStringLiteral( "name" ) );
           layer = QgsApplication::pluginLayerRegistry()->createLayer( typeName );
           break;
         }
 
-        case Qgis::LayerType::Mesh:
+        case QgsMapLayerType::MeshLayer:
           layer = new QgsMeshLayer();
           break;
 
-        case Qgis::LayerType::VectorTile:
+        case QgsMapLayerType::VectorTileLayer:
           layer = new QgsVectorTileLayer;
           break;
 
-        case Qgis::LayerType::PointCloud:
+        case QgsMapLayerType::PointCloudLayer:
           layer = new QgsPointCloudLayer();
           break;
 
-        case Qgis::LayerType::TiledScene:
-          layer = new QgsTiledSceneLayer;
-          break;
-
-        case Qgis::LayerType::Group:
+        case QgsMapLayerType::GroupLayer:
           layer = new QgsGroupLayer( QString(), QgsGroupLayer::LayerOptions( QgsCoordinateTransformContext() ) );
           break;
 
-        case Qgis::LayerType::Annotation:
+        case QgsMapLayerType::AnnotationLayer:
           break;
       }
     }
@@ -391,14 +369,14 @@ QList<QgsMapLayer *> QgsLayerDefinition::loadLayerDefinitionLayers( const QStrin
   QFile file( qlrfile );
   if ( !file.open( QIODevice::ReadOnly ) )
   {
-    QgsDebugError( QStringLiteral( "Can't open file" ) );
+    QgsDebugMsg( QStringLiteral( "Can't open file" ) );
     return QList<QgsMapLayer *>();
   }
 
   QDomDocument doc;
   if ( !doc.setContent( &file ) )
   {
-    QgsDebugError( QStringLiteral( "Can't set content" ) );
+    QgsDebugMsg( QStringLiteral( "Can't set content" ) );
     return QList<QgsMapLayer *>();
   }
 
@@ -460,7 +438,6 @@ void QgsLayerDefinition::DependencySorter::init( const QDomDocument &doc )
     else
     {
       layersToSort << qMakePair( id, layerElem );
-      mDependentLayerIds.insert( id );
     }
     layerElem = layerElem.nextSiblingElement( );
   }
@@ -550,11 +527,6 @@ QgsLayerDefinition::DependencySorter::DependencySorter( const QString &fileName 
   ( void )pFile.open( QIODevice::ReadOnly );
   ( void )doc.setContent( &pFile );
   init( doc );
-}
-
-bool QgsLayerDefinition::DependencySorter::isLayerDependent( const QString &layerId ) const
-{
-  return mDependentLayerIds.contains( layerId );
 }
 
 

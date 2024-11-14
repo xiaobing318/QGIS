@@ -47,14 +47,14 @@ QString QgsMeanCoordinatesAlgorithm::groupId() const
 void QgsMeanCoordinatesAlgorithm::initAlgorithm( const QVariantMap & )
 {
   addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ),
-                QObject::tr( "Input layer" ), QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::VectorAnyGeometry ) ) );
+                QObject::tr( "Input layer" ), QList< int >() << QgsProcessing::TypeVectorAnyGeometry ) );
   addParameter( new QgsProcessingParameterField( QStringLiteral( "WEIGHT" ), QObject::tr( "Weight field" ),
                 QVariant(), QStringLiteral( "INPUT" ),
-                Qgis::ProcessingFieldParameterDataType::Numeric, false, true ) );
+                QgsProcessingParameterField::Numeric, false, true ) );
   addParameter( new QgsProcessingParameterField( QStringLiteral( "UID" ),
                 QObject::tr( "Unique ID field" ), QVariant(),
-                QStringLiteral( "INPUT" ), Qgis::ProcessingFieldParameterDataType::Any, false, true ) );
-  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Mean coordinates" ), Qgis::ProcessingSourceType::VectorPoint ) );
+                QStringLiteral( "INPUT" ), QgsProcessingParameterField::Any, false, true ) );
+  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Mean coordinates" ), QgsProcessing::TypeVectorPoint ) );
 }
 
 QString QgsMeanCoordinatesAlgorithm::shortHelpString() const
@@ -98,8 +98,8 @@ QVariantMap QgsMeanCoordinatesAlgorithm::processAlgorithm( const QVariantMap &pa
   }
 
   QgsFields fields;
-  fields.append( QgsField( QStringLiteral( "MEAN_X" ), QMetaType::Type::Double, QString(), 24, 15 ) );
-  fields.append( QgsField( QStringLiteral( "MEAN_Y" ), QMetaType::Type::Double, QString(), 24, 15 ) );
+  fields.append( QgsField( QStringLiteral( "MEAN_X" ), QVariant::Double, QString(), 24, 15 ) );
+  fields.append( QgsField( QStringLiteral( "MEAN_Y" ), QVariant::Double, QString(), 24, 15 ) );
   if ( uniqueFieldIndex >= 0 )
   {
     const QgsField uniqueField = source->fields().at( uniqueFieldIndex );
@@ -108,11 +108,11 @@ QVariantMap QgsMeanCoordinatesAlgorithm::processAlgorithm( const QVariantMap &pa
 
   QString dest;
   std::unique_ptr< QgsFeatureSink > sink( parameterAsSink( parameters, QStringLiteral( "OUTPUT" ), context, dest, fields,
-                                          Qgis::WkbType::Point, source->sourceCrs() ) );
+                                          QgsWkbTypes::Point, source->sourceCrs() ) );
   if ( !sink )
     throw QgsProcessingException( invalidSinkError( parameters, QStringLiteral( "OUTPUT" ) ) );
 
-  QgsFeatureIterator features = source->getFeatures( QgsFeatureRequest().setSubsetOfAttributes( attributes ), Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks );
+  QgsFeatureIterator features = source->getFeatures( QgsFeatureRequest().setSubsetOfAttributes( attributes ), QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks );
 
   double step = source->featureCount() > 0 ? 50.0 / source->featureCount() : 1;
   int i = 0;
@@ -212,8 +212,6 @@ QVariantMap QgsMeanCoordinatesAlgorithm::processAlgorithm( const QVariantMap &pa
     if ( !sink->addFeature( outFeat, QgsFeatureSink::FastInsert ) )
       throw QgsProcessingException( writeFeatureError( sink.get(), parameters, QStringLiteral( "OUTPUT" ) ) );
   }
-
-  sink->finalize();
 
   QVariantMap outputs;
   outputs.insert( QStringLiteral( "OUTPUT" ), dest );

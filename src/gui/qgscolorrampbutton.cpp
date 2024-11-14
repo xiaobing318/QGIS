@@ -26,7 +26,6 @@
 #include "qgscolorbrewercolorrampdialog.h"
 #include "qgscptcitycolorrampdialog.h"
 #include "qgspresetcolorrampdialog.h"
-#include "moc_qgscolorrampbutton.cpp"
 
 #include <QAction>
 #include <QInputDialog>
@@ -384,7 +383,7 @@ void QgsColorRampButton::createColorRamp()
   }
   else
   {
-    QgsDebugError( "invalid ramp type " + rampType );
+    QgsDebugMsg( "invalid ramp type " + rampType );
     return;
   }
 

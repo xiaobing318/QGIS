@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     GdalUtils.py
@@ -19,81 +21,45 @@ __author__ = 'Victor Olaya'
 __date__ = 'August 2012'
 __copyright__ = '(C) 2012, Victor Olaya'
 
-from typing import (
-    Dict,
-    List,
-    Optional
-)
 import os
 import subprocess
 import platform
 import re
 import warnings
-from dataclasses import dataclass
 
 import psycopg2
 
-from qgis.core import (
-    Qgis,
-    QgsBlockingProcess,
-    QgsRunProcess,
-    QgsApplication,
-    QgsVectorFileWriter,
-    QgsProcessingFeedback,
-    QgsProcessingUtils,
-    QgsMessageLog,
-    QgsSettings,
-    QgsCredentials,
-    QgsDataSourceUri,
-    QgsCoordinateReferenceSystem,
-    QgsProcessingException,
-    QgsProviderRegistry,
-    QgsMapLayer,
-    QgsProcessingContext
-)
+with warnings.catch_warnings():
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
+    from osgeo import ogr
+
+from qgis.core import (Qgis,
+                       QgsBlockingProcess,
+                       QgsRunProcess,
+                       QgsApplication,
+                       QgsVectorFileWriter,
+                       QgsProcessingFeedback,
+                       QgsProcessingUtils,
+                       QgsMessageLog,
+                       QgsSettings,
+                       QgsCredentials,
+                       QgsDataSourceUri,
+                       QgsProjUtils,
+                       QgsCoordinateReferenceSystem,
+                       QgsProcessingException)
 
 from qgis.PyQt.QtCore import (
     QCoreApplication,
     QProcess
 )
 
-
-@dataclass
-class GdalConnectionDetails:
-    """
-    Encapsulates connection details for a layer
-    """
-    connection_string: Optional[str] = None
-    format: Optional[str] = None
-    open_options: Optional[List[str]] = None
-    layer_name: Optional[str] = None
-    credential_options: Optional[Dict] = None
-
-    def open_options_as_arguments(self) -> List[str]:
-        """
-        Returns any open options as a list of arguments
-        """
-        res = []
-        for option in self.open_options:
-            res.append(f'-oo {option}')
-
-        return res
-
-    def credential_options_as_arguments(self) -> List[str]:
-        """
-        Returns any credential options as a list of arguments
-        """
-        res = []
-        for key, value in self.credential_options.items():
-            res.append(f'--config {key} {value}')
-
-        return res
-
+from processing.core.ProcessingConfig import ProcessingConfig
+from processing.tools.system import isWindows, isMac
 
 try:
-    from osgeo import gdal, ogr
-    gdal.UseExceptions()
-    ogr.UseExceptions()
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
+        from osgeo import gdal  # NOQA
 
     gdalAvailable = True
 except:
@@ -115,7 +81,7 @@ class GdalUtils:
         isDarwin = False
         try:
             isDarwin = platform.system() == 'Darwin'
-        except OSError:  # https://travis-ci.org/m-kuhn/QGIS#L1493-L1526
+        except IOError:  # https://travis-ci.org/m-kuhn/QGIS#L1493-L1526
             pass
         if isDarwin and os.path.isfile(os.path.join(QgsApplication.prefixPath(), "bin", "gdalinfo")):
             # Looks like there's a bundled gdal. Let's use it.
@@ -126,18 +92,16 @@ class GdalUtils:
             settings = QgsSettings()
             path = settings.value('/GdalTools/gdalPath', '')
             if not path.lower() in envval.lower().split(os.pathsep):
-                envval += f'{os.pathsep}{path}'
+                envval += '{}{}'.format(os.pathsep, path)
                 os.putenv('PATH', envval)
 
         fused_command = ' '.join([str(c) for c in commands])
-        QgsMessageLog.logMessage(fused_command, 'Processing', Qgis.MessageLevel.Info)
+        QgsMessageLog.logMessage(fused_command, 'Processing', Qgis.Info)
         feedback.pushInfo(GdalUtils.tr('GDAL command:'))
         feedback.pushCommandInfo(fused_command)
         feedback.pushInfo(GdalUtils.tr('GDAL command output:'))
 
         loglines = [GdalUtils.tr('GDAL execution console output')]
-        # create string list of number from 0 to 99
-        progress_string_list = [str(a) for a in range(0, 100)]
 
         def on_stdout(ba):
             val = ba.data().decode('UTF-8')
@@ -145,20 +109,12 @@ class GdalUtils:
             if val == '100 - done.':
                 on_stdout.progress = 100
                 feedback.setProgress(on_stdout.progress)
-            else:
-                # remove any number of trailing "." or ".." strings
-                match = re.match(r'.*?(\d+)\.+\s*$', val)
-                found_number = False
-                if match:
-                    int_val = match.group(1)
-                    if int_val in progress_string_list:
-                        on_stdout.progress = int(int_val)
-                        feedback.setProgress(on_stdout.progress)
-                        found_number = True
-
-                if not found_number and val == '.':
-                    on_stdout.progress += 2.5
-                    feedback.setProgress(on_stdout.progress)
+            elif val in ('0', '10', '20', '30', '40', '50', '60', '70', '80', '90'):
+                on_stdout.progress = int(val)
+                feedback.setProgress(on_stdout.progress)
+            elif val == '.':
+                on_stdout.progress += 2.5
+                feedback.setProgress(on_stdout.progress)
 
             on_stdout.buffer += val
             if on_stdout.buffer.endswith('\n') or on_stdout.buffer.endswith('\r'):
@@ -190,11 +146,11 @@ class GdalUtils:
         res = proc.run(feedback)
         if feedback.isCanceled() and res != 0:
             feedback.pushInfo(GdalUtils.tr('Process was canceled and did not complete'))
-        elif not feedback.isCanceled() and proc.exitStatus() == QProcess.ExitStatus.CrashExit:
+        elif not feedback.isCanceled() and proc.exitStatus() == QProcess.CrashExit:
             raise QgsProcessingException(GdalUtils.tr('Process was unexpectedly terminated'))
         elif res == 0:
             feedback.pushInfo(GdalUtils.tr('Process completed successfully'))
-        elif proc.processError() == QProcess.ProcessError.FailedToStart:
+        elif proc.processError() == QProcess.FailedToStart:
             raise QgsProcessingException(GdalUtils.tr('Process {} failed to start. Either {} is missing, or you may have insufficient permissions to run the program.').format(command, command))
         else:
             feedback.reportError(GdalUtils.tr('Process returned error code {}').format(res))
@@ -322,37 +278,36 @@ class GdalUtils:
         return gdal.VersionInfo('RELEASE_NAME')
 
     @staticmethod
-    def gdal_connection_details_from_uri(
-            uri: str,
-            context: QgsProcessingContext) -> GdalConnectionDetails:
+    def ogrConnectionStringFromLayer(layer):
+        """Generates OGR connection string from a layer
         """
-        Generates GDAL connection details from layer source
+        return GdalUtils.ogrConnectionStringAndFormatFromLayer(layer)[0]
+
+    @staticmethod
+    def ogrConnectionStringAndFormat(uri, context):
+        """Generates OGR connection string and format string from layer source
+        Returned values are a tuple of the connection string and format string
         """
+        ogrstr = None
+        format = None
+
         layer = QgsProcessingUtils.mapLayerFromString(uri, context, False)
         if layer is None:
             path, ext = os.path.splitext(uri)
-            _format = QgsVectorFileWriter.driverForExtension(ext)
-            return GdalConnectionDetails(
-                connection_string=uri,
-                format=f'"{_format}"'
-            )
+            format = QgsVectorFileWriter.driverForExtension(ext)
+            return uri, '"' + format + '"'
 
-        return GdalUtils.gdal_connection_details_from_layer(layer)
+        return GdalUtils.ogrConnectionStringAndFormatFromLayer(layer)
 
     @staticmethod
-    def gdal_connection_details_from_layer(layer: QgsMapLayer) -> GdalConnectionDetails:
-        """
-        Builds GDAL connection details from a QGIS map layer
-        """
-        provider = layer.providerType()
+    def ogrConnectionStringAndFormatFromLayer(layer):
+        provider = layer.dataProvider().name()
         if provider == 'spatialite':
             # dbname='/geodata/osm_ch.sqlite' table="places" (Geometry) sql=
             regex = re.compile("dbname='(.+)'")
             r = regex.search(str(layer.source()))
-            return GdalConnectionDetails(
-                connection_string=r.groups()[0],
-                format='"SQLite"'
-            )
+            ogrstr = r.groups()[0]
+            format = 'SQLite'
         elif provider == 'postgres':
             # dbname='ktryjh_iuuqef' host=spacialdb.com port=9999
             # user='ktryjh_iuuqef' password='xyqwer' sslmode=disable
@@ -379,29 +334,24 @@ class GdalUtils:
             if ok:
                 QgsCredentials.instance().put(conninfo, user, passwd)
 
-            return GdalConnectionDetails(
-                connection_string=f"PG:{dsUri.connectionInfo()}",
-                format='"PostgreSQL"'
-            )
+            ogrstr = "PG:%s" % dsUri.connectionInfo()
+            format = 'PostgreSQL'
         elif provider == 'mssql':
             # 'dbname=\'db_name\' host=myHost estimatedmetadata=true
             # srid=27700 type=MultiPolygon table="dbo"."my_table"
             # #(Shape) sql='
             dsUri = layer.dataProvider().uri()
             ogrstr = 'MSSQL:'
-            ogrstr += f'database={dsUri.database()};'
-            ogrstr += f'server={dsUri.host()};'
+            ogrstr += 'database={0};'.format(dsUri.database())
+            ogrstr += 'server={0};'.format(dsUri.host())
             if dsUri.username() != "":
-                ogrstr += f'uid={dsUri.username()};'
+                ogrstr += 'uid={0};'.format(dsUri.username())
             else:
                 ogrstr += 'trusted_connection=yes;'
             if dsUri.password() != '':
-                ogrstr += f'pwd={dsUri.password()};'
-            ogrstr += f'tables={dsUri.table()}'
-            return GdalConnectionDetails(
-                connection_string=ogrstr,
-                format='"MSSQL"'
-            )
+                ogrstr += 'pwd={0};'.format(dsUri.password())
+            ogrstr += 'tables={0}'.format(dsUri.table())
+            format = 'MSSQL'
         elif provider == "oracle":
             # OCI:user/password@host:port/service:table
             dsUri = QgsDataSourceUri(layer.dataProvider().dataSourceUri())
@@ -431,78 +381,18 @@ class GdalUtils:
                 ogrstr += dsUri.schema() + "."
 
             ogrstr += dsUri.table()
-            return GdalConnectionDetails(
-                connection_string=ogrstr,
-                format='"OCI"'
-            )
+            format = 'OCI'
         elif provider.lower() == "wfs":
             uri = QgsDataSourceUri(layer.source())
             baseUrl = uri.param('url').split('?')[0]
-            return GdalConnectionDetails(
-                connection_string=f"WFS:{baseUrl}",
-                format='"WFS"'
-            )
-        elif provider.lower() == "ogr":
-            parts = QgsProviderRegistry.instance().decodeUri('ogr',
-                                                             layer.source())
-            if 'path' in parts:
-                path = parts['path']
-                if 'vsiPrefix' in parts:
-                    path = parts['vsiPrefix'] + path
+            ogrstr = "WFS:{}".format(baseUrl)
+            format = 'WFS'
+        else:
+            ogrstr = str(layer.source()).split("|")[0]
+            path, ext = os.path.splitext(ogrstr)
+            format = QgsVectorFileWriter.driverForExtension(ext)
 
-                _, ext = os.path.splitext(parts['path'])
-                format = QgsVectorFileWriter.driverForExtension(ext)
-
-                return GdalConnectionDetails(
-                    connection_string=path,
-                    format=f'"{format}"',
-                    open_options=parts.get('openOptions', None),
-                    credential_options=parts.get('credentialOptions', None)
-                )
-        elif provider.lower() == "gdal":
-            parts = QgsProviderRegistry.instance().decodeUri('gdal',
-                                                             layer.source())
-            if 'path' in parts:
-                path = parts['path']
-                if 'vsiPrefix' in parts:
-                    path = parts['vsiPrefix'] + path
-
-                return GdalConnectionDetails(
-                    connection_string=path,
-                    open_options=parts.get('openOptions', None),
-                    credential_options=parts.get('credentialOptions', None)
-                )
-        elif provider == 'postgresraster':
-            gdal_source = ''
-            uri = layer.dataProvider().uri()
-            gdal_source = f"PG: {uri.connectionInfo()}"
-            schema = uri.schema()
-            if schema:
-                gdal_source += f" schema='{schema}'"
-            table = uri.table()
-            gdal_source += f" table='{table}'"
-            column = uri.param('column') or uri.geometryColumn()
-            if column:
-                gdal_source += f" column='{column}'"
-            is_tiled = any([layer.dataProvider().xSize() != layer.dataProvider().xBlockSize(),
-                            layer.dataProvider().ySize() != layer.dataProvider().yBlockSize()])
-            gdal_source += f" mode={2 if is_tiled else 1}"
-            where = layer.dataProvider().subsetString()
-            if where:
-                gdal_source += f" where='{where}'"
-
-            return GdalConnectionDetails(
-                connection_string=gdal_source,
-                format='"PostGISRaster"'
-            )
-
-        ogrstr = str(layer.source()).split("|")[0]
-        path, ext = os.path.splitext(ogrstr)
-        format = QgsVectorFileWriter.driverForExtension(ext)
-        return GdalConnectionDetails(
-            connection_string=ogrstr,
-            format=f'"{format}"'
-        )
+        return ogrstr, '"' + format + '"'
 
     @staticmethod
     def ogrOutputLayerName(uri):
@@ -538,9 +428,8 @@ class GdalUtils:
             if f.startswith('layerid='):
                 layerid = int(f.split('=')[1])
 
-        try:
-            ds = gdal.OpenEx(basePath, gdal.OF_VECTOR)
-        except Exception:
+        ds = ogr.Open(basePath)
+        if not ds:
             return None
 
         ly = ds.GetLayer(layerid)
@@ -561,16 +450,15 @@ class GdalUtils:
 
     @staticmethod
     def writeLayerParameterToTextFile(filename, alg, parameters, parameter_name, context, quote=True, executing=False):
-        listFile = QgsProcessingUtils.generateTempFilename(filename, context)
+        listFile = QgsProcessingUtils.generateTempFilename(filename)
 
         if executing:
             layers = []
             for l in alg.parameterAsLayerList(parameters, parameter_name, context):
-                layer_details = GdalUtils.gdal_connection_details_from_layer(l)
                 if quote:
-                    layers.append('"' + layer_details.connection_string + '"')
+                    layers.append('"' + l.source() + '"')
                 else:
-                    layers.append(layer_details.connection_string)
+                    layers.append(l.source())
 
             with open(listFile, 'w') as f:
                 f.write('\n'.join(layers))
@@ -588,7 +476,7 @@ class GdalUtils:
         if crs.authid().upper().startswith('EPSG:') or crs.authid().upper().startswith('IGNF:') or crs.authid().upper().startswith('ESRI:'):
             return crs.authid()
 
-        return crs.toWkt(QgsCoordinateReferenceSystem.WktVariant.WKT_PREFERRED_GDAL)
+        return crs.toWkt(QgsCoordinateReferenceSystem.WKT_PREFERRED_GDAL)
 
     @classmethod
     def tr(cls, string, context=''):

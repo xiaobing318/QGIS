@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/codeeditors/qgscodeeditorcolorscheme.h                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -58,7 +58,6 @@ Defines a color scheme for use in :py:class:`QgsCodeEditor` widgets.
       FoldIconForeground,
       FoldIconHalo,
       IndentationGuide,
-      SearchMatchBackground,
     };
 
     QgsCodeEditorColorScheme( const QString &id = QString(), const QString &name = QString() );
@@ -103,5 +102,5 @@ Sets the ``color`` to use in the editor for the specified ``role``.
  *                                                                      *
  * src/gui/codeeditors/qgscodeeditorcolorscheme.h                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

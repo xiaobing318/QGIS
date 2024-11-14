@@ -51,9 +51,8 @@ QIcon QgsClassificationLogarithmic::icon() const
   return QgsApplication::getThemeIcon( "classification_methods/mClassificationLogarithmic.svg" );
 }
 
-QList<double> QgsClassificationLogarithmic::calculateBreaks( double &minimum, double &maximum, const QList<double> &values, int nclasses, QString &error )
+QList<double> QgsClassificationLogarithmic::calculateBreaks( double &minimum, double &maximum, const QList<double> &values, int nclasses )
 {
-  Q_UNUSED( error )
   const QgsProcessingContext context;
   const QgsProcessingParameterDefinition *def = parameterDefinition( QStringLiteral( "ZERO_NEG_VALUES_HANDLE" ) );
   const NegativeValueHandling nvh = static_cast< NegativeValueHandling >( QgsProcessingParameters::parameterAsEnum( def, parameterValues(), context ) );

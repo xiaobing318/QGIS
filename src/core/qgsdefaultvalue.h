@@ -43,6 +43,7 @@
  * default value should also be applied when a feature is updated. If this is
  * not set, the default value will only be used when a feature is created.
  *
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsDefaultValue
 {
@@ -107,7 +108,7 @@ class CORE_EXPORT QgsDefaultValue
      * Checks if a default value is set. Alias for isValid().
      * \returns FALSE if the expression is a null string.
      */
-    explicit operator bool() const SIP_PYTHON_SPECIAL_BOOL( isValid );
+    operator bool() const SIP_PYTHON_SPECIAL_BOOL( isValid );
 
   private:
     QString mExpression;

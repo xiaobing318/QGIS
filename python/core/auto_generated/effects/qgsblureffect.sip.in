@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/effects/qgsblureffect.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -15,6 +15,8 @@ class QgsBlurEffect : QgsPaintEffect /NoDefaultCtors/
 %Docstring(signature="appended")
 A paint effect which blurs a source picture, using a number of different blur
 methods.
+
+.. versionadded:: 2.9
 %End
 
 %TypeHeaderCode
@@ -38,6 +40,9 @@ Creates a new QgsBlurEffect effect from a properties string map.
 %End
 
     QgsBlurEffect();
+%Docstring
+Constructor for QgsBlurEffect.
+%End
 
     virtual QString type() const;
     virtual QVariantMap properties() const;
@@ -79,7 +84,7 @@ Returns the blur level (radius)
 .. seealso:: :py:func:`blurMethod`
 %End
 
-    void setBlurUnit( const Qgis::RenderUnit unit );
+    void setBlurUnit( const QgsUnitTypes::RenderUnit unit );
 %Docstring
 Sets the units used for the blur level (radius).
 
@@ -94,7 +99,7 @@ Sets the units used for the blur level (radius).
 .. versionadded:: 3.4.9
 %End
 
-    Qgis::RenderUnit blurUnit() const;
+    QgsUnitTypes::RenderUnit blurUnit() const;
 %Docstring
 Returns the units used for the blur level (radius).
 
@@ -212,5 +217,5 @@ Returns the blend mode for the effect
  *                                                                      *
  * src/core/effects/qgsblureffect.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

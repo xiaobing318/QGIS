@@ -25,6 +25,7 @@
 /**
  * \ingroup gui
  * \brief Layout view tool for zooming into and out of the layout.
+ * \since QGIS 3.0
  */
 class GUI_EXPORT QgsLayoutViewToolZoom : public QgsLayoutViewTool
 {

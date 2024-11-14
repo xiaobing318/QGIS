@@ -3,9 +3,8 @@
  *                                                                      *
  * src/core/locator/qgslocator.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
-
 
 
 
@@ -32,6 +31,8 @@ for each result. Callers should connect this signal to an appropriate slot desig
 to collect and handle these results. Since :py:func:`~foundResult` is triggered whenever a filter
 encounters an individual result, it will usually be triggered many times for a single
 call to :py:func:`~fetchResults`.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -88,9 +89,8 @@ with valid prefixes.
 
 .. seealso:: :py:func:`filters`
 
-.. deprecated:: 3.2
-
-   Use :py:func:`~QgsLocator.filters` instead.
+.. deprecated:: QGIS 3.2
+   use :py:func:`~QgsLocator.filters` instead
 %End
 
     void fetchResults( const QString &string, const QgsLocatorContext &context, QgsFeedback *feedback = 0 );
@@ -173,5 +173,5 @@ of successful completion or early cancellation.
  *                                                                      *
  * src/core/locator/qgslocator.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

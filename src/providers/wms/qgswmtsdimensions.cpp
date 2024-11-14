@@ -17,7 +17,6 @@
 
 #include "qgswmsprovider.h"
 #include "qgswmtsdimensions.h"
-#include "moc_qgswmtsdimensions.cpp"
 #include "qgssettings.h"
 #include "qgsgui.h"
 

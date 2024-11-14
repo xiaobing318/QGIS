@@ -19,11 +19,13 @@
 
 #include <QSqlQuery>
 
-class QgsOracleQuery;
-
 struct QgsOracleProviderResultIterator: public QgsAbstractDatabaseProviderConnection::QueryResult::QueryResultIterator
 {
-    QgsOracleProviderResultIterator( int columnCount, std::unique_ptr<QgsOracleQuery> query );
+
+    QgsOracleProviderResultIterator( int columnCount, const QSqlQuery &query )
+      : mColumnCount( columnCount )
+      , mQuery( query )
+    {}
 
     QVariantList nextRowPrivate() override;
     bool hasNextRowPrivate() const override;
@@ -31,7 +33,7 @@ struct QgsOracleProviderResultIterator: public QgsAbstractDatabaseProviderConnec
   private:
 
     int mColumnCount = 0;
-    std::unique_ptr<QgsOracleQuery> mQuery;
+    QSqlQuery mQuery;
     QVariantList mNextRow;
 
     QVariantList nextRowInternal();
@@ -51,7 +53,7 @@ class QgsOracleProviderConnection : public QgsAbstractDatabaseProviderConnection
     void createVectorTable( const QString &schema,
                             const QString &name,
                             const QgsFields &fields,
-                            Qgis::WkbType wkbType,
+                            QgsWkbTypes::Type wkbType,
                             const QgsCoordinateReferenceSystem &srs, bool overwrite,
                             const QMap<QString, QVariant> *options ) const override;
 
@@ -65,7 +67,7 @@ class QgsOracleProviderConnection : public QgsAbstractDatabaseProviderConnection
     void deleteSpatialIndex( const QString &schema, const QString &name, const QString &geometryColumn ) const override;
     QStringList schemas() const override;
     QList<QgsAbstractDatabaseProviderConnection::TableProperty> tables( const QString &schema,
-        const TableFlags &flags = TableFlags(), QgsFeedback *feedback = nullptr ) const override;
+        const TableFlags &flags = TableFlags() ) const override;
     void store( const QString &name ) const override;
     void remove( const QString &name ) const override;
     QIcon icon() const override;

@@ -16,8 +16,6 @@
  ***************************************************************************/
 
 #include "qgssourcecache.h"
-#include "moc_qgssourcecache.cpp"
-#include "qgsabstractcontentcache_p.h"
 
 #include "qgis.h"
 #include "qgslogger.h"
@@ -116,5 +114,3 @@ QString QgsSourceCache::fetchSource( const QString &path, bool &isBroken, bool b
 
   return filePath;
 }
-
-template class QgsAbstractContentCache<QgsSourceCacheEntry>; // clazy:exclude=missing-qobject-macro

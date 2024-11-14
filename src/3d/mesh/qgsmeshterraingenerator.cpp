@@ -16,16 +16,16 @@
  ***************************************************************************/
 
 #include "qgsmeshterraingenerator.h"
-#include "moc_qgsmeshterraingenerator.cpp"
-#include "qgsmeshterraintileloader_p.h"
+
+#include <Qt3DRender/QMaterial>
 
 #include "qgsmesh3dentity_p.h"
 #include "qgsmeshlayer.h"
 #include "qgsmeshlayer3drenderer.h"
-#include "qgsterrainentity.h"
+#include "qgsterrainentity_p.h"
+#include "qgsterraintextureimage_p.h"
 #include "qgsmeshlayerutils.h"
-#include "qgs3dmapsettings.h"
-#include "qgs3drendercontext.h"
+
 
 QgsMeshTerrainTileLoader::QgsMeshTerrainTileLoader( QgsTerrainEntity *terrain, QgsChunkNode *node, const QgsTriangularMesh &triangularMesh, const QgsMesh3DSymbol *symbol )
   : QgsTerrainTileLoader( terrain, node )
@@ -37,7 +37,7 @@ QgsMeshTerrainTileLoader::QgsMeshTerrainTileLoader( QgsTerrainEntity *terrain, Q
 
 Qt3DCore::QEntity *QgsMeshTerrainTileLoader::createEntity( Qt3DCore::QEntity *parent )
 {
-  QgsMesh3DTerrainTileEntity *entity = new QgsMesh3DTerrainTileEntity( Qgs3DRenderContext::fromMapSettings( terrain()->mapSettings() ), mTriangularMesh, mSymbol.get(), mNode->tileId(), parent );
+  QgsMesh3dTerrainTileEntity *entity = new QgsMesh3dTerrainTileEntity( terrain()->map3D(), mTriangularMesh, mSymbol.get(), mNode->tileId(), parent );
   entity->build();
   createTexture( entity );
 
@@ -93,7 +93,7 @@ void QgsMeshTerrainGenerator::setLayer( QgsMeshLayer *layer )
     disconnect( mLayer.get(), &QgsMeshLayer::request3DUpdate, this, &QgsMeshTerrainGenerator::terrainChanged );
 
   mLayer = QgsMapLayerRef( layer );
-  mIsValid = layer;
+  mIsValid = layer != nullptr;
   updateTriangularMesh();
   if ( mIsValid )
   {
@@ -122,7 +122,7 @@ QgsTerrainGenerator *QgsMeshTerrainGenerator::clone() const
 
 QgsTerrainGenerator::Type QgsMeshTerrainGenerator::type() const {return QgsTerrainGenerator::Mesh;}
 
-QgsRectangle QgsMeshTerrainGenerator::rootChunkExtent() const
+QgsRectangle QgsMeshTerrainGenerator::extent() const
 {
   return mTriangularMesh.extent();
 }
@@ -145,7 +145,7 @@ void QgsMeshTerrainGenerator::readXml( const QDomElement &elem )
   mSymbol->readXml( elem.firstChildElement( "symbol" ), rwc );
 }
 
-float QgsMeshTerrainGenerator::heightAt( double x, double y, const Qgs3DRenderContext & ) const
+float QgsMeshTerrainGenerator::heightAt( double x, double y, const Qgs3DMapSettings & ) const
 {
   return QgsMeshLayerUtils::interpolateZForPoint( mTriangularMesh, x, y );
 }

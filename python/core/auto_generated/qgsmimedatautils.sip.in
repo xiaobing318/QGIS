@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsmimedatautils.h                                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -11,9 +11,6 @@
 
 class QgsMimeDataUtils
 {
-%Docstring(signature="appended")
-Contains utility functions for working with MIME data.
-%End
 
 %TypeHeaderCode
 #include "qgsmimedatautils.h"
@@ -41,6 +38,8 @@ Constructs a URI corresponding to the specified ``layer``.
       bool isValid() const;
 %Docstring
 Returns whether the object contains valid data
+
+.. versionadded:: 3.0
 %End
 
       QString data() const;
@@ -96,7 +95,7 @@ to create a new layer corresponding to the URI.
 
       QString pId;
 
-      Qgis::WkbType wkbType;
+      QgsWkbTypes::Type wkbType;
 
       QString filePath;
 
@@ -120,6 +119,8 @@ Encodes a URI list to a new QMimeData object.
     static QByteArray layerTreeNodesToUriList( const QList<QgsLayerTreeNode *> &nodes );
 %Docstring
 Returns encoded URI list from a list of layer tree nodes.
+
+.. versionadded:: 3.0
 %End
 
     static bool hasOriginatedFromCurrentAppInstance( const QgsMimeDataUtils::Uri &uri );
@@ -139,5 +140,5 @@ instance.
  *                                                                      *
  * src/core/qgsmimedatautils.h                                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -188,18 +188,6 @@ bool QgsServerProjectUtils::wmsFeatureInfoSegmentizeWktGeometry( const QgsProjec
          || segmGeom.compare( QLatin1String( "true" ), Qt::CaseInsensitive ) == 0;
 }
 
-bool QgsServerProjectUtils::wmsAddLegendGroupsLegendGraphic( const QgsProject &project )
-{
-  const QString legendGroups = project.readEntry( QStringLiteral( "WMSAddLayerGroupsLegendGraphic" ), QStringLiteral( "/" ), "" );
-  return legendGroups.compare( QLatin1String( "enabled" ), Qt::CaseInsensitive ) == 0
-         || legendGroups.compare( QLatin1String( "true" ), Qt::CaseInsensitive ) == 0;
-}
-
-bool QgsServerProjectUtils::wmsSkipNameForGroup( const QgsProject &project )
-{
-  return project.readBoolEntry( QStringLiteral( "WMSSkipNameForGroup" ), QStringLiteral( "/" ), false );
-}
-
 int QgsServerProjectUtils::wmsFeatureInfoPrecision( const QgsProject &project )
 {
   return project.readNumEntry( QStringLiteral( "WMSPrecision" ), QStringLiteral( "/" ), 6 );

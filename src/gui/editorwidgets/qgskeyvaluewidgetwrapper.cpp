@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgskeyvaluewidgetwrapper.h"
-#include "moc_qgskeyvaluewidgetwrapper.cpp"
 #include "qgskeyvaluewidget.h"
 #include "qgsattributeform.h"
 
@@ -25,21 +24,13 @@ QgsKeyValueWidgetWrapper::QgsKeyValueWidgetWrapper( QgsVectorLayer *layer, int f
 
 QVariant QgsKeyValueWidgetWrapper::value() const
 {
-  if ( !mWidget ) return QgsVariantUtils::createNullVariant( QMetaType::Type::QVariantMap );
+  if ( !mWidget ) return QVariant( QVariant::Map );
   return mWidget->map();
 }
 
 void QgsKeyValueWidgetWrapper::showIndeterminateState()
 {
   mWidget->setMap( QVariantMap() );
-}
-
-void QgsKeyValueWidgetWrapper::setEnabled( bool enabled )
-{
-  if ( mWidget )
-  {
-    mWidget->setReadOnly( !enabled );
-  }
 }
 
 QWidget *QgsKeyValueWidgetWrapper::createWidget( QWidget *parent )

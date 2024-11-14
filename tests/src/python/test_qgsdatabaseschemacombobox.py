@@ -11,13 +11,16 @@ __copyright__ = 'Copyright 2020, The QGIS Project'
 
 import os
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtTest import QSignalSpy
-from qgis.core import QgsProviderRegistry
+from qgis.core import (
+    QgsProviderRegistry
+)
 from qgis.gui import QgsDatabaseSchemaComboBox
 from qgis.testing import unittest
 
-from utilities import start_app, unitTestDataPath
+from utilities import unitTestDataPath, start_app
 
 start_app()
 
@@ -29,7 +32,6 @@ class TestQgsDatabaseSchemaComboBox(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
-        super().setUpClass()
 
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain(cls.__name__)
@@ -50,10 +52,10 @@ class TestQgsDatabaseSchemaComboBox(unittest.TestCase):
         self.assertGreaterEqual(m.comboBox().count(), 3)
 
         text = [m.comboBox().itemText(i) for i in range(m.comboBox().count())]
-        self.assertIn("CamelCase'singlequote'Schema", text)
+        self.assertIn('CamelCaseSchema', text)
         self.assertIn('qgis_test', text)
-        self.assertLess(text.index("CamelCase'singlequote'Schema"), text.index('qgis_test'))
-        self.assertEqual(m.currentSchema(), "CamelCase'singlequote'Schema")
+        self.assertLess(text.index('CamelCaseSchema'), text.index('qgis_test'))
+        self.assertEqual(m.currentSchema(), 'CamelCaseSchema')
 
         m.setSchema('qgis_test')
         self.assertEqual(m.currentSchema(), 'qgis_test')
@@ -124,10 +126,10 @@ class TestQgsDatabaseSchemaComboBox(unittest.TestCase):
 
         text = [m.comboBox().itemText(i) for i in range(m.comboBox().count())]
         self.assertFalse(text[0])
-        self.assertIn("CamelCase'singlequote'Schema", text)
+        self.assertIn('CamelCaseSchema', text)
         self.assertIn('qgis_test', text)
-        self.assertLess(text.index("CamelCase'singlequote'Schema"), text.index('qgis_test'))
-        self.assertEqual(m.currentSchema(), "CamelCase'singlequote'Schema")
+        self.assertLess(text.index('CamelCaseSchema'), text.index('qgis_test'))
+        self.assertEqual(m.currentSchema(), 'CamelCaseSchema')
 
         m.setSchema('qgis_test')
         self.assertEqual(m.currentSchema(), 'qgis_test')

@@ -72,16 +72,15 @@ bool QgsAnnotationMarkerItem::writeXml( QDomElement &element, QDomDocument &docu
 Qgis::AnnotationItemFlags QgsAnnotationMarkerItem::flags() const
 {
   // in truth this should depend on whether the marker symbol is scale dependent or not!
-  return Qgis::AnnotationItemFlag::ScaleDependentBoundingBox
-         | Qgis::AnnotationItemFlag::SupportsReferenceScale;
+  return Qgis::AnnotationItemFlag::ScaleDependentBoundingBox;
 }
 
-QList<QgsAnnotationItemNode> QgsAnnotationMarkerItem::nodesV2( const QgsAnnotationItemEditContext & ) const
+QList<QgsAnnotationItemNode> QgsAnnotationMarkerItem::nodes() const
 {
   return { QgsAnnotationItemNode( QgsVertexId( 0, 0, 0 ), mPoint, Qgis::AnnotationItemNodeType::VertexHandle )};
 }
 
-Qgis::AnnotationItemEditOperationResult QgsAnnotationMarkerItem::applyEditV2( QgsAbstractAnnotationItemEditOperation *operation, const QgsAnnotationItemEditContext & )
+Qgis::AnnotationItemEditOperationResult QgsAnnotationMarkerItem::applyEdit( QgsAbstractAnnotationItemEditOperation *operation )
 {
   switch ( operation->type() )
   {
@@ -112,7 +111,7 @@ Qgis::AnnotationItemEditOperationResult QgsAnnotationMarkerItem::applyEditV2( Qg
   return Qgis::AnnotationItemEditOperationResult::Invalid;
 }
 
-QgsAnnotationItemEditOperationTransientResults *QgsAnnotationMarkerItem::transientEditResultsV2( QgsAbstractAnnotationItemEditOperation *operation, const QgsAnnotationItemEditContext & )
+QgsAnnotationItemEditOperationTransientResults *QgsAnnotationMarkerItem::transientEditResults( QgsAbstractAnnotationItemEditOperation *operation )
 {
   switch ( operation->type() )
   {
@@ -154,7 +153,7 @@ bool QgsAnnotationMarkerItem::readXml( const QDomElement &element, const QgsRead
   return true;
 }
 
-QgsAnnotationMarkerItem *QgsAnnotationMarkerItem::clone() const
+QgsAnnotationMarkerItem *QgsAnnotationMarkerItem::clone()
 {
   std::unique_ptr< QgsAnnotationMarkerItem > item = std::make_unique< QgsAnnotationMarkerItem >( mPoint );
   item->setSymbol( mSymbol->clone() );

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 """
 ***************************************************************************
@@ -40,7 +41,7 @@ if len(sys.argv) == 1:
     print("Usage: ./scripts/mkuidefaults.py \"location_to_ini\"")
     sys.exit(1)
 
-s = QSettings(sys.argv[1], QSettings.Format.IniFormat)
+s = QSettings(sys.argv[1], QSettings.IniFormat)
 
 ba = bytes(s.value("/UI/geometry"))
 

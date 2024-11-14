@@ -249,7 +249,7 @@ QgsFields QgsWfs3AbstractItemsHandler::publishedFields( const QgsVectorLayer *vL
   const QgsFields &fields = vLayer->fields();
   for ( const QgsField &field : fields )
   {
-    if ( !field.configurationFlags().testFlag( Qgis::FieldConfigurationFlag::HideFromWfs ) )
+    if ( !field.configurationFlags().testFlag( QgsField::ConfigurationFlag::HideFromWfs ) )
     {
       publishedAttributes.push_back( field.name() );
     }
@@ -473,60 +473,58 @@ void QgsWfs3CollectionsHandler::handleRequest( const QgsServerApiContext &contex
       {
         continue;
       }
-      if ( layer->type() != Qgis::LayerType::Vector )
+      if ( layer->type() != QgsMapLayerType::VectorLayer )
       {
         continue;
       }
 
-      try
-      {
-        // Check if the layer is published, raise not found if it is not
-        checkLayerIsAccessible( layer, context );
+      // Check if the layer is published, raise not found if it is not
+      checkLayerIsAccessible( layer, context );
 
-        const std::string title{layer->serverProperties()->wfsTitle().isEmpty() ? layer->name().toStdString() : layer->serverProperties()->wfsTitle().toStdString()};
-        const QString shortName{layer->serverProperties()->shortName().isEmpty() ? layer->name() : layer->serverProperties()->shortName()};
-        data["collections"].push_back(
+      const std::string title { layer->title().isEmpty() ? layer->name().toStdString() : layer->title().toStdString() };
+      const QString shortName { layer->shortName().isEmpty() ? layer->name() : layer->shortName() };
+      data["collections"].push_back(
+      {
+        // identifier of the collection used, for example, in URIs
+        { "id", shortName.toStdString() },
+        // human readable title of the collection
+        { "title", title },
+        // a description of the features in the collection
+        { "description", layer->abstract().toStdString() },
         {
-          // identifier of the collection used, for example, in URIs
-          { "id", shortName.toStdString() },
-          // human readable title of the collection
-          { "title", title },
-          // a description of the features in the collection
-          { "description", layer->serverProperties()->abstract().toStdString() },
-          {
-            "crs", crss
-          },
-          // TODO: "relations" ?
-          {
-            "extent",  {
-              {
-                "spatial", {
-                  { "bbox", QgsServerApiUtils::layerExtent( layer ) },
-                  { "crs", "http://www.opengis.net/def/crs/OGC/1.3/CRS84" },
-                },
+          "crs", crss
+        },
+        // TODO: "relations" ?
+        {
+          "extent",  {
+            {
+              "spatial", {
+                { "bbox", QgsServerApiUtils::layerExtent( layer ) },
+                { "crs", "http://www.opengis.net/def/crs/OGC/1.3/CRS84" },
               },
-              {
-                "temporal", {
-                  { "interval", QgsServerApiUtils::temporalExtent( layer ) },
-                  { "trs", "http://www.opengis.net/def/uom/ISO-8601/0/Gregorian" },
-                }
+            },
+            {
+              "temporal", {
+                { "interval", QgsServerApiUtils::temporalExtent( layer ) },
+                { "trs", "http://www.opengis.net/def/uom/ISO-8601/0/Gregorian" },
               }
             }
-          },
-          {
-            "links", {
-              {
-                { "href", href( context, QStringLiteral( "/%1/items" ).arg( shortName ), QgsServerOgcApi::contentTypeToExtension( QgsServerOgcApi::ContentType::JSON ) )  },
-                { "rel", QgsServerOgcApi::relToString( QgsServerOgcApi::Rel::items ) },
-                { "type", QgsServerOgcApi::mimeType( QgsServerOgcApi::ContentType::GEOJSON ) },
-                { "title", title + " as GeoJSON" }
-              },
-              {
-                { "href", href( context, QStringLiteral( "/%1/items" ).arg( shortName ), QgsServerOgcApi::contentTypeToExtension( QgsServerOgcApi::ContentType::HTML ) )  },
-                { "rel", QgsServerOgcApi::relToString( QgsServerOgcApi::Rel::items ) },
-                { "type", QgsServerOgcApi::mimeType( QgsServerOgcApi::ContentType::HTML )  },
-                { "title", title + " as HTML" }
-              }/* TODO: not sure what these "concepts" are about, neither if they are mandatory
+          }
+        },
+        {
+          "links", {
+            {
+              { "href", href( context, QStringLiteral( "/%1/items" ).arg( shortName ), QgsServerOgcApi::contentTypeToExtension( QgsServerOgcApi::ContentType::JSON ) )  },
+              { "rel", QgsServerOgcApi::relToString( QgsServerOgcApi::Rel::item ) },
+              { "type", QgsServerOgcApi::mimeType( QgsServerOgcApi::ContentType::GEOJSON ) },
+              { "title", title + " as GeoJSON" }
+            },
+            {
+              { "href", href( context, QStringLiteral( "/%1/items" ).arg( shortName ), QgsServerOgcApi::contentTypeToExtension( QgsServerOgcApi::ContentType::HTML ) )  },
+              { "rel", QgsServerOgcApi::relToString( QgsServerOgcApi::Rel::item ) },
+              { "type", QgsServerOgcApi::mimeType( QgsServerOgcApi::ContentType::HTML )  },
+              { "title", title + " as HTML" }
+            }/* TODO: not sure what these "concepts" are about, neither if they are mandatory
             {
               { "href", href( api, context.request(), QStringLiteral( "/%1/concepts" ).arg( shortName ) )  },
               { "rel", QgsServerOgcApi::relToString( QgsServerOgcApi::Rel::item ) },
@@ -534,14 +532,9 @@ void QgsWfs3CollectionsHandler::handleRequest( const QgsServerApiContext &contex
               { "title", "Describe " + title }
             }
             */
-            }
-          },
-        } );
-      }
-      catch ( QgsServerApiNotFoundError & )
-      {
-        // Skip non-published layers
-      }
+          }
+        },
+      } );
     }
   }
 
@@ -633,9 +626,9 @@ void QgsWfs3DescribeCollectionHandler::handleRequest( const QgsServerApiContext 
   // Check if the layer is published, raise not found if it is not
   checkLayerIsAccessible( mapLayer, context );
 
-  const std::string title { mapLayer->serverProperties()->wfsTitle().isEmpty() ? mapLayer->name().toStdString() : mapLayer->serverProperties()->wfsTitle().toStdString() };
+  const std::string title { mapLayer->title().isEmpty() ? mapLayer->name().toStdString() : mapLayer->title().toStdString() };
   const std::string itemsTitle { title + " items" };
-  const QString shortName { mapLayer->serverProperties()->shortName().isEmpty() ? mapLayer->name() : mapLayer->serverProperties()->shortName() };
+  const QString shortName { mapLayer->shortName().isEmpty() ? mapLayer->name() : mapLayer->shortName() };
   json linksList = links( context );
   linksList.push_back(
   {
@@ -671,10 +664,9 @@ void QgsWfs3DescribeCollectionHandler::handleRequest( const QgsServerApiContext 
   {
     crss.push_back( crs.toStdString() );
   }
-
   json data
   {
-    { "id", shortName.toStdString() },
+    { "id", mapLayer->name().toStdString() },
     { "title", title },
     // TODO: check if we need to expose other advertised CRS here
     {
@@ -717,10 +709,10 @@ json QgsWfs3DescribeCollectionHandler::schema( const QgsServerApiContext &contex
   // Construct the context with collection id
   for ( const auto &mapLayer : layers )
   {
-    const QString shortName { mapLayer->serverProperties()->shortName().isEmpty() ? mapLayer->name() : mapLayer->serverProperties()->shortName() };
+    const QString shortName { mapLayer->shortName().isEmpty() ? mapLayer->name() : mapLayer->shortName() };
     // Use layer id for operationId
     const QString layerId { mapLayer->id() };
-    const std::string title { mapLayer->serverProperties()->wfsTitle().isEmpty() ? mapLayer->name().toStdString() : mapLayer->serverProperties()->wfsTitle().toStdString() };
+    const std::string title { mapLayer->title().isEmpty() ? mapLayer->name().toStdString() : mapLayer->title().toStdString() };
     const std::string path { QgsServerApiUtils::appendMapParameter( context.apiRootPath() + QStringLiteral( "/collections/%1" ).arg( shortName ), context.request()->url() ).toStdString() };
 
     data[ path ] =
@@ -787,9 +779,7 @@ QList<QgsServerQueryStringParameter> QgsWfs3CollectionsItemsHandler::parameters(
                                         10 };
   limit.setCustomValidator( [ = ]( const QgsServerApiContext &, QVariant & value ) -> bool
   {
-    bool ok = false;
-    const qlonglong longVal { value.toLongLong( &ok ) };
-    return ok && longVal >= 0 && longVal <= maxLimit;
+    return value.toInt() >= 0 && value.toInt() <= maxLimit;   // TODO: make this configurable!
   } );
   params.push_back( limit );
 
@@ -812,9 +802,8 @@ QList<QgsServerQueryStringParameter> QgsWfs3CollectionsItemsHandler::parameters(
     {
       offset.setCustomValidator( [ = ]( const QgsServerApiContext &, QVariant & value ) -> bool
       {
-        bool ok = false;
-        const qlonglong longVal { value.toLongLong( &ok ) };
-        return ok && longVal >= 0 && longVal <= mapLayer->featureCount( );
+        const qlonglong longVal { value.toLongLong( ) };
+        return longVal >= 0 && longVal <= mapLayer->featureCount( );
       } );
       offset.setDescription( QStringLiteral( "Offset for features to retrieve [0-%1]" ).arg( mapLayer->featureCount( ) ) );
       offsetValidatorSet = true;
@@ -909,9 +898,8 @@ QList<QgsServerQueryStringParameter> QgsWfs3CollectionsItemsHandler::parameters(
   {
     offset.setCustomValidator( [ ]( const QgsServerApiContext &, QVariant & value ) -> bool
     {
-      bool ok = false;
-      const qlonglong longVal { value.toLongLong( &ok ) };
-      return ok && longVal >= 0 ;
+      const qlonglong longVal { value.toLongLong( ) };
+      return longVal >= 0 ;
     } );
   }
 
@@ -977,8 +965,8 @@ json QgsWfs3CollectionsItemsHandler::schema( const QgsServerApiContext &context 
   // Construct the context with collection id
   for ( const auto &mapLayer : layers )
   {
-    const QString shortName { mapLayer->serverProperties()->shortName().isEmpty() ? mapLayer->name() : mapLayer->serverProperties()->shortName() };
-    const std::string title { mapLayer->serverProperties()->wfsTitle().isEmpty() ? mapLayer->name().toStdString() : mapLayer->serverProperties()->wfsTitle().toStdString() };
+    const QString shortName { mapLayer->shortName().isEmpty() ? mapLayer->name() : mapLayer->shortName() };
+    const std::string title { mapLayer->title().isEmpty() ? mapLayer->name().toStdString() : mapLayer->title().toStdString() };
     // Use layer id for operationId
     const QString layerId { mapLayer->id() };
     const QString path { QgsServerApiUtils::appendMapParameter( context.apiRootPath() + QStringLiteral( "/collections/%1/items" ).arg( shortName ), context.request()->url() ) };
@@ -1085,19 +1073,6 @@ json QgsWfs3CollectionsItemsHandler::schema( const QgsServerApiContext &context 
         }
       }
     };
-
-#ifdef HAVE_SERVER_PYTHON_PLUGINS
-
-    // get access controls
-    QgsAccessControl *accessControl = context.serverInterface()->accessControls();
-    // If the layer has no insert capabilities, remove the post operation
-    if ( accessControl && !accessControl->layerInsertPermission( mapLayer ) )
-    {
-      data[ path.toStdString() ].erase( "post" );
-    }
-
-#endif
-
   } // end for loop
   return data;
 }
@@ -1114,11 +1089,11 @@ const QList<QgsServerQueryStringParameter> QgsWfs3CollectionsItemsHandler::field
       QgsServerQueryStringParameter::Type t;
       switch ( f.type() )
       {
-        case QMetaType::Type::Int:
-        case QMetaType::Type::LongLong:
+        case QVariant::Int:
+        case QVariant::LongLong:
           t = QgsServerQueryStringParameter::Type::Integer;
           break;
-        case QMetaType::Type::Double:
+        case QVariant::Double:
           t = QgsServerQueryStringParameter::Type::Double;
           break;
         // TODO: date & time
@@ -1155,7 +1130,7 @@ void QgsWfs3CollectionsItemsHandler::handleRequest( const QgsServerApiContext &c
   // Check if the layer is published, raise not found if it is not
   checkLayerIsAccessible( mapLayer, context );
 
-  const std::string title { mapLayer->serverProperties()->wfsTitle().isEmpty() ? mapLayer->name().toStdString() : mapLayer->serverProperties()->wfsTitle().toStdString() };
+  const std::string title { mapLayer->title().isEmpty() ? mapLayer->name().toStdString() : mapLayer->title().toStdString() };
 
   // Get parameters
   QVariantMap params = values( context );
@@ -1369,7 +1344,7 @@ void QgsWfs3CollectionsItemsHandler::handleRequest( const QgsServerApiContext &c
           featureRequest.setNoAttributes();
         }
 
-        featureRequest.setFlags( Qgis::FeatureRequestFlag::NoGeometry );
+        featureRequest.setFlags( QgsFeatureRequest::Flag::NoGeometry );
         featureRequest.setLimit( -1 );
         features = mapLayer->getFeatures( featureRequest );
 
@@ -1413,47 +1388,6 @@ void QgsWfs3CollectionsItemsHandler::handleRequest( const QgsServerApiContext &c
         cleanedUrlAsString += '&';
       }
 
-      // Pagesize metadata
-      json pagesize = json::array();
-      const qlonglong maxLimit { context.serverInterface()->serverSettings()->apiWfs3MaxLimit() };
-      if ( matchedFeaturesCount > 1 && maxLimit > 1 )
-      {
-        const std::string pageSizeOneLink { cleanedUrlAsString.toStdString() + QStringLiteral( "offset=0&limit=1" ).toStdString() };
-        pagesize.push_back( {{ "title", "1" }, { "href", pageSizeOneLink }} ) ;
-        if ( matchedFeaturesCount > 10 && maxLimit > 10 )
-        {
-          const std::string pageSizeTenLink  { cleanedUrlAsString.toStdString() + QStringLiteral( "offset=0&limit=10" ).toStdString() };
-          pagesize.push_back( {{ "title", "10" }, { "href", pageSizeTenLink }} ) ;
-        }
-        if ( matchedFeaturesCount > 20 && maxLimit > 20 )
-        {
-          const std::string pageSizeTwentyLink { cleanedUrlAsString.toStdString() + QStringLiteral( "offset=0&limit=20" ).toStdString() };
-          pagesize.push_back( {{ "title", "20" }, { "href", pageSizeTwentyLink }} ) ;
-        }
-        if ( matchedFeaturesCount > 50 && maxLimit > 50 )
-        {
-          const std::string pageSizeFiftyLink { cleanedUrlAsString.toStdString() + QStringLiteral( "offset=0&limit=50" ).toStdString() };
-          pagesize.push_back( {{ "title", "50" }, { "href", pageSizeFiftyLink }} ) ;
-        }
-        if ( matchedFeaturesCount > 100 && maxLimit > 100 )
-        {
-          const std::string pageSizeHundredLink { cleanedUrlAsString.toStdString() + QStringLiteral( "offset=0&limit=100" ).toStdString() };
-          pagesize.push_back( {{ "title", "100" }, { "href", pageSizeHundredLink }} ) ;
-        }
-        if ( matchedFeaturesCount > 1000 && maxLimit > 1000 )
-        {
-          const std::string pageSizeThousandLink { cleanedUrlAsString.toStdString() + QStringLiteral( "offset=0&limit=1000" ).toStdString() };
-          pagesize.push_back( {{ "title", "1000" }, { "href", pageSizeThousandLink }} ) ;
-        }
-        std::string maxTitle = "All";
-        if ( maxLimit < matchedFeaturesCount )
-        {
-          maxTitle = "Maximum";
-        }
-        const std::string pageSizeMaxLink { cleanedUrlAsString.toStdString() + QStringLiteral( "offset=0&limit=%1" ).arg( maxLimit ).toStdString() };
-        pagesize.push_back( {{ "title", maxTitle }, { "href", pageSizeMaxLink }} ) ;
-      }
-
       // Get the self link
       json selfLink;
       for ( const auto &l : data["links"] )
@@ -1465,94 +1399,23 @@ void QgsWfs3CollectionsItemsHandler::handleRequest( const QgsServerApiContext &c
         }
       }
 
-      // Pagination metadata
-      json pagination = json::array();
-
-      if ( limit != 0 )
+      // Add prev - next links
+      if ( offset != 0 )
       {
-        // Add prev - next links
-        json prevLink;
-        if ( offset != 0 )
-        {
-          prevLink = selfLink;
-          prevLink["href"] = cleanedUrlAsString.toStdString() + QStringLiteral( "offset=%1&limit=%2" ).arg( std::max<long>( 0, offset - limit ) ).arg( limit ).toStdString();
-          prevLink["rel"] = "prev";
-          prevLink["title"] = "Previous page";
-          data["links"].push_back( prevLink );
-        }
+        json prevLink = selfLink;
+        prevLink["href"] = cleanedUrlAsString.toStdString() + QStringLiteral( "offset=%1&limit=%2" ).arg( std::max<long>( 0, offset - limit ) ).arg( limit ).toStdString();
+        prevLink["rel"] = "prev";
+        prevLink["title"] = "Previous page";
+        data["links"].push_back( prevLink );
+      }
 
-        json nextLink;
-        if ( limit + offset < matchedFeaturesCount )
-        {
-          nextLink = selfLink;
-          nextLink["href"] = cleanedUrlAsString.toStdString() + QStringLiteral( "offset=%1&limit=%2" ).arg( std::min<long>( matchedFeaturesCount, limit + offset ) ).arg( limit ).toStdString();
-          nextLink["rel"] = "next";
-          nextLink["title"] = "Next page";
-          data["links"].push_back( nextLink );
-        }
-
-        // Pagination
-        if ( matchedFeaturesCount - limit > 0 )
-        {
-          const int totalPages { static_cast<int>( std::ceil( static_cast<float>( matchedFeaturesCount ) / static_cast<float>( limit ) ) ) };
-          const int currentPage { static_cast<int>( offset / limit + 1 ) };
-          const std::string currentPageLink { selfLink["href"] };
-
-          std::string prevPageLink;
-          if ( prevLink.contains( std::string{ "href" } ) )
-          {
-            prevPageLink = prevLink["href"];
-          }
-
-          std::string nextPageLink;
-          if ( nextLink.contains( std::string{ "href" } ) )
-          {
-            nextPageLink = nextLink["href"];
-          }
-
-          const std::string firstPageLink { cleanedUrlAsString.toStdString() + QStringLiteral( "offset=0&limit=%1" ).arg( limit ).toStdString() };
-          const std::string lastPageLink { cleanedUrlAsString.toStdString() + QStringLiteral( "offset=%1&limit=%2" ).arg( totalPages * limit - limit ).arg( limit ).toStdString() };
-
-          if ( currentPage != 1 )
-          {
-            pagination.push_back( {{ "title",  "1" }, { "href", firstPageLink }, { "class", "page-item" }} ) ;
-          }
-          if ( currentPage > 3 )
-          {
-            pagination.push_back( {{ "title", "\u2026" }, { "class", "page-item disabled" }} ) ;
-          }
-          if ( currentPage > 2 )
-          {
-            pagination.push_back( {{ "title",  std::to_string( currentPage - 1 ) }, { "href", prevPageLink }, { "class", "page-item" }} ) ;
-          }
-          pagination.push_back( {{ "title",  std::to_string( currentPage ) }, { "href", currentPageLink }, { "class", "page-item active" }} ) ;
-          if ( currentPage < totalPages - 1 )
-          {
-            pagination.push_back( {{ "title",  std::to_string( currentPage + 1 )  }, { "href", nextPageLink }, { "class", "page-item" }} ) ;
-          }
-          if ( currentPage < totalPages - 2 )
-          {
-            pagination.push_back( {{ "title", "\u2026" }, { "class", "page-item disabled" }} ) ;
-          }
-          if ( currentPage != totalPages )
-          {
-            pagination.push_back( {{ "title",  std::to_string( totalPages ) }, { "href", lastPageLink }, { "class", "page-item" }} ) ;
-          }
-
-          // Add first - last links
-          // Since we are having them ready, not mandatory by the spec but allowed
-          json firstLink = selfLink;
-          firstLink["href"] = firstPageLink;
-          firstLink["rel"] = "first";
-          firstLink["title"] = "First page";
-          data["links"].push_back( firstLink );
-
-          json lastLink = selfLink;
-          lastLink["href"] = lastPageLink;
-          lastLink["rel"] = "last";
-          lastLink["title"] = "Last page";
-          data["links"].push_back( lastLink );
-        }
+      if ( limit + offset < matchedFeaturesCount )
+      {
+        json nextLink = selfLink;
+        nextLink["href"] = cleanedUrlAsString.toStdString() + QStringLiteral( "offset=%1&limit=%2" ).arg( std::min<long>( matchedFeaturesCount, limit + offset ) ).arg( limit ).toStdString();
+        nextLink["rel"] = "next";
+        nextLink["title"] = "Next page";
+        data["links"].push_back( nextLink );
       }
 
       json navigation = json::array();
@@ -1568,8 +1431,6 @@ void QgsWfs3CollectionsItemsHandler::handleRequest( const QgsServerApiContext &c
           "geojsonUrl", href( context, "/",
                               QgsServerOgcApi::contentTypeToExtension( QgsServerOgcApi::ContentType::GEOJSON ) )
         },
-        { "pagesize", pagesize },
-        { "pagination", pagination },
         { "navigation", navigation }
       };
 
@@ -1582,7 +1443,7 @@ void QgsWfs3CollectionsItemsHandler::handleRequest( const QgsServerApiContext &c
     {
       // First: check permissions
       const QStringList wfstInsertLayerIds = QgsServerProjectUtils::wfstInsertLayerIds( *context.project() );
-      if ( ! wfstInsertLayerIds.contains( mapLayer->id() ) || ! mapLayer->dataProvider()->capabilities().testFlag( Qgis::VectorProviderCapability::AddFeatures ) )
+      if ( ! wfstInsertLayerIds.contains( mapLayer->id() ) || ! mapLayer->dataProvider()->capabilities().testFlag( QgsVectorDataProvider::Capability::AddFeatures ) )
       {
         throw QgsServerApiPermissionDeniedException( QStringLiteral( "Features cannot be added to layer '%1'" ).arg( mapLayer->name() ) );
       }
@@ -1608,7 +1469,7 @@ void QgsWfs3CollectionsItemsHandler::handleRequest( const QgsServerApiContext &c
       try
       {
         // Parse
-        json postData = json::parse( context.request()->data().toStdString() );
+        json postData = json::parse( context.request()->data() );
 
         // Process data: extract geometry (because we need to process attributes in a much more complex way)
         const QgsFields fields = QgsOgrUtils::stringToFields( context.request()->data(), QTextCodec::codecForName( "UTF-8" ) );
@@ -1753,7 +1614,7 @@ void QgsWfs3CollectionsFeatureHandler::handleRequest( const QgsServerApiContext 
   // Check if the layer is published, raise not found if it is not
   checkLayerIsAccessible( mapLayer, context );
 
-  const std::string title { mapLayer->serverProperties()->wfsTitle().isEmpty() ? mapLayer->name().toStdString() : mapLayer->serverProperties()->wfsTitle().toStdString() };
+  const std::string title { mapLayer->title().isEmpty() ? mapLayer->name().toStdString() : mapLayer->title().toStdString() };
 
   // Retrieve feature from storage
   const QString featureId { match.captured( QStringLiteral( "featureId" ) ) };
@@ -1845,8 +1706,8 @@ void QgsWfs3CollectionsFeatureHandler::handleRequest( const QgsServerApiContext 
       // First: check permissions
       const QStringList wfstUpdateLayerIds = QgsServerProjectUtils::wfstUpdateLayerIds( *context.project() );
       if ( ! wfstUpdateLayerIds.contains( mapLayer->id() ) ||
-           ! mapLayer->dataProvider()->capabilities().testFlag( Qgis::VectorProviderCapability::ChangeGeometries ) ||
-           ! mapLayer->dataProvider()->capabilities().testFlag( Qgis::VectorProviderCapability::ChangeAttributeValues ) )
+           ! mapLayer->dataProvider()->capabilities().testFlag( QgsVectorDataProvider::Capability::ChangeGeometries ) ||
+           ! mapLayer->dataProvider()->capabilities().testFlag( QgsVectorDataProvider::Capability::ChangeAttributeValues ) )
       {
         throw QgsServerApiPermissionDeniedException( QStringLiteral( "Features in layer '%1' cannot be changed" ).arg( mapLayer->name() ) );
       }
@@ -1872,7 +1733,7 @@ void QgsWfs3CollectionsFeatureHandler::handleRequest( const QgsServerApiContext 
       try
       {
         // Parse
-        json postData = json::parse( context.request()->data().toStdString() );
+        json postData = json::parse( context.request()->data() );
         // Process data: extract geometry (because we need to process attributes in a much more complex way)
         const QgsFields fields( QgsOgrUtils::stringToFields( context.request()->data(), QTextCodec::codecForName( "UTF-8" ) ) );
         const QgsFeatureList features = QgsOgrUtils::stringToFeatureList( context.request()->data(), fields, QTextCodec::codecForName( "UTF-8" ) );
@@ -1979,7 +1840,7 @@ void QgsWfs3CollectionsFeatureHandler::handleRequest( const QgsServerApiContext 
       // First: check permissions
       const QStringList wfstUpdateLayerIds = QgsServerProjectUtils::wfstUpdateLayerIds( *context.project() );
       if ( ! wfstUpdateLayerIds.contains( mapLayer->id() ) ||
-           ! mapLayer->dataProvider()->capabilities().testFlag( Qgis::VectorProviderCapability::ChangeAttributeValues ) )
+           ! mapLayer->dataProvider()->capabilities().testFlag( QgsVectorDataProvider::Capability::ChangeAttributeValues ) )
       {
         throw QgsServerApiPermissionDeniedException( QStringLiteral( "Feature attributes in layer '%1' cannot be changed" ).arg( mapLayer->name() ) );
       }
@@ -2010,7 +1871,7 @@ void QgsWfs3CollectionsFeatureHandler::handleRequest( const QgsServerApiContext 
       try
       {
         // Parse
-        json postData = json::parse( context.request()->data().toStdString() );
+        json postData = json::parse( context.request()->data() );
 
         // If the request contains "add" we raise
         if ( postData.contains( "add" ) )
@@ -2100,9 +1961,9 @@ void QgsWfs3CollectionsFeatureHandler::handleRequest( const QgsServerApiContext 
     case QgsServerRequest::Method::DeleteMethod:
     {
       // First: check permissions
-      const QStringList wfstDeleteLayerIds = QgsServerProjectUtils::wfstDeleteLayerIds( *context.project() );
-      if ( ! wfstDeleteLayerIds.contains( mapLayer->id() ) ||
-           ! mapLayer->dataProvider()->capabilities().testFlag( Qgis::VectorProviderCapability::DeleteFeatures ) )
+      const QStringList wfstUpdateLayerIds = QgsServerProjectUtils::wfstDeleteLayerIds( *context.project() );
+      if ( ! wfstUpdateLayerIds.contains( mapLayer->id() ) ||
+           ! mapLayer->dataProvider()->capabilities().testFlag( QgsVectorDataProvider::Capability::DeleteFeatures ) )
       {
         throw QgsServerApiPermissionDeniedException( QStringLiteral( "Features in layer '%1' cannot be deleted" ).arg( mapLayer->name() ) );
       }
@@ -2155,10 +2016,10 @@ json QgsWfs3CollectionsFeatureHandler::schema( const QgsServerApiContext &contex
   // Construct the context with collection id
   for ( const auto &mapLayer : layers )
   {
-    const QString shortName { mapLayer->serverProperties()->shortName().isEmpty() ? mapLayer->name() : mapLayer->serverProperties()->shortName() };
+    const QString shortName { mapLayer->shortName().isEmpty() ? mapLayer->name() : mapLayer->shortName() };
     // Use layer id for operationId
     const QString layerId { mapLayer->id() };
-    const std::string title { mapLayer->serverProperties()->wfsTitle().isEmpty() ? mapLayer->name().toStdString() : mapLayer->serverProperties()->wfsTitle().toStdString() };
+    const std::string title { mapLayer->title().isEmpty() ? mapLayer->name().toStdString() : mapLayer->title().toStdString() };
     const std::string path { QgsServerApiUtils::appendMapParameter( context.apiRootPath() + QStringLiteral( "/collections/%1/items/{featureId}" ).arg( shortName ), context.request()->url() ).toStdString() };
 
     data[ path ] =
@@ -2294,25 +2155,6 @@ json QgsWfs3CollectionsFeatureHandler::schema( const QgsServerApiContext &contex
         }
       }
     };
-
-#ifdef HAVE_SERVER_PYTHON_PLUGINS
-
-    // get access controls
-    QgsAccessControl *accessControl = context.serverInterface()->accessControls();
-    // If the layer has no delete capabilities, remove the delete operation
-    if ( accessControl && !accessControl->layerDeletePermission( mapLayer ) )
-    {
-      data[ path ].erase( "delete" );
-    }
-    // If the layer has no update capabilities, remove the put and patch operation
-    if ( accessControl && !accessControl->layerUpdatePermission( mapLayer ) )
-    {
-      data[ path ].erase( "put" );
-      data[ path ].erase( "patch" );
-    }
-
-#endif
-
   } // end for loop
   return data;
 }

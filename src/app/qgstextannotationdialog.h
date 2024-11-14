@@ -52,8 +52,6 @@ class APP_EXPORT QgsTextAnnotationDialog: public QDialog, private Ui::QgsTextAnn
     void mButtonBox_clicked( QAbstractButton *button );
     void backgroundColorChanged( const QColor &color );
     void showHelp();
-    void onSettingsChanged();
-    void onLiveUpdateToggled( bool checked );
 };
 
 #endif // QGSTEXTANNOTATIONDIALOG_H

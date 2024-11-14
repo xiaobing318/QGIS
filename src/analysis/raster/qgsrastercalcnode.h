@@ -80,6 +80,9 @@ class ANALYSIS_EXPORT QgsRasterCalcNode
       opNONE,
     };
 
+    /**
+     * Constructor for QgsRasterCalcNode.
+     */
     QgsRasterCalcNode() = default;
 
     QgsRasterCalcNode( double number );
@@ -90,7 +93,9 @@ class ANALYSIS_EXPORT QgsRasterCalcNode
     QgsRasterCalcNode( const QString &rasterName );
     ~QgsRasterCalcNode();
 
+    //! QgsRasterCalcNode cannot be copied
     QgsRasterCalcNode( const QgsRasterCalcNode &rh ) = delete;
+    //! QgsRasterCalcNode cannot be copied
     QgsRasterCalcNode &operator=( const QgsRasterCalcNode &rh ) = delete;
 
     Type type() const { return mType; }
@@ -106,6 +111,7 @@ class ANALYSIS_EXPORT QgsRasterCalcNode
      * \param row optional row number to calculate for calculating result by rows, or -1 to
      * calculate entire result
      * \note not available in Python bindings
+     * \since QGIS 2.10
      */
     bool calculate( QMap<QString, QgsRasterBlock * > &rasterData, QgsRasterMatrix &result, int row = -1 ) const SIP_SKIP;
 
@@ -129,13 +135,13 @@ class ANALYSIS_EXPORT QgsRasterCalcNode
      * It uses QgsRasterCalcNode::cleanRasterReferences
      * \note since QGIS 3.22
      */
-    QStringList referencedLayerNames() const;
+    QStringList referencedLayerNames( );
 
     /**
      * Returns a list of raster layer references that are addressed in the formula, without quotation marks.
      * \note since QGIS 3.22
      */
-    QStringList cleanRasterReferences() const;
+    QStringList cleanRasterReferences();
 
   private:
 #ifdef SIP_RUN
@@ -146,7 +152,7 @@ class ANALYSIS_EXPORT QgsRasterCalcNode
      * Calculates result of raster calculation when tFunct type is used
      * \since QGIS 3.22
      */
-    QgsRasterMatrix evaluateFunction( const std::vector< std::unique_ptr< QgsRasterMatrix > > &matrixVector, QgsRasterMatrix &result ) const;
+    QgsRasterMatrix evaluateFunction( const QVector<QgsRasterMatrix *> &matrixVector, QgsRasterMatrix &result ) const;
 
     Type mType = tNumber;
     QgsRasterCalcNode *mLeft = nullptr;

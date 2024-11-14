@@ -14,9 +14,6 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef QGSMAPTOOLFILLRING_H
-#define QGSMAPTOOLFILLRING_H
-
 #include "qgsmaptoolcapture.h"
 #include "qgis_app.h"
 
@@ -43,5 +40,3 @@ class APP_EXPORT QgsMapToolFillRing: public QgsMapToolCapture
 
     QgsVectorLayer *getCheckLayer();
 };
-
-#endif // QGSMAPTOOLFILLRING_H

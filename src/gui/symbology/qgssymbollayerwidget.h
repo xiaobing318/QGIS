@@ -26,6 +26,7 @@
 #include <QStandardItemModel>
 
 class QgsVectorLayer;
+class QgsMapCanvas;
 class QgsMarkerSymbol;
 class QgsLineSymbol;
 
@@ -56,17 +57,20 @@ class GUI_EXPORT QgsSymbolLayerWidget : public QWidget, protected QgsExpressionC
      * Sets the context in which the symbol widget is shown, e.g., the associated map canvas and expression contexts.
      * \param context symbol widget context
      * \see context()
+     * \since QGIS 3.0
      */
     virtual void setContext( const QgsSymbolWidgetContext &context );
 
     /**
      * Returns the context in which the symbol widget is shown, e.g., the associated map canvas and expression contexts.
      * \see setContext()
+     * \since QGIS 3.0
      */
     QgsSymbolWidgetContext context() const;
 
     /**
      * Returns the vector layer associated with the widget.
+     * \since QGIS 2.12
      */
     const QgsVectorLayer *vectorLayer() const { return mVectorLayer; }
 
@@ -76,6 +80,7 @@ class GUI_EXPORT QgsSymbolLayerWidget : public QWidget, protected QgsExpressionC
      * Registers a data defined override button. Handles setting up connections
      * for the button and initializing the button to show the correct descriptions
      * and help text for the associated property.
+     * \since QGIS 3.0
      */
     void registerDataDefinedButton( QgsPropertyOverrideButton *button, QgsSymbolLayer::Property key );
 
@@ -83,6 +88,8 @@ class GUI_EXPORT QgsSymbolLayerWidget : public QWidget, protected QgsExpressionC
 
   private:
     QgsVectorLayer *mVectorLayer = nullptr;
+
+    QgsMapCanvas *mMapCanvas = nullptr;
 
   signals:
 
@@ -141,6 +148,7 @@ class GUI_EXPORT QgsSimpleLineSymbolLayerWidget : public QgsSymbolLayerWidget, p
      */
     static QgsSymbolLayerWidget *create( QgsVectorLayer *vl ) SIP_FACTORY { return new QgsSimpleLineSymbolLayerWidget( vl ); }
 
+    // from base class
     void setSymbolLayer( QgsSymbolLayer *layer ) override;
     QgsSymbolLayer *symbolLayer() override;
     void setContext( const QgsSymbolWidgetContext &context ) override;
@@ -299,6 +307,7 @@ class QgsFilledMarkerSymbolLayer;
  * \ingroup gui
  * \class QgsFilledMarkerSymbolLayerWidget
  * \brief Widget for configuring QgsFilledMarkerSymbolLayer symbol layers.
+ * \since QGIS 2.16
  */
 class GUI_EXPORT QgsFilledMarkerSymbolLayerWidget : public QgsSymbolLayerWidget, private Ui::WidgetFilledMarker
 {
@@ -613,7 +622,7 @@ class GUI_EXPORT QgsSvgMarkerSymbolLayerWidget : public QgsSymbolLayerWidget, pr
 
     /**
      * This method does nothing anymore, the loading is automatic
-     * \deprecated QGIS 3.16
+     * \deprecated since QGIS 3.16
      */
     Q_DECL_DEPRECATED void populateList() SIP_DEPRECATED {}
 
@@ -811,6 +820,8 @@ class GUI_EXPORT QgsRasterFillSymbolLayerWidget : public QgsSymbolLayerWidget, p
     void offsetChanged();
     void mOffsetUnitWidget_changed();
     void mRotationSpinBox_valueChanged( double d );
+    void mWidthUnitWidget_changed();
+    void mWidthSpinBox_valueChanged( double d );
 
   private:
     void updatePreviewImage();
@@ -903,50 +914,6 @@ class GUI_EXPORT QgsLineburstSymbolLayerWidget : public QgsSymbolLayerWidget, pr
     QgsLineburstSymbolLayer *mLayer = nullptr;
 
 };
-
-
-///////////
-
-#include "ui_widget_filledline.h"
-
-class QgsFilledLineSymbolLayer;
-
-/**
- * \ingroup gui
- * \class QgsFilledLineSymbolLayerWidget
- * A widget for configuring QgsFilledLineSymbolLayer.
- * \since QGIS 3.36
- */
-class GUI_EXPORT QgsFilledLineSymbolLayerWidget : public QgsSymbolLayerWidget, private Ui::WidgetFilledLine
-{
-    Q_OBJECT
-
-  public:
-
-    /**
-     * Constructor for QgsFilledLineSymbolLayerWidget.
-     * \param vl associated vector layer
-     * \param parent parent widget
-     */
-    QgsFilledLineSymbolLayerWidget( QgsVectorLayer *vl, QWidget *parent SIP_TRANSFERTHIS = nullptr );
-
-    ~QgsFilledLineSymbolLayerWidget() override;
-
-    /**
-     * Creates a new QgsFilledLineSymbolLayerWidget.
-     * \param vl associated vector layer
-     */
-    static QgsSymbolLayerWidget *create( QgsVectorLayer *vl ) SIP_FACTORY { return new QgsFilledLineSymbolLayerWidget( vl ); }
-
-    void setSymbolLayer( QgsSymbolLayer *layer ) override;
-    QgsSymbolLayer *symbolLayer() override;
-
-  private:
-
-    QgsFilledLineSymbolLayer *mLayer = nullptr;
-
-};
-
 
 ///////////
 
@@ -1189,6 +1156,7 @@ class GUI_EXPORT QgsFontMarkerSymbolLayerWidget : public QgsSymbolLayerWidget, p
 
     /**
      * Set stroke color.
+     * \since QGIS 2.16
     */
     void setColorStroke( const QColor &color );
     void setSize( double size );
@@ -1284,51 +1252,6 @@ class GUI_EXPORT QgsCentroidFillSymbolLayerWidget : public QgsSymbolLayerWidget,
     void mDrawAllPartsCheckBox_stateChanged( int state );
     void mClipPointsCheckBox_stateChanged( int state );
     void mClipOnCurrentPartOnlyCheckBox_stateChanged( int state );
-};
-
-
-///////////
-
-#include "ui_qgslinearreferencingsymbollayerwidgetbase.h"
-
-class QgsLinearReferencingSymbolLayer;
-
-/**
- * \ingroup gui
- * \class QgsLinearReferencingSymbolLayerWidget
- * \brief Widget for controlling the properties of a QgsLinearReferencingSymbolLayer.
- * \since QGIS 3.40
- */
-class GUI_EXPORT QgsLinearReferencingSymbolLayerWidget : public QgsSymbolLayerWidget, private Ui::QgsLinearReferencingSymbolLayerWidgetBase
-{
-    Q_OBJECT
-
-  public:
-
-    /**
-     * Constructor for QgsLinearReferencingSymbolLayerWidget.
-     */
-    QgsLinearReferencingSymbolLayerWidget( QgsVectorLayer *vl, QWidget *parent SIP_TRANSFERTHIS = nullptr );
-
-    ~QgsLinearReferencingSymbolLayerWidget() override;
-
-    /**
-     * Creates a new QgsLinearReferencingSymbolLayerWidget.
-     * \param vl associated vector layer
-     */
-    static QgsSymbolLayerWidget *create( QgsVectorLayer *vl ) SIP_FACTORY { return new QgsLinearReferencingSymbolLayerWidget( vl ); }
-
-    void setSymbolLayer( QgsSymbolLayer *layer ) override;
-    QgsSymbolLayer *symbolLayer() override;
-    void setContext( const QgsSymbolWidgetContext &context ) override;
-
-  private slots:
-    void changeNumberFormat();
-
-  private:
-
-    QgsLinearReferencingSymbolLayer *mLayer = nullptr;
-    bool mBlockChangesSignal = false;
 };
 
 

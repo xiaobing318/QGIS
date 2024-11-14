@@ -66,24 +66,19 @@ QString QgsPointsAlongGeometryAlgorithm::shortDescription() const
   return QObject::tr( "Creates regularly spaced points along line features." );
 }
 
-Qgis::ProcessingAlgorithmDocumentationFlags QgsPointsAlongGeometryAlgorithm::documentationFlags() const
-{
-  return Qgis::ProcessingAlgorithmDocumentationFlag::RegeneratesPrimaryKey;
-}
-
 QList<int> QgsPointsAlongGeometryAlgorithm::inputLayerTypes() const
 {
-  return QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorLine ) << static_cast< int >( Qgis::ProcessingSourceType::VectorPolygon );
+  return QList<int>() << QgsProcessing::TypeVectorLine << QgsProcessing::TypeVectorPolygon;
 }
 
-Qgis::ProcessingSourceType QgsPointsAlongGeometryAlgorithm::outputLayerType() const
+QgsProcessing::SourceType QgsPointsAlongGeometryAlgorithm::outputLayerType() const
 {
-  return Qgis::ProcessingSourceType::VectorPoint;
+  return QgsProcessing::TypeVectorPoint;
 }
 
-Qgis::WkbType QgsPointsAlongGeometryAlgorithm::outputWkbType( Qgis::WkbType inputType ) const
+QgsWkbTypes::Type QgsPointsAlongGeometryAlgorithm::outputWkbType( QgsWkbTypes::Type inputType ) const
 {
-  Qgis::WkbType out = Qgis::WkbType::Point;
+  QgsWkbTypes::Type out = QgsWkbTypes::Point;
   if ( QgsWkbTypes::hasZ( inputType ) )
     out = QgsWkbTypes::addZ( out );
   if ( QgsWkbTypes::hasM( inputType ) )
@@ -94,8 +89,8 @@ Qgis::WkbType QgsPointsAlongGeometryAlgorithm::outputWkbType( Qgis::WkbType inpu
 QgsFields QgsPointsAlongGeometryAlgorithm::outputFields( const QgsFields &inputFields ) const
 {
   QgsFields output = inputFields;
-  output.append( QgsField( QStringLiteral( "distance" ), QMetaType::Type::Double ) );
-  output.append( QgsField( QStringLiteral( "angle" ), QMetaType::Type::Double ) );
+  output.append( QgsField( QStringLiteral( "distance" ), QVariant::Double ) );
+  output.append( QgsField( QStringLiteral( "angle" ), QVariant::Double ) );
   return output;
 }
 
@@ -138,10 +133,10 @@ QString QgsPointsAlongGeometryAlgorithm::svgIconPath() const
   return QgsApplication::iconPath( QStringLiteral( "/algorithms/mAlgorithmExtractVertices.svg" ) );
 }
 
-Qgis::ProcessingFeatureSourceFlags QgsPointsAlongGeometryAlgorithm::sourceFlags() const
+QgsProcessingFeatureSource::Flag QgsPointsAlongGeometryAlgorithm::sourceFlags() const
 {
   // skip geometry checks - this algorithm doesn't care about invalid geometries
-  return Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks;
+  return QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks;
 }
 
 QgsFeatureSink::SinkFlags QgsPointsAlongGeometryAlgorithm::sinkFlags() const
@@ -190,7 +185,7 @@ QgsFeatureList QgsPointsAlongGeometryAlgorithm::processFeature( const QgsFeature
     if ( mDynamicEndOffset )
       endOffset = mEndOffsetProperty.valueAsDouble( context.expressionContext(), endOffset );
 
-    const double totalLength = geometry.type() == Qgis::GeometryType::Polygon ? geometry.constGet()->perimeter()
+    const double totalLength = geometry.type() == QgsWkbTypes::PolygonGeometry ? geometry.constGet()->perimeter()
                                : geometry.length() - endOffset;
 
     double currentDistance = startOffset;

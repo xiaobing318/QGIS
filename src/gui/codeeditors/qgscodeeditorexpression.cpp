@@ -13,9 +13,9 @@
  *                                                                         *
  ***************************************************************************/
 
+#include "qgsapplication.h"
 #include "qgscodeeditorexpression.h"
-#include "moc_qgscodeeditorexpression.cpp"
-#include "qgsexpression.h"
+#include "qgssymbollayerutils.h"
 
 #include <QString>
 #include <QFont>
@@ -29,11 +29,6 @@ QgsCodeEditorExpression::QgsCodeEditorExpression( QWidget *parent )
   }
   setAutoCompletionCaseSensitivity( false );
   QgsCodeEditorExpression::initializeLexer(); // avoid cppcheck warning by explicitly specifying namespace
-}
-
-Qgis::ScriptLanguage QgsCodeEditorExpression::language() const
-{
-  return Qgis::ScriptLanguage::QgisExpression;
 }
 
 void QgsCodeEditorExpression::setExpressionContext( const QgsExpressionContext &context )

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/server/qgsaccesscontrol.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -16,6 +16,8 @@ class QgsAccessControl : QgsFeatureFilterProvider
 {
 %Docstring(signature="appended")
 A helper class that centralizes restrictions given by all the access control filter plugins.
+
+.. versionadded:: 2.14
 %End
 
 %TypeHeaderCode
@@ -29,6 +31,9 @@ Constructor
 %End
 
     QgsAccessControl( const QgsAccessControl &copy );
+%Docstring
+Constructor
+%End
 
 
     ~QgsAccessControl();
@@ -155,5 +160,5 @@ Register an access control filter
  *                                                                      *
  * src/server/qgsaccesscontrol.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

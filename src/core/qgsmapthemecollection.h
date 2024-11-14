@@ -38,6 +38,7 @@ class QgsProject;
  * \ingroup core
  * \brief Container class that allows storage of map themes consisting of visible
  *  map layers and layer styles.
+ * \since QGIS 2.12
 */
 
 class CORE_EXPORT QgsMapThemeCollection : public QObject
@@ -52,6 +53,7 @@ class CORE_EXPORT QgsMapThemeCollection : public QObject
     /**
      * \ingroup core
      * \brief Individual record of a visible layer in a map theme record.
+     * \since QGIS 3.0
      */
     class CORE_EXPORT MapThemeLayerRecord
     {
@@ -114,6 +116,7 @@ class CORE_EXPORT QgsMapThemeCollection : public QObject
      * \ingroup core
      * \brief Individual map theme record of visible layers and styles.
      *
+     * \since QGIS 3.0, Previously called PresetRecord
      */
     class CORE_EXPORT MapThemeRecord
     {
@@ -157,9 +160,10 @@ class CORE_EXPORT QgsMapThemeCollection : public QObject
         /**
          * Returns whether information about checked/unchecked state of groups has been recorded
          * and thus whether checkedGroupNodes() is valid.
+         * \note Not available in Python bindings
          * \since QGIS 3.10.1
          */
-        bool hasCheckedStateInfo() const { return mHasCheckedStateInfo; };
+        bool hasCheckedStateInfo() const { return mHasCheckedStateInfo; } SIP_SKIP;
 
         /**
          * Sets whether the map theme contains valid expanded/collapsed state of nodes
@@ -169,9 +173,10 @@ class CORE_EXPORT QgsMapThemeCollection : public QObject
 
         /**
          * Sets whether the map theme contains valid checked/unchecked state of group nodes
+         * \note Not available in Python bindings
          * \since QGIS 3.10.1
          */
-        void setHasCheckedStateInfo( bool hasInfo ) { mHasCheckedStateInfo = hasInfo; };
+        void setHasCheckedStateInfo( bool hasInfo ) { mHasCheckedStateInfo = hasInfo; } SIP_SKIP;
 
         /**
          * Returns a set of group identifiers for group nodes that should have expanded state (other group nodes should be collapsed).
@@ -234,6 +239,7 @@ class CORE_EXPORT QgsMapThemeCollection : public QObject
 
     /**
      * Returns whether a map theme with a matching name exists.
+     * \since QGIS 3.0
      */
     bool hasMapTheme( const QString &name ) const;
 
@@ -253,6 +259,7 @@ class CORE_EXPORT QgsMapThemeCollection : public QObject
 
     /**
      * Removes an existing map theme from collection.
+     * \since QGIS 3.0
      */
     void removeMapTheme( const QString &name );
 
@@ -268,11 +275,13 @@ class CORE_EXPORT QgsMapThemeCollection : public QObject
 
     /**
      * Returns a list of existing map theme names.
+     * \since QGIS 3.0
      */
     QStringList mapThemes() const;
 
     /**
      * Returns the recorded state of a map theme.
+     * \since QGIS 3.0
      */
     QgsMapThemeCollection::MapThemeRecord mapThemeState( const QString &name ) const { return mMapThemes[name]; }
 
@@ -281,6 +290,7 @@ class CORE_EXPORT QgsMapThemeCollection : public QObject
      *
      * \note The order of the returned list is not guaranteed to reflect the order of layers
      * in the canvas.
+     * \since QGIS 3.0
      */
     QStringList mapThemeVisibleLayerIds( const QString &name ) const;
 
@@ -289,11 +299,13 @@ class CORE_EXPORT QgsMapThemeCollection : public QObject
      *
      * \note The order of the returned list is not guaranteed to reflect the order of layers
      * in the canvas.
+     * \since QGIS 3.0
      */
     QList<QgsMapLayer *> mapThemeVisibleLayers( const QString &name ) const;
 
     /**
      * Gets layer style overrides (for QgsMapSettings) of the visible layers for given map theme.
+     * \since QGIS 3.0
      */
     QMap<QString, QString> mapThemeStyleOverrides( const QString &name );
 
@@ -314,28 +326,27 @@ class CORE_EXPORT QgsMapThemeCollection : public QObject
     /**
      * Static method to create theme from the current state of layer visibilities in layer tree,
      * current style of layers and check state of legend items (from a layer tree model).
+     * \since QGIS 3.0
      */
     static QgsMapThemeCollection::MapThemeRecord createThemeFromCurrentState( QgsLayerTreeGroup *root, QgsLayerTreeModel *model );
 
     /**
      * Apply theme given by its name and modify layer tree, current style of layers and checked
      * legend items of passed layer tree model.
+     * \since QGIS 3.0
      */
     void applyTheme( const QString &name, QgsLayerTreeGroup *root, QgsLayerTreeModel *model );
 
     /**
-     * Returns the QgsProject on which this map theme collection works.
+     * The QgsProject on which this map theme collection works.
      *
-     * \see setProject()
-     * \see projectChanged()
+     * \since QGIS 3.0
      */
     QgsProject *project();
 
     /**
-     * Sets the \a project on which this map theme collection works.
-     *
-     * \see project()
-     * \see projectChanged()
+     * \copydoc project()
+     * \since QGIS 3.0
      */
     void setProject( QgsProject *project );
 
@@ -343,6 +354,7 @@ class CORE_EXPORT QgsMapThemeCollection : public QObject
      * Returns the master layer order (this will always match the project's QgsProject::layerOrder() ).
      * All map themes will maintain the same layer order as the master layer order.
      * \see masterVisibleLayers()
+     * \since QGIS 3.0
      */
     QList< QgsMapLayer * > masterLayerOrder() const;
 
@@ -351,6 +363,7 @@ class CORE_EXPORT QgsMapThemeCollection : public QObject
      * of masterLayerOrder(), but the returned layers are filtered to only include those visible
      * in the project's layer tree.
      * \see masterLayerOrder()
+     * \since QGIS 3.0
      */
     QList< QgsMapLayer * > masterVisibleLayers() const;
 
@@ -358,11 +371,13 @@ class CORE_EXPORT QgsMapThemeCollection : public QObject
 
     /**
      * Emitted when map themes within the collection are changed.
+     * \since QGIS 3.0
      */
     void mapThemesChanged();
 
     /**
      * Emitted when a map theme changes definition.
+     * \since QGIS 3.0
      */
     void mapThemeChanged( const QString &theme );
 
@@ -375,8 +390,8 @@ class CORE_EXPORT QgsMapThemeCollection : public QObject
     /**
      * Emitted when the project changes
      *
-     * \see project()
-     * \see setProject()
+     * \copydoc project()
+     * \since QGIS 3.0
      */
     void projectChanged();
 

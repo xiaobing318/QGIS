@@ -56,13 +56,13 @@ class QgsGridAlgorithm : public QgsProcessingAlgorithm
 
 
   private:
-    int mIdx = 0;
+    int mIdx;
     QgsRectangle mGridExtent;
     QgsCoordinateReferenceSystem mCrs;
-    double mHSpacing = 1;
-    double mVSpacing = 1;
-    double mHOverlay = 0;
-    double mVOverlay = 0;
+    double mHSpacing;
+    double mVSpacing;
+    double mHOverlay;
+    double mVOverlay;
 
     //define grid creation methods
     void createPointGrid( std::unique_ptr< QgsFeatureSink > &sink, QgsProcessingFeedback *feedback );

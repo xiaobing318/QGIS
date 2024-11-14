@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsnewdatabasetablenamewidget.h                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -39,7 +39,7 @@ getters.
 %Docstring
 Constructs a new QgsNewDatabaseTableNameWidget
 
-:param browserModel: an existing browser model (typically from app), if ``None`` an instance will be created
+:param browserModel: an existing browser model (typically from app), if NULL an instance will be created
 :param providersFilter: optional white list of data provider keys that should be
                         shown in the widget, if not specified all providers data items with database
                         capabilities will be shown
@@ -164,7 +164,7 @@ getters.
 %Docstring
 Constructs a new QgsNewDatabaseTableNameDialog
 
-:param browserModel: an existing browser model (typically from app), if ``None`` an instance will be created
+:param browserModel: an existing browser model (typically from app), if NULL an instance will be created
 :param providersFilter: optional white list of data provider keys that should be
                         shown in the widget, if not specified all providers data items with database
                         capabilities will be shown
@@ -208,5 +208,5 @@ Returns the validation error or an empty string is the widget status is valid
  *                                                                      *
  * src/gui/qgsnewdatabasetablenamewidget.h                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

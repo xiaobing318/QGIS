@@ -16,9 +16,9 @@
  ***************************************************************************/
 
 #include "qgsrasterpyramidsoptionswidget.h"
-#include "moc_qgsrasterpyramidsoptionswidget.cpp"
 #include "qgsrasterdataprovider.h"
 #include "qgslogger.h"
+#include "qgsdialog.h"
 #include "qgssettings.h"
 
 #include <QInputDialog>
@@ -35,16 +35,12 @@ QgsRasterPyramidsOptionsWidget::QgsRasterPyramidsOptionsWidget( QWidget *parent,
   , mProvider( provider )
 {
   setupUi( this );
-
-  cbxPyramidsFormat->addItem( tr( "External (GeoTiff .ovr)" ), QVariant::fromValue( Qgis::RasterPyramidFormat::GeoTiff ) );
-  cbxPyramidsFormat->addItem( tr( "Internal (if possible)" ), QVariant::fromValue( Qgis::RasterPyramidFormat::Internal ) );
-  cbxPyramidsFormat->addItem( tr( "External (Erdas Imagine .aux)" ), QVariant::fromValue( Qgis::RasterPyramidFormat::Erdas ) );
-
   connect( cbxPyramidsLevelsCustom, &QCheckBox::toggled, this, &QgsRasterPyramidsOptionsWidget::cbxPyramidsLevelsCustom_toggled );
   connect( cbxPyramidsFormat, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, &QgsRasterPyramidsOptionsWidget::cbxPyramidsFormat_currentIndexChanged );
 
   mSaveOptionsWidget->setProvider( provider );
-  mSaveOptionsWidget->setPyramidsFormat( Qgis::RasterPyramidFormat::GeoTiff );
+  mSaveOptionsWidget->setPyramidsFormat( QgsRaster::PyramidsGTiff );
+  mSaveOptionsWidget->setType( QgsRasterFormatSaveOptionsWidget::ProfileLineEdit );
 
   updateUi();
 }
@@ -58,11 +54,11 @@ void QgsRasterPyramidsOptionsWidget::updateUi()
   // keep it in sync with qgsrasterlayerproperties.cpp
   tmpStr = mySettings.value( prefix + "format", "external" ).toString();
   if ( tmpStr == QLatin1String( "internal" ) )
-    cbxPyramidsFormat->setCurrentIndex( cbxPyramidsFormat->findData( QVariant::fromValue( Qgis::RasterPyramidFormat::Internal ) ) );
+    cbxPyramidsFormat->setCurrentIndex( INTERNAL );
   else if ( tmpStr == QLatin1String( "external_erdas" ) )
-    cbxPyramidsFormat->setCurrentIndex( cbxPyramidsFormat->findData( QVariant::fromValue( Qgis::RasterPyramidFormat::Erdas ) ) );
+    cbxPyramidsFormat->setCurrentIndex( ERDAS );
   else
-    cbxPyramidsFormat->setCurrentIndex( cbxPyramidsFormat->findData( QVariant::fromValue( Qgis::RasterPyramidFormat::GeoTiff ) ) );
+    cbxPyramidsFormat->setCurrentIndex( GTIFF );
 
   // initialize resampling methods
   cboResamplingMethod->clear();
@@ -102,7 +98,11 @@ void QgsRasterPyramidsOptionsWidget::updateUi()
       it.value()->setChecked( false );
   }
   tmpStr = mySettings.value( prefix + "overviewList", "" ).toString();
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+  const QStringList constSplit = tmpStr.split( ' ', QString::SkipEmptyParts );
+#else
   const QStringList constSplit = tmpStr.split( ' ', Qt::SkipEmptyParts );
+#endif
   for ( const QString &lev : constSplit )
   {
     if ( mOverviewCheckBoxes.contains( lev.toInt() ) )
@@ -132,20 +132,12 @@ void QgsRasterPyramidsOptionsWidget::apply()
   QString tmpStr;
 
   // mySettings.setValue( prefix + "internal", cbxPyramidsInternal->isChecked() );
-
-  const Qgis::RasterPyramidFormat format = cbxPyramidsFormat->currentData().value< Qgis::RasterPyramidFormat >();
-  switch ( format )
-  {
-    case Qgis::RasterPyramidFormat::GeoTiff:
-      tmpStr = QStringLiteral( "external" );
-      break;
-    case Qgis::RasterPyramidFormat::Internal:
-      tmpStr = QStringLiteral( "internal" );
-      break;
-    case Qgis::RasterPyramidFormat::Erdas:
-      tmpStr = QStringLiteral( "external_erdas" );
-      break;
-  }
+  if ( cbxPyramidsFormat->currentIndex() == INTERNAL )
+    tmpStr = QStringLiteral( "internal" );
+  else if ( cbxPyramidsFormat->currentIndex() == ERDAS )
+    tmpStr = QStringLiteral( "external_erdas" );
+  else
+    tmpStr = QStringLiteral( "external" );
   mySettings.setValue( prefix + "format", tmpStr );
   mySettings.setValue( prefix + "resampling", resamplingMethod() );
   mySettings.setValue( prefix + "overviewStr", lePyramidsLevels->text().trimmed() );
@@ -177,10 +169,26 @@ void QgsRasterPyramidsOptionsWidget::cbxPyramidsLevelsCustom_toggled( bool toggl
   setOverviewList();
 }
 
-void QgsRasterPyramidsOptionsWidget::cbxPyramidsFormat_currentIndexChanged( int )
+void QgsRasterPyramidsOptionsWidget::cbxPyramidsFormat_currentIndexChanged( int index )
 {
-  const Qgis::RasterPyramidFormat format = cbxPyramidsFormat->currentData().value< Qgis::RasterPyramidFormat >();
-  mSaveOptionsWidget->setEnabled( format != Qgis::RasterPyramidFormat::Erdas );
+  mSaveOptionsWidget->setEnabled( index != ERDAS );
+  QgsRaster::RasterPyramidsFormat format;
+  switch ( index )
+  {
+    case GTIFF:
+      format = QgsRaster::PyramidsGTiff;
+      break;
+    case INTERNAL:
+      format = QgsRaster::PyramidsInternal;
+      break;
+    case ERDAS:
+      format = QgsRaster::PyramidsErdas;
+      break;
+    default:
+      QgsDebugMsg( QStringLiteral( "Should not happen !" ) );
+      format = QgsRaster::PyramidsGTiff;
+      break;
+  }
   mSaveOptionsWidget->setPyramidsFormat( format );
 }
 
@@ -193,14 +201,18 @@ void QgsRasterPyramidsOptionsWidget::setOverviewList()
   if ( cbxPyramidsLevelsCustom->isChecked() )
   {
     // should we also validate that numbers are increasing?
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+    const QStringList constSplit = lePyramidsLevels->text().trimmed().split( ' ', QString::SkipEmptyParts );
+#else
     const QStringList constSplit = lePyramidsLevels->text().trimmed().split( ' ', Qt::SkipEmptyParts );
+#endif
     for ( const QString &lev : constSplit )
     {
-      QgsDebugMsgLevel( "lev= " + lev, 3 );
+      QgsDebugMsg( "lev= " + lev );
       const int tmpInt = lev.toInt();
       if ( tmpInt > 0 )
       {
-        QgsDebugMsgLevel( "tmpInt= " + QString::number( tmpInt ), 3 );
+        QgsDebugMsg( "tmpInt= " + QString::number( tmpInt ) );
         // if number is valid, add to overview list
         mOverviewList << tmpInt;
       }

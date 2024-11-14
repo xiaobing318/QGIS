@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     VariableDistanceBuffer.py
@@ -67,7 +69,7 @@ class VariableDistanceBuffer(QgisAlgorithm):
         super().__init__()
 
     def flags(self):
-        return QgsProcessingAlgorithm.Flag.FlagSupportsBatch | QgsProcessingAlgorithm.Flag.FlagCanCancel | QgsProcessingAlgorithm.Flag.FlagDeprecated
+        return QgsProcessingAlgorithm.FlagSupportsBatch | QgsProcessingAlgorithm.FlagCanCancel | QgsProcessingAlgorithm.FlagDeprecated
 
     def initAlgorithm(self, config=None):
         self.addParameter(QgsProcessingParameterFeatureSource(self.INPUT,
@@ -76,7 +78,7 @@ class VariableDistanceBuffer(QgisAlgorithm):
         self.addParameter(QgsProcessingParameterField(self.FIELD,
                                                       self.tr('Distance field'), parentLayerParameterName=self.INPUT))
         self.addParameter(QgsProcessingParameterNumber(self.SEGMENTS,
-                                                       self.tr('Segments'), type=QgsProcessingParameterNumber.Type.Integer,
+                                                       self.tr('Segments'), type=QgsProcessingParameterNumber.Integer,
                                                        minValue=1, defaultValue=5))
         self.addParameter(QgsProcessingParameterBoolean(self.DISSOLVE,
                                                         self.tr('Dissolve result'), defaultValue=False))
@@ -95,11 +97,11 @@ class VariableDistanceBuffer(QgisAlgorithm):
             self.tr('Join style'),
             options=self.join_styles, defaultValue=0))
         self.addParameter(QgsProcessingParameterNumber(self.MITER_LIMIT,
-                                                       self.tr('Miter limit'), type=QgsProcessingParameterNumber.Type.Double,
+                                                       self.tr('Miter limit'), type=QgsProcessingParameterNumber.Double,
                                                        minValue=0, defaultValue=2))
 
         self.addParameter(
-            QgsProcessingParameterFeatureSink(self.OUTPUT, self.tr('Buffer'), QgsProcessing.SourceType.TypeVectorPolygon))
+            QgsProcessingParameterFeatureSink(self.OUTPUT, self.tr('Buffer'), QgsProcessing.TypeVectorPolygon))
 
     def name(self):
         return 'variabledistancebuffer'
@@ -121,12 +123,11 @@ class VariableDistanceBuffer(QgisAlgorithm):
         field = self.parameterAsString(parameters, self.FIELD, context)
 
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context,
-                                               source.fields(), QgsWkbTypes.Type.Polygon, source.sourceCrs())
+                                               source.fields(), QgsWkbTypes.Polygon, source.sourceCrs())
         if sink is None:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
 
         buff.buffering(feedback, context, sink, 0, field, True, source, dissolve, segments, end_cap_style,
                        join_style, miter_limit)
 
-        sink.finalize()
         return {self.OUTPUT: dest_id}

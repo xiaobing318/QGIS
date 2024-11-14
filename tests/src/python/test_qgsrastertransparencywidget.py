@@ -11,8 +11,9 @@ __copyright__ = 'Copyright 2018, The QGIS Project'
 
 import pathlib
 
+import qgis  # NOQA switch sip api
 from qgis.core import QgsRasterLayer, QgsRasterRange
-from qgis.gui import QgsMapCanvas, QgsRasterTransparencyWidget
+from qgis.gui import QgsRasterTransparencyWidget, QgsMapCanvas
 from qgis.testing import TestCase, unittest
 from qgis.testing.mocked import get_iface
 
@@ -22,7 +23,6 @@ from utilities import unitTestDataPath
 class TestQgsRasterTransparencyWidget(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        super().setUpClass()
         cls.iface = get_iface()
 
     @staticmethod

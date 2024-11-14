@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsmapdecoration.h                                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -14,6 +14,8 @@ class QgsMapDecoration
 {
 %Docstring(signature="appended")
 Interface for map decorations.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -22,6 +24,9 @@ Interface for map decorations.
   public:
 
     QgsMapDecoration();
+%Docstring
+Constructor for QgsMapDecoration.
+%End
 
     virtual ~QgsMapDecoration();
 
@@ -35,14 +40,6 @@ Renders a map decoration.
 Returns the map decoration display name.
 
 .. versionadded:: 3.14
-%End
-
-    virtual bool hasFixedMapPosition() const;
-%Docstring
-Returns ``True`` if the decoration is attached to a fixed map position (e.g grid, layout extent), or
-``False`` if the annotation uses a position relative to the map canvas (e.g. title, copyright...)
-
-.. versionadded:: 3.34
 %End
 
   protected:
@@ -61,5 +58,5 @@ Sets the map decoration display ``name``.
  *                                                                      *
  * src/core/qgsmapdecoration.h                                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

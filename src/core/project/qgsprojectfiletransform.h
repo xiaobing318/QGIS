@@ -25,7 +25,6 @@
 
 
 class QgsRasterLayer;
-class QgsMapLayer;
 
 /**
  * \ingroup core
@@ -57,7 +56,7 @@ class CORE_EXPORT QgsProjectFileTransform
     bool updateRevision( const QgsProjectVersion &version );
 
     /**
-     * Prints the contents to the console.
+     * Prints the contents via QgsDebugMsg()
      */
     void dump();
 
@@ -77,15 +76,6 @@ class CORE_EXPORT QgsProjectFileTransform
      */
     QgsProjectVersion currentVersion() const;
 
-    /**
-     * QgsSymbolLayerReference uses QgsSymbolLayer unique uuid identifier since QGIS 3.30, instead of the symbol
-     * key (rule for QgsRuleBasedRenderer for instance) and index path, so this method migrates \a mapLayers old references
-     * to new ones.
-     * \since QGIS 3.30
-     * \deprecated QGIS 3.30
-     */
-    Q_DECL_DEPRECATED static void fixOldSymbolLayerReferences( const QMap<QString, QgsMapLayer *> &mapLayers );
-
   private:
 
     QDomDocument mDom;
@@ -94,3 +84,4 @@ class CORE_EXPORT QgsProjectFileTransform
 
 
 #endif //QGSPROJECTFILETRANSFORM_H
+

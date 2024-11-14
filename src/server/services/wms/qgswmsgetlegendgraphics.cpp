@@ -22,15 +22,12 @@
 #include "qgslegendrenderer.h"
 #include "qgsvectorlayer.h"
 #include "qgsvectorlayerfeaturecounter.h"
-#include "qgslayertreefiltersettings.h"
 
 #include "qgswmsutils.h"
 #include "qgswmsrequest.h"
 #include "qgswmsserviceexception.h"
 #include "qgswmsgetlegendgraphics.h"
 #include "qgswmsrenderer.h"
-#include "qgsserverprojectutils.h"
-#include "qgsmapsettings.h"
 
 #include <QImage>
 #include <QJsonObject>
@@ -54,7 +51,6 @@ namespace QgsWms
     context.setFlag( QgsWmsRenderContext::UseScaleDenominator );
     context.setFlag( QgsWmsRenderContext::UseSrcWidthHeight );
     context.setParameters( parameters );
-    context.setSocketFeedback( response.feedback() );
 
     // get the requested output format
     QgsWmsParameters::Format format = parameters.format();
@@ -122,34 +118,21 @@ namespace QgsWms
     QgsRenderer renderer( context );
 
     // retrieve legend settings and model
-    bool addLegendGroups = QgsServerProjectUtils::wmsAddLegendGroupsLegendGraphic( *project ) || parameters.addLayerGroups();
-    std::unique_ptr<QgsLayerTree> tree( addLegendGroups ? layerTreeWithGroups( context, QgsProject::instance()->layerTreeRoot() ) : layerTree( context ) );
+    std::unique_ptr<QgsLayerTree> tree( layerTree( context ) );
     const std::unique_ptr<QgsLayerTreeModel> model( legendModel( context, *tree.get() ) );
 
     // rendering
     if ( format == QgsWmsParameters::Format::JSON )
     {
       QJsonObject result;
-
-      Qgis::LegendJsonRenderFlags jsonFlags;
-
-      if ( parameters.showRuleDetailsAsBool() )
-      {
-        jsonFlags.setFlag( Qgis::LegendJsonRenderFlag::ShowRuleDetails );
-      }
-
       if ( !parameters.rule().isEmpty() )
       {
-        QgsLayerTreeModelLegendNode *node = legendNode( parameters.rule(), *model.get() );
-        if ( ! node )
-        {
-          throw QgsException( QStringLiteral( "Could not get a legend node for the requested RULE" ) );
-        }
-        result = renderer.getLegendGraphicsAsJson( *node, jsonFlags );
+        throw QgsBadRequestException( QgsServiceException::QGIS_InvalidParameterValue,
+                                      QStringLiteral( "RULE cannot be used with JSON format" ) );
       }
       else
       {
-        result = renderer.getLegendGraphicsAsJson( *model.get(), jsonFlags );
+        result = renderer.getLegendGraphicsAsJson( *model.get() );
       }
       tree->clear();
       response.setHeader( QStringLiteral( "Content-Type" ), parameters.formatAsString() );
@@ -284,10 +267,7 @@ namespace QgsWms
       QList<QgsMapLayer *> layers = context.layersToRender();
       renderer.configureLayers( layers, mapSettings.get() );
       mapSettings->setLayers( context.layersToRender() );
-
-      QgsLayerTreeFilterSettings filterSettings( *mapSettings );
-      filterSettings.setLayerFilterExpressionsFromLayerTree( model->rootGroup() );
-      model->setFilterSettings( &filterSettings );
+      model->setLegendFilterByMap( mapSettings.get() );
     }
 
     // if legend is not based on rendering rules
@@ -339,15 +319,15 @@ namespace QgsWms
       lt->setUseLayerName( false ); // do not modify underlying layer
 
       // name
-      if ( !ml->serverProperties()->title().isEmpty() )
-        lt->setName( ml->serverProperties()->title() );
+      if ( !ml->title().isEmpty() )
+        lt->setName( ml->title() );
 
       // show feature count
       const bool showFeatureCount = context.parameters().showFeatureCountAsBool();
       const QString property = QStringLiteral( "showFeatureCount" );
       lt->setCustomProperty( property, showFeatureCount );
 
-      if ( ml->type() != Qgis::LayerType::Vector || !showFeatureCount )
+      if ( ml->type() != QgsMapLayerType::VectorLayer || !showFeatureCount )
         continue;
 
       QgsVectorLayer *vl = qobject_cast<QgsVectorLayer *>( ml );
@@ -361,40 +341,6 @@ namespace QgsWms
     for ( QgsVectorLayerFeatureCounter *counter : counters )
     {
       counter->waitForFinished();
-    }
-
-    return tree.release();
-  }
-
-  QgsLayerTree *layerTreeWithGroups( const QgsWmsRenderContext &context, QgsLayerTree *projectRoot )
-  {
-    if ( !projectRoot )
-    {
-      return 0;
-    }
-
-    std::unique_ptr<QgsLayerTree> tree( new QgsLayerTree() );
-
-    QgsWmsParameters wmsParams = context.parameters();
-    QStringList layerNicknames = wmsParams.allLayersNickname();
-    for ( int i = 0; i < layerNicknames.size(); ++i )
-    {
-      QString nickname = layerNicknames.at( i );
-
-      //single layer
-      QgsMapLayer *layer = context.layer( nickname );
-      if ( layer )
-      {
-        tree->addLayer( layer );
-      }
-      else //nickname refers to a group
-      {
-        QgsLayerTreeGroup *group = projectRoot->findGroup( nickname );
-        if ( group )
-        {
-          tree->insertChildNode( i, group->clone() );
-        }
-      }
     }
 
     return tree.release();

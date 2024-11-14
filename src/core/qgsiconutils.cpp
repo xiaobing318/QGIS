@@ -22,25 +22,25 @@
 
 #include <QIcon>
 
-QIcon QgsIconUtils::iconForWkbType( Qgis::WkbType type )
+QIcon QgsIconUtils::iconForWkbType( QgsWkbTypes::Type type )
 {
-  const Qgis::GeometryType geomType = QgsWkbTypes::geometryType( type );
+  const QgsWkbTypes::GeometryType geomType = QgsWkbTypes::geometryType( QgsWkbTypes::Type( type ) );
   return iconForGeometryType( geomType );
 }
 
-QIcon QgsIconUtils::iconForGeometryType( Qgis::GeometryType typeGroup )
+QIcon QgsIconUtils::iconForGeometryType( QgsWkbTypes::GeometryType typeGroup )
 {
   switch ( typeGroup )
   {
-    case Qgis::GeometryType::Null:
+    case QgsWkbTypes::NullGeometry:
       return iconTable();
-    case Qgis::GeometryType::Point:
+    case QgsWkbTypes::PointGeometry:
       return iconPoint();
-    case Qgis::GeometryType::Line:
+    case QgsWkbTypes::LineGeometry:
       return iconLine();
-    case Qgis::GeometryType::Polygon:
+    case QgsWkbTypes::PolygonGeometry:
       return iconPolygon();
-    case Qgis::GeometryType::Unknown:
+    case QgsWkbTypes::UnknownGeometry:
       return iconGeometryCollection();
   }
   return iconDefaultLayer();
@@ -91,11 +91,6 @@ QIcon QgsIconUtils::iconPointCloud()
   return QgsApplication::getThemeIcon( QStringLiteral( "/mIconPointCloudLayer.svg" ) );
 }
 
-QIcon QgsIconUtils::iconTiledScene()
-{
-  return QgsApplication::getThemeIcon( QStringLiteral( "/mIconTiledSceneLayer.svg" ) );
-}
-
 QIcon QgsIconUtils::iconDefaultLayer()
 {
   return QgsApplication::getThemeIcon( QStringLiteral( "/mIconLayer.png" ) );
@@ -103,52 +98,48 @@ QIcon QgsIconUtils::iconDefaultLayer()
 
 QIcon QgsIconUtils::iconForLayer( const QgsMapLayer *layer )
 {
-  if ( layer )
+  switch ( layer->type() )
   {
-    switch ( layer->type() )
+    case QgsMapLayerType::RasterLayer:
+    case QgsMapLayerType::MeshLayer:
+    case QgsMapLayerType::VectorTileLayer:
+    case QgsMapLayerType::PointCloudLayer:
+    case QgsMapLayerType::PluginLayer:
+    case QgsMapLayerType::AnnotationLayer:
+    case QgsMapLayerType::GroupLayer:
     {
-      case Qgis::LayerType::Raster:
-      case Qgis::LayerType::Mesh:
-      case Qgis::LayerType::VectorTile:
-      case Qgis::LayerType::PointCloud:
-      case Qgis::LayerType::Plugin:
-      case Qgis::LayerType::Annotation:
-      case Qgis::LayerType::Group:
-      case Qgis::LayerType::TiledScene:
-      {
-        return QgsIconUtils::iconForLayerType( layer->type() );
-      }
+      return QgsIconUtils::iconForLayerType( layer->type() );
+    }
 
-      case Qgis::LayerType::Vector:
+    case QgsMapLayerType::VectorLayer:
+    {
+      const QgsVectorLayer *vl = qobject_cast<const QgsVectorLayer *>( layer );
+      if ( !vl )
       {
-        const QgsVectorLayer *vl = qobject_cast<const QgsVectorLayer *>( layer );
-        if ( !vl )
+        return QIcon();
+      }
+      const QgsWkbTypes::GeometryType geomType = vl->geometryType();
+      switch ( geomType )
+      {
+        case QgsWkbTypes::PointGeometry:
         {
-          return QIcon();
+          return QgsIconUtils::iconPoint();
         }
-        const Qgis::GeometryType geomType = vl->geometryType();
-        switch ( geomType )
+        case QgsWkbTypes::PolygonGeometry :
         {
-          case Qgis::GeometryType::Point:
-          {
-            return QgsIconUtils::iconPoint();
-          }
-          case Qgis::GeometryType::Polygon:
-          {
-            return QgsIconUtils::iconPolygon();
-          }
-          case Qgis::GeometryType::Line:
-          {
-            return QgsIconUtils::iconLine();
-          }
-          case Qgis::GeometryType::Null:
-          {
-            return QgsIconUtils::iconTable();
-          }
-          case Qgis::GeometryType::Unknown:
-          {
-            return QgsIconUtils::iconGeometryCollection();
-          }
+          return QgsIconUtils::iconPolygon();
+        }
+        case QgsWkbTypes::LineGeometry :
+        {
+          return QgsIconUtils::iconLine();
+        }
+        case QgsWkbTypes::NullGeometry :
+        {
+          return QgsIconUtils::iconTable();
+        }
+        case QgsWkbTypes::UnknownGeometry:
+        {
+          return QgsIconUtils::iconGeometryCollection();
         }
       }
     }
@@ -156,34 +147,32 @@ QIcon QgsIconUtils::iconForLayer( const QgsMapLayer *layer )
   return QIcon();
 }
 
-QIcon QgsIconUtils::iconForLayerType( Qgis::LayerType type )
+QIcon QgsIconUtils::iconForLayerType( QgsMapLayerType type )
 {
   switch ( type )
   {
-    case Qgis::LayerType::Raster:
+    case QgsMapLayerType::RasterLayer:
       return QgsIconUtils::iconRaster();
 
-    case Qgis::LayerType::Mesh:
+    case QgsMapLayerType::MeshLayer:
       return QgsIconUtils::iconMesh();
 
-    case Qgis::LayerType::VectorTile:
+    case QgsMapLayerType::VectorTileLayer:
       return QgsIconUtils::iconVectorTile();
 
-    case Qgis::LayerType::PointCloud:
+    case QgsMapLayerType::PointCloudLayer:
       return QgsIconUtils::iconPointCloud();
 
-    case Qgis::LayerType::TiledScene:
-      return QgsIconUtils::iconTiledScene();
-
-    case Qgis::LayerType::Vector:
+    case QgsMapLayerType::VectorLayer:
       return QgsIconUtils::iconGeometryCollection();
 
-    case Qgis::LayerType::Annotation:
+    case QgsMapLayerType::AnnotationLayer:
       return QgsApplication::getThemeIcon( QStringLiteral( "/mIconAnnotationLayer.svg" ) );
 
-    case Qgis::LayerType::Plugin:
-    case Qgis::LayerType::Group:
+    case QgsMapLayerType::PluginLayer:
+    case QgsMapLayerType::GroupLayer:
       break;
   }
   return QIcon();
 }
+

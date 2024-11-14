@@ -3,12 +3,12 @@
  *                                                                      *
  * src/gui/symbology/qgsrendererwidget.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
 
-class QgsRendererWidget : QgsPanelWidget, QgsExpressionContextGenerator
+class QgsRendererWidget : QgsPanelWidget
 {
 %Docstring(signature="appended")
 Base class for renderer settings widgets.
@@ -27,8 +27,6 @@ WORKFLOW:
 %End
   public:
     QgsRendererWidget( QgsVectorLayer *layer, QgsStyle *style );
-    virtual QgsExpressionContext createExpressionContext() const;
-
 
     virtual QgsFeatureRenderer *renderer() = 0;
 %Docstring
@@ -47,6 +45,8 @@ Sets the context in which the renderer widget is shown, e.g., the associated map
 :param context: symbol widget context
 
 .. seealso:: :py:func:`context`
+
+.. versionadded:: 3.0
 %End
 
     QgsSymbolWidgetContext context() const;
@@ -54,11 +54,15 @@ Sets the context in which the renderer widget is shown, e.g., the associated map
 Returns the context in which the renderer widget is shown, e.g., the associated map canvas and expression contexts.
 
 .. seealso:: :py:func:`setContext`
+
+.. versionadded:: 3.0
 %End
 
     const QgsVectorLayer *vectorLayer() const;
 %Docstring
 Returns the vector layer associated with the widget.
+
+.. versionadded:: 2.12
 %End
 
     void applyChanges();
@@ -83,9 +87,8 @@ to re-synchronize with the variables.
 %Docstring
 Emitted when the symbol levels settings have been changed.
 
-.. deprecated:: 3.20
-
-   No longer emitted.
+.. deprecated:: QGIS 3.20
+   -- no longer emitted.
 %End
 
   protected:
@@ -104,6 +107,8 @@ and by connecting the slot contextMenuViewCategories(const QPoint&).
 %Docstring
 Creates widget to setup data-defined size legend.
 Returns newly created panel - may be ``None`` if it could not be opened. Ownership is transferred to the caller.
+
+.. versionadded:: 3.0
 %End
 
     virtual void setSymbolLevels( const QList< QgsLegendSymbolItem > &levels, bool enabled );
@@ -115,13 +120,6 @@ The ``levels`` argument defines the updated list of symbols with rendering passe
 The ``enabled`` arguments specifies if symbol levels should be enabled for the renderer.
 
 .. versionadded:: 3.20
-%End
-
-    void registerDataDefinedButton( QgsPropertyOverrideButton *button, QgsFeatureRenderer::Property key );
-%Docstring
-Registers a data defined override button. Handles setting up connections
-for the button and initializing the button to show the correct descriptions
-and help text for the associated property.
 %End
 
   protected slots:
@@ -203,6 +201,8 @@ Sets the context in which the symbol widget is shown, e.g., the associated map c
 :param context: symbol widget context
 
 .. seealso:: :py:func:`context`
+
+.. versionadded:: 3.0
 %End
 
     QgsSymbolWidgetContext context() const;
@@ -210,11 +210,15 @@ Sets the context in which the symbol widget is shown, e.g., the associated map c
 Returns the context in which the symbol widget is shown, e.g., the associated map canvas and expression contexts.
 
 .. seealso:: :py:func:`setContext`
+
+.. versionadded:: 3.0
 %End
 
     const QgsVectorLayer *vectorLayer() const;
 %Docstring
 Returns the vector layer associated with the widget.
+
+.. versionadded:: 2.12
 %End
 
   public slots:
@@ -299,5 +303,5 @@ class QgsDataDefinedWidthDialog : QgsDataDefinedValueDialog
  *                                                                      *
  * src/gui/symbology/qgsrendererwidget.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

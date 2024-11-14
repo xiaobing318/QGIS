@@ -18,12 +18,10 @@
 
 #include <cmath>
 #include "qgslogger.h"
-#include "qgsscalecalculator.h"
 #include "qgsrectangle.h"
-#include "qgsunittypes.h"
-#include <QSizeF>
+#include "qgsscalecalculator.h"
 
-QgsScaleCalculator::QgsScaleCalculator( double dpi, Qgis::DistanceUnit mapUnits )
+QgsScaleCalculator::QgsScaleCalculator( double dpi, QgsUnitTypes::DistanceUnit mapUnits )
   : mDpi( dpi )
   , mMapUnits( mapUnits )
 {}
@@ -37,15 +35,15 @@ double QgsScaleCalculator::dpi() const
   return mDpi;
 }
 
-void QgsScaleCalculator::setMapUnits( Qgis::DistanceUnit mapUnits )
+void QgsScaleCalculator::setMapUnits( QgsUnitTypes::DistanceUnit mapUnits )
 {
-  QgsDebugMsgLevel( QStringLiteral( "Map units set to %1" ).arg( qgsEnumValueToKey( mapUnits ) ), 3 );
+  QgsDebugMsgLevel( QStringLiteral( "Map units set to %1" ).arg( QString::number( mapUnits ) ), 3 );
   mMapUnits = mapUnits;
 }
 
-Qgis::DistanceUnit QgsScaleCalculator::mapUnits() const
+QgsUnitTypes::DistanceUnit QgsScaleCalculator::mapUnits() const
 {
-  QgsDebugMsgLevel( QStringLiteral( "Map units returned as %1" ).arg( qgsEnumValueToKey( mMapUnits ) ), 4 );
+  QgsDebugMsgLevel( QStringLiteral( "Map units returned as %1" ).arg( QString::number( mMapUnits ) ), 4 );
   return mMapUnits;
 }
 
@@ -53,7 +51,7 @@ double QgsScaleCalculator::calculate( const QgsRectangle &mapExtent, double canv
 {
   if ( qgsDoubleNear( canvasWidth, 0. ) || qgsDoubleNear( mDpi, 0.0 ) )
   {
-    QgsDebugError( QStringLiteral( "Can't calculate scale from the input values" ) );
+    QgsDebugMsg( QStringLiteral( "Can't calculate scale from the input values" ) );
     return 0;
   }
 
@@ -70,7 +68,7 @@ QSizeF QgsScaleCalculator::calculateImageSize( const QgsRectangle &mapExtent, do
 {
   if ( qgsDoubleNear( scale, 0.0 ) || qgsDoubleNear( mDpi, 0.0 ) )
   {
-    QgsDebugError( QStringLiteral( "Can't calculate image size from the input values" ) );
+    QgsDebugMsg( QStringLiteral( "Can't calculate image size from the input values" ) );
     return QSizeF();
   }
   double conversionFactor = 0;
@@ -90,69 +88,21 @@ QSizeF QgsScaleCalculator::calculateImageSize( const QgsRectangle &mapExtent, do
 void QgsScaleCalculator::calculateMetrics( const QgsRectangle &mapExtent, double &delta, double &conversionFactor ) const
 {
   delta = mapExtent.xMaximum() - mapExtent.xMinimum();
-
   switch ( mMapUnits )
   {
-    case Qgis::DistanceUnit::Inches:
-      conversionFactor = 1;
+    case QgsUnitTypes::DistanceMeters:
+      // convert meters to inches
+      conversionFactor = 39.3700787;
       break;
-
-    case Qgis::DistanceUnit::Meters:
-    case Qgis::DistanceUnit::Kilometers:
-    case Qgis::DistanceUnit::Feet:
-    case Qgis::DistanceUnit::Yards:
-    case Qgis::DistanceUnit::Millimeters:
-    case Qgis::DistanceUnit::Centimeters:
-    case Qgis::DistanceUnit::Miles:
-    case Qgis::DistanceUnit::NauticalMiles:
-    case Qgis::DistanceUnit::ChainsInternational:
-    case Qgis::DistanceUnit::ChainsBritishBenoit1895A:
-    case Qgis::DistanceUnit::ChainsBritishBenoit1895B:
-    case Qgis::DistanceUnit::ChainsBritishSears1922Truncated:
-    case Qgis::DistanceUnit::ChainsBritishSears1922:
-    case Qgis::DistanceUnit::ChainsClarkes:
-    case Qgis::DistanceUnit::ChainsUSSurvey:
-    case Qgis::DistanceUnit::FeetBritish1865:
-    case Qgis::DistanceUnit::FeetBritish1936:
-    case Qgis::DistanceUnit::FeetBritishBenoit1895A:
-    case Qgis::DistanceUnit::FeetBritishBenoit1895B:
-    case Qgis::DistanceUnit::FeetBritishSears1922Truncated:
-    case Qgis::DistanceUnit::FeetBritishSears1922:
-    case Qgis::DistanceUnit::FeetClarkes:
-    case Qgis::DistanceUnit::FeetGoldCoast:
-    case Qgis::DistanceUnit::FeetIndian:
-    case Qgis::DistanceUnit::FeetIndian1937:
-    case Qgis::DistanceUnit::FeetIndian1962:
-    case Qgis::DistanceUnit::FeetIndian1975:
-    case Qgis::DistanceUnit::FeetUSSurvey:
-    case Qgis::DistanceUnit::LinksInternational:
-    case Qgis::DistanceUnit::LinksBritishBenoit1895A:
-    case Qgis::DistanceUnit::LinksBritishBenoit1895B:
-    case Qgis::DistanceUnit::LinksBritishSears1922Truncated:
-    case Qgis::DistanceUnit::LinksBritishSears1922:
-    case Qgis::DistanceUnit::LinksClarkes:
-    case Qgis::DistanceUnit::LinksUSSurvey:
-    case Qgis::DistanceUnit::YardsBritishBenoit1895A:
-    case Qgis::DistanceUnit::YardsBritishBenoit1895B:
-    case Qgis::DistanceUnit::YardsBritishSears1922Truncated:
-    case Qgis::DistanceUnit::YardsBritishSears1922:
-    case Qgis::DistanceUnit::YardsClarkes:
-    case Qgis::DistanceUnit::YardsIndian:
-    case Qgis::DistanceUnit::YardsIndian1937:
-    case Qgis::DistanceUnit::YardsIndian1962:
-    case Qgis::DistanceUnit::YardsIndian1975:
-    case Qgis::DistanceUnit::MilesUSSurvey:
-    case Qgis::DistanceUnit::Fathoms:
-    case Qgis::DistanceUnit::MetersGermanLegal:
-      // convert to inches
-      conversionFactor = QgsUnitTypes::fromUnitToUnitFactor( mMapUnits, Qgis::DistanceUnit::Inches );
+    case QgsUnitTypes::DistanceFeet:
+      conversionFactor = 12.0;
       break;
-
-    case Qgis::DistanceUnit::Unknown:
-      // assume degrees to maintain old API
-      [[fallthrough]];
-
-    case Qgis::DistanceUnit::Degrees:
+    case QgsUnitTypes::DistanceNauticalMiles:
+      // convert nautical miles to inches
+      conversionFactor = 72913.4;
+      break;
+    default:
+    case QgsUnitTypes::DistanceDegrees:
       // degrees require conversion to meters first
       conversionFactor = 39.3700787;
       delta = calculateGeographicDistance( mapExtent );

@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgstableeditorformattingwidget.h"
-#include "moc_qgstableeditorformattingwidget.cpp"
 #include "qgsnumericformatselectorwidget.h"
 #include "qgsnumericformat.h"
 #include "qgis.h"
@@ -222,11 +221,6 @@ void QgsTableEditorFormattingWidget::setCellProperty( const QgsProperty &propert
   else
     mExpressionEdit->setExpression( property.asExpression() );
   mBlockSignals--;
-}
-
-void QgsTableEditorFormattingWidget::setLayer( QgsMapLayer *layer )
-{
-  mExpressionEdit->setLayer( layer );
 }
 
 void QgsTableEditorFormattingWidget::registerExpressionContextGenerator( QgsExpressionContextGenerator *generator )

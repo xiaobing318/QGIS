@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsslider.h"
-#include "moc_qgsslider.cpp"
 #include "qgslogger.h"
 #include "qgsvariantutils.h"
 
@@ -78,10 +77,10 @@ void QgsSlider::update()
   if ( QgsVariantUtils::isNull( mValue ) )
     mValue = mMin;
 
-  if ( mMin.userType() == QMetaType::Type::Int &&
-       mMax.userType() == QMetaType::Type::Int &&
-       mStep.userType() == QMetaType::Type::Int &&
-       mValue.userType() == QMetaType::Type::Int )
+  if ( mMin.type() == QVariant::Int &&
+       mMax.type() == QVariant::Int &&
+       mStep.type() == QVariant::Int &&
+       mValue.type() == QVariant::Int )
   {
     QSlider::setMinimum( mMin.toInt() );
     QSlider::setMaximum( mMax.toInt() );
@@ -117,10 +116,10 @@ void QgsSlider::onValueChanged( int value )
   {
     mValue = QVariant();
   }
-  else if ( mMin.userType() == QMetaType::Type::Int &&
-            mMax.userType() == QMetaType::Type::Int &&
-            mStep.userType() == QMetaType::Type::Int &&
-            mValue.userType() == QMetaType::Type::Int )
+  else if ( mMin.type() == QVariant::Int &&
+            mMax.type() == QVariant::Int &&
+            mStep.type() == QVariant::Int &&
+            mValue.type() == QVariant::Int )
   {
     mValue = value;
   }

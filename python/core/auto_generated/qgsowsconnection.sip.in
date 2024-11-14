@@ -3,15 +3,8 @@
  *                                                                      *
  * src/core/qgsowsconnection.h                                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
-
-
-
-
-
-
-
 
 
 
@@ -29,6 +22,11 @@ Connections management
   public:
 
 
+
+
+    const QgsSettingsEntryGroup settingsServiceConnectionDetailsGroup;
+    const QgsSettingsEntryGroup settingsServiceConnectionCredentialsGroup;
+
     QgsOwsConnection( const QString &service, const QString &connName );
 %Docstring
 Constructor
@@ -40,16 +38,22 @@ Constructor
     QString connectionName() const;
 %Docstring
 Returns the connection name.
+
+.. versionadded:: 3.0
 %End
 
     QString connectionInfo() const;
 %Docstring
 Returns connection info string.
+
+.. versionadded:: 3.0
 %End
 
     QString service() const;
 %Docstring
 Returns a string representing the service type, e.g. "WMS".
+
+.. versionadded:: 3.0
 %End
 
     QgsDataSourceUri uri() const;
@@ -62,9 +66,10 @@ Returns the connection uri.
 Adds uri parameters relating to the settings for a WMS or WCS connection to a :py:class:`QgsDataSourceUri` ``uri``.
 Connection settings are taken from the specified QSettings ``settingsKey``.
 
-.. deprecated:: 3.26
+.. versionadded:: 3.0
 
-   Use addWmsWcsConnectionSettings with service and connection name parameters.
+.. deprecated:: QGIS 3.26
+   use addWmsWcsConnectionSettings with service and connection name parameters
 %End
 
     static QgsDataSourceUri &addWmsWcsConnectionSettings( QgsDataSourceUri &uri, const QString &service, const QString &connName );
@@ -80,9 +85,10 @@ Connection settings are taken from the specified ``servcie`` and ``connName``
 Adds uri parameters relating to the settings for a WFS connection to a :py:class:`QgsDataSourceUri` ``uri``.
 Connection settings are taken from the specified QSettings ``settingsKey``.
 
-.. deprecated:: 3.26
+.. versionadded:: 3.0
 
-   Use addWfsConnectionSettings with service and connection name parameters.
+.. deprecated:: QGIS 3.26
+   use addWfsConnectionSettings with service and connection name parameters
 %End
 
     static QgsDataSourceUri &addWfsConnectionSettings( QgsDataSourceUri &uri, const QString &service, const QString &connName );
@@ -122,5 +128,5 @@ Marks the specified connection for the specified service as selected
  *                                                                      *
  * src/core/qgsowsconnection.h                                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -59,12 +59,12 @@ void QgsGridAlgorithm::initAlgorithm( const QVariantMap & )
   addParameter( new QgsProcessingParameterDistance( QStringLiteral( "HSPACING" ), QObject::tr( "Horizontal spacing" ), 1, QStringLiteral( "CRS" ), false, 0, 1000000000.0 ) );
   addParameter( new QgsProcessingParameterDistance( QStringLiteral( "VSPACING" ), QObject::tr( "Vertical spacing" ), 1, QStringLiteral( "CRS" ), false, 0, 1000000000.0 ) );
 
-  addParameter( new QgsProcessingParameterDistance( QStringLiteral( "HOVERLAY" ), QObject::tr( "Horizontal overlay" ), 0, QStringLiteral( "CRS" ), false ) );
-  addParameter( new QgsProcessingParameterDistance( QStringLiteral( "VOVERLAY" ), QObject::tr( "Vertical overlay" ), 0, QStringLiteral( "CRS" ), false ) );
+  addParameter( new QgsProcessingParameterDistance( QStringLiteral( "HOVERLAY" ), QObject::tr( "Horizontal overlay" ), 0, QStringLiteral( "CRS" ), false, 0, 1000000000.0 ) );
+  addParameter( new QgsProcessingParameterDistance( QStringLiteral( "VOVERLAY" ), QObject::tr( "Vertical overlay" ), 0, QStringLiteral( "CRS" ), false, 0, 1000000000.0 ) );
 
   addParameter( new QgsProcessingParameterCrs( QStringLiteral( "CRS" ), QObject::tr( "Grid CRS" ), QStringLiteral( "ProjectCrs" ) ) );
 
-  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Grid" ), Qgis::ProcessingSourceType::VectorAnyGeometry ) );
+  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Grid" ), QgsProcessing::TypeVectorAnyGeometry ) );
 }
 
 QString QgsGridAlgorithm::shortHelpString() const
@@ -110,37 +110,24 @@ QVariantMap QgsGridAlgorithm::processAlgorithm( const QVariantMap &parameters, Q
   if ( mGridExtent.height() < mVSpacing ) //check if grid extent is smaller than vertical spacing
     throw QgsProcessingException( QObject::tr( "Vertical spacing is too large for the covered area." ) );
 
-  // if ( mHSpacing <= mHOverlay || mVSpacing <= mVOverlay )
-  //   throw QgsProcessingException( QObject::tr( "Invalid overlay: horizontal: '%1', vertical: '%2'" ).arg( mHOverlay ).arg( mVOverlay ) );
+  if ( mHSpacing <= mHOverlay || mVSpacing <= mVOverlay )
+    throw QgsProcessingException( QObject::tr( "Invalid overlay: horizontal: '%1', vertical: '%2'" ).arg( mHOverlay ).arg( mVOverlay ) );
 
   QgsFields fields = QgsFields();
-  fields.append( QgsField( QStringLiteral( "id" ), QMetaType::Type::LongLong ) );
-  fields.append( QgsField( QStringLiteral( "left" ), QMetaType::Type::Double ) );
-  fields.append( QgsField( QStringLiteral( "top" ), QMetaType::Type::Double ) );
-  fields.append( QgsField( QStringLiteral( "right" ), QMetaType::Type::Double ) );
-  fields.append( QgsField( QStringLiteral( "bottom" ), QMetaType::Type::Double ) );
+  fields.append( QgsField( QStringLiteral( "id" ), QVariant::LongLong ) );
+  fields.append( QgsField( QStringLiteral( "left" ), QVariant::Double ) );
+  fields.append( QgsField( QStringLiteral( "top" ), QVariant::Double ) );
+  fields.append( QgsField( QStringLiteral( "right" ), QVariant::Double ) );
+  fields.append( QgsField( QStringLiteral( "bottom" ), QVariant::Double ) );
 
-  switch ( mIdx )
-  {
-    case 0: //point
-    case 2: //rectangle
-    case 4: //hexagon
-      fields.append( QgsField( QStringLiteral( "row_index" ), QMetaType::Type::LongLong ) );
-      fields.append( QgsField( QStringLiteral( "col_index" ), QMetaType::Type::LongLong ) );
-      break;
-    default:
-      break;
-  }
-
-
-  Qgis::WkbType outputWkb = Qgis::WkbType::Polygon;
+  QgsWkbTypes::Type outputWkb = QgsWkbTypes::Polygon;
   switch ( mIdx )
   {
     case 0:
-      outputWkb = Qgis::WkbType::Point;
+      outputWkb = QgsWkbTypes::Point;
       break;
     case 1:
-      outputWkb = Qgis::WkbType::LineString;
+      outputWkb = QgsWkbTypes::LineString;
       break;
   }
 
@@ -170,7 +157,7 @@ QVariantMap QgsGridAlgorithm::processAlgorithm( const QVariantMap &parameters, Q
       break;
   }
 
-  sink->finalize();
+
   QVariantMap outputs;
   outputs.insert( QStringLiteral( "OUTPUT" ), dest );
   return outputs;
@@ -199,7 +186,7 @@ void QgsGridAlgorithm::createPointGrid( std::unique_ptr< QgsFeatureSink > &sink,
       const double y = mGridExtent.yMaximum() - ( row * mVSpacing - row * mVOverlay );
 
       f.setGeometry( QgsGeometry( new QgsPoint( x, y ) ) );
-      f.setAttributes( QgsAttributes() << id << x << y << x + mHSpacing << y + mVSpacing << row << col );
+      f.setAttributes( QgsAttributes() << id << x << y << x + mHSpacing << y + mVSpacing );
       if ( !sink->addFeature( f, QgsFeatureSink::FastInsert ) )
         throw QgsProcessingException( writeFeatureError( sink.get(), QVariantMap(), QStringLiteral( "OUTPUT" ) ) );
 
@@ -359,7 +346,7 @@ void QgsGridAlgorithm::createRectangleGrid( std::unique_ptr< QgsFeatureSink > &s
       std::unique_ptr< QgsPolygon > poly = std::make_unique< QgsPolygon >();
       poly->setExteriorRing( new QgsLineString( ringX, ringY ) );
       f.setGeometry( std::move( poly ) );
-      f.setAttributes( QgsAttributes() << id << x1 << y1 << x2 << y2 << row << col );
+      f.setAttributes( QgsAttributes() << id << x1 << y1 << x2 << y2 );
       if ( !sink->addFeature( f, QgsFeatureSink::FastInsert ) )
         throw QgsProcessingException( writeFeatureError( sink.get(), QVariantMap(), QStringLiteral( "OUTPUT" ) ) );
 
@@ -526,7 +513,7 @@ void QgsGridAlgorithm::createHexagonGrid( std::unique_ptr<QgsFeatureSink> &sink,
       std::unique_ptr< QgsPolygon > poly = std::make_unique< QgsPolygon >();
       poly->setExteriorRing( new QgsLineString( ringX, ringY ) );
       f.setGeometry( std::move( poly ) );
-      f.setAttributes( QgsAttributes() << id << x1 << y1 << x4 << y3 << row << col );
+      f.setAttributes( QgsAttributes() << id << x1 << y1 << x4 << y3 );
       if ( !sink->addFeature( f, QgsFeatureSink::FastInsert ) )
         throw QgsProcessingException( writeFeatureError( sink.get(), QVariantMap(), QStringLiteral( "OUTPUT" ) ) );
 

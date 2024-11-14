@@ -648,6 +648,9 @@
          <number>0</number>
         </property>
         <widget class="QWidget" name="tbpAuthentication">
+         <property name="whatsThis">
+          <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;&lt;br/&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+         </property>
          <attribute name="title">
           <string>Authentication</string>
          </attribute>
@@ -695,6 +698,9 @@
             <item row="1" column="0">
              <widget class="QCheckBox" name="chkValidateCertificate">
               <property name="toolTip">
+               <string>Restrict the displayed tables to those that are in the layer registries.</string>
+              </property>
+              <property name="whatsThis">
                <string>Restricts the displayed tables to those that are found in the layer registries (geometry_columns, geography_columns, topology.layer). This can speed up the initial display of spatial tables.</string>
               </property>
               <property name="text">
@@ -874,20 +880,13 @@
       <item>
        <widget class="QCheckBox" name="chkUserTablesOnly">
         <property name="toolTip">
+         <string>Restrict the displayed tables to those that are in the layer registries.</string>
+        </property>
+        <property name="whatsThis">
          <string>Restricts the displayed tables to those that are found in the layer registries (geometry_columns, geography_columns, topology.layer). This can speed up the initial display of spatial tables.</string>
         </property>
         <property name="text">
          <string>Only look for user's tables</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QCheckBox" name="chkUseEstimatedMetadata">
-        <property name="toolTip">
-         <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;If checked, estimated table metadata will be used if available. For large tables, this avoids slow table loads and potentially expensive computations, but may result in incorrect layer properties such as layer extent. The fast extent estimation is available starting with QRC1/2024 and SP8 in HANA Cloud and HANA On-Premise respectively.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-        </property>
-        <property name="text">
-         <string>Use estimated table metadata</string>
         </property>
        </widget>
       </item>
@@ -940,7 +939,7 @@
   <customwidget>
    <class>QgsAuthSettingsWidget</class>
    <extends>QWidget</extends>
-   <header>qgsauthsettingswidget.h</header>
+   <header>auth/qgsauthsettingswidget.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>
@@ -975,8 +974,8 @@
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>331</x>
-     <y>841</y>
+     <x>322</x>
+     <y>611</y>
     </hint>
     <hint type="destinationlabel">
      <x>450</x>
@@ -991,8 +990,8 @@
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>413</x>
-     <y>841</y>
+     <x>404</x>
+     <y>611</y>
     </hint>
     <hint type="destinationlabel">
      <x>450</x>
@@ -1002,7 +1001,7 @@
   </connection>
  </connections>
  <buttongroups>
-  <buttongroup name="buttonGroup_2"/>
   <buttongroup name="buttonGroup"/>
+  <buttongroup name="buttonGroup_2"/>
  </buttongroups>
 </ui>

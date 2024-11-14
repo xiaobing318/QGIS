@@ -22,10 +22,9 @@
 #include "qgssymbollayerutils.h"
 #include "qgspointcloudlayer.h"
 #include "qgspointcloudindex.h"
+#include "qgspointcloudlayerelevationproperties.h"
 #include "qgslogger.h"
 #include "qgscircle.h"
-#include "qgsunittypes.h"
-
 #include <QThread>
 #include <QPointer>
 
@@ -38,6 +37,11 @@ QgsPointCloudRenderContext::QgsPointCloudRenderContext( QgsRenderContext &contex
   , mFeedback( feedback )
 {
 
+}
+
+void QgsPointCloudRenderContext::setElevationMap( QgsElevationMap *elevationMap )
+{
+  mElevationMap.reset( elevationMap );
 }
 
 long QgsPointCloudRenderContext::pointsRendered() const
@@ -100,7 +104,7 @@ void QgsPointCloudRenderer::startRender( QgsPointCloudRenderContext &context )
   }
 #endif
 
-  mDefaultPainterPenWidth = context.renderContext().convertToPainterUnits( pointSize(), pointSizeUnit(), pointSizeMapUnitScale() );
+  mPainterPenWidth = context.renderContext().convertToPainterUnits( pointSize(), pointSizeUnit(), pointSizeMapUnitScale() );
 
   switch ( mPointSymbol )
   {
@@ -141,12 +145,12 @@ void QgsPointCloudRenderer::setMaximumScreenError( double error )
   mMaximumScreenError = error;
 }
 
-Qgis::RenderUnit QgsPointCloudRenderer::maximumScreenErrorUnit() const
+QgsUnitTypes::RenderUnit QgsPointCloudRenderer::maximumScreenErrorUnit() const
 {
   return mMaximumScreenErrorUnit;
 }
 
-void QgsPointCloudRenderer::setMaximumScreenErrorUnit( Qgis::RenderUnit unit )
+void QgsPointCloudRenderer::setMaximumScreenErrorUnit( QgsUnitTypes::RenderUnit unit )
 {
   mMaximumScreenErrorUnit = unit;
 }
@@ -163,30 +167,25 @@ QStringList QgsPointCloudRenderer::legendRuleKeys() const
 
 void QgsPointCloudRenderer::drawPointToElevationMap( double x, double y, double z, QgsPointCloudRenderContext &context ) const
 {
-  drawPointToElevationMap( x, y, z, mDefaultPainterPenWidth, context );
-}
-
-void QgsPointCloudRenderer::drawPointToElevationMap( double x, double y, double z, int width, QgsPointCloudRenderContext &context ) const
-{
   const QPointF originalXY( x, y );
   context.renderContext().mapToPixel().transformInPlace( x, y );
-  QPainter *elevationPainter = context.renderContext().elevationMap()->painter();
+  QPainter *elevationPainter = context.elevationMap()->painter();
 
   QBrush brush( QgsElevationMap::encodeElevation( z ) );
   switch ( mPointSymbol )
   {
     case Qgis::PointCloudSymbol::Square:
-      elevationPainter->fillRect( QRectF( x - width * 0.5,
-                                          y - width * 0.5,
-                                          width, width ), brush );
+      elevationPainter->fillRect( QRectF( x - mPainterPenWidth * 0.5,
+                                          y - mPainterPenWidth * 0.5,
+                                          mPainterPenWidth, mPainterPenWidth ), brush );
       break;
 
     case Qgis::PointCloudSymbol::Circle:
       elevationPainter->setBrush( brush );
       elevationPainter->setPen( Qt::NoPen );
-      elevationPainter->drawEllipse( QRectF( x - width * 0.5,
-                                             y - width * 0.5,
-                                             width, width ) );
+      elevationPainter->drawEllipse( QRectF( x - mPainterPenWidth * 0.5,
+                                             y - mPainterPenWidth * 0.5,
+                                             mPainterPenWidth, mPainterPenWidth ) );
       break;
   };
 }
@@ -200,11 +199,10 @@ void QgsPointCloudRenderer::copyCommonProperties( QgsPointCloudRenderer *destina
   destination->setMaximumScreenErrorUnit( mMaximumScreenErrorUnit );
   destination->setPointSymbol( mPointSymbol );
   destination->setDrawOrder2d( mDrawOrder2d );
-
-  destination->setRenderAsTriangles( mRenderAsTriangles );
-  destination->setHorizontalTriangleFilter( mHorizontalTriangleFilter );
-  destination->setHorizontalTriangleFilterThreshold( mHorizontalTriangleFilterThreshold );
-  destination->setHorizontalTriangleFilterUnit( mHorizontalTriangleFilterUnit );
+  destination->setEyeDomeLightingEnabled( mEyeDomeLightingEnabled );
+  destination->setEyeDomeLightingStrength( mEyeDomeLightingStrength );
+  destination->setEyeDomeLightingDistance( mEyeDomeLightingDistance );
+  destination->setEyeDomeLightingDistanceUnit( mEyeDomeLightingDistanceUnit );
 }
 
 void QgsPointCloudRenderer::restoreCommonProperties( const QDomElement &element, const QgsReadWriteContext & )
@@ -217,11 +215,10 @@ void QgsPointCloudRenderer::restoreCommonProperties( const QDomElement &element,
   mMaximumScreenErrorUnit = QgsUnitTypes::decodeRenderUnit( element.attribute( QStringLiteral( "maximumScreenErrorUnit" ), QStringLiteral( "MM" ) ) );
   mPointSymbol = static_cast< Qgis::PointCloudSymbol >( element.attribute( QStringLiteral( "pointSymbol" ), QStringLiteral( "0" ) ).toInt() );
   mDrawOrder2d = static_cast< Qgis::PointCloudDrawOrder >( element.attribute( QStringLiteral( "drawOrder2d" ), QStringLiteral( "0" ) ).toInt() );
-
-  mRenderAsTriangles = element.attribute( QStringLiteral( "renderAsTriangles" ), QStringLiteral( "0" ) ).toInt();
-  mHorizontalTriangleFilter = element.attribute( QStringLiteral( "horizontalTriangleFilter" ), QStringLiteral( "0" ) ).toInt();
-  mHorizontalTriangleFilterThreshold = element.attribute( QStringLiteral( "horizontalTriangleFilterThreshold" ), QStringLiteral( "5" ) ).toDouble();
-  mHorizontalTriangleFilterUnit = QgsUnitTypes::decodeRenderUnit( element.attribute( QStringLiteral( "horizontalTriangleFilterUnit" ), QStringLiteral( "MM" ) ) );
+  mEyeDomeLightingEnabled = element.attribute( QStringLiteral( "use-eye-dome-lighting" ), QStringLiteral( "0" ) ).toInt();
+  mEyeDomeLightingStrength = element.attribute( QStringLiteral( "eye-dome-lighting-strength" ), QStringLiteral( "1000" ) ).toInt();
+  mEyeDomeLightingDistance = element.attribute( QStringLiteral( "eye-dome-lighting-distance" ), QStringLiteral( "0.5" ) ).toDouble();
+  mEyeDomeLightingDistanceUnit = QgsUnitTypes::decodeRenderUnit( element.attribute( QStringLiteral( "eye-dome-lighting-distance-unit" ) ) );
 }
 
 void QgsPointCloudRenderer::saveCommonProperties( QDomElement &element, const QgsReadWriteContext & ) const
@@ -234,11 +231,10 @@ void QgsPointCloudRenderer::saveCommonProperties( QDomElement &element, const Qg
   element.setAttribute( QStringLiteral( "maximumScreenErrorUnit" ), QgsUnitTypes::encodeUnit( mMaximumScreenErrorUnit ) );
   element.setAttribute( QStringLiteral( "pointSymbol" ), QString::number( static_cast< int >( mPointSymbol ) ) );
   element.setAttribute( QStringLiteral( "drawOrder2d" ), QString::number( static_cast< int >( mDrawOrder2d ) ) );
-
-  element.setAttribute( QStringLiteral( "renderAsTriangles" ), QString::number( static_cast< int >( mRenderAsTriangles ) ) );
-  element.setAttribute( QStringLiteral( "horizontalTriangleFilter" ), QString::number( static_cast< int >( mHorizontalTriangleFilter ) ) );
-  element.setAttribute( QStringLiteral( "horizontalTriangleFilterThreshold" ), qgsDoubleToString( mHorizontalTriangleFilterThreshold ) );
-  element.setAttribute( QStringLiteral( "horizontalTriangleFilterUnit" ), QgsUnitTypes::encodeUnit( mHorizontalTriangleFilterUnit ) );
+  element.setAttribute( QStringLiteral( "use-eye-dome-lighting" ), QString::number( mEyeDomeLightingEnabled ) );
+  element.setAttribute( QStringLiteral( "eye-dome-lighting-strength" ), QString::number( mEyeDomeLightingStrength ) );
+  element.setAttribute( QStringLiteral( "eye-dome-lighting-distance" ), QString::number( mEyeDomeLightingDistance ) );
+  element.setAttribute( QStringLiteral( "eye-dome-lighting-distance-unit" ), QgsUnitTypes::encodeUnit( mEyeDomeLightingDistanceUnit ) );
 }
 
 Qgis::PointCloudSymbol QgsPointCloudRenderer::pointSymbol() const
@@ -265,36 +261,51 @@ QVector<QVariantMap> QgsPointCloudRenderer::identify( QgsPointCloudLayer *layer,
 {
   QVector<QVariantMap> selectedPoints;
 
+  QgsPointCloudIndex *index = layer->dataProvider()->index();
+
+  if ( !index || !index->isValid() )
+    return selectedPoints;
+
+  const IndexedPointCloudNode root = index->root();
+
   const double maxErrorPixels = renderContext.convertToPainterUnits( maximumScreenError(), maximumScreenErrorUnit() );// in pixels
 
-  const QgsRectangle layerExtentLayerCoords = layer->dataProvider()->extent();
-  QgsRectangle layerExtentMapCoords = layerExtentLayerCoords;
+  const QgsRectangle rootNodeExtentLayerCoords = index->nodeMapExtent( root );
+  QgsRectangle rootNodeExtentMapCoords;
   if ( !renderContext.coordinateTransform().isShortCircuited() )
   {
     try
     {
       QgsCoordinateTransform extentTransform = renderContext.coordinateTransform();
       extentTransform.setBallparkTransformsAreAppropriate( true );
-      layerExtentMapCoords = extentTransform.transformBoundingBox( layerExtentLayerCoords );
+      rootNodeExtentMapCoords = extentTransform.transformBoundingBox( rootNodeExtentLayerCoords );
     }
     catch ( QgsCsException & )
     {
-      QgsDebugError( QStringLiteral( "Could not transform node extent to map CRS" ) );
+      QgsDebugMsg( QStringLiteral( "Could not transform node extent to map CRS" ) );
+      rootNodeExtentMapCoords = rootNodeExtentLayerCoords;
     }
   }
+  else
+  {
+    rootNodeExtentMapCoords = rootNodeExtentLayerCoords;
+  }
+
+  const double rootErrorInMapCoordinates = rootNodeExtentMapCoords.width() / index->span();
+  const double rootErrorInLayerCoordinates = rootNodeExtentLayerCoords.width() / index->span();
 
   const double mapUnitsPerPixel = renderContext.mapToPixel().mapUnitsPerPixel();
-  if ( ( mapUnitsPerPixel < 0.0 ) || ( maxErrorPixels < 0.0 ) )
+  if ( ( rootErrorInMapCoordinates < 0.0 ) || ( mapUnitsPerPixel < 0.0 ) || ( maxErrorPixels < 0.0 ) )
   {
-    QgsDebugError( QStringLiteral( "invalid screen error" ) );
+    QgsDebugMsg( QStringLiteral( "invalid screen error" ) );
     return selectedPoints;
   }
 
   const double maxErrorInMapCoordinates = maxErrorPixels * mapUnitsPerPixel;
-  const double maxErrorInLayerCoordinates = maxErrorInMapCoordinates * layerExtentLayerCoords.width() / layerExtentMapCoords.width();
+  const double maxErrorInLayerCoordinates = maxErrorInMapCoordinates * rootErrorInLayerCoordinates / rootErrorInMapCoordinates;
 
   QgsGeometry selectionGeometry = geometry;
-  if ( geometry.type() == Qgis::GeometryType::Point )
+  if ( geometry.type() == QgsWkbTypes::PointGeometry )
   {
     const double x = geometry.asPoint().x();
     const double y = geometry.asPoint().y();
@@ -337,7 +348,7 @@ QVector<QVariantMap> QgsPointCloudRenderer::identify( QgsPointCloudLayer *layer,
   }
   catch ( QgsCsException & )
   {
-    QgsDebugError( QStringLiteral( "Could not transform geometry to layer CRS" ) );
+    QgsDebugMsg( QStringLiteral( "Could not transform geometry to layer CRS" ) );
     return selectedPoints;
   }
 

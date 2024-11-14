@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/fieldformatter/qgsvaluerelationfieldformatter.h             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -16,6 +16,8 @@ Field formatter for a value relation field.
 
 A value relation field formatter looks up the values from
 features on another layer.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -24,17 +26,19 @@ features on another layer.
   public:
     struct ValueRelationItem
     {
-      ValueRelationItem( const QVariant &key, const QString &value, const QString &description = QString(), const QVariant group = QVariant() );
+      ValueRelationItem( const QVariant &key, const QString &value, const QString &description = QString() );
 %Docstring
 Constructor for ValueRelationItem
 %End
 
       ValueRelationItem();
+%Docstring
+Constructor for ValueRelationItem
+%End
 
       QVariant key;
       QString value;
       QString description;
-      QVariant group;
     };
 
     typedef QVector < QgsValueRelationFieldFormatter::ValueRelationItem > ValueRelationCache;
@@ -73,6 +77,8 @@ if doing multiple lookups in a loop.
 :param parentFormFeature: For embedded forms only, the feature currently being edited in the parent form with current attribute values
 
 :return: A kvp list of values for the widget
+
+.. versionadded:: 3.0
 %End
 
     static bool expressionRequiresFormScope( const QString &expression );
@@ -156,7 +162,7 @@ optionally checks for ``parentFeature``
 
     static QgsVectorLayer *resolveLayer( const QVariantMap &config, const QgsProject *project );
 %Docstring
-Returns the (possibly ``None``) layer from the widget's ``config`` and ``project``
+Returns the (possibly NULL) layer from the widget's ``config`` and ``project``
 
 .. versionadded:: 3.8
 %End
@@ -172,5 +178,5 @@ Returns the (possibly ``None``) layer from the widget's ``config`` and ``project
  *                                                                      *
  * src/core/fieldformatter/qgsvaluerelationfieldformatter.h             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

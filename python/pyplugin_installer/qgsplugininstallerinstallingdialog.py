@@ -25,20 +25,16 @@
 """
 from builtins import str
 
-from pathlib import Path
-
-from qgis.PyQt import uic
 from qgis.PyQt.QtCore import QDir, QUrl, QFile, QCoreApplication
 from qgis.PyQt.QtWidgets import QDialog
 from qgis.PyQt.QtNetwork import QNetworkRequest, QNetworkReply
 
+import qgis
 from qgis.core import QgsNetworkAccessManager, QgsApplication, QgsNetworkRequestParameters
-from qgis.utils import HOME_PLUGIN_PATH
 
+from .ui_qgsplugininstallerinstallingbase import Ui_QgsPluginInstallerInstallingDialogBase
 from .installer_data import removeDir, repositories
 from .unzip import unzip
-
-Ui_QgsPluginInstallerInstallingDialogBase, _ = uic.loadUiType(Path(__file__).parent / 'qgsplugininstallerinstallingbase.ui')
 
 
 class QgsPluginInstallerInstallingDialog(QDialog, Ui_QgsPluginInstallerInstallingDialogBase):
@@ -66,7 +62,7 @@ class QgsPluginInstallerInstallingDialog(QDialog, Ui_QgsPluginInstallerInstallin
 
     def requestDownloading(self):
         self.request = QNetworkRequest(self.url)
-        self.request.setAttribute(QNetworkRequest.Attribute(QgsNetworkRequestParameters.RequestAttributes.AttributeInitiatorClass), "QgsPluginInstallerInstallingDialog")
+        self.request.setAttribute(QNetworkRequest.Attribute(QgsNetworkRequestParameters.AttributeInitiatorClass), "QgsPluginInstallerInstallingDialog")
         authcfg = repositories.all()[self.plugin["zip_repository"]]["authcfg"]
         if authcfg and isinstance(authcfg, str):
             if not QgsApplication.authManager().updateNetworkRequest(
@@ -83,11 +79,11 @@ class QgsPluginInstallerInstallingDialog(QDialog, Ui_QgsPluginInstallerInstallin
 
             self.stateChanged(4)
 
-    def exec(self):
+    def exec_(self):
         if self.request is None:
-            return QDialog.DialogCode.Rejected
+            return QDialog.Rejected
 
-        QDialog.exec(self)
+        QDialog.exec_(self)
 
     # ----------------------------------------- #
     def result(self):
@@ -117,15 +113,15 @@ class QgsPluginInstallerInstallingDialog(QDialog, Ui_QgsPluginInstallerInstallin
     def requestFinished(self):
         reply = self.sender()
         self.buttonBox.setEnabled(False)
-        if reply.error() != QNetworkReply.NetworkError.NoError:
+        if reply.error() != QNetworkReply.NoError:
             self.mResult = reply.errorString()
-            if reply.error() == QNetworkReply.NetworkError.OperationCanceledError:
+            if reply.error() == QNetworkReply.OperationCanceledError:
                 self.mResult += "<br/><br/>" + QCoreApplication.translate("QgsPluginInstaller", "If you haven't canceled the download manually, it might be caused by a timeout. In this case consider increasing the connection timeout value in QGIS options.")
             self.reject()
             reply.deleteLater()
             return
-        elif reply.attribute(QNetworkRequest.Attribute.HttpStatusCodeAttribute) in (301, 302):
-            redirectionUrl = reply.attribute(QNetworkRequest.Attribute.RedirectionTargetAttribute)
+        elif reply.attribute(QNetworkRequest.HttpStatusCodeAttribute) in (301, 302):
+            redirectionUrl = reply.attribute(QNetworkRequest.RedirectionTargetAttribute)
             self.redirectionCounter += 1
             if self.redirectionCounter > 4:
                 self.mResult = QCoreApplication.translate("QgsPluginInstaller", "Too many redirections")
@@ -141,12 +137,12 @@ class QgsPluginInstallerInstallingDialog(QDialog, Ui_QgsPluginInstallerInstallin
                 reply.deleteLater()
                 return
 
-        self.file.open(QFile.OpenModeFlag.WriteOnly)
+        self.file.open(QFile.WriteOnly)
         self.file.write(reply.readAll())
         self.file.close()
         self.stateChanged(0)
         reply.deleteLater()
-        pluginDir = HOME_PLUGIN_PATH
+        pluginDir = qgis.utils.home_plugin_path
         tmpPath = self.file.fileName()
         # make sure that the parent directory exists
         if not QDir(pluginDir).exists():

@@ -25,6 +25,7 @@
  * \ingroup gui
  * \class QgsOptionsPageWidget
  * \brief Base class for widgets for pages included in the options dialog.
+ * \since QGIS 3.0
  */
 class GUI_EXPORT QgsOptionsPageWidget : public QWidget
 {
@@ -76,12 +77,6 @@ class GUI_EXPORT QgsOptionsPageWidget : public QWidget
      */
     virtual void apply() = 0;
 
-    /**
-     * Called to cancel settings changed in the options page (e.g. save them to
-     * QgsSettings objects). This is usually called when the options dialog is canceled.
-     */
-    virtual void cancel() { return; }
-
   protected:
 
     /**
@@ -104,6 +99,7 @@ class GUI_EXPORT QgsOptionsPageWidget : public QWidget
  * \ingroup gui
  * \class QgsOptionsWidgetFactory
  * \brief A factory class for creating custom options pages.
+ * \since QGIS 3.0
  */
 // NOTE - this is a QObject so we can detect its destruction and avoid
 // QGIS crashing when a plugin crashes/exits without deregistering a factory
@@ -113,13 +109,13 @@ class GUI_EXPORT QgsOptionsWidgetFactory : public QObject
 
   public:
 
+    //! Constructor
     QgsOptionsWidgetFactory() = default;
 
     //! Constructor
-    QgsOptionsWidgetFactory( const QString &title, const QIcon &icon, const QString &key = QString() )
+    QgsOptionsWidgetFactory( const QString &title, const QIcon &icon )
       : mTitle( title )
       , mIcon( icon )
-      , mKey( key )
     {}
 
     /**
@@ -146,20 +142,6 @@ class GUI_EXPORT QgsOptionsWidgetFactory : public QObject
      * \see title()
      */
     void setTitle( const QString &title ) { mTitle = title; }
-
-    /**
-     * The key of the panel (untranslated title).
-     * \see setKey()
-     *
-     * \since QGIS 3.32
-     */
-    virtual QString key() const { return mKey; }
-
-    /**
-     * Set the \a key for the interface.
-     * \see key()
-     */
-    void setKey( const QString &key ) { mKey = key; }
 
     /**
      * Returns a tab name hinting at where this page should be inserted into the
@@ -196,7 +178,6 @@ class GUI_EXPORT QgsOptionsWidgetFactory : public QObject
   private:
     QString mTitle;
     QIcon mIcon;
-    QString mKey;
 
 
 };

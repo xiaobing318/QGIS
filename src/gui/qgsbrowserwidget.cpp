@@ -13,7 +13,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsbrowserwidget.h"
-#include "moc_qgsbrowserwidget.cpp"
 
 #include <QAbstractTextDocumentLayout>
 #include <QHeaderView>

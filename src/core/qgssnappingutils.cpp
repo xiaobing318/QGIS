@@ -14,16 +14,16 @@
  ***************************************************************************/
 
 #include "qgssnappingutils.h"
-#include "moc_qgssnappingutils.cpp"
 #include "qgsgeometry.h"
 #include "qgsproject.h"
 #include "qgsvectorlayer.h"
 #include "qgslogger.h"
+#include "qgsrenderer.h"
 #include "qgsrendercontext.h"
 
 QgsSnappingUtils::QgsSnappingUtils( QObject *parent, bool enableSnappingForInvisibleFeature )
   : QObject( parent )
-  , mSnappingConfig( QgsProject::instance() ) // skip-keyword-check
+  , mSnappingConfig( QgsProject::instance() )
   , mEnableSnappingForInvisibleFeature( enableSnappingForInvisibleFeature )
 {
 }
@@ -60,7 +60,7 @@ void QgsSnappingUtils::clearAllLocators()
 
 QgsPointLocator *QgsSnappingUtils::locatorForLayerUsingStrategy( QgsVectorLayer *vl, const QgsPointXY &pointMap, double tolerance )
 {
-  if ( vl->geometryType() == Qgis::GeometryType::Null || mStrategy == IndexNeverFull )
+  if ( vl->geometryType() == QgsWkbTypes::NullGeometry || mStrategy == IndexNeverFull )
     return nullptr;
 
   QgsRectangle aoi( pointMap.x() - tolerance, pointMap.y() - tolerance,
@@ -127,7 +127,7 @@ static QgsPointLocator::Match _findClosestSegmentIntersection( const QgsPointXY 
 
   // get intersection points
   QList<QgsPointXY> newPoints;
-  if ( g.wkbType() == Qgis::WkbType::LineString )
+  if ( g.wkbType() == QgsWkbTypes::LineString )
   {
     const auto constAsPolyline = g.asPolyline();
     for ( const QgsPointXY &p : constAsPolyline )
@@ -136,7 +136,7 @@ static QgsPointLocator::Match _findClosestSegmentIntersection( const QgsPointXY 
         newPoints << p;
     }
   }
-  if ( g.wkbType() == Qgis::WkbType::MultiLineString )
+  if ( g.wkbType() == QgsWkbTypes::MultiLineString )
   {
     const auto constAsMultiPolyline = g.asMultiPolyline();
     for ( const QgsPolylineXY &pl : constAsMultiPolyline )
@@ -236,15 +236,15 @@ static void _updateBestMatch( QgsPointLocator::Match &bestMatch, const QgsPointX
   }
   if ( type & QgsPointLocator::Centroid )
   {
-    _replaceIfBetter( bestMatch, loc->nearestCentroid( pointMap, tolerance, filter, relaxed ), tolerance );
+    _replaceIfBetter( bestMatch, loc->nearestCentroid( pointMap, tolerance, filter ), tolerance );
   }
   if ( type & QgsPointLocator::MiddleOfSegment )
   {
-    _replaceIfBetter( bestMatch, loc->nearestMiddleOfSegment( pointMap, tolerance, filter, relaxed ), tolerance );
+    _replaceIfBetter( bestMatch, loc->nearestMiddleOfSegment( pointMap, tolerance, filter ), tolerance );
   }
   if ( type & QgsPointLocator::LineEndpoint )
   {
-    _replaceIfBetter( bestMatch, loc->nearestLineEndpoints( pointMap, tolerance, filter, relaxed ), tolerance );
+    _replaceIfBetter( bestMatch, loc->nearestLineEndpoints( pointMap, tolerance, filter ), tolerance );
   }
 }
 
@@ -449,7 +449,7 @@ void QgsSnappingUtils::prepareIndex( const QList<LayerAndAreaOfInterest> &layers
   {
     QgsVectorLayer *vl = entry.first;
 
-    if ( vl->geometryType() == Qgis::GeometryType::Null || mStrategy == IndexNeverFull )
+    if ( vl->geometryType() == QgsWkbTypes::NullGeometry || mStrategy == IndexNeverFull )
       continue;
 
     QgsPointLocator *loc = locatorForLayer( vl );
@@ -542,7 +542,7 @@ void QgsSnappingUtils::prepareIndex( const QList<LayerAndAreaOfInterest> &layers
 
     if ( !relaxed )
     {
-      QgsDebugMsgLevel( QStringLiteral( "Prepare index total: %1 ms" ).arg( t.elapsed() ), 2 );
+      QgsDebugMsg( QStringLiteral( "Prepare index total: %1 ms" ).arg( t.elapsed() ) );
     }
   }
 }
@@ -650,7 +650,7 @@ QString QgsSnappingUtils::dump()
     msg += QString( "layer : %1\n"
                     "config: %2   tolerance %3 %4\n" )
            .arg( layer.layer->name() )
-           .arg( layer.type ).arg( layer.tolerance ).arg( static_cast<int>( layer.unit ) );
+           .arg( layer.type ).arg( layer.tolerance ).arg( layer.unit );
 
     if ( mStrategy == IndexAlwaysFull || mStrategy == IndexHybrid || mStrategy == IndexExtent )
     {

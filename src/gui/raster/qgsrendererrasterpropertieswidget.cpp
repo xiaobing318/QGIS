@@ -13,7 +13,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsrendererrasterpropertieswidget.h"
-#include "moc_qgsrendererrasterpropertieswidget.cpp"
 
 #include "qgis.h"
 #include "qgsmapcanvas.h"
@@ -25,17 +24,19 @@
 #include "qgsrasterrendererregistry.h"
 #include "qgssinglebandgrayrendererwidget.h"
 #include "qgssinglebandpseudocolorrendererwidget.h"
-#include "qgsrastersinglecolorrendererwidget.h"
 #include "qgsmultibandcolorrendererwidget.h"
 #include "qgspalettedrendererwidget.h"
 #include "qgshillshaderendererwidget.h"
 #include "qgsmultibandcolorrenderer.h"
 #include "qgssinglebandgrayrenderer.h"
 #include "qgsapplication.h"
+#include "qgscolorrampimpl.h"
 #include "qgsproject.h"
 #include "qgsprojectutils.h"
 
-void QgsRendererRasterPropertiesWidget::initRendererWidgetFunctions()
+#include "qgsmessagelog.h"
+
+static void _initRendererWidgetFunctions()
 {
   static bool sInitialized = false;
   if ( sInitialized )
@@ -45,12 +46,13 @@ void QgsRendererRasterPropertiesWidget::initRendererWidgetFunctions()
   QgsApplication::rasterRendererRegistry()->insertWidgetFunction( QStringLiteral( "multibandcolor" ), QgsMultiBandColorRendererWidget::create );
   QgsApplication::rasterRendererRegistry()->insertWidgetFunction( QStringLiteral( "singlebandpseudocolor" ), QgsSingleBandPseudoColorRendererWidget::create );
   QgsApplication::rasterRendererRegistry()->insertWidgetFunction( QStringLiteral( "singlebandgray" ), QgsSingleBandGrayRendererWidget::create );
-  QgsApplication::rasterRendererRegistry()->insertWidgetFunction( QStringLiteral( "singlecolor" ), QgsRasterSingleColorRendererWidget::create );
   QgsApplication::rasterRendererRegistry()->insertWidgetFunction( QStringLiteral( "hillshade" ), QgsHillshadeRendererWidget::create );
   QgsApplication::rasterRendererRegistry()->insertWidgetFunction( QStringLiteral( "contour" ), QgsRasterContourRendererWidget::create );
 
   sInitialized = true;
 }
+
+
 
 QgsRendererRasterPropertiesWidget::QgsRendererRasterPropertiesWidget( QgsMapLayer *layer, QgsMapCanvas *canvas, QWidget *parent )
   : QgsMapLayerConfigWidget( layer, canvas, parent )
@@ -62,7 +64,7 @@ QgsRendererRasterPropertiesWidget::QgsRendererRasterPropertiesWidget( QgsMapLaye
   setupUi( this );
   connect( mResetColorRenderingBtn, &QToolButton::clicked, this, &QgsRendererRasterPropertiesWidget::mResetColorRenderingBtn_clicked );
 
-  initRendererWidgetFunctions();
+  _initRendererWidgetFunctions();
 
   mResamplingUtils.initWidgets( mRasterLayer, mZoomedInResamplingComboBox, mZoomedOutResamplingComboBox, mMaximumOversamplingSpinBox, mCbEarlyResampling );
 
@@ -181,8 +183,8 @@ void QgsRendererRasterPropertiesWidget::syncToLayer( QgsRasterLayer *layer )
   {
     if ( QgsApplication::rasterRendererRegistry()->rendererData( name, entry ) )
     {
-      if ( ( mRasterLayer->rasterType() != Qgis::RasterLayerType::SingleBandColorData && entry.name != QLatin1String( "singlebandcolordata" ) ) ||
-           ( mRasterLayer->rasterType() == Qgis::RasterLayerType::SingleBandColorData && entry.name == QLatin1String( "singlebandcolordata" ) ) )
+      if ( ( mRasterLayer->rasterType() != QgsRasterLayer::ColorLayer && entry.name != QLatin1String( "singlebandcolordata" ) ) ||
+           ( mRasterLayer->rasterType() == QgsRasterLayer::ColorLayer && entry.name == QLatin1String( "singlebandcolordata" ) ) )
       {
         cboRenderers->addItem( entry.icon(), entry.visibleName, entry.name );
       }
@@ -304,12 +306,12 @@ void QgsRendererRasterPropertiesWidget::setRendererWidget( const QString &render
         {
           if ( rendererName == QLatin1String( "singlebandgray" ) )
           {
-            whileBlocking( mRasterLayer )->setRenderer( QgsApplication::rasterRendererRegistry()->defaultRendererForDrawingStyle( Qgis::RasterDrawingStyle::SingleBandGray, mRasterLayer->dataProvider() ) );
+            whileBlocking( mRasterLayer )->setRenderer( QgsApplication::rasterRendererRegistry()->defaultRendererForDrawingStyle( QgsRaster::SingleBandGray, mRasterLayer->dataProvider() ) );
             whileBlocking( mRasterLayer )->setDefaultContrastEnhancement();
           }
           else if ( rendererName == QLatin1String( "multibandcolor" ) )
           {
-            whileBlocking( mRasterLayer )->setRenderer( QgsApplication::rasterRendererRegistry()->defaultRendererForDrawingStyle( Qgis::RasterDrawingStyle::MultiBandColor, mRasterLayer->dataProvider() ) );
+            whileBlocking( mRasterLayer )->setRenderer( QgsApplication::rasterRendererRegistry()->defaultRendererForDrawingStyle( QgsRaster::MultiBandColor, mRasterLayer->dataProvider() ) );
             whileBlocking( mRasterLayer )->setDefaultContrastEnhancement();
           }
         }

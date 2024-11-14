@@ -17,9 +17,9 @@
 
 #include "qgsprocessingparametertype.h"
 
-Qgis::ProcessingParameterTypeFlags QgsProcessingParameterType::flags() const
+QgsProcessingParameterType::ParameterFlags QgsProcessingParameterType::flags() const
 {
-  return Qgis::ProcessingParameterTypeFlag::ExposeToModeler;
+  return QgsProcessingParameterType::ExposeToModeler;
 }
 
 QVariantMap QgsProcessingParameterType::metadata() const

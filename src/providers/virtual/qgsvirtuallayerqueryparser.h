@@ -40,34 +40,34 @@ namespace QgsVirtualLayerQueryParser
   {
     public:
       ColumnDef() = default;
-      ColumnDef( const QString &name, Qgis::WkbType aWkbType, long aSrid )
+      ColumnDef( const QString &name, QgsWkbTypes::Type aWkbType, long aSrid )
         : mName( name )
-        , mType( QMetaType::Type::User )
+        , mType( QVariant::UserType )
         , mWkbType( aWkbType )
         , mSrid( aSrid )
       {}
-      ColumnDef( const QString &name, QMetaType::Type aType )
+      ColumnDef( const QString &name, QVariant::Type aType )
         : mName( name )
         , mType( aType )
-        , mWkbType( Qgis::WkbType::NoGeometry )
+        , mWkbType( QgsWkbTypes::NoGeometry )
       {}
 
       QString name() const { return mName; }
       void setName( const QString &name ) { mName = name; }
 
-      bool isGeometry() const { return mType == QMetaType::Type::User; }
-      void setGeometry( Qgis::WkbType wkbType ) { mType = QMetaType::Type::User; mWkbType = wkbType; }
+      bool isGeometry() const { return mType == QVariant::UserType; }
+      void setGeometry( QgsWkbTypes::Type wkbType ) { mType = QVariant::UserType; mWkbType = wkbType; }
       long srid() const { return mSrid; }
       void setSrid( long srid ) { mSrid = srid; }
 
-      void setScalarType( QMetaType::Type t ) { mType = t; mWkbType = Qgis::WkbType::NoGeometry; }
-      QMetaType::Type scalarType() const { return mType; }
-      Qgis::WkbType wkbType() const { return mWkbType; }
+      void setScalarType( QVariant::Type t ) { mType = t; mWkbType = QgsWkbTypes::NoGeometry; }
+      QVariant::Type scalarType() const { return mType; }
+      QgsWkbTypes::Type wkbType() const { return mWkbType; }
 
     private:
       QString mName;
-      QMetaType::Type mType = QMetaType::Type::UnknownType;
-      Qgis::WkbType mWkbType = Qgis::WkbType::Unknown;
+      QVariant::Type mType = QVariant::Invalid;
+      QgsWkbTypes::Type mWkbType = QgsWkbTypes::Unknown;
       long mSrid = -1;
   };
 

@@ -24,10 +24,13 @@
 //qgis includes...
 #include "qgsmultirenderchecker.h"
 #include <qgsapplication.h>
+#include "qgsconfig.h"
 #include "qgslogger.h"
 #include "qgscolorramp.h"
 #include "qgscptcityarchive.h"
 #include "qgsvectorlayer.h"
+#include "qgslinesymbollayer.h"
+#include "qgsfillsymbollayer.h"
 #include "qgssinglesymbolrenderer.h"
 #include "qgsmarkersymbollayer.h"
 #include "qgsrulebasedrenderer.h"
@@ -46,6 +49,7 @@
 #include "qgstextannotation.h"
 #include "qgslayoutitemlegend.h"
 #include "qgslayertreelayer.h"
+#include "qgslayertreeutils.h"
 #include "qgsmaplayerlegend.h"
 #include "qgsabstract3dsymbol.h"
 #include "qgs3dsymbolregistry.h"
@@ -126,7 +130,7 @@ class Dummy3DSymbol : public QgsAbstract3DSymbol
     QgsAbstract3DSymbol *clone() const override { Dummy3DSymbol *res = new Dummy3DSymbol(); res->id = id; return res; }
     void readXml( const QDomElement &elem, const QgsReadWriteContext & ) override { id = elem.attribute( QStringLiteral( "id" ) ); }
     void writeXml( QDomElement &elem, const QgsReadWriteContext & ) const override { elem.setAttribute( QStringLiteral( "id" ), id ); }
-    QList<Qgis::GeometryType> compatibleGeometryTypes() const override { return QList< Qgis::GeometryType >() << Qgis::GeometryType::Point << Qgis::GeometryType::Line; }
+    QList<QgsWkbTypes::GeometryType> compatibleGeometryTypes() const override { return QList< QgsWkbTypes::GeometryType >() << QgsWkbTypes::PointGeometry << QgsWkbTypes::LineGeometry; }
 
     QString id;
 
@@ -481,7 +485,7 @@ void TestStyle::testCreate3dSymbol()
   QVERIFY( mStyle->symbol3DNames().contains( QStringLiteral( "test_settings" ) ) );
   QCOMPARE( mStyle->symbol3DCount(), 1 );
   QVERIFY( mStyle->symbol3DCompatibleGeometryTypes( QStringLiteral( "blah" ) ).isEmpty() );
-  QCOMPARE( mStyle->symbol3DCompatibleGeometryTypes( QStringLiteral( "test_settings" ) ), QList< Qgis::GeometryType >() << Qgis::GeometryType::Point << Qgis::GeometryType::Line );
+  QCOMPARE( mStyle->symbol3DCompatibleGeometryTypes( QStringLiteral( "test_settings" ) ), QList< QgsWkbTypes::GeometryType >() << QgsWkbTypes::PointGeometry << QgsWkbTypes::LineGeometry );
   std::unique_ptr< Dummy3DSymbol > retrieved( dynamic_cast< Dummy3DSymbol * >( mStyle->symbol3D( QStringLiteral( "test_settings" ) ) ) );
   QCOMPARE( retrieved->id, QStringLiteral( "xxx" ) );
   symbol.id = QStringLiteral( "yyy" );
@@ -553,11 +557,11 @@ void TestStyle::testLoadColorRamps()
   colorTests.insert( QStringLiteral( "test_cc3" ), qMakePair( 0, QColor( "#0000ff" ) ) );
   colorTests.insert( QStringLiteral( "test_cc3" ), qMakePair( 1, QColor( "#ff0000" ) ) );
 
-  QgsDebugMsgLevel( QStringLiteral( "loaded colorRamps: " ) + colorRamps.join( ' ' ), 1 );
+  QgsDebugMsg( QStringLiteral( "loaded colorRamps: " ) + colorRamps.join( ' ' ) );
 
   for ( const QString &name : colorRampsTest )
   {
-    QgsDebugMsgLevel( "colorRamp " + name, 1 );
+    QgsDebugMsg( "colorRamp " + name );
     QVERIFY( colorRamps.contains( name ) );
     QgsColorRamp *ramp = mStyle->colorRamp( name );
     QVERIFY( ramp != nullptr );
@@ -579,13 +583,13 @@ void TestStyle::testSaveLoad()
 {
   // basic test to see that ramp is present
   const QStringList colorRamps = mStyle->colorRampNames();
-  QgsDebugMsgLevel( "loaded colorRamps: " + colorRamps.join( " " ), 1 );
+  QgsDebugMsg( "loaded colorRamps: " + colorRamps.join( " " ) );
 
   const QStringList colorRampsTest = QStringList() << QStringLiteral( "test_gradient" );
 
   for ( const QString &name : colorRampsTest )
   {
-    QgsDebugMsgLevel( "colorRamp " + name, 1 );
+    QgsDebugMsg( "colorRamp " + name );
     QVERIFY( colorRamps.contains( name ) );
     QgsColorRamp *ramp = mStyle->colorRamp( name );
     QVERIFY( ramp != nullptr );
@@ -1518,9 +1522,9 @@ void TestStyle::testVisitor()
   QgsVectorLayer *vl2 = new QgsVectorLayer( QStringLiteral( "Point?crs=epsg:4326&field=pk:int&field=col1:string" ), QStringLiteral( "vl2" ), QStringLiteral( "memory" ) );
   QVERIFY( vl2->isValid() );
   p.addMapLayer( vl2 );
-  QgsSymbol *s1 = QgsSymbol::defaultSymbol( Qgis::GeometryType::Point );
+  QgsSymbol *s1 = QgsSymbol::defaultSymbol( QgsWkbTypes::PointGeometry );
   s1->setColor( QColor( 0, 255, 0 ) );
-  QgsSymbol *s2 = QgsSymbol::defaultSymbol( Qgis::GeometryType::Point );
+  QgsSymbol *s2 = QgsSymbol::defaultSymbol( QgsWkbTypes::PointGeometry );
   s2->setColor( QColor( 0, 255, 255 ) );
   QgsRuleBasedRenderer::Rule *rootRule = new QgsRuleBasedRenderer::Rule( nullptr );
   QgsRuleBasedRenderer::Rule *rule2 = new QgsRuleBasedRenderer::Rule( s1, 0, 0, QStringLiteral( "fld >= 5 and fld <= 20" ) );
@@ -1573,7 +1577,7 @@ void TestStyle::testVisitor()
 
   QgsRasterShader *rasterShader = new QgsRasterShader();
   QgsColorRampShader *colorRampShader = new QgsColorRampShader();
-  colorRampShader->setColorRampType( Qgis::ShaderInterpolationMethod::Linear );
+  colorRampShader->setColorRampType( QgsColorRampShader::Interpolated );
   colorRampShader->setSourceColorRamp( new QgsGradientColorRamp( QColor( 255, 255, 0 ), QColor( 255, 0, 255 ) ) );
   rasterShader->setRasterShaderFunction( colorRampShader );
   QgsSingleBandPseudoColorRenderer *r = new QgsSingleBandPseudoColorRenderer( rl->dataProvider(), 1, rasterShader );
@@ -1652,10 +1656,10 @@ void TestStyle::testVisitor()
 
   // with annotations
   QgsTextAnnotation *annotation = new QgsTextAnnotation();
-  QgsSymbol *a1 = QgsSymbol::defaultSymbol( Qgis::GeometryType::Point );
+  QgsSymbol *a1 = QgsSymbol::defaultSymbol( QgsWkbTypes::PointGeometry );
   a1->setColor( QColor( 0, 200, 0 ) );
   annotation->setMarkerSymbol( static_cast< QgsMarkerSymbol * >( a1 ) );
-  QgsSymbol *a2 = QgsSymbol::defaultSymbol( Qgis::GeometryType::Polygon );
+  QgsSymbol *a2 = QgsSymbol::defaultSymbol( QgsWkbTypes::PolygonGeometry );
   a2->setColor( QColor( 200, 200, 0 ) );
   annotation->setFillSymbol( static_cast< QgsFillSymbol * >( a2 ) );
   p.annotationManager()->addAnnotation( annotation );
@@ -1690,7 +1694,7 @@ void TestStyle::testColorRampShaderClassificationEqualInterval()
 {
   // Test Type::Interpolated and ClassificationMode::EqualInterval
   {
-    std::unique_ptr<QgsColorRampShader> shader( new QgsColorRampShader( 0.0, 255.0, new QgsGradientColorRamp( Qt::green, Qt::blue ), Qgis::ShaderInterpolationMethod::Linear, Qgis::ShaderClassificationMethod::EqualInterval ) );
+    std::unique_ptr<QgsColorRampShader> shader( new QgsColorRampShader( 0.0, 255.0, new QgsGradientColorRamp( Qt::green, Qt::blue ), QgsColorRampShader::Type::Interpolated, QgsColorRampShader::ClassificationMode::EqualInterval ) );
     shader->classifyColorRamp( 5, -1 );
 
     QList<QgsColorRampShader::ColorRampItem> itemsList = shader->colorRampItemList();
@@ -1706,7 +1710,7 @@ void TestStyle::testColorRampShaderClassificationEqualInterval()
 
   // Test Type::Exact and ClassificationMode::EqualInterval
   {
-    std::unique_ptr<QgsColorRampShader> shader( new QgsColorRampShader( 0.0, 255.0, new QgsGradientColorRamp( Qt::green, Qt::blue ), Qgis::ShaderInterpolationMethod::Exact, Qgis::ShaderClassificationMethod::EqualInterval ) );
+    std::unique_ptr<QgsColorRampShader> shader( new QgsColorRampShader( 0.0, 255.0, new QgsGradientColorRamp( Qt::green, Qt::blue ), QgsColorRampShader::Type::Exact, QgsColorRampShader::ClassificationMode::EqualInterval ) );
     shader->classifyColorRamp( 5, -1 );
 
     QList<QgsColorRampShader::ColorRampItem> itemsList = shader->colorRampItemList();
@@ -1722,7 +1726,7 @@ void TestStyle::testColorRampShaderClassificationEqualInterval()
 
   // Test Type::Discrete and ClassificationMode::EqualInterval
   {
-    std::unique_ptr<QgsColorRampShader> shader( new QgsColorRampShader( 0.0, 255.0, new QgsGradientColorRamp( Qt::green, Qt::blue ), Qgis::ShaderInterpolationMethod::Discrete, Qgis::ShaderClassificationMethod::EqualInterval ) );
+    std::unique_ptr<QgsColorRampShader> shader( new QgsColorRampShader( 0.0, 255.0, new QgsGradientColorRamp( Qt::green, Qt::blue ), QgsColorRampShader::Type::Discrete, QgsColorRampShader::ClassificationMode::EqualInterval ) );
     shader->classifyColorRamp( 5, -1 );
 
     QList<QgsColorRampShader::ColorRampItem> itemsList = shader->colorRampItemList();
@@ -1739,14 +1743,14 @@ void TestStyle::testColorRampShaderClassificationEqualInterval()
   // Test when min == max for EqualInterval mode
   for ( int i = 0; i < 3; ++i )
   {
-    const Qgis::ShaderInterpolationMethod type = static_cast<Qgis::ShaderInterpolationMethod>( i );
-    std::unique_ptr<QgsColorRampShader> shader( new QgsColorRampShader( 0.0, 0.0, new QgsGradientColorRamp( Qt::green, Qt::blue ), type, Qgis::ShaderClassificationMethod::EqualInterval ) );
+    const QgsColorRampShader::Type type = static_cast<QgsColorRampShader::Type>( i );
+    std::unique_ptr<QgsColorRampShader> shader( new QgsColorRampShader( 0.0, 0.0, new QgsGradientColorRamp( Qt::green, Qt::blue ), type, QgsColorRampShader::ClassificationMode::EqualInterval ) );
     shader->classifyColorRamp( 5, -1 );
 
     QList<QgsColorRampShader::ColorRampItem> itemsList = shader->colorRampItemList();
     QList<QgsColorRampShader::ColorRampItem> itemsList2;
     itemsList2.append( QgsColorRampShader::ColorRampItem( 0, QColor( 0,  255,  0 ),  "0" ) );
-    if ( type == Qgis::ShaderInterpolationMethod::Discrete )
+    if ( type == QgsColorRampShader::Type::Discrete )
       itemsList2.append( QgsColorRampShader::ColorRampItem( qInf(), QColor( 0,  0,  255 ),  "inf" ) );
 
     QVERIFY( compareItemLists( itemsList, itemsList2 ) );
@@ -1758,7 +1762,7 @@ void TestStyle::testColorRampShaderClassificationContinius()
 {
   // Test Type::Interpolated and ClassificationMode::Continuous
   {
-    std::unique_ptr<QgsColorRampShader> shader( new QgsColorRampShader( 0.0, 255.0, new QgsGradientColorRamp( Qt::green, Qt::blue ), Qgis::ShaderInterpolationMethod::Linear, Qgis::ShaderClassificationMethod::Continuous ) );
+    std::unique_ptr<QgsColorRampShader> shader( new QgsColorRampShader( 0.0, 255.0, new QgsGradientColorRamp( Qt::green, Qt::blue ), QgsColorRampShader::Type::Interpolated, QgsColorRampShader::ClassificationMode::Continuous ) );
     shader->classifyColorRamp( 5, -1 );
 
     QList<QgsColorRampShader::ColorRampItem> itemsList = shader->colorRampItemList();
@@ -1771,7 +1775,7 @@ void TestStyle::testColorRampShaderClassificationContinius()
 
   // Test Type::Exact and ClassificationMode::Continuous
   {
-    std::unique_ptr<QgsColorRampShader> shader( new QgsColorRampShader( 0.0, 255.0, new QgsGradientColorRamp( Qt::green, Qt::blue ), Qgis::ShaderInterpolationMethod::Exact, Qgis::ShaderClassificationMethod::Continuous ) );
+    std::unique_ptr<QgsColorRampShader> shader( new QgsColorRampShader( 0.0, 255.0, new QgsGradientColorRamp( Qt::green, Qt::blue ), QgsColorRampShader::Type::Exact, QgsColorRampShader::ClassificationMode::Continuous ) );
     shader->classifyColorRamp( 5, -1 );
 
     QList<QgsColorRampShader::ColorRampItem> itemsList = shader->colorRampItemList();
@@ -1784,7 +1788,7 @@ void TestStyle::testColorRampShaderClassificationContinius()
 
   // Test Type::Discrete and ClassificationMode::Continuous
   {
-    std::unique_ptr<QgsColorRampShader> shader( new QgsColorRampShader( 0.0, 255.0, new QgsGradientColorRamp( Qt::green, Qt::blue ), Qgis::ShaderInterpolationMethod::Discrete, Qgis::ShaderClassificationMethod::Continuous ) );
+    std::unique_ptr<QgsColorRampShader> shader( new QgsColorRampShader( 0.0, 255.0, new QgsGradientColorRamp( Qt::green, Qt::blue ), QgsColorRampShader::Type::Discrete, QgsColorRampShader::ClassificationMode::Continuous ) );
     shader->classifyColorRamp( 5, -1 );
 
     QList<QgsColorRampShader::ColorRampItem> itemsList = shader->colorRampItemList();
@@ -1798,14 +1802,14 @@ void TestStyle::testColorRampShaderClassificationContinius()
   // Test when min == max for Continuous mode
   for ( int i = 0; i < 3; ++i )
   {
-    const Qgis::ShaderInterpolationMethod type = static_cast<Qgis::ShaderInterpolationMethod>( i );
-    std::unique_ptr<QgsColorRampShader> shader( new QgsColorRampShader( 0.0, 0.0, new QgsGradientColorRamp( Qt::green, Qt::blue ), type, Qgis::ShaderClassificationMethod::Continuous ) );
+    const QgsColorRampShader::Type type = static_cast<QgsColorRampShader::Type>( i );
+    std::unique_ptr<QgsColorRampShader> shader( new QgsColorRampShader( 0.0, 0.0, new QgsGradientColorRamp( Qt::green, Qt::blue ), type, QgsColorRampShader::ClassificationMode::Continuous ) );
     shader->classifyColorRamp( 5, -1 );
 
     QList<QgsColorRampShader::ColorRampItem> itemsList = shader->colorRampItemList();
     QList<QgsColorRampShader::ColorRampItem> itemsList2;
     itemsList2.append( QgsColorRampShader::ColorRampItem( 0, QColor( 0,  255,  0 ),  "0" ) );
-    if ( type == Qgis::ShaderInterpolationMethod::Discrete )
+    if ( type == QgsColorRampShader::Type::Discrete )
       itemsList2.append( QgsColorRampShader::ColorRampItem( qInf(), QColor( 0,  0,  255 ),  "inf" ) );
 
     QVERIFY( compareItemLists( itemsList, itemsList2 ) );

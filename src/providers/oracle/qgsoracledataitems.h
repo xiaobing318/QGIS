@@ -77,7 +77,6 @@ class QgsOracleConnectionItem : public QgsDataCollectionItem
 
   public slots:
     void editConnection();
-    void duplicateConnection();
     void deleteConnection();
     void refreshConnection();
 
@@ -135,7 +134,7 @@ class QgsOracleDataItemProvider : public QgsDataItemProvider
     QString name() override;
     QString dataProviderKey() const override;
 
-    Qgis::DataItemProviderCapabilities capabilities() const override;
+    int capabilities() const override;
 
     QgsDataItem *createDataItem( const QString &pathIn, QgsDataItem *parentItem ) override;
 };

@@ -11,8 +11,8 @@
  ***************************************************************************/
 
 #include "qgsdecorationnortharrowdialog.h"
-#include "moc_qgsdecorationnortharrowdialog.cpp"
 #include "qgsdecorationnortharrow.h"
+#include "qgslogger.h"
 #include "qgshelp.h"
 #include "qgsproject.h"
 #include "qgssymbollayerutils.h"
@@ -76,12 +76,7 @@ QgsDecorationNorthArrowDialog::QgsDecorationNorthArrowDialog( QgsDecorationNorth
   spinHorizontal->setClearValue( 0 );
   spinHorizontal->setValue( mDeco.mMarginHorizontal );
   spinVertical->setValue( mDeco.mMarginVertical );
-  wgtUnitSelection->setUnits(
-  {
-    Qgis::RenderUnit::Millimeters,
-    Qgis::RenderUnit::Percentage,
-    Qgis::RenderUnit::Pixels
-  } );
+  wgtUnitSelection->setUnits( QgsUnitTypes::RenderUnitList() << QgsUnitTypes::RenderMillimeters << QgsUnitTypes::RenderPercentage << QgsUnitTypes::RenderPixels );
   wgtUnitSelection->setUnit( mDeco.mMarginUnit );
 
   // enabled

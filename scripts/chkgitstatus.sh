@@ -7,13 +7,7 @@ command -v git > /dev/null || {
   exit 2 # considered a "skip"
 }
 
-if test "${QGIS_TEST_ACCEPT_GITSTATUS_CHECK_FAILURE}" = "1"; then
-	exit=2
-else
-	exit=1
-fi
-
-git -C ${srcdir} status -uno > .gitstatus-full || exit $exit
+git -C ${srcdir} status -uno > .gitstatus-full || exit 1
 
 if test "$1" = "log"; then
   grep 'modified: ' .gitstatus-full | sort -u > .gitstatus
@@ -24,7 +18,10 @@ elif test "$1" = "check"; then
   else
     echo "Source files (printed above) were modified. Diff follows:"
     git -C ${srcdir} diff
-    exit $exit
+    if test "${QGIS_TEST_ACCEPT_GITSTATUS_CHECK_FAILURE}" = "1"; then
+      exit 2 # considered a "skip" by CMake
+    fi
+    exit 1
   fi
 else
   echo "Usage: $0 [log|check]" >&2

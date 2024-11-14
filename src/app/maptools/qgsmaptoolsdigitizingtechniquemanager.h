@@ -19,15 +19,17 @@
 #define QGSMAPTOOLSDIGITIZINGTECHNIQUEMANAGER_H
 
 #include "qgis_app.h"
+#include "qgssettingsentryimpl.h"
+#include "qgssettingsentryenumflag.h"
 #include "qgsmaptoolcapture.h"
 #include "qgsmaptoolshapeabstract.h"
-#include "qgssettingstree.h"
+#include "qgsmaptoolshapecircle2points.h"
+
 
 #include <QWidgetAction>
 
+
 class QgsSpinBox;
-class QgsSettingsEntryString;
-template<class T> class QgsSettingsEntryEnumFlag;
 
 class QAction;
 class QToolButton;
@@ -50,12 +52,10 @@ class APP_EXPORT QgsMapToolsDigitizingTechniqueManager : public QObject
 {
     Q_OBJECT
   public:
-    static const QgsSettingsEntryEnumFlag<Qgis::CaptureTechnique> *settingsDigitizingTechnique;
+    static const inline  QgsSettingsEntryEnumFlag<Qgis::CaptureTechnique> settingsDigitizingTechnique = QgsSettingsEntryEnumFlag<Qgis::CaptureTechnique>( QStringLiteral( "technique" ), QgsSettings::Prefix::QGIS_DIGITIZING, Qgis::CaptureTechnique::StraightSegments, QObject::tr( "Current digitizing technique" ), Qgis::SettingsOption::SaveFormerValue ) SIP_SKIP;
 
-    static inline QgsSettingsTreeNode *sTreeShapeMapTools = QgsSettingsTree::sTreeDigitizing->createChildNode( QStringLiteral( "shape-map-tools" ) );
-    static const QgsSettingsEntryString *settingMapToolShapeCurrent;
-    static inline QgsSettingsTreeNamedListNode *sTreeShapeMapToolsCategories = sTreeShapeMapTools->createNamedListNode( QStringLiteral( "categories" ) );
-    static const QgsSettingsEntryString *settingMapToolShapeDefaultForCategory;
+    static const inline QgsSettingsEntryString settingMapToolShapeDefaultForShape = QgsSettingsEntryString( QStringLiteral( "%1/default" ), QgsSettings::Prefix::QGIS_DIGITIZING_SHAPEMAPTOOLS, QString(), QObject::tr( "Default map tool for given shape category" ) ) SIP_SKIP;
+    static const inline QgsSettingsEntryString settingMapToolShapeCurrent = QgsSettingsEntryString( QStringLiteral( "current" ), QgsSettings::Prefix::QGIS_DIGITIZING_SHAPEMAPTOOLS, QgsMapToolShapeCircle2PointsMetadata::TOOL_ID, QObject::tr( "Current shape map tool" ) ) SIP_SKIP;
 
     QgsMapToolsDigitizingTechniqueManager( QObject *parent );
     ~QgsMapToolsDigitizingTechniqueManager();
@@ -73,8 +73,6 @@ class APP_EXPORT QgsMapToolsDigitizingTechniqueManager : public QObject
 
   private:
     void setupTool( QgsMapToolCapture *tool );
-
-    void updateDigitizeModeButton( const Qgis::CaptureTechnique technique );
 
     QMap<Qgis::CaptureTechnique, QAction *> mTechniqueActions;
     QHash<QString, QAction *> mShapeActions;

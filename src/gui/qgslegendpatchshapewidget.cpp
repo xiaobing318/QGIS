@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgslegendpatchshapewidget.h"
-#include "moc_qgslegendpatchshapewidget.cpp"
 #include "qgsstylesavedialog.h"
 #include "qgsproject.h"
 #include "qgsprojectstylesettings.h"

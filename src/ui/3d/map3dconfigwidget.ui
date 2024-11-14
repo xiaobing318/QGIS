@@ -88,18 +88,6 @@
          </property>
          <item>
           <property name="text">
-           <string>General</string>
-          </property>
-          <property name="toolTip">
-           <string>General settings</string>
-          </property>
-          <property name="icon">
-           <iconset resource="../../../images/images.qrc">
-            <normaloff>:/images/themes/default/propertyicons/general.svg</normaloff>:/images/themes/default/propertyicons/general.svg</iconset>
-          </property>
-         </item>
-         <item>
-          <property name="text">
            <string>Terrain</string>
           </property>
           <property name="toolTip">
@@ -124,10 +112,10 @@
          </item>
          <item>
           <property name="text">
-           <string>Effects</string>
+           <string>Shadow</string>
           </property>
           <property name="toolTip">
-           <string>Effects settings</string>
+           <string>Shadow settings</string>
           </property>
           <property name="icon">
            <iconset resource="../../../images/images.qrc">
@@ -191,75 +179,8 @@
        <item>
         <widget class="QStackedWidget" name="m3DOptionsStackedWidget">
          <property name="currentIndex">
-          <number>0</number>
+          <number>4</number>
          </property>
-         <widget class="QWidget" name="mPageGeneral">
-          <layout class="QVBoxLayout" name="verticalLayout_5">
-           <property name="topMargin">
-            <number>0</number>
-           </property>
-           <property name="rightMargin">
-            <number>0</number>
-           </property>
-           <property name="bottomMargin">
-            <number>0</number>
-           </property>
-           <item>
-            <widget class="QgsScrollArea" name="scrollAreaGeneral">
-             <property name="frameShape">
-              <enum>QFrame::NoFrame</enum>
-             </property>
-             <property name="widgetResizable">
-              <bool>true</bool>
-             </property>
-             <widget class="QWidget" name="scrollAreaGeneralWidgetContents">
-              <property name="geometry">
-               <rect>
-                <x>0</x>
-                <y>0</y>
-                <width>813</width>
-                <height>649</height>
-               </rect>
-              </property>
-              <layout class="QVBoxLayout" name="verticalLayout_7">
-               <property name="leftMargin">
-                <number>0</number>
-               </property>
-               <property name="topMargin">
-                <number>0</number>
-               </property>
-               <property name="rightMargin">
-                <number>0</number>
-               </property>
-               <property name="bottomMargin">
-                <number>0</number>
-               </property>
-               <item>
-                <widget class="QgsExtentGroupBox" name="groupExtent">
-                 <property name="title">
-                  <string>Extent</string>
-                 </property>
-                </widget>
-               </item>
-               <item>
-                <spacer name="verticalSpacer">
-                 <property name="orientation">
-                  <enum>Qt::Vertical</enum>
-                 </property>
-                 <property name="sizeHint" stdset="0">
-                  <size>
-                   <width>20</width>
-                   <height>40</height>
-                  </size>
-                 </property>
-                </spacer>
-               </item>
-              </layout>
-             </widget>
-            </widget>
-           </item>
-          </layout>
-         </widget>
          <widget class="QWidget" name="mPageTerrain">
           <layout class="QVBoxLayout" name="verticalLayout_61">
            <property name="topMargin">
@@ -447,11 +368,7 @@
                    <number>0</number>
                   </property>
                   <item>
-                   <widget class="QgsPhongMaterialWidget" name="widgetTerrainMaterial" native="true">
-                    <property name="hasOpacity">
-                     <bool>false</bool>
-                    </property>
-                   </widget>
+                   <widget class="QgsPhongMaterialWidget" name="widgetTerrainMaterial" native="true"/>
                   </item>
                  </layout>
                 </widget>
@@ -559,7 +476,7 @@
            </item>
           </layout>
          </widget>
-         <widget class="QWidget" name="mPageEffects">
+         <widget class="QWidget" name="mPageShadow">
           <layout class="QVBoxLayout" name="verticalLayout_6">
            <property name="topMargin">
             <number>0</number>
@@ -629,61 +546,6 @@
                   </item>
                  </layout>
                 </widget>
-               </item>
-               <item>
-                <widget class="QGroupBox" name="edlGroupBox">
-                 <property name="title">
-                  <string>Show Eye Dome Lighting</string>
-                 </property>
-                 <property name="checkable">
-                  <bool>true</bool>
-                 </property>
-                 <property name="checked">
-                  <bool>false</bool>
-                 </property>
-                 <layout class="QGridLayout" name="gridLayout_2">
-                  <item row="0" column="1">
-                   <widget class="QgsDoubleSpinBox" name="edlStrengthSpinBox">
-                    <property name="maximum">
-                     <double>10000.000000000000000</double>
-                    </property>
-                    <property name="singleStep">
-                     <double>100.000000000000000</double>
-                    </property>
-                    <property name="value">
-                     <double>1000.000000000000000</double>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="0" column="0">
-                   <widget class="QLabel" name="label">
-                    <property name="text">
-                     <string>Lighting strength</string>
-                    </property>
-                   </widget>
-                  </item>
-                  <item row="1" column="0">
-                   <widget class="QLabel" name="label_2">
-                    <property name="text">
-                        <string>Lighting distance</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item row="1" column="1">
-                      <widget class="QgsSpinBox" name="edlDistanceSpinBox">
-                       <property name="minimum">
-                        <number>1</number>
-                       </property>
-                       <property name="maximum">
-                        <number>20</number>
-                       </property>
-                      </widget>
-                     </item>
-                 </layout>
-                </widget>
-               </item>
-               <item row="2" column="0">
-                <widget class="QgsAmbientOcclusionSettingsWidget" name="mAmbientOcclusionSettingsWidget" native="true"/>
                </item>
                <item>
                 <spacer name="verticalSpacerShadow">
@@ -862,21 +724,21 @@
                   <item row="0" column="0">
                    <widget class="QCheckBox" name="mSync2DTo3DCheckbox">
                     <property name="text">
-                     <string>2D map view follows 3D camera</string>
+                     <string>2D Map View Follows 3D Camera</string>
                     </property>
                    </widget>
                   </item>
                   <item row="1" column="0">
                    <widget class="QCheckBox" name="mSync3DTo2DCheckbox">
                     <property name="text">
-                     <string>3D camera follows 2D map view</string>
+                     <string>3D Camera Follows 2D Map View</string>
                     </property>
                    </widget>
                   </item>
                   <item row="2" column="0">
                    <widget class="QCheckBox" name="mVisualizeExtentCheckBox">
                     <property name="text">
-                     <string>Show visible camera area in 2D map view</string>
+                     <string>Show Visible Camera Area in 2D Map View</string>
                     </property>
                    </widget>
                   </item>
@@ -963,7 +825,7 @@
                   <string>Advanced Settings</string>
                  </property>
                  <layout class="QGridLayout" name="gridLayout_11">
-                  <item row="2" column="0">
+                  <item row="4" column="0">
                    <widget class="QGroupBox" name="mDebugDepthMapGroupBox">
                     <property name="title">
                      <string>Debug Depth Map</string>
@@ -1145,7 +1007,7 @@
                     </item>
                    </layout>
                   </item>
-                  <item row="1" column="0">
+                  <item row="3" column="0">
                    <widget class="QGroupBox" name="mDebugShadowMapGroupBox">
                     <property name="title">
                      <string>Debug Shadow Map</string>
@@ -1190,7 +1052,59 @@
                     </layout>
                    </widget>
                   </item>
-                  <item row="3" column="0">
+                  <item row="1" column="0">
+                   <widget class="QGroupBox" name="edlGroupBox">
+                    <property name="title">
+                     <string>Show Eye Dome Lighting</string>
+                    </property>
+                    <property name="checkable">
+                     <bool>true</bool>
+                    </property>
+                    <property name="checked">
+                     <bool>false</bool>
+                    </property>
+                    <layout class="QGridLayout" name="gridLayout_2">
+                     <item row="0" column="1">
+                      <widget class="QgsDoubleSpinBox" name="edlStrengthSpinBox">
+                       <property name="maximum">
+                        <double>10000.000000000000000</double>
+                       </property>
+                       <property name="singleStep">
+                        <double>100.000000000000000</double>
+                       </property>
+                       <property name="value">
+                        <double>1000.000000000000000</double>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="0" column="0">
+                      <widget class="QLabel" name="label">
+                       <property name="text">
+                        <string>Lighting strength</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="1" column="0">
+                      <widget class="QLabel" name="label_2">
+                       <property name="text">
+                        <string>Lighting distance</string>
+                       </property>
+                      </widget>
+                     </item>
+                     <item row="1" column="1">
+                      <widget class="QgsSpinBox" name="edlDistanceSpinBox">
+                       <property name="minimum">
+                        <number>1</number>
+                       </property>
+                       <property name="maximum">
+                        <number>20</number>
+                       </property>
+                      </widget>
+                     </item>
+                    </layout>
+                   </widget>
+                  </item>
+                  <item row="5" column="0">
                    <spacer name="verticalSpacerAdvanced">
                     <property name="orientation">
                      <enum>Qt::Vertical</enum>
@@ -1202,6 +1116,9 @@
                      </size>
                     </property>
                    </spacer>
+                  </item>
+                  <item row="2" column="0">
+                   <widget class="QgsAmbientOcclusionSettingsWidget" name="mAmbientOcclusionSettingsWidget" native="true"/>
                   </item>
                  </layout>
                 </widget>
@@ -1264,12 +1181,6 @@
    <class>QgsAmbientOcclusionSettingsWidget</class>
    <extends>QWidget</extends>
    <header>qgsambientocclusionsettingswidget.h</header>
-   <container>1</container>
-  </customwidget>
-  <customwidget>
-   <class>QgsExtentGroupBox</class>
-   <extends>QGroupBox</extends>
-   <header>qgsextentgroupbox.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

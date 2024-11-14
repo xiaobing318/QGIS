@@ -22,7 +22,6 @@
 #include "qgis_gui.h"
 
 class QgsVectorLayer;
-class QgsMessageBar;
 
 /**
  * \ingroup gui
@@ -37,7 +36,7 @@ class QgsMessageBar;
  *     layer = QgsVectorLayer(uri, "Scratch point layer",  "memory")
  *     layer.startEditing()
  *     dialog = QgsFieldCalculator(layer)
- *     dialog.exec()
+ *     dialog.exec_()
  * \endcode
  */
 class GUI_EXPORT QgsFieldCalculator: public QDialog, private Ui::QgsFieldCalculatorBase
@@ -62,15 +61,11 @@ class GUI_EXPORT QgsFieldCalculator: public QDialog, private Ui::QgsFieldCalcula
     void mCreateVirtualFieldCheckbox_stateChanged( int state );
     void mOutputFieldNameLineEdit_textChanged( const QString &text );
     void mOutputFieldTypeComboBox_activated( int index );
-    void mExistingFieldComboBox_currentIndexChanged( const int index );
 
-    //! Sets the dialog buttons (Ok and Apply) enabled / disabled
-    void setDialogButtonState();
+    //! Sets the OK button enabled / disabled
+    void setOkButtonState();
     void setPrecisionMinMax();
     void showHelp();
-    void calculate();
-    //! show the given message in the Plugin Manager internal message bar
-    void pushMessage( const QString &text, Qgis::MessageLevel level = Qgis::MessageLevel::Info, int duration = -1 );
 
   private:
     //! default constructor forbidden
@@ -90,8 +85,6 @@ class GUI_EXPORT QgsFieldCalculator: public QDialog, private Ui::QgsFieldCalcula
 
     //! Idx of changed attribute
     int mAttributeId;
-
-    QgsMessageBar *mMsgBar = nullptr;
 
     friend class TestQgsFieldCalculator;
 };

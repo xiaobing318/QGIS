@@ -1,6 +1,5 @@
-# The following has been generated automatically from src/gui/actions/qgsmaplayeractionregistry.h
-try:
-    QgsMapLayerActionRegistry.__attribute_docs__ = {'changed': 'Triggered when an action is added or removed from the registry\n'}
-    QgsMapLayerActionRegistry.__group__ = ['actions']
-except NameError:
-    pass
+# The following has been generated automatically from src/gui/qgsmaplayeractionregistry.h
+QgsMapLayerAction.Targets.baseClass = QgsMapLayerAction
+Targets = QgsMapLayerAction  # dirty hack since SIP seems to introduce the flags in module
+QgsMapLayerAction.Flags.baseClass = QgsMapLayerAction
+Flags = QgsMapLayerAction  # dirty hack since SIP seems to introduce the flags in module

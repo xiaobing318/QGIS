@@ -15,11 +15,12 @@
  ***************************************************************************/
 
 #include "qgslayoutitemnodeitem.h"
-#include "moc_qgslayoutitemnodeitem.cpp"
+#include "qgssymbollayerutils.h"
 #include "qgssymbol.h"
+#include "qgsmapsettings.h"
 #include "qgslayout.h"
+#include "qgslayoututils.h"
 #include "qgsmarkersymbol.h"
-#include "qgslayoutrendercontext.h"
 
 #include <limits>
 #include <cmath>
@@ -84,11 +85,6 @@ void QgsLayoutNodesItem::draw( QgsLayoutItemRenderContext &context )
 
   if ( mDrawNodes && layout()->renderContext().isPreviewRender() )
     drawNodes( context );
-}
-
-QgsLayoutItem::Flags QgsLayoutNodesItem::itemFlags() const
-{
-  return QgsLayoutItem::FlagDisableSceneCaching;
 }
 
 double QgsLayoutNodesItem::computeDistance( QPointF pt1,
@@ -350,10 +346,10 @@ void QgsLayoutNodesItem::updateBoundingRect()
 {
   QRectF br = rect();
   br.adjust( -mMaxSymbolBleed, -mMaxSymbolBleed, mMaxSymbolBleed, mMaxSymbolBleed );
-  prepareGeometryChange();
   mCurrentRectangle = br;
 
   // update
+  prepareGeometryChange();
   update();
 }
 

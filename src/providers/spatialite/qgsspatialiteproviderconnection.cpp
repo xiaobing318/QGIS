@@ -24,7 +24,6 @@
 #include "qgsvectorlayer.h"
 #include "qgsfeedback.h"
 #include "qgsdbquerylog.h"
-#include "qgsdbquerylog_p.h"
 
 #include <QRegularExpression>
 #include <QTextCodec>
@@ -85,7 +84,7 @@ QString QgsSpatiaLiteProviderConnection::tableUri( const QString &schema, const 
 void QgsSpatiaLiteProviderConnection::createVectorTable( const QString &schema,
     const QString &name,
     const QgsFields &fields,
-    Qgis::WkbType wkbType,
+    QgsWkbTypes::Type wkbType,
     const QgsCoordinateReferenceSystem &srs,
     bool overwrite,
     const QMap<QString, QVariant> *options ) const
@@ -147,7 +146,7 @@ QgsVectorLayer *QgsSpatiaLiteProviderConnection::createSqlVectorLayer( const Qgs
     tUri.setGeometryColumn( options.geometryColumn );
   }
 
-  return new QgsVectorLayer{ tUri.uri( false ), options.layerName.isEmpty() ? QStringLiteral( "QueryLayer" ) : options.layerName, providerKey() };
+  return new QgsVectorLayer{ tUri.uri(), options.layerName.isEmpty() ? QStringLiteral( "QueryLayer" ) : options.layerName, providerKey() };
 }
 
 void QgsSpatiaLiteProviderConnection::dropVectorTable( const QString &schema, const QString &name ) const
@@ -182,8 +181,8 @@ void QgsSpatiaLiteProviderConnection::dropVectorTable( const QString &schema, co
       ret = sqlite3_exec( sqlite_handle, "VACUUM", nullptr, nullptr, nullptr );
       if ( ret != SQLITE_OK )
       {
-        QgsDebugError( QStringLiteral( "Failed to run VACUUM after deleting table on database %1" )
-                       .arg( pathFromUri() ) );
+        QgsDebugMsg( QStringLiteral( "Failed to run VACUUM after deleting table on database %1" )
+                     .arg( pathFromUri() ) );
       }
 
       QgsSqliteHandle::closeDb( hndl );
@@ -289,7 +288,7 @@ bool QgsSpatiaLiteProviderConnection::spatialIndexExists( const QString &schema,
   return !res.isEmpty() && !res.at( 0 ).isEmpty() && res.at( 0 ).at( 0 ).toInt() == 1;
 }
 
-QList<QgsSpatiaLiteProviderConnection::TableProperty> QgsSpatiaLiteProviderConnection::tables( const QString &schema, const TableFlags &flags, QgsFeedback *feedback ) const
+QList<QgsSpatiaLiteProviderConnection::TableProperty> QgsSpatiaLiteProviderConnection::tables( const QString &schema, const TableFlags &flags ) const
 {
   checkCapability( Capability::Tables );
   if ( ! schema.isEmpty() )
@@ -357,9 +356,6 @@ QList<QgsSpatiaLiteProviderConnection::TableProperty> QgsSpatiaLiteProviderConne
       const QList<QgsSpatiaLiteConnection::TableEntry> constTables = connection.tables();
       for ( const QgsSpatiaLiteConnection::TableEntry &entry : constTables )
       {
-        if ( feedback && feedback->isCanceled() )
-          break;
-
         QString tableName { tableNotLowercaseNames.value( entry.tableName, entry.tableName ) };
         dsUri.setDataSource( QString(), tableName, entry.column, QString(), QString() );
         QgsSpatiaLiteProviderConnection::TableProperty property;
@@ -379,7 +375,7 @@ QList<QgsSpatiaLiteProviderConnection::TableProperty> QgsSpatiaLiteProviderConne
           else
           {
             property.setGeometryColumnCount( 0 );
-            property.setGeometryColumnTypes( {{ Qgis::WkbType::NoGeometry, QgsCoordinateReferenceSystem() }} );
+            property.setGeometryColumnTypes( {{ QgsWkbTypes::NoGeometry, QgsCoordinateReferenceSystem() }} );
             property.setFlag( QgsSpatiaLiteProviderConnection::TableFlag::Aspatial );
           }
 

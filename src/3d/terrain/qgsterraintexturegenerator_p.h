@@ -37,7 +37,7 @@ class QgsRasterLayer;
 #include <QObject>
 #include <QSize>
 
-#include "qgschunknode.h"
+#include "qgschunknode_p.h"
 #include "qgsrectangle.h"
 
 class Qgs3DMapSettings;
@@ -51,6 +51,7 @@ class Qgs3DMapSettings;
  * signal will be emitted. Handles multiple rendering requests at a time - each request gets
  * a unique job ID assigned.
  *
+ * \since QGIS 3.0
  */
 class QgsTerrainTextureGenerator : public QObject
 {

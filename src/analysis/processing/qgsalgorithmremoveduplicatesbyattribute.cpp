@@ -47,12 +47,12 @@ QString QgsRemoveDuplicatesByAttributeAlgorithm::groupId() const
 void QgsRemoveDuplicatesByAttributeAlgorithm::initAlgorithm( const QVariantMap & )
 {
   addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ), QObject::tr( "Input layer" ),
-                QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::Vector ) ) );
-  addParameter( new QgsProcessingParameterField( QStringLiteral( "FIELDS" ), QObject::tr( "Field to match duplicates by" ), QVariant(), QStringLiteral( "INPUT" ), Qgis::ProcessingFieldParameterDataType::Any, true ) );
+                QList< int >() << QgsProcessing::TypeVector ) );
+  addParameter( new QgsProcessingParameterField( QStringLiteral( "FIELDS" ), QObject::tr( "Field to match duplicates by" ), QVariant(), QStringLiteral( "INPUT" ), QgsProcessingParameterField::Any, true ) );
 
   addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Filtered (no duplicates)" ) ) );
   QgsProcessingParameterFeatureSink *failOutput = new QgsProcessingParameterFeatureSink( QStringLiteral( "DUPLICATES" ),  QObject::tr( "Filtered (duplicates)" ),
-      Qgis::ProcessingSourceType::VectorAnyGeometry, QVariant(), true );
+      QgsProcessing::TypeVectorAnyGeometry, QVariant(), true );
   failOutput->setCreateByDefault( false );
   addParameter( failOutput );
 
@@ -82,7 +82,7 @@ QVariantMap QgsRemoveDuplicatesByAttributeAlgorithm::processAlgorithm( const QVa
   if ( !source )
     throw QgsProcessingException( invalidSourceError( parameters, QStringLiteral( "INPUT" ) ) );
 
-  const QStringList fieldNames = parameterAsStrings( parameters, QStringLiteral( "FIELDS" ), context );
+  const QStringList fieldNames = parameterAsFields( parameters, QStringLiteral( "FIELDS" ), context );
 
   QgsAttributeList attributes;
   for ( const QString &field : fieldNames )
@@ -116,7 +116,7 @@ QVariantMap QgsRemoveDuplicatesByAttributeAlgorithm::processAlgorithm( const QVa
 
   QSet< QVariantList > matched;
 
-  QgsFeatureIterator it = source->getFeatures( QgsFeatureRequest(), Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks );
+  QgsFeatureIterator it = source->getFeatures( QgsFeatureRequest(), QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks );
   QgsFeature f;
 
   QVariantList dupeKey;
@@ -161,18 +161,12 @@ QVariantMap QgsRemoveDuplicatesByAttributeAlgorithm::processAlgorithm( const QVa
     current++;
   }
 
-  if ( noDupeSink )
-    noDupeSink->finalize();
-
   QVariantMap outputs;
   outputs.insert( QStringLiteral( "RETAINED_COUNT" ), keptCount );
   outputs.insert( QStringLiteral( "DUPLICATE_COUNT" ), discardedCount );
   outputs.insert( QStringLiteral( "OUTPUT" ), noDupeSinkId );
   if ( dupesSink )
-  {
-    dupesSink->finalize();
     outputs.insert( QStringLiteral( "DUPLICATES" ), dupeSinkId );
-  }
   return outputs;
 }
 

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/textrenderer/qgstextcharacterformat.h                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -31,6 +31,9 @@ settings from a :py:class:`QgsTextFormat` for individual characters (or sets of 
   public:
 
     QgsTextCharacterFormat();
+%Docstring
+Constructor for QgsTextCharacterFormat.
+%End
 
     QgsTextCharacterFormat( const QTextCharFormat &format );
 %Docstring
@@ -43,21 +46,6 @@ Constructor for QgsTextCharacterFormat, based on the specified QTextCharFormat `
       SetTrue,
       SetFalse,
     };
-
-    void overrideWith( const QgsTextCharacterFormat &other );
-%Docstring
-Override all the default/unset properties of the current character format
-with the settings from another format.
-
-This will replace any default/unset existing settings with the
-settings from ``other``.
-
-Any settings which are default/unset in ``other`` will be left unchanged.
-
-:param other: The format to override with.
-
-.. versionadded:: 3.36
-%End
 
     QColor textColor() const;
 %Docstring
@@ -82,12 +70,6 @@ is desired and the default format color should be used.
 Returns the font point size, or -1 if the font size is not set
 and should be inherited.
 
-.. note::
-
-   A format should have either :py:func:`~QgsTextCharacterFormat.fontPointSize` or :py:func:`~QgsTextCharacterFormat.fontPercentageSize` set, not both.
-
-.. seealso:: :py:func:`fontPercentageSize`
-
 .. seealso:: :py:func:`setFontPointSize`
 
 .. versionadded:: 3.28
@@ -100,47 +82,9 @@ Sets the font point ``size``.
 Set ``size`` to -1 if the font size is not set
 and should be inherited.
 
-.. note::
-
-   A format should have either :py:func:`~QgsTextCharacterFormat.fontPointSize` or :py:func:`~QgsTextCharacterFormat.fontPercentageSize` set, not both.
-
 .. seealso:: :py:func:`fontPointSize`
-
-.. seealso:: :py:func:`setFontPercentageSize`
 
 .. versionadded:: 3.28
-%End
-
-    double fontPercentageSize() const;
-%Docstring
-Returns the font percentage size (as fraction of inherited font size), or -1 if the font size percentage is not set.
-
-.. note::
-
-   A format should have either :py:func:`~QgsTextCharacterFormat.fontPointSize` or :py:func:`~QgsTextCharacterFormat.fontPercentageSize` set, not both.
-
-.. seealso:: :py:func:`fontPointSize`
-
-.. seealso:: :py:func:`setFontPercentageSize`
-
-.. versionadded:: 3.40
-%End
-
-    void setFontPercentageSize( double size );
-%Docstring
-Sets  the font percentage ``size`` (as fraction of inherited font size).
-
-Set ``size`` to -1 if the font percentange size is not set.
-
-.. note::
-
-   A format should have either :py:func:`~QgsTextCharacterFormat.fontPointSize` or :py:func:`~QgsTextCharacterFormat.fontPercentageSize` set, not both.
-
-.. seealso:: :py:func:`fontPercentageSize`
-
-.. seealso:: :py:func:`setFontPointSize`
-
-.. versionadded:: 3.40
 %End
 
     QString family() const;
@@ -184,24 +128,6 @@ and should be inherited.
 .. seealso:: :py:func:`fontWeight`
 
 .. versionadded:: 3.28
-%End
-
-    double wordSpacing() const;
-%Docstring
-Returns the font word spacing, in points, or NaN if word spacing is not set and should be inherited.
-
-.. seealso:: :py:func:`setWordSpacing`
-
-.. versionadded:: 3.40
-%End
-
-    void setWordSpacing( double spacing );
-%Docstring
-Sets the font word ``spacing``, in points, or NaN if word spacing is not set and should be inherited.
-
-.. seealso:: :py:func:`wordSpacing`
-
-.. versionadded:: 3.40
 %End
 
     BooleanValue italic() const;
@@ -264,121 +190,13 @@ Sets whether the format has overline ``enabled``.
 .. seealso:: :py:func:`overline`
 %End
 
-    QString imagePath() const;
-%Docstring
-Returns the path to the image to render, if the format applies to a document image fragment.
-
-.. seealso:: :py:func:`QgsTextFragment.isImage`
-
-.. seealso:: :py:func:`imageSize`
-
-.. seealso:: :py:func:`setImagePath`
-
-.. versionadded:: 3.40
-%End
-
-    void setImagePath( const QString &path );
-%Docstring
-Sets the ``path`` to the image to render, if the format applies to a document image fragment.
-
-.. seealso:: :py:func:`QgsTextFragment.isImage`
-
-.. seealso:: :py:func:`setImageSize`
-
-.. seealso:: :py:func:`imagePath`
-
-.. versionadded:: 3.40
-%End
-
-    QSizeF imageSize() const;
-%Docstring
-Returns the image size, if the format applies to a document image fragment.
-
-The image size is always considered to be in :py:class:`Qgis`.RenderUnit.Points.
-
-.. seealso:: :py:func:`QgsTextFragment.isImage`
-
-.. seealso:: :py:func:`imagePath`
-
-.. seealso:: :py:func:`setImageSize`
-
-.. versionadded:: 3.40
-%End
-
-    void setImageSize( const QSizeF &size );
-%Docstring
-Sets the image ``size``, if the format applies to a document image fragment.
-
-The image size is always considered to be in :py:class:`Qgis`.RenderUnit.Points.
-
-.. seealso:: :py:func:`QgsTextFragment.isImage`
-
-.. seealso:: :py:func:`setImagePath`
-
-.. seealso:: :py:func:`imageSize`
-
-.. versionadded:: 3.40
-%End
-
-    bool hasVerticalAlignmentSet() const;
-%Docstring
-Returns ``True`` if the format has an explicit vertical alignment set.
-
-If ``False`` is returned then the vertical alignment will be inherited.
-
-.. seealso:: :py:func:`setHasVerticalAlignmentSet`
-
-.. seealso:: :py:func:`verticalAlignment`
-
-.. versionadded:: 3.30
-%End
-
-    void setHasVerticalAlignmentSet( bool set );
-%Docstring
-Sets whether the format has an explicit vertical alignment ``set``.
-
-If ``set`` is ``False`` then the vertical alignment will be inherited.
-
-.. seealso:: :py:func:`hasVerticalAlignmentSet`
-
-.. seealso:: :py:func:`setVerticalAlignment`
-
-.. versionadded:: 3.30
-%End
-
-    Qgis::TextCharacterVerticalAlignment verticalAlignment() const;
-%Docstring
-Returns the format vertical alignment.
-
-This property is only respected if :py:func:`~QgsTextCharacterFormat.hasVerticalAlignmentSet` is ``True``.
-
-.. seealso:: :py:func:`hasVerticalAlignmentSet`
-
-.. seealso:: :py:func:`setVerticalAlignment`
-
-.. versionadded:: 3.30
-%End
-
-    void setVerticalAlignment( Qgis::TextCharacterVerticalAlignment alignment );
-%Docstring
-Sets the format vertical ``alignment``.
-
-This property is only respected if :py:func:`~QgsTextCharacterFormat.hasVerticalAlignmentSet` is ``True``.
-
-.. seealso:: :py:func:`hasVerticalAlignmentSet`
-
-.. seealso:: :py:func:`verticalAlignment`
-
-.. versionadded:: 3.30
-%End
-
     void updateFontForFormat( QFont &font, const QgsRenderContext &context, double scaleFactor = 1.0 ) const;
 %Docstring
 Updates the specified ``font`` in place, applying character formatting options which
 are applicable on a font level when rendered in the given ``context``.
 
 The optional ``scaleFactor`` parameter can specify a font size scaling factor. It is recommended to set this to
-:py:func:`QgsTextRenderer.calculateScaleFactorForFormat()` and then manually calculations
+:py:class:`QgsTextRenderer`.FONT_WORKAROUND_SCALE and then manually calculations
 based on the resultant font metrics. Failure to do so will result in poor quality text rendering
 at small font sizes.
 %End
@@ -390,5 +208,5 @@ at small font sizes.
  *                                                                      *
  * src/core/textrenderer/qgstextcharacterformat.h                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

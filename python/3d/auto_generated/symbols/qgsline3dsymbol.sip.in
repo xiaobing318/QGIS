@@ -3,7 +3,7 @@
  *                                                                      *
  * src/3d/symbols/qgsline3dsymbol.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -19,14 +19,18 @@ class QgsLine3DSymbol : QgsAbstract3DSymbol /NoDefaultCtors/
 
    This is not considered stable API, and may change in future QGIS releases. It is
    exposed to the Python bindings as a tech preview only.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
 #include "qgsline3dsymbol.h"
 %End
   public:
-
     QgsLine3DSymbol();
+%Docstring
+Constructor for QgsLine3DSymbol
+%End
     ~QgsLine3DSymbol();
 
     static QgsAbstract3DSymbol *create() /Factory/;
@@ -44,7 +48,7 @@ Caller takes ownership of the returned symbol.
 
     virtual void readXml( const QDomElement &elem, const QgsReadWriteContext &context );
 
-    virtual QList< Qgis::GeometryType > compatibleGeometryTypes() const;
+    virtual QList< QgsWkbTypes::GeometryType > compatibleGeometryTypes() const;
 
     virtual void setDefaultPropertiesFromLayer( const QgsVectorLayer *layer );
 
@@ -76,36 +80,13 @@ Returns width of the line symbol (in map units)
 Sets width of the line symbol (in map units)
 %End
 
- float height() const /Deprecated/;
+    float height() const;
 %Docstring
 Returns height (altitude) of the symbol (in map units)
-
-.. deprecated:: 3.36
-
-   Use :py:func:`~QgsLine3DSymbol.offset` instead.
 %End
-
- void setHeight( float height ) /Deprecated/;
+    void setHeight( float height );
 %Docstring
 Sets height (altitude) of the symbol (in map units)
-
-.. deprecated:: 3.36
-
-   Use :py:func:`~QgsLine3DSymbol.setOffset` instead.
-%End
-
-    float offset() const;
-%Docstring
-Returns vertical offset of the symbol (in map units)
-
-.. versionadded:: 3.36
-%End
-
-    void setOffset( float offset );
-%Docstring
-Sets vertical offset of the symbol (in map units)
-
-.. versionadded:: 3.36
 %End
 
     float extrusionHeight() const;
@@ -126,12 +107,12 @@ Returns whether the renderer will render data with simple lines (otherwise it us
 Sets whether the renderer will render data with simple lines (otherwise it uses buffer)
 %End
 
-    QgsAbstractMaterialSettings *materialSettings() const;
+    QgsAbstractMaterialSettings *material() const;
 %Docstring
-Returns material settings used for shading of the symbol
+Returns material used for shading of the symbol
 %End
 
-    void setMaterialSettings( QgsAbstractMaterialSettings *materialSettings /Transfer/ );
+    void setMaterial( QgsAbstractMaterialSettings *material /Transfer/ );
 %Docstring
 Sets the ``material`` settings used for shading of the symbol.
 
@@ -147,5 +128,5 @@ Ownership of ``material`` is transferred to the symbol.
  *                                                                      *
  * src/3d/symbols/qgsline3dsymbol.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

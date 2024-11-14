@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsopacitywidget.h"
-#include "moc_qgsopacitywidget.cpp"
 #include "qgsdoublespinbox.h"
 #include "qgis.h"
 #include <QHBoxLayout>

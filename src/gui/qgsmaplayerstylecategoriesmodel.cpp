@@ -14,50 +14,33 @@
  ***************************************************************************/
 
 #include "qgsmaplayerstylecategoriesmodel.h"
-#include "moc_qgsmaplayerstylecategoriesmodel.cpp"
 #include "qgsapplication.h"
 
-QgsMapLayerStyleCategoriesModel::QgsMapLayerStyleCategoriesModel( Qgis::LayerType type, QObject *parent )
+QgsMapLayerStyleCategoriesModel::QgsMapLayerStyleCategoriesModel( QgsMapLayerType type, QObject *parent )
   : QAbstractListModel( parent )
 {
   switch ( type )
   {
-    case Qgis::LayerType::Vector:
+    case QgsMapLayerType::VectorLayer:
       mCategoryList = qgsEnumList<QgsMapLayer::StyleCategory>();
       break;
 
-    case Qgis::LayerType::VectorTile:
+    case QgsMapLayerType::VectorTileLayer:
       mCategoryList << QgsMapLayer::StyleCategory::Symbology << QgsMapLayer::StyleCategory::Labeling << QgsMapLayer::StyleCategory::AllStyleCategories;
       break;
 
-    case Qgis::LayerType::Raster:
-      mCategoryList << QgsMapLayer::StyleCategory::LayerConfiguration
-                    << QgsMapLayer::StyleCategory::Symbology
-                    << QgsMapLayer::StyleCategory::MapTips
-                    << QgsMapLayer::StyleCategory::Rendering
-                    << QgsMapLayer::StyleCategory::CustomProperties
-                    << QgsMapLayer::StyleCategory::Temporal
-                    << QgsMapLayer::StyleCategory::Elevation
-                    << QgsMapLayer::StyleCategory::AttributeTable
-                    << QgsMapLayer::StyleCategory::Notes
-                    << QgsMapLayer::StyleCategory::AllStyleCategories;
-      break;
-    case Qgis::LayerType::Annotation:
-    case Qgis::LayerType::Plugin:
-    case Qgis::LayerType::Mesh:
-    case Qgis::LayerType::PointCloud:
-    case Qgis::LayerType::Group:
-    case Qgis::LayerType::TiledScene:
+    case QgsMapLayerType::RasterLayer:
+    case QgsMapLayerType::AnnotationLayer:
+    case QgsMapLayerType::PluginLayer:
+    case QgsMapLayerType::MeshLayer:
+    case QgsMapLayerType::PointCloudLayer:
+    case QgsMapLayerType::GroupLayer:
       // not yet handled by the model
       break;
   }
 
   // move All categories to top
-  int idxAllStyleCategories = mCategoryList.indexOf( QgsMapLayer::AllStyleCategories );
-  if ( idxAllStyleCategories > 0 )
-  {
-    mCategoryList.move( idxAllStyleCategories, 0 );
-  }
+  mCategoryList.move( mCategoryList.indexOf( QgsMapLayer::AllStyleCategories ), 0 );
 }
 
 void QgsMapLayerStyleCategoriesModel::setCategories( QgsMapLayer::StyleCategories categories )
@@ -85,7 +68,7 @@ void QgsMapLayerStyleCategoriesModel::setShowAllCategories( bool showAll )
 int QgsMapLayerStyleCategoriesModel::rowCount( const QModelIndex & ) const
 {
   int count = mCategoryList.count();
-  if ( count > 0 && !mShowAllCategories )
+  if ( !mShowAllCategories )
     count--;
   return count;
 }
@@ -111,350 +94,222 @@ QVariant QgsMapLayerStyleCategoriesModel::data( const QModelIndex &index, int ro
     return mCategories.testFlag( category ) ? Qt::Checked : Qt::Unchecked;
   }
 
-  QString htmlStylePattern = QStringLiteral( "<p><b>%1</b><br/><span style='color:gray;'>%2</span></p>" );
   switch ( category )
   {
     case QgsMapLayer::StyleCategory::LayerConfiguration:
-    {
-      QString name = tr( "Layer Configuration" );
-      QString description = tr( "The layers display expression and the datasource flags: identifiable, removable, searchable, read-only and hidden from the project settings" );
       switch ( role )
       {
-        case static_cast< int >( Role::NameRole ):
-          return name;
         case Qt::DisplayRole:
-          return htmlStylePattern.arg( name ).arg( description );
+          return tr( "Layer Configuration" );
         case Qt::ToolTipRole:
-          return description;
+          return tr( "Identifiable, removable, searchable, display expression, read-only, hidden" );
         case Qt::DecorationRole:
-          return QgsApplication::getThemeIcon( QStringLiteral( "/propertyicons/layerconfiguration.svg" ) );
+          return QgsApplication::getThemeIcon( QStringLiteral( "/propertyicons/system.svg" ) );
       }
       break;
-    }
     case QgsMapLayer::StyleCategory::Symbology:
-    {
-      QString name = tr( "Symbology" );
-      QString description = tr( "Everything from the symbology section" );
       switch ( role )
       {
-        case static_cast< int >( Role::NameRole ):
-          return name;
         case Qt::DisplayRole:
-
-          return htmlStylePattern.arg( name ).arg( description );
+          return tr( "Symbology" );
         case Qt::ToolTipRole:
-          return description;
+          return QVariant();
         case Qt::DecorationRole:
           return QgsApplication::getThemeIcon( QStringLiteral( "/propertyicons/symbology.svg" ) );
       }
       break;
-    }
     case QgsMapLayer::StyleCategory::Symbology3D:
-    {
-      QString name = tr( "3D Symbology" );
-      QString description = tr( "Everything from the 3D symbology section" );
       switch ( role )
       {
-        case static_cast< int >( Role::NameRole ):
-          return name;
         case Qt::DisplayRole:
-
-          return htmlStylePattern.arg( name ).arg( description );
+          return tr( "3D Symbology" );
         case Qt::ToolTipRole:
-          return description;
+          return QVariant();
         case Qt::DecorationRole:
           return QgsApplication::getThemeIcon( QStringLiteral( "/3d.svg" ) );
       }
       break;
-    }
     case QgsMapLayer::StyleCategory::Labeling:
-    {
-      QString name = tr( "Labels" );
-      QString description = tr( "Everything from the labels section" );
       switch ( role )
       {
-        case static_cast< int >( Role::NameRole ):
-          return name;
         case Qt::DisplayRole:
-
-          return htmlStylePattern.arg( name ).arg( description );
+          return tr( "Labels" );
         case Qt::ToolTipRole:
-          return description;
+          return QVariant();
         case Qt::DecorationRole:
           return QgsApplication::getThemeIcon( QStringLiteral( "/propertyicons/labels.svg" ) );
       }
       break;
-    }
     case QgsMapLayer::StyleCategory::Fields:
-    {
-      QString name = tr( "Fields" );
-      QString description = tr( "Virtual fields, aliases, default value expressions and constraints from the form section and WMS/WFS exposure" );
       switch ( role )
       {
-        case static_cast< int >( Role::NameRole ):
-          return name;
         case Qt::DisplayRole:
-
-          return htmlStylePattern.arg( name ).arg( description );
+          return tr( "Fields" );
         case Qt::ToolTipRole:
-          return description;
+          return tr( "Aliases, widgets, WMS/WFS, expressions, constraints, virtual fields" );
         case Qt::DecorationRole:
-          return QgsApplication::getThemeIcon( QStringLiteral( "/propertyicons/sourcefieldsandforms.svg" ) );
+          return QgsApplication::getThemeIcon( QStringLiteral( "/mSourceFields.svg" ) );
       }
       break;
-    }
     case QgsMapLayer::StyleCategory::Forms:
-    {
-      QString name = tr( "Attribute Form" );
-      QString description = tr( "Form layout and widget configuration (no constraints and default value expressions)" );
       switch ( role )
       {
-        case static_cast< int >( Role::NameRole ):
-          return name;
         case Qt::DisplayRole:
-
-          return htmlStylePattern.arg( name ).arg( description );
+          return tr( "Forms" );
         case Qt::ToolTipRole:
-          return description;
+          return QVariant();
         case Qt::DecorationRole:
           return QgsApplication::getThemeIcon( QStringLiteral( "/mActionFormView.svg" ) );
       }
       break;
-    }
     case QgsMapLayer::StyleCategory::Actions:
-    {
-      QString name = tr( "Actions" );
-      QString description = tr( "Everything from the actions section" );
       switch ( role )
       {
-        case static_cast< int >( Role::NameRole ):
-          return name;
         case Qt::DisplayRole:
-
-          return htmlStylePattern.arg( name ).arg( description );
+          return tr( "Actions" );
         case Qt::ToolTipRole:
-          return description;
+          return QVariant();
         case Qt::DecorationRole:
           return QgsApplication::getThemeIcon( QStringLiteral( "/propertyicons/action.svg" ) );
       }
       break;
-    }
     case QgsMapLayer::StyleCategory::MapTips:
-    {
-      QString name = tr( "Map Tips" );
-      QString description = tr( "Map tips settings (no layer display expression)" );
       switch ( role )
       {
-        case static_cast< int >( Role::NameRole ):
-          return name;
         case Qt::DisplayRole:
-
-          return htmlStylePattern.arg( name ).arg( description );
+          return tr( "Map Tips" );
         case Qt::ToolTipRole:
-          return description;
+          return QVariant();
         case Qt::DecorationRole:
           return QgsApplication::getThemeIcon( QStringLiteral( "/propertyicons/display.svg" ) );
       }
       break;
-    }
     case QgsMapLayer::StyleCategory::Diagrams:
-    {
-      QString name = tr( "Diagrams" );
-      QString description = tr( "Everything from the diagram section" );
       switch ( role )
       {
-        case static_cast< int >( Role::NameRole ):
-          return name;
         case Qt::DisplayRole:
-
-          return htmlStylePattern.arg( name ).arg( description );
+          return tr( "Diagrams" );
         case Qt::ToolTipRole:
-          return description;
+          return QVariant();
         case Qt::DecorationRole:
           return QgsApplication::getThemeIcon( QStringLiteral( "/propertyicons/diagram.svg" ) );
       }
       break;
-    }
     case QgsMapLayer::StyleCategory::AttributeTable:
-    {
-      QString name = tr( "Attribute Table Configuration" );
-      QString description = tr( "Attribute table settings: choice and order of columns and conditional styling" );
       switch ( role )
       {
-        case static_cast< int >( Role::NameRole ):
-          return name;
         case Qt::DisplayRole:
-
-          return htmlStylePattern.arg( name ).arg( description );
+          return tr( "Attribute Table Settings" );
         case Qt::ToolTipRole:
-          return description;
+          return tr( "Choice and order of columns, conditional styling" );
         case Qt::DecorationRole:
           return QgsApplication::getThemeIcon( QStringLiteral( "/mActionOpenTable.svg" ) );
       }
       break;
-    }
     case QgsMapLayer::StyleCategory::Rendering:
-    {
-      QString name = tr( "Rendering" );
-      QString description = tr( "Everything from the rendering section: Scale visibility, simplify method, opacity, auto refresh etc." );
       switch ( role )
       {
-        case static_cast< int >( Role::NameRole ):
-          return name;
         case Qt::DisplayRole:
-
-          return htmlStylePattern.arg( name ).arg( description );
+          return tr( "Rendering" );
         case Qt::ToolTipRole:
-          return description;
+          return tr( "Scale visibility, simplify method, opacity" );
         case Qt::DecorationRole:
           return QgsApplication::getThemeIcon( QStringLiteral( "/propertyicons/rendering.svg" ) );
       }
       break;
-    }
     case QgsMapLayer::StyleCategory::CustomProperties:
-    {
-      QString name = tr( "Custom Properties" );
-      QString description = tr( "Layer variables and embedded legend widgets as well as all the custom properties (often used by plugins and custom python code)" );
       switch ( role )
       {
-        case static_cast< int >( Role::NameRole ):
-          return name;
         case Qt::DisplayRole:
-
-          return htmlStylePattern.arg( name ).arg( description );
+          return tr( "Custom Properties" );
         case Qt::ToolTipRole:
-          return description;
+          return QVariant();
         case Qt::DecorationRole:
           return QgsApplication::getThemeIcon( QStringLiteral( "/mActionOptions.svg" ) );
       }
       break;
-    }
     case QgsMapLayer::StyleCategory::GeometryOptions:
-    {
-      QString name = tr( "Geometry Options" );
-      QString description = tr( "Geometry constraints and validity checks" );
       switch ( role )
       {
-        case static_cast< int >( Role::NameRole ):
-          return name;
         case Qt::DisplayRole:
-
-          return htmlStylePattern.arg( name ).arg( description );
+          return tr( "Geometry Options" );
         case Qt::ToolTipRole:
-          return description;
+          return tr( "Geometry constraints and validity checks" );
         case Qt::DecorationRole:
           return QgsApplication::getThemeIcon( QStringLiteral( "/propertyicons/digitizing.svg" ) );
       }
       break;
-    }
     case QgsMapLayer::StyleCategory::Relations:
-    {
-      QString name = tr( "Relations" );
-      QString description = tr( "The relations this layer has with other layers" );
       switch ( role )
       {
-        case static_cast< int >( Role::NameRole ):
-          return name;
         case Qt::DisplayRole:
-
-          return htmlStylePattern.arg( name ).arg( description );
+          return tr( "Relations" );
         case Qt::ToolTipRole:
-          return description;
+          return tr( "Relations with other layers" );
         case Qt::DecorationRole:
           return QgsApplication::getThemeIcon( QStringLiteral( "/propertyicons/relations.svg" ) );
       }
       break;
-    }
+
     case QgsMapLayer::StyleCategory::Temporal:
-    {
-      QString name = tr( "Temporal Properties" );
-      QString description = tr( "Everything from the temporal section" );
       switch ( role )
       {
-        case static_cast< int >( Role::NameRole ):
-          return name;
         case Qt::DisplayRole:
-
-          return htmlStylePattern.arg( name ).arg( description );
+          return tr( "Temporal Properties" );
         case Qt::ToolTipRole:
-          return description;
+          return tr( "Temporal properties" );
         case Qt::DecorationRole:
           return QgsApplication::getThemeIcon( QStringLiteral( "/propertyicons/temporal.svg" ) );
       }
       break;
-    }
+
     case QgsMapLayer::StyleCategory::Legend:
-    {
-      QString name = tr( "Legend Settings" );
-      QString description = tr( "Legend settings (no embedded legend widgets)" );
       switch ( role )
       {
-        case static_cast< int >( Role::NameRole ):
-          return name;
         case Qt::DisplayRole:
-
-          return htmlStylePattern.arg( name ).arg( description );
+          return tr( "Legend Settings" );
         case Qt::ToolTipRole:
-          return description;
+          return tr( "Legend settings" );
         case Qt::DecorationRole:
           return QgsApplication::getThemeIcon( QStringLiteral( "/legend.svg" ) );
       }
       break;
-    }
+
     case QgsMapLayer::StyleCategory::Elevation:
-    {
-      QString name = tr( "Elevation Properties" );
-      QString description = tr( "Everything from the elevation section" );
       switch ( role )
       {
-        case static_cast< int >( Role::NameRole ):
-          return name;
         case Qt::DisplayRole:
-
-          return htmlStylePattern.arg( name ).arg( description );
+          return tr( "Elevation Properties" );
         case Qt::ToolTipRole:
-          return description;
+          return tr( "Elevation properties" );
         case Qt::DecorationRole:
-          return QgsApplication::getThemeIcon( QStringLiteral( "/propertyicons/elevationscale.svg" ) );
+          return QIcon(); // TODO
       }
       break;
-    }
+
     case QgsMapLayer::StyleCategory::Notes:
-    {
-      QString name = tr( "Notes" );
-      QString description = tr( "The layer notes" );
       switch ( role )
       {
-        case static_cast< int >( Role::NameRole ):
-          return name;
         case Qt::DisplayRole:
-
-          return htmlStylePattern.arg( name ).arg( description );
         case Qt::ToolTipRole:
-          return description;
+          return tr( "Notes" );
         case Qt::DecorationRole:
-          return QgsApplication::getThemeIcon( QStringLiteral( "/propertyicons/notes.svg" ) );
+          return QIcon(); // TODO
       }
       break;
-    }
+
     case QgsMapLayer::StyleCategory::AllStyleCategories:
-    {
-      QString name = tr( "All Style Categories" );
-      QString description = tr( "All style categories" );
       switch ( role )
       {
-        case static_cast< int >( Role::NameRole ):
-          return name;
         case Qt::DisplayRole:
-
-          return htmlStylePattern.arg( name ).arg( description );
+          return tr( "All Style Categories" );
         case Qt::ToolTipRole:
           return QVariant();
         case Qt::DecorationRole:
           return QVariant();
       }
       break;
-    }
+
   }
   return QVariant();
 }
@@ -487,36 +342,4 @@ bool QgsMapLayerStyleCategoriesModel::setData( const QModelIndex &index, const Q
 Qt::ItemFlags QgsMapLayerStyleCategoriesModel::flags( const QModelIndex & ) const
 {
   return Qt::ItemIsEnabled | Qt::ItemIsUserCheckable;
-}
-
-QgsCategoryDisplayLabelDelegate::QgsCategoryDisplayLabelDelegate( QObject *parent )
-  : QItemDelegate( parent )
-{
-}
-
-void QgsCategoryDisplayLabelDelegate::drawDisplay( QPainter *painter, const QStyleOptionViewItem &option, const QRect &rect, const QString &text ) const
-{
-  QLabel label;
-  label.setText( text );
-  label.setEnabled( option.state & QStyle::State_Enabled );
-  label.setAttribute( Qt::WA_TranslucentBackground );
-  label.setMargin( 3 );
-  label.setWordWrap( true );
-  painter->save();
-  painter->translate( rect.topLeft() );
-  label.resize( rect.size() );
-  label.render( painter );
-  painter->restore();
-}
-
-QSize QgsCategoryDisplayLabelDelegate::sizeHint( const QStyleOptionViewItem &option, const QModelIndex &index ) const
-{
-  Q_UNUSED( option )
-  QLabel label;
-  QString display = index.model()->data( index, Qt::DisplayRole ).toString();
-  label.setText( display );
-  label.setWordWrap( true );
-  label.setFixedWidth( option.widget->size().width() );
-  label.setMargin( 3 );
-  return label.sizeHint();
 }

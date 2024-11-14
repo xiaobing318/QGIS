@@ -60,10 +60,7 @@ class CORE_EXPORT QgsZipItem : public QgsDataCollectionItem
     static QVector<dataItem_t *> sDataItemPtr SIP_SKIP;
     static QStringList sProviderNames;
 
-    /**
-     * \deprecated QGIS 3.40. Will be removed in QGIS 4.0.
-     */
-    Q_DECL_DEPRECATED static QString vsiPrefix( const QString &uri ) SIP_DEPRECATED;
+    static QString vsiPrefix( const QString &uri ) { return qgsVsiPrefix( uri ); }
 
     /**
      * Creates a new data item from the specified path.

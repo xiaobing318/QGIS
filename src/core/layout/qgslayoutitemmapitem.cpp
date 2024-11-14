@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgslayoutitemmapitem.h"
-#include "moc_qgslayoutitemmapitem.cpp"
 #include "qgslayoutitemmap.h"
 #include "qgslayout.h"
 #include <QUuid>
@@ -280,7 +279,7 @@ void QgsLayoutItemMapItemStack::drawItems( QPainter *painter, bool ignoreStackin
         if ( !ignoreStacking )
           break;
 
-        [[fallthrough]];
+        FALLTHROUGH
       case QgsLayoutItemMapItem::StackAboveMapLabels:
         item->draw( painter );
         break;

@@ -12,15 +12,14 @@
 #
 
 
-set(QWT_LIBRARY_NAMES qwt-${QT_VERSION_BASE_LOWER} qwt qwt6 qwt6-${QT_VERSION_BASE_LOWER})
+set(QWT_LIBRARY_NAMES qwt-qt5 qwt6-qt5 qwt qwt6)
 
 find_library(QWT_LIBRARY
   NAMES ${QWT_LIBRARY_NAMES}
   PATHS
     /usr/lib
-    /usr/lib64
     /usr/local/lib
-    /usr/local/lib/${QT_VERSION_BASE_LOWER}
+    /usr/local/lib/qt5
     "$ENV{LIB_DIR}/lib"
     "$ENV{LIB}"
 )
@@ -33,12 +32,12 @@ endif()
 FIND_PATH(QWT_INCLUDE_DIR NAMES qwt.h PATHS
   "${_qwt_fw}/Headers"
   /usr/include
-  /usr/include/${QT_VERSION_BASE_LOWER}
+  /usr/include/qt5
   /usr/local/include
-  /usr/local/include/${QT_VERSION_BASE_LOWER}
+  /usr/local/include/qt5
   "$ENV{LIB_DIR}/include"
   "$ENV{INCLUDE}"
-  PATH_SUFFIXES qwt-${QT_VERSION_BASE_LOWER} ${QT_VERSION_BASE_LOWER}/qwt qwt qwt6
+  PATH_SUFFIXES qwt-qt5 qwt qwt6 qt5/qwt
 )
 
 IF (QWT_INCLUDE_DIR AND QWT_LIBRARY)

@@ -52,15 +52,15 @@ class QgsZonalHistogramAlgorithm : public QgsProcessingAlgorithm
   private:
 
     std::unique_ptr< QgsRasterInterface > mRasterInterface;
-    int mRasterBand = 1;
+    int mRasterBand;
     bool mHasNoDataValue = false;
     float mNodataValue = -1;
     QgsRectangle mRasterExtent;
     QgsCoordinateReferenceSystem mCrs;
-    double mCellSizeX = 0;
-    double mCellSizeY = 0;
-    double mNbCellsXProvider = 0;
-    double mNbCellsYProvider = 0;
+    double mCellSizeX;
+    double mCellSizeY;
+    double mNbCellsXProvider;
+    double mNbCellsYProvider;
 
 };
 

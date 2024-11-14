@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     SelectByAttribute.py
@@ -19,7 +21,7 @@ __author__ = 'Michael Minn'
 __date__ = 'May 2010'
 __copyright__ = '(C) 2010, Michael Minn'
 
-from qgis.PyQt.QtCore import QMetaType
+from qgis.PyQt.QtCore import QVariant
 from qgis.core import (QgsExpression,
                        QgsVectorLayer,
                        QgsProcessing,
@@ -70,7 +72,7 @@ class SelectByAttribute(QgisAlgorithm):
         super().__init__()
 
     def flags(self):
-        return super().flags() | QgsProcessingAlgorithm.Flag.FlagNoThreading | QgsProcessingAlgorithm.Flag.FlagNotAvailableInStandaloneTool
+        return super().flags() | QgsProcessingAlgorithm.FlagNoThreading | QgsProcessingAlgorithm.FlagNotAvailableInStandaloneTool
 
     def initAlgorithm(self, config=None):
         self.operators = ['=',
@@ -93,7 +95,7 @@ class SelectByAttribute(QgisAlgorithm):
 
         self.addParameter(QgsProcessingParameterVectorLayer(self.INPUT,
                                                             self.tr('Input layer'),
-                                                            types=[QgsProcessing.SourceType.TypeVector]))
+                                                            types=[QgsProcessing.TypeVector]))
         self.addParameter(QgsProcessingParameterField(self.FIELD,
                                                       self.tr('Selection attribute'),
                                                       parentLayerParameterName=self.INPUT))
@@ -124,13 +126,13 @@ class SelectByAttribute(QgisAlgorithm):
 
         fields = layer.fields()
 
-        idx = fields.lookupField(fieldName)
+        idx = layer.fields().lookupField(fieldName)
         if idx < 0:
             raise QgsProcessingException(self.tr("Field '{}' was not found in layer").format(fieldName))
 
         fieldType = fields[idx].type()
 
-        if fieldType != QMetaType.Type.QString and operator in self.STRING_OPERATORS:
+        if fieldType != QVariant.String and operator in self.STRING_OPERATORS:
             op = ''.join('"%s", ' % o for o in self.STRING_OPERATORS)
             raise QgsProcessingException(
                 self.tr('Operators {0} can be used only with string fields.').format(op))
@@ -138,27 +140,27 @@ class SelectByAttribute(QgisAlgorithm):
         field_ref = QgsExpression.quotedColumnRef(fieldName)
         quoted_val = QgsExpression.quotedValue(value)
         if operator == 'is null':
-            expression_string = f'{field_ref} IS NULL'
+            expression_string = '{} IS NULL'.format(field_ref)
         elif operator == 'is not null':
-            expression_string = f'{field_ref} IS NOT NULL'
+            expression_string = '{} IS NOT NULL'.format(field_ref)
         elif operator == 'begins with':
-            expression_string = f"{field_ref} LIKE '{value}%'"
+            expression_string = "{} LIKE '{}%'".format(field_ref, value)
         elif operator == 'contains':
-            expression_string = f"{field_ref} LIKE '%{value}%'"
+            expression_string = "{} LIKE '%{}%'".format(field_ref, value)
         elif operator == 'does not contain':
-            expression_string = f"{field_ref} NOT LIKE '%{value}%'"
+            expression_string = "{} NOT LIKE '%{}%'".format(field_ref, value)
         else:
-            expression_string = f'{field_ref} {operator} {quoted_val}'
+            expression_string = '{} {} {}'.format(field_ref, operator, quoted_val)
 
         method = self.parameterAsEnum(parameters, self.METHOD, context)
         if method == 0:
-            behavior = QgsVectorLayer.SelectBehavior.SetSelection
+            behavior = QgsVectorLayer.SetSelection
         elif method == 1:
-            behavior = QgsVectorLayer.SelectBehavior.AddToSelection
+            behavior = QgsVectorLayer.AddToSelection
         elif method == 2:
-            behavior = QgsVectorLayer.SelectBehavior.RemoveFromSelection
+            behavior = QgsVectorLayer.RemoveFromSelection
         elif method == 3:
-            behavior = QgsVectorLayer.SelectBehavior.IntersectSelection
+            behavior = QgsVectorLayer.IntersectSelection
 
         expression = QgsExpression(expression_string)
         if expression.hasParserError():

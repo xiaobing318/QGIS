@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/effects/qgseffectstackpropertieswidget.h                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -22,6 +22,8 @@ and reordering effects within the stack.
 .. seealso:: :py:class:`QgsEffectStackPropertiesDialog`
 
 .. seealso:: :py:class:`QgsEffectStackCompactWidget`
+
+.. versionadded:: 2.9
 %End
 
 %TypeHeaderCode
@@ -138,6 +140,8 @@ and reordering effects within the stack.
 .. seealso:: :py:class:`QgsEffectStackPropertiesWidget`
 
 .. seealso:: :py:class:`QgsEffectStackCompactWidget`
+
+.. versionadded:: 2.9
 %End
 
 %TypeHeaderCode
@@ -186,6 +190,8 @@ and a button for opening an effect stack customization dialog.
 .. seealso:: :py:class:`QgsEffectStackPropertiesWidget`
 
 .. seealso:: :py:class:`QgsEffectStackPropertiesDialog`
+
+.. versionadded:: 2.9
 %End
 
 %TypeHeaderCode
@@ -245,5 +251,5 @@ Emitted when the paint effect properties change
  *                                                                      *
  * src/gui/effects/qgseffectstackpropertieswidget.h                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

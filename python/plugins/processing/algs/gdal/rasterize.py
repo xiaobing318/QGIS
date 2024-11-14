@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     rasterize.py
@@ -21,6 +23,7 @@ __copyright__ = '(C) 2013, Alexander Bruy'
 
 import os
 
+from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtGui import QIcon
 
 from qgis.core import (QgsRasterFileWriter,
@@ -28,12 +31,13 @@ from qgis.core import (QgsRasterFileWriter,
                        QgsProcessingParameterDefinition,
                        QgsProcessingParameterFeatureSource,
                        QgsProcessingParameterField,
+                       QgsProcessingParameterRasterLayer,
                        QgsProcessingParameterNumber,
                        QgsProcessingParameterString,
                        QgsProcessingParameterEnum,
                        QgsProcessingParameterExtent,
                        QgsProcessingParameterBoolean,
-                       QgsProcessingParameterRasterDestination, NULL)
+                       QgsProcessingParameterRasterDestination)
 from processing.algs.gdal.GdalAlgorithm import GdalAlgorithm
 from processing.algs.gdal.GdalUtils import GdalUtils
 
@@ -58,7 +62,7 @@ class rasterize(GdalAlgorithm):
     EXTRA = 'EXTRA'
     OUTPUT = 'OUTPUT'
 
-    TYPES = ['Byte', 'Int16', 'UInt16', 'UInt32', 'Int32', 'Float32', 'Float64', 'CInt16', 'CInt32', 'CFloat32', 'CFloat64', 'Int8']
+    TYPES = ['Byte', 'Int16', 'UInt16', 'UInt32', 'Int32', 'Float32', 'Float64', 'CInt16', 'CInt32', 'CFloat32', 'CFloat64']
 
     def __init__(self):
         super().__init__()
@@ -73,11 +77,11 @@ class rasterize(GdalAlgorithm):
                                                       self.tr('Field to use for a burn-in value'),
                                                       None,
                                                       self.INPUT,
-                                                      QgsProcessingParameterField.DataType.Numeric,
+                                                      QgsProcessingParameterField.Numeric,
                                                       optional=True))
         self.addParameter(QgsProcessingParameterNumber(self.BURN,
                                                        self.tr('A fixed value to burn'),
-                                                       type=QgsProcessingParameterNumber.Type.Double,
+                                                       type=QgsProcessingParameterNumber.Double,
                                                        defaultValue=0.0,
                                                        optional=True))
         self.addParameter(QgsProcessingParameterBoolean(self.USE_Z,
@@ -89,30 +93,32 @@ class rasterize(GdalAlgorithm):
                                                      self.units))
         self.addParameter(QgsProcessingParameterNumber(self.WIDTH,
                                                        self.tr('Width/Horizontal resolution'),
-                                                       type=QgsProcessingParameterNumber.Type.Double,
+                                                       type=QgsProcessingParameterNumber.Double,
                                                        minValue=0.0,
                                                        defaultValue=0.0))
         self.addParameter(QgsProcessingParameterNumber(self.HEIGHT,
                                                        self.tr('Height/Vertical resolution'),
-                                                       type=QgsProcessingParameterNumber.Type.Double,
+                                                       type=QgsProcessingParameterNumber.Double,
                                                        minValue=0.0,
                                                        defaultValue=0.0))
         self.addParameter(QgsProcessingParameterExtent(self.EXTENT,
                                                        self.tr('Output extent'),
                                                        optional=True))
         nodataParam = QgsProcessingParameterNumber(self.NODATA,
-                                                   self.tr('Assign a specified NoData value to output bands'),
-                                                   type=QgsProcessingParameterNumber.Type.Double,
+                                                   self.tr('Assign a specified nodata value to output bands'),
+                                                   type=QgsProcessingParameterNumber.Double,
                                                    optional=True)
-        nodataParam.setGuiDefaultValueOverride(NULL)
+        nodataParam.setGuiDefaultValueOverride(QVariant(QVariant.Double))
         self.addParameter(nodataParam)
 
         options_param = QgsProcessingParameterString(self.OPTIONS,
                                                      self.tr('Additional creation options'),
                                                      defaultValue='',
                                                      optional=True)
-        options_param.setFlags(options_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
-        options_param.setMetadata({'widget_wrapper': {'widget_type': 'rasteroptions'}})
+        options_param.setFlags(options_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        options_param.setMetadata({
+            'widget_wrapper': {
+                'class': 'processing.algs.gdal.ui.RasterOptionsWidget.RasterOptionsWidgetWrapper'}})
         self.addParameter(options_param)
 
         dataType_param = QgsProcessingParameterEnum(self.DATA_TYPE,
@@ -120,27 +126,27 @@ class rasterize(GdalAlgorithm):
                                                     self.TYPES,
                                                     allowMultiple=False,
                                                     defaultValue=5)
-        dataType_param.setFlags(dataType_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        dataType_param.setFlags(dataType_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(dataType_param)
 
         init_param = QgsProcessingParameterNumber(self.INIT,
                                                   self.tr('Pre-initialize the output image with value'),
-                                                  type=QgsProcessingParameterNumber.Type.Double,
+                                                  type=QgsProcessingParameterNumber.Double,
                                                   optional=True)
-        init_param.setFlags(init_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        init_param.setFlags(init_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(init_param)
 
         invert_param = QgsProcessingParameterBoolean(self.INVERT,
                                                      self.tr('Invert rasterization'),
                                                      defaultValue=False)
-        invert_param.setFlags(invert_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        invert_param.setFlags(invert_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(invert_param)
 
         extra_param = QgsProcessingParameterString(self.EXTRA,
                                                    self.tr('Additional command-line parameters'),
                                                    defaultValue=None,
                                                    optional=True)
-        extra_param.setFlags(extra_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        extra_param.setFlags(extra_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(extra_param)
 
         self.addParameter(QgsProcessingParameterRasterDestination(self.OUTPUT,
@@ -169,10 +175,10 @@ class rasterize(GdalAlgorithm):
         if source is None:
             raise QgsProcessingException(self.invalidSourceError(parameters, self.INPUT))
 
-        input_details = self.getOgrCompatibleSource(self.INPUT, parameters, context, feedback, executing)
+        ogrLayer, layerName = self.getOgrCompatibleSource(self.INPUT, parameters, context, feedback, executing)
         arguments = [
             '-l',
-            input_details.layer_name
+            layerName
         ]
         fieldName = self.parameterAsString(parameters, self.FIELD, context)
         use_z = self.parameterAsBoolean(parameters, self.USE_Z, context)
@@ -217,32 +223,13 @@ class rasterize(GdalAlgorithm):
             arguments.append(extent.xMaximum())
             arguments.append(extent.yMaximum())
 
-        data_type = self.parameterAsEnum(parameters, self.DATA_TYPE, context)
-        if self.TYPES[data_type] == 'Int8' and GdalUtils.version() < 3070000:
-            raise QgsProcessingException(self.tr('Int8 data type requires GDAL version 3.7 or later'))
-
-        arguments.append('-ot ' + self.TYPES[data_type])
+        arguments.append('-ot')
+        arguments.append(self.TYPES[self.parameterAsEnum(parameters, self.DATA_TYPE, context)])
 
         out = self.parameterAsOutputLayer(parameters, self.OUTPUT, context)
         self.setOutputValue(self.OUTPUT, out)
-
-        output_format = QgsRasterFileWriter.driverForExtension(os.path.splitext(out)[1])
-        if not output_format:
-            raise QgsProcessingException(self.tr('Output format is invalid'))
-
         arguments.append('-of')
-        arguments.append(output_format)
-
-        if input_details.open_options:
-            if GdalUtils.version() < 3070000:
-                raise QgsProcessingException(self.tr(
-                    'Open options are not supported by gdal_rasterize version {} (requires GDAL version 3.7 or later)'.format(
-                        GdalUtils.readableVersion())))
-
-            arguments.extend(input_details.open_options_as_arguments())
-
-        if input_details.credential_options:
-            arguments.extend(input_details.credential_options_as_arguments())
+        arguments.append(QgsRasterFileWriter.driverForExtension(os.path.splitext(out)[1]))
 
         options = self.parameterAsString(parameters, self.OPTIONS, context)
         if options:
@@ -252,7 +239,7 @@ class rasterize(GdalAlgorithm):
             extra = self.parameterAsString(parameters, self.EXTRA, context)
             arguments.append(extra)
 
-        arguments.append(input_details.connection_string)
+        arguments.append(ogrLayer)
         arguments.append(out)
 
         return [self.commandName(), GdalUtils.escapeAndJoin(arguments)]

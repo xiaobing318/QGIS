@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/editorwidgets/core/qgseditorwidgetautoconf.h                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -12,6 +12,8 @@ class QgsEditorWidgetAutoConfPlugin
 {
 %Docstring(signature="appended")
 Base class for plugins allowing to pick automatically a widget type for editing fields.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -46,5 +48,5 @@ Typical scores are:
  *                                                                      *
  * src/gui/editorwidgets/core/qgseditorwidgetautoconf.h                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

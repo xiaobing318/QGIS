@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgscolorrampimpl.h                                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -13,6 +13,8 @@ class QgsGradientStop
 {
 %Docstring(signature="appended")
 Represents a color stop within a :py:class:`QgsGradientColorRamp` color ramp.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -97,6 +99,8 @@ class QgsGradientColorRamp : QgsColorRamp
 %Docstring(signature="appended")
 Gradient color ramp, which smoothly interpolates between two colors and also
 supports optional extra color stops.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -257,6 +261,8 @@ Copy color ramp stops to a QGradient
 :param gradient: gradient to copy stops into
 :param opacity: opacity multiplier. Opacity of colors will be multiplied
                 by this factor before adding to the gradient.
+
+.. versionadded:: 2.1
 %End
 
     QColor::Spec colorSpec() const;
@@ -321,6 +327,8 @@ class QgsLimitedRandomColorRamp : QgsColorRamp
 {
 %Docstring(signature="appended")
 Constrained random color ramp, which returns random colors based on preset parameters.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -380,6 +388,8 @@ Returns the string identifier for QgsLimitedRandomColorRamp.
                                        int valMax = DEFAULT_RANDOM_VAL_MAX, int valMin = DEFAULT_RANDOM_VAL_MIN );
 %Docstring
 Gets a list of random colors
+
+.. versionadded:: 2.4
 %End
 
     void updateColors();
@@ -485,6 +495,8 @@ class QgsRandomColorRamp: QgsColorRamp
 %Docstring(signature="appended")
 Totally random color ramp. Returns colors generated at random, but constrained
 to some hardcoded saturation and value ranges to prevent ugly color generation.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -493,6 +505,9 @@ to some hardcoded saturation and value ranges to prevent ugly color generation.
   public:
 
     QgsRandomColorRamp();
+%Docstring
+Constructor for QgsRandomColorRamp.
+%End
 
     virtual int count() const;
 
@@ -510,6 +525,8 @@ this method pregenerates a set of visually distinct colors which are returned
 by subsequent calls to :py:func:`~QgsRandomColorRamp.color`.
 
 :param colorCount: number of unique colors
+
+.. versionadded:: 2.5
 %End
 
     static QString typeString();
@@ -538,6 +555,8 @@ class QgsPresetSchemeColorRamp : QgsColorRamp, QgsColorScheme
 {
 %Docstring(signature="appended")
 A scheme based color ramp consisting of a list of predefined colors.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -621,6 +640,8 @@ class QgsColorBrewerColorRamp : QgsColorRamp
 {
 %Docstring(signature="appended")
 Color ramp utilising "Color Brewer" preset color schemes.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -735,10 +756,6 @@ Generates the scheme using the current name and number of colors
 
 class QgsCptCityColorRamp : QgsGradientColorRamp
 {
-%Docstring(signature="appended")
-
-A color ramp from the CPT City collection.
-%End
 
 %TypeHeaderCode
 #include "qgscolorrampimpl.h"
@@ -828,5 +845,5 @@ Returns the string identifier for QgsCptCityColorRamp.
  *                                                                      *
  * src/core/qgscolorrampimpl.h                                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

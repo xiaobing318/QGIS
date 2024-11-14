@@ -37,6 +37,7 @@ class QgsSubsetStringEditorInterface;
 class GUI_EXPORT QgsSubsetStringEditorProvider
 {
   public:
+    //! Destructor.
     virtual ~QgsSubsetStringEditorProvider();
 
     //! Provider key

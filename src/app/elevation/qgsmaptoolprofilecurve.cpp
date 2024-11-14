@@ -15,7 +15,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsmaptoolprofilecurve.h"
-#include "moc_qgsmaptoolprofilecurve.cpp"
 #include "qgsmapcanvas.h"
 #include "qgsrubberband.h"
 #include "qgsmaptoolcapturerubberband.h"

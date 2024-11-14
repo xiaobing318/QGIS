@@ -9,28 +9,27 @@ __author__ = 'Nyall Dawson'
 __date__ = '09/11/2020'
 __copyright__ = 'Copyright 2020, The QGIS Project'
 
+import qgis  # NOQA
 from qgis.PyQt.QtGui import QColor
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import (
-    Qgis,
-    QgsPointCloudClassifiedRenderer,
-    QgsPointCloudLayer,
     QgsPointCloudLayerElevationProperties,
-    QgsProviderRegistry,
     QgsReadWriteContext,
     QgsUnitTypes,
-    QgsDoubleRange,
+    Qgis,
+    QgsPointCloudLayer,
+    QgsProviderRegistry,
+    QgsPointCloudClassifiedRenderer
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
 start_app()
 
 
-class TestQgsPointCloudElevationProperties(QgisTestCase):
+class TestQgsPointCloudElevationProperties(unittest.TestCase):
 
     def testBasic(self):
         props = QgsPointCloudLayerElevationProperties(None)
@@ -42,21 +41,21 @@ class TestQgsPointCloudElevationProperties(QgisTestCase):
         props.setZOffset(0.5)
         props.setZScale(2)
         props.setMaximumScreenError(0.4)
-        props.setMaximumScreenErrorUnit(QgsUnitTypes.RenderUnit.RenderInches)
+        props.setMaximumScreenErrorUnit(QgsUnitTypes.RenderInches)
         props.setPointSymbol(Qgis.PointCloudSymbol.Circle)
         props.setPointColor(QColor(255, 0, 255))
         props.setPointSize(1.2)
-        props.setPointSizeUnit(QgsUnitTypes.RenderUnit.RenderPoints)
+        props.setPointSizeUnit(QgsUnitTypes.RenderPoints)
         props.setRespectLayerColors(False)
 
         self.assertEqual(props.zScale(), 2)
         self.assertEqual(props.zOffset(), 0.5)
         self.assertEqual(props.maximumScreenError(), 0.4)
-        self.assertEqual(props.maximumScreenErrorUnit(), QgsUnitTypes.RenderUnit.RenderInches)
+        self.assertEqual(props.maximumScreenErrorUnit(), QgsUnitTypes.RenderInches)
         self.assertEqual(props.pointSymbol(), Qgis.PointCloudSymbol.Circle)
         self.assertEqual(props.pointColor().name(), '#ff00ff')
         self.assertEqual(props.pointSize(), 1.2)
-        self.assertEqual(props.pointSizeUnit(), QgsUnitTypes.RenderUnit.RenderPoints)
+        self.assertEqual(props.pointSizeUnit(), QgsUnitTypes.RenderPoints)
         self.assertFalse(props.respectLayerColors())
 
         doc = QDomDocument("testdoc")
@@ -68,22 +67,22 @@ class TestQgsPointCloudElevationProperties(QgisTestCase):
         self.assertEqual(props2.zScale(), 2)
         self.assertEqual(props2.zOffset(), 0.5)
         self.assertEqual(props2.maximumScreenError(), 0.4)
-        self.assertEqual(props2.maximumScreenErrorUnit(), QgsUnitTypes.RenderUnit.RenderInches)
+        self.assertEqual(props2.maximumScreenErrorUnit(), QgsUnitTypes.RenderInches)
         self.assertEqual(props2.pointSymbol(), Qgis.PointCloudSymbol.Circle)
         self.assertEqual(props2.pointColor().name(), '#ff00ff')
         self.assertEqual(props2.pointSize(), 1.2)
-        self.assertEqual(props2.pointSizeUnit(), QgsUnitTypes.RenderUnit.RenderPoints)
+        self.assertEqual(props2.pointSizeUnit(), QgsUnitTypes.RenderPoints)
         self.assertFalse(props2.respectLayerColors())
 
         props2 = props.clone()
         self.assertEqual(props2.zScale(), 2)
         self.assertEqual(props2.zOffset(), 0.5)
         self.assertEqual(props2.maximumScreenError(), 0.4)
-        self.assertEqual(props2.maximumScreenErrorUnit(), QgsUnitTypes.RenderUnit.RenderInches)
+        self.assertEqual(props2.maximumScreenErrorUnit(), QgsUnitTypes.RenderInches)
         self.assertEqual(props2.pointSymbol(), Qgis.PointCloudSymbol.Circle)
         self.assertEqual(props2.pointColor().name(), '#ff00ff')
         self.assertEqual(props2.pointSize(), 1.2)
-        self.assertEqual(props2.pointSizeUnit(), QgsUnitTypes.RenderUnit.RenderPoints)
+        self.assertEqual(props2.pointSizeUnit(), QgsUnitTypes.RenderPoints)
         self.assertFalse(props2.respectLayerColors())
 
     @unittest.skipIf('ept' not in QgsProviderRegistry.instance().providerList(), 'EPT provider not available')
@@ -103,21 +102,6 @@ class TestQgsPointCloudElevationProperties(QgisTestCase):
         props.setRespectLayerColors(False)
         layer.setRenderer(QgsPointCloudClassifiedRenderer())
         self.assertEqual(len(spy), 1)
-
-    @unittest.skipIf('ept' not in QgsProviderRegistry.instance().providerList(), 'EPT provider not available')
-    def test_layer_calculations(self):
-        layer = QgsPointCloudLayer(unitTestDataPath() + '/point_clouds/ept/rgb/ept.json', 'test', 'ept')
-        self.assertTrue(layer.isValid())
-
-        props = layer.elevationProperties()
-        self.assertEqual(props.calculateZRange(layer), QgsDoubleRange(0.98, 1.25))
-        self.assertEqual(props.significantZValues(layer),
-                         [0.98, 1.25])
-
-        props.setZScale(2)
-        props.setZOffset(0.1)
-        self.assertEqual(props.significantZValues(layer),
-                         [2.06, 2.6])
 
 
 if __name__ == '__main__':

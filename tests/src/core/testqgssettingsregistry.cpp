@@ -16,12 +16,13 @@
 
 #include "qgssettingsentry.h"
 #include "qgssettingsregistry.h"
+#include "qgsunittypes.h"
+#include "qgsmaplayerproxymodel.h"
 #include "qgstest.h"
 
 /**
  * This is a helper class to test protected methods of QgsSettingsRegistry
  */
-Q_NOWARN_DEPRECATED_PUSH
 class SettingsRegistryTest : public QgsSettingsRegistry
 {
   public:
@@ -31,8 +32,6 @@ class SettingsRegistryTest : public QgsSettingsRegistry
       QgsSettingsRegistry::addSettingsEntry( settingsEntry );
     }
 };
-Q_NOWARN_DEPRECATED_POP
-
 
 /**
  * \ingroup UnitTests

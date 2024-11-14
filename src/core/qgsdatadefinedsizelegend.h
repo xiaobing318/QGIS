@@ -37,6 +37,7 @@ class QgsLineSymbol;
  * For example: the list of classes (size values), whether the classes should appear in separate
  * legend nodes or whether to collapse them into one legend node.
  *
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsDataDefinedSizeLegend
 {
@@ -49,6 +50,7 @@ class CORE_EXPORT QgsDataDefinedSizeLegend
 
     ~QgsDataDefinedSizeLegend();
 
+    //! Copy constructor
     QgsDataDefinedSizeLegend( const QgsDataDefinedSizeLegend &other );
     QgsDataDefinedSizeLegend &operator=( const QgsDataDefinedSizeLegend &other );
 

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgspropertyoverridebutton.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -22,6 +22,8 @@ It allows users to specify field or expression based overrides
 which should be applied to a property of an object. Eg, this widget
 is used for controlling data defined overrides in symbology, labeling
 and layouts.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -208,6 +210,8 @@ reflect the status of the property when it's set to follow a project color.
     void updateFieldLists();
 %Docstring
 Updates list of fields.
+
+.. versionadded:: 3.0
 %End
 
 
@@ -252,5 +256,5 @@ Emitted when creating a new auxiliary field
  *                                                                      *
  * src/gui/qgspropertyoverridebutton.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

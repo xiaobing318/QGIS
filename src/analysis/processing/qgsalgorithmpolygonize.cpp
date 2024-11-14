@@ -53,11 +53,11 @@ QString QgsPolygonizeAlgorithm::groupId() const
 void QgsPolygonizeAlgorithm::initAlgorithm( const QVariantMap & )
 {
   addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ),
-                QObject::tr( "Input layer" ), QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::VectorLine ) ) );
+                QObject::tr( "Input layer" ), QList< int >() << QgsProcessing::TypeVectorLine ) );
   addParameter( new QgsProcessingParameterBoolean( QStringLiteral( "KEEP_FIELDS" ),
                 QObject::tr( "Keep table structure of line layer" ), false, true ) );
   addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ),
-                QObject::tr( "Polygons" ), Qgis::ProcessingSourceType::VectorPolygon ) );
+                QObject::tr( "Polygons" ), QgsProcessing::TypeVectorPolygon ) );
   addOutput( new QgsProcessingOutputNumber( QStringLiteral( "NUM_POLYGONS" ), QObject::tr( "Number of polygons" ) ) );
 }
 
@@ -77,7 +77,7 @@ QVariantMap QgsPolygonizeAlgorithm::processAlgorithm( const QVariantMap &paramet
     fields = source->fields();
 
   QString dest;
-  std::unique_ptr< QgsFeatureSink > sink( parameterAsSink( parameters, QStringLiteral( "OUTPUT" ), context, dest, fields, Qgis::WkbType::Polygon, source->sourceCrs() ) );
+  std::unique_ptr< QgsFeatureSink > sink( parameterAsSink( parameters, QStringLiteral( "OUTPUT" ), context, dest, fields, QgsWkbTypes::Polygon, source->sourceCrs() ) );
   if ( !sink )
     throw QgsProcessingException( invalidSinkError( parameters, QStringLiteral( "OUTPUT" ) ) );
 
@@ -132,8 +132,6 @@ QVariantMap QgsPolygonizeAlgorithm::processAlgorithm( const QVariantMap &paramet
       polygonCount += 1;
     }
   }
-
-  sink->finalize();
 
   QVariantMap outputs;
   outputs.insert( QStringLiteral( "OUTPUT" ), dest );

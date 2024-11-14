@@ -9,15 +9,18 @@ __author__ = 'Matthias Kuhn'
 __date__ = '12.8.2015'
 __copyright__ = 'Copyright 2015, The QGIS Project'
 
-
-from qgis.core import QgsEditError, QgsFeature, QgsVectorLayer, edit
-import unittest
-from qgis.testing import start_app, QgisTestCase
+import qgis  # NOQA
+from qgis.core import (edit,
+                       QgsFeature,
+                       QgsVectorLayer,
+                       QgsEditError
+                       )
+from qgis.testing import unittest, start_app
 
 start_app()
 
 
-class TestSyntacticSugar(QgisTestCase):
+class TestSyntacticSugar(unittest.TestCase):
 
     def testEdit(self):
         """Test `with edit(layer):` code"""

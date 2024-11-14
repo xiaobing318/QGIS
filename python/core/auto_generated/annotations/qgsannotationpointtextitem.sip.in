@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/annotations/qgsannotationpointtextitem.h                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -45,17 +45,17 @@ Creates a new text at point annotation item.
 
     virtual bool readXml( const QDomElement &element, const QgsReadWriteContext &context );
 
-    virtual QgsAnnotationPointTextItem *clone() const /Factory/;
+    virtual QgsAnnotationPointTextItem *clone() /Factory/;
 
     virtual QgsRectangle boundingBox() const;
 
     virtual QgsRectangle boundingBox( QgsRenderContext &context ) const;
 
-    virtual QList< QgsAnnotationItemNode > nodesV2( const QgsAnnotationItemEditContext &context ) const;
+    virtual QList< QgsAnnotationItemNode > nodes() const;
 
-    virtual Qgis::AnnotationItemEditOperationResult applyEditV2( QgsAbstractAnnotationItemEditOperation *operation, const QgsAnnotationItemEditContext &context );
+    virtual Qgis::AnnotationItemEditOperationResult applyEdit( QgsAbstractAnnotationItemEditOperation *operation );
 
-    virtual QgsAnnotationItemEditOperationTransientResults *transientEditResultsV2( QgsAbstractAnnotationItemEditOperation *operation, const QgsAnnotationItemEditContext &context ) /Factory/;
+    virtual QgsAnnotationItemEditOperationTransientResults *transientEditResults( QgsAbstractAnnotationItemEditOperation *operation ) /Factory/;
 
 
     QgsPointXY point() const;
@@ -132,24 +132,6 @@ Sets the text's ``alignment`` relative to the reference :py:func:`~QgsAnnotation
 .. seealso:: :py:func:`alignment`
 %End
 
-    Qgis::SymbolRotationMode rotationMode() const;
-%Docstring
-Returns the rotation mode for the text item.
-
-.. seealso:: :py:func:`setRotationMode`
-
-.. versionadded:: 3.32
-%End
-
-    void setRotationMode( Qgis::SymbolRotationMode mode );
-%Docstring
-Sets the rotation ``mode`` for the text item.
-
-.. seealso:: :py:func:`rotationMode`
-
-.. versionadded:: 3.32
-%End
-
   private:
     QgsAnnotationPointTextItem( const QgsAnnotationPointTextItem &other );
 };
@@ -159,5 +141,5 @@ Sets the rotation ``mode`` for the text item.
  *                                                                      *
  * src/core/annotations/qgsannotationpointtextitem.h                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

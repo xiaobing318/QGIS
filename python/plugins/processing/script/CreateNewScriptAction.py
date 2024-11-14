@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     CreateNewScriptAction.py
@@ -23,7 +25,7 @@ import os
 
 from qgis.PyQt.QtCore import QCoreApplication
 
-from qgis.utils import iface
+from qgis.core import QgsApplication
 
 from processing.gui.ToolboxAction import ToolboxAction
 
@@ -37,5 +39,5 @@ class CreateNewScriptAction(ToolboxAction):
         self.group = self.tr("Tools")
 
     def execute(self):
-        dlg = ScriptEditorDialog(parent=iface.mainWindow())
+        dlg = ScriptEditorDialog(None)
         dlg.show()

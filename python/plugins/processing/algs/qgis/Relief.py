@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     Relief.py
@@ -49,7 +51,7 @@ class ParameterReliefColors(QgsProcessingParameterDefinition):
 
     def clone(self):
         return ParameterReliefColors(self.name(), self.description(), self.parent,
-                                     self.flags() & QgsProcessingParameterDefinition.Flag.FlagOptional)
+                                     self.flags() & QgsProcessingParameterDefinition.FlagOptional)
 
     @staticmethod
     def valueToColors(value):
@@ -98,7 +100,7 @@ class Relief(QgisAlgorithm):
         self.addParameter(QgsProcessingParameterRasterLayer(self.INPUT,
                                                             self.tr('Elevation layer')))
         self.addParameter(QgsProcessingParameterNumber(self.Z_FACTOR,
-                                                       self.tr('Z factor'), type=QgsProcessingParameterNumber.Type.Double,
+                                                       self.tr('Z factor'), type=QgsProcessingParameterNumber.Double,
                                                        minValue=0.00, defaultValue=1.0))
         self.addParameter(QgsProcessingParameterBoolean(self.AUTO_COLORS,
                                                         self.tr('Generate relief classes automatically'),

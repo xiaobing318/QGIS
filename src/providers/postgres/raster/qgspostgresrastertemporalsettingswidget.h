@@ -31,7 +31,7 @@ class QgsPostgresRasterTemporalSettingsWidget : public QgsMapLayerConfigWidget, 
   public:
     QgsPostgresRasterTemporalSettingsWidget( QgsMapLayer *layer, QgsMapCanvas *canvas, QWidget *parent = nullptr );
 
-    void syncToLayer( QgsMapLayer *layer ) final;
+    void syncToLayer( QgsMapLayer *layer ) override;
     void apply() override;
   private slots:
 

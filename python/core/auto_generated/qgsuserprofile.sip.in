@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsuserprofile.h                                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -12,12 +12,13 @@ class QgsUserProfile
 {
 %Docstring(signature="appended")
 User profile contains information about the user profile folders on the machine.
-
 In QGIS 3 all settings, plugins, etc were moved into a %APPDATA%/profiles folder for each platform.
 This allows for manage different user profiles per machine vs the single default one that was allowed in the
 past.
 
 A user profile is all settings and anything that used to be found in .qgis3 in the users home folder.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -83,5 +84,5 @@ The icon for the user profile.
  *                                                                      *
  * src/core/qgsuserprofile.h                                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

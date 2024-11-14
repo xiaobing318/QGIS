@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/gps/qgsbabelgpsdevice.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -24,6 +24,9 @@ A babel format capable of interacting directly with a GPS device.
   public:
 
     QgsBabelGpsDeviceFormat();
+%Docstring
+Default constructor
+%End
 
     QgsBabelGpsDeviceFormat( const QString &waypointDownloadCommand,
                              const QString &waypointUploadCommand,
@@ -54,5 +57,5 @@ Constructor for QgsBabelGpsDeviceFormat.
  *                                                                      *
  * src/core/gps/qgsbabelgpsdevice.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

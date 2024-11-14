@@ -47,6 +47,7 @@ class QgsFillSymbol;
  * Derived classes should implement their custom painting routines within
  * a renderAnnotation() override.
  *
+ * \since QGIS 3.0
  */
 
 class CORE_EXPORT QgsAnnotation : public QObject
@@ -164,14 +165,14 @@ class CORE_EXPORT QgsAnnotation : public QObject
     /**
      * Sets the annotation's frame's offset (in pixels) from the mapPosition() reference point.
      * \see frameOffsetFromReferencePoint()
-     * \deprecated QGIS 3.40. Use setFrameOffsetFromReferencePointMm() instead.
+     * \deprecated use setFrameOffsetFromReferencePointMm() instead
      */
     Q_DECL_DEPRECATED void setFrameOffsetFromReferencePoint( QPointF offset ) SIP_DEPRECATED;
 
     /**
      * Returns the annotation's frame's offset (in pixels) from the mapPosition() reference point.
      * \see setFrameOffsetFromReferencePoint()
-     * \deprecated QGIS 3.40. Use frameOffsetFromReferencePointMm() instead.
+     * \deprecated use frameOffsetFromReferencePointMm() instead
      */
     Q_DECL_DEPRECATED QPointF frameOffsetFromReferencePoint() const SIP_DEPRECATED;
 
@@ -193,7 +194,7 @@ class CORE_EXPORT QgsAnnotation : public QObject
      * Sets the size (in pixels) of the annotation's frame (the main area in which
      * the annotation's content is drawn).
      * \see frameSize()
-     * \deprecated QGIS 3.40. Use setFrameSizeMm() instead.
+     * \deprecated use setFrameSizeMm() instead
      */
     Q_DECL_DEPRECATED void setFrameSize( QSizeF size ) SIP_DEPRECATED;
 
@@ -201,7 +202,7 @@ class CORE_EXPORT QgsAnnotation : public QObject
      * Returns the size (in pixels) of the annotation's frame (the main area in which
      * the annotation's content is drawn).
      * \see setFrameSize()
-     * \deprecated QGIS 3.40. Use frameSizeMm() instead.
+     * \deprecated use frameSizeMm() instead
      */
     Q_DECL_DEPRECATED QSizeF frameSize() const SIP_DEPRECATED;
 

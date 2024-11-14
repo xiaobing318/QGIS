@@ -19,9 +19,7 @@
 #define QGSPROCESSING_H
 
 #include "qgis_core.h"
-#include "qgis.h"
 #include "qgssettingsentryimpl.h"
-#include "qgssettingstree.h"
 #include <QString>
 
 //
@@ -35,79 +33,73 @@
  * \brief Contains enumerations and other constants for use in processing algorithms
  * and parameters.
  *
+ * \since QGIS 3.0
  */
 
 class CORE_EXPORT QgsProcessing
 {
-    Q_GADGET
 
   public:
 
+    //! Data source types enum
+    enum SourceType
+    {
+      TypeMapLayer = -2, //!< Any map layer type (raster, vector, mesh, point cloud, annotation or plugin layer)
+      TypeVectorAnyGeometry = -1, //!< Any vector layer with geometry
+      TypeVectorPoint = 0, //!< Vector point layers
+      TypeVectorLine = 1, //!< Vector line layers
+      TypeVectorPolygon = 2, //!< Vector polygon layers
+      TypeRaster = 3, //!< Raster layers
+      TypeFile = 4, //!< Files (i.e. non map layer sources, such as text files)
+      TypeVector = 5, //!< Tables (i.e. vector layers with or without geometry). When used for a sink this indicates the sink has no geometry.
+      TypeMesh = 6, //!< Mesh layers \since QGIS 3.6
+      TypePlugin = 7, //!< Plugin layers \since QGIS 3.22
+      TypePointCloud = 8, //!< Point cloud layers \since QGIS 3.22
+      TypeAnnotation = 9 //!< Annotation layers \since QGIS 3.22
+    };
+
     //! Available Python output types
-    enum class PythonOutputType SIP_MONKEYPATCH_SCOPEENUM
+    enum PythonOutputType
     {
       PythonQgsProcessingAlgorithmSubclass, //!< Full Python QgsProcessingAlgorithm subclass
     };
-    Q_ENUM( PythonOutputType )
-
-    /**
-     * Layer options flags
-     *
-     * \since QGIS 3.32
-     */
-    enum class LayerOptionsFlag : int SIP_ENUM_BASETYPE( IntFlag )
-    {
-      SkipIndexGeneration = 1 << 0, //!< Do not generate index when creating a layer. Makes sense only for point cloud layers
-    };
-    Q_ENUM( LayerOptionsFlag )
-    Q_DECLARE_FLAGS( LayerOptionsFlags, LayerOptionsFlag )
-    Q_FLAG( LayerOptionsFlags )
 
     /**
      * Converts a source \a type to a string representation.
      *
      * \since QGIS 3.6
      */
-    static QString sourceTypeToString( Qgis::ProcessingSourceType type )
+    static QString sourceTypeToString( SourceType type )
     {
       switch ( type )
       {
-        case Qgis::ProcessingSourceType::MapLayer:
+        case QgsProcessing::TypeMapLayer:
           return QStringLiteral( "TypeMapLayer" );
-        case Qgis::ProcessingSourceType::VectorAnyGeometry:
+        case QgsProcessing::TypeVectorAnyGeometry:
           return QStringLiteral( "TypeVectorAnyGeometry" );
-        case Qgis::ProcessingSourceType::VectorPoint:
+        case QgsProcessing::TypeVectorPoint:
           return QStringLiteral( "TypeVectorPoint" );
-        case Qgis::ProcessingSourceType::VectorLine:
+        case QgsProcessing::TypeVectorLine:
           return QStringLiteral( "TypeVectorLine" );
-        case Qgis::ProcessingSourceType::VectorPolygon:
+        case QgsProcessing::TypeVectorPolygon:
           return QStringLiteral( "TypeVectorPolygon" );
-        case Qgis::ProcessingSourceType::Raster:
+        case QgsProcessing::TypeRaster:
           return QStringLiteral( "TypeRaster" );
-        case Qgis::ProcessingSourceType::File:
+        case QgsProcessing::TypeFile:
           return QStringLiteral( "TypeFile" );
-        case Qgis::ProcessingSourceType::Vector:
+        case QgsProcessing::TypeVector:
           return QStringLiteral( "TypeVector" );
-        case Qgis::ProcessingSourceType::Mesh:
+        case QgsProcessing::TypeMesh:
           return QStringLiteral( "TypeMesh" );
-        case Qgis::ProcessingSourceType::Plugin:
+        case QgsProcessing::TypePlugin:
           return QStringLiteral( "TypePlugin" );
-        case Qgis::ProcessingSourceType::PointCloud:
+        case QgsProcessing::TypePointCloud:
           return QStringLiteral( "TypePointCloud" );
-        case Qgis::ProcessingSourceType::Annotation:
+        case QgsProcessing::TypeAnnotation:
           return QStringLiteral( "TypeAnnotation" );
-        case Qgis::ProcessingSourceType::VectorTile:
-          return QStringLiteral( "TypeVectorTile" );
       }
       return QString();
     }
-
-    /**
-     * Converts a documentation \a flag to a translated string.
-     *
-     * \since QGIS 3.40
-     */
-    static QString documentationFlagToString( Qgis::ProcessingAlgorithmDocumentationFlag flag );
 
     /**
      * Constant used to indicate that a Processing algorithm output should be a temporary layer/file.
@@ -117,16 +109,14 @@ class CORE_EXPORT QgsProcessing
     static const QString TEMPORARY_OUTPUT;
 
 #ifndef SIP_RUN
-    static inline QgsSettingsTreeNode *sTreeConfiguration = QgsSettingsTree::sTreeQgis->createChildNode( QStringLiteral( "configuration" ) );
-
     //! Settings entry prefer filename as layer name
-    static const QgsSettingsEntryBool *settingsPreferFilenameAsLayerName;
+    static const inline QgsSettingsEntryBool settingsPreferFilenameAsLayerName = QgsSettingsEntryBool( QStringLiteral( "PREFER_FILENAME_AS_LAYER_NAME" ), QgsSettings::Prefix::PROCESSING_CONFIGURATION, true, QObject::tr( "Prefer filename as layer name" ) );
     //! Settings entry temp path
-    static const QgsSettingsEntryString *settingsTempPath;
+    static const inline QgsSettingsEntryString settingsTempPath = QgsSettingsEntryString( QStringLiteral( "TEMP_PATH2" ), QgsSettings::Prefix::PROCESSING_CONFIGURATION, QString() );
     //! Settings entry default output vector layer ext
-    static const QgsSettingsEntryString *settingsDefaultOutputVectorLayerExt;
+    static const inline QgsSettingsEntryInteger settingsDefaultOutputVectorLayerExt = QgsSettingsEntryInteger( QStringLiteral( "DefaultOutputVectorLayerExt" ), QgsSettings::Prefix::PROCESSING_CONFIGURATION, -1 );
     //! Settings entry default output raster layer ext
-    static const QgsSettingsEntryString *settingsDefaultOutputRasterLayerExt;
+    static const inline QgsSettingsEntryInteger settingsDefaultOutputRasterLayerExt = QgsSettingsEntryInteger( QStringLiteral( "DefaultOutputRasterLayerExt" ), QgsSettings::Prefix::PROCESSING_CONFIGURATION, -1 );
 #endif
 };
 

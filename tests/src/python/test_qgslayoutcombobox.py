@@ -9,17 +9,16 @@ __author__ = '(C) 2019 by Nyall Dawson'
 __date__ = '11/03/2019'
 __copyright__ = 'Copyright 2019, The QGIS Project'
 
+import qgis  # NOQA
 from qgis.PyQt.QtTest import QSignalSpy
-from qgis.core import (
-    QgsLayoutManager,
-    QgsLayoutManagerProxyModel,
-    QgsPrintLayout,
-    QgsProject,
-    QgsReport,
-)
+from qgis.core import (QgsPrintLayout,
+                       QgsLayoutManager,
+                       QgsLayoutManagerProxyModel,
+                       QgsProject,
+                       QgsReport,
+                       )
 from qgis.gui import QgsLayoutComboBox
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -27,7 +26,7 @@ start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestQgsLayoutComboBox(QgisTestCase):
+class TestQgsLayoutComboBox(unittest.TestCase):
 
     def setUp(self):
         """Run before each test."""
@@ -85,14 +84,14 @@ class TestQgsLayoutComboBox(QgisTestCase):
         combo.setCurrentLayout(None)
         self.assertEqual(combo.currentIndex(), 0)
 
-        combo.setFilters(QgsLayoutManagerProxyModel.Filter.FilterPrintLayouts)
+        combo.setFilters(QgsLayoutManagerProxyModel.FilterPrintLayouts)
         self.assertEqual(combo.count(), 3)
         self.assertEqual(combo.itemText(0), '')
         self.assertEqual(combo.itemText(1), 'bbb')
         self.assertEqual(combo.itemText(2), 'ccc')
 
-        combo.setFilters(QgsLayoutManagerProxyModel.Filter.FilterReports)
-        self.assertEqual(combo.filters(), QgsLayoutManagerProxyModel.Filter.FilterReports)
+        combo.setFilters(QgsLayoutManagerProxyModel.FilterReports)
+        self.assertEqual(combo.filters(), QgsLayoutManagerProxyModel.FilterReports)
         self.assertEqual(combo.count(), 2)
         self.assertEqual(combo.itemText(0), '')
         self.assertEqual(combo.itemText(1), 'ddd')

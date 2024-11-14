@@ -13,7 +13,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsrendererpropertiesdialog.h"
-#include "moc_qgsrendererpropertiesdialog.cpp"
 
 #include "qgsrenderer.h"
 #include "qgsrendererregistry.h"
@@ -44,7 +43,7 @@
 #include <QKeyEvent>
 #include <QMessageBox>
 
-static bool initVectorLayerRenderer( const QString &name, QgsRendererWidgetFunc f, const QString &iconName = QString() )
+static bool _initRenderer( const QString &name, QgsRendererWidgetFunc f, const QString &iconName = QString() )
 {
   QgsRendererRegistry *reg = QgsApplication::rendererRegistry();
   QgsRendererAbstractMetadata *am = reg->rendererMetadata( name );
@@ -65,24 +64,24 @@ static bool initVectorLayerRenderer( const QString &name, QgsRendererWidgetFunc 
   return true;
 }
 
-void QgsRendererPropertiesDialog::initRendererWidgetFunctions()
+static void _initRendererWidgetFunctions()
 {
   static bool sInitialized = false;
   if ( sInitialized )
     return;
 
-  initVectorLayerRenderer( QStringLiteral( "singleSymbol" ), QgsSingleSymbolRendererWidget::create, QStringLiteral( "rendererSingleSymbol.svg" ) );
-  initVectorLayerRenderer( QStringLiteral( "categorizedSymbol" ), QgsCategorizedSymbolRendererWidget::create, QStringLiteral( "rendererCategorizedSymbol.svg" ) );
-  initVectorLayerRenderer( QStringLiteral( "graduatedSymbol" ), QgsGraduatedSymbolRendererWidget::create, QStringLiteral( "rendererGraduatedSymbol.svg" ) );
-  initVectorLayerRenderer( QStringLiteral( "RuleRenderer" ), QgsRuleBasedRendererWidget::create, QStringLiteral( "rendererRuleBasedSymbol.svg" ) );
-  initVectorLayerRenderer( QStringLiteral( "pointDisplacement" ), QgsPointDisplacementRendererWidget::create, QStringLiteral( "rendererPointDisplacementSymbol.svg" ) );
-  initVectorLayerRenderer( QStringLiteral( "pointCluster" ), QgsPointClusterRendererWidget::create, QStringLiteral( "rendererPointClusterSymbol.svg" ) );
-  initVectorLayerRenderer( QStringLiteral( "invertedPolygonRenderer" ), QgsInvertedPolygonRendererWidget::create, QStringLiteral( "rendererInvertedSymbol.svg" ) );
-  initVectorLayerRenderer( QStringLiteral( "mergedFeatureRenderer" ), QgsMergedFeatureRendererWidget::create, QStringLiteral( "rendererMergedFeatures.svg" ) );
-  initVectorLayerRenderer( QStringLiteral( "heatmapRenderer" ), QgsHeatmapRendererWidget::create, QStringLiteral( "rendererHeatmapSymbol.svg" ) );
-  initVectorLayerRenderer( QStringLiteral( "25dRenderer" ), Qgs25DRendererWidget::create, QStringLiteral( "renderer25dSymbol.svg" ) );
-  initVectorLayerRenderer( QStringLiteral( "nullSymbol" ), QgsNullSymbolRendererWidget::create, QStringLiteral( "rendererNullSymbol.svg" ) );
-  initVectorLayerRenderer( QStringLiteral( "embeddedSymbol" ), QgsEmbeddedSymbolRendererWidget::create );
+  _initRenderer( QStringLiteral( "singleSymbol" ), QgsSingleSymbolRendererWidget::create, QStringLiteral( "rendererSingleSymbol.svg" ) );
+  _initRenderer( QStringLiteral( "categorizedSymbol" ), QgsCategorizedSymbolRendererWidget::create, QStringLiteral( "rendererCategorizedSymbol.svg" ) );
+  _initRenderer( QStringLiteral( "graduatedSymbol" ), QgsGraduatedSymbolRendererWidget::create, QStringLiteral( "rendererGraduatedSymbol.svg" ) );
+  _initRenderer( QStringLiteral( "RuleRenderer" ), QgsRuleBasedRendererWidget::create, QStringLiteral( "rendererRuleBasedSymbol.svg" ) );
+  _initRenderer( QStringLiteral( "pointDisplacement" ), QgsPointDisplacementRendererWidget::create, QStringLiteral( "rendererPointDisplacementSymbol.svg" ) );
+  _initRenderer( QStringLiteral( "pointCluster" ), QgsPointClusterRendererWidget::create, QStringLiteral( "rendererPointClusterSymbol.svg" ) );
+  _initRenderer( QStringLiteral( "invertedPolygonRenderer" ), QgsInvertedPolygonRendererWidget::create, QStringLiteral( "rendererInvertedSymbol.svg" ) );
+  _initRenderer( QStringLiteral( "mergedFeatureRenderer" ), QgsMergedFeatureRendererWidget::create, QStringLiteral( "rendererMergedFeatures.svg" ) );
+  _initRenderer( QStringLiteral( "heatmapRenderer" ), QgsHeatmapRendererWidget::create, QStringLiteral( "rendererHeatmapSymbol.svg" ) );
+  _initRenderer( QStringLiteral( "25dRenderer" ), Qgs25DRendererWidget::create, QStringLiteral( "renderer25dSymbol.svg" ) );
+  _initRenderer( QStringLiteral( "nullSymbol" ), QgsNullSymbolRendererWidget::create, QStringLiteral( "rendererNullSymbol.svg" ) );
+  _initRenderer( QStringLiteral( "embeddedSymbol" ), QgsEmbeddedSymbolRendererWidget::create );
   sInitialized = true;
 }
 
@@ -104,7 +103,7 @@ QgsRendererPropertiesDialog::QgsRendererPropertiesDialog( QgsVectorLayer *layer,
   }
 
   // initialize registry's widget functions
-  initRendererWidgetFunctions();
+  _initRendererWidgetFunctions();
 
   QgsRendererRegistry *reg = QgsApplication::rendererRegistry();
   const QStringList renderers = reg->renderersList( mLayer );
@@ -134,54 +133,54 @@ QgsRendererPropertiesDialog::QgsRendererPropertiesDialog( QgsVectorLayer *layer,
           << mFeatureBlendComboBox
           << mEffectWidget;
 
-  connectValueChanged( widgets );
+  connectValueChanged( widgets, SIGNAL( widgetChanged() ) );
   connect( mEffectWidget, &QgsPanelWidget::showPanel, this, &QgsRendererPropertiesDialog::openPanel );
 }
 
-void QgsRendererPropertiesDialog::connectValueChanged( const QList<QWidget *> &widgets )
+void QgsRendererPropertiesDialog::connectValueChanged( const QList<QWidget *> &widgets, const char *slot )
 {
   for ( QWidget *widget : widgets )
   {
     if ( QgsPropertyOverrideButton *w = qobject_cast<QgsPropertyOverrideButton *>( widget ) )
     {
-      connect( w, &QgsPropertyOverrideButton::changed, this, &QgsRendererPropertiesDialog::widgetChanged );
+      connect( w, SIGNAL( changed ), this, slot );
     }
     else if ( QgsFieldExpressionWidget *w = qobject_cast<QgsFieldExpressionWidget *>( widget ) )
     {
-      connect( w, qOverload< const QString & >( &QgsFieldExpressionWidget::fieldChanged ), this, &QgsRendererPropertiesDialog::widgetChanged );
+      connect( w, SIGNAL( fieldChanged( QString ) ), this,  slot );
     }
     else if ( QgsOpacityWidget *w = qobject_cast<QgsOpacityWidget *>( widget ) )
     {
-      connect( w, &QgsOpacityWidget::opacityChanged, this, &QgsRendererPropertiesDialog::widgetChanged );
+      connect( w, SIGNAL( opacityChanged( double ) ), this,  slot );
     }
     else if ( QComboBox *w = qobject_cast<QComboBox *>( widget ) )
     {
-      connect( w, qOverload< int >( &QComboBox::currentIndexChanged ), this, &QgsRendererPropertiesDialog::widgetChanged );
+      connect( w, SIGNAL( currentIndexChanged( int ) ), this, slot );
     }
     else if ( QSpinBox *w = qobject_cast<QSpinBox *>( widget ) )
     {
-      connect( w, qOverload< int >( &QSpinBox::valueChanged ), this, &QgsRendererPropertiesDialog::widgetChanged );
+      connect( w, SIGNAL( valueChanged( int ) ), this, slot );
     }
     else if ( QDoubleSpinBox *w = qobject_cast<QDoubleSpinBox *>( widget ) )
     {
-      connect( w, qOverload< double >( &QDoubleSpinBox::valueChanged ), this, &QgsRendererPropertiesDialog::widgetChanged );
+      connect( w, SIGNAL( valueChanged( double ) ), this, slot );
     }
     else if ( QgsColorButton *w = qobject_cast<QgsColorButton *>( widget ) )
     {
-      connect( w, &QgsColorButton::colorChanged, this, &QgsRendererPropertiesDialog::widgetChanged );
+      connect( w, SIGNAL( colorChanged( QColor ) ), this, slot );
     }
     else if ( QCheckBox *w = qobject_cast<QCheckBox *>( widget ) )
     {
-      connect( w, &QCheckBox::toggled, this, &QgsRendererPropertiesDialog::widgetChanged );
+      connect( w, SIGNAL( toggled( bool ) ), this, slot );
     }
     else if ( QLineEdit *w = qobject_cast<QLineEdit *>( widget ) )
     {
-      connect( w, &QLineEdit::textEdited, this, &QgsRendererPropertiesDialog::widgetChanged );
-      connect( w, &QLineEdit::textChanged, this, &QgsRendererPropertiesDialog::widgetChanged );
+      connect( w, SIGNAL( textEdited( QString ) ), this, slot );
+      connect( w, SIGNAL( textChanged( QString ) ), this, slot );
     }
     else if ( QgsEffectStackCompactWidget *w = qobject_cast<QgsEffectStackCompactWidget *>( widget ) )
     {
-      connect( w, &QgsEffectStackCompactWidget::changed, this, &QgsRendererPropertiesDialog::widgetChanged );
+      connect( w, SIGNAL( changed() ), this, slot );
     }
   }
 }
@@ -225,7 +224,7 @@ void QgsRendererPropertiesDialog::rendererChanged()
 {
   if ( cboRenderers->currentIndex() == -1 )
   {
-    QgsDebugError( QStringLiteral( "No current item -- this should never happen!" ) );
+    QgsDebugMsg( QStringLiteral( "No current item -- this should never happen!" ) );
     return;
   }
 

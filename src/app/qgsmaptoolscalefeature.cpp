@@ -23,9 +23,7 @@
 #include <cmath>
 
 #include "qgsadvanceddigitizingdockwidget.h"
-#include "qgsavoidintersectionsoperation.h"
 #include "qgsmaptoolscalefeature.h"
-#include "moc_qgsmaptoolscalefeature.cpp"
 #include "qgsfeatureiterator.h"
 #include "qgsgeometry.h"
 #include "qgslogger.h"
@@ -370,13 +368,6 @@ void QgsMapToolScaleFeature::applyScaling( double scale )
   request.setFilterFids( mScaledFeatures ).setNoAttributes();
   QgsFeatureIterator fi = vlayer->getFeatures( request );
   QgsFeature feat;
-
-  QgsAvoidIntersectionsOperation avoidIntersections;
-  connect( &avoidIntersections, &QgsAvoidIntersectionsOperation::messageEmitted, this, &QgsMapTool::messageEmitted );
-
-  // when removing intersections don't check for intersections with selected features
-  const QHash<QgsVectorLayer *, QSet<QgsFeatureId> > ignoreFeatures {{vlayer, mScaledFeatures}};
-
   while ( fi.nextFeature( feat ) )
   {
     if ( !feat.hasGeometry() )
@@ -387,25 +378,6 @@ void QgsMapToolScaleFeature::applyScaling( double scale )
       continue;
 
     const QgsFeatureId id = feat.id();
-
-    if ( vlayer->geometryType() == Qgis::GeometryType::Polygon )
-    {
-      const QgsAvoidIntersectionsOperation::Result res = avoidIntersections.apply( vlayer, id, geom, ignoreFeatures );
-
-      if ( res.operationResult == Qgis::GeometryOperationResult::InvalidInputGeometryType || geom.isEmpty() )
-      {
-        const QString errorMessage = ( geom.isEmpty() ) ?
-                                     tr( "The feature cannot be scaled because the resulting geometry would be empty" ) :
-                                     tr( "An error was reported during intersection removal" );
-
-        emit messageEmitted( errorMessage, Qgis::MessageLevel::Warning );
-        vlayer->destroyEditCommand();
-        deleteScalingWidget();
-        deleteRubberband();
-        return;
-      }
-    }
-
     vlayer->changeGeometry( id, geom );
   }
 

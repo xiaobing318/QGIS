@@ -18,7 +18,6 @@
  ***************************************************************************/
 
 #include "qgswmsrequest.h"
-#include "moc_qgswmsrequest.cpp"
 
 namespace QgsWms
 {

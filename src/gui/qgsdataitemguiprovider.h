@@ -42,6 +42,9 @@ class GUI_EXPORT QgsDataItemGuiContext
 {
   public:
 
+    /**
+     * Constructor for QgsDataItemGuiContext.
+     */
     QgsDataItemGuiContext() = default;
 
     /**

@@ -28,7 +28,7 @@ void QgsProjectBadLayerHandler::handleBadLayers( const QList<QDomNode> &layers )
 
   for ( const QDomNode &layer : layers )
   {
-    QgsMessageLog::logMessage( QObject::tr( " * %1" ).arg( QgsDataSourceUri::removePassword( dataSource( layer ), true ) ) );
+    QgsMessageLog::logMessage( QObject::tr( " * %1" ).arg( QgsDataSourceUri::removePassword( dataSource( layer ) ) ) );
   }
 }
 
@@ -38,7 +38,7 @@ QgsProjectBadLayerHandler::DataType QgsProjectBadLayerHandler::dataType( const Q
 
   if ( type.isNull() )
   {
-    QgsDebugError( QStringLiteral( "cannot find ``type'' attribute" ) );
+    QgsDebugMsg( QStringLiteral( "cannot find ``type'' attribute" ) );
 
     return IS_BOGUS;
   }
@@ -67,7 +67,7 @@ QString QgsProjectBadLayerHandler::dataSource( const QDomNode &layerNode )
 
   if ( dataSourceNode.isNull() )
   {
-    QgsDebugError( QStringLiteral( "cannot find datasource node" ) );
+    QgsDebugMsg( QStringLiteral( "cannot find datasource node" ) );
 
     return QString();
   }
@@ -106,7 +106,7 @@ QgsProjectBadLayerHandler::ProviderType QgsProjectBadLayerHandler::providerType(
       return IS_FILE;
 
     default:
-      QgsDebugError( QStringLiteral( "unknown ``type'' attribute" ) );
+      QgsDebugMsg( QStringLiteral( "unknown ``type'' attribute" ) );
   }
 
   return IS_Unknown;

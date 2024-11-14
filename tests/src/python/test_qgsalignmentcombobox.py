@@ -11,44 +11,44 @@ __author__ = 'Nyall Dawson'
 __date__ = '26/06/2019'
 __copyright__ = 'Copyright 2019, The QGIS Project'
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import Qt
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.gui import QgsAlignmentComboBox
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsAlignmentComboBox(QgisTestCase):
+class TestQgsAlignmentComboBox(unittest.TestCase):
 
     def testGettersSetters(self):
         """ test widget getters/setters """
         w = QgsAlignmentComboBox()
-        w.setAvailableAlignments(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignJustify)
-        w.setCurrentAlignment(Qt.AlignmentFlag.AlignRight)
-        self.assertEqual(w.currentAlignment(), Qt.AlignmentFlag.AlignRight)
-        w.setCurrentAlignment(Qt.AlignmentFlag.AlignJustify)
-        self.assertEqual(w.currentAlignment(), Qt.AlignmentFlag.AlignJustify)
+        w.setAvailableAlignments(Qt.AlignRight | Qt.AlignJustify)
+        w.setCurrentAlignment(Qt.AlignRight)
+        self.assertEqual(w.currentAlignment(), Qt.AlignRight)
+        w.setCurrentAlignment(Qt.AlignJustify)
+        self.assertEqual(w.currentAlignment(), Qt.AlignJustify)
         # not a choice
-        w.setCurrentAlignment(Qt.AlignmentFlag.AlignLeft)
-        self.assertEqual(w.currentAlignment(), Qt.AlignmentFlag.AlignJustify)
+        w.setCurrentAlignment(Qt.AlignLeft)
+        self.assertEqual(w.currentAlignment(), Qt.AlignJustify)
 
     def test_ChangedSignals(self):
         """ test that signals are correctly emitted when setting alignment"""
         w = QgsAlignmentComboBox()
 
         spy = QSignalSpy(w.changed)
-        w.setCurrentAlignment(Qt.AlignmentFlag.AlignRight)
+        w.setCurrentAlignment(Qt.AlignRight)
         self.assertEqual(len(spy), 1)
-        w.setCurrentAlignment(Qt.AlignmentFlag.AlignRight)
+        w.setCurrentAlignment(Qt.AlignRight)
         self.assertEqual(len(spy), 1)
-        w.setCurrentAlignment(Qt.AlignmentFlag.AlignLeft)
+        w.setCurrentAlignment(Qt.AlignLeft)
         self.assertEqual(len(spy), 2)
-        w.setAvailableAlignments(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignJustify)
+        w.setAvailableAlignments(Qt.AlignRight | Qt.AlignJustify)
         self.assertEqual(len(spy), 3)
-        self.assertEqual(w.currentAlignment(), Qt.AlignmentFlag.AlignRight)
-        w.setAvailableAlignments(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignRight)
+        self.assertEqual(w.currentAlignment(), Qt.AlignRight)
+        w.setAvailableAlignments(Qt.AlignLeft | Qt.AlignRight)
         self.assertEqual(len(spy), 3)
 
 

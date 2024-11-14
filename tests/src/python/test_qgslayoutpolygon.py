@@ -9,28 +9,25 @@ __author__ = '(C) 2016 by Paul Blottiere'
 __date__ = '14/03/2016'
 __copyright__ = 'Copyright 2016, The QGIS Project'
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import QPointF, QRectF
-from qgis.PyQt.QtGui import QImage, QPainter, QPolygonF
+from qgis.PyQt.QtGui import QPolygonF, QPainter, QImage
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (
-    QgsFillSymbol,
-    QgsLayout,
-    QgsLayoutItem,
-    QgsLayoutItemPolygon,
-    QgsLayoutItemRegistry,
-    QgsLayoutItemRenderContext,
-    QgsLayoutUtils,
-    QgsProject,
-    QgsReadWriteContext,
-    QgsLayoutItemMap,
-    QgsRectangle,
-    Qgis,
-    QgsGeometryGeneratorSymbolLayer
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsLayoutItemPolygon,
+                       QgsLayoutItemRegistry,
+                       QgsLayout,
+                       QgsFillSymbol,
+                       QgsProject,
+                       QgsReadWriteContext,
+                       QgsLayoutItem,
+                       QgsLayoutItemRenderContext,
+                       QgsLayoutUtils)
+from qgis.testing import (start_app,
+                          unittest
+                          )
 
+from qgslayoutchecker import QgsLayoutChecker
 from test_qgslayoutitem import LayoutItemTestCase
 from utilities import unitTestDataPath
 
@@ -38,20 +35,15 @@ start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestQgsLayoutPolygon(QgisTestCase, LayoutItemTestCase):
-
-    @classmethod
-    def control_path_prefix(cls):
-        return "composer_polygon"
+class TestQgsLayoutPolygon(unittest.TestCase, LayoutItemTestCase):
 
     @classmethod
     def setUpClass(cls):
-        super(TestQgsLayoutPolygon, cls).setUpClass()
         cls.item_class = QgsLayoutItemPolygon
 
     def __init__(self, methodName):
         """Run once on class initialization."""
-        QgisTestCase.__init__(self, methodName)
+        unittest.TestCase.__init__(self, methodName)
 
         # create composition
         self.layout = QgsLayout(QgsProject.instance())
@@ -107,37 +99,34 @@ class TestQgsLayoutPolygon(QgisTestCase, LayoutItemTestCase):
         """Test if type is valid"""
 
         self.assertEqual(
-            self.polygon.type(), QgsLayoutItemRegistry.ItemType.LayoutPolygon)
+            self.polygon.type(), QgsLayoutItemRegistry.LayoutPolygon)
 
     def testDefaultStyle(self):
         """Test polygon rendering with default style."""
 
         self.polygon.setDisplayNodes(False)
-        self.assertTrue(
-            self.render_layout_check(
-                'composerpolygon_defaultstyle',
-                self.layout
-            )
-        )
+        checker = QgsLayoutChecker(
+            'composerpolygon_defaultstyle', self.layout)
+        checker.setControlPathPrefix("composer_polygon")
+        myTestResult, myMessage = checker.testLayout()
+        assert myTestResult, myMessage
 
     def testDisplayNodes(self):
         """Test displayNodes method"""
 
         self.polygon.setDisplayNodes(True)
-        self.assertTrue(
-            self.render_layout_check(
-                'composerpolygon_displaynodes',
-                self.layout
-            )
-        )
+        checker = QgsLayoutChecker(
+            'composerpolygon_displaynodes', self.layout)
+        checker.setControlPathPrefix("composer_polygon")
+        myTestResult, myMessage = checker.testLayout()
+        assert myTestResult, myMessage
 
         self.polygon.setDisplayNodes(False)
-        self.assertTrue(
-            self.render_layout_check(
-                'composerpolygon_defaultstyle',
-                self.layout
-            )
-        )
+        checker = QgsLayoutChecker(
+            'composerpolygon_defaultstyle', self.layout)
+        checker.setControlPathPrefix("composer_polygon")
+        myTestResult, myMessage = checker.testLayout()
+        assert myTestResult, myMessage
 
     def testSelectedNode(self):
         """Test selectedNode and deselectNode methods"""
@@ -145,21 +134,19 @@ class TestQgsLayoutPolygon(QgisTestCase, LayoutItemTestCase):
         self.polygon.setDisplayNodes(True)
 
         self.polygon.setSelectedNode(3)
-        self.assertTrue(
-            self.render_layout_check(
-                'composerpolygon_selectednode',
-                self.layout
-            )
-        )
+        checker = QgsLayoutChecker(
+            'composerpolygon_selectednode', self.layout)
+        checker.setControlPathPrefix("composer_polygon")
+        myTestResult, myMessage = checker.testLayout()
+        assert myTestResult, myMessage
 
         self.polygon.deselectNode()
         self.polygon.setDisplayNodes(False)
-        self.assertTrue(
-            self.render_layout_check(
-                'composerpolygon_defaultstyle',
-                self.layout
-            )
-        )
+        checker = QgsLayoutChecker(
+            'composerpolygon_defaultstyle', self.layout)
+        checker.setControlPathPrefix("composer_polygon")
+        myTestResult, myMessage = checker.testLayout()
+        assert myTestResult, myMessage
 
     def testRemoveNode(self):
         """Test removeNode method"""
@@ -167,12 +154,11 @@ class TestQgsLayoutPolygon(QgisTestCase, LayoutItemTestCase):
         rc = self.polygon.removeNode(100)
         self.assertEqual(rc, False)
 
-        self.assertTrue(
-            self.render_layout_check(
-                'composerpolygon_defaultstyle',
-                self.layout
-            )
-        )
+        checker = QgsLayoutChecker(
+            'composerpolygon_defaultstyle', self.layout)
+        checker.setControlPathPrefix("composer_polygon")
+        myTestResult, myMessage = checker.testLayout()
+        assert myTestResult, myMessage
 
         self.assertEqual(self.polygon.nodesSize(), 4)
 
@@ -219,12 +205,11 @@ class TestQgsLayoutPolygon(QgisTestCase, LayoutItemTestCase):
         self.assertEqual(rc, True)
         self.assertEqual(self.polygon.nodesSize(), 5)
 
-        self.assertTrue(
-            self.render_layout_check(
-                'composerpolygon_addnode',
-                self.layout
-            )
-        )
+        checker = QgsLayoutChecker(
+            'composerpolygon_addnode', self.layout)
+        checker.setControlPathPrefix("composer_polygon")
+        myTestResult, myMessage = checker.testLayout()
+        assert myTestResult, myMessage
 
     def testMoveNode(self):
         """Test moveNode method"""
@@ -235,12 +220,11 @@ class TestQgsLayoutPolygon(QgisTestCase, LayoutItemTestCase):
         rc = self.polygon.moveNode(3, QPointF(100.0, 150.0))
         self.assertEqual(rc, True)
 
-        self.assertTrue(
-            self.render_layout_check(
-                'composerpolygon_movenode',
-                self.layout
-            )
-        )
+        checker = QgsLayoutChecker(
+            'composerpolygon_movenode', self.layout)
+        checker.setControlPathPrefix("composer_polygon")
+        myTestResult, myMessage = checker.testLayout()
+        assert myTestResult, myMessage
 
     def testNodeAtPosition(self):
         """Test nodeAtPosition method"""
@@ -347,7 +331,7 @@ class TestQgsLayoutPolygon(QgisTestCase, LayoutItemTestCase):
 
         # must be a closed polygon, in scene coordinates!
         self.assertEqual(shape.clipPath().asWkt(), 'Polygon ((50 30, 100 10, 200 100, 50 30))')
-        self.assertTrue(int(shape.itemFlags() & QgsLayoutItem.Flag.FlagProvidesClipPath))
+        self.assertTrue(int(shape.itemFlags() & QgsLayoutItem.FlagProvidesClipPath))
 
         spy = QSignalSpy(shape.clipPathChanged)
         self.assertTrue(shape.addNode(QPointF(150, 110), False))
@@ -376,51 +360,6 @@ class TestQgsLayoutPolygon(QgisTestCase, LayoutItemTestCase):
         shape.draw(QgsLayoutItemRenderContext(rc))
         p.end()
         self.assertEqual(len(spy), 5)
-
-    def test_generator(self):
-        project = QgsProject()
-        layout = QgsLayout(project)
-        layout.initializeDefaults()
-
-        p = QPolygonF()
-        p.append(QPointF(0.0, 0.0))
-        p.append(QPointF(100.0, 10.0))
-        p.append(QPointF(200.0, 100.0))
-        shape = QgsLayoutItemPolygon(p, layout)
-        layout.addLayoutItem(shape)
-
-        map = QgsLayoutItemMap(layout)
-        map.attemptSetSceneRect(QRectF(0, 0, 10, 10))
-        map.zoomToExtent(QgsRectangle(1, 1, 2, 2))
-        layout.addLayoutItem(map)
-
-        props = {}
-        props["color"] = "green"
-        props["style"] = "solid"
-        props["style_border"] = "solid"
-        props["color_border"] = "red"
-        props["width_border"] = "6.0"
-        props["joinstyle"] = "miter"
-
-        sub_symbol = QgsFillSymbol.createSimple(props)
-
-        line_symbol = QgsFillSymbol()
-        generator = QgsGeometryGeneratorSymbolLayer.create({
-            'geometryModifier': "geom_from_wkt('POLYGON((10 10,287 10,287 200,10 200,10 10))')",
-            'SymbolType': 'Fill',
-        })
-        generator.setUnits(Qgis.RenderUnit.Millimeters)
-        generator.setSubSymbol(sub_symbol)
-
-        line_symbol.changeSymbolLayer(0, generator)
-        shape.setSymbol(line_symbol)
-
-        self.assertTrue(
-            self.render_layout_check(
-                'polygon_generator',
-                layout
-            )
-        )
 
 
 if __name__ == '__main__':

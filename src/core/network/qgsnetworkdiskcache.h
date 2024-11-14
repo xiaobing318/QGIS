@@ -20,8 +20,6 @@
 
 #define SIP_NO_FILE
 
-#include "qgis_core.h"
-
 #include <QNetworkDiskCache>
 #include <QMutex>
 
@@ -47,7 +45,7 @@ class ExpirableNetworkDiskCache : public QNetworkDiskCache
  *
  * \note not available in Python bindings
  */
-class CORE_EXPORT QgsNetworkDiskCache : public QNetworkDiskCache
+class QgsNetworkDiskCache : public QNetworkDiskCache
 {
     Q_OBJECT
 
@@ -88,12 +86,6 @@ class CORE_EXPORT QgsNetworkDiskCache : public QNetworkDiskCache
 
     //! \see QNetworkDiskCache::fileMetaData()
     QNetworkCacheMetaData fileMetaData( const QString &fileName ) const;
-
-    /**
-     * Returns a smart cache size, in bytes, based on available free space
-     * \since QGIS 3.40
-     */
-    static qint64 smartCacheSize( const QString &path );
 
   public slots:
     //! \see QNetworkDiskCache::clear()

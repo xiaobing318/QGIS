@@ -61,6 +61,7 @@ struct CORE_EXPORT QgsPointCloudAttributeStatistics
 class CORE_EXPORT QgsPointCloudStatistics
 {
   public:
+    //! Constructor
     QgsPointCloudStatistics();
 
 #ifndef SIP_RUN

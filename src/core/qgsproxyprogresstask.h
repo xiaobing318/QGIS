@@ -45,9 +45,6 @@ class CORE_EXPORT QgsProxyProgressTask : public QgsTask
      */
     QgsProxyProgressTask( const QString &description, bool canCancel = false );
 
-    QgsProxyProgressTask( const QgsProxyProgressTask &other ) = delete;
-    QgsProxyProgressTask &operator=( const QgsProxyProgressTask &other ) = delete;
-
     /**
      * Finalizes the task, with the specified \a result.
      *
@@ -103,9 +100,6 @@ class CORE_EXPORT QgsScopedProxyProgressTask
      */
     QgsScopedProxyProgressTask( const QString &description );
 
-    QgsScopedProxyProgressTask( const QgsScopedProxyProgressTask &other ) = delete;
-    QgsScopedProxyProgressTask &operator=( const QgsScopedProxyProgressTask &other ) = delete;
-
     ~QgsScopedProxyProgressTask();
 
     /**
@@ -116,10 +110,6 @@ class CORE_EXPORT QgsScopedProxyProgressTask
   private:
 
     QgsProxyProgressTask *mTask = nullptr;
-
-#ifdef SIP_RUN
-    QgsScopedProxyProgressTask( const QgsScopedProxyProgressTask &other );
-#endif
 
     // SIP generates .cpp code that doesn't compile if commenting out the legit following line.
     // Q_DISABLE_COPY( QgsScopedProxyProgressTask )

@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsmodelgraphicitem.h"
-#include "moc_qgsmodelgraphicitem.cpp"
 #include "qgsapplication.h"
 #include "qgsmodelgraphicsscene.h"
 #include "qgsmodelgraphicsview.h"

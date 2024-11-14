@@ -12,31 +12,35 @@ __copyright__ = 'Copyright 2017, The QGIS Project'
 import os
 from tempfile import TemporaryDirectory
 
-from qgis.PyQt.QtCore import QCoreApplication, QDir, QEvent
+import qgis  # NOQA
+from qgis.PyQt.QtCore import (
+    QDir,
+    QCoreApplication,
+    QEvent
+)
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.core import (
-    QgsCoordinateTransformContext,
-    QgsGroupLayer,
     QgsLayerTree,
-    QgsLayerTreeGroup,
-    QgsLayerTreeLayer,
     QgsProject,
     QgsVectorLayer,
+    QgsLayerTreeLayer,
+    QgsLayerTreeGroup,
+    QgsGroupLayer,
+    QgsCoordinateTransformContext
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
-from utilities import unitTestDataPath
+from utilities import (unitTestDataPath)
 
 app = start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestQgsLayerTree(QgisTestCase):
+class TestQgsLayerTree(unittest.TestCase):
 
     def __init__(self, methodName):
         """Run once on class initialization."""
-        QgisTestCase.__init__(self, methodName)
+        unittest.TestCase.__init__(self, methodName)
 
     def testCustomLayerOrder(self):
         """ test project layer order"""
@@ -146,7 +150,7 @@ class TestQgsLayerTree(QgisTestCase):
 
         group_layer.deleteLater()
         group_layer = None
-        QCoreApplication.sendPostedEvents(None, QEvent.Type.DeferredDelete)
+        QCoreApplication.sendPostedEvents(None, QEvent.DeferredDelete)
         # should be automatically cleaned
         self.assertFalse(group_node.groupLayer())
 
@@ -533,36 +537,6 @@ class TestQgsLayerTree(QgisTestCase):
         self.assertEqual(p.layerTreeRoot().layerOrder(), [layer, layer2, layer3, layer4])
         self.assertEqual(p.layerTreeRoot().checkedLayers(), [layer, layer2, layer3, layer4])
         self.assertGreater(len(spy), spy_count)
-
-    def test_reorder_group_layers(self):
-        layer = QgsVectorLayer("Point?field=fldtxt:string",
-                               "layer1", "memory")
-        layer2 = QgsVectorLayer("Point?field=fldtxt:string",
-                                "layer2", "memory")
-        layer3 = QgsVectorLayer("Point?field=fldtxt:string",
-                                "layer3", "memory")
-        layer4 = QgsVectorLayer("Point?field=fldtxt:string",
-                                "layer4", "memory")
-        group = QgsLayerTreeGroup()
-        group.addLayer(layer)
-        group.addLayer(layer2)
-        group.addLayer(layer3)
-        group.addLayer(layer4)
-
-        self.assertEqual([l.layer() for l in group.children()], [layer, layer2, layer3, layer4])
-
-        group.reorderGroupLayers([])
-        self.assertEqual([l.layer() for l in group.children()], [layer, layer2, layer3, layer4])
-
-        group.reorderGroupLayers([layer4, layer2])
-        self.assertEqual([l.layer() for l in group.children()], [layer4, layer2, layer, layer3])
-
-        group.reorderGroupLayers([layer3])
-        self.assertEqual([l.layer() for l in group.children()], [layer3, layer4, layer2, layer])
-
-        group.addChildNode(QgsLayerTreeGroup('test'))
-        group.reorderGroupLayers([layer, layer3])
-        self.assertEqual([l.layer() if isinstance(l, QgsLayerTreeLayer) else 'group' for l in group.children()], [layer, layer3, layer4, layer2, 'group'])
 
 
 if __name__ == '__main__':

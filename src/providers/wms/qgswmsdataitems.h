@@ -20,6 +20,7 @@
 #include "qgsdataitemprovider.h"
 #include "qgsdatasourceuri.h"
 #include "qgswmsprovider.h"
+#include "qgsgeonodeconnection.h"
 #include "qgsconnectionsitem.h"
 
 class QgsWmsCapabilitiesDownload;
@@ -189,8 +190,11 @@ class QgsWmsDataItemProvider : public QgsDataItemProvider
   public:
     QString name() override { return QStringLiteral( "WMS" ); }
     QString dataProviderKey() const override;
-    Qgis::DataItemProviderCapabilities capabilities() const override { return Qgis::DataItemProviderCapability::NetworkSources; }
+    int capabilities() const override { return QgsDataProvider::Net; }
+
     QgsDataItem *createDataItem( const QString &path, QgsDataItem *parentItem ) override;
+
+    QVector<QgsDataItem *> createDataItems( const QString &path, QgsDataItem *parentItem ) override;
 };
 
 
@@ -223,8 +227,11 @@ class QgsXyzTileDataItemProvider : public QgsDataItemProvider
   public:
     QString name() override;
     QString dataProviderKey() const override;
-    Qgis::DataItemProviderCapabilities capabilities() const override;
+    int capabilities() const override;
+
     QgsDataItem *createDataItem( const QString &path, QgsDataItem *parentItem ) override;
+
+    QVector<QgsDataItem *> createDataItems( const QString &path, QgsDataItem *parentItem ) override;
 };
 
 

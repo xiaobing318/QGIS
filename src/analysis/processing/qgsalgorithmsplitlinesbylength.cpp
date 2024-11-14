@@ -61,19 +61,14 @@ QString QgsSplitLinesByLengthAlgorithm::shortDescription() const
   return QObject::tr( "Splits lines into parts which are no longer than a specified length." );
 }
 
-Qgis::ProcessingAlgorithmDocumentationFlags QgsSplitLinesByLengthAlgorithm::documentationFlags() const
-{
-  return Qgis::ProcessingAlgorithmDocumentationFlag::RegeneratesPrimaryKey;
-}
-
 QList<int> QgsSplitLinesByLengthAlgorithm::inputLayerTypes() const
 {
-  return QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorLine );
+  return QList<int>() << QgsProcessing::TypeVectorLine;
 }
 
-Qgis::ProcessingSourceType QgsSplitLinesByLengthAlgorithm::outputLayerType() const
+QgsProcessing::SourceType QgsSplitLinesByLengthAlgorithm::outputLayerType() const
 {
-  return Qgis::ProcessingSourceType::VectorLine;
+  return QgsProcessing::TypeVectorLine;
 }
 
 QgsSplitLinesByLengthAlgorithm *QgsSplitLinesByLengthAlgorithm::createInstance() const
@@ -106,7 +101,7 @@ QString QgsSplitLinesByLengthAlgorithm::outputName() const
   return QObject::tr( "Split" );
 }
 
-Qgis::WkbType QgsSplitLinesByLengthAlgorithm::outputWkbType( Qgis::WkbType inputWkbType ) const
+QgsWkbTypes::Type QgsSplitLinesByLengthAlgorithm::outputWkbType( QgsWkbTypes::Type inputWkbType ) const
 {
   return QgsWkbTypes::singleType( inputWkbType );
 }
@@ -149,14 +144,9 @@ QgsFeatureList QgsSplitLinesByLengthAlgorithm::processFeature( const QgsFeature 
   }
 }
 
-Qgis::ProcessingFeatureSourceFlags QgsSplitLinesByLengthAlgorithm::sourceFlags() const
+QgsProcessingFeatureSource::Flag QgsSplitLinesByLengthAlgorithm::sourceFlags() const
 {
-  return Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks;
-}
-
-QgsFeatureSink::SinkFlags QgsSplitLinesByLengthAlgorithm::sinkFlags() const
-{
-  return QgsFeatureSink::RegeneratePrimaryKey;
+  return QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks;
 }
 
 

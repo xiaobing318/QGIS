@@ -14,8 +14,8 @@ test_qgsoptional.py
  ***************************************************************************/
 '''
 
-
-from qgis.core import QgsExpression, QgsOptionalExpression
+import qgis  # NOQA
+from qgis.core import QgsOptionalExpression, QgsExpression
 from qgis.testing import unittest
 
 
@@ -32,15 +32,12 @@ class TestQgsOptional(unittest.TestCase):
     def testQgsOptionalExpression(self):
         opt = QgsOptionalExpression()
         self.assertFalse(opt.enabled())
-        self.assertFalse(opt)
 
         opt = QgsOptionalExpression(QgsExpression('true'))
         self.assertTrue(opt.enabled())
         self.assertEqual(opt.data().expression(), 'true')
-        self.assertTrue(opt)
         opt.setEnabled(False)
         self.assertFalse(opt.enabled())
-        self.assertFalse(opt)
         # boolean operator not yet working in python
         # self.assertFalse(opt)
         self.assertEqual(opt.data().expression(), 'true')

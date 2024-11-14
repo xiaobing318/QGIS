@@ -58,7 +58,7 @@ class GUI_EXPORT QgsDataSourceSelectWidget: public QgsPanelWidget, private Ui::Q
      */
     QgsDataSourceSelectWidget( QgsBrowserGuiModel *browserModel = nullptr,
                                bool setFilterByLayerType = false,
-                               Qgis::LayerType layerType = Qgis::LayerType::Vector,
+                               QgsMapLayerType layerType = QgsMapLayerType::VectorLayer,
                                QWidget *parent = nullptr );
 
 
@@ -67,13 +67,13 @@ class GUI_EXPORT QgsDataSourceSelectWidget: public QgsPanelWidget, private Ui::Q
     /**
      * Sets layer type filter to \a layerType and activates the filtering
      */
-    void setLayerTypeFilter( Qgis::LayerType layerType );
+    void setLayerTypeFilter( QgsMapLayerType layerType );
 
     /**
      * Sets a description label
      * \param description a description string
      * \note the description will be displayed at the bottom of the dialog
-     * \since QGIS 3.8
+     * \since 3.8
      */
     void setDescription( const QString &description );
 
@@ -82,11 +82,9 @@ class GUI_EXPORT QgsDataSourceSelectWidget: public QgsPanelWidget, private Ui::Q
      *
      * The \a path must correspond to a valid directory existing on the file system.
      *
-     * Since QGIS 3.38 the \a selectPath argument can be used to automatically select the path too.
-     *
      * \since QGIS 3.28
      */
-    void expandPath( const QString &path, bool selectPath = false );
+    void expandPath( const QString &path );
 
     /**
      * Returns the (possibly invalid) uri of the selected data source
@@ -103,9 +101,6 @@ class GUI_EXPORT QgsDataSourceSelectWidget: public QgsPanelWidget, private Ui::Q
     void setFilter();
     //! Scroll to last selected index and expand it's children
     void showEvent( QShowEvent *e ) override;
-
-    void dragEnterEvent( QDragEnterEvent *event ) override;
-    void dropEvent( QDropEvent *event ) override;
 
   signals:
 
@@ -139,9 +134,6 @@ class GUI_EXPORT QgsDataSourceSelectWidget: public QgsPanelWidget, private Ui::Q
     void refreshModel( const QModelIndex &index );
 
     void setValid( bool valid );
-
-    //! Returns file name if object meets drop criteria.
-    QString acceptableFilePath( QDropEvent *event ) const;
 
     QgsBrowserProxyModel mBrowserProxyModel;
     QgsBrowserGuiModel *mBrowserModel = nullptr;
@@ -182,19 +174,19 @@ class GUI_EXPORT QgsDataSourceSelectDialog: public QDialog
      */
     QgsDataSourceSelectDialog( QgsBrowserGuiModel *browserModel = nullptr,
                                bool setFilterByLayerType = false,
-                               Qgis::LayerType layerType = Qgis::LayerType::Vector,
+                               QgsMapLayerType layerType = QgsMapLayerType::VectorLayer,
                                QWidget *parent = nullptr );
 
     /**
      * Sets layer type filter to \a layerType and activates the filtering
      */
-    void setLayerTypeFilter( Qgis::LayerType layerType );
+    void setLayerTypeFilter( QgsMapLayerType layerType );
 
     /**
      * Sets a description label
      * \param description a description string
      * \note the description will be displayed at the bottom of the dialog
-     * \since QGIS 3.8
+     * \since 3.8
      */
     void setDescription( const QString &description );
 
@@ -203,11 +195,9 @@ class GUI_EXPORT QgsDataSourceSelectDialog: public QDialog
      *
      * The \a path must correspond to a valid directory existing on the file system.
      *
-     * Since QGIS 3.38 the \a selectPath argument can be used to automatically select the path too.
-     *
      * \since QGIS 3.28
      */
-    void expandPath( const QString &path, bool selectPath = false );
+    void expandPath( const QString &path );
 
     /**
      * Returns the (possibly invalid) uri of the selected data source

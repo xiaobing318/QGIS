@@ -29,6 +29,7 @@ class QgsSnappingUtils;
  * \ingroup core
  * \brief The QgsCadUtils class provides routines for CAD editing.
  *
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsCadUtils
 {
@@ -37,6 +38,7 @@ class CORE_EXPORT QgsCadUtils
     /**
      * \brief Structure with details of one constraint
      * \ingroup core
+     * \since QGIS 3.0
      */
     class AlignMapPointConstraint
     {
@@ -62,6 +64,7 @@ class CORE_EXPORT QgsCadUtils
     /**
      * \brief Structure returned from alignMapPoint() method
      * \ingroup core
+     * \since QGIS 3.0
      */
     class AlignMapPointOutput
     {
@@ -80,7 +83,7 @@ class CORE_EXPORT QgsCadUtils
 
         /**
          * Snapped segment - only valid if actually used for something
-         * \deprecated QGIS 3.40. Will be removed in QGIS 4.0 - use snapMatch instead.
+         * \deprecated will be removed in QGIS 4.0 - use snapMatch instead
          */
         QgsPointLocator::Match edgeMatch;
 
@@ -95,6 +98,7 @@ class CORE_EXPORT QgsCadUtils
     /**
      * \ingroup core
      * \brief Defines constraints for the QgsCadUtils::alignMapPoint() method.
+     * \since QGIS 3.0
      */
     class AlignMapPointContext
     {
@@ -129,12 +133,6 @@ class CORE_EXPORT QgsCadUtils
 
         QgsCadUtils::AlignMapPointConstraint lineExtensionConstraint;
         QgsCadUtils::AlignMapPointConstraint xyVertexConstraint;
-
-        /**
-         * Flag to set snapping to features priority over common angle.
-         * \since QGIS 3.32
-         */
-        bool snappingToFeaturesOverridesCommonAngle = false;
 
         /**
          * Dumps the context's properties, for debugging.
@@ -194,6 +192,7 @@ class CORE_EXPORT QgsCadUtils
          * \since QGIS 3.26
          */
         QQueue< QgsPointLocator::Match > lockedSnapVertices() const { return mLockedSnapVertices; } SIP_SKIP;
+
 
 #ifdef SIP_RUN
         SIP_PROPERTY( name = cadPointList, get = _cadPointList, set = _setCadPointList )

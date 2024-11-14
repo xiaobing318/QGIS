@@ -20,15 +20,11 @@ Email                : nyall dot dawson at gmail dot com
 #include "qgsidwinterpolator.h"
 #include "qgsvectorlayer.h"
 
-class TestQgsInterpolator : public QgsTest
+class TestQgsInterpolator : public QObject
 {
     Q_OBJECT
 
   public:
-
-    TestQgsInterpolator()
-      : QgsTest( QStringLiteral( "Interpolator Tests" ) )
-    {}
 
   private slots:
     void initTestCase();// will be called before the first testfunction is executed.
@@ -367,7 +363,7 @@ void TestQgsInterpolator::TIN_IDW_Interpolator_with_attribute()
       QStringLiteral( "point" ),
       QStringLiteral( "memory" ) );
 
-  QVERIFY( mLayerPoint->fields().field( "ZValue" ).type() == QMetaType::Type::Double );
+  QVERIFY( mLayerPoint->fields().field( "ZValue" ).type() == QVariant::Double );
 
   const QString wkt1 = "Point (0 0)";
   const QString wkt2 = "Point (2 0)";
@@ -397,7 +393,7 @@ void TestQgsInterpolator::TIN_IDW_Interpolator_with_attribute()
   QgsFeature f5;
   f5.setFields( fields, true );
   f5.setGeometry( QgsGeometry::fromWkt( wkt5 ) );
-  f5.setAttribute( "ZValue", QgsVariantUtils::createNullVariant( QMetaType::Type::Double ) ); //NULL value has to be ignore
+  f5.setAttribute( "ZValue", QVariant( QVariant::Double ) ); //NULL value has to be ignore
   QgsFeature f6;
   f6.setFields( fields, true );
   f6.setGeometry( QgsGeometry::fromWkt( wkt6 ) );

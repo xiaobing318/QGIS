@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsmaptoolhtmlannotation.h"
-#include "moc_qgsmaptoolhtmlannotation.cpp"
 #include "qgshtmlannotation.h"
 #include "qgsmapcanvas.h"
 #include "qgsvectorlayer.h"

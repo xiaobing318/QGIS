@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     r_li.py
@@ -23,8 +25,6 @@ import shutil
 from qgis.core import QgsProcessingParameterString
 from processing.tools.system import (isWindows, mkdir,
                                      getTempFilename)
-from grassprovider.grass_utils import GrassUtils
-
 import os
 
 # for MS-Windows users who have MBCS chars in their name:
@@ -33,13 +33,12 @@ if os.name == 'nt':
 
 
 def rliPath():
-    """Return r.li GRASS user dir"""
-    grass_version = GrassUtils.installedVersion().split('.')[0]
+    """Return r.li GRASS7 user dir"""
     if isWindows():
         homeDir = win32api.GetShortPathName(os.path.expanduser('~'))
-        return os.path.join(homeDir, 'AppData', 'Roaming', f'GRASS{grass_version}', 'r.li')
+        return os.path.join(homeDir, 'AppData', 'Roaming', 'GRASS7', 'r.li')
     else:
-        return os.path.join(os.path.expanduser("~"), f'.grass{grass_version}', 'r.li')
+        return os.path.join(os.path.expanduser("~"), '.grass7', 'r.li')
 
 
 def removeConfigFile(alg, parameters, context):
@@ -85,17 +84,17 @@ def configFile(alg, parameters, context, feedback, outputTxt=False):
     """Handle inline configuration
     :param parameters:
     """
-    # Where is the GRASS user directory ?
-    user_grass_path = rliPath()
-    if not os.path.isdir(user_grass_path):
-        mkdir(user_grass_path)
-    if not os.path.isdir(os.path.join(user_grass_path, 'output')):
-        mkdir(os.path.join(user_grass_path, 'output'))
+    # Where is the GRASS7 user directory ?
+    userGrass7Path = rliPath()
+    if not os.path.isdir(userGrass7Path):
+        mkdir(userGrass7Path)
+    if not os.path.isdir(os.path.join(userGrass7Path, 'output')):
+        mkdir(os.path.join(userGrass7Path, 'output'))
 
     # If we have a configuration file, we need to copy it into user dir
     if parameters['config']:
         fileName = alg.parameterAsString(parameters, 'config', context)
-        configFilePath = os.path.join(user_grass_path, os.path.basename(fileName))
+        configFilePath = os.path.join(userGrass7Path, os.path.basename(fileName))
         # Copy the file
         shutil.copy(parameters['config'], configFilePath)
         # Change the parameter value
@@ -103,8 +102,8 @@ def configFile(alg, parameters, context, feedback, outputTxt=False):
     # Handle inline configuration
     elif parameters['config_txt']:
         # Creates a temporary txt file in user r.li directory
-        tempConfig = os.path.basename(getTempFilename(context=context))
-        configFilePath = os.path.join(user_grass_path, tempConfig)
+        tempConfig = os.path.basename(getTempFilename())
+        configFilePath = os.path.join(userGrass7Path, tempConfig)
         # Inject rules into temporary txt file
         with open(configFilePath, "w") as f:
             f.write(alg.parameterAsString(parameters, 'config_txt', context))
@@ -118,7 +117,7 @@ def configFile(alg, parameters, context, feedback, outputTxt=False):
     if outputTxt:
         param = QgsProcessingParameterString(
             'output', 'virtual output',
-            'a' + os.path.basename(getTempFilename(context=context)),
+            'a' + os.path.basename(getTempFilename()),
             False, False)
         alg.addParameter(param)
 
@@ -131,9 +130,9 @@ def configFile(alg, parameters, context, feedback, outputTxt=False):
 def moveOutputTxtFile(alg, parameters, context):
     # Find output file name:
     txtPath = alg.parameterAsString(parameters, 'output_txt', context)
-    user_grass_path = rliPath()
+    userGrass7Path = rliPath()
 
-    output = os.path.join(user_grass_path, 'output',
+    output = os.path.join(userGrass7Path, 'output',
                           alg.parameterAsString(parameters, 'output', context))
     # move the file
     if isWindows():

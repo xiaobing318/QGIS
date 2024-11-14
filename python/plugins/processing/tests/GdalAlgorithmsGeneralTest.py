@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     GdalAlgorithmTests.py
@@ -38,8 +40,8 @@ from qgis.core import (QgsProcessingContext,
                        QgsProcessingException,
                        QgsProcessingFeatureSourceDefinition)
 
-from qgis.testing import (QgisTestCase,
-                          start_app)
+from qgis.testing import (start_app,
+                          unittest)
 
 from processing.algs.gdal.GdalUtils import GdalUtils
 from processing.algs.gdal.ogr2ogr import ogr2ogr
@@ -48,7 +50,7 @@ from processing.algs.gdal.OgrToPostGis import OgrToPostGis
 testDataPath = os.path.join(os.path.dirname(__file__), 'testdata')
 
 
-class TestGdalAlgorithms(QgisTestCase):
+class TestGdalAlgorithms(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
@@ -69,7 +71,7 @@ class TestGdalAlgorithms(QgisTestCase):
             if a.id() in ('gdal:buildvirtualvector'):
                 # build virtual vector is an exception
                 continue
-            self.assertTrue(a.commandName(), f'Algorithm {a.id()} has no commandName!')
+            self.assertTrue(a.commandName(), 'Algorithm {} has no commandName!'.format(a.id()))
 
     def testCommandNameInTags(self):
         # Test that algorithms commandName is present in provided tags
@@ -77,7 +79,7 @@ class TestGdalAlgorithms(QgisTestCase):
         for a in p.algorithms():
             if not a.commandName():
                 continue
-            self.assertTrue(a.commandName() in a.tags(), f'Algorithm {a.id()} commandName not found in tags!')
+            self.assertTrue(a.commandName() in a.tags(), 'Algorithm {} commandName not found in tags!'.format(a.id()))
 
     def testNoParameters(self):
         # Test that algorithms throw QgsProcessingException and not base Python
@@ -114,15 +116,15 @@ class TestGdalAlgorithms(QgisTestCase):
         parameters = {'INPUT': 'testmem'}
         feedback = QgsProcessingFeedback()
         # check that memory layer is automatically saved out to geopackage when required by GDAL algorithms
-        input_details = alg.getOgrCompatibleSource('INPUT', parameters, context, feedback,
-                                                   executing=True)
-        self.assertTrue(input_details.connection_string)
-        self.assertTrue(input_details.connection_string.endswith('.gpkg'))
-        self.assertTrue(os.path.exists(input_details.connection_string))
-        self.assertTrue(input_details.connection_string)
+        ogr_data_path, ogr_layer_name = alg.getOgrCompatibleSource('INPUT', parameters, context, feedback,
+                                                                   executing=True)
+        self.assertTrue(ogr_data_path)
+        self.assertTrue(ogr_data_path.endswith('.gpkg'))
+        self.assertTrue(os.path.exists(ogr_data_path))
+        self.assertTrue(ogr_layer_name)
 
         # make sure that layer has correct features
-        res = QgsVectorLayer(input_details.connection_string, 'res')
+        res = QgsVectorLayer(ogr_data_path, 'res')
         self.assertTrue(res.isValid())
         self.assertEqual(res.featureCount(), 2)
 
@@ -131,10 +133,10 @@ class TestGdalAlgorithms(QgisTestCase):
         # - it has no meaning for the gdal command outside of QGIS, memory layers don't exist!
         # - we don't want to force an export of the whole memory layer to a temp file just to show the command preview
         # this might be very slow!
-        input_details = alg.getOgrCompatibleSource('INPUT', parameters, context, feedback,
-                                                   executing=False)
-        self.assertEqual(input_details.connection_string, 'path_to_data_file')
-        self.assertEqual(input_details.layer_name, 'layer_name')
+        ogr_data_path, ogr_layer_name = alg.getOgrCompatibleSource('INPUT', parameters, context, feedback,
+                                                                   executing=False)
+        self.assertEqual(ogr_data_path, 'path_to_data_file')
+        self.assertEqual(ogr_layer_name, 'layer_name')
 
         QgsProject.instance().removeMapLayer(layer)
 
@@ -151,43 +153,43 @@ class TestGdalAlgorithms(QgisTestCase):
 
         alg = ogr2ogr()
         alg.initAlgorithm()
-        input_details = alg.getOgrCompatibleSource('INPUT', {'INPUT': vl.id()}, context, feedback, True)
-        self.assertEqual(input_details.connection_string, source)
-        input_details = alg.getOgrCompatibleSource('INPUT', {'INPUT': vl.id()}, context, feedback, False)
-        self.assertEqual(input_details.connection_string, source)
+        path, layer = alg.getOgrCompatibleSource('INPUT', {'INPUT': vl.id()}, context, feedback, True)
+        self.assertEqual(path, source)
+        path, layer = alg.getOgrCompatibleSource('INPUT', {'INPUT': vl.id()}, context, feedback, False)
+        self.assertEqual(path, source)
 
         # with selected features only - if not executing, the 'selected features only' setting
         # should be ignored (because it has no meaning for the gdal command outside of QGIS!)
         parameters = {'INPUT': QgsProcessingFeatureSourceDefinition(vl.id(), True)}
-        input_details = alg.getOgrCompatibleSource('INPUT', parameters, context, feedback, False)
-        self.assertEqual(input_details.connection_string, source)
+        path, layer = alg.getOgrCompatibleSource('INPUT', parameters, context, feedback, False)
+        self.assertEqual(path, source)
 
         # with subset string
         vl.setSubsetString('x')
-        input_details = alg.getOgrCompatibleSource('INPUT', parameters, context, feedback, False)
-        self.assertEqual(input_details.connection_string, source)
+        path, layer = alg.getOgrCompatibleSource('INPUT', parameters, context, feedback, False)
+        self.assertEqual(path, source)
         # subset of layer must be exported
-        input_details = alg.getOgrCompatibleSource('INPUT', parameters, context, feedback, True)
-        self.assertNotEqual(input_details.connection_string, source)
-        self.assertTrue(input_details.connection_string)
-        self.assertTrue(input_details.connection_string.endswith('.gpkg'))
-        self.assertTrue(os.path.exists(input_details.connection_string))
-        self.assertTrue(input_details.layer_name)
+        path, layer = alg.getOgrCompatibleSource('INPUT', parameters, context, feedback, True)
+        self.assertNotEqual(path, source)
+        self.assertTrue(path)
+        self.assertTrue(path.endswith('.gpkg'))
+        self.assertTrue(os.path.exists(path))
+        self.assertTrue(layer)
 
         # geopackage with layer
         source = os.path.join(testDataPath, 'custom', 'circular_strings.gpkg')
         vl2 = QgsVectorLayer(source + '|layername=circular_strings')
         self.assertTrue(vl2.isValid())
         p.addMapLayer(vl2)
-        input_details = alg.getOgrCompatibleSource('INPUT', {'INPUT': vl2.id()}, context, feedback, True)
-        self.assertEqual(input_details.connection_string, source)
-        self.assertEqual(input_details.layer_name, 'circular_strings')
+        path, layer = alg.getOgrCompatibleSource('INPUT', {'INPUT': vl2.id()}, context, feedback, True)
+        self.assertEqual(path, source)
+        self.assertEqual(layer, 'circular_strings')
         vl3 = QgsVectorLayer(source + '|layername=circular_strings_with_line')
         self.assertTrue(vl3.isValid())
         p.addMapLayer(vl3)
-        input_details = alg.getOgrCompatibleSource('INPUT', {'INPUT': vl3.id()}, context, feedback, True)
-        self.assertEqual(input_details.connection_string, source)
-        self.assertEqual(input_details.layer_name, 'circular_strings_with_line')
+        path, layer = alg.getOgrCompatibleSource('INPUT', {'INPUT': vl3.id()}, context, feedback, True)
+        self.assertEqual(path, source)
+        self.assertEqual(layer, 'circular_strings_with_line')
 
     def testGetOgrCompatibleSourceFromFeatureSource(self):
         # create a memory layer and add to project and context
@@ -215,15 +217,15 @@ class TestGdalAlgorithms(QgisTestCase):
         parameters = {'INPUT': QgsProcessingFeatureSourceDefinition('testmem', True)}
         feedback = QgsProcessingFeedback()
         # check that memory layer is automatically saved out to geopackage when required by GDAL algorithms
-        input_details = alg.getOgrCompatibleSource('INPUT', parameters, context, feedback,
-                                                   executing=True)
-        self.assertTrue(input_details.connection_string)
-        self.assertTrue(input_details.connection_string.endswith('.gpkg'))
-        self.assertTrue(os.path.exists(input_details.connection_string))
-        self.assertTrue(input_details.layer_name)
+        ogr_data_path, ogr_layer_name = alg.getOgrCompatibleSource('INPUT', parameters, context, feedback,
+                                                                   executing=True)
+        self.assertTrue(ogr_data_path)
+        self.assertTrue(ogr_data_path.endswith('.gpkg'))
+        self.assertTrue(os.path.exists(ogr_data_path))
+        self.assertTrue(ogr_layer_name)
 
         # make sure that layer has only selected feature
-        res = QgsVectorLayer(input_details.connection_string, 'res')
+        res = QgsVectorLayer(ogr_data_path, 'res')
         self.assertTrue(res.isValid())
         self.assertEqual(res.featureCount(), 1)
 
@@ -273,14 +275,14 @@ class TestGdalAlgorithms(QgisTestCase):
                 'port=5493 sslmode=disable key=\'edge_id\' srid=0 type=LineString table="city_data"."edge" (geom) sql=')
             self.assertEqual(name, 'city_data.edge')
 
-    def test_gdal_connection_details_from_uri(self):
+    def testOgrConnectionStringAndFormat(self):
         context = QgsProcessingContext()
-        output_details = GdalUtils.gdal_connection_details_from_uri('d:/test/test.shp', context)
-        self.assertEqual(output_details.connection_string, 'd:/test/test.shp')
-        self.assertEqual(output_details.format, '"ESRI Shapefile"')
-        output_details = GdalUtils.gdal_connection_details_from_uri('d:/test/test.mif', context)
-        self.assertEqual(output_details.connection_string, 'd:/test/test.mif')
-        self.assertEqual(output_details.format, '"MapInfo File"')
+        output, outputFormat = GdalUtils.ogrConnectionStringAndFormat('d:/test/test.shp', context)
+        self.assertEqual(output, 'd:/test/test.shp')
+        self.assertEqual(outputFormat, '"ESRI Shapefile"')
+        output, outputFormat = GdalUtils.ogrConnectionStringAndFormat('d:/test/test.mif', context)
+        self.assertEqual(output, 'd:/test/test.mif')
+        self.assertEqual(outputFormat, '"MapInfo File"')
 
     def testConnectionString(self):
         alg = OgrToPostGis()

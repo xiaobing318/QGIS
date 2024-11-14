@@ -17,7 +17,7 @@ import os
 import urllib.parse
 
 from qgis.PyQt import QtCore
-from qgis.core import QgsVectorLayer
+from qgis.core import (QgsVectorLayer)
 from qgis.testing import unittest
 
 from test_qgsserver import QgsServerTestBase

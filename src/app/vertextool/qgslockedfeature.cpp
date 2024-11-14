@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgslockedfeature.h"
-#include "moc_qgslockedfeature.cpp"
 #include "qgsvertexeditor.h"
 
 #include "qgsfeatureiterator.h"
@@ -31,8 +30,6 @@
 #include "qgsproject.h"
 #include "qgsstatusbar.h"
 #include "qgsmapcanvas.h"
-#include "qgssettingsentryimpl.h"
-
 
 
 QgsLockedFeature::QgsLockedFeature( QgsFeatureId featureId,
@@ -126,7 +123,7 @@ void QgsLockedFeature::geometryChanged( QgsFeatureId fid, const QgsGeometry &geo
 
 void QgsLockedFeature::validateGeometry( QgsGeometry *g )
 {
-  if ( QgsSettingsRegistryCore::settingsDigitizingValidateGeometries->value() == 0 )
+  if ( QgsSettingsRegistryCore::settingsDigitizingValidateGeometries.value() == 0 )
     return;
 
   if ( !g )
@@ -146,12 +143,12 @@ void QgsLockedFeature::validateGeometry( QgsGeometry *g )
   while ( !mGeomErrorMarkers.isEmpty() )
   {
     QgsVertexMarker *vm = mGeomErrorMarkers.takeFirst();
-    QgsDebugMsgLevel( "deleting " + vm->toolTip(), 2 );
+    QgsDebugMsg( "deleting " + vm->toolTip() );
     delete vm;
   }
 
   Qgis::GeometryValidationEngine method = Qgis::GeometryValidationEngine::QgisInternal;
-  if ( QgsSettingsRegistryCore::settingsDigitizingValidateGeometries->value() == 2 )
+  if ( QgsSettingsRegistryCore::settingsDigitizingValidateGeometries.value() == 2 )
     method = Qgis::GeometryValidationEngine::Geos;
   mValidator = new QgsGeometryValidator( *g, nullptr, method );
   connect( mValidator, &QgsGeometryValidator::errorFound, this, &QgsLockedFeature::addError );
@@ -234,7 +231,7 @@ void QgsLockedFeature::createVertexMap()
 
   if ( !mGeometry )
   {
-    QgsDebugMsgLevel( QStringLiteral( "Loading feature" ), 2 );
+    QgsDebugMsg( QStringLiteral( "Loading feature" ) );
     updateGeometry( nullptr );
   }
 

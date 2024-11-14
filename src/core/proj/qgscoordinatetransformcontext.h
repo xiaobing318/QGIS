@@ -51,6 +51,7 @@ class QDomElement;
  * \see QgsDatumTransform
  * \see QgsCoordinateTransform
  *
+ * \since QGIS 3.0
 */
 
 class CORE_EXPORT QgsCoordinateTransformContext
@@ -64,7 +65,14 @@ class CORE_EXPORT QgsCoordinateTransformContext
 
     ~QgsCoordinateTransformContext() ;
 
+    /**
+     * Copy constructor
+     */
     QgsCoordinateTransformContext( const QgsCoordinateTransformContext &rhs );
+
+    /**
+     * Assignment operator
+     */
     QgsCoordinateTransformContext &operator=( const QgsCoordinateTransformContext &rhs ) SIP_SKIP;
 
     bool operator==( const QgsCoordinateTransformContext &rhs ) const ;
@@ -87,7 +95,7 @@ class CORE_EXPORT QgsCoordinateTransformContext
      *
      * \see addSourceDestinationDatumTransform()
      *
-     * \deprecated QGIS 3.40. Has no effect on builds based on Proj 6.0 or later, use coordinateOperations() instead.
+     * \deprecated Has no effect on builds based on Proj 6.0 or later, use coordinateOperations() instead.
      */
     Q_DECL_DEPRECATED QMap< QPair< QString, QString>, QgsDatumTransform::TransformPair > sourceDestinationDatumTransforms() const SIP_DEPRECATED;
 
@@ -120,7 +128,7 @@ class CORE_EXPORT QgsCoordinateTransformContext
      * \see sourceDestinationDatumTransforms()
      * \see removeSourceDestinationDatumTransform()
      *
-     * \deprecated QGIS 3.40. Has no effect on builds based on Proj 6.0 or later, use addCoordinateOperation() instead.
+     * \deprecated Has no effect on builds based on Proj 6.0 or later, use addCoordinateOperation() instead.
      */
     Q_DECL_DEPRECATED bool addSourceDestinationDatumTransform( const QgsCoordinateReferenceSystem &sourceCrs, const QgsCoordinateReferenceSystem &destinationCrs, int sourceTransformId, int destinationTransformId ) SIP_DEPRECATED;
 
@@ -162,7 +170,7 @@ class CORE_EXPORT QgsCoordinateTransformContext
      * \a destinationCrs.
      * \see addSourceDestinationDatumTransform()
      *
-     * \deprecated QGIS 3.40. Use removeCoordinateOperation() instead.
+     * \deprecated Use removeCoordinateOperation() instead
      */
     Q_DECL_DEPRECATED void removeSourceDestinationDatumTransform( const QgsCoordinateReferenceSystem &sourceCrs, const QgsCoordinateReferenceSystem &destinationCrs ) SIP_DEPRECATED ;
 
@@ -189,7 +197,7 @@ class CORE_EXPORT QgsCoordinateTransformContext
      * destination.
      *
      * \note source and destination are reversible.
-     * \deprecated QGIS 3.40. Has no effect on builds based on Proj 6.0 or later. Use calculateCoordinateOperation() instead.
+     * \deprecated Has no effect on builds based on Proj 6.0 or later. Use calculateCoordinateOperation() instead.
      */
     Q_DECL_DEPRECATED QgsDatumTransform::TransformPair calculateDatumTransforms( const QgsCoordinateReferenceSystem &source, const QgsCoordinateReferenceSystem &destination ) const SIP_DEPRECATED;
 

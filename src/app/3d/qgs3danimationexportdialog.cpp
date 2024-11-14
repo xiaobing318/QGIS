@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgs3danimationexportdialog.h"
-#include "moc_qgs3danimationexportdialog.cpp"
 #include "qgsproject.h"
 #include "qgsgui.h"
 #include "qgssettings.h"

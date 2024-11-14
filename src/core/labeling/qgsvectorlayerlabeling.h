@@ -36,6 +36,7 @@ class QgsStyleEntityVisitorInterface;
  * \ingroup core
  * \brief Abstract base class - its implementations define different approaches to the labeling of a vector layer.
  *
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsAbstractVectorLayerLabeling
 {
@@ -52,7 +53,7 @@ class CORE_EXPORT QgsAbstractVectorLayerLabeling
 #endif
 
   public:
-
+    //! Default constructor
     QgsAbstractVectorLayerLabeling() = default;
     virtual ~QgsAbstractVectorLayerLabeling() = default;
 
@@ -86,6 +87,7 @@ class CORE_EXPORT QgsAbstractVectorLayerLabeling
      * \param settings Pal layer settings
      * \param providerId The id of the provider
      *
+     * \since QGIS 3.0
      */
     virtual void setSettings( QgsPalLayerSettings *settings SIP_TRANSFER, const QString &providerId = QString() ) = 0;
 
@@ -93,19 +95,9 @@ class CORE_EXPORT QgsAbstractVectorLayerLabeling
      * Returns TRUE if drawing labels requires advanced effects like composition
      * modes, which could prevent it being used as an isolated cached image
      * or exported to a vector format.
+     * \since QGIS 3.0
      */
     virtual bool requiresAdvancedEffects() const = 0;
-
-    /**
-     * Multiply opacity by \a opacityFactor.
-     *
-     * This method multiplies the opacity of the labeling elements (text, shadow, buffer etc.)
-     * by \a opacity effectively changing the opacity of the whole labeling elements.
-     *
-     * \since QGIS 3.32
-     */
-    virtual void multiplyOpacity( double opacityFactor ) { Q_UNUSED( opacityFactor ); };
-
 
     // static stuff
 
@@ -166,6 +158,7 @@ class CORE_EXPORT QgsAbstractVectorLayerLabeling
  *
  * The configuration is kept in layer's custom properties for backward compatibility.
  *
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsVectorLayerSimpleLabeling : public QgsAbstractVectorLayerLabeling
 {
@@ -187,14 +180,15 @@ class CORE_EXPORT QgsVectorLayerSimpleLabeling : public QgsAbstractVectorLayerLa
      * \param settings Pal layer settings
      * \param providerId Unused parameter
      *
+     * \since QGIS 3.0
      */
     void setSettings( QgsPalLayerSettings *settings SIP_TRANSFER, const QString &providerId = QString() ) override;
 
     bool requiresAdvancedEffects() const override;
     void toSld( QDomNode &parent, const QVariantMap &props ) const override;
-    void multiplyOpacity( double opacityFactor ) override;
+
     //! Create the instance from a DOM element with saved configuration
-    static QgsVectorLayerSimpleLabeling *create( const QDomElement &element, const QgsReadWriteContext &context ); // cppcheck-suppress duplInheritedMember
+    static QgsVectorLayerSimpleLabeling *create( const QDomElement &element, const QgsReadWriteContext &context );
 
   private:
     std::unique_ptr<QgsPalLayerSettings> mSettings;

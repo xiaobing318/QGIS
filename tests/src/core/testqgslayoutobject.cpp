@@ -29,7 +29,6 @@ class TestQgsLayoutObject: public QgsTest
     TestQgsLayoutObject() : QgsTest( QStringLiteral( "Layout Object Tests" ) ) {}
 
   private slots:
-    void cleanupTestCase();
 
     void creation(); //test creation of QgsLayoutObject
     void layout(); //test fetching layout from QgsLayoutObject
@@ -41,11 +40,6 @@ class TestQgsLayoutObject: public QgsTest
 
 };
 
-
-void TestQgsLayoutObject::cleanupTestCase()
-{
-  QgsApplication::exitQgis();
-}
 
 void TestQgsLayoutObject::creation()
 {
@@ -169,7 +163,7 @@ void TestQgsLayoutObject::writeRetrieveDDProperty()
   QgsLayout l( &p );
 
   QgsLayoutObject *object = new QgsLayoutObject( &l );
-  object->dataDefinedProperties().setProperty( QgsLayoutObject::DataDefinedProperty::TestProperty, QgsProperty::fromExpression( QStringLiteral( "10 + 40" ) ) );
+  object->dataDefinedProperties().setProperty( QgsLayoutObject::TestProperty, QgsProperty::fromExpression( QStringLiteral( "10 + 40" ) ) );
 
   //test writing object with dd settings
   QDomImplementation DomImplementation;
@@ -189,14 +183,14 @@ void TestQgsLayoutObject::writeRetrieveDDProperty()
   QVERIFY( readObject->readObjectPropertiesFromElement( rootNode, doc, QgsReadWriteContext() ) );
 
   //test getting not set dd from restored object
-  QgsProperty dd = readObject->dataDefinedProperties().property( QgsLayoutObject::DataDefinedProperty::BlendMode );
+  QgsProperty dd = readObject->dataDefinedProperties().property( QgsLayoutObject::BlendMode );
   QVERIFY( !dd );
 
   //test getting good property
-  dd = readObject->dataDefinedProperties().property( QgsLayoutObject::DataDefinedProperty::TestProperty );
+  dd = readObject->dataDefinedProperties().property( QgsLayoutObject::TestProperty );
   QVERIFY( dd );
   QVERIFY( dd.isActive() );
-  QCOMPARE( dd.propertyType(), Qgis::PropertyType::Expression );
+  QCOMPARE( dd.propertyType(), QgsProperty::ExpressionBasedProperty );
 
   delete object;
   delete readObject;

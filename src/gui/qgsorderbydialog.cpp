@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgsorderbydialog.h"
-#include "moc_qgsorderbydialog.cpp"
 
 #include "qgsexpressionbuilderdialog.h"
 #include "qgsfieldexpressionwidget.h"

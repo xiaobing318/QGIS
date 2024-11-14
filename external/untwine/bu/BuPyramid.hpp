@@ -45,6 +45,7 @@ private:
     void getInputFiles();
     void readBaseInfo();
     size_t queueWork();
+    void writeInfo();
 
     BaseInfo m_b;
     PyramidManager m_manager;

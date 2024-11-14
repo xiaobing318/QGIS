@@ -17,7 +17,26 @@
 
 #include "qgsdatadefinedsizelegend.h"
 #include "qgsfontutils.h"
+#include "qgsrenderchecker.h"
+#include "qgssymbol.h"
 #include "qgsmarkersymbol.h"
+
+static QString _fileNameForTest( const QString &testName )
+{
+  return QDir::tempPath() + '/' + testName + ".png";
+}
+
+static bool _verifyImage( const QString &testName, QString &report )
+{
+  QgsRenderChecker checker;
+  checker.setControlPathPrefix( QStringLiteral( "data_defined_size_legend" ) );
+  checker.setControlName( "expected_" + testName );
+  checker.setRenderedImage( _fileNameForTest( testName ) );
+  checker.setSizeTolerance( 3, 3 );
+  const bool equal = checker.compareImages( testName, 500 );
+  report += checker.report();
+  return equal;
+}
 
 static QgsRenderContext _createRenderContext( double mupp, double dpi, double scale )
 {
@@ -39,7 +58,7 @@ class TestQgsDataDefinedSizeLegend : public QgsTest
 
   public:
 
-    TestQgsDataDefinedSizeLegend() : QgsTest( QStringLiteral( "Data Defined Size Legend Tests" ), QStringLiteral( "data_defined_size_legend" ) ) {}
+    TestQgsDataDefinedSizeLegend() : QgsTest( QStringLiteral( "Data Defined Size Legend Tests" ) ) {}
 
   private slots:
     void initTestCase();// will be called before the first testfunction is executed.
@@ -86,12 +105,14 @@ void TestQgsDataDefinedSizeLegend::testBasic()
   QgsRenderContext context( _createRenderContext( 100, 96, 100 ) );
 
   const QImage imgBottom = settings.collapsedLegendImage( context, Qt::white, 1 );
-  QGSVERIFYIMAGECHECK( "basic_bottom", "basic_bottom", imgBottom, QString(), 500, QSize( 3, 3 ) );
+  imgBottom.save( _fileNameForTest( QStringLiteral( "basic_bottom" ) ) );
+  QVERIFY( _verifyImage( "basic_bottom", mReport ) );
 
   settings.setVerticalAlignment( QgsDataDefinedSizeLegend::AlignCenter );
 
   const QImage imgCenter = settings.collapsedLegendImage( context, Qt::white, 1 );
-  QGSVERIFYIMAGECHECK( "basic_center", "basic_center", imgCenter, QString(), 500, QSize( 3, 3 ) );
+  imgCenter.save( _fileNameForTest( QStringLiteral( "basic_center" ) ) );
+  QVERIFY( _verifyImage( "basic_center", mReport ) );
 }
 
 void TestQgsDataDefinedSizeLegend::testCrowded()
@@ -119,7 +140,9 @@ void TestQgsDataDefinedSizeLegend::testCrowded()
   QgsRenderContext context( _createRenderContext( 100, 96, 100 ) );
 
   const QImage img = settings.collapsedLegendImage( context, Qt::white, 1 );
-  QGSVERIFYIMAGECHECK( "crowded", "crowded", img, QString(), 500, QSize( 3, 3 ) );
+  img.save( _fileNameForTest( QStringLiteral( "crowded" ) ) );
+
+  QVERIFY( _verifyImage( "crowded", mReport ) );
 }
 
 QGSTEST_MAIN( TestQgsDataDefinedSizeLegend )

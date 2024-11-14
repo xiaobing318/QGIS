@@ -22,6 +22,8 @@
 
 #include "qgis_sip.h"
 #include "qgsprocessingalgorithm.h"
+#include "qgsvectorlayer.h"
+#include "vector/qgszonalstatistics.h"
 
 ///@cond PRIVATE
 
@@ -41,7 +43,7 @@ class QgsZonalStatisticsFeatureBasedAlgorithm : public QgsProcessingFeatureBased
     QString groupId() const override;
     QString shortHelpString() const override;
     QList<int> inputLayerTypes() const override;
-    bool supportInPlaceEdit( const QgsMapLayer *layer ) const override;
+
     QgsZonalStatisticsFeatureBasedAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
@@ -52,19 +54,20 @@ class QgsZonalStatisticsFeatureBasedAlgorithm : public QgsProcessingFeatureBased
 
     bool prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
     QgsFeatureList processFeature( const QgsFeature &feature,  QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
+    bool supportInPlaceEdit( const QgsMapLayer *layer ) const override;
 
   private:
     std::unique_ptr< QgsRasterInterface > mRaster;
-    int mBand = 1;
+    int mBand;
     QString mPrefix;
-    Qgis::ZonalStatistics mStats = Qgis::ZonalStatistic::All;
+    QgsZonalStatistics::Statistics mStats = QgsZonalStatistics::All;
     QgsCoordinateReferenceSystem mCrs;
     bool mCreatedTransform = false;
     QgsCoordinateTransform mFeatureToRasterTransform;
-    double mPixelSizeX = 0;
-    double mPixelSizeY = 0;
+    double mPixelSizeX;
+    double mPixelSizeY;
     QgsFields mOutputFields;
-    QMap<Qgis::ZonalStatistic, int> mStatFieldsMapping;
+    QMap<QgsZonalStatistics::Statistic, int> mStatFieldsMapping;
 };
 
 ///@endcond PRIVATE

@@ -54,13 +54,12 @@ class QgsWCSSourceSelect : public QgsOWSSourceSelect
 
   public:
     //! Constructor
-    QgsWCSSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::Standalone );
+    QgsWCSSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::None );
 
   private:
     QgsWcsCapabilities mCapabilities;
 
-    QString selectedIdentifier() const;
-    QString selectedTitle() const;
+    QString selectedIdentifier();
 
     // QgsWcsCapabilities virtual methods
     void populateLayerList() override;

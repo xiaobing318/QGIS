@@ -46,13 +46,12 @@ QgsLineVertexData::QgsLineVertexData()
   vertices << QVector3D();
 }
 
-void QgsLineVertexData::init( Qgis::AltitudeClamping clamping, Qgis::AltitudeBinding binding, float height, const Qgs3DRenderContext &context, const QgsVector3D &chunkOrigin )
+void QgsLineVertexData::init( Qgis::AltitudeClamping clamping, Qgis::AltitudeBinding binding, float height, const Qgs3DMapSettings *map )
 {
   altClamping = clamping;
   altBinding = binding;
   baseHeight = height;
-  renderContext = context;
-  origin = chunkOrigin;
+  mapSettings = map;
 }
 
 QByteArray QgsLineVertexData::createVertexBuffer()
@@ -134,11 +133,9 @@ void QgsLineVertexData::addLineString( const QgsLineString &lineString, float ex
   for ( int i = 0; i < lineString.vertexCount(); ++i )
   {
     QgsPoint p = lineString.pointN( i );
-    float z = Qgs3DUtils::clampAltitude( p, altClamping, altBinding, baseHeight + extraHeightOffset, centroid, renderContext );
+    float z = Qgs3DUtils::clampAltitude( p, altClamping, altBinding, baseHeight + extraHeightOffset, centroid, *mapSettings );
 
-    vertices << QVector3D( static_cast< float >( p.x() - origin.x() ),
-                           static_cast< float >( p.y() - origin.y() ),
-                           z );
+    vertices << QVector3D( p.x() - mapSettings->origin().x(), z, -( p.y() - mapSettings->origin().y() ) );
     indexes << vertices.count() - 1;
   }
 
@@ -163,19 +160,15 @@ void QgsLineVertexData::addVerticalLines( const QgsLineString &lineString, float
   for ( int i = 0; i < lineString.vertexCount(); ++i )
   {
     QgsPoint p = lineString.pointN( i );
-    float z = Qgs3DUtils::clampAltitude( p, altClamping, altBinding, baseHeight + extraHeightOffset, centroid, renderContext );
+    float z = Qgs3DUtils::clampAltitude( p, altClamping, altBinding, baseHeight + extraHeightOffset, centroid, *mapSettings );
     float z2 = z + verticalLength;
 
     if ( withAdjacency )
       indexes << vertices.count();  // add the following vertex (for adjacency)
 
-    vertices << QVector3D( static_cast< float >( p.x() - origin.x() ),
-                           static_cast< float >( p.y() - origin.y() ),
-                           z );
+    vertices << QVector3D( p.x() - mapSettings->origin().x(), z, -( p.y() - mapSettings->origin().y() ) );
     indexes << vertices.count() - 1;
-    vertices << QVector3D( static_cast< float >( p.x() - origin.x() ),
-                           static_cast< float >( p.y() - origin.y() ),
-                           z2 );
+    vertices << QVector3D( p.x() - mapSettings->origin().x(), z2, -( p.y() - mapSettings->origin().y() ) );
     indexes << vertices.count() - 1;
 
     if ( withAdjacency )

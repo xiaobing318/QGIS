@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsnewvectortabledialog.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -49,7 +49,7 @@ Sets the schema ``name``
 Sets the table ``name``
 %End
 
-    void setGeometryType( Qgis::WkbType type );
+    void setGeometryType( QgsWkbTypes::Type type );
 %Docstring
 Sets the geometry ``type``
 %End
@@ -84,7 +84,7 @@ Returns the geometry column name
 Returns the fields
 %End
 
-    Qgis::WkbType geometryType() const;
+    QgsWkbTypes::Type geometryType() const;
 %Docstring
 Returns the geometry type
 %End
@@ -96,7 +96,8 @@ Sets the fields to ``fields``
 
     bool createSpatialIndex();
 %Docstring
-Returns ``True`` if spatialindex checkbox is checked.
+Returns ``True`` if spatialindex checkbox is cheched
+@return
 %End
 
     QStringList validationErrors() const;
@@ -119,5 +120,5 @@ Returns the validation errors or an empty list if the dialog is valid
  *                                                                      *
  * src/gui/qgsnewvectortabledialog.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

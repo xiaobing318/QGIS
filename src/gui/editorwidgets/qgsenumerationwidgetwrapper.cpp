@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsenumerationwidgetwrapper.h"
-#include "moc_qgsenumerationwidgetwrapper.cpp"
 
 #include "qgsvectorlayer.h"
 #include "qgsvectordataprovider.h"

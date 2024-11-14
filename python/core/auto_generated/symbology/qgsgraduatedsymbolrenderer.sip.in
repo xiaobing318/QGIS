@@ -3,16 +3,13 @@
  *                                                                      *
  * src/core/symbology/qgsgraduatedsymbolrenderer.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
 
 class QgsGraduatedSymbolRenderer : QgsFeatureRenderer
 {
-%Docstring(signature="appended")
-A vector feature renderer which uses numeric attributes to classify features into different ranges.
-%End
 
 %TypeHeaderCode
 #include "qgsgraduatedsymbolrenderer.h"
@@ -22,8 +19,6 @@ A vector feature renderer which uses numeric attributes to classify features int
     QgsGraduatedSymbolRenderer( const QString &attrName = QString(), const QgsRangeList &ranges = QgsRangeList() );
 
     ~QgsGraduatedSymbolRenderer();
-
-    virtual Qgis::FeatureRendererFlags flags() const;
 
     virtual QgsSymbol *symbolForFeature( const QgsFeature &feature, QgsRenderContext &context ) const;
 
@@ -73,6 +68,10 @@ Returns a list of all ranges used in the classification.
     bool updateRangeUpperValue( int rangeIndex, double value );
     bool updateRangeLowerValue( int rangeIndex, double value );
     bool updateRangeRenderState( int rangeIndex, bool render );
+%Docstring
+
+.. versionadded:: 2.5
+%End
 
     void addClass( QgsSymbol *symbol );
     void addClass( const QgsRendererRange &range ) /PyName=addClassRange/;
@@ -98,6 +97,8 @@ value becomes a break between two classes.
 :param breakValue: position to insert break
 :param updateSymbols: set to ``True`` to reapply ramp colors to the new
                       symbol ranges
+
+.. versionadded:: 2.9
 %End
 
     void deleteClass( int idx );
@@ -113,6 +114,8 @@ Moves the category at index position from to index position to.
 Tests whether classes assigned to the renderer have ranges which overlap.
 
 :return: ``True`` if ranges overlap
+
+.. versionadded:: 2.10
 %End
 
     bool rangesHaveGaps() const;
@@ -120,6 +123,8 @@ Tests whether classes assigned to the renderer have ranges which overlap.
 Tests whether classes assigned to the renderer have gaps between the ranges.
 
 :return: ``True`` if ranges have gaps
+
+.. versionadded:: 2.10
 %End
 
     void sortByValue( Qt::SortOrder order = Qt::AscendingOrder );
@@ -154,16 +159,14 @@ This will take ownership of the method
  Mode mode() const /Deprecated/;
 %Docstring
 
-.. deprecated:: 3.10
-
-   Use classficationMethod instead.
+.. deprecated:: QGIS 3.10
+   use classficationMethod instead
 %End
  void setMode( Mode mode ) /Deprecated/;
 %Docstring
 
-.. deprecated:: 3.10
-
-   Use classficationMethod instead.
+.. deprecated:: QGIS 3.10
+   use classficationMethod instead
 %End
 
  bool useSymmetricMode() const /Deprecated/;
@@ -172,9 +175,8 @@ Returns if we want to classify symmetric around a given value
 
 .. versionadded:: 3.4
 
-.. deprecated:: 3.10
-
-   Use classficationMethod instead.
+.. deprecated:: QGIS 3.10
+   use classficationMethod instead
 %End
 
   void setUseSymmetricMode( bool useSymmetricMode ) /Deprecated/;
@@ -183,9 +185,8 @@ Set if we want to classify symmetric around a given value
 
 .. versionadded:: 3.4
 
-.. deprecated:: 3.10
-
-   Use classficationMethod instead.
+.. deprecated:: QGIS 3.10
+   use classficationMethod instead
 %End
 
  double symmetryPoint() const /Deprecated/;
@@ -194,9 +195,8 @@ Returns the pivot value for symmetric classification
 
 .. versionadded:: 3.4
 
-.. deprecated:: 3.10
-
-   Use classficationMethod instead.
+.. deprecated:: QGIS 3.10
+   use classficationMethod instead
 %End
 
  void setSymmetryPoint( double symmetryPoint ) /Deprecated/;
@@ -205,9 +205,8 @@ Set the pivot point
 
 .. versionadded:: 3.4
 
-.. deprecated:: 3.10
-
-   Use classficationMethod instead.
+.. deprecated:: QGIS 3.10
+   use classficationMethod instead
 %End
 
 
@@ -217,9 +216,8 @@ Returns if we want to have a central class astride the pivot value
 
 .. versionadded:: 3.4
 
-.. deprecated:: 3.10
-
-   Use classficationMethod instead.
+.. deprecated:: QGIS 3.10
+   use classficationMethod instead
 %End
 
  void setAstride( bool astride ) /Deprecated/;
@@ -228,9 +226,8 @@ Set if we want a central class astride the pivot value
 
 .. versionadded:: 3.4
 
-.. deprecated:: 3.10
-
-   Use classficationMethod instead.
+.. deprecated:: QGIS 3.10
+   use classficationMethod instead
 %End
 
  static void makeBreaksSymmetric( QList<double> &breaks /In,Out/, double symmetryPoint, bool astride ) /Deprecated/;
@@ -244,9 +241,8 @@ Does not put a break on the symmetryPoint. This is done before.
 
 .. versionadded:: 3.4
 
-.. deprecated:: 3.10
-
-   Use :py:class:`QgsClassificationMethod`.makeBreaksSymmetric instead.
+.. deprecated:: QGIS 3.10
+  use :py:class:`QgsClassificationMethod`.makeBreaksSymmetric instead
 %End
 
  static QList<double> calcEqualIntervalBreaks( double minimum, double maximum, int classes, bool useSymmetricMode, double symmetryPoint, bool astride ) /Deprecated/;
@@ -260,9 +256,8 @@ Compute the equal interval classification
 :param symmetryPoint: The point around which we want a symmetry
 :param astride: A bool indicating if the symmetry is made astride the symmetryPoint or not ( [-1,1] vs. [-1,0][0,1] )
 
-.. deprecated:: 3.10
-
-   Use :py:class:`QgsClassificationEqualInterval` class instead.
+.. deprecated:: QGIS 3.10
+   use :py:class:`QgsClassificationEqualInterval` class instead
 %End
 
  void updateClasses( QgsVectorLayer *vlayer, Mode mode, int nclasses, bool useSymmetricMode = false, double symmetryPoint = 0.0, bool astride = false ) /Deprecated/;
@@ -276,17 +271,17 @@ Recalculate classes for a layer
 :param symmetryPoint: The value around which the classes will be symmetric if useSymmetricMode is checked
 :param astride: A bool indicating if the symmetry is made astride the symmetryPoint or not ( [-1,1] vs. [-1,0][0,1] )
 
-.. deprecated:: 3.10
+.. versionadded:: 2.6
+
+.. deprecated:: QGIS 3.10
 %End
 
-    void updateClasses( const QgsVectorLayer *vl, int nclasses, QString &error /Out/ );
+    void updateClasses( const QgsVectorLayer *vl, int nclasses );
 %Docstring
 Recalculate classes for a layer
 
 :param vl: The layer being rendered (from which data values are calculated)
 :param nclasses: the number of classes
-
-:return: Optional parameter for error reporting
 %End
 
 
@@ -294,9 +289,10 @@ Recalculate classes for a layer
 %Docstring
 Returns the label format used to generate default classification labels
 
-.. deprecated:: 3.10
+.. versionadded:: 2.6
 
-   Use :py:func:`~QgsGraduatedSymbolRenderer.classificationMethod` and :py:class:`QgsClassificationMethod`.setLabelFormat instead.
+.. deprecated:: QGIS 3.10
+   use :py:func:`~QgsGraduatedSymbolRenderer.classificationMethod` and :py:class:`QgsClassificationMethod`.setLabelFormat instead
 %End
 
  void setLabelFormat( const QgsRendererRangeLabelFormat &labelFormat, bool updateRanges = false ) /Deprecated/;
@@ -306,9 +302,10 @@ Set the label format used to generate default classification labels
 :param labelFormat: The string appended to classification labels
 :param updateRanges: If ``True`` then ranges ending with the old unit string are updated to the new.
 
-.. deprecated:: 3.10
+.. versionadded:: 2.6
 
-   Use :py:func:`~QgsGraduatedSymbolRenderer.classificationMethod` and :py:class:`QgsClassificationMethod`.setLabelFormat instead.
+.. deprecated:: QGIS 3.10
+   use :py:func:`~QgsGraduatedSymbolRenderer.classificationMethod` and :py:class:`QgsClassificationMethod`.setLabelFormat instead
 %End
 
 
@@ -317,6 +314,8 @@ Set the label format used to generate default classification labels
 Reset the label decimal places to a numberbased on the minimum class interval
 
 :param updateRanges: if ``True`` then ranges currently using the default label will be updated
+
+.. versionadded:: 2.6
 %End
 
 
@@ -348,7 +347,7 @@ Creates a new graduated renderer.
 
 :return: new QgsGraduatedSymbolRenderer object
 
-.. deprecated:: 3.10
+.. deprecated:: QGIS 3.10
 %End
 
     static QgsFeatureRenderer *create( QDomElement &element, const QgsReadWriteContext &context ) /Factory/;
@@ -430,16 +429,22 @@ set varying symbol size for classes
 .. note::
 
    the classes must already be set so that symbols exist
+
+.. versionadded:: 2.10
 %End
 
     double minSymbolSize() const;
 %Docstring
 Returns the min symbol size when graduated by size
+
+.. versionadded:: 2.10
 %End
 
     double maxSymbolSize() const;
 %Docstring
 Returns the max symbol size when graduated by size
+
+.. versionadded:: 2.10
 %End
 
     Qgis::GraduatedMethod graduatedMethod() const;
@@ -447,6 +452,8 @@ Returns the max symbol size when graduated by size
 Returns the method used for graduation (either size or color).
 
 .. seealso:: :py:func:`setGraduatedMethod`
+
+.. versionadded:: 2.10
 %End
 
     void setGraduatedMethod( Qgis::GraduatedMethod method );
@@ -454,6 +461,8 @@ Returns the method used for graduation (either size or color).
 Set the ``method`` used for graduation (either size or color).
 
 .. seealso:: :py:func:`graduatedMethod`
+
+.. versionadded:: 2.10
 %End
 
     virtual bool legendSymbolItemsCheckable() const;
@@ -471,6 +480,8 @@ Set the ``method`` used for graduation (either size or color).
 creates a QgsGraduatedSymbolRenderer from an existing renderer.
 
 :return: a new renderer if the conversion was possible, otherwise ``None``.
+
+.. versionadded:: 2.6
 %End
 
     void setDataDefinedSizeLegend( QgsDataDefinedSizeLegend *settings /Transfer/ );
@@ -482,12 +493,16 @@ different symbol sizes collapsed in one legend node or separated across multiple
 When renderer does not use data-defined size or does not use marker symbols, these settings will be ignored.
 Takes ownership of the passed settings objects. ``None`` is a valid input that disables data-defined
 size legend.
+
+.. versionadded:: 3.0
 %End
 
     QgsDataDefinedSizeLegend *dataDefinedSizeLegend() const;
 %Docstring
 Returns configuration of appearance of legend when using data-defined size for marker symbols.
 Will return ``None`` if the functionality is disabled.
+
+.. versionadded:: 3.0
 %End
 
     void updateRangeLabels();
@@ -532,5 +547,5 @@ Returns the matching legend key for a value.
  *                                                                      *
  * src/core/symbology/qgsgraduatedsymbolrenderer.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

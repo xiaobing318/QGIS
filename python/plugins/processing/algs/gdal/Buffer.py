@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     Buffer.py
@@ -60,7 +62,7 @@ class Buffer(GdalAlgorithm):
                                                       self.tr('Dissolve by attribute'),
                                                       None,
                                                       self.INPUT,
-                                                      QgsProcessingParameterField.DataType.Any,
+                                                      QgsProcessingParameterField.Any,
                                                       optional=True))
         self.addParameter(QgsProcessingParameterBoolean(self.DISSOLVE,
                                                         self.tr('Dissolve all results'),
@@ -73,12 +75,12 @@ class Buffer(GdalAlgorithm):
                                                      self.tr('Additional creation options'),
                                                      defaultValue='',
                                                      optional=True)
-        options_param.setFlags(options_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        options_param.setFlags(options_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(options_param)
 
         self.addParameter(QgsProcessingParameterVectorDestination(self.OUTPUT,
                                                                   self.tr('Buffer'),
-                                                                  QgsProcessing.SourceType.TypeVectorPolygon))
+                                                                  QgsProcessing.TypeVectorPolygon))
 
     def name(self):
         return 'buffervectors'
@@ -100,8 +102,7 @@ class Buffer(GdalAlgorithm):
         if source is None:
             raise QgsProcessingException(self.invalidSourceError(parameters, self.INPUT))
         fields = source.fields()
-        source_details = self.getOgrCompatibleSource(self.INPUT, parameters, context, feedback, executing)
-
+        ogrLayer, layerName = self.getOgrCompatibleSource(self.INPUT, parameters, context, feedback, executing)
         geometry = self.parameterAsString(parameters, self.GEOMETRY, context)
         distance = self.parameterAsDouble(parameters, self.DISTANCE, context)
         fieldName = self.parameterAsString(parameters, self.FIELD, context)
@@ -110,7 +111,7 @@ class Buffer(GdalAlgorithm):
         outFile = self.parameterAsOutputLayer(parameters, self.OUTPUT, context)
         self.setOutputValue(self.OUTPUT, outFile)
 
-        output_details = GdalUtils.gdal_connection_details_from_uri(outFile, context)
+        output, outputFormat = GdalUtils.ogrConnectionStringAndFormat(outFile, context)
 
         other_fields_exist = any(
             True for f in fields
@@ -120,36 +121,30 @@ class Buffer(GdalAlgorithm):
         other_fields = ',*' if other_fields_exist else ''
 
         arguments = [
-            output_details.connection_string,
-            source_details.connection_string,
+            output,
+            ogrLayer,
             '-dialect',
             'sqlite',
             '-sql'
         ]
 
         if dissolve or fieldName:
-            sql = f'SELECT ST_Union(ST_Buffer({geometry}, {distance})) AS {geometry}{other_fields} FROM "{source_details.layer_name}"'
+            sql = 'SELECT ST_Union(ST_Buffer({}, {})) AS {}{} FROM "{}"'.format(geometry, distance, geometry, other_fields, layerName)
         else:
-            sql = f'SELECT ST_Buffer({geometry}, {distance}) AS {geometry}{other_fields} FROM "{source_details.layer_name}"'
+            sql = 'SELECT ST_Buffer({}, {}) AS {}{} FROM "{}"'.format(geometry, distance, geometry, other_fields, layerName)
 
         if fieldName:
-            sql = f'{sql} GROUP BY "{fieldName}"'
+            sql = '{} GROUP BY "{}"'.format(sql, fieldName)
 
         arguments.append(sql)
 
         if self.parameterAsBoolean(parameters, self.EXPLODE_COLLECTIONS, context):
             arguments.append('-explodecollections')
 
-        if source_details.open_options:
-            arguments.extend(source_details.open_options_as_arguments())
-
-        if source_details.credential_options:
-            arguments.extend(source_details.credential_options_as_arguments())
-
         if options:
             arguments.append(options)
 
-        if output_details.format:
-            arguments.append(f'-f {output_details.format}')
+        if outputFormat:
+            arguments.append('-f {}'.format(outputFormat))
 
         return [self.commandName(), GdalUtils.escapeAndJoin(arguments)]

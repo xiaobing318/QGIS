@@ -18,7 +18,6 @@
 
 #include "qgslogger.h"
 #include "qgsnetworkreplyparser.h"
-#include "moc_qgsnetworkreplyparser.cpp"
 
 #include <QNetworkReply>
 #include <QObject>
@@ -50,9 +49,9 @@ QgsNetworkReplyParser::QgsNetworkReplyParser( QNetworkReply *reply )
   else // multipart
   {
     const QString contentType = mReply->header( QNetworkRequest::ContentTypeHeader ).toString();
-    QgsDebugMsgLevel( "contentType: " + contentType, 2 );
+    QgsDebugMsg( "contentType: " + contentType );
 
-    const thread_local QRegularExpression re( ".*boundary=\"?([^\"]+)\"?\\s?", QRegularExpression::CaseInsensitiveOption );
+    const QRegularExpression re( ".*boundary=\"?([^\"]+)\"?\\s?", QRegularExpression::CaseInsensitiveOption );
     const QRegularExpressionMatch match = re.match( contentType );
     if ( !( match.capturedStart( 0 ) == 0 ) )
     {
@@ -61,7 +60,7 @@ QgsNetworkReplyParser::QgsNetworkReplyParser( QNetworkReply *reply )
     }
 
     QString boundary = match.captured( 1 );
-    QgsDebugMsgLevel( QStringLiteral( "boundary = %1 size = %2" ).arg( boundary ).arg( boundary.size() ), 2 );
+    QgsDebugMsg( QStringLiteral( "boundary = %1 size = %2" ).arg( boundary ).arg( boundary.size() ) );
     boundary = "--" + boundary;
 
     // Lines should be terminated by CRLF ("\r\n") but any new line combination may appear
@@ -76,7 +75,7 @@ QgsNetworkReplyParser::QgsNetworkReplyParser( QNetworkReply *reply )
       to = data.indexOf( boundary.toLatin1(), from );
       if ( to < 0 )
       {
-        QgsDebugMsgLevel( QStringLiteral( "No more boundaries, rest size = %1" ).arg( data.size() - from - 1 ), 2 );
+        QgsDebugMsg( QStringLiteral( "No more boundaries, rest size = %1" ).arg( data.size() - from - 1 ) );
         // It may be end, last boundary is followed by '--'
         if ( data.size() - from - 1 == 2 && QString( data.mid( from, 2 ) ) == QLatin1String( "--" ) ) // end
         {
@@ -94,7 +93,7 @@ QgsNetworkReplyParser::QgsNetworkReplyParser( QNetworkReply *reply )
           break;
         }
       }
-      QgsDebugMsgLevel( QStringLiteral( "part %1 - %2" ).arg( from ).arg( to ), 2 );
+      QgsDebugMsg( QStringLiteral( "part %1 - %2" ).arg( from ).arg( to ) );
       QByteArray part = data.mid( from, to - from );
       // Remove possible new line from beginning
       while ( !part.isEmpty() && ( part.at( 0 ) == '\r' || part.at( 0 ) == '\n' ) )
@@ -117,13 +116,13 @@ QgsNetworkReplyParser::QgsNetworkReplyParser( QNetworkReply *reply )
       // parse headers
       RawHeaderMap headersMap;
       const QByteArray headers = part.left( pos );
-      QgsDebugMsgLevel( "headers:\n" + headers, 2 );
+      QgsDebugMsg( "headers:\n" + headers );
 
       const QStringList headerRows = QString( headers ).split( QRegularExpression( "[\n\r]+" ) );
       const auto constHeaderRows = headerRows;
       for ( const QString &row : constHeaderRows )
       {
-        QgsDebugMsgLevel( "row = " + row, 2 );
+        QgsDebugMsg( "row = " + row );
         const QStringList kv = row.split( QStringLiteral( ": " ) );
         headersMap.insert( kv.value( 0 ).toLatin1(), kv.value( 1 ).toLatin1() );
       }
@@ -142,7 +141,7 @@ bool QgsNetworkReplyParser::isMultipart( QNetworkReply *reply )
   if ( !reply ) return false;
 
   const QString contentType = reply->header( QNetworkRequest::ContentTypeHeader ).toString();
-  QgsDebugMsgLevel( "contentType: " + contentType, 2 );
+  QgsDebugMsg( "contentType: " + contentType );
 
   // Multipart content type examples:
   //   multipart/mixed; boundary=wcs

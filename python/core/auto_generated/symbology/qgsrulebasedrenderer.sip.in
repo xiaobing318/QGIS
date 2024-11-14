@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/symbology/qgsrulebasedrenderer.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -137,6 +137,10 @@ Returns ``True`` if this rule or one of its children needs the geometry to be ap
 %End
 
         QgsLegendSymbolList legendSymbolItems( int currentLevel = -1 ) const;
+%Docstring
+
+.. versionadded:: 2.6
+%End
 
         bool isFilterOK( const QgsFeature &f, QgsRenderContext *context = 0 ) const;
 %Docstring
@@ -170,6 +174,8 @@ A scale of 0 indicates no maximum scale visibility.
 .. seealso:: :py:func:`minimumScale`
 
 .. seealso:: :py:func:`setMaximumScale`
+
+.. versionadded:: 3.0
 %End
 
         double minimumScale() const;
@@ -181,6 +187,8 @@ A scale of 0 indicates no minimum scale visibility.
 .. seealso:: :py:func:`maximumScale`
 
 .. seealso:: :py:func:`setMinimumScale`
+
+.. versionadded:: 3.0
 %End
 
         QgsExpression *filter() const;
@@ -214,11 +222,15 @@ Returns if this rule is active
         QString ruleKey() const;
 %Docstring
 Unique rule identifier (for identification of rule within renderer)
+
+.. versionadded:: 2.6
 %End
 
         void setRuleKey( const QString &key );
 %Docstring
 Override the assigned rule key (should be used just internally by rule-based renderer)
+
+.. versionadded:: 2.6
 %End
 
         void setSymbol( QgsSymbol *sym /Transfer/ );
@@ -280,7 +292,7 @@ clone this rule, return new instance
 Saves the symbol layer as SLD
 %End
 
-        static QgsRuleBasedRenderer::Rule *createFromSld( QDomElement &element, Qgis::GeometryType geomType ) /Factory/;
+        static QgsRuleBasedRenderer::Rule *createFromSld( QDomElement &element, QgsWkbTypes::GeometryType geomType ) /Factory/;
 %Docstring
 Create a rule from the SLD provided in element and for the specified geometry type.
 %End
@@ -290,17 +302,6 @@ Create a rule from the SLD provided in element and for the specified geometry ty
         bool startRender( QgsRenderContext &context, const QgsFields &fields, QString &filter );
 %Docstring
 prepare the rule for rendering and its children (build active children array)
-%End
-
-        bool hasActiveChildren() const;
-%Docstring
-Returns ``True`` if the rule has any active children.
-
-.. note::
-
-   Must be called after :py:func:`~Rule.startRender`
-
-.. versionadded:: 3.30
 %End
 
         QSet<int> collectZLevels();
@@ -334,6 +335,8 @@ tell which symbols will be used to render the feature
         QSet< QString > legendKeysForFeature( const QgsFeature &feature, QgsRenderContext *context = 0 );
 %Docstring
 Returns which legend keys match the feature
+
+.. versionadded:: 2.14
 %End
 
         QgsRuleBasedRenderer::RuleList rulesForFeature( const QgsFeature &feature, QgsRenderContext *context = 0, bool onlyActive = true );
@@ -353,13 +356,12 @@ Stop a rendering process. Used to clean up the internal state of this rule
 :param context: The rendering context
 %End
 
-        static QgsRuleBasedRenderer::Rule *create( QDomElement &ruleElem, QgsSymbolMap &symbolMap, bool reuseId = true ) /Factory/;
+        static QgsRuleBasedRenderer::Rule *create( QDomElement &ruleElem, QgsSymbolMap &symbolMap ) /Factory/;
 %Docstring
 Create a rule from an XML definition
 
 :param ruleElem: The XML rule element
 :param symbolMap: Symbol map
-:param reuseId: set to ``True`` to create an exact copy of the original symbol or ``False`` to create a new rule with the same parameters as the original but a new unique :py:func:`~Rule.ruleKey`. (Since QGIS 3.30)
 
 :return: A new rule
 %End
@@ -418,6 +420,8 @@ take child rule out, set parent as ``None``
         QgsRuleBasedRenderer::Rule *findRuleByKey( const QString &key );
 %Docstring
 Try to find a rule given its unique key
+
+.. versionadded:: 2.6
 %End
 
         void setIsElse( bool iselse );
@@ -475,14 +479,11 @@ Constructor for convenience. Creates a root rule and adds a default rule with sy
 Returns symbol for current feature. Should not be used individually: there could be more symbols for a feature
 %End
 
-    virtual Qgis::FeatureRendererFlags flags() const;
-
     virtual bool renderFeature( const QgsFeature &feature, QgsRenderContext &context, int layer = -1, bool selected = false, bool drawVertexMarker = false ) throw( QgsCsException );
 
 
     virtual void startRender( QgsRenderContext &context, const QgsFields &fields );
 
-    virtual bool canSkipRender();
 
     virtual void stopRender( QgsRenderContext &context );
 
@@ -502,10 +503,7 @@ Returns symbol for current feature. Should not be used individually: there could
     virtual void toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props = QVariantMap() ) const;
 
 
-    static QgsFeatureRenderer *createFromSld( QDomElement &element, Qgis::GeometryType geomType ) /Factory/;
-%Docstring
-Creates a new rule based renderer from an SLD XML element.
-%End
+    static QgsFeatureRenderer *createFromSld( QDomElement &element, QgsWkbTypes::GeometryType geomType ) /Factory/;
 
     virtual QgsSymbolList symbols( QgsRenderContext &context ) const;
 
@@ -563,6 +561,8 @@ Creates a new QgsRuleBasedRenderer from an existing ``renderer``.
 Since QGIS 3.20, the optional ``layer`` parameter is required for conversions of some renderer types.
 
 :return: a new renderer if the conversion was possible, otherwise ``None``.
+
+.. versionadded:: 2.5
 %End
 
     static void convertToDataDefinedSymbology( QgsSymbol *symbol, const QString &sizeScaleField, const QString &rotationField = QString() );
@@ -584,5 +584,5 @@ helper function to convert the size scale and rotation fields present in some ot
  *                                                                      *
  * src/core/symbology/qgsrulebasedrenderer.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -40,10 +40,11 @@ class QgsFields;
  *
  * QgsVectorLayerExporter can be used in two ways:
  *
- * - Using a static call to QgsVectorLayerExporter::exportLayer(...) which exports the
+ * # Using a static call to QgsVectorLayerExporter::exportLayer(...) which exports the
  *   entire layer to the destination provider.
- * - Create an instance of the class and issue calls to addFeature(...)
+ * # Create an instance of the class and issue calls to addFeature(...)
  *
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsVectorLayerExporter : public QgsFeatureSink
 {
@@ -87,13 +88,15 @@ class CORE_EXPORT QgsVectorLayerExporter : public QgsFeatureSink
     QgsVectorLayerExporter( const QString &uri,
                             const QString &provider,
                             const QgsFields &fields,
-                            Qgis::WkbType geometryType,
+                            QgsWkbTypes::Type geometryType,
                             const QgsCoordinateReferenceSystem &crs,
                             bool overwrite = false,
                             const QMap<QString, QVariant> &options = QMap<QString, QVariant>(),
                             QgsFeatureSink::SinkFlags sinkFlags = QgsFeatureSink::SinkFlags() );
 
+    //! QgsVectorLayerExporter cannot be copied
     QgsVectorLayerExporter( const QgsVectorLayerExporter &rh ) = delete;
+    //! QgsVectorLayerExporter cannot be copied
     QgsVectorLayerExporter &operator=( const QgsVectorLayerExporter &rh ) = delete;
 
     /**
@@ -116,13 +119,6 @@ class CORE_EXPORT QgsVectorLayerExporter : public QgsFeatureSink
      * \see errorCode()
      */
     int errorCount() const { return mErrorCount; }
-
-    /**
-     * Returns the attribute capabilities of the exporter.
-     *
-     * \since QGIS 3.32
-     */
-    Qgis::VectorDataProviderAttributeEditCapabilities attributeEditCapabilities() const;
 
     bool addFeatures( QgsFeatureList &features, QgsFeatureSink::Flags flags = QgsFeatureSink::Flags() ) override;
     bool addFeature( QgsFeature &feature, QgsFeatureSink::Flags flags = QgsFeatureSink::Flags() ) override;
@@ -172,6 +168,7 @@ class CORE_EXPORT QgsVectorLayerExporter : public QgsFeatureSink
  * QGIS interface.
  * \see QgsVectorFileWriterTask
  * \see QgsRasterFileWriterTask
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsVectorLayerExporterTask : public QgsTask
 {

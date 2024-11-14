@@ -18,7 +18,6 @@
 #include "qaction.h"
 #include "qgsapplication.h"
 #include "qgsexpressionpreviewwidget.h"
-#include "moc_qgsexpressionpreviewwidget.cpp"
 #include "qgsmessageviewer.h"
 #include "qgsvectorlayer.h"
 #include "qgsfeaturepickerwidget.h"
@@ -34,66 +33,30 @@ QgsExpressionPreviewWidget::QgsExpressionPreviewWidget( QWidget *parent )
   mCopyPreviewAction = new QAction( QgsApplication::getThemeIcon( QStringLiteral( "/mActionEditCopy.svg" ) ), tr( "Copy Expression Value" ), this );
   mPreviewLabel->addAction( mCopyPreviewAction );
   mFeaturePickerWidget->setShowBrowserButtons( true );
-  mStackedWidget->setSizeMode( QgsStackedWidget::SizeMode::CurrentPageOnly );
-  mStackedWidget->setCurrentWidget( mPageFeaturePicker );
 
-  mCustomButtonNext->setEnabled( false );
-  mCustomButtonPrev->setEnabled( false );
   connect( mFeaturePickerWidget, &QgsFeaturePickerWidget::featureChanged, this, &QgsExpressionPreviewWidget::setCurrentFeature );
-  connect( mCustomComboBox, qOverload< int >( &QComboBox::currentIndexChanged ), this, &QgsExpressionPreviewWidget::setCustomChoice );
   connect( mPreviewLabel, &QLabel::linkActivated, this, &QgsExpressionPreviewWidget::linkActivated );
   connect( mCopyPreviewAction, &QAction::triggered, this, &QgsExpressionPreviewWidget::copyFullExpressionValue );
-  connect( mCustomButtonPrev, &QToolButton::clicked, this, [this]
-  {
-    mCustomComboBox->setCurrentIndex( std::max( 0, mCustomComboBox->currentIndex() - 1 ) );
-  } );
-  connect( mCustomButtonNext, &QToolButton::clicked, this, [this]
-  {
-    mCustomComboBox->setCurrentIndex( std::min( mCustomComboBox->count() - 1, mCustomComboBox->currentIndex() + 1 ) );
-  } );
 }
 
 void QgsExpressionPreviewWidget::setLayer( QgsVectorLayer *layer )
 {
-  if ( layer != mLayer )
-  {
-    mLayer = layer;
-    mFeaturePickerWidget->setLayer( layer );
-  }
-}
-
-void QgsExpressionPreviewWidget::setCustomPreviewGenerator( const QString &label, const QList<QPair<QString, QVariant> > &choices,  const std::function< QgsExpressionContext( const QVariant & ) > &previewContextGenerator )
-{
-  mCustomPreviewGeneratorFunction = previewContextGenerator;
-  mStackedWidget->setCurrentWidget( mPageCustomPicker );
-  mCustomLabel->setText( label );
-  mCustomComboBox->blockSignals( true );
-  mCustomComboBox->clear();
-  for ( const auto &choice : choices )
-  {
-    mCustomComboBox->addItem( choice.first, choice.second );
-  }
-  mCustomComboBox->blockSignals( false );
-  setCustomChoice( 0 );
+  mLayer = layer;
+  mFeaturePickerWidget->setLayer( layer );
 }
 
 void QgsExpressionPreviewWidget::setExpressionText( const QString &expression )
 {
-  if ( expression != mExpressionText )
-  {
-    mExpressionText = expression;
-    refreshPreview();
-  }
+  mExpressionText = expression;
+  refreshPreview();
 }
 
 void QgsExpressionPreviewWidget::setCurrentFeature( const QgsFeature &feature )
 {
-  // todo: update the combo box if it has been set externally?
-  if ( feature != mExpressionContext.feature() )
-  {
-    mExpressionContext.setFeature( feature );
-    refreshPreview();
-  }
+  // todo: update the combo box if it has been set externaly?
+
+  mExpressionContext.setFeature( feature );
+  refreshPreview();
 }
 
 void QgsExpressionPreviewWidget::setGeomCalculator( const QgsDistanceArea &da )
@@ -227,11 +190,6 @@ bool QgsExpressionPreviewWidget::parserError() const
   return mParserError;
 }
 
-QString QgsExpressionPreviewWidget::currentPreviewText() const
-{
-  return mPreviewLabel->text();
-}
-
 void QgsExpressionPreviewWidget::setEvalError( bool evalError )
 {
   if ( evalError == mEvalError )
@@ -253,16 +211,4 @@ void QgsExpressionPreviewWidget::copyFullExpressionValue()
   const QString copiedValue = QgsExpression::formatPreviewString( value, false, 100000 );
   QgsDebugMsgLevel( QStringLiteral( "set clipboard: %1" ).arg( copiedValue ), 4 );
   clipboard->setText( copiedValue );
-}
-
-void QgsExpressionPreviewWidget::setCustomChoice( int )
-{
-  const QVariant selectedValue = mCustomComboBox->currentData();
-
-  mCustomButtonPrev->setEnabled( mCustomComboBox->currentIndex() > 0 && mCustomComboBox->count() > 0 );
-  mCustomButtonNext->setEnabled( mCustomComboBox->currentIndex() < ( mCustomComboBox->count() - 1 ) && mCustomComboBox->count() > 0 );
-
-  mExpressionContext = mCustomPreviewGeneratorFunction( selectedValue );
-
-  refreshPreview();
 }

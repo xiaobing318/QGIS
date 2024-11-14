@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     TextToFloat.py
@@ -19,7 +21,7 @@ __author__ = 'Michael Minn'
 __date__ = 'May 2010'
 __copyright__ = '(C) 2010, Michael Minn'
 
-from qgis.PyQt.QtCore import QMetaType
+from qgis.PyQt.QtCore import QVariant
 from qgis.core import (QgsField,
                        QgsProcessing,
                        QgsProcessingParameterField,
@@ -45,7 +47,7 @@ class TextToFloat(QgisFeatureBasedAlgorithm):
         self.addParameter(QgsProcessingParameterField(self.FIELD,
                                                       self.tr('Text attribute to convert to float'),
                                                       parentLayerParameterName='INPUT',
-                                                      type=QgsProcessingParameterField.DataType.String
+                                                      type=QgsProcessingParameterField.String
                                                       ))
 
     def name(self):
@@ -58,12 +60,12 @@ class TextToFloat(QgisFeatureBasedAlgorithm):
         return self.tr('Float from text')
 
     def inputLayerTypes(self):
-        return [QgsProcessing.SourceType.TypeVector]
+        return [QgsProcessing.TypeVector]
 
     def outputFields(self, inputFields):
         self.field_idx = inputFields.lookupField(self.field_name)
         if self.field_idx >= 0:
-            inputFields[self.field_idx] = QgsField(self.field_name, QMetaType.Type.Double, '', 24, 15)
+            inputFields[self.field_idx] = QgsField(self.field_name, QVariant.Double, '', 24, 15)
         return inputFields
 
     def prepareAlgorithm(self, parameters, context, feedback):
@@ -74,7 +76,7 @@ class TextToFloat(QgisFeatureBasedAlgorithm):
         return False
 
     def sourceFlags(self):
-        return QgsProcessingFeatureSource.Flag.FlagSkipGeometryValidityChecks
+        return QgsProcessingFeatureSource.FlagSkipGeometryValidityChecks
 
     def processFeature(self, feature, context, feedback):
         value = feature[self.field_idx]

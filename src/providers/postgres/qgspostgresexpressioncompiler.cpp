@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgspostgresexpressioncompiler.h"
-#include "qgsexpressionutils.h"
 #include "qgssqlexpressioncompiler.h"
 #include "qgsexpressionnodeimpl.h"
 
@@ -40,17 +39,21 @@ QString QgsPostgresExpressionCompiler::quotedValue( const QVariant &value, bool 
 
   // don't use the default QgsPostgresConn::quotedValue handling for double values -- for
   // various reasons it returns them as string values!
-  switch ( value.userType() )
+  switch ( value.type() )
   {
-    case QMetaType::Type::Double:
+    case QVariant::Double:
       return value.toString();
 
-    default:
+    case QVariant::UserType:
+      if ( value.userType() == QMetaType::type( "QgsGeometry" ) )
+      {
+        const QgsGeometry geom = value.value<QgsGeometry>();
+        return QString( "ST_GeomFromText('%1',%2)" ).arg( geom.asWkt() ).arg( mRequestedSrid.isEmpty() ? mDetectedSrid : mRequestedSrid );
+      }
+      break;
 
-      QgsGeometry geom = QgsExpressionUtils::getGeometry( value, nullptr );
-      if ( geom.isNull() )
-        break;
-      return QString( "ST_GeomFromText('%1',%2)" ).arg( geom.asWkt() ).arg( mRequestedSrid.isEmpty() ? mDetectedSrid : mRequestedSrid );
+    default:
+      break;
   }
 
   return QgsPostgresConn::quotedValue( value );
@@ -224,7 +227,7 @@ QgsSqlExpressionCompiler::Result QgsPostgresExpressionCompiler::compileNode( con
         return Complete;
       }
 #endif
-      [[fallthrough]];
+      FALLTHROUGH
     }
 
     default:

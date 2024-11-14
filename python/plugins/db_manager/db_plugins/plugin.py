@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 /***************************************************************************
 Name                 : DB Manager
@@ -17,6 +19,8 @@ email                : brush.tyler@gmail.com
  *                                                                         *
  ***************************************************************************/
 """
+from builtins import str
+from builtins import range
 
 from qgis.PyQt.QtCore import Qt, QObject, pyqtSignal, QByteArray
 
@@ -156,7 +160,7 @@ class DBPlugin(QObject):
             md.deleteConnection(self.connectionName())
         except (AttributeError, QgsProviderConnectionException):
             settings = QgsSettings()
-            settings.beginGroup("/%s/%s" % (self.connectionSettingsKey(), self.connectionName()))
+            settings.beginGroup(u"/%s/%s" % (self.connectionSettingsKey(), self.connectionName()))
             settings.remove("")
 
         self.deleted.emit()
@@ -223,11 +227,11 @@ class DBPlugin(QObject):
             res = QMessageBox.question(parent, QApplication.translate("DBManagerPlugin", "DB Manager"),
                                        QApplication.translate("DBManagerPlugin",
                                                               "Really remove connection to {0}?").format(item.connectionName()),
-                                       QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-            if res != QMessageBox.StandardButton.Yes:
+                                       QMessageBox.Yes | QMessageBox.No)
+            if res != QMessageBox.Yes:
                 return
         finally:
-            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            QApplication.setOverrideCursor(Qt.WaitCursor)
 
         item.remove()
 
@@ -325,11 +329,11 @@ class Database(DbItemObject):
                     q = 1
                     while "_subq_%d_" % q in sql:
                         q += 1
-                    sql = "SELECT %s AS _uid_,* FROM (%s\n) AS _subq_%d_" % (uniqueFct, sql, q)
+                    sql = u"SELECT %s AS _uid_,* FROM (%s\n) AS _subq_%d_" % (uniqueFct, sql, q)
                     uniqueCol = "_uid_"
 
         uri = self.uri()
-        uri.setDataSource("", "(%s\n)" % sql, geomCol, filter, uniqueCol)
+        uri.setDataSource("", u"(%s\n)" % sql, geomCol, filter, uniqueCol)
         if avoidSelectById:
             uri.disableSelectAtId(True)
         provider = self.dbplugin().providerName()
@@ -344,7 +348,7 @@ class Database(DbItemObject):
     def registerSubPluginActions(self, mainWindow):
         # load plugins!
         try:
-            exec("from .%s.plugins import load" % self.dbplugin().typeName(), globals())
+            exec(u"from .%s.plugins import load" % self.dbplugin().typeName(), globals())
         except ImportError:
             pass
         else:
@@ -365,7 +369,7 @@ class Database(DbItemObject):
 
         action = QAction(QApplication.translate("DBManagerPlugin", "Delete Selected Item"), self)
         mainWindow.registerAction(action, None, self.deleteActionSlot)
-        action.setShortcuts(QKeySequence.StandardKey.Delete)
+        action.setShortcuts(QKeySequence.Delete)
 
         action = QAction(QgsApplication.getThemeIcon("/mActionCreateTable.svg"),
                          QApplication.translate("DBManagerPlugin", "&Create Table…"), self)
@@ -405,8 +409,8 @@ class Database(DbItemObject):
         else:
             QApplication.restoreOverrideCursor()
             parent.infoBar.pushMessage(QApplication.translate("DBManagerPlugin", "Cannot delete the selected item."),
-                                       Qgis.MessageLevel.Info, parent.iface.messageTimeout())
-            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+                                       Qgis.Info, parent.iface.messageTimeout())
+            QApplication.setOverrideCursor(Qt.WaitCursor)
 
     def createSchemaActionSlot(self, item, action, parent):
         QApplication.restoreOverrideCursor()
@@ -414,14 +418,14 @@ class Database(DbItemObject):
             if not isinstance(item, (DBPlugin, Schema, Table)) or item.database() is None:
                 parent.infoBar.pushMessage(
                     QApplication.translate("DBManagerPlugin", "No database selected or you are not connected to it."),
-                    Qgis.MessageLevel.Info, parent.iface.messageTimeout())
+                    Qgis.Info, parent.iface.messageTimeout())
                 return
             (schema, ok) = QInputDialog.getText(parent, QApplication.translate("DBManagerPlugin", "New schema"),
                                                 QApplication.translate("DBManagerPlugin", "Enter new schema name"))
             if not ok:
                 return
         finally:
-            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            QApplication.setOverrideCursor(Qt.WaitCursor)
 
         self.createSchema(schema)
 
@@ -431,16 +435,16 @@ class Database(DbItemObject):
             if not isinstance(item, Schema):
                 parent.infoBar.pushMessage(
                     QApplication.translate("DBManagerPlugin", "Select an empty schema for deletion."),
-                    Qgis.MessageLevel.Info, parent.iface.messageTimeout())
+                    Qgis.Info, parent.iface.messageTimeout())
                 return
             res = QMessageBox.question(parent, QApplication.translate("DBManagerPlugin", "DB Manager"),
                                        QApplication.translate("DBManagerPlugin",
                                                               "Really delete schema {0}?").format(item.name),
-                                       QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-            if res != QMessageBox.StandardButton.Yes:
+                                       QMessageBox.Yes | QMessageBox.No)
+            if res != QMessageBox.Yes:
                 return
         finally:
-            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            QApplication.setOverrideCursor(Qt.WaitCursor)
 
         item.delete()
 
@@ -462,31 +466,31 @@ class Database(DbItemObject):
         if not hasattr(item, 'database') or item.database() is None:
             parent.infoBar.pushMessage(
                 QApplication.translate("DBManagerPlugin", "No database selected or you are not connected to it."),
-                Qgis.MessageLevel.Info, parent.iface.messageTimeout())
+                Qgis.Info, parent.iface.messageTimeout())
             return
         from ..dlg_create_table import DlgCreateTable
 
-        DlgCreateTable(item, parent).exec()
-        QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+        DlgCreateTable(item, parent).exec_()
+        QApplication.setOverrideCursor(Qt.WaitCursor)
 
     def editTableActionSlot(self, item, action, parent):
         QApplication.restoreOverrideCursor()
         try:
             if not isinstance(item, Table) or item.isView:
                 parent.infoBar.pushMessage(QApplication.translate("DBManagerPlugin", "Select a table to edit."),
-                                           Qgis.MessageLevel.Info, parent.iface.messageTimeout())
+                                           Qgis.Info, parent.iface.messageTimeout())
                 return
 
             if isinstance(item, RasterTable):
                 parent.infoBar.pushMessage(QApplication.translate("DBManagerPlugin", "Editing of raster tables is not supported."),
-                                           Qgis.MessageLevel.Info, parent.iface.messageTimeout())
+                                           Qgis.Info, parent.iface.messageTimeout())
                 return
 
             from ..dlg_table_properties import DlgTableProperties
 
-            DlgTableProperties(item, parent).exec()
+            DlgTableProperties(item, parent).exec_()
         finally:
-            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            QApplication.setOverrideCursor(Qt.WaitCursor)
 
     def deleteTableActionSlot(self, item, action, parent):
         QApplication.restoreOverrideCursor()
@@ -494,16 +498,16 @@ class Database(DbItemObject):
             if not isinstance(item, Table):
                 parent.infoBar.pushMessage(
                     QApplication.translate("DBManagerPlugin", "Select a table/view for deletion."),
-                    Qgis.MessageLevel.Info, parent.iface.messageTimeout())
+                    Qgis.Info, parent.iface.messageTimeout())
                 return
             res = QMessageBox.question(parent, QApplication.translate("DBManagerPlugin", "DB Manager"),
                                        QApplication.translate("DBManagerPlugin",
                                                               "Really delete table/view {0}?").format(item.name),
-                                       QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-            if res != QMessageBox.StandardButton.Yes:
+                                       QMessageBox.Yes | QMessageBox.No)
+            if res != QMessageBox.Yes:
                 return
         finally:
-            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            QApplication.setOverrideCursor(Qt.WaitCursor)
 
         item.delete()
 
@@ -512,16 +516,16 @@ class Database(DbItemObject):
         try:
             if not isinstance(item, Table) or item.isView:
                 parent.infoBar.pushMessage(QApplication.translate("DBManagerPlugin", "Select a table to empty it."),
-                                           Qgis.MessageLevel.Info, parent.iface.messageTimeout())
+                                           Qgis.Info, parent.iface.messageTimeout())
                 return
             res = QMessageBox.question(parent, QApplication.translate("DBManagerPlugin", "DB Manager"),
                                        QApplication.translate("DBManagerPlugin",
                                                               "Really delete all items from table {0}?").format(item.name),
-                                       QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
-            if res != QMessageBox.StandardButton.Yes:
+                                       QMessageBox.Yes | QMessageBox.No)
+            if res != QMessageBox.Yes:
                 return
         finally:
-            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            QApplication.setOverrideCursor(Qt.WaitCursor)
 
         item.empty()
 
@@ -540,10 +544,10 @@ class Database(DbItemObject):
         try:
             if not isinstance(item, Table):
                 parent.infoBar.pushMessage(QApplication.translate("DBManagerPlugin", "Select a table/view."),
-                                           Qgis.MessageLevel.Info, parent.iface.messageTimeout())
+                                           Qgis.Info, parent.iface.messageTimeout())
                 return
         finally:
-            QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+            QApplication.setOverrideCursor(Qt.WaitCursor)
 
         item.moveToSchema(new_schema)
 
@@ -756,7 +760,7 @@ class Table(DbItemObject):
 
     def mimeUri(self):
         layerType = "raster" if self.type == Table.RasterType else "vector"
-        return "%s:%s:%s:%s" % (layerType, self.database().dbplugin().providerName(), self.name, self.uri().uri(False))
+        return u"%s:%s:%s:%s" % (layerType, self.database().dbplugin().providerName(), self.name, self.uri().uri(False))
 
     def toMapLayer(self, geometryType=None, crs=None):
         provider = self.database().dbplugin().providerName()
@@ -973,10 +977,10 @@ class Table(DbItemObject):
             QApplication.restoreOverrideCursor()
             try:
                 if QMessageBox.question(None, QApplication.translate("DBManagerPlugin", "Table triggers"), msg,
-                                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No) == QMessageBox.StandardButton.No:
+                                        QMessageBox.Yes | QMessageBox.No) == QMessageBox.No:
                     return False
             finally:
-                QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+                QApplication.setOverrideCursor(Qt.WaitCursor)
 
             if trigger_action == "enable" or trigger_action == "disable":
                 enable = trigger_action == "enable"
@@ -995,10 +999,10 @@ class Table(DbItemObject):
             QApplication.restoreOverrideCursor()
             try:
                 if QMessageBox.question(None, QApplication.translate("DBManagerPlugin", "Table trigger"), msg,
-                                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No) == QMessageBox.StandardButton.No:
+                                        QMessageBox.Yes | QMessageBox.No) == QMessageBox.No:
                     return False
             finally:
-                QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+                QApplication.setOverrideCursor(Qt.WaitCursor)
 
             if trigger_action == "delete":
                 self.aboutToChange.emit()
@@ -1104,10 +1108,10 @@ class VectorTable(Table):
             QApplication.restoreOverrideCursor()
             try:
                 if QMessageBox.question(None, QApplication.translate("DBManagerPlugin", "Spatial Index"), msg,
-                                        QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No) == QMessageBox.StandardButton.No:
+                                        QMessageBox.Yes | QMessageBox.No) == QMessageBox.No:
                     return False
             finally:
-                QApplication.setOverrideCursor(Qt.CursorShape.WaitCursor)
+                QApplication.setOverrideCursor(Qt.WaitCursor)
 
             if spatialIndex_action == "create":
                 self.createSpatialIndex()
@@ -1136,7 +1140,7 @@ class VectorTable(Table):
             msgLabel.setWordWrap(True)
             msgLabel.linkActivated.connect(self.mainWindow.iface.mainWindow().findChild(QWidget, "MessageLog").show)
             msgLabel.linkActivated.connect(self.mainWindow.iface.mainWindow().raise_)
-            self.mainWindow.infoBar.pushItem(QgsMessageBarItem(msgLabel, Qgis.MessageLevel.Warning))
+            self.mainWindow.infoBar.pushItem(QgsMessageBarItem(msgLabel, Qgis.Warning))
 
     def showAdvancedVectorDialog(self):
         dlg = QDialog()
@@ -1173,8 +1177,8 @@ class VectorTable(Table):
 
         addButton = QPushButton(self.tr('Load Layer'))
         addButton.clicked.connect(lambda: self.addLayer(selectedGeometryType(), selectedCrs()))
-        btns = QDialogButtonBox(QDialogButtonBox.StandardButton.Cancel)
-        btns.addButton(addButton, QDialogButtonBox.ButtonRole.ActionRole)
+        btns = QDialogButtonBox(QDialogButtonBox.Cancel)
+        btns.addButton(addButton, QDialogButtonBox.ActionRole)
 
         layout.addRow(btns)
 
@@ -1182,7 +1186,7 @@ class VectorTable(Table):
         btns.accepted.connect(dlg.accept)
         btns.rejected.connect(dlg.reject)
 
-        dlg.exec()
+        dlg.exec_()
 
         settings = QgsSettings()
         settings.setValue("/DB_Manager/advancedAddDialog/geometry", dlg.saveGeometry())
@@ -1230,8 +1234,8 @@ class TableField(TableSubItemObject):
 
     def type2String(self):
         if self.modifier is None or self.modifier == -1:
-            return "%s" % self.dataType
-        return "%s (%s)" % (self.dataType, self.modifier)
+            return u"%s" % self.dataType
+        return u"%s (%s)" % (self.dataType, self.modifier)
 
     def default2String(self):
         if not self.hasDefault:
@@ -1246,9 +1250,9 @@ class TableField(TableSubItemObject):
         name = quoteIdFunc(self.name)
         not_null = "NOT NULL" if self.notNull else ""
 
-        txt = "%s %s %s" % (name, self.type2String(), not_null)
+        txt = u"%s %s %s" % (name, self.type2String(), not_null)
         if self.hasDefault:
-            txt += " DEFAULT %s" % self.default2String()
+            txt += u" DEFAULT %s" % self.default2String()
         return txt
 
     def getComment(self):
@@ -1366,7 +1370,7 @@ class TableTrigger(TableSubItemObject):
         self.name = self.function = None
 
     def type2String(self):
-        trig_type = ''
+        trig_type = u''
         trig_type += "Before " if self.type & TableTrigger.TypeBefore else "After "
         if self.type & TableTrigger.TypeInsert:
             trig_type += "INSERT "

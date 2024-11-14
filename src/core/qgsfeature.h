@@ -30,8 +30,6 @@ email                : sherman at mrcc.com
 #include "qgsattributes.h"
 #include "qgsfields.h"
 #include "qgsfeatureid.h"
-#include "qgsvariantutils.h"
-
 #include <memory>
 class QgsFeature;
 class QgsFeaturePrivate;
@@ -71,88 +69,29 @@ class CORE_EXPORT QgsFeature
   public:
 
 #ifdef SIP_RUN
-    SIP_PYOBJECT __iter__() SIP_HOLDGIL;
+    SIP_PYOBJECT __iter__();
     % MethodCode
     QgsAttributes attributes = sipCpp->attributes();
     PyObject *attrs = sipConvertFromType( &attributes, sipType_QgsAttributes, Py_None );
     sipRes = PyObject_GetIter( attrs );
     % End
-#endif
 
-#ifdef SIP_PYQT5_RUN
-#ifdef SIP_RUN
-    SIP_PYOBJECT __getitem__( int key ) SIP_HOLDGIL;
+    SIP_PYOBJECT __getitem__( int key );
     % MethodCode
-    if ( a0 < 0 || a0 >= sipCpp->attributeCount() )
+    QgsAttributes attrs = sipCpp->attributes();
+    if ( a0 < 0 || a0 >= attrs.count() )
     {
       PyErr_SetString( PyExc_KeyError, QByteArray::number( a0 ) );
       sipIsErr = 1;
     }
     else
     {
-      const QVariant v = sipCpp->attribute( a0 );
-      if ( !v.isValid() )
-      {
-        Py_INCREF( Py_None );
-        sipRes = Py_None;
-      }
-      // QByteArray null handling is "special"! See null_from_qvariant_converter in conversions.sip
-      else if ( QgsVariantUtils::isNull( v, true ) && v.userType() != QMetaType::Type::QByteArray )
-      {
-        PyObject *vartype = sipConvertFromEnum( v.type(), sipType_QVariant_Type );
-        PyObject *args = PyTuple_Pack( 1, vartype );
-        PyTypeObject *typeObj = sipTypeAsPyTypeObject( sipType_QVariant );
-        sipRes = PyObject_Call( ( PyObject * )typeObj, args, nullptr );
-        Py_DECREF( args );
-        Py_DECREF( vartype );
-      }
-      else
-      {
-        switch ( v.userType() )
-        {
-          case QMetaType::Type::Int:
-            sipRes = PyLong_FromLong( v.toInt() );
-            break;
-
-          case QMetaType::Type::UInt:
-            sipRes = PyLong_FromUnsignedLong( v.toUInt() );
-            break;
-
-          case QMetaType::Type::Long:
-          case QMetaType::Type::LongLong:
-            sipRes = PyLong_FromLongLong( v.toLongLong() );
-            break;
-
-          case QMetaType::Type::ULong:
-          case QMetaType::Type::ULongLong:
-            sipRes = PyLong_FromUnsignedLongLong( v.toULongLong() );
-            break;
-
-          case QMetaType::Type::Bool:
-            sipRes = PyBool_FromLong( v.toBool() ? 1 : 0 );
-            break;
-
-          case QMetaType::Type::Float:
-          case QMetaType::Type::Double:
-            sipRes = PyFloat_FromDouble( v.toDouble() );
-            break;
-
-          case QMetaType::Type::QString:
-            sipRes = PyUnicode_FromString( v.toString().toUtf8().constData() );
-            break;
-
-          default:
-          {
-            QVariant *newV = new QVariant( v );
-            sipRes = sipConvertFromNewType( newV, sipType_QVariant, Py_None );
-            break;
-          }
-        }
-      }
+      QVariant *v = new QVariant( attrs.at( a0 ) );
+      sipRes = sipConvertFromNewType( v, sipType_QVariant, Py_None );
     }
     % End
 
-    SIP_PYOBJECT __getitem__( const QString &name ) SIP_HOLDGIL;
+    SIP_PYOBJECT __getitem__( const QString &name );
     % MethodCode
     int fieldIdx = sipCpp->fieldNameIndex( *a0 );
     if ( fieldIdx == -1 )
@@ -162,241 +101,22 @@ class CORE_EXPORT QgsFeature
     }
     else
     {
-      const QVariant v = sipCpp->attribute( fieldIdx );
-      if ( !v.isValid() )
-      {
-        Py_INCREF( Py_None );
-        sipRes = Py_None;
-      }
-      // QByteArray null handling is "special"! See null_from_qvariant_converter in conversions.sip
-      else if ( QgsVariantUtils::isNull( v, true ) && v.userType() != QMetaType::Type::QByteArray )
-      {
-        PyObject *vartype = sipConvertFromEnum( v.type(), sipType_QVariant_Type );
-        PyObject *args = PyTuple_Pack( 1, vartype );
-        PyTypeObject *typeObj = sipTypeAsPyTypeObject( sipType_QVariant );
-        sipRes = PyObject_Call( ( PyObject * )typeObj, args, nullptr );
-        Py_DECREF( args );
-        Py_DECREF( vartype );
-      }
-      else
-      {
-        switch ( v.userType() )
-        {
-          case QMetaType::Type::Int:
-            sipRes = PyLong_FromLong( v.toInt() );
-            break;
-
-          case QMetaType::Type::UInt:
-            sipRes = PyLong_FromUnsignedLong( v.toUInt() );
-            break;
-
-          case QMetaType::Type::Long:
-          case QMetaType::Type::LongLong:
-            sipRes = PyLong_FromLongLong( v.toLongLong() );
-            break;
-
-          case QMetaType::Type::ULong:
-          case QMetaType::Type::ULongLong:
-            sipRes = PyLong_FromUnsignedLongLong( v.toULongLong() );
-            break;
-
-          case QMetaType::Type::Bool:
-            sipRes = PyBool_FromLong( v.toBool() ? 1 : 0 );
-            break;
-
-          case QMetaType::Type::Float:
-          case QMetaType::Type::Double:
-            sipRes = PyFloat_FromDouble( v.toDouble() );
-            break;
-
-          case QMetaType::Type::QString:
-            sipRes = PyUnicode_FromString( v.toString().toUtf8().constData() );
-            break;
-
-          default:
-          {
-            QVariant *newV = new QVariant( v );
-            sipRes = sipConvertFromNewType( newV, sipType_QVariant, Py_None );
-            break;
-          }
-        }
-      }
-    }
-    % End
-#endif
-#endif
-
-#ifdef SIP_PYQT6_RUN
-#ifdef SIP_RUN
-    SIP_PYOBJECT __getitem__( int key ) SIP_HOLDGIL;
-    % MethodCode
-    if ( a0 < 0 || a0 >= sipCpp->attributeCount() )
-    {
-      PyErr_SetString( PyExc_KeyError, QByteArray::number( a0 ) );
-      sipIsErr = 1;
-    }
-    else
-    {
-      const QVariant v = sipCpp->attribute( a0 );
-      // QByteArray null handling is "special"! See null_from_qvariant_converter in conversions.sip
-      if ( QgsVariantUtils::isNull( v, true ) && v.userType() != QMetaType::Type::QByteArray )
-      {
-        Py_INCREF( Py_None );
-        sipRes = Py_None;
-      }
-      else
-      {
-        switch ( v.userType() )
-        {
-          case QMetaType::Type::Int:
-            sipRes = PyLong_FromLong( v.toInt() );
-            break;
-
-          case QMetaType::Type::UInt:
-            sipRes = PyLong_FromUnsignedLong( v.toUInt() );
-            break;
-
-          case QMetaType::Type::Long:
-          case QMetaType::Type::LongLong:
-            sipRes = PyLong_FromLongLong( v.toLongLong() );
-            break;
-
-          case QMetaType::Type::ULong:
-          case QMetaType::Type::ULongLong:
-            sipRes = PyLong_FromUnsignedLongLong( v.toULongLong() );
-            break;
-
-          case QMetaType::Type::Bool:
-            sipRes = PyBool_FromLong( v.toBool() ? 1 : 0 );
-            break;
-
-          case QMetaType::Type::Float:
-          case QMetaType::Type::Double:
-            sipRes = PyFloat_FromDouble( v.toDouble() );
-            break;
-
-          case QMetaType::Type::QString:
-            sipRes = PyUnicode_FromString( v.toString().toUtf8().constData() );
-            break;
-
-          default:
-          {
-            QVariant *newV = new QVariant( v );
-            sipRes = sipConvertFromNewType( newV, sipType_QVariant, Py_None );
-            break;
-          }
-        }
-      }
+      QVariant *v = new QVariant( sipCpp->attribute( fieldIdx ) );
+      sipRes = sipConvertFromNewType( v, sipType_QVariant, Py_None );
     }
     % End
 
-    SIP_PYOBJECT __getitem__( const QString &name ) SIP_HOLDGIL;
-    % MethodCode
-    int fieldIdx = sipCpp->fieldNameIndex( *a0 );
-    if ( fieldIdx == -1 )
-    {
-      PyErr_SetString( PyExc_KeyError, a0->toLatin1() );
-      sipIsErr = 1;
-    }
-    else
-    {
-      const QVariant v = sipCpp->attribute( fieldIdx );
-      // QByteArray null handling is "special"! See null_from_qvariant_converter in conversions.sip
-      if ( QgsVariantUtils::isNull( v, true ) && v.userType() != QMetaType::Type::QByteArray )
-      {
-        Py_INCREF( Py_None );
-        sipRes = Py_None;
-      }
-      else
-      {
-        switch ( v.userType() )
-        {
-          case QMetaType::Type::Int:
-            sipRes = PyLong_FromLong( v.toInt() );
-            break;
-
-          case QMetaType::Type::UInt:
-            sipRes = PyLong_FromUnsignedLong( v.toUInt() );
-            break;
-
-          case QMetaType::Type::Long:
-          case QMetaType::Type::LongLong:
-            sipRes = PyLong_FromLongLong( v.toLongLong() );
-            break;
-
-          case QMetaType::Type::ULong:
-          case QMetaType::Type::ULongLong:
-            sipRes = PyLong_FromUnsignedLongLong( v.toULongLong() );
-            break;
-
-          case QMetaType::Type::Bool:
-            sipRes = PyBool_FromLong( v.toBool() ? 1 : 0 );
-            break;
-
-          case QMetaType::Type::Float:
-          case QMetaType::Type::Double:
-            sipRes = PyFloat_FromDouble( v.toDouble() );
-            break;
-
-          case QMetaType::Type::QString:
-            sipRes = PyUnicode_FromString( v.toString().toUtf8().constData() );
-            break;
-
-          default:
-          {
-            QVariant *newV = new QVariant( v );
-            sipRes = sipConvertFromNewType( newV, sipType_QVariant, Py_None );
-            break;
-          }
-        }
-      }
-    }
-    % End
-#endif
-#endif
-
-#ifdef SIP_RUN
-    void __setitem__( int key, SIP_PYOBJECT value SIP_TYPEHINT( Optional[Union[bool, int, float, str, QVariant]] ) ) SIP_HOLDGIL;
+    void __setitem__( int key, QVariant value / GetWrapper / );
     % MethodCode
     bool rv;
 
-    if ( a1 == Py_None )
+    if ( a1Wrapper == Py_None )
     {
       rv = sipCpp->setAttribute( a0, QVariant( QVariant::Int ) );
     }
-    else if ( PyBool_Check( a1 ) )
-    {
-      rv = sipCpp->setAttribute( a0, QVariant( PyObject_IsTrue( a1 ) == 1 ) );
-    }
-    else if ( PyLong_Check( a1 ) )
-    {
-      rv = sipCpp->setAttribute( a0, QVariant( PyLong_AsLongLong( a1 ) ) );
-    }
-    else if ( PyFloat_Check( a1 ) )
-    {
-      rv = sipCpp->setAttribute( a0, QVariant( PyFloat_AsDouble( a1 ) ) );
-    }
-    else if ( PyUnicode_Check( a1 ) )
-    {
-      rv = sipCpp->setAttribute( a0, QVariant( QString::fromUtf8( PyUnicode_AsUTF8( a1 ) ) ) );
-    }
-    else if ( sipCanConvertToType( a1, sipType_QVariant, SIP_NOT_NONE ) )
-    {
-      int state;
-      QVariant *qvariant = reinterpret_cast<QVariant *>( sipConvertToType( a1, sipType_QVariant, 0, SIP_NOT_NONE, &state, &sipIsErr ) );
-      if ( sipIsErr )
-      {
-        rv = false;
-      }
-      else
-      {
-        rv = sipCpp->setAttribute( a0, *qvariant );
-      }
-      sipReleaseType( qvariant, sipType_QVariant, state );
-    }
     else
     {
-      rv = false;
+      rv = sipCpp->setAttribute( a0, *a1 );
     }
 
     if ( !rv )
@@ -406,7 +126,7 @@ class CORE_EXPORT QgsFeature
     }
     % End
 
-    void __setitem__( const QString &key, SIP_PYOBJECT value SIP_TYPEHINT( Optional[Union[bool, int, float, str, QVariant]] ) ) SIP_HOLDGIL;
+    void __setitem__( const QString &key, QVariant value / GetWrapper / );
     % MethodCode
     int fieldIdx = sipCpp->fieldNameIndex( *a0 );
     if ( fieldIdx == -1 )
@@ -416,46 +136,20 @@ class CORE_EXPORT QgsFeature
     }
     else
     {
-      if ( a1 == Py_None )
+      if ( a1Wrapper == Py_None )
       {
-        sipCpp->setAttribute( fieldIdx, QVariant( QVariant::Int ) );
-      }
-      else if ( PyBool_Check( a1 ) )
-      {
-        sipCpp->setAttribute( fieldIdx, QVariant( PyObject_IsTrue( a1 ) == 1 ) );
-      }
-      else if ( PyLong_Check( a1 ) )
-      {
-        sipCpp->setAttribute( fieldIdx, QVariant( PyLong_AsLongLong( a1 ) ) );
-      }
-      else if ( PyFloat_Check( a1 ) )
-      {
-        sipCpp->setAttribute( fieldIdx, QVariant( PyFloat_AsDouble( a1 ) ) );
-      }
-      else if ( PyUnicode_Check( a1 ) )
-      {
-        sipCpp->setAttribute( fieldIdx, QVariant( QString::fromUtf8( PyUnicode_AsUTF8( a1 ) ) ) );
-      }
-      else if ( sipCanConvertToType( a1, sipType_QVariant, SIP_NOT_NONE ) )
-      {
-        int state;
-        QVariant *qvariant = reinterpret_cast<QVariant *>( sipConvertToType( a1, sipType_QVariant, 0, SIP_NOT_NONE, &state, &sipIsErr ) );
-        if ( !sipIsErr )
-        {
-          sipCpp->setAttribute( fieldIdx, *qvariant );
-        }
-        sipReleaseType( qvariant, sipType_QVariant, state );
+        sipCpp->setAttribute( *a0, QVariant( QVariant::Int ) );
       }
       else
       {
-        sipIsErr = 1;
+        sipCpp->setAttribute( fieldIdx, *a1 );
       }
     }
     % End
 
-    void __delitem__( int key ) SIP_HOLDGIL;
+    void __delitem__( int key );
     % MethodCode
-    if ( a0 >= 0 && a0 < sipCpp->attributeCount() )
+    if ( a0 >= 0 && a0 < sipCpp->attributes().count() )
       sipCpp->deleteAttribute( a0 );
     else
     {
@@ -464,7 +158,7 @@ class CORE_EXPORT QgsFeature
     }
     % End
 
-    void __delitem__( const QString &name ) SIP_HOLDGIL;
+    void __delitem__( const QString &name );
     % MethodCode
     int fieldIdx = sipCpp->fieldNameIndex( *a0 );
     if ( fieldIdx == -1 )
@@ -476,7 +170,7 @@ class CORE_EXPORT QgsFeature
       sipCpp->deleteAttribute( fieldIdx );
     % End
 
-    long __hash__() const SIP_HOLDGIL;
+    long __hash__() const;
     % MethodCode
     sipRes = qHash( *sipCpp );
     % End
@@ -489,7 +183,7 @@ class CORE_EXPORT QgsFeature
 #ifndef SIP_RUN
     QgsFeature( QgsFeatureId id = FID_NULL );
 #else
-    QgsFeature( qint64 id = FID_NULL ) SIP_HOLDGIL;
+    QgsFeature( qint64 id = FID_NULL );
 #endif
 
     /**
@@ -500,13 +194,28 @@ class CORE_EXPORT QgsFeature
 #ifndef SIP_RUN
     QgsFeature( const QgsFields &fields, QgsFeatureId id = FID_NULL );
 #else
-    QgsFeature( const QgsFields &fields, qint64 id = FID_NULL ) SIP_HOLDGIL;
+    QgsFeature( const QgsFields &fields, qint64 id = FID_NULL );
 #endif
 
-    QgsFeature( const QgsFeature &rhs ) SIP_HOLDGIL;
-    QgsFeature &operator=( const QgsFeature &rhs ) SIP_HOLDGIL;
-    bool operator==( const QgsFeature &other ) const SIP_HOLDGIL;
-    bool operator!=( const QgsFeature &other ) const SIP_HOLDGIL;
+    /**
+     * Copy constructor
+     */
+    QgsFeature( const QgsFeature &rhs );
+
+    /**
+     * Assignment operator
+     */
+    QgsFeature &operator=( const QgsFeature &rhs );
+
+    /**
+     * Compares two features
+     */
+    bool operator==( const QgsFeature &other ) const;
+
+    /**
+     * Compares two features
+     */
+    bool operator!=( const QgsFeature &other ) const;
 
     virtual ~QgsFeature();
 
@@ -514,7 +223,7 @@ class CORE_EXPORT QgsFeature
      * Returns the feature ID for this feature.
      * \see setId()
      */
-    QgsFeatureId id() const SIP_HOLDGIL;
+    QgsFeatureId id() const;
 
     /**
      * Sets the feature \a id for this feature.
@@ -524,7 +233,7 @@ class CORE_EXPORT QgsFeature
      *  This method is not designed to allow a specific feature ID to be assigned to a feature which will be added to a
      *  layer or data provider, and the results will be unpredictable
      */
-    void setId( QgsFeatureId id ) SIP_HOLDGIL;
+    void setId( QgsFeatureId id );
 
     /**
      * Returns the feature's attributes.
@@ -541,8 +250,9 @@ class CORE_EXPORT QgsFeature
      *
      * \see setAttributes()
      * \see attributeMap()
+     * \since QGIS 2.9
      */
-    QgsAttributes attributes() const SIP_HOLDGIL;
+    QgsAttributes attributes() const;
 
 #ifndef SIP_RUN
 
@@ -569,10 +279,10 @@ class CORE_EXPORT QgsFeature
      * \see setAttributes()
      * \since QGIS 3.22.2
      */
-    SIP_PYOBJECT attributeMap() const SIP_HOLDGIL SIP_TYPEHINT( Dict[str, Optional[object]] );
+    SIP_PYOBJECT attributeMap() const SIP_TYPEHINT( Dict[str, Optional[object]] );
     % MethodCode
     const int fieldSize = sipCpp->fields().size();
-    const int attributeSize = sipCpp->attributeCount();
+    const int attributeSize = sipCpp->attributes().size();
     if ( fieldSize == 0 && attributeSize != 0 )
     {
       PyErr_SetString( PyExc_ValueError, QStringLiteral( "Field definition has not been set for feature" ).toUtf8().constData() );
@@ -586,8 +296,7 @@ class CORE_EXPORT QgsFeature
     else
     {
       QVariantMap *v = new QVariantMap( sipCpp->attributeMap() );
-      const sipTypeDef *qvariantmap_type = sipFindType( "QMap<QString,QVariant>" );
-      sipRes = sipConvertFromNewType( v, qvariantmap_type, Py_None );
+      sipRes = sipConvertFromNewType( v, sipType_QVariantMap, Py_None );
     }
     % End
 #endif
@@ -596,7 +305,7 @@ class CORE_EXPORT QgsFeature
      * Returns the number of attributes attached to the feature.
      * \since QGIS 3.18
      */
-    int attributeCount() const SIP_HOLDGIL;
+    int attributeCount() const;
 
     /**
      * Sets the feature's attributes.
@@ -614,7 +323,7 @@ class CORE_EXPORT QgsFeature
      * \see setAttribute()
      * \see attributes()
      */
-    void setAttributes( const QgsAttributes &attrs ) SIP_HOLDGIL;
+    void setAttributes( const QgsAttributes &attrs );
 
 #ifndef SIP_RUN
 
@@ -628,7 +337,7 @@ class CORE_EXPORT QgsFeature
      * \returns FALSE, if the field index does not exist
      * \see setAttributes()
      */
-    Q_INVOKABLE bool setAttribute( int field, const QVariant &attr );
+    bool setAttribute( int field, const QVariant &attr );
 #else
 
     /**
@@ -655,47 +364,17 @@ class CORE_EXPORT QgsFeature
      * \throws KeyError if the field index does not exist
      * \see setAttributes()
      */
-    bool setAttribute( int field, SIP_PYOBJECT attr SIP_TYPEHINT( Optional[Union[bool, int, float, str, QVariant]] ) ) SIP_HOLDGIL;
+    bool setAttribute( int field, const QVariant &attr / GetWrapper / );
     % MethodCode
     bool rv;
 
-    if ( a1 == Py_None )
+    if ( a1Wrapper == Py_None )
     {
       rv = sipCpp->setAttribute( a0, QVariant( QVariant::Int ) );
     }
-    else if ( PyBool_Check( a1 ) )
-    {
-      rv = sipCpp->setAttribute( a0, QVariant( PyObject_IsTrue( a1 ) == 1 ) );
-    }
-    else if ( PyLong_Check( a1 ) )
-    {
-      rv = sipCpp->setAttribute( a0, QVariant( PyLong_AsLongLong( a1 ) ) );
-    }
-    else if ( PyFloat_Check( a1 ) )
-    {
-      rv = sipCpp->setAttribute( a0, QVariant( PyFloat_AsDouble( a1 ) ) );
-    }
-    else if ( PyUnicode_Check( a1 ) )
-    {
-      rv = sipCpp->setAttribute( a0, QVariant( QString::fromUtf8( PyUnicode_AsUTF8( a1 ) ) ) );
-    }
-    else if ( sipCanConvertToType( a1, sipType_QVariant, SIP_NOT_NONE ) )
-    {
-      int state;
-      QVariant *qvariant = reinterpret_cast<QVariant *>( sipConvertToType( a1, sipType_QVariant, 0, SIP_NOT_NONE, &state, &sipIsErr ) );
-      if ( sipIsErr )
-      {
-        rv = false;
-      }
-      else
-      {
-        rv = sipCpp->setAttribute( a0, *qvariant );
-      }
-      sipReleaseType( qvariant, sipType_QVariant, state );
-    }
     else
     {
-      rv = false;
+      rv = sipCpp->setAttribute( a0, *a1 );
     }
 
     if ( !rv )
@@ -717,7 +396,7 @@ class CORE_EXPORT QgsFeature
      *
      * \see resizeAttributes()
      */
-    void initAttributes( int fieldCount ) SIP_HOLDGIL;
+    void initAttributes( int fieldCount );
 
     /**
      * Resizes the attributes attached to this feature to the given number of fields.
@@ -732,7 +411,7 @@ class CORE_EXPORT QgsFeature
      * \see padAttributes()
      * \since QGIS 3.18
      */
-    void resizeAttributes( int fieldCount ) SIP_HOLDGIL;
+    void resizeAttributes( int fieldCount );
 
     /**
      * Resizes the attributes attached to this feature by appending the specified \a count of NULL values to the end of the existing attributes.
@@ -740,7 +419,7 @@ class CORE_EXPORT QgsFeature
      * \see resizeAttributes()
      * \since QGIS 3.18
      */
-    void padAttributes( int count ) SIP_HOLDGIL;
+    void padAttributes( int count );
 
 #ifndef SIP_RUN
 
@@ -778,9 +457,9 @@ class CORE_EXPORT QgsFeature
      * \throws KeyError if the field is not found
      * \see setAttribute()
      */
-    void deleteAttribute( int field ) SIP_HOLDGIL;
+    void deleteAttribute( int field );
     % MethodCode
-    if ( a0 >= 0 && a0 < sipCpp->attributeCount() )
+    if ( a0 >= 0 && a0 < sipCpp->attributes().count() )
       sipCpp->deleteAttribute( a0 );
     else
     {
@@ -798,7 +477,7 @@ class CORE_EXPORT QgsFeature
      *
      * \see setValid()
      */
-    bool isValid() const SIP_HOLDGIL;
+    bool isValid() const;
 
     /**
      * Sets the validity of the feature.
@@ -807,13 +486,14 @@ class CORE_EXPORT QgsFeature
      *
      * \see isValid()
      */
-    void setValid( bool validity ) SIP_HOLDGIL;
+    void setValid( bool validity );
 
     /**
      * Returns TRUE if the feature has an associated geometry.
      * \see geometry()
+     * \since QGIS 3.0.
      */
-    bool hasGeometry() const SIP_HOLDGIL;
+    bool hasGeometry() const;
 
     /**
      * Returns the geometry associated with this feature. If the feature has no geometry,
@@ -821,7 +501,7 @@ class CORE_EXPORT QgsFeature
      * \see hasGeometry()
      * \see setGeometry()
      */
-    QgsGeometry geometry() const SIP_HOLDGIL;
+    QgsGeometry geometry() const;
 
     /**
      * Set the feature's geometry.
@@ -832,7 +512,7 @@ class CORE_EXPORT QgsFeature
      * \see geometry()
      * \see clearGeometry()
      */
-    void setGeometry( const QgsGeometry &geometry ) SIP_HOLDGIL;
+    void setGeometry( const QgsGeometry &geometry );
 
     /**
      * Set the feature's \a geometry.
@@ -867,7 +547,7 @@ class CORE_EXPORT QgsFeature
 #ifndef SIP_RUN
     void setGeometry( std::unique_ptr< QgsAbstractGeometry > geometry );
 #else
-    void setGeometry( QgsAbstractGeometry *geometry SIP_TRANSFER ) SIP_HOLDGIL;
+    void setGeometry( QgsAbstractGeometry *geometry SIP_TRANSFER );
     % MethodCode
     sipCpp->setGeometry( std::unique_ptr< QgsAbstractGeometry>( a0 ) );
     % End
@@ -877,22 +557,24 @@ class CORE_EXPORT QgsFeature
      * Removes any geometry associated with the feature.
      * \see setGeometry()
      * \see hasGeometry()
+     * \since QGIS 3.0
      */
-    void clearGeometry() SIP_HOLDGIL;
+    void clearGeometry();
 
     /**
      * Assigns a field map with the feature to allow attribute access by attribute name.
      * \param fields The attribute fields which this feature holds
      * \param initAttributes If TRUE, attributes are initialized. Clears any data previously assigned.
      * \see fields()
+     * \since QGIS 2.9
      */
-    void setFields( const QgsFields &fields, bool initAttributes = false SIP_PYARGDEFAULT( true ) ) SIP_HOLDGIL;
+    void setFields( const QgsFields &fields, bool initAttributes = false SIP_PYARGDEFAULT( true ) );
 
     /**
      * Returns the field map associated with the feature.
      * \see setFields()
      */
-    QgsFields fields() const SIP_HOLDGIL;
+    QgsFields fields() const;
 
 #ifndef SIP_RUN
 
@@ -910,11 +592,13 @@ class CORE_EXPORT QgsFeature
      * \returns FALSE if attribute name could not be converted to index
      * \see setFields()
      */
-    Q_INVOKABLE bool setAttribute( const QString &name, const QVariant &value );
+    bool setAttribute( const QString &name, const QVariant &value );
 #else
 
     /**
      * Insert a value into attribute, by field \a name.
+     *
+     * Returns FALSE if field \a name could not be matched.
      *
      * Field map must be associated using setFields() before this method can be used.
      *
@@ -936,10 +620,10 @@ class CORE_EXPORT QgsFeature
      *
      * \param name The name of the field to set
      * \param value The value to set
-     * \throws KeyError if the attribute name could not could not be matched.
+     *  \throws KeyError if the attribute name could not be converted to an index
      * \see setFields()
      */
-    void setAttribute( const QString &name, SIP_PYOBJECT value SIP_TYPEHINT( Optional[Union[bool, int, float, str, QVariant]] ) ) SIP_HOLDGIL;
+    void setAttribute( const QString &name, const QVariant &value / GetWrapper / );
     % MethodCode
     int fieldIdx = sipCpp->fieldNameIndex( *a0 );
     if ( fieldIdx == -1 )
@@ -949,39 +633,13 @@ class CORE_EXPORT QgsFeature
     }
     else
     {
-      if ( a1 == Py_None )
+      if ( a1Wrapper == Py_None )
       {
-        sipCpp->setAttribute( fieldIdx, QVariant( QVariant::Int ) );
-      }
-      else if ( PyBool_Check( a1 ) )
-      {
-        sipCpp->setAttribute( fieldIdx, QVariant( PyObject_IsTrue( a1 ) == 1 ) );
-      }
-      else if ( PyLong_Check( a1 ) )
-      {
-        sipCpp->setAttribute( fieldIdx, QVariant( PyLong_AsLongLong( a1 ) ) );
-      }
-      else if ( PyFloat_Check( a1 ) )
-      {
-        sipCpp->setAttribute( fieldIdx, QVariant( PyFloat_AsDouble( a1 ) ) );
-      }
-      else if ( PyUnicode_Check( a1 ) )
-      {
-        sipCpp->setAttribute( fieldIdx, QVariant( QString::fromUtf8( PyUnicode_AsUTF8( a1 ) ) ) );
-      }
-      else if ( sipCanConvertToType( a1, sipType_QVariant, SIP_NOT_NONE ) )
-      {
-        int state;
-        QVariant *qvariant = reinterpret_cast<QVariant *>( sipConvertToType( a1, sipType_QVariant, 0, SIP_NOT_NONE, &state, &sipIsErr ) );
-        if ( !sipIsErr )
-        {
-          sipCpp->setAttribute( fieldIdx, *qvariant );
-        }
-        sipReleaseType( qvariant, sipType_QVariant, state );
+        sipCpp->setAttribute( *a0, QVariant( QVariant::Int ) );
       }
       else
       {
-        sipIsErr = 1;
+        sipCpp->setAttribute( fieldIdx, *a1 );
       }
     }
     % End
@@ -1027,10 +685,10 @@ class CORE_EXPORT QgsFeature
      * \endcode
      *
      * \param name The name of the field to clear
-     * \throws KeyError if attribute name could not be matched.
+     * \throws KeyError if attribute name could not be converted to index
      * \see setFields()
      */
-    bool deleteAttribute( const QString &name ) SIP_HOLDGIL;
+    bool deleteAttribute( const QString &name );
     % MethodCode
     int fieldIdx = sipCpp->fieldNameIndex( *a0 );
     if ( fieldIdx == -1 )
@@ -1058,7 +716,7 @@ class CORE_EXPORT QgsFeature
      * \returns The value of the attribute, or an invalid/null variant if no such name exists
      * \see setFields
      */
-    Q_INVOKABLE QVariant attribute( const QString &name ) const;
+    QVariant attribute( const QString &name ) const;
 #else
 
     /**
@@ -1086,7 +744,7 @@ class CORE_EXPORT QgsFeature
      * \throws KeyError if the field is not found
      * \see setFields
      */
-    Q_INVOKABLE SIP_PYOBJECT attribute( const QString &name ) const SIP_HOLDGIL;
+    SIP_PYOBJECT attribute( const QString &name ) const;
     % MethodCode
     int fieldIdx = sipCpp->fieldNameIndex( *a0 );
     if ( fieldIdx == -1 )
@@ -1138,10 +796,10 @@ class CORE_EXPORT QgsFeature
      * \throws KeyError if the field is not found
      * \see setFields()
      */
-    SIP_PYOBJECT attribute( int fieldIdx ) const SIP_HOLDGIL;
+    SIP_PYOBJECT attribute( int fieldIdx ) const;
     % MethodCode
     {
-      if ( a0 < 0 || a0 >= sipCpp->attributeCount() )
+      if ( a0 < 0 || a0 >= sipCpp->attributes().count() )
       {
         PyErr_SetString( PyExc_KeyError, QByteArray::number( a0 ) );
         sipIsErr = 1;
@@ -1174,10 +832,10 @@ class CORE_EXPORT QgsFeature
      * \see QgsUnsetAttributeValue
      * \since QGIS 3.28
      */
-    bool isUnsetValue( int fieldIdx ) const SIP_HOLDGIL;
+    bool isUnsetValue( int fieldIdx ) const;
     % MethodCode
     {
-      if ( a0 < 0 || a0 >= sipCpp->attributeCount() )
+      if ( a0 < 0 || a0 >= sipCpp->attributes().count() )
       {
         PyErr_SetString( PyExc_KeyError, QByteArray::number( a0 ) );
         sipIsErr = 1;
@@ -1195,7 +853,7 @@ class CORE_EXPORT QgsFeature
      *
      * \since QGIS 3.20
      */
-    const QgsSymbol *embeddedSymbol() const SIP_HOLDGIL;
+    const QgsSymbol *embeddedSymbol() const;
 
     /**
      * Sets the feature's embedded \a symbol.
@@ -1204,7 +862,7 @@ class CORE_EXPORT QgsFeature
      *
      * \since QGIS 3.20
      */
-    void setEmbeddedSymbol( QgsSymbol *symbol SIP_TRANSFER ) SIP_HOLDGIL;
+    void setEmbeddedSymbol( QgsSymbol *symbol SIP_TRANSFER );
 
     /**
      * Utility method to get attribute index from name.
@@ -1215,7 +873,7 @@ class CORE_EXPORT QgsFeature
      * \returns -1 if field does not exist or field map is not associated.
      * \see setFields()
      */
-    int fieldNameIndex( const QString &fieldName ) const SIP_HOLDGIL;
+    int fieldNameIndex( const QString &fieldName ) const;
 
     /**
      * Returns the approximate RAM usage of the feature, in bytes.

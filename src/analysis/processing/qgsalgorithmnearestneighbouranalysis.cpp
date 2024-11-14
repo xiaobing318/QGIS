@@ -18,7 +18,6 @@
 #include "qgsalgorithmnearestneighbouranalysis.h"
 #include "qgsapplication.h"
 #include "qgsdistancearea.h"
-#include "qgsspatialindex.h"
 #include <QTextStream>
 
 ///@cond PRIVATE
@@ -72,7 +71,7 @@ QgsNearestNeighbourAnalysisAlgorithm *QgsNearestNeighbourAnalysisAlgorithm::crea
 
 void QgsNearestNeighbourAnalysisAlgorithm::initAlgorithm( const QVariantMap & )
 {
-  addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ), QObject::tr( "Input layer" ), QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::VectorPoint ) ) );
+  addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ), QObject::tr( "Input layer" ), QList< int >() << QgsProcessing::TypeVectorPoint ) );
   addParameter( new QgsProcessingParameterFileDestination( QStringLiteral( "OUTPUT_HTML_FILE" ), QObject::tr( "Nearest neighbour" ),
                 QObject::tr( "HTML files (*.html *.HTML)" ), QVariant(), true ) );
   addOutput( new QgsProcessingOutputNumber( QStringLiteral( "OBSERVED_MD" ), QObject::tr( "Observed mean distance" ) ) );
@@ -113,14 +112,7 @@ QVariantMap QgsNearestNeighbourAnalysisAlgorithm::processAlgorithm( const QVaria
     }
 
     const QgsFeatureId neighbourId = spatialIndex.nearestNeighbor( f.geometry().asPoint(), 2 ).at( 1 );
-    try
-    {
-      sumDist += da.measureLine( spatialIndex.geometry( neighbourId ).asPoint(), f.geometry().asPoint() );
-    }
-    catch ( QgsCsException & )
-    {
-      throw QgsProcessingException( QObject::tr( "An error occurred while calculating length" ) );
-    }
+    sumDist += da.measureLine( spatialIndex.geometry( neighbourId ).asPoint(), f.geometry().asPoint() );
 
     i++;
     feedback->setProgress( i * step );

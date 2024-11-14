@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/metadata/qgsabstractmetadatabase.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -401,29 +401,11 @@ Adds an individual ``link`` to the existing links.
 .. seealso:: :py:func:`setLinks`
 %End
 
-    QDateTime dateTime( Qgis::MetadataDateType type ) const;
-%Docstring
-Returns the date for the specified date ``type``.
-
-.. seealso:: :py:func:`setDateTime`
-
-.. versionadded:: 3.30
-%End
-
-    void setDateTime( Qgis::MetadataDateType type, QDateTime date );
-%Docstring
-Sets a date value for the specified date ``type``.
-
-.. seealso:: :py:func:`dateTime`
-
-.. versionadded:: 3.30
-%End
-
     virtual bool readMetadataXml( const QDomElement &metadataElement );
 %Docstring
 Sets state from DOM document.
 
-:param metadataElement: The DOM element corresponding to ``resourceMetadata`` tag
+:param metadataElement: The DOM element corresponding to ``resourceMetadata'' tag
 
 :return: ``True`` if successful
 
@@ -435,7 +417,7 @@ class method in order to read common metadata properties.
 %Docstring
 Stores state in a DOM node.
 
-:param metadataElement: is a DOM element corresponding to ``resourceMetadata`` tag
+:param metadataElement: is a DOM element corresponding to ``resourceMetadata'' tag
 :param document: is a the DOM document being written
 
 :return: ``True`` if successful
@@ -470,7 +452,6 @@ QgsAbstractMetadataBase cannot be instantiated directly, it must be subclassed.
 
 
 
-
     bool equals( const QgsAbstractMetadataBase &other ) const;
 %Docstring
 Tests whether the common metadata fields in this object are equal to ``other``.
@@ -489,5 +470,5 @@ equality of base class members.
  *                                                                      *
  * src/core/metadata/qgsabstractmetadatabase.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

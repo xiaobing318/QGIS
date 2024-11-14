@@ -174,9 +174,6 @@ public:
         m_errors.clear();
     }
 
-    void setError(const std::string& err)
-    { m_errors.push_back(err); }
-
 private:
     // Worker thread function.  Wait for a task and run it.
     void work();

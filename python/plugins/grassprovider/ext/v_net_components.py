@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     v_net_components.py
@@ -26,9 +28,9 @@ from qgis.core import QgsProcessingParameterDefinition
 def processCommand(alg, parameters, context, feedback):
     # We need to disable only output_point parameter
     outPoint = alg.parameterDefinition('output_point')
-    outPoint.setFlags(outPoint.flags() | QgsProcessingParameterDefinition.Flag.FlagHidden)
+    outPoint.setFlags(outPoint.flags() | QgsProcessingParameterDefinition.FlagHidden)
     incorporatePoints(alg, parameters, context, feedback)
-    outPoint.setFlags(outPoint.flags() | QgsProcessingParameterDefinition.Flag.FlagHidden)
+    outPoint.setFlags(outPoint.flags() | QgsProcessingParameterDefinition.FlagHidden)
 
 
 def processOutputs(alg, parameters, context, feedback):

@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsgradientstopeditor.h"
-#include "moc_qgsgradientstopeditor.cpp"
 #include "qgsapplication.h"
 #include "qgssymbollayerutils.h"
 

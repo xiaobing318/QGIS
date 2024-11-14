@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/layertree/qgslayertreenode.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -53,11 +53,9 @@ Custom properties that have already been used within QGIS:
 - "legend/..." - properties for legend appearance customization
 - "expandedLegendNodes" - list of layer's legend nodes' rules in expanded state
 
-.. seealso:: :py:class:`QgsLayerTree`
+.. seealso:: :py:func:`also`
 
-.. seealso:: :py:class:`QgsLayerTreeLayer`
-
-.. seealso:: :py:class:`QgsLayerTreeGroup`
+.. versionadded:: 2.4
 %End
 
 %TypeHeaderCode
@@ -111,11 +109,15 @@ Gets list of children of the node. Children are owned by the parent
     virtual QString name() const = 0;
 %Docstring
 Returns name of the node
+
+.. versionadded:: 3.0
 %End
 
     virtual void setName( const QString &name ) = 0;
 %Docstring
 Set name of the node. Emits nameChanged signal.
+
+.. versionadded:: 3.0
 %End
 
     static QgsLayerTreeNode *readXml( QDomElement &element, const QgsReadWriteContext &context ) /Factory/;
@@ -128,6 +130,8 @@ Does not resolve textual references to layers. Call :py:func:`~QgsLayerTreeNode.
 %Docstring
 Read layer tree from XML. Returns new instance.
 Also resolves textual references to layers from the project (calls :py:func:`~QgsLayerTreeNode.resolveReferences` internally).
+
+.. versionadded:: 3.0
 %End
 
     virtual void writeXml( QDomElement &parentElement, const QgsReadWriteContext &context ) = 0;
@@ -153,16 +157,22 @@ If ``looseMatching`` is ``True`` then a looser match will be used, where a layer
 will match if the name, public source, and data provider match. This can be
 used to match legend customization from different projects where layers
 will have different layer IDs.
+
+.. versionadded:: 3.0
 %End
 
     bool isVisible() const;
 %Docstring
 Returns whether a node is really visible (ie checked and all its ancestors checked as well)
+
+.. versionadded:: 3.0
 %End
 
     bool itemVisibilityChecked() const;
 %Docstring
 Returns whether a node is checked (independently of its ancestors or children)
+
+.. versionadded:: 3.0
 %End
 
     void setItemVisibilityChecked( bool checked );
@@ -170,32 +180,44 @@ Returns whether a node is checked (independently of its ancestors or children)
 Check or uncheck a node (independently of its ancestors or children)
 
 .. seealso:: :py:func:`QgsLayerTreeView.setLayerVisible`
+
+.. versionadded:: 3.0
 %End
 
     virtual void setItemVisibilityCheckedRecursive( bool checked );
 %Docstring
 Check or uncheck a node and all its children (taking into account exclusion rules)
+
+.. versionadded:: 3.0
 %End
 
     void setItemVisibilityCheckedParentRecursive( bool checked );
 %Docstring
 Check or uncheck a node and all its parents
+
+.. versionadded:: 3.0
 %End
 
     bool isItemVisibilityCheckedRecursive() const;
 %Docstring
 Returns whether this node is checked and all its children.
+
+.. versionadded:: 3.0
 %End
 
     bool isItemVisibilityUncheckedRecursive() const;
 %Docstring
 Returns whether this node is unchecked and all its children.
+
+.. versionadded:: 3.0
 %End
 
     QList< QgsMapLayer * > checkedLayers() const;
 %Docstring
 Returns a list of any checked layers which belong to this node or its
 children.
+
+.. versionadded:: 3.0
 %End
 
     int depth() const;
@@ -269,6 +291,8 @@ Emitted when the collapsed/expanded state of a node within the tree has been cha
     void nameChanged( QgsLayerTreeNode *node, QString name );
 %Docstring
 Emitted when the name of the node is changed
+
+.. versionadded:: 3.0
 %End
 
   protected:
@@ -311,5 +335,5 @@ Low-level removal of children from the node.
  *                                                                      *
  * src/core/layertree/qgslayertreenode.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgspointcloudblockrequest.h"
-#include "moc_qgspointcloudblockrequest.cpp"
 
 //
 // QgsPointCloudBlockRequest
@@ -26,23 +25,18 @@
 
 QgsPointCloudBlockRequest::QgsPointCloudBlockRequest( const IndexedPointCloudNode &node, const QString &uri,
     const QgsPointCloudAttributeCollection &attributes, const QgsPointCloudAttributeCollection &requestedAttributes,
-    const QgsVector3D &scale, const QgsVector3D &offset, const QgsPointCloudExpression &filterExpression, const QgsRectangle &filterRect )
-  : mNode( node )
-  , mUri( uri )
-  , mAttributes( attributes )
-  , mRequestedAttributes( requestedAttributes )
-  , mScale( scale )
-  , mOffset( offset )
-  , mFilterExpression( filterExpression )
-  , mFilterRect( filterRect )
+    const QgsVector3D &scale, const QgsVector3D &offset, const QgsPointCloudExpression &filterExpression )
+  : mNode( node ), mUri( uri ),
+    mAttributes( attributes ), mRequestedAttributes( requestedAttributes ),
+    mScale( scale ), mOffset( offset ), mFilterExpression( filterExpression )
 {
 }
 
 QgsPointCloudBlockRequest::~QgsPointCloudBlockRequest() = default;
 
-std::unique_ptr<QgsPointCloudBlock> QgsPointCloudBlockRequest::takeBlock()
+QgsPointCloudBlock *QgsPointCloudBlockRequest::block()
 {
-  return std::move( mBlock );
+  return mBlock;
 }
 
 QString QgsPointCloudBlockRequest::errorStr()

@@ -45,9 +45,9 @@ class QgsSumLineLengthAlgorithm : public QgsProcessingFeatureBasedAlgorithm
     QgsSumLineLengthAlgorithm *createInstance() const override SIP_FACTORY;
     void initParameters( const QVariantMap &configuration = QVariantMap() ) override;
     QList<int> inputLayerTypes() const override;
-    Qgis::ProcessingSourceType outputLayerType() const override;
+    QgsProcessing::SourceType outputLayerType() const override;
     QgsCoordinateReferenceSystem outputCrs( const QgsCoordinateReferenceSystem &inputCrs ) const override;
-    bool supportInPlaceEdit( const QgsMapLayer *layer ) const override;
+
 
   protected:
     QString inputParameterName() const override;
@@ -56,6 +56,7 @@ class QgsSumLineLengthAlgorithm : public QgsProcessingFeatureBasedAlgorithm
     bool prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
     QgsFeatureList processFeature( const QgsFeature &feature, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;
     QgsFields outputFields( const QgsFields &inputFields ) const override;
+    bool supportInPlaceEdit( const QgsMapLayer *layer ) const override;
 
   private:
     bool mIsInPlace = false;

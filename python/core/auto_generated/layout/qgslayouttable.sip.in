@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/layout/qgslayouttable.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -26,6 +26,8 @@ class QgsLayoutTableStyle
 {
 %Docstring(signature="appended")
 Styling option for a layout table cell
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -34,6 +36,9 @@ Styling option for a layout table cell
   public:
 
     QgsLayoutTableStyle();
+%Docstring
+Constructor for QgsLayoutTableStyle
+%End
 
     bool enabled;
 
@@ -65,6 +70,8 @@ class QgsLayoutTable: QgsLayoutMultiFrame
 %Docstring(signature="appended")
 A class to display a table in the print layout, and allow
 the table to span over multiple frames
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -195,9 +202,8 @@ Sets the ``font`` used to draw header text in the table.
 
 .. seealso:: :py:func:`setContentFont`
 
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsLayoutTable.setHeaderTextFormat` instead.
+.. deprecated::
+   use :py:func:`~QgsLayoutTable.setHeaderTextFormat` instead
 %End
 
  QFont headerFont() const /Deprecated/;
@@ -208,9 +214,8 @@ Returns the font used to draw header text in the table.
 
 .. seealso:: :py:func:`contentFont`
 
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsLayoutTable.headerTextFormat` instead.
+.. deprecated::
+   use :py:func:`~QgsLayoutTable.headerTextFormat` instead
 %End
 
  void setHeaderFontColor( const QColor &color ) /Deprecated/;
@@ -223,9 +228,8 @@ Sets the ``color`` used to draw header text in the table.
 
 .. seealso:: :py:func:`setContentFontColor`
 
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsLayoutTable.setHeaderTextFormat` instead.
+.. deprecated::
+   use :py:func:`~QgsLayoutTable.setHeaderTextFormat` instead
 %End
 
  QColor headerFontColor() const /Deprecated/;
@@ -238,9 +242,8 @@ Returns the color used to draw header text in the table.
 
 .. seealso:: :py:func:`contentFontColor`
 
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsLayoutTable.headerTextFormat` instead.
+.. deprecated::
+   use :py:func:`~QgsLayoutTable.headerTextFormat` instead
 %End
 
     void setHeaderTextFormat( const QgsTextFormat &format );
@@ -303,9 +306,8 @@ Sets the ``font`` used to draw text in table body cells.
 
 .. seealso:: :py:func:`setHeaderFont`
 
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsLayoutTable.setContentTextFormat` instead.
+.. deprecated::
+   use :py:func:`~QgsLayoutTable.setContentTextFormat` instead
 %End
 
  QFont contentFont() const /Deprecated/;
@@ -316,9 +318,8 @@ Returns the font used to draw text in table body cells.
 
 .. seealso:: :py:func:`headerFont`
 
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsLayoutTable.contextTextFormat` instead.
+.. deprecated::
+   use :py:func:`~QgsLayoutTable.contextTextFormat` instead
 %End
 
  void setContentFontColor( const QColor &color ) /Deprecated/;
@@ -331,9 +332,8 @@ Sets the ``color`` used to draw text in table body cells.
 
 .. seealso:: :py:func:`setHeaderFontColor`
 
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsLayoutTable.setContentTextFormat` instead.
+.. deprecated::
+   use :py:func:`~QgsLayoutTable.setContentTextFormat` instead
 %End
 
  QColor contentFontColor() const /Deprecated/;
@@ -346,9 +346,8 @@ Returns the color used to draw text in table body cells.
 
 .. seealso:: :py:func:`headerFontColor`
 
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsLayoutTable.contextTextFormat` instead.
+.. deprecated::
+   use :py:func:`~QgsLayoutTable.contextTextFormat` instead
 %End
 
     void setContentTextFormat( const QgsTextFormat &format );
@@ -615,24 +614,6 @@ Creates a new :py:class:`QgsExpressionContextScope` for the cell at ``row``, ``c
 .. versionadded:: 3.16
 %End
 
-    virtual int rowSpan( int row, int column ) const;
-%Docstring
-Returns the row span for the cell a ``row``, ``column``.
-
-.. seealso:: :py:func:`columnSpan`
-
-.. versionadded:: 3.40
-%End
-
-    virtual int columnSpan( int row, int column ) const;
-%Docstring
-Returns the column span for the cell a ``row``, ``column``.
-
-.. seealso:: :py:func:`rowSpan`
-
-.. versionadded:: 3.40
-%End
-
     QgsLayoutTableContents &contents();
 %Docstring
 Returns the current contents of the table. Excludes header cells.
@@ -816,5 +797,5 @@ Returns the vertical alignment to use for the cell at the specified ``row`` and 
  *                                                                      *
  * src/core/layout/qgslayouttable.h                                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

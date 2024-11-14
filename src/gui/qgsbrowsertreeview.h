@@ -35,6 +35,7 @@ class QgsDataItem;
  * \brief The QgsBrowserTreeView class extends QTreeView with save/restore tree state functionality.
  *
  * \see QgsBrowserModel
+ * \since QGIS 2.8
  */
 class GUI_EXPORT QgsBrowserTreeView : public QTreeView
 {
@@ -82,11 +83,9 @@ class GUI_EXPORT QgsBrowserTreeView : public QTreeView
      *
      * The \a path must correspond to a valid directory existing on the file system.
      *
-     * Since QGIS 3.38 the \a selectPath argument can be used to automatically select the path too.
-     *
      * \since QGIS 3.28
      */
-    void expandPath( const QString &path, bool selectPath = false );
+    void expandPath( const QString &path );
 
   protected:
 

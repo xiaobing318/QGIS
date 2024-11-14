@@ -11,16 +11,15 @@
  ***************************************************************************/
 
 #include "qgsdecorationcopyrightdialog.h"
-#include "moc_qgsdecorationcopyrightdialog.cpp"
 #include "qgsdecorationcopyright.h"
 
 #include "qgisapp.h"
+#include "qgsexpression.h"
 #include "qgsexpressionbuilderdialog.h"
 #include "qgsexpressioncontext.h"
 #include "qgshelp.h"
 #include "qgsmapcanvas.h"
 #include "qgsgui.h"
-#include "qgsexpressionfinder.h"
 
 //qt includes
 #include <QColorDialog>
@@ -76,10 +75,7 @@ QgsDecorationCopyrightDialog::QgsDecorationCopyrightDialog( QgsDecorationCopyrig
   spnHorizontal->setClearValue( 0 );
   spnHorizontal->setValue( mDeco.mMarginHorizontal );
   spnVertical->setValue( mDeco.mMarginVertical );
-  wgtUnitSelection->setUnits( { Qgis::RenderUnit::Millimeters,
-                                Qgis::RenderUnit::Percentage,
-                                Qgis::RenderUnit::Pixels
-                              } );
+  wgtUnitSelection->setUnits( QgsUnitTypes::RenderUnitList() << QgsUnitTypes::RenderMillimeters << QgsUnitTypes::RenderPercentage << QgsUnitTypes::RenderPixels );
   wgtUnitSelection->setUnit( mDeco.mMarginUnit );
 
   // font settings
@@ -101,13 +97,18 @@ void QgsDecorationCopyrightDialog::buttonBox_rejected()
 
 void QgsDecorationCopyrightDialog::mInsertExpressionButton_clicked()
 {
-  QString expression = QgsExpressionFinder::findAndSelectActiveExpression( txtCopyrightText );
-  QgsExpressionBuilderDialog exprDlg( nullptr, expression, this, QStringLiteral( "generic" ), QgisApp::instance()->mapCanvas()->mapSettings().expressionContext() );
+  QString selText = txtCopyrightText->textCursor().selectedText();
+
+  // edit the selected expression if there's one
+  if ( selText.startsWith( QLatin1String( "[%" ) ) && selText.endsWith( QLatin1String( "%]" ) ) )
+    selText = selText.mid( 2, selText.size() - 4 );
+
+  QgsExpressionBuilderDialog exprDlg( nullptr, selText, this, QStringLiteral( "generic" ), QgisApp::instance()->mapCanvas()->mapSettings().expressionContext() );
 
   exprDlg.setWindowTitle( QObject::tr( "Insert Expression" ) );
   if ( exprDlg.exec() == QDialog::Accepted )
   {
-    expression = exprDlg.expressionText().trimmed();
+    const QString expression = exprDlg.expressionText();
     if ( !expression.isEmpty() )
     {
       txtCopyrightText->insertPlainText( "[%" + expression + "%]" );

@@ -54,27 +54,27 @@ QString QgsDbscanClusteringAlgorithm::groupId() const
 void QgsDbscanClusteringAlgorithm::initAlgorithm( const QVariantMap & )
 {
   addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ),
-                QObject::tr( "Input layer" ), QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::VectorPoint ) ) );
+                QObject::tr( "Input layer" ), QList< int >() << QgsProcessing::TypeVectorPoint ) );
   addParameter( new QgsProcessingParameterNumber( QStringLiteral( "MIN_SIZE" ), QObject::tr( "Minimum cluster size" ),
-                Qgis::ProcessingNumberParameterType::Integer, 5, false, 1 ) );
+                QgsProcessingParameterNumber::Integer, 5, false, 1 ) );
   addParameter( new QgsProcessingParameterDistance( QStringLiteral( "EPS" ),
                 QObject::tr( "Maximum distance between clustered points" ), 1, QStringLiteral( "INPUT" ), false, 0 ) );
 
   auto dbscanStarParam = std::make_unique<QgsProcessingParameterBoolean>( QStringLiteral( "DBSCAN*" ),
                          QObject::tr( "Treat border points as noise (DBSCAN*)" ), false, true );
-  dbscanStarParam->setFlags( dbscanStarParam->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  dbscanStarParam->setFlags( dbscanStarParam->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( dbscanStarParam.release() );
 
   auto fieldNameParam = std::make_unique<QgsProcessingParameterString>( QStringLiteral( "FIELD_NAME" ),
                         QObject::tr( "Cluster field name" ), QStringLiteral( "CLUSTER_ID" ) );
-  fieldNameParam->setFlags( fieldNameParam->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  fieldNameParam->setFlags( fieldNameParam->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( fieldNameParam.release() );
   auto sizeFieldNameParam = std::make_unique<QgsProcessingParameterString>( QStringLiteral( "SIZE_FIELD_NAME" ),
                             QObject::tr( "Cluster size field name" ), QStringLiteral( "CLUSTER_SIZE" ) );
-  sizeFieldNameParam->setFlags( sizeFieldNameParam->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  sizeFieldNameParam->setFlags( sizeFieldNameParam->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( sizeFieldNameParam.release() );
 
-  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Clusters" ), Qgis::ProcessingSourceType::VectorPoint ) );
+  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Clusters" ), QgsProcessing::TypeVectorPoint ) );
 
   addOutput( new QgsProcessingOutputNumber( QStringLiteral( "NUM_CLUSTERS" ), QObject::tr( "Number of clusters" ) ) );
 }
@@ -120,9 +120,9 @@ QVariantMap QgsDbscanClusteringAlgorithm::processAlgorithm( const QVariantMap &p
   QgsFields outputFields = source->fields();
   QgsFields newFields;
   const QString clusterFieldName = parameterAsString( parameters, QStringLiteral( "FIELD_NAME" ), context );
-  newFields.append( QgsField( clusterFieldName, QMetaType::Type::Int ) );
+  newFields.append( QgsField( clusterFieldName, QVariant::Int ) );
   const QString clusterSizeFieldName = parameterAsString( parameters, QStringLiteral( "SIZE_FIELD_NAME" ), context );
-  newFields.append( QgsField( clusterSizeFieldName, QMetaType::Type::Int ) );
+  newFields.append( QgsField( clusterSizeFieldName, QVariant::Int ) );
   outputFields = QgsProcessingUtils::combineFields( outputFields, newFields );
 
   QString dest;
@@ -202,8 +202,6 @@ QVariantMap QgsDbscanClusteringAlgorithm::processAlgorithm( const QVariantMap &p
       throw QgsProcessingException( writeFeatureError( sink.get(), parameters, QStringLiteral( "OUTPUT" ) ) );
   }
 
-  sink->finalize();
-
   QVariantMap outputs;
   outputs.insert( QStringLiteral( "OUTPUT" ), dest );
   outputs.insert( QStringLiteral( "NUM_CLUSTERS" ), static_cast< unsigned int >( clusterSize.size() ) );
@@ -250,7 +248,7 @@ void QgsDbscanClusteringAlgorithm::stdbscan( const std::size_t minSize,
     }
 
     QgsPointXY point;
-    if ( QgsWkbTypes::flatType( feat.geometry().wkbType() ) == Qgis::WkbType::Point )
+    if ( QgsWkbTypes::flatType( feat.geometry().wkbType() ) == QgsWkbTypes::Point )
       point = QgsPointXY( *qgsgeometry_cast< const QgsPoint * >( feat.geometry().constGet() ) );
     else
     {

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/symbology/qgsmasksymbollayer.h                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -64,13 +64,12 @@ Create a new QgsMaskMarkerSymbolLayer
 
     virtual bool usesMapUnits() const;
 
-    virtual void setOutputUnit( Qgis::RenderUnit unit );
+    virtual void setOutputUnit( QgsUnitTypes::RenderUnit unit );
 
     virtual QColor color() const;
 
 
     virtual void drawPreviewIcon( QgsSymbolRenderContext &context, QSize size );
-
 
     bool enabled() const;
 %Docstring
@@ -107,5 +106,5 @@ Sets the symbol layers that will be masked by the sub symbol's shape.
  *                                                                      *
  * src/core/symbology/qgsmasksymbollayer.h                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

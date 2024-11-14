@@ -15,7 +15,6 @@
  *
  ***************************************************************************/
 #include "qgshanaconnectionstringbuilder.h"
-#include "qgis.h"
 #include <QRegularExpression>
 
 QgsHanaConnectionStringBuilder::QgsHanaConnectionStringBuilder( const QgsDataSourceUri &uri )
@@ -116,7 +115,6 @@ QString QgsHanaConnectionStringBuilder::toString() const
   }
 
   addProperty( QStringLiteral( "CHAR_AS_UTF8" ), QStringLiteral( "1" ) );
-  addProperty( QStringLiteral( "sessionVariable:APPLICATION" ), QStringLiteral( "QGIS %1" ).arg( Qgis::version() ) );
 
-  return props.join( QLatin1Char( ';' ) );
+  return props.join( QStringLiteral( ";" ) );
 }

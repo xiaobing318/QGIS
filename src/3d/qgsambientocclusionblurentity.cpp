@@ -14,12 +14,11 @@
  ***************************************************************************/
 
 #include "qgsambientocclusionblurentity.h"
-#include "moc_qgsambientocclusionblurentity.cpp"
 
 #include <Qt3DRender/QParameter>
 
-QgsAmbientOcclusionBlurEntity::QgsAmbientOcclusionBlurEntity( Qt3DRender::QTexture2D *texture, Qt3DRender::QLayer *layer, QNode *parent )
-  : QgsRenderPassQuad( layer, parent )
+QgsAmbientOcclusionBlurEntity::QgsAmbientOcclusionBlurEntity( Qt3DRender::QTexture2D *texture, QNode *parent )
+  : QgsRenderPassQuad( parent )
 {
   mAmbientOcclusionFactorTextureParameter = new Qt3DRender::QParameter( QStringLiteral( "texture" ), texture );
   mMaterial->addParameter( mAmbientOcclusionFactorTextureParameter );
@@ -30,3 +29,4 @@ QgsAmbientOcclusionBlurEntity::QgsAmbientOcclusionBlurEntity( Qt3DRender::QTextu
   mShader->setVertexShaderCode( Qt3DRender::QShaderProgram::loadSource( QUrl( vertexShaderPath ) ) );
   mShader->setFragmentShaderCode( Qt3DRender::QShaderProgram::loadSource( QUrl( fragmentShaderPath ) ) );
 }
+

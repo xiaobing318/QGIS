@@ -3,8 +3,9 @@
  *                                                                      *
  * src/core/network/qgsnetworkaccessmanager.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
+
 
 
 
@@ -31,6 +32,9 @@ Encapsulates parameters and properties of a network request.
     };
 
     QgsNetworkRequestParameters();
+%Docstring
+Default constructor.
+%End
 
     QgsNetworkRequestParameters( QNetworkAccessManager::Operation operation,
                                  const QNetworkRequest &request,
@@ -110,6 +114,8 @@ individual proxies.
 If no proxy factories are there or none returns a proxy for an URL a
 fallback proxy can be set.  There's also a exclude list that defines URLs
 that the fallback proxy should not be used for, then no proxy will be used.
+
+.. versionadded:: 1.5
 %End
 
 %TypeHeaderCode
@@ -330,10 +336,9 @@ The ``processor`` function takes the QNetworkRequest as its argument, and can mu
 %End
 %MethodCode
     PyObject *s = 0;
-    QString id;
-    Py_XINCREF( a0 );
     Py_BEGIN_ALLOW_THREADS
-    id = QgsNetworkAccessManager::setRequestPreprocessor( [a0]( QNetworkRequest *arg )->QString
+    Py_XINCREF( a0 );
+    QString id = QgsNetworkAccessManager::setRequestPreprocessor( [a0]( QNetworkRequest *arg )->QString
     {
       QString res;
       SIP_BLOCK_THREADS
@@ -349,9 +354,9 @@ The ``processor`` function takes the QNetworkRequest as its argument, and can mu
       SIP_UNBLOCK_THREADS
       return res;
     } );
-    Py_END_ALLOW_THREADS
 
     s = sipConvertFromNewType( new QString( id ), sipType_QString, 0 );
+    Py_END_ALLOW_THREADS
     return s;
 %End
 
@@ -390,18 +395,17 @@ The ``processor`` function takes a QNetworkRequest request and a QNetworkReply a
 %End
 %MethodCode
     PyObject *s = 0;
-    QString id;
-    Py_XINCREF( a0 );
     Py_BEGIN_ALLOW_THREADS
-    id = QgsNetworkAccessManager::setReplyPreprocessor( [a0]( const QNetworkRequest &request, QNetworkReply *reply )
+    Py_XINCREF( a0 );
+    QString id = QgsNetworkAccessManager::setReplyPreprocessor( [a0]( const QNetworkRequest &request, QNetworkReply *reply )
     {
       SIP_BLOCK_THREADS
       Py_XDECREF( sipCallMethod( NULL, a0, "ND", new QNetworkRequest( request ), sipType_QNetworkRequest, NULL, reply, sipType_QNetworkReply, NULL ) );
       SIP_UNBLOCK_THREADS
     } );
 
-    Py_END_ALLOW_THREADS
     s = sipConvertFromNewType( new QString( id ), sipType_QString, 0 );
+    Py_END_ALLOW_THREADS
     return s;
 %End
 
@@ -471,11 +475,10 @@ Preprocesses request
 
   signals:
 
- void requestAboutToBeCreated( QNetworkAccessManager::Operation operation, const QNetworkRequest &request, QIODevice *device ) /Deprecated/;
+ void requestAboutToBeCreated( QNetworkAccessManager::Operation, const QNetworkRequest &, QIODevice * ) /Deprecated/;
 %Docstring
 
-.. deprecated:: 3.40
-
+.. deprecated::
    Use the thread-safe requestAboutToBeCreated( :py:class:`QgsNetworkRequestParameters` ) signal instead.
 %End
 
@@ -487,30 +490,11 @@ This signal is propagated to the main thread QgsNetworkAccessManager instance, s
 only to connect to the main thread's signal in order to receive notifications about requests
 created in any thread.
 
-.. seealso:: :py:func:`requestCreated`
-
 .. seealso:: :py:func:`finished`
 
 .. seealso:: :py:func:`requestTimedOut`
 
 .. versionadded:: 3.6
-%End
-
-    void requestCreated( const QgsNetworkRequestParameters &request );
-%Docstring
-Emitted when a network request has been created.
-
-This signal is propagated to the main thread QgsNetworkAccessManager instance, so it is necessary
-only to connect to the main thread's signal in order to receive notifications about requests
-created in any thread.
-
-.. seealso:: :py:func:`requestAboutToBeCreated`
-
-.. seealso:: :py:func:`finished`
-
-.. seealso:: :py:func:`requestTimedOut`
-
-.. versionadded:: 3.38
 %End
 
     void finished( QgsNetworkReplyContent reply );
@@ -617,18 +601,14 @@ See :py:class:`QgsSslErrorHandler` for details on how to handle SSL errors and p
 
 
 
- void requestCreated( QNetworkReply *reply ) /Deprecated/;
+ void requestCreated( QNetworkReply * ) /Deprecated/;
 %Docstring
 
-.. deprecated:: 3.40
-
+.. deprecated::
    Use the thread-safe requestAboutToBeCreated( :py:class:`QgsNetworkRequestParameters` ) signal instead.
 %End
 
-    void requestTimedOut( QNetworkReply *reply );
-%Docstring
-Emitted when a request times out.
-%End
+    void requestTimedOut( QNetworkReply * );
 
 
     void authBrowserAborted();
@@ -657,5 +637,5 @@ Emitted when the cookies changed.
  *                                                                      *
  * src/core/network/qgsnetworkaccessmanager.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

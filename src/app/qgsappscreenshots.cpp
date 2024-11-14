@@ -22,7 +22,6 @@
 #include <QImage>
 
 #include "qgsappscreenshots.h"
-#include "moc_qgsappscreenshots.cpp"
 
 #include "qgsvectorlayerproperties.h"
 #include "qgsvectorlayer.h"

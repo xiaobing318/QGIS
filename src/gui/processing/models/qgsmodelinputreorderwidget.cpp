@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsmodelinputreorderwidget.h"
-#include "moc_qgsmodelinputreorderwidget.cpp"
 #include "qgsgui.h"
 #include "qgsprocessingmodelalgorithm.h"
 #include <QDialogButtonBox>
@@ -60,6 +59,7 @@ void QgsModelInputReorderWidget::setModel( QgsProcessingModelAlgorithm *model )
 {
   mModel = model;
   mParameters = mModel->orderedParameters();
+  QStringList res;
   mItemModel->clear();
   for ( const QgsProcessingModelParameter &param : std::as_const( mParameters ) )
   {

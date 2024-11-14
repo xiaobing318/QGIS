@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     nearblack.py
@@ -53,7 +55,7 @@ class nearblack(GdalAlgorithm):
         self.addParameter(QgsProcessingParameterRasterLayer(self.INPUT, self.tr('Input layer')))
         self.addParameter(QgsProcessingParameterNumber(self.NEAR,
                                                        self.tr('How far from black (white)'),
-                                                       type=QgsProcessingParameterNumber.Type.Integer,
+                                                       type=QgsProcessingParameterNumber.Integer,
                                                        minValue=0,
                                                        defaultValue=15))
         self.addParameter(QgsProcessingParameterBoolean(self.WHITE,
@@ -64,15 +66,17 @@ class nearblack(GdalAlgorithm):
                                                      self.tr('Additional creation options'),
                                                      defaultValue='',
                                                      optional=True)
-        options_param.setFlags(options_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
-        options_param.setMetadata({'widget_wrapper': {'widget_type': 'rasteroptions'}})
+        options_param.setFlags(options_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        options_param.setMetadata({
+            'widget_wrapper': {
+                'class': 'processing.algs.gdal.ui.RasterOptionsWidget.RasterOptionsWidgetWrapper'}})
         self.addParameter(options_param)
 
         extra_param = QgsProcessingParameterString(self.EXTRA,
                                                    self.tr('Additional command-line parameters'),
                                                    defaultValue=None,
                                                    optional=True)
-        extra_param.setFlags(extra_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        extra_param.setFlags(extra_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(extra_param)
 
         self.addParameter(QgsProcessingParameterRasterDestination(self.OUTPUT, self.tr('Nearblack')))
@@ -99,19 +103,14 @@ class nearblack(GdalAlgorithm):
         inLayer = self.parameterAsRasterLayer(parameters, self.INPUT, context)
         if inLayer is None:
             raise QgsProcessingException(self.invalidRasterError(parameters, self.INPUT))
-        input_details = GdalUtils.gdal_connection_details_from_layer(inLayer)
 
         out = self.parameterAsOutputLayer(parameters, self.OUTPUT, context)
         self.setOutputValue(self.OUTPUT, out)
-
-        output_format = QgsRasterFileWriter.driverForExtension(os.path.splitext(out)[1])
-        if not output_format:
-            raise QgsProcessingException(self.tr('Output format is invalid'))
-
         arguments = [
-            input_details.connection_string,
+            inLayer.source(),
+
             '-of',
-            output_format,
+            QgsRasterFileWriter.driverForExtension(os.path.splitext(out)[1]),
             '-o',
             out,
             '-near',
@@ -120,9 +119,6 @@ class nearblack(GdalAlgorithm):
 
         if self.parameterAsBoolean(parameters, self.WHITE, context):
             arguments.append('-white')
-
-        if input_details.credential_options:
-            arguments.extend(input_details.credential_options_as_arguments())
 
         options = self.parameterAsString(parameters, self.OPTIONS, context)
         if options:

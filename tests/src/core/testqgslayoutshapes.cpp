@@ -16,6 +16,7 @@
  ***************************************************************************/
 
 #include "qgsapplication.h"
+#include "qgsmultirenderchecker.h"
 #include "qgslayoutitemshape.h"
 #include "qgsproject.h"
 #include "qgssymbol.h"
@@ -34,7 +35,7 @@ class TestQgsLayoutShapes : public QgsTest
     Q_OBJECT
 
   public:
-    TestQgsLayoutShapes() : QgsTest( QStringLiteral( "Layout Shape Tests" ), QStringLiteral( "composer_shapes" ) ) {}
+    TestQgsLayoutShapes() : QgsTest( QStringLiteral( "Layout Shape Tests" ) ) {}
 
   private slots:
     void initTestCase();// will be called before the first testfunction is executed.
@@ -70,6 +71,7 @@ void TestQgsLayoutShapes::rectangle()
   shape->attemptMove( QgsLayoutPoint( 20, 20 ) );
   shape->attemptResize( QgsLayoutSize( 150, 100 ) );
 
+
   QgsSimpleFillSymbolLayer *simpleFill = new QgsSimpleFillSymbolLayer();
   std::unique_ptr< QgsFillSymbol > fillSymbol( new QgsFillSymbol() );
   fillSymbol->changeSymbolLayer( 0, simpleFill );
@@ -81,7 +83,9 @@ void TestQgsLayoutShapes::rectangle()
 
   l.addLayoutItem( shape );
 
-  QGSVERIFYLAYOUTCHECK( QStringLiteral( "composershapes_rectangle" ), &l );
+  QgsLayoutChecker checker( QStringLiteral( "composershapes_rectangle" ), &l );
+  checker.setControlPathPrefix( QStringLiteral( "composer_shapes" ) );
+  QVERIFY( checker.testLayout( mReport ) );
 }
 
 void TestQgsLayoutShapes::triangle()
@@ -95,6 +99,7 @@ void TestQgsLayoutShapes::triangle()
   shape->attemptMove( QgsLayoutPoint( 20, 20 ) );
   shape->attemptResize( QgsLayoutSize( 150, 100 ) );
 
+
   QgsSimpleFillSymbolLayer *simpleFill = new QgsSimpleFillSymbolLayer();
   std::unique_ptr< QgsFillSymbol > fillSymbol( new QgsFillSymbol() );
   fillSymbol->changeSymbolLayer( 0, simpleFill );
@@ -106,7 +111,9 @@ void TestQgsLayoutShapes::triangle()
 
   l.addLayoutItem( shape );
 
-  QGSVERIFYLAYOUTCHECK( QStringLiteral( "composershapes_triangle" ), &l );
+  QgsLayoutChecker checker( QStringLiteral( "composershapes_triangle" ), &l );
+  checker.setControlPathPrefix( QStringLiteral( "composer_shapes" ) );
+  QVERIFY( checker.testLayout( mReport ) );
 }
 
 void TestQgsLayoutShapes::ellipse()
@@ -131,7 +138,9 @@ void TestQgsLayoutShapes::ellipse()
 
   l.addLayoutItem( shape );
 
-  QGSVERIFYLAYOUTCHECK( QStringLiteral( "composershapes_ellipse" ), &l );
+  QgsLayoutChecker checker( QStringLiteral( "composershapes_ellipse" ), &l );
+  checker.setControlPathPrefix( QStringLiteral( "composer_shapes" ) );
+  QVERIFY( checker.testLayout( mReport ) );
 }
 
 void TestQgsLayoutShapes::roundedRectangle()
@@ -157,7 +166,9 @@ void TestQgsLayoutShapes::roundedRectangle()
 
   shape->setCornerRadius( QgsLayoutMeasurement( 30 ) );
 
-  QGSVERIFYLAYOUTCHECK( QStringLiteral( "composershapes_roundedrect" ), &l );
+  QgsLayoutChecker checker( QStringLiteral( "composershapes_roundedrect" ), &l );
+  checker.setControlPathPrefix( QStringLiteral( "composer_shapes" ) );
+  QVERIFY( checker.testLayout( mReport ) );
 }
 
 void TestQgsLayoutShapes::symbol()
@@ -181,7 +192,9 @@ void TestQgsLayoutShapes::symbol()
   delete fillSymbol;
 
   l.addLayoutItem( shape );
-  QGSVERIFYLAYOUTCHECK( QStringLiteral( "composershapes_symbol" ), &l );
+  QgsLayoutChecker checker( QStringLiteral( "composershapes_symbol" ), &l );
+  checker.setControlPathPrefix( QStringLiteral( "composer_shapes" ) );
+  QVERIFY( checker.testLayout( mReport ) );
 }
 
 void TestQgsLayoutShapes::readWriteXml()
@@ -271,9 +284,9 @@ void TestQgsLayoutShapes::shapeRotation()
   delete fillSymbol;
 
   l.addLayoutItem( shape );
-  mControlPathPrefix = QStringLiteral( "composer_items" );
-  QGSVERIFYLAYOUTCHECK( QStringLiteral( "composerrotation_shape" ), &l );
-  mControlPathPrefix = QStringLiteral( "composer_shape" );
+  QgsLayoutChecker checker( QStringLiteral( "composerrotation_shape" ), &l );
+  checker.setControlPathPrefix( QStringLiteral( "composer_items" ) );
+  QVERIFY( checker.testLayout( mReport ) );
 }
 
 QGSTEST_MAIN( TestQgsLayoutShapes )

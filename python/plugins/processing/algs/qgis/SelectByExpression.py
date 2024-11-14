@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     SelectByExpression.py
@@ -46,7 +48,7 @@ class SelectByExpression(QgisAlgorithm):
         super().__init__()
 
     def flags(self):
-        return super().flags() | QgsProcessingAlgorithm.Flag.FlagNoThreading | QgsProcessingAlgorithm.Flag.FlagNotAvailableInStandaloneTool
+        return super().flags() | QgsProcessingAlgorithm.FlagNoThreading | QgsProcessingAlgorithm.FlagNotAvailableInStandaloneTool
 
     def initAlgorithm(self, config=None):
         self.methods = [self.tr('creating new selection'),
@@ -54,7 +56,7 @@ class SelectByExpression(QgisAlgorithm):
                         self.tr('removing from current selection'),
                         self.tr('selecting within current selection')]
 
-        self.addParameter(QgsProcessingParameterVectorLayer(self.INPUT, self.tr('Input layer'), types=[QgsProcessing.SourceType.TypeVector]))
+        self.addParameter(QgsProcessingParameterVectorLayer(self.INPUT, self.tr('Input layer'), types=[QgsProcessing.TypeVector]))
 
         self.addParameter(QgsProcessingParameterExpression(self.EXPRESSION,
                                                            self.tr('Expression'), parentLayerParameterName=self.INPUT))
@@ -74,21 +76,19 @@ class SelectByExpression(QgisAlgorithm):
 
         method = self.parameterAsEnum(parameters, self.METHOD, context)
         if method == 0:
-            behavior = QgsVectorLayer.SelectBehavior.SetSelection
+            behavior = QgsVectorLayer.SetSelection
         elif method == 1:
-            behavior = QgsVectorLayer.SelectBehavior.AddToSelection
+            behavior = QgsVectorLayer.AddToSelection
         elif method == 2:
-            behavior = QgsVectorLayer.SelectBehavior.RemoveFromSelection
+            behavior = QgsVectorLayer.RemoveFromSelection
         elif method == 3:
-            behavior = QgsVectorLayer.SelectBehavior.IntersectSelection
+            behavior = QgsVectorLayer.IntersectSelection
 
         expression = self.parameterAsString(parameters, self.EXPRESSION, context)
         qExp = QgsExpression(expression)
         if qExp.hasParserError():
             raise QgsProcessingException(qExp.parserErrorString())
 
-        expression_context = self.createExpressionContext(parameters, context)
-
-        layer.selectByExpression(expression, behavior, expression_context)
+        layer.selectByExpression(expression, behavior)
 
         return {self.OUTPUT: parameters[self.INPUT]}

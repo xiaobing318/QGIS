@@ -45,13 +45,6 @@
       <item row="1" column="0" colspan="2">
        <widget class="QComboBox" name="mDisplayAsTextComboBox"/>
       </item>
-      <item row="2" column="0" colspan="2">
-       <widget class="QCheckBox" name="mAllowNullState">
-        <property name="text">
-         <string>Allow NULL representation</string>
-        </property>
-       </widget>
-      </item>
      </layout>
     </widget>
    </item>

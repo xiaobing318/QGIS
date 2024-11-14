@@ -34,6 +34,7 @@ class QgsExpressionNode;
  * so that feature requests can take advantage of the provider's native filtering support.
  * \note Not part of stable API, may change in future versions of QGIS
  * \note Not available in Python bindings
+ * \since QGIS 2.14
  */
 
 class CORE_EXPORT QgsSqlExpressionCompiler
@@ -147,6 +148,7 @@ class CORE_EXPORT QgsSqlExpressionCompiler
      * Casts a value to a real result. Subclasses which indicate the IntegerDivisionResultsInInteger
      * flag must reimplement this to cast a numeric value to a real type value so that division results
      * in a real value result instead of integer.
+     * \since QGIS 3.0
      */
     virtual QString castToReal( const QString &value ) const;
 
@@ -170,6 +172,7 @@ class CORE_EXPORT QgsSqlExpressionCompiler
     /**
      * Casts a value to a integer result. Subclasses must reimplement this to cast a numeric value to a integer
      * type value so that integer division results in a integer value result instead of real.
+     * \since QGIS 3.0
      */
     virtual QString castToInt( const QString &value ) const;
 

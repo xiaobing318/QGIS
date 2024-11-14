@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/layertree/qgslayertreeview.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -46,24 +46,6 @@ Returns if private layers are shown.
 Determines if private layers are shown.
 %End
 
-    bool hideValidLayers() const;
-%Docstring
-Returns if valid layers should be hidden (i.e. only invalid layers are shown).
-
-.. seealso:: :py:func:`setHideValidLayers`
-
-.. versionadded:: 3.38
-%End
-
-    void setHideValidLayers( bool hideValid );
-%Docstring
-Sets whether valid layers should be hidden (i.e. only invalid layers are shown).
-
-.. seealso:: :py:func:`setHideValidLayers`
-
-.. versionadded:: 3.38
-%End
-
   protected:
 
     virtual bool filterAcceptsRow( int sourceRow, const QModelIndex &sourceParent ) const;
@@ -87,6 +69,8 @@ Allows the client to specify a context menu provider with custom actions. Also i
 with a set of default actions that can be used when building context menu.
 
 .. seealso:: :py:class:`QgsLayerTreeModel`
+
+.. versionadded:: 2.4
 %End
 
 %TypeHeaderCode
@@ -215,17 +199,6 @@ Convenience methods which sets the visible state of the specified map ``layer``.
 .. versionadded:: 3.10
 %End
 
-    void setCurrentNode( QgsLayerTreeNode *node );
-%Docstring
-Sets the currently selected ``node``.
-
-If ``node`` is ``None`` then all nodes will be deselected.
-
-.. seealso:: :py:func:`currentNode`
-
-.. versionadded:: 3.40
-%End
-
     void setCurrentLayer( QgsMapLayer *layer );
 %Docstring
 Sets the currently selected ``layer``.
@@ -247,52 +220,24 @@ Gets current group node. If a layer is current node, the function will return pa
     QgsLayerTreeModelLegendNode *currentLegendNode() const;
 %Docstring
 Gets current legend node. May be ``None`` if current node is not a legend node.
+
+.. versionadded:: 2.14
 %End
 
     QList<QgsLayerTreeNode *> selectedNodes( bool skipInternal = false ) const;
 %Docstring
-Returns the list of selected layer tree nodes.
+Returns list of selected nodes
 
 :param skipInternal: If ``True``, will ignore nodes which have an ancestor in the selection
-
-.. seealso:: :py:func:`selectedLayerNodes`
-
-.. seealso:: :py:func:`selectedLegendNodes`
-
-.. seealso:: :py:func:`selectedLayers`
 %End
-
     QList<QgsLayerTreeLayer *> selectedLayerNodes() const;
 %Docstring
-Returns the list of selected nodes filtered to just layer nodes (:py:class:`QgsLayerTreeLayer`).
-
-.. seealso:: :py:func:`selectedNodes`
-
-.. seealso:: :py:func:`selectedLayers`
-
-.. seealso:: :py:func:`selectedLegendNodes`
+Returns list of selected nodes filtered to just layer nodes
 %End
 
     QList<QgsMapLayer *> selectedLayers() const;
 %Docstring
-Returns the list of selected layers.
-
-.. seealso:: :py:func:`selectedNodes`
-
-.. seealso:: :py:func:`selectedLayerNodes`
-
-.. seealso:: :py:func:`selectedLegendNodes`
-%End
-
-    QList<QgsLayerTreeModelLegendNode *> selectedLegendNodes() const;
-%Docstring
-Returns the list of selected legend nodes.
-
-.. seealso:: :py:func:`selectedNodes`
-
-.. seealso:: :py:func:`selectedLayerNodes`
-
-.. versionadded:: 3.32
+Gets list of selected layers
 %End
 
     QList<QgsMapLayer *> selectedLayersRecursive() const;
@@ -352,23 +297,6 @@ Returns width of contextual menu mark, at right of layer node items.
 
 
 
-
-    bool showPrivateLayers() const;
-%Docstring
-Returns the show private layers status
-
-.. versionadded:: 3.18
-%End
-
-    bool hideValidLayers() const;
-%Docstring
-Returns if valid layers should be hidden (i.e. only invalid layers are shown).
-
-.. seealso:: :py:func:`setHideValidLayers`
-
-.. versionadded:: 3.38
-%End
-
   public slots:
     void refreshLayerSymbology( const QString &layerId );
 %Docstring
@@ -378,11 +306,15 @@ Force refresh of layer symbology. Normally not needed as the changes of layer's 
     void expandAllNodes();
 %Docstring
 Enhancement of QTreeView.expandAll() that also records expanded state in layer tree nodes
+
+.. versionadded:: 2.18
 %End
 
     void collapseAllNodes();
 %Docstring
 Enhancement of QTreeView.collapseAll() that also records expanded state in layer tree nodes
+
+.. versionadded:: 2.18
 %End
 
     void setLayerMarkWidth( int width );
@@ -408,24 +340,17 @@ Set the show private layers to ``showPrivate``
 .. versionadded:: 3.18
 %End
 
-    void setHideValidLayers( bool hideValid );
+    bool showPrivateLayers( );
 %Docstring
-Sets whether valid layers should be hidden (i.e. only invalid layers are shown).
+Returns the show private layers status
 
-.. seealso:: :py:func:`setHideValidLayers`
-
-.. versionadded:: 3.38
+.. versionadded:: 3.18
 %End
 
   signals:
     void currentLayerChanged( QgsMapLayer *layer );
 %Docstring
 Emitted when a current layer is changed
-%End
-
-    void datasetsDropped( QDropEvent *event );
-%Docstring
-Emitted when datasets are dropped onto the layer tree view
 %End
 
     void contextMenuAboutToShow( QMenu *menu );
@@ -445,16 +370,10 @@ Allows customization of the menu.
 
     QgsMapLayer *layerForIndex( const QModelIndex &index ) const;
 
-    virtual void mouseDoubleClickEvent( QMouseEvent *event );
-
     virtual void mouseReleaseEvent( QMouseEvent *event );
 
     virtual void keyPressEvent( QKeyEvent *event );
 
-
-    virtual void dragEnterEvent( QDragEnterEvent *event );
-
-    virtual void dragMoveEvent( QDragMoveEvent *event );
 
     virtual void dropEvent( QDropEvent *event );
 
@@ -482,10 +401,12 @@ Allows customization of the menu.
 class QgsLayerTreeViewMenuProvider
 {
 %Docstring(signature="appended")
-Implementation of this interface can be implemented to allow :py:class:`QgsLayerTreeView`
+Implementation of this interface can be implemented to allow QgsLayerTreeView
 instance to provide custom context menus (opened upon right-click).
 
 .. seealso:: :py:class:`QgsLayerTreeView`
+
+.. versionadded:: 2.4
 %End
 
 %TypeHeaderCode
@@ -506,5 +427,5 @@ Returns a newly created menu instance (or ``None`` on error)
  *                                                                      *
  * src/gui/layertree/qgslayertreeview.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

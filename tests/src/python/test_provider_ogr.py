@@ -14,53 +14,50 @@ import os
 import shutil
 import sys
 import tempfile
-import math
 from datetime import datetime
 
 from osgeo import gdal, ogr  # NOQA
-from qgis.PyQt.QtCore import QByteArray, QTemporaryDir, QVariant
+from qgis.PyQt.QtCore import QVariant, QByteArray, QTemporaryDir
 from qgis.PyQt.QtXml import QDomDocument
 from qgis.core import (
     NULL,
-    Qgis,
-    QgsAbstractDatabaseProviderConnection,
-    QgsApplication,
     QgsAuthMethodConfig,
-    QgsBox3D,
-    QgsCoordinateReferenceSystem,
+    QgsApplication,
     QgsCoordinateTransformContext,
-    QgsDataProvider,
-    QgsDirectoryItem,
     QgsEditorWidgetSetup,
-    QgsFeature,
-    QgsFeatureRequest,
+    QgsProject,
     QgsField,
-    QgsFieldConstraints,
     QgsFields,
     QgsGeometry,
-    QgsLayerMetadata,
-    QgsMapLayerType,
+    QgsRectangle,
+    QgsProviderRegistry,
+    QgsFeature,
+    QgsFeatureRequest,
+    QgsSettings,
+    QgsDataProvider,
+    QgsVectorDataProvider,
+    QgsVectorLayer,
+    QgsVectorFileWriter,
+    QgsVectorLayerExporter,
+    QgsWkbTypes,
     QgsNetworkAccessManager,
+    QgsLayerMetadata,
     QgsNotSupportedException,
-    QgsProject,
+    QgsMapLayerType,
+    QgsProviderSublayerDetails,
+    Qgis,
+    QgsDirectoryItem,
+    QgsAbstractDatabaseProviderConnection,
     QgsProviderConnectionException,
     QgsProviderMetadata,
-    QgsProviderRegistry,
-    QgsProviderSublayerDetails,
-    QgsRectangle,
     QgsRelation,
-    QgsSettings,
     QgsUnsetAttributeValue,
-    QgsVectorDataProvider,
-    QgsVectorFileWriter,
-    QgsVectorLayer,
-    QgsVectorLayerExporter,
-    QgsWeakRelation,
-    QgsWkbTypes,
+    QgsFieldConstraints
 )
-from qgis.gui import QgsGui
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.gui import (
+    QgsGui
+)
+from qgis.testing import start_app, unittest
 from qgis.utils import spatialite_connect
 
 import mockedwebserver
@@ -92,24 +89,17 @@ def count_opened_filedescriptors(filename_to_test):
     return count
 
 
-class PyQgsOGRProvider(QgisTestCase):
+class PyQgsOGRProvider(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
-        super().setUpClass()
         # Create test layer
         cls.basetestpath = tempfile.mkdtemp()
         cls.datasource = os.path.join(cls.basetestpath, 'test.csv')
         with open(cls.datasource, 'w') as f:
             f.write('id,WKT\n')
             f.write('1,POINT(2 49)\n')
-
-        # Copy GPKG files to a temporary directory
-        cls.temp_dir = tempfile.TemporaryDirectory()
-        cls.temp_dir_path = cls.temp_dir.name
-        for f in ('curved_polys.gpkg', 'domains.gpkg', 'gps_timestamp.gpkg', 'mixed_layers.gpkg'):
-            shutil.copy(os.path.join(unitTestDataPath(), f), cls.temp_dir_path)
 
         cls.dirs_to_cleanup = [cls.basetestpath]
 
@@ -118,15 +108,13 @@ class PyQgsOGRProvider(QgisTestCase):
         """Run after all tests"""
         for dirname in cls.dirs_to_cleanup:
             shutil.rmtree(dirname, True)
-        super().tearDownClass()
-        cls.temp_dir.cleanup()
 
     def testUpdateMode(self):
 
         vl = QgsVectorLayer(f'{self.datasource}|layerid=0', 'test', 'ogr')
         self.assertTrue(vl.isValid())
         caps = vl.dataProvider().capabilities()
-        self.assertTrue(caps & QgsVectorDataProvider.Capability.AddFeatures)
+        self.assertTrue(caps & QgsVectorDataProvider.AddFeatures)
 
         self.assertEqual(vl.dataProvider().property("_debug_open_mode"), "read-write")
 
@@ -148,7 +136,7 @@ class PyQgsOGRProvider(QgisTestCase):
 
         vl = QgsVectorLayer(f'{datasource}|layerid=0', 'test', 'ogr')
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.Point)
 
     def testMixOfPolygonCurvePolygon(self):
 
@@ -189,14 +177,14 @@ class PyQgsOGRProvider(QgisTestCase):
         vl = QgsVectorLayer(f'{datasource}|layername=routes', 'test', 'ogr')
         self.assertTrue(vl.isValid())
         f = next(vl.getFeatures())
-        self.assertEqual(f.geometry().wkbType(), QgsWkbTypes.Type.LineString)
+        self.assertEqual(f.geometry().wkbType(), QgsWkbTypes.LineString)
 
         # GPX with elevation data
         datasource = os.path.join(TEST_DATA_DIR, 'elev.gpx')
         vl = QgsVectorLayer(f'{datasource}|layername=routes', 'test', 'ogr')
         self.assertTrue(vl.isValid())
         f = next(vl.getFeatures())
-        self.assertEqual(f.geometry().wkbType(), QgsWkbTypes.Type.LineStringZ)
+        self.assertEqual(f.geometry().wkbType(), QgsWkbTypes.LineStringZ)
         self.assertEqual(f.geometry().constGet().pointN(0).z(), 1)
         self.assertEqual(f.geometry().constGet().pointN(1).z(), 2)
         self.assertEqual(f.geometry().constGet().pointN(2).z(), 3)
@@ -359,47 +347,46 @@ class PyQgsOGRProvider(QgisTestCase):
         it = l.getFeatures()
         f = QgsFeature()
         while it.nextFeature(f):
-            self.assertEqual(f.attribute("text"), "shape 2")
+            self.assertTrue(f.attribute("text") == "shape 2")
 
     def testTriangleTINPolyhedralSurface(self):
         """ Test support for Triangles (mapped to Polygons) """
         testsets = (
-            ("Triangle((0 0, 0 1, 1 1, 0 0))", QgsWkbTypes.Type.Triangle, "Triangle ((0 0, 0 1, 1 1, 0 0))"),
-            ("Triangle Z((0 0 1, 0 1 2, 1 1 3, 0 0 1))", QgsWkbTypes.Type.TriangleZ,
-             "Triangle Z ((0 0 1, 0 1 2, 1 1 3, 0 0 1))"),
-            ("Triangle M((0 0 4, 0 1 5, 1 1 6, 0 0 4))", QgsWkbTypes.Type.TriangleM,
-             "Triangle M ((0 0 4, 0 1 5, 1 1 6, 0 0 4))"),
-            ("Triangle ZM((0 0 0 1, 0 1 2 3, 1 1 4 5, 0 0 0 1))", QgsWkbTypes.Type.TriangleZM,
-             "Triangle ZM ((0 0 0 1, 0 1 2 3, 1 1 4 5, 0 0 0 1))"),
+            ("Triangle((0 0, 0 1, 1 1, 0 0))", QgsWkbTypes.Triangle, "Triangle ((0 0, 0 1, 1 1, 0 0))"),
+            ("Triangle Z((0 0 1, 0 1 2, 1 1 3, 0 0 1))", QgsWkbTypes.TriangleZ,
+             "TriangleZ ((0 0 1, 0 1 2, 1 1 3, 0 0 1))"),
+            ("Triangle M((0 0 4, 0 1 5, 1 1 6, 0 0 4))", QgsWkbTypes.TriangleM,
+             "TriangleM ((0 0 4, 0 1 5, 1 1 6, 0 0 4))"),
+            ("Triangle ZM((0 0 0 1, 0 1 2 3, 1 1 4 5, 0 0 0 1))", QgsWkbTypes.TriangleZM,
+             "TriangleZM ((0 0 0 1, 0 1 2 3, 1 1 4 5, 0 0 0 1))"),
 
-            ("TIN (((0 0, 0 1, 1 1, 0 0)),((0 0, 1 0, 1 1, 0 0)))", QgsWkbTypes.Type.TIN,
-             "TIN (((0 0, 0 1, 1 1, 0 0)),((0 0, 1 0, 1 1, 0 0)))"),
-            ("TIN Z(((0 0 0, 0 1 1, 1 1 1, 0 0 0)),((0 0 0, 1 0 0, 1 1 1, 0 0 0)))", QgsWkbTypes.Type.TINZ,
-             "TIN Z (((0 0 0, 0 1 1, 1 1 1, 0 0 0)),((0 0 0, 1 0 0, 1 1 1, 0 0 0)))"),
-            ("TIN M(((0 0 0, 0 1 2, 1 1 3, 0 0 0)),((0 0 0, 1 0 4, 1 1 3, 0 0 0)))", QgsWkbTypes.Type.TINM,
-             "TIN M (((0 0 0, 0 1 2, 1 1 3, 0 0 0)),((0 0 0, 1 0 4, 1 1 3, 0 0 0)))"),
+            ("TIN (((0 0, 0 1, 1 1, 0 0)),((0 0, 1 0, 1 1, 0 0)))", QgsWkbTypes.MultiPolygon,
+             "MultiPolygon (((0 0, 0 1, 1 1, 0 0)),((0 0, 1 0, 1 1, 0 0)))"),
+            ("TIN Z(((0 0 0, 0 1 1, 1 1 1, 0 0 0)),((0 0 0, 1 0 0, 1 1 1, 0 0 0)))", QgsWkbTypes.MultiPolygonZ,
+             "MultiPolygonZ (((0 0 0, 0 1 1, 1 1 1, 0 0 0)),((0 0 0, 1 0 0, 1 1 1, 0 0 0)))"),
+            ("TIN M(((0 0 0, 0 1 2, 1 1 3, 0 0 0)),((0 0 0, 1 0 4, 1 1 3, 0 0 0)))", QgsWkbTypes.MultiPolygonM,
+             "MultiPolygonM (((0 0 0, 0 1 2, 1 1 3, 0 0 0)),((0 0 0, 1 0 4, 1 1 3, 0 0 0)))"),
             ("TIN ZM(((0 0 0 0, 0 1 1 2, 1 1 1 3, 0 0 0 0)),((0 0 0 0, 1 0 0 4, 1 1 1 3, 0 0 0 0)))",
-             QgsWkbTypes.Type.TINZM,
-             "TIN ZM (((0 0 0 0, 0 1 1 2, 1 1 1 3, 0 0 0 0)),((0 0 0 0, 1 0 0 4, 1 1 1 3, 0 0 0 0)))"),
+             QgsWkbTypes.MultiPolygonZM,
+             "MultiPolygonZM (((0 0 0 0, 0 1 1 2, 1 1 1 3, 0 0 0 0)),((0 0 0 0, 1 0 0 4, 1 1 1 3, 0 0 0 0)))"),
 
-            ("PolyhedralSurface (((0 0, 0 1, 1 1, 0 0)),((0 0, 1 0, 1 1, 0 0)))", QgsWkbTypes.Type.PolyhedralSurface,
-             "PolyhedralSurface (((0 0, 0 1, 1 1, 0 0)),((0 0, 1 0, 1 1, 0 0)))"),
+            ("PolyhedralSurface (((0 0, 0 1, 1 1, 0 0)),((0 0, 1 0, 1 1, 0 0)))", QgsWkbTypes.MultiPolygon,
+             "MultiPolygon (((0 0, 0 1, 1 1, 0 0)),((0 0, 1 0, 1 1, 0 0)))"),
             ("PolyhedralSurface Z(((0 0 0, 0 1 1, 1 1 1, 0 0 0)),((0 0 0, 1 0 0, 1 1 1, 0 0 0)))",
-
-             QgsWkbTypes.Type.PolyhedralSurfaceZ,
-             "PolyhedralSurface Z (((0 0 0, 0 1 1, 1 1 1, 0 0 0)),((0 0 0, 1 0 0, 1 1 1, 0 0 0)))"),
+             QgsWkbTypes.MultiPolygonZ,
+             "MultiPolygonZ (((0 0 0, 0 1 1, 1 1 1, 0 0 0)),((0 0 0, 1 0 0, 1 1 1, 0 0 0)))"),
             ("PolyhedralSurface M(((0 0 0, 0 1 2, 1 1 3, 0 0 0)),((0 0 0, 1 0 4, 1 1 3, 0 0 0)))",
-             QgsWkbTypes.Type.PolyhedralSurfaceM,
-             "PolyhedralSurface M (((0 0 0, 0 1 2, 1 1 3, 0 0 0)),((0 0 0, 1 0 4, 1 1 3, 0 0 0)))"),
+             QgsWkbTypes.MultiPolygonM,
+             "MultiPolygonM (((0 0 0, 0 1 2, 1 1 3, 0 0 0)),((0 0 0, 1 0 4, 1 1 3, 0 0 0)))"),
             ("PolyhedralSurface ZM(((0 0 0 0, 0 1 1 2, 1 1 1 3, 0 0 0 0)),((0 0 0 0, 1 0 0 4, 1 1 1 3, 0 0 0 0)))",
-             QgsWkbTypes.Type.PolyhedralSurfaceZM,
-             "PolyhedralSurface ZM (((0 0 0 0, 0 1 1 2, 1 1 1 3, 0 0 0 0)),((0 0 0 0, 1 0 0 4, 1 1 1 3, 0 0 0 0)))")
+             QgsWkbTypes.MultiPolygonZM,
+             "MultiPolygonZM (((0 0 0 0, 0 1 1 2, 1 1 1 3, 0 0 0 0)),((0 0 0 0, 1 0 0 4, 1 1 1 3, 0 0 0 0)))")
         )
         for row in testsets:
             datasource = os.path.join(self.basetestpath, 'test.csv')
             with open(datasource, 'w') as f:
                 f.write('id,WKT\n')
-                f.write(f'1,"{row[0]}"')
+                f.write('1,"%s"' % row[0])
 
             vl = QgsVectorLayer(datasource, 'test', 'ogr')
             self.assertTrue(vl.isValid())
@@ -409,6 +396,10 @@ class PyQgsOGRProvider(QgisTestCase):
             self.assertTrue(vl.getFeatures(QgsFeatureRequest(1)).nextFeature(f))
             self.assertTrue(f.geometry())
             self.assertEqual(f.geometry().constGet().asWkt(), row[2])
+
+    """PolyhedralSurface, Tin => mapped to MultiPolygon
+          Triangle => mapped to Polygon
+      """
 
     def testSetupProxy(self):
         """Test proxy setup"""
@@ -539,21 +530,21 @@ class PyQgsOGRProvider(QgisTestCase):
             self.assertTrue(layer.isValid())
 
             self.assertFalse(
-                layer.dataProvider().skipConstraintCheck(0, QgsFieldConstraints.Constraint.ConstraintUnique, 5))
-            self.assertTrue(layer.dataProvider().skipConstraintCheck(0, QgsFieldConstraints.Constraint.ConstraintUnique, 'Autogenerate'))
+                layer.dataProvider().skipConstraintCheck(0, QgsFieldConstraints.ConstraintUnique, 5))
+            self.assertTrue(layer.dataProvider().skipConstraintCheck(0, QgsFieldConstraints.ConstraintUnique, 'Autogenerate'))
             self.assertTrue(
-                layer.dataProvider().skipConstraintCheck(0, QgsFieldConstraints.Constraint.ConstraintUnique, QgsUnsetAttributeValue()))
+                layer.dataProvider().skipConstraintCheck(0, QgsFieldConstraints.ConstraintUnique, QgsUnsetAttributeValue()))
             self.assertTrue(
-                layer.dataProvider().skipConstraintCheck(0, QgsFieldConstraints.Constraint.ConstraintUnique, QgsUnsetAttributeValue('Autogenerate')))
-            self.assertFalse(layer.dataProvider().skipConstraintCheck(1, QgsFieldConstraints.Constraint.ConstraintUnique, 'my name'))
+                layer.dataProvider().skipConstraintCheck(0, QgsFieldConstraints.ConstraintUnique, QgsUnsetAttributeValue('Autogenerate')))
+            self.assertFalse(layer.dataProvider().skipConstraintCheck(1, QgsFieldConstraints.ConstraintUnique, 'my name'))
             self.assertFalse(
-                layer.dataProvider().skipConstraintCheck(1, QgsFieldConstraints.Constraint.ConstraintUnique, NULL))
+                layer.dataProvider().skipConstraintCheck(1, QgsFieldConstraints.ConstraintUnique, NULL))
             self.assertTrue(
-                layer.dataProvider().skipConstraintCheck(1, QgsFieldConstraints.Constraint.ConstraintUnique, QgsUnsetAttributeValue()))
+                layer.dataProvider().skipConstraintCheck(1, QgsFieldConstraints.ConstraintUnique, QgsUnsetAttributeValue()))
             self.assertFalse(
-                layer.dataProvider().skipConstraintCheck(2, QgsFieldConstraints.Constraint.ConstraintUnique, 11))
+                layer.dataProvider().skipConstraintCheck(2, QgsFieldConstraints.ConstraintUnique, 11))
             self.assertTrue(
-                layer.dataProvider().skipConstraintCheck(2, QgsFieldConstraints.Constraint.ConstraintUnique, QgsUnsetAttributeValue()))
+                layer.dataProvider().skipConstraintCheck(2, QgsFieldConstraints.ConstraintUnique, QgsUnsetAttributeValue()))
 
             feature = QgsFeature(layer.fields())
             feature.setAttributes([1, 'test1', 11])
@@ -1089,6 +1080,7 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(vl.fields().at(0).name(), 'bool')
         self.assertEqual(vl.fields().at(0).type(), QVariant.Bool)
         self.assertEqual([f[0] for f in vl.getFeatures()], [True, False, NULL])
+        self.assertEqual([f[0].__class__.__name__ for f in vl.getFeatures()], ['bool', 'bool', 'QVariant'])
 
     def testReloadDataAndFeatureCount(self):
 
@@ -1151,7 +1143,8 @@ class PyQgsOGRProvider(QgisTestCase):
 
         # Test default values
         dp = vl.dataProvider()
-        self.assertEqual(dp.defaultValue(0), NULL)
+        # FIXME: should it be None?
+        self.assertTrue(dp.defaultValue(0).isNull())
         self.assertIsNone(dp.defaultValue(1))
         # FIXME: This fails because there is no backend-side evaluation in this provider
         # self.assertTrue(dp.defaultValue(2).startswith(now.strftime('%Y-%m-%d')))
@@ -1255,7 +1248,7 @@ class PyQgsOGRProvider(QgisTestCase):
         """
         Test that field domain names are taken from OGR where available (requires GDAL 3.3 or later)
         """
-        datasource = os.path.join(self.temp_dir_path, 'domains.gpkg')
+        datasource = os.path.join(unitTestDataPath(), 'domains.gpkg')
         vl = QgsVectorLayer(datasource, 'test', 'ogr')
         self.assertTrue(vl.isValid())
 
@@ -1263,28 +1256,11 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(fields.field('with_range_domain_int').constraints().domainName(), 'range_domain_int')
         self.assertEqual(fields.field('with_glob_domain').constraints().domainName(), 'glob_domain')
 
-        self.assertEqual(fields.field('with_range_domain_int').splitPolicy(), Qgis.FieldDomainSplitPolicy.DefaultValue)
-        self.assertEqual(fields.field('with_glob_domain').splitPolicy(), Qgis.FieldDomainSplitPolicy.DefaultValue)
-
-        datasource = os.path.join(self.temp_dir_path, 'gps_timestamp.gpkg')
+        datasource = os.path.join(unitTestDataPath(), 'gps_timestamp.gpkg')
         vl = QgsVectorLayer(datasource, 'test', 'ogr')
         self.assertTrue(vl.isValid())
         fields = vl.fields()
         self.assertFalse(fields.field('stringf').constraints().domainName())
-
-        with tempfile.TemporaryDirectory() as temp_dir:
-            src_file_name = os.path.join(unitTestDataPath(), 'domains.gdb')
-            dest_file_name = os.path.join(temp_dir, 'domains.gdb')
-            shutil.copytree(src_file_name, dest_file_name)
-            vl = QgsVectorLayer(dest_file_name + '|layername=test', 'test', 'ogr')
-            self.assertTrue(vl.isValid())
-            fields = vl.fields()
-            self.assertEqual(fields.field('default_value').splitPolicy(),
-                             Qgis.FieldDomainSplitPolicy.DefaultValue)
-            self.assertEqual(fields.field('duplicate').splitPolicy(),
-                             Qgis.FieldDomainSplitPolicy.Duplicate)
-            self.assertEqual(fields.field('ratio').splitPolicy(),
-                             Qgis.FieldDomainSplitPolicy.GeometryRatio)
 
     def testGdbLayerMetadata(self):
         """
@@ -1369,7 +1345,7 @@ class PyQgsOGRProvider(QgisTestCase):
         vl = QgsVectorLayer(tmpfile + '|layername=test', 'test', 'ogr')
         f = QgsField('expression_field', QVariant.Int)
         idx = vl.addExpressionField('123', f)
-        self.assertEqual(vl.fields().fieldOrigin(idx), QgsFields.FieldOrigin.OriginExpression)
+        self.assertEqual(vl.fields().fieldOrigin(idx), QgsFields.OriginExpression)
 
         project.addMapLayers([vl])
 
@@ -1395,38 +1371,21 @@ class PyQgsOGRProvider(QgisTestCase):
             with mockedwebserver.install_http_handler(handler):
                 QgsVectorLayer("OAPIF:http://127.0.0.1:%d/collections/foo" % port, 'test', 'ogr')
                 # Error coming from Qt network stack, not GDAL/CURL one
-                self.assertIn('server replied: Not Found', gdal.GetLastErrorMsg())
+                assert 'server replied: Not Found' in gdal.GetLastErrorMsg()
 
             # Test a nominal case
             handler = mockedwebserver.SequentialHandler()
-            # Asked when ogr provider try to open. See QgsOgrProvider::QgsOgrProvider#453 open( OpenModeForceReadOnly );
             handler.add('GET', '/collections/foo', 200, {'Content-Type': 'application/json'}, '{ "id": "foo" }')
-
-            # 3.8.3 not necessarily the minimum version
-            if int(gdal.VersionInfo('VERSION_NUM')) >= GDAL_COMPUTE_VERSION(3, 8, 3):
-                handler.add('GET', '/', 200, {'Content-Type': 'application/json'}, '{ "id": "foo" }')
-                handler.add('GET', '/api', 200, {'Content-Type': 'application/json'}, '{ "id": "foo" }')
-
-                handler.add('GET', '/collections/foo/items?limit=20', 200, {'Content-Type': 'application/geo+json'},
-                            '{ "type": "FeatureCollection", "features": [] }')
-                handler.add('GET', '/collections/foo/items?limit=1000', 200, {'Content-Type': 'application/geo+json'},
-                            '{ "type": "FeatureCollection", "features": [] }')
-            else:
-                # See QgsOgrProvider::open#4012 mOgrOrigLayer = QgsOgrProviderUtils::getLayer( mFilePath, false, options, mLayerName, errCause, true );
+            handler.add('GET', '/collections/foo/items?limit=10', 200, {'Content-Type': 'application/geo+json'},
+                        '{ "type": "FeatureCollection", "features": [] }')
+            handler.add('GET', '/collections/foo/items?limit=10', 200, {'Content-Type': 'application/geo+json'},
+                        '{ "type": "FeatureCollection", "features": [] }')
+            if int(gdal.VersionInfo('VERSION_NUM')) < GDAL_COMPUTE_VERSION(3, 3, 0):
                 handler.add('GET', '/collections/foo/items?limit=10', 200, {'Content-Type': 'application/geo+json'},
                             '{ "type": "FeatureCollection", "features": [] }')
-
-                # See QgsOgrProvider::open#4066 computeCapabilities();
-                handler.add('GET', '/collections/foo/items?limit=10', 200, {'Content-Type': 'application/geo+json'},
-                            '{ "type": "FeatureCollection", "features": [] }')
-
-                if int(gdal.VersionInfo('VERSION_NUM')) < GDAL_COMPUTE_VERSION(3, 3, 0):
-                    handler.add('GET', '/collections/foo/items?limit=10', 200, {'Content-Type': 'application/geo+json'},
-                                '{ "type": "FeatureCollection", "features": [] }')
-
             with mockedwebserver.install_http_handler(handler):
                 vl = QgsVectorLayer("OAPIF:http://127.0.0.1:%d/collections/foo" % port, 'test', 'ogr')
-                self.assertTrue(vl.isValid())
+                assert vl.isValid()
 
             # More complicated test using an anthentication configuration
             authm = QgsApplication.authManager()
@@ -1458,11 +1417,11 @@ class PyQgsOGRProvider(QgisTestCase):
         options.layerName = 'writetest'
         err, _ = QgsVectorFileWriter.writeAsVectorFormatV2(ml, os.path.join(d.path(), 'writetest.shp'),
                                                            QgsCoordinateTransformContext(), options)
-        self.assertEqual(err, QgsVectorFileWriter.WriterError.NoError)
+        self.assertEqual(err, QgsVectorFileWriter.NoError)
         self.assertTrue(os.path.isfile(os.path.join(d.path(), 'writetest.shp')))
 
         vl = QgsVectorLayer(os.path.join(d.path(), 'writetest.shp'))
-        self.assertTrue(bool(vl.dataProvider().capabilities() & QgsVectorDataProvider.Capability.AddFeatures))
+        self.assertTrue(bool(vl.dataProvider().capabilities() & QgsVectorDataProvider.AddFeatures))
 
         # Let's try if we can really add features
         feature = QgsFeature(vl.fields())
@@ -1489,7 +1448,7 @@ class PyQgsOGRProvider(QgisTestCase):
         options.layerName = 'fid_double_test'
         err, _ = QgsVectorFileWriter.writeAsVectorFormatV2(ml, os.path.join(d.path(), 'fid_double_test.gpkg'),
                                                            QgsCoordinateTransformContext(), options)
-        self.assertEqual(err, QgsVectorFileWriter.WriterError.NoError)
+        self.assertEqual(err, QgsVectorFileWriter.NoError)
         self.assertTrue(os.path.isfile(os.path.join(d.path(), 'fid_double_test.gpkg')))
 
         vl = QgsVectorLayer(os.path.join(d.path(), 'fid_double_test.gpkg'))
@@ -1509,7 +1468,7 @@ class PyQgsOGRProvider(QgisTestCase):
         options.layerName = 'metadatatest'
         err, _ = QgsVectorFileWriter.writeAsVectorFormatV2(ml, os.path.join(d.path(), 'metadatatest.shp'),
                                                            QgsCoordinateTransformContext(), options)
-        self.assertEqual(err, QgsVectorFileWriter.WriterError.NoError)
+        self.assertEqual(err, QgsVectorFileWriter.NoError)
         self.assertTrue(os.path.isfile(os.path.join(d.path(), 'metadatatest.shp')))
 
         uri = d.path() + '/metadatatest.shp'
@@ -1590,7 +1549,7 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertFalse(any(f.embeddedSymbol() for f in layer.getFeatures()))
 
         symbols = [f.embeddedSymbol().clone() if f.embeddedSymbol() else None for f in
-                   layer.getFeatures(QgsFeatureRequest().setFlags(QgsFeatureRequest.Flag.EmbeddedSymbols))]
+                   layer.getFeatures(QgsFeatureRequest().setFlags(QgsFeatureRequest.EmbeddedSymbols))]
         self.assertCountEqual([s.color().name() for s in symbols if s is not None],
                               ['#ff00ff', '#ffff00', '#000000', '#ff0000'])
         self.assertCountEqual([s.color().alpha() for s in symbols if s is not None], [127, 135, 255, 127])
@@ -1626,39 +1585,12 @@ class PyQgsOGRProvider(QgisTestCase):
         encodedUri = QgsProviderRegistry.instance().encodeUri('ogr', parts)
         self.assertEqual(encodedUri, uri)
 
-    @unittest.skipIf(gdal.GetDriverByName("GTFS") is None, "GTFS driver required")
-    def testDecodeGTFS(self):
-        """Test querySublayers() for GTFS .zip dataset"""
-
-        uri = os.path.join(TEST_DATA_DIR, "ogr", "gtfs_extract.zip")
-        metadata = QgsProviderRegistry.instance().providerMetadata('ogr')
-        res = metadata.querySublayers(uri)
-        self.assertEqual(len(res), 9)
-
-    def testDecodeEncodeUriCredentialOptions(self):
-        """Test decodeUri/encodeUri credential options support"""
-
-        uri = '/my/vector.shp|option:AN=OPTION|credential:ANOTHER=BBB|credential:SOMEKEY=AAAAA'
-        parts = QgsProviderRegistry.instance().decodeUri('ogr', uri)
-        self.assertEqual(parts, {
-            'path': '/my/vector.shp',
-            'layerId': None,
-            'layerName': None,
-            'credentialOptions': {
-                'ANOTHER': 'BBB',
-                'SOMEKEY': 'AAAAA'
-            },
-            'openOptions': ['AN=OPTION']
-        })
-        encodedUri = QgsProviderRegistry.instance().encodeUri('ogr', parts)
-        self.assertEqual(encodedUri, uri)
-
     @unittest.skipIf(int(gdal.VersionInfo('VERSION_NUM')) < GDAL_COMPUTE_VERSION(3, 3, 0), "GDAL 3.3 required")
     def testFieldDomains(self):
         """
         Test that field domains are translated from OGR where available (requires GDAL 3.3 or later)
         """
-        datasource = os.path.join(self.temp_dir_path, 'domains.gpkg')
+        datasource = os.path.join(unitTestDataPath(), 'domains.gpkg')
         vl = QgsVectorLayer(datasource, 'test', 'ogr')
         self.assertTrue(vl.isValid())
 
@@ -1710,7 +1642,7 @@ class PyQgsOGRProvider(QgisTestCase):
 
         editor_widget_type = 'Color'
         factory = QgsGui.instance().editorWidgetRegistry().factory(editor_widget_type)
-        self.assertEqual(factory.name(), editor_widget_type)
+        assert factory.name() == editor_widget_type
 
         # 1. create a vector
         uri = "point?crs=epsg:4326&field=id:integer"
@@ -1718,10 +1650,10 @@ class PyQgsOGRProvider(QgisTestCase):
 
         path = '/vsimem/test.gpkg'
         result, msg = QgsVectorLayerExporter.exportLayer(layer, path, 'ogr', layer.crs())
-        self.assertEqual(result, Qgis.VectorExportResult.Success)
+        self.assertTrue(result == Qgis.VectorExportResult.Success, msg=msg)
         layer = QgsVectorLayer(path)
         self.assertTrue(layer.isValid())
-        self.assertEqual(layer.providerType(), 'ogr')
+        self.assertTrue(layer.providerType() == 'ogr')
 
         field1 = QgsField(name='field1', type=QVariant.String)
         field2 = QgsField(name='field2', type=QVariant.String)
@@ -1729,9 +1661,9 @@ class PyQgsOGRProvider(QgisTestCase):
         setup2 = QgsEditorWidgetSetup(editor_widget_type, {})
 
         # 2. Add field, set editor widget after commitChanges()
-        self.assertTrue(layer.startEditing())
+        assert layer.startEditing()
         layer.addAttribute(field1)
-        self.assertTrue(layer.commitChanges(stopEditing=False))
+        assert layer.commitChanges(stopEditing=False)
         i = layer.fields().lookupField(field1.name())
         layer.setEditorWidgetSetup(i, setup1)
 
@@ -1774,7 +1706,7 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(res[0].uri(), TEST_DATA_DIR + "/lines.shp")
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
-        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Type.LineString)
+        self.assertEqual(res[0].wkbType(), QgsWkbTypes.LineString)
         self.assertEqual(res[0].geometryColumnName(), '')
         self.assertEqual(res[0].driverName(), 'ESRI Shapefile')
 
@@ -1787,13 +1719,13 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(res[0].uri(), '/vsizip/' + TEST_DATA_DIR + "/zip/points2.zip/points.shp|layername=points")
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
-        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Point)
         self.assertEqual(res[0].geometryColumnName(), '')
         self.assertEqual(res[0].driverName(), 'ESRI Shapefile')
         options = QgsProviderSublayerDetails.LayerOptions(QgsCoordinateTransformContext())
         vl = res[0].toLayer(options)
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.Point)
 
         # zip file layer vector, explicit file in zip
         res = metadata.querySublayers('/vsizip/' + TEST_DATA_DIR + '/zip/points2.zip/points.shp')
@@ -1804,13 +1736,13 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(res[0].uri(), '/vsizip/' + TEST_DATA_DIR + "/zip/points2.zip/points.shp|layername=points")
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
-        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Point)
         self.assertEqual(res[0].geometryColumnName(), '')
         self.assertEqual(res[0].driverName(), 'ESRI Shapefile')
         options = QgsProviderSublayerDetails.LayerOptions(QgsCoordinateTransformContext())
         vl = res[0].toLayer(options)
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.Point)
 
         # zip file layer vector, explicit file in zip which is NOT a OGR supported source
         res = metadata.querySublayers('/vsizip/' + TEST_DATA_DIR + '/zip/points2.zip/points.qml')
@@ -1825,26 +1757,26 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(res[0].uri(), '/vsitar/' + TEST_DATA_DIR + "/zip/testtar.tgz/folder/points.geojson|layername=points")
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
-        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Point)
         self.assertEqual(res[0].geometryColumnName(), '')
         self.assertEqual(res[0].driverName(), 'GeoJSON')
         options = QgsProviderSublayerDetails.LayerOptions(QgsCoordinateTransformContext())
         vl = res[0].toLayer(options)
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.Point)
         self.assertEqual(res[1].layerNumber(), 0)
         self.assertEqual(res[1].name(), "points.shp")
         self.assertEqual(res[1].description(), '')
         self.assertEqual(res[1].uri(), '/vsitar/' + TEST_DATA_DIR + "/zip/testtar.tgz/points.shp|layername=points")
         self.assertEqual(res[1].providerKey(), "ogr")
         self.assertEqual(res[1].type(), QgsMapLayerType.VectorLayer)
-        self.assertEqual(res[1].wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(res[1].wkbType(), QgsWkbTypes.Point)
         self.assertEqual(res[1].geometryColumnName(), '')
         self.assertEqual(res[1].driverName(), 'ESRI Shapefile')
         options = QgsProviderSublayerDetails.LayerOptions(QgsCoordinateTransformContext())
         vl = res[1].toLayer(options)
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.Point)
 
         # multi-layer archive, but with specific suffix specified
         res = metadata.querySublayers('/vsitar/' + os.path.join(TEST_DATA_DIR, 'zip', 'testtar.tgz') + '/folder/points.geojson')
@@ -1855,13 +1787,13 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(res[0].uri(), '/vsitar/' + TEST_DATA_DIR + "/zip/testtar.tgz/folder/points.geojson|layername=points")
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
-        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Point)
         self.assertEqual(res[0].geometryColumnName(), '')
         self.assertEqual(res[0].driverName(), 'GeoJSON')
         options = QgsProviderSublayerDetails.LayerOptions(QgsCoordinateTransformContext())
         vl = res[0].toLayer(options)
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.Point)
         self.assertEqual(vl.dataProvider().storageType(), 'GeoJSON')
 
         res = metadata.querySublayers('/vsitar/' + os.path.join(TEST_DATA_DIR, 'zip', 'testtar.tgz') + '/points.shp')
@@ -1872,13 +1804,13 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(res[0].uri(), '/vsitar/' + TEST_DATA_DIR + "/zip/testtar.tgz/points.shp|layername=points")
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
-        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Point)
         self.assertEqual(res[0].geometryColumnName(), '')
         self.assertEqual(res[0].driverName(), 'ESRI Shapefile')
         options = QgsProviderSublayerDetails.LayerOptions(QgsCoordinateTransformContext())
         vl = res[0].toLayer(options)
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.Point)
         self.assertEqual(vl.dataProvider().storageType(), 'ESRI Shapefile')
 
         # archive, with suffix, and layername
@@ -1890,13 +1822,13 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(res[0].uri(), '/vsitar/' + TEST_DATA_DIR + "/zip/testtar.tgz/points.shp|layername=points")
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
-        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Point)
         self.assertEqual(res[0].geometryColumnName(), '')
         self.assertEqual(res[0].driverName(), 'ESRI Shapefile')
         options = QgsProviderSublayerDetails.LayerOptions(QgsCoordinateTransformContext())
         vl = res[0].toLayer(options)
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.Point)
         self.assertEqual(vl.dataProvider().storageType(), 'ESRI Shapefile')
 
         # geometry collection sublayers -- requires a scan to resolve geometry type
@@ -1908,7 +1840,7 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(res[0].uri(), TEST_DATA_DIR + "/multipatch.shp")
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
-        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Type.Unknown)
+        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Unknown)
         self.assertEqual(res[0].geometryColumnName(), '')
         self.assertEqual(res[0].driverName(), 'ESRI Shapefile')
 
@@ -1921,7 +1853,7 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(res[0].uri(), TEST_DATA_DIR + "/multipatch.shp|geometrytype=Polygon25D|uniqueGeometryType=yes")
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
-        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Type.PolygonZ)
+        self.assertEqual(res[0].wkbType(), QgsWkbTypes.PolygonZ)
         self.assertEqual(res[0].geometryColumnName(), '')
         self.assertEqual(res[0].driverName(), 'ESRI Shapefile')
 
@@ -1929,21 +1861,21 @@ class PyQgsOGRProvider(QgisTestCase):
         vl = res[0].toLayer(options)
         self.assertTrue(vl.isValid())
         feature = next(vl.getFeatures())
-        self.assertEqual(feature.geometry().wkbType(), QgsWkbTypes.Type.MultiPolygonZ)
-        self.assertEqual(feature.geometry().asWkt(), 'MultiPolygon Z (((0 0 0, 0 1 0, 1 1 0, 0 0 0)),((0 0 0, 1 1 0, 1 0 0,'
+        self.assertEqual(feature.geometry().wkbType(), QgsWkbTypes.MultiPolygonZ)
+        self.assertEqual(feature.geometry().asWkt(), 'MultiPolygonZ (((0 0 0, 0 1 0, 1 1 0, 0 0 0)),((0 0 0, 1 1 0, 1 0 0,'
                                                      ' 0 0 0)),((0 0 0, 0 -1 0, 1 -1 0, 0 0 0)),((0 0 0, 1 -1 0, 1 0 0, 0 0 0)))')
 
         # single layer geopackage -- sublayers MUST have the layerName set on the uri,
         # in case more layers are added in future to the gpkg
-        res = metadata.querySublayers(os.path.join(self.temp_dir_path, 'curved_polys.gpkg'))
+        res = metadata.querySublayers(os.path.join(TEST_DATA_DIR, 'curved_polys.gpkg'))
         self.assertEqual(len(res), 1)
         self.assertEqual(res[0].layerNumber(), 0)
         self.assertEqual(res[0].name(), "polys")
         self.assertEqual(res[0].description(), '')
-        self.assertEqual(res[0].uri(), self.temp_dir_path + "/curved_polys.gpkg|layername=polys")
+        self.assertEqual(res[0].uri(), TEST_DATA_DIR + "/curved_polys.gpkg|layername=polys")
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
-        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Type.CurvePolygon)
+        self.assertEqual(res[0].wkbType(), QgsWkbTypes.CurvePolygon)
         self.assertEqual(res[0].geometryColumnName(), 'geometry')
         self.assertEqual(res[0].driverName(), 'GPKG')
 
@@ -1952,38 +1884,38 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertTrue(vl.isValid())
 
         # geopackage with two vector layers
-        res = metadata.querySublayers(os.path.join(self.temp_dir_path, "mixed_layers.gpkg"))
+        res = metadata.querySublayers(os.path.join(TEST_DATA_DIR, "mixed_layers.gpkg"))
         self.assertEqual(len(res), 2)
         self.assertEqual(res[0].layerNumber(), 0)
         self.assertEqual(res[0].name(), "points")
         self.assertEqual(res[0].description(), "")
-        self.assertEqual(res[0].uri(), f"{self.temp_dir_path}/mixed_layers.gpkg|layername=points")
+        self.assertEqual(res[0].uri(), f"{TEST_DATA_DIR}/mixed_layers.gpkg|layername=points")
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
         self.assertEqual(res[0].featureCount(), Qgis.FeatureCountState.Uncounted)
-        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Point)
         self.assertEqual(res[0].geometryColumnName(), 'geometry')
         self.assertEqual(res[0].driverName(), 'GPKG')
         vl = res[0].toLayer(options)
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.Point)
 
         self.assertEqual(res[1].layerNumber(), 1)
         self.assertEqual(res[1].name(), "lines")
         self.assertEqual(res[1].description(), "")
-        self.assertEqual(res[1].uri(), f"{self.temp_dir_path}/mixed_layers.gpkg|layername=lines")
+        self.assertEqual(res[1].uri(), f"{TEST_DATA_DIR}/mixed_layers.gpkg|layername=lines")
         self.assertEqual(res[1].providerKey(), "ogr")
         self.assertEqual(res[1].type(), QgsMapLayerType.VectorLayer)
         self.assertEqual(res[1].featureCount(), Qgis.FeatureCountState.Uncounted)
-        self.assertEqual(res[1].wkbType(), QgsWkbTypes.Type.MultiLineString)
+        self.assertEqual(res[1].wkbType(), QgsWkbTypes.MultiLineString)
         self.assertEqual(res[1].geometryColumnName(), 'geom')
         self.assertEqual(res[1].driverName(), 'GPKG')
         vl = res[1].toLayer(options)
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.MultiLineString)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.MultiLineString)
 
         # request feature count
-        res = metadata.querySublayers(os.path.join(self.temp_dir_path, "mixed_layers.gpkg"), Qgis.SublayerQueryFlag.CountFeatures)
+        res = metadata.querySublayers(os.path.join(TEST_DATA_DIR, "mixed_layers.gpkg"), Qgis.SublayerQueryFlag.CountFeatures)
         self.assertEqual(len(res), 2)
         self.assertEqual(res[0].name(), "points")
         self.assertEqual(res[0].featureCount(), 0)
@@ -1994,69 +1926,69 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(res[1].driverName(), 'GPKG')
 
         # geopackage with two layers, but specific layer is requested in uri
-        res = metadata.querySublayers(os.path.join(self.temp_dir_path, "mixed_layers.gpkg") + '|layerid=0')
+        res = metadata.querySublayers(os.path.join(TEST_DATA_DIR, "mixed_layers.gpkg") + '|layerid=0')
         self.assertEqual(len(res), 1)
         self.assertEqual(res[0].layerNumber(), 0)
         self.assertEqual(res[0].name(), "points")
         self.assertEqual(res[0].description(), "")
-        self.assertEqual(res[0].uri(), f"{self.temp_dir_path}/mixed_layers.gpkg|layername=points")
+        self.assertEqual(res[0].uri(), f"{TEST_DATA_DIR}/mixed_layers.gpkg|layername=points")
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
         self.assertEqual(res[0].featureCount(), Qgis.FeatureCountState.Uncounted)
-        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Point)
         self.assertEqual(res[0].geometryColumnName(), 'geometry')
         self.assertEqual(res[0].driverName(), 'GPKG')
         vl = res[0].toLayer(options)
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.Point)
 
-        res = metadata.querySublayers(os.path.join(self.temp_dir_path, "mixed_layers.gpkg") + '|layerid=1')
+        res = metadata.querySublayers(os.path.join(TEST_DATA_DIR, "mixed_layers.gpkg") + '|layerid=1')
         self.assertEqual(len(res), 1)
         self.assertEqual(res[0].layerNumber(), 1)
         self.assertEqual(res[0].name(), "lines")
         self.assertEqual(res[0].description(), "")
-        self.assertEqual(res[0].uri(), f"{self.temp_dir_path}/mixed_layers.gpkg|layername=lines")
+        self.assertEqual(res[0].uri(), f"{TEST_DATA_DIR}/mixed_layers.gpkg|layername=lines")
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
         self.assertEqual(res[0].featureCount(), Qgis.FeatureCountState.Uncounted)
-        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Type.MultiLineString)
+        self.assertEqual(res[0].wkbType(), QgsWkbTypes.MultiLineString)
         self.assertEqual(res[0].geometryColumnName(), 'geom')
         self.assertEqual(res[0].driverName(), 'GPKG')
         vl = res[0].toLayer(options)
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.MultiLineString)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.MultiLineString)
 
-        res = metadata.querySublayers(os.path.join(self.temp_dir_path, "mixed_layers.gpkg") + '|layername=points')
+        res = metadata.querySublayers(os.path.join(TEST_DATA_DIR, "mixed_layers.gpkg") + '|layername=points')
         self.assertEqual(len(res), 1)
         self.assertEqual(res[0].layerNumber(), 0)
         self.assertEqual(res[0].name(), "points")
         self.assertEqual(res[0].description(), "")
-        self.assertEqual(res[0].uri(), f"{self.temp_dir_path}/mixed_layers.gpkg|layername=points")
+        self.assertEqual(res[0].uri(), f"{TEST_DATA_DIR}/mixed_layers.gpkg|layername=points")
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
         self.assertEqual(res[0].featureCount(), Qgis.FeatureCountState.Uncounted)
-        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Point)
         self.assertEqual(res[0].geometryColumnName(), 'geometry')
         self.assertEqual(res[0].driverName(), 'GPKG')
         vl = res[0].toLayer(options)
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.Point)
 
-        res = metadata.querySublayers(os.path.join(self.temp_dir_path, "mixed_layers.gpkg") + '|layername=lines')
+        res = metadata.querySublayers(os.path.join(TEST_DATA_DIR, "mixed_layers.gpkg") + '|layername=lines')
         self.assertEqual(len(res), 1)
         self.assertEqual(res[0].layerNumber(), 1)
         self.assertEqual(res[0].name(), "lines")
         self.assertEqual(res[0].description(), "")
-        self.assertEqual(res[0].uri(), f"{self.temp_dir_path}/mixed_layers.gpkg|layername=lines")
+        self.assertEqual(res[0].uri(), f"{TEST_DATA_DIR}/mixed_layers.gpkg|layername=lines")
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
         self.assertEqual(res[0].featureCount(), Qgis.FeatureCountState.Uncounted)
-        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Type.MultiLineString)
+        self.assertEqual(res[0].wkbType(), QgsWkbTypes.MultiLineString)
         self.assertEqual(res[0].geometryColumnName(), 'geom')
         self.assertEqual(res[0].driverName(), 'GPKG')
         vl = res[0].toLayer(options)
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.MultiLineString)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.MultiLineString)
 
         # layer with mixed geometry types - without resolving geometry types
         res = metadata.querySublayers(os.path.join(TEST_DATA_DIR, "mixed_types.TAB"))
@@ -2068,7 +2000,7 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
         self.assertEqual(res[0].featureCount(), Qgis.FeatureCountState.Uncounted)
-        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Type.Unknown)
+        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Unknown)
         self.assertEqual(res[0].geometryColumnName(), '')
         self.assertEqual(res[0].driverName(), 'MapInfo File')
         vl = res[0].toLayer(options)
@@ -2084,7 +2016,7 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
         self.assertEqual(res[0].featureCount(), 13)
-        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Type.Unknown)
+        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Unknown)
         self.assertEqual(res[0].geometryColumnName(), '')
         self.assertEqual(res[0].driverName(), 'MapInfo File')
 
@@ -2098,12 +2030,12 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
         self.assertEqual(res[0].featureCount(), 4)
-        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Point)
         self.assertEqual(res[0].geometryColumnName(), '')
         self.assertEqual(res[0].driverName(), 'MapInfo File')
         vl = res[0].toLayer(options)
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.Point)
 
         self.assertEqual(res[1].layerNumber(), 0)
         self.assertEqual(res[1].name(), "mixed_types")
@@ -2112,12 +2044,12 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(res[1].providerKey(), "ogr")
         self.assertEqual(res[1].type(), QgsMapLayerType.VectorLayer)
         self.assertEqual(res[1].featureCount(), 4)
-        self.assertEqual(res[1].wkbType(), QgsWkbTypes.Type.LineString)
+        self.assertEqual(res[1].wkbType(), QgsWkbTypes.LineString)
         self.assertEqual(res[1].geometryColumnName(), '')
         self.assertEqual(res[1].driverName(), 'MapInfo File')
         vl = res[1].toLayer(options)
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.LineString)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.LineString)
 
         self.assertEqual(res[2].layerNumber(), 0)
         self.assertEqual(res[2].name(), "mixed_types")
@@ -2126,12 +2058,12 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(res[2].providerKey(), "ogr")
         self.assertEqual(res[2].type(), QgsMapLayerType.VectorLayer)
         self.assertEqual(res[2].featureCount(), 3)
-        self.assertEqual(res[2].wkbType(), QgsWkbTypes.Type.Polygon)
+        self.assertEqual(res[2].wkbType(), QgsWkbTypes.Polygon)
         self.assertEqual(res[2].geometryColumnName(), '')
         self.assertEqual(res[2].driverName(), 'MapInfo File')
         vl = res[2].toLayer(options)
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.Polygon)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.Polygon)
 
         # a layer which reports unknown geometry type and requires a full table scan to resolve, but which only
         # contains a single type of geometry
@@ -2145,12 +2077,12 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
         self.assertEqual(res[0].featureCount(), 49)
-        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Type.Polygon)
+        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Polygon)
         self.assertEqual(res[0].geometryColumnName(), '')
         self.assertEqual(res[0].driverName(), 'MapInfo File')
         vl = res[0].toLayer(options)
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.Polygon)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.Polygon)
 
         # same, but don't resolve geometry types
         res = metadata.querySublayers(os.path.join(TEST_DATA_DIR, "mapinfo", "fill_styles.TAB"))
@@ -2162,12 +2094,12 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
         self.assertEqual(res[0].featureCount(), Qgis.FeatureCountState.Uncounted)
-        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Type.Unknown)
+        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Unknown)
         self.assertEqual(res[0].geometryColumnName(), '')
         self.assertEqual(res[0].driverName(), 'MapInfo File')
         vl = res[0].toLayer(options)
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.Polygon)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.Polygon)
 
         # mixed types source, but with a URI which specifies a particular type. Only this type should be returned
         res = metadata.querySublayers(os.path.join(TEST_DATA_DIR, "mixed_types.TAB|geometrytype=Point"),
@@ -2180,12 +2112,12 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
         self.assertEqual(res[0].featureCount(), 4)
-        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Point)
         self.assertEqual(res[0].geometryColumnName(), '')
         self.assertEqual(res[0].driverName(), 'MapInfo File')
         vl = res[0].toLayer(options)
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.Point)
 
         res = metadata.querySublayers(os.path.join(TEST_DATA_DIR, "mixed_types.TAB|geometrytype=LineString"),
                                       Qgis.SublayerQueryFlag.ResolveGeometryType)
@@ -2197,12 +2129,12 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
         self.assertEqual(res[0].featureCount(), 4)
-        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Type.LineString)
+        self.assertEqual(res[0].wkbType(), QgsWkbTypes.LineString)
         self.assertEqual(res[0].geometryColumnName(), '')
         self.assertEqual(res[0].driverName(), 'MapInfo File')
         vl = res[0].toLayer(options)
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.LineString)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.LineString)
 
         res = metadata.querySublayers(os.path.join(TEST_DATA_DIR, "mixed_types.TAB|geometrytype=Polygon"),
                                       Qgis.SublayerQueryFlag.ResolveGeometryType)
@@ -2214,12 +2146,12 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
         self.assertEqual(res[0].featureCount(), 3)
-        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Type.Polygon)
+        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Polygon)
         self.assertEqual(res[0].geometryColumnName(), '')
         self.assertEqual(res[0].driverName(), 'MapInfo File')
         vl = res[0].toLayer(options)
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.Polygon)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.Polygon)
 
         # same as above, but without ResolveGeometryType flag
         res = metadata.querySublayers(os.path.join(TEST_DATA_DIR, "mixed_types.TAB|geometrytype=Point"))
@@ -2231,12 +2163,12 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
         self.assertEqual(res[0].featureCount(), Qgis.FeatureCountState.Uncounted)
-        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Point)
         self.assertEqual(res[0].geometryColumnName(), '')
         self.assertEqual(res[0].driverName(), 'MapInfo File')
         vl = res[0].toLayer(options)
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.Point)
 
         res = metadata.querySublayers(os.path.join(TEST_DATA_DIR, "mixed_types.TAB|geometrytype=LineString"))
         self.assertEqual(len(res), 1)
@@ -2247,12 +2179,12 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
         self.assertEqual(res[0].featureCount(), Qgis.FeatureCountState.Uncounted)
-        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Type.LineString)
+        self.assertEqual(res[0].wkbType(), QgsWkbTypes.LineString)
         self.assertEqual(res[0].geometryColumnName(), '')
         self.assertEqual(res[0].driverName(), 'MapInfo File')
         vl = res[0].toLayer(options)
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.LineString)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.LineString)
 
         res = metadata.querySublayers(os.path.join(TEST_DATA_DIR, "mixed_types.TAB|geometrytype=Polygon"))
         self.assertEqual(len(res), 1)
@@ -2263,12 +2195,12 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
         self.assertEqual(res[0].featureCount(), Qgis.FeatureCountState.Uncounted)
-        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Type.Polygon)
+        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Polygon)
         self.assertEqual(res[0].geometryColumnName(), '')
         self.assertEqual(res[0].driverName(), 'MapInfo File')
         vl = res[0].toLayer(options)
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.Polygon)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.Polygon)
 
         # spatialite
         res = metadata.querySublayers(os.path.join(TEST_DATA_DIR, "provider/spatialite.db"))
@@ -2376,7 +2308,7 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(res[0].layerNumber(), 0)
         self.assertEqual(res[0].name(), "ARC")
         self.assertEqual(res[0].description(), "")
-        self.assertEqual(res[0].uri(), f"{os.path.join(TEST_DATA_DIR, 'esri_coverage', 'testpolyavc')}|layername=ARC")
+        self.assertEqual(res[0].uri(), '{}|layername=ARC'.format(os.path.join(TEST_DATA_DIR, 'esri_coverage', 'testpolyavc')))
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
         self.assertFalse(res[0].skippedContainerScan())
@@ -2433,29 +2365,29 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(res[0].uri(), TEST_DATA_DIR + "/multipatch.shp")
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
-        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Type.Unknown)
+        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Unknown)
         self.assertEqual(res[0].geometryColumnName(), '')
         self.assertFalse(res[0].skippedContainerScan())
 
         # single layer geopackage -- sublayers MUST have the layerName set on the uri,
         # in case more layers are added in future to the gpkg
-        res = metadata.querySublayers(os.path.join(self.temp_dir_path, 'curved_polys.gpkg'), Qgis.SublayerQueryFlag.FastScan)
+        res = metadata.querySublayers(os.path.join(TEST_DATA_DIR, 'curved_polys.gpkg'), Qgis.SublayerQueryFlag.FastScan)
         self.assertEqual(len(res), 1)
         self.assertEqual(res[0].layerNumber(), 0)
         self.assertEqual(res[0].name(), "curved_polys")
         self.assertEqual(res[0].description(), '')
-        self.assertEqual(res[0].uri(), self.temp_dir_path + "/curved_polys.gpkg")
+        self.assertEqual(res[0].uri(), TEST_DATA_DIR + "/curved_polys.gpkg")
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
         self.assertTrue(res[0].skippedContainerScan())
 
         # geopackage with two vector layers
-        res = metadata.querySublayers(os.path.join(self.temp_dir_path, "mixed_layers.gpkg"), Qgis.SublayerQueryFlag.FastScan)
+        res = metadata.querySublayers(os.path.join(TEST_DATA_DIR, "mixed_layers.gpkg"), Qgis.SublayerQueryFlag.FastScan)
         self.assertEqual(len(res), 1)
         self.assertEqual(res[0].layerNumber(), 0)
         self.assertEqual(res[0].name(), "mixed_layers")
         self.assertEqual(res[0].description(), "")
-        self.assertEqual(res[0].uri(), f"{self.temp_dir_path}/mixed_layers.gpkg")
+        self.assertEqual(res[0].uri(), f"{TEST_DATA_DIR}/mixed_layers.gpkg")
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
         self.assertTrue(res[0].skippedContainerScan())
@@ -2529,7 +2461,7 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(res[0].layerNumber(), 0)
         self.assertEqual(res[0].name(), "ARC")
         self.assertEqual(res[0].description(), "")
-        self.assertEqual(res[0].uri(), f"{os.path.join(TEST_DATA_DIR, 'esri_coverage', 'testpolyavc')}|layername=ARC")
+        self.assertEqual(res[0].uri(), '{}|layername=ARC'.format(os.path.join(TEST_DATA_DIR, 'esri_coverage', 'testpolyavc')))
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
         self.assertFalse(res[0].skippedContainerScan())
@@ -2543,12 +2475,12 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(res[0].uri(), '/vsizip/' + TEST_DATA_DIR + "/zip/points2.zip/points.shp")
         self.assertEqual(res[0].providerKey(), "ogr")
         self.assertEqual(res[0].type(), QgsMapLayerType.VectorLayer)
-        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Type.Unknown)
+        self.assertEqual(res[0].wkbType(), QgsWkbTypes.Unknown)
         self.assertEqual(res[0].geometryColumnName(), '')
         options = QgsProviderSublayerDetails.LayerOptions(QgsCoordinateTransformContext())
         vl = res[0].toLayer(options)
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.Point)
 
         # zip file layer vector, explicit file in zip which is NOT a OGR supported source
         res = metadata.querySublayers('/vsizip/' + TEST_DATA_DIR + '/zip/points2.zip/points.qml', Qgis.SublayerQueryFlag.FastScan)
@@ -2659,7 +2591,7 @@ class PyQgsOGRProvider(QgisTestCase):
 
         vl = QgsVectorLayer(f'{datasource}|option:X_POSSIBLE_NAMES=Longitude|option:Y_POSSIBLE_NAMES=Latitude', 'test', 'ogr')
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.Point)
 
         f = vl.getFeature(1)
         self.assertEqual(f.geometry().asWkt(), 'Point (1 1)')
@@ -2676,26 +2608,26 @@ class PyQgsOGRProvider(QgisTestCase):
         options = QgsProviderSublayerDetails.LayerOptions(QgsCoordinateTransformContext())
 
         for ld in layers:
-            if ld.wkbType() == QgsWkbTypes.Type.PointZ:
+            if ld.wkbType() == QgsWkbTypes.PointZ:
                 point_layer = ld.toLayer(options)
-            if ld.wkbType() == QgsWkbTypes.Type.LineStringZ:
+            if ld.wkbType() == QgsWkbTypes.LineStringZ:
                 polyline_layer = ld.toLayer(options)
 
         self.assertTrue(point_layer.isValid())
         self.assertEqual(point_layer.featureCount(), 11)
         feature = next(point_layer.getFeatures())
         self.assertTrue(feature.isValid())
-        self.assertEqual(feature.geometry().wkbType(), QgsWkbTypes.Type.PointZ)
+        self.assertEqual(feature.geometry().wkbType(), QgsWkbTypes.PointZ)
         self.assertEqual(feature.geometry().asWkt(),
-                         'Point Z (635660.10747100005391985 1768912.79759799991734326 3.36980799999999991)')
+                         'PointZ (635660.10747100005391985 1768912.79759799991734326 3.36980799999999991)')
 
         self.assertTrue(polyline_layer.isValid())
         self.assertEqual(polyline_layer.featureCount(), 2)
         feature = next(polyline_layer.getFeatures())
         self.assertTrue(feature.isValid())
-        self.assertEqual(feature.geometry().wkbType(), QgsWkbTypes.Type.LineStringZ)
+        self.assertEqual(feature.geometry().wkbType(), QgsWkbTypes.LineStringZ)
         self.assertEqual(feature.geometry().vertexAt(1).asWkt(),
-                         'Point Z (635660.11699699994642287 1768910.93880999996326864 3.33884099999999995)')
+                         'PointZ (635660.11699699994642287 1768910.93880999996326864 3.33884099999999995)')
 
     def test_provider_connection_shp(self):
         """
@@ -2717,7 +2649,7 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(table.geometryColumnCount(), 1)
         self.assertEqual(len(table.geometryColumnTypes()), 1)
         self.assertEqual(table.geometryColumnTypes()[0].crs, layer.crs())
-        self.assertEqual(table.geometryColumnTypes()[0].wkbType, QgsWkbTypes.Type.LineString)
+        self.assertEqual(table.geometryColumnTypes()[0].wkbType, QgsWkbTypes.LineString)
         self.assertEqual(table.flags(), QgsAbstractDatabaseProviderConnection.TableFlag.Vector)
 
         tables = conn.tables('unused')
@@ -2728,7 +2660,7 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(table.geometryColumnCount(), 1)
         self.assertEqual(len(table.geometryColumnTypes()), 1)
         self.assertEqual(table.geometryColumnTypes()[0].crs, layer.crs())
-        self.assertEqual(table.geometryColumnTypes()[0].wkbType, QgsWkbTypes.Type.LineString)
+        self.assertEqual(table.geometryColumnTypes()[0].wkbType, QgsWkbTypes.LineString)
         self.assertEqual(table.flags(), QgsAbstractDatabaseProviderConnection.TableFlag.Vector)
 
     def test_provider_connection_gdb(self):
@@ -2750,7 +2682,7 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(table.primaryKeyColumns(), ['OBJECTID'])
         self.assertEqual(table.geometryColumnCount(), 1)
         self.assertEqual(len(table.geometryColumnTypes()), 1)
-        self.assertEqual(table.geometryColumnTypes()[0].wkbType, QgsWkbTypes.Type.MultiPolygon)
+        self.assertEqual(table.geometryColumnTypes()[0].wkbType, QgsWkbTypes.MultiPolygon)
         self.assertEqual(table.flags(), QgsAbstractDatabaseProviderConnection.TableFlag.Vector)
 
         # aspatial table
@@ -2770,7 +2702,7 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(table.primaryKeyColumns(), ['OBJECTID'])
         self.assertEqual(table.geometryColumnCount(), 1)
         self.assertEqual(len(table.geometryColumnTypes()), 1)
-        self.assertEqual(table.geometryColumnTypes()[0].wkbType, QgsWkbTypes.Type.Point)
+        self.assertEqual(table.geometryColumnTypes()[0].wkbType, QgsWkbTypes.Point)
         self.assertEqual(table.flags(), QgsAbstractDatabaseProviderConnection.TableFlag.Vector)
 
     def testCreateEmptyDatabase(self):
@@ -2835,21 +2767,21 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(rel.id(), 'simple_relationship_one_to_one')
         self.assertEqual(rel.referencedLayer(), table1)
         self.assertEqual(rel.referencingLayer(), table2)
-        self.assertEqual(rel.strength(), QgsRelation.RelationStrength.Association)
+        self.assertEqual(rel.strength(), QgsRelation.Association)
         self.assertEqual(rel.fieldPairs(), {'parent_pk': 'pk'})
 
         rel = [r for r in relations if r.name() == 'simple_one_to_many'][0]
         self.assertEqual(rel.id(), 'simple_one_to_many')
         self.assertEqual(rel.referencedLayer(), table1)
         self.assertEqual(rel.referencingLayer(), table2)
-        self.assertEqual(rel.strength(), QgsRelation.RelationStrength.Association)
+        self.assertEqual(rel.strength(), QgsRelation.Association)
         self.assertEqual(rel.fieldPairs(), {'parent_pk': 'pk'})
 
         rel = [r for r in relations if r.name() == 'composite_one_to_one'][0]
         self.assertEqual(rel.id(), 'composite_one_to_one')
         self.assertEqual(rel.referencedLayer(), table1)
         self.assertEqual(rel.referencingLayer(), table3)
-        self.assertEqual(rel.strength(), QgsRelation.RelationStrength.Composition)
+        self.assertEqual(rel.strength(), QgsRelation.Composition)
         self.assertEqual(rel.fieldPairs(), {'parent_pk': 'pk'})
 
         rel = [r for r in relations if r.id() == 'simple_many_to_many_forward'][0]
@@ -2857,7 +2789,7 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(rel.id(), 'simple_many_to_many_forward')
         self.assertEqual(rel.referencedLayer(), table1)
         self.assertEqual(rel.referencingLayer(), simple_many_to_many)
-        self.assertEqual(rel.strength(), QgsRelation.RelationStrength.Association)
+        self.assertEqual(rel.strength(), QgsRelation.Association)
         self.assertEqual(rel.fieldPairs(), {'origin_foreign_key': 'pk'})
 
         rel = [r for r in relations if r.id() == 'simple_many_to_many_backward'][0]
@@ -2865,7 +2797,7 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(rel.id(), 'simple_many_to_many_backward')
         self.assertEqual(rel.referencedLayer(), table2)
         self.assertEqual(rel.referencingLayer(), simple_many_to_many)
-        self.assertEqual(rel.strength(), QgsRelation.RelationStrength.Association)
+        self.assertEqual(rel.strength(), QgsRelation.Association)
         self.assertEqual(rel.fieldPairs(), {'destination_foreign_key': 'parent_pk'})
 
         relations = table6.dataProvider().discoverRelations(table6, all_tables)
@@ -2875,14 +2807,14 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(rel.id(), 'composite_many_to_many_forward')
         self.assertEqual(rel.referencedLayer(), table6)
         self.assertEqual(rel.referencingLayer(), composite_many_to_many)
-        self.assertEqual(rel.strength(), QgsRelation.RelationStrength.Composition)
+        self.assertEqual(rel.strength(), QgsRelation.Composition)
         self.assertEqual(rel.fieldPairs(), {'origin_foreign_key': 'pk'})
 
         rel = [r for r in relations if r.id() == 'composite_many_to_many_backward'][0]
         self.assertEqual(rel.id(), 'composite_many_to_many_backward')
         self.assertEqual(rel.referencedLayer(), table7)
         self.assertEqual(rel.referencingLayer(), composite_many_to_many)
-        self.assertEqual(rel.strength(), QgsRelation.RelationStrength.Composition)
+        self.assertEqual(rel.strength(), QgsRelation.Composition)
         self.assertEqual(rel.fieldPairs(), {'dest_foreign_key': 'parent_pk'})
 
         relations = table8.dataProvider().discoverRelations(table8, all_tables)
@@ -2892,7 +2824,7 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(rel.id(), 'simple_attributed')
         self.assertEqual(rel.referencedLayer(), table8)
         self.assertEqual(rel.referencingLayer(), table9)
-        self.assertEqual(rel.strength(), QgsRelation.RelationStrength.Association)
+        self.assertEqual(rel.strength(), QgsRelation.Association)
         self.assertEqual(rel.fieldPairs(), {'parent_pk': 'pk'})
 
         relations = points.dataProvider().discoverRelations(points, all_tables)
@@ -2902,87 +2834,8 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(rel.id(), 'points__ATTACHREL')
         self.assertEqual(rel.referencedLayer(), points)
         self.assertEqual(rel.referencingLayer(), points__ATTACH)
-        self.assertEqual(rel.strength(), QgsRelation.RelationStrength.Composition)
+        self.assertEqual(rel.strength(), QgsRelation.Composition)
         self.assertEqual(rel.fieldPairs(), {'REL_OBJECTID': 'OBJECTID'})
-
-    def test_provider_connection_tables(self):
-        """
-        Test retrieving tables via the connections API
-        """
-        metadata = QgsProviderRegistry.instance().providerMetadata('ogr')
-        # start with a connection which only supports one layer
-        conn = metadata.createConnection(TEST_DATA_DIR + '/' + 'relationships.gdb', {})
-        self.assertTrue(conn)
-
-        # don't want system tables included
-        self.assertCountEqual([t.tableName() for t in conn.tables()],
-                              ['table1', 'table2', 'table3', 'table4', 'table6', 'table7',
-                               'table8', 'table9', 'points', 'points__ATTACH',
-                               'composite_many_to_many', 'simple_attributed',
-                               'simple_many_to_many'])
-        # DO want system tables included
-        self.assertCountEqual([t.tableName() for t in conn.tables('',
-                                                                  QgsAbstractDatabaseProviderConnection.TableFlag.Aspatial | QgsAbstractDatabaseProviderConnection.TableFlag.Vector | QgsAbstractDatabaseProviderConnection.TableFlag.IncludeSystemTables)],
-                              ['table1', 'table2', 'table3', 'table4', 'table6', 'table7',
-                               'table8', 'table9', 'points', 'points__ATTACH',
-                               'composite_many_to_many', 'simple_attributed',
-                               'simple_many_to_many', 'GDB_DBTune', 'GDB_ItemRelationshipTypes',
-                               'GDB_ItemRelationships', 'GDB_ItemTypes', 'GDB_Items',
-                               'GDB_SpatialRefs', 'GDB_SystemCatalog'])
-
-    def test_provider_connection_illegal_fields(self):
-        """
-        Test retrieving illegal field names via the connections API
-        """
-        metadata = QgsProviderRegistry.instance().providerMetadata('ogr')
-        # start with a connection which only supports one layer
-        conn = metadata.createConnection(TEST_DATA_DIR + '/' + 'relationships.gdb', {})
-        self.assertTrue(conn)
-
-        self.assertEqual(conn.illegalFieldNames(),
-                         {'ALTER', 'NULL', 'UPDATE', 'LIKE', 'FROM', 'WHERE', 'INSERT', 'CREATE',
-                          'EXISTS', 'ORDER', 'DROP', 'TABLE', 'BETWEEN', 'SELECT', 'FOR', 'ADD',
-                          'IS', 'GROUP', 'COLUMN', 'DELETE', 'VALUES', 'IN', 'NOT', 'BY', 'OR',
-                          'INTO', 'AND', 'SET'})
-
-    def test_provider_related_table_types(self):
-        """
-        Test retrieving related table types
-        """
-        metadata = QgsProviderRegistry.instance().providerMetadata('ogr')
-        # GDB
-        conn = metadata.createConnection(TEST_DATA_DIR + '/' + 'relationships.gdb', {})
-        self.assertCountEqual(conn.relatedTableTypes(), ['media', 'features'])
-        # GPKG
-        conn = metadata.createConnection(self.temp_dir_path + '/' + 'domains.gpkg', {})
-        self.assertCountEqual(conn.relatedTableTypes(), ['media', 'features', 'simple_attributes', 'attributes', 'tiles'])
-        # other (not supported)
-        conn = metadata.createConnection(TEST_DATA_DIR + '/' + 'lines.shp', {})
-        self.assertEqual(conn.relatedTableTypes(), [])
-
-    @unittest.skipIf(int(gdal.VersionInfo('VERSION_NUM')) < GDAL_COMPUTE_VERSION(3, 6, 0), "GDAL 3.6 required")
-    def test_provider_relationship_capabilities(self):
-        """
-        Test retrieving relationship capabilities
-        """
-        metadata = QgsProviderRegistry.instance().providerMetadata('ogr')
-        # GDB
-        conn = metadata.createConnection(TEST_DATA_DIR + '/' + 'relationships.gdb', {})
-        self.assertCountEqual(conn.supportedRelationshipCardinalities(), [Qgis.RelationshipCardinality.OneToMany, Qgis.RelationshipCardinality.ManyToMany, Qgis.RelationshipCardinality.OneToOne])
-        self.assertCountEqual(conn.supportedRelationshipStrengths(), [Qgis.RelationshipStrength.Composition, Qgis.RelationshipStrength.Association])
-        self.assertEqual(conn.supportedRelationshipCapabilities(), Qgis.RelationshipCapabilities(Qgis.RelationshipCapability.ForwardPathLabel | Qgis.RelationshipCapability.BackwardPathLabel))
-
-        # GPKG
-        conn = metadata.createConnection(self.temp_dir_path + '/' + 'domains.gpkg', {})
-        self.assertCountEqual(conn.supportedRelationshipCardinalities(), [Qgis.RelationshipCardinality.ManyToMany])
-        self.assertCountEqual(conn.supportedRelationshipStrengths(), [Qgis.RelationshipStrength.Association])
-        self.assertEqual(conn.supportedRelationshipCapabilities(), Qgis.RelationshipCapabilities())
-
-        # other (not supported)
-        conn = metadata.createConnection(TEST_DATA_DIR + '/' + 'lines.shp', {})
-        self.assertCountEqual(conn.supportedRelationshipCardinalities(), [])
-        self.assertCountEqual(conn.supportedRelationshipStrengths(), [])
-        self.assertEqual(conn.supportedRelationshipCapabilities(), Qgis.RelationshipCapabilities())
 
     @unittest.skipIf(int(gdal.VersionInfo('VERSION_NUM')) < GDAL_COMPUTE_VERSION(3, 6, 0), "GDAL 3.6 required")
     def test_provider_connection_relationships(self):
@@ -2994,7 +2847,7 @@ class PyQgsOGRProvider(QgisTestCase):
         conn = metadata.createConnection(TEST_DATA_DIR + '/' + 'relationships.gdb', {})
         self.assertTrue(conn)
 
-        self.assertTrue(conn.capabilities() & QgsAbstractDatabaseProviderConnection.Capability.RetrieveRelationships)
+        self.assertTrue(conn.capabilities() & QgsAbstractDatabaseProviderConnection.RetrieveRelationships)
 
         relationships = conn.relationships()
         self.assertCountEqual([r.id() for r in relationships],
@@ -3018,14 +2871,13 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(rel.referencingLayerSource(), TEST_DATA_DIR + '/' + 'relationships.gdb|layername=table2')
         self.assertEqual(rel.referencingLayerProvider(), 'ogr')
         self.assertEqual(rel.referencingLayerName(), 'table2')
-        self.assertEqual(rel.strength(), QgsRelation.RelationStrength.Association)
+        self.assertEqual(rel.strength(), QgsRelation.Association)
         self.assertEqual(rel.referencingLayerFields(), ['parent_pk'])
         self.assertEqual(rel.referencedLayerFields(), ['pk'])
         self.assertEqual(rel.cardinality(), Qgis.RelationshipCardinality.OneToOne)
         self.assertEqual(rel.forwardPathLabel(), 'my forward path label')
         self.assertEqual(rel.backwardPathLabel(), 'my backward path label')
-        # result depends on gdal version
-        self.assertIn(rel.relatedTableType(), ('feature', 'features'))
+        self.assertEqual(rel.relatedTableType(), 'feature')
 
         rel = [r for r in relationships if r.id() == 'composite_many_to_many'][0]
         self.assertEqual(rel.id(), 'composite_many_to_many')
@@ -3039,7 +2891,7 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(rel.mappingTableSource(), TEST_DATA_DIR + '/' + 'relationships.gdb|layername=composite_many_to_many')
         self.assertEqual(rel.mappingTableProvider(), 'ogr')
         self.assertEqual(rel.mappingTableName(), 'composite_many_to_many')
-        self.assertEqual(rel.strength(), QgsRelation.RelationStrength.Composition)
+        self.assertEqual(rel.strength(), QgsRelation.Composition)
         self.assertEqual(rel.cardinality(), Qgis.RelationshipCardinality.ManyToMany)
         self.assertEqual(rel.referencingLayerFields(), ['parent_pk'])
         self.assertEqual(rel.mappingReferencingLayerFields(), ['dest_foreign_key'])
@@ -3057,109 +2909,13 @@ class PyQgsOGRProvider(QgisTestCase):
         self.assertEqual(rel.referencedLayerProvider(), 'ogr')
         self.assertEqual(rel.referencingLayerSource(), TEST_DATA_DIR + '/' + 'relationships.gdb|layername=table4')
         self.assertEqual(rel.referencingLayerProvider(), 'ogr')
-        self.assertEqual(rel.strength(), QgsRelation.RelationStrength.Composition)
+        self.assertEqual(rel.strength(), QgsRelation.Composition)
         self.assertEqual(rel.cardinality(), Qgis.RelationshipCardinality.OneToMany)
         self.assertEqual(rel.referencingLayerFields(), ['parent_pk'])
         self.assertEqual(rel.referencedLayerFields(), ['pk'])
 
         relationships = conn.relationships('', 'table2')
         self.assertFalse(relationships)
-
-    @unittest.skipIf(int(gdal.VersionInfo('VERSION_NUM')) < GDAL_COMPUTE_VERSION(3, 6, 0), "GDAL 3.6 required")
-    def test_provider_connection_modify_relationship(self):
-        """
-        Test creating relationship via the connections API
-        """
-        metadata = QgsProviderRegistry.instance().providerMetadata('ogr')
-        with tempfile.TemporaryDirectory() as temp_dir:
-            tmpfile = os.path.join(temp_dir, 'test_gdb.gdb')
-
-            ok, err = metadata.createDatabase(tmpfile)
-            self.assertTrue(ok)
-            self.assertFalse(err)
-
-            conn = metadata.createConnection(tmpfile, {})
-            self.assertTrue(conn)
-
-            conn.createVectorTable('', 'child', QgsFields(), QgsWkbTypes.Type.Point, QgsCoordinateReferenceSystem('EPSG:4326'), False, {})
-            layer = QgsVectorLayer(tmpfile + '|layername=child')
-            self.assertTrue(layer.isValid())
-
-            conn.createVectorTable('', 'parent', QgsFields(), QgsWkbTypes.Type.Point, QgsCoordinateReferenceSystem('EPSG:4326'), False, {})
-            layer = QgsVectorLayer(tmpfile + '|layername=parent')
-            self.assertTrue(layer.isValid())
-            del layer
-
-            self.assertTrue(
-                conn.capabilities() & QgsAbstractDatabaseProviderConnection.Capability.AddRelationship)
-
-            relationships = conn.relationships()
-            self.assertFalse(relationships)
-
-            rel = QgsWeakRelation('id',
-                                  'rel_name',
-                                  Qgis.RelationshipStrength.Association,
-                                  'referencing_id',
-                                  'referencing_name',
-                                  tmpfile + '|layername=child',
-                                  'ogr',
-                                  'referenced_id',
-                                  'referenced_name',
-                                  tmpfile + '|layername=parent',
-                                  'ogr'
-                                  )
-            rel.setReferencedLayerFields(['fielda'])
-            rel.setReferencingLayerFields(['fieldb'])
-
-            conn.addRelationship(rel)
-            relationships = conn.relationships()
-            self.assertEqual(len(relationships), 1)
-
-            result = relationships[0]
-            self.assertEqual(result.name(), 'rel_name')
-            self.assertEqual(result.referencingLayerSource(), tmpfile + '|layername=child')
-            self.assertEqual(result.referencedLayerSource(), tmpfile + '|layername=parent')
-            self.assertEqual(result.referencingLayerFields(), ['fieldb'])
-            self.assertEqual(result.referencedLayerFields(), ['fielda'])
-
-            # update relationship
-            rel.setReferencedLayerFields(['fieldc'])
-            rel.setReferencingLayerFields(['fieldd'])
-
-            conn.updateRelationship(rel)
-            relationships = conn.relationships()
-            self.assertEqual(len(relationships), 1)
-
-            result = relationships[0]
-            self.assertEqual(result.name(), 'rel_name')
-            self.assertEqual(result.referencingLayerSource(), tmpfile + '|layername=child')
-            self.assertEqual(result.referencedLayerSource(), tmpfile + '|layername=parent')
-            self.assertEqual(result.referencingLayerFields(), ['fieldd'])
-            self.assertEqual(result.referencedLayerFields(), ['fieldc'])
-
-            # try updating non-existing relationship
-            rel2 = QgsWeakRelation('id',
-                                   'nope',
-                                   Qgis.RelationshipStrength.Association,
-                                   'referencing_id',
-                                   'referencing_name',
-                                   tmpfile + '|layername=child',
-                                   'ogr',
-                                   'referenced_id',
-                                   'referenced_name',
-                                   tmpfile + '|layername=parent',
-                                   'ogr'
-                                   )
-            with self.assertRaises(QgsProviderConnectionException):
-                conn.updateRelationship(rel2)
-
-            # delete
-            with self.assertRaises(QgsProviderConnectionException):
-                conn.deleteRelationship(rel2)
-
-            conn.deleteRelationship(rel)
-            relationships = conn.relationships()
-            self.assertFalse(relationships)
 
     def testUniqueGeometryType(self):
         """
@@ -3179,7 +2935,7 @@ class PyQgsOGRProvider(QgisTestCase):
 
         vl = QgsVectorLayer(res[0].uri(), 'test', 'ogr')
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.Point)
         self.assertEqual(vl.featureCount(), 2)
         self.assertEqual(len([x for x in vl.getFeatures()]), 2)
 
@@ -3201,7 +2957,7 @@ class PyQgsOGRProvider(QgisTestCase):
 
         vl = QgsVectorLayer(res[0].uri(), 'test', 'ogr')
         self.assertTrue(vl.isValid())
-        self.assertEqual(vl.wkbType(), QgsWkbTypes.Type.NoGeometry)
+        self.assertEqual(vl.wkbType(), QgsWkbTypes.NoGeometry)
         self.assertEqual(vl.featureCount(), 2)
         self.assertEqual(len([x for x in vl.getFeatures()]), 2)
 
@@ -3239,436 +2995,6 @@ class PyQgsOGRProvider(QgisTestCase):
             2: ['2', 'feat 2', 'fid 2'],
             3: ['3', 'feat 3', 'fid 3']
         })
-
-    @unittest.skipIf(int(gdal.VersionInfo('VERSION_NUM')) < GDAL_COMPUTE_VERSION(3, 7, 0), "GDAL 3.7 required")
-    def test_provider_connection_set_field_alias(self):
-        """
-        Test setting field alias via the connections api
-        """
-        metadata = QgsProviderRegistry.instance().providerMetadata('ogr')
-        with tempfile.TemporaryDirectory() as temp_dir:
-            tmpfile = os.path.join(temp_dir, 'test_gdb.gdb')
-
-            ok, err = metadata.createDatabase(tmpfile)
-            self.assertTrue(ok)
-            self.assertFalse(err)
-
-            conn = metadata.createConnection(tmpfile, {})
-            self.assertTrue(conn)
-
-            fields = QgsFields()
-            field = QgsField('my_field', QVariant.String)
-            fields.append(field)
-            conn.createVectorTable('', 'test', fields, QgsWkbTypes.Type.Point, QgsCoordinateReferenceSystem('EPSG:4326'), False, {})
-            layer = QgsVectorLayer(tmpfile + '|layername=test')
-            self.assertTrue(layer.isValid())
-
-            del layer
-
-            self.assertTrue(
-                conn.capabilities2() & Qgis.DatabaseProviderConnectionCapability2.SetFieldAlias)
-
-            # field does not exist
-            with self.assertRaises(QgsProviderConnectionException):
-                conn.setFieldAlias('not field', '', 'test', 'my alias')
-
-            conn.setFieldAlias('my_field', '', 'test', 'my alias')
-
-            layer = QgsVectorLayer(tmpfile + '|layername=test')
-            self.assertTrue(layer.isValid())
-
-            fields = layer.fields()
-            self.assertEqual(fields['my_field'].alias(), 'my alias')
-
-    @unittest.skipIf(int(gdal.VersionInfo('VERSION_NUM')) < GDAL_COMPUTE_VERSION(3, 7, 0), "GDAL 3.7 required")
-    def test_provider_connection_set_field_comment(self):
-        """
-        Test setting field comments via the connections api
-        """
-        metadata = QgsProviderRegistry.instance().providerMetadata('ogr')
-        with tempfile.TemporaryDirectory() as temp_dir:
-            tmpfile = os.path.join(temp_dir, 'test_gpkg.gpkg')
-
-            ok, err = metadata.createDatabase(tmpfile)
-            self.assertTrue(ok)
-            self.assertFalse(err)
-
-            conn = metadata.createConnection(tmpfile, {})
-            self.assertTrue(conn)
-
-            fields = QgsFields()
-            field = QgsField('my_field', QVariant.String)
-            fields.append(field)
-            conn.createVectorTable('', 'test', fields, QgsWkbTypes.Type.Point, QgsCoordinateReferenceSystem('EPSG:4326'), False, {})
-            layer = QgsVectorLayer(tmpfile + '|layername=test')
-            self.assertTrue(layer.isValid())
-
-            del layer
-
-            self.assertTrue(
-                conn.capabilities2() & Qgis.DatabaseProviderConnectionCapability2.SetFieldComment)
-
-            # field does not exist
-            with self.assertRaises(QgsProviderConnectionException):
-                conn.setFieldComment('not field', '', 'test', 'my comment')
-
-            conn.setFieldComment('my_field', '', 'test', 'my comment')
-
-            layer = QgsVectorLayer(tmpfile + '|layername=test')
-            self.assertTrue(layer.isValid())
-
-            fields = layer.fields()
-            self.assertEqual(fields['my_field'].comment(), 'my comment')
-
-    @unittest.skipIf(int(gdal.VersionInfo('VERSION_NUM')) < GDAL_COMPUTE_VERSION(3, 7, 0), "GDAL 3.7 required")
-    def test_provider_set_field_alias(self):
-        """
-        Test setting field alias via the vector data provider api
-        """
-        metadata = QgsProviderRegistry.instance().providerMetadata('ogr')
-        with tempfile.TemporaryDirectory() as temp_dir:
-            tmpfile = os.path.join(temp_dir, 'test_gdb.gdb')
-
-            ok, err = metadata.createDatabase(tmpfile)
-            self.assertTrue(ok)
-            self.assertFalse(err)
-
-            conn = metadata.createConnection(tmpfile, {})
-            self.assertTrue(conn)
-
-            fields = QgsFields()
-            field = QgsField('my_field', QVariant.String)
-            field.setAlias('my alias')
-            fields.append(field)
-            conn.createVectorTable('', 'test', fields, QgsWkbTypes.Type.Point, QgsCoordinateReferenceSystem('EPSG:4326'), False, {})
-            layer = QgsVectorLayer(tmpfile + '|layername=test')
-            self.assertTrue(layer.isValid())
-
-            fields = layer.fields()
-            self.assertEqual(fields['my_field'].alias(), 'my alias')
-
-            self.assertTrue(
-                layer.dataProvider().attributeEditCapabilities() & Qgis.VectorDataProviderAttributeEditCapability.EditAlias)
-
-            field2 = QgsField('my_field2', QVariant.String)
-            field2.setAlias('my alias2')
-
-            self.assertTrue(layer.dataProvider().addAttributes([field2]))
-
-            del layer
-
-            layer = QgsVectorLayer(tmpfile + '|layername=test')
-            self.assertTrue(layer.isValid())
-
-            fields = layer.fields()
-            self.assertEqual(fields['my_field'].alias(), 'my alias')
-            self.assertEqual(fields['my_field2'].alias(), 'my alias2')
-
-    @unittest.skipIf(int(gdal.VersionInfo('VERSION_NUM')) < GDAL_COMPUTE_VERSION(3, 7, 0), "GDAL 3.7 required")
-    def test_provider_set_field_comment(self):
-        """
-        Test setting field comments via the vector data provider api
-        """
-        metadata = QgsProviderRegistry.instance().providerMetadata('ogr')
-        with tempfile.TemporaryDirectory() as temp_dir:
-            tmpfile = os.path.join(temp_dir, 'test_gpkg.gpkg')
-
-            ok, err = metadata.createDatabase(tmpfile)
-            self.assertTrue(ok)
-            self.assertFalse(err)
-
-            conn = metadata.createConnection(tmpfile, {})
-            self.assertTrue(conn)
-
-            fields = QgsFields()
-            field = QgsField('my_field', QVariant.String)
-            field.setComment('my comment')
-            fields.append(field)
-            conn.createVectorTable('', 'test', fields, QgsWkbTypes.Type.Point, QgsCoordinateReferenceSystem('EPSG:4326'), False, {})
-            layer = QgsVectorLayer(tmpfile + '|layername=test')
-            self.assertTrue(layer.isValid())
-
-            fields = layer.fields()
-            self.assertEqual(fields['my_field'].comment(), 'my comment')
-
-            self.assertTrue(
-                layer.dataProvider().attributeEditCapabilities() & Qgis.VectorDataProviderAttributeEditCapability.EditComment)
-
-            field2 = QgsField('my_field2', QVariant.String)
-            field2.setComment('my comment2')
-
-            self.assertTrue(layer.dataProvider().addAttributes([field2]))
-
-            del layer
-
-            layer = QgsVectorLayer(tmpfile + '|layername=test')
-            self.assertTrue(layer.isValid())
-
-            fields = layer.fields()
-            self.assertEqual(fields['my_field'].comment(), 'my comment')
-            self.assertEqual(fields['my_field2'].comment(), 'my comment2')
-
-    @unittest.skipIf(int(gdal.VersionInfo('VERSION_NUM')) < GDAL_COMPUTE_VERSION(3, 7, 0), "GDAL 3.7.0 required")
-    def testFieldComment(self):
-        """Test reading field comments"""
-        with tempfile.TemporaryDirectory() as dest_dir:
-            database_path = os.path.join(dest_dir, 'new_gpkg.gpkg')
-            ds = ogr.GetDriverByName('GPKG').CreateDataSource(database_path)
-            lyr = ds.CreateLayer('test', geom_type=ogr.wkbPoint)
-            lyr.CreateField(ogr.FieldDefn('field1', ogr.OFTString))
-            lyr.CreateField(ogr.FieldDefn('field2', ogr.OFTString))
-
-            ds.ExecuteSQL(
-                """CREATE TABLE gpkg_data_columns (
-          table_name TEXT NOT NULL,
-          column_name TEXT NOT NULL,
-          name TEXT,
-          title TEXT,
-          description TEXT,
-          mime_type TEXT,
-          constraint_name TEXT,
-          CONSTRAINT pk_gdc PRIMARY KEY (table_name, column_name),
-          CONSTRAINT gdc_tn UNIQUE (table_name, name)
-        )"""
-            )
-
-            ds.ExecuteSQL(
-                "INSERT INTO gpkg_data_columns('table_name', 'column_name', 'description') VALUES ('test', 'field1', 'my description')"
-            )
-
-            ds = None
-
-            vl = QgsVectorLayer(f'{database_path}|layername=test', 'test')
-            self.assertTrue(vl.isValid())
-
-            fields = vl.fields()
-
-            self.assertEqual(fields[0].name(), 'fid')
-
-            self.assertEqual(fields[1].name(), 'field1')
-            self.assertEqual(fields[1].comment(), 'my description')
-
-            self.assertEqual(fields[2].name(), 'field2')
-            self.assertEqual(fields[2].comment(), '')
-
-    @unittest.skipIf(int(gdal.VersionInfo('VERSION_NUM')) < GDAL_COMPUTE_VERSION(3, 7, 0), "GDAL 3.7 required")
-    def test_exporter_capabilities(self):
-        with tempfile.TemporaryDirectory() as temp_dir:
-            dest_file_name = os.path.join(temp_dir,
-                                          'test_gpkg.gpkg')
-
-            layer = QgsVectorLayer("point?crs=epsg:4326&field=id:integer",
-                                   "Scratch point layer", "memory")
-
-            exporter = QgsVectorLayerExporter(dest_file_name,
-                                              'ogr',
-                                              layer.fields(),
-                                              layer.wkbType(),
-                                              layer.crs())
-
-            self.assertTrue(
-                exporter.attributeEditCapabilities() & Qgis.VectorDataProviderAttributeEditCapability.EditAlias)
-            self.assertTrue(
-                exporter.attributeEditCapabilities() & Qgis.VectorDataProviderAttributeEditCapability.EditComment)
-
-            dest_file_name = os.path.join(temp_dir,
-                                          'test_shp.shp')
-
-            exporter = QgsVectorLayerExporter(dest_file_name,
-                                              'ogr',
-                                              layer.fields(),
-                                              layer.wkbType(),
-                                              layer.crs())
-
-            self.assertFalse(
-                exporter.attributeEditCapabilities() & Qgis.VectorDataProviderAttributeEditCapability.EditAlias)
-            self.assertFalse(
-                exporter.attributeEditCapabilities() & Qgis.VectorDataProviderAttributeEditCapability.EditComment)
-
-    @unittest.skipIf(int(gdal.VersionInfo('VERSION_NUM')) < GDAL_COMPUTE_VERSION(3, 7, 0), "GDAL 3.7 required")
-    def testGeoJsonMapType(self):
-        """Test issue GH #54966: Geojson and maps attribute not working"""
-
-        temp_dir = QTemporaryDir()
-        temp_path = temp_dir.path()
-        json_path = os.path.join(temp_path, 'test.json')
-
-        data = """
-        {
-          "type": "FeatureCollection",
-          "features": [
-            { "type": "Feature",
-              "properties": {
-                "style": {
-                    "color": "red"
-                },
-                "list": [1, 2]
-              },
-              "geometry": {
-                "type": "Point",
-                "coordinates": [ 13.318741, 38.106645 ]
-              }
-            }
-          ]
-        }"""
-
-        with open(json_path, 'w+') as f:
-            f.write(data)
-
-        vl = QgsVectorLayer(json_path, 'vl')
-        self.assertTrue(vl.isValid())
-        self.assertEqual(vl.fields()[0].type(), QVariant.Map)
-        self.assertEqual(vl.fields()[1].type(), QVariant.List)
-
-        f = next(vl.getFeatures())
-        fid = f.id()
-        self.assertEqual(fid, 0)
-        self.assertEqual(f.attributes()[1], [1, 2])
-
-        self.assertTrue(vl.dataProvider().changeAttributeValues({fid: {0: {"style": {"color": "green"}}}}))
-        vl = QgsVectorLayer(json_path, 'vl')
-        self.assertTrue(vl.isValid())
-        self.assertEqual(vl.fields()[0].type(), QVariant.Map)
-        f = next(vl.getFeatures())
-        self.assertEqual(f.attributes()[0], {'style': {'color': 'green'}})
-
-        f = QgsFeature(vl.fields())
-        f.setGeometry(QgsGeometry.fromWkt('POINT(15 40)'))
-        f.setAttribute(0, {'style': {'color': 'yellow'}})
-        self.assertTrue(vl.dataProvider().addFeatures([f]))
-        vl = QgsVectorLayer(json_path, 'vl')
-        self.assertTrue(vl.isValid())
-        self.assertEqual(vl.fields()[0].type(), QVariant.Map)
-        f = vl.getFeature(1)
-        self.assertEqual(f.attributes()[0], {'style': {'color': 'yellow'}})
-
-    @unittest.skipIf(int(gdal.VersionInfo('VERSION_NUM')) < GDAL_COMPUTE_VERSION(3, 8, 0), "GDAL 3.8 required")
-    def testDataCommentFileGeodatabase(self):
-
-        with tempfile.TemporaryDirectory() as temp_dir:
-            dest_file_name = os.path.join(temp_dir, 'testDataCommentFileGeodatabase.gdb')
-            ds = ogr.GetDriverByName("OpenFileGDB").CreateDataSource(dest_file_name)
-            ds.CreateLayer("test", geom_type=ogr.wkbPoint, options=["LAYER_ALIAS=my_alias"])
-            ds = None
-
-            vl = QgsVectorLayer(dest_file_name, 'vl')
-            self.assertEqual(vl.dataComment(), "my_alias")
-
-    def testExtentCsv(self):
-        # 2D points
-        datasource_2d = os.path.join(self.basetestpath, 'testExtent2D.csv')
-        with open(datasource_2d, 'w') as f:
-            f.write('id,WKT\n')
-            for i in range(9):
-                f.write(f'{i},POINT ({2 * i} {i - 3})\n')
-
-        vl = QgsVectorLayer(f'{datasource_2d}|layerid=0', 'test', 'ogr')
-        self.assertTrue(vl.isValid())
-        self.assertTrue(vl.featureCount(), 9)
-        self.assertEqual(vl.extent(), QgsRectangle(0, -3, 16, 5))
-        self.assertEqual(vl.extent3D(), QgsBox3D(0, -3, float('nan'), 16, 5, float('nan')))
-        del vl
-
-        os.unlink(datasource_2d)
-        self.assertFalse(os.path.exists(datasource_2d))
-
-        # 3D points
-        datasource_3d = os.path.join(self.basetestpath, 'testExtent3D.csv')
-        with open(datasource_3d, 'w') as f:
-            f.write('id,WKT\n')
-            for i in range(13):
-                f.write(f'{i},POINT Z({2 * i} {i - 3} {i - 5})\n')
-
-        vl = QgsVectorLayer(f'{datasource_3d}|layerid=0', 'test', 'ogr')
-        self.assertTrue(vl.isValid())
-        self.assertTrue(vl.featureCount(), 12)
-        self.assertEqual(vl.extent(), QgsRectangle(0, -3, 24, 9))
-        self.assertEqual(vl.extent3D(), QgsBox3D(0, -3, -5, 24, 9, 7))
-        del vl
-
-        os.unlink(datasource_3d)
-        self.assertFalse(os.path.exists(datasource_3d))
-
-    def testExtentShp(self):
-        # 2D points
-        vl = QgsVectorLayer(os.path.join(unitTestDataPath(), 'points.shp'), 'points', 'ogr')
-        self.assertTrue(vl.isValid())
-        self.assertTrue(vl.featureCount(), 9)
-        self.assertAlmostEqual(vl.extent().xMinimum(), -118.8888, places=3)
-        self.assertAlmostEqual(vl.extent().yMinimum(), 22.8002, places=3)
-        self.assertAlmostEqual(vl.extent().xMaximum(), -83.3333, places=3)
-        self.assertAlmostEqual(vl.extent().yMaximum(), 46.872, places=3)
-
-        self.assertAlmostEqual(vl.extent3D().xMinimum(), -118.8888, places=3)
-        self.assertAlmostEqual(vl.extent3D().yMinimum(), 22.8002, places=3)
-        self.assertTrue(math.isnan(vl.extent3D().zMinimum()))
-        self.assertAlmostEqual(vl.extent3D().xMaximum(), -83.3333, places=3)
-        self.assertAlmostEqual(vl.extent3D().yMaximum(), 46.872, places=3)
-        self.assertTrue(math.isnan(vl.extent3D().zMaximum()))
-        del vl
-
-        # 3D points
-        vl = QgsVectorLayer(os.path.join(unitTestDataPath(), '3d', 'points_with_z.shp'), 'points', 'ogr')
-        self.assertTrue(vl.isValid())
-        self.assertTrue(vl.featureCount(), 9)
-        self.assertAlmostEqual(vl.extent().xMinimum(), 321384.94, places=3)
-        self.assertAlmostEqual(vl.extent().yMinimum(), 129147.09, places=3)
-        self.assertAlmostEqual(vl.extent().xMaximum(), 322342.3, places=3)
-        self.assertAlmostEqual(vl.extent().yMaximum(), 130554.6, places=3)
-
-        self.assertAlmostEqual(vl.extent3D().xMinimum(), 321384.94, places=3)
-        self.assertAlmostEqual(vl.extent3D().yMinimum(), 129147.09, places=3)
-        self.assertAlmostEqual(vl.extent3D().zMinimum(), 64.9, places=3)
-        self.assertAlmostEqual(vl.extent3D().xMaximum(), 322342.3, places=3)
-        self.assertAlmostEqual(vl.extent3D().yMaximum(), 130554.6, places=3)
-        self.assertAlmostEqual(vl.extent3D().zMaximum(), 105.6, places=3)
-        del vl
-
-    @unittest.skipIf(int(gdal.VersionInfo('VERSION_NUM')) < GDAL_COMPUTE_VERSION(3, 6, 0), "GDAL 3.6 required")
-    @unittest.skipIf(gdal.GetDriverByName("OpenFileGDB") is None, "GDAL OpenFileGDB driver required")
-    def testReadOnlyFieldsFileGeodatabase(self):
-
-        with tempfile.TemporaryDirectory() as temp_dir:
-            dest_file_name = os.path.join(temp_dir, 'testReadOnlyFieldsFileGeodatabase.gdb')
-            ds = ogr.GetDriverByName("OpenFileGDB").CreateDataSource(dest_file_name)
-            ds.CreateLayer("test", geom_type=ogr.wkbPolygon, options=["CREATE_SHAPE_AREA_AND_LENGTH_FIELDS=YES"])
-            ds = None
-
-            vl = QgsVectorLayer(dest_file_name, 'vl')
-            self.assertTrue(vl.fields()["Shape_Area"].isReadOnly())
-
-    @unittest.skipIf(int(gdal.VersionInfo('VERSION_NUM')) < GDAL_COMPUTE_VERSION(3, 6, 0), "GDAL 3.6 required")
-    @unittest.skipIf(gdal.GetDriverByName("OpenFileGDB") is None, "GDAL OpenFileGDB driver required")
-    def testDeleteFieldFileGeodatabase(self):
-
-        with tempfile.TemporaryDirectory() as temp_dir:
-            dest_file_name = os.path.join(temp_dir, 'testDeleteFieldFileGeodatabase.gdb')
-            ds = ogr.GetDriverByName("OpenFileGDB").CreateDataSource(dest_file_name)
-            lyr = ds.CreateLayer("test", geom_type=ogr.wkbNone)
-            lyr.CreateField(ogr.FieldDefn("fld1"))
-            lyr.CreateField(ogr.FieldDefn("fld2"))
-            f = ogr.Feature(lyr.GetLayerDefn())
-            f["fld1"] = "a"
-            f["fld2"] = "b"
-            lyr.CreateFeature(f)
-            f = ogr.Feature(lyr.GetLayerDefn())
-            f["fld1"] = "c"
-            f["fld2"] = "d"
-            lyr.CreateFeature(f)
-            ds = None
-
-            vl = QgsVectorLayer(dest_file_name, 'vl')
-            self.assertTrue(vl.startEditing())
-            self.assertTrue(vl.deleteAttribute(1))  # delete field fld1
-            self.assertTrue(vl.commitChanges())
-
-            # Re-open a connection without explicitly closing the one we've edited
-            vl2 = QgsVectorLayer(dest_file_name, 'vl2')
-            features = {f.id(): f.attributes() for f in vl2.getFeatures()}
-            self.assertEqual(features, {
-                1: [1, 'b'],
-                2: [2, 'd']
-            })
 
 
 if __name__ == '__main__':

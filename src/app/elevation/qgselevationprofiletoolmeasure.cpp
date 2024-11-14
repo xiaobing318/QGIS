@@ -15,9 +15,8 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgselevationprofiletoolmeasure.h"
-#include "moc_qgselevationprofiletoolmeasure.cpp"
 #include "qgselevationprofilecanvas.h"
-#include "qgsunittypes.h"
+#include "qgsapplication.h"
 #include "qgsplotmouseevent.h"
 #include "qgsguiutils.h"
 #include "qgsclipper.h"
@@ -85,12 +84,12 @@ void QgsProfileMeasureResultsDialog::setMeasures( double total, double distance,
   const QgsSettings settings;
   const bool baseUnit = settings.value( QStringLiteral( "qgis/measure/keepbaseunit" ), true ).toBool();
 
-  Qgis::DistanceUnit distanceUnit = mCrs.mapUnits();
-  const Qgis::DistanceUnit projectUnit = QgsProject::instance()->distanceUnits();
+  QgsUnitTypes::DistanceUnit distanceUnit = mCrs.mapUnits();
+  const QgsUnitTypes::DistanceUnit projectUnit = QgsProject::instance()->distanceUnits();
 
   if ( projectUnit != distanceUnit
-       && QgsUnitTypes::unitType( distanceUnit ) == Qgis::DistanceUnitType::Standard
-       && QgsUnitTypes::unitType( projectUnit ) == Qgis::DistanceUnitType::Standard )
+       && QgsUnitTypes::unitType( distanceUnit ) == QgsUnitTypes::DistanceUnitType::Standard
+       && QgsUnitTypes::unitType( projectUnit ) == QgsUnitTypes::DistanceUnitType::Standard )
   {
     // convert distance to desired project units. We can only do this if neither the crs units nor the project units are geographic!
     distance *= QgsUnitTypes::fromUnitToUnitFactor( distanceUnit, projectUnit );
@@ -98,7 +97,7 @@ void QgsProfileMeasureResultsDialog::setMeasures( double total, double distance,
   }
 
   int decimals = settings.value( QStringLiteral( "qgis/measure/decimalplaces" ), 3 ).toInt();
-  if ( distanceUnit == Qgis::DistanceUnit::Degrees && distance < 1 )
+  if ( distanceUnit == QgsUnitTypes::DistanceDegrees && distance < 1 )
   {
     // special handling for degrees - because we can't use smaller units (eg m->mm), we need to make sure there's
     // enough decimal places to show a usable measurement value

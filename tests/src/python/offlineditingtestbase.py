@@ -26,13 +26,13 @@ __copyright__ = 'Copyright 2016, The QGIS Project'
 from time import sleep
 
 from qgis.core import (
-    QgsExpression,
     QgsFeature,
-    QgsFeatureRequest,
     QgsGeometry,
-    QgsOfflineEditing,
     QgsPointXY,
+    QgsFeatureRequest,
+    QgsExpression,
     QgsProject,
+    QgsOfflineEditing,
 )
 
 # Tet features, fields: [id, name, geometry]
@@ -136,7 +136,7 @@ class OfflineTestBase:
         offline_layer = list(self.registry.mapLayers().values())[0]
         self.assertTrue(offline_layer.isSpatial())
         self.assertTrue(offline_layer.isValid())
-        self.assertGreater(offline_layer.name().find('(offline)'), -1)
+        self.assertTrue(offline_layer.name().find('(offline)') > -1)
         self.assertEqual(len([f for f in offline_layer.getFeatures()]), len(TEST_FEATURES))
         return ol, offline_layer
 

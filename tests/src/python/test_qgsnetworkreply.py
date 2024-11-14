@@ -10,15 +10,14 @@ __author__ = 'Nyall Dawson'
 __date__ = '20/06/2022'
 __copyright__ = 'Copyright 2022, The QGIS Project'
 
-
+import qgis  # NOQA
 from qgis.core import QgsNetworkReplyContent
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import unittest, start_app
 
 app = start_app()
 
 
-class TestQgsNetworkReply(QgisTestCase):
+class TestQgsNetworkReply(unittest.TestCase):
 
     def test_content_disposition_filename(self):
         self.assertEqual(QgsNetworkReplyContent.extractFileNameFromContentDispositionHeader('x'), '')

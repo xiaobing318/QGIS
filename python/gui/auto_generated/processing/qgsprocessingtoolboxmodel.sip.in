@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/processing/qgsprocessingtoolboxmodel.h                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -30,30 +30,26 @@ Abstract base class for nodes contained within a :py:class:`QgsProcessingToolbox
     {
       sipType = sipType_QgsProcessingToolboxModelNode;
       QgsProcessingToolboxModelNode *node = qobject_cast<QgsProcessingToolboxModelNode *>( sipCpp );
-      if ( node->nodeType() == QgsProcessingToolboxModelNode::NodeType::Provider )
+      if ( node->nodeType() == QgsProcessingToolboxModelNode::NodeProvider )
         sipType = sipType_QgsProcessingToolboxModelProviderNode;
-      else if ( node->nodeType() == QgsProcessingToolboxModelNode::NodeType::Group )
+      else if ( node->nodeType() == QgsProcessingToolboxModelNode::NodeGroup )
         sipType = sipType_QgsProcessingToolboxModelGroupNode;
-      else if ( node->nodeType() == QgsProcessingToolboxModelNode::NodeType::Algorithm )
+      else if ( node->nodeType() == QgsProcessingToolboxModelNode::NodeAlgorithm )
         sipType = sipType_QgsProcessingToolboxModelAlgorithmNode;
-      else if ( node->nodeType() == QgsProcessingToolboxModelNode::NodeType::Recent )
+      else if ( node->nodeType() == QgsProcessingToolboxModelNode::NodeRecent )
         sipType = sipType_QgsProcessingToolboxModelRecentNode;
-      else if ( node->nodeType() == QgsProcessingToolboxModelNode::NodeType::Favorite )
-        sipType = sipType_QgsProcessingToolboxModelFavoriteNode;
     }
     else
       sipType = 0;
 %End
   public:
 
-
-    enum class NodeType
+    enum NodeType
     {
-      Provider,
-      Group,
-      Algorithm,
-      Recent,
-      Favorite,
+      NodeProvider,
+      NodeGroup,
+      NodeAlgorithm,
+      NodeRecent,
     };
 
     ~QgsProcessingToolboxModelNode();
@@ -118,29 +114,9 @@ Processing toolbox model node corresponding to the recent algorithms group
   public:
 
     QgsProcessingToolboxModelRecentNode();
-
-    virtual NodeType nodeType() const;
-
-};
-
-class QgsProcessingToolboxModelFavoriteNode : QgsProcessingToolboxModelNode
-{
-%Docstring(signature="appended")
-Processing toolbox model node corresponding to the favorite algorithms group
-
-.. warning::
-
-   Not part of stable API and may change in future QGIS releases.
-
-.. versionadded:: 3.40
+%Docstring
+Constructor for QgsProcessingToolboxModelRecentNode.
 %End
-
-%TypeHeaderCode
-#include "qgsprocessingtoolboxmodel.h"
-%End
-  public:
-
-    QgsProcessingToolboxModelFavoriteNode();
 
     virtual NodeType nodeType() const;
 
@@ -272,21 +248,19 @@ of this model.
 %End
   public:
 
-
-      enum class CustomRole
+    enum Roles
     {
-      NodeType,
-      AlgorithmFlags,
-      AlgorithmId,
-      AlgorithmName,
-      AlgorithmShortDescription,
-      AlgorithmTags,
-      ProviderFlags,
+      RoleNodeType,
+      RoleAlgorithmFlags,
+      RoleAlgorithmId,
+      RoleAlgorithmName,
+      RoleAlgorithmShortDescription,
+      RoleAlgorithmTags,
+      RoleProviderFlags,
     };
 
     QgsProcessingToolboxModel( QObject *parent /TransferThis/ = 0, QgsProcessingRegistry *registry = 0,
-                               QgsProcessingRecentAlgorithmLog *recentLog = 0,
-                               QgsProcessingFavoriteAlgorithmManager *favoriteManager = 0 );
+                               QgsProcessingRecentAlgorithmLog *recentLog = 0 );
 %Docstring
 Constructor for QgsProcessingToolboxModel, with the given ``parent`` object.
 
@@ -297,9 +271,6 @@ by the model.
 
 If ``recentLog`` is specified then it will be used to create a "Recently used" top
 level group containing recently used algorithms.
-
-If ``favoriteManager`` is specified then it will be used to create a "Favorites" top
-level group containing favorite algorithms. Since QGIS 3.40
 %End
 
     virtual Qt::ItemFlags flags( const QModelIndex &index ) const;
@@ -387,11 +358,6 @@ Returns the index corresponding to the parent of a given node.
 Emitted whenever recent algorithms are added to the model.
 %End
 
-    void favoriteAlgorithmAdded();
-%Docstring
-Emitted whenever favorite algorithms are added to the model.
-%End
-
 };
 
 
@@ -410,21 +376,19 @@ the results.
 %End
   public:
 
-
-    enum class Filter
+    enum Filter
     {
-      Toolbox,
-      Modeler,
-      InPlace,
-      ShowKnownIssues,
+      FilterToolbox,
+      FilterModeler,
+      FilterInPlace,
+      FilterShowKnownIssues,
     };
     typedef QFlags<QgsProcessingToolboxProxyModel::Filter> Filters;
 
 
     explicit QgsProcessingToolboxProxyModel( QObject *parent /TransferThis/ = 0,
         QgsProcessingRegistry *registry = 0,
-        QgsProcessingRecentAlgorithmLog *recentLog = 0,
-        QgsProcessingFavoriteAlgorithmManager *favoriteManager = 0 );
+        QgsProcessingRecentAlgorithmLog *recentLog = 0 );
 %Docstring
 Constructor for QgsProcessingToolboxProxyModel, with the given ``parent`` object.
 
@@ -435,9 +399,6 @@ by the model.
 
 If ``recentLog`` is specified then it will be used to create a "Recently used" top
 level group containing recently used algorithms.
-
-If ``favoriteManager`` is specified then it will be used to create a "Favorites" top
-level group containing favorite algorithms. SInce QGIS 3.40
 %End
 
     QgsProcessingToolboxModel *toolboxModel();
@@ -491,7 +452,6 @@ Returns the current filter string, if set.
 
 
 };
-QFlags<QgsProcessingToolboxProxyModel::Filter> operator|(QgsProcessingToolboxProxyModel::Filter f1, QFlags<QgsProcessingToolboxProxyModel::Filter> f2);
 
 
 /************************************************************************
@@ -499,5 +459,5 @@ QFlags<QgsProcessingToolboxProxyModel::Filter> operator|(QgsProcessingToolboxPro
  *                                                                      *
  * src/gui/processing/qgsprocessingtoolboxmodel.h                       *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

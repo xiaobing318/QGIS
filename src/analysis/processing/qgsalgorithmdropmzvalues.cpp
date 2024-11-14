@@ -71,9 +71,9 @@ void QgsDropMZValuesAlgorithm::initParameters( const QVariantMap & )
   addParameter( new QgsProcessingParameterBoolean( QStringLiteral( "DROP_Z_VALUES" ), QObject::tr( "Drop Z Values" ), false ) );
 }
 
-Qgis::WkbType QgsDropMZValuesAlgorithm::outputWkbType( Qgis::WkbType inputWkbType ) const
+QgsWkbTypes::Type QgsDropMZValuesAlgorithm::outputWkbType( QgsWkbTypes::Type inputWkbType ) const
 {
-  Qgis::WkbType wkb = inputWkbType;
+  QgsWkbTypes::Type wkb = inputWkbType;
   if ( mDropM )
     wkb = QgsWkbTypes::dropM( wkb );
   if ( mDropZ )
@@ -81,9 +81,9 @@ Qgis::WkbType QgsDropMZValuesAlgorithm::outputWkbType( Qgis::WkbType inputWkbTyp
   return wkb;
 }
 
-Qgis::ProcessingFeatureSourceFlags QgsDropMZValuesAlgorithm::sourceFlags() const
+QgsProcessingFeatureSource::Flag QgsDropMZValuesAlgorithm::sourceFlags() const
 {
-  return Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks;
+  return QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks;
 }
 
 bool QgsDropMZValuesAlgorithm::prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback * )

@@ -19,8 +19,6 @@
 #define QGSRASTERBANDSTATS
 
 #include "qgis_core.h"
-#include "qgis_sip.h"
-#include "qgis.h"
 #include <QString>
 #include <QVector>
 
@@ -36,8 +34,34 @@
 class CORE_EXPORT QgsRasterBandStats
 {
   public:
+    enum Stats
+    {
+      None         = 0,
+      Min          = 1,
+      Max          = 1 << 1,
+      Range        = 1 << 2,
+      Sum          = 1 << 3,
+      Mean         = 1 << 4,
+      StdDev       = 1 << 5,
+      SumOfSquares = 1 << 6,
+      All          = Min | Max | Range | Sum | Mean | StdDev | SumOfSquares
+    };
 
-    QgsRasterBandStats() = default;
+    QgsRasterBandStats()
+    {
+      statsGathered = None;
+      minimumValue = std::numeric_limits<double>::max();
+      maximumValue = -std::numeric_limits<double>::max();
+      range = 0.0;
+      mean = 0.0;
+      sumOfSquares = 0.0;
+      stdDev = 0.0;
+      sum = 0.0;
+      elementCount = 0;
+      width = 0;
+      height = 0;
+      bandNumber = 1;
+    }
 
     //! Compares region, size etc. not collected statistics
     bool contains( const QgsRasterBandStats &s ) const
@@ -50,51 +74,50 @@ class CORE_EXPORT QgsRasterBandStats
     }
 
     //! \brief The gdal band number (starts at 1)
-    int bandNumber = 1;
+    int bandNumber;
 
     // TODO: check if no data are excluded in stats calculation
 
     //! \brief The number of not no data cells in the band.
-    qgssize elementCount = 0;
+    qgssize elementCount;
 
     /**
      * \brief The maximum cell value in the raster band. NO_DATA values
      * are ignored. This does not use the gdal GetMaximmum function.
     */
-    double maximumValue = -std::numeric_limits<double>::max();
+    double maximumValue;
 
     /**
      * \brief The minimum cell value in the raster band. NO_DATA values
      * are ignored. This does not use the gdal GetMinimum function.
     */
-    double minimumValue = std::numeric_limits<double>::max();
+    double minimumValue;
 
     //! \brief The mean cell value for the band. NO_DATA values are excluded.
-    double mean = 0;
+    double mean;
 
     //! \brief The range is the distance between min & max.
-    double range = 0;
+    double range;
 
     //! \brief The standard deviation of the cell values.
-    double stdDev = 0;
+    double stdDev;
 
     //! \brief Collected statistics
-    Qgis::RasterBandStatistics statsGathered;
+    int statsGathered;
 
     //! \brief The sum of all cells in the band. NO_DATA values are excluded.
-    double sum = 0;
+    double sum;
 
     //! \brief The sum of the squares. Used to calculate standard deviation.
-    double sumOfSquares = 0;
+    double sumOfSquares;
 
     //! \brief Number of columns used to calc statistics
-    int width = 0;
+    int width;
 
     //! \brief Number of rows used to calc statistics
-    int height = 0;
+    int height;
 
     //! \brief Extent used to calc statistics
     QgsRectangle extent;
 };
-
 #endif

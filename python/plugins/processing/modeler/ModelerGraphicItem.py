@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     ModelerGraphicItem.py
@@ -93,7 +95,7 @@ class ModelerInputGraphicItem(QgsModelParameterGraphicItem):
             dlg.setCommentColor(comment_color)
             if edit_comment:
                 dlg.switchToCommentTab()
-            if dlg.exec():
+            if dlg.exec_():
                 new_param = dlg.param
                 comment = dlg.comments()
                 comment_color = dlg.commentColor()
@@ -113,7 +115,7 @@ class ModelerInputGraphicItem(QgsModelParameterGraphicItem):
             if edit_comment:
                 dlg.switchToCommentTab()
 
-            if dlg.exec():
+            if dlg.exec_():
                 new_param = dlg.createParameter(existing_param.name())
                 comment = dlg.comments()
                 comment_color = dlg.commentColor()
@@ -175,7 +177,7 @@ class ModelerChildAlgorithmGraphicItem(QgsModelChildAlgorithmGraphicItem):
         dlg.setCommentColor(self.component().comment().color())
         if edit_comment:
             dlg.switchToCommentTab()
-        if dlg.exec():
+        if dlg.exec_():
             alg = dlg.createAlgorithm()
             alg.setChildId(self.component().childId())
             alg.copyNonDefinitionPropertiesFromModel(self.model())
@@ -190,7 +192,7 @@ class ModelerChildAlgorithmGraphicItem(QgsModelChildAlgorithmGraphicItem):
                     QCoreApplication.translate('ModelerGraphicItem', 'Algorithm “{}” is invalid').format(alg.description()),
                     self.tr('Algorithm is Invalid'),
                     QCoreApplication.translate('ModelerGraphicItem', "<p>The “{}” algorithm is invalid, because:</p><ul><li>{}</li></ul>").format(alg.description(), '</li><li>'.join(errors)),
-                    level=Qgis.MessageLevel.Warning
+                    level=Qgis.Warning
                 )
             else:
                 self.scene().messageBar().clearWidgets()
@@ -222,7 +224,7 @@ class ModelerOutputGraphicItem(QgsModelOutputGraphicItem):
         if edit_comment:
             dlg.switchToCommentTab()
 
-        if dlg.exec():
+        if dlg.exec_():
             model_outputs = child_alg.modelOutputs()
 
             model_output = QgsProcessingModelOutput(model_outputs[self.component().name()])
@@ -231,7 +233,7 @@ class ModelerOutputGraphicItem(QgsModelOutputGraphicItem):
             model_output.setName(dlg.param.description())
             model_output.setDescription(dlg.param.description())
             model_output.setDefaultValue(dlg.param.defaultValue())
-            model_output.setMandatory(not (dlg.param.flags() & QgsProcessingParameterDefinition.Flag.FlagOptional))
+            model_output.setMandatory(not (dlg.param.flags() & QgsProcessingParameterDefinition.FlagOptional))
             model_output.comment().setDescription(dlg.comments())
             model_output.comment().setColor(dlg.commentColor())
             model_outputs[model_output.name()] = model_output

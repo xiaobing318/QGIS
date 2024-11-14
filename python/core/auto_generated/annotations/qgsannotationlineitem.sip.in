@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/annotations/qgsannotationlineitem.h                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -25,7 +25,7 @@ An annotation item which renders a line symbol along a line geometry.
 
     QgsAnnotationLineItem( QgsCurve *curve /Transfer/ );
 %Docstring
-Constructor for QgsAnnotationLineItem, with the specified ``curve``.
+Constructor for QgsAnnotationLineItem, with the specified ``linestring``.
 %End
     ~QgsAnnotationLineItem();
 
@@ -35,13 +35,11 @@ Constructor for QgsAnnotationLineItem, with the specified ``curve``.
 
     virtual bool writeXml( QDomElement &element, QDomDocument &document, const QgsReadWriteContext &context ) const;
 
-    virtual QList< QgsAnnotationItemNode > nodesV2( const QgsAnnotationItemEditContext &context ) const;
+    virtual QList< QgsAnnotationItemNode > nodes() const;
 
-    virtual Qgis::AnnotationItemEditOperationResult applyEditV2( QgsAbstractAnnotationItemEditOperation *operation, const QgsAnnotationItemEditContext &context );
+    virtual Qgis::AnnotationItemEditOperationResult applyEdit( QgsAbstractAnnotationItemEditOperation *operation );
 
-    virtual QgsAnnotationItemEditOperationTransientResults *transientEditResultsV2( QgsAbstractAnnotationItemEditOperation *operation, const QgsAnnotationItemEditContext &context ) /Factory/;
-
-    virtual Qgis::AnnotationItemFlags flags() const;
+    virtual QgsAnnotationItemEditOperationTransientResults *transientEditResults( QgsAbstractAnnotationItemEditOperation *operation ) /Factory/;
 
 
     static QgsAnnotationLineItem *create() /Factory/;
@@ -54,7 +52,7 @@ Creates a new linestring annotation item.
     virtual QgsRectangle boundingBox() const;
 
 
-    virtual QgsAnnotationLineItem *clone() const /Factory/;
+    virtual QgsAnnotationLineItem *clone() /Factory/;
 
 
     const QgsCurve *geometry() const;
@@ -100,5 +98,5 @@ The item takes ownership of the symbol.
  *                                                                      *
  * src/core/annotations/qgsannotationlineitem.h                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

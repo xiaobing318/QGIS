@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/symbology/qgsellipsesymbollayer.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -67,8 +67,6 @@ Creates the symbol layer
 
     virtual QString layerType() const;
 
-    virtual Qgis::SymbolLayerFlags flags() const;
-
     virtual void startRender( QgsSymbolRenderContext &context );
 
     virtual void stopRender( QgsSymbolRenderContext &context );
@@ -94,7 +92,7 @@ Sets the rendered ellipse marker shape using a symbol ``name``.
 
 .. seealso:: :py:func:`shape`
 
-.. deprecated:: 3.20
+.. deprecated:: QGIS 3.20
 %End
 
  QString symbolName() const /Deprecated/;
@@ -105,7 +103,7 @@ Returns the shape name for the rendered ellipse marker symbol.
 
 .. seealso:: :py:func:`setShape`
 
-.. deprecated:: 3.20
+.. deprecated:: QGIS 3.20
 %End
 
     QgsEllipseSymbolLayer::Shape shape() const;
@@ -171,11 +169,15 @@ Encodes a shape to its string representation.
     Qt::PenJoinStyle penJoinStyle() const;
 %Docstring
 Gets stroke join style.
+
+.. versionadded:: 2.16
 %End
 
     void setPenJoinStyle( Qt::PenJoinStyle style );
 %Docstring
 Set stroke join style.
+
+.. versionadded:: 2.16
 %End
 
     Qt::PenCapStyle penCapStyle() const;
@@ -217,7 +219,7 @@ Sets the marker's stroke cap ``style`` (e.g., flat, round, etc).
     virtual void setStrokeColor( const QColor &c );
     virtual QColor strokeColor() const;
 
-    void setSymbolWidthUnit( Qgis::RenderUnit unit );
+    void setSymbolWidthUnit( QgsUnitTypes::RenderUnit unit );
 %Docstring
 Sets the units for the symbol's width.
 
@@ -228,7 +230,7 @@ Sets the units for the symbol's width.
 .. seealso:: :py:func:`setSymbolHeightUnit`
 %End
 
-    Qgis::RenderUnit symbolWidthUnit() const;
+    QgsUnitTypes::RenderUnit symbolWidthUnit() const;
 %Docstring
 Returns the units for the symbol's width.
 
@@ -240,7 +242,7 @@ Returns the units for the symbol's width.
     void setSymbolWidthMapUnitScale( const QgsMapUnitScale &scale );
     const QgsMapUnitScale &symbolWidthMapUnitScale() const;
 
-    void setSymbolHeightUnit( Qgis::RenderUnit unit );
+    void setSymbolHeightUnit( QgsUnitTypes::RenderUnit unit );
 %Docstring
 Sets the units for the symbol's height.
 
@@ -251,7 +253,7 @@ Sets the units for the symbol's height.
 .. seealso:: :py:func:`setSymbolWidthUnit`
 %End
 
-    Qgis::RenderUnit symbolHeightUnit() const;
+    QgsUnitTypes::RenderUnit symbolHeightUnit() const;
 %Docstring
 Returns the units for the symbol's height.
 
@@ -263,7 +265,7 @@ Returns the units for the symbol's height.
     void setSymbolHeightMapUnitScale( const QgsMapUnitScale &scale );
     const QgsMapUnitScale &symbolHeightMapUnitScale() const;
 
-    void setStrokeWidthUnit( Qgis::RenderUnit unit );
+    void setStrokeWidthUnit( QgsUnitTypes::RenderUnit unit );
 %Docstring
 Sets the units for the symbol's stroke width.
 
@@ -272,7 +274,7 @@ Sets the units for the symbol's stroke width.
 .. seealso:: :py:func:`strokeWidthUnit`
 %End
 
-    Qgis::RenderUnit strokeWidthUnit() const;
+    QgsUnitTypes::RenderUnit strokeWidthUnit() const;
 %Docstring
 Returns the units for the symbol's stroke width.
 
@@ -282,9 +284,9 @@ Returns the units for the symbol's stroke width.
     void setStrokeWidthMapUnitScale( const QgsMapUnitScale &scale );
     const QgsMapUnitScale &strokeWidthMapUnitScale() const;
 
-    virtual void setOutputUnit( Qgis::RenderUnit unit );
+    virtual void setOutputUnit( QgsUnitTypes::RenderUnit unit );
 
-    virtual Qgis::RenderUnit outputUnit() const;
+    virtual QgsUnitTypes::RenderUnit outputUnit() const;
 
     virtual bool usesMapUnits() const;
 
@@ -307,5 +309,5 @@ Returns the units for the symbol's stroke width.
  *                                                                      *
  * src/core/symbology/qgsellipsesymbollayer.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -9,25 +9,25 @@ __author__ = 'Nyall Dawson'
 __date__ = '02/11/2020'
 __copyright__ = 'Copyright 2020, The QGIS Project'
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import QVariant
 from qgis.analysis import QgsBatchGeocodeAlgorithm
 from qgis.core import (
-    NULL,
-    QgsCoordinateReferenceSystem,
-    QgsFeature,
-    QgsField,
-    QgsFields,
     QgsGeocoderInterface,
+    QgsWkbTypes,
     QgsGeocoderResult,
     QgsGeometry,
     QgsPointXY,
+    QgsCoordinateReferenceSystem,
+    QgsFeature,
     QgsProcessingContext,
     QgsProcessingFeedback,
     QgsRectangle,
-    QgsWkbTypes,
+    QgsField,
+    QgsFields,
+    NULL
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 start_app()
 
@@ -35,10 +35,10 @@ start_app()
 class TestGeocoder(QgsGeocoderInterface):
 
     def flags(self):
-        return QgsGeocoderInterface.Flag.GeocodesStrings
+        return QgsGeocoderInterface.GeocodesStrings
 
     def wkbType(self):
-        return QgsWkbTypes.Type.Point
+        return QgsWkbTypes.Point
 
     def geocodeString(self, string, context, feedback):
         if string == 'a':
@@ -65,10 +65,10 @@ class TestGeocoder(QgsGeocoderInterface):
 class TestGeocoderExtraFields(QgsGeocoderInterface):
 
     def flags(self):
-        return QgsGeocoderInterface.Flag.GeocodesStrings
+        return QgsGeocoderInterface.GeocodesStrings
 
     def wkbType(self):
-        return QgsWkbTypes.Type.Point
+        return QgsWkbTypes.Point
 
     def appendedFields(self):
         fields = QgsFields()
@@ -114,7 +114,7 @@ class TestGeocoderAlgorithm(QgsBatchGeocodeAlgorithm):
         return TestGeocoderAlgorithm(self.geocoder)
 
 
-class TestQgsBatchGeocodeAlgorithm(QgisTestCase):
+class TestQgsBatchGeocodeAlgorithm(unittest.TestCase):
 
     def test_algorithm(self):
         geocoder = TestGeocoder()

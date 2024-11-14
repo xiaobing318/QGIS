@@ -16,6 +16,7 @@
  ***************************************************************************/
 
 #include "qgsalgorithmaddxyfields.h"
+#include "qgsfeaturerequest.h"
 #include "qgsvectorlayer.h"
 
 ///@cond PRIVATE
@@ -62,7 +63,7 @@ QString QgsAddXYFieldsAlgorithm::outputName() const
 
 QList<int> QgsAddXYFieldsAlgorithm::inputLayerTypes() const
 {
-  return QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorPoint );
+  return QList<int>() << QgsProcessing::TypeVectorPoint;
 }
 
 QgsAddXYFieldsAlgorithm *QgsAddXYFieldsAlgorithm::createInstance() const
@@ -70,9 +71,9 @@ QgsAddXYFieldsAlgorithm *QgsAddXYFieldsAlgorithm::createInstance() const
   return new QgsAddXYFieldsAlgorithm();
 }
 
-Qgis::ProcessingFeatureSourceFlags QgsAddXYFieldsAlgorithm::sourceFlags() const
+QgsProcessingFeatureSource::Flag QgsAddXYFieldsAlgorithm::sourceFlags() const
 {
-  return Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks;
+  return QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks;
 }
 
 void QgsAddXYFieldsAlgorithm::initParameters( const QVariantMap &configuration )
@@ -104,8 +105,8 @@ QgsFields QgsAddXYFieldsAlgorithm::outputFields( const QgsFields &inputFields ) 
     const QString yFieldName = mPrefix + 'y';
 
     QgsFields outFields = inputFields;
-    outFields.append( QgsField( xFieldName, QMetaType::Type::Double, QString(), 20, 10 ) );
-    outFields.append( QgsField( yFieldName, QMetaType::Type::Double, QString(), 20, 10 ) );
+    outFields.append( QgsField( xFieldName, QVariant::Double, QString(), 20, 10 ) );
+    outFields.append( QgsField( yFieldName, QVariant::Double, QString(), 20, 10 ) );
     return outFields;
   }
 }
@@ -180,7 +181,7 @@ bool QgsAddXYFieldsAlgorithm::supportInPlaceEdit( const QgsMapLayer *layer ) con
 {
   if ( const QgsVectorLayer *vl = qobject_cast< const QgsVectorLayer * >( layer ) )
   {
-    return vl->geometryType() == Qgis::GeometryType::Point;
+    return vl->geometryType() == QgsWkbTypes::PointGeometry;
   }
   return false;
 }

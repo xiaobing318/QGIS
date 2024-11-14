@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/layout/qgsabstractlayoutiterator.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -12,6 +12,8 @@ class QgsAbstractLayoutIterator
 {
 %Docstring(signature="appended")
 An abstract base class for :py:class:`QgsLayout` based classes which can be exported by :py:class:`QgsLayoutExporter`.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -65,5 +67,5 @@ specified base file path and extension.
  *                                                                      *
  * src/core/layout/qgsabstractlayoutiterator.h                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -17,7 +17,6 @@
 
 #include "qgssettings.h"
 #include "qgsgeorefconfigdialog.h"
-#include "moc_qgsgeorefconfigdialog.cpp"
 #include "qgis.h"
 #include "qgsgui.h"
 

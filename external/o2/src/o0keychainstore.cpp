@@ -4,11 +4,7 @@
 #include "o0keychainstore.h"
 
 #include <QDebug>
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-#include <qt6keychain/keychain.h>
-#else
-#include <qt5keychain/keychain.h>
-#endif
+#include <keychain.h>
 #include <QtCore/QDataStream>
 #include <QtCore/QBuffer>
 #include <QtCore/QEventLoop>

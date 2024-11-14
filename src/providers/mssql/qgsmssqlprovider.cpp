@@ -16,14 +16,11 @@
  ***************************************************************************/
 
 #include "qgsmssqlprovider.h"
-#include "moc_qgsmssqlprovider.cpp"
 #include "qgsmssqlconnection.h"
 #include "qgsmssqldatabase.h"
 #include "qgsmssqlproviderconnection.h"
 #include "qgsfeedback.h"
 #include "qgsdbquerylog.h"
-#include "qgsdbquerylog_p.h"
-#include "qgsvariantutils.h"
 
 #include <QtGlobal>
 #include <QFileInfo>
@@ -47,6 +44,7 @@
 #include "qgsfields.h"
 #include "qgsgeometry.h"
 #include "qgslogger.h"
+#include "qgsmessageoutput.h"
 #include "qgsmessagelog.h"
 #include "qgsrectangle.h"
 #include "qgis.h"
@@ -59,7 +57,6 @@
 #include "qgsconfig.h"
 constexpr int sMssqlConQueryLogFilePrefixLength = CMAKE_SOURCE_DIR[sizeof( CMAKE_SOURCE_DIR ) - 1] == '/' ? sizeof( CMAKE_SOURCE_DIR ) + 1 : sizeof( CMAKE_SOURCE_DIR );
 #define LoggedExec(query, sql ) execLogged( query, sql, QString(QString( __FILE__ ).mid( sMssqlConQueryLogFilePrefixLength ) + ':' + QString::number( __LINE__ ) + " (" + __FUNCTION__ + ")") )
-#define LoggedExecPrepared(query ) execPreparedLogged( query, QString(QString( __FILE__ ).mid( sMssqlConQueryLogFilePrefixLength ) + ':' + QString::number( __LINE__ ) + " (" + __FUNCTION__ + ")") )
 #define LoggedExecMetadata(query, sql, uri ) execLogged( query, sql, uri, QString(QString( __FILE__ ).mid( sMssqlConQueryLogFilePrefixLength ) + ':' + QString::number( __LINE__ ) + " (" + __FUNCTION__ + ")") )
 
 
@@ -68,7 +65,7 @@ const QString QgsMssqlProvider::MSSQL_PROVIDER_DESCRIPTION = QStringLiteral( "MS
 int QgsMssqlProvider::sConnectionId = 0;
 
 QgsMssqlProvider::QgsMssqlProvider( const QString &uri, const ProviderOptions &options,
-                                    Qgis::DataProviderReadFlags flags )
+                                    QgsDataProvider::ReadFlags flags )
   : QgsVectorDataProvider( uri, options, flags )
   , mShared( new QgsMssqlSharedData )
 {
@@ -90,7 +87,7 @@ QgsMssqlProvider::QgsMssqlProvider( const QString &uri, const ProviderOptions &o
   mHost = anUri.host();
 
   mUseEstimatedMetadata = anUri.useEstimatedMetadata();
-  if ( mReadFlags & Qgis::DataProviderReadFlag::TrustDataSource )
+  if ( mReadFlags & QgsDataProvider::FlagTrustDataSource )
   {
     mUseEstimatedMetadata = true;
   }
@@ -116,7 +113,7 @@ QgsMssqlProvider::QgsMssqlProvider( const QString &uri, const ProviderOptions &o
   if ( !db.isOpen() )
   {
     setLastError( db.lastError().text() );
-    QgsDebugError( mLastError );
+    QgsDebugMsg( mLastError );
     mValid = false;
     return;
   }
@@ -154,7 +151,7 @@ QgsMssqlProvider::QgsMssqlProvider( const QString &uri, const ProviderOptions &o
     if ( !anUri.geometryColumn().isEmpty() )
       mGeometryColName = anUri.geometryColumn();
 
-    if ( mSRId < 0 || mWkbType == Qgis::WkbType::Unknown || mGeometryColName.isEmpty() )
+    if ( mSRId < 0 || mWkbType == QgsWkbTypes::Unknown || mGeometryColName.isEmpty() )
     {
       loadMetadata();
     }
@@ -191,7 +188,7 @@ QgsMssqlProvider::QgsMssqlProvider( const QString &uri, const ProviderOptions &o
 
     if ( mValid )
     {
-      for ( const QString &col : std::as_const( cols ) )
+      for ( const QString &col : cols )
       {
         const int idx = mAttributeFields.indexFromName( col );
         if ( idx < 0 )
@@ -205,9 +202,9 @@ QgsMssqlProvider::QgsMssqlProvider( const QString &uri, const ProviderOptions &o
         const QgsField &fld = mAttributeFields.at( idx );
 
         if ( mPrimaryKeyAttrs.size() == 0 &&
-             ( fld.type() == QMetaType::Type::Int ||
-               fld.type() == QMetaType::Type::LongLong ||
-               ( fld.type() == QMetaType::Type::Double && fld.precision() == 0 ) ) )
+             ( fld.type() == QVariant::Int ||
+               fld.type() == QVariant::LongLong ||
+               ( fld.type() == QVariant::Double && fld.precision() == 0 ) ) )
         {
           mPrimaryKeyType = PktInt;
         }
@@ -222,7 +219,7 @@ QgsMssqlProvider::QgsMssqlProvider( const QString &uri, const ProviderOptions &o
       if ( mGeometryColName.isEmpty() )
       {
         // table contains no geometries
-        mWkbType = Qgis::WkbType::NoGeometry;
+        mWkbType = QgsWkbTypes::NoGeometry;
         mSRId = 0;
       }
     }
@@ -245,22 +242,22 @@ QgsFeatureIterator QgsMssqlProvider::getFeatures( const QgsFeatureRequest &reque
 {
   if ( !mValid )
   {
-    QgsDebugError( QStringLiteral( "Read attempt on an invalid mssql data source" ) );
+    QgsDebugMsg( QStringLiteral( "Read attempt on an invalid mssql data source" ) );
     return QgsFeatureIterator();
   }
 
   return QgsFeatureIterator( new QgsMssqlFeatureIterator( new QgsMssqlFeatureSource( this ), true, request ) );
 }
 
-QMetaType::Type QgsMssqlProvider::DecodeSqlType( const QString &sqlTypeName )
+QVariant::Type QgsMssqlProvider::DecodeSqlType( const QString &sqlTypeName )
 {
-  QMetaType::Type type = QMetaType::Type::UnknownType;
+  QVariant::Type type = QVariant::Invalid;
   if ( sqlTypeName.startsWith( QLatin1String( "decimal" ), Qt::CaseInsensitive ) ||
        sqlTypeName.startsWith( QLatin1String( "numeric" ), Qt::CaseInsensitive ) ||
        sqlTypeName.startsWith( QLatin1String( "real" ), Qt::CaseInsensitive ) ||
        sqlTypeName.startsWith( QLatin1String( "float" ), Qt::CaseInsensitive ) )
   {
-    type = QMetaType::Type::Double;
+    type = QVariant::Double;
   }
   else if ( sqlTypeName.startsWith( QLatin1String( "char" ), Qt::CaseInsensitive ) ||
             sqlTypeName.startsWith( QLatin1String( "nchar" ), Qt::CaseInsensitive ) ||
@@ -270,48 +267,48 @@ QMetaType::Type QgsMssqlProvider::DecodeSqlType( const QString &sqlTypeName )
             sqlTypeName.startsWith( QLatin1String( "ntext" ), Qt::CaseInsensitive ) ||
             sqlTypeName.startsWith( QLatin1String( "uniqueidentifier" ), Qt::CaseInsensitive ) )
   {
-    type = QMetaType::Type::QString;
+    type = QVariant::String;
   }
   else if ( sqlTypeName.startsWith( QLatin1String( "smallint" ), Qt::CaseInsensitive ) ||
             sqlTypeName.startsWith( QLatin1String( "int" ), Qt::CaseInsensitive ) ||
             sqlTypeName.startsWith( QLatin1String( "bit" ), Qt::CaseInsensitive ) ||
             sqlTypeName.startsWith( QLatin1String( "tinyint" ), Qt::CaseInsensitive ) )
   {
-    type = QMetaType::Type::Int;
+    type = QVariant::Int;
   }
   else if ( sqlTypeName.startsWith( QLatin1String( "bigint" ), Qt::CaseInsensitive ) )
   {
-    type = QMetaType::Type::LongLong;
+    type = QVariant::LongLong;
   }
   else if ( sqlTypeName.startsWith( QLatin1String( "binary" ), Qt::CaseInsensitive ) ||
             sqlTypeName.startsWith( QLatin1String( "varbinary" ), Qt::CaseInsensitive ) ||
             sqlTypeName.startsWith( QLatin1String( "image" ), Qt::CaseInsensitive ) )
   {
-    type = QMetaType::Type::QByteArray;
+    type = QVariant::ByteArray;
   }
   else if ( sqlTypeName.startsWith( QLatin1String( "datetime" ), Qt::CaseInsensitive ) ||
             sqlTypeName.startsWith( QLatin1String( "smalldatetime" ), Qt::CaseInsensitive ) ||
             sqlTypeName.startsWith( QLatin1String( "datetime2" ), Qt::CaseInsensitive ) )
   {
-    type = QMetaType::Type::QDateTime;
+    type = QVariant::DateTime;
   }
   else if ( sqlTypeName.startsWith( QLatin1String( "date" ), Qt::CaseInsensitive ) )
   {
-    type = QMetaType::Type::QDate;
+    type = QVariant::Date;
   }
   else if ( sqlTypeName.startsWith( QLatin1String( "timestamp" ), Qt::CaseInsensitive ) )
   {
-    type = QMetaType::Type::QString;
+    type = QVariant::String;
   }
   else if ( sqlTypeName.startsWith( QLatin1String( "time" ), Qt::CaseInsensitive ) )
   {
-    type = QMetaType::Type::QTime;
+    type = QVariant::Time;
   }
   else
   {
-    QgsDebugError( QStringLiteral( "Unknown field type: %1" ).arg( sqlTypeName ) );
+    QgsDebugMsg( QStringLiteral( "Unknown field type: %1" ).arg( sqlTypeName ) );
     // Everything else just dumped as a string.
-    type = QMetaType::Type::QString;
+    type = QVariant::String;
   }
 
   return type;
@@ -320,21 +317,25 @@ QMetaType::Type QgsMssqlProvider::DecodeSqlType( const QString &sqlTypeName )
 void QgsMssqlProvider::loadMetadata()
 {
   mSRId = 0;
-  mWkbType = Qgis::WkbType::Unknown;
+  mWkbType = QgsWkbTypes::Unknown;
 
   QSqlQuery query = createQuery();
   query.setForwardOnly( true );
   if ( !LoggedExec( query, QStringLiteral( "SELECT f_geometry_column, srid, geometry_type, coord_dimension FROM geometry_columns WHERE f_table_schema=%1 AND f_table_name=%2" ).arg( quotedValue( mSchemaName ), quotedValue( mTableName ) ) ) )
   {
-    QgsDebugError( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
+    QgsDebugMsg( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
   }
 
   if ( query.isActive() && query.next() )
   {
     mGeometryColName = query.value( 0 ).toString();
     mSRId = query.value( 1 ).toInt();
-    const int dimensions = query.value( 3 ).toInt();
-    const QString detectedType { QgsMssqlProvider::typeFromMetadata( query.value( 2 ).toString().toUpper(), dimensions ) };
+    QString detectedType = query.value( 2 ).toString();
+    const QString dim = query.value( 3 ).toString();
+    if ( dim == QLatin1String( "3" ) && !detectedType.endsWith( 'M' ) )
+      detectedType += QLatin1Char( 'Z' );
+    else if ( dim == QLatin1String( "4" ) )
+      detectedType += QLatin1String( "ZM" );
     mWkbType = getWkbType( detectedType );
   }
 }
@@ -343,29 +344,6 @@ bool QgsMssqlProvider::execLogged( QSqlQuery &qry, const QString &sql, const QSt
 {
   QgsDatabaseQueryLogWrapper logWrapper{ sql, uri().uri(), QStringLiteral( "mssql" ), QStringLiteral( "QgsMssqlProvider" ),  queryOrigin };
   const bool res { qry.exec( sql ) };
-  if ( ! res )
-  {
-    logWrapper.setError( qry.lastError().text() );
-  }
-  else
-  {
-    if ( qry.isSelect() )
-    {
-      logWrapper.setFetchedRows( qry.size() );
-    }
-    else
-    {
-      logWrapper.setFetchedRows( qry.numRowsAffected() );
-    }
-  }
-  logWrapper.setQuery( qry.lastQuery() );
-  return res;
-}
-
-bool QgsMssqlProvider::execPreparedLogged( QSqlQuery &qry, const QString &queryOrigin ) const
-{
-  QgsDatabaseQueryLogWrapper logWrapper{ qry.lastQuery(), uri().uri(), QStringLiteral( "mssql" ), QStringLiteral( "QgsMssqlProvider" ),  queryOrigin };
-  const bool res { qry.exec( ) };
   if ( ! res )
   {
     logWrapper.setError( qry.lastError().text() );
@@ -397,7 +375,7 @@ QSqlQuery QgsMssqlProvider::createQuery() const
   QSqlDatabase d = conn->db();
   if ( !d.isOpen() )
   {
-    QgsDebugError( "Creating query, but the database is not open!" );
+    QgsDebugMsg( "Creating query, but the database is not open!" );
   }
   return QSqlQuery( d );
 }
@@ -472,7 +450,7 @@ void QgsMssqlProvider::loadFields()
     }
     else
     {
-      const QMetaType::Type sqlType = DecodeSqlType( sqlTypeName );
+      const QVariant::Type sqlType = DecodeSqlType( sqlTypeName );
       if ( sqlTypeName == QLatin1String( "int identity" ) || sqlTypeName == QLatin1String( "bigint identity" ) )
       {
         mPrimaryKeyType = PktInt;
@@ -486,7 +464,7 @@ void QgsMssqlProvider::loadFields()
       }
 
       QgsField field;
-      if ( sqlType == QMetaType::Type::QString )
+      if ( sqlType == QVariant::String )
       {
         // Field length in chars is column 7 ("Length") of the sp_columns output,
         // except for uniqueidentifiers which must use column 6 ("Precision").
@@ -500,15 +478,15 @@ void QgsMssqlProvider::loadFields()
                           sqlTypeName,
                           length );
       }
-      else if ( sqlType == QMetaType::Type::Double )
+      else if ( sqlType == QVariant::Double )
       {
         field = QgsField( colName,
                           sqlType,
                           sqlTypeName,
                           query.value( QStringLiteral( "PRECISION" ) ).toInt(),
-                          sqlTypeName == QLatin1String( "decimal" ) || sqlTypeName == QLatin1String( "numeric" ) ? query.value( QStringLiteral( "SCALE" ) ).toInt() : -1 );
+                          sqlTypeName == QLatin1String( "decimal" ) ? query.value( QStringLiteral( "SCALE" ) ).toInt() : -1 );
       }
-      else if ( sqlType == QMetaType::Type::QDate || sqlType == QMetaType::Type::QDateTime || sqlType == QMetaType::Type::QTime )
+      else if ( sqlType == QVariant::Date || sqlType == QVariant::DateTime || sqlType == QVariant::Time )
       {
         field = QgsField( colName,
                           sqlType,
@@ -565,7 +543,7 @@ void QgsMssqlProvider::loadFields()
     const QString sql4 { QStringLiteral( "exec sp_pkeys @table_name = N%1, @table_owner = %2 " ).arg( quotedValue( mTableName ), quotedValue( mSchemaName ) ) };
     if ( !LoggedExec( query, sql4 ) )
     {
-      QgsDebugError( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
+      QgsDebugMsg( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
     }
 
     if ( query.isActive() )
@@ -579,9 +557,9 @@ void QgsMssqlProvider::loadFields()
         const QgsField &fld = mAttributeFields.at( idx );
 
         if ( !mPrimaryKeyAttrs.isEmpty() ||
-             ( fld.type() != QMetaType::Type::Int &&
-               fld.type() != QMetaType::Type::LongLong &&
-               ( fld.type() != QMetaType::Type::Double || fld.precision() != 0 ) ) )
+             ( fld.type() != QVariant::Int &&
+               fld.type() != QVariant::LongLong &&
+               ( fld.type() != QVariant::Double || fld.precision() != 0 ) ) )
           mPrimaryKeyType = PktFidMap;
 
         mPrimaryKeyAttrs << idx;
@@ -605,7 +583,7 @@ void QgsMssqlProvider::loadFields()
                            .arg( pk, mSchemaName, mTableName ) };
       if ( !LoggedExec( query, sql5 ) )
       {
-        QgsDebugError( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
+        QgsDebugMsg( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
       }
 
       if ( query.isActive() && query.next() && query.value( 0 ).toInt() == query.value( 1 ).toInt() )
@@ -620,7 +598,7 @@ void QgsMssqlProvider::loadFields()
   if ( mPrimaryKeyAttrs.isEmpty() )
   {
     const QString error = QStringLiteral( "No primary key could be found on table %1" ).arg( mTableName );
-    QgsDebugError( error );
+    QgsDebugMsg( error );
     mValid = false;
     setLastError( error );
   }
@@ -639,18 +617,18 @@ QString QgsMssqlProvider::quotedValue( const QVariant &value )
   if ( QgsVariantUtils::isNull( value ) )
     return QStringLiteral( "NULL" );
 
-  switch ( value.userType() )
+  switch ( value.type() )
   {
-    case QMetaType::Type::Int:
-    case QMetaType::Type::LongLong:
-    case QMetaType::Type::Double:
+    case QVariant::Int:
+    case QVariant::LongLong:
+    case QVariant::Double:
       return value.toString();
 
-    case QMetaType::Type::Bool:
+    case QVariant::Bool:
       return QString( value.toBool() ? '1' : '0' );
 
     default:
-    case QMetaType::Type::QString:
+    case QVariant::String:
       QString v = value.toString();
       v.replace( '\'', QLatin1String( "''" ) );
       if ( v.contains( '\\' ) )
@@ -699,7 +677,7 @@ QVariant QgsMssqlProvider::defaultValue( int fieldId ) const
   if ( !LoggedExec( query, sql ) )
   {
     const QString errorMessage( tr( "Could not execute query: %1" ).arg( query.lastError().text() ) );
-    QgsDebugError( errorMessage );
+    QgsDebugMsg( errorMessage );
     pushError( errorMessage );
     return QVariant();
   }
@@ -707,13 +685,12 @@ QVariant QgsMssqlProvider::defaultValue( int fieldId ) const
   if ( !query.next() )
   {
     const QString errorMessage( tr( "Could not fetch next query value: %1" ).arg( query.lastError().text() ) );
-    QgsDebugError( errorMessage );
+    QgsDebugMsg( errorMessage );
     pushError( errorMessage );
     return QVariant();
   }
 
-  const QVariant res = query.value( 0 );
-  return QgsVariantUtils::isNull( res ) ? QVariant() : res;
+  return query.value( 0 );
 }
 
 QString QgsMssqlProvider::storageType() const
@@ -723,7 +700,7 @@ QString QgsMssqlProvider::storageType() const
 
 QVariant QgsMssqlProvider::convertTimeValue( const QVariant &value )
 {
-  if ( value.isValid() && value.userType() == QMetaType::Type::QByteArray )
+  if ( value.isValid() && value.type() == QVariant::ByteArray )
   {
     // time fields can be returned as byte arrays... woot
     const QByteArray ba = value.toByteArray();
@@ -734,10 +711,10 @@ QVariant QgsMssqlProvider::convertTimeValue( const QVariant &value )
       const int seconds = ba.at( 4 );
       QVariant t = QTime( hours, mins, seconds );
       if ( !t.isValid() ) // can't handle it
-        t = QgsVariantUtils::createNullVariant( QMetaType::Type::QTime );
+        t = QVariant( QVariant::Time );
       return t;
     }
-    return QgsVariantUtils::createNullVariant( QMetaType::Type::QTime );
+    return QVariant( QVariant::Time );
   }
   return value;
 }
@@ -767,15 +744,15 @@ QVariant QgsMssqlProvider::minimumValue( int index ) const
 
   if ( !LoggedExec( query, sql ) )
   {
-    QgsDebugError( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
+    QgsDebugMsg( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
   }
 
   if ( query.isActive() && query.next() )
   {
     QVariant v = query.value( 0 );
-    if ( fld.type() == QMetaType::Type::QTime )
+    if ( fld.type() == QVariant::Time )
       v = convertTimeValue( v );
-    if ( v.userType() != fld.type() )
+    if ( v.type() != fld.type() )
       v = convertValue( fld.type(), v.toString() );
     return v;
   }
@@ -808,15 +785,15 @@ QVariant QgsMssqlProvider::maximumValue( int index ) const
 
   if ( !LoggedExec( query, sql ) )
   {
-    QgsDebugError( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
+    QgsDebugMsg( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
   }
 
   if ( query.isActive() && query.next() )
   {
     QVariant v = query.value( 0 );
-    if ( fld.type() == QMetaType::Type::QTime )
+    if ( fld.type() == QVariant::Time )
       v = convertTimeValue( v );
-    if ( v.userType() != fld.type() )
+    if ( v.type() != fld.type() )
       v = convertValue( fld.type(), v.toString() );
     return v;
   }
@@ -857,7 +834,7 @@ QSet<QVariant> QgsMssqlProvider::uniqueValues( int index, int limit ) const
 
   if ( !LoggedExec( query, sql ) )
   {
-    QgsDebugError( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
+    QgsDebugMsg( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
   }
 
   if ( query.isActive() )
@@ -866,9 +843,9 @@ QSet<QVariant> QgsMssqlProvider::uniqueValues( int index, int limit ) const
     while ( query.next() )
     {
       QVariant v = query.value( 0 );
-      if ( fld.type() == QMetaType::Type::QTime )
+      if ( fld.type() == QVariant::Time )
         v = convertTimeValue( v );
-      if ( v.userType() != fld.type() )
+      if ( v.type() != fld.type() )
         v = convertValue( fld.type(), v.toString() );
       uniqueValues.insert( v );
     }
@@ -911,7 +888,7 @@ QStringList QgsMssqlProvider::uniqueStringsMatching( int index, const QString &s
 
   if ( !LoggedExec( query, sql ) )
   {
-    QgsDebugError( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
+    QgsDebugMsg( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
   }
 
   if ( query.isActive() )
@@ -974,7 +951,7 @@ void QgsMssqlProvider::UpdateStatistics( bool estimate ) const
   }
   else
   {
-    QgsDebugError( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
+    QgsDebugMsg( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
   }
 
   // If we can't find the extents in the spatial index table just do what we normally do.
@@ -1058,7 +1035,7 @@ void QgsMssqlProvider::UpdateStatistics( bool estimate ) const
 
   if ( !LoggedExec( query, statement ) )
   {
-    QgsDebugError( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
+    QgsDebugMsg( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
   }
 
   if ( !query.isActive() )
@@ -1110,7 +1087,7 @@ QgsRectangle QgsMssqlProvider::extent() const
 /**
  * Returns the feature type
  */
-Qgis::WkbType QgsMssqlProvider::wkbType() const
+QgsWkbTypes::Type QgsMssqlProvider::wkbType() const
 {
   return mWkbType;
 }
@@ -1157,22 +1134,11 @@ bool QgsMssqlProvider::isValid() const
   return mValid;
 }
 
-Qgis::ProviderStyleStorageCapabilities QgsMssqlProvider::styleStorageCapabilities() const
-{
-  Qgis::ProviderStyleStorageCapabilities storageCapabilities;
-  if ( isValid() )
-  {
-    storageCapabilities |= Qgis::ProviderStyleStorageCapability::SaveToDatabase;
-    storageCapabilities |= Qgis::ProviderStyleStorageCapability::LoadFromDatabase;
-  }
-  return storageCapabilities;
-}
-
 bool QgsMssqlProvider::addFeatures( QgsFeatureList &flist, Flags flags )
 {
   for ( QgsFeatureList::iterator it = flist.begin(); it != flist.end(); ++it )
   {
-    if ( it->hasGeometry() && mWkbType == Qgis::WkbType::NoGeometry )
+    if ( it->hasGeometry() && mWkbType == QgsWkbTypes::NoGeometry )
     {
       it->clearGeometry();
     }
@@ -1294,7 +1260,7 @@ bool QgsMssqlProvider::addFeatures( QgsFeatureList &flist, Flags flags )
 
       QString delim;
 
-      for ( const auto idx : std::as_const( mPrimaryKeyAttrs ) )
+      for ( const auto idx : mPrimaryKeyAttrs )
       {
         const QgsField &fld = mAttributeFields.at( idx );
         statement += delim + QStringLiteral( "inserted.[%1]" ).arg( fld.name() );
@@ -1315,7 +1281,7 @@ bool QgsMssqlProvider::addFeatures( QgsFeatureList &flist, Flags flags )
     if ( !query.prepare( statement ) )
     {
       const QString msg = query.lastError().text();
-      QgsDebugError( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
+      QgsDebugMsg( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
       if ( !mSkipFailures )
       {
         pushError( msg );
@@ -1347,41 +1313,41 @@ bool QgsMssqlProvider::addFeatures( QgsFeatureList &flist, Flags flags )
       if ( mComputedColumns.contains( fld.name() ) )
         continue; // skip computed columns because they are done server side.
 
-      const QMetaType::Type type = fld.type();
+      const QVariant::Type type = fld.type();
       if ( QgsVariantUtils::isNull( attrs.at( i ) ) )
       {
         // binding null values
-        if ( type == QMetaType::Type::QDate || type == QMetaType::Type::QDateTime )
-          query.addBindValue( QgsVariantUtils::createNullVariant( QMetaType::Type::QString ) );
+        if ( type == QVariant::Date || type == QVariant::DateTime )
+          query.addBindValue( QVariant( QVariant::String ) );
         else
-          query.addBindValue( QgsVariantUtils::createNullVariant( type ) );
+          query.addBindValue( QVariant( type ) );
       }
-      else if ( type == QMetaType::Type::Int )
+      else if ( type == QVariant::Int )
       {
         // binding an INTEGER value
         query.addBindValue( attrs.at( i ).toInt() );
       }
-      else if ( type == QMetaType::Type::Double )
+      else if ( type == QVariant::Double )
       {
         // binding a DOUBLE value
         query.addBindValue( attrs.at( i ).toDouble() );
       }
-      else if ( type == QMetaType::Type::QString )
+      else if ( type == QVariant::String )
       {
         // binding a TEXT value
         query.addBindValue( attrs.at( i ).toString() );
       }
-      else if ( type == QMetaType::Type::QTime )
+      else if ( type == QVariant::Time )
       {
         // binding a TIME value
         query.addBindValue( attrs.at( i ).toTime().toString( Qt::ISODate ) );
       }
-      else if ( type == QMetaType::Type::QDate )
+      else if ( type == QVariant::Date )
       {
         // binding a DATE value
         query.addBindValue( attrs.at( i ).toDate().toString( Qt::ISODate ) );
       }
-      else if ( type == QMetaType::Type::QDateTime )
+      else if ( type == QVariant::DateTime )
       {
         // binding a DATETIME value
         query.addBindValue( attrs.at( i ).toDateTime().toString( Qt::ISODate ) );
@@ -1412,23 +1378,21 @@ bool QgsMssqlProvider::addFeatures( QgsFeatureList &flist, Flags flags )
           // Z and M on the end of a WKT string isn't valid for
           // SQL Server so we have to remove it first.
           wkt = geom.asWkt();
-          const thread_local QRegularExpression wktRx( QStringLiteral( "[mzMZ]+\\s*\\(" ) );
-          wkt.replace( wktRx, QStringLiteral( "(" ) );
+          wkt.replace( QRegularExpression( QStringLiteral( "[mzMZ]+\\s*\\(" ) ), QStringLiteral( "(" ) );
           // if we have M value only, we need to insert null-s for the Z value
           if ( QgsWkbTypes::hasM( geom.wkbType() ) && !QgsWkbTypes::hasZ( geom.wkbType() ) )
           {
-            const thread_local QRegularExpression nullRx( QStringLiteral( "(?=\\s[0-9+-.]+[,)])" ) );
-            wkt.replace( QRegularExpression( nullRx ), QStringLiteral( " NULL" ) );
+            wkt.replace( QRegularExpression( QStringLiteral( "(?=\\s[0-9+-.]+[,)])" ) ), QStringLiteral( " NULL" ) );
           }
         }
         query.addBindValue( wkt );
       }
     }
 
-    if ( !LoggedExecPrepared( query ) )
+    if ( !query.exec() )
     {
       const QString msg = query.lastError().text();
-      QgsDebugError( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
+      QgsDebugMsg( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
       if ( !mSkipFailures )
       {
         pushError( msg );
@@ -1441,7 +1405,7 @@ bool QgsMssqlProvider::addFeatures( QgsFeatureList &flist, Flags flags )
       if ( !query.next() )
       {
         const QString msg = query.lastError().text();
-        QgsDebugError( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
+        QgsDebugMsg( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
         if ( !mSkipFailures )
         {
           pushError( msg );
@@ -1482,7 +1446,7 @@ bool QgsMssqlProvider::addAttributes( const QList<QgsField> &attributes )
   for ( QList<QgsField>::const_iterator it = attributes.begin(); it != attributes.end(); ++it )
   {
     QString type = it->typeName();
-    if ( type == QLatin1String( "char" ) || type == QLatin1String( "varchar" ) || type == QLatin1String( "nvarchar" ) )
+    if ( type == QLatin1String( "char" ) || type == QLatin1String( "varchar" ) )
     {
       if ( it->length() > 0 )
         type = QStringLiteral( "%1(%2)" ).arg( type ).arg( it->length() );
@@ -1508,7 +1472,7 @@ bool QgsMssqlProvider::addAttributes( const QList<QgsField> &attributes )
   query.setForwardOnly( true );
   if ( !LoggedExec( query, statement ) )
   {
-    QgsDebugError( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
+    QgsDebugMsg( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
     return false;
   }
 
@@ -1541,7 +1505,7 @@ bool QgsMssqlProvider::deleteAttributes( const QgsAttributeIds &attributes )
 
   if ( !LoggedExec( query, statement ) )
   {
-    QgsDebugError( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
+    QgsDebugMsg( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
     return false;
   }
 
@@ -1618,7 +1582,7 @@ bool QgsMssqlProvider::changeAttributeValues( const QgsChangedAttributesMap &att
     // use prepared statement to prevent from sql injection
     if ( !query.prepare( statement ) )
     {
-      QgsDebugError( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
+      QgsDebugMsg( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
       return false;
     }
 
@@ -1638,41 +1602,41 @@ bool QgsMssqlProvider::changeAttributeValues( const QgsChangedAttributesMap &att
       if ( mComputedColumns.contains( fld.name() ) )
         continue; // skip computed columns because they are done server side.
 
-      const QMetaType::Type type = fld.type();
+      const QVariant::Type type = fld.type();
       if ( QgsVariantUtils::isNull( *it2 ) )
       {
         // binding null values
-        if ( type == QMetaType::Type::QDate || type == QMetaType::Type::QDateTime )
-          query.addBindValue( QgsVariantUtils::createNullVariant( QMetaType::Type::QString ) );
+        if ( type == QVariant::Date || type == QVariant::DateTime )
+          query.addBindValue( QVariant( QVariant::String ) );
         else
-          query.addBindValue( QgsVariantUtils::createNullVariant( type ) );
+          query.addBindValue( QVariant( type ) );
       }
-      else if ( type == QMetaType::Type::Int )
+      else if ( type == QVariant::Int )
       {
         // binding an INTEGER value
         query.addBindValue( it2->toInt() );
       }
-      else if ( type == QMetaType::Type::Double )
+      else if ( type == QVariant::Double )
       {
         // binding a DOUBLE value
         query.addBindValue( it2->toDouble() );
       }
-      else if ( type == QMetaType::Type::QString )
+      else if ( type == QVariant::String )
       {
         // binding a TEXT value
         query.addBindValue( it2->toString() );
       }
-      else if ( type == QMetaType::Type::QDateTime )
+      else if ( type == QVariant::DateTime )
       {
         // binding a DATETIME value
         query.addBindValue( it2->toDateTime().toString( Qt::ISODate ) );
       }
-      else if ( type == QMetaType::Type::QDate )
+      else if ( type == QVariant::Date )
       {
         // binding a DATE value
         query.addBindValue( it2->toDate().toString( Qt::ISODate ) );
       }
-      else if ( type == QMetaType::Type::QTime )
+      else if ( type == QVariant::Time )
       {
         // binding a TIME value
         query.addBindValue( it2->toTime().toString( Qt::ISODate ) );
@@ -1683,9 +1647,9 @@ bool QgsMssqlProvider::changeAttributeValues( const QgsChangedAttributesMap &att
       }
     }
 
-    if ( !LoggedExecPrepared( query ) )
+    if ( !query.exec() )
     {
-      QgsDebugError( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
+      QgsDebugMsg( QStringLiteral( "SQL:%1\n  Error:%2" ).arg( query.lastQuery(), query.lastError().text() ) );
       return false;
     }
 
@@ -1769,12 +1733,11 @@ bool QgsMssqlProvider::changeGeometryValues( const QgsGeometryMap &geometry_map 
       QString wkt = it->asWkt();
       // Z and M on the end of a WKT string isn't valid for
       // SQL Server so we have to remove it first.
-      const thread_local QRegularExpression zmRegExp( QStringLiteral( "[mzMZ]+\\s*\\(" ) );
-      wkt.replace( zmRegExp, QStringLiteral( "(" ) );
+      wkt.replace( QRegularExpression( QStringLiteral( "[mzMZ]+\\s*\\(" ) ), QStringLiteral( "(" ) );
       query.addBindValue( wkt );
     }
 
-    if ( ! LoggedExecPrepared( query ) )
+    if ( !query.exec() )
     {
       pushError( query.lastError().text() );
       return false;
@@ -1865,27 +1828,27 @@ bool QgsMssqlProvider::deleteFeatures( const QgsFeatureIds &ids )
 
 void QgsMssqlProvider::updateExtents()
 {
-  mExtent.setNull();
+  mExtent.setMinimal();
 }
 
-Qgis::VectorProviderCapabilities QgsMssqlProvider::capabilities() const
+QgsVectorDataProvider::Capabilities QgsMssqlProvider::capabilities() const
 {
-  Qgis::VectorProviderCapabilities cap = Qgis::VectorProviderCapability::CreateAttributeIndex | Qgis::VectorProviderCapability::AddFeatures | Qgis::VectorProviderCapability::AddAttributes | Qgis::VectorProviderCapability::TransactionSupport;
+  QgsVectorDataProvider::Capabilities cap = CreateAttributeIndex | AddFeatures | AddAttributes | TransactionSupport;
   bool hasGeom = false;
   if ( !mGeometryColName.isEmpty() )
   {
     hasGeom = true;
-    cap |= Qgis::VectorProviderCapability::CreateSpatialIndex;
+    cap |= CreateSpatialIndex;
   }
 
   if ( mPrimaryKeyAttrs.isEmpty() )
     return cap;
 
   if ( hasGeom )
-    cap |= Qgis::VectorProviderCapability::ChangeGeometries;
+    cap |= ChangeGeometries;
 
-  return cap | Qgis::VectorProviderCapability::DeleteFeatures | Qgis::VectorProviderCapability::ChangeAttributeValues | Qgis::VectorProviderCapability::DeleteAttributes |
-         Qgis::VectorProviderCapability::SelectAtId;
+  return cap | DeleteFeatures | ChangeAttributeValues | DeleteAttributes |
+         QgsVectorDataProvider::SelectAtId;
 }
 
 bool QgsMssqlProvider::createSpatialIndex()
@@ -1975,10 +1938,6 @@ QgsCoordinateReferenceSystem QgsMssqlProvider::crs() const
       if ( mCrs.isValid() )
         return mCrs;
     }
-    else  // try to load as EPSG
-    {
-      mCrs = QgsCoordinateReferenceSystem::fromEpsgId( mSRId );
-    }
   }
   return mCrs;
 }
@@ -2050,26 +2009,11 @@ bool QgsMssqlProvider::setSubsetString( const QString &theSQL, bool )
 
   setDataSourceUri( anUri.uri() );
 
-  mExtent.setNull();
+  mExtent.setMinimal();
 
   emit dataChanged();
 
   return true;
-}
-
-bool QgsMssqlProvider::supportsSubsetString() const
-{
-  return true;
-}
-
-QString QgsMssqlProvider::subsetStringDialect() const
-{
-  return tr( "SQL Server WHERE clause" );
-}
-
-QString QgsMssqlProvider::subsetStringHelpUrl() const
-{
-  return QStringLiteral( "https://learn.microsoft.com/en-us/sql/t-sql/queries/where-transact-sql?view=sql-server-ver16" );
 }
 
 QString  QgsMssqlProvider::description() const
@@ -2094,39 +2038,39 @@ bool QgsMssqlProvider::convertField( QgsField &field )
   int fieldPrec = field.precision();
   switch ( field.type() )
   {
-    case QMetaType::Type::LongLong:
+    case QVariant::LongLong:
       fieldType = QStringLiteral( "bigint" );
       fieldSize = -1;
       fieldPrec = 0;
       break;
 
-    case QMetaType::Type::QDateTime:
+    case QVariant::DateTime:
       fieldType = QStringLiteral( "datetime" );
       fieldPrec = 0;
       break;
 
-    case QMetaType::Type::QDate:
+    case QVariant::Date:
       fieldType = QStringLiteral( "date" );
       fieldPrec = 0;
       break;
 
-    case QMetaType::Type::QTime:
+    case QVariant::Time:
       fieldType = QStringLiteral( "time" );
       fieldPrec = 0;
       break;
 
-    case QMetaType::Type::QString:
+    case QVariant::String:
       fieldType = QStringLiteral( "nvarchar(max)" );
       fieldPrec = 0;
       break;
 
-    case QMetaType::Type::Int:
+    case QVariant::Int:
       fieldType = QStringLiteral( "int" );
       fieldSize = -1;
       fieldPrec = 0;
       break;
 
-    case QMetaType::Type::Double:
+    case QVariant::Double:
       if ( fieldSize <= 0 || fieldPrec <= 0 )
       {
         fieldType = QStringLiteral( "float" );
@@ -2149,31 +2093,31 @@ bool QgsMssqlProvider::convertField( QgsField &field )
   return true;
 }
 
-void QgsMssqlProvider::mssqlWkbTypeAndDimension( Qgis::WkbType wkbType, QString &geometryType, int &dim )
+void QgsMssqlProvider::mssqlWkbTypeAndDimension( QgsWkbTypes::Type wkbType, QString &geometryType, int &dim )
 {
-  const Qgis::WkbType flatType = QgsWkbTypes::flatType( wkbType );
+  const QgsWkbTypes::Type flatType = QgsWkbTypes::flatType( wkbType );
 
-  if ( flatType == Qgis::WkbType::Point )
+  if ( flatType == QgsWkbTypes::Point )
     geometryType = QStringLiteral( "POINT" );
-  else if ( flatType == Qgis::WkbType::LineString )
+  else if ( flatType == QgsWkbTypes::LineString )
     geometryType = QStringLiteral( "LINESTRING" );
-  else if ( flatType == Qgis::WkbType::Polygon )
+  else if ( flatType == QgsWkbTypes::Polygon )
     geometryType = QStringLiteral( "POLYGON" );
-  else if ( flatType == Qgis::WkbType::MultiPoint )
+  else if ( flatType == QgsWkbTypes::MultiPoint )
     geometryType = QStringLiteral( "MULTIPOINT" );
-  else if ( flatType == Qgis::WkbType::MultiLineString )
+  else if ( flatType == QgsWkbTypes::MultiLineString )
     geometryType = QStringLiteral( "MULTILINESTRING" );
-  else if ( flatType == Qgis::WkbType::MultiPolygon )
+  else if ( flatType == QgsWkbTypes::MultiPolygon )
     geometryType = QStringLiteral( "MULTIPOLYGON" );
-  else if ( flatType == Qgis::WkbType::GeometryCollection )
+  else if ( flatType == QgsWkbTypes::GeometryCollection )
     geometryType = QStringLiteral( "GEOMETRYCOLLECTION" );
-  else if ( flatType == Qgis::WkbType::CircularString )
+  else if ( flatType == QgsWkbTypes::CircularString )
     geometryType = QStringLiteral( "CIRCULARSTRING" );
-  else if ( flatType == Qgis::WkbType::CompoundCurve )
+  else if ( flatType == QgsWkbTypes::CompoundCurve )
     geometryType = QStringLiteral( "COMPOUNDCURVE" );
-  else if ( flatType == Qgis::WkbType::CurvePolygon )
+  else if ( flatType == QgsWkbTypes::CurvePolygon )
     geometryType = QStringLiteral( "CURVEPOLYGON" );
-  else if ( flatType == Qgis::WkbType::Unknown )
+  else if ( flatType == QgsWkbTypes::Unknown )
     geometryType = QStringLiteral( "GEOMETRY" );
   else
   {
@@ -2194,13 +2138,13 @@ void QgsMssqlProvider::mssqlWkbTypeAndDimension( Qgis::WkbType wkbType, QString 
     geometryType += QLatin1Char( 'M' );
     dim = 3;
   }
-  else if ( wkbType >= Qgis::WkbType::Point25D && wkbType <= Qgis::WkbType::MultiPolygon25D )
+  else if ( wkbType >= QgsWkbTypes::Point25D && wkbType <= QgsWkbTypes::MultiPolygon25D )
   {
     dim = 3;
   }
 }
 
-Qgis::WkbType QgsMssqlProvider::getWkbType( const QString &geometryType )
+QgsWkbTypes::Type QgsMssqlProvider::getWkbType( const QString &geometryType )
 {
   return QgsWkbTypes::parseType( geometryType );
 }
@@ -2208,7 +2152,7 @@ Qgis::WkbType QgsMssqlProvider::getWkbType( const QString &geometryType )
 
 Qgis::VectorExportResult QgsMssqlProvider::createEmptyLayer( const QString &uri,
     const QgsFields &fields,
-    Qgis::WkbType wkbType,
+    QgsWkbTypes::Type wkbType,
     const QgsCoordinateReferenceSystem &srs,
     bool overwrite,
     QMap<int, int> *oldToNewAttrIdxMap,
@@ -2243,7 +2187,7 @@ Qgis::VectorExportResult QgsMssqlProvider::createEmptyLayer( const QString &uri,
   if ( schemaName.isEmpty() )
     schemaName = QStringLiteral( "dbo" );
 
-  if ( wkbType != Qgis::WkbType::NoGeometry && geometryColumn.isEmpty() )
+  if ( wkbType != QgsWkbTypes::NoGeometry && geometryColumn.isEmpty() )
     geometryColumn = QStringLiteral( "geom" );
 
   // get the pk's name and type
@@ -2437,7 +2381,7 @@ Qgis::VectorExportResult QgsMssqlProvider::createEmptyLayer( const QString &uri,
   dsUri.setDataSource( schemaName, tableName, geometryColumn, QString(), primaryKey );
 
   const QgsDataProvider::ProviderOptions providerOptions;
-  const Qgis::DataProviderReadFlags flags;
+  const QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags();
   QgsMssqlProvider *provider = new QgsMssqlProvider( dsUri.uri(), providerOptions, flags );
   if ( !provider->isValid() )
   {
@@ -2509,7 +2453,7 @@ Qgis::VectorExportResult QgsMssqlProvider::createEmptyLayer( const QString &uri,
 QgsMssqlProvider *QgsMssqlProviderMetadata::createProvider(
   const QString &uri,
   const QgsDataProvider::ProviderOptions &options,
-  Qgis::DataProviderReadFlags flags )
+  QgsDataProvider::ReadFlags flags )
 {
   return new QgsMssqlProvider( uri, options, flags );
 }
@@ -2551,14 +2495,15 @@ void QgsMssqlProviderMetadata::saveConnection( const QgsAbstractProviderConnecti
   saveConnectionProtected( conn, name );
 }
 
-Qgis::VectorExportResult QgsMssqlProviderMetadata::createEmptyLayer( const QString &uri,
-    const QgsFields &fields,
-    Qgis::WkbType wkbType,
-    const QgsCoordinateReferenceSystem &srs,
-    bool overwrite,
-    QMap<int, int> &oldToNewAttrIdxMap,
-    QString &errorMessage,
-    const QMap<QString, QVariant> *options )
+Qgis::VectorExportResult QgsMssqlProviderMetadata::createEmptyLayer(
+  const QString &uri,
+  const QgsFields &fields,
+  QgsWkbTypes::Type wkbType,
+  const QgsCoordinateReferenceSystem &srs,
+  bool overwrite,
+  QMap<int, int> &oldToNewAttrIdxMap,
+  QString &errorMessage,
+  const QMap<QString, QVariant> *options )
 {
   return QgsMssqlProvider::createEmptyLayer(
            uri, fields, wkbType, srs, overwrite,
@@ -2641,8 +2586,8 @@ bool QgsMssqlProviderMetadata::saveStyle( const QString &uri,
 
   if ( !db->isValid() )
   {
-    QgsDebugError( QStringLiteral( "Error connecting to database" ) );
-    QgsDebugError( db->errorText() );
+    QgsDebugMsg( QStringLiteral( "Error connecting to database" ) );
+    QgsDebugMsg( db->errorText() );
     return false;
   }
 
@@ -2653,7 +2598,7 @@ bool QgsMssqlProviderMetadata::saveStyle( const QString &uri,
 
   if ( !LoggedExecMetadata( query, sql, uri ) )
   {
-    QgsDebugError( query.lastError().text() );
+    QgsDebugMsg( query.lastError().text() );
     return false;
   }
   if ( query.isActive() && query.next() && query.value( 0 ).toInt() == 0 )
@@ -2734,8 +2679,8 @@ bool QgsMssqlProviderMetadata::saveStyle( const QString &uri,
 
   if ( !LoggedExecMetadata( query, checkQuery, uri ) )
   {
-    QgsDebugError( query.lastError().text() );
-    QgsDebugError( QStringLiteral( "Check Query failed" ) );
+    QgsDebugMsg( query.lastError().text() );
+    QgsDebugMsg( QStringLiteral( "Check Query failed" ) );
     return false;
   }
   if ( query.isActive() && query.next() && query.value( 0 ).toString() == styleName )
@@ -2792,12 +2737,6 @@ bool QgsMssqlProviderMetadata::saveStyle( const QString &uri,
 
 QString QgsMssqlProviderMetadata::loadStyle( const QString &uri, QString &errCause )
 {
-  QString styleName;
-  return loadStoredStyle( uri, styleName, errCause );
-}
-
-QString QgsMssqlProviderMetadata::loadStoredStyle( const QString &uri, QString &styleName, QString &errCause )
-{
   errCause.clear();
   const QgsDataSourceUri dsUri( uri );
   // connect to database
@@ -2805,8 +2744,8 @@ QString QgsMssqlProviderMetadata::loadStoredStyle( const QString &uri, QString &
 
   if ( !db->isValid() )
   {
-    QgsDebugError( QStringLiteral( "Error connecting to database" ) );
-    QgsDebugError( db->errorText() );
+    QgsDebugMsg( QStringLiteral( "Error connecting to database" ) );
+    QgsDebugMsg( db->errorText() );
     errCause = tr( "Cannot connect to database: %1" ).arg( db->errorText() );
     return QString();
   }
@@ -2833,7 +2772,7 @@ QString QgsMssqlProviderMetadata::loadStoredStyle( const QString &uri, QString &
   query.clear();
   query.setForwardOnly( true );
 
-  const QString selectQmlQuery = QString( "SELECT top 1 styleName, styleQML"
+  const QString selectQmlQuery = QString( "SELECT top 1 styleQML"
                                           " FROM layer_styles"
                                           " WHERE f_table_catalog=%1"
                                           " AND f_table_schema=%2"
@@ -2850,13 +2789,12 @@ QString QgsMssqlProviderMetadata::loadStoredStyle( const QString &uri, QString &
     QgsDebugMsgLevel( QStringLiteral( "Load of style failed" ), 2 );
     const QString msg = query.lastError().text();
     errCause = msg;
-    QgsDebugError( msg );
+    QgsDebugMsg( msg );
     return QString();
   }
   if ( query.isActive() && query.next() )
   {
-    styleName = query.value( 0 ).toString();
-    const QString style = query.value( 1 ).toString();
+    QString style = query.value( 0 ).toString();
     return style;
   }
   return QString();
@@ -2874,8 +2812,8 @@ int QgsMssqlProviderMetadata::listStyles( const QString &uri,
 
   if ( !db->isValid() )
   {
-    QgsDebugError( QStringLiteral( "Error connecting to database" ) );
-    QgsDebugError( db->errorText() );
+    QgsDebugMsg( QStringLiteral( "Error connecting to database" ) );
+    QgsDebugMsg( db->errorText() );
     return -1;
   }
 
@@ -2889,12 +2827,12 @@ int QgsMssqlProviderMetadata::listStyles( const QString &uri,
   {
     const QString msg = query.lastError().text();
     errCause = msg;
-    QgsDebugError( msg );
+    QgsDebugMsg( msg );
     return -1;
   }
   if ( query.isActive() && query.next() && query.value( 0 ).toInt() == 0 )
   {
-    QgsDebugMsgLevel( QStringLiteral( "No styles available on DB" ), 2 );
+    QgsDebugMsgLevel( QObject::tr( "No styles available on DB" ), 2 );
     return -1;
   }
 
@@ -2914,7 +2852,7 @@ int QgsMssqlProviderMetadata::listStyles( const QString &uri,
   bool queryOk = LoggedExecMetadata( query, selectRelatedQuery, uri );
   if ( !queryOk )
   {
-    QgsDebugError( query.lastError().text() );
+    QgsDebugMsg( query.lastError().text() );
     return -1;
   }
   int numberOfRelatedStyles = 0;
@@ -2939,7 +2877,7 @@ int QgsMssqlProviderMetadata::listStyles( const QString &uri,
   queryOk = LoggedExecMetadata( query, selectOthersQuery, uri );
   if ( !queryOk )
   {
-    QgsDebugError( query.lastError().text() );
+    QgsDebugMsg( query.lastError().text() );
     return -1;
   }
   while ( query.next() )
@@ -2969,8 +2907,8 @@ QString QgsMssqlProviderMetadata::getStyleById( const QString &uri, const QStrin
 
   if ( !db->isValid() )
   {
-    QgsDebugError( QStringLiteral( "Error connecting to database" ) );
-    QgsDebugError( db->errorText() );
+    QgsDebugMsg( QStringLiteral( "Error connecting to database" ) );
+    QgsDebugMsg( db->errorText() );
     errCause = tr( "Cannot connect to database: %1" ).arg( db->errorText() );
     return QString();
   }
@@ -3002,7 +2940,7 @@ QString QgsMssqlProviderMetadata::getStyleById( const QString &uri, const QStrin
   const bool queryOk = LoggedExecMetadata( query, selectQmlQuery, uri );
   if ( !queryOk )
   {
-    QgsDebugError( query.lastError().text() );
+    QgsDebugMsg( query.lastError().text() );
     errCause = query.lastError().text();
     return QString();
   }
@@ -3039,8 +2977,8 @@ QVariantMap QgsMssqlProviderMetadata::decodeUri( const QString &uri ) const
   //if ( ! dsUri.authConfigId().isEmpty() )
   //  uriParts[ QStringLiteral( "authcfg" ) ] = dsUri.authConfigId();
 
-  if ( dsUri.wkbType() != Qgis::WkbType::Unknown )
-    uriParts[ QStringLiteral( "type" ) ] = static_cast< quint32>( dsUri.wkbType() );
+  if ( dsUri.wkbType() != QgsWkbTypes::Type::Unknown )
+    uriParts[ QStringLiteral( "type" ) ] = dsUri.wkbType();
 
   // Supported?
   // uriParts[ QStringLiteral( "selectatid" ) ] = dsUri.selectAtIdDisabled();
@@ -3111,7 +3049,7 @@ QString QgsMssqlProviderMetadata::encodeUri( const QVariantMap &parts ) const
   //if ( parts.contains( QStringLiteral( "authcfg" ) ) )
   //  dsUri.setAuthConfigId( parts.value( QStringLiteral( "authcfg" ) ).toString() );
   if ( parts.contains( QStringLiteral( "type" ) ) )
-    dsUri.setParam( QStringLiteral( "type" ), QgsWkbTypes::displayString( static_cast<Qgis::WkbType>( parts.value( QStringLiteral( "type" ) ).toInt() ) ) );
+    dsUri.setParam( QStringLiteral( "type" ), QgsWkbTypes::displayString( static_cast<QgsWkbTypes::Type>( parts.value( QStringLiteral( "type" ) ).toInt() ) ) );
   // Supported?
   //if ( parts.contains( QStringLiteral( "selectatid" ) ) )
   //  dsUri.setParam( QStringLiteral( "selectatid" ), parts.value( QStringLiteral( "selectatid" ) ).toString() );
@@ -3148,32 +3086,9 @@ QString QgsMssqlProviderMetadata::encodeUri( const QVariantMap &parts ) const
   return dsUri.uri();
 }
 
-QList<Qgis::LayerType> QgsMssqlProviderMetadata::supportedLayerTypes() const
+QList<QgsMapLayerType> QgsMssqlProviderMetadata::supportedLayerTypes() const
 {
-  return { Qgis::LayerType::Vector };
-}
-
-QString QgsMssqlProvider::typeFromMetadata( const QString &typeName, int numCoords )
-{
-
-  QString type { typeName };
-  const bool hasM { typeName.endsWith( 'M', Qt::CaseInsensitive ) };
-  if ( numCoords == 4 )
-  {
-    if ( hasM )
-    {
-      type.chop( 1 );
-    }
-    type.append( QStringLiteral( "ZM" ) );
-  }
-  else if ( numCoords == 3 )
-  {
-    if ( ! hasM )
-    {
-      type.append( QStringLiteral( "Z" ) );
-    }
-  }
-  return type;
+  return { QgsMapLayerType::VectorLayer };
 }
 
 bool QgsMssqlProviderMetadata::execLogged( QSqlQuery &qry, const QString &sql, const QString &uri, const QString &queryOrigin ) const
@@ -3283,7 +3198,7 @@ QString QgsMssqlProvider::whereClauseFid( QgsFeatureId featureId )
       }
       else
       {
-        QgsDebugError( QStringLiteral( "FAILURE: Key values for feature %1 not found." ).arg( featureId ) );
+        QgsDebugMsg( QStringLiteral( "FAILURE: Key values for feature %1 not found." ).arg( featureId ) );
         whereClause = QStringLiteral( "NULL IS NOT NULL" );
       }
     }

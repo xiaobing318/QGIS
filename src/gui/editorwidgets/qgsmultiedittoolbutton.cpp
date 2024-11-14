@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsmultiedittoolbutton.h"
-#include "moc_qgsmultiedittoolbutton.cpp"
 #include "qgsapplication.h"
 #include "qgsguiutils.h"
 

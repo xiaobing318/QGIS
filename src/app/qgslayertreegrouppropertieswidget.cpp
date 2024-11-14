@@ -14,9 +14,10 @@
  ***************************************************************************/
 
 #include "qgslayertreegrouppropertieswidget.h"
-#include "moc_qgslayertreegrouppropertieswidget.cpp"
+#include "qgsstyle.h"
 #include "qgsapplication.h"
 #include "qgsmaplayer.h"
+#include "qgsgui.h"
 #include "qgspainteffect.h"
 #include "qgsmapcanvas.h"
 #include "qgspainteffectregistry.h"
@@ -34,7 +35,6 @@ QgsLayerTreeGroupPropertiesWidget::QgsLayerTreeGroupPropertiesWidget( QgsMapCanv
 
   mPaintEffect.reset( QgsPaintEffectRegistry::defaultStack() );
   mPaintEffect->setEnabled( false );
-  mEffectWidget->setPaintEffect( mPaintEffect.get() );
 
   connect( mOpacityWidget, &QgsOpacityWidget::opacityChanged, this, &QgsLayerTreeGroupPropertiesWidget::onLayerPropertyChanged );
   connect( mBlendModeComboBox, qOverload< int >( &QgsBlendModeComboBox::currentIndexChanged ), this, &QgsLayerTreeGroupPropertiesWidget::onLayerPropertyChanged );
@@ -132,7 +132,7 @@ QgsLayerTreeGroupPropertiesWidgetFactory::QgsLayerTreeGroupPropertiesWidgetFacto
   : QObject( parent )
 {
   setIcon( QgsApplication::getThemeIcon( QStringLiteral( "propertyicons/symbology.svg" ) ) );
-  setTitle( tr( "Symbology" ) );
+  setTitle( tr( "Group" ) );
 }
 
 QgsMapLayerConfigWidget *QgsLayerTreeGroupPropertiesWidgetFactory::createWidget( QgsMapLayer *, QgsMapCanvas *canvas, bool, QWidget *parent ) const

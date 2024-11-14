@@ -9,18 +9,35 @@ __author__ = 'Nyall Dawson'
 __date__ = '28/3/2022'
 __copyright__ = 'Copyright 2022, The QGIS Project'
 
-from qgis.PyQt.QtCore import QEvent, QPoint, QPointF, Qt
-from qgis.PyQt.QtGui import QKeyEvent, QMouseEvent, QWheelEvent
+import qgis  # NOQA
+
+from qgis.PyQt.QtCore import (
+    QDir,
+    QEvent,
+    Qt,
+    QPoint,
+    QPointF
+)
+from qgis.PyQt.QtGui import (
+    QKeyEvent,
+    QMouseEvent,
+    QWheelEvent
+)
+
 from qgis.core import (
     QgsCoordinateReferenceSystem,
     QgsLineString,
     QgsPoint,
     QgsPointXY,
-    QgsProject,
+    QgsProject
 )
-from qgis.gui import QgsElevationProfileCanvas, QgsPlotMouseEvent, QgsPlotTool
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.gui import (
+    QgsElevationProfileCanvas,
+    QgsPlotTool,
+    QgsPlotMouseEvent
+)
+
+from qgis.testing import start_app, unittest
 
 app = start_app()
 
@@ -53,7 +70,15 @@ class TestTool(QgsPlotTool):
         self.events.append(event)
 
 
-class TestQgsElevationProfileCanvas(QgisTestCase):
+class TestQgsElevationProfileCanvas(unittest.TestCase):
+
+    def setUp(self):
+        self.report = "<h1>Python QgsElevationProfileCanvas Tests</h1>\n"
+
+    def tearDown(self):
+        report_file_path = "%s/qgistest.html" % QDir.tempPath()
+        with open(report_file_path, 'a') as report_file:
+            report_file.write(self.report)
 
     def testGettersSetters(self):
         canvas = QgsElevationProfileCanvas()
@@ -143,49 +168,49 @@ class TestQgsElevationProfileCanvas(QgisTestCase):
         canvas.setTool(tool)
         self.assertEqual(canvas.tool(), tool)
 
-        key_press_event = QKeyEvent(QEvent.Type.KeyPress, 54, Qt.KeyboardModifier.ShiftModifier)
+        key_press_event = QKeyEvent(QEvent.KeyPress, 54, Qt.ShiftModifier)
         canvas.keyPressEvent(key_press_event)
-        self.assertEqual(tool.events[-1].type(), QEvent.Type.KeyPress)
+        self.assertEqual(tool.events[-1].type(), QEvent.KeyPress)
 
-        key_release_event = QKeyEvent(QEvent.Type.KeyRelease, 54, Qt.KeyboardModifier.ShiftModifier)
+        key_release_event = QKeyEvent(QEvent.KeyRelease, 54, Qt.ShiftModifier)
         canvas.keyReleaseEvent(key_release_event)
-        self.assertEqual(tool.events[-1].type(), QEvent.Type.KeyRelease)
+        self.assertEqual(tool.events[-1].type(), QEvent.KeyRelease)
 
-        mouse_dbl_click_event = QMouseEvent(QEvent.Type.MouseButtonDblClick, QPointF(300, 200), Qt.MouseButton.LeftButton, Qt.MouseButtons(), Qt.KeyboardModifier.ShiftModifier)
+        mouse_dbl_click_event = QMouseEvent(QEvent.MouseButtonDblClick, QPointF(300, 200), Qt.LeftButton, Qt.MouseButtons(), Qt.ShiftModifier)
         canvas.mouseDoubleClickEvent(mouse_dbl_click_event)
-        self.assertEqual(tool.events[-1].type(), QEvent.Type.MouseButtonDblClick)
+        self.assertEqual(tool.events[-1].type(), QEvent.MouseButtonDblClick)
         self.assertIsInstance(tool.events[-1], QgsPlotMouseEvent)
         self.assertAlmostEqual(tool.events[-1].mapPoint().x(), 5.92, delta=0.6)
         self.assertAlmostEqual(tool.events[-1].mapPoint().y(), 2, 4)
         self.assertAlmostEqual(tool.events[-1].mapPoint().z(), 49.165, delta=5)
 
-        mouse_move_event = QMouseEvent(QEvent.Type.MouseMove, QPointF(300, 200), Qt.MouseButton.LeftButton, Qt.MouseButtons(), Qt.KeyboardModifier.ShiftModifier)
+        mouse_move_event = QMouseEvent(QEvent.MouseMove, QPointF(300, 200), Qt.LeftButton, Qt.MouseButtons(), Qt.ShiftModifier)
         canvas.mouseMoveEvent(mouse_move_event)
-        self.assertEqual(tool.events[-1].type(), QEvent.Type.MouseMove)
+        self.assertEqual(tool.events[-1].type(), QEvent.MouseMove)
         self.assertIsInstance(tool.events[-1], QgsPlotMouseEvent)
         self.assertAlmostEqual(tool.events[-1].mapPoint().x(), 5.92, delta=10)
         self.assertAlmostEqual(tool.events[-1].mapPoint().y(), 2, 4)
         self.assertAlmostEqual(tool.events[-1].mapPoint().z(), 49.165, delta=5)
 
-        mouse_press_event = QMouseEvent(QEvent.Type.MouseButtonPress, QPointF(300, 200), Qt.MouseButton.LeftButton, Qt.MouseButtons(), Qt.KeyboardModifier.ShiftModifier)
+        mouse_press_event = QMouseEvent(QEvent.MouseButtonPress, QPointF(300, 200), Qt.LeftButton, Qt.MouseButtons(), Qt.ShiftModifier)
         canvas.mousePressEvent(mouse_press_event)
-        self.assertEqual(tool.events[-1].type(), QEvent.Type.MouseButtonPress)
+        self.assertEqual(tool.events[-1].type(), QEvent.MouseButtonPress)
         self.assertIsInstance(tool.events[-1], QgsPlotMouseEvent)
         self.assertAlmostEqual(tool.events[-1].mapPoint().x(), 5.927, delta=1)
         self.assertAlmostEqual(tool.events[-1].mapPoint().y(), 2, 4)
         self.assertAlmostEqual(tool.events[-1].mapPoint().z(), 49.165, delta=5)
 
-        mouse_release_event = QMouseEvent(QEvent.Type.MouseButtonRelease, QPointF(300, 200), Qt.MouseButton.LeftButton, Qt.MouseButtons(), Qt.KeyboardModifier.ShiftModifier)
+        mouse_release_event = QMouseEvent(QEvent.MouseButtonRelease, QPointF(300, 200), Qt.LeftButton, Qt.MouseButtons(), Qt.ShiftModifier)
         canvas.mouseReleaseEvent(mouse_release_event)
-        self.assertEqual(tool.events[-1].type(), QEvent.Type.MouseButtonRelease)
+        self.assertEqual(tool.events[-1].type(), QEvent.MouseButtonRelease)
         self.assertIsInstance(tool.events[-1], QgsPlotMouseEvent)
         self.assertAlmostEqual(tool.events[-1].mapPoint().x(), 5.927, delta=1)
         self.assertAlmostEqual(tool.events[-1].mapPoint().y(), 2, 4)
         self.assertAlmostEqual(tool.events[-1].mapPoint().z(), 49.165, delta=5)
 
-        wheel_event = QWheelEvent(QPointF(300, 200), QPointF(300, 200), QPoint(1, 2), QPoint(3, 4), Qt.MouseButton.NoButton, Qt.KeyboardModifier.NoModifier, Qt.ScrollPhase.ScrollBegin, False)
+        wheel_event = QWheelEvent(QPointF(300, 200), QPointF(300, 200), QPoint(1, 2), QPoint(3, 4), Qt.NoButton, Qt.NoModifier, Qt.ScrollBegin, False)
         canvas.wheelEvent(wheel_event)
-        self.assertEqual(tool.events[-1].type(), QEvent.Type.Wheel)
+        self.assertEqual(tool.events[-1].type(), QEvent.Wheel)
 
 
 if __name__ == '__main__':

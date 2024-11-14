@@ -1,3 +1,4 @@
+# -*- coding:utf-8 -*-
 """
 /***************************************************************************
 Module to generate prepared APIs for calltips and auto-completion.
@@ -20,14 +21,11 @@ Portions of this file contain code from Eric4 APIsManager module.
 
 import os
 
-from pathlib import Path
-
-from qgis.PyQt import uic
 from qgis.PyQt.Qsci import QsciAPIs, QsciLexerPython
 from qgis.PyQt.QtWidgets import QDialog, QDialogButtonBox
 from qgis.PyQt.QtCore import QCoreApplication
 
-Ui_APIsDialogPythonConsole, _ = uic.loadUiType(Path(__file__).parent / 'console_compile_apis.ui')
+from .ui_console_compile_apis import Ui_APIsDialogPythonConsole
 
 
 class PrepareAPIDialog(QDialog):
@@ -69,7 +67,7 @@ class PrepareAPIDialog(QDialog):
         self.ui.label.setText('{0} {1}'.format(self.ui.label.text(), rslt))
         self._api = None
         self.ui.progressBar.setVisible(False)
-        self.ui.buttonBox.button(QDialogButtonBox.StandardButton.Cancel).setText(
+        self.ui.buttonBox.button(QDialogButtonBox.Cancel).setText(
             QCoreApplication.translate("PythonConsole", "Done"))
         self.adjustSize()
 
@@ -90,5 +88,5 @@ class PrepareAPIDialog(QDialog):
             self.ui.progressBar.setVisible(False)
             self.ui.plainTextEdit.setVisible(True)
             self.ui.plainTextEdit.insertPlainText(err)
-            self.ui.buttonBox.button(QDialogButtonBox.StandardButton.Cancel).setText(self.tr("Done"))
+            self.ui.buttonBox.button(QDialogButtonBox.Cancel).setText(self.tr("Done"))
             self.adjustSize()

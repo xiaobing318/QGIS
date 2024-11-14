@@ -46,9 +46,7 @@ class QgsVectorTileProviderMetadata : public QgsProviderMetadata
 
     QVariantMap decodeUri( const QString &uri ) const override;
     QString encodeUri( const QVariantMap &parts ) const override;
-    QString absoluteToRelativeUri( const QString &uri, const QgsReadWriteContext &context ) const override;
-    QString relativeToAbsoluteUri( const QString &uri, const QgsReadWriteContext &context ) const override;
-    QList< Qgis::LayerType > supportedLayerTypes() const override;
+    QList< QgsMapLayerType > supportedLayerTypes() const override;
 };
 
 ///@endcond

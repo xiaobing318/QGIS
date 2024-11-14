@@ -13,15 +13,11 @@ from processing.core.Processing import Processing
 from processing.gui.AlgorithmExecutor import execute
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.analysis import QgsNativeAlgorithms
-from qgis.core import (
-    QgsApplication,
-    QgsProcessingContext,
-    QgsProcessingFeedback,
-    QgsSettings,
-    QgsVectorLayer,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsApplication, QgsVectorLayer,
+                       QgsProcessingContext,
+                       QgsProcessingFeedback, QgsSettings,
+                       )
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -36,12 +32,11 @@ class ConsoleFeedBack(QgsProcessingFeedback):
         self._errors.append(error)
 
 
-class TestExportToPostGis(QgisTestCase):
+class TestExportToPostGis(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
-        super().setUpClass()
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain(
             "QGIS_TestPyQgsExportToPostgis.com")
@@ -58,7 +53,7 @@ class TestExportToPostGis(QgisTestCase):
         settings.setValue('database', 'qgis_test')
 
     def test_import(self):
-        """Test algorithm with CamelCase'singlequote'Schema"""
+        """Test algorithm with CamelCaseSchema"""
 
         alg = self.registry.createAlgorithmById("qgis:importintopostgis")
         self.assertIsNotNone(alg)
@@ -76,7 +71,7 @@ class TestExportToPostGis(QgisTestCase):
             'LOWERCASE_NAMES': True,
             'OVERWRITE': True,
             'PRIMARY_KEY': None,
-            'SCHEMA': "CamelCase'singlequote'Schema",
+            'SCHEMA': 'CamelCaseSchema',
             'TABLENAME': table_name
         }
 
@@ -90,11 +85,11 @@ class TestExportToPostGis(QgisTestCase):
         # Check that data have been imported correctly
         exported = QgsVectorLayer(unitTestDataPath() + '/points.shp', 'exported')
         self.assertTrue(exported.isValid())
-        imported = QgsVectorLayer(f"service='qgis_test' table=\"CamelCase'singlequote'Schema\".\"{table_name}\" (geom)", 'imported', 'postgres')
+        imported = QgsVectorLayer("service='qgis_test' table=\"CamelCaseSchema\".\"%s\" (geom)" % table_name, 'imported', 'postgres')
         self.assertTrue(imported.isValid())
         imported_fields = [f.name() for f in imported.fields()]
         for f in exported.fields():
-            self.assertIn(f.name().lower(), imported_fields)
+            self.assertTrue(f.name().lower() in imported_fields)
 
         # Check data
         imported_f = next(imported.getFeatures("class = 'Jet' AND heading = 85"))

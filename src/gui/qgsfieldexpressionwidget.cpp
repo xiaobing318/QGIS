@@ -20,7 +20,6 @@
 
 #include "qgsapplication.h"
 #include "qgsfieldexpressionwidget.h"
-#include "moc_qgsfieldexpressionwidget.cpp"
 #include "qgsexpressionbuilderdialog.h"
 #include "qgsfieldproxymodel.h"
 #include "qgsdistancearea.h"
@@ -32,7 +31,7 @@
 
 QgsFieldExpressionWidget::QgsFieldExpressionWidget( QWidget *parent )
   : QWidget( parent )
-  , mExpressionDialogTitle( tr( "Expression Builder" ) )
+  , mExpressionDialogTitle( tr( "Expression Dialog" ) )
   , mDistanceArea( nullptr )
 
 {
@@ -55,6 +54,11 @@ QgsFieldExpressionWidget::QgsFieldExpressionWidget( QWidget *parent )
 
   layout->addWidget( mCombo );
   layout->addWidget( mButton );
+
+  // give focus to the combo
+  // hence if the widget is used as a delegate
+  // it will allow pressing on the expression dialog button
+  setFocusProxy( mCombo );
 
   connect( mCombo->lineEdit(), &QLineEdit::textEdited, this, &QgsFieldExpressionWidget::expressionEdited );
   connect( mCombo->lineEdit(), &QLineEdit::editingFinished, this, &QgsFieldExpressionWidget::expressionEditingFinished );
@@ -163,13 +167,6 @@ void QgsFieldExpressionWidget::registerExpressionContextGenerator( const QgsExpr
   mExpressionContextGenerator = generator;
 }
 
-void QgsFieldExpressionWidget::setCustomPreviewGenerator( const QString &label, const QList<QPair<QString, QVariant> > &choices, const std::function<QgsExpressionContext( const QVariant & )> &previewContextGenerator )
-{
-  mCustomPreviewLabel = label;
-  mCustomChoices = choices;
-  mPreviewContextGenerator = previewContextGenerator;
-}
-
 void QgsFieldExpressionWidget::setLayer( QgsMapLayer *layer )
 {
   QgsVectorLayer *vl = qobject_cast< QgsVectorLayer * >( layer );
@@ -251,11 +248,6 @@ void QgsFieldExpressionWidget::editExpression()
   dlg.setWindowTitle( mExpressionDialogTitle );
   dlg.setAllowEvalErrors( mAllowEvalErrors );
 
-  if ( !mCustomChoices.isEmpty() )
-  {
-    dlg.expressionBuilder()->setCustomPreviewGenerator( mCustomPreviewLabel, mCustomChoices, mPreviewContextGenerator );
-  }
-
   if ( !vl )
     dlg.expressionBuilder()->expressionTree()->loadFieldNames( mFieldProxyModel->sourceFieldModel()->fields() );
 
@@ -335,21 +327,6 @@ void QgsFieldExpressionWidget::setAllowEvalErrors( bool allowEvalErrors )
   emit allowEvalErrorsChanged();
 }
 
-
-bool QgsFieldExpressionWidget::buttonVisible() const
-{
-  return mButton->isVisibleTo( this );
-}
-
-void QgsFieldExpressionWidget::setButtonVisible( bool visible )
-{
-  if ( visible == buttonVisible() )
-    return;
-
-  mButton->setVisible( visible );
-  emit buttonVisibleChanged();
-}
-
 void QgsFieldExpressionWidget::currentFieldChanged()
 {
   updateLineEditStyle();
@@ -392,8 +369,7 @@ void QgsFieldExpressionWidget::updateLineEditStyle( const QString &expression )
       currentField( &isExpression, &isValid );
     }
     QFont font = mCombo->lineEdit()->font();
-    font.setFamily( ( QgsCodeEditor::getMonospaceFont() ).family() );
-    font.setItalic( false );
+    font.setItalic( isExpression );
     mCombo->lineEdit()->setFont( font );
 
     if ( isExpression && !isValid )

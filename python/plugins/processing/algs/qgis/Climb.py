@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 /***************************************************************************
  Climb
@@ -24,7 +26,7 @@ import os
 import math
 
 from qgis.PyQt.QtGui import QIcon
-from qgis.PyQt.QtCore import QMetaType
+from qgis.PyQt.QtCore import QVariant
 
 from qgis.core import (QgsProcessing,
                        QgsFeatureSink,
@@ -74,7 +76,7 @@ class Climb(QgisAlgorithm):
             QgsProcessingParameterFeatureSource(
                 self.INPUT,
                 self.tr('Line layer'),
-                [QgsProcessing.SourceType.TypeVectorLine]
+                [QgsProcessing.TypeVectorLine]
             )
         )
 
@@ -137,10 +139,10 @@ class Climb(QgisAlgorithm):
         fieldnumber = 0
 
         # Create new fields for climb and descent
-        thefields.append(QgsField(self.CLIMBATTRIBUTE, QMetaType.Type.Double))
-        thefields.append(QgsField(self.DESCENTATTRIBUTE, QMetaType.Type.Double))
-        thefields.append(QgsField(self.MINELEVATTRIBUTE, QMetaType.Type.Double))
-        thefields.append(QgsField(self.MAXELEVATTRIBUTE, QMetaType.Type.Double))
+        thefields.append(QgsField(self.CLIMBATTRIBUTE, QVariant.Double))
+        thefields.append(QgsField(self.DESCENTATTRIBUTE, QVariant.Double))
+        thefields.append(QgsField(self.MINELEVATTRIBUTE, QVariant.Double))
+        thefields.append(QgsField(self.MAXELEVATTRIBUTE, QVariant.Double))
 
         # combine all the vector fields
         out_fields = QgsProcessingUtils.combineFields(thefields, source_fields)
@@ -222,7 +224,7 @@ class Climb(QgisAlgorithm):
             # Set the final attribute list
             feature.setAttributes(attrs)
             # Add a feature to the sink
-            sink.addFeature(feature, QgsFeatureSink.Flag.FastInsert)
+            sink.addFeature(feature, QgsFeatureSink.FastInsert)
             minelevation = min(minelevation, minelev)
             maxelevation = max(maxelevation, maxelev)
             # Update the progress bar
@@ -240,9 +242,6 @@ class Climb(QgisAlgorithm):
                 no_z_report=(', '.join(no_z_nodes)))
         )
         )
-
-        sink.finalize()
-
         # Return the results
         return {self.OUTPUT: dest_id, self.TOTALCLIMB: totalclimb,
                 self.TOTALDESCENT: totaldescent,

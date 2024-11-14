@@ -14,11 +14,12 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsattributeeditoraction.h"
+#include "qgsproject.h"
 #include "qgsvectorlayer.h"
 #include "qgsactionmanager.h"
 
 QgsAttributeEditorAction::QgsAttributeEditorAction( const QgsAction &action, QgsAttributeEditorElement *parent )
-  : QgsAttributeEditorElement( Qgis::AttributeEditorType::Action, action.id().toString(), parent )
+  : QgsAttributeEditorElement( AeTypeAction, action.id().toString(), parent )
   , mAction( action )
   , mUuid( action.id() )
 {}

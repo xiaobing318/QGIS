@@ -28,19 +28,19 @@ QgsSimpleCopyExternalStorageStoredContent::QgsSimpleCopyExternalStorageStoredCon
 
   mCopyTask = new QgsCopyFileTask( filePath, url );
 
-  connect( mCopyTask, &QgsTask::taskCompleted, this, [this]
+  connect( mCopyTask, &QgsTask::taskCompleted, this, [ = ]
   {
     mUrl = mCopyTask->destination();
     setStatus( Qgis::ContentStatus::Finished );
     emit stored();
   } );
 
-  connect( mCopyTask, &QgsTask::taskTerminated, this, [this]
+  connect( mCopyTask, &QgsTask::taskTerminated, this, [ = ]
   {
     reportError( mCopyTask->errorString() );
   } );
 
-  connect( mCopyTask, &QgsTask::progressChanged, this, [this]( double progress )
+  connect( mCopyTask, &QgsTask::progressChanged, this, [ = ]( double progress )
   {
     emit progressChanged( progress );
   } );
@@ -58,7 +58,7 @@ void QgsSimpleCopyExternalStorageStoredContent::cancel()
     return;
 
   disconnect( mCopyTask, &QgsTask::taskTerminated, this, nullptr );
-  connect( mCopyTask, &QgsTask::taskTerminated, this, [this]
+  connect( mCopyTask, &QgsTask::taskTerminated, this, [ = ]
   {
     setStatus( Qgis::ContentStatus::Canceled );
     emit canceled();

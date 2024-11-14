@@ -16,9 +16,7 @@
  ***************************************************************************/
 
 #include "qgsprovidersublayertask.h"
-#include "moc_qgsprovidersublayertask.cpp"
 #include "qgsfeedback.h"
-#include "qgsprovidermetadata.h"
 #include "qgsproviderregistry.h"
 #include "qgsprovidersublayerdetails.h"
 #include "qgsreadwritelocker.h"
@@ -26,14 +24,6 @@
 QgsProviderSublayerTask::QgsProviderSublayerTask( const QString &uri, bool includeSystemTables )
   : QgsTask( tr( "Retrieving layers" ), QgsTask::CanCancel | QgsTask::CancelWithoutPrompt | QgsTask::Silent )
   , mUri( uri )
-  , mIncludeSystemTables( includeSystemTables )
-{
-}
-
-QgsProviderSublayerTask::QgsProviderSublayerTask( const QString &uri, const QString &providerKey, bool includeSystemTables )
-  : QgsTask( tr( "Retrieving layers" ), QgsTask::CanCancel | QgsTask::CancelWithoutPrompt | QgsTask::Silent )
-  , mUri( uri )
-  , mProviderKey( providerKey )
   , mIncludeSystemTables( includeSystemTables )
 {
 }
@@ -54,15 +44,7 @@ bool QgsProviderSublayerTask::run()
   if ( mIncludeSystemTables )
     flags |= Qgis::SublayerQueryFlag::IncludeSystemTables;
 
-  QList<QgsProviderSublayerDetails> res;
-  if ( mProviderKey.isEmpty() )
-    res = QgsProviderRegistry::instance()->querySublayers( mUri, flags, mFeedback.get() );
-  else
-  {
-    QgsProviderMetadata *provider = QgsProviderRegistry::instance()->providerMetadata( mProviderKey );
-    if ( provider )
-      res = provider->querySublayers( mUri, flags, mFeedback.get() );
-  }
+  const QList<QgsProviderSublayerDetails> res = QgsProviderRegistry::instance()->querySublayers( mUri, flags, mFeedback.get() );
 
   const QgsReadWriteLocker locker( mLock, QgsReadWriteLocker::Write );
   mResults = res;

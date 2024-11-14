@@ -55,11 +55,6 @@ QString QgsMultiRingConstantBufferAlgorithm::shortHelpString() const
   return QObject::tr( "This algorithm computes multi-ring ('donuts') buffer for all the features in an input layer, using a fixed or dynamic distance and rings number." );
 }
 
-Qgis::ProcessingAlgorithmDocumentationFlags QgsMultiRingConstantBufferAlgorithm::documentationFlags() const
-{
-  return Qgis::ProcessingAlgorithmDocumentationFlag::RegeneratesPrimaryKey;
-}
-
 QgsMultiRingConstantBufferAlgorithm *QgsMultiRingConstantBufferAlgorithm::createInstance() const
 {
   return new QgsMultiRingConstantBufferAlgorithm();
@@ -68,7 +63,7 @@ QgsMultiRingConstantBufferAlgorithm *QgsMultiRingConstantBufferAlgorithm::create
 void QgsMultiRingConstantBufferAlgorithm::initParameters( const QVariantMap & )
 {
   std::unique_ptr< QgsProcessingParameterNumber> rings = std::make_unique< QgsProcessingParameterNumber >( QStringLiteral( "RINGS" ),
-      QObject::tr( "Number of rings" ), Qgis::ProcessingNumberParameterType::Integer,
+      QObject::tr( "Number of rings" ), QgsProcessingParameterNumber::Integer,
       1, false, 0 );
   rings->setIsDynamic( true );
   rings->setDynamicPropertyDefinition( QgsPropertyDefinition( QStringLiteral( "RINGS" ), QObject::tr( "Number of rings" ), QgsPropertyDefinition::IntegerPositive ) );
@@ -92,7 +87,7 @@ bool QgsMultiRingConstantBufferAlgorithm::supportInPlaceEdit( const QgsMapLayer 
   if ( ! QgsProcessingFeatureBasedAlgorithm::supportInPlaceEdit( layer ) )
     return false;
   // Polygons only
-  return layer->wkbType() == Qgis::WkbType::Polygon || layer->wkbType() == Qgis::WkbType::MultiPolygon;
+  return layer->wkbType() == QgsWkbTypes::Type::Polygon || layer->wkbType() == QgsWkbTypes::Type::MultiPolygon;
 }
 
 bool QgsMultiRingConstantBufferAlgorithm::prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback * )
@@ -113,14 +108,14 @@ bool QgsMultiRingConstantBufferAlgorithm::prepareAlgorithm( const QVariantMap &p
 QgsFields QgsMultiRingConstantBufferAlgorithm::outputFields( const QgsFields &inputFields ) const
 {
   QgsFields fields = inputFields;
-  fields.append( QgsField( QStringLiteral( "ringId" ), QMetaType::Type::Int, QString(), 10, 0 ) );
-  fields.append( QgsField( QStringLiteral( "distance" ), QMetaType::Type::Double, QString(), 20, 6 ) );
+  fields.append( QgsField( QStringLiteral( "ringId" ), QVariant::Int, QString(), 10, 0 ) );
+  fields.append( QgsField( QStringLiteral( "distance" ), QVariant::Double, QString(), 20, 6 ) );
   return fields;
 }
 
-Qgis::ProcessingFeatureSourceFlags QgsMultiRingConstantBufferAlgorithm::sourceFlags() const
+QgsProcessingFeatureSource::Flag QgsMultiRingConstantBufferAlgorithm::sourceFlags() const
 {
-  return Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks;
+  return QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks;
 }
 
 QgsFeatureSink::SinkFlags QgsMultiRingConstantBufferAlgorithm::sinkFlags() const

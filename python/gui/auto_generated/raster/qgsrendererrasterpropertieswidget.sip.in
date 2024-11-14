@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/raster/qgsrendererrasterpropertieswidget.h                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -34,6 +34,8 @@ Sets the map canvas associated with the dialog. This allows the widget to retrie
 map scale and other properties from the canvas.
 
 :param canvas: map canvas
+
+.. versionadded:: 2.12
 %End
 
     QgsRasterRendererWidget *currentRenderWidget();
@@ -69,5 +71,5 @@ Sync the widget to the given layer.
  *                                                                      *
  * src/gui/raster/qgsrendererrasterpropertieswidget.h                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

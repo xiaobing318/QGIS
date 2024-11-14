@@ -23,64 +23,51 @@
             <table>
                 <tr>
                     <td>{{ gettext('Identifier') }}</td>
-                    <td>{{ obj.identifier if obj.identifier not in [None, 'None', '']
-                        else gettext('None') }}</td>
+                    <td>{{ obj.identifier }}</td>
                 </tr>
                 <tr>
                     <td>{{ gettext('Title') }}</td>
-                    <td>{{ obj.title if obj.title not in [None, 'None', '']
-                        else gettext('None') }}</td>
+                    <td>{{ obj.title }}</td>
                 </tr>
                 <tr>
                     <td>{{ gettext('Abstract') }}</td>
-                    <td>{{ obj.abstract if obj.abstract not in [None, 'None', '']
-                        else gettext('None') }}</td>
+                    <td>{{ obj.abstract }}</td>
                 </tr>
                 <tr>
                     <td>{{ gettext('Subjects') }}</td>
-                    <td>{% set filteredSubjects = obj.subjects | select('ne', None) | select('ne', 'None') | select('ne', '') | list %}
-                        {{ filteredSubjects | join(',') if filteredSubjects else gettext('None') }}</td>
+                    <td>{{ obj.subjects|join(',') }}</td>
                 </tr>
                 <tr>
                     <td>{{ gettext('Creator') }}</td>
-                    <td>{{ obj.creator if obj.creator not in [None, 'None', '']
-                        else gettext('None') }}</td>
+                    <td>{{ obj.creator }}</td>
                 </tr>
                 <tr>
                     <td>{{ gettext('Contributor') }}</td>
-                    <td>{{ obj.contributor if obj.contributor not in [None, 'None', '']
-                        else gettext('None') }}</td>
+                    <td>{{ obj.contributor}}</td>
                 </tr>
                 <tr>
                     <td>{{ gettext('Publisher') }}</td>
-                    <td>{{ obj.publisher if obj.publisher not in [None, 'None', '']
-                        else gettext('None') }}</td>
+                    <td>{{ obj.publisher}}</td>
                 </tr>
                 <tr>
                     <td>{{ gettext('Modified') }}</td>
-                    <td>{{ obj.modified if obj.modified not in [None, 'None', '']
-                        else gettext('None') }}</td>
+                    <td>{{ obj.modified }}</td>
                 </tr>
                 <tr>
                     <td>{{ gettext('Language') }}</td>
-                    <td>{{ obj.language if obj.language not in [None, 'None', '']
-                        else gettext('None') }}</td>
+                    <td>{{ obj.language }}</td>
                 </tr>
                 <tr>
                     <td>{{ gettext('Format') }}</td>
-                    <td>{{ obj.format if obj.format not in [None, 'None', '']
-                        else gettext('None') }}</td>
+                    <td>{{ obj.format }}</td>
                 </tr>
                 <tr>
                     <td>{{ gettext('Rights') }}</td>
-                    <td>{% set filteredRights = obj.rights | select('ne', None) | select('ne', 'None') | select('ne', '') | list %}
-                        {{ filteredRights | join(',') if filteredRights else gettext('None') }}</td>
+                    <td>{{ obj.rights|join(',') }}</td>
                 </tr>
                 <tr>
                     <td>{{ gettext('Bounding Box') }}</td>
-                    <td>{{ [obj.bbox.minx, obj.bbox.miny, obj.bbox.maxx, obj.bbox.maxy] | join(',')
-                           if obj.bbox not in [None, 'None', '']
-                           else gettext('None') }}</td>
+                    <td>{{ [obj.bbox.minx, obj.bbox.miny, obj.bbox.maxx, obj.bbox.maxy]|join(',') }}</td>
                 </tr>
             </table>
         </section>
@@ -88,30 +75,10 @@
             <h4>Links</h4>
             <ul>
             {% for link in obj.references %}
-                <li><a href="{{ link['url'] }}">
-                    {{ link['name'] if link['name'] not in [None, 'None', '']
-                       else link['description'] if link['description'] not in [None, 'None', '']
-                       else link['scheme'] if link['scheme'] not in [None, 'None', '']
-                       else gettext('Access Link') }}
-                    {% if link['scheme'] not in [None, 'None', '']
-                       and ( link['name'] not in [None, 'None', '']
-                       or link['description'] not in [None, 'None', ''] ) %}
-                           ({{ link['scheme'] }})
-                    {% endif %}
-                </a></li>
+                <li><a href="{{ link['url'] }}">{{ link['scheme'] if link['scheme'] not in [None, 'None', ''] else gettext('Access Link') }}</a></li>
             {% endfor %}
             {% for link in obj.uris %}
-                <li><a href="{{ link['url'] }}">
-                    {{ link['name'] if link['name'] not in [None, 'None', '']
-                       else link['description'] if link['description'] not in [None, 'None', '']
-                       else link['protocol'] if link['protocol'] not in [None, 'None', '']
-                       else gettext('Access Link') }}
-                    {% if link['protocol'] not in [None, 'None', '']
-                       and ( link['name'] not in [None, 'None', '']
-                       or link['description'] not in [None, 'None', ''] ) %}
-                           ({{ link['protocol'] }})
-                    {% endif %}
-                </a></li>
+                <li><a href="{{ link['url'] }}">{{ link['protocol'] if link['protocol'] not in [None, 'None', ''] else gettext('Access Link') }}</a></li>
             {% endfor %}
             </ul>
         </section>

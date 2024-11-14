@@ -3,7 +3,7 @@
  *                                                                      *
  * src/server/qgsserver.h                                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -33,6 +33,8 @@ Set environment variable
 
 :param var: environment variable name
 :param val: value
+
+.. versionadded:: 2.14
 %End
 
     void handleRequest( QgsServerRequest &request, QgsServerResponse &response, const QgsProject *project = 0 );
@@ -74,5 +76,5 @@ Initialize Python
  *                                                                      *
  * src/server/qgsserver.h                                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

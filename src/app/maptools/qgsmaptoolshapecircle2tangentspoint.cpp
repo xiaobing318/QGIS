@@ -15,13 +15,13 @@
  ***************************************************************************/
 
 #include "qgsmaptoolshapecircle2tangentspoint.h"
-#include "moc_qgsmaptoolshapecircle2tangentspoint.cpp"
 #include "qgsgeometryrubberband.h"
 #include "qgsadvanceddigitizingdockwidget.h"
 #include "qgssnappingutils.h"
 #include "qgsmapcanvas.h"
 #include "qgspoint.h"
 #include "qgisapp.h"
+#include "qgsstatusbar.h"
 #include "qgslinestring.h"
 #include "qgsmultipolygon.h"
 #include "qgsdoublespinbox.h"
@@ -120,7 +120,7 @@ void QgsMapToolShapeCircle2TangentsPoint::cadCanvasMoveEvent( QgsMapMouseEvent *
   {
     if ( !mTempRubberBand )
     {
-      Qgis::GeometryType type = mode == QgsMapToolCapture::CapturePolygon ? Qgis::GeometryType::Polygon : Qgis::GeometryType::Line;
+      QgsWkbTypes::GeometryType type = mode == QgsMapToolCapture::CapturePolygon ? QgsWkbTypes::PolygonGeometry : QgsWkbTypes::LineGeometry;
       mTempRubberBand = mParentTool->createGeometryRubberBand( type, true );
       mTempRubberBand->show();
     }
@@ -233,7 +233,7 @@ void QgsMapToolShapeCircle2TangentsPoint::radiusSpinBoxChanged( double radius )
     const std::unique_ptr<QgsMultiPolygon> rb( new QgsMultiPolygon() );
     for ( int i = 0; i < mCenters.size(); ++i )
     {
-      std::unique_ptr<QgsGeometryRubberBand> tempRB( mParentTool->createGeometryRubberBand( Qgis::GeometryType::Point, true ) );
+      std::unique_ptr<QgsGeometryRubberBand> tempRB( mParentTool->createGeometryRubberBand( QgsWkbTypes::PointGeometry, true ) );
       std::unique_ptr<QgsPoint> tempCenter( new QgsPoint( mCenters.at( i ) ) );
       tempRB->setGeometry( tempCenter.release() );
       tempRB->show();

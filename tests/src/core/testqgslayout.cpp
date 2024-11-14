@@ -34,8 +34,6 @@
 #include "qgslayoutitemattributetable.h"
 #include "qgsrasterlayer.h"
 #include "qgsexpressioncontextutils.h"
-#include "qgslayoutrendercontext.h"
-#include "qgslayoutexporter.h"
 #include <QSignalSpy>
 
 class TestQgsLayout: public QgsTest
@@ -103,47 +101,47 @@ void TestQgsLayout::units()
 {
   QgsProject p;
   QgsLayout layout( &p );
-  layout.setUnits( Qgis::LayoutUnit::Centimeters );
-  QCOMPARE( layout.units(), Qgis::LayoutUnit::Centimeters );
-  QCOMPARE( layout.convertToLayoutUnits( QgsLayoutMeasurement( 10.0, Qgis::LayoutUnit::Millimeters ) ), 1.0 );
-  QCOMPARE( layout.convertToLayoutUnits( QgsLayoutSize( 10.0, 20.0, Qgis::LayoutUnit::Millimeters ) ), QSizeF( 1.0, 2.0 ) );
-  QCOMPARE( layout.convertToLayoutUnits( QgsLayoutPoint( 10.0, 20.0, Qgis::LayoutUnit::Millimeters ) ), QPointF( 1.0, 2.0 ) );
-  QCOMPARE( layout.convertFromLayoutUnits( 1.0, Qgis::LayoutUnit::Millimeters ), QgsLayoutMeasurement( 10.0, Qgis::LayoutUnit::Millimeters ) );
-  QCOMPARE( layout.convertFromLayoutUnits( QSizeF( 1.0, 2.0 ), Qgis::LayoutUnit::Millimeters ), QgsLayoutSize( 10.0, 20.0, Qgis::LayoutUnit::Millimeters ) );
-  QCOMPARE( layout.convertFromLayoutUnits( QPointF( 1.0, 2.0 ), Qgis::LayoutUnit::Millimeters ), QgsLayoutPoint( 10.0, 20.0, Qgis::LayoutUnit::Millimeters ) );
+  layout.setUnits( QgsUnitTypes::LayoutCentimeters );
+  QCOMPARE( layout.units(), QgsUnitTypes::LayoutCentimeters );
+  QCOMPARE( layout.convertToLayoutUnits( QgsLayoutMeasurement( 10.0, QgsUnitTypes::LayoutMillimeters ) ), 1.0 );
+  QCOMPARE( layout.convertToLayoutUnits( QgsLayoutSize( 10.0, 20.0, QgsUnitTypes::LayoutMillimeters ) ), QSizeF( 1.0, 2.0 ) );
+  QCOMPARE( layout.convertToLayoutUnits( QgsLayoutPoint( 10.0, 20.0, QgsUnitTypes::LayoutMillimeters ) ), QPointF( 1.0, 2.0 ) );
+  QCOMPARE( layout.convertFromLayoutUnits( 1.0, QgsUnitTypes::LayoutMillimeters ), QgsLayoutMeasurement( 10.0, QgsUnitTypes::LayoutMillimeters ) );
+  QCOMPARE( layout.convertFromLayoutUnits( QSizeF( 1.0, 2.0 ), QgsUnitTypes::LayoutMillimeters ), QgsLayoutSize( 10.0, 20.0, QgsUnitTypes::LayoutMillimeters ) );
+  QCOMPARE( layout.convertFromLayoutUnits( QPointF( 1.0, 2.0 ), QgsUnitTypes::LayoutMillimeters ), QgsLayoutPoint( 10.0, 20.0, QgsUnitTypes::LayoutMillimeters ) );
 
   //check with dpi conversion
-  layout.setUnits( Qgis::LayoutUnit::Inches );
+  layout.setUnits( QgsUnitTypes::LayoutInches );
   layout.renderContext().setDpi( 96.0 );
   QCOMPARE( layout.renderContext().dpi(), 96.0 );
-  QCOMPARE( layout.convertToLayoutUnits( QgsLayoutMeasurement( 96, Qgis::LayoutUnit::Pixels ) ), 1.0 );
-  QCOMPARE( layout.convertToLayoutUnits( QgsLayoutSize( 96, 96, Qgis::LayoutUnit::Pixels ) ), QSizeF( 1.0, 1.0 ) );
-  QCOMPARE( layout.convertToLayoutUnits( QgsLayoutPoint( 96, 96, Qgis::LayoutUnit::Pixels ) ), QPointF( 1.0, 1.0 ) );
-  QgsLayoutMeasurement result = layout.convertFromLayoutUnits( 1.0, Qgis::LayoutUnit::Pixels );
-  QCOMPARE( result.units(), Qgis::LayoutUnit::Pixels );
+  QCOMPARE( layout.convertToLayoutUnits( QgsLayoutMeasurement( 96, QgsUnitTypes::LayoutPixels ) ), 1.0 );
+  QCOMPARE( layout.convertToLayoutUnits( QgsLayoutSize( 96, 96, QgsUnitTypes::LayoutPixels ) ), QSizeF( 1.0, 1.0 ) );
+  QCOMPARE( layout.convertToLayoutUnits( QgsLayoutPoint( 96, 96, QgsUnitTypes::LayoutPixels ) ), QPointF( 1.0, 1.0 ) );
+  QgsLayoutMeasurement result = layout.convertFromLayoutUnits( 1.0, QgsUnitTypes::LayoutPixels );
+  QCOMPARE( result.units(), QgsUnitTypes::LayoutPixels );
   QCOMPARE( result.length(), 96.0 );
-  QgsLayoutSize sizeResult = layout.convertFromLayoutUnits( QSizeF( 1.0, 1.0 ), Qgis::LayoutUnit::Pixels );
-  QCOMPARE( sizeResult.units(), Qgis::LayoutUnit::Pixels );
+  QgsLayoutSize sizeResult = layout.convertFromLayoutUnits( QSizeF( 1.0, 1.0 ), QgsUnitTypes::LayoutPixels );
+  QCOMPARE( sizeResult.units(), QgsUnitTypes::LayoutPixels );
   QCOMPARE( sizeResult.width(), 96.0 );
   QCOMPARE( sizeResult.height(), 96.0 );
-  QgsLayoutPoint pointResult = layout.convertFromLayoutUnits( QPointF( 1.0, 1.0 ), Qgis::LayoutUnit::Pixels );
-  QCOMPARE( pointResult.units(), Qgis::LayoutUnit::Pixels );
+  QgsLayoutPoint pointResult = layout.convertFromLayoutUnits( QPointF( 1.0, 1.0 ), QgsUnitTypes::LayoutPixels );
+  QCOMPARE( pointResult.units(), QgsUnitTypes::LayoutPixels );
   QCOMPARE( pointResult.x(), 96.0 );
   QCOMPARE( pointResult.y(), 96.0 );
 
-  layout.setUnits( Qgis::LayoutUnit::Pixels );
-  QCOMPARE( layout.convertToLayoutUnits( QgsLayoutMeasurement( 1, Qgis::LayoutUnit::Inches ) ), 96.0 );
-  QCOMPARE( layout.convertToLayoutUnits( QgsLayoutSize( 1, 2, Qgis::LayoutUnit::Inches ) ), QSizeF( 96.0, 192.0 ) );
-  QCOMPARE( layout.convertToLayoutUnits( QgsLayoutPoint( 1, 2, Qgis::LayoutUnit::Inches ) ), QPointF( 96.0, 192.0 ) );
-  result = layout.convertFromLayoutUnits( 96.0, Qgis::LayoutUnit::Inches );
-  QCOMPARE( result.units(), Qgis::LayoutUnit::Inches );
+  layout.setUnits( QgsUnitTypes::LayoutPixels );
+  QCOMPARE( layout.convertToLayoutUnits( QgsLayoutMeasurement( 1, QgsUnitTypes::LayoutInches ) ), 96.0 );
+  QCOMPARE( layout.convertToLayoutUnits( QgsLayoutSize( 1, 2, QgsUnitTypes::LayoutInches ) ), QSizeF( 96.0, 192.0 ) );
+  QCOMPARE( layout.convertToLayoutUnits( QgsLayoutPoint( 1, 2, QgsUnitTypes::LayoutInches ) ), QPointF( 96.0, 192.0 ) );
+  result = layout.convertFromLayoutUnits( 96.0, QgsUnitTypes::LayoutInches );
+  QCOMPARE( result.units(), QgsUnitTypes::LayoutInches );
   QCOMPARE( result.length(), 1.0 );
-  sizeResult = layout.convertFromLayoutUnits( QSizeF( 96.0, 192.0 ), Qgis::LayoutUnit::Inches );
-  QCOMPARE( sizeResult.units(), Qgis::LayoutUnit::Inches );
+  sizeResult = layout.convertFromLayoutUnits( QSizeF( 96.0, 192.0 ), QgsUnitTypes::LayoutInches );
+  QCOMPARE( sizeResult.units(), QgsUnitTypes::LayoutInches );
   QCOMPARE( sizeResult.width(), 1.0 );
   QCOMPARE( sizeResult.height(), 2.0 );
-  pointResult = layout.convertFromLayoutUnits( QPointF( 96.0, 192.0 ), Qgis::LayoutUnit::Inches );
-  QCOMPARE( pointResult.units(), Qgis::LayoutUnit::Inches );
+  pointResult = layout.convertFromLayoutUnits( QPointF( 96.0, 192.0 ), QgsUnitTypes::LayoutInches );
+  QCOMPARE( pointResult.units(), QgsUnitTypes::LayoutInches );
   QCOMPARE( pointResult.x(), 1.0 );
   QCOMPARE( pointResult.y(), 2.0 );
 }
@@ -161,35 +159,30 @@ void TestQgsLayout::name()
 void TestQgsLayout::customProperties()
 {
   QgsProject p;
-  QgsLayout layout( &p );
+  QgsLayout *layout = new QgsLayout( &p );
 
-  QCOMPARE( layout.customProperty( "noprop", "defaultval" ).toString(), QString( "defaultval" ) );
-  QVERIFY( layout.customProperties().isEmpty() );
-  layout.setCustomProperty( QStringLiteral( "testprop" ), "testval" );
-  QCOMPARE( layout.customProperty( "testprop", "defaultval" ).toString(), QString( "testval" ) );
-  QCOMPARE( layout.customProperties().length(), 1 );
-  QCOMPARE( layout.customProperties().at( 0 ), QString( "testprop" ) );
+  QCOMPARE( layout->customProperty( "noprop", "defaultval" ).toString(), QString( "defaultval" ) );
+  QVERIFY( layout->customProperties().isEmpty() );
+  layout->setCustomProperty( QStringLiteral( "testprop" ), "testval" );
+  QCOMPARE( layout->customProperty( "testprop", "defaultval" ).toString(), QString( "testval" ) );
+  QCOMPARE( layout->customProperties().length(), 1 );
+  QCOMPARE( layout->customProperties().at( 0 ), QString( "testprop" ) );
 
   //test no crash
-  layout.removeCustomProperty( QStringLiteral( "badprop" ) );
+  layout->removeCustomProperty( QStringLiteral( "badprop" ) );
 
-  layout.removeCustomProperty( QStringLiteral( "testprop" ) );
-  QVERIFY( layout.customProperties().isEmpty() );
-  QCOMPARE( layout.customProperty( "noprop", "defaultval" ).toString(), QString( "defaultval" ) );
+  layout->removeCustomProperty( QStringLiteral( "testprop" ) );
+  QVERIFY( layout->customProperties().isEmpty() );
+  QCOMPARE( layout->customProperty( "noprop", "defaultval" ).toString(), QString( "defaultval" ) );
 
-  layout.setCustomProperty( QStringLiteral( "testprop1" ), "testval1" );
-  layout.setCustomProperty( QStringLiteral( "testprop2" ), "testval2" );
-  const QStringList keys = layout.customProperties();
+  layout->setCustomProperty( QStringLiteral( "testprop1" ), "testval1" );
+  layout->setCustomProperty( QStringLiteral( "testprop2" ), "testval2" );
+  const QStringList keys = layout->customProperties();
   QCOMPARE( keys.length(), 2 );
   QVERIFY( keys.contains( "testprop1" ) );
   QVERIFY( keys.contains( "testprop2" ) );
 
-  // list value
-  layout.setCustomProperty( QStringLiteral( "a_list" ), QStringList{ QStringLiteral( "value 1" ),
-                            QStringLiteral( "value 2" ),
-                            QStringLiteral( "value 3" )} );
-  const QStringList res = layout.customProperty( QStringLiteral( "a_list" ) ).toStringList();
-  QCOMPARE( res, QStringList() << "value 1" << "value 2" << "value 3" );
+  delete layout;
 }
 
 void TestQgsLayout::writeRetrieveCustomProperties()
@@ -197,10 +190,6 @@ void TestQgsLayout::writeRetrieveCustomProperties()
   QgsLayout layout( QgsProject::instance() );
   layout.setCustomProperty( QStringLiteral( "testprop" ), "testval" );
   layout.setCustomProperty( QStringLiteral( "testprop2" ), 5 );
-  // list value
-  layout.setCustomProperty( QStringLiteral( "a_list" ), QStringList{ QStringLiteral( "value 1" ),
-                            QStringLiteral( "value 2" ),
-                            QStringLiteral( "value 3" )} );
 
   //test writing composition with custom properties
   QDomImplementation DomImplementation;
@@ -216,13 +205,11 @@ void TestQgsLayout::writeRetrieveCustomProperties()
   QVERIFY( readLayout.readXml( layoutNode, doc, QgsReadWriteContext() ) );
 
   //test retrieved custom properties
-  QCOMPARE( readLayout.customProperties().length(), 3 );
+  QCOMPARE( readLayout.customProperties().length(), 2 );
   QVERIFY( readLayout.customProperties().contains( QString( "testprop" ) ) );
   QVERIFY( readLayout.customProperties().contains( QString( "testprop2" ) ) );
   QCOMPARE( readLayout.customProperty( "testprop" ).toString(), QString( "testval" ) );
   QCOMPARE( readLayout.customProperty( "testprop2" ).toInt(), 5 );
-  const QStringList res = readLayout.customProperty( QStringLiteral( "a_list" ) ).toStringList();
-  QCOMPARE( res, QStringList() << "value 1" << "value 2" << "value 3" );
 }
 
 void TestQgsLayout::variablesEdited()
@@ -736,8 +723,8 @@ void TestQgsLayout::shouldExportPage()
   QVERIFY( !l.pageCollection()->shouldExportPage( 1 ) );
 
   l.pageCollection()->page( 1 )->setExcludeFromExports( false );
-  l.pageCollection()->page( 0 )->dataDefinedProperties().setProperty( QgsLayoutObject::DataDefinedProperty::ExcludeFromExports, QgsProperty::fromExpression( "1" ) );
-  l.pageCollection()->page( 1 )->dataDefinedProperties().setProperty( QgsLayoutObject::DataDefinedProperty::ExcludeFromExports, QgsProperty::fromValue( true ) );
+  l.pageCollection()->page( 0 )->dataDefinedProperties().setProperty( QgsLayoutObject::ExcludeFromExports, QgsProperty::fromExpression( "1" ) );
+  l.pageCollection()->page( 1 )->dataDefinedProperties().setProperty( QgsLayoutObject::ExcludeFromExports, QgsProperty::fromValue( true ) );
   l.refresh();
   QVERIFY( !l.pageCollection()->shouldExportPage( 0 ) );
   QVERIFY( !l.pageCollection()->shouldExportPage( 1 ) );

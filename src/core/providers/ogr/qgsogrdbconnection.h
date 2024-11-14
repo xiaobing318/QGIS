@@ -35,8 +35,8 @@ class CORE_EXPORT QgsOgrDbConnection : public QObject
     Q_OBJECT
 
   public:
-    static const QgsSettingsEntryString *settingsOgrConnectionPath;
-    static const QgsSettingsEntryString *settingsOgrConnectionSelected;
+    static const inline QgsSettingsEntryString settingsOgrConnectionPath = QgsSettingsEntryString( QStringLiteral( "providers/ogr/%1/connections/%2/path" ), QString(), QString() );
+    static const inline QgsSettingsEntryString settingsOgrConnectionSelected = QgsSettingsEntryString( QStringLiteral( "providers/ogr/%1/connections/selected" ), QString() );
 
     //! Constructor
     explicit QgsOgrDbConnection( const QString &connName, const QString &settingsKey );
@@ -57,7 +57,7 @@ class CORE_EXPORT QgsOgrDbConnection : public QObject
     QString path( ) const { return mPath; }
     //! Returns the connection name
     QString name() const { return mConnName; }
-    //! Sets the \a path for the connection
+    //! Sets the \a path fo the connection
     void setPath( const QString &path );
     //! Store the connection data in the settings
     void save();

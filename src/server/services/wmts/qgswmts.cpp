@@ -108,7 +108,7 @@ class QgsWmtsModule: public QgsServiceModule
   public:
     void registerSelf( QgsServiceRegistry &registry, QgsServerInterface *serverIface ) override
     {
-      QgsDebugMsgLevel( QStringLiteral( "WMTSModule::registerSelf called" ), 2 );
+      QgsDebugMsg( QStringLiteral( "WMTSModule::registerSelf called" ) );
       registry.registerService( new  QgsWmts::Service( serverIface ) );
     }
 };

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/vector/qgsvectorlayertemporalproperties.h                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -264,14 +264,14 @@ Units are specified by :py:func:`~QgsVectorLayerTemporalProperties.setDurationUn
 .. seealso:: :py:func:`setDurationUnits`
 %End
 
-    Qgis::TemporalUnit durationUnits() const;
+    QgsUnitTypes::TemporalUnit durationUnits() const;
 %Docstring
 Returns the units of the event's duration.
 
 .. seealso:: :py:func:`setDurationUnits`
 %End
 
-    void setDurationUnits( Qgis::TemporalUnit units );
+    void setDurationUnits( QgsUnitTypes::TemporalUnit units );
 %Docstring
 Sets the ``units`` of the event's duration.
 
@@ -372,5 +372,5 @@ and looking for standard naming conventions (e.g. "begin_date").
  *                                                                      *
  * src/core/vector/qgsvectorlayertemporalproperties.h                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

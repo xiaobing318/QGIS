@@ -27,6 +27,7 @@
 #include "qgsprojectversion.h"
 #include "qgsogcutils.h"
 #include "qgsserverparameters.h"
+#include "qgsdxfexport.h"
 
 namespace QgsWms
 {
@@ -156,7 +157,6 @@ namespace QgsWms
         RULELABEL,
         SCALE,
         SELECTION,
-        SHOWRULEDETAILS,
         HIGHLIGHT_GEOM,
         HIGHLIGHT_SYMBOL,
         HIGHLIGHT_LABELSTRING,
@@ -181,14 +181,12 @@ namespace QgsWms
         GRID_INTERVAL_Y,
         WITH_GEOMETRY,
         WITH_MAPTIP,
-        WITH_DISPLAY_NAME,
         WMTVER,
         ATLAS_PK,
         FORMAT_OPTIONS,
         SRCWIDTH,
         SRCHEIGHT,
-        TILED,
-        ADDLAYERGROUPS
+        TILED
       };
       Q_ENUM( Name )
 
@@ -199,7 +197,7 @@ namespace QgsWms
        * \param defaultValue Default value of the parameter
        */
       QgsWmsParameter( const QgsWmsParameter::Name name = QgsWmsParameter::UNKNOWN,
-                       const QMetaType::Type type = QMetaType::Type::QString,
+                       const QVariant::Type type = QVariant::String,
                        const QVariant defaultValue = QVariant( "" ) );
 
       /**
@@ -330,6 +328,7 @@ namespace QgsWms
    * \ingroup server
    * \class QgsWms::QgsWmsParameters
    * \brief Provides an interface to retrieve and manipulate WMS parameters received from the client.
+   * \since QGIS 3.0
    */
   class QgsWmsParameters : public QgsServerParameters
   {
@@ -362,29 +361,9 @@ namespace QgsWms
         USE_TITLE_AS_LAYERNAME,
         CODEC,
         NO_MTEXT,
-        FORCE_2D,
-        EXPORT_LINES_WITH_ZERO_WIDTH
+        FORCE_2D
       };
       Q_ENUM( DxfFormatOption )
-
-      enum PdfFormatOption
-      {
-        RASTERIZE_WHOLE_IMAGE,
-        FORCE_VECTOR_OUTPUT,
-        APPEND_GEOREFERENCE,
-        EXPORT_METADATA,
-        TEXT_RENDER_FORMAT,
-        SIMPLIFY_GEOMETRY,
-        WRITE_GEO_PDF,
-        USE_ISO_32000_EXTENSION_FORMAT_GEOREFERENCING,
-        USE_OGC_BEST_PRACTICE_FORMAT_GEOREFERENCING,
-        INCLUDE_GEO_PDF_FEATURES,
-        EXPORT_THEMES,
-        PREDEFINED_MAP_SCALES,
-        LOSSLESS_IMAGE_COMPRESSION,
-        DISABLE_TILED_RASTER_RENDERING
-      };
-      Q_ENUM( PdfFormatOption )
 
       /**
        * Constructor for WMS parameters with specific values.
@@ -451,13 +430,6 @@ namespace QgsWms
        * \throws QgsBadRequestException
        */
       int heightAsInt() const;
-
-      /**
-       * Returns SHOWRULEDETAILS as a bool. An exception is raised if an invalid
-       * parameter is found.
-       * \since QGIS 3.36
-       */
-      bool showRuleDetailsAsBool() const;
 
       /**
        * Returns SRCWIDTH parameter or an empty string if not defined.
@@ -682,11 +654,6 @@ namespace QgsWms
        * \since QGIS 3.10
        */
       bool tiledAsBool() const;
-
-      /**
-       * Returns true if layer groups shall be added to GetLegendGraphic results
-       */
-      bool addLayerGroups() const;
 
       /**
        * Returns infoFormat. If the INFO_FORMAT parameter is not used, then the
@@ -1309,32 +1276,10 @@ namespace QgsWms
       bool withGeometry() const;
 
       /**
-       * \brief withMapTipAsString
-       * \returns WITH_MAPTIP parameter as string
-       * \since QGIS 3.36
-       */
-      QString withMapTipAsString() const;
-
-      /**
        * \brief withMapTip
        * \returns TRUE if maptip information is requested for feature info response
        */
       bool withMapTip() const;
-
-      /**
-       * Returns TRUE if only maptip information is requested for HTML
-       * feature info response
-       * \returns htmlInfoOnlyMapTip
-       * \since QGIS 3.36
-       */
-      bool htmlInfoOnlyMapTip() const;
-
-      /**
-       * \brief withDisplayName
-       * \returns TRUE if the display name is requested for feature info response
-       * \since QGIS 3.32
-       */
-      bool withDisplayName() const;
 
       /**
        * Returns WMTVER parameter or an empty string if not defined.
@@ -1359,6 +1304,12 @@ namespace QgsWms
       QStringList atlasPk() const;
 
       /**
+       * Returns a map of DXF options defined within FORMAT_OPTIONS parameter.
+       * \since QGIS 3.8
+       */
+      QMap<DxfFormatOption, QString> dxfFormatOptions() const;
+
+      /**
        * Returns the DXF LAYERATTRIBUTES parameter.
        * \since QGIS 3.8
        */
@@ -1380,7 +1331,7 @@ namespace QgsWms
        * Returns the DXF MODE parameter.
        * \since QGIS 3.8
        */
-      Qgis::FeatureSymbologyExport dxfMode() const;
+      QgsDxfExport::SymbologyExport dxfMode() const;
 
       /**
        * Returns the DXF CODEC parameter.
@@ -1410,121 +1361,11 @@ namespace QgsWms
        */
       bool isForce2D() const;
 
-      /**
-       * \returns true if the lines are export to dxf with minimal (hairline) width
-       *
-       * \since QGIS 3.38
-       */
-      bool exportLinesWithZeroWidth() const;
-
-      /**
-       * Returns if a geospatial PDF shall be exported
-       * \since QGIS 3.32
-       */
-      bool writeGeospatialPdf() const;
-
-      /**
-       * Returns if pdf should be exported as vector
-       * \since QGIS 3.32
-       */
-      bool pdfForceVectorOutput() const;
-
-      /**
-       * Returns true if georeference info shall be added to the pdf
-       * \since QGIS 3.32
-       */
-      bool pdfAppendGeoreference() const;
-
-      /**
-       * Returns if geometries shall to be simplified
-       * \since QGIS 3.32
-       */
-      bool pdfSimplifyGeometries() const;
-
-      /**
-       * Returns true if metadata shall be added to the pdf
-       * \since QGIS 3.32
-       */
-      bool pdfExportMetadata() const;
-
-      /**
-       * Returns text render format for pdf export
-       * \since QGIS 3.32
-       */
-      Qgis::TextRenderFormat pdfTextRenderFormat() const;
-
-      /**
-       * Returns true if images embedded in pdf must be compressed using a lossless algorithm
-       * \since QGIS 3.32
-       */
-      bool pdfLosslessImageCompression() const;
-
-      /**
-       * Returns true if rasters shall be untiled in the pdf
-       * \since QGIS 3.32
-       */
-      bool pdfDisableTiledRasterRendering() const;
-
-      /**
-       * Returns true, if Iso32000 georeferencing shall be used
-       * \since QGIS 3.32
-       */
-      bool pdfUseIso32000ExtensionFormatGeoreferencing() const;
-
-      /**
-       * Returns true if OGC best practice georeferencing shall be used
-       * \since QGIS 3.32
-       */
-      bool pdfUseOgcBestPracticeFormatGeoreferencing() const;
-
-      /**
-       * Returns map themes for geospatial PDF export
-       * \since QGIS 3.32
-       */
-      QStringList pdfExportMapThemes() const;
-
-      /**
-       * Returns list of map scales
-       * \since QGIS 3.32
-       */
-      QVector<qreal> pdfPredefinedMapScales() const;
-
       QString version() const override;
 
       QString request() const override;
 
-      /**
-       * Returns the format options for an output format. Possible template types are QgsWmsParameters::PdfFormatOption or QgsWmsParameters::DxfFormatOption
-       * \returns a key-value map
-       * \since QGIS 3.32
-       */
-      template<typename T> QMap< T, QString > formatOptions() const
-      {
-        QMap<T, QString> options;
-        const QMetaEnum metaEnum( QMetaEnum::fromType<T>() );
-        const QStringList opts = mWmsParameters.value( QgsWmsParameter::FORMAT_OPTIONS ).toStringList( ';' );
-
-        for ( auto it = opts.constBegin(); it != opts.constEnd(); ++it )
-        {
-          const int equalIdx = it->indexOf( ':' );
-          if ( equalIdx > 0 && equalIdx < ( it->length() - 1 ) )
-          {
-            const QString name = it->left( equalIdx ).toUpper();
-            int metaEnumVal = metaEnum.keyToValue( name.toStdString().c_str() );
-            if ( metaEnumVal < 0 )
-            {
-              continue; //option for a different format
-            }
-            const T option = ( T )metaEnumVal;
-            const QString value = it->right( it->length() - equalIdx - 1 );
-            options.insert( option, value );
-          }
-        }
-        return options;
-      }
-
     private:
-
       static bool isExternalLayer( const QString &name );
 
       bool loadParameter( const QString &name, const QString &value ) override;

@@ -43,9 +43,6 @@ class QgsWFSSharedData : public QObject, public QgsBackgroundCachedSharedData
     //! Return provider geometry attribute name
     const QString &geometryAttribute() const { return mGeometryAttribute; }
 
-    //! Return list of layer properties.
-    const QList< QgsOgcUtils::LayerProperties > &layerProperties() const { return mLayerPropertiesList; }
-
     std::unique_ptr<QgsFeatureDownloaderImpl> newFeatureDownloaderImpl( QgsFeatureDownloader *, bool requestFromMainThread ) override;
 
     bool isRestrictedToRequestBBOX() const override;
@@ -56,15 +53,6 @@ class QgsWFSSharedData : public QObject, public QgsBackgroundCachedSharedData
 
     //! Set a new filter and return the previous one. Only used to temporarily disable filtering when trying to get layer geometry type.
     QString setWFSFilter( const QString &newFilter ) { QString oldFilter = mWFSFilter; mWFSFilter = newFilter; return oldFilter; }
-
-    //! Returns the WFS filter computed by computeFilter()
-    const QString &WFSFilter() const { return mWFSFilter; }
-
-    //! Compute mWFSGeometryTypeFilter
-    void computeGeometryTypeFilter();
-
-    //! Combine several WFS filters together with a And condition
-    QString combineWFSFilters( const std::vector<QString> &filters ) const;
 
     //! Creates a deep copy of this shared data
     QgsWFSSharedData *clone() const;
@@ -97,12 +85,6 @@ class QgsWFSSharedData : public QObject, public QgsBackgroundCachedSharedData
     //! Map a field name to the pair (typename, fieldname) that describes its source field
     QMap< QString, QPair<QString, QString> > mMapFieldNameToSrcLayerNameFieldName;
 
-    //! Map a field name to the pair (xpath, isNestedContent)
-    QMap<QString, QPair<QString, bool> > mFieldNameToXPathAndIsNestedContentMap;
-
-    //! Map a namespace prefix to its URI
-    QMap<QString, QString> mNamespacePrefixToURIMap;
-
     //! Page size for WFS 2.0. 0 = disabled
     long long mPageSize = 0;
 
@@ -124,10 +106,7 @@ class QgsWFSSharedData : public QObject, public QgsBackgroundCachedSharedData
     bool mServerPrefersCoordinatesForTransactions_1_1 = false;
 
     //! Geometry type of the features in this layer
-    Qgis::WkbType mWKBType = Qgis::WkbType::Unknown;
-
-    //! Geometry type filter to ensure geometries returned by the layer are of type mWKBType.
-    QString mWFSGeometryTypeFilter;
+    QgsWkbTypes::Type mWKBType = QgsWkbTypes::Unknown;
 
     //! Create GML parser
     QgsGmlStreamingParser *createParser() const;

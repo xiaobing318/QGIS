@@ -3,9 +3,8 @@
  *                                                                      *
  * src/gui/raster/qgsrasterlayertemporalpropertieswidget.h              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
-
 
 
 
@@ -53,5 +52,5 @@ Adds a child ``widget`` to the properties widget.
  *                                                                      *
  * src/gui/raster/qgsrasterlayertemporalpropertieswidget.h              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

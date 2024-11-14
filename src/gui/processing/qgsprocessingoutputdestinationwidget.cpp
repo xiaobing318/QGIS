@@ -14,8 +14,10 @@
  ***************************************************************************/
 
 #include "qgsprocessingoutputdestinationwidget.h"
-#include "moc_qgsprocessingoutputdestinationwidget.cpp"
+#include "qgsgui.h"
 #include "qgsprocessingparameters.h"
+#include "qgsproviderregistry.h"
+#include "qgsprovidermetadata.h"
 #include "qgsnewdatabasetablenamewidget.h"
 #include "qgssettings.h"
 #include "qgsfileutils.h"
@@ -60,7 +62,7 @@ QgsProcessingLayerOutputDestinationWidget::QgsProcessingLayerOutputDestinationWi
   if ( !mParameter->defaultValueForGui().isValid() )
   {
     // no default value -- we default to either skipping the output or a temporary output, depending on the createByDefault value
-    if ( mParameter->flags() & Qgis::ProcessingParameterFlag::Optional && !mParameter->createByDefault() )
+    if ( mParameter->flags() & QgsProcessingParameterDefinition::FlagOptional && !mParameter->createByDefault() )
       setValue( QVariant() );
     else
       setValue( QgsProcessing::TEMPORARY_OUTPUT );
@@ -85,9 +87,9 @@ void QgsProcessingLayerOutputDestinationWidget::setValue( const QVariant &value 
 {
   const bool prevSkip = outputIsSkipped();
   mUseRemapping = false;
-  if ( !value.isValid() || ( value.userType() == QMetaType::Type::QString && value.toString().isEmpty() ) )
+  if ( !value.isValid() || ( value.type() == QVariant::String && value.toString().isEmpty() ) )
   {
-    if ( mParameter->flags() & Qgis::ProcessingParameterFlag::Optional )
+    if ( mParameter->flags() & QgsProcessingParameterDefinition::FlagOptional )
       skipOutput();
     else
       saveToTemporary();
@@ -98,7 +100,7 @@ void QgsProcessingLayerOutputDestinationWidget::setValue( const QVariant &value 
     {
       saveToTemporary();
     }
-    else if ( value.userType() == qMetaTypeId<QgsProcessingOutputLayerDefinition>() )
+    else if ( value.userType() == QMetaType::type( "QgsProcessingOutputLayerDefinition" ) )
     {
       const QgsProcessingOutputLayerDefinition def = value.value< QgsProcessingOutputLayerDefinition >();
       if ( def.sink.staticValue().toString() == QLatin1String( "memory:" ) || def.sink.staticValue().toString() == QgsProcessing::TEMPORARY_OUTPUT || def.sink.staticValue().toString().isEmpty() )
@@ -134,7 +136,7 @@ void QgsProcessingLayerOutputDestinationWidget::setValue( const QVariant &value 
       }
       else
       {
-        if ( prev.userType() != qMetaTypeId<QgsProcessingOutputLayerDefinition>() ||
+        if ( prev.userType() != QMetaType::type( "QgsProcessingOutputLayerDefinition" ) ||
              !( prev.value< QgsProcessingOutputLayerDefinition >() == QgsProcessingLayerOutputDestinationWidget::value().value< QgsProcessingOutputLayerDefinition >() ) )
           emit destinationChanged();
       }
@@ -159,7 +161,7 @@ QVariant QgsProcessingLayerOutputDestinationWidget::value() const
     key = leText->text();
   }
 
-  if ( key.isEmpty() && mParameter->flags() & Qgis::ProcessingParameterFlag::Optional )
+  if ( key.isEmpty() && mParameter->flags() & QgsProcessingParameterDefinition::FlagOptional )
     return QVariant();
 
   QString provider;
@@ -235,7 +237,7 @@ void QgsProcessingLayerOutputDestinationWidget::menuAboutToShow()
 
   if ( !mDefaultSelection )
   {
-    if ( mParameter->flags() & Qgis::ProcessingParameterFlag::Optional )
+    if ( mParameter->flags() & QgsProcessingParameterDefinition::FlagOptional )
     {
       QAction *actionSkipOutput = new QAction( tr( "Skip Output" ), this );
       connect( actionSkipOutput, &QAction::triggered, this, &QgsProcessingLayerOutputDestinationWidget::skipOutput );
@@ -392,11 +394,6 @@ void QgsProcessingLayerOutputDestinationWidget::selectFile()
     lastExtPath = QStringLiteral( "/Processing/LastPointCloudOutputExt" );
     lastExt = settings.value( lastExtPath, QStringLiteral( ".%1" ).arg( mParameter->defaultFileExtension() ) ).toString();
   }
-  else if ( mParameter->type() == QgsProcessingParameterVectorTileDestination::typeName() )
-  {
-    lastExtPath = QStringLiteral( "/Processing/LastVectorTileOutputExt" );
-    lastExt = settings.value( lastExtPath, QStringLiteral( ".%1" ).arg( mParameter->defaultFileExtension() ) ).toString();
-  }
 
   // get default filter
   const QStringList filters = fileFilter.split( QStringLiteral( ";;" ) );
@@ -433,9 +430,6 @@ void QgsProcessingLayerOutputDestinationWidget::selectFile()
     emit skipOutputChanged( false );
     emit destinationChanged();
   }
-  // return dialog focus on Mac
-  activateWindow();
-  raise();
 }
 
 void QgsProcessingLayerOutputDestinationWidget::saveToGeopackage()
@@ -446,9 +440,6 @@ void QgsProcessingLayerOutputDestinationWidget::saveToGeopackage()
     lastPath = settings.value( QStringLiteral( "/Processing/Configuration/OUTPUTS_FOLDER" ), QString() ).toString();
 
   QString filename =  QFileDialog::getSaveFileName( this, tr( "Save to GeoPackage" ), lastPath, tr( "GeoPackage files (*.gpkg);;All files (*.*)" ), nullptr, QFileDialog::DontConfirmOverwrite );
-  // return dialog focus on Mac
-  activateWindow();
-  raise();
 
   if ( filename.isEmpty() )
     return;
@@ -545,7 +536,7 @@ void QgsProcessingLayerOutputDestinationWidget::appendToLayer()
 {
   if ( QgsPanelWidget *panel = QgsPanelWidget::findParentPanel( this ) )
   {
-    QgsDataSourceSelectWidget *widget = new QgsDataSourceSelectWidget( mBrowserModel, true, Qgis::LayerType::Vector );
+    QgsDataSourceSelectWidget *widget = new QgsDataSourceSelectWidget( mBrowserModel, true, QgsMapLayerType::VectorLayer );
     widget->setPanelTitle( tr( "Append \"%1\" to Layer" ).arg( mParameter->description() ) );
 
     panel->openPanel( widget );
@@ -581,7 +572,7 @@ void QgsProcessingLayerOutputDestinationWidget::setAppendDestination( const QStr
   props.insert( mParameter->name(), uri );
 
   const QgsProcessingAlgorithm::VectorProperties outputProps = alg->sinkProperties( mParameter->name(), props, *mContext, QMap<QString, QgsProcessingAlgorithm::VectorProperties >() );
-  if ( outputProps.availability == Qgis::ProcessingPropertyAvailability::Available )
+  if ( outputProps.availability == QgsProcessingAlgorithm::Available )
   {
     if ( QgsPanelWidget *panel = QgsPanelWidget::findParentPanel( this ) )
     {

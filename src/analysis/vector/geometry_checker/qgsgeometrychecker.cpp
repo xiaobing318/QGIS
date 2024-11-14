@@ -22,7 +22,6 @@
 
 #include "qgsgeometrycheckcontext.h"
 #include "qgsgeometrychecker.h"
-#include "moc_qgsgeometrychecker.cpp"
 #include "qgsgeometrycheck.h"
 #include "qgsfeaturepool.h"
 #include "qgsproject.h"
@@ -150,7 +149,7 @@ bool QgsGeometryChecker::fixError( QgsGeometryCheckError *error, int method, boo
   {
     const QMap<QgsFeatureId, QList<QgsGeometryCheck::Change>> &layerChanges = it.value();
     QgsFeaturePool *featurePool = mFeaturePools[it.key()];
-    QgsCoordinateTransform t( featurePool->crs(), mContext->mapCrs, QgsProject::instance() );
+    QgsCoordinateTransform t( featurePool->layer()->crs(), mContext->mapCrs, QgsProject::instance() );
     t.setBallparkTransformsAreAppropriate( true );
     for ( auto layerChangeIt = layerChanges.constBegin(); layerChangeIt != layerChanges.constEnd(); ++layerChangeIt )
     {
@@ -187,11 +186,11 @@ bool QgsGeometryChecker::fixError( QgsGeometryCheckError *error, int method, boo
   }
   recheckArea.grow( 10 * mContext->tolerance );
   QMap<QString, QgsFeatureIds> recheckAreaFeatures;
-  for ( auto it = mFeaturePools.constBegin(); it != mFeaturePools.constEnd(); it++ )
+  for ( const QString &layerId : mFeaturePools.keys() )
   {
-    QgsFeaturePool *featurePool = it.value();
-    QgsCoordinateTransform t( mContext->mapCrs, featurePool->crs(), QgsProject::instance() );
-    recheckAreaFeatures[it.key()] = featurePool->getIntersects( t.transform( recheckArea ) );
+    QgsFeaturePool *featurePool = mFeaturePools[layerId];
+    QgsCoordinateTransform t( mContext->mapCrs, featurePool->layer()->crs(), QgsProject::instance() );
+    recheckAreaFeatures[layerId] = featurePool->getIntersects( t.transform( recheckArea ) );
   }
 
   // Recheck feature / changed area to detect new errors
@@ -273,9 +272,9 @@ bool QgsGeometryChecker::fixError( QgsGeometryCheckError *error, int method, boo
 
   if ( triggerRepaint )
   {
-    for ( auto itChange = changes.constBegin(); itChange != changes.constEnd(); itChange++ )
+    for ( const QString &layerId : changes.keys() )
     {
-      mFeaturePools[itChange.key()]->layer()->triggerRepaint();
+      mFeaturePools[layerId]->layer()->triggerRepaint();
     }
   }
 

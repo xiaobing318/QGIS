@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsfontbutton.h"
-#include "moc_qgsfontbutton.cpp"
 #include "qgstextformatwidget.h"
 #include "qgssymbollayerutils.h"
 #include "qgscolorscheme.h"
@@ -491,7 +490,7 @@ QPixmap QgsFontButton::createDragIcon( QSize size, const QgsTextFormat *tempForm
       const double fontSize = context.convertToPainterUnits( tempFormat->size(), tempFormat->sizeUnit(), tempFormat->sizeMapUnitScale() );
       double xtrans = 0;
       if ( tempFormat->buffer().enabled() )
-        xtrans = tempFormat->buffer().sizeUnit() == Qgis::RenderUnit::Percentage
+        xtrans = tempFormat->buffer().sizeUnit() == QgsUnitTypes::RenderPercentage
                  ? fontSize * tempFormat->buffer().size() / 100
                  : context.convertToPainterUnits( tempFormat->buffer().size(), tempFormat->buffer().sizeUnit(), tempFormat->buffer().sizeMapUnitScale() );
       if ( tempFormat->background().enabled() && tempFormat->background().sizeType() != QgsTextBackgroundSettings::SizeFixed )
@@ -499,7 +498,7 @@ QPixmap QgsFontButton::createDragIcon( QSize size, const QgsTextFormat *tempForm
 
       double ytrans = 0.0;
       if ( tempFormat->buffer().enabled() )
-        ytrans = std::max( ytrans, tempFormat->buffer().sizeUnit() == Qgis::RenderUnit::Percentage
+        ytrans = std::max( ytrans, tempFormat->buffer().sizeUnit() == QgsUnitTypes::RenderPercentage
                            ? fontSize * tempFormat->buffer().size() / 100
                            : context.convertToPainterUnits( tempFormat->buffer().size(), tempFormat->buffer().sizeUnit(), tempFormat->buffer().sizeMapUnitScale() ) );
       if ( tempFormat->background().enabled() )
@@ -613,7 +612,7 @@ void QgsFontButton::prepareMenu()
   {
     QAction *fontAction = new QAction( family, recentFontMenu );
     QFont f = fontAction->font();
-    QgsFontUtils::setFontFamily( f, family );
+    f.setFamily( family );
     fontAction->setFont( f );
     fontAction->setToolTip( family );
     recentFontMenu->addAction( fontAction );
@@ -631,7 +630,7 @@ void QgsFontButton::prepareMenu()
         {
           QgsTextFormat newFormat = mFormat;
           QFont f = newFormat.font();
-          QgsFontUtils::setFontFamily( f, family );
+          f.setFamily( family );
           newFormat.setFont( f );
           setTextFormat( newFormat );
           QgsFontUtils::addRecentFontFamily( mFormat.font().family() );
@@ -640,7 +639,7 @@ void QgsFontButton::prepareMenu()
         case ModeQFont:
         {
           QFont font = mFont;
-          QgsFontUtils::setFontFamily( font, family );
+          font.setFamily( family );
           setCurrentFont( font );
           QgsFontUtils::addRecentFontFamily( family );
           break;
@@ -666,7 +665,7 @@ void QgsFontButton::prepareMenu()
   const int iconSize = QgsGuiUtils::scaleIconSize( 16 );
   if ( mMode == ModeTextRenderer && formatFromMimeData( QApplication::clipboard()->mimeData(), tempFormat ) )
   {
-    tempFormat.setSizeUnit( Qgis::RenderUnit::Pixels );
+    tempFormat.setSizeUnit( QgsUnitTypes::RenderPixels );
     tempFormat.setSize( 14 );
     pasteFormatAction->setIcon( createDragIcon( QSize( iconSize, iconSize ), &tempFormat ) );
   }
@@ -851,13 +850,6 @@ void QgsFontButton::updatePreview( const QColor &color, QgsTextFormat *format, Q
   if ( color.isValid() )
     tempFormat.setColor( color );
 
-  // always show font previews based on the standard font size for buttons. Otherwise large/small text
-  // will be unreadable, making the button very non-user-friendly.
-  // Note that we take away a few points here, as the text in these buttons is rendered with a fairly large
-  // margin and we'd like to avoid cropping the text.
-  tempFormat.setSize( QToolButton::font().pointSizeF() - 2 );
-  tempFormat.setSizeUnit( Qgis::RenderUnit::Points );
-
   QSize currentIconSize;
   //icon size is button size with a small margin
   if ( menu() )
@@ -896,9 +888,8 @@ void QgsFontButton::updatePreview( const QColor &color, QgsTextFormat *format, Q
   }
 
   //create an icon pixmap
-  QPixmap pixmap( currentIconSize * devicePixelRatioF() );
+  QPixmap pixmap( currentIconSize );
   pixmap.fill( Qt::transparent );
-  pixmap.setDevicePixelRatio( devicePixelRatioF() );
   QPainter p;
   p.begin( &pixmap );
   p.setRenderHint( QPainter::Antialiasing );
@@ -914,7 +905,6 @@ void QgsFontButton::updatePreview( const QColor &color, QgsTextFormat *format, Q
       context.setMapToPixel( newCoordXForm );
 
       context.setScaleFactor( mScreenHelper->screenDpi() / 25.4 );
-      context.setDevicePixelRatio( devicePixelRatioF() );
       context.setUseAdvancedEffects( true );
       context.setFlag( Qgis::RenderContextFlag::Antialiasing, true );
       context.setPainter( &p );
@@ -923,7 +913,7 @@ void QgsFontButton::updatePreview( const QColor &color, QgsTextFormat *format, Q
       const double fontSize = context.convertToPainterUnits( tempFormat.size(), tempFormat.sizeUnit(), tempFormat.sizeMapUnitScale() );
       double xtrans = 0;
       if ( tempFormat.buffer().enabled() )
-        xtrans = tempFormat.buffer().sizeUnit() == Qgis::RenderUnit::Percentage
+        xtrans = tempFormat.buffer().sizeUnit() == QgsUnitTypes::RenderPercentage
                  ? fontSize * tempFormat.buffer().size() / 100
                  : context.convertToPainterUnits( tempFormat.buffer().size(), tempFormat.buffer().sizeUnit(), tempFormat.buffer().sizeMapUnitScale() );
       if ( tempFormat.background().enabled() && tempFormat.background().sizeType() != QgsTextBackgroundSettings::SizeFixed )
@@ -931,7 +921,7 @@ void QgsFontButton::updatePreview( const QColor &color, QgsTextFormat *format, Q
 
       double ytrans = 0.0;
       if ( tempFormat.buffer().enabled() )
-        ytrans = std::max( ytrans, tempFormat.buffer().sizeUnit() == Qgis::RenderUnit::Percentage
+        ytrans = std::max( ytrans, tempFormat.buffer().sizeUnit() == QgsUnitTypes::RenderPercentage
                            ? fontSize * tempFormat.buffer().size() / 100
                            : context.convertToPainterUnits( tempFormat.buffer().size(), tempFormat.buffer().sizeUnit(), tempFormat.buffer().sizeMapUnitScale() ) );
       if ( tempFormat.background().enabled() )

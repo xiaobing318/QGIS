@@ -29,6 +29,7 @@
  * \ingroup core
  * \brief A storage object for map layers, in which the layers are owned by the
  * store and have their lifetime bound to the store.
+ * \since QGIS 3.0
 */
 
 class CORE_EXPORT QgsMapLayerStore : public QObject

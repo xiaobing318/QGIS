@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsruntimeprofiler.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -45,18 +45,16 @@ front of the profile tag set using start.
 
 :param name: The name of the group.
 
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsRuntimeProfiler.start` instead.
+.. deprecated::
+   use :py:func:`~QgsRuntimeProfiler.start` instead
 %End
 
  void endGroup() /Deprecated/;
 %Docstring
 End the current active group.
 
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsRuntimeProfiler.end` instead.
+.. deprecated::
+   use :py:func:`~QgsRuntimeProfiler.end` instead
 %End
 
     QStringList childGroups( const QString &parent = QString(), const QString &group = "startup" ) const;
@@ -66,29 +64,16 @@ Returns a list of all child groups with the specified ``parent``.
 .. versionadded:: 3.14
 %End
 
-    void start( const QString &name, const QString &group = "startup", const QString &id = QString() );
+    void start( const QString &name, const QString &group = "startup" );
 %Docstring
 Start a profile event with the given name.
 The ``name`` of the profile event. Will have the name of
 the active ``group`` appended after ending.
-
-Since QGIS 3.34, the optional ``id`` argument can be used to provide a unique
-ID to disambiguate nodes with the same ``name``.
 %End
 
     void end( const QString &group = "startup" );
 %Docstring
 End the current profile event.
-%End
-
-    void record( const QString &name, double time, const QString &group = "startup", const QString &id = QString() );
-%Docstring
-Manually adds a profile event with the given name and total ``time`` (in seconds).
-
-The optional ``id`` argument can be used to provider a unique
-ID to disambiguate nodes with the same ``name``.
-
-.. versionadded:: 3.34
 %End
 
     double profileTime( const QString &name, const QString &group = "startup" ) const;
@@ -142,15 +127,6 @@ Returns the translated name of a standard profile ``group``.
     virtual QVariant headerData( int section, Qt::Orientation orientation, int role = Qt::DisplayRole ) const;
 
 
-    QString asText( const QString &group = QString() );
-%Docstring
-Returns the model as a multi-line text string.
-
-:param group: A group name to filter the model against.
-
-.. versionadded:: 3.34
-%End
-
 
     void groupAdded( const QString &group );
 %Docstring
@@ -184,15 +160,12 @@ Python scripts should not use :py:class:`QgsScopedRuntimeProfile` directly. Inst
 %End
   public:
 
-    QgsScopedRuntimeProfile( const QString &name, const QString &group = "startup", const QString &id = QString() );
+    QgsScopedRuntimeProfile( const QString &name, const QString &group = "startup" );
 %Docstring
 Constructor for QgsScopedRuntimeProfile.
 
 Automatically registers the operation in the :py:func:`QgsApplication.profiler()` instance
 and starts recording the run time of the operation.
-
-Since QGIS 3.34, the optional ``id`` argument can be used to provide a unique
-ID to disambiguate nodes with the same ``name``.
 %End
 
     ~QgsScopedRuntimeProfile();
@@ -215,5 +188,5 @@ This is useful for reusing an existing scoped runtime profiler with multi-step p
  *                                                                      *
  * src/core/qgsruntimeprofiler.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

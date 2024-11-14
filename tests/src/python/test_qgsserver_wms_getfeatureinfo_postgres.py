@@ -12,6 +12,8 @@ the Free Software Foundation; either version 2 of the License, or
 __author__ = 'Alessandro Pasotti'
 __date__ = '22/01/2021'
 __copyright__ = 'Copyright 2021, The QGIS Project'
+# This will get replaced with a git SHA1 when you do a git archive
+__revision__ = '252ad49ddcbc4a0dcfe9eb9381503de0fde9e0ed'
 
 import os
 
@@ -19,20 +21,15 @@ import os
 # executions
 os.environ['QT_HASH_SEED'] = '1'
 
-import json
 import urllib.parse
 import xml.etree.ElementTree as ET
+import json
 
-from qgis.core import (
-    QgsExpression,
-    QgsFeatureRequest,
-    QgsProject,
-    QgsProviderRegistry,
-    QgsVectorLayer,
-)
-from qgis.server import QgsBufferServerRequest, QgsBufferServerResponse
 from qgis.testing import unittest
+
 from test_qgsserver_wms import TestQgsServerWMSTestBase
+from qgis.core import QgsProject, QgsVectorLayer, QgsFeatureRequest, QgsExpression, QgsProviderRegistry
+from qgis.server import QgsBufferServerRequest, QgsBufferServerResponse
 
 
 class TestQgsServerWMSGetFeatureInfoPG(TestQgsServerWMSTestBase):

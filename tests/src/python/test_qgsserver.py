@@ -1,5 +1,7 @@
 """QGIS Unit tests for QgsServer.
 
+Set the env var ENCODED_OUTPUT to enable printing the base64 encoded image diff
+
 FIXME: keep here only generic server tests and move specific services
        tests to test_qgsserver_<service>.py
 
@@ -28,36 +30,26 @@ import os
 # Deterministic XML
 os.environ['QT_HASH_SEED'] = '1'
 
-import base64
-import difflib
-import email
 import re
-import tempfile
-import urllib.error
-import urllib.parse
 import urllib.request
+import urllib.parse
+import urllib.error
+import email
+import difflib
 
 from io import StringIO
-from shutil import copytree
+from qgis.server import QgsServer, QgsServerRequest, QgsBufferServerRequest, QgsBufferServerResponse, QgsServerParameterDefinition
+from qgis.core import QgsFontUtils, QgsMultiRenderChecker
+from qgis.testing import unittest, start_app
+from qgis.PyQt.QtCore import QSize
+from qgis.PyQt.QtGui import QColor
+from utilities import unitTestDataPath
 
 import osgeo.gdal  # NOQA
+import tempfile
+import base64
+from shutil import copytree
 
-from qgis.core import (
-    QgsFontUtils,
-    QgsMultiRenderChecker,
-)
-from qgis.PyQt.QtCore import QSize
-from qgis.PyQt.QtGui import QColor, QImage
-from qgis.server import (
-    QgsBufferServerRequest,
-    QgsBufferServerResponse,
-    QgsServer,
-    QgsServerParameterDefinition,
-    QgsServerRequest,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
-from utilities import unitTestDataPath
 
 start_app()
 
@@ -68,7 +60,7 @@ RE_ELEMENT_CONTENT = br'<[^>\[]+>(.+)</[^>\[\s]+>'
 RE_ATTRIBUTES = rb'((?:(?!\s|=).)*)\s*?=\s*?["\']?((?:(?<=")(?:(?<=\\)"|[^"])*|(?<=\')(?:(?<=\\)\'|[^\'])*)|(?:(?!"|\')(?:(?!\/>|>|\s).)+))'
 
 
-class QgsServerTestBase(QgisTestCase):
+class QgsServerTestBase(unittest.TestCase):
 
     """Base class for QGIS server tests"""
 
@@ -123,7 +115,6 @@ class QgsServerTestBase(QgisTestCase):
     @classmethod
     def setUpClass(self):
         """Create the server instance"""
-        super().setUpClass()
         self.fontFamily = QgsFontUtils.standardTestFontFamily()
         QgsFontUtils.loadStandardTestFonts(['All'])
 
@@ -184,13 +175,14 @@ class QgsServerTestBase(QgisTestCase):
     @classmethod
     def tearDownClass(self):
         """Cleanup env"""
+
+        super().tearDownClass()
         try:
             del os.environ["QGIS_SERVER_DISABLED_APIS"]
         except KeyError:
             pass
 
         self.temporary_dir.cleanup()
-        super().tearDownClass()
 
     def strip_version_xmlns(self, text):
         """Order of attributes is random, strip version and xmlns"""
@@ -229,7 +221,7 @@ class QgsServerTestBase(QgisTestCase):
 
         return data[1], headers
 
-    def _img_diff(self, image: str, control_image, max_diff, max_size_diff=QSize(), outputFormat='PNG') -> bool:
+    def _img_diff(self, image, control_image, max_diff, max_size_diff=QSize(), outputFormat='PNG'):
 
         if outputFormat == 'PNG':
             extFile = 'png'
@@ -246,26 +238,17 @@ class QgsServerTestBase(QgisTestCase):
             f.write(image)
 
         if outputFormat != 'PNG':
-            # TODO fix this, it's not actually testing anything..!
-            return True
+            return (True, "QgsRenderChecker can only be used for PNG")
 
-        rendered_image = QImage(temp_image)
-        if rendered_image.format() not in (QImage.Format.Format_RGB32,
-                                           QImage.Format.Format_ARGB32,
-                                           QImage.Format.Format_ARGB32_Premultiplied):
-            rendered_image = rendered_image.convertToFormat(QImage.Format.Format_ARGB32)
+        control = QgsMultiRenderChecker()
+        control.setControlPathPrefix("qgis_server")
+        control.setControlName(control_image)
+        control.setRenderedImage(temp_image)
+        if max_size_diff.isValid():
+            control.setSizeTolerance(max_size_diff.width(), max_size_diff.height())
+        return control.runTest(control_image, max_diff), control.report()
 
-        return self.image_check(
-            control_image,
-            control_image,
-            rendered_image,
-            control_image,
-            allowed_mismatch=max_diff,
-            control_path_prefix="qgis_server",
-            size_tolerance=max_size_diff
-        )
-
-    def _img_diff_error(self, response, headers, test_name: str, max_diff=100, max_size_diff=QSize(), outputFormat='PNG'):
+    def _img_diff_error(self, response, headers, image, max_diff=100, max_size_diff=QSize(), unittest_data_path='control_images', outputFormat='PNG'):
         """
         :param outputFormat: PNG, JPG or WEBP
         """
@@ -282,18 +265,36 @@ class QgsServerTestBase(QgisTestCase):
         else:
             raise RuntimeError('Yeah, new format implemented')
 
-        if self.regenerate_reference:
-            reference_path = unitTestDataPath(
-                'control_images') + '/qgis_server/' + test_name + '/' + test_name + '.' + extFile
-            self.store_reference(reference_path, response)
+        reference_path = unitTestDataPath(unittest_data_path) + '/qgis_server/' + image + '/' + image + '.' + extFile
+        self.store_reference(reference_path, response)
 
         self.assertEqual(
             headers.get("Content-Type"), contentType,
-            f"Content type is wrong: {headers.get('Content-Type')} instead of {contentType}\n{response}")
+            "Content type is wrong: {} instead of {}\n{}".format(headers.get("Content-Type"), contentType, response))
 
-        self.assertTrue(
-            self._img_diff(response, test_name, max_diff, max_size_diff, outputFormat)
-        )
+        test, report = self._img_diff(response, image, max_diff, max_size_diff, outputFormat)
+
+        with open(os.path.join(tempfile.gettempdir(), image + "_result." + extFile), "rb") as rendered_file:
+            encoded_rendered_file = base64.b64encode(rendered_file.read())
+            if not os.environ.get('ENCODED_OUTPUT'):
+                message = f"Image is wrong: rendered file {tempfile.gettempdir()}/{image}_result.{extFile}"
+            else:
+                message = "Image is wrong\n{}\nImage:\necho '{}' | base64 -d >{}/{}_result.{}".format(
+                    report, encoded_rendered_file.strip().decode('utf8'), tempfile.gettempdir(), image, extFile
+                )
+
+        # If the failure is in image sizes the diff file will not exists.
+        if os.path.exists(os.path.join(tempfile.gettempdir(), image + "_result_diff." + extFile)):
+            with open(os.path.join(tempfile.gettempdir(), image + "_result_diff." + extFile), "rb") as diff_file:
+                if not os.environ.get('ENCODED_OUTPUT'):
+                    message = f"Image is wrong: diff file {tempfile.gettempdir()}/{image}_result_diff.{extFile}"
+                else:
+                    encoded_diff_file = base64.b64encode(diff_file.read())
+                    message += "\nDiff:\necho '{}' | base64 -d > {}/{}_result_diff.{}".format(
+                        encoded_diff_file.strip().decode('utf8'), tempfile.gettempdir(), image, extFile
+                    )
+
+        self.assertTrue(test, message)
 
     def _execute_request(self, qs, requestMethod=QgsServerRequest.GetMethod, data=None, request_headers=None):
         request = QgsBufferServerRequest(qs, requestMethod, request_headers or {}, data)
@@ -349,7 +350,7 @@ class QgsServerTestBase(QgisTestCase):
         self.assertEqual(color.blue(), 255)
 
 
-class TestQgsServerTestBase(QgisTestCase):
+class TestQgsServerTestBase(unittest.TestCase):
 
     def test_assert_xml_equal(self):
         engine = QgsServerTestBase()
@@ -404,10 +405,10 @@ class TestQgsServer(QgsServerTestBase):
     def test_multiple_servers(self):
         """Segfaults?"""
         for i in range(10):
-            locals()[f"s{i}"] = QgsServer()
-            locals()[f"rq{i}"] = QgsBufferServerRequest("")
-            locals()[f"re{i}"] = QgsBufferServerResponse()
-            locals()[f"s{i}"].handleRequest(locals()[f"rq{i}"], locals()[f"re{i}"])
+            locals()["s%s" % i] = QgsServer()
+            locals()["rq%s" % i] = QgsBufferServerRequest("")
+            locals()["re%s" % i] = QgsBufferServerResponse()
+            locals()["s%s" % i].handleRequest(locals()["rq%s" % i], locals()["re%s" % i])
 
     def test_requestHandler(self):
         """Test request handler"""
@@ -442,7 +443,7 @@ class TestQgsServer(QgsServerTestBase):
 
         # Test response when project is specified but without service
         project = self.testdata_path + "test_project_wfs.qgs"
-        qs = f'?MAP={urllib.parse.quote(project)}'
+        qs = '?MAP=%s' % (urllib.parse.quote(project))
         header, body = self._execute_request(qs)
         response = self.strip_version_xmlns(header + body)
         expected = self.strip_version_xmlns(b'Content-Length: 365\nContent-Type: text/xml; charset=utf-8\n\n<?xml version="1.0" encoding="UTF-8"?>\n<ServiceExceptionReport  >\n <ServiceException code="Service configuration error">Service unknown or unsupported. Current supported services (case-sensitive): WMS WFS WCS WMTS SampleService, or use a WFS3 (OGC API Features) endpoint</ServiceException>\n</ServiceExceptionReport>\n')
@@ -471,7 +472,7 @@ class TestQgsServer(QgsServerTestBase):
         response = re.sub(RE_STRIP_UNCHECKABLE, b'', response)
         expected = re.sub(RE_STRIP_UNCHECKABLE, b'', expected)
 
-        self.assertXMLEqual(response, expected, msg=f"request {query_string} failed.\n Query: {request}\n Expected:\n{expected.decode('utf-8')}\n\n Response:\n{response.decode('utf-8')}")
+        self.assertXMLEqual(response, expected, msg="request {} failed.\n Query: {}\n Expected:\n{}\n\n Response:\n{}".format(query_string, request, expected.decode('utf-8'), response.decode('utf-8')))
 
     def test_project_wcs(self):
         """Test some WCS request"""
@@ -565,7 +566,7 @@ class TestQgsServer(QgsServerTestBase):
             self.assertTrue(item_found)
 
 
-class TestQgsServerParameter(QgisTestCase):
+class TestQgsServerParameter(unittest.TestCase):
 
     def test_filter(self):
         # empty filter

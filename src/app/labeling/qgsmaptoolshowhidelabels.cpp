@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsmaptoolshowhidelabels.h"
-#include "moc_qgsmaptoolshowhidelabels.cpp"
 
 #include "qgsexception.h"
 #include "qgsfeatureiterator.h"
@@ -36,8 +35,8 @@ QgsMapToolShowHideLabels::QgsMapToolShowHideLabels( QgsMapCanvas *canvas, QgsAdv
   mToolName = tr( "Show/hide labels" );
   mRubberBand = nullptr;
 
-  mPalProperties << QgsPalLayerSettings::Property::Show;
-  mDiagramProperties << QgsDiagramLayerSettings::Property::Show;
+  mPalProperties << QgsPalLayerSettings::Show;
+  mDiagramProperties << QgsDiagramLayerSettings::Show;
 }
 
 QgsMapToolShowHideLabels::~QgsMapToolShowHideLabels()
@@ -71,7 +70,7 @@ void QgsMapToolShowHideLabels::canvasPressEvent( QgsMapMouseEvent *e )
   mSelectRect.setRect( 0, 0, 0, 0 );
   mSelectRect.setTopLeft( e->pos() );
   mSelectRect.setBottomRight( e->pos() );
-  mRubberBand = new QgsRubberBand( mCanvas, Qgis::GeometryType::Polygon );
+  mRubberBand = new QgsRubberBand( mCanvas, QgsWkbTypes::PolygonGeometry );
 }
 
 void QgsMapToolShowHideLabels::canvasMoveEvent( QgsMapMouseEvent *e )
@@ -124,7 +123,7 @@ void QgsMapToolShowHideLabels::canvasReleaseEvent( QgsMapMouseEvent *e )
 
     showHideLabels( e );
 
-    mRubberBand->reset( Qgis::GeometryType::Polygon );
+    mRubberBand->reset( QgsWkbTypes::PolygonGeometry );
     delete mRubberBand;
     mRubberBand = nullptr;
   }
@@ -260,12 +259,12 @@ bool QgsMapToolShowHideLabels::selectedFeatures( QgsVectorLayer *vlayer,
 
   QApplication::setOverrideCursor( Qt::WaitCursor );
 
-  QgsDebugMsgLevel( "Selection layer: " + vlayer->name(), 2 );
-  QgsDebugMsgLevel( "Selection polygon: " + selectGeomTrans.asWkt(), 2 );
+  QgsDebugMsg( "Selection layer: " + vlayer->name() );
+  QgsDebugMsg( "Selection polygon: " + selectGeomTrans.asWkt() );
 
   QgsFeatureIterator fit = vlayer->getFeatures( QgsFeatureRequest()
                            .setFilterRect( selectGeomTrans.boundingBox() )
-                           .setFlags( Qgis::FeatureRequestFlag::NoGeometry | Qgis::FeatureRequestFlag::ExactIntersect )
+                           .setFlags( QgsFeatureRequest::NoGeometry | QgsFeatureRequest::ExactIntersect )
                            .setNoAttributes() );
 
   QgsFeature f;
@@ -334,7 +333,7 @@ bool QgsMapToolShowHideLabels::showHide( const QgsLabelPosition &pos, bool show 
       QgsDiagramIndexes indexes;
       createAuxiliaryFields( details, indexes );
 
-      showCol = indexes[ QgsDiagramLayerSettings::Property::Show ];
+      showCol = indexes[ QgsDiagramLayerSettings::Show ];
     }
   }
   else
@@ -344,7 +343,7 @@ bool QgsMapToolShowHideLabels::showHide( const QgsLabelPosition &pos, bool show 
       QgsPalIndexes indexes;
       createAuxiliaryFields( details, indexes );
 
-      showCol = indexes[ QgsPalLayerSettings::Property::Show ];
+      showCol = indexes[ QgsPalLayerSettings::Show ];
     }
   }
 

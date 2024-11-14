@@ -34,6 +34,21 @@ class QgisApp;
  * Only those functions "exposed" by QgisInterface can be called from within a
  * plugin.
  */
+/*
+* 杨小兵-2024-02-23
+一、解释
+  它是一个接口类，用于提供插件访问QgisApp中私有方法的途径。简单来说，就是让插件能够使用QGIS主应用程序中的某些功能，而不需要直接操作这些功能的内部代码。
+`Only those functions "exposed" by QgisInterface can be called from within a plugin.`：这句话进一步解释了接口的限制。只有那些通过`QgisInterface`
+公开（或“暴露”）的函数，才能被插件调用。这意味着插件开发者不能随意调用QGIS主应用程序中的任何内部方法，而只能使用那些专门为插件交互设计的、安全的方法。
+
+`QgisInterface`定义了插件与QGIS主程序交互所需的一系列方法。这些方法包括但不限于：
+- **图层操作**：添加、删除、修改图层。
+- **地图渲染**：刷新地图显示、设置地图范围。
+- **用户界面操作**：添加工具栏按钮、菜单项、对话框等。
+- **项目管理**：保存和加载QGIS项目文件。
+- **工具和分析**：执行地理处理工具、访问分析库等。
+
+*/
 
 Q_NOWARN_DEPRECATED_PUSH
 class APP_EXPORT QgisAppInterface : public QgisInterface
@@ -56,7 +71,7 @@ class APP_EXPORT QgisAppInterface : public QgisInterface
     QgsLayerTreeView *layerTreeView() override;
 
     void addCustomActionForLayerType( QAction *action, QString menu,
-                                      Qgis::LayerType type, bool allLayers ) override;
+                                      QgsMapLayerType type, bool allLayers ) override;
     void addCustomActionForLayer( QAction *action, QgsMapLayer *layer ) override;
     bool removeCustomActionForLayerType( QAction *action ) override;
 
@@ -72,7 +87,6 @@ class APP_EXPORT QgisAppInterface : public QgisInterface
     QgsMeshLayer *addMeshLayer( const QString &url, const QString &baseName, const QString &providerKey ) override;
     QgsVectorTileLayer *addVectorTileLayer( const QString &url, const QString &baseName ) override;
     QgsPointCloudLayer *addPointCloudLayer( const QString &url, const QString &baseName, const QString &providerKey ) override;
-    QgsTiledSceneLayer *addTiledSceneLayer( const QString &url, const QString &baseName, const QString &providerKey ) override;
     bool addProject( const QString &projectName ) override;
     bool newProject( bool promptToSaveFlag = false ) override;
     void reloadConnections( ) override;
@@ -107,9 +121,6 @@ class APP_EXPORT QgisAppInterface : public QgisInterface
     QList< QgsMapCanvas * > mapCanvases() override;
     QgsMapCanvas *createNewMapCanvas( const QString &name ) override;
     void closeMapCanvas( const QString &name ) override;
-    QList< Qgs3DMapCanvas * > mapCanvases3D() override;
-    Qgs3DMapCanvas *createNewMapCanvas3D( const QString &name ) override;
-    void closeMapCanvas3D( const QString &name ) override;
     QSize iconSize( bool dockedToolbar = false ) const override;
     QgsLayerTreeMapCanvasBridge *layerTreeCanvasBridge() override;
     QWidget *mainWindow() override;
@@ -157,7 +168,6 @@ class APP_EXPORT QgisAppInterface : public QgisInterface
     void unregisterProjectPropertiesWidgetFactory( QgsOptionsWidgetFactory *factory ) override;
     void registerDevToolWidgetFactory( QgsDevToolWidgetFactory *factory ) override;
     void unregisterDevToolWidgetFactory( QgsDevToolWidgetFactory *factory ) override;
-    void showApiDocumentation( Qgis::DocumentationApi api, Qgis::DocumentationBrowser browser, const QString &object, const QString &module ) override;
     void registerApplicationExitBlocker( QgsApplicationExitBlockerInterface *blocker ) override;
     void unregisterApplicationExitBlocker( QgsApplicationExitBlockerInterface *blocker ) override;
     void registerMapToolHandler( QgsAbstractMapToolHandler *handler ) override;
@@ -169,11 +179,6 @@ class APP_EXPORT QgisAppInterface : public QgisInterface
     void registerCustomLayoutDropHandler( QgsLayoutCustomDropHandler *handler ) override;
     void unregisterCustomLayoutDropHandler( QgsLayoutCustomDropHandler *handler ) override;
     QMenu *projectMenu() override;
-    QMenu *projectImportExportMenu() override;
-    void addProjectImportAction( QAction *action ) override;
-    void removeProjectImportAction( QAction *action )override;
-    void addProjectExportAction( QAction *action ) override;
-    void removeProjectExportAction( QAction *action ) override;
     QMenu *editMenu() override;
     QMenu *viewMenu() override;
     QMenu *layerMenu() override;
@@ -186,14 +191,12 @@ class APP_EXPORT QgisAppInterface : public QgisInterface
     QMenu *vectorMenu() override;
     QMenu *databaseMenu() override;
     QMenu *webMenu() override;
-    QMenu *meshMenu() override;
     QMenu *firstRightStandardMenu() override;
     QMenu *windowMenu() override;
     QMenu *helpMenu() override;
     QToolBar *fileToolBar() override;
     QToolBar *layerToolBar() override;
     QToolBar *dataSourceManagerToolBar() override;
-    void openDataSourceManagerPage( const QString &pageName ) override;
     QToolBar *mapNavToolToolBar() override;
     QToolBar *digitizeToolBar() override;
     QToolBar *advancedDigitizeToolBar() override;
@@ -320,8 +323,6 @@ class APP_EXPORT QgisAppInterface : public QgisInterface
     QgsLayerTreeRegistryBridge::InsertionPoint layerTreeInsertionPoint() override;
     void setGpsPanelConnection( QgsGpsConnection *connection ) override;
     QList<QgsMapDecoration *> activeDecorations() override;
-    QgsUserProfileManager *userProfileManager() override;
-    void blockActiveLayerChanges( bool blocked ) override;
 
   private slots:
 

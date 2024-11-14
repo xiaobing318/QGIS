@@ -11,6 +11,7 @@ __copyright__ = 'Copyright 2022, The QGIS Project'
 
 import os
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import QTemporaryDir
 from qgis.core import (
     Qgis,
@@ -23,13 +24,12 @@ from qgis.core import (
     QgsVectorFileWriter,
     QgsVectorLayer,
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsVectorLayerEditBufferGroup(QgisTestCase):
+class TestQgsVectorLayerEditBufferGroup(unittest.TestCase):
 
     def tearDown(self):
         """Run after each test."""
@@ -47,7 +47,7 @@ class TestQgsVectorLayerEditBufferGroup(QgisTestCase):
         options.layerName = 'layer_a'
         err, msg, newFileName, newLayer = QgsVectorFileWriter.writeAsVectorFormatV3(ml, os.path.join(d.path(), 'test_EditBufferGroup_A.gpkg'), QgsCoordinateTransformContext(), options)
 
-        self.assertEqual(err, QgsVectorFileWriter.WriterError.NoError)
+        self.assertEqual(err, QgsVectorFileWriter.NoError)
         self.assertTrue(os.path.isfile(newFileName))
 
         layer_a = QgsVectorLayer(newFileName + '|layername=layer_a')
@@ -58,7 +58,7 @@ class TestQgsVectorLayerEditBufferGroup(QgisTestCase):
         options.layerName = 'layer_b'
         err, msg, newFileName, newLayer = QgsVectorFileWriter.writeAsVectorFormatV3(ml, os.path.join(d.path(), 'test_EditBufferGroup_B.gpkg'), QgsCoordinateTransformContext(), options)
 
-        self.assertEqual(err, QgsVectorFileWriter.WriterError.NoError)
+        self.assertEqual(err, QgsVectorFileWriter.NoError)
         self.assertTrue(os.path.isfile(newFileName))
 
         layer_b = QgsVectorLayer(newFileName + '|layername=layer_b')
@@ -137,7 +137,7 @@ class TestQgsVectorLayerEditBufferGroup(QgisTestCase):
         err, msg, newFileName, newLayer = QgsVectorFileWriter.writeAsVectorFormatV3(ml, os.path.join(d.path(), 'test_EditBufferGroup.gpkg'), QgsCoordinateTransformContext(), options)
 
         options.layerName = 'layer_b'
-        options.actionOnExistingFile = QgsVectorFileWriter.ActionOnExistingFile.CreateOrOverwriteLayer
+        options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
         err, msg, newFileName, newLayer = QgsVectorFileWriter.writeAsVectorFormatV3(ml, os.path.join(d.path(), 'test_EditBufferGroup.gpkg'), QgsCoordinateTransformContext(), options)
 
         layer_a = QgsVectorLayer(newFileName + '|layername=layer_a')
@@ -171,7 +171,7 @@ class TestQgsVectorLayerEditBufferGroup(QgisTestCase):
         err, msg, newFileName, newLayer = QgsVectorFileWriter.writeAsVectorFormatV3(memoryLayer_a, os.path.join(d.path(), 'test_EditBufferGroupReadOnly.gpkg'), QgsCoordinateTransformContext(), options)
 
         options.layerName = 'layer_b'
-        options.actionOnExistingFile = QgsVectorFileWriter.ActionOnExistingFile.CreateOrOverwriteLayer
+        options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
         err, msg, newFileName, newLayer = QgsVectorFileWriter.writeAsVectorFormatV3(memoryLayer_b, os.path.join(d.path(), 'test_EditBufferGroupReadOnly.gpkg'), QgsCoordinateTransformContext(), options)
 
         layer_a = QgsVectorLayer(newFileName + '|layername=layer_a')
@@ -233,7 +233,7 @@ class TestQgsVectorLayerEditBufferGroup(QgisTestCase):
         err, msg, newFileName, newLayer = QgsVectorFileWriter.writeAsVectorFormatV3(memoryLayer_a, os.path.join(d.path(), 'test_EditBufferGroupCircularRelations.gpkg'), QgsCoordinateTransformContext(), options)
 
         options.layerName = 'layer_b'
-        options.actionOnExistingFile = QgsVectorFileWriter.ActionOnExistingFile.CreateOrOverwriteLayer
+        options.actionOnExistingFile = QgsVectorFileWriter.CreateOrOverwriteLayer
         err, msg, newFileName, newLayer = QgsVectorFileWriter.writeAsVectorFormatV3(memoryLayer_b, os.path.join(d.path(), 'test_EditBufferGroupCircularRelations.gpkg'), QgsCoordinateTransformContext(), options)
 
         layer_a = QgsVectorLayer(newFileName + '|layername=layer_a')

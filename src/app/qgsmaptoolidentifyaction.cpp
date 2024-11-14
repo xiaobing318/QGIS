@@ -25,18 +25,16 @@
 #include "qgsidentifymenu.h"
 #include "qgsmapcanvas.h"
 #include "qgsmaptoolidentifyaction.h"
-#include "moc_qgsmaptoolidentifyaction.cpp"
 #include "qgsmaptoolselectionhandler.h"
 #include "qgsrasterlayer.h"
 #include "qgsvectordataprovider.h"
 #include "qgsvectorlayer.h"
 #include "qgsproject.h"
+#include "qgsunittypes.h"
 #include "qgsstatusbar.h"
 #include "qgssettings.h"
 #include "qgsmapmouseevent.h"
 #include "qgslayertreeview.h"
-#include "qgsmaplayeraction.h"
-#include "qgsunittypes.h"
 
 #include <QCursor>
 #include <QPixmap>
@@ -50,11 +48,12 @@ QgsMapToolIdentifyAction::QgsMapToolIdentifyAction( QgsMapCanvas *canvas )
   setCursor( QgsApplication::getThemeCursor( QgsApplication::Cursor::Identify ) );
   connect( this, &QgsMapToolIdentify::changedRasterResults, this, &QgsMapToolIdentifyAction::handleChangedRasterResults );
   mIdentifyMenu->setAllowMultipleReturn( true );
-  QgsMapLayerAction *attrTableAction = new QgsMapLayerAction( tr( "Show Attribute Table" ), mIdentifyMenu, Qgis::LayerType::Vector, Qgis::MapLayerActionTarget::MultipleFeatures );
-  connect( attrTableAction, &QgsMapLayerAction::triggeredForFeaturesV2, this, &QgsMapToolIdentifyAction::showAttributeTable );
+  QgsMapLayerAction *attrTableAction = new QgsMapLayerAction( tr( "Show Attribute Table" ), mIdentifyMenu, QgsMapLayerType::VectorLayer, QgsMapLayerAction::MultipleFeatures );
+  connect( attrTableAction, &QgsMapLayerAction::triggeredForFeatures, this, &QgsMapToolIdentifyAction::showAttributeTable );
   identifyMenu()->addCustomAction( attrTableAction );
   mSelectionHandler = new QgsMapToolSelectionHandler( canvas, QgsMapToolSelectionHandler::SelectSimple );
   connect( mSelectionHandler, &QgsMapToolSelectionHandler::geometryChanged, this, &QgsMapToolIdentifyAction::identifyFromGeometry );
+
 }
 
 QgsMapToolIdentifyAction::~QgsMapToolIdentifyAction()
@@ -83,7 +82,7 @@ QgsIdentifyResultsDialog *QgsMapToolIdentifyAction::resultsDialog()
   return mResultsDialog;
 }
 
-void QgsMapToolIdentifyAction::showAttributeTable( QgsMapLayer *layer, const QList<QgsFeature> &featureList, const QgsMapLayerActionContext & )
+void QgsMapToolIdentifyAction::showAttributeTable( QgsMapLayer *layer, const QList<QgsFeature> &featureList )
 {
   resultsDialog()->clear();
 
@@ -104,13 +103,14 @@ void QgsMapToolIdentifyAction::showAttributeTable( QgsMapLayer *layer, const QLi
   tableDialog->show();
 }
 
+
 void QgsMapToolIdentifyAction::identifyFromGeometry()
 {
   resultsDialog()->clear();
   connect( this, &QgsMapToolIdentifyAction::identifyMessage, QgisApp::instance(), &QgisApp::showStatusMessage );
 
   const QgsGeometry geometry = mSelectionHandler->selectedGeometry();
-  const bool isSinglePoint = geometry.type() == Qgis::GeometryType::Point;
+  const bool isSinglePoint = geometry.type() == QgsWkbTypes::PointGeometry;
 
   if ( isSinglePoint )
     setClickContextScope( geometry.asPoint() );
@@ -133,7 +133,6 @@ void QgsMapToolIdentifyAction::identifyFromGeometry()
   QgsIdentifyContext identifyContext;
   if ( mCanvas->mapSettings().isTemporal() )
     identifyContext.setTemporalRange( mCanvas->temporalRange() );
-  identifyContext.setZRange( mCanvas->zRange() );
   const QList<IdentifyResult> results = QgsMapToolIdentify::identify( geometry, mode, layerList, AllLayers, identifyContext );
 
   disconnect( this, &QgsMapToolIdentifyAction::identifyMessage, QgisApp::instance(), &QgisApp::showStatusMessage );
@@ -184,11 +183,11 @@ void QgsMapToolIdentifyAction::canvasReleaseEvent( QgsMapMouseEvent *e )
 void QgsMapToolIdentifyAction::handleChangedRasterResults( QList<IdentifyResult> &results )
 {
   // Add new result after raster format change
-  QgsDebugMsgLevel( QStringLiteral( "%1 raster results" ).arg( results.size() ), 2 );
+  QgsDebugMsg( QStringLiteral( "%1 raster results" ).arg( results.size() ) );
   QList<IdentifyResult>::const_iterator rresult;
   for ( rresult = results.constBegin(); rresult != results.constEnd(); ++rresult )
   {
-    if ( rresult->mLayer->type() == Qgis::LayerType::Raster )
+    if ( rresult->mLayer->type() == QgsMapLayerType::RasterLayer )
     {
       resultsDialog()->addFeature( *rresult );
     }
@@ -233,31 +232,19 @@ void QgsMapToolIdentifyAction::showResultsForFeature( QgsVectorLayer *vlayer, Qg
   resultsDialog()->updateViewModes();
 }
 
-Qgis::DistanceUnit QgsMapToolIdentifyAction::displayDistanceUnits() const
+QgsUnitTypes::DistanceUnit QgsMapToolIdentifyAction::displayDistanceUnits() const
 {
-  Qgis::DistanceUnit units = QgsProject::instance()->distanceUnits();
-  // unknown units used as a placeholder for map units
-  if ( units == Qgis::DistanceUnit::Unknown )
-  {
-    return QgsProject::instance()->crs().mapUnits();
-  }
-  return units;
+  return QgsProject::instance()->distanceUnits();
 }
 
-Qgis::AreaUnit QgsMapToolIdentifyAction::displayAreaUnits() const
+QgsUnitTypes::AreaUnit QgsMapToolIdentifyAction::displayAreaUnits() const
 {
-  Qgis::AreaUnit units = QgsProject::instance()->areaUnits();
-  // unknown units used as a placeholder for map units
-  if ( units == Qgis::AreaUnit::Unknown )
-  {
-    return QgsUnitTypes::distanceToAreaUnit( QgsProject::instance()->crs().mapUnits() );
-  }
-  return units;
+  return QgsProject::instance()->areaUnits();
 }
 
 void QgsMapToolIdentifyAction::handleCopyToClipboard( QgsFeatureStore &featureStore )
 {
-  QgsDebugMsgLevel( QStringLiteral( "features count = %1" ).arg( featureStore.features().size() ), 2 );
+  QgsDebugMsg( QStringLiteral( "features count = %1" ).arg( featureStore.features().size() ) );
   emit copyToClipboard( featureStore );
 }
 
@@ -275,22 +262,15 @@ void QgsMapToolIdentifyAction::setClickContextScope( const QgsPointXY &point )
   }
 }
 
+
 void QgsMapToolIdentifyAction::keyReleaseEvent( QKeyEvent *e )
 {
   if ( mSelectionHandler->keyReleaseEvent( e ) )
     return;
 
-  switch ( e->key() )
-  {
-    case Qt::Key_Escape:
-    {
-      clearResults();
-      return;
-    }
-  }
-
-  QgsMapToolIdentify::keyReleaseEvent( e );
+  QgsMapTool::keyReleaseEvent( e );
 }
+
 
 void QgsMapToolIdentifyAction::showIdentifyResults( const QList<IdentifyResult> &identifyResults )
 {

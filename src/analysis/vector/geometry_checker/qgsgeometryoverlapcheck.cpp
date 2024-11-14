@@ -44,7 +44,7 @@ void QgsGeometryOverlapCheck::collectErrors( const QMap<QString, QgsFeaturePool 
 
     const QgsGeometry geomA = layerFeatureA.geometry();
     const QgsRectangle bboxA = geomA.boundingBox();
-    std::unique_ptr< QgsGeometryEngine > geomEngineA( QgsGeometry::createGeometryEngine( geomA.constGet(), mContext->tolerance ) );
+    std::unique_ptr< QgsGeometryEngine > geomEngineA = QgsGeometryCheckerUtils::createGeomEngine( geomA.constGet(), mContext->tolerance );
     geomEngineA->prepareGeometry();
     if ( !geomEngineA->isValid() )
     {
@@ -112,7 +112,7 @@ void QgsGeometryOverlapCheck::fixError( const QMap<QString, QgsFeaturePool *> &f
   const QgsGeometryCheckerUtils::LayerFeature layerFeatureA( featurePoolA, featureA, mContext, true );
   const QgsGeometryCheckerUtils::LayerFeature layerFeatureB( featurePoolB, featureB, mContext, true );
   const QgsGeometry geometryA = layerFeatureA.geometry();
-  std::unique_ptr< QgsGeometryEngine > geomEngineA( QgsGeometry::createGeometryEngine( geometryA.constGet(), mContext->tolerance ) );
+  std::unique_ptr< QgsGeometryEngine > geomEngineA = QgsGeometryCheckerUtils::createGeomEngine( geometryA.constGet(), mContext->tolerance );
   geomEngineA->prepareGeometry();
 
   const QgsGeometry geometryB = layerFeatureB.geometry();
@@ -134,7 +134,7 @@ void QgsGeometryOverlapCheck::fixError( const QMap<QString, QgsFeaturePool *> &f
   {
     QgsAbstractGeometry *part = QgsGeometryCheckerUtils::getGeomPart( interGeom.get(), iPart );
     if ( std::fabs( part->area() - overlapError->value().toDouble() ) < mContext->reducedTolerance &&
-         QgsGeometryUtilsBase::fuzzyDistanceEqual( mContext->reducedTolerance,  part->centroid().x(), part->centroid().y(), overlapError->location().x(), overlapError->location().y() ) ) // TODO: add fuzzyDistanceEqual in QgsAbstractGeometry classes
+         QgsGeometryCheckerUtils::pointsFuzzyEqual( part->centroid(), overlapError->location(), mContext->reducedTolerance ) )
     {
       interPart = part;
       break;
@@ -153,7 +153,7 @@ void QgsGeometryOverlapCheck::fixError( const QMap<QString, QgsFeaturePool *> &f
   }
   else if ( method == Subtract )
   {
-    std::unique_ptr< QgsGeometryEngine > geomEngineDiffA( QgsGeometry::createGeometryEngine( geometryA.constGet(), 0 ) );
+    std::unique_ptr< QgsGeometryEngine > geomEngineDiffA = QgsGeometryCheckerUtils::createGeomEngine( geometryA.constGet(), 0 );
     std::unique_ptr< QgsAbstractGeometry > diff1( geomEngineDiffA->difference( interPart, &errMsg ) );
     if ( !diff1 || diff1->isEmpty() )
     {
@@ -163,7 +163,7 @@ void QgsGeometryOverlapCheck::fixError( const QMap<QString, QgsFeaturePool *> &f
     {
       QgsGeometryCheckerUtils::filter1DTypes( diff1.get() );
     }
-    std::unique_ptr< QgsGeometryEngine > geomEngineDiffB( QgsGeometry::createGeometryEngine( geometryB.constGet(), 0 ) );
+    std::unique_ptr< QgsGeometryEngine > geomEngineDiffB = QgsGeometryCheckerUtils::createGeomEngine( geometryB.constGet(), 0 );
     std::unique_ptr< QgsAbstractGeometry > diff2( geomEngineDiffB->difference( interPart, &errMsg ) );
     if ( !diff2 || diff2->isEmpty() )
     {
@@ -253,9 +253,9 @@ QgsGeometryCheck::Flags QgsGeometryOverlapCheck::factoryFlags()
   return QgsGeometryCheck::AvailableInValidation;
 }
 
-QList<Qgis::GeometryType> QgsGeometryOverlapCheck::factoryCompatibleGeometryTypes()
+QList<QgsWkbTypes::GeometryType> QgsGeometryOverlapCheck::factoryCompatibleGeometryTypes()
 {
-  return {Qgis::GeometryType::Polygon};
+  return {QgsWkbTypes::PolygonGeometry};
 }
 
 bool QgsGeometryOverlapCheck::factoryIsCompatible( QgsVectorLayer *layer ) SIP_SKIP
@@ -278,7 +278,7 @@ bool QgsGeometryOverlapCheckError::isEqual( QgsGeometryCheckError *other ) const
          other->layerId() == layerId() &&
          other->featureId() == featureId() &&
          err->overlappedFeature() == overlappedFeature() &&
-         location().distanceCompare( other->location(), mCheck->context()->reducedTolerance ) &&
+         QgsGeometryCheckerUtils::pointsFuzzyEqual( location(), other->location(), mCheck->context()->reducedTolerance ) &&
          std::fabs( value().toDouble() - other->value().toDouble() ) < mCheck->context()->reducedTolerance;
 }
 

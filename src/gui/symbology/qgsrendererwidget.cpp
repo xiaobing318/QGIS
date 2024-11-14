@@ -13,7 +13,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsrendererwidget.h"
-#include "moc_qgsrendererwidget.cpp"
 
 #include "qgsdatadefinedsizelegendwidget.h"
 #include "qgssymbol.h"
@@ -21,6 +20,7 @@
 #include "qgscolordialog.h"
 #include "qgssymbollevelsdialog.h"
 #include "qgssymbollayer.h"
+#include "qgsexpressionbuilderdialog.h"
 #include "qgsmapcanvas.h"
 #include "qgspanelwidget.h"
 #include "qgsproject.h"
@@ -60,11 +60,11 @@ QgsRendererWidget::QgsRendererWidget( QgsVectorLayer *layer, QgsStyle *style )
   contextMenu->addAction( tr( "Change Opacity…" ), this, SLOT( changeSymbolOpacity() ) );
   contextMenu->addAction( tr( "Change Output Unit…" ), this, SLOT( changeSymbolUnit() ) );
 
-  if ( mLayer && mLayer->geometryType() == Qgis::GeometryType::Line )
+  if ( mLayer && mLayer->geometryType() == QgsWkbTypes::LineGeometry )
   {
     contextMenu->addAction( tr( "Change Width…" ), this, SLOT( changeSymbolWidth() ) );
   }
-  else if ( mLayer && mLayer->geometryType() == Qgis::GeometryType::Point )
+  else if ( mLayer && mLayer->geometryType() == QgsWkbTypes::PointGeometry )
   {
     contextMenu->addAction( tr( "Change Size…" ), this, SLOT( changeSymbolSize() ) );
     contextMenu->addAction( tr( "Change Angle…" ), this, SLOT( changeSymbolAngle() ) );
@@ -195,11 +195,11 @@ void QgsRendererWidget::changeSymbolUnit()
     return;
 
   bool ok;
-  const int currentUnit = ( firstSymbol->outputUnit() == Qgis::RenderUnit::Millimeters ) ? 0 : 1;
+  const int currentUnit = ( firstSymbol->outputUnit() == QgsUnitTypes::RenderMillimeters ) ? 0 : 1;
   const QString item = QInputDialog::getItem( this, tr( "Symbol unit" ), tr( "Select symbol unit" ), QStringList() << tr( "Millimeter" ) << tr( "Map unit" ), currentUnit, false, &ok );
   if ( ok )
   {
-    const Qgis::RenderUnit unit = ( item.compare( tr( "Millimeter" ) ) == 0 ) ? Qgis::RenderUnit::Millimeters : Qgis::RenderUnit::MapUnits;
+    const QgsUnitTypes::RenderUnit unit = ( item.compare( tr( "Millimeter" ) ) == 0 ) ? QgsUnitTypes::RenderMillimeters : QgsUnitTypes::RenderMapUnits;
 
     const auto constSymbolList = symbolList;
     for ( QgsSymbol *symbol : constSymbolList )
@@ -315,14 +315,6 @@ void QgsRendererWidget::copySymbol()
   QApplication::clipboard()->setMimeData( QgsSymbolLayerUtils::symbolToMimeData( symbolList.at( 0 ) ) );
 }
 
-void QgsRendererWidget::updateDataDefinedProperty()
-{
-  QgsPropertyOverrideButton *button = qobject_cast<QgsPropertyOverrideButton *>( sender() );
-  const QgsFeatureRenderer::Property key = static_cast< QgsFeatureRenderer::Property >( button->propertyKey() );
-  renderer()->setDataDefinedProperty( key, button->toProperty() );
-  emit widgetChanged();
-}
-
 void QgsRendererWidget::showSymbolLevelsDialog( QgsFeatureRenderer *r )
 {
   QgsPanelWidget *panel = QgsPanelWidget::findParentPanel( this );
@@ -397,50 +389,6 @@ void QgsRendererWidget::setSymbolLevels( const QList< QgsLegendSymbolItem > &, b
 
 }
 
-void QgsRendererWidget::registerDataDefinedButton( QgsPropertyOverrideButton *button, QgsFeatureRenderer::Property key )
-{
-  // note that we don't specify the layer here -- we don't want to expose a choice of fields for renderer level buttons,
-  // as the settings apply to the WHOLE layer and aren't evaluated on a feature-by-feature basis
-  button->init( static_cast< int >( key ), renderer()->dataDefinedProperties(), QgsFeatureRenderer::propertyDefinitions(), nullptr, true );
-  connect( button, &QgsPropertyOverrideButton::changed, this, &QgsRendererWidget::updateDataDefinedProperty );
-
-  button->registerExpressionContextGenerator( this );
-}
-
-QgsExpressionContext QgsRendererWidget::createExpressionContext() const
-{
-  if ( auto *lExpressionContext = mContext.expressionContext() )
-    return *lExpressionContext;
-
-  QgsExpressionContext expContext( mContext.globalProjectAtlasMapLayerScopes( vectorLayer() ) );
-
-  // additional scopes
-  const auto constAdditionalExpressionContextScopes = mContext.additionalExpressionContextScopes();
-  for ( const QgsExpressionContextScope &scope : constAdditionalExpressionContextScopes )
-  {
-    expContext.appendScope( new QgsExpressionContextScope( scope ) );
-  }
-
-  //TODO - show actual value
-  expContext.setOriginalValueVariable( QVariant() );
-
-  QStringList highlights;
-  highlights << QgsExpressionContext::EXPR_ORIGINAL_VALUE;
-
-  if ( expContext.hasVariable( QStringLiteral( "zoom_level" ) ) )
-  {
-    highlights << QStringLiteral( "zoom_level" );
-  }
-  if ( expContext.hasVariable( QStringLiteral( "vector_tile_zoom" ) ) )
-  {
-    highlights << QStringLiteral( "vector_tile_zoom" );
-  }
-
-  expContext.setHighlightedVariables( highlights );
-
-  return expContext;
-}
-
 //
 // QgsDataDefinedValueDialog
 //
@@ -468,16 +416,22 @@ QgsSymbolWidgetContext QgsDataDefinedValueDialog::context() const
 QgsExpressionContext QgsDataDefinedValueDialog::createExpressionContext() const
 {
   QgsExpressionContext expContext;
+  expContext << QgsExpressionContextUtils::globalScope()
+             << QgsExpressionContextUtils::projectScope( QgsProject::instance() )
+             << QgsExpressionContextUtils::atlasScope( nullptr );
   if ( auto *lMapCanvas = mContext.mapCanvas() )
   {
-    expContext = lMapCanvas->createExpressionContext();
+    expContext << QgsExpressionContextUtils::mapSettingsScope( lMapCanvas->mapSettings() )
+               << new QgsExpressionContextScope( lMapCanvas->expressionContextScope() );
+
+    if ( const QgsExpressionContextScopeGenerator *generator = dynamic_cast< const QgsExpressionContextScopeGenerator * >( lMapCanvas->temporalController() ) )
+    {
+      expContext << generator->createExpressionContextScope();
+    }
   }
   else
   {
-    expContext << QgsExpressionContextUtils::globalScope()
-               << QgsExpressionContextUtils::projectScope( QgsProject::instance() )
-               << QgsExpressionContextUtils::atlasScope( nullptr )
-               << QgsExpressionContextUtils::mapSettingsScope( QgsMapSettings() );
+    expContext << QgsExpressionContextUtils::mapSettingsScope( QgsMapSettings() );
   }
 
   if ( auto *lVectorLayer = vectorLayer() )
@@ -551,7 +505,7 @@ void QgsDataDefinedValueDialog::dataDefinedChanged()
 QgsDataDefinedSizeDialog::QgsDataDefinedSizeDialog( const QList<QgsSymbol *> &symbolList, QgsVectorLayer *layer )
   : QgsDataDefinedValueDialog( symbolList, layer, tr( "Size" ) )
 {
-  init( static_cast< int >( QgsSymbolLayer::Property::Size ) );
+  init( QgsSymbolLayer::PropertySize );
   if ( !symbolList.isEmpty() && symbolList.at( 0 ) && vectorLayer() )
   {
     mAssistantSymbol.reset( static_cast<const QgsMarkerSymbol *>( symbolList.at( 0 ) )->clone() );
@@ -580,7 +534,7 @@ void QgsDataDefinedSizeDialog::setDataDefined( QgsSymbol *symbol, const QgsPrope
 QgsDataDefinedRotationDialog::QgsDataDefinedRotationDialog( const QList<QgsSymbol *> &symbolList, QgsVectorLayer *layer )
   : QgsDataDefinedValueDialog( symbolList, layer, tr( "Rotation" ) )
 {
-  init( static_cast< int >( QgsSymbolLayer::Property::Angle ) );
+  init( QgsSymbolLayer::PropertyAngle );
 }
 
 QgsProperty QgsDataDefinedRotationDialog::symbolDataDefined( const QgsSymbol *symbol ) const
@@ -603,7 +557,7 @@ void QgsDataDefinedRotationDialog::setDataDefined( QgsSymbol *symbol, const QgsP
 QgsDataDefinedWidthDialog::QgsDataDefinedWidthDialog( const QList<QgsSymbol *> &symbolList, QgsVectorLayer *layer )
   : QgsDataDefinedValueDialog( symbolList, layer, tr( "Width" ) )
 {
-  init( static_cast< int >( QgsSymbolLayer::Property::StrokeWidth ) );
+  init( QgsSymbolLayer::PropertyStrokeWidth );
 }
 
 QgsProperty QgsDataDefinedWidthDialog::symbolDataDefined( const QgsSymbol *symbol ) const

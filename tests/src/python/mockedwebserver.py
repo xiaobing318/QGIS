@@ -31,8 +31,6 @@
 import contextlib
 import sys
 import time
-import tempfile
-
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from threading import Thread
 
@@ -169,7 +167,7 @@ class DispatcherHttpHandler(BaseHTTPRequestHandler):
     def do_HEAD(self):
 
         if do_log:
-            f = open(tempfile.gettempdir() + '/log.txt', 'a')
+            f = open('/tmp/log.txt', 'a')
             f.write('HEAD %s\n' % self.path)
             f.close()
 
@@ -178,7 +176,7 @@ class DispatcherHttpHandler(BaseHTTPRequestHandler):
     def do_DELETE(self):
 
         if do_log:
-            f = open(tempfile.gettempdir() + '/log.txt', 'a')
+            f = open('/tmp/log.txt', 'a')
             f.write('DELETE %s\n' % self.path)
             f.close()
 
@@ -187,7 +185,7 @@ class DispatcherHttpHandler(BaseHTTPRequestHandler):
     def do_POST(self):
 
         if do_log:
-            f = open(tempfile.gettempdir() + '/log.txt', 'a')
+            f = open('/tmp/log.txt', 'a')
             f.write('POST %s\n' % self.path)
             f.close()
 
@@ -196,7 +194,7 @@ class DispatcherHttpHandler(BaseHTTPRequestHandler):
     def do_PUT(self):
 
         if do_log:
-            f = open(tempfile.gettempdir() + '/log.txt', 'a')
+            f = open('/tmp/log.txt', 'a')
             f.write('PUT %s\n' % self.path)
             f.close()
 
@@ -205,7 +203,7 @@ class DispatcherHttpHandler(BaseHTTPRequestHandler):
     def do_GET(self):
 
         if do_log:
-            f = open(tempfile.gettempdir() + '/log.txt', 'a')
+            f = open('/tmp/log.txt', 'a')
             f.write('GET %s\n' % self.path)
             f.close()
 

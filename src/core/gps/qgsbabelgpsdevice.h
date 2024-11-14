@@ -36,6 +36,7 @@ class CORE_EXPORT QgsBabelGpsDeviceFormat : public QgsAbstractBabelFormat
 {
   public:
 
+    //! Default constructor
     QgsBabelGpsDeviceFormat() = default;
 
     /**

@@ -16,12 +16,12 @@
 *                                                                         *
 ***************************************************************************
 """
-from PyQt5.QtCore import QVariant
 
 
-def _mapping_feature(feature):
+def mapping_feature(feature):
     geom = feature.geometry()
-    properties = {k: None if (v is None or (isinstance(v, QVariant) and v.isNull())) else v for k, v in feature.attributeMap().items()}
+    fields = [field.name() for field in feature.fields()]
+    properties = dict(list(zip(fields, feature.attributes())))
     return {'type': 'Feature',
             'properties': properties,
             'geometry': geom.__geo_interface__}

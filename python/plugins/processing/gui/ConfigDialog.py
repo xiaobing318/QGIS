@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     ConfigDialog.py
@@ -64,7 +66,7 @@ with warnings.catch_warnings():
 class ConfigOptionsPage(QgsOptionsPageWidget):
 
     def __init__(self, parent):
-        super().__init__(parent)
+        super(ConfigOptionsPage, self).__init__(parent)
         self.config_widget = ConfigDialog(False)
         layout = QHBoxLayout()
         layout.setContentsMargins(0, 0, 0, 0)
@@ -85,7 +87,7 @@ class ConfigOptionsPage(QgsOptionsPageWidget):
 class ProcessingTreeHighlight(QgsOptionsDialogHighlightWidget):
 
     def __init__(self, config_dialog):
-        super().__init__(config_dialog.tree)
+        super(ProcessingTreeHighlight, self).__init__(config_dialog.tree)
         self.config_dialog = config_dialog
 
     def highlightText(self, text):
@@ -101,7 +103,7 @@ class ProcessingTreeHighlight(QgsOptionsDialogHighlightWidget):
 class ConfigDialog(BASE, WIDGET):
 
     def __init__(self, showSearch=True):
-        super().__init__(None)
+        super(ConfigDialog, self).__init__(None)
         self.setupUi(self)
 
         self.groupIcon = QgsApplication.getThemeIcon('mIconFolder.svg')
@@ -294,7 +296,7 @@ class ConfigDialog(BASE, WIDGET):
 
             self.menusItem.appendRow([groupItem, emptyItem])
 
-        self.tree.sortByColumn(0, Qt.SortOrder.AscendingOrder)
+        self.tree.sortByColumn(0, Qt.AscendingOrder)
         self.adjustColumns()
 
     def resetMenusToDefaults(self):
@@ -303,7 +305,7 @@ class ConfigDialog(BASE, WIDGET):
                 d = defaultMenuEntries.get(alg.id(), "")
                 setting = ProcessingConfig.settings["MENU_" + alg.id()]
                 item = self.items[setting]
-                item.setData(d, Qt.ItemDataRole.EditRole)
+                item.setData(d, Qt.EditRole)
         self.saveMenus = True
 
     def accept(self):
@@ -311,7 +313,7 @@ class ConfigDialog(BASE, WIDGET):
         for setting in list(self.items.keys()):
             if setting.group != menusSettingsGroup or self.saveMenus:
                 if isinstance(setting.value, bool):
-                    setting.setValue(self.items[setting].checkState() == Qt.CheckState.Checked)
+                    setting.setValue(self.items[setting].checkState() == Qt.Checked)
                 else:
                     try:
                         setting.setValue(str(self.items[setting].text()))
@@ -321,7 +323,7 @@ class ConfigDialog(BASE, WIDGET):
                         return
                 setting.save(qsettings)
 
-        with OverrideCursor(Qt.CursorShape.WaitCursor):
+        with OverrideCursor(Qt.WaitCursor):
             for p in QgsApplication.processingRegistry().providers():
                 p.refreshAlgorithms()
 
@@ -343,16 +345,16 @@ class SettingItem(QStandardItem):
     def __init__(self, setting):
         QStandardItem.__init__(self)
         self.setting = setting
-        self.setData(setting, Qt.ItemDataRole.UserRole)
+        self.setData(setting, Qt.UserRole)
         if isinstance(setting.value, bool):
             self.setCheckable(True)
             self.setEditable(False)
             if setting.value:
-                self.setCheckState(Qt.CheckState.Checked)
+                self.setCheckState(Qt.Checked)
             else:
-                self.setCheckState(Qt.CheckState.Unchecked)
+                self.setCheckState(Qt.Unchecked)
         else:
-            self.setData(setting.value, Qt.ItemDataRole.EditRole)
+            self.setData(setting.value, Qt.EditRole)
 
 
 class SettingDelegate(QStyledItemDelegate):
@@ -361,7 +363,7 @@ class SettingDelegate(QStyledItemDelegate):
         QStyledItemDelegate.__init__(self, parent)
 
     def createEditor(self, parent, options, index):
-        setting = index.model().data(index, Qt.ItemDataRole.UserRole)
+        setting = index.model().data(index, Qt.UserRole)
         if setting.valuetype == Setting.FOLDER:
             return FileDirectorySelector(parent, placeholder=setting.placeholder)
         elif setting.valuetype == Setting.FILE:
@@ -370,15 +372,10 @@ class SettingDelegate(QStyledItemDelegate):
             combo = QComboBox(parent)
             combo.addItems(setting.options)
             return combo
-        elif setting.valuetype == Setting.SELECTION_STORE_STRING:
-            combo = QComboBox(parent)
-            for option in setting.options:
-                combo.addItem(option, option)
-            return combo
         elif setting.valuetype == Setting.MULTIPLE_FOLDERS:
             return MultipleDirectorySelector(parent, setting.placeholder)
         else:
-            value = self.convertValue(index.model().data(index, Qt.ItemDataRole.EditRole))
+            value = self.convertValue(index.model().data(index, Qt.EditRole))
             if isinstance(value, int):
                 spnBox = QgsSpinBox(parent)
                 spnBox.setRange(-999999999, 999999999)
@@ -394,35 +391,31 @@ class SettingDelegate(QStyledItemDelegate):
                 return lineEdit
 
     def setEditorData(self, editor, index):
-        value = self.convertValue(index.model().data(index, Qt.ItemDataRole.EditRole))
-        setting = index.model().data(index, Qt.ItemDataRole.UserRole)
+        value = self.convertValue(index.model().data(index, Qt.EditRole))
+        setting = index.model().data(index, Qt.UserRole)
         if setting.valuetype == Setting.SELECTION:
             editor.setCurrentIndex(editor.findText(value))
-        elif setting.valuetype == Setting.SELECTION_STORE_STRING:
-            editor.setCurrentIndex(editor.findData(value))
         elif setting.valuetype in (Setting.FLOAT, Setting.INT):
             editor.setValue(value)
         else:
             editor.setText(value)
 
     def setModelData(self, editor, model, index):
-        value = self.convertValue(index.model().data(index, Qt.ItemDataRole.EditRole))
-        setting = index.model().data(index, Qt.ItemDataRole.UserRole)
+        value = self.convertValue(index.model().data(index, Qt.EditRole))
+        setting = index.model().data(index, Qt.UserRole)
         if setting.valuetype == Setting.SELECTION:
-            model.setData(index, editor.currentText(), Qt.ItemDataRole.EditRole)
-        elif setting.valuetype == Setting.SELECTION_STORE_STRING:
-            model.setData(index, editor.currentData(), Qt.ItemDataRole.EditRole)
+            model.setData(index, editor.currentText(), Qt.EditRole)
         else:
             if isinstance(value, str):
-                model.setData(index, editor.text(), Qt.ItemDataRole.EditRole)
+                model.setData(index, editor.text(), Qt.EditRole)
             else:
-                model.setData(index, editor.value(), Qt.ItemDataRole.EditRole)
+                model.setData(index, editor.value(), Qt.EditRole)
 
     def sizeHint(self, option, index):
         return QgsSpinBox().sizeHint()
 
     def eventFilter(self, editor, event):
-        if event.type() == QEvent.Type.FocusOut and hasattr(editor, 'canFocusOut'):
+        if event.type() == QEvent.FocusOut and hasattr(editor, 'canFocusOut'):
             if not editor.canFocusOut:
                 return False
         return QStyledItemDelegate.eventFilter(self, editor, event)
@@ -460,7 +453,7 @@ class FileDirectorySelector(QWidget):
         self.canFocusOut = False
         self.selectFile = selectFile
 
-        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setFocusPolicy(Qt.StrongFocus)
         self.btnSelect.clicked.connect(self.select)
 
     def select(self):
@@ -468,7 +461,7 @@ class FileDirectorySelector(QWidget):
         if not self.selectFile:
             selectedPath = QFileDialog.getExistingDirectory(None,
                                                             self.tr('Select directory'), lastDir,
-                                                            QFileDialog.Option.ShowDirsOnly)
+                                                            QFileDialog.ShowDirsOnly)
         else:
             selectedPath, selected_filter = QFileDialog.getOpenFileName(None,
                                                                         self.tr('Select file'), lastDir, self.tr('All files (*)')
@@ -507,7 +500,7 @@ class MultipleDirectorySelector(QWidget):
 
         self.canFocusOut = False
 
-        self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
+        self.setFocusPolicy(Qt.StrongFocus)
         self.btnSelect.clicked.connect(self.select)
 
     def select(self):
@@ -518,7 +511,7 @@ class MultipleDirectorySelector(QWidget):
             items = []
 
         dlg = DirectorySelectorDialog(None, items)
-        if dlg.exec():
+        if dlg.exec_():
             text = dlg.value()
             self.lineEdit.setText(text)
 

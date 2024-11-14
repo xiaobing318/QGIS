@@ -19,7 +19,7 @@
 #define QGSLAYOUTMEASUREMENT_H
 
 #include "qgis_core.h"
-#include "qgis.h"
+
 #include "qgsunittypes.h"
 
 /**
@@ -28,6 +28,7 @@
  * \brief This class provides a method of storing measurements for use in QGIS layouts
  * using a variety of different measurement units.
  * \see QgsLayoutMeasurementConverter
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsLayoutMeasurement
 {
@@ -38,7 +39,7 @@ class CORE_EXPORT QgsLayoutMeasurement
      * \param length measurement length
      * \param units measurement units
     */
-    explicit QgsLayoutMeasurement( double length, Qgis::LayoutUnit units = Qgis::LayoutUnit::Millimeters );
+    explicit QgsLayoutMeasurement( double length, QgsUnitTypes::LayoutUnit units = QgsUnitTypes::LayoutMillimeters );
 
     /**
      * Returns the length of the measurement.
@@ -56,14 +57,14 @@ class CORE_EXPORT QgsLayoutMeasurement
      * Returns the units for the measurement.
      * \see setUnits()
     */
-    Qgis::LayoutUnit units() const { return mUnits; }
+    QgsUnitTypes::LayoutUnit units() const { return mUnits; }
 
     /**
      * Sets the \a units for the measurement. Does not alter the stored length,
      * ie. no length conversion is done.
      * \see units()
     */
-    void setUnits( const Qgis::LayoutUnit units ) { mUnits = units; }
+    void setUnits( const QgsUnitTypes::LayoutUnit units ) { mUnits = units; }
 
     /**
      * Encodes the layout measurement to a string
@@ -131,7 +132,7 @@ class CORE_EXPORT QgsLayoutMeasurement
   private:
 
     double mLength = 0.0;
-    Qgis::LayoutUnit mUnits = Qgis::LayoutUnit::Millimeters;
+    QgsUnitTypes::LayoutUnit mUnits = QgsUnitTypes::LayoutMillimeters;
 
 };
 

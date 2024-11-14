@@ -23,9 +23,13 @@
 
 #include <ctime>
 
-#include "qgis_app.h"
 #include "ui_qgsattributetabledialog.h"
+#include "qgssearchwidgetwrapper.h"
+#include "qgsdockwidget.h"
+#include "qgis_app.h"
+#include "qgsstoredexpressionmanager.h"
 
+class QDialogButtonBox;
 class QPushButton;
 class QLineEdit;
 class QComboBox;
@@ -239,10 +243,12 @@ class APP_EXPORT QgsAttributeTableDialog : public QDialog, private Ui::QgsAttrib
 
     QDialog *mDialog = nullptr;
 
+/*
+    是Qt中的一个智能指针，用于安全地持有QObject派生类的实例的指针。如果所指向的QObject被删除，`QPointer`会自动置为nullptr，从而避免了野指针的问题。
+*/
     QPointer< QgsVectorLayer > mLayer = nullptr;
     void updateMultiEditButtonState();
     void deleteFeature( QgsFeatureId fid );
-    void toggleShortcuts( bool enable );
 
     QList< QPointer< QgsVectorLayer> > mReferencingLayers;
 

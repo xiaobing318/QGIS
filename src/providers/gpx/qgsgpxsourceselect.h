@@ -32,7 +32,7 @@ class QgsGpxSourceSelect : public QgsAbstractDataSourceWidget, private Ui::QgsGp
 
   public:
     //! Constructor
-    QgsGpxSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::Standalone );
+    QgsGpxSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::None );
 
   public slots:
     //! Determines the tables the user selected and closes the dialog

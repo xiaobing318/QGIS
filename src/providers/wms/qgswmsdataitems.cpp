@@ -14,14 +14,17 @@
  ***************************************************************************/
 
 #include "qgswmsdataitems.h"
-#include "moc_qgswmsdataitems.cpp"
 
 #include "qgslogger.h"
 
+#include "qgsdataitemproviderregistry.h"
 #include "qgsdatasourceuri.h"
 #include "qgswmscapabilities.h"
 #include "qgswmsconnection.h"
 #include "qgsxyzconnection.h"
+
+#include "qgsgeonodeconnection.h"
+#include "qgsgeonoderequest.h"
 
 
 // ---------------------------------------------------------------------------
@@ -463,14 +466,6 @@ QString QgsWMSItemBase::createUri( bool withStyle )
     crs = mLayerProperty.crs[0];
   }
   mDataSourceUri.setParam( QStringLiteral( "crs" ), crs );
-
-  // Set default featureCount to 10, old connections might miss this
-  // setting.
-  if ( ! mDataSourceUri.hasParam( QStringLiteral( "featureCount" ) ) )
-  {
-    mDataSourceUri.setParam( QStringLiteral( "featureCount" ), QStringLiteral( "10" ) );
-  }
-
   //uri = rasterLayerPath + "|layers=" + layers.join( "," ) + "|styles=" + styles.join( "," ) + "|format=" + format + "|crs=" + crs;
 
   return mDataSourceUri.encodedUri();
@@ -752,6 +747,51 @@ QgsXyzLayerItem::QgsXyzLayerItem( QgsDataItem *parent, QString name, QString pat
 // ---------------------------------------------------------------------------
 
 
+QVector<QgsDataItem *> QgsWmsDataItemProvider::createDataItems( const QString &path, QgsDataItem *parentItem )
+{
+  QVector<QgsDataItem *> items;
+  if ( path.startsWith( QLatin1String( "geonode:/" ) ) )
+  {
+    QString connectionName = path.split( '/' ).last();
+    if ( QgsGeoNodeConnectionUtils::connectionList().contains( connectionName ) )
+    {
+      QgsGeoNodeConnection connection( connectionName );
+
+      QString url = connection.uri().param( QStringLiteral( "url" ) );
+      QgsGeoNodeRequest geonodeRequest( url, true );
+
+      const QStringList encodedUris( geonodeRequest.fetchServiceUrlsBlocking( QStringLiteral( "WMS" ) ) );
+
+      if ( !encodedUris.isEmpty() )
+      {
+        for ( const QString &encodedUri : encodedUris )
+        {
+          QgsDebugMsgLevel( encodedUri, 3 );
+          QgsDataSourceUri uri;
+
+          QStringList serviceConnectionDetails = {QgsGeoNodeConnectionUtils::sGeoNodeConnection.toLower(), QStringLiteral( "%1/wms" ).arg( connectionName )};
+
+          uri.setParam( QStringLiteral( "url" ), encodedUri );
+          if ( QgsOwsConnection::settingsConnectionDpiMode.exists( serviceConnectionDetails ) )
+          {
+            uri.setParam( QStringLiteral( "dpiMode" ), QString::number( static_cast<int>( QgsOwsConnection::settingsConnectionDpiMode.value( serviceConnectionDetails ) ) ) );
+          }
+
+          QgsDebugMsgLevel( QStringLiteral( "WMS full uri: '%1'." ).arg( QString( uri.encodedUri() ) ), 2 );
+
+          QgsDataItem *item = new QgsWMSConnectionItem( parentItem, QStringLiteral( "WMS" ), path, uri.encodedUri() );
+          if ( item )
+          {
+            items.append( item );
+          }
+        }
+      }
+    }
+  }
+
+  return items;
+}
+
 QString QgsXyzTileDataItemProvider::name()
 {
   return QStringLiteral( "XYZ Tiles" );
@@ -762,17 +802,57 @@ QString QgsXyzTileDataItemProvider::dataProviderKey() const
   return QStringLiteral( "wms" );
 }
 
-Qgis::DataItemProviderCapabilities QgsXyzTileDataItemProvider::capabilities() const
+int QgsXyzTileDataItemProvider::capabilities() const
 {
-  return Qgis::DataItemProviderCapability::NetworkSources;
+  return QgsDataProvider::Net;
 }
 
 QgsDataItem *QgsXyzTileDataItemProvider::createDataItem( const QString &path, QgsDataItem *parentItem )
 {
   if ( path.isEmpty() )
-    return new QgsXyzTileRootItem( parentItem, QObject::tr( "XYZ Tiles" ), QStringLiteral( "xyz:" ) );
+    return new QgsXyzTileRootItem( parentItem, QStringLiteral( "XYZ Tiles" ), QStringLiteral( "xyz:" ) );
   return nullptr;
 }
+
+QVector<QgsDataItem *> QgsXyzTileDataItemProvider::createDataItems( const QString &path, QgsDataItem *parentItem )
+{
+  QVector<QgsDataItem *> items;
+  if ( path.startsWith( QLatin1String( "geonode:/" ) ) )
+  {
+    QString connectionName = path.split( '/' ).last();
+    if ( QgsGeoNodeConnectionUtils::connectionList().contains( connectionName ) )
+    {
+      QgsGeoNodeConnection connection( connectionName );
+
+      QString url = connection.uri().param( QStringLiteral( "url" ) );
+      QgsGeoNodeRequest geonodeRequest( url, true );
+
+      const QgsStringMap urlData( geonodeRequest.fetchServiceUrlDataBlocking( QStringLiteral( "XYZ" ) ) );
+
+      if ( !urlData.isEmpty() )
+      {
+        auto urlDataIt = urlData.constBegin();
+        for ( ; urlDataIt != urlData.constEnd(); ++urlDataIt )
+        {
+          const QString layerName = urlDataIt.key();
+          QgsDebugMsgLevel( urlDataIt.value(), 2 );
+          QgsDataSourceUri uri;
+          uri.setParam( QStringLiteral( "type" ), QStringLiteral( "xyz" ) );
+          uri.setParam( QStringLiteral( "url" ), urlDataIt.value() );
+
+          QgsDataItem *item = new QgsXyzLayerItem( parentItem, layerName, path, uri.encodedUri() );
+          if ( item )
+          {
+            items.append( item );
+          }
+        }
+      }
+    }
+  }
+
+  return items;
+}
+
 
 bool QgsWMSLayerCollectionItem::layerCollection() const
 {

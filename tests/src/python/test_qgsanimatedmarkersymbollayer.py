@@ -21,17 +21,19 @@ __copyright__ = '(C) 2022, Nyall Dawson'
 
 import os
 
-from qgis.PyQt.QtCore import QSize
+import qgis  # NOQA
+from qgis.PyQt.QtCore import QDir, QSize
 from qgis.core import (
-    QgsAnimatedMarkerSymbolLayer,
     QgsMapSettings,
-    QgsMarkerSymbol,
-    QgsRectangle,
-    QgsSingleSymbolRenderer,
+    QgsRenderChecker,
     QgsVectorLayer,
+    QgsRectangle,
+    QgsMultiRenderChecker,
+    QgsSingleSymbolRenderer,
+    QgsAnimatedMarkerSymbolLayer,
+    QgsMarkerSymbol
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import unittest, start_app
 
 from utilities import unitTestDataPath
 
@@ -39,11 +41,15 @@ start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestQgsAnimatedMarkerSymbolLayer(QgisTestCase):
+class TestQgsAnimatedMarkerSymbolLayer(unittest.TestCase):
 
-    @classmethod
-    def control_path_prefix(cls):
-        return "symbol_animatedmarker"
+    def setUp(self):
+        self.report = "<h1>Python QgsAnimatedMarkerSymbolLayer Tests</h1>\n"
+
+    def tearDown(self):
+        report_file_path = "%s/qgistest.html" % QDir.tempPath()
+        with open(report_file_path, 'a') as report_file:
+            report_file.write(self.report)
 
     def testRenderFrame1(self):
         point_shp = os.path.join(TEST_DATA_DIR, 'points.shp')
@@ -67,13 +73,14 @@ class TestQgsAnimatedMarkerSymbolLayer(QgisTestCase):
         ms.setFrameRate(10)
         ms.setCurrentFrame(1)
 
-        self.assertTrue(
-            self.render_map_settings_check(
-                'animatedmarker_frame1',
-                'animatedmarker_frame1',
-                ms
-            )
-        )
+        # Test rendering
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(ms)
+        renderchecker.setControlPathPrefix('symbol_animatedmarker')
+        renderchecker.setControlName('expected_animatedmarker_frame1')
+        res = renderchecker.runTest('expected_animatedmarker_frame1')
+        self.report += renderchecker.report()
+        self.assertTrue(res)
 
     def testRenderFrame2(self):
         point_shp = os.path.join(TEST_DATA_DIR, 'points.shp')
@@ -97,13 +104,29 @@ class TestQgsAnimatedMarkerSymbolLayer(QgisTestCase):
         ms.setFrameRate(10)
         ms.setCurrentFrame(2)
 
-        self.assertTrue(
-            self.render_map_settings_check(
-                'animatedmarker_frame2',
-                'animatedmarker_frame2',
-                ms
-            )
-        )
+        # Test rendering
+        renderchecker = QgsMultiRenderChecker()
+        renderchecker.setMapSettings(ms)
+        renderchecker.setControlPathPrefix('symbol_animatedmarker')
+        renderchecker.setControlName('expected_animatedmarker_frame2')
+        res = renderchecker.runTest('expected_animatedmarker_frame2')
+        self.report += renderchecker.report()
+        self.assertTrue(res)
+
+    def imageCheck(self, name, reference_image, image):
+        self.report += f"<h2>Render {name}</h2>\n"
+        temp_dir = QDir.tempPath() + '/'
+        file_name = temp_dir + 'symbol_' + name + ".png"
+        image.save(file_name, "PNG")
+        checker = QgsRenderChecker()
+        checker.setControlPathPrefix("symbol_animatedmarker")
+        checker.setControlName("expected_" + reference_image)
+        checker.setRenderedImage(file_name)
+        checker.setColorTolerance(2)
+        result = checker.compareImages(name, 20)
+        self.report += checker.report()
+        print(self.report)
+        return result
 
 
 if __name__ == '__main__':

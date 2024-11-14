@@ -56,6 +56,7 @@ class QgsLocatorOptionsWidget : public QTreeView
  * \class QgsLocatorFiltersModel
  * \ingroup app
  * \brief An list model for displaying available filters and configuring them.
+ * \since QGIS 3.0
  */
 class QgsLocatorFiltersModel : public QAbstractTableModel
 {

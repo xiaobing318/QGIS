@@ -54,12 +54,12 @@ QString QgsFieldCalculatorAlgorithm::outputName() const
 
 QList<int> QgsFieldCalculatorAlgorithm::inputLayerTypes() const
 {
-  return QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::Vector );
+  return QList<int>() << QgsProcessing::TypeVector;
 }
 
-Qgis::ProcessingFeatureSourceFlags QgsFieldCalculatorAlgorithm::sourceFlags() const
+QgsProcessingFeatureSource::Flag QgsFieldCalculatorAlgorithm::sourceFlags() const
 {
-  return Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks;
+  return QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks;
 }
 
 void QgsFieldCalculatorAlgorithm::initParameters( const QVariantMap &configuration )
@@ -71,19 +71,19 @@ void QgsFieldCalculatorAlgorithm::initParameters( const QVariantMap &configurati
   fieldTypes.reserve( 11 );
   icons.reserve( 11 );
   for ( const auto &type :
-        std::vector < std::pair< QMetaType::Type, QMetaType::Type > >
+        std::vector < std::pair< QVariant::Type, QVariant::Type > >
 {
-  {QMetaType::Type::Double, QMetaType::Type::UnknownType },
-  {QMetaType::Type::Int, QMetaType::Type::UnknownType },
-  {QMetaType::Type::QString, QMetaType::Type::UnknownType },
-  {QMetaType::Type::QDate, QMetaType::Type::UnknownType },
-  {QMetaType::Type::QTime, QMetaType::Type::UnknownType },
-  {QMetaType::Type::QDateTime, QMetaType::Type::UnknownType },
-  {QMetaType::Type::Bool, QMetaType::Type::UnknownType },
-  {QMetaType::Type::QByteArray, QMetaType::Type::UnknownType },
-  {QMetaType::Type::QStringList, QMetaType::Type::UnknownType },
-  {QMetaType::Type::QVariantList, QMetaType::Type::Int },
-  {QMetaType::Type::QVariantList, QMetaType::Type::Double }
+  {QVariant::Double, QVariant::Invalid },
+  {QVariant::Int, QVariant::Invalid },
+  {QVariant::String, QVariant::Invalid },
+  {QVariant::Date, QVariant::Invalid },
+  {QVariant::Time, QVariant::Invalid },
+  {QVariant::DateTime, QVariant::Invalid },
+  {QVariant::Bool, QVariant::Invalid },
+  {QVariant::ByteArray, QVariant::Invalid },
+  {QVariant::StringList, QVariant::Invalid },
+  {QVariant::List, QVariant::Int },
+  {QVariant::List, QVariant::Double }
 } )
   {
     fieldTypes << QgsVariantUtils::typeToDisplayString( type.first, type.second );
@@ -104,8 +104,8 @@ void QgsFieldCalculatorAlgorithm::initParameters( const QVariantMap &configurati
       }} )
   } );
 
-  std::unique_ptr< QgsProcessingParameterNumber > fieldLength = std::make_unique< QgsProcessingParameterNumber > ( QStringLiteral( "FIELD_LENGTH" ), QObject::tr( "Result field length" ), Qgis::ProcessingNumberParameterType::Integer, QVariant( 0 ), false, 0 );
-  std::unique_ptr< QgsProcessingParameterNumber > fieldPrecision = std::make_unique< QgsProcessingParameterNumber > ( QStringLiteral( "FIELD_PRECISION" ), QObject::tr( "Result field precision" ), Qgis::ProcessingNumberParameterType::Integer, QVariant( 0 ), false, 0 );
+  std::unique_ptr< QgsProcessingParameterNumber > fieldLength = std::make_unique< QgsProcessingParameterNumber > ( QStringLiteral( "FIELD_LENGTH" ), QObject::tr( "Result field length" ), QgsProcessingParameterNumber::Integer, QVariant( 0 ), false, 0 );
+  std::unique_ptr< QgsProcessingParameterNumber > fieldPrecision = std::make_unique< QgsProcessingParameterNumber > ( QStringLiteral( "FIELD_PRECISION" ), QObject::tr( "Result field precision" ), QgsProcessingParameterNumber::Integer, QVariant( 0 ), false, 0 );
   std::unique_ptr< QgsProcessingParameterExpression > expression = std::make_unique< QgsProcessingParameterExpression> ( QStringLiteral( "FORMULA" ), QObject::tr( "Formula" ), QVariant(), QStringLiteral( "INPUT" ), false );
 
   expression->setMetadata( QVariantMap( {{"inlineEditor", true}} ) );
@@ -149,45 +149,45 @@ bool QgsFieldCalculatorAlgorithm::prepareAlgorithm( const QVariantMap &parameter
   const int fieldPrecision = parameterAsInt( parameters, QStringLiteral( "FIELD_PRECISION" ), context );
   const QString fieldName = parameterAsString( parameters, QStringLiteral( "FIELD_NAME" ), context );
 
-  QMetaType::Type fieldType = QMetaType::Type::QString;
-  QMetaType::Type fieldSubType = QMetaType::Type::UnknownType;
+  QVariant::Type fieldType = QVariant::Type::String;
+  QVariant::Type fieldSubType = QVariant::Type::Invalid;
   switch ( fieldTypeIdx )
   {
     case 0: // Float
-      fieldType = QMetaType::Type::Double;
+      fieldType = QVariant::Double;
       break;
     case 1: // Integer
-      fieldType = QMetaType::Type::Int;
+      fieldType = QVariant::Int;
       break;
     case 2: // String
-      fieldType = QMetaType::Type::QString;
+      fieldType = QVariant::String;
       break;
     case 3: // Date
-      fieldType = QMetaType::Type::QDate;
+      fieldType = QVariant::Date;
       break;
     case 4: // Time
-      fieldType = QMetaType::Type::QTime;
+      fieldType = QVariant::Time;
       break;
     case 5: // DateTime
-      fieldType = QMetaType::Type::QDateTime;
+      fieldType = QVariant::DateTime;
       break;
     case 6: // Boolean
-      fieldType = QMetaType::Type::Bool;
+      fieldType = QVariant::Bool;
       break;
     case 7: // Binary
-      fieldType = QMetaType::Type::QByteArray;
+      fieldType = QVariant::ByteArray;
       break;
     case 8: // StringList
-      fieldType = QMetaType::Type::QStringList;
-      fieldSubType = QMetaType::Type::QString;
+      fieldType = QVariant::StringList;
+      fieldSubType = QVariant::String;
       break;
     case 9: // IntegerList
-      fieldType = QMetaType::Type::QVariantList;
-      fieldSubType = QMetaType::Type::Int;
+      fieldType = QVariant::List;
+      fieldSubType = QVariant::Int;
       break;
     case 10: // DoubleList
-      fieldType = QMetaType::Type::QVariantList;
-      fieldSubType = QMetaType::Type::Double;
+      fieldType = QVariant::List;
+      fieldSubType = QVariant::Double;
       break;
   }
 

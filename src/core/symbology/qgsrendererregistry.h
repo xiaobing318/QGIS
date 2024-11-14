@@ -44,8 +44,9 @@ class CORE_EXPORT QgsRendererAbstractMetadata
 
     /**
      * Layer types the renderer is compatible with
+     * \since QGIS 2.16
      */
-    enum LayerType SIP_ENUM_BASETYPE( IntFlag )
+    enum LayerType
     {
       PointLayer = 1, //!< Compatible with point layers
       LineLayer = 2, //!< Compatible with line layers
@@ -94,6 +95,7 @@ class CORE_EXPORT QgsRendererAbstractMetadata
 
     /**
      * Returns flags indicating the types of layer the renderer is compatible with.
+     * \since QGIS 2.16
      */
     virtual QgsRendererAbstractMetadata::LayerTypes compatibleLayerTypes() const { return All; }
 
@@ -113,10 +115,7 @@ class CORE_EXPORT QgsRendererAbstractMetadata
     virtual QgsRendererWidget *createRendererWidget( QgsVectorLayer *layer, QgsStyle *style, QgsFeatureRenderer *oldRenderer ) SIP_FACTORY
     { Q_UNUSED( layer ) Q_UNUSED( style ); Q_UNUSED( oldRenderer ); return nullptr; }
 
-    /**
-     * Returns a new instance of the renderer, converted from an SLD XML element.
-     */
-    virtual QgsFeatureRenderer *createRendererFromSld( QDomElement &elem, Qgis::GeometryType geomType ) SIP_FACTORY
+    virtual QgsFeatureRenderer *createRendererFromSld( QDomElement &elem, QgsWkbTypes::GeometryType geomType ) SIP_FACTORY
     { Q_UNUSED( elem ) Q_UNUSED( geomType ); return nullptr; }
 
   protected:
@@ -134,7 +133,7 @@ Q_DECLARE_OPERATORS_FOR_FLAGS( QgsRendererAbstractMetadata::LayerTypes )
 
 typedef QgsFeatureRenderer *( *QgsRendererCreateFunc )( QDomElement &, const QgsReadWriteContext & ) SIP_SKIP;
 typedef QgsRendererWidget *( *QgsRendererWidgetFunc )( QgsVectorLayer *, QgsStyle *, QgsFeatureRenderer * ) SIP_SKIP;
-typedef QgsFeatureRenderer *( *QgsRendererCreateFromSldFunc )( QDomElement &, Qgis::GeometryType geomType ) SIP_SKIP;
+typedef QgsFeatureRenderer *( *QgsRendererCreateFromSldFunc )( QDomElement &, QgsWkbTypes::GeometryType geomType ) SIP_SKIP;
 
 /**
  * \ingroup core
@@ -180,7 +179,7 @@ class CORE_EXPORT QgsRendererMetadata : public QgsRendererAbstractMetadata
     { return mCreateFunc ? mCreateFunc( elem, context ) : nullptr; }
     QgsRendererWidget *createRendererWidget( QgsVectorLayer *layer, QgsStyle *style, QgsFeatureRenderer *renderer ) override SIP_FACTORY
     { return mWidgetFunc ? mWidgetFunc( layer, style, renderer ) : nullptr; }
-    QgsFeatureRenderer *createRendererFromSld( QDomElement &elem, Qgis::GeometryType geomType ) override SIP_FACTORY
+    QgsFeatureRenderer *createRendererFromSld( QDomElement &elem, QgsWkbTypes::GeometryType geomType ) override SIP_FACTORY
     { return mCreateFromSldFunc ? mCreateFromSldFunc( elem, geomType ) : nullptr; }
 
     //! \note not available in Python bindings
@@ -229,7 +228,9 @@ class CORE_EXPORT QgsRendererRegistry
     QgsRendererRegistry();
     ~QgsRendererRegistry();
 
+    //! QgsRendererRegistry cannot be copied.
     QgsRendererRegistry( const QgsRendererRegistry &rh ) = delete;
+    //! QgsRendererRegistry cannot be copied.
     QgsRendererRegistry &operator=( const QgsRendererRegistry &rh ) = delete;
 
     /**
@@ -263,6 +264,7 @@ class CORE_EXPORT QgsRendererRegistry
     /**
      * Returns a list of available renderers which are compatible with a specified layer.
      * \param layer vector layer
+     * \since QGIS 2.16
      */
     QStringList renderersList( const QgsVectorLayer *layer ) const;
 

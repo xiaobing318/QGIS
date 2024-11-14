@@ -14,21 +14,17 @@
  ***************************************************************************/
 
 #include "qgswcsdataitemguiprovider.h"
-#include "moc_qgswcsdataitemguiprovider.cpp"
 
 #include "qgsmanageconnectionsdialog.h"
 #include "qgswcsdataitems.h"
 #include "qgsnewhttpconnection.h"
 #include "qgsowsconnection.h"
-#include "qgsdataitemguiproviderutils.h"
-#include "qgssettingsentryenumflag.h"
-#include "qgssettingsentryimpl.h"
 
 #include <QFileDialog>
 #include <QMessageBox>
 
 
-void QgsWcsDataItemGuiProvider::populateContextMenu( QgsDataItem *item, QMenu *menu, const QList<QgsDataItem *> &selection, QgsDataItemGuiContext context )
+void QgsWcsDataItemGuiProvider::populateContextMenu( QgsDataItem *item, QMenu *menu, const QList<QgsDataItem *> &, QgsDataItemGuiContext )
 {
   if ( QgsWCSRootItem *rootItem = qobject_cast< QgsWCSRootItem * >( item ) )
   {
@@ -57,19 +53,8 @@ void QgsWcsDataItemGuiProvider::populateContextMenu( QgsDataItem *item, QMenu *m
     connect( actionEdit, &QAction::triggered, this, [connItem] { editConnection( connItem ); } );
     menu->addAction( actionEdit );
 
-    QAction *actionDuplicate = new QAction( tr( "Duplicate Connection" ), menu );
-    connect( actionDuplicate, &QAction::triggered, this, [connItem] { duplicateConnection( connItem ); } );
-    menu->addAction( actionDuplicate );
-
-    const QList< QgsWCSConnectionItem * > wcsConnectionItems = QgsDataItem::filteredItems<QgsWCSConnectionItem>( selection );
-    QAction *actionDelete = new QAction( wcsConnectionItems.size() > 1 ? tr( "Remove Connections…" ) : tr( "Remove Connection…" ), menu );
-    connect( actionDelete, &QAction::triggered, this, [wcsConnectionItems, context]
-    {
-      QgsDataItemGuiProviderUtils::deleteConnections( wcsConnectionItems, []( const QString & connectionName )
-      {
-        QgsOwsConnection::deleteConnection( QStringLiteral( "WCS" ), connectionName );
-      }, context );
-    } );
+    QAction *actionDelete = new QAction( tr( "Remove Connection" ), menu );
+    connect( actionDelete, &QAction::triggered, this, [connItem] { deleteConnection( connItem ); } );
     menu->addAction( actionDelete );
   }
 }
@@ -95,33 +80,14 @@ void QgsWcsDataItemGuiProvider::editConnection( QgsDataItem *item )
   }
 }
 
-void QgsWcsDataItemGuiProvider::duplicateConnection( QgsDataItem *item )
+void QgsWcsDataItemGuiProvider::deleteConnection( QgsDataItem *item )
 {
-  const QString connectionName = item->name();
-  const QStringList connections = QgsOwsConnection::sTreeOwsConnections->items( {QStringLiteral( "wcs" )} );
+  if ( QMessageBox::question( nullptr, tr( "Remove Connection" ), tr( "Are you sure you want to remove the connection “%1”?" ).arg( item->name() ),
+                              QMessageBox::Yes | QMessageBox::No, QMessageBox::No ) != QMessageBox::Yes )
+    return;
 
-  const QString newConnectionName = QgsDataItemGuiProviderUtils::uniqueName( connectionName, connections );
-
-  const QStringList detailsParameters { QStringLiteral( "wcs" ), connectionName };
-  const QStringList newDetailsParameters { QStringLiteral( "wcs" ), newConnectionName };
-
-  QgsOwsConnection::settingsUrl->setValue( QgsOwsConnection::settingsUrl->value( detailsParameters ), newDetailsParameters );
-
-  QgsOwsConnection::settingsIgnoreAxisOrientation->setValue( QgsOwsConnection::settingsIgnoreAxisOrientation->value( detailsParameters ), newDetailsParameters );
-  QgsOwsConnection::settingsInvertAxisOrientation->setValue( QgsOwsConnection::settingsInvertAxisOrientation->value( detailsParameters ), newDetailsParameters );
-
-  QgsOwsConnection::settingsReportedLayerExtents->setValue( QgsOwsConnection::settingsReportedLayerExtents->value( detailsParameters ), newDetailsParameters );
-  QgsOwsConnection::settingsIgnoreGetMapURI->setValue( QgsOwsConnection::settingsIgnoreGetMapURI->value( detailsParameters ), newDetailsParameters );
-  QgsOwsConnection::settingsSmoothPixmapTransform->setValue( QgsOwsConnection::settingsSmoothPixmapTransform->value( detailsParameters ), newDetailsParameters );
-  QgsOwsConnection::settingsDpiMode->setValue( QgsOwsConnection::settingsDpiMode->value( detailsParameters ), newDetailsParameters );
-  QgsOwsConnection::settingsTilePixelRatio->setValue( QgsOwsConnection::settingsTilePixelRatio->value( detailsParameters ), newDetailsParameters );
-
-  QgsOwsConnection::settingsHeaders->setValue( QgsOwsConnection::settingsHeaders->value( detailsParameters ), newDetailsParameters );
-
-  QgsOwsConnection::settingsUsername->setValue( QgsOwsConnection::settingsUsername->value( detailsParameters ), newDetailsParameters );
-  QgsOwsConnection::settingsPassword->setValue( QgsOwsConnection::settingsPassword->value( detailsParameters ), newDetailsParameters );
-  QgsOwsConnection::settingsAuthCfg->setValue( QgsOwsConnection::settingsAuthCfg->value( detailsParameters ), newDetailsParameters );
-
+  QgsOwsConnection::deleteConnection( QStringLiteral( "WCS" ), item->name() );
+  // the parent should be updated
   item->parent()->refreshConnections();
 }
 

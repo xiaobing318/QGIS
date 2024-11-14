@@ -43,15 +43,14 @@ class QgsPointOnSurfaceAlgorithm : public QgsProcessingFeatureBasedAlgorithm
     QString group() const override;
     QString groupId() const override;
     QString shortHelpString() const override;
-    Qgis::ProcessingAlgorithmDocumentationFlags documentationFlags() const override;
     QgsPointOnSurfaceAlgorithm *createInstance() const override SIP_FACTORY;
     void initParameters( const QVariantMap &configuration = QVariantMap() ) override;
 
   protected:
 
     QString outputName() const override;
-    Qgis::ProcessingSourceType outputLayerType() const override { return Qgis::ProcessingSourceType::VectorPoint; }
-    Qgis::WkbType outputWkbType( Qgis::WkbType inputWkbType ) const override { Q_UNUSED( inputWkbType ) return Qgis::WkbType::Point; }
+    QgsProcessing::SourceType outputLayerType() const override { return QgsProcessing::TypeVectorPoint; }
+    QgsWkbTypes::Type outputWkbType( QgsWkbTypes::Type inputWkbType ) const override { Q_UNUSED( inputWkbType ) return QgsWkbTypes::Point; }
     QgsFeatureSink::SinkFlags sinkFlags() const override;
 
     bool prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;

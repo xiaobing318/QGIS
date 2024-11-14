@@ -9,26 +9,21 @@ __author__ = 'Nyall Dawson'
 __date__ = '03/10/2020'
 __copyright__ = 'Copyright 2020, The QGIS Project'
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtGui import QColor
 from qgis.core import QgsSettings
-from qgis.gui import (
-    QgsCodeEditorColorScheme,
-    QgsCodeEditorColorSchemeRegistry,
-    QgsGui,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.gui import QgsCodeEditorColorScheme, QgsCodeEditorColorSchemeRegistry, QgsGui
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsCodeEditorColorScheme(QgisTestCase):
+class TestQgsCodeEditorColorScheme(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
-        super().setUpClass()
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain("QGIS_TestPyQgsCodeEditorColorScheme.com")
         QCoreApplication.setApplicationName("QGIS_TestPyQgsCodeEditorColorScheme")

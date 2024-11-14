@@ -16,24 +16,23 @@
  ***************************************************************************/
 
 #include "qgsalgorithmzonalstatisticsfeaturebased.h"
-#include "qgszonalstatistics.h"
 
 ///@cond PRIVATE
 
-const std::vector< Qgis::ZonalStatistic > STATS
+const std::vector< QgsZonalStatistics::Statistic > STATS
 {
-  Qgis::ZonalStatistic::Count,
-  Qgis::ZonalStatistic::Sum,
-  Qgis::ZonalStatistic::Mean,
-  Qgis::ZonalStatistic::Median,
-  Qgis::ZonalStatistic::StDev,
-  Qgis::ZonalStatistic::Min,
-  Qgis::ZonalStatistic::Max,
-  Qgis::ZonalStatistic::Range,
-  Qgis::ZonalStatistic::Minority,
-  Qgis::ZonalStatistic::Majority,
-  Qgis::ZonalStatistic::Variety,
-  Qgis::ZonalStatistic::Variance,
+  QgsZonalStatistics::Count,
+  QgsZonalStatistics::Sum,
+  QgsZonalStatistics::Mean,
+  QgsZonalStatistics::Median,
+  QgsZonalStatistics::StDev,
+  QgsZonalStatistics::Min,
+  QgsZonalStatistics::Max,
+  QgsZonalStatistics::Range,
+  QgsZonalStatistics::Minority,
+  QgsZonalStatistics::Majority,
+  QgsZonalStatistics::Variety,
+  QgsZonalStatistics::Variance,
 };
 
 QString QgsZonalStatisticsFeatureBasedAlgorithm::name() const
@@ -70,7 +69,7 @@ QString QgsZonalStatisticsFeatureBasedAlgorithm::shortHelpString() const
 
 QList<int> QgsZonalStatisticsFeatureBasedAlgorithm::inputLayerTypes() const
 {
-  return QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorPolygon );
+  return QList<int>() << QgsProcessing::TypeVectorPolygon;
 }
 
 QgsZonalStatisticsFeatureBasedAlgorithm *QgsZonalStatisticsFeatureBasedAlgorithm::createInstance() const
@@ -83,7 +82,7 @@ void QgsZonalStatisticsFeatureBasedAlgorithm::initParameters( const QVariantMap 
   Q_UNUSED( configuration )
   QStringList statChoices;
   statChoices.reserve( STATS.size() );
-  for ( const Qgis::ZonalStatistic stat : STATS )
+  for ( const QgsZonalStatistics::Statistic stat : STATS )
   {
     statChoices << QgsZonalStatistics::displayName( stat );
   }
@@ -114,7 +113,7 @@ bool QgsZonalStatisticsFeatureBasedAlgorithm::prepareAlgorithm( const QVariantMa
   mPrefix = parameterAsString( parameters, QStringLiteral( "COLUMN_PREFIX" ), context );
 
   const QList< int > stats = parameterAsEnums( parameters, QStringLiteral( "STATISTICS" ), context );
-  mStats = Qgis::ZonalStatistics();
+  mStats = QgsZonalStatistics::Statistics();
   for ( const int s : stats )
   {
     mStats |= STATS.at( s );
@@ -140,11 +139,11 @@ bool QgsZonalStatisticsFeatureBasedAlgorithm::prepareAlgorithm( const QVariantMa
 
   mOutputFields = source->fields();
 
-  for ( const Qgis::ZonalStatistic stat : STATS )
+  for ( const QgsZonalStatistics::Statistic stat : STATS )
   {
     if ( mStats & stat )
     {
-      const QgsField field = QgsField( mPrefix + QgsZonalStatistics::shortName( stat ), QMetaType::Type::Double, QStringLiteral( "double precision" ) );
+      const QgsField field = QgsField( mPrefix + QgsZonalStatistics::shortName( stat ), QVariant::Double, QStringLiteral( "double precision" ) );
       if ( mOutputFields.names().contains( field.name() ) )
       {
         throw QgsProcessingException( QObject::tr( "Field %1 already exists" ).arg( field.name() ) );
@@ -180,7 +179,7 @@ QgsFeatureList QgsZonalStatisticsFeatureBasedAlgorithm::processFeature( const Qg
       feedback->reportError( QObject::tr( "Encountered a transform error when reprojecting feature with id %1." ).arg( feature.id() ) );
   }
 
-  const QMap<Qgis::ZonalStatistic, QVariant> results = QgsZonalStatistics::calculateStatistics( mRaster.get(), geometry, mPixelSizeX, mPixelSizeY, mBand, mStats );
+  const QMap<QgsZonalStatistics::Statistic, QVariant> results = QgsZonalStatistics::calculateStatistics( mRaster.get(), geometry, mPixelSizeX, mPixelSizeY, mBand, mStats );
   for ( auto result = results.constBegin(); result != results.constEnd(); ++result )
   {
     attributes.replace( mStatFieldsMapping.value( result.key() ), result.value() );

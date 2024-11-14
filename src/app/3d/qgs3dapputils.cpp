@@ -21,7 +21,6 @@
 #include "qgspoint3dsymbolwidget.h"
 #include "qgspolygon3dsymbolwidget.h"
 #include "qgsline3dsymbolwidget.h"
-#include "qgsmetalroughmaterialwidget.h"
 #include "qgsphongmaterialwidget.h"
 #include "qgsphongtexturedmaterialwidget.h"
 #include "qgsgoochmaterialwidget.h"
@@ -40,7 +39,6 @@ void Qgs3DAppUtils::initialize()
   qgis::down_cast< QgsMaterialSettingsMetadata * >( Qgs3D::materialRegistry()->materialSettingsMetadata( QStringLiteral( "phongtextured" ) ) )->setWidgetFunction( QgsPhongTexturedMaterialWidget::create );
   qgis::down_cast< QgsMaterialSettingsMetadata * >( Qgs3D::materialRegistry()->materialSettingsMetadata( QStringLiteral( "gooch" ) ) )->setWidgetFunction( QgsGoochMaterialWidget::create );
   qgis::down_cast< QgsMaterialSettingsMetadata * >( Qgs3D::materialRegistry()->materialSettingsMetadata( QStringLiteral( "simpleline" ) ) )->setWidgetFunction( QgsSimpleLineMaterialWidget::create );
-  qgis::down_cast< QgsMaterialSettingsMetadata * >( Qgs3D::materialRegistry()->materialSettingsMetadata( QStringLiteral( "metalrough" ) ) )->setWidgetFunction( QgsMetalRoughMaterialWidget::create );
 
   QgsStyleModel::setIconGenerator( new Qgs3DIconGenerator( QgsApplication::defaultStyleModel() ) );
 }

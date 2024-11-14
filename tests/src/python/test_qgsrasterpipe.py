@@ -22,14 +22,13 @@ __author__ = 'Nyall Dawson'
 __date__ = 'June 2021'
 __copyright__ = '(C) 2021, Nyall Dawson'
 
-from qgis.core import (
-    QgsExpressionContext,
-    QgsProperty,
-    QgsRasterPipe,
-    QgsSingleBandPseudoColorRenderer,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+import qgis  # NOQA
+from qgis.core import (QgsRasterPipe,
+                       QgsProperty,
+                       QgsExpressionContext,
+                       QgsSingleBandPseudoColorRenderer
+                       )
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -39,13 +38,13 @@ start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestQgsRasterPipe(QgisTestCase):
+class TestQgsRasterPipe(unittest.TestCase):
 
     def test_data_defined_properties(self):
         pipe = QgsRasterPipe()
 
-        pipe.dataDefinedProperties().setProperty(QgsRasterPipe.Property.RendererOpacity, QgsProperty.fromExpression('100/2'))
-        self.assertEqual(pipe.dataDefinedProperties().property(QgsRasterPipe.Property.RendererOpacity),
+        pipe.dataDefinedProperties().setProperty(QgsRasterPipe.RendererOpacity, QgsProperty.fromExpression('100/2'))
+        self.assertEqual(pipe.dataDefinedProperties().property(QgsRasterPipe.RendererOpacity),
                          QgsProperty.fromExpression('100/2'))
 
         pipe.set(QgsSingleBandPseudoColorRenderer(None))

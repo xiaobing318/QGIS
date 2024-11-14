@@ -33,6 +33,7 @@ class QgsLayoutTableColumn;
  * \ingroup core
  * \brief List of QVariants, representing a the contents of a single row in
  * a QgsLayoutTable
+ * \since QGIS 3.0
 */
 typedef QVector< QVariant > QgsLayoutTableRow;
 
@@ -40,6 +41,7 @@ typedef QVector< QVariant > QgsLayoutTableRow;
  * \ingroup core
  * \brief List of QgsLayoutTableRows, representing rows and column cell contents
  * for a QgsLayoutTable
+ * \since QGIS 3.0
 */
 #ifndef SIP_RUN
 typedef QVector< QgsLayoutTableRow > QgsLayoutTableContents;
@@ -51,6 +53,7 @@ typedef QVector< QVector< QVariant > > QgsLayoutTableContents;
 /**
  * \ingroup core
  * \brief List of column definitions for a QgsLayoutTable
+ * \since QGIS 3.0
 */
 typedef QVector<QgsLayoutTableColumn> QgsLayoutTableColumns;
 
@@ -67,12 +70,14 @@ typedef QVector<QgsLayoutTableColumn> QgsLayoutTableSortColumns;
  * \ingroup core
  *  \class QgsLayoutTableStyle
  *  \brief Styling option for a layout table cell
+ *  \since QGIS 3.0
  */
 
 class CORE_EXPORT QgsLayoutTableStyle
 {
   public:
 
+    //! Constructor for QgsLayoutTableStyle
     QgsLayoutTableStyle() = default;
 
     //! Whether the styling option is enabled
@@ -102,6 +107,7 @@ class CORE_EXPORT QgsLayoutTableStyle
  * \brief A class to display a table in the print layout, and allow
  * the table to span over multiple frames
  * \ingroup core
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
 {
@@ -232,7 +238,7 @@ class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
      * Sets the \a font used to draw header text in the table.
      * \see headerFont()
      * \see setContentFont()
-     * \deprecated QGIS 3.40. Use setHeaderTextFormat() instead.
+     * \deprecated use setHeaderTextFormat() instead
      */
     Q_DECL_DEPRECATED void setHeaderFont( const QFont &font ) SIP_DEPRECATED;
 
@@ -240,7 +246,7 @@ class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
      * Returns the font used to draw header text in the table.
      * \see setHeaderFont()
      * \see contentFont()
-     * \deprecated QGIS 3.40. Use headerTextFormat() instead.
+     * \deprecated use headerTextFormat() instead
      */
     Q_DECL_DEPRECATED QFont headerFont() const SIP_DEPRECATED;
 
@@ -249,7 +255,7 @@ class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
      * \see headerFontColor()
      * \see setHeaderFont()
      * \see setContentFontColor()
-     * \deprecated QGIS 3.40. Use setHeaderTextFormat() instead.
+     * \deprecated use setHeaderTextFormat() instead
      */
     Q_DECL_DEPRECATED void setHeaderFontColor( const QColor &color ) SIP_DEPRECATED;
 
@@ -258,7 +264,7 @@ class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
      * \see setHeaderFontColor()
      * \see headerFont()
      * \see contentFontColor()
-     * \deprecated QGIS 3.40. Use headerTextFormat() instead.
+     * \deprecated use headerTextFormat() instead
      */
     Q_DECL_DEPRECATED QColor headerFontColor() const SIP_DEPRECATED;
 
@@ -308,7 +314,7 @@ class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
      * Sets the \a font used to draw text in table body cells.
      * \see contentFont()
      * \see setHeaderFont()
-     * \deprecated QGIS 3.40. Use setContentTextFormat() instead.
+     * \deprecated use setContentTextFormat() instead
      */
     Q_DECL_DEPRECATED void setContentFont( const QFont &font ) SIP_DEPRECATED;
 
@@ -316,7 +322,7 @@ class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
      * Returns the font used to draw text in table body cells.
      * \see setContentFont()
      * \see headerFont()
-     * \deprecated QGIS 3.40. Use contextTextFormat() instead.
+     * \deprecated use contextTextFormat() instead
      */
     Q_DECL_DEPRECATED QFont contentFont() const SIP_DEPRECATED;
 
@@ -325,7 +331,7 @@ class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
      * \see contentFontColor()
      * \see setContentFont()
      * \see setHeaderFontColor()
-     * \deprecated QGIS 3.40. Use setContentTextFormat() instead.
+     * \deprecated use setContentTextFormat() instead
      */
     Q_DECL_DEPRECATED void setContentFontColor( const QColor &color ) SIP_DEPRECATED;
 
@@ -334,7 +340,7 @@ class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
      * \see setContentFontColor()
      * \see contentFont()
      * \see headerFontColor()
-     * \deprecated QGIS 3.40. Use contextTextFormat() instead.
+     * \deprecated use contextTextFormat() instead
      */
     Q_DECL_DEPRECATED QColor contentFontColor() const SIP_DEPRECATED;
 
@@ -546,22 +552,6 @@ class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
      * \since QGIS 3.16
      */
     virtual QgsExpressionContextScope *scopeForCell( int row, int column ) const SIP_FACTORY;
-
-    /**
-     * Returns the row span for the cell a \a row, \a column.
-     *
-     * \see columnSpan()
-     * \since QGIS 3.40
-     */
-    virtual int rowSpan( int row, int column ) const;
-
-    /**
-     * Returns the column span for the cell a \a row, \a column.
-     *
-     * \see rowSpan()
-     * \since QGIS 3.40
-     */
-    virtual int columnSpan( int row, int column ) const;
 
     /**
      * Returns the current contents of the table. Excludes header cells.
@@ -794,11 +784,9 @@ class CORE_EXPORT QgsLayoutTable: public QgsLayoutMultiFrame
      * Returns the calculated background color for a row and column combination.
      * \param row row number, where -1 is the header row, and 0 is the first body row
      * \param column column number, where 0 is the first column
-     * \param rowSpan number of rows spanned by cell
-     * \param columnSpan number of columns spanned by cell
      * \returns background color, or invalid QColor if no background should be drawn
      */
-    QColor backgroundColor( int row, int column, int rowSpan = 1, int columnSpan = 1 ) const;
+    QColor backgroundColor( int row, int column ) const;
 
     friend class TestQgsLayoutTable;
     friend class TestQgsLayoutManualTable;

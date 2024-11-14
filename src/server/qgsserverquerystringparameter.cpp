@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgsserverquerystringparameter.h"
-#include "moc_qgsserverquerystringparameter.cpp"
 #include "qgsserverrequest.h"
 #include "qgsserverexception.h"
 #include "nlohmann/json.hpp"
@@ -62,13 +61,13 @@ QVariant QgsServerQueryStringParameter::value( const QgsServerApiContext &contex
   {
 
     // 3: check type
-    const QMetaType::Type targetType { static_cast< QMetaType::Type  >( mType )};
+    const QVariant::Type targetType { static_cast< QVariant::Type  >( mType )};
     // Handle csv list type
     if ( mType == Type::List )
     {
       value = value.toString().split( ',' );
     }
-    if ( value.userType() != targetType )
+    if ( value.type() != targetType )
     {
       bool ok = false;
       if ( value.canConvert( static_cast<int>( targetType ) ) )

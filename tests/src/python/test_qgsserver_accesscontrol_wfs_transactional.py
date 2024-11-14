@@ -13,7 +13,7 @@ __copyright__ = 'Copyright 2015, The QGIS Project'
 
 from qgis.testing import unittest
 
-from test_qgsserver_accesscontrol import XML_NS, TestQgsServerAccessControl
+from test_qgsserver_accesscontrol import TestQgsServerAccessControl, XML_NS
 
 WFS_TRANSACTION_INSERT = """<?xml version="1.0" encoding="UTF-8"?>
 <wfs:Transaction {xml_ns}>
@@ -67,37 +67,37 @@ class TestQgsServerAccessControlWFSTransactional(TestQgsServerAccessControl):
         response, headers = self._post_fullaccess(data.format(color="red", gid=2))
         self.assertEqual(
             headers.get("Content-Type"), "text/xml; charset=utf-8",
-            f"Content type for Insert is wrong: {headers.get('Content-Type')}")
+            "Content type for Insert is wrong: %s" % headers.get("Content-Type"))
 
         self.assertTrue(
             str(response).find("<SUCCESS/>") != -1,
-            f"WFS/Transactions Insert don't succeed\n{response}")
+            "WFS/Transactions Insert don't succeed\n%s" % response)
         self._test_colors({2: "red"})
 
         response, headers = self._post_restricted(data.format(color="blue", gid=3))
         self.assertEqual(
             headers.get("Content-Type"), "text/xml; charset=utf-8",
-            f"Content type for Insert is wrong: {headers.get('Content-Type')}")
+            "Content type for Insert is wrong: %s" % headers.get("Content-Type"))
         self.assertTrue(
             str(response).find("<SUCCESS/>") == -1,
-            f"WFS/Transactions Insert succeed\n{response}")
+            "WFS/Transactions Insert succeed\n%s" % response)
 
         response, headers = self._post_restricted(data.format(color="red", gid=4), "LAYER_PERM=no")
         self.assertEqual(
             headers.get("Content-Type"), "text/xml; charset=utf-8",
-            f"Content type for Insert is wrong: {headers.get('Content-Type')}")
+            "Content type for Insert is wrong: %s" % headers.get("Content-Type"))
         self.assertTrue(
             str(response).find(
                 '<ServiceException code="Security">No permissions to do WFS changes on layer \\\'db_point\\\'</ServiceException>') != -1,
-            f"WFS/Transactions Insert succeed\n{response}")
+            "WFS/Transactions Insert succeed\n%s" % response)
 
         response, headers = self._post_restricted(data.format(color="yellow", gid=5), "LAYER_PERM=yes")
         self.assertEqual(
             headers.get("Content-Type"), "text/xml; charset=utf-8",
-            f"Content type for Insert is wrong: {headers.get('Content-Type')}")
+            "Content type for Insert is wrong: %s" % headers.get("Content-Type"))
         self.assertTrue(
             str(response).find("<SUCCESS/>") != -1,
-            f"WFS/Transactions Insert don't succeed\n{response}")
+            "WFS/Transactions Insert don't succeed\n%s" % response)
         self._test_colors({5: "yellow"})
 
     def test_wfstransaction_update(self):
@@ -107,47 +107,47 @@ class TestQgsServerAccessControlWFSTransactional(TestQgsServerAccessControl):
         response, headers = self._post_restricted(data.format(color="yellow"))
         self.assertEqual(
             headers.get("Content-Type"), "text/xml; charset=utf-8",
-            f"Content type for GetMap is wrong: {headers.get('Content-Type')}")
+            "Content type for GetMap is wrong: %s" % headers.get("Content-Type"))
         self.assertTrue(
             str(response).find("<SUCCESS/>") == -1,
-            f"WFS/Transactions Update succeed\n{response}")
+            "WFS/Transactions Update succeed\n%s" % response)
         self._test_colors({1: "blue"})
 
         response, headers = self._post_fullaccess(data.format(color="red"))
         self.assertEqual(
             headers.get("Content-Type"), "text/xml; charset=utf-8",
-            f"Content type for Update is wrong: {headers.get('Content-Type')}")
+            "Content type for Update is wrong: %s" % headers.get("Content-Type"))
         self.assertTrue(
             str(response).find("<SUCCESS/>") != -1,
-            f"WFS/Transactions Update don't succeed\n{response}")
+            "WFS/Transactions Update don't succeed\n%s" % response)
         self._test_colors({1: "red"})
 
         response, headers = self._post_restricted(data.format(color="blue"))
         self.assertEqual(
             headers.get("Content-Type"), "text/xml; charset=utf-8",
-            f"Content type for Update is wrong: {headers.get('Content-Type')}")
+            "Content type for Update is wrong: %s" % headers.get("Content-Type"))
         self.assertTrue(
             str(response).find("<SUCCESS/>") == -1,
-            f"WFS/Transactions Update succeed\n{response}")
+            "WFS/Transactions Update succeed\n%s" % response)
         self._test_colors({1: "red"})
 
         response, headers = self._post_restricted(data.format(color="yellow"), "LAYER_PERM=no")
         self.assertEqual(
             headers.get("Content-Type"), "text/xml; charset=utf-8",
-            f"Content type for Update is wrong: {headers.get('Content-Type')}")
+            "Content type for Update is wrong: %s" % headers.get("Content-Type"))
         self.assertTrue(
             str(response).find(
                 '<ServiceException code="Security">No permissions to do WFS changes on layer \\\'db_point\\\'</ServiceException>') != -1,
-            f"WFS/Transactions Update succeed\n{response}")
+            "WFS/Transactions Update succeed\n%s" % response)
         self._test_colors({1: "red"})
 
         response, headers = self._post_restricted(data.format(color="yellow"), "LAYER_PERM=yes")
         self.assertEqual(
             headers.get("Content-Type"), "text/xml; charset=utf-8",
-            f"Content type for Update is wrong: {headers.get('Content-Type')}")
+            "Content type for Update is wrong: %s" % headers.get("Content-Type"))
         self.assertTrue(
             str(response).find("<SUCCESS/>") != -1,
-            f"WFS/Transactions Update don't succeed\n{response}")
+            "WFS/Transactions Update don't succeed\n%s" % response)
         self._test_colors({1: "yellow"})
 
     def test_wfstransaction_delete_fullaccess(self):
@@ -157,10 +157,10 @@ class TestQgsServerAccessControlWFSTransactional(TestQgsServerAccessControl):
         response, headers = self._post_fullaccess(data)
         self.assertEqual(
             headers.get("Content-Type"), "text/xml; charset=utf-8",
-            f"Content type for GetMap is wrong: {headers.get('Content-Type')}")
+            "Content type for GetMap is wrong: %s" % headers.get("Content-Type"))
         self.assertTrue(
             str(response).find("<SUCCESS/>") != -1,
-            f"WFS/Transactions Delete didn't succeed\n{response}")
+            "WFS/Transactions Delete didn't succeed\n%s" % response)
 
     def test_wfstransaction_delete_restricted(self):
         data = WFS_TRANSACTION_DELETE.format(id="0", xml_ns=XML_NS)
@@ -169,10 +169,10 @@ class TestQgsServerAccessControlWFSTransactional(TestQgsServerAccessControl):
         response, headers = self._post_restricted(data)
         self.assertEqual(
             headers.get("Content-Type"), "text/xml; charset=utf-8",
-            f"Content type for GetMap is wrong: {headers.get('Content-Type')}")
+            "Content type for GetMap is wrong: %s" % headers.get("Content-Type"))
         self.assertTrue(
             str(response).find("<SUCCESS/>") == -1,
-            f"WFS/Transactions Delete succeed\n{response}")
+            "WFS/Transactions Delete succeed\n%s" % response)
 
         data_update = WFS_TRANSACTION_UPDATE.format(id="0", color="red", xml_ns=XML_NS)
         response, headers = self._post_fullaccess(data_update)
@@ -181,19 +181,19 @@ class TestQgsServerAccessControlWFSTransactional(TestQgsServerAccessControl):
         response, headers = self._post_restricted(data, "LAYER_PERM=no")
         self.assertEqual(
             headers.get("Content-Type"), "text/xml; charset=utf-8",
-            f"Content type for GetMap is wrong: {headers.get('Content-Type')}")
+            "Content type for GetMap is wrong: %s" % headers.get("Content-Type"))
         self.assertTrue(
             str(response).find(
                 '<ServiceException code="Security">No permissions to do WFS changes on layer \\\'db_point\\\'</ServiceException>') != -1,
-            f"WFS/Transactions Delete succeed\n{response}")
+            "WFS/Transactions Delete succeed\n%s" % response)
 
         response, headers = self._post_restricted(data, "LAYER_PERM=yes")
         self.assertEqual(
             headers.get("Content-Type"), "text/xml; charset=utf-8",
-            f"Content type for GetMap is wrong: {headers.get('Content-Type')}")
+            "Content type for GetMap is wrong: %s" % headers.get("Content-Type"))
         self.assertTrue(
             str(response).find("<SUCCESS/>") != -1,
-            f"WFS/Transactions Delete don't succeed\n{response}")
+            "WFS/Transactions Delete don't succeed\n%s" % response)
 
 
 if __name__ == "__main__":

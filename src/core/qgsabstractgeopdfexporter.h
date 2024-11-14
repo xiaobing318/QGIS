@@ -31,20 +31,20 @@
 #define SIP_NO_FILE
 
 
-class QgsGeospatialPdfRenderedFeatureHandler;
+class QgsGeoPdfRenderedFeatureHandler;
 
 /**
- * \class QgsAbstractGeospatialPdfExporter
+ * \class QgsAbstractGeoPdfExporter
  * \ingroup core
  *
- * \brief Abstract base class for Geospatial PDF exporters.
+ * \brief Abstract base class for GeoPDF exporters.
  *
- * The base class handles generic Geospatial PDF export setup, cleanup and processing steps.
+ * The base class handles generic GeoPDF export setup, cleanup and processing steps.
  *
  * This class is a low level implementation detail only. Generally, you should use the high level interface exposed by
  * classes like QgsLayoutExporter instead.
  *
- * \warning QgsAbstractGeospatialPdfExporter is designed to be a short lived object. It should be created for a
+ * \warning QgsAbstractGeoPdfExporter is designed to be a short lived object. It should be created for a
  * single export operation only, and then immediately destroyed. Failure to correctly
  * destroy the object after exporting a PDF will leave the application in an inconsistent, unstable state.
  *
@@ -52,29 +52,32 @@ class QgsGeospatialPdfRenderedFeatureHandler;
  *
  * \since QGIS 3.10
  */
-class CORE_EXPORT QgsAbstractGeospatialPdfExporter
+class CORE_EXPORT QgsAbstractGeoPdfExporter
 {
   public:
 
     /**
-     * Returns TRUE if the current QGIS build is capable of Geospatial PDF support.
+     * Returns TRUE if the current QGIS build is capable of GeoPDF support.
      *
      * If FALSE is returned, a user-friendly explanation why can be retrieved via
-     * geospatialPDFAvailabilityExplanation().
+     * geoPDFAvailabilityExplanation().
      */
-    static bool geospatialPDFCreationAvailable();
+    static bool geoPDFCreationAvailable();
 
     /**
-     * Returns a user-friendly, translated string explaining why Geospatial PDF export
+     * Returns a user-friendly, translated string explaining why GeoPDF export
      * support is not available on the current QGIS build (or an empty string if
-     * Geospatial PDF support IS available).
-     * \see geospatialPDFCreationAvailable()
+     * GeoPDF support IS available).
+     * \see geoPDFCreationAvailable()
      */
-    static QString geospatialPDFAvailabilityExplanation();
+    static QString geoPDFAvailabilityExplanation();
 
-    QgsAbstractGeospatialPdfExporter() = default;
+    /**
+     * Constructor for QgsAbstractGeoPdfExporter.
+     */
+    QgsAbstractGeoPdfExporter() = default;
 
-    virtual ~QgsAbstractGeospatialPdfExporter() = default;
+    virtual ~QgsAbstractGeoPdfExporter() = default;
 
     /**
      * Contains information about a feature rendered inside the PDF.
@@ -82,6 +85,9 @@ class CORE_EXPORT QgsAbstractGeospatialPdfExporter
     struct RenderedFeature
     {
 
+      /**
+       * Constructor for RenderedFeature.
+       */
       RenderedFeature() = default;
 
       /**
@@ -132,7 +138,7 @@ class CORE_EXPORT QgsAbstractGeospatialPdfExporter
     };
 
     /**
-     * \brief Contains details of a control point used during georeferencing Geospatial PDF outputs.
+     * \brief Contains details of a control point used during georeferencing GeoPDF outputs.
      * \ingroup core
      * \since QGIS 3.10
      */
@@ -176,7 +182,7 @@ class CORE_EXPORT QgsAbstractGeospatialPdfExporter
       QgsCoordinateReferenceSystem crs;
 
       //! List of control points corresponding to this georeferenced section
-      QList< QgsAbstractGeospatialPdfExporter::ControlPoint > controlPoints;
+      QList< QgsAbstractGeoPdfExporter::ControlPoint > controlPoints;
 
     };
 
@@ -187,7 +193,7 @@ class CORE_EXPORT QgsAbstractGeospatialPdfExporter
      * The optional \a group argument can be used to differentiate features from the same layer exported
      * multiple times as part of different layer groups.
      */
-    void pushRenderedFeature( const QString &layerId, const QgsAbstractGeospatialPdfExporter::RenderedFeature &feature, const QString &group = QString() );
+    void pushRenderedFeature( const QString &layerId, const QgsAbstractGeoPdfExporter::RenderedFeature &feature, const QString &group = QString() );
 
     struct ExportDetails
     {
@@ -198,7 +204,7 @@ class CORE_EXPORT QgsAbstractGeospatialPdfExporter
       double dpi = 300;
 
       //! List of georeferenced sections
-      QList< QgsAbstractGeospatialPdfExporter::GeoReferencedSection > georeferencedSections;
+      QList< QgsAbstractGeoPdfExporter::GeoReferencedSection > georeferencedSections;
 
       //! Metadata author tag
       QString author;
@@ -222,19 +228,18 @@ class CORE_EXPORT QgsAbstractGeospatialPdfExporter
       QgsAbstractMetadataBase::KeywordMap keywords;
 
       /**
-       * TRUE if ISO32000 extension format georeferencing should be used.
+       * TRUE if ISO3200 extension format georeferencing should be used.
        *
-       * This is a recommended setting which results in Geospatial PDF files
-       * that use PDF 2.0 Geospatial Features (ISO 32000-2:2017).
-       * Compatible with the built-in Acrobat geospatial tools
+       * This is a recommended setting which results in Geospatial PDF files compatible
+       * with the built-in Acrobat geospatial tools.
        */
       bool useIso32000ExtensionFormatGeoreferencing = true;
 
       /**
        * TRUE if OGC "best practice" format georeferencing should be used.
        *
-       * \warning This results in Geospatial PDF files compatible with a unnamed suite of tools starting with Terra and ending with Go, but
-       * can break compatibility with the built-in Acrobat geospatial tools (yes, Geospatial PDF
+       * \warning This results in GeoPDF files compatible with the TerraGo suite of tools, but
+       * can break compatibility with the built-in Acrobat geospatial tools (yes, GeoPDF
        * format is a mess!).
       */
       bool useOgcBestPracticeFormatGeoreferencing = false;
@@ -253,8 +258,6 @@ class CORE_EXPORT QgsAbstractGeospatialPdfExporter
        *
        * Layers which are not included in this group will always have their own individual layer tree entry
        * created for them automatically.
-       *
-       * \see layerTreeGroupOrder
        */
       QMap< QString, QString > customLayerTreeGroups;
 
@@ -274,34 +277,13 @@ class CORE_EXPORT QgsAbstractGeospatialPdfExporter
       QMap< QString, bool > initialLayerVisibility;
 
       /**
-       * Optional list of layer IDs, in the order desired to appear in the generated Geospatial PDF file.
+       * Optional list of layer IDs, in the order desired to appear in the generated GeoPDF file.
        *
-       * Layers appearing earlier in the list will show earlier in the Geospatial PDF layer tree list.
-       *
-       * \see layerTreeGroupOrder
+       * Layers appearing earlier in the list will show earlier in the GeoPDF layer tree list.
        *
        * \since QGIS 3.14
        */
       QStringList layerOrder;
-
-      /**
-       * Specifies the ordering of layer tree groups in the generated Geospatial PDF file.
-       *
-       * Groups appearing earlier in the list will show earlier in the Geospatial PDF layer tree list.
-       *
-       * \see layerOrder
-       * \see customLayerTreeGroups
-       *
-       * \since QGIS 3.38
-       */
-      QStringList layerTreeGroupOrder;
-
-      /**
-       * Contains a list of group names which should be considered as mutually exclusive.
-       *
-       * \since QGIS 3.40
-       */
-      QSet< QString > mutuallyExclusiveGroups;
 
     };
 
@@ -312,13 +294,13 @@ class CORE_EXPORT QgsAbstractGeospatialPdfExporter
      * argument gives a list of additional layers to include in the generated PDF file. These must have already
      * been created, e.g. as a result of rendering layers to separate PDF source files.
      *
-     * Any features previously collected by calls to pushRenderedFeature() will be included automatically in the Geospatial PDF
+     * Any features previously collected by calls to pushRenderedFeature() will be included automatically in the GeoPDF
      * export.
      *
      * Returns TRUE if the operation was successful, or FALSE if an error occurred. If an error occurred, it
      * can be retrieved by calling errorMessage().
      */
-    bool finalize( const QList< QgsAbstractGeospatialPdfExporter::ComponentLayerDetail > &components, const QString &destinationFile, const ExportDetails &details );
+    bool finalize( const QList< QgsAbstractGeoPdfExporter::ComponentLayerDetail > &components, const QString &destinationFile, const ExportDetails &details );
 
     /**
      * Returns the last error message encountered during the export.
@@ -326,13 +308,13 @@ class CORE_EXPORT QgsAbstractGeospatialPdfExporter
     QString errorMessage() const { return mErrorMessage; }
 
     /**
-     * Returns a file path to use for temporary files required for Geospatial PDF creation.
+     * Returns a file path to use for temporary files required for GeoPDF creation.
      */
     QString generateTemporaryFilepath( const QString &filename ) const;
 
     /**
      * Returns TRUE if the specified composition \a mode is supported for layers
-     * during Geospatial PDF exports.
+     * during GeoPDF exports.
      *
      * \since QGIS 3.14
      */
@@ -341,7 +323,7 @@ class CORE_EXPORT QgsAbstractGeospatialPdfExporter
   protected:
 
     /**
-     * Contains information relating to a single PDF layer in the Geospatial PDF export.
+     * Contains information relating to a single PDF layer in the GeoPDF export.
      */
     struct VectorComponentDetail
     {
@@ -383,15 +365,15 @@ class CORE_EXPORT QgsAbstractGeospatialPdfExporter
 
     bool saveTemporaryLayers();
 
-    QString createCompositionXml( const QList< QgsAbstractGeospatialPdfExporter::ComponentLayerDetail > &components, const ExportDetails &details );
+    QString createCompositionXml( const QList< QgsAbstractGeoPdfExporter::ComponentLayerDetail > &components, const ExportDetails &details );
 
     /**
      * Returns the GDAL string representation of the specified QPainter composition \a mode.
      */
     static QString compositionModeToString( QPainter::CompositionMode mode );
 
-    friend class TestQgsLayoutGeospatialPdfExport;
-    friend class TestQgsGeospatialPdfExport;
+    friend class TestQgsLayoutGeoPdfExport;
+    friend class TestQgsGeoPdfExport;
 };
 
 #endif //QGSABSTRACTGEOPDFEXPORTER_H

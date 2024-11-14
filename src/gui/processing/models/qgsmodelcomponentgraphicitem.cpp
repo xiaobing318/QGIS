@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsmodelcomponentgraphicitem.h"
-#include "moc_qgsmodelcomponentgraphicitem.cpp"
 #include "qgsprocessingmodelcomponent.h"
 #include "qgsprocessingmodelparameter.h"
 #include "qgsprocessingmodelchildalgorithm.h"
@@ -28,7 +27,6 @@
 #include "qgsmodelviewtool.h"
 #include "qgsmodelviewmouseevent.h"
 #include "qgsmodelgroupboxdefinitionwidget.h"
-#include "qgsmessagelog.h"
 
 #include <QSvgRenderer>
 #include <QPicture>
@@ -871,20 +869,6 @@ QgsModelChildAlgorithmGraphicItem::QgsModelChildAlgorithmGraphicItem( QgsProcess
 void QgsModelChildAlgorithmGraphicItem::contextMenuEvent( QGraphicsSceneContextMenuEvent *event )
 {
   QMenu *popupmenu = new QMenu( event->widget() );
-
-  if ( isSelected() )
-  {
-    QAction *runSelectedStepsAction = popupmenu->addAction( QObject::tr( "Run Selected Steps…" ) );
-    runSelectedStepsAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "mActionRunSelected.svg" ) ) );
-    connect( runSelectedStepsAction, &QAction::triggered, this, &QgsModelChildAlgorithmGraphicItem::runSelected );
-  }
-
-  QAction *runFromHereAction = popupmenu->addAction( QObject::tr( "Run from Here…" ) );
-  runFromHereAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "mActionStart.svg" ) ) );
-  connect( runFromHereAction, &QAction::triggered, this, &QgsModelChildAlgorithmGraphicItem::runFromHere );
-
-  popupmenu->addSeparator();
-
   QAction *removeAction = popupmenu->addAction( QObject::tr( "Remove" ) );
   connect( removeAction, &QAction::triggered, this, &QgsModelChildAlgorithmGraphicItem::deleteComponent );
   QAction *editAction = popupmenu->addAction( QObject::tr( "Edit…" ) );
@@ -904,44 +888,6 @@ void QgsModelChildAlgorithmGraphicItem::contextMenuEvent( QGraphicsSceneContextM
     {
       QAction *deactivateAction = popupmenu->addAction( QObject::tr( "Deactivate" ) );
       connect( deactivateAction, &QAction::triggered, this, &QgsModelChildAlgorithmGraphicItem::deactivateAlgorithm );
-    }
-
-    // only show the "View Output Layers" action for algorithms which create layers
-    if ( const QgsProcessingAlgorithm *algorithm = child->algorithm() )
-    {
-      const QList< const QgsProcessingParameterDefinition * > outputParams = algorithm->destinationParameterDefinitions();
-      if ( !outputParams.isEmpty() )
-      {
-        popupmenu->addSeparator();
-        QAction *viewOutputLayersAction = popupmenu->addAction( QObject::tr( "View Output Layers" ) );
-        viewOutputLayersAction->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "mActionShowSelectedLayers.svg" ) ) );
-        connect( viewOutputLayersAction, &QAction::triggered, this, &QgsModelChildAlgorithmGraphicItem::showPreviousResults );
-        // enable this action only when the child succeeded
-        switch ( mResults.executionStatus() )
-        {
-          case Qgis::ProcessingModelChildAlgorithmExecutionStatus::NotExecuted:
-          case Qgis::ProcessingModelChildAlgorithmExecutionStatus::Failed:
-            viewOutputLayersAction->setEnabled( false );
-            break;
-
-          case Qgis::ProcessingModelChildAlgorithmExecutionStatus::Success:
-            break;
-        }
-      }
-    }
-
-    QAction *viewLogAction = popupmenu->addAction( QObject::tr( "View Log…" ) );
-    connect( viewLogAction, &QAction::triggered, this, &QgsModelChildAlgorithmGraphicItem::showLog );
-    // enable this action even when the child failed
-    switch ( mResults.executionStatus() )
-    {
-      case Qgis::ProcessingModelChildAlgorithmExecutionStatus::NotExecuted:
-        viewLogAction->setEnabled( false );
-        break;
-
-      case Qgis::ProcessingModelChildAlgorithmExecutionStatus::Success:
-      case Qgis::ProcessingModelChildAlgorithmExecutionStatus::Failed:
-        break;
     }
   }
 
@@ -1016,7 +962,7 @@ int QgsModelChildAlgorithmGraphicItem::linkPointCount( Qt::Edge edge ) const
         QgsProcessingParameterDefinitions params = child->algorithm()->parameterDefinitions();
         params.erase( std::remove_if( params.begin(), params.end(), []( const QgsProcessingParameterDefinition * param )
         {
-          return param->flags() & Qgis::ProcessingParameterFlag::Hidden || param->isDestination();
+          return param->flags() & QgsProcessingParameterDefinition::FlagHidden || param->isDestination();
         } ), params.end() );
         return params.size();
       }
@@ -1039,8 +985,6 @@ QString QgsModelChildAlgorithmGraphicItem::linkPointText( Qt::Edge edge, int ind
     if ( !child->algorithm() )
       return QString();
 
-    const QVariantMap inputs = mResults.inputs();
-    const QVariantMap outputs = mResults.outputs();
     switch ( edge )
     {
       case Qt::BottomEdge:
@@ -1056,9 +1000,9 @@ QString QgsModelChildAlgorithmGraphicItem::linkPointText( Qt::Edge edge, int ind
 
         const QgsProcessingOutputDefinition *output = child->algorithm()->outputDefinitions().at( index );
         QString title = output->description();
-        if ( outputs.contains( output->name() ) )
+        if ( mResults.contains( output->name() ) )
         {
-          title += QStringLiteral( ": %1" ).arg( outputs.value( output->name() ).toString() );
+          title += QStringLiteral( ": %1" ).arg( mResults.value( output->name() ).toString() );
         }
         return truncatedTextForItem( title );
       }
@@ -1068,7 +1012,7 @@ QString QgsModelChildAlgorithmGraphicItem::linkPointText( Qt::Edge edge, int ind
         QgsProcessingParameterDefinitions params = child->algorithm()->parameterDefinitions();
         params.erase( std::remove_if( params.begin(), params.end(), []( const QgsProcessingParameterDefinition * param )
         {
-          return param->flags() & Qgis::ProcessingParameterFlag::Hidden || param->isDestination();
+          return param->flags() & QgsProcessingParameterDefinition::FlagHidden || param->isDestination();
         } ), params.end() );
 
         if ( index >= params.length() )
@@ -1081,8 +1025,8 @@ QString QgsModelChildAlgorithmGraphicItem::linkPointText( Qt::Edge edge, int ind
         }
 
         QString title = params.at( index )->description();
-        if ( !inputs.value( params.at( index )->name() ).toString().isEmpty() )
-          title +=  QStringLiteral( ": %1" ).arg( inputs.value( params.at( index )->name() ).toString() );
+        if ( !mInputs.value( params.at( index )->name() ).toString().isEmpty() )
+          title +=  QStringLiteral( ": %1" ).arg( mInputs.value( params.at( index )->name() ).toString() );
         return truncatedTextForItem( title );
       }
 
@@ -1112,12 +1056,22 @@ bool QgsModelChildAlgorithmGraphicItem::canDeleteComponent()
   return false;
 }
 
-void QgsModelChildAlgorithmGraphicItem::setResults( const QgsProcessingModelChildAlgorithmResult &results )
+void QgsModelChildAlgorithmGraphicItem::setResults( const QVariantMap &results )
 {
   if ( mResults == results )
     return;
 
   mResults = results;
+  update();
+  emit updateArrowPaths();
+}
+
+void QgsModelChildAlgorithmGraphicItem::setInputs( const QVariantMap &inputs )
+{
+  if ( mInputs == inputs )
+    return;
+
+  mInputs = inputs;
   update();
   emit updateArrowPaths();
 }

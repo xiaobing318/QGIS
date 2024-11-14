@@ -51,6 +51,7 @@ class QgsMapLayer;
  * subclasses. E.g. validating against the native QGIS metadata schema can be performed
  * using QgsNativeMetadataValidator.
  *
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsLayerMetadata : public QgsAbstractMetadataBase
 {
@@ -78,7 +79,7 @@ class CORE_EXPORT QgsLayerMetadata : public QgsAbstractMetadataBase
        * compulsory.
        * \see extentCrs
        */
-      QgsBox3D bounds;
+      QgsBox3d bounds;
 
       // TODO c++20 - replace with = default
       bool operator==( const QgsLayerMetadata::SpatialExtent &other ) const;
@@ -166,6 +167,9 @@ class CORE_EXPORT QgsLayerMetadata : public QgsAbstractMetadataBase
      */
     typedef QList< QgsLayerMetadata::Constraint > ConstraintList;
 
+    /**
+     * Constructor for QgsLayerMetadata.
+     */
     QgsLayerMetadata() = default;
 
 

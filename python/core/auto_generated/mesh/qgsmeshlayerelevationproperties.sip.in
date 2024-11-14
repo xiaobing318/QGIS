@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/mesh/qgsmeshlayerelevationproperties.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -40,102 +40,12 @@ Constructor for QgsMeshLayerElevationProperties, with the specified ``parent`` o
 
     virtual QgsMeshLayerElevationProperties *clone() const /Factory/;
 
-    virtual bool isVisibleInZRange( const QgsDoubleRange &range, QgsMapLayer *layer = 0 ) const;
+    virtual bool isVisibleInZRange( const QgsDoubleRange &range ) const;
 
     virtual QgsDoubleRange calculateZRange( QgsMapLayer *layer ) const;
 
-    virtual QList< double > significantZValues( QgsMapLayer *layer ) const;
-
     virtual bool showByDefaultInElevationProfilePlots() const;
 
-    virtual QgsMapLayerElevationProperties::Flags flags() const;
-
-
-    Qgis::MeshElevationMode mode() const;
-%Docstring
-Returns the elevation mode.
-
-.. seealso:: :py:func:`setMode`
-
-.. versionadded:: 3.38
-%End
-
-    void setMode( Qgis::MeshElevationMode mode );
-%Docstring
-Sets the elevation ``mode``.
-
-.. seealso:: :py:func:`mode`
-
-.. versionadded:: 3.38
-%End
-
-    QgsDoubleRange fixedRange() const;
-%Docstring
-Returns the fixed elevation range for the mesh.
-
-.. note::
-
-   This is only considered when :py:func:`~QgsMeshLayerElevationProperties.mode` is :py:class:`Qgis`.MeshElevationMode.FixedElevationRange.
-
-.. note::
-
-   When a fixed range is set any :py:func:`~QgsMeshLayerElevationProperties.zOffset` and :py:func:`~QgsMeshLayerElevationProperties.zScale` is ignored.
-
-.. seealso:: :py:func:`setFixedRange`
-
-.. versionadded:: 3.38
-%End
-
-    void setFixedRange( const QgsDoubleRange &range );
-%Docstring
-Sets the fixed elevation ``range`` for the mesh.
-
-.. note::
-
-   This is only considered when :py:func:`~QgsMeshLayerElevationProperties.mode` is :py:class:`Qgis`.MeshElevationMode.FixedElevationRange.
-
-.. note::
-
-   When a fixed range is set any :py:func:`~QgsMeshLayerElevationProperties.zOffset` and :py:func:`~QgsMeshLayerElevationProperties.zScale` is ignored.
-
-.. seealso:: :py:func:`fixedRange`
-
-.. versionadded:: 3.38
-%End
-
-    QMap<int, QgsDoubleRange> fixedRangePerGroup() const;
-%Docstring
-Returns the fixed elevation range for each group.
-
-.. note::
-
-   This is only considered when :py:func:`~QgsMeshLayerElevationProperties.mode` is :py:class:`Qgis`.MeshElevationMode.FixedRangePerGroup.
-
-.. note::
-
-   When a fixed range is set any :py:func:`~QgsMeshLayerElevationProperties.zOffset` and :py:func:`~QgsMeshLayerElevationProperties.zScale` is ignored.
-
-.. seealso:: :py:func:`setFixedRangePerGroup`
-
-.. versionadded:: 3.38
-%End
-
-    void setFixedRangePerGroup( const QMap<int, QgsDoubleRange> &ranges );
-%Docstring
-Sets the fixed elevation range for each group.
-
-.. note::
-
-   This is only considered when :py:func:`~QgsMeshLayerElevationProperties.mode` is :py:class:`Qgis`.MeshElevationMode.FixedRangePerGroup.
-
-.. note::
-
-   When a fixed range is set any :py:func:`~QgsMeshLayerElevationProperties.zOffset` and :py:func:`~QgsMeshLayerElevationProperties.zScale` is ignored.
-
-.. seealso:: :py:func:`fixedRangePerGroup`
-
-.. versionadded:: 3.38
-%End
 
     QgsLineSymbol *profileLineSymbol() const;
 %Docstring
@@ -183,32 +93,6 @@ Sets the ``symbology`` option used to render the mesh profile in elevation profi
 .. seealso:: :py:func:`setProfileSymbology`
 %End
 
-    double elevationLimit() const;
-%Docstring
-Returns the elevation limit, which is used when :py:func:`~QgsMeshLayerElevationProperties.profileSymbology` is
-:py:class:`Qgis`.ProfileSurfaceSymbology.FillBelow or :py:class:`Qgis`.ProfileSurfaceSymbology.FillAbove
-to limit the fill to a specific elevation range.
-
-By default this is NaN, which indicates that there is no elevation limit.
-
-.. seealso:: :py:func:`setElevationLimit`
-
-.. versionadded:: 3.32
-%End
-
-    void setElevationLimit( double limit );
-%Docstring
-Sets the elevation ``limit``, which is used when :py:func:`~QgsMeshLayerElevationProperties.profileSymbology` is
-:py:class:`Qgis`.ProfileSurfaceSymbology.FillBelow or :py:class:`Qgis`.ProfileSurfaceSymbology.FillAbove
-to limit the fill to a specific elevation range.
-
-Set to NaN to indicate that there is no elevation limit.
-
-.. seealso:: :py:func:`elevationLimit`
-
-.. versionadded:: 3.32
-%End
-
 };
 
 /************************************************************************
@@ -216,5 +100,5 @@ Set to NaN to indicate that there is no elevation limit.
  *                                                                      *
  * src/core/mesh/qgsmeshlayerelevationproperties.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

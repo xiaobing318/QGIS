@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/elevation/qgselevationprofilecanvas.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -206,52 +206,6 @@ Converts a plot point to the equivalent canvas point.
 .. seealso:: :py:func:`canvasPointToPlotPoint`
 %End
 
-    bool lockAxisScales() const;
-%Docstring
-Returns ``True`` if the distance and elevation scales are locked to each other.
-
-.. seealso:: :py:func:`setLockAxisScales`
-
-.. versionadded:: 3.32
-%End
-
-    void setLockAxisScales( bool lock );
-%Docstring
-Sets whether the distance and elevation scales are locked to each other.
-
-.. seealso:: :py:func:`lockAxisScales`
-
-.. versionadded:: 3.32
-%End
-
-    Qgis::DistanceUnit distanceUnit() const;
-%Docstring
-Returns the distance unit used by the canvas.
-
-.. seealso:: :py:func:`setDistanceUnit`
-
-.. versionadded:: 3.32
-%End
-
-    void setDistanceUnit( Qgis::DistanceUnit unit );
-%Docstring
-Sets the distance ``unit`` used by the canvas.
-
-.. seealso:: :py:func:`distanceUnit`
-
-.. versionadded:: 3.32
-%End
-
-    void setBackgroundColor( const QColor &color );
-%Docstring
-Sets the background ``color`` to use for the profile canvas.
-
-The chart text, border and axis color will be automatically updated to ensure
-readability with the new background color.
-
-.. versionadded:: 3.34
-%End
-
   signals:
 
     void activeJobCountChanged( int count );
@@ -290,5 +244,5 @@ Sets whether snapping of cursor points is enabled.
  *                                                                      *
  * src/gui/elevation/qgselevationprofilecanvas.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

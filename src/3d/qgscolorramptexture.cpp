@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgscolorramptexture.h"
-#include "moc_qgscolorramptexture.cpp"
 
 /// @cond PRIVATE
 

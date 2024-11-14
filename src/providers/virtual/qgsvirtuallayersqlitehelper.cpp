@@ -41,7 +41,7 @@ QgsScopedSqlite::QgsScopedSqlite( const QString &path, bool withExtension )
   if ( r )
   {
     const QString err = QStringLiteral( "%1 [%2]" ).arg( sqlite3_errmsg( db_ ), path );
-    QgsDebugError( err );
+    QgsDebugMsg( err );
     throw std::runtime_error( err.toUtf8().constData() );
   }
   // enable extended result codes
@@ -121,9 +121,9 @@ namespace Sqlite
 
   Query &Query::bind( const QVariant &value, int idx )
   {
-    switch ( value.userType() )
+    switch ( value.type() )
     {
-      case QMetaType::Type::QString:
+      case QVariant::String:
       {
         const QByteArray ba( value.toString().toUtf8() );
         const int r = sqlite3_bind_text( stmt_, idx, ba.constData(), ba.size(), SQLITE_TRANSIENT );
@@ -134,7 +134,7 @@ namespace Sqlite
         return *this;
       }
 
-      case QMetaType::Type::Double:
+      case QVariant::Double:
       {
         bool ok; // no reason to fail double conversion
         const double dbl = value.toDouble( &ok );

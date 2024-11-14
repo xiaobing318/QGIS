@@ -20,6 +20,7 @@
 #include "qgsmessagelog.h"
 #include "qgsproviderregistry.h"
 #include "qgsspatialiteutils.h"
+#include "qgsvectorfilewriter.h"
 #include "qgswfsutils.h" // for isCompatibleType()
 
 #include <QCryptographicHash>
@@ -179,17 +180,17 @@ bool QgsBackgroundCachedSharedData::createCache()
   std::set<QString> setSQLiteColumnNameUpperCase;
   for ( const QgsField &field : std::as_const( mFields ) )
   {
-    QMetaType::Type type = field.type();
+    QVariant::Type type = field.type();
     // Map DateTime to int64 milliseconds from epoch
-    if ( type == QMetaType::Type::QDateTime )
+    if ( type == QVariant::DateTime )
     {
       // Note: this is just a wish. If GDAL < 2, QgsVectorFileWriter will actually map
       // it to a String
-      type = QMetaType::Type::LongLong;
+      type = QVariant::LongLong;
     }
-    else if ( type == QMetaType::Type::QVariantList && field.subType() == QMetaType::Type::QString )
+    else if ( type == QVariant::List && field.subType() == QVariant::String )
     {
-      type = QMetaType::Type::QStringList;
+      type = QVariant::StringList;
     }
 
     // Make sure we don't have several field names that only differ by their case
@@ -206,11 +207,11 @@ bool QgsBackgroundCachedSharedData::createCache()
     cacheFields.append( QgsField( sqliteFieldName, type, field.typeName() ) );
   }
   // Add some field for our internal use
-  cacheFields.append( QgsField( QgsBackgroundCachedFeatureIteratorConstants::FIELD_GEN_COUNTER, QMetaType::Type::Int, QStringLiteral( "int" ) ) );
-  cacheFields.append( QgsField( QgsBackgroundCachedFeatureIteratorConstants::FIELD_UNIQUE_ID, QMetaType::Type::QString, QStringLiteral( "string" ) ) );
-  cacheFields.append( QgsField( QgsBackgroundCachedFeatureIteratorConstants::FIELD_HEXWKB_GEOM, QMetaType::Type::QString, QStringLiteral( "string" ) ) );
+  cacheFields.append( QgsField( QgsBackgroundCachedFeatureIteratorConstants::FIELD_GEN_COUNTER, QVariant::Int, QStringLiteral( "int" ) ) );
+  cacheFields.append( QgsField( QgsBackgroundCachedFeatureIteratorConstants::FIELD_UNIQUE_ID, QVariant::String, QStringLiteral( "string" ) ) );
+  cacheFields.append( QgsField( QgsBackgroundCachedFeatureIteratorConstants::FIELD_HEXWKB_GEOM, QVariant::String, QStringLiteral( "string" ) ) );
   if ( mDistinctSelect )
-    cacheFields.append( QgsField( QgsBackgroundCachedFeatureIteratorConstants::FIELD_MD5, QMetaType::Type::QString, QStringLiteral( "string" ) ) );
+    cacheFields.append( QgsField( QgsBackgroundCachedFeatureIteratorConstants::FIELD_MD5, QVariant::String, QStringLiteral( "string" ) ) );
 
   const auto logMessageWithReason = [this]( const QString & reason )
   {
@@ -280,13 +281,13 @@ bool QgsBackgroundCachedSharedData::createCache()
     for ( const QgsField &field : std::as_const( cacheFields ) )
     {
       QString type( QStringLiteral( "VARCHAR" ) );
-      if ( field.type() == QMetaType::Type::Int )
+      if ( field.type() == QVariant::Int )
         type = QStringLiteral( "INTEGER" );
-      else if ( field.type() == QMetaType::Type::LongLong )
+      else if ( field.type() == QVariant::LongLong )
         type = QStringLiteral( "BIGINT" );
-      else if ( field.type() == QMetaType::Type::Double )
+      else if ( field.type() == QVariant::Double )
         type = QStringLiteral( "REAL" );
-      else if ( field.type() == QMetaType::Type::QStringList )
+      else if ( field.type() == QVariant::StringList )
         type = QStringLiteral( "JSONSTRINGLIST" );
 
       sql += QStringLiteral( ", %1 %2" ).arg( quotedIdentifier( field.name() ), type );
@@ -295,7 +296,7 @@ bool QgsBackgroundCachedSharedData::createCache()
     rc = sqlite3_exec( database.get(), sql.toUtf8(), nullptr, nullptr, nullptr );
     if ( rc != SQLITE_OK )
     {
-      QgsDebugError( QStringLiteral( "%1 failed" ).arg( sql ) );
+      QgsDebugMsg( QStringLiteral( "%1 failed" ).arg( sql ) );
       if ( failedSql.isEmpty() ) failedSql = sql;
       ret = false;
     }
@@ -304,7 +305,7 @@ bool QgsBackgroundCachedSharedData::createCache()
     rc = sqlite3_exec( database.get(), sql.toUtf8(), nullptr, nullptr, nullptr );
     if ( rc != SQLITE_OK )
     {
-      QgsDebugError( QStringLiteral( "%1 failed" ).arg( sql ) );
+      QgsDebugMsg( QStringLiteral( "%1 failed" ).arg( sql ) );
       if ( failedSql.isEmpty() ) failedSql = sql;
       ret = false;
     }
@@ -313,7 +314,7 @@ bool QgsBackgroundCachedSharedData::createCache()
     rc = sqlite3_exec( database.get(), sql.toUtf8(), nullptr, nullptr, nullptr );
     if ( rc != SQLITE_OK )
     {
-      QgsDebugError( QStringLiteral( "%1 failed" ).arg( sql ) );
+      QgsDebugMsg( QStringLiteral( "%1 failed" ).arg( sql ) );
       if ( failedSql.isEmpty() ) failedSql = sql;
       ret = false;
     }
@@ -325,7 +326,7 @@ bool QgsBackgroundCachedSharedData::createCache()
     rc = sqlite3_exec( database.get(), sql.toUtf8(), nullptr, nullptr, nullptr );
     if ( rc != SQLITE_OK )
     {
-      QgsDebugError( QStringLiteral( "%1 failed" ).arg( sql ) );
+      QgsDebugMsg( QStringLiteral( "%1 failed" ).arg( sql ) );
       if ( failedSql.isEmpty() ) failedSql = sql;
       ret = false;
     }
@@ -336,7 +337,7 @@ bool QgsBackgroundCachedSharedData::createCache()
       rc = sqlite3_exec( database.get(), sql.toUtf8(), nullptr, nullptr, nullptr );
       if ( rc != SQLITE_OK )
       {
-        QgsDebugError( QStringLiteral( "%1 failed" ).arg( sql ) );
+        QgsDebugMsg( QStringLiteral( "%1 failed" ).arg( sql ) );
         if ( failedSql.isEmpty() ) failedSql = sql;
         ret = false;
       }
@@ -401,7 +402,7 @@ bool QgsBackgroundCachedSharedData::createCache()
     ok &= mCacheIdDb.exec( QStringLiteral( "CREATE INDEX idx_qgisId ON id_cache(qgisId)" ), errorMsg ) == SQLITE_OK;
     if ( !ok )
     {
-      QgsDebugError( errorMsg );
+      QgsDebugMsg( errorMsg );
       return false;
     }
   }
@@ -626,10 +627,10 @@ void QgsBackgroundCachedSharedData::serializeFeatures( QVector<QgsFeatureUniqueI
       if ( idx >= 0 )
       {
         const QVariant &v = srcFeature.attributes().value( i );
-        const QMetaType::Type fieldType = dataProviderFields.at( idx ).type();
-        if ( v.userType() == QMetaType::Type::QDateTime && !QgsVariantUtils::isNull( v ) )
+        const QVariant::Type fieldType = dataProviderFields.at( idx ).type();
+        if ( v.type() == QVariant::DateTime && !QgsVariantUtils::isNull( v ) )
           cachedFeature.setAttribute( idx, QVariant( v.toDateTime().toMSecsSinceEpoch() ) );
-        else if ( v.userType() == QMetaType::Type::QVariantMap  && !QgsVariantUtils::isNull( v ) )
+        else if ( v.type() == QVariant::Map  && !QgsVariantUtils::isNull( v ) )
         {
           QString stringValue = QString::fromUtf8( QJsonDocument::fromVariant( v ).toJson().constData() );
           if ( stringValue.isEmpty() )
@@ -639,7 +640,7 @@ void QgsBackgroundCachedSharedData::serializeFeatures( QVector<QgsFeatureUniqueI
           }
           cachedFeature.setAttribute( idx, stringValue );
         }
-        else if ( QgsWFSUtils::isCompatibleType( static_cast<QMetaType::Type>( v.userType() ), fieldType ) )
+        else if ( QgsWFSUtils::isCompatibleType( v.type(), fieldType ) )
           cachedFeature.setAttribute( idx, v );
         else
           cachedFeature.setAttribute( idx, QgsVectorDataProvider::convertValue( fieldType, v.toString() ) );
@@ -796,7 +797,7 @@ void QgsBackgroundCachedSharedData::endOfDownload( bool success, long long featu
     if ( featureCount == 0 && mRect.contains( mCapabilityExtent ) && !hasServerSideFilter() &&
          supportsFastFeatureCount() && hasGeometry() && !mTryFetchingOneFeature )
     {
-      QgsDebugMsgLevel( QStringLiteral( "Capability extent is probably wrong. Starting a new request with one feature limit to get at least one feature" ), 2 );
+      QgsDebugMsg( QStringLiteral( "Capability extent is probably wrong. Starting a new request with one feature limit to get at least one feature" ) );
       mTryFetchingOneFeature = true;
       mComputedExtent = getExtentFromSingleFeatureRequest();
       if ( !mComputedExtent.isNull() &&
@@ -804,9 +805,9 @@ void QgsBackgroundCachedSharedData::endOfDownload( bool success, long long featu
       {
         // Grow the extent by ~ 50 km (completely arbitrary number if you wonder!)
         // so that it is sufficiently zoomed out
-        if ( mSourceCrs.mapUnits() == Qgis::DistanceUnit::Meters )
+        if ( mSourceCrs.mapUnits() == QgsUnitTypes::DistanceMeters )
           mComputedExtent.grow( 50. * 1000. );
-        else if ( mSourceCrs.mapUnits() == Qgis::DistanceUnit::Degrees )
+        else if ( mSourceCrs.mapUnits() == QgsUnitTypes::DistanceDegrees )
           mComputedExtent.grow( 50. / 110 );
         pushError( QObject::tr( "Layer extent reported by the server is not correct. "
                                 "You may need to zoom on layer and then zoom out to see all features" ) );
@@ -853,8 +854,8 @@ void QgsBackgroundCachedSharedData::endOfDownload( bool success, long long featu
       // contains duplicates. Actually happens with
       // http://demo.opengeo.org/geoserver/wfs?SERVICE=WFS&REQUEST=GetFeature&VERSION=2.0.0&TYPENAMES=osm:landcover_line
       // with gml.id=landcover_line.119246130 in particular
-      QgsDebugMsgLevel( QStringLiteral( "raw features=%1, unique features=%2" ).
-                        arg( featureCount ).arg( mFeatureCount ), 2 );
+      QgsDebugMsg( QStringLiteral( "raw features=%1, unique features=%2" ).
+                   arg( featureCount ).arg( mFeatureCount ) );
     }
   }
 
@@ -1071,7 +1072,7 @@ bool QgsBackgroundCachedSharedData::changeGeometryValues( const QgsGeometryMap &
     if ( stmt.step() != SQLITE_ROW )
     {
       // shouldn't happen normally
-      QgsDebugError( QStringLiteral( "cannot find dbId corresponding to qgisId = %1" ).arg( iter.key() ) );
+      QgsDebugMsg( QStringLiteral( "cannot find dbId corresponding to qgisId = %1" ).arg( iter.key() ) );
       continue;
     }
     QgsFeatureId dbId = stmt.columnAsInt64( 0 );
@@ -1116,7 +1117,7 @@ bool QgsBackgroundCachedSharedData::changeAttributeValues( const QgsChangedAttri
     if ( stmt.step() != SQLITE_ROW )
     {
       // shouldn't happen normally
-      QgsDebugError( QStringLiteral( "cannot find dbId corresponding to qgisId = %1" ).arg( iter.key() ) );
+      QgsDebugMsg( QStringLiteral( "cannot find dbId corresponding to qgisId = %1" ).arg( iter.key() ) );
       continue;
     }
     QgsFeatureId dbId = stmt.columnAsInt64( 0 );
@@ -1129,7 +1130,7 @@ bool QgsBackgroundCachedSharedData::changeAttributeValues( const QgsChangedAttri
     {
       int idx = dataProviderFields.indexFromName( mMapUserVisibleFieldNameToSpatialiteColumnName[mFields.at( siter.key() ).name()] );
       Q_ASSERT( idx >= 0 );
-      if ( siter.value().userType() == QMetaType::Type::QDateTime && !QgsVariantUtils::isNull( siter.value() ) )
+      if ( siter.value().type() == QVariant::DateTime && !QgsVariantUtils::isNull( siter.value() ) )
         newAttrMap[idx] = QVariant( siter.value().toDateTime().toMSecsSinceEpoch() );
       else
         newAttrMap[idx] = siter.value();
@@ -1153,26 +1154,26 @@ QString QgsBackgroundCachedSharedData::getMD5( const QgsFeature &f )
     {
       // nothing to do
     }
-    else if ( v.userType() == QMetaType::Type::QDateTime )
+    else if ( v.type() == QVariant::DateTime )
     {
       qint64 val = v.toDateTime().toMSecsSinceEpoch();
       hash.addData( QByteArray( ( const char * )&val, sizeof( val ) ) );
     }
-    else if ( v.userType() == QMetaType::Type::Int )
+    else if ( v.type() == QVariant::Int )
     {
       int val = v.toInt();
       hash.addData( QByteArray( ( const char * )&val, sizeof( val ) ) );
     }
-    else if ( v.userType() == QMetaType::Type::LongLong )
+    else if ( v.type() == QVariant::LongLong )
     {
       qint64 val = v.toLongLong();
       hash.addData( QByteArray( ( const char * )&val, sizeof( val ) ) );
     }
-    else if ( v.userType() == QMetaType::Type::QString )
+    else if ( v.type() == QVariant::String )
     {
       hash.addData( v.toByteArray() );
     }
-    else if ( v.userType() == QMetaType::Type::QStringList )
+    else if ( v.type() == QVariant::StringList )
     {
       for ( const QString &s : v.toStringList() )
         hash.addData( s.toUtf8() );

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgstablewidgetbase.h                                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -15,6 +15,8 @@ Base widget allowing to edit a collection, using a table.
 
 This widget includes buttons to add and remove rows.
 Child classes must call init(QAbstractTableModel*) from their constructor.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -25,26 +27,6 @@ Child classes must call init(QAbstractTableModel*) from their constructor.
     explicit QgsTableWidgetBase( QWidget *parent );
 %Docstring
 Constructor.
-%End
-
-    bool isReadOnly() const;
-%Docstring
-Returns ``True`` if the widget is shown in a read-only state.
-
-.. seealso:: :py:func:`setReadOnly`
-
-.. versionadded:: 3.38
-%End
-
-  public slots:
-
-    virtual void setReadOnly( bool readOnly );
-%Docstring
-Sets whether the widget should be shown in a read-only state.
-
-.. seealso:: :py:func:`isReadOnly`
-
-.. versionadded:: 3.38
 %End
 
   protected:
@@ -70,5 +52,5 @@ Emitted each time a key or a value is changed.
  *                                                                      *
  * src/gui/qgstablewidgetbase.h                                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -17,7 +17,7 @@
    </sizepolicy>
   </property>
   <property name="windowTitle">
-   <string>Save Point Cloud Layer as…</string>
+   <string>Save Vector Layer as…</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_2">
    <item>

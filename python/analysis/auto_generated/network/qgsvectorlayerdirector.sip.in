@@ -3,7 +3,7 @@
  *                                                                      *
  * src/analysis/network/qgsvectorlayerdirector.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -14,6 +14,8 @@ class QgsVectorLayerDirector : QgsGraphDirector
 {
 %Docstring(signature="appended")
 Determine making the graph from vector line layer
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -65,5 +67,5 @@ MANDATORY DIRECTOR PROPERTY DECLARATION
  *                                                                      *
  * src/analysis/network/qgsvectorlayerdirector.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

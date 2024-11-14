@@ -17,7 +17,6 @@
 
 #include "qgsgdalutils.h"
 #include "qgsrastercalcdialog.h"
-#include "moc_qgsrastercalcdialog.cpp"
 #include "qgsproject.h"
 #include "qgsrastercalcnode.h"
 #include "qgsrasterdataprovider.h"

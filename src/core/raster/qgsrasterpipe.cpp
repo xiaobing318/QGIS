@@ -86,7 +86,7 @@ bool QgsRasterPipe::connect( QVector<QgsRasterInterface *> interfaces )
 #ifdef QGISDEBUG
       const QgsRasterInterface &a = *interfaces[i];
       const QgsRasterInterface &b = *interfaces[i - 1];
-      QgsDebugError( QStringLiteral( "cannot connect %1 to %2" ).arg( typeid( a ).name(), typeid( b ).name() ) );
+      QgsDebugMsg( QStringLiteral( "cannot connect %1 to %2" ).arg( typeid( a ).name(), typeid( b ).name() ) );
 #endif
       return false;
     }
@@ -192,12 +192,15 @@ void QgsRasterPipe::unsetRole( QgsRasterInterface *interface )
   mRoleMap.remove( role );
 
   // Decrease all indexes greater than the removed one
-  const QMap<Qgis::RasterPipeInterfaceRole, int> currentRoles = mRoleMap;
-  for ( auto it = currentRoles.cbegin(); it != currentRoles.cend(); ++it )
+  const auto roleMapValues {mRoleMap.values()};
+  if ( roleIdx < *std::max_element( roleMapValues.begin(), roleMapValues.end() ) )
   {
-    if ( it.value() > roleIdx )
+    for ( auto it = mRoleMap.cbegin(); it != mRoleMap.cend(); ++it )
     {
-      mRoleMap[it.key()] = it.value() - 1;
+      if ( it.value() > roleIdx )
+      {
+        mRoleMap[it.key()] = it.value() - 1;
+      }
     }
   }
 }
@@ -423,14 +426,14 @@ void QgsRasterPipe::evaluateDataDefinedProperties( QgsExpressionContext &context
   if ( !mDataDefinedProperties.hasActiveProperties() )
     return;
 
-  if ( mDataDefinedProperties.isActive( Property::RendererOpacity ) )
+  if ( mDataDefinedProperties.isActive( RendererOpacity ) )
   {
     if ( QgsRasterRenderer *r = renderer() )
     {
       const double prevOpacity = r->opacity();
       context.setOriginalValueVariable( prevOpacity * 100 );
       bool ok = false;
-      const double opacity = mDataDefinedProperties.valueAsDouble( Property::RendererOpacity, context, prevOpacity, &ok ) / 100;
+      const double opacity = mDataDefinedProperties.valueAsDouble( RendererOpacity, context, prevOpacity, &ok ) / 100;
       if ( ok )
       {
         r->setOpacity( opacity );
@@ -447,7 +450,7 @@ void QgsRasterPipe::initPropertyDefinitions()
 
   sPropertyDefinitions = QgsPropertiesDefinition
   {
-    { static_cast< int >( QgsRasterPipe::Property::RendererOpacity ), QgsPropertyDefinition( "RendererOpacity", QObject::tr( "Renderer opacity" ), QgsPropertyDefinition::Opacity, origin ) },
+    { QgsRasterPipe::RendererOpacity, QgsPropertyDefinition( "RendererOpacity", QObject::tr( "Renderer opacity" ), QgsPropertyDefinition::Opacity, origin ) },
   };
 }
 

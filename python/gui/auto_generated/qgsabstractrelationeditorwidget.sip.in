@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsabstractrelationeditorwidget.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -104,18 +104,16 @@ Returns the attribute editor context.
 %Docstring
 Defines if a title label should be shown for this widget.
 
-.. deprecated:: 3.20
-
-   Label is handled directly in :py:class:`QgsAttributeForm`.
+.. deprecated:: QGIS 3.20
+   label is handled directly in :py:class:`QgsAttributeForm`.
 %End
 
  void setShowLabel( bool showLabel ) /Deprecated/;
 %Docstring
 Defines if a title label should be shown for this widget.
 
-.. deprecated:: 3.20
-
-   Label is handled directly in :py:class:`QgsAttributeForm`.
+.. deprecated:: QGIS 3.20
+   label is handled directly in :py:class:`QgsAttributeForm`.
 %End
 
     QVariant nmRelationId() const;
@@ -133,9 +131,8 @@ If it's empty, then it's considered as a 1:M relationship.
 %Docstring
 Determines the label of this element
 
-.. deprecated:: 3.20
-
-   Label is handled directly in :py:class:`QgsAttributeForm`.
+.. deprecated:: QGIS 3.20
+   label is handled directly in :py:class:`QgsAttributeForm`.
 %End
 
     void setLabel( const QString &label = QString() );
@@ -229,11 +226,9 @@ Adds new features with given ``geometry``
 Delete a feature with given ``fid``
 %End
 
-    void linkFeature( const QString &filterExpression = QString() );
+    void linkFeature();
 %Docstring
 Links a new feature to the relation
-
-:param filterExpression: to filter the available features in the link dialog since QGIS 3.40
 %End
 
     void onLinkFeatureDlgAccepted();
@@ -270,9 +265,8 @@ Refresh the UI when the widget becomes visible
 %Docstring
 Updates the title contents to reflect the current state of the widget
 
-.. deprecated:: 3.20
-
-   Label is handled directly in :py:class:`QgsAttributeForm`.
+.. deprecated:: QGIS 3.20
+   label is handled directly in :py:class:`QgsAttributeForm`.
 %End
 
     void deleteFeatures( const QgsFeatureIds &fids );
@@ -298,9 +292,8 @@ Check :py:class:`QgsRealationEditorWidget` as an example.
 %Docstring
 Sets the title of the widget, if it is wrapped within a :py:class:`QgsCollapsibleGroupBox`
 
-.. deprecated:: 3.20
-
-   Label is handled directly in :py:class:`QgsAttributeForm`.
+.. deprecated:: QGIS 3.20
+   label is handled directly in :py:class:`QgsAttributeForm`.
 %End
 
     virtual void beforeSetRelationFeature( const QgsRelation &newRelation, const QgsFeature &newFeature );
@@ -466,5 +459,5 @@ Create a new configuration widget for this widget type.
  *                                                                      *
  * src/gui/qgsabstractrelationeditorwidget.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

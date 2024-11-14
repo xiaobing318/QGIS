@@ -16,14 +16,13 @@ __copyright__ = 'Copyright 2020, ItOpen'
 import os
 
 from qgis.core import (
-    QgsLegendModel,
-    QgsLegendRenderer,
-    QgsLegendSettings,
     QgsProject,
+    QgsLegendModel,
+    QgsLegendSettings,
+    QgsLegendRenderer,
     QgsRenderContext,
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -31,7 +30,7 @@ QGISAPP = start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestPyQgsLegendRenderer(QgisTestCase):
+class TestPyQgsLegendRenderer(unittest.TestCase):
 
     def test_json_export(self):
 
@@ -42,7 +41,7 @@ class TestPyQgsLegendRenderer(QgisTestCase):
         settings = QgsLegendSettings()
         renderer = QgsLegendRenderer(model, settings)
         nodes = renderer.exportLegendToJson(ctx)['nodes'].toVariant()
-        self.assertEqual(len(nodes), 9)
+        self.assertEqual(len(nodes), 7)
         self.assertEqual(nodes[0]['type'], 'layer')
         self.assertEqual(nodes[0]['title'], 'testlayer')
 

@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgslayoutitem.h"
-#include "moc_qgslayoutitem.cpp"
 #include "qgslayout.h"
 #include "qgslayoututils.h"
 #include "qgspagesizeregistry.h"
@@ -24,13 +23,12 @@
 #include "qgssymbollayerutils.h"
 #include "qgslayoutitemgroup.h"
 #include "qgspainting.h"
+#include "qgslayouteffect.h"
 #include "qgslayoutundostack.h"
 #include "qgslayoutpagecollection.h"
 #include "qgslayoutitempage.h"
 #include "qgsimageoperation.h"
 #include "qgsexpressioncontextutils.h"
-#include "qgslayoutrendercontext.h"
-#include "qgssvgcache.h"
 
 #include <QPainter>
 #include <QStyleOptionGraphicsItem>
@@ -59,7 +57,7 @@ QgsLayoutItem::QgsLayoutItem( QgsLayout *layout, bool manageZValue )
   setCacheMode( QGraphicsItem::DeviceCoordinateCache );
 
   //record initial position
-  const Qgis::LayoutUnit initialUnits = layout ? layout->units() : Qgis::LayoutUnit::Millimeters;
+  const QgsUnitTypes::LayoutUnit initialUnits = layout ? layout->units() : QgsUnitTypes::LayoutMillimeters;
   mItemPosition = QgsLayoutPoint( scenePos().x(), scenePos().y(), initialUnits );
   mItemSize = QgsLayoutSize( rect().width(), rect().height(), initialUnits );
 
@@ -79,11 +77,23 @@ QgsLayoutItem::QgsLayoutItem( QgsLayout *layout, bool manageZValue )
   {
     mLayoutManagesZValue = false;
   }
+
+  // Setup layout effect
+  mEffect = new QgsLayoutEffect();
+  if ( mLayout )
+  {
+    mEffect->setEnabled( mLayout->renderContext().flags() & QgsLayoutRenderContext::FlagUseAdvancedEffects );
+    connect( &mLayout->renderContext(), &QgsLayoutRenderContext::flagsChanged, this, [ = ]( QgsLayoutRenderContext::Flags flags )
+    {
+      mEffect->setEnabled( flags & QgsLayoutRenderContext::FlagUseAdvancedEffects );
+    } );
+  }
+  setGraphicsEffect( mEffect.data() );
 }
 
 QgsLayoutItem::~QgsLayoutItem()
 {
-  QgsLayoutItem::cleanup();
+  cleanup();
 }
 
 void QgsLayoutItem::cleanup()
@@ -114,11 +124,6 @@ QString QgsLayoutItem::displayName() const
 int QgsLayoutItem::type() const
 {
   return QgsLayoutItemRegistry::LayoutItem;
-}
-
-QIcon QgsLayoutItem::icon() const
-{
-  return QgsApplication::getThemeIcon( QStringLiteral( "/mLayoutItem.svg" ) );
 }
 
 QgsLayoutItem::Flags QgsLayoutItem::itemFlags() const
@@ -284,6 +289,8 @@ void QgsLayoutItem::paint( QPainter *painter, const QStyleOptionGraphicsItem *it
     return;
   }
 
+  //TODO - remember to disable saving/restoring on graphics view!!
+
   if ( shouldDrawDebugRect() )
   {
     drawDebugRect( painter );
@@ -293,19 +300,7 @@ void QgsLayoutItem::paint( QPainter *painter, const QStyleOptionGraphicsItem *it
   const bool previewRender = !mLayout || mLayout->renderContext().isPreviewRender();
   double destinationDpi = previewRender ? QgsLayoutUtils::scaleFactorFromItemStyle( itemStyle, painter ) * 25.4 : mLayout->renderContext().dpi();
   const bool useImageCache = false;
-  bool forceRasterOutput = containsAdvancedEffects();
-  QPainter::CompositionMode blendMode = blendModeForRender();
-  if ( mLayout->renderContext().flags() & QgsLayoutRenderContext::FlagForceVectorOutput )
-  {
-    // the FlagForceVectorOutput flag overrides everything, and absolutely DISABLES rasterisation
-    // even when we need it to get correct rendering of opacity/blend modes/etc
-    forceRasterOutput = false;
-  }
-  else if ( blendMode != QPainter::CompositionMode_SourceOver )
-  {
-    // we have to rasterize content in order to show it with alternative blend modes
-    forceRasterOutput = true;
-  }
+  const bool forceRasterOutput = containsAdvancedEffects() && ( !mLayout || !( mLayout->renderContext().flags() & QgsLayoutRenderContext::FlagForceVectorOutput ) );
 
   if ( useImageCache || forceRasterOutput )
   {
@@ -319,7 +314,7 @@ void QgsLayoutItem::paint( QPainter *painter, const QStyleOptionGraphicsItem *it
     }
     else
     {
-      const double layoutUnitsToPixels = mLayout ? mLayout->convertFromLayoutUnits( 1, Qgis::LayoutUnit::Pixels ).length() : destinationDpi / 25.4;
+      const double layoutUnitsToPixels = mLayout ? mLayout->convertFromLayoutUnits( 1, QgsUnitTypes::LayoutPixels ).length() : destinationDpi / 25.4;
       widthInPixels = boundingRect().width() * layoutUnitsToPixels;
       heightInPixels = boundingRect().height() * layoutUnitsToPixels;
     }
@@ -351,7 +346,6 @@ void QgsLayoutItem::paint( QPainter *painter, const QStyleOptionGraphicsItem *it
       preparePainter( painter );
       const double cacheScale = destinationDpi / mItemCacheDpi;
       painter->scale( cacheScale / context.scaleFactor(), cacheScale / context.scaleFactor() );
-      painter->setCompositionMode( blendMode );
       painter->drawImage( boundingRect().x() * context.scaleFactor() / cacheScale,
                           boundingRect().y() * context.scaleFactor() / cacheScale, mItemCachedImage );
       return;
@@ -387,7 +381,6 @@ void QgsLayoutItem::paint( QPainter *painter, const QStyleOptionGraphicsItem *it
       const QgsScopedQPainterState painterState( painter );
       // scale painter from mm to dots
       painter->scale( 1.0 / context.scaleFactor(), 1.0 / context.scaleFactor() );
-      painter->setCompositionMode( blendMode );
       painter->drawImage( boundingRect().x() * context.scaleFactor(),
                           boundingRect().y() * context.scaleFactor(), image );
 
@@ -416,11 +409,6 @@ void QgsLayoutItem::paint( QPainter *painter, const QStyleOptionGraphicsItem *it
 
     painter->scale( context.scaleFactor(), context.scaleFactor() );
     drawFrame( context );
-  }
-
-  if ( isRefreshing() && previewRender )
-  {
-    drawRefreshingOverlay( painter, itemStyle );
   }
 }
 
@@ -686,7 +674,7 @@ bool QgsLayoutItem::writeXml( QDomElement &parentElement, QDomDocument &doc, con
   element.appendChild( bgColorElem );
 
   //blend mode
-  element.setAttribute( QStringLiteral( "blendMode" ), static_cast< int >( QgsPainting::getBlendModeEnum( mBlendMode ) ) );
+  element.setAttribute( QStringLiteral( "blendMode" ), QgsPainting::getBlendModeEnum( mBlendMode ) );
 
   //opacity
   element.setAttribute( QStringLiteral( "opacity" ), QString::number( mOpacity ) );
@@ -810,7 +798,7 @@ bool QgsLayoutItem::readXml( const QDomElement &element, const QDomDocument &doc
   }
 
   //blend mode
-  setBlendMode( QgsPainting::getCompositionMode( static_cast< Qgis::BlendMode >( element.attribute( QStringLiteral( "blendMode" ), QStringLiteral( "0" ) ).toUInt() ) ) );
+  setBlendMode( QgsPainting::getCompositionMode( static_cast< QgsPainting::BlendMode >( element.attribute( QStringLiteral( "blendMode" ), QStringLiteral( "0" ) ).toUInt() ) ) );
 
   //opacity
   if ( element.hasAttribute( QStringLiteral( "opacity" ) ) )
@@ -914,7 +902,6 @@ void QgsLayoutItem::setBlendMode( const QPainter::CompositionMode mode )
   mBlendMode = mode;
   // Update the item effect to use the new blend mode
   refreshBlendMode();
-  update();
 }
 
 void QgsLayoutItem::setItemOpacity( double opacity )
@@ -933,7 +920,7 @@ bool QgsLayoutItem::excludeFromExports() const
 void QgsLayoutItem::setExcludeFromExports( bool exclude )
 {
   mExcludeFromExports = exclude;
-  refreshDataDefinedProperty( QgsLayoutObject::DataDefinedProperty::ExcludeFromExports );
+  refreshDataDefinedProperty( QgsLayoutObject::ExcludeFromExports );
 }
 
 bool QgsLayoutItem::containsAdvancedEffects() const
@@ -1006,15 +993,15 @@ QgsLayoutPoint QgsLayoutItem::applyDataDefinedPosition( const QgsLayoutPoint &po
   }
 
   const QgsExpressionContext context = createExpressionContext();
-  const double evaluatedX = mDataDefinedProperties.valueAsDouble( QgsLayoutObject::DataDefinedProperty::PositionX, context, position.x() );
-  const double evaluatedY = mDataDefinedProperties.valueAsDouble( QgsLayoutObject::DataDefinedProperty::PositionY, context, position.y() );
+  const double evaluatedX = mDataDefinedProperties.valueAsDouble( QgsLayoutObject::PositionX, context, position.x() );
+  const double evaluatedY = mDataDefinedProperties.valueAsDouble( QgsLayoutObject::PositionY, context, position.y() );
   return QgsLayoutPoint( evaluatedX, evaluatedY, position.units() );
 }
 
 void QgsLayoutItem::applyDataDefinedOrientation( double &width, double &height, const QgsExpressionContext &context )
 {
   bool ok = false;
-  const QString orientationString = mDataDefinedProperties.valueAsString( QgsLayoutObject::DataDefinedProperty::PaperOrientation, context, QString(), &ok );
+  const QString orientationString = mDataDefinedProperties.valueAsString( QgsLayoutObject::PaperOrientation, context, QString(), &ok );
   if ( ok && !orientationString.isEmpty() )
   {
     const QgsLayoutItemPage::Orientation orientation = QgsLayoutUtils::decodePaperOrientation( orientationString, ok );
@@ -1049,17 +1036,17 @@ QgsLayoutSize QgsLayoutItem::applyDataDefinedSize( const QgsLayoutSize &size )
     return size;
   }
 
-  if ( !mDataDefinedProperties.isActive( QgsLayoutObject::DataDefinedProperty::PresetPaperSize ) &&
-       !mDataDefinedProperties.isActive( QgsLayoutObject::DataDefinedProperty::ItemWidth ) &&
-       !mDataDefinedProperties.isActive( QgsLayoutObject::DataDefinedProperty::ItemHeight ) &&
-       !mDataDefinedProperties.isActive( QgsLayoutObject::DataDefinedProperty::PaperOrientation ) )
+  if ( !mDataDefinedProperties.isActive( QgsLayoutObject::PresetPaperSize ) &&
+       !mDataDefinedProperties.isActive( QgsLayoutObject::ItemWidth ) &&
+       !mDataDefinedProperties.isActive( QgsLayoutObject::ItemHeight ) &&
+       !mDataDefinedProperties.isActive( QgsLayoutObject::PaperOrientation ) )
     return size;
 
 
   const QgsExpressionContext context = createExpressionContext();
 
   // lowest priority is page size
-  const QString pageSize = mDataDefinedProperties.valueAsString( QgsLayoutObject::DataDefinedProperty::PresetPaperSize, context );
+  const QString pageSize = mDataDefinedProperties.valueAsString( QgsLayoutObject::PresetPaperSize, context );
   QgsPageSize matchedSize;
   double evaluatedWidth = size.width();
   double evaluatedHeight = size.height();
@@ -1071,31 +1058,13 @@ QgsLayoutSize QgsLayoutItem::applyDataDefinedSize( const QgsLayoutSize &size )
   }
 
   // highest priority is dd width/height
-  evaluatedWidth = mDataDefinedProperties.valueAsDouble( QgsLayoutObject::DataDefinedProperty::ItemWidth, context, evaluatedWidth );
-  evaluatedHeight = mDataDefinedProperties.valueAsDouble( QgsLayoutObject::DataDefinedProperty::ItemHeight, context, evaluatedHeight );
+  evaluatedWidth = mDataDefinedProperties.valueAsDouble( QgsLayoutObject::ItemWidth, context, evaluatedWidth );
+  evaluatedHeight = mDataDefinedProperties.valueAsDouble( QgsLayoutObject::ItemHeight, context, evaluatedHeight );
 
   //which is finally overwritten by data defined orientation
   applyDataDefinedOrientation( evaluatedWidth, evaluatedHeight, context );
 
   return QgsLayoutSize( evaluatedWidth, evaluatedHeight, size.units() );
-}
-
-QPainter::CompositionMode QgsLayoutItem::blendModeForRender() const
-{
-  QPainter::CompositionMode mode = mEvaluatedBlendMode;
-  if ( !( mLayout->renderContext().flags() & QgsLayoutRenderContext::FlagUseAdvancedEffects ) )
-  {
-    // advanced effects disabled, reset blend mode
-    mode = QPainter::CompositionMode_SourceOver;
-  }
-
-  if ( mLayout->renderContext().flags() & QgsLayoutRenderContext::FlagForceVectorOutput )
-  {
-    // the FlagForceVectorOutput flag overrides everything, and absolutely DISABLES rasterisation
-    // even when we need it to get correct rendering of opacity/blend modes/etc
-    mode = QPainter::CompositionMode_SourceOver;
-  }
-  return mode;
 }
 
 double QgsLayoutItem::applyDataDefinedRotation( const double rotation )
@@ -1106,7 +1075,7 @@ double QgsLayoutItem::applyDataDefinedRotation( const double rotation )
   }
 
   const QgsExpressionContext context = createExpressionContext();
-  const double evaluatedRotation = mDataDefinedProperties.valueAsDouble( QgsLayoutObject::DataDefinedProperty::ItemRotation, context, rotation );
+  const double evaluatedRotation = mDataDefinedProperties.valueAsDouble( QgsLayoutObject::ItemRotation, context, rotation );
   return evaluatedRotation;
 }
 
@@ -1115,41 +1084,41 @@ void QgsLayoutItem::refreshDataDefinedProperty( const QgsLayoutObject::DataDefin
   //update data defined properties and update item to match
 
   //evaluate width and height first, since they may affect position if non-top-left reference point set
-  if ( property == QgsLayoutObject::DataDefinedProperty::ItemWidth || property == QgsLayoutObject::DataDefinedProperty::ItemHeight ||
-       property == QgsLayoutObject::DataDefinedProperty::AllProperties )
+  if ( property == QgsLayoutObject::ItemWidth || property == QgsLayoutObject::ItemHeight ||
+       property == QgsLayoutObject::AllProperties )
   {
     refreshItemSize();
   }
-  if ( property == QgsLayoutObject::DataDefinedProperty::PositionX || property == QgsLayoutObject::DataDefinedProperty::PositionY ||
-       property == QgsLayoutObject::DataDefinedProperty::AllProperties )
+  if ( property == QgsLayoutObject::PositionX || property == QgsLayoutObject::PositionY ||
+       property == QgsLayoutObject::AllProperties )
   {
     refreshItemPosition();
   }
-  if ( property == QgsLayoutObject::DataDefinedProperty::ItemRotation || property == QgsLayoutObject::DataDefinedProperty::AllProperties )
+  if ( property == QgsLayoutObject::ItemRotation || property == QgsLayoutObject::AllProperties )
   {
     refreshItemRotation();
   }
-  if ( property == QgsLayoutObject::DataDefinedProperty::Opacity || property == QgsLayoutObject::DataDefinedProperty::AllProperties )
+  if ( property == QgsLayoutObject::Opacity || property == QgsLayoutObject::AllProperties )
   {
     refreshOpacity( false );
   }
-  if ( property == QgsLayoutObject::DataDefinedProperty::FrameColor || property == QgsLayoutObject::DataDefinedProperty::AllProperties )
+  if ( property == QgsLayoutObject::FrameColor || property == QgsLayoutObject::AllProperties )
   {
     refreshFrame( false );
   }
-  if ( property == QgsLayoutObject::DataDefinedProperty::BackgroundColor || property == QgsLayoutObject::DataDefinedProperty::AllProperties )
+  if ( property == QgsLayoutObject::BackgroundColor || property == QgsLayoutObject::AllProperties )
   {
     refreshBackgroundColor( false );
   }
-  if ( property == QgsLayoutObject::DataDefinedProperty::BlendMode || property == QgsLayoutObject::DataDefinedProperty::AllProperties )
+  if ( property == QgsLayoutObject::BlendMode || property == QgsLayoutObject::AllProperties )
   {
     refreshBlendMode();
   }
-  if ( property == QgsLayoutObject::DataDefinedProperty::ExcludeFromExports || property == QgsLayoutObject::DataDefinedProperty::AllProperties )
+  if ( property == QgsLayoutObject::ExcludeFromExports || property == QgsLayoutObject::AllProperties )
   {
     const bool exclude = mExcludeFromExports;
     //data defined exclude from exports set?
-    mEvaluatedExcludeFromExports = mDataDefinedProperties.valueAsBool( QgsLayoutObject::DataDefinedProperty::ExcludeFromExports, createExpressionContext(), exclude );
+    mEvaluatedExcludeFromExports = mDataDefinedProperties.valueAsBool( QgsLayoutObject::ExcludeFromExports, createExpressionContext(), exclude );
   }
 
   update();
@@ -1185,11 +1154,6 @@ void QgsLayoutItem::rotateItem( const double angle, const QPointF transformOrigi
   QPointF itemTransformOrigin = mapFromScene( transformOrigin );
 
   refreshItemRotation( &itemTransformOrigin );
-}
-
-bool QgsLayoutItem::isRefreshing() const
-{
-  return false;
 }
 
 QgsExpressionContext QgsLayoutItem::createExpressionContext() const
@@ -1283,18 +1247,6 @@ void QgsLayoutItem::drawBackground( QgsRenderContext &context )
   context.setPainterFlagsUsingContext( p );
 
   p->drawPath( framePath() );
-}
-
-void QgsLayoutItem::drawRefreshingOverlay( QPainter *painter, const QStyleOptionGraphicsItem *itemStyle )
-{
-  const QgsScopedQPainterState painterState( painter );
-  bool fitsInCache = false;
-  const int xSize = std::floor( static_cast<double>( QFontMetrics( QFont() ).horizontalAdvance( 'X' ) ) * painter->device()->devicePixelRatioF() );
-  const QImage refreshingImage = QgsApplication::svgCache()->svgAsImage( QStringLiteral( ":/images/composer/refreshing_item.svg" ), xSize * 3, QColor(), QColor(), 1, 1, fitsInCache );
-
-  const double previewScaleFactor = QgsLayoutUtils::scaleFactorFromItemStyle( itemStyle, painter );
-  painter->scale( 1.0 / previewScaleFactor / painter->device()->devicePixelRatioF(), 1.0 / previewScaleFactor / painter->device()->devicePixelRatioF() );
-  painter->drawImage( xSize, xSize, refreshingImage );
 }
 
 void QgsLayoutItem::setFixedSize( const QgsLayoutSize &size )
@@ -1447,7 +1399,7 @@ void QgsLayoutItem::refreshItemRotation( QPointF *origin )
   double r = mItemRotation;
 
   //data defined rotation set?
-  r = mDataDefinedProperties.valueAsDouble( QgsLayoutObject::DataDefinedProperty::ItemRotation, createExpressionContext(), r );
+  r = mDataDefinedProperties.valueAsDouble( QgsLayoutItem::ItemRotation, createExpressionContext(), r );
 
   if ( qgsDoubleNear( r, rotation() ) && !origin )
   {
@@ -1484,7 +1436,7 @@ void QgsLayoutItem::refreshItemRotation( QPointF *origin )
 void QgsLayoutItem::refreshOpacity( bool updateItem )
 {
   //data defined opacity set?
-  const double opacity = mDataDefinedProperties.valueAsDouble( QgsLayoutObject::DataDefinedProperty::Opacity, createExpressionContext(), mOpacity * 100.0 );
+  const double opacity = mDataDefinedProperties.valueAsDouble( QgsLayoutObject::Opacity, createExpressionContext(), mOpacity * 100.0 );
 
   // Set the QGraphicItem's opacity
   mEvaluatedOpacity = opacity / 100.0;
@@ -1512,7 +1464,7 @@ void QgsLayoutItem::refreshFrame( bool updateItem )
 
   //data defined stroke color set?
   bool ok = false;
-  const QColor frameColor = mDataDefinedProperties.valueAsColor( QgsLayoutObject::DataDefinedProperty::FrameColor, createExpressionContext(), mFrameColor, &ok );
+  const QColor frameColor = mDataDefinedProperties.valueAsColor( QgsLayoutObject::FrameColor, createExpressionContext(), mFrameColor, &ok );
   QPen itemPen;
   if ( ok )
   {
@@ -1547,7 +1499,7 @@ void QgsLayoutItem::refreshBackgroundColor( bool updateItem )
 {
   //data defined fill color set?
   bool ok = false;
-  const QColor backgroundColor = mDataDefinedProperties.valueAsColor( QgsLayoutObject::DataDefinedProperty::BackgroundColor, createExpressionContext(), mBackgroundColor, &ok );
+  const QColor backgroundColor = mDataDefinedProperties.valueAsColor( QgsLayoutObject::BackgroundColor, createExpressionContext(), mBackgroundColor, &ok );
   if ( ok )
   {
     setBrush( QBrush( backgroundColor, Qt::SolidPattern ) );
@@ -1568,7 +1520,7 @@ void QgsLayoutItem::refreshBlendMode()
 
   //data defined blend mode set?
   bool ok = false;
-  const QString blendStr = mDataDefinedProperties.valueAsString( QgsLayoutObject::DataDefinedProperty::BlendMode, createExpressionContext(), QString(), &ok );
+  const QString blendStr = mDataDefinedProperties.valueAsString( QgsLayoutObject::BlendMode, createExpressionContext(), QString(), &ok );
   if ( ok && !blendStr.isEmpty() )
   {
     const QString blendstr = blendStr.trimmed();
@@ -1576,15 +1528,8 @@ void QgsLayoutItem::refreshBlendMode()
     blendMode = blendModeD;
   }
 
-  mEvaluatedBlendMode = blendMode;
-
-  // we can only enable caching if no blend mode is set -- otherwise
-  // we need to redraw the item every time it is painted
-  if ( mEvaluatedBlendMode == QPainter::CompositionMode_Source && !( itemFlags() & QgsLayoutItem::FlagDisableSceneCaching ) )
-    setCacheMode( QGraphicsItem::DeviceCoordinateCache );
-  else
-    setCacheMode( QGraphicsItem::NoCache );
-
-  update();
+  // Update the item effect to use the new blend mode
+  if ( mEffect )
+    mEffect->setCompositionMode( blendMode );
 }
 

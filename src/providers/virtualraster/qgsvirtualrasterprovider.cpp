@@ -13,7 +13,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsvirtualrasterprovider.h"
-#include "moc_qgsvirtualrasterprovider.cpp"
 #include "qgsrastermatrix.h"
 #include "qgsrasterlayer.h"
 #include "qgsrasterprojector.h"
@@ -36,7 +35,7 @@ QgsVirtualRasterProvider::QgsVirtualRasterProvider( const QString &uri, const Qg
 
   if ( ! decodedUriParams.crs.isValid() )
   {
-    QgsDebugError( "crs is not valid" );
+    QgsDebugMsg( "crs is not valid" );
     mValid = false;
     return;
   }
@@ -44,7 +43,7 @@ QgsVirtualRasterProvider::QgsVirtualRasterProvider( const QString &uri, const Qg
 
   if ( decodedUriParams.extent.isNull() )
   {
-    QgsDebugError( "extent is null" );
+    QgsDebugMsg( "extent is null" );
     mValid = false;
     return;
   }
@@ -122,7 +121,6 @@ QgsVirtualRasterProvider::QgsVirtualRasterProvider( const QgsVirtualRasterProvid
   , mYBlockSize( other.mYBlockSize )
   , mFormulaString( other.mFormulaString )
   , mLastError( other.mLastError )
-  , mRasterLayers{} // see note in other constructor above
 
 {
   for ( const auto &it : other.mRasterLayers )
@@ -172,7 +170,7 @@ QgsRasterBlock *QgsVirtualRasterProvider::block( int bandNo, const QgsRectangle 
       if ( rasterBlockFeedback->isCanceled() )
       {
         qDeleteAll( inputBlocks );
-        QgsDebugMsgLevel( "Canceled = 3, User canceled calculation", 2 );
+        QgsDebugMsg( "Canceled = 3, User canceled calculation" );
       }
     }
     else
@@ -208,17 +206,12 @@ QgsRasterBlock *QgsVirtualRasterProvider::block( int bandNo, const QgsRectangle 
     {
       qDeleteAll( inputBlocks );
       inputBlocks.clear();
-      QgsDebugError( "calcNode was not run in a correct way" );
+      QgsDebugMsg( "calcNode was not run in a correct way" );
     }
   }
 
   Q_ASSERT( tblock );
   return tblock.release();
-}
-
-Qgis::DataProviderFlags QgsVirtualRasterProvider::flags() const
-{
-  return Qgis::DataProviderFlag::FastExtent2D;
 }
 
 QgsRectangle QgsVirtualRasterProvider::extent() const
@@ -273,38 +266,15 @@ QIcon QgsVirtualRasterProviderMetadata::icon() const
   return QgsApplication::getThemeIcon( QStringLiteral( "mIconRaster.svg" ) );
 }
 
-QgsVirtualRasterProvider *QgsVirtualRasterProviderMetadata::createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags )
+QgsVirtualRasterProvider *QgsVirtualRasterProviderMetadata::createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags )
 {
   Q_UNUSED( flags );
   return new QgsVirtualRasterProvider( uri, options );
 }
 
-QString QgsVirtualRasterProviderMetadata::absoluteToRelativeUri( const QString &uri, const QgsReadWriteContext &context ) const
+QList<QgsMapLayerType> QgsVirtualRasterProviderMetadata::supportedLayerTypes() const
 {
-  QgsRasterDataProvider::VirtualRasterParameters decodedVirtualParams = QgsRasterDataProvider::decodeVirtualRasterProviderUri( uri );
-
-  for ( auto &it : decodedVirtualParams.rInputLayers )
-  {
-    it.uri = context.pathResolver().writePath( it.uri );
-  }
-  return QgsRasterDataProvider::encodeVirtualRasterProviderUri( decodedVirtualParams ) ;
-}
-
-QString QgsVirtualRasterProviderMetadata::relativeToAbsoluteUri( const QString &uri, const QgsReadWriteContext &context ) const
-{
-  QgsRasterDataProvider::VirtualRasterParameters decodedVirtualParams = QgsRasterDataProvider::decodeVirtualRasterProviderUri( uri );
-
-  for ( auto &it : decodedVirtualParams.rInputLayers )
-  {
-    it.uri = context.pathResolver().readPath( it.uri );
-  }
-  return QgsRasterDataProvider::encodeVirtualRasterProviderUri( decodedVirtualParams ) ;
-}
-
-
-QList<Qgis::LayerType> QgsVirtualRasterProviderMetadata::supportedLayerTypes() const
-{
-  return { Qgis::LayerType::Raster };
+  return { QgsMapLayerType::RasterLayer };
 }
 
 QgsVirtualRasterProvider *QgsVirtualRasterProvider::clone() const
@@ -343,7 +313,7 @@ QString QgsVirtualRasterProvider::lastError()
   return QStringLiteral( "Not implemented" );
 }
 
-QString QgsVirtualRasterProvider::htmlMetadata() const
+QString QgsVirtualRasterProvider::htmlMetadata()
 {
   //only test
   return "Virtual Raster data provider";
@@ -354,13 +324,15 @@ QString QgsVirtualRasterProvider::providerKey()
   return PROVIDER_KEY;
 };
 
-Qgis::RasterInterfaceCapabilities QgsVirtualRasterProvider::capabilities() const
+int QgsVirtualRasterProvider::capabilities() const
 {
-  const Qgis::RasterInterfaceCapabilities capability = Qgis::RasterInterfaceCapability::Identify
-      | Qgis::RasterInterfaceCapability::IdentifyValue
-      | Qgis::RasterInterfaceCapability::Size
-      //| Qgis::RasterInterfaceCapability::BuildPyramids
-      | Qgis::RasterInterfaceCapability::Prefetch;
+  const int capability = QgsRasterDataProvider::Identify
+                         | QgsRasterDataProvider::IdentifyValue
+                         | QgsRasterDataProvider::Size
+                         //| QgsRasterDataProvider::BuildPyramids
+                         | QgsRasterDataProvider::Create
+                         | QgsRasterDataProvider::Remove
+                         | QgsRasterDataProvider::Prefetch;
   return capability;
 }
 

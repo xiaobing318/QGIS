@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/processing/qgsprocessingparametervectortilewriterlayers.h   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -48,7 +48,7 @@ Constructor for QgsProcessingParameterVectorTileWriterLayers.
 
     virtual QString valueAsPythonString( const QVariant &value, QgsProcessingContext &context ) const;
 
-    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonOutputType::PythonQgsProcessingAlgorithmSubclass ) const;
+    virtual QString asPythonString( QgsProcessing::PythonOutputType outputType = QgsProcessing::PythonQgsProcessingAlgorithmSubclass ) const;
 
 
     static QString typeName();
@@ -77,5 +77,5 @@ Converts a single input layer to QVariant representation (a QVariantMap)
  *                                                                      *
  * src/core/processing/qgsprocessingparametervectortilewriterlayers.h   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

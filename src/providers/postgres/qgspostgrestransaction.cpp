@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgspostgrestransaction.h"
-#include "moc_qgspostgrestransaction.cpp"
 #include "qgspostgresconn.h"
 #include "qgslogger.h"
 #include "qgis.h"
@@ -72,13 +71,13 @@ bool QgsPostgresTransaction::executeSql( const QString &sql, QString &errorMsg, 
     createSavepoint( err );
   }
 
-  QgsDebugMsgLevel( QStringLiteral( "Transaction sql: %1" ).arg( sql ), 2 );
+  QgsDebugMsg( QStringLiteral( "Transaction sql: %1" ).arg( sql ) );
   QgsPostgresResult r( mConn->LoggedPQexec( "QgsPostgresTransaction", sql ) );
   if ( r.PQresultStatus() == PGRES_BAD_RESPONSE ||
        r.PQresultStatus() == PGRES_FATAL_ERROR )
   {
     errorMsg = QStringLiteral( "Status %1 (%2)" ).arg( r.PQresultStatus() ).arg( r.PQresultErrorMessage() );
-    QgsDebugError( errorMsg );
+    QgsDebugMsg( errorMsg );
 
     if ( isDirty )
     {
@@ -94,6 +93,6 @@ bool QgsPostgresTransaction::executeSql( const QString &sql, QString &errorMsg, 
     emit dirtied( sql, name );
   }
 
-  QgsDebugMsgLevel( QStringLiteral( "Status %1 (OK)" ).arg( r.PQresultStatus() ), 2 );
+  QgsDebugMsg( QStringLiteral( "Status %1 (OK)" ).arg( r.PQresultStatus() ) );
   return true;
 }

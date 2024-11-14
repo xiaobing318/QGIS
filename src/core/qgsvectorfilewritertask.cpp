@@ -16,13 +16,11 @@
  ***************************************************************************/
 
 #include "qgsvectorfilewritertask.h"
-#include "moc_qgsvectorfilewritertask.cpp"
 #include "qgsvectorlayer.h"
 
-QgsVectorFileWriterTask::QgsVectorFileWriterTask( QgsVectorLayer *layer, const QString &fileName, const QgsVectorFileWriter::SaveVectorOptions &options, QgsFeatureSink::SinkFlags sinkFlags )
+QgsVectorFileWriterTask::QgsVectorFileWriterTask( QgsVectorLayer *layer, const QString &fileName, const QgsVectorFileWriter::SaveVectorOptions &options )
   : QgsTask( tr( "Saving %1" ).arg( fileName ), QgsTask::CanCancel )
   , mDestFileName( fileName )
-  , mSinkFlags( sinkFlags )
   , mOptions( options )
 {
   if ( mOptions.fieldValueConverter )
@@ -61,7 +59,7 @@ bool QgsVectorFileWriterTask::run()
 
 
   mError = QgsVectorFileWriter::writeAsVectorFormatV2(
-             mWriterDetails, mDestFileName, mTransformContext, mOptions, &mNewFilename, &mNewLayer, &mErrorMessage, mSinkFlags );
+             mWriterDetails, mDestFileName, mTransformContext, mOptions, &mNewFilename, &mNewLayer, &mErrorMessage );
   return mError == QgsVectorFileWriter::NoError;
 }
 

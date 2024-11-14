@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgsreportfieldgroupsectionwidget.h"
-#include "moc_qgsreportfieldgroupsectionwidget.cpp"
 #include "qgsreportsectionfieldgroup.h"
 #include "qgslayout.h"
 #include "qgslayoutdesignerdialog.h"
@@ -29,7 +28,7 @@ QgsReportSectionFieldGroupWidget::QgsReportSectionFieldGroupWidget( QgsReportOrg
 {
   setupUi( this );
 
-  mLayerComboBox->setFilters( Qgis::LayerFilter::VectorLayer );
+  mLayerComboBox->setFilters( QgsMapLayerProxyModel::VectorLayer );
   connect( mLayerComboBox, &QgsMapLayerComboBox::layerChanged, mFieldComboBox, &QgsFieldComboBox::setLayer );
   connect( mButtonEditBody, &QPushButton::clicked, this, &QgsReportSectionFieldGroupWidget::editBody );
   connect( mButtonEditHeader, &QPushButton::clicked, this, &QgsReportSectionFieldGroupWidget::editHeader );

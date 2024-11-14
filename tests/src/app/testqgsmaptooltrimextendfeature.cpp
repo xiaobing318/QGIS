@@ -170,7 +170,7 @@ class TestQgsMapToolTrimExtendFeature : public QObject
       snappingConfig.setEnabled( true );
       snappingConfig.setTolerance( 100 );
       snappingConfig.setTypeFlag( static_cast<Qgis::SnappingTypes>( Qgis::SnappingType::Vertex | Qgis::SnappingType::Segment ) );
-      snappingConfig.setUnits( Qgis::MapToolUnit::Pixels );
+      snappingConfig.setUnits( QgsTolerance::Pixels );
       snappingConfig.setMode( Qgis::SnappingMode::AllLayers );
       mSnappingUtils->setConfig( snappingConfig );
 
@@ -465,7 +465,7 @@ class TestQgsMapToolTrimExtendFeature : public QObject
       */
       const QgsFeature f = vlLineZ->getFeature( 1 );
 
-      const QString wkt = "LineString Z (3 5 5, 1.5 6.5 150)";
+      const QString wkt = "LineStringZ (3 5 5, 1.5 6.5 150)";
       QCOMPARE( f.geometry().asWkt(), wkt );
 
       vlLineZ->rollBack();

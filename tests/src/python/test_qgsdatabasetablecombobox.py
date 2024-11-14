@@ -11,19 +11,20 @@ __copyright__ = 'Copyright 2020, The QGIS Project'
 
 import os
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import QCoreApplication, QVariant
 from qgis.PyQt.QtTest import QSignalSpy
 from qgis.core import (
-    QgsCoordinateReferenceSystem,
-    QgsField,
-    QgsFields,
     QgsProviderRegistry,
+    QgsFields,
+    QgsField,
     QgsWkbTypes,
+    QgsCoordinateReferenceSystem
 )
 from qgis.gui import QgsDatabaseTableComboBox
 from qgis.testing import unittest
 
-from utilities import start_app, unitTestDataPath
+from utilities import unitTestDataPath, start_app
 
 start_app()
 
@@ -35,7 +36,6 @@ class TestQgsDatabaseTableComboBox(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
-        super().setUpClass()
 
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain(cls.__name__)
@@ -91,7 +91,7 @@ class TestQgsDatabaseTableComboBox(unittest.TestCase):
 
         fields = QgsFields()
         fields.append(QgsField('test', QVariant.String))
-        conn.createVectorTable('qgis_test', 'myNewTable', fields, QgsWkbTypes.Type.Point, QgsCoordinateReferenceSystem('EPSG:3857'), False, {})
+        conn.createVectorTable('qgis_test', 'myNewTable', fields, QgsWkbTypes.Point, QgsCoordinateReferenceSystem('EPSG:3857'), False, {})
 
         text2 = [m.comboBox().itemText(i) for i in range(m.comboBox().count())]
         # tables are not automatically refreshed
@@ -167,7 +167,7 @@ class TestQgsDatabaseTableComboBox(unittest.TestCase):
 
         fields = QgsFields()
         fields.append(QgsField('test', QVariant.String))
-        conn.createVectorTable('qgis_test', 'myNewTable', fields, QgsWkbTypes.Type.Point, QgsCoordinateReferenceSystem('EPSG:3857'), False, {})
+        conn.createVectorTable('qgis_test', 'myNewTable', fields, QgsWkbTypes.Point, QgsCoordinateReferenceSystem('EPSG:3857'), False, {})
 
         text2 = [m.comboBox().itemText(i) for i in range(m.comboBox().count())]
         # tables are not automatically refreshed
@@ -261,7 +261,7 @@ class TestQgsDatabaseTableComboBox(unittest.TestCase):
 
         fields = QgsFields()
         fields.append(QgsField('test', QVariant.String))
-        conn.createVectorTable('qgis_test', 'myNewTable', fields, QgsWkbTypes.Type.Point, QgsCoordinateReferenceSystem('EPSG:3857'), False, {})
+        conn.createVectorTable('qgis_test', 'myNewTable', fields, QgsWkbTypes.Point, QgsCoordinateReferenceSystem('EPSG:3857'), False, {})
 
         text2 = [m.comboBox().itemText(i) for i in range(m.comboBox().count())]
         # tables are not automatically refreshed

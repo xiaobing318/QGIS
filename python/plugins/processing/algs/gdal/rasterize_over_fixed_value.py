@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     rasterize_over_fixed_value.py
@@ -23,9 +25,12 @@ import os
 
 from qgis.PyQt.QtGui import QIcon
 
-from qgis.core import (QgsProcessingException,
+from qgis.core import (QgsRasterFileWriter,
+                       QgsProcessingContext,
+                       QgsProcessingException,
                        QgsProcessingParameterDefinition,
                        QgsProcessingParameterFeatureSource,
+                       QgsProcessingParameterField,
                        QgsProcessingParameterRasterLayer,
                        QgsProcessingParameterNumber,
                        QgsProcessingParameterString,
@@ -55,7 +60,7 @@ class rasterize_over_fixed_value(GdalAlgorithm):
                                                             self.tr('Input raster layer')))
         self.addParameter(QgsProcessingParameterNumber(self.BURN,
                                                        self.tr('A fixed value to burn'),
-                                                       type=QgsProcessingParameterNumber.Type.Double,
+                                                       type=QgsProcessingParameterNumber.Double,
                                                        defaultValue=0.0))
 
         params = [
@@ -68,7 +73,7 @@ class rasterize_over_fixed_value(GdalAlgorithm):
                                          optional=True)
         ]
         for p in params:
-            p.setFlags(p.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+            p.setFlags(p.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
             self.addParameter(p)
 
         self.addOutput(QgsProcessingOutputRasterLayer(self.OUTPUT,
@@ -93,18 +98,16 @@ class rasterize_over_fixed_value(GdalAlgorithm):
         return 'gdal_rasterize'
 
     def getConsoleCommands(self, parameters, context, feedback, executing=True):
-        input_details = self.getOgrCompatibleSource(self.INPUT, parameters, context, feedback, executing)
+        ogrLayer, layerName = self.getOgrCompatibleSource(self.INPUT, parameters, context, feedback, executing)
         inLayer = self.parameterAsRasterLayer(parameters, self.INPUT_RASTER, context)
         if inLayer is None:
             raise QgsProcessingException(self.invalidRasterError(parameters, self.INPUT_RASTER))
-        input_raster_details = GdalUtils.gdal_connection_details_from_layer(
-            inLayer)
 
         self.setOutputValue(self.OUTPUT, inLayer.source())
 
         arguments = [
             '-l',
-            input_details.layer_name,
+            layerName,
             '-burn',
             str(self.parameterAsDouble(parameters, self.BURN, context)),
         ]
@@ -112,23 +115,12 @@ class rasterize_over_fixed_value(GdalAlgorithm):
         if self.parameterAsBool(parameters, self.ADD, context):
             arguments.append('-add')
 
-        if input_details.open_options:
-            if GdalUtils.version() < 3070000:
-                raise QgsProcessingException(self.tr(
-                    'Open options are not supported by gdal_rasterize version {} (requires GDAL version 3.7 or later)'.format(
-                        GdalUtils.readableVersion())))
-
-            arguments.extend(input_details.open_options_as_arguments())
-
-        if input_details.credential_options:
-            arguments.extend(input_details.credential_options_as_arguments())
-
         if self.EXTRA in parameters and parameters[self.EXTRA] not in (None, ''):
             extra = self.parameterAsString(parameters, self.EXTRA, context)
             arguments.append(extra)
 
-        arguments.append(input_details.connection_string)
-        arguments.append(input_raster_details.connection_string)
+        arguments.append(ogrLayer)
+        arguments.append(inLayer.source())
 
         return [self.commandName(), GdalUtils.escapeAndJoin(arguments)]
 

@@ -70,8 +70,6 @@ class QgsMeshLayerInterpolator : public QgsRasterInterface SIP_SKIP
 
     void setSpatialIndexActive( bool active );
 
-    void setElevationMapSettings( bool renderElevationMap, double elevationScale, double elevationOffset );
-
   private:
     const QgsTriangularMesh &mTriangularMesh;
     const QVector<double> &mDatasetValues;
@@ -80,10 +78,6 @@ class QgsMeshLayerInterpolator : public QgsRasterInterface SIP_SKIP
     QgsMeshDatasetGroupMetadata::DataType mDataType = QgsMeshDatasetGroupMetadata::DataType::DataOnVertices;
     QSize mOutputSize;
     bool mSpatialIndexActive = false;
-
-    bool mRenderElevation = false;
-    double mElevationScale = 1.0;
-    double mElevationOffset = 0.0;
 };
 
 ///@endcond

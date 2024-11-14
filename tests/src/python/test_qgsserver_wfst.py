@@ -38,16 +38,18 @@ import tempfile
 from shutil import copytree, rmtree
 
 from qgis.core import (
-    QgsExpression,
+    QgsVectorLayer,
     QgsFeature,
-    QgsFeatureRequest,
     QgsGeometry,
     QgsPointXY,
     QgsRectangle,
-    QgsVectorLayer,
+    QgsFeatureRequest,
+    QgsExpression,
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import (
+    start_app,
+    unittest,
+)
 
 from utilities import unitTestDataPath, waitServer
 
@@ -57,14 +59,13 @@ QGIS_SERVER_PORT = os.environ.get('QGIS_SERVER_PORT', '0')
 qgis_app = start_app()
 
 
-class TestWFST(QgisTestCase):
+class TestWFST(unittest.TestCase):
 
     VERSION = '1.0.0'
 
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
-        super().setUpClass()
 
         cls.port = QGIS_SERVER_PORT
         # Create tmp folder
@@ -95,7 +96,8 @@ class TestWFST(QgisTestCase):
         cls.port = int(re.findall(br':(\d+)', line)[0])
         assert cls.port != 0
         # Wait for the server process to start
-        assert waitServer(f'http://127.0.0.1:{cls.port}'), "Server is not responding!"
+        assert waitServer('http://127.0.0.1:%s' %
+                          cls.port), "Server is not responding!"
 
     @classmethod
     def tearDownClass(cls):
@@ -108,8 +110,6 @@ class TestWFST(QgisTestCase):
         for ln in ['test_point', 'test_polygon', 'test_linestring']:
             cls._clearLayer(ln)
         rmtree(cls.temp_path)
-
-        super().tearDownClass()
 
     def setUp(self):
         """Run before each test."""
@@ -155,7 +155,8 @@ class TestWFST(QgisTestCase):
         parms = {
             'srsname': 'EPSG:4326',
             'typename': type_name,
-            'url': f'http://127.0.0.1:{cls.port}/?map={cls.project_path}',
+            'url': 'http://127.0.0.1:{}/?map={}'.format(cls.port,
+                                                        cls.project_path),
             'version': cls.VERSION,
             'table': '',
             # 'sql': '',
@@ -171,11 +172,13 @@ class TestWFST(QgisTestCase):
         Find the feature and return it, raise exception if not found
         """
 
-        request = QgsFeatureRequest(QgsExpression(f"{attr_name}={attr_value}"))
+        request = QgsFeatureRequest(QgsExpression("{}={}".format(attr_name,
+                                                                 attr_value)))
         try:
             return next(layer.dataProvider().getFeatures(request))
         except StopIteration:
-            raise Exception(f"Wrong attributes in WFS layer {layer.name()}")
+            raise Exception("Wrong attributes in WFS layer %s" %
+                            layer.name())
 
     def _checkAddFeatures(self, wfs_layer, layer, features):
         """
@@ -194,7 +197,7 @@ class TestWFST(QgisTestCase):
         # Verify features from the layers
         for f in ogr_features:
             geom = next(wfs_layer.dataProvider().getFeatures(QgsFeatureRequest(
-                QgsExpression(f"\"id\" = {f.attribute('id')}")))).geometry()
+                QgsExpression('"id" = %s' % f.attribute('id'))))).geometry()
             self.assertEqual(geom.boundingBox(), f.geometry().boundingBox())
 
     def _checkUpdateFeatures(self, wfs_layer, old_features, new_features):

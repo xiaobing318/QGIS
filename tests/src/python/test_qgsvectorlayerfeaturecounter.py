@@ -9,21 +9,21 @@ __author__ = 'Mathieu Pellerin'
 __date__ = '08/02/2021'
 __copyright__ = 'Copyright 2021, The QGIS Project'
 
-from qgis.PyQt.QtCore import QDate, QDateTime, QTime
+import qgis  # NOQA
+
+from qgis.PyQt.QtCore import QDateTime, QDate, QTime
 from qgis.PyQt.QtTest import QSignalSpy
-from qgis.core import (
-    NULL,
-    QgsFeature,
-    QgsGeometry,
-    QgsVectorLayer,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+
+from qgis.core import (QgsVectorLayer,
+                       QgsFeature,
+                       QgsGeometry,
+                       NULL)
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsVectorLayerFeatureCounter(QgisTestCase):
+class TestQgsVectorLayerFeatureCounter(unittest.TestCase):
 
     def setUp(self):
 

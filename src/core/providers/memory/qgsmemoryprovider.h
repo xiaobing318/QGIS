@@ -13,9 +13,6 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef QGSMEMORYPROVIDER_H
-#define QGSMEMORYPROVIDER_H
-
 #define SIP_NO_FILE
 
 #include "qgsvectordataprovider.h"
@@ -36,7 +33,7 @@ class QgsMemoryProvider final: public QgsVectorDataProvider
 
   public:
     explicit QgsMemoryProvider( const QString &uri, const QgsVectorDataProvider::ProviderOptions &coordinateTransformContext,
-                                Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() );
+                                QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() );
 
     ~QgsMemoryProvider() override;
 
@@ -52,7 +49,7 @@ class QgsMemoryProvider final: public QgsVectorDataProvider
     QString dataSourceUri( bool expandAuthConfig = true ) const override;
     QString storageType() const override;
     QgsFeatureIterator getFeatures( const QgsFeatureRequest &request ) const override;
-    Qgis::WkbType wkbType() const override;
+    QgsWkbTypes::Type wkbType() const override;
     long long featureCount() const override;
     QgsFields fields() const override;
     bool addFeatures( QgsFeatureList &flist, QgsFeatureSink::Flags flags = QgsFeatureSink::Flags() ) override;
@@ -64,12 +61,10 @@ class QgsMemoryProvider final: public QgsVectorDataProvider
     bool changeGeometryValues( const QgsGeometryMap &geometry_map ) override;
     QString subsetString() const override;
     bool setSubsetString( const QString &theSQL, bool updateFeatureCount = true ) override;
-    bool supportsSubsetString() const override;
-    QString subsetStringDialect() const override;
-    QString subsetStringHelpUrl() const override;
+    bool supportsSubsetString() const override { return true; }
     bool createSpatialIndex() override;
-    Qgis::SpatialIndexPresence hasSpatialIndex() const override;
-    Qgis::VectorProviderCapabilities capabilities() const override;
+    QgsFeatureSource::SpatialIndexPresence hasSpatialIndex() const override;
+    QgsVectorDataProvider::Capabilities capabilities() const override;
     bool truncate() override;
 
     /* Implementation of functions from QgsDataProvider */
@@ -88,7 +83,7 @@ class QgsMemoryProvider final: public QgsVectorDataProvider
 
     // fields
     QgsFields mFields;
-    Qgis::WkbType mWkbType;
+    QgsWkbTypes::Type mWkbType;
     mutable QgsRectangle mExtent;
 
     // features
@@ -111,9 +106,8 @@ class QgsMemoryProviderMetadata final: public QgsProviderMetadata
   public:
     QgsMemoryProviderMetadata();
     QIcon icon() const override;
-    QgsDataProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() ) override;
-    QList< Qgis::LayerType > supportedLayerTypes() const override;
+    QgsDataProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() ) override;
+    QList< QgsMapLayerType > supportedLayerTypes() const override;
 };
 
 ///@endcond
-#endif // QGSMEMORYPROVIDER_H

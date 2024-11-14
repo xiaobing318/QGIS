@@ -38,7 +38,7 @@
  * - "LayerNotDefined" / "StyleNotDefined"
  * - "OperationNotSupported"
  *
- * \deprecated QGIS 3.40. Use QsgServerException.
+ * \deprecated Use QsgServerException
  */
 class SERVER_EXPORT QgsMapServiceException : public QgsOgcServiceException
 {

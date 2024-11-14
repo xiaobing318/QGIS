@@ -17,13 +17,11 @@
 
 #include "qgis.h"
 #include "qgspointclouddataprovider.h"
-#include "moc_qgspointclouddataprovider.cpp"
 #include "qgspointcloudindex.h"
 #include "qgsgeometry.h"
 #include "qgspointcloudrequest.h"
-#include "qgsgeos.h"
+#include "qgsgeometryengine.h"
 #include "qgspointcloudstatscalculator.h"
-#include "qgsthreadingutils.h"
 
 #include <mutex>
 #include <QDebug>
@@ -34,7 +32,7 @@
 QgsPointCloudDataProvider::QgsPointCloudDataProvider(
   const QString &uri,
   const QgsDataProvider::ProviderOptions &options,
-  Qgis::DataProviderReadFlags flags )
+  QgsDataProvider::ReadFlags flags )
   : QgsDataProvider( uri, options, flags )
 {
 }
@@ -43,37 +41,27 @@ QgsPointCloudDataProvider::~QgsPointCloudDataProvider() = default;
 
 QgsPointCloudDataProvider::Capabilities QgsPointCloudDataProvider::capabilities() const
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   return QgsPointCloudDataProvider::NoCapabilities;
 }
 
 bool QgsPointCloudDataProvider::hasValidIndex() const
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   QgsPointCloudIndex *lIndex = index();
   return lIndex && lIndex->isValid();
 }
 
 QgsGeometry QgsPointCloudDataProvider::polygonBounds() const
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   return QgsGeometry::fromRect( extent() );
 }
 
 QVariantMap QgsPointCloudDataProvider::originalMetadata() const
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   return QVariantMap();
 }
 
 QgsPointCloudRenderer *QgsPointCloudDataProvider::createRenderer( const QVariantMap & ) const
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   return nullptr;
 }
 
@@ -185,15 +173,11 @@ QMap<int, QString> QgsPointCloudDataProvider::translatedDataFormatIds()
 
 bool QgsPointCloudDataProvider::hasStatisticsMetadata() const
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   return index() && index()->hasStatisticsMetadata();
 }
 
-QVariant QgsPointCloudDataProvider::metadataStatistic( const QString &attribute, Qgis::Statistic statistic ) const
+QVariant QgsPointCloudDataProvider::metadataStatistic( const QString &attribute, QgsStatisticalSummary::Statistic statistic ) const
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   QgsPointCloudIndex *pcIndex = index();
   if ( pcIndex )
   {
@@ -204,8 +188,6 @@ QVariant QgsPointCloudDataProvider::metadataStatistic( const QString &attribute,
 
 QVariantList QgsPointCloudDataProvider::metadataClasses( const QString &attribute ) const
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   QgsPointCloudIndex *pcIndex = index();
   if ( pcIndex )
   {
@@ -214,10 +196,8 @@ QVariantList QgsPointCloudDataProvider::metadataClasses( const QString &attribut
   return QVariantList();
 }
 
-QVariant QgsPointCloudDataProvider::metadataClassStatistic( const QString &attribute, const QVariant &value, Qgis::Statistic statistic ) const
+QVariant QgsPointCloudDataProvider::metadataClassStatistic( const QString &attribute, const QVariant &value, QgsStatisticalSummary::Statistic statistic ) const
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   QgsPointCloudIndex *pcIndex = index();
   if ( pcIndex )
   {
@@ -226,32 +206,15 @@ QVariant QgsPointCloudDataProvider::metadataClassStatistic( const QString &attri
   return QVariant();
 }
 
+
 QgsPointCloudStatistics QgsPointCloudDataProvider::metadataStatistics()
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   QgsPointCloudIndex *pcIndex = index();
   if ( pcIndex )
   {
     return pcIndex->metadataStatistics();
   }
   return QgsPointCloudStatistics();
-}
-
-bool QgsPointCloudDataProvider::supportsSubsetString() const
-{
-  return true;
-}
-
-QString QgsPointCloudDataProvider::subsetStringDialect() const
-{
-  return tr( "QGIS expression" );
-}
-
-QString QgsPointCloudDataProvider::subsetStringHelpUrl() const
-{
-  // unfortunately we can't access QgsHelp here, that's a GUI class!
-  return QString();
 }
 
 struct MapIndexedPointCloudNode
@@ -278,14 +241,15 @@ struct MapIndexedPointCloudNode
     const QgsPointCloudAttribute::DataType xType = blockAttributes.find( QStringLiteral( "X" ), xOffset )->type();
     const QgsPointCloudAttribute::DataType yType = blockAttributes.find( QStringLiteral( "Y" ), yOffset )->type();
     const QgsPointCloudAttribute::DataType zType = blockAttributes.find( QStringLiteral( "Z" ), zOffset )->type();
-    std::unique_ptr< QgsGeos > extentEngine = std::make_unique< QgsGeos >( mExtentGeometry.constGet() );
+    std::unique_ptr< QgsGeometryEngine > extentEngine( QgsGeometry::createGeometryEngine( mExtentGeometry.constGet() ) );
     extentEngine->prepareGeometry();
     for ( int i = 0; i < block->pointCount() && pointsCount < mPointsLimit; ++i )
     {
       double x, y, z;
       QgsPointCloudAttribute::getPointXYZ( ptr, i, recordSize, xOffset, xType, yOffset, yType, zOffset, zType, block->scale(), block->offset(), x, y, z );
+      QgsPoint point( x, y );
 
-      if ( mZRange.contains( z ) && extentEngine->contains( x, y ) )
+      if ( mZRange.contains( z ) && extentEngine->contains( &point ) )
       {
         QVariantMap pointAttr = QgsPointCloudAttribute::getAttributeMap( ptr, i * recordSize, blockAttributes );
         pointAttr[ QStringLiteral( "X" ) ] = x;
@@ -315,32 +279,7 @@ QVector<QVariantMap> QgsPointCloudDataProvider::identify(
 {
   QVector<QVariantMap> acceptedPoints;
 
-  // Try sub-indexes first
-  for ( QgsPointCloudSubIndex &subidx : subIndexes() )
-  {
-    // Check if the sub-index is relevant and if it is loaded. We shouldn't
-    // need to identify points in unloaded indices.
-    if ( !subidx.index()
-         || ( !subidx.zRange().overlaps( extentZRange ) )
-         || !subidx.polygonBounds().intersects( extentGeometry ) )
-      continue;
-    acceptedPoints.append( identify( subidx.index(), maxError, extentGeometry, extentZRange, pointsLimit ) );
-  }
-
-  // Then look at main index
-  acceptedPoints.append( identify( index(), maxError, extentGeometry, extentZRange, pointsLimit ) );
-
-  return acceptedPoints;
-}
-
-QVector<QVariantMap> QgsPointCloudDataProvider::identify(
-  QgsPointCloudIndex *index, double maxError,
-  const QgsGeometry &extentGeometry,
-  const QgsDoubleRange &extentZRange, int pointsLimit )
-{
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
-  QVector<QVariantMap> acceptedPoints;
+  QgsPointCloudIndex *index = this->index();
 
   if ( !index || !index->isValid() )
     return acceptedPoints;
@@ -372,8 +311,6 @@ QVector<IndexedPointCloudNode> QgsPointCloudDataProvider::traverseTree(
   const QgsGeometry &extentGeometry,
   const QgsDoubleRange &extentZRange )
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   QVector<IndexedPointCloudNode> nodes;
 
   const QgsDoubleRange nodeZRange = pc->nodeZRange( n );
@@ -401,8 +338,6 @@ QVector<IndexedPointCloudNode> QgsPointCloudDataProvider::traverseTree(
 
 bool QgsPointCloudDataProvider::setSubsetString( const QString &subset, bool updateFeatureCount )
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   Q_UNUSED( updateFeatureCount )
   const auto i = index();
   if ( !i )
@@ -417,8 +352,6 @@ bool QgsPointCloudDataProvider::setSubsetString( const QString &subset, bool upd
 
 QString QgsPointCloudDataProvider::subsetString() const
 {
-  QGIS_PROTECT_QOBJECT_THREAD_ACCESS
-
   return mSubsetString;
 }
 

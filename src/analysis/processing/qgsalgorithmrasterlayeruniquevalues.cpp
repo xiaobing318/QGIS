@@ -17,8 +17,6 @@
 
 #include "qgsalgorithmrasterlayeruniquevalues.h"
 #include "qgsstringutils.h"
-#include "qgsunittypes.h"
-
 #include <QTextStream>
 
 ///@cond PRIVATE
@@ -57,20 +55,19 @@ void QgsRasterLayerUniqueValuesReportAlgorithm::initAlgorithm( const QVariantMap
   addParameter( new QgsProcessingParameterFileDestination( QStringLiteral( "OUTPUT_HTML_FILE" ),
                 QObject::tr( "Unique values report" ), QObject::tr( "HTML files (*.html)" ), QVariant(), true ) );
   addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT_TABLE" ),
-                QObject::tr( "Unique values table" ), Qgis::ProcessingSourceType::Vector, QVariant(), true, false ) );
+                QObject::tr( "Unique values table" ), QgsProcessing::TypeVector, QVariant(), true, false ) );
 
   addOutput( new QgsProcessingOutputString( QStringLiteral( "EXTENT" ), QObject::tr( "Extent" ) ) );
   addOutput( new QgsProcessingOutputString( QStringLiteral( "CRS_AUTHID" ), QObject::tr( "CRS authority identifier" ) ) );
   addOutput( new QgsProcessingOutputNumber( QStringLiteral( "WIDTH_IN_PIXELS" ), QObject::tr( "Width in pixels" ) ) );
   addOutput( new QgsProcessingOutputNumber( QStringLiteral( "HEIGHT_IN_PIXELS" ), QObject::tr( "Height in pixels" ) ) );
   addOutput( new QgsProcessingOutputNumber( QStringLiteral( "TOTAL_PIXEL_COUNT" ), QObject::tr( "Total pixel count" ) ) );
-  addOutput( new QgsProcessingOutputNumber( QStringLiteral( "NODATA_PIXEL_COUNT" ), QObject::tr( "NoData pixel count" ) ) );
+  addOutput( new QgsProcessingOutputNumber( QStringLiteral( "NODATA_PIXEL_COUNT" ), QObject::tr( "NODATA pixel count" ) ) );
 }
 
 QString QgsRasterLayerUniqueValuesReportAlgorithm::shortHelpString() const
 {
-  return QObject::tr( "This algorithm returns the count and area of each unique value in a given raster layer. "
-                      "The area calculation is done in the area unit of the layer's CRS." );
+  return QObject::tr( "This algorithm returns the count and area of each unique value in a given raster layer." );
 }
 
 QgsRasterLayerUniqueValuesReportAlgorithm *QgsRasterLayerUniqueValuesReportAlgorithm::createInstance() const
@@ -115,10 +112,10 @@ QVariantMap QgsRasterLayerUniqueValuesReportAlgorithm::processAlgorithm( const Q
   if ( parameters.contains( QStringLiteral( "OUTPUT_TABLE" ) ) && parameters.value( QStringLiteral( "OUTPUT_TABLE" ) ).isValid() )
   {
     QgsFields outFields;
-    outFields.append( QgsField( QStringLiteral( "value" ), QMetaType::Type::Double, QString(), 20, 8 ) );
-    outFields.append( QgsField( QStringLiteral( "count" ), QMetaType::Type::LongLong, QString(), 20 ) );
-    outFields.append( QgsField( areaUnit.replace( QStringLiteral( "²" ), QStringLiteral( "2" ) ), QMetaType::Type::Double, QString(), 20, 8 ) );
-    sink.reset( parameterAsSink( parameters, QStringLiteral( "OUTPUT_TABLE" ), context, tableDest, outFields, Qgis::WkbType::NoGeometry, QgsCoordinateReferenceSystem() ) );
+    outFields.append( QgsField( QStringLiteral( "value" ), QVariant::Double, QString(), 20, 8 ) );
+    outFields.append( QgsField( QStringLiteral( "count" ), QVariant::LongLong, QString(), 20 ) );
+    outFields.append( QgsField( areaUnit.replace( QStringLiteral( "²" ), QStringLiteral( "2" ) ), QVariant::Double, QString(), 20, 8 ) );
+    sink.reset( parameterAsSink( parameters, QStringLiteral( "OUTPUT_TABLE" ), context, tableDest, outFields, QgsWkbTypes::NoGeometry, QgsCoordinateReferenceSystem() ) );
     if ( !sink )
       throw QgsProcessingException( invalidSinkError( parameters, QStringLiteral( "OUTPUT_TABLE" ) ) );
   }
@@ -201,7 +198,7 @@ QVariantMap QgsRasterLayerUniqueValuesReportAlgorithm::processAlgorithm( const Q
       out << QObject::tr( "<p>%1: %2 (%3 %4)</p>\n" ).arg( QObject::tr( "Height in pixels" ) ).arg( mLayerHeight ).arg( QObject::tr( "units per pixel" ) ).arg( mRasterUnitsPerPixelY );
       out << QObject::tr( "<p>%1: %2</p>\n" ).arg( QObject::tr( "Total pixel count" ) ).arg( layerSize );
       if ( mHasNoDataValue )
-        out << QObject::tr( "<p>%1: %2</p>\n" ).arg( QObject::tr( "NoData pixel count" ) ).arg( noDataCount );
+        out << QObject::tr( "<p>%1: %2</p>\n" ).arg( QObject::tr( "NODATA pixel count" ) ).arg( noDataCount );
       out << QStringLiteral( "<table><tr><td>%1</td><td>%2</td><td>%3 (%4)</td></tr>\n" ).arg( QObject::tr( "Value" ), QObject::tr( "Pixel count" ), QObject::tr( "Area" ), encodedAreaUnit );
 
       for ( auto it = sortedUniqueValues.constBegin(); it != sortedUniqueValues.constEnd(); ++it )
@@ -224,7 +221,6 @@ QVariantMap QgsRasterLayerUniqueValuesReportAlgorithm::processAlgorithm( const Q
       if ( !sink->addFeature( f, QgsFeatureSink::FastInsert ) )
         throw QgsProcessingException( writeFeatureError( sink.get(), parameters, QStringLiteral( "OUTPUT_TABLE" ) ) );
     }
-    sink->finalize();
     outputs.insert( QStringLiteral( "OUTPUT_TABLE" ), tableDest );
   }
 
@@ -233,3 +229,6 @@ QVariantMap QgsRasterLayerUniqueValuesReportAlgorithm::processAlgorithm( const Q
 
 
 ///@endcond
+
+
+

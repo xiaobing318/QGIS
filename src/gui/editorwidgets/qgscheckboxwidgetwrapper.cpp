@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgscheckboxwidgetwrapper.h"
-#include "moc_qgscheckboxwidgetwrapper.cpp"
 
 QgsCheckboxWidgetWrapper::QgsCheckboxWidgetWrapper( QgsVectorLayer *layer, int fieldIdx, QWidget *editor, QWidget *parent )
   : QgsEditorWidgetWrapper( layer, fieldIdx, editor, parent )
@@ -25,42 +24,31 @@ QgsCheckboxWidgetWrapper::QgsCheckboxWidgetWrapper( QgsVectorLayer *layer, int f
 
 QVariant QgsCheckboxWidgetWrapper::value() const
 {
-  if ( config( QStringLiteral( "AllowNullState" ) ).toBool() && mCheckBox && mCheckBox->checkState() == Qt::PartiallyChecked )
-  {
-    return QVariant();
-  }
+  QVariant v;
 
-  if ( field().type() == QMetaType::Type::Bool )
+  if ( field().type() == QVariant::Bool )
   {
     if ( mGroupBox )
-    {
-      return mGroupBox->isChecked();
-    }
+      v = mGroupBox->isChecked();
     else if ( mCheckBox )
-    {
-      return mCheckBox->isChecked();
-    }
+      v = mCheckBox->isChecked();
   }
   else
   {
     if ( mGroupBox )
-    {
-      return mGroupBox->isChecked() ? config( QStringLiteral( "CheckedState" ) ) : config( QStringLiteral( "UncheckedState" ) );
-    }
+      v = mGroupBox->isChecked() ? config( QStringLiteral( "CheckedState" ) ) : config( QStringLiteral( "UncheckedState" ) );
+
     else if ( mCheckBox )
-    {
-      return mCheckBox->isChecked() ? config( QStringLiteral( "CheckedState" ) ) : config( QStringLiteral( "UncheckedState" ) );
-    }
+      v = mCheckBox->isChecked() ? config( QStringLiteral( "CheckedState" ) ) : config( QStringLiteral( "UncheckedState" ) );
   }
 
-  return QVariant();
+  return v;
 }
 
 void QgsCheckboxWidgetWrapper::showIndeterminateState()
 {
   if ( mCheckBox )
   {
-    mIndeterminateStateEnabled = true;
     whileBlocking( mCheckBox )->setCheckState( Qt::PartiallyChecked );
   }
 }
@@ -76,16 +64,12 @@ void QgsCheckboxWidgetWrapper::initWidget( QWidget *editor )
   mGroupBox = qobject_cast<QGroupBox *>( editor );
 
   if ( mCheckBox )
-    connect( mCheckBox, &QCheckBox::stateChanged, this, [ = ]( int state )
+    connect( mCheckBox, &QAbstractButton::toggled, this, [ = ]( bool state )
   {
-    if ( !mIndeterminateStateEnabled && mCheckBox->checkState() != Qt::PartiallyChecked )
-    {
-      mCheckBox->setTristate( false );
-    }
     Q_NOWARN_DEPRECATED_PUSH
-    emit valueChanged( state != Qt::Unchecked );
+    emit valueChanged( state );
     Q_NOWARN_DEPRECATED_POP
-    emit valuesChanged( state != Qt::Unchecked );
+    emit valuesChanged( state );
   } );
   if ( mGroupBox )
     connect( mGroupBox, &QGroupBox::toggled, this, [ = ]( bool state )
@@ -104,32 +88,23 @@ bool QgsCheckboxWidgetWrapper::valid() const
 
 void QgsCheckboxWidgetWrapper::updateValues( const QVariant &value, const QVariantList & )
 {
-  Qt::CheckState state = Qt::Unchecked;
+  bool state = false;
 
-  if ( config( QStringLiteral( "AllowNullState" ) ).toBool() && value.isNull() )
+  if ( field().type() == QVariant::Bool )
   {
-    state = Qt::PartiallyChecked;
+    state = value.toBool();
   }
   else
   {
-    if ( field().type() == QMetaType::Type::Bool )
-    {
-      state = value.toBool() ? Qt::Checked : Qt::Unchecked;
-    }
-    else
-    {
-      state = value == config( QStringLiteral( "CheckedState" ) ) ? Qt::Checked : Qt::Unchecked;
-    }
+    state = ( value == config( QStringLiteral( "CheckedState" ) ) );
   }
-
   if ( mGroupBox )
   {
-    mGroupBox->setChecked( state == Qt::Checked );
+    mGroupBox->setChecked( state );
   }
 
   if ( mCheckBox )
   {
-    mCheckBox->setTristate( state == Qt::PartiallyChecked );
-    mCheckBox->setCheckState( state );
+    mCheckBox->setChecked( state );
   }
 }

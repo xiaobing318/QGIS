@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsdefaultvalue.h                                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -29,6 +29,8 @@ Usual values for such an expression are
 :py:class:`QgsDefaultValue` also has a `applyOnUpdate` flag which will indicate that a
 default value should also be applied when a feature is updated. If this is
 not set, the default value will only be used when a feature is created.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -94,5 +96,5 @@ Returns if this default value should be applied.
  *                                                                      *
  * src/core/qgsdefaultvalue.h                                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/./3d/qgsabstract3drenderer.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -21,6 +21,8 @@ will be added to the 3D scene to represent data in renderer's display style.
 
 Renderers may store some custom properties (e.g. materials, sizes) that are written to and read from
 XML. It is therefore not recommended to store large amount of data within a renderer (e.g. arrays of vertices).
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -52,8 +54,10 @@ Resolves references to other objects - second phase of loading - after :py:func:
 %End
 
   protected:
-
     QgsAbstract3DRenderer();
+%Docstring
+Default constructor
+%End
 
   private:
     QgsAbstract3DRenderer( const QgsAbstract3DRenderer & );
@@ -66,5 +70,5 @@ Resolves references to other objects - second phase of loading - after :py:func:
  *                                                                      *
  * src/core/./3d/qgsabstract3drenderer.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

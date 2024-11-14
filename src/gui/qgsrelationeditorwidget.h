@@ -99,9 +99,9 @@ class GUI_EXPORT QgsRelationEditorWidget : public QgsAbstractRelationEditorWidge
      * Possible buttons shown in the relation editor
      * \since QGIS 3.18
      */
-    enum Button SIP_ENUM_BASETYPE( IntFlag )
+    enum Button
     {
-      NoButton = 0, //!< No button \since QGIS 3.20
+      NoButton = 0, //!< No button (since QGIS 3.20)
       Link = 1 << 1, //!< Link button
       Unlink = 1 << 2, //!< Unlink button
       SaveChildEdits = 1 << 3, //!< Save child edits button
@@ -153,7 +153,7 @@ class GUI_EXPORT QgsRelationEditorWidget : public QgsAbstractRelationEditorWidge
 
     /**
      * Duplicates a feature
-     * \deprecated QGIS 3.18. Use duplicateSelectedFeatures() instead.
+     * \deprecated since QGIS 3.18, use duplicateSelectedFeatures() instead
      */
     Q_DECL_DEPRECATED void duplicateFeature() SIP_DEPRECATED;
 
@@ -204,16 +204,12 @@ class GUI_EXPORT QgsRelationEditorWidget : public QgsAbstractRelationEditorWidge
 
     void addFeature();
     void addFeatureGeometry();
-
-    // TODO -- someone familiar with this widget needs to fix this:
-    void toggleEditing( bool state ); // cppcheck-suppress duplInheritedMember
-
+    void toggleEditing( bool state );
     void showContextMenu( QgsActionMenu *menu, QgsFeatureId fid );
     void mapToolDeactivated();
     void onDigitizingCompleted( const QgsFeature &feature );
     void onDigitizingCanceled( );
     void multiEditItemSelectionChanged();
-    void linkFeature();
 
   private:
 
@@ -265,7 +261,6 @@ class GUI_EXPORT QgsRelationEditorWidget : public QgsAbstractRelationEditorWidge
     Buttons mButtonsVisibility = Button::AllButtons;
     bool mShowFirstFeature = true;
     bool mAllowAddChildFeatureWithNoGeometry = true;
-    QString mFilterExpression;
 
     QList<QTreeWidgetItem *> mMultiEditPreviousSelectedItems;
     QgsFeatureIds mMultiEdit1NJustAddedIds;
@@ -299,19 +294,15 @@ class GUI_EXPORT QgsRelationEditorConfigWidget : public QgsAbstractRelationEdito
      *
      * \returns A widget configuration
      */
-    QVariantMap config() override;
+    QVariantMap config();
 
     /**
      * \brief Update the configuration widget to represent the given configuration.
      *
      * \param config The configuration which should be represented by this widget
      */
-    void setConfig( const QVariantMap &config ) override;
+    void setConfig( const QVariantMap &config );
 
-    /**
-     * Opens an expression dialog and sets its value as filter expression for the linking dialog
-     */
-    void mEditExpression_clicked();
 };
 
 

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     OgrToPostGis.py
@@ -40,8 +42,7 @@ class OgrToPostGis(GdalAlgorithm):
     SHAPE_ENCODING = 'SHAPE_ENCODING'
     GTYPE = 'GTYPE'
     GEOMTYPE = ['', 'NONE', 'GEOMETRY', 'POINT', 'LINESTRING', 'POLYGON', 'GEOMETRYCOLLECTION', 'MULTIPOINT',
-                'MULTIPOLYGON', 'MULTILINESTRING', 'CIRCULARSTRING', 'COMPOUNDCURVE', 'CURVEPOLYGON', 'MULTICURVE',
-                'MULTISURFACE', 'CONVERT_TO_LINEAR', 'CONVERT_TO_CURVE']
+                'MULTIPOLYGON', 'MULTILINESTRING', 'CIRCULARSTRING', 'COMPOUNDCURVE', 'CURVEPOLYGON', 'MULTICURVE', 'MULTISURFACE']
     S_SRS = 'S_SRS'
     T_SRS = 'T_SRS'
     A_SRS = 'A_SRS'
@@ -71,7 +72,6 @@ class OgrToPostGis(GdalAlgorithm):
     INDEX = 'INDEX'
     SKIPFAILURES = 'SKIPFAILURES'
     PRECISION = 'PRECISION'
-    MAKEVALID = 'MAKEVALID'
     PROMOTETOMULTI = 'PROMOTETOMULTI'
     OPTIONS = 'OPTIONS'
 
@@ -81,7 +81,7 @@ class OgrToPostGis(GdalAlgorithm):
     def initAlgorithm(self, config=None):
         self.addParameter(QgsProcessingParameterFeatureSource(self.INPUT,
                                                               self.tr('Input layer'),
-                                                              types=[QgsProcessing.SourceType.TypeVector]))
+                                                              types=[QgsProcessing.TypeVector]))
         self.addParameter(QgsProcessingParameterString(self.SHAPE_ENCODING,
                                                        self.tr('Shape encoding'), "", optional=True))
         self.addParameter(QgsProcessingParameterEnum(self.GTYPE,
@@ -163,10 +163,6 @@ class OgrToPostGis(GdalAlgorithm):
                                                         self.tr(
                                                             'Continue after a failure, skipping the failed feature'),
                                                         defaultValue=False))
-        self.addParameter(QgsProcessingParameterBoolean(self.MAKEVALID,
-                                                        self.tr(
-                                                            'Validate geometries based on Simple Features specification'),
-                                                        defaultValue=False))
         self.addParameter(QgsProcessingParameterBoolean(self.PROMOTETOMULTI,
                                                         self.tr('Promote to Multipart'),
                                                         defaultValue=True))
@@ -220,8 +216,8 @@ class OgrToPostGis(GdalAlgorithm):
         return GdalUtils.escapeAndJoin(arguments)
 
     def getConsoleCommands(self, parameters, context, feedback, executing=True):
-        input_details = self.getOgrCompatibleSource(self.INPUT, parameters, context, feedback, executing)
-        if not input_details.layer_name:
+        ogrLayer, layername = self.getOgrCompatibleSource(self.INPUT, parameters, context, feedback, executing)
+        if not layername:
             raise QgsProcessingException(self.invalidSourceError(parameters, self.INPUT))
 
         shapeEncoding = self.parameterAsString(parameters, self.SHAPE_ENCODING, context)
@@ -254,7 +250,6 @@ class OgrToPostGis(GdalAlgorithm):
         index = self.parameterAsBoolean(parameters, self.INDEX, context)
         indexstring = "-lco SPATIAL_INDEX=OFF"
         skipfailures = self.parameterAsBoolean(parameters, self.SKIPFAILURES, context)
-        make_valid = self.parameterAsBoolean(parameters, self.MAKEVALID, context)
         promotetomulti = self.parameterAsBoolean(parameters, self.PROMOTETOMULTI, context)
         precision = self.parameterAsBoolean(parameters, self.PRECISION, context)
         options = self.parameterAsString(parameters, self.OPTIONS, context)
@@ -271,17 +266,13 @@ class OgrToPostGis(GdalAlgorithm):
         arguments.append('PostgreSQL')
         arguments.append('PG:' + self.getConnectionString(parameters, context))
         arguments.append(dimstring)
-        arguments.append(input_details.connection_string)
-        arguments.append(input_details.layer_name)
+        arguments.append(ogrLayer)
+        arguments.append(layername)
         if index:
             arguments.append(indexstring)
         if launder:
             arguments.append(launderstring)
-        if append and overwrite:
-            raise QgsProcessingException(
-                self.tr(
-                    'Only one of "Overwrite existing table" or "Append to existing table" can be enabled at a time.'))
-        elif append:
+        if append:
             arguments.append('-append')
         if include_fields:
             arguments.append(fields_string)
@@ -299,9 +290,9 @@ class OgrToPostGis(GdalAlgorithm):
         elif primary_key:
             arguments.append("-lco FID=" + primary_key)
         if len(table) == 0:
-            table = input_details.layer_name.lower()
+            table = layername.lower()
         if schema:
-            table = f'{schema}.{table}'
+            table = '{}.{}'.format(schema, table)
         arguments.append('-nln')
         arguments.append(table)
         if ssrs.isValid():
@@ -334,26 +325,10 @@ class OgrToPostGis(GdalAlgorithm):
         if len(gt) > 0:
             arguments.append('-gt')
             arguments.append(gt)
-        if make_valid:
-            arguments.append('-makevalid')
-        if promotetomulti and self.GEOMTYPE[self.parameterAsEnum(parameters, self.GTYPE, context)]:
-            if self.GEOMTYPE[self.parameterAsEnum(parameters, self.GTYPE, context)] == 'CONVERT_TO_LINEAR':
-                arguments.append('-nlt PROMOTE_TO_MULTI')
-            else:
-                raise QgsProcessingException(
-                    self.tr(
-                        'Only one of "Promote to Multipart" or "Output geometry type" (excluding Convert to Linear) can be enabled.'))
-        elif promotetomulti and not self.GEOMTYPE[self.parameterAsEnum(parameters, self.GTYPE, context)]:
+        if promotetomulti:
             arguments.append('-nlt PROMOTE_TO_MULTI')
         if precision is False:
             arguments.append('-lco PRECISION=NO')
-
-        if input_details.open_options:
-            arguments.extend(input_details.open_options_as_arguments())
-
-        if input_details.credential_options:
-            arguments.extend(input_details.credential_options_as_arguments())
-
         if len(options) > 0:
             arguments.append(options)
 

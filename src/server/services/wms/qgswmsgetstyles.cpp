@@ -19,16 +19,19 @@
  *                                                                         *
  ***************************************************************************/
 
+
+#include "qgswmsutils.h"
 #include "qgswmsrequest.h"
+#include "qgswmsserviceexception.h"
 #include "qgswmsgetstyles.h"
 #include "qgswmsrendercontext.h"
+#include "qgsserverprojectutils.h"
 
 #include "qgsproject.h"
 #include "qgsrenderer.h"
 #include "qgsvectorlayer.h"
 #include "qgsmaplayerstylemanager.h"
 #include "qgsvectorlayerlabeling.h"
-#include "qgsserverresponse.h"
 
 
 namespace QgsWms
@@ -91,7 +94,7 @@ namespace QgsWms
         nameNode.appendChild( myDocument.createTextNode( context.layerNickname( *layer ) ) );
         namedLayerNode.appendChild( nameNode );
 
-        if ( layer->type() != Qgis::LayerType::Vector )
+        if ( layer->type() != QgsMapLayerType::VectorLayer )
           continue;
 
         QgsVectorLayer *vlayer = qobject_cast<QgsVectorLayer *>( layer );

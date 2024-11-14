@@ -9,17 +9,17 @@ __author__ = 'Nyall Dawson'
 __date__ = '22/08/2018'
 __copyright__ = 'Copyright 2018, The QGIS Project'
 
+import qgis  # NOQA
 
 from qgis.core import (
-    Qgis,
-    QgsAnnotationLayer,
-    QgsMapLayerProxyModel,
-    QgsMeshLayer,
-    QgsProject,
     QgsVectorLayer,
+    QgsMeshLayer,
+    QgsAnnotationLayer,
+    QgsProject,
+    QgsMapLayerProxyModel
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+
+from qgis.testing import start_app, unittest
 
 start_app()
 
@@ -35,7 +35,7 @@ def create_mesh_layer(name):
     return layer
 
 
-class TestQgsMapLayerProxyModel(QgisTestCase):
+class TestQgsMapLayerProxyModel(unittest.TestCase):
 
     def testGettersSetters(self):
         """ test model getters/setters """
@@ -45,8 +45,8 @@ class TestQgsMapLayerProxyModel(QgisTestCase):
         l2 = create_layer('l2')
         QgsProject.instance().addMapLayer(l2)
 
-        m.setFilters(Qgis.LayerFilter.LineLayer | Qgis.LayerFilter.WritableLayer)
-        self.assertEqual(m.filters(), Qgis.LayerFilters(Qgis.LayerFilter.LineLayer | Qgis.LayerFilter.WritableLayer))
+        m.setFilters(QgsMapLayerProxyModel.LineLayer | QgsMapLayerProxyModel.WritableLayer)
+        self.assertEqual(m.filters(), QgsMapLayerProxyModel.LineLayer | QgsMapLayerProxyModel.WritableLayer)
 
         m.setExceptedLayerIds([l2.id()])
         self.assertEqual(m.exceptedLayerIds(), [l2.id()])
@@ -70,8 +70,8 @@ class TestQgsMapLayerProxyModel(QgisTestCase):
         l2 = create_layer('l2')
         QgsProject.instance().addMapLayer(l2)
 
-        m.setFilters(Qgis.LayerFilter.MeshLayer)
-        self.assertEqual(m.filters(), Qgis.LayerFilter.MeshLayer)
+        m.setFilters(QgsMapLayerProxyModel.MeshLayer)
+        self.assertEqual(m.filters(), QgsMapLayerProxyModel.MeshLayer)
 
         self.assertEqual(m.rowCount(), 1)
         self.assertEqual(m.data(m.index(0, 0)), 'l1')
@@ -92,8 +92,8 @@ class TestQgsMapLayerProxyModel(QgisTestCase):
         l2 = create_layer('l2')
         QgsProject.instance().addMapLayer(l2)
 
-        m.setFilters(Qgis.LayerFilter.AnnotationLayer)
-        self.assertEqual(m.filters(), Qgis.LayerFilter.AnnotationLayer)
+        m.setFilters(QgsMapLayerProxyModel.AnnotationLayer)
+        self.assertEqual(m.filters(), QgsMapLayerProxyModel.AnnotationLayer)
 
         self.assertEqual(m.rowCount(), 1)
         self.assertEqual(m.data(m.index(0, 0)), 'annotation 1')
@@ -101,14 +101,14 @@ class TestQgsMapLayerProxyModel(QgisTestCase):
         self.assertTrue(m.acceptsLayer(l1))
         self.assertFalse(m.acceptsLayer(l2))
 
-        m.setFilters(Qgis.LayerFilter.VectorLayer)
+        m.setFilters(QgsMapLayerProxyModel.VectorLayer)
         self.assertEqual(m.rowCount(), 1)
         self.assertEqual(m.data(m.index(0, 0)), 'l2')
 
         self.assertFalse(m.acceptsLayer(l1))
         self.assertTrue(m.acceptsLayer(l2))
 
-        m.setFilters(Qgis.LayerFilter.All)
+        m.setFilters(QgsMapLayerProxyModel.All)
         self.assertEqual(m.rowCount(), 2)
         self.assertEqual(m.data(m.index(0, 0)), 'annotation 1')
         self.assertEqual(m.data(m.index(1, 0)), 'l2')
@@ -133,7 +133,7 @@ class TestQgsMapLayerProxyModel(QgisTestCase):
                             'layer 4', "memory")
         QgsProject.instance().addMapLayer(l4)
 
-        m.setFilters(Qgis.LayerFilter.PolygonLayer)
+        m.setFilters(QgsMapLayerProxyModel.PolygonLayer)
         self.assertEqual(m.rowCount(), 1)
         self.assertEqual(m.data(m.index(0, 0)), 'layer 2')
 
@@ -142,7 +142,7 @@ class TestQgsMapLayerProxyModel(QgisTestCase):
         self.assertFalse(m.acceptsLayer(l3))
         self.assertFalse(m.acceptsLayer(l4))
 
-        m.setFilters(Qgis.LayerFilter.PointLayer)
+        m.setFilters(QgsMapLayerProxyModel.PointLayer)
         self.assertEqual(m.rowCount(), 1)
         self.assertEqual(m.data(m.index(0, 0)), 'layer 1')
 
@@ -151,7 +151,7 @@ class TestQgsMapLayerProxyModel(QgisTestCase):
         self.assertFalse(m.acceptsLayer(l3))
         self.assertFalse(m.acceptsLayer(l4))
 
-        m.setFilters(Qgis.LayerFilter.LineLayer)
+        m.setFilters(QgsMapLayerProxyModel.LineLayer)
         self.assertEqual(m.rowCount(), 1)
         self.assertEqual(m.data(m.index(0, 0)), 'layer 4')
 
@@ -160,7 +160,7 @@ class TestQgsMapLayerProxyModel(QgisTestCase):
         self.assertFalse(m.acceptsLayer(l3))
         self.assertTrue(m.acceptsLayer(l4))
 
-        m.setFilters(Qgis.LayerFilter.NoGeometry)
+        m.setFilters(QgsMapLayerProxyModel.NoGeometry)
         self.assertEqual(m.rowCount(), 1)
         self.assertEqual(m.data(m.index(0, 0)), 'layer 3')
 
@@ -169,7 +169,7 @@ class TestQgsMapLayerProxyModel(QgisTestCase):
         self.assertTrue(m.acceptsLayer(l3))
         self.assertFalse(m.acceptsLayer(l4))
 
-        m.setFilters(Qgis.LayerFilter.HasGeometry)
+        m.setFilters(QgsMapLayerProxyModel.HasGeometry)
         self.assertEqual(m.rowCount(), 3)
         self.assertEqual(m.data(m.index(0, 0)), 'layer 1')
         self.assertEqual(m.data(m.index(1, 0)), 'layer 2')
@@ -180,7 +180,7 @@ class TestQgsMapLayerProxyModel(QgisTestCase):
         self.assertFalse(m.acceptsLayer(l3))
         self.assertTrue(m.acceptsLayer(l4))
 
-        m.setFilters(Qgis.LayerFilter.VectorLayer)
+        m.setFilters(QgsMapLayerProxyModel.VectorLayer)
         self.assertEqual(m.rowCount(), 4)
         self.assertEqual(m.data(m.index(0, 0)), 'layer 1')
         self.assertEqual(m.data(m.index(1, 0)), 'layer 2')
@@ -192,7 +192,7 @@ class TestQgsMapLayerProxyModel(QgisTestCase):
         self.assertTrue(m.acceptsLayer(l3))
         self.assertTrue(m.acceptsLayer(l4))
 
-        m.setFilters(Qgis.LayerFilter.PluginLayer)
+        m.setFilters(QgsMapLayerProxyModel.PluginLayer)
         self.assertEqual(m.rowCount(), 0)
 
         self.assertFalse(m.acceptsLayer(l1))
@@ -200,7 +200,7 @@ class TestQgsMapLayerProxyModel(QgisTestCase):
         self.assertFalse(m.acceptsLayer(l3))
         self.assertFalse(m.acceptsLayer(l4))
 
-        m.setFilters(Qgis.LayerFilter.RasterLayer)
+        m.setFilters(QgsMapLayerProxyModel.RasterLayer)
         self.assertEqual(m.rowCount(), 0)
 
         self.assertFalse(m.acceptsLayer(l1))

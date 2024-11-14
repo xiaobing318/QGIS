@@ -93,7 +93,7 @@ void TestQgsShapeburst::initTestCase()
                                      myPolyFileInfo.completeBaseName(), QStringLiteral( "ogr" ) );
 
   QgsVectorSimplifyMethod simplifyMethod;
-  simplifyMethod.setSimplifyHints( Qgis::VectorRenderingSimplificationFlags() );
+  simplifyMethod.setSimplifyHints( QgsVectorSimplifyMethod::NoSimplification );
   mpPolysLayer->setSimplifyMethod( simplifyMethod );
 
   // Register the layer with the registry
@@ -162,7 +162,7 @@ void TestQgsShapeburst::shapeburstMaxDistanceMm()
 {
   mShapeburstFill->setUseWholeShape( false );
   mShapeburstFill->setMaxDistance( 3 );
-  mShapeburstFill->setDistanceUnit( Qgis::RenderUnit::Millimeters );
+  mShapeburstFill->setDistanceUnit( QgsUnitTypes::RenderMillimeters );
   QVERIFY( imageCheck( "shapeburst_maxdistance_mm" ) );
   mShapeburstFill->setUseWholeShape( true );
 }
@@ -171,10 +171,10 @@ void TestQgsShapeburst::shapeburstMaxDistanceMapUnits()
 {
   mShapeburstFill->setUseWholeShape( false );
   mShapeburstFill->setMaxDistance( 10 );
-  mShapeburstFill->setDistanceUnit( Qgis::RenderUnit::MapUnits );
+  mShapeburstFill->setDistanceUnit( QgsUnitTypes::RenderMapUnits );
   QVERIFY( imageCheck( "shapeburst_maxdistance_mapunit" ) );
   mShapeburstFill->setUseWholeShape( true );
-  mShapeburstFill->setDistanceUnit( Qgis::RenderUnit::Millimeters );
+  mShapeburstFill->setDistanceUnit( QgsUnitTypes::RenderMillimeters );
 }
 
 void TestQgsShapeburst::shapeburstIgnoreRings()
@@ -188,7 +188,7 @@ void TestQgsShapeburst::shapeburstSymbolFromQml()
 {
   QVERIFY( setQml( "shapeburst" ) );
   QgsVectorSimplifyMethod simplifyMethod;
-  simplifyMethod.setSimplifyHints( Qgis::VectorRenderingSimplificationFlags() );
+  simplifyMethod.setSimplifyHints( QgsVectorSimplifyMethod::NoSimplification );
   mpPolysLayer->setSimplifyMethod( simplifyMethod );
   QVERIFY( imageCheck( "shapeburst_from_qml" ) );
 }

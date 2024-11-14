@@ -9,35 +9,32 @@ __author__ = 'Nyall Dawson'
 __date__ = '3/05/2016'
 __copyright__ = 'Copyright 2016, The QGIS Project'
 
-from qgis.PyQt.QtCore import QT_VERSION_STR, QLocale, Qt, QVariant
-from qgis.core import (
-    NULL,
-    QgsCoordinateReferenceSystem,
-    QgsEditorWidgetSetup,
-    QgsFeature,
-    QgsField,
-    QgsFields,
-    QgsGeometry,
-    QgsJsonExporter,
-    QgsJsonUtils,
-    QgsLineString,
-    QgsPoint,
-    QgsProject,
-    QgsRelation,
-    QgsVectorLayer,
-    QgsWkbTypes,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+import qgis  # NOQA
+from qgis.PyQt.QtCore import QVariant, QTextCodec, QLocale, Qt
+from qgis.core import (QgsJsonUtils,
+                       QgsJsonExporter,
+                       QgsCoordinateReferenceSystem,
+                       QgsProject,
+                       QgsFeature,
+                       QgsField,
+                       QgsFields,
+                       QgsWkbTypes,
+                       QgsGeometry,
+                       QgsPoint,
+                       QgsLineString,
+                       NULL,
+                       QgsVectorLayer,
+                       QgsRelation,
+                       QgsEditorWidgetSetup
+                       )
+from qgis.testing import unittest, start_app
 
 start_app()
-
-if int(QT_VERSION_STR.split('.')[0]) < 6:
-    from qgis.PyQt.QtCore import QTextCodec
-    codec = QTextCodec.codecForName("System")
+codec = QTextCodec.codecForName("System")
 
 
-class TestQgsJsonUtils(QgisTestCase):
+class TestQgsJsonUtils(unittest.TestCase):
+
     def testStringToFeatureList(self):
         """Test converting json string to features"""
 
@@ -45,48 +42,38 @@ class TestQgsJsonUtils(QgisTestCase):
         fields.append(QgsField("name", QVariant.String))
 
         # empty string
-        if int(QT_VERSION_STR.split('.')[0]) >= 6:
-            features = QgsJsonUtils.stringToFeatureList("", fields)
-        else:
-            features = QgsJsonUtils.stringToFeatureList("", fields, codec)
+        features = QgsJsonUtils.stringToFeatureList("", fields, codec)
         self.assertEqual(features, [])
 
         # bad string
-        if int(QT_VERSION_STR.split('.')[0]) >= 6:
-            features = QgsJsonUtils.stringToFeatureList("asdasdas", fields)
-        else:
-            features = QgsJsonUtils.stringToFeatureList("asdasdas", fields, codec)
+        features = QgsJsonUtils.stringToFeatureList("asdasdas", fields, codec)
         self.assertEqual(features, [])
 
         # geojson string with 1 feature
-        s = '{\n"type": "Feature","geometry": {"type": "Point","coordinates": [125, 10]},"properties": {"name": "Dinagat Islands"}}'
-        if int(QT_VERSION_STR.split('.')[0]) >= 6:
-            features = QgsJsonUtils.stringToFeatureList(s, fields)
-        else:
-            features = QgsJsonUtils.stringToFeatureList(s, fields, codec)
+        features = QgsJsonUtils.stringToFeatureList(
+            '{\n"type": "Feature","geometry": {"type": "Point","coordinates": [125, 10]},"properties": {"name": "Dinagat Islands"}}',
+            fields, codec)
         self.assertEqual(len(features), 1)
         self.assertFalse(features[0].geometry().isNull())
-        self.assertEqual(features[0].geometry().wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(features[0].geometry().wkbType(), QgsWkbTypes.Point)
         point = features[0].geometry().constGet()
         self.assertEqual(point.x(), 125.0)
         self.assertEqual(point.y(), 10.0)
         self.assertEqual(features[0]['name'], "Dinagat Islands")
 
         # geojson string with 2 features
-        s = '{ "type": "FeatureCollection","features":[{\n"type": "Feature","geometry": {"type": "Point","coordinates": [125, 10]},"properties": {"name": "Dinagat Islands"}}, {\n"type": "Feature","geometry": {"type": "Point","coordinates": [110, 20]},"properties": {"name": "Henry Gale Island"}}]}'
-        if int(QT_VERSION_STR.split('.')[0]) >= 6:
-            features = QgsJsonUtils.stringToFeatureList(s, fields)
-        else:
-            features = QgsJsonUtils.stringToFeatureList(s, fields, codec)
+        features = QgsJsonUtils.stringToFeatureList(
+            '{ "type": "FeatureCollection","features":[{\n"type": "Feature","geometry": {"type": "Point","coordinates": [125, 10]},"properties": {"name": "Dinagat Islands"}}, {\n"type": "Feature","geometry": {"type": "Point","coordinates": [110, 20]},"properties": {"name": "Henry Gale Island"}}]}',
+            fields, codec)
         self.assertEqual(len(features), 2)
         self.assertFalse(features[0].geometry().isNull())
-        self.assertEqual(features[0].geometry().wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(features[0].geometry().wkbType(), QgsWkbTypes.Point)
         point = features[0].geometry().constGet()
         self.assertEqual(point.x(), 125.0)
         self.assertEqual(point.y(), 10.0)
         self.assertEqual(features[0]['name'], "Dinagat Islands")
         self.assertFalse(features[1].geometry().isNull())
-        self.assertEqual(features[1].geometry().wkbType(), QgsWkbTypes.Type.Point)
+        self.assertEqual(features[1].geometry().wkbType(), QgsWkbTypes.Point)
         point = features[1].geometry().constGet()
         self.assertEqual(point.x(), 110.0)
         self.assertEqual(point.y(), 20.0)
@@ -105,12 +92,12 @@ class TestQgsJsonUtils(QgisTestCase):
         # No milliseconds
         features = QgsJsonUtils.stringToFeatureList(geojson_with_time('22:00:10'), fields)
         self.assertEqual(len(features), 1)
-        self.assertEqual(features[0]['some_time_field'].toString(Qt.DateFormat.ISODateWithMs), f"{date}22:00:10.000")
+        self.assertEqual(features[0]['some_time_field'].toString(Qt.ISODateWithMs), f"{date}22:00:10.000")
 
         # milliseconds
         features = QgsJsonUtils.stringToFeatureList(geojson_with_time('22:00:10.123'), fields)
         self.assertEqual(len(features), 1)
-        self.assertEqual(features[0]['some_time_field'].toString(Qt.DateFormat.ISODateWithMs), f"{date}22:00:10.123")
+        self.assertEqual(features[0]['some_time_field'].toString(Qt.ISODateWithMs), f"{date}22:00:10.123")
 
     def testStringToFeatureListWithTimeProperty_regression44160(self):
         """Test that milliseconds and time zone information is parsed from time properties"""
@@ -123,36 +110,28 @@ class TestQgsJsonUtils(QgisTestCase):
         # No milliseconds
         features = QgsJsonUtils.stringToFeatureList(geojson_with_time('22:00:10'), fields)
         self.assertEqual(len(features), 1)
-        self.assertEqual(features[0]['some_time_field'].toString(Qt.DateFormat.ISODateWithMs), "22:00:10.000")
+        self.assertEqual(features[0]['some_time_field'].toString(Qt.ISODateWithMs), "22:00:10.000")
 
         # milliseconds
         features = QgsJsonUtils.stringToFeatureList(geojson_with_time('22:00:10.123'), fields)
         self.assertEqual(len(features), 1)
-        self.assertEqual(features[0]['some_time_field'].toString(Qt.DateFormat.ISODateWithMs), "22:00:10.123")
+        self.assertEqual(features[0]['some_time_field'].toString(Qt.ISODateWithMs), "22:00:10.123")
 
     def testStringToFields(self):
         """test retrieving fields from GeoJSON strings"""
 
         # empty string
-        if int(QT_VERSION_STR.split('.')[0]) >= 6:
-            fields = QgsJsonUtils.stringToFields("")
-        else:
-            fields = QgsJsonUtils.stringToFields("", codec)
+        fields = QgsJsonUtils.stringToFields("", codec)
         self.assertEqual(fields.count(), 0)
 
         # bad string
-        if int(QT_VERSION_STR.split('.')[0]) >= 6:
-            fields = QgsJsonUtils.stringToFields("asdasdas")
-        else:
-            fields = QgsJsonUtils.stringToFields("asdasdas", codec)
+        fields = QgsJsonUtils.stringToFields("asdasdas", codec)
         self.assertEqual(fields.count(), 0)
 
         # geojson string
-        s = '{\n"type": "Feature","geometry": {"type": "Point","coordinates": [125, 10]},"properties": {"name": "Dinagat Islands","height":5.5}}'
-        if int(QT_VERSION_STR.split('.')[0]) >= 6:
-            fields = QgsJsonUtils.stringToFields(s)
-        else:
-            fields = QgsJsonUtils.stringToFields(s, codec)
+        fields = QgsJsonUtils.stringToFields(
+            '{\n"type": "Feature","geometry": {"type": "Point","coordinates": [125, 10]},"properties": {"name": "Dinagat Islands","height":5.5}}',
+            codec)
         self.assertEqual(fields.count(), 2)
         self.assertEqual(fields[0].name(), "name")
         self.assertEqual(fields[0].type(), QVariant.String)
@@ -160,11 +139,9 @@ class TestQgsJsonUtils(QgisTestCase):
         self.assertEqual(fields[1].type(), QVariant.Double)
 
         # geojson string with 2 features
-        s = '{ "type": "FeatureCollection","features":[{\n"type": "Feature","geometry": {"type": "Point","coordinates": [125, 10]},"properties": {"name": "Dinagat Islands","height":5.5}}, {\n"type": "Feature","geometry": {"type": "Point","coordinates": [110, 20]},"properties": {"name": "Henry Gale Island","height":6.5}}]}'
-        if int(QT_VERSION_STR.split('.')[0]) >= 6:
-            fields = QgsJsonUtils.stringToFields(s)
-        else:
-            fields = QgsJsonUtils.stringToFields(s, codec)
+        fields = QgsJsonUtils.stringToFields(
+            '{ "type": "FeatureCollection","features":[{\n"type": "Feature","geometry": {"type": "Point","coordinates": [125, 10]},"properties": {"name": "Dinagat Islands","height":5.5}}, {\n"type": "Feature","geometry": {"type": "Point","coordinates": [110, 20]},"properties": {"name": "Henry Gale Island","height":6.5}}]}',
+            codec)
         self.assertEqual(fields.count(), 2)
         self.assertEqual(fields[0].name(), "name")
         self.assertEqual(fields[0].type(), QVariant.String)
@@ -726,35 +703,6 @@ class TestQgsJsonUtils(QgisTestCase):
         # with field formatter
         setup = QgsEditorWidgetSetup('ValueMap', {"map": {"apples": 123, "bananas": 124}})
         child.setEditorWidgetSetup(1, setup)
-        parent.setEditorWidgetSetup(1, QgsEditorWidgetSetup('ValueMap', {"map": {"sixty-seven": 67}}))
-        expected = """{
-  "geometry": null,
-  "id": 432,
-  "properties": {
-    "fldint": "sixty-seven",
-    "fldtxt": "test1",
-    "foreignkey": 123,
-    "relation one": [
-      {
-        "x": "foo",
-        "y": "apples",
-        "z": 321
-      },
-      {
-        "x": "bar",
-        "y": "apples",
-        "z": 654
-      }
-    ]
-  },
-  "type": "Feature"
-}"""
-        self.assertEqual(exporter.exportFeature(pf1, indent=2), expected)
-
-        # Use raw values
-        self.assertTrue(exporter.useFieldFormatters())
-        exporter.setUseFieldFormatters(False)
-        self.assertFalse(exporter.useFieldFormatters())
         expected = """{
   "geometry": null,
   "id": 432,
@@ -765,12 +713,12 @@ class TestQgsJsonUtils(QgisTestCase):
     "relation one": [
       {
         "x": "foo",
-        "y": 123,
+        "y": "apples",
         "z": 321
       },
       {
         "x": "bar",
-        "y": 123,
+        "y": "apples",
         "z": 654
       }
     ]
@@ -778,8 +726,6 @@ class TestQgsJsonUtils(QgisTestCase):
   "type": "Feature"
 }"""
         self.assertEqual(exporter.exportFeature(pf1, indent=2), expected)
-        exporter.setUseFieldFormatters(True)
-        parent.setEditorWidgetSetup(1, QgsEditorWidgetSetup())
 
         # test excluding related attributes
         exporter.setIncludeRelated(False)
@@ -985,583 +931,6 @@ class TestQgsJsonUtils(QgisTestCase):
   "type": "Feature"
 }"""
         self.assertEqual(exporter.exportFeature(features[0], indent=2), expected)
-
-    def test_geojson_invalid(self):
-        res = QgsJsonUtils.geometryFromGeoJson("")
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson("xxxx")
-        self.assertTrue(res.isNull())
-
-    def test_geojson_point(self):
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-            "type": "Point",
-            "coordinates": [30.0, 10.0]
-        }"""
-        )
-        self.assertEqual(res.asWkt(), "Point (30 10)")
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "Point",
-                    "coordinates": [30.0, 10.0, 15.5]
-                }"""
-        )
-        self.assertEqual(res.asWkt(), "Point Z (30 10 15.5)")
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "Point",
-                    "coordinates": [30.0]
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "Point",
-                    "coordinates": 3
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "Point",
-                    "coordinates": [1,2,3,4]
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "Point"
-                }"""
-        )
-        self.assertTrue(res.isNull())
-
-    def test_geojson_multipoint(self):
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-            "type": "MultiPoint",
-            "coordinates": [[10.0, 40.0],
-            [40.0, 30.0],
-            [20.0, 20.0],
-            [30.0, 10.0]]
-        }"""
-        )
-        self.assertEqual(res.asWkt(), "MultiPoint ((10 40),(40 30),(20 20),(30 10))")
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-            "type": "MultiPoint",
-            "coordinates": [[10.0, 40.0, 15.5],
-            [40.0, 30.0, 12.5],
-            [20.0, 20.0, 1.1],
-            [30.0, 10.0, 2.2]]
-        }"""
-        )
-        self.assertEqual(
-            res.asWkt(1),
-            "MultiPoint Z ((10 40 15.5),(40 30 12.5),(20 20 1.1),(30 10 2.2))",
-        )
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "MultiPoint",
-                    "coordinates": [30.0]
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "MultiPoint",
-                    "coordinates": [[30.0]]
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "MultiPoint",
-                    "coordinates": 3
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "MultiPoint",
-                    "coordinates": [[1,2,3,4]]
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "MultiPoint"
-                }"""
-        )
-        self.assertTrue(res.isNull())
-
-    def test_geojson_linestring(self):
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-    "type": "LineString",
-    "coordinates": [
-        [30.0, 10.0],
-        [10.0, 30.0],
-        [40.0, 40.0]
-    ]
-}"""
-        )
-        self.assertEqual(res.asWkt(), "LineString (30 10, 10 30, 40 40)")
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-    "type": "LineString",
-    "coordinates": [
-        [30.0, 10.0, 12.2],
-        [10.0, 30.0, 12.3],
-        [40.0, 40.0, 12.4]
-    ]
-}"""
-        )
-        self.assertEqual(
-            res.asWkt(1),
-            "LineString Z (30 10 12.2, 10 30 12.3, 40 40 12.4)",
-        )
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "LineString",
-                    "coordinates": [30.0]
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "LineString",
-                    "coordinates": [[30.0]]
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "LineString",
-                    "coordinates": 3
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "LineString",
-                    "coordinates": [[1,2,3,4]]
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "LineString"
-                }"""
-        )
-        self.assertTrue(res.isNull())
-
-    def test_geojson_multilinestring(self):
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-    "type": "MultiLineString",
-    "coordinates": [
-        [
-            [10.0, 10.0],
-            [20.0, 20.0],
-            [10.0, 40.0]
-        ],
-        [
-            [40.0, 40.0],
-            [30.0, 30.0],
-            [40.0, 20.0],
-            [30.0, 10.0]
-        ]
-    ]
-}"""
-        )
-        self.assertEqual(
-            res.asWkt(),
-            "MultiLineString ((10 10, 20 20, 10 40),(40 40, 30 30, 40 20, 30 10))",
-        )
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-    "type": "MultiLineString",
-    "coordinates": [
-        [
-            [10.0, 10.0, 1.2],
-            [20.0, 20.0, 1.3],
-            [10.0, 40.0, 1.4]
-        ],
-        [
-            [40.0, 40.0, 2],
-            [30.0, 30.0, 3],
-            [40.0, 20.0, 4],
-            [30.0, 10.0, 5]
-        ]
-    ]
-}"""
-        )
-        self.assertEqual(
-            res.asWkt(1),
-            "MultiLineString Z ((10 10 1.2, 20 20 1.3, 10 40 1.4),(40 40 2, 30 30 3, 40 20 4, 30 10 5))",
-        )
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "MultiLineString",
-                    "coordinates": [30.0]
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "MultiLineString",
-                    "coordinates": [[30.0]]
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "MultiLineString",
-                    "coordinates": [[[30.0]]]
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "MultiLineString",
-                    "coordinates": 3
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "MultiLineString",
-                    "coordinates": [[[1,2,3,4]]]
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "MultiLineString"
-                }"""
-        )
-        self.assertTrue(res.isNull())
-
-    def test_geojson_polygon(self):
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-    "type": "Polygon",
-    "coordinates": [
-        [
-            [35.0, 10.0],
-            [45.0, 45.0],
-            [15.0, 40.0],
-            [10.0, 20.0],
-            [35.0, 10.0]
-        ],
-        [
-            [20.0, 30.0],
-            [35.0, 35.0],
-            [30.0, 20.0],
-            [20.0, 30.0]
-        ]
-    ]
-}"""
-        )
-        self.assertEqual(
-            res.asWkt(),
-            "Polygon ((35 10, 45 45, 15 40, 10 20, 35 10),(20 30, 35 35, 30 20, 20 30))",
-        )
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-    "type": "Polygon",
-    "coordinates": [
-        [
-            [35.0, 10.0],
-            [45.0, 45.0],
-            [15.0, 40.0],
-            [10.0, 20.0],
-            [35.0, 10.0]
-        ]
-    ]
-}"""
-        )
-        self.assertEqual(
-            res.asWkt(),
-            "Polygon ((35 10, 45 45, 15 40, 10 20, 35 10))",
-        )
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-    "type": "Polygon",
-    "coordinates": [
-        [
-            [35.0, 10.0, 1.1],
-            [45.0, 45.0, 1.2],
-            [15.0, 40.0, 1.3],
-            [10.0, 20.0, 1.4],
-            [35.0, 10.0, 1.1]
-        ],
-        [
-            [20.0, 30.0, 2],
-            [35.0, 35.0, 3],
-            [30.0, 20.0, 4],
-            [20.0, 30.0, 2]
-        ]
-    ]
-}"""
-        )
-        self.assertEqual(
-            res.asWkt(1),
-            "Polygon Z ((35 10 1.1, 45 45 1.2, 15 40 1.3, 10 20 1.4, 35 10 1.1),(20 30 2, 35 35 3, 30 20 4, 20 30 2))",
-        )
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "Polygon",
-                    "coordinates": [30.0]
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "Polygon",
-                    "coordinates": [[30.0]]
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "Polygon",
-                    "coordinates": [[[30.0]]]
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "Polygon",
-                    "coordinates": 3
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "Polygon",
-                    "coordinates": [[[1,2,3,4]]]
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "Polygon"
-                }"""
-        )
-        self.assertTrue(res.isNull())
-
-    def test_geojson_multipolygon(self):
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-    "type": "MultiPolygon",
-    "coordinates": [
-        [
-            [
-                [30.0, 20.0],
-                [45.0, 40.0],
-                [10.0, 40.0],
-                [30.0, 20.0]
-            ]
-        ],
-        [
-            [
-                [15.0, 5.0],
-                [40.0, 10.0],
-                [10.0, 20.0],
-                [5.0, 10.0],
-                [15.0, 5.0]
-            ]
-        ]
-    ]
-}"""
-        )
-        self.assertEqual(
-            res.asWkt(),
-            "MultiPolygon (((30 20, 45 40, 10 40, 30 20)),((15 5, 40 10, 10 20, 5 10, 15 5)))",
-        )
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-    "type": "MultiPolygon",
-    "coordinates": [
-        [
-            [
-                [40.0, 40.0],
-                [20.0, 45.0],
-                [45.0, 30.0],
-                [40.0, 40.0]
-            ]
-        ],
-        [
-            [
-                [20.0, 35.0],
-                [10.0, 30.0],
-                [10.0, 10.0],
-                [30.0, 5.0],
-                [45.0, 20.0],
-                [20.0, 35.0]
-            ],
-            [
-                [30.0, 20.0],
-                [20.0, 15.0],
-                [20.0, 25.0],
-                [30.0, 20.0]
-            ]
-        ]
-    ]
-}"""
-        )
-        self.assertEqual(
-            res.asWkt(),
-            "MultiPolygon (((40 40, 20 45, 45 30, 40 40)),((20 35, 10 30, 10 10, 30 5, 45 20, 20 35),(30 20, 20 15, 20 25, 30 20)))",
-        )
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-    "type": "MultiPolygon",
-    "coordinates": [
-        [
-            [
-                [30.0, 20.0, 1],
-                [45.0, 40.0, 2],
-                [10.0, 40.0, 3],
-                [30.0, 20.0, 1]
-            ]
-        ],
-        [
-            [
-                [15.0, 5.0, 11],
-                [40.0, 10.0, 12],
-                [10.0, 20.0, 13],
-                [5.0, 10.0, 14],
-                [15.0, 5.0, 11]
-            ]
-        ]
-    ]
-}"""
-        )
-        self.assertEqual(
-            res.asWkt(1),
-            "MultiPolygon Z (((30 20 1, 45 40 2, 10 40 3, 30 20 1)),((15 5 11, 40 10 12, 10 20 13, 5 10 14, 15 5 11)))",
-        )
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "MultiPolygon",
-                    "coordinates": [30.0]
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "MultiPolygon",
-                    "coordinates": [[30.0]]
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "MultiPolygon",
-                    "coordinates": [[[30.0]]]
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "MultiPolygon",
-                    "coordinates": [[[[30.0]]]]
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "MultiPolygon",
-                    "coordinates": 3
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "MultiPolygon",
-                    "coordinates": [[[1,2,3,4]]]
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "MultiPolygon"
-                }"""
-        )
-        self.assertTrue(res.isNull())
-
-    def test_geojson_collection(self):
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-    "type": "GeometryCollection",
-    "geometries": [
-        {
-            "type": "Point",
-            "coordinates": [40.0, 10.0]
-        },
-        {
-            "type": "LineString",
-            "coordinates": [
-                [10.0, 10.0],
-                [20.0, 20.0],
-                [10.0, 40.0]
-            ]
-        },
-        {
-            "type": "Polygon",
-            "coordinates": [
-                [
-                    [40.0, 40.0],
-                    [20.0, 45.0],
-                    [45.0, 30.0],
-                    [40.0, 40.0]
-                ]
-            ]
-        }
-    ]
-}"""
-        )
-        self.assertEqual(
-            res.asWkt(),
-            "GeometryCollection (Point (40 10),LineString (10 10, 20 20, 10 40),Polygon ((40 40, 20 45, 45 30, 40 40)))",
-        )
-
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "GeometryCollection",
-                    "geometries": [30.0]
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "GeometryCollection",
-                    "geometries": [[30.0]]
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "GeometryCollection",
-                    "geometries": 3
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "GeometryCollection",
-                    "geometries": [[[1,2,3,4]]]
-                }"""
-        )
-        self.assertTrue(res.isNull())
-        res = QgsJsonUtils.geometryFromGeoJson(
-            """{
-                    "type": "GeometryCollection"
-                }"""
-        )
-        self.assertTrue(res.isNull())
 
 
 if __name__ == "__main__":

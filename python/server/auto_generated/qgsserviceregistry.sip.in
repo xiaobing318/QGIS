@@ -3,7 +3,7 @@
  *                                                                      *
  * src/server/qgsserviceregistry.h                                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -22,6 +22,8 @@ services.
 
 IMPORTANT: The registry hold ownership of registered services and
 will call 'delete'  on cleanup
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -30,6 +32,10 @@ will call 'delete'  on cleanup
   public:
 
     QgsServiceRegistry();
+%Docstring
+Constructor
+%End
+
     ~QgsServiceRegistry();
 
     QgsService *getService( const QString &name, const QString &version = QString() );
@@ -129,5 +135,5 @@ Clean up registered service and unregister modules
  *                                                                      *
  * src/server/qgsserviceregistry.h                                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

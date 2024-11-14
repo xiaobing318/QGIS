@@ -20,14 +20,16 @@
 #include "qgspointcloudlayer.h"
 #include "qgscoordinatetransform.h"
 #include "qgsgeos.h"
+#include "qgsterrainprovider.h"
+#include "qgslinesymbol.h"
 #include "qgspointcloudlayerelevationproperties.h"
 #include "qgsprofilesnapping.h"
 #include "qgsprofilepoint.h"
 #include "qgspointcloudrenderer.h"
 #include "qgspointcloudrequest.h"
 #include "qgspointcloudblockrequest.h"
+#include "qgsmarkersymbol.h"
 #include "qgsmessagelog.h"
-#include "qgsproject.h"
 
 //
 // QgsPointCloudLayerProfileGenerator
@@ -35,18 +37,18 @@
 
 QgsPointCloudLayerProfileResults::QgsPointCloudLayerProfileResults()
 {
-  mPointIndex = GEOSSTRtree_create_r( QgsGeosContext::get(), ( size_t )10 );
+  mPointIndex = GEOSSTRtree_create_r( QgsGeos::getGEOSHandler(), ( size_t )10 );
 }
 
 QgsPointCloudLayerProfileResults::~QgsPointCloudLayerProfileResults()
 {
-  GEOSSTRtree_destroy_r( QgsGeosContext::get(), mPointIndex );
+  GEOSSTRtree_destroy_r( QgsGeos::getGEOSHandler(), mPointIndex );
   mPointIndex = nullptr;
 }
 
 void QgsPointCloudLayerProfileResults::finalize( QgsFeedback *feedback )
 {
-  GEOSContextHandle_t geosctxt = QgsGeosContext::get();
+  GEOSContextHandle_t geosctxt = QgsGeos::getGEOSHandler();
 
   const std::size_t size = results.size();
   PointResult *pointData = results.data();
@@ -99,64 +101,6 @@ QVector<QgsGeometry> QgsPointCloudLayerProfileResults::asGeometries() const
   {
     res.append( QgsGeometry( new QgsPoint( point.x, point.y, point.z ) ) );
   }
-  return res;
-}
-
-QVector<QgsAbstractProfileResults::Feature> QgsPointCloudLayerProfileResults::asFeatures( Qgis::ProfileExportType type, QgsFeedback *feedback ) const
-{
-  QVector<  QgsAbstractProfileResults::Feature > res;
-  res.reserve( static_cast< int >( results.size() ) );
-  switch ( type )
-  {
-    case Qgis::ProfileExportType::Features3D:
-    {
-      for ( const PointResult &point : results )
-      {
-        if ( feedback && feedback->isCanceled() )
-          break;
-        QgsAbstractProfileResults::Feature f;
-        f.layerIdentifier = mLayerId;
-        f.geometry = QgsGeometry( std::make_unique< QgsPoint >( point.x, point.y, point.z ) );
-        res.append( f );
-      }
-      break;
-    }
-
-    case Qgis::ProfileExportType::Profile2D:
-    {
-      for ( const PointResult &point : results )
-      {
-        if ( feedback && feedback->isCanceled() )
-          break;
-        QgsAbstractProfileResults::Feature f;
-        f.layerIdentifier = mLayerId;
-        f.geometry = QgsGeometry( std::make_unique< QgsPoint >( point.distanceAlongCurve, point.z ) );
-        res.append( f );
-      }
-      break;
-    }
-
-    case Qgis::ProfileExportType::DistanceVsElevationTable:
-    {
-      for ( const PointResult &point : results )
-      {
-        if ( feedback && feedback->isCanceled() )
-          break;
-
-        QgsAbstractProfileResults::Feature f;
-        f.layerIdentifier = mLayerId;
-        f.attributes =
-        {
-          { QStringLiteral( "distance" ),  point.distanceAlongCurve },
-          { QStringLiteral( "elevation" ),  point.z }
-        };
-        f.geometry = QgsGeometry( std::make_unique< QgsPoint >( point.x, point.y, point.z ) );
-        res << f;
-      }
-      break;
-    }
-  }
-
   return res;
 }
 
@@ -238,7 +182,7 @@ QgsProfileSnapResult QgsPointCloudLayerProfileResults::snapPoint( const QgsProfi
 {
   QgsProfileSnapResult result;
 
-  GEOSContextHandle_t geosctxt = QgsGeosContext::get();
+  GEOSContextHandle_t geosctxt = QgsGeos::getGEOSHandler();
 
   const double minDistance = point.distance() - context.maximumPointDistanceDelta;
   const double maxDistance = point.distance() + context.maximumPointDistanceDelta;
@@ -326,7 +270,6 @@ void QgsPointCloudLayerProfileResults::copyPropertiesFromGenerator( const QgsAbs
   opacityByDistanceEffect = pcGenerator->mOpacityByDistanceEffect;
 
   mLayer = pcGenerator->mLayer;
-  mLayerId = pcGenerator->mId;
   mCurveCrs = pcGenerator->mTargetCrs;
   mProfileCurve.reset( pcGenerator->mProfileCurve->clone() );
   mTolerance = pcGenerator->mTolerance;
@@ -354,7 +297,7 @@ QgsPointCloudLayerProfileGenerator::QgsPointCloudLayerProfileGenerator( QgsPoint
   , mFeedback( std::make_unique< QgsFeedback >() )
   , mProfileCurve( request.profileCurve() ? request.profileCurve()->clone() : nullptr )
   , mTolerance( request.tolerance() )
-  , mSourceCrs( layer->crs3D() )
+  , mSourceCrs( layer->crs() )
   , mTargetCrs( request.crs() )
   , mTransformContext( request.transformContext() )
   , mZOffset( layer->elevationProperties()->zOffset() )
@@ -389,22 +332,11 @@ bool QgsPointCloudLayerProfileGenerator::generateProfile( const QgsProfileGenera
   // this is not AT ALL thread safe, but it's what QgsPointCloudLayerRenderer does !
   // TODO: fix when QgsPointCloudLayerRenderer is made thread safe to use same approach
 
-  QVector<QgsPointCloudIndex *> indexes;
-  QgsPointCloudIndex *mainIndex = mLayer->dataProvider()->index();
-  if ( mainIndex && mainIndex->isValid() )
-    indexes.append( mainIndex );
-
-  // Gather all relevant sub-indexes
-  const QgsRectangle profileCurveBbox = mProfileCurve->boundingBox();
-  for ( const QgsPointCloudSubIndex &subidx : mLayer->dataProvider()->subIndexes() )
+  QgsPointCloudIndex *pc = mLayer->dataProvider()->index();
+  if ( !pc || !pc->isValid() )
   {
-    QgsPointCloudIndex *index = subidx.index();
-    if ( index && index->isValid() && subidx.polygonBounds().intersects( profileCurveBbox ) )
-      indexes.append( subidx.index() );
-  }
-
-  if ( indexes.empty() )
     return false;
+  }
 
   const double startDistanceOffset = std::max( !context.distanceRange().isInfinite() ? context.distanceRange().lower() : 0, 0.0 );
   const double endDistance = context.distanceRange().upper();
@@ -433,7 +365,7 @@ bool QgsPointCloudLayerProfileGenerator::generateProfile( const QgsProfileGenera
   }
   catch ( QgsCsException & )
   {
-    QgsDebugError( QStringLiteral( "Error transforming profile line to layer CRS" ) );
+    QgsDebugMsg( QStringLiteral( "Error transforming profile line to layer CRS" ) );
     return false;
   }
 
@@ -444,20 +376,48 @@ bool QgsPointCloudLayerProfileGenerator::generateProfile( const QgsProfileGenera
   mSearchGeometryInLayerCrsGeometryEngine->prepareGeometry();
   mMaxSearchExtentInLayerCrs = mSearchGeometryInLayerCrs->boundingBox();
 
-  double maximumErrorPixels = context.convertDistanceToPixels( mMaximumScreenError, mMaximumScreenErrorUnit );
-  if ( maximumErrorPixels < 0.0 )
-  {
-    QgsDebugError( QStringLiteral( "Invalid maximum error in pixels" ) );
-    return false;
-  }
+  const IndexedPointCloudNode root = pc->root();
 
-  const double toleranceInPixels = context.convertDistanceToPixels( mTolerance, Qgis::RenderUnit::MapUnits );
+  double maximumErrorPixels = context.convertDistanceToPixels( mMaximumScreenError, mMaximumScreenErrorUnit );
+  const double toleranceInPixels = context.convertDistanceToPixels( mTolerance, QgsUnitTypes::RenderMapUnits );
   // ensure that the maximum error is compatible with the tolerance size -- otherwise if the tolerance size
   // is much smaller than the maximum error, we don't dig deep enough into the point cloud nodes to find
   // points which are inside the tolerance.
   // "4" is a magic number here, based purely on what "looks good" in the profile results!
   if ( toleranceInPixels / 4 < maximumErrorPixels )
     maximumErrorPixels = toleranceInPixels / 4;
+
+  const QgsRectangle rootNodeExtentLayerCoords = pc->nodeMapExtent( root );
+  QgsRectangle rootNodeExtentInCurveCrs;
+  try
+  {
+    QgsCoordinateTransform extentTransform = mLayerToTargetTransform;
+    extentTransform.setBallparkTransformsAreAppropriate( true );
+    rootNodeExtentInCurveCrs = extentTransform.transformBoundingBox( rootNodeExtentLayerCoords );
+  }
+  catch ( QgsCsException & )
+  {
+    QgsDebugMsg( QStringLiteral( "Could not transform node extent to curve CRS" ) );
+    rootNodeExtentInCurveCrs = rootNodeExtentLayerCoords;
+  }
+
+  const double rootErrorInMapCoordinates = rootNodeExtentInCurveCrs.width() / pc->span(); // in curve coords
+
+  const double mapUnitsPerPixel = context.mapUnitsPerDistancePixel();
+  if ( ( rootErrorInMapCoordinates < 0.0 ) || ( mapUnitsPerPixel < 0.0 ) || ( maximumErrorPixels < 0.0 ) )
+  {
+    QgsDebugMsg( QStringLiteral( "invalid screen error" ) );
+    return false;
+  }
+  double rootErrorPixels = rootErrorInMapCoordinates / mapUnitsPerPixel; // in pixels
+  const QVector<IndexedPointCloudNode> nodes = traverseTree( pc, pc->root(), maximumErrorPixels, rootErrorPixels, context.elevationRange() );
+
+  const double rootErrorInLayerCoordinates = rootNodeExtentLayerCoords.width() / pc->span();
+  const double maxErrorInMapCoordinates = maximumErrorPixels * mapUnitsPerPixel;
+
+  mResults = std::make_unique< QgsPointCloudLayerProfileResults >();
+  mResults->copyPropertiesFromGenerator( this );
+  mResults->mMaxErrorInLayerCoordinates = maxErrorInMapCoordinates * rootErrorInLayerCoordinates / rootErrorInMapCoordinates;
 
   QgsPointCloudRequest request;
   QgsPointCloudAttributeCollection attributes;
@@ -494,75 +454,22 @@ bool QgsPointCloudLayerProfileGenerator::generateProfile( const QgsProfileGenera
 
   request.setAttributes( attributes );
 
-  mResults = std::make_unique< QgsPointCloudLayerProfileResults >();
-  mResults->copyPropertiesFromGenerator( this );
-  mResults->mMaxErrorInLayerCoordinates = 0;
-
-  QgsCoordinateTransform extentTransform = mLayerToTargetTransform;
-  extentTransform.setBallparkTransformsAreAppropriate( true );
-
-  const double mapUnitsPerPixel = context.mapUnitsPerDistancePixel();
-  if ( mapUnitsPerPixel < 0.0 )
+  switch ( pc->accessType() )
   {
-    QgsDebugError( QStringLiteral( "Invalid map units per pixel ratio" ) );
+    case QgsPointCloudIndex::AccessType::Local:
+    {
+      visitNodesSync( nodes, pc, request, context.elevationRange() );
+      break;
+    }
+    case QgsPointCloudIndex::AccessType::Remote:
+    {
+      visitNodesAsync( nodes, pc, request, context.elevationRange() );
+      break;
+    }
+  }
+
+  if ( mFeedback->isCanceled() )
     return false;
-  }
-
-  for ( QgsPointCloudIndex *pc : std::as_const( indexes ) )
-  {
-    const IndexedPointCloudNode root = pc->root();
-    const QgsRectangle rootNodeExtentLayerCoords = pc->nodeMapExtent( root );
-    QgsRectangle rootNodeExtentInCurveCrs;
-    try
-    {
-      rootNodeExtentInCurveCrs = extentTransform.transformBoundingBox( rootNodeExtentLayerCoords );
-    }
-    catch ( QgsCsException & )
-    {
-      QgsDebugError( QStringLiteral( "Could not transform node extent to curve CRS" ) );
-      rootNodeExtentInCurveCrs = rootNodeExtentLayerCoords;
-    }
-
-    const double rootErrorInMapCoordinates = rootNodeExtentInCurveCrs.width() / pc->span(); // in curve coords
-    if ( rootErrorInMapCoordinates < 0.0 )
-    {
-      QgsDebugError( QStringLiteral( "Invalid root node error" ) );
-      return false;
-    }
-
-    double rootErrorPixels = rootErrorInMapCoordinates / mapUnitsPerPixel; // in pixels
-    const QVector<IndexedPointCloudNode> nodes = traverseTree( pc, pc->root(), maximumErrorPixels, rootErrorPixels, context.elevationRange() );
-
-    const double rootErrorInLayerCoordinates = rootNodeExtentLayerCoords.width() / pc->span();
-    const double maxErrorInMapCoordinates = maximumErrorPixels * mapUnitsPerPixel;
-
-    mResults->mMaxErrorInLayerCoordinates = std::max(
-        mResults->mMaxErrorInLayerCoordinates,
-        maxErrorInMapCoordinates * rootErrorInLayerCoordinates / rootErrorInMapCoordinates );
-
-    switch ( pc->accessType() )
-    {
-      case QgsPointCloudIndex::AccessType::Local:
-      {
-        visitNodesSync( nodes, pc, request, context.elevationRange() );
-        break;
-      }
-      case QgsPointCloudIndex::AccessType::Remote:
-      {
-        visitNodesAsync( nodes, pc, request, context.elevationRange() );
-        break;
-      }
-    }
-
-    if ( mFeedback->isCanceled() )
-      return false;
-  }
-
-  if ( mGatheredPoints.empty() )
-  {
-    mResults = nullptr;
-    return false;
-  }
 
   // convert x/y values back to distance/height values
 
@@ -621,8 +528,7 @@ QVector<IndexedPointCloudNode> QgsPointCloudLayerProfileGenerator::traverseTree(
   if ( !mSearchGeometryInLayerCrsGeometryEngine->intersects( nodeMapGeometry.constGet() ) )
     return nodes;
 
-  if ( pc->nodePointCount( n ) > 0 )
-    nodes.append( n );
+  nodes.append( n );
 
   double childrenErrorPixels = nodeErrorPixels / 2.0;
   if ( childrenErrorPixels < maxErrorPixels )
@@ -683,7 +589,7 @@ int QgsPointCloudLayerProfileGenerator::visitNodesAsync( const QVector<IndexedPo
       if ( blockRequests.isEmpty() )
         loop.exit();
 
-      std::unique_ptr<QgsPointCloudBlock> block = blockRequest->takeBlock();
+      std::unique_ptr<QgsPointCloudBlock> block( blockRequest->block() );
 
       blockRequest->deleteLater();
 
@@ -694,7 +600,7 @@ int QgsPointCloudLayerProfileGenerator::visitNodesAsync( const QVector<IndexedPo
 
       if ( !block )
       {
-        QgsDebugError( QStringLiteral( "Unable to load node %1, error: %2" ).arg( nStr, blockRequest->errorStr() ) );
+        QgsDebugMsg( QStringLiteral( "Unable to load node %1, error: %2" ).arg( nStr, blockRequest->errorStr() ) );
         return;
       }
 
@@ -710,8 +616,7 @@ int QgsPointCloudLayerProfileGenerator::visitNodesAsync( const QVector<IndexedPo
   // was called for all blocks, so let's clean up anything that is left
   for ( QgsPointCloudBlockRequest *blockRequest : std::as_const( blockRequests ) )
   {
-    std::unique_ptr<QgsPointCloudBlock> block = blockRequest->takeBlock();
-    block.reset();
+    delete blockRequest->block();
     blockRequest->deleteLater();
   }
 

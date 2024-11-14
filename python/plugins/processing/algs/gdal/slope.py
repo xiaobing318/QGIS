@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     slope.py
@@ -58,7 +60,7 @@ class slope(GdalAlgorithm):
                                                      parentLayerParameterName=self.INPUT))
         self.addParameter(QgsProcessingParameterNumber(self.SCALE,
                                                        self.tr('Ratio of vertical units to horizontal'),
-                                                       type=QgsProcessingParameterNumber.Type.Double,
+                                                       type=QgsProcessingParameterNumber.Double,
                                                        minValue=0.0,
                                                        defaultValue=1.0))
         self.addParameter(QgsProcessingParameterBoolean(self.AS_PERCENT,
@@ -75,15 +77,17 @@ class slope(GdalAlgorithm):
                                                      self.tr('Additional creation options'),
                                                      defaultValue='',
                                                      optional=True)
-        options_param.setFlags(options_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
-        options_param.setMetadata({'widget_wrapper': {'widget_type': 'rasteroptions'}})
+        options_param.setFlags(options_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        options_param.setMetadata({
+            'widget_wrapper': {
+                'class': 'processing.algs.gdal.ui.RasterOptionsWidget.RasterOptionsWidgetWrapper'}})
         self.addParameter(options_param)
 
         extra_param = QgsProcessingParameterString(self.EXTRA,
                                                    self.tr('Additional command-line parameters'),
                                                    defaultValue=None,
                                                    optional=True)
-        extra_param.setFlags(extra_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        extra_param.setFlags(extra_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(extra_param)
 
         self.addParameter(QgsProcessingParameterRasterDestination(self.OUTPUT, self.tr('Slope')))
@@ -107,22 +111,16 @@ class slope(GdalAlgorithm):
         inLayer = self.parameterAsRasterLayer(parameters, self.INPUT, context)
         if inLayer is None:
             raise QgsProcessingException(self.invalidRasterError(parameters, self.INPUT))
-        input_details = GdalUtils.gdal_connection_details_from_layer(
-            inLayer)
 
         out = self.parameterAsOutputLayer(parameters, self.OUTPUT, context)
         self.setOutputValue(self.OUTPUT, out)
 
-        output_format = QgsRasterFileWriter.driverForExtension(os.path.splitext(out)[1])
-        if not output_format:
-            raise QgsProcessingException(self.tr('Output format is invalid'))
-
         arguments = [
             'slope',
-            input_details.connection_string,
+            inLayer.source(),
             out,
             '-of',
-            output_format,
+            QgsRasterFileWriter.driverForExtension(os.path.splitext(out)[1]),
             '-b',
             str(self.parameterAsInt(parameters, self.BAND, context)),
             '-s',
@@ -138,9 +136,6 @@ class slope(GdalAlgorithm):
         if self.parameterAsBoolean(parameters, self.ZEVENBERGEN, context):
             arguments.append('-alg')
             arguments.append('ZevenbergenThorne')
-
-        if input_details.credential_options:
-            arguments.extend(input_details.credential_options_as_arguments())
 
         options = self.parameterAsString(parameters, self.OPTIONS, context)
         if options:

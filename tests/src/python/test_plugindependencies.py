@@ -17,25 +17,26 @@ import uuid
 
 from pyplugin_installer.plugindependencies import find_dependencies
 from qgis.PyQt.QtCore import QCoreApplication
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import (
+    start_app,
+    unittest,
+)
 
 from utilities import unitTestDataPath
 
 TESTDATA_PATH = unitTestDataPath()
 
 
-class PluginDependenciesTest(QgisTestCase):
+class PluginDependenciesTest(unittest.TestCase):
     """Test plugin dependencies"""
 
     @classmethod
     def setUpClass(cls):
         """Runs at start."""
-        super().setUpClass()
 
         QCoreApplication.setOrganizationName("QGIS")
         QCoreApplication.setOrganizationDomain("qgis.org")
-        QCoreApplication.setApplicationName(f"QGIS-TEST-{uuid.uuid1()}")
+        QCoreApplication.setApplicationName("QGIS-TEST-%s" % uuid.uuid1())
         qgis_app = start_app()
 
         # Installed plugins

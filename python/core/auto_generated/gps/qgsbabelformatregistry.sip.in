@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/gps/qgsbabelformatregistry.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -24,7 +24,6 @@ A registry for :py:class:`QgsAbstractBabelFormat` GPSBabel formats.
 #include "qgsbabelformatregistry.h"
 %End
   public:
-
 
     QgsBabelFormatRegistry();
 %Docstring
@@ -98,5 +97,5 @@ Reloads the registry's members from the currently stored configuration.
  *                                                                      *
  * src/core/gps/qgsbabelformatregistry.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

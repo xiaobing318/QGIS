@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsscalecalculator.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -23,7 +23,7 @@ and monitor dpi.
   public:
 
     QgsScaleCalculator( double dpi = 0,
-                        Qgis::DistanceUnit mapUnits = Qgis::DistanceUnit::Meters );
+                        QgsUnitTypes::DistanceUnit mapUnits = QgsUnitTypes::DistanceMeters );
 %Docstring
 Constructor
 
@@ -45,25 +45,23 @@ Returns the DPI (dots per inch) used in scale calculations.
 .. seealso:: :py:func:`setDpi`
 %End
 
-    void setMapUnits( Qgis::DistanceUnit mapUnits );
+    void setMapUnits( QgsUnitTypes::DistanceUnit mapUnits );
 %Docstring
-Set the map units.
+Set the map units
 
-.. seealso:: :py:func:`mapUnits`
+:param mapUnits: Units of the data on the map. Must match a value from the
 %End
 
-    Qgis::DistanceUnit mapUnits() const;
+    QgsUnitTypes::DistanceUnit mapUnits() const;
 %Docstring
-Returns current map units.
-
-.. seealso:: :py:func:`setMapUnits`
+Returns current map units
 %End
 
     double calculate( const QgsRectangle &mapExtent, double canvasWidth ) const;
 %Docstring
-Calculate the scale denominator.
+Calculate the scale denominator
 
-:param mapExtent: :py:class:`QgsRectangle` containing the current map extent. Units are specified by :py:func:`~QgsScaleCalculator.mapUnits`.
+:param mapExtent: :py:class:`QgsRectangle` containing the current map extent
 :param canvasWidth: Width of the map canvas in pixel (physical) units
 
 :return: scale denominator of current map view, e.g. 1000.0 for a 1:1000 map.
@@ -71,9 +69,9 @@ Calculate the scale denominator.
 
     QSizeF calculateImageSize( const QgsRectangle &mapExtent, double scale ) const;
 %Docstring
-Calculate the image size in pixel (physical) units.
+Calculate the image size in pixel (physical) units
 
-:param mapExtent: :py:class:`QgsRectangle` containing the current map extent. Units are specified by :py:func:`~QgsScaleCalculator.mapUnits`
+:param mapExtent: :py:class:`QgsRectangle` containing the current map extent
 :param scale: Scale denominator, e.g. 1000.0 for a 1:1000 map
 
 :return: image size
@@ -97,5 +95,5 @@ data.
  *                                                                      *
  * src/core/qgsscalecalculator.h                                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

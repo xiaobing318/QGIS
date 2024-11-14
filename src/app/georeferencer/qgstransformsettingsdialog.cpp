@@ -17,20 +17,17 @@
 #include <QFileInfo>
 #include <QMessageBox>
 
+#include "qgsprojectionselectiontreewidget.h"
+#include "qgsapplication.h"
 #include "qgsfilewidget.h"
 #include "qgstransformsettingsdialog.h"
-#include "moc_qgstransformsettingsdialog.cpp"
 #include "qgscoordinatereferencesystem.h"
 #include "qgsgui.h"
 #include "qgshelp.h"
+#include "qgsproviderregistry.h"
 #include "qgsvectorfilewriter.h"
-#include "qgssettingsentryimpl.h"
 
-const QgsSettingsEntryString *QgsTransformSettingsDialog::settingLastDestinationFolder = new QgsSettingsEntryString( QStringLiteral( "last-destination-folder" ), QgsGeoreferencerMainWindow::sTreeGeoreferencer, QString(), QObject::tr( "Last used folder for georeferencer destination files" ) );
-
-const QgsSettingsEntryString *QgsTransformSettingsDialog::settingLastPdfFolder = new QgsSettingsEntryString( QStringLiteral( "last-pdf-folder" ), QgsGeoreferencerMainWindow::sTreeGeoreferencer, QString(), QObject::tr( "Last used folder for georeferencer PDF report files" ) );
-
-QgsTransformSettingsDialog::QgsTransformSettingsDialog( Qgis::LayerType type, const QString &source, const QString &output, QWidget *parent )
+QgsTransformSettingsDialog::QgsTransformSettingsDialog( QgsMapLayerType type, const QString &source, const QString &output, QWidget *parent )
   : QDialog( parent )
   , mType( type )
   , mSourceFile( source )
@@ -38,7 +35,7 @@ QgsTransformSettingsDialog::QgsTransformSettingsDialog( Qgis::LayerType type, co
   setupUi( this );
   QgsGui::enableAutoGeometryRestore( this );
 
-  QgsFileWidget *outputFile = mType == Qgis::LayerType::Raster ? mRasterOutputFile : mVectorOutputFile;
+  QgsFileWidget *outputFile = mType == QgsMapLayerType::RasterLayer ? mRasterOutputFile : mVectorOutputFile;
   outputFile->setStorageMode( QgsFileWidget::SaveFile );
   if ( output.isEmpty() )
   {
@@ -51,44 +48,43 @@ QgsTransformSettingsDialog::QgsTransformSettingsDialog( Qgis::LayerType type, co
 
   switch ( mType )
   {
-    case Qgis::LayerType::Vector:
+    case QgsMapLayerType::VectorLayer:
       mOutputSettingsStackedWidget->setCurrentWidget( mVectorOutputSettings );
       mOutputSettingsStackedWidget->removeWidget( mRasterOutputSettings );
       outputFile->setFilter( QgsVectorFileWriter::fileFilterString() );
       break;
-    case Qgis::LayerType::Raster:
+    case QgsMapLayerType::RasterLayer:
       mOutputSettingsStackedWidget->setCurrentWidget( mRasterOutputSettings );
       mOutputSettingsStackedWidget->removeWidget( mVectorOutputSettings );
       outputFile->setFilter( tr( "TIF files" ) + " (*.tif *.tiff *.TIF *.TIFF)" );
       break;
-    case Qgis::LayerType::Plugin:
-    case Qgis::LayerType::Mesh:
-    case Qgis::LayerType::VectorTile:
-    case Qgis::LayerType::Annotation:
-    case Qgis::LayerType::PointCloud:
-    case Qgis::LayerType::Group:
-    case Qgis::LayerType::TiledScene:
+    case QgsMapLayerType::PluginLayer:
+    case QgsMapLayerType::MeshLayer:
+    case QgsMapLayerType::VectorTileLayer:
+    case QgsMapLayerType::AnnotationLayer:
+    case QgsMapLayerType::PointCloudLayer:
+    case QgsMapLayerType::GroupLayer:
       break;
   }
   mOutputSettingsStackedWidget->adjustSize();
   mOutputSettingsGroupBox->adjustSize();
 
   outputFile->setDialogTitle( tr( "Destination File" ) );
-  const QString lastDestinationFolder = settingLastDestinationFolder->value();
+  const QString lastDestinationFolder = settingLastDestinationFolder.value();
   outputFile->setDefaultRoot( lastDestinationFolder.isEmpty() ? QDir::homePath() : lastDestinationFolder );
   connect( outputFile, &QgsFileWidget::fileChanged, this, [ = ]
   {
-    settingLastDestinationFolder->setValue( QFileInfo( outputFile->filePath() ).absolutePath() );
+    settingLastDestinationFolder.setValue( QFileInfo( outputFile->filePath() ).absolutePath() );
   } );
 
   mPdfMap->setStorageMode( QgsFileWidget::SaveFile );
   mPdfMap->setFilter( tr( "PDF files" ) + " (*.pdf *.PDF)" );
   mPdfMap->setDialogTitle( tr( "Save Map File As" ) );
-  const QString lastPdfFolder = settingLastPdfFolder->value();
+  const QString lastPdfFolder = settingLastPdfFolder.value();
   mPdfMap->setDefaultRoot( lastPdfFolder.isEmpty() ? QDir::homePath() : lastPdfFolder );
   connect( mPdfMap, &QgsFileWidget::fileChanged, this, [ = ]
   {
-    settingLastPdfFolder->setValue( QFileInfo( mPdfMap->filePath() ).absolutePath() );
+    settingLastPdfFolder.setValue( QFileInfo( mPdfMap->filePath() ).absolutePath() );
   } );
 
   mPdfReport->setStorageMode( QgsFileWidget::SaveFile );
@@ -97,7 +93,7 @@ QgsTransformSettingsDialog::QgsTransformSettingsDialog( Qgis::LayerType type, co
   mPdfReport->setDefaultRoot( lastPdfFolder.isEmpty() ? QDir::homePath() : lastPdfFolder );
   connect( mPdfReport, &QgsFileWidget::fileChanged, this, [ = ]
   {
-    settingLastPdfFolder->setValue( QFileInfo( mPdfMap->filePath() ).absolutePath() );
+    settingLastPdfFolder.setValue( QFileInfo( mPdfMap->filePath() ).absolutePath() );
   } );
 
   connect( cmbTransformType, &QComboBox::currentTextChanged, this, &QgsTransformSettingsDialog::cmbTransformType_currentIndexChanged );
@@ -118,10 +114,10 @@ QgsTransformSettingsDialog::QgsTransformSettingsDialog( Qgis::LayerType type, co
   cmbCompressionComboBox->addItem( tr( "DEFLATE" ), QStringLiteral( "DEFLATE" ) );
 
   cmbResampling->addItem( tr( "Nearest Neighbour" ), static_cast< int >( QgsImageWarper::ResamplingMethod::NearestNeighbour ) );
-  cmbResampling->addItem( tr( "Bilinear (2x2 Kernel)" ), static_cast< int >( QgsImageWarper::ResamplingMethod::Bilinear ) );
-  cmbResampling->addItem( tr( "Cubic (4x4 Kernel)" ), static_cast< int >( QgsImageWarper::ResamplingMethod::Cubic ) );
-  cmbResampling->addItem( tr( "Cubic B-Spline (4x4 Kernel)" ), static_cast< int >( QgsImageWarper::ResamplingMethod::CubicSpline ) );
-  cmbResampling->addItem( tr( "Lanczos (6x6 Kernel)" ), static_cast< int >( QgsImageWarper::ResamplingMethod::Lanczos ) );
+  cmbResampling->addItem( tr( "Linear" ), static_cast< int >( QgsImageWarper::ResamplingMethod::Bilinear ) );
+  cmbResampling->addItem( tr( "Cubic" ), static_cast< int >( QgsImageWarper::ResamplingMethod::Cubic ) );
+  cmbResampling->addItem( tr( "Cubic Spline" ), static_cast< int >( QgsImageWarper::ResamplingMethod::CubicSpline ) );
+  cmbResampling->addItem( tr( "Lanczos" ), static_cast< int >( QgsImageWarper::ResamplingMethod::Lanczos ) );
 
   connect( buttonBox, &QDialogButtonBox::helpRequested, this, &QgsTransformSettingsDialog::showHelp );
 }
@@ -185,7 +181,7 @@ void QgsTransformSettingsDialog::setCompressionMethod( const QString &method )
 
 QString QgsTransformSettingsDialog::destinationFilename() const
 {
-  QgsFileWidget *outputFile = mType == Qgis::LayerType::Raster ? mRasterOutputFile : mVectorOutputFile;
+  QgsFileWidget *outputFile = mType == QgsMapLayerType::RasterLayer ? mRasterOutputFile : mVectorOutputFile;
   return outputFile->filePath();
 }
 
@@ -260,7 +256,7 @@ void QgsTransformSettingsDialog::setOutputResolution( double resX, double resY )
 
 void QgsTransformSettingsDialog::accept()
 {
-  QgsFileWidget *outputFile = mType == Qgis::LayerType::Raster ? mRasterOutputFile : mVectorOutputFile;
+  QgsFileWidget *outputFile = mType == QgsMapLayerType::RasterLayer ? mRasterOutputFile : mVectorOutputFile;
   if ( !outputFile->filePath().isEmpty() )
   {
     //if the file path is relative, make it relative to the input file directory
@@ -310,7 +306,7 @@ void QgsTransformSettingsDialog::mWorldFileCheckBox_stateChanged( int state )
   }
   label_2->setEnabled( enableOutputRaster );
 
-  QgsFileWidget *outputFile = mType == Qgis::LayerType::Raster ? mRasterOutputFile : mVectorOutputFile;
+  QgsFileWidget *outputFile = mType == QgsMapLayerType::RasterLayer ? mRasterOutputFile : mVectorOutputFile;
   outputFile->setEnabled( enableOutputRaster );
 }
 
@@ -328,19 +324,18 @@ QString QgsTransformSettingsDialog::generateModifiedFileName( const QString &fil
 
   switch ( mType )
   {
-    case Qgis::LayerType::Vector:
+    case QgsMapLayerType::VectorLayer:
       modifiedFileName.replace( pos, modifiedFileName.size(), QStringLiteral( "gpkg" ) );
       break;
-    case Qgis::LayerType::Raster:
+    case QgsMapLayerType::RasterLayer:
       modifiedFileName.replace( pos, modifiedFileName.size(), QStringLiteral( "tif" ) );
       break;
-    case Qgis::LayerType::Plugin:
-    case Qgis::LayerType::Mesh:
-    case Qgis::LayerType::VectorTile:
-    case Qgis::LayerType::Annotation:
-    case Qgis::LayerType::PointCloud:
-    case Qgis::LayerType::Group:
-    case Qgis::LayerType::TiledScene:
+    case QgsMapLayerType::PluginLayer:
+    case QgsMapLayerType::MeshLayer:
+    case QgsMapLayerType::VectorTileLayer:
+    case QgsMapLayerType::AnnotationLayer:
+    case QgsMapLayerType::PointCloudLayer:
+    case QgsMapLayerType::GroupLayer:
       break;
   }
 

@@ -9,15 +9,19 @@ __author__ = 'Nyall Dawson'
 __date__ = '09/11/2020'
 __copyright__ = 'Copyright 2020, The QGIS Project'
 
+import qgis  # NOQA
 
-from qgis.core import QgsProcessingBatchFeedback, QgsProcessingFeedback
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (
+    QgsProcessingBatchFeedback,
+    QgsProcessingFeedback
+)
+
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsProcessingBatch(QgisTestCase):
+class TestQgsProcessingBatch(unittest.TestCase):
 
     def testFeedback(self):
         """

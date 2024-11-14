@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsstyleitemslistwidget.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -53,9 +53,9 @@ Sets the ``type`` of symbols to show in the widget.
 .. seealso:: :py:func:`setEntityType`
 %End
 
-    void setLayerType( Qgis::GeometryType type );
+    void setLayerType( QgsWkbTypes::GeometryType type );
 %Docstring
-Sets the layer ``type`` to show in the widget. Set ``type`` to :py:class:`Qgis`.GeometryType.Unknown if no
+Sets the layer ``type`` to show in the widget. Set ``type`` to :py:class:`QgsWkbTypes`.UnknownGeometry if no
 layer type filter is desired.
 
 This setting only applies to label settings and 3d style entities.
@@ -126,5 +126,5 @@ manner given the context of the widget.
  *                                                                      *
  * src/gui/qgsstyleitemslistwidget.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

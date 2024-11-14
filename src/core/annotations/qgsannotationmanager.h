@@ -25,9 +25,6 @@ class QgsReadWriteContext;
 class QgsProject;
 class QgsAnnotation;
 class QgsStyleEntityVisitorInterface;
-class QgsAnnotationLayer;
-class QgsAnnotationItem;
-class QgsCoordinateTransformContext;
 
 /**
  * \ingroup core
@@ -42,6 +39,7 @@ class QgsCoordinateTransformContext;
  * QgsAnnotationManager retains ownership of all the annotations contained
  * in the manager.
  *
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsAnnotationManager : public QObject
 {
@@ -104,21 +102,6 @@ class CORE_EXPORT QgsAnnotationManager : public QObject
     bool readXml( const QDomElement &element, const QgsReadWriteContext &context );
 
     /**
-     * Reads the manager's state from a DOM element, restoring annotations
-     * present in the XML document.
-     *
-     * Annotations which can be safely converted to QgsAnnotationItem subclasses will
-     * be automatically converted to those, and stored in the specified annotation \a layer.
-     *
-     * \note Not available in Python bindings
-     *
-     * \see writeXml()
-     * \since QGIS 3.40
-     */
-    bool readXmlAndUpgradeToAnnotationLayerItems( const QDomElement &element, const QgsReadWriteContext &context,
-        QgsAnnotationLayer *layer, const QgsCoordinateTransformContext &transformContext ) SIP_SKIP;
-
-    /**
      * Returns a DOM element representing the state of the manager.
      * \see readXml()
      */
@@ -148,15 +131,11 @@ class CORE_EXPORT QgsAnnotationManager : public QObject
 
   private:
 
-    bool readXmlPrivate( const QDomElement &element, const QgsReadWriteContext &context, QgsAnnotationLayer *layer, const QgsCoordinateTransformContext &transformContext );
-    static std::unique_ptr< QgsAnnotationItem > convertToAnnotationItem( QgsAnnotation *annotation, QgsAnnotationLayer *layer,
-        const QgsCoordinateTransformContext &transformContext );
-
     QgsProject *mProject = nullptr;
 
     QList< QgsAnnotation * > mAnnotations;
 
-    QgsAnnotation *createAnnotationFromXml( const QDomElement &element, const QgsReadWriteContext &context );
+    void createAnnotationFromXml( const QDomElement &element, const QgsReadWriteContext &context );
 
 };
 

@@ -205,9 +205,6 @@ QgsPointCloudCategoryList QgsPointCloudRendererRegistry::classificationAttribute
   const QList<int> layerClasses = stats.classesOf( QStringLiteral( "Classification" ) );
   const QgsPointCloudCategoryList defaultCategories = QgsPointCloudClassifiedRenderer::defaultCategories();
 
-  if ( layerClasses.isEmpty() )
-    return defaultCategories;
-
   QgsPointCloudCategoryList categories;
   for ( const int &layerClass : layerClasses )
   {

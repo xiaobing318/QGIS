@@ -37,8 +37,10 @@ from qgis.core import (
     QgsAuthMethodConfig,
     QgsVectorLayer,
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import (
+    start_app,
+    unittest,
+)
 
 from utilities import unitTestDataPath
 
@@ -85,7 +87,7 @@ host all all 0.0.0.0/0 trust
 """
 
 
-class TestAuthManager(QgisTestCase):
+class TestAuthManager(unittest.TestCase):
 
     @classmethod
     def setUpAuth(cls):
@@ -137,7 +139,6 @@ class TestAuthManager(QgisTestCase):
     def setUpClass(cls):
         """Run before all tests:
         Creates an auth configuration"""
-        super().setUpClass()
         cls.port = QGIS_POSTGRES_SERVER_PORT
         cls.username = 'username'
         cls.password = 'password'
@@ -157,7 +158,7 @@ class TestAuthManager(QgisTestCase):
 
         cls.server = subprocess.Popen([os.path.join(QGIS_POSTGRES_EXECUTABLE_PATH, 'postgres'), '-D',
                                        cls.data_path, '-c',
-                                       f"config_file={cls.pg_conf}"],
+                                       "config_file=%s" % cls.pg_conf],
                                       env=env,
                                       stdout=subprocess.PIPE,
                                       stderr=subprocess.PIPE)
@@ -187,7 +188,6 @@ class TestAuthManager(QgisTestCase):
         time.sleep(2)
         rmtree(QGIS_AUTH_DB_DIR_PATH)
         rmtree(cls.tempfolder)
-        super().tearDownClass()
 
     def setUp(self):
         """Run before each test."""

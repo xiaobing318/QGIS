@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     rgb2pct.py
@@ -47,7 +49,7 @@ class rgb2pct(GdalAlgorithm):
         self.addParameter(QgsProcessingParameterRasterLayer(self.INPUT, self.tr('Input layer')))
         self.addParameter(QgsProcessingParameterNumber(self.NCOLORS,
                                                        self.tr('Number of colors'),
-                                                       type=QgsProcessingParameterNumber.Type.Integer,
+                                                       type=QgsProcessingParameterNumber.Integer,
                                                        minValue=0,
                                                        maxValue=255,
                                                        defaultValue=2))
@@ -79,23 +81,14 @@ class rgb2pct(GdalAlgorithm):
         raster = self.parameterAsRasterLayer(parameters, self.INPUT, context)
         if raster is None:
             raise QgsProcessingException(self.invalidRasterError(parameters, self.INPUT))
-        input_details = GdalUtils.gdal_connection_details_from_layer(
-            raster)
-
-        output_format = QgsRasterFileWriter.driverForExtension(os.path.splitext(out)[1])
-        if not output_format:
-            raise QgsProcessingException(self.tr('Output format is invalid'))
 
         arguments = [
             '-n',
             str(self.parameterAsInt(parameters, self.NCOLORS, context)),
             '-of',
-            output_format,
-            input_details.connection_string,
+            QgsRasterFileWriter.driverForExtension(os.path.splitext(out)[1]),
+            raster.source(),
             out
         ]
-
-        if input_details.credential_options:
-            arguments.extend(input_details.credential_options_as_arguments())
 
         return [self.commandName() + ('.bat' if isWindows() else '.py'), GdalUtils.escapeAndJoin(arguments)]

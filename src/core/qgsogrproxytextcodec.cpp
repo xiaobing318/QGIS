@@ -32,7 +32,7 @@ QString QgsOgrProxyTextCodec::convertToUnicode( const char *chars, int, Converte
   char *res = CPLRecode( chars, mName.constData(), CPL_ENC_UTF8 );
   if ( !res )
   {
-    QgsDebugError( "convertToUnicode failed" );
+    QgsDebugMsg( "convertToUnicode failed" );
     return QString();
   }
 
@@ -50,7 +50,7 @@ QByteArray QgsOgrProxyTextCodec::convertFromUnicode( const QChar *unicode, int l
   char *res = CPLRecode( src.toUtf8().constData(), CPL_ENC_UTF8, mName.constData() );
   if ( !res )
   {
-    QgsDebugError( "convertFromUnicode failed" );
+    QgsDebugMsg( "convertFromUnicode failed" );
     return QByteArray();
   }
 

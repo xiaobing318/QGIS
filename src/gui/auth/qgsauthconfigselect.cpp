@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgsauthconfigselect.h"
-#include "moc_qgsauthconfigselect.cpp"
 #include "ui_qgsauthconfigselect.h"
 
 #include "qgsauthconfig.h"
@@ -320,7 +319,7 @@ void QgsAuthConfigUriEdit::setDataSourceUri( const QString &datauri )
 
   mAuthCfg = authCfgFromUri();
 
-  QgsDebugMsgLevel( QStringLiteral( "Parsed authcfg ID: %1" ).arg( mAuthCfg ), 2 );
+  QgsDebugMsg( QStringLiteral( "Parsed authcfg ID: %1" ).arg( mAuthCfg ) );
 
   wdgtAuthSelect->blockSignals( true );
   wdgtAuthSelect->setConfigId( mAuthCfg );

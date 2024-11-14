@@ -28,6 +28,9 @@ class GUI_EXPORT QgsTableWidgetItem : public QTableWidgetItem
 {
   public:
 
+    /**
+      * Constructor for QgsTableWidgetItem.
+      */
     QgsTableWidgetItem() = default;
 
     /**

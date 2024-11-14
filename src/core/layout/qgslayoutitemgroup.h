@@ -23,6 +23,7 @@
 /**
  * \ingroup core
  * \brief A container for grouping several QgsLayoutItems.
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsLayoutItemGroup: public QgsLayoutItem
 {
@@ -34,7 +35,6 @@ class CORE_EXPORT QgsLayoutItemGroup: public QgsLayoutItem
      * Constructor for QgsLayoutItemGroup, belonging to the specified \a layout.
      */
     explicit QgsLayoutItemGroup( QgsLayout *layout );
-    ~QgsLayoutItemGroup() override;
 
     void cleanup() override;
 
@@ -76,22 +76,20 @@ class CORE_EXPORT QgsLayoutItemGroup: public QgsLayoutItem
 
     void finalizeRestoreFromXml() override;
     ExportLayerBehavior exportLayerBehavior() const override;
-
-    QRectF rectWithFrame() const override;
-
   protected:
     void draw( QgsLayoutItemRenderContext &context ) override;
     bool writePropertiesToElement( QDomElement &parentElement, QDomDocument &document, const QgsReadWriteContext &context ) const override;
     bool readPropertiesFromElement( const QDomElement &itemElement, const QDomDocument &document, const QgsReadWriteContext &context ) override;
 
-  private slots:
-    void updateBoundingRect();
-
   private:
+
+    void resetBoundingRect();
+    void updateBoundingRect( QgsLayoutItem *item );
+    void setSceneRect( const QRectF &rectangle );
 
     QList< QString > mItemUuids;
     QList< QPointer< QgsLayoutItem >> mItems;
-    QRectF mRectWithFrame;
+    QRectF mBoundingRectangle;
 };
 
 #endif //QGSLAYOUTITEMGROUP_H

@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgscoordinateutils.h"
-#include "moc_qgscoordinateutils.cpp"
 #include "qgscoordinatereferencesystem.h"
 #include "qgscoordinatereferencesystemutils.h"
 #include "qgscoordinatetransform.h"
@@ -36,7 +35,7 @@
 int QgsCoordinateUtils::calculateCoordinatePrecision( double mapUnitsPerPixel, const QgsCoordinateReferenceSystem &mapCrs, QgsProject *project )
 {
   if ( !project )
-    project = QgsProject::instance(); // skip-keyword-check
+    project = QgsProject::instance();
   // Get the display precision from the project settings
   const bool automatic = project->readBoolEntry( QStringLiteral( "PositionPrecision" ), QStringLiteral( "/Automatic" ) );
   int dp = 0;
@@ -88,7 +87,7 @@ int QgsCoordinateUtils::calculateCoordinatePrecisionForCrs( const QgsCoordinateR
   QgsProject *prj = project;
   if ( !prj )
   {
-    prj = QgsProject::instance(); // skip-keyword-check
+    prj = QgsProject::instance();
   }
 
   const bool automatic = prj->readBoolEntry( QStringLiteral( "PositionPrecision" ), QStringLiteral( "/Automatic" ) );
@@ -102,8 +101,8 @@ int QgsCoordinateUtils::calculateCoordinatePrecisionForCrs( const QgsCoordinateR
 
 int QgsCoordinateUtils::calculateCoordinatePrecision( const QgsCoordinateReferenceSystem &crs )
 {
-  const Qgis::DistanceUnit unit = crs.mapUnits();
-  if ( unit == Qgis::DistanceUnit::Degrees )
+  const QgsUnitTypes::DistanceUnit unit = crs.mapUnits();
+  if ( unit == QgsUnitTypes::DistanceDegrees )
   {
     return 8;
   }
@@ -142,10 +141,10 @@ QString QgsCoordinateUtils::formatCoordinateForProject( QgsProject *project, con
   {
     case Qgis::CoordinateOrder::Default:
     case Qgis::CoordinateOrder::XY:
-      return QStringLiteral( "%1%2 %3" ).arg( formattedX, QgsCoordinateFormatter::separator(), formattedY );
+      return QStringLiteral( "%1%2%3" ).arg( formattedX, QgsCoordinateFormatter::separator(), formattedY );
 
     case Qgis::CoordinateOrder::YX:
-      return QStringLiteral( "%1%2 %3" ).arg( formattedY, QgsCoordinateFormatter::separator(), formattedX );
+      return QStringLiteral( "%1%2%3" ).arg( formattedY, QgsCoordinateFormatter::separator(), formattedX );
   }
   BUILTIN_UNREACHABLE
 }

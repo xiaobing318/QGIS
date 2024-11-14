@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsstylesavedialog.h"
-#include "moc_qgsstylesavedialog.cpp"
 
 #include "qgis.h"
 #include "qgsstyle.h"
@@ -167,7 +166,7 @@ QgsStyle::StyleEntity QgsStyleSaveDialog::selectedType() const
 
 QgsStyle *QgsStyleSaveDialog::destinationStyle()
 {
-  if ( QgsStyle *style = qobject_cast< QgsStyle * >( mComboBoxDestination->model()->data( mComboBoxDestination->model()->index( mComboBoxDestination->currentIndex(), 0, QModelIndex() ), static_cast< int >( QgsProjectStyleDatabaseModel::CustomRole::Style ) ).value< QObject * >() ) )
+  if ( QgsStyle *style = qobject_cast< QgsStyle * >( mComboBoxDestination->model()->data( mComboBoxDestination->model()->index( mComboBoxDestination->currentIndex(), 0, QModelIndex() ), QgsProjectStyleDatabaseModel::StyleRole ).value< QObject * >() ) )
   {
     return style;
   }

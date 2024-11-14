@@ -117,9 +117,9 @@ void TestQgsMapToolAddFeaturePointZM::testPointZM()
   TestQgsMapToolAdvancedDigitizingUtils utils( mCaptureTool );
   mCanvas->setCurrentLayer( mLayerPointZM );
   // test with default Z value = 123
-  QgsSettingsRegistryCore::settingsDigitizingDefaultZValue->setValue( 123 );
+  QgsSettingsRegistryCore::settingsDigitizingDefaultZValue.setValue( 123 );
   // test with default M value = 333
-  QgsSettingsRegistryCore::settingsDigitizingDefaultMValue->setValue( 333 );
+  QgsSettingsRegistryCore::settingsDigitizingDefaultMValue.setValue( 333 );
 
   QSet<QgsFeatureId> oldFids = utils.existingFeatureIds();
 
@@ -128,21 +128,21 @@ void TestQgsMapToolAddFeaturePointZM::testPointZM()
 
   QCOMPARE( mLayerPointZM->featureCount(), ( long )2 );
 
-  QString wkt = "Point ZM (4 0 123 333)";
+  QString wkt = "PointZM (4 0 123 333)";
   QCOMPARE( mLayerPointZM->getFeature( newFid ).geometry().asWkt(), wkt );
 
   mLayerPointZM->undoStack()->undo();
 
   // test with default Z value = 345
-  QgsSettingsRegistryCore::settingsDigitizingDefaultZValue->setValue( 345 );
+  QgsSettingsRegistryCore::settingsDigitizingDefaultZValue.setValue( 345 );
   // test with default M value = 123
-  QgsSettingsRegistryCore::settingsDigitizingDefaultMValue->setValue( 123 );
+  QgsSettingsRegistryCore::settingsDigitizingDefaultMValue.setValue( 123 );
 
   oldFids = utils.existingFeatureIds();
   utils.mouseClick( 6, 6, Qt::LeftButton, Qt::KeyboardModifiers(), true );
   newFid = utils.newFeatureId( oldFids );
 
-  wkt = "Point ZM (6 6 345 123)";
+  wkt = "PointZM (6 6 345 123)";
   QCOMPARE( mLayerPointZM->getFeature( newFid ).geometry().asWkt(), wkt );
 
   mLayerPointZM->undoStack()->undo();

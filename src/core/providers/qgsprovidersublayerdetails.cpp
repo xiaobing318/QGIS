@@ -23,7 +23,6 @@ QgsMapLayer *QgsProviderSublayerDetails::toLayer( const LayerOptions &options ) 
 {
   QgsMapLayerFactory::LayerOptions layerOptions( options.transformContext );
   layerOptions.loadDefaultStyle = options.loadDefaultStyle;
-  layerOptions.loadAllStoredStyles = options.loadAllStoredStyle;
   return QgsMapLayerFactory::createLayer( mUri, mName, mType, layerOptions, mProviderKey );
 }
 
@@ -32,33 +31,30 @@ QgsMimeDataUtils::Uri QgsProviderSublayerDetails::toMimeUri() const
   QgsMimeDataUtils::Uri u;
   switch ( mType )
   {
-    case Qgis::LayerType::Vector:
+    case QgsMapLayerType::VectorLayer:
       u.layerType = QStringLiteral( "vector" );
       u.wkbType = mWkbType;
       break;
-    case Qgis::LayerType::Raster:
+    case QgsMapLayerType::RasterLayer:
       u.layerType = QStringLiteral( "raster" );
       break;
-    case Qgis::LayerType::Mesh:
+    case QgsMapLayerType::MeshLayer:
       u.layerType = QStringLiteral( "mesh" );
       break;
-    case Qgis::LayerType::VectorTile:
+    case QgsMapLayerType::VectorTileLayer:
       u.layerType = QStringLiteral( "vector-tile" );
       break;
-    case Qgis::LayerType::PointCloud:
+    case QgsMapLayerType::PointCloudLayer:
       u.layerType = QStringLiteral( "pointcloud" );
       break;
-    case Qgis::LayerType::Plugin:
+    case QgsMapLayerType::PluginLayer:
       u.layerType = QStringLiteral( "plugin" );
       break;
-    case Qgis::LayerType::Group:
+    case QgsMapLayerType::GroupLayer:
       u.layerType = QStringLiteral( "group" );
       break;
-    case Qgis::LayerType::Annotation:
+    case QgsMapLayerType::AnnotationLayer:
       u.layerType = QStringLiteral( "annotation" );
-      break;
-    case Qgis::LayerType::TiledScene:
-      u.layerType = QStringLiteral( "tiled-scene" );
       break;
   }
 

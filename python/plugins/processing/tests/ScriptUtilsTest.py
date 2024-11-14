@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     ScriptUtilsTest
@@ -24,8 +26,7 @@ import shutil
 import tempfile
 
 from qgis.core import NULL, QgsApplication
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 from processing.script import ScriptUtils
 
@@ -34,7 +35,7 @@ testDataPath = os.path.join(os.path.dirname(__file__), 'testdata')
 start_app()
 
 
-class ScriptUtilsTest(QgisTestCase):
+class ScriptUtilsTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):

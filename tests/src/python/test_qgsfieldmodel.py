@@ -9,20 +9,18 @@ __author__ = 'Nyall Dawson'
 __date__ = '14/11/2016'
 __copyright__ = 'Copyright 2016, The QGIS Project'
 
-from qgis.PyQt.QtCore import QModelIndex, Qt, QVariant
-from qgis.core import (
-    QgsEditorWidgetSetup,
-    QgsField,
-    QgsFieldConstraints,
-    QgsFieldModel,
-    QgsFieldProxyModel,
-    QgsFields,
-    QgsProject,
-    QgsVectorLayer,
-    QgsVectorLayerJoinInfo,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+import qgis  # NOQA
+from qgis.PyQt.QtCore import QVariant, Qt, QModelIndex
+from qgis.core import (QgsField,
+                       QgsFields,
+                       QgsVectorLayer,
+                       QgsFieldModel,
+                       QgsFieldProxyModel,
+                       QgsEditorWidgetSetup,
+                       QgsProject,
+                       QgsVectorLayerJoinInfo,
+                       QgsFieldConstraints)
+from qgis.testing import start_app, unittest
 
 start_app()
 
@@ -43,7 +41,7 @@ def create_model():
     return l, m
 
 
-class TestQgsFieldModel(QgisTestCase):
+class TestQgsFieldModel(unittest.TestCase):
 
     def testGettersSetters(self):
         """ test model getters/setters """
@@ -152,111 +150,111 @@ class TestQgsFieldModel(QgisTestCase):
 
     def testFieldNameRole(self):
         l, m = create_model()
-        self.assertEqual(m.data(m.indexFromName('fldtxt'), QgsFieldModel.FieldRoles.FieldNameRole), 'fldtxt')
-        self.assertEqual(m.data(m.indexFromName('fldint'), QgsFieldModel.FieldRoles.FieldNameRole), 'fldint')
-        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldRoles.FieldNameRole))
-        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.FieldRoles.FieldNameRole))
+        self.assertEqual(m.data(m.indexFromName('fldtxt'), QgsFieldModel.FieldNameRole), 'fldtxt')
+        self.assertEqual(m.data(m.indexFromName('fldint'), QgsFieldModel.FieldNameRole), 'fldint')
+        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldNameRole))
+        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.FieldNameRole))
         m.setAllowExpression(True)
         m.setExpression('an expression')
-        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldRoles.FieldNameRole))
+        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldNameRole))
         m.setAllowEmptyFieldName(True)
-        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.FieldRoles.FieldNameRole))
+        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.FieldNameRole))
 
     def testExpressionRole(self):
         l, m = create_model()
-        self.assertEqual(m.data(m.indexFromName('fldtxt'), QgsFieldModel.FieldRoles.ExpressionRole), 'fldtxt')
-        self.assertEqual(m.data(m.indexFromName('fldint'), QgsFieldModel.FieldRoles.ExpressionRole), 'fldint')
-        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldRoles.ExpressionRole))
-        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.FieldRoles.ExpressionRole))
+        self.assertEqual(m.data(m.indexFromName('fldtxt'), QgsFieldModel.ExpressionRole), 'fldtxt')
+        self.assertEqual(m.data(m.indexFromName('fldint'), QgsFieldModel.ExpressionRole), 'fldint')
+        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.ExpressionRole))
+        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.ExpressionRole))
         m.setAllowExpression(True)
         m.setExpression('an expression')
-        self.assertEqual(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldRoles.ExpressionRole), 'an expression')
+        self.assertEqual(m.data(m.indexFromName('an expression'), QgsFieldModel.ExpressionRole), 'an expression')
         m.setAllowEmptyFieldName(True)
-        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.FieldRoles.ExpressionRole))
+        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.ExpressionRole))
 
     def testFieldIndexRole(self):
         l, m = create_model()
-        self.assertEqual(m.data(m.indexFromName('fldtxt'), QgsFieldModel.FieldRoles.FieldIndexRole), 0)
-        self.assertEqual(m.data(m.indexFromName('fldint'), QgsFieldModel.FieldRoles.FieldIndexRole), 1)
-        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldRoles.FieldIndexRole))
-        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.FieldRoles.FieldIndexRole))
+        self.assertEqual(m.data(m.indexFromName('fldtxt'), QgsFieldModel.FieldIndexRole), 0)
+        self.assertEqual(m.data(m.indexFromName('fldint'), QgsFieldModel.FieldIndexRole), 1)
+        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldIndexRole))
+        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.FieldIndexRole))
         m.setAllowExpression(True)
         m.setExpression('an expression')
-        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldRoles.FieldIndexRole))
+        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldIndexRole))
         m.setAllowEmptyFieldName(True)
-        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.FieldRoles.FieldIndexRole))
+        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.FieldIndexRole))
 
     def testIsExpressionRole(self):
         l, m = create_model()
-        self.assertFalse(m.data(m.indexFromName('fldtxt'), QgsFieldModel.FieldRoles.IsExpressionRole))
-        self.assertFalse(m.data(m.indexFromName('fldint'), QgsFieldModel.FieldRoles.IsExpressionRole))
-        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldRoles.IsExpressionRole))
-        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.FieldRoles.IsExpressionRole))
+        self.assertFalse(m.data(m.indexFromName('fldtxt'), QgsFieldModel.IsExpressionRole))
+        self.assertFalse(m.data(m.indexFromName('fldint'), QgsFieldModel.IsExpressionRole))
+        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.IsExpressionRole))
+        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.IsExpressionRole))
         m.setAllowExpression(True)
         m.setExpression('an expression')
-        self.assertTrue(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldRoles.IsExpressionRole))
+        self.assertTrue(m.data(m.indexFromName('an expression'), QgsFieldModel.IsExpressionRole))
         m.setAllowEmptyFieldName(True)
-        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.FieldRoles.IsExpressionRole))
+        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.IsExpressionRole))
 
     def testExpressionValidityRole(self):
         l, m = create_model()
-        self.assertTrue(m.data(m.indexFromName('fldtxt'), QgsFieldModel.FieldRoles.ExpressionValidityRole))
-        self.assertTrue(m.data(m.indexFromName('fldint'), QgsFieldModel.FieldRoles.ExpressionValidityRole))
-        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldRoles.ExpressionValidityRole))
-        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.FieldRoles.ExpressionValidityRole))
+        self.assertTrue(m.data(m.indexFromName('fldtxt'), QgsFieldModel.ExpressionValidityRole))
+        self.assertTrue(m.data(m.indexFromName('fldint'), QgsFieldModel.ExpressionValidityRole))
+        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.ExpressionValidityRole))
+        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.ExpressionValidityRole))
         m.setAllowExpression(True)
         m.setExpression('an expression')
-        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldRoles.ExpressionValidityRole))
+        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.ExpressionValidityRole))
         m.setAllowEmptyFieldName(True)
-        self.assertTrue(m.data(m.indexFromName(None), QgsFieldModel.FieldRoles.ExpressionValidityRole))
+        self.assertTrue(m.data(m.indexFromName(None), QgsFieldModel.ExpressionValidityRole))
 
     def testFieldTypeRole(self):
         l, m = create_model()
-        self.assertEqual(m.data(m.indexFromName('fldtxt'), QgsFieldModel.FieldRoles.FieldTypeRole), QVariant.String)
-        self.assertEqual(m.data(m.indexFromName('fldint'), QgsFieldModel.FieldRoles.FieldTypeRole), QVariant.Int)
-        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldRoles.FieldTypeRole))
-        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.FieldRoles.FieldTypeRole))
+        self.assertEqual(m.data(m.indexFromName('fldtxt'), QgsFieldModel.FieldTypeRole), QVariant.String)
+        self.assertEqual(m.data(m.indexFromName('fldint'), QgsFieldModel.FieldTypeRole), QVariant.Int)
+        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldTypeRole))
+        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.FieldTypeRole))
         m.setAllowExpression(True)
         m.setExpression('an expression')
-        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldRoles.FieldTypeRole))
+        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldTypeRole))
         m.setAllowEmptyFieldName(True)
-        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.FieldRoles.FieldTypeRole))
+        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.FieldTypeRole))
 
     def testFieldOriginRole(self):
         l, m = create_model()
-        self.assertEqual(m.data(m.indexFromName('fldtxt'), QgsFieldModel.FieldRoles.FieldOriginRole), QgsFields.FieldOrigin.OriginProvider)
-        self.assertEqual(m.data(m.indexFromName('fldint'), QgsFieldModel.FieldRoles.FieldOriginRole), QgsFields.FieldOrigin.OriginProvider)
-        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldRoles.FieldOriginRole))
-        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.FieldRoles.FieldOriginRole))
+        self.assertEqual(m.data(m.indexFromName('fldtxt'), QgsFieldModel.FieldOriginRole), QgsFields.OriginProvider)
+        self.assertEqual(m.data(m.indexFromName('fldint'), QgsFieldModel.FieldOriginRole), QgsFields.OriginProvider)
+        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldOriginRole))
+        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.FieldOriginRole))
         m.setAllowExpression(True)
         m.setExpression('an expression')
-        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldRoles.FieldOriginRole))
+        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldOriginRole))
         m.setAllowEmptyFieldName(True)
-        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.FieldRoles.FieldOriginRole))
+        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.FieldOriginRole))
 
     def testIsEmptyRole(self):
         l, m = create_model()
-        self.assertFalse(m.data(m.indexFromName('fldtxt'), QgsFieldModel.FieldRoles.IsEmptyRole), QgsFields.FieldOrigin.OriginProvider)
-        self.assertFalse(m.data(m.indexFromName('fldint'), QgsFieldModel.FieldRoles.IsEmptyRole), QgsFields.FieldOrigin.OriginProvider)
-        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldRoles.IsEmptyRole))
-        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.FieldRoles.IsEmptyRole))
+        self.assertFalse(m.data(m.indexFromName('fldtxt'), QgsFieldModel.IsEmptyRole), QgsFields.OriginProvider)
+        self.assertFalse(m.data(m.indexFromName('fldint'), QgsFieldModel.IsEmptyRole), QgsFields.OriginProvider)
+        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.IsEmptyRole))
+        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.IsEmptyRole))
         m.setAllowExpression(True)
         m.setExpression('an expression')
-        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldRoles.IsEmptyRole))
+        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.IsEmptyRole))
         m.setAllowEmptyFieldName(True)
-        self.assertTrue(m.data(m.indexFromName(None), QgsFieldModel.FieldRoles.IsEmptyRole))
+        self.assertTrue(m.data(m.indexFromName(None), QgsFieldModel.IsEmptyRole))
 
     def testDisplayRole(self):
         l, m = create_model()
-        self.assertEqual(m.data(m.indexFromName('fldtxt'), Qt.ItemDataRole.DisplayRole), 'fldtxt')
-        self.assertEqual(m.data(m.indexFromName('fldint'), Qt.ItemDataRole.DisplayRole), 'fldint')
-        self.assertFalse(m.data(m.indexFromName('an expression'), Qt.ItemDataRole.DisplayRole))
-        self.assertFalse(m.data(m.indexFromName(None), Qt.ItemDataRole.DisplayRole))
+        self.assertEqual(m.data(m.indexFromName('fldtxt'), Qt.DisplayRole), 'fldtxt')
+        self.assertEqual(m.data(m.indexFromName('fldint'), Qt.DisplayRole), 'fldint')
+        self.assertFalse(m.data(m.indexFromName('an expression'), Qt.DisplayRole))
+        self.assertFalse(m.data(m.indexFromName(None), Qt.DisplayRole))
         m.setAllowExpression(True)
         m.setExpression('an expression')
-        self.assertEqual(m.data(m.indexFromName('an expression'), Qt.ItemDataRole.DisplayRole), 'an expression')
+        self.assertEqual(m.data(m.indexFromName('an expression'), Qt.DisplayRole), 'an expression')
         m.setAllowEmptyFieldName(True)
-        self.assertFalse(m.data(m.indexFromName(None), Qt.ItemDataRole.DisplayRole))
+        self.assertFalse(m.data(m.indexFromName(None), Qt.DisplayRole))
 
     def testManualFields(self):
         _, m = create_model()
@@ -265,20 +263,20 @@ class TestQgsFieldModel(QgisTestCase):
         fields.append(QgsField('f2', QVariant.String))
         m.setFields(fields)
         self.assertEqual(m.rowCount(), 2)
-        self.assertEqual(m.data(m.index(0, 0, QModelIndex()), Qt.ItemDataRole.DisplayRole), 'f1')
-        self.assertEqual(m.data(m.index(1, 0, QModelIndex()), Qt.ItemDataRole.DisplayRole), 'f2')
+        self.assertEqual(m.data(m.index(0, 0, QModelIndex()), Qt.DisplayRole), 'f1')
+        self.assertEqual(m.data(m.index(1, 0, QModelIndex()), Qt.DisplayRole), 'f2')
 
     def testEditorWidgetTypeRole(self):
         l, m = create_model()
-        self.assertEqual(m.data(m.indexFromName('fldtxt'), QgsFieldModel.FieldRoles.EditorWidgetType), 'Hidden')
-        self.assertEqual(m.data(m.indexFromName('fldint'), QgsFieldModel.FieldRoles.EditorWidgetType), 'ValueMap')
-        self.assertIsNone(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldRoles.EditorWidgetType))
-        self.assertIsNone(m.data(m.indexFromName(None), QgsFieldModel.FieldRoles.EditorWidgetType))
+        self.assertEqual(m.data(m.indexFromName('fldtxt'), QgsFieldModel.EditorWidgetType), 'Hidden')
+        self.assertEqual(m.data(m.indexFromName('fldint'), QgsFieldModel.EditorWidgetType), 'ValueMap')
+        self.assertIsNone(m.data(m.indexFromName('an expression'), QgsFieldModel.EditorWidgetType))
+        self.assertIsNone(m.data(m.indexFromName(None), QgsFieldModel.EditorWidgetType))
         m.setAllowExpression(True)
         m.setExpression('an expression')
-        self.assertIsNone(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldRoles.EditorWidgetType))
+        self.assertIsNone(m.data(m.indexFromName('an expression'), QgsFieldModel.EditorWidgetType))
         m.setAllowEmptyFieldName(True)
-        self.assertIsNone(m.data(m.indexFromName(None), QgsFieldModel.FieldRoles.EditorWidgetType))
+        self.assertIsNone(m.data(m.indexFromName(None), QgsFieldModel.EditorWidgetType))
 
     def testJoinedFieldIsEditableRole(self):
         layer = QgsVectorLayer("Point?field=id_a:integer",
@@ -300,18 +298,18 @@ class TestQgsFieldModel(QgisTestCase):
         m = QgsFieldModel()
         m.setLayer(layer)
 
-        self.assertIsNone(m.data(m.indexFromName('id_a'), QgsFieldModel.FieldRoles.JoinedFieldIsEditable))
-        self.assertTrue(m.data(m.indexFromName('B_value_b'), QgsFieldModel.FieldRoles.JoinedFieldIsEditable))
-        self.assertIsNone(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldRoles.JoinedFieldIsEditable))
-        self.assertIsNone(m.data(m.indexFromName(None), QgsFieldModel.FieldRoles.JoinedFieldIsEditable))
+        self.assertIsNone(m.data(m.indexFromName('id_a'), QgsFieldModel.JoinedFieldIsEditable))
+        self.assertTrue(m.data(m.indexFromName('B_value_b'), QgsFieldModel.JoinedFieldIsEditable))
+        self.assertIsNone(m.data(m.indexFromName('an expression'), QgsFieldModel.JoinedFieldIsEditable))
+        self.assertIsNone(m.data(m.indexFromName(None), QgsFieldModel.JoinedFieldIsEditable))
         m.setAllowExpression(True)
         m.setExpression('an expression')
-        self.assertIsNone(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldRoles.JoinedFieldIsEditable))
+        self.assertIsNone(m.data(m.indexFromName('an expression'), QgsFieldModel.JoinedFieldIsEditable))
         m.setAllowEmptyFieldName(True)
-        self.assertIsNone(m.data(m.indexFromName(None), QgsFieldModel.FieldRoles.JoinedFieldIsEditable))
+        self.assertIsNone(m.data(m.indexFromName(None), QgsFieldModel.JoinedFieldIsEditable))
 
         proxy_m = QgsFieldProxyModel()
-        proxy_m.setFilters(QgsFieldProxyModel.Filter.AllTypes | QgsFieldProxyModel.Filter.HideReadOnly)
+        proxy_m.setFilters(QgsFieldProxyModel.AllTypes | QgsFieldProxyModel.HideReadOnly)
         proxy_m.sourceFieldModel().setLayer(layer)
         self.assertEqual(proxy_m.rowCount(), 2)
         self.assertEqual(proxy_m.data(proxy_m.index(0, 0)), 'id_a')
@@ -332,41 +330,33 @@ class TestQgsFieldModel(QgisTestCase):
         m = QgsFieldModel()
         m.setLayer(layer3)
 
-        self.assertIsNone(m.data(m.indexFromName('id_a'), QgsFieldModel.FieldRoles.JoinedFieldIsEditable))
-        self.assertFalse(m.data(m.indexFromName('B_value_b'), QgsFieldModel.FieldRoles.JoinedFieldIsEditable))
-        self.assertIsNone(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldRoles.JoinedFieldIsEditable))
-        self.assertIsNone(m.data(m.indexFromName(None), QgsFieldModel.FieldRoles.JoinedFieldIsEditable))
+        self.assertIsNone(m.data(m.indexFromName('id_a'), QgsFieldModel.JoinedFieldIsEditable))
+        self.assertFalse(m.data(m.indexFromName('B_value_b'), QgsFieldModel.JoinedFieldIsEditable))
+        self.assertIsNone(m.data(m.indexFromName('an expression'), QgsFieldModel.JoinedFieldIsEditable))
+        self.assertIsNone(m.data(m.indexFromName(None), QgsFieldModel.JoinedFieldIsEditable))
         m.setAllowExpression(True)
         m.setExpression('an expression')
-        self.assertIsNone(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldRoles.JoinedFieldIsEditable))
+        self.assertIsNone(m.data(m.indexFromName('an expression'), QgsFieldModel.JoinedFieldIsEditable))
         m.setAllowEmptyFieldName(True)
-        self.assertIsNone(m.data(m.indexFromName(None), QgsFieldModel.FieldRoles.JoinedFieldIsEditable))
+        self.assertIsNone(m.data(m.indexFromName(None), QgsFieldModel.JoinedFieldIsEditable))
 
         proxy_m = QgsFieldProxyModel()
         proxy_m.sourceFieldModel().setLayer(layer3)
-        proxy_m.setFilters(QgsFieldProxyModel.Filter.AllTypes | QgsFieldProxyModel.Filter.HideReadOnly)
-        self.assertEqual(proxy_m.rowCount(), 1)
-        self.assertEqual(proxy_m.data(proxy_m.index(0, 0)), 'id_a')
-
-        proxy_m.setFilters(QgsFieldProxyModel.Filter.AllTypes | QgsFieldProxyModel.Filter.OriginProvider)
-        proxy_m.sourceFieldModel().setLayer(layer)
-        self.assertEqual(proxy_m.rowCount(), 1)
-        self.assertEqual(proxy_m.data(proxy_m.index(0, 0)), 'id_a')
-        proxy_m.sourceFieldModel().setLayer(layer3)
+        proxy_m.setFilters(QgsFieldProxyModel.AllTypes | QgsFieldProxyModel.HideReadOnly)
         self.assertEqual(proxy_m.rowCount(), 1)
         self.assertEqual(proxy_m.data(proxy_m.index(0, 0)), 'id_a')
 
     def testFieldIsWidgetEditableRole(self):
         l, m = create_model()
-        self.assertTrue(m.data(m.indexFromName('fldtxt'), QgsFieldModel.FieldRoles.FieldIsWidgetEditable))
-        self.assertTrue(m.data(m.indexFromName('fldint'), QgsFieldModel.FieldRoles.FieldIsWidgetEditable))
-        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldRoles.FieldIsWidgetEditable))
-        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.FieldRoles.FieldIsWidgetEditable))
+        self.assertTrue(m.data(m.indexFromName('fldtxt'), QgsFieldModel.FieldIsWidgetEditable))
+        self.assertTrue(m.data(m.indexFromName('fldint'), QgsFieldModel.FieldIsWidgetEditable))
+        self.assertFalse(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldIsWidgetEditable))
+        self.assertFalse(m.data(m.indexFromName(None), QgsFieldModel.FieldIsWidgetEditable))
         m.setAllowExpression(True)
         m.setExpression('an expression')
-        self.assertTrue(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldRoles.FieldIsWidgetEditable))
+        self.assertTrue(m.data(m.indexFromName('an expression'), QgsFieldModel.FieldIsWidgetEditable))
         m.setAllowEmptyFieldName(True)
-        self.assertTrue(m.data(m.indexFromName(None), QgsFieldModel.FieldRoles.FieldIsWidgetEditable))
+        self.assertTrue(m.data(m.indexFromName(None), QgsFieldModel.FieldIsWidgetEditable))
 
         editFormConfig = l.editFormConfig()
         idx = l.fields().indexOf('fldtxt')
@@ -374,7 +364,7 @@ class TestQgsFieldModel(QgisTestCase):
         editFormConfig.setReadOnly(idx, True)
         l.setEditFormConfig(editFormConfig)
         # It's read only, so the widget is NOT editable
-        self.assertFalse(m.data(m.indexFromName('fldtxt'), QgsFieldModel.FieldRoles.FieldIsWidgetEditable))
+        self.assertFalse(m.data(m.indexFromName('fldtxt'), QgsFieldModel.FieldIsWidgetEditable))
 
     def testFieldTooltip(self):
         f = QgsField('my_string', QVariant.String, 'string')
@@ -397,7 +387,7 @@ class TestQgsFieldModel(QgisTestCase):
         self.assertEqual(QgsFieldModel.fieldToolTipExtended(f, layer), "<b>my_real</b><br><font style='font-family:monospace; white-space: nowrap;'>real(8, 3) NULL</font><br><em>Comment text</em><br><font style='font-family:monospace;'>1+1</font>")
         f.setAlias('my alias')
         constraints = f.constraints()
-        constraints.setConstraint(QgsFieldConstraints.Constraint.ConstraintUnique)
+        constraints.setConstraint(QgsFieldConstraints.ConstraintUnique)
         f.setConstraints(constraints)
         self.assertEqual(QgsFieldModel.fieldToolTipExtended(f, layer), "<b>my alias</b> (my_real)<br><font style='font-family:monospace; white-space: nowrap;'>real(8, 3) NULL UNIQUE</font><br><em>Comment text</em><br><font style='font-family:monospace;'>1+1</font>")
 

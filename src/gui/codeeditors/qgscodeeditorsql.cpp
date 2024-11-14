@@ -13,8 +13,9 @@
  *                                                                         *
  ***************************************************************************/
 
+#include "qgsapplication.h"
 #include "qgscodeeditorsql.h"
-#include "moc_qgscodeeditorsql.cpp"
+#include "qgssymbollayerutils.h"
 
 #include <QWidget>
 #include <QString>
@@ -30,11 +31,6 @@ QgsCodeEditorSQL::QgsCodeEditorSQL( QWidget *parent )
   }
   setAutoCompletionCaseSensitivity( false );
   QgsCodeEditorSQL::initializeLexer(); // avoid cppcheck warning by explicitly specifying namespace
-}
-
-Qgis::ScriptLanguage QgsCodeEditorSQL::language() const
-{
-  return Qgis::ScriptLanguage::Sql;
 }
 
 QgsCodeEditorSQL::~QgsCodeEditorSQL()

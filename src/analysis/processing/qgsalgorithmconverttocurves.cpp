@@ -62,13 +62,13 @@ QgsConvertToCurvesAlgorithm *QgsConvertToCurvesAlgorithm::createInstance() const
 
 QList<int> QgsConvertToCurvesAlgorithm::inputLayerTypes() const
 {
-  return QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorLine ) << static_cast< int >( Qgis::ProcessingSourceType::VectorPolygon );
+  return QList<int>() << QgsProcessing::TypeVectorLine << QgsProcessing::TypeVectorPolygon;
 }
 
 void QgsConvertToCurvesAlgorithm::initParameters( const QVariantMap & )
 {
   std::unique_ptr< QgsProcessingParameterNumber > tolerance = std::make_unique< QgsProcessingParameterNumber >( QStringLiteral( "DISTANCE" ),
-      QObject::tr( "Maximum distance tolerance" ), Qgis::ProcessingNumberParameterType::Double,
+      QObject::tr( "Maximum distance tolerance" ), QgsProcessingParameterNumber::Double,
       0.000001, false, 0, 10000000.0 );
   tolerance->setIsDynamic( true );
   tolerance->setDynamicPropertyDefinition( QgsPropertyDefinition( QStringLiteral( "DISTANCE" ), QObject::tr( "Maximum distance tolerance" ), QgsPropertyDefinition::DoublePositive ) );
@@ -76,7 +76,7 @@ void QgsConvertToCurvesAlgorithm::initParameters( const QVariantMap & )
   addParameter( tolerance.release() );
 
   std::unique_ptr< QgsProcessingParameterNumber > angleTolerance = std::make_unique< QgsProcessingParameterNumber >( QStringLiteral( "ANGLE" ),
-      QObject::tr( "Maximum angle tolerance" ), Qgis::ProcessingNumberParameterType::Double,
+      QObject::tr( "Maximum angle tolerance" ), QgsProcessingParameterNumber::Double,
       0.000001, false, 0, 45.0 );
   angleTolerance->setIsDynamic( true );
   angleTolerance->setDynamicPropertyDefinition( QgsPropertyDefinition( QStringLiteral( "ANGLE" ), QObject::tr( "Maximum angle tolerance" ), QgsPropertyDefinition::DoublePositive ) );
@@ -117,25 +117,25 @@ QgsFeatureList QgsConvertToCurvesAlgorithm::processFeature( const QgsFeature &fe
   return QgsFeatureList() << f;
 }
 
-Qgis::WkbType QgsConvertToCurvesAlgorithm::outputWkbType( Qgis::WkbType inputWkbType ) const
+QgsWkbTypes::Type QgsConvertToCurvesAlgorithm::outputWkbType( QgsWkbTypes::Type inputWkbType ) const
 {
   if ( QgsWkbTypes::isCurvedType( inputWkbType ) )
     return inputWkbType;
 
-  Qgis::WkbType outType = Qgis::WkbType::Unknown;
+  QgsWkbTypes::Type outType = QgsWkbTypes::Unknown;
   switch ( QgsWkbTypes::geometryType( inputWkbType ) )
   {
-    case Qgis::GeometryType::Point:
-    case Qgis::GeometryType::Null:
-    case Qgis::GeometryType::Unknown:
+    case QgsWkbTypes::PointGeometry:
+    case QgsWkbTypes::NullGeometry:
+    case QgsWkbTypes::UnknownGeometry:
       return inputWkbType;
 
-    case Qgis::GeometryType::Line:
-      outType = Qgis::WkbType::CompoundCurve;
+    case QgsWkbTypes::LineGeometry:
+      outType = QgsWkbTypes::CompoundCurve;
       break;
 
-    case Qgis::GeometryType::Polygon:
-      outType = Qgis::WkbType::CurvePolygon;
+    case QgsWkbTypes::PolygonGeometry:
+      outType = QgsWkbTypes::CurvePolygon;
       break;
   }
 

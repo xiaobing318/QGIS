@@ -15,12 +15,15 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsmaptopixel.h"
-#include "qgsunittypes.h"
 
 #include <QPoint>
 #include <QTextStream>
 #include <QVector>
 #include <QTransform>
+
+#include "qgslogger.h"
+#include "qgspointxy.h"
+
 
 QgsMapToPixel::QgsMapToPixel( double mapUnitsPerPixel,
                               double xc,
@@ -53,10 +56,10 @@ QgsMapToPixel::QgsMapToPixel( double mapUnitsPerPixel )
   updateMatrix();
 }
 
-QgsMapToPixel QgsMapToPixel::fromScale( double scale, Qgis::DistanceUnit mapUnits, double dpi )
+QgsMapToPixel QgsMapToPixel::fromScale( double scale, QgsUnitTypes::DistanceUnit mapUnits, double dpi )
 {
   const double metersPerPixel = 25.4 / dpi / 1000.0;
-  const double mapUnitsPerPixel = metersPerPixel * QgsUnitTypes::fromUnitToUnitFactor( Qgis::DistanceUnit::Meters, mapUnits );
+  const double mapUnitsPerPixel = metersPerPixel * QgsUnitTypes::fromUnitToUnitFactor( QgsUnitTypes::DistanceMeters, mapUnits );
   return QgsMapToPixel( mapUnitsPerPixel * scale );
 }
 

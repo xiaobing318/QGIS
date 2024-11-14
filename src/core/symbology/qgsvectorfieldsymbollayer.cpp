@@ -16,6 +16,7 @@
  ***************************************************************************/
 
 #include "qgsvectorfieldsymbollayer.h"
+#include "qgsvectorlayer.h"
 #include "qgsunittypes.h"
 #include "qgssymbollayerutils.h"
 #include "qgslinesymbol.h"
@@ -27,7 +28,7 @@ QgsVectorFieldSymbolLayer::QgsVectorFieldSymbolLayer()
 
 QgsVectorFieldSymbolLayer::~QgsVectorFieldSymbolLayer() = default;
 
-void QgsVectorFieldSymbolLayer::setOutputUnit( Qgis::RenderUnit unit )
+void QgsVectorFieldSymbolLayer::setOutputUnit( QgsUnitTypes::RenderUnit unit )
 {
   QgsMarkerSymbolLayer::setOutputUnit( unit );
   mDistanceUnit = unit;
@@ -35,13 +36,13 @@ void QgsVectorFieldSymbolLayer::setOutputUnit( Qgis::RenderUnit unit )
     mLineSymbol->setOutputUnit( unit );
 }
 
-Qgis::RenderUnit QgsVectorFieldSymbolLayer::outputUnit() const
+QgsUnitTypes::RenderUnit QgsVectorFieldSymbolLayer::outputUnit() const
 {
   if ( QgsMarkerSymbolLayer::outputUnit() == mDistanceUnit )
   {
     return mDistanceUnit;
   }
-  return Qgis::RenderUnit::Unknown;
+  return QgsUnitTypes::RenderUnknownUnit;
 }
 
 void QgsVectorFieldSymbolLayer::setMapUnitScale( const QgsMapUnitScale &scale )
@@ -223,7 +224,6 @@ void QgsVectorFieldSymbolLayer::startRender( QgsSymbolRenderContext &context )
 {
   if ( mLineSymbol )
   {
-    mLineSymbol->setRenderHints( mLineSymbol->renderHints() | Qgis::SymbolRenderHint::IsSymbolLayerSubSymbol );
     mLineSymbol->startRender( context.renderContext(), context.fields() );
   }
 
@@ -280,9 +280,9 @@ QVariantMap QgsVectorFieldSymbolLayer::properties() const
 
 bool QgsVectorFieldSymbolLayer::usesMapUnits() const
 {
-  return mDistanceUnit == Qgis::RenderUnit::MapUnits || mDistanceUnit == Qgis::RenderUnit::MetersInMapUnits
-         || mOffsetUnit == Qgis::RenderUnit::MapUnits || mOffsetUnit == Qgis::RenderUnit::MetersInMapUnits
-         || mSizeUnit == Qgis::RenderUnit::MapUnits || mSizeUnit == Qgis::RenderUnit::MetersInMapUnits;
+  return mDistanceUnit == QgsUnitTypes::RenderMapUnits || mDistanceUnit == QgsUnitTypes::RenderMetersInMapUnits
+         || mOffsetUnit == QgsUnitTypes::RenderMapUnits || mOffsetUnit == QgsUnitTypes::RenderMetersInMapUnits
+         || mSizeUnit == QgsUnitTypes::RenderMapUnits || mSizeUnit == QgsUnitTypes::RenderMetersInMapUnits;
 }
 
 void QgsVectorFieldSymbolLayer::toSld( QDomDocument &doc, QDomElement &element, const QVariantMap &props ) const

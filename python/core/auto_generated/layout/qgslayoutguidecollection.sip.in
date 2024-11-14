@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/layout/qgslayoutguidecollection.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -12,6 +12,8 @@ class QgsLayoutGuide : QObject
 {
 %Docstring(signature="appended")
 Contains the configuration for a single snap guide used by a layout.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -126,6 +128,8 @@ class QgsLayoutGuideCollection : QAbstractTableModel, QgsLayoutSerializableObjec
 {
 %Docstring(signature="appended")
 Stores and manages the snap guides used by a layout.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -133,15 +137,13 @@ Stores and manages the snap guides used by a layout.
 %End
   public:
 
-
-
-    enum class CustomRole
+    enum Roles
     {
-      Orientation,
-      Position,
-      Units,
-      Page,
-      LayoutPosition,
+      OrientationRole,
+      PositionRole,
+      UnitsRole,
+      PageRole,
+      LayoutPositionRole,
     };
 
     QgsLayoutGuideCollection( QgsLayout *layout, QgsLayoutPageCollection *pageCollection );
@@ -263,7 +265,9 @@ Sets the collection's state from a DOM element. collectionElement is the DOM nod
 class QgsLayoutGuideProxyModel : QSortFilterProxyModel
 {
 %Docstring(signature="appended")
-Filters :py:class:`QgsLayoutGuideCollection` models to guides of a single orientation (horizontal or vertical).
+Filters QgsLayoutGuideCollection models to guides of a single orientation (horizontal or vertical).
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -295,5 +299,5 @@ Sets the current ``page`` for filtering matching guides. Page numbers begin at 0
  *                                                                      *
  * src/core/layout/qgslayoutguidecollection.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

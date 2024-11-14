@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsdatetimestatisticalsummary.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -19,6 +19,8 @@ Statistics are calculated by calling :py:func:`~calculate` and passing a list of
 individual statistics can then be retrieved using the associated methods. Note that not all statistics
 are calculated by default. Statistics which require slower computations are only calculated by
 specifying the statistic in the constructor or via :py:func:`~setStatistics`.
+
+.. versionadded:: 2.16
 %End
 
 %TypeHeaderCode
@@ -26,14 +28,27 @@ specifying the statistic in the constructor or via :py:func:`~setStatistics`.
 %End
   public:
 
-    QgsDateTimeStatisticalSummary( Qgis::DateTimeStatistics stats = Qgis::DateTimeStatistic::All );
+    enum Statistic
+    {
+      Count,
+      CountDistinct,
+      CountMissing,
+      Min,
+      Max,
+      Range,
+      All,
+    };
+    typedef QFlags<QgsDateTimeStatisticalSummary::Statistic> Statistics;
+
+
+    QgsDateTimeStatisticalSummary( QgsDateTimeStatisticalSummary::Statistics stats = All );
 %Docstring
 Constructor for QgsDateTimeStatisticalSummary
 
 :param stats: flags for statistics to calculate
 %End
 
-    Qgis::DateTimeStatistics statistics() const;
+    Statistics statistics() const;
 %Docstring
 Returns flags which specify which statistics will be calculated. Some statistics
 are always calculated (e.g., count).
@@ -41,7 +56,7 @@ are always calculated (e.g., count).
 .. seealso:: :py:func:`setStatistics`
 %End
 
-    void setStatistics( Qgis::DateTimeStatistics stats );
+    void setStatistics( Statistics stats );
 %Docstring
 Sets flags which specify which statistics will be calculated. Some statistics
 are always calculated (e.g., count).
@@ -98,7 +113,7 @@ any calculated datetime statistics.
 .. seealso:: :py:func:`addValue`
 %End
 
-    QVariant statistic( Qgis::DateTimeStatistic stat ) const;
+    QVariant statistic( QgsDateTimeStatisticalSummary::Statistic stat ) const;
 %Docstring
 Returns the value of a specified statistic
 
@@ -142,7 +157,7 @@ Returns the maximum (latest) non-null datetime value.
 Returns the range (interval between earliest and latest non-null datetime values).
 %End
 
-    static QString displayName( Qgis::DateTimeStatistic statistic );
+    static QString displayName( QgsDateTimeStatisticalSummary::Statistic statistic );
 %Docstring
 Returns the friendly display name for a statistic
 
@@ -151,10 +166,13 @@ Returns the friendly display name for a statistic
 
 };
 
+QFlags<QgsDateTimeStatisticalSummary::Statistic> operator|(QgsDateTimeStatisticalSummary::Statistic f1, QFlags<QgsDateTimeStatisticalSummary::Statistic> f2);
+
+
 /************************************************************************
  * This file has been generated automatically from                      *
  *                                                                      *
  * src/core/qgsdatetimestatisticalsummary.h                             *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -25,6 +25,7 @@
 #include "qgsexception.h"
 #include "qgsfeedback.h"
 #include "qgsmessagelog.h"
+#include "qgssettings.h"
 #include "qgsvectorlayer.h"
 
 #include "odbc/PreparedStatement.h"
@@ -47,7 +48,6 @@ QVariantList QgsHanaProviderResultIterator::nextRowPrivate()
     return ret;
 
   ret.reserve( mNumColumns );
-  // cppcheck-suppress unsignedLessThanZero
   for ( unsigned short i = 1; i <= mNumColumns; ++i )
     ret.push_back( mResultSet->getValue( i ) );
   mNextRow = mResultSet->next();
@@ -181,7 +181,7 @@ void QgsHanaProviderConnection::setCapabilities()
 void QgsHanaProviderConnection::createVectorTable( const QString &schema,
     const QString &name,
     const QgsFields &fields,
-    Qgis::WkbType wkbType,
+    QgsWkbTypes::Type wkbType,
     const QgsCoordinateReferenceSystem &srs,
     bool overwrite,
     const QMap<QString,
@@ -193,7 +193,7 @@ void QgsHanaProviderConnection::createVectorTable( const QString &schema,
   newUri.setSchema( schema );
   newUri.setTable( name );
   // Set geometry column if it's not aspatial
-  if ( wkbType != Qgis::WkbType::Unknown &&  wkbType != Qgis::WkbType::NoGeometry )
+  if ( wkbType != QgsWkbTypes::Type::Unknown &&  wkbType != QgsWkbTypes::Type::NoGeometry )
   {
     newUri.setGeometryColumn( options->value( QStringLiteral( "geometryColumn" ), QStringLiteral( "geom" ) ).toString() );
   }
@@ -405,7 +405,7 @@ QList<QgsAbstractDatabaseProviderConnection::TableProperty> QgsHanaProviderConne
   return tables;
 }
 
-QgsAbstractDatabaseProviderConnection::TableProperty QgsHanaProviderConnection::table( const QString &schema, const QString &table, QgsFeedback * ) const
+QgsAbstractDatabaseProviderConnection::TableProperty QgsHanaProviderConnection::table( const QString &schema, const QString &table ) const
 {
   const QString geometryColumn = QgsDataSourceUri( uri() ).geometryColumn();
   auto layerFilter = [&table, &geometryColumn]( const QgsHanaLayerProperty & layer )
@@ -419,7 +419,7 @@ QgsAbstractDatabaseProviderConnection::TableProperty QgsHanaProviderConnection::
   return constTables[0];
 }
 
-QList<QgsHanaProviderConnection::TableProperty> QgsHanaProviderConnection::tables( const QString &schema, const TableFlags &flags, QgsFeedback * ) const
+QList<QgsHanaProviderConnection::TableProperty> QgsHanaProviderConnection::tables( const QString &schema, const TableFlags &flags ) const
 {
   return tablesWithFilter( schema, flags );
 }
@@ -445,7 +445,7 @@ QStringList QgsHanaProviderConnection::schemas( ) const
   }
 }
 
-QgsFields QgsHanaProviderConnection::fields( const QString &schema, const QString &table, QgsFeedback * ) const
+QgsFields QgsHanaProviderConnection::fields( const QString &schema, const QString &table ) const
 {
   QgsHanaConnectionRef conn = createConnection();
   const QString geometryColumn = QgsDataSourceUri( uri() ).geometryColumn();
@@ -540,7 +540,7 @@ QgsVectorLayer *QgsHanaProviderConnection::createSqlVectorLayer( const SqlVector
 
   QgsVectorLayer::LayerOptions vectorLayerOptions { false, true };
   vectorLayerOptions.skipCrsValidation = true;
-  return new QgsVectorLayer{ tUri.uri( false ), options.layerName.isEmpty() ? QStringLiteral( "QueryLayer" ) : options.layerName, providerKey(), vectorLayerOptions };
+  return new QgsVectorLayer{ tUri.uri(), options.layerName.isEmpty() ? QStringLiteral( "QueryLayer" ) : options.layerName, providerKey(), vectorLayerOptions };
 }
 
 QgsAbstractDatabaseProviderConnection::SqlVectorLayerOptions QgsHanaProviderConnection::sqlOptions( const QString &layerSource )

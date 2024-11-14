@@ -17,7 +17,6 @@
  ***************************************************************************/
 
 #include "qgsdecorationgrid.h"
-#include "moc_qgsdecorationgrid.cpp"
 #include "qgsdecorationgriddialog.h"
 
 #include "qgisapp.h"
@@ -37,8 +36,6 @@
 #include "qgstextrenderer.h"
 #include "qgslinesymbol.h"
 #include "qgsmarkersymbol.h"
-#include "qgstextdocument.h"
-#include "qgstextdocumentmetrics.h"
 
 #include <QPainter>
 #include <QAction>
@@ -87,8 +84,8 @@ void QgsDecorationGrid::projectRead()
   QgsDecorationItem::projectRead();
 
   mEnabled = QgsProject::instance()->readBoolEntry( mConfigurationName, QStringLiteral( "/Enabled" ), false );
-  mMapUnits = static_cast< Qgis::DistanceUnit >( QgsProject::instance()->readNumEntry( mConfigurationName, QStringLiteral( "/MapUnits" ),
-              static_cast< int >( Qgis::DistanceUnit::Unknown ) ) );
+  mMapUnits = static_cast< QgsUnitTypes::DistanceUnit >( QgsProject::instance()->readNumEntry( mConfigurationName, QStringLiteral( "/MapUnits" ),
+              QgsUnitTypes::DistanceUnknownUnit ) );
   mGridStyle = static_cast< GridStyle >( QgsProject::instance()->readNumEntry( mConfigurationName, QStringLiteral( "/Style" ),
                                          QgsDecorationGrid::Line ) );
   mGridIntervalX = QgsProject::instance()->readDoubleEntry( mConfigurationName, QStringLiteral( "/IntervalX" ), 10 );
@@ -306,13 +303,8 @@ void QgsDecorationGrid::drawCoordinateAnnotation( QgsRenderContext &context, QPo
 
   const QFontMetricsF textMetrics = QgsTextRenderer::fontMetrics( context, mTextFormat );
   const double textDescent = textMetrics.descent();
-
-  const QgsTextDocument doc = QgsTextDocument::fromTextAndFormat( annotationStringList, mTextFormat );
-  const QgsTextDocumentMetrics metrics = QgsTextDocumentMetrics::calculateMetrics( doc, mTextFormat, context );
-
-  const QSizeF textSize = metrics.documentSize( Qgis::TextLayoutMode::Point, mTextFormat.orientation() );
-  const double textWidth = textSize.width();
-  const double textHeight = textSize.height();
+  const double textWidth = QgsTextRenderer::textWidth( context, mTextFormat, annotationStringList );
+  const double textHeight = QgsTextRenderer::textHeight( context, mTextFormat, annotationStringList, Qgis::TextLayoutMode::Point );
 
   double xpos = pos.x();
   double ypos = pos.y();
@@ -376,7 +368,7 @@ void QgsDecorationGrid::drawCoordinateAnnotation( QgsRenderContext &context, QPo
       }
   }
 
-  QgsTextRenderer::drawDocument( QPointF( xpos, ypos ), mTextFormat, metrics.document(), metrics, context, Qgis::TextHorizontalAlignment::Left, rotation );
+  QgsTextRenderer::drawText( QPointF( xpos, ypos ), rotation, Qgis::TextHorizontalAlignment::Left, annotationStringList, context, mTextFormat );
 }
 
 static bool clipByRect( QLineF &line, const QPolygonF &rect )
@@ -429,10 +421,10 @@ int QgsDecorationGrid::xGridLines( const QgsMapSettings &mapSettings, QList< QPa
 
   const QgsMapToPixel &m2p = mapSettings.mapToPixel();
 
-  // draw nothing if the distance between grid lines would be less than 5px
+  // draw nothing if the distance between grid lines would be less than 1px
   // otherwise the grid lines would completely cover the whole map
   //if ( mapBoundingRect.height() / mGridIntervalY >= p->device()->height() )
-  if ( mGridIntervalY / mapSettings.mapUnitsPerPixel() < 5 )
+  if ( mGridIntervalY / mapSettings.mapUnitsPerPixel() < 1 )
     return 1;
 
   const QPolygonF canvasPoly = mapSettings.visiblePolygon();
@@ -474,10 +466,10 @@ int QgsDecorationGrid::yGridLines( const QgsMapSettings &mapSettings, QList< QPa
 
   const QgsMapToPixel &m2p = mapSettings.mapToPixel();
 
-  // draw nothing if the distance between grid lines would be less than 5px
-  // otherwise the grid lines would render the whole map illegible
+  // draw nothing if the distance between grid lines would be less than 1px
+  // otherwise the grid lines would completely cover the whole map
   //if ( mapBoundingRect.height() / mGridIntervalY >= p->device()->height() )
-  if ( mGridIntervalX / mapSettings.mapUnitsPerPixel() < 5 )
+  if ( mGridIntervalX / mapSettings.mapUnitsPerPixel() < 1 )
     return 1;
 
   const QPolygonF canvasPoly = mapSettings.visiblePolygon();
@@ -533,11 +525,11 @@ void QgsDecorationGrid::checkMapUnitsChanged()
   // this is to avoid problems when CRS changes to/from geographic and projected
   // a better solution would be to change the grid interval, but this is a little tricky
   // note: we could be less picky (e.g. from degrees to DMS)
-  const Qgis::DistanceUnit mapUnits = QgisApp::instance()->mapCanvas()->mapSettings().mapUnits();
+  const QgsUnitTypes::DistanceUnit mapUnits = QgisApp::instance()->mapCanvas()->mapSettings().mapUnits();
   if ( mEnabled && ( mMapUnits != mapUnits ) )
   {
     mEnabled = false;
-    mMapUnits = Qgis::DistanceUnit::Unknown; // make sure isDirty() returns true
+    mMapUnits = QgsUnitTypes::DistanceUnknownUnit; // make sure isDirty() returns true
     if ( ! QgisApp::instance()->mapCanvas()->isFrozen() )
     {
       update();
@@ -549,7 +541,7 @@ bool QgsDecorationGrid::isDirty()
 {
   // checks if stored map units is undefined or different from canvas map units
   // or if interval is 0
-  return mMapUnits == Qgis::DistanceUnit::Unknown ||
+  return mMapUnits == QgsUnitTypes::DistanceUnknownUnit ||
          mMapUnits != QgisApp::instance()->mapCanvas()->mapSettings().mapUnits() ||
          qgsDoubleNear( mGridIntervalX, 0.0 ) || qgsDoubleNear( mGridIntervalY, 0.0 );
 }
@@ -558,7 +550,7 @@ void QgsDecorationGrid::setDirty( bool dirty )
 {
   if ( dirty )
   {
-    mMapUnits = Qgis::DistanceUnit::Unknown;
+    mMapUnits = QgsUnitTypes::DistanceUnknownUnit;
   }
   else
   {
@@ -577,7 +569,7 @@ bool QgsDecorationGrid::getIntervalFromExtent( double *values, bool useXAxis ) c
     interval = ( extent.xMaximum() - extent.xMinimum() ) / 5;
   else
     interval = ( extent.yMaximum() - extent.yMinimum() ) / 5;
-  QgsDebugMsgLevel( QStringLiteral( "interval: %1" ).arg( interval ), 2 );
+  QgsDebugMsg( QStringLiteral( "interval: %1" ).arg( interval ) );
   if ( !qgsDoubleNear( interval, 0.0 ) )
   {
     double interval2 = 0;
@@ -585,7 +577,7 @@ bool QgsDecorationGrid::getIntervalFromExtent( double *values, bool useXAxis ) c
     if ( factor != 0 )
     {
       interval2 = std::round( interval / factor ) * factor;
-      QgsDebugMsgLevel( QStringLiteral( "interval2: %1" ).arg( interval2 ), 2 );
+      QgsDebugMsg( QStringLiteral( "interval2: %1" ).arg( interval2 ) );
       if ( !qgsDoubleNear( interval2, 0.0 ) )
         interval = interval2;
     }
@@ -604,7 +596,7 @@ bool QgsDecorationGrid::getIntervalFromCurrentLayer( double *values ) const
     QMessageBox::warning( nullptr, tr( "Get Interval from Layer" ), tr( "No active layer" ) );
     return false;
   }
-  if ( layer->type() != Qgis::LayerType::Raster )
+  if ( layer->type() != QgsMapLayerType::RasterLayer )
   {
     QMessageBox::warning( nullptr, tr( "Get Interval from Layer" ), tr( "Please select a raster layer." ) );
     return false;
@@ -640,10 +632,10 @@ bool QgsDecorationGrid::getIntervalFromCurrentLayer( double *values ) const
   ratio = extent.yMinimum() / values[1];
   values[3] = ( ratio - std::floor( ratio ) ) * values[1];
 
-  QgsDebugMsgLevel( QStringLiteral( "xmax: %1 xmin: %2 width: %3 xInterval: %4 xOffset: %5" ).arg(
-                      extent.xMaximum() ).arg( extent.xMinimum() ).arg( rlayer->width() ).arg( values[0] ).arg( values[2] ), 2 );
-  QgsDebugMsgLevel( QStringLiteral( "ymax: %1 ymin: %2 height: %3 yInterval: %4 yOffset: %5" ).arg(
-                      extent.yMaximum() ).arg( extent.yMinimum() ).arg( rlayer->height() ).arg( values[1] ).arg( values[3] ), 2 );
+  QgsDebugMsg( QStringLiteral( "xmax: %1 xmin: %2 width: %3 xInterval: %4 xOffset: %5" ).arg(
+                 extent.xMaximum() ).arg( extent.xMinimum() ).arg( rlayer->width() ).arg( values[0] ).arg( values[2] ) );
+  QgsDebugMsg( QStringLiteral( "ymax: %1 ymin: %2 height: %3 yInterval: %4 yOffset: %5" ).arg(
+                 extent.yMaximum() ).arg( extent.yMinimum() ).arg( rlayer->height() ).arg( values[1] ).arg( values[3] ) );
 
   return true;
 }

@@ -33,6 +33,7 @@ class QgsRelationReferenceWidget;
  * \ingroup gui
  * \class QgsRelationReferenceSearchWidgetWrapper
  * \brief Wraps a relation reference search widget.
+ * \since QGIS 2.16
  */
 
 class GUI_EXPORT QgsRelationReferenceSearchWidgetWrapper : public QgsSearchWidgetWrapper
@@ -79,7 +80,7 @@ class GUI_EXPORT QgsRelationReferenceSearchWidgetWrapper : public QgsSearchWidge
 
     /**
      * Called when current value of search widget changes
-     * \deprecated QGIS 3.10. Made private.
+     * \deprecated since QGIS 3.10 made private
      */
     Q_DECL_DEPRECATED void onValueChanged( const QVariant &value ) SIP_DEPRECATED;
 

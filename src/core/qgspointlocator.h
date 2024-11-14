@@ -96,6 +96,7 @@ namespace SpatialIndex SIP_SKIP
  *
  * Works with one layer.
  *
+ * \since QGIS 2.8
  */
 class CORE_EXPORT QgsPointLocator : public QObject
 {
@@ -120,21 +121,25 @@ class CORE_EXPORT QgsPointLocator : public QObject
 
     /**
      * Gets associated layer
+     * \since QGIS 2.14
      */
     QgsVectorLayer *layer() const { return mLayer; }
 
     /**
      * Gets destination CRS - may be an invalid QgsCoordinateReferenceSystem if not doing OTF reprojection
+     * \since QGIS 2.14
      */
     QgsCoordinateReferenceSystem destinationCrs() const;
 
     /**
      * Gets extent of the area point locator covers - if NULLPTR then it caches the whole layer
+     * \since QGIS 2.14
      */
     const QgsRectangle *extent() const { return mExtent.get(); }
 
     /**
      * Configure extent - if not NULLPTR, it will index only that area
+     * \since QGIS 2.14
      */
     void setExtent( const QgsRectangle *extent );
 
@@ -147,7 +152,7 @@ class CORE_EXPORT QgsPointLocator : public QObject
     /**
      * The type of a snap result or the filter type for a snap request.
      */
-    enum Type SIP_ENUM_BASETYPE( IntFlag )
+    enum Type
     {
       Invalid = 0, //!< Invalid
       Vertex  = 1 << 0, //!< Snapped to a vertex. Can be a vertex of the geometry or an intersection.
@@ -155,7 +160,7 @@ class CORE_EXPORT QgsPointLocator : public QObject
       Area    = 1 << 2, //!< Snapped to an area
       Centroid = 1 << 3, //!< Snapped to a centroid
       MiddleOfSegment = 1 << 4, //!< Snapped to the middle of a segment
-      LineEndpoint = 1 << 5, //!< Start or end points of lines only \since QGIS 3.20
+      LineEndpoint = 1 << 5, //!< Start or end points of lines only (since QGIS 3.20)
       All = Vertex | Edge | Area | Centroid | MiddleOfSegment //!< Combination of all types. Note LineEndpoint is not included as endpoints made redundant by the presence of the Vertex flag.
     };
 
@@ -257,7 +262,7 @@ class CORE_EXPORT QgsPointLocator : public QObject
          * Convenient method to return a point on an edge with linear
          * interpolation of the Z value.
          * The parameter \a destinationCrs depends of where the instance of this Match is created (geom.cache: layer CRS, map canvas snapper: dest CRS)
-         * \since QGIS 3.10
+         * \since 3.10
          */
         QgsPoint interpolatedPoint( const QgsCoordinateReferenceSystem &destinationCrs = QgsCoordinateReferenceSystem() ) const
         {
@@ -276,7 +281,7 @@ class CORE_EXPORT QgsPointLocator : public QObject
               }
               catch ( QgsCsException & )
               {
-                QgsDebugError( QStringLiteral( "transformation to layer coordinate failed" ) );
+                QgsDebugMsg( QStringLiteral( "transformation to layer coordinate failed" ) );
               }
             }
 
@@ -304,7 +309,7 @@ class CORE_EXPORT QgsPointLocator : public QObject
               }
               catch ( QgsCsException & )
               {
-                QgsDebugError( QStringLiteral( "transformation to destination coordinate failed" ) );
+                QgsDebugMsg( QStringLiteral( "transformation to destination coordinate failed" ) );
               }
             }
           }
@@ -369,7 +374,7 @@ class CORE_EXPORT QgsPointLocator : public QObject
      * Find nearest centroid to the specified point - up to distance specified by tolerance
      * Optional filter may discard unwanted matches.
      * This method is either blocking or non blocking according to \a relaxed parameter passed
-     * \since QGIS 3.12
+     * \since 3.12
      */
     Match nearestCentroid( const QgsPointXY &point, double tolerance, QgsPointLocator::MatchFilter *filter = nullptr, bool relaxed = false );
 
@@ -377,7 +382,7 @@ class CORE_EXPORT QgsPointLocator : public QObject
      * Find nearest middle of segment to the specified point - up to distance specified by tolerance
      * Optional filter may discard unwanted matches.
      * This method is either blocking or non blocking according to \a relaxed parameter passed
-     * \since QGIS 3.12
+     * \since 3.12
      */
     Match nearestMiddleOfSegment( const QgsPointXY &point, double tolerance, QgsPointLocator::MatchFilter *filter = nullptr, bool relaxed = false );
 
@@ -385,7 +390,7 @@ class CORE_EXPORT QgsPointLocator : public QObject
      * Find nearest line endpoint (start or end vertex) to the specified point - up to distance specified by tolerance
      * Optional filter may discard unwanted matches.
      * This method is either blocking or non blocking according to \a relaxed parameter passed
-     * \since QGIS 3.20
+     * \since 3.20
      */
     Match nearestLineEndpoints( const QgsPointXY &point, double tolerance, QgsPointLocator::MatchFilter *filter = nullptr, bool relaxed = false );
 
@@ -402,6 +407,7 @@ class CORE_EXPORT QgsPointLocator : public QObject
      * This will first perform a pointInPolygon and return first result.
      * If no match is found and tolerance is not 0, it will return nearestEdge.
      * This method is either blocking or non blocking according to \a relaxed parameter passed
+     * \since QGIS 3.0
      */
     Match nearestArea( const QgsPointXY &point, double tolerance, QgsPointLocator::MatchFilter *filter = nullptr, bool relaxed = false );
 
@@ -438,16 +444,15 @@ class CORE_EXPORT QgsPointLocator : public QObject
     // TODO: function to return just the first match?
 
     /**
-     * Find out if the \a point is in any polygons
-     * \param point The point to check polygons against, in map coordinates
-     * \param relaxed TRUE if index build has to be non blocking
-     * \param filter since QGIS 3.36, Optional filter may discard unwanted matches.
-     * \note Parameters \a filter and \a relaxed are in reversed order compared to the rest of MatchList returning methods.
+     * find out if the \a point is in any polygons
+     * This method is either blocking or non blocking according to \a relaxed parameter passed
      */
-    MatchList pointInPolygon( const QgsPointXY &point, bool relaxed = false, QgsPointLocator::MatchFilter *filter = nullptr );
+    //!
+    MatchList pointInPolygon( const QgsPointXY &point, bool relaxed = false );
 
     /**
      * Returns how many geometries are cached in the index
+     * \since QGIS 2.14
      */
     int cachedGeometryCount() const { return mGeoms.count(); }
 

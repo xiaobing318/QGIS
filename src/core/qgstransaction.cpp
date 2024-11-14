@@ -15,7 +15,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgstransaction.h"
-#include "moc_qgstransaction.cpp"
 #include "qgslogger.h"
 #include "qgsdatasourceuri.h"
 #include "qgsproviderregistry.h"
@@ -73,21 +72,14 @@ QString QgsTransaction::connectionString() const
 }
 
 // For the needs of the OGR provider with GeoPackage datasources, remove
-// any reference to layers and filters in the connection string
-QString QgsTransaction::cleanupConnectionString( const QString &str )
+// any reference to layers in the connection string
+QString QgsTransaction::removeLayerIdOrName( const QString &str )
 {
   QString res( str );
 
-  static const QStringList toRemove
+  for ( int i = 0; i < 2; i++ )
   {
-    { QStringLiteral( "|layername=" )},
-    { QStringLiteral( "|layerid=" )},
-    { QStringLiteral( "|subset=" )},
-  };
-
-  for ( const auto &strToRm : std::as_const( toRemove ) )
-  {
-    const int pos = res.indexOf( strToRm );
+    const int pos = res.indexOf( i == 0 ? QLatin1String( "|layername=" ) :  QLatin1String( "|layerid=" ) );
     if ( pos >= 0 )
     {
       const int end = res.indexOf( '|', pos + 1 );
@@ -113,7 +105,7 @@ QString QgsTransaction::connectionString( const QString &layerUri )
   // reference to layers from it.
   if ( connString.isEmpty() )
   {
-    connString = cleanupConnectionString( layerUri );
+    connString = removeLayerIdOrName( layerUri );
   }
   return connString;
 }
@@ -139,8 +131,8 @@ bool QgsTransaction::addLayer( QgsVectorLayer *layer, bool addLayersInEditMode )
 
   if ( connectionString( layer->source() ) != mConnString )
   {
-    QgsDebugError( QStringLiteral( "Couldn't start transaction because connection string for layer %1 : '%2' does not match '%3'" ).arg(
-                     layer->id(), connectionString( layer->source() ), mConnString ) );
+    QgsDebugMsg( QStringLiteral( "Couldn't start transaction because connection string for layer %1 : '%2' does not match '%3'" ).arg(
+                   layer->id(), connectionString( layer->source() ), mConnString ) );
     return false;
   }
 
@@ -203,7 +195,7 @@ bool QgsTransaction::rollback( QString &errorMsg )
 bool QgsTransaction::supportsTransaction( const QgsVectorLayer *layer )
 {
   //test if provider supports transactions
-  if ( !layer->dataProvider() || ( layer->dataProvider()->capabilities() & Qgis::VectorProviderCapability::TransactionSupport ) == 0 )
+  if ( !layer->dataProvider() || ( layer->dataProvider()->capabilities() & QgsVectorDataProvider::TransactionSupport ) == 0 )
     return false;
 
   return true;

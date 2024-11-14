@@ -22,7 +22,6 @@
 
 #include "qgslogger.h"
 #include "qgsnewnamedialog.h"
-#include "moc_qgsnewnamedialog.cpp"
 
 QgsNewNameDialog::QgsNewNameDialog( const QString &source,
                                     const QString &initial,

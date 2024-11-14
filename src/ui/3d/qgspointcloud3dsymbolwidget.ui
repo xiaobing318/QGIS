@@ -192,7 +192,7 @@
     </widget>
    </item>
    <item row="2" column="0" colspan="3">
-    <widget class="QgsStackedWidget" name="mStackedWidget">
+    <widget class="QStackedWidget" name="mStackedWidget">
      <property name="currentIndex">
       <number>0</number>
      </property>
@@ -629,19 +629,13 @@ enhancement</string>
   <customwidget>
    <class>QgsColorRampShaderWidget</class>
    <extends>QWidget</extends>
-   <header>qgscolorrampshaderwidget.h</header>
+   <header>raster/qgscolorrampshaderwidget.h</header>
    <container>1</container>
   </customwidget>
   <customwidget>
    <class>QgsPointCloudAttributeComboBox</class>
    <extends>QComboBox</extends>
    <header>qgspointcloudattributecombobox.h</header>
-  </customwidget>
-  <customwidget>
-   <class>QgsStackedWidget</class>
-   <extends>QStackedWidget</extends>
-   <header>qgsstackedwidget.h</header>
-   <container>1</container>
   </customwidget>
  </customwidgets>
  <tabstops>

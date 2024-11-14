@@ -32,7 +32,7 @@
 #include <getopt.h>
 #endif
 
-#ifdef Q_OS_MACOS
+#ifdef Q_OS_MACX
 #include <ApplicationServices/ApplicationServices.h>
 #if MAC_OS_X_VERSION_MAX_ALLOWED < 1050
 typedef SInt32 SRefCon;
@@ -251,21 +251,21 @@ int main( int argc, char *argv[] )
         return 2;   // XXX need standard exit codes
 
       default:
-        QgsDebugError( QStringLiteral( "%1: getopt returned character code %2" ).arg( argv[0] ).arg( optionChar ) );
+        QgsDebugMsg( QStringLiteral( "%1: getopt returned character code %2" ).arg( argv[0] ).arg( optionChar ) );
         return 1;   // XXX need standard exit codes
     }
   }
 
   // Add any remaining args to the file list - we will attempt to load them
   // as layers in the map view further down....
-  QgsDebugMsgLevel( QStringLiteral( "Files specified on command line: %1" ).arg( optind ), 1 );
+  QgsDebugMsg( QStringLiteral( "Files specified on command line: %1" ).arg( optind ) );
   if ( optind < argc )
   {
     while ( optind < argc )
     {
 #ifdef QGISDEBUG
       const int idx = optind;
-      QgsDebugMsgLevel( QStringLiteral( "%1: %2" ).arg( idx ).arg( argv[idx] ), 1 );
+      QgsDebugMsg( QStringLiteral( "%1: %2" ).arg( idx ).arg( argv[idx] ) );
 #endif
       sFileList.append( QDir::toNativeSeparators( QFileInfo( QFile::decodeName( argv[optind++] ) ).absoluteFilePath() ) );
     }
@@ -391,7 +391,7 @@ int main( int argc, char *argv[] )
 
   QgsProviderRegistry::instance( QgsApplication::pluginPath() );
 
-#ifdef Q_OS_MACOS
+#ifdef Q_OS_MACX
   // If the GDAL plugins are bundled with the application and GDAL_DRIVER_PATH
   // is not already defined, use the GDAL plugins in the application bundle.
   QString gdalPlugins( QCoreApplication::applicationDirPath().append( "/lib/gdalplugins" ) );
@@ -429,7 +429,7 @@ int main( int argc, char *argv[] )
   QCoreApplication::addLibraryPath( QApplication::applicationDirPath()
                                     + QDir::separator() + "qtplugins" );
 #endif
-#ifdef Q_OS_MACOS
+#ifdef Q_OS_MACX
   //qDebug("Adding qt image plugins to plugin search path...");
   CFURLRef myBundleRef = CFBundleCopyBundleURL( CFBundleGetMainBundle() );
   CFStringRef myMacPath = CFURLCopyFileSystemPath( myBundleRef, kCFURLPOSIXPathStyle );
@@ -503,7 +503,7 @@ int main( int argc, char *argv[] )
         return 1;
       }
     }
-    QgsDebugMsgLevel( QStringLiteral( "hints: %1" ).arg( hints ), 1 );
+    QgsDebugMsg( QStringLiteral( "hints: %1" ).arg( hints ) );
     qbench->setRenderHints( hints );
   }
 
@@ -512,10 +512,10 @@ int main( int argc, char *argv[] )
   /////////////////////////////////////////////////////////////////////
   // autoload any file names that were passed in on the command line
   /////////////////////////////////////////////////////////////////////
-  QgsDebugMsgLevel( QStringLiteral( "Number of files in myFileList: %1" ).arg( sFileList.count() ), 1 );
+  QgsDebugMsg( QStringLiteral( "Number of files in myFileList: %1" ).arg( sFileList.count() ) );
   for ( QStringList::Iterator myIterator = sFileList.begin(); myIterator != sFileList.end(); ++myIterator )
   {
-    QgsDebugMsgLevel( QStringLiteral( "Trying to load file : %1" ).arg( ( *myIterator ) ), 1 );
+    QgsDebugMsg( QStringLiteral( "Trying to load file : %1" ).arg( ( *myIterator ) ) );
     const QString myLayerName = *myIterator;
     // don't load anything with a .qgs or .qgz extension - these are project files
     if ( !myLayerName.endsWith( QLatin1String( ".qgs" ), Qt::CaseInsensitive ) &&
@@ -549,7 +549,11 @@ int main( int argc, char *argv[] )
         ok = false;
         break;
       }
-      coords[i] = QStringView {myInitialExtent} .mid( posOld, pos - posOld ).toDouble( &ok );
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 2)
+      coords[i] = myInitialExtent.midRef( posOld, pos - posOld ).toDouble( &ok );
+#else
+      coords[i] = QStringView {myInitialExtent}.mid( posOld, pos - posOld ).toDouble( &ok );
+#endif
       if ( !ok )
         break;
 
@@ -557,12 +561,17 @@ int main( int argc, char *argv[] )
     }
 
     // parse last coordinate
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 2)
     if ( ok )
-      coords[3] = QStringView {myInitialExtent} .mid( posOld ).toDouble( &ok );
+      coords[3] = myInitialExtent.midRef( posOld ).toDouble( &ok );
+#else
+    if ( ok )
+      coords[3] = QStringView {myInitialExtent}.mid( posOld ).toDouble( &ok );
+#endif
 
     if ( !ok )
     {
-      QgsDebugError( QStringLiteral( "Error while parsing initial extent!" ) );
+      QgsDebugMsg( QStringLiteral( "Error while parsing initial extent!" ) );
     }
     else
     {

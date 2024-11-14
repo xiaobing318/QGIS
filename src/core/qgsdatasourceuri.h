@@ -187,13 +187,8 @@ class CORE_EXPORT QgsDataSourceUri
 
     /**
      * Removes the password element from a URI.
-     *
-     * \param aUri A data source uri
-     * \param hide TRUE to replace the password value with 'xxxxxxxx', FALSE to remove password (key and value) (since QGIS 3.34)
-     *
-     * \returns The data source uri without the password
      */
-    static QString removePassword( const QString &aUri, bool hide = false );
+    static QString removePassword( const QString &aUri );
 
     /**
      * Returns any associated authentication configuration ID stored in the URI.
@@ -239,6 +234,7 @@ class CORE_EXPORT QgsDataSourceUri
 
     /**
      * Sets the \a scheme for the URI.
+     * \since QGIS 2.12
      */
     void setSchema( const QString &schema );
 
@@ -261,11 +257,13 @@ class CORE_EXPORT QgsDataSourceUri
 
     /**
      * Returns the driver name stored in the URI
+     * \since QGIS 2.16
      */
     QString driver() const;
 
     /**
      * Sets the \a driver name stored in the URI.
+     * \since QGIS 2.16
      */
     void setDriver( const QString &driver );
 
@@ -287,10 +285,10 @@ class CORE_EXPORT QgsDataSourceUri
     /**
      * Returns the WKB type associated with the URI.
      */
-    Qgis::WkbType wkbType() const;
+    QgsWkbTypes::Type wkbType() const;
 
     //! Sets the WKB \a type associated with the URI.
-    void setWkbType( Qgis::WkbType type );
+    void setWkbType( QgsWkbTypes::Type type );
 
     //! Returns the spatial reference ID associated with the URI.
     QString srid() const;
@@ -401,7 +399,7 @@ class CORE_EXPORT QgsDataSourceUri
     //! Whether mSelectAtIdDisabled has been explicitly set to true or false
     bool mSelectAtIdDisabledSet = false;
     //! geometry type (or QgsWkbTypes::Unknown if not specified)
-    Qgis::WkbType mWkbType = Qgis::WkbType::Unknown;
+    QgsWkbTypes::Type mWkbType = QgsWkbTypes::Unknown;
     //! SRID or a null string if not specified
     QString mSrid;
     //! Generic params store

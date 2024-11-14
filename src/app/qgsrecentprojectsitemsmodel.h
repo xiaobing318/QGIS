@@ -51,7 +51,6 @@ class QgsRecentProjectItemsModel : public QAbstractListModel
     void unpinProject( const QModelIndex &index );
     void removeProject( const QModelIndex &index );
     void recheckProject( const QModelIndex &index );
-    void clear( bool clearPinned = false );
 
   private:
     QList<RecentProjectData> mRecentProjects;

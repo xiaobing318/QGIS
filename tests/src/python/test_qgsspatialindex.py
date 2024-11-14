@@ -9,21 +9,20 @@ __author__ = 'Alexander Bruy'
 __date__ = '20/01/2011'
 __copyright__ = 'Copyright 2012, The QGIS Project'
 
+import qgis  # NOQA
 
-from qgis.core import (
-    QgsFeature,
-    QgsGeometry,
-    QgsPointXY,
-    QgsRectangle,
-    QgsSpatialIndex,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsSpatialIndex,
+                       QgsFeature,
+                       QgsGeometry,
+                       QgsRectangle,
+                       QgsPointXY)
+
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsSpatialIndex(QgisTestCase):
+class TestQgsSpatialIndex(unittest.TestCase):
 
     def testIndex(self):
         idx = QgsSpatialIndex()
@@ -44,7 +43,8 @@ class TestQgsSpatialIndex(QgisTestCase):
         myMessage = f'Expected: {myExpectedValue} Got: {myValue}'
         self.assertEqual(myValue, myExpectedValue, myMessage)
         fids.sort()
-        myMessage = f'Expected: {[1, 2, 5, 6]}\nGot: {fids}\n'
+        myMessage = ('Expected: %s\nGot: %s\n' %
+                     ([1, 2, 5, 6], fids))
         assert fids == [1, 2, 5, 6], myMessage
 
         # nearest neighbor test
@@ -54,12 +54,13 @@ class TestQgsSpatialIndex(QgisTestCase):
         myMessage = f'Expected: {myExpectedValue} Got: {myValue}'
 
         fids.sort()
-        myMessage = f'Expected: {[0, 1, 5]}\nGot: {fids}\n'
+        myMessage = ('Expected: %s\nGot: %s\n' %
+                     ([0, 1, 5], fids))
         assert fids == [0, 1, 5], myMessage
 
     def testGetGeometry(self):
         idx = QgsSpatialIndex()
-        idx2 = QgsSpatialIndex(QgsSpatialIndex.Flag.FlagStoreFeatureGeometries)
+        idx2 = QgsSpatialIndex(QgsSpatialIndex.FlagStoreFeatureGeometries)
         fid = 0
         for y in range(5):
             for x in range(10, 15):

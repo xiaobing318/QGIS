@@ -12,10 +12,10 @@ __copyright__ = 'Copyright 2018, The QGIS Project'
 import os
 import shutil
 
-from qgis.PyQt.QtCore import QDateTime, Qt, QTemporaryFile, QTime, QDate
-from qgis.core import QgsExifTools, QgsPointXY
-import unittest
-from qgis.testing import start_app, QgisTestCase
+import qgis  # NOQA switch sip api
+from qgis.PyQt.QtCore import QTemporaryFile, QDateTime
+from qgis.core import QgsPointXY, QgsExifTools
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -24,22 +24,18 @@ TEST_DATA_DIR = unitTestDataPath()
 start_app()
 
 
-class TestQgsExifUtils(QgisTestCase):
+class TestQgsExifUtils(unittest.TestCase):
 
     def testReadTags(self):
         photos_folder = os.path.join(TEST_DATA_DIR, 'photos')
 
-        # test a converted Exif rational value
+        # test a convnerted rational value
         elevation = QgsExifTools.readTag(os.path.join(photos_folder, '0997.JPG'), 'Exif.GPSInfo.GPSAltitude')
         self.assertEqual(elevation, 422.19101123595505)
 
-        # test a converted Exif datetime value
+        # test a converted datetime value
         dt = QgsExifTools.readTag(os.path.join(photos_folder, '0997.JPG'), 'Exif.Image.DateTime')
         self.assertEqual(dt, QDateTime(2018, 3, 16, 12, 19, 19))
-
-        # test a converted Xmp datetime value
-        dt = QgsExifTools.readTag(os.path.join(photos_folder, '0997.JPG'), 'Xmp.xmp.MetadataDate')
-        self.assertEqual(dt, QDateTime(QDate(2023, 2, 5), QTime(10, 16, 5, 0), Qt.TimeSpec(1)))
 
     def testGeoTags(self):
         photos_folder = os.path.join(TEST_DATA_DIR, 'photos')
@@ -49,11 +45,11 @@ class TestQgsExifUtils(QgisTestCase):
 
         tag, ok = QgsExifTools.getGeoTag(os.path.join(photos_folder, '0997.JPG'))
         self.assertTrue(ok)
-        self.assertEqual(tag.asWkt(6), 'Point Z (149.275167 -37.2305 422.191011)')
+        self.assertEqual(tag.asWkt(6), 'PointZ (149.275167 -37.2305 422.191011)')
 
         tag, ok = QgsExifTools.getGeoTag(os.path.join(photos_folder, 'geotagged.jpg'))
         self.assertTrue(ok)
-        self.assertEqual(tag.asWkt(6), 'Point Z (149.131878 -36.220892 867)')
+        self.assertEqual(tag.asWkt(6), 'PointZ (149.131878 -36.220892 867)')
 
         tag, ok = QgsExifTools.getGeoTag(os.path.join(photos_folder, 'notags.JPG'))
         self.assertFalse(ok)
@@ -92,7 +88,7 @@ class TestQgsExifUtils(QgisTestCase):
         self.assertTrue(QgsExifTools.geoTagImage(tmpName, QgsPointXY(1.1, 3.3), deets))
         tag, ok = QgsExifTools.getGeoTag(tmpName)
         self.assertTrue(ok)
-        self.assertEqual(tag.asWkt(6), 'Point Z (1.1 3.3 110.1)')
+        self.assertEqual(tag.asWkt(6), 'PointZ (1.1 3.3 110.1)')
         os.remove(tmpName)
 
         shutil.copy(src_photo, tmpName)
@@ -101,16 +97,7 @@ class TestQgsExifUtils(QgisTestCase):
         self.assertTrue(QgsExifTools.geoTagImage(tmpName, QgsPointXY(1.1, 3.3), deets))
         tag, ok = QgsExifTools.getGeoTag(tmpName)
         self.assertTrue(ok)
-        self.assertEqual(tag.asWkt(6), 'Point Z (1.1 3.3 -110.1)')
-        os.remove(tmpName)
-
-        shutil.copy(src_photo, tmpName)
-        self.assertTrue(QgsExifTools.tagImage(tmpName, 'Exif.Photo.ShutterSpeedValue', 5.333))
-        self.assertTrue(QgsExifTools.tagImage(tmpName, 'Xmp.dc.Format', 'image/jpeg'))
-        value = QgsExifTools.readTag(tmpName, 'Exif.Photo.ShutterSpeedValue')
-        self.assertEqual(value, 5.333)
-        value = QgsExifTools.readTag(tmpName, 'Xmp.dc.Format')
-        self.assertEqual(value, 'image/jpeg')
+        self.assertEqual(tag.asWkt(6), 'PointZ (1.1 3.3 -110.1)')
         os.remove(tmpName)
 
 

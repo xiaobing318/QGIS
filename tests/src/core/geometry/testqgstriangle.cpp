@@ -74,7 +74,7 @@ void TestQgsTriangle::constructor()
   QCOMPARE( tr.partCount(), 0 );
   QVERIFY( !tr.is3D() );
   QVERIFY( !tr.isMeasure() );
-  QCOMPARE( tr.wkbType(), Qgis::WkbType::Triangle );
+  QCOMPARE( tr.wkbType(), QgsWkbTypes::Triangle );
   QCOMPARE( tr.wktTypeStr(), QString( "Triangle" ) );
   QCOMPARE( tr.geometryType(), QString( "Triangle" ) );
   QCOMPARE( tr.dimension(), 2 );
@@ -106,7 +106,7 @@ void TestQgsTriangle::constructor3Points()
   QCOMPARE( tr.partCount(), 1 );
   QVERIFY( !tr.is3D() );
   QVERIFY( !tr.isMeasure() );
-  QCOMPARE( tr.wkbType(), Qgis::WkbType::Triangle );
+  QCOMPARE( tr.wkbType(), QgsWkbTypes::Triangle );
   QCOMPARE( tr.wktTypeStr(), QString( "Triangle" ) );
   QCOMPARE( tr.geometryType(), QString( "Triangle" ) );
   QCOMPARE( tr.dimension(), 2 );
@@ -126,7 +126,7 @@ void TestQgsTriangle::constructor3Points()
   QCOMPARE( tr.partCount(), 1 );
   QVERIFY( !tr.is3D() );
   QVERIFY( !tr.isMeasure() );
-  QCOMPARE( tr.wkbType(), Qgis::WkbType::Triangle );
+  QCOMPARE( tr.wkbType(), QgsWkbTypes::Triangle );
   QCOMPARE( tr.wktTypeStr(), QString( "Triangle" ) );
   QCOMPARE( tr.geometryType(), QString( "Triangle" ) );
   QCOMPARE( tr.dimension(), 2 );
@@ -145,7 +145,7 @@ void TestQgsTriangle::constructor3Points()
   QCOMPARE( tr.partCount(), 1 );
   QVERIFY( !tr.is3D() );
   QVERIFY( !tr.isMeasure() );
-  QCOMPARE( tr.wkbType(), Qgis::WkbType::Triangle );
+  QCOMPARE( tr.wkbType(), QgsWkbTypes::Triangle );
   QCOMPARE( tr.wktTypeStr(), QString( "Triangle" ) );
   QCOMPARE( tr.geometryType(), QString( "Triangle" ) );
   QCOMPARE( tr.dimension(), 2 );
@@ -159,39 +159,39 @@ void TestQgsTriangle::constructor3Points()
 void TestQgsTriangle::constructorZM()
 {
   // Z
-  QgsTriangle tr = QgsTriangle( QgsPoint( Qgis::WkbType::PointZ, 0, 5, 1 ),
-                                QgsPoint( Qgis::WkbType::PointZ, 0, 0, 2 ),
-                                QgsPoint( Qgis::WkbType::PointZ, 10, 10, 3 ) );
+  QgsTriangle tr = QgsTriangle( QgsPoint( QgsWkbTypes::PointZ, 0, 5, 1 ),
+                                QgsPoint( QgsWkbTypes::PointZ, 0, 0, 2 ),
+                                QgsPoint( QgsWkbTypes::PointZ, 10, 10, 3 ) );
 
   QVERIFY( !tr.isEmpty() );
   QVERIFY( tr.is3D() );
   QVERIFY( !tr.isMeasure() );
-  QCOMPARE( tr.wkbType(), Qgis::WkbType::TriangleZ );
-  QCOMPARE( tr.wktTypeStr(), QString( "Triangle Z" ) );
+  QCOMPARE( tr.wkbType(), QgsWkbTypes::TriangleZ );
+  QCOMPARE( tr.wktTypeStr(), QString( "TriangleZ" ) );
   QCOMPARE( tr.geometryType(), QString( "Triangle" ) );
 
   // M
-  tr = QgsTriangle( QgsPoint( Qgis::WkbType::PointM, 0, 5, 0, 1 ),
-                    QgsPoint( Qgis::WkbType::PointM, 0, 0, 0, 2 ),
-                    QgsPoint( Qgis::WkbType::PointM, 10, 10, 0, 3 ) );
+  tr = QgsTriangle( QgsPoint( QgsWkbTypes::PointM, 0, 5, 0, 1 ),
+                    QgsPoint( QgsWkbTypes::PointM, 0, 0, 0, 2 ),
+                    QgsPoint( QgsWkbTypes::PointM, 10, 10, 0, 3 ) );
 
   QVERIFY( !tr.isEmpty() );
   QVERIFY( !tr.is3D() );
   QVERIFY( tr.isMeasure() );
-  QCOMPARE( tr.wkbType(), Qgis::WkbType::TriangleM );
-  QCOMPARE( tr.wktTypeStr(), QString( "Triangle M" ) );
+  QCOMPARE( tr.wkbType(), QgsWkbTypes::TriangleM );
+  QCOMPARE( tr.wktTypeStr(), QString( "TriangleM" ) );
   QCOMPARE( tr.geometryType(), QString( "Triangle" ) );
 
   // ZM
-  tr = QgsTriangle( QgsPoint( Qgis::WkbType::PointZM, 0, 5, 8, 1 ),
-                    QgsPoint( Qgis::WkbType::PointZM, 0, 0, 5, 2 ),
-                    QgsPoint( Qgis::WkbType::PointZM, 10, 10, 2, 3 ) );
+  tr = QgsTriangle( QgsPoint( QgsWkbTypes::PointZM, 0, 5, 8, 1 ),
+                    QgsPoint( QgsWkbTypes::PointZM, 0, 0, 5, 2 ),
+                    QgsPoint( QgsWkbTypes::PointZM, 10, 10, 2, 3 ) );
 
   QVERIFY( !tr.isEmpty() );
   QVERIFY( tr.is3D() );
   QVERIFY( tr.isMeasure() );
-  QCOMPARE( tr.wkbType(), Qgis::WkbType::TriangleZM );
-  QCOMPARE( tr.wktTypeStr(), QString( "Triangle ZM" ) );
+  QCOMPARE( tr.wkbType(), QgsWkbTypes::TriangleZM );
+  QCOMPARE( tr.wktTypeStr(), QString( "TriangleZM" ) );
   QCOMPARE( tr.geometryType(), QString( "Triangle" ) );
 }
 
@@ -228,7 +228,7 @@ void TestQgsTriangle::exteriorRing()
   QCOMPARE( tr.partCount(), 0 );
   QVERIFY( !tr.exteriorRing() );
   QVERIFY( !tr.interiorRing( 0 ) );
-  QCOMPARE( tr.wkbType(), Qgis::WkbType::Triangle );
+  QCOMPARE( tr.wkbType(), QgsWkbTypes::Triangle );
 
   std::unique_ptr< QgsLineString > ext( new QgsLineString() );
   ext->setPoints( QgsPointSequence() << QgsPoint( 0, 0 ) << QgsPoint( 0, 10 )
@@ -245,7 +245,7 @@ void TestQgsTriangle::exteriorRing()
   QCOMPARE( tr.partCount(), 1 );
   QVERIFY( !tr.is3D() );
   QVERIFY( !tr.isMeasure() );
-  QCOMPARE( tr.wkbType(), Qgis::WkbType::Triangle );
+  QCOMPARE( tr.wkbType(), QgsWkbTypes::Triangle );
   QCOMPARE( tr.wktTypeStr(), QString( "Triangle" ) );
   QCOMPARE( tr.geometryType(), QString( "Triangle" ) );
   QCOMPARE( tr.dimension(), 2 );
@@ -273,7 +273,7 @@ void TestQgsTriangle::exteriorRing()
   QCOMPARE( tr.partCount(), 1 );
   QVERIFY( !tr.is3D() );
   QVERIFY( !tr.isMeasure() );
-  QCOMPARE( tr.wkbType(), Qgis::WkbType::Triangle );
+  QCOMPARE( tr.wkbType(), QgsWkbTypes::Triangle );
   QCOMPARE( tr.wktTypeStr(), QString( "Triangle" ) );
   QCOMPARE( tr.geometryType(), QString( "Triangle" ) );
   QCOMPARE( tr.dimension(), 2 );
@@ -297,8 +297,8 @@ void TestQgsTriangle::exteriorRingZM()
 
   QVERIFY( tr.is3D() );
   QVERIFY( !tr.isMeasure() );
-  QCOMPARE( tr.wkbType(), Qgis::WkbType::TriangleZ );
-  QCOMPARE( tr.wktTypeStr(), QString( "Triangle Z" ) );
+  QCOMPARE( tr.wkbType(), QgsWkbTypes::TriangleZ );
+  QCOMPARE( tr.wktTypeStr(), QString( "TriangleZ" ) );
   QCOMPARE( tr.geometryType(), QString( "Triangle" ) );
   QCOMPARE( tr.dimension(), 2 );
   QCOMPARE( tr.vertexAt( 0 ).z(),  3.0 );
@@ -314,8 +314,8 @@ void TestQgsTriangle::exteriorRingZM()
 
   QVERIFY( tr.is3D() );
   QVERIFY( tr.isMeasure() );
-  QCOMPARE( tr.wkbType(), Qgis::WkbType::TriangleZM );
-  QCOMPARE( tr.wktTypeStr(), QString( "Triangle ZM" ) );
+  QCOMPARE( tr.wkbType(), QgsWkbTypes::TriangleZM );
+  QCOMPARE( tr.wktTypeStr(), QString( "TriangleZM" ) );
   QCOMPARE( tr.geometryType(), QString( "Triangle" ) );
   QCOMPARE( tr.dimension(), 2 );
   QCOMPARE( tr.vertexAt( 0 ).m(),  4.0 );
@@ -327,8 +327,8 @@ void TestQgsTriangle::exteriorRingZM()
 
   QVERIFY( !tr.is3D() );
   QVERIFY( tr.isMeasure() );
-  QCOMPARE( tr.wkbType(), Qgis::WkbType::TriangleM );
-  QCOMPARE( tr.wktTypeStr(), QString( "Triangle M" ) );
+  QCOMPARE( tr.wkbType(), QgsWkbTypes::TriangleM );
+  QCOMPARE( tr.wktTypeStr(), QString( "TriangleM" ) );
   QCOMPARE( tr.geometryType(), QString( "Triangle" ) );
   QCOMPARE( tr.dimension(), 2 );
   QVERIFY( std::isnan( tr.vertexAt( 0 ).z() ) );
@@ -340,7 +340,7 @@ void TestQgsTriangle::exteriorRingZM()
 
   QVERIFY( !tr.is3D() );
   QVERIFY( !tr.isMeasure() );
-  QCOMPARE( tr.wkbType(), Qgis::WkbType::Triangle );
+  QCOMPARE( tr.wkbType(), QgsWkbTypes::Triangle );
   QCOMPARE( tr.wktTypeStr(), QString( "Triangle" ) );
   QCOMPARE( tr.geometryType(), QString( "Triangle" ) );
   QCOMPARE( tr.dimension(), 2 );
@@ -441,16 +441,16 @@ void TestQgsTriangle::conversion()
   QgsTriangle tr;
 
   std::unique_ptr< QgsLineString > ext( new QgsLineString() );
-  ext->setPoints( QgsPointSequence() << QgsPoint( Qgis::WkbType::PointZM, 0, 0, 1, 5 )
-                  << QgsPoint( Qgis::WkbType::PointZM, 0, 10, 2, 6 )
-                  << QgsPoint( Qgis::WkbType::PointZM, 10, 10, 3, 7 ) );
+  ext->setPoints( QgsPointSequence() << QgsPoint( QgsWkbTypes::PointZM, 0, 0, 1, 5 )
+                  << QgsPoint( QgsWkbTypes::PointZM, 0, 10, 2, 6 )
+                  << QgsPoint( QgsWkbTypes::PointZM, 10, 10, 3, 7 ) );
   tr.setExteriorRing( ext.release() );
 
   QgsPolygon polyExpected;
   ext.reset( new QgsLineString() );
-  ext->setPoints( QgsPointSequence() << QgsPoint( Qgis::WkbType::PointZM, 0, 0, 1, 5 )
-                  << QgsPoint( Qgis::WkbType::PointZM, 0, 10, 2, 6 )
-                  << QgsPoint( Qgis::WkbType::PointZM, 10, 10, 3, 7 ) );
+  ext->setPoints( QgsPointSequence() << QgsPoint( QgsWkbTypes::PointZM, 0, 0, 1, 5 )
+                  << QgsPoint( QgsWkbTypes::PointZM, 0, 10, 2, 6 )
+                  << QgsPoint( QgsWkbTypes::PointZM, 10, 10, 3, 7 ) );
   polyExpected.setExteriorRing( ext.release() );
 
   //toPolygon
@@ -467,7 +467,7 @@ void TestQgsTriangle::toCurveType()
   QgsTriangle tr( QgsPoint( 7, 4 ), QgsPoint( 13, 3 ), QgsPoint( 9, 6 ) );
   std::unique_ptr< QgsCurvePolygon > curveType( tr.toCurveType() );
 
-  QCOMPARE( curveType->wkbType(), Qgis::WkbType::CurvePolygon );
+  QCOMPARE( curveType->wkbType(), QgsWkbTypes::CurvePolygon );
   QCOMPARE( curveType->exteriorRing()->numPoints(), 4 );
   QCOMPARE( curveType->exteriorRing()->vertexAt( QgsVertexId( 0, 0, 0 ) ), QgsPoint( 7, 4 ) );
   QCOMPARE( curveType->exteriorRing()->vertexAt( QgsVertexId( 0, 0, 1 ) ), QgsPoint( 13, 3 ) );
@@ -490,9 +490,9 @@ void TestQgsTriangle::toFromWkt()
   QgsTriangle tr;
 
   std::unique_ptr< QgsLineString > ext( new QgsLineString() );
-  ext->setPoints( QgsPointSequence() << QgsPoint( Qgis::WkbType::PointZM, 0, 0, 1, 5 )
-                  << QgsPoint( Qgis::WkbType::PointZM, 0, 10, 2, 6 )
-                  << QgsPoint( Qgis::WkbType::PointZM, 10, 10, 3, 7 ) );
+  ext->setPoints( QgsPointSequence() << QgsPoint( QgsWkbTypes::PointZM, 0, 0, 1, 5 )
+                  << QgsPoint( QgsWkbTypes::PointZM, 0, 10, 2, 6 )
+                  << QgsPoint( QgsWkbTypes::PointZM, 10, 10, 3, 7 ) );
   tr.setExteriorRing( ext.release() );
 
   QString wkt = tr.asWkt();
@@ -508,7 +508,7 @@ void TestQgsTriangle::toFromWkt()
   QCOMPARE( trFromWkt.numInteriorRings(), 0 );
   QVERIFY( !trFromWkt.is3D() );
   QVERIFY( !trFromWkt.isMeasure() );
-  QCOMPARE( trFromWkt.wkbType(), Qgis::WkbType::Triangle );
+  QCOMPARE( trFromWkt.wkbType(), QgsWkbTypes::Triangle );
 }
 
 void TestQgsTriangle::toFromWkb()
@@ -528,7 +528,7 @@ void TestQgsTriangle::toFromWkb()
   QgsConstWkbPtr wkbPtr( wkb );
   tResult.fromWkb( wkbPtr );
   QCOMPARE( tWKB.asWkt(), "Triangle ((0 0, 0 10, 10 10, 0 0))" );
-  QCOMPARE( tWKB.wkbType(), Qgis::WkbType::Triangle );
+  QCOMPARE( tWKB.wkbType(), QgsWkbTypes::Triangle );
   QCOMPARE( tWKB, tResult );
 
   // as a polygon
@@ -542,7 +542,7 @@ void TestQgsTriangle::toFromWkb()
   QgsConstWkbPtr wkbPtr2( wkb );
   pResult.fromWkb( wkbPtr2 );
   QCOMPARE( pResult.asWkt(), "Polygon ((0 0, 0 10, 10 10, 0 0))" );
-  QCOMPARE( pResult.wkbType(), Qgis::WkbType::Polygon );
+  QCOMPARE( pResult.wkbType(), QgsWkbTypes::Polygon );
 
   // WKB Z
   tWKB = QgsTriangle( QgsPoint( 0, 0, 1 ), QgsPoint( 0, 10, 2 ),
@@ -554,8 +554,8 @@ void TestQgsTriangle::toFromWkb()
 
   QgsConstWkbPtr wkbPtrZ( wkb );
   tResult.fromWkb( wkbPtrZ );
-  QCOMPARE( tWKB.asWkt(), "Triangle Z ((0 0 1, 0 10 2, 10 10 3, 0 0 1))" );
-  QCOMPARE( tWKB.wkbType(), Qgis::WkbType::TriangleZ );
+  QCOMPARE( tWKB.asWkt(), "TriangleZ ((0 0 1, 0 10 2, 10 10 3, 0 0 1))" );
+  QCOMPARE( tWKB.wkbType(), QgsWkbTypes::TriangleZ );
   QCOMPARE( tWKB, tResult );
 
   // as a polygon
@@ -566,15 +566,15 @@ void TestQgsTriangle::toFromWkb()
 
   QgsConstWkbPtr wkbPtrZ2( wkb );
   pResult.fromWkb( wkbPtrZ2 );
-  QCOMPARE( pResult.asWkt(), "Polygon Z ((0 0 1, 0 10 2, 10 10 3, 0 0 1))" );
-  QCOMPARE( pResult.wkbType(), Qgis::WkbType::PolygonZ );
+  QCOMPARE( pResult.asWkt(), "PolygonZ ((0 0 1, 0 10 2, 10 10 3, 0 0 1))" );
+  QCOMPARE( pResult.wkbType(), QgsWkbTypes::PolygonZ );
 
   // WKB M
   // tWKB=QgsTriangle (QgsPoint(0,0, 5), QgsPoint(0, 10, 6), QgsPoint(10, 10, 7)); will produce a TriangleZ
   std::unique_ptr< QgsLineString > ext( new QgsLineString() );
-  ext->setPoints( QgsPointSequence() << QgsPoint( Qgis::WkbType::PointM, 0, 0, 0, 5 )
-                  << QgsPoint( Qgis::WkbType::PointM, 0, 10, 0, 6 )
-                  << QgsPoint( Qgis::WkbType::PointM, 10, 10, 0, 7 ) );
+  ext->setPoints( QgsPointSequence() << QgsPoint( QgsWkbTypes::PointM, 0, 0, 0, 5 )
+                  << QgsPoint( QgsWkbTypes::PointM, 0, 10, 0, 6 )
+                  << QgsPoint( QgsWkbTypes::PointM, 10, 10, 0, 7 ) );
   tWKB.setExteriorRing( ext.release() );
 
   wkb = tWKB.asWkb();
@@ -584,8 +584,8 @@ void TestQgsTriangle::toFromWkb()
 
   QgsConstWkbPtr  wkbPtrM( wkb );
   tResult.fromWkb( wkbPtrM );
-  QCOMPARE( tWKB.asWkt(), "Triangle M ((0 0 5, 0 10 6, 10 10 7, 0 0 5))" );
-  QCOMPARE( tWKB.wkbType(), Qgis::WkbType::TriangleM );
+  QCOMPARE( tWKB.asWkt(), "TriangleM ((0 0 5, 0 10 6, 10 10 7, 0 0 5))" );
+  QCOMPARE( tWKB.wkbType(), QgsWkbTypes::TriangleM );
   QCOMPARE( tWKB, tResult );
 
   // as a polygon
@@ -596,8 +596,8 @@ void TestQgsTriangle::toFromWkb()
 
   QgsConstWkbPtr wkbPtrM2( wkb );
   pResult.fromWkb( wkbPtrM2 );
-  QCOMPARE( pResult.asWkt(), "Polygon M ((0 0 5, 0 10 6, 10 10 7, 0 0 5))" );
-  QCOMPARE( pResult.wkbType(), Qgis::WkbType::PolygonM );
+  QCOMPARE( pResult.asWkt(), "PolygonM ((0 0 5, 0 10 6, 10 10 7, 0 0 5))" );
+  QCOMPARE( pResult.wkbType(), QgsWkbTypes::PolygonM );
 
   // WKB ZM
   tWKB = QgsTriangle( QgsPoint( 0, 0, 1, 5 ), QgsPoint( 0, 10, 2, 6 ),
@@ -609,8 +609,8 @@ void TestQgsTriangle::toFromWkb()
 
   QgsConstWkbPtr wkbPtrZM( wkb );
   tResult.fromWkb( wkbPtrZM );
-  QCOMPARE( tWKB.asWkt(), "Triangle ZM ((0 0 1 5, 0 10 2 6, 10 10 3 7, 0 0 1 5))" );
-  QCOMPARE( tWKB.wkbType(), Qgis::WkbType::TriangleZM );
+  QCOMPARE( tWKB.asWkt(), "TriangleZM ((0 0 1 5, 0 10 2 6, 10 10 3 7, 0 0 1 5))" );
+  QCOMPARE( tWKB.wkbType(), QgsWkbTypes::TriangleZM );
   QCOMPARE( tWKB, tResult );
 
   // as a polygon
@@ -621,20 +621,20 @@ void TestQgsTriangle::toFromWkb()
 
   QgsConstWkbPtr wkbPtrZM2( wkb );
   pResult.fromWkb( wkbPtrZM2 );
-  QCOMPARE( pResult.asWkt(), "Polygon ZM ((0 0 1 5, 0 10 2 6, 10 10 3 7, 0 0 1 5))" );
-  QCOMPARE( pResult.wkbType(), Qgis::WkbType::PolygonZM );
+  QCOMPARE( pResult.asWkt(), "PolygonZM ((0 0 1 5, 0 10 2 6, 10 10 3 7, 0 0 1 5))" );
+  QCOMPARE( pResult.wkbType(), QgsWkbTypes::PolygonZM );
 
   //bad WKB - check for no crash
   QgsTriangle tr;
   QgsConstWkbPtr nullPtr( nullptr, 0 );
   QVERIFY( !tr.fromWkb( nullPtr ) );
-  QCOMPARE( tr.wkbType(), Qgis::WkbType::Triangle );
+  QCOMPARE( tr.wkbType(), QgsWkbTypes::Triangle );
 
   QgsPoint point( 1, 2 );
   QByteArray wkbPoint = point.asWkb();
   QgsConstWkbPtr wkbPointPtr( wkbPoint );
   QVERIFY( !tr.fromWkb( wkbPointPtr ) );
-  QCOMPARE( tr.wkbType(), Qgis::WkbType::Triangle );
+  QCOMPARE( tr.wkbType(), QgsWkbTypes::Triangle );
 
   // AsWkb should work for polygons
   // even with FlagExportTrianglesAsPolygons
@@ -651,7 +651,7 @@ void TestQgsTriangle::toFromWkb()
   QgsConstWkbPtr wkbPtrPl( wkb );
   pResult.fromWkb( wkbPtrPl );
   QCOMPARE( pResult.asWkt(), "Polygon ((0 0, 0 10, 10 10, 10 0, 0 0))" );
-  QCOMPARE( pResult.wkbType(), Qgis::WkbType::Polygon );
+  QCOMPARE( pResult.wkbType(), QgsWkbTypes::Polygon );
 
 
   // invalid multi ring
@@ -1082,7 +1082,7 @@ void TestQgsTriangle::boundary()
 
   std::unique_ptr< QgsCurve > boundary( QgsTriangle( QgsPoint( 7, 4 ), QgsPoint( 13, 3 ), QgsPoint( 9, 6 ) ).boundary() );
 
-  QCOMPARE( boundary->wkbType(), Qgis::WkbType::LineString );
+  QCOMPARE( boundary->wkbType(), QgsWkbTypes::LineString );
   QCOMPARE( boundary->numPoints(), 4 );
   QCOMPARE( boundary->vertexAt( QgsVertexId( 0, 0, 0 ) ), QgsPoint( 7, 4 ) );
   QCOMPARE( boundary->vertexAt( QgsVertexId( 0, 0, 1 ) ), QgsPoint( 13, 3 ) );

@@ -22,12 +22,8 @@ os.environ['QT_HASH_SEED'] = '1'
 from qgis.core import QgsProject, QgsProviderRegistry, QgsVectorLayer
 from qgis.PyQt.QtCore import QTemporaryDir
 from qgis.PyQt.QtGui import QImage
-from qgis.server import (
-    QgsAccessControlFilter,
-    QgsBufferServerRequest,
-    QgsBufferServerResponse,
-    QgsServer,
-)
+from qgis.server import (QgsServer, QgsBufferServerRequest,
+                         QgsBufferServerResponse, QgsAccessControlFilter)
 from qgis.testing import unittest
 from test_qgsserver import QgsServerTestBase
 from utilities import unitTestDataPath
@@ -132,7 +128,7 @@ class TestQgsServerAccessControlWMSGetPrintPG(QgsServerTestBase):
 
         project = open(project_path).read()
         with open(cls.temp_project_path, 'w+') as f:
-            f.write(re.sub(r'<datasource>.*</datasource>', f'<datasource>{cls.layer_uri}</datasource>', project))
+            f.write(re.sub(r'<datasource>.*</datasource>', '<datasource>%s</datasource>' % cls.layer_uri, project))
 
         cls.test_project = QgsProject()
         cls.test_project.read(cls.temp_project_path)
@@ -160,7 +156,7 @@ class TestQgsServerAccessControlWMSGetPrintPG(QgsServerTestBase):
         res = QgsBufferServerResponse()
         self._server.handleRequest(req, res, self.test_project)
         self.assertEqual(res.statusCode(), 400)
-        self.assertIn(exception_text, bytes(res.body()).decode('utf8'))
+        self.assertTrue(exception_text in bytes(res.body()).decode('utf8'))
 
     def _check_white(self, qs):
         """Check that output is a white image"""

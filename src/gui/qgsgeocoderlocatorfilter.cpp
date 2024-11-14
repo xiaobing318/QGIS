@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsgeocoderlocatorfilter.h"
-#include "moc_qgsgeocoderlocatorfilter.cpp"
 #include "qgsmapcanvas.h"
 #include "qgsmessagelog.h"
 #include "qgsgeocoderresult.h"

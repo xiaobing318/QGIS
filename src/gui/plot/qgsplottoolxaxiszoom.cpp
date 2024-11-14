@@ -16,8 +16,10 @@
  ***************************************************************************/
 
 #include "qgsplottoolxaxiszoom.h"
-#include "moc_qgsplottoolxaxiszoom.cpp"
+#include "qgsapplication.h"
+#include "qgsplotmouseevent.h"
 #include "qgsplotcanvas.h"
+#include "qgsplotrubberband.h"
 #include "qgselevationprofilecanvas.h"
 #include <QWheelEvent>
 
@@ -32,49 +34,23 @@ QgsPlotToolXAxisZoom::~QgsPlotToolXAxisZoom() = default;
 
 QPointF QgsPlotToolXAxisZoom::constrainStartPoint( QPointF scenePoint ) const
 {
-  if ( mElevationCanvas->lockAxisScales() )
-  {
-    return scenePoint;
-  }
-  else
-  {
-    // force the rubber band to take the whole vertical area
-    QRectF plotArea = mElevationCanvas->plotArea();
-    return QPointF( scenePoint.x(), plotArea.top() );
-  }
+  // force the rubber band to take the whole vertical area
+  QRectF plotArea = mElevationCanvas->plotArea();
+  return QPointF( scenePoint.x(), plotArea.top() );
 }
 
 QPointF QgsPlotToolXAxisZoom::constrainMovePoint( QPointF scenePoint ) const
 {
   const QRectF plotArea = mElevationCanvas->plotArea();
-  if ( mElevationCanvas->lockAxisScales() )
-  {
-    const double selectedDistanceRange = std::fabs( scenePoint.x() - mRubberBandStartPos.x() );
-    // ensure the same aspect ratio is retained
-    const double calculatedElevationRange = plotArea.height() / plotArea.width() * selectedDistanceRange;
-    return QPointF( scenePoint.x(), mRubberBandStartPos.y() + calculatedElevationRange );
-  }
-  else
-  {
-    // force the rubber band to take the whole vertical area
-    return QPointF( scenePoint.x(), plotArea.bottom() );
-  }
+  // force the rubber band to take the whole vertical area
+  return QPointF( scenePoint.x(), plotArea.bottom() );
 }
 
 QRectF QgsPlotToolXAxisZoom::constrainBounds( const QRectF &sceneBounds ) const
 {
   const QRectF plotArea = mElevationCanvas->plotArea();
-
-  if ( mElevationCanvas->lockAxisScales() )
-  {
-    // constraint has already been applied
-    return sceneBounds;
-  }
-  else
-  {
-    // retain current vertical rect
-    return QRectF( sceneBounds.left(), plotArea.top(), sceneBounds.width(), plotArea.height() );
-  }
+  // retain current vertical rect
+  return QRectF( sceneBounds.left(), plotArea.top(), sceneBounds.width(), plotArea.height() );
 }
 
 void QgsPlotToolXAxisZoom::zoomOutClickOn( QPointF scenePoint )

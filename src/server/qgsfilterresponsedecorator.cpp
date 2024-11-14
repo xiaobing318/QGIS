@@ -41,21 +41,6 @@ void QgsFilterResponseDecorator::start()
 #endif
 }
 
-void QgsFilterResponseDecorator::ready()
-{
-#ifdef HAVE_SERVER_PYTHON_PLUGINS
-  QgsServerFiltersMap::const_iterator filtersIterator;
-  for ( filtersIterator = mFilters.constBegin(); filtersIterator != mFilters.constEnd(); ++filtersIterator )
-  {
-    if ( ! filtersIterator.value()->onProjectReady() )
-    {
-      // stop propagation
-      return;
-    }
-  }
-#endif
-}
-
 void QgsFilterResponseDecorator::finish()
 {
 #ifdef HAVE_SERVER_PYTHON_PLUGINS
@@ -91,3 +76,5 @@ void QgsFilterResponseDecorator::flush()
 #endif
   mResponse.flush();
 }
+
+

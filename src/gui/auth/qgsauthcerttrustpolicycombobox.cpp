@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgsauthcerttrustpolicycombobox.h"
-#include "moc_qgsauthcerttrustpolicycombobox.cpp"
 
 #include <QLineEdit>
 
@@ -102,7 +101,7 @@ void QgsAuthCertTrustPolicyComboBox::highlightCurrentIndex( int indx )
     default:
       break;
   }
-  QgsDebugMsgLevel( QStringLiteral( "Set Stylesheet to : %1" ).arg( ss ), 2 );
+  QgsDebugMsg( QStringLiteral( "Set Stylesheet to : %1" ).arg( ss ) );
   // lineEdit()->setStyleSheet( ss );
   setStyleSheet( ss );
 }

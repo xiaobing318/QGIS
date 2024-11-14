@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsbookmarkeditordialog.h"
-#include "moc_qgsbookmarkeditordialog.cpp"
 
 #include "qgis.h"
 #include "qgisapp.h"
@@ -49,10 +48,9 @@ QgsBookmarkEditorDialog::QgsBookmarkEditorDialog( QgsBookmark bookmark, bool inP
 
   mExtentGroupBox->setOutputCrs( mBookmark.extent().crs() );
   mExtentGroupBox->setCurrentExtent( mBookmark.extent(), mBookmark.extent().crs() );
-  mExtentGroupBox->setMapCanvas( mMapCanvas );
   mExtentGroupBox->setOutputExtentFromCurrent();
+  mExtentGroupBox->setMapCanvas( mMapCanvas );
   mCrsSelector->setCrs( mBookmark.extent().crs() );
-  mRotation->setValue( mBookmark.rotation() );
 
   mSaveLocation->addItem( tr( "User Bookmarks" ), ApplicationManager );
   mSaveLocation->addItem( tr( "Project Bookmarks" ), ProjectManager );
@@ -63,7 +61,6 @@ QgsBookmarkEditorDialog::QgsBookmarkEditorDialog( QgsBookmark bookmark, bool inP
   connect( buttonBox, &QDialogButtonBox::helpRequested, this, &QgsBookmarkEditorDialog::showHelp );
 
   mName->setFocus();
-  mName->selectAll();
 }
 
 void QgsBookmarkEditorDialog::crsChanged( const QgsCoordinateReferenceSystem &crs )
@@ -83,7 +80,6 @@ void QgsBookmarkEditorDialog::onAccepted()
   bookmark.setName( mName->text() );
   bookmark.setGroup( mGroup->currentText() );
   bookmark.setExtent( QgsReferencedRectangle( mExtentGroupBox->outputExtent(), mExtentGroupBox->outputCrs() ) );
-  bookmark.setRotation( mRotation->value() );
 
   if ( bookmark.id().isEmpty() )
   {

@@ -15,7 +15,6 @@
 
 
 #include "qgsrelationreferencewidgetwrapper.h"
-#include "moc_qgsrelationreferencewidgetwrapper.cpp"
 #include "qgsproject.h"
 #include "qgsrelationmanager.h"
 #include "qgsrelationreferencewidget.h"
@@ -52,19 +51,14 @@ void QgsRelationReferenceWidgetWrapper::initWidget( QWidget *editor )
   const bool showForm = config( QStringLiteral( "ShowForm" ), false ).toBool();
   const bool mapIdent = config( QStringLiteral( "MapIdentification" ), false ).toBool();
   const bool readOnlyWidget = config( QStringLiteral( "ReadOnly" ), false ).toBool();
+  const bool orderByValue = config( QStringLiteral( "OrderByValue" ), false ).toBool();
   const bool showOpenFormButton = config( QStringLiteral( "ShowOpenFormButton" ), true ).toBool();
 
   mWidget->setEmbedForm( showForm );
   mWidget->setReadOnlySelector( readOnlyWidget );
   mWidget->setAllowMapIdentification( mapIdent );
+  mWidget->setOrderByValue( orderByValue );
   mWidget->setOpenFormButtonVisible( showOpenFormButton );
-
-  const bool fetchLimitActive = config( QStringLiteral( "FetchLimitActive" ), QgsSettings().value( QStringLiteral( "maxEntriesRelationWidget" ), 100, QgsSettings::Gui ).toInt() > 0 ).toBool();
-  if ( fetchLimitActive )
-  {
-    mWidget->setFetchLimit( config( QStringLiteral( "FetchLimitNumber" ), QgsSettings().value( QStringLiteral( "maxEntriesRelationWidget" ), 100, QgsSettings::Gui ) ).toInt() );
-  }
-
   if ( config( QStringLiteral( "FilterFields" ), QVariant() ).isValid() )
   {
     mWidget->setFilterFields( config( QStringLiteral( "FilterFields" ) ).toStringList() );
@@ -106,16 +100,7 @@ void QgsRelationReferenceWidgetWrapper::initWidget( QWidget *editor )
   }
   while ( ctx );
 
-  // If AllowNULL is not set in the config, provide a default value based on the
-  // constraints of the referencing fields
-  if ( !config( QStringLiteral( "AllowNULL" ) ).isValid() )
-  {
-    mWidget->setRelation( relation, relation.referencingFieldsAllowNull() );
-  }
-  else
-  {
-    mWidget->setRelation( relation, config( QStringLiteral( "AllowNULL" ) ).toBool() );
-  }
+  mWidget->setRelation( relation, config( QStringLiteral( "AllowNULL" ) ).toBool() );
 
   connect( mWidget, &QgsRelationReferenceWidget::foreignKeysChanged, this, &QgsRelationReferenceWidgetWrapper::foreignKeysChanged );
 }
@@ -123,13 +108,13 @@ void QgsRelationReferenceWidgetWrapper::initWidget( QWidget *editor )
 QVariant QgsRelationReferenceWidgetWrapper::value() const
 {
   if ( !mWidget )
-    return QgsVariantUtils::createNullVariant( field().type() );
+    return QVariant( field().type() );
 
   const QVariantList fkeys = mWidget->foreignKeys();
 
   if ( fkeys.isEmpty() )
   {
-    return QgsVariantUtils::createNullVariant( field().type() );
+    return QVariant( field().type() );
   }
   else
   {
@@ -140,7 +125,7 @@ QVariant QgsRelationReferenceWidgetWrapper::value() const
       if ( fieldPairs.at( i ).referencingField() == field().name() )
         return fkeys.at( i );
     }
-    return QgsVariantUtils::createNullVariant( field().type() ); // should not happen
+    return QVariant( field().type() ); // should not happen
   }
 }
 
@@ -244,7 +229,7 @@ void QgsRelationReferenceWidgetWrapper::foreignKeysChanged( const QVariantList &
   if ( mBlockChanges != 0 ) // initial value is being set, we can ignore this signal
     return;
 
-  QVariant mainValue = QgsVariantUtils::createNullVariant( field().type() );
+  QVariant mainValue = QVariant( field().type() );
 
   if ( !mWidget || !mWidget->relation().isValid() )
   {

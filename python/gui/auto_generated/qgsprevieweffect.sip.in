@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsprevieweffect.h                                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -39,6 +39,8 @@ Sets the mode for the preview effect, which controls how the effect modifies a w
 :param mode: PreviewMode to use to draw the widget
 
 .. seealso:: :py:func:`mode`
+
+.. versionadded:: 2.3
 %End
 
     PreviewMode mode() const;
@@ -48,6 +50,8 @@ Returns the mode used for the preview effect.
 :return: PreviewMode currently used by the effect
 
 .. seealso:: :py:func:`setMode`
+
+.. versionadded:: 2.3
 %End
 
   protected:
@@ -61,5 +65,5 @@ Returns the mode used for the preview effect.
  *                                                                      *
  * src/gui/qgsprevieweffect.h                                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

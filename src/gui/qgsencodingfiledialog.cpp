@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsencodingfiledialog.h"
-#include "moc_qgsencodingfiledialog.cpp"
 #include "qgsproject.h"
 #include "qgslogger.h"
 #include "qgsvectordataprovider.h"
@@ -80,7 +79,7 @@ void QgsEncodingFileDialog::saveUsedEncoding()
 {
   QgsSettings settings;
   settings.setValue( QStringLiteral( "UI/encoding" ), encoding() );
-  QgsDebugMsgLevel( QStringLiteral( "Set encoding %1 as default." ).arg( encoding() ), 2 );
+  QgsDebugMsg( QStringLiteral( "Set encoding %1 as default." ).arg( encoding() ) );
 }
 
 void QgsEncodingFileDialog::addCancelAll()

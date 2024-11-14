@@ -16,20 +16,20 @@
  ***************************************************************************/
 
 #include "qgsnewvectorlayerdialog.h"
-#include "moc_qgsnewvectorlayerdialog.cpp"
 #include "qgsapplication.h"
 #include "qgsfilewidget.h"
 #include "qgis.h"
 #include "qgslogger.h"
 #include "qgscoordinatereferencesystem.h"
+#include "qgsproviderregistry.h"
 #include "qgsvectordataprovider.h"
 #include "qgsvectorfilewriter.h"
 #include "qgssettings.h"
+#include "qgsogrprovider.h"
 #include "qgsgui.h"
 #include "qgsiconutils.h"
 #include "qgsfileutils.h"
 #include "qgsvariantutils.h"
-#include "qgsogrproviderutils.h"
 
 #include <QPushButton>
 #include <QComboBox>
@@ -47,31 +47,29 @@ QgsNewVectorLayerDialog::QgsNewVectorLayerDialog( QWidget *parent, Qt::WindowFla
   connect( mFileFormatComboBox, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, &QgsNewVectorLayerDialog::mFileFormatComboBox_currentIndexChanged );
   connect( mTypeBox, static_cast<void ( QComboBox::* )( int )>( &QComboBox::currentIndexChanged ), this, &QgsNewVectorLayerDialog::mTypeBox_currentIndexChanged );
   connect( buttonBox, &QDialogButtonBox::helpRequested, this, &QgsNewVectorLayerDialog::showHelp );
-  connect( mButtonUp, &QToolButton::clicked, this, &QgsNewVectorLayerDialog::moveFieldsUp );
-  connect( mButtonDown, &QToolButton::clicked, this, &QgsNewVectorLayerDialog::moveFieldsDown );
 
   mAddAttributeButton->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionNewAttribute.svg" ) ) );
   mRemoveAttributeButton->setIcon( QgsApplication::getThemeIcon( QStringLiteral( "/mActionDeleteAttribute.svg" ) ) );
 
-  mTypeBox->addItem( QgsFields::iconForFieldType( QMetaType::Type::QString ), QgsVariantUtils::typeToDisplayString( QMetaType::Type::QString ), "String" );
-  mTypeBox->addItem( QgsFields::iconForFieldType( QMetaType::Type::Int ), QgsVariantUtils::typeToDisplayString( QMetaType::Type::Int ), "Integer" );
-  mTypeBox->addItem( QgsFields::iconForFieldType( QMetaType::Type::Double ), QgsVariantUtils::typeToDisplayString( QMetaType::Type::Double ), "Real" );
-  mTypeBox->addItem( QgsFields::iconForFieldType( QMetaType::Type::QDate ), QgsVariantUtils::typeToDisplayString( QMetaType::Type::QDate ), "Date" );
+  mTypeBox->addItem( QgsFields::iconForFieldType( QVariant::String ), QgsVariantUtils::typeToDisplayString( QVariant::String ), "String" );
+  mTypeBox->addItem( QgsFields::iconForFieldType( QVariant::Int ), QgsVariantUtils::typeToDisplayString( QVariant::Int ), "Integer" );
+  mTypeBox->addItem( QgsFields::iconForFieldType( QVariant::Double ), QgsVariantUtils::typeToDisplayString( QVariant::Double ), "Real" );
+  mTypeBox->addItem( QgsFields::iconForFieldType( QVariant::Date ), QgsVariantUtils::typeToDisplayString( QVariant::Date ), "Date" );
 
   mWidth->setValidator( new QIntValidator( 1, 255, this ) );
   mPrecision->setValidator( new QIntValidator( 0, 15, this ) );
 
-  const Qgis::WkbType geomTypes[] =
+  const QgsWkbTypes::Type geomTypes[] =
   {
-    Qgis::WkbType::NoGeometry,
-    Qgis::WkbType::Point,
-    Qgis::WkbType::MultiPoint,
-    Qgis::WkbType::LineString,
-    Qgis::WkbType::Polygon,
+    QgsWkbTypes::NoGeometry,
+    QgsWkbTypes::Point,
+    QgsWkbTypes::MultiPoint,
+    QgsWkbTypes::LineString,
+    QgsWkbTypes::Polygon,
   };
 
   for ( const auto type : geomTypes )
-    mGeometryTypeBox->addItem( QgsIconUtils::iconForWkbType( type ), QgsWkbTypes::translatedDisplayString( type ), static_cast<quint32>( type ) );
+    mGeometryTypeBox->addItem( QgsIconUtils::iconForWkbType( type ), QgsWkbTypes::translatedDisplayString( type ), type );
   mGeometryTypeBox->setCurrentIndex( -1 );
 
   mOkButton = buttonBox->button( QDialogButtonBox::Ok );
@@ -121,8 +119,6 @@ QgsNewVectorLayerDialog::QgsNewVectorLayerDialog( QWidget *parent, Qt::WindowFla
 
   mAddAttributeButton->setEnabled( false );
   mRemoveAttributeButton->setEnabled( false );
-  mButtonUp->setEnabled( false );
-  mButtonDown->setEnabled( false );
 
   mFileName->setStorageMode( QgsFileWidget::SaveFile );
   mFileName->setFilter( QgsVectorFileWriter::filterForDriver( mFileFormatComboBox->currentData( Qt::UserRole ).toString() ) );
@@ -178,15 +174,15 @@ void QgsNewVectorLayerDialog::mTypeBox_currentIndexChanged( int index )
       break;
 
     default:
-      QgsDebugError( QStringLiteral( "unexpected index" ) );
+      QgsDebugMsg( QStringLiteral( "unexpected index" ) );
       break;
   }
 }
 
-Qgis::WkbType QgsNewVectorLayerDialog::selectedType() const
+QgsWkbTypes::Type QgsNewVectorLayerDialog::selectedType() const
 {
-  Qgis::WkbType wkbType = Qgis::WkbType::Unknown;
-  wkbType = static_cast<Qgis::WkbType>
+  QgsWkbTypes::Type wkbType = QgsWkbTypes::Unknown;
+  wkbType = static_cast<QgsWkbTypes::Type>
             ( mGeometryTypeBox->currentData( Qt::UserRole ).toInt() );
 
   if ( mGeometryWithZRadioButton->isChecked() )
@@ -216,15 +212,8 @@ void QgsNewVectorLayerDialog::mAddAttributeButton_clicked()
   //use userrole to avoid translated type string
   const QString myType = mTypeBox->currentData( Qt::UserRole ).toString();
   mAttributeView->addTopLevelItem( new QTreeWidgetItem( QStringList() << myName << myType << myWidth << myPrecision ) );
-
   checkOk();
-
   mNameEdit->clear();
-
-  if ( !mNameEdit->hasFocus() )
-  {
-    mNameEdit->setFocus();
-  }
 }
 
 void QgsNewVectorLayerDialog::mRemoveAttributeButton_clicked()
@@ -241,7 +230,7 @@ void QgsNewVectorLayerDialog::attributes( QList< QPair<QString, QString> > &at )
     QTreeWidgetItem *item = *it;
     const QString type = QStringLiteral( "%1;%2;%3" ).arg( item->text( 1 ), item->text( 2 ), item->text( 3 ) );
     at.push_back( qMakePair( item->text( 0 ), type ) );
-    QgsDebugMsgLevel( QStringLiteral( "appending %1//%2" ).arg( item->text( 0 ), type ), 2 );
+    QgsDebugMsg( QStringLiteral( "appending %1//%2" ).arg( item->text( 0 ), type ) );
     ++it;
   }
 }
@@ -266,28 +255,6 @@ void QgsNewVectorLayerDialog::nameChanged( const QString &name )
 void QgsNewVectorLayerDialog::selectionChanged()
 {
   mRemoveAttributeButton->setDisabled( mAttributeView->selectedItems().isEmpty() );
-  mButtonUp->setDisabled( mAttributeView->selectedItems().isEmpty() );
-  mButtonDown->setDisabled( mAttributeView->selectedItems().isEmpty() );
-}
-
-void QgsNewVectorLayerDialog::moveFieldsUp()
-{
-  int currentRow = mAttributeView->currentIndex().row();
-  if ( currentRow == 0 )
-    return;
-
-  mAttributeView->insertTopLevelItem( currentRow - 1, mAttributeView->takeTopLevelItem( currentRow ) );
-  mAttributeView->setCurrentIndex( mAttributeView->model()->index( currentRow - 1, 0 ) );
-}
-
-void QgsNewVectorLayerDialog::moveFieldsDown()
-{
-  int currentRow = mAttributeView->currentIndex().row();
-  if ( currentRow == mAttributeView->topLevelItemCount() - 1 )
-    return;
-
-  mAttributeView->insertTopLevelItem( currentRow + 1, mAttributeView->takeTopLevelItem( currentRow ) );
-  mAttributeView->setCurrentIndex( mAttributeView->model()->index( currentRow + 1, 0 ) );
 }
 
 QString QgsNewVectorLayerDialog::filename() const
@@ -320,10 +287,10 @@ void QgsNewVectorLayerDialog::updateExtension()
 {
   QString fileName = filename();
   const QString fileformat = selectedFileFormat();
-  const Qgis::WkbType geometrytype = selectedType();
+  const QgsWkbTypes::Type geometrytype = selectedType();
   if ( fileformat == QLatin1String( "ESRI Shapefile" ) )
   {
-    if ( geometrytype != Qgis::WkbType::NoGeometry )
+    if ( geometrytype != QgsWkbTypes::NoGeometry )
     {
       fileName = fileName.replace( fileName.lastIndexOf( QLatin1String( ".dbf" ), -1, Qt::CaseInsensitive ), 4, QLatin1String( ".shp" ) );
       fileName = QgsFileUtils::ensureFileNameHasExtension( fileName, { QStringLiteral( "shp" ) } );
@@ -340,33 +307,6 @@ void QgsNewVectorLayerDialog::updateExtension()
 
 void QgsNewVectorLayerDialog::accept()
 {
-  if ( !mNameEdit->text().trimmed().isEmpty() )
-  {
-    const QString currentFieldName = mNameEdit->text();
-    bool currentFound = false;
-    QTreeWidgetItemIterator it( mAttributeView );
-    while ( *it )
-    {
-      QTreeWidgetItem *item = *it;
-      if ( item->text( 0 ) == currentFieldName )
-      {
-        currentFound = true;
-        break;
-      }
-      ++it;
-    }
-
-    if ( !currentFound )
-    {
-      if ( QMessageBox::question( this, windowTitle(),
-                                  tr( "The field “%1” has not been added to the fields list. Are you sure you want to proceed and discard this field?" ).arg( currentFieldName ),
-                                  QMessageBox::Ok | QMessageBox::Cancel ) != QMessageBox::Ok )
-      {
-        return;
-      }
-    }
-  }
-
   updateExtension();
 
   if ( QFile::exists( filename() ) && QMessageBox::warning( this, tr( "New ShapeFile Layer" ), tr( "The layer already exists. Are you sure you want to overwrite the existing file?" ),
@@ -376,6 +316,56 @@ void QgsNewVectorLayerDialog::accept()
   QDialog::accept();
 }
 
+/*
+* 杨小兵-2024-03-04
+一、解释
+#### 数据结构和算法
+  在计算机实现方面，此函数主要涉及以下几个关键步骤和数据结构：
+1. **初始化和参数设置**：函数开始时，清除任何已存在的错误消息，然后创建一个`QgsNewVectorLayerDialog`对话框实例用于收集用户输入的图层创建参数。
+这包括设置图层的CRS、文件名等。
+
+2. **用户交互**：通过`geomDialog.exec()`显示对话框，等待用户完成输入。如果用户取消操作，函数返回一个空字符串。
+
+3. **读取用户输入**：从对话框中读取用户指定的文件格式、几何类型、文件名和编码。
+
+4. **创建矢量图层**：使用用户提供的参数，尝试创建一个空的矢量数据源。这里用到`QgsOgrProviderUtils::createEmptyDataSource`方法，该方法基于OGR库
+（一种支持多种矢量文件格式的开源库）实现，可以根据指定的几何类型和属性创建新的矢量图层。
+
+5. **错误处理**：如果在创建图层的过程中遇到错误（如指定了未知的几何类型），函数会设置错误消息并返回一个空字符串。
+
+6. **保存并返回文件名**：如果图层成功创建，函数最后更新配置设置，记录最后一次使用的文件目录和编码，并返回新创建的文件名。
+
+#### 关键的类和方法
+- `QgsNewVectorLayerDialog`：一个对话框类，用于收集用户关于新图层的输入。
+- `QgsWkbTypes`：包含几何类型枚举的类。
+- `QgsOgrProviderUtils`：一个工具类，提供创建空数据源的静态方法。
+- `QgsSettings`：用于读写应用程序设置的类。
+
+二、参数
+errorMessage： 用来向调用者传递错误信息
+parent：       挂接到父窗口
+initialPath：  文件路径
+encoding：     文件字符编码
+crs：          参考坐标系统
+
+三、show函数和exec函数之间的区别
+  在Qt框架中，`show()`函数和`exec()`函数都可以用来显示一个对话框，但它们在行为上有明显的区别：
+- `show()`函数用于非模态对话框，它会显示对话框但不会阻塞程序的其他部分。当使用`show()`时，对话框显示后，代码会立即继续执行到`show()`调用之后的部分。
+这意味着，用户可以在对话框打开的同时与程序的其他部分互动。
+- `exec()`函数用于模态对话框，它会显示对话框并阻塞程序的其他部分，直到对话框被关闭。模态对话框要求用户在继续使用程序之前必须首先处理对话框，这是通过
+在对话框关闭之前暂停代码执行来实现的。`exec()`会在对话框关闭时返回一个结果，通常用于判断用户是接受了对话框（比如按下了OK按钮），还是拒绝了对话框（比
+如按下了Cancel按钮或关闭了对话框）。
+  在`QgsNewVectorLayerDialog::execAndCreateLayer`函数中，使用`geomDialog.exec()`而不是`geomDialog.show()`是因为需要创建矢量图层的操作要求用户
+必须完成对话框中的输入，并做出明确的选择（如确定或取消）之后，程序才能根据这些输入继续执行。这种情况下，模态对话框比非模态对话框更合适，因为它可以确保
+在用户提供必要的输入之前，程序的其他部分不会继续执行，从而避免了可能的错误或不一致状态。
+
+
+三、总结
+1、之前自己写的插件交互界面是通过指针的方式完成的，并且是在一个统一的插件中管理多个交互界面，但是这里是通过创建对象的方式来调用交互界面
+2、通过`geomDialog.exec()`显示对话框，等待用户完成输入
+3、使用QgsPluginRegistry::loadCppPlugin函数在加载插件的时候，将会调用initGui函数，这里同插件的处理方式就是有无initGui的差别，本质上都是一样
+4、QT中的交互界面对象中有两种函数（show和exec函数）：show是非模态的函数，而exec则是模态函数
+*/
 QString QgsNewVectorLayerDialog::execAndCreateLayer( QString &errorMessage, QWidget *parent, const QString &initialPath, QString *encoding, const QgsCoordinateReferenceSystem &crs )
 {
   errorMessage.clear();
@@ -389,11 +379,11 @@ QString QgsNewVectorLayerDialog::execAndCreateLayer( QString &errorMessage, QWid
   }
 
   const QString fileformat = geomDialog.selectedFileFormat();
-  const Qgis::WkbType geometrytype = geomDialog.selectedType();
+  const QgsWkbTypes::Type geometrytype = geomDialog.selectedType();
   QString fileName = geomDialog.filename();
 
   const QString enc = geomDialog.selectedFileEncoding();
-  QgsDebugMsgLevel( QStringLiteral( "New file format will be: %1" ).arg( fileformat ), 2 );
+  QgsDebugMsg( QStringLiteral( "New file format will be: %1" ).arg( fileformat ) );
 
   QList< QPair<QString, QString> > attributes;
   geomDialog.attributes( attributes );
@@ -403,7 +393,7 @@ QString QgsNewVectorLayerDialog::execAndCreateLayer( QString &errorMessage, QWid
   settings.setValue( QStringLiteral( "UI/encoding" ), enc );
 
   //try to create the new layer with OGRProvider instead of QgsVectorFileWriter
-  if ( geometrytype != Qgis::WkbType::Unknown )
+  if ( geometrytype != QgsWkbTypes::Unknown )
   {
     const QgsCoordinateReferenceSystem srs = geomDialog.crs();
     const bool success = QgsOgrProviderUtils::createEmptyDataSource( fileName, fileformat, enc, geometrytype, attributes, srs, errorMessage );
@@ -415,7 +405,7 @@ QString QgsNewVectorLayerDialog::execAndCreateLayer( QString &errorMessage, QWid
   else
   {
     errorMessage = QObject::tr( "Geometry type not recognised" );
-    QgsDebugError( errorMessage );
+    QgsDebugMsg( errorMessage );
     return QString();
   }
 

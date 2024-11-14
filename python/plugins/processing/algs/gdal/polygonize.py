@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     polygonize.py
@@ -66,12 +68,12 @@ class polygonize(GdalAlgorithm):
                                                    self.tr('Additional command-line parameters'),
                                                    defaultValue=None,
                                                    optional=True)
-        extra_param.setFlags(extra_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        extra_param.setFlags(extra_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(extra_param)
 
         self.addParameter(QgsProcessingParameterVectorDestination(self.OUTPUT,
                                                                   self.tr('Vectorized'),
-                                                                  QgsProcessing.SourceType.TypeVectorPolygon))
+                                                                  QgsProcessing.TypeVectorPolygon))
 
     def name(self):
         return 'polygonize'
@@ -104,29 +106,24 @@ class polygonize(GdalAlgorithm):
         inLayer = self.parameterAsRasterLayer(parameters, self.INPUT, context)
         if inLayer is None:
             raise QgsProcessingException(self.invalidRasterError(parameters, self.INPUT))
-        input_details = GdalUtils.gdal_connection_details_from_layer(
-            inLayer)
 
-        arguments.append(input_details.connection_string)
+        arguments.append(inLayer.source())
 
         arguments.append('-b')
         arguments.append(str(self.parameterAsInt(parameters, self.BAND, context)))
 
         outFile = self.parameterAsOutputLayer(parameters, self.OUTPUT, context)
         self.setOutputValue(self.OUTPUT, outFile)
-        output_details = GdalUtils.gdal_connection_details_from_uri(outFile, context)
+        output, outFormat = GdalUtils.ogrConnectionStringAndFormat(outFile, context)
 
-        if output_details.format:
-            arguments.append(f'-f {output_details.format}')
+        if outFormat:
+            arguments.append('-f {}'.format(outFormat))
 
-        arguments.append(output_details.connection_string)
+        arguments.append(output)
 
-        layerName = GdalUtils.ogrOutputLayerName(output_details.connection_string)
+        layerName = GdalUtils.ogrOutputLayerName(output)
         if layerName:
             arguments.append(layerName)
         arguments.append(self.parameterAsString(parameters, self.FIELD, context))
-
-        if input_details.credential_options:
-            arguments.extend(input_details.credential_options_as_arguments())
 
         return [self.commandName() + ('.bat' if isWindows() else '.py'), GdalUtils.escapeAndJoin(arguments)]

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     PointsAlongLines.py
@@ -30,6 +32,8 @@ from qgis.core import (QgsProcessingException,
 from processing.algs.gdal.GdalAlgorithm import GdalAlgorithm
 from processing.algs.gdal.GdalUtils import GdalUtils
 
+from processing.tools.system import isWindows
+
 
 class PointsAlongLines(GdalAlgorithm):
     INPUT = 'INPUT'
@@ -44,13 +48,13 @@ class PointsAlongLines(GdalAlgorithm):
     def initAlgorithm(self, config=None):
         self.addParameter(QgsProcessingParameterFeatureSource(self.INPUT,
                                                               self.tr('Input layer'),
-                                                              [QgsProcessing.SourceType.TypeVectorLine]))
+                                                              [QgsProcessing.TypeVectorLine]))
         self.addParameter(QgsProcessingParameterString(self.GEOMETRY,
                                                        self.tr('Geometry column name'),
                                                        defaultValue='geometry'))
         self.addParameter(QgsProcessingParameterNumber(self.DISTANCE,
                                                        self.tr('Distance from line start represented as fraction of line length'),
-                                                       type=QgsProcessingParameterNumber.Type.Double,
+                                                       type=QgsProcessingParameterNumber.Double,
                                                        minValue=0,
                                                        maxValue=1,
                                                        defaultValue=0.5))
@@ -59,12 +63,12 @@ class PointsAlongLines(GdalAlgorithm):
                                                      self.tr('Additional creation options'),
                                                      defaultValue='',
                                                      optional=True)
-        options_param.setFlags(options_param.flags() | QgsProcessingParameterDefinition.Flag.FlagAdvanced)
+        options_param.setFlags(options_param.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
         self.addParameter(options_param)
 
         self.addParameter(QgsProcessingParameterVectorDestination(self.OUTPUT,
                                                                   self.tr('Points along lines'),
-                                                                  QgsProcessing.SourceType.TypeVectorPoint))
+                                                                  QgsProcessing.TypeVectorPoint))
 
     def name(self):
         return 'pointsalonglines'
@@ -87,14 +91,14 @@ class PointsAlongLines(GdalAlgorithm):
             raise QgsProcessingException(self.invalidSourceError(parameters, self.INPUT))
 
         fields = source.fields()
-        input_details = self.getOgrCompatibleSource(self.INPUT, parameters, context, feedback, executing)
+        ogrLayer, layerName = self.getOgrCompatibleSource(self.INPUT, parameters, context, feedback, executing)
         distance = self.parameterAsDouble(parameters, self.DISTANCE, context)
         geometry = self.parameterAsString(parameters, self.GEOMETRY, context)
         outFile = self.parameterAsOutputLayer(parameters, self.OUTPUT, context)
         self.setOutputValue(self.OUTPUT, outFile)
         options = self.parameterAsString(parameters, self.OPTIONS, context)
 
-        output_details = GdalUtils.gdal_connection_details_from_uri(outFile, context)
+        output, outputFormat = GdalUtils.ogrConnectionStringAndFormat(outFile, context)
 
         other_fields_exist = any(
             f for f in fields
@@ -104,25 +108,18 @@ class PointsAlongLines(GdalAlgorithm):
         other_fields = ',*' if other_fields_exist else ''
 
         arguments = [
-            output_details.connection_string,
-            input_details.connection_string,
+            output,
+            ogrLayer,
             '-dialect',
             'sqlite',
             '-sql',
-            f'SELECT ST_Line_Interpolate_Point({geometry}, {distance}) AS {geometry}{other_fields} FROM "{input_details.layer_name}"'
+            f'SELECT ST_Line_Interpolate_Point({geometry}, {distance}) AS {geometry}{other_fields} FROM "{layerName}"'
         ]
-
-        if input_details.open_options:
-            arguments.extend(input_details.open_options_as_arguments())
-
-        if input_details.credential_options:
-            arguments.extend(
-                input_details.credential_options_as_arguments())
 
         if options:
             arguments.append(options)
 
-        if output_details.format:
-            arguments.append(f'-f {output_details.format}')
+        if outputFormat:
+            arguments.append(f'-f {outputFormat}')
 
         return ['ogr2ogr', GdalUtils.escapeAndJoin(arguments)]

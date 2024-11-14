@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsexpressioncalculatorlocatorfilter.h"
-#include "moc_qgsexpressioncalculatorlocatorfilter.cpp"
 #include "qgsexpressioncontext.h"
 #include "qgsexpressioncontextutils.h"
 #include "qgsproject.h"
@@ -54,7 +53,7 @@ void QgsExpressionCalculatorLocatorFilter::fetchResults( const QString &string, 
       QgsLocatorResult result;
       result.filter = this;
       result.displayString = tr( "Copy “%1” to clipboard" ).arg( resultString );
-      result.setUserData( resultString );
+      result.userData = resultString;
       result.score = 1;
       emit resultFetched( result );
     }
@@ -63,5 +62,5 @@ void QgsExpressionCalculatorLocatorFilter::fetchResults( const QString &string, 
 
 void QgsExpressionCalculatorLocatorFilter::triggerResult( const QgsLocatorResult &result )
 {
-  QApplication::clipboard()->setText( result.userData().toString() );
+  QApplication::clipboard()->setText( result.userData.toString() );
 }

@@ -31,6 +31,7 @@
  * This is usually used only when constructing new layout items, allowing users to precisely
  * enter their sizes and positions.
  *
+ * \since QGIS 3.0
  */
 class GUI_EXPORT QgsLayoutItemPropertiesDialog : public QDialog, private Ui::QgsLayoutNewItemPropertiesDialog
 {

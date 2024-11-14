@@ -16,7 +16,6 @@
 #include "qgiscustomwidgets.h"
 #include "qgsrasterbandcombobox.h"
 #include "qgsrasterbandcomboboxplugin.h"
-#include "moc_qgsrasterbandcomboboxplugin.cpp"
 
 
 QgsRasterBandComboBoxPlugin::QgsRasterBandComboBoxPlugin( QObject *parent )

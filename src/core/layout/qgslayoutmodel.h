@@ -46,6 +46,7 @@ class QgsLayoutItem;
  * stacking of items in the layout to the last known state, and emit the corresponding signals
  * as required.
  *
+ * \since QGIS 3.0
  */
 
 class CORE_EXPORT QgsLayoutModel: public QAbstractItemModel
@@ -198,6 +199,7 @@ class CORE_EXPORT QgsLayoutModel: public QAbstractItemModel
      * from the composition is restored to the composition.
      * \param item to mark as restored to the composition
      * \see setItemRemoved
+     * \since QGIS 2.5
      */
     void setItemRestored( QgsComposerItem *item );
 #endif
@@ -299,6 +301,7 @@ class CORE_EXPORT QgsLayoutModel: public QAbstractItemModel
  * \class QgsLayoutProxyModel
  * \ingroup core
  * \brief Allows for filtering a QgsLayoutModel by item type.
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsLayoutProxyModel: public QSortFilterProxyModel
 {

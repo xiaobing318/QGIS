@@ -1,5 +1,3 @@
 # The following has been generated automatically from src/core/qgsmaplayerproxymodel.h
-try:
-    QgsMapLayerProxyModel.layerMatchesFilters = staticmethod(QgsMapLayerProxyModel.layerMatchesFilters)
-except NameError:
-    pass
+QgsMapLayerProxyModel.Filters.baseClass = QgsMapLayerProxyModel
+Filters = QgsMapLayerProxyModel  # dirty hack since SIP seems to introduce the flags in module

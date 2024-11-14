@@ -3,7 +3,7 @@
  *                                                                      *
  * src/server/qgsserverogcapihandler.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -66,6 +66,10 @@ Optionally, override:
 
        def parameters(self, context):
            return [QgsServerQueryStringParameter("value1", True, QgsServerQueryStringParameter.Type.Double, "a double value")]
+
+
+
+
 
 .. versionadded:: 3.10
 %End
@@ -268,5 +272,5 @@ Set the content types to ``contentTypes``
  *                                                                      *
  * src/server/qgsserverogcapihandler.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

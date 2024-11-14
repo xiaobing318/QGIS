@@ -390,7 +390,7 @@ QgsGpsData *QgsGpsData::getData( const QString &fileName )
       return nullptr;
     }
     QgsGpsData *data = new QgsGpsData;
-    QgsDebugMsgLevel( "Loading file " + fileName, 2 );
+    QgsDebugMsg( "Loading file " + fileName );
     QgsGPXHandler handler( *data );
     bool failed = false;
 
@@ -427,7 +427,7 @@ QgsGpsData *QgsGpsData::getData( const QString &fileName )
   }
   else
   {
-    QgsDebugError( fileName + " is already loaded" );
+    QgsDebugMsg( fileName + " is already loaded" );
   }
 
   // return a pointer and increase the reference count for that file name
@@ -446,10 +446,10 @@ void QgsGpsData::releaseData( const QString &fileName )
   const DataMap::iterator iter = sDataObjects.find( fileName );
   if ( iter != sDataObjects.end() )
   {
-    QgsDebugMsgLevel( "unrefing " + fileName, 2 );
+    QgsDebugMsg( "unrefing " + fileName );
     if ( --( iter.value().second ) == 0 )
     {
-      QgsDebugMsgLevel( "No one's using " + fileName + ", I'll erase it", 2 );
+      QgsDebugMsg( "No one's using " + fileName + ", I'll erase it" );
       delete iter.value().first;
       sDataObjects.erase( iter );
     }
@@ -581,17 +581,6 @@ bool QgsGPXHandler::startElement( const XML_Char *qName, const XML_Char **attr )
       mDouble = &mWpt.ele;
       mCharBuffer.clear();
       parseModes.push( ParsingDouble );
-    }
-    else
-      parseModes.push( ParsingUnknown );
-  }
-  else if ( !std::strcmp( qName, "time" ) )
-  {
-    if ( parseModes.top() == ParsingWaypoint )
-    {
-      mDateTime = &mWpt.time;
-      mCharBuffer.clear();
-      parseModes.push( ParsingDateTime );
     }
     else
       parseModes.push( ParsingUnknown );
@@ -743,11 +732,6 @@ bool QgsGPXHandler::endElement( const std::string &qName )
   else if ( parseModes.top() == ParsingString )
   {
     *mString = mCharBuffer;
-    mCharBuffer.clear();
-  }
-  else if ( parseModes.top() == ParsingDateTime )
-  {
-    *mDateTime = QDateTime::fromString( mCharBuffer, Qt::ISODateWithMs );
     mCharBuffer.clear();
   }
   parseModes.pop();

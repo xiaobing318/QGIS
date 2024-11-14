@@ -60,11 +60,6 @@ QString QgsMultiUnionAlgorithm::shortHelpString() const
                         "for non-overlapping features, and attribute values from both layers for overlapping features." );
 }
 
-Qgis::ProcessingAlgorithmDocumentationFlags QgsMultiUnionAlgorithm::documentationFlags() const
-{
-  return Qgis::ProcessingAlgorithmDocumentationFlag::RegeneratesPrimaryKey;
-}
-
 QgsProcessingAlgorithm *QgsMultiUnionAlgorithm::createInstance() const
 {
   return new QgsMultiUnionAlgorithm();
@@ -73,10 +68,10 @@ QgsProcessingAlgorithm *QgsMultiUnionAlgorithm::createInstance() const
 void QgsMultiUnionAlgorithm::initAlgorithm( const QVariantMap & )
 {
   addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ), QObject::tr( "Input layer" ) ) );
-  addParameter( new QgsProcessingParameterMultipleLayers( QStringLiteral( "OVERLAYS" ), QObject::tr( "Overlay layers" ), Qgis::ProcessingSourceType::VectorAnyGeometry, QVariant(), true ) );
+  addParameter( new QgsProcessingParameterMultipleLayers( QStringLiteral( "OVERLAYS" ), QObject::tr( "Overlay layers" ), QgsProcessing::TypeVectorAnyGeometry, QVariant(), true ) );
 
   std::unique_ptr< QgsProcessingParameterString > prefix = std::make_unique< QgsProcessingParameterString >( QStringLiteral( "OVERLAY_FIELDS_PREFIX" ), QObject::tr( "Overlay fields prefix" ), QString(), false, true );
-  prefix->setFlags( prefix->flags() | Qgis::ProcessingParameterFlag::Advanced );
+  prefix->setFlags( prefix->flags() | QgsProcessingParameterDefinition::FlagAdvanced );
   addParameter( prefix.release() );
 
   addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Union" ) ) );
@@ -100,13 +95,13 @@ QVariantMap QgsMultiUnionAlgorithm::processAlgorithm( const QVariantMap &paramet
     if ( !layer )
       throw QgsProcessingException( QObject::tr( "Error retrieving map layer." ) );
 
-    if ( layer->type() != Qgis::LayerType::Vector )
+    if ( layer->type() != QgsMapLayerType::VectorLayer )
       throw QgsProcessingException( QObject::tr( "All layers must be vector layers!" ) );
 
     totalLayerCount++;
   }
 
-  const Qgis::WkbType geometryType = QgsWkbTypes::multiType( sourceA->wkbType() );
+  const QgsWkbTypes::Type geometryType = QgsWkbTypes::multiType( sourceA->wkbType() );
   const QgsCoordinateReferenceSystem crs = sourceA->sourceCrs();
   const QString overlayFieldsPrefix = parameterAsString( parameters, QStringLiteral( "OVERLAY_FIELDS_PREFIX" ), context );
   std::unique_ptr< QgsFeatureSink > sink;
@@ -124,7 +119,6 @@ QVariantMap QgsMultiUnionAlgorithm::processAlgorithm( const QVariantMap &paramet
     outputs.insert( QStringLiteral( "OUTPUT" ), dest );
 
     QgsOverlayUtils::resolveOverlaps( *sourceA, *sink, feedback );
-    sink->finalize();
     return outputs;
   }
   else

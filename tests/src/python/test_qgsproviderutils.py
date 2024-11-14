@@ -11,21 +11,23 @@ __copyright__ = 'Copyright 2021, The QGIS Project'
 
 from qgis.core import (
     Qgis,
-    QgsMapLayerType,
-    QgsProviderRegistry,
-    QgsProviderSublayerDetails,
-    QgsProviderUtils,
     QgsWkbTypes,
+    QgsProviderRegistry,
+    QgsProviderUtils,
+    QgsProviderSublayerDetails,
+    QgsMapLayerType
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import (
+    unittest,
+    start_app
+)
 
 from utilities import unitTestDataPath
 
 app = start_app()
 
 
-class TestQgsProviderUtils(QgisTestCase):
+class TestQgsProviderUtils(unittest.TestCase):
 
     def test_sublayerDetailsAreIncomplete(self):
         """
@@ -36,7 +38,7 @@ class TestQgsProviderUtils(QgisTestCase):
         # surface scan only
         sublayers = QgsProviderRegistry.instance().querySublayers(uri)
         self.assertEqual(len(sublayers), 1)
-        self.assertEqual(sublayers[0].wkbType(), QgsWkbTypes.Type.Unknown)
+        self.assertEqual(sublayers[0].wkbType(), QgsWkbTypes.Unknown)
 
         # need to resolve geometry types for complete details about this uri!
         self.assertTrue(QgsProviderUtils.sublayerDetailsAreIncomplete(sublayers))
@@ -115,7 +117,7 @@ class TestQgsProviderUtils(QgisTestCase):
         sl1 = QgsProviderSublayerDetails()
         sl1.setProviderKey('ogr')
         sl1.setType(QgsMapLayerType.VectorLayer)
-        sl1.setWkbType(QgsWkbTypes.Type.Point)
+        sl1.setWkbType(QgsWkbTypes.Point)
         sl1.setFeatureCount(1)
         sl1.setSkippedContainerScan(False)
         self.assertFalse(
@@ -125,7 +127,7 @@ class TestQgsProviderUtils(QgisTestCase):
         sl2 = QgsProviderSublayerDetails()
         sl2.setProviderKey('ogr')
         sl2.setType(QgsMapLayerType.VectorLayer)
-        sl2.setWkbType(QgsWkbTypes.Type.Point)
+        sl2.setWkbType(QgsWkbTypes.Point)
         sl2.setFeatureCount(1)
         sl2.setSkippedContainerScan(True)
         self.assertTrue(QgsProviderUtils.sublayerDetailsAreIncomplete([sl2], QgsProviderUtils.SublayerCompletenessFlags(

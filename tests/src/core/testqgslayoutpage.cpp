@@ -23,21 +23,20 @@
 #include "qgsfillsymbollayer.h"
 #include "qgslinesymbollayer.h"
 #include "qgsmarkersymbollayer.h"
+#include "qgsmultirenderchecker.h"
 #include "qgslayoutpagecollection.h"
 #include <QObject>
 #include "qgstest.h"
 #include "qgsfillsymbol.h"
-#include "qgslayoutrendercontext.h"
 
 class TestQgsLayoutPage : public QgsTest
 {
     Q_OBJECT
 
   public:
-    TestQgsLayoutPage() : QgsTest( QStringLiteral( "Layout Page Tests" ), QStringLiteral( "composer_paper" ) ) {}
+    TestQgsLayoutPage() : QgsTest( QStringLiteral( "Layout Page Tests" ) ) {}
 
   private slots:
-    void cleanupTestCase();
 
     void itemType();
     void pageSize();
@@ -54,11 +53,6 @@ class TestQgsLayoutPage : public QgsTest
 
 };
 
-void TestQgsLayoutPage::cleanupTestCase()
-{
-  QgsApplication::exitQgis();
-}
-
 void TestQgsLayoutPage::itemType()
 {
   QgsProject p;
@@ -72,12 +66,12 @@ void TestQgsLayoutPage::pageSize()
   QgsProject p;
   QgsLayout l( &p );
   std::unique_ptr< QgsLayoutItemPage > page( new QgsLayoutItemPage( &l ) );
-  page->setPageSize( QgsLayoutSize( 270, 297, Qgis::LayoutUnit::Meters ) );
+  page->setPageSize( QgsLayoutSize( 270, 297, QgsUnitTypes::LayoutMeters ) );
   QCOMPARE( page->pageSize().width(), 270.0 );
   QCOMPARE( page->pageSize().height(), 297.0 );
-  QCOMPARE( page->pageSize().units(), Qgis::LayoutUnit::Meters );
+  QCOMPARE( page->pageSize().units(), QgsUnitTypes::LayoutMeters );
   QCOMPARE( page->orientation(), QgsLayoutItemPage::Portrait );
-  page->setPageSize( QgsLayoutSize( 297, 270, Qgis::LayoutUnit::Meters ) );
+  page->setPageSize( QgsLayoutSize( 297, 270, QgsUnitTypes::LayoutMeters ) );
   QCOMPARE( page->orientation(), QgsLayoutItemPage::Landscape );
 
   // from registry
@@ -85,19 +79,19 @@ void TestQgsLayoutPage::pageSize()
   // should be unchanged
   QCOMPARE( page->pageSize().width(), 297.0 );
   QCOMPARE( page->pageSize().height(), 270.0 );
-  QCOMPARE( page->pageSize().units(), Qgis::LayoutUnit::Meters );
+  QCOMPARE( page->pageSize().units(), QgsUnitTypes::LayoutMeters );
 
   // good size
   QVERIFY( page->setPageSize( "A5" ) );
   QCOMPARE( page->pageSize().width(), 148.0 );
   QCOMPARE( page->pageSize().height(), 210.0 );
-  QCOMPARE( page->pageSize().units(), Qgis::LayoutUnit::Millimeters );
+  QCOMPARE( page->pageSize().units(), QgsUnitTypes::LayoutMillimeters );
   QCOMPARE( page->orientation(), QgsLayoutItemPage::Portrait );
 
   QVERIFY( page->setPageSize( "A5", QgsLayoutItemPage::Landscape ) );
   QCOMPARE( page->pageSize().width(), 210.0 );
   QCOMPARE( page->pageSize().height(), 148.0 );
-  QCOMPARE( page->pageSize().units(), Qgis::LayoutUnit::Millimeters );
+  QCOMPARE( page->pageSize().units(), QgsUnitTypes::LayoutMillimeters );
   QCOMPARE( page->orientation(), QgsLayoutItemPage::Landscape );
 
 }
@@ -154,10 +148,12 @@ void TestQgsLayoutPage::defaultPaper()
   QgsProject p;
   QgsLayout l( &p );
   std::unique_ptr< QgsLayoutItemPage > page( new QgsLayoutItemPage( &l ) );
-  page->setPageSize( QgsLayoutSize( 297, 210, Qgis::LayoutUnit::Millimeters ) );
+  page->setPageSize( QgsLayoutSize( 297, 210, QgsUnitTypes::LayoutMillimeters ) );
   l.pageCollection()->addPage( page.release() );
 
-  QGSVERIFYLAYOUTCHECK( QStringLiteral( "composerpaper_default" ), &l );
+  QgsLayoutChecker checker( QStringLiteral( "composerpaper_default" ), &l );
+  checker.setControlPathPrefix( QStringLiteral( "composer_paper" ) );
+  QVERIFY( checker.testLayout( mReport ) );
 }
 
 void TestQgsLayoutPage::transparentPaper()
@@ -165,7 +161,7 @@ void TestQgsLayoutPage::transparentPaper()
   QgsProject p;
   QgsLayout l( &p );
   std::unique_ptr< QgsLayoutItemPage > page( new QgsLayoutItemPage( &l ) );
-  page->setPageSize( QgsLayoutSize( 297, 210, Qgis::LayoutUnit::Millimeters ) );
+  page->setPageSize( QgsLayoutSize( 297, 210, QgsUnitTypes::LayoutMillimeters ) );
   l.pageCollection()->addPage( page.release() );
 
   QgsSimpleFillSymbolLayer *simpleFill = new QgsSimpleFillSymbolLayer();
@@ -175,7 +171,9 @@ void TestQgsLayoutPage::transparentPaper()
   simpleFill->setStrokeColor( Qt::transparent );
   l.pageCollection()->setPageStyleSymbol( fillSymbol.get() );
 
-  QGSVERIFYLAYOUTCHECK( QStringLiteral( "composerpaper_transparent" ), &l );
+  QgsLayoutChecker checker( QStringLiteral( "composerpaper_transparent" ), &l );
+  checker.setControlPathPrefix( QStringLiteral( "composer_paper" ) );
+  QVERIFY( checker.testLayout( mReport ) );
 }
 
 void TestQgsLayoutPage::borderedPaper()
@@ -183,7 +181,7 @@ void TestQgsLayoutPage::borderedPaper()
   QgsProject p;
   QgsLayout l( &p );
   std::unique_ptr< QgsLayoutItemPage > page( new QgsLayoutItemPage( &l ) );
-  page->setPageSize( QgsLayoutSize( 297, 210, Qgis::LayoutUnit::Millimeters ) );
+  page->setPageSize( QgsLayoutSize( 297, 210, QgsUnitTypes::LayoutMillimeters ) );
   l.pageCollection()->addPage( page.release() );
 
   QgsSimpleFillSymbolLayer *simpleFill = new QgsSimpleFillSymbolLayer();
@@ -194,7 +192,9 @@ void TestQgsLayoutPage::borderedPaper()
   simpleFill->setStrokeWidth( 6 );
   l.pageCollection()->setPageStyleSymbol( fillSymbol.get() );
 
-  QGSVERIFYLAYOUTCHECK( QStringLiteral( "composerpaper_bordered" ), &l );
+  QgsLayoutChecker checker( QStringLiteral( "composerpaper_bordered" ), &l );
+  checker.setControlPathPrefix( QStringLiteral( "composer_paper" ) );
+  QVERIFY( checker.testLayout( mReport ) );
 }
 
 void TestQgsLayoutPage::markerLinePaper()
@@ -202,7 +202,7 @@ void TestQgsLayoutPage::markerLinePaper()
   QgsProject p;
   QgsLayout l( &p );
   std::unique_ptr< QgsLayoutItemPage > page( new QgsLayoutItemPage( &l ) );
-  page->setPageSize( QgsLayoutSize( 297, 210, Qgis::LayoutUnit::Millimeters ) );
+  page->setPageSize( QgsLayoutSize( 297, 210, QgsUnitTypes::LayoutMillimeters ) );
   l.pageCollection()->addPage( page.release() );
 
   QgsMarkerLineSymbolLayer *markerLine = new QgsMarkerLineSymbolLayer();
@@ -211,7 +211,9 @@ void TestQgsLayoutPage::markerLinePaper()
   markerLineSymbol->changeSymbolLayer( 0, markerLine );
   l.pageCollection()->setPageStyleSymbol( markerLineSymbol.get() );
 
-  QGSVERIFYLAYOUTCHECK( QStringLiteral( "composerpaper_markerborder" ), &l );
+  QgsLayoutChecker checker( QStringLiteral( "composerpaper_markerborder" ), &l );
+  checker.setControlPathPrefix( QStringLiteral( "composer_paper" ) );
+  QVERIFY( checker.testLayout( mReport, 0, 0 ) );
 }
 
 void TestQgsLayoutPage::hiddenPages()
@@ -219,7 +221,7 @@ void TestQgsLayoutPage::hiddenPages()
   QgsProject p;
   QgsLayout l( &p );
   std::unique_ptr< QgsLayoutItemPage > page( new QgsLayoutItemPage( &l ) );
-  page->setPageSize( QgsLayoutSize( 297, 210, Qgis::LayoutUnit::Millimeters ) );
+  page->setPageSize( QgsLayoutSize( 297, 210, QgsUnitTypes::LayoutMillimeters ) );
   l.pageCollection()->addPage( page.release() );
 
   QgsSimpleFillSymbolLayer *simpleFill = new QgsSimpleFillSymbolLayer();
@@ -231,7 +233,11 @@ void TestQgsLayoutPage::hiddenPages()
 
   l.renderContext().setPagesVisible( false );
 
-  QGSVERIFYLAYOUTCHECK( QStringLiteral( "composerpaper_hidden" ), &l );
+  QgsLayoutChecker checker( QStringLiteral( "composerpaper_hidden" ), &l );
+  checker.setControlPathPrefix( QStringLiteral( "composer_paper" ) );
+  const bool result = checker.testLayout( mReport );
+  QVERIFY( result );
+
 }
 
 void TestQgsLayoutPage::pageLayout()
@@ -239,7 +245,7 @@ void TestQgsLayoutPage::pageLayout()
   QgsProject p;
   QgsLayout l( &p );
   std::unique_ptr< QgsLayoutItemPage > page1( new QgsLayoutItemPage( &l ) );
-  page1->setPageSize( QgsLayoutSize( 297, 210, Qgis::LayoutUnit::Millimeters ) );
+  page1->setPageSize( QgsLayoutSize( 297, 210, QgsUnitTypes::LayoutMillimeters ) );
 
   const QPageLayout layout1 = page1->pageLayout();
 
@@ -249,7 +255,7 @@ void TestQgsLayoutPage::pageLayout()
   QCOMPARE( layout1.pageSize().size( QPageSize::Millimeter ).height(), 297 );
 
   std::unique_ptr< QgsLayoutItemPage > page2( new QgsLayoutItemPage( &l ) );
-  page2->setPageSize( QgsLayoutSize( 210, 297, Qgis::LayoutUnit::Millimeters ) );
+  page2->setPageSize( QgsLayoutSize( 210, 297, QgsUnitTypes::LayoutMillimeters ) );
 
   const QPageLayout layout2 = page2->pageLayout();
 

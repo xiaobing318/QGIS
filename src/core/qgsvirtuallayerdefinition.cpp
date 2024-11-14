@@ -15,6 +15,8 @@ email                : hugo dot mercier at oslandia dot com
  ***************************************************************************/
 
 #include "qgsvirtuallayerdefinition.h"
+#include "qgsvectorlayer.h"
+#include "qgsvectordataprovider.h"
 #include "fromencodedcomponenthelper.h"
 
 #include <QUrl>
@@ -113,10 +115,10 @@ QgsVirtualLayerDefinition QgsVirtualLayerDefinition::fromUrl( const QUrl &url )
         if ( match.capturedTexts().size() > 2 )
         {
           // not used by the spatialite provider for now ...
-          Qgis::WkbType wkbType = QgsWkbTypes::parseType( match.captured( 2 ) );
-          if ( wkbType == Qgis::WkbType::Unknown )
+          QgsWkbTypes::Type wkbType = QgsWkbTypes::parseType( match.captured( 2 ) );
+          if ( wkbType == QgsWkbTypes::Unknown )
           {
-            wkbType = static_cast<Qgis::WkbType>( match.captured( 2 ).toLong() );
+            wkbType = static_cast<QgsWkbTypes::Type>( match.captured( 2 ).toLong() );
           }
           def.setGeometryWkbType( wkbType );
           def.setGeometrySrid( match.captured( 3 ).toLong() );
@@ -125,7 +127,7 @@ QgsVirtualLayerDefinition QgsVirtualLayerDefinition::fromUrl( const QUrl &url )
     }
     else if ( key == QLatin1String( "nogeometry" ) )
     {
-      def.setGeometryWkbType( Qgis::WkbType::NoGeometry );
+      def.setGeometryWkbType( QgsWkbTypes::NoGeometry );
     }
     else if ( key == QLatin1String( "uid" ) )
     {
@@ -147,15 +149,15 @@ QgsVirtualLayerDefinition QgsVirtualLayerDefinition::fromUrl( const QUrl &url )
         const QString fieldType( match.captured( 2 ) );
         if ( fieldType == QLatin1String( "int" ) )
         {
-          fields.append( QgsField( fieldName, QMetaType::Type::LongLong, fieldType ) );
+          fields.append( QgsField( fieldName, QVariant::LongLong, fieldType ) );
         }
         else if ( fieldType == QLatin1String( "real" ) )
         {
-          fields.append( QgsField( fieldName, QMetaType::Type::Double, fieldType ) );
+          fields.append( QgsField( fieldName, QVariant::Double, fieldType ) );
         }
         if ( fieldType == QLatin1String( "text" ) )
         {
-          fields.append( QgsField( fieldName, QMetaType::Type::QString, fieldType ) );
+          fields.append( QgsField( fieldName, QVariant::String, fieldType ) );
         }
       }
     }
@@ -205,12 +207,12 @@ QUrl QgsVirtualLayerDefinition::toUrl() const
   if ( !uid().isEmpty() )
     urlQuery.addQueryItem( QStringLiteral( "uid" ), uid() );
 
-  if ( geometryWkbType() == Qgis::WkbType::NoGeometry )
+  if ( geometryWkbType() == QgsWkbTypes::NoGeometry )
     urlQuery.addQueryItem( QStringLiteral( "nogeometry" ), QString() );
   else if ( !geometryField().isEmpty() )
   {
     if ( hasDefinedGeometry() )
-      urlQuery.addQueryItem( QStringLiteral( "geometry" ), QStringLiteral( "%1:%2:%3" ).arg( geometryField() ). arg( qgsEnumValueToKey( geometryWkbType() ) ).arg( geometrySrid() ).toUtf8() );
+      urlQuery.addQueryItem( QStringLiteral( "geometry" ), QStringLiteral( "%1:%2:%3" ).arg( geometryField() ). arg( geometryWkbType() ).arg( geometrySrid() ).toUtf8() );
     else
       urlQuery.addQueryItem( QStringLiteral( "geometry" ), geometryField() );
   }
@@ -218,14 +220,14 @@ QUrl QgsVirtualLayerDefinition::toUrl() const
   const auto constFields = fields();
   for ( const QgsField &f : constFields )
   {
-    if ( f.type() == QMetaType::Type::Int
-         || f.type() == QMetaType::Type::UInt
-         || f.type() == QMetaType::Type::Bool
-         || f.type() == QMetaType::Type::LongLong )
+    if ( f.type() == QVariant::Int
+         || f.type() == QVariant::UInt
+         || f.type() == QVariant::Bool
+         || f.type() == QVariant::LongLong )
       urlQuery.addQueryItem( QStringLiteral( "field" ), f.name() + ":int" );
-    else if ( f.type() == QMetaType::Type::Double )
+    else if ( f.type() == QVariant::Double )
       urlQuery.addQueryItem( QStringLiteral( "field" ), f.name() + ":real" );
-    else if ( f.type() == QMetaType::Type::QString )
+    else if ( f.type() == QVariant::String )
       urlQuery.addQueryItem( QStringLiteral( "field" ), f.name() + ":text" );
   }
 

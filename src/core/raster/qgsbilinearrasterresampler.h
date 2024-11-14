@@ -34,6 +34,9 @@ class CORE_EXPORT QgsBilinearRasterResampler: public QgsRasterResamplerV2
 {
   public:
 
+    /**
+     * Constructor for QgsBilinearRasterResampler.
+     */
     QgsBilinearRasterResampler() = default;
     Q_DECL_DEPRECATED void resample( const QImage &srcImage, QImage &dstImage ) override SIP_DEPRECATED;
 

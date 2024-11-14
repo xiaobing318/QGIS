@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/metadata/qgslayermetadataformatter.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -14,6 +14,8 @@ class QgsLayerMetadataFormatter
 {
 %Docstring(signature="appended")
 Class for metadata formatter.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -71,5 +73,5 @@ This will return a HTML table.
  *                                                                      *
  * src/core/metadata/qgslayermetadataformatter.h                        *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -201,10 +201,8 @@ class TestQgsGrassProvider: public QgsTest
     void mapsets();
     void maps();
     void vectorLayers();
-    void invalidLayer();
     void region();
     void info();
-    void crsEpsg3857();
     void rasterImport();
     void vectorImport();
     void edit();
@@ -257,7 +255,7 @@ void TestQgsGrassProvider::initTestCase()
   // in version different form which we are testing here and it would also load GRASS libs in different version
   // and result in segfault when __do_global_dtors_aux() is called.
   // => we must set QGIS_PROVIDER_FILE before QgsApplication::initQgis() to avoid loading GRASS provider in different version
-  QgsGrass::putEnv( QStringLiteral( "QGIS_PROVIDER_FILE" ), QStringLiteral( "grass(?:provider)?%1" ).arg( GRASS_BUILD_VERSION ) );
+  QgsGrass::putEnv( QStringLiteral( "QGIS_PROVIDER_FILE" ), QStringLiteral( "gdal|ogr|memoryprovider|grassprovider%1" ).arg( GRASS_BUILD_VERSION ) );
   QgsApplication::initQgis();
   QString mySettings = QgsApplication::showSettings();
   mySettings = mySettings.replace( QLatin1String( "\n" ), QLatin1String( "<br />\n" ) );
@@ -353,8 +351,15 @@ void TestQgsGrassProvider::fatalError()
 
 void TestQgsGrassProvider::locations()
 {
-  const QStringList locations = QgsGrass::locations( mGisdbase );
-  QCOMPARE( locations, QStringList() << QStringLiteral( "webmerc" ) << QStringLiteral( "wgs84" ) );
+  reportHeader( QStringLiteral( "TestQgsGrassProvider::locations" ) );
+  bool ok = true;
+  QStringList expectedLocations;
+  expectedLocations << QStringLiteral( "wgs84" );
+  QStringList locations = QgsGrass::locations( mGisdbase );
+  reportRow( "expectedLocations: " + expectedLocations.join( QLatin1String( ", " ) ) );
+  reportRow( "locations: " + locations.join( QLatin1String( ", " ) ) );
+  compare( expectedLocations, locations, ok );
+  GVERIFY( ok );
 }
 
 void TestQgsGrassProvider::mapsets()
@@ -482,16 +487,6 @@ void TestQgsGrassProvider::vectorLayers()
   GVERIFY( ok );
 }
 
-void TestQgsGrassProvider::invalidLayer()
-{
-  std::unique_ptr< QgsVectorLayer > brokenLayer = std::make_unique< QgsVectorLayer >( QStringLiteral( "/not/valid" ), QStringLiteral( "test" ), QStringLiteral( "grass" ) );
-  QVERIFY( !brokenLayer->isValid() );
-  QgsVectorDataProvider *provider = brokenLayer->dataProvider();
-  QVERIFY( provider );
-  QVERIFY( !provider->isValid() );
-  QVERIFY( provider->fields().isEmpty() );
-}
-
 void TestQgsGrassProvider::region()
 {
   reportHeader( QStringLiteral( "TestQgsGrassProvider::region" ) );
@@ -614,14 +609,6 @@ void TestQgsGrassProvider::info()
     }
   }
   GVERIFY( ok );
-}
-
-void TestQgsGrassProvider::crsEpsg3857()
-{
-  QString error;
-  const QgsCoordinateReferenceSystem crs = QgsGrass::crs( mGisdbase,  QStringLiteral( "webmerc" ), error );
-  QCOMPARE( error, QString() );
-  QCOMPARE( crs.authid(), QStringLiteral( "EPSG:3857" ) );
 }
 
 
@@ -922,7 +909,7 @@ QList< TestQgsGrassCommandGroup > TestQgsGrassProvider::createCommands()
   command = TestQgsGrassCommand( TestQgsGrassCommand::AddFeature );
   grassFeature = TestQgsGrassFeature( GV_POINT );
   grassFeature.setId( 1 );
-  geometry = new QgsGeometry( new QgsPoint( Qgis::WkbType::Point, 10, 10, 0 ) );
+  geometry = new QgsGeometry( new QgsPoint( QgsWkbTypes::Point, 10, 10, 0 ) );
   grassFeature.setGeometry( *geometry );
   delete geometry;
   command.grassFeatures << grassFeature;
@@ -932,12 +919,12 @@ QList< TestQgsGrassCommandGroup > TestQgsGrassProvider::createCommands()
   // Change geometry
   command = TestQgsGrassCommand( TestQgsGrassCommand::ChangeGeometry );
   command.fid = 1;
-  command.geometry = new QgsGeometry( new QgsPoint( Qgis::WkbType::Point, 20, 20, 0 ) );
+  command.geometry = new QgsGeometry( new QgsPoint( QgsWkbTypes::Point, 20, 20, 0 ) );
   commandGroup.commands << command;
 
   // Add field
   command = TestQgsGrassCommand( TestQgsGrassCommand::AddAttribute );
-  command.field = QgsField( QStringLiteral( "field_int" ), QMetaType::Type::Int, QStringLiteral( "integer" ) );
+  command.field = QgsField( QStringLiteral( "field_int" ), QVariant::Int, QStringLiteral( "integer" ) );
   commandGroup.commands << command;
 
   // Change attribute
@@ -949,7 +936,7 @@ QList< TestQgsGrassCommandGroup > TestQgsGrassProvider::createCommands()
 
   // Delete field
   command = TestQgsGrassCommand( TestQgsGrassCommand::DeleteAttribute );
-  command.field = QgsField( QStringLiteral( "field_int" ), QMetaType::Type::Int, QStringLiteral( "integer" ) );
+  command.field = QgsField( QStringLiteral( "field_int" ), QVariant::Int, QStringLiteral( "integer" ) );
   commandGroup.commands << command;
 
   // Delete feature
@@ -1005,7 +992,7 @@ QList< TestQgsGrassCommandGroup > TestQgsGrassProvider::createCommands()
 
   // Add field
   command = TestQgsGrassCommand( TestQgsGrassCommand::AddAttribute );
-  command.field = QgsField( QStringLiteral( "field_int" ), QMetaType::Type::Int, QStringLiteral( "integer" ) );
+  command.field = QgsField( QStringLiteral( "field_int" ), QVariant::Int, QStringLiteral( "integer" ) );
   commandGroup.commands << command;
 
   // Add line feature with attributes
@@ -1014,8 +1001,8 @@ QList< TestQgsGrassCommandGroup > TestQgsGrassProvider::createCommands()
   grassFeature.setId( 1 );
   line = new QgsLineString();
   pointList.clear();
-  pointList << QgsPoint( Qgis::WkbType::Point, 0, 0, 0 );
-  pointList << QgsPoint( Qgis::WkbType::Point, 20, 10, 0 );
+  pointList << QgsPoint( QgsWkbTypes::Point, 0, 0, 0 );
+  pointList << QgsPoint( QgsWkbTypes::Point, 20, 10, 0 );
   line->setPoints( pointList );
   pointList.clear();
   geometry = new QgsGeometry( line );

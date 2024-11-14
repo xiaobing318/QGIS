@@ -31,7 +31,6 @@ class QgsVectorLayer;
 
 /**
  * \ingroup core
- * \brief Handles logic relating to synchronizing online and offline copies of layer data.
  */
 class CORE_EXPORT QgsOfflineEditing : public QObject
 {

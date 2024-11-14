@@ -35,6 +35,7 @@ class QgsMapCanvas;
  * \class QgsMetadataWidget
  * \brief A wizard to edit metadata on a map layer.
  *
+ * \since QGIS 3.0
  */
 
 class GUI_EXPORT QgsMetadataWidget : public QWidget, private Ui::QgsMetadataWidgetBase
@@ -242,6 +243,7 @@ class GUI_EXPORT QgsMetadataWidget : public QWidget, private Ui::QgsMetadataWidg
  * \class LinkItemDelegate
  * \brief Special delegate for the link view in the metadata wizard.
  *
+ * \since QGIS 3.0
  */
 class LinkItemDelegate : public QStyledItemDelegate
 {
@@ -267,6 +269,7 @@ class LinkItemDelegate : public QStyledItemDelegate
  * \class ConstraintItemDelegate
  * \brief Special delegate for the constraint view in the metadata wizard.
  *
+ * \since QGIS 3.0
  */
 class ConstraintItemDelegate : public QStyledItemDelegate
 {

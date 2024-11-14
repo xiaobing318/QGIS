@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsprocessingdxflayerswidgetwrapper.h"
-#include "moc_qgsprocessingdxflayerswidgetwrapper.cpp"
 
 #include <QBoxLayout>
 #include <QLineEdit>
@@ -49,34 +48,15 @@ QgsProcessingDxfLayerDetailsWidget::QgsProcessingDxfLayerDetailsWidget( const QV
     return;
 
   mFieldsComboBox->setLayer( mLayer );
-
-  if ( mLayer->fields().exists( layer.layerOutputAttributeIndex() ) )
-    mFieldsComboBox->setField( mLayer->fields().at( layer.layerOutputAttributeIndex() ).name() );
-
-  mOverriddenName->setText( layer.overriddenName() );
-
-  if ( mLayer->geometryType() == Qgis::GeometryType::Point )
-  {
-    // Data defined blocks are only available for point layers
-    mGroupBoxBlocks->setVisible( true );
-    mGroupBoxBlocks->setChecked( layer.buildDataDefinedBlocks() );
-    mSpinBoxBlocks->setValue( layer.dataDefinedBlocksMaximumNumberOfClasses() );
-  }
-  else
-  {
-    mGroupBoxBlocks->setVisible( false );
-  }
+  mFieldsComboBox->setCurrentIndex( layer.layerOutputAttributeIndex() );
 
   connect( mFieldsComboBox, &QgsFieldComboBox::fieldChanged, this, &QgsPanelWidget::widgetChanged );
-  connect( mOverriddenName, &QLineEdit::textChanged, this, &QgsPanelWidget::widgetChanged );
-  connect( mGroupBoxBlocks, &QGroupBox::toggled, this, &QgsPanelWidget::widgetChanged );
-  connect( mSpinBoxBlocks, &QSpinBox::textChanged, this, &QgsPanelWidget::widgetChanged );
 }
 
 QVariant QgsProcessingDxfLayerDetailsWidget::value() const
 {
   const int index = mLayer->fields().lookupField( mFieldsComboBox->currentField() );
-  const QgsDxfExport::DxfLayer layer( mLayer, index, mGroupBoxBlocks->isChecked(), mSpinBoxBlocks->value(), mOverriddenName->text().trimmed() );
+  const QgsDxfExport::DxfLayer layer( mLayer, index );
   return QgsProcessingParameterDxfLayers::layerAsVariantMap( layer );
 }
 
@@ -113,7 +93,7 @@ QgsProcessingDxfLayersPanelWidget::QgsProcessingDxfLayersPanelWidget(
     seenVectorLayers.insert( layer.layer() );
   }
 
-  const QList<QgsVectorLayer *> options = QgsProcessingUtils::compatibleVectorLayers( project, QList< int >() << static_cast<int>( Qgis::ProcessingSourceType::VectorAnyGeometry ) );
+  const QList<QgsVectorLayer *> options = QgsProcessingUtils::compatibleVectorLayers( project, QList< int >() );
   for ( const QgsVectorLayer *layer : options )
   {
     if ( seenVectorLayers.contains( layer ) )
@@ -122,9 +102,6 @@ QgsProcessingDxfLayersPanelWidget::QgsProcessingDxfLayersPanelWidget(
     QVariantMap vm;
     vm["layer"] = layer->id();
     vm["attributeIndex"] = -1;
-    vm["overriddenLayerName"] = QString();
-    vm["buildDataDefinedBlocks"] = DEFAULT_DXF_DATA_DEFINED_BLOCKS;
-    vm["dataDefinedBlocksMaximumNumberOfClasses"] = -1;
 
     const QString title = layer->name();
     addOption( vm, title, false );
@@ -187,19 +164,8 @@ QString QgsProcessingDxfLayersPanelWidget::titleForLayer( const QgsDxfExport::Dx
 {
   QString title = layer.layer()->name();
 
-  // if both options are set, the split attribute takes precedence,
-  // so hide overridden message to give users a hint on the result.
   if ( layer.layerOutputAttributeIndex() != -1 )
-  {
     title += tr( " [split attribute: %1]" ).arg( layer.splitLayerAttribute() );
-  }
-  else
-  {
-    if ( !layer.overriddenName().isEmpty() )
-    {
-      title += tr( " [overridden name: %1]" ).arg( layer.overriddenName() );
-    }
-  }
 
   return title;
 }
@@ -233,7 +199,7 @@ QgsProcessingDxfLayersWidget::QgsProcessingDxfLayersWidget( QWidget *parent )
 void QgsProcessingDxfLayersWidget::setValue( const QVariant &value )
 {
   if ( value.isValid() )
-    mValue = value.userType() == QMetaType::Type::QVariantList ? value.toList() : QVariantList() << value;
+    mValue = value.type() == QVariant::List ? value.toList() : QVariantList() << value;
   else
     mValue.clear();
 

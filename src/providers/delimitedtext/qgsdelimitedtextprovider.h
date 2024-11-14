@@ -82,7 +82,7 @@ class QgsDelimitedTextProvider final: public QgsVectorDataProvider
       GeomAsWkt
     };
 
-    explicit QgsDelimitedTextProvider( const QString &uri, const QgsDataProvider::ProviderOptions &providerOptions, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() );
+    explicit QgsDelimitedTextProvider( const QString &uri, const QgsDataProvider::ProviderOptions &providerOptions, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() );
     ~QgsDelimitedTextProvider() override;
 
     /* Implementation of functions from QgsVectorDataProvider */
@@ -90,22 +90,19 @@ class QgsDelimitedTextProvider final: public QgsVectorDataProvider
     QgsAbstractFeatureSource *featureSource() const override;
     QString storageType() const override;
     QgsFeatureIterator getFeatures( const QgsFeatureRequest &request ) const override;
-    Qgis::WkbType wkbType() const override;
+    QgsWkbTypes::Type wkbType() const override;
     long long featureCount() const override;
     QgsFields fields() const override;
-    Qgis::VectorProviderCapabilities capabilities() const override;
+    QgsVectorDataProvider::Capabilities capabilities() const override;
     bool createSpatialIndex() override;
-    Qgis::SpatialIndexPresence hasSpatialIndex() const override;
+    QgsFeatureSource::SpatialIndexPresence hasSpatialIndex() const override;
     QString name() const override;
     QString description() const override;
     QgsRectangle extent() const override;
-    QgsBox3D extent3D() const override;
     bool isValid() const override;
     QgsCoordinateReferenceSystem crs() const override;
     bool setSubsetString( const QString &subset, bool updateFeatureCount = true ) override;
-    bool supportsSubsetString() const override;
-    QString subsetStringDialect() const override;
-    QString subsetStringHelpUrl() const override;
+    bool supportsSubsetString() const override { return true; }
     QString subsetString() const override
     {
       return mSubsetString;
@@ -206,7 +203,7 @@ class QgsDelimitedTextProvider final: public QgsVectorDataProvider
     bool mWktHasPrefix = false;
 
     //! Layer extent
-    mutable QgsBox3D mExtent;
+    mutable QgsRectangle mExtent;
 
     int mGeomType;
 
@@ -236,8 +233,8 @@ class QgsDelimitedTextProvider final: public QgsVectorDataProvider
     // Coordinate reference system
     QgsCoordinateReferenceSystem mCrs;
 
-    Qgis::WkbType mWkbType = Qgis::WkbType::NoGeometry;
-    Qgis::GeometryType mGeometryType = Qgis::GeometryType::Unknown;
+    QgsWkbTypes::Type mWkbType = QgsWkbTypes::NoGeometry;
+    QgsWkbTypes::GeometryType mGeometryType = QgsWkbTypes::UnknownGeometry;
 
     // Spatial index
     bool mBuildSpatialIndex = false;
@@ -261,13 +258,11 @@ class QgsDelimitedTextProviderMetadata final: public QgsProviderMetadata
   public:
     QgsDelimitedTextProviderMetadata();
     QIcon icon() const override;
-    QgsDataProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() ) override;
+    QgsDataProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() ) override;
     QVariantMap decodeUri( const QString &uri ) const override;
     QString encodeUri( const QVariantMap &parts ) const override;
-    QString absoluteToRelativeUri( const QString &uri, const QgsReadWriteContext &context ) const override;
-    QString relativeToAbsoluteUri( const QString &uri, const QgsReadWriteContext &context ) const override;
     ProviderCapabilities providerCapabilities() const override;
-    QList< Qgis::LayerType > supportedLayerTypes() const override;
+    QList< QgsMapLayerType > supportedLayerTypes() const override;
 };
 
 #endif

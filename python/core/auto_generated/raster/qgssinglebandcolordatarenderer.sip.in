@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/raster/qgssinglebandcolordatarenderer.h                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -35,10 +35,6 @@ QgsSingleBandColorDataRenderer cannot be copied. Use :py:func:`~QgsSingleBandCol
 
     virtual bool setInput( QgsRasterInterface *input );
 
-    virtual int inputBand() const;
-
-    virtual bool setInputBand( int band );
-
 
     virtual QgsRasterBlock *block( int bandNo, const QgsRectangle &extent, int width, int height, QgsRasterBlockFeedback *feedback = 0 ) /Factory/;
 
@@ -59,5 +55,5 @@ QgsSingleBandColorDataRenderer cannot be copied. Use :py:func:`~QgsSingleBandCol
  *                                                                      *
  * src/core/raster/qgssinglebandcolordatarenderer.h                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

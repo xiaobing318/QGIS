@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     mocked
@@ -24,7 +26,7 @@ import os
 import re
 
 try:
-    import xml.etree.ElementTree as ET
+    import xml.etree.cElementTree as ET
 except ImportError:
     import xml.etree.ElementTree as ET
 
@@ -64,7 +66,7 @@ class DoxygenParser():
                                          'QgsSQLStatement::NodeUnaryOperator',
                                          'QgsRuleBasedLabeling::Rule',
                                          'QgsSQLStatement::Visitor']
-        self.version_regex = re.compile(r'.*QGIS\s+(?:<ref.*?>)?[\d\.]+.*', re.MULTILINE)
+        self.version_regex = re.compile(r'QGIS [\d\.]+.*')
         self.parseFiles(path)
 
     def parseFiles(self, path):
@@ -156,9 +158,9 @@ class DoxygenParser():
                         unacceptable_undocumented = undocumented - set(acceptable_missing)
 
                         # do a case insensitive check too
-                        unacceptable_undocumented_insensitive = {
-                            DoxygenParser.standardize_signature(u) for u in undocumented} - {
-                            DoxygenParser.standardize_signature(u) for u in acceptable_missing}
+                        unacceptable_undocumented_insensitive = set(
+                            [DoxygenParser.standardize_signature(u) for u in undocumented]) - set(
+                            [DoxygenParser.standardize_signature(u) for u in acceptable_missing])
 
                         if len(unacceptable_undocumented_insensitive) > 0:
                             self.undocumented_members[class_name] = {}
@@ -181,13 +183,13 @@ class DoxygenParser():
         except ET.ParseError as e:
             # sometimes Doxygen generates malformed xml (e.g., for < and > operators)
             line_num, col = e.position
-            with open(f) as xml_file:
+            with open(f, 'r') as xml_file:
                 for i, l in enumerate(xml_file):
                     if i == line_num - 1:
                         line = l
                         break
             caret = '{:=>{}}'.format('^', col)
-            print(f'ParseError in {f}\n{e}\n{line}\n{caret}')
+            print(('ParseError in {}\n{}\n{}\n{}'.format(f, e, line, caret)))
 
         self.documentable_members += documentable_members
         self.documented_members += documented_members
@@ -257,7 +259,7 @@ class DoxygenParser():
         # test for brief description
         d = e.find('briefdescription')
         has_brief_description = False
-        if d is not None:
+        if d:
             has_brief_description = True
             for para in d.iter('para'):
                 if para.text and re.search(r'\btodo\b', para.text.lower()) is not None:
@@ -271,14 +273,9 @@ class DoxygenParser():
             for s in para.iter('simplesect'):
                 if s.get('kind') == 'since':
                     for p in s.iter('para'):
-                        if self.version_regex.match(ET.tostring(p).decode()):
+                        if self.version_regex.match(p.text):
                             found_version_added = True
                             break
-            for s in para.iter('xrefsect'):
-                if s.find('xreftitle') is not None and 'Deprecated' in s.find('xreftitle').text:
-                    # can't have both deprecated and since, so if we've found deprecated then treat it as having satisfied the "since" requirement too
-                    found_version_added = True
-                    break
 
             if para.text and re.search(r'\btodo\b', para.text.lower()) is not None:
                 noncompliant_members.append({
@@ -378,25 +375,22 @@ class DoxygenParser():
         if self.isDestructor(elem):
             return False
 
+        # ignore constructors with no arguments
         if self.isConstructor(elem):
-            # ignore constructors with no arguments
             try:
-                if re.match(r'^\s*\(\s*\)\s*(?:=\s*(?:default|delete)\s*)?$', elem.find('argsstring').text):
+                if elem.find('argsstring').text == '()':
                     return False
             except:
                 pass
 
-            # ignore copy, move constructors
-            name = elem.find('name').text
-            match = re.match(r'^\s*\(\s*(?:const)?\s*' + name + r'\s*&{0,2}\s*(?:[a-zA-Z0-9_]+)?\s*\)\s*(?:=\s*(?:default|delete)\s*)?$', elem.find('argsstring').text)
-            if match:
-                return False
-
         name = elem.find('name')
 
         # ignore certain obvious operators
-        if name.text in ('operator=', 'operator==', 'operator!=', 'operator>=', 'operator>', 'operator<=', 'operator<', 'Q_ENUM'):
-            return False
+        try:
+            if name.text in ('operator=', 'operator==', 'operator!=', 'Q_ENUM'):
+                return False
+        except:
+            pass
 
         # ignore on_* slots
         try:
@@ -464,11 +458,9 @@ class DoxygenParser():
         try:
             definition = member_elem.find('definition').text
             name = member_elem.find('name').text
-            if f'{name}::{name}' in definition:
+            if '{}::{}'.format(name, name) in definition:
                 return True
-            if re.match(rf'{name}\s*\<\s*[a-zA-Z0-9_]+\s*\>\s*::{name}', definition):
-                return True
-        except (AttributeError, re.error):
+        except:
             pass
 
         return False
@@ -539,8 +531,6 @@ class DoxygenParser():
                 decl_deprecated = True
         except:
             pass
-        if b'Q_DECL_DEPRECATED' in ET.tostring(type_elem):
-            decl_deprecated = True
 
         doxy_deprecated = False
         has_description = True

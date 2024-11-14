@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsmssqltransaction.h"
-#include "moc_qgsmssqltransaction.cpp"
 
 #include "qgsmssqldatabase.h"
 

@@ -11,7 +11,6 @@
  ***************************************************************************/
 
 #include "qgsdecorationscalebardialog.h"
-#include "moc_qgsdecorationscalebardialog.cpp"
 #include "qgsdecorationscalebar.h"
 #include "qgslogger.h"
 #include "qgshelp.h"
@@ -21,7 +20,7 @@
 #include <QDialogButtonBox>
 #include <QPushButton>
 
-QgsDecorationScaleBarDialog::QgsDecorationScaleBarDialog( QgsDecorationScaleBar &deco, Qgis::DistanceUnit units, QWidget *parent )
+QgsDecorationScaleBarDialog::QgsDecorationScaleBarDialog( QgsDecorationScaleBar &deco, int units, QWidget *parent )
   : QDialog( parent )
   , mDeco( deco )
 {
@@ -40,18 +39,17 @@ QgsDecorationScaleBarDialog::QgsDecorationScaleBarDialog( QgsDecorationScaleBar 
   spnSize->setShowClearButton( false );
   switch ( units )
   {
-    case Qgis::DistanceUnit::Meters:
+    case 0:
       spnSize->setSuffix( tr( " meters/km" ) );
       break;
-    case Qgis::DistanceUnit::Feet:
-    case Qgis::DistanceUnit::Miles:
+    case 1:
       spnSize->setSuffix( tr( " feet/miles" ) );
       break;
-    case Qgis::DistanceUnit::Degrees:
+    case 2:
       spnSize->setSuffix( tr( " degrees" ) );
       break;
     default:
-      QgsDebugError( QStringLiteral( "Error: not picked up map units - actual value = %1" ).arg( qgsEnumValueToKey( units ) ) );
+      QgsDebugMsg( QStringLiteral( "Error: not picked up map units - actual value = %1" ).arg( units ) );
   }
   spnSize->setValue( mDeco.mPreferredSize );
 
@@ -73,12 +71,7 @@ QgsDecorationScaleBarDialog::QgsDecorationScaleBarDialog( QgsDecorationScaleBar 
   spnHorizontal->setClearValue( 0 );
   spnHorizontal->setValue( mDeco.mMarginHorizontal );
   spnVertical->setValue( mDeco.mMarginVertical );
-  wgtUnitSelection->setUnits(
-  {
-    Qgis::RenderUnit::Millimeters,
-    Qgis::RenderUnit::Percentage,
-    Qgis::RenderUnit::Pixels
-  } );
+  wgtUnitSelection->setUnits( QgsUnitTypes::RenderUnitList() << QgsUnitTypes::RenderMillimeters << QgsUnitTypes::RenderPercentage << QgsUnitTypes::RenderPixels );
   wgtUnitSelection->setUnit( mDeco.mMarginUnit );
 
   grpEnable->setChecked( mDeco.enabled() );

@@ -16,9 +16,6 @@
 #define QGSCONDITIONALSTYLE_H
 
 #include "qgis_core.h"
-#include "qgsfield.h"
-
-#include <QObject>
 #include <QFont>
 #include <QColor>
 #include <QPixmap>
@@ -33,6 +30,7 @@ class QgsExpressionContext;
 class QgsSymbol;
 
 typedef QList<QgsConditionalStyle> QgsConditionalStyles;
+
 
 /**
  * \ingroup core
@@ -62,21 +60,12 @@ class CORE_EXPORT QgsConditionalLayerStyles : public QObject
      * Each row will check be checked against each rule.
      *
      * \see rowStyles()
+     * \since QGIS 2.12
      */
     void setRowStyles( const QgsConditionalStyles &styles );
 
     /**
-     * Returns a style associated to a constraint failure.
-     * \param strength the type of constraint
-     * \since QGIS 3.30
-     */
-    QgsConditionalStyle constraintFailureStyles( QgsFieldConstraints::ConstraintStrength strength );
-
-    /**
      * Set the conditional \a styles for a field, with the specified \a fieldName.
-     *
-     * The field value is inserted into a 'value' variable to conduct
-     * expression checks.
      *
      * \see fieldStyles()
      */

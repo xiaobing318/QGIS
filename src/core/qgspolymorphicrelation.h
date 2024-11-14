@@ -156,6 +156,7 @@ class CORE_EXPORT QgsPolymorphicRelation
 
     /**
      * Generate a (project-wide) unique id for this relation
+     * \since QGIS 3.0
      */
     void generateId();
 
@@ -285,10 +286,6 @@ class CORE_EXPORT QgsPolymorphicRelation
     void setRelationStrength( Qgis::RelationshipStrength relationStrength );
 
   private:
-    friend class QgsRelationManager;
-
-    //! Upgrades a relation ID to a stabler ID former if generated using QGIS < 3.38
-    QString upgradeGeneratedRelationId( const QString &oldRelationId ) const;
 
     QExplicitlySharedDataPointer<QgsPolymorphicRelationPrivate> d;
 

@@ -23,12 +23,14 @@
 #include "qgsrectangle.h"
 #include "qgsmapsettings.h"
 #include "qgspointxy.h"
+#include "qgslogger.h"
 #include "qgsapplication.h"
 #include "qgsmaplayerlistutils_p.h"
 #include "qgsvectorlayer.h"
 #include "qgscoordinatereferencesystem.h"
 #include "qgsexpressioncontextutils.h"
 #include "qgsrenderedfeaturehandlerinterface.h"
+#include "qgsrendercontext.h"
 #include "qgsgrouplayer.h"
 
 class TestHandler : public QgsRenderedFeatureHandlerInterface
@@ -66,7 +68,6 @@ class TestQgsMapSettings: public QObject
     void testComputeExtentForScale();
     void testComputeScaleForExtent();
     void testLayersWithGroupLayers();
-    void testMaskRenderSettings();
 
   private:
     QString toString( const QPolygonF &p, int decimalPlaces = 2 ) const;
@@ -117,11 +118,11 @@ void TestQgsMapSettings::testGettersSetters()
   QCOMPARE( ms.textRenderFormat(), Qgis::TextRenderFormat::AlwaysOutlines );
 
   // must default to no simplification
-  QCOMPARE( ms.simplifyMethod().simplifyHints(), Qgis::VectorRenderingSimplificationFlags() );
+  QCOMPARE( ms.simplifyMethod().simplifyHints(), QgsVectorSimplifyMethod::NoSimplification );
   QgsVectorSimplifyMethod simplify;
-  simplify.setSimplifyHints( Qgis::VectorRenderingSimplificationFlag::GeometrySimplification );
+  simplify.setSimplifyHints( QgsVectorSimplifyMethod::GeometrySimplification );
   ms.setSimplifyMethod( simplify );
-  QCOMPARE( ms.simplifyMethod().simplifyHints(), Qgis::VectorRenderingSimplificationFlag::GeometrySimplification );
+  QCOMPARE( ms.simplifyMethod().simplifyHints(), QgsVectorSimplifyMethod::GeometrySimplification );
 
   QVERIFY( ms.zRange().isInfinite() );
   ms.setZRange( QgsDoubleRange( 1, 10 ) );
@@ -237,7 +238,7 @@ void TestQgsMapSettings::testDevicePixelRatio()
   ms.setDevicePixelRatio( 1.5 );
   ms.setExtent( QgsRectangle( 0, 0, 100, 100 ) );
   QCOMPARE( ms.outputSize() * 1.5, ms.deviceOutputSize() );
-  QCOMPARE( scale, ms.scale() );
+  QCOMPARE( scale * 1.5, ms.scale() );
 }
 
 void TestQgsMapSettings::visiblePolygon()
@@ -583,23 +584,6 @@ void TestQgsMapSettings::testExpressionContext()
 
   QCOMPARE( r.toString(), QStringLiteral( "EPSG:7030" ) );
 
-  e = QgsExpression( QStringLiteral( "@map_z_range_lower" ) );
-  r = e.evaluate( &c );
-  QVERIFY( !r.isValid() );
-  e = QgsExpression( QStringLiteral( "@map_z_range_upper" ) );
-  r = e.evaluate( &c );
-  QVERIFY( !r.isValid() );
-
-  ms.setZRange( QgsDoubleRange( 0.5, 100.5 ) );
-  c = QgsExpressionContext();
-  c << QgsExpressionContextUtils::mapSettingsScope( ms );
-  e = QgsExpression( QStringLiteral( "@map_z_range_lower" ) );
-  r = e.evaluate( &c );
-  QCOMPARE( r.toDouble(), 0.5 );
-  e = QgsExpression( QStringLiteral( "@map_z_range_upper" ) );
-  r = e.evaluate( &c );
-  QCOMPARE( r.toDouble(), 100.5 );
-
   e = QgsExpression( QStringLiteral( "@map_start_time" ) );
   r = e.evaluate( &c );
   QVERIFY( !r.isValid() );
@@ -718,7 +702,7 @@ void TestQgsMapSettings::testComputeExtentForScale()
 
   //                   [                   output width in inches                   ] * [scale]
   const double widthInches = settings.outputSize().width() / double( settings.outputDpi() ) * 500;
-  const double widthMapUnits = widthInches * QgsUnitTypes::fromUnitToUnitFactor( Qgis::DistanceUnit::Feet, settings.mapUnits() ) / 12;
+  const double widthMapUnits = widthInches * QgsUnitTypes::fromUnitToUnitFactor( QgsUnitTypes::DistanceFeet, settings.mapUnits() ) / 12;
   QGSCOMPARENEARRECTANGLE( rect, QgsRectangle( - 0.5 * widthMapUnits, - 0.5 * widthMapUnits, 0.5 * widthMapUnits, 0.5 * widthMapUnits ), 0.0001 );
 
 }
@@ -733,7 +717,7 @@ void TestQgsMapSettings::testComputeScaleForExtent()
 
   const double scale = settings.computeScaleForExtent( QgsRectangle( -500., -500., 500., 500. ) );
 
-  const double widthInches = 1000 * QgsUnitTypes::fromUnitToUnitFactor( settings.mapUnits(), Qgis::DistanceUnit::Feet ) * 12;
+  const double widthInches = 1000 * QgsUnitTypes::fromUnitToUnitFactor( settings.mapUnits(), QgsUnitTypes::DistanceFeet ) * 12;
   const double testScale = widthInches * settings.outputDpi() / double( settings.outputSize().width() );
   QGSCOMPARENEAR( scale, testScale, 0.001 );
 }
@@ -771,24 +755,6 @@ void TestQgsMapSettings::testLayersWithGroupLayers()
   QCOMPARE( settings.layerIds( true ).at( 0 ), vlA->id() );
   QCOMPARE( settings.layerIds( true ).at( 1 ), vlB->id() );
   QCOMPARE( settings.layerIds( true ).at( 2 ), vlC->id() );
-}
-
-void TestQgsMapSettings::testMaskRenderSettings()
-{
-  QgsMapSettings settings;
-  settings.maskSettings().setSimplificationTolerance( 10 );
-  QCOMPARE( settings.maskSettings().simplifyTolerance(), 10 );
-
-  QgsMaskRenderSettings maskSettings;
-  maskSettings.setSimplificationTolerance( 11 );
-  settings.setMaskSettings( maskSettings );
-  QCOMPARE( settings.maskSettings().simplifyTolerance(), 11 );
-
-  QgsMapSettings settings2 = settings;
-  QCOMPARE( settings2.maskSettings().simplifyTolerance(), 11 );
-
-  QgsMapSettings settings3( settings );
-  QCOMPARE( settings3.maskSettings().simplifyTolerance(), 11 );
 }
 
 QGSTEST_MAIN( TestQgsMapSettings )

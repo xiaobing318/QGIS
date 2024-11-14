@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsvaliditycheckresultswidget.h"
-#include "moc_qgsvaliditycheckresultswidget.cpp"
 #include "qgsvaliditycheckregistry.h"
 #include "qgsapplication.h"
 #include "qgsfeedback.h"
@@ -70,7 +69,7 @@ QVariant QgsValidityCheckResultsModel::data( const QModelIndex &index, int role 
     case Qt::ToolTipRole:
       return res.title;
 
-    case static_cast< int >( QgsValidityCheckResultsModel::CustomRole::Description ):
+    case QgsValidityCheckResultsModel::DescriptionRole:
       return res.detailedDescription;
 
     case Qt::DecorationRole:
@@ -209,6 +208,6 @@ bool QgsValidityCheckResultsWidget::runChecks( int type, const QgsValidityCheckC
 
 void QgsValidityCheckResultsWidget::selectionChanged( const QModelIndex &current, const QModelIndex & )
 {
-  const QString desc = mResultsModel->data( current, static_cast< int >( QgsValidityCheckResultsModel::CustomRole::Description ) ).toString();
+  const QString desc = mResultsModel->data( current, QgsValidityCheckResultsModel::DescriptionRole ).toString();
   mDetailedDescriptionTextBrowser->setHtml( desc );
 }

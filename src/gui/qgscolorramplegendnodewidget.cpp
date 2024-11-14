@@ -16,13 +16,13 @@
  ***************************************************************************/
 
 #include "qgscolorramplegendnodewidget.h"
-#include "moc_qgscolorramplegendnodewidget.cpp"
+#include "qgscolorramplegendnode.h"
 #include "qgshelp.h"
 #include "qgsnumericformatselectorwidget.h"
 #include "qgsnumericformat.h"
 #include <QDialogButtonBox>
 
-QgsColorRampLegendNodeWidget::QgsColorRampLegendNodeWidget( QWidget *parent, Capabilities capabilities )
+QgsColorRampLegendNodeWidget::QgsColorRampLegendNodeWidget( QWidget *parent )
   : QgsPanelWidget( parent )
 {
   setupUi( this );
@@ -33,22 +33,8 @@ QgsColorRampLegendNodeWidget::QgsColorRampLegendNodeWidget( QWidget *parent, Cap
   mOrientationComboBox->addItem( tr( "Vertical" ), Qt::Vertical );
   mOrientationComboBox->addItem( tr( "Horizontal" ), Qt::Horizontal );
 
-  if ( capabilities.testFlag( Capability::DefaultMinimum ) )
-  {
-    mMinLabelLineEdit->setPlaceholderText( tr( "Default" ) );
-  }
-  else
-  {
-    mMinLabelLineEdit->setShowClearButton( false );
-  }
-  if ( capabilities.testFlag( Capability::DefaultMinimum ) )
-  {
-    mMaxLabelLineEdit->setPlaceholderText( tr( "Default" ) );
-  }
-  else
-  {
-    mMaxLabelLineEdit->setShowClearButton( false );
-  }
+  mMinLabelLineEdit->setPlaceholderText( tr( "Default" ) );
+  mMaxLabelLineEdit->setPlaceholderText( tr( "Default" ) );
 
   mFontButton->setShowNullFormat( true );
   mFontButton->setNoFormatString( tr( "Default" ) );
@@ -68,22 +54,6 @@ QgsColorRampLegendNodeWidget::QgsColorRampLegendNodeWidget( QWidget *parent, Cap
   connect( mOrientationComboBox, qOverload<int>( &QComboBox::currentIndexChanged ), this, &QgsColorRampLegendNodeWidget::onOrientationChanged );
   connect( mNumberFormatPushButton, &QPushButton::clicked, this, &QgsColorRampLegendNodeWidget::changeNumberFormat );
   connect( mFontButton, &QgsFontButton::changed, this, &QgsColorRampLegendNodeWidget::onChanged );
-
-  if ( !capabilities.testFlag( Capability::Prefix ) )
-  {
-    mPrefixLineEdit->hide();
-    mPrefixLabel->hide();
-  }
-  if ( !capabilities.testFlag( Capability::Suffix ) )
-  {
-    mSuffixLineEdit->hide();
-    mSuffixLabel->hide();
-  }
-  if ( !capabilities.testFlag( Capability::NumberFormat ) )
-  {
-    mNumberFormatPushButton->hide();
-    mNumberFormatLabel->hide();
-  }
 }
 
 QgsColorRampLegendNodeSettings QgsColorRampLegendNodeWidget::settings() const
@@ -167,11 +137,11 @@ void QgsColorRampLegendNodeWidget::onChanged()
 // QgsColorRampLegendNodeDialog
 //
 
-QgsColorRampLegendNodeDialog::QgsColorRampLegendNodeDialog( const QgsColorRampLegendNodeSettings &settings, QWidget *parent, QgsColorRampLegendNodeWidget::Capabilities capabilities )
+QgsColorRampLegendNodeDialog::QgsColorRampLegendNodeDialog( const QgsColorRampLegendNodeSettings &settings, QWidget *parent )
   : QDialog( parent )
 {
   QVBoxLayout *vLayout = new QVBoxLayout();
-  mWidget = new QgsColorRampLegendNodeWidget( nullptr, capabilities );
+  mWidget = new QgsColorRampLegendNodeWidget( nullptr );
   vLayout->addWidget( mWidget );
   mButtonBox = new QDialogButtonBox( QDialogButtonBox::Cancel | QDialogButtonBox::Help | QDialogButtonBox::Ok, Qt::Horizontal );
   connect( mButtonBox, &QDialogButtonBox::accepted, this, &QDialog::accept );

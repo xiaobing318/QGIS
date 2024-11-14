@@ -39,8 +39,6 @@ class APP_EXPORT QgsHtmlAnnotationDialog: public QDialog, private Ui::QgsFormAnn
     void fileRadioButtonToggled( bool checked );
     void sourceRadioButtonToggled( bool checked );
     void showHelp();
-    void onSettingsChanged();
-    void onLiveUpdateToggled( bool checked );
 };
 
 #endif // QgsHTMLAnnotationDialog_H

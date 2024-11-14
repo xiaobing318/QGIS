@@ -104,9 +104,8 @@ class GUI_EXPORT QgsExternalStorageFileWidget : public QgsFileWidget
     /**
      * Set \a urlExpression expression, which once evaluated, provide the URL used to store selected
      * documents. This is used only if an external storage has been defined
-     * \see setStorageType()
-     * \see externalStorage()
-     * \since QGIS 3.22
+     * \see setStorageType(), externalStorage()
+     * \since 3.22
      */
     void setStorageUrlExpression( const QString &urlExpression );
 
@@ -115,7 +114,7 @@ class GUI_EXPORT QgsExternalStorageFileWidget : public QgsFileWidget
      * URL used to store selected documents. This is used only if an external storage has been defined.
      * Returns null if no expression has been set.
      * \see setStorageUrlExpression()
-     * \since QGIS 3.22
+     * \since 3.22
      */
     QString storageUrlExpressionString() const;
 
@@ -124,21 +123,21 @@ class GUI_EXPORT QgsExternalStorageFileWidget : public QgsFileWidget
      * documents. This is used only if an external storage has been defined.
      * Returns null if no expression has been set.
      * \see setStorageUrlExpression()
-     * \since QGIS 3.22
+     * \since 3.22
      */
     QgsExpression *storageUrlExpression() const;
 
     /**
      * Set expression context to be used when for storage URL expression evaluation
      * \see setStorageUrlExpression
-     * \since QGIS 3.22
+     * \since 3.22
      */
     void setExpressionContext( const QgsExpressionContext &context );
 
     /**
      * Returns expression context used for storage url expression evaluation
      * \see storageUrlExpression
-     * \since QGIS 3.22
+     * \since 3.22
      */
     const QgsExpressionContext &expressionContext() const;
 
@@ -157,7 +156,7 @@ class GUI_EXPORT QgsExternalStorageFileWidget : public QgsFileWidget
     /**
      * Creates and Returns an expression context scope specific to QgsExternalStorageFileWidget
      * It defines the variable containing the user selected file name
-     * \since QGIS 3.22
+     * \since 3.22
      */
     static QgsExpressionContextScope *createFileWidgetScope();
 

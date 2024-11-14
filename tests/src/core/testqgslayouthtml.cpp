@@ -18,13 +18,13 @@
 #include "qgsapplication.h"
 #include "qgslayoutitemhtml.h"
 #include "qgslayoutframe.h"
+#include "qgsmultirenderchecker.h"
 #include "qgsfontutils.h"
 #include "qgsvectorlayer.h"
 #include "qgsrelationmanager.h"
 #include "qgsvectordataprovider.h"
 #include "qgsproject.h"
 #include "qgslayout.h"
-#include "qgslayoutreportcontext.h"
 
 #include <QObject>
 #include "qgstest.h"
@@ -34,7 +34,7 @@ class TestQgsLayoutHtml : public QgsTest
     Q_OBJECT
 
   public:
-    TestQgsLayoutHtml() : QgsTest( QStringLiteral( "Layout HTML Tests" ), QStringLiteral( "composer_html" ) ) {}
+    TestQgsLayoutHtml() : QgsTest( QStringLiteral( "Layout HTML Tests" ) ) {}
 
   private slots:
     void initTestCase();// will be called before the first testfunction is executed.
@@ -79,7 +79,10 @@ void TestQgsLayoutHtml::sourceMode()
   htmlItem->setHtml( QStringLiteral( "<body style=\"margin: 10px;\"><div style=\"width: 100px; height: 50px; background-color: red;\"></div></body>" ) );
   htmlItem->loadHtml();
 
-  QGSVERIFYLAYOUTCHECK( QStringLiteral( "composerhtml_manual" ), &l, 0, 100 );
+  QgsLayoutChecker checker( QStringLiteral( "composerhtml_manual" ), &l );
+  checker.setControlPathPrefix( QStringLiteral( "composer_html" ) );
+  const bool result = checker.testLayout( mReport, 0, 100 );
+  QVERIFY( result );
 }
 
 void TestQgsLayoutHtml::userStylesheets()
@@ -99,7 +102,10 @@ void TestQgsLayoutHtml::userStylesheets()
   //setting user stylesheet enabled automatically loads html
   htmlItem->setUserStylesheetEnabled( true );
 
-  QGSVERIFYLAYOUTCHECK( QStringLiteral( "composerhtml_userstylesheet" ), &l, 0, 100 );
+  QgsLayoutChecker checker( QStringLiteral( "composerhtml_userstylesheet" ), &l );
+  checker.setControlPathPrefix( QStringLiteral( "composer_html" ) );
+  const bool result = checker.testLayout( mReport, 0, 100 );
+  QVERIFY( result );
 }
 
 void TestQgsLayoutHtml::evalExpressions()
@@ -117,7 +123,10 @@ void TestQgsLayoutHtml::evalExpressions()
 
   htmlItem->loadHtml();
 
-  QGSVERIFYLAYOUTCHECK( QStringLiteral( "composerhtml_expressions_enabled" ), &l );
+  QgsLayoutChecker checker( QStringLiteral( "composerhtml_expressions_enabled" ), &l );
+  checker.setControlPathPrefix( QStringLiteral( "composer_html" ) );
+  const bool result = checker.testLayout( mReport );
+  QVERIFY( result );
 }
 
 void TestQgsLayoutHtml::evalExpressionsOff()
@@ -133,7 +142,10 @@ void TestQgsLayoutHtml::evalExpressionsOff()
   htmlItem->setHtml( QStringLiteral( "<body style=\"margin: 10px;\"><div style=\"width: [% 10 * 10 %]px; height: [% 30 + 20 %]px; background-color: [% 'yel' || 'low' %];\"></div></body>" ) );
   htmlItem->loadHtml();
 
-  QGSVERIFYLAYOUTCHECK( QStringLiteral( "composerhtml_expressions_disabled" ), &l );
+  QgsLayoutChecker checker( QStringLiteral( "composerhtml_expressions_disabled" ), &l );
+  checker.setControlPathPrefix( QStringLiteral( "composer_html" ) );
+  const bool result = checker.testLayout( mReport );
+  QVERIFY( result );
 }
 
 void TestQgsLayoutHtml::table()
@@ -146,7 +158,10 @@ void TestQgsLayoutHtml::table()
   htmlItem->addFrame( htmlFrame );
   htmlItem->setUrl( QUrl( QStringLiteral( "file:///%1/test_html.html" ).arg( TEST_DATA_DIR ) ) );
 
-  QGSVERIFYLAYOUTCHECK( QStringLiteral( "composerhtml_table" ), &l );
+  QgsLayoutChecker checker( QStringLiteral( "composerhtml_table" ), &l );
+  checker.setControlPathPrefix( QStringLiteral( "composer_html" ) );
+  const bool result = checker.testLayout( mReport );
+  QVERIFY( result );
 }
 
 void TestQgsLayoutHtml::tableMultiFrame()
@@ -163,10 +178,16 @@ void TestQgsLayoutHtml::tableMultiFrame()
   //page1
   htmlItem->setUrl( QUrl( QStringLiteral( "file:///%1/test_html.html" ).arg( TEST_DATA_DIR ) ) );
   htmlItem->frame( 0 )->setFrameEnabled( true );
-  QGSVERIFYLAYOUTCHECK( QStringLiteral( "composerhtml_multiframe1" ), &l );
+  QgsLayoutChecker checker1( QStringLiteral( "composerhtml_multiframe1" ), &l );
+  checker1.setControlPathPrefix( QStringLiteral( "composer_html" ) );
+  bool result = checker1.testLayout( mReport );
 
   //page2
-  QGSVERIFYLAYOUTCHECK( QStringLiteral( "composerhtml_multiframe2" ), &l, 1 );
+  QgsLayoutChecker checker2( QStringLiteral( "composerhtml_multiframe2" ), &l );
+  checker2.setControlPathPrefix( QStringLiteral( "composer_html" ) );
+  result = checker2.testLayout( mReport, 1 ) && result;
+
+  QVERIFY( result );
 }
 
 void TestQgsLayoutHtml::htmlMultiFrameSmartBreak()
@@ -183,10 +204,16 @@ void TestQgsLayoutHtml::htmlMultiFrameSmartBreak()
   //page1
   htmlItem->setUrl( QUrl( QStringLiteral( "file:///%1/test_html.html" ).arg( TEST_DATA_DIR ) ) );
   htmlItem->frame( 0 )->setFrameEnabled( true );
-  QGSVERIFYLAYOUTCHECK( QStringLiteral( "composerhtml_smartbreaks1" ), &l, 0, 200 );
+  QgsLayoutChecker checker1( QStringLiteral( "composerhtml_smartbreaks1" ), &l );
+  checker1.setControlPathPrefix( QStringLiteral( "composer_html" ) );
+  bool result = checker1.testLayout( mReport, 0, 200 );
 
   //page2
-  QGSVERIFYLAYOUTCHECK( QStringLiteral( "composerhtml_smartbreaks2" ), &l, 1, 200 );
+  QgsLayoutChecker checker2( QStringLiteral( "composerhtml_smartbreaks2" ), &l );
+  checker2.setControlPathPrefix( QStringLiteral( "composer_html" ) );
+  result = checker2.testLayout( mReport, 1, 200 ) && result;
+
+  QVERIFY( result );
 }
 
 void TestQgsLayoutHtml::javascriptSetFeature()
@@ -257,7 +284,10 @@ void TestQgsLayoutHtml::javascriptSetFeature()
 
   htmlItem->loadHtml();
 
-  QGSVERIFYLAYOUTCHECK( QStringLiteral( "composerhtml_setfeature" ), &l );
+  QgsLayoutChecker checker( QStringLiteral( "composerhtml_setfeature" ), &l );
+  checker.setControlPathPrefix( QStringLiteral( "composer_html" ) );
+  const bool result = checker.testLayout( mReport );
+  QVERIFY( result );
 
   QgsProject::instance()->removeMapLayers( QList<QgsMapLayer *>() << childLayer << parentLayer );
 }

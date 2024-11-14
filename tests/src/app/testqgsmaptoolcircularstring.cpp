@@ -99,7 +99,7 @@ void TestQgsMapToolCircularString::resetMapTool( QgsMapToolShapeMetadata *metada
 
 void TestQgsMapToolCircularString::testAddCircularStringCurvePoint()
 {
-  QgsSettingsRegistryCore::settingsDigitizingDefaultZValue->setValue( 333 );
+  QgsSettingsRegistryCore::settingsDigitizingDefaultZValue.setValue( 333 );
   mLayer->startEditing();
 
   mMapTool->setCurrentCaptureTechnique( Qgis::CaptureTechnique::CircularString );
@@ -114,16 +114,16 @@ void TestQgsMapToolCircularString::testAddCircularStringCurvePoint()
   QCOMPARE( mLayer->featureCount(), ( long )1 );
   const QgsFeature f = mLayer->getFeature( newFid );
 
-  const QString wkt = "CompoundCurve Z (CircularString Z (0 0 333, 1 1 333, 0 2 333))";
+  const QString wkt = "CompoundCurveZ (CircularStringZ (0 0 333, 1 1 333, 0 2 333))";
   QCOMPARE( f.geometry().asWkt(), wkt );
 
   mLayer->rollBack();
-  QgsSettingsRegistryCore::settingsDigitizingDefaultZValue->setValue( 0 );
+  QgsSettingsRegistryCore::settingsDigitizingDefaultZValue.setValue( 0 );
 }
 
 void TestQgsMapToolCircularString::testAddCircularStringRadius()
 {
-  QgsSettingsRegistryCore::settingsDigitizingDefaultZValue->setValue( 111 );
+  QgsSettingsRegistryCore::settingsDigitizingDefaultZValue.setValue( 111 );
   mLayer->startEditing();
 
   QgsMapToolShapeCircularStringRadiusMetadata md;
@@ -139,16 +139,16 @@ void TestQgsMapToolCircularString::testAddCircularStringRadius()
   QCOMPARE( mLayer->featureCount(), ( long )1 );
   const QgsFeature f = mLayer->getFeature( newFid );
 
-  const QString wkt = "CompoundCurve Z (CircularString Z (0 0 111, 0.17912878474779187 0.82087121525220819 111, 1 1 111))";
+  const QString wkt = "CompoundCurveZ (CircularStringZ (0 0 111, 0.17912878474779187 0.82087121525220819 111, 1 1 111))";
   QCOMPARE( f.geometry().asWkt(), wkt );
 
   mLayer->rollBack();
-  QgsSettingsRegistryCore::settingsDigitizingDefaultZValue->setValue( 0 );
+  QgsSettingsRegistryCore::settingsDigitizingDefaultZValue.setValue( 0 );
 }
 
 void TestQgsMapToolCircularString::testAddCircularStringRadiusWithDeletedVertex()
 {
-  QgsSettingsRegistryCore::settingsDigitizingDefaultZValue->setValue( 111 );
+  QgsSettingsRegistryCore::settingsDigitizingDefaultZValue.setValue( 111 );
   mLayer->startEditing();
 
   QgsMapToolShapeCircularStringRadiusMetadata md;
@@ -168,16 +168,16 @@ void TestQgsMapToolCircularString::testAddCircularStringRadiusWithDeletedVertex(
   QCOMPARE( mLayer->featureCount(), ( long )1 );
   const QgsFeature f = mLayer->getFeature( newFid );
 
-  const QString wkt = "CompoundCurve Z (CircularString Z (0 0 111, 0.17912878474779187 0.82087121525220819 111, 1 1 111))";
+  const QString wkt = "CompoundCurveZ (CircularStringZ (0 0 111, 0.17912878474779187 0.82087121525220819 111, 1 1 111))";
   QCOMPARE( f.geometry().asWkt(), wkt );
 
   mLayer->rollBack();
-  QgsSettingsRegistryCore::settingsDigitizingDefaultZValue->setValue( 0 );
+  QgsSettingsRegistryCore::settingsDigitizingDefaultZValue.setValue( 0 );
 }
 
 void TestQgsMapToolCircularString::testAddCircularStringAfterClassicDigitizing()
 {
-  QgsSettingsRegistryCore::settingsDigitizingDefaultZValue->setValue( 333 );
+  QgsSettingsRegistryCore::settingsDigitizingDefaultZValue.setValue( 333 );
   mLayer->startEditing();
 
   mMapTool->setCurrentCaptureTechnique( Qgis::CaptureTechnique::StraightSegments );
@@ -205,11 +205,11 @@ void TestQgsMapToolCircularString::testAddCircularStringAfterClassicDigitizing()
 
   qDebug() << f.geometry().asWkt();
 
-  const QString wkt = "CompoundCurve Z ((2 1 333, 2 0 333, 0 0 333),CircularString Z (0 0 333, 1 1 333, 0 2 333),(0 2 333, 2 2 333, 4 2 333))";
+  const QString wkt = "CompoundCurveZ ((2 1 333, 2 0 333, 0 0 333),CircularStringZ (0 0 333, 1 1 333, 0 2 333),(0 2 333, 2 2 333, 4 2 333))";
   QCOMPARE( f.geometry().asWkt(), wkt );
 
   mLayer->rollBack();
-  QgsSettingsRegistryCore::settingsDigitizingDefaultZValue->setValue( 0 );
+  QgsSettingsRegistryCore::settingsDigitizingDefaultZValue.setValue( 0 );
 }
 QGSTEST_MAIN( TestQgsMapToolCircularString )
 #include "testqgsmaptoolcircularstring.moc"

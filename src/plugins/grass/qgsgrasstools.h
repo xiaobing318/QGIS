@@ -22,7 +22,6 @@
 
 #include <QSortFilterProxyModel>
 #include <QStandardItem>
-#include <QRegularExpression>
 
 class QDomElement;
 class QSortFilterProxyModel;
@@ -154,7 +153,7 @@ class QgsGrassToolsTreeFilterProxyModel : public QSortFilterProxyModel
 
     QAbstractItemModel *mModel = nullptr;
     QString mFilter; // filter string provided
-    QRegularExpression mRegExp; // regular expression constructed from filter string
+    QRegExp mRegExp; // regular expression constructed from filter string
 
     bool filterAcceptsString( const QString &value ) const;
 

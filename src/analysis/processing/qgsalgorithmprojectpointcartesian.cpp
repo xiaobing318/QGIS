@@ -58,12 +58,12 @@ QString QgsProjectPointCartesianAlgorithm::shortHelpString() const
 
 QList<int> QgsProjectPointCartesianAlgorithm::inputLayerTypes() const
 {
-  return QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorPoint );
+  return QList<int>() << QgsProcessing::TypeVectorPoint;
 }
 
-Qgis::ProcessingSourceType QgsProjectPointCartesianAlgorithm::outputLayerType() const
+QgsProcessing::SourceType QgsProjectPointCartesianAlgorithm::outputLayerType() const
 {
-  return Qgis::ProcessingSourceType::VectorPoint;
+  return QgsProcessing::TypeVectorPoint;
 }
 
 QgsProjectPointCartesianAlgorithm *QgsProjectPointCartesianAlgorithm::createInstance() const
@@ -73,7 +73,7 @@ QgsProjectPointCartesianAlgorithm *QgsProjectPointCartesianAlgorithm::createInst
 
 void QgsProjectPointCartesianAlgorithm::initParameters( const QVariantMap & )
 {
-  std::unique_ptr< QgsProcessingParameterNumber > bearing = std::make_unique< QgsProcessingParameterNumber >( QStringLiteral( "BEARING" ), QObject::tr( "Bearing (degrees from North)" ), Qgis::ProcessingNumberParameterType::Double, 0, false );
+  std::unique_ptr< QgsProcessingParameterNumber > bearing = std::make_unique< QgsProcessingParameterNumber >( QStringLiteral( "BEARING" ), QObject::tr( "Bearing (degrees from North)" ), QgsProcessingParameterNumber::Double, 0, false );
   bearing->setIsDynamic( true );
   bearing->setDynamicPropertyDefinition( QgsPropertyDefinition( QStringLiteral( "Bearing" ), QObject::tr( "Bearing (degrees from North)" ), QgsPropertyDefinition::Double ) );
   bearing->setDynamicLayerParameterName( QStringLiteral( "INPUT" ) );
@@ -86,9 +86,9 @@ void QgsProjectPointCartesianAlgorithm::initParameters( const QVariantMap & )
   addParameter( distance.release() );
 }
 
-Qgis::ProcessingFeatureSourceFlags QgsProjectPointCartesianAlgorithm::sourceFlags() const
+QgsProcessingFeatureSource::Flag QgsProjectPointCartesianAlgorithm::sourceFlags() const
 {
-  return Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks;
+  return QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks;
 }
 
 bool QgsProjectPointCartesianAlgorithm::prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback * )
@@ -109,7 +109,7 @@ bool QgsProjectPointCartesianAlgorithm::prepareAlgorithm( const QVariantMap &par
 QgsFeatureList QgsProjectPointCartesianAlgorithm::processFeature( const QgsFeature &feature, QgsProcessingContext &context, QgsProcessingFeedback * )
 {
   QgsFeature f = feature;
-  if ( f.hasGeometry() && QgsWkbTypes::geometryType( f.geometry().wkbType() ) == Qgis::GeometryType::Point )
+  if ( f.hasGeometry() && QgsWkbTypes::geometryType( f.geometry().wkbType() ) == QgsWkbTypes::PointGeometry )
   {
     double distance = mDistance;
     if ( mDynamicDistance )

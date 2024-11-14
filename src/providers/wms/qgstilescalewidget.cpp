@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgstilescalewidget.h"
-#include "moc_qgstilescalewidget.cpp"
 #include "qgsmapcanvas.h"
 #include "qgsrasterlayer.h"
 #include "qgsrasterdataprovider.h"
@@ -106,9 +105,6 @@ void QgsTileScaleWidget::scaleChanged( double scale )
   mSlider->blockSignals( true );
   mSlider->setValue( i );
   mSlider->blockSignals( false );
-
-
-  mLabelScale->setText( tr( "Zoom: %1" ).arg( i ) );
 }
 
 void QgsTileScaleWidget::mSlider_valueChanged( int value )
@@ -138,7 +134,7 @@ void QgsTileScaleWidget::showTileScale( QMainWindow *mainWindow )
   QgsDebugMsgLevel( QStringLiteral( "canvas:%1 [%2]" ).arg( ( quint64 ) canvas, 0, 16 ).arg( canvas ? canvas->objectName() : QString() ), 4 );
   if ( !canvas )
   {
-    QgsDebugError( QStringLiteral( "map canvas mapCanvas not found" ) );
+    QgsDebugMsg( QStringLiteral( "map canvas mapCanvas not found" ) );
     return;
   }
 
@@ -153,7 +149,7 @@ void QgsTileScaleWidget::showTileScale( QMainWindow *mainWindow )
   }
   else
   {
-    QgsDebugError( QStringLiteral( "legend not found" ) );
+    QgsDebugMsg( QStringLiteral( "legend not found" ) );
   }
 
   //create the dock widget
@@ -173,7 +169,7 @@ void QgsTileScaleWidget::showTileScale( QMainWindow *mainWindow )
   }
   else
   {
-    QgsDebugError( QStringLiteral( "panel menu not found" ) );
+    QgsDebugMsg( QStringLiteral( "panel menu not found" ) );
   }
 
   dock->setWidget( tws );

@@ -67,8 +67,7 @@ class TestQgis : public QgsTest
     void testQgsFlagValueToKeys();
     void testQgsFlagKeysToValue();
     void testQMapQVariantList();
-    void testQgsMapJoin();
-    void testQgsSetJoin();
+
 };
 
 void TestQgis::permissiveToDouble()
@@ -269,10 +268,10 @@ void TestQgis::qVariantCompare_data()
 
   QTest::newRow( "invalid to value" ) << QVariant() << QVariant( 2 ) << true << false;
   QTest::newRow( "invalid to value 2" ) << QVariant( 2 ) << QVariant() << false << true;
-  QTest::newRow( "invalid to null" ) << QVariant() << QgsVariantUtils::createNullVariant( QMetaType::Type::QString ) << true << false;
-  QTest::newRow( "invalid to null2 " ) << QgsVariantUtils::createNullVariant( QMetaType::Type::QString ) << QVariant() << false << true;
-  QTest::newRow( "null to value" ) <<  QgsVariantUtils::createNullVariant( QMetaType::Type::QString ) << QVariant( "a" ) << true << false;
-  QTest::newRow( "null to value 2" ) << QVariant( "a" ) << QgsVariantUtils::createNullVariant( QMetaType::Type::QString ) << false << true;
+  QTest::newRow( "invalid to null" ) << QVariant() << QVariant( QVariant::String ) << true << false;
+  QTest::newRow( "invalid to null2 " ) << QVariant( QVariant::String ) << QVariant() << false << true;
+  QTest::newRow( "null to value" ) <<  QVariant( QVariant::String ) << QVariant( "a" ) << true << false;
+  QTest::newRow( "null to value 2" ) << QVariant( "a" ) << QVariant( QVariant::String ) << false << true;
 
   QTest::newRow( "int" ) << QVariant( 1 ) << QVariant( 2 ) << true << false;
   QTest::newRow( "int 2" ) << QVariant( 1 ) << QVariant( -2 ) << false << true;
@@ -419,20 +418,20 @@ void TestQgis::testQgsVariantEqual()
 
   // This is what we actually wanted to fix with qgsVariantEqual
   // zero != NULL
-  QVERIFY( ! qgsVariantEqual( QVariant( 0 ), QgsVariantUtils::createNullVariant( QMetaType::Type::Int ) ) );
-  QVERIFY( ! qgsVariantEqual( QVariant( 0 ), QgsVariantUtils::createNullVariant( QMetaType::Type::Double ) ) );
-  QVERIFY( ! qgsVariantEqual( QVariant( 0.0f ), QgsVariantUtils::createNullVariant( QMetaType::Type::Int ) ) );
-  QVERIFY( ! qgsVariantEqual( QVariant( 0.0f ), QgsVariantUtils::createNullVariant( QMetaType::Type::Double ) ) );
-  QVERIFY( QVariant( 0 ) == QgsVariantUtils::createNullVariant( QMetaType::Type::Int ) );
+  QVERIFY( ! qgsVariantEqual( QVariant( 0 ), QVariant( QVariant::Int ) ) );
+  QVERIFY( ! qgsVariantEqual( QVariant( 0 ), QVariant( QVariant::Double ) ) );
+  QVERIFY( ! qgsVariantEqual( QVariant( 0.0f ), QVariant( QVariant::Int ) ) );
+  QVERIFY( ! qgsVariantEqual( QVariant( 0.0f ), QVariant( QVariant::Double ) ) );
+  QVERIFY( QVariant( 0 ) == QVariant( QVariant::Int ) );
 
   // NULL identities
-  QVERIFY( qgsVariantEqual( QgsVariantUtils::createNullVariant( QMetaType::Type::Int ), QgsVariantUtils::createNullVariant( QMetaType::Type::Int ) ) );
-  QVERIFY( qgsVariantEqual( QgsVariantUtils::createNullVariant( QMetaType::Type::Double ), QgsVariantUtils::createNullVariant( QMetaType::Type::Double ) ) );
-  QVERIFY( qgsVariantEqual( QgsVariantUtils::createNullVariant( QMetaType::Type::Int ), QgsVariantUtils::createNullVariant( QMetaType::Type::Double ) ) );
-  QVERIFY( qgsVariantEqual( QgsVariantUtils::createNullVariant( QMetaType::Type::Int ), QgsVariantUtils::createNullVariant( QMetaType::Type::QString ) ) );
+  QVERIFY( qgsVariantEqual( QVariant( QVariant::Int ), QVariant( QVariant::Int ) ) );
+  QVERIFY( qgsVariantEqual( QVariant( QVariant::Double ), QVariant( QVariant::Double ) ) );
+  QVERIFY( qgsVariantEqual( QVariant( QVariant::Int ), QVariant( QVariant::Double ) ) );
+  QVERIFY( qgsVariantEqual( QVariant( QVariant::Int ), QVariant( QVariant::String ) ) );
 
   // NULL should not be equal to invalid
-  QVERIFY( !qgsVariantEqual( QVariant(), QgsVariantUtils::createNullVariant( QMetaType::Type::Int ) ) );
+  QVERIFY( !qgsVariantEqual( QVariant(), QVariant( QVariant::Int ) ) );
 }
 
 void TestQgis::testQgsEnumMapList()
@@ -446,11 +445,11 @@ void TestQgis::testQgsEnumMapList()
 void TestQgis::testQgsEnumValueToKey()
 {
   bool ok = false;
-  QgsMapLayerModel::CustomRole value = QgsMapLayerModel::CustomRole::Layer;
-  QgsMapLayerModel::CustomRole badValue = static_cast<QgsMapLayerModel::CustomRole>( -1 );
-  QMetaEnum metaEnum = QMetaEnum::fromType<QgsMapLayerModel::CustomRole>();
-  QVERIFY( !metaEnum.valueToKey( static_cast< int >( badValue ) ) );
-  QCOMPARE( qgsEnumValueToKey( value, &ok ), QStringLiteral( "Layer" ) );
+  QgsMapLayerModel::ItemDataRole value = QgsMapLayerModel::LayerRole;
+  QgsMapLayerModel::ItemDataRole badValue = static_cast<QgsMapLayerModel::ItemDataRole>( -1 );
+  QMetaEnum metaEnum = QMetaEnum::fromType<QgsMapLayerModel::ItemDataRole>();
+  QVERIFY( !metaEnum.valueToKey( badValue ) );
+  QCOMPARE( qgsEnumValueToKey( value, &ok ), QStringLiteral( "LayerRole" ) );
   QCOMPARE( ok, true );
   QCOMPARE( qgsEnumValueToKey( badValue, &ok ), QString() );
   QCOMPARE( ok, false );
@@ -458,8 +457,8 @@ void TestQgis::testQgsEnumValueToKey()
 void TestQgis::testQgsEnumKeyToValue()
 {
   bool ok = false;
-  QgsMapLayerModel::CustomRole defaultValue = QgsMapLayerModel::CustomRole::LayerId;
-  QCOMPARE( qgsEnumKeyToValue( QStringLiteral( "Additional" ), defaultValue, false, &ok ), QgsMapLayerModel::CustomRole::Additional );
+  QgsMapLayerModel::ItemDataRole defaultValue = QgsMapLayerModel::LayerIdRole;
+  QCOMPARE( qgsEnumKeyToValue( QStringLiteral( "AdditionalRole" ), defaultValue, false, &ok ), QgsMapLayerModel::AdditionalRole );
   QCOMPARE( ok, true );
   QCOMPARE( qgsEnumKeyToValue( QStringLiteral( "UnknownKey" ), defaultValue, false, &ok ), defaultValue );
   QCOMPARE( ok, false );
@@ -467,13 +466,13 @@ void TestQgis::testQgsEnumKeyToValue()
   QCOMPARE( ok, false );
 
   // try with int values as string keys
-  QCOMPARE( qgsEnumKeyToValue( QString::number( static_cast< int >( QgsMapLayerModel::CustomRole::Additional ) ), defaultValue, true, &ok ), QgsMapLayerModel::CustomRole::Additional );
+  QCOMPARE( qgsEnumKeyToValue( QString::number( QgsMapLayerModel::AdditionalRole ), defaultValue, true, &ok ), QgsMapLayerModel::AdditionalRole );
   QCOMPARE( ok, true );
-  QCOMPARE( qgsEnumKeyToValue( QString::number( static_cast< int >( QgsMapLayerModel::CustomRole::Additional ) ), defaultValue, false, &ok ), defaultValue );
+  QCOMPARE( qgsEnumKeyToValue( QString::number( QgsMapLayerModel::AdditionalRole ), defaultValue, false, &ok ), defaultValue );
   QCOMPARE( ok, false );
   // also try with an invalid int value
-  QMetaEnum metaEnum = QMetaEnum::fromType<QgsMapLayerModel::CustomRole>();
-  int invalidValue = static_cast< int >( defaultValue ) + 7894563;
+  QMetaEnum metaEnum = QMetaEnum::fromType<QgsMapLayerModel::ItemDataRole>();
+  int invalidValue = defaultValue + 7894563;
   QVERIFY( !metaEnum.valueToKey( invalidValue ) );
   QCOMPARE( qgsEnumKeyToValue( QString::number( invalidValue ), defaultValue, true, &ok ), defaultValue );
   QCOMPARE( ok, false );
@@ -494,10 +493,7 @@ void TestQgis::testQgsFlagKeysToValue()
   QgsFieldProxyModel::Filters defaultValue( QgsFieldProxyModel::Filter::AllTypes );
   QgsFieldProxyModel::Filters newValue( QgsFieldProxyModel::Filter::String | QgsFieldProxyModel::Filter::Double );
 
-  bool ok = true;
-  QCOMPARE( qgsFlagKeysToValue( QString(), defaultValue, false, &ok ), defaultValue );
-  QCOMPARE( ok, false );
-
+  bool ok = false;
   QCOMPARE( qgsFlagKeysToValue( QStringLiteral( "String|Double" ), defaultValue, false, &ok ), newValue );
   QCOMPARE( ok, true );
   QCOMPARE( qgsFlagKeysToValue( QStringLiteral( "UnknownKey" ), defaultValue, false, &ok ), defaultValue );
@@ -532,49 +528,6 @@ void TestQgis::testQMapQVariantList()
 
   QVERIFY( it != ids.constEnd() );
   QCOMPARE( it.value(), 5L );
-}
-
-void TestQgis::testQgsMapJoin()
-{
-  QMap< QString, int> map;
-
-  map.insert( "tutu", 3 );
-  map.insert( "titi", 4 );
-  map.insert( "tata", 5 );
-
-  QString res = qgsMapJoinValues( map, QStringLiteral( ", " ) );
-
-  QRegularExpression re( "[3|4|5], [3|4|5], [3|4|5]" );
-  QVERIFY( re.match( res ).hasMatch() );
-  QVERIFY( res.contains( "3" ) );
-  QVERIFY( res.contains( "4" ) );
-  QVERIFY( res.contains( "5" ) );
-
-  res = qgsMapJoinKeys( map, QStringLiteral( ", " ) );
-
-  re.setPattern( "(tutu|titi|tata), (tutu|titi|tata), (tutu|titi|tata)" );
-  QVERIFY( re.match( res ).hasMatch() );
-  QVERIFY( res.contains( "tutu" ) );
-  QVERIFY( res.contains( "titi" ) );
-  QVERIFY( res.contains( "tata" ) );
-}
-
-void TestQgis::testQgsSetJoin()
-{
-  QSet<int> set;
-
-  set.insert( 3 );
-  set.insert( 4 );
-  set.insert( 4 );
-  set.insert( 5 );
-
-  const QString res = qgsSetJoin( set, QStringLiteral( ", " ) );
-
-  const thread_local QRegularExpression re( "[3|4|5], [3|4|5], [3|4|5]" );
-  QVERIFY( re.match( res ).hasMatch() );
-  QVERIFY( res.contains( "3" ) );
-  QVERIFY( res.contains( "4" ) );
-  QVERIFY( res.contains( "5" ) );
 }
 
 

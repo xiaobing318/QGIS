@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/processing/models/qgsmodelgraphicsscene.h                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -124,9 +124,14 @@ not correctly emit signals to allow the scene's model to update.
 Clears any selected items and sets ``item`` as the current selection.
 %End
 
-    void setLastRunResult( const QgsProcessingModelResult &result );
+    void setChildAlgorithmResults( const QVariantMap &results );
 %Docstring
-Sets the ``result`` of the last run of the model through the designer window.
+Sets the results for child algorithms for the last model execution.
+%End
+
+    void setChildAlgorithmInputs( const QVariantMap &inputs );
+%Docstring
+Sets the inputs for child algorithms for the last model execution.
 %End
 
     QgsMessageBar *messageBar() const;
@@ -174,34 +179,6 @@ Emitted whenever the selected item changes.
 If ``None``, no item is selected.
 %End
 
-    void runSelected();
-%Docstring
-Emitted when the user opts to run selected steps from the model.
-
-.. versionadded:: 3.38
-%End
-
-    void runFromChild( const QString &childId );
-%Docstring
-Emitted when the user opts to run the part of the model starting from the specified child algorithm.
-
-.. versionadded:: 3.38
-%End
-
-    void showChildAlgorithmOutputs( const QString &childId );
-%Docstring
-Emitted when the user opts to view previous results from the child algorithm with matching ID.
-
-.. versionadded:: 3.38
-%End
-
-    void showChildAlgorithmLog( const QString &childId );
-%Docstring
-Emitted when the user opts to view the previous log from the child algorithm with matching ID.
-
-.. versionadded:: 3.38
-%End
-
   protected:
 
     virtual QgsModelComponentGraphicItem *createParameterGraphicItem( QgsProcessingModelAlgorithm *model, QgsProcessingModelParameter *param ) const /Factory/;
@@ -239,5 +216,5 @@ Creates a new graphic item for a model group box.
  *                                                                      *
  * src/gui/processing/models/qgsmodelgraphicsscene.h                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -29,6 +29,7 @@ class QgsWebPage;
  * \class QgsHtmlAnnotation
  * \ingroup core
  * \brief An annotation item that embeds HTML content.
+ * \since QGIS 3.0
 */
 
 class CORE_EXPORT QgsHtmlAnnotation: public QgsAnnotation

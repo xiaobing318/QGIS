@@ -73,42 +73,37 @@ QgsMimeDataUtils::Uri::Uri( QgsMapLayer *layer )
 {
   switch ( layer->type() )
   {
-    case Qgis::LayerType::Vector:
+    case QgsMapLayerType::VectorLayer:
     {
       layerType = QStringLiteral( "vector" );
       wkbType = qobject_cast< QgsVectorLayer *>( layer )->wkbType();
       break;
     }
-    case Qgis::LayerType::Raster:
+    case QgsMapLayerType::RasterLayer:
     {
       layerType = QStringLiteral( "raster" );
       break;
     }
 
-    case Qgis::LayerType::Mesh:
+    case QgsMapLayerType::MeshLayer:
     {
       layerType = QStringLiteral( "mesh" );
       break;
     }
-    case Qgis::LayerType::PointCloud:
+    case QgsMapLayerType::PointCloudLayer:
     {
       layerType = QStringLiteral( "pointcloud" );
       break;
     }
-    case Qgis::LayerType::VectorTile:
+    case QgsMapLayerType::VectorTileLayer:
     {
       layerType = QStringLiteral( "vector-tile" );
       break;
     }
-    case Qgis::LayerType::TiledScene:
-    {
-      layerType = QStringLiteral( "tiled-scene" );
-      break;
-    }
 
-    case Qgis::LayerType::Plugin:
-    case Qgis::LayerType::Group:
-    case Qgis::LayerType::Annotation:
+    case QgsMapLayerType::PluginLayer:
+    case QgsMapLayerType::GroupLayer:
+    case QgsMapLayerType::AnnotationLayer:
     {
       // plugin layers do not have a standard way of storing their URI...
       return;
@@ -143,7 +138,7 @@ QgsVectorLayer *QgsMimeDataUtils::Uri::vectorLayer( bool &owner, QString &error 
 
   if ( !layerId.isEmpty() && QgsMimeDataUtils::hasOriginatedFromCurrentAppInstance( *this ) )
   {
-    if ( QgsVectorLayer *vectorLayer = QgsProject::instance()->mapLayer<QgsVectorLayer *>( layerId ) ) // skip-keyword-check
+    if ( QgsVectorLayer *vectorLayer = QgsProject::instance()->mapLayer<QgsVectorLayer *>( layerId ) )
     {
       return vectorLayer;
     }
@@ -155,7 +150,7 @@ QgsVectorLayer *QgsMimeDataUtils::Uri::vectorLayer( bool &owner, QString &error 
   }
 
   owner = true;
-  const QgsVectorLayer::LayerOptions options { QgsProject::instance()->transformContext() }; // skip-keyword-check
+  const QgsVectorLayer::LayerOptions options { QgsProject::instance()->transformContext() };
   return new QgsVectorLayer( uri, name, providerKey, options );
 }
 
@@ -171,7 +166,7 @@ QgsRasterLayer *QgsMimeDataUtils::Uri::rasterLayer( bool &owner, QString &error 
 
   if ( !layerId.isEmpty() && QgsMimeDataUtils::hasOriginatedFromCurrentAppInstance( *this ) )
   {
-    if ( QgsRasterLayer *rasterLayer = QgsProject::instance()->mapLayer<QgsRasterLayer *>( layerId ) ) // skip-keyword-check
+    if ( QgsRasterLayer *rasterLayer = QgsProject::instance()->mapLayer<QgsRasterLayer *>( layerId ) )
     {
       return rasterLayer;
     }
@@ -193,7 +188,7 @@ QgsMeshLayer *QgsMimeDataUtils::Uri::meshLayer( bool &owner, QString &error ) co
 
   if ( !layerId.isEmpty() && QgsMimeDataUtils::hasOriginatedFromCurrentAppInstance( *this ) )
   {
-    if ( QgsMeshLayer *meshLayer = QgsProject::instance()->mapLayer<QgsMeshLayer *>( layerId ) ) // skip-keyword-check
+    if ( QgsMeshLayer *meshLayer = QgsProject::instance()->mapLayer<QgsMeshLayer *>( layerId ) )
     {
       return meshLayer;
     }
@@ -207,7 +202,7 @@ QgsMapLayer *QgsMimeDataUtils::Uri::mapLayer() const
 {
   if ( !layerId.isEmpty() && QgsMimeDataUtils::hasOriginatedFromCurrentAppInstance( *this ) )
   {
-    return QgsProject::instance()->mapLayer( layerId ); // skip-keyword-check
+    return QgsProject::instance()->mapLayer( layerId );
   }
   return nullptr;
 }
@@ -259,7 +254,7 @@ static void _addLayerTreeNodeToUriList( QgsLayerTreeNode *node, QgsMimeDataUtils
     if ( !layer )
       return;
 
-    if ( layer->type() == Qgis::LayerType::Plugin )
+    if ( layer->type() == QgsMapLayerType::PluginLayer )
       return; // plugin layers do not have a standard way of storing their URI...
 
     uris << QgsMimeDataUtils::Uri( layer );
@@ -288,7 +283,7 @@ QString QgsMimeDataUtils::encode( const QStringList &items )
 {
   QString encoded;
   // Do not escape colon twice
-  const thread_local QRegularExpression re( QStringLiteral( "(?<!\\\\):" ) );
+  const QRegularExpression re( QStringLiteral( "(?<!\\\\):" ) );
   const auto constItems = items;
   for ( const QString &item : constItems )
   {

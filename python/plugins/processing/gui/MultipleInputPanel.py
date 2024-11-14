@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     MultipleInputPanel.py
@@ -42,7 +44,7 @@ class MultipleInputPanel(BASE, WIDGET):
     selectionChanged = pyqtSignal()
 
     def __init__(self, options=None, datatype=None):
-        super().__init__(None)
+        super(MultipleInputPanel, self).__init__(None)
         self.setupUi(self)
 
         self.leText.setEnabled(False)
@@ -61,11 +63,11 @@ class MultipleInputPanel(BASE, WIDGET):
             self.tr('{0} elements selected').format(len(self.selectedoptions)))
 
     def showSelectionDialog(self):
-        if self.datatype == QgsProcessing.SourceType.TypeFile:
+        if self.datatype == QgsProcessing.TypeFile:
             dlg = MultipleFileInputDialog(self.selectedoptions)
         else:
             dlg = MultipleInputDialog(self.options, self.selectedoptions, datatype=self.datatype)
-        dlg.exec()
+        dlg.exec_()
         if dlg.selectedoptions is not None:
             self.selectedoptions = dlg.selectedoptions
             self.leText.setText(

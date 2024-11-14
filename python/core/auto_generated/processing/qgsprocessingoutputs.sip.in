@@ -3,9 +3,8 @@
  *                                                                      *
  * src/core/processing/qgsprocessingoutputs.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
-
 
 
 
@@ -20,6 +19,8 @@ Base class for the definition of processing outputs.
 
 Output definitions encapsulate the properties regarding the outputs from algorithms, such
 as generated layers or calculated values.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -32,8 +33,6 @@ as generated layers or calculated values.
       sipType = sipType_QgsProcessingOutputRasterLayer;
     else if ( sipCpp->type() == QgsProcessingOutputPointCloudLayer::typeName() )
       sipType = sipType_QgsProcessingOutputPointCloudLayer;
-    else if ( sipCpp->type() == QgsProcessingOutputVectorTileLayer::typeName() )
-      sipType = sipType_QgsProcessingOutputVectorTileLayer;
     else if ( sipCpp->type() == QgsProcessingOutputMapLayer::typeName() )
       sipType = sipType_QgsProcessingOutputMapLayer;
     else if ( sipCpp->type() == QgsProcessingOutputMultipleLayers::typeName() )
@@ -52,8 +51,6 @@ as generated layers or calculated values.
       sipType = sipType_QgsProcessingOutputFile;
     else if ( sipCpp->type() == QgsProcessingOutputConditionalBranch::typeName() )
       sipType = sipType_QgsProcessingOutputConditionalBranch;
-    else if ( sipCpp->type() == QgsProcessingOutputVariant::typeName() )
-      sipType = sipType_QgsProcessingOutputVariant;
     else
       sipType = nullptr;
 %End
@@ -123,38 +120,6 @@ Returns ``True`` if the output was automatically created when adding a parameter
 .. versionadded:: 3.14
 %End
 
-    virtual QString valueAsString( const QVariant &value, QgsProcessingContext &context, bool &ok /Out/ ) const;
-%Docstring
-Returns a string version of the parameter output ``value`` (if possible).
-
-:param value: value to convert
-:param context: processing context
-
-:return: - value converted to string
-         - ok: ``True`` if value could be represented as a string.
-
-.. seealso:: :py:func:`valueAsFormattedString`
-
-.. versionadded:: 3.36
-%End
-
-    virtual QString valueAsFormattedString( const QVariant &value, QgsProcessingContext &context, bool &ok /Out/ ) const;
-%Docstring
-Returns a HTML string version of the parameter output ``value`` (if possible).
-
-By default this will return the same value as :py:func:`~QgsProcessingOutputDefinition.valueAsString`.
-
-:param value: value to convert
-:param context: processing context
-
-:return: - value converted to string
-         - ok: ``True`` if value could be represented as a string.
-
-.. seealso:: :py:func:`valueAsString`
-
-.. versionadded:: 3.36
-%End
-
   protected:
 
 
@@ -170,6 +135,8 @@ A map layer output for processing algorithms, where layers may be either vector 
 
 If the actual layer output type is known (e.g. always vector or always raster), use
 :py:class:`QgsProcessingOutputVectorLayer` or :py:class:`QgsProcessingOutputRasterLayer` instead.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -189,13 +156,14 @@ Returns the type name for the output class.
 
     virtual QString type() const;
 
-
 };
 
 class QgsProcessingOutputVectorLayer : QgsProcessingOutputDefinition
 {
 %Docstring(signature="appended")
 A vector layer output for processing algorithms.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -203,7 +171,7 @@ A vector layer output for processing algorithms.
 %End
   public:
 
-    QgsProcessingOutputVectorLayer( const QString &name, const QString &description = QString(), Qgis::ProcessingSourceType type = Qgis::ProcessingSourceType::VectorAnyGeometry );
+    QgsProcessingOutputVectorLayer( const QString &name, const QString &description = QString(), QgsProcessing::SourceType type = QgsProcessing::TypeVectorAnyGeometry );
 %Docstring
 Constructor for QgsProcessingOutputVectorLayer.
 %End
@@ -214,14 +182,14 @@ Returns the type name for the output class.
 %End
     virtual QString type() const;
 
-    Qgis::ProcessingSourceType dataType() const;
+    QgsProcessing::SourceType dataType() const;
 %Docstring
 Returns the layer type for the output layer.
 
 .. seealso:: :py:func:`setDataType`
 %End
 
-    void setDataType( Qgis::ProcessingSourceType type );
+    void setDataType( QgsProcessing::SourceType type );
 %Docstring
 Sets the layer ``type`` for the output layer.
 
@@ -234,6 +202,8 @@ class QgsProcessingOutputRasterLayer : QgsProcessingOutputDefinition
 {
 %Docstring(signature="appended")
 A raster layer output for processing algorithms.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -291,6 +261,8 @@ the number and nature of the output layers is not predefined.
    should only ever be used when the number of output layers is not
    fixed - e.g. as a result of processing all layers in a specified
    folder.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -309,15 +281,14 @@ Returns the type name for the output class.
 %End
     virtual QString type() const;
 
-    virtual QString valueAsString( const QVariant &value, QgsProcessingContext &context, bool &ok /Out/ ) const;
-
-
 };
 
 class QgsProcessingOutputHtml : QgsProcessingOutputDefinition
 {
 %Docstring(signature="appended")
 A HTML file output for processing algorithms.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -335,44 +306,14 @@ Constructor for QgsProcessingOutputHtml.
 Returns the type name for the output class.
 %End
     virtual QString type() const;
-    virtual QString valueAsFormattedString( const QVariant &value, QgsProcessingContext &context, bool &ok /Out/ ) const;
-
-};
-
-
-class QgsProcessingOutputVariant : QgsProcessingOutputDefinition
-{
-%Docstring(signature="appended")
-A variant output for processing algorithms, capable of storing any QVariant value.
-
-.. versionadded:: 3.34
-%End
-
-%TypeHeaderCode
-#include "qgsprocessingoutputs.h"
-%End
-  public:
-
-    QgsProcessingOutputVariant( const QString &name, const QString &description = QString() );
-%Docstring
-Constructor for QgsProcessingOutputVariant.
-%End
-
-    static QString typeName();
-%Docstring
-Returns the type name for the output class.
-%End
-    virtual QString type() const;
-
-    virtual QString valueAsString( const QVariant &value, QgsProcessingContext &context, bool &ok /Out/ ) const;
-
-
 };
 
 class QgsProcessingOutputNumber : QgsProcessingOutputDefinition
 {
 %Docstring(signature="appended")
 A numeric output for processing algorithms.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -390,15 +331,14 @@ Constructor for QgsProcessingOutputNumber.
 Returns the type name for the output class.
 %End
     virtual QString type() const;
-    virtual QString valueAsString( const QVariant &value, QgsProcessingContext &context, bool &ok /Out/ ) const;
-
-
 };
 
 class QgsProcessingOutputString : QgsProcessingOutputDefinition
 {
 %Docstring(signature="appended")
 A string output for processing algorithms.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -441,14 +381,14 @@ Constructor for :py:class:`QgsProcessingOutputNumber`.
 Returns the type name for the output class.
 %End
     virtual QString type() const;
-    virtual QString valueAsString( const QVariant &value, QgsProcessingContext &context, bool &ok /Out/ ) const;
-
 };
 
 class QgsProcessingOutputFolder : QgsProcessingOutputDefinition
 {
 %Docstring(signature="appended")
 A folder output for processing algorithms.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -467,15 +407,14 @@ Constructor for QgsProcessingOutputFolder.
 Returns the type name for the output class.
 %End
     virtual QString type() const;
-    virtual QString valueAsFormattedString( const QVariant &value, QgsProcessingContext &context, bool &ok /Out/ ) const;
-
-
 };
 
 class QgsProcessingOutputFile : QgsProcessingOutputDefinition
 {
 %Docstring(signature="appended")
 A file output for processing algorithms.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -493,9 +432,6 @@ Constructor for QgsProcessingOutputFile.
 Returns the type name for the output class.
 %End
     virtual QString type() const;
-    virtual QString valueAsFormattedString( const QVariant &value, QgsProcessingContext &context, bool &ok /Out/ ) const;
-
-
 };
 
 class QgsProcessingOutputConditionalBranch : QgsProcessingOutputDefinition
@@ -524,35 +460,10 @@ Returns the type name for the output class.
     virtual QString type() const;
 };
 
-class QgsProcessingOutputVectorTileLayer : QgsProcessingOutputDefinition
-{
-%Docstring(signature="appended")
-A vector tile layer output for processing algorithms.
-
-.. versionadded:: 3.32
-%End
-
-%TypeHeaderCode
-#include "qgsprocessingoutputs.h"
-%End
-  public:
-
-    QgsProcessingOutputVectorTileLayer( const QString &name, const QString &description = QString() );
-%Docstring
-Constructor for QgsProcessingOutputVectorTileLayer.
-%End
-
-    static QString typeName();
-%Docstring
-Returns the type name for the output class.
-%End
-    virtual QString type() const;
-};
-
 /************************************************************************
  * This file has been generated automatically from                      *
  *                                                                      *
  * src/core/processing/qgsprocessingoutputs.h                           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

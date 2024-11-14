@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsabstractdatasourcewidget.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -22,6 +22,8 @@ and add layers.
 
 The implementation is generic enough to handle other layer search and
 selection widgets.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -78,21 +80,6 @@ This should clear any selection that has previously been done.
 .. versionadded:: 3.10
 %End
 
-    virtual bool configureFromUri( const QString &uri );
-%Docstring
-Configure the widget from a layer ``uri`` by selecting the layer path or connection options.
-The base implementation does nothing and returns ``False``: providers with ConfigureSourceSelectFromUri capability
-must override to implement this functionality.
-
-:return: ``True`` on success.
-
-.. note::
-
-   Not all data providers may be able to configure the widget from the provided uri, in that case this method returns ``False``.
-
-.. versionadded:: 3.38
-%End
-
   signals:
 
     void connectionsChanged();
@@ -106,13 +93,9 @@ This signal is normally forwarded the app and used to refresh browser items
 Emitted when a DB layer has been selected for addition
 %End
 
- void addRasterLayer( const QString &rasterLayerPath, const QString &baseName, const QString &providerKey ) /Deprecated/;
+    void addRasterLayer( const QString &rasterLayerPath, const QString &baseName, const QString &providerKey );
 %Docstring
 Emitted when a raster layer has been selected for addition
-
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsAbstractDataSourceWidget.addLayer` instead.
 %End
 
     void addRasterLayers( const QStringList &layersList );
@@ -124,57 +107,33 @@ Emitted when one or more GDAL supported layers are selected for addition
 .. versionadded:: 3.20
 %End
 
- void addVectorLayer( const QString &uri, const QString &layerName, const QString &providerKey = QString() ) /Deprecated/;
+    void addVectorLayer( const QString &uri, const QString &layerName, const QString &providerKey = QString() );
 %Docstring
 Emitted when a vector layer has been selected for addition.
 
 If ``providerKey`` is not specified, the default provider key associated with the source
 will be used.
-
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsAbstractDataSourceWidget.addLayer` instead.
 %End
 
- void addMeshLayer( const QString &url, const QString &baseName, const QString &providerKey ) /Deprecated/;
+    void addMeshLayer( const QString &url, const QString &baseName, const QString &providerKey );
 %Docstring
 Emitted when a mesh layer has been selected for addition.
 
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsAbstractDataSourceWidget.addLayer` instead.
+.. versionadded:: 3.4
 %End
 
- void addVectorTileLayer( const QString &url, const QString &baseName ) /Deprecated/;
+    void addVectorTileLayer( const QString &url, const QString &baseName );
 %Docstring
 Emitted when a vector tile layer has been selected for addition.
 
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsAbstractDataSourceWidget.addLayer` instead.
+.. versionadded:: 3.14
 %End
 
- void addPointCloudLayer( const QString &url, const QString &baseName, const QString &providerKey ) /Deprecated/;
+    void addPointCloudLayer( const QString &url, const QString &baseName, const QString &providerKey );
 %Docstring
 Emitted when a point cloud layer has been selected for addition.
 
-.. deprecated:: 3.40
-
-   Use :py:func:`~QgsAbstractDataSourceWidget.addLayer` instead.
-%End
-
-    void addLayer( Qgis::LayerType type, const QString &url, const QString &baseName, const QString &providerKey );
-%Docstring
-Emitted when a layer has been selected for addition.
-
-This is a generic method, intended for replacing the specific layer type signals implemented above.
-
-.. warning::
-
-   For QGIS versions < 4.x, the specific layer type added signals must be emitted for vector, raster,
-   mesh, vector tile and point cloud layers in addition to this signal.
-
-.. versionadded:: 3.34
+.. versionadded:: 3.18
 %End
 
     void addVectorLayers( const QStringList &layerList, const QString &encoding, const QString &dataSourceType );
@@ -200,9 +159,8 @@ Emitted when a layer needs to be replaced
 %Docstring
 Emitted when a progress dialog is shown by the provider dialog.
 
-.. deprecated:: 3.4
-
-   This signal is no longer used. Use :py:class:`QgsProxyProgressTask` instead to show progress reports.
+.. deprecated:: QGIS 3.4
+   this signal is no longer used. Use :py:class:`QgsProxyProgressTask` instead to show progress reports.
 %End
 
     void progressMessage( QString message );
@@ -224,7 +182,7 @@ Emitted when a ``message`` with ``title`` and ``level`` must be shown to the use
 
   protected:
 
-    QgsAbstractDataSourceWidget( QWidget *parent /TransferThis/ = 0, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::Standalone );
+    QgsAbstractDataSourceWidget( QWidget *parent /TransferThis/ = 0, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::None );
 %Docstring
 Constructor
 %End
@@ -258,5 +216,5 @@ Returns the add Button
  *                                                                      *
  * src/gui/qgsabstractdatasourcewidget.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

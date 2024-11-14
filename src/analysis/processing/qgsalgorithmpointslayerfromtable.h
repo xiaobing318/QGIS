@@ -42,7 +42,6 @@ class QgsPointsLayerFromTableAlgorithm : public QgsProcessingAlgorithm
     QString group() const override;
     QString groupId() const override;
     QString shortHelpString() const override;
-    Qgis::ProcessingAlgorithmDocumentationFlags documentationFlags() const override;
     QgsPointsLayerFromTableAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:

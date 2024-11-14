@@ -23,8 +23,6 @@
 #include "qgsfeaturefilterprovider.h"
 #include "qgis_server.h"
 
-#include <QHash>
-
 /**
  * \ingroup server
  * \class QgsDimensionFilter

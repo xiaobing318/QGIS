@@ -17,7 +17,6 @@
 
 
 #include "qgsmodelgroupboxdefinitionwidget.h"
-#include "moc_qgsmodelgroupboxdefinitionwidget.cpp"
 
 #include "qgscolorbutton.h"
 #include "qgsgui.h"

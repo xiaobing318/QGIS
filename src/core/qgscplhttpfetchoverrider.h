@@ -20,13 +20,16 @@
 
 #include <QNetworkRequest>
 #include <QString>
-#include <QPointer>
+#include "qgsnetworkaccessmanager.h" // for QgsSetRequestInitiatorClass
 
-#include "qgis_core.h"
 #include "cpl_http.h"
 #include "gdal.h"
 
 class QgsFeedback;
+
+#ifndef SIP_RUN
+#define QgsSetCPLHTTPFetchOverriderInitiatorClass(overrider, _class) QgsSetRequestInitiatorClass(overrider, _class)
+#endif
 
 /**
  * \ingroup core
@@ -38,30 +41,17 @@ class QgsFeedback;
  * \note not available in Python bindings
  * \since QGIS 3.18
  */
-class CORE_EXPORT QgsCPLHTTPFetchOverrider
+class QgsCPLHTTPFetchOverrider
 {
   public:
     //! Installs the redirection for the current thread
     explicit QgsCPLHTTPFetchOverrider( const QString &authCfg = QString(), QgsFeedback *feedback = nullptr );
 
+    //! Destructor
     ~QgsCPLHTTPFetchOverrider();
 
     //! Define attribute that must be forwarded to the actual QNetworkRequest
     void setAttribute( QNetworkRequest::Attribute code, const QVariant &value );
-
-    /**
-     * Sets the \a feedback cancellation object for the redirection.
-     *
-     * \since QGIS 3.32
-     */
-    void setFeedback( QgsFeedback *feedback );
-
-    /**
-     * Returns the thread associated with the overrider.
-     *
-     * \since QGIS 3.32
-     */
-    QThread *thread() const;
 
   private:
 
@@ -78,8 +68,6 @@ class CORE_EXPORT QgsCPLHTTPFetchOverrider
     QString mAuthCfg;
 
     QgsFeedback *mFeedback = nullptr;
-
-    QPointer< QThread > mThread;
 
     std::map<QNetworkRequest::Attribute, QVariant> mAttributes;
 };

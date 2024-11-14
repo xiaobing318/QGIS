@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/browser/qgsfavoritesitem.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -13,6 +13,8 @@ class QgsFavoritesItem : QgsDataCollectionItem
 {
 %Docstring(signature="appended")
 Contains various Favorites directories
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -75,5 +77,5 @@ Icon for favorites group
  *                                                                      *
  * src/core/browser/qgsfavoritesitem.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

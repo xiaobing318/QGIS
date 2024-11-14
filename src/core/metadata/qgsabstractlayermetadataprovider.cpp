@@ -56,12 +56,12 @@ void QgsLayerMetadataProviderResult::setGeographicExtent( const QgsPolygon &geog
   mGeographicExtent = geographicExtent;
 }
 
-Qgis::GeometryType QgsLayerMetadataProviderResult::geometryType() const
+const QgsWkbTypes::GeometryType &QgsLayerMetadataProviderResult::geometryType() const
 {
   return mGeometryType;
 }
 
-void QgsLayerMetadataProviderResult::setGeometryType( Qgis::GeometryType geometryType )
+void QgsLayerMetadataProviderResult::setGeometryType( const QgsWkbTypes::GeometryType &geometryType )
 {
   mGeometryType = geometryType;
 }
@@ -96,12 +96,12 @@ void QgsLayerMetadataProviderResult::setDataProviderName( const QString &dataPro
   mDataProviderName = dataProviderName;
 }
 
-Qgis::LayerType QgsLayerMetadataProviderResult::layerType() const
+QgsMapLayerType QgsLayerMetadataProviderResult::layerType() const
 {
   return mLayerType;
 }
 
-void QgsLayerMetadataProviderResult::setLayerType( Qgis::LayerType layerType )
+void QgsLayerMetadataProviderResult::setLayerType( QgsMapLayerType layerType )
 {
   mLayerType = layerType;
 }

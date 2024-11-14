@@ -9,28 +9,27 @@ __author__ = 'Nyall Dawson'
 __date__ = '01/03/2022'
 __copyright__ = 'Copyright 2022, The QGIS Project'
 
-
+import qgis  # NOQA
 from qgis.analysis import (
-    QgsGcpPoint,
-    QgsGcpTransformerInterface,
     QgsVectorWarper,
+    QgsGcpPoint,
+    QgsGcpTransformerInterface
 )
 from qgis.core import (
-    QgsCoordinateReferenceSystem,
+    QgsVectorLayer,
     QgsFeature,
-    QgsFeatureStore,
     QgsGeometry,
     QgsPointXY,
-    QgsProject,
-    QgsVectorLayer,
+    QgsFeatureStore,
+    QgsCoordinateReferenceSystem,
+    QgsProject
 )
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsVectorWarper(QgisTestCase):
+class TestQgsVectorWarper(unittest.TestCase):
 
     def testWarper(self):
         # create source layer
@@ -53,7 +52,7 @@ class TestQgsVectorWarper(QgisTestCase):
         f5.setAttributes(["test5", 0])
         f5.setGeometry(QgsGeometry.fromPointXY(QgsPointXY(0, 0)))
         self.assertTrue(pr.addFeatures([f, f2, f3, f4, f5]))
-        self.assertEqual(source_layer.featureCount(), 5)
+        self.assertTrue(source_layer.featureCount() == 5)
 
         # create sink
         sink = QgsFeatureStore()

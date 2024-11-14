@@ -24,6 +24,7 @@ import os
 os.environ['QT_HASH_SEED'] = '1'
 
 from qgis.testing import unittest
+
 from test_qgsserver_wms import TestQgsServerWMSTestBase
 
 

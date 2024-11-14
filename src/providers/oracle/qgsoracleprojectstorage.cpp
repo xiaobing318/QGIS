@@ -15,10 +15,10 @@
 #include "qgsoracleprojectstorage.h"
 
 #include "qgsoracleconn.h"
-#include "qgsdbquerylog.h"
+#include "qgsoracleconnpool.h"
 #include "qgsoracleprovider.h"
+
 #include "qgsreadwritecontext.h"
-#include "qgslogger.h"
 
 #include <QIODevice>
 #include <QJsonDocument>
@@ -182,8 +182,8 @@ bool QgsOracleProjectStorage::writeProject( const QString &uri, QIODevice *devic
   QSqlQuery qry( *pconn.get() );
   if ( !qry.prepare( sql ) )
   {
-    QgsDebugError( QStringLiteral( "SQL: %1\nERROR: %2" )
-                   .arg( qry.lastQuery(), qry.lastError().text() ) );
+    QgsDebugMsg( QStringLiteral( "SQL: %1\nERROR: %2" )
+                 .arg( qry.lastQuery(), qry.lastError().text() ) );
     return false;
   }
 

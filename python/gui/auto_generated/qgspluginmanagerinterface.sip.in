@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgspluginmanagerinterface.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -18,6 +18,9 @@ class QgsPluginManagerInterface : QObject
   public:
 
     QgsPluginManagerInterface();
+%Docstring
+Constructor
+%End
 
     virtual void clearPythonPluginMetadata() = 0;
 %Docstring
@@ -65,5 +68,5 @@ show the given message in the Plugin Manager internal message bar
  *                                                                      *
  * src/gui/qgspluginmanagerinterface.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

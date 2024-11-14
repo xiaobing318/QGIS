@@ -57,6 +57,7 @@ class QgsMasterLayoutInterface;
  * If you are creating a new QgsLayoutItem configuration widget, you should instead
  * inherit from QgsLayoutItemBaseWidget (rather then directly working with QgsLayoutConfigObject).
  *
+ * \since QGIS 3.0
 */
 class GUI_EXPORT QgsLayoutConfigObject: public QObject
 {
@@ -116,6 +117,7 @@ class GUI_EXPORT QgsLayoutConfigObject: public QObject
  * this base class.
  *
  *
+ * \since QGIS 3.0
 */
 class GUI_EXPORT QgsLayoutItemBaseWidget: public QgsPanelWidget
 {
@@ -210,6 +212,7 @@ class GUI_EXPORT QgsLayoutItemBaseWidget: public QgsPanelWidget
  * \ingroup gui
  * \brief A widget for controlling the common properties of layout items (e.g. position and size, background, stroke, frame).
  * This widget can be embedded into other layout item widgets.
+ * \since QGIS 3.0
 */
 class GUI_EXPORT QgsLayoutItemPropertiesWidget: public QWidget, private Ui::QgsLayoutItemWidgetBase
 {
@@ -267,21 +270,20 @@ class GUI_EXPORT QgsLayoutItemPropertiesWidget: public QWidget, private Ui::QgsL
 //    void on_mTransparencySlider_valueChanged( int value );
 //    void on_mTransparencySpinBox_valueChanged( int value );
     void mStrokeWidthSpinBox_valueChanged( double d );
-    void strokeUnitChanged( Qgis::LayoutUnit unit );
+    void strokeUnitChanged( QgsUnitTypes::LayoutUnit unit );
     void mFrameGroupBox_toggled( bool state );
     void mFrameJoinStyleCombo_currentIndexChanged( int index );
     void mBackgroundGroupBox_toggled( bool state );
     void mItemIdLineEdit_editingFinished();
-    void exportGroupNameEditingFinished();
 
     //adjust coordinates in line edits
     void mPageSpinBox_valueChanged( int );
     void mXPosSpin_valueChanged( double );
     void mYPosSpin_valueChanged( double );
-    void positionUnitsChanged( Qgis::LayoutUnit unit );
+    void positionUnitsChanged( QgsUnitTypes::LayoutUnit unit );
     void mWidthSpin_valueChanged( double );
     void mHeightSpin_valueChanged( double );
-    void sizeUnitsChanged( Qgis::LayoutUnit unit );
+    void sizeUnitsChanged( QgsUnitTypes::LayoutUnit unit );
 
     void mUpperLeftCheckBox_stateChanged( bool state );
     void mUpperMiddleCheckBox_stateChanged( bool state );

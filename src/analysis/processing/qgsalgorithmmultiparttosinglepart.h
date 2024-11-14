@@ -40,17 +40,16 @@ class QgsMultipartToSinglepartAlgorithm : public QgsProcessingFeatureBasedAlgori
     QString name() const override;
     QString displayName() const override;
     QString outputName() const override;
-    Qgis::WkbType outputWkbType( Qgis::WkbType inputWkbType ) const override;
+    QgsWkbTypes::Type outputWkbType( QgsWkbTypes::Type inputWkbType ) const override;
     QStringList tags() const override;
     QString group() const override;
     QString groupId() const override;
     QString shortHelpString() const override;
-    Qgis::ProcessingAlgorithmDocumentationFlags documentationFlags() const override;
     QgsMultipartToSinglepartAlgorithm *createInstance() const override SIP_FACTORY;
 
   protected:
 
-    Qgis::ProcessingFeatureSourceFlags sourceFlags() const override;
+    QgsProcessingFeatureSource::Flag sourceFlags() const override;
     QgsFeatureSink::SinkFlags sinkFlags() const override;
     QgsFeatureList processFeature( const QgsFeature &feature,
                                    QgsProcessingContext &context, QgsProcessingFeedback *feedback ) override;

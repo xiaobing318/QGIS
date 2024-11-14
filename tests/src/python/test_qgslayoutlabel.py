@@ -9,18 +9,16 @@ __author__ = '(C) 2017 by Nyall Dawson'
 __date__ = '23/10/2017'
 __copyright__ = 'Copyright 2017, The QGIS Project'
 
-from qgis.PyQt.QtCore import QDate, QDateTime, QFileInfo
+import qgis  # NOQA
+from qgis.PyQt.QtCore import QFileInfo, QDate, QDateTime
 from qgis.PyQt.QtTest import QSignalSpy
-from qgis.core import (
-    QgsLayoutItemLabel,
-    QgsLayoutItemPage,
-    QgsLayoutPoint,
-    QgsPrintLayout,
-    QgsProject,
-    QgsVectorLayer,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsVectorLayer,
+                       QgsPrintLayout,
+                       QgsLayoutItemLabel,
+                       QgsProject,
+                       QgsLayoutItemPage,
+                       QgsLayoutPoint)
+from qgis.testing import start_app, unittest
 
 from test_qgslayoutitem import LayoutItemTestCase
 from utilities import unitTestDataPath
@@ -28,11 +26,10 @@ from utilities import unitTestDataPath
 start_app()
 
 
-class TestQgsLayoutItemLabel(QgisTestCase, LayoutItemTestCase):
+class TestQgsLayoutItemLabel(unittest.TestCase, LayoutItemTestCase):
 
     @classmethod
     def setUpClass(cls):
-        super(TestQgsLayoutItemLabel, cls).setUpClass()
         cls.item_class = QgsLayoutItemLabel
 
     def testCase(self):

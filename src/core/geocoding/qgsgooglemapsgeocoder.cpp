@@ -17,7 +17,6 @@
 #include "qgsgeocodercontext.h"
 #include "qgslogger.h"
 #include "qgsnetworkaccessmanager.h"
-#include "qgssetrequestinitiator_p.h"
 #include "qgsblockingnetworkrequest.h"
 #include "qgsreadwritelocker.h"
 #include "qgscoordinatetransform.h"
@@ -50,24 +49,24 @@ QgsGeocoderInterface::Flags QgsGoogleMapsGeocoder::flags() const
 QgsFields QgsGoogleMapsGeocoder::appendedFields() const
 {
   QgsFields fields;
-  fields.append( QgsField( QStringLiteral( "location_type" ), QMetaType::Type::QString ) );
-  fields.append( QgsField( QStringLiteral( "formatted_address" ), QMetaType::Type::QString ) );
-  fields.append( QgsField( QStringLiteral( "place_id" ), QMetaType::Type::QString ) );
+  fields.append( QgsField( QStringLiteral( "location_type" ), QVariant::String ) );
+  fields.append( QgsField( QStringLiteral( "formatted_address" ), QVariant::String ) );
+  fields.append( QgsField( QStringLiteral( "place_id" ), QVariant::String ) );
 
   // add more?
-  fields.append( QgsField( QStringLiteral( "street_number" ), QMetaType::Type::QString ) );
-  fields.append( QgsField( QStringLiteral( "route" ), QMetaType::Type::QString ) );
-  fields.append( QgsField( QStringLiteral( "locality" ), QMetaType::Type::QString ) );
-  fields.append( QgsField( QStringLiteral( "administrative_area_level_2" ), QMetaType::Type::QString ) );
-  fields.append( QgsField( QStringLiteral( "administrative_area_level_1" ), QMetaType::Type::QString ) );
-  fields.append( QgsField( QStringLiteral( "country" ), QMetaType::Type::QString ) );
-  fields.append( QgsField( QStringLiteral( "postal_code" ), QMetaType::Type::QString ) );
+  fields.append( QgsField( QStringLiteral( "street_number" ), QVariant::String ) );
+  fields.append( QgsField( QStringLiteral( "route" ), QVariant::String ) );
+  fields.append( QgsField( QStringLiteral( "locality" ), QVariant::String ) );
+  fields.append( QgsField( QStringLiteral( "administrative_area_level_2" ), QVariant::String ) );
+  fields.append( QgsField( QStringLiteral( "administrative_area_level_1" ), QVariant::String ) );
+  fields.append( QgsField( QStringLiteral( "country" ), QVariant::String ) );
+  fields.append( QgsField( QStringLiteral( "postal_code" ), QVariant::String ) );
   return fields;
 }
 
-Qgis::WkbType QgsGoogleMapsGeocoder::wkbType() const
+QgsWkbTypes::Type QgsGoogleMapsGeocoder::wkbType() const
 {
-  return Qgis::WkbType::Point;
+  return QgsWkbTypes::Point;
 }
 
 QList<QgsGeocoderResult> QgsGoogleMapsGeocoder::geocodeString( const QString &string, const QgsGeocoderContext &context, QgsFeedback *feedback ) const
@@ -84,7 +83,7 @@ QList<QgsGeocoderResult> QgsGoogleMapsGeocoder::geocodeString( const QString &st
     }
     catch ( QgsCsException & )
     {
-      QgsDebugError( "Could not transform geocode bounds to WGS84" );
+      QgsDebugMsg( "Could not transform geocode bounds to WGS84" );
     }
   }
 
@@ -185,7 +184,7 @@ QUrl QgsGoogleMapsGeocoder::requestUrl( const QString &address, const QgsRectang
     // Qt5 does URL encoding from some reason (of the FILTER parameter for example)
     modifiedUrlString = QUrl::fromPercentEncoding( modifiedUrlString.toUtf8() );
     modifiedUrlString.replace( QLatin1String( "fake_qgis_http_endpoint/" ), QLatin1String( "fake_qgis_http_endpoint_" ) );
-    QgsDebugMsgLevel( QStringLiteral( "Get %1" ).arg( modifiedUrlString ), 2 );
+    QgsDebugMsg( QStringLiteral( "Get %1" ).arg( modifiedUrlString ) );
     modifiedUrlString = modifiedUrlString.mid( QStringLiteral( "http://" ).size() );
     QString args = modifiedUrlString.mid( modifiedUrlString.indexOf( '?' ) );
     if ( modifiedUrlString.size() > 150 )
@@ -214,7 +213,7 @@ QUrl QgsGoogleMapsGeocoder::requestUrl( const QString &address, const QgsRectang
     }
 #endif
     modifiedUrlString = modifiedUrlString.mid( 0, modifiedUrlString.indexOf( '?' ) ) + args;
-    QgsDebugMsgLevel( QStringLiteral( "Get %1 (after laundering)" ).arg( modifiedUrlString ), 2 );
+    QgsDebugMsg( QStringLiteral( "Get %1 (after laundering)" ).arg( modifiedUrlString ) );
     res = QUrl::fromLocalFile( modifiedUrlString );
   }
 

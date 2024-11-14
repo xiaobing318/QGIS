@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsexternalstoragefilewidget.h"
-#include "moc_qgsexternalstoragefilewidget.cpp"
 
 #include <QLineEdit>
 #include <QToolButton>
@@ -63,7 +62,7 @@ void QgsExternalStorageFileWidget::setStorageType( const QString &storageType )
     mExternalStorage = QgsApplication::externalStorageRegistry()->externalStorageFromType( storageType );
     if ( !mExternalStorage )
     {
-      QgsDebugError( QStringLiteral( "Invalid storage type: %1" ).arg( storageType ) );
+      QgsDebugMsg( QStringLiteral( "Invalid storage type: %1" ).arg( storageType ) );
     }
     else
     {
@@ -198,7 +197,7 @@ void QgsExternalStorageFileWidget::setSelectedFileNames( QStringList fileNames )
                                    tr( "Storage URL expression is invalid : %1" ).arg( mStorageUrlExpression->evalErrorString() ) );
       }
 
-      QgsDebugError( QStringLiteral( "Storage URL expression is invalid : %1" ).arg( mStorageUrlExpression->evalErrorString() ) );
+      QgsDebugMsg( tr( "Storage URL expression is invalid : %1" ).arg( mStorageUrlExpression->evalErrorString() ) );
       return;
     }
 

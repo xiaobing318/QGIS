@@ -23,9 +23,6 @@
 #include "qgsrenderer.h"
 #include "qgsvectorlayerlabeling.h"
 #include "qgslabelsink.h"
-#include "qgsmaplayerstyle.h"
-#include "qgsrendercontext.h"
-#include "qgsdxfexport.h"
 
 /**
  * Holds information about each layer in a DXF job.
@@ -33,7 +30,7 @@
  */
 struct DxfLayerJob
 {
-    DxfLayerJob( QgsVectorLayer *vl, const QString &layerStyleOverride, QgsRenderContext &renderContext, QgsDxfExport *dxfExport, const QString &splitLayerAttribute, const QString &layerDerivedName )
+    DxfLayerJob( QgsVectorLayer *vl, const QString &layerStyleOverride, QgsRenderContext &renderContext, QgsDxfExport *dxfExport, const QString &splitLayerAttribute )
       : renderContext( renderContext )
       , styleOverride( vl )
       , featureSource( vl )
@@ -41,16 +38,16 @@ struct DxfLayerJob
       , crs( vl->crs() )
       , layerName( vl->name() )
       , splitLayerAttribute( splitLayerAttribute )
-      , layerDerivedName( layerDerivedName )
+      , layerTitle( vl->title().isEmpty() ? vl->name() : vl->title() )
     {
+      fields = vl->fields();
+      renderer.reset( vl->renderer()->clone() );
+      renderContext.expressionContext().appendScope( QgsExpressionContextUtils::layerScope( vl ) );
+
       if ( !layerStyleOverride.isNull() )
       {
         styleOverride.setOverrideStyle( layerStyleOverride );
       }
-      fields = vl->fields();
-      selectedFeatureIds = vl->selectedFeatureIds();
-      renderer.reset( vl->renderer()->clone() );
-      renderContext.expressionContext().appendScope( QgsExpressionContextUtils::layerScope( vl ) );
 
       labeling.reset( vl->labelsEnabled() ? vl->labeling()->clone() : nullptr );
 
@@ -94,7 +91,6 @@ struct DxfLayerJob
 
     QgsRenderContext renderContext;
     QgsFields fields;
-    QgsFeatureIds selectedFeatureIds;
     QgsMapLayerStyleOverride styleOverride;
     QgsVectorLayerFeatureSource featureSource;
     std::unique_ptr< QgsFeatureRenderer > renderer;
@@ -105,7 +101,7 @@ struct DxfLayerJob
     QgsLabelSinkProvider *labelProvider = nullptr;
     QgsRuleBasedLabelSinkProvider *ruleBasedLabelProvider = nullptr;
     QString splitLayerAttribute;
-    QString layerDerivedName;  // Obtained from overridden name, title or layer name
+    QString layerTitle;
     QSet<QString> attributes;
 
   private:

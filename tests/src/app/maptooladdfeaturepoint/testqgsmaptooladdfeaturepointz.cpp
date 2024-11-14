@@ -158,7 +158,7 @@ void TestQgsMapToolAddFeaturePointZ::testPointZ()
   TestQgsMapToolAdvancedDigitizingUtils utils( mCaptureTool );
 
   // test with default Z value = 333
-  QgsSettingsRegistryCore::settingsDigitizingDefaultZValue->setValue( 333 );
+  QgsSettingsRegistryCore::settingsDigitizingDefaultZValue.setValue( 333 );
 
   QSet<QgsFeatureId> oldFids = utils.existingFeatureIds();
 
@@ -167,7 +167,7 @@ void TestQgsMapToolAddFeaturePointZ::testPointZ()
 
   QCOMPARE( mLayerPointZ->featureCount(), ( long )2 );
 
-  QString wkt = "Point Z (4 0 333)";
+  QString wkt = "PointZ (4 0 333)";
   QCOMPARE( mLayerPointZ->getFeature( newFid ).geometry().asWkt(), wkt );
 
   mLayerPointZ->undoStack()->undo();
@@ -176,7 +176,7 @@ void TestQgsMapToolAddFeaturePointZ::testPointZ()
   utils.mouseClick( 6, 6, Qt::LeftButton, Qt::KeyboardModifiers(), true );
   newFid = utils.newFeatureId( oldFids );
 
-  wkt = "Point Z (6 6 3)";
+  wkt = "PointZ (6 6 3)";
   QCOMPARE( mLayerPointZ->getFeature( newFid ).geometry().asWkt(), wkt );
 
   mLayerPointZ->undoStack()->undo();
@@ -190,7 +190,7 @@ void TestQgsMapToolAddFeaturePointZ::testTopologicalEditingZ()
   TestQgsMapToolAdvancedDigitizingUtils utils( mCaptureTool );
 
   // test with default Z value = 333
-  QgsSettingsRegistryCore::settingsDigitizingDefaultZValue->setValue( 333 );
+  QgsSettingsRegistryCore::settingsDigitizingDefaultZValue.setValue( 333 );
 
   const QSet<QgsFeatureId> oldFids = utils.existingFeatureIds();
 
@@ -199,13 +199,13 @@ void TestQgsMapToolAddFeaturePointZ::testTopologicalEditingZ()
 
   QCOMPARE( mLayerPointZ->featureCount(), ( long )2 );
 
-  QString wkt = "Point Z (3 3 3)";
+  QString wkt = "PointZ (3 3 3)";
   QCOMPARE( mLayerPointZ->getFeature( newFid ).geometry().asWkt(), wkt );
 
 
   QCOMPARE( mLayerLineZSnap->featureCount(), ( long )1 );
 
-  wkt = "LineString Z (1 1 1, 3 3 3, 5 5 5)";
+  wkt = "LineStringZ (1 1 1, 3 3 3, 5 5 5)";
   QgsFeature f;
   QgsFeatureIterator it = mLayerLineZSnap->getFeatures();
   it.nextFeature( f );

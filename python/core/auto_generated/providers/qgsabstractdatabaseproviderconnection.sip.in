@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/providers/qgsabstractdatabaseproviderconnection.h           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -33,7 +33,7 @@ is not supported or cannot be performed without errors.
 
   public:
 
-    enum class TableFlag
+    enum TableFlag
     {
       Aspatial,
       Vector,
@@ -41,7 +41,6 @@ is not supported or cannot be performed without errors.
       View,
       MaterializedView,
       Foreign,
-      IncludeSystemTables,
     };
 
     typedef QFlags<QgsAbstractDatabaseProviderConnection::TableFlag> TableFlags;
@@ -93,7 +92,7 @@ Returns the number of fetched rows.
 
         long long rowCount( ) const;
 %Docstring
-Returns the number of rows returned by a SELECT query or :py:class:`Qgis`.FeatureCountState.UnknownCount if unknown.
+Returns the number of rows returned by a SELECT query or Qgis.FeatureCountState.UnknownCount if unknown.
 
 .. seealso:: :py:func:`fetchedRowCount`
 %End
@@ -167,7 +166,7 @@ Sets the query execution time to ``queryExecutionTime`` milliseconds.
           QString str = QStringLiteral( "<QgsAbstractDatabaseProviderConnection.TableProperty.GeometryColumnType: '%1, %2'>" ).arg( QgsWkbTypes::displayString( sipCpp->wkbType ), sipCpp->crs.authid() );
           sipRes = PyUnicode_FromString( str.toUtf8().constData() );
 %End
-          Qgis::WkbType wkbType;
+          QgsWkbTypes::Type wkbType;
           QgsCoordinateReferenceSystem crs;
 
           bool operator==( const GeometryColumnType &other ) const;
@@ -189,7 +188,7 @@ Sets the table name to ``name``.
 .. seealso:: :py:func:`defaultName`
 %End
 
-        void addGeometryColumnType( Qgis::WkbType type, const QgsCoordinateReferenceSystem &crs );
+        void addGeometryColumnType( const QgsWkbTypes::Type &type, const QgsCoordinateReferenceSystem &crs );
 %Docstring
 Appends the geometry column ``type`` with the given ``srid`` to the geometry column types list.
 %End
@@ -357,9 +356,6 @@ This information is calculated from the geometry columns types.
       AddFieldDomain,
       RenameField,
       RetrieveRelationships,
-      AddRelationship,
-      UpdateRelationship,
-      DeleteRelationship,
     };
     typedef QFlags<QgsAbstractDatabaseProviderConnection::Capability> Capabilities;
 
@@ -373,7 +369,6 @@ This information is calculated from the geometry columns types.
       SinglePoint,
       SingleLineString,
       SinglePolygon,
-      PolyhedralSurfaces,
     };
 
     typedef QFlags<QgsAbstractDatabaseProviderConnection::GeometryColumnCapability> GeometryColumnCapabilities;
@@ -399,18 +394,7 @@ The connection is not automatically stored in the settings.
 
     Capabilities capabilities() const;
 %Docstring
-Returns connection capabilities.
-
-.. seealso:: :py:func:`capabilities2`
-%End
-
-    Qgis::DatabaseProviderConnectionCapabilities2 capabilities2() const;
-%Docstring
-Returns extended connection capabilities.
-
-.. seealso:: :py:func:`capabilities`
-
-.. versionadded:: 3.32
+Returns connection capabilities
 %End
 
     virtual GeometryColumnCapabilities geometryColumnCapabilities();
@@ -437,7 +421,7 @@ Returns the URI string for the given ``table`` and ``schema``.
 .. versionadded:: 3.12
 %End
 
-    virtual void createVectorTable( const QString &schema, const QString &name, const QgsFields &fields, Qgis::WkbType wkbType, const QgsCoordinateReferenceSystem &srs, bool overwrite, const QMap<QString, QVariant> *options ) const throw( QgsProviderConnectionException );
+    virtual void createVectorTable( const QString &schema, const QString &name, const QgsFields &fields, QgsWkbTypes::Type wkbType, const QgsCoordinateReferenceSystem &srs, bool overwrite, const QMap<QString, QVariant> *options ) const throw( QgsProviderConnectionException );
 %Docstring
 Creates an empty table with ``name`` in the given ``schema`` (schema is ignored if not supported by the backend).
 
@@ -564,6 +548,7 @@ Renames an existing field.
 
    it is responsibility of the caller to handle open layers and registry entries.
 
+
 :raises QgsProviderConnectionException: if any errors are encountered.
 
 .. versionadded:: 3.28
@@ -662,11 +647,9 @@ ignored if not supported by the backend).
 %End
 
 
-    virtual QgsAbstractDatabaseProviderConnection::TableProperty table( const QString &schema, const QString &table, QgsFeedback *feedback = 0 ) const throw( QgsProviderConnectionException );
+    virtual QgsAbstractDatabaseProviderConnection::TableProperty table( const QString &schema, const QString &table ) const throw( QgsProviderConnectionException );
 %Docstring
 Returns information on a ``table`` in the given ``schema``.
-
-Since QGIS 3.32 the optional ``feedback`` argument can be used to cancel the request.
 
 :raises QgsProviderConnectionException: if any errors are encountered or if the table does not exist.
 
@@ -696,11 +679,9 @@ Returns information about the existing schemas.
 :raises QgsProviderConnectionException: if any errors are encountered.
 %End
 
-    virtual QgsFields fields( const QString &schema, const QString &table, QgsFeedback *feedback = 0 ) const throw( QgsProviderConnectionException );
+    virtual QgsFields fields( const QString &schema, const QString &table ) const throw( QgsProviderConnectionException );
 %Docstring
 Returns the fields of a ``table`` and ``schema``.
-
-Since QGIS 3.32 the optional ``feedback`` argument can be used to cancel the request.
 
 .. note::
 
@@ -739,14 +720,6 @@ The default implementation returns an list of common reserved words under the
 Subclasses should add provider- and/or connection- specific words.
 
 .. versionadded:: 3.22
-%End
-
-    virtual QSet< QString > illegalFieldNames() const;
-%Docstring
-Returns a list of field names which are considered illegal by the connection and
-should not be used when creating or altering fields.
-
-.. versionadded:: 3.30
 %End
 
     virtual QStringList fieldDomainNames() const throw( QgsProviderConnectionException );
@@ -810,135 +783,6 @@ Adds a new field ``domain`` to the database.
 .. versionadded:: 3.26
 %End
 
-    virtual void setFieldAlias( const QString &fieldName, const QString &schema, const QString &tableName, const QString &alias ) const throw( QgsProviderConnectionException );
-%Docstring
-Sets the ``alias`` for the existing field with the specified name.
-
-:param fieldName: name of the field to be modified
-:param schema: name of the schema (schema is ignored if not supported by the backend).
-:param tableName: name of the table
-:param alias: alias to set for the field. Set to an empty string to remove a previously set alias.
-
-:raises QgsProviderConnectionException: if any errors are encountered.
-
-.. versionadded:: 3.32
-%End
-
-    virtual void setFieldComment( const QString &fieldName, const QString &schema, const QString &tableName, const QString &comment ) const throw( QgsProviderConnectionException );
-%Docstring
-Sets the ``comment`` for the existing field with the specified name.
-
-:param fieldName: name of the field to be modified
-:param schema: name of the schema (schema is ignored if not supported by the backend).
-:param tableName: name of the table
-:param comment: comment to set for the field. Set to an empty string to remove a previously set comment.
-
-:raises QgsProviderConnectionException: if any errors are encountered.
-
-.. versionadded:: 3.32
-%End
-
-    SIP_PYOBJECT supportedRelationshipCardinalities() const /TypeHint="List[Qgis.RelationshipCardinality]"/;
-%Docstring
-Returns a list of relationship cardinalities which are supported by the provider.
-
-.. versionadded:: 3.30
-%End
-%MethodCode
-    // adapted from the qpymultimedia_qlist.sip file from the PyQt6 sources
-
-    const QList< Qgis::RelationshipCardinality > cppRes = sipCpp->supportedRelationshipCardinalities();
-
-    PyObject *l = PyList_New( cppRes.size() );
-
-    if ( !l )
-      sipIsErr = 1;
-    else
-    {
-      for ( int i = 0; i < cppRes.size(); ++i )
-      {
-        PyObject *eobj = sipConvertFromEnum( static_cast<int>( cppRes.at( i ) ),
-                                             sipType_Qgis_RelationshipCardinality );
-
-        if ( !eobj )
-        {
-          sipIsErr = 1;
-        }
-
-        PyList_SetItem( l, i, eobj );
-      }
-
-      if ( !sipIsErr )
-      {
-        sipRes = l;
-      }
-      else
-      {
-        Py_DECREF( l );
-      }
-    }
-%End
-
-    SIP_PYOBJECT supportedRelationshipStrengths() const /TypeHint="List[Qgis.RelationshipStrength]"/;
-%Docstring
-Returns a list of relationship strengths which are supported by the provider.
-
-.. versionadded:: 3.30
-%End
-%MethodCode
-    // adapted from the qpymultimedia_qlist.sip file from the PyQt6 sources
-
-    const QList< Qgis::RelationshipStrength > cppRes = sipCpp->supportedRelationshipStrengths();
-
-    PyObject *l = PyList_New( cppRes.size() );
-
-    if ( !l )
-      sipIsErr = 1;
-    else
-    {
-      for ( int i = 0; i < cppRes.size(); ++i )
-      {
-        PyObject *eobj = sipConvertFromEnum( static_cast<int>( cppRes.at( i ) ),
-                                             sipType_Qgis_RelationshipStrength );
-
-        if ( !eobj )
-        {
-          sipIsErr = 1;
-        }
-
-        PyList_SetItem( l, i, eobj );
-      }
-
-      if ( !sipIsErr )
-      {
-        sipRes = l;
-      }
-      else
-      {
-        Py_DECREF( l );
-      }
-    }
-%End
-
-    virtual Qgis::RelationshipCapabilities supportedRelationshipCapabilities() const;
-%Docstring
-Returns the relationship capabilities supported by the provider.
-
-.. versionadded:: 3.30
-%End
-
-    virtual QStringList relatedTableTypes() const;
-%Docstring
-Returns a list of the related table types supported by the database format.
-
-The related table type is a free-form string representing the type of related features, where the
-exact interpretation is format dependent. For instance, table types from GeoPackage
-relationships will directly reflect the categories from the GeoPackage related
-tables extension (i.e. "media", "simple attributes", "features", "attributes" and "tiles").
-
-.. versionadded:: 3.30
-%End
-
     virtual QList< QgsWeakRelation > relationships( const QString &schema = QString(), const QString &tableName = QString() ) const throw( QgsProviderConnectionException );
 %Docstring
 Returns a list of relationships detected in the database.
@@ -951,33 +795,6 @@ forms the left (or "parent" / "referenced") side of the relationship are retriev
 :raises QgsProviderConnectionException: if any errors are encountered.
 
 .. versionadded:: 3.28
-%End
-
-    virtual void addRelationship( const QgsWeakRelation &relationship ) const throw( QgsProviderConnectionException );
-%Docstring
-Adds a new field ``relationship`` to the database.
-
-:raises QgsProviderConnectionException: if any errors are encountered.
-
-.. versionadded:: 3.30
-%End
-
-    virtual void updateRelationship( const QgsWeakRelation &relationship ) const throw( QgsProviderConnectionException );
-%Docstring
-Updates an existing ``relationship`` in the database.
-
-:raises QgsProviderConnectionException: if any errors are encountered.
-
-.. versionadded:: 3.30
-%End
-
-    virtual void deleteRelationship( const QgsWeakRelation &relationship ) const throw( QgsProviderConnectionException );
-%Docstring
-Deletes an existing ``relationship`` in the database.
-
-:raises QgsProviderConnectionException: if any errors are encountered.
-
-.. versionadded:: 3.30
 %End
 
     virtual QgsProviderSqlQueryBuilder *queryBuilder() const /Factory/;
@@ -1024,14 +841,6 @@ Checks if ``capability`` is supported.
 :raises QgsProviderConnectionException: if the capability is not supported
 %End
 
-    void checkCapability( Qgis::DatabaseProviderConnectionCapability2 capability ) const;
-%Docstring
-Checks if ``capability`` is supported.
-
-:raises QgsProviderConnectionException: if the capability is not supported
-%End
-
-
 
 };
 
@@ -1043,5 +852,5 @@ QFlags<QgsAbstractDatabaseProviderConnection::Capability> operator|(QgsAbstractD
  *                                                                      *
  * src/core/providers/qgsabstractdatabaseproviderconnection.h           *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

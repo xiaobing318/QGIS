@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsmapthemes.h"
-#include "moc_qgsmapthemes.cpp"
 #include "qgsmapthemecollection.h"
 
 #include "qgslayertree.h"

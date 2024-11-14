@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/providers/qgsprovidersublayertask.h                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -41,14 +41,6 @@ Constructor for QgsProviderSublayerTask, which retrieves sublayer details for th
 specified ``uri``.
 %End
 
-    QgsProviderSublayerTask( const QString &uri, const QString &providerKey, bool includeSystemTables = false );
-%Docstring
-Constructor for QgsProviderSublayerTask, which retrieves sublayer details for the
-specified ``uri``, restricted to a particular provider.
-
-.. versionadded:: 3.30
-%End
-
     ~QgsProviderSublayerTask();
 
     QList<QgsProviderSublayerDetails> results() const;
@@ -71,5 +63,5 @@ Returns the sublayer details as calculated by the task.
  *                                                                      *
  * src/core/providers/qgsprovidersublayertask.h                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

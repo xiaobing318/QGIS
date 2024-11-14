@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/layout/qgslayoutitemlegend.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -16,6 +16,8 @@ class QgsLegendModel : QgsLayerTreeModel
 Item model implementation based on layer tree model for layout legend.
 
 Overrides some functionality of :py:class:`QgsLayerTreeModel` to better fit the needs of layout legends.
+
+.. versionadded:: 2.6
 %End
 
 %TypeHeaderCode
@@ -63,6 +65,8 @@ class QgsLayoutItemLegend : QgsLayoutItem
 {
 %Docstring(signature="appended")
 A layout item subclass for map legends.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -89,10 +93,6 @@ The caller takes responsibility for deleting the returned object.
     virtual QgsLayoutItem::Flags itemFlags() const;
 
     virtual QString displayName() const;
-
-    virtual bool requiresRasterization() const;
-
-    virtual bool containsAdvancedEffects() const;
 
 
     void adjustBoxSize();
@@ -121,7 +121,6 @@ Returns whether the legend should automatically resize to fit its contents.
 %Docstring
 Returns the legend model.
 %End
-
 
     void setAutoUpdateModel( bool autoUpdate );
 %Docstring
@@ -211,26 +210,18 @@ Returns legend style.
 Sets the style of ``component`` to ``style`` for the legend.
 %End
 
- QFont styleFont( QgsLegendStyle::Style component ) const /Deprecated/;
+    QFont styleFont( QgsLegendStyle::Style component ) const;
 %Docstring
 Returns the font settings for a legend ``component``.
 
 .. seealso:: :py:func:`setStyleFont`
-
-.. deprecated:: 3.40
-
-   Use :py:func:`QgsLegendStyle.textFormat()` from :py:func:`~QgsLayoutItemLegend.style` instead.
 %End
 
- void setStyleFont( QgsLegendStyle::Style component, const QFont &font ) /Deprecated/;
+    void setStyleFont( QgsLegendStyle::Style component, const QFont &font );
 %Docstring
 Sets the style ``font`` for a legend ``component``.
 
 .. seealso:: :py:func:`styleFont`
-
-.. deprecated:: 3.40
-
-   Use :py:func:`QgsLegendStyle.setTextFormat()` from :py:func:`~QgsLayoutItemLegend.style` instead.
 %End
 
     void setStyleMargin( QgsLegendStyle::Style component, double margin );
@@ -243,26 +234,18 @@ Set the ``margin`` for a legend ``component``.
 Set the ``margin`` for a particular ``side`` of a legend ``component``.
 %End
 
- double lineSpacing() const /Deprecated/;
+    double lineSpacing() const;
 %Docstring
 Returns the spacing in-between lines in layout units.
 
 .. seealso:: :py:func:`setLineSpacing`
-
-.. deprecated:: 3.40
-
-   Use :py:func:`QgsLegendStyle.textFormat()` from :py:func:`~QgsLayoutItemLegend.style` instead.
 %End
 
- void setLineSpacing( double spacing ) /Deprecated/;
+    void setLineSpacing( double spacing );
 %Docstring
 Sets the ``spacing`` in-between multiple lines.
 
 .. seealso:: :py:func:`lineSpacing`
-
-.. deprecated:: 3.40
-
-   Use :py:func:`QgsLegendStyle.setTextFormat()` from :py:func:`~QgsLayoutItemLegend.style` instead.
 %End
 
     double boxSpace() const;
@@ -293,26 +276,18 @@ Sets the legend column ``spacing``.
 .. seealso:: :py:func:`columnSpace`
 %End
 
- QColor fontColor() const /Deprecated/;
+    QColor fontColor() const;
 %Docstring
 Returns the legend font color.
 
 .. seealso:: :py:func:`setFontColor`
-
-.. deprecated:: 3.40
-
-   Use :py:func:`QgsLegendStyle.setTextFormat()` from :py:func:`~QgsLayoutItemLegend.style` instead.
 %End
 
- void setFontColor( const QColor &color ) /Deprecated/;
+    void setFontColor( const QColor &color );
 %Docstring
 Sets the legend font ``color``.
 
 .. seealso:: :py:func:`fontColor`
-
-.. deprecated:: 3.40
-
-   Use :py:func:`QgsLegendStyle.setTextFormat()` from :py:func:`~QgsLayoutItemLegend.style` instead.
 %End
 
     double symbolWidth() const;
@@ -568,8 +543,6 @@ only drawn if :py:func:`~QgsLayoutItemLegend.drawRasterStroke` is ``True``.
 Sets the ``map`` to associate with the legend.
 
 .. seealso:: :py:func:`linkedMap`
-
-.. seealso:: :py:func:`setFilterByMapItems`
 %End
 
     QgsLayoutItemMap *linkedMap() const;
@@ -577,28 +550,6 @@ Sets the ``map`` to associate with the legend.
 Returns the associated map.
 
 .. seealso:: :py:func:`setLinkedMap`
-%End
-
-    void setFilterByMapItems( const QList< QgsLayoutItemMap * > &maps );
-%Docstring
-Sets the ``maps`` to use when filtering legend content by map extents.
-
-.. seealso:: :py:func:`filterByMapItems`
-
-.. seealso:: :py:func:`setLinkedMap`
-
-.. versionadded:: 3.32
-%End
-
-    QList< QgsLayoutItemMap * > filterByMapItems() const;
-%Docstring
-Returns the maps to use when filtering legend content by map extents.
-
-.. seealso:: :py:func:`setFilterByMapItems`
-
-.. seealso:: :py:func:`setLinkedMap`
-
-.. versionadded:: 3.32
 %End
 
     QString themeName() const;
@@ -637,8 +588,6 @@ Returns the legend's renderer settings object.
 
     virtual bool accept( QgsStyleEntityVisitorInterface *visitor ) const;
 
-    virtual bool isRefreshing() const;
-
 
   public slots:
 
@@ -646,7 +595,7 @@ Returns the legend's renderer settings object.
 
     virtual void invalidateCache();
 
-    virtual void refreshDataDefinedProperty( QgsLayoutObject::DataDefinedProperty property = QgsLayoutObject::DataDefinedProperty::AllProperties );
+    virtual void refreshDataDefinedProperty( QgsLayoutObject::DataDefinedProperty property = QgsLayoutObject::AllProperties );
 
 
   protected:
@@ -665,5 +614,5 @@ Returns the legend's renderer settings object.
  *                                                                      *
  * src/core/layout/qgslayoutitemlegend.h                                *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

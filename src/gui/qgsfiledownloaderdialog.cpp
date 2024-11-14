@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsfiledownloaderdialog.h"
-#include "moc_qgsfiledownloaderdialog.cpp"
 #include "qgsfiledownloader.h"
 #include "qgsfileutils.h"
 #include <QMessageBox>

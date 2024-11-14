@@ -176,17 +176,6 @@ class PYTHON_EXPORT QgsPythonUtils
     virtual bool startProcessingPlugin( const QString &packageName ) = 0;
 
     /**
-     * Finalizes the startup of the Processing plugin.
-     *
-     * \warning This should only be called after the startProcessingPlugin() method has been called
-     * for every installed and enabled plugin.
-     *
-     * \see startProcessingPlugin()
-     * \since QGIS 3.36
-     */
-    virtual bool finalizeProcessingStartup() = 0;
-
-    /**
      * Helper function to return some information about a plugin.
      *
      * \param function metadata component to return. Must match one of the strings: name, type, version, description, hasProcessingProvider.
@@ -218,11 +207,6 @@ class PYTHON_EXPORT QgsPythonUtils
      */
     virtual bool unloadPlugin( const QString &packageName ) = 0;
 
-    /**
-     * Initialize GDAL Python, turning on its exceptions.
-     * \since QGIS 3.38
-     */
-    virtual void initGDAL() = 0;
 };
 
 #endif

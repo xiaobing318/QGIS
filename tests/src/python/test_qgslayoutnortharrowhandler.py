@@ -9,18 +9,17 @@ __author__ = '(C) 2020 by Nyall Dawson'
 __date__ = '05/04/2020'
 __copyright__ = 'Copyright 2020, The QGIS Project'
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import QRectF
 from qgis.PyQt.QtTest import QSignalSpy
-from qgis.core import (
-    QgsCoordinateReferenceSystem,
-    QgsLayout,
-    QgsLayoutItemMap,
-    QgsLayoutNorthArrowHandler,
-    QgsProject,
-    QgsRectangle,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsLayoutNorthArrowHandler,
+                       QgsLayout,
+                       QgsLayoutItemMap,
+                       QgsRectangle,
+                       QgsCoordinateReferenceSystem,
+                       QgsProject
+                       )
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -28,7 +27,7 @@ start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestQgsLayoutNorthArrowHandler(QgisTestCase):
+class TestQgsLayoutNorthArrowHandler(unittest.TestCase):
 
     def testNorthArrowWithMapItemRotation(self):
         """Test arrow rotation when map item is also rotated"""
@@ -46,7 +45,7 @@ class TestQgsLayoutNorthArrowHandler(QgisTestCase):
         self.assertEqual(handler.linkedMap(), map)
         self.assertEqual(len(spy), 0)
 
-        handler.setNorthMode(QgsLayoutNorthArrowHandler.NorthMode.GridNorth)
+        handler.setNorthMode(QgsLayoutNorthArrowHandler.GridNorth)
         map.setItemRotation(45)
         self.assertEqual(handler.arrowRotation(), 45)
         self.assertEqual(len(spy), 1)
@@ -105,7 +104,7 @@ class TestQgsLayoutNorthArrowHandler(QgisTestCase):
         self.assertEqual(handler.linkedMap(), map)
         self.assertEqual(len(spy), 0)
 
-        handler.setNorthMode(QgsLayoutNorthArrowHandler.NorthMode.GridNorth)
+        handler.setNorthMode(QgsLayoutNorthArrowHandler.GridNorth)
         map.setMapRotation(45)
         self.assertEqual(handler.arrowRotation(), 45)
         self.assertEqual(len(spy), 1)
@@ -135,7 +134,7 @@ class TestQgsLayoutNorthArrowHandler(QgisTestCase):
         self.assertEqual(handler.linkedMap(), map)
         self.assertEqual(len(spy), 0)
 
-        handler.setNorthMode(QgsLayoutNorthArrowHandler.NorthMode.TrueNorth)
+        handler.setNorthMode(QgsLayoutNorthArrowHandler.TrueNorth)
         self.assertAlmostEqual(handler.arrowRotation(), 37.20, 1)
         self.assertEqual(len(spy), 1)
         self.assertAlmostEqual(spy[-1][0], 37.20, 1)

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     ProcessingConfig.py
@@ -48,7 +50,7 @@ class ProcessingConfig:
     VECTOR_LINE_STYLE = 'VECTOR_LINE_STYLE'
     VECTOR_POLYGON_STYLE = 'VECTOR_POLYGON_STYLE'
     FILTER_INVALID_GEOMETRIES = 'FILTER_INVALID_GEOMETRIES'
-    PREFER_FILENAME_AS_LAYER_NAME = 'prefer-filename-as-layer-name'
+    PREFER_FILENAME_AS_LAYER_NAME = 'PREFER_FILENAME_AS_LAYER_NAME'
     KEEP_DIALOG_OPEN = 'KEEP_DIALOG_OPEN'
     PRE_EXECUTION_SCRIPT = 'PRE_EXECUTION_SCRIPT'
     POST_EXECUTION_SCRIPT = 'POST_EXECUTION_SCRIPT'
@@ -57,9 +59,9 @@ class ProcessingConfig:
     SHOW_PROVIDERS_TOOLTIP = 'SHOW_PROVIDERS_TOOLTIP'
     SHOW_ALGORITHMS_KNOWN_ISSUES = 'SHOW_ALGORITHMS_KNOWN_ISSUES'
     MAX_THREADS = 'MAX_THREADS'
-    DEFAULT_OUTPUT_RASTER_LAYER_EXT = 'default-output-raster-ext'
-    DEFAULT_OUTPUT_VECTOR_LAYER_EXT = 'default-output-vector-ext'
-    TEMP_PATH = 'temp-path'
+    DEFAULT_OUTPUT_RASTER_LAYER_EXT = 'DefaultOutputRasterLayerExt'
+    DEFAULT_OUTPUT_VECTOR_LAYER_EXT = 'DefaultOutputVectorLayerExt'
+    TEMP_PATH = 'TEMP_PATH2'
     RESULTS_GROUP_NAME = 'RESULTS_GROUP_NAME'
     VECTOR_FEATURE_COUNT = 'VECTOR_FEATURE_COUNT'
 
@@ -77,8 +79,7 @@ class ProcessingConfig:
         ProcessingConfig.addSetting(Setting(
             ProcessingConfig.tr('General'),
             ProcessingConfig.PREFER_FILENAME_AS_LAYER_NAME,
-            ProcessingConfig.tr('Prefer output filename for layer names'), True,
-            hasSettingEntry=True))
+            ProcessingConfig.tr('Prefer output filename for layer names'), True))
         ProcessingConfig.addSetting(Setting(
             ProcessingConfig.tr('General'),
             ProcessingConfig.SHOW_PROVIDERS_TOOLTIP,
@@ -156,9 +157,8 @@ class ProcessingConfig:
             ProcessingConfig.DEFAULT_OUTPUT_VECTOR_LAYER_EXT,
             ProcessingConfig.tr('Default output vector layer extension'),
             QgsVectorFileWriter.supportedFormatExtensions()[0],
-            valuetype=Setting.SELECTION_STORE_STRING,
-            options=extensions,
-            hasSettingEntry=True))
+            valuetype=Setting.SELECTION,
+            options=extensions))
 
         extensions = QgsRasterFileWriter.supportedFormatExtensions()
         ProcessingConfig.addSetting(Setting(
@@ -166,17 +166,15 @@ class ProcessingConfig:
             ProcessingConfig.DEFAULT_OUTPUT_RASTER_LAYER_EXT,
             ProcessingConfig.tr('Default output raster layer extension'),
             'tif',
-            valuetype=Setting.SELECTION_STORE_STRING,
-            options=extensions,
-            hasSettingEntry=True))
+            valuetype=Setting.SELECTION,
+            options=extensions))
 
         ProcessingConfig.addSetting(Setting(
             ProcessingConfig.tr('General'),
             ProcessingConfig.TEMP_PATH,
             ProcessingConfig.tr('Override temporary output folder path'), None,
             valuetype=Setting.FOLDER,
-            placeholder=ProcessingConfig.tr('Leave blank for default'),
-            hasSettingEntry=True))
+            placeholder=ProcessingConfig.tr('Leave blank for default')))
 
         ProcessingConfig.addSetting(Setting(
             ProcessingConfig.tr('General'),
@@ -273,16 +271,12 @@ class Setting:
     FLOAT = 4
     INT = 5
     MULTIPLE_FOLDERS = 6
-    SELECTION_STORE_STRING = 7
 
     def __init__(self, group, name, description, default, hidden=False, valuetype=None,
-                 validator=None, options=None, placeholder="", hasSettingEntry=False):
-        """
-        hasSettingEntry is true if the given setting is part of QgsSettingsRegistry entries
-        """
+                 validator=None, options=None, placeholder=""):
         self.group = group
         self.name = name
-        self.qname = ("qgis/configuration/" if hasSettingEntry else "Processing/Configuration/") + self.name
+        self.qname = "Processing/Configuration/" + self.name
         self.description = description
         self.default = default
         self.hidden = hidden
@@ -356,9 +350,6 @@ class Setting:
     def save(self, qsettings=None):
         if not qsettings:
             qsettings = QgsSettings()
-        if self.value == self.default:
-            qsettings.remove(self.qname)
-            return
         if self.valuetype == self.SELECTION:
             qsettings.setValue(self.qname, self.options.index(self.value))
         else:

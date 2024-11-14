@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/layout/qgslayoutitemregistry.h                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -20,6 +20,8 @@ GUI behavior of :py:class:`QgsLayoutItems`.
 .. note::
 
    In C++ you can use :py:class:`QgsLayoutItemMetadata` convenience class.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -87,6 +89,8 @@ GUI behavior of :py:class:`QgsLayoutMultiFrames`.
 .. note::
 
    In C++ you can use :py:class:`QgsLayoutMultiFrameMetadata` convenience class.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -148,6 +152,8 @@ Registry of available layout item types.
 
 A companion class, :py:class:`QgsLayoutItemGuiRegistry`, handles the GUI behavior
 of layout items.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -189,11 +195,6 @@ of layout items.
 
       LayoutManualTable,
       LayoutMarker,
-
-      LayoutElevationProfile,
-
-      // WARNING!!!! SIP CASTING OF QgsLayoutItem and QgsLayoutMultiFrame DEPENDS on these
-      // values, and must be updated if any additional types are added
 
       // item types provided by plugins
       PluginItem,
@@ -302,5 +303,5 @@ Emitted whenever a new multiframe type is added to the registry, with the specif
  *                                                                      *
  * src/core/layout/qgslayoutitemregistry.h                              *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

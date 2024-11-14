@@ -3,9 +3,8 @@
  *                                                                      *
  * src/core/qgsmaplayerutils.h                                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
-
 
 
 
@@ -57,7 +56,7 @@ uses a data provider which does not specify paths in a layer URI.
 .. versionadded:: 3.22
 %End
 
-    static QList< QgsMapLayer * > sortLayersByType( const QList< QgsMapLayer * > &layers, const QList< Qgis::LayerType > &order );
+    static QList< QgsMapLayer * > sortLayersByType( const QList< QgsMapLayer * > &layers, const QList< QgsMapLayerType > &order );
 %Docstring
 Sorts a list of map ``layers`` by their layer type, respecting the ``order`` of types specified.
 
@@ -81,13 +80,6 @@ Specifically this method:
 .. versionadded:: 3.28
 %End
 
-    static bool isOpenStreetMapLayer( QgsMapLayer *layer );
-%Docstring
-Returns ``True`` if the layer is served by OpenStreetMap server.
-
-.. versionadded:: 3.40
-%End
-
 };
 
 
@@ -97,5 +89,5 @@ Returns ``True`` if the layer is served by OpenStreetMap server.
  *                                                                      *
  * src/core/qgsmaplayerutils.h                                          *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -17,14 +17,11 @@
 #ifndef QGSSETTINGSREGISTRY_H
 #define QGSSETTINGSREGISTRY_H
 
-#include "qgis.h"
 #include "qgis_core.h"
 #include "qgis_sip.h"
+#include "qgssettingsentry.h"
 
 #include <QMap>
-
-class QgsSettingsEntryBase;
-class QgsSettingsEntryGroup;
 
 /**
  * \ingroup core
@@ -33,13 +30,19 @@ class QgsSettingsEntryGroup;
  * list of child QgsSettingsRegistry and a list of child QgsSettingsRegistry
  *
  * \since QGIS 3.20
- * \deprecated QGIS 3.30. Use QgsSettings::treeRoot() instead.
  */
-class CORE_DEPRECATED_EXPORT QgsSettingsRegistry
+class CORE_EXPORT QgsSettingsRegistry
 {
   public:
 
+    /**
+     * Constructor for QgsSettingsRegistry.
+     */
     QgsSettingsRegistry();
+
+    /**
+     * Destructor for QgsSettingsRegistry.
+     */
     virtual ~QgsSettingsRegistry();
 
     /**
@@ -79,21 +82,16 @@ class CORE_DEPRECATED_EXPORT QgsSettingsRegistry
     /**
      * Adds a group of setting to the registry
      * \since QGIS 3.26
-     * \deprecated QGIS 3.30
      */
-    Q_DECL_DEPRECATED void addSettingsEntryGroup( const QgsSettingsEntryGroup *settingsGroup ) SIP_DEPRECATED;
+    void addSettingsEntryGroup( const QgsSettingsEntryGroup *settingsGroup );
 
   private:
 
     QMap<QString, const QgsSettingsEntryBase *> mSettingsEntriesMap;
 
-    Q_NOWARN_DEPRECATED_PUSH
     QMap<const QgsSettingsEntryBase *, const QgsSettingsEntryGroup *> mSettingsEntriesGroupMap;
-    Q_NOWARN_DEPRECATED_POP
 
     QList<const QgsSettingsRegistry *> mSettingsRegistryChildList;
-
-    friend class QgsSettingsEntryBase;
 
 };
 

@@ -17,7 +17,7 @@
  ***************************************************************************/
 #include "qgslogger.h"
 #include "qgsvectorlayersaveasdialog.h"
-#include "moc_qgsvectorlayersaveasdialog.cpp"
+#include "qgsprojectionselectiondialog.h"
 #include "qgsvectordataprovider.h"
 #include "qgscoordinatereferencesystem.h"
 #include "qgseditorwidgetfactory.h"
@@ -25,8 +25,8 @@
 #include "qgssettings.h"
 #include "qgsmapcanvas.h"
 #include "qgsgui.h"
+#include "qgsapplication.h"
 #include "qgsmaplayerutils.h"
-#include "qgshelp.h"
 #include <QMessageBox>
 #include <QFileDialog>
 #include <QTextCodec>
@@ -47,7 +47,7 @@ QgsVectorLayerSaveAsDialog::QgsVectorLayerSaveAsDialog( long srsid, QWidget *par
   setup();
 }
 
-QgsVectorLayerSaveAsDialog::QgsVectorLayerSaveAsDialog( QgsVectorLayer *layer, QgsVectorLayerSaveAsDialog::Options options, QWidget *parent, Qt::WindowFlags fl )
+QgsVectorLayerSaveAsDialog::QgsVectorLayerSaveAsDialog( QgsVectorLayer *layer, Options options, QWidget *parent, Qt::WindowFlags fl )
   : QDialog( parent, fl )
   , mLayer( layer )
   , mActionOnExistingFile( QgsVectorFileWriter::CreateOrOverwriteFile )
@@ -69,7 +69,7 @@ QgsVectorLayerSaveAsDialog::QgsVectorLayerSaveAsDialog( QgsVectorLayer *layer, Q
       leLayername->setText( mDefaultOutputLayerNameFromInputLayerName );
   }
 
-  if ( !( mOptions & Option::Symbology ) )
+  if ( !( mOptions & Symbology ) )
   {
     mSymbologyExportLabel->hide();
     mSymbologyExportComboBox->hide();
@@ -77,27 +77,27 @@ QgsVectorLayerSaveAsDialog::QgsVectorLayerSaveAsDialog( QgsVectorLayer *layer, Q
     mScaleWidget->hide();
   }
 
-  if ( !( mOptions & Option::DestinationCrs ) )
+  if ( !( mOptions & DestinationCrs ) )
   {
     mCrsLabel->hide();
     mCrsSelector->hide();
   }
-  if ( !( mOptions & Option::Fields ) )
+  if ( !( mOptions & Fields ) )
     mAttributesSelection->hide();
 
-  if ( !( mOptions & Option::SelectedOnly ) )
+  if ( !( mOptions & SelectedOnly ) )
     mSelectedOnly->hide();
 
-  if ( !( mOptions & Option::AddToCanvas ) )
+  if ( !( mOptions & AddToCanvas ) )
     mAddToCanvas->hide();
 
-  if ( !( mOptions & Option::GeometryType ) )
+  if ( !( mOptions & GeometryType ) )
     mGeometryGroupBox->hide();
 
-  if ( !( mOptions & Option::Extent ) )
+  if ( !( mOptions & Extent ) )
     mExtentGroupBox->hide();
 
-  if ( !( mOptions & Option::Metadata ) )
+  if ( !( mOptions & Metadata ) )
   {
     mCheckPersistMetadata->setChecked( false );
     mCheckPersistMetadata->hide();
@@ -144,18 +144,18 @@ void QgsVectorLayerSaveAsDialog::setup()
   mFormatComboBox->setCurrentIndex( mFormatComboBox->findData( format ) );
   mFormatComboBox->blockSignals( false );
 
-  const auto addGeomItem = [this]( Qgis::WkbType type )
+  const auto addGeomItem = [this]( QgsWkbTypes::Type type )
   {
-    mGeometryTypeComboBox->addItem( QgsIconUtils::iconForWkbType( type ), QgsWkbTypes::translatedDisplayString( type ), static_cast< quint32>( type ) );
+    mGeometryTypeComboBox->addItem( QgsIconUtils::iconForWkbType( type ), QgsWkbTypes::translatedDisplayString( type ), type );
   };
 
   //add geometry types to combobox
   mGeometryTypeComboBox->addItem( tr( "Automatic" ), -1 );
-  addGeomItem( Qgis::WkbType::Point );
-  addGeomItem( Qgis::WkbType::LineString );
-  addGeomItem( Qgis::WkbType::Polygon );
-  mGeometryTypeComboBox->addItem( QgsWkbTypes::translatedDisplayString( Qgis::WkbType::GeometryCollection ), static_cast< quint32>( Qgis::WkbType::GeometryCollection ) );
-  addGeomItem( Qgis::WkbType::NoGeometry );
+  addGeomItem( QgsWkbTypes::Point );
+  addGeomItem( QgsWkbTypes::LineString );
+  addGeomItem( QgsWkbTypes::Polygon );
+  mGeometryTypeComboBox->addItem( QgsWkbTypes::translatedDisplayString( QgsWkbTypes::GeometryCollection ), QgsWkbTypes::GeometryCollection );
+  addGeomItem( QgsWkbTypes::NoGeometry );
   mGeometryTypeComboBox->setCurrentIndex( mGeometryTypeComboBox->findData( -1 ) );
 
   mEncodingComboBox->addItems( QgsVectorDataProvider::availableEncodings() );
@@ -177,9 +177,9 @@ void QgsVectorLayerSaveAsDialog::setup()
   mFormatComboBox_currentIndexChanged( mFormatComboBox->currentIndex() );
 
   //symbology export combo box
-  mSymbologyExportComboBox->addItem( tr( "No Symbology" ), QVariant::fromValue( Qgis::FeatureSymbologyExport::NoSymbology ) );
-  mSymbologyExportComboBox->addItem( tr( "Feature Symbology" ), QVariant::fromValue( Qgis::FeatureSymbologyExport::PerFeature ) );
-  mSymbologyExportComboBox->addItem( tr( "Symbol Layer Symbology" ), QVariant::fromValue( Qgis::FeatureSymbologyExport::PerSymbolLayer ) );
+  mSymbologyExportComboBox->addItem( tr( "No Symbology" ), QgsVectorFileWriter::NoSymbology );
+  mSymbologyExportComboBox->addItem( tr( "Feature Symbology" ), QgsVectorFileWriter::FeatureSymbology );
+  mSymbologyExportComboBox->addItem( tr( "Symbol Layer Symbology" ), QgsVectorFileWriter::SymbolLayerSymbology );
   mSymbologyExportComboBox_currentIndexChanged( mSymbologyExportComboBox->currentText() );
 
   // extent group box
@@ -265,10 +265,10 @@ QList<QPair<QLabel *, QWidget *> > QgsVectorLayerSaveAsDialog::createControls( c
             cb->addItem( val, val );
           }
           if ( opt->allowNone )
-            cb->addItem( tr( "<Default>" ), QgsVariantUtils::createNullVariant( QMetaType::Type::QString ) );
+            cb->addItem( tr( "<Default>" ), QVariant( QVariant::String ) );
           int idx = cb->findText( opt->defaultValue );
           if ( idx == -1 )
-            idx = cb->findData( QgsVariantUtils::createNullVariant( QMetaType::Type::QString ) );
+            idx = cb->findData( QVariant( QVariant::String ) );
           cb->setCurrentIndex( idx );
           control = cb;
         }
@@ -309,63 +309,12 @@ QList<QPair<QLabel *, QWidget *> > QgsVectorLayerSaveAsDialog::createControls( c
 
 void QgsVectorLayerSaveAsDialog::accept()
 {
-#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,9,0)
-  if ( format() == QLatin1String( "OpenFileGDB" ) )
-  {
-    // The OpenFileGDB driver supports 64-bit integer fields starting with GDAL 3.9,
-    // if selecting the TARGET_ARCGIS_VERSION=ARCGIS_PRO_3_2_OR_LATER option
-    bool targetAll = true;
-    for ( const QString &layerOption : layerOptions() )
-    {
-      if ( layerOption == QLatin1String( "TARGET_ARCGIS_VERSION=ARCGIS_PRO_3_2_OR_LATER" ) )
-      {
-        targetAll = false;
-      }
-    }
-    if ( targetAll )
-    {
-      for ( int i = 0; i < mLayer->fields().size(); ++i )
-      {
-        QgsField fld = mLayer->fields().at( i );
-        if ( fld.type() == QMetaType::Type::LongLong )
-        {
-          if ( QMessageBox::question( this,
-                                      tr( "Save Vector Layer As" ),
-                                      tr( "The layer contains at least one 64-bit integer field, which, with the current settings, can only be exported as a Real field. It could be exported as a 64-bit integer field if the TARGET_ARCGIS_VERSION layer option is set to ARCGIS_PRO_3_2_OR_LATER. Do you want to continue and export it as a Real field?" ) ) != QMessageBox::Yes )
-          {
-            return;
-          }
-          break;
-        }
-      }
-    }
-  }
-  else if ( format() == QLatin1String( "FileGDB" ) )
-  {
-    // The FileGDB driver based on the ESRI SDK doesn't support 64-bit integers
-    for ( int i = 0; i < mLayer->fields().size(); ++i )
-    {
-      QgsField fld = mLayer->fields().at( i );
-      if ( fld.type() == QMetaType::Type::LongLong )
-      {
-        if ( QMessageBox::question( this,
-                                    tr( "Save Vector Layer As" ),
-                                    tr( "The layer contains at least one 64-bit integer field, which cannot be exported as such when using this output driver. 64-bit integer fields could be supported by selecting the %1 format and setting its TARGET_ARCGIS_VERSION layer option to ARCGIS_PRO_3_2_OR_LATER. Do you want to continue and export it as a Real field?" ).arg( tr( "ESRI File Geodatabase" ) ) ) != QMessageBox::Yes )
-        {
-          return;
-        }
-        break;
-      }
-    }
-  }
-#endif
-
-  if ( QFile::exists( fileName() ) )
+  if ( QFile::exists( filename() ) )
   {
     QgsVectorFileWriter::EditionCapabilities caps =
-      QgsVectorFileWriter::editionCapabilities( fileName() );
-    bool layerExists = QgsVectorFileWriter::targetLayerExists( fileName(),
-                       layerName() );
+      QgsVectorFileWriter::editionCapabilities( filename() );
+    bool layerExists = QgsVectorFileWriter::targetLayerExists( filename(),
+                       layername() );
     QMessageBox msgBox;
     msgBox.setIcon( QMessageBox::Question );
     msgBox.setWindowTitle( tr( "Save Vector Layer As" ) );
@@ -428,7 +377,7 @@ void QgsVectorLayerSaveAsDialog::accept()
         // should not reach here, layer does not exist and cannot add new layer
         if ( QMessageBox::question( this,
                                     tr( "Save Vector Layer As" ),
-                                    tr( "The file already exists. Do you want to overwrite it?" ) ) != QMessageBox::Yes )
+                                    tr( "The file already exists. Do you want to overwrite it?" ) ) == QMessageBox::NoButton )
         {
           return;
         }
@@ -439,7 +388,7 @@ void QgsVectorLayerSaveAsDialog::accept()
 
   if ( mActionOnExistingFile == QgsVectorFileWriter::AppendToLayerNoNewFields )
   {
-    if ( QgsVectorFileWriter::areThereNewFieldsToCreate( fileName(), layerName(), mLayer, selectedAttributes() ) )
+    if ( QgsVectorFileWriter::areThereNewFieldsToCreate( filename(), layername(), mLayer, selectedAttributes() ) )
     {
       if ( QMessageBox::question( this,
                                   tr( "Save Vector Layer As" ),
@@ -449,9 +398,9 @@ void QgsVectorLayerSaveAsDialog::accept()
       }
     }
   }
-  else if ( mActionOnExistingFile == QgsVectorFileWriter::CreateOrOverwriteFile && QFile::exists( fileName() ) )
+  else if ( mActionOnExistingFile == QgsVectorFileWriter::CreateOrOverwriteFile && QFile::exists( filename() ) )
   {
-    const QList<QgsProviderSublayerDetails> sublayers = QgsProviderRegistry::instance()->querySublayers( fileName() );
+    const QList<QgsProviderSublayerDetails> sublayers = QgsProviderRegistry::instance()->querySublayers( filename() );
     QStringList layerList;
     layerList.reserve( sublayers.size() );
     for ( const QgsProviderSublayerDetails &sublayer : sublayers )
@@ -473,7 +422,7 @@ void QgsVectorLayerSaveAsDialog::accept()
   }
 
   QgsSettings settings;
-  settings.setValue( QStringLiteral( "UI/lastVectorFileFilterDir" ), QFileInfo( fileName() ).absolutePath() );
+  settings.setValue( QStringLiteral( "UI/lastVectorFileFilterDir" ), QFileInfo( filename() ).absolutePath() );
   settings.setValue( QStringLiteral( "UI/lastVectorFormat" ), format() );
   settings.setValue( QStringLiteral( "UI/encoding" ), encoding() );
   QDialog::accept();
@@ -504,7 +453,7 @@ void QgsVectorLayerSaveAsDialog::mFormatComboBox_currentIndexChanged( int idx )
     if ( !ext.isEmpty() )
     {
       QFileInfo fi( mFilename->filePath() );
-      mFilename->setFilePath( QStringLiteral( "%1/%2.%3" ).arg( fi.path(), fi.baseName(), ext ) );
+      mFilename->setFilePath( QStringLiteral( "%1/%2.%3" ).arg( fi.path() ).arg( fi.baseName() ).arg( ext ) );
     }
   }
 
@@ -523,7 +472,7 @@ void QgsVectorLayerSaveAsDialog::mFormatComboBox_currentIndexChanged( int idx )
   }
   else
   {
-    if ( mOptions & Option::Fields )
+    if ( mOptions & Fields )
     {
       mAttributesSelection->setVisible( true );
       isFormatForFieldsAsDisplayedValues = ( sFormat == QLatin1String( "CSV" ) ||
@@ -534,7 +483,7 @@ void QgsVectorLayerSaveAsDialog::mFormatComboBox_currentIndexChanged( int idx )
   }
 
   // Show symbology options only for some formats
-  if ( QgsVectorFileWriter::supportsFeatureStyles( sFormat ) && ( mOptions & Option::Symbology ) )
+  if ( QgsVectorFileWriter::supportsFeatureStyles( sFormat ) && ( mOptions & Symbology ) )
   {
     mSymbologyExportLabel->setVisible( true );
     mSymbologyExportComboBox->setVisible( true );
@@ -743,18 +692,7 @@ void QgsVectorLayerSaveAsDialog::mFormatComboBox_currentIndexChanged( int idx )
   GDALDriverH hDriver = GDALGetDriverByName( format().toUtf8().constData() );
   if ( hDriver )
   {
-    const bool canReopen = GDALGetMetadataItem( hDriver, GDAL_DCAP_OPEN, nullptr );
-    if ( mAddToCanvas->isEnabled() && !canReopen )
-    {
-      mAddToCanvasStateOnOpenCompatibleDriver = mAddToCanvas->isChecked();
-      mAddToCanvas->setChecked( false );
-      mAddToCanvas->setEnabled( false );
-    }
-    else if ( !mAddToCanvas->isEnabled() && canReopen )
-    {
-      mAddToCanvas->setChecked( mAddToCanvasStateOnOpenCompatibleDriver );
-      mAddToCanvas->setEnabled( true );
-    }
+    mAddToCanvas->setEnabled( GDALGetMetadataItem( hDriver, GDAL_DCAP_OPEN, nullptr ) != nullptr );
   }
 }
 
@@ -951,12 +889,12 @@ void QgsVectorLayerSaveAsDialog::mCrsSelector_crsChanged( const QgsCoordinateRef
   mExtentGroupBox->setOutputCrs( mSelectedCrs );
 }
 
-QString QgsVectorLayerSaveAsDialog::fileName() const
+QString QgsVectorLayerSaveAsDialog::filename() const
 {
   return mFilename->filePath();
 }
 
-QString QgsVectorLayerSaveAsDialog::layerName() const
+QString QgsVectorLayerSaveAsDialog::layername() const
 {
   return leLayername->text();
 }
@@ -971,7 +909,12 @@ QString QgsVectorLayerSaveAsDialog::format() const
   return mFormatComboBox->currentData().toString();
 }
 
-QgsCoordinateReferenceSystem QgsVectorLayerSaveAsDialog::crs() const
+long QgsVectorLayerSaveAsDialog::crs() const
+{
+  return mSelectedCrs.srsid();
+}
+
+QgsCoordinateReferenceSystem QgsVectorLayerSaveAsDialog::crsObject() const
 {
   return mSelectedCrs;
 }
@@ -1139,19 +1082,17 @@ QStringList QgsVectorLayerSaveAsDialog::attributesExportNames() const
 
 bool QgsVectorLayerSaveAsDialog::addToCanvas() const
 {
-  return mAddToCanvas->isChecked();
+  return mAddToCanvas->isChecked() && mAddToCanvas->isEnabled();
 }
 
 void QgsVectorLayerSaveAsDialog::setAddToCanvas( bool enabled )
 {
-  mAddToCanvasStateOnOpenCompatibleDriver = enabled;
-  if ( mAddToCanvas->isEnabled() )
-    mAddToCanvas->setChecked( enabled );
+  mAddToCanvas->setChecked( enabled );
 }
 
-Qgis::FeatureSymbologyExport QgsVectorLayerSaveAsDialog::symbologyExport() const
+int QgsVectorLayerSaveAsDialog::symbologyExport() const
 {
-  return mSymbologyExportComboBox->currentData().value< Qgis::FeatureSymbologyExport >();
+  return mSymbologyExportComboBox->currentData().toInt();
 }
 
 double QgsVectorLayerSaveAsDialog::scale() const
@@ -1192,16 +1133,16 @@ bool QgsVectorLayerSaveAsDialog::persistMetadata() const
   return mCheckPersistMetadata->isChecked();
 }
 
-Qgis::WkbType QgsVectorLayerSaveAsDialog::geometryType() const
+QgsWkbTypes::Type QgsVectorLayerSaveAsDialog::geometryType() const
 {
   int currentIndexData = mGeometryTypeComboBox->currentData().toInt();
   if ( currentIndexData == -1 )
   {
     //automatic
-    return Qgis::WkbType::Unknown;
+    return QgsWkbTypes::Unknown;
   }
 
-  return static_cast< Qgis::WkbType >( currentIndexData );
+  return static_cast< QgsWkbTypes::Type >( currentIndexData );
 }
 
 bool QgsVectorLayerSaveAsDialog::automaticGeometryType() const
@@ -1246,11 +1187,11 @@ void QgsVectorLayerSaveAsDialog::mSymbologyExportComboBox_currentIndexChanged( c
   mScaleLabel->setEnabled( scaleEnabled );
 }
 
-void QgsVectorLayerSaveAsDialog::mGeometryTypeComboBox_currentIndexChanged( int )
+void QgsVectorLayerSaveAsDialog::mGeometryTypeComboBox_currentIndexChanged( int index )
 {
-  Qgis::WkbType currentIndexData = static_cast< Qgis::WkbType >( mGeometryTypeComboBox->currentData().toInt() );
+  int currentIndexData = mGeometryTypeComboBox->itemData( index ).toInt();
 
-  if ( mGeometryTypeComboBox->currentIndex() != -1 && currentIndexData != Qgis::WkbType::NoGeometry )
+  if ( currentIndexData != -1 && currentIndexData != QgsWkbTypes::NoGeometry )
   {
     mForceMultiCheckBox->setEnabled( true );
     mIncludeZCheckBox->setEnabled( true );

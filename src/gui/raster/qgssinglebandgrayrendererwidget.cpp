@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgssinglebandgrayrendererwidget.h"
-#include "moc_qgssinglebandgrayrendererwidget.cpp"
 #include "qgssinglebandgrayrenderer.h"
 #include "qgsrasterlayer.h"
 #include "qgsrasterdataprovider.h"
@@ -149,7 +148,7 @@ void QgsSingleBandGrayRendererWidget::loadMinMax( int bandNo, double min, double
 {
   Q_UNUSED( bandNo )
 
-  QgsDebugMsgLevel( QStringLiteral( "theBandNo = %1 min = %2 max = %3" ).arg( bandNo ).arg( min ).arg( max ), 2 );
+  QgsDebugMsg( QStringLiteral( "theBandNo = %1 min = %2 max = %3" ).arg( bandNo ).arg( min ).arg( max ) );
 
   mDisableMinMaxWidgetRefresh = true;
   if ( std::isnan( min ) )
@@ -186,8 +185,8 @@ void QgsSingleBandGrayRendererWidget::setFromRenderer( const QgsRasterRenderer *
   if ( gr )
   {
     //band
-    mGrayBandComboBox->setBand( gr->inputBand() );
-    mMinMaxWidget->setBands( QList< int >() << gr->inputBand() );
+    mGrayBandComboBox->setBand( gr->grayBand() );
+    mMinMaxWidget->setBands( QList< int >() << gr->grayBand() );
     mGradientComboBox->setCurrentIndex( mGradientComboBox->findData( gr->gradient() ) );
 
     const QgsContrastEnhancement *ce = gr->contrastEnhancement();

@@ -101,13 +101,13 @@ void TestQgsQueryBuilder::testFillValues()
 
   QgsQueryBuilder queryBuilder( &vl );
 
-  queryBuilder.fillValues( "intarray", 10 );
+  queryBuilder.fillValues( 0, 10 );
   QCOMPARE( getModelItemDisplayStrings( queryBuilder.mModelValues ), QStringList() << "1" << "2, 3" << "4, 5, 6" << "NULL" );
 
-  queryBuilder.fillValues( "strarray", 10 );
+  queryBuilder.fillValues( 1, 10 );
   QCOMPARE( getModelItemDisplayStrings( queryBuilder.mModelValues ), QStringList() << "NULL" << "testA" << "testB, testC" );
 
-  queryBuilder.fillValues( "intf", 10 );
+  queryBuilder.fillValues( 2, 10 );
   QCOMPARE( getModelItemDisplayStrings( queryBuilder.mModelValues ), QStringList() << "0" << "42" << "NULL" );
 }
 

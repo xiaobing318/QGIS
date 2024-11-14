@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     FindProjection.py
@@ -36,7 +38,7 @@ from qgis.core import (QgsGeometry,
                        QgsProcessingParameterCrs,
                        QgsProcessingParameterFeatureSink,
                        QgsProcessingParameterDefinition)
-from qgis.PyQt.QtCore import QMetaType
+from qgis.PyQt.QtCore import QVariant
 
 from processing.algs.qgis.QgisAlgorithm import QgisAlgorithm
 
@@ -70,7 +72,7 @@ class FindProjection(QgisAlgorithm):
 
         # deprecated
         crs_param = QgsProcessingParameterCrs(self.TARGET_AREA_CRS, 'Target area CRS', optional=True)
-        crs_param.setFlags(crs_param.flags() | QgsProcessingParameterDefinition.Flag.FlagHidden)
+        crs_param.setFlags(crs_param.flags() | QgsProcessingParameterDefinition.FlagHidden)
         self.addParameter(crs_param)
 
         self.addParameter(QgsProcessingParameterFeatureSink(self.OUTPUT,
@@ -97,10 +99,10 @@ class FindProjection(QgisAlgorithm):
         target_geom = QgsGeometry.fromRect(extent)
 
         fields = QgsFields()
-        fields.append(QgsField('auth_id', QMetaType.Type.QString, '', 20))
+        fields.append(QgsField('auth_id', QVariant.String, '', 20))
 
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context,
-                                               fields, QgsWkbTypes.Type.NoGeometry, QgsCoordinateReferenceSystem())
+                                               fields, QgsWkbTypes.NoGeometry, QgsCoordinateReferenceSystem())
         if sink is None:
             raise QgsProcessingException(self.invalidSinkError(parameters, self.OUTPUT))
 
@@ -139,7 +141,7 @@ class FindProjection(QgisAlgorithm):
                     feedback.pushInfo(self.tr('Found candidate CRS: {}').format(candidate_crs.authid()))
                     f = QgsFeature(fields)
                     f.setAttributes([candidate_crs.authid()])
-                    sink.addFeature(f, QgsFeatureSink.Flag.FastInsert)
+                    sink.addFeature(f, QgsFeatureSink.FastInsert)
                     found_results += 1
             except:
                 continue
@@ -149,5 +151,4 @@ class FindProjection(QgisAlgorithm):
         if found_results == 0:
             feedback.reportError(self.tr('No matching projections found'))
 
-        sink.finalize()
         return {self.OUTPUT: dest_id}

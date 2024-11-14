@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsmeshdatasetgrouptreewidget.h"
-#include "moc_qgsmeshdatasetgrouptreewidget.cpp"
 
 #include <QFileDialog>
 #include <QMessageBox>

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     TinInterpolation.py
@@ -93,14 +95,14 @@ class TinInterpolation(QgisAlgorithm):
                                                   self.tr('Number of columns'),
                                                   optional=True,
                                                   minValue=0, maxValue=10000000)
-        cols_param.setFlags(cols_param.flags() | QgsProcessingParameterDefinition.Flag.FlagHidden)
+        cols_param.setFlags(cols_param.flags() | QgsProcessingParameterDefinition.FlagHidden)
         self.addParameter(cols_param)
 
         rows_param = QgsProcessingParameterNumber(self.ROWS,
                                                   self.tr('Number of rows'),
                                                   optional=True,
                                                   minValue=0, maxValue=10000000)
-        rows_param.setFlags(rows_param.flags() | QgsProcessingParameterDefinition.Flag.FlagHidden)
+        rows_param.setFlags(rows_param.flags() | QgsProcessingParameterDefinition.FlagHidden)
         self.addParameter(rows_param)
 
         self.addParameter(QgsProcessingParameterRasterDestination(self.OUTPUT,
@@ -108,7 +110,7 @@ class TinInterpolation(QgisAlgorithm):
 
         triangulation_file_param = QgsProcessingParameterFeatureSink(self.TRIANGULATION,
                                                                      self.tr('Triangulation'),
-                                                                     type=QgsProcessing.SourceType.TypeVectorLine,
+                                                                     type=QgsProcessing.TypeVectorLine,
                                                                      optional=True)
         triangulation_file_param.setCreateByDefault(False)
         self.addParameter(triangulation_file_param)
@@ -154,25 +156,24 @@ class TinInterpolation(QgisAlgorithm):
 
             data.valueSource = int(v[1])
             data.interpolationAttribute = int(v[2])
-            if data.valueSource == QgsInterpolator.ValueSource.ValueAttribute and data.interpolationAttribute == -1:
-                raise QgsProcessingException(self.tr(
-                    'Layer {} is set to use a value attribute, but no attribute was set').format(i + 1))
+            if data.valueSource == QgsInterpolator.ValueAttribute and data.interpolationAttribute == -1:
+                raise QgsProcessingException(self.tr('Layer {} is set to use a value attribute, but no attribute was set'.format(i + 1)))
 
             if v[3] == '0':
-                data.sourceType = QgsInterpolator.SourceType.SourcePoints
+                data.sourceType = QgsInterpolator.SourcePoints
             elif v[3] == '1':
-                data.sourceType = QgsInterpolator.SourceType.SourceStructureLines
+                data.sourceType = QgsInterpolator.SourceStructureLines
             else:
-                data.sourceType = QgsInterpolator.SourceType.SourceBreakLines
+                data.sourceType = QgsInterpolator.SourceBreakLines
             layerData.append(data)
 
         if method == 0:
-            interpolationMethod = QgsTinInterpolator.TinInterpolation.Linear
+            interpolationMethod = QgsTinInterpolator.Linear
         else:
-            interpolationMethod = QgsTinInterpolator.TinInterpolation.CloughTocher
+            interpolationMethod = QgsTinInterpolator.CloughTocher
 
         (triangulation_sink, triangulation_dest_id) = self.parameterAsSink(parameters, self.TRIANGULATION, context,
-                                                                           QgsTinInterpolator.triangulationFields(), QgsWkbTypes.Type.LineString, crs)
+                                                                           QgsTinInterpolator.triangulationFields(), QgsWkbTypes.LineString, crs)
 
         interpolator = QgsTinInterpolator(layerData, interpolationMethod, feedback)
         if triangulation_sink is not None:
@@ -185,6 +186,4 @@ class TinInterpolation(QgisAlgorithm):
                                    rows)
 
         writer.writeFile(feedback)
-        if triangulation_sink:
-            triangulation_sink.finalize()
         return {self.OUTPUT: output, self.TRIANGULATION: triangulation_dest_id}

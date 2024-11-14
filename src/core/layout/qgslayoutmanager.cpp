@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgslayoutmanager.h"
-#include "moc_qgslayoutmanager.cpp"
 #include "qgslayout.h"
 #include "qgsproject.h"
 #include "qgslogger.h"
@@ -278,7 +277,6 @@ QgsMasterLayoutInterface *QgsLayoutManager::duplicateLayout( const QgsMasterLayo
   }
   else
   {
-    // cppcheck-suppress returnDanglingLifetime
     return l;
   }
 }
@@ -368,7 +366,7 @@ QVariant QgsLayoutManagerModel::data( const QModelIndex &index, int role ) const
     case Qt::EditRole:
       return !isEmpty && mLayoutManager ? mLayoutManager->layouts().at( layoutRow )->name() : QVariant();
 
-    case static_cast< int >( CustomRole::Layout ):
+    case LayoutRole:
     {
       if ( isEmpty || !mLayoutManager )
         return QVariant();
@@ -418,7 +416,7 @@ bool QgsLayoutManagerModel::setData( const QModelIndex &index, const QVariant &v
 
   //check if name already exists
   QStringList layoutNames;
-  const QList< QgsMasterLayoutInterface * > layouts = QgsProject::instance()->layoutManager()->layouts(); // skip-keyword-check
+  const QList< QgsMasterLayoutInterface * > layouts = QgsProject::instance()->layoutManager()->layouts();
   for ( QgsMasterLayoutInterface *l : layouts )
   {
     layoutNames << l->name();
@@ -455,9 +453,9 @@ QgsMasterLayoutInterface *QgsLayoutManagerModel::layoutFromIndex( const QModelIn
   if ( index.row() == 0 && mAllowEmpty )
     return nullptr;
 
-  if ( QgsPrintLayout *l = qobject_cast< QgsPrintLayout * >( qvariant_cast<QObject *>( data( index, static_cast< int >( CustomRole::Layout ) ) ) ) )
+  if ( QgsPrintLayout *l = qobject_cast< QgsPrintLayout * >( qvariant_cast<QObject *>( data( index, LayoutRole ) ) ) )
     return l;
-  else if ( QgsReport *r = qobject_cast< QgsReport * >( qvariant_cast<QObject *>( data( index, static_cast< int >( CustomRole::Layout ) ) ) ) )
+  else if ( QgsReport *r = qobject_cast< QgsReport * >( qvariant_cast<QObject *>( data( index, LayoutRole ) ) ) )
     return r;
   else
     return nullptr;

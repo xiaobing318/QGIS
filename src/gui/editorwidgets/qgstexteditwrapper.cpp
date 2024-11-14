@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgstexteditwrapper.h"
-#include "moc_qgstexteditwrapper.cpp"
 
 #include "qgsfields.h"
 #include "qgsfieldvalidator.h"
@@ -66,13 +65,13 @@ QVariant QgsTextEditWrapper::value() const
     v = mLineEdit->text();
   }
 
-  if ( ( v.isEmpty() && ( field().type() == QMetaType::Type::Int
-                          || field().type() == QMetaType::Type::Double
-                          || field().type() == QMetaType::Type::LongLong
-                          || field().type() == QMetaType::Type::QDate ) )
+  if ( ( v.isEmpty() && ( field().type() == QVariant::Int
+                          || field().type() == QVariant::Double
+                          || field().type() == QVariant::LongLong
+                          || field().type() == QVariant::Date ) )
        || v == QgsApplication::nullRepresentation() )
   {
-    return QgsVariantUtils::createNullVariant( field().type() );
+    return QVariant( field().type() );
   }
 
   if ( !QgsVariantUtils::isNull( defaultValue() ) && v == defaultValue().toString() )
@@ -82,17 +81,17 @@ QVariant QgsTextEditWrapper::value() const
 
   QVariant res( v );
   // treat VariantMap fields including JSON differently
-  if ( field().type() != QMetaType::Type::QVariantMap && field().convertCompatible( res ) )
+  if ( field().type() != QVariant::Map && field().convertCompatible( res ) )
   {
     return res;
   }
-  else if ( field().type() == QMetaType::Type::QString && field().length() > 0 )
+  else if ( field().type() == QVariant::String && field().length() > 0 )
   {
     // for string fields convertCompatible may return false due to field length limit - in this case just truncate
     // input rather then discarding it entirely
     return QVariant( v.left( field().length() ) );
   }
-  else if ( field().type() == QMetaType::Type::QVariantMap )
+  else if ( field().type() == QVariant::Map )
   {
     // replace empty string (invalid) with quoted empty string
     if ( v.isEmpty() )
@@ -101,7 +100,7 @@ QVariant QgsTextEditWrapper::value() const
       mInvalidJSON = false;
       return qjson;
     }
-    if ( json::accept( v.toStdString() ) )
+    if ( json::accept( v.toUtf8() ) )
     {
       QVariant qjson = QgsJsonUtils::parseJson( v.toStdString() );
       mInvalidJSON = false;
@@ -123,7 +122,7 @@ QVariant QgsTextEditWrapper::value() const
   }
   else
   {
-    return QgsVariantUtils::createNullVariant( field().type() );
+    return QVariant( field().type() );
   }
 }
 
@@ -172,7 +171,7 @@ void QgsTextEditWrapper::initWidget( QWidget *editor )
     }
 
     QgsFilterLineEdit *fle = qobject_cast<QgsFilterLineEdit *>( mLineEdit );
-    if ( field().type() == QMetaType::Type::Int || field().type() == QMetaType::Type::Double || field().type() == QMetaType::Type::LongLong || field().type() == QMetaType::Type::QDate )
+    if ( field().type() == QVariant::Int || field().type() == QVariant::Double || field().type() == QVariant::LongLong || field().type() == QVariant::Date )
     {
       mPlaceholderText = defVal.toString();
       mLineEdit->setPlaceholderText( mPlaceholderText );
@@ -279,16 +278,16 @@ void QgsTextEditWrapper::setWidgetValue( const QVariant &val )
   QString v;
   if ( QgsVariantUtils::isNull( val ) )
   {
-    if ( !( field().type() == QMetaType::Type::Int || field().type() == QMetaType::Type::Double || field().type() == QMetaType::Type::LongLong || field().type() == QMetaType::Type::QDate ) )
+    if ( !( field().type() == QVariant::Int || field().type() == QVariant::Double || field().type() == QVariant::LongLong || field().type() == QVariant::Date ) )
       v = QgsApplication::nullRepresentation();
   }
-  else if ( field().type() == QMetaType::Type::QVariantMap )
+  else if ( field().type() == QVariant::Map )
   {
     // this has to be overridden for json which has only values (i.e. no objects or arrays), as qgsfield.cpp displayString()
     // uses QJsonDocument which doesn't recognise this as valid JSON although it technically is
     if ( field().displayString( val ).isEmpty() )
     {
-      if ( val.userType() == QMetaType::Type::QString && val.toString() != QLatin1String( "\"\"" ) )
+      if ( val.type() == QVariant::String && val.toString() != QLatin1String( "\"\"" ) )
       {
         v = val.toString().append( "\"" ).insert( 0, "\"" );
       }
@@ -302,7 +301,7 @@ void QgsTextEditWrapper::setWidgetValue( const QVariant &val )
       v = field().displayString( val );
     }
   }
-  else if ( val.userType() == QMetaType::Type::Double && std::isnan( val.toDouble() ) )
+  else if ( val.type() == QVariant::Double && std::isnan( val.toDouble() ) )
   {
     v = QgsApplication::nullRepresentation();
   }

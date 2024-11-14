@@ -38,6 +38,7 @@ class QgsMapLayer;
  * however possible that temporarily a layer exists in one tree more than just
  * once, e.g. while reordering items with drag and drop.
  *
+ * \since QGIS 2.4
  */
 class CORE_EXPORT QgsLayerTreeLayer : public QgsLayerTreeNode
 {
@@ -85,6 +86,7 @@ class CORE_EXPORT QgsLayerTreeLayer : public QgsLayerTreeNode
      *
      * \see setName()
      *
+     * \since QGIS 3.0
      */
     QString name() const override;
 
@@ -93,6 +95,7 @@ class CORE_EXPORT QgsLayerTreeLayer : public QgsLayerTreeNode
      *
      * \see name()
      *
+     * \since QGIS 3.0
      */
     void setName( const QString &n ) override;
 
@@ -113,11 +116,12 @@ class CORE_EXPORT QgsLayerTreeLayer : public QgsLayerTreeNode
      * Read layer node from XML. Returns new instance.
      * Does not resolve textual references to layers. Call resolveReferences() afterwards to do it.
      */
-    static QgsLayerTreeLayer *readXml( QDomElement &element, const QgsReadWriteContext &context ) SIP_FACTORY;  // cppcheck-suppress duplInheritedMember
+    static QgsLayerTreeLayer *readXml( QDomElement &element, const QgsReadWriteContext &context ) SIP_FACTORY;
 
     /**
      * Read layer node from XML. Returns new instance.
      * Also resolves textual references to layers from the project (calls resolveReferences() internally).
+     * \since QGIS 3.0
      */
     static QgsLayerTreeLayer *readXml( QDomElement &element, const QgsProject *project, const QgsReadWriteContext &context ) SIP_FACTORY;
 
@@ -129,6 +133,7 @@ class CORE_EXPORT QgsLayerTreeLayer : public QgsLayerTreeNode
 
     /**
      * Resolves reference to layer from stored layer ID (if it has not been resolved already)
+     * \since QGIS 3.0
      */
     void resolveReferences( const QgsProject *project, bool looseMatching = false ) override;
 
@@ -225,6 +230,7 @@ class CORE_EXPORT QgsLayerTreeLayer : public QgsLayerTreeNode
 
     /**
      * Emitted when a previously available layer got unloaded (from layer registry).
+     * \since QGIS 2.6
      */
     void layerWillBeUnloaded();
 
@@ -245,11 +251,13 @@ class CORE_EXPORT QgsLayerTreeLayer : public QgsLayerTreeNode
 
     /**
      * Emits a nameChanged() signal if layer's name has changed
+     * \since QGIS 3.0
      */
     void layerNameChanged();
 
     /**
      * Handles the event of deletion of the referenced layer
+     * \since QGIS 3.0
      */
     void layerWillBeDeleted();
 

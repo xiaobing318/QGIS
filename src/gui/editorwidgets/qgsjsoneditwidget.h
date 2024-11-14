@@ -56,13 +56,6 @@ class GUI_EXPORT QgsJsonEditWidget : public QWidget, private Ui::QgsJsonEditWidg
     explicit QgsJsonEditWidget( QWidget *parent SIP_TRANSFERTHIS = nullptr );
 
     /**
-     * Returns a reference to the JSON code editor used in the widget.
-     *
-     * \since QGIS 3.36
-     */
-    QgsCodeEditorJson *jsonEditor();
-
-    /**
      * \brief Set the JSON text in the widget to \a jsonText.
      */
     void setJsonText( const QString &jsonText );
@@ -116,8 +109,6 @@ class GUI_EXPORT QgsJsonEditWidget : public QWidget, private Ui::QgsJsonEditWidg
     void refreshTreeViewItem( QTreeWidgetItem *treeWidgetItemParent, const QJsonValue &jsonValue );
     void refreshTreeViewItemValue( QTreeWidgetItem *treeWidgetItem, const QString &jsonValueString, const QColor &textColor );
 
-    QFont monospaceFont() const;
-
     QString mJsonText;
 
     FormatJson mFormatJsonMode = FormatJson::Indented;
@@ -126,8 +117,6 @@ class GUI_EXPORT QgsJsonEditWidget : public QWidget, private Ui::QgsJsonEditWidg
 
     QAction *mCopyValueAction;
     QAction *mCopyKeyAction;
-
-    bool mEnableUrlHighlighting = true;
 };
 
 #endif // QGSJSONEDITWIDGET_H

@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgssvgannotation.h"
-#include "moc_qgssvgannotation.cpp"
 
 #include "qgsreadwritecontext.h"
 #include "qgsproject.h"
@@ -63,7 +62,7 @@ void QgsSvgAnnotation::readXml( const QDomElement &itemElem, const QgsReadWriteC
 void QgsSvgAnnotation::renderAnnotation( QgsRenderContext &context, QSizeF size ) const
 {
   QPainter *painter = context.painter();
-  if ( !painter || ( context.feedback() && context.feedback()->isCanceled() ) )
+  if ( !painter )
   {
     return;
   }

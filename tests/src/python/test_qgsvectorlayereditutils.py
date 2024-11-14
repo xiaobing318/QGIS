@@ -12,33 +12,36 @@ __author__ = 'Loïc Bartoletti'
 __date__ = '18/10/2022'
 __copyright__ = 'Copyright 2022, The QGIS Project'
 
-import os
+import qgis  # NOQA
+
 import tempfile
+import os
 
 from qgis.PyQt.QtCore import (
     QVariant,
+    Qt,
+    QTime,
+    QTimer,
+    QTemporaryDir,
 )
-from qgis.core import (
-    Qgis,
-    QgsCoordinateReferenceSystem,
-    QgsCoordinateTransformContext,
-    QgsFeature,
-    QgsField,
-    QgsFields,
-    QgsGeometry,
-    QgsLineString,
-    QgsPoint,
-    QgsPointXY,
-    QgsVectorFileWriter,
-    QgsVectorLayer,
-    QgsVectorLayerEditUtils,
-    QgsWkbTypes,
-    QgsDefaultValue,
-    QgsVectorLayerUtils,
-    QgsUnsetAttributeValue
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+
+from qgis.core import (Qgis,
+                       QgsFeature,
+                       QgsField,
+                       QgsFields,
+                       QgsGeometry,
+                       QgsLineString,
+                       QgsPoint,
+                       QgsPointXY,
+                       QgsCoordinateReferenceSystem,
+                       QgsCoordinateTransformContext,
+                       QgsVectorLayer,
+                       QgsVectorLayerEditUtils,
+                       QgsVectorFileWriter,
+                       QgsWkbTypes)
+
+
+from qgis.testing import start_app, unittest
 
 start_app()
 
@@ -58,7 +61,7 @@ def createEmptyMultiPolygonLayer():
     return createEmptyLayer("MultiPolygon")
 
 
-class TestQgsVectorLayerEditUtils(QgisTestCase):
+class TestQgsVectorLayerEditUtils(unittest.TestCase):
 
     def testAddRing(self):
         # test adding ring to a vector layer
@@ -279,187 +282,6 @@ class TestQgsVectorLayerEditUtils(QgisTestCase):
             "Polygon ((2 2, 6 2, 6 6, 2 6, 2 2))"
         )
 
-    def testAddRingV2AtLeastOne(self):
-        # test adding ring on multi features
-        # Succeed if the ring can be added at least to 1 feature
-        layer = createEmptyPolygonLayer()
-        self.assertTrue(layer.startEditing())
-
-        pr = layer.dataProvider()
-        f1 = QgsFeature(layer.fields(), 1)
-        f1.setGeometry(QgsGeometry.fromWkt('POLYGON((0 0, 5 0, 5 5, 0 5, 0 0))'))
-        f2 = QgsFeature(layer.fields(), 1)
-        f2.setGeometry(QgsGeometry.fromWkt('POLYGON((2 2, 6 2, 6 6, 2 6, 2 2))'))
-        assert pr.addFeatures([f1, f2])
-        self.assertEqual(layer.featureCount(), 2)
-
-        vle = QgsVectorLayerEditUtils(layer)
-        result = vle.addRingV2(QgsLineString([QgsPoint(0.5, 3), QgsPoint(1.5, 3), QgsPoint(1.5, 1.5), QgsPoint(3, 1.5), QgsPoint(3, 0.5), QgsPoint(0.5, 0.5), QgsPoint(0.5, 3)]))
-        self.assertEqual(Qgis.GeometryOperationResult.Success, result[0])
-        self.assertEqual({1}, set(result[1]))
-        layer.commitChanges()
-
-        self.assertEqual(
-            layer.getFeature(1).geometry().asWkt(),
-            "Polygon ((0 0, 5 0, 5 5, 0 5, 0 0),(0.5 3, 1.5 3, 1.5 1.5, 3 1.5, 3 0.5, 0.5 0.5, 0.5 3))"
-        )
-        self.assertEqual(
-            layer.getFeature(2).geometry().asWkt(),
-            "Polygon ((2 2, 6 2, 6 6, 2 6, 2 2))"
-        )
-
-    def testMoveVertex(self):
-        layer = QgsVectorLayer("Point", "point", "memory")
-        self.assertTrue(layer.startEditing())
-        self.assertTrue(layer.isValid())
-
-        pr = layer.dataProvider()
-        f1 = QgsFeature(layer.fields(), 1)
-        f1.setGeometry(QgsGeometry.fromWkt('Point(0 0)'))
-        self.assertTrue(pr.addFeatures([f1]))
-        self.assertEqual(layer.featureCount(), 1)
-
-        vle = QgsVectorLayerEditUtils(layer)
-
-        self.assertTrue(vle.moveVertex(1, 2, f1.id(), 0))
-        f1 = layer.getFeature(1)
-
-        self.assertEqual(f1.geometry().constGet().x(), 1)
-        self.assertEqual(f1.geometry().constGet().y(), 2)
-
-        self.assertTrue(vle.moveVertexV2(QgsPoint(3, 4, 5, 6), f1.id(), 0))
-        f1 = layer.getFeature(1)
-
-        self.assertEqual(f1.geometry().constGet().x(), 3)
-        self.assertEqual(f1.geometry().constGet().y(), 4)
-        self.assertFalse(f1.geometry().constGet().is3D())
-        self.assertFalse(f1.geometry().constGet().isMeasure())
-
-    def testMoveVertexPointZ(self):
-        layer = QgsVectorLayer("PointZ", "pointZ", "memory")
-        self.assertTrue(layer.startEditing())
-        self.assertTrue(layer.isValid())
-
-        pr = layer.dataProvider()
-        f1 = QgsFeature(layer.fields(), 1)
-        f1.setGeometry(QgsGeometry.fromWkt('PointZ(0 0 0)'))
-        self.assertTrue(pr.addFeatures([f1]))
-        self.assertEqual(layer.featureCount(), 1)
-
-        vle = QgsVectorLayerEditUtils(layer)
-
-        self.assertTrue(vle.moveVertex(1, 2, f1.id(), 0))
-        f1 = layer.getFeature(1)
-
-        self.assertEqual(f1.geometry().constGet().x(), 1)
-        self.assertEqual(f1.geometry().constGet().y(), 2)
-        self.assertEqual(f1.geometry().constGet().z(), 0)
-
-        self.assertTrue(vle.moveVertexV2(QgsPoint(3, 4, 5, 6), f1.id(), 0))
-        f1 = layer.getFeature(1)
-
-        self.assertEqual(f1.geometry().constGet().x(), 3)
-        self.assertEqual(f1.geometry().constGet().y(), 4)
-        self.assertEqual(f1.geometry().constGet().z(), 5)
-        self.assertTrue(f1.geometry().constGet().is3D())
-        self.assertFalse(f1.geometry().constGet().isMeasure())
-
-        # Add a non-Z point and check that Z get added on move
-        f2 = QgsFeature(layer.fields(), 2)
-        f2.setGeometry(QgsGeometry.fromWkt('Point(0 0)'))
-        self.assertTrue(pr.addFeatures([f2]))
-        self.assertEqual(layer.featureCount(), 2)
-
-        self.assertFalse(f2.geometry().constGet().is3D())
-        self.assertTrue(vle.moveVertexV2(QgsPoint(3, 4, 5, 6), f2.id(), 0))
-        f2 = layer.getFeature(2)
-        self.assertEqual(f2.geometry().constGet().x(), 3)
-        self.assertEqual(f2.geometry().constGet().y(), 4)
-        self.assertEqual(f2.geometry().constGet().z(), 5)
-        self.assertTrue(f2.geometry().constGet().is3D())
-        self.assertFalse(f2.geometry().constGet().isMeasure())
-
-    def testMoveVertexPointM(self):
-        layer = QgsVectorLayer("PointM", "pointM", "memory")
-        self.assertTrue(layer.startEditing())
-        self.assertTrue(layer.isValid())
-
-        pr = layer.dataProvider()
-        f1 = QgsFeature(layer.fields(), 1)
-        f1.setGeometry(QgsGeometry.fromWkt('PointM(0 0 0)'))
-        self.assertTrue(pr.addFeatures([f1]))
-        self.assertEqual(layer.featureCount(), 1)
-
-        vle = QgsVectorLayerEditUtils(layer)
-
-        self.assertTrue(vle.moveVertexV2(QgsPoint(3, 4, 5, 6), f1.id(), 0))
-        f1 = layer.getFeature(1)
-
-        self.assertEqual(f1.geometry().constGet().x(), 3)
-        self.assertEqual(f1.geometry().constGet().y(), 4)
-        self.assertEqual(f1.geometry().constGet().m(), 6)
-        self.assertFalse(f1.geometry().constGet().is3D())
-        self.assertTrue(f1.geometry().constGet().isMeasure())
-
-        # Add a non-M point and check that M get added on move
-        f2 = QgsFeature(layer.fields(), 2)
-        f2.setGeometry(QgsGeometry.fromWkt('Point(0 0)'))
-        self.assertTrue(pr.addFeatures([f2]))
-        self.assertEqual(layer.featureCount(), 2)
-
-        self.assertFalse(f2.geometry().constGet().isMeasure())
-
-        self.assertTrue(vle.moveVertexV2(QgsPoint(3, 4, 5, 6), f2.id(), 0))
-        f2 = layer.getFeature(2)
-
-        self.assertTrue(f2.geometry().constGet().isMeasure())
-        self.assertFalse(f2.geometry().constGet().is3D())
-        self.assertEqual(f2.geometry().constGet().x(), 3)
-        self.assertEqual(f2.geometry().constGet().y(), 4)
-        self.assertEqual(f2.geometry().constGet().m(), 6)
-
-    def testMoveVertexPointZM(self):
-        layer = QgsVectorLayer("PointZM", "pointZM", "memory")
-        self.assertTrue(layer.startEditing())
-        self.assertTrue(layer.isValid())
-
-        pr = layer.dataProvider()
-        f1 = QgsFeature(layer.fields(), 1)
-        f1.setGeometry(QgsGeometry.fromWkt('PointZM(0 0 0 0)'))
-        self.assertTrue(pr.addFeatures([f1]))
-        self.assertEqual(layer.featureCount(), 1)
-
-        vle = QgsVectorLayerEditUtils(layer)
-
-        self.assertTrue(vle.moveVertexV2(QgsPoint(3, 4, 5, 6), f1.id(), 0))
-        f1 = layer.getFeature(1)
-
-        self.assertEqual(f1.geometry().constGet().x(), 3)
-        self.assertEqual(f1.geometry().constGet().y(), 4)
-        self.assertEqual(f1.geometry().constGet().z(), 5)
-        self.assertEqual(f1.geometry().constGet().m(), 6)
-        self.assertTrue(f1.geometry().constGet().is3D())
-        self.assertTrue(f1.geometry().constGet().isMeasure())
-
-        # Add a non-ZM point and check that Z and M get added on move
-        f2 = QgsFeature(layer.fields(), 2)
-        f2.setGeometry(QgsGeometry.fromWkt('Point(0 0)'))
-        self.assertTrue(pr.addFeatures([f2]))
-        self.assertEqual(layer.featureCount(), 2)
-
-        self.assertFalse(f2.geometry().constGet().isMeasure())
-        self.assertFalse(f2.geometry().constGet().is3D())
-
-        self.assertTrue(vle.moveVertexV2(QgsPoint(3, 4, 5, 6), f2.id(), 0))
-        f2 = layer.getFeature(2)
-        self.assertTrue(f2.geometry().constGet().isMeasure())
-        self.assertTrue(f2.geometry().constGet().is3D())
-
-        self.assertEqual(f2.geometry().constGet().x(), 3)
-        self.assertEqual(f2.geometry().constGet().y(), 4)
-        self.assertEqual(f2.geometry().constGet().z(), 5)
-        self.assertEqual(f2.geometry().constGet().m(), 6)
-
     def testSplitParts(self):
         layer = createEmptyMultiPolygonLayer()
         self.assertTrue(layer.startEditing())
@@ -561,7 +383,7 @@ class TestQgsVectorLayerEditUtils(QgisTestCase):
         QgsVectorFileWriter.create(
             fileName=tempgpkg,
             fields=fields,
-            geometryType=QgsWkbTypes.Type.Polygon,
+            geometryType=QgsWkbTypes.Polygon,
             srs=crs,
             transformContext=QgsCoordinateTransformContext(),
             options=options)
@@ -602,114 +424,6 @@ class TestQgsVectorLayerEditUtils(QgisTestCase):
             "Polygon ((5 0, 0 0, 0 5, 3 5, 3 8, 8 8, 8 3, 5 3, 5 0))"
         )
         self.assertEqual(mergedFeature.attribute('name'), 'tre')
-
-    def test_split_policy_lines(self):
-        temp_layer = QgsVectorLayer("LineString?crs=epsg:3111&field=pk:int&field=field_default:real&field=field_dupe:real&field=field_unset:real&field=field_ratio:real&field=apply_default:real",
-                                    "vl", "memory")
-        self.assertTrue(temp_layer.isValid())
-
-        temp_layer.setDefaultValueDefinition(1,
-                                             QgsDefaultValue('301'))
-        temp_layer.setDefaultValueDefinition(2,
-                                             QgsDefaultValue('302'))
-        temp_layer.setDefaultValueDefinition(3,
-                                             QgsDefaultValue('303'))
-        temp_layer.setDefaultValueDefinition(4,
-                                             QgsDefaultValue('304'))
-        temp_layer.setDefaultValueDefinition(5,
-                                             QgsDefaultValue('305', True))
-
-        temp_layer.setFieldSplitPolicy(1,
-                                       Qgis.FieldDomainSplitPolicy.DefaultValue)
-        temp_layer.setFieldSplitPolicy(2,
-                                       Qgis.FieldDomainSplitPolicy.Duplicate)
-        temp_layer.setFieldSplitPolicy(3,
-                                       Qgis.FieldDomainSplitPolicy.UnsetField)
-        temp_layer.setFieldSplitPolicy(4,
-                                       Qgis.FieldDomainSplitPolicy.GeometryRatio)
-        # this will be ignored -- the apply on update default will override it
-        temp_layer.setFieldSplitPolicy(5,
-                                       Qgis.FieldDomainSplitPolicy.GeometryRatio)
-
-        temp_layer.startEditing()
-
-        feature = QgsVectorLayerUtils.createFeature(temp_layer,
-                                                    QgsGeometry.fromWkt('LineString( 0 0, 10 0)'))
-        feature[1] = 3301
-        feature[5] = 3305
-        self.assertTrue(temp_layer.addFeature(feature))
-
-        temp_layer.commitChanges()
-
-        original_feature = next(temp_layer.getFeatures())
-        self.assertEqual(original_feature.attributes(),
-                         [None, 3301.0, 302.0, 303.0, 304.0, 3305.0])
-
-        temp_layer.startEditing()
-
-        split_curve = QgsGeometry.fromWkt('LineString (0.3 0.2, 0.27 -0.2, 0.86 -0.24, 0.88 0.22)')
-        temp_layer.splitFeatures(split_curve.constGet(), preserveCircular=False)
-
-        features = list(temp_layer.getFeatures())
-        attributes = [f.attributes() for f in features]
-        self.assertCountEqual(attributes,
-                              [[None, 3301.0, 302.0, 303.0, 8.664000000000001, 305.0],
-                               [None, 301, 302.0, QgsUnsetAttributeValue(), 17.797217391304347, 305.0],
-                               [None, 301, 302.0, QgsUnsetAttributeValue(), 277.53878260869567, 305.0]
-                               ])
-
-        temp_layer.rollBack()
-
-    def test_split_policy_polygon(self):
-        temp_layer = QgsVectorLayer("Polygon?crs=epsg:3111&field=pk:int&field=field_default:real&field=field_dupe:real&field=field_unset:real&field=field_ratio:real",
-                                    "vl", "memory")
-        self.assertTrue(temp_layer.isValid())
-
-        temp_layer.setDefaultValueDefinition(1,
-                                             QgsDefaultValue('301'))
-        temp_layer.setDefaultValueDefinition(2,
-                                             QgsDefaultValue('302'))
-        temp_layer.setDefaultValueDefinition(3,
-                                             QgsDefaultValue('303'))
-        temp_layer.setDefaultValueDefinition(4,
-                                             QgsDefaultValue('304'))
-
-        temp_layer.setFieldSplitPolicy(1,
-                                       Qgis.FieldDomainSplitPolicy.DefaultValue)
-        temp_layer.setFieldSplitPolicy(2,
-                                       Qgis.FieldDomainSplitPolicy.Duplicate)
-        temp_layer.setFieldSplitPolicy(3,
-                                       Qgis.FieldDomainSplitPolicy.UnsetField)
-        temp_layer.setFieldSplitPolicy(4,
-                                       Qgis.FieldDomainSplitPolicy.GeometryRatio)
-
-        temp_layer.startEditing()
-
-        feature = QgsVectorLayerUtils.createFeature(temp_layer,
-                                                    QgsGeometry.fromWkt('Polygon(( 0 0, 10 0, 10 10, 0 10, 0 0))'))
-        feature[1] = 3301
-        self.assertTrue(temp_layer.addFeature(feature))
-
-        temp_layer.commitChanges()
-
-        original_feature = next(temp_layer.getFeatures())
-        self.assertEqual(original_feature.attributes(),
-                         [None, 3301.0, 302.0, 303.0, 304.0])
-
-        temp_layer.startEditing()
-
-        split_curve = QgsGeometry.fromWkt('LineString (-2.7 4.3, 5.5 11.8, 5.28 -5.57)')
-        temp_layer.splitFeatures(split_curve.constGet(), preserveCircular=False)
-
-        features = list(temp_layer.getFeatures())
-        attributes = [f.attributes() for f in features]
-        self.assertCountEqual(attributes,
-                              [[None, 3301.0, 302.0, 303.0, 147.23845863746018],
-                               [None, 301, 302.0, QgsUnsetAttributeValue(), 17.343326048780483],
-                               [None, 301, 302.0, QgsUnsetAttributeValue(), 139.41821531375936]
-                               ])
-
-        temp_layer.rollBack()
 
 
 if __name__ == '__main__':

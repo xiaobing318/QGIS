@@ -42,7 +42,7 @@ QgsGeometry QgsMapClippingUtils::calculateFeatureRequestGeometry( const QList< Q
   shouldFilter = false;
   for ( const QgsMapClippingRegion &region : regions )
   {
-    if ( region.geometry().type() != Qgis::GeometryType::Polygon )
+    if ( region.geometry().type() != QgsWkbTypes::PolygonGeometry )
       continue;
 
     shouldFilter = true;
@@ -61,7 +61,7 @@ QgsGeometry QgsMapClippingUtils::calculateFeatureRequestGeometry( const QList< Q
     return QgsGeometry();
 
   // filter out polygon parts from result only
-  result.convertGeometryCollectionToSubclass( Qgis::GeometryType::Polygon );
+  result.convertGeometryCollectionToSubclass( QgsWkbTypes::PolygonGeometry );
 
   // lastly transform back to layer CRS
   try
@@ -70,7 +70,7 @@ QgsGeometry QgsMapClippingUtils::calculateFeatureRequestGeometry( const QList< Q
   }
   catch ( QgsCsException & )
   {
-    QgsDebugError( QStringLiteral( "Could not transform clipping region to layer CRS" ) );
+    QgsDebugMsg( QStringLiteral( "Could not transform clipping region to layer CRS" ) );
     shouldFilter = false;
     return QgsGeometry();
   }
@@ -85,7 +85,7 @@ QgsGeometry QgsMapClippingUtils::calculateFeatureIntersectionGeometry( const QLi
   shouldClip = false;
   for ( const QgsMapClippingRegion &region : regions )
   {
-    if ( region.geometry().type() != Qgis::GeometryType::Polygon )
+    if ( region.geometry().type() != QgsWkbTypes::PolygonGeometry )
       continue;
 
     if ( region.featureClip() != QgsMapClippingRegion::FeatureClippingType::ClipToIntersection )
@@ -107,7 +107,7 @@ QgsGeometry QgsMapClippingUtils::calculateFeatureIntersectionGeometry( const QLi
     return QgsGeometry();
 
   // filter out polygon parts from result only
-  result.convertGeometryCollectionToSubclass( Qgis::GeometryType::Polygon );
+  result.convertGeometryCollectionToSubclass( QgsWkbTypes::PolygonGeometry );
 
   // lastly transform back to layer CRS
   try
@@ -116,7 +116,7 @@ QgsGeometry QgsMapClippingUtils::calculateFeatureIntersectionGeometry( const QLi
   }
   catch ( QgsCsException & )
   {
-    QgsDebugError( QStringLiteral( "Could not transform clipping region to layer CRS" ) );
+    QgsDebugMsg( QStringLiteral( "Could not transform clipping region to layer CRS" ) );
     shouldClip = false;
     return QgsGeometry();
   }
@@ -124,36 +124,35 @@ QgsGeometry QgsMapClippingUtils::calculateFeatureIntersectionGeometry( const QLi
   return result;
 }
 
-QPainterPath QgsMapClippingUtils::calculatePainterClipRegion( const QList<QgsMapClippingRegion> &regions, const QgsRenderContext &context, Qgis::LayerType layerType, bool &shouldClip )
+QPainterPath QgsMapClippingUtils::calculatePainterClipRegion( const QList<QgsMapClippingRegion> &regions, const QgsRenderContext &context, QgsMapLayerType layerType, bool &shouldClip )
 {
   QgsGeometry result;
   bool first = true;
   shouldClip = false;
   for ( const QgsMapClippingRegion &region : regions )
   {
-    if ( region.geometry().type() != Qgis::GeometryType::Polygon )
+    if ( region.geometry().type() != QgsWkbTypes::PolygonGeometry )
       continue;
 
     switch ( layerType )
     {
-      case Qgis::LayerType::Vector:
+      case QgsMapLayerType::VectorLayer:
         if ( region.featureClip() != QgsMapClippingRegion::FeatureClippingType::ClipPainterOnly )
           continue;
         break;
 
-      case Qgis::LayerType::VectorTile:
+      case QgsMapLayerType::VectorTileLayer:
         // for now, we ignore the region's featureClip behavior when rendering vector tiles
         // TODO: ideally we should apply this during rendering, just like we do for normal
         // vector layers
         break;
 
-      case Qgis::LayerType::Mesh:
-      case Qgis::LayerType::Raster:
-      case Qgis::LayerType::Plugin:
-      case Qgis::LayerType::PointCloud:
-      case Qgis::LayerType::Annotation:
-      case Qgis::LayerType::Group:
-      case Qgis::LayerType::TiledScene:
+      case QgsMapLayerType::MeshLayer:
+      case QgsMapLayerType::RasterLayer:
+      case QgsMapLayerType::PluginLayer:
+      case QgsMapLayerType::PointCloudLayer:
+      case QgsMapLayerType::AnnotationLayer:
+      case QgsMapLayerType::GroupLayer:
         // for these layer types, we ignore the region's featureClip behavior.
         break;
 
@@ -187,7 +186,7 @@ QgsGeometry QgsMapClippingUtils::calculateLabelIntersectionGeometry( const QList
   shouldClip = false;
   for ( const QgsMapClippingRegion &region : regions )
   {
-    if ( region.geometry().type() != Qgis::GeometryType::Polygon )
+    if ( region.geometry().type() != QgsWkbTypes::PolygonGeometry )
       continue;
 
     // for labeling, we clip using either painter clip regions or intersects type regions.
@@ -213,7 +212,7 @@ QgsGeometry QgsMapClippingUtils::calculateLabelIntersectionGeometry( const QList
     return QgsGeometry();
 
   // filter out polygon parts from result only
-  result.convertGeometryCollectionToSubclass( Qgis::GeometryType::Polygon );
+  result.convertGeometryCollectionToSubclass( QgsWkbTypes::PolygonGeometry );
 
   // lastly transform back to layer CRS
   try
@@ -222,7 +221,7 @@ QgsGeometry QgsMapClippingUtils::calculateLabelIntersectionGeometry( const QList
   }
   catch ( QgsCsException & )
   {
-    QgsDebugError( QStringLiteral( "Could not transform clipping region to layer CRS" ) );
+    QgsDebugMsg( QStringLiteral( "Could not transform clipping region to layer CRS" ) );
     shouldClip = false;
     return QgsGeometry();
   }

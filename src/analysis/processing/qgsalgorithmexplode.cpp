@@ -58,19 +58,14 @@ QString QgsExplodeAlgorithm::shortHelpString() const
                       "same type and contain only single curve segments." );
 }
 
-Qgis::ProcessingAlgorithmDocumentationFlags QgsExplodeAlgorithm::documentationFlags() const
-{
-  return Qgis::ProcessingAlgorithmDocumentationFlag::RegeneratesPrimaryKey;
-}
-
 QList<int> QgsExplodeAlgorithm::inputLayerTypes() const
 {
-  return QList<int>() << static_cast< int >( Qgis::ProcessingSourceType::VectorLine );
+  return QList<int>() << QgsProcessing::TypeVectorLine;
 }
 
-Qgis::ProcessingSourceType QgsExplodeAlgorithm::outputLayerType() const
+QgsProcessing::SourceType QgsExplodeAlgorithm::outputLayerType() const
 {
-  return Qgis::ProcessingSourceType::VectorLine;
+  return QgsProcessing::TypeVectorLine;
 }
 
 QgsExplodeAlgorithm *QgsExplodeAlgorithm::createInstance() const
@@ -83,7 +78,7 @@ QString QgsExplodeAlgorithm::outputName() const
   return QObject::tr( "Exploded" );
 }
 
-Qgis::WkbType QgsExplodeAlgorithm::outputWkbType( Qgis::WkbType inputWkbType ) const
+QgsWkbTypes::Type QgsExplodeAlgorithm::outputWkbType( QgsWkbTypes::Type inputWkbType ) const
 {
   return QgsWkbTypes::singleType( inputWkbType );
 }
@@ -108,11 +103,6 @@ QgsFeatureList QgsExplodeAlgorithm::processFeature( const QgsFeature &f, QgsProc
     }
     return features;
   }
-}
-
-Qgis::ProcessingFeatureSourceFlags QgsExplodeAlgorithm::sourceFlags() const
-{
-  return Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks;
 }
 
 QgsFeatureSink::SinkFlags QgsExplodeAlgorithm::sinkFlags() const
@@ -147,7 +137,7 @@ std::vector<QgsGeometry> QgsExplodeAlgorithm::curveAsSingleSegments( const QgsCu
     return parts;
   switch ( QgsWkbTypes::flatType( curve->wkbType() ) )
   {
-    case Qgis::WkbType::LineString:
+    case QgsWkbTypes::LineString:
     {
       const QgsLineString *line = qgsgeometry_cast< const QgsLineString * >( curve );
       for ( int i = 0; i < line->numPoints() - 1; ++i )
@@ -169,7 +159,7 @@ std::vector<QgsGeometry> QgsExplodeAlgorithm::curveAsSingleSegments( const QgsCu
       break;
     }
 
-    case Qgis::WkbType::CircularString:
+    case QgsWkbTypes::CircularString:
     {
       const QgsCircularString *string = qgsgeometry_cast< const QgsCircularString * >( curve );
       for ( int i = 0; i < string->numPoints() - 2; i += 2 )
@@ -193,7 +183,7 @@ std::vector<QgsGeometry> QgsExplodeAlgorithm::curveAsSingleSegments( const QgsCu
       break;
     }
 
-    case Qgis::WkbType::CompoundCurve:
+    case QgsWkbTypes::CompoundCurve:
     {
       const QgsCompoundCurve *compoundCurve = qgsgeometry_cast< QgsCompoundCurve * >( curve );
       for ( int i = 0; i < compoundCurve->nCurves(); ++i )

@@ -20,9 +20,10 @@
 #include "qgslogger.h"
 #include "qgsrendercontext.h"
 #include "qgssymbollayerutils.h"
-#include "qgspainting.h"
-
 #include <QPicture>
+
+Q_GUI_EXPORT extern int qt_defaultDpiX();
+Q_GUI_EXPORT extern int qt_defaultDpiY();
 
 QgsPaintEffect::QgsPaintEffect( const QgsPaintEffect &other )
   : mEnabled( other.enabled() )
@@ -131,7 +132,9 @@ void QgsPaintEffect::drawSource( QPainter &painter )
 {
   if ( requiresQPainterDpiFix )
   {
-    QgsPainting::drawPicture( &painter, QPointF( 0, 0 ), *mPicture );
+    const QgsScopedQPainterState painterState( &painter );
+    fixQPictureDpi( &painter );
+    painter.drawPicture( 0, 0, *mPicture );
   }
   else
   {
@@ -177,7 +180,12 @@ QRectF QgsPaintEffect::boundingRect( const QRectF &rect, const QgsRenderContext 
 
 void QgsPaintEffect::fixQPictureDpi( QPainter *painter ) const
 {
-  QgsPainting::applyScaleFixForQPictureDpi( painter );
+  // QPicture makes an assumption that we drawing to it with system DPI.
+  // Then when being drawn, it scales the painter. The following call
+  // negates the effect. There is no way of setting QPicture's DPI.
+  // See QTBUG-20361
+  painter->scale( static_cast< double >( qt_defaultDpiX() ) / painter->device()->logicalDpiX(),
+                  static_cast< double >( qt_defaultDpiY() ) / painter->device()->logicalDpiY() );
 }
 
 QRectF QgsPaintEffect::imageBoundingRect( const QgsRenderContext &context ) const

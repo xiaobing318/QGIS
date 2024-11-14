@@ -9,15 +9,13 @@ __author__ = '(C) 2020 by Nyall Dawson'
 __date__ = '10/01/2020'
 __copyright__ = 'Copyright 2020, The QGIS Project'
 
+import qgis  # NOQA
 from qgis.PyQt.QtGui import QColor
-from qgis.core import (
-    QgsBearingNumericFormat,
-    QgsReadWriteContext,
-    QgsTableCell,
-    QgsTextFormat,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsTableCell,
+                       QgsBearingNumericFormat,
+                       QgsReadWriteContext,
+                       QgsTextFormat)
+from qgis.testing import start_app, unittest
 
 from utilities import unitTestDataPath
 
@@ -25,7 +23,7 @@ start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestQgsTableCell(QgisTestCase):
+class TestQgsTableCell(unittest.TestCase):
 
     def testCell(self):
         c = QgsTableCell('test')

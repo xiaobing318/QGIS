@@ -31,7 +31,7 @@ class CustomActionRegistry : public QgsMapLayerActionRegistry
     Q_OBJECT
 
   public:
-#include "qgsmaplayeractionregistry.h"
+
     CustomActionRegistry() = default;
     // remove all actions
     void clear() { mMapLayerActionList.clear(); }
@@ -60,7 +60,7 @@ class GUI_EXPORT QgsIdentifyMenu : public QMenu
 
     struct ActionData
     {
-
+      //! Constructor for ActionData
       ActionData() = default;
 
       ActionData( QgsMapLayer *layer, QgsMapLayerAction *mapLayerAction = nullptr )
@@ -107,7 +107,7 @@ class GUI_EXPORT QgsIdentifyMenu : public QMenu
      *
      * \since QGIS 3.26
     */
-    static QList<QgsMapToolIdentify::IdentifyResult> findFeaturesOnCanvas( QgsMapMouseEvent *event, QgsMapCanvas *canvas, const QList<Qgis::GeometryType> &geometryTypes );
+    static QList<QgsMapToolIdentify::IdentifyResult> findFeaturesOnCanvas( QgsMapMouseEvent *event, QgsMapCanvas *canvas, const QList<QgsWkbTypes::GeometryType> &geometryTypes );
 
     //! define if the menu executed can return multiple results (e.g. all results or all identified features of a vector layer)
     void setAllowMultipleReturn( bool multipleReturn ) { mAllowMultipleReturn = multipleReturn;}
@@ -120,12 +120,14 @@ class GUI_EXPORT QgsIdentifyMenu : public QMenu
     /**
      * Sets an expression context scope used to resolve underlying actions.
      *
+     * \since QGIS 3.0
      */
     void setExpressionContextScope( const QgsExpressionContextScope &scope );
 
     /**
      * Returns an expression context scope used to resolve underlying actions.
      *
+     * \since QGIS 3.0
      */
     QgsExpressionContextScope expressionContextScope() const;
 
@@ -175,9 +177,9 @@ class GUI_EXPORT QgsIdentifyMenu : public QMenu
     /**
      * Applies style from the settings to the highlight
      *
-     * \deprecated QGIS 3.40. Use QgsHighlight::applyDefaultStyle() instead.
+     * \since QGIS 3.8
      */
-    Q_DECL_DEPRECATED static void styleHighlight( QgsHighlight *highlight ) SIP_DEPRECATED;
+    static void styleHighlight( QgsHighlight *highlight );
 
   protected:
     void closeEvent( QCloseEvent *e ) override;

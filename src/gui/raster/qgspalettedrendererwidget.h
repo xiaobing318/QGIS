@@ -197,6 +197,7 @@ class GUI_EXPORT QgsPalettedRendererWidget: public QgsRasterRendererWidget, priv
 
     QMenu *mContextMenu = nullptr;
     QMenu *mAdvancedMenu = nullptr;
+    QAction *mLoadFromLayerAction = nullptr;
     QgsPalettedRendererModel *mModel = nullptr;
     QgsPalettedRendererProxyModel *mProxyModel = nullptr;
 

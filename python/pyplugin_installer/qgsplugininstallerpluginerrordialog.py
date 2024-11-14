@@ -26,11 +26,7 @@
 
 from qgis.PyQt.QtWidgets import QDialog
 
-from pathlib import Path
-
-from qgis.PyQt import uic
-
-Ui_QgsPluginInstallerPluginErrorDialogBase, _ = uic.loadUiType(Path(__file__).parent / 'qgsplugininstallerpluginerrorbase.ui')
+from .ui_qgsplugininstallerpluginerrorbase import Ui_QgsPluginInstallerPluginErrorDialogBase
 
 
 class QgsPluginInstallerPluginErrorDialog(QDialog, Ui_QgsPluginInstallerPluginErrorDialogBase):

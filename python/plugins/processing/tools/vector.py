@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     vector.py
@@ -63,7 +65,7 @@ def values(source, *attributes):
         attr_keys[index] = attr
 
     # use an optimised feature request
-    request = QgsFeatureRequest().setSubsetOfAttributes(indices).setFlags(QgsFeatureRequest.Flag.NoGeometry)
+    request = QgsFeatureRequest().setSubsetOfAttributes(indices).setFlags(QgsFeatureRequest.NoGeometry)
 
     for feature in source.getFeatures(request):
         for i in indices:

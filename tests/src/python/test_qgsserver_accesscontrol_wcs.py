@@ -33,12 +33,12 @@ class TestQgsServerAccessControlWCS(TestQgsServerAccessControl):
         response, headers = self._get_fullaccess(query_string)
         self.assertTrue(
             str(response).find("<name>dem</name>") != -1,
-            f"No dem layer in WCS/GetCapabilities\n{response}")
+            "No dem layer in WCS/GetCapabilities\n%s" % response)
 
         response, headers = self._get_restricted(query_string)
         self.assertTrue(
             str(response).find("<name>dem</name>") != -1,
-            f"No dem layer in WCS/GetCapabilities\n{response}")
+            "No dem layer in WCS/GetCapabilities\n%s" % response)
 
         query_string = "&".join(["%s=%s" % i for i in list({
             "MAP": urllib.parse.quote(self.projectPath),
@@ -51,7 +51,7 @@ class TestQgsServerAccessControlWCS(TestQgsServerAccessControl):
         response, headers = self._get_restricted(query_string)
         self.assertFalse(
             str(response).find("<name>dem</name>") != -1,
-            f"Unexpected dem layer in WCS/GetCapabilities\n{response}")
+            "Unexpected dem layer in WCS/GetCapabilities\n%s" % response)
 
     def test_wcs_describecoverage(self):
         query_string = "&".join(["%s=%s" % i for i in list({
@@ -65,12 +65,12 @@ class TestQgsServerAccessControlWCS(TestQgsServerAccessControl):
         response, headers = self._get_fullaccess(query_string)
         self.assertTrue(
             str(response).find("<name>dem</name>") != -1,
-            f"No dem layer in DescribeCoverage\n{response}")
+            "No dem layer in DescribeCoverage\n%s" % response)
 
         response, headers = self._get_restricted(query_string)
         self.assertTrue(
             str(response).find("<name>dem</name>") != -1,
-            f"No dem layer in DescribeCoverage\n{response}")
+            "No dem layer in DescribeCoverage\n%s" % response)
 
         query_string = "&".join(["%s=%s" % i for i in list({
             "MAP": urllib.parse.quote(self.projectPath),
@@ -84,7 +84,7 @@ class TestQgsServerAccessControlWCS(TestQgsServerAccessControl):
         response, headers = self._get_restricted(query_string)
         self.assertFalse(
             str(response).find("<name>dem</name>") != -1,
-            f"Unexpected dem layer in DescribeCoverage\n{response}")
+            "Unexpected dem layer in DescribeCoverage\n%s" % response)
 
     def test_wcs_getcoverage(self):
         query_string = "&".join(["%s=%s" % i for i in list({
@@ -103,7 +103,7 @@ class TestQgsServerAccessControlWCS(TestQgsServerAccessControl):
         response, headers = self._get_fullaccess(query_string)
         self.assertEqual(
             headers.get("Content-Type"), "image/tiff",
-            f"Content type for GetMap is wrong: {headers.get('Content-Type')}")
+            "Content type for GetMap is wrong: %s" % headers.get("Content-Type"))
         self.assertTrue(
             self._geo_img_diff(response, "WCS_GetCoverage.geotiff") == 0,
             "Image for GetCoverage is wrong")
@@ -111,7 +111,7 @@ class TestQgsServerAccessControlWCS(TestQgsServerAccessControl):
         response, headers = self._get_restricted(query_string)
         self.assertEqual(
             headers.get("Content-Type"), "image/tiff",
-            f"Content type for GetMap is wrong: {headers.get('Content-Type')}")
+            "Content type for GetMap is wrong: %s" % headers.get("Content-Type"))
         self.assertTrue(
             self._geo_img_diff(response, "WCS_GetCoverage.geotiff") == 0,
             "Image for GetCoverage is wrong")
@@ -133,7 +133,7 @@ class TestQgsServerAccessControlWCS(TestQgsServerAccessControl):
         response, headers = self._get_restricted(query_string)
         self.assertEqual(
             headers.get("Content-Type"), "text/xml; charset=utf-8",
-            f"Content type for GetMap is wrong: {headers.get('Content-Type')}")
+            "Content type for GetMap is wrong: %s" % headers.get("Content-Type"))
         self.assertTrue(
             str(response).find('<ServiceException code="RequestNotWellFormed">') != -1,
             "The layer for the COVERAGE 'dem' is not found")

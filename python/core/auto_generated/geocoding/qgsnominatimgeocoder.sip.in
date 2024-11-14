@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/geocoding/qgsnominatimgeocoder.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -44,7 +44,7 @@ The optional ``endpoint`` argument can be used to specify a non-default endpoint
 
     virtual QgsFields appendedFields() const;
 
-    virtual Qgis::WkbType wkbType() const;
+    virtual QgsWkbTypes::Type wkbType() const;
 
     virtual QList< QgsGeocoderResult > geocodeString( const QString &string, const QgsGeocoderContext &context, QgsFeedback *feedback = 0 ) const;
 
@@ -115,5 +115,5 @@ e.g. "gb" for Great Britain.
  *                                                                      *
  * src/core/geocoding/qgsnominatimgeocoder.h                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

@@ -42,6 +42,7 @@ class QgsMapCanvas;
  *   been complete). Accordingly handleMimeData() implementations must return
  *   quickly and defer any intensive or slow processing.
  *
+ * \since QGIS 3.0
  */
 class GUI_EXPORT QgsCustomDropHandler : public QObject
 {
@@ -97,7 +98,7 @@ class GUI_EXPORT QgsCustomDropHandler : public QObject
      * (For instance by copying the relevant parts of \a data and then handling
      * the data after a short timeout).
      *
-     * \deprecated QGIS 3.10. Use handleMimeDataV2() instead.
+     * \deprecated since QGIS 3.10 - use handleMimeDataV2() instead.
      */
     Q_DECL_DEPRECATED virtual void handleMimeData( const QMimeData *data ) SIP_DEPRECATED;
 

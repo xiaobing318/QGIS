@@ -93,11 +93,6 @@ class CORE_EXPORT QgsWebView : public QTextBrowser
       setSource( url );
     }
 
-    QUrl url() const
-    {
-      return source();
-    }
-
     QWebPage *page() const
     {
       return mPage;
@@ -132,20 +127,6 @@ class CORE_EXPORT QgsWebView : public QTextBrowser
     void linkClicked( const QUrl &link );
 
     void pageLoadFinished( bool ok );
-
-  public slots:
-
-    void setHtml( const QString &text )
-    {
-      QTextBrowser::setHtml( text );
-      emit pageLoadFinished( true );
-    }
-
-    void setText( const QString &text )
-    {
-      QTextBrowser::setText( text );
-      emit pageLoadFinished( true );
-    }
 
   private:
     QWebSettings *mSettings = nullptr;

@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgslayoutviewtool.h"
-#include "moc_qgslayoutviewtool.cpp"
 #include "qgslayoutview.h"
 #include "qgslayoutviewmouseevent.h"
 

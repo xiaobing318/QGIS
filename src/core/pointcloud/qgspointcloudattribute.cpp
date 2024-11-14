@@ -27,7 +27,7 @@ QgsPointCloudAttribute::QgsPointCloudAttribute( const QString &name, DataType ty
   updateSize();
 }
 
-QMetaType::Type QgsPointCloudAttribute::variantType() const
+QVariant::Type QgsPointCloudAttribute::variantType() const
 {
   switch ( mType )
   {
@@ -37,16 +37,16 @@ QMetaType::Type QgsPointCloudAttribute::variantType() const
     case DataType::UShort:
     case DataType::UInt32:
     case DataType::Int32:
-      return QMetaType::Type::Int;
+      return QVariant::Int;
 
     case DataType::UInt64:
     case DataType::Int64:
-      return QMetaType::Type::LongLong;
+      return QVariant::LongLong;
     case DataType::Float:
     case DataType::Double:
-      return QMetaType::Type::Double;
+      return QVariant::Double;
   }
-  return QMetaType::Type::UnknownType;
+  return QVariant::Invalid;
 }
 
 QString QgsPointCloudAttribute::displayType() const

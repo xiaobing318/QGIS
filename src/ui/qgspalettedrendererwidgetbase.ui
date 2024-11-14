@@ -189,7 +189,7 @@
   <customwidget>
    <class>QgsRasterBandComboBox</class>
    <extends>QComboBox</extends>
-   <header>qgsrasterbandcombobox.h</header>
+   <header>raster/qgsrasterbandcombobox.h</header>
   </customwidget>
   <customwidget>
    <class>QgsColorRampButton</class>

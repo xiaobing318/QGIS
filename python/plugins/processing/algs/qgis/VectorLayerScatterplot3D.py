@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     EquivalentNumField.py
@@ -53,15 +55,15 @@ class VectorLayerScatterplot3D(QgisAlgorithm):
         self.addParameter(QgsProcessingParameterField(self.XFIELD,
                                                       self.tr('X attribute'),
                                                       parentLayerParameterName=self.INPUT,
-                                                      type=QgsProcessingParameterField.DataType.Numeric))
+                                                      type=QgsProcessingParameterField.Numeric))
         self.addParameter(QgsProcessingParameterField(self.YFIELD,
                                                       self.tr('Y attribute'),
                                                       parentLayerParameterName=self.INPUT,
-                                                      type=QgsProcessingParameterField.DataType.Numeric))
+                                                      type=QgsProcessingParameterField.Numeric))
         self.addParameter(QgsProcessingParameterField(self.ZFIELD,
                                                       self.tr('Z attribute'),
                                                       parentLayerParameterName=self.INPUT,
-                                                      type=QgsProcessingParameterField.DataType.Numeric))
+                                                      type=QgsProcessingParameterField.Numeric))
 
         self.addParameter(QgsProcessingParameterFileDestination(self.OUTPUT, self.tr('Histogram'), self.tr('HTML files (*.html)')))
 

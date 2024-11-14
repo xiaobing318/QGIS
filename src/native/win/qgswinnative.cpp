@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgswinnative.h"
-#include "moc_qgswinnative.cpp"
 #include <QCoreApplication>
 #include <QDebug>
 #include <QString>
@@ -24,23 +23,15 @@
 #include <QWindow>
 #include <QProcess>
 #include <QAbstractEventDispatcher>
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 #include <QtWinExtras/QWinTaskbarButton>
 #include <QtWinExtras/QWinTaskbarProgress>
 #include <QtWinExtras/QWinJumpList>
 #include <QtWinExtras/QWinJumpListItem>
 #include <QtWinExtras/QWinJumpListCategory>
-#endif
 #include "wintoastlib.h"
 #include <Dbt.h>
 #include <memory>
 #include <type_traits>
-
-#ifdef UNICODE
-#define _T(x) L##x
-#else
-#define _T(x) x
-#endif
 
 
 struct LPITEMIDLISTDeleter
@@ -66,7 +57,6 @@ void QgsWinNative::initializeMainWindow( QWindow *window,
     const QString &version )
 {
   mWindow = window;
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
   if ( mTaskButton )
     return; // already initialized!
 
@@ -74,7 +64,6 @@ void QgsWinNative::initializeMainWindow( QWindow *window,
   mTaskButton->setWindow( window );
   mTaskProgress = mTaskButton->progress();
   mTaskProgress->setVisible( false );
-#endif
 
   QString appName = qgetenv( "QGIS_WIN_APP_NAME" );
   if ( appName.isEmpty() )
@@ -137,7 +126,7 @@ void QgsWinNative::showFileProperties( const QString &path )
     info.nShow = SW_SHOWNORMAL;
     info.fMask = SEE_MASK_INVOKEIDLIST;
     info.lpIDList = pidl.get();
-    info.lpVerb = _T( "properties" );
+    info.lpVerb = "properties";
 
     ShellExecuteEx( &info );
   }
@@ -145,31 +134,24 @@ void QgsWinNative::showFileProperties( const QString &path )
 
 void QgsWinNative::showUndefinedApplicationProgress()
 {
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
   mTaskProgress->setMaximum( 0 );
   mTaskProgress->show();
-#endif
 }
 
 void QgsWinNative::setApplicationProgress( double progress )
 {
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
   mTaskProgress->setMaximum( 100 );
   mTaskProgress->show();
   mTaskProgress->setValue( static_cast< int >( std::round( progress ) ) );
-#endif
 }
 
 void QgsWinNative::hideApplicationProgress()
 {
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
   mTaskProgress->hide();
-#endif
 }
 
 void QgsWinNative::onRecentProjectsChanged( const std::vector<QgsNative::RecentProjectProperties> &recentProjects )
 {
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
   QWinJumpList jumplist;
   jumplist.recent()->clear();
   for ( const RecentProjectProperties &recentProject : recentProjects )
@@ -181,7 +163,6 @@ void QgsWinNative::onRecentProjectsChanged( const std::vector<QgsNative::RecentP
     newProject->setArguments( QStringList( recentProject.path ) );
     jumplist.recent()->addItem( newProject );
   }
-#endif
 }
 
 class NotificationHandler : public WinToastLib::IWinToastHandler
@@ -247,11 +228,7 @@ bool QgsWinNative::openTerminalAtPath( const QString &path )
   return process.startDetached( &pid );
 }
 
-#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
 bool QgsWinNativeEventFilter::nativeEventFilter( const QByteArray &eventType, void *message, long * )
-#else
-bool QgsWinNativeEventFilter::nativeEventFilter( const QByteArray &eventType, void *message, qintptr * )
-#endif
 {
   static const QByteArray sWindowsGenericMSG{ "windows_generic_MSG" };
   if ( !message || eventType != sWindowsGenericMSG )

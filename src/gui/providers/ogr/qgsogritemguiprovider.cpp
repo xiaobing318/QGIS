@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgsogritemguiprovider.h"
-#include "moc_qgsogritemguiprovider.cpp"
 ///@cond PRIVATE
 
 #include <QAction>

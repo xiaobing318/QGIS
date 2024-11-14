@@ -9,20 +9,19 @@ __author__ = 'Tobias Reber'
 __date__ = '20/05/2015'
 __copyright__ = 'Copyright 2015, The QGIS Project'
 
+import qgis  # NOQA
 
-from qgis.core import NULL, QgsFeature, QgsGeometry, QgsPointXY, QgsVectorLayer
+from qgis.core import QgsFeature, QgsGeometry, QgsPointXY, QgsVectorLayer, NULL
 from qgis.gui import QgsGui
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsRangeWidget(QgisTestCase):
+class TestQgsRangeWidget(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        super().setUpClass()
         QgsGui.editorWidgetRegistry().initEditors()
 
     def setUp(self):

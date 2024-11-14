@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsmodelviewtool.h"
-#include "moc_qgsmodelviewtool.cpp"
 #include "qgsmodelgraphicsview.h"
 #include "qgsmodelgraphicsscene.h"
 #include "qgsmodelviewmouseevent.h"

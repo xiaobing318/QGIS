@@ -17,9 +17,6 @@
  ***************************************************************************/
 
 
-#ifndef QGSPROJECTPROPERTIES_H
-#define QGSPROJECTPROPERTIES_H
-
 #include "ui_qgsprojectpropertiesbase.h"
 
 #include "qgsoptionsdialogbase.h"
@@ -32,7 +29,6 @@
 #include "qgis_app.h"
 
 #include <QList>
-#include <QColorSpace>
 
 class QgsMapCanvas;
 class QgsRelationManagerDialog;
@@ -83,11 +79,6 @@ class APP_EXPORT QgsProjectProperties : public QgsOptionsDialogBase, private Ui:
      * Slot called when apply button is pressed or dialog is accepted
      */
     void apply();
-
-    /**
-     * Slot called when cancel button is pressed or dialog is not accepted
-     */
-    void cancel();
 
     /**
      * Let the user add a scale to the list of project scales
@@ -208,35 +199,6 @@ class APP_EXPORT QgsProjectProperties : public QgsOptionsDialogBase, private Ui:
     void removeStyleDatabase();
     void newStyleDatabase();
 
-#if QT_VERSION >= QT_VERSION_CHECK(6, 8, 0)
-
-    /**
-     * Called whenever user select the add ICC profile button
-     */
-    void addIccProfile();
-
-    /**
-     * load \a iccProfileFilePath and set resulting color space to project
-     */
-    void addIccProfile( const QString &iccProfileFilePath );
-
-    /**
-     * Called whenever user select the remove ICC profile button
-     */
-    void removeIccProfile();
-
-    /**
-     * Called whenever user select the save ICC profile button
-     */
-    void saveIccProfile();
-
-    /**
-     * Update color space widget according to current project color space
-     */
-    void updateColorSpaceWidgets();
-
-#endif
-
   private:
 
     /**
@@ -273,7 +235,6 @@ class APP_EXPORT QgsProjectProperties : public QgsOptionsDialogBase, private Ui:
     QList<EllipsoidDefs> mEllipsoidList;
     int mEllipsoidIndex;
     bool mBlockCrsUpdates = false;
-    QColorSpace mColorSpace;
 
     QList< QgsOptionsPageWidget * > mAdditionalProjectPropertiesWidgets;
 
@@ -308,4 +269,3 @@ class APP_EXPORT QgsProjectProperties : public QgsOptionsDialogBase, private Ui:
 
     friend class TestQgsProjectProperties;
 };
-#endif // QGSPROJECTPROPERTIES_H

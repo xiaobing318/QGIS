@@ -140,7 +140,7 @@ class TestQgsServerPlugins(QgsServerTestBase):
         serverIface.registerFilter(filter2, 100)
         serverIface.registerFilter(filter3, 300)
         serverIface.registerFilter(filter4, 400)
-        self.assertIn(filter2, serverIface.filters()[100])
+        self.assertTrue(filter2 in serverIface.filters()[100])
         self.assertEqual(filter1, serverIface.filters()[101][0])
         self.assertEqual(filter2, serverIface.filters()[200][0])
         header, body = (_v for _v in self._execute_request('?service=simple'))
@@ -157,8 +157,8 @@ class TestQgsServerPlugins(QgsServerTestBase):
         # Check that the bindings for complex type QgsServerFiltersMap are working
         filters = {100: [filter, filter2], 101: [filter1], 200: [filter2]}
         serverIface.setFilters(filters)
-        self.assertIn(filter, serverIface.filters()[100])
-        self.assertIn(filter2, serverIface.filters()[100])
+        self.assertTrue(filter in serverIface.filters()[100])
+        self.assertTrue(filter2 in serverIface.filters()[100])
         self.assertEqual(filter1, serverIface.filters()[101][0])
         self.assertEqual(filter2, serverIface.filters()[200][0])
         header, body = self._execute_request('?service=simple')
@@ -179,8 +179,8 @@ class TestQgsServerPlugins(QgsServerTestBase):
         """ Test plugin can read confif path
         """
         try:
-            from qgis.core import QgsProject
             from qgis.server import QgsServerFilter
+            from qgis.core import QgsProject
         except ImportError:
             print("QGIS Server plugins are not compiled. Skipping test")
             return
@@ -203,7 +203,7 @@ class TestQgsServerPlugins(QgsServerTestBase):
         serverIface.registerFilter(Filter0(serverIface), 100)
 
         # Test using MAP
-        self._execute_request(f'?service=simple&MAP={self.projectPath}')
+        self._execute_request('?service=simple&MAP=%s' % self.projectPath)
 
         # Check config file path
         self.assertEqual(configFilePath2, self.projectPath)
@@ -272,8 +272,8 @@ class TestQgsServerPlugins(QgsServerTestBase):
         """ Test streaming pipeline propagation
         """
         try:
-            from qgis.core import QgsProject
             from qgis.server import QgsServerFilter
+            from qgis.core import QgsProject
         except ImportError:
             print("QGIS Server plugins are not compiled. Skipping test")
             return
@@ -304,10 +304,6 @@ class TestQgsServerPlugins(QgsServerTestBase):
                 request = self.serverInterface().requestHandler()
                 return self.propagate
 
-            def onProjectReady(self):
-                request = self.serverInterface().requestHandler()
-                return self.propagate
-
             def onSendResponse(self):
                 request = self.serverInterface().requestHandler()
                 request.clearBody()
@@ -328,16 +324,10 @@ class TestQgsServerPlugins(QgsServerTestBase):
             def __init__(self, iface):
                 super().__init__(iface)
                 self.request_ready = False
-                self.project_ready = False
 
             def onRequestReady(self):
                 request = self.serverInterface().requestHandler()
                 self.request_ready = True
-                return True
-
-            def onProjectReady(self):
-                request = self.serverInterface().requestHandler()
-                self.project_ready = True
                 return True
 
             def onSendResponse(self):
@@ -348,37 +338,6 @@ class TestQgsServerPlugins(QgsServerTestBase):
             def onResponseComplete(self):
                 request = self.serverInterface().requestHandler()
                 request.appendBody(b'E')
-                return True
-
-        # Methods to manage propagate filter
-        class Filter3(QgsServerFilter):
-            def __init__(self, iface, propagate_filter):
-                super().__init__(iface)
-                self.propagate_filter = propagate_filter
-                self.step_to_stop_propagate = None
-
-            def onRequestReady(self):
-                request = self.serverInterface().requestHandler()
-                if self.step_to_stop_propagate == 'onRequestReady':
-                    self.propagate_filter.propagate = False
-                return True
-
-            def onProjectReady(self):
-                request = self.serverInterface().requestHandler()
-                if self.step_to_stop_propagate == 'onProjectReady':
-                    self.propagate_filter.propagate = False
-                return True
-
-            def onSendResponse(self):
-                request = self.serverInterface().requestHandler()
-                if self.step_to_stop_propagate == 'onSendResponse':
-                    self.propagate_filter.propagate = False
-                return True
-
-            def onResponseComplete(self):
-                request = self.serverInterface().requestHandler()
-                if self.step_to_stop_propagate == 'onResponseComplete':
-                    self.propagate_filter.propagate = False
                 return True
 
         serverIface = self.server.serverInterface()
@@ -398,61 +357,15 @@ class TestQgsServerPlugins(QgsServerTestBase):
 
         # Test no propagation
         filter1.propagate = False
-        _, body = self._execute_request_project(f'?service={service0.name()}', project=project)
+        _, body = self._execute_request_project('?service=%s' % service0.name(), project=project)
         self.assertFalse(filter2.request_ready)
-        self.assertFalse(filter2.project_ready)
         self.assertEqual(body, b'ABC')
 
         # Test with propagation
         filter1.propagate = True
-        _, body = self._execute_request_project(f'?service={service0.name()}', project=project)
+        _, body = self._execute_request_project('?service=%s' % service0.name(), project=project)
         self.assertTrue(filter2.request_ready)
-        self.assertTrue(filter2.project_ready)
         self.assertEqual(body, b'ABDCE')
-
-        # Manage propagation
-        filter3 = Filter3(serverIface, filter1)
-        serverIface.registerFilter(filter3, 100)
-
-        # Stop at onResponseComplete
-        filter1.propagate = True
-        filter2.request_ready = False
-        filter2.project_ready = False
-        filter3.step_to_stop_propagate = 'onResponseComplete'
-        _, body = self._execute_request_project(f'?service={service0.name()}', project=project)
-        self.assertTrue(filter2.request_ready)
-        self.assertTrue(filter2.project_ready)
-        self.assertEqual(body, b'ABDC')
-
-        # Stop at onSendResponse
-        filter1.propagate = True
-        filter2.request_ready = False
-        filter2.project_ready = False
-        filter3.step_to_stop_propagate = 'onSendResponse'
-        _, body = self._execute_request_project(f'?service={service0.name()}', project=project)
-        self.assertTrue(filter2.request_ready)
-        self.assertTrue(filter2.project_ready)
-        self.assertEqual(body, b'ABC')
-
-        # Stop at onProjectReady
-        filter1.propagate = True
-        filter2.request_ready = False
-        filter2.project_ready = False
-        filter3.step_to_stop_propagate = 'onProjectReady'
-        _, body = self._execute_request_project(f'?service={service0.name()}', project=project)
-        self.assertTrue(filter2.request_ready)
-        self.assertFalse(filter2.project_ready)
-        self.assertEqual(body, b'ABC')
-
-        # Stop at onRequestReady
-        filter1.propagate = True
-        filter2.request_ready = False
-        filter2.project_ready = False
-        filter3.step_to_stop_propagate = 'onRequestReady'
-        _, body = self._execute_request_project(f'?service={service0.name()}', project=project)
-        self.assertFalse(filter2.request_ready)
-        self.assertFalse(filter2.project_ready)
-        self.assertEqual(body, b'ABC')
 
         serverIface.setFilters({})
         reg.unregisterService(service0.name(), service0.version())

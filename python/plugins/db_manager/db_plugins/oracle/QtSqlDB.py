@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 /***************************************************************************
 Name                 : QtSqlDB
@@ -17,6 +19,8 @@ email                : jef at norbit dot de
  *                                                                         *
  ***************************************************************************/
 """
+from builtins import range
+from builtins import object
 
 from qgis.PyQt.QtCore import QVariant, QDate, QTime, QDateTime, QByteArray
 from qgis.PyQt.QtSql import QSqlDatabase, QSqlQuery, QSqlField
@@ -56,16 +60,16 @@ def TimestampFromTicks(ticks):
 class ConnectionError(Exception):
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super(ConnectionError, self).__init__(*args, **kwargs)
 
 
 class ExecError(Exception):
 
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        super(ExecError, self).__init__(*args, **kwargs)
 
 
-class QtSqlDBCursor:
+class QtSqlDBCursor(object):
 
     def __init__(self, conn):
         self.qry = QSqlQuery(conn)
@@ -78,7 +82,7 @@ class QtSqlDBCursor:
 
     def execute(self, operation, parameters=[]):
         if len(parameters) == 0:
-            if not self.qry.exec(operation):
+            if not self.qry.exec_(operation):
                 raise ExecError(self.qry.lastError().databaseText())
         else:
             if not self.qry.prepare(operation):
@@ -87,7 +91,7 @@ class QtSqlDBCursor:
             for i in range(len(parameters)):
                 self.qry.bindValue(i, parameters[i])
 
-            if not self.qry.exec():
+            if not self.qry.exec_():
                 raise ExecError(self.qry.lastError().databaseText())
 
         self.rowcount = self.qry.size()
@@ -119,7 +123,7 @@ class QtSqlDBCursor:
                 f.length(),  # internal_size
                 f.precision(),  # precision
                 None,  # scale
-                f.requiredStatus() != QSqlField.RequiredStatus.Required  # null_ok
+                f.requiredStatus() != QSqlField.Required  # null_ok
             ])
 
     def executemany(self, operation, seq_of_parameters):
@@ -133,7 +137,7 @@ class QtSqlDBCursor:
             for i in range(len(r)):
                 self.qry.bindValue(i, r[i])
 
-            if not self.qry.exec():
+            if not self.qry.exec_():
                 raise ExecError(self.qry.lastError().databaseText())
 
     def scroll(self, row):
@@ -151,7 +155,7 @@ class QtSqlDBCursor:
                     isinstance(value, QDateTime)):
                 value = value.toString()
             elif isinstance(value, QByteArray):
-                value = "GEOMETRY"
+                value = u"GEOMETRY"
                 # value = value.toHex()
 
             row.append(value)
@@ -185,7 +189,7 @@ class QtSqlDBCursor:
         raise ExecError("nyi")
 
 
-class QtSqlDBConnection:
+class QtSqlDBConnection(object):
     connections = 0
 
     def __init__(self, driver, dbname, user, passwd):

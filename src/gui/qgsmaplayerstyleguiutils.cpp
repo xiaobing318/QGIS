@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsmaplayerstyleguiutils.h"
-#include "moc_qgsmaplayerstyleguiutils.cpp"
 
 #include <QAction>
 #include <QInputDialog>
@@ -146,7 +145,7 @@ void QgsMapLayerStyleGuiUtils::addStyle()
   }
   else
   {
-    QgsDebugError( "Failed to add style: " + text );
+    QgsDebugMsg( "Failed to add style: " + text );
   }
 }
 
@@ -163,7 +162,7 @@ void QgsMapLayerStyleGuiUtils::useStyle()
   const bool res = layer->styleManager()->setCurrentStyle( name );
   if ( !res )
   {
-    QgsDebugError( "Failed to set current style: " + name );
+    QgsDebugMsg( "Failed to set current style: " + name );
   }
 }
 
@@ -180,7 +179,7 @@ void QgsMapLayerStyleGuiUtils::removeStyle()
   const bool res = layer->styleManager()->removeStyle( layer->styleManager()->currentStyle() );
   if ( !res )
   {
-    QgsDebugError( QStringLiteral( "Failed to remove current style" ) );
+    QgsDebugMsg( QStringLiteral( "Failed to remove current style" ) );
   }
 }
 
@@ -206,6 +205,6 @@ void QgsMapLayerStyleGuiUtils::renameStyle()
   const bool res = layer->styleManager()->renameStyle( name, text );
   if ( !res )
   {
-    QgsDebugError( "Failed to rename style: " + name );
+    QgsDebugMsg( "Failed to rename style: " + name );
   }
 }

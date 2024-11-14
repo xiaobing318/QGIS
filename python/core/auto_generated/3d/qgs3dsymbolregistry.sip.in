@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/./3d/qgs3dsymbolregistry.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -104,7 +104,7 @@ The caller takes ownership of the returned symbol.
 Returns ``None`` if the specified type is not found in the registry.
 %End
 
-    QgsAbstract3DSymbol *defaultSymbolForGeometryType( Qgis::GeometryType type ) /Factory/;
+    QgsAbstract3DSymbol *defaultSymbolForGeometryType( QgsWkbTypes::GeometryType type ) /Factory/;
 %Docstring
 Creates a new instance of the default 3D symbol for the specified geometry ``type``.
 
@@ -122,5 +122,5 @@ The caller takes ownership of the returned symbol.
  *                                                                      *
  * src/core/./3d/qgs3dsymbolregistry.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

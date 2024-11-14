@@ -22,7 +22,7 @@
 //header for class being tested
 #include <qgshttpheaders.h>
 #include <qgspoint.h>
-#include "qgssettings.h"
+#include "qgslogger.h"
 #include "qgsowsconnection.h"
 #include <QNetworkRequest>
 #include <QUrlQuery>
@@ -44,7 +44,6 @@ class TestQgsHttpheaders: public QObject
 
     void setFromSettingsGoodKey();
     void setFromSettingsBadKey();
-    void setFromUrlQuery();
     void updateSettings();
 
     void createQgsOwsConnection();
@@ -88,8 +87,6 @@ void TestQgsHttpheaders::setFromSettings( const QString &keyBase )
   settings.setValue( keyBase + QgsHttpHeaders::PATH_PREFIX + "key1", "value1" );
   settings.setValue( keyBase + QgsHttpHeaders::PATH_PREFIX + QgsHttpHeaders::KEY_REFERER, "valueHH_R" );
 
-  Q_NOWARN_DEPRECATED_PUSH
-
   QgsHttpHeaders h( settings, keyBase );
   QVERIFY( ! h.keys().contains( outOfHeaderKey ) );
   QVERIFY( h.keys().contains( QStringLiteral( "key1" ) ) );
@@ -101,8 +98,6 @@ void TestQgsHttpheaders::setFromSettings( const QString &keyBase )
   QgsHttpHeaders h2( settings, keyBase );
   QVERIFY( h2.keys().contains( QgsHttpHeaders::KEY_REFERER ) );
   QCOMPARE( h2 [QgsHttpHeaders::KEY_REFERER].toString(), QStringLiteral( "value_R" ) );
-
-  Q_NOWARN_DEPRECATED_POP
 }
 
 void TestQgsHttpheaders::updateSettings()
@@ -110,8 +105,6 @@ void TestQgsHttpheaders::updateSettings()
   QgsSettings settings;
   QString keyBase = QStringLiteral( "qgis/mytest2/" );
   settings.remove( keyBase ); // cleanup
-
-  Q_NOWARN_DEPRECATED_PUSH
 
   QgsHttpHeaders h( QVariantMap( { {QStringLiteral( "key1" ), "value1"}} ) );
   h.updateSettings( settings, keyBase );
@@ -137,15 +130,16 @@ void TestQgsHttpheaders::updateSettings()
   QCOMPARE( settings.value( keyBase + QgsHttpHeaders::PATH_PREFIX + QgsHttpHeaders::KEY_REFERER ).toString(), "http://gg.com" );
   QVERIFY( settings.contains( keyBase + QgsHttpHeaders::KEY_REFERER ) );
   QCOMPARE( settings.value( keyBase + QgsHttpHeaders::KEY_REFERER ).toString(), "http://gg.com" );
-
-  Q_NOWARN_DEPRECATED_POP
 }
 
 
 void TestQgsHttpheaders::createQgsOwsConnection()
 {
-  QgsHttpHeaders h( QVariantMap( { { QgsHttpHeaders::KEY_REFERER, "http://test.com"}, {"other_http_header", "value"}} ) );
-  QgsOwsConnection::settingsHeaders->setValue( h.headers(), {"service", "name"} );
+  QgsSettings settings;
+  settings.setValue( QString( QgsSettings::Prefix::QGIS ) + "/connections-service/name/" + QgsHttpHeaders::PATH_PREFIX + QgsHttpHeaders::KEY_REFERER,
+                     "http://test.com" );
+  settings.setValue( QString( QgsSettings::Prefix::QGIS ) + "/connections-service/name/" + QgsHttpHeaders::PATH_PREFIX + "other_http_header",
+                     "value" );
 
   QgsOwsConnection ows( "service", "name" );
   QCOMPARE( ows.connectionInfo(), ",authcfg=,referer=http://test.com" );
@@ -177,37 +171,6 @@ void TestQgsHttpheaders::updateNetworkRequest()
 
   QVERIFY( request.hasRawHeader( QByteArray::fromStdString( QgsHttpHeaders::KEY_REFERER.toStdString() ) ) );
   QCOMPARE( request.rawHeader( QByteArray::fromStdString( QgsHttpHeaders::KEY_REFERER.toStdString() ) ), "my_ref" );
-}
-
-
-void TestQgsHttpheaders::setFromUrlQuery()
-{
-  {
-    // with only new http-header:referer
-    QUrlQuery url( "https://www.ogc.org/?p1=v1&http-header:other_http_header=value&http-header:referer=http://test.new.com" );
-    QgsHttpHeaders h;
-    h.setFromUrlQuery( url );
-    QCOMPARE( h[QgsHttpHeaders::KEY_REFERER ].toString(), QStringLiteral( "http://test.new.com" ) );
-    QCOMPARE( h[ "other_http_header" ].toString(), QStringLiteral( "value" ) );
-  }
-
-  {
-    // with both new http-header:referer and old referer
-    QUrlQuery url( "https://www.ogc.org/?p1=v1&referer=http://test.old.com&http-header:other_http_header=value&http-header:referer=http://test.new.com" );
-    QgsHttpHeaders h;
-    h.setFromUrlQuery( url );
-    QCOMPARE( h[QgsHttpHeaders::KEY_REFERER ].toString(), QStringLiteral( "http://test.new.com" ) );
-    QCOMPARE( h[ "other_http_header" ].toString(), QStringLiteral( "value" ) );
-  }
-
-  {
-    // with only old referer
-    QUrlQuery url( "https://www.ogc.org/?p1=v1&referer=http://test.old.com&http-header:other_http_header=value" );
-    QgsHttpHeaders h;
-    h.setFromUrlQuery( url );
-    QCOMPARE( h[QgsHttpHeaders::KEY_REFERER ].toString(), QStringLiteral( "http://test.old.com" ) );
-    QCOMPARE( h[ "other_http_header" ].toString(), QStringLiteral( "value" ) );
-  }
 }
 
 

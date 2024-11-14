@@ -54,22 +54,17 @@ namespace QgsWms
                                  QStringLiteral( "SLD_VERSION = %1 is not supported" ).arg( parameters[ QStringLiteral( "SLD_VERSION" )] ), 400 );
     }
 
-    if ( !parameters.contains( QStringLiteral( "LAYERS" ) ) && !parameters.contains( QStringLiteral( "LAYER" ) ) )
+    if ( !parameters.contains( QStringLiteral( "LAYERS" ) ) )
     {
       throw QgsServiceException( QStringLiteral( "MissingParameterValue" ),
-                                 QStringLiteral( "LAYERS or LAYER is mandatory for DescribeLayer operation" ), 400 );
+                                 QStringLiteral( "LAYERS is mandatory for DescribeLayer operation" ), 400 );
     }
 
-    QStringList layersList;
-
-    if ( parameters.contains( QStringLiteral( "LAYERS" ) ) )
-    {
-      layersList = parameters[ QStringLiteral( "LAYERS" )].split( ',', Qt::SkipEmptyParts );
-    }
-    else
-    {
-      layersList = parameters[ QStringLiteral( "LAYER" )].split( ',', Qt::SkipEmptyParts );
-    }
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+    QStringList layersList = parameters[ QStringLiteral( "LAYERS" )].split( ',', QString::SkipEmptyParts );
+#else
+    const QStringList layersList = parameters[ QStringLiteral( "LAYERS" )].split( ',', Qt::SkipEmptyParts );
+#endif
     if ( layersList.isEmpty() )
     {
       throw QgsServiceException( QStringLiteral( "InvalidParameterValue" ), QStringLiteral( "Layers is empty" ), 400 );
@@ -133,8 +128,8 @@ namespace QgsWms
       QString name = layer->name();
       if ( useLayerIds )
         name = layer->id();
-      else if ( !layer->serverProperties()->shortName().isEmpty() )
-        name = layer->serverProperties()->shortName();
+      else if ( !layer->shortName().isEmpty() )
+        name = layer->shortName();
 
       if ( !layersList.contains( name ) )
       {
@@ -167,7 +162,7 @@ namespace QgsWms
       QDomElement nameNode = myDocument.createElement( QStringLiteral( "TypeName" ) );
       switch ( layer->type() )
       {
-        case Qgis::LayerType::Vector:
+        case QgsMapLayerType::VectorLayer:
         {
           typeNode.appendChild( myDocument.createTextNode( QStringLiteral( "wfs" ) ) );
 
@@ -182,7 +177,7 @@ namespace QgsWms
           nameNode.appendChild( typeNameNode );
           break;
         }
-        case Qgis::LayerType::Raster:
+        case QgsMapLayerType::RasterLayer:
         {
           typeNode.appendChild( myDocument.createTextNode( QStringLiteral( "wcs" ) ) );
 
@@ -198,13 +193,12 @@ namespace QgsWms
           break;
         }
 
-        case Qgis::LayerType::Mesh:
-        case Qgis::LayerType::VectorTile:
-        case Qgis::LayerType::Plugin:
-        case Qgis::LayerType::Annotation:
-        case Qgis::LayerType::PointCloud:
-        case Qgis::LayerType::Group:
-        case Qgis::LayerType::TiledScene:
+        case QgsMapLayerType::MeshLayer:
+        case QgsMapLayerType::VectorTileLayer:
+        case QgsMapLayerType::PluginLayer:
+        case QgsMapLayerType::AnnotationLayer:
+        case QgsMapLayerType::PointCloudLayer:
+        case QgsMapLayerType::GroupLayer:
           break;
       }
       layerNode.appendChild( typeNode );

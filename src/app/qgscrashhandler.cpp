@@ -68,7 +68,7 @@ void QgsCrashHandler::handleCrash( int processID, int threadID,
                                    const QString &ptrStr )
 {
   QString fileName = QStandardPaths::standardLocations( QStandardPaths::TempLocation ).at( 0 ) + "/qgis-crash-info-" + QString::number( processID );
-  QgsDebugMsgLevel( fileName, 2 );
+  QgsDebugMsg( fileName );
 
   QStringList arguments;
   arguments = QCoreApplication::arguments();
@@ -121,6 +121,6 @@ void QgsCrashHandler::handleCrash( int processID, int threadID,
 #else
   QString path = prefixPath + QStringLiteral( "/qgiscrashhandler" );
 #endif
-  QgsDebugMsgLevel( path, 2 );
+  QgsDebugMsg( path );
   QProcess::execute( path, args );
 }

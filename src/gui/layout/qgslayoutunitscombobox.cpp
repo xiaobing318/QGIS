@@ -14,41 +14,39 @@
  ***************************************************************************/
 
 #include "qgslayoutunitscombobox.h"
-#include "moc_qgslayoutunitscombobox.cpp"
 #include "qgslayoutmeasurementconverter.h"
-#include "qgsunittypes.h"
 #include "qgis.h"
 
 QgsLayoutUnitsComboBox::QgsLayoutUnitsComboBox( QWidget *parent )
   : QComboBox( parent )
 {
-  QList< Qgis::LayoutUnit > units;
-  units << Qgis::LayoutUnit::Millimeters
-        << Qgis::LayoutUnit::Centimeters
-        << Qgis::LayoutUnit::Meters
-        << Qgis::LayoutUnit::Inches
-        << Qgis::LayoutUnit::Feet
-        << Qgis::LayoutUnit::Points
-        << Qgis::LayoutUnit::Picas
-        << Qgis::LayoutUnit::Pixels;
+  QList< QgsUnitTypes::LayoutUnit > units;
+  units << QgsUnitTypes::LayoutMillimeters
+        << QgsUnitTypes::LayoutCentimeters
+        << QgsUnitTypes::LayoutMeters
+        << QgsUnitTypes::LayoutInches
+        << QgsUnitTypes::LayoutFeet
+        << QgsUnitTypes::LayoutPoints
+        << QgsUnitTypes::LayoutPicas
+        << QgsUnitTypes::LayoutPixels;
 
   const auto constUnits = units;
-  for ( const Qgis::LayoutUnit u : constUnits )
+  for ( const QgsUnitTypes::LayoutUnit u : constUnits )
   {
-    addItem( QgsUnitTypes::toAbbreviatedString( u ), static_cast< int >( u ) );
+    addItem( QgsUnitTypes::toAbbreviatedString( u ), u );
     setItemData( count() - 1, QgsUnitTypes::toString( u ), Qt::ToolTipRole );
   }
   connect( this, static_cast<void ( QgsLayoutUnitsComboBox::* )( int )>( &QgsLayoutUnitsComboBox::currentIndexChanged ), this, &QgsLayoutUnitsComboBox::indexChanged );
 }
 
-Qgis::LayoutUnit QgsLayoutUnitsComboBox::unit() const
+QgsUnitTypes::LayoutUnit QgsLayoutUnitsComboBox::unit() const
 {
-  return static_cast< Qgis::LayoutUnit >( currentData().toInt() );
+  return static_cast< QgsUnitTypes::LayoutUnit >( currentData().toInt() );
 }
 
-void QgsLayoutUnitsComboBox::setUnit( Qgis::LayoutUnit unit )
+void QgsLayoutUnitsComboBox::setUnit( QgsUnitTypes::LayoutUnit unit )
 {
-  setCurrentIndex( findData( static_cast< int >( unit ) ) );
+  setCurrentIndex( findData( unit ) );
 }
 
 void QgsLayoutUnitsComboBox::linkToWidget( QDoubleSpinBox *widget )
@@ -58,7 +56,7 @@ void QgsLayoutUnitsComboBox::linkToWidget( QDoubleSpinBox *widget )
 
 void QgsLayoutUnitsComboBox::indexChanged( int )
 {
-  const Qgis::LayoutUnit newUnit = unit();
+  const QgsUnitTypes::LayoutUnit newUnit = unit();
   if ( mConverter )
   {
     const auto constMLinkedSpinBoxes = mLinkedSpinBoxes;
@@ -68,8 +66,7 @@ void QgsLayoutUnitsComboBox::indexChanged( int )
         whileBlocking( widget.data() )->setValue( mConverter->convert( QgsLayoutMeasurement( widget->value(), mOldUnit ), newUnit ).length() );
     }
   }
-  emit unitChanged( newUnit );
-  emit changed( static_cast<int>( newUnit ) );
+  emit changed( newUnit );
   mOldUnit = newUnit;
 }
 

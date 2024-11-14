@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgslegendsettings.h                                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -15,9 +15,10 @@ class QgsLegendSettings
 {
 %Docstring(signature="appended")
 The :py:class:`QgsLegendSettings` class stores the appearance and layout settings
-for legend drawing with :py:class:`QgsLegendRenderer`.
+for legend drawing with :py:class:`QgsLegendRenderer`. The content of the legend is given
+in :py:class:`QgsLegendModel` class.
 
-The content of the legend is driven by the :py:class:`QgsLegendModel` class.
+.. versionadded:: 2.6
 %End
 
 %TypeHeaderCode
@@ -171,29 +172,21 @@ If ``False``, then then columns will be individually resized to their minimum po
 .. seealso:: :py:func:`equalColumnWidth`
 %End
 
- QColor fontColor() const /Deprecated/;
+    QColor fontColor() const;
 %Docstring
 Returns the font color used for legend items.
 
 .. seealso:: :py:func:`setFontColor`
-
-.. deprecated:: 3.40
-
-   Use :py:func:`QgsLegendStyle.textFormat()` instead.
 %End
 
- void setFontColor( const QColor &c ) /Deprecated/;
+    void setFontColor( const QColor &c );
 %Docstring
 Sets the font color used for legend items.
 
 .. seealso:: :py:func:`fontColor`
-
-.. deprecated:: 3.40
-
-   Use :py:func:`QgsLegendStyle.textFormat()` instead.
 %End
 
- QColor layerFontColor() const /Deprecated/;
+    QColor layerFontColor() const;
 %Docstring
 Returns layer font color, defaults to :py:func:`~QgsLegendSettings.fontColor`
 
@@ -201,12 +194,10 @@ Returns layer font color, defaults to :py:func:`~QgsLegendSettings.fontColor`
 
 .. seealso:: :py:func:`fontColor`
 
-.. deprecated:: 3.40
-
-   Use :py:func:`QgsLegendStyle.textFormat()` instead.
+.. versionadded:: 3.4.7
 %End
 
- void setLayerFontColor( const QColor &fontColor ) /Deprecated/;
+    void setLayerFontColor( const QColor &fontColor );
 %Docstring
 Sets layer font color to ``fontColor``
 Overrides :py:func:`~QgsLegendSettings.fontColor`
@@ -215,9 +206,7 @@ Overrides :py:func:`~QgsLegendSettings.fontColor`
 
 .. seealso:: :py:func:`fontColor`
 
-.. deprecated:: 3.40
-
-   Use :py:func:`QgsLegendStyle.textFormat()` instead.
+.. versionadded:: 3.4.7
 %End
 
     QSizeF symbolSize() const;
@@ -305,6 +294,8 @@ Returns whether a stroke will be drawn around raster symbol items.
 .. seealso:: :py:func:`rasterStrokeColor`
 
 .. seealso:: :py:func:`rasterStrokeWidth`
+
+.. versionadded:: 2.12
 %End
 
     void setDrawRasterStroke( bool enabled );
@@ -318,6 +309,8 @@ Sets whether a stroke will be drawn around raster symbol items.
 .. seealso:: :py:func:`setRasterStrokeColor`
 
 .. seealso:: :py:func:`setRasterStrokeWidth`
+
+.. versionadded:: 2.12
 %End
 
     QColor rasterStrokeColor() const;
@@ -330,6 +323,8 @@ only drawn if :py:func:`~QgsLegendSettings.drawRasterStroke` is ``True``.
 .. seealso:: :py:func:`drawRasterStroke`
 
 .. seealso:: :py:func:`rasterStrokeWidth`
+
+.. versionadded:: 2.12
 %End
 
     void setRasterStrokeColor( const QColor &color );
@@ -344,6 +339,8 @@ only drawn if :py:func:`~QgsLegendSettings.drawRasterStroke` is ``True``.
 .. seealso:: :py:func:`setDrawRasterStroke`
 
 .. seealso:: :py:func:`setRasterStrokeWidth`
+
+.. versionadded:: 2.12
 %End
 
     double rasterStrokeWidth() const;
@@ -356,6 +353,8 @@ only drawn if :py:func:`~QgsLegendSettings.drawRasterStroke` is ``True``.
 .. seealso:: :py:func:`drawRasterStroke`
 
 .. seealso:: :py:func:`rasterStrokeColor`
+
+.. versionadded:: 2.12
 %End
 
     void setRasterStrokeWidth( double width );
@@ -370,6 +369,8 @@ only drawn if :py:func:`~QgsLegendSettings.drawRasterStroke` is ``True``.
 .. seealso:: :py:func:`setDrawRasterStroke`
 
 .. seealso:: :py:func:`setRasterStrokeColor`
+
+.. versionadded:: 2.12
 %End
 
     QSizeF wmsLegendSize() const;
@@ -386,75 +387,45 @@ Sets the desired size (in millimeters) of WMS legend graphics shown in the legen
 .. seealso:: :py:func:`wmsLegendSize`
 %End
 
-    void setSynchronousLegendRequests( bool b );
-%Docstring
-Sets whether to request legend graphics synchronously.
-
-.. seealso:: :py:func:`synchronousLegendRequests`
-
-.. versionadded:: 3.34
-%End
-
-    bool synchronousLegendRequests() const;
-%Docstring
-Returns whether to request legend graphics synchronously.
-
-.. seealso:: :py:func:`setSynchronousLegendRequests`
-
-.. versionadded:: 3.34
-%End
-
- double lineSpacing() const /Deprecated/;
+    double lineSpacing() const;
 %Docstring
 Returns the line spacing to use between lines of legend text.
 
 .. seealso:: :py:func:`setLineSpacing`
-
-.. deprecated:: 3.40
-
-   Use :py:func:`QgsLegendStyle.textFormat()` from :py:func:`~QgsLegendSettings.style` instead.
 %End
 
- void setLineSpacing( double s );
+    void setLineSpacing( double s );
 %Docstring
 Sets the line spacing to use between lines of legend text.
 
 .. seealso:: :py:func:`lineSpacing`
-
-.. deprecated:: 3.40
-
-   Use :py:func:`QgsLegendStyle.setTextFormat()` from :py:func:`~QgsLegendSettings.style` instead.
 %End
 
  double mmPerMapUnit() const /Deprecated/;
 %Docstring
 
-.. deprecated:: 3.40
-
+.. deprecated::
    Use scale factor from render contexts instead.
 %End
 
  void setMmPerMapUnit( double mmPerMapUnit ) /Deprecated/;
 %Docstring
 
-.. deprecated:: 3.40
-
+.. deprecated::
    Set scale factor on render contexts instead.
 %End
 
  bool useAdvancedEffects() const /Deprecated/;
 %Docstring
 
-.. deprecated:: 3.40
-
+.. deprecated::
    Use flags from render contexts instead.
 %End
 
  void setUseAdvancedEffects( bool use ) /Deprecated/;
 %Docstring
 
-.. deprecated:: 3.40
-
+.. deprecated::
    Set flag on render contexts instead.
 %End
 
@@ -465,9 +436,8 @@ The scale value indicates the scale denominator, e.g. 1000.0 for a 1:1000 map.
 
 .. seealso:: :py:func:`setMapScale`
 
-.. deprecated:: 3.40
-
-   Take this property from the render context instead.
+.. deprecated::
+   take this property from the render context instead
 %End
 
  void setMapScale( double scale ) /Deprecated/;
@@ -477,9 +447,8 @@ The ``scale`` value indicates the scale denominator, e.g. 1000.0 for a 1:1000 ma
 
 .. seealso:: :py:func:`mapScale`
 
-.. deprecated:: 3.40
-
-   Set this property on the render context instead.
+.. deprecated::
+   set this property on the render context instead
 %End
 
  double mapUnitsPerPixel() const /Deprecated/;
@@ -488,9 +457,8 @@ Returns the factor of map units per pixel for symbols with size given in map uni
 
 .. seealso:: :py:func:`setMapUnitsPerPixel`
 
-.. deprecated:: 3.40
-
-   Take these properties on render contexts instead.
+.. deprecated::
+   take these properties on render contexts instead
 %End
 
  void setMapUnitsPerPixel( double mapUnitsPerPixel ) /Deprecated/;
@@ -499,24 +467,21 @@ Sets the mmPerMapUnit calculated by ``mapUnitsPerPixel`` mostly taken from the m
 
 .. seealso:: :py:func:`mapUnitsPerPixel`
 
-.. deprecated:: 3.40
-
-   Set these properties on render contexts instead.
+.. deprecated::
+   set these properties on render contexts instead
 %End
 
  int dpi() const /Deprecated/;
 %Docstring
 
-.. deprecated:: 3.40
-
+.. deprecated::
    Take dpi from render contexts instead.
 %End
 
  void setDpi( int dpi ) /Deprecated/;
 %Docstring
 
-.. deprecated:: 3.40
-
+.. deprecated::
    Set dpi on render contexts instead.
 %End
 
@@ -587,20 +552,6 @@ Returns the font ascent in Millimeters (considers upscaling and downscaling with
 Returns the font descent in Millimeters (considers upscaling and downscaling with FONT_WORKAROUND_SCALE
 %End
 
-    Qgis::LegendJsonRenderFlags jsonRenderFlags() const;
-%Docstring
-Returns the JSON export flags.
-
-.. versionadded:: 3.36
-%End
-
-    void setJsonRenderFlags( const Qgis::LegendJsonRenderFlags &jsonRenderFlags );
-%Docstring
-Sets the  the JSON export flags to ``jsonRenderFlags``.
-
-.. versionadded:: 3.36
-%End
-
 };
 
 
@@ -610,5 +561,5 @@ Sets the  the JSON export flags to ``jsonRenderFlags``.
  *                                                                      *
  * src/core/qgslegendsettings.h                                         *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

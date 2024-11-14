@@ -19,6 +19,7 @@
 #include "qgsgeometryengine.h"
 #include "qgslogger.h"
 #include "qgsspatialindex.h"
+#include "qgsmessagelog.h"
 #include "qgsproject.h"
 #include "qgsexception.h"
 #include "qgsexpressioncontextutils.h"
@@ -28,8 +29,10 @@
 QgsMemoryFeatureIterator::QgsMemoryFeatureIterator( QgsMemoryFeatureSource *source, bool ownSource, const QgsFeatureRequest &request )
   : QgsAbstractFeatureIteratorFromSource<QgsMemoryFeatureSource>( source, ownSource, request )
 {
-  mTransform = mRequest.calculateTransform( mSource->mCrs );
-
+  if ( mRequest.destinationCrs().isValid() && mRequest.destinationCrs() != mSource->mCrs )
+  {
+    mTransform = QgsCoordinateTransform( mSource->mCrs, mRequest.destinationCrs(), mRequest.transformContext() );
+  }
   try
   {
     mFilterRect = filterRectToSourceCrs( mTransform );
@@ -54,7 +57,7 @@ QgsMemoryFeatureIterator::QgsMemoryFeatureIterator( QgsMemoryFeatureSource *sour
       break;
 
     case Qgis::SpatialFilterType::BoundingBox:
-      if ( !mFilterRect.isNull() && ( mRequest.flags() & Qgis::FeatureRequestFlag::ExactIntersect ) )
+      if ( !mFilterRect.isNull() && mRequest.flags() & QgsFeatureRequest::ExactIntersect )
       {
         mSelectRectGeom = QgsGeometry::fromRect( mFilterRect );
         mSelectRectEngine.reset( QgsGeometry::createGeometryEngine( mSelectRectGeom.constGet() ) );
@@ -80,14 +83,14 @@ QgsMemoryFeatureIterator::QgsMemoryFeatureIterator( QgsMemoryFeatureSource *sour
     mFeatureIdList = mSource->mSpatialIndex->intersects( mFilterRect );
     QgsDebugMsgLevel( "Features returned by spatial index: " + QString::number( mFeatureIdList.count() ), 2 );
   }
-  else if ( mRequest.filterType() == Qgis::FeatureRequestFilterType::Fid )
+  else if ( mRequest.filterType() == QgsFeatureRequest::FilterFid )
   {
     mUsingFeatureIdList = true;
     const QgsFeatureMap::const_iterator it = mSource->mFeatures.constFind( mRequest.filterFid() );
     if ( it != mSource->mFeatures.constEnd() )
       mFeatureIdList.append( mRequest.filterFid() );
   }
-  else if ( mRequest.filterType() == Qgis::FeatureRequestFilterType::Fids )
+  else if ( mRequest.filterType() == QgsFeatureRequest::FilterFids )
   {
     mUsingFeatureIdList = true;
     const QgsFeatureIds filterFids = mRequest.filterFids();
@@ -130,7 +133,7 @@ bool QgsMemoryFeatureIterator::nextFeatureUsingList( QgsFeature &feature )
     feature = mSource->mFeatures.value( *mFeatureIdListIterator );
     if ( !mFilterRect.isNull() )
     {
-      if ( mRequest.spatialFilterType() == Qgis::SpatialFilterType::BoundingBox && ( mRequest.flags() & Qgis::FeatureRequestFlag::ExactIntersect ) )
+      if ( mRequest.spatialFilterType() == Qgis::SpatialFilterType::BoundingBox && mRequest.flags() & QgsFeatureRequest::ExactIntersect )
       {
         // do exact check in case we're doing intersection
         if ( feature.hasGeometry() && mSelectRectEngine->intersects( feature.geometry().constGet() ) )
@@ -203,7 +206,7 @@ bool QgsMemoryFeatureIterator::nextFeatureTraverseAll( QgsFeature &feature )
     }
     else
     {
-      if ( mRequest.spatialFilterType() == Qgis::SpatialFilterType::BoundingBox && ( mRequest.flags() & Qgis::FeatureRequestFlag::ExactIntersect ) )
+      if ( mRequest.spatialFilterType() == Qgis::SpatialFilterType::BoundingBox && mRequest.flags() & QgsFeatureRequest::ExactIntersect )
       {
         // using exact test when checking for intersection
         if ( feature.hasGeometry() && mSelectRectEngine->intersects( feature.geometry().constGet() ) )
@@ -304,7 +307,7 @@ QgsExpressionContext *QgsMemoryFeatureSource::expressionContext()
     mExpressionContext = std::make_unique< QgsExpressionContext >(
                            QList<QgsExpressionContextScope *>()
                            << QgsExpressionContextUtils::globalScope()
-                           << QgsExpressionContextUtils::projectScope( QgsProject::instance() ) ); // skip-keyword-check
+                           << QgsExpressionContextUtils::projectScope( QgsProject::instance() ) );
     mExpressionContext->setFields( mFields );
   }
   return mExpressionContext.get();

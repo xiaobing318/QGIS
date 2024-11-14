@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsfindfilesbypatternwidget.h"
-#include "moc_qgsfindfilesbypatternwidget.cpp"
 #include "qgsgui.h"
 #include "qgssettings.h"
 
@@ -69,6 +68,7 @@ void QgsFindFilesByPatternWidget::find()
     filter << pattern;
 
   QDirIterator it( path, filter, QDir::AllEntries | QDir::NoSymLinks | QDir::NoDotAndDotDot, mRecursiveCheckBox->isChecked() ? QDirIterator::Subdirectories : QDirIterator::NoIteratorFlags );
+  const QStringList files;
   while ( it.hasNext() )
   {
     const QString fullPath = it.next();

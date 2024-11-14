@@ -38,22 +38,20 @@ class QgsOgrProviderMetadata final: public QgsProviderMetadata
     void initProvider() override;
     void cleanupProvider() override;
     QList< QgsDataItemProvider * > dataItemProviders() const override;
-    QgsDataProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, Qgis::DataProviderReadFlags flags = Qgis::DataProviderReadFlags() ) override;
+    QgsDataProvider *createProvider( const QString &uri, const QgsDataProvider::ProviderOptions &options, QgsDataProvider::ReadFlags flags = QgsDataProvider::ReadFlags() ) override;
     QVariantMap decodeUri( const QString &uri ) const override;
     QString encodeUri( const QVariantMap &parts ) const override;
-    QString absoluteToRelativeUri( const QString &uri, const QgsReadWriteContext &context ) const override;
-    QString relativeToAbsoluteUri( const QString &uri, const QgsReadWriteContext &context ) const override;
-    QString filters( Qgis::FileFilterType type ) override;
+    QString filters( FilterType type ) override;
     QgsProviderMetadata::ProviderMetadataCapabilities capabilities() const override;
     ProviderCapabilities providerCapabilities() const override;
     bool uriIsBlocklisted( const QString &uri ) const override;
     QList< QgsProviderSublayerDetails > querySublayers( const QString &uri, Qgis::SublayerQueryFlags flags = Qgis::SublayerQueryFlags(), QgsFeedback *feedback = nullptr ) const override;
     QStringList sidecarFilesForUri( const QString &uri ) const override;
-    QList< Qgis::LayerType > supportedLayerTypes() const override;
+    QList< QgsMapLayerType > supportedLayerTypes() const override;
     Qgis::VectorExportResult createEmptyLayer(
       const QString &uri,
       const QgsFields &fields,
-      Qgis::WkbType wkbType,
+      QgsWkbTypes::Type wkbType,
       const QgsCoordinateReferenceSystem &srs,
       bool overwrite,
       QMap<int, int> &oldToNewAttrIdxMap,
@@ -68,7 +66,6 @@ class QgsOgrProviderMetadata final: public QgsProviderMetadata
                     const QString &uiFileContent, bool useAsDefault, QString &errCause ) override;
     bool deleteStyleById( const QString &uri, const QString &styleId, QString &errCause ) override;
     QString loadStyle( const QString &uri, QString &errCause ) override;
-    QString loadStoredStyle( const QString &uri, QString &name, QString &errCause ) override;
     int listStyles( const QString &uri, QStringList &ids, QStringList &names,
                     QStringList &descriptions, QString &errCause ) override;
     QString getStyleById( const QString &uri, const QString &styleId, QString &errCause ) override;

@@ -123,7 +123,6 @@ class CORE_EXPORT QgsOgrProviderUtils
     static QStringList fileExtensions();
     static QStringList directoryExtensions();
     static QStringList wildcards();
-    static QStringList tableNamesFromSelectSQL( const QString &sql );
 
     //! Whether the file is a local file.
     static bool IsLocalFile( const QString &path );
@@ -139,7 +138,7 @@ class CORE_EXPORT QgsOgrProviderUtils
     static bool createEmptyDataSource( const QString &uri,
                                        const QString &format,
                                        const QString &encoding,
-                                       Qgis::WkbType vectortype,
+                                       QgsWkbTypes::Type vectortype,
                                        const QList< QPair<QString, QString> > &attributes,
                                        const QgsCoordinateReferenceSystem &srs,
                                        QString &errorMessage );
@@ -154,9 +153,6 @@ class CORE_EXPORT QgsOgrProviderUtils
                                    const QgsAttributeList &fetchAttributes,
                                    bool firstAttrIsFid,
                                    const QString &subsetString );
-
-    //! Remove comments from subset string (typically a full SELECT) and trim
-    static QString cleanSubsetString( const QString &subsetString );
 
     /**
      * Sets a subset string for an OGR \a layer.
@@ -225,10 +221,10 @@ class CORE_EXPORT QgsOgrProviderUtils
     static void invalidateCachedLastModifiedDate( const QString &dsName );
 
     //! Converts a QGIS WKB type to the corresponding OGR wkb type
-    static OGRwkbGeometryType ogrTypeFromQgisType( Qgis::WkbType type );
+    static OGRwkbGeometryType ogrTypeFromQgisType( QgsWkbTypes::Type type );
 
     //! Converts a OGR WKB type to the corresponding QGIS wkb type
-    static Qgis::WkbType qgisTypeFromOgrType( OGRwkbGeometryType type );
+    static QgsWkbTypes::Type qgisTypeFromOgrType( OGRwkbGeometryType type );
 
     //! Conerts a string to an OGR WKB geometry type
     static OGRwkbGeometryType ogrWkbGeometryTypeFromName( const QString &typeName );
@@ -250,8 +246,7 @@ class CORE_EXPORT QgsOgrProviderUtils
                                QString &layerName,
                                QString &subsetString,
                                OGRwkbGeometryType &ogrGeometryTypeFilter,
-                               QStringList &openOptions,
-                               QVariantMap &credentialOptions );
+                               QStringList &openOptions );
 
     //! Whether a driver can share the same dataset handle among different layers
     static bool canDriverShareSameDatasetAmongLayers( const QString &driverName );
@@ -303,7 +298,6 @@ class CORE_EXPORT QgsOgrProviderUtils
     };
 };
 
-
 /**
  * \class QgsOgrDataset
  * \brief Wrap a GDALDatasetH object in a thread-safe way
@@ -313,7 +307,7 @@ class QgsOgrDataset
     friend class QgsOgrProviderUtils;
     friend class QgsOgrTransaction;
     QgsOgrProviderUtils::DatasetIdentification mIdent;
-    QgsOgrProviderUtils::DatasetWithLayers *mDs = nullptr;
+    QgsOgrProviderUtils::DatasetWithLayers *mDs;
 
     QgsOgrDataset() = default;
     ~QgsOgrDataset() = default;
@@ -429,9 +423,6 @@ class QgsOgrLayer
     //! Returns layer name
     QByteArray name();
 
-    //! Return OGRERR_NONE if lmyer is not sqlite OR if layer is sqlite but with spatialite, else returns OGRERR_UNSUPPORTED_OPERATION
-    OGRErr isSpatialiteEnabled();
-
     //! Wrapper of OGR_L_GetLayerCount
     int GetLayerCount();
 
@@ -462,25 +453,14 @@ class QgsOgrLayer
     //! Return an total feature count based on meta data from package container
     GIntBig GetTotalFeatureCountFromMetaData() const;
 
-    //! Wrapper of OGR_L_GetExtent
+    //! Wrapper of OGR_L_GetLayerCount
     OGRErr GetExtent( OGREnvelope *psExtent, bool bForce );
-
-    //! Wrapper of OGR_L_GetExtent3D
-    OGRErr GetExtent3D( OGREnvelope3D *psExtent, bool bForce );
-
-    //! Combines 3D envelopes for all feature to find the extent. Slow process...
-    OGRErr computeExtent3DSlowly( OGREnvelope3D *extent );
 
     //! Wrapper of OGR_L_GetLayerCount
     OGRErr CreateFeature( OGRFeatureH hFeature );
 
     //! Wrapper of OGR_L_GetLayerCount
     OGRErr SetFeature( OGRFeatureH hFeature );
-
-#if GDAL_VERSION_NUM >= GDAL_COMPUTE_VERSION(3,7,0)
-    //! Wrapper of OGR_L_UpdateFeature
-    OGRErr UpdateFeature( OGRFeatureH hFeature, int nUpdatedFieldsCount, const int *panUpdatedFieldsIdx, int nUpdatedGeomFieldsCount, const int *panUpdatedGeomFieldsIdx, bool bUpdateStyleString );
-#endif
 
     //! Wrapper of OGR_L_GetLayerCount
     OGRErr DeleteFeature( GIntBig fid );

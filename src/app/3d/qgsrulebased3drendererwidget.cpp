@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsrulebased3drendererwidget.h"
-#include "moc_qgsrulebased3drendererwidget.cpp"
 
 #include "qgs3dutils.h"
 #include "qgsexpressionbuilderdialog.h"
@@ -515,7 +514,7 @@ bool QgsRuleBased3DRendererModel::removeRows( int row, int count, const QModelIn
     }
     else
     {
-      QgsDebugError( QStringLiteral( "trying to remove invalid index - this should not happen!" ) );
+      QgsDebugMsg( QStringLiteral( "trying to remove invalid index - this should not happen!" ) );
     }
   }
 

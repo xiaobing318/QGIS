@@ -37,6 +37,7 @@ typedef std::function < QgsAnnotation*() > QgsCreateAnnotationFunc;
  * \class QgsAnnotationMetadata
  * \ingroup core
  * \brief Metadata item for an annotation type within a QgsAnnotationRegistry.
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsAnnotationMetadata
 {
@@ -75,6 +76,7 @@ class CORE_EXPORT QgsAnnotationMetadata
  * \class QgsAnnotationRegistry
  * \ingroup core
  * \brief Handles registration and creation of annotation item types.
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsAnnotationRegistry
 {

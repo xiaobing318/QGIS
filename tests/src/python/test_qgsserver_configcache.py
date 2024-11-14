@@ -15,8 +15,10 @@ import os
 from pathlib import Path
 from time import time
 
+import qgis  # NOQA
 from qgis.core import QgsApplication
-from qgis.server import QgsConfigCache, QgsServerSettings
+from qgis.server import (QgsConfigCache,
+                         QgsServerSettings)
 from qgis.testing import unittest
 
 from utilities import unitTestDataPath
@@ -27,14 +29,12 @@ class TestQgsServerConfigCache(unittest.TestCase):
     @classmethod
     def setUpClass(self):
         """Run before all tests"""
-        super().setUpClass()
         self._app = QgsApplication([], False)
 
     @classmethod
     def tearDownClass(self):
         """Run after all tests"""
         self._app.exitQgis
-        super().tearDownClass()
 
     def test_periodic_cache_strategy(self):
 
@@ -195,18 +195,6 @@ class TestQgsServerConfigCache(unittest.TestCase):
         QgsConfigCache.initialize(settings)
 
         self.assertEqual(QgsConfigCache.instance().strategyName(), 'off')
-
-    def test_list_projects(self):
-        settings = QgsServerSettings()
-        settings.load()
-        cache = QgsConfigCache(settings)
-
-        path = Path(unitTestDataPath('qgis_server_project')) / 'project.qgs'
-        prj1 = cache.project(str(path))
-
-        projects = cache.projects()
-        self.assertEqual(len(projects), 1)
-        self.assertEqual(projects[0].fileName(), path.as_posix())
 
 
 if __name__ == "__main__":

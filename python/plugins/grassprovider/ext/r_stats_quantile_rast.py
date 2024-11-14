@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     r_stats_quantile_rast.py
@@ -21,7 +23,7 @@ __copyright__ = '(C) 2016, Médéric Ribreux'
 
 import os
 from qgis.core import QgsProcessingParameterString
-from grassprovider.grass_utils import GrassUtils
+from grassprovider.Grass7Utils import Grass7Utils
 
 
 def processCommand(alg, parameters, context, feedback):
@@ -49,6 +51,6 @@ def processOutputs(alg, parameters, context, feedback):
     # We need to export each of the output
     for output in outputs:
         fileName = os.path.join(outputDir, output)
-        outFormat = GrassUtils.getRasterFormatFromFilename(fileName)
+        outFormat = Grass7Utils.getRasterFormatFromFilename(fileName)
         alg.exportRasterLayer(output, fileName, True,
                               outFormat, createOpt, metaOpt)

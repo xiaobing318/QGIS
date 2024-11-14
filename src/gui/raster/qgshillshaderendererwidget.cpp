@@ -17,7 +17,6 @@
 
 
 #include "qgshillshaderendererwidget.h"
-#include "moc_qgshillshaderendererwidget.cpp"
 #include "qgsrasterlayer.h"
 #include "qgsbilinearrasterresampler.h"
 #include "qgshillshaderenderer.h"
@@ -80,7 +79,7 @@ void QgsHillshadeRendererWidget::setFromRenderer( const QgsRasterRenderer *rende
   const QgsHillshadeRenderer *r = dynamic_cast<const QgsHillshadeRenderer *>( renderer );
   if ( r )
   {
-    mBandsCombo->setBand( r->inputBand() );
+    mBandsCombo->setBand( r->band() );
     mLightAngle->setValue( r->altitude() );
     mLightAzimuth->setValue( r->azimuth() );
     mZFactor->setValue( r->zFactor() );

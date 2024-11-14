@@ -13,8 +13,8 @@
  *                                                                         *
  ***************************************************************************/
 
+#include "qgsapplication.h"
 #include "qgscodeeditorcss.h"
-#include "moc_qgscodeeditorcss.cpp"
 
 #include <QWidget>
 #include <QString>
@@ -34,11 +34,6 @@ QgsCodeEditorCSS::QgsCodeEditorCSS( QWidget *parent )
     setTitle( tr( "CSS Editor" ) );
   }
   QgsCodeEditorCSS::initializeLexer();
-}
-
-Qgis::ScriptLanguage QgsCodeEditorCSS::language() const
-{
-  return Qgis::ScriptLanguage::Css;
 }
 
 void QgsCodeEditorCSS::initializeLexer()

@@ -55,8 +55,6 @@ class GUI_EXPORT QgsFieldMappingModel: public QAbstractTableModel
       DestinationLength,      //!< Destination field length
       DestinationPrecision,   //!< Destination field precision
       DestinationConstraints, //!< Destination field constraints
-      DestinationAlias,       //!< Destination alias
-      DestinationComment,     //!< Destination comment
     };
 
     Q_ENUM( ColumnDataIndex );
@@ -94,9 +92,9 @@ class GUI_EXPORT QgsFieldMappingModel: public QAbstractTableModel
 
     /**
      * Returns a static map of supported data types
-     * \deprecated QGIS 3.24. Use supportedDataTypes() instead.
+     * \deprecated QGIS 3.24 use supportedDataTypes() instead
      */
-    Q_DECL_DEPRECATED static const QMap<QMetaType::Type, QString> dataTypes();
+    Q_DECL_DEPRECATED static const QMap<QVariant::Type, QString> dataTypes();
 
     /**
      * Returns a static list of supported data types

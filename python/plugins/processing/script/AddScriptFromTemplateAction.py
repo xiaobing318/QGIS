@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     AddScriptFromTemplateAction.py
@@ -24,7 +26,7 @@ import codecs
 
 from qgis.PyQt.QtCore import QCoreApplication
 
-from qgis.utils import iface
+from qgis.core import QgsApplication
 
 from processing.gui.ToolboxAction import ToolboxAction
 
@@ -38,7 +40,7 @@ class AddScriptFromTemplateAction(ToolboxAction):
         self.group = self.tr("Tools")
 
     def execute(self):
-        dlg = ScriptEditorDialog(parent=iface.mainWindow())
+        dlg = ScriptEditorDialog(None)
 
         pluginPath = os.path.split(os.path.dirname(__file__))[0]
         templatePath = os.path.join(

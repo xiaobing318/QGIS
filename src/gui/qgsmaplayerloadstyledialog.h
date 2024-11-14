@@ -20,6 +20,7 @@
 #define SIP_NO_FILE
 
 #include "ui_qgsvectorlayerloadstyledialog.h"
+#include "qgsguiutils.h"
 #include "qgis_gui.h"
 #include "qgsvectorlayerproperties.h"
 #include "qgsmaplayer.h"
@@ -54,9 +55,9 @@ class GUI_EXPORT QgsMapLayerLoadStyleDialog : public QDialog, private Ui::QgsVec
     QgsMapLayer::StyleCategories styleCategories() const;
 
     /**
-     * Returns the selected style type.
+     * Returns the selected vector style type, for vector layers only.
      */
-    QgsLayerPropertiesDialog::StyleType currentStyleType() const;
+    QgsVectorLayerProperties::StyleType currentStyleType() const;
 
     /**
      * Returns the file extension for the selected layer style source file.
@@ -91,9 +92,6 @@ class GUI_EXPORT QgsMapLayerLoadStyleDialog : public QDialog, private Ui::QgsVec
     void onOthersTableSelectionChanged();
     void deleteStyleFromDB();
     void showHelp();
-    void selectAll();
-    void deselectAll();
-    void invertSelection();
 
   private:
     void selectionChanged( QTableWidget *styleTable );

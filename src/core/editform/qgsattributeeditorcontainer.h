@@ -18,7 +18,6 @@
 
 #include "qgis_core.h"
 #include "qgsattributeeditorelement.h"
-#include "qgsoptionalexpression.h"
 
 /**
  * \ingroup core
@@ -37,9 +36,12 @@ class CORE_EXPORT QgsAttributeEditorContainer : public QgsAttributeEditorElement
      * \param backgroundColor The optional background color of the container.
      */
     QgsAttributeEditorContainer( const QString &name, QgsAttributeEditorElement *parent, const QColor &backgroundColor = QColor() )
-      : QgsAttributeEditorElement( Qgis::AttributeEditorType::Container, name, parent )
+      : QgsAttributeEditorElement( AeTypeContainer, name, parent )
+      , mIsGroupBox( true )
+      , mColumnCount( 1 )
       , mBackgroundColor( backgroundColor )
     {}
+
 
     ~QgsAttributeEditorContainer() override;
 
@@ -51,40 +53,21 @@ class CORE_EXPORT QgsAttributeEditorContainer : public QgsAttributeEditorElement
     virtual void addChildElement( QgsAttributeEditorElement *element SIP_TRANSFER );
 
     /**
-     * Sets the container type.
-     *
-     * \see type()
-     * \since QGIS 3.32
-     */
-    void setType( Qgis::AttributeEditorContainerType type ) { mType = type; }
-
-    /**
-     * Returns the container type.
-     *
-     * \see setType()
-     * \since QGIS 3.32
-     */
-    Qgis::AttributeEditorContainerType type() const { return mType; }
-
-    /**
      * Determines if this container is rendered as collapsible group box or tab in a tabwidget
      *
      * \param isGroupBox If TRUE, this will be a group box
-     * \deprecated QGIS 3.40. Use setType() instead.
      */
-    Q_DECL_DEPRECATED virtual void setIsGroupBox( bool isGroupBox ) SIP_DEPRECATED;
+    virtual void setIsGroupBox( bool isGroupBox ) { mIsGroupBox = isGroupBox; }
 
     /**
      * Returns if this container is going to be a group box
      *
      * \returns TRUE if it will be a group box, FALSE if it will be a tab
-     *
-     * \deprecated QGIS 3.40. Use type() instead.
      */
-    Q_DECL_DEPRECATED virtual bool isGroupBox() const SIP_DEPRECATED;
+    virtual bool isGroupBox() const { return mIsGroupBox; }
 
     /**
-     * For group box containers returns TRUE if this group box is collapsed.
+     * For group box containers  returns if this group box is collapsed.
      *
      * \returns TRUE if the group box is collapsed, FALSE otherwise.
      * \see collapsed()
@@ -94,7 +77,7 @@ class CORE_EXPORT QgsAttributeEditorContainer : public QgsAttributeEditorElement
     bool collapsed() const { return mCollapsed; };
 
     /**
-     * For group box containers sets if this group box is \a collapsed.
+     * For group box containers  sets if this group box is \a collapsed.
      *
      * \see collapsed()
      * \see setCollapsed()
@@ -116,7 +99,7 @@ class CORE_EXPORT QgsAttributeEditorContainer : public QgsAttributeEditorElement
      *
      * \returns A list of elements of the type which has been searched for
      */
-    virtual QList<QgsAttributeEditorElement *> findElements( Qgis::AttributeEditorType type ) const;
+    virtual QList<QgsAttributeEditorElement *> findElements( AttributeEditorType type ) const;
 
     /**
      * Clear all children from this container.
@@ -124,27 +107,24 @@ class CORE_EXPORT QgsAttributeEditorContainer : public QgsAttributeEditorElement
     void clear();
 
     /**
-     * Change the name of this container.
+     * Change the name of this container
      */
     void setName( const QString &name );
 
     /**
-     * Gets the number of columns in this group.
-     *
-     * \see setColumnCount()
+     * Gets the number of columns in this group
      */
     int columnCount() const;
 
     /**
-     * Set the number of columns in this group.
-     *
-     * \see columnCount()
+     * Set the number of columns in this group
      */
     void setColumnCount( int columnCount );
 
     /**
      * Creates a deep copy of this element. To be implemented by subclasses.
      *
+     * \since QGIS 3.0
      */
     QgsAttributeEditorElement *clone( QgsAttributeEditorElement *parent ) const override SIP_FACTORY;
 
@@ -153,6 +133,7 @@ class CORE_EXPORT QgsAttributeEditorContainer : public QgsAttributeEditorElement
      * show or hide this container based on an expression incorporating
      * the field value controlled by editor widgets.
      *
+     * \since QGIS 3.0
      */
     QgsOptionalExpression visibilityExpression() const;
 
@@ -161,6 +142,7 @@ class CORE_EXPORT QgsAttributeEditorContainer : public QgsAttributeEditorElement
      * show or hide this container based on an expression incorporating
      * the field value controlled by editor widgets.
      *
+     * \since QGIS 3.0
      */
     void setVisibilityExpression( const QgsOptionalExpression &visibilityExpression );
 
@@ -189,17 +171,14 @@ class CORE_EXPORT QgsAttributeEditorContainer : public QgsAttributeEditorElement
     void setCollapsedExpression( const QgsOptionalExpression &collapsedExpression ) SIP_SKIP;
 
     /**
-     * Returns the background color of the container.
-     *
-     * \see setBackgroundColor()
+     * \brief backgroundColor
+     * \return background color of the container
      * \since QGIS 3.8
      */
     QColor backgroundColor() const;
 
     /**
-     * Sets the background color to \a backgroundColor.
-     *
-     * \see backgroundColor()
+     * Sets the background color to \a backgroundColor
      */
     void setBackgroundColor( const QColor &backgroundColor );
 
@@ -208,9 +187,9 @@ class CORE_EXPORT QgsAttributeEditorContainer : public QgsAttributeEditorElement
     void loadConfiguration( const QDomElement &element,  const QString &layerId, const QgsReadWriteContext &context, const QgsFields &fields ) override;
     QString typeIdentifier() const override;
 
-    Qgis::AttributeEditorContainerType mType = Qgis::AttributeEditorContainerType::GroupBox;
+    bool mIsGroupBox;
     QList<QgsAttributeEditorElement *> mChildren;
-    int mColumnCount = 1;
+    int mColumnCount;
     QgsOptionalExpression mVisibilityExpression;
     QColor mBackgroundColor;
     bool mCollapsed = false;

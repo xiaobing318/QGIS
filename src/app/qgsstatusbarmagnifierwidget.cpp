@@ -22,7 +22,6 @@
 #include "qgssettings.h"
 #include "qgsapplication.h"
 #include "qgsstatusbarmagnifierwidget.h"
-#include "moc_qgsstatusbarmagnifierwidget.cpp"
 #include "qgsdoublespinbox.h"
 #include "qgsguiutils.h"
 

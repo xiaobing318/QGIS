@@ -14,8 +14,8 @@
  ***************************************************************************/
 
 #include "qgsgpsdeviceoptions.h"
-#include "moc_qgsgpsdeviceoptions.cpp"
 #include "qgsbabelgpsdevice.h"
+#include "qgssettings.h"
 #include "qgsapplication.h"
 #include "qgsbabelformatregistry.h"
 #include "qgssettingsregistrycore.h"
@@ -87,31 +87,31 @@ QgsGpsDeviceOptionsWidget::QgsGpsDeviceOptionsWidget( QWidget *parent )
 
   mGpsBabelFileWidget->setStorageMode( QgsFileWidget::GetFile );
   mGpsBabelFileWidget->setDialogTitle( tr( "Select GPSBabel Executable" ) );
-  mGpsBabelFileWidget->setFilePath( QgsSettingsRegistryCore::settingsGpsBabelPath->value() );
-}
-
-QString QgsGpsDeviceOptionsWidget::helpKey() const
-{
-  return QStringLiteral( "introduction/qgis_configuration.html#defining-new-device" );
+  mGpsBabelFileWidget->setFilePath( QgsSettingsRegistryCore::settingsGpsBabelPath.value() );
 }
 
 void QgsGpsDeviceOptionsWidget::apply()
 {
-  QgsBabelFormatRegistry::sTreeBabelDevices->deleteAllItems();
+  QStringList deviceNames;
+  QgsSettings settings;
+  const QString devPath = QStringLiteral( "babelDevices/%1" );
+  settings.remove( QStringLiteral( "babelDevices" ), QgsSettings::Gps );
 
   for ( auto iter = mDevices.constBegin(); iter != mDevices.constEnd(); ++iter )
   {
     const QString name = iter.key();
+    deviceNames << name;
     const QStringList commands = iter.value();
-
-    QgsBabelFormatRegistry::settingsBabelWptDownload->setValue( commands.value( 0 ), name );
-    QgsBabelFormatRegistry::settingsBabelWptUpload->setValue( commands.value( 1 ), name );
-    QgsBabelFormatRegistry::settingsBabelRteDownload->setValue( commands.value( 2 ), name );
-    QgsBabelFormatRegistry::settingsBabelRteUpload->setValue( commands.value( 3 ), name );
-    QgsBabelFormatRegistry::settingsBabelTrkDownload->setValue( commands.value( 4 ), name );
-    QgsBabelFormatRegistry::settingsBabelTrkUpload->setValue( commands.value( 5 ), name );
+    settings.setValue( devPath.arg( name ) + "/wptdownload", commands.value( 0 ), QgsSettings::Gps );
+    settings.setValue( devPath.arg( name ) + "/wptupload", commands.value( 1 ), QgsSettings::Gps );
+    settings.setValue( devPath.arg( name ) + "/rtedownload", commands.value( 2 ), QgsSettings::Gps );
+    settings.setValue( devPath.arg( name ) + "/rteupload", commands.value( 3 ), QgsSettings::Gps );
+    settings.setValue( devPath.arg( name ) + "/trkdownload", commands.value( 4 ), QgsSettings::Gps );
+    settings.setValue( devPath.arg( name ) + "/trkupload", commands.value( 5 ), QgsSettings::Gps );
   }
-  QgsSettingsRegistryCore::settingsGpsBabelPath->setValue( mGpsBabelFileWidget->filePath() );
+  settings.setValue( QStringLiteral( "babelDeviceList" ), deviceNames, QgsSettings::Gps );
+
+  QgsSettingsRegistryCore::settingsGpsBabelPath.setValue( mGpsBabelFileWidget->filePath() );
 
   QgsApplication::gpsBabelFormatRegistry()->reloadFromSettings();
 }
@@ -237,7 +237,7 @@ void QgsGpsDeviceOptionsWidget::renameCurrentDevice()
 // QgsGpsDeviceOptionsFactory
 //
 QgsGpsDeviceOptionsFactory::QgsGpsDeviceOptionsFactory()
-  : QgsOptionsWidgetFactory( tr( "GPSBabel" ), QIcon(), QStringLiteral( "gpsbabel" ) )
+  : QgsOptionsWidgetFactory( tr( "GPSBabel" ), QIcon() )
 {
 
 }

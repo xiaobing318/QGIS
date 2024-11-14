@@ -42,9 +42,8 @@ class QgsSplitWithLinesAlgorithm : public QgsProcessingAlgorithm
     QString group() const override;
     QString groupId() const override;
     QString shortHelpString() const override;
-    Qgis::ProcessingAlgorithmDocumentationFlags documentationFlags() const override;
     QgsSplitWithLinesAlgorithm *createInstance() const override SIP_FACTORY;
-    Qgis::ProcessingAlgorithmFlags flags() const override;
+    QgsProcessingAlgorithm::Flags flags() const override;
     bool supportInPlaceEdit( const QgsMapLayer *layer ) const override;
   protected:
 

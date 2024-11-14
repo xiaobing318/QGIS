@@ -85,7 +85,7 @@ class QgsOracleSourceSelect : public QgsAbstractDbSourceSelect
 
   public:
     //! Constructor
-    QgsOracleSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::Standalone );
+    QgsOracleSourceSelect( QWidget *parent = nullptr, Qt::WindowFlags fl = QgsGuiUtils::ModalDialogFlags, QgsProviderRegistry::WidgetMode widgetMode = QgsProviderRegistry::WidgetMode::None );
     //! Destructor
     ~QgsOracleSourceSelect() override;
     //! Populate the connection list combo box

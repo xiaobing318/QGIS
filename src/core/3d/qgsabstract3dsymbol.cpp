@@ -19,9 +19,9 @@
 QgsPropertiesDefinition QgsAbstract3DSymbol::sPropertyDefinitions;
 
 
-QList<Qgis::GeometryType> QgsAbstract3DSymbol::compatibleGeometryTypes() const
+QList<QgsWkbTypes::GeometryType> QgsAbstract3DSymbol::compatibleGeometryTypes() const
 {
-  return QList< Qgis::GeometryType >();
+  return QList< QgsWkbTypes::GeometryType >();
 }
 
 const QgsPropertiesDefinition &QgsAbstract3DSymbol::propertyDefinitions()
@@ -44,8 +44,8 @@ void QgsAbstract3DSymbol::initPropertyDefinitions()
 
   sPropertyDefinitions = QgsPropertiesDefinition
   {
-    { static_cast< int >( Property::Height ), QgsPropertyDefinition( "height", QObject::tr( "Height" ), QgsPropertyDefinition::Double, origin ) },
-    { static_cast< int >( Property::ExtrusionHeight ), QgsPropertyDefinition( "extrusionHeight", QObject::tr( "ExtrusionHeight" ), QgsPropertyDefinition::DoublePositive, origin ) },
+    { PropertyHeight, QgsPropertyDefinition( "height", QObject::tr( "Height" ), QgsPropertyDefinition::Double, origin ) },
+    { PropertyExtrusionHeight, QgsPropertyDefinition( "extrusionHeight", QObject::tr( "ExtrusionHeight" ), QgsPropertyDefinition::DoublePositive, origin ) },
   };
 
 }

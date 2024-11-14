@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsstylemanagerdialog.h"
-#include "moc_qgsstylemanagerdialog.cpp"
 #include "qgsstylesavedialog.h"
 
 #include "qgssymbol.h"
@@ -45,8 +44,6 @@
 #include "qgsproject.h"
 #include "qgsprojectstylesettings.h"
 #include "qgsfileutils.h"
-#include "qgssettingsentryimpl.h"
-
 
 #include <QAction>
 #include <QFile>
@@ -63,8 +60,6 @@
 
 #include "qgsapplication.h"
 #include "qgslogger.h"
-
-const QgsSettingsEntryString *QgsStyleManagerDialog::settingLastStyleDatabaseFolder = new QgsSettingsEntryString( QStringLiteral( "last-style-database-folder" ), sTtreeStyleManager, QString(), QStringLiteral( "Last used folder for style databases" ) );
 
 //
 // QgsCheckableStyleModel
@@ -133,7 +128,7 @@ QVariant QgsCheckableStyleModel::data( const QModelIndex &index, int role ) cons
       if ( !mCheckable || index.column() != 0 )
         return QVariant();
 
-      const QStringList tags = data( index, static_cast< int >( QgsStyleModel::CustomRole::Tag ) ).toStringList();
+      const QStringList tags = data( index, QgsStyleModel::TagRole ).toStringList();
       return tags.contains( mCheckTag ) ? Qt::Checked : Qt::Unchecked;
     }
 
@@ -159,7 +154,7 @@ bool QgsCheckableStyleModel::setData( const QModelIndex &i, const QVariant &valu
       return false;
 
     const QString name = data( index( i.row(), QgsStyleModel::Name ), Qt::DisplayRole ).toString();
-    const QgsStyle::StyleEntity entity = static_cast< QgsStyle::StyleEntity >( data( i, static_cast< int >( QgsStyleModel::CustomRole::Type ) ).toInt() );
+    const QgsStyle::StyleEntity entity = static_cast< QgsStyle::StyleEntity >( data( i, QgsStyleModel::TypeRole ).toInt() );
 
     if ( value.toInt() == Qt::Checked )
       return mStyle->tagSymbol( entity, name, QStringList() << mCheckTag );
@@ -368,15 +363,15 @@ void QgsStyleManagerDialog::init()
   mMenuBtnAddItemAll->addAction( item );
   mMenuBtnAddItemAll->addSeparator();
   item = new QAction( QgsApplication::getThemeIcon( QStringLiteral( "labelingSingle.svg" ) ), tr( "Point Label Settings…" ), this );
-  connect( item, &QAction::triggered, this, [ = ]( bool ) { addLabelSettings( Qgis::GeometryType::Point ); } );
+  connect( item, &QAction::triggered, this, [ = ]( bool ) { addLabelSettings( QgsWkbTypes::PointGeometry ); } );
   mMenuBtnAddItemAll->addAction( item );
   mMenuBtnAddItemLabelSettings->addAction( item );
   item = new QAction( QgsApplication::getThemeIcon( QStringLiteral( "labelingSingle.svg" ) ), tr( "Line Label Settings…" ), this );
-  connect( item, &QAction::triggered, this, [ = ]( bool ) {  addLabelSettings( Qgis::GeometryType::Line ); } );
+  connect( item, &QAction::triggered, this, [ = ]( bool ) {  addLabelSettings( QgsWkbTypes::LineGeometry ); } );
   mMenuBtnAddItemAll->addAction( item );
   mMenuBtnAddItemLabelSettings->addAction( item );
   item = new QAction( QgsApplication::getThemeIcon( QStringLiteral( "labelingSingle.svg" ) ), tr( "Polygon Label Settings…" ), this );
-  connect( item, &QAction::triggered, this, [ = ]( bool ) {  addLabelSettings( Qgis::GeometryType::Polygon ); } );
+  connect( item, &QAction::triggered, this, [ = ]( bool ) {  addLabelSettings( QgsWkbTypes::PolygonGeometry ); } );
   mMenuBtnAddItemAll->addAction( item );
   mMenuBtnAddItemLabelSettings->addAction( item );
 
@@ -503,8 +498,6 @@ void QgsStyleManagerDialog::setCurrentStyle( QgsStyle *style )
   }
   mModel->addDesiredIconSize( mSymbolTreeView->iconSize() );
   mModel->addDesiredIconSize( listItems->iconSize() );
-  mModel->addTargetScreenProperties( QgsScreenProperties( screen() ) );
-
   mModel->setFilterString( searchBox->text() );
 
   listItems->setModel( mModel );
@@ -710,7 +703,11 @@ void QgsStyleManagerDialog::copyItemsToDefault()
     if ( !ok )
       return;
 
+#if QT_VERSION < QT_VERSION_CHECK(5, 15, 0)
+    const QStringList parts = tags.split( ',', QString::SkipEmptyParts );
+#else
     const QStringList parts = tags.split( ',', Qt::SkipEmptyParts );
+#endif
     QStringList additionalTags;
     additionalTags.reserve( parts.count() );
     for ( const QString &tag : parts )
@@ -856,7 +853,7 @@ int QgsStyleManagerDialog::selectedItemType()
   if ( !index.isValid() )
     return 0;
 
-  const QgsStyle::StyleEntity entity = static_cast< QgsStyle::StyleEntity >( mModel->data( index, static_cast< int >( QgsStyleModel::CustomRole::Type ) ).toInt() );
+  const QgsStyle::StyleEntity entity = static_cast< QgsStyle::StyleEntity >( mModel->data( index, QgsStyleModel::TypeRole ).toInt() );
   if ( entity == QgsStyle::ColorrampEntity )
     return 3;
   else if ( entity == QgsStyle::TextFormatEntity )
@@ -868,7 +865,7 @@ int QgsStyleManagerDialog::selectedItemType()
   else if ( entity == QgsStyle::Symbol3DEntity )
     return 7;
 
-  return  mModel->data( index, static_cast< int >( QgsStyleModel::CustomRole::SymbolType ) ).toInt();
+  return  mModel->data( index, QgsStyleModel::SymbolTypeRole ).toInt();
 }
 
 bool QgsStyleManagerDialog::allTypesSelected() const
@@ -891,9 +888,9 @@ QList< QgsStyleManagerDialog::ItemDetails > QgsStyleManagerDialog::selectedItems
       continue;
 
     ItemDetails details;
-    details.entityType = static_cast< QgsStyle::StyleEntity >( mModel->data( index, static_cast< int >( QgsStyleModel::CustomRole::Type ) ).toInt() );
+    details.entityType = static_cast< QgsStyle::StyleEntity >( mModel->data( index, QgsStyleModel::TypeRole ).toInt() );
     if ( details.entityType == QgsStyle::SymbolEntity )
-      details.symbolType = static_cast< Qgis::SymbolType >( mModel->data( index, static_cast< int >( QgsStyleModel::CustomRole::SymbolType ) ).toInt() );
+      details.symbolType = static_cast< Qgis::SymbolType >( mModel->data( index, QgsStyleModel::SymbolTypeRole ).toInt() );
     details.name = mModel->data( mModel->index( index.row(), QgsStyleModel::Name, index.parent() ), Qt::DisplayRole ).toString();
 
     res << details;
@@ -1599,7 +1596,7 @@ QString QgsStyleManagerDialog::addColorRampStatic( QWidget *parent, QgsStyle *st
   {
     // Q_ASSERT( 0 && "invalid ramp type" );
     // bailing out is rather harsh!
-    QgsDebugError( QStringLiteral( "invalid ramp type %1" ).arg( rampType ) );
+    QgsDebugMsg( QStringLiteral( "invalid ramp type %1" ).arg( rampType ) );
     return QString();
   }
 
@@ -1871,7 +1868,7 @@ bool QgsStyleManagerDialog::editTextFormat()
   return true;
 }
 
-bool QgsStyleManagerDialog::addLabelSettings( Qgis::GeometryType type )
+bool QgsStyleManagerDialog::addLabelSettings( QgsWkbTypes::GeometryType type )
 {
   QgsPalLayerSettings settings;
   QgsLabelSettingsDialog settingsDlg( settings, nullptr, nullptr, this, type );
@@ -1949,7 +1946,7 @@ bool QgsStyleManagerDialog::editLabelSettings()
     return false;
 
   QgsPalLayerSettings settings = mStyle->labelSettings( formatName );
-  Qgis::GeometryType geomType = settings.layerType;
+  QgsWkbTypes::GeometryType geomType = settings.layerType;
 
   // let the user edit the settings and update list when done
   QgsLabelSettingsDialog dlg( settings, nullptr, nullptr, this, geomType );
@@ -2164,7 +2161,7 @@ bool QgsStyleManagerDialog::editSymbol3D()
 
 void QgsStyleManagerDialog::addStyleDatabase( bool createNew )
 {
-  QString initialFolder = QgsStyleManagerDialog::settingLastStyleDatabaseFolder->value();
+  QString initialFolder = QgsStyleManagerDialog::settingLastStyleDatabaseFolder.value();
   if ( initialFolder.isEmpty() )
     initialFolder = QDir::homePath();
 
@@ -2179,12 +2176,9 @@ void QgsStyleManagerDialog::addStyleDatabase( bool createNew )
                            tr( "Add Style Database" ),
                            initialFolder,
                            tr( "Style databases" ) + " (*.db *.xml)" );
-  // return dialog focus on Mac
-  activateWindow();
-  raise();
   if ( ! databasePath.isEmpty() )
   {
-    QgsStyleManagerDialog::settingLastStyleDatabaseFolder->setValue( QFileInfo( databasePath ).path() );
+    QgsStyleManagerDialog::settingLastStyleDatabaseFolder.setValue( QFileInfo( databasePath ).path() );
 
     if ( createNew )
     {
@@ -2424,6 +2418,8 @@ void QgsStyleManagerDialog::populateGroups()
 
 void QgsStyleManagerDialog::groupChanged( const QModelIndex &index )
 {
+  QStringList groupSymbols;
+
   const QString category = index.data( Qt::UserRole + 1 ).toString();
   sPreviousTag = category;
 
@@ -2657,7 +2653,7 @@ void QgsStyleManagerDialog::groupRenamed( QStandardItem *item )
   if ( isReadOnly() )
     return;
 
-  QgsDebugMsgLevel( QStringLiteral( "Symbol group edited: data=%1 text=%2" ).arg( item->data( Qt::UserRole + 1 ).toString(), item->text() ), 2 );
+  QgsDebugMsg( QStringLiteral( "Symbol group edited: data=%1 text=%2" ).arg( item->data( Qt::UserRole + 1 ).toString(), item->text() ) );
   int id = item->data( Qt::UserRole + 1 ).toInt();
   QString name = item->text();
   mBlockGroupUpdates++;
@@ -2848,7 +2844,7 @@ void QgsStyleManagerDialog::listitemsContextMenu( QPoint point )
 
   if ( !isReadOnly() )
   {
-    const QStringList currentTags = indices.count() == 1 ? indices.at( 0 ).data( static_cast< int >( QgsStyleModel::CustomRole::Tag ) ).toStringList() : QStringList();
+    const QStringList currentTags = indices.count() == 1 ? indices.at( 0 ).data( QgsStyleModel::TagRole ).toStringList() : QStringList();
     QAction *a = nullptr;
     QStringList tags = mStyle->tags();
     tags.sort();
@@ -3013,3 +3009,4 @@ void QgsStyleManagerDialog::showHelp()
 {
   QgsHelp::openHelp( QStringLiteral( "style_library/style_manager.html" ) );
 }
+

@@ -11,23 +11,24 @@ __author__ = 'Nyall Dawson'
 __date__ = '11/04/2017'
 __copyright__ = 'Copyright 2017, The QGIS Project'
 
-from qgis.PyQt.QtCore import QDate, QDateTime, QRegularExpression, QTime
+import qgis  # NOQA
+from qgis.PyQt.QtCore import (QDate,
+                              QTime,
+                              QDateTime,
+                              QRegularExpression, )
 from qgis.PyQt.QtXml import QDomDocument
-from qgis.core import (
-    QgsBox3d,
-    QgsCoordinateReferenceSystem,
-    QgsDateTimeRange,
-    QgsLayerMetadata,
-    QgsNativeMetadataValidator,
-    QgsVectorLayer,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.core import (QgsLayerMetadata,
+                       QgsCoordinateReferenceSystem,
+                       QgsVectorLayer,
+                       QgsNativeMetadataValidator,
+                       QgsBox3d,
+                       QgsDateTimeRange)
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsLayerMetadata(QgisTestCase):
+class TestQgsLayerMetadata(unittest.TestCase):
 
     def testGettersSetters(self):
         m = QgsLayerMetadata()

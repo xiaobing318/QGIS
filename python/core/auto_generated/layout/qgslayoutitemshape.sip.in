@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/layout/qgslayoutitemshape.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -12,6 +12,8 @@ class QgsLayoutItemShape : QgsLayoutItem
 {
 %Docstring(signature="appended")
 Layout item for basic filled shapes (e.g. rectangles, ellipses).
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -125,5 +127,5 @@ Returns the corner radius for rounded rectangle corners.
  *                                                                      *
  * src/core/layout/qgslayoutitemshape.h                                 *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

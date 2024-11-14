@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/fieldformatter/qgslistfieldformatter.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -14,6 +14,8 @@ Field formatter for a list field.
 
 This represents a list type value.
 Values will be represented as a comma-separated list.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -22,6 +24,9 @@ Values will be represented as a comma-separated list.
   public:
 
     QgsListFieldFormatter();
+%Docstring
+Default constructor of field formatter for a list field.
+%End
     virtual QString id() const;
 
 
@@ -34,5 +39,5 @@ Values will be represented as a comma-separated list.
  *                                                                      *
  * src/core/fieldformatter/qgslistfieldformatter.h                      *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

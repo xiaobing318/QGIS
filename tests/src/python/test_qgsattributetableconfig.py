@@ -9,15 +9,15 @@ __author__ = 'Nyall Dawson'
 __date__ = '07/06/2016'
 __copyright__ = 'Copyright 2016, The QGIS Project'
 
+import qgis  # NOQA
 
 from qgis.core import QgsAttributeTableConfig, QgsVectorLayer
-import unittest
-from qgis.testing import start_app, QgisTestCase
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsAttributeTableConfig(QgisTestCase):
+class TestQgsAttributeTableConfig(unittest.TestCase):
 
     def testLayerConfig(self):
         """ test retrieving attribute table config from a layer """

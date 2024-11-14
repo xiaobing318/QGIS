@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/qgsoptionswidgetfactory.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -12,6 +12,8 @@ class QgsOptionsPageWidget : QWidget
 {
 %Docstring(signature="appended")
 Base class for widgets for pages included in the options dialog.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -56,12 +58,6 @@ Called to permanently apply the settings shown in the options page (e.g. save th
 :py:class:`QgsSettings` objects). This is usually called when the options dialog is accepted.
 %End
 
-    virtual void cancel();
-%Docstring
-Called to cancel settings changed in the options page (e.g. save them to
-:py:class:`QgsSettings` objects). This is usually called when the options dialog is canceled.
-%End
-
   protected:
 
     void registerHighlightWidget( QgsOptionsDialogHighlightWidget *highlightWidget );
@@ -82,8 +78,11 @@ class QgsOptionsWidgetFactory : QObject
   public:
 
     QgsOptionsWidgetFactory();
+%Docstring
+Constructor
+%End
 
-    QgsOptionsWidgetFactory( const QString &title, const QIcon &icon, const QString &key = QString() );
+    QgsOptionsWidgetFactory( const QString &title, const QIcon &icon );
 %Docstring
 Constructor
 %End
@@ -116,22 +115,6 @@ The title of the panel.
 Set the ``title`` for the interface.
 
 .. seealso:: :py:func:`title`
-%End
-
-    virtual QString key() const;
-%Docstring
-The key of the panel (untranslated title).
-
-.. seealso:: :py:func:`setKey`
-
-.. versionadded:: 3.32
-%End
-
-    void setKey( const QString &key );
-%Docstring
-Set the ``key`` for the interface.
-
-.. seealso:: :py:func:`key`
 %End
 
     virtual QString pagePositionHint() const;
@@ -175,5 +158,5 @@ Factory function to create the widget on demand as needed by the options dialog.
  *                                                                      *
  * src/gui/qgsoptionswidgetfactory.h                                    *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

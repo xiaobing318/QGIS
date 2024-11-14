@@ -14,11 +14,11 @@
    <string>Topology Checker Panel</string>
   </property>
   <widget class="QWidget" name="dockWidgetContents">
-   <layout class="QVBoxLayout" name="mainVerticalLayout">
+   <layout class="QGridLayout" name="gridLayout_2">
     <property name="margin">
      <number>0</number>
     </property>
-    <item>
+    <item row="0" column="0">
      <widget class="QToolBar" name="mTopologyToolbar">
       <property name="iconSize">
        <size>
@@ -34,34 +34,7 @@
       <addaction name="actionConfigure"/>
      </widget>
     </item>
-    <item>
-     <layout class="QHBoxLayout" name="filterLayout">
-      <item>
-       <widget class="QLabel" name="filterLabel">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Minimum" vsizetype="Preferred">
-          <horstretch>0</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>
-        <property name="text">
-         <string>Filter errors by rule</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QComboBox" name="mFilterComboBox">
-        <property name="sizePolicy">
-         <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-          <horstretch>1</horstretch>
-          <verstretch>0</verstretch>
-         </sizepolicy>
-        </property>       
-       </widget>
-      </item>
-     </layout>
-    </item>
-    <item>
+    <item row="1" column="0">
      <layout class="QHBoxLayout" name="horizontalLayout">
       <item>
        <widget class="QTableView" name="mErrorTableView">
@@ -72,7 +45,7 @@
       </item>
      </layout>
     </item>
-    <item>
+    <item row="2" column="0">
      <layout class="QHBoxLayout" name="horizontalLayout_5">
       <item>
        <widget class="QCheckBox" name="mToggleRubberband">
@@ -80,7 +53,7 @@
          <string>Show topology errors</string>
         </property>
         <property name="text">
-         <string>Show errors on the canvas</string>
+         <string>Show errors</string>
         </property>
         <property name="checked">
          <bool>false</bool>
@@ -96,7 +69,7 @@
       </item>
      </layout>
     </item>
-    <item>
+    <item row="3" column="0">
      <layout class="QGridLayout" name="gridLayout">
       <item row="0" column="0">
        <widget class="QComboBox" name="mFixBox">

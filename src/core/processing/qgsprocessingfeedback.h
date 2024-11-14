@@ -20,10 +20,9 @@
 
 #include "qgis_core.h"
 #include "qgsfeedback.h"
+#include "qgsmessagelog.h"
 
 class QgsProcessingProvider;
-class QgsProcessingAlgorithm;
-class QgsProcessingContext;
 
 /**
  * \class QgsProcessingFeedback
@@ -33,6 +32,7 @@ class QgsProcessingContext;
  * This base class implementation silently ignores all feedback reported by algorithms.
  * Subclasses of QgsProcessingFeedback can be used to log this feedback or report
  * it to users via the GUI.
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsProcessingFeedback : public QgsFeedback
 {
@@ -79,30 +79,12 @@ class CORE_EXPORT QgsProcessingFeedback : public QgsFeedback
      * Pushes a general informational message from the algorithm. This can
      * be used to report feedback which is neither a status report or an
      * error, such as "Found 47 matching features".
-     *
-     * \see pushFormattedMessage()
      * \see pushWarning()
      * \see pushCommandInfo()
      * \see pushDebugInfo()
      * \see pushConsoleInfo()
      */
     virtual void pushInfo( const QString &info );
-
-    /**
-     * Pushes a pre-formatted message from the algorithm.
-     *
-     * This can be used to push formatted HTML messages to the feedback object.
-     * A plain \a text version of the message must also be specified.
-     *
-     * \see pushInfo()
-     * \see pushWarning()
-     * \see pushCommandInfo()
-     * \see pushDebugInfo()
-     * \see pushConsoleInfo()
-     *
-     * \since QGIS 3.36
-     */
-    virtual void pushFormattedMessage( const QString &html, const QString &text );
 
     /**
      * Pushes an informational message containing a command from the algorithm.
@@ -142,13 +124,6 @@ class CORE_EXPORT QgsProcessingFeedback : public QgsFeedback
     void pushVersionInfo( const QgsProcessingProvider *provider = nullptr );
 
     /**
-     * Pushes a summary of the execution \a results to the log
-     *
-     * \since QGIS 3.36
-     */
-    void pushFormattedResults( const QgsProcessingAlgorithm *algorithm, QgsProcessingContext &context, const QVariantMap &results );
-
-    /**
      * Returns the HTML formatted contents of the log, which contains all messages pushed to the feedback object.
      *
      * \see textLog()
@@ -186,6 +161,7 @@ class CORE_EXPORT QgsProcessingFeedback : public QgsFeedback
  * feedback object, but scales overall progress reports to account
  * for a number of child steps which each report their own feedback.
  *
+ * \since QGIS 3.0
  */
 class CORE_EXPORT QgsProcessingMultiStepFeedback : public QgsProcessingFeedback
 {
@@ -213,8 +189,6 @@ class CORE_EXPORT QgsProcessingMultiStepFeedback : public QgsProcessingFeedback
     void pushCommandInfo( const QString &info ) override;
     void pushDebugInfo( const QString &info ) override;
     void pushConsoleInfo( const QString &info ) override;
-    void pushFormattedMessage( const QString &html, const QString &text ) override;
-
     QString htmlLog() const override;
     QString textLog() const override;
   private slots:

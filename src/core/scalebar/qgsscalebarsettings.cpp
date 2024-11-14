@@ -15,6 +15,7 @@
  ***************************************************************************/
 
 #include "qgsscalebarsettings.h"
+#include "qgsapplication.h"
 #include "qgsnumericformat.h"
 #include "qgsbasicnumericformat.h"
 #include "qgslinesymbollayer.h"
@@ -26,7 +27,7 @@
 QgsScaleBarSettings::QgsScaleBarSettings()
 {
   mTextFormat.setSize( 12.0 );
-  mTextFormat.setSizeUnit( Qgis::RenderUnit::Points );
+  mTextFormat.setSizeUnit( QgsUnitTypes::RenderPoints );
   mTextFormat.setColor( QColor( 0, 0, 0 ) );
 
   mNumericFormat = std::make_unique< QgsBasicNumericFormat >();
@@ -39,7 +40,7 @@ QgsScaleBarSettings::QgsScaleBarSettings()
     line->setPenJoinStyle( Qt::MiterJoin );
     line->setPenCapStyle( Qt::SquareCap );
   }
-  mLineSymbol->setOutputUnit( Qgis::RenderUnit::Millimeters );
+  mLineSymbol->setOutputUnit( QgsUnitTypes::RenderMillimeters );
   mDivisionLineSymbol.reset( mLineSymbol->clone() );
   mSubdivisionLineSymbol.reset( mLineSymbol->clone() );
 
@@ -158,7 +159,7 @@ void QgsScaleBarSettings::setLineWidth( double width )
   for ( QgsLineSymbol *symbol : { mLineSymbol.get(), mDivisionLineSymbol.get(), mSubdivisionLineSymbol.get() } )
   {
     symbol->setWidth( width );
-    symbol->setOutputUnit( Qgis::RenderUnit::Millimeters );
+    symbol->setOutputUnit( QgsUnitTypes::RenderMillimeters );
   }
 }
 
@@ -180,7 +181,7 @@ void QgsScaleBarSettings::setPen( const QPen &pen )
   {
     symbol->setColor( pen.color() );
     symbol->setWidth( pen.widthF() );
-    symbol->setOutputUnit( Qgis::RenderUnit::Millimeters );
+    symbol->setOutputUnit( QgsUnitTypes::RenderMillimeters );
     if ( QgsSimpleLineSymbolLayer *line = dynamic_cast< QgsSimpleLineSymbolLayer * >( symbol->symbolLayer( 0 ) ) )
     {
       line->setPenJoinStyle( pen.joinStyle() );

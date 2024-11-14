@@ -30,13 +30,3 @@ bool QgsIdentifyContext::isTemporal() const
 {
   return mTemporalRange.begin().isValid() || mTemporalRange.end().isValid();
 }
-
-QgsDoubleRange QgsIdentifyContext::zRange() const
-{
-  return mZRange;
-}
-
-void QgsIdentifyContext::setZRange( const QgsDoubleRange &range )
-{
-  mZRange = range;
-}

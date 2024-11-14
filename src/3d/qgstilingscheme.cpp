@@ -15,12 +15,11 @@
 
 #include "qgstilingscheme.h"
 
-#include "qgschunknode.h"
+#include "qgschunknode_p.h"
 #include "qgsrectangle.h"
 
 QgsTilingScheme::QgsTilingScheme( const QgsRectangle &fullExtent, const QgsCoordinateReferenceSystem &crs )
   : mCrs( crs )
-  , mFullExtent( fullExtent )
 {
   mMapOrigin = QgsPointXY( fullExtent.xMinimum(), fullExtent.yMinimum() );
   mBaseTileSide = std::max( fullExtent.width(), fullExtent.height() );

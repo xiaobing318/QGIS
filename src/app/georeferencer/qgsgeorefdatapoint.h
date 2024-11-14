@@ -88,7 +88,7 @@ class APP_EXPORT QgsGeorefDataPoint : public QObject
     void setDestinationPointCrs( const QgsCoordinateReferenceSystem &crs );
 
     /**
-     * Returns the destinationPoint() transformed to the given target CRS.
+     * Returns the destionationPoint() transformed to the given target CRS.
      */
     QgsPointXY transformedDestinationPoint( const QgsCoordinateReferenceSystem &targetCrs, const QgsCoordinateTransformContext &context ) const;
 
@@ -109,7 +109,7 @@ class APP_EXPORT QgsGeorefDataPoint : public QObject
     int id() const { return mId; }
     void setId( int id );
 
-    bool contains( QPoint p, QgsGcpPoint::PointType type, double &distance );
+    bool contains( QPoint p, QgsGcpPoint::PointType type );
 
     QgsMapCanvas *srcCanvas() const { return mSrcCanvas; }
     QgsMapCanvas *dstCanvas() const { return mDstCanvas; }

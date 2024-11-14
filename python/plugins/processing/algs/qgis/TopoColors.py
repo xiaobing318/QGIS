@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     TopoColors.py
@@ -39,7 +41,7 @@ from qgis.core import (QgsField,
                        QgsProcessingParameterEnum,
                        QgsProcessingParameterFeatureSink)
 
-from qgis.PyQt.QtCore import QMetaType
+from qgis.PyQt.QtCore import (QVariant)
 
 from processing.algs.qgis.QgisAlgorithm import QgisAlgorithm
 
@@ -69,7 +71,7 @@ class TopoColor(QgisAlgorithm):
 
         self.addParameter(QgsProcessingParameterFeatureSource(self.INPUT,
                                                               self.tr('Input layer'),
-                                                              [QgsProcessing.SourceType.TypeVectorPolygon]))
+                                                              [QgsProcessing.TypeVectorPolygon]))
         self.addParameter(QgsProcessingParameterNumber(self.MIN_COLORS,
                                                        self.tr('Minimum number of colors'), minValue=1, maxValue=1000,
                                                        defaultValue=4))
@@ -86,7 +88,7 @@ class TopoColor(QgisAlgorithm):
             options=balance_by, defaultValue=0))
 
         self.addParameter(
-            QgsProcessingParameterFeatureSink(self.OUTPUT, self.tr('Colored'), QgsProcessing.SourceType.TypeVectorPolygon))
+            QgsProcessingParameterFeatureSink(self.OUTPUT, self.tr('Colored'), QgsProcessing.TypeVectorPolygon))
 
     def name(self):
         return 'topologicalcoloring'
@@ -104,7 +106,7 @@ class TopoColor(QgisAlgorithm):
         min_distance = self.parameterAsDouble(parameters, self.MIN_DISTANCE, context)
 
         fields = source.fields()
-        fields.append(QgsField('color_id', QMetaType.Type.Int))
+        fields.append(QgsField('color_id', QVariant.Int))
 
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context,
                                                fields, source.wkbType(), source.sourceCrs())
@@ -140,11 +142,10 @@ class TopoColor(QgisAlgorithm):
                 attributes.append(NULL)
             output_feature.setAttributes(attributes)
 
-            sink.addFeature(output_feature, QgsFeatureSink.Flag.FastInsert)
+            sink.addFeature(output_feature, QgsFeatureSink.FastInsert)
             current += 1
             feedback.setProgress(80 + int(current * total))
 
-        sink.finalize()
         return {self.OUTPUT: dest_id}
 
     @staticmethod

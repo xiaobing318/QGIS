@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/qgsvectorsimplifymethod.h                                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -13,6 +13,8 @@ class QgsVectorSimplifyMethod
 {
 %Docstring(signature="appended")
 This class contains information how to simplify geometries fetched from a vector layer
+
+.. versionadded:: 2.2
 %End
 
 %TypeHeaderCode
@@ -27,20 +29,38 @@ This class contains information how to simplify geometries fetched from a vector
 construct a default object
 %End
 
-    void setSimplifyHints( Qgis::VectorRenderingSimplificationFlags simplifyHints );
+    enum SimplifyHint
+    {
+      NoSimplification,
+      GeometrySimplification,
+      AntialiasingSimplification,
+      FullSimplification,
+    };
+    typedef QFlags<QgsVectorSimplifyMethod::SimplifyHint> SimplifyHints;
+
+
+    void setSimplifyHints( SimplifyHints simplifyHints );
 %Docstring
 Sets the simplification hints of the vector layer managed
 %End
-    Qgis::VectorRenderingSimplificationFlags simplifyHints() const;
+    SimplifyHints simplifyHints() const;
 %Docstring
 Gets the simplification hints of the vector layer managed
 %End
 
-    void setSimplifyAlgorithm( Qgis::VectorSimplificationAlgorithm simplifyAlgorithm );
+    enum SimplifyAlgorithm
+    {
+      Distance,
+      SnapToGrid,
+      Visvalingam,
+      SnappedToGridGlobal,
+    };
+
+    void setSimplifyAlgorithm( SimplifyAlgorithm simplifyAlgorithm );
 %Docstring
 Sets the local simplification algorithm of the vector layer managed
 %End
-    Qgis::VectorSimplificationAlgorithm simplifyAlgorithm() const;
+    SimplifyAlgorithm simplifyAlgorithm() const;
 %Docstring
 Gets the local simplification algorithm of the vector layer managed
 %End
@@ -83,11 +103,13 @@ Gets the maximum scale at which the layer should be simplified
 
 };
 
+QFlags<QgsVectorSimplifyMethod::SimplifyHint> operator|(QgsVectorSimplifyMethod::SimplifyHint f1, QFlags<QgsVectorSimplifyMethod::SimplifyHint> f2);
+
 
 /************************************************************************
  * This file has been generated automatically from                      *
  *                                                                      *
  * src/core/qgsvectorsimplifymethod.h                                   *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

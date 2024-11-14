@@ -57,6 +57,8 @@ class QgsAuthPkiPathsEdit : public QgsAuthMethodEdit, private Ui::QgsAuthPkiPath
     void clearPkiPathsKeyPath();
     void clearPkiPathsKeyPass();
 
+    void chkPkiPathsPassShow_stateChanged( int state );
+
     void btnPkiPathsCert_clicked();
 
     void btnPkiPathsKey_clicked();

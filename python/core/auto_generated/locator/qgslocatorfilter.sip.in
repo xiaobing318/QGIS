@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/locator/qgslocatorfilter.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -15,6 +15,8 @@ class QgsLocatorResult
 {
 %Docstring(signature="appended")
 Encapsulates properties of an individual matching result found by a :py:class:`QgsLocatorFilter`.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -23,24 +25,21 @@ Encapsulates properties of an individual matching result found by a :py:class:`Q
   public:
 
     QgsLocatorResult();
+%Docstring
+Constructor for QgsLocatorResult.
+%End
 
     QgsLocatorResult( QgsLocatorFilter *filter, const QString &displayString, const QVariant &userData = QVariant() );
 %Docstring
 Constructor for QgsLocatorResult.
 %End
 
-    QVariant userData() const /PyName=_userData/;
+
+    QVariant getUserData() const;
 %Docstring
 Returns the ``userData``.
 
 .. versionadded:: 3.18
-%End
-
-    void setUserData( const QVariant &userData );
-%Docstring
-Set ``userData`` for the locator result
-
-.. versionadded:: 3.34
 %End
 
     QgsLocatorFilter *filter;
@@ -49,19 +48,21 @@ Set ``userData`` for the locator result
 
     QString description;
 
+    QVariant userData;
+
     QIcon icon;
 
     double score;
 
     QString group;
 
-    double groupScore;
-
     struct ResultAction
     {
       public:
-
         ResultAction();
+%Docstring
+Constructor for ResultAction
+%End
 
         ResultAction( int id, QString text, QString iconPath = QString() );
 %Docstring
@@ -76,7 +77,6 @@ normally.
     };
 
     QList<QgsLocatorResult::ResultAction> actions;
-
 };
 
 
@@ -90,6 +90,8 @@ Abstract base class for filters which collect locator results.
 
    If the configuration of the filter is changed outside of the main application settings,
    one needs to invalidate current results of the locator widget: see QgisInterface.invalidateLocatorResults
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -210,22 +212,6 @@ by a user. The filter subclass must implement logic here
 to perform the desired operation for the search result.
 E.g. a file search filter would open file associated with the triggered
 result.
-%End
-
-    virtual void resultSelected( const QgsLocatorResult &result );
-%Docstring
-This is called when the ``result`` is selected by the user.
-The filter subclass can implement logic here.
-
-.. versionadded:: 3.40
-%End
-
-    virtual void resultDeselected( const QgsLocatorResult &result );
-%Docstring
-This is called when a ``result`` is deselected.
-The filter subclass can implement logic here.
-
-.. versionadded:: 3.40
 %End
 
     virtual void triggerResultFromAction( const QgsLocatorResult &result, const int actionId );
@@ -377,10 +363,12 @@ QFlags<QgsLocatorFilter::Flag> operator|(QgsLocatorFilter::Flag f1, QFlags<QgsLo
 
 
 
+
+
 /************************************************************************
  * This file has been generated automatically from                      *
  *                                                                      *
  * src/core/locator/qgslocatorfilter.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

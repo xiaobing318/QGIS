@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     ReliefColorsWidget.py
@@ -46,7 +48,7 @@ WIDGET, BASE = uic.loadUiType(os.path.join(pluginPath, 'reliefcolorswidgetbase.u
 class ReliefColorsWidget(BASE, WIDGET):
 
     def __init__(self):
-        super().__init__(None)
+        super(ReliefColorsWidget, self).__init__(None)
         self.setupUi(self)
 
         self.btnAdd.setIcon(QgsApplication.getThemeIcon('/symbologyAdd.svg'))

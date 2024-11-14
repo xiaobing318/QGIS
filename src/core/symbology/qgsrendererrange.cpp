@@ -18,28 +18,24 @@
 #include "qgssymbol.h"
 
 #include <QLocale>
-#include <QUuid>
 
 
-QgsRendererRange::QgsRendererRange( const QgsClassificationRange &range, QgsSymbol *symbol, bool render, const QString &uuid )
+QgsRendererRange::QgsRendererRange( const QgsClassificationRange &range, QgsSymbol *symbol, bool render )
   : mLowerValue( range.lowerBound() )
   , mUpperValue( range.upperBound() )
   , mSymbol( symbol )
   , mLabel( range.label() )
   , mRender( render )
 {
-  mUuid = !uuid.isEmpty() ? uuid : QUuid::createUuid().toString();
 }
 
-QgsRendererRange::QgsRendererRange( double lowerValue, double upperValue, QgsSymbol *symbol, const QString &label, bool render, const QString &uuid )
+QgsRendererRange::QgsRendererRange( double lowerValue, double upperValue, QgsSymbol *symbol, const QString &label, bool render )
   : mLowerValue( lowerValue )
   , mUpperValue( upperValue )
   , mSymbol( symbol )
   , mLabel( label )
   , mRender( render )
-{
-  mUuid = !uuid.isEmpty() ? uuid : QUuid::createUuid().toString();
-}
+{}
 
 QgsRendererRange::QgsRendererRange( const QgsRendererRange &range )
   : mLowerValue( range.mLowerValue )
@@ -47,19 +43,15 @@ QgsRendererRange::QgsRendererRange( const QgsRendererRange &range )
   , mSymbol( range.mSymbol ? range.mSymbol->clone() : nullptr )
   , mLabel( range.mLabel )
   , mRender( range.mRender )
-  , mUuid( range.mUuid )
 {}
 
 QgsRendererRange::~QgsRendererRange() = default;
 
+
+// cpy and swap idiom, note that the cpy is done with 'pass by value'
 QgsRendererRange &QgsRendererRange::operator=( QgsRendererRange range )
 {
-  mLowerValue = range.mLowerValue;
-  mUpperValue = range.mUpperValue;
-  mSymbol.reset( range.mSymbol ? range.mSymbol->clone() : nullptr );
-  mLabel = range.mLabel;
-  mRender = range.mRender;
-  mUuid = range.mUuid;
+  swap( range );
   return *this;
 }
 
@@ -70,9 +62,13 @@ bool QgsRendererRange::operator<( const QgsRendererRange &other ) const
     ( qgsDoubleNear( lowerValue(), other.lowerValue() ) && upperValue() < other.upperValue() );
 }
 
-QString QgsRendererRange::uuid() const
+
+void QgsRendererRange::swap( QgsRendererRange &other )
 {
-  return mUuid;
+  std::swap( mLowerValue, other.mLowerValue );
+  std::swap( mUpperValue, other.mUpperValue );
+  std::swap( mSymbol, other.mSymbol );
+  std::swap( mLabel, other.mLabel );
 }
 
 double QgsRendererRange::lowerValue() const

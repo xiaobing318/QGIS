@@ -13,7 +13,6 @@
  *                                                                         *
  ***************************************************************************/
 #include "qgsfeaturelistviewdelegate.h"
-#include "moc_qgsfeaturelistviewdelegate.cpp"
 #include "qgsvectorlayer.h"
 #include "qgsattributetablemodel.h"
 #include "qgsfeaturelistmodel.h"

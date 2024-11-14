@@ -120,7 +120,6 @@ class QgsDatabaseQueryLoggerQueryGroup final : public QgsDevToolsModelGroup
     int mQueryId = 0;
     QByteArray mData;
     Status mStatus = Status::Pending;
-    qint64 mElapsed = -1;
 };
 
 #endif // QGSDBQUERYLOGGERNODE_H

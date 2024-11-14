@@ -63,11 +63,11 @@ QgsRasterSamplingAlgorithm *QgsRasterSamplingAlgorithm::createInstance() const
 
 void QgsRasterSamplingAlgorithm::initAlgorithm( const QVariantMap & )
 {
-  addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ), QObject::tr( "Input layer" ), QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::VectorPoint ) ) );
+  addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ), QObject::tr( "Input layer" ), QList< int >() << QgsProcessing::TypeVectorPoint ) );
   addParameter( new QgsProcessingParameterRasterLayer( QStringLiteral( "RASTERCOPY" ), QObject::tr( "Raster layer" ) ) );
 
   addParameter( new QgsProcessingParameterString( QStringLiteral( "COLUMN_PREFIX" ), QObject::tr( "Output column prefix" ), QStringLiteral( "SAMPLE_" ), false, true ) );
-  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Sampled" ), Qgis::ProcessingSourceType::VectorPoint ) );
+  addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Sampled" ), QgsProcessing::TypeVectorPoint ) );
 }
 
 bool QgsRasterSamplingAlgorithm::prepareAlgorithm( const QVariantMap &parameters, QgsProcessingContext &context, QgsProcessingFeedback * )
@@ -98,7 +98,7 @@ QVariantMap QgsRasterSamplingAlgorithm::processAlgorithm( const QVariantMap &par
     const bool intSafe = ( dataType == Qgis::DataType::Byte || dataType == Qgis::DataType::UInt16 || dataType == Qgis::DataType::Int16 || dataType == Qgis::DataType::UInt32 ||
                            dataType == Qgis::DataType::Int32 || dataType == Qgis::DataType::CInt16 || dataType == Qgis::DataType::CInt32 );
 
-    newFields.append( QgsField( QStringLiteral( "%1%2" ).arg( fieldPrefix, QString::number( band ) ), intSafe ? QMetaType::Type::Int : QMetaType::Type::Double ) );
+    newFields.append( QgsField( QStringLiteral( "%1%2" ).arg( fieldPrefix, QString::number( band ) ), intSafe ? QVariant::Int : QVariant::Double ) );
     emptySampleAttributes += QVariant();
   }
   const QgsFields fields = QgsProcessingUtils::combineFields( source->fields(), newFields );
@@ -172,8 +172,6 @@ QVariantMap QgsRasterSamplingAlgorithm::processAlgorithm( const QVariantMap &par
     if ( !sink->addFeature( outputFeature, QgsFeatureSink::FastInsert ) )
       throw QgsProcessingException( writeFeatureError( sink.get(), parameters, QStringLiteral( "OUTPUT" ) ) );
   }
-
-  sink->finalize();
 
   QVariantMap outputs;
   outputs.insert( QStringLiteral( "OUTPUT" ), dest );

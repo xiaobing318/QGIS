@@ -23,7 +23,6 @@
 #include "qgsexpressioncontextutils.h"
 #include "qgsblockingnetworkrequest.h"
 #include "qgsnetworkaccessmanager.h"
-#include "qgssetrequestinitiator_p.h"
 
 #include <QUrl>
 #include <QFileInfo>
@@ -77,8 +76,7 @@ QUrl QgsHelp::helpUrl( const QString &key )
       const QRegularExpression rx( QStringLiteral( "(<!\\$\\$)*(\\$%1)" ).arg( var ) );
       fullPath.replace( rx, scope->variable( var ).toString() );
     }
-    const thread_local QRegularExpression pathRx( QStringLiteral( "(\\$\\$)" ) );
-    fullPath.replace( pathRx, QStringLiteral( "$" ) );
+    fullPath.replace( QRegularExpression( QStringLiteral( "(\\$\\$)" ) ), QStringLiteral( "$" ) );
 
     helpPath = QStringLiteral( "%1/%2" ).arg( fullPath, key );
 

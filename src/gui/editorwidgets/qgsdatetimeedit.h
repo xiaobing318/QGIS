@@ -93,6 +93,7 @@ class GUI_EXPORT QgsDateTimeEdit : public QDateTimeEdit
 
     /**
      * Resets the widget to show no value (ie, an "unknown" state).
+     * \since QGIS 2.16
      */
     void setEmpty();
 
@@ -140,7 +141,7 @@ class GUI_EXPORT QgsDateTimeEdit : public QDateTimeEdit
 #ifndef SIP_RUN
 ///@cond PRIVATE
 #if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
-    QgsDateTimeEdit( const QVariant &var, QMetaType::Type parserType, QWidget *parent );
+    QgsDateTimeEdit( const QVariant &var, QVariant::Type parserType, QWidget *parent );
 #else
     QgsDateTimeEdit( const QVariant &var, QMetaType::Type parserType, QWidget *parent );
 #endif
@@ -201,12 +202,15 @@ class GUI_EXPORT QgsDateTimeEdit : public QDateTimeEdit
     /**
      * Set the lowest Date that can be stored in a Shapefile or Geopackage Date field
      *
-     * Uses QDateTimeEdit::setDateTimeRange (since Qt 4.4)
+     * - uses QDateTimeEdit::setDateTimeRange (since Qt 4.4)
      *
-     * \note QDate and QDateTime does not support minus years for the Qt::ISODate format
-     * -> returns empty (toString) or invalid (fromString) values
+     * \note
      *
-     * \note not available in Python bindings
+     * - QDate and QDateTime does not support minus years for the Qt::ISODate format
+     *   -> returns empty (toString) or invalid (fromString) values
+    *
+    * \note not available in Python bindings
+    * \since QGIS 3.0
     */
     void setMinimumEditDateTime();
 
@@ -218,7 +222,7 @@ class GUI_EXPORT QgsDateTimeEdit : public QDateTimeEdit
  * \ingroup gui
  * \brief The QgsTimeEdit class is a QTimeEdit widget with the capability of setting/reading null date/times.
  *
- * \warning You should use the signal timeValueChanged of this subclass
+ * \warning You should use the signal valueChanged of this subclass
  * rather than QDateTimeEdit::timeChanged. (If you consequently connect parent's
  * timeChanged signal and call time() afterwards there is no guarantee that
  * NULL values will be correctly handled).
@@ -264,7 +268,7 @@ class GUI_EXPORT QgsTimeEdit : public QgsDateTimeEdit
  * \ingroup gui
  * \brief The QgsDateEdit class is a QDateEdit widget with the capability of setting/reading null dates.
  *
- * \warning You should use the signal dateValueChanged of this subclass
+ * \warning You should use the signal valueChanged of this subclass
  * rather than QDateTimeEdit::dateChanged. (If you consequently connect parent's
  * dateChanged signal and call date() afterwards there is no guarantee that
  * NULL values will be correctly handled).

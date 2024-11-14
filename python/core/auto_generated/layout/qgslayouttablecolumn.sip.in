@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/layout/qgslayouttablecolumn.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -18,6 +18,8 @@ Stores properties of a column for a :py:class:`QgsLayoutTable`.
 Some properties of a :py:class:`QgsLayoutTableColumn` are applicable only in certain contexts.
 For instance, the attribute and setAttribute methods only have an effect
 for :py:class:`QgsLayoutItemAttributeTables`, and have no effect for :py:class:`QgsLayoutItemTextTables`.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -192,9 +194,8 @@ If sort rank is <= 0 then the column is not being sorted.
 
 .. seealso:: :py:func:`sortOrder`
 
-.. deprecated:: 3.14
-
-   The order is now hold in a dedicated model.
+.. deprecated:: QGIS 3.14
+   the order is now hold in a dedicated model
 %End
 
  void setSortByRank( int rank ) /Deprecated/;
@@ -214,9 +215,8 @@ If the sort ``rank`` is <= 0 then the column is not being sorted.
 
 .. seealso:: :py:func:`setSortOrder`
 
-.. deprecated:: 3.14
-
-   The order is now hold in a dedicated model.
+.. deprecated:: QGIS 3.14
+   the order is now hold in a dedicated model
 %End
 
  QgsLayoutTableColumn *clone() /Deprecated,Factory/;
@@ -225,9 +225,8 @@ Creates a duplicate column which is a deep copy of this column.
 
 :return: a new QgsLayoutTableColumn with same properties as this column.
 
-.. deprecated:: 3.14
-
-   Use a copy instead.
+.. deprecated:: QGIS 3.14
+   use a copy instead
 %End
 
     bool operator==( const QgsLayoutTableColumn &other ) const;
@@ -249,5 +248,5 @@ Creates a duplicate column which is a deep copy of this column.
  *                                                                      *
  * src/core/layout/qgslayouttablecolumn.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

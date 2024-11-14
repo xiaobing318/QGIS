@@ -18,8 +18,6 @@
 #include "qgsalgorithmsplitwithlines.h"
 #include "qgsgeometryengine.h"
 #include "qgsvectorlayer.h"
-#include "qgsspatialindex.h"
-
 ///@cond PRIVATE
 
 QString QgsSplitWithLinesAlgorithm::name() const
@@ -50,9 +48,9 @@ QString QgsSplitWithLinesAlgorithm::groupId() const
 void QgsSplitWithLinesAlgorithm::initAlgorithm( const QVariantMap & )
 {
   addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "INPUT" ),
-                QObject::tr( "Input layer" ), QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::VectorLine ) << static_cast< int >( Qgis::ProcessingSourceType::VectorPolygon ) ) );
+                QObject::tr( "Input layer" ), QList< int >() << QgsProcessing::TypeVectorLine << QgsProcessing::TypeVectorPolygon ) );
   addParameter( new QgsProcessingParameterFeatureSource( QStringLiteral( "LINES" ),
-                QObject::tr( "Split layer" ), QList< int >() << static_cast< int >( Qgis::ProcessingSourceType::VectorLine ) << static_cast< int >( Qgis::ProcessingSourceType::VectorPolygon ) ) );
+                QObject::tr( "Split layer" ), QList< int >() << QgsProcessing::TypeVectorLine << QgsProcessing::TypeVectorPolygon ) );
   addParameter( new QgsProcessingParameterFeatureSink( QStringLiteral( "OUTPUT" ), QObject::tr( "Split" ) ) );
 }
 
@@ -62,20 +60,15 @@ QString QgsSplitWithLinesAlgorithm::shortHelpString() const
                       "Intersection between geometries in both layers are considered as split points." );
 }
 
-Qgis::ProcessingAlgorithmDocumentationFlags QgsSplitWithLinesAlgorithm::documentationFlags() const
-{
-  return Qgis::ProcessingAlgorithmDocumentationFlag::RegeneratesPrimaryKey;
-}
-
 QgsSplitWithLinesAlgorithm *QgsSplitWithLinesAlgorithm::createInstance() const
 {
   return new QgsSplitWithLinesAlgorithm();
 }
 
-Qgis::ProcessingAlgorithmFlags QgsSplitWithLinesAlgorithm::flags() const
+QgsProcessingAlgorithm::Flags QgsSplitWithLinesAlgorithm::flags() const
 {
-  Qgis::ProcessingAlgorithmFlags f = QgsProcessingAlgorithm::flags();
-  f |= Qgis::ProcessingAlgorithmFlag::SupportsInPlaceEdits;
+  Flags f = QgsProcessingAlgorithm::flags();
+  f |= QgsProcessingAlgorithm::FlagSupportsInPlaceEdits;
   return f;
 }
 
@@ -85,7 +78,7 @@ bool QgsSplitWithLinesAlgorithm::supportInPlaceEdit( const QgsMapLayer *l ) cons
   if ( !layer )
     return false;
 
-  if ( layer->geometryType() != Qgis::GeometryType::Line && layer->geometryType() != Qgis::GeometryType::Polygon )
+  if ( layer->geometryType() != QgsWkbTypes::LineGeometry && layer->geometryType() != QgsWkbTypes::PolygonGeometry )
     return false;
 
   return true;
@@ -168,7 +161,7 @@ QVariantMap QgsSplitWithLinesAlgorithm::processAlgorithm( const QVariantMap &par
         if ( originalGeometryEngine->intersects( splitFeatureCandidate.constGet() ) )
         {
 
-          QVector< QgsGeometry > splitGeomParts = splitFeatureCandidate.convertToType( Qgis::GeometryType::Line, true ).asGeometryCollection();
+          QVector< QgsGeometry > splitGeomParts = splitFeatureCandidate.convertToType( QgsWkbTypes::GeometryType::LineGeometry, true ).asGeometryCollection();
           splittingLines.append( splitGeomParts );
         }
       }
@@ -259,7 +252,7 @@ QVariantMap QgsSplitWithLinesAlgorithm::processAlgorithm( const QVariantMap &par
       }
 
       bool passed = true;
-      if ( QgsWkbTypes::geometryType( aGeom.wkbType() ) == Qgis::GeometryType::Line )
+      if ( QgsWkbTypes::geometryType( aGeom.wkbType() ) == QgsWkbTypes::LineGeometry )
       {
         int numPoints = aGeom.constGet()->nCoordinates();
 
@@ -285,8 +278,6 @@ QVariantMap QgsSplitWithLinesAlgorithm::processAlgorithm( const QVariantMap &par
 
     feedback->setProgress( i * step );
   }
-
-  sink->finalize();
 
   QVariantMap outputs;
   outputs.insert( QStringLiteral( "OUTPUT" ), dest );

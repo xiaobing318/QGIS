@@ -16,7 +16,6 @@
  ***************************************************************************/
 
 #include "qgssettingslocatorfilter.h"
-#include "moc_qgssettingslocatorfilter.cpp"
 #include "qgisapp.h"
 
 
@@ -61,7 +60,7 @@ void QgsSettingsLocatorFilter::fetchResults( const QString &string, const QgsLoc
     QgsLocatorResult result;
     result.filter = this;
     result.displayString = title;
-    result.userData().setValue( settingsPage );
+    result.userData.setValue( settingsPage );
 
     if ( context.usingPrefix && string.isEmpty() )
     {
@@ -87,7 +86,7 @@ QMap<QString, QString> QgsSettingsLocatorFilter::settingsPage( const QString &ty
 void QgsSettingsLocatorFilter::triggerResult( const QgsLocatorResult &result )
 {
 
-  const QMap<QString, QString> settingsPage = qvariant_cast<QMap<QString, QString>>( result.userData() );
+  const QMap<QString, QString> settingsPage = qvariant_cast<QMap<QString, QString>>( result.userData );
   const QString type = settingsPage.value( QStringLiteral( "type" ) );
   const QString page = settingsPage.value( QStringLiteral( "page" ) );
 

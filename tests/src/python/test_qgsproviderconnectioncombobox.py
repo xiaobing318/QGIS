@@ -13,13 +13,17 @@ import os
 import shutil
 import tempfile
 
+import qgis  # NOQA
 from qgis.PyQt.QtCore import QCoreApplication
 from qgis.PyQt.QtTest import QSignalSpy
-from qgis.core import QgsProviderRegistry, QgsVectorLayer
+from qgis.core import (
+    QgsVectorLayer,
+    QgsProviderRegistry
+)
 from qgis.gui import QgsProviderConnectionComboBox
 from qgis.testing import unittest
 
-from utilities import start_app, unitTestDataPath
+from utilities import unitTestDataPath, start_app
 
 start_app()
 
@@ -31,7 +35,6 @@ class TestQgsProviderConnectionComboBox(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Run before all tests"""
-        super().setUpClass()
         QCoreApplication.setOrganizationName("QGIS_Test")
         QCoreApplication.setOrganizationDomain(cls.__name__)
         QCoreApplication.setApplicationName(cls.__name__)
@@ -55,7 +58,6 @@ class TestQgsProviderConnectionComboBox(unittest.TestCase):
         """Run after all tests"""
         os.unlink(cls.gpkg_path)
         os.unlink(cls.gpkg_path2)
-        super().tearDownClass()
 
     def testCombo(self):
         """ test combobox functionality """
@@ -176,13 +178,11 @@ class TestQgsProviderConnectionComboBox(unittest.TestCase):
         self.assertEqual(m.currentConnectionUri(), self.gpkg_path)
         self.assertEqual(len(spy), 3)
 
-        # deleting the selected connection when we are allowing empty
-        # connections should fallback to the empty item
         md.deleteConnection('qgis_test1')
-        self.assertFalse(m.currentConnection())
-        self.assertFalse(m.currentConnectionUri())
+        self.assertEqual(m.currentConnection(), 'aaa_qgis_test2')
+        self.assertEqual(m.currentConnectionUri(), self.gpkg_path2)
         self.assertEqual(len(spy), 4)
-        self.assertFalse(spy[-1][0])
+        self.assertEqual(spy[-1][0], 'aaa_qgis_test2')
 
 
 if __name__ == '__main__':

@@ -32,7 +32,7 @@ QString QgsSwapXYAlgorithm::displayName() const
 
 QStringList QgsSwapXYAlgorithm::tags() const
 {
-  return QObject::tr( "invert,flip,swap,switch,latitude,longitude" ).split( ',' );
+  return QObject::tr( "invert,flip,swap,latitude,longitude" ).split( ',' );
 }
 
 QString QgsSwapXYAlgorithm::group() const
@@ -73,10 +73,10 @@ bool QgsSwapXYAlgorithm::supportInPlaceEdit( const QgsMapLayer *l ) const
   return layer->isSpatial();
 }
 
-Qgis::ProcessingFeatureSourceFlags QgsSwapXYAlgorithm::sourceFlags() const
+QgsProcessingFeatureSource::Flag QgsSwapXYAlgorithm::sourceFlags() const
 {
   // this algorithm doesn't care about invalid geometries
-  return Qgis::ProcessingFeatureSourceFlag::SkipGeometryValidityChecks;
+  return QgsProcessingFeatureSource::FlagSkipGeometryValidityChecks;
 }
 
 QgsFeatureList QgsSwapXYAlgorithm::processFeature( const QgsFeature &f, QgsProcessingContext &, QgsProcessingFeedback * )

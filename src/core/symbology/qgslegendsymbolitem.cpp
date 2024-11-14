@@ -59,7 +59,6 @@ QgsLegendSymbolItem &QgsLegendSymbolItem::operator=( const QgsLegendSymbolItem &
   mScaleMaxDenom = other.mScaleMaxDenom;
   mLevel = other.mLevel;
   mParentKey = other.mParentKey;
-  mUserData = other.mUserData;
 
   return *this;
 }
@@ -93,14 +92,4 @@ void QgsLegendSymbolItem::setDataDefinedSizeLegendSettings( QgsDataDefinedSizeLe
 QgsDataDefinedSizeLegend *QgsLegendSymbolItem::dataDefinedSizeLegendSettings() const
 {
   return mDataDefinedSizeLegendSettings;
-}
-
-void QgsLegendSymbolItem::setUserData( int key, QVariant &value )
-{
-  mUserData.insert( key, value );
-}
-
-QVariant QgsLegendSymbolItem::userData( int key ) const
-{
-  return mUserData.value( key, QVariant() );
 }

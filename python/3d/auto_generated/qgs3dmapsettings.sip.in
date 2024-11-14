@@ -3,8 +3,11 @@
  *                                                                      *
  * src/3d/qgs3dmapsettings.h                                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
+
+
+
 
 
 
@@ -17,20 +20,21 @@ class Qgs3DMapSettings : QObject, QgsTemporalRangeObject
 %Docstring(signature="appended")
 Definition of the world.
 
-.. warning::
-
-   Qgs3DMapSettings are a QObject subclass, and accordingly are not
-   safe for access across different threads. See Qgs3DRenderContext instead
-   for a safe snapshot of settings from Qgs3DMapSettings.
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
 #include "qgs3dmapsettings.h"
 %End
   public:
-
     Qgs3DMapSettings();
+%Docstring
+Constructor for Qgs3DMapSettings
+%End
     Qgs3DMapSettings( const Qgs3DMapSettings &other );
+%Docstring
+Copy constructor
+%End
     ~Qgs3DMapSettings();
 
 
@@ -47,28 +51,6 @@ Writes configuration to a DOM element, to be used later with :py:func:`~Qgs3DMap
 Resolves references to other objects (map layers) after the call to :py:func:`~Qgs3DMapSettings.readXml`
 %End
 
-    QgsRectangle extent() const;
-%Docstring
-Returns the 3D scene's 2D extent in the 3D scene's CRS
-
-.. seealso:: :py:func:`crs`
-
-.. versionadded:: 3.30
-%End
-
-    void setExtent( const QgsRectangle &extent );
-%Docstring
-Sets the 3D scene's 2D ``extent`` in the 3D scene's CRS, while also setting the scene's origin to the extent's center
-This needs to be called during initialization, as terrain will only be generated
-within this extent and layer 3D data will only be loaded within this extent too.
-
-.. seealso:: :py:func:`setOrigin`
-
-.. seealso:: :py:func:`setCrs`
-
-.. versionadded:: 3.30
-%End
-
     void setOrigin( const QgsVector3D &origin );
 %Docstring
 Sets coordinates in map CRS at which our 3D world has origin (0,0,0)
@@ -80,15 +62,10 @@ with scenes spanning hundreds of kilometers and zooming in a lot).
 
 Need to look into more advanced techniques like "relative to center" or "relative to eye"
 to improve the precision.
-
-.. seealso:: :py:func:`origin`
 %End
-
     QgsVector3D origin() const;
 %Docstring
-Returns coordinates in map CRS at which 3D scene has origin (0,0,0).
-
-.. seealso:: :py:func:`setOrigin`
+Returns coordinates in map CRS at which 3D scene has origin (0,0,0)
 %End
 
     QgsVector3D mapToWorldCoordinates( const QgsVector3D &mapCoords ) const;
@@ -102,16 +79,11 @@ Converts 3D world coordinates to map coordinates (applies offset and turns (x,y,
 
     void setCrs( const QgsCoordinateReferenceSystem &crs );
 %Docstring
-Sets coordinate reference system used in the 3D scene.
-
-.. seealso:: :py:func:`crs`
+Sets coordinate reference system used in the 3D scene
 %End
-
     QgsCoordinateReferenceSystem crs() const;
 %Docstring
-Returns coordinate reference system used in the 3D scene.
-
-.. seealso:: :py:func:`setCrs`
+Returns coordinate reference system used in the 3D scene
 %End
 
     QgsCoordinateTransformContext transformContext() const;
@@ -138,6 +110,8 @@ Returns the path resolver for conversion between relative and absolute paths
 during rendering operations, e.g. for resolving relative symbol paths.
 
 .. seealso:: :py:func:`setPathResolver`
+
+.. versionadded:: 3.0
 %End
 
     void setPathResolver( const QgsPathResolver &resolver );
@@ -146,6 +120,8 @@ Sets the path ``resolver`` for conversion between relative and absolute paths
 during rendering operations, e.g. for resolving relative symbol paths.
 
 .. seealso:: :py:func:`pathResolver`
+
+.. versionadded:: 3.0
 %End
 
     QgsMapThemeCollection *mapThemeCollection() const;
@@ -335,6 +311,15 @@ Empty map theme name means that the map theme is not overridden and the current 
 %End
 
 
+    void setRenderers( const QList<QgsAbstract3DRenderer *> &renderers /Transfer/ );
+%Docstring
+Sets list of extra 3D renderers to use in the scene. Takes ownership of the objects.
+%End
+    QList<QgsAbstract3DRenderer *> renderers() const;
+%Docstring
+Returns list of extra 3D renderers
+%End
+
     void setShowTerrainBoundingBoxes( bool enabled );
 %Docstring
 Sets whether to display bounding boxes of terrain tiles (for debugging)
@@ -448,10 +433,6 @@ Sets the debugging settings of the shadow map
 
 .. seealso:: :py:func:`debugShadowMapEnabled`
 
-.. seealso:: :py:func:`debugShadowMapCorner`
-
-.. seealso:: :py:func:`debugShadowMapSize`
-
 .. versionadded:: 3.18
 %End
     bool debugShadowMapEnabled() const;
@@ -472,10 +453,6 @@ Returns the size of the shadow map preview
 Sets the debugging settings of the depth map
 
 .. seealso:: :py:func:`debugDepthMapEnabled`
-
-.. seealso:: :py:func:`debugDepthMapCorner`
-
-.. seealso:: :py:func:`debugDepthMapSize`
 
 .. versionadded:: 3.18
 %End
@@ -551,6 +528,7 @@ Sets DPI used for conversion between real world units (e.g. mm) and pixels
 
 .. versionadded:: 3.10
 %End
+
 
     double outputDpi() const;
 %Docstring
@@ -687,22 +665,6 @@ This parameter is transient. It is not saved in the project parameters.
 .. seealso:: :py:func:`isDebugOverlayEnabled`
 
 .. versionadded:: 3.26
-%End
-
-    bool showExtentIn2DView() const;
-%Docstring
-Returns whether the extent is displayed on the main 2D map canvas
-
-.. seealso:: :py:func:`setShowExtentIn2DView`
-
-.. versionadded:: 3.32
-%End
-
-    void setShowExtentIn2DView( bool show );
-%Docstring
-Sets whether the extent is displayed on the main 2D map canvas
-
-.. versionadded:: 3.32
 %End
 
   signals:
@@ -950,24 +912,6 @@ Emitted when the debug overaly is enabled or disabled
 .. versionadded:: 3.26
 %End
 
-    void extentChanged();
-%Docstring
-Emitted when the 3d view's 2d extent has changed
-
-.. seealso:: :py:func:`setExtent`
-
-.. versionadded:: 3.30
-%End
-
-    void showExtentIn2DViewChanged();
-%Docstring
-Emitted when the parameter to display 3d view's extent in the 2D canvas has changed
-
-.. seealso:: :py:func:`setShowExtentIn2DView`
-
-.. versionadded:: 3.32
-%End
-
   private:
     Qgs3DMapSettings &operator=( const Qgs3DMapSettings & );
 };
@@ -978,5 +922,5 @@ Emitted when the parameter to display 3d view's extent in the 2D canvas has chan
  *                                                                      *
  * src/3d/qgs3dmapsettings.h                                            *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

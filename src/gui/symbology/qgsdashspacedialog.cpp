@@ -14,7 +14,6 @@
  ***************************************************************************/
 
 #include "qgsdashspacedialog.h"
-#include "moc_qgsdashspacedialog.cpp"
 #include "qgsdoublevalidator.h"
 #include "qgsapplication.h"
 
@@ -98,7 +97,7 @@ QVector<qreal> QgsDashSpaceWidget::dashDotVector() const
   return dashVector;
 }
 
-void QgsDashSpaceWidget::setUnit( Qgis::RenderUnit unit )
+void QgsDashSpaceWidget::setUnit( QgsUnitTypes::RenderUnit unit )
 {
   QTreeWidgetItem *headerItem = mDashSpaceTreeWidget->headerItem();
   headerItem->setText( 0, QStringLiteral( "%1 (%2)" ).arg( tr( "Dash" ), QgsUnitTypes::toAbbreviatedString( unit ) ) );
@@ -123,7 +122,7 @@ QVector<qreal> QgsDashSpaceDialog::dashDotVector() const
   return mWidget->dashDotVector();
 }
 
-void QgsDashSpaceDialog::setUnit( Qgis::RenderUnit unit )
+void QgsDashSpaceDialog::setUnit( QgsUnitTypes::RenderUnit unit )
 {
   mWidget->setUnit( unit );
 }

@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/layout/qgslayoutitemcombobox.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -14,6 +14,8 @@ class QgsLayoutItemComboBox : QComboBox
 %Docstring(signature="appended")
 The :py:class:`QgsLayoutItemComboBox` class is a combo box which displays items of
 a matching type from a layout.
+
+.. versionadded:: 3.0
 %End
 
 %TypeHeaderCode
@@ -147,5 +149,5 @@ Emitted whenever the currently selected item changes
  *                                                                      *
  * src/gui/layout/qgslayoutitemcombobox.h                               *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

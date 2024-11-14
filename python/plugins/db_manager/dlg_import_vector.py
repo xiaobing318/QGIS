@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 /***************************************************************************
 Name                 : DB Manager
@@ -19,8 +21,9 @@ The content of this file is based on
  *                                                                         *
  ***************************************************************************/
 """
+from builtins import str
+from builtins import range
 
-from qgis.PyQt import uic
 from qgis.PyQt.QtCore import Qt, QFileInfo
 from qgis.PyQt.QtWidgets import QDialog, QFileDialog, QMessageBox
 
@@ -34,11 +37,9 @@ from qgis.core import (QgsDataSourceUri,
                        QgsProject,
                        QgsSettings)
 from qgis.gui import QgsMessageViewer
-from qgis.utils import OverrideCursor, iface
+from qgis.utils import OverrideCursor
 
-from .gui_utils import GuiUtils
-
-Ui_Dialog, _ = uic.loadUiType(GuiUtils.get_ui_file_path('DlgImportVector.ui'))
+from .ui.ui_DlgImportVector import Ui_DbManagerDlgImportVector as Ui_Dialog
 
 
 class DlgImportVector(QDialog, Ui_Dialog):
@@ -134,12 +135,6 @@ class DlgImportVector(QDialog, Ui_Dialog):
             # TODO: add import raster support!
             if layer is not None and layer.type() == QgsMapLayerType.VectorLayer:
                 self.cboInputLayer.addItem(layer.name(), layer.id())
-
-        # set the current index of the combo box to the active layer in the layer tree (if found in combo box)
-        if iface is not None and iface.activeLayer():
-            index = self.cboInputLayer.findData(iface.activeLayer().id())
-            if index != -1:
-                self.cboInputLayer.setCurrentIndex(index)
 
     def deleteInputLayer(self):
         """ unset the input layer, then destroy it but only if it was created from this dialog """
@@ -294,7 +289,7 @@ class DlgImportVector(QDialog, Ui_Dialog):
                                      self.tr("Invalid target srid: must be a valid crs."))
                 return
 
-        with OverrideCursor(Qt.CursorShape.WaitCursor):
+        with OverrideCursor(Qt.WaitCursor):
             # store current input layer crs and encoding, so I can restore it
             prevInCrs = self.inLayer.crs()
             prevInEncoding = self.inLayer.dataProvider().encoding()

@@ -17,7 +17,6 @@
  ***************************************************************************/
 
 #include "qgscustomprojectionoptions.h"
-#include "moc_qgscustomprojectionoptions.cpp"
 #include "qgsapplication.h"
 #include "qgscoordinatereferencesystemregistry.h"
 
@@ -42,39 +41,39 @@ QgsCustomProjectionOptionsWidget::QgsCustomProjectionOptionsWidget( QWidget *par
   // we just check whether there is our database [MD]
   if ( !QFileInfo::exists( QgsApplication::qgisSettingsDirPath() ) )
   {
-    QgsDebugError( QStringLiteral( "The qgis.db does not exist" ) );
+    QgsDebugMsg( QStringLiteral( "The qgis.db does not exist" ) );
   }
 
   populateList();
   if ( mDefinitions.empty() )
   {
-    leName->setEnabled( false );
-    mCrsDefinitionWidget->setEnabled( false );
+    // create an empty definition which corresponds to the initial state of the dialog
+    mDefinitions << Definition();
+    QTreeWidgetItem *newItem = new QTreeWidgetItem( leNameList, QStringList() );
+    newItem->setText( QgisCrsNameColumn, QString() );
+    newItem->setText( QgisCrsParametersColumn, QString() );
+  }
+  whileBlocking( leName )->setText( mDefinitions[0].name );
+
+  mBlockUpdates++;
+
+  QgsCoordinateReferenceSystem crs;
+  Qgis::CrsDefinitionFormat format;
+  if ( mDefinitions.at( 0 ).wkt.isEmpty() )
+  {
+    crs.createFromProj( mDefinitions[0].proj );
+    format = Qgis::CrsDefinitionFormat::Proj;
   }
   else
   {
-    whileBlocking( leName )->setText( mDefinitions[0].name );
-
-    mBlockUpdates++;
-
-    QgsCoordinateReferenceSystem crs;
-    Qgis::CrsDefinitionFormat format;
-    if ( mDefinitions.at( 0 ).wkt.isEmpty() )
-    {
-      crs.createFromProj( mDefinitions[0].proj );
-      format = Qgis::CrsDefinitionFormat::Proj;
-    }
-    else
-    {
-      crs.createFromWkt( mDefinitions[0].wkt );
-      format = Qgis::CrsDefinitionFormat::Wkt;
-    }
-    mCrsDefinitionWidget->setCrs( crs, format );
-
-    mBlockUpdates--;
-
-    leNameList->setCurrentItem( leNameList->topLevelItem( 0 ) );
+    crs.createFromWkt( mDefinitions[0].wkt );
+    format = Qgis::CrsDefinitionFormat::Wkt;
   }
+  mCrsDefinitionWidget->setCrs( crs, format );
+
+  mBlockUpdates--;
+
+  leNameList->setCurrentItem( leNameList->topLevelItem( 0 ) );
 
   leNameList->hideColumn( QgisCrsIdColumn );
 
@@ -95,8 +94,8 @@ void QgsCustomProjectionOptionsWidget::populateList()
     const QString id = QString::number( details.id );
 
     mExistingCRSnames[id] = details.name;
-    const QString actualWkt = details.crs.toWkt( Qgis::CrsWktVariant::Preferred, false );
-    const QString actualWktFormatted = details.crs.toWkt( Qgis::CrsWktVariant::Preferred, true );
+    const QString actualWkt = details.crs.toWkt( QgsCoordinateReferenceSystem::WKT_PREFERRED, false );
+    const QString actualWktFormatted = details.crs.toWkt( QgsCoordinateReferenceSystem::WKT_PREFERRED, true );
     const QString actualProj = details.crs.toProj();
     mExistingCRSwkt[id] = details.wkt.isEmpty() ? QString() : actualWkt;
     mExistingCRSproj[id] = details.wkt.isEmpty() ? actualProj : QString();
@@ -143,7 +142,7 @@ bool QgsCustomProjectionOptionsWidget::saveCrs( const QgsCoordinateReferenceSyst
     }
   }
 
-  mExistingCRSwkt[id] = format == Qgis::CrsDefinitionFormat::Wkt ? crs.toWkt( Qgis::CrsWktVariant::Preferred, false ) : QString();
+  mExistingCRSwkt[id] = format == Qgis::CrsDefinitionFormat::Wkt ? crs.toWkt( QgsCoordinateReferenceSystem::WKT_PREFERRED, false ) : QString();
   mExistingCRSproj[id] = format == Qgis::CrsDefinitionFormat::Proj ? crs.toProj() : QString();
   mExistingCRSnames[id] = name;
 
@@ -155,9 +154,6 @@ void QgsCustomProjectionOptionsWidget::pbnAdd_clicked()
   QString name = tr( "new CRS" );
 
   QTreeWidgetItem *newItem = new QTreeWidgetItem( leNameList, QStringList() );
-
-  leName->setEnabled( true );
-  mCrsDefinitionWidget->setEnabled( true );
 
   newItem->setText( QgisCrsNameColumn, name );
   newItem->setText( QgisCrsIdColumn, QString() );
@@ -207,12 +203,6 @@ void QgsCustomProjectionOptionsWidget::pbnRemove_clicked()
     }
     mDefinitions.erase( mDefinitions.begin() + row );
   }
-
-  if ( mDefinitions.empty() )
-  {
-    leName->setEnabled( false );
-    mCrsDefinitionWidget->setEnabled( false );
-  }
 }
 
 void QgsCustomProjectionOptionsWidget::leNameList_currentItemChanged( QTreeWidgetItem *current, QTreeWidgetItem *previous )
@@ -227,7 +217,7 @@ void QgsCustomProjectionOptionsWidget::leNameList_currentItemChanged( QTreeWidge
     switch ( mCrsDefinitionWidget->format() )
     {
       case Qgis::CrsDefinitionFormat::Wkt:
-        mDefinitions[previousIndex].wkt = mCrsDefinitionWidget->crs().toWkt( Qgis::CrsWktVariant::Preferred );
+        mDefinitions[previousIndex].wkt = mCrsDefinitionWidget->crs().toWkt( QgsCoordinateReferenceSystem::WKT_PREFERRED );
         mDefinitions[previousIndex].proj.clear();
         break;
 
@@ -320,7 +310,7 @@ bool QgsCustomProjectionOptionsWidget::isValid()
         {
           ref = QStringLiteral( "ID[\"%1\",%2]" ).arg( authparts.at( 0 ), authparts.at( 1 ) );
         }
-        if ( !ref.isEmpty() && crs.toWkt( Qgis::CrsWktVariant::Preferred ).contains( ref ) )
+        if ( !ref.isEmpty() && crs.toWkt( QgsCoordinateReferenceSystem::WKT_PREFERRED ).contains( ref ) )
         {
           QMessageBox::warning( this, tr( "Custom Coordinate Reference System" ),
                                 tr( "Cannot save '%1' — the definition is equivalent to %2.\n\n(Try removing \"%3\" from the WKT definition.)" ).arg( def.name, crs.authid(), ref ) );
@@ -368,7 +358,7 @@ void QgsCustomProjectionOptionsWidget::apply()
     }
     if ( ! saveSuccess )
     {
-      QgsDebugError( QStringLiteral( "Error when saving CRS '%1'" ).arg( def.name ) );
+      QgsDebugMsg( QStringLiteral( "Error when saving CRS '%1'" ).arg( def.name ) );
     }
   }
   QgsDebugMsgLevel( QStringLiteral( "We remove the deleted CRS." ), 4 );
@@ -377,7 +367,7 @@ void QgsCustomProjectionOptionsWidget::apply()
     saveSuccess &= QgsApplication::coordinateReferenceSystemRegistry()->removeUserCrs( mDeletedCRSs[i].toLong() );
     if ( ! saveSuccess )
     {
-      QgsDebugError( QStringLiteral( "Error deleting CRS for '%1'" ).arg( mDefinitions.at( i ).name ) );
+      QgsDebugMsg( QStringLiteral( "Error deleting CRS for '%1'" ).arg( mDefinitions.at( i ).name ) );
     }
   }
 }
@@ -414,14 +404,15 @@ void QgsCustomProjectionOptionsWidget::updateListFromCurrentItem()
 QString QgsCustomProjectionOptionsWidget::multiLineWktToSingleLine( const QString &wkt )
 {
   QString res = wkt;
-  const thread_local QRegularExpression re( QStringLiteral( "\\s*\\n\\s*" ), QRegularExpression::MultilineOption );
+  QRegularExpression re( QStringLiteral( "\\s*\\n\\s*" ) );
+  re.setPatternOptions( QRegularExpression::MultilineOption );
   res.replace( re, QString() );
   return res;
 }
 
 QString QgsCustomProjectionOptionsWidget::helpKey() const
 {
-  return QStringLiteral( "working_with_projections/working_with_projections" );
+  return QStringLiteral( "working_with_projections/working_with_projections.html" );
 }
 
 
@@ -429,7 +420,7 @@ QString QgsCustomProjectionOptionsWidget::helpKey() const
 // QgsCustomProjectionOptionsFactory
 //
 QgsCustomProjectionOptionsFactory::QgsCustomProjectionOptionsFactory()
-  : QgsOptionsWidgetFactory( tr( "User Defined CRS" ), QIcon(), QStringLiteral( "user_defined_crs" ) )
+  : QgsOptionsWidgetFactory( tr( "User Defined CRS" ), QIcon() )
 {
 
 }

@@ -11,19 +11,18 @@ __copyright__ = 'Copyright 2021, The QGIS Project'
 
 import os
 
-from qgis.core import (
-    NULL,
-    QgsDefaultValue,
-    QgsVectorLayer,
-    QgsVectorLayerUtils,
-)
-import unittest
-from qgis.testing import start_app, QgisTestCase
+import qgis  # NOQA
+from qgis.core import (QgsVectorLayer,
+                       QgsVectorLayerUtils,
+                       QgsDefaultValue,
+                       NULL
+                       )
+from qgis.testing import start_app, unittest
 
 start_app()
 
 
-class TestQgsVectorLayerUtilsPostgres(QgisTestCase):
+class TestQgsVectorLayerUtilsPostgres(unittest.TestCase):
 
     def testCreateFeature(self):
         """ test creating a feature respecting unique values of postgres provider """

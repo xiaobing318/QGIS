@@ -21,8 +21,6 @@
 #include "qgslinesymbol.h"
 #include "qgsannotationitemnode.h"
 #include "qgsannotationitemeditoperation.h"
-#include "qgscurve.h"
-#include "qgslinestring.h"
 
 QgsAnnotationLineItem::QgsAnnotationLineItem( QgsCurve *curve )
   : QgsAnnotationItem()
@@ -83,7 +81,7 @@ bool QgsAnnotationLineItem::writeXml( QDomElement &element, QDomDocument &docume
   return true;
 }
 
-QList<QgsAnnotationItemNode> QgsAnnotationLineItem::nodesV2( const QgsAnnotationItemEditContext & ) const
+QList<QgsAnnotationItemNode> QgsAnnotationLineItem::nodes() const
 {
   QList< QgsAnnotationItemNode > res;
   int i = 0;
@@ -94,7 +92,7 @@ QList<QgsAnnotationItemNode> QgsAnnotationLineItem::nodesV2( const QgsAnnotation
   return res;
 }
 
-Qgis::AnnotationItemEditOperationResult QgsAnnotationLineItem::applyEditV2( QgsAbstractAnnotationItemEditOperation *operation, const QgsAnnotationItemEditContext & )
+Qgis::AnnotationItemEditOperationResult QgsAnnotationLineItem::applyEdit( QgsAbstractAnnotationItemEditOperation *operation )
 {
   switch ( operation->type() )
   {
@@ -138,7 +136,7 @@ Qgis::AnnotationItemEditOperationResult QgsAnnotationLineItem::applyEditV2( QgsA
   return Qgis::AnnotationItemEditOperationResult::Invalid;
 }
 
-QgsAnnotationItemEditOperationTransientResults *QgsAnnotationLineItem::transientEditResultsV2( QgsAbstractAnnotationItemEditOperation *operation, const QgsAnnotationItemEditContext & )
+QgsAnnotationItemEditOperationTransientResults *QgsAnnotationLineItem::transientEditResults( QgsAbstractAnnotationItemEditOperation *operation )
 {
   switch ( operation->type() )
   {
@@ -169,11 +167,6 @@ QgsAnnotationItemEditOperationTransientResults *QgsAnnotationLineItem::transient
   return nullptr;
 }
 
-Qgis::AnnotationItemFlags QgsAnnotationLineItem::flags() const
-{
-  return Qgis::AnnotationItemFlag::SupportsReferenceScale;
-}
-
 QgsAnnotationLineItem *QgsAnnotationLineItem::create()
 {
   return new QgsAnnotationLineItem( new QgsLineString() );
@@ -200,15 +193,13 @@ QgsRectangle QgsAnnotationLineItem::boundingBox() const
   return mCurve->boundingBox();
 }
 
-QgsAnnotationLineItem *QgsAnnotationLineItem::clone() const
+QgsAnnotationLineItem *QgsAnnotationLineItem::clone()
 {
   std::unique_ptr< QgsAnnotationLineItem > item = std::make_unique< QgsAnnotationLineItem >( mCurve->clone() );
   item->setSymbol( mSymbol->clone() );
   item->copyCommonProperties( this );
   return item.release();
 }
-
-void QgsAnnotationLineItem::setGeometry( QgsCurve *geometry ) { mCurve.reset( geometry ); }
 
 const QgsLineSymbol *QgsAnnotationLineItem::symbol() const
 {

@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgsspatialitetransaction.h"
-#include "moc_qgsspatialitetransaction.cpp"
 #include "qgslogger.h"
 #include <QDebug>
 
@@ -52,7 +51,7 @@ bool QgsSpatiaLiteTransaction::executeSql( const QString &sql, QString &errorMsg
 
   if ( ! mSqliteHandle )
   {
-    QgsDebugError( QStringLiteral( "Spatialite handle is not set" ) );
+    QgsDebugMsg( QStringLiteral( "Spatialite handle is not set" ) );
     return false;
   }
 
@@ -61,7 +60,7 @@ bool QgsSpatiaLiteTransaction::executeSql( const QString &sql, QString &errorMsg
     createSavepoint( errorMsg );
     if ( ! errorMsg.isEmpty() )
     {
-      QgsDebugError( errorMsg );
+      QgsDebugMsg( errorMsg );
       return false;
     }
   }
@@ -74,7 +73,7 @@ bool QgsSpatiaLiteTransaction::executeSql( const QString &sql, QString &errorMsg
       rollbackToSavepoint( savePoints().last(), errorMsg );
     }
     errorMsg = QStringLiteral( "%1\n%2" ).arg( errMsg, errorMsg );
-    QgsDebugError( errMsg );
+    QgsDebugMsg( errMsg );
     sqlite3_free( errMsg );
     return false;
   }

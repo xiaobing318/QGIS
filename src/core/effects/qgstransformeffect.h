@@ -21,7 +21,7 @@
 #include "qgspainteffect.h"
 #include "qgis_sip.h"
 #include "qgsmapunitscale.h"
-#include "qgis.h"
+#include "qgsunittypes.h"
 #include <QPainter>
 
 /**
@@ -30,6 +30,7 @@
  * \brief A paint effect which applies transformations (such as move,
  * scale and rotate) to a picture.
  *
+ * \since QGIS 2.9
  */
 
 class CORE_EXPORT QgsTransformEffect : public QgsPaintEffect SIP_NODEFAULTCTORS
@@ -44,6 +45,9 @@ class CORE_EXPORT QgsTransformEffect : public QgsPaintEffect SIP_NODEFAULTCTORS
      */
     static QgsPaintEffect *create( const QVariantMap &map ) SIP_FACTORY;
 
+    /**
+     * Constructor for QgsTransformEffect.
+     */
     QgsTransformEffect() = default;
 
     QString type() const override { return QStringLiteral( "transform" ); }
@@ -99,7 +103,7 @@ class CORE_EXPORT QgsTransformEffect : public QgsPaintEffect SIP_NODEFAULTCTORS
      * \see setTranslateY
      * \see setTranslateMapUnitScale
      */
-    void setTranslateUnit( const Qgis::RenderUnit unit ) { mTranslateUnit = unit; }
+    void setTranslateUnit( const QgsUnitTypes::RenderUnit unit ) { mTranslateUnit = unit; }
 
     /**
      * Returns the units used for the transform translation.
@@ -109,7 +113,7 @@ class CORE_EXPORT QgsTransformEffect : public QgsPaintEffect SIP_NODEFAULTCTORS
      * \see translateY
      * \see translateMapUnitScale
      */
-    Qgis::RenderUnit translateUnit() const { return mTranslateUnit; }
+    QgsUnitTypes::RenderUnit translateUnit() const { return mTranslateUnit; }
 
     /**
      * Sets the map unit scale used for the transform translation.
@@ -247,7 +251,7 @@ class CORE_EXPORT QgsTransformEffect : public QgsPaintEffect SIP_NODEFAULTCTORS
 
     double mTranslateX = 0.0;
     double mTranslateY = 0.0;
-    Qgis::RenderUnit mTranslateUnit = Qgis::RenderUnit::Millimeters;
+    QgsUnitTypes::RenderUnit mTranslateUnit = QgsUnitTypes::RenderMillimeters;
     QgsMapUnitScale mTranslateMapUnitScale;
     double mScaleX = 1.0;
     double mScaleY = 1.0;

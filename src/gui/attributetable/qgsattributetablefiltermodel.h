@@ -48,8 +48,7 @@ class GUI_EXPORT QgsAttributeTableFilterModel: public QSortFilterProxyModel, pub
       ShowSelected,     //!< Show only selected features
       ShowVisible,      //!< Show only visible features (depends on the map canvas)
       ShowFilteredList, //!< Show only features whose ids are on the filter list. {\see setFilteredFeatures}
-      ShowEdited,       //!< Show only features which have unsaved changes
-      ShowInvalid,      //!< Show only features not respecting constraints \since QGIS 3.30
+      ShowEdited        //!< Show only features which have unsaved changes
     };
     Q_ENUM( FilterMode )
 
@@ -63,21 +62,16 @@ class GUI_EXPORT QgsAttributeTableFilterModel: public QSortFilterProxyModel, pub
     };
     Q_ENUM( ColumnType )
 
-    // *INDENT-OFF*
-
     /**
      * The additional roles defined by this filter model.
      * The values of these roles start just after the roles defined by
      * QgsAttributeTableModel so they do not conflict.
-     * \note Prior to QGIS 3.36 this was available as QgsAttributeTableFilterModel::Role
-     * \since QGIS 3.36
      */
-    enum class CustomRole SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsAttributeTableFilterModel, Role ) : int
+    enum Role
     {
-      Type SIP_MONKEYPATCH_COMPAT_NAME(TypeRole) = static_cast< int >( QgsAttributeTableModel::CustomRole::User ) //!< The type of a given column
+      TypeRole = QgsAttributeTableModel::UserRole //!< The type of a given column
     };
-    Q_ENUM( CustomRole )
-    // *INDENT-ON*
+
 
     /**
      * Make sure, the master model is already loaded, so the selection will get synchronized.
@@ -98,6 +92,7 @@ class GUI_EXPORT QgsAttributeTableFilterModel: public QSortFilterProxyModel, pub
      *
      * \param sourceModel The model
      *
+     * \since QGIS 2.0
      */
     void setSourceModel( QgsAttributeTableModel *sourceModel );
 
@@ -191,7 +186,7 @@ class GUI_EXPORT QgsAttributeTableFilterModel: public QSortFilterProxyModel, pub
 
     QModelIndexList fidToIndexList( QgsFeatureId fid );
 
-    QModelIndex mapToMaster( const QModelIndex &proxyIndex ) const;
+    inline QModelIndex mapToMaster( const QModelIndex &proxyIndex ) const { return mapToSource( proxyIndex ); }
 
     inline QModelIndex mapFromMaster( const QModelIndex &sourceIndex ) const { return mapFromSource( sourceIndex ); }
 
@@ -316,7 +311,7 @@ class GUI_EXPORT QgsAttributeTableFilterModel: public QSortFilterProxyModel, pub
      * Is called upon every change of the visible extents on the map canvas.
      * When a change is signalled, the filter is updated and invalidated if needed.
      *
-     * \deprecated QGIS 3.10.3. Made private as reloadVisible().
+     * \deprecated since QGIS 3.10.3 - made private as reloadVisible()
      */
     Q_DECL_DEPRECATED void extentsChanged();
 

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 ***************************************************************************
     self.py
@@ -81,7 +83,6 @@ class AssignProjection(GdalAlgorithm):
         if inLayer is None:
             raise QgsProcessingException(self.invalidRasterError(parameters, self.INPUT))
 
-        input_details = GdalUtils.gdal_connection_details_from_layer(inLayer)
         fileName = inLayer.source()
 
         crs = self.parameterAsCrs(parameters, self.CRS, context)
@@ -89,14 +90,9 @@ class AssignProjection(GdalAlgorithm):
         arguments = [
             '-a_srs',
             GdalUtils.gdal_crs_string(crs),
-            input_details.connection_string
+
+            fileName
         ]
-
-        if input_details.open_options:
-            arguments.extend(input_details.open_options_as_arguments())
-
-        if input_details.credential_options:
-            arguments.extend(input_details.credential_options_as_arguments())
 
         self.setOutputValue(self.OUTPUT, fileName)
 

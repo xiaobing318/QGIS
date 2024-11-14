@@ -66,11 +66,6 @@ class GUI_EXPORT QgsFeatureSelectionDlg : public QDialog, private Ui::QgsFeature
      */
     void setSelectedFeatures( const QgsFeatureIds &ids );
 
-    /**
-     * Set form filter expression
-     */
-    void setFilterExpression( const QString &filter, QgsAttributeForm::FilterType type );
-
   protected:
 
     void keyPressEvent( QKeyEvent *evt ) override;
@@ -109,6 +104,11 @@ class GUI_EXPORT QgsFeatureSelectionDlg : public QDialog, private Ui::QgsFeature
      * Select feature using an expression
      */
     void mActionExpressionSelect_triggered();
+
+    /**
+     * Set form filter expression
+     */
+    void setFilterExpression( const QString &filter, QgsAttributeForm::FilterType type );
 
     /**
      * View mode has changed

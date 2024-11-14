@@ -39,25 +39,16 @@ class CORE_EXPORT QgsPointCloudAttributeModel : public QAbstractItemModel
 
   public:
 
-    // *INDENT-OFF*
-
-     /**
-     * Custom model roles.
-     *
-     * \note Prior to QGIS 3.36 this was available as QgsPointCloudAttributeModel::FieldRoles
-     * \since QGIS 3.36
-     */
-    enum class CustomRole SIP_MONKEYPATCH_SCOPEENUM_UNNEST( QgsPointCloudAttributeModel, FieldRoles ) : int
+    //! Roles utilized by the model
+    enum FieldRoles
     {
-      AttributeName SIP_MONKEYPATCH_COMPAT_NAME(AttributeNameRole)= Qt::UserRole + 1,  //!< Attribute name
-      AttributeIndex SIP_MONKEYPATCH_COMPAT_NAME(AttributeIndexRole), //!< Attribute index if index corresponds to an attribute
-      AttributeSize SIP_MONKEYPATCH_COMPAT_NAME(AttributeSizeRole), //!< Attribute size
-      AttributeType SIP_MONKEYPATCH_COMPAT_NAME(AttributeTypeRole), //!< Attribute type, see QgsPointCloudAttribute::DataType
-      IsEmpty SIP_MONKEYPATCH_COMPAT_NAME(IsEmptyRole), //!< TRUE if the index corresponds to the empty value
-      IsNumeric SIP_MONKEYPATCH_COMPAT_NAME(IsNumericRole), //!< TRUE if the index corresponds to a numeric attributre
+      AttributeNameRole = Qt::UserRole + 1,  //!< Attribute name
+      AttributeIndexRole, //!< Attribute index if index corresponds to an attribute
+      AttributeSizeRole, //!< Attribute size
+      AttributeTypeRole, //!< Attribute type, see QgsPointCloudAttribute::DataType
+      IsEmptyRole, //!< TRUE if the index corresponds to the empty value
+      IsNumericRole, //!< TRUE if the index corresponds to a numeric attributre
     };
-    Q_ENUM( CustomRole )
-    // *INDENT-ON*
 
     /**
      * Constructor for QgsPointCloudAttributeModel, with the specified \a parent object.
@@ -149,7 +140,7 @@ class CORE_EXPORT QgsPointCloudAttributeProxyModel : public QSortFilterProxyMode
   public:
 
     //! Attribute type filters
-    enum Filter SIP_ENUM_BASETYPE( IntFlag )
+    enum Filter
     {
       Char = 1 << 0, //!< Character attributes
       Short = 1 << 1, //!< Short attributes

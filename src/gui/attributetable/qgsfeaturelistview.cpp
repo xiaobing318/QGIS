@@ -19,38 +19,24 @@
 #include <QSet>
 #include <QSettings>
 
+#include "qgsattributetabledelegate.h"
+#include "qgsattributetablefiltermodel.h"
 #include "qgsattributetablemodel.h"
 #include "qgsfeaturelistmodel.h"
 #include "qgsfeaturelistviewdelegate.h"
 #include "qgsfeaturelistview.h"
-#include "moc_qgsfeaturelistview.cpp"
 #include "qgsfeatureselectionmodel.h"
 #include "qgslogger.h"
+#include "qgsmapcanvas.h"
+#include "qgsvectordataprovider.h"
 #include "qgsvectorlayer.h"
 #include "qgsvectorlayerselectionmanager.h"
 #include "qgsvectorlayercache.h"
-#include "qgsactionmenu.h"
 
 QgsFeatureListView::QgsFeatureListView( QWidget *parent )
   : QListView( parent )
 {
   setSelectionMode( QAbstractItemView::ExtendedSelection );
-
-  mUpdateEditSelectionTimerWithSelection.setSingleShot( true );
-  connect( &mUpdateEditSelectionTimerWithSelection, &QTimer::timeout, this, [ this ]()
-  {
-    updateEditSelection( true );
-  } );
-
-  mUpdateEditSelectionTimerWithSelection.setInterval( 0 );
-
-  mUpdateEditSelectionTimerWithoutSelection.setSingleShot( true );
-  connect( &mUpdateEditSelectionTimerWithoutSelection, &QTimer::timeout, this, [ this ]()
-  {
-    updateEditSelection( false );
-  } );
-
-  mUpdateEditSelectionTimerWithoutSelection.setInterval( 0 );
 }
 
 QgsVectorLayerCache *QgsFeatureListView::layerCache()
@@ -130,7 +116,7 @@ QgsFeatureIds QgsFeatureListView::currentEditSelection()
   const QModelIndexList selectedIndexes = mCurrentEditSelectionModel->selectedIndexes();
   for ( const QModelIndex &idx : selectedIndexes )
   {
-    selection << idx.data( static_cast< int >( QgsAttributeTableModel::CustomRole::FeatureId ) ).value<QgsFeatureId>();
+    selection << idx.data( QgsAttributeTableModel::FeatureIdRole ).value<QgsFeatureId>();
   }
   return selection;
 }
@@ -171,29 +157,17 @@ void QgsFeatureListView::mousePressEvent( QMouseEvent *event )
   }
   else
   {
-    QgsDebugError( QStringLiteral( "No model assigned to this view" ) );
+    QgsDebugMsg( QStringLiteral( "No model assigned to this view" ) );
   }
 }
 
-void QgsFeatureListView::editSelectionChanged( const QItemSelection &selected, const QItemSelection &deselected )
+void QgsFeatureListView::editSelectionChanged( const QItemSelection &deselected, const QItemSelection &selected )
 {
   if ( isVisible() && updatesEnabled() )
   {
     const QItemSelection localDeselected = mModel->mapSelectionFromMaster( deselected );
     const QItemSelection localSelected = mModel->mapSelectionFromMaster( selected );
     viewport()->update( visualRegionForSelection( localDeselected ) | visualRegionForSelection( localSelected ) );
-  }
-
-  mLastEditSelectionFid = QgsFeatureId();
-  if ( !selected.isEmpty() )
-  {
-    const QModelIndexList indexList = selected.indexes();
-    if ( !indexList.isEmpty() )
-    {
-      QgsFeature selectedFeature;
-      mModel->featureByIndex( mModel->mapFromMaster( indexList.first() ), selectedFeature );
-      mLastEditSelectionFid = selectedFeature.id();
-    }
   }
 
   const QItemSelection currentSelection = mCurrentEditSelectionModel->selection();
@@ -306,7 +280,7 @@ void QgsFeatureListView::mouseMoveEvent( QMouseEvent *event )
   }
   else
   {
-    QgsDebugError( QStringLiteral( "No model assigned to this view" ) );
+    QgsDebugMsg( QStringLiteral( "No model assigned to this view" ) );
   }
 }
 
@@ -436,19 +410,6 @@ void QgsFeatureListView::selectRow( const QModelIndex &index, bool anchor )
 
 void QgsFeatureListView::ensureEditSelection( bool inSelection )
 {
-
-  if ( inSelection )
-  {
-    mUpdateEditSelectionTimerWithSelection.start();
-  }
-  else
-  {
-    mUpdateEditSelectionTimerWithoutSelection.start();
-  }
-}
-
-void QgsFeatureListView::updateEditSelection( bool inSelection )
-{
   if ( !mModel->rowCount() )
   {
     // not sure this is the best place to emit from
@@ -507,47 +468,46 @@ void QgsFeatureListView::updateEditSelection( bool inSelection )
 
   if ( editSelectionUpdateRequested )
   {
-    // The layer might have been removed between timer start and timer triggered
-    // in this case there is nothing left for us to do.
-    if ( !layerCache() )
-      return;
-
-    int rowToSelect = -1;
-
-    QgsFeatureIds selectedFids;
-
-    if ( inSelection )
+    if ( !mUpdateEditSelectionTimer.isSingleShot() )
     {
-      selectedFids = layerCache()->layer()->selectedFeatureIds();
-    }
-
-    //if the selectedFids are empty because of no selection or selection reset, the index should persist
-    if ( selectedFids.isEmpty() )
-    {
-      //if no index can be evaluated from the last position the index should go to 0
-      selectedFids = QgsFeatureIds() << mLastEditSelectionFid;
-    }
-
-    const int rowCount = mModel->rowCount();
-    for ( int i = 0; i < rowCount; i++ )
-    {
-      if ( selectedFids.contains( mModel->idxToFid( mModel->index( i, 0 ) ) ) )
+      mUpdateEditSelectionTimer.setSingleShot( true );
+      connect( &mUpdateEditSelectionTimer, &QTimer::timeout, this, [ this, inSelection, validEditSelectionAvailable ]()
       {
-        rowToSelect = i;
-        break;
-      }
-    }
+        // The layer might have been removed between timer start and timer triggered
+        // in this case there is nothing left for us to do.
+        if ( !layerCache() )
+          return;
 
-    if ( rowToSelect == -1 && !validEditSelectionAvailable )
-    {
-      // if no index could have been evaluated but no validEditSelectionAvailable, then jump to zero
-      rowToSelect = 0;
-    }
+        int rowToSelect = -1;
 
-    if ( rowToSelect != -1 )
-    {
-      setEditSelection( mModel->mapToMaster( mModel->index( rowToSelect, 0 ) ), QItemSelectionModel::ClearAndSelect );
+        if ( inSelection )
+        {
+          const QgsFeatureIds selectedFids = layerCache()->layer()->selectedFeatureIds();
+          const int rowCount = mModel->rowCount();
+
+          for ( int i = 0; i < rowCount; i++ )
+          {
+            if ( selectedFids.contains( mModel->idxToFid( mModel->index( i, 0 ) ) ) )
+            {
+              rowToSelect = i;
+              break;
+            }
+
+            if ( rowToSelect == -1 && !validEditSelectionAvailable )
+              rowToSelect = 0;
+          }
+        }
+        else
+          rowToSelect = 0;
+
+        if ( rowToSelect != -1 )
+        {
+          setEditSelection( mModel->mapToMaster( mModel->index( rowToSelect, 0 ) ), QItemSelectionModel::ClearAndSelect );
+        }
+      } );
+      mUpdateEditSelectionTimer.setInterval( 0 );
     }
+    mUpdateEditSelectionTimer.start();
   }
 }
 

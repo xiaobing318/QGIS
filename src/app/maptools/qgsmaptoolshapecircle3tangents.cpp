@@ -15,7 +15,6 @@
  ***************************************************************************/
 
 #include "qgsmaptoolshapecircle3tangents.h"
-#include "moc_qgsmaptoolshapecircle3tangents.cpp"
 #include "qgsgeometryrubberband.h"
 #include "qgsadvanceddigitizingdockwidget.h"
 #include "qgslinestring.h"
@@ -125,7 +124,7 @@ void QgsMapToolShapeCircle3Tangents::cadCanvasMoveEvent( QgsMapMouseEvent *e, Qg
 
   if ( !mTempRubberBand )
   {
-    Qgis::GeometryType type = mode == QgsMapToolCapture::CapturePolygon ? Qgis::GeometryType::Polygon : Qgis::GeometryType::Line;
+    QgsWkbTypes::GeometryType type = mode == QgsMapToolCapture::CapturePolygon ? QgsWkbTypes::PolygonGeometry : QgsWkbTypes::LineGeometry;
     mTempRubberBand = mParentTool->createGeometryRubberBand( type, true );
     mTempRubberBand->show();
   }

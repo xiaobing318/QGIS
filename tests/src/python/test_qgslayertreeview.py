@@ -9,34 +9,32 @@ __author__ = 'Nyall Dawson'
 __date__ = '02.04.2018'
 __copyright__ = 'Copyright 2018, The QGIS Project'
 
-from qgis.PyQt.QtCore import QStringListModel, QItemSelectionModel
-from qgis.PyQt.QtTest import QAbstractItemModelTester, QSignalSpy
+import qgis  # NOQA
+from qgis.PyQt.QtCore import QStringListModel
+from qgis.PyQt.QtTest import QSignalSpy, QAbstractItemModelTester
 from qgis.core import (
-    QgsLayerTree,
     QgsLayerTreeModel,
     QgsProject,
     QgsVectorLayer,
-    QgsCategorizedSymbolRenderer,
-    QgsRendererCategory,
-    QgsMarkerSymbol,
-    QgsMapLayerLegend
+    QgsLayerTree,
 )
-from qgis.gui import QgsLayerTreeView, QgsLayerTreeViewDefaultActions
-import unittest
-from qgis.testing import start_app, QgisTestCase
-
-from utilities import unitTestDataPath
+from qgis.gui import (
+    QgsLayerTreeView,
+    QgsLayerTreeViewDefaultActions,
+)
+from qgis.testing import start_app, unittest
+from utilities import (unitTestDataPath)
 
 app = start_app()
 TEST_DATA_DIR = unitTestDataPath()
 
 
-class TestQgsLayerTreeView(QgisTestCase):
+class TestQgsLayerTreeView(unittest.TestCase):
 
     def __init__(self, methodName):
         """Run once on class initialization."""
 
-        QgisTestCase.__init__(self, methodName)
+        unittest.TestCase.__init__(self, methodName)
 
         # setup a dummy project
         self.project = QgsProject()
@@ -252,7 +250,7 @@ class TestQgsLayerTreeView(QgisTestCase):
         ])
 
         selectionMode = view.selectionMode()
-        view.setSelectionMode(QgsLayerTreeView.SelectionMode.MultiSelection)
+        view.setSelectionMode(QgsLayerTreeView.MultiSelection)
         nodeLayerIndex = view.node2index(group)
         view.setCurrentIndex(nodeLayerIndex)
         view.setCurrentLayer(self.layer5)
@@ -369,7 +367,7 @@ class TestQgsLayerTreeView(QgisTestCase):
         ])
 
         selectionMode = view.selectionMode()
-        view.setSelectionMode(QgsLayerTreeView.SelectionMode.MultiSelection)
+        view.setSelectionMode(QgsLayerTreeView.MultiSelection)
         nodeLayerIndex = view.node2index(group)
         view.setCurrentIndex(nodeLayerIndex)
         view.setCurrentLayer(self.layer4)
@@ -440,7 +438,7 @@ class TestQgsLayerTreeView(QgisTestCase):
         ])
 
         selectionMode = view.selectionMode()
-        view.setSelectionMode(QgsLayerTreeView.SelectionMode.MultiSelection)
+        view.setSelectionMode(QgsLayerTreeView.MultiSelection)
         view.setCurrentLayer(self.layer)
         view.setCurrentLayer(self.layer2)
         view.setSelectionMode(selectionMode)
@@ -516,7 +514,7 @@ class TestQgsLayerTreeView(QgisTestCase):
         ])
 
         selectionMode = view.selectionMode()
-        view.setSelectionMode(QgsLayerTreeView.SelectionMode.MultiSelection)
+        view.setSelectionMode(QgsLayerTreeView.MultiSelection)
         nodeLayerIndex = view.node2index(group)
         view.setCurrentIndex(nodeLayerIndex)
         nodeLayerIndex2 = view.node2index(group2)
@@ -626,34 +624,6 @@ class TestQgsLayerTreeView(QgisTestCase):
 
         self.assertEqual(proxy_items, ['layer2'])
 
-        # test valid layer filtering
-        broken_layer = QgsVectorLayer("xxxx", "broken", "ogr")
-        self.assertFalse(broken_layer.isValid())
-        self.project.addMapLayers([broken_layer])
-
-        proxy_model.setFilterText(None)
-
-        proxy_items = []
-        for r in range(proxy_model.rowCount()):
-            proxy_items.append(proxy_model.data(proxy_model.index(r, 0)))
-        self.assertEqual(proxy_items, ['broken', 'layer1', 'layer2'])
-
-        proxy_model.setHideValidLayers(True)
-
-        proxy_items = []
-        for r in range(proxy_model.rowCount()):
-            proxy_items.append(proxy_model.data(proxy_model.index(r, 0)))
-        self.assertEqual(proxy_items, ['broken'])
-
-        proxy_model.setHideValidLayers(False)
-
-        proxy_items = []
-        for r in range(proxy_model.rowCount()):
-            proxy_items.append(proxy_model.data(proxy_model.index(r, 0)))
-        self.assertEqual(proxy_items, ['broken', 'layer1', 'layer2'])
-
-        self.project.removeMapLayer(broken_layer)
-
     def testProxyModelCurrentIndex(self):
         """Test a crash spotted out while developing the proxy model"""
 
@@ -686,43 +656,6 @@ class TestQgsLayerTreeView(QgisTestCase):
         source_index = tree_model.index(1, 0)
         tree_layer2_index = view.node2sourceIndex(node2)
         self.assertEqual(tree_layer2_index, view.node2sourceIndex(node2))
-
-    def test_selected_legend_nodes(self):
-        layer = QgsVectorLayer("Point?field=fldtxt:string",
-                               "layer1", "memory")
-
-        cat1 = QgsRendererCategory(1, QgsMarkerSymbol.createSimple({}), 'cat 1')
-        cat2 = QgsRendererCategory(2, QgsMarkerSymbol.createSimple({}),
-                                   'cat 2')
-        cat3 = QgsRendererCategory(1, QgsMarkerSymbol.createSimple({}),
-                                   'cat 3')
-
-        renderer = QgsCategorizedSymbolRenderer('fldtext', [cat1, cat2, cat3])
-        layer.setRenderer(renderer)
-        layer.setLegend(QgsMapLayerLegend.defaultVectorLegend(layer))
-
-        root = QgsLayerTree()
-        model = QgsLayerTreeModel(root)
-        layer_tree_layer = root.addLayer(layer)
-        view = QgsLayerTreeView()
-        view.setModel(model)
-
-        legend_nodes = model.layerLegendNodes(layer_tree_layer)
-        self.assertEqual(len(legend_nodes), 3)
-
-        index = model.legendNode2index(legend_nodes[0])
-        self.assertTrue(index.isValid())
-        self.assertEqual(model.index2legendNode(index), legend_nodes[0])
-        index2 = model.legendNode2index(legend_nodes[2])
-        self.assertTrue(index2.isValid())
-        self.assertEqual(model.index2legendNode(index2), legend_nodes[2])
-
-        self.assertFalse(view.selectedLegendNodes())
-
-        view.selectionModel().select(view.proxyModel().mapFromSource(index), QItemSelectionModel.SelectionFlag.ClearAndSelect)
-        view.selectionModel().select(view.proxyModel().mapFromSource(index2), QItemSelectionModel.SelectionFlag.Select)
-
-        self.assertCountEqual(view.selectedLegendNodes(), [legend_nodes[0], legend_nodes[2]])
 
 
 if __name__ == '__main__':

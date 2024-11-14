@@ -3,7 +3,7 @@
  *                                                                      *
  * src/gui/symbology/characterwidget.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -47,6 +47,8 @@ Returns the size (in pixels) of the square used to render each character preview
 Returns the currently selected character in the widget.
 
 .. seealso:: :py:func:`setCharacter`
+
+.. versionadded:: 3.0
 %End
 
     QFont font() const;
@@ -54,6 +56,8 @@ Returns the currently selected character in the widget.
 Returns the font shown in the widget
 
 .. seealso:: :py:func:`setFont`
+
+.. versionadded:: 3.0
 %End
 
   public slots:
@@ -63,16 +67,22 @@ Returns the font shown in the widget
 Sets the ``font`` to show in the widget.
 
 .. seealso:: :py:func:`font`
+
+.. versionadded:: 3.0
 %End
 
     void setFontSize( double fontSize );
 %Docstring
 Sets the font size (in points) to render in the widget.
+
+.. versionadded:: 3.0
 %End
 
     void setFontStyle( const QString &fontStyle );
 %Docstring
 Sets the font style to show in the widget.
+
+.. versionadded:: 3.0
 %End
 
     void updateFontMerging( bool enable );
@@ -80,6 +90,8 @@ Sets the font style to show in the widget.
     void setColumns( int columns );
 %Docstring
 Sets the number of columns of characters to show in the widget.
+
+.. versionadded:: 3.0
 %End
 
     void setCharacter( QChar character );
@@ -126,5 +138,5 @@ Emitted when a character is selected in the widget.
  *                                                                      *
  * src/gui/symbology/characterwidget.h                                  *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

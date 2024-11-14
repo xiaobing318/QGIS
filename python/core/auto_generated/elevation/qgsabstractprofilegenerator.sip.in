@@ -3,7 +3,7 @@
  *                                                                      *
  * src/core/elevation/qgsabstractprofilegenerator.h                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/
 
 
@@ -165,13 +165,6 @@ Abstract base class for storage of elevation profiles.
 %End
   public:
 
-    struct Feature
-    {
-      QString layerIdentifier;
-      QgsGeometry geometry;
-      QVariantMap attributes;
-    };
-
     virtual ~QgsAbstractProfileResults();
 
     virtual QString type() const = 0;
@@ -193,15 +186,6 @@ as the point z value.
     virtual QVector< QgsGeometry > asGeometries() const = 0;
 %Docstring
 Returns a list of geometries representing the calculated elevation results.
-%End
-
-    virtual QVector< QgsAbstractProfileResults::Feature > asFeatures( Qgis::ProfileExportType type, QgsFeedback *feedback = 0 ) const;
-%Docstring
-Returns a list of features representing the calculated elevation results.
-
-The default implementation returns an empty list.
-
-.. versionadded:: 3.32
 %End
 
     virtual void renderResults( QgsProfileRenderContext &context ) = 0;
@@ -337,7 +321,7 @@ Returns the DPI (dots per inch) for the profie, to be used in size conversions.
 .. seealso:: :py:func:`setDpi`
 %End
 
-    double convertDistanceToPixels( double size, Qgis::RenderUnit unit ) const;
+    double convertDistanceToPixels( double size, QgsUnitTypes::RenderUnit unit ) const;
 %Docstring
 Converts a distance size from the specified units to pixels.
 %End
@@ -363,13 +347,13 @@ Qt containers and various Qt classes use implicit sharing.
 
 The scenario will be:
 
-- elevation profile job (doing preparation in the GUI thread) calls
+# elevation profile job (doing preparation in the GUI thread) calls
   :py:func:`QgsAbstractProfileSource.createProfileGenerator()` and gets an instance of this class.
   The instance is initialized at that point and should not need
   additional calls to the source.
-- profile job (still in GUI thread) stores the generator for later use.
-- profile job (in worker thread) calls :py:func:`QgsAbstractProfileGenerator.generateProfile()`
-- profile job (again in GUI thread) will check :py:func:`~errors` and report them
+# profile job (still in GUI thread) stores the generator for later use.
+# profile job (in worker thread) calls :py:func:`QgsAbstractProfileGenerator.generateProfile()`
+# profile job (again in GUI thread) will check :py:func:`~QgsProfileGenerationContext.errors` and report them
 
 .. versionadded:: 3.26
 %End
@@ -421,5 +405,5 @@ Ownership is transferred to the caller.
  *                                                                      *
  * src/core/elevation/qgsabstractprofilegenerator.h                     *
  *                                                                      *
- * Do not edit manually ! Edit header and run scripts/sipify.py again   *
+ * Do not edit manually ! Edit header and run scripts/sipify.pl again   *
  ************************************************************************/

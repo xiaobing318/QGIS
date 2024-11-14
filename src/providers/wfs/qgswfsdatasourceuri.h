@@ -45,9 +45,6 @@ class QgsWFSDataSourceURI
     //! Copy constructor
     QgsWFSDataSourceURI( const QgsWFSDataSourceURI &other );
 
-    //! Returns whether the URI is a valid one
-    bool isValid() const;
-
     //! Returns the URI, optionally with the authentication configuration expanded
     QString uri( bool expandAuthConfig = false ) const;
 
@@ -69,16 +66,8 @@ class QgsWFSDataSourceURI
     //! Returns user defined limit page size. 0=server udefault
     long long pageSize() const;
 
-    //! Whether paging is enabled
-    enum class PagingStatus
-    {
-      DEFAULT, //! For WFS <= 1.1, no paging. For WFS 2.0, trust GetCapabilities "ImplementsResultPaging"
-      ENABLED, //! Enabled
-      DISABLED // Disabled
-    };
-
     //! Returns whether paging is enabled.
-    PagingStatus pagingStatus() const;
+    bool pagingEnabled() const;
 
     //! Gets typename (with prefix)
     QString typeName() const;
@@ -100,12 +89,6 @@ class QgsWFSDataSourceURI
 
     //! Sets OGC filter xml or a QGIS expression
     void setFilter( const QString &filterIn );
-
-    //! Returns whether there is a geometry type filter.
-    bool hasGeometryTypeFilter() const;
-
-    //! Gets the geometry type filter.
-    Qgis::WkbType geometryTypeFilter() const;
 
     //! Gets SQL query
     QString sql() const;
