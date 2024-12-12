@@ -2,8 +2,8 @@
   "vcpkg-configuration": {
     "default-registry": {
       "kind": "git",
-      "baseline": "5e5d0e1cd7785623065e77eff011afdeec1a3574",
-      "repository": "https://github.com/microsoft/vcpkg"
+      "baseline": "e2390f659770b26022f5a2549accc1e72840d997",
+      "repository": "https://github.com/Neumann-A/vcpkg"
     },
     "registries": [
       {

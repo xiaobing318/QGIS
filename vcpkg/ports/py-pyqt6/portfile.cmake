@@ -1,16 +1,11 @@
 set(VCPKG_POLICY_EMPTY_INCLUDE_FOLDER enabled)
 set(VCPKG_BUILD_TYPE release)
 
-vcpkg_download_distfile(
-    ARCHIVE
-    URLS            https://riverbankcomputing.com/pypi/packages/PyQt6/PyQt6-6.8.0.dev2411221125.tar.gz
-    FILENAME        pyqt6.tar.gz
-    SHA512          f52fe48969a8b86651f6a3bf6156a91c57e42e4192bd184dfe6b7ac8a4728509b4610c2da8fb88039ff2880b02c6dbb455d1ed12fb65b7cd65ddb8ca7fb6a476
-)
-
-vcpkg_extract_source_archive_ex(
-  OUT_SOURCE_PATH SOURCE_PATH
-  ARCHIVE ${ARCHIVE}
+vcpkg_from_pythonhosted(
+    OUT_SOURCE_PATH SOURCE_PATH
+    PACKAGE_NAME        PyQt6
+    VERSION         ${VERSION}
+    SHA512          1e0fec009e1823b06460fd96eddc00ed31388c20f6d832aa0ebaa130baf06d83514df43af7961c3cb2872570d27e539d6db7bf6143ccdfd61a19da7521be2c7e
 )
 
 # https://www.riverbankcomputing.com/static/Docs/PyQt6/installation.html
