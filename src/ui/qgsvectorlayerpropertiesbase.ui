@@ -21,7 +21,7 @@
   </property>
   <property name="windowIcon">
    <iconset resource="../../images/images.qrc">
-    <normaloff>:/images/icons/qgis-icon-16x16.png</normaloff>:/images/icons/qgis-icon-16x16.png</iconset>
+    <normaloff>:/images/icons/qgis-icon-16x16.svg</normaloff>:/images/icons/qgis-icon-16x16.svg</iconset>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_26">
    <item>
@@ -439,8 +439,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>653</width>
-                <height>679</height>
+                <width>274</width>
+                <height>462</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_9">
@@ -733,8 +733,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>653</width>
-                <height>679</height>
+                <width>100</width>
+                <height>30</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_18">
@@ -950,8 +950,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>653</width>
-                <height>679</height>
+                <width>116</width>
+                <height>102</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_23">
@@ -1345,8 +1345,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>653</width>
-                <height>679</height>
+                <width>100</width>
+                <height>30</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_21">
@@ -1547,8 +1547,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>689</width>
-                <height>665</height>
+                <width>613</width>
+                <height>455</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_32">
@@ -2106,8 +2106,8 @@
                <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>343</width>
-                <height>800</height>
+                <width>308</width>
+                <height>718</height>
                </rect>
               </property>
               <layout class="QVBoxLayout" name="verticalLayout_13">

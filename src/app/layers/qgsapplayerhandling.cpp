@@ -226,8 +226,40 @@ void QgsAppLayerHandling::postProcessAddedLayers( const QList<QgsMapLayer *> &la
   }
 }
 
-QList< QgsMapLayer * > QgsAppLayerHandling::addOgrVectorLayers( const QStringList &layers, const QString &encoding, const QString &dataSourceType, bool &ok, bool showWarningOnInvalid )
+QList< QgsMapLayer * > QgsAppLayerHandling::addOgrVectorLayers(
+  const QStringList &layers,
+  const QString &encoding,
+  const QString &dataSourceType,
+  bool &ok,
+  bool showWarningOnInvalid )
 {
+  /*
+  * 杨小兵-2024-03-18
+  * 添加OGR向量图层的方法：
+    1. **初始化和参数检查**：函数接受一个QStringList类型的图层列表，一个指定编码的QString，一个数据源类型的QString，一个布尔引用ok来标记操作是否成功，
+    以及一个用于控制是否在无效图层时显示警告的布尔值。函数开始时，首先设置`ok = false`，初始化一些局部变量，如用于添加的图层列表`layersToAdd`和已添加
+    图层列表`addedLayers`。
+    
+    2. **遍历图层URI处理**：对于每个图层URI，根据数据源类型（文件、数据库或其他）进行处理，尝试解析出基础名称`baseName`。这个基础名称可能会根据用户的设
+    置进行格式化。
+    
+    3. **查询子图层**：使用`QgsProviderRegistry`查询每个URI的子图层。过滤掉非向量子图层，只保留向量类型的子图层。
+    
+    4. **处理子图层添加逻辑**：根据查询到的子图层信息，决定是否询问用户添加哪些子图层。这个决定基于用户的设置、子图层的数量和类型。如果只有一个子图层且用
+    户设置为自动添加，或者在询问用户后，用户选择添加特定的子图层，这些子图层会被添加到`addedLayers`列表中。
+    
+    5. **错误处理和反馈**：如果URI代表的数据源无效，会根据`showWarningOnInvalid`参数决定是否显示警告消息。如果是由于数据源类型为`vsicurl`而失败，则会
+    询问用户是否尝试使用"File"数据源类型重试。
+    
+    6. **图层注册与后处理**：成功添加的图层会被注册到`QgsProject`中，并对每个添加的图层执行后处理操作，如设置编码和请求用户输入坐标系转换信息。
+    
+    7. **返回值和操作结果**：函数返回添加的图层列表。如果至少有一个图层被成功添加，或者在询问用户子图层时用户选择了取消（但没有错误发生），`ok`会被设置
+    为`true`。
+    此方法的应用场景主要是在QGIS项目中动态地添加OGR支持的向量图层，处理过程考虑了多种数据源类型和用户交互情况，体现了灵活性和健壮性。从计算机实现的角度看，
+  此方法利用了QGIS的图层管理和用户界面交互机制，通过条件判断、循环遍历和动态内存管理来实现功能，展现了现代C++编程的特点。
+
+
+  */
   //note: this method ONLY supports vector layers from the OGR provider!
   ok = false;
 
@@ -240,7 +272,53 @@ QList< QgsMapLayer * > QgsAppLayerHandling::addOgrVectorLayers( const QStringLis
 
   for ( const QString &layerUri : layers )
   {
+    /*
+    * 杨小兵-2024-03-18
+    一、解释
+      上述代码行中，`const QString uri = layerUri.trimmed();`的作用是创建一个新的常量字符串`uri`，它是`layerUri`去除前导和尾随空白（如空格、制表符、
+    换行符等）后的结果。
+    
+    二、详细解释如下：
+    - `layerUri`是一个`QString`类型的变量，它可能包含一个图层的URI（统一资源标识符），这个URI用于定位和访问数据。在GIS应用中，这些URI可能指向本地文件
+    路径、数据库连接或网络资源等。
+    - `trimmed()`是`QString`类的一个成员函数，它返回一个新的字符串，这个字符串是从原始字符串中移除了前导和尾随的空白字符后的结果。空白字符包括空格、制表
+    符、回车符等。注意，`trimmed()`函数不会修改原始字符串。
+    
+    三、为什么需要使用`trimmed()`：
+    1. **移除无意义的空白字符**：URI前后的空白字符在大多数情况下是无意义的，可能是由于不小心在输入时加入的，或者在复制粘贴过程中无意中包含进来的。这些空白
+    字符如果不被移除，可能会导致URI解析失败或者找不到相应的资源。
+    2. **提高鲁棒性**：在处理用户输入或外部数据时，总是存在格式不一致的可能性。通过`trimmed()`移除无关的空白字符，可以提高程序对输入数据的容错能力，确保即
+    便在不理想的输入条件下也能正常工作。
+    3. **统一数据格式**：在后续的处理过程中，统一的数据格式有助于减少错误和异常情况的发生。例如，如果后续的代码逻辑依赖于URI格式的一致性，去除前后的空白字
+    符可以确保所有URI在格式上的一致性。
+      综上，使用`trimmed()`是为了确保处理的URI格式正确、统一，并且提高了代码对于不规范输入的鲁棒性，是常见的字符串预处理步骤之一。
+    */
     const QString uri = layerUri.trimmed();
+    /*
+    * 杨小兵-2024-03-18
+    一、解释
+      这段代码的作用是基于输入的数据源类型（如文件、数据库、目录或协议）和数据源URI，确定并设置一个基础名称`baseName`，这个基础名称用于后续创建图层或者进
+    行其他相关操作。代码逻辑可以分为三部分：
+
+    1. **处理文件类型数据源**:
+       - 首先，创建一个`srcWithoutLayername`字符串，其值为`uri`的副本。这一步是为了处理可能包含在URI中的附加信息，如图层名称或其他参数。
+       - 使用`indexOf('|')`查找`'|'`字符在URI中的位置，这通常用于分隔文件路径和图层名称或其他参数。如果找到了`'|'`字符，就使用`resize(posPipe)`方法截
+       断字符串，移除管道符号（`'|'`）及其后的所有内容。这一步的目的是提取出纯粹的文件路径，无论是否附加了图层名或参数。
+       - 调用`QgsProviderUtils::suggestLayerNameFromFilePath(srcWithoutLayername)`根据处理后的文件路径建议一个图层名称，这个名称被赋值给`baseName`。
+       - 如果URI是指向ZIP或TAR文件中的图层（通过`vsiPrefix`检查得出），则会调用`askUserForZipItemLayers`函数询问用户是否要添加ZIP或TAR文件中的图层。如
+       果用户同意，当前迭代会通过`continue`跳过，继续处理下一个URI。
+    
+    2. **处理数据库类型数据源**:
+       - 调用`QgsProviderRegistry::instance()->decodeUri`方法解析URI，尝试从中提取数据库名称。如果成功提取到数据库名称，就使用这个名称作为`baseName`。
+       如果没有提取到有效的数据库名称，就直接使用URI作为`baseName`。这反映了从数据库类型的数据源中提取基础名称的逻辑，其中基础名称可能是数据库的名称或者在
+       无法确定数据库名称时使用URI。
+    
+    3. **处理目录或协议类型数据源**:
+       - 直接调用`QgsProviderUtils::suggestLayerNameFromFilePath(uri)`根据URI建议一个图层名称。这表明，如果数据源类型不是文件也不是数据库（可能是目录
+       或某种协议类型），则直接使用URI来建议一个图层名称。
+      总结而言，这段代码的核心目的是根据不同类型的数据源URI提取或生成一个适当的图层基础名称`baseName`。这个基础名称可能是基于文件路径、数据库名称、或者直接根
+    据URI生成的，依据于数据源的类型和特定的URI格式。这一处理过程对于确保图层名称的一致性和可识别性非常重要，尤其是在涉及多种数据源类型时。
+    */
     QString baseName;
     if ( dataSourceType == QLatin1String( "file" ) )
     {
@@ -1297,9 +1375,44 @@ QList< QgsMapLayer * > QgsAppLayerHandling::addDatabaseLayers( const QStringList
   return myList;
 }
 
+/*
+* 杨小兵-2024-02-24
+  这个函数是用于在一个地理信息系统(GIS)软件中添加一个图层的私有方法。它利用了模板编程来允许不同类型的图层被添加，如矢量图层、栅格图层等。
+该方法主要功能是根据提供的URI、名称、提供者键值和其他参数来创建并添加一个新的图层到项目中。接下来，我将详细解释这个函数的处理逻辑：
+
+1. **初始化设置与阻止画布刷新**：首先，函数通过创建一个`QgsSettings`对象来读取QGIS的配置，并使用`QgsCanvasRefreshBlocker`来阻止在添
+加图层时自动刷新画布，以提高性能。
+
+2. **格式化图层名称**：根据用户的设置决定是否格式化图层的名称。如果用户设置了`qgis/formatLayerName`为`true`，则会格式化名称。
+
+3. **处理认证需求**：通过正则表达式检查URI是否包含认证配置（例如，是否需要密码）。如果需要，且用户界面未被禁用，会提示用户输入密码。
+
+4. **解析URI**：使用`QgsProviderRegistry`的`decodeUri`方法来解析URI，并可能通过`QgsPathResolver`处理路径，以确保所有内置路径和本地
+化路径正确扩展。
+
+5. **查询子图层能力**：检查数据提供者是否支持查询子图层。这是为了处理那些能够包含多个子图层的数据源，例如，一个单一的文件可能包含多个矢量图层。
+
+6. **查询并处理子图层**：如果数据源支持子图层查询，函数会查询这些子图层，并根据类型过滤不匹配的子图层。如果有多个匹配的子图层，可能会根据用户
+的设置提示用户选择。
+
+7. **添加图层**：根据前面的步骤，可能会添加一个或多个子图层。如果不支持查询子图层，或者只有一个匹配的子图层，直接使用`QgsMapLayerFactory`
+创建并添加图层。在图层被成功创建后，会根据设置再次格式化图层名称，并将图层添加到项目中。
+
+8. **后处理**：对添加的图层进行一些后处理操作，如请求用户进行坐标系转换的确认，以及执行一些与添加的图层相关的后处理操作。
+
+9. **更新UI状态**：最后，根据当前活动图层更新用户界面的状态，激活或禁用与图层相关的操作。
+
+  整个过程体现了GIS软件在处理图层添加时的复杂性，包括对图层名称的格式化、对需要认证的数据源的处理、对包含多个子图层的数据源的支持以及与用户界面
+的交互。这个函数体现了软件工程中的一些常见模式，比如条件逻辑、资源管理（如使用阻止器模式管理画布刷新）和用户交互。
+
+二、总结
+1、这里使用QgsMapLayerFactory函数创建并且添加图层
+2、
+*/
 template<typename T>
 T *QgsAppLayerHandling::addLayerPrivate( QgsMapLayerType type, const QString &uri, const QString &name, const QString &providerKey, bool guiWarnings )
 {
+#pragma region "初始化设置与阻止画布刷新、格式化图层名称、处理认证需求、解析URI"
   QgsSettings settings;
 
   QgsCanvasRefreshBlocker refreshBlocker;
@@ -1326,11 +1439,14 @@ T *QgsAppLayerHandling::addLayerPrivate( QgsMapLayerType type, const QString &ur
   }
   // Not all providers implement decodeUri(), so use original uri if uriElements is empty
   const QString updatedUri = uriElements.isEmpty() ? uri : QgsProviderRegistry::instance()->encodeUri( providerKey, uriElements );
+#pragma endregion
 
+#pragma region "查询子图层能力、查询并处理子图层"
   const bool canQuerySublayers = QgsProviderRegistry::instance()->providerMetadata( providerKey ) &&
                                  ( QgsProviderRegistry::instance()->providerMetadata( providerKey )->capabilities() & QgsProviderMetadata::QuerySublayers );
 
   T *result = nullptr;
+  //  如果存在子图层，那么执行if中的处理逻辑，如果不存在子图层，则执行else中的处理逻辑
   if ( canQuerySublayers )
   {
     // query sublayers
@@ -1401,6 +1517,7 @@ T *QgsAppLayerHandling::addLayerPrivate( QgsMapLayerType type, const QString &ur
   {
     QgsMapLayerFactory::LayerOptions options( QgsProject::instance()->transformContext() );
     options.loadDefaultStyle = false;
+    //  创建图层
     result = qobject_cast< T * >( QgsMapLayerFactory::createLayer( uri, name, type, options, providerKey ) );
     if ( result )
     {
@@ -1410,6 +1527,7 @@ T *QgsAppLayerHandling::addLayerPrivate( QgsMapLayerType type, const QString &ur
         base = QgsMapLayer::formatLayerName( base );
       }
       result->setName( base );
+      //  添加图层
       QgsProject::instance()->addMapLayer( result );
 
       QgisApp::instance()->askUserForDatumTransform( result->crs(), QgsProject::instance()->crs(), result );
@@ -1417,8 +1535,13 @@ T *QgsAppLayerHandling::addLayerPrivate( QgsMapLayerType type, const QString &ur
     }
   }
 
+#pragma endregion
+
+#pragma region "更新UI状态"
   QgisApp::instance()->activateDeactivateLayerRelatedActions( QgisApp::instance()->activeLayer() );
   return result;
+#pragma endregion
+
 }
 
 const QList<QgsVectorLayerRef> QgsAppLayerHandling::findBrokenLayerDependencies( QgsVectorLayer *vl, QgsMapLayer::StyleCategories categories, QgsVectorLayerRef::MatchType matchType, DependencyFlags dependencyFlags )

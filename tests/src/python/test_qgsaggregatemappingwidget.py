@@ -12,7 +12,7 @@ __author__ = 'Nyall Dawson'
 __date__ = '03/06/2020'
 __copyright__ = 'Copyright 2020, The QGIS Project'
 # This will get replaced with a git SHA1 when you do a git archive
-__revision__ = '$Format:%H$'
+__revision__ = '252ad49ddcbc4a0dcfe9eb9381503de0fde9e0ed'
 
 from qgis.PyQt.Qt import Qt
 from qgis.PyQt.QtCore import (

@@ -1,0 +1,5 @@
+add_subdirectory(write_shp_data_into_gpkg)
+add_subdirectory(merge_process)
+add_subdirectory(get_shp_data_from_gpkg)
+add_subdirectory(annotation_pointer)
+add_subdirectory(convert_multi_datasrc2gjb)

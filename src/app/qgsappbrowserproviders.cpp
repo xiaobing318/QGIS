@@ -87,7 +87,9 @@ QgsQlrDataItem::QgsQlrDataItem( QgsDataItem *parent, const QString &name, const 
   : QgsLayerItem( parent, name, path, path, Qgis::BrowserLayerType::NoType, QStringLiteral( "qlr" ) )
 {
   setState( Qgis::BrowserItemState::Populated ); // no children
-  setIconName( QStringLiteral( ":/images/icons/qgis-icon-16x16.png" ) );
+  setIconName( QStringLiteral( ":/images/icons/qgis-icon-16x16.svg" ) );
+  //  杨小兵-2024-03-28：修改图标
+  //setIconName(QStringLiteral(":/images/icons/qgis-icon-16x16.png"));
   setToolTip( QDir::toNativeSeparators( path ) );
   mCapabilities |= Qgis::BrowserItemCapability::ItemRepresentsFile;
 }

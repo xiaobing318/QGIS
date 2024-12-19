@@ -10,7 +10,7 @@ __author__ = 'Nyall Dawson'
 __date__ = '07/08/2020'
 __copyright__ = 'Copyright 2019, The QGIS Project'
 # This will get replaced with a git SHA1 when you do a git archive
-__revision__ = '$Format:%H$'
+__revision__ = '252ad49ddcbc4a0dcfe9eb9381503de0fde9e0ed'
 
 import os
 import shutil

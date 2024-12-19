@@ -61,7 +61,7 @@ class Topol: public QObject, public QgisPlugin
 
     //////////////////////////////////////////////////////////////////////
     //
-    //                MANDATORY PLUGIN METHODS FOLLOW
+    //                MANDATORY PLUGIN METHODS FOLLOW(杨小兵2024-02-23：强制插件方法如下)
     //
     //////////////////////////////////////////////////////////////////////
 

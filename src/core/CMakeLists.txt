@@ -1,6 +1,63 @@
 ############################################################
 # sources
+#[[
+杨小兵-2024-03-04
+  这段代码是在CMake配置文件中使用的，它使用Bison和Flex工具自动生成解析器(parser)和词法分析器(lexer)的代码（1、使用Bison自动生成解析器代码；
+2、使用Flex工具自动生成分析器的代码）。
 
+### 应用场景
+  在编程中，尤其是在处理编译器、解释器或复杂的文本分析任务时，经常需要将输入文本（如代码或查询语句）转换为可操作的内部表示形式。这个转换过程
+通常涉及两个主要步骤：词法分析和语法分析。词法分析器(lexer)负责将输入文本分解成一系列标记(tokens)，而语法分析器(parser)则根据这些标记构建抽
+象语法树（AST），这是进一步处理的基础。
+
+### 数学角度
+  从数学的角度来看，这个过程可以被视为一种形式语言的解析，其中词法分析相当于识别语言的字母表中的符号，而语法分析则是根据这些符号的组合规则
+（即语法）构建表达式或句子。这个过程类似于使用形式文法（如上下文无关文法）描述和生成语言的元素。
+
+### 计算机实现
+#### Bison和Flex的使用
+- **Bison** 是一个用于生成语法分析器的工具，它读取包含语法规则的描述文件（以`.yy`或`.y`为扩展名），并生成一个解析输入文本的C或C++代码。
+- **Flex** 是一个生成词法分析器的工具，它读取包含词法规则的描述文件（以`.ll`或`.l`为扩展名），并生成用于识别标记的C或C++代码。
+
+#### CMake指令详解
+- **BISON_TARGET**: 定义了一个Bison目标，用于生成语法分析器的源代码。例如，`QgsExpressionParser`是目标名，`qgsexpressionparser.yy`
+是Bison的输入文件，生成的源代码将是`qgsexpressionparser.cpp`。
+- **FLEX_TARGET**: 定义了一个Flex目标，用于生成词法分析器的源代码。如`QgsExpressionLexer`是目标名，`qgsexpressionlexer.ll`是Flex的
+输入文件，生成的源代码将是`qgsexpressionlexer.cpp`。
+- **ADD_FLEX_BISON_DEPENDENCY**: 建立Flex和Bison生成的目标之间的依赖关系，确保在构建过程中词法分析器和语法分析器的源代码能够以正确的顺序生成。
+
+  这些指令在CMake配置中用于自动化地生成处理不同种类的输入文本所需的解析器和词法分析器代码。例如，`QgsExpressionParser`和`QgsExpressionLexer`
+用于解析和词法分析表达式，而`QgsSqlStatementParser`和`QgsSqlStatementLexer`用于SQL语句，`QgsMeshCalcParser`和`QgsMeshCalcLexer`则可能用于
+某种特定于应用程序的网格计算语言。通过指定不同的编译标志（`COMPILE_FLAGS`），可以为每个解析器和词法分析器定制前缀，以避免命名冲突。
+
+二、为什么使用Bison和Flex？
+1. 在QGIS 3.28.15项目的编译过程中，词法分析和语法分析的需求主要源于QGIS内部的特定功能，如表达式解析、SQL语句解析、或其他专门的文本解析需求
+（也就是说是QGIS内部自定义了一些功能，这些功能是需要定制化的实现，编译器中的词法分析和语法分析只能满足编译过程中的需求，并不能满足QGIS内部的
+特定功能）。QGIS是一个复杂的地理信息系统软件，它允许用户通过表达式、SQL语句等方式进行数据查询、过滤和计算。这些功能需要将用户输入的文本（如表达
+式或SQL查询）转换为软件能够理解和操作的内部表示形式。词法分析器和语法分析器在这里用于解析这些复杂文本，生成抽象语法树（AST），AST随后可用于进一
+步的计算或数据检索操作。这是确保QGIS能够正确理解和执行用户命令的关键步骤。
+
+2. 您的理解是正确的：当编译QGIS项目（或任何C++项目）时，MSVC（Microsoft Visual C++）编译器或其他编译器确实会对项目代码进行词法分析和语法分
+析，以将C++代码转换为机器代码。这是编译任何程序的标准过程，确保代码符合C++的语法规则，并且可以被转换成可执行的程序。
+
+  然而，Bison和Flex的使用与编译QGIS的C++代码本身是分开的。这两个工具用于生成QGIS内部使用的特定功能的解析器和词法分析器代码，而不是用于编译QGIS
+的C++代码本身。当QGIS运行时，这些自动生成的解析器和词法分析器代码用于解析如表达式和SQL查询等用户输入，这是QGIS软件功能的一部分。简而言之，MSVC编
+译器负责将QGIS的源代码编译成可执行文件，而Bison和Flex生成的代码则是QGIS软件内部的一部分，用于运行时解析用户输入。这两个过程虽然都涉及“解析”，但目
+的和上下文完全不同。Bison和Flex在这里的使用是为了增强QGIS的功能，使其能够理解和处理复杂的用户输入，而这些是MSVC编译器在编译时不会也无法处理的任务。
+
+问题：“在QGIS 3.28.15项目的编译过程中，词法分析和语法分析的需求主要源于QGIS内部的特定功能，如表达式解析、SQL语句解析、或其他专门的文本解析需求” 
+也就是说是QGIS内部自定义了一些功能，这些功能是需要定制化的实现，编译器中的词法分析和语法分析只能满足编译过程中的需求，并不能满足QGIS内部的特定功能，
+我的这个理解是否正确？
+  是的，您的理解是正确的。QGIS内部自定义的功能，如表达式解析、SQL语句解析等，确实需要定制化的实现。这些功能的实现涉及到解析用户输入的文本，这种文
+本解析通常比编译器在编译过程中执行的标准词法分析和语法分析更为复杂和特定。
+  编译器中的词法分析和语法分析是为了将源代码转换为机器代码的过程中，确保源代码符合编程语言的语法规则。这个过程是通用的，针对的是编程语言本身的语法，
+如C++、Java等。
+  而QGIS内部的特定功能，如表达式解析器和SQL语句解析器，则需要理解和转换QGIS特定的语法或者用户定义的语法，这些语法是为了在QGIS环境中执行特定的地理
+信息系统操作或查询而设计的。这种解析过程是特定于应用程序的，需要开发者使用工具如Bison和Flex来创建能够解析这些特定语法的词法分析器和语法分析器。
+  因此，虽然编译器的词法分析和语法分析对于将QGIS源代码转换为可执行代码是必要的，但它们并不能直接用于QGIS内部需要的特定文本解析任务。这些任务需要通
+过定制化的词法分析器和语法分析器来实现，这就是为什么在QGIS项目中使用Bison和Flex这样的工具来生成这些解析器的代码。
+
+]]
 BISON_TARGET(QgsExpressionParser   qgsexpressionparser.yy   ${CMAKE_CURRENT_BINARY_DIR}/qgsexpressionparser.cpp COMPILE_FLAGS "-p exp_")
 FLEX_TARGET(QgsExpressionLexer qgsexpressionlexer.ll ${CMAKE_CURRENT_BINARY_DIR}/qgsexpressionlexer.cpp)
 ADD_FLEX_BISON_DEPENDENCY(QgsExpressionLexer QgsExpressionParser)
@@ -11,6 +68,10 @@ BISON_TARGET(QgsMeshCalcParser mesh/qgsmeshcalcparser.yy ${CMAKE_CURRENT_BINARY_
 FLEX_TARGET(QgsMeshCalcLexer mesh/qgsmeshcalclexer.ll ${CMAKE_CURRENT_BINARY_DIR}/qgsmeshcalclexer.cpp)
 ADD_FLEX_BISON_DEPENDENCY(QgsMeshCalcLexer QgsMeshCalcParser)
 
+#[[
+杨小兵-2024-03-04
+将多个*.cpp文件添加到QGIS_CORE_SRCS变量中，在后面将会使用到
+]]
 set(QGIS_CORE_SRCS
   ${CMAKE_SOURCE_DIR}/external/kdbush/include/kdbush.hpp
 
@@ -903,6 +964,10 @@ set(QGIS_CORE_SRCS
 
 )
 
+#[[
+杨小兵-2024-03-04
+  如果定义了WITH_INTERNAL_POLY2TRI宏，那么将多个*.cpp文件再次添加到QGIS_CORE_SRCS变量中，并且设置一些头文件的搜索路径。
+]]
 if (WITH_INTERNAL_POLY2TRI)
   set(QGIS_CORE_SRCS ${QGIS_CORE_SRCS}
     ${CMAKE_SOURCE_DIR}/external/poly2tri/common/shapes.cc
@@ -916,6 +981,40 @@ else ()
   include_directories(${Poly2Tri_INCLUDE_DIR})
 endif ()
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  这段CMake脚本涉及到一系列操作，主要目的是处理QGIS项目中的函数帮助文件，并生成一个特定的C++源文件。下面逐步解释这些命令的作用：
+
+1. **`file(GLOB JSON_HELP_FILES "${CMAKE_SOURCE_DIR}/resources/function_help/json/*")`**：
+   - 这个命令使用GLOB模式收集`${CMAKE_SOURCE_DIR}/resources/function_help/json/`目录下的所有文件路径，并将这些路径存储在变量
+   `JSON_HELP_FILES`中。这里主要是收集JSON格式的帮助文件，这些文件可能用于定义QGIS中各种函数的帮助文档。
+
+2. **条件判断和字符串替换**:
+   - `if(CMAKE_VERSION VERSION_LESS "3.18" AND NOT USING_NINJA)`检查CMake的版本是否低于3.18，并且构建系统不是Ninja。如果条
+   件为真，执行内部的字符串替换命令。
+   - `string(REPLACE "$" "$$" JSON_HELP_FILES "${JSON_HELP_FILES}")`是为了在较早版本的CMake中处理路径字符串时避免由于`$`符
+   号引起的问题，通过将`$`替换为`$$`来解决。
+   - 接下来的两行`string(REPLACE "\(" "\\(" JSON_HELP_FILES "${JSON_HELP_FILES}")`和`string(REPLACE "\)" "\\)" JSON_HELP_FILES 
+   "${JSON_HELP_FILES}")`将路径字符串中的括号`(`和`)`转义，因为在某些上下文中，这些字符可能会被错误地解析。
+
+3. **`add_custom_command`**:
+   - 这个命令定义了一个自定义的构建命令，它指示CMake在构建过程中执行一系列指定的命令，以生成输出文件`${CMAKE_CURRENT_BINARY_DIR}/qgsexpression_texts.cpp`。
+   - `COMMAND ${Python_EXECUTABLE} ${CMAKE_SOURCE_DIR}/scripts/process_function_template.py ${CMAKE_CURRENT_BINARY_DIR}/
+   qgsexpression_texts.cpp.temp`：这一步调用Python脚本`process_function_template.py`，以处理函数模板，并生成一个临时文件。这个脚本
+   可能会读取JSON帮助文件，并根据这些文件的内容生成C++源代码。
+   - `COMMAND ${CMAKE_COMMAND} -DSRC=${CMAKE_CURRENT_BINARY_DIR}/qgsexpression_texts.cpp.temp -DDST=${CMAKE_CURRENT_BINARY_DIR}
+   /qgsexpression_texts.cpp -P ${CMAKE_SOURCE_DIR}/cmake/CopyIfChanged.cmake`：这一步调用CMake命令执行`CopyIfChanged.cmake`脚本，
+   这个脚本可能会检查临时文件是否有更新，如果有，则将其复制到最终的目标文件位置，这样可以避免不必要的重新编译。
+   - `DEPENDS ${JSON_HELP_FILES}`：指定这个自定义命令依赖于前面通过GLOB收集的JSON帮助文件。这意味着如果这些帮助文件被修改，上述命令将被
+   重新执行以更新输出文件。
+   - `WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}`：设置工作目录为`${CMAKE_SOURCE_DIR}`，确保上述命令在正确的目录下执行。
+
+  总结来说，这段CMake脚本的作用是自动处理QGIS函数的帮助文件，通过一个Python脚本将这些帮助文件转换为C++代码，然后将生成的代码保存到项目的构建目录中。这个过程通过自动化地处理和更新帮助文档内容，简化了QGIS开发和维护过程。
+二、总结
+1、用来自动处理QGIS函数的帮助文档
+2、这部分内容现在可以不用关心
+]]
 file(GLOB JSON_HELP_FILES "${CMAKE_SOURCE_DIR}/resources/function_help/json/*")
 if(CMAKE_VERSION VERSION_LESS "3.18" AND NOT USING_NINJA)
   string(REPLACE "$" "$$" JSON_HELP_FILES "${JSON_HELP_FILES}")
@@ -929,6 +1028,11 @@ add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/qgsexpression_texts.cpp
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
 )
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果设置了ENABLE_MODELTEST标志，那么将会设置一个变量，这个变量中存储的是测试相关的代码文件
+]]
 if(ENABLE_MODELTEST)
   set(MODELTEST_SRCS
     ../../tests/qt_modeltest/modeltest.cpp
@@ -939,17 +1043,35 @@ if(ENABLE_MODELTEST)
   )
 endif()
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果编译器是Clang编译器，那么需要对一个cpp文件进行特殊处理
+]]
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   # spatialindex headers produce warnings
   set_source_files_properties(qgsspatialindex.cpp PROPERTIES COMPILE_FLAGS -Wno-overloaded-virtual)
 endif()
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果${QT_VERSION_BASE}Positioning_FOUND变量存在，那么将一个新的cpp文件添加到QGIS_CORE_SRCS变量中
+]]
 if (${QT_VERSION_BASE}Positioning_FOUND)
   set(QGIS_CORE_SRCS ${QGIS_CORE_SRCS}
     gps/qgsqtlocationconnection.cpp
   )
 endif()
 
+
+#[[
+杨小兵-2024-03-04
+一、解释
+1、如果不是MSVC编译器，将对一些文件进行属性的配置
+2、如果是MSVC编译器，将会都一些文件进行属性的配置
+3、根据不同的编译器采用不同的属性配置设置
+]]
 if(NOT MSVC)
   set_source_files_properties(
     ${FLEX_QgsExpressionLexer_OUTPUTS}
@@ -977,6 +1099,12 @@ else()
     PROPERTIES COMPILE_FLAGS /W0)
 endif()
 
+
+#[[
+杨小兵-2024-03-04
+一、解释
+  设置QGIS_CORE_HDRS变量，其中包含qgis_core项目需要的头文件
+]]
 set(QGIS_CORE_HDRS
   ${CMAKE_SOURCE_DIR}/external/nlohmann/json_fwd.hpp
 
@@ -1891,6 +2019,11 @@ set(QGIS_CORE_HDRS
   vectortile/qgsvtpktiles.h
 )
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  设置QGIS_CORE_PRIVATE_HDRS变量，其中包含qgis_core项目需要的私有头文件（只有qgis_core需要的头文件）
+]]
 set(QGIS_CORE_PRIVATE_HDRS
   qgsexpressionsorter_p.h
   qgsfeature_p.h
@@ -1921,12 +2054,22 @@ set(QGIS_CORE_PRIVATE_HDRS
   textrenderer/qgstextrenderer_p.h
 )
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果没有设置WITH_QTWEBKIT变量，那么需要向QGIS_CORE_HDRS添加一个额外的头文件
+]]
 if (NOT WITH_QTWEBKIT)
   set(QGIS_CORE_HDRS ${QGIS_CORE_HDRS}
     qgswebframe.h
   )
 endif()
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果设置${QT_VERSION_BASE}Positioning_FOUND变量，那么需要向QGIS_CORE_HDRS添加一个额外的头文件
+]]
 if (${QT_VERSION_BASE}Positioning_FOUND)
   set(QGIS_CORE_HDRS ${QGIS_CORE_HDRS}
     gps/qgsqtlocationconnection.h
@@ -1934,12 +2077,22 @@ if (${QT_VERSION_BASE}Positioning_FOUND)
 endif()
 
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果设置HAVE_OPENCL变量，那么需要向QGIS_CORE_HDRS添加一个额外的头文件
+]]
 if (HAVE_OPENCL)
     set(QGIS_CORE_HDRS ${QGIS_CORE_HDRS}
         qgsopenclutils.h
     )
 endif()
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果设置了MSVC变量，那么需要向特定的文件添加文件属性，如果没有设置MSVC则需要向其他一些文件设置属性
+]]
 if(MSVC)
   set_source_files_properties(
       ${CMAKE_CURRENT_BINARY_DIR}/qgsexpression_texts.cpp
@@ -1953,6 +2106,16 @@ else()
   endif()
 endif()
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  需要使用protoc工具生成头文件，这个头文件用来支持vector tiles的MVT编码
+
+二、总结
+1、protoc是一个工具
+2、protoc这个工具可以用来生成头文件
+3、protoc这个工具的输入是.proto文件，输出是.hpp文件
+]]
 # Generate cpp+header file from .proto file using "protoc" tool (to support MVT encoding of vector tiles)
 protobuf_generate_cpp(VECTOR_TILE_PROTO_SRCS VECTOR_TILE_PROTO_HDRS vectortile/vector_tile.proto)
 set(QGIS_CORE_SRCS ${QGIS_CORE_SRCS} ${VECTOR_TILE_PROTO_SRCS})
@@ -1962,10 +2125,15 @@ if (NOT MSVC)
   set_source_files_properties(${VECTOR_TILE_PROTO_SRCS} PROPERTIES COMPILE_FLAGS -w)
 endif()
 
+
+#[[
+杨小兵-2024-03-04
+一、解释
+  安装头文件，用来支持OS X的框架目标
+]]
 # install headers
 # install qgsconfig.h and plugin.h here so they can get into
 # the OS X framework target
-
 if (${QT_VERSION_BASE}Positioning_FOUND)
   set(QGIS_CORE_HDRS ${QGIS_CORE_HDRS}
     gps/qgsqtlocationconnection.h
@@ -1973,6 +2141,11 @@ if (${QT_VERSION_BASE}Positioning_FOUND)
   )
 endif()
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果设置了标志，则添加头文件的搜索路径
+]]
 if (WITH_PDAL)
   include_directories(SYSTEM
     ${PDAL_INCLUDE_DIR}
@@ -1982,6 +2155,11 @@ if (WITH_PDAL)
   endif()
 endif()
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果设置了标志，则添加头文件的搜索路径
+]]
 if (HAVE_OPENCL)
     set(QGIS_CORE_SRCS ${QGIS_CORE_SRCS}
         qgsopenclutils.cpp
@@ -1992,6 +2170,12 @@ if (HAVE_OPENCL)
     include_directories(SYSTEM ${OpenCL_INCLUDE_DIRS})
 endif()
 
+
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果设置了标志，则添加头文件的搜索路径
+]]
 if (WITH_EPT)
   include_directories(providers/ept)
 
@@ -2015,6 +2199,11 @@ if (WITH_EPT)
   add_definitions( -DWITH_EPT )
 endif()
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果设置了标志，则添加头文件的搜索路径
+]]
 if (WITH_COPC)
   include_directories(providers/copc)
 
@@ -2034,6 +2223,11 @@ if (WITH_COPC)
   add_definitions( -DWITH_COPC )
 endif()
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果设置了标志，则添加头文件的搜索路径
+]]
 if (WITH_EPT OR WITH_COPC)
   if (LazPerf_FOUND)
   # Use system laz-perf
@@ -2075,6 +2269,11 @@ if (WITH_EPT OR WITH_COPC)
   )
 endif()
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果设置了标志，则添加头文件的搜索路径
+]]
 if (APPLE)
   # Libtasn1 is for DER-encoded PKI ASN.1 parsing/extracting workarounds
   include_directories(SYSTEM
@@ -2083,6 +2282,11 @@ if (APPLE)
 endif()
 
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果设置了标志，则设置文件的预处理器选项
+]]
 #for PAL classes
 if (WIN32)
     add_definitions(-D_HAVE_WINDOWS_H_)
@@ -2095,7 +2299,32 @@ add_definitions(-DTEST_DATA_DIR="${TEST_DATA_DIR}")
 
 set(IMAGE_RCCS ../../images/images.qrc)
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 #############################################################
+#[[
+杨小兵-2024-03-04
+一、解释
+  前面的内容设置了*.cpp文件和*.h文件，通过不同的操作系统平台、编译器设置一些特定文件的属性，基本上就是包含了.cpp文件和.hpp文件，现在
+将会构建qgis_core库
+]]
 # qgis_core library
 include_directories(${CMAKE_CURRENT_BINARY_DIR})
 
@@ -2105,6 +2334,11 @@ add_library(qgis_core ${LIBRARY_TYPE} ${QGIS_CORE_SRCS} ${QGIS_CORE_HDRS} ${QGIS
 # require c++17
 target_compile_features(qgis_core PRIVATE cxx_std_17)
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  根据不同的编译器设置qgis_core动态链接库的一些编译选项
+]]
 # Exiv still uses std::auto_ptr
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   target_compile_definitions(qgis_core PUBLIC _LIBCPP_ENABLE_CXX17_REMOVED_AUTO_PTR)
@@ -2113,6 +2347,12 @@ if (MSVC)
   target_compile_definitions(qgis_core PUBLIC _HAS_AUTO_PTR_ETC=1)
 endif()
 
+
+#[[
+杨小兵-2024-03-04
+一、解释
+  为qgis_core添加一些头文件的搜索路径
+]]
 target_include_directories(qgis_core SYSTEM PUBLIC
   ${${QT_VERSION_BASE}Core_INCLUDE_DIRS}
   ${${QT_VERSION_BASE}Gui_INCLUDE_DIRS}
@@ -2138,12 +2378,23 @@ target_include_directories(qgis_core SYSTEM PUBLIC
   ${EXIV2_INCLUDE_DIR}
 )
 
+
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果设置了标志，那么将会包含头文件的搜索路径
+]]
 if (WITH_SPATIALITE)
   target_include_directories(qgis_core SYSTEM PUBLIC
     ${SPATIALITE_INCLUDE_DIR}
   )
 endif()
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果设置了标志，那么将会包含头文件的搜索路径
+]]
 target_include_directories(qgis_core PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_BINARY_DIR}
@@ -2206,37 +2457,78 @@ target_include_directories(qgis_core PUBLIC
   ${CMAKE_SOURCE_DIR}/external/meshOptimizer
 )
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果设置了标志，那么将会包含头文件的搜索路径
+]]
 if (WITH_EPT)
   target_include_directories(qgis_core PUBLIC
     ${CMAKE_SOURCE_DIR}/src/core/providers/ept)
 endif()
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果设置了标志，那么将会包含头文件的搜索路径
+]]
 if (WITH_COPC)
   target_include_directories(qgis_core PUBLIC
     ${CMAKE_SOURCE_DIR}/src/core/providers/copc)
 endif()
 
+
+#[[
+杨小兵-2024-03-04
+一、解释
+  生成qgis_core动态链接库（一般是动态链接库）的导出头文件
+]]
 GENERATE_EXPORT_HEADER(
   qgis_core
   BASE_NAME CORE
   EXPORT_FILE_NAME qgis_core.h
 )
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  添加头文件
+]]
 set(QGIS_CORE_HDRS ${QGIS_CORE_HDRS} ${CMAKE_CURRENT_BINARY_DIR}/qgis_core.h)
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  添加第三方库的测试库
+]]
 if(ENABLE_MODELTEST)
   target_link_libraries(qgis_core ${QT_VERSION_BASE}::Test)
 endif()
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果没有设置标志，则添加第三方库
+]]
 if (NOT WITH_INTERNAL_POLY2TRI)
    target_link_libraries(qgis_core ${Poly2Tri_LIBRARY})
 endif()
 
+
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果设置了标志，则添加第三方库
+]]
 if(HAVE_OPENCL)
   target_link_libraries(qgis_core ${OpenCL_LIBRARY})
 endif()
 
-
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果没有设置APPLE或者没有设置QGIS_MACAPP_FRAMEWORK标志，则将QGIS_CORE_HDRS头文件输出到构建目录中
+]]
 if(NOT APPLE OR NOT QGIS_MACAPP_FRAMEWORK)
   install(FILES ${QGIS_CORE_HDRS} DESTINATION ${QGIS_INCLUDE_DIR})
 else()
@@ -2262,6 +2554,12 @@ else()
   )
 endif()
 
+
+#[[
+杨小兵-2024-03-04
+一、解释
+  设置android的版本信息
+]]
 #generate unversioned libs for android
 if (NOT ANDROID)
   set_target_properties(qgis_core PROPERTIES
@@ -2270,9 +2568,21 @@ if (NOT ANDROID)
     )
 endif()
 
+
+#[[
+杨小兵-2024-03-04
+一、解释
+  确保version库是存在的
+]]
 # make sure to create qgsversion.h before compiling
 add_dependencies(qgis_core version)
 
+
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果设置了WIN32则需要找到一些底层的库文件
+]]
 # because of htonl
 if (WIN32)
   find_library(SETUPAPI_LIBRARY NAMES setupapi PATHS $ENV{LIB})
@@ -2284,6 +2594,12 @@ if (APPLE)
   target_link_libraries(qgis_core ${LIBTASN1_LIBRARY})
 endif()
 
+
+#[[
+杨小兵-2024-03-04
+一、解释
+  qgis_core将会依赖QT中的一些库，例如Core、Gui等等
+]]
 target_link_libraries(qgis_core
   ${QT_VERSION_BASE}::Core
   ${QT_VERSION_BASE}::Gui
@@ -2307,36 +2623,73 @@ target_link_libraries(qgis_core
   ${ZLIB_LIBRARIES}
   ${EXIV2_LIBRARY}
 )
+
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果不是IOS平台，还需要链接QT中的第三方库
+]]
 if (NOT IOS)
   target_link_libraries(qgis_core ${QT_VERSION_BASE}::PrintSupport)
 endif()
 
+
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果标志存在，还需要链接第三方库
+]]
 if (WITH_SPATIALITE)
   target_link_libraries(qgis_core ${SPATIALITE_LIBRARY})
 endif()
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果标志存在，还需要链接第三方库
+]]
 if (BUILD_WITH_QT6)
   target_link_libraries(qgis_core Qt6::Core5Compat)
 endif()
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果标志存在，还需要链接第三方库
+]]
 if (WITH_EPT)
   target_link_libraries(qgis_core
     ${ZSTD_LIBRARY}
   )
 endif()
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果标志存在，还需要链接第三方库
+]]
 if (WITH_EPT OR WITH_COPC)
   if (LazPerf_FOUND)
     target_link_libraries(qgis_core ${LazPerf_LIBRARY})
   endif()
 endif()
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果标志存在，还需要链接第三方库
+]]
 if (WITH_PDAL)
   target_link_libraries(qgis_core
     ${PDAL_LIBRARIES}
   )
 endif()
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果标志存在，还需要链接第三方库
+]]
 if (FORCE_STATIC_LIBS)
   target_link_libraries(qgis_core
     provider_wms_a
@@ -2345,6 +2698,8 @@ if (FORCE_STATIC_LIBS)
     provider_arcgisfeatureserver_a
     provider_arcgismapserver_a
   )
+
+  
   if (HAVE_SPATIALITE)
     target_link_libraries(qgis_core
       provider_spatialite_a
@@ -2372,25 +2727,54 @@ if (FORCE_STATIC_LIBS)
   endif()
 endif()
 
+  
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果是MSVC编译器，还需要链接odbc32 odbccp32，因为gdal将会需要odbc库
+]]
 if (MSVC)
   #needed for linking to gdal which needs odbc
   set(TARGET_LINK_LIBRARIES qgis_core odbc32 odbccp32)
 endif()
 
+
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果标志存在，还需要链接第三方库
+]]
 if (${QT_VERSION_BASE}SerialPort_FOUND)
   target_link_libraries(qgis_core
     ${QT_VERSION_BASE}::SerialPort
   )
 endif()
 
+
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果标志存在，还需要链接第三方库
+]]
 if (${QT_VERSION_BASE}Positioning_FOUND)
   target_link_libraries(qgis_core
     ${QT_VERSION_BASE}::Positioning
   )
 endif()
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  为qgis_core添加预处理器选项
+]]
 target_compile_definitions(qgis_core PRIVATE "-DQT_NO_FOREACH")
 
+
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果CLANG_TIDY_EXE工具存在，需要使用CLANG_TIDY_EXE这个工具设置qgis_core的属性，用来检查代码
+]]
 # clang-tidy
 if(CLANG_TIDY_EXE)
   set_target_properties(
@@ -2399,8 +2783,13 @@ if(CLANG_TIDY_EXE)
   )
 endif()
 
-# install
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  设置这个库的安装位置
+]]
+# install
 install(TARGETS qgis_core
   RUNTIME DESTINATION ${QGIS_BIN_DIR}
   LIBRARY DESTINATION ${QGIS_LIB_DIR}
@@ -2408,8 +2797,12 @@ install(TARGETS qgis_core
   FRAMEWORK DESTINATION ${QGIS_FW_SUBDIR}
   PUBLIC_HEADER DESTINATION ${QGIS_INCLUDE_DIR})
 
+#[[
+杨小兵-2024-03-04
+一、解释
+  如果标志存在，则需要设置安装位置
+]]
 # Mac dev frameworks
-
 if (APPLE AND QGIS_MACAPP_INSTALL_DEV)
   install(TARGETS qgis_core FRAMEWORK DESTINATION ${QGIS_MACAPP_DEV_PREFIX})
   install(CODE "execute_process(COMMAND install_name_tool -id \"${QGIS_MACAPP_DEV_PREFIX}/qgis_core.framework/Versions/${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}/qgis_core\" \"$ENV{DESTDIR}${QGIS_MACAPP_DEV_PREFIX}/qgis_core.framework/qgis_core\")")

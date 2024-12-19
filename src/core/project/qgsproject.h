@@ -1241,7 +1241,33 @@ class CORE_EXPORT QgsProject : public QObject, public QgsExpressionContextGenera
     QList<QgsMapLayer *> addMapLayers( const QList<QgsMapLayer *> &mapLayers SIP_TRANSFER,
                                        bool addToLegend = true,
                                        bool takeOwnership SIP_PYARGREMOVE = true );
-
+    /*
+    * 杨小兵-2024-02-24
+      这段注释描述了`addMapLayer`函数的用途、参数、返回值以及一些特别注意事项。下面我将根据注释内容进行详细解释：
+    
+    ### 函数用途
+    - `addMapLayer`函数的目的是将一个图层添加到已加载图层的地图中。这个函数在图层成功添加到地图后，会触发几个信号，包括`layersAdded()`和
+    `layerWasAdded()`。如果`addToLegend`参数被设置为`TRUE`，还会触发`legendLayersAdded()`信号。
+    
+    ### 参数
+    - **mapLayer**: 这是要添加到注册表中的图层。它是一个`QgsMapLayer`对象的指针。
+    - **addToLegend**: 这是一个布尔值，默认为`TRUE`。如果设置为`TRUE`，则该图层会被添加到图例和主画布中。如果你有一个私有图层，不希望它显
+    示在图例中，可以将此参数设置为`FALSE`。
+    - **takeOwnership**: 这也是一个布尔值，默认为`TRUE`。如果设置为`TRUE`，则图层注册表将接管图层的所有权，这意味着你不需要手动删除这个图层；
+    否则，你需要自己负责删除它。需要注意的是，在Python绑定中不可用，注册表将始终接管所有权。
+    
+    ### 返回值
+    - 函数返回一个指向新添加图层的指针。如果无法添加图层，则返回`NULLPTR`。
+    
+    ### 注意事项
+    - 作为一个副作用，`QgsProject`会被标记为已修改（dirty），这意味着项目状态已更改，可能需要保存。
+    - 如果一次添加多个图层，建议使用`addMapLayers()`函数，以优化性能和用户体验。
+    - 在Python绑定中，`takeOwnership`参数不可用，因为图层注册表将始终接管图层的所有权。
+    
+      通过这个函数，用户可以将单个图层添加到QGIS项目中，并根据需要控制其是否出现在图例中。此外，函数的设计也考虑到了资源管理和用户体验，提供了
+    批量添加图层的建议以及自动管理图层生命周期的机制。
+    
+    */
     /**
      * \brief
      * Add a layer to the map of loaded layers.

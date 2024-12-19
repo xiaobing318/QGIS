@@ -45,6 +45,28 @@ class QgsMessageBar;
  * \note not available in Python bindings
  * \since QGIS 3.0
  */
+/*
+* 杨小兵-2024-02-22
+  - **`Ui::QgsDataSourceManagerDialog`**：这是一个由Qt Designer生成的界面类，定义了
+对话框的布局和界面元素，如按钮、列表框等。这个类通常在Qt Designer的UI文件中定义，并通
+过uic（UI编译器）工具自动生成C++代码。
+  - **`QgsDataSourceManagerDialog`**：这是一个实际的对话框类，用于实现数据源管理的逻辑
+和功能。它使用`Ui::QgsDataSourceManagerDialog`来定义其界面，但包含了额外的逻辑，如信号
+和槽的连接、用户交互的处理等。
+
+- **`QgsBrowserGuiModel *browserModel`**：指向一个浏览器模型的指针，这个模型用于管理和
+展示QGIS中可用的数据源。这允许`QgsDataSourceManagerDialog`展示和操作这些数据源。
+
+- **`QWidget *parent = nullptr`**：指向父窗口的指针。这个参数用于设置对话框的父窗口，有
+助于Qt管理窗口的层次关系和事件传递。默认为`nullptr`，意味着对话框没有父窗口。
+
+- **`QgsMapCanvas *canvas = nullptr`**：指向地图画布的指针。地图画布是QGIS中用于展示地
+图的组件。这个参数允许`QgsDataSourceManagerDialog`在需要时与地图画布交互，例如添加图层到
+画布上。默认为`nullptr`。
+
+- **`Qt::WindowFlags fl = Qt::Window`**：窗口标志，用于控制对话框的外观和行为。`Qt::Window`
+是一个默认值，表示对话框是一个顶级窗口。这个参数可以用于设置对话框为模态、无边框等不同的窗口类型。
+*/
 class GUI_EXPORT QgsDataSourceManagerDialog : public QgsOptionsDialogBase, private Ui::QgsDataSourceManagerDialog
 {
     Q_OBJECT
@@ -115,7 +137,25 @@ class GUI_EXPORT QgsDataSourceManagerDialog : public QgsOptionsDialogBase, priva
     void showEvent( QShowEvent *event ) override;
 
   signals:
+    /*
+    * 杨小兵-2024-02-22
+    一、解释
+      这些代码片段定义了`QgsDataSourceManagerDialog`类中的信号。在QGIS中，信号和槽机制是一种在对象之间进行通信的方式，
+    其中一个对象（发射信号的对象）在特定事件发生时发射（emit）一个信号，而另一个或多个对象（连接到该信号的对象）接收该信
+    号并响应。这些特定的信号被设计用于在用户通过`QgsDataSourceManagerDialog`选择添加各种类型的图层（如栅格图层、矢量图
+    层、网格图层和矢量瓦片图层）时发射。
 
+    - **层级添加的通知**：这些信号提供了一种机制，用于在用户从数据源管理器中选择一个或多个图层添加到项目中时，通知QGIS应
+    用（如QgisApp）进行相应的操作。
+    - **解耦UI和逻辑**：通过这种方式，`QgsDataSourceManagerDialog`不直接处理图层的添加逻辑，而是通过信号发射通知，这有
+    助于保持代码的模块化和解耦，使得UI组件（如对话框）与应用程序的其他逻辑分离。
+    - **灵活性和扩展性**：当QGIS应用接收到这些信号时，可以灵活地处理图层添加的逻辑，包括图层的加载、配置以及与已有项目的
+    集成等。这也为将来添加新的图层类型或修改现有逻辑提供了便利。
+
+
+    二、总结
+    1、要使用这些信号，你需要在QGIS应用中的适当位置连接这些信号到相应的槽函数。
+    */
     /**
      * Emitted when a one or more layer were selected for addition: for signal forwarding to QgisApp
      * \since QGIS 3.20

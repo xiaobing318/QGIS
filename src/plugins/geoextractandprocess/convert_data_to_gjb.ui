@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>QgsConvertDataToGJB</class>
+ <widget class="QDialog" name="QgsConvertDataToGJB">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>773</width>
+    <height>225</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>矢量数据语义融合</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout">
+   <item row="0" column="0" colspan="2">
+    <widget class="QGroupBox" name="groupBox_2">
+     <property name="minimumSize">
+      <size>
+       <width>543</width>
+       <height>185</height>
+      </size>
+     </property>
+     <property name="title">
+      <string/>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_5">
+      <item row="1" column="0">
+       <widget class="QGroupBox" name="groupBox_4">
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="title">
+         <string>输入数据目录</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_3">
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_11">
+           <property name="text">
+            <string>文件路径</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLineEdit" name="lineEdit_InputDataPath">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>16777215</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="2">
+          <widget class="QPushButton" name="Button_Open">
+           <property name="text">
+            <string>浏览</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item row="0" column="0">
+       <widget class="QGroupBox" name="groupBox_3">
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="title">
+         <string>输入数据源</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_2">
+         <item row="0" column="0">
+          <widget class="QRadioButton" name="radioButton_GB">
+           <property name="text">
+            <string>国标（GB）数据</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QRadioButton" name="radioButton_JB">
+           <property name="text">
+            <string>军标（JB）数据</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="2">
+          <widget class="QRadioButton" name="radioButton_DH">
+           <property name="text">
+            <string>导航（DH）数据</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="3">
+          <widget class="QRadioButton" name="radioButton_OSM">
+           <property name="text">
+            <string>OSM数据</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="4">
+          <widget class="QRadioButton" name="radioButton_TDT">
+           <property name="text">
+            <string>天地图（TDT）数据</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QGroupBox" name="groupBox_5">
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>100</height>
+         </size>
+        </property>
+        <property name="title">
+         <string>输出数据目录</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_4">
+         <item row="0" column="2">
+          <widget class="QLineEdit" name="lineEdit_SaveDataPath">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>16777215</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="0" colspan="2">
+          <widget class="QLabel" name="label_10">
+           <property name="text">
+            <string>保存路径</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="3">
+          <widget class="QPushButton" name="Button_Save">
+           <property name="text">
+            <string>浏览</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <spacer name="horizontalSpacer">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>419</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="1" column="1">
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QPushButton" name="Button_OK">
+       <property name="text">
+        <string>确定</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="Button_Cancel">
+       <property name="text">
+        <string>关闭</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <resources/>
+ <connections/>
+</ui>

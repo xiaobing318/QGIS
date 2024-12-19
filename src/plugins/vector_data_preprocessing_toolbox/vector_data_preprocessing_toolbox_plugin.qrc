@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/vector_data_preprocessing_toolbox">
+        <file>images/geocoordsys_trans.png</file>
+        <file>images/projcoordsys_trans.png</file>
+    </qresource>
+</RCC>

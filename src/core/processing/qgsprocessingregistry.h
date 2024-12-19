@@ -18,14 +18,43 @@
 #ifndef QGSPROCESSINGREGISTRY_H
 #define QGSPROCESSINGREGISTRY_H
 
+#pragma region "包含头文件"
 #include "qgis_core.h"
 #include "qgis.h"
 #include "qgsprocessingprovider.h"
 #include <QMap>
+#pragma endregion
 
+#pragma region "类的前向声明"
 class QgsProcessingParameterType;
 class QgsProcessingAlgorithmConfigurationWidgetFactory;
+#pragma endregion
 
+#pragma region "类的介绍"
+/*
+* 杨小兵-2024-03-26
+一、应用场景
+  `QgsProcessingRegistry`类在QGIS的处理框架中扮演了一个核心的角色。这个框架用于执行各种地理信息处理任务，如空间分析、数据转换、地图生成等。具体来说，这个注册表用
+于管理处理组件，这包括但不限于：
+- **处理提供者**（Providers）：这些是执行具体处理算法的模块。每个提供者可能包含多个算法。
+- **算法**（Algorithms）：执行具体的数据处理任务，如计算区域、路径查找、数据转换等。
+- **参数和输出**（Parameters and Outputs）：算法运行所需的输入参数和它们产生的输出。
+
+二、数学角度的解释
+  从数学角度看，`QgsProcessingRegistry`可以视为一个集合，这个集合中的元素包括处理提供者、算法、参数和输出。这些元素共同构成了QGIS处理框架的数学模型，允许用户定义
+和执行地理信息处理的复杂操作序列。
+
+三、计算机实现
+  在计算机实现上，`QgsProcessingRegistry`是一个类，它提供了一系列方法来注册和管理处理组件。这个类是QGIS处理框架的核心，因为它允许框架动态地添加、查询和管理不同的
+处理算法和资源。具体来说，它包括了以下几个方面的功能：
+- **注册和管理提供者**：提供者是实现特定处理功能的库或模块。`QgsProcessingRegistry`允许将这些提供者动态添加到QGIS中，从而扩展其处理功能。
+- **查询和访问算法**：通过注册表，用户和开发者可以查询可用的处理算法，并根据需要执行这些算法。
+- **管理参数和输出**：处理算法通常需要输入参数，并产生输出。注册表也涉及到这些参数和输出的管理，确保算法能够以正确的方式执行。
+
+  通常情况下，开发者和用户不需要直接创建`QgsProcessingRegistry`实例，因为QGIS提供了一个全局可访问的处理注册表实例，可以通过`QgsApplication::processingRegistry()`
+方法访问。这样的设计允许在QGIS的不同部分共享和使用相同的处理资源，从而提高了代码的重用性和整体架构的一致性。注释中提到`since QGIS 3.0`，意味着这个类是在QGIS 3.0版本
+中引入的，标示着QGIS处理框架的一个重要更新，进一步增强了QGIS作为一个地理信息系统平台的能力和灵活性。
+*/
 /**
  * \class QgsProcessingRegistry
  * \ingroup core
@@ -36,10 +65,12 @@ class QgsProcessingAlgorithmConfigurationWidgetFactory;
  * QgsApplication::processingRegistry().
  * \since QGIS 3.0
  */
+#pragma endregion
 class CORE_EXPORT QgsProcessingRegistry : public QObject
 {
     Q_OBJECT
 
+#pragma region "公开成员函数"
   public:
 
     /**
@@ -181,7 +212,15 @@ class CORE_EXPORT QgsProcessingRegistry : public QObject
      * \since QGIS 3.2
      */
     QList<QgsProcessingParameterType *> parameterTypes() const;
+#pragma endregion
 
+#pragma region "信号"
+/*
+* 杨小兵-2024-03-26
+  在Qt框架中，`signals`关键字是用于定义信号的特殊Qt宏，它本身不遵循C++的`public`、`private`或`protected`访问控制规则。信号是Qt对象间通信的一种方式，用于通知
+其他对象某个事件的发生。当你声明了一个信号，无论它被放置在类定义的哪个区域（`public`、`private`或`protected`区域），它对于所有接收对象都是可见的。这意味着，你
+不能通过改变信号在类定义中的位置来限制谁可以连接到这个信号。
+*/
   signals:
 
     //! Emitted when a provider has been added to the registry.
@@ -204,7 +243,9 @@ class CORE_EXPORT QgsProcessingRegistry : public QObject
      * \since QGIS 3.2
      */
     void parameterTypeRemoved( QgsProcessingParameterType *type );
+#pragma endregion
 
+#pragma region "私有成员函数"
   private:
 
     //! Map of available providers by id. This class owns the pointers
@@ -218,6 +259,8 @@ class CORE_EXPORT QgsProcessingRegistry : public QObject
 #ifdef SIP_RUN
     QgsProcessingRegistry( const QgsProcessingRegistry &other );
 #endif
+#pragma endregion
+
 };
 
 #endif // QGSPROCESSINGREGISTRY_H

@@ -17,8 +17,15 @@ REM ***************************************************************************
 if not "%PROGRAMFILES(X86)%"=="" set PF86=%PROGRAMFILES(X86)%
 if "%PF86%"=="" set PF86=%PROGRAMFILES%
 if "%PF86%"=="" (echo PROGRAMFILES not set & goto error)
+REM 杨小兵-2024-11-04（输出%PF86%）
 
-if "%VCSDK%"=="" set VCSDK=10.0.14393.0
+
+REM 杨小兵-2024-01-11（获得系统信息）
+REM if "%PF%"=="" set PF=%PROGRAMFILES%
+
+REM 杨小兵-2024-01-11（设置MSVC中SDK的版本信息）
+if "%VCSDK%"=="" set VCSDK=10.0.19041.0
+
 
 set ARCH=%1
 if "%ARCH%"=="x86" goto x86
@@ -34,8 +41,8 @@ goto archset
 
 :x86_64
 set VCARCH=amd64
-set CMAKE_COMPILER_PATH=%PF86%\Microsoft Visual Studio 14.0\VC\bin\amd64
-set DBGHLP_PATH=%PF86%\Microsoft Visual Studio 14.0\Common7\IDE\Remote Debugger\x64
+set CMAKE_COMPILER_PATH=%PF86%\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64
+set DBGHLP_PATH=%PF86%\Microsoft Visual Studio\2019\Community\Common7\IDE\Remote Debugger\x64
 set SETUPAPI_LIBRARY=%PF86%\Windows Kits\10\Lib\%VCSDK%\um\x64\SetupAPI.Lib
 
 :archset
@@ -56,17 +63,25 @@ call "%OSGEO4W_ROOT%\bin\o4w_env.bat"
 call "%OSGEO4W_ROOT%\bin\py3_env.bat"
 call "%OSGEO4W_ROOT%\bin\qt5_env.bat"
 
-set VS140COMNTOOLS=%PF86%\Microsoft Visual Studio 14.0\Common7\Tools\
-call "%PF86%\Microsoft Visual Studio 14.0\VC\vcvarsall.bat" %VCARCH%
+set VS160COMNTOOLS=%PF86%\Microsoft Visual Studio\2019\Community\Common7\Tools\
+call "%PF86%\Microsoft Visual Studio\2019\Community\VC\Auxiliary\Build\vcvarsall.bat" %VCARCH%
 
-path %path%;%PF86%\Microsoft Visual Studio 14.0\VC\bin
+path %path%;%PF86%\Microsoft Visual Studio\2019\Community\VC\Tools\MSVC\14.29.30133\bin\Hostx64\x64
 
-set GRASS7=
-if exist %OSGEO4W_ROOT%\bin\grass74.bat set GRASS7=%OSGEO4W_ROOT%\bin\grass74.bat
-if exist %OSGEO4W_ROOT%\bin\grass76.bat set GRASS7=%OSGEO4W_ROOT%\bin\grass76.bat
-if exist %OSGEO4W_ROOT%\bin\grass78.bat set GRASS7=%OSGEO4W_ROOT%\bin\grass78.bat
-if "%GRASS7%"=="" (echo GRASS7 not found & goto error)
-for /f "usebackq tokens=1" %%a in (`%GRASS7% --config path`) do set GRASS_PREFIX=%%a
+set GRASS8=
+if exist %OSGEO4W_ROOT%\bin\grass83.bat set GRASS8=%OSGEO4W_ROOT%\bin\grass83.bat
+if "%GRASS8%"=="" (echo GRASS8 not found & goto error)
+for /f "usebackq tokens=1" %%a in (`%GRASS8% --config path`) do set GRASS_PREFIX=%%a
+
+REM set GRASS7=
+REM if exist %OSGEO4W_ROOT%\bin\grass74.bat set GRASS7=%OSGEO4W_ROOT%\bin\grass74.bat
+REM if exist %OSGEO4W_ROOT%\bin\grass76.bat set GRASS7=%OSGEO4W_ROOT%\bin\grass76.bat
+REM if exist %OSGEO4W_ROOT%\bin\grass78.bat set GRASS7=%OSGEO4W_ROOT%\bin\grass78.bat
+REM if "%GRASS7%"=="" (echo GRASS7 not found & goto error)
+REM for /f "usebackq tokens=1" %%a in (`%GRASS7% --config path`) do set GRASS_PREFIX=%%a
+REM 杨小兵-2024-01-12（判断GRASS8是否被设置)
+if "%GRASS8%"=="" (echo GRASS8 not found & goto error)
+for /f "usebackq tokens=1" %%a in (`%GRASS8% --config path`) do set GRASS_PREFIX=%%a
 
 set PYTHONPATH=
 if exist "%PROGRAMFILES%\CMake\bin" path %PATH%;%PROGRAMFILES%\CMake\bin

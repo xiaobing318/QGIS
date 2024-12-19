@@ -550,7 +550,8 @@ static void setTitleBarText_( QWidget &qgisApp )
     if ( QgsProject::instance()->fileName().isEmpty() )
     {
       // new project
-      caption = QgisApp::tr( "Untitled Project" );
+      caption = QgisApp::tr("未命名工程");
+      //caption = QgisApp::tr( "Untitled Project" );
     }
     else
     {
@@ -567,8 +568,8 @@ static void setTitleBarText_( QWidget &qgisApp )
   }
   if ( QgsProject::instance()->isDirty() )
     caption.prepend( '*' );
-
-  caption += QgisApp::tr( "QGIS" );
+  caption += QgisApp::tr("一张图数据处理与加工系统");
+  //caption += QgisApp::tr( "QGIS" );
 
   if ( Qgis::version().endsWith( QLatin1String( "Master" ) ) )
   {
@@ -918,11 +919,91 @@ static bool cmpByText_( QAction *a, QAction *b )
 
 QgisApp *QgisApp::sInstance = nullptr;
 
+
 // constructor starts here
 QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, bool skipBadLayers, bool skipVersionCheck, const QString &rootProfileLocation, const QString &activeProfile, QWidget *parent, Qt::WindowFlags fl )
   : QMainWindow( parent, fl )
   , mSplash( splash )
 {
+  /*
+  * 杨小兵-2024-02-23
+  一、解释
+    这是QgisApp类的构造函数，用于初始化QGIS的主要应用程序界面`QgisApp`。
+
+  二、处理逻辑
+    1. **实例化与单例检查**：
+       - 首先检查是否已存在`QgisApp`的实例，如果存在，则显示错误信息并终止程序。
+       - 设置当前实例为`QgisApp`的静态实例。
+  
+    2. **启动和配置环境**：
+       - 配置启动画面文字颜色。
+       - 初始化用户配置管理器`mUserProfileManager`，设置根位置、活动用户配置，并启用新配置通知。
+       - 创建并启动网络记录器`mNetworkLogger`。
+  
+    3. **加载GUI组件**：
+       - 设置界面(UI)，加载操作、菜单、工具栏。
+       - 初始化地图画布`mMapCanvas`，设置其属性，如颜色、项目关联等。
+       - 创建并配置撤销/重做相关的UI组件。
+  
+    4. **高级绘图工具和统计摘要面板**：
+       - 初始化并配置高级绘图工具面板和统计摘要面板。
+  
+    5. **书签、图层树视图、撤销面板**：
+       - 初始化书签面板。
+       - 设置地图画布焦点，初始化图层树视图`mLayerTreeView`。
+       - 创建撤销面板`mUndoDock`和撤销小部件`mUndoWidget`。
+  
+    6. **地图工具和布局**：
+       - 配置地图工具，如顶点编辑器`mVertexEditorDock`。
+       - 读取设置，创建工具栏、状态栏，设置画布工具。
+  
+    7. **额外的配置和初始化**：
+       - 初始化3D支持、布局支持、地理验证服务等。
+       - 加载插件管理器，恢复上次会话中加载的插件。
+  
+    8. **状态栏、消息栏和日志查看器**：
+       - 在状态栏中添加坐标显示、比例尺等组件。
+       - 初始化消息栏和日志查看器，用于显示应用程序消息和日志。
+  
+    9. **数据浏览器和时态控制器**：
+       - 创建并配置数据浏览器小部件和时态控制器小部件。
+  
+    10. **Python支持和自定义设置**：
+        - 如果启用Python支持，则初始化Python控制台和插件安装器。
+        - 应用自定义设置，如快捷键、界面布局调整等。
+  
+    11. **项目存储和快捷方式设置**：
+        - 设置用于打开和保存项目的快捷方式和菜单项。
+  
+    12. **完成初始化后的操作**：
+        - 显示主窗口，完成启动画面。
+        - 恢复窗口状态，包括面板位置和大小等。
+        - 连接信号和槽，完成应用程序的最终设置。
+  三、总结
+  1、这个构造函数通过一系列步骤初始化QGIS应用程序的主窗口，包括用户界面设置、工具和面板的初始化、插件加载、Python支持配置等。
+  每一步都涉及到不同组件的配置和初始化，以确保QGIS能够根据用户的设置和需求正确启动并运行。
+
+  */
+#pragma region "实例化与单例检查"
+  /*
+  * 杨小兵-2024-02-23
+  1. **为什么需要检查是否已经存在`QgisApp`的实例？为什么会出现已经存在`QgisApp`的实例的情况？**
+    检查是否已经存在`QgisApp`的实例是为了防止创建多个应用程序实例。这是一个典型的单例模式应用场景，确保整个应用程序运行周期内只有一个`QgisApp`实例。
+  这样做有几个原因：
+     - **资源管理**：防止资源浪费或冲突。`QgisApp`可能会占用大量系统资源，如内存和文件句柄。多个实例可能导致资源浪费或冲突。
+     - **状态管理**：确保应用程序状态的一致性。如果有多个实例，用户对一个实例的更改可能不会反映到其他实例中，导致状态不一致。
+     - **用户体验**：避免用户混淆。如果允许多个实例存在，用户可能会对哪个窗口是当前操作窗口感到困惑。
+  
+    出现已经存在`QgisApp`实例的情况可能是因为程序在没有完全关闭的情况下被再次启动。这种情况下，第二次启动的尝试应该被阻止，以避免上述问题。
+  
+  2. **为什么将`QgisApp`设置为静态实例？**
+    将`QgisApp`设置为静态实例是单例模式的一部分，这样做有几个目的：
+     - **全局访问**：静态实例可以从程序的任何部分被访问，无需传递`QgisApp`对象的引用。这对于访问应用程序级别的功能和资源很方便。
+     - **生命周期管理**：静态实例的生命周期与应用程序的生命周期一致，这意味着它会在程序启动时创建，在程序结束时销毁。这有助于管理资源和状态的生命周期。
+     - **控制实例创建**：通过将实例设置为静态并私有化构造函数，可以防止外部代码创建新的`QgisApp`实例，这是实现单例模式的关键。
+    总的来说，检查是否已经存在`QgisApp`的实例并将其设置为静态实例，是为了确保应用程序的正常运行，避免资源浪费和状态不一致等问题，同时提供一个全局可访问
+  且生命周期管理得当的应用程序实例。
+  */
   if ( sInstance )
   {
     QMessageBox::critical(
@@ -933,10 +1014,16 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, bool skipBadLayers
   }
 
   sInstance = this;
+
+#pragma endregion
+
   QgsRuntimeProfiler *profiler = QgsApplication::profiler();
 
+#pragma region "启动和配置环境"
+  //  1、配置启动画面文字颜色(就是启动画面下方显示的文字)
   QColor splashTextColor = Qgis::releaseName() == QLatin1String( "Master" ) ? QColor( 93, 153, 51 ) : Qt::black;
 
+  //  2、初始化用户配置管理器`mUserProfileManager`，设置根位置、活动用户配置，并启用新配置通知
   startProfile( tr( "Create user profile manager" ) );
   mUserProfileManager = new QgsUserProfileManager( QString(), this );
   mUserProfileManager->setRootLocation( rootProfileLocation );
@@ -945,15 +1032,24 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, bool skipBadLayers
   connect( mUserProfileManager, &QgsUserProfileManager::profilesChanged, this, &QgisApp::refreshProfileMenu );
   endProfile();
 
+  //  3、启动网络记录器，希望记录所有请求(创建并启动网络记录器`mNetworkLogger`)
   // start the network logger early, we want all requests logged!
   startProfile( tr( "Create network logger" ) );
   mNetworkLogger = new QgsNetworkLogger( QgsNetworkAccessManager::instance(), this );
   endProfile();
 
+
+#pragma endregion
+
+#pragma region "加载GUI组件"
+
+  //  1、设置界面(UI)，加载操作、菜单、工具栏
   // load GUI: actions, menus, toolbars
   startProfile( tr( "Setting up UI" ) );
   setupUi( this );
   endProfile();
+
+
 
   mScreenHelper = new QgsScreenHelper( this );
 
@@ -964,6 +1060,7 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, bool skipBadLayers
   startProfile( tr( "Checking user database" ) );
   mSplash->showMessage( tr( "Checking database" ), Qt::AlignHCenter | Qt::AlignBottom, splashTextColor );
   qApp->processEvents();
+  //  在其他人打开它并防止我们复制它之前尽早执行此操作
   // Do this early on before anyone else opens it and prevents us copying it
   QString dbError;
   if ( !QgsApplication::createDatabase( &dbError ) )
@@ -1089,6 +1186,37 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, bool skipBadLayers
 
   endProfile();
 
+#pragma region "设置图层树相关的内容：就是QGIS界面中Layers面板"
+  /*
+  * 杨小兵-2024-02-23
+  一、解释
+    显示了在QGIS应用程序初始化或某个特定操作过程中设置地图画布焦点并初始化图层树视图(`QgsLayerTreeView`)的过程。
+
+  二、代码分析
+  1、mMapCanvas->setFocus();
+    - 这行代码调用`mMapCanvas`对象的`setFocus()`方法，将用户界面的焦点设置到地图画布上。地图画布(`mMapCanvas`)是
+  QGIS中用于显示地图的主要组件。设置焦点意味着地图画布将接收键盘事件，比如通过箭头键移动地图视图等。
+  2、startProfile( tr( "Layer tree" ) );
+    - `startProfile()`函数似乎是用于性能分析或日志记录的起始点，`tr( "Layer tree" )"调用`tr()`函数进行国际化，这
+  意味着"Layer tree"字符串将被翻译成当前QGIS界面语言对应的文本。此处，它标记了开始执行与图层树相关的操作或初始化的性能分析。
+  3、mLayerTreeView = new QgsLayerTreeView( this );
+    - 这行代码创建了一个新的`QgsLayerTreeView`实例，分配给成员变量`mLayerTreeView`。`QgsLayerTreeView`是一个视图组件，
+  用于显示和管理地图图层的层次结构。`this`参数表明这个新创建的`QgsLayerTreeView`实例的父对象是当前对象（通常是指QGIS的主
+  窗口或其中的一个部分），这有助于Qt管理对象的生命周期和内存。
+  4、mLayerTreeView->setObjectName( QStringLiteral( "theLayerTreeView" ) );
+    - 通过`setObjectName()`方法为`mLayerTreeView`设置了一个对象名"theLayerTreeView"。在Qt中，设置对象名有助于在后续的
+  代码中通过名字查找特定的对象，特别是在不直接持有对象引用的情况下。这使得开发者能够通过名字引用来找到这个`QgsLayerTreeView`
+  实例，这在进行UI测试或需要动态访问UI组件时非常有用。
+  5、endProfile();
+    - `endProfile()`函数似乎标记了性能分析或初始化过程的结束点。就像`startProfile()`一样，它用于性能监测，帮助开发者了解初
+  始化图层树视图所需的时间。
+
+  三、总结
+  1、这段代码片段展示了在QGIS应用程序中如何将焦点设置到地图画布，并初始化图层树视图`QgsLayerTreeView`的过程。通过使用性能分析
+  函数(`startProfile()`和`endProfile()`)，它还暗示了对该过程性能的关注。此外，为图层树视图设置一个明确的对象名，增加了代码的
+  可维护性和测试的便利性。
+  2、设置焦点意味着地图画布将接收键盘事件，比如通过箭头键移动地图视图等
+  */
   //set the focus to the map canvas
   mMapCanvas->setFocus();
 
@@ -1096,6 +1224,8 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, bool skipBadLayers
   mLayerTreeView = new QgsLayerTreeView( this );
   mLayerTreeView->setObjectName( QStringLiteral( "theLayerTreeView" ) ); // "theLayerTreeView" used to find this canonical instance later
   endProfile();
+
+#pragma endregion
 
   // create undo widget
   startProfile( tr( "Undo dock" ) );
@@ -1110,7 +1240,9 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, bool skipBadLayers
   mUndoDock->setWidget( mUndoWidget );
   mUndoDock->setObjectName( QStringLiteral( "undo/redo dock" ) );
   endProfile();
+#pragma endregion
 
+#pragma region "高级数字化dock、统计摘要dock、书签dock"
   // Advanced Digitizing dock
   startProfile( tr( "Advanced digitize panel" ) );
   mAdvancedDigitizingDockWidget = new QgsAdvancedDigitizingDockWidget( mMapCanvas, this );
@@ -1150,14 +1282,21 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, bool skipBadLayers
   connect( mActionShowBookmarks, &QAction::triggered, this, [ = ] { showBookmarks(); } );
 
   endProfile();
+#pragma endregion
 
+#pragma region "Snapping实用程序、创建地图工具、几何验证"
+  //  Snapping utilities
   startProfile( tr( "Snapping utilities" ) );
   mSnappingUtils = new QgsMapCanvasSnappingUtils( mMapCanvas, this );
   mMapCanvas->setSnappingUtils( mSnappingUtils );
   connect( QgsProject::instance(), &QgsProject::snappingConfigChanged, mSnappingUtils, &QgsSnappingUtils::setConfig );
 
   endProfile();
-
+  /*
+  * 杨小兵-2024-02-22
+  一、解释
+    调用createMenus、createActions、createActionGroups三个函数，进行一些初始化的工作，也就是给成员变量赋值或者将信号和槽函数之间建立联系。
+  */
   functionProfile( &QgisApp::createMenus, this, QStringLiteral( "Create menus" ) );
   functionProfile( &QgisApp::createActions, this, QStringLiteral( "Create actions" ) );
   functionProfile( &QgisApp::createActionGroups, this, QStringLiteral( "Create action group" ) );
@@ -1206,6 +1345,7 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, bool skipBadLayers
   functionProfile( &QgisApp::initNativeProcessing, this, QStringLiteral( "Initialize native processing" ) );
   functionProfile( &QgisApp::initLayouts, this, QStringLiteral( "Initialize layouts support" ) );
 
+
   startProfile( tr( "Geometry validation" ) );
 
   mGeometryValidationService = std::make_unique<QgsGeometryValidationService>( QgsProject::instance() );
@@ -1220,7 +1360,15 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, bool skipBadLayers
   mGeometryValidationDock->setGeometryValidationModel( mGeometryValidationModel );
   mGeometryValidationDock->setGeometryValidationService( mGeometryValidationService.get() );
   endProfile();
+#pragma endregion
 
+#pragma region "为QGIS应用程序添加新的注解类型支持，实现项目中注解添加的动态处理，以及设置和监控项目模板目录"
+  /*
+  * 杨小兵-2024-02-23
+  一、解释
+    总的来说，这段代码的作用是为QGIS应用程序添加新的注解类型支持，实现项目中注解添加的动态处理，以及设置和监控项目模板目录，
+  以便在模板文件变化时自动更新项目模板选项。这些功能共同增强了QGIS的用户交互能力和项目管理灵活性。
+  */
   QgsApplication::annotationRegistry()->addAnnotationType( QgsAnnotationMetadata( QStringLiteral( "FormAnnotationItem" ), &QgsFormAnnotation::create ) );
   connect( QgsProject::instance()->annotationManager(), &QgsAnnotationManager::annotationAdded, this, &QgisApp::annotationCreated );
 
@@ -1240,7 +1388,9 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, bool skipBadLayers
     projectsTemplateWatcher->addPath( templateDirName );
     connect( projectsTemplateWatcher, &QFileSystemWatcher::directoryChanged, this, [this] { updateProjectFromTemplates(); } );
   }
+#pragma endregion
 
+#pragma region "插件管理器、图层样式dock、开发者工具dock、Snapping对话框"
   // initialize the plugin manager
   startProfile( tr( "Plugin manager" ) );
   mPluginManager = new QgsPluginManager( this, restorePlugins );
@@ -1322,6 +1472,10 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, bool skipBadLayers
   }
   endProfile();
 
+#pragma endregion
+
+#pragma region "BrowserGuiModel实例、创建 GPS 工具、初始化消息栏和日志查看器"
+  //  创建BrowserGuiModel实例，用于在后面使用
   mBrowserModel = new QgsBrowserGuiModel( this );
   mBrowserWidget = new QgsBrowserDockWidget( tr( "Browser" ), mBrowserModel, this );
   mBrowserWidget->setObjectName( QStringLiteral( "Browser" ) );
@@ -1393,6 +1547,8 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, bool skipBadLayers
   addDockWidget( Qt::LeftDockWidgetArea, mBookMarksDockWidget );
   mBookMarksDockWidget->hide();
 
+
+
   // create the GPS tool on starting QGIS - this is like the browser
   mpGpsWidget = new QgsGpsInformationWidget( mMapCanvas );
   QgsPanelWidgetStack *gpsStack = new QgsPanelWidgetStack();
@@ -1430,6 +1586,83 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, bool skipBadLayers
   connect( mMessageButton, &QAbstractButton::toggled, this, &QgisApp::toggleLogMessageIcon );
   mVectorLayerTools = new QgsGuiVectorLayerTools();
 
+#pragma endregion
+
+#pragma region "编辑器小部件类型初始化、内部剪贴板创建、应用程序接口创建、加载python支持等等"
+  /*
+  * 杨小兵-2024-02-23
+    1. **编辑器小部件类型初始化**：
+       - 初始化应用程序中使用的编辑器小部件类型，以便于地图画布和信息栏中使用。
+    
+    2. **内部剪贴板创建**：
+       - 创建一个新的`QgsClipboard`实例，用于在应用程序内部管理剪贴板数据。同时，连接剪贴板内容变化的信号到相应的槽函数，以处理剪贴板内容的变化。
+    
+    3. **应用程序接口创建**：
+       - 创建`QgisAppInterface`实例，为插件和其他组件提供与主应用程序交互的接口。
+    
+    4. **Mac OS特有的窗口菜单项设置**（条件编译）：
+       - 为Mac OS操作系统特定地添加窗口菜单项，并连接相应的动作信号至激活窗口的槽函数。
+    
+    5. **地图层属性工厂注册**：
+       - 注册多个地图层属性工厂，以支持不同类型的地图层（如矢量层、点云层、3D层等）的特定属性设置。
+    
+    6. **项目属性小部件工厂注册**：
+       - 注册项目属性小部件工厂，以支持项目级别的属性设置，如高程设置。
+    
+    7. **图层相关动作的激活与禁用**：
+       - 初始化后，根据当前图层状态激活或禁用相关动作。
+    
+    8. **地图层动作注册发生变化时的更新**：
+       - 连接地图层动作注册表变化的信号至更新功能动作的槽函数。
+    
+    9. **应用程序标题设置**：
+       - 设置应用程序窗口的标题，包括QGIS版本和发布名称。
+    
+    10. **自定义坐标参考系统验证连接**：
+        - 连接自定义CRS验证的信号与槽函数，以实现特定的坐标参考系统验证逻辑。
+    
+    11. **图形消息输出和凭证请求设置**：
+        - 设置图形消息输出创建器和图形凭证请求对话框。
+    
+    12. **定位器小部件设置**：
+        - 设置地图画布和配置触发器，以便于使用定位器小部件进行快速搜索和命令执行。
+    
+    13. **供应商插件检查**：
+        - 显示启动画面消息，检查供应商插件。
+    
+    14. **网络访问管理器设置**：
+        - 设置`QgsNetworkAccessManager`，这是必要的步骤，用于管理网络请求，特别是在需要考虑代理设置时。
+    
+    15. **OpenCL程序源路径设置**（条件编译）：
+        - 为支持OpenCL的功能设置默认的OpenCL程序源路径。
+    
+    16. **数据项提供者注册**：
+        - 注册多个数据项提供者，如书签、QLR文件、QPT模板等，以支持不同类型的数据源和项目模板。
+    
+    17. **缺失图层处理器设置**：
+        - 创建并设置处理加载项目时缺失图层的处理器。
+    
+    18. **Python支持加载**：
+        - 显示启动画面消息，加载Python支持。
+    
+    19. **插件注册和恢复**：
+        - 创建插件注册表，加载并恢复上一次会话中的插件。
+    
+    20. **最近项目路径更新**：
+        - 更新最近项目列表，考虑插件可能注册的自定义项目存储。
+    
+    21. **工具栏图标大小设置**：
+        - 根据设置或默认逻辑确定并设置工具栏图标的大小。
+    
+    22. **文件过滤器初始化**：
+        - 初始化矢量和栅格文件的过滤器，以便于文件对话框中使用。
+    
+    23. **连接设置**：
+        - 在构造函数的最后确保所有成员都已正确实例化后，设置应用程序内部的信号与槽连接。
+    这些步骤共同完成了QGIS主应用程序的初始化过程，包括用户界面设置、内部数据管理、插件加载、网络配置、数据提供者注册等，为用户提供了一个功能丰富、
+  可定制和扩展的地理信息系统工作环境。
+
+  */
   // Init the editor widget types
   QgsGui::editorWidgetRegistry()->initEditors( mMapCanvas, mInfoBar );
 
@@ -1554,12 +1787,37 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, bool skipBadLayers
   qApp->processEvents();
   QgsPluginRegistry::instance()->setQgisInterface( mQgisInterface );
 
+#pragma region "在QGIS启动时根据配置恢复插件"
+  /*
+  * 杨小兵-2024-02-23
+  一、解释
+    这段代码的主要作用是在启动QGIS时恢复插件的会话，这可以通过命令行选项进行控制。代码中涉及的操作主要包括两个部分：
+  首先是从QGIS的默认插件路径恢复插件，然后是从用户指定的插件路径恢复插件。
+    - 这段代码首先检查`restorePlugins`变量的值，如果为`true`，则表示需要恢复插件。这个变量可能根据程序启动时的参
+  数设置，比如通过命令行选项`--noplugins`可以禁用插件的自动恢复，以防某些插件导致QGIS在启动时崩溃。
+
+    `QgsPluginRegistry::instance()->restoreSessionPlugins(QgsApplication::pluginPath());`调用恢复了在QGIS
+  应用程序默认插件路径下的插件。`QgsPluginRegistry::instance()`获取插件注册表的实例，`restoreSessionPlugins`
+  方法用于恢复插件，`QgsApplication::pluginPath()`返回QGIS默认的插件路径。
+
+  - 接下来，代码从用户设置中获取了一个插件搜索路径列表。这些设置可能在QGIS的配置文件中被用户指定，允许QGIS从除了默
+  认路径以外的其他路径加载插件。
+
+    这段代码的作用是在QGIS启动时根据配置恢复插件会话，旨在提供灵活性和稳定性。通过允许用户通过命令行选项或配置文件指
+  定插件加载行为，QGIS能够更好地管理插件，尤其是在遇到可能导致启动时崩溃的插件时提供了一个安全的恢复选项。此外，通过
+  支持从用户指定的目录加载插件，QGIS为用户提供了更多的自定义和扩展能力，使得用户能够根据自己的需要灵活管理插件。
+
+  二、总结
+  1、两种恢复插件的方式：从默认的路径恢复插件、从用户指定的插件路径恢复插件（应该是可以通过变量来进行设置的）
+  */
   if ( restorePlugins )
   {
+    //  1、从默认的路径恢复插件
     // Restoring of plugins can be disabled with --noplugins command line option
     // because some plugins may cause QGIS to crash during startup
     QgsPluginRegistry::instance()->restoreSessionPlugins( QgsApplication::pluginPath() );
 
+    //  2、从用户指定的插件路径恢复插件
     // Also restore plugins from user specified plugin directories
     QStringList myPathList = settings.value( QStringLiteral( "plugins/searchPathsForPlugins" ) ).toStringList();
     if ( !myPathList.isEmpty() )
@@ -1568,6 +1826,8 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, bool skipBadLayers
       QgsPluginRegistry::instance()->restoreSessionPlugins( myPathList );
     }
   }
+
+#pragma endregion
 
 #ifdef WITH_BINDINGS
   if ( mPythonUtils && mPythonUtils->isEnabled() )
@@ -1641,6 +1901,9 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, bool skipBadLayers
 #endif
   // Do this last in the ctor to ensure that all members are instantiated properly
   setupConnections();
+#pragma endregion
+
+#pragma region "完成初始化后的操作"
   //
   // Please make sure this is the last thing the ctor does so that we can ensure the
   // widgets are all initialized before trying to restore their state.
@@ -1650,7 +1913,6 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, bool skipBadLayers
   startProfile( tr( "Restore window state" ) );
   restoreWindowState();
   endProfile();
-
   // do main window customization - after window state has been restored, before the window is shown
   startProfile( tr( "Update customization on main window" ) );
   QgsCustomization::instance()->updateMainWindow( mToolbarMenu, mPanelMenu );
@@ -1681,6 +1943,8 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, bool skipBadLayers
 
   mFullScreenMode = false;
   mPrevScreenModeMaximized = false;
+
+  //  显示主窗口，完成启动画面
   startProfile( tr( "Show main window" ) );
   show();
   qApp->processEvents();
@@ -1902,6 +2166,8 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, bool skipBadLayers
     messageBar()->pushWidget( messageWidget, Qgis::MessageLevel::Warning, 0 );
   } );
   QgsApplication::fontManager()->enableFontDownloadsForSession();
+#pragma endregion
+
 }
 
 QgisApp::QgisApp()
@@ -2463,6 +2729,32 @@ QgsDockWidget *QgisApp::logDock()
 
 void QgisApp::dataSourceManager( const QString &pageName )
 {
+  /*
+  * 杨小兵-2024-02-22
+  一、逻辑分析
+  - **对话框实例检查**：首先检查`mDataSourceManagerDialog`是否已经实例化。如果没有，就创建一个新的`QgsDataSourceManagerDialog`实例，并设置它的父对象
+  为当前应用（`this`），同时传递必要的参数，如`mBrowserModel`和`mapCanvas`。
+
+  - **设置信号和槽连接**：通过一系列的`connect`函数调用，为数据源管理对话框设置多个信号和槽的连接。这些连接确保了当对话框中的用户交互发生时（例如，用户尝
+  试添加新的图层或更改数据源），相应的动作会被触发，并由`QgisApp`类处理。比如，当用户添加一个新的栅格图层时，会触发一个信号，该信号连接到一个Lambda表达式
+  或成员函数，进而调用相应的处理函数（如`addRasterLayer`）。
+
+  - **对话框的显示和激活**：如果`mDataSourceManagerDialog`已经实例化，就重置其状态。然后，如果提供了特定的页面名称（`pageName`），尝试在对话框中打开该
+  页面。最后，显示对话框并激活它，以便用户可以与之交互。
+
+  - **信号和槽的作用**：这些信号和槽的连接是为了实现数据源管理的动态交互。例如，添加图层、更新图层列表、处理文件拖放等操作，都需要在用户执行某些动作时响应，
+  并执行相应的逻辑处理。
+
+
+  二、总结
+  1、数据源管理对话框类中产生一个信号（添加新的图层或者更改数据源），那么将会调用相对应的函数进行处理（这些函数是`QgisApp`类中的内容）
+  2、逻辑分析
+    （1）如果mDataSourceManagerDialog没有实例化，则创建一个新的`QgsDataSourceManagerDialog`实例，并设置它的父对象为当前应用（`this`），同时传递必要的
+    参数，如`mBrowserModel`和`mapCanvas`
+    （2）如果mDataSourceManagerDialog已经实例化，则重置其状态
+    （3）然后，如果提供了特定的页面名称（`pageName`），尝试在对话框中打开该页面。最后，显示对话框并激活它，以便用户可以与之交互。
+  */
+  //  如果mDataSourceManagerDialog不是有效的指针，那么将会执行if代码块中的内容,如果mDataSourceManagerDialog是有效的指针将会执行else中的内容
   if ( ! mDataSourceManagerDialog )
   {
     mDataSourceManagerDialog = new QgsDataSourceManagerDialog( mBrowserModel, this, mapCanvas() );
@@ -2515,9 +2807,12 @@ void QgisApp::dataSourceManager( const QString &pageName )
   {
     mDataSourceManagerDialog->reset();
   }
+
+  //  如果提供了特定的页面名称（`pageName`），尝试在对话框中打开该页面
   // Try to open the dialog on a particular page
   if ( ! pageName.isEmpty() )
   {
+    //  openPage中设置pagename和进行延迟操作
     mDataSourceManagerDialog->openPage( pageName );
   }
 
@@ -2670,17 +2965,38 @@ void QgisApp::readSettings()
 
 
 //////////////////////////////////////////////////////////////////////
-//            Set Up the gui toolbars, menus, statusbar etc
+//            Set Up the gui toolbars, menus, statusbar etc(杨小兵-2024-02-22：其中statusbar是QGIS界面底部用来显示状态的，例如进度信息)
 //////////////////////////////////////////////////////////////////////
 
 void QgisApp::createActions()
 {
+#pragma region "针对插件处理分隔符"
+  /*
+  * 杨小兵-2024-02-22
+  一、解释
+  1. **`// plugin list separator will be created when the first plugin is loaded`**
+    这条注释说明`mActionPluginSeparator1`用作插件列表中的分隔符，但只有在加载第一个插件时才会创建。这意味着如果QGIS加载了至少一个插件，
+  用户界面（UI）会动态地在相关的菜单或工具栏中插入一个分隔符来视觉上区分插件和其他菜单项。
+  
+  2. **`// python separator will be created only if python is found`**
+  
+    这条注释指出`mActionPluginSeparator2`作为Python分隔符，仅在检测到Python环境存在时创建。这可能是因为QGIS允许通过Python插件扩展其功能，
+  如果Python环境可用，则UI中会相应地添加一个分隔符来区分Python插件和其他类型的插件或菜单项。
+  
+  3. **`// raster plugins list separator will be created when the first plugin is loaded`**
+  
+    此注释表明`mActionRasterSeparator`是光栅插件列表的分隔符，也是在加载第一个光栅插件时创建。这样做的目的是在UI中明确区分光栅相关的插件和
+  其他类型的插件或功能，提高用户界面的组织性和可用性。
+
+  */
   mActionPluginSeparator1 = nullptr;  // plugin list separator will be created when the first plugin is loaded
   mActionPluginSeparator2 = nullptr;  // python separator will be created only if python is found
   mActionRasterSeparator = nullptr;   // raster plugins list separator will be created when the first plugin is loaded
 
-  // Project Menu Items
+#pragma endregion
 
+#pragma region "将Project Menu相关的QAction动作同其槽函数连接在一起"
+  // Project Menu Items
   connect( mActionNewProject, &QAction::triggered, this, [ = ] { fileNew(); } );
   connect( mActionNewBlankProject, &QAction::triggered, this, &QgisApp::fileNewBlank );
   connect( mActionOpenProject, &QAction::triggered, this, &QgisApp::fileOpen );
@@ -2698,9 +3014,10 @@ void QgisApp::createActions()
   connect( mActionExit, &QAction::triggered, this, &QgisApp::fileExit );
   connect( mActionDxfExport, &QAction::triggered, this, &QgisApp::dxfExport );
   connect( mActionDwgImport, &QAction::triggered, this, &QgisApp::dwgImport );
+#pragma endregion
 
+#pragma region "将Edit Menu相关的QAction动作同其槽函数连接在一起"
   // Edit Menu Items
-
   connect( mActionUndo, &QAction::triggered, mUndoWidget, &QgsUndoWidget::undo );
   connect( mActionRedo, &QAction::triggered, mUndoWidget, &QgsUndoWidget::redo );
   connect( mActionCutFeatures, &QAction::triggered, this, [ = ] { cutSelectionToClipboard(); } );
@@ -2739,7 +3056,9 @@ void QgisApp::createActions()
   connect( mActionOffsetCurve, &QAction::triggered, this, &QgisApp::offsetCurve );
   connect( mActionReverseLine, &QAction::triggered, this, &QgisApp::reverseLine );
   connect( mActionTrimExtendFeature, &QAction::triggered, this, [ = ] { mMapCanvas->setMapTool( mMapTools->mapTool( QgsAppMapTools::TrimExtendFeature ) ); } );
+#pragma endregion
 
+#pragma region "将View Menu相关的QAction动作同其槽函数连接在一起"
   // View Menu Items
   connect( mActionPan, &QAction::triggered, this, &QgisApp::pan );
   connect( mActionPanToSelected, &QAction::triggered, this, &QgisApp::panToSelected );
@@ -2794,9 +3113,10 @@ void QgisApp::createActions()
   mStatisticalSummaryDockWidget->setToggleVisibilityAction( mActionStatisticalSummary );
   connect( mActionManage3DMapViews, &QAction::triggered, this, &QgisApp::show3DMapViewsManager );
   connect( mActionElevationProfile, &QAction::triggered, this, &QgisApp::createNewElevationProfile );
+#pragma endregion
 
+#pragma region "将Layer Menu相关的QAction动作同其槽函数连接在一起"
   // Layer Menu Items
-
   connect( mActionDataSourceManager, &QAction::triggered, this, [ = ]() { dataSourceManager(); } );
   connect( mActionNewVectorLayer, &QAction::triggered, this, &QgisApp::newVectorLayer );
 #ifdef HAVE_SPATIALITE
@@ -2880,14 +3200,16 @@ void QgisApp::createActions()
   connect( mActionToggleSelectedLayers, &QAction::triggered, this, &QgisApp::toggleSelectedLayers );
   connect( mActionToggleSelectedLayersIndependently, &QAction::triggered, this, &QgisApp::toggleSelectedLayersIndependently );
   connect( mActionHideDeselectedLayers, &QAction::triggered, this, &QgisApp::hideDeselectedLayers );
+#pragma endregion
 
+#pragma region "将Plugin Menu相关的QAction动作同其槽函数连接在一起"
   // Plugin Menu Items
-
   connect( mActionManagePlugins, &QAction::triggered, this, &QgisApp::showPluginManager );
   connect( mActionShowPythonDialog, &QAction::triggered, this, &QgisApp::showPythonDialog );
+#pragma endregion
 
+#pragma region "将Settings Menu相关的QAction动作同其槽函数连接在一起"
   // Settings Menu Items
-
   connect( mActionToggleFullScreen, &QAction::triggered, this, &QgisApp::toggleFullScreen );
   connect( mActionTogglePanelsVisibility, &QAction::triggered, this, &QgisApp::togglePanelsVisibility );
   connect( mActionToggleMapOnly, &QAction::triggered, this, &QgisApp::toggleMapOnly );
@@ -2897,7 +3219,9 @@ void QgisApp::createActions()
   connect( mActionConfigureShortcuts, &QAction::triggered, this, &QgisApp::configureShortcuts );
   connect( mActionStyleManager, &QAction::triggered, this, &QgisApp::showStyleManager );
   connect( mActionCustomization, &QAction::triggered, this, &QgisApp::customize );
+#pragma endregion
 
+#pragma region "针对MAC OS平台所做的处理"
 #ifdef Q_OS_MAC
   // Window Menu Items
 
@@ -2917,7 +3241,38 @@ void QgisApp::createActions()
   // list of open windows
   mWindowActions = new QActionGroup( this );
 #endif
+#pragma endregion
 
+#pragma region "为Vector edits menu添加动作"
+/*
+* 杨小兵-2024-03-06
+  在一个基于Qt框架的应用程序中创建并配置了一个名为"Current Edits"的下拉菜单（QMenu），并将其关联到一个可能是工具栏按钮或其他界面元素的动作（mActionAllEdits）。
+这个菜单被设计为包含一系列与编辑向量数据相关的操作。
+
+### 创建菜单
+- `QMenu *menuAllEdits = new QMenu( tr( "Current Edits" ), this );`：这行代码创建了一个新的QMenu对象，命名为"Current Edits"。`tr()`函数用于国际化，使
+得"Current Edits"这个字符串可以被翻译成不同的语言。`this`参数指的是这个菜单的父对象，通常是创建这个菜单的窗口或者应用程序主界面。
+
+### 添加动作到菜单
+- `menuAllEdits->addAction( mActionSaveEdits );`、`menuAllEdits->addAction( mActionRollbackEdits );`、`menuAllEdits->addAction( mActionCancelEdits );
+`：这几行代码将几个动作（Actions）添加到了菜单中。这些动作可能代表了如保存编辑、回滚（撤销）编辑和取消编辑等操作。动作是Qt中的一个功能强大的组件，它不仅可以被
+添加到菜单中，还可以被添加到工具栏或者被分配快捷键等。
+
+- `menuAllEdits->addSeparator();`：这行代码在菜单中添加了一个分隔符，通常用于在视觉上区分不同组别的菜单项。
+- 接下来的三行代码`menuAllEdits->addAction( mActionSaveAllEdits );`、`menuAllEdits->addAction( mActionRollbackAllEdits );`、`menuAllEdits->addAction( mActionCancelAllEdits );
+`又添加了三个动作，这次是针对所有编辑的保存、回滚和取消操作。
+
+### 配置菜单
+- `menuAllEdits->setObjectName( "AllEditsMenu" );`：这行代码为菜单设置了一个对象名（ObjectName），这使得在样式表（CSS）或者其他需要引用这个菜单的场合中
+可以更容易地识别和定位它。
+
+### 关联菜单到动作
+- `mActionAllEdits->setMenu( menuAllEdits );`：这行代码将前面创建和配置的菜单与一个动作（mActionAllEdits）关联起来。这意味着当用户触发这个动作时（可能通过
+点击一个按钮或者其他GUI元素），"Current Edits"菜单就会显示出来。这通常用于创建一个有下拉菜单的按钮。
+
+  总的来说，这段代码展示了如何在Qt应用程序中创建和配置一个包含多个操作的菜单，以及如何将这个菜单关联到一个GUI元素上。这是创建直观、用户友好的图形用户界面的常见
+做法。
+*/
   // Vector edits menu
   QMenu *menuAllEdits = new QMenu( tr( "Current Edits" ), this );
   menuAllEdits->addAction( mActionSaveEdits );
@@ -2929,7 +3284,9 @@ void QgisApp::createActions()
   menuAllEdits->addAction( mActionCancelAllEdits );
   menuAllEdits->setObjectName( "AllEditsMenu" );
   mActionAllEdits->setMenu( menuAllEdits );
+#pragma endregion
 
+#pragma region "将Raster toolbar相关的QAction动作同其槽函数连接在一起"
   // Raster toolbar items
   connect( mActionLocalHistogramStretch, &QAction::triggered, this, &QgisApp::localHistogramStretch );
   connect( mActionFullHistogramStretch, &QAction::triggered, this, &QgisApp::fullHistogramStretch );
@@ -2948,9 +3305,10 @@ void QgisApp::createActions()
   delete mActionShowGeoreferencer;
   mActionShowGeoreferencer = nullptr;
 #endif
+#pragma endregion
 
+#pragma region "将Help Menu相关的QAction动作同其槽函数连接在一起"
   // Help Menu Items
-
 #ifdef Q_OS_MAC
   mActionHelpContents->setShortcut( QString( "Ctrl+?" ) );
   mActionQgisHomePage->setShortcut( QString() );
@@ -2997,7 +3355,54 @@ void QgisApp::createActions()
   {
     showLayerProperties( QgsProject::instance()->mainAnnotationLayer() );
   } );
+#pragma endregion
 
+#pragma region "为canvas和layertree设置快捷键"
+  /*
+  * 杨小兵-2024-02-23
+  一、解释
+    在一个Qt应用程序中创建和配置快捷键的典型方式，使用QT提供的接口创建快捷键、配置快捷键。目的是为特定的QWidget对象
+  （这里是`mMapCanvas`和`mLayerTreeView`）设置“复制”、“剪切”、“粘贴”和“全选”的快捷键。
+
+  二、注释解释
+    1. **为什么需要限制快捷键的上下文到画布及其子对象**：注释指出不能设置这些快捷键的原因是需要将它们的作用限制在画布
+  及其子对象内。在Qt中，快捷键可以在不同的上下文中工作，比如全局快捷键或特定窗口/控件的快捷键。通过将快捷键的上下文设置
+  为`Qt::WidgetWithChildrenShortcut`，确保了这些快捷键只会在指定的控件及其子控件内触发，而不会影响到应用程序的其他部分。
+
+  三、for循环解释
+    通过迭代一个包含两个元素的列表（这里是`mMapCanvas`和`mLayerTreeView`，它们都被强制转换为`QWidget*`类型）来为这些
+  元素分别设置四个快捷键：复制、剪切、粘贴和全选。这两个变量代表了应用程序中的两个不同的控件。`mMapCanvas`可能是显示地图
+  的画布，而`mLayerTreeView`可能是显示图层结构的树状视图。这两个控件都是QWidget的子类，因此它们可以包含子控件，并能够接
+  收和处理快捷键事件
+
+  四、LayerTreeView
+    `QgsLayerTreeView`类是QGIS API中的一部分，专门用于处理图层树视图的显示和交互，这是QGIS用户界面的重要组成部分。
+  `QgsLayerTreeView`类继承自Qt的`QTreeView`，是用于展示和管理地图图层的树状结构视图。在GIS应用程序中，图层是地图
+  数据的基本组织单位，每个图层可以代表不同的地理信息，如道路、河流、地形等。`QgsLayerTreeView`提供了一个图形界面，
+  使用户能够看到当前加载的所有图层及其层次结构，同时允许用户通过图形界面进行图层的排序、组织、编辑和其他操作。
+
+  `QgsLayerTreeView`的作用
+  1. **图层管理**：`QgsLayerTreeView`允许用户添加、删除、隐藏或显示图层，这对于管理地图上显示的信息至关重要。用户
+  可以通过勾选或取消勾选来控制哪些图层可见，以及调整图层的顺序来改变它们的叠加方式。
+  
+  2. **图层属性访问**：通过右击图层，用户可以访问图层的属性和设置，如更改图层的样式、设置图层过滤器、导出或导入图层
+  数据等。`QgsLayerTreeView`提供了这些功能的入口点，使得对图层的管理更为直观和易于访问。
+  
+  3. **图层组织**：用户可以将图层组织成组，这在处理包含大量图层的复杂地图时非常有用。这有助于对图层进行逻辑分组，例
+  如，将所有水体相关的图层放在一个组中，所有道路相关的图层放在另一个组中，从而使地图的管理更加有序。
+  
+  4. **交互式操作**：`QgsLayerTreeView`支持拖放操作，用户可以通过拖动图层来重新排序或将图层移动到不同的组中。这种
+  交互方式提高了用户对图层管理的直观感受和操作效率。
+  
+  5. **集成插件和工具**：QGIS允许通过插件扩展其功能，`QgsLayerTreeView`作为用户界面的一部分，可以与多种插件集成，
+  为用户提供更多的图层相关功能，如图层标注、图层查询工具等。
+
+
+  五、总结
+  1、QgsLayerTreeView继承自QTreeView
+  2、QTreeView是QT框架中的一个类
+  3、`QgsLayerTreeView`提供了一个图形界面，使用户能够看到当前加载的所有图层及其层次结构
+  */
   // we can't set the shortcut these actions, because we need to restrict their context to the canvas and it's children..
   for ( QWidget *widget :
         {
@@ -3022,6 +3427,9 @@ void QgisApp::createActions()
     connect( selectAllShortcut, &QShortcut::activated, this, &QgisApp::selectAll );
   }
 
+#pragma endregion
+
+#pragma region "设置一些可选项的QAction"
 #ifndef HAVE_POSTGRESQL
   delete mActionAddPgLayer;
   mActionAddPgLayer = 0;
@@ -3037,6 +3445,7 @@ void QgisApp::createActions()
   mActionAddHanaLayer = nullptr;
 #endif
 
+#pragma endregion
 }
 
 void QgisApp::showStyleManager()
@@ -5204,6 +5613,11 @@ void QgisApp::restoreWindowState()
 
 }
 ///////////// END OF GUI SETUP ROUTINES ///////////////
+
+
+
+
+
 void QgisApp::sponsors()
 {
   QgsSettings settings;
@@ -5401,6 +5815,22 @@ void QgisApp::about()
   sAbt->activateWindow();
 }
 
+/*
+* 杨小兵-2024-03-06
+  `QgisApp`类中的`crsAndFormatAdjustedLayerUri`函数的目的是对给定的图层URI进行调整，使其坐标参考系统（CRS）和图像格式与项目设置或用户偏好保持一致。
+
+### 函数作用总结
+1. **调整图层CRS**：函数首先遍历支持的CRS列表`supportedCrs`。对于列表中的每一个CRS，它使用`createFromOgcWmsCrs`方法尝试创建一个
+`QgsCoordinateReferenceSystem`实例。如果该CRS与地图画布当前的目的CRS（`mMapCanvas->mapSettings().destinationCrs()`）相匹配，
+它会在URI中找到并替换当前的CRS参数值。这个过程确保了图层的CRS与项目的CRS一致，从而避免了可能的坐标转换问题。
+
+2. **调整图层格式**：接下来，函数通过查看最后一次用户使用的图像格式（从`QgsSettings`获取）来调整图层的图像格式。它遍历`supportedFormats`列表中的格式，
+并将URI中的格式参数替换为与`lastImageEncoding`匹配的格式。这样做可以确保图层使用的是用户偏好或最近使用的图像格式，可能是为了优化性能或视觉效果。
+
+3. **返回调整后的URI**：经过CRS和格式调整后的新URI被返回，供进一步使用。
+
+  这个函数体现了GIS软件中一个重要的功能：动态调整图层数据源的参数以匹配项目设置或用户偏好。这样的调整对于保持地图数据的一致性和提升用户体验是非常关键的。
+*/
 QString QgisApp::crsAndFormatAdjustedLayerUri( const QString &uri, const QStringList &supportedCrs, const QStringList &supportedFormats ) const
 {
   QString newuri = uri;
@@ -5802,11 +6232,14 @@ void QgisApp::fileNewFromTemplateAction( QAction *qAction )
   }
 }
 
+#pragma region "新建图层:新建形状文件图层、新建临时图层、新建Spatialite图层、新建GeoPackage图层、新建网格图层、新建Gpx图层"
 
 void QgisApp::newVectorLayer()
 {
   QString encoding;
   QString error;
+  //  杨小兵-2024-03-06:Dialog是用来从交互界面获取参数信息的，而对数据的处理是在“后端”函数完成的，这样可以使得前端交互和后端处理之间相互不依赖（解耦）
+  //  QgsNewVectorLayerDialog::execAndCreateLayer这部分代码是创建数据，下面的QgsAppLayerHandling::addOgrVectorLayers是添加图层的显示
   QString fileName = QgsNewVectorLayerDialog::execAndCreateLayer( error, this, QString(), &encoding, QgsProject::instance()->defaultCrsForNewLayers() );
 
   if ( !fileName.isEmpty() )
@@ -5828,6 +6261,7 @@ void QgisApp::newVectorLayer()
   }
 }
 
+//  杨小兵-2024-03-06：新建临时图层（新建虚拟图层是通过QgisApp::addVirtualLayer()完成的，QgisApp::addVirtualLayer()这个函数在新建和添加虚拟图层的时候使用相同的接口）
 void QgisApp::newMemoryLayer()
 {
   QgsVectorLayer *newLayer = QgsNewMemoryLayerDialog::runAndCreateLayer( this, QgsProject::instance()->defaultCrsForNewLayers() );
@@ -5909,6 +6343,8 @@ void QgisApp::newGpxLayer()
       waypointLayer->startEditing();
   }
 }
+
+#pragma endregion
 
 void QgisApp::showRasterCalculator()
 {
@@ -6680,9 +7116,34 @@ void QgisApp::openProject( QAction *action )
     addProject( project );
 }
 
+/*
+* 杨小兵-2024-03-06
+  `QgisApp`类中的`runScript`函数，它的目的是在QGIS应用程序中运行一个指定路径的Python脚本。该函数的执行分为几个关键步骤，考虑到了安全警告、用户偏好和
+脚本执行的条件。
+
+### 函数作用总结
+1. **条件编译检查**：使用`#ifdef WITH_BINDINGS`条件编译指令来检查是否启用了Python绑定。如果未启用（即编译时未定义`WITH_BINDINGS`），则函数中的代码不
+会被编译，代替的是一个简单的对`filePath`参数的未使用声明（`Q_UNUSED`宏）。
+
+2. **Python工具可用性检查**：检查`mPythonUtils`（可能是一个指向Python工具或接口的指针）是否存在且启用。如果不满足这些条件，函数将直接返回，不执行任何脚本。
+
+3. **安全警告对话框**：
+   - 使用`QgsSettings`检查用户是否设置了显示脚本执行前的安全警告。
+   - 如果需要显示警告，则构造并显示一个包含安全警告信息的消息框，提醒用户执行未受信任源的脚本可能会对计算机造成危害，并询问是否继续。
+   - 消息框还包含一个复选框，允许用户选择不再显示此警告。
+   - 用户的选择（是否再次显示警告）会被保存到`QgsSettings`中。
+
+4. **执行Python脚本**：
+   - 如果用户选择继续执行脚本（在显示警告的情况下选择“是”）或者如果设置为不显示警告，那么将使用`mPythonUtils`执行指定路径的Python脚本。
+   - 脚本执行的调用通过向`runString`方法传递一个格式化的字符串来完成，该字符串调用`qgis.utils.run_script_from_file`函数，并传入脚本的文件路径。
+   - 如果脚本执行失败，会显示一个错误信息。
+
+通过这个函数，QGIS提供了一种机制来运行Python脚本，同时通过显示安全警告来提醒用户潜在的安全风险。这种做法平衡了功能的强大性和安全性考虑。
+*/
 void QgisApp::runScript( const QString &filePath )
 {
 #ifdef WITH_BINDINGS
+  //  如果python实用工具不存在 || python实用工具没有开启，那么直接返回
   if ( !mPythonUtils || !mPythonUtils->isEnabled() )
     return;
 
@@ -15904,6 +16365,63 @@ void QgisApp::readProject( const QDomDocument &doc )
   }
 }
 
+/*
+* 杨小兵-2024-03-06
+一、解释
+  这个函数`showLayerProperties`定义在`QgisApp`类中，其作用是显示地图图层的属性对话框。在GIS软件中，图层属性对话框允许用户查看和修改图层的各种设置，
+如样式、过滤器、坐标系统等。
+
+### 函数作用详解
+- **参数解释**：
+  - `QgsMapLayer *mapLayer`: 这是一个指向`QgsMapLayer`对象的指针，代表了需要显示属性的地图图层。
+  - `const QString &page`: 这个参数指定了属性对话框中应当直接显示的页面。
+
+- **功能流程**：
+  1. **参数校验**：首先，函数检查`mapLayer`参数是否为`nullptr`。如果是，函数立即返回，不执行任何操作。这是一种防御性编程的做法，确保不对空指针进行操作，
+  从而避免程序崩溃。
+
+  2. **嵌入图层检查**：接着，函数调用`QgsProject::instance()->layerIsEmbedded(mapLayer->id())`检查该图层是否是嵌入图层。嵌入图层是指被其他项目文件引
+  用的图层。如果该图层是嵌入图层，函数也会直接返回，不显示属性对话框。这可能是因为嵌入图层的属性可能受其它项目文件的管理和控制，直接在当前项目中修改它们的
+  属性可能会导致不一致性。
+
+  3. **获取属性对话框工厂**：最后，函数收集所有注册的数据提供者的图层配置小部件工厂。这些工厂是用于创建显示图层属性的对话框或界面的组件。通过收集这些工厂，
+  `showLayerProperties`函数能够根据图层类型动态地创建对应的属性对话框界面。
+
+### 注释内容分析
+  注释中提到的是对于图层属性对话框的重用策略的考虑。在2005年左右，QGIS曾经尝试通过保存已打开的属性对话框的指针，以便在下次打开相同图层的属性时能够快速显示，
+从而节省时间。然而，注释指出当前的代码实现不能直接支持这种重用机制。为了实现对话框的重用，需要考虑两种方案：
+  1. **传递图层参数**：在同步属性对话框时，需要将图层作为参数传递，以确保对话框能够正确地显示和更新当前图层的属性。
+  2. **为每个图层存储对话框指针的副本**：这意味着每个图层都会有一个对应的属性对话框指针保存，这样即便是不同的图层被操作，也能保证每次打开属性对话框时，能够
+  快速加载对应的信息。
+注释反映了开发过程中对性能优化和用户体验改进的持续考虑，同时也指出了实现这种优化所需要解决的技术挑战。
+
+1. **什么是Factories？**
+   "Factories"（工厂）是一种设计模式，用于在软件开发中创建对象，而不需要指定创建对象的具体类。工厂负责根据输入或配置动态生成具有特定接口的对象实例。这种模式
+   允许更灵活的代码，因为它可以在运行时决定究竟实例化哪个类，降低了代码间的耦合度，并增强了系统的扩展性。
+
+2. **什么是Registered Data Providers？**
+   "Registered Data Providers"（注册的数据提供者）是QGIS中已注册并可用于提供地理空间数据的组件。这些数据提供者负责从各种来源（如数据库、文件、远程服务等）
+   读取地理空间数据，并将其以统一的方式提供给QGIS。通过注册机制，QGIS可以在运行时识别和使用这些提供者，而无需在编译时硬编码它们的具体实现。
+
+3. **Registered Data Providers提供了什么东西？为什么需要？**
+   注册的数据提供者提供了对地理空间数据的访问能力。它们能够读取特定格式的数据（如Shapefile、GeoJSON、PostGIS数据库等），并将这些数据转换成QGIS可以处理的格式。
+   这种机制允许QGIS支持广泛的数据源，使其能够适应不同用户的需求。注册的数据提供者是必需的，因为它们提供了一种模块化和扩展性强的方法来接入和操作各种地理空间数
+   据，这是GIS系统的核心功能之一。
+
+4. **Factories提供了什么东西？为什么需要？**
+   在QGIS中，工厂（特别是这里提到的`QgsMapLayerConfigWidgetFactory`）提供了一种创建和配置地图图层属性小部件的方法。这些工厂根据不同类型的地图图层（如矢量
+   图层、栅格图层等）动态生成配置界面，允许用户修改图层的样式、过滤条件、渲染设置等。工厂模式的使用使得QGIS能够为不同类型的图层提供定制化的属性配置界面，而不
+   需要为每种图层类型编写固定的代码。这种方式增强了QGIS的灵活性和扩展性，允许开发者和插件作者添加新的图层类型和配置选项，而无需修改QGIS的核心代码。
+
+   总的来说，注册的数据提供者和工厂模式在QGIS中的使用显著提升了软件的灵活性和扩展性，使其成为一个强大且可定制的地理信息系统平台。
+
+二、总结
+1、注释中的内容是为了说明在未来想要做到的效果就是能够快速打开属性对话框
+2、这个函数的作用就是为了显示一个图层的属性信息（对不同类型的图层数据通过不同的data providers来打开）
+3、Factories是一种设计模式
+4、data providers指的就是不同的数据源类型
+
+*/
 void QgisApp::showLayerProperties( QgsMapLayer *mapLayer, const QString &page )
 {
   /*

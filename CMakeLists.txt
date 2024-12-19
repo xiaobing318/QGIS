@@ -693,6 +693,7 @@ else()
   set(QGISDEBUG FALSE)
 endif()
 
+
 if(MSVC)
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /utf-8 /std:c++17")
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} /utf-8 /std:c++17")

@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SeAnnotationPointerReverseExtractionDialog</class>
+ <widget class="QDialog" name="SeAnnotationPointerReverseExtractionDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>569</width>
+    <height>253</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>注记指针反向挂接</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout_4">
+   <item row="0" column="0" colspan="2">
+    <widget class="QGroupBox" name="groupBox_2">
+     <property name="minimumSize">
+      <size>
+       <width>543</width>
+       <height>185</height>
+      </size>
+     </property>
+     <property name="title">
+      <string/>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_3">
+      <item row="0" column="0">
+       <widget class="QGroupBox" name="groupBox_InputData">
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="title">
+         <string>输入数据目录</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout">
+         <item row="0" column="2">
+          <widget class="QPushButton" name="Button_OpenInputShpDataPath">
+           <property name="text">
+            <string>浏览</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLineEdit" name="lineEdit_InputShpDataPath">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>16777215</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_InputShpDataPath">
+           <property name="text">
+            <string>shp数据路径</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QGroupBox" name="groupBox_OutputData">
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>100</height>
+         </size>
+        </property>
+        <property name="title">
+         <string>输出数据目录</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_2">
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_OutputShpDataPath">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>结果保存路径</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLineEdit" name="lineEdit_OutputShpDataPath">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>16777215</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="2">
+          <widget class="QPushButton" name="Button_OpenOutputShpDataPath">
+           <property name="text">
+            <string>浏览</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QProgressBar" name="progressBar">
+     <property name="value">
+      <number>0</number>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QPushButton" name="Button_OK">
+       <property name="text">
+        <string>开始处理</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="Button_Cancel">
+       <property name="text">
+        <string>关闭</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <resources>
+  <include location="../odata_format_conversion_plugin.qrc"/>
+ </resources>
+ <connections/>
+</ui>

@@ -1,0 +1,451 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>se_pbf2gpkg_dialog</class>
+ <widget class="QDialog" name="se_pbf2gpkg_dialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>747</width>
+    <height>466</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>pbf文件格式向GeoPackage文件格式转化工具</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout_8">
+   <item row="0" column="0">
+    <widget class="QGroupBox" name="groupBox">
+     <property name="title">
+      <string/>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_7">
+      <item row="0" column="0">
+       <widget class="QGroupBox" name="groupBox_2">
+        <property name="minimumSize">
+         <size>
+          <width>543</width>
+          <height>185</height>
+         </size>
+        </property>
+        <property name="title">
+         <string/>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_6">
+         <item row="0" column="0">
+          <widget class="QGroupBox" name="groupBox_InputData">
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <property name="title">
+            <string>输入pbf数据目录（按照ZXY组织目录结构）</string>
+           </property>
+           <layout class="QGridLayout" name="gridLayout_3">
+            <item row="0" column="0">
+             <widget class="QLabel" name="label_pbf_data_input_path">
+              <property name="text">
+               <string>pbf数据路径</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="2">
+             <widget class="QPushButton" name="Button_pbf_data_path_open">
+              <property name="text">
+               <string>浏览</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QLineEdit" name="lineEdit_pbf_data_input_path">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>16777215</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QGroupBox" name="groupBox_OutputData">
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>100</height>
+            </size>
+           </property>
+           <property name="title">
+            <string>输出GeoPackage地理空间数据库文件路径</string>
+           </property>
+           <layout class="QGridLayout" name="gridLayout_4">
+            <item row="0" column="2">
+             <widget class="QLineEdit" name="lineEdit_gpkg_data_output_path">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>0</height>
+               </size>
+              </property>
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>16777215</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="0" colspan="2">
+             <widget class="QLabel" name="label_gpkg_data_output_path">
+              <property name="text">
+               <string>数据保存路径</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="3">
+             <widget class="QPushButton" name="Button_gpkg_data_path_open">
+              <property name="text">
+               <string>浏览</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QGroupBox" name="groupBox_pbf_data_input_level">
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>100</height>
+            </size>
+           </property>
+           <property name="title">
+            <string>输入pbf文件瓦片级数（0---&gt;20）</string>
+           </property>
+           <layout class="QGridLayout" name="gridLayout">
+            <item row="0" column="0">
+             <widget class="QLabel" name="label_pbf_data_input_level">
+              <property name="text">
+               <string>瓦片级数</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QComboBox" name="comboBox">
+              <item>
+               <property name="text">
+                <string>0</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>1</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>2</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>3</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>4</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>5</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>6</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>7</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>8</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>9</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>10</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>11</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>12</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>13</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>14</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>15</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>16</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>17</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>18</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>19</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>20</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item row="3" column="0">
+          <widget class="QGroupBox" name="groupBox_pbf_data_input_layer_name">
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>100</height>
+            </size>
+           </property>
+           <property name="title">
+            <string>提取pbf文件特定图层</string>
+           </property>
+           <layout class="QGridLayout" name="gridLayout_2">
+            <item row="0" column="0">
+             <widget class="QLabel" name="label_pbf_data_input_layer_name">
+              <property name="text">
+               <string>图层名称</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="1">
+             <widget class="QComboBox" name="comboBox_layer_name">
+              <item>
+               <property name="text">
+                <string>contour</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>admin</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>airport_label</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>aerowav</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>barrier_line</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>building</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>country_label</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>hillshade</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>housenum_label</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>landcover</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>landuse</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>landuse_overlay</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>marine_label</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>motorway_junction</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>mountain_peak_label</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>place_label</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>poi_label</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>rail_station_label</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>road</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>road_label</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>state_label</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>water</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>water_label</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>waterway</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>waterway_label</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QGroupBox" name="groupBox_3">
+        <property name="title">
+         <string/>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_5">
+         <item row="0" column="0">
+          <widget class="QProgressBar" name="progressBar">
+           <property name="value">
+            <number>0</number>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QPushButton" name="Button_OK">
+           <property name="text">
+            <string>开始转换</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="2">
+          <widget class="QPushButton" name="Button_Cancel">
+           <property name="text">
+            <string>关闭</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="3">
+          <layout class="QHBoxLayout" name="horizontalLayout"/>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <resources/>
+ <connections/>
+</ui>

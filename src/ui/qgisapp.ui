@@ -17,7 +17,7 @@
      <x>0</x>
      <y>0</y>
      <width>1277</width>
-     <height>22</height>
+     <height>23</height>
     </rect>
    </property>
    <property name="toolTip">
@@ -1981,7 +1981,7 @@ Shift+R to enable range selection.</string>
   <action name="mActionAbout">
    <property name="icon">
     <iconset resource="../../images/images.qrc">
-     <normaloff>:/images/themes/default/mActionHelpAbout.svg</normaloff>:/images/themes/default/mActionHelpAbout.svg</iconset>
+     <normaloff>:/images/icons/qgis-icon-16x16.svg</normaloff>:/images/icons/qgis-icon-16x16.svg</iconset>
    </property>
    <property name="text">
     <string>About</string>

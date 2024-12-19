@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>SeTextFilesGbk2Utf8</class>
+ <widget class="QDialog" name="SeTextFilesGbk2Utf8">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>788</width>
+    <height>234</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>文本文件字符集编码转化（GBK--&gt;UTF8）</string>
+  </property>
+  <property name="windowIcon">
+   <iconset resource="../odata_format_conversion_plugin.qrc">
+    <normaloff>:/odata_format_conversion_toolbox/images/se_text_files_gbk2utf8.svg</normaloff>:/odata_format_conversion_toolbox/images/se_text_files_gbk2utf8.svg</iconset>
+  </property>
+  <layout class="QGridLayout" name="gridLayout_4">
+   <item row="0" column="0" colspan="2">
+    <widget class="QGroupBox" name="groupBox_2">
+     <property name="minimumSize">
+      <size>
+       <width>543</width>
+       <height>185</height>
+      </size>
+     </property>
+     <property name="title">
+      <string/>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_3">
+      <item row="0" column="0">
+       <widget class="QGroupBox" name="groupBox_InputData">
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="title">
+         <string>输入数据目录</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout">
+         <item row="0" column="2">
+          <widget class="QPushButton" name="Button_OpenInputDataDir">
+           <property name="text">
+            <string>浏览</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLineEdit" name="lineEdit_InputDataDir">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>16777215</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_InputDataDir">
+           <property name="text">
+            <string>输入数据目录路径</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QGroupBox" name="groupBox_OutputData">
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>100</height>
+         </size>
+        </property>
+        <property name="title">
+         <string>输出数据目录</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_2">
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_OutputDataDir">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>输出数据目录路径</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLineEdit" name="lineEdit_OutputDataDir">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>16777215</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="2">
+          <widget class="QPushButton" name="Button_OpenOutputDataDir">
+           <property name="text">
+            <string>浏览</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="1" column="0" colspan="2">
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QPushButton" name="Button_OK">
+       <property name="text">
+        <string>开始处理</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="Button_Cancel">
+       <property name="text">
+        <string>关闭</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <resources>
+  <include location="../odata_format_conversion_plugin.qrc"/>
+ </resources>
+ <connections/>
+</ui>

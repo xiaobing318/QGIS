@@ -1,0 +1,3131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>QgsSetBetterThan5wMatchParamsDlg</class>
+ <widget class="QDialog" name="QgsSetBetterThan5wMatchParamsDlg">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>770</width>
+    <height>789</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>0</width>
+    <height>0</height>
+   </size>
+  </property>
+  <property name="maximumSize">
+   <size>
+    <width>16777215</width>
+    <height>16777215</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>优于1:5万数据融合匹配参数设置</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout_58">
+   <item row="0" column="0" colspan="2">
+    <widget class="QGroupBox" name="groupBox_Whole">
+     <property name="title">
+      <string/>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_57">
+      <item row="0" column="0">
+       <widget class="QGroupBox" name="groupBox_2">
+        <property name="title">
+         <string>输入数据</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_55">
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_GuoBiao">
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>军标（GJB）数据</string>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QLineEdit" name="lineEdit_InputJunBiaoDataPath">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="toolTip">
+            <string>请选择军标数据存储目录</string>
+           </property>
+           <property name="dragEnabled">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="2">
+          <widget class="QPushButton" name="pushButton_OpenJunBiaoData">
+           <property name="maximumSize">
+            <size>
+             <width>93</width>
+             <height>28</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>打开</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="label_JunBiao">
+           <property name="minimumSize">
+            <size>
+             <width>90</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>国标(GB)数据</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QLineEdit" name="lineEdit_InputGuoBiaoDataPath">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="toolTip">
+            <string>请选择国标数据存储目录</string>
+           </property>
+           <property name="dragEnabled">
+            <bool>true</bool>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="2">
+          <widget class="QPushButton" name="pushButton_OpenGuoBiaoData">
+           <property name="maximumSize">
+            <size>
+             <width>93</width>
+             <height>28</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>打开</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QGroupBox" name="groupBox_SetParams">
+        <property name="minimumSize">
+         <size>
+          <width>0</width>
+          <height>0</height>
+         </size>
+        </property>
+        <property name="title">
+         <string>匹配参数设置</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_54">
+         <item row="0" column="0">
+          <spacer name="horizontalSpacer">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>538</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item row="0" column="1">
+          <layout class="QHBoxLayout" name="horizontalLayout_5">
+           <item>
+            <widget class="QPushButton" name="pushButton_LoadMatchParams">
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>加载配置文件</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="pushButton_SaveMatchParams">
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>另存配置文件</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item row="1" column="0" colspan="2">
+          <widget class="QTabWidget" name="tabWidget_LayerType">
+           <property name="sizePolicy">
+            <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+             <horstretch>0</horstretch>
+             <verstretch>0</verstretch>
+            </sizepolicy>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <property name="currentIndex">
+            <number>0</number>
+           </property>
+           <widget class="QWidget" name="tab_Layer_A">
+            <attribute name="title">
+             <string>测量控制点</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_11">
+             <item row="0" column="0">
+              <widget class="QGroupBox" name="groupBox_A_GeoType">
+               <property name="title">
+                <string>测量控制点几何类型选择</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_9">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_Point_A">
+                  <property name="text">
+                   <string>点</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_A">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="title">
+                <string>测量控制点匹配字段</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_8">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_YaoSuBianHao_A">
+                  <property name="text">
+                   <string>要素编号</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_BiGao_A">
+                  <property name="text">
+                   <string>比高</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QCheckBox" name="checkBox_BianMa_A">
+                  <property name="text">
+                   <string>编码</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QCheckBox" name="checkBox_LiLunHengZuoBiao_A">
+                  <property name="text">
+                   <string>理论横坐标</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QCheckBox" name="checkBox_MingCheng_A">
+                  <property name="text">
+                   <string>名称</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QCheckBox" name="checkBox_LiLunZongZuoBiao_A">
+                  <property name="text">
+                   <string>理论纵坐标</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QCheckBox" name="checkBox_LeiXing_A">
+                  <property name="text">
+                   <string>类型</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QCheckBox" name="checkBox_TuXingTeZheng_A">
+                  <property name="text">
+                   <string>图形特征</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QCheckBox" name="checkBox_DengJi_A">
+                  <property name="text">
+                   <string>等级</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QCheckBox" name="checkBox_ZhuJiZhiZhen_A">
+                  <property name="text">
+                   <string>注记指针</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QCheckBox" name="checkBox_GaoCheng_A">
+                  <property name="text">
+                   <string>高程</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="1">
+                 <widget class="QCheckBox" name="checkBox_WaiGuaBiaoZhiZhen_A">
+                  <property name="text">
+                   <string>外挂表指针</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_Layer_B">
+            <attribute name="title">
+             <string>工农业社会文化设施</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_3">
+             <item row="0" column="0">
+              <widget class="QGroupBox" name="groupBox_B_GeoType">
+               <property name="title">
+                <string>工农业社会文化设施几何类型选择</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_2">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_Point_B">
+                  <property name="text">
+                   <string>点</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_Line_B">
+                  <property name="text">
+                   <string>线</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QCheckBox" name="checkBox_Polygon_B">
+                  <property name="text">
+                   <string>面</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_B">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="title">
+                <string>工农业社会文化设施匹配字段</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_5">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_YaoSuBianHao_B">
+                  <property name="text">
+                   <string>要素编号</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_BianMa_B">
+                  <property name="text">
+                   <string>编码</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QCheckBox" name="checkBox_MingCheng_B">
+                  <property name="text">
+                   <string>名称</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QCheckBox" name="checkBox_LeiXing_B">
+                  <property name="text">
+                   <string>类型</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QCheckBox" name="checkBox_LeiBie_B">
+                  <property name="text">
+                   <string>类别</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QCheckBox" name="checkBox_GaoCheng_B">
+                  <property name="text">
+                   <string>高程</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QCheckBox" name="checkBox_BiGao_B">
+                  <property name="text">
+                   <string>比高</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QCheckBox" name="checkBox_TuXingTeZheng_B">
+                  <property name="text">
+                   <string>图形特征</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QCheckBox" name="checkBox_XingZhengQuHua_B">
+                  <property name="text">
+                   <string>行政区划</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QCheckBox" name="checkBox_WaiGuaBiaoZhiZhen_B">
+                  <property name="text">
+                   <string>外挂表指针</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QCheckBox" name="checkBox_ZhuJiZhiZhen_B">
+                  <property name="text">
+                   <string>注记指针</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_Layer_C">
+            <attribute name="title">
+             <string>居民地及附属设施</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_6">
+             <item row="0" column="0">
+              <widget class="QGroupBox" name="groupBox_C_GeoType">
+               <property name="title">
+                <string>居民地及附属设施几何类型选择</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_4">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_Point_C">
+                  <property name="text">
+                   <string>点</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_Line_C">
+                  <property name="text">
+                   <string>线</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QCheckBox" name="checkBox_Polygon_C">
+                  <property name="text">
+                   <string>面</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_C">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="title">
+                <string>居民地及附属设施匹配字段</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_59">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_YaoSuBianHao_C">
+                  <property name="text">
+                   <string>要素编号</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_BianMa_C">
+                  <property name="text">
+                   <string>编码</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QCheckBox" name="checkBox_MingCheng_C">
+                  <property name="text">
+                   <string>名称</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QCheckBox" name="checkBox_LeiXing_C">
+                  <property name="text">
+                   <string>类型</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QCheckBox" name="checkBox_JuZhuYueFen_C">
+                  <property name="text">
+                   <string>居住月份</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QCheckBox" name="checkBox_RenKou_C">
+                  <property name="text">
+                   <string>人口</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QCheckBox" name="checkBox_BiGao_C">
+                  <property name="text">
+                   <string>比高</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QCheckBox" name="checkBox_XingZhengQuHua_C">
+                  <property name="text">
+                   <string>行政区划</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QCheckBox" name="checkBox_TuXingTeZheng_C">
+                  <property name="text">
+                   <string>图形特征</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QCheckBox" name="checkBox_ZhuJiZhiZhen_C">
+                  <property name="text">
+                   <string>注记指针</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QCheckBox" name="checkBox_WaiGuaBiaoZhiZhen_C">
+                  <property name="text">
+                   <string>外挂表指针</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_Layer_D">
+            <attribute name="title">
+             <string>陆地交通</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_24">
+             <item row="0" column="0">
+              <widget class="QGroupBox" name="groupBox_D_GeoType">
+               <property name="title">
+                <string>陆地交通几何类型选择</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_10">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_Point_D">
+                  <property name="text">
+                   <string>点</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_Line_D">
+                  <property name="text">
+                   <string>线</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QCheckBox" name="checkBox_Polygon_D">
+                  <property name="text">
+                   <string>面</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_D">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="title">
+                <string>陆地交通匹配字段</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_60">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_YaoSuBianHao_D">
+                  <property name="text">
+                   <string>要素编号</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_PuKuan_D">
+                  <property name="text">
+                   <string>铺宽</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QCheckBox" name="checkBox_ShuiShen_D">
+                  <property name="text">
+                   <string>水深</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QCheckBox" name="checkBox_BianMa_D">
+                  <property name="text">
+                   <string>编码</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QCheckBox" name="checkBox_QiaoChang_D">
+                  <property name="text">
+                   <string>桥长</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="2">
+                 <widget class="QCheckBox" name="checkBox_DiZhi_D">
+                  <property name="text">
+                   <string>底质</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QCheckBox" name="checkBox_MingCheng_D">
+                  <property name="text">
+                   <string>名称</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QCheckBox" name="checkBox_JingKongGao_D">
+                  <property name="text">
+                   <string>净空高</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="2">
+                 <widget class="QCheckBox" name="checkBox_QuLvBanJing_D">
+                  <property name="text">
+                   <string>曲率半径</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QCheckBox" name="checkBox_LeiXing_D">
+                  <property name="text">
+                   <string>类型</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QCheckBox" name="checkBox_ZaiZhongDunShu_D">
+                  <property name="text">
+                   <string>载重吨数</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="2">
+                 <widget class="QCheckBox" name="checkBox_ZuiDaZongPo_D">
+                  <property name="text">
+                   <string>最大纵坡</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QCheckBox" name="checkBox_BianHao_D">
+                  <property name="text">
+                   <string>编号</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QCheckBox" name="checkBox_LiCheng_D">
+                  <property name="text">
+                   <string>里程</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="2">
+                 <widget class="QCheckBox" name="checkBox_TuXingTeZheng_D">
+                  <property name="text">
+                   <string>图形特征</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QCheckBox" name="checkBox_DengJi_D">
+                  <property name="text">
+                   <string>等级</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="1">
+                 <widget class="QCheckBox" name="checkBox_BiGao_D">
+                  <property name="text">
+                   <string>比高</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="2">
+                 <widget class="QCheckBox" name="checkBox_ZhuJiZhiZhen_D">
+                  <property name="text">
+                   <string>注记指针</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="6" column="0">
+                 <widget class="QCheckBox" name="checkBox_KuanDu_D">
+                  <property name="text">
+                   <string>宽度</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="6" column="1">
+                 <widget class="QCheckBox" name="checkBox_TongXingYueFen_D">
+                  <property name="text">
+                   <string>通行月份</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="6" column="2">
+                 <widget class="QCheckBox" name="checkBox_WaiGuaBiaoZhiZhen_D">
+                  <property name="text">
+                   <string>外挂表指针</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_Layer_E">
+            <attribute name="title">
+             <string>管线</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_26">
+             <item row="0" column="0">
+              <widget class="QGroupBox" name="groupBox_E_GeoType">
+               <property name="title">
+                <string>管线几何类型选择</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_25">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_Point_E">
+                  <property name="text">
+                   <string>点</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_Line_E">
+                  <property name="text">
+                   <string>线</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QCheckBox" name="checkBox_Polygon_E">
+                  <property name="text">
+                   <string>面</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_E">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="title">
+                <string>管线匹配字段</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_12">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_YaoSuBianHao_E">
+                  <property name="text">
+                   <string>要素编号</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_CunZaiZhuangTai_E">
+                  <property name="text">
+                   <string>存在状态</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QCheckBox" name="checkBox_BianMa_E">
+                  <property name="text">
+                   <string>编码</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QCheckBox" name="checkBox_ZuoYongFangShi_E">
+                  <property name="text">
+                   <string>作用方式</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QCheckBox" name="checkBox_MingCheng_E">
+                  <property name="text">
+                   <string>名称</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QCheckBox" name="checkBox_XianZhiZhongLei_E">
+                  <property name="text">
+                   <string>限制种类</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QCheckBox" name="checkBox_LeiXing_E">
+                  <property name="text">
+                   <string>类型</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QCheckBox" name="checkBox_TuXingTeZheng_E">
+                  <property name="text">
+                   <string>图形特征</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QCheckBox" name="checkBox_JingKongGao_E">
+                  <property name="text">
+                   <string>净空高</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QCheckBox" name="checkBox_ZhuJiZhiZhen_E">
+                  <property name="text">
+                   <string>注记指针</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QCheckBox" name="checkBox_MaiCangShenDu_E">
+                  <property name="text">
+                   <string>埋藏深度</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="1">
+                 <widget class="QCheckBox" name="checkBox_WaiGuaBiaoZhiZhen_E">
+                  <property name="text">
+                   <string>外挂表指针</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_Layer_F">
+            <attribute name="title">
+             <string>水域/陆地</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_53">
+             <item row="0" column="0">
+              <widget class="QGroupBox" name="groupBox_F_GeoType">
+               <property name="title">
+                <string>水域/陆地几何类型选择</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_27">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_Point_F">
+                  <property name="text">
+                   <string>点</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_Line_F">
+                  <property name="text">
+                   <string>线</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QCheckBox" name="checkBox_Polygon_F">
+                  <property name="text">
+                   <string>面</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_F">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="title">
+                <string>水域/陆地图层相同属性字段选择</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_7">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_YaoSuBianHao_F">
+                  <property name="text">
+                   <string>要素编号</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_NiShen_F">
+                  <property name="text">
+                   <string>泥深</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QCheckBox" name="checkBox_DunWei_F">
+                  <property name="text">
+                   <string>吨位</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="3">
+                 <widget class="QCheckBox" name="checkBox_WeiZhiZhiLiang_F">
+                  <property name="text">
+                   <string>位置质量</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QCheckBox" name="checkBox_BianMa_F">
+                  <property name="text">
+                   <string>编码</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QCheckBox" name="checkBox_ShiLingYueFen_F">
+                  <property name="text">
+                   <string>时令月份</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="2">
+                 <widget class="QCheckBox" name="checkBox_HeLiuDaiMa_F">
+                  <property name="text">
+                   <string>河流代码</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="3">
+                 <widget class="QCheckBox" name="checkBox_YanSe_F">
+                  <property name="text">
+                   <string>颜色</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QCheckBox" name="checkBox_MingCheng_F">
+                  <property name="text">
+                   <string>名称</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QCheckBox" name="checkBox_ChangDu_F">
+                  <property name="text">
+                   <string>长度</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="2">
+                 <widget class="QCheckBox" name="checkBox_TongHangXingZhi_F">
+                  <property name="text">
+                   <string>通航性质</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="3">
+                 <widget class="QCheckBox" name="checkBox_YuShuiMianGuanXi_F">
+                  <property name="text">
+                   <string>与水面关系</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QCheckBox" name="checkBox_LeiXing_F">
+                  <property name="text">
+                   <string>类型</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QCheckBox" name="checkBox_GaoCheng_F">
+                  <property name="text">
+                   <string>高程</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="2">
+                 <widget class="QCheckBox" name="checkBox_ZhiWuLeiXing_F">
+                  <property name="text">
+                   <string>植物类型</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="3">
+                 <widget class="QCheckBox" name="checkBox_TuXingTeZheng_F">
+                  <property name="text">
+                   <string>图形特征</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QCheckBox" name="checkBox_KuanDu_F">
+                  <property name="text">
+                   <string>宽度</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QCheckBox" name="checkBox_BiGao_F">
+                  <property name="text">
+                   <string>比高</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="2">
+                 <widget class="QCheckBox" name="checkBox_BiaoMianWuZhi_F">
+                  <property name="text">
+                   <string>表面物质</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="3">
+                 <widget class="QCheckBox" name="checkBox_ZhuJiZhiZhen_F">
+                  <property name="text">
+                   <string>注记指针</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QCheckBox" name="checkBox_ShuiShen_F">
+                  <property name="text">
+                   <string>水深</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="1">
+                 <widget class="QCheckBox" name="checkBox_KuRongLiang_F">
+                  <property name="text">
+                   <string>库容量</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="2">
+                 <widget class="QCheckBox" name="checkBox_CunZaiZhuangTai_F">
+                  <property name="text">
+                   <string>存在状态</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="3">
+                 <widget class="QCheckBox" name="checkBox_WaiGuaBiaoZhiZhen_F">
+                  <property name="text">
+                   <string>外挂表指针</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_Layer_G">
+            <attribute name="title">
+             <string>海底地貌及底质</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_52">
+             <item row="0" column="0">
+              <widget class="QGroupBox" name="groupBox_G_GeoType">
+               <property name="title">
+                <string>海底地貌及底质几何类型选择</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_28">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_Point_G">
+                  <property name="text">
+                   <string>点</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_Line_G">
+                  <property name="text">
+                   <string>线</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QCheckBox" name="checkBox_Polygon_G">
+                  <property name="text">
+                   <string>面</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_G">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="title">
+                <string>海底地貌及底质匹配字段</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_13">
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_ShuiShenZhi2_G">
+                  <property name="text">
+                   <string>水深值2</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QCheckBox" name="checkBox_LeiXing_G">
+                  <property name="text">
+                   <string>类型</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QCheckBox" name="checkBox_MingCheng_G">
+                  <property name="text">
+                   <string>名称</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QCheckBox" name="checkBox_WeiZhiZhiLiang_G">
+                  <property name="text">
+                   <string>位置质量</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="1">
+                 <widget class="QCheckBox" name="checkBox_BiaoMianWuZhi_G">
+                  <property name="text">
+                   <string>表面物质</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_YaoSuBianHao_G">
+                  <property name="text">
+                   <string>要素编号</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="2">
+                 <widget class="QCheckBox" name="checkBox_WeiXianJi_G">
+                  <property name="text">
+                   <string>危险级</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QCheckBox" name="checkBox_BianMa_G">
+                  <property name="text">
+                   <string>编码</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QCheckBox" name="checkBox_WuZhiXingTai_G">
+                  <property name="text">
+                   <string>物质形态</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="2">
+                 <widget class="QCheckBox" name="checkBox_ZhuJiZhiZhen_G">
+                  <property name="text">
+                   <string>注记指针</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="2">
+                 <widget class="QCheckBox" name="checkBox_TuXingTeZheng_G">
+                  <property name="text">
+                   <string>图形特征</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QCheckBox" name="checkBox_ZuoYongFangShi_G">
+                  <property name="text">
+                   <string>作用方式</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QCheckBox" name="checkBox_ShuiShenZhi_G">
+                  <property name="text">
+                   <string>水深值</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="2">
+                 <widget class="QCheckBox" name="checkBox_WaiGuaBiaoZhiZhen_G">
+                  <property name="text">
+                   <string>外挂表指针</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QCheckBox" name="checkBox_CeShenZhiLiang_G">
+                  <property name="text">
+                   <string>测深质量</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QCheckBox" name="checkBox_ShuiShenZhi1_G">
+                  <property name="text">
+                   <string>水深值1</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QCheckBox" name="checkBox_CeShenJiShu_G">
+                  <property name="text">
+                   <string>测深技术</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_Layer_H">
+            <attribute name="title">
+             <string>礁石、沉船、障碍物</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_51">
+             <item row="0" column="0">
+              <widget class="QGroupBox" name="groupBox_H_GeoType">
+               <property name="title">
+                <string>礁石、沉船、障碍物几何类型选择</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_29">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_Point_H">
+                  <property name="text">
+                   <string>点</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_Line_H">
+                  <property name="text">
+                   <string>线</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QCheckBox" name="checkBox_Polygon_H">
+                  <property name="text">
+                   <string>面</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_H">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="title">
+                <string>礁石、沉船、障碍物匹配字段</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_14">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_YaoSuBianHao_H">
+                  <property name="text">
+                   <string>要素编号</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_CunZaiZhuangTai_H">
+                  <property name="text">
+                   <string>存在状态</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QCheckBox" name="checkBox_YuShuiMianGuanXi_H">
+                  <property name="text">
+                   <string>与水面关系</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QCheckBox" name="checkBox_BianMa_H">
+                  <property name="text">
+                   <string>编码</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QCheckBox" name="checkBox_CeShenJiShu_H">
+                  <property name="text">
+                   <string>测深技术</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="2">
+                 <widget class="QCheckBox" name="checkBox_WeiXianJi_H">
+                  <property name="text">
+                   <string>危险级</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QCheckBox" name="checkBox_MingCheng_H">
+                  <property name="text">
+                   <string>名称</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QCheckBox" name="checkBox_CeShenZhiLiang_H">
+                  <property name="text">
+                   <string>测深质量</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="2">
+                 <widget class="QCheckBox" name="checkBox_TuXingTeZheng_H">
+                  <property name="text">
+                   <string>图形特征</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QCheckBox" name="checkBox_LeiXing_H">
+                  <property name="text">
+                   <string>类型</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QCheckBox" name="checkBox_WeiZhiZhiLiang_H">
+                  <property name="text">
+                   <string>位置质量</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="2">
+                 <widget class="QCheckBox" name="checkBox_ZhuJiZhiZhen_H">
+                  <property name="text">
+                   <string>注记指针</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QCheckBox" name="checkBox_ShuiShenZhi_H">
+                  <property name="text">
+                   <string>水深值</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QCheckBox" name="checkBox_XianZhiZhongLei_H">
+                  <property name="text">
+                   <string>限制种类</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="2">
+                 <widget class="QCheckBox" name="checkBox_WaiGuaBiaoZhiZhen_H">
+                  <property name="text">
+                   <string>外挂表指针</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QCheckBox" name="checkBox_GaoDu_H">
+                  <property name="text">
+                   <string>高度</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="1">
+                 <widget class="QCheckBox" name="checkBox_ZuoYongFangShi_H">
+                  <property name="text">
+                   <string>作用方式</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="6" column="0">
+                 <widget class="QCheckBox" name="checkBox_ChuiGao_H">
+                  <property name="text">
+                   <string>垂高</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="6" column="1">
+                 <widget class="QCheckBox" name="checkBox_BiaoMianWuZhi_H">
+                  <property name="text">
+                   <string>表面物质</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_Layer_I">
+            <attribute name="title">
+             <string>水文</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_50">
+             <item row="0" column="0">
+              <widget class="QGroupBox" name="groupBox_I_GeoType">
+               <property name="title">
+                <string>水文几何类型选择</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_30">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_Point_I">
+                  <property name="text">
+                   <string>点</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_Line_I">
+                  <property name="text">
+                   <string>线</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QCheckBox" name="checkBox_Polygon_I">
+                  <property name="text">
+                   <string>面</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_I">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="title">
+                <string>水文匹配字段</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_15">
+                <item row="1" column="0">
+                 <widget class="QCheckBox" name="checkBox_BianMa_I">
+                  <property name="text">
+                   <string>编码</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="6" column="1">
+                 <widget class="QCheckBox" name="checkBox_WaiGuaBiaoZhiZhen_I">
+                  <property name="text">
+                   <string>外挂表指针</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="6" column="0">
+                 <widget class="QCheckBox" name="checkBox_LiuSu_I">
+                  <property name="text">
+                   <string>流速</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QCheckBox" name="checkBox_GaoCheng_I">
+                  <property name="text">
+                   <string>高程</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QCheckBox" name="checkBox_KuanDu_I">
+                  <property name="text">
+                   <string>宽度</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QCheckBox" name="checkBox_MiaoShu_I">
+                  <property name="text">
+                   <string>描述</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_FangWei_I">
+                  <property name="text">
+                   <string>方位</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QCheckBox" name="checkBox_MingCheng_I">
+                  <property name="text">
+                   <string>名称</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QCheckBox" name="checkBox_YueFen_I">
+                  <property name="text">
+                   <string>月份</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QCheckBox" name="checkBox_ShuiShen_I">
+                  <property name="text">
+                   <string>水深</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_YaoSuBianHao_I">
+                  <property name="text">
+                   <string>要素编号</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QCheckBox" name="checkBox_TuXingTeZheng_I">
+                  <property name="text">
+                   <string>图形特征</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="1">
+                 <widget class="QCheckBox" name="checkBox_ZhuJiZhiZhen_I">
+                  <property name="text">
+                   <string>注记指针</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QCheckBox" name="checkBox_DiZhi_I">
+                  <property name="text">
+                   <string>底质</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_Layer_J">
+            <attribute name="title">
+             <string>陆地地貌及土质</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_49">
+             <item row="0" column="0">
+              <widget class="QGroupBox" name="groupBox_J_GeoType">
+               <property name="title">
+                <string>陆地地貌及土质几何类型选择</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_31">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_Point_J">
+                  <property name="text">
+                   <string>点</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_Line_J">
+                  <property name="text">
+                   <string>线</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QCheckBox" name="checkBox_Polygon_J">
+                  <property name="text">
+                   <string>面</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_J">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="title">
+                <string>陆地地貌及土质匹配字段</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_16">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_YaoSuBianHao_J">
+                  <property name="text">
+                   <string>要素编号</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_BiGao_J">
+                  <property name="text">
+                   <string>比高</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QCheckBox" name="checkBox_BianMa_J">
+                  <property name="text">
+                   <string>编码</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QCheckBox" name="checkBox_GouKuan_J">
+                  <property name="text">
+                   <string>沟宽</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QCheckBox" name="checkBox_MingCheng_J">
+                  <property name="text">
+                   <string>名称</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QCheckBox" name="checkBox_FangXiang_J">
+                  <property name="text">
+                   <string>方向</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QCheckBox" name="checkBox_LeiXing_J">
+                  <property name="text">
+                   <string>类型</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QCheckBox" name="checkBox_TuXingTeZheng_J">
+                  <property name="text">
+                   <string>图形特征</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QCheckBox" name="checkBox_LeiBie_J">
+                  <property name="text">
+                   <string>类别</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QCheckBox" name="checkBox_ZhuJiZhiZhen_J">
+                  <property name="text">
+                   <string>注记指针</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QCheckBox" name="checkBox_GaoCheng_J">
+                  <property name="text">
+                   <string>高程</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="1">
+                 <widget class="QCheckBox" name="checkBox_WaiGuaBiaoZhiZhen_J">
+                  <property name="text">
+                   <string>外挂表指针</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_Layer_K">
+            <attribute name="title">
+             <string>境界与政区</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_48">
+             <item row="0" column="0">
+              <widget class="QGroupBox" name="groupBox_K_GeoType">
+               <property name="title">
+                <string>境界与政区几何类型选择</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_32">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_Point_K">
+                  <property name="text">
+                   <string>点</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_Line_K">
+                  <property name="text">
+                   <string>线</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QCheckBox" name="checkBox_Polygon_K">
+                  <property name="text">
+                   <string>面</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_K">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="title">
+                <string>境界与政区匹配字段</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_17">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_YaoSuBianHao_K">
+                  <property name="text">
+                   <string>要素编号</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_XuHao_K">
+                  <property name="text">
+                   <string>序号</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QCheckBox" name="checkBox_BianMa_K">
+                  <property name="text">
+                   <string>编码</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QCheckBox" name="checkBox_GaoCheng_K">
+                  <property name="text">
+                   <string>高程</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QCheckBox" name="checkBox_MingCheng_K">
+                  <property name="text">
+                   <string>名称</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QCheckBox" name="checkBox_BiGao_K">
+                  <property name="text">
+                   <string>比高</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QCheckBox" name="checkBox_LeiXing_K">
+                  <property name="text">
+                   <string>类型</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QCheckBox" name="checkBox_TuXingTeZheng_K">
+                  <property name="text">
+                   <string>图形特征</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QCheckBox" name="checkBox_DaiMa_K">
+                  <property name="text">
+                   <string>代码</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QCheckBox" name="checkBox_ZhuJiZhiZhen_K">
+                  <property name="text">
+                   <string>注记指针</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QCheckBox" name="checkBox_BianHao_K">
+                  <property name="text">
+                   <string>编号</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="1">
+                 <widget class="QCheckBox" name="checkBox_WaiGuaBiaoZhiZhen_K">
+                  <property name="text">
+                   <string>外挂表指针</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_Layer_L">
+            <attribute name="title">
+             <string>植被</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_47">
+             <item row="0" column="0">
+              <widget class="QGroupBox" name="groupBox_L_GeoType">
+               <property name="title">
+                <string>植被几何类型选择</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_33">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_Point_L">
+                  <property name="text">
+                   <string>点</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_Line_L">
+                  <property name="text">
+                   <string>线</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QCheckBox" name="checkBox_Polygon_L">
+                  <property name="text">
+                   <string>面</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_L">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="title">
+                <string>植被匹配字段</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_18">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_YaoSuBianHao_L">
+                  <property name="text">
+                   <string>要素编号</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_XiongJing_L">
+                  <property name="text">
+                   <string>胸径</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QCheckBox" name="checkBox_BianMa_L">
+                  <property name="text">
+                   <string>编码</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QCheckBox" name="checkBox_KuanDu_L">
+                  <property name="text">
+                   <string>宽度</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QCheckBox" name="checkBox_MingCheng_L">
+                  <property name="text">
+                   <string>名称</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QCheckBox" name="checkBox_TuXingTeZheng_L">
+                  <property name="text">
+                   <string>图形特征</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QCheckBox" name="checkBox_LeiXing_L">
+                  <property name="text">
+                   <string>类型</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QCheckBox" name="checkBox_ZhuJiZhiZhen_L">
+                  <property name="text">
+                   <string>注记指针</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QCheckBox" name="checkBox_GaoCheng_L">
+                  <property name="text">
+                   <string>高程</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QCheckBox" name="checkBox_WaiGuaBiaoZhiZhen_L">
+                  <property name="text">
+                   <string>外挂表指针</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QCheckBox" name="checkBox_GaoDu_L">
+                  <property name="text">
+                   <string>高度</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_Layer_M">
+            <attribute name="title">
+             <string>地磁要素</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_46">
+             <item row="0" column="0">
+              <widget class="QGroupBox" name="groupBox_M_GeoType">
+               <property name="title">
+                <string>地磁要素几何类型选择</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_34">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_Point_M">
+                  <property name="text">
+                   <string>点</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_Line_M">
+                  <property name="text">
+                   <string>线</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QCheckBox" name="checkBox_Polygon_M">
+                  <property name="text">
+                   <string>面</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_M">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="title">
+                <string>地磁要素匹配字段</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_19">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_YaoSuBianHao_M">
+                  <property name="text">
+                   <string>要素编号</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_TuXingTeZheng_M">
+                  <property name="text">
+                   <string>图形特征</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QCheckBox" name="checkBox_BianMa_M">
+                  <property name="text">
+                   <string>编码</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QCheckBox" name="checkBox_ZhuJiZhiZhen_M">
+                  <property name="text">
+                   <string>注记指针</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QCheckBox" name="checkBox_MingCheng_M">
+                  <property name="text">
+                   <string>名称</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QCheckBox" name="checkBox_WaiGuaBiaoZhiZhen_M">
+                  <property name="text">
+                   <string>外挂表指针</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QCheckBox" name="checkBox_CiChaZhi_M">
+                  <property name="text">
+                   <string>磁差值</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QCheckBox" name="checkBox_CanKaoNian_M">
+                  <property name="text">
+                   <string>参考年</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QCheckBox" name="checkBox_NianBianZhi_M">
+                  <property name="text">
+                   <string>年变值</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_Layer_N">
+            <attribute name="title">
+             <string>助航设备及航道</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_45">
+             <item row="0" column="0">
+              <widget class="QGroupBox" name="groupBox_N_GeoType">
+               <property name="title">
+                <string>助航设备及航道几何类型选择</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_35">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_Point_N">
+                  <property name="text">
+                   <string>点</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_Line_N">
+                  <property name="text">
+                   <string>线</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QCheckBox" name="checkBox_Polygon_N">
+                  <property name="text">
+                   <string>面</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_N">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="title">
+                <string>助航设备及航道匹配字段</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_20">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_YaoSuBianHao_N">
+                  <property name="text">
+                   <string>要素编号</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_SeCaiTuAn_N">
+                  <property name="text">
+                   <string>色彩图案</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QCheckBox" name="checkBox_ZuoYongJuLi_N">
+                  <property name="text">
+                   <string>作用距离</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="3">
+                 <widget class="QCheckBox" name="checkBox_ShuiShenZhi1_N">
+                  <property name="text">
+                   <string>水深值1</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QCheckBox" name="checkBox_BianMa_N">
+                  <property name="text">
+                   <string>编码</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QCheckBox" name="checkBox_DingBiaoYanSe_N">
+                  <property name="text">
+                   <string>顶标颜色</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="2">
+                 <widget class="QCheckBox" name="checkBox_DengGuangKeShi_N">
+                  <property name="text">
+                   <string>灯光可视</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="3">
+                 <widget class="QCheckBox" name="checkBox_ZuoYongFangShi_N">
+                  <property name="text">
+                   <string>作用方式</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QCheckBox" name="checkBox_MingCheng_N">
+                  <property name="text">
+                   <string>名称</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QCheckBox" name="checkBox_FaGuangZhuangTai_N">
+                  <property name="text">
+                   <string>发光状态</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="2">
+                 <widget class="QCheckBox" name="checkBox_FangWei_N">
+                  <property name="text">
+                   <string>方位</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="3">
+                 <widget class="QCheckBox" name="checkBox_FuBiaoXiTong_N">
+                  <property name="text">
+                   <string>浮标系统</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QCheckBox" name="checkBox_LeiXing_N">
+                  <property name="text">
+                   <string>类型</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QCheckBox" name="checkBox_GaoDu_N">
+                  <property name="text">
+                   <string>高度</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="2">
+                 <widget class="QCheckBox" name="checkBox_HangXingZhiXiang_N">
+                  <property name="text">
+                   <string>航行指向</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="3">
+                 <widget class="QCheckBox" name="checkBox_TuXingTeZheng_N">
+                  <property name="text">
+                   <string>图形特征</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QCheckBox" name="checkBox_XingZhi_N">
+                  <property name="text">
+                   <string>性质</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QCheckBox" name="checkBox_DengGuangTeXing_N">
+                  <property name="text">
+                   <string>灯光特性</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="2">
+                 <widget class="QCheckBox" name="checkBox_GuangHuJiaoDu1_N">
+                  <property name="text">
+                   <string>光弧角度1</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="3">
+                 <widget class="QCheckBox" name="checkBox_ZhuJiZhiZhen_N">
+                  <property name="text">
+                   <string>注记指针</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QCheckBox" name="checkBox_BianHao_N">
+                  <property name="text">
+                   <string>编号</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="1">
+                 <widget class="QCheckBox" name="checkBox_XinHaoZu_N">
+                  <property name="text">
+                   <string>信号组</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="2">
+                 <widget class="QCheckBox" name="checkBox_GuangHuJiaoDu2_N">
+                  <property name="text">
+                   <string>光弧角度2</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="3">
+                 <widget class="QCheckBox" name="checkBox_WaiGuaBiaoZhiZhen_N">
+                  <property name="text">
+                   <string>外挂表指针</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="6" column="0">
+                 <widget class="QCheckBox" name="checkBox_YanSe_N">
+                  <property name="text">
+                   <string>颜色</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="6" column="1">
+                 <widget class="QCheckBox" name="checkBox_XinHaoZhouQi_N">
+                  <property name="text">
+                   <string>信号周期</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="6" column="2">
+                 <widget class="QCheckBox" name="checkBox_LeiDaKeShi_N">
+                  <property name="text">
+                   <string>雷达可视</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_Layer_O">
+            <attribute name="title">
+             <string>海上区域界线</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_44">
+             <item row="0" column="0">
+              <widget class="QGroupBox" name="groupBox_O_GeoType">
+               <property name="title">
+                <string>海上区域界线几何类型选择</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_36">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_Point_O">
+                  <property name="text">
+                   <string>点</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_Line_O">
+                  <property name="text">
+                   <string>线</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QCheckBox" name="checkBox_Polygon_O">
+                  <property name="text">
+                   <string>面</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_O">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="title">
+                <string>海上区域界线匹配字段</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_21">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_YaoSuBianHao_O">
+                  <property name="text">
+                   <string>要素编号</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_CunZaiZhuangTai_O">
+                  <property name="text">
+                   <string>存在状态</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QCheckBox" name="checkBox_BianMa_O">
+                  <property name="text">
+                   <string>编码</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QCheckBox" name="checkBox_LeiDaKeShi_O">
+                  <property name="text">
+                   <string>雷达可视</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QCheckBox" name="checkBox_MingCheng_O">
+                  <property name="text">
+                   <string>名称</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QCheckBox" name="checkBox_BanJing_O">
+                  <property name="text">
+                   <string>半径</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QCheckBox" name="checkBox_LeiXing_O">
+                  <property name="text">
+                   <string>类型</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QCheckBox" name="checkBox_GaoDu_O">
+                  <property name="text">
+                   <string>高度</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QCheckBox" name="checkBox_GuoJiaDaiMa_O">
+                  <property name="text">
+                   <string>国家代码</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QCheckBox" name="checkBox_TuXingTeZheng_O">
+                  <property name="text">
+                   <string>图形特征</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QCheckBox" name="checkBox_BianHao_O">
+                  <property name="text">
+                   <string>编号</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="1">
+                 <widget class="QCheckBox" name="checkBox_ZhuJiZhiZhen_O">
+                  <property name="text">
+                   <string>注记指针</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="6" column="0">
+                 <widget class="QCheckBox" name="checkBox_XianZhiZhongLei_O">
+                  <property name="text">
+                   <string>限制种类</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="6" column="1">
+                 <widget class="QCheckBox" name="checkBox_WaiGuaBiaoZhiZhen_O">
+                  <property name="text">
+                   <string>外挂表指针</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_Layer_P">
+            <attribute name="title">
+             <string>航空要素</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_43">
+             <item row="0" column="0">
+              <widget class="QGroupBox" name="groupBox_P_GeoType">
+               <property name="title">
+                <string>航空要素几何类型选择</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_37">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_Point_P">
+                  <property name="text">
+                   <string>点</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_Line_P">
+                  <property name="text">
+                   <string>线</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QCheckBox" name="checkBox_Polygon_P">
+                  <property name="text">
+                   <string>面</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_P">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="title">
+                <string>航空要素匹配字段</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_22">
+                <item row="1" column="0">
+                 <widget class="QCheckBox" name="checkBox_BianMa_P">
+                  <property name="text">
+                   <string>编码</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QCheckBox" name="checkBox_MingCheng_P">
+                  <property name="text">
+                   <string>名称</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_GaoCheng_P">
+                  <property name="text">
+                   <string>高程</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="0">
+                 <widget class="QCheckBox" name="checkBox_BianHao_P">
+                  <property name="text">
+                   <string>编号</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="1">
+                 <widget class="QCheckBox" name="checkBox_WaiGuaBiaoZhiZhen_P">
+                  <property name="text">
+                   <string>外挂表指针</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="5" column="0">
+                 <widget class="QCheckBox" name="checkBox_PaoDaoCiFangXiang_P">
+                  <property name="text">
+                   <string>跑道磁方向</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="4" column="1">
+                 <widget class="QCheckBox" name="checkBox_ZhuJiZhiZhen_P">
+                  <property name="text">
+                   <string>注记指针</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QCheckBox" name="checkBox_KuanDu_P">
+                  <property name="text">
+                   <string>宽度</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QCheckBox" name="checkBox_LeiXing_P">
+                  <property name="text">
+                   <string>类型</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QCheckBox" name="checkBox_BiGao_P">
+                  <property name="text">
+                   <string>比高</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_YaoSuBianHao_P">
+                  <property name="text">
+                   <string>要素编号</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="1">
+                 <widget class="QCheckBox" name="checkBox_TuXingTeZheng_P">
+                  <property name="text">
+                   <string>图形特征</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_Layer_Q">
+            <attribute name="title">
+             <string>军事区域</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_42">
+             <item row="0" column="0">
+              <widget class="QGroupBox" name="groupBox_Q_GeoType">
+               <property name="title">
+                <string>军事区域几何类型选择</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_38">
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_Point_Q">
+                  <property name="text">
+                   <string>点</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_Line_Q">
+                  <property name="text">
+                   <string>线</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="2">
+                 <widget class="QCheckBox" name="checkBox_Polygon_Q">
+                  <property name="text">
+                   <string>面</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_Q">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="title">
+                <string>军事区域图层相同属性字段选择</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_23">
+                <item row="3" column="1">
+                 <widget class="QCheckBox" name="checkBox_WaiGuaBiaoZhiZhen_Q">
+                  <property name="text">
+                   <string>外挂表指针</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QCheckBox" name="checkBox_TuXingTeZheng_Q">
+                  <property name="text">
+                   <string>图形特征</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_YaoSuBianHao_Q">
+                  <property name="text">
+                   <string>要素编号</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QCheckBox" name="checkBox_ZhuJiZhiZhen_Q">
+                  <property name="text">
+                   <string>注记指针</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QCheckBox" name="checkBox_MingCheng_Q">
+                  <property name="text">
+                   <string>名称</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QCheckBox" name="checkBox_BianMa_Q">
+                  <property name="text">
+                   <string>编码</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QCheckBox" name="checkBox_LeiXing_Q">
+                  <property name="text">
+                   <string>类型</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_XianZhiZhongLei_Q">
+                  <property name="text">
+                   <string>限制种类</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_Layer_R">
+            <attribute name="title">
+             <string>注记</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_41">
+             <item row="0" column="0">
+              <widget class="QGroupBox" name="groupBox_R_GeoType">
+               <property name="title">
+                <string>注记几何类型选择</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_40">
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_Line_R">
+                  <property name="text">
+                   <string>线</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_Point_R">
+                  <property name="text">
+                   <string>点</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_R">
+               <property name="minimumSize">
+                <size>
+                 <width>0</width>
+                 <height>0</height>
+                </size>
+               </property>
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>16777215</height>
+                </size>
+               </property>
+               <property name="title">
+                <string>注记匹配字段</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_39">
+                <item row="3" column="1">
+                 <widget class="QCheckBox" name="checkBox_YanSe_R">
+                  <property name="text">
+                   <string>颜色</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="1">
+                 <widget class="QCheckBox" name="checkBox_ZiJi_R">
+                  <property name="text">
+                   <string>字级</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="0">
+                 <widget class="QCheckBox" name="checkBox_YaoSuBianHao_R">
+                  <property name="text">
+                   <string>要素编号</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="1">
+                 <widget class="QCheckBox" name="checkBox_ZiXiang_R">
+                  <property name="text">
+                   <string>字向</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="2" column="0">
+                 <widget class="QCheckBox" name="checkBox_MingCheng_R">
+                  <property name="text">
+                   <string>名称</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="1" column="0">
+                 <widget class="QCheckBox" name="checkBox_BianMa_R">
+                  <property name="text">
+                   <string>编码</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="3" column="0">
+                 <widget class="QCheckBox" name="checkBox_ZiTi_R">
+                  <property name="text">
+                   <string>字体</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QCheckBox" name="checkBox_ZiXing_R">
+                  <property name="text">
+                   <string>字形</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </widget>
+         </item>
+         <item row="2" column="0" colspan="2">
+          <widget class="QGroupBox" name="groupBox">
+           <property name="minimumSize">
+            <size>
+             <width>700</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>200</height>
+            </size>
+           </property>
+           <property name="title">
+            <string>匹配阈值设置</string>
+           </property>
+           <layout class="QGridLayout" name="gridLayout">
+            <item row="0" column="0">
+             <layout class="QHBoxLayout" name="horizontalLayout_3">
+              <item>
+               <widget class="QLabel" name="label_6">
+                <property name="minimumSize">
+                 <size>
+                  <width>90</width>
+                  <height>30</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>点匹配阈值</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLineEdit" name="lineEdit_PointDistance">
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="toolTip">
+                 <string>接边处搜索距离，不同比例尺数据设置距离不同</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_7">
+                <property name="text">
+                 <string>单位：米</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item row="0" column="1">
+             <spacer name="horizontalSpacer_4">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>341</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item row="1" column="0">
+             <layout class="QHBoxLayout" name="horizontalLayout_2">
+              <item>
+               <widget class="QLabel" name="label_2">
+                <property name="minimumSize">
+                 <size>
+                  <width>90</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="text">
+                 <string>线面匹配阈值</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLineEdit" name="lineEdit_LineAndPolygonDistance">
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>0</height>
+                 </size>
+                </property>
+                <property name="toolTip">
+                 <string>接边处搜索距离，不同比例尺数据设置距离不同</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QLabel" name="label_3">
+                <property name="text">
+                 <string>单位：米</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item row="1" column="1">
+             <spacer name="horizontalSpacer_2">
+              <property name="orientation">
+               <enum>Qt::Horizontal</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>241</width>
+                <height>20</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+           </layout>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QGroupBox" name="groupBox_3">
+        <property name="title">
+         <string>输出数据</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_56">
+         <item row="0" column="0">
+          <layout class="QHBoxLayout" name="horizontalLayout_8">
+           <item>
+            <widget class="QLabel" name="label_MatchDBPath">
+             <property name="maximumSize">
+              <size>
+               <width>100</width>
+               <height>16777215</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>输出目录</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLineEdit" name="lineEdit_MatchDBSavePath">
+             <property name="minimumSize">
+              <size>
+               <width>0</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="toolTip">
+              <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;输出按图幅命名的融合匹配库，库中存放以图层命名的融合匹配记录表&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+             </property>
+             <property name="dragEnabled">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="pushButton_Save">
+             <property name="maximumSize">
+              <size>
+               <width>93</width>
+               <height>28</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>保存</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <spacer name="horizontalSpacer_3">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>446</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="1" column="1">
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QPushButton" name="Button_OK">
+       <property name="text">
+        <string>确定</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="Button_Cancel">
+       <property name="text">
+        <string>取消</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <layoutdefault spacing="6" margin="11"/>
+ <resources/>
+ <connections/>
+</ui>

@@ -18,6 +18,33 @@
 #ifndef QGISINTERFACE_H
 #define QGISINTERFACE_H
 
+#pragma region "包含头文件"
+/*
+* 杨小兵-2024-02-23
+### 1. `#include "qgis.h"`
+- **作用**：这个头文件通常包含了QGIS的核心库定义，比如版本信息、一些全局枚举和常量。它为插件开发者提供了访问QGIS核心功能的基础设施，
+确保插件能够与QGIS核心库兼容并正确使用其基础功能。
+
+### 2. `#include "qgis_sip.h"`
+- **作用**：`qgis_sip.h`是专门为SIP（一个用于创建Python绑定的工具）准备的头文件。SIP用于将C++代码转换为Python模块，使得QGIS的功能
+可以通过Python脚本来访问和控制。这个头文件可能包含了特定的宏定义和指令，用于指导SIP处理过程，使得QGIS的C++接口能够在Python中被使用。
+
+### 3. `#include "qgis_gui.h"`
+- **作用**：此头文件包含了QGIS的图形用户界面（GUI）组件的定义。它提供了创建图形界面元素，如工具栏、菜单项、对话框等，所需的类和函数。
+对于开发需要与用户交云的插件，这个头文件是必不可少的，因为它允许插件以一种与QGIS GUI一致的方式来设计和实现其用户界面。
+
+### 4. `#include "qgscoordinatereferencesystem.h"`
+- **作用**：这个头文件定义了与坐标参考系统（CRS）相关的类。`QgsCoordinateReferenceSystem`类用于表示地图的坐标系统，包括地理坐标系
+统和投影坐标系统。这对于进行地图绘制、空间分析等任务的插件至关重要，因为正确的坐标参考系统是确保地理数据精确表示的基础。
+
+### 5. `#include "qgslayertreeregistrybridge.h"`
+- **作用**：此头文件中的`QgsLayerTreeRegistryBridge`类提供了一个桥接接口，用于同步图层注册表（包含了所有已加载图层的信息）和图层树
+（用于在QGIS界面中组织和显示图层的结构）。这使得插件可以在向QGIS中添加或移除图层时，自动更新图层树视图，保持用户界面的一致性和准确性。
+
+  这些头文件共同提供了开发QGIS插件所需的各种功能和接口。通过这些接口，插件可以访问QGIS的核心功能、GUI组件、坐标参考系统等，从而能够创建
+功能丰富、与QGIS紧密集成的地理信息系统应用。
+
+*/
 #include <QObject>
 #include <map>
 
@@ -26,6 +53,8 @@
 #include "qgis_gui.h"
 #include "qgscoordinatereferencesystem.h"
 #include "qgslayertreeregistrybridge.h"
+
+#pragma endregion
 
 class QAction;
 class QDialog;

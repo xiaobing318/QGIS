@@ -83,7 +83,47 @@ class GUI_EXPORT QgsLayerTreeProxyModel : public QSortFilterProxyModel
 
 };
 
+/*
+* 杨小兵-2024-02-23
+一、解释
+  上述注释是对`QgsLayerTreeView`类的详细描述，该类在QGIS的图形用户界面（GUI）模块中。让我们逐点解析这段注释，以更好地理解`QgsLayerTreeView`类
+的功能和应用场景。
+  - **扩展自`QTreeView`**：`QgsLayerTreeView`是基于Qt的`QTreeView`类的扩展，这意味着它继承了`QTreeView`的所有功能，并在此基础上增加了额外的
+  功能，专门用于处理图层树（layer tree）。
 
+  - **额外的功能**：`QgsLayerTreeView`提供了一些在处理图层树时非常有用的附加功能。这些功能包括更新图层树节点的展开状态、监听图层树中展开状态的
+  变化、跟踪当前图层并在当前图层改变时发出信号等。
+
+1. **更新和监听展开状态**：`QgsLayerTreeView`能够更新图层树中节点的展开状态，并且能够监听图层树中展开状态的改变。这意味着如果用户在图层树视图中
+展开或折叠了某个节点，`QgsLayerTreeView`会相应地更新其显示，并且如果图层树的结构在程序的其他部分发生变化，`QgsLayerTreeView`也能够捕捉到这些变
+化并更新视图。
+
+2. **跟踪当前图层并发出信号**：当当前选中的图层发生变化时，`QgsLayerTreeView`会跟踪这一变化并发出一个信号。这对于开发者来说非常有用，因为他们可以
+监听这个信号并根据当前选中的图层更新应用程序的其他部分，如属性面板、状态栏等。
+
+3. **自定义上下文菜单**：`QgsLayerTreeView`允许客户端（即使用`QgsLayerTreeView`的开发者）指定一个上下文菜单提供者，以添加自定义操作到图层树视图
+的上下文菜单中。这为开发者提供了高度的灵活性，使他们能够根据应用程序的需要为用户提供定制的功能。
+
+4. **默认动作集合**：除了支持自定义操作，`QgsLayerTreeView`还自带了一套默认的动作，这些动作可以在构建上下文菜单时使用。这些默认动作涵盖了一些常见
+的图层操作需求，如添加、删除图层等。
+
+5. **与`QgsLayerTreeModel`的关系**：注释中提到了`QgsLayerTreeModel`，这是因为`QgsLayerTreeView`通常与`QgsLayerTreeModel`一起使用。
+`QgsLayerTreeModel`提供了图层树的数据模型，而`QgsLayerTreeView`则是这个模型的视图表示。这种模型-视图架构使得图层树的表示与数据逻辑分离，
+便于管理和更新。(数据+视图)
+
+二、QGIS全部的模块
+1、core library:The CORE library contains all basic GIS functionality
+2、gui library	:The GUI library is build on top of the CORE library and adds reusable GUI widgets
+3、analysis library:The ANALYSIS library is built on top of CORE library and provides high level tools for carrying out spatial analysis on vector and raster data
+4、server library:The SERVER library is built on top of the CORE library and adds map server components to QGIS
+5、3D library:The 3D library is build on top of the CORE library and Qt 3D framework
+6、plugin classes:Contains classes related to implementation of QGIS plugins
+7、QgsQuick library:The QgsQuick library is built on top of the CORE library and Qt Quick/QML framework
+
+三、适用版本
+- **自QGIS 2.4起引入**：这表明`QgsLayerTreeView`类自QGIS版本2.4起就已经存在，并在后续版本中继续得到支持和更新。
+
+*/
 /**
  * \ingroup gui
  * \brief The QgsLayerTreeView class extends QTreeView and provides some additional functionality
