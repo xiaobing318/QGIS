@@ -2,7 +2,7 @@ name: Write build artifact comments
 
 on:
   workflow_run:
-    workflows: 
+    workflows:
       - 🪟 MingW64 Windows 64bit Build
       - 🪟 Windows Qt6
       - 🧮 Vcpkg report
@@ -76,7 +76,7 @@ jobs:
             function updateCommentSection(prComment, marker, body) {
               // Create a regular expression to match the section between start and end markers
               const sectionRegex = new RegExp(`(<!-- ====startsection ${marker}-->\\n)([\\s\\S]*?)(<!-- ====endsection ${marker}-->)`, 'm');
-              
+
               // Check if the section with the marker exists
               if (sectionRegex.test(prComment)) {
                 // Replace the existing body text between the markers
