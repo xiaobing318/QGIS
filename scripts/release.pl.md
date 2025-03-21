@@ -1,3 +1,5 @@
+## 1 代码理解
+
 ### Key Points
 - 这个文件由Perl解释器读取并执行，Perl可在Ubuntu等多个平台上运行。
 - 脚本自动化QGIS软件的发布过程，处理版本更新和Git管理等任务，减少人为错误。
@@ -78,3 +80,54 @@
 - [How to run perl script on Ubuntu Stack Overflow](https://stackoverflow.com/questions/53247228/how-to-run-perl-script-on-ubuntu)
 - [Install Perl on Ubuntu Ultahost Knowledge Base](https://ultahost.com/knowledge-base/install-perl-ubuntu/)
 - [QGIS release.pl at master GitHub](https://github.com/qgis/QGIS/blob/master/scripts/release.pl)
+
+
+
+## 2 脚本运行结果示例
+
+```bash
+xbyang@bogon QGIS % perl ./scripts/release.pl -major -dryrun -releasename="Quantum leap"
+Last pull rebase...
+DRYRUN: git pull --rebase
+Pulling transifex translations...
+DRYRUN: CONSIDER_TS_DROP_FATAL=1 scripts/pull_ts.sh
+DRYRUN: git add i18n/*.ts
+DRYRUN: git commit -n -a -m "translation update for 4.0.0 from transifex"
+Updating changelog...
+DRYRUN: scripts/create_changelog.sh
+DRYRUN: perl -i -pe 's#<releases>#<releases>
+    <release version="4.0.0" date="2025-03-21" />#' linux/org.qgis.qgis.appdata.xml.in
+DRYRUN: scripts/update_news.pl 4.0 "Quantum leap"
+DRYRUN: git commit -n -a -m "changelog and news update for 4.0"
+Creating and checking out branch...
+DRYRUN: git checkout -b release-4_0
+DRYRUN: Update CMakeLists.txt to 4.0.0 (Quantum leap)
+Updating version...
+DRYRUN: dch -r ''
+DRYRUN: dch --newversion 4.0.0 'Release of 4.0.0'
+DRYRUN: cp debian/changelog /tmp
+DRYRUN: perl -i -pe 's/qgis-dev-deps/qgis-rel-deps/;' INSTALL.md
+DRYRUN: cp -v images/splash/splash-4.0rc.png images/splash/splash.png
+DRYRUN: sed -i -e 's/r:qgis-application/r:release-4_0-qgis-application/' .tx/config
+DRYRUN: git commit -n -a -m "Release of 4.0 (Quantum leap)"
+DRYRUN: git tag final-4_0_0 -m 'Version 4.0'
+DRYRUN: for i in $(seq 20); do tx push -s && exit 0; echo "Retry $i/20..."; done; exit 1
+Producing archive...
+DRYRUN: git archive --format tar --prefix=qgis-4.0.0/ final-4_0_0 | bzip2 -c >qgis-4.0.0.tar.bz2
+DRYRUN: sha256sum qgis-4.0.0.tar.bz2 >qgis-4.0.0.tar.bz2.sha256
+Updating master...
+DRYRUN: git checkout master
+DRYRUN: perl -i -pe "s#Earlier versions of the documentation are also available on the QGIS website:#$&\n<a href=\"https://qgis.org/api/4.0\">4.0</a>,#" doc/index.dox
+DRYRUN: Update CMakeLists.txt to 4.1.0 (Master)
+DRYRUN: cp /tmp/changelog debian
+DRYRUN: dch -r ''
+DRYRUN: dch --newversion 4.1.0 'New development version 4.1 after branch of 4.0'
+DRYRUN: git commit -n -a -m 'Bump version to 4.1'
+Push dry-run...
+DRYRUN: git push -n --follow-tags origin master release-4_0
+Now manually push and upload the tar balls:
+	git push --follow-tags origin master release-4_0
+	rsync qgis-4.0.0.tar.bz2* ssh.qgis.org:/var/www/downloads/
+Update the versions and release name in release spreadsheet.
+Package and update the website afterwards.
+```
