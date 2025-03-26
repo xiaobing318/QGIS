@@ -1,60 +1,81 @@
 Building QGIS from source - step by step
+```c
+/*
+Notes:杨小兵-2025-03-22
+
+1、这部分内容将会介绍如何一步步从源码构建 QGIS 。
+2、这部分内容同之前版本的构建方式是不同的，需要重新理解一下，重要的是对其中的一些概念要有所了解，例如操作系统平台、编译器、构建系统等等。
+3、在markdown进行渲染的时候还隐藏了一些注释内容，下列这个 TOC 则是通过https://freelance-tech-writer.github.io/table-of-contents-generator/index.html生成的。（目前没有使用成功，不知道该网址是否正常）
+*/
+```
 
 <!-- Table of contents generated with https://freelance-tech-writer.github.io/table-of-contents-generator/index.html -->
 
 # Table of Contents
-* [Table of Contents](#table-of-contents)
-* [1. Introduction](#1-introduction)
-* [2. Overview](#2-overview)
-* [3. Building on GNU/Linux](#3-building-on-gnulinux)
-   * [3.1. Building QGIS with Qt 5.x](#31-building-qgis-with-qt-5x)
-   * [3.2. Prepare apt](#32-prepare-apt)
-   * [3.3. Install build dependencies](#33-install-build-dependencies)
-   * [3.4. Setup ccache (Optional, but recommended)](#34-setup-ccache-optional-but-recommended)
-   * [3.5. Prepare your development environment](#35-prepare-your-development-environment)
-   * [3.6. Check out the QGIS Source Code](#36-check-out-the-qgis-source-code)
-   * [3.7. Starting the compile](#37-starting-the-compile)
-       * [3.7.1 Available compilation flags](#371-available-compilation-flags)
-   * [3.8. Compiling with 3D](#38-compiling-with-3d)
-       * [3.8.1. Compiling with 3D on old Debian based distributions](#381-compiling-with-3d-on-old-debian-based-distributions)
-   * [3.9. Building different branches](#39-building-different-branches)
-   * [3.10. Building Debian packages](#310-building-debian-packages)
-       * [3.10.1. Building packages with oracle support](#3101-building-packages-with-oracle-support)
-   * [3.11. On Fedora Linux](#311-on-fedora-linux)
-       * [3.11.1. Install build dependencies](#3111-install-build-dependencies)
-       * [3.11.2. Suggested system tweaks](#3112-suggested-system-tweaks)
-       * [3.11.3. Additional tools for QGIS development](#3113-additional-tools-for-qgis-development)
-* [4. Building on Windows](#4-building-on-windows)
-   * [4.1. Building with Microsoft Visual Studio](#41-building-with-microsoft-visual-studio)
-       * [4.1.1. Visual Studio 2022 Community Edition](#411-visual-studio-2022-community-edition)
-       * [4.1.2. Other tools and dependencies](#412-other-tools-and-dependencies)
-       * [4.1.3. Clone the QGIS Source Code](#413-clone-the-qgis-source-code)
-       * [4.1.4. OSGeo4W](#414-osgeo4w)
-   * [4.2. Building on Linux with mingw64](#42-building-on-linux-with-mingw64)
-       * [4.2.1. Building with Docker](#421-building-with-docker)
-           * [4.2.1.1. Initial setup](#4211-initial-setup)
-           * [4.2.1.2. Building the dependencies](#4212-building-the-dependencies)
-           * [4.2.1.3. Cross-Building QGIS](#4213-cross-building-qgis)
-       * [4.2.2. Testing QGIS](#422-testing-qgis)
-   * [4.3 Building for Qt 6 with VCPKG in Microsoft Visual Studio](43-building-on-windows-with-vcpkg)
-* [5. Building on MacOS X](#5-building-on-macos-x)
-   * [5.1. Install Developer Tools](#51-install-developer-tools)
-   * [5.2. Install CMake and other build tools](#52-install-cmake-and-other-build-tools)
-   * [5.3. Install Qt5 and QGIS-Deps](#53-install-qt5-and-qgis-deps)
-   * [5.4. QGIS source](#54-qgis-source)
-   * [5.5. Configure the build](#55-configure-the-build)
-   * [5.6. Building](#56-building)
-* [6. Setting up the WCS test server on GNU/Linux](#6-setting-up-the-wcs-test-server-on-gnulinux)
-   * [6.1. Preparation](#61-preparation)
-   * [6.2. Setup mapserver](#62-setup-mapserver)
-   * [6.3. Create a home page](#63-create-a-home-page)
-   * [6.4. Now deploy it](#64-now-deploy-it)
-   * [6.5. Debugging](#65-debugging)
-* [7. Setting up a Jenkins Build Server](#7-setting-up-a-jenkins-build-server)
-* [8. Debug output and running tests](#8-debug-output-and-running-tests)
-* [9. Authors and Acknowledgments](#9-authors-and-acknowledgments)
+- [Table of Contents](#table-of-contents)
+- [1. Introduction](#1-introduction)
+- [2. Overview](#2-overview)
+- [3. Building on GNU/Linux](#3-building-on-gnulinux)
+  - [3.1. Building QGIS with Qt 5.x](#31-building-qgis-with-qt-5x)
+  - [3.2. Prepare apt](#32-prepare-apt)
+  - [3.3. Install build dependencies](#33-install-build-dependencies)
+  - [3.4. Setup ccache (Optional, but recommended)](#34-setup-ccache-optional-but-recommended)
+  - [3.5. Prepare your development environment](#35-prepare-your-development-environment)
+  - [3.6. Check out the QGIS Source Code](#36-check-out-the-qgis-source-code)
+  - [3.7. Starting the compile](#37-starting-the-compile)
+    - [3.7.1 Available compilation flags](#371-available-compilation-flags)
+  - [3.8. Compiling with 3D](#38-compiling-with-3d)
+    - [3.8.1. Compiling with 3D on old Debian based distributions](#381-compiling-with-3d-on-old-debian-based-distributions)
+  - [3.9. Building different branches](#39-building-different-branches)
+  - [3.10. Building Debian packages](#310-building-debian-packages)
+    - [3.10.1. Building packages with Oracle support](#3101-building-packages-with-oracle-support)
+  - [3.11. On Fedora Linux](#311-on-fedora-linux)
+    - [3.11.1. Install build dependencies](#3111-install-build-dependencies)
+    - [3.11.2. Suggested system tweaks](#3112-suggested-system-tweaks)
+    - [3.11.3. Additional tools for QGIS development](#3113-additional-tools-for-qgis-development)
+    - [3.11.4. QT6 experimental builds with Fedora Rawhide](#3114-qt6-experimental-builds-with-fedora-rawhide)
+- [4. Building on Windows](#4-building-on-windows)
+  - [4.1. Building with Microsoft Visual Studio](#41-building-with-microsoft-visual-studio)
+    - [4.1.1. Visual Studio 2022 Community Edition](#411-visual-studio-2022-community-edition)
+    - [4.1.2. Other tools and dependencies](#412-other-tools-and-dependencies)
+    - [4.1.3. Clone the QGIS Source Code](#413-clone-the-qgis-source-code)
+    - [4.1.4. OSGeo4W](#414-osgeo4w)
+  - [4.2. Building on Linux with mingw64](#42-building-on-linux-with-mingw64)
+    - [4.2.1. Building with Docker](#421-building-with-docker)
+      - [4.2.1.1. Initial setup](#4211-initial-setup)
+      - [4.2.1.2. Building the dependencies](#4212-building-the-dependencies)
+      - [4.2.1.3. Cross-Building QGIS](#4213-cross-building-qgis)
+    - [4.2.2. Testing QGIS](#422-testing-qgis)
+  - [4.3 Building on Windows with vcpkg](#43-building-on-windows-with-vcpkg)
+    - [4.3.1 Install Build Tools](#431-install-build-tools)
+    - [4.3.2 Build QGIS](#432-build-qgis)
+      - [4.3.2.1 Build with an SDK](#4321-build-with-an-sdk)
+      - [4.3.2.1 Build all the dependencies locally](#4321-build-all-the-dependencies-locally)
+- [5. Building on MacOS X](#5-building-on-macos-x)
+  - [5.1. Install Developer Tools](#51-install-developer-tools)
+  - [5.2. Install CMake and other build tools](#52-install-cmake-and-other-build-tools)
+  - [5.3. Install Qt5 and QGIS-Deps](#53-install-qt5-and-qgis-deps)
+  - [5.4. QGIS source](#54-qgis-source)
+  - [5.5. Configure the build](#55-configure-the-build)
+  - [5.6. Building](#56-building)
+- [6. Setting up the WCS test server on GNU/Linux](#6-setting-up-the-wcs-test-server-on-gnulinux)
+  - [6.1. Preparation](#61-preparation)
+  - [6.2. Setup mapserver](#62-setup-mapserver)
+  - [6.3. Create a home page](#63-create-a-home-page)
+  - [6.4. Now deploy it](#64-now-deploy-it)
+  - [6.5. Debugging](#65-debugging)
+- [7. Setting up a Jenkins Build Server](#7-setting-up-a-jenkins-build-server)
+- [8. Debug output and running tests](#8-debug-output-and-running-tests)
+- [9. Authors and Acknowledgments](#9-authors-and-acknowledgments)
 
 # 1. Introduction
+```c
+/*
+Notes:杨小兵-2025-03-22
+
+1、这部分内容将会对从源码构建 QGIS 进行一个介绍。
+*/
+```
 
 This document is the original installation guide of the described software
 QGIS. The software and hardware descriptions named in this
@@ -62,6 +83,14 @@ document are in most cases registered trademarks and are therefore subject
 to the legal requirements. QGIS is subject to the GNU General Public
 License. Find more information on the QGIS Homepage:
 https://qgis.org
+```c
+/*
+Notes:杨小兵-2025-03-22
+
+1、这个文档中的内容是所述 QGIS 软件的原始安装指南。本文件中提及的软件和硬件描述在大多数情况下均为注册商标，因此受法律要求的约束。QGIS 受 GNU 通用公共许可证约束。有关更多信息，请访问 QGIS 主页：https://qgis.org。
+2、整体来看这部分内容提供了一个额外信息的描述，并没有提供关于构建 QGIS 相关的内容。
+*/
+```
 
 The details, that are given in this document have been written and verified
 to the best of knowledge and responsibility of the editors. Nevertheless,
@@ -69,23 +98,61 @@ mistakes concerning the content are possible. Therefore, all data are not
 liable to any duties or guarantees. The editors and publishers do not take
 any responsibility or liability for failures and their consequences. You are
 always welcome for indicating possible mistakes.
+```c
+/*
+Notes:杨小兵-2025-03-22
+
+1、本文档中提供的详细信息均由编辑尽其所能编写和验证。然而，内容方面可能存在错误。因此，所有数据均不承担任何责任或保证。编辑和出版商对失败及其后果不承担任何责任。欢迎您随时指出可能的错误。
+2、文档中的内容可能存在问题。
+*/
+```
 
 Because the code of QGIS evolves from release to release, These instructions are
 regularly updated to match the corresponding release. Instructions for the current
 master branch are available at https://github.com/qgis/QGIS/blob/master/INSTALL.md.
 If you wish to build another version of QGIS, ensure to checkout the appropriate
 release branch. The QGIS source code can be found [in the repository](https://github.com/qgis/QGIS).
+```c
+/*
+Notes:杨小兵-2025-03-22
+
+1、由于 QGIS 的代码在各个版本之间不断演变，因此这些说明会定期更新以匹配相应的版本。当前主分支的说明可在 https://github.com/qgis/QGIS/blob/master/INSTALL.md 上找到。如果您希望构建另一个版本的 QGIS，请确保签出相应的发布分支。QGIS 源代码可在 [存储库](https://github.com/qgis/QGIS) 中找到。
+2、如果想要构建特定的 QGIS 版本则需要在对应分支中找到安装说明文件，而不是使用一个分支中的安装说明文件来构建另外一个分支中的 QGIS ,这样可能会存在问题。
+*/
+```
 
 Please visit https://qgis.org for information on joining our mailing lists
 and getting involved in the project further.
 
 **Note to document writers:** Please use this document as the central
 place for describing build procedures. Please do not remove this notice.
+```c
+/*
+Notes:杨小兵-2025-03-22
+
+1、请访问 https://qgis.org 了解加入我们的邮件列表以及进一步参与该项目的信息。
+2、文档编写者须知：请将此文档作为描述构建过程的中心位置。请不要删除此通知。
+*/
+```
 
 # 2. Overview
+```c
+/*
+Notes:杨小兵-2025-03-22
+
+1、这部分内容将会整体上介绍一下从源码构建 QGIS 的情况。
+*/
+```
 
 QGIS, like a number of major projects (e.g., KDE 4.0),
 uses [CMake](https://www.cmake.org) for building from source.
+```c
+/*
+Notes:杨小兵-2025-03-22
+
+1、QGIS 这个项目使用的构建系统是 CMake，类似于一些其他出名的项目一样，例如 KDE 4.0 项目。
+*/
+```
 
 Following a summary of the required dependencies for building:
 
@@ -130,8 +197,23 @@ proprietary third party libraries.  QGIS doesn't need any of those itself to
 build, but will only support those formats if GDAL is built accordingly.  Refer
 to [format list](https://gdal.org/index.html) for instructions how to include
 those formats in GDAL.
+```c
+/*
+Notes:杨小兵-2025-03-22
+
+1、QGIS通过GDAL支持多种地理数据格式，包括像ECW和MrSid这样的专有格式，但这些格式需要专有的第三方库；QGIS本身在构建时不需要这些库，只有在GDAL构建时配置了相应库支持后，QGIS才能处理这些格式，用户可以参考GDAL的格式列表获取配置指导。
+2、QGIS中能够支持多种地理数据格式是通过GDAL来实现的，也就是说QGIS内部使用了GDAL来实现对多种地理数据格式进行的操作。
+*/
+```
 
 # 3. Building on GNU/Linux
+```c
+/*
+Notes:杨小兵-2025-03-22
+
+1、这部分内容将会讲述如何在GNU/Linux平台上从源码构建QGIS。
+*/
+```
 
 ## 3.1. Building QGIS with Qt 5.x
 
@@ -154,6 +236,21 @@ This document assumes you have made a fresh install and have a 'clean' system.
 These instructions should work fine if this is a system that has already been
 in use for a while, you may need to just skip those steps which are irrelevant
 to you.
+```c
+/*
+Notes:杨小兵-2025-03-22
+
+1、在Ubuntu系统上编译和安装QGIS时，推荐通过构建Debian包的方式进行，因为这种方法最简单，尤其是对于非开发用户；它利用apt管理依赖项的二进制包，仅从源代码构建QGIS核心部分，从而简化流程并减少手动编译的复杂性。
+  1.1 通过Debian包的方式编译和安装QGIS是最为方便的，但是目前这种方式满足不了我的需求。
+  1.2 需要一些额外的知识重新整理整个编译流程。
+2、关键点
+  2.1 Debian包构建是首选：对于不打算深入开发QGIS的用户，使用Debian包编译和安装QGIS是最简便的方式，相较于从头构建所有组件更为高效。
+  2.2 依赖项管理依赖apt：通过apt安装二进制依赖包，避免手动编译所有依赖项，确保系统包管理交给apt，只需专注于QGIS核心代码的构建。
+  2.3 系统环境适用性：指南假设用户使用的是新安装的Ubuntu系统，但对已使用过的系统也适用，用户可根据实际情况跳过不必要的步骤。
+  2.4 二进制包的优势：使用二进制包安装依赖项能显著降低构建复杂度，减少出错概率，尤其适合不想深入处理依赖关系的用户。
+  2.5 适用范围的局限：这些说明主要针对Ubuntu系统，若使用其他Debian衍生版本，可能需要根据具体情况调整包名或步骤。
+*/
+```
 
 ## 3.2. Prepare apt
 
@@ -164,6 +261,16 @@ Now update your local sources database:
 
 ```bash
 sudo apt-get update
+```
+```c
+/*
+Notes:杨小兵-2025-03-22
+
+1、您需要一个足够新的发行版才能满足所有依赖关系。以下部分列出了支持的发行版。在下列的章节中罗列出了支持的发行版。需要通过上述命令来更新本地源数据库。
+2、关键点
+  2.1 并不是所有的GNU/Linux都是支持QGIS的编译和安装的，有些比较老的发行版则是不支持的，这一点是需要注意的。
+  2.2 这里需要对apt包管理器有一个基本的认识。
+*/
 ```
 
 ## 3.3. Install build dependencies
@@ -180,6 +287,22 @@ sudo apt-get update
 | sid | ``apt-get install bison build-essential ca-certificates ccache cmake cmake-curses-gui dh-python doxygen expect flex flip gdal-bin git graphviz grass-dev libdraco-dev libexiv2-dev libexpat1-dev libfcgi-dev libgdal-dev libgeos-dev libgsl-dev libpq-dev libproj-dev libprotobuf-dev libqca-qt5-2-dev libqca-qt5-2-plugins libqscintilla2-qt5-dev libqt5opengl5-dev libqt5serialport5-dev libqt5sql5-sqlite libqt5svg5-dev libqt5webkit5-dev libqt5xmlpatterns5-dev libqwt-qt5-dev libspatialindex-dev libspatialite-dev libsqlite3-dev libsqlite3-mod-spatialite libyaml-tiny-perl libzip-dev libzstd-dev lighttpd locales ninja-build ocl-icd-opencl-dev opencl-headers pandoc pkg-config poppler-utils protobuf-compiler pyqt5-dev pyqt5-dev-tools pyqt5.qsci-dev python3-all-dev python3-autopep8 python3-dev python3-gdal python3-jinja2 python3-lxml python3-mock python3-nose2 python3-owslib python3-plotly python3-psycopg2 python3-pygments python3-pyproj python3-pyqt5 python3-pyqt5.qsci python3-pyqt5.qtmultimedia python3-pyqt5.qtpositioning python3-pyqt5.qtserialport python3-pyqt5.qtsql python3-pyqt5.qtsvg python3-pyqt5.qtwebkit python3-pyqtbuild python3-sip python3-termcolor python3-yaml qt3d-assimpsceneimport-plugin qt3d-defaultgeometryloader-plugin qt3d-gltfsceneio-plugin qt3d-scene2d-plugin qt3d5-dev qtbase5-dev qtbase5-private-dev qtkeychain-qt5-dev qtmultimedia5-dev qtpositioning5-dev qttools5-dev qttools5-dev-tools sip-tools spawn-fcgi xauth xfonts-100dpi xfonts-75dpi xfonts-base xfonts-scalable xvfb`` |
 
 (extracted from the control.in file in `debian/`)
+```c
+/*
+Notes:杨小兵-2025-03-22
+
+1、上述内容罗列出来的是针对不同的、支持的发行版安装构建依赖的具体命令，当前QGIS分支支持的发行版如下所示
+  1.1 bullseye--->debian 11.x
+  1.2 bookworm--->debian 12.x
+  1.3 jammy------>Ubuntu 22.04 LTS
+  1.4 kinetic---->Ubuntu 22.10
+  1.5 lunar------>Ubuntu 23.04
+  1.6 mantic----->Ubuntu 23.10
+  1.7 noble------>Ubuntu 24.04 LTS
+  1.8 sid-------->debian 不稳定
+2、上述给出的安装构建依赖命令则是从debian/目录中的control.in文件中抽取得到的。（对debian这个目录需要深入了解从而明白这个目录具体的作用是什么？应用场景具体是什么？
+*/
+```
 
 See [debian-ubuntu](https://qgis.org/en/site/forusers/alldownloads.html#debian-ubuntu) for
 currently supported distributions (plain xenial's GDAL for instance is too old
