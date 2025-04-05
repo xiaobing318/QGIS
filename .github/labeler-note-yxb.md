@@ -1,6 +1,6 @@
 # 1. 解释labeler.yml文件中的内容整体作用是什么？
 
-这个 labeler.yml 文件，你可以把它想象成一个“自动标签机”。它的作用是告诉 GitHub（QGIS 项目用 GitHub 管理代码），当有人提交代码改动（也就是 pull request，简称 PR）时，根据改动的文件路径，自动给这个 PR 贴上一个标签。比如：
+这个 labeler.yml 文件，你可以把它想象成一个“自动标签机”。它的作用是告诉 GitHub（QGIS 项目用 GitHub 管理代码）（具体来说就是Github Actions中的actions/labelers所需要的配置文件），当有人提交代码改动（也就是 pull request，简称 PR）时，根据改动的文件路径，自动给这个 PR 贴上一个标签。比如：
  - 如果有人改了 src/3d/ 目录下的文件，GitHub 就会给这个 PR 打上 "3D" 的标签。
  - 如果改了 src/core/annotations/ 下的文件，就打上 "Annotations" 的标签。
  - 再比如改了 python/plugins/db_manager/，就打上 "DB Manager" 的标签。
