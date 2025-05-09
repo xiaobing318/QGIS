@@ -1,0 +1,10 @@
+<RCC>
+    <qresource prefix="/planet_data_products_toolbox">
+        <file>icons/translator_gradient_icon.svg</file>
+		<file>icons/translator_black_icon.svg</file>
+		<file>icons/translator_colors_icon.svg</file>
+		<file>icons/plugin_icon.svg</file>
+        <file>icons/analysis_ready_data_process_tool_icon.svg</file>
+        <file>icons/point_feature_hierarchical_processing_tool_icon.svg</file>
+    </qresource>
+</RCC>

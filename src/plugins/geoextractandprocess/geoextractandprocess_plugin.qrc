@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file>icons/geoextractandprocess_createdb_22x22.png</file>
+        <file>icons/geoextractandprocess_setmergeparam_22x22.png</file>
+    </qresource>
+</RCC>

@@ -1,0 +1,1008 @@
+#include "se_feature_attribute_check_thread_yth.h"
+#include "vector/cse_vector_datacheck.h"
+#include <QtWidgets>
+#include <cmath>
+
+/*----------------GDAL--------------*/
+#include "gdal.h"
+#include "gdal_priv.h"
+#include "cpl_string.h"
+#include "gdal_utils.h"
+/*-----------------------------------*/
+
+
+#ifdef OS_FAMILY_WINDOWS
+#include <io.h>
+#include <stdio.h>
+#include <windows.h>
+#else
+#include <sys/io.h>
+#include <dirent.h>
+#include <sys/errno.h>
+#endif
+
+
+
+SE_FeatureAttributeThreadYTH::SE_FeatureAttributeThreadYTH(QObject *parent)
+    : QThread(parent)
+{
+    restart = false;
+    abort = false;
+}
+
+SE_FeatureAttributeThreadYTH::~SE_FeatureAttributeThreadYTH()
+{
+    mutex.lock();
+    abort = true;
+    condition.wakeOne();
+    mutex.unlock();
+
+    wait();
+
+}
+void SE_FeatureAttributeThreadYTH::SetThreadParams(QString qstrInputShpDataPath, QString qstrInputXmlPath, QString qstrOutputLogPath)
+{
+	QMutexLocker locker(&mutex);
+
+	this->m_qstrInputShpDataPath = qstrInputShpDataPath;
+	this->m_qstrInputXmlPath = qstrInputXmlPath;
+	this->m_qstrOutputLogPath = qstrOutputLogPath;
+
+	start();
+}
+
+void SE_FeatureAttributeThreadYTH::run()
+{
+    mutex.lock();
+    QString qstrInputShpDataPath = this->m_qstrInputShpDataPath;
+    QString qstrInputXmlPath = this->m_qstrInputXmlPath;
+	QString qstrOutputLogPath = this->m_qstrOutputLogPath;
+    mutex.unlock();
+	double dPercent = 0;
+	QString qstrResult;
+	// ----------------------开始-------------------------//
+
+	if (!FileIsExisted(qstrInputXmlPath))
+	{
+		dPercent = 0;
+		qstrResult = QString::fromLocal8Bit("输入xml文件不存在，请重新输入！");
+		emit resultProcess(dPercent, qstrResult);
+		return;
+	}
+
+	string strInputXmlPath = qstrInputXmlPath.toLocal8Bit();
+
+	// shp数据路径
+	if (!FilePathIsExisted(qstrInputShpDataPath))
+	{
+		dPercent = 0;
+		qstrResult = QString::fromLocal8Bit("输入shp数据目录不存在，请重新输入！");
+		emit resultProcess(dPercent, qstrResult);
+		return;
+	}
+
+	// 日志文件路径
+	if (!FileIsExisted(qstrOutputLogPath))
+	{
+		dPercent = 0;
+		qstrResult = QString::fromLocal8Bit("输出日志文件路径不合法，请重新输入！");
+		emit resultProcess(dPercent, qstrResult);
+		return;
+	}
+
+	string strLogFilePath = qstrOutputLogPath.toLocal8Bit();
+
+
+	// 获取shp目录下的文件夹个数
+	QStringList qstrShpSubDir = GetSubDirPathOfCurrentDir(qstrInputShpDataPath);
+
+
+	// 如果当前输入shp目录为单个图幅
+	if (qstrShpSubDir.size() == 0)
+	{
+		string strInputShpDataPath = qstrInputShpDataPath.toLocal8Bit();
+
+		// 获取shp图幅号
+		string strShpSheet;
+		GetFolderNameFromPath_string(strInputShpDataPath, strShpSheet);
+
+		SE_Error err = SE_ERROR_FAILURE;
+
+		vector<VectorAttributeCheckInfo> vLayerAttrCheckInfo;
+		vLayerAttrCheckInfo.clear();
+
+		err = CSE_VectorDataCheck::GJBFeatureAttributeCheck(
+			strInputShpDataPath.c_str(),
+			strInputXmlPath.c_str(),
+			vLayerAttrCheckInfo);
+
+		if (err != SE_ERROR_NONE)
+		{
+			char szText[500] = { 0 };
+			sprintf(szText, "一体化数据属性检查错误，错误代码：%d", err);
+			QString qstrText = QString::fromLocal8Bit(szText);
+			dPercent = 0;
+			emit resultProcess(dPercent, qstrText);
+			return;
+		}
+		else
+		{
+			err = CSE_VectorDataCheck::LogResultOfGJBFeatureAttributeCheck(vLayerAttrCheckInfo,
+				strLogFilePath.c_str());
+
+			if (err != SE_ERROR_NONE)
+			{
+				char szText[500] = { 0 };
+				sprintf(szText, "一体化数据属性检查日志输出错误，错误代码：%d", err);
+				QString qstrText = QString::fromLocal8Bit(szText);
+				dPercent = 0;
+				emit resultProcess(dPercent, qstrText);
+				return;
+			}
+
+			dPercent =  1.0;
+			qstrResult = QString::fromLocal8Bit("一体化数据属性检查完成！");
+			emit resultProcess(dPercent, qstrResult);
+		}
+
+	}
+
+	// 如果当前输入shp目录为多个图幅目录
+	else
+	{
+		for (int iIndex = 0; iIndex < qstrShpSubDir.size(); iIndex++)
+		{
+			QByteArray qInputShpPath = qstrShpSubDir[iIndex].toLocal8Bit();
+			string strInputShpDataPath = string(qInputShpPath);
+
+			// 获取指定目录的最后一级目录
+			// 获取shp图幅号
+			string strShpSheet;
+			GetFolderNameFromPath_string(strInputShpDataPath, strShpSheet);
+
+			SE_Error err = SE_ERROR_FAILURE;
+
+			vector<VectorAttributeCheckInfo> vLayerAttrCheckInfo;
+			vLayerAttrCheckInfo.clear();
+
+			err = CSE_VectorDataCheck::GJBFeatureAttributeCheck(
+				strInputShpDataPath.c_str(),
+				strInputXmlPath.c_str(),
+				vLayerAttrCheckInfo);
+
+
+			if (err != SE_ERROR_NONE)
+			{
+				char szText[500] = { 0 };
+				sprintf(szText, "一体化数据属性检查错误，错误代码：%d", err);
+				QString qstrText = QString::fromLocal8Bit(szText);
+				dPercent = 0;
+				emit resultProcess(dPercent, qstrText);
+				return;
+			}
+			else
+			{
+				err = CSE_VectorDataCheck::LogResultOfGJBFeatureAttributeCheck(vLayerAttrCheckInfo,
+					strLogFilePath.c_str());
+
+				if (err != SE_ERROR_NONE)
+				{
+					char szText[500] = { 0 };
+					sprintf(szText, "一体化数据属性检查日志输出错误，错误代码：%d", err);
+					QString qstrText = QString::fromLocal8Bit(szText);
+					dPercent = 0;
+					emit resultProcess(dPercent, qstrText);
+					return;
+				}
+
+				dPercent = (iIndex + 1) * 1.0 / qstrShpSubDir.size();
+				qstrResult = QString::fromLocal8Bit("一体化数据属性检查完成！");
+				emit resultProcess(dPercent, qstrResult);
+			}
+		}
+
+	}
+
+	// ----------------------结束-------------------------//
+
+}
+
+
+// 判断目录是否存在
+bool SE_FeatureAttributeThreadYTH::FilePathIsExisted(QString qstrPath)
+{
+	QDir dir(qstrPath);
+	return dir.exists();
+}
+
+// 判断文件是否存在
+bool SE_FeatureAttributeThreadYTH::FileIsExisted(QString qstrFilePath)
+{
+	return QFile::exists(qstrFilePath);
+}
+
+
+/*获取在指定目录下的目录的路径*/
+QStringList SE_FeatureAttributeThreadYTH::GetSubDirPathOfCurrentDir(QString dirPath)
+{
+	QStringList dirPaths;
+	QDir splDir(dirPath);
+	QFileInfoList fileInfoListInSplDir = splDir.entryInfoList(QDir::Dirs | QDir::NoDotAndDotDot);
+	QFileInfo tempFileInfo;
+	foreach(tempFileInfo, fileInfoListInSplDir) {
+		dirPaths << tempFileInfo.absoluteFilePath();
+	}
+	return dirPaths;
+}
+
+/*获取指定目录的最后一级目录*/
+void SE_FeatureAttributeThreadYTH::GetFolderNameFromPath_string(string strPath, string& strFolderName)
+{
+	// 获取图幅文件夹名称
+	int iIndex = strPath.find_last_of("/");
+	if (iIndex != string::npos)
+	{
+		strFolderName = strPath.substr(iIndex + 1, strPath.length() - 1);
+	}
+	else
+	{
+		strFolderName = "";
+	}
+}
+
+
+
+SE_Error SE_FeatureAttributeThreadYTH::FeatureAttributeCheck(
+	const char* szInputShpPath,
+	const char* szAttrCheckConfigXmlFile,
+	vector<VectorAttributeCheckInfo>& vFeatureAttrCheckInfo)
+{
+	// 如果输入图层列表为空
+	if (!szInputShpPath)
+	{
+		return SE_ERROR_FILEPATH_IS_INVALID;
+	}
+
+	vFeatureAttrCheckInfo.clear();
+
+	// 循环读取输入图层，如果读取不成功，提示错误消息
+	CPLSetConfigOption("GDAL_FILENAME_IS_UTF8", "NO");	// 支持中文路径
+	CPLSetConfigOption("SHAPE_ENCODING", "");			// 属性表支持中文字段
+	GDALAllRegister();
+	GDALDataset* poDS = (GDALDataset*)GDALOpenEx(szInputShpPath, GDAL_OF_VECTOR, NULL, NULL, NULL);
+
+	// 文件不存在或打开失败
+	if (poDS == nullptr)
+	{
+		return SE_ERROR_OPEN_SHAPEFILE_FAILED;
+	}
+
+	// 获取图层数量
+	int iLayerCount = poDS->GetLayerCount();
+	if (iLayerCount == 0)
+	{
+		return SE_ERROR_SHP_FILE_COUNT_IS_ZERO;
+	}
+
+	// 所有图层属性字段检查配置信息
+	vector<VectorLayerFieldInfo> vLayerAttrConfigInfo;
+	vLayerAttrConfigInfo.clear();
+
+	// 读取属性检查配置文件
+	bool bResult = LoadFeatureAttrCheckXmlConfigFile(szAttrCheckConfigXmlFile, vLayerAttrConfigInfo);
+	if (!bResult)
+	{
+		return SE_ERROR_OPEN_VECTOR_LAYER_ATTRIBUTE_CONFIGFILE_FAILED;
+	}
+
+	// 循环读取输入图层，如果读取不成功，提示错误消息
+	for (int iIndex = 0; iIndex < iLayerCount; iIndex++)
+	{
+		// 输出当前图层属性检查结果
+		VectorAttributeCheckInfo outputCheckInfo;
+
+		OGRLayer* poLayer = poDS->GetLayer(iIndex);
+		if (poLayer == nullptr)
+		{
+			return SE_ERROR_OGRLAYER_IS_NULL;
+		}
+
+		// 获取图幅号、要素层、几何类型
+		string strSheetNumber;
+		string strLayerType;
+		string strGeometryType;
+		GetLayerInfo(poLayer->GetName(), strSheetNumber, strLayerType, strGeometryType);
+
+		// 元数据图层跳过
+		if (strLayerType == "S")
+		{
+			continue;
+		}
+
+		outputCheckInfo.strLayerType = strLayerType;
+
+		// 获取对应图层类型的字段及属性检查配置信息
+		VectorLayerFieldInfo sLayerFieldCheckInfo;
+		GetAttributeCheckInfoByLayerType(
+			strLayerType,
+			vLayerAttrConfigInfo,
+			sLayerFieldCheckInfo);
+
+		// 获取图层属性字段
+		vector<LayerFieldInfo> vLayerFieldInfo;
+		vLayerFieldInfo.clear();
+
+		OGRFeatureDefn* pFeatureDefn = poLayer->GetLayerDefn();
+		int iFieldCount = pFeatureDefn->GetFieldCount();
+		for (int iFieldIndex = 0; iFieldIndex < iFieldCount; iFieldIndex++)
+		{
+			OGRFieldDefn* pField = pFeatureDefn->GetFieldDefn(iFieldIndex);
+			LayerFieldInfo sFieldInfo;
+			sFieldInfo.strFieldName = pField->GetNameRef();
+			sFieldInfo.iFieldLength = pField->GetWidth();
+
+			// 整型
+			if (pField->GetType() == OFTInteger
+				|| pField->GetType() == OFTInteger64)
+			{
+				sFieldInfo.strFieldType = "int";
+			}
+
+			// 浮点型
+			else if (pField->GetType() == OFTReal)
+			{
+				sFieldInfo.strFieldType = "float";
+			}
+
+			// 字符型
+			else if (pField->GetType() == OFTString)
+			{
+				sFieldInfo.strFieldType = "string";
+			}
+
+			vLayerFieldInfo.push_back(sFieldInfo);
+		}
+
+
+		// 图层字段检查
+		VectorAttributeCheckInfo outputFieldInfoCheck;
+		outputFieldInfoCheck.strLayerType = strLayerType;
+		LayerFieldInfoCheck(
+			vLayerFieldInfo,
+			sLayerFieldCheckInfo,
+			outputFieldInfoCheck.vFieldAttributeErrorList);
+
+		// 判断图层类型是否已经存在
+		int iLayerTypeIndex = -1;
+		for (int i = 0; i < vFeatureAttrCheckInfo.size(); i++)
+		{
+			// 如果已经存在同类型图层，则在图层类型后追加属性检查错误记录
+			if (vFeatureAttrCheckInfo[i].strLayerType == strLayerType)
+			{
+				iLayerTypeIndex = i;
+			}
+		}
+
+		// 说明已经存在同名图层
+		if (iLayerTypeIndex != -1)
+		{
+			for (int i = 0; i < outputCheckInfo.vFieldAttributeErrorList.size(); i++)
+			{
+				vFeatureAttrCheckInfo[iLayerTypeIndex].vFieldAttributeErrorList.push_back(outputFieldInfoCheck.vFieldAttributeErrorList[i]);
+			}
+		}
+		else
+		{
+			vFeatureAttrCheckInfo.push_back(outputFieldInfoCheck);
+		}
+
+
+
+		// 重置要素读取顺序
+		poLayer->ResetReading();
+		OGRFeature* poFeature = nullptr;
+
+		// 循环判断每个要素
+		while ((poFeature = poLayer->GetNextFeature()) != NULL)
+		{
+			// 要素属性值
+			MAP_STRING_2_STRING mapFieldValue;
+			mapFieldValue.clear();
+
+			// 要素字段信息
+			vector<LayerFieldInfo> vLayerFieldInfo;
+			vLayerFieldInfo.clear();
+
+			// 获取要素的属性字段信息及属性值
+			GetFeatureAttr(poFeature, mapFieldValue, vLayerFieldInfo);
+
+			// 检查属性字段的有效性
+			LayerFieldAttrCheck(
+				mapFieldValue,
+				sLayerFieldCheckInfo,
+				outputCheckInfo.vFieldAttributeErrorList);
+
+			// 判断图层类型是否已经存在
+			int iLayerIndex = -1;
+			for (int i = 0; i < vFeatureAttrCheckInfo.size(); i++)
+			{
+				// 如果已经存在同类型图层，则在图层类型后追加属性检查错误记录
+				if (vFeatureAttrCheckInfo[i].strLayerType == strLayerType)
+				{
+					iLayerIndex = i;
+				}
+			}
+
+			// 说明已经存在同名图层
+			if (iLayerIndex != -1)
+			{
+				for (int i = 0; i < outputCheckInfo.vFieldAttributeErrorList.size(); i++)
+				{
+					vFeatureAttrCheckInfo[iLayerIndex].vFieldAttributeErrorList.push_back(outputCheckInfo.vFieldAttributeErrorList[i]);
+				}
+			}
+			else
+			{
+				vFeatureAttrCheckInfo.push_back(outputCheckInfo);
+			}
+
+			OGRFeature::DestroyFeature(poFeature);
+		}
+	}
+
+	// 关闭数据源
+	GDALClose(poDS);
+
+	return SE_ERROR_NONE;
+}
+
+
+// 读取属性检查配置信息
+bool SE_FeatureAttributeThreadYTH::LoadFeatureAttrCheckXmlConfigFile(const char* szAttrCheckConfigXmlFile, vector<VectorLayerFieldInfo>& vLayerConfigFieldInfo)
+{
+	// 如果xml文件为空
+	if (!szAttrCheckConfigXmlFile)
+	{
+		return false;
+	}
+
+	vLayerConfigFieldInfo.clear();
+
+	// 读取xml文件
+	xmlDocPtr doc = nullptr;
+	xmlNodePtr pRootNode = nullptr;
+
+	// 属性检查项配置文件
+	doc = xmlParseFile(szAttrCheckConfigXmlFile);
+
+	if (nullptr == doc)
+	{
+		return false;
+	}
+
+	// 获取根节点<data_attribute_check>
+	pRootNode = xmlDocGetRootElement(doc);
+
+	if (NULL == pRootNode) {
+		xmlFreeDoc(doc);
+		return false;
+	}
+
+	// 遍历所有根节点的子节点
+	xmlNodePtr cur;
+
+	//遍历处理根节点的每一个子节点
+	cur = pRootNode->xmlChildrenNode;
+	xmlChar* key;
+	while (cur != NULL)
+	{
+		// data_spec节点
+		if (!xmlStrcmp(cur->name, (const xmlChar*)"data_spec"))
+		{
+			key = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+			string strDataSpec = UTF8_To_GBK((char*)key);
+			xmlFree(key);
+		}
+
+		// data_format节点
+		else if (!xmlStrcmp(cur->name, (const xmlChar*)"data_format"))
+		{
+			key = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+			string strDataFormat = UTF8_To_GBK((char*)key);
+			xmlFree(key);
+		}
+
+		// layer_fields节点，从A-R图层
+		else if (!xmlStrcmp(cur->name, (const xmlChar*)"layer_fields"))
+		{
+			// layer_fields节点
+			VectorLayerFieldInfo info;
+			Parse_layer_fields(doc, cur, info);
+			vLayerConfigFieldInfo.push_back(info);
+		}
+
+
+		cur = cur->next;
+	}
+
+	xmlFreeDoc(doc);
+
+	return true;
+}
+
+
+/*UTF-8转GBK*/
+string SE_FeatureAttributeThreadYTH::UTF8_To_GBK(const string& str)
+{
+	int nwLen = MultiByteToWideChar(CP_UTF8, 0, str.c_str(), -1, NULL, 0);
+
+	wchar_t* pwBuf = new wchar_t[nwLen + 1];
+	memset(pwBuf, 0, nwLen * 2 + 2);
+
+	MultiByteToWideChar(CP_UTF8, 0, str.c_str(), str.length(), pwBuf, nwLen);
+
+	int nLen = WideCharToMultiByte(CP_ACP, 0, pwBuf, -1, NULL, NULL, NULL, NULL);
+
+	char* pBuf = new char[nLen + 1];
+	memset(pBuf, 0, nLen + 1);
+
+	WideCharToMultiByte(CP_ACP, 0, pwBuf, nwLen, pBuf, nLen, NULL, NULL);
+
+	std::string retStr = pBuf;
+
+	delete[]pBuf;
+	delete[]pwBuf;
+
+	pBuf = NULL;
+	pwBuf = NULL;
+
+	return retStr;
+}
+
+
+void SE_FeatureAttributeThreadYTH::GetLayerInfo(string strLayerName,
+	string& strSheetNumber,
+	string& strLayerType,
+	string& strGeometryType)
+{
+	int iIndexOfSheet = strLayerName.find_first_of("_");
+	strSheetNumber = strLayerName.substr(0, iIndexOfSheet);
+	int iIndexOfLayerType = strLayerName.find_last_of("_");
+	strLayerType = strLayerName.substr(iIndexOfSheet + 1, 1);
+	int iIndexOfExt = strLayerName.find(".");
+	strGeometryType = strLayerName.substr(iIndexOfLayerType + 1, iIndexOfExt - (iIndexOfLayerType + 1));
+}
+
+
+// 解析每个layer_fields节点
+void SE_FeatureAttributeThreadYTH::Parse_layer_fields(
+	xmlDocPtr doc,
+	xmlNodePtr cur,
+	VectorLayerFieldInfo& info)
+{
+	xmlChar* key;
+	cur = cur->xmlChildrenNode;
+	while (cur != NULL)
+	{
+		// layer_name：图层名称
+		if ((!xmlStrcmp(cur->name, (const xmlChar*)"layer_name")))
+		{
+			key = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+			string strLayerName = UTF8_To_GBK((char*)key);
+			info.strLayerType = strLayerName;
+			xmlFree(key);
+		}
+
+		// fields：字段列表
+		else if ((!xmlStrcmp(cur->name, (const xmlChar*)"fields")))
+		{
+			FieldInfo field_info;
+			Parse_fields(doc, cur, field_info);
+			info.vLayerFieldInfo.push_back(field_info);
+		}
+		cur = cur->next;
+	}
+}
+
+
+// 解析每个fields节点
+void SE_FeatureAttributeThreadYTH::Parse_fields(
+	xmlDocPtr doc,
+	xmlNodePtr cur,
+	FieldInfo& info)
+{
+	xmlChar* key;
+	cur = cur->xmlChildrenNode;
+	while (cur != nullptr)
+	{
+		// field_name：字段名称
+		if ((!xmlStrcmp(cur->name, (const xmlChar*)"field_name")))
+		{
+			key = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+			string strFieldName = UTF8_To_GBK((char*)key);
+			info.strFieldName = strFieldName;
+			xmlFree(key);
+		}
+
+		// field_type：字段类型
+		else if ((!xmlStrcmp(cur->name, (const xmlChar*)"field_type")))
+		{
+			key = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+			info.strFieldType = (char*)key;
+			xmlFree(key);
+		}
+
+		// field_length：字段长度
+		else if ((!xmlStrcmp(cur->name, (const xmlChar*)"field_length")))
+		{
+			key = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+			info.iFieldLength = atoi((char*)key);
+			xmlFree(key);
+		}
+
+		// field_enum_values_list_simple：简单字段属性枚举值
+		else if ((!xmlStrcmp(cur->name, (const xmlChar*)"field_enum_values_list_simple")))
+		{
+			// 遍历field_enum_values_list_simple节点		
+			Parse_field_enum_values_list_simple(doc, cur, info.vSimpleEnumFieldValue);
+		}
+
+		// field_enum_values_list_complex：复杂字段属性枚举值
+		else if ((!xmlStrcmp(cur->name, (const xmlChar*)"field_enum_values_list_complex")))
+		{
+			// 遍历field_enum_values_list_complex节点		
+			Parse_field_enum_values_list_complex(doc, cur, info.vComplexEnumFieldValue);
+		}
+
+		cur = cur->next;
+	}
+}
+
+
+// 解析每个field_enum_values_list_simple节点
+void SE_FeatureAttributeThreadYTH::Parse_field_enum_values_list_simple(
+	xmlDocPtr doc,
+	xmlNodePtr cur,
+	vector<string>& vSimpleEnumFieldValue)
+{
+	vSimpleEnumFieldValue.clear();
+
+	xmlChar* key;
+	cur = cur->xmlChildrenNode;
+	while (cur != nullptr)
+	{
+		// field_enum_values
+		if ((!xmlStrcmp(cur->name, (const xmlChar*)"field_enum_values")))
+		{
+			key = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+			string strEnumValues = UTF8_To_GBK((char*)key);
+			vSimpleEnumFieldValue.push_back(strEnumValues);
+			xmlFree(key);
+		}
+		cur = cur->next;
+	}
+}
+
+// 解析每个field_enum_values_list_complex节点
+void SE_FeatureAttributeThreadYTH::Parse_field_enum_values_list_complex(
+	xmlDocPtr doc,
+	xmlNodePtr cur,
+	vector<FieldEnumValue>& vComplexEnumFieldValue)
+{
+	vComplexEnumFieldValue.clear();
+
+	
+	cur = cur->xmlChildrenNode;
+	while (cur != nullptr)
+	{
+		// field_enum_values
+		if ((!xmlStrcmp(cur->name, (const xmlChar*)"field_enum_values")))
+		{
+			FieldEnumValue enumValue;
+			// 解析field_enum_values节点
+			Parse_field_enum_values(doc, cur, enumValue);
+			vComplexEnumFieldValue.push_back(enumValue);
+		}
+
+		cur = cur->next;
+
+	}
+}
+
+
+// 解析每个field_enum_values节点
+void SE_FeatureAttributeThreadYTH::Parse_field_enum_values(
+	xmlDocPtr doc,
+	xmlNodePtr cur,
+	FieldEnumValue& enumValue)
+{
+	xmlChar* key;
+	cur = cur->xmlChildrenNode;
+	while (cur != nullptr)
+	{
+		// field_enum_value，字段属性值
+		if ((!xmlStrcmp(cur->name, (const xmlChar*)"field_enum_value")))
+		{
+			key = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+			if (key)
+			{
+				string strEnumValue = UTF8_To_GBK((char*)key);
+				enumValue.strFieldEnumValue = strEnumValue;
+				xmlFree(key);
+			}
+
+		}
+
+		// field_enum_name，字段属性值
+		else if ((!xmlStrcmp(cur->name, (const xmlChar*)"field_enum_name")))
+		{
+			key = xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+			if (key)
+			{
+				string strEnumName = UTF8_To_GBK((char*)key);
+				enumValue.vStrFieldEnumName.push_back(strEnumName);
+				xmlFree(key);
+			}
+
+		}
+		cur = cur->next;
+	}
+}
+
+
+void SE_FeatureAttributeThreadYTH::GetAttributeCheckInfoByLayerType(
+	string strLayerType,
+	vector<VectorLayerFieldInfo>& vLayersFieldInfo,
+	VectorLayerFieldInfo& sLayerFieldInfo)
+{
+	for (int i = 0; i < vLayersFieldInfo.size(); i++)
+	{
+		if (vLayersFieldInfo[i].strLayerType == strLayerType)
+		{
+			sLayerFieldInfo = vLayersFieldInfo[i];
+		}
+	}
+}
+
+
+void SE_FeatureAttributeThreadYTH::LayerFieldInfoCheck(
+	vector<LayerFieldInfo>& vLayerFieldInfo,
+	VectorLayerFieldInfo& sLayerFieldCheckInfo,
+	vector<VectorFieldAttrCheckError>& vAttributeErrorList)
+{
+	// 属性检查错误记录
+	vAttributeErrorList.clear();
+
+	// 检查属性字段是否在检查列表中
+	for (int i = 0; i < vLayerFieldInfo.size(); i++)
+	{
+		VectorFieldAttrCheckError fieldCheckError;
+
+		LayerFieldInfo field = vLayerFieldInfo[i];
+
+		// 字段名
+		bool bFieldExistedFlag_Name = false;
+		for (int j = 0; j < sLayerFieldCheckInfo.vLayerFieldInfo.size(); j++)
+		{
+			if (field.strFieldName == sLayerFieldCheckInfo.vLayerFieldInfo[j].strFieldName)
+			{
+				bFieldExistedFlag_Name = true;
+				break;
+			}
+		}
+
+		// 字段类型
+		bool bFieldExistedFlag_Type = false;
+		for (int j = 0; j < sLayerFieldCheckInfo.vLayerFieldInfo.size(); j++)
+		{
+			if (bFieldExistedFlag_Name && field.strFieldType == sLayerFieldCheckInfo.vLayerFieldInfo[j].strFieldType)
+			{
+				bFieldExistedFlag_Type = true;
+				break;
+			}
+		}
+
+		// 字段长度
+		bool bFieldExistedFlag_Length = false;
+		for (int j = 0; j < sLayerFieldCheckInfo.vLayerFieldInfo.size(); j++)
+		{
+			if (bFieldExistedFlag_Name && field.iFieldLength == sLayerFieldCheckInfo.vLayerFieldInfo[j].iFieldLength)
+			{
+				bFieldExistedFlag_Length = true;
+				break;
+			}
+		}
+
+		if (bFieldExistedFlag_Name && bFieldExistedFlag_Type && bFieldExistedFlag_Length)
+		{
+			continue;
+		}
+
+		string strTotal;
+		// 如果字段名称不符合要求
+		if (!bFieldExistedFlag_Name)
+		{
+			char szError[500] = { 0 };
+			string strFieldNameError;
+			sprintf(szError, " %s图层中字段“%s”名称不规范\t", sLayerFieldCheckInfo.strLayerType.c_str(), field.strFieldName.c_str());
+			strFieldNameError = szError;
+			strTotal += strFieldNameError;
+		}
+
+		// 如果字段类型不符合要求
+		if (!bFieldExistedFlag_Type)
+		{
+			char szError[500] = { 0 };
+			string strFieldTypeError;
+			sprintf(szError, " %s图层中字段[%s]类型“%s”不规范\t", sLayerFieldCheckInfo.strLayerType.c_str(), field.strFieldType.c_str(), field.strFieldType.c_str());
+			strFieldTypeError = szError;
+			strTotal += strFieldTypeError;
+		}
+
+		// 如果字段长度不符合要求
+		if (!bFieldExistedFlag_Length)
+		{
+			char szError[500] = { 0 };
+			string strFieldLengthError;
+			sprintf(szError, " %s图层中字段[%s]长度“%d”不规范\t", sLayerFieldCheckInfo.strLayerType.c_str(), field.strFieldType.c_str(), field.iFieldLength);
+			strFieldLengthError = szError;
+
+			strTotal += strFieldLengthError;
+		}
+
+		fieldCheckError.strFieldName = field.strFieldName;
+		fieldCheckError.vStrFieldAttrCheckError.push_back(strTotal);
+		vAttributeErrorList.push_back(fieldCheckError);
+	}
+
+}
+
+
+// 获取要素属性信息
+SE_Error SE_FeatureAttributeThreadYTH::GetFeatureAttr(
+	OGRFeature* poFeature,
+	map<string, string>& mFieldValue,
+	vector<LayerFieldInfo>& vLayerFieldInfo)
+{
+	if (nullptr == poFeature)
+	{
+		return SE_ERROR_FEATURE_IS_NULL;
+	}
+
+	for (int iField = 0; iField < poFeature->GetFieldCount(); iField++)
+	{
+		OGRFieldDefn* pField = poFeature->GetFieldDefnRef(iField);
+		if (nullptr == pField)
+		{
+			return SE_ERROR_FIELDDEFN_IS_NULL;
+		}
+
+		string strFieldName = pField->GetNameRef();
+		string strValue = poFeature->GetFieldAsString(iField);
+		mFieldValue.insert(map<string, string>::value_type(strFieldName, strValue));
+
+		LayerFieldInfo sFieldInfo;
+		sFieldInfo.strFieldName = strFieldName;
+		sFieldInfo.iFieldLength = pField->GetWidth();
+
+		// 整型
+		if (pField->GetType() == OFTInteger
+			|| pField->GetType() == OFTInteger64)
+		{
+			sFieldInfo.strFieldType = "int";
+		}
+
+		// 浮点型
+		else if (pField->GetType() == OFTReal)
+		{
+			sFieldInfo.strFieldType = "float";
+		}
+
+		// 字符型
+		else if (pField->GetType() == OFTString)
+		{
+			sFieldInfo.strFieldType = "string";
+		}
+
+		vLayerFieldInfo.push_back(sFieldInfo);
+	}
+
+	return SE_ERROR_NONE;
+}
+
+
+void SE_FeatureAttributeThreadYTH::LayerFieldAttrCheck(
+	map<string, string>& mapFieldValue,
+	VectorLayerFieldInfo& sLayerFieldCheckInfo,
+	vector<VectorFieldAttrCheckError>& vAttributeErrorList)
+{
+	// 属性检查错误记录
+	vAttributeErrorList.clear();
+
+	// 检查属性值是否在检查列表有效范围内
+	map<string, string>::iterator iter;
+	for (iter = mapFieldValue.begin(); iter != mapFieldValue.end(); iter++)
+	{
+		VectorFieldAttrCheckError fieldCheckError;
+		string strFieldName = iter->first;
+		string strFieldValue = iter->second;
+		fieldCheckError.strFieldName = strFieldName;
+
+
+		for (int j = 0; j < sLayerFieldCheckInfo.vLayerFieldInfo.size(); j++)
+		{
+			FieldInfo info = sLayerFieldCheckInfo.vLayerFieldInfo[j];
+
+			if (strFieldName == info.strFieldName)
+			{
+				// 如果是简单属性枚举值
+				if (info.vSimpleEnumFieldValue.size() > 0)
+				{
+					// 如果不在枚举属性列表中
+					if (!FieldValueIsExistedInSimpleEnumList(info.vSimpleEnumFieldValue, strFieldValue))
+					{
+						char szError[500] = { 0 };
+						sprintf(szError, "%s图层中字段[%s]的属性值“%s”不规范", sLayerFieldCheckInfo.strLayerType.c_str(), strFieldName.c_str(), strFieldValue.c_str());
+						fieldCheckError.vStrFieldAttrCheckError.push_back(szError);
+						vAttributeErrorList.push_back(fieldCheckError);
+					}
+				}
+
+				// 如果是复杂属性枚举值
+				if (info.vComplexEnumFieldValue.size() > 0)
+				{
+					// 获取编码属性值对应的枚举值
+					string strCode;
+					map<string, string>::iterator iterCode = mapFieldValue.find("编码");
+					if (iterCode != mapFieldValue.end())
+					{
+						strCode = iterCode->second;
+					}
+
+					// 复杂枚举值
+					vector<string> vComplexEnumName;
+					vComplexEnumName.clear();
+					for (int k = 0; k < info.vComplexEnumFieldValue.size(); k++)
+					{
+						if (strCode == info.vComplexEnumFieldValue[k].strFieldEnumValue)
+						{
+							vComplexEnumName = info.vComplexEnumFieldValue[k].vStrFieldEnumName;
+						}
+					}
+
+					// 如果枚举属性列表不为空，才需要判断属性是否规范
+					if (vComplexEnumName.size() == 0)
+					{
+						continue;
+					}
+
+
+					// 如果不在枚举属性列表中
+					if (!FieldValueIsExistedInSimpleEnumList(vComplexEnumName, strFieldValue))
+					{
+						char szError[500] = { 0 };
+						sprintf(szError, "%s图层中字段[%s]的属性值“%s”不规范", sLayerFieldCheckInfo.strLayerType.c_str(), strFieldName.c_str(), strFieldValue.c_str());
+						fieldCheckError.vStrFieldAttrCheckError.push_back(szError);
+						vAttributeErrorList.push_back(fieldCheckError);
+					}
+				}
+			}
+		}
+	}
+}
+
+
+bool SE_FeatureAttributeThreadYTH::FieldValueIsExistedInSimpleEnumList(
+	vector<string>& vSimpleEnumValue,
+	string strValue)
+{
+	for (int i = 0; i < vSimpleEnumValue.size(); i++)
+	{
+		if (strValue == vSimpleEnumValue[i])
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
