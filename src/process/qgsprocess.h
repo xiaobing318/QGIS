@@ -17,6 +17,7 @@
 #ifndef QGSPROCESS_H
 #define QGSPROCESS_H
 
+#pragma region "包含头文件"
 #ifdef WITH_BINDINGS
 #include "qgspythonrunner.h"
 #include "qgspythonutils.h"
@@ -26,10 +27,13 @@
 #include "qgsunittypes.h"
 #include "qgsprocessingcontext.h"
 #include <QElapsedTimer>
+#pragma endregion
 
+#pragma region "类的前向声明"
 class QgsApplication;
 
 class QgsProcessingAlgorithm;
+#pragma endregion
 
 class ConsoleFeedback : public QgsProcessingFeedback
 {

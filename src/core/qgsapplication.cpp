@@ -686,9 +686,16 @@ QString QgsApplication::activeThemePath()
   }
 }
 
+/*
+* 杨小兵-2024-03-05
+* 加载任务栏显示的图标
+*/
 QString QgsApplication::appIconPath()
 {
-  return iconsPath() + QStringLiteral( "qgis-icon-60x60.png" );
+  QString debug = iconsPath() + QStringLiteral("qgis-icon-60x60.svg");
+  return iconsPath() + QStringLiteral( "qgis-icon-60x60.svg" );
+  //  debug info
+  //return iconsPath() + QStringLiteral( "DLHJ_icon_60x60.png" );
 }
 
 int QgsApplication::maxThreads()
@@ -861,6 +868,35 @@ void QgsApplication::setThemeName( const QString &themeName )
   *sThemeName() = themeName;
 }
 
+/*
+* 杨小兵-2024-03-26
+一、解释
+  这个函数`resolvePkgPath`是一个QGIS应用程序中的函数，用于解析和确定QGIS的包路径（package path）。这个路径是QGIS运行所需的数据和资源文件的存储位置。函数的目的
+是在不同的平台和运行环境下，找到正确的路径以访问这些资源。
+
+二、函数作用详解
+1. **初始化路径**：首先，函数尝试确定应用程序的路径。它检查是否已经有一个有效的路径存储在`appPath`静态变量中。如果没有，它会使用`QCoreApplication::instance()`
+来判断应用程序实例是否存在，从而获取应用程序目录路径。
+
+2. **环境变量支持**：接着，函数检查环境变量`QGIS_PREFIX_PATH`是否被设置。如果设置了，函数会使用这个环境变量的值作为前缀路径；如果没有设置，则使用应用程序路径作为
+前缀。
+
+3. **构建目录检测**：函数尝试确定QGIS是否从构建目录运行，而不是安装目录。它通过检查特定路径下是否存在名为`qgisbuildpath.txt`的文件来做出判断。如果该文件存在，则
+读取其中的内容来设置源代码路径和构建输出路径，并且设置一个标志，表明当前是从构建目录运行。
+
+4. **配置目录调整**：对于使用Visual Studio进行构建的情况，函数会特别处理配置目录，以确保路径正确。
+
+5. **前缀路径确定**：最后，函数确定最终的前缀路径。这一步会考虑不同操作系统的特殊路径需求。例如，在Android上，它会使用与应用程序关联的特定目录；在Mac和Windows上，
+它会使用应用程序路径；而在其他情况下，可能需要根据是否包含特定字符串（如`cgi-bin`）来调整路径。
+
+三、处理逻辑总结
+- 首先尝试使用静态变量存储和获取应用程序路径。
+- 判断和使用环境变量`QGIS_PREFIX_PATH`作为前缀路径。
+- 检查是否从构建目录运行，通过搜索`qgisbuildpath.txt`文件实现，并据此设置相关路径。
+- 根据不同的操作系统和构建工具，调整和确定最终的前缀路径。
+- 如果从构建目录运行，返回构建输出路径；否则，返回确定的前缀路径，附加上QGIS的数据子目录。
+
+*/
 QString QgsApplication::resolvePkgPath()
 {
   static QString appPath;

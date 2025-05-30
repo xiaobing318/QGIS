@@ -17,6 +17,7 @@
 #ifndef qgsnewvectorlayerdialog_H
 #define qgsnewvectorlayerdialog_H
 
+#pragma region "包含头文件"
 #include "ui_qgsnewvectorlayerdialogbase.h"
 #include "qgsguiutils.h"
 #include "qgshelp.h"
@@ -24,7 +25,7 @@
 #include "qgswkbtypes.h"
 #include "qgis_gui.h"
 #include "qgis_sip.h"
-
+#pragma endregion
 /**
  * \ingroup gui
  * \class QgsNewVectorLayerDialog

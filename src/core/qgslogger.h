@@ -18,6 +18,7 @@
 #ifndef QGSLOGGER_H
 #define QGSLOGGER_H
 
+#pragma region "包含头文件"
 #include <iostream>
 #include "qgis_sip.h"
 #include <sstream>
@@ -26,9 +27,13 @@
 
 #include "qgis_core.h"
 #include "qgsconfig.h"
+#pragma endregion
 
+#pragma region "类的前向声明"
 class QFile;
+#pragma endregion
 
+#pragma region "根据是否定义QGISDEBUG宏来定义不同的“宏函数”"
 #ifdef QGISDEBUG
 #define QgsDebugMsg(str) QgsLogger::debug(QString(str), 1, __FILE__, __FUNCTION__, __LINE__)
 #define QgsDebugMsgLevel(str, level) if ( level <= QgsLogger::debugLevel() ) { QgsLogger::debug(QString(str), (level), __FILE__, __FUNCTION__, __LINE__); }(void)(0)
@@ -38,7 +43,9 @@ class QFile;
 #define QgsDebugMsg(str) do {} while(false)
 #define QgsDebugMsgLevel(str, level) do {} while(false)
 #endif
+#pragma endregion
 
+#pragma region "类注释解释说明"
 /**
  * \ingroup core
  * \brief QgsLogger is a class to print debug/warning/error messages to the console.
@@ -56,7 +63,45 @@ class QFile;
  * QGIS_LOG_FILE may contain a file name. If set, all messages will be appended
  * to this file rather than to stdout.
 */
+/*
+* 杨小兵-2024-03-07
+一、解释上述注释内容
+  注释中描述了`QgsLogger`类的功能和用法。`QgsLogger`是QGIS核心库的一部分，用于向控制台打印调试、警告和错误消息。与标准输入输出流（如iostream等）相比，
+`QgsLogger`的优势在于其输出可以通过环境变量进行控制，从而提供更灵活的调试信息管理方式。
 
+  环境变量`QGIS_DEBUG`是一个整数值，用于指定哪些调试消息将被写入控制台。只有当消息的调试级别小于或等于`QGIS_DEBUG`指定的值时，这些消息才会被输出。如果
+没有定义`QGIS_DEBUG`环境变量，它的默认值在调试模式下为1，在发布模式下为0。
+
+`QGIS_DEBUG_FILE`环境变量可以指定一个文件名，只有来自该文件的消息（且符合指定的调试级别）会被打印出来。如果没有设置`QGIS_DEBUG_FILE`，则所有文件的消息
+都会被打印。
+
+`QGIS_LOG_FILE`环境变量也可以指定一个文件名。如果设置了此环境变量，所有消息将被追加到该文件中，而不是输出到标准输出（stdout）。
+
+### 有条理总结上述注释内容
+1. **`QgsLogger`类的作用**：用于向控制台输出调试、警告和错误消息。
+2. **环境变量控制**：
+   - `QGIS_DEBUG`：控制输出到控制台的调试消息级别。
+   - `QGIS_DEBUG_FILE`：限制只有来自特定文件的消息才会被输出。
+   - `QGIS_LOG_FILE`：指定一个文件，所有消息将追加到这个文件而不是标准输出。
+3. **默认行为**：
+   - 如果未定义`QGIS_DEBUG`，其默认值在调试模式下为1，在发布模式下为0。
+   - 如果未设置`QGIS_DEBUG_FILE`，则所有文件的消息都将被输出。
+   - 如果未设置`QGIS_LOG_FILE`，消息输出到标准输出。
+
+### 需要注意的地方
+1. **环境变量的设置**：正确设置环境变量是使用`QgsLogger`进行有效调试的关键。开发者需要根据需要调整`QGIS_DEBUG`的值，以及可选地设置
+`QGIS_DEBUG_FILE`和`QGIS_LOG_FILE`来控制消息的输出。
+2. **调试级别的理解**：理解不同调试消息的级别及其与`QGIS_DEBUG`环境变量值之间的关系对于有效地过滤输出很重要。
+3. **性能考虑**：虽然`QgsLogger`提供了强大的调试功能，但在性能敏感的应用中，过多的日志记录可能会对性能产生影响。因此，在发布版本的应
+用中通常会降低调试级别或关闭日志记录。
+4. **日志文件管理**：如果使用`QGIS_LOG_FILE`指定了日志文件，需要注意日志文件的管理，防止因为日志过多而消耗大量磁盘空间。
+
+总结：
+1、QgsLogger是qgis_core中的一部分（是QGIS核心库中的一部分）
+2、与标准输入输出流（如iostream等）相比，`QgsLogger`的优势在于其输出可以通过环境变量进行控制，从而提供更灵活的调试信息管理方式。
+3、可以通过设置QGIS_DEBUG_FILE和QGIS_LOG_FILE设置需要输出的日志等级和日志的输出文件
+*/
+#pragma endregion
 class CORE_EXPORT QgsLogger
 {
   public:

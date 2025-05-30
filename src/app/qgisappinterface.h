@@ -34,6 +34,21 @@ class QgisApp;
  * Only those functions "exposed" by QgisInterface can be called from within a
  * plugin.
  */
+/*
+* 杨小兵-2024-02-23
+一、解释
+  它是一个接口类，用于提供插件访问QgisApp中私有方法的途径。简单来说，就是让插件能够使用QGIS主应用程序中的某些功能，而不需要直接操作这些功能的内部代码。
+`Only those functions "exposed" by QgisInterface can be called from within a plugin.`：这句话进一步解释了接口的限制。只有那些通过`QgisInterface`
+公开（或“暴露”）的函数，才能被插件调用。这意味着插件开发者不能随意调用QGIS主应用程序中的任何内部方法，而只能使用那些专门为插件交互设计的、安全的方法。
+
+`QgisInterface`定义了插件与QGIS主程序交互所需的一系列方法。这些方法包括但不限于：
+- **图层操作**：添加、删除、修改图层。
+- **地图渲染**：刷新地图显示、设置地图范围。
+- **用户界面操作**：添加工具栏按钮、菜单项、对话框等。
+- **项目管理**：保存和加载QGIS项目文件。
+- **工具和分析**：执行地理处理工具、访问分析库等。
+
+*/
 
 Q_NOWARN_DEPRECATED_PUSH
 class APP_EXPORT QgisAppInterface : public QgisInterface

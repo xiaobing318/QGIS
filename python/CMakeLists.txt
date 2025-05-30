@@ -1,7 +1,75 @@
+#[[
+杨小兵-2024-04-01
+
+一、解释
+  这部分内容是使用CMake配置项目时用到的，主要用于设置项目中生成的可执行文件、库文件等的输出目录。CMake是一个跨平台的自动化构建系统，它使用CMakeLists.txt文件
+来定义构建过程。下面我将分别解释这些命令的应用场景、数学原理背后的解决方案，以及如何从计算机实现的角度解决这一问题。
+
+
+二、详细解释
+
+1. **`file(MAKE_DIRECTORY ${QGIS_PYTHON_OUTPUT_DIRECTORY})`**
+   - **功能**：创建一个目录，如果目录已经存在，则不会进行任何操作。
+   - **应用场景**：在项目构建之前，确保所有的输出文件都有一个统一的存放位置。例如，如果你的项目需要将Python绑定或者插件输出到特定的目录，这个命令可以用来创建这
+  个目录。
+
+2. **`set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${QGIS_PYTHON_OUTPUT_DIRECTORY})`**
+   - **功能**：设置可执行文件的输出目录。
+   - **应用场景**：当你的项目中包含了可执行文件（例如，应用程序、工具等）时，这个命令用来指定这些可执行文件应该被输出到的目录。这有助于将生成的文件组织在项目的
+  特定部分，便于管理和使用。
+
+3. **`set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${QGIS_PYTHON_OUTPUT_DIRECTORY})`**
+   - **功能**：设置库文件的输出目录。
+   - **应用场景**：对于包含动态或静态库的项目，这个命令指定库文件的输出目录。这同样有助于文件的组织和管理，特别是在开发需要被多个项目或模块引用的共享库时。
+
+  在这三个命令中，`${QGIS_PYTHON_OUTPUT_DIRECTORY}`是一个变量，它应该在之前被定义，指向了希望将文件输出到的目录路径。这种方式使得管理路径变得灵活，易于在不同的
+环境或项目配置中进行调整。
+二、总结
+1、QGIS_PYTHON_OUTPUT_DIRECTORY这个变量是在顶层CMakeLists.txt中定义的（set (QGIS_PYTHON_OUTPUT_DIRECTORY ${PYTHON_OUTPUT_DIRECTORY}/qgis)）
+2、其中file命令是为了创建一个目录，如果存在那么则不进行任何的处理，反之则创建需要的文件
+]]
 file (MAKE_DIRECTORY ${QGIS_PYTHON_OUTPUT_DIRECTORY})
 set (CMAKE_RUNTIME_OUTPUT_DIRECTORY ${QGIS_PYTHON_OUTPUT_DIRECTORY})
 set (CMAKE_LIBRARY_OUTPUT_DIRECTORY ${QGIS_PYTHON_OUTPUT_DIRECTORY})
 
+
+#[[
+杨小兵-2024-04-01
+
+一、解释
+  在使用CMake进行项目构建时，如何管理和部署Python插件及其支持包到一个指定的目录（`PYTHON_OUTPUT_DIRECTORY`），以确保当应用程序从构建目录运行时插件能够正常工
+作。
+
+二、应用场景
+  在开发需要支持Python插件的应用程序，比如QGIS，时，通常需要一种机制来自动化地管理插件的部署。这个过程包括将插件文件复制到特定目录、编译Python代码到字节码等。
+这样做的目的是确保开发者或者用户在构建目录中运行应用程序时，所有插件都是可用的，并且是最新的。
+
+三、计算机实现的角度
+
+1. **`PYTHON_OUTPUT_DIRECTORY`的设置**
+   这个目录用于存放所有Python插件及其依赖，使得在应用程序运行时能够正常加载这些插件。这个目录应该在CMakeLists.txt中被指定，以便于所有相关的构建命令都能使用它。
+
+2. **Make Targets的使用**
+   - **`staged-plugins`**
+     - **功能**：将插件复制到`PYTHON_OUTPUT_DIRECTORY`。这通常在从仓库拉取最新代码并构建项目后执行，以确保插件是最新的。
+     - **应用场景**：开发过程中频繁更新插件代码时，使用这个目标可以快速部署插件到测试环境。
+   
+   - **`staged-plugins-pyc`**
+     - **功能**：不仅复制插件到指定目录，还会将Python代码编译成字节码（.pyc文件）。这可以提高运行时的性能，并且减少源代码的暴露。
+     - **应用场景**：为了提高应用程序的启动速度和运行效率，或者需要隐藏源代码时使用。
+   
+   - **`clean-staged-plugins`**
+     - **功能**：移除之前部署的插件目录。这用于清理旧的插件，确保不会有任何冲突或遗留问题。
+     - **应用场景**：在重新部署插件之前清理环境，或者当插件不再需要时使用。
+
+3. **`add_custom_target`的使用**
+   `add_custom_target`命令用于添加一个自定义目标，这里是`staged-plugins`，它不会自动执行，需要手动触发。这种方式提供了灵活性，让开发者可以在适当的时候选择执
+  行哪些操作。
+
+二、总结
+  这段注释和相关的CMake配置提供了一种灵活高效的方式来管理Python插件的部署过程。通过定义专门的make目标，它使得开发和测试过程中插件的更新和维护变得简单，确保了
+应用程序在开发阶段能够顺利地运行和测试插件。这些机制虽然主要是围绕构建和部署过程，但背后反映了项目管理和自动化的重要性，以及如何通过工具化来提高开发效率和质量。
+]]
 # Python plugins and support packages can be staged to PYTHON_OUTPUT_DIRECTORY
 # so plugins will function when app is run from build directory
 
@@ -14,6 +82,8 @@ set (CMAKE_LIBRARY_OUTPUT_DIRECTORY ${QGIS_PYTHON_OUTPUT_DIRECTORY})
 
 # Other target dependencies will be added, per staged resource
 add_custom_target(staged-plugins)
+
+
 
 # Plugins can also be staged with CMake option at build time
 if(WITH_STAGED_PLUGINS)

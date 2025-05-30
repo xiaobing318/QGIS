@@ -651,15 +651,40 @@ void QgsAttributeTableDialog::mActionSelectedToTop_toggled( bool checked )
 
 void QgsAttributeTableDialog::mActionOpenFieldCalculator_triggered()
 {
+/*
+* 杨小兵-2024-02-19
+一、作用
+  这个方法的作用是触发字段计算器的功能。字段计算器是QGIS中一个非常有用的工具，它允许用户对属性表中的字段进行计算和更新。
+*/
+/*
+  一、这行代码的作用是获取主视图的模型，这个模型包含了图层的属性数据
+  二、QgsAttributeTableModel这是QGIS中用于管理图层属性表数据的模型类。它提供了一种机制来访问和修改图层的属性数据。
+*/
   QgsAttributeTableModel *masterModel = mMainView->masterModel();
 
+  // 创建一个QgsFieldCalculator对象，这个对象用于执行字段计算。传入mLayer作为要操作的图层，this作为父对象。
   QgsFieldCalculator calc( mLayer, this );
+
+/*
+  显示字段计算器的对话框，并检查用户是否点击了接受（确定）按钮。当`QgsFieldCalculator`对象调用`exec()`方法时，会显示字段计算器的GUI对话框。
+如果用户在对话框中点击了“OK”或“Accept”按钮，`exec()`方法会返回`QDialog::Accepted`，表示用户接受了更改。
+
+总结：
+1、当`QgsFieldCalculator`对象调用`exec()`方法时，会显示字段计算器的GUI对话框
+2、`calc.exec()`方法调用是用于执行或显示`QgsFieldCalculator`对象的GUI对话框
+3、`QgsFieldCalculator`类继承自`QDialog`，这意味着它是一个对话框，具有模态的行为特征。模态对话框会阻塞其父窗口（如果有的话）的输入，直到对话框关闭。
+4、`exec()`方法的调用会导致对话框显示给用户，并且等待用户进行操作（例如填写数据、点击按钮等）直到对话框被关闭。这个方法最终会返回一个整数值，表示对话框是如何被关闭的
+5、`calc.exec()`方法将字段计算器的GUI对话框显示出来，并且等待用户完成操作，如果没有完成操作，那么则不能切换到其他的对话框，必须以某种方式完成
+*/
   if ( calc.exec() == QDialog::Accepted )
   {
+    // 如果用户接受了更改，获取被改变的属性字段的列号
     int col = masterModel->fieldCol( calc.changedAttributeId() );
-
+    // 检查列号是否有效（即确保获取的列号是一个存在的列）。
     if ( col >= 0 )
     {
+      // 如果列号有效，则重新加载对应列的数据。这一步是必要的，因为字段计算可能已经更改了属性表中的数据。
+      // 重新加载操作会影响从第一行到最后一行的该列中的所有数据。
       masterModel->reload( masterModel->index( 0, col ), masterModel->index( masterModel->rowCount() - 1, col ) );
     }
   }

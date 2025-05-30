@@ -18,6 +18,29 @@
 #ifndef QGISAPP_H
 #define QGISAPP_H
 
+#pragma region "前向声明"
+/*
+* 杨小兵-2024-03-05
+1. **用户界面（UI）组件**: 类如`QActionGroup`、`QCheckBox`、`QLabel`、`QPushButton`、`QSpinBox`等，提供基础的用户界面元素，允许开发者构建交互式
+的GUI应用程序。
+
+2. **地理信息处理**: 类如`QgsFeature`、`QgsGeometry`、`QgsRasterLayer`、`QgsVectorLayer`等，用于处理地理信息数据，包括矢量和栅格数据的读取、编辑和显示。
+
+3. **地图显示和交互**: 类如`QgsMapCanvas`、`QgsMapTool`等，提供了地图的渲染和用户交互的功能，使用户能够浏览、缩放、旋转地图和进行地图编辑等操作。
+
+4. **GIS功能扩展**: 类如`QgsAuthManager`、`QgsCoordinateReferenceSystem`、`QgsPluginManager`等，提供了认证管理、坐标系统转换、插件管理等高级GIS功能，
+支持应用程序的功能扩展。
+
+5. **布局和打印**: 类如`QgsLayout`、`QgsPrintLayout`、`QgsComposer`等，用于设计地图的布局和打印输出，支持创建高质量的地图产品。
+
+6. **网络和数据交互**: 类如`QTcpSocket`、`QNetworkAccessManager`等，提供了网络通信功能，支持与远程服务器的数据交换和Web服务的访问。
+
+7. **GIS项目管理和设置**: 类如`QgsSettings`、`QgsProject`等，用于管理GIS项目的设置和配置，包括项目的保存和加载、用户偏好设置等。
+
+8. **地图装饰和界面增强**: 类如`QgsMapDecoration`、`QgsMessageBar`等，用于向地图界面添加装饰元素和向用户展示消息和通知。
+
+
+*/
 class QActionGroup;
 class QCheckBox;
 class QCursor;
@@ -153,7 +176,9 @@ class QgsAppQueryLogger;
 class QgsMapToolCapture;
 class QgsElevationProfileWidget;
 class QgsScreenHelper;
+#pragma endregion
 
+#pragma region "包含头文件"
 #include <QMainWindow>
 #include <QToolBar>
 #include <QAbstractSocket>
@@ -187,6 +212,8 @@ class QgsScreenHelper;
 #ifdef Q_OS_WIN
 #include <windows.h>
 #endif
+#pragma endregion
+
 
 class QgsLegendFilterButton;
 
@@ -201,6 +228,7 @@ class QgsGeoreferencerMainWindow;
 class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
 {
     Q_OBJECT
+#pragma region "公开属性的成员函数"
   public:
     //! Constructor
     QgisApp( QSplashScreen *splash, bool restorePlugins = true, bool skipBadLayers = false,
@@ -212,7 +240,9 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
 
     ~QgisApp() override;
 
+    //  杨小兵-2024-03-06：明确的告诉C++编译器不要实现默认的拷贝构造函数
     QgisApp( QgisApp const & ) = delete;
+    //  杨小兵-2024-03-06：明确的告诉C++编译器不要实现默认的拷贝复制函数
     QgisApp &operator=( QgisApp const & ) = delete;
 
 
@@ -239,6 +269,7 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
     /**
      * Attempts to run a Python script
      * \param filePath full path to Python script
+     * 在QGIS应用程序中运行一个指定路径的Python脚本
      */
     void runScript( const QString &filePath );
 
@@ -483,7 +514,9 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
      */
     void showSystemNotification( const QString &title, const QString &message, bool replaceExisting = true );
 
+#pragma region "获取数据成员相关的一些函数"
 
+#pragma region "获取动作数据成员"
     //! Actions to be inserted in menus and toolbars
     QAction *actionNewProject() { return mActionNewProject; }
     QAction *actionOpenProject() { return mActionOpenProject; }
@@ -635,6 +668,9 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
 
     QAction *actionShowPinnedLabels() { return mActionShowPinnedLabels; }
 
+#pragma endregion
+
+#pragma region "获取菜单数据成员"
     //! Menus
     QMenu *projectMenu() { return mProjectMenu; }
     QMenu *editMenu() { return mEditMenu; }
@@ -660,6 +696,9 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
 #endif
     QMenu *helpMenu() { return mHelpMenu; }
 
+#pragma endregion
+
+#pragma region "获取工具条数据成员"
     //! Toolbars
 
     /**
@@ -690,6 +729,9 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
     QToolBar *databaseToolBar() { return mDatabaseToolBar; }
     QToolBar *webToolBar() { return mWebToolBar; }
 
+#pragma endregion
+
+#pragma region "获取其他杂项的数据成员"
     QgsStatusBar *statusBarIface() { return mStatusBar; }
 
     //! Returns the CAD dock widget
@@ -699,6 +741,9 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
     QgsMapOverviewCanvas *mapOverviewCanvas() { return mOverviewCanvas; }
 
     QgsLocatorWidget *locatorWidget() { return mLocatorWidget; }
+#pragma endregion
+
+#pragma endregion
 
     //! show layer properties
     void showLayerProperties( QgsMapLayer *mapLayer, const QString &page = QString() );
@@ -883,7 +928,9 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
 
     //! Returns the application vertex editor
     QgsVertexEditor *vertexEditor() { return mVertexEditorDock; }
+#pragma endregion
 
+#pragma region "公开属性的槽函数"
   public slots:
     //! save current vector layer
     QString saveAsFile( QgsMapLayer *layer = nullptr, bool onlySelected = false, bool defaultToAddToMap = true );
@@ -1337,7 +1384,9 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
      * Is called from the legend when the current legend item has changed.
     */
     void activateDeactivateLayerRelatedActions( QgsMapLayer *layer );
+#pragma endregion
 
+#pragma region "受保护属性的成员函数"
   protected:
     void showEvent( QShowEvent *event ) override;
 
@@ -1356,7 +1405,9 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
     //! reimplements widget keyReleaseEvent event so we can check if back was pressed
     virtual void keyReleaseEvent( QKeyEvent *event );
 #endif
+#pragma endregion
 
+#pragma region "私有属性的槽函数"
   private slots:
     void newProfile();
 
@@ -1639,6 +1690,7 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
     //! Creates a new 3D map canvas view
     void new3DMapCanvas();
 
+#pragma region "新建图层:新建形状文件图层、新建临时图层、新建Spatialite图层、新建GeoPackage图层、新建网格图层、新建Gpx图层"
     //! Create a new empty vector layer
     void newVectorLayer();
     //! Create a new memory layer
@@ -1655,6 +1707,7 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
 
     //! Create a new empty GPX layer
     void newGpxLayer();
+#pragma endregion
 
     //! Create a new print layout
     void newPrintLayout();
@@ -2038,6 +2091,9 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
 
     void annotationItemTypeAdded( int id );
 
+#pragma endregion
+
+#pragma region "信号"
   signals:
 
     /**
@@ -2116,7 +2172,9 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
      * Emitted when the active layer is changed.
      */
     void activeLayerChanged( QgsMapLayer *layer );
+#pragma endregion
 
+#pragma region "私有成员函数"
   private:
 
     void createPreviewImage( const QString &path, const QIcon &overlayIcon = QIcon() );
@@ -2362,6 +2420,10 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
      * Returns a list of all capture map tools.
      */
     QList< QgsMapToolCapture * > captureTools();
+
+#pragma endregion
+
+#pragma region "私有成员变量"
 
     QgsScreenHelper *mScreenHelper = nullptr;
 
@@ -2677,6 +2739,10 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
     bool mBlockAutoSelectAddedLayer = false;
 
     int mFreezeCount = 0;
+
+#pragma endregion
+
+#pragma region "友元类"
     friend class QgsCanvasRefreshBlocker;
     friend class QgsMapToolsDigitizingTechniqueManager;
 
@@ -2684,6 +2750,8 @@ class APP_EXPORT QgisApp : public QMainWindow, private Ui::MainWindow
     friend class TestQgisApp;
     friend class QgisAppInterface;
     friend class QgsAppScreenShots;
+
+#pragma endregion
 };
 
 #ifdef ANDROID
