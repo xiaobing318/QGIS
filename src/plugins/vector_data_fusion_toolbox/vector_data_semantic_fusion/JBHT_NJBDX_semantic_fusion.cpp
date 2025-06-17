@@ -7,10 +7,6 @@
 #include <regex>
 #include <fstream>
 
-//  TODO:后续需要去除
-#include <random>
-#include <chrono>
-#include <set>
 
 /************ GDAL/OGR ************/
 #include "ogrsf_frmts.h"
@@ -943,31 +939,10 @@ void qgs_JBHT_NJBDX_semantic_fusion::JBHT_Mapping_NJBDX_Fields(
   single_frame_data_successful_logger->info("<------------------函数[{}]日志开始--->进行 JBHT -> NJBDX 字段属性值映射------------------>",
     __FUNCTION__);
 
-  // 获取图层数量
-  size_t layer_count = JBHT_single_frame_data_all_layers_info_entity.vJBHT_single_frame_data_single_layer_info.size();
-
-  // 如果图层数量大于 4，随机选择一个图层
-  std::set<size_t> skip_indices;
-  if (layer_count > 17)
-  {
-    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-    std::default_random_engine generator(seed);
-    std::uniform_int_distribution<size_t> distribution(0, layer_count - 1);
-    size_t skip_index = distribution(generator);
-    skip_indices.insert(skip_index);
-  }
-
   //  循环处理 JBHT 图层
   int JBHT_layer_counter = 1;
-  for (size_t i = 0; i < layer_count; ++i)
+  for (const auto& JBHT_single_layer : JBHT_single_frame_data_all_layers_info_entity.vJBHT_single_frame_data_single_layer_info)
   {
-    if (skip_indices.find(i) != skip_indices.end())
-    {
-      //  跳过图层处理
-      continue;
-    }
-    const auto& JBHT_single_layer = JBHT_single_frame_data_all_layers_info_entity.vJBHT_single_frame_data_single_layer_info[i];
-
     //  日志中提示当前正在处理的JBHT图层
     single_frame_data_successful_logger->info("<----------函数[{}]：开始处理 JBHT 中第 {} 个图层：{} (该图层GDAL几何类型：{} )---------->",
       __FUNCTION__,
@@ -1113,25 +1088,25 @@ void qgs_JBHT_NJBDX_semantic_fusion::JBHT_Mapping_NJBDX_Fields(
       if (Current_JBHT_single_layer_name == "")
       {
         single_frame_data_successful_logger->error("函数[{}]：分类编码映射配置文件过滤条件 [{}] 中的图层名称为空，在分类编码映射配置文件过滤条件 [{}] 中应该设置为 CommonLayerName（表示图层名称通用）或者设置为具体的图层名称，请重新检查并且设置分类编码映射配置文件。",
-          __FUNCTION__, codeMapping.JBHT_Classification_Code_Mapping_Condition, codeMapping.JBHT_Classification_Code_Mapping_Condition);
-        //  跳过当前分类编码映射表项的处理，继续处理下一个分类编码表项。
-        continue;
+              __FUNCTION__, codeMapping.JBHT_Classification_Code_Mapping_Condition, codeMapping.JBHT_Classification_Code_Mapping_Condition);
+          //  跳过当前分类编码映射表项的处理，继续处理下一个分类编码表项。
+          continue;
       }
       //  判断当前图层是否为通用形式
       else if (Current_JBHT_single_layer_name == "CommonLayerName")
       {
-        //  如果在分类编码配置文件中指定的图层名称是通用形式，则不需要对图层名称进行进一步的判断，只需要设置一下标签默认当前图层在分类编码映射表中存在映射表项，但这样是否合理？（合理）
-        is_exist_classification_code_mapping_condition_flag = true;
+          //  如果在分类编码配置文件中指定的图层名称是通用形式，则不需要对图层名称进行进一步的判断，只需要设置一下标签默认当前图层在分类编码映射表中存在映射表项，但这样是否合理？（合理）
+          is_exist_classification_code_mapping_condition_flag = true;
       }
       else if (Current_JBHT_single_layer_name != Current_JBHT_single_extract_layer_name)
       {
-        //  跳过当前分类编码映射表项的处理，继续处理下一个分类编码表项。
-        continue;
+          //  跳过当前分类编码映射表项的处理，继续处理下一个分类编码表项。
+          continue;
       }
       else
       {
-        //  说明过滤条件中设置的图层名称和当前图层名称一致，则需要设置该标志意味着当前图层在分类编码映射表中存在映射关系
-        is_exist_classification_code_mapping_condition_flag = true;
+          //  说明过滤条件中设置的图层名称和当前图层名称一致，则需要设置该标志意味着当前图层在分类编码映射表中存在映射关系
+          is_exist_classification_code_mapping_condition_flag = true;
       }
 
 
@@ -1192,12 +1167,12 @@ void qgs_JBHT_NJBDX_semantic_fusion::JBHT_Mapping_NJBDX_Fields(
         {
           //  若长度不够则跳过
           single_frame_data_successful_logger->warn("函数[{}]：无法从 [{}] 提取有效的图层标识，跳过此要素。", __FUNCTION__, classificationCodeResult);
-
+          
           //  将要素拷贝到目的图层中
           CopyOneFeatureToEmptyLayer(
-            poFeature,
-            pDestLayer,
-            single_frame_data_failed_logger);
+              poFeature,
+              pDestLayer,
+              single_frame_data_failed_logger);
 
           //  处理失败的要素写入“语义融合失败图层”之后将其FID记录到集合中
           processedFIDs.insert(poFeature->GetFID());
@@ -1219,12 +1194,12 @@ void qgs_JBHT_NJBDX_semantic_fusion::JBHT_Mapping_NJBDX_Fields(
         {
           //  说明没有找到对应的英文名称
           single_frame_data_successful_logger->warn("函数[{}]：无法从 [{}] 提取有效的图层英文名称，跳过此要素。", __FUNCTION__, classificationCodeResult);
-
+          
           //  将要素拷贝到目的图层中
           CopyOneFeatureToEmptyLayer(
-            poFeature,
-            pDestLayer,
-            single_frame_data_failed_logger);
+              poFeature,
+              pDestLayer,
+              single_frame_data_failed_logger);
 
           //  处理失败的要素写入“语义融合失败图层”之后将其FID记录到集合中
           processedFIDs.insert(poFeature->GetFID());
@@ -1237,8 +1212,8 @@ void qgs_JBHT_NJBDX_semantic_fusion::JBHT_Mapping_NJBDX_Fields(
         OGRLayer* poNJBDXLayer = nullptr;
         for (auto& nLayerInfo : NJBDX_single_frame_data_all_layers_info_entity.vNJBDX_single_frame_data_single_layer_info)
         {
-
-
+          
+          
           //  这里需要根据几何类型来拼接图层名称
           const std::string NJBDXLayerName = targetLayerEnglishName + "_" + JBHT_OGRGeometryType2String(poJBHTLayer->GetGeomType());
           //  比较解析后的名称与映射中的名称
@@ -1257,12 +1232,12 @@ void qgs_JBHT_NJBDX_semantic_fusion::JBHT_Mapping_NJBDX_Fields(
         if (!poNJBDXLayer)
         {
           single_frame_data_successful_logger->info("函数[{}]：在 NJBDX 数据源中未找到图层 [{}]，可能不需要为此图层写入要素。", __FUNCTION__, targetLayerEnglishName);
-
+          
           //  将要素拷贝到目的图层中
           CopyOneFeatureToEmptyLayer(
-            poFeature,
-            pDestLayer,
-            single_frame_data_failed_logger);
+              poFeature,
+              pDestLayer,
+              single_frame_data_failed_logger);
 
           //  处理失败的要素写入“语义融合失败图层”之后将其FID记录到集合中
           processedFIDs.insert(poFeature->GetFID());
@@ -1276,12 +1251,12 @@ void qgs_JBHT_NJBDX_semantic_fusion::JBHT_Mapping_NJBDX_Fields(
         if (!poNJBDXDefn)
         {
           single_frame_data_successful_logger->error("函数[{}]：无法获取 NJBDX 图层 [{}] 的字段定义，跳过写入。", __FUNCTION__, targetLayerEnglishName);
-
+          
           //  将要素拷贝到目的图层中
           CopyOneFeatureToEmptyLayer(
-            poFeature,
-            pDestLayer,
-            single_frame_data_failed_logger);
+              poFeature,
+              pDestLayer,
+              single_frame_data_failed_logger);
 
           //  处理失败的要素写入“语义融合失败图层”之后将其FID记录到集合中
           processedFIDs.insert(poFeature->GetFID());
@@ -1298,12 +1273,12 @@ void qgs_JBHT_NJBDX_semantic_fusion::JBHT_Mapping_NJBDX_Fields(
           single_frame_data_successful_logger->error("函数[{}]：图层 [{}]中创建 NJBDX 新要素失败，跳过写入。",
             __FUNCTION__,
             targetLayerEnglishName);
-
+          
           //  将要素拷贝到目的图层中
           CopyOneFeatureToEmptyLayer(
-            poFeature,
-            pDestLayer,
-            single_frame_data_failed_logger);
+              poFeature,
+              pDestLayer,
+              single_frame_data_failed_logger);
 
           //  处理失败的要素写入“语义融合失败图层”之后将其FID记录到集合中
           processedFIDs.insert(poFeature->GetFID());
@@ -1421,10 +1396,10 @@ void qgs_JBHT_NJBDX_semantic_fusion::JBHT_Mapping_NJBDX_Fields(
     //  检查当前图层在分类编码条件映射表中是否存在映射表项
     if (!is_exist_classification_code_mapping_condition_flag)
     {
-      //  如果当前图层在分类编码条件映射表中不存在映射表项，则输出日志信息
+        //  如果当前图层在分类编码条件映射表中不存在映射表项，则输出日志信息
       single_frame_data_successful_logger->warn("函数[{}]：JBHT_Classification_Code_Conditional_Mapping_Lists.json配置文件中没有 JBHT 图层：{} 的映射信息。",
-        __FUNCTION__,
-        JBHT_single_layer.layer_name);
+            __FUNCTION__, 
+            JBHT_single_layer.layer_name);
     }
 
 
@@ -1460,521 +1435,6 @@ void qgs_JBHT_NJBDX_semantic_fusion::JBHT_Mapping_NJBDX_Fields(
     __FUNCTION__);
 
 }
-
-//// -----------------------------------------------------------------------------
-////  主要实现函数：将 JBHT 数据源中的要素按分类编码映射到 NJBDX 数据源中
-//// -----------------------------------------------------------------------------
-//void qgs_JBHT_NJBDX_semantic_fusion::JBHT_Mapping_NJBDX_Fields(
-//  const JBHT_single_frame_data_all_layers_info_t& JBHT_single_frame_data_all_layers_info_entity,
-//  const JBHT_single_frame_data_all_layers_info_t& JBHT_single_frame_data_all_layers_info_empty_entity,
-//  const JBHT_NJBDX_single_frame_data_all_layers_info_t& NJBDX_single_frame_data_all_layers_info_entity,
-//  const JBHT_Layers_Fields_Info_Json_t& JBHT_Layers_Fields_Info_Json_entity,
-//  const JBHT_NJBDX_Layers_Fields_Info_Json_t& NJBDX_Layers_Fields_Info_Json_entity,
-//  const JBHT_Layers_Mapping_NJBDX_Layers_Json_t& JBHT_Layers_Mapping_NJBDX_Layers_Json_entity,
-//  const JBHT_Classification_Code_Conditional_Mapping_Lists_Json_t& JBHT_Classification_Code_Conditional_Mapping_Lists_Json_entity,
-//  const JBHT_Other_Fields_Mapping_NJBDX_Other_Fields_Json_t& JBHT_Other_Fields_Mapping_NJBDX_Other_Fields_Json_entity,
-//  std::shared_ptr<spdlog::logger> single_frame_data_successful_logger,
-//  std::shared_ptr<spdlog::logger> single_frame_data_failed_logger)
-//{
-//  single_frame_data_successful_logger->info("<------------------函数[{}]日志开始--->进行 JBHT -> NJBDX 字段属性值映射------------------>",
-//    __FUNCTION__);
-//
-//  //  循环处理 JBHT 图层
-//  int JBHT_layer_counter = 1;
-//  for (const auto& JBHT_single_layer : JBHT_single_frame_data_all_layers_info_entity.vJBHT_single_frame_data_single_layer_info)
-//  {
-//    //  日志中提示当前正在处理的JBHT图层
-//    single_frame_data_successful_logger->info("<----------函数[{}]：开始处理 JBHT 中第 {} 个图层：{} (该图层GDAL几何类型：{} )---------->",
-//      __FUNCTION__,
-//      JBHT_layer_counter,
-//      JBHT_single_layer.layer_name,
-//      OGRGeometryTypeToName(JBHT_single_layer.layer_geo_type));
-//
-//#pragma region "1 在 JBHT_Layers_Mapping_NJBDX_Layers_Json_t 中找出当前JBHT图层对应的映射(一对多)"
-//
-//    //  在 JBHT_Layers_Mapping_NJBDX_Layers_Json_t 中找出当前JBHT图层对应的映射(一对多)
-//    const auto& allMappings = JBHT_Layers_Mapping_NJBDX_Layers_Json_entity.vJBHT_layers_mapping_NJBDX_layers;
-//    //  使用 std::find_if 查找匹配的映射
-//    auto itFound = std::find_if(allMappings.begin(), allMappings.end(),
-//      [&JBHT_single_layer, JBHT_Layers_Fields_Info_Json_entity, this, single_frame_data_successful_logger](const JBHT_layers_mapping_NJBDX_layers_t& item) -> bool
-//      {
-//        //  解析当前图层的名称（例如D）
-//        std::string parsedName = this->JBHT_Extract_LayerName(
-//          JBHT_single_layer.layer_name,
-//          JBHT_Layers_Fields_Info_Json_entity,
-//          single_frame_data_successful_logger);
-//
-//        //  如果解析失败，跳过此元素
-//        if (parsedName.empty())
-//        {
-//          single_frame_data_successful_logger->info("函数[{}]：当前 JBHT 图层{}名称类型解析失败。", __FUNCTION__, JBHT_single_layer.layer_name);
-//          return false;
-//        }
-//
-//        //  比较解析后的名称与映射中的名称
-//        bool nameMatches = (item.JBHT_Layer.JBHT_layer_english_name == parsedName);
-//
-//        //  比较几何类型
-//        bool geometryMatches = (item.JBHT_Layer.JBHT_layer_type == JBHT_single_layer.layer_geo_type);
-//
-//        //  返回两个条件都满足的结果
-//        return nameMatches && geometryMatches;
-//      }
-//    );
-//    //  如果在图层映射表中没有找到映射关系则需要将情况写入日志中
-//    if (itFound == allMappings.end())
-//    {
-//      single_frame_data_successful_logger->warn("函数[{}]：无法在JBHT_Layers_Mapping_NJBDX_Layers.json中找到与图层 [{}] 对应的映射关系，跳过当前图层的处理。",
-//        __FUNCTION__,
-//        JBHT_single_layer.layer_name);
-//      continue;
-//    }
-//
-//    //  在上一步中找到了当前JBHT图层对应映射的NJBDX图层，获取JBHT当前 OGRLayer* 图层指针
-//    OGRLayer* poJBHTLayer = JBHT_single_layer.polayer;
-//    //  判断JBHT图层指针是否有效
-//    if (!poJBHTLayer)
-//    {
-//      single_frame_data_successful_logger->warn("函数[{}]：JBHT 图层 [{}] 的 OGRLayer 指针为空，跳过当前图层的处理。",
-//        __FUNCTION__,
-//        JBHT_single_layer.layer_name);
-//      continue;
-//    }
-//#pragma endregion
-//
-//#pragma region "2 遍历分类编码条件映射表"
-//
-//    //  首先需要查询到JBHT空数据图层名称同JBHT非空数据图层名称相同的图层指针（对于遍历分类编条件映射表只需要查找一次）
-//    OGRLayer* pDestLayer = NULL;
-//    for (const auto& JBHT_current_single_empty_layer : JBHT_single_frame_data_all_layers_info_empty_entity.vJBHT_single_frame_data_single_layer_info)
-//    {
-//      if (JBHT_current_single_empty_layer.layer_name == JBHT_single_layer.layer_name)
-//      {
-//        pDestLayer = JBHT_current_single_empty_layer.polayer;
-//        break;
-//      }
-//    }
-//    if (!pDestLayer)
-//    {
-//      single_frame_data_successful_logger->warn("函数[{}]：当前处理的JBHT图层名称{}在语义融合失败图层名称集合中没有找到相同的图层名称，跳过语义融合失败图层要素写入操作。",
-//        __FUNCTION__,
-//        JBHT_single_layer.layer_name);
-//      continue;
-//    }
-//
-//    // 在遍历当前JBHT图层前增加一个记录处理要素ID的集合
-//    std::set<GIntBig> processedFIDs;
-//
-//    //  设置一个flag来表示当前图层是否在分类编码条件映射表中是否有映射条件（初始为false意味着没有找到）
-//    bool is_exist_classification_code_mapping_condition_flag = false;
-//
-//    //  遍历分类编码条件映射表
-//    for (const auto& codeMapping : JBHT_Classification_Code_Conditional_Mapping_Lists_Json_entity.vJBHT_Classification_Code_Conditional_Mapping_Lists)
-//    {
-//#pragma region "2.1 分类编码条件映射表项必要检查"
-//      //  判断当前‘分类编码条件映射表项’是否需要映射
-//      if (codeMapping.JBHT_Classification_Code_Mapping_Condition_Flag != "yes")
-//      {
-//        single_frame_data_successful_logger->info("函数[{}]：当前'分类编码条件映射表项'中的'映射条件标志'不是'yes'。具体的'分类编码条件映射表项'如下所示：", __FUNCTION__);
-//        single_frame_data_successful_logger->info("\"Note\":\"{}\"", codeMapping.Note);
-//        single_frame_data_successful_logger->info("\"JBHT_Classification_Code_Mapping_Condition\":\"{}\"", codeMapping.JBHT_Classification_Code_Mapping_Condition);
-//        single_frame_data_successful_logger->info("\"JBHT_Classification_Code_Mapping_Condition_Flag\":\"{}\"", codeMapping.JBHT_Classification_Code_Mapping_Condition_Flag);
-//        single_frame_data_successful_logger->info("\"NJBDX_Classification_Code_Mapping_Condition\":\"{}\"", codeMapping.NJBDX_Classification_Code_Mapping_Condition);
-//        //  继续处理下一个'分类编码条件映射表项'
-//        continue;
-//      }
-//      //  TODO:检查表达式合法性
-//      //if (!is_valid_qgis_expression(codeMapping.JBHT_Classification_Code_Mapping_Condition))
-//      //{
-//      //  single_frame_data_successful_logger->info("函数[{}]：当前'分类编码条件映射表项'中的'JBHT_Classification_Code_Mapping_Condition'无效。具体的'分类编码条件映射表项'如下所示：", __FUNCTION__);
-//      //  single_frame_data_successful_logger->info("\"Note\":\"{}\"", codeMapping.Note);
-//      //  single_frame_data_successful_logger->info("\"JBHT_Classification_Code_Mapping_Condition\":\"{}\"", codeMapping.JBHT_Classification_Code_Mapping_Condition);
-//      //  single_frame_data_successful_logger->info("\"JBHT_Classification_Code_Mapping_Condition_Flag\":\"{}\"", codeMapping.JBHT_Classification_Code_Mapping_Condition_Flag);
-//      //  single_frame_data_successful_logger->info("\"NJBDX_Classification_Code_Mapping_Condition\":\"{}\"", codeMapping.NJBDX_Classification_Code_Mapping_Condition);
-//      //  //  继续处理下一个'分类编码条件映射表项'
-//      //  continue;
-//
-//      //}
-//      //if (!is_valid_qgis_expression(codeMapping.NJBDX_Classification_Code_Mapping_Condition))
-//      //{
-//      //  single_frame_data_successful_logger->info("函数[{}]：当前'分类编码条件映射表项'中的'NJBDX_Classification_Code_Mapping_Condition'无效。具体的'分类编码条件映射表项'如下所示：", __FUNCTION__);
-//      //  single_frame_data_successful_logger->info("\"Note\":\"{}\"", codeMapping.Note);
-//      //  single_frame_data_successful_logger->info("\"JBHT_Classification_Code_Mapping_Condition\":\"{}\"", codeMapping.JBHT_Classification_Code_Mapping_Condition);
-//      //  single_frame_data_successful_logger->info("\"JBHT_Classification_Code_Mapping_Condition_Flag\":\"{}\"", codeMapping.JBHT_Classification_Code_Mapping_Condition_Flag);
-//      //  single_frame_data_successful_logger->info("\"NJBDX_Classification_Code_Mapping_Condition\":\"{}\"", codeMapping.NJBDX_Classification_Code_Mapping_Condition);
-//      //  //  继续处理下一个'分类编码条件映射表项'
-//      //  continue;
-//      //}
-//#pragma endregion
-//
-//#pragma region "2.2 根据 JBHT_Classification_Code_Mapping_Condition 对 JBHT 要素进行筛选"
-//
-//      /*
-//      Notes:杨小兵-2025-03-05
-//
-//      1、在JBHT_Classification_Code_Mapping_Condition其中添加了JBHT图层名称信息，这里需要将JBHT图层名称和筛选条件两者进行区分（抽取出来）
-//      2、获取得到JBHT的图层名，判断当前处理的图层名称是否同当前矢量图层名称是否相同，如果相同则继续进行处理，反之则跳过
-//      3、JBHT_Classification_Code_Mapping_Condition字符串示例：ACHARE|\"CODE\"=140403 AND \"TYPE\"!='栈道'(需要单独提取ACHARE和\"CODE\"=140403 AND \"TYPE\"!='栈道')
-//      */
-//
-//      //  判断当前图层名称是否同当前分类编码映射条件中指定的图层名称相同，需要针对不同的数据源进行不同的图层名称的抽取规则，并且设置成通用和非通用两种方式
-//
-//      //  首先获取到分类编码中指定图层的名称
-//      std::string Current_JBHT_single_layer_name = extractBeforeDelimiter(codeMapping.JBHT_Classification_Code_Mapping_Condition);
-//      //  需要对当前图层名称进行过滤抽取，例如从DN101202_B_point中抽取出B
-//      std::string Current_JBHT_single_extract_layer_name = JBHT_Extract_LayerName(JBHT_single_layer.layer_name, JBHT_Layers_Fields_Info_Json_entity, single_frame_data_successful_logger);
-//
-//      //  判断当前图层名称是否为空
-//      if (Current_JBHT_single_layer_name == "")
-//      {
-//        single_frame_data_successful_logger->error("函数[{}]：分类编码映射配置文件过滤条件 [{}] 中的图层名称为空，在分类编码映射配置文件过滤条件 [{}] 中应该设置为 CommonLayerName（表示图层名称通用）或者设置为具体的图层名称，请重新检查并且设置分类编码映射配置文件。",
-//              __FUNCTION__, codeMapping.JBHT_Classification_Code_Mapping_Condition, codeMapping.JBHT_Classification_Code_Mapping_Condition);
-//          //  跳过当前分类编码映射表项的处理，继续处理下一个分类编码表项。
-//          continue;
-//      }
-//      //  判断当前图层是否为通用形式
-//      else if (Current_JBHT_single_layer_name == "CommonLayerName")
-//      {
-//          //  如果在分类编码配置文件中指定的图层名称是通用形式，则不需要对图层名称进行进一步的判断，只需要设置一下标签默认当前图层在分类编码映射表中存在映射表项，但这样是否合理？（合理）
-//          is_exist_classification_code_mapping_condition_flag = true;
-//      }
-//      else if (Current_JBHT_single_layer_name != Current_JBHT_single_extract_layer_name)
-//      {
-//          //  跳过当前分类编码映射表项的处理，继续处理下一个分类编码表项。
-//          continue;
-//      }
-//      else
-//      {
-//          //  说明过滤条件中设置的图层名称和当前图层名称一致，则需要设置该标志意味着当前图层在分类编码映射表中存在映射关系
-//          is_exist_classification_code_mapping_condition_flag = true;
-//      }
-//
-//
-//      //  根据 JBHT_Classification_Code_Mapping_Condition 对 JBHT 要素进行筛选，例如可能为："\"CODE\"=140403 AND \"TYPE\"!='栈道'"
-//      const std::string ogrAttributeFilter = extractAfterDelimiter(codeMapping.JBHT_Classification_Code_Mapping_Condition);
-//
-//      //  动态抽取过滤条件中所有字段名称
-//      std::vector<std::string> fieldNames = extractFieldNames(ogrAttributeFilter);
-//
-//      //  创建要素指针用来在后续对符合过滤条件的要素进行处理
-//      OGRFeature* poFeature = nullptr;
-//
-//      //  检查图层定义中是否包含所有过滤条件中引用的字段
-//      bool allFieldsExist = true;
-//      OGRFeatureDefn* poJBHTDefn = poJBHTLayer->GetLayerDefn();
-//      for (const auto& fieldName : fieldNames)
-//      {
-//        if (poJBHTDefn->GetFieldIndex(fieldName.c_str()) == -1)
-//        {
-//          single_frame_data_successful_logger->warn("函数[{}]：图层 [{}] 中不存在字段 [{}]，过滤条件 [{}] 将不会生效。",
-//            __FUNCTION__, JBHT_single_layer.layer_name, fieldName, ogrAttributeFilter);
-//          allFieldsExist = false;
-//          break;
-//        }
-//      }
-//      //  如果所有字段都存在，则设置属性过滤器；
-//      if (allFieldsExist)
-//      {
-//        if (poJBHTLayer->SetAttributeFilter(ogrAttributeFilter.c_str()) != OGRERR_NONE)
-//        {
-//          single_frame_data_successful_logger->error("函数[{}]：设置属性过滤器 [{}] 失败，属性过滤条件存在错误，请仔细检查是否存在拼写错误或者逻辑错误。",
-//            __FUNCTION__,
-//            ogrAttributeFilter);
-//          continue;
-//        }
-//      }
-//      else
-//      {
-//        //  所有字段中的部分字段不存在，不设置属性过滤器，并且对要素不进行处理，直接跳过。
-//        poJBHTLayer->SetAttributeFilter(nullptr);
-//        continue;
-//      }
-//      poJBHTLayer->ResetReading();
-//      //  对符合过滤条件的要素进行处理，这里需要将语义融合不成功的记录在pDestLayer图层中
-//      while ((poFeature = poJBHTLayer->GetNextFeature()) != nullptr)
-//      {
-//        //  先计算 NJBDX_Classification_Code_Mapping_Condition 的结果，例如 "11010202"，然后取其前两位 "11" 来决定映射到哪个 NJBDX 图层
-//        std::string classificationCodeResult = JBHT_extractClassificationCode(codeMapping.NJBDX_Classification_Code_Mapping_Condition);
-//
-//        //  取前两位(示例：若得到 "11010202" -> "11")，根据需求可截取其他子串或使用正则等
-//        std::string targetLayerNumericalIdentification = "";
-//        std::string targetLayerEnglishName = "";
-//        if (classificationCodeResult.size() >= 2)
-//        {
-//          targetLayerNumericalIdentification = classificationCodeResult.substr(0, 2);  // 提取前两位
-//        }
-//        else
-//        {
-//          //  若长度不够则跳过
-//          single_frame_data_successful_logger->warn("函数[{}]：无法从 [{}] 提取有效的图层标识，跳过此要素。", __FUNCTION__, classificationCodeResult);
-//          
-//          //  将要素拷贝到目的图层中
-//          CopyOneFeatureToEmptyLayer(
-//              poFeature,
-//              pDestLayer,
-//              single_frame_data_failed_logger);
-//
-//          //  处理失败的要素写入“语义融合失败图层”之后将其FID记录到集合中
-//          processedFIDs.insert(poFeature->GetFID());
-//
-//          OGRFeature::DestroyFeature(poFeature);
-//          continue;
-//        }
-//
-//        //  这里需要将图层标识号（例如11、12、13等等）同具体的英文名称映射从而获取目标图层的英文名称
-//        for (auto& NJBDX_current_layer : NJBDX_Layers_Fields_Info_Json_entity.vNJBDX_Layers_Fields)
-//        {
-//          if (NJBDX_current_layer.NJBDX_Layer_Numerical_Identification == targetLayerNumericalIdentification)
-//          {
-//            targetLayerEnglishName = NJBDX_current_layer.NJBDX_Layer_English_Name;
-//            break;
-//          }
-//        }
-//        if (targetLayerEnglishName == "")
-//        {
-//          //  说明没有找到对应的英文名称
-//          single_frame_data_successful_logger->warn("函数[{}]：无法从 [{}] 提取有效的图层英文名称，跳过此要素。", __FUNCTION__, classificationCodeResult);
-//          
-//          //  将要素拷贝到目的图层中
-//          CopyOneFeatureToEmptyLayer(
-//              poFeature,
-//              pDestLayer,
-//              single_frame_data_failed_logger);
-//
-//          //  处理失败的要素写入“语义融合失败图层”之后将其FID记录到集合中
-//          processedFIDs.insert(poFeature->GetFID());
-//
-//          OGRFeature::DestroyFeature(poFeature);
-//          continue;
-//        }
-//
-//        //  找到目标 NJBDX 图层后，获取其 OGRLayer*
-//        OGRLayer* poNJBDXLayer = nullptr;
-//        for (auto& nLayerInfo : NJBDX_single_frame_data_all_layers_info_entity.vNJBDX_single_frame_data_single_layer_info)
-//        {
-//          
-//          
-//          //  这里需要根据几何类型来拼接图层名称
-//          const std::string NJBDXLayerName = targetLayerEnglishName + "_" + JBHT_OGRGeometryType2String(poJBHTLayer->GetGeomType());
-//          //  比较解析后的名称与映射中的名称
-//          bool nameMatches = (nLayerInfo.layer_name == NJBDXLayerName);
-//
-//          //  比较几何类型（NJBDX图层的几何类型应该同JBHT图层的几何类型是相同的，不应该存在类型不同的情况）
-//          bool geometryMatches = (nLayerInfo.layer_geo_type == poJBHTLayer->GetGeomType());
-//
-//          //  如果图层名称、图层几何类型两个条件都满足，那么当前的NJBDX图层即为需要的图层 
-//          if (nameMatches && geometryMatches)
-//          {
-//            poNJBDXLayer = nLayerInfo.polayer;
-//            break;
-//          }
-//        }
-//        if (!poNJBDXLayer)
-//        {
-//          single_frame_data_successful_logger->info("函数[{}]：在 NJBDX 数据源中未找到图层 [{}]，可能不需要为此图层写入要素。", __FUNCTION__, targetLayerEnglishName);
-//          
-//          //  将要素拷贝到目的图层中
-//          CopyOneFeatureToEmptyLayer(
-//              poFeature,
-//              pDestLayer,
-//              single_frame_data_failed_logger);
-//
-//          //  处理失败的要素写入“语义融合失败图层”之后将其FID记录到集合中
-//          processedFIDs.insert(poFeature->GetFID());
-//
-//          OGRFeature::DestroyFeature(poFeature);
-//          continue;
-//        }
-//
-//        //  获取 NJBDX 图层的字段定义
-//        OGRFeatureDefn* poNJBDXDefn = poNJBDXLayer->GetLayerDefn();
-//        if (!poNJBDXDefn)
-//        {
-//          single_frame_data_successful_logger->error("函数[{}]：无法获取 NJBDX 图层 [{}] 的字段定义，跳过写入。", __FUNCTION__, targetLayerEnglishName);
-//          
-//          //  将要素拷贝到目的图层中
-//          CopyOneFeatureToEmptyLayer(
-//              poFeature,
-//              pDestLayer,
-//              single_frame_data_failed_logger);
-//
-//          //  处理失败的要素写入“语义融合失败图层”之后将其FID记录到集合中
-//          processedFIDs.insert(poFeature->GetFID());
-//
-//          OGRFeature::DestroyFeature(poFeature);
-//          //  继续处理下一个要素
-//          continue;
-//        }
-//
-//        //  创建新要素并复制几何
-//        OGRFeature* poNewNjbdxFeature = OGRFeature::CreateFeature(poNJBDXDefn);
-//        if (!poNewNjbdxFeature)
-//        {
-//          single_frame_data_successful_logger->error("函数[{}]：图层 [{}]中创建 NJBDX 新要素失败，跳过写入。",
-//            __FUNCTION__,
-//            targetLayerEnglishName);
-//          
-//          //  将要素拷贝到目的图层中
-//          CopyOneFeatureToEmptyLayer(
-//              poFeature,
-//              pDestLayer,
-//              single_frame_data_failed_logger);
-//
-//          //  处理失败的要素写入“语义融合失败图层”之后将其FID记录到集合中
-//          processedFIDs.insert(poFeature->GetFID());
-//
-//          OGRFeature::DestroyFeature(poFeature);
-//          //  继续处理下一个要素
-//          continue;
-//        }
-//        //  将JBHT当前图层要素的几何定义赋值到新创建的NJBDX要素中
-//        JBHT_copy_geometry_from_source_to_target(poFeature, poNewNjbdxFeature, single_frame_data_successful_logger);
-//
-//
-//
-//        //  日志说明现在开始处理JBHT数据源中当前图层的‘分类编码’字段属性值映射
-//        single_frame_data_successful_logger->info("<-----------------------------------第一步----------------------------------->");
-//        single_frame_data_successful_logger->info("函数[{}]：第一步--->开始处理 JBHT 图层：{} 中要素ID为 {} 的'分类编码'字段属性值映射。",
-//          __FUNCTION__,
-//          JBHT_single_layer.layer_name,
-//          poFeature->GetFID() + 1);
-//
-//        //  写入分类编码字段（例如 NJBDX 图层中专门有 "CODE" 字段，即分类编码字段）
-//        JBHT_mapping_classification_code_field(poNewNjbdxFeature, "CODE", classificationCodeResult);
-//
-//        //  日志说明现在结束处理JBHT数据源中当前图层的‘分类编码’字段属性值映射
-//        single_frame_data_successful_logger->info("函数[{}]：第一步--->结束处理 JBHT 图层：{} 中要素ID为 {} 的'分类编码'字段属性值映射。", __FUNCTION__, JBHT_single_layer.layer_name, poFeature->GetFID() + 1);
-//        single_frame_data_successful_logger->info("<-----------------------------------第一步----------------------------------->\n");
-//
-//
-//
-//
-//
-//        //  日志说明现在开始处理JBHT数据源中当前图层的‘其他’字段属性值映射
-//        single_frame_data_successful_logger->info("<-----------------------------------第二步----------------------------------->");
-//        single_frame_data_successful_logger->info("函数[{}]：第二步--->开始处理 JBHT 图层：{} 中要素ID为 {} 的'其他'字段属性值映射。", __FUNCTION__, JBHT_single_layer.layer_name, poFeature->GetFID() + 1);
-//
-//        //  获取JBHT_Classification_Code_Conditional_Mapping_Lists_Json_entity对应NJBDX的特定图层
-//        JBHT_Layers_Other_Fields_Mapping_t JBHT_Layers_Other_Fields_Mapping_entity;
-//        for (int i = 0; i < JBHT_Other_Fields_Mapping_NJBDX_Other_Fields_Json_entity.vJBHT_Layers_Other_Fields_Mapping.size(); i++)
-//        {
-//          //  这里的图层标识符可以是11、12、13等等
-//          if (JBHT_Other_Fields_Mapping_NJBDX_Other_Fields_Json_entity.vJBHT_Layers_Other_Fields_Mapping[i].NJBDX_Layer_English_Name == targetLayerEnglishName)
-//          {
-//            JBHT_Layers_Other_Fields_Mapping_entity = JBHT_Other_Fields_Mapping_NJBDX_Other_Fields_Json_entity.vJBHT_Layers_Other_Fields_Mapping[i];
-//            break;
-//          }
-//        }
-//        //  检查是否找到其他字段映射的配置信息
-//        if (!(JBHT_Layers_Other_Fields_Mapping_entity.vOther_Fields_Mapping.size()))
-//        {
-//          single_frame_data_successful_logger->error("函数[{}]：在JBHT_Other_Fields_Mapping_NJBDX_Other_Fields.json配置文件中没有找到NJBDX图层[{}]配置信息，跳过该要素的'其他'字段属性值映射。",
-//            __FUNCTION__,
-//            targetLayerEnglishName);
-//
-//
-//          //  将要素拷贝到目的图层中
-//          CopyOneFeatureToEmptyLayer(
-//            poFeature,
-//            pDestLayer,
-//            single_frame_data_failed_logger);
-//
-//          //  处理失败的要素写入“语义融合失败图层”之后将其FID记录到集合中
-//          processedFIDs.insert(poFeature->GetFID());
-//
-//
-//          //  日志说明现在结束处理JBHT数据源中当前图层的‘其他’字段属性值映射
-//          single_frame_data_successful_logger->info("函数[{}]：第二步--->结束处理 JBHT 图层：{} 中要素ID为 {} 的'其他'字段属性值映射。",
-//            __FUNCTION__,
-//            JBHT_single_layer.layer_name,
-//            poFeature->GetFID() + 1);
-//          single_frame_data_successful_logger->info("-----------------------------------第二步----------------------------------->\n");
-//          //  处理下一个要素
-//          continue;
-//        }
-//        //  映射JBHT图层的其他字段属性
-//        JBHT_mapping_other_fields(
-//          poFeature,
-//          poNewNjbdxFeature,
-//          JBHT_Layers_Other_Fields_Mapping_entity,
-//          single_frame_data_successful_logger);
-//
-//        //  日志说明现在结束处理JBHT数据源中当前图层的‘其他’字段属性值映射
-//        single_frame_data_successful_logger->info("函数[{}]：第二步--->结束处理 JBHT 图层：{} 中要素ID为 {} 的'其他'字段属性值映射。", __FUNCTION__, JBHT_single_layer.layer_name, poFeature->GetFID() + 1);
-//        single_frame_data_successful_logger->info("<-----------------------------------第二步----------------------------------->\n");
-//
-//
-//
-//        //  写入要素到目标图层
-//        if (poNJBDXLayer->CreateFeature(poNewNjbdxFeature) != OGRERR_NONE)
-//        {
-//          //  将要素拷贝到目的图层中
-//          CopyOneFeatureToEmptyLayer(
-//            poFeature,
-//            pDestLayer,
-//            single_frame_data_failed_logger);
-//
-//          //  处理失败的要素写入“语义融合失败图层”之后将其FID记录到集合中
-//          processedFIDs.insert(poFeature->GetFID());
-//
-//          single_frame_data_successful_logger->error("函数[{}]：向 NJBDX 图层 [{}] 写入要素失败。", __FUNCTION__, targetLayerEnglishName);
-//        }
-//
-//        // 写入 NJBDX 图层成功后将其FID记录到集合中
-//        processedFIDs.insert(poFeature->GetFID());
-//
-//        OGRFeature::DestroyFeature(poNewNjbdxFeature);
-//        OGRFeature::DestroyFeature(poFeature);
-//      } // end while
-//
-//      //  重置过滤器
-//      poJBHTLayer->SetAttributeFilter(nullptr);
-//#pragma endregion
-//
-//    } // end for codeMapping
-//
-//    //  检查当前图层在分类编码条件映射表中是否存在映射表项
-//    if (!is_exist_classification_code_mapping_condition_flag)
-//    {
-//        //  如果当前图层在分类编码条件映射表中不存在映射表项，则输出日志信息
-//      single_frame_data_successful_logger->warn("函数[{}]：JBHT_Classification_Code_Conditional_Mapping_Lists.json配置文件中没有 JBHT 图层：{} 的映射信息。",
-//            __FUNCTION__, 
-//            JBHT_single_layer.layer_name);
-//    }
-//
-//
-//
-//    //  处理未被任何映射条件处理的要素
-//    poJBHTLayer->SetAttributeFilter(nullptr);
-//    poJBHTLayer->ResetReading();
-//    OGRFeature* poRemainingFeature = nullptr;
-//    while ((poRemainingFeature = poJBHTLayer->GetNextFeature()) != nullptr)
-//    {
-//      //  如果该要素未在 processedFIDs 中，则拷贝到 pDestLayer
-//      if (processedFIDs.find(poRemainingFeature->GetFID()) == processedFIDs.end())
-//      {
-//        single_frame_data_successful_logger->info("函数[{}]：输入图层[{}]中要素ID为 {} 语义融合失败，将该要素写入到语义融合失败图层。", __FUNCTION__, poRemainingFeature->GetFID() + 1);
-//        CopyOneFeatureToEmptyLayer(poRemainingFeature, pDestLayer, single_frame_data_failed_logger);
-//      }
-//      OGRFeature::DestroyFeature(poRemainingFeature);
-//    }
-//
-//
-//#pragma endregion
-//
-//    //  日志中提示当前正在处理的JBHT图层
-//    single_frame_data_successful_logger->info("<----------函数[{}]：结束处理 JBHT 中第 {} 个图层：{} (该图层GDAL几何类型：{} )---------->\n",
-//      __FUNCTION__,
-//      JBHT_layer_counter,
-//      JBHT_single_layer.layer_name,
-//      OGRGeometryTypeToName(JBHT_single_layer.layer_geo_type));
-//    JBHT_layer_counter++;
-//  } // end for JBHT_single_layer
-//
-//  single_frame_data_successful_logger->info("<------------------函数[{}]日志开始--->进行 JBHT -> NJBDX 字段属性值映射------------------>",
-//    __FUNCTION__);
-//
-//}
 
 /**
  * 从输入字符串中提取第一个连续的8位数字字符串。
