@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Manage_ARD_PackageDlg</class>
+ <widget class="QDialog" name="Manage_ARD_PackageDlg">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>871</width>
+    <height>654</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>分析就绪型数据包管理</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout_6">
+   <item row="1" column="0">
+    <spacer name="horizontalSpacer">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>682</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="pushButton_OK">
+     <property name="text">
+      <string>确定</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="2">
+    <widget class="QPushButton" name="pushButton_Cancel">
+     <property name="text">
+      <string>取消</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="0" colspan="3">
+    <widget class="QGroupBox" name="groupBox">
+     <property name="title">
+      <string/>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_5">
+      <item row="0" column="0">
+       <widget class="QGroupBox" name="groupBox_2">
+        <property name="title">
+         <string>分析就绪型数据包</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout">
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_5">
+           <property name="text">
+            <string>数据包路径</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLineEdit" name="lineEdit_InputDataPath">
+           <property name="toolTip">
+            <string>请选择映射规则文件路径</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QPushButton" name="pushButton_Open">
+           <property name="text">
+            <string>浏览</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QGroupBox" name="groupBox_3">
+        <property name="title">
+         <string>数据包信息列表</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_4">
+         <item row="1" column="0">
+          <widget class="QGroupBox" name="groupBox_5">
+           <property name="title">
+            <string>数据包操作</string>
+           </property>
+           <layout class="QGridLayout" name="gridLayout_3">
+            <item row="1" column="0">
+             <widget class="QLineEdit" name="lineEdit_ARD_PackageName">
+              <property name="toolTip">
+               <string>请输入要查找的任务名称（模糊查找）</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QPushButton" name="pushButton_Query">
+              <property name="text">
+               <string>查找</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="0">
+             <widget class="QLabel" name="label_2">
+              <property name="text">
+               <string>输入数据包名称</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+         <item row="0" column="0">
+          <widget class="QTreeWidget" name="treeWidget_ARD_Package">
+           <column>
+            <property name="text">
+             <string>分析就绪型数据列表</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>名称</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>数据级别</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>数据类型</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>左边界经度</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>上边界纬度</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>右边界经度</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>下边界纬度</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>描述信息</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>支撑的任务</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>时相信息</string>
+            </property>
+           </column>
+           <column>
+            <property name="text">
+             <string>数据源信息</string>
+            </property>
+           </column>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources>
+  <include location="../analysis_ready_data_tools.qrc"/>
+ </resources>
+ <connections/>
+</ui>

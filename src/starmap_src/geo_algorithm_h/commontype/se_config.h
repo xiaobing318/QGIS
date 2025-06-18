@@ -1,3 +1,4 @@
+#pragma once
 #ifndef STAREARTH_CONFIG_H_
 #define STAREARTH_CONFIG_H_
 

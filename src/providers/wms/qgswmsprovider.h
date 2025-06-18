@@ -34,6 +34,15 @@
 #include <QVector>
 #include <QUrl>
 
+//---------------------------------------//
+#include <string>
+#include <vector>
+
+using namespace std;
+
+//---------------------------------------//
+
+
 class QgsCoordinateTransform;
 class QgsNetworkAccessManager;
 class QgsWmsCapabilities;
@@ -42,6 +51,30 @@ class QgsTileDownloadManagerReply;
 class QNetworkAccessManager;
 class QNetworkReply;
 class QNetworkRequest;
+
+/*瓦片包分包规则结构体*/
+struct PTP_Package_Rule
+{
+  int			min_z;		// 最小级别
+  int			max_z;		// 最大级别
+  int			base_z;		// 基础级别
+
+  PTP_Package_Rule()
+  {
+    min_z = 0;
+    max_z = 0;
+    base_z = 0;
+  }
+
+  PTP_Package_Rule(int _min_z, int _max_z, int _base_z)
+  {
+    min_z = _min_z;
+    max_z = _max_z;
+    base_z = _base_z;
+  }
+};
+
+
 
 /**
  * \class Handles asynchronous download of WMS legend
@@ -440,6 +473,53 @@ class QgsWmsProvider final: public QgsRasterDataProvider
     void setSRSQueryItem( QUrlQuery &url );
 
     bool ignoreExtents() const override;
+        // 加载ptp读取配置文件
+    bool LoadPtpKeyConfigFile(string& strPrivateKey, string& strDevKey);
+
+    /// <summary>
+    /// 根据输入ptp所在路径及xyz获取ptp文件名
+    /// </summary>
+    /// <param name="qstrPtpPath"></param>
+    /// <param name="z"></param>
+    /// <param name="x"></param>
+    /// <param name="y"></param>
+    /// <returns></returns>
+    QString GetPtpNameByXYZ(const QString& qstrPtpPath, int z, int x, int y);
+
+    /// <summary>
+    /// 根据zxy获取对应的瓦片对象
+    /// </summary>
+    /// <param name="qstrPtpPath">ptp包所在路径</param>
+    /// <param name="z">瓦片级别</param>
+    /// <param name="x">瓦片列索引</param>
+    /// <param name="y">瓦片行索引</param>
+    /// <returns>图片对象</returns>
+    QImage GetTileDataAsImage(const QString& qstrPtpPath, int z, int x, int y);
+
+    /// <summary>
+    /// 获取ptp所在路径下所有的ptp文件名
+    /// </summary>
+    /// <param name="path">ptp文件所在路径</param>
+    /// <returns>ptp文件列表</returns>
+    QStringList GetPtpFileNames(const QString& path);
+
+    /// <summary>
+    /// 根据zxy及分包规则获取ptp包名
+    /// </summary>
+    /// <param name="x">x索引</param>
+    /// <param name="y">y索引</param>
+    /// <param name="z">缩放级别</param>
+    /// <param name="vPTP_Rule">分包规则</param>
+    /// <returns>ptp包名</returns>
+    string GetPtpPackageNameByZXY(int x, int y, int z, vector<PTP_Package_Rule>& vPTP_Rule);
+
+    /// <summary>
+    /// 根据ptp名称获取分包规则
+    /// </summary>
+    /// <param name="qstrFileName">ptp包名称</param>
+    /// <param name="vRule">分包规则</param>
+    void GetPtpRuleByPtpFileName(const QString& qstrFileName, vector<PTP_Package_Rule>& vRule);
+
 
   private:
 
@@ -603,6 +683,10 @@ class QgsWmsProvider final: public QgsRasterDataProvider
 
     friend class TestQgsWmsProvider;
 
+    // ptp读写key
+    string m_strPrivateKey;
+
+    string m_strDevKey;
 };
 
 

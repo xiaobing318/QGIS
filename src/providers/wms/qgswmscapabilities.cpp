@@ -86,6 +86,8 @@ bool QgsWmsSettings::parseUri( const QString &uriString )
 
     mIsMBTiles = uri.param( QStringLiteral( "type" ) ) == QLatin1String( "mbtiles" );
 
+    // 获取ptp文件状态
+    mIsPTPFiles = uri.param(QStringLiteral("url")).startsWith("file:");
     return true;
   }
 

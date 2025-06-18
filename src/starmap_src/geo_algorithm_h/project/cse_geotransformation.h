@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef CSE_GEOTRANSFORMATION_H_
 #define CSE_GEOTRANSFORMATION_H_
 
@@ -9,7 +11,7 @@
 #   define COMPILER_MSVC  1
 #endif
 
-// vs2010及以上
+// vs2010������
 #if _MSC_VER >= 1600	
 #   define _HAVE_STDINT_H  1
 #endif
@@ -53,24 +55,24 @@ class SE_API CSE_GeoTransformation
 public:
 	CSE_GeoTransformation(void);
 
-	/*@brief 地理坐标系转换
+	/*@brief ��������ϵת��
 	* 
-	* 实现北京54坐标系、西安80坐标系、CGS2000坐标系、WGS84等坐标系之间的转换 
+	* ʵ�ֱ���54����ϵ������80����ϵ��CGS2000����ϵ��WGS84������ϵ֮���ת�� 
 	*
-	* @param enumFrom:			源地理坐标系，坐标单位为度
-	* @param enumeTo:			目的地理坐标系，坐标单位为度
-	* @param structParams:		源地理坐标系到目的地理坐标系的转换参数
-	* @param iCount:			转换的点个数，不小于1
-	* @param pdValues:			转换的点坐标数组，如果iDimension = 2，以x1、y1、x2、y2、...形式连续存储，数组长度为iCount的2倍；
-								如果iDimension = 3，以x1、y1、z1、x2、y2、z2...形式连续存储，数组长度为iCount的3倍；不能为空
-	* @param iDimension:		点坐标维数，默认为2，取值范围为2或3，其它值无效
+	* @param enumFrom:			Դ��������ϵ�����굥λΪ��
+	* @param enumeTo:			Ŀ�ĵ�������ϵ�����굥λΪ��
+	* @param structParams:		Դ��������ϵ��Ŀ�ĵ�������ϵ��ת������
+	* @param iCount:			ת���ĵ��������С��1
+	* @param pdValues:			ת���ĵ��������飬���iDimension = 2����x1��y1��x2��y2��...��ʽ�����洢�����鳤��ΪiCount��2����
+								���iDimension = 3����x1��y1��z1��x2��y2��z2...��ʽ�����洢�����鳤��ΪiCount��3��������Ϊ��
+	* @param iDimension:		������ά����Ĭ��Ϊ2��ȡֵ��ΧΪ2��3������ֵ��Ч
 	*
-	* @return 1：				转换成功
-			  2：				转换的点个数小于1
-			  3：				转换的点坐标数组为空
-			  4：				点坐标维数不为2或3
-			  5:				经度或纬度超限，经度[-180.0,180.0]，纬度[-90.0,90.0]
-			  6：				其它错误
+	* @return 1��				ת���ɹ�
+			  2��				ת���ĵ����С��1
+			  3��				ת���ĵ���������Ϊ��
+			  4��				������ά����Ϊ2��3
+			  5:				���Ȼ�γ�ȳ��ޣ�����[-180.0,180.0]��γ��[-90.0,90.0]
+			  6��				��������
 	*/
 
 	static int GeoCoordinateTransformation(GeoCoordSys enumFrom,
@@ -80,21 +82,21 @@ public:
 											double *pdValues,
 											int iDimension = 2);
 
-	/*@brief 地理坐标转投影坐标
+	/*@brief ��������תͶӰ����
 	*
-	* 实现北京54坐标系、西安80坐标系、CGS2000坐标系、WGS84等地理坐标到高斯投影、墨卡托投影、兰伯特投影、UTM投影等各类投影坐标的转换
+	* ʵ�ֱ���54����ϵ������80����ϵ��CGS2000����ϵ��WGS84�ȵ������굽��˹ͶӰ��ī����ͶӰ��������ͶӰ��UTMͶӰ�ȸ���ͶӰ�����ת��
 	*
-	* @param enumGeo:				源地理坐标系，坐标单位为度
-	* @param enumProjection:		目的投影类型，投影类型定义参考se_projectcommondef.h中定义
-	* @param structProjParams:		投影参数值
-	* @param iCount:				转换的点个数，不小于1
-	* @param pdValues:				转换的点坐标数组，以x1、y1、x2、y2、...形式连续存储，数组长度为iCount的2倍；
+	* @param enumGeo:				Դ��������ϵ�����굥λΪ��
+	* @param enumProjection:		Ŀ��ͶӰ���ͣ�ͶӰ���Ͷ���ο�se_projectcommondef.h�ж���
+	* @param structProjParams:		ͶӰ����ֵ
+	* @param iCount:				ת���ĵ��������С��1
+	* @param pdValues:				ת���ĵ��������飬��x1��y1��x2��y2��...��ʽ�����洢�����鳤��ΪiCount��2����
 	*
-	* @return 1：			    转换成功
-			  2：				转换的点个数小于1
-			  3：				转换的点坐标数组为空
-			  4:				经度或纬度超限，经度[-180.0,180.0]，纬度[-90.0,90.0]
-			  5：				其它错误
+	* @return 1��			    ת���ɹ�
+			  2��				ת���ĵ����С��1
+			  3��				ת���ĵ���������Ϊ��
+			  4:				���Ȼ�γ�ȳ��ޣ�����[-180.0,180.0]��γ��[-90.0,90.0]
+			  5��				��������
 	*/
 	static int Geo2Proj(GeoCoordSys enumGeo,
 					    Projection enumProjection,
@@ -103,20 +105,20 @@ public:
 						double *pdValues);
 
 
-	/*@brief 投影坐标转地理坐标
+	/*@brief ͶӰ����ת��������
 	*
-	* 实现高斯投影、墨卡托投影、兰伯特投影、UTM投影等各类投影坐标到北京54坐标系、西安80坐标系、CGS2000坐标系、WGS84等地理坐标的转换
+	* ʵ�ָ�˹ͶӰ��ī����ͶӰ��������ͶӰ��UTMͶӰ�ȸ���ͶӰ���굽����54����ϵ������80����ϵ��CGS2000����ϵ��WGS84�ȵ��������ת��
 	*
-	* @param enumGeo:				目的地理坐标系，坐标单位为度
-	* @param enumProjection:		源投影类型，投影类型定义参考se_projectcommondef.h中定义
-	* @param structProjParams:		投影参数值
-	* @param iCount:				转换的点个数，不小于1
-	* @param pdValues:				转换的点坐标数组，以x1、y1、x2、y2、...形式连续存储，数组长度为iCount的2倍；
+	* @param enumGeo:				Ŀ�ĵ�������ϵ�����굥λΪ��
+	* @param enumProjection:		ԴͶӰ���ͣ�ͶӰ���Ͷ���ο�se_projectcommondef.h�ж���
+	* @param structProjParams:		ͶӰ����ֵ
+	* @param iCount:				ת���ĵ��������С��1
+	* @param pdValues:				ת���ĵ��������飬��x1��y1��x2��y2��...��ʽ�����洢�����鳤��ΪiCount��2����
 	*
-	* @return 1：			    转换成功
-			  2：				转换的点个数小于1
-			  3：				转换的点坐标数组为空
-			  4：				其它错误
+	* @return 1��			    ת���ɹ�
+			  2��				ת���ĵ����С��1
+			  3��				ת���ĵ���������Ϊ��
+			  4��				��������
 	*/
 	static int Proj2Geo(GeoCoordSys enumGeo,
 						Projection enumProjection,
@@ -125,30 +127,30 @@ public:
 						double *pdValues);
 
 
-	/*@brief 地理坐标系转换（输入参数为基本类型）
+	/*@brief ��������ϵת�����������Ϊ�������ͣ�
 	*
-	* 实现北京54坐标系、西安80坐标系、CGS2000坐标系、WGS84等坐标系之间的转换
+	* ʵ�ֱ���54����ϵ������80����ϵ��CGS2000����ϵ��WGS84������ϵ֮���ת��
 	*
-	* @param enumFrom:			源地理坐标系，坐标单位为度
-	* @param enumeTo:			目的地理坐标系，坐标单位为度
-	* @param dX;				X方向平移
-	* @param dY;				Y方向平移
-	* @param dZ;				Z方向平移
-	* @param dEx;				X方向旋转
-	* @param dEy;				Y方向旋转
-	* @param dEz;				Z方向旋转
-	* @param dM;				尺度变化因子
-	* @param iCount:			转换的点个数，不小于1
-	* @param pdValues:			转换的点坐标数组，如果iDimension = 2，以x1、y1、x2、y2、...形式连续存储，数组长度为iCount的2倍；
-	如果iDimension = 3，以x1、y1、z1、x2、y2、z2...形式连续存储，数组长度为iCount的3倍；不能为空
-	* @param iDimension:			点坐标维数，默认为2，取值范围为2或3，其它值无效
+	* @param enumFrom:			Դ��������ϵ�����굥λΪ��
+	* @param enumeTo:			Ŀ�ĵ�������ϵ�����굥λΪ��
+	* @param dX;				X����ƽ��
+	* @param dY;				Y����ƽ��
+	* @param dZ;				Z����ƽ��
+	* @param dEx;				X������ת
+	* @param dEy;				Y������ת
+	* @param dEz;				Z������ת
+	* @param dM;				�߶ȱ仯����
+	* @param iCount:			ת���ĵ��������С��1
+	* @param pdValues:			ת���ĵ��������飬���iDimension = 2����x1��y1��x2��y2��...��ʽ�����洢�����鳤��ΪiCount��2����
+	���iDimension = 3����x1��y1��z1��x2��y2��z2...��ʽ�����洢�����鳤��ΪiCount��3��������Ϊ��
+	* @param iDimension:			������ά����Ĭ��Ϊ2��ȡֵ��ΧΪ2��3������ֵ��Ч
 	*
-	* @return 1：				转换成功
-			  2：				转换的点个数小于1
-			  3：				转换的点坐标数组为空
-			  4：				点坐标维数不为2或3
-			  5:				经度或纬度超限，经度[-180.0,180.0]，纬度[-90.0,90.0]
-			  6：				其它错误
+	* @return 1��				ת���ɹ�
+			  2��				ת���ĵ����С��1
+			  3��				ת���ĵ���������Ϊ��
+			  4��				������ά����Ϊ2��3
+			  5:				���Ȼ�γ�ȳ��ޣ�����[-180.0,180.0]��γ��[-90.0,90.0]
+			  6��				��������
 	*/
 
 	static int GeoCoordinateTransformation_2(GeoCoordSys enumFrom,
@@ -165,27 +167,27 @@ public:
 											int iDimension = 2);
 
 	
-	/*@brief 地理坐标转投影坐标（参数为基本数据类型）
+	/*@brief ��������תͶӰ���꣨����Ϊ�����������ͣ�
 	*
-	* 实现北京54坐标系、西安80坐标系、CGS2000坐标系、WGS84等地理坐标到高斯投影、墨卡托投影、兰伯特投影、UTM投影等各类投影坐标的转换
+	* ʵ�ֱ���54����ϵ������80����ϵ��CGS2000����ϵ��WGS84�ȵ������굽��˹ͶӰ��ī����ͶӰ��������ͶӰ��UTMͶӰ�ȸ���ͶӰ�����ת��
 	*
-	* @param enumGeo:				源地理坐标系，坐标单位为度
-	* @param enumProjection:		目的投影类型，投影类型定义参考se_projectcommondef.h中定义
-	* @param lon_0:					中央经线，单位：度
-	* @param lat_0:					纬度原点，单位：度
-	* @param lat_ts:				墨卡托投影割线，单位：度
-	* @param lat_1:					标准纬线1，单位：度
-	* @param lat_2:					标准纬线2，单位：度
-	* @param x_0:					横坐标偏移，单位：米
-	* @param y_0:					纵坐标偏移，单位：米
-	* @param iCount:				转换的点个数，不小于1
-	* @param pdValues:				转换的点坐标数组，以x1、y1、x2、y2、...形式连续存储，数组长度为iCount的2倍；
+	* @param enumGeo:				Դ��������ϵ�����굥λΪ��
+	* @param enumProjection:		Ŀ��ͶӰ���ͣ�ͶӰ���Ͷ���ο�se_projectcommondef.h�ж���
+	* @param lon_0:					���뾭�ߣ���λ����
+	* @param lat_0:					γ��ԭ�㣬��λ����
+	* @param lat_ts:				ī����ͶӰ���ߣ���λ����
+	* @param lat_1:					��׼γ��1����λ����
+	* @param lat_2:					��׼γ��2����λ����
+	* @param x_0:					������ƫ�ƣ���λ����
+	* @param y_0:					������ƫ�ƣ���λ����
+	* @param iCount:				ת���ĵ��������С��1
+	* @param pdValues:				ת���ĵ��������飬��x1��y1��x2��y2��...��ʽ�����洢�����鳤��ΪiCount��2����
 	*
-	* @return 1：			    转换成功
-		      2：				转换的点个数小于1
-	          3：				转换的点坐标数组为空
-	          4:				经度或纬度超限，经度[-180.0,180.0]，纬度[-90.0,90.0]
-	          5：				其它错误
+	* @return 1��			    ת���ɹ�
+		      2��				ת���ĵ����С��1
+	          3��				ת���ĵ���������Ϊ��
+	          4:				���Ȼ�γ�ȳ��ޣ�����[-180.0,180.0]��γ��[-90.0,90.0]
+	          5��				��������
 	*/
 	static int Geo2Proj_2(GeoCoordSys enumGeo,
 						  Projection enumProjection,
@@ -200,26 +202,26 @@ public:
 						  double *pdValues);
 
 
-	/*@brief 投影坐标转地理坐标（转换为基本数据类型）
+	/*@brief ͶӰ����ת�������꣨ת��Ϊ�����������ͣ�
 	*
-	* 实现高斯投影、墨卡托投影、兰伯特投影、UTM投影等各类投影坐标到北京54坐标系、西安80坐标系、CGS2000坐标系、WGS84等地理坐标的转换
+	* ʵ�ָ�˹ͶӰ��ī����ͶӰ��������ͶӰ��UTMͶӰ�ȸ���ͶӰ���굽����54����ϵ������80����ϵ��CGS2000����ϵ��WGS84�ȵ��������ת��
 	*
-	* @param enumGeo:				目的地理坐标系，坐标单位为度
-	* @param enumProjection:		源投影类型，投影类型定义参考se_projectcommondef.h中定义
-	* @param lon_0:					中央经线，单位：度
-	* @param lat_0:					纬度原点，单位：度
-	* @param lat_ts:				墨卡托投影割线，单位：度
-	* @param lat_1:					标准纬线1，单位：度
-	* @param lat_2:					标准纬线2，单位：度
-	* @param x_0:					横坐标偏移，单位：米
-	* @param y_0:					纵坐标偏移，单位：米
-	* @param iCount:				转换的点个数，不小于1
-	* @param pdValues:				转换的点坐标数组，以x1、y1、x2、y2、...形式连续存储，数组长度为iCount的2倍；
+	* @param enumGeo:				Ŀ�ĵ�������ϵ�����굥λΪ��
+	* @param enumProjection:		ԴͶӰ���ͣ�ͶӰ���Ͷ���ο�se_projectcommondef.h�ж���
+	* @param lon_0:					���뾭�ߣ���λ����
+	* @param lat_0:					γ��ԭ�㣬��λ����
+	* @param lat_ts:				ī����ͶӰ���ߣ���λ����
+	* @param lat_1:					��׼γ��1����λ����
+	* @param lat_2:					��׼γ��2����λ����
+	* @param x_0:					������ƫ�ƣ���λ����
+	* @param y_0:					������ƫ�ƣ���λ����
+	* @param iCount:				ת���ĵ��������С��1
+	* @param pdValues:				ת���ĵ��������飬��x1��y1��x2��y2��...��ʽ�����洢�����鳤��ΪiCount��2����
 	*
-	* @return 1：			    转换成功
-				2：				转换的点个数小于1
-				3：				转换的点坐标数组为空
-				4：				其它错误
+	* @return 1��			    ת���ɹ�
+				2��				ת���ĵ����С��1
+				3��				ת���ĵ���������Ϊ��
+				4��				��������
 	*/
 	static int Proj2Geo_2(GeoCoordSys enumGeo,
 						  Projection enumProjection,
@@ -233,31 +235,31 @@ public:
 						  int iCount,
 						  double *pdValues);
 
-	/*@brief 境外局部坐标系转常用地理坐标系（输入参数为基本类型）
+	/*@brief ����ֲ�����ϵת���õ�������ϵ���������Ϊ�������ͣ�
 	*
-	* 实现境外局部坐标系转北京54坐标系、西安80坐标系、CGS2000坐标系、WGS84等常用坐标系
+	* ʵ�־���ֲ�����ϵת����54����ϵ������80����ϵ��CGS2000����ϵ��WGS84�ȳ�������ϵ
 	*
-	* @param dFromSemiMajorAxis:			境外地理坐标系参考椭球体长半轴，单位：米
-	* @param dFromSemiMinorAxis:			境外地理坐标系参考椭球体短半轴，单位：米 
-	* @param enumeTo:						目的地理坐标系，坐标单位为度
-	* @param dX;							X方向平移
-	* @param dY;							Y方向平移
-	* @param dZ;							Z方向平移
-	* @param dEx;							X方向旋转
-	* @param dEy;							Y方向旋转
-	* @param dEz;							Z方向旋转
-	* @param dM;							尺度变化因子
-	* @param iCount:						转换的点个数，不小于1
-	* @param pdValues:						转换的点坐标数组，如果iDimension = 2，以x1、y1、x2、y2、...形式连续存储，数组长度为iCount的2倍；
-											如果iDimension = 3，以x1、y1、z1、x2、y2、z2...形式连续存储，数组长度为iCount的3倍；不能为空
-	* @param iDimension:					点坐标维数，默认为2，取值范围为2或3，其它值无效
+	* @param dFromSemiMajorAxis:			�����������ϵ�ο������峤���ᣬ��λ����
+	* @param dFromSemiMinorAxis:			�����������ϵ�ο�������̰��ᣬ��λ���� 
+	* @param enumeTo:						Ŀ�ĵ�������ϵ�����굥λΪ��
+	* @param dX;							X����ƽ��
+	* @param dY;							Y����ƽ��
+	* @param dZ;							Z����ƽ��
+	* @param dEx;							X������ת
+	* @param dEy;							Y������ת
+	* @param dEz;							Z������ת
+	* @param dM;							�߶ȱ仯����
+	* @param iCount:						ת���ĵ��������С��1
+	* @param pdValues:						ת���ĵ��������飬���iDimension = 2����x1��y1��x2��y2��...��ʽ�����洢�����鳤��ΪiCount��2����
+											���iDimension = 3����x1��y1��z1��x2��y2��z2...��ʽ�����洢�����鳤��ΪiCount��3��������Ϊ��
+	* @param iDimension:					������ά����Ĭ��Ϊ2��ȡֵ��ΧΪ2��3������ֵ��Ч
 	*
-	* @return 1：				转换成功
-			  2：				转换的点个数小于1
-			  3：				转换的点坐标数组为空
-			  4：				点坐标维数不为2或3
-			  5:				经度或纬度超限，经度[-180.0,180.0]，纬度[-90.0,90.0]
-			  6：				其它错误
+	* @return 1��				ת���ɹ�
+			  2��				ת���ĵ����С��1
+			  3��				ת���ĵ���������Ϊ��
+			  4��				������ά����Ϊ2��3
+			  5:				���Ȼ�γ�ȳ��ޣ�����[-180.0,180.0]��γ��[-90.0,90.0]
+			  6��				��������
 	*/
 
 	static int ForeignGeoCoordinateTransformation(double dFromSemiMajorAxis,

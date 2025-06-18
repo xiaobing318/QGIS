@@ -601,6 +601,7 @@ set(QGIS_CORE_SRCS
   qgsarchive.cpp
   qgstestutils.cpp
   qgsziputils.cpp
+  qgsptpfiles.cpp
 
   browser/qgsbrowsermodel.cpp
   browser/qgsbrowserproxymodel.cpp
@@ -1354,6 +1355,7 @@ set(QGIS_CORE_HDRS
   qgsxmlutils.h
   qgsziputils.h
   qobjectuniqueptr.h
+  qgsptpfiles.h
 
   3d/qgs3drendererregistry.h
   3d/qgs3dsymbolregistry.h
@@ -2455,6 +2457,9 @@ target_include_directories(qgis_core PUBLIC
   ${CMAKE_SOURCE_DIR}/external/nmea
   ${CMAKE_SOURCE_DIR}/external/rtree/include
   ${CMAKE_SOURCE_DIR}/external/meshOptimizer
+
+  # 杨小兵-2024-07-29:包含ptp相关的头文件
+  ${CMAKE_SOURCE_DIR}/src/starmap_src/geo_algorithm_h
 )
 
 #[[
@@ -2622,6 +2627,8 @@ target_link_libraries(qgis_core
   ${Protobuf_LITE_LIBRARY}
   ${ZLIB_LIBRARIES}
   ${EXIV2_LIBRARY}
+  # 杨小兵-2024-07-29:链接libptp
+  ${CMAKE_SOURCE_DIR}/external/starmap_external/libptp/lib/windows/libmapboom_base_lib_1.52.lib
 )
 
 #[[
@@ -2761,6 +2768,8 @@ if (${QT_VERSION_BASE}Positioning_FOUND)
     ${QT_VERSION_BASE}::Positioning
   )
 endif()
+
+
 
 #[[
 杨小兵-2024-03-04

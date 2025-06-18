@@ -17,15 +17,11 @@ REM ***************************************************************************
 if not "%PROGRAMFILES(X86)%"=="" set PF86=%PROGRAMFILES(X86)%
 if "%PF86%"=="" set PF86=%PROGRAMFILES%
 if "%PF86%"=="" (echo PROGRAMFILES not set & goto error)
-REM 杨小兵-2024-11-04（输出%PF86%）
-
-
 REM 杨小兵-2024-01-11（获得系统信息）
 REM if "%PF%"=="" set PF=%PROGRAMFILES%
 
 REM 杨小兵-2024-01-11（设置MSVC中SDK的版本信息）
 if "%VCSDK%"=="" set VCSDK=10.0.19041.0
-
 
 set ARCH=%1
 if "%ARCH%"=="x86" goto x86

@@ -10,6 +10,10 @@
     <height>506</height>
    </rect>
   </property>
+  <property name="windowIcon">
+   <iconset resource="../../images/images.qrc">
+    <normaloff>:/images/icons/qgis_icon.svg</normaloff>:/images/icons/qgis_icon.svg</iconset>
+  </property>
   <widget class="QWidget" name="centralwidget"/>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
@@ -17,7 +21,7 @@
      <x>0</x>
      <y>0</y>
      <width>1277</width>
-     <height>23</height>
+     <height>21</height>
     </rect>
    </property>
    <property name="toolTip">
@@ -1960,7 +1964,7 @@ Shift+R to enable range selection.</string>
      <normaloff>:/images/themes/default/mActionQgisHomePage.png</normaloff>:/images/themes/default/mActionQgisHomePage.png</iconset>
    </property>
    <property name="text">
-    <string>QGIS Home Page</string>
+    <string>LC Home Page</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+H</string>
@@ -1972,7 +1976,7 @@ Shift+R to enable range selection.</string>
      <normaloff>:/images/themes/default/mIconSuccess.svg</normaloff>:/images/themes/default/mIconSuccess.svg</iconset>
    </property>
    <property name="text">
-    <string>Check QGIS Version</string>
+    <string>Check LC Version</string>
    </property>
    <property name="statusTip">
     <string>Check if your QGIS version is up to date (requires internet access)</string>
@@ -1996,7 +2000,7 @@ Shift+R to enable range selection.</string>
      <normaloff>:/images/themes/default/mActionHelpSponsors.png</normaloff>:/images/themes/default/mActionHelpSponsors.png</iconset>
    </property>
    <property name="text">
-    <string>QGIS Sustaining Members</string>
+    <string>LC Sustaining Members</string>
    </property>
   </action>
   <action name="mActionMoveLabel">
@@ -3374,7 +3378,7 @@ Shows placeholders for labels which could not be placed, e.g. due to overlaps wi
   </action>
   <action name="mActionDonate">
    <property name="text">
-    <string>Donate to QGIS</string>
+    <string>Donate to LC</string>
    </property>
   </action>
   <action name="mActionGetInvolved">

@@ -568,7 +568,7 @@ static void setTitleBarText_( QWidget &qgisApp )
   }
   if ( QgsProject::instance()->isDirty() )
     caption.prepend( '*' );
-  caption += QgisApp::tr("一张图数据处理与加工系统");
+  caption += QgisApp::tr("专题地理要素数据软件");
   //caption += QgisApp::tr( "QGIS" );
 
   if ( Qgis::version().endsWith( QLatin1String( "Master" ) ) )
@@ -934,47 +934,47 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, bool skipBadLayers
     1. **实例化与单例检查**：
        - 首先检查是否已存在`QgisApp`的实例，如果存在，则显示错误信息并终止程序。
        - 设置当前实例为`QgisApp`的静态实例。
-  
+
     2. **启动和配置环境**：
        - 配置启动画面文字颜色。
        - 初始化用户配置管理器`mUserProfileManager`，设置根位置、活动用户配置，并启用新配置通知。
        - 创建并启动网络记录器`mNetworkLogger`。
-  
+
     3. **加载GUI组件**：
        - 设置界面(UI)，加载操作、菜单、工具栏。
        - 初始化地图画布`mMapCanvas`，设置其属性，如颜色、项目关联等。
        - 创建并配置撤销/重做相关的UI组件。
-  
+
     4. **高级绘图工具和统计摘要面板**：
        - 初始化并配置高级绘图工具面板和统计摘要面板。
-  
+
     5. **书签、图层树视图、撤销面板**：
        - 初始化书签面板。
        - 设置地图画布焦点，初始化图层树视图`mLayerTreeView`。
        - 创建撤销面板`mUndoDock`和撤销小部件`mUndoWidget`。
-  
+
     6. **地图工具和布局**：
        - 配置地图工具，如顶点编辑器`mVertexEditorDock`。
        - 读取设置，创建工具栏、状态栏，设置画布工具。
-  
+
     7. **额外的配置和初始化**：
        - 初始化3D支持、布局支持、地理验证服务等。
        - 加载插件管理器，恢复上次会话中加载的插件。
-  
+
     8. **状态栏、消息栏和日志查看器**：
        - 在状态栏中添加坐标显示、比例尺等组件。
        - 初始化消息栏和日志查看器，用于显示应用程序消息和日志。
-  
+
     9. **数据浏览器和时态控制器**：
        - 创建并配置数据浏览器小部件和时态控制器小部件。
-  
+
     10. **Python支持和自定义设置**：
         - 如果启用Python支持，则初始化Python控制台和插件安装器。
         - 应用自定义设置，如快捷键、界面布局调整等。
-  
+
     11. **项目存储和快捷方式设置**：
         - 设置用于打开和保存项目的快捷方式和菜单项。
-  
+
     12. **完成初始化后的操作**：
         - 显示主窗口，完成启动画面。
         - 恢复窗口状态，包括面板位置和大小等。
@@ -993,9 +993,9 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, bool skipBadLayers
      - **资源管理**：防止资源浪费或冲突。`QgisApp`可能会占用大量系统资源，如内存和文件句柄。多个实例可能导致资源浪费或冲突。
      - **状态管理**：确保应用程序状态的一致性。如果有多个实例，用户对一个实例的更改可能不会反映到其他实例中，导致状态不一致。
      - **用户体验**：避免用户混淆。如果允许多个实例存在，用户可能会对哪个窗口是当前操作窗口感到困惑。
-  
+
     出现已经存在`QgisApp`实例的情况可能是因为程序在没有完全关闭的情况下被再次启动。这种情况下，第二次启动的尝试应该被阻止，以避免上述问题。
-  
+
   2. **为什么将`QgisApp`设置为静态实例？**
     将`QgisApp`设置为静态实例是单例模式的一部分，这样做有几个目的：
      - **全局访问**：静态实例可以从程序的任何部分被访问，无需传递`QgisApp`对象的引用。这对于访问应用程序级别的功能和资源很方便。
@@ -1593,70 +1593,70 @@ QgisApp::QgisApp( QSplashScreen *splash, bool restorePlugins, bool skipBadLayers
   * 杨小兵-2024-02-23
     1. **编辑器小部件类型初始化**：
        - 初始化应用程序中使用的编辑器小部件类型，以便于地图画布和信息栏中使用。
-    
+
     2. **内部剪贴板创建**：
        - 创建一个新的`QgsClipboard`实例，用于在应用程序内部管理剪贴板数据。同时，连接剪贴板内容变化的信号到相应的槽函数，以处理剪贴板内容的变化。
-    
+
     3. **应用程序接口创建**：
        - 创建`QgisAppInterface`实例，为插件和其他组件提供与主应用程序交互的接口。
-    
+
     4. **Mac OS特有的窗口菜单项设置**（条件编译）：
        - 为Mac OS操作系统特定地添加窗口菜单项，并连接相应的动作信号至激活窗口的槽函数。
-    
+
     5. **地图层属性工厂注册**：
        - 注册多个地图层属性工厂，以支持不同类型的地图层（如矢量层、点云层、3D层等）的特定属性设置。
-    
+
     6. **项目属性小部件工厂注册**：
        - 注册项目属性小部件工厂，以支持项目级别的属性设置，如高程设置。
-    
+
     7. **图层相关动作的激活与禁用**：
        - 初始化后，根据当前图层状态激活或禁用相关动作。
-    
+
     8. **地图层动作注册发生变化时的更新**：
        - 连接地图层动作注册表变化的信号至更新功能动作的槽函数。
-    
+
     9. **应用程序标题设置**：
        - 设置应用程序窗口的标题，包括QGIS版本和发布名称。
-    
+
     10. **自定义坐标参考系统验证连接**：
         - 连接自定义CRS验证的信号与槽函数，以实现特定的坐标参考系统验证逻辑。
-    
+
     11. **图形消息输出和凭证请求设置**：
         - 设置图形消息输出创建器和图形凭证请求对话框。
-    
+
     12. **定位器小部件设置**：
         - 设置地图画布和配置触发器，以便于使用定位器小部件进行快速搜索和命令执行。
-    
+
     13. **供应商插件检查**：
         - 显示启动画面消息，检查供应商插件。
-    
+
     14. **网络访问管理器设置**：
         - 设置`QgsNetworkAccessManager`，这是必要的步骤，用于管理网络请求，特别是在需要考虑代理设置时。
-    
+
     15. **OpenCL程序源路径设置**（条件编译）：
         - 为支持OpenCL的功能设置默认的OpenCL程序源路径。
-    
+
     16. **数据项提供者注册**：
         - 注册多个数据项提供者，如书签、QLR文件、QPT模板等，以支持不同类型的数据源和项目模板。
-    
+
     17. **缺失图层处理器设置**：
         - 创建并设置处理加载项目时缺失图层的处理器。
-    
+
     18. **Python支持加载**：
         - 显示启动画面消息，加载Python支持。
-    
+
     19. **插件注册和恢复**：
         - 创建插件注册表，加载并恢复上一次会话中的插件。
-    
+
     20. **最近项目路径更新**：
         - 更新最近项目列表，考虑插件可能注册的自定义项目存储。
-    
+
     21. **工具栏图标大小设置**：
         - 根据设置或默认逻辑确定并设置工具栏图标的大小。
-    
+
     22. **文件过滤器初始化**：
         - 初始化矢量和栅格文件的过滤器，以便于文件对话框中使用。
-    
+
     23. **连接设置**：
         - 在构造函数的最后确保所有成员都已正确实例化后，设置应用程序内部的信号与槽连接。
     这些步骤共同完成了QGIS主应用程序的初始化过程，包括用户界面设置、内部数据管理、插件加载、网络配置、数据提供者注册等，为用户提供了一个功能丰富、
@@ -2977,14 +2977,14 @@ void QgisApp::createActions()
   1. **`// plugin list separator will be created when the first plugin is loaded`**
     这条注释说明`mActionPluginSeparator1`用作插件列表中的分隔符，但只有在加载第一个插件时才会创建。这意味着如果QGIS加载了至少一个插件，
   用户界面（UI）会动态地在相关的菜单或工具栏中插入一个分隔符来视觉上区分插件和其他菜单项。
-  
+
   2. **`// python separator will be created only if python is found`**
-  
+
     这条注释指出`mActionPluginSeparator2`作为Python分隔符，仅在检测到Python环境存在时创建。这可能是因为QGIS允许通过Python插件扩展其功能，
   如果Python环境可用，则UI中会相应地添加一个分隔符来区分Python插件和其他类型的插件或菜单项。
-  
+
   3. **`// raster plugins list separator will be created when the first plugin is loaded`**
-  
+
     此注释表明`mActionRasterSeparator`是光栅插件列表的分隔符，也是在加载第一个光栅插件时创建。这样做的目的是在UI中明确区分光栅相关的插件和
   其他类型的插件或功能，提高用户界面的组织性和可用性。
 
@@ -3384,16 +3384,16 @@ void QgisApp::createActions()
   `QgsLayerTreeView`的作用
   1. **图层管理**：`QgsLayerTreeView`允许用户添加、删除、隐藏或显示图层，这对于管理地图上显示的信息至关重要。用户
   可以通过勾选或取消勾选来控制哪些图层可见，以及调整图层的顺序来改变它们的叠加方式。
-  
+
   2. **图层属性访问**：通过右击图层，用户可以访问图层的属性和设置，如更改图层的样式、设置图层过滤器、导出或导入图层
   数据等。`QgsLayerTreeView`提供了这些功能的入口点，使得对图层的管理更为直观和易于访问。
-  
+
   3. **图层组织**：用户可以将图层组织成组，这在处理包含大量图层的复杂地图时非常有用。这有助于对图层进行逻辑分组，例
   如，将所有水体相关的图层放在一个组中，所有道路相关的图层放在另一个组中，从而使地图的管理更加有序。
-  
+
   4. **交互式操作**：`QgsLayerTreeView`支持拖放操作，用户可以通过拖动图层来重新排序或将图层移动到不同的组中。这种
   交互方式提高了用户对图层管理的直观感受和操作效率。
-  
+
   5. **集成插件和工具**：QGIS允许通过插件扩展其功能，`QgsLayerTreeView`作为用户界面的一部分，可以与多种插件集成，
   为用户提供更多的图层相关功能，如图层标注、图层查询工具等。
 
@@ -5621,8 +5621,12 @@ void QgisApp::restoreWindowState()
 void QgisApp::sponsors()
 {
   QgsSettings settings;
-  QString qgisSponsorsUrl = settings.value( QStringLiteral( "qgis/qgisSponsorsUrl" ),
-                            tr( "https://qgis.org/en/site/about/sustaining_members.html" ) ).toString();
+  //QString qgisSponsorsUrl = settings.value( QStringLiteral( "qgis/qgisSponsorsUrl" ),
+  //                          tr( "https://qgis.org/en/site/about/sustaining_members.html" ) ).toString();
+
+  QString qgisSponsorsUrl = settings.value(QStringLiteral("GARMAP-TECH/GARMAP-TECH-SponsorsUrl"),
+    tr("https://GARMAP-TECH/en/site/about/sustaining_members.html")).toString();
+
   openURL( qgisSponsorsUrl, false );
 }
 
@@ -5634,11 +5638,12 @@ void QgisApp::about()
     sAbt = new QgsAbout( this );
     QString versionString = QStringLiteral( "<html><body><div align='center'><table width='100%'>" );
 
-    versionString += QStringLiteral( "<tr><td>%1</td><td>%2</td><td>" ).arg( tr( "QGIS version" ), Qgis::version() );
-
+    //versionString += QStringLiteral( "<tr><td>%1</td><td>%2</td><td>" ).arg( tr( "QGIS version" ), Qgis::version() );
+    versionString += QStringLiteral("<tr><td>%1</td><td>%2</td><td>").arg(tr("LC 版本"), QString("0.0.2"));
     if ( QString( Qgis::devVersion() ) == QLatin1String( "exported" ) )
     {
-      versionString += tr( "QGIS code branch" );
+      //versionString += tr( "QGIS code branch" );
+      versionString += tr("LC代码分支");
       if ( Qgis::version().endsWith( QLatin1String( "Master" ) ) )
       {
         versionString += QLatin1String( "</td><td><a href=\"https://github.com/qgis/QGIS/tree/master\">master</a></td>" );
@@ -5651,7 +5656,8 @@ void QgisApp::about()
     }
     else
     {
-      versionString += QStringLiteral( "%1</td><td><a href=\"https://github.com/qgis/QGIS/commit/%2\">%2</a></td>" ).arg( tr( "QGIS code revision" ), Qgis::devVersion() );
+      //versionString += QStringLiteral( "%1</td><td><a href=\"https://github.com/qgis/QGIS/commit/%2\">%2</a></td>" ).arg( tr( "QGIS code revision" ), Qgis::devVersion() );
+      versionString += QStringLiteral("%1</td><td><a href=\"https://github.com/qgis/QGIS/commit/%2\">%2</a></td>").arg(tr("LC代码分支"), Qgis::devVersion());
     }
     versionString += QLatin1String( "</tr><tr>" );
 
@@ -13043,8 +13049,8 @@ void QgisApp::supportProviders()
 void QgisApp::helpQgisHomePage()
 {
   QgsSettings settings;
-  QString  helpQgisHomePageUrl = settings.value( QStringLiteral( "qgis/helpQgisHomePageUrl" ),
-                                 QStringLiteral( "https://qgis.org" ) ).toString();
+  QString  helpQgisHomePageUrl = settings.value( QStringLiteral( "GARMAP-TECH/helpQgisHomePageUrl" ),
+                                 QStringLiteral( "https://GARMAP-TECH.org" ) ).toString();
   openURL( helpQgisHomePageUrl, false );
 }
 

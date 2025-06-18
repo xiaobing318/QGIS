@@ -13,36 +13,36 @@
  *                                                                         *
  ***************************************************************************/
 #pragma region "头文件"
-/*
-* 杨小兵-2024-03-04
-1. **`<windows.h>`**：
-   - 这是Windows平台的一个头文件，提供了访问Windows API的函数、宏定义和类型定义。通过它，程序可以进行窗口管理、系统调用和与操作系统交互的其他任务。
-例如，创建窗口、处理消息、访问系统资源等。
+ /*
+ * 杨小兵-2024-03-04
+ 1. **`<windows.h>`**：
+    - 这是Windows平台的一个头文件，提供了访问Windows API的函数、宏定义和类型定义。通过它，程序可以进行窗口管理、系统调用和与操作系统交互的其他任务。
+ 例如，创建窗口、处理消息、访问系统资源等。
 
-2. **`<io.h>`**：
-   - 这是C语言标准库的扩展，主要用于处理低级的文件操作。它在Windows环境下提供了对文件的创建、打开、关闭、读写等操作的支持。包含了诸如`_open`、
-`_read`、`_write`、`_close`等函数，以及对文件的属性操作（如检查文件是否存在）的函数。
+ 2. **`<io.h>`**：
+    - 这是C语言标准库的扩展，主要用于处理低级的文件操作。它在Windows环境下提供了对文件的创建、打开、关闭、读写等操作的支持。包含了诸如`_open`、
+ `_read`、`_write`、`_close`等函数，以及对文件的属性操作（如检查文件是否存在）的函数。
 
-3. **`<sstream>`**：
-   - 这个头文件定义了字符串流类，包括`istringstream`（输入字符串流）、`ostringstream`（输出字符串流）和`stringstream`（输入输出字符串流）。
-这些类用于字符串的读写操作，可以将变量转换为字符串或从字符串解析出变量，常用于格式化和解析数据。
+ 3. **`<sstream>`**：
+    - 这个头文件定义了字符串流类，包括`istringstream`（输入字符串流）、`ostringstream`（输出字符串流）和`stringstream`（输入输出字符串流）。
+ 这些类用于字符串的读写操作，可以将变量转换为字符串或从字符串解析出变量，常用于格式化和解析数据。
 
-4. **`<iostream>`**：
-   - 定义了输入输出流的基础，包括`cin`、`cout`、`cerr`和`clog`对象。分别用于标准输入、标准输出、未缓冲的标准错误输出和缓冲的标准错误输出。它是处理
-控制台输入输出的基础。
+ 4. **`<iostream>`**：
+    - 定义了输入输出流的基础，包括`cin`、`cout`、`cerr`和`clog`对象。分别用于标准输入、标准输出、未缓冲的标准错误输出和缓冲的标准错误输出。它是处理
+ 控制台输入输出的基础。
 
-5. **`<fstream>`**：
-   - 提供了对文件操作的输入输出流类，包括`ifstream`（用于从文件读取数据）、`ofstream`（用于向文件写入数据）和`fstream`（可以同时进行文件的读写）。
-这些类支持对文件的打开、读写和关闭操作。
+ 5. **`<fstream>`**：
+    - 提供了对文件操作的输入输出流类，包括`ifstream`（用于从文件读取数据）、`ofstream`（用于向文件写入数据）和`fstream`（可以同时进行文件的读写）。
+ 这些类支持对文件的打开、读写和关闭操作。
 
-6. **`<list>`**：
-   - 定义了双向链表容器类`list`。`list`是一个模板类，可以存储任意类型的元素。支持快速的元素插入和删除操作。由于其底层是链表实现，它不支持随机访问。
+ 6. **`<list>`**：
+    - 定义了双向链表容器类`list`。`list`是一个模板类，可以存储任意类型的元素。支持快速的元素插入和删除操作。由于其底层是链表实现，它不支持随机访问。
 
-7. **`<memory>`**：
-   - 提供了智能指针的定义，如`unique_ptr`、`shared_ptr`和`weak_ptr`。这些智能指针用于自动管理动态分配的内存，帮助避免内存泄漏和指针悬挂问题。
-`unique_ptr`是独占所有权的智能指针，`shared_ptr`是共享所有权的智能指针，而`weak_ptr`是一种不控制对象生命周期的智能指针，用来解决`shared_ptr`间的循环引用问题。
+ 7. **`<memory>`**：
+    - 提供了智能指针的定义，如`unique_ptr`、`shared_ptr`和`weak_ptr`。这些智能指针用于自动管理动态分配的内存，帮助避免内存泄漏和指针悬挂问题。
+ `unique_ptr`是独占所有权的智能指针，`shared_ptr`是共享所有权的智能指针，而`weak_ptr`是一种不控制对象生命周期的智能指针，用来解决`shared_ptr`间的循环引用问题。
 
-*/
+ */
 #include <windows.h>
 #include <io.h>
 
@@ -52,7 +52,7 @@
 #include <list>
 #include <memory>
 
-//  TJ目前设置为50，DLHJ设置为50
+ //  LC目前设置为50
 #define START_COUNTER 50
 #pragma endregion
 
@@ -66,7 +66,7 @@
 2、其中MB_ICONERROR是在显示的对话框中加上一个“错误”图标
 
 */
-void showError( std::string message, std::string title )
+void showError(std::string message, std::string title)
 {
   std::string newmessage = "Oops, looks like an error loading QGIS \n\n Details: \n\n" + message;
   MessageBox(
@@ -105,22 +105,22 @@ void showError( std::string message, std::string title )
 4、filepath.get()`返回的C风格字符串
 5、如果GetModuleFileName函数成功，返回值是写入缓冲区的字符串长度；如果GetModuleFileName函数失败，返回值是0
 */
-std::string moduleExeBaseName( void )
+std::string moduleExeBaseName(void)
 {
   DWORD l = MAX_PATH;
   //  通过分配一个char类型的智能指针filepath来保存文件（可执行文件）的路径信息
   std::unique_ptr<char> filepath;
-  for ( ;; )
+  for (;; )
   {
     //  通过`filepath.reset(new char[l])`分配足够长的字符数组来尝试存放模块文件名
-    filepath.reset( new char[l] );
+    filepath.reset(new char[l]);
     //  如果`GetModuleFileName`返回的长度小于`l`，说明文件名已成功获取，不需要再次循环；否则，增加`l`的值（`l += MAX_PATH;`）以提供更大的缓冲区并再次尝试
-    if ( GetModuleFileName( nullptr, filepath.get(), l ) < l )
+    if (GetModuleFileName(nullptr, filepath.get(), l) < l)
       break;
     l += MAX_PATH;
   }
 
-  std::string basename( filepath.get() );
+  std::string basename(filepath.get());
   return basename;
 }
 
@@ -274,11 +274,11 @@ Windows GUI（图形用户界面）的应用程序。`WinMain`函数是Windows�
 负责初始化应用程序窗口、处理消息循环以及清理在程序退出时释放资源。
 
 */
-int CALLBACK WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow )
+int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
 #pragma region "获得qgis.exe程序在文件系统中的位置、获得qgis.exe所在的目录"
-  std::string exename( moduleExeBaseName() );
-  std::string basename( exename.substr( 0, exename.size() - 4 ) );
+  std::string exename(moduleExeBaseName());
+  std::string basename(exename.substr(0, exename.size() - 4));
 #pragma endregion
 
 #pragma region "如果设置了OSGEO4W_ROOT环境变量并且是通过命令行参数的形式启动QGIS"
@@ -300,9 +300,9 @@ int CALLBACK WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdL
   4、strcmp是string.h中的一个标准C函数，当比较的两个字符串是相同的时候返回值为0
   */
   //  1、如果设置了OSGEO4W_ROOT环境变量并且是通过命令行参数的形式启动QGIS,那么需要读取*.vars文件中的内容并且将相应的环境变量写入到*.env中（就是设置各种环境变量）
-  if ( getenv( "OSGEO4W_ROOT" ) && __argc == 2 && strcmp( __argv[1], "--postinstall" ) == 0 )
+  if (getenv("OSGEO4W_ROOT") && __argc == 2 && strcmp(__argv[1], "--postinstall") == 0)
   {
-    std::string envfile( basename + ".env" );
+    std::string envfile(basename + ".env");
     /*
     * 杨小兵-2024-02-20
     一、解释
@@ -311,7 +311,7 @@ int CALLBACK WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdL
 
     二、_access函数参数解释
     1. **`const char *path`**: 第一个参数是一个指向字符数组的指针，代表要检查访问权限的文件或目录的路径。这个字符串应该是一个以null结尾的C风格字符串。
-    
+
     2. **`int amode`**: 第二个参数是一个整数，指定要检查的访问权限类型。这个参数可以是以下值之一，或者是这些值的组合：
        - `0` (`F_OK`): 检查文件是否存在。
        - `2` (`W_OK`): 检查文件是否可写。
@@ -328,7 +328,7 @@ int CALLBACK WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdL
     4、下列条件想要表达的意思是，如果指定的文件不存在或者存在且可写，则执行后续的代码逻辑。这种检查通常用于确定是否可以创建新文件或覆写现有文件
     */
     // write or update environment file
-    if ( _access( envfile.c_str(), 0 ) < 0 || _access( envfile.c_str(), 2 ) == 0 )
+    if (_access(envfile.c_str(), 0) < 0 || _access(envfile.c_str(), 2) == 0)
     {
       std::list<std::string> vars;
 
@@ -343,17 +343,17 @@ int CALLBACK WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdL
         2、通过`while (std::getline(varfile, var))`循环读取`varfile`中的每一行，并将其存储到字符串变量`var`中
         */
         std::ifstream varfile;
-        varfile.open( basename + ".vars" );
+        varfile.open(basename + ".vars");
 
         std::string var;
-        while ( std::getline( varfile, var ) )
+        while (std::getline(varfile, var))
         {
-          vars.push_back( var );
+          vars.push_back(var);
         }
 
         varfile.close();
       }
-      catch ( std::ifstream::failure e )
+      catch (std::ifstream::failure e)
       {
         /*
         一、解释
@@ -365,7 +365,7 @@ int CALLBACK WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdL
         */
 
         std::string message = "Could not read environment variable list " + basename + ".vars" + " [" + e.what() + "]";
-        showError( message, "Error loading QGIS" );
+        showError(message, "Error loading QGIS");
         return EXIT_FAILURE;
       }
 
@@ -392,18 +392,18 @@ int CALLBACK WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdL
         如果文件成功打开，可以使用文件流对象（如`file`）进行写操作；如果打开文件失败，文件流的状态会被设置为错误状态
         */
         std::ofstream file;
-        file.open( envfile, std::ifstream::out );
+        file.open(envfile, std::ifstream::out);
 
-        for ( std::list<std::string>::const_iterator it = vars.begin();  it != vars.end(); ++it )
+        for (std::list<std::string>::const_iterator it = vars.begin(); it != vars.end(); ++it)
         {
-          if ( getenv( it->c_str() ) )
-            file << *it << "=" << getenv( it->c_str() ) << std::endl;
+          if (getenv(it->c_str()))
+            file << *it << "=" << getenv(it->c_str()) << std::endl;
         }
       }
-      catch ( std::ifstream::failure e )
+      catch (std::ifstream::failure e)
       {
         std::string message = "Could not write environment file " + basename + ".env" + " [" + e.what() + "]";
-        showError( message, "Error loading QGIS" );
+        showError(message, "Error loading QGIS");
         return EXIT_FAILURE;
       }
     }
@@ -438,19 +438,19 @@ int CALLBACK WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdL
 
     */
     std::ifstream file;
-    file.open( basename + ".env" );
+    file.open(basename + ".env");
 
 #pragma region "发布版本的时候将这段代码打开:设置STARMAP_INSTALL_DIRECTORY_PREFIX环境变量"
     /*
     * 杨小兵-2024-02-29
       首先检测系统内是否设置了STARMAP_INSTALL_DIRECTORY_PREFIX自定义系统环境变量，如果没有设置的话直接退出并且进行给出提示信息
     */
-    const char* starmap_install_directory_prefix = getenv("DLHJ_INSTALL_DIRECTORY_PREFIX_V_2_02_09");
+    const char* starmap_install_directory_prefix = getenv("LC_INSTALL_DIRECTORY_PREFIX_V_0_00_02");
     if (starmap_install_directory_prefix == nullptr)
     {
       std::string starmap_install_directory_prefix_title = "提示：设置环境变量";
-      std::string starmap_install_directory_prefix_message = "需要设置环境变量DLHJ_INSTALL_DIRECTORY_PREFIX_V_2_02_09。如果没有DLHJ_INSTALL_DIRECTORY_PREFIX_V_2_02_09这个变量，请首先创建这个环境变量，并且将其值设置为DLHJ在文件系统中的位置！";
-      
+      std::string starmap_install_directory_prefix_message = "需要设置环境变量LC_INSTALL_DIRECTORY_PREFIX_V_0_00_02。如果没有LC_INSTALL_DIRECTORY_PREFIX_V_0_00_02这个变量，请首先创建这个环境变量，并且将其值设置为DLHJ在文件系统中的位置！";
+
       //  给出提示信息（在Windows下使用一个提示窗口，在其他平台这里还要通过宏定义进行跨平台操作）
       ShowUtf8MessageBox(starmap_install_directory_prefix_title.c_str(), starmap_install_directory_prefix_message.c_str());
 
@@ -463,7 +463,7 @@ int CALLBACK WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdL
 #pragma endregion
 
     std::string var;
-    while ( std::getline( file, var ) )
+    while (std::getline(file, var))
     {
 
 #pragma region "发布版本的时候将这段代码打开:设置STARMAP_INSTALL_DIRECTORY_PREFIX环境变量"
@@ -474,23 +474,23 @@ int CALLBACK WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdL
       //  先将starmap_install_directory_prefix中的正反斜杠统一处理
       //std::string temp = var;(debug)
       replaceAll(str_starmap_install_directory_prefix, str_right_slash, str_left_slash);
-      replaceAll(var, "DLHJ_INSTALL_DIRECTORY_PREFIX_V_2_02_09", str_starmap_install_directory_prefix);
+      replaceAll(var, "LC_INSTALL_DIRECTORY_PREFIX_V_0_00_02", str_starmap_install_directory_prefix);
       //temp = var;
 #pragma endregion
 
 
-      if ( _putenv( var.c_str() ) < 0 )
+      if (_putenv(var.c_str()) < 0)
       {
         std::string message = "Could not set environment variable:" + var;
-        showError( message, "Error loading QGIS" );
+        showError(message, "Error loading QGIS");
         return EXIT_FAILURE;
       }
     }
   }
-  catch ( std::ifstream::failure e )
+  catch (std::ifstream::failure e)
   {
     std::string message = "Could not read environment file " + basename + ".env" + " [" + e.what() + "]";
-    showError( message, "Error loading QGIS" );
+    showError(message, "Error loading QGIS");
     return EXIT_FAILURE;
   }
 #pragma endregion
@@ -539,47 +539,47 @@ int CALLBACK WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdL
   4、windows目录；
   5、PATH指定的目录
   */
-  HINSTANCE hKernelDLL = LoadLibrary( "kernel32.dll" );
-  BOOL ( *SetDefaultDllDirectories )( DWORD ) = hKernelDLL ? reinterpret_cast<BOOL( * )( DWORD )>( GetProcAddress( hKernelDLL, "SetDefaultDllDirectories" ) ) : 0;
-  DLL_DIRECTORY_COOKIE( *AddDllDirectory )( PCWSTR ) = hKernelDLL ? reinterpret_cast<DLL_DIRECTORY_COOKIE( * )( PCWSTR )>( GetProcAddress( hKernelDLL, "AddDllDirectory" ) ) : 0;
+  HINSTANCE hKernelDLL = LoadLibrary("kernel32.dll");
+  BOOL(*SetDefaultDllDirectories)(DWORD) = hKernelDLL ? reinterpret_cast<BOOL(*)(DWORD)>(GetProcAddress(hKernelDLL, "SetDefaultDllDirectories")) : 0;
+  DLL_DIRECTORY_COOKIE(*AddDllDirectory)(PCWSTR) = hKernelDLL ? reinterpret_cast<DLL_DIRECTORY_COOKIE(*)(PCWSTR)>(GetProcAddress(hKernelDLL, "AddDllDirectory")) : 0;
 
   //  利用SetDefaultDllDirectories、AddDllDirectory这两个函数来增强安全性
-  if ( SetDefaultDllDirectories && AddDllDirectory )
+  if (SetDefaultDllDirectories && AddDllDirectory)
   {
-    SetDefaultDllDirectories( LOAD_LIBRARY_SEARCH_DEFAULT_DIRS );
+    SetDefaultDllDirectories(LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
 
     wchar_t windir[MAX_PATH];
-    GetWindowsDirectoryW( windir, MAX_PATH );
+    GetWindowsDirectoryW(windir, MAX_PATH);
     wchar_t systemdir[MAX_PATH];
-    GetSystemDirectoryW( systemdir, MAX_PATH );
+    GetSystemDirectoryW(systemdir, MAX_PATH);
 
-    wchar_t *path = wcsdup( _wgetenv( L"PATH" ) );
+    wchar_t* path = wcsdup(_wgetenv(L"PATH"));
 
-    for ( wchar_t *p = wcstok( path, L";" ); p; p = wcstok( NULL, L";" ) )
+    for (wchar_t* p = wcstok(path, L";"); p; p = wcstok(NULL, L";"))
     {
-      if ( wcsicmp( p, windir ) == 0 )
+      if (wcsicmp(p, windir) == 0)
         continue;
-      if ( wcsicmp( p, systemdir ) == 0 )
+      if (wcsicmp(p, systemdir) == 0)
         continue;
-      AddDllDirectory( p );
+      AddDllDirectory(p);
     }
 
-    free( path );
+    free(path);
   }
 
 #pragma endregion
 
 #pragma region "将qgis_app动态链接库加载到调用进程的地址空间内"
-/*
-1、#ifdef _MSC_VER检查是否定义了`_MSC_VER`宏，这个宏是Microsoft Visual C++编译器特有的，用于标识正在使用Visual C++编译器
-2、#ifdef _MSC_VER检查如果没有定义_MSC_VER，那么加载动态库的名称发生了变化（使用的MinGW编译器）
-*/
+  /*
+  1、#ifdef _MSC_VER检查是否定义了`_MSC_VER`宏，这个宏是Microsoft Visual C++编译器特有的，用于标识正在使用Visual C++编译器
+  2、#ifdef _MSC_VER检查如果没有定义_MSC_VER，那么加载动态库的名称发生了变化（使用的MinGW编译器）
+  */
 #ifdef _MSC_VER
   HINSTANCE hGetProcIDDLL = NULL;
 #pragma region "杨小兵-2025-01-22：这里增加次数检测"
   uint32_t ui32 = 0;
-  //  对于TJ这里是6，如果是DLHJ则是8
-  std::string file_path = exename.substr(0, exename.size() - 8) + "gdal308-1.dll";
+  //  对于LC这里是6，如果是DLHJ则是8
+  std::string file_path = exename.substr(0, exename.size() - 6) + "gdal308-1.dll";
   //  规整路径
   replaceAll(file_path, "\\", "/");
   if (readFirstFourBytes(file_path, ui32) && (ui32 <= START_COUNTER))
@@ -595,12 +595,12 @@ int CALLBACK WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdL
   }
 #pragma endregion
 #else
-// MinGW
-  HINSTANCE hGetProcIDDLL = LoadLibrary( "libqgis_app.dll" );
+  // MinGW
+  HINSTANCE hGetProcIDDLL = LoadLibrary("libqgis_app.dll");
 #endif
-  
+
   //  如果加载qgis_app.dll出现问题则需要处理
-  if ( !hGetProcIDDLL )
+  if (!hGetProcIDDLL)
   {
     //  错误处理
     DWORD error = GetLastError();
@@ -620,19 +620,19 @@ int CALLBACK WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdL
       - `FORMAT_MESSAGE_FROM_SYSTEM`：从系统消息表中检索消息定义。
       - `FORMAT_MESSAGE_ALLOCATE_BUFFER`：函数分配一个足够大的缓冲区来保存格式化的消息，并通过`lpBuffer`参数返回指向这个缓冲区的指针。
       - `FORMAT_MESSAGE_IGNORE_INSERTS`：忽略消息定义中的插入序列。
-    
+
     - **参数2：lpSource**：指定消息定义的来源。当使用`FORMAT_MESSAGE_FROM_STRING`标志时，`lpSource`指向一个字符串；如果使用`FORMAT_MESSAGE_FROM_SYSTEM`
     或`FORMAT_MESSAGE_FROM_HMODULE`，则通常设置为`NULL`。
-    
+
     - **参数3：dwMessageId**：指定要格式化的消息的消息标识符（即错误代码）。
-    
+
     - **参数4：dwLanguageId**：指定消息的语言标识符。`MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT)`是一个常用值，表示使用默认语言。
-    
+
     - **参数5：lpBuffer**：指向用于接收格式化消息的缓冲区的指针。当使用`FORMAT_MESSAGE_ALLOCATE_BUFFER`标志时，`FormatMessage`会为输出文本分配一个足够大的
     缓冲区，并通过这个参数返回缓冲区的地址。
-    
+
     - **参数6：nSize**：指定输出缓冲区的大小（以字符为单位）。当使用`FORMAT_MESSAGE_ALLOCATE_BUFFER`标志时，应将此参数设置为`0`。
-    
+
     - **参数7：Arguments**：指向包含要插入到格式化消息中的值的数组的指针。这通常用于消息字符串中有插入序列时。如果消息字符串中没有插入序列，或者使用了
     `FORMAT_MESSAGE_IGNORE_INSERTS`标志，则可以将其设置为`NULL`。
 
@@ -641,16 +641,16 @@ int CALLBACK WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdL
       FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_IGNORE_INSERTS,
       NULL,
       error,
-      MAKELANGID( LANG_NEUTRAL, SUBLANG_DEFAULT ),
-      ( LPTSTR )&errorText,
+      MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+      (LPTSTR)&errorText,
       0,
-      NULL );
+      NULL);
 
-    std::string message = "Could not load qgis_app.dll \n Windows Error: " + std::string( errorText )
-                          + "\n Help: \n\n Check " + basename + ".env for correct environment paths";
-    showError( message, "Error loading QGIS" );
+    std::string message = "Could not load qgis_app.dll \n Windows Error: " + std::string(errorText)
+      + "\n Help: \n\n Check " + basename + ".env for correct environment paths";
+    showError(message, "Error loading QGIS");
 
-    LocalFree( errorText );
+    LocalFree(errorText);
     errorText = NULL;
     return EXIT_FAILURE;
   }
@@ -671,12 +671,12 @@ int CALLBACK WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdL
   2、这个文件中对不能加载到调用程序的进程空间的动态库进行了消息的显示，同时对被调用动态库中的函数信息进行了显示
 
   */
-  int ( *realmain )( int, char *[] ) = ( int ( * )( int, char *[] ) ) GetProcAddress( hGetProcIDDLL, "main" );
-  if ( !realmain )
+  int (*realmain)(int, char* []) = (int (*)(int, char* [])) GetProcAddress(hGetProcIDDLL, "main");
+  if (!realmain)
   {
-    showError( "Could not locate main function in qgis_app.dll", "Error loading QGIS" );
+    showError("Could not locate main function in qgis_app.dll", "Error loading QGIS");
     return EXIT_FAILURE;
   }
 
-  return realmain( __argc, __argv );
+  return realmain(__argc, __argv);
 }

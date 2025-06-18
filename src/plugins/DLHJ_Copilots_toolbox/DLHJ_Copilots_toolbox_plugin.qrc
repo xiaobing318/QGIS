@@ -1,8 +1,0 @@
-<RCC>
-    <qresource prefix="/DLHJ_Copilots_toolbox">
-    <file>icons/DLHJ_Copilot_plugin.svg</file>
-    <file>icons/DLHJ_Copilot_Agent.svg</file>
-    <file>icons/DLHJ_Copilot_Chat.svg</file>
-    <file>icons/DLHJ_Copilot_Coder.svg</file>
-    </qresource>
-</RCC>

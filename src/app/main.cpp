@@ -1016,10 +1016,10 @@ int main( int argc, char *argv[] )
       通过这种方式，`QCoreApplication`提供了一个跨平台且便捷的方法来处理命令行参数，确保了参数在不同操作系统下的一致解析和表示，使得开发跨平台应用程序时，能够更加
     专注于应用逻辑而非底层的编码和解析差异。考虑到跨平台的因素，这里QT提供了内部的方式可以更好的处理参数信息，而不需要进行分情况处理，这样有利于使用者更加关注上层逻辑
     而不是底层转化原理。
-    */  
+    */
     QCoreApplication coreApp( argc, argv );
     // trigger storing of application path in QgsApplication（这个函数在出错的情况也不会退出程序）
-    ( void ) QgsApplication::resolvePkgPath(); 
+    ( void ) QgsApplication::resolvePkgPath();
 
     if ( !bundleclicked( argc, argv ) )
     {
@@ -1502,19 +1502,19 @@ int main( int argc, char *argv[] )
   1. **获取当前的用户和全局区域设置**：代码首先从`QgsApplication`的设置中获取当前用户的区域设置（`myUserTranslation`）、
   全局区域设置（`myGlobalLocale`）、是否覆盖区域设置的标志（`myLocaleOverrideFlag`）以及是否显示数字分组分隔符的标志
   （`myShowGroupSeparatorFlag`）。
-  
+
   2. **处理区域设置覆盖逻辑**：如果设置了区域设置覆盖标志（`myLocaleOverrideFlag`），代码会根据`QgsApplication`的设置
   来更新显示数字分组分隔符的标志（`myShowGroupSeparatorFlag`）。
-  
+
   3. **确定最终的翻译代码**：代码通过一系列逻辑判断来决定使用哪个翻译代码。这个逻辑考虑了命令行参数、用户在选项对话框中指
   定的设置以及系统默认区域设置。命令行参数具有最高优先级，其次是用户指定的设置，最后是系统区域设置。
-  
+
   4. **应用全局区域设置**：如果设置了区域设置覆盖标志并且指定了全局区域设置，代码将创建一个新的`QLocale`对象，并将其设置
   为默认的区域设置。
-  
+
   5. **配置数字格式化**：根据是否显示数字分组分隔符的标志，代码调整当前区域设置的数字格式化选项，然后将其设置为应用程序的
   默认区域设置。
-  
+
   6. **设置应用程序翻译**：最后，代码使用确定的翻译代码通过`QgsApplication::setTranslation`方法设置QGIS应用程序的翻译，
   以确保应用程序界面使用相应的语言显示。
 
@@ -1598,20 +1598,20 @@ int main( int argc, char *argv[] )
      ```
      这行代码创建了一个`QgsApplication`的实例，它是QGIS应用程序的主入口点。`argc`和`argv`参数用于接收命令行参数，
      `myUseGuiFlag`决定了应用程序是否以图形界面模式运行，最后的参数指定了应用程序的类型（在这个例子中是“desktop”桌面应用）。
-  
+
   2. **设置应用程序的本地化（Locale）**：
      ```cpp
      QgsApplication::setLocale(QLocale());
      ```
      这行代码通过调用`setLocale`方法设置QGIS应用程序的本地化设置，`QLocale()`构造函数创建了一个代表系统当前区域设置的`QLocale`实例。这意味着QGIS会尝试根据系统的区域设置来调整其界面语言和数值格式。
-  
+
   3. **记录应用程序启动前的日志消息**：
      ```cpp
      for (const QString &preApplicationLogMessage : std::as_const(preApplicationLogMessages))
        QgsMessageLog::logMessage(preApplicationLogMessage);
      ```
      在`QgsApplication`实例创建之前，可能会有一些日志消息需要记录（例如，错误信息或者警告）。这段代码遍历`preApplicationLogMessages`容器中的所有消息，并通过`QgsMessageLog::logMessage`方法将它们记录下来。这确保了应用程序启动过程中的所有重要信息都被捕获并可供后续分析。
-  
+
   */
   QgsApplication myApp( argc, argv, myUseGuiFlag, QString(), QStringLiteral( "desktop" ) );
 
@@ -2097,7 +2097,7 @@ int main( int argc, char *argv[] )
   */
   //set up splash screen（设置启动画面，这个启动画面就是QGIS应用程序启动的时候出现的画面）。
   QString mySplashPath( QgsCustomization::instance()->splashPath() );
-  QPixmap myPixmap( mySplashPath + QStringLiteral( "DLHJ_YZT_splash.png" ) );
+  QPixmap myPixmap( mySplashPath + QStringLiteral( "LC_splash.png" ) );
 
   double screenDpi = 96;
   if ( QScreen *screen = QGuiApplication::primaryScreen() )
@@ -2378,10 +2378,10 @@ int main( int argc, char *argv[] )
   执行后续操作。
 
   - **隐藏QGIS界面：** 执行`qgis->hide();`隐藏QGIS应用程序的界面。这可能是为了在执行导出操作时减少界面干扰或提高性能。
-  
+
   - **配置DXF导出选项：** 创建一个`QgsDxfExport`对象，并通过调用其方法来配置导出选项。包括设置符号比例(`setSymbologyScale`)、设置符号导
   出模式(`setSymbologyExport`)和设置导出范围(`setExtent`)。
-  
+
   - **准备图层列表：** 初始化`QStringList layerIds;`和`QList< QgsDxfExport::DxfLayer > layers;`准备存储要导出的图层的ID和图层对象。这
   表明接下来的步骤可能涉及选择特定的图层进行导出。
 
@@ -2506,13 +2506,13 @@ int main( int argc, char *argv[] )
 
   1. **设置OpenCL程序文件夹的路径：** 这段代码的主要功能是设置OpenCL源代码文件的路径。这些源代码文件包含了OpenCL程序，QGIS可以
   利用这些程序来执行特定的并行计算任务。
-  
+
   2. **命令行参数：** 首先，代码检查是否通过命令行参数`--openclprogramfolder`指定了OpenCL程序文件夹的路径。如果指定了，就使用这个路径。
-  
+
   3. **环境变量：** 如果没有通过命令行参数指定路径，代码将尝试读取环境变量`QGIS_OPENCL_PROGRAM_FOLDER`的值作为OpenCL程序文件夹的路径。
-  
+
   4. **默认位置：** 如果上述两种方法都没有提供路径，代码将使用QGIS应用程序初始化时设置的默认位置作为OpenCL程序文件夹的路径。
-  
+
   5. **应用路径：** 如果找到了OpenCL程序文件夹的路径（不为空），则通过`QgsOpenClUtils::setSourcePath()`方法设置这个路径，以便QGIS
   知道从哪里加载OpenCL程序。
 

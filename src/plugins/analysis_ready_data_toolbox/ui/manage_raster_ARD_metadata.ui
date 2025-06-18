@@ -1,0 +1,380 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>ManageRasterARDMetadataDlg</class>
+ <widget class="QDialog" name="ManageRasterARDMetadataDlg">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>593</width>
+    <height>602</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>栅格分析就绪型数据元数据编辑</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout_5">
+   <item row="0" column="0" colspan="4">
+    <widget class="QGroupBox" name="groupBox">
+     <property name="title">
+      <string/>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_10">
+      <item row="0" column="0">
+       <widget class="QGroupBox" name="groupBox_InputData_3">
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="title">
+         <string>数据加载</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_3">
+         <item row="0" column="0" colspan="3">
+          <widget class="QLabel" name="label_2">
+           <property name="text">
+            <string>栅格分析就绪型数据路径（tif格式）</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0" colspan="2">
+          <widget class="QLineEdit" name="lineEdit_InputDataPath">
+           <property name="toolTip">
+            <string>设置shp分析就绪型数据所在目录</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="2">
+          <widget class="QPushButton" name="pushButton_Open">
+           <property name="text">
+            <string>浏览</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="label_ShpPath_4">
+           <property name="text">
+            <string>元数据文件路径</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="0">
+          <widget class="QLineEdit" name="lineEdit_InputMetaDataPath">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>16777215</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="2">
+          <widget class="QPushButton" name="Button_OpenMetaData">
+           <property name="text">
+            <string>浏览</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QGroupBox" name="groupBox_2">
+        <property name="title">
+         <string>元数据编辑</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout">
+         <item row="0" column="0">
+          <widget class="QTabWidget" name="tabWidget">
+           <property name="currentIndex">
+            <number>0</number>
+           </property>
+           <widget class="QWidget" name="tab_GLXX">
+            <attribute name="title">
+             <string>1-管理信息</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_2">
+             <item row="0" column="0">
+              <widget class="QTableWidget" name="tableWidget_GLXX">
+               <column>
+                <property name="text">
+                 <string>数据项</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>数据类型</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>格式</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>备注</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>属性值</string>
+                </property>
+               </column>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_BSXX">
+            <attribute name="title">
+             <string>2-标识信息</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_4">
+             <item row="0" column="0">
+              <widget class="QTableWidget" name="tableWidget_BSXX">
+               <column>
+                <property name="text">
+                 <string>数据项</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>数据类型</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>格式</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>备注</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>属性值</string>
+                </property>
+               </column>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_ZLXX">
+            <attribute name="title">
+             <string>3-质量信息</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_6">
+             <item row="0" column="0">
+              <widget class="QTableWidget" name="tableWidget_ZLXX">
+               <column>
+                <property name="text">
+                 <string>数据项</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>数据类型</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>格式</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>备注</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>属性值</string>
+                </property>
+               </column>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_ZTXX">
+            <attribute name="title">
+             <string>4-专题信息</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_7">
+             <item row="0" column="0">
+              <widget class="QTableWidget" name="tableWidget_ZTXX">
+               <column>
+                <property name="text">
+                 <string>数据项</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>数据类型</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>格式</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>备注</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>属性值</string>
+                </property>
+               </column>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab">
+            <attribute name="title">
+             <string>5-分析就绪型数据</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_8">
+             <item row="0" column="0">
+              <widget class="QTableWidget" name="tableWidget_ARD">
+               <column>
+                <property name="text">
+                 <string>数据项</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>数据类型</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>格式</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>备注</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>属性值</string>
+                </property>
+               </column>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QGroupBox" name="groupBox_InputData_4">
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="title">
+         <string>元数据保存</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_9">
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_ShpPath_5">
+           <property name="text">
+            <string>文件路径</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLineEdit" name="lineEdit_OutputMetaDataPath">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>16777215</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QPushButton" name="Button_SaveMetaData">
+           <property name="text">
+            <string>浏览</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <spacer name="horizontalSpacer">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>404</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="pushButton_UpdateMetadataRange">
+     <property name="toolTip">
+      <string>更新5-分析就绪型数据元数据中经纬度范围及最大最小X、Y范围</string>
+     </property>
+     <property name="text">
+      <string>更新元数据范围</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="2">
+    <widget class="QPushButton" name="pushButton_OK">
+     <property name="text">
+      <string>保存</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="3">
+    <widget class="QPushButton" name="pushButton_Cancel">
+     <property name="text">
+      <string>关闭</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

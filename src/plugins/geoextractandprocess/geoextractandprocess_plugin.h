@@ -94,6 +94,8 @@ public slots:
 	// 矢量数据迁移
 	void CopyShapefiles();
 
+  // 动目标专题图制作（整饰要素矢量化）
+  void MovingTargetMappingLayoutVectorization();
 
 	//! unload the plugin
 	void unload() override;
@@ -168,6 +170,9 @@ private:
 
 	// “影像图制图（整饰要素矢量化）”菜单
 	QAction* mActionImageMapping_LayoutVectorization = nullptr;
+
+  // “动目标专题图制图（整饰要素矢量化）”菜单
+  QAction* mActionMovingTargetMapping_LayoutVectorization = nullptr;
 
 	// “矢量数据迁移”菜单
 	QAction* mActionCopyShapefiles = nullptr;

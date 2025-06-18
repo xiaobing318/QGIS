@@ -28,7 +28,7 @@
 #include "image_mapping_gdxdata.h"
 #include "image_mapping_layout_vectorization.h"
 #include "copy_shapefiles.h"
-
+#include "moving_target_mapping_layout_vectorization.h"
 
 
 #include <QAction>
@@ -114,7 +114,7 @@ void QgsGeoExtractAndProcessPlugin::initGui()
 	delete mActionSetBetterThan5WMatchParams;
 	delete mActionExtractContour;
 	delete mActionConvertDataToGB_OR_JB;
-	delete mActionImageMapping;
+	//delete mActionImageMapping;
 	delete mActionMovingTargetMapping;
 	delete mActionImageMapping_GdxData;
 	delete mActionImageMapping_LayoutVectorization;
@@ -388,16 +388,34 @@ void QgsGeoExtractAndProcessPlugin::initGui()
 	/*****************************************************************/
 	/*    “栅格— 动目标专题图制作”菜单					 */
 	/*****************************************************************/
-	QIcon iconMovingTargetMapping;
+	/*QIcon iconMovingTargetMapping;
 	QString strIconMovingTargetMapping = curExePath + "/resource/geoextractandprocess/moving_target_mapping.png";
 	iconMovingTargetMapping.addFile(strIconMovingTargetMapping);
 	mActionMovingTargetMapping = new QAction(iconMovingTargetMapping, tr("动目标专题制图"), this);
 	mActionMovingTargetMapping->setObjectName(QStringLiteral("mActionMovingTargetMapping"));
 	mActionMovingTargetMapping->setWhatsThis(tr("动目标专题制图"));
-	connect(mActionMovingTargetMapping, &QAction::triggered, this, &QgsGeoExtractAndProcessPlugin::MovingTargetMapping);
+  // 杨小兵-2024-09-06：为了WX系统集成重新集成的【动目标制图】功能，废弃之前的【动目标制图】功能
+  connect(mActionMovingTargetMapping, &QAction::triggered, this, &QgsGeoExtractAndProcessPlugin::MovingTargetMapping);
 	mQGisIface->addRasterToolBarIcon(mActionMovingTargetMapping);
 	mQGisIface->addPluginToRasterMenu(tr("&动目标专题制图"), mActionMovingTargetMapping);
-	mActionMovingTargetMapping->setEnabled(true);
+	mActionMovingTargetMapping->setEnabled(true);*/
+
+
+  /*****************************************************************/
+  /*    “栅格— 动目标专题图制作”菜单					 */
+  /*****************************************************************/
+  // 杨小兵-2024-09-06：为了WX系统集成重新集成的【动目标制图】功能，废弃之前的【动目标制图】功能
+  QIcon iconMovingTargetMapping_LayoutVectorization;
+  QString strIconMovingTargetMapping_LayoutVectorization = curExePath + "/resource/geoextractandprocess/moving_target_mapping_layout_vectorization.png";
+  iconMovingTargetMapping_LayoutVectorization.addFile(strIconMovingTargetMapping_LayoutVectorization);
+  mActionMovingTargetMapping_LayoutVectorization = new QAction(iconMovingTargetMapping_LayoutVectorization, tr("动目标专题制图"), this);
+  mActionMovingTargetMapping_LayoutVectorization->setObjectName(QStringLiteral("mActionMovingTargetMapping_LayoutVectorization"));
+  mActionMovingTargetMapping_LayoutVectorization->setWhatsThis(tr("动目标专题制图"));
+  connect(mActionMovingTargetMapping_LayoutVectorization, &QAction::triggered, this, &QgsGeoExtractAndProcessPlugin::MovingTargetMappingLayoutVectorization);
+  mQGisIface->addRasterToolBarIcon(mActionMovingTargetMapping_LayoutVectorization);
+  mQGisIface->addPluginToRasterMenu(tr("&动目标专题制图"), mActionMovingTargetMapping_LayoutVectorization);
+  mActionMovingTargetMapping_LayoutVectorization->setEnabled(true);
+
 
 	/*****************************************************************/
 	/*					“栅格— 影像图制图— 国地信数据”菜单					 */
@@ -431,9 +449,8 @@ void QgsGeoExtractAndProcessPlugin::initGui()
 	mQGisIface->addPluginToRasterMenu(tr("&影像图制图"), mActionImageMapping_LayoutVectorization);
 	mActionImageMapping_LayoutVectorization->setEnabled(true);
 
-
-
 #pragma endregion
+
 
 #pragma region "矢量数据迁移"
 
@@ -1469,6 +1486,20 @@ void QgsGeoExtractAndProcessPlugin::CopyShapefiles()
 	}
 }
 
+void QgsGeoExtractAndProcessPlugin::MovingTargetMappingLayoutVectorization()
+{
+  QgsMovingTargetMappingLayoutVectorizationDialog* pDlg = new QgsMovingTargetMappingLayoutVectorizationDialog();
+  if (!pDlg)
+  {
+    return;
+  }
+  if (pDlg->exec() == QDialog::Accepted)
+  {
+    delete pDlg;
+  }
+}
+
+
 void QgsGeoExtractAndProcessPlugin::unload()
 {
 	//------------------------系列比例尺提取与加工---------------------------------------//
@@ -1529,8 +1560,8 @@ void QgsGeoExtractAndProcessPlugin::unload()
 	mQGisIface->removeRasterToolBarIcon(mActionImageMapping);
 
 	//------------------------动目标专题制图---------------------------------------//
-	mQGisIface->removePluginRasterMenu(tr("&动目标专题制图"), mActionMovingTargetMapping);
-	mQGisIface->removeRasterToolBarIcon(mActionMovingTargetMapping);
+	//mQGisIface->removePluginRasterMenu(tr("&动目标专题制图"), mActionMovingTargetMapping);
+	//mQGisIface->removeRasterToolBarIcon(mActionMovingTargetMapping);
 
 	//------------------------影像图制作（国地信数据）---------------------------------------//
 	mQGisIface->removePluginRasterMenu(tr("&影像图制作"), mActionImageMapping_GdxData);
@@ -1543,6 +1574,11 @@ void QgsGeoExtractAndProcessPlugin::unload()
 	//------------------------矢量数据迁移---------------------------------------//
 	mQGisIface->removePluginRasterMenu(tr("&影像图制作"), mActionCopyShapefiles);
 	mQGisIface->removeRasterToolBarIcon(mActionCopyShapefiles);
+
+  //------------------------动目标专题制图（整饰要素矢量化）---------------------------------------//
+  mQGisIface->removePluginRasterMenu(tr("&动目标专题制图"), mActionMovingTargetMapping_LayoutVectorization);
+  mQGisIface->removeRasterToolBarIcon(mActionMovingTargetMapping_LayoutVectorization);
+
 
 	delete mActionCreateDbAndInputData;
 	delete mActionSetMergeParams;
@@ -1562,11 +1598,12 @@ void QgsGeoExtractAndProcessPlugin::unload()
 	delete mActionSetBetterThan5WMatchParams;
 	delete mActionBetterThan5wMergeFeatures;
 	delete mActionConvertDataToGJB;
-	delete mActionImageMapping;
+	//delete mActionImageMapping;
 	delete mActionMovingTargetMapping;
 	delete mActionImageMapping_GdxData;
 	delete mActionImageMapping_LayoutVectorization;
 	delete mActionCopyShapefiles;
+  delete mActionMovingTargetMapping_LayoutVectorization;
 }
 
 void QgsGeoExtractAndProcessPlugin::help()

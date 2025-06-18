@@ -1,15 +1,13 @@
-#ifndef STAREARTH_COMMONTYPE_H_
-#define STAREARTH_COMMONTYPE_H_
-#pragma region "包含头文件"
+#pragma once
+#ifndef _STAREARTH_COMMONTYPE_H_
+#define _STAREARTH_COMMONTYPE_H_
 
-/*----------------STL--------------*/
 #include <string>
 #include <vector>
 using namespace std;
-#pragma endregion
 
-/*64位有符号整型*/
-typedef signed __int64 SE_Int64;		
+/*基本数据类型定义*/
+typedef signed long long SE_Int64;		// 64位有符号整型
 
 /*整型点结构体*/
 struct SE_Point
@@ -37,6 +35,7 @@ struct SE_Point
 	}
 
 };
+
 
 /*浮点型点结构体*/
 struct SE_DPoint
@@ -114,6 +113,7 @@ struct SE_Rect
 	}
 };
 
+
 /*浮点型矩形结构体*/
 struct SE_DRect
 {
@@ -171,7 +171,6 @@ struct SE_Polyline
 	}
 };
 
-/*面要素结构体*/
 struct SE_Polygon
 {
 	vector<SE_DPoint>			vExteriorPoints;		// 多边形外边界点集合
@@ -218,13 +217,75 @@ typedef enum
 	SE_Bool					= 14			// 布尔型
 } SE_FieldType;
 
+
+
 /*字段定义*/
 typedef struct
 {
-	string strName;		// 字段名称
-	SE_FieldType eType;		// 字段类型
-	int    iLength;		// 字段长度
+	string				strName;		// 字段名称
+	SE_FieldType		eType;			// 字段类型
+	int					iLength;		// 字段长度
 
 }SE_Field;
 
-#endif // STAREARTH_COMMONTYPE_H_
+
+/*ZXY结构体*/
+struct ZXY_INDEX
+{
+	int			iZ;
+	int			iX;
+	int			iY;
+
+	ZXY_INDEX()
+	{
+		iZ = 0;
+		iY = 0;
+		iY = 0;
+	}
+};
+
+
+
+/*分包信息结构体*/
+struct ARD_PACKAGE_INFO
+{
+	int iMinZ;
+	int iMaxZ;
+	int iBaseZ;
+
+	ARD_PACKAGE_INFO()
+	{
+		iMinZ = 0;
+		iMaxZ = 0;
+		iBaseZ = 0;
+	}
+};
+
+/*元数据模板信息结构体*/
+struct MetaDataTemplateInfo
+{
+	string		strCategory;			// 元数据类
+	string		strItem;				// 数据项
+	string		strShortFormItem;		// 数据元素简称
+	string		strType;				// 数据类型
+	string		strFormat;				// 格式
+	string		strDetail;				// 备注
+	string		strValue;				// 数据值
+
+	MetaDataTemplateInfo()
+	{
+		strCategory = "";
+		strItem = "";
+		strShortFormItem = "";
+		strType = "";
+		strFormat = "";
+		strDetail = "";
+		strValue = "";
+	}
+};
+
+
+
+
+
+#endif // _STAREARTH_COMMONTYPE_H_

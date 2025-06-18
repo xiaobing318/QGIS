@@ -1,3 +1,5 @@
+#pragma once
+
 #ifndef SE_COMMONDEF_H_
 #define SE_COMMONDEF_H_
 
@@ -52,24 +54,100 @@ typedef int SE_Error;
 #define SE_ERROR_RASTER_FORMAT_IS_NOT_SUPPORTED					45				/*不支持的栅格数据格式*/
 #define SE_ERROR_READ_RASTER_DATA_FAILED						46				/*读取栅格数据失败*/
 #define SE_ERROR_WRITE_RASTER_DATA_FAILED						47				/*写入栅格数据失败*/
-#define SE_ERROR_OPEN_DATASET_FAILED							48				/*打开数据源失败*/
-#define SE_ERROR_INPUT_SR_IS_INVALID							49				/*输入空间参考系不合法*/
-#define SE_ERROR_INPUT_SR_IS_GEOCOORDSYS						50				/*输入空间参考系是地理坐标系*/
-#define SE_ERROR_FAILED2OBTAIN_ACTUAL_EXISTING_LAYER_INFO_FROM_ODATA_FRAMED_DATA		51				/*从odata分幅数据中获取实际存在的图层信息失败(杨小兵-2024-01-24)*/
-#define SE_ERROR_CREATE_S_LAYER_DATASET_FAILED											52				/*创建S层结果数据源失败(杨小兵-2024-01-24)*/
+#define SE_ERROR_INPUT_DEM_FILE_IS_NULL							48				/*输入DEM文件为空*/
+#define SE_ERROR_COORD_IS_OUTOF_DEM_RANGE						49				/*坐标超出DEM数据范围*/
+#define SE_ERROR_OPEN_TIFFILE_FAILED							50				/*打开TIF文件失败*/
+#define SE_ERROR_GET_RASTER_BAND_FAILED							51				/*获取栅格波段失败*/
+#define SE_ERROR_CREATE_COORDTRANS_FAILED						52				/*创建坐标转换对象失败*/
+#define SE_ERROR_RASTERIO_FAILED								53				/*栅格数据读取失败*/
+#define SE_ERROR_CAL_DISTANCE_OF_TWO_POINT_FAILED				54				/*计算两点距离失败*/
+#define SE_ERROR_CAL_SAMPLE_POINTS_FAILED						55				/*计算采样点失败*/
+#define SE_ERROR_INPUT_POLYGON_IS_INVALID						56				/*输入多边形不合法*/
+#define SE_ERROR_TOPOGRAPHICAL_IMPORTANCE_ANALYSIS_FAILED		57				/*地形重要性分析失败*/
+#define SE_ERROR_MAX_POLYGON_TO_CELLSIZE_FAILED					58				/*计算最大H3索引数失败*/
+#define SE_ERROR_POLYGON_TO_CELLS_FAILED						59				/*计算多边形H3索引集合失败*/
+#define SE_ERROR_SET_WELLKNOWN_GEOGCS_FAILED					60				/*设置空间参考系失败*/
+#define SE_ERROR_SET_FIELDDEFN_FAILED							61				/*设置字段定义文件失败*/
+#define SE_ERROR_H3_INDEX_SIZE_IS_ZERO							62				/*H3索引个数为0*/
+#define SE_ERROR_MALLOC_MEMORY_FAILED							63				/*内存分配失败*/
+#define SE_ERROR_VECTOR_READY_DATA_CONFIG_IS_NULL				64				/*矢量分析就绪配置文件为空*/
+#define SE_ERROR_OPEN_VECTOR_READY_DATA_CONFIG_FAILED			65				/*打开矢量分析就绪配置文件失败*/
+#define SE_ERROR_SRS_IS_NOT_GEOCOORDSYS							66				/*空间参考系非地理坐标系*/
+#define SE_ERROR_LATLNG_TO_CELL_FAILED							67				/*经纬度转H3格网失败*/
+#define SE_ERROR_GET_RASTER_DRIVER_FAILED						68				/*获取栅格驱动失败*/
+#define SE_ERROR_CREATE_TIF_FAILED								69				/*创建tif文件失败*/
+#define SE_ERROR_RASTER_BAND_RASTERIO_WRITE_FAILED				70				/*栅格图层写数据失败*/
+#define SE_ERROR_CREATE_POLYGON_FAILED							71				/*创建多边形失败*/
+#define SE_ERROR_EXTRACT_RIDGE_FAILED							72				/*提取山脊点/线失败*/
+#define SE_ERROR_EXTRACT_VALLEY_FAILED							73				/*提取山谷点/线失败*/
+#define SE_ERROR_OUTPUT_FILE_PATH_IS_NULL						74				/*输出数据路径为空*/
+#define SE_ERROR_GET_RASTER_PIXEL_VALUES_FAILED					75				/*读取栅格数据像素值失败*/
+#define SE_ERROR_GEOMETRY_TYPE_IS_NOT_POLYGON					76				/*几何类型不是多边形*/
+#define SE_ERROR_GET_DRIVER_FAILED								77				/*获取驱动失败*/
+#define SE_ERROR_FILESYSTEM_ERROR								78				/*文件系统错误*/
+#define SE_ERROR_GENERAL_ERROR									79				/*通用错误*/
+#define SE_ERROR_FAILED_TO_OPEN_INPUT_FILE						80				/*打开输入文件失败*/
+#define SE_ERROR_FAILED_TO_CREATE_VRT_DATASET					81				/*创建虚拟GDAL数据集失败*/
+#define SE_ERROR_FAILED_TO_CREATE_WARPED_VRT_DATASET			82				/*创建虚拟变换数据集失败*/
+#define SE_ERROR_FAILED_TO_PERFORM_WARPING_OPERATION			83				/*执行变换操作失败*/
+#define SE_ERROR_FAILED_TO_GET_MEMORY_DRIVER					84				/*获取内存驱动失败*/
+#define SE_ERROR_FAILED_TO_CREATE_MEMORY_DATASET				85				/*创建内存数据集失败*/
+#define SE_ERROR_FAILED_TO_CREATE_MEMORY_LAYER					86				/*创建内存图层失败*/
+#define SE_ERROR_FAILED_TO_EXPORT_ANALYSIS_READY_DATA_SHP		87				/*导出shp格式矢量分析就绪数据失败*/
+#define SE_ERROR_FEATURE_GEOMETRY_TYPE_IS_ERROR					88				/*要素几何类型异常*/
+#define SE_ERROR_VECTOR_LAYER_INTERSECTION_ERROR				89				/*图层叠加分析失败*/
+#define SE_TERRAIN_ERROR_INVALID_SCHEME                         90              /*未知的权重叠加方案*/
+#define SE_ERROR_INVALID_PARAM                                  91              /*栅格和矢量数据的大小不匹配
 
-#define SE_ERROR_WKBPOINT_POINTER_IS_NULL                 53                  /*wkbPoint类型的指针为空*/
-#define SE_ERROR_WKBLINESTRING_POINTER_IS_NULL            54                  /*wkbLineString类型的指针为空*/
-#define SE_ERROR_WKBPOLYGON_POINTER_IS_NULL               55                  /*wkbPolygon类型的指针为空*/
-#define SE_ERROR_WKBMULTIPOINT_POINTER_IS_NULL            56                  /*wkbMultiPoint类型的指针为空*/
-#define SE_ERROR_WKBMULTILINESTRING_POINTER_IS_NULL       57                  /*wkbMultiLineString类型的指针为空*/
-#define SE_ERROR_WKBMULTIPOLYGON_POINTER_IS_NULL          58                  /*wkbMultiPolygon类型的指针为空*/
-#define SE_ERROR_WKBGEOMETRYCOLLECTION_POINTER_IS_NULL    59                  /*wkbGeometryCollection类型的指针为空*/
-#define SE_ERROR_WKBLINEARRING_POINTER_IS_NULL            60                  /*wkbLinearRing类型的指针为空*/
-#define SE_ERROR_ARGC_VALUE_IS_NOT_VALID                  61                  /*argc变量出现错误，其值至少为1，标识匹配算法的类型*/
-#define SE_ERROR_MATCH_ALG_TYPE_IS_NOT_VALID              62                  /*矢量要素空间匹配算法类别不是有效的*/
-#define SE_ERROR_BUFF_DISTANCE_IS_NOT_VALID               63                  /*空间匹配算法的缓冲距离不是有效的*/
-#define SE_ERROR_CREATE_OGRGEOMETRY_IS_UNSUCCESS          64                  /*创建OGRGeometry新的几何要素失败*/
-#define SE_ERROR_OGRFEATURE_TYPE_NOT_MATCH                65                  /*两个OGR要素类型是不匹配的*/
-#endif // SE_COMMONDEF_H_
 
+
+
+/*定义并行计算标志*/
+typedef int SeParallelComputingFlag;
+
+#define SE_PARALLEL_COMPUTING_NONE						0		/*CUP单线程计算模式*/
+#define SE_PARALLEL_COMPUTING_CPU						1		/*CUP多线程计算模式*/
+#define SE_PARALLEL_COMPUTING_GPU						2		/*GPU多线程计算模式*/
+
+/*定义日志级别*/
+/*0——错误；1——信息；2——调试*/
+const int SE_LOG_LEVEL_ERROR = 0;			// 错误
+const int SE_LOG_LEVEL_INFO = 1;			// 信息
+const int SE_LOG_LEVEL_DEBUG = 2;			// 调试
+
+
+/*定义日志类型*/
+const char SE_LOG_TYPE_SYSTEM[] = "System_Running";				/*系统运行*/
+const char SE_LOG_TYPE_USER_OPERATION[] = "User_Operation";		/*用户操作*/
+const char SE_LOG_TYPE_SERVICE_VISIT[] = "Service_Visit";		/*业务访问*/
+
+
+
+/*定义显示就绪型数据类型*/
+const char SE_DATA_TYPE_SHILIANG[] = "ShiLiang";		/*矢量*/
+const char SE_DATA_TYPE_GAOCHENG[] = "GaoCheng";		/*高程*/		
+const char SE_DATA_TYPE_YINGXIANG[] = "YingXiang";		/*影像*/
+const char SE_DATA_TYPE_DIMING[] = "DiMing";			/*地名*/
+
+const char SE_DATA_TYPE_SHIJING[] = "ShiJing";			/*实景*/
+const char SE_DATA_TYPE_DIZHI[] = "DiZhi";				/*地质*/
+const char SE_DATA_TYPE_HANGKONGTU[] = "HangKongTu";	/*航空图*/
+const char SE_DATA_TYPE_QINGXIESHEYING[] = "QingXieSheYing";			/*倾斜摄影*/
+
+const char SE_DATA_TYPE_BIAOHUI[] = "BiaoHui";			/*专用标绘*/;			
+const char SE_DATA_TYPE_DIXIAGUANWANG[] = "DiXiaGuanWang";				/*地下管网*/
+const char SE_DATA_TYPE_DIMIANQIXIANG[] = "DiMianQiXiang";				/*地面气象*/
+const char SE_DATA_TYPE_GAOKONGQIXIANG[] = "GaoKongQiXiang";			/*高空气象*/
+
+/*定义显示就绪型数据要素类型*/
+const char SE_FEATURE_TYPE_GONGNONGYE[] = "B";				/*工农业社会文化设施*/
+const char SE_FEATURE_TYPE_JUMINGDI[] = "C";				/*居民地*/
+const char SE_FEATURE_TYPE_LUDIJIAOTONG[] = "D";			/*陆地交通*/
+const char SE_FEATURE_TYPE_GUANXIAN[] = "E";				/*管线*/
+
+const char SE_FEATURE_TYPE_SHUIYULUDI[] = "F";				/*水域陆地*/
+const char SE_FEATURE_TYPE_LUDIDIMIAO[] = "J";				/*陆地地貌及土质*/
+const char SE_FEATURE_TYPE_ZHIBEI[] = "L";					/*植被*/
+
+
+#endif // SE_COMMONDEF_H

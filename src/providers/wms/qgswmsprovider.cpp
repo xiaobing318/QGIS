@@ -23,7 +23,7 @@
  *   (at your option) any later version.                                   *
  *                                                                         *
  ***************************************************************************/
-
+#define _HAS_STD_BYTE 0
 #include "qgslogger.h"
 #include "qgswmsprovider.h"
 #include "qgswmsconnection.h"
@@ -53,6 +53,9 @@
 #include "qgsogrutils.h"
 #include "qgsproviderregistry.h"
 #include "qgsruntimeprofiler.h"
+
+// 引用ptp读取头文件
+#include "qgsptpfiles.h"
 #include "qgstiledownloadmanager.h"
 
 #include <QNetworkRequest>
@@ -72,8 +75,10 @@
 #include <QJsonArray>
 #include <QRegularExpression>
 #include <QRegularExpressionMatch>
+#include <QMessageBox>
 
 #include <ogr_api.h>
+
 
 #ifdef QGISDEBUG
 #include <QFile>
@@ -245,6 +250,10 @@ QgsWmsProvider::QgsWmsProvider( QString const &uri, const ProviderOptions &optio
 
   mValid = true;
   QgsDebugMsgLevel( QStringLiteral( "exiting constructor." ), 4 );
+
+    // 获取ptp读取key
+  LoadPtpKeyConfigFile(m_strPrivateKey, m_strDevKey);
+
 }
 
 
@@ -937,6 +946,13 @@ QImage *QgsWmsProvider::draw( const QgsRectangle &viewExtent, int pixelWidth, in
       mbtilesReader.reset( new QgsMbTiles( QUrl( mSettings.mBaseUrl ).path() ) );
       mbtilesReader->open();
     }
+    
+    //----------------------------------------------------//
+    // modified by yzl 2023-1-29
+    // note：增加本地ptp瓦片包的读取
+    //----------------------------------------------------//
+    // PTP读取类
+    std::unique_ptr<QgsPTPFiles> ptpReader;
 
     QElapsedTimer t;
     t.start();
@@ -959,6 +975,46 @@ QImage *QgsWmsProvider::draw( const QgsRectangle &viewExtent, int pixelWidth, in
         if ( img.isNull() )
           continue;
         QgsTileCache::insertTile( r.url, img );
+      }
+
+      // 如果读取本地ptp瓦片包
+      else if (mSettings.mIsPTPFiles && !QgsTileCache::tile(r.url, localImage))
+      {
+        // 根据zxy及路径获取ptp文件名称
+        QUrlQuery query(r.url);
+        QString qstrPtpFilePath = GetPtpNameByXYZ(QUrl(mSettings.mBaseUrl).path(),
+          query.queryItemValue("z").toInt(),
+          query.queryItemValue("x").toInt(),
+          query.queryItemValue("y").toInt());
+
+
+        QString qstrPrivateKey = QString::fromLocal8Bit(m_strPrivateKey.c_str());
+        QString qstrDevKey = QString::fromLocal8Bit(m_strDevKey.c_str());
+        ptpReader.reset(new QgsPTPFiles(
+          qstrPtpFilePath,
+          qstrPrivateKey,
+          qstrDevKey));
+
+        // 打开ptp文件
+        bool bOpenFlag = ptpReader->open();
+        // 如果对应的ptp文件不存在，跳过当前循环
+        if (!bOpenFlag)
+        {
+          continue;
+        }
+
+        // 加载zxy图片
+        QImage img = ptpReader->tileDataAsImage(
+          query.queryItemValue("z").toInt(),
+          query.queryItemValue("x").toInt(),
+          query.queryItemValue("y").toInt());
+        if (img.isNull())
+        {
+          ptpReader->close();
+          continue;
+        }
+        QgsTileCache::insertTile(r.url, img);
+        ptpReader->close();
       }
 
       if ( QgsTileCache::tile( r.url, localImage ) )
@@ -5330,3 +5386,139 @@ QgsRasterHistogram QgsWmsInterpretationConverterTerrariumRGB::histogram( int, in
 {
   return QgsRasterHistogram();
 }
+bool QgsWmsProvider::LoadPtpKeyConfigFile(string& strPrivateKey, string& strDevKey)
+{
+  // 程序运行目录
+  QString qstrCurExePath = QCoreApplication::applicationDirPath();
+  QString qstrPtpKeyCfgFilePath = qstrCurExePath + "/config/ptp/key.cfg";
+  QByteArray qKeyPath = qstrPtpKeyCfgFilePath.toLocal8Bit();
+  string strKeyPath = string(qKeyPath);
+
+  FILE* fp = fopen(strKeyPath.c_str(), "r");
+  if (!fp)
+  {
+    return false;
+  }
+  char szPrivateKeyTag[100] = { 0 };
+  char szPrivateKey[1000] = { 0 };
+  char szDevKeyTag[100] = { 0 };
+  char szDevKey[1000] = { 0 };
+
+  // 读取key
+  fscanf(fp, "%s", szPrivateKeyTag);
+  fscanf(fp, "%s", szPrivateKey);
+  fscanf(fp, "%s", szDevKeyTag);
+  fscanf(fp, "%s", szDevKey);
+
+  strPrivateKey = szPrivateKey;
+  strDevKey = szDevKey;
+
+  fclose(fp);
+
+  return true;
+}
+
+QString QgsWmsProvider::GetPtpNameByXYZ(const QString& qstrPtpPath, int z, int x, int y)
+{
+  // 获取当前路径下ptp文件列表
+  QStringList qstrPtpFileNameList = GetPtpFileNames(qstrPtpPath);
+  if (qstrPtpFileNameList.size() == 0)
+  {
+    QString qstrTitle = QString::fromLocal8Bit("XYZ连接");
+    QString qstrText = QStringLiteral("当前路径%1下无ptp文件！").arg(qstrPtpPath);
+    QMessageBox msgBox;
+    msgBox.setWindowTitle(qstrTitle);
+    msgBox.setText(qstrText);
+    msgBox.setStandardButtons(QMessageBox::Yes);
+    msgBox.setDefaultButton(QMessageBox::Yes);
+    msgBox.exec();
+    return QString();
+  }
+
+  // 读取其中的一个文件获取分包规则
+  vector<PTP_Package_Rule> vPtpPackageRule;
+  vPtpPackageRule.clear();
+
+  GetPtpRuleByPtpFileName(qstrPtpFileNameList[0], vPtpPackageRule);
+
+  // 根据xyz及分包规则计算包名
+  string strPtpFileName = GetPtpPackageNameByZXY(x, y, z, vPtpPackageRule);
+  QString qstrPtpFileName = QString::fromLocal8Bit(strPtpFileName.c_str());
+
+  QString qstrPtpFileFullName = qstrPtpPath + "/" + qstrPtpFileName + ".ptp";
+
+  // 返回所在xyz所在包名
+  return qstrPtpFileFullName;
+}
+
+
+QStringList QgsWmsProvider::GetPtpFileNames(const QString& path)
+{
+  QDir dir(path);
+  QStringList nameFilters;
+  nameFilters << "*.ptp" << "*.PTP";
+  QStringList files = dir.entryList(nameFilters, QDir::Files | QDir::Readable, QDir::Name);
+  return files;
+}
+
+string QgsWmsProvider::GetPtpPackageNameByZXY(int x, int y, int z, vector<PTP_Package_Rule>& vPTP_Rule)
+{
+  string strPackageName;
+
+  for (int i = 0; i < vPTP_Rule.size(); ++i)
+  {
+    char szPackageName[50] = { 0 };
+    if (z >= vPTP_Rule[i].min_z
+      && z <= vPTP_Rule[i].max_z)
+    {
+      int iBaseX = floor(x / pow(2, z - vPTP_Rule[i].base_z));
+      int iBaseY = floor(y / pow(2, z - vPTP_Rule[i].base_z));
+      sprintf(szPackageName, "%d-%d-%d-%d-%d",
+        vPTP_Rule[i].min_z,
+        vPTP_Rule[i].max_z,
+        vPTP_Rule[i].base_z,
+        iBaseX,
+        iBaseY);
+
+      strPackageName = szPackageName;
+      break;
+    }
+  }
+
+  return strPackageName;
+}
+
+void QgsWmsProvider::GetPtpRuleByPtpFileName(const QString& qstrFileName, vector<PTP_Package_Rule>& vRule)
+{
+  vRule.clear();
+
+  // 分包规则：（1）[[0,7,0],[8,11,3],[12,15,7],[16,19,11],[20,22,15]]
+  //			 （2）[[0,9,0],[10,14,7],[15,19,11],[20,22,15]]
+  if (qstrFileName.startsWith("0-7-0")
+    || qstrFileName.startsWith("8-11-3")
+    || qstrFileName.startsWith("12-15-7")
+    || qstrFileName.startsWith("16-19-11")
+    || qstrFileName.startsWith("20-22-15"))
+  {
+    vRule.push_back(PTP_Package_Rule(0, 7, 0));
+    vRule.push_back(PTP_Package_Rule(8, 11, 3));
+    vRule.push_back(PTP_Package_Rule(12, 15, 7));
+    vRule.push_back(PTP_Package_Rule(16, 19, 11));
+    vRule.push_back(PTP_Package_Rule(20, 22, 15));
+  }
+  else if (qstrFileName.startsWith("0-9-0")
+    || qstrFileName.startsWith("10-14-7")
+    || qstrFileName.startsWith("15-19-11")
+    || qstrFileName.startsWith("20-22-15"))
+  {
+    vRule.push_back(PTP_Package_Rule(0, 9, 0));
+    vRule.push_back(PTP_Package_Rule(10, 14, 7));
+    vRule.push_back(PTP_Package_Rule(15, 19, 11));
+    vRule.push_back(PTP_Package_Rule(20, 22, 15));
+  }
+}
+
+
+
+
+

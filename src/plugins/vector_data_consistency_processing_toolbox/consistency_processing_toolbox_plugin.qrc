@@ -1,9 +1,0 @@
-<RCC>
-    <qresource prefix="/vector_data_consistency_processing_toolbox">
-        <file>icons/consistency_attribute_connection_processing_tool.svg</file>
-        <file>icons/consistency_matching_form_checking_tool.svg</file>
-        <file>icons/consistency_matching_tool.svg</file>
-        <file>icons/consistent_geometry_editing_and_processing_tool.svg</file>
-        <file>icons/consistency_processing_toolbox_plugin.svg</file>
-    </qresource>
-</RCC>

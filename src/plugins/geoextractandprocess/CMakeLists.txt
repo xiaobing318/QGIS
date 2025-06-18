@@ -6,7 +6,10 @@ set (geoextractandprocess_SRCS
     set_attribute_extract_params.cpp
     multiscale_match.cpp
     multiscale_addfield.cpp
+    # 这个【动目标制图】功能已经被废弃了,这里还没有移除
     moving_target_mapping.cpp
+    # 添加【动目标制图】功能
+    moving_target_mapping_layout_vectorization.cpp
     image_spatial_accuracy_check.cpp
     image_mapping_layout_vectorization.cpp
     image_mapping_gdxdata.cpp
@@ -33,7 +36,10 @@ set (geoextractandprocess_HDRS
     se_commontypedef.h
     multiscale_match.h
     multiscale_addfield.h
+    # 这个【动目标制图】功能已经被废弃了,这里还没有移除
     moving_target_mapping.h
+    # 添加【动目标制图】功能
+    moving_target_mapping_layout_vectorization.h
     image_spatial_accuracy_check.h
     image_mapping_layout_vectorization.h
     image_mapping_gdxdata.h
@@ -60,7 +66,10 @@ set (geoextractandprocess_UIS
     set_attribute_extract_params.ui
     multiscale_match.ui
     multiscale_addfield.ui
+    # 这个【动目标制图】功能已经被废弃了,这里还没有移除
     moving_target_mapping.ui
+    # 添加【动目标制图】功能
+    moving_target_mapping_layout_vectorization.ui
     image_spatial_accuracy_check.ui
     image_mapping_layout_vectorization.ui
     image_mapping_gdxdata.ui

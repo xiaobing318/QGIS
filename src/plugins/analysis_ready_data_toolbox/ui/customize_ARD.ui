@@ -1,0 +1,570 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>CustomizeARDDlg</class>
+ <widget class="QDialog" name="CustomizeARDDlg">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>950</width>
+    <height>810</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>分析就绪型数据定制</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout_7">
+   <item row="1" column="2">
+    <widget class="QPushButton" name="Button_Cancel">
+     <property name="text">
+      <string>关闭</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="Button_OK">
+     <property name="text">
+      <string>开始定制</string>
+     </property>
+    </widget>
+   </item>
+   <item row="0" column="0" colspan="3">
+    <widget class="QGroupBox" name="groupBox">
+     <property name="title">
+      <string/>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_9">
+      <item row="0" column="0">
+       <widget class="QGroupBox" name="groupBox_3">
+        <property name="title">
+         <string>定制参数设置</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_6">
+         <item row="0" column="0">
+          <widget class="QTabWidget" name="tabWidget_ARD_Setting">
+           <property name="currentIndex">
+            <number>1</number>
+           </property>
+           <widget class="QWidget" name="tab_RasterARD">
+            <attribute name="title">
+             <string>栅格分析就绪数据</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_3">
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_2">
+               <property name="text">
+                <string>定制参数配置文件路径</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="3">
+              <widget class="QPushButton" name="pushButton_RasterARD_ConfigFilePath">
+               <property name="maximumSize">
+                <size>
+                 <width>75</width>
+                 <height>16777215</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>浏览</string>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="0">
+              <widget class="QLabel" name="label_3">
+               <property name="text">
+                <string>数据源路径</string>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="3">
+              <widget class="QPushButton" name="pushButton_RasterARD_InputDataPath">
+               <property name="maximumSize">
+                <size>
+                 <width>75</width>
+                 <height>16777215</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>浏览</string>
+               </property>
+              </widget>
+             </item>
+             <item row="6" column="0">
+              <widget class="QLabel" name="label_8">
+               <property name="text">
+                <string>数据源元数据（json格式）文件路径</string>
+               </property>
+              </widget>
+             </item>
+             <item row="7" column="3">
+              <widget class="QPushButton" name="pushButton_RasterARD_InputMetadataPath">
+               <property name="maximumSize">
+                <size>
+                 <width>75</width>
+                 <height>16777215</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>浏览</string>
+               </property>
+              </widget>
+             </item>
+             <item row="8" column="0" colspan="4">
+              <widget class="QTableWidget" name="tableWidget_RasterARD">
+               <attribute name="horizontalHeaderMinimumSectionSize">
+                <number>23</number>
+               </attribute>
+               <attribute name="horizontalHeaderDefaultSectionSize">
+                <number>100</number>
+               </attribute>
+               <attribute name="horizontalHeaderStretchLastSection">
+                <bool>false</bool>
+               </attribute>
+               <attribute name="verticalHeaderStretchLastSection">
+                <bool>false</bool>
+               </attribute>
+               <column>
+                <property name="text">
+                 <string>图层名称</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>图层类型</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>分析就绪数据产品名称</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>分析就绪数据产品标识</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>栅格化字段名称</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>DEM分辨率（度）</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>比例尺分母</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>是否生成</string>
+                </property>
+               </column>
+              </widget>
+             </item>
+             <item row="9" column="0">
+              <widget class="QLabel" name="label_4">
+               <property name="text">
+                <string>保存路径</string>
+               </property>
+              </widget>
+             </item>
+             <item row="9" column="1">
+              <widget class="QCheckBox" name="checkBox_RasterMetaData">
+               <property name="text">
+                <string>是否生成元数据</string>
+               </property>
+              </widget>
+             </item>
+             <item row="9" column="2" colspan="2">
+              <spacer name="horizontalSpacer">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>628</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item row="10" column="0" colspan="3">
+              <widget class="QLineEdit" name="lineEdit_RasterARD_SavePath"/>
+             </item>
+             <item row="10" column="3">
+              <widget class="QPushButton" name="pushButton_RasterARD_SavePath">
+               <property name="text">
+                <string>浏览</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0" colspan="4">
+              <widget class="QGroupBox" name="groupBox_4">
+               <property name="title">
+                <string>矢量数据格式</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_2">
+                <item row="0" column="1">
+                 <widget class="QRadioButton" name="radioButton_gpkg_raster">
+                  <property name="text">
+                   <string>gpkg</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="0">
+                 <widget class="QRadioButton" name="radioButton_shp_raster">
+                  <property name="text">
+                   <string>shp</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="0" column="0" colspan="4">
+              <widget class="QGroupBox" name="groupBox_5">
+               <property name="title">
+                <string>栅格就绪型数据类别</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout">
+                <item row="0" column="0">
+                 <widget class="QRadioButton" name="radioButton_terrain_factor">
+                  <property name="text">
+                   <string>地形因子</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="1">
+                 <widget class="QRadioButton" name="radioButton_rasterize">
+                  <property name="text">
+                   <string>矢量数据栅格化</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="3" column="0" colspan="3">
+              <widget class="QLineEdit" name="lineEdit_RasterARD_ConfigFilePath"/>
+             </item>
+             <item row="5" column="0" colspan="3">
+              <widget class="QLineEdit" name="lineEdit_RasterARD_InputDataPath"/>
+             </item>
+             <item row="7" column="0" colspan="3">
+              <widget class="QLineEdit" name="lineEdit_RasterARD_InputMetadataPath"/>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_VectorARD">
+            <attribute name="title">
+             <string>矢量分析就绪数据</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_5">
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_5">
+               <property name="text">
+                <string>定制参数配置文件路径</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="3">
+              <widget class="QPushButton" name="pushButton_VectorARD_ConfigFilePath">
+               <property name="maximumSize">
+                <size>
+                 <width>75</width>
+                 <height>16777215</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>浏览</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QLabel" name="label_6">
+               <property name="text">
+                <string>数据源路径</string>
+               </property>
+              </widget>
+             </item>
+             <item row="4" column="3">
+              <widget class="QPushButton" name="pushButton_VectorARD_InputDataPath">
+               <property name="maximumSize">
+                <size>
+                 <width>16777215</width>
+                 <height>16777215</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>浏览</string>
+               </property>
+              </widget>
+             </item>
+             <item row="5" column="0" colspan="2">
+              <widget class="QLabel" name="label_9">
+               <property name="text">
+                <string>数据源元数据（json格式）文件路径</string>
+               </property>
+              </widget>
+             </item>
+             <item row="6" column="0" colspan="3">
+              <widget class="QLineEdit" name="lineEdit_VectorARD_InputMetadataPath"/>
+             </item>
+             <item row="6" column="3">
+              <widget class="QPushButton" name="pushButton_VectorARD_InputMetadataPath">
+               <property name="maximumSize">
+                <size>
+                 <width>75</width>
+                 <height>16777215</height>
+                </size>
+               </property>
+               <property name="text">
+                <string>浏览</string>
+               </property>
+              </widget>
+             </item>
+             <item row="8" column="0">
+              <widget class="QLabel" name="label_7">
+               <property name="text">
+                <string>保存路径</string>
+               </property>
+              </widget>
+             </item>
+             <item row="8" column="1">
+              <widget class="QCheckBox" name="checkBox_VectorMetaData">
+               <property name="text">
+                <string>是否生成元数据</string>
+               </property>
+              </widget>
+             </item>
+             <item row="8" column="2" colspan="2">
+              <spacer name="horizontalSpacer_2">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint" stdset="0">
+                <size>
+                 <width>628</width>
+                 <height>20</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item row="9" column="3">
+              <widget class="QPushButton" name="pushButton_VectorARD_SavePath">
+               <property name="text">
+                <string>浏览</string>
+               </property>
+              </widget>
+             </item>
+             <item row="7" column="0" colspan="4">
+              <widget class="QTableWidget" name="tableWidget_VectorARD">
+               <column>
+                <property name="text">
+                 <string>图层名称</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>分析就绪数据产品名称</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>分析就绪数据产品标识</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>比例尺分母</string>
+                </property>
+               </column>
+               <column>
+                <property name="text">
+                 <string>是否生成</string>
+                </property>
+               </column>
+              </widget>
+             </item>
+             <item row="9" column="0" colspan="3">
+              <widget class="QLineEdit" name="lineEdit_VectorARD_SavePath"/>
+             </item>
+             <item row="4" column="0" colspan="3">
+              <widget class="QLineEdit" name="lineEdit_VectorARD_InputDataPath"/>
+             </item>
+             <item row="2" column="0" colspan="3">
+              <widget class="QLineEdit" name="lineEdit_VectorARD_ConfigFilePath"/>
+             </item>
+             <item row="0" column="0" colspan="4">
+              <widget class="QGroupBox" name="groupBox_6">
+               <property name="title">
+                <string>矢量数据格式</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_4">
+                <item row="0" column="1">
+                 <widget class="QRadioButton" name="radioButton_gpkg_vector">
+                  <property name="text">
+                   <string>gpkg</string>
+                  </property>
+                 </widget>
+                </item>
+                <item row="0" column="0">
+                 <widget class="QRadioButton" name="radioButton_shp_vector">
+                  <property name="text">
+                   <string>shp</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QGroupBox" name="groupBox_InputData_3">
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="title">
+         <string>日志设置</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_8">
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_ShpPath_4">
+           <property name="minimumSize">
+            <size>
+             <width>100</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>50</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>日志级别</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QComboBox" name="comboBox_LogLevel">
+           <property name="minimumSize">
+            <size>
+             <width>120</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>75</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <item>
+            <property name="text">
+             <string>错误</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>信息</string>
+            </property>
+           </item>
+           <item>
+            <property name="text">
+             <string>调试</string>
+            </property>
+           </item>
+          </widget>
+         </item>
+         <item row="0" column="2" colspan="2">
+          <spacer name="horizontalSpacer_3">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>238</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="label_ShpPath_3">
+           <property name="text">
+            <string>保存路径</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0" colspan="3">
+          <widget class="QLineEdit" name="lineEdit_OutputLogPath">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <property name="toolTip">
+            <string>设置日志文件保存路径</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="3">
+          <widget class="QPushButton" name="Button_SaveLogFilePath">
+           <property name="maximumSize">
+            <size>
+             <width>75</width>
+             <height>16777215</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>浏览</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <widget class="QProgressBar" name="progressBar">
+     <property name="value">
+      <number>0</number>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

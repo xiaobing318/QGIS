@@ -1,0 +1,543 @@
+########################################################
+# Files set
+set(analysis_ready_data_tools_SRCS
+  # 插件入口
+  analysis_ready_data_tools.cpp
+
+  # 工具集
+  ui_class/se_clip_vector_data_by_grid_level.cpp
+  ui_class/se_customize_ARD.cpp
+  ui_class/se_datas_dlg.cpp
+  ui_class/se_display_statistic_data.cpp
+  ui_class/se_download_ARD_packet.cpp
+  ui_class/se_edit_source_data_metadata.cpp
+  ui_class/se_gpkg_division_rule.cpp
+  ui_class/se_grid_division_rule.cpp
+  ui_class/se_load_dem_data.cpp
+  ui_class/se_manage_ARD_package.cpp
+  ui_class/se_manage_log.cpp
+  ui_class/se_manage_metadata.cpp
+  ui_class/se_manage_raster_ARD_metadata.cpp
+  ui_class/se_merge_raster_ARD_package.cpp
+  ui_class/se_merge_vector_ARD_package.cpp
+  ui_class/se_metadata_template.cpp
+  ui_class/se_models_dlg.cpp
+  ui_class/se_packet_seg_and_encap.cpp
+  ui_class/se_pack_display_ready_data.cpp
+  ui_class/se_pack_raster_theme_ARD.cpp
+  ui_class/se_pack_shp_ARD.cpp
+  ui_class/se_pack_shp_ARD_multithread.cpp
+  ui_class/se_pack_theme_display_ready_data.cpp
+  ui_class/se_pack_tif_ARD.cpp
+  ui_class/se_pack_vector_theme_ARD.cpp
+  ui_class/se_raster_ARD_check.cpp
+  ui_class/se_raster_ARD_packet_check.cpp
+  ui_class/se_relate_source_data.cpp
+  ui_class/se_task_model_ARD_rule.cpp
+  ui_class/se_unpack_raster_ARD.cpp
+  ui_class/se_unpack_vector_ARD.cpp
+  ui_class/se_unzip_packet.cpp
+  ui_class/se_upload_ARD_packet.cpp
+  ui_class/se_vector_ARD_check.cpp
+  ui_class/se_vector_ARD_packet_check.cpp
+  ui_class/se_vector_format_conversion.cpp
+
+  ui_task/se_clip_vector_data_by_grid_level_task.cpp
+  ui_task/se_customize_rasterize_task.cpp
+  ui_task/se_customize_terrain_factor_task.cpp
+  ui_task/se_customize_vector_task.cpp
+  ui_task/se_dem2tif_task.cpp
+  ui_task/se_download_ARD_packet_task.cpp
+  ui_task/se_geojson2gpkg.cpp
+  ui_task/se_geojson2shp.cpp
+  ui_task/se_gpkg2shp.cpp
+  ui_task/se_merge_raster_gpkg_task.cpp
+  ui_task/se_merge_vector_gpkg_task.cpp
+  ui_task/se_packet_seg_and_encap_task.cpp
+  ui_task/se_pack_display_ready_data_task.cpp
+  ui_task/se_pack_raster_theme_ARD_task.cpp
+  ui_task/se_pack_shp_ARD2_task.cpp
+  ui_task/se_pack_shp_ARD_task.cpp
+  ui_task/se_pack_theme_display_ready_data_task.cpp
+  ui_task/se_pack_tif_ARD_task.cpp
+  ui_task/se_pack_vector_theme_ARD_task.cpp
+  ui_task/se_raster_ARD_check_task.cpp
+  ui_task/se_raster_ARD_packet_check_task.cpp
+  ui_task/se_shp2gpkg.cpp
+  ui_task/se_unpack_raster_ARD_task.cpp
+  ui_task/se_unpack_vector_ARD_task.cpp
+  ui_task/se_unzip_packet_task.cpp
+  ui_task/se_upload_ARD_packet_task.cpp
+  ui_task/se_vector_ARD_check_task.cpp
+  ui_task/se_vector_ARD_packet_check_task.cpp
+
+  common/cse_mapsheet.cpp
+)
+
+set(analysis_ready_data_tools_HDRS
+  # 插件入口
+  analysis_ready_data_tools.h
+
+  # 工具集
+  ui_class/se_clip_vector_data_by_grid_level.h
+  ui_class/se_customize_ARD.h
+  ui_class/se_datas_dlg.h
+  ui_class/se_display_statistic_data.h
+  ui_class/se_download_ARD_packet.h
+  ui_class/se_edit_source_data_metadata.h
+  ui_class/se_gpkg_division_rule.h
+  ui_class/se_grid_division_rule.h
+  ui_class/se_load_dem_data.h
+  ui_class/se_manage_ARD_package.h
+  ui_class/se_manage_log.h
+  ui_class/se_manage_metadata.h
+  ui_class/se_manage_raster_ARD_metadata.h
+  ui_class/se_merge_raster_ARD_package.h
+  ui_class/se_merge_vector_ARD_package.h
+  ui_class/se_metadata_template.h
+  ui_class/se_models_dlg.h
+  ui_class/se_packet_seg_and_encap.h
+  ui_class/se_pack_display_ready_data.h
+  ui_class/se_pack_raster_theme_ARD.h
+  ui_class/se_pack_shp_ARD.h
+  ui_class/se_pack_shp_ARD_multithread.h
+  ui_class/se_pack_theme_display_ready_data.h
+  ui_class/se_pack_tif_ARD.h
+  ui_class/se_pack_vector_theme_ARD.h
+  ui_class/se_raster_ARD_check.h
+  ui_class/se_raster_ARD_packet_check.h
+  ui_class/se_relate_source_data.h
+  ui_class/se_task_model_ARD_rule.h
+  ui_class/se_unpack_raster_ARD.h
+  ui_class/se_unpack_vector_ARD.h
+  ui_class/se_unzip_packet.h
+  ui_class/se_upload_ARD_packet.h
+  ui_class/se_vector_ARD_check.h
+  ui_class/se_vector_ARD_packet_check.h
+  ui_class/se_vector_format_conversion.h
+
+  ui_task/se_clip_vector_data_by_grid_level_task.h
+  ui_task/se_customize_rasterize_task.h
+  ui_task/se_customize_terrain_factor_task.h
+  ui_task/se_customize_vector_task.h
+  ui_task/se_dem2tif_task.h
+  ui_task/se_download_ARD_packet_task.h
+  ui_task/se_geojson2gpkg.h
+  ui_task/se_geojson2shp.h
+  ui_task/se_gpkg2shp.h
+  ui_task/se_merge_raster_gpkg_task.h
+  ui_task/se_merge_vector_gpkg_task.h
+  ui_task/se_packet_seg_and_encap_task.h
+  ui_task/se_pack_display_ready_data_task.h
+  ui_task/se_pack_raster_theme_ARD_task.h
+  ui_task/se_pack_shp_ARD2_task.h
+  ui_task/se_pack_shp_ARD_task.h
+  ui_task/se_pack_theme_display_ready_data_task.h
+  ui_task/se_pack_tif_ARD_task.h
+  ui_task/se_pack_vector_theme_ARD_task.h
+  ui_task/se_raster_ARD_check_task.h
+  ui_task/se_raster_ARD_packet_check_task.h
+  ui_task/se_shp2gpkg.h
+  ui_task/se_unpack_raster_ARD_task.h
+  ui_task/se_unpack_vector_ARD_task.h
+  ui_task/se_unzip_packet_task.h
+  ui_task/se_upload_ARD_packet_task.h
+  ui_task/se_vector_ARD_check_task.h
+  ui_task/se_vector_ARD_packet_check_task.h
+
+  common/cse_mapsheet.h
+)
+
+set(analysis_ready_data_tools_UIS
+  ui/clip_vector_data_by_grid_level.ui
+  ui/customize_ARD.ui
+  ui/datas.ui
+  ui/display_statistic_data.ui
+  ui/download_ARD_packet.ui
+  ui/edit_source_data_metadata.ui
+  ui/gpkg_division_rule.ui
+  ui/grid_division_rule.ui
+  ui/load_dem_data.ui
+  ui/manage_ARD_package.ui
+  ui/manage_log.ui
+  ui/manage_metadata.ui
+  ui/manage_raster_ARD_metadata.ui
+  ui/merge_raster_gpkg.ui
+  ui/merge_vector_gpkg.ui
+  ui/metadata_template.ui
+  ui/models.ui
+  ui/packet_segmentation_and_encapsulation.ui
+  ui/pack_display_ready_data.ui
+  ui/pack_raster_ARD.ui
+  ui/pack_raster_theme_ARD.ui
+  ui/pack_theme_display_ready_data.ui
+  ui/pack_vector_ARD.ui
+  ui/pack_vector_theme_ARD.ui
+  ui/raster_ard_check.ui
+  ui/raster_ard_packet_check.ui
+  ui/relate_source_data.ui
+  ui/task_model_ARD_rule.ui
+  ui/unpack_raster_ARD.ui
+  ui/unpack_vector_ARD.ui
+  ui/unzip_packet.ui
+  ui/upload_ARD_packet.ui
+  ui/vector_ard_check.ui
+  ui/vector_ard_packet_check.ui
+  ui/vector_format_conversion.ui
+)
+
+set(analysis_ready_data_tools_RCCS
+  analysis_ready_data_tools.qrc
+)
+
+########################################################
+#------------------------------------------------------------
+# 1. 平台检测
+#------------------------------------------------------------
+if(WIN32)
+    set(PLATFORM_TYPE "WINDOWS")
+elseif(UNIX)
+    set(PLATFORM_TYPE "LINUX")
+else()
+    message(FATAL_ERROR "Unsupported platform")
+endif()
+
+#------------------------------------------------------------
+# 2. Qt 自动处理（UIC/MOC/RCC）
+#------------------------------------------------------------
+set(CMAKE_AUTOMOC ON)
+set(CMAKE_AUTORCC ON)
+
+#------------------------------------------------------------
+# 3. Qt 版本判断
+#------------------------------------------------------------
+set(_Qt_VERSION 5)
+if(BUILD_WITH_QT6)
+    set(_Qt_VERSION 6)
+endif()
+
+if(_Qt_VERSION EQUAL 6)
+    qt6_wrap_ui(analysis_ready_data_tools_UIS_H ${analysis_ready_data_tools_UIS})
+else()
+    qt5_wrap_ui(analysis_ready_data_tools_UIS_H ${analysis_ready_data_tools_UIS})
+endif()
+
+#------------------------------------------------------------
+# 4. 库目标（MODULE plugin）
+#------------------------------------------------------------
+add_library(plugin_analysis_ready_data_tools MODULE
+    ${analysis_ready_data_tools_SRCS}
+    ${analysis_ready_data_tools_RCCS}
+    ${analysis_ready_data_tools_UIS_H}
+)
+
+# require c++17
+target_compile_features(plugin_analysis_ready_data_tools PRIVATE cxx_std_17)
+
+#------------------------------------------------------------
+# 5. 平台特定的路径配置
+#------------------------------------------------------------
+if(PLATFORM_TYPE STREQUAL "WINDOWS")
+    # Windows平台配置
+    set(QGIS_ROOT_DIR "${CMAKE_SOURCE_DIR}")
+    set(QGIS_BUILD_DIR "${CMAKE_BINARY_DIR}")
+    set(OSGEO4W_ROOT "$ENV{OSGEO4W_ROOT}")
+
+    # Qt路径（Windows OSGeo4W64）
+    if(NOT OSGEO4W_ROOT)
+        set(OSGEO4W_ROOT "C:/OSGeo4W64")
+    endif()
+
+    set(QT_INCLUDE_DIR "${OSGEO4W_ROOT}/apps/Qt5/include")
+    set(QT_LIB_DIR "${OSGEO4W_ROOT}/apps/Qt5/lib")
+
+    # QGIS头文件路径（Windows）
+    set(QGIS_INCLUDE_DIRS
+        ${QGIS_ROOT_DIR}/src/core
+        ${QGIS_BUILD_DIR}/src/core
+        ${QGIS_ROOT_DIR}/src/core/3d
+        ${QGIS_ROOT_DIR}/src/core/annotations
+        ${QGIS_ROOT_DIR}/src/core/auth
+        ${QGIS_ROOT_DIR}/src/core/browser
+        ${QGIS_ROOT_DIR}/src/core/callouts
+        ${QGIS_ROOT_DIR}/src/core/classification
+        ${QGIS_ROOT_DIR}/src/core/diagram
+        ${QGIS_ROOT_DIR}/src/core/dxf
+        ${QGIS_ROOT_DIR}/src/core/editform
+        ${QGIS_ROOT_DIR}/src/core/effects
+        ${QGIS_ROOT_DIR}/src/core/elevation
+        ${QGIS_ROOT_DIR}/src/core/expression
+        ${QGIS_ROOT_DIR}/src/core/externalstorage
+        ${QGIS_ROOT_DIR}/src/core/fieldformatter
+        ${QGIS_ROOT_DIR}/src/core/geocms
+        ${QGIS_ROOT_DIR}/src/core/geocoding
+        ${QGIS_ROOT_DIR}/src/core/geometry
+        ${QGIS_ROOT_DIR}/src/core/gps
+        ${QGIS_ROOT_DIR}/src/core/labeling
+        ${QGIS_ROOT_DIR}/src/core/layertree
+        ${QGIS_ROOT_DIR}/src/core/layout
+        ${QGIS_ROOT_DIR}/src/core/locator
+        ${QGIS_ROOT_DIR}/src/core/maprenderer
+        ${QGIS_ROOT_DIR}/src/core/mesh
+        ${QGIS_ROOT_DIR}/src/core/metadata
+        ${QGIS_ROOT_DIR}/src/core/network
+        ${QGIS_ROOT_DIR}/src/core/numericformats
+        ${QGIS_ROOT_DIR}/src/core/pal
+        ${QGIS_ROOT_DIR}/src/core/plot
+        ${QGIS_ROOT_DIR}/src/core/pointcloud
+        ${QGIS_ROOT_DIR}/src/core/processing
+        ${QGIS_ROOT_DIR}/src/core/proj
+        ${QGIS_ROOT_DIR}/src/core/project
+        ${QGIS_ROOT_DIR}/src/core/providers
+        ${QGIS_ROOT_DIR}/src/core/raster
+        ${QGIS_ROOT_DIR}/src/core/scalebar
+        ${QGIS_ROOT_DIR}/src/core/settings
+        ${QGIS_ROOT_DIR}/src/core/simplify
+        ${QGIS_ROOT_DIR}/src/core/symbology
+        ${QGIS_ROOT_DIR}/src/core/textrenderer
+        ${QGIS_ROOT_DIR}/src/core/validity
+        ${QGIS_ROOT_DIR}/src/core/vector
+        ${QGIS_ROOT_DIR}/src/core/vectortile
+        ${QGIS_ROOT_DIR}/src/gui
+        ${QGIS_ROOT_DIR}/src/gui/layertree
+        ${QGIS_BUILD_DIR}/src/gui
+        ${QGIS_ROOT_DIR}/src/analysis
+        ${QGIS_BUILD_DIR}/src/analysis
+        ${QGIS_ROOT_DIR}/src/native
+        ${QGIS_BUILD_DIR}/src/native
+        ${QGIS_ROOT_DIR}/src/plugins
+    )
+
+    # QGIS库路径（Windows）
+    set(QGIS_LIBRARIES
+        ${QGIS_BUILD_DIR}/src/core/RelWithDebInfo/qgis_core.lib
+        ${QGIS_BUILD_DIR}/src/gui/RelWithDebInfo/qgis_gui.lib
+        ${QGIS_BUILD_DIR}/src/analysis/RelWithDebInfo/qgis_analysis.lib
+        ${QGIS_BUILD_DIR}/src/native/RelWithDebInfo/qgis_native.lib
+    )
+
+    # 外部库头文件（Windows）
+    set(EXTERNAL_INCLUDE_DIRS
+        ${OSGEO4W_ROOT}/include
+        ${OSGEO4W_ROOT}/include/gdal
+        ${OSGEO4W_ROOT}/include/libxml2
+        ${QT_INCLUDE_DIR}/QtCore
+        ${QT_INCLUDE_DIR}/QtGui
+        ${QT_INCLUDE_DIR}/QtWidgets
+        ${QT_INCLUDE_DIR}/QtXml
+        ${QT_INCLUDE_DIR}/QtSvg
+        ${QT_INCLUDE_DIR}/QtQuick
+        ${QT_INCLUDE_DIR}/QtCharts
+        ${QT_INCLUDE_DIR}/QtQml
+        ${QT_INCLUDE_DIR}
+    )
+
+    # 外部库文件（Windows）
+    set(EXTERNAL_LIBRARIES
+        ${OSGEO4W_ROOT}/lib/gdal_i.lib
+        ${OSGEO4W_ROOT}/lib/sqlite3_i.lib
+        ${OSGEO4W_ROOT}/lib/libxml2.lib
+        ${OSGEO4W_ROOT}/lib/iconv.dll.lib
+        ${QT_LIB_DIR}/Qt5Core.lib
+        ${QT_LIB_DIR}/Qt5Gui.lib
+        ${QT_LIB_DIR}/Qt5Widgets.lib
+        ${QT_LIB_DIR}/Qt5Xml.lib
+        ${QT_LIB_DIR}/Qt5Svg.lib
+        ${QT_LIB_DIR}/Qt5Quick.lib
+        ${QT_LIB_DIR}/Qt5Charts.lib
+        ${QT_LIB_DIR}/Qt5Qml.lib
+    )
+
+    # 自定义库（Windows）
+    set(CUSTOM_LIBRARIES
+        ${QGIS_BUILD_DIR}/src/starmap_src/base_zchj_data_process/RelWithDebInfo/base_zchj_data_process.lib
+    )
+
+    # Windows预处理器定义
+    set(PLATFORM_DEFINITIONS
+        "-DOS_FAMILY_WINDOWS"
+        "-D_HAS_STD_BYTE=0"
+        "-DWIN32_LEAN_AND_MEAN"
+        "-DNOMINMAX"
+    )
+
+elseif(PLATFORM_TYPE STREQUAL "LINUX")
+    # Linux平台配置
+    set(QGIS_ROOT_DIR "${CMAKE_SOURCE_DIR}")
+    set(QGIS_BUILD_DIR "${CMAKE_BINARY_DIR}")
+
+    # QGIS头文件路径（Linux）
+    set(QGIS_INCLUDE_DIRS
+        ${QGIS_ROOT_DIR}/src/core
+        ${QGIS_BUILD_DIR}/src/core
+        ${QGIS_ROOT_DIR}/src/core/3d
+        ${QGIS_ROOT_DIR}/src/core/annotations
+        ${QGIS_ROOT_DIR}/src/core/auth
+        ${QGIS_ROOT_DIR}/src/core/browser
+        ${QGIS_ROOT_DIR}/src/core/callouts
+        ${QGIS_ROOT_DIR}/src/core/classification
+        ${QGIS_ROOT_DIR}/src/core/diagram
+        ${QGIS_ROOT_DIR}/src/core/dxf
+        ${QGIS_ROOT_DIR}/src/core/editform
+        ${QGIS_ROOT_DIR}/src/core/effects
+        ${QGIS_ROOT_DIR}/src/core/elevation
+        ${QGIS_ROOT_DIR}/src/core/expression
+        ${QGIS_ROOT_DIR}/src/core/externalstorage
+        ${QGIS_ROOT_DIR}/src/core/fieldformatter
+        ${QGIS_ROOT_DIR}/src/core/geocms
+        ${QGIS_ROOT_DIR}/src/core/geocoding
+        ${QGIS_ROOT_DIR}/src/core/geometry
+        ${QGIS_ROOT_DIR}/src/core/gps
+        ${QGIS_ROOT_DIR}/src/core/labeling
+        ${QGIS_ROOT_DIR}/src/core/layertree
+        ${QGIS_ROOT_DIR}/src/core/layout
+        ${QGIS_ROOT_DIR}/src/core/locator
+        ${QGIS_ROOT_DIR}/src/core/maprenderer
+        ${QGIS_ROOT_DIR}/src/core/mesh
+        ${QGIS_ROOT_DIR}/src/core/metadata
+        ${QGIS_ROOT_DIR}/src/core/network
+        ${QGIS_ROOT_DIR}/src/core/numericformats
+        ${QGIS_ROOT_DIR}/src/core/pal
+        ${QGIS_ROOT_DIR}/src/core/plot
+        ${QGIS_ROOT_DIR}/src/core/pointcloud
+        ${QGIS_ROOT_DIR}/src/core/processing
+        ${QGIS_ROOT_DIR}/src/core/proj
+        ${QGIS_ROOT_DIR}/src/core/project
+        ${QGIS_ROOT_DIR}/src/core/providers
+        ${QGIS_ROOT_DIR}/src/core/raster
+        ${QGIS_ROOT_DIR}/src/core/scalebar
+        ${QGIS_ROOT_DIR}/src/core/settings
+        ${QGIS_ROOT_DIR}/src/core/simplify
+        ${QGIS_ROOT_DIR}/src/core/symbology
+        ${QGIS_ROOT_DIR}/src/core/textrenderer
+        ${QGIS_ROOT_DIR}/src/core/validity
+        ${QGIS_ROOT_DIR}/src/core/vector
+        ${QGIS_ROOT_DIR}/src/core/vectortile
+        ${QGIS_ROOT_DIR}/src/gui
+        ${QGIS_ROOT_DIR}/src/gui/layertree
+        ${QGIS_BUILD_DIR}/src/gui
+        ${QGIS_ROOT_DIR}/src/analysis
+        ${QGIS_BUILD_DIR}/src/analysis
+        ${QGIS_ROOT_DIR}/src/native
+        ${QGIS_BUILD_DIR}/src/native
+        ${QGIS_ROOT_DIR}/src/plugins
+    )
+
+    # QGIS库路径（Linux）
+    set(QGIS_LIBRARIES
+        ${QGIS_BUILD_DIR}/output/lib/libqgis_core.so
+        ${QGIS_BUILD_DIR}/output/lib/libqgis_gui.so
+        ${QGIS_BUILD_DIR}/output/lib/libqgis_analysis.so
+        ${QGIS_BUILD_DIR}/output/lib/libqgis_native.so
+    )
+
+    # 外部库头文件（Linux）
+    set(EXTERNAL_INCLUDE_DIRS
+        /usr/include/gdal
+        /usr/include/libxml2
+        /usr/include/sqlite3
+        /usr/include/aarch64-linux-gnu/qt5/QtCore
+        /usr/include/aarch64-linux-gnu/qt5/QtGui
+        /usr/include/aarch64-linux-gnu/qt5/QtWidgets
+        /usr/include/aarch64-linux-gnu/qt5/QtXml
+        /usr/include/aarch64-linux-gnu/qt5/QtSvg
+        /usr/include/aarch64-linux-gnu/qt5/QtQuick
+        #/usr/include/aarch64-linux-gnu/qt5/QtCharts
+        /usr/include/aarch64-linux-gnu/qt5/QtQml
+        /usr/include/aarch64-linux-gnu/qt5
+    )
+
+    # 外部库文件（Linux）
+    set(EXTERNAL_LIBRARIES
+        /usr/lib/aarch64-linux-gnu/libgdal.so
+        /usr/lib/aarch64-linux-gnu/libsqlite3.so
+        /usr/lib/aarch64-linux-gnu/libxml2.so
+        /usr/lib/aarch64-linux-gnu/libiconv.so
+        /usr/lib/aarch64-linux-gnu/libQt5Core.so
+        /usr/lib/aarch64-linux-gnu/libQt5Gui.so
+        /usr/lib/aarch64-linux-gnu/libQt5Widgets.so
+        /usr/lib/aarch64-linux-gnu/libQt5Xml.so
+        /usr/lib/aarch64-linux-gnu/libQt5Svg.so
+        /usr/lib/aarch64-linux-gnu/libQt5Quick.so
+        #/usr/lib/aarch64-linux-gnu/libQt5Charts.so
+        /usr/lib/aarch64-linux-gnu/libQt5Qml.so
+    )
+
+    # 自定义库（Linux）
+    set(CUSTOM_LIBRARIES
+        ${QGIS_BUILD_DIR}/src/starmap_src/base_zchj_data_process/libbase_zchj_data_process.so
+    )
+
+    # Linux预处理器定义
+    set(PLATFORM_DEFINITIONS
+        "-DOS_FAMILY_LINUX"
+    )
+endif()
+
+#------------------------------------------------------------
+# 6. 包含头文件
+#------------------------------------------------------------
+target_include_directories(plugin_analysis_ready_data_tools SYSTEM PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+    ${CMAKE_CURRENT_BINARY_DIR}
+    ${QGIS_INCLUDE_DIRS}
+    ${EXTERNAL_INCLUDE_DIRS}
+    # 插件特定头文件
+    ${CMAKE_SOURCE_DIR}/src/plugins/analysis_ready_data_tools
+    ${CMAKE_BINARY_DIR}/src/plugins/analysis_ready_data_tools
+    ${CMAKE_SOURCE_DIR}/src/starmap_src/geo_algorithm_h
+    ${CMAKE_SOURCE_DIR}/external/starmap_external/spdlog_01_15_00/include
+    ${CMAKE_SOURCE_DIR}/external/starmap_external/nlohmann
+    ${CMAKE_SOURCE_DIR}/external/starmap_external
+)
+
+#------------------------------------------------------------
+# 7. 链接库
+#------------------------------------------------------------
+target_link_libraries(plugin_analysis_ready_data_tools PRIVATE
+    ${QGIS_LIBRARIES}
+    ${EXTERNAL_LIBRARIES}
+    ${CUSTOM_LIBRARIES}
+)
+
+#------------------------------------------------------------
+# 8. 添加预处理器定义
+#------------------------------------------------------------
+target_compile_definitions(plugin_analysis_ready_data_tools PRIVATE
+    ${PLATFORM_DEFINITIONS}
+)
+
+#------------------------------------------------------------
+# 9. 平台特定编译选项
+#------------------------------------------------------------
+if(PLATFORM_TYPE STREQUAL "WINDOWS")
+    # Windows特定编译选项
+    target_compile_options(plugin_analysis_ready_data_tools PRIVATE
+        /W3
+        /bigobj
+    )
+    # 设置Windows运行时库
+    set_property(TARGET plugin_analysis_ready_data_tools PROPERTY
+        MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+
+elseif(PLATFORM_TYPE STREQUAL "LINUX")
+    # Linux特定编译选项
+    target_compile_options(plugin_analysis_ready_data_tools PRIVATE
+        -Wall
+        -Wextra
+        -fPIC
+    )
+endif()
+
+########################################################
+# Install
+if(PLATFORM_TYPE STREQUAL "WINDOWS")
+    set(QGIS_PLUGIN_DIR "${CMAKE_INSTALL_PREFIX}/plugins")
+elseif(PLATFORM_TYPE STREQUAL "LINUX")
+    set(QGIS_PLUGIN_DIR "${CMAKE_INSTALL_PREFIX}/lib/qgis/plugins")
+endif()
+
+install(TARGETS plugin_analysis_ready_data_tools
+    RUNTIME DESTINATION ${QGIS_PLUGIN_DIR}
+    LIBRARY DESTINATION ${QGIS_PLUGIN_DIR}
+)

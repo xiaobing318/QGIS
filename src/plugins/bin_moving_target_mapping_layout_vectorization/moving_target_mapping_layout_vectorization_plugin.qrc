@@ -1,0 +1,5 @@
+<RCC>
+    <qresource prefix="/bin_moving_target_mapping_layout_vectorization">
+        <file>icons/moving_target_mapping_layout_vectorization.svg</file>
+    </qresource>
+</RCC>

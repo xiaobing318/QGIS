@@ -1,0 +1,1090 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>EditSrcDataMetadataDlg</class>
+ <widget class="QDialog" name="EditSrcDataMetadataDlg">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>611</width>
+    <height>607</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>原始数据元数据编辑</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout_5">
+   <item row="0" column="0" colspan="3">
+    <widget class="QGroupBox" name="groupBox">
+     <property name="title">
+      <string/>
+     </property>
+     <layout class="QGridLayout" name="gridLayout_77">
+      <item row="0" column="0">
+       <widget class="QGroupBox" name="groupBox_15">
+        <property name="title">
+         <string>元数据模板设置</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_76">
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_13">
+           <property name="text">
+            <string>元数据模板文件路径</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLineEdit" name="lineEdit_InputPath"/>
+         </item>
+         <item row="1" column="1">
+          <widget class="QPushButton" name="pushButton_LoadFile">
+           <property name="text">
+            <string>浏览</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QGroupBox" name="groupBox_3">
+        <property name="title">
+         <string>原始数据类型</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_75">
+         <item row="0" column="0">
+          <widget class="QTabWidget" name="tabWidget_DataType">
+           <property name="font">
+            <font>
+             <pointsize>9</pointsize>
+             <weight>50</weight>
+             <bold>false</bold>
+            </font>
+           </property>
+           <property name="toolTip">
+            <string>根据不同的标签页选择原始数据类型</string>
+           </property>
+           <property name="layoutDirection">
+            <enum>Qt::LeftToRight</enum>
+           </property>
+           <property name="styleSheet">
+            <string notr="true"/>
+           </property>
+           <property name="tabShape">
+            <enum>QTabWidget::Rounded</enum>
+           </property>
+           <property name="currentIndex">
+            <number>2</number>
+           </property>
+           <property name="documentMode">
+            <bool>false</bool>
+           </property>
+           <property name="tabsClosable">
+            <bool>false</bool>
+           </property>
+           <property name="movable">
+            <bool>false</bool>
+           </property>
+           <property name="tabBarAutoHide">
+            <bool>false</bool>
+           </property>
+           <widget class="QWidget" name="tab_2">
+            <attribute name="title">
+             <string>1-矢量数据</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label">
+               <property name="font">
+                <font>
+                 <family>楷体</family>
+                 <pointsize>10</pointsize>
+                 <weight>75</weight>
+                 <italic>false</italic>
+                 <bold>true</bold>
+                 <underline>false</underline>
+                 <strikeout>false</strikeout>
+                </font>
+               </property>
+               <property name="text">
+                <string>当前页面为【矢量数据】元数据编辑页面</string>
+               </property>
+               <property name="textFormat">
+                <enum>Qt::AutoText</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_2">
+               <property name="title">
+                <string>元数据编辑</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_2">
+                <item row="0" column="0">
+                 <widget class="QTableWidget" name="tableWidget_ShiLiang">
+                  <column>
+                   <property name="text">
+                    <string>元数据类</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据项</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据元素简称</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据类型</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>格式</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>备注</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>属性值</string>
+                   </property>
+                  </column>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_3">
+            <attribute name="title">
+             <string>2-影像数据</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_3">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_2">
+               <property name="font">
+                <font>
+                 <family>楷体</family>
+                 <pointsize>10</pointsize>
+                 <weight>75</weight>
+                 <italic>false</italic>
+                 <bold>true</bold>
+                 <underline>false</underline>
+                 <strikeout>false</strikeout>
+                </font>
+               </property>
+               <property name="text">
+                <string>当前页面为【影像数据】元数据编辑页面</string>
+               </property>
+               <property name="textFormat">
+                <enum>Qt::AutoText</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_4">
+               <property name="title">
+                <string>元数据编辑</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_4">
+                <item row="0" column="0">
+                 <widget class="QTableWidget" name="tableWidget_YingXiang">
+                  <column>
+                   <property name="text">
+                    <string>元数据类</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据项</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据元素简称</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据类型</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>格式</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>备注</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>属性值</string>
+                   </property>
+                  </column>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_4">
+            <attribute name="title">
+             <string>3-高程数据</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_6">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_3">
+               <property name="font">
+                <font>
+                 <family>楷体</family>
+                 <pointsize>10</pointsize>
+                 <weight>75</weight>
+                 <italic>false</italic>
+                 <bold>true</bold>
+                 <underline>false</underline>
+                 <strikeout>false</strikeout>
+                </font>
+               </property>
+               <property name="text">
+                <string>当前页面为【高程数据】元数据编辑页面</string>
+               </property>
+               <property name="textFormat">
+                <enum>Qt::AutoText</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_5">
+               <property name="title">
+                <string>元数据编辑</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_7">
+                <item row="0" column="0">
+                 <widget class="QTableWidget" name="tableWidget_GaoCheng">
+                  <column>
+                   <property name="text">
+                    <string>元数据类</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据项</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据元素简称</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据类型</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>格式</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>备注</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>属性值</string>
+                   </property>
+                  </column>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_5">
+            <attribute name="title">
+             <string>4-地名数据</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_8">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_4">
+               <property name="font">
+                <font>
+                 <family>楷体</family>
+                 <pointsize>10</pointsize>
+                 <weight>75</weight>
+                 <italic>false</italic>
+                 <bold>true</bold>
+                 <underline>false</underline>
+                 <strikeout>false</strikeout>
+                </font>
+               </property>
+               <property name="text">
+                <string>当前页面为【地名数据】元数据编辑页面</string>
+               </property>
+               <property name="textFormat">
+                <enum>Qt::AutoText</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_6">
+               <property name="title">
+                <string>元数据编辑</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_10">
+                <item row="0" column="0">
+                 <widget class="QTableWidget" name="tableWidget_DiMing">
+                  <column>
+                   <property name="text">
+                    <string>元数据类</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据项</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据元素简称</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据类型</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>格式</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>备注</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>属性值</string>
+                   </property>
+                  </column>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_6">
+            <attribute name="title">
+             <string>5-实景数据</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_11">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_5">
+               <property name="font">
+                <font>
+                 <family>楷体</family>
+                 <pointsize>10</pointsize>
+                 <weight>75</weight>
+                 <italic>false</italic>
+                 <bold>true</bold>
+                 <underline>false</underline>
+                 <strikeout>false</strikeout>
+                </font>
+               </property>
+               <property name="text">
+                <string>当前页面为【实景数据】元数据编辑页面</string>
+               </property>
+               <property name="textFormat">
+                <enum>Qt::AutoText</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_7">
+               <property name="title">
+                <string>元数据编辑</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_12">
+                <item row="0" column="0">
+                 <widget class="QTableWidget" name="tableWidget_ShiJing">
+                  <column>
+                   <property name="text">
+                    <string>元数据类</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据项</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据元素简称</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据类型</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>格式</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>备注</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>属性值</string>
+                   </property>
+                  </column>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_7">
+            <attribute name="title">
+             <string>6-国防领域地质数据</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_14">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_6">
+               <property name="font">
+                <font>
+                 <family>楷体</family>
+                 <pointsize>10</pointsize>
+                 <weight>75</weight>
+                 <italic>false</italic>
+                 <bold>true</bold>
+                 <underline>false</underline>
+                 <strikeout>false</strikeout>
+                </font>
+               </property>
+               <property name="text">
+                <string>当前页面为【国防领域地质数据】元数据编辑页面</string>
+               </property>
+               <property name="textFormat">
+                <enum>Qt::AutoText</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_8">
+               <property name="title">
+                <string>元数据编辑</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_13">
+                <item row="0" column="0">
+                 <widget class="QTableWidget" name="tableWidget_DiZhi">
+                  <column>
+                   <property name="text">
+                    <string>元数据类</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据项</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据元素简称</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据类型</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>格式</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>备注</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>属性值</string>
+                   </property>
+                  </column>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_8">
+            <attribute name="title">
+             <string>7-航空图数据</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_15">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_7">
+               <property name="font">
+                <font>
+                 <family>楷体</family>
+                 <pointsize>10</pointsize>
+                 <weight>75</weight>
+                 <italic>false</italic>
+                 <bold>true</bold>
+                 <underline>false</underline>
+                 <strikeout>false</strikeout>
+                </font>
+               </property>
+               <property name="text">
+                <string>当前页面为【航空图数据】元数据编辑页面</string>
+               </property>
+               <property name="textFormat">
+                <enum>Qt::AutoText</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_9">
+               <property name="title">
+                <string>元数据编辑</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_16">
+                <item row="0" column="0">
+                 <widget class="QTableWidget" name="tableWidget_HangKongTu">
+                  <column>
+                   <property name="text">
+                    <string>元数据类</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据项</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据元素简称</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据类型</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>格式</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>备注</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>属性值</string>
+                   </property>
+                  </column>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_9">
+            <attribute name="title">
+             <string>8-倾斜摄影数据</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_17">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_8">
+               <property name="font">
+                <font>
+                 <family>楷体</family>
+                 <pointsize>10</pointsize>
+                 <weight>75</weight>
+                 <italic>false</italic>
+                 <bold>true</bold>
+                 <underline>false</underline>
+                 <strikeout>false</strikeout>
+                </font>
+               </property>
+               <property name="text">
+                <string>当前页面为【倾斜摄影数据】元数据编辑页面</string>
+               </property>
+               <property name="textFormat">
+                <enum>Qt::AutoText</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_10">
+               <property name="title">
+                <string>元数据编辑</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_18">
+                <item row="0" column="0">
+                 <widget class="QTableWidget" name="tableWidget_QingXieSheYing">
+                  <column>
+                   <property name="text">
+                    <string>元数据类</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据项</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据元素简称</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据类型</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>格式</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>备注</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>属性值</string>
+                   </property>
+                  </column>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_10">
+            <attribute name="title">
+             <string>9-专用标绘数据</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_20">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_9">
+               <property name="font">
+                <font>
+                 <family>楷体</family>
+                 <pointsize>10</pointsize>
+                 <weight>75</weight>
+                 <italic>false</italic>
+                 <bold>true</bold>
+                 <underline>false</underline>
+                 <strikeout>false</strikeout>
+                </font>
+               </property>
+               <property name="text">
+                <string>当前页面为【专用标绘数据】元数据编辑页面</string>
+               </property>
+               <property name="textFormat">
+                <enum>Qt::AutoText</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_11">
+               <property name="title">
+                <string>元数据编辑</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_19">
+                <item row="0" column="0">
+                 <widget class="QTableWidget" name="tableWidget_BiaoHui">
+                  <column>
+                   <property name="text">
+                    <string>元数据类</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据项</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据元素简称</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据类型</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>格式</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>备注</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>属性值</string>
+                   </property>
+                  </column>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_11">
+            <attribute name="title">
+             <string>10-地下管网数据</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_21">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_10">
+               <property name="font">
+                <font>
+                 <family>楷体</family>
+                 <pointsize>10</pointsize>
+                 <weight>75</weight>
+                 <italic>false</italic>
+                 <bold>true</bold>
+                 <underline>false</underline>
+                 <strikeout>false</strikeout>
+                </font>
+               </property>
+               <property name="text">
+                <string>当前页面为【地下管网数据】元数据编辑页面</string>
+               </property>
+               <property name="textFormat">
+                <enum>Qt::AutoText</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_12">
+               <property name="title">
+                <string>元数据编辑</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_22">
+                <item row="0" column="0">
+                 <widget class="QTableWidget" name="tableWidget_GuanWang">
+                  <column>
+                   <property name="text">
+                    <string>元数据类</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据项</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据元素简称</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据类型</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>格式</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>备注</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>属性值</string>
+                   </property>
+                  </column>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_12">
+            <attribute name="title">
+             <string>11-高空气象数据</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_23">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_11">
+               <property name="font">
+                <font>
+                 <family>楷体</family>
+                 <pointsize>10</pointsize>
+                 <weight>75</weight>
+                 <italic>false</italic>
+                 <bold>true</bold>
+                 <underline>false</underline>
+                 <strikeout>false</strikeout>
+                </font>
+               </property>
+               <property name="text">
+                <string>当前页面为【高空气象数据】元数据编辑页面</string>
+               </property>
+               <property name="textFormat">
+                <enum>Qt::AutoText</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_13">
+               <property name="title">
+                <string>元数据编辑</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_24">
+                <item row="0" column="0">
+                 <widget class="QTableWidget" name="tableWidget_GaoKongQiXiang">
+                  <column>
+                   <property name="text">
+                    <string>元数据类</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据项</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据元素简称</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据类型</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>格式</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>备注</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>属性值</string>
+                   </property>
+                  </column>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+           <widget class="QWidget" name="tab_13">
+            <attribute name="title">
+             <string>12-地面气象数据</string>
+            </attribute>
+            <layout class="QGridLayout" name="gridLayout_25">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_12">
+               <property name="font">
+                <font>
+                 <family>楷体</family>
+                 <pointsize>10</pointsize>
+                 <weight>75</weight>
+                 <italic>false</italic>
+                 <bold>true</bold>
+                 <underline>false</underline>
+                 <strikeout>false</strikeout>
+                </font>
+               </property>
+               <property name="text">
+                <string>当前页面为【地面气象数据】元数据编辑页面</string>
+               </property>
+               <property name="textFormat">
+                <enum>Qt::AutoText</enum>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0">
+              <widget class="QGroupBox" name="groupBox_14">
+               <property name="title">
+                <string>元数据编辑</string>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_26">
+                <item row="0" column="0">
+                 <widget class="QTableWidget" name="tableWidget_DiMianQiXiang">
+                  <column>
+                   <property name="text">
+                    <string>元数据类</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据项</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据元素简称</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>数据类型</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>格式</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>备注</string>
+                   </property>
+                  </column>
+                  <column>
+                   <property name="text">
+                    <string>属性值</string>
+                   </property>
+                  </column>
+                 </widget>
+                </item>
+               </layout>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QGroupBox" name="groupBox_InputData_4">
+        <property name="maximumSize">
+         <size>
+          <width>16777215</width>
+          <height>16777215</height>
+         </size>
+        </property>
+        <property name="title">
+         <string>元数据保存</string>
+        </property>
+        <layout class="QGridLayout" name="gridLayout_9">
+         <item row="0" column="0">
+          <widget class="QLabel" name="label_ShpPath_5">
+           <property name="text">
+            <string>文件路径</string>
+           </property>
+           <property name="alignment">
+            <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLineEdit" name="lineEdit_OutputMetaDataPath">
+           <property name="minimumSize">
+            <size>
+             <width>0</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>16777215</height>
+            </size>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QPushButton" name="Button_SaveMetaData">
+           <property name="text">
+            <string>浏览</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item row="1" column="2">
+    <widget class="QPushButton" name="pushButton_Cancel">
+     <property name="text">
+      <string>关闭</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="pushButton_OK">
+     <property name="text">
+      <string>保存</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="0">
+    <spacer name="horizontalSpacer">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>404</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

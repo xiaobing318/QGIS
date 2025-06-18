@@ -331,7 +331,7 @@ endif()
 
 #[[
 杨小兵-2024-03-04
-一、解释  
+一、解释
   如果设置了HAVE_GEOREFERENCER这个宏（相当于是一个开关）那么将会修改QGIS_APP_SRCS变量中的内容，在这个例子中将会添加多个.cpp，这些.cpp文件
 和当前cmakelists.txt文件处于相同的目录路径中。HAVE_GEOREFERENCER这个变量在顶层cmakelists.txt中进行了设置。如果定义了`HAVE_GEOREFERENCER`
 标志，则会将一系列与地理参考器（Georeferencer）相关的`.cpp`文件添加到`QGIS_APP_SRCS`变量中。地理参考器通常用于将地理坐标系统（GCS）应用于无
@@ -381,7 +381,7 @@ endif()
 
 #[[
 杨小兵-2024-03-04
-一、解释  
+一、解释
   如果设置了WITH_3D这个宏（相当于是一个开关）那么将会修改QGIS_APP_SRCS变量中的内容，在这个例子中将会添加多个.cpp。
 ]]
 if (WITH_3D)
@@ -430,7 +430,7 @@ endif()
 
 #[[
 杨小兵-2024-03-04
-一、解释  
+一、解释
   `find_package`命令在CMake中是用来定位外部项目或库的，并加载它们的设置到当前的CMake项目中。这个命令尝试找到指定的包及其提供的库、头文件、
 工具等，并设置一些变量来反映找到的包的详细信息或状态。`find_package`命令试图找到一个软件包的库和头文件。它首先查找包的CMake配置文件（通常
 是`<package_name>Config.cmake`或`<package-name>-config.cmake`）。如果找到，CMake会读取这个文件来了解如何使用该包。如果未找到配置文件，
@@ -462,7 +462,7 @@ set (WITH_QWTPOLAR FALSE CACHE BOOL "Determines whether QwtPolar should be built
 
 #[[
 杨小兵-2024-03-04
-一、解释  
+一、解释
 1. **`add_definitions(-DWITH_QWTPOLAR)`**:
   - 这一行向项目添加了一个预处理器定义`WITH_QWTPOLAR`。这意味着在编译项目时，编译器会定义一个名为`WITH_QWTPOLAR`的宏。这通常用于条件编译，
 例如，在源代码中可以使用`#ifdef WITH_QWTPOLAR`来检查这个宏是否被定义，从而决定是否包含与QwtPolar相关的代码部分。
@@ -536,7 +536,7 @@ endif()
 
 #[[
 杨小兵-2024-03-04
-一、解释  
+一、解释
   如果设置了POSTGRES_FOUND这个宏（相当于是一个开关）并且设置了HAVE_PGCONFIG宏，那么将会添加一个预处理器定义HAVE_PGCONFIG并且将其值设置为1
 ]]
 if (POSTGRES_FOUND)
@@ -556,7 +556,7 @@ set(TEST_RCCS ../../tests/testdata/testdata.qrc)
 
 #[[
 杨小兵-2024-03-04
-一、解释  
+一、解释
   如果设置了WIN32这个宏（相当于是一个开关）将会向其中添加一些文件（main.cpp和测试使用的测试资源）这段CMake脚本是针对QGIS项目的一部分，它通过
 条件编译指令针对不同的操作系统和编译环境（不同的操作环境、不同的编译环境）设置不同的编译源文件和编译选项。
 
@@ -592,7 +592,7 @@ endif()
 
 #[[
 杨小兵-2024-03-04
-一、解释  
+一、解释
   如果设置了PEDANTIC这个宏（相当于是一个开关）将会执行代码块中的代码，PEDANTIC这个是关于编译器flag的一些设置，现在可以不用关心
 ]]
 if(PEDANTIC)
@@ -622,7 +622,7 @@ endif()
 
 #[[
 杨小兵-2024-03-04
-一、解释  
+一、解释
 1. **`include_directories`解释**:
   `include_directories`命令在CMake中用于向项目添加头文件的搜索路径。这意味着它用于指定头文件（.h或.hpp文件，而非.cpp文件）的目录，
 以便编译器在编译项目时可以找到这些头文件。当你在源文件中使用`#include`指令包含一个头文件时，编译器会在这些指定的目录中搜索指定的头文
@@ -675,7 +675,7 @@ endif()
 #############
 #[[
 杨小兵-2024-03-04
-一、解释  
+一、解释
   如果设置了ANDROID这个宏（相当于是一个开关）将会执行代码块中的代码，ANDROID是Android中的一些内容，现在可以不用关系其代码块中的内容，如果
 不是android平台下，那么将会配置一个生成可执行文件的项目文件。（下面的内容将会生成两个项目文件：名为${QGIS_APP_NAME}、名为qgis_app两个项目文件）
 
@@ -712,7 +712,7 @@ target_compile_features(qgis_app PRIVATE cxx_std_17)
 
 #[[
 杨小兵-2024-03-04
-一、解释  
+一、解释
 ### 1. `target_include_directories`命令的作用
   `target_include_directories`命令在CMake中用于为特定的目标（如可执行文件或库）指定包含（头文件）目录。这些指定的目录将在编译该目标的文件
 时被编译器用来搜索头文件。这对于确保编译器可以找到项目中使用的所有外部或内部库的头文件是非常重要的。
@@ -786,7 +786,7 @@ target_include_directories(qgis_app SYSTEM PUBLIC
 
 #[[
 杨小兵-2024-03-04
-一、解释  
+一、解释
 ### 1. `add_dependencies`命令的作用
   `add_dependencies`命令在CMake中用于为指定的目标（如可执行文件或库）添加构建依赖。这意味着在构建指定的目标之前，必须先构建这些依赖。
 该命令确保在构建过程中，依赖项按照正确的顺序被构建。这意味着，在开始构建`qgis_gui`目标之前，`ui`目标必须已经被构建。这常用于确保自动
@@ -848,7 +848,7 @@ endif()
 
 #[[
 杨小兵-2024-03-04
-一、解释  
+一、解释
   `GENERATE_EXPORT_HEADER`是CMake的一个命令，用于为库生成一个导出头文件。这个导出头文件定义了用于导出和导入符号的宏，
 这在创建动态链接库（DLL）时特别重要。当你在Windows上构建DLL时，必须显式地标记哪些符号（函数、类等）是要被导出的，这样
 其他使用这个DLL的应用或库才能链接和使用这些符号。相应的，使用这个DLL的应用需要知道这些符号是从DLL导入的。`GENERATE_EXPORT_HEADER`
@@ -977,7 +977,7 @@ endif()
 二、总结
 ]]
 if(MSVC)
-  install(FILES starmap.ico qgis.ico qgis-mime.ico qgis-qgs.ico qgis-qlr.ico qgis-qml.ico qgis-qpt.ico DESTINATION ${CMAKE_INSTALL_PREFIX}/icons)
+  install(FILES qgis-icon.ico qgis-mime.ico qgis-qgs.ico qgis-qlr.ico qgis-qml.ico qgis-qpt.ico DESTINATION ${CMAKE_INSTALL_PREFIX}/icons)
 endif()
 
 install(TARGETS qgis_app

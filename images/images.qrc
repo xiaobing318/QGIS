@@ -67,16 +67,17 @@
         <file>flags/zh-Hans.svg</file>
         <file>flags/zh-Hant.svg</file>
         <file>flags/ky.svg</file>
-        <file>icons/qgis-icon-16x16.png</file>
-        <file>icons/qgis-icon-60x60.png</file>
-        <file>icons/qgis-full.png</file>
+        <file>icons/qgis-icon-16x16.svg</file>
+        <file>icons/qgis-icon-60x60.svg</file>
+        <file>icons/qgis_icon.svg</file>
+        <file>icons/qgis-icon-minimal-black.svg</file>
         <file>icons/qbrowser_icon.svg</file>
         <file>north_arrows/default.png</file>
         <file>north_arrows/default.svg</file>
         <file>north_arrows/gpsarrow.svg</file>
         <file>north_arrows/gpsarrow2.svg</file>
         <file>splash/splash.png</file>
-        <file>splash/DLHJ_splash.png</file>
+        <file>splash/LC_splash.png</file>
         <file>composer/missing_image.png</file>
         <file>composer/missing_image.svg</file>
         <file>themes/default/checks/SliverOrGap.svg</file>
@@ -791,8 +792,6 @@
         <file>themes/default/mActionCircle3Tangents.svg</file>
         <file>themes/default/mActionAddGeoPackageLayer.svg</file>
         <file>themes/default/mActionFindReplace.svg</file>
-        <file>icons/qgis_icon.svg</file>
-        <file>icons/qgis-icon-minimal-black.svg</file>
         <file>themes/default/mActionCircle2TangentsPoint.svg</file>
         <file>themes/default/mActionRegularPolygonCenterPoint.svg</file>
         <file>themes/default/3d.svg</file>
