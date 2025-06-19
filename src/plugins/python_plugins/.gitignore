@@ -1,0 +1,6 @@
+# 当前.gitignore文件所在目录以及递归子目录中的PDF文件不需要被git跟踪管理
+*.pdf
+
+# 需要对插件中的.VSCodeCounter和.vscode目录中的内容不需要被git跟踪管理
+dataToolbox/.VSCodeCounter
+dataToolbox/.vscode
