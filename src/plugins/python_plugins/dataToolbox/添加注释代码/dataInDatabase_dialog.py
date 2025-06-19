@@ -30,7 +30,11 @@ from PyQt5.QtWidgets import QFileDialog, QMessageBox, QApplication
 from PyQt5.QtCore import QThread, pyqtSignal, QVariant, QSettings
 from os.path import split, splitext
 from osgeo import ogr
-from qgis.core import QgsMessageLog, QgsVectorLayer, QgsFeature, QgsWkbTypes, QgsFeatureSink, QgsField, QgsWkbTypes, QgsProviderRegistry, QgsVectorFileWriter, QgsProject, QgsWkbTypes, QgsRectangle, QgsCoordinateTransform,QgsVectorLayerExporter, Qgis
+from qgis.core import (
+    QgsMessageLog, QgsVectorLayer, QgsFeature, QgsFeatureSink, QgsField, 
+    QgsProviderRegistry, QgsVectorFileWriter, QgsProject, QgsWkbTypes, 
+    QgsRectangle, QgsCoordinateTransform,QgsVectorLayerExporter, Qgis,
+    QgsGeometry, QgsDistanceArea, QgsUnitTypes)
 import concurrent.futures
 import threading
 
@@ -165,6 +169,40 @@ class dataInDatabaseDialog(QtWidgets.QDialog, FORM_CLASS):
                 layer_list.append(layer)
         return layer_list    
 
+    def robust_contains(self,
+                        candidate: QgsGeometry,
+                        polygon: QgsGeometry,
+                        tol_ratio: float = 0.9,
+                        ellipsoid: str = 'WGS84') -> bool:
+        """
+        用双缓冲重叠面积比补判。
+
+        :param candidate: 点/线/面候选几何
+        :param polygon:   面要素（附加面）
+        :param tol_ratio: 重叠面积 / min(缓冲后面积, 面要素面积) 的阈值
+        :param ellipsoid: 面积测算用椭球
+        """
+        # 1. 以 QGIS 自带的 DistanceArea 计算 geodesic area
+        dist = QgsDistanceArea()
+        dist.setEllipsoid(ellipsoid)
+
+        # 2. 构造类型相关缓冲（°），再转椭球面积比较
+        if candidate.wkbType() == QgsWkbTypes.Point:
+            buf = candidate.buffer(0.00005, 8)  # 约 5~6 m（需要根据纬度调节）
+        elif QgsWkbTypes.geometryType(candidate.wkbType()) == QgsWkbTypes.LineGeometry:
+            buf = candidate.buffer(0.0001, 8)   # 约 10 m
+        else:                                   # Polygon
+            buf = candidate  # 面不做缓冲
+
+        inter = buf.intersection(polygon)
+        if inter.isEmpty():
+            return False
+
+        overlap = dist.measureArea(inter)
+        min_area = min(dist.measureArea(buf), dist.measureArea(polygon))
+
+        return (overlap / min_area) >= tol_ratio
+
     # 总体目的：通过附加矢量面图层计算得到要素ID集合
     # 参数一：输入数据路径（这里指的就是分幅数据目录在文件系统中的位置）；参数二：输入数据类型（如果为0则表示输入数据类型是shapefile，如果为1则表示输入数据类型时Geopackage）
     # 参数三：附加矢量面图层
@@ -224,12 +262,26 @@ class dataInDatabaseDialog(QtWidgets.QDialog, FORM_CLASS):
             for vector_feature in vector_iterator:
                 # 获取得到当前矢量要素的几何信息
                 vector_geo = vector_feature.geometry()
-                # 如果当前处理的矢量要素不是最后一个那么执行代码块中的内容（TODO：）
+                # 如果当前处理的矢量要素不是最后一个那么执行代码块中的内容（这里指的并不是辅助图层中最后的面要素，而是辅助图层中的当前要素，只不过当前要素针对当前待处理的矢量图层没有处理完）
                 if last_feature != None:
                     # 获取最后一个处理矢量要素的几何信息 
                     last_feature_geo = last_feature.geometry()
                     # 如果附加矢量要素包含当前处理矢量要素，则进行一些单独的处理
-                    if last_feature_geo.contains(vector_geo) == True:
+                    """
+                    概述：这里的判断两个矢量要素的集合位置关系的目的就是为了判断当前处理矢量要素是否在附加矢量面要素中，但是对于面要素来说，
+                    存在一些边界情况是contains方法无法判断的，因此需要对附加矢量面要素进行一些特殊处理。例如：如果当前处理矢量要素在附加矢
+                    量面要素的边界上，那么contains方法返回False，但是实际上当前处理矢量要素是包含在附加矢量面要素中的。
+                    
+                    算法：双缓冲区重叠面积比例算法
+                    1. 获取当前处理矢量要素和附加矢量面要素的几何信息。
+                    2. 根据当前矢量要素的几何类型(点、线、面)，设计缓冲区，并且计算缓冲区之后的面积，注意这里不需要对面进行缓冲。
+                    3. 计算附加矢量面要素的几何信息的面积，注意这里不需要对面进行缓冲。
+                    4. 判断当前处理矢量要素的缓冲区和附加矢量面要素的几何信息是否相交，如果相交则计算重叠面积。
+                    5. 如果重叠面积同当前处理矢量要素的缓冲区面积和附加矢量面要素的几何信息的面积中的最小值之间的比例大于等于0.9，
+                    则认为当前处理矢量要素包含在附加矢量面要素中。
+                    """
+                    #if last_feature_geo.contains(vector_geo) == True:
+                    if self.robust_contains(vector_geo, last_feature_geo):
                         last_fid = last_feature.id()
                         if last_fid not in data_tongji:
                             data_tongji[last_fid] = 1
@@ -247,7 +299,21 @@ class dataInDatabaseDialog(QtWidgets.QDialog, FORM_CLASS):
                     feature_geo = feature.geometry()
                     # 如果当前矢量面要素几何位置上不包含当前处理矢量要素，则跳过处理下一个附加矢量面图层的矢量面要素
                     # 总体目的：从几何位置上判断附加面要素是否和当前处理矢量要素产生包含关系
-                    if feature_geo.contains(vector_geo) == False:
+                    """
+                    概述：这里的判断两个矢量要素的集合位置关系的目的就是为了判断当前处理矢量要素是否在附加矢量面要素中，但是对于面要素来说，
+                    存在一些边界情况是contains方法无法判断的，因此需要对附加矢量面要素进行一些特殊处理。例如：如果当前处理矢量要素在附加矢
+                    量面要素的边界上，那么contains方法返回False，但是实际上当前处理矢量要素是包含在附加矢量面要素中的。
+                    
+                    算法：双缓冲区重叠面积比例算法
+                    1. 获取当前处理矢量要素和附加矢量面要素的几何信息。
+                    2. 根据当前矢量要素的几何类型(点、线、面)，设计缓冲区，并且计算缓冲区之后的面积，注意这里不需要对面进行缓冲。
+                    3. 计算附加矢量面要素的几何信息的面积，注意这里不需要对面进行缓冲。
+                    4. 判断当前处理矢量要素的缓冲区和附加矢量面要素的几何信息是否相交，如果相交则计算重叠面积。
+                    5. 如果重叠面积同当前处理矢量要素的缓冲区面积和附加矢量面要素的几何信息的面积中的最小值之间的比例大于等于0.9，
+                    则认为当前处理矢量要素包含在附加矢量面要素中。
+                    """
+                    #if feature_geo.contains(vector_geo) == False:
+                    if not self.robust_contains(vector_geo, feature_geo):
                         continue
                     # 获取得到当前附加矢量面要素的ID属性
                     fid = feature.id()
