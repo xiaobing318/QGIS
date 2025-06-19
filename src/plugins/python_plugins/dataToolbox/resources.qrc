@@ -1,0 +1,13 @@
+<RCC>
+    <qresource prefix="/plugins/dataToolbox">
+        <file>image/database.svg</file>
+        <file>image/dataconvert.svg</file>
+        <file>image/datadetection.svg</file>
+        <file>image/dataprocess.svg</file>
+        <file>image/fieldoptimization.svg</file>
+        <file>image/formartconvert.svg</file>
+        <file>image/logicalunity.svg</file>
+        <file>image/scalealignment.svg</file>
+        <file>icon.png</file>
+    </qresource>
+</RCC>
