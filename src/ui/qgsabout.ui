@@ -17,7 +17,7 @@
    </size>
   </property>
   <property name="windowTitle">
-   <string>About LC</string>
+   <string>About TGFD</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
@@ -225,7 +225,7 @@
            <item>
             <widget class="QLabel" name="label_3">
              <property name="text">
-              <string>LC is licensed under the GNU General Public License</string>
+              <string>TGFD is licensed under the GNU General Public License</string>
              </property>
              <property name="alignment">
               <set>Qt::AlignCenter</set>
@@ -247,7 +247,7 @@
              <item>
               <widget class="QPushButton" name="btnQgisHome">
                <property name="text">
-                <string>LC Home Page</string>
+                <string>TGFD Home Page</string>
                </property>
                <property name="flat">
                 <bool>false</bool>

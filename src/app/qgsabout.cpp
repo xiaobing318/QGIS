@@ -144,7 +144,7 @@ void QgsAbout::init()
     //                               "<a href=\"https://qgis.org/en/site/about/sustaining_members.html#list-of-donors\">"
     //                               "https://qgis.org/en/site/about/sustaining_members.html#list-of-donors</a></p>" );
     const QString donorsHTML = tr("<p>For a list of individuals and institutions who have contributed "
-      "money to fund LC development and other project costs see "
+      "money to fund TGFD development and other project costs see "
       "<a href=\"https://GARMAP-TECH.org/en/site/about/sustaining_members.html#list-of-donors\">"
       "https://GARMAP-TECH.org/en/site/about/sustaining_members.html#list-of-donors</a></p>");
 #if 0
@@ -241,10 +241,10 @@ void QgsAbout::setPluginInfo()
   QString myString;
   //provide info about the plugins available
   //myString += "<b>" + tr( "Available QGIS Data Provider Plugins" ) + "</b><br>";
-  myString += "<b>" + tr("Available LC Data Provider Plugins") + "</b><br>";
+  myString += "<b>" + tr("Available TGFD Data Provider Plugins") + "</b><br>";
   myString += QgsProviderRegistry::instance()->pluginList( true );
   //myString += "<b>" + tr( "Available QGIS Authentication Method Plugins" ) + "</b><br>";
-  myString += "<b>" + tr("Available LC Authentication Method Plugins") + "</b><br>";
+  myString += "<b>" + tr("Available TGFD Authentication Method Plugins") + "</b><br>";
   myString += QgsAuthMethodRegistry::instance()->pluginList( true );
   //qt database plugins
   myString += "<b>" + tr( "Available Qt Database Plugins" ) + "</b><br>";

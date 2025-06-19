@@ -52,7 +52,7 @@
 #include <list>
 #include <memory>
 
- //  LC目前设置为50
+ //  TGFD目前设置为50
 #define START_COUNTER 50
 #pragma endregion
 
@@ -443,13 +443,13 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 #pragma region "发布版本的时候将这段代码打开:设置STARMAP_INSTALL_DIRECTORY_PREFIX环境变量"
     /*
     * 杨小兵-2024-02-29
-      首先检测系统内是否设置了STARMAP_INSTALL_DIRECTORY_PREFIX自定义系统环境变量，如果没有设置的话直接退出并且进行给出提示信息
+      首先检测系统内是否设置了TGFD_INSTALL_DIRECTORY_PREFIX自定义系统环境变量，如果没有设置的话直接退出并且进行给出提示信息
     */
-    const char* starmap_install_directory_prefix = getenv("LC_INSTALL_DIRECTORY_PREFIX_V_0_00_02");
+    const char* starmap_install_directory_prefix = getenv("TGFD_INSTALL_DIRECTORY_PREFIX_V_0_00_02");
     if (starmap_install_directory_prefix == nullptr)
     {
       std::string starmap_install_directory_prefix_title = "提示：设置环境变量";
-      std::string starmap_install_directory_prefix_message = "需要设置环境变量LC_INSTALL_DIRECTORY_PREFIX_V_0_00_02。如果没有LC_INSTALL_DIRECTORY_PREFIX_V_0_00_02这个变量，请首先创建这个环境变量，并且将其值设置为DLHJ在文件系统中的位置！";
+      std::string starmap_install_directory_prefix_message = "需要设置环境变量TGFD_INSTALL_DIRECTORY_PREFIX_V_0_00_02。如果没有TGFD_INSTALL_DIRECTORY_PREFIX_V_0_00_02这个变量，请首先创建这个环境变量，并且将其值设置为DLHJ在文件系统中的位置！";
 
       //  给出提示信息（在Windows下使用一个提示窗口，在其他平台这里还要通过宏定义进行跨平台操作）
       ShowUtf8MessageBox(starmap_install_directory_prefix_title.c_str(), starmap_install_directory_prefix_message.c_str());
@@ -466,15 +466,15 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     while (std::getline(file, var))
     {
 
-#pragma region "发布版本的时候将这段代码打开:设置STARMAP_INSTALL_DIRECTORY_PREFIX环境变量"
+#pragma region "发布版本的时候将这段代码打开:设置TGFD_INSTALL_DIRECTORY_PREFIX环境变量"
       /*
       * 杨小兵-2024-02-29
-        将前面得到的STARMAP_INSTALL_DIRECTORY_PREFIX替换到具体的环境变量中，然后进行设置当前进程的环境变量中
+        将前面得到的TGFD_INSTALL_DIRECTORY_PREFIX替换到具体的环境变量中，然后进行设置当前进程的环境变量中
       */
       //  先将starmap_install_directory_prefix中的正反斜杠统一处理
       //std::string temp = var;(debug)
       replaceAll(str_starmap_install_directory_prefix, str_right_slash, str_left_slash);
-      replaceAll(var, "LC_INSTALL_DIRECTORY_PREFIX_V_0_00_02", str_starmap_install_directory_prefix);
+      replaceAll(var, "TGFD_INSTALL_DIRECTORY_PREFIX_V_0_00_02", str_starmap_install_directory_prefix);
       //temp = var;
 #pragma endregion
 
@@ -578,8 +578,8 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
   HINSTANCE hGetProcIDDLL = NULL;
 #pragma region "杨小兵-2025-01-22：这里增加次数检测"
   uint32_t ui32 = 0;
-  //  对于LC这里是6，如果是DLHJ则是8
-  std::string file_path = exename.substr(0, exename.size() - 6) + "gdal308-1.dll";
+  //  对于LC=6,DLHJ=8,TGFD=8
+  std::string file_path = exename.substr(0, exename.size() - 8) + "gdal308-1.dll";
   //  规整路径
   replaceAll(file_path, "\\", "/");
   if (readFirstFourBytes(file_path, ui32) && (ui32 <= START_COUNTER))

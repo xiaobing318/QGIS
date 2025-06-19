@@ -5639,11 +5639,11 @@ void QgisApp::about()
     QString versionString = QStringLiteral( "<html><body><div align='center'><table width='100%'>" );
 
     //versionString += QStringLiteral( "<tr><td>%1</td><td>%2</td><td>" ).arg( tr( "QGIS version" ), Qgis::version() );
-    versionString += QStringLiteral("<tr><td>%1</td><td>%2</td><td>").arg(tr("LC 版本"), QString("0.0.2"));
+    versionString += QStringLiteral("<tr><td>%1</td><td>%2</td><td>").arg(tr("TGFD 版本"), QString("0.0.2"));
     if ( QString( Qgis::devVersion() ) == QLatin1String( "exported" ) )
     {
       //versionString += tr( "QGIS code branch" );
-      versionString += tr("LC代码分支");
+      versionString += tr("TGFD代码分支");
       if ( Qgis::version().endsWith( QLatin1String( "Master" ) ) )
       {
         versionString += QLatin1String( "</td><td><a href=\"https://github.com/qgis/QGIS/tree/master\">master</a></td>" );
@@ -5657,7 +5657,7 @@ void QgisApp::about()
     else
     {
       //versionString += QStringLiteral( "%1</td><td><a href=\"https://github.com/qgis/QGIS/commit/%2\">%2</a></td>" ).arg( tr( "QGIS code revision" ), Qgis::devVersion() );
-      versionString += QStringLiteral("%1</td><td><a href=\"https://github.com/qgis/QGIS/commit/%2\">%2</a></td>").arg(tr("LC代码分支"), Qgis::devVersion());
+      versionString += QStringLiteral("%1</td><td><a href=\"https://github.com/qgis/QGIS/commit/%2\">%2</a></td>").arg(tr("TGFD代码分支"), Qgis::devVersion());
     }
     versionString += QLatin1String( "</tr><tr>" );
 

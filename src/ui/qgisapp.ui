@@ -1964,7 +1964,7 @@ Shift+R to enable range selection.</string>
      <normaloff>:/images/themes/default/mActionQgisHomePage.png</normaloff>:/images/themes/default/mActionQgisHomePage.png</iconset>
    </property>
    <property name="text">
-    <string>LC Home Page</string>
+    <string>TGFD Home Page</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+H</string>
@@ -1976,7 +1976,7 @@ Shift+R to enable range selection.</string>
      <normaloff>:/images/themes/default/mIconSuccess.svg</normaloff>:/images/themes/default/mIconSuccess.svg</iconset>
    </property>
    <property name="text">
-    <string>Check LC Version</string>
+    <string>Check TGFD Version</string>
    </property>
    <property name="statusTip">
     <string>Check if your QGIS version is up to date (requires internet access)</string>
@@ -2000,7 +2000,7 @@ Shift+R to enable range selection.</string>
      <normaloff>:/images/themes/default/mActionHelpSponsors.png</normaloff>:/images/themes/default/mActionHelpSponsors.png</iconset>
    </property>
    <property name="text">
-    <string>LC Sustaining Members</string>
+    <string>TGFD Sustaining Members</string>
    </property>
   </action>
   <action name="mActionMoveLabel">
@@ -3378,7 +3378,7 @@ Shows placeholders for labels which could not be placed, e.g. due to overlaps wi
   </action>
   <action name="mActionDonate">
    <property name="text">
-    <string>Donate to LC</string>
+    <string>Donate to TGFD</string>
    </property>
   </action>
   <action name="mActionGetInvolved">
