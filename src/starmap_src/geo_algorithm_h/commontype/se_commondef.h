@@ -71,5 +71,7 @@ typedef int SE_Error;
 #define SE_ERROR_BUFF_DISTANCE_IS_NOT_VALID               63                  /*空间匹配算法的缓冲距离不是有效的*/
 #define SE_ERROR_CREATE_OGRGEOMETRY_IS_UNSUCCESS          64                  /*创建OGRGeometry新的几何要素失败*/
 #define SE_ERROR_OGRFEATURE_TYPE_NOT_MATCH                65                  /*两个OGR要素类型是不匹配的*/
+
+#define SE_ERROR_SMS_LAYER_INFO_IS_NOT_SAME_WITH_ACTUAL_LAYER_INFO_FROM_ODATA_FRAMED_DATA		66				/*odata分幅数据中SMS文件描述的要素图层数量同实际存在要素图层数量不一致(杨小兵-2024-12-01)*/
 #endif // SE_COMMONDEF_H_
 

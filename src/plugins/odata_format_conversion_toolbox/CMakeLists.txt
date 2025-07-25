@@ -54,12 +54,12 @@ add_library (plugin_odata_format_conversion_toolbox MODULE ${odata_format_conver
 target_compile_features(plugin_odata_format_conversion_toolbox PRIVATE cxx_std_17)
 
 
-# 杨小兵-2024-03-27：获取为CMake临时设置的环境变量
+# -2024-03-27：获取为CMake临时设置的环境变量
 set(OSGEO4W_ROOT_for_plugin_odata_format_conversion_toolbox $ENV{OSGEO4W_ROOT})
 set(O4W_QT_HEADERS_for_plugin_odata_format_conversion_toolbox $ENV{O4W_QT_HEADERS})
 set(O4W_QT_LIBRARIES_for_plugin_odata_format_conversion_toolbox $ENV{O4W_QT_LIBRARIES})
 
-# 杨小兵-2024-03-27：包含头文件 
+# -2024-03-27：包含头文件 
 target_include_directories(plugin_odata_format_conversion_toolbox SYSTEM PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_BINARY_DIR}
@@ -91,7 +91,7 @@ target_include_directories(plugin_odata_format_conversion_toolbox SYSTEM PUBLIC
 )
 
 
-# 杨小兵-2024-03-27：包含库文件
+# -2024-03-27：包含库文件
 target_link_libraries(plugin_odata_format_conversion_toolbox
 
   ${OSGEO4W_ROOT_for_plugin_odata_format_conversion_toolbox}/lib/gdal_i.lib
@@ -108,7 +108,7 @@ target_link_libraries(plugin_odata_format_conversion_toolbox
 
 )
 
-# 杨小兵-2024-03-27：添加预处理器定义
+# -2024-03-27：添加预处理器定义
 target_compile_definitions(plugin_odata_format_conversion_toolbox PRIVATE "-DOS_FAMILY_WINDOWS" "-D_HAS_STD_BYTE=0")
 
 ########################################################

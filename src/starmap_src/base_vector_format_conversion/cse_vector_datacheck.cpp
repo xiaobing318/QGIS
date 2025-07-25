@@ -1110,7 +1110,7 @@ SE_Error CSE_VectorDataCheck::DataCodeStandardizationCheck_Odata(const char* szI
 	return CSE_QualityInspectionTools::DataFileEncodingStandardizationCheck(szInputPath, sz_log_data_path);
 }
 
-#pragma region "DLHJ-杨小兵（2023-9-25）"
+#pragma region "DLHJ-（2023-9-25）"
 
 // 一体化属性检查
 SE_Error CSE_VectorDataCheck::GJBFeatureAttributeCheck(

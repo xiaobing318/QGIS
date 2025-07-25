@@ -61,7 +61,7 @@ void SE_AnnoPointerReverseExtractThread::SetSingleThreadParams(QString qstrInput
 }
 
 
-#pragma region "/**************杨小兵 - 2024 - 01 - 08：多线程并行，增加速度；代码由杨志龙杨老师提供，杨小兵进行集成）**************/"
+#pragma region "/************** - 2024 - 01 - 08：多线程并行，增加速度；代码由杨志龙杨老师提供，进行集成）**************/"
 //void SE_AnnoPointerReverseExtractThread::run()
 //{
 //    mutex.lock();
@@ -120,7 +120,7 @@ void SE_AnnoPointerReverseExtractThread::SetSingleThreadParams(QString qstrInput
 //}
 #pragma endregion
 
-#pragma region "/**************杨小兵 - 2024 - 01 - 08：单线程运行；代码由杨志龙杨老师提供，杨小兵进行集成）**************/"
+#pragma region "/************** - 2024 - 01 - 08：单线程运行；代码由杨志龙杨老师提供，进行集成）**************/"
 void SE_AnnoPointerReverseExtractThread::run()
 {
 	mutex.lock();
@@ -212,7 +212,7 @@ void SE_AnnoPointerReverseExtractThread::run()
 				strInputDataPath.c_str(),
 				strOutputPath.c_str());
 
-			//	（时间：2023-11-06；杨小兵；当其中的一个分幅文件检查错误的时候就进行错误处理，其余的分幅文件不再进行处理）
+			//	（时间：2023-11-06；；当其中的一个分幅文件检查错误的时候就进行错误处理，其余的分幅文件不再进行处理）
 			if (err != SE_ERROR_NONE)
 			{
 				char szText[500] = { 0 };
@@ -224,7 +224,7 @@ void SE_AnnoPointerReverseExtractThread::run()
 				return;
 			}
 			/*
-				（时间：2023-11-06；杨小兵；错误：对每一个分幅文件数据处理完之后就会弹出一个窗口，应该在所有的分幅文件都处理完之后再弹出，只弹出一次）
+				（时间：2023-11-06；；错误：对每一个分幅文件数据处理完之后就会弹出一个窗口，应该在所有的分幅文件都处理完之后再弹出，只弹出一次）
 			如果想要准确记录某一个分幅文件中的数据，那么需要额外的处理，因为目前的代码只要其中的一个分幅文件出现问题就会退出而不会处理其他的分幅
 			文件数据
 			*/
@@ -235,7 +235,7 @@ void SE_AnnoPointerReverseExtractThread::run()
 			//	emit resultProcess(dPercent, qstrResult);
 			//}
 		}
-		//	（时间：2023-11-06；杨小兵；在所有的分幅文件数据处理完之后再弹出提示信息）
+		//	（时间：2023-11-06；；在所有的分幅文件数据处理完之后再弹出提示信息）
 		dPercent = 1.0;
 		qstrResult = tr("注记指针反向挂接完成！");
 		emit resultProcess(dPercent, qstrResult);

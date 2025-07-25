@@ -85,12 +85,12 @@ void SE_Odata2shpThread::run()
 	int iOutputSRS = this->m_iOutputSRS;
 	double dOffsetX = this->m_dOffsetX;
 	double dOffsetY = this->m_dOffsetY;
-	//	杨小兵-2023-12-20：获取图层信息方式：1——从*.SMS文件中获取图层信息；2——从实际odata数据目录中获取图层信息
+	//	-2023-12-20：获取图层信息方式：1——从*.SMS文件中获取图层信息；2——从实际odata数据目录中获取图层信息
 	int method_of_obtaining_layer_info = this->m_method_of_obtaining_layer_info;
-	//	杨小兵-2023-12-07：放大系数外放
+	//	-2023-12-07：放大系数外放
 	bool bsetzoomscale = this->m_bsetzoomscale;
 	double dzoomscale = this->m_dzoomscale;
-	//	杨小兵-2024-01-24：日志器等级参数
+	//	-2024-01-24：日志器等级参数
 	spdlog::level::level_enum log_level = this->m_log_level;
 
   //  解锁
@@ -167,10 +167,10 @@ void SE_Odata2shpThread::run()
 		}
 #pragma endregion
 
-    //  杨小兵2024-01-23：需要更加不同的错误代码来将信息写入到日志中，按照分幅的方式来进行处理，也就是每一个分幅数据中将会有一个日志文件）
+    //  2024-01-23：需要更加不同的错误代码来将信息写入到日志中，按照分幅的方式来进行处理，也就是每一个分幅数据中将会有一个日志文件）
 		if (err == SE_ERROR_NONE)
 		{
-			//  杨小兵2024-01-23：处理当前分幅数据如果没有出错，那么每次处理1幅，报告进度给主线程
+			//  2024-01-23：处理当前分幅数据如果没有出错，那么每次处理1幅，报告进度给主线程
 			processed_frame_data_flag = 1;
 			iProcessed = 1;
 			qstrResult = tr("当前分幅数据线划图数据格式转换完成！");
@@ -178,7 +178,7 @@ void SE_Odata2shpThread::run()
 		}
 		else
 		{
-			//  杨小兵2024-01-23：处理当前分幅数据如果出现了错误，那么每次处理1幅，报告进度给主线程
+			//  2024-01-23：处理当前分幅数据如果出现了错误，那么每次处理1幅，报告进度给主线程
 			processed_frame_data_flag = 1;
 			iProcessed = 0;
 			qstrResult = tr("当前分幅数据线划图数据格式转换失败！");

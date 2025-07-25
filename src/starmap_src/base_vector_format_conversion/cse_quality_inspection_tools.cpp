@@ -401,7 +401,7 @@ int CSE_QualityInspectionTools::RareWordStatistics(
 
 
 #pragma region "公用的一些内部函数或者数据结构"
-//	杨小兵（2023-8-30）
+//	（2023-8-30）
 
 //	在CSE_QualityInspectionTools类实体创建的时候，首先将创建图层类别（A,B,C,D等等）映射
 std::unordered_map<std::string, CSE_QualityInspectionTools::LayerType> CSE_QualityInspectionTools::layer_type_mapping = 
@@ -843,7 +843,7 @@ void CSE_QualityInspectionTools::read_sx_file_for_rare_word(
 #pragma endregion
 
 #pragma region "数据文件编码规范性检查"
-//	杨小兵（2023-8-30）
+//	（2023-8-30）
 
 //	a)	SX文件是否乱码
 int CSE_QualityInspectionTools::IsTheSXFileGarbled(
@@ -888,7 +888,7 @@ int CSE_QualityInspectionTools::IsTheZBFileGarbledAndOutliers(
 		注意：由于这部分的内容还没有确定下来，因此先不用进行处理，只放一个函数接口后面添加实现就可以了
 	2	是否存在异常值（超出正常精度要求，小数点后6位）？
 		如果存在异常值，则将异常的详细情况写入到log_data_path路径下的文本文件中，如果不存在则将不存在的详细情况也写入到log_data_path路径下的文本文件中
-	3	杨小兵：2023-11-07 坐标文件中应该不会存在乱码的情况
+	3	：2023-11-07 坐标文件中应该不会存在乱码的情况
 */
 	//int IsTheZBFileGarbled_flag = IsTheZBFileGarbled(odata_framing_data_path, log_data_path);
 	//if (IsTheZBFileGarbled_flag != 0)
@@ -924,7 +924,7 @@ int CSE_QualityInspectionTools::IsFieldMissingOrRedundant(
 		（3）最后对面要素（如果存在的话）进行要素字段数量的判断（如果出现要素字段数量同枚举类型中的数量不相同，将图层类型“面”和要素ID记录到log中）
 二、注意：
 	1	这个函数目前存在问题：没有办法检查是否存在确实数据，因为将SX文件数据读取的时候存在问题，采用fscanf()进行读取存在问题，因为这个函数不能对换行符进行识别
-		正确的做法应该是对一行中的数据进行读取，然后再计数其中存在数据的数量是多少（杨小兵：2023-11-07）
+		正确的做法应该是对一行中的数据进行读取，然后再计数其中存在数据的数量是多少（：2023-11-07）
 */
 
 	size_t odata_framing_data_name_starting_position = odata_framing_data_path.find_last_of("/");
@@ -1452,7 +1452,7 @@ void CSE_QualityInspectionTools::ReadSingleSXFileData(
 	FILE* fp = fopen(sx_file_data_path.c_str(), "rt");
 	if (fp == NULL)
 	{
-		//	杨小兵：2023-11-08（标准的做法应该是将可能产生的错误写入到日志文件中，而不是控制台中，这样对于排查错误是比较方便的）
+		//	：2023-11-08（标准的做法应该是将可能产生的错误写入到日志文件中，而不是控制台中，这样对于排查错误是比较方便的）
 		std::string error_message = "属性（.SX）文件:" + sx_file_data_path + "打开失败！";
 		int result = log(log_data_path, error_message);
 		//	这里还需要对日志文件写入是否正常进行错误处理
@@ -2194,7 +2194,7 @@ int CSE_QualityInspectionTools::log_polygon(
 	fclose(logfile_descriptor);
 }
 
-//	杨小兵（2023-10-31）
+//	（2023-10-31）
 void CSE_QualityInspectionTools::is_single_SXFile_Garbled(const string& single_sx_file_path, const string& log_data_path)
 {
 	//	先将SX文件中的数据读取出来存放在在自定义结构体中（将单个SX文件中的数据读取出来存放在自定义结构体中）
@@ -2576,7 +2576,7 @@ void CSE_QualityInspectionTools::get_single_field_from_line(const string& line, 
 
 #pragma region "关于乱码的部分代码"
 
-//	杨小兵（2023-11-07）
+//	（2023-11-07）
 void CSE_QualityInspectionTools::ZBFileGarbledStatisticsProcess(const string& single_sx_file_path, const string& log_data_path)
 {
 	//	先将SX文件中的数据读取出来存放在在自定义结构体中（将单个SX文件中的数据读取出来存放在自定义结构体中）
@@ -2814,7 +2814,7 @@ void CSE_QualityInspectionTools::handleErrorAndLog(const std::string& step, cons
 #pragma endregion
 
 #pragma region "数据文件完整性检查"
-//	杨小兵（2023-8-30）
+//	（2023-8-30）
 void CSE_QualityInspectionTools::classification_file_paths(const vector<string>& file_paths, vector<layer_type_paths_t>& all_layer_type_paths)
 {
 	//	创建一个临时的文件向量，可以在后面修改（发现存在，则处理之后将其pop）
@@ -2932,7 +2932,7 @@ bool CSE_QualityInspectionTools::IsTheFileComplete(const layer_type_paths_t& sin
 #pragma endregion
 
 #pragma region"图幅文件、数据文件命名规范性（图幅长度和比例尺对应）"
-//	杨小兵（2023-8-30）
+//	（2023-8-30）
 void CSE_QualityInspectionTools::IsTheOdataFrameNameLegal(const string& odata_frame_data_name, const string& log_data_path)
 {
 /*

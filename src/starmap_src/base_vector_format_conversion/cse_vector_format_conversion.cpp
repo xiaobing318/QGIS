@@ -1,4 +1,9 @@
-#include "cse_vector_format_conversion.h"
+#pragma region "包含头文件（减少重复）"
+/*------------STL-----------*/
+#include <string>
+#include <stdio.h>
+#include <filesystem>
+/*--------------------------*/
 
 /*----------------GDAL--------------*/
 #include <gdal.h>
@@ -6,12 +11,9 @@
 #include <ogrsf_frmts.h>
 /*-----------------------------------*/
 
-/*------------STL-----------*/
-#include <string>
-#include <stdio.h>
-/*--------------------------*/
-
 /*-----------SE-------------*/
+#include "cse_vector_format_conversion.h"
+
 #include "cse_vector_format_conversion_Imp.h"
 #include "cse_mapsheet.h"
 #include "commontype/se_commontypedef.h"
@@ -22,9 +24,23 @@
 /*--------------------------*/
 
 using namespace std;
+#pragma endregion
 
 
-CSE_VectorFormatConversion::CSE_VectorFormatConversion(void)
+void CSE_VectorFormatConversion::make_dir_utf8(const std::string& u8path)
+{
+  namespace fs = std::filesystem;
+  std::error_code ec;
+  fs::create_directories(fs::u8path(u8path), ec);  // 连续建父目录，UTF-8 安全
+  if (ec && ec != std::errc::file_exists)
+    throw std::filesystem::filesystem_error("create_directories", ec);
+}
+
+CSE_VectorFormatConversion::CSE_VectorFormatConversion()
+{
+}
+
+CSE_VectorFormatConversion::~CSE_VectorFormatConversion()
 {
 }
 
@@ -2031,7 +2047,7 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_GeoSRS(
 	vSFieldType.push_back(OFTString);
 	vSFieldWidth.push_back(10);
 	vFieldPrecision.push_back(0);
-	// 杨小兵-2024-02-21：根据《矢量模型及格式》“图幅等高距”字段为短整型
+	// -2024-02-21：根据《矢量模型及格式》“图幅等高距”字段为短整型
 	vSFieldsName.push_back("等高距");
 	vSFieldType.push_back(OFTInteger);
 	vSFieldWidth.push_back(10);
@@ -2600,2760 +2616,2972 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_GeoSRS(
 
 // 实现odata转shp功能-放大系数外放（目标坐标系CGCS2000）
 SE_Error CSE_VectorFormatConversion::Odata2Shp_GeoSRS(
-	const char* szInputPath,
-	const char* szOutputPath,
-	double dOffsetX,
-	double dOffsetY,
-	int method_of_obtaining_layer_info,
-	bool bsetzoomscale,
-	double dzoomscale,
-	spdlog::level::level_enum log_level)
+  const char* szInputPath,
+  const char* szOutputPath,
+  double dOffsetX,
+  double dOffsetY,
+  int method_of_obtaining_layer_info,
+  bool bsetzoomscale,
+  double dzoomscale,
+  spdlog::level::level_enum log_level)
 {
-#pragma region "【1】构建分幅数据输出路径"
-	string str_input_path = szInputPath;
-	string str_output_path = szOutputPath;
-
-	// 获取当前图幅名，按照规范化的文件分割符("/")分割,并且获得分幅数据的图幅号，拼接构成一个完整的输出路径
-	int iIndexTemp = str_input_path.find_last_of("/");
-	string strSheetNumber = str_input_path.substr(iIndexTemp + 1, str_input_path.length() - iIndexTemp);
-
-	str_output_path = str_output_path + "/" + strSheetNumber;
-
+#pragma region "【1】构建分幅数据输入、输出路径并且进行检查是否有效"
+  //  分幅数据的输入路径
+  string str_input_path = szInputPath;
+  //  分幅数据的输出路径
+  string str_output_path = szOutputPath;
+  //  获取当前图幅名，按照规范化的文件分割符("/")分割,并且获得分幅数据的图幅号，拼接构成一个完整的输出路径
+  int iIndexTemp = str_input_path.find_last_of("/");
+  string strSheetNumber = str_input_path.substr(iIndexTemp + 1, str_input_path.length() - iIndexTemp);
+  //  构建分幅数据的输出路径（分幅子文件夹）
+  str_output_path = str_output_path + "/" + strSheetNumber;
 #ifdef OS_FAMILY_WINDOWS
-	// 输出路径创建图幅目录
-	_mkdir(str_output_path.c_str());
+  //  输出路径创建图幅目录
+  //_mkdir(str_output_path.c_str());
+  make_dir_utf8(str_output_path);
 #else
 #define MODE (S_IRWXU | S_IRWXG | S_IRWXO)
-	mkdir(str_output_path.c_str(), MODE);
+  mkdir(str_output_path.c_str(), MODE);
 #endif
 
-	/*
-	注释：杨小兵-2024-01-29；
-	分析：
-		1、首先创建一个日志器，然后根据具体不同的情况来划分类别，全部的级别为：trace、debug、info、warn、err、critical、off）
-		2、对于日志器而言，创建之后也是需要进行资源回收的，使用spdlog::shutdown()函数便可以对所有的日志器实现资源回收
-		3、这里需要下列这两行代码是想要在多线程的环境中，确保创建的“日志器”是相互独立的，因为basic_logger_mt函数在创建日志器的时候首先会检查在一个
-		进程中是否已经存在想要的日志器，如果存在就不能创建相同名称的日志器，添加图幅号就是为了区分不同的日志器，然后在不同的线程中关闭不同的日志器，
-		另外一种方式就是用线程号来区分不同的日志器，但是这样在底层算法中将会添加复杂度，因此选择图幅号来进行区分会是更好的选择
-			std::thread::id thread_id = std::this_thread::get_id();
-			std::size_t thread_id_hash = std::hash<std::thread::id>{}(thread_id);
-	*/
-	//	设置日志器的等级并且创建一个日志器，日志器等级的设置对所有的日志器同时进行了设置，这里不对日志器等级有效性进行检查，因为采用的是下拉框，没有出错的可能
-	std::string logger_name = strSheetNumber + "_logger";
+  /*
+  注释：-2024-01-29；
+  分析：
+    1、首先创建一个日志器，然后根据具体不同的情况来划分类别，全部的级别为：trace、debug、info、warn、err、critical、off）
+    2、对于日志器而言，创建之后也是需要进行资源回收的，使用spdlog::shutdown()函数便可以对所有的日志器实现资源回收
+    3、这里需要下列这两行代码是想要在多线程的环境中，确保创建的“日志器”是相互独立的，因为basic_logger_mt函数在创建日志器的时候首先会检查在一个
+    进程中是否已经存在想要的日志器，如果存在就不能创建相同名称的日志器，添加图幅号就是为了区分不同的日志器，然后在不同的线程中关闭不同的日志器，
+    另外一种方式就是用线程号来区分不同的日志器，但是这样在底层算法中将会添加复杂度，因此选择图幅号来进行区分会是更好的选择
+      std::thread::id thread_id = std::this_thread::get_id();
+      std::size_t thread_id_hash = std::hash<std::thread::id>{}(thread_id);
+  */
+  //	设置日志器的等级并且创建一个日志器，日志器等级的设置对所有的日志器同时进行了设置，这里不对日志器等级有效性进行检查，因为采用的是下拉框，没有出错的可能
+  std::string logger_name = strSheetNumber + "_logger";
+  //  构建分幅数据目录下的日志文件
+  std::string absolute_log_path = str_output_path + "/" + strSheetNumber + "_log.txt";
+  //  设置日志器的等级
+  spdlog::set_level(log_level);
+  //  创建日志器
+  auto logger = spdlog::basic_logger_mt(logger_name, absolute_log_path, true);
+  //	在 spdlog 中，日志级别通常是分层的，包括 trace<debug<info<warn<error<critical 等几个等级,只有等级比log_level高的信息将会被及时刷新到日志中
+  logger->flush_on(log_level);
 
-	std::string absolute_log_path = str_output_path + "/" + strSheetNumber + "_log.txt";
-	spdlog::set_level(log_level);
-	auto logger = spdlog::basic_logger_mt(logger_name, absolute_log_path, true);
-	//	在 spdlog 中，日志级别通常是分层的，包括 trace<debug<info<warn<error<critical 等几个等级,只有等级比log_level高的信息将会被及时刷新到日志中
-	logger->flush_on(log_level);
+  //	如果输入数据路径检查没有问题，那么需要给这个日志文件写上标识
+  std::string log_header_info = "<--------------------分幅数据：" + str_input_path + "日志开始！-------------------->";
+  logger->critical(log_header_info);
 
-	//	如果输入数据路径检查没有问题，那么需要给这个日志文件写上标识
-	std::string log_header_info = "<--------------------分幅数据：" + str_input_path + "日志开始！-------------------->";
-	logger->critical(log_header_info);
-
-	//	输入路径检查
-	if (!szInputPath)
-	{
-		std::string msg = "分幅数据：" + str_input_path + "的路径不存在！请详细检查该路径是否存在";
-		logger->critical(msg);
-		std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
-		logger->critical(log_tailer_info);
-		spdlog::shutdown();
-		return SE_ERROR_FILEPATH_IS_INVALID;
-	}
-
-	//	输出路径检查（不进行检查）
-
+  //	输入路径检查
+  if (!szInputPath)
+  {
+    std::string msg = "分幅数据：" + str_input_path + "的路径不存在！请详细检查该路径是否存在";
+    logger->critical(msg);
+    std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
+    logger->critical(log_tailer_info);
+    spdlog::shutdown();
+    return SE_ERROR_FILEPATH_IS_INVALID;
+  }
+  //	输出路径检查（不进行检查）
 
 #pragma endregion
 
 #pragma region "【2】读取SMS文件"
-	// SMS文件路径
-	string strSMSPath = str_input_path + "/" + strSheetNumber + ".SMS";
-
-	// 验证后缀大写是否能打开，如果能打开则继续，如果不能打开，则改为小写后缀，如果还不能打开，则程序返回
-	if (!CSE_VectorFormatConversion_Imp::CheckFile(strSMSPath))
-	{
-		strSMSPath = str_input_path + "/" + strSheetNumber + ".sms";
-		if (!CSE_VectorFormatConversion_Imp::CheckFile(strSMSPath))
-		{
-			// 记录日志
-			std::string msg = "分幅数据：" + str_input_path + "中的.SMS文件不存在！请详细检查该路径下的文件是否存在";
-			logger->critical(msg);
-			std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
-			logger->critical(log_tailer_info);
-			spdlog::shutdown();
-			return SE_ERROR_OPEN_SMSFILE_FAILED;
-		}
-	}
+  //  构建SMS文件路径
+  string strSMSPath = str_input_path + "/" + strSheetNumber + ".SMS";
+  //  检查SMS是否可以打开：验证后缀大写是否能打开，如果能打开则继续，如果不能打开，则改为小写后缀，如果还不能打开，则程序返回
+  if (!CSE_VectorFormatConversion_Imp::CheckFile(strSMSPath))
+  {
+    strSMSPath = str_input_path + "/" + strSheetNumber + ".sms";
+    if (!CSE_VectorFormatConversion_Imp::CheckFile(strSMSPath))
+    {
+      // 记录日志
+      std::string msg = "分幅数据：" + str_input_path + "中的.SMS文件不存在！请详细检查该路径下的文件是否存在";
+      logger->critical(msg);
+      std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
+      logger->critical(log_tailer_info);
+      spdlog::shutdown();
+      return SE_ERROR_OPEN_SMSFILE_FAILED;
+    }
+  }
 
 #pragma endregion
 
 #pragma region "【3】读取元数据信息"
-	/*
-	【9】地图比例尺分母
-	【12】西南图廓角点横坐标、【13】西南图廓角点纵坐标、【22】大地基准
-	【23】地图投影、【24】中央经线、【25】标准纬线1、【26】标准纬线2
-	【27】分带方式、【28】高斯投影带号、【29】坐标单位、【31】坐标放大系数
-	【32】相对原点横坐标、【33】相对原点纵坐标
-	*/
-	// 根据图幅号计算经纬度范围
-	SE_DRect dSheetRect;
-	CSE_MapSheet::get_box(strSheetNumber, dSheetRect.dleft, dSheetRect.dtop, dSheetRect.dright, dSheetRect.dbottom);
+  /*
+  【9】地图比例尺分母
+  【12】西南图廓角点横坐标
+  【13】西南图廓角点纵坐标
+  【22】大地基准
+  【23】地图投影
+  【24】中央经线
+  【25】标准纬线1
+  【26】标准纬线2
+  【27】分带方式
+  【28】高斯投影带号
+  【29】坐标单位
+  【31】坐标放大系数
+  【32】相对原点横坐标
+  【33】相对原点纵坐标
+  */
 
-	string strValue;
-	// 【9】地图比例尺分母
-	double dScale = 0;
-	CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 9, strValue);
-	dScale = atof(strValue.c_str());
-
-	// 【12】西南图廓角点横坐标
-	double dSouthWestX = 0;
-	CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 12, strValue);
-	dSouthWestX = atof(strValue.c_str());
-
-	// 【13】西南图廓角点纵坐标
-	double dSouthWestY = 0;
-	CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 13, strValue);
-	dSouthWestY = atof(strValue.c_str());
-
-	//【22】大地基准
-	string strGeoCoordSys;
-	CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 22, strGeoCoordSys);
-
-	//【23】地图投影
-	string strProjection;
-	CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 23, strProjection);
-
-	//【24】中央经线
-	double dCenterL = 0;
-	CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 24, strValue);
-	dCenterL = atof(strValue.c_str());
-
-	//【25】标准纬线1
-	double dParellel_1 = 0;
-	CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 25, strValue);
-	dParellel_1 = atof(strValue.c_str());
-
-	//【26】标准纬线2
-	double dParellel_2 = 0;
-	CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 26, strValue);
-	dParellel_2 = atof(strValue.c_str());
-
-	//【27】分带方式
-	string strProjZoneType;
-	CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 27, strProjZoneType);
-
-	//【28】高斯投影带号
-	int iProjZone = 0;
-	CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 28, strValue);
-	iProjZone = atoi(strValue.c_str());
-
-	//【29】坐标单位
-	string strCoordUnit;
-	CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 29, strCoordUnit);
-
-	//【31】坐标放大系数
-	double dCoordZoomScale = 0;
-	CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 31, strValue);
-	dCoordZoomScale = atof(strValue.c_str());
-
-	/*
-		（杨小兵-2023-12-07）添加功能：新增界面设置放大系数
-	*/
-	//	如果选择手工设置放大系数
-	if (bsetzoomscale)
-	{
-		dCoordZoomScale = dzoomscale;
-	}
-
-	//【32】相对原点横坐标
-	double dOriginX = 0;
-	CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 32, strValue);
-	dOriginX = atof(strValue.c_str());
-
-	//【33】相对原点纵坐标
-	double dOriginY = 0;
-	CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 33, strValue);
-	dOriginY = atof(strValue.c_str());
-	double dPianyiX = dSouthWestX - dOriginX;
-	double dPianyiY = dSouthWestY - dOriginY;
+  //  根据图幅号计算经纬度范围
+  SE_DRect dSheetRect;
+  CSE_MapSheet::get_box(strSheetNumber, dSheetRect.dleft, dSheetRect.dtop, dSheetRect.dright, dSheetRect.dbottom);
+  //  用来存储从SMS文件中读取的元信息
+  string strValue;
+  // 【9】地图比例尺分母
+  double dScale = 0;
+  CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 9, strValue);
+  dScale = atof(strValue.c_str());
+  // 【12】西南图廓角点横坐标
+  double dSouthWestX = 0;
+  CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 12, strValue);
+  dSouthWestX = atof(strValue.c_str());
+  // 【13】西南图廓角点纵坐标
+  double dSouthWestY = 0;
+  CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 13, strValue);
+  dSouthWestY = atof(strValue.c_str());
+  //【22】大地基准
+  string strGeoCoordSys;
+  CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 22, strGeoCoordSys);
+  //【23】地图投影
+  string strProjection;
+  CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 23, strProjection);
+  //【24】中央经线
+  double dCenterL = 0;
+  CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 24, strValue);
+  dCenterL = atof(strValue.c_str());
+  //【25】标准纬线1
+  double dParellel_1 = 0;
+  CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 25, strValue);
+  dParellel_1 = atof(strValue.c_str());
+  //【26】标准纬线2
+  double dParellel_2 = 0;
+  CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 26, strValue);
+  dParellel_2 = atof(strValue.c_str());
+  //【27】分带方式
+  string strProjZoneType;
+  CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 27, strProjZoneType);
+  //【28】高斯投影带号
+  int iProjZone = 0;
+  CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 28, strValue);
+  iProjZone = atoi(strValue.c_str());
+  //【29】坐标单位
+  string strCoordUnit;
+  CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 29, strCoordUnit);
+  //【31】坐标放大系数
+  double dCoordZoomScale = 0;
+  CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 31, strValue);
+  dCoordZoomScale = atof(strValue.c_str());
+  //  -2023-12-07：新增界面设置放大系数，如果选择手工设置放大系数
+  if (bsetzoomscale)
+  {
+    dCoordZoomScale = dzoomscale;
+  }
+  //【32】相对原点横坐标
+  double dOriginX = 0;
+  CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 32, strValue);
+  dOriginX = atof(strValue.c_str());
+  //【33】相对原点纵坐标
+  double dOriginY = 0;
+  CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 33, strValue);
+  dOriginY = atof(strValue.c_str());
+  double dPianyiX = dSouthWestX - dOriginX;
+  double dPianyiY = dSouthWestY - dOriginY;
 
 #pragma endregion
 
 #pragma region "【4】读取不同要素类型对应属性、坐标、拓扑文件"
 
-	CPLSetConfigOption("GDAL_FILENAME_IS_UTF8", "NO");		// 支持中文路径
-	CPLSetConfigOption("SHAPE_ENCODING", "");				//属性表支持中文字段
-	GDALAllRegister();
+#pragma region "1、拼接SMS文件路径并且获取分幅数据中的图层信息"
+  /*将ODATA中的sms文件拷贝到目标目录下
+    （时间：2023-10-17；；为了跨平台应该使用下面的写法，因为在linux和Mac OS中只支持"/"，而在Windows OS中"/"和"\"都是支持的）
+    string strTargetSMSFilePath = str_output_path + "\\" + strSheetNumber + ".SMS";
+  */
+
+  //  拼接存放SMS文件的路径位置
+  string strTargetSMSFilePath = str_output_path + "/" + strSheetNumber + ".SMS";
+  bool bResult = CSE_VectorFormatConversion_Imp::CopySMSFile(strSMSPath, strTargetSMSFilePath);
+  if (!bResult)
+  {
+    //	这种错误不应该导致程序停止，应该继续执行，并且将相关的错误信息写入到日志中
+    std::string msg = "将文件" + strSMSPath + "拷贝到" + strTargetSMSFilePath + "失败了！";
+    logger->error(msg);
+    //return SE_ERROR_COPY_SMS_FILE_FAILED;
+  }
+  //  用来存储当前图幅包含的要素图层列表
+  vector<string> vLayerType;
+  vLayerType.clear();
+  //	-2023-12-20：获取图层信息方式：1——从*.SMS文件中获取图层信息；2——从实际odata数据目录中获取图层信息
+  if (method_of_obtaining_layer_info == 1)
+  {
+    CSE_VectorFormatConversion_Imp::GetLayerTypeFromSMS(strSMSPath, vLayerType);
+    //  TODO读取出来的图层信息有可能为空，这里需要进行检查
+
+    //  这里需要检查SMS文件中的图层数量同实际数据图层数量是否一致
+    //  创建用来存储要素图层列表
+    vector<string> actual_vLayerType;
+    actual_vLayerType.clear();
+    //  读取文件目录中实际图层数量
+    int result = CSE_VectorFormatConversion_Imp::GetLayerTypeFromOdataDir(str_input_path, actual_vLayerType);
+    if (result != 0)
+    {
+      //	从实际分幅数据中获取odata图层信息失败
+      std::string msg = "从实际分幅数据：（" + str_input_path + "）数据中获取odata图层信息失败";
+      logger->critical(msg);
+      std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
+      logger->critical(log_tailer_info);
+      spdlog::shutdown();
+      //	-2024-12-01：从odata分幅数据中获取实际存在的图层信息失败，需要返回错误代码
+      return SE_ERROR_FAILED2OBTAIN_ACTUAL_EXISTING_LAYER_INFO_FROM_ODATA_FRAMED_DATA;
+    }
+    //  如果SMS文件中描述的图层同实际图层是不相同的，则需要记录日志
+    if (vLayerType.size() != actual_vLayerType.size())
+    {
+      //	从实际分幅数据中获取odata图层信息失败
+      std::string msg = "分幅数据：（" + str_input_path + "）数据中SMS文件描述的要素图层数量同实际分幅数据中的要素图层数量不一致";
+      logger->critical(msg);
+      std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
+      logger->critical(log_tailer_info);
+      spdlog::shutdown();
+      //	-2024-12-01：分幅数据SMS文件中描述的图层同实际图层是不相同的
+      return SE_ERROR_SMS_LAYER_INFO_IS_NOT_SAME_WITH_ACTUAL_LAYER_INFO_FROM_ODATA_FRAMED_DATA;
+    }
+  }
+  else if (method_of_obtaining_layer_info == 2)
+  {
+    int result = CSE_VectorFormatConversion_Imp::GetLayerTypeFromOdataDir(str_input_path, vLayerType);
+    if (result != 0)
+    {
+      //	从实际分幅数据中获取odata图层信息失败
+      std::string msg = "从实际分幅数据：（" + str_input_path + "）数据中获取odata图层信息失败";
+      logger->critical(msg);
+      std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
+      logger->critical(log_tailer_info);
+      spdlog::shutdown();
+      //	（-2024-01-24）从odata分幅数据中获取实际存在的图层信息失败，需要返回错误代码
+      return SE_ERROR_FAILED2OBTAIN_ACTUAL_EXISTING_LAYER_INFO_FROM_ODATA_FRAMED_DATA;
+    }
+  }
 
-
-	/*将ODATA中的sms文件拷贝到目标目录下
-		（时间：2023-10-17；杨小兵；为了跨平台应该使用下面的写法，因为在linux和Mac OS中只支持"/"，而在Windows OS中"/"和"\"都是支持的）
-		string strTargetSMSFilePath = str_output_path + "\\" + strSheetNumber + ".SMS";
-	*/
-	string strTargetSMSFilePath = str_output_path + "/" + strSheetNumber + ".SMS";
-	bool bResult = CSE_VectorFormatConversion_Imp::CopySMSFile(strSMSPath, strTargetSMSFilePath);
-	if (!bResult)
-	{
-		//	这种错误不应该导致程序停止，应该继续执行，并且将相关的错误信息写入到日志中
-		std::string msg = "将文件" + strSMSPath + "拷贝到" + strTargetSMSFilePath + "失败了！";
-		logger->error(msg);
-		//return SE_ERROR_COPY_SMS_FILE_FAILED;
-	}
-
-	// 当前图幅包含的要素图层列表
-	vector<string> vLayerType;
-	vLayerType.clear();
-
-	//	（杨小兵-2023-12-20）获取图层信息方式：1——从*.SMS文件中获取图层信息；2——从实际odata数据目录中获取图层信息
-	if (method_of_obtaining_layer_info == 1)
-	{
-		CSE_VectorFormatConversion_Imp::GetLayerTypeFromSMS(strSMSPath, vLayerType);
-	}
-	else if (method_of_obtaining_layer_info == 2)
-	{
-		int result = CSE_VectorFormatConversion_Imp::GetLayerTypeFromOdataDir(str_input_path, vLayerType);
-		if (result != 0)
-		{
-			//	从实际分幅数据中获取odata图层信息失败
-			std::string msg = "从实际分幅数据：（" + str_input_path + "）数据中获取odata图层信息失败";
-			logger->critical(msg);
-			std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
-			logger->critical(log_tailer_info);
-			spdlog::shutdown();
-			//	（杨小兵-2024-01-24）从odata分幅数据中获取实际存在的图层信息失败，需要返回错误代码
-			return SE_ERROR_FAILED2OBTAIN_ACTUAL_EXISTING_LAYER_INFO_FROM_ODATA_FRAMED_DATA;
-		}
-	}
-
-	const char* pszDriverName = "ESRI Shapefile";
-	GDALDriver* poDriver;
-	poDriver = GetGDALDriverManager()->GetDriverByName(pszDriverName);
-	if (poDriver == NULL)
-	{
-		//	从实际分幅数据中获取odata图层信息失败
-		std::string msg = "在处理分幅数据：（" + str_input_path + "）的时候，获取ESRI Shapefile驱动器失败了！";
-		logger->critical(msg);
-		std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
-		logger->critical(log_tailer_info);
-		spdlog::shutdown();
-		return SE_ERROR_GET_SHP_DRIVER_FAILED;
-	}
-
-	// 读取不同要素类型对应属性、坐标、拓扑文件
-	for (size_t iLayerIndex = 0; iLayerIndex < vLayerType.size(); iLayerIndex++)
-	{
-		// Y图层暂不处理
-		if (vLayerType[iLayerIndex] == "Y")
-		{
-			continue;
-		}
-		bResult = false;
-
-		string strSXFilePath = str_input_path + "/" + strSheetNumber + "." + vLayerType[iLayerIndex] + "SX";
-		string strZBFilePath = str_input_path + "/" + strSheetNumber + "." + vLayerType[iLayerIndex] + "ZB";
-		string strTPFilePath = str_input_path + "/" + strSheetNumber + "." + vLayerType[iLayerIndex] + "TP";
-
-		if (!CSE_VectorFormatConversion_Imp::CheckFile(strSXFilePath))
-		{
-			string strSmall;		// 小写字符
-			CSE_VectorFormatConversion_Imp::CapToSmall(vLayerType[iLayerIndex], strSmall);
-
-			strSXFilePath = str_input_path + "/" + strSheetNumber + "." + strSmall + "sx";
-			if (!CSE_VectorFormatConversion_Imp::CheckFile(strSXFilePath))
-			{
-				strSXFilePath = str_input_path + "/" + strSheetNumber + "." + vLayerType[iLayerIndex] + "sx";
-				if (!CSE_VectorFormatConversion_Imp::CheckFile(strSXFilePath))
-				{
-					//	如果不存在，则跳过，将相关信息写入到日志中
-					std::string msg = "获取" + strSXFilePath + "文件失败！";
-					logger->error(msg);
-					continue;
-				}
-			}
-		}
-
-		if (!CSE_VectorFormatConversion_Imp::CheckFile(strZBFilePath))
-		{
-			string strSmall;		// 小写字符
-			CSE_VectorFormatConversion_Imp::CapToSmall(vLayerType[iLayerIndex], strSmall);
-			strZBFilePath = str_input_path + "/" + strSheetNumber + "." + strSmall + "zb";
-			if (!CSE_VectorFormatConversion_Imp::CheckFile(strZBFilePath))
-			{
-				strZBFilePath = str_input_path + "/" + strSheetNumber + "." + vLayerType[iLayerIndex] + "zb";
-				if (!CSE_VectorFormatConversion_Imp::CheckFile(strZBFilePath))
-				{
-					//	如果不存在，则跳过，将相关信息写入到日志中
-					std::string msg = "获取" + strZBFilePath + "文件失败！";
-					logger->error(msg);
-					continue;
-				}
-			}
-		}
-		if (vLayerType[iLayerIndex] != "R")
-		{
-			if (!CSE_VectorFormatConversion_Imp::CheckFile(strTPFilePath))
-			{
-				string strSmall;		// 小写字符
-				CSE_VectorFormatConversion_Imp::CapToSmall(vLayerType[iLayerIndex], strSmall);
-				strTPFilePath = str_input_path + "/" + strSheetNumber + "." + strSmall + "tp";
-				if (!CSE_VectorFormatConversion_Imp::CheckFile(strTPFilePath))
-				{
-					strTPFilePath = str_input_path + "/" + strSheetNumber + "." + vLayerType[iLayerIndex] + "tp";
-					if (!CSE_VectorFormatConversion_Imp::CheckFile(strTPFilePath))
-					{
-						//	如果不存在，则跳过，将相关信息写入到日志中
-						std::string msg = "获取" + strTPFilePath + "文件失败！";
-						logger->error(msg);
-						continue;
-					}
-				}
-			}
-		}
-
-		//*************************************//
-		// -----------读拓扑文件------------//
-		//***********************************//
-		// 读取线拓扑文件，shp主要存储线拓扑，例如:_A_line.shp文件
-		// 注记R图层无拓扑信息，跳过
-		// 存储线要素拓扑信息
-		vector<vector<string>> vLineTopogValues;
-		vLineTopogValues.clear();
-		if (vLayerType[iLayerIndex] != "R")
-		{
-			bResult = CSE_VectorFormatConversion_Imp::LoadTPFile(strTPFilePath, vLineTopogValues);
-			if (!bResult)
-			{
-				//	如果不存在，则跳过，将相关信息写入到日志中
-				std::string msg = "读取拓扑文件（" + strTPFilePath + "）失败！";
-				logger->error(msg);
-				continue;
-			}
-		}
-		// ---------------------------------//
-		//----------------------------------//
-		// -----------读属性文件------------//
-		//------------------------------------//
-		vector<vector<string>> vPointFieldValues;
-		vPointFieldValues.clear();
-
-		vector<vector<string>> vLineFieldValues;
-		vLineFieldValues.clear();
-
-		vector<vector<string>> vPolygonFieldValues;
-		vPolygonFieldValues.clear();
-
-		// 注记图层属性值
-		vector<vector<string>> vRFieldValues;
-		vRFieldValues.clear();
-		// 如果是注记图层
-		if (vLayerType[iLayerIndex] == "R")
-		{
-			string strRSXFilePath = str_input_path + "/" + strSheetNumber + ".RSX";
-			if (!CSE_VectorFormatConversion_Imp::CheckFile(strRSXFilePath))
-			{
-				strRSXFilePath = str_input_path + "/" + strSheetNumber + ".rsx";
-				if (!CSE_VectorFormatConversion_Imp::CheckFile(strRSXFilePath))
-				{
-					//	如果不存在，则跳过，将相关信息写入到日志中
-					std::string msg = "注记属性文件（" + strRSXFilePath + "）不存在！";
-					logger->error(msg);
-					continue;
-				}
-			}
-
-			bResult = CSE_VectorFormatConversion_Imp::LoadRSXFile(strRSXFilePath, strSheetNumber, vRFieldValues);
-		}
-		// 如果是其它图层
-		else
-		{
-			bResult = CSE_VectorFormatConversion_Imp::LoadSXFile(strSXFilePath,
-				vLayerType[iLayerIndex],
-				strSheetNumber,
-				vLineTopogValues,
-				vPointFieldValues,
-				vLineFieldValues,
-				vPolygonFieldValues);
-		}
-		if (!bResult)
-		{
-			//	如果不存在，则跳过，将相关信息写入到日志中
-			std::string msg = "读取实体要素层文件（" + strSXFilePath + "）失败！";
-			logger->error(msg);
-			continue;
-		}
-
-
-		//**********************************//
-		// ----------读坐标文件---------//
-		//**********************************//
-		// 点要素集合
-		// 转换前的坐标文件
-		vector<SE_DPoint> vPoints;
-		vPoints.clear();
-
-		// 点要素方向点集合
-		vector<SE_DPoint> vDirectionPoints;
-		vDirectionPoints.clear();
-
-		// 线要素集合
-		vector<vector<SE_DPoint>> vLines;
-		vLines.clear();
-
-		// 面要素外环
-		vector<vector<SE_DPoint>> vPolygons;
-		vPolygons.clear();
-
-		// 面要素内环
-		vector<vector<vector<SE_DPoint>>> vInteriorPolygons;
-		vInteriorPolygons.clear();
-
-
-		// ----注记几何信息----//
-		vector<SE_DPoint> vRPoints;
-		vRPoints.clear();
-
-		vector<vector<SE_DPoint>> vRLines;
-		vRLines.clear();
-
-		vector<int> vPointIDs;
-		vPointIDs.clear();
-
-		vector<int> vLineIDs;
-		vLineIDs.clear();
-		//--------------------------------//
-		// 如果是注记图层
-		if (vLayerType[iLayerIndex] == "R")
-		{
-			string strRZBFilePath = str_input_path + "/" + strSheetNumber + ".RZB";
-			if (!CSE_VectorFormatConversion_Imp::CheckFile(strRZBFilePath))
-			{
-				strRZBFilePath = str_input_path + "/" + strSheetNumber + ".rzb";
-				if (!CSE_VectorFormatConversion_Imp::CheckFile(strRZBFilePath))
-				{
-					//	如果不存在，则跳过，将相关信息写入到日志中
-					std::string msg = "注记层坐标文件（" + strRZBFilePath + "）不存在！";
-					logger->error(msg);
-					continue;
-				}
-			}
-
-			bResult = CSE_VectorFormatConversion_Imp::LoadRZBFile(strRZBFilePath, vPointIDs, vRPoints, vLineIDs, vRLines);
-		}
-		else
-		{
-			bResult = CSE_VectorFormatConversion_Imp::LoadZBFile(strZBFilePath, vPoints, vDirectionPoints, vLines, vPolygons, vInteriorPolygons);
-		}
-		if (!bResult)
-		{
-			//	如果不存在，则跳过，将相关信息写入到日志中
-			std::string msg = "实体要素层坐标文件（" + strZBFilePath + "）不存在！";
-			logger->error(msg);
-			continue;
-		}
-
-		// ---------转换后的坐标文件------//
-		// 点坐标
-		vector<SE_DPoint> vShpPoints;
-		vShpPoints.clear();
-
-		// 线坐标
-		vector<vector<SE_DPoint>> vShpLines;
-		vShpLines.clear();
-
-		// 面坐标（外环多边形）
-		vector<vector<SE_DPoint>> vShpExteriorPolygons;
-		vShpExteriorPolygons.clear();
-
-		// 内环多边形
-		vector<vector<vector<SE_DPoint>>> vShpInteriorPolygons;
-		vShpInteriorPolygons.clear();
-
-		// 注记几何坐标
-		vector<SE_DPoint> vRShpPoints;
-		vRShpPoints.clear();
-
-		vector<vector<SE_DPoint>> vRShpLines;
-		vRShpLines.clear();
-
-		//------------------------------//
-		// 加载完坐标文件信息后，进行ODATA到shp地理坐标系（默认CGCS2000坐标系）的转换
-		// ODATA中坐标为相对原点坐标偏移，需计算出真实的投影坐标
-		//****************以下部分进行坐标转换******************//
-		if (strstr(strGeoCoordSys.c_str(), "2000") != NULL)
-		{
-			// 如果是高斯投影
-			if (strstr(strProjection.c_str(), "高斯") != NULL)
-			{
-				ProjectionParams params;
-				params.lon_0 = dCenterL;
-				params.x_0 = iProjZone * 1000000 + 500000;		// 加带号后的高斯值
-				// 如果是米为单位
-				if (strstr(strCoordUnit.c_str(), "米") != NULL)
-				{
-					// 分别对点、线、面要素进行高斯投影反算
-					//------------------------------------------//
-					// 计算西南角点横纵坐标，并减去对应比例尺的横坐标偏移量dOffsetX
-					// 计算西南角点横纵坐标，并减去对应比例尺的纵坐标偏移量dOffsetY
-					double dSouthWest[2];
-					dSouthWest[0] = dSheetRect.dleft;
-					dSouthWest[1] = dSheetRect.dbottom;
-
-					int iRet = CSE_GeoTransformation::Geo2Proj(
-						CGCS2000,
-						GaussKruger,
-						params,
-						1,
-						dSouthWest);
-
-					if (iRet != 1)
-					{
-						//	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
-						std::string msg = "源地理坐标系统：CGCS2000向目的投影坐标系统：Gauss投影失败了！";
-						logger->error(msg);
-						continue;
-					}
-
-					dSouthWestX = dSouthWest[0] - dOffsetX;
-					dSouthWestY = dSouthWest[1] - dOffsetY;
-
-					// --------------【注记点要素投影】----------------//
-					if (vLayerType[iLayerIndex] == "R")
-					{
-						// 如果注记点要素大于0
-						if (vRPoints.size() > 0)
-						{
-							size_t iPointCount = vRPoints.size();
-							double* dValues = new double[iPointCount * 2];
-							for (int i = 0; i < iPointCount; i++)
-							{
-								// 横坐标，真实坐标值
-								dValues[2 * i] = vRPoints[i].dx / dCoordZoomScale + dSouthWestX;
-								// 纵坐标，真实坐标值
-								dValues[2 * i + 1] = vRPoints[i].dy / dCoordZoomScale + dSouthWestY;
-
-							}
-							int iResult = CSE_GeoTransformation::Proj2Geo(
-								CGCS2000,
-								GaussKruger,
-								params,
-								iPointCount,
-								dValues);
-
-							if (iResult != 1)
-							{
-								//	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
-								std::string msg = "（投影到地理坐标系统）注记图层【点】要素从源地理坐标系统：CGCS2000向目的投影坐标系统：Gauss投影转化失败了！";
-								logger->error(msg);
-								continue;
-							}
-
-							for (int i = 0; i < iPointCount; i++)
-							{
-								SE_DPoint xyz;
-								xyz.dx = dValues[2 * i];
-								xyz.dy = dValues[2 * i + 1];
-								vRShpPoints.push_back(xyz);
-							}
-							if (dValues)
-							{
-								delete[]dValues;
-								dValues = NULL;
-							}
-						}
-
-						// 如果注记线要素大于0
-						if (vRLines.size() > 0)
-						{
-							for (size_t iLineIndex = 0; iLineIndex < vRLines.size(); iLineIndex++)
-							{
-								// 记录每条线坐标转换后的坐标
-								vector<SE_DPoint> vLinePoints;
-								vLinePoints.clear();
-								size_t iPointCount = vRLines[iLineIndex].size();
-								double* dValues = new double[iPointCount * 2];
-								for (int i = 0; i < iPointCount; i++)
-								{
-									// 横坐标，真实坐标值
-									dValues[2 * i] = vRLines[iLineIndex][i].dx / dCoordZoomScale + dSouthWestX;
-									// 纵坐标，真实坐标值
-									dValues[2 * i + 1] = vRLines[iLineIndex][i].dy / dCoordZoomScale + dSouthWestY;
-
-								}
-
-								int iResult = CSE_GeoTransformation::Proj2Geo(
-									CGCS2000,
-									GaussKruger,
-									params,
-									iPointCount,
-									dValues);
-
-								if (iResult != 1)
-								{
-									//	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
-									std::string msg = "（投影到地理坐标系统）注记图层【线】要素从源地理坐标系统：CGCS2000向目的投影坐标系统：Gauss投影转化失败了！";
-									logger->error(msg);
-									continue;
-								}
-
-								for (int i = 0; i < iPointCount; i++)
-								{
-									SE_DPoint xyz;
-									xyz.dx = dValues[2 * i];
-									xyz.dy = dValues[2 * i + 1];
-									vLinePoints.push_back(xyz);
-								}
-
-								vRShpLines.push_back(vLinePoints);
-								if (dValues)
-								{
-									delete[]dValues;
-									dValues = NULL;
-								}
-							}
-						}
-					}
-
-					// 如果是A到Q图层
-					else
-					{
-						// --------------【点要素投影】----------------//		
-						if (vPoints.size() > 0)
-						{
-							size_t iPointCount = vPoints.size();
-							double* dValues = new double[iPointCount * 2];
-							for (int i = 0; i < iPointCount; i++)
-							{
-								// 横坐标，真实坐标值
-								dValues[2 * i] = vPoints[i].dx / dCoordZoomScale + dSouthWestX;
-								// 纵坐标，真实坐标值
-								dValues[2 * i + 1] = vPoints[i].dy / dCoordZoomScale + dSouthWestY;
-
-								// 方向点横坐标
-								double dDirX = vDirectionPoints[i].dx / dCoordZoomScale + dSouthWestX;
-
-								// 方向点纵坐标
-								double dDirY = vDirectionPoints[i].dy / dCoordZoomScale + dSouthWestY;
-
-								// 计算点到方向点角度
-								double dAngle = CSE_VectorFormatConversion_Imp::CalAngle_Proj(dValues[2 * i], dValues[2 * i + 1], dDirX, dDirY);
-								char szAngle[100];
-								sprintf(szAngle, "%f", dAngle);
-								vPointFieldValues[i][0] = szAngle;
-
-							}
-
-							int iResult = CSE_GeoTransformation::Proj2Geo(
-								CGCS2000,
-								GaussKruger,
-								params,
-								iPointCount,
-								dValues);
-
-							if (iResult != 1)
-							{
-								//	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
-								std::string msg = "（投影到地理坐标系统）实体要素图层【点】要素从源地理坐标系统：CGCS2000向目的投影坐标系统：Gauss投影转化失败了！";
-								logger->error(msg);
-								continue;
-							}
-
-							for (int i = 0; i < iPointCount; i++)
-							{
-								SE_DPoint xyz;
-								xyz.dx = dValues[2 * i];
-								xyz.dy = dValues[2 * i + 1];
-								vShpPoints.push_back(xyz);
-							}
-
-							if (dValues)
-							{
-								delete[]dValues;
-								dValues = NULL;
-							}
-						}
-						//------------------------------------------//
-						// --------------【线要素投影】----------------//
-						if (vLines.size() > 0)
-						{
-							for (size_t iLineIndex = 0; iLineIndex < vLines.size(); iLineIndex++)
-							{
-								// 记录每条线坐标转换后的坐标
-								vector<SE_DPoint> vLinePoints;
-								vLinePoints.clear();
-
-								size_t iPointCount = vLines[iLineIndex].size();
-								double* dValues = new double[iPointCount * 2];
-								for (int i = 0; i < iPointCount; i++)
-								{
-									// 横坐标，真实坐标值
-									dValues[2 * i] = vLines[iLineIndex][i].dx / dCoordZoomScale + dSouthWestX;
-									// 纵坐标，真实坐标值
-									dValues[2 * i + 1] = vLines[iLineIndex][i].dy / dCoordZoomScale + dSouthWestY;
-
-								}
-								int iResult = CSE_GeoTransformation::Proj2Geo(
-									CGCS2000,
-									GaussKruger,
-									params,
-									iPointCount,
-									dValues);
-
-								if (iResult != 1)
-								{
-									//	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
-									std::string msg = "（投影到地理坐标系统）实体要素图层【线】要素从源地理坐标系统：CGCS2000向目的投影坐标系统：Gauss投影转化失败了！";
-									logger->error(msg);
-									continue;
-								}
-								for (int i = 0; i < iPointCount; i++)
-								{
-									SE_DPoint xyz;
-									xyz.dx = dValues[2 * i];
-									xyz.dy = dValues[2 * i + 1];
-									vLinePoints.push_back(xyz);
-								}
-
-								vShpLines.push_back(vLinePoints);
-								if (dValues)
-								{
-									delete[]dValues;
-									dValues = NULL;
-								}
-							}
-						}
-						//------------------------------------------//
-						// --------------【面要素投影】----------------//
-						if (vPolygons.size() > 0)
-						{
-							for (size_t iPolygonIndex = 0; iPolygonIndex < vPolygons.size(); iPolygonIndex++)
-							{
-								// 记录每个面要素边界点坐标转换后的坐标
-								vector<SE_DPoint> vPolygonPoints;
-								vPolygonPoints.clear();
-								size_t iPointCount = vPolygons[iPolygonIndex].size();
-								double* dValues = new double[iPointCount * 2];
-								for (int i = 0; i < iPointCount; i++)
-								{
-									// 横坐标，真实坐标值
-									dValues[2 * i] = vPolygons[iPolygonIndex][i].dx / dCoordZoomScale + dSouthWestX;
-									// 纵坐标，真实坐标值
-									dValues[2 * i + 1] = vPolygons[iPolygonIndex][i].dy / dCoordZoomScale + dSouthWestY;
-
-								}
-								int iResult = CSE_GeoTransformation::Proj2Geo(
-									CGCS2000,
-									GaussKruger,
-									params,
-									iPointCount,
-									dValues);
-
-								if (iResult != 1)
-								{
-									//	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
-									std::string msg = "（投影到地理坐标系统）实体要素图层【面】要素（外环）从源地理坐标系统：CGCS2000向目的投影坐标系统：Gauss投影转化失败了！";
-									logger->error(msg);
-									continue;
-								}
-								for (int i = 0; i < iPointCount; i++)
-								{
-									SE_DPoint xyz;
-									xyz.dx = dValues[2 * i];
-									xyz.dy = dValues[2 * i + 1];
-									vPolygonPoints.push_back(xyz);
-								}
-								vShpExteriorPolygons.push_back(vPolygonPoints);
-								if (dValues)
-								{
-									delete[]dValues;
-									dValues = NULL;
-								}
-							}
-						}
-
-						vector<vector<SE_DPoint>> vOutInterior;	// 存储转换后的环多边形 
-						vOutInterior.clear();
-
-						if (vInteriorPolygons.size() > 0)
-						{
-							for (size_t iInteriorIndex = 0; iInteriorIndex < vInteriorPolygons.size(); iInteriorIndex++)
-							{
-								vOutInterior.clear();
-								vector<vector<SE_DPoint>> vInterior = vInteriorPolygons[iInteriorIndex];
-								// 如果内环为不存在的
-								if (vInterior.size() == 0)
-								{
-									vShpInteriorPolygons.push_back(vOutInterior);
-									continue;
-								}
-								for (size_t iInteriorPolygonIndex = 0; iInteriorPolygonIndex < vInterior.size(); iInteriorPolygonIndex++)
-								{
-									// 记录每个面要素边界点坐标转换后的坐标
-									vector<SE_DPoint> vPolygonPoints;
-									vPolygonPoints.clear();
-									size_t iPointCount = vInterior[iInteriorPolygonIndex].size();
-									double* dValues = new double[iPointCount * 2];
-									for (int iii = 0; iii < iPointCount; iii++)
-									{
-										// 横坐标，真实坐标值
-										dValues[2 * iii] = vInterior[iInteriorPolygonIndex][iii].dx / dCoordZoomScale + dSouthWestX;
-										// 纵坐标，真实坐标值
-										dValues[2 * iii + 1] = vInterior[iInteriorPolygonIndex][iii].dy / dCoordZoomScale + dSouthWestY;
-									}
-									int iResult = CSE_GeoTransformation::Proj2Geo(
-										CGCS2000,
-										GaussKruger,
-										params,
-										iPointCount,
-										dValues);
-
-									if (iResult != 1)
-									{
-										//	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
-										std::string msg = "（投影到地理坐标系统）实体要素图层【面】要素（内环）从源地理坐标系统：CGCS2000向目的投影坐标系统：Gauss投影转化失败了！";
-										logger->error(msg);
-										continue;
-									}
-									for (int iii = 0; iii < iPointCount; iii++)
-									{
-										SE_DPoint xyz;
-										xyz.dx = dValues[2 * iii];
-										xyz.dy = dValues[2 * iii + 1];
-
-										vPolygonPoints.push_back(xyz);
-									}
-									vOutInterior.push_back(vPolygonPoints);
-									if (dValues)
-									{
-										delete[]dValues;
-										dValues = NULL;
-									}
-								}
-								vShpInteriorPolygons.push_back(vOutInterior);
-							}
-						}
-						//------------------------------------------//
-					}
-					//------------------------------------------//
-				}
-				// 如果是秒为单位
-				else if (strstr(strCoordUnit.c_str(), "秒") != NULL)
-				{
-					//------------------------------------------//
-					// 坐标原点为图幅西南角点经纬度
-					dSouthWestX = dSheetRect.dleft;
-					dSouthWestY = dSheetRect.dbottom;
-					// --------------【注记点要素投影】----------------//
-					if (vLayerType[iLayerIndex] == "R")
-					{
-						if (vRPoints.size() > 0)
-						{
-							size_t iPointCount = vRPoints.size();
-							double* dValues = new double[iPointCount * 2];
-							for (int i = 0; i < iPointCount; i++)
-							{
-								// 横坐标，真实坐标值
-								dValues[2 * i] = vRPoints[i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
-								// 纵坐标，真实坐标值
-								dValues[2 * i + 1] = vRPoints[i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
-							}
-							for (int i = 0; i < iPointCount; i++)
-							{
-								SE_DPoint xyz;
-								xyz.dx = dValues[2 * i];
-								xyz.dy = dValues[2 * i + 1];
-								vRShpPoints.push_back(xyz);
-							}
-							if (dValues)
-							{
-								delete[]dValues;
-								dValues = NULL;
-							}
-						}
-						if (vRLines.size() > 0)
-						{
-							for (size_t iLineIndex = 0; iLineIndex < vRLines.size(); iLineIndex++)
-							{
-								// 记录每条线坐标转换后的坐标
-								vector<SE_DPoint> vLinePoints;
-								vLinePoints.clear();
-								size_t iPointCount = vRLines[iLineIndex].size();
-								double* dValues = new double[iPointCount * 2];
-								for (int i = 0; i < iPointCount; i++)
-								{
-									// 横坐标，真实坐标值
-									dValues[2 * i] = vRLines[iLineIndex][i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
-									// 纵坐标，真实坐标值
-									dValues[2 * i + 1] = vRLines[iLineIndex][i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
-
-								}
-								for (int i = 0; i < iPointCount; i++)
-								{
-									SE_DPoint xyz;
-									xyz.dx = dValues[2 * i];
-									xyz.dy = dValues[2 * i + 1];
-									vLinePoints.push_back(xyz);
-								}
-								vRShpLines.push_back(vLinePoints);
-								if (dValues)
-								{
-									delete[]dValues;
-									dValues = NULL;
-								}
-							}
-						}
-					}
-					else
-					{
-						// --------------【点要素投影】----------------//		
-						if (vPoints.size() > 0)
-						{
-							size_t iPointCount = vPoints.size();
-							double* dValues = new double[iPointCount * 2];
-							for (int i = 0; i < iPointCount; i++)
-							{
-								// 横坐标，真实坐标值
-								dValues[2 * i] = vPoints[i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
-								// 纵坐标，真实坐标值
-								dValues[2 * i + 1] = vPoints[i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
-								// 方向点横坐标
-								double dDirX = vDirectionPoints[i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
-								// 方向点纵坐标
-								double dDirY = vDirectionPoints[i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
-								double dAngle = CSE_VectorFormatConversion_Imp::CalAngle_Geo(dValues[2 * i], dValues[2 * i + 1], dDirX, dDirY);
-								char szAngle[100];
-								sprintf(szAngle, "%f", dAngle);
-								vPointFieldValues[i][0] = szAngle;
-							}
-							for (int i = 0; i < iPointCount; i++)
-							{
-								SE_DPoint xyz;
-								xyz.dx = dValues[2 * i];
-								xyz.dy = dValues[2 * i + 1];
-								vShpPoints.push_back(xyz);
-							}
-							if (dValues)
-							{
-								delete[]dValues;
-								dValues = NULL;
-							}
-						}
-						//------------------------------------------//
-						// --------------【线要素投影】----------------//
-						if (vLines.size() > 0)
-						{
-							for (size_t iLineIndex = 0; iLineIndex < vLines.size(); iLineIndex++)
-							{
-								// 记录每条线坐标转换后的坐标
-								vector<SE_DPoint> vLinePoints;
-								vLinePoints.clear();
-
-								size_t iPointCount = vLines[iLineIndex].size();
-								double* dValues = new double[iPointCount * 2];
-								for (int i = 0; i < iPointCount; i++)
-								{
-									// 横坐标，真实坐标值
-									dValues[2 * i] = vLines[iLineIndex][i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
-									// 纵坐标，真实坐标值
-									dValues[2 * i + 1] = vLines[iLineIndex][i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
-
-								}
-								for (int i = 0; i < iPointCount; i++)
-								{
-									SE_DPoint xyz;
-									xyz.dx = dValues[2 * i];
-									xyz.dy = dValues[2 * i + 1];
-									vLinePoints.push_back(xyz);
-								}
-								vShpLines.push_back(vLinePoints);
-								if (dValues)
-								{
-									delete[]dValues;
-									dValues = NULL;
-								}
-							}
-						}
-						//------------------------------------------//
-						// --------------【面要素投影】----------------//
-						if (vPolygons.size() > 0)
-						{
-							for (size_t iPolygonIndex = 0; iPolygonIndex < vPolygons.size(); iPolygonIndex++)
-							{
-								// 记录每个面要素边界点坐标转换后的坐标
-								vector<SE_DPoint> vPolygonPoints;
-								vPolygonPoints.clear();
-								size_t iPointCount = vPolygons[iPolygonIndex].size();
-								double* dValues = new double[iPointCount * 2];
-								for (int i = 0; i < iPointCount; i++)
-								{
-									// 横坐标，真实坐标值
-									dValues[2 * i] = vPolygons[iPolygonIndex][i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
-
-									// 纵坐标，真实坐标值
-									dValues[2 * i + 1] = vPolygons[iPolygonIndex][i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
-								}
-								for (int i = 0; i < iPointCount; i++)
-								{
-									SE_DPoint xyz;
-									xyz.dx = dValues[2 * i];
-									xyz.dy = dValues[2 * i + 1];
-									vPolygonPoints.push_back(xyz);
-								}
-								vShpExteriorPolygons.push_back(vPolygonPoints);
-								if (dValues)
-								{
-									delete[]dValues;
-									dValues = NULL;
-								}
-							}
-						}
-
-						// 存储转换后的环多边形
-						vector<vector<SE_DPoint>> vOutInterior;
-						vOutInterior.clear();
-
-						if (vInteriorPolygons.size() > 0)
-						{
-							for (size_t iInteriorIndex = 0; iInteriorIndex < vInteriorPolygons.size(); iInteriorIndex++)
-							{
-								vOutInterior.clear();
-								vector<vector<SE_DPoint>> vInterior = vInteriorPolygons[iInteriorIndex];
-								// 如果内环为不存在的
-								if (vInterior.size() == 0)
-								{
-									vShpInteriorPolygons.push_back(vOutInterior);
-									continue;
-								}
-								for (size_t iInteriorPolygonIndex = 0; iInteriorPolygonIndex < vInterior.size(); iInteriorPolygonIndex++)
-								{
-									// 记录每个面要素边界点坐标转换后的坐标
-									vector<SE_DPoint> vPolygonPoints;
-									vPolygonPoints.clear();
-									size_t iPointCount = vInterior[iInteriorPolygonIndex].size();
-									double* dValues = new double[iPointCount * 2];
-									for (int iii = 0; iii < iPointCount; iii++)
-									{
-										// 横坐标，真实坐标值
-										dValues[2 * iii] = vInterior[iInteriorPolygonIndex][iii].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
-										// 纵坐标，真实坐标值
-										dValues[2 * iii + 1] = vInterior[iInteriorPolygonIndex][iii].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
-									}
-									for (int iii = 0; iii < iPointCount; iii++)
-									{
-										SE_DPoint xyz;
-										xyz.dx = dValues[2 * iii];
-										xyz.dy = dValues[2 * iii + 1];
-										vPolygonPoints.push_back(xyz);
-									}
-									vOutInterior.push_back(vPolygonPoints);
-									if (dValues)
-									{
-										delete[]dValues;
-										dValues = NULL;
-									}
-								}
-								vShpInteriorPolygons.push_back(vOutInterior);
-							}
-						}
-						//------------------------------------------//
-					}
-					//------------------------------------------//
-				}
-			}
-
-			// 如果是等角圆锥投影，100万比例尺可能为等角圆锥投影
-			else if (strstr(strProjection.c_str(), "等角圆锥") != NULL)
-			{
-				ProjectionParams params;
-				params.lon_0 = dCenterL;
-				params.lat_1 = dParellel_1;
-				params.lat_2 = dParellel_2;
-				// 如果是米为单位
-				if (strstr(strCoordUnit.c_str(), "米") != NULL)
-				{
-					// 分别对点、线、面要素进行圆锥投影反算
-					//------------------------------------------//
-					// --------------【注记点要素投影】----------------//
-					if (vLayerType[iLayerIndex] == "R")
-					{
-						if (vRPoints.size() > 0)
-						{
-							size_t iPointCount = vRPoints.size();
-							double* dValues = new double[iPointCount * 2];
-							for (int i = 0; i < iPointCount; i++)
-							{
-								// 横坐标，真实坐标值
-								dValues[2 * i] = vRPoints[i].dx / dCoordZoomScale + dOriginX - dOffsetX;
-								// 纵坐标，真实坐标值
-								dValues[2 * i + 1] = vRPoints[i].dy / dCoordZoomScale + dOriginY - dOffsetY;
-
-							}
-							int iResult = CSE_GeoTransformation::Proj2Geo(
-								CGCS2000,
-								LambertConformalConic,
-								params,
-								iPointCount,
-								dValues);
-
-							if (iResult != 1)
-							{
-								//	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
-								std::string msg = "（投影到地理坐标系统）注记要素图层【点】要素从源地理坐标系统：CGCS2000向目的投影坐标系统：Gauss投影转化失败了！";
-								logger->error(msg);
-								continue;
-							}
-
-							for (int i = 0; i < iPointCount; i++)
-							{
-								SE_DPoint xyz;
-								xyz.dx = dValues[2 * i];
-								xyz.dy = dValues[2 * i + 1];
-								vRShpPoints.push_back(xyz);
-							}
-							if (dValues)
-							{
-								delete[]dValues;
-								dValues = NULL;
-							}
-						}
-
-						if (vRLines.size() > 0)
-						{
-							for (size_t iLineIndex = 0; iLineIndex < vRLines.size(); iLineIndex++)
-							{
-								// 记录每条线坐标转换后的坐标
-								vector<SE_DPoint> vLinePoints;
-								vLinePoints.clear();
-
-								size_t iPointCount = vRLines[iLineIndex].size();
-								double* dValues = new double[iPointCount * 2];
-								for (int i = 0; i < iPointCount; i++)
-								{
-									// 横坐标，真实坐标值
-									dValues[2 * i] = vRLines[iLineIndex][i].dx / dCoordZoomScale + dOriginX - dOffsetX;
-									// 纵坐标，真实坐标值
-									dValues[2 * i + 1] = vRLines[iLineIndex][i].dy / dCoordZoomScale + dOriginY - dOffsetY;
-
-								}
-								int iResult = CSE_GeoTransformation::Proj2Geo(CGCS2000, LambertConformalConic, params, iPointCount, dValues);
-								if (iResult != 1)
-								{
-									//	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
-									std::string msg = "（投影到地理坐标系统）注记要素图层【线】要素从源地理坐标系统：CGCS2000向目的投影坐标系统：Gauss投影转化失败了！";
-									logger->error(msg);
-									continue;
-								}
-								for (int i = 0; i < iPointCount; i++)
-								{
-									SE_DPoint xyz;
-									xyz.dx = dValues[2 * i];
-									xyz.dy = dValues[2 * i + 1];
-									vLinePoints.push_back(xyz);
-								}
-								vRShpLines.push_back(vLinePoints);
-								if (dValues)
-								{
-									delete[]dValues;
-									dValues = NULL;
-								}
-							}
-						}
-					}
-					else
-					{
-						// --------------【点要素投影】----------------//		
-						if (vPoints.size() > 0)
-						{
-							size_t iPointCount = vPoints.size();
-							double* dValues = new double[iPointCount * 2];
-							for (int i = 0; i < iPointCount; i++)
-							{
-								// 横坐标，真实坐标值
-								dValues[2 * i] = vPoints[i].dx / dCoordZoomScale + dOriginX - dOffsetX;
-								// 纵坐标，真实坐标值
-								dValues[2 * i + 1] = vPoints[i].dy / dCoordZoomScale + dOriginY - dOffsetY;
-								// 方向点横坐标
-								double dDirX = vDirectionPoints[i].dx / dCoordZoomScale + dOriginX - dOffsetX;
-								// 方向点纵坐标
-								double dDirY = vDirectionPoints[i].dy / dCoordZoomScale + dOriginY - dOffsetY;
-								double dAngle = CSE_VectorFormatConversion_Imp::CalAngle_Proj(dValues[2 * i], dValues[2 * i + 1], dDirX, dDirY);
-								char szAngle[100];
-								sprintf(szAngle, "%f", dAngle);
-								vPointFieldValues[i][0] = szAngle;
-							}
-							int iResult = CSE_GeoTransformation::Proj2Geo(
-								CGCS2000,
-								LambertConformalConic,
-								params,
-								iPointCount,
-								dValues);
-
-							if (iResult != 1)
-							{
-								//	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
-								std::string msg = "（投影到地理坐标系统）实体要素图层【点】要素从源地理坐标系统：CGCS2000向目的投影坐标系统：Gauss投影转化失败了！";
-								logger->error(msg);
-								continue;
-							}
-							for (int i = 0; i < iPointCount; i++)
-							{
-								SE_DPoint xyz;
-								xyz.dx = dValues[2 * i];
-								xyz.dy = dValues[2 * i + 1];
-								vShpPoints.push_back(xyz);
-							}
-							if (dValues)
-							{
-								delete[]dValues;
-								dValues = NULL;
-							}
-						}
-						//------------------------------------------//
-						// --------------【线要素投影】----------------//
-						if (vLines.size() > 0)
-						{
-							for (size_t iLineIndex = 0; iLineIndex < vLines.size(); iLineIndex++)
-							{
-								// 记录每条线坐标转换后的坐标
-								vector<SE_DPoint> vLinePoints;
-								vLinePoints.clear();
-								size_t iPointCount = vLines[iLineIndex].size();
-								double* dValues = new double[iPointCount * 2];
-								for (int i = 0; i < iPointCount; i++)
-								{
-									// 横坐标，真实坐标值
-									dValues[2 * i] = vLines[iLineIndex][i].dx / dCoordZoomScale + dOriginX - dOffsetX;
-									// 纵坐标，真实坐标值
-									dValues[2 * i + 1] = vLines[iLineIndex][i].dy / dCoordZoomScale + dOriginY - dOffsetY;
-
-								}
-								int iResult = CSE_GeoTransformation::Proj2Geo(
-									CGCS2000,
-									LambertConformalConic,
-									params,
-									iPointCount,
-									dValues);
-
-								if (iResult != 1)
-								{
-									//	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
-									std::string msg = "（投影到地理坐标系统）实体要素图层【线】要素从源地理坐标系统：CGCS2000向目的投影坐标系统：Gauss投影转化失败了！";
-									logger->error(msg);
-									continue;
-								}
-								for (int i = 0; i < iPointCount; i++)
-								{
-									SE_DPoint xyz;
-									xyz.dx = dValues[2 * i];
-									xyz.dy = dValues[2 * i + 1];
-									vLinePoints.push_back(xyz);
-								}
-								vShpLines.push_back(vLinePoints);
-								if (dValues)
-								{
-									delete[]dValues;
-									dValues = NULL;
-								}
-							}
-						}
-						//------------------------------------------//
-						// --------------【面要素投影】----------------//
-						if (vPolygons.size() > 0)
-						{
-							for (size_t iPolygonIndex = 0; iPolygonIndex < vPolygons.size(); iPolygonIndex++)
-							{
-								// 记录每个面要素边界点坐标转换后的坐标
-								vector<SE_DPoint> vPolygonPoints;
-								vPolygonPoints.clear();
-								size_t iPointCount = vPolygons[iPolygonIndex].size();
-								double* dValues = new double[iPointCount * 2];
-								for (int i = 0; i < iPointCount; i++)
-								{
-									// 横坐标，真实坐标值
-									dValues[2 * i] = vPolygons[iPolygonIndex][i].dx / dCoordZoomScale + dOriginX - dOffsetX;
-									// 纵坐标，真实坐标值
-									dValues[2 * i + 1] = vPolygons[iPolygonIndex][i].dy / dCoordZoomScale + dOriginY - dOffsetY;
-
-								}
-								int iResult = CSE_GeoTransformation::Proj2Geo(
-									CGCS2000,
-									LambertConformalConic,
-									params,
-									iPointCount,
-									dValues);
-
-								if (iResult != 1)
-								{
-									//	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
-									std::string msg = "（投影到地理坐标系统）实体要素图层【面】要素（外环）从源地理坐标系统：CGCS2000向目的投影坐标系统：Gauss投影转化失败了！";
-									logger->error(msg);
-									continue;
-								}
-								for (int i = 0; i < iPointCount; i++)
-								{
-									SE_DPoint xyz;
-									xyz.dx = dValues[2 * i];
-									xyz.dy = dValues[2 * i + 1];
-									vPolygonPoints.push_back(xyz);
-								}
-								vShpExteriorPolygons.push_back(vPolygonPoints);
-								if (dValues)
-								{
-									delete[]dValues;
-									dValues = NULL;
-								}
-							}
-						}
-						vector<vector<SE_DPoint>> vOutInterior;	// 存储转换后的环多边形 
-						vOutInterior.clear();
-						if (vInteriorPolygons.size() > 0)
-						{
-							for (size_t iInteriorIndex = 0; iInteriorIndex < vInteriorPolygons.size(); iInteriorIndex++)
-							{
-								vOutInterior.clear();
-								vector<vector<SE_DPoint>> vInterior = vInteriorPolygons[iInteriorIndex];
-								// 如果内环为不存在的
-								if (vInterior.size() == 0)
-								{
-									vShpInteriorPolygons.push_back(vOutInterior);
-									continue;
-								}
-								for (size_t iInteriorPolygonIndex = 0; iInteriorPolygonIndex < vInterior.size(); iInteriorPolygonIndex++)
-								{
-									// 记录每个面要素边界点坐标转换后的坐标
-									vector<SE_DPoint> vPolygonPoints;
-									vPolygonPoints.clear();
-									size_t iPointCount = vInterior[iInteriorPolygonIndex].size();
-									double* dValues = new double[iPointCount * 2];
-									for (int iii = 0; iii < iPointCount; iii++)
-									{
-										// 横坐标，真实坐标值
-										dValues[2 * iii] = vInterior[iInteriorPolygonIndex][iii].dx / dCoordZoomScale + dOriginX - dOffsetX;
-										// 纵坐标，真实坐标值
-										dValues[2 * iii + 1] = vInterior[iInteriorPolygonIndex][iii].dy / dCoordZoomScale + dOriginY - dOffsetY;
-
-									}
-									int iResult = CSE_GeoTransformation::Proj2Geo(CGCS2000, LambertConformalConic, params, iPointCount, dValues);
-									if (iResult != 1)
-									{
-										//	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
-										std::string msg = "（投影到地理坐标系统）实体要素图层【面】要素（内环）从源地理坐标系统：CGCS2000向目的投影坐标系统：Gauss投影转化失败了！";
-										logger->error(msg);
-										continue;
-									}
-									for (int iii = 0; iii < iPointCount; iii++)
-									{
-										SE_DPoint xyz;
-										xyz.dx = dValues[2 * iii];
-										xyz.dy = dValues[2 * iii + 1];
-										vPolygonPoints.push_back(xyz);
-									}
-									vOutInterior.push_back(vPolygonPoints);
-									if (dValues)
-									{
-										delete[]dValues;
-										dValues = NULL;
-									}
-								}
-								vShpInteriorPolygons.push_back(vOutInterior);
-							}
-						}
-						//------------------------------------------//
-					}
-					//------------------------------------------//
-				}
-				// 如果是秒为单位
-				else if (strstr(strCoordUnit.c_str(), "秒") != NULL)
-				{
-					//------------------------------------------//
-					// 坐标原点为图幅西南角点经纬度
-					dSouthWestX = dSheetRect.dleft;
-					dSouthWestY = dSheetRect.dbottom;
-					// --------------【注记点要素投影】----------------//
-					if (vLayerType[iLayerIndex] == "R")
-					{
-						if (vRPoints.size() > 0)
-						{
-							size_t iPointCount = vRPoints.size();
-							double* dValues = new double[iPointCount * 2];
-							for (int i = 0; i < iPointCount; i++)
-							{
-								// 横坐标，真实坐标值
-								dValues[2 * i] = vRPoints[i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
-
-								// 纵坐标，真实坐标值
-								dValues[2 * i + 1] = vRPoints[i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
-
-							}
-							for (int i = 0; i < iPointCount; i++)
-							{
-								SE_DPoint xyz;
-								xyz.dx = dValues[2 * i];
-								xyz.dy = dValues[2 * i + 1];
-								vRShpPoints.push_back(xyz);
-							}
-							if (dValues)
-							{
-								delete[]dValues;
-								dValues = NULL;
-							}
-						}
-						if (vRLines.size() > 0)
-						{
-							for (size_t iLineIndex = 0; iLineIndex < vRLines.size(); iLineIndex++)
-							{
-								// 记录每条线坐标转换后的坐标
-								vector<SE_DPoint> vLinePoints;
-								vLinePoints.clear();
-								size_t iPointCount = vRLines[iLineIndex].size();
-								double* dValues = new double[iPointCount * 2];
-								for (int i = 0; i < iPointCount; i++)
-								{
-
-									// 横坐标，真实坐标值
-									dValues[2 * i] = vRLines[iLineIndex][i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
-
-									// 纵坐标，真实坐标值
-									dValues[2 * i + 1] = vRLines[iLineIndex][i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
-
-								}
-								for (int i = 0; i < iPointCount; i++)
-								{
-									SE_DPoint xyz;
-									xyz.dx = dValues[2 * i];
-									xyz.dy = dValues[2 * i + 1];
-									vLinePoints.push_back(xyz);
-								}
-								vRShpLines.push_back(vLinePoints);
-								if (dValues)
-								{
-									delete[]dValues;
-									dValues = NULL;
-								}
-							}
-						}
-					}
-					else
-					{
-						// --------------【点要素投影】----------------//		
-						if (vPoints.size() > 0)
-						{
-							size_t iPointCount = vPoints.size();
-							double* dValues = new double[iPointCount * 2];
-							for (int i = 0; i < iPointCount; i++)
-							{
-								// 横坐标，真实坐标值
-								dValues[2 * i] = vPoints[i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
-								// 纵坐标，真实坐标值
-								dValues[2 * i + 1] = vPoints[i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
-								// 方向点横坐标
-								double dDirX = vDirectionPoints[i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
-								// 方向点纵坐标
-								double dDirY = vDirectionPoints[i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
-
-								double dAngle = CSE_VectorFormatConversion_Imp::CalAngle_Geo(dValues[2 * i], dValues[2 * i + 1], dDirX, dDirY);
-								char szAngle[100];
-								sprintf(szAngle, "%f", dAngle);
-								vPointFieldValues[i][0] = szAngle;
-							}
-							for (int i = 0; i < iPointCount; i++)
-							{
-								SE_DPoint xyz;
-								xyz.dx = dValues[2 * i];
-								xyz.dy = dValues[2 * i + 1];
-								vShpPoints.push_back(xyz);
-							}
-							if (dValues)
-							{
-								delete[]dValues;
-								dValues = NULL;
-							}
-						}
-						//------------------------------------------//
-						// --------------【线要素投影】----------------//
-						if (vLines.size() > 0)
-						{
-							for (size_t iLineIndex = 0; iLineIndex < vLines.size(); iLineIndex++)
-							{
-								// 记录每条线坐标转换后的坐标
-								vector<SE_DPoint> vLinePoints;
-								vLinePoints.clear();
-								size_t iPointCount = vLines[iLineIndex].size();
-								double* dValues = new double[iPointCount * 2];
-								for (int i = 0; i < iPointCount; i++)
-								{
-									// 横坐标，真实坐标值
-									dValues[2 * i] = vLines[iLineIndex][i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
-									// 纵坐标，真实坐标值
-									dValues[2 * i + 1] = vLines[iLineIndex][i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
-
-								}
-								for (int i = 0; i < iPointCount; i++)
-								{
-									SE_DPoint xyz;
-									xyz.dx = dValues[2 * i];
-									xyz.dy = dValues[2 * i + 1];
-									vLinePoints.push_back(xyz);
-								}
-								vShpLines.push_back(vLinePoints);
-
-								if (dValues)
-								{
-									delete[]dValues;
-									dValues = NULL;
-								}
-							}
-						}
-						//------------------------------------------//
-						// --------------【面要素投影】----------------//
-						if (vPolygons.size() > 0)
-						{
-							for (size_t iPolygonIndex = 0; iPolygonIndex < vPolygons.size(); iPolygonIndex++)
-							{
-								// 记录每个面要素边界点坐标转换后的坐标
-								vector<SE_DPoint> vPolygonPoints;
-								vPolygonPoints.clear();
-								size_t iPointCount = vPolygons[iPolygonIndex].size();
-								double* dValues = new double[iPointCount * 2];
-								for (int i = 0; i < iPointCount; i++)
-								{
-									// 横坐标，真实坐标值
-									dValues[2 * i] = vPolygons[iPolygonIndex][i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
-									// 纵坐标，真实坐标值
-									dValues[2 * i + 1] = vPolygons[iPolygonIndex][i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
-								}
-								for (int i = 0; i < iPointCount; i++)
-								{
-									SE_DPoint xyz;
-									xyz.dx = dValues[2 * i];
-									xyz.dy = dValues[2 * i + 1];
-									vPolygonPoints.push_back(xyz);
-								}
-								vShpExteriorPolygons.push_back(vPolygonPoints);
-								if (dValues)
-								{
-									delete[]dValues;
-									dValues = NULL;
-								}
-							}
-						}
-
-						vector<vector<SE_DPoint>> vOutInterior;	// 存储转换后的环多边形 
-						vOutInterior.clear();
-						if (vInteriorPolygons.size() > 0)
-						{
-							for (size_t iInteriorIndex = 0; iInteriorIndex < vInteriorPolygons.size(); iInteriorIndex++)
-							{
-								vOutInterior.clear();
-								vector<vector<SE_DPoint>> vInterior = vInteriorPolygons[iInteriorIndex];
-								// 如果内环为不存在的
-								if (vInterior.size() == 0)
-								{
-									vShpInteriorPolygons.push_back(vOutInterior);
-									continue;
-								}
-								for (size_t iInteriorPolygonIndex = 0; iInteriorPolygonIndex < vInterior.size(); iInteriorPolygonIndex++)
-								{
-									// 记录每个面要素边界点坐标转换后的坐标
-									vector<SE_DPoint> vPolygonPoints;
-									vPolygonPoints.clear();
-									size_t iPointCount = vInterior[iInteriorPolygonIndex].size();
-									double* dValues = new double[iPointCount * 2];
-									for (int iii = 0; iii < iPointCount; iii++)
-									{
-										// 横坐标，真实坐标值
-										dValues[2 * iii] = vInterior[iInteriorPolygonIndex][iii].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
-										// 纵坐标，真实坐标值
-										dValues[2 * iii + 1] = vInterior[iInteriorPolygonIndex][iii].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
-
-									}
-									for (int iii = 0; iii < iPointCount; iii++)
-									{
-										SE_DPoint xyz;
-										xyz.dx = dValues[2 * iii];
-										xyz.dy = dValues[2 * iii + 1];
-										vPolygonPoints.push_back(xyz);
-									}
-									vOutInterior.push_back(vPolygonPoints);
-									if (dValues)
-									{
-										delete[]dValues;
-										dValues = NULL;
-									}
-								}
-								vShpInteriorPolygons.push_back(vOutInterior);
-							}
-						}
-						//------------------------------------------//
-					}
-					//------------------------------------------//
-				}
-			}
-		}
-
-    //****************坐标转换完毕******************//
-		// ----------创建shp文件---------//
-#pragma region "case1:是R图层"
-		// 如果是注记R图层
-		if (vLayerType[iLayerIndex] == "R")
-		{
-#pragma region "如果注记要素层中的点要素个数大于0"
-			// 注记点要素个数不为0
-			if (vRShpPoints.size() > 0)
-			{
-				vector<string> vFieldsName;
-				vFieldsName.clear();
-				vector<OGRFieldType> vFieldType;
-				vFieldType.clear();
-				vector<int> vFieldWidth;
-				vFieldWidth.clear();
-				//	杨小兵-2024-02-21：存储字段精度信息
-				vector<int> vFieldPrecision;
-				vFieldPrecision.clear();
-
-				// 根据要素类型获取字段信息
-				CSE_VectorFormatConversion_Imp::CreateShpFieldsByLayerType(vLayerType[iLayerIndex], "", vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
-				// 创建对应要素类型的点图层，如:图幅_R_point.shp
-				// 点要素图层全路径
-
-				string strCPGFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_point.cpg";
-				string strPointShpFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_point.shp";
-
-				//创建结果数据源
-				GDALDataset* poResultDS;
-				poResultDS = poDriver->Create(strPointShpFilePath.c_str(), 0, 0, 0, GDT_Unknown, NULL);
-				if (poResultDS == NULL)
-				{
-					//	如果创建失败，则跳过，将相关信息写入到日志中
-					std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建注记要素层点图层（" + strPointShpFilePath + "）失败！";
-					logger->error(msg);
-					continue;
-				}
-
-				// 根据图层要素类型创建shp文件
-				OGRLayer* poResultLayer = NULL;
-				// 设置结果图层的空间参考（CGCS2000）
-				OGRSpatialReference pResultSR;
-				OGRErr oErr = pResultSR.SetWellKnownGeogCS("EPSG:4490");
-				if (oErr != OGRERR_NONE)
-				{
-					//	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
-					std::string msg = "（投影到地理坐标系统）注记要素图层（点图层）在SetWellKnownGeogCS失败了！";
-					logger->error(msg);
-					continue;
-				}
-
-				// 图层名称
-				string strResultShpName = strSheetNumber + "_" + vLayerType[iLayerIndex] + "_point";
-
-				// shp中存储属性信息和几何信息
-				poResultLayer = poResultDS->CreateLayer(strResultShpName.c_str(), &pResultSR, wkbPoint, NULL);
-				if (!poResultLayer)
-				{
-					//	如果创建失败，则跳过，将相关信息写入到日志中
-					std::string msg = "目录（" + str_output_path + "/" + strSheetNumber + "）中创建结果点图层（" + strResultShpName + "）失败！";
-					logger->error(msg);
-					continue;
-				}
-				// 创建结果图层属性字段
-				int iResult = CSE_VectorFormatConversion_Imp::SetFieldDefn(poResultLayer, vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
-				if (iResult != 0)
-				{
-					//	如果创建失败，则跳过，将相关信息写入到日志中
-					std::string msg = "设置目录（" + str_output_path + "/" + strSheetNumber + "）中图层（" + strResultShpName + "）的字段定义失败！";
-					logger->error(msg);
-					continue;
-				}
-
-				// 创建要素
-				for (int i = 0; i < vRShpPoints.size(); i++)
-				{
-					iResult = CSE_VectorFormatConversion_Imp::Set_Point(poResultLayer,
-						vRShpPoints[i].dx,
-						vRShpPoints[i].dy,
-						vRShpPoints[i].dz,
-						vRFieldValues[i],
-						vLayerType[iLayerIndex]);
-					if (iResult != 0 && iResult != -2)
-					{
-						//	如果创建失败，则跳过，将相关信息写入到日志中
-						std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）的结果图层（" + strResultShpName + "）中创建点要素失败！";
-						logger->error(msg);
-						continue;
-					}
-				}
-				// 关闭数据源
-				GDALClose(poResultDS);
-
-
-				// 创建cpg文件
-				bResult = CSE_VectorFormatConversion_Imp::CreateShapefileCPG(strCPGFilePath);
-				if (!bResult)
-				{
-					//	如果创建失败，则跳过，将相关信息写入到日志中
-					std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建ShapefileCPG（" + strCPGFilePath + "）失败！";
-					logger->error(msg);
-					continue;
-				}
-			}
 #pragma endregion
 
-#pragma region "如果注记要素层中的线要素个数大于0"
-			// 线要素个数不为0
-			if (vRShpLines.size() > 0)
-			{
-				vector<string> vFieldsName;
-				vFieldsName.clear();
-				vector<OGRFieldType> vFieldType;
-				vFieldType.clear();
-				vector<int> vFieldWidth;
-				vFieldWidth.clear();
-				vector<int> vFieldPrecision;
-				vFieldPrecision.clear();
-				// 根据要素类型获取字段信息
-				CSE_VectorFormatConversion_Imp::CreateShpFieldsByLayerType(vLayerType[iLayerIndex], "", vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
-				// 创建对应要素类型的线图层，如:图幅_A_line.shp
-				// 线要素图层全路径
+#pragma region "2、设置GDAL"
+  //  如果使用的是GDAL 2.x及以前版本，可以保留以下设置；如果使用GDAL 3.x及以上版本，建议移除。
+  CPLSetConfigOption("GDAL_FILENAME_IS_UTF8", "NO"); // GDAL 3.x及以上版本不需要
+  //  设置Shapefile属性表编码为UTF-8
+  CPLSetConfigOption("SHAPE_ENCODING", "UTF-8");      // 属性表支持UTF-8字符集编码
+  //  注册所有GDAL驱动
+  GDALAllRegister();
 
-				string strCPGFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_line.cpg";
-				string strLineShpFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_line.shp";
-
-				//创建结果数据源
-				GDALDataset* poResultDS;
-				poResultDS = poDriver->Create(strLineShpFilePath.c_str(), 0, 0, 0, GDT_Unknown, NULL);
-				if (poResultDS == NULL)
-				{
-					//	如果创建失败，则跳过，将相关信息写入到日志中
-					std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建注记要素层线图层（" + strLineShpFilePath + "）失败！";
-					logger->error(msg);
-					continue;
-				}
-				// 根据图层要素类型创建shp文件
-				OGRLayer* poResultLayer = NULL;
-				// 设置结果图层的空间参考（CGCS2000）
-				OGRSpatialReference pResultSR;
-
-				OGRErr oErr = pResultSR.SetWellKnownGeogCS("EPSG:4490");
-				if (oErr != OGRERR_NONE)
-				{
-					//	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
-					std::string msg = "（投影到地理坐标系统）注记要素图层（线图层）在SetWellKnownGeogCS失败了！";
-					logger->error(msg);
-					continue;
-				}
-
-				// 图层名称
-				string strResultShpName = strSheetNumber + "_" + vLayerType[iLayerIndex] + "_line";
-
-				poResultLayer = poResultDS->CreateLayer(strResultShpName.c_str(), &pResultSR, wkbLineString, NULL);
-				if (!poResultLayer)
-				{
-					//	如果创建失败，则跳过，将相关信息写入到日志中
-					std::string msg = "目录（" + str_output_path + "/" + strSheetNumber + "）中创建结果线图层（" + strResultShpName + "）失败！";
-					logger->error(msg);
-					continue;
-				}
-				// 创建结果图层属性字段
-				int iResult = CSE_VectorFormatConversion_Imp::SetFieldDefn(poResultLayer, vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
-				if (iResult != 0)
-				{
-					//	如果创建失败，则跳过，将相关信息写入到日志中
-					std::string msg = "设置目录（" + str_output_path + "/" + strSheetNumber + "）中图层（" + strResultShpName + "）的字段定义失败！";
-					logger->error(msg);
-					continue;
-				}
-				// 创建要素
-				for (int i = 0; i < vRShpLines.size(); i++)
-				{
-					iResult = CSE_VectorFormatConversion_Imp::Set_LineString(poResultLayer,
-						vRShpLines[i],
-						vRFieldValues[i],
-						vLayerType[iLayerIndex]);
-					if (iResult != 0 && iResult != -2)
-					{
-						//	如果创建失败，则跳过，将相关信息写入到日志中
-						std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）的结果图层（" + strResultShpName + "）中创建线要素失败！";
-						logger->error(msg);
-						continue;
-					}
-				}
-				// 关闭数据源
-				GDALClose(poResultDS);
-
-				// 创建cpg文件
-				bResult = CSE_VectorFormatConversion_Imp::CreateShapefileCPG(strCPGFilePath);
-				if (!bResult)
-				{
-					//	如果创建失败，则跳过，将相关信息写入到日志中
-					std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建ShapefileCPG（" + strCPGFilePath + "）失败！";
-					logger->error(msg);
-					continue;
-				}
-			}
-#pragma endregion
-		}
+  const char* pszDriverName = "ESRI Shapefile";
+  GDALDriver* poDriver;
+  poDriver = GetGDALDriverManager()->GetDriverByName(pszDriverName);
+  if (poDriver == NULL)
+  {
+    //	从实际分幅数据中获取odata图层信息失败
+    std::string msg = "在处理分幅数据：（" + str_input_path + "）的时候，获取ESRI Shapefile驱动器失败了！";
+    logger->critical(msg);
+    std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
+    logger->critical(log_tailer_info);
+    spdlog::shutdown();
+    return SE_ERROR_GET_SHP_DRIVER_FAILED;
+  }
 #pragma endregion
 
-#pragma region "case2:不是R图层"
-		// 如果不是R图层
-		else
-		{
+#pragma region "3、循环：1、读取不同要素类型对应属性、坐标、拓扑文件；2、坐标转化；3、生成shapefile文件"
+  //  循环：1、读取不同要素类型对应属性、坐标、拓扑文件；2、坐标转化；3、生成shapefile文件
+  for (size_t iLayerIndex = 0; iLayerIndex < vLayerType.size(); iLayerIndex++)
+  {
+    //  Y图层暂不处理
+    if (vLayerType[iLayerIndex] == "Y")
+    {
+      continue;
+    }
+    bResult = false;
+
+#pragma region "1、检查属性、坐标、拓扑文件是否存在"
+    //  拼接属性、坐标、拓扑文件路径
+    string strSXFilePath = str_input_path + "/" + strSheetNumber + "." + vLayerType[iLayerIndex] + "SX";
+    string strZBFilePath = str_input_path + "/" + strSheetNumber + "." + vLayerType[iLayerIndex] + "ZB";
+    string strTPFilePath = str_input_path + "/" + strSheetNumber + "." + vLayerType[iLayerIndex] + "TP";
+    //  检查SX文件是否存在：如果拼接文件路径不存在则尝试全部小写文件路径是否存在
+    if (!CSE_VectorFormatConversion_Imp::CheckFile(strSXFilePath))
+    {
+      string strSmall;		// 小写字符
+      CSE_VectorFormatConversion_Imp::CapToSmall(vLayerType[iLayerIndex], strSmall);
+
+      strSXFilePath = str_input_path + "/" + strSheetNumber + "." + strSmall + "sx";
+      //  如果拼接文件路径不存在则尝试要素图层大写、文件类型小写构成的文件路径是否存在
+      if (!CSE_VectorFormatConversion_Imp::CheckFile(strSXFilePath))
+      {
+        strSXFilePath = str_input_path + "/" + strSheetNumber + "." + vLayerType[iLayerIndex] + "sx";
+        if (!CSE_VectorFormatConversion_Imp::CheckFile(strSXFilePath))
+        {
+          //	如果不存在，则跳过，将相关信息写入到日志中
+          std::string msg = "获取" + strSXFilePath + "文件失败！";
+          logger->error(msg);
+          continue;
+        }
+      }
+    }
+    //  检查ZB文件是否存在：如果拼接文件路径不存在则尝试全部小写文件路径是否存在
+    if (!CSE_VectorFormatConversion_Imp::CheckFile(strZBFilePath))
+    {
+      string strSmall;		// 小写字符
+      CSE_VectorFormatConversion_Imp::CapToSmall(vLayerType[iLayerIndex], strSmall);
+      strZBFilePath = str_input_path + "/" + strSheetNumber + "." + strSmall + "zb";
+      if (!CSE_VectorFormatConversion_Imp::CheckFile(strZBFilePath))
+      {
+        strZBFilePath = str_input_path + "/" + strSheetNumber + "." + vLayerType[iLayerIndex] + "zb";
+        if (!CSE_VectorFormatConversion_Imp::CheckFile(strZBFilePath))
+        {
+          //	如果不存在，则跳过，将相关信息写入到日志中
+          std::string msg = "获取" + strZBFilePath + "文件失败！";
+          logger->error(msg);
+          continue;
+        }
+      }
+    }
+    //  检查TP文件是否存在：如果当前要素图层类型不是R注记图层（注记层不存在拓扑信息）
+    if (vLayerType[iLayerIndex] != "R")
+    {
+      if (!CSE_VectorFormatConversion_Imp::CheckFile(strTPFilePath))
+      {
+        string strSmall;		// 小写字符
+        CSE_VectorFormatConversion_Imp::CapToSmall(vLayerType[iLayerIndex], strSmall);
+        strTPFilePath = str_input_path + "/" + strSheetNumber + "." + strSmall + "tp";
+        if (!CSE_VectorFormatConversion_Imp::CheckFile(strTPFilePath))
+        {
+          strTPFilePath = str_input_path + "/" + strSheetNumber + "." + vLayerType[iLayerIndex] + "tp";
+          if (!CSE_VectorFormatConversion_Imp::CheckFile(strTPFilePath))
+          {
+            //	如果不存在，则跳过，将相关信息写入到日志中
+            std::string msg = "获取" + strTPFilePath + "文件失败！";
+            logger->error(msg);
+            continue;
+          }
+        }
+      }
+    }
+#pragma endregion
+
+#pragma region "2、读拓扑文件"
+    /*
+    -----------读拓扑文件------------
+    1、读取线拓扑文件，shp主要存储线拓扑，例如:_A_line.shp文件
+    2、注记R图层无拓扑信息，跳过
+    */
+
+    //  用来存储线要素拓扑信息
+    vector<vector<string>> vLineTopogValues;
+    vLineTopogValues.clear();
+    //  如果不是注记图层，则加载拓扑信息，如果是注记图层则不需要读取拓扑信息
+    if (vLayerType[iLayerIndex] != "R")
+    {
+      bResult = CSE_VectorFormatConversion_Imp::LoadTPFile(strTPFilePath, vLineTopogValues);
+      if (!bResult)
+      {
+        //	如果不存在，则跳过，将相关信息写入到日志中
+        std::string msg = "读取拓扑文件（" + strTPFilePath + "）失败！";
+        logger->error(msg);
+        continue;
+      }
+    }
+#pragma endregion
+
+#pragma region "3、读属性文件"
+    /*
+    -----------读属性文件------------
+    */
+
+    //  用来存储点图层属性值
+    vector<vector<string>> vPointFieldValues;
+    vPointFieldValues.clear();
+    //  用来存储线图层属性值
+    vector<vector<string>> vLineFieldValues;
+    vLineFieldValues.clear();
+    //  用来存储面图层属性值
+    vector<vector<string>> vPolygonFieldValues;
+    vPolygonFieldValues.clear();
+
+    //  用来存储注记图层属性值（RSX）
+    vector<vector<string>> vRFieldValues;
+    vRFieldValues.clear();
+    //  用来存储注记图层属性值（RRSX）
+    vector<vector<string>> vRRFieldValues;
+    vRRFieldValues.clear();
+    //  用来标识RRSX文件是否存在
+    bool Flag4RRSXFile = false;
+
+    //  如果是注记图层，根据是否存在RRSX和RSX的不同情况来读取属性信息
+    if (vLayerType[iLayerIndex] == "R")
+    {
+      //  拼接注记属性文件路径
+      string strRRSXFilePath = str_input_path + "/" + strSheetNumber + ".RRSX";
+      string strRSXFilePath = str_input_path + "/" + strSheetNumber + ".RSX";
+      //  检查是否存在RRSX、RSX文件
+      bool bRRSXExists = CSE_VectorFormatConversion_Imp::CheckFile(strRRSXFilePath);
+      bool bRSXExists = CSE_VectorFormatConversion_Imp::CheckFile(strRSXFilePath);
+      //  如果 .RRSX 或 .RSX 文件不存在，尝试小写扩展名
+      if (!bRRSXExists && !bRSXExists)
+      {
+        strRRSXFilePath = str_input_path + "/" + strSheetNumber + ".rrsx";
+        strRSXFilePath = str_input_path + "/" + strSheetNumber + ".rsx";
+        bRRSXExists = CSE_VectorFormatConversion_Imp::CheckFile(strRRSXFilePath);
+        bRSXExists = CSE_VectorFormatConversion_Imp::CheckFile(strRSXFilePath);
+      }
+      //  如果RRSX文件存在，则使用LoadRRSXFile接口读取文件内容，因此RRSX和RSX保存的内容不一样
+      if (bRRSXExists)
+      {
+        //  如果存在 .RRSX 文件，读取该文件
+        bResult = CSE_VectorFormatConversion_Imp::LoadRRSXFile(
+          strRRSXFilePath,
+          strSheetNumber,
+          vRRFieldValues);
+        //  更新标志
+        Flag4RRSXFile = true;
+      }
+      //  如果RSX文件存在，则使用LoadRSXFile接口读取文件内容，因此RRSX和RSX保存的内容不一样
+      else if (bRSXExists)
+      {
+        //  如果只存在 .RSX 文件，读取该文件
+        bResult = CSE_VectorFormatConversion_Imp::LoadRSXFile(
+          strRSXFilePath,
+          strSheetNumber,
+          vRFieldValues);
+      }
+      else
+      {
+        //  如果两个文件都不存在，将相关信息写入到日志中
+        std::string msg = "注记属性文件（" + strRSXFilePath + " 或 " + strRRSXFilePath + "）不存在！";
+        logger->error(msg);
+        continue;
+      }
+    }
+    //  如果是其它图层
+    else
+    {
+      bResult = CSE_VectorFormatConversion_Imp::LoadSXFile(
+        strSXFilePath,
+        vLayerType[iLayerIndex],
+        strSheetNumber,
+        vLineTopogValues,
+        vPointFieldValues,
+        vLineFieldValues,
+        vPolygonFieldValues);
+    }
+    if (!bResult)
+    {
+      //	如果不存在，则跳过，将相关信息写入到日志中
+      std::string msg = "读取实体要素层文件（" + strSXFilePath + "）失败！";
+      logger->error(msg);
+      continue;
+    }
+#pragma endregion
+
+#pragma region "4、读坐标文件"
+    /*
+    ----------读坐标文件---------
+    1、读取转换前的坐标文件
+    */
+
+    /***********************实体要素层几何坐标*************************/
+
+    //  用来保存点要素几何坐标
+    vector<SE_DPoint> vPoints;
+    vPoints.clear();
+    //  用来保存点要素方向点几何坐标
+    vector<SE_DPoint> vDirectionPoints;
+    vDirectionPoints.clear();
+    //  用来保存线要素几何坐标
+    vector<vector<SE_DPoint>> vLines;
+    vLines.clear();
+    //  用来保存面要素外环几何坐标
+    vector<vector<SE_DPoint>> vPolygons;
+    vPolygons.clear();
+    //  用来保存面要素内环几何坐标
+    vector<vector<vector<SE_DPoint>>> vInteriorPolygons;
+    vInteriorPolygons.clear();
+
+    /***********************注记要素层几何坐标*************************/
+    /*旧版使用的变量，以备回滚
+    vector<SE_DPoint> vRPoints;
+    vRPoints.clear();
+    vector<vector<SE_DPoint>> vRLines;
+    vRLines.clear();
+    vector<int> vPointIDs;
+    vPointIDs.clear();
+    vector<int> vLineIDs;
+    vLineIDs.clear();
+    */
+
+    //  用来保存注记要素ID
+    vector<int> vRFeatureIDs;
+    vRFeatureIDs.clear();
+    //  用来保存注记要素中的名称定位点几何坐标
+    vector<SE_DPoint> vNameAnchorPoints;
+    vNameAnchorPoints.clear();
+    //  用来保存注记要素中的注记定位点几何坐标
+    vector<vector<SE_DPoint>> vAnnotationAnchorPoints;
+    vAnnotationAnchorPoints.clear();
+
+    //  如果是注记图层，根据是否存在RRZB和RZB的不同情况来读取坐标信息（目前只存在RZB文件）
+    if (vLayerType[iLayerIndex] == "R")
+    {
+      //  拼接注记坐标文件路径
+      string strRZBFilePath = str_input_path + "/" + strSheetNumber + ".RZB";
+      bool bRZBExists = CSE_VectorFormatConversion_Imp::CheckFile(strRZBFilePath);
+      //  如果.RZB 文件不存在，尝试小写扩展名
+      if (!bRZBExists)
+      {
+        strRZBFilePath = str_input_path + "/" + strSheetNumber + ".rzb";
+        bRZBExists = CSE_VectorFormatConversion_Imp::CheckFile(strRZBFilePath);
+      }
+      //  如果.RZB 文件存在
+      if (bRZBExists)
+      {
+        //  如果只存在 .RZB 文件，使用新的读取接口读取该文件中的信息
+        bResult = CSE_VectorFormatConversion_Imp::LoadRZBFile4NewVersionV1(
+          strRZBFilePath,
+          vRFeatureIDs,
+          vNameAnchorPoints,
+          vAnnotationAnchorPoints);
+      }
+      else
+      {
+        //  如果两个文件都不存在，将相关信息写入到日志中
+        std::string msg = "注记坐标文件（" + strRZBFilePath + "）不存在！";
+        logger->error(msg);
+        continue;
+      }
+    }
+    else
+    {
+      bResult = CSE_VectorFormatConversion_Imp::LoadZBFile(strZBFilePath, vPoints, vDirectionPoints, vLines, vPolygons, vInteriorPolygons);
+    }
+    if (!bResult)
+    {
+      //	如果不存在，则跳过，将相关信息写入到日志中
+      std::string msg = "实体要素层坐标文件（" + strZBFilePath + "）不存在！";
+      logger->error(msg);
+      continue;
+    }
+
+    //  读坐标文件
+#pragma endregion
+
+#pragma region "5、坐标转化"
+    /*
+    ----------对之前读取的坐标进行转化---------
+    1、使用转换前的坐标数据进行转化
+    */
+
+    //  用来保存单部件点几何坐标
+    vector<SE_DPoint> vShpPoints;
+    vShpPoints.clear();
+    //  用来保存单部件线几何坐标
+    vector<vector<SE_DPoint>> vShpLines;
+    vShpLines.clear();
+    //  用来保存多部件1：面几何坐标（外环多边形）
+    vector<vector<SE_DPoint>> vShpExteriorPolygons;
+    vShpExteriorPolygons.clear();
+    //  用来保存多部件2：内环多边形几何坐标
+    vector<vector<vector<SE_DPoint>>> vShpInteriorPolygons;
+    vShpInteriorPolygons.clear();
+
+    //  用来保存注记层定位点几何坐标
+    vector<SE_DPoint> vRShpPoints;
+    vRShpPoints.clear();
+    //  用来保存注记层注记点几何坐标
+    vector<vector<SE_DPoint>> vRShpMultiPoints;
+    vRShpMultiPoints.clear();
+
+    //  加载完坐标文件信息后，进行ODATA到shp地理坐标系（默认CGCS2000坐标系）的转换,ODATA中坐标为相对原点坐标偏移，需计算出真实的投影坐标
+    if (strstr(strGeoCoordSys.c_str(), "2000") != NULL)
+    {
+#pragma region "case1:高斯投影"
+      //  如果是高斯投影
+      if (strstr(strProjection.c_str(), "高斯") != NULL)
+      {
+        //  设置投影参数
+        ProjectionParams params;
+        params.lon_0 = dCenterL;
+        //  加带号后的高斯值
+        params.x_0 = iProjZone * 1000000 + 500000;
+
+        //  如果是米为单位
+        if (strstr(strCoordUnit.c_str(), "米") != NULL)
+        {
+          /*
+          分别对点、线、面要素进行高斯投影反算
+          1、计算西南角点横纵坐标，并减去对应比例尺的横坐标偏移量dOffsetX
+          2、计算西南角点横纵坐标，并减去对应比例尺的纵坐标偏移量dOffsetY
+          */
+          double dSouthWest[2];
+          dSouthWest[0] = dSheetRect.dleft;
+          dSouthWest[1] = dSheetRect.dbottom;
+          //  地理坐标到投影坐标
+          int iRet = CSE_GeoTransformation::Geo2Proj(
+            CGCS2000,
+            GaussKruger,
+            params,
+            1,
+            dSouthWest);
+          if (iRet != 1)
+          {
+            //	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
+            std::string msg = "源地理坐标系统：CGCS2000向目的投影坐标系统：Gauss投影失败了！";
+            logger->error(msg);
+            continue;
+          }
+
+          dSouthWestX = dSouthWest[0] - dOffsetX;
+          dSouthWestY = dSouthWest[1] - dOffsetY;
+
+          //  注记要素层投影
+          if (vLayerType[iLayerIndex] == "R")
+          {
+            //  如果注记层中的“名称定位点”要素大于0
+            if (vNameAnchorPoints.size() > 0)
+            {
+              //  计算定位点要素数量
+              size_t iPointCount = vNameAnchorPoints.size();
+              //  分配存储定位点要素集合坐标存储空间
+              double* dValues = new double[iPointCount * 2];
+              //  循环对每个定位点要素进行真实坐标计算
+              for (int i = 0; i < iPointCount; i++)
+              {
+                // 横坐标，真实坐标值
+                dValues[2 * i] = vNameAnchorPoints[i].dx / dCoordZoomScale + dSouthWestX;
+                // 纵坐标，真实坐标值
+                dValues[2 * i + 1] = vNameAnchorPoints[i].dy / dCoordZoomScale + dSouthWestY;
+              }
+              //  投影到地理坐标
+              int iResult = CSE_GeoTransformation::Proj2Geo(
+                CGCS2000,
+                GaussKruger,
+                params,
+                iPointCount,
+                dValues);
+              if (iResult != 1)
+              {
+                //	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
+                std::string msg = "（投影到地理坐标系统）注记图层中的名称定位点从源地理坐标系统：CGCS2000向目的投影坐标系统：Gauss投影转化失败了！";
+                logger->error(msg);
+                continue;
+              }
+              //  存储注记层中“定位点”投影的几何坐标
+              for (int i = 0; i < iPointCount; i++)
+              {
+                SE_DPoint xyz;
+                xyz.dx = dValues[2 * i];
+                xyz.dy = dValues[2 * i + 1];
+                vRShpPoints.push_back(xyz);
+              }
+              if (dValues)
+              {
+                delete[]dValues;
+                dValues = NULL;
+              }
+            }
+            //  如果注记层中的“注记定位点”要素大于0
+            if (vAnnotationAnchorPoints.size() > 0)
+            {
+              //  对每个注记要素的注记点计算真实几何坐标
+              for (size_t iIndex = 0; iIndex < vAnnotationAnchorPoints.size(); iIndex++)
+              {
+                //  记录每个注记要素坐标转换后的坐标
+                vector<SE_DPoint> vMultiPoints;
+                vMultiPoints.clear();
+                //  计算每个注记要素中有多少注记点
+                size_t iPointCount = vAnnotationAnchorPoints[iIndex].size();
+                //  分配存储注记要素中注记点的存储空间
+                double* dValues = new double[iPointCount * 2];
+                //  循环对每个注记点的真实几何坐标进行计算
+                for (int i = 0; i < iPointCount; i++)
+                {
+                  // 横坐标，真实坐标值
+                  dValues[2 * i] = vAnnotationAnchorPoints[iIndex][i].dx / dCoordZoomScale + dSouthWestX;
+                  // 纵坐标，真实坐标值
+                  dValues[2 * i + 1] = vAnnotationAnchorPoints[iIndex][i].dy / dCoordZoomScale + dSouthWestY;
+                }
+                //  投影到地理坐标
+                int iResult = CSE_GeoTransformation::Proj2Geo(
+                  CGCS2000,
+                  GaussKruger,
+                  params,
+                  iPointCount,
+                  dValues);
+                if (iResult != 1)
+                {
+                  //	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
+                  std::string msg = "（投影到地理坐标系统）注记图层中的注记点从源地理坐标系统：CGCS2000向目的投影坐标系统：Gauss投影转化失败了！";
+                  logger->error(msg);
+                  continue;
+                }
+                //  存储注记层中“注记点”投影的几何坐标
+                for (int i = 0; i < iPointCount; i++)
+                {
+                  SE_DPoint xyz;
+                  xyz.dx = dValues[2 * i];
+                  xyz.dy = dValues[2 * i + 1];
+                  vMultiPoints.push_back(xyz);
+                }
+                //  将当前注记要素的注记点记录到自定义结构体中用于后面的shp图层创建
+                vRShpMultiPoints.push_back(vMultiPoints);
+                if (dValues)
+                {
+                  delete[]dValues;
+                  dValues = NULL;
+                }
+              }
+            }
+          }
+          //  实体要素层投影
+          else
+          {
+            // --------------【点要素投影】----------------//		
+            if (vPoints.size() > 0)
+            {
+              size_t iPointCount = vPoints.size();
+              double* dValues = new double[iPointCount * 2];
+              for (int i = 0; i < iPointCount; i++)
+              {
+                // 横坐标，真实坐标值
+                dValues[2 * i] = vPoints[i].dx / dCoordZoomScale + dSouthWestX;
+                // 纵坐标，真实坐标值
+                dValues[2 * i + 1] = vPoints[i].dy / dCoordZoomScale + dSouthWestY;
+
+                // 方向点横坐标
+                double dDirX = vDirectionPoints[i].dx / dCoordZoomScale + dSouthWestX;
+
+                // 方向点纵坐标
+                double dDirY = vDirectionPoints[i].dy / dCoordZoomScale + dSouthWestY;
+
+                // 计算点到方向点角度
+                double dAngle = CSE_VectorFormatConversion_Imp::CalAngle_Proj(dValues[2 * i], dValues[2 * i + 1], dDirX, dDirY);
+                char szAngle[100];
+                sprintf(szAngle, "%f", dAngle);
+                vPointFieldValues[i][0] = szAngle;
+
+              }
+              //  投影到地理坐标
+              int iResult = CSE_GeoTransformation::Proj2Geo(
+                CGCS2000,
+                GaussKruger,
+                params,
+                iPointCount,
+                dValues);
+              if (iResult != 1)
+              {
+                //	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
+                std::string msg = "（投影到地理坐标系统）实体要素图层【点】要素从源地理坐标系统：CGCS2000向目的投影坐标系统：Gauss投影转化失败了！";
+                logger->error(msg);
+                continue;
+              }
+              // 直接存储投影坐标
+              for (int i = 0; i < iPointCount; i++)
+              {
+                SE_DPoint xyz;
+                xyz.dx = dValues[2 * i];
+                xyz.dy = dValues[2 * i + 1];
+                vShpPoints.push_back(xyz);
+              }
+
+              if (dValues)
+              {
+                delete[]dValues;
+                dValues = NULL;
+              }
+            }
+            //------------------------------------------//
+            // --------------【线要素投影】----------------//
+            if (vLines.size() > 0)
+            {
+              for (size_t iLineIndex = 0; iLineIndex < vLines.size(); iLineIndex++)
+              {
+                // 记录每条线坐标转换后的坐标
+                vector<SE_DPoint> vLinePoints;
+                vLinePoints.clear();
+
+                size_t iPointCount = vLines[iLineIndex].size();
+                double* dValues = new double[iPointCount * 2];
+                for (int i = 0; i < iPointCount; i++)
+                {
+                  // 横坐标，真实坐标值
+                  dValues[2 * i] = vLines[iLineIndex][i].dx / dCoordZoomScale + dSouthWestX;
+                  // 纵坐标，真实坐标值
+                  dValues[2 * i + 1] = vLines[iLineIndex][i].dy / dCoordZoomScale + dSouthWestY;
+
+                }
+                //  投影到地理坐标
+                int iResult = CSE_GeoTransformation::Proj2Geo(
+                  CGCS2000,
+                  GaussKruger,
+                  params,
+                  iPointCount,
+                  dValues);
+
+                if (iResult != 1)
+                {
+                  //	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
+                  std::string msg = "（投影到地理坐标系统）实体要素图层【线】要素从源地理坐标系统：CGCS2000向目的投影坐标系统：Gauss投影转化失败了！";
+                  logger->error(msg);
+                  continue;
+                }
+                // 直接存储投影坐标
+                for (int i = 0; i < iPointCount; i++)
+                {
+                  SE_DPoint xyz;
+                  xyz.dx = dValues[2 * i];
+                  xyz.dy = dValues[2 * i + 1];
+                  vLinePoints.push_back(xyz);
+                }
+
+                vShpLines.push_back(vLinePoints);
+                if (dValues)
+                {
+                  delete[]dValues;
+                  dValues = NULL;
+                }
+              }
+            }
+            //------------------------------------------//
+            // --------------【面要素投影】----------------//
+            if (vPolygons.size() > 0)
+            {
+              for (size_t iPolygonIndex = 0; iPolygonIndex < vPolygons.size(); iPolygonIndex++)
+              {
+                // 记录每个面要素边界点坐标转换后的坐标
+                vector<SE_DPoint> vPolygonPoints;
+                vPolygonPoints.clear();
+                size_t iPointCount = vPolygons[iPolygonIndex].size();
+                double* dValues = new double[iPointCount * 2];
+                for (int i = 0; i < iPointCount; i++)
+                {
+                  // 横坐标，真实坐标值
+                  dValues[2 * i] = vPolygons[iPolygonIndex][i].dx / dCoordZoomScale + dSouthWestX;
+                  // 纵坐标，真实坐标值
+                  dValues[2 * i + 1] = vPolygons[iPolygonIndex][i].dy / dCoordZoomScale + dSouthWestY;
+
+                }
+                //  投影到地理坐标
+                int iResult = CSE_GeoTransformation::Proj2Geo(
+                  CGCS2000,
+                  GaussKruger,
+                  params,
+                  iPointCount,
+                  dValues);
+                if (iResult != 1)
+                {
+                  //	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
+                  std::string msg = "（投影到地理坐标系统）实体要素图层【面】要素（外环）从源地理坐标系统：CGCS2000向目的投影坐标系统：Gauss投影转化失败了！";
+                  logger->error(msg);
+                  continue;
+                }
+                // 直接存储投影坐标
+                for (int i = 0; i < iPointCount; i++)
+                {
+                  SE_DPoint xyz;
+                  xyz.dx = dValues[2 * i];
+                  xyz.dy = dValues[2 * i + 1];
+                  vPolygonPoints.push_back(xyz);
+                }
+                vShpExteriorPolygons.push_back(vPolygonPoints);
+                if (dValues)
+                {
+                  delete[]dValues;
+                  dValues = NULL;
+                }
+              }
+            }
+
+            vector<vector<SE_DPoint>> vOutInterior;	// 存储转换后的环多边形 
+            vOutInterior.clear();
+
+            if (vInteriorPolygons.size() > 0)
+            {
+              for (size_t iInteriorIndex = 0; iInteriorIndex < vInteriorPolygons.size(); iInteriorIndex++)
+              {
+                vOutInterior.clear();
+                vector<vector<SE_DPoint>> vInterior = vInteriorPolygons[iInteriorIndex];
+                // 如果内环为不存在的
+                if (vInterior.size() == 0)
+                {
+                  vShpInteriorPolygons.push_back(vOutInterior);
+                  continue;
+                }
+                for (size_t iInteriorPolygonIndex = 0; iInteriorPolygonIndex < vInterior.size(); iInteriorPolygonIndex++)
+                {
+                  // 记录每个面要素边界点坐标转换后的坐标
+                  vector<SE_DPoint> vPolygonPoints;
+                  vPolygonPoints.clear();
+                  size_t iPointCount = vInterior[iInteriorPolygonIndex].size();
+                  double* dValues = new double[iPointCount * 2];
+                  for (int iii = 0; iii < iPointCount; iii++)
+                  {
+                    // 横坐标，真实坐标值
+                    dValues[2 * iii] = vInterior[iInteriorPolygonIndex][iii].dx / dCoordZoomScale + dSouthWestX;
+                    // 纵坐标，真实坐标值
+                    dValues[2 * iii + 1] = vInterior[iInteriorPolygonIndex][iii].dy / dCoordZoomScale + dSouthWestY;
+                  }
+                  //  投影到地理坐标
+                  int iResult = CSE_GeoTransformation::Proj2Geo(
+                    CGCS2000,
+                    GaussKruger,
+                    params,
+                    iPointCount,
+                    dValues);
+                  if (iResult != 1)
+                  {
+                    //	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
+                    std::string msg = "（投影到地理坐标系统）实体要素图层【面】要素（内环）从源地理坐标系统：CGCS2000向目的投影坐标系统：Gauss投影转化失败了！";
+                    logger->error(msg);
+                    continue;
+                  }
+                  // 直接存储投影坐标
+                  for (int iii = 0; iii < iPointCount; iii++)
+                  {
+                    SE_DPoint xyz;
+                    xyz.dx = dValues[2 * iii];
+                    xyz.dy = dValues[2 * iii + 1];
+
+                    vPolygonPoints.push_back(xyz);
+                  }
+                  vOutInterior.push_back(vPolygonPoints);
+                  if (dValues)
+                  {
+                    delete[]dValues;
+                    dValues = NULL;
+                  }
+                }
+                vShpInteriorPolygons.push_back(vOutInterior);
+              }
+            }
+            //------------------------------------------//
+          }
+          //------------------------------------------//
+        }
+        //  如果是秒为单位
+        else if (strstr(strCoordUnit.c_str(), "秒") != NULL)
+        {
+          //  坐标原点为图幅西南角点经纬度
+          dSouthWestX = dSheetRect.dleft;
+          dSouthWestY = dSheetRect.dbottom;
+          //  注记要素层投影
+          if (vLayerType[iLayerIndex] == "R")
+          {
+            //  如果注记层中的“名称定位点”要素大于0
+            if (vNameAnchorPoints.size() > 0)
+            {
+              size_t iPointCount = vNameAnchorPoints.size();
+              double* dValues = new double[iPointCount * 2];
+              for (int i = 0; i < iPointCount; i++)
+              {
+                //  横坐标，真实坐标值
+                dValues[2 * i] = vNameAnchorPoints[i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
+                //  纵坐标，真实坐标值
+                dValues[2 * i + 1] = vNameAnchorPoints[i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
+              }
+              //  循环对每个名称定位点的几何坐标进行存储
+              for (int i = 0; i < iPointCount; i++)
+              {
+                SE_DPoint xyz;
+                xyz.dx = dValues[2 * i];
+                xyz.dy = dValues[2 * i + 1];
+                vRShpPoints.push_back(xyz);
+              }
+              if (dValues)
+              {
+                delete[]dValues;
+                dValues = NULL;
+              }
+            }
+            //  如果注记层中的“注记定位点”要素大于0
+            if (vAnnotationAnchorPoints.size() > 0)
+            {
+              for (size_t iIndex = 0; iIndex < vAnnotationAnchorPoints.size(); iIndex++)
+              {
+                // 记录每条线坐标转换后的坐标
+                vector<SE_DPoint> vMultiPoints;
+                vMultiPoints.clear();
+                //  计算每个注记要素的注记点数量
+                size_t iPointCount = vAnnotationAnchorPoints[iIndex].size();
+                //  分配注记要素的注记点几何坐标所需的空间
+                double* dValues = new double[iPointCount * 2];
+                //  循环对计算每个注记要素的注记点的真实几何坐标
+                for (int i = 0; i < iPointCount; i++)
+                {
+                  // 横坐标，真实坐标值
+                  dValues[2 * i] = vAnnotationAnchorPoints[iIndex][i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
+                  // 纵坐标，真实坐标值
+                  dValues[2 * i + 1] = vAnnotationAnchorPoints[iIndex][i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
+                }
+                //  循环存储注记要素中注记点的几何坐标
+                for (int i = 0; i < iPointCount; i++)
+                {
+                  SE_DPoint xyz;
+                  xyz.dx = dValues[2 * i];
+                  xyz.dy = dValues[2 * i + 1];
+                  vMultiPoints.push_back(xyz);
+                }
+                vRShpMultiPoints.push_back(vMultiPoints);
+                if (dValues)
+                {
+                  delete[]dValues;
+                  dValues = NULL;
+                }
+              }
+            }
+          }
+          //  实体要素层投影
+          else
+          {
+            // --------------【点要素投影】----------------//		
+            if (vPoints.size() > 0)
+            {
+              size_t iPointCount = vPoints.size();
+              double* dValues = new double[iPointCount * 2];
+              for (int i = 0; i < iPointCount; i++)
+              {
+                // 横坐标，真实坐标值
+                dValues[2 * i] = vPoints[i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
+                // 纵坐标，真实坐标值
+                dValues[2 * i + 1] = vPoints[i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
+                // 方向点横坐标
+                double dDirX = vDirectionPoints[i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
+                // 方向点纵坐标
+                double dDirY = vDirectionPoints[i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
+                double dAngle = CSE_VectorFormatConversion_Imp::CalAngle_Geo(dValues[2 * i], dValues[2 * i + 1], dDirX, dDirY);
+                char szAngle[100];
+                sprintf(szAngle, "%f", dAngle);
+                vPointFieldValues[i][0] = szAngle;
+              }
+
+              for (int i = 0; i < iPointCount; i++)
+              {
+                SE_DPoint xyz;
+                xyz.dx = dValues[2 * i];
+                xyz.dy = dValues[2 * i + 1];
+                vShpPoints.push_back(xyz);
+              }
+              if (dValues)
+              {
+                delete[]dValues;
+                dValues = NULL;
+              }
+            }
+            //------------------------------------------//
+            // --------------【线要素投影】----------------//
+            if (vLines.size() > 0)
+            {
+              for (size_t iLineIndex = 0; iLineIndex < vLines.size(); iLineIndex++)
+              {
+                // 记录每条线坐标转换后的坐标
+                vector<SE_DPoint> vLinePoints;
+                vLinePoints.clear();
+
+                size_t iPointCount = vLines[iLineIndex].size();
+                double* dValues = new double[iPointCount * 2];
+                for (int i = 0; i < iPointCount; i++)
+                {
+                  // 横坐标，真实坐标值
+                  dValues[2 * i] = vLines[iLineIndex][i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
+                  // 纵坐标，真实坐标值
+                  dValues[2 * i + 1] = vLines[iLineIndex][i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
+
+                }
+
+                for (int i = 0; i < iPointCount; i++)
+                {
+                  SE_DPoint xyz;
+                  xyz.dx = dValues[2 * i];
+                  xyz.dy = dValues[2 * i + 1];
+                  vLinePoints.push_back(xyz);
+                }
+                vShpLines.push_back(vLinePoints);
+                if (dValues)
+                {
+                  delete[]dValues;
+                  dValues = NULL;
+                }
+              }
+            }
+            //------------------------------------------//
+            // --------------【面要素投影】----------------//
+            if (vPolygons.size() > 0)
+            {
+              for (size_t iPolygonIndex = 0; iPolygonIndex < vPolygons.size(); iPolygonIndex++)
+              {
+                // 记录每个面要素边界点坐标转换后的坐标
+                vector<SE_DPoint> vPolygonPoints;
+                vPolygonPoints.clear();
+                size_t iPointCount = vPolygons[iPolygonIndex].size();
+                double* dValues = new double[iPointCount * 2];
+                for (int i = 0; i < iPointCount; i++)
+                {
+                  // 横坐标，真实坐标值
+                  dValues[2 * i] = vPolygons[iPolygonIndex][i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
+
+                  // 纵坐标，真实坐标值
+                  dValues[2 * i + 1] = vPolygons[iPolygonIndex][i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
+                }
+
+                for (int i = 0; i < iPointCount; i++)
+                {
+                  SE_DPoint xyz;
+                  xyz.dx = dValues[2 * i];
+                  xyz.dy = dValues[2 * i + 1];
+                  vPolygonPoints.push_back(xyz);
+                }
+                vShpExteriorPolygons.push_back(vPolygonPoints);
+                if (dValues)
+                {
+                  delete[]dValues;
+                  dValues = NULL;
+                }
+              }
+            }
+
+            // 存储转换后的环多边形
+            vector<vector<SE_DPoint>> vOutInterior;
+            vOutInterior.clear();
+
+            if (vInteriorPolygons.size() > 0)
+            {
+              for (size_t iInteriorIndex = 0; iInteriorIndex < vInteriorPolygons.size(); iInteriorIndex++)
+              {
+                vOutInterior.clear();
+                vector<vector<SE_DPoint>> vInterior = vInteriorPolygons[iInteriorIndex];
+                // 如果内环为不存在的
+                if (vInterior.size() == 0)
+                {
+                  vShpInteriorPolygons.push_back(vOutInterior);
+                  continue;
+                }
+                for (size_t iInteriorPolygonIndex = 0; iInteriorPolygonIndex < vInterior.size(); iInteriorPolygonIndex++)
+                {
+                  // 记录每个面要素边界点坐标转换后的坐标
+                  vector<SE_DPoint> vPolygonPoints;
+                  vPolygonPoints.clear();
+                  size_t iPointCount = vInterior[iInteriorPolygonIndex].size();
+                  double* dValues = new double[iPointCount * 2];
+                  for (int iii = 0; iii < iPointCount; iii++)
+                  {
+                    // 横坐标，真实坐标值
+                    dValues[2 * iii] = vInterior[iInteriorPolygonIndex][iii].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
+                    // 纵坐标，真实坐标值
+                    dValues[2 * iii + 1] = vInterior[iInteriorPolygonIndex][iii].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
+                  }
+
+                  for (int iii = 0; iii < iPointCount; iii++)
+                  {
+                    SE_DPoint xyz;
+                    xyz.dx = dValues[2 * iii];
+                    xyz.dy = dValues[2 * iii + 1];
+                    vPolygonPoints.push_back(xyz);
+                  }
+                  vOutInterior.push_back(vPolygonPoints);
+                  if (dValues)
+                  {
+                    delete[]dValues;
+                    dValues = NULL;
+                  }
+                }
+                vShpInteriorPolygons.push_back(vOutInterior);
+              }
+            }
+            //------------------------------------------//
+          }
+          //------------------------------------------//
+        }
+      }
+#pragma endregion
+
+#pragma region "case2:等角圆锥投影"
+      //  如果是等角圆锥投影，100万比例尺可能为等角圆锥投影
+      else if (strstr(strProjection.c_str(), "等角圆锥") != NULL)
+      {
+        ProjectionParams params;
+        params.lon_0 = dCenterL;
+        params.lat_1 = dParellel_1;
+        params.lat_2 = dParellel_2;
+        //  如果是米为单位（分别对点、线、面要素进行圆锥投影反算）
+        if (strstr(strCoordUnit.c_str(), "米") != NULL)
+        {
+          //  注记要素层投影
+          if (vLayerType[iLayerIndex] == "R")
+          {
+            //  如果注记层中的“名称定位点”要素大于0
+            if (vNameAnchorPoints.size() > 0)
+            {
+              //  计算名称定位点要素数量
+              size_t iPointCount = vNameAnchorPoints.size();
+              //  分配名称点位点真实几何坐标所需的空间
+              double* dValues = new double[iPointCount * 2];
+              //  循环对每个名称定位点的真实几何坐标进行计算
+              for (int i = 0; i < iPointCount; i++)
+              {
+                // 横坐标，真实坐标值
+                dValues[2 * i] = vNameAnchorPoints[i].dx / dCoordZoomScale + dOriginX - dOffsetX;
+                // 纵坐标，真实坐标值
+                dValues[2 * i + 1] = vNameAnchorPoints[i].dy / dCoordZoomScale + dOriginY - dOffsetY;
+              }
+              //  投影到地理坐标
+              int iResult = CSE_GeoTransformation::Proj2Geo(
+                CGCS2000,
+                LambertConformalConic,
+                params,
+                iPointCount,
+                dValues);
+              if (iResult != 1)
+              {
+                //	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
+                std::string msg = "（投影到地理坐标系统）注记要素图层中的名称定位点从源地理坐标系统：CGCS2000向目的投影坐标系统：Gauss投影转化失败了！";
+                logger->error(msg);
+                continue;
+              }
+              //  存储注记层中“名称定位点”投影的几何坐标
+              for (int i = 0; i < iPointCount; i++)
+              {
+                SE_DPoint xyz;
+                xyz.dx = dValues[2 * i];
+                xyz.dy = dValues[2 * i + 1];
+                vRShpPoints.push_back(xyz);
+              }
+              if (dValues)
+              {
+                delete[]dValues;
+                dValues = NULL;
+              }
+            }
+            //  如果注记层中的“注记定位点”要素大于0
+            if (vAnnotationAnchorPoints.size() > 0)
+            {
+              for (size_t iIndex = 0; iIndex < vAnnotationAnchorPoints.size(); iIndex++)
+              {
+                //  记录每个注记要素中的注记点坐标
+                vector<SE_DPoint> vMultiPoints;
+                vMultiPoints.clear();
+                //  计算当前注记要素中的注记点坐标数量
+                size_t iPointCount = vAnnotationAnchorPoints[iIndex].size();
+                //  分配当前注记要素中的注记点几何坐标所需要的存储空间
+                double* dValues = new double[iPointCount * 2];
+                //  循环对每个注记点要素中的注记点的真实几何坐标进行计算
+                for (int i = 0; i < iPointCount; i++)
+                {
+                  // 横坐标，真实坐标值
+                  dValues[2 * i] = vAnnotationAnchorPoints[iIndex][i].dx / dCoordZoomScale + dOriginX - dOffsetX;
+                  // 纵坐标，真实坐标值
+                  dValues[2 * i + 1] = vAnnotationAnchorPoints[iIndex][i].dy / dCoordZoomScale + dOriginY - dOffsetY;
+                }
+                //  投影到地理坐标
+                int iResult = CSE_GeoTransformation::Proj2Geo(CGCS2000, LambertConformalConic, params, iPointCount, dValues);
+                if (iResult != 1)
+                {
+                  //	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
+                  std::string msg = "（投影到地理坐标系统）注记要素图层中的注记定位点从源地理坐标系统：CGCS2000向目的投影坐标系统：Gauss投影转化失败了！";
+                  logger->error(msg);
+                  continue;
+                }
+                // 存储注记层中“注记定位点”投影的几何坐标
+                for (int i = 0; i < iPointCount; i++)
+                {
+                  SE_DPoint xyz;
+                  xyz.dx = dValues[2 * i];
+                  xyz.dy = dValues[2 * i + 1];
+                  vMultiPoints.push_back(xyz);
+                }
+                vRShpMultiPoints.push_back(vMultiPoints);
+                if (dValues)
+                {
+                  delete[]dValues;
+                  dValues = NULL;
+                }
+              }
+            }
+          }
+          //  实体要素层投影
+          else
+          {
+            // --------------【点要素投影】----------------//		
+            if (vPoints.size() > 0)
+            {
+              size_t iPointCount = vPoints.size();
+              double* dValues = new double[iPointCount * 2];
+              for (int i = 0; i < iPointCount; i++)
+              {
+                // 横坐标，真实坐标值
+                dValues[2 * i] = vPoints[i].dx / dCoordZoomScale + dOriginX - dOffsetX;
+                // 纵坐标，真实坐标值
+                dValues[2 * i + 1] = vPoints[i].dy / dCoordZoomScale + dOriginY - dOffsetY;
+                // 方向点横坐标
+                double dDirX = vDirectionPoints[i].dx / dCoordZoomScale + dOriginX - dOffsetX;
+                // 方向点纵坐标
+                double dDirY = vDirectionPoints[i].dy / dCoordZoomScale + dOriginY - dOffsetY;
+                double dAngle = CSE_VectorFormatConversion_Imp::CalAngle_Proj(dValues[2 * i], dValues[2 * i + 1], dDirX, dDirY);
+                char szAngle[100];
+                sprintf(szAngle, "%f", dAngle);
+                vPointFieldValues[i][0] = szAngle;
+              }
+              //  投影到地理坐标
+              int iResult = CSE_GeoTransformation::Proj2Geo(
+                CGCS2000,
+                LambertConformalConic,
+                params,
+                iPointCount,
+                dValues);
+              if (iResult != 1)
+              {
+                //	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
+                std::string msg = "（投影到地理坐标系统）实体要素图层【点】要素从源地理坐标系统：CGCS2000向目的投影坐标系统：Gauss投影转化失败了！";
+                logger->error(msg);
+                continue;
+              }
+              // 直接存储投影坐标
+              for (int i = 0; i < iPointCount; i++)
+              {
+                SE_DPoint xyz;
+                xyz.dx = dValues[2 * i];
+                xyz.dy = dValues[2 * i + 1];
+                vShpPoints.push_back(xyz);
+              }
+              if (dValues)
+              {
+                delete[]dValues;
+                dValues = NULL;
+              }
+            }
+            //------------------------------------------//
+            // --------------【线要素投影】----------------//
+            if (vLines.size() > 0)
+            {
+              for (size_t iLineIndex = 0; iLineIndex < vLines.size(); iLineIndex++)
+              {
+                // 记录每条线坐标转换后的坐标
+                vector<SE_DPoint> vLinePoints;
+                vLinePoints.clear();
+                size_t iPointCount = vLines[iLineIndex].size();
+                double* dValues = new double[iPointCount * 2];
+                for (int i = 0; i < iPointCount; i++)
+                {
+                  // 横坐标，真实坐标值
+                  dValues[2 * i] = vLines[iLineIndex][i].dx / dCoordZoomScale + dOriginX - dOffsetX;
+                  // 纵坐标，真实坐标值
+                  dValues[2 * i + 1] = vLines[iLineIndex][i].dy / dCoordZoomScale + dOriginY - dOffsetY;
+
+                }
+                //  投影到地理坐标
+                int iResult = CSE_GeoTransformation::Proj2Geo(
+                  CGCS2000,
+                  LambertConformalConic,
+                  params,
+                  iPointCount,
+                  dValues);
+                if (iResult != 1)
+                {
+                  //	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
+                  std::string msg = "（投影到地理坐标系统）实体要素图层【线】要素从源地理坐标系统：CGCS2000向目的投影坐标系统：Gauss投影转化失败了！";
+                  logger->error(msg);
+                  continue;
+                }
+
+                // 直接存储投影坐标
+                for (int i = 0; i < iPointCount; i++)
+                {
+                  SE_DPoint xyz;
+                  xyz.dx = dValues[2 * i];
+                  xyz.dy = dValues[2 * i + 1];
+                  vLinePoints.push_back(xyz);
+                }
+                vShpLines.push_back(vLinePoints);
+                if (dValues)
+                {
+                  delete[]dValues;
+                  dValues = NULL;
+                }
+              }
+            }
+            //------------------------------------------//
+            // --------------【面要素投影】----------------//
+            if (vPolygons.size() > 0)
+            {
+              for (size_t iPolygonIndex = 0; iPolygonIndex < vPolygons.size(); iPolygonIndex++)
+              {
+                // 记录每个面要素边界点坐标转换后的坐标
+                vector<SE_DPoint> vPolygonPoints;
+                vPolygonPoints.clear();
+                size_t iPointCount = vPolygons[iPolygonIndex].size();
+                double* dValues = new double[iPointCount * 2];
+                for (int i = 0; i < iPointCount; i++)
+                {
+                  // 横坐标，真实坐标值
+                  dValues[2 * i] = vPolygons[iPolygonIndex][i].dx / dCoordZoomScale + dOriginX - dOffsetX;
+                  // 纵坐标，真实坐标值
+                  dValues[2 * i + 1] = vPolygons[iPolygonIndex][i].dy / dCoordZoomScale + dOriginY - dOffsetY;
+
+                }
+                //  投影到地理坐标
+                int iResult = CSE_GeoTransformation::Proj2Geo(
+                  CGCS2000,
+                  LambertConformalConic,
+                  params,
+                  iPointCount,
+                  dValues);
+                if (iResult != 1)
+                {
+                  //	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
+                  std::string msg = "（投影到地理坐标系统）实体要素图层【面】要素（外环）从源地理坐标系统：CGCS2000向目的投影坐标系统：Gauss投影转化失败了！";
+                  logger->error(msg);
+                  continue;
+                }
+
+                // 直接存储投影坐标
+                for (int i = 0; i < iPointCount; i++)
+                {
+                  SE_DPoint xyz;
+                  xyz.dx = dValues[2 * i];
+                  xyz.dy = dValues[2 * i + 1];
+                  vPolygonPoints.push_back(xyz);
+                }
+                vShpExteriorPolygons.push_back(vPolygonPoints);
+                if (dValues)
+                {
+                  delete[]dValues;
+                  dValues = NULL;
+                }
+              }
+            }
+            vector<vector<SE_DPoint>> vOutInterior;	// 存储转换后的环多边形 
+            vOutInterior.clear();
+            if (vInteriorPolygons.size() > 0)
+            {
+              for (size_t iInteriorIndex = 0; iInteriorIndex < vInteriorPolygons.size(); iInteriorIndex++)
+              {
+                vOutInterior.clear();
+                vector<vector<SE_DPoint>> vInterior = vInteriorPolygons[iInteriorIndex];
+                // 如果内环为不存在的
+                if (vInterior.size() == 0)
+                {
+                  vShpInteriorPolygons.push_back(vOutInterior);
+                  continue;
+                }
+                for (size_t iInteriorPolygonIndex = 0; iInteriorPolygonIndex < vInterior.size(); iInteriorPolygonIndex++)
+                {
+                  // 记录每个面要素边界点坐标转换后的坐标
+                  vector<SE_DPoint> vPolygonPoints;
+                  vPolygonPoints.clear();
+                  size_t iPointCount = vInterior[iInteriorPolygonIndex].size();
+                  double* dValues = new double[iPointCount * 2];
+                  for (int iii = 0; iii < iPointCount; iii++)
+                  {
+                    // 横坐标，真实坐标值
+                    dValues[2 * iii] = vInterior[iInteriorPolygonIndex][iii].dx / dCoordZoomScale + dOriginX - dOffsetX;
+                    // 纵坐标，真实坐标值
+                    dValues[2 * iii + 1] = vInterior[iInteriorPolygonIndex][iii].dy / dCoordZoomScale + dOriginY - dOffsetY;
+
+                  }
+                  //  投影到地理坐标
+                  int iResult = CSE_GeoTransformation::Proj2Geo(CGCS2000, LambertConformalConic, params, iPointCount, dValues);
+                  if (iResult != 1)
+                  {
+                    //	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
+                    std::string msg = "（投影到地理坐标系统）实体要素图层【面】要素（内环）从源地理坐标系统：CGCS2000向目的投影坐标系统：Gauss投影转化失败了！";
+                    logger->error(msg);
+                    continue;
+                  }
+                  // 直接存储投影坐标
+                  for (int iii = 0; iii < iPointCount; iii++)
+                  {
+                    SE_DPoint xyz;
+                    xyz.dx = dValues[2 * iii];
+                    xyz.dy = dValues[2 * iii + 1];
+                    vPolygonPoints.push_back(xyz);
+                  }
+                  vOutInterior.push_back(vPolygonPoints);
+                  if (dValues)
+                  {
+                    delete[]dValues;
+                    dValues = NULL;
+                  }
+                }
+                vShpInteriorPolygons.push_back(vOutInterior);
+              }
+            }
+            //------------------------------------------//
+          }
+          //------------------------------------------//
+        }
+        //  如果是秒为单位
+        else if (strstr(strCoordUnit.c_str(), "秒") != NULL)
+        {
+          // 坐标原点为图幅西南角点经纬度
+          dSouthWestX = dSheetRect.dleft;
+          dSouthWestY = dSheetRect.dbottom;
+          //  注记要素层投影
+          if (vLayerType[iLayerIndex] == "R")
+          {
+            //  如果注记层中的“名称定位点”要素大于0
+            if (vNameAnchorPoints.size() > 0)
+            {
+              //  计算注记要素中名称定位点的数量
+              size_t iPointCount = vNameAnchorPoints.size();
+              //  分配注记要素中名称定位点所需的存储空间
+              double* dValues = new double[iPointCount * 2];
+              for (int i = 0; i < iPointCount; i++)
+              {
+                // 横坐标，真实坐标值
+                dValues[2 * i] = vNameAnchorPoints[i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
+                // 纵坐标，真实坐标值
+                dValues[2 * i + 1] = vNameAnchorPoints[i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
+              }
+              //  存储注记层中“名称定位点”投影的几何坐标
+              for (int i = 0; i < iPointCount; i++)
+              {
+                SE_DPoint xyz;
+                xyz.dx = dValues[2 * i];
+                xyz.dy = dValues[2 * i + 1];
+                vRShpPoints.push_back(xyz);
+              }
+              if (dValues)
+              {
+                delete[]dValues;
+                dValues = NULL;
+              }
+            }
+            //  如果注记层中的“注记定位点”要素大于0
+            if (vAnnotationAnchorPoints.size() > 0)
+            {
+              for (size_t iIndex = 0; iIndex < vAnnotationAnchorPoints.size(); iIndex++)
+              {
+                // 记录注记要素的注记点位点坐标转换后的坐标
+                vector<SE_DPoint> vMultiPoints;
+                vMultiPoints.clear();
+                //  计算当前注记要素的注记定位点数量
+                size_t iPointCount = vAnnotationAnchorPoints[iIndex].size();
+                //  分配当前注记要素的注记定位点所需的存储空间
+                double* dValues = new double[iPointCount * 2];
+                //  循环计算每个注记要素的注记定位点的真实几何坐标
+                for (int i = 0; i < iPointCount; i++)
+                {
+                  // 横坐标，真实坐标值
+                  dValues[2 * i] = vAnnotationAnchorPoints[iIndex][i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
+                  // 纵坐标，真实坐标值
+                  dValues[2 * i + 1] = vAnnotationAnchorPoints[iIndex][i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
+                }
+                //  存储注记层中“注记定位点”投影的几何坐标
+                for (int i = 0; i < iPointCount; i++)
+                {
+                  SE_DPoint xyz;
+                  xyz.dx = dValues[2 * i];
+                  xyz.dy = dValues[2 * i + 1];
+                  vMultiPoints.push_back(xyz);
+                }
+                vRShpMultiPoints.push_back(vMultiPoints);
+                if (dValues)
+                {
+                  delete[]dValues;
+                  dValues = NULL;
+                }
+              }
+            }
+          }
+          //  实体要素层投影
+          else
+          {
+            // --------------【点要素投影】----------------//		
+            if (vPoints.size() > 0)
+            {
+              size_t iPointCount = vPoints.size();
+              double* dValues = new double[iPointCount * 2];
+              for (int i = 0; i < iPointCount; i++)
+              {
+                // 横坐标，真实坐标值
+                dValues[2 * i] = vPoints[i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
+                // 纵坐标，真实坐标值
+                dValues[2 * i + 1] = vPoints[i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
+                // 方向点横坐标
+                double dDirX = vDirectionPoints[i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
+                // 方向点纵坐标
+                double dDirY = vDirectionPoints[i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
+
+                double dAngle = CSE_VectorFormatConversion_Imp::CalAngle_Geo(dValues[2 * i], dValues[2 * i + 1], dDirX, dDirY);
+                char szAngle[100];
+                sprintf(szAngle, "%f", dAngle);
+                vPointFieldValues[i][0] = szAngle;
+              }
+
+              for (int i = 0; i < iPointCount; i++)
+              {
+                SE_DPoint xyz;
+                xyz.dx = dValues[2 * i];
+                xyz.dy = dValues[2 * i + 1];
+                vShpPoints.push_back(xyz);
+              }
+              if (dValues)
+              {
+                delete[]dValues;
+                dValues = NULL;
+              }
+            }
+            //------------------------------------------//
+            // --------------【线要素投影】----------------//
+            if (vLines.size() > 0)
+            {
+              for (size_t iLineIndex = 0; iLineIndex < vLines.size(); iLineIndex++)
+              {
+                // 记录每条线坐标转换后的坐标
+                vector<SE_DPoint> vLinePoints;
+                vLinePoints.clear();
+                size_t iPointCount = vLines[iLineIndex].size();
+                double* dValues = new double[iPointCount * 2];
+                for (int i = 0; i < iPointCount; i++)
+                {
+                  // 横坐标，真实坐标值
+                  dValues[2 * i] = vLines[iLineIndex][i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
+                  // 纵坐标，真实坐标值
+                  dValues[2 * i + 1] = vLines[iLineIndex][i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
+
+                }
+
+                for (int i = 0; i < iPointCount; i++)
+                {
+                  SE_DPoint xyz;
+                  xyz.dx = dValues[2 * i];
+                  xyz.dy = dValues[2 * i + 1];
+                  vLinePoints.push_back(xyz);
+                }
+                vShpLines.push_back(vLinePoints);
+
+                if (dValues)
+                {
+                  delete[]dValues;
+                  dValues = NULL;
+                }
+              }
+            }
+            //------------------------------------------//
+            // --------------【面要素投影】----------------//
+            if (vPolygons.size() > 0)
+            {
+              for (size_t iPolygonIndex = 0; iPolygonIndex < vPolygons.size(); iPolygonIndex++)
+              {
+                // 记录每个面要素边界点坐标转换后的坐标
+                vector<SE_DPoint> vPolygonPoints;
+                vPolygonPoints.clear();
+                size_t iPointCount = vPolygons[iPolygonIndex].size();
+                double* dValues = new double[iPointCount * 2];
+                for (int i = 0; i < iPointCount; i++)
+                {
+                  // 横坐标，真实坐标值
+                  dValues[2 * i] = vPolygons[iPolygonIndex][i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
+                  // 纵坐标，真实坐标值
+                  dValues[2 * i + 1] = vPolygons[iPolygonIndex][i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
+                }
+
+                for (int i = 0; i < iPointCount; i++)
+                {
+                  SE_DPoint xyz;
+                  xyz.dx = dValues[2 * i];
+                  xyz.dy = dValues[2 * i + 1];
+                  vPolygonPoints.push_back(xyz);
+                }
+                vShpExteriorPolygons.push_back(vPolygonPoints);
+                if (dValues)
+                {
+                  delete[]dValues;
+                  dValues = NULL;
+                }
+              }
+            }
+
+            vector<vector<SE_DPoint>> vOutInterior;	// 存储转换后的环多边形 
+            vOutInterior.clear();
+            if (vInteriorPolygons.size() > 0)
+            {
+              for (size_t iInteriorIndex = 0; iInteriorIndex < vInteriorPolygons.size(); iInteriorIndex++)
+              {
+                vOutInterior.clear();
+                vector<vector<SE_DPoint>> vInterior = vInteriorPolygons[iInteriorIndex];
+                // 如果内环为不存在的
+                if (vInterior.size() == 0)
+                {
+                  vShpInteriorPolygons.push_back(vOutInterior);
+                  continue;
+                }
+                for (size_t iInteriorPolygonIndex = 0; iInteriorPolygonIndex < vInterior.size(); iInteriorPolygonIndex++)
+                {
+                  // 记录每个面要素边界点坐标转换后的坐标
+                  vector<SE_DPoint> vPolygonPoints;
+                  vPolygonPoints.clear();
+                  size_t iPointCount = vInterior[iInteriorPolygonIndex].size();
+                  double* dValues = new double[iPointCount * 2];
+                  for (int iii = 0; iii < iPointCount; iii++)
+                  {
+                    // 横坐标，真实坐标值
+                    dValues[2 * iii] = vInterior[iInteriorPolygonIndex][iii].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
+                    // 纵坐标，真实坐标值
+                    dValues[2 * iii + 1] = vInterior[iInteriorPolygonIndex][iii].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
+
+                  }
+
+                  for (int iii = 0; iii < iPointCount; iii++)
+                  {
+                    SE_DPoint xyz;
+                    xyz.dx = dValues[2 * iii];
+                    xyz.dy = dValues[2 * iii + 1];
+                    vPolygonPoints.push_back(xyz);
+                  }
+                  vOutInterior.push_back(vPolygonPoints);
+                  if (dValues)
+                  {
+                    delete[]dValues;
+                    dValues = NULL;
+                  }
+                }
+                vShpInteriorPolygons.push_back(vOutInterior);
+              }
+            }
+            //------------------------------------------//
+          }
+          //------------------------------------------//
+        }
+      }
+#pragma endregion
+    }
+
+
+    //  进行坐标转化
+#pragma endregion
+
+#pragma region "6、创建shp文件"
+    /*
+    ----------创建shp文件---------
+    */
+
+#pragma region "创建shapefile:图层类型是R图层"
+    // 如果是注记R图层
+    if (vLayerType[iLayerIndex] == "R")
+    {
+#pragma region "如果注记要素层中的名称定位点要素个数大于0"
+      //  注记图层中的名称定位点要素个数不为0
+      if (vRShpPoints.size() > 0)
+      {
+        //  创建注记名称定位点要素层的字段信息
+        vector<string> vFieldsName;
+        vFieldsName.clear();
+        vector<OGRFieldType> vFieldType;
+        vFieldType.clear();
+        vector<int> vFieldWidth;
+        vFieldWidth.clear();
+        vector<int> vFieldPrecision;
+        vFieldPrecision.clear();
+        //  根据要素类型获取字段信息，不同的要素层存在不同的字段信息（这里是否需要将第二个参数设置为Point?）
+        if (Flag4RRSXFile)
+        {
+          CSE_VectorFormatConversion_Imp::CreateShpFieldsByLayerType("RR", "", vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
+        }
+        else
+        {
+          CSE_VectorFormatConversion_Imp::CreateShpFieldsByLayerType(vLayerType[iLayerIndex], "", vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
+        }
+
+
+        //  创建对应要素类型的点图层，如:图幅：*_R_NameAnchorPoints.shp，点要素图层全路径
+        string strPointShpFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_NameAnchorPoints.shp";
+        //  创建结果数据源
+        GDALDataset* poResultDS;
+        poResultDS = poDriver->Create(strPointShpFilePath.c_str(), 0, 0, 0, GDT_Unknown, NULL);
+        if (poResultDS == NULL)
+        {
+          //	如果创建失败，则跳过，将相关信息写入到日志中
+          std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建注记名称定位点图层（" + strPointShpFilePath + "）失败！";
+          logger->error(msg);
+          continue;
+        }
+        //  根据图层要素类型创建shp文件
+        OGRLayer* poResultLayer = NULL;
+
+        //  设置结果图层的空间参考（CGCS2000）
+        OGRSpatialReference pResultSR;
+        OGRErr oErr = pResultSR.SetWellKnownGeogCS("EPSG:4490");
+        if (oErr != OGRERR_NONE)
+        {
+          //	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
+          std::string msg = "（投影到地理坐标系统）注记要素图层中的名称定位点在SetWellKnownGeogCS失败了！";
+          logger->error(msg);
+          continue;
+        }
+
+        //  图层名称
+        string strResultShpName = strSheetNumber + "_" + vLayerType[iLayerIndex] + "_NameAnchorPoints";
+        //  shp中存储属性信息和几何信息（wkbPoint）
+        poResultLayer = poResultDS->CreateLayer(strResultShpName.c_str(), &pResultSR, wkbPoint, NULL);
+        if (!poResultLayer)
+        {
+          //	如果创建失败，则跳过，将相关信息写入到日志中
+          std::string msg = "目录（" + str_output_path + "/" + strSheetNumber + "）中创建结果点图层（" + strResultShpName + "）失败！";
+          logger->error(msg);
+          continue;
+        }
+        //  创建结果图层的属性字段
+        int iResult = CSE_VectorFormatConversion_Imp::SetFieldDefn(poResultLayer, vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
+        if (iResult != 0)
+        {
+          //	如果创建失败，则跳过，将相关信息写入到日志中
+          std::string msg = "设置目录（" + str_output_path + "/" + strSheetNumber + "）中图层（" + strResultShpName + "）的字段定义失败！";
+          logger->error(msg);
+          continue;
+        }
+
+        //  循环创建注记名称定位点要素
+        for (int i = 0; i < vRShpPoints.size(); i++)
+        {
+          if (Flag4RRSXFile)
+          {
+            iResult = CSE_VectorFormatConversion_Imp::Set_Point(
+              poResultLayer,
+              vRShpPoints[i].dx,
+              vRShpPoints[i].dy,
+              vRShpPoints[i].dz,
+              vRRFieldValues[i],
+              "RR");
+          }
+          else
+          {
+            iResult = CSE_VectorFormatConversion_Imp::Set_Point(
+              poResultLayer,
+              vRShpPoints[i].dx,
+              vRShpPoints[i].dy,
+              vRShpPoints[i].dz,
+              vRFieldValues[i],
+              vLayerType[iLayerIndex]);
+          }
+          //  检查要素创建是否成功
+          if (iResult != 0 && iResult != -2)
+          {
+            //	如果创建失败，则跳过，将相关信息写入到日志中
+            std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）的结果图层（" + strResultShpName + "）中创建点要素失败！";
+            logger->error(msg);
+            continue;
+          }
+        }
+        //  关闭数据源
+        GDALClose(poResultDS);
+
+        //  创建cpg文件
+        string strCPGFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_NameAnchorPoints.cpg";
+        bResult = CSE_VectorFormatConversion_Imp::CreateShapefileCPG(strCPGFilePath);
+        if (!bResult)
+        {
+          //	如果创建失败，则跳过，将相关信息写入到日志中
+          std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建ShapefileCPG（" + strCPGFilePath + "）失败！";
+          logger->error(msg);
+          continue;
+        }
+      }
+#pragma endregion
+
+#pragma region "如果注记要素层中的注记定位点要素个数大于0"
+      //  注记图层中的注记定位点要素个数不为0
+      if (vRShpMultiPoints.size() > 0)
+      {
+        //  创建注记注记定位点要素层的字段信息
+        vector<string> vFieldsName;
+        vFieldsName.clear();
+        vector<OGRFieldType> vFieldType;
+        vFieldType.clear();
+        vector<int> vFieldWidth;
+        vFieldWidth.clear();
+        vector<int> vFieldPrecision;
+        vFieldPrecision.clear();
+
+        //  根据要素类型获取字段信息
+        if (Flag4RRSXFile)
+        {
+          CSE_VectorFormatConversion_Imp::CreateShpFieldsByLayerType("RR", "", vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
+        }
+        else
+        {
+          CSE_VectorFormatConversion_Imp::CreateShpFieldsByLayerType(vLayerType[iLayerIndex], "", vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
+        }
+
+        //  创建注记要素类型的注记定位点（多点）图层
+        string strMultiPointShpFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_AnnotationAnchorPoints.shp";
+        //  创建结果数据源
+        GDALDataset* poResultDS;
+        poResultDS = poDriver->Create(strMultiPointShpFilePath.c_str(), 0, 0, 0, GDT_Unknown, NULL);
+        if (poResultDS == NULL)
+        {
+          //	如果创建失败，则跳过，将相关信息写入到日志中
+          std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建注记定位点图层（" + strMultiPointShpFilePath + "）失败！";
+          logger->error(msg);
+          continue;
+        }
+
+        //  根据图层要素类型创建shp文件
+        OGRLayer* poResultLayer = NULL;
+
+        //  设置结果图层的空间参考（CGCS2000）
+        OGRSpatialReference pResultSR;
+        OGRErr oErr = pResultSR.SetWellKnownGeogCS("EPSG:4490");
+        if (oErr != OGRERR_NONE)
+        {
+          //	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
+          std::string msg = "（投影到地理坐标系统）注记要中的注记定位点在SetWellKnownGeogCS失败了！";
+          logger->error(msg);
+          continue;
+        }
+
+        //  图层名称
+        string strResultShpName = strSheetNumber + "_" + vLayerType[iLayerIndex] + "_AnnotationAnchorPoints";
+        //  这里需要将wkbLineString修改成wkbMultiPoint
+        //poResultLayer = poResultDS->CreateLayer(strResultShpName.c_str(), &pResultSR, wkbMultiPoint, NULL);
+        //  -2024-12-07：如果使用wkbMultiPoint的话将不能对单个多点要素中的每个对象赋予不同的属性值，因此这里需要对多点要素进行拆分
+        poResultLayer = poResultDS->CreateLayer(strResultShpName.c_str(), &pResultSR, wkbPoint, NULL);
+        if (!poResultLayer)
+        {
+          //	如果创建失败，则跳过，将相关信息写入到日志中
+          std::string msg = "目录（" + str_output_path + "/" + strSheetNumber + "）中创建结果多点图层（" + strResultShpName + "）失败！";
+          logger->error(msg);
+          continue;
+        }
+
+        //  创建结果图层属性字段
+        int iResult = CSE_VectorFormatConversion_Imp::SetFieldDefn(poResultLayer, vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
+        if (iResult != 0)
+        {
+          //	如果创建失败，则跳过，将相关信息写入到日志中
+          std::string msg = "设置目录（" + str_output_path + "/" + strSheetNumber + "）中图层（" + strResultShpName + "）的字段定义失败！";
+          logger->error(msg);
+          continue;
+        }
+        //  创建注记定位点要素（需要使用Set_MultiPoint函数）
+        for (int i = 0; i < vRShpMultiPoints.size(); i++)
+        {
+          if (Flag4RRSXFile)
+          {
+            iResult = CSE_VectorFormatConversion_Imp::Set_MultiPoint(
+              poResultLayer,
+              vRShpMultiPoints[i],
+              vRRFieldValues[i],
+              "RR");
+          }
+          else
+          {
+            iResult = CSE_VectorFormatConversion_Imp::Set_MultiPoint(
+              poResultLayer,
+              vRShpMultiPoints[i],
+              vRFieldValues[i],
+              vLayerType[iLayerIndex]);
+          }
+          //  检查结果
+          if (iResult != 0 && iResult != -2)
+          {
+            //	如果创建失败，则跳过，将相关信息写入到日志中
+            std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）的结果图层（" + strResultShpName + "）中创建多点要素失败！";
+            logger->error(msg);
+            continue;
+          }
+        }
+        //  关闭数据源
+        GDALClose(poResultDS);
+
+        //  创建cpg文件
+        string strCPGFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_AnnotationAnchorPoints.cpg";
+        bResult = CSE_VectorFormatConversion_Imp::CreateShapefileCPG(strCPGFilePath);
+        if (!bResult)
+        {
+          //	如果创建失败，则跳过，将相关信息写入到日志中
+          std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建ShapefileCPG（" + strCPGFilePath + "）失败！";
+          logger->error(msg);
+          continue;
+        }
+      }
+#pragma endregion
+    }
+#pragma endregion
+
+#pragma region "创建shapefile:图层类型是实体要素图层"
+    // 如果不是R图层
+    else
+    {
 #pragma region "如果实体要素层中的点要素个数大于0"
-			// 如果点要素个数大于0
-			if (vShpPoints.size() > 0)		// 点要素个数不为0
-			{
-				// 判断点图层中编码是否都为0，如果都为0，则不生成对应的图层
-				bool bIsAllZero = CSE_VectorFormatConversion_Imp::AttrCodeIsAllZero("Point", vPointFieldValues);
-				if (!bIsAllZero)
-				{
-					vector<string> vFieldsName;
-					vFieldsName.clear();
+      // 如果点要素个数大于0
+      if (vShpPoints.size() > 0)		// 点要素个数不为0
+      {
+        // 判断点图层中编码是否都为0，如果都为0，则不生成对应的图层
+        bool bIsAllZero = CSE_VectorFormatConversion_Imp::AttrCodeIsAllZero("Point", vPointFieldValues);
+        if (!bIsAllZero)
+        {
+          vector<string> vFieldsName;
+          vFieldsName.clear();
 
-					vector<OGRFieldType> vFieldType;
-					vFieldType.clear();
+          vector<OGRFieldType> vFieldType;
+          vFieldType.clear();
 
-					vector<int> vFieldWidth;
-					vFieldWidth.clear();
+          vector<int> vFieldWidth;
+          vFieldWidth.clear();
 
-					vector<int> vFieldPrecision;
-					vFieldPrecision.clear();
-					// 根据要素类型获取字段信息
-					CSE_VectorFormatConversion_Imp::CreateShpFieldsByLayerType(vLayerType[iLayerIndex], "Point", vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
-					// 创建对应要素类型的点图层，如:图幅_A_point.shp
-					// 点要素图层全路径
+          vector<int> vFieldPrecision;
+          vFieldPrecision.clear();
+          // 根据要素类型获取字段信息
+          CSE_VectorFormatConversion_Imp::CreateShpFieldsByLayerType(vLayerType[iLayerIndex], "Point", vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
+          // 创建对应要素类型的点图层，如:图幅_A_point.shp
+          // 点要素图层全路径
 
-					string strCPGFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_point.cpg";
-					string strPointShpFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_point.shp";
+          string strCPGFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_point.cpg";
+          string strPointShpFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_point.shp";
 
-					//创建结果数据源
-					GDALDataset* poResultDS;
-					poResultDS = poDriver->Create(strPointShpFilePath.c_str(), 0, 0, 0, GDT_Unknown, NULL);
-					if (poResultDS == NULL)
-					{
-						//	如果创建失败，则跳过，将相关信息写入到日志中
-						std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建实体要素层点图层（" + strPointShpFilePath + "）失败！";
-						logger->error(msg);
-						continue;
-					}
-					// 根据图层要素类型创建shp文件
-					OGRLayer* poResultLayer = NULL;
-					// 设置结果图层的空间参考（CGCS2000）
-					OGRSpatialReference pResultSR;
-					OGRErr oErr = pResultSR.SetWellKnownGeogCS("EPSG:4490");
-					if (oErr != OGRERR_NONE)
-					{
-						//	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
-						std::string msg = "（投影到地理坐标系统）实体要素图层（点图层）在SetWellKnownGeogCS失败了！";
-						logger->error(msg);
-						continue;
-					}
+          //创建结果数据源
+          GDALDataset* poResultDS;
+          poResultDS = poDriver->Create(strPointShpFilePath.c_str(), 0, 0, 0, GDT_Unknown, NULL);
+          if (poResultDS == NULL)
+          {
+            //	如果创建失败，则跳过，将相关信息写入到日志中
+            std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建实体要素层点图层（" + strPointShpFilePath + "）失败！";
+            logger->error(msg);
+            continue;
+          }
+          // 根据图层要素类型创建shp文件
+          OGRLayer* poResultLayer = NULL;
 
-					// shp中存储属性信息和几何信息
-					string strResultShpFileName = strSheetNumber + "_" + vLayerType[iLayerIndex] + "_point";
-					poResultLayer = poResultDS->CreateLayer(strResultShpFileName.c_str(), &pResultSR, wkbPoint, NULL);
-					if (!poResultLayer)
-					{
-						//	如果创建失败，则跳过，将相关信息写入到日志中
-						std::string msg = "目录（" + str_output_path + "/" + strSheetNumber + "）中创建注记要素层点图层（" + strResultShpFileName + "）失败！";
-						logger->error(msg);
-						continue;
-					}
-					// 创建结果图层属性字段
-					int iResult = CSE_VectorFormatConversion_Imp::SetFieldDefn(poResultLayer, vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
-					if (iResult != 0)
-					{
-						//	如果创建失败，则跳过，将相关信息写入到日志中
-						std::string msg = "设置目录（" + str_output_path + "/" + strSheetNumber + "）中图层（" + strResultShpFileName + "）的字段定义失败！";
-						logger->error(msg);
-						continue;
-					}
-					// 创建要素
-					for (int i = 0; i < vShpPoints.size(); i++)
-					{
-						iResult = CSE_VectorFormatConversion_Imp::Set_Point(poResultLayer,
-							vShpPoints[i].dx,
-							vShpPoints[i].dy,
-							vShpPoints[i].dz,
-							vPointFieldValues[i],
-							vLayerType[iLayerIndex]);
-						if (iResult != 0 && iResult != -2)
-						{
-							//	如果创建失败，则跳过，将相关信息写入到日志中
-							std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）的结果图层（" + strResultShpFileName + "）中创建点要素失败！";
-							logger->error(msg);
-							continue;
-						}
-					}
-					// 关闭数据源
-					GDALClose(poResultDS);
+          // 设置结果图层的空间参考（CGCS2000）
+          OGRSpatialReference pResultSR;
+          OGRErr oErr = pResultSR.SetWellKnownGeogCS("EPSG:4490");
+          if (oErr != OGRERR_NONE)
+          {
+            //	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
+            std::string msg = "（投影到地理坐标系统）实体要素图层（点图层）在SetWellKnownGeogCS失败了！";
+            logger->error(msg);
+            continue;
+          }
 
-					// 创建cpg文件
-					bResult = CSE_VectorFormatConversion_Imp::CreateShapefileCPG(strCPGFilePath);
-					if (!bResult)
-					{
-						//	如果创建失败，则跳过，将相关信息写入到日志中
-						std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建ShapefileCPG（" + strCPGFilePath + "）失败！";
-						logger->error(msg);
-						continue;
-					}
-				}
+          // shp中存储属性信息和几何信息
+          string strResultShpFileName = strSheetNumber + "_" + vLayerType[iLayerIndex] + "_point";
+          poResultLayer = poResultDS->CreateLayer(strResultShpFileName.c_str(), &pResultSR, wkbPoint, NULL);
+          if (!poResultLayer)
+          {
+            //	如果创建失败，则跳过，将相关信息写入到日志中
+            std::string msg = "目录（" + str_output_path + "/" + strSheetNumber + "）中创建注记要素层点图层（" + strResultShpFileName + "）失败！";
+            logger->error(msg);
+            continue;
+          }
+          // 创建结果图层属性字段
+          int iResult = CSE_VectorFormatConversion_Imp::SetFieldDefn(poResultLayer, vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
+          if (iResult != 0)
+          {
+            //	如果创建失败，则跳过，将相关信息写入到日志中
+            std::string msg = "设置目录（" + str_output_path + "/" + strSheetNumber + "）中图层（" + strResultShpFileName + "）的字段定义失败！";
+            logger->error(msg);
+            continue;
+          }
+          // 创建要素
+          for (int i = 0; i < vShpPoints.size(); i++)
+          {
+            iResult = CSE_VectorFormatConversion_Imp::Set_Point(poResultLayer,
+              vShpPoints[i].dx,
+              vShpPoints[i].dy,
+              vShpPoints[i].dz,
+              vPointFieldValues[i],
+              vLayerType[iLayerIndex]);
+            if (iResult != 0 && iResult != -2)
+            {
+              //	如果创建失败，则跳过，将相关信息写入到日志中
+              std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）的结果图层（" + strResultShpFileName + "）中创建点要素失败！";
+              logger->error(msg);
+              continue;
+            }
+          }
+          // 关闭数据源
+          GDALClose(poResultDS);
 
-			}
+          // 创建cpg文件
+          bResult = CSE_VectorFormatConversion_Imp::CreateShapefileCPG(strCPGFilePath);
+          if (!bResult)
+          {
+            //	如果创建失败，则跳过，将相关信息写入到日志中
+            std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建ShapefileCPG（" + strCPGFilePath + "）失败！";
+            logger->error(msg);
+            continue;
+          }
+        }
+
+      }
 #pragma endregion
 
 #pragma region "如果实体要素层中的线要素个数大于0"
-			// 如果线要素个数大于0
-			if (vShpLines.size() > 0)		// 线要素个数不为0
-			{
+      // 如果线要素个数大于0
+      if (vShpLines.size() > 0)		// 线要素个数不为0
+      {
 
-				// 判断线图层中编码是否都为0，如果都为0，则不生成对应的图层
-				bool bIsAllZero = CSE_VectorFormatConversion_Imp::AttrCodeIsAllZero("Line", vLineFieldValues);
-				if (!bIsAllZero)
-				{
-					vector<string> vFieldsName;
-					vFieldsName.clear();
+        // 判断线图层中编码是否都为0，如果都为0，则不生成对应的图层
+        bool bIsAllZero = CSE_VectorFormatConversion_Imp::AttrCodeIsAllZero("Line", vLineFieldValues);
+        if (!bIsAllZero)
+        {
+          vector<string> vFieldsName;
+          vFieldsName.clear();
 
-					vector<OGRFieldType> vFieldType;
-					vFieldType.clear();
+          vector<OGRFieldType> vFieldType;
+          vFieldType.clear();
 
-					vector<int> vFieldWidth;
-					vFieldWidth.clear();
+          vector<int> vFieldWidth;
+          vFieldWidth.clear();
 
-					vector<int> vFieldPrecision;
-					vFieldPrecision.clear();
-					// 根据要素类型获取字段信息
-					CSE_VectorFormatConversion_Imp::CreateShpFieldsByLayerType(vLayerType[iLayerIndex], "Line", vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
-					// 创建对应要素类型的线图层，如:图幅_A_line.shp
-					// 线要素图层全路径
+          vector<int> vFieldPrecision;
+          vFieldPrecision.clear();
 
-					string strCPGFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_line.cpg";
-					string strLineShpFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_line.shp";
+          // 根据要素类型获取字段信息
+          CSE_VectorFormatConversion_Imp::CreateShpFieldsByLayerType(vLayerType[iLayerIndex], "Line", vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
+          // 创建对应要素类型的线图层，如:图幅_A_line.shp
+          // 线要素图层全路径
 
-					//创建结果数据源
-					GDALDataset* poResultDS;
-					poResultDS = poDriver->Create(strLineShpFilePath.c_str(), 0, 0, 0, GDT_Unknown, NULL);
-					if (poResultDS == NULL)
-					{
-						//	如果创建失败，则跳过，将相关信息写入到日志中
-						std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建实体要素层线图层（" + strLineShpFilePath + "）失败！";
-						logger->error(msg);
-						continue;
-					}
-					// 根据图层要素类型创建shp文件
-					OGRLayer* poResultLayer = NULL;
-					// 设置结果图层的空间参考（CGCS2000）
-					OGRSpatialReference pResultSR;
-					OGRErr oErr = pResultSR.SetWellKnownGeogCS("EPSG:4490");
-					if (oErr != OGRERR_NONE)
-					{
-						//	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
-						std::string msg = "（投影到地理坐标系统）实体要素图层（线图层）在SetWellKnownGeogCS失败了！";
-						logger->error(msg);
-						continue;
-					}
-					// shp中存储属性信息和几何信息
+          string strCPGFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_line.cpg";
+          string strLineShpFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_line.shp";
 
-					string strResultShpFileName = strSheetNumber + "_" + vLayerType[iLayerIndex] + "_line";
-					poResultLayer = poResultDS->CreateLayer(strResultShpFileName.c_str(), &pResultSR, wkbLineString, NULL);
-					if (!poResultLayer)
-					{
-						//	如果创建失败，则跳过，将相关信息写入到日志中
-						std::string msg = "目录（" + str_output_path + "/" + strSheetNumber + "）中创建注记要素层线图层（" + strResultShpFileName + "）失败！";
-						logger->error(msg);
-						continue;
-					}
-					// 创建结果图层属性字段
-					int iResult = CSE_VectorFormatConversion_Imp::SetFieldDefn(poResultLayer, vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
-					if (iResult != 0)
-					{
-						//	如果创建失败，则跳过，将相关信息写入到日志中
-						std::string msg = "设置目录（" + str_output_path + "/" + strSheetNumber + "）中图层（" + strResultShpFileName + "）的字段定义失败！";
-						logger->error(msg);
-						continue;
-					}
-					// 创建要素
-					for (int i = 0; i < vShpLines.size(); i++)
-					{
-						iResult = CSE_VectorFormatConversion_Imp::Set_LineString(poResultLayer,
-							vShpLines[i],
-							vLineFieldValues[i],
-							vLayerType[iLayerIndex]);
-						if (iResult != 0 && iResult != -2)
-						{
-							//	如果创建失败，则跳过，将相关信息写入到日志中
-							std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）的结果图层（" + strResultShpFileName + "）中创建线要素失败！";
-							logger->error(msg);
-							continue;
-						}
-					}
-					// 关闭数据源
-					GDALClose(poResultDS);
+          //创建结果数据源
+          GDALDataset* poResultDS;
+          poResultDS = poDriver->Create(strLineShpFilePath.c_str(), 0, 0, 0, GDT_Unknown, NULL);
+          if (poResultDS == NULL)
+          {
+            //	如果创建失败，则跳过，将相关信息写入到日志中
+            std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建实体要素层线图层（" + strLineShpFilePath + "）失败！";
+            logger->error(msg);
+            continue;
+          }
+          // 根据图层要素类型创建shp文件
+          OGRLayer* poResultLayer = NULL;
 
-					// 创建cpg文件
-					bResult = CSE_VectorFormatConversion_Imp::CreateShapefileCPG(strCPGFilePath);
-					if (!bResult)
-					{
-						//	如果创建失败，则跳过，将相关信息写入到日志中
-						std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建ShapefileCPG（" + strCPGFilePath + "）失败！";
-						logger->error(msg);
-						continue;
-					}
-				}
-			}
+          // 设置结果图层的空间参考（CGCS2000）
+          OGRSpatialReference pResultSR;
+          OGRErr oErr = pResultSR.SetWellKnownGeogCS("EPSG:4490");
+          if (oErr != OGRERR_NONE)
+          {
+            //	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
+            std::string msg = "（投影到地理坐标系统）实体要素图层（线图层）在SetWellKnownGeogCS失败了！";
+            logger->error(msg);
+            continue;
+          }
+
+          // shp中存储属性信息和几何信息
+          string strResultShpFileName = strSheetNumber + "_" + vLayerType[iLayerIndex] + "_line";
+          poResultLayer = poResultDS->CreateLayer(strResultShpFileName.c_str(), &pResultSR, wkbLineString, NULL);
+          if (!poResultLayer)
+          {
+            //	如果创建失败，则跳过，将相关信息写入到日志中
+            std::string msg = "目录（" + str_output_path + "/" + strSheetNumber + "）中创建注记要素层线图层（" + strResultShpFileName + "）失败！";
+            logger->error(msg);
+            continue;
+          }
+          // 创建结果图层属性字段
+          int iResult = CSE_VectorFormatConversion_Imp::SetFieldDefn(poResultLayer, vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
+          if (iResult != 0)
+          {
+            //	如果创建失败，则跳过，将相关信息写入到日志中
+            std::string msg = "设置目录（" + str_output_path + "/" + strSheetNumber + "）中图层（" + strResultShpFileName + "）的字段定义失败！";
+            logger->error(msg);
+            continue;
+          }
+          // 创建要素
+          for (int i = 0; i < vShpLines.size(); i++)
+          {
+            iResult = CSE_VectorFormatConversion_Imp::Set_LineString(poResultLayer,
+              vShpLines[i],
+              vLineFieldValues[i],
+              vLayerType[iLayerIndex]);
+            if (iResult != 0 && iResult != -2)
+            {
+              //	如果创建失败，则跳过，将相关信息写入到日志中
+              std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）的结果图层（" + strResultShpFileName + "）中创建线要素失败！";
+              logger->error(msg);
+              continue;
+            }
+          }
+          // 关闭数据源
+          GDALClose(poResultDS);
+
+          // 创建cpg文件
+          bResult = CSE_VectorFormatConversion_Imp::CreateShapefileCPG(strCPGFilePath);
+          if (!bResult)
+          {
+            //	如果创建失败，则跳过，将相关信息写入到日志中
+            std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建ShapefileCPG（" + strCPGFilePath + "）失败！";
+            logger->error(msg);
+            continue;
+          }
+        }
+      }
 #pragma endregion
 
 #pragma region "如果实体要素层中的面要素个数大于0"
-			// 如果面要素个数大于0
-			if (vShpExteriorPolygons.size() > 0)
-			{
-				// 判断面图层中编码是否都为0，如果都为0，则不生成对应的图层
-				bool bIsAllZero = CSE_VectorFormatConversion_Imp::AttrCodeIsAllZero("Polygon", vPolygonFieldValues);
-				if (!bIsAllZero)
-				{
-					vector<string> vFieldsName;
-					vFieldsName.clear();
-					vector<OGRFieldType> vFieldType;
-					vFieldType.clear();
-					vector<int> vFieldWidth;
-					vFieldWidth.clear();
-					vector<int> vFieldPrecision;
-					vFieldPrecision.clear();
-					// 根据要素类型获取字段信息
-					CSE_VectorFormatConversion_Imp::CreateShpFieldsByLayerType(vLayerType[iLayerIndex], "Polygon", vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
-					// 创建对应要素类型的面图层，如:图幅_A_polygon.shp
-					// 面要素图层全路径
+      // 如果面要素个数大于0
+      if (vShpExteriorPolygons.size() > 0)
+      {
+        // 判断面图层中编码是否都为0，如果都为0，则不生成对应的图层
+        bool bIsAllZero = CSE_VectorFormatConversion_Imp::AttrCodeIsAllZero("Polygon", vPolygonFieldValues);
+        if (!bIsAllZero)
+        {
+          vector<string> vFieldsName;
+          vFieldsName.clear();
+          vector<OGRFieldType> vFieldType;
+          vFieldType.clear();
+          vector<int> vFieldWidth;
+          vFieldWidth.clear();
+          vector<int> vFieldPrecision;
+          vFieldPrecision.clear();
+          // 根据要素类型获取字段信息
+          CSE_VectorFormatConversion_Imp::CreateShpFieldsByLayerType(vLayerType[iLayerIndex], "Polygon", vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
+          // 创建对应要素类型的面图层，如:图幅_A_polygon.shp
+          // 面要素图层全路径
 
-					string strCPGFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_polygon.cpg";
-					string strPolygonShpFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_polygon.shp";
+          string strCPGFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_polygon.cpg";
+          string strPolygonShpFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_polygon.shp";
 
-					//创建结果数据源
-					GDALDataset* poResultDS;
-					poResultDS = poDriver->Create(strPolygonShpFilePath.c_str(), 0, 0, 0, GDT_Unknown, NULL);
-					if (poResultDS == NULL)
-					{
-						//	如果创建失败，则跳过，将相关信息写入到日志中
-						std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建实体要素层面图层（" + strPolygonShpFilePath + "）失败！";
-						logger->error(msg);
-						continue;
-					}
-					// 根据图层要素类型创建shp文件
-					OGRLayer* poResultLayer = NULL;
-					// 设置结果图层的空间参考（CGCS2000）
-					OGRSpatialReference pResultSR;
-					OGRErr oErr = pResultSR.SetWellKnownGeogCS("EPSG:4490");
-					if (oErr != OGRERR_NONE)
-					{
-						//	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
-						std::string msg = "（投影到地理坐标系统）实体要素图层（面图层）在SetWellKnownGeogCS失败了！";
-						logger->error(msg);
-						continue;
-					}
+          //创建结果数据源
+          GDALDataset* poResultDS;
+          poResultDS = poDriver->Create(strPolygonShpFilePath.c_str(), 0, 0, 0, GDT_Unknown, NULL);
+          if (poResultDS == NULL)
+          {
+            //	如果创建失败，则跳过，将相关信息写入到日志中
+            std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建实体要素层面图层（" + strPolygonShpFilePath + "）失败！";
+            logger->error(msg);
+            continue;
+          }
+          // 根据图层要素类型创建shp文件
+          OGRLayer* poResultLayer = NULL;
 
-					// shp中存储属性信息和几何信息
-					string strResultShpFileName = strSheetNumber + "_" + vLayerType[iLayerIndex] + "_polygon";
-					poResultLayer = poResultDS->CreateLayer(strResultShpFileName.c_str(), &pResultSR, wkbPolygon, NULL);
-					if (!poResultLayer)
-					{
-						//	如果创建失败，则跳过，将相关信息写入到日志中
-						std::string msg = "目录（" + str_output_path + "/" + strSheetNumber + "）中创建注记要素层面图层（" + strResultShpFileName + "）失败！";
-						logger->error(msg);
-						continue;
-					}
-					// 创建结果图层属性字段
-					int iResult = CSE_VectorFormatConversion_Imp::SetFieldDefn(poResultLayer, vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
-					if (iResult != 0)
-					{
-						//	如果创建失败，则跳过，将相关信息写入到日志中
-						std::string msg = "设置目录（" + str_output_path + "/" + strSheetNumber + "）中图层（" + strResultShpFileName + "）的字段定义失败！";
-						logger->error(msg);
-						continue;
-					}
-					// 创建要素
-					for (int i = 0; i < vShpExteriorPolygons.size(); i++)
-					{
-						vector<vector<SE_DPoint>> vInterior = vShpInteriorPolygons[i];
-						iResult = CSE_VectorFormatConversion_Imp::Set_Polygon(poResultLayer,
-							vShpExteriorPolygons[i],
-							vInterior,
-							vPolygonFieldValues[i],
-							vLayerType[iLayerIndex]);
-						if (iResult != 0 && iResult != -2)
-						{
-							//	如果创建失败，则跳过，将相关信息写入到日志中
-							std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）的结果图层（" + strResultShpFileName + "）中创建面要素失败！";
-							logger->error(msg);
-							continue;
-						}
-					}
-					// 关闭数据源
-					GDALClose(poResultDS);
+          // 设置结果图层的空间参考（CGCS2000）
+          OGRSpatialReference pResultSR;
+          OGRErr oErr = pResultSR.SetWellKnownGeogCS("EPSG:4490");
+          if (oErr != OGRERR_NONE)
+          {
+            //	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
+            std::string msg = "（投影到地理坐标系统）实体要素图层（面图层）在SetWellKnownGeogCS失败了！";
+            logger->error(msg);
+            continue;
+          }
 
-					// 创建cpg文件
-					bResult = CSE_VectorFormatConversion_Imp::CreateShapefileCPG(strCPGFilePath);
-					if (!bResult)
-					{
-						//	如果创建失败，则跳过，将相关信息写入到日志中
-						std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建ShapefileCPG（" + strCPGFilePath + "）失败！";
-						logger->error(msg);
-						continue;
-					}
-				}
-			}
+          // shp中存储属性信息和几何信息
+          string strResultShpFileName = strSheetNumber + "_" + vLayerType[iLayerIndex] + "_polygon";
+          poResultLayer = poResultDS->CreateLayer(strResultShpFileName.c_str(), &pResultSR, wkbPolygon, NULL);
+          if (!poResultLayer)
+          {
+            //	如果创建失败，则跳过，将相关信息写入到日志中
+            std::string msg = "目录（" + str_output_path + "/" + strSheetNumber + "）中创建注记要素层面图层（" + strResultShpFileName + "）失败！";
+            logger->error(msg);
+            continue;
+          }
+          // 创建结果图层属性字段
+          int iResult = CSE_VectorFormatConversion_Imp::SetFieldDefn(poResultLayer, vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
+          if (iResult != 0)
+          {
+            //	如果创建失败，则跳过，将相关信息写入到日志中
+            std::string msg = "设置目录（" + str_output_path + "/" + strSheetNumber + "）中图层（" + strResultShpFileName + "）的字段定义失败！";
+            logger->error(msg);
+            continue;
+          }
+          // 创建要素
+          for (int i = 0; i < vShpExteriorPolygons.size(); i++)
+          {
+            vector<vector<SE_DPoint>> vInterior = vShpInteriorPolygons[i];
+            iResult = CSE_VectorFormatConversion_Imp::Set_Polygon(poResultLayer,
+              vShpExteriorPolygons[i],
+              vInterior,
+              vPolygonFieldValues[i],
+              vLayerType[iLayerIndex]);
+            if (iResult != 0 && iResult != -2)
+            {
+              //	如果创建失败，则跳过，将相关信息写入到日志中
+              std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）的结果图层（" + strResultShpFileName + "）中创建面要素失败！";
+              logger->error(msg);
+              continue;
+            }
+          }
+          // 关闭数据源
+          GDALClose(poResultDS);
+
+          // 创建cpg文件
+          bResult = CSE_VectorFormatConversion_Imp::CreateShapefileCPG(strCPGFilePath);
+          if (!bResult)
+          {
+            //	如果创建失败，则跳过，将相关信息写入到日志中
+            std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建ShapefileCPG（" + strCPGFilePath + "）失败！";
+            logger->error(msg);
+            continue;
+          }
+        }
+      }
 #pragma endregion
-		}
+    }
 #pragma endregion
 
-	}
+    //  创建shp文件
+#pragma endregion
+
+  }
+#pragma endregion
 
 #pragma endregion
 
 #pragma region "【5】增加生成元数据描述图层S_polygon.shp图层"
-#pragma region "创建S图层的字段（字段名称、字段类型、字段精度）"
-	// 修改说明：增加生成元数据描述图层S_polygon.shp图层
-	// 生成多边形图层，图层的几何信息为一个矩形要素，坐标点为四个角点，属性信息为要素编号和图幅号
-	// 创建S图层的属性字段
-	vector<string> vSFieldsName;
-	vSFieldsName.clear();
-	vector<OGRFieldType> vSFieldType;
-	vSFieldType.clear();
-	vector<int> vSFieldWidth;
-	vSFieldWidth.clear();
-	vector<int> vFieldPrecision;
-	vFieldPrecision.clear();
-	
-	// -------------------将元数据前94项全部写入shp文件--------------//
-	vSFieldsName.push_back("生产单位");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("生产日期");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("更新日期");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("图式编号");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("分类编码");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("图名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("图号");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	// 杨小兵-2024-02-21：根据《矢量模型及格式》“图幅等高距”字段为短整型
-	vSFieldsName.push_back("等高距");
-	vSFieldType.push_back(OFTInteger);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("比例尺分母");
-	vSFieldType.push_back(OFTInteger64);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("经度范围");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("纬度范围");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("左下角横");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("左下角纵");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("右下角横");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("右下角纵");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("右上角横");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("右上角纵");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("左上角横");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("左上角纵");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("长半径");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("椭球扁率");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(15);
-	vFieldPrecision.push_back(9);
-	vSFieldsName.push_back("大地基准");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("地图投影");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(9);
-	vSFieldsName.push_back("中央经线");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(5);
-	vSFieldsName.push_back("标准纬线1");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(5);
-	vSFieldsName.push_back("标准纬线2");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(5);
-	vSFieldsName.push_back("分带方式");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("带号");
-	vSFieldType.push_back(OFTInteger);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("坐标单位");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("坐标维数");
-	vSFieldType.push_back(OFTInteger);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("缩放系数");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(6);
-	vSFieldsName.push_back("相横坐标");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("相纵坐标");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("磁偏角");
-	vSFieldType.push_back(OFTInteger);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("磁坐偏角");
-	vSFieldType.push_back(OFTInteger);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("纵线偏角");
-	vSFieldType.push_back(OFTInteger);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("高程系统名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("高程基准");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("深度基准");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("主要资料");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("航分母");
-	vSFieldType.push_back(OFTInteger);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("航摄仪焦距");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("航摄单位");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("航摄日期");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("调绘日期");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("摄区号");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("分辨率");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(6);
-	vSFieldsName.push_back("数据来源");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("内插方法");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("采集方法");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("采集仪器");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原图图名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原图图号");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原基准");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原投影");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原中央经线");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(5);
-	vSFieldsName.push_back("原纬线1");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(5);
-	vSFieldsName.push_back("原纬线2");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(5);
-	vSFieldsName.push_back("原图分带");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原图坐标");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原图高");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原图基准");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原深度基准");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原经度范围");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原纬度范围");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原出版单位");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原图等高距");
-	vSFieldType.push_back(OFTInteger);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原图分母");
-	vSFieldType.push_back(OFTInteger64);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原出版日期");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原图图式");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("西边接边");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("北边接边");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("东边接边");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("南边接边");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("平面位置");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(6);
-	vSFieldsName.push_back("高程中误差");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(6);
-	vSFieldsName.push_back("属性精度");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("逻辑一致性");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("完整性");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("质量评价");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("结论总分");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("检验单位");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("评检日期");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("总评价");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("左上图幅名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("上边图幅名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("右上图幅名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("左边图幅名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("右边图幅名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("左下图幅名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("下边图幅名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("右下图幅名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("政区说明");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("总层数");
-	vSFieldType.push_back(OFTInteger);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
+
+#pragma region "1、创建图层字段（字段名称、字段类型、字段精度）"
+  // 修改说明：增加生成元数据描述图层S_polygon.shp图层
+  // 生成多边形图层，图层的几何信息为一个矩形要素，坐标点为四个角点，属性信息为要素编号和图幅号
+  // 创建S图层的属性字段
+  vector<string> vSFieldsName;
+  vSFieldsName.clear();
+  vector<OGRFieldType> vSFieldType;
+  vSFieldType.clear();
+  vector<int> vSFieldWidth;
+  vSFieldWidth.clear();
+  vector<int> vSFieldPrecision;
+  vSFieldPrecision.clear();
+
+  // 根据要素类型获取字段信息
+  CSE_VectorFormatConversion_Imp::CreateShpFieldsByLayerType("S", "Polygon", vSFieldsName, vSFieldType, vSFieldWidth, vSFieldPrecision);
+
+  //#pragma region "S_polygon图层字段信息（旧版）"
+  //	// -------------------将元数据前94项全部写入shp文件--------------//
+  //	vSFieldsName.push_back("生产单位");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("生产日期");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(8);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("更新日期");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(8);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("图式编号");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("分类编码");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("图名");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("图号");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	// -2024-02-21：根据《矢量模型及格式》“图幅等高距”字段为短整型
+  //	vSFieldsName.push_back("等高距");
+  //	vSFieldType.push_back(OFTInteger);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("比例尺分母");
+  //	vSFieldType.push_back(OFTInteger64);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("经度范围");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("纬度范围");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("左下角横");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(12);
+  //	vSFieldPrecision.push_back(2);
+  //	vSFieldsName.push_back("左下角纵");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(12);
+  //	vSFieldPrecision.push_back(2);
+  //	vSFieldsName.push_back("右下角横");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(12);
+  //	vSFieldPrecision.push_back(2);
+  //	vSFieldsName.push_back("右下角纵");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(12);
+  //	vSFieldPrecision.push_back(2);
+  //	vSFieldsName.push_back("右上角横");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(12);
+  //	vSFieldPrecision.push_back(2);
+  //	vSFieldsName.push_back("右上角纵");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(12);
+  //	vSFieldPrecision.push_back(2);
+  //	vSFieldsName.push_back("左上角横");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(12);
+  //	vSFieldPrecision.push_back(2);
+  //	vSFieldsName.push_back("左上角纵");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(12);
+  //	vSFieldPrecision.push_back(2);
+  //	vSFieldsName.push_back("长半径");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(12);
+  //	vSFieldPrecision.push_back(2);
+  //	vSFieldsName.push_back("椭球扁率");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(15);
+  //	vSFieldPrecision.push_back(9);
+  //	vSFieldsName.push_back("大地基准");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("地图投影");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(9);
+  //	vSFieldsName.push_back("中央经线");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(5);
+  //	vSFieldsName.push_back("标准纬线1");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(5);
+  //	vSFieldsName.push_back("标准纬线2");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(5);
+  //	vSFieldsName.push_back("分带方式");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("带号");
+  //	vSFieldType.push_back(OFTInteger);
+  //	vSFieldWidth.push_back(8);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("坐标单位");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("坐标维数");
+  //	vSFieldType.push_back(OFTInteger);
+  //	vSFieldWidth.push_back(8);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("缩放系数");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(6);
+  //	vSFieldsName.push_back("相横坐标");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(12);
+  //	vSFieldPrecision.push_back(2);
+  //	vSFieldsName.push_back("相纵坐标");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(12);
+  //	vSFieldPrecision.push_back(2);
+  //	vSFieldsName.push_back("磁偏角");
+  //	vSFieldType.push_back(OFTInteger);
+  //	vSFieldWidth.push_back(8);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("磁坐偏角");
+  //	vSFieldType.push_back(OFTInteger);
+  //	vSFieldWidth.push_back(8);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("纵线偏角");
+  //	vSFieldType.push_back(OFTInteger);
+  //	vSFieldWidth.push_back(8);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("高程系统名");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("高程基准");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("深度基准");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("主要资料");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("航分母");
+  //	vSFieldType.push_back(OFTInteger);
+  //	vSFieldWidth.push_back(8);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("航摄仪焦距");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(12);
+  //	vSFieldPrecision.push_back(2);
+  //	vSFieldsName.push_back("航摄单位");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("航摄日期");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(8);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("调绘日期");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(8);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("摄区号");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("分辨率");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(6);
+  //	vSFieldsName.push_back("数据来源");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("内插方法");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("采集方法");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("采集仪器");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原图图名");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原图图号");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原基准");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原投影");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原中央经线");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(5);
+  //	vSFieldsName.push_back("原纬线1");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(5);
+  //	vSFieldsName.push_back("原纬线2");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(5);
+  //	vSFieldsName.push_back("原图分带");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原图坐标");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原图高");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原图基准");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原深度基准");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原经度范围");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原纬度范围");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原出版单位");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原图等高距");
+  //	vSFieldType.push_back(OFTInteger);
+  //	vSFieldWidth.push_back(8);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原图分母");
+  //	vSFieldType.push_back(OFTInteger64);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原出版日期");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(8);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原图图式");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("西边接边");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("北边接边");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("东边接边");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("南边接边");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("平面位置");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(6);
+  //	vSFieldsName.push_back("高程中误差");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(6);
+  //	vSFieldsName.push_back("属性精度");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("逻辑一致性");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("完整性");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("质量评价");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("结论总分");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("检验单位");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("评检日期");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(8);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("总评价");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("左上图幅名");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("上边图幅名");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("右上图幅名");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("左边图幅名");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("右边图幅名");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("左下图幅名");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("下边图幅名");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("右下图幅名");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("政区说明");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("总层数");
+  //	vSFieldType.push_back(OFTInteger);
+  //	vSFieldWidth.push_back(8);
+  //	vSFieldPrecision.push_back(0);
+  //#pragma endregion
+
 #pragma endregion
 
-#pragma region "创建图层"
-	//--------------------------------------------------------------------//
-	// 创建对应要素类型的面图层，如:图幅_S_polygon.shp
-	// 面要素图层全路径
+#pragma region "2、创建S图层"
+  //--------------------------------------------------------------------//
+  // 创建对应要素类型的面图层，如:图幅_S_polygon.shp
+  // 面要素图层全路径
 
-	string strSCPGFilePath = str_output_path + "/" + strSheetNumber + "_S_polygon.cpg";
-	string strSPolygonShpFilePath = str_output_path + "/" + strSheetNumber + "_S_polygon.shp";
+  string strSCPGFilePath = str_output_path + "/" + strSheetNumber + "_S_polygon.cpg";
+  string strSPolygonShpFilePath = str_output_path + "/" + strSheetNumber + "_S_polygon.shp";
 
-	//创建结果数据源
-	GDALDataset* poSResultDS;
-	poSResultDS = poDriver->Create(strSPolygonShpFilePath.c_str(), 0, 0, 0, GDT_Unknown, NULL);
-	if (poSResultDS == NULL)
-	{
-		//	如果创建失败，则跳过，将相关信息写入到日志中
-		std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建S面图层（" + strSPolygonShpFilePath + "）失败！";
-		logger->error(msg);
-		std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
-		logger->critical(log_tailer_info);
-		spdlog::shutdown();
-		return SE_ERROR_CREATE_S_LAYER_DATASET_FAILED;
-	}
-	// 根据图层要素类型创建shp文件
-	OGRLayer* poSResultLayer = NULL;
-	// 设置结果图层的空间参考（CGCS2000）
-	OGRSpatialReference pSResultSR;
-	pSResultSR.SetWellKnownGeogCS("EPSG:4490");
+  //创建结果数据源
+  GDALDataset* poSResultDS;
+  poSResultDS = poDriver->Create(strSPolygonShpFilePath.c_str(), 0, 0, 0, GDT_Unknown, NULL);
+  if (poSResultDS == NULL)
+  {
+    //	如果创建失败，则跳过，将相关信息写入到日志中
+    std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建S面图层（" + strSPolygonShpFilePath + "）失败！";
+    logger->error(msg);
+    std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
+    logger->critical(log_tailer_info);
+    spdlog::shutdown();
+    return SE_ERROR_CREATE_S_LAYER_DATASET_FAILED;
+  }
+  // 根据图层要素类型创建shp文件
+  OGRLayer* poSResultLayer = NULL;
+  // 设置结果图层的空间参考（CGCS2000）
+  OGRSpatialReference pSResultSR;
+  pSResultSR.SetWellKnownGeogCS("EPSG:4490");
 
-	// shp中存储属性信息和几何信息
-	string strResultSShpFileName = strSheetNumber + "_S_polygon";
-	poSResultLayer = poSResultDS->CreateLayer(strResultSShpFileName.c_str(), &pSResultSR, wkbPolygon, NULL);
-	if (!poSResultLayer)
-	{
-		//	如果创建失败，则跳过，将相关信息写入到日志中
-		std::string msg = "目录（" + str_output_path + "/" + strSheetNumber + "）中创建注记要素层面图层（" + strResultSShpFileName + "）失败！";
-		logger->error(msg);
-		std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
-		logger->critical(log_tailer_info);
-		spdlog::shutdown();
-		return SE_ERROR_CREATE_SHP_FILE_FAILED;
-	}
-	// 创建结果图层属性字段
-	int iRet = CSE_VectorFormatConversion_Imp::SetFieldDefn(poSResultLayer, vSFieldsName, vSFieldType, vSFieldWidth, vFieldPrecision);
-	if (iRet != 0)
-	{
-		//	如果创建失败，则跳过，将相关信息写入到日志中
-		std::string msg = "设置目录（" + str_output_path + "/" + strSheetNumber + "）中图层（" + strResultSShpFileName + "）的字段定义失败！";
-		logger->error(msg);
-		std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
-		logger->critical(log_tailer_info);
-		spdlog::shutdown();
-		return SE_ERROR_CREATE_LAYER_FIELD_FAILED;
-	}
+  // shp中存储属性信息和几何信息
+  string strResultSShpFileName = strSheetNumber + "_S_polygon";
+  poSResultLayer = poSResultDS->CreateLayer(strResultSShpFileName.c_str(), &pSResultSR, wkbPolygon, NULL);
+  if (!poSResultLayer)
+  {
+    //	如果创建失败，则跳过，将相关信息写入到日志中
+    std::string msg = "目录（" + str_output_path + "/" + strSheetNumber + "）中创建注记要素层面图层（" + strResultSShpFileName + "）失败！";
+    logger->error(msg);
+    std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
+    logger->critical(log_tailer_info);
+    spdlog::shutdown();
+    return SE_ERROR_CREATE_SHP_FILE_FAILED;
+  }
+  // 创建结果图层属性字段
+  int iRet = CSE_VectorFormatConversion_Imp::SetFieldDefn(poSResultLayer, vSFieldsName, vSFieldType, vSFieldWidth, vSFieldPrecision);
+  if (iRet != 0)
+  {
+    //	如果创建失败，则跳过，将相关信息写入到日志中
+    std::string msg = "设置目录（" + str_output_path + "/" + strSheetNumber + "）中图层（" + strResultSShpFileName + "）的字段定义失败！";
+    logger->error(msg);
+    std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
+    logger->critical(log_tailer_info);
+    spdlog::shutdown();
+    return SE_ERROR_CREATE_LAYER_FIELD_FAILED;
+  }
 #pragma endregion
 
-#pragma region "向要素中写入属性值"
-	// 元数据几何要素
-	vector<SE_DPoint> vSPolygon;
-	vSPolygon.clear();
+#pragma region "3、向S图层要素中写入属性值"
 
-	// 图幅左上角点
-	SE_DPoint LeftTop_xyz;
-	LeftTop_xyz.dx = dSheetRect.dleft;
-	LeftTop_xyz.dy = dSheetRect.dtop;
-	vSPolygon.push_back(LeftTop_xyz);
+  // 元数据几何要素
+  vector<SE_DPoint> vSPolygon;
+  vSPolygon.clear();
 
-	// 图幅左下角点
-	SE_DPoint LeftBottom_xyz;
-	LeftBottom_xyz.dx = dSheetRect.dleft;
-	LeftBottom_xyz.dy = dSheetRect.dbottom;
-	vSPolygon.push_back(LeftBottom_xyz);
+  // 图幅左上角点
+  SE_DPoint LeftTop_xyz;
+  LeftTop_xyz.dx = dSheetRect.dleft;
+  LeftTop_xyz.dy = dSheetRect.dtop;
+  vSPolygon.push_back(LeftTop_xyz);
 
-	// 图幅右下角点
-	SE_DPoint RightBottom_xyz;
-	RightBottom_xyz.dx = dSheetRect.dright;
-	RightBottom_xyz.dy = dSheetRect.dbottom;
-	vSPolygon.push_back(RightBottom_xyz);
+  // 图幅左下角点
+  SE_DPoint LeftBottom_xyz;
+  LeftBottom_xyz.dx = dSheetRect.dleft;
+  LeftBottom_xyz.dy = dSheetRect.dbottom;
+  vSPolygon.push_back(LeftBottom_xyz);
 
-	// 图幅右上角点
-	SE_DPoint RightTop_xyz;
-	RightTop_xyz.dx = dSheetRect.dright;
-	RightTop_xyz.dy = dSheetRect.dtop;
-	vSPolygon.push_back(RightTop_xyz);
+  // 图幅右下角点
+  SE_DPoint RightBottom_xyz;
+  RightBottom_xyz.dx = dSheetRect.dright;
+  RightBottom_xyz.dy = dSheetRect.dbottom;
+  vSPolygon.push_back(RightBottom_xyz);
 
-	// 创建几何信息和属性信息
-	OGRFeature* poSFeature;
-	poSFeature = OGRFeature::CreateFeature(poSResultLayer->GetLayerDefn());
-	if (!poSFeature)
-	{
-		//	如果创建失败，则跳过，将相关信息写入到日志中
-		std::string msg = "目录（" + str_output_path + "/" + strSheetNumber + "）中的图层（" + strResultSShpFileName + "）的要素创建失败！";
-		logger->error(msg);
-		std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
-		logger->critical(log_tailer_info);
-		spdlog::shutdown();
-		return SE_ERROR_CREATE_FEATURE_FAILED;
-	}
+  // 图幅右上角点
+  SE_DPoint RightTop_xyz;
+  RightTop_xyz.dx = dSheetRect.dright;
+  RightTop_xyz.dy = dSheetRect.dtop;
+  vSPolygon.push_back(RightTop_xyz);
 
-	// 读取94项元数据信息，并写入图层中
-	//-------------------------------------------//
-	vector<string> vSMSInfo;
-	vSMSInfo.clear();
-	for (int i = 1; i <= 94; i++)
-	{
-		string strInfo;
-		CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, i, strInfo);
-		vSMSInfo.push_back(strInfo);
-	}
-	poSFeature->SetField(0, vSMSInfo[0].c_str());
-	poSFeature->SetField(1, vSMSInfo[1].c_str());
-	poSFeature->SetField(2, vSMSInfo[2].c_str());
-	poSFeature->SetField(3, vSMSInfo[3].c_str());
-	poSFeature->SetField(4, vSMSInfo[4].c_str());
-	poSFeature->SetField(5, vSMSInfo[5].c_str());
-	poSFeature->SetField(6, vSMSInfo[6].c_str());
-	poSFeature->SetField(7, atof(vSMSInfo[7].c_str()));
-	poSFeature->SetField(8, _atoi64(vSMSInfo[8].c_str()));
-	poSFeature->SetField(9, vSMSInfo[9].c_str());
-	poSFeature->SetField(10, vSMSInfo[10].c_str());
-	poSFeature->SetField(11, atof(vSMSInfo[11].c_str()));
-	poSFeature->SetField(12, atof(vSMSInfo[12].c_str()));
-	poSFeature->SetField(13, atof(vSMSInfo[13].c_str()));
-	poSFeature->SetField(14, atof(vSMSInfo[14].c_str()));
-	poSFeature->SetField(15, atof(vSMSInfo[15].c_str()));
-	poSFeature->SetField(16, atof(vSMSInfo[16].c_str()));
-	poSFeature->SetField(17, atof(vSMSInfo[17].c_str()));
-	poSFeature->SetField(18, atof(vSMSInfo[18].c_str()));
-	poSFeature->SetField(19, atof(vSMSInfo[19].c_str()));
-	poSFeature->SetField(20, atof(vSMSInfo[20].c_str()));
-	poSFeature->SetField(21, vSMSInfo[21].c_str());
-	poSFeature->SetField(22, vSMSInfo[22].c_str());
-	poSFeature->SetField(23, atof(vSMSInfo[23].c_str()));
-	poSFeature->SetField(24, atof(vSMSInfo[24].c_str()));
-	poSFeature->SetField(25, atof(vSMSInfo[25].c_str()));
-	poSFeature->SetField(26, vSMSInfo[26].c_str());
-	poSFeature->SetField(27, atoi(vSMSInfo[27].c_str()));
-	poSFeature->SetField(28, vSMSInfo[28].c_str());
-	poSFeature->SetField(29, atoi(vSMSInfo[29].c_str()));
-	poSFeature->SetField(30, atof(vSMSInfo[30].c_str()));
-	poSFeature->SetField(31, atof(vSMSInfo[31].c_str()));
-	poSFeature->SetField(32, atof(vSMSInfo[32].c_str()));
-	poSFeature->SetField(33, atoi(vSMSInfo[33].c_str()));
-	poSFeature->SetField(34, atoi(vSMSInfo[34].c_str()));
-	poSFeature->SetField(35, atoi(vSMSInfo[35].c_str()));
-	poSFeature->SetField(36, vSMSInfo[36].c_str());
-	poSFeature->SetField(37, vSMSInfo[37].c_str());
-	poSFeature->SetField(38, vSMSInfo[38].c_str());
-	poSFeature->SetField(39, vSMSInfo[39].c_str());
-	poSFeature->SetField(40, atoi(vSMSInfo[40].c_str()));
-	poSFeature->SetField(41, atof(vSMSInfo[41].c_str()));
-	poSFeature->SetField(42, vSMSInfo[42].c_str());
-	poSFeature->SetField(43, vSMSInfo[43].c_str());
-	poSFeature->SetField(44, vSMSInfo[44].c_str());
-	poSFeature->SetField(45, vSMSInfo[45].c_str());
-	poSFeature->SetField(46, atof(vSMSInfo[46].c_str()));
-	poSFeature->SetField(47, vSMSInfo[47].c_str());
-	poSFeature->SetField(48, vSMSInfo[48].c_str());
-	poSFeature->SetField(49, vSMSInfo[49].c_str());
-	poSFeature->SetField(50, vSMSInfo[50].c_str());
-	poSFeature->SetField(51, vSMSInfo[51].c_str());
-	poSFeature->SetField(52, vSMSInfo[52].c_str());
-	poSFeature->SetField(53, vSMSInfo[53].c_str());
-	poSFeature->SetField(54, vSMSInfo[54].c_str());
-	poSFeature->SetField(55, atof(vSMSInfo[55].c_str()));
-	poSFeature->SetField(56, atof(vSMSInfo[56].c_str()));
-	poSFeature->SetField(57, atof(vSMSInfo[57].c_str()));
-	poSFeature->SetField(58, vSMSInfo[58].c_str());
-	poSFeature->SetField(59, vSMSInfo[59].c_str());
-	poSFeature->SetField(60, vSMSInfo[60].c_str());
-	poSFeature->SetField(61, vSMSInfo[61].c_str());
-	poSFeature->SetField(62, vSMSInfo[62].c_str());
-	poSFeature->SetField(63, vSMSInfo[63].c_str());
-	poSFeature->SetField(64, vSMSInfo[64].c_str());
-	poSFeature->SetField(65, vSMSInfo[65].c_str());
-	poSFeature->SetField(66, atof(vSMSInfo[66].c_str()));
-	poSFeature->SetField(67, _atoi64(vSMSInfo[67].c_str()));
-	poSFeature->SetField(68, vSMSInfo[68].c_str());
-	poSFeature->SetField(69, vSMSInfo[69].c_str());
-	poSFeature->SetField(70, vSMSInfo[70].c_str());
-	poSFeature->SetField(71, vSMSInfo[71].c_str());
-	poSFeature->SetField(72, vSMSInfo[72].c_str());
-	poSFeature->SetField(73, vSMSInfo[73].c_str());
-	poSFeature->SetField(74, atof(vSMSInfo[74].c_str()));
-	poSFeature->SetField(75, atof(vSMSInfo[75].c_str()));
-	poSFeature->SetField(76, vSMSInfo[76].c_str());
-	poSFeature->SetField(77, vSMSInfo[77].c_str());
-	poSFeature->SetField(78, vSMSInfo[78].c_str());
-	poSFeature->SetField(79, vSMSInfo[79].c_str());
-	poSFeature->SetField(80, vSMSInfo[80].c_str());
-	poSFeature->SetField(81, vSMSInfo[81].c_str());
-	poSFeature->SetField(82, vSMSInfo[82].c_str());
-	poSFeature->SetField(83, vSMSInfo[83].c_str());
-	poSFeature->SetField(84, vSMSInfo[84].c_str());
-	poSFeature->SetField(85, vSMSInfo[85].c_str());
-	poSFeature->SetField(86, vSMSInfo[86].c_str());
-	poSFeature->SetField(87, vSMSInfo[87].c_str());
-	poSFeature->SetField(88, vSMSInfo[88].c_str());
-	poSFeature->SetField(89, vSMSInfo[89].c_str());
-	poSFeature->SetField(90, vSMSInfo[90].c_str());
-	poSFeature->SetField(91, vSMSInfo[91].c_str());
-	poSFeature->SetField(92, vSMSInfo[92].c_str());
-	poSFeature->SetField(93, atoi(vSMSInfo[93].c_str()));
-	//-------------------------------------------//
-	OGRPolygon polygon;
-	// 外环
-	OGRLinearRing ringOut;
-	for (int i = 0; i < vSPolygon.size(); i++)
-	{
-		ringOut.addPoint(vSPolygon[i].dx, vSPolygon[i].dy);
-	}
-	//结束点应和起始点相同，保证多边形闭合
-	ringOut.closeRings();
-	polygon.addRing(&ringOut);
-	poSFeature->SetGeometry((OGRGeometry*)(&polygon));
-	if (poSResultLayer->CreateFeature(poSFeature) != OGRERR_NONE)
-	{
+  // 创建几何信息和属性信息
+  OGRFeature* poSFeature;
+  poSFeature = OGRFeature::CreateFeature(poSResultLayer->GetLayerDefn());
+  if (!poSFeature)
+  {
     //	如果创建失败，则跳过，将相关信息写入到日志中
     std::string msg = "目录（" + str_output_path + "/" + strSheetNumber + "）中的图层（" + strResultSShpFileName + "）的要素创建失败！";
     logger->error(msg);
     std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
     logger->critical(log_tailer_info);
     spdlog::shutdown();
-		return SE_ERROR_CREATE_FEATURE_FAILED;
-	}
-	OGRFeature::DestroyFeature(poSFeature);
-	// 关闭数据源
-	GDALClose(poSResultDS);
+    return SE_ERROR_CREATE_FEATURE_FAILED;
+  }
+
+  // 读取94项元数据信息，并写入图层中
+  //-------------------------------------------//
+  vector<string> vSMSInfo;
+  vSMSInfo.clear();
+  for (int i = 1; i <= 94; i++)
+  {
+    string strInfo;
+    CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, i, strInfo);
+    vSMSInfo.push_back(strInfo);
+  }
+  poSFeature->SetField(0, vSMSInfo[0].c_str());
+  poSFeature->SetField(1, vSMSInfo[1].c_str());
+  poSFeature->SetField(2, vSMSInfo[2].c_str());
+  poSFeature->SetField(3, vSMSInfo[3].c_str());
+  poSFeature->SetField(4, vSMSInfo[4].c_str());
+  poSFeature->SetField(5, vSMSInfo[5].c_str());
+  poSFeature->SetField(6, vSMSInfo[6].c_str());
+  poSFeature->SetField(7, atof(vSMSInfo[7].c_str()));
+  poSFeature->SetField(8, _atoi64(vSMSInfo[8].c_str()));
+  poSFeature->SetField(9, vSMSInfo[9].c_str());
+  poSFeature->SetField(10, vSMSInfo[10].c_str());
+  poSFeature->SetField(11, atof(vSMSInfo[11].c_str()));
+  poSFeature->SetField(12, atof(vSMSInfo[12].c_str()));
+  poSFeature->SetField(13, atof(vSMSInfo[13].c_str()));
+  poSFeature->SetField(14, atof(vSMSInfo[14].c_str()));
+  poSFeature->SetField(15, atof(vSMSInfo[15].c_str()));
+  poSFeature->SetField(16, atof(vSMSInfo[16].c_str()));
+  poSFeature->SetField(17, atof(vSMSInfo[17].c_str()));
+  poSFeature->SetField(18, atof(vSMSInfo[18].c_str()));
+  poSFeature->SetField(19, atof(vSMSInfo[19].c_str()));
+  poSFeature->SetField(20, atof(vSMSInfo[20].c_str()));
+  poSFeature->SetField(21, vSMSInfo[21].c_str());
+  poSFeature->SetField(22, vSMSInfo[22].c_str());
+  poSFeature->SetField(23, atof(vSMSInfo[23].c_str()));
+  poSFeature->SetField(24, atof(vSMSInfo[24].c_str()));
+  poSFeature->SetField(25, atof(vSMSInfo[25].c_str()));
+  poSFeature->SetField(26, vSMSInfo[26].c_str());
+  poSFeature->SetField(27, atoi(vSMSInfo[27].c_str()));
+  poSFeature->SetField(28, vSMSInfo[28].c_str());
+  poSFeature->SetField(29, atoi(vSMSInfo[29].c_str()));
+  poSFeature->SetField(30, atof(vSMSInfo[30].c_str()));
+  poSFeature->SetField(31, atof(vSMSInfo[31].c_str()));
+  poSFeature->SetField(32, atof(vSMSInfo[32].c_str()));
+  poSFeature->SetField(33, atoi(vSMSInfo[33].c_str()));
+  poSFeature->SetField(34, atoi(vSMSInfo[34].c_str()));
+  poSFeature->SetField(35, atoi(vSMSInfo[35].c_str()));
+  poSFeature->SetField(36, vSMSInfo[36].c_str());
+  poSFeature->SetField(37, vSMSInfo[37].c_str());
+  poSFeature->SetField(38, vSMSInfo[38].c_str());
+  poSFeature->SetField(39, vSMSInfo[39].c_str());
+  poSFeature->SetField(40, atoi(vSMSInfo[40].c_str()));
+  poSFeature->SetField(41, atof(vSMSInfo[41].c_str()));
+  poSFeature->SetField(42, vSMSInfo[42].c_str());
+  poSFeature->SetField(43, vSMSInfo[43].c_str());
+  poSFeature->SetField(44, vSMSInfo[44].c_str());
+  poSFeature->SetField(45, vSMSInfo[45].c_str());
+  poSFeature->SetField(46, atof(vSMSInfo[46].c_str()));
+  poSFeature->SetField(47, vSMSInfo[47].c_str());
+  poSFeature->SetField(48, vSMSInfo[48].c_str());
+  poSFeature->SetField(49, vSMSInfo[49].c_str());
+  poSFeature->SetField(50, vSMSInfo[50].c_str());
+  poSFeature->SetField(51, vSMSInfo[51].c_str());
+  poSFeature->SetField(52, vSMSInfo[52].c_str());
+  poSFeature->SetField(53, vSMSInfo[53].c_str());
+  poSFeature->SetField(54, vSMSInfo[54].c_str());
+  poSFeature->SetField(55, atof(vSMSInfo[55].c_str()));
+  poSFeature->SetField(56, atof(vSMSInfo[56].c_str()));
+  poSFeature->SetField(57, atof(vSMSInfo[57].c_str()));
+  poSFeature->SetField(58, vSMSInfo[58].c_str());
+  poSFeature->SetField(59, vSMSInfo[59].c_str());
+  poSFeature->SetField(60, vSMSInfo[60].c_str());
+  poSFeature->SetField(61, vSMSInfo[61].c_str());
+  poSFeature->SetField(62, vSMSInfo[62].c_str());
+  poSFeature->SetField(63, vSMSInfo[63].c_str());
+  poSFeature->SetField(64, vSMSInfo[64].c_str());
+  poSFeature->SetField(65, vSMSInfo[65].c_str());
+  poSFeature->SetField(66, atof(vSMSInfo[66].c_str()));
+  poSFeature->SetField(67, _atoi64(vSMSInfo[67].c_str()));
+  poSFeature->SetField(68, vSMSInfo[68].c_str());
+  poSFeature->SetField(69, vSMSInfo[69].c_str());
+  poSFeature->SetField(70, vSMSInfo[70].c_str());
+  poSFeature->SetField(71, vSMSInfo[71].c_str());
+  poSFeature->SetField(72, vSMSInfo[72].c_str());
+  poSFeature->SetField(73, vSMSInfo[73].c_str());
+  poSFeature->SetField(74, atof(vSMSInfo[74].c_str()));
+  poSFeature->SetField(75, atof(vSMSInfo[75].c_str()));
+  poSFeature->SetField(76, vSMSInfo[76].c_str());
+  poSFeature->SetField(77, vSMSInfo[77].c_str());
+  poSFeature->SetField(78, vSMSInfo[78].c_str());
+  poSFeature->SetField(79, vSMSInfo[79].c_str());
+  poSFeature->SetField(80, vSMSInfo[80].c_str());
+  poSFeature->SetField(81, vSMSInfo[81].c_str());
+  poSFeature->SetField(82, vSMSInfo[82].c_str());
+  poSFeature->SetField(83, vSMSInfo[83].c_str());
+  poSFeature->SetField(84, vSMSInfo[84].c_str());
+  poSFeature->SetField(85, vSMSInfo[85].c_str());
+  poSFeature->SetField(86, vSMSInfo[86].c_str());
+  poSFeature->SetField(87, vSMSInfo[87].c_str());
+  poSFeature->SetField(88, vSMSInfo[88].c_str());
+  poSFeature->SetField(89, vSMSInfo[89].c_str());
+  poSFeature->SetField(90, vSMSInfo[90].c_str());
+  poSFeature->SetField(91, vSMSInfo[91].c_str());
+  poSFeature->SetField(92, vSMSInfo[92].c_str());
+  poSFeature->SetField(93, atoi(vSMSInfo[93].c_str()));
+  //-------------------------------------------//
+  OGRPolygon polygon;
+  // 外环
+  OGRLinearRing ringOut;
+  for (int i = 0; i < vSPolygon.size(); i++)
+  {
+    ringOut.addPoint(vSPolygon[i].dx, vSPolygon[i].dy);
+  }
+  //结束点应和起始点相同，保证多边形闭合
+  ringOut.closeRings();
+  polygon.addRing(&ringOut);
+  poSFeature->SetGeometry((OGRGeometry*)(&polygon));
+  if (poSResultLayer->CreateFeature(poSFeature) != OGRERR_NONE)
+  {
+    //	如果创建失败，将相关信息写入到日志中
+    std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建S层的feature失败！";
+    logger->error(msg);
+    OGRFeature::DestroyFeature(poSFeature);
+    // 关闭数据源
+    GDALClose(poSResultLayer);
 
 
-	// 创建cpg文件
-	bool bRet = CSE_VectorFormatConversion_Imp::CreateShapefileCPG(strSCPGFilePath);
-	if (!bRet)
-	{
-		//	如果创建失败，则跳过，将相关信息写入到日志中
-		std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建ShapefileCPG（" + strSCPGFilePath + "）失败！";
-		logger->error(msg);
-	}
+    std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
+    logger->critical(log_tailer_info);
+    spdlog::shutdown();
+    return SE_ERROR_CREATE_FEATURE_FAILED;
+  }
+  OGRFeature::DestroyFeature(poSFeature);
+  // 关闭数据源
+  GDALClose(poSResultDS);
+
+
+  // 创建cpg文件
+  bool bRet = CSE_VectorFormatConversion_Imp::CreateShapefileCPG(strSCPGFilePath);
+  if (!bRet)
+  {
+    //	如果创建失败，则跳过，将相关信息写入到日志中
+    std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建ShapefileCPG（" + strSCPGFilePath + "）失败！";
+    logger->error(msg);
+  }
 
 #pragma endregion
 
 #pragma endregion
 
 #pragma region "【6】关闭资源"
-	//--------------------end----------------------------------//
-	std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
-	logger->critical(log_tailer_info);
-	//---------------------------------------------------------//
-	spdlog::shutdown();
+  //--------------------end----------------------------------//
+  std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
+  logger->critical(log_tailer_info);
+  //---------------------------------------------------------//
+  spdlog::shutdown();
 
 
 #pragma endregion
 
-	return SE_ERROR_NONE;
+  return SE_ERROR_NONE;
 }
 
 #pragma endregion
@@ -7110,7 +7338,6 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 				}
 			}
 		}
-
 		// 如果不是R图层
 		else
 		{
@@ -7395,7 +7622,7 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 	vSFieldType.push_back(OFTString);
 	vSFieldWidth.push_back(10);
 	vFieldPrecision.push_back(0);
-	// 杨小兵-2024-02-21：根据《矢量模型及格式》“图幅等高距”字段为短整型
+	// -2024-02-21：根据《矢量模型及格式》“图幅等高距”字段为短整型
 	vSFieldsName.push_back("等高距");
 	vSFieldType.push_back(OFTInteger);
 	vSFieldWidth.push_back(10);
@@ -7744,14 +7971,16 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 	vSFieldType.push_back(OFTInteger);
 	vSFieldWidth.push_back(8);
 	vFieldPrecision.push_back(0);
+
+
 	//--------------------------------------------------------------------//
 	// 创建对应要素类型的面图层，如:图幅_S_polygon.shp
-	// 面要素图层全路径
 
+  //  构建面要素图层全路径
 	string strSCPGFilePath = strShpFilePath + "/" + strSheetNumber + "_S_polygon.cpg";
 	string strSPolygonShpFilePath = strShpFilePath + "/" + strSheetNumber + "_S_polygon.shp";
 
-	//创建结果数据源
+	//  创建结果数据源
 	GDALDataset* poSResultDS;
 	poSResultDS = poDriver->Create(strSPolygonShpFilePath.c_str(), 0, 0, 0, GDT_Unknown, NULL);
 	if (poSResultDS == NULL) {
@@ -7972,26 +8201,27 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 	double dzoomscale,
 	spdlog::level::level_enum log_level)
 {
-#pragma region "【1】构建分幅数据输出路径"
+#pragma region "【1】构建分幅数据输入、输出路径并且进行检查是否有效"
+  //  分幅数据的输入路径
 	string str_input_path = szInputPath;
+  //  分幅数据的输出路径
 	string str_output_path = szOutputPath;
-
-	// 获取当前图幅名，按照规范化的文件分割符("/")分割,并且获得分幅数据的图幅号，拼接构成一个完整的输出路径
+	//  获取当前图幅名，按照规范化的文件分割符("/")分割,并且获得分幅数据的图幅号，拼接构成一个完整的输出路径
 	int iIndexTemp = str_input_path.find_last_of("/");
 	string strSheetNumber = str_input_path.substr(iIndexTemp + 1, str_input_path.length() - iIndexTemp);
-
+  //  构建分幅数据的输出路径（分幅子文件夹）
 	str_output_path = str_output_path + "/" + strSheetNumber;
-
 #ifdef OS_FAMILY_WINDOWS
-	// 输出路径创建图幅目录
-	_mkdir(str_output_path.c_str());
+	//  输出路径创建图幅目录
+	//_mkdir(str_output_path.c_str());
+  make_dir_utf8(str_output_path);
 #else
 #define MODE (S_IRWXU | S_IRWXG | S_IRWXO)
 	mkdir(str_output_path.c_str(), MODE);
 #endif
 
 	/*
-	注释：杨小兵-2024-01-29；
+	注释：-2024-01-29；
 	分析：
 		1、首先创建一个日志器，然后根据具体不同的情况来划分类别，全部的级别为：trace、debug、info、warn、err、critical、off）
 		2、对于日志器而言，创建之后也是需要进行资源回收的，使用spdlog::shutdown()函数便可以对所有的日志器实现资源回收
@@ -8003,9 +8233,11 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 	*/
 	//	设置日志器的等级并且创建一个日志器，日志器等级的设置对所有的日志器同时进行了设置，这里不对日志器等级有效性进行检查，因为采用的是下拉框，没有出错的可能
 	std::string logger_name = strSheetNumber + "_logger";
-
+  //  构建分幅数据目录下的日志文件
 	std::string absolute_log_path = str_output_path + "/" + strSheetNumber + "_log.txt";
+  //  设置日志器的等级
 	spdlog::set_level(log_level);
+  //  创建日志器
 	auto logger = spdlog::basic_logger_mt(logger_name, absolute_log_path, true);
 	//	在 spdlog 中，日志级别通常是分层的，包括 trace<debug<info<warn<error<critical 等几个等级,只有等级比log_level高的信息将会被及时刷新到日志中
 	logger->flush_on(log_level);
@@ -8024,17 +8256,14 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 		spdlog::shutdown();
 		return SE_ERROR_FILEPATH_IS_INVALID;
 	}
-
 	//	输出路径检查（不进行检查）
-
 
 #pragma endregion
 
 #pragma region "【2】读取SMS文件"
-	// SMS文件路径
+	//  构建SMS文件路径
 	string strSMSPath = str_input_path + "/" + strSheetNumber + ".SMS";
-
-	// 验证后缀大写是否能打开，如果能打开则继续，如果不能打开，则改为小写后缀，如果还不能打开，则程序返回
+	//  检查SMS是否可以打开：验证后缀大写是否能打开，如果能打开则继续，如果不能打开，则改为小写后缀，如果还不能打开，则程序返回
 	if (!CSE_VectorFormatConversion_Imp::CheckFile(strSMSPath))
 	{
 		strSMSPath = str_input_path + "/" + strSheetNumber + ".sms";
@@ -8055,86 +8284,79 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 #pragma region "【3】读取元数据信息"
 	/*
 	【9】地图比例尺分母
-	【12】西南图廓角点横坐标、【13】西南图廓角点纵坐标、【22】大地基准
-	【23】地图投影、【24】中央经线、【25】标准纬线1、【26】标准纬线2
-	【27】分带方式、【28】高斯投影带号、【29】坐标单位、【31】坐标放大系数
-	【32】相对原点横坐标、【33】相对原点纵坐标
+	【12】西南图廓角点横坐标
+  【13】西南图廓角点纵坐标
+  【22】大地基准
+	【23】地图投影
+  【24】中央经线
+  【25】标准纬线1
+  【26】标准纬线2
+	【27】分带方式
+  【28】高斯投影带号
+  【29】坐标单位
+  【31】坐标放大系数
+	【32】相对原点横坐标
+  【33】相对原点纵坐标
 	*/
-	// 根据图幅号计算经纬度范围
+
+	//  根据图幅号计算经纬度范围
 	SE_DRect dSheetRect;
 	CSE_MapSheet::get_box(strSheetNumber, dSheetRect.dleft, dSheetRect.dtop, dSheetRect.dright, dSheetRect.dbottom);
-
+  //  用来存储从SMS文件中读取的元信息
 	string strValue;
 	// 【9】地图比例尺分母
 	double dScale = 0;
 	CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 9, strValue);
 	dScale = atof(strValue.c_str());
-
 	// 【12】西南图廓角点横坐标
 	double dSouthWestX = 0;
 	CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 12, strValue);
 	dSouthWestX = atof(strValue.c_str());
-
 	// 【13】西南图廓角点纵坐标
 	double dSouthWestY = 0;
 	CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 13, strValue);
 	dSouthWestY = atof(strValue.c_str());
-
 	//【22】大地基准
 	string strGeoCoordSys;
 	CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 22, strGeoCoordSys);
-
 	//【23】地图投影
 	string strProjection;
 	CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 23, strProjection);
-
 	//【24】中央经线
 	double dCenterL = 0;
 	CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 24, strValue);
 	dCenterL = atof(strValue.c_str());
-
 	//【25】标准纬线1
 	double dParellel_1 = 0;
 	CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 25, strValue);
 	dParellel_1 = atof(strValue.c_str());
-
 	//【26】标准纬线2
 	double dParellel_2 = 0;
 	CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 26, strValue);
 	dParellel_2 = atof(strValue.c_str());
-
 	//【27】分带方式
 	string strProjZoneType;
 	CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 27, strProjZoneType);
-
 	//【28】高斯投影带号
 	int iProjZone = 0;
 	CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 28, strValue);
 	iProjZone = atoi(strValue.c_str());
-
 	//【29】坐标单位
 	string strCoordUnit;
 	CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 29, strCoordUnit);
-
 	//【31】坐标放大系数
 	double dCoordZoomScale = 0;
 	CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 31, strValue);
 	dCoordZoomScale = atof(strValue.c_str());
-
-	/*
-		（杨小兵-2023-12-07）添加功能：新增界面设置放大系数
-	*/
-	//	如果选择手工设置放大系数
+	//  -2023-12-07：新增界面设置放大系数，如果选择手工设置放大系数
 	if (bsetzoomscale)
 	{
 		dCoordZoomScale = dzoomscale;
 	}
-
 	//【32】相对原点横坐标
 	double dOriginX = 0;
 	CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 32, strValue);
 	dOriginX = atof(strValue.c_str());
-
 	//【33】相对原点纵坐标
 	double dOriginY = 0;
 	CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, 33, strValue);
@@ -8146,15 +8368,13 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 
 #pragma region "【4】读取不同要素类型对应属性、坐标、拓扑文件"
 
-	CPLSetConfigOption("GDAL_FILENAME_IS_UTF8", "NO");		// 支持中文路径
-	CPLSetConfigOption("SHAPE_ENCODING", "");				//属性表支持中文字段
-	GDALAllRegister();
-
-
+#pragma region "1、拼接SMS文件路径并且获取分幅数据中的图层信息"
 	/*将ODATA中的sms文件拷贝到目标目录下
-		（时间：2023-10-17；杨小兵；为了跨平台应该使用下面的写法，因为在linux和Mac OS中只支持"/"，而在Windows OS中"/"和"\"都是支持的）
+		（时间：2023-10-17；；为了跨平台应该使用下面的写法，因为在linux和Mac OS中只支持"/"，而在Windows OS中"/"和"\"都是支持的）
 		string strTargetSMSFilePath = str_output_path + "\\" + strSheetNumber + ".SMS";
 	*/
+
+  //  拼接存放SMS文件的路径位置
 	string strTargetSMSFilePath = str_output_path + "/" + strSheetNumber + ".SMS";
 	bool bResult = CSE_VectorFormatConversion_Imp::CopySMSFile(strSMSPath, strTargetSMSFilePath);
 	if (!bResult)
@@ -8164,15 +8384,44 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 		logger->error(msg);
 		//return SE_ERROR_COPY_SMS_FILE_FAILED;
 	}
-
-	// 当前图幅包含的要素图层列表
+	//  用来存储当前图幅包含的要素图层列表
 	vector<string> vLayerType;
 	vLayerType.clear();
-
-	//	（杨小兵-2023-12-20）获取图层信息方式：1——从*.SMS文件中获取图层信息；2——从实际odata数据目录中获取图层信息
+	//	-2023-12-20：获取图层信息方式：1——从*.SMS文件中获取图层信息；2——从实际odata数据目录中获取图层信息
 	if (method_of_obtaining_layer_info == 1)
 	{
 		CSE_VectorFormatConversion_Imp::GetLayerTypeFromSMS(strSMSPath, vLayerType);
+    //  TODO读取出来的图层信息有可能为空，这里需要进行检查
+
+    //  这里需要检查SMS文件中的图层数量同实际数据图层数量是否一致
+    //  创建用来存储要素图层列表
+    vector<string> actual_vLayerType;
+    actual_vLayerType.clear();
+    //  读取文件目录中实际图层数量
+    int result = CSE_VectorFormatConversion_Imp::GetLayerTypeFromOdataDir(str_input_path, actual_vLayerType);
+    if (result != 0)
+    {
+      //	从实际分幅数据中获取odata图层信息失败
+      std::string msg = "从实际分幅数据：（" + str_input_path + "）数据中获取odata图层信息失败";
+      logger->critical(msg);
+      std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
+      logger->critical(log_tailer_info);
+      spdlog::shutdown();
+      //	-2024-12-01：从odata分幅数据中获取实际存在的图层信息失败，需要返回错误代码
+      return SE_ERROR_FAILED2OBTAIN_ACTUAL_EXISTING_LAYER_INFO_FROM_ODATA_FRAMED_DATA;
+    }
+    //  如果SMS文件中描述的图层同实际图层是不相同的，则需要记录日志
+    if (vLayerType.size() != actual_vLayerType.size())
+    {
+      //	从实际分幅数据中获取odata图层信息失败
+      std::string msg = "分幅数据：（" + str_input_path + "）数据中SMS文件描述的要素图层数量同实际分幅数据中的要素图层数量不一致";
+      logger->critical(msg);
+      std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
+      logger->critical(log_tailer_info);
+      spdlog::shutdown();
+      //	-2024-12-01：分幅数据SMS文件中描述的图层同实际图层是不相同的
+      return SE_ERROR_SMS_LAYER_INFO_IS_NOT_SAME_WITH_ACTUAL_LAYER_INFO_FROM_ODATA_FRAMED_DATA;
+    }
 	}
 	else if (method_of_obtaining_layer_info == 2)
 	{
@@ -8185,10 +8434,20 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 			std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
 			logger->critical(log_tailer_info);
 			spdlog::shutdown();
-			//	（杨小兵-2024-01-24）从odata分幅数据中获取实际存在的图层信息失败，需要返回错误代码
+			//	（-2024-01-24）从odata分幅数据中获取实际存在的图层信息失败，需要返回错误代码
 			return SE_ERROR_FAILED2OBTAIN_ACTUAL_EXISTING_LAYER_INFO_FROM_ODATA_FRAMED_DATA;
 		}
 	}
+
+#pragma endregion
+
+#pragma region "2、设置GDAL"
+  //  如果使用的是GDAL 2.x及以前版本，可以保留以下设置；如果使用GDAL 3.x及以上版本，建议移除。
+  CPLSetConfigOption("GDAL_FILENAME_IS_UTF8", "NO"); // GDAL 3.x及以上版本不需要
+  //  设置Shapefile属性表编码为UTF-8
+  CPLSetConfigOption("SHAPE_ENCODING", "UTF-8");      // 属性表支持UTF-8字符集编码
+  //  注册所有GDAL驱动
+  GDALAllRegister();
 
 	const char* pszDriverName = "ESRI Shapefile";
 	GDALDriver* poDriver;
@@ -8203,27 +8462,32 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 		spdlog::shutdown();
 		return SE_ERROR_GET_SHP_DRIVER_FAILED;
 	}
+#pragma endregion
 
-	// 读取不同要素类型对应属性、坐标、拓扑文件
+#pragma region "3、循环：1、读取不同要素类型对应属性、坐标、拓扑文件；2、坐标转化；3、生成shapefile文件"
+	//  循环：1、读取不同要素类型对应属性、坐标、拓扑文件；2、坐标转化；3、生成shapefile文件
 	for (size_t iLayerIndex = 0; iLayerIndex < vLayerType.size(); iLayerIndex++)
 	{
-		// Y图层暂不处理
+		//  Y图层暂不处理
 		if (vLayerType[iLayerIndex] == "Y")
 		{
 			continue;
 		}
 		bResult = false;
 
+#pragma region "1、检查属性、坐标、拓扑文件是否存在"
+    //  拼接属性、坐标、拓扑文件路径
 		string strSXFilePath = str_input_path + "/" + strSheetNumber + "." + vLayerType[iLayerIndex] + "SX";
 		string strZBFilePath = str_input_path + "/" + strSheetNumber + "." + vLayerType[iLayerIndex] + "ZB";
 		string strTPFilePath = str_input_path + "/" + strSheetNumber + "." + vLayerType[iLayerIndex] + "TP";
-
+    //  检查SX文件是否存在：如果拼接文件路径不存在则尝试全部小写文件路径是否存在
 		if (!CSE_VectorFormatConversion_Imp::CheckFile(strSXFilePath))
 		{
 			string strSmall;		// 小写字符
 			CSE_VectorFormatConversion_Imp::CapToSmall(vLayerType[iLayerIndex], strSmall);
 
 			strSXFilePath = str_input_path + "/" + strSheetNumber + "." + strSmall + "sx";
+      //  如果拼接文件路径不存在则尝试要素图层大写、文件类型小写构成的文件路径是否存在
 			if (!CSE_VectorFormatConversion_Imp::CheckFile(strSXFilePath))
 			{
 				strSXFilePath = str_input_path + "/" + strSheetNumber + "." + vLayerType[iLayerIndex] + "sx";
@@ -8236,7 +8500,7 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 				}
 			}
 		}
-
+    //  检查ZB文件是否存在：如果拼接文件路径不存在则尝试全部小写文件路径是否存在
 		if (!CSE_VectorFormatConversion_Imp::CheckFile(strZBFilePath))
 		{
 			string strSmall;		// 小写字符
@@ -8254,7 +8518,8 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 				}
 			}
 		}
-		if (vLayerType[iLayerIndex] != "R")
+    //  检查TP文件是否存在：如果当前要素图层类型不是R注记图层（注记层不存在拓扑信息）
+    if (vLayerType[iLayerIndex] != "R")
 		{
 			if (!CSE_VectorFormatConversion_Imp::CheckFile(strTPFilePath))
 			{
@@ -8274,15 +8539,19 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 				}
 			}
 		}
+#pragma endregion
 
-		//*************************************//
-		// -----------读拓扑文件------------//
-		//***********************************//
-		// 读取线拓扑文件，shp主要存储线拓扑，例如:_A_line.shp文件
-		// 注记R图层无拓扑信息，跳过
-		// 存储线要素拓扑信息
+#pragma region "2、读拓扑文件"
+    /*
+    -----------读拓扑文件------------
+    1、读取线拓扑文件，shp主要存储线拓扑，例如:_A_line.shp文件
+    2、注记R图层无拓扑信息，跳过
+    */
+
+		//  用来存储线要素拓扑信息
 		vector<vector<string>> vLineTopogValues;
 		vLineTopogValues.clear();
+    //  如果不是注记图层，则加载拓扑信息，如果是注记图层则不需要读取拓扑信息
 		if (vLayerType[iLayerIndex] != "R")
 		{
 			bResult = CSE_VectorFormatConversion_Imp::LoadTPFile(strTPFilePath, vLineTopogValues);
@@ -8294,44 +8563,82 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 				continue;
 			}
 		}
-		// ---------------------------------//
-		//----------------------------------//
-		// -----------读属性文件------------//
-		//------------------------------------//
+#pragma endregion
+
+#pragma region "3、读属性文件"
+    /*
+    -----------读属性文件------------
+    */
+
+    //  用来存储点图层属性值
 		vector<vector<string>> vPointFieldValues;
 		vPointFieldValues.clear();
-
+    //  用来存储线图层属性值
 		vector<vector<string>> vLineFieldValues;
 		vLineFieldValues.clear();
-
+    //  用来存储面图层属性值
 		vector<vector<string>> vPolygonFieldValues;
 		vPolygonFieldValues.clear();
 
-		// 注记图层属性值
+		//  用来存储注记图层属性值（RSX）
 		vector<vector<string>> vRFieldValues;
 		vRFieldValues.clear();
-		// 如果是注记图层
-		if (vLayerType[iLayerIndex] == "R")
-		{
-			string strRSXFilePath = str_input_path + "/" + strSheetNumber + ".RSX";
-			if (!CSE_VectorFormatConversion_Imp::CheckFile(strRSXFilePath))
-			{
-				strRSXFilePath = str_input_path + "/" + strSheetNumber + ".rsx";
-				if (!CSE_VectorFormatConversion_Imp::CheckFile(strRSXFilePath))
-				{
-					//	如果不存在，则跳过，将相关信息写入到日志中
-					std::string msg = "注记属性文件（" + strRSXFilePath + "）不存在！";
-					logger->error(msg);
-					continue;
-				}
-			}
+    //  用来存储注记图层属性值（RRSX）
+    vector<vector<string>> vRRFieldValues;
+    vRRFieldValues.clear();
+    //  用来标识RRSX文件是否存在
+    bool Flag4RRSXFile = false;
 
-			bResult = CSE_VectorFormatConversion_Imp::LoadRSXFile(strRSXFilePath, strSheetNumber, vRFieldValues);
-		}
-		// 如果是其它图层
+    //  如果是注记图层，根据是否存在RRSX和RSX的不同情况来读取属性信息
+    if (vLayerType[iLayerIndex] == "R")
+    {
+      //  拼接注记属性文件路径
+      string strRRSXFilePath = str_input_path + "/" + strSheetNumber + ".RRSX";
+      string strRSXFilePath = str_input_path + "/" + strSheetNumber + ".RSX";
+      //  检查是否存在RRSX、RSX文件
+      bool bRRSXExists = CSE_VectorFormatConversion_Imp::CheckFile(strRRSXFilePath);
+      bool bRSXExists = CSE_VectorFormatConversion_Imp::CheckFile(strRSXFilePath);
+      //  如果 .RRSX 或 .RSX 文件不存在，尝试小写扩展名
+      if (!bRRSXExists && !bRSXExists)
+      {
+        strRRSXFilePath = str_input_path + "/" + strSheetNumber + ".rrsx";
+        strRSXFilePath = str_input_path + "/" + strSheetNumber + ".rsx";
+        bRRSXExists = CSE_VectorFormatConversion_Imp::CheckFile(strRRSXFilePath);
+        bRSXExists = CSE_VectorFormatConversion_Imp::CheckFile(strRSXFilePath);
+      }
+      //  如果RRSX文件存在，则使用LoadRRSXFile接口读取文件内容，因此RRSX和RSX保存的内容不一样
+      if (bRRSXExists)
+      {
+        //  如果存在 .RRSX 文件，读取该文件
+        bResult = CSE_VectorFormatConversion_Imp::LoadRRSXFile(
+          strRRSXFilePath,
+          strSheetNumber,
+          vRRFieldValues);
+        //  更新标志
+        Flag4RRSXFile = true;
+      }
+      //  如果RSX文件存在，则使用LoadRSXFile接口读取文件内容，因此RRSX和RSX保存的内容不一样
+      else if (bRSXExists)
+      {
+        //  如果只存在 .RSX 文件，读取该文件
+        bResult = CSE_VectorFormatConversion_Imp::LoadRSXFile(
+          strRSXFilePath,
+          strSheetNumber,
+          vRFieldValues);
+      }
+      else
+      {
+        //  如果两个文件都不存在，将相关信息写入到日志中
+        std::string msg = "注记属性文件（" + strRSXFilePath + " 或 " + strRRSXFilePath + "）不存在！";
+        logger->error(msg);
+        continue;
+      }
+    }
+		//  如果是其它图层
 		else
 		{
-			bResult = CSE_VectorFormatConversion_Imp::LoadSXFile(strSXFilePath,
+			bResult = CSE_VectorFormatConversion_Imp::LoadSXFile(
+        strSXFilePath,
 				vLayerType[iLayerIndex],
 				strSheetNumber,
 				vLineTopogValues,
@@ -8346,64 +8653,84 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 			logger->error(msg);
 			continue;
 		}
+#pragma endregion
 
+#pragma region "4、读坐标文件"
+    /*
+    ----------读坐标文件---------
+    1、读取转换前的坐标文件
+    */
 
-		//**********************************//
-		// ----------读坐标文件---------//
-		//**********************************//
-		// 点要素集合
-		// 转换前的坐标文件
+    /***********************实体要素层几何坐标*************************/
+
+		//  用来保存点要素几何坐标
 		vector<SE_DPoint> vPoints;
 		vPoints.clear();
-
-		// 点要素方向点集合
+		//  用来保存点要素方向点几何坐标
 		vector<SE_DPoint> vDirectionPoints;
 		vDirectionPoints.clear();
-
-		// 线要素集合
+		//  用来保存线要素几何坐标
 		vector<vector<SE_DPoint>> vLines;
 		vLines.clear();
-
-		// 面要素外环
+		//  用来保存面要素外环几何坐标
 		vector<vector<SE_DPoint>> vPolygons;
 		vPolygons.clear();
-
-		// 面要素内环
+		//  用来保存面要素内环几何坐标
 		vector<vector<vector<SE_DPoint>>> vInteriorPolygons;
 		vInteriorPolygons.clear();
 
-
-		// ----注记几何信息----//
-		vector<SE_DPoint> vRPoints;
+    /***********************注记要素层几何坐标*************************/
+    /*旧版使用的变量，以备回滚
+    vector<SE_DPoint> vRPoints;
 		vRPoints.clear();
-
 		vector<vector<SE_DPoint>> vRLines;
 		vRLines.clear();
-
 		vector<int> vPointIDs;
 		vPointIDs.clear();
-
 		vector<int> vLineIDs;
 		vLineIDs.clear();
-		//--------------------------------//
-		// 如果是注记图层
-		if (vLayerType[iLayerIndex] == "R")
-		{
-			string strRZBFilePath = str_input_path + "/" + strSheetNumber + ".RZB";
-			if (!CSE_VectorFormatConversion_Imp::CheckFile(strRZBFilePath))
-			{
-				strRZBFilePath = str_input_path + "/" + strSheetNumber + ".rzb";
-				if (!CSE_VectorFormatConversion_Imp::CheckFile(strRZBFilePath))
-				{
-					//	如果不存在，则跳过，将相关信息写入到日志中
-					std::string msg = "注记层坐标文件（" + strRZBFilePath + "）不存在！";
-					logger->error(msg);
-					continue;
-				}
-			}
+    */
 
-			bResult = CSE_VectorFormatConversion_Imp::LoadRZBFile(strRZBFilePath, vPointIDs, vRPoints, vLineIDs, vRLines);
-		}
+    //  用来保存注记要素ID
+    vector<int> vRFeatureIDs;
+    vRFeatureIDs.clear();
+    //  用来保存注记要素中的名称定位点几何坐标
+    vector<SE_DPoint> vNameAnchorPoints;
+    vNameAnchorPoints.clear();
+    //  用来保存注记要素中的注记定位点几何坐标
+    vector<vector<SE_DPoint>> vAnnotationAnchorPoints;
+    vAnnotationAnchorPoints.clear();
+
+		//  如果是注记图层，根据是否存在RRZB和RZB的不同情况来读取坐标信息（目前只存在RZB文件）
+    if (vLayerType[iLayerIndex] == "R")
+    {
+      //  拼接注记坐标文件路径
+      string strRZBFilePath = str_input_path + "/" + strSheetNumber + ".RZB";
+      bool bRZBExists = CSE_VectorFormatConversion_Imp::CheckFile(strRZBFilePath);
+      //  如果.RZB 文件不存在，尝试小写扩展名
+      if (!bRZBExists)
+      {
+        strRZBFilePath = str_input_path + "/" + strSheetNumber + ".rzb";
+        bRZBExists = CSE_VectorFormatConversion_Imp::CheckFile(strRZBFilePath);
+      }
+      //  如果.RZB 文件存在
+      if (bRZBExists)
+      {
+        //  如果只存在 .RZB 文件，使用新的读取接口读取该文件中的信息
+        bResult = CSE_VectorFormatConversion_Imp::LoadRZBFile4NewVersionV1(
+          strRZBFilePath,
+          vRFeatureIDs,
+          vNameAnchorPoints,
+          vAnnotationAnchorPoints);
+      }
+      else
+      {
+        //  如果两个文件都不存在，将相关信息写入到日志中
+        std::string msg = "注记坐标文件（" + strRZBFilePath +  "）不存在！";
+        logger->error(msg);
+        continue;
+      }
+    }
 		else
 		{
 			bResult = CSE_VectorFormatConversion_Imp::LoadZBFile(strZBFilePath, vPoints, vDirectionPoints, vLines, vPolygons, vInteriorPolygons);
@@ -8416,60 +8743,66 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 			continue;
 		}
 
-		// ---------转换后的坐标文件------//
-		// 点坐标
+//  读坐标文件
+#pragma endregion
+
+#pragma region "5、坐标转化"
+    /*
+    ----------对之前读取的坐标进行转化---------
+    1、使用转换前的坐标数据进行转化
+    */
+
+    //  用来保存单部件点几何坐标
 		vector<SE_DPoint> vShpPoints;
 		vShpPoints.clear();
-
-		// 线坐标
+		//  用来保存单部件线几何坐标
 		vector<vector<SE_DPoint>> vShpLines;
 		vShpLines.clear();
-
-		// 面坐标（外环多边形）
+		//  用来保存多部件1：面几何坐标（外环多边形）
 		vector<vector<SE_DPoint>> vShpExteriorPolygons;
 		vShpExteriorPolygons.clear();
-
-		// 内环多边形
+		//  用来保存多部件2：内环多边形几何坐标
 		vector<vector<vector<SE_DPoint>>> vShpInteriorPolygons;
 		vShpInteriorPolygons.clear();
 
-		// 注记几何坐标
+		//  用来保存注记层定位点几何坐标
 		vector<SE_DPoint> vRShpPoints;
 		vRShpPoints.clear();
+    //  用来保存注记层注记点几何坐标
+		vector<vector<SE_DPoint>> vRShpMultiPoints;
+    vRShpMultiPoints.clear();
 
-		vector<vector<SE_DPoint>> vRShpLines;
-		vRShpLines.clear();
-
-		//------------------------------//
-		// 加载完坐标文件信息后，进行ODATA到shp地理坐标系（默认CGCS2000坐标系）的转换
-		// ODATA中坐标为相对原点坐标偏移，需计算出真实的投影坐标
-		//****************以下部分进行坐标转换******************//
+		//  加载完坐标文件信息后，进行ODATA到shp地理坐标系（默认CGCS2000坐标系）的转换,ODATA中坐标为相对原点坐标偏移，需计算出真实的投影坐标
 		if (strstr(strGeoCoordSys.c_str(), "2000") != NULL)
 		{
-			// 如果是高斯投影
+#pragma region "case1:高斯投影"
+			//  如果是高斯投影
 			if (strstr(strProjection.c_str(), "高斯") != NULL)
 			{
+        //  设置投影参数
 				ProjectionParams params;
 				params.lon_0 = dCenterL;
-				params.x_0 = iProjZone * 1000000 + 500000;		// 加带号后的高斯值
-				// 如果是米为单位
+        //  加带号后的高斯值
+				params.x_0 = iProjZone * 1000000 + 500000;
+
+				//  如果是米为单位
 				if (strstr(strCoordUnit.c_str(), "米") != NULL)
 				{
-					// 分别对点、线、面要素进行高斯投影反算
-					//------------------------------------------//
-					// 计算西南角点横纵坐标，并减去对应比例尺的横坐标偏移量dOffsetX
-					// 计算西南角点横纵坐标，并减去对应比例尺的纵坐标偏移量dOffsetY
+          /*
+          分别对点、线、面要素进行高斯投影反算
+          1、计算西南角点横纵坐标，并减去对应比例尺的横坐标偏移量dOffsetX
+          2、计算西南角点横纵坐标，并减去对应比例尺的纵坐标偏移量dOffsetY
+          */
 					double dSouthWest[2];
 					dSouthWest[0] = dSheetRect.dleft;
 					dSouthWest[1] = dSheetRect.dbottom;
-
+          //  地理坐标到投影坐标
 					int iRet = CSE_GeoTransformation::Geo2Proj(
 						CGCS2000,
 						GaussKruger,
 						params,
 						1,
 						dSouthWest);
-
 					if (iRet != 1)
 					{
 						//	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
@@ -8481,24 +8814,25 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 					dSouthWestX = dSouthWest[0] - dOffsetX;
 					dSouthWestY = dSouthWest[1] - dOffsetY;
 
-					// --------------【注记点要素投影】----------------//
+					//  注记要素层投影
 					if (vLayerType[iLayerIndex] == "R")
 					{
-						// 如果注记点要素大于0
-						if (vRPoints.size() > 0)
+						//  如果注记层中的“名称定位点”要素大于0
+						if (vNameAnchorPoints.size() > 0)
 						{
-							size_t iPointCount = vRPoints.size();
+              //  计算定位点要素数量
+							size_t iPointCount = vNameAnchorPoints.size();
+              //  分配存储定位点要素集合坐标存储空间
 							double* dValues = new double[iPointCount * 2];
+              //  循环对每个定位点要素进行真实坐标计算
 							for (int i = 0; i < iPointCount; i++)
 							{
 								// 横坐标，真实坐标值
-								dValues[2 * i] = vRPoints[i].dx / dCoordZoomScale + dSouthWestX;
+								dValues[2 * i] = vNameAnchorPoints[i].dx / dCoordZoomScale + dSouthWestX;
 								// 纵坐标，真实坐标值
-								dValues[2 * i + 1] = vRPoints[i].dy / dCoordZoomScale + dSouthWestY;
-
+								dValues[2 * i + 1] = vNameAnchorPoints[i].dy / dCoordZoomScale + dSouthWestY;
 							}
-
-							// 直接存储投影坐标
+							//  存储注记层中“定位点”投影的几何坐标
 							for (int i = 0; i < iPointCount; i++)
 							{
 								SE_DPoint xyz;
@@ -8512,36 +8846,37 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 								dValues = NULL;
 							}
 						}
-
-						// 如果注记线要素大于0
-						if (vRLines.size() > 0)
+						//  如果注记层中的“注记定位点”要素大于0
+						if (vAnnotationAnchorPoints.size() > 0)
 						{
-							for (size_t iLineIndex = 0; iLineIndex < vRLines.size(); iLineIndex++)
+              //  对每个注记要素的注记点计算真实几何坐标
+							for (size_t iIndex = 0; iIndex < vAnnotationAnchorPoints.size(); iIndex++)
 							{
-								// 记录每条线坐标转换后的坐标
-								vector<SE_DPoint> vLinePoints;
-								vLinePoints.clear();
-								size_t iPointCount = vRLines[iLineIndex].size();
+								//  记录每个注记要素坐标转换后的坐标
+								vector<SE_DPoint> vMultiPoints;
+                vMultiPoints.clear();
+                //  计算每个注记要素中有多少注记点
+								size_t iPointCount = vAnnotationAnchorPoints[iIndex].size();
+                //  分配存储注记要素中注记点的存储空间
 								double* dValues = new double[iPointCount * 2];
+                //  循环对每个注记点的真实几何坐标进行计算
 								for (int i = 0; i < iPointCount; i++)
 								{
 									// 横坐标，真实坐标值
-									dValues[2 * i] = vRLines[iLineIndex][i].dx / dCoordZoomScale + dSouthWestX;
+									dValues[2 * i] = vAnnotationAnchorPoints[iIndex][i].dx / dCoordZoomScale + dSouthWestX;
 									// 纵坐标，真实坐标值
-									dValues[2 * i + 1] = vRLines[iLineIndex][i].dy / dCoordZoomScale + dSouthWestY;
-
+									dValues[2 * i + 1] = vAnnotationAnchorPoints[iIndex][i].dy / dCoordZoomScale + dSouthWestY;
 								}
-
-								// 直接存储投影坐标
+								//  存储注记层中“注记点”投影的几何坐标
 								for (int i = 0; i < iPointCount; i++)
 								{
 									SE_DPoint xyz;
 									xyz.dx = dValues[2 * i];
 									xyz.dy = dValues[2 * i + 1];
-									vLinePoints.push_back(xyz);
+                  vMultiPoints.push_back(xyz);
 								}
-
-								vRShpLines.push_back(vLinePoints);
+                //  将当前注记要素的注记点记录到自定义结构体中用于后面的shp图层创建
+                vRShpMultiPoints.push_back(vMultiPoints);
 								if (dValues)
 								{
 									delete[]dValues;
@@ -8549,9 +8884,8 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 								}
 							}
 						}
-					}
-
-					// 如果是A到Q图层
+          }
+					//  实体要素层投影
 					else
 					{
 						// --------------【点要素投影】----------------//		
@@ -8723,36 +9057,34 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 					}
 					//------------------------------------------//
 				}
-				// 如果是秒为单位
+				//  如果是秒为单位
 				else if (strstr(strCoordUnit.c_str(), "秒") != NULL)
 				{
-					//------------------------------------------//
-					// 坐标原点为图幅西南角点经纬度
+					//  坐标原点为图幅西南角点经纬度
 					dSouthWestX = dSheetRect.dleft;
 					dSouthWestY = dSheetRect.dbottom;
-					// --------------【注记点要素投影】----------------//
+          //  注记要素层投影
 					if (vLayerType[iLayerIndex] == "R")
 					{
-						if (vRPoints.size() > 0)
+            //  如果注记层中的“名称定位点”要素大于0
+						if (vNameAnchorPoints.size() > 0)
 						{
-							size_t iPointCount = vRPoints.size();
+							size_t iPointCount = vNameAnchorPoints.size();
 							double* dValues = new double[iPointCount * 2];
 							for (int i = 0; i < iPointCount; i++)
 							{
-								// 横坐标，真实坐标值
-								dValues[2 * i] = vRPoints[i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
-								// 纵坐标，真实坐标值
-								dValues[2 * i + 1] = vRPoints[i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
+								//  横坐标，真实坐标值
+								dValues[2 * i] = vNameAnchorPoints[i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
+								//  纵坐标，真实坐标值
+								dValues[2 * i + 1] = vNameAnchorPoints[i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
 							}
-
-							// 将地理坐标转换为投影坐标
+							//  将地理坐标转换为投影坐标
 							int iResult = CSE_GeoTransformation::Geo2Proj(
 								CGCS2000,
 								GaussKruger,
 								params,
 								iPointCount,
 								dValues);
-
 							if (iResult != 1)
 							{
 								//	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
@@ -8760,8 +9092,7 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 								logger->error(msg);
 								continue;
 							}
-
-
+              //  循环对每个名称定位点的几何坐标进行存储
 							for (int i = 0; i < iPointCount; i++)
 							{
 								SE_DPoint xyz;
@@ -8775,32 +9106,33 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 								dValues = NULL;
 							}
 						}
-						if (vRLines.size() > 0)
+            //  如果注记层中的“注记定位点”要素大于0
+            if (vAnnotationAnchorPoints.size() > 0)
 						{
-							for (size_t iLineIndex = 0; iLineIndex < vRLines.size(); iLineIndex++)
+							for (size_t iIndex = 0; iIndex < vAnnotationAnchorPoints.size(); iIndex++)
 							{
 								// 记录每条线坐标转换后的坐标
-								vector<SE_DPoint> vLinePoints;
-								vLinePoints.clear();
-								size_t iPointCount = vRLines[iLineIndex].size();
+								vector<SE_DPoint> vMultiPoints;
+                vMultiPoints.clear();
+                //  计算每个注记要素的注记点数量
+								size_t iPointCount = vAnnotationAnchorPoints[iIndex].size();
+                //  分配注记要素的注记点几何坐标所需的空间
 								double* dValues = new double[iPointCount * 2];
+                //  循环对计算每个注记要素的注记点的真实几何坐标
 								for (int i = 0; i < iPointCount; i++)
 								{
 									// 横坐标，真实坐标值
-									dValues[2 * i] = vRLines[iLineIndex][i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
+									dValues[2 * i] = vAnnotationAnchorPoints[iIndex][i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
 									// 纵坐标，真实坐标值
-									dValues[2 * i + 1] = vRLines[iLineIndex][i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
-
+									dValues[2 * i + 1] = vAnnotationAnchorPoints[iIndex][i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
 								}
-
-								// 将地理坐标转换为投影坐标
+								//  将地理坐标转换为投影坐标
 								int iResult = CSE_GeoTransformation::Geo2Proj(
 									CGCS2000,
 									GaussKruger,
 									params,
 									iPointCount,
 									dValues);
-
 								if (iResult != 1)
 								{
 									//	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
@@ -8808,15 +9140,15 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 									logger->error(msg);
 									continue;
 								}
-
+                //  循环存储注记要素中注记点的几何坐标
 								for (int i = 0; i < iPointCount; i++)
 								{
 									SE_DPoint xyz;
 									xyz.dx = dValues[2 * i];
 									xyz.dy = dValues[2 * i + 1];
-									vLinePoints.push_back(xyz);
+                  vMultiPoints.push_back(xyz);
 								}
-								vRShpLines.push_back(vLinePoints);
+                vRShpMultiPoints.push_back(vMultiPoints);
 								if (dValues)
 								{
 									delete[]dValues;
@@ -8825,6 +9157,7 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 							}
 						}
 					}
+          //  实体要素层投影
 					else
 					{
 						// --------------【点要素投影】----------------//		
@@ -9050,36 +9383,38 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 					//------------------------------------------//
 				}
 			}
+#pragma endregion
 
-			// 如果是等角圆锥投影，100万比例尺可能为等角圆锥投影
+#pragma region "case2:等角圆锥投影"
+			//  如果是等角圆锥投影，100万比例尺可能为等角圆锥投影
 			else if (strstr(strProjection.c_str(), "等角圆锥") != NULL)
 			{
 				ProjectionParams params;
 				params.lon_0 = dCenterL;
 				params.lat_1 = dParellel_1;
 				params.lat_2 = dParellel_2;
-				// 如果是米为单位
+				//  如果是米为单位（分别对点、线、面要素进行圆锥投影反算）
 				if (strstr(strCoordUnit.c_str(), "米") != NULL)
 				{
-					// 分别对点、线、面要素进行圆锥投影反算
-					//------------------------------------------//
-					// --------------【注记点要素投影】----------------//
+					//  注记要素层投影
 					if (vLayerType[iLayerIndex] == "R")
 					{
-						if (vRPoints.size() > 0)
+            //  如果注记层中的“名称定位点”要素大于0
+						if (vNameAnchorPoints.size() > 0)
 						{
-							size_t iPointCount = vRPoints.size();
+              //  计算名称定位点要素数量
+							size_t iPointCount = vNameAnchorPoints.size();
+              //  分配名称点位点真实几何坐标所需的空间
 							double* dValues = new double[iPointCount * 2];
+              //  循环对每个名称定位点的真实几何坐标进行计算
 							for (int i = 0; i < iPointCount; i++)
 							{
 								// 横坐标，真实坐标值
-								dValues[2 * i] = vRPoints[i].dx / dCoordZoomScale + dOriginX - dOffsetX;
+								dValues[2 * i] = vNameAnchorPoints[i].dx / dCoordZoomScale + dOriginX - dOffsetX;
 								// 纵坐标，真实坐标值
-								dValues[2 * i + 1] = vRPoints[i].dy / dCoordZoomScale + dOriginY - dOffsetY;
-
+								dValues[2 * i + 1] = vNameAnchorPoints[i].dy / dCoordZoomScale + dOriginY - dOffsetY;
 							}
-
-							// 直接存储投影坐标
+							//  存储注记层中“名称定位点”投影的几何坐标
 							for (int i = 0; i < iPointCount; i++)
 							{
 								SE_DPoint xyz;
@@ -9093,35 +9428,35 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 								dValues = NULL;
 							}
 						}
-
-						if (vRLines.size() > 0)
+            //  如果注记层中的“注记定位点”要素大于0
+						if (vAnnotationAnchorPoints.size() > 0)
 						{
-							for (size_t iLineIndex = 0; iLineIndex < vRLines.size(); iLineIndex++)
+							for (size_t iIndex = 0; iIndex < vAnnotationAnchorPoints.size(); iIndex++)
 							{
-								// 记录每条线坐标转换后的坐标
-								vector<SE_DPoint> vLinePoints;
-								vLinePoints.clear();
-
-								size_t iPointCount = vRLines[iLineIndex].size();
+								//  记录每个注记要素中的注记点坐标
+								vector<SE_DPoint> vMultiPoints;
+                vMultiPoints.clear();
+                //  计算当前注记要素中的注记点坐标数量
+								size_t iPointCount = vAnnotationAnchorPoints[iIndex].size();
+                //  分配当前注记要素中的注记点几何坐标所需要的存储空间
 								double* dValues = new double[iPointCount * 2];
+                //  循环对每个注记点要素中的注记点的真实几何坐标进行计算
 								for (int i = 0; i < iPointCount; i++)
 								{
 									// 横坐标，真实坐标值
-									dValues[2 * i] = vRLines[iLineIndex][i].dx / dCoordZoomScale + dOriginX - dOffsetX;
+									dValues[2 * i] = vAnnotationAnchorPoints[iIndex][i].dx / dCoordZoomScale + dOriginX - dOffsetX;
 									// 纵坐标，真实坐标值
-									dValues[2 * i + 1] = vRLines[iLineIndex][i].dy / dCoordZoomScale + dOriginY - dOffsetY;
-
+									dValues[2 * i + 1] = vAnnotationAnchorPoints[iIndex][i].dy / dCoordZoomScale + dOriginY - dOffsetY;
 								}
-
-								// 直接存储投影坐标
+								// 存储注记层中“注记定位点”投影的几何坐标
 								for (int i = 0; i < iPointCount; i++)
 								{
 									SE_DPoint xyz;
 									xyz.dx = dValues[2 * i];
 									xyz.dy = dValues[2 * i + 1];
-									vLinePoints.push_back(xyz);
+                  vMultiPoints.push_back(xyz);
 								}
-								vRShpLines.push_back(vLinePoints);
+								vRShpMultiPoints.push_back(vMultiPoints);
 								if (dValues)
 								{
 									delete[]dValues;
@@ -9130,7 +9465,8 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 							}
 						}
 					}
-					else
+          //  实体要素层投影
+          else
 					{
 						// --------------【点要素投影】----------------//		
 						if (vPoints.size() > 0)
@@ -9291,38 +9627,36 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 					}
 					//------------------------------------------//
 				}
-				// 如果是秒为单位
+				//  如果是秒为单位
 				else if (strstr(strCoordUnit.c_str(), "秒") != NULL)
 				{
-					//------------------------------------------//
 					// 坐标原点为图幅西南角点经纬度
 					dSouthWestX = dSheetRect.dleft;
 					dSouthWestY = dSheetRect.dbottom;
-					// --------------【注记点要素投影】----------------//
+          //  注记要素层投影
 					if (vLayerType[iLayerIndex] == "R")
 					{
-						if (vRPoints.size() > 0)
+            //  如果注记层中的“名称定位点”要素大于0
+						if (vNameAnchorPoints.size() > 0)
 						{
-							size_t iPointCount = vRPoints.size();
+              //  计算注记要素中名称定位点的数量
+							size_t iPointCount = vNameAnchorPoints.size();
+              //  分配注记要素中名称定位点所需的存储空间
 							double* dValues = new double[iPointCount * 2];
 							for (int i = 0; i < iPointCount; i++)
 							{
 								// 横坐标，真实坐标值
-								dValues[2 * i] = vRPoints[i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
-
+								dValues[2 * i] = vNameAnchorPoints[i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
 								// 纵坐标，真实坐标值
-								dValues[2 * i + 1] = vRPoints[i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
-
+								dValues[2 * i + 1] = vNameAnchorPoints[i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
 							}
-
-							// 将地理坐标转换为投影坐标
+							//  将地理坐标转换为投影坐标
 							int iResult = CSE_GeoTransformation::Geo2Proj(
 								CGCS2000,
 								LambertConformalConic,
 								params,
 								iPointCount,
 								dValues);
-
 							if (iResult != 1)
 							{
 								//	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
@@ -9330,7 +9664,7 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 								logger->error(msg);
 								continue;
 							}
-
+              //  存储注记层中“名称定位点”投影的几何坐标
 							for (int i = 0; i < iPointCount; i++)
 							{
 								SE_DPoint xyz;
@@ -9344,34 +9678,33 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 								dValues = NULL;
 							}
 						}
-						if (vRLines.size() > 0)
+            //  如果注记层中的“注记定位点”要素大于0
+            if (vAnnotationAnchorPoints.size() > 0)
 						{
-							for (size_t iLineIndex = 0; iLineIndex < vRLines.size(); iLineIndex++)
+							for (size_t iIndex = 0; iIndex < vAnnotationAnchorPoints.size(); iIndex++)
 							{
-								// 记录每条线坐标转换后的坐标
-								vector<SE_DPoint> vLinePoints;
-								vLinePoints.clear();
-								size_t iPointCount = vRLines[iLineIndex].size();
+								// 记录注记要素的注记点位点坐标转换后的坐标
+								vector<SE_DPoint> vMultiPoints;
+                vMultiPoints.clear();
+                //  计算当前注记要素的注记定位点数量
+								size_t iPointCount = vAnnotationAnchorPoints[iIndex].size();
+                //  分配当前注记要素的注记定位点所需的存储空间
 								double* dValues = new double[iPointCount * 2];
+                //  循环计算每个注记要素的注记定位点的真实几何坐标
 								for (int i = 0; i < iPointCount; i++)
 								{
-
 									// 横坐标，真实坐标值
-									dValues[2 * i] = vRLines[iLineIndex][i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
-
+									dValues[2 * i] = vAnnotationAnchorPoints[iIndex][i].dx / dCoordZoomScale / 3600.0 + dSouthWestX;
 									// 纵坐标，真实坐标值
-									dValues[2 * i + 1] = vRLines[iLineIndex][i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
-
+									dValues[2 * i + 1] = vAnnotationAnchorPoints[iIndex][i].dy / dCoordZoomScale / 3600.0 + dSouthWestY;
 								}
-
-								// 将地理坐标转换为投影坐标
+								//  将地理坐标转换为投影坐标
 								int iResult = CSE_GeoTransformation::Geo2Proj(
 									CGCS2000,
 									LambertConformalConic,
 									params,
 									iPointCount,
 									dValues);
-
 								if (iResult != 1)
 								{
 									//	如果坐标系统转化失败了，则将错误信息写入到日志中，并且继续下一个图层的转化
@@ -9379,15 +9712,15 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 									logger->error(msg);
 									continue;
 								}
-
+                //  存储注记层中“注记定位点”投影的几何坐标
 								for (int i = 0; i < iPointCount; i++)
 								{
 									SE_DPoint xyz;
 									xyz.dx = dValues[2 * i];
 									xyz.dy = dValues[2 * i + 1];
-									vLinePoints.push_back(xyz);
+                  vMultiPoints.push_back(xyz);
 								}
-								vRShpLines.push_back(vLinePoints);
+								vRShpMultiPoints.push_back(vMultiPoints);
 								if (dValues)
 								{
 									delete[]dValues;
@@ -9396,7 +9729,8 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 							}
 						}
 					}
-					else
+          //  实体要素层投影
+          else
 					{
 						// --------------【点要素投影】----------------//		
 						if (vPoints.size() > 0)
@@ -9620,13 +9954,22 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 					//------------------------------------------//
 				}
 			}
-		}
-		//****************坐标转换完毕******************//
-		// ----------创建shp文件---------//
+#pragma endregion
+    }
 
-		OGRSpatialReference pResultSR;		// 结果图层的空间参考
+
+//  进行坐标转化
+#pragma endregion
+
+#pragma region "6、创建shp文件"
+    /*
+    ----------创建shp文件---------
+    */
+
+    //  创建结果图层的空间参考并且进行参数设置
+		OGRSpatialReference pResultSR;
 		pResultSR.SetProjCS("ProjCoordSys");
-		// 地理基准CGCS2000
+		//  地理基准CGCS2000
 		pResultSR.SetWellKnownGeogCS("EPSG:4490");
 		if (strstr(strProjection.c_str(), "高斯") != NULL)
 		{
@@ -9646,14 +9989,15 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 				0);
 		}
 
-#pragma region "case1:是R图层"
+#pragma region "创建shapefile:图层类型是R图层"
 		// 如果是注记R图层
 		if (vLayerType[iLayerIndex] == "R")
 		{
-#pragma region "如果注记要素层中的点要素个数大于0"
-			// 注记点要素个数不为0
+#pragma region "如果注记要素层中的名称定位点要素个数大于0"
+			//  注记图层中的名称定位点要素个数不为0
 			if (vRShpPoints.size() > 0)
 			{
+        //  创建注记名称定位点要素层的字段信息
 				vector<string> vFieldsName;
 				vFieldsName.clear();
 				vector<OGRFieldType> vFieldType;
@@ -9662,33 +10006,34 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 				vFieldWidth.clear();
 				vector<int> vFieldPrecision;
 				vFieldPrecision.clear();
+				//  根据要素类型获取字段信息，不同的要素层存在不同的字段信息（这里是否需要将第二个参数设置为Point?）
+        if (Flag4RRSXFile)
+        {
+          CSE_VectorFormatConversion_Imp::CreateShpFieldsByLayerType("RR", "", vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
+        }
+        else
+        {
+          CSE_VectorFormatConversion_Imp::CreateShpFieldsByLayerType(vLayerType[iLayerIndex], "", vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
+        }
+				
 
-				// 根据要素类型获取字段信息
-				CSE_VectorFormatConversion_Imp::CreateShpFieldsByLayerType(vLayerType[iLayerIndex], "", vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
-				// 创建对应要素类型的点图层，如:图幅_R_point.shp
-				// 点要素图层全路径
-
-				string strCPGFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_point.cpg";
-				string strPointShpFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_point.shp";
-
-				//创建结果数据源
+        //  创建对应要素类型的点图层，如:图幅：*_R_NameAnchorPoints.shp，点要素图层全路径
+				string strPointShpFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_NameAnchorPoints.shp";
+				//  创建结果数据源
 				GDALDataset* poResultDS;
 				poResultDS = poDriver->Create(strPointShpFilePath.c_str(), 0, 0, 0, GDT_Unknown, NULL);
 				if (poResultDS == NULL)
 				{
 					//	如果创建失败，则跳过，将相关信息写入到日志中
-					std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建注记要素层点图层（" + strPointShpFilePath + "）失败！";
+					std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建注记名称定位点图层（" + strPointShpFilePath + "）失败！";
 					logger->error(msg);
 					continue;
 				}
-
-				// 根据图层要素类型创建shp文件
+				//  根据图层要素类型创建shp文件
 				OGRLayer* poResultLayer = NULL;
-
-				// 图层名称
-				string strResultShpName = strSheetNumber + "_" + vLayerType[iLayerIndex] + "_point";
-
-				// shp中存储属性信息和几何信息
+				//  图层名称
+				string strResultShpName = strSheetNumber + "_" + vLayerType[iLayerIndex] + "_NameAnchorPoints";
+				//  shp中存储属性信息和几何信息（wkbPoint）
 				poResultLayer = poResultDS->CreateLayer(strResultShpName.c_str(), &pResultSR, wkbPoint, NULL);
 				if (!poResultLayer)
 				{
@@ -9697,7 +10042,7 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 					logger->error(msg);
 					continue;
 				}
-				// 创建结果图层属性字段
+				//  创建结果图层的属性字段
 				int iResult = CSE_VectorFormatConversion_Imp::SetFieldDefn(poResultLayer, vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
 				if (iResult != 0)
 				{
@@ -9707,15 +10052,30 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 					continue;
 				}
 
-				// 创建要素
+				//  循环创建注记名称定位点要素
 				for (int i = 0; i < vRShpPoints.size(); i++)
 				{
-					iResult = CSE_VectorFormatConversion_Imp::Set_Point(poResultLayer,
-						vRShpPoints[i].dx,
-						vRShpPoints[i].dy,
-						vRShpPoints[i].dz,
-						vRFieldValues[i],
-						vLayerType[iLayerIndex]);
+          if (Flag4RRSXFile)
+          {
+            iResult = CSE_VectorFormatConversion_Imp::Set_Point(
+              poResultLayer,
+              vRShpPoints[i].dx,
+              vRShpPoints[i].dy,
+              vRShpPoints[i].dz,
+              vRRFieldValues[i],
+              "RR");
+          }
+          else
+          {
+            iResult = CSE_VectorFormatConversion_Imp::Set_Point(
+              poResultLayer,
+              vRShpPoints[i].dx,
+              vRShpPoints[i].dy,
+              vRShpPoints[i].dz,
+              vRFieldValues[i],
+              vLayerType[iLayerIndex]);
+          }
+          //  检查要素创建是否成功
 					if (iResult != 0 && iResult != -2)
 					{
 						//	如果创建失败，则跳过，将相关信息写入到日志中
@@ -9724,11 +10084,11 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 						continue;
 					}
 				}
-				// 关闭数据源
+				//  关闭数据源
 				GDALClose(poResultDS);
 
-
-				// 创建cpg文件
+				//  创建cpg文件
+        string strCPGFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_NameAnchorPoints.cpg";
 				bResult = CSE_VectorFormatConversion_Imp::CreateShapefileCPG(strCPGFilePath);
 				if (!bResult)
 				{
@@ -9740,10 +10100,11 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 			}
 #pragma endregion
 
-#pragma region "如果注记要素层中的线要素个数大于0"
-			// 线要素个数不为0
-			if (vRShpLines.size() > 0)
+#pragma region "如果注记要素层中的注记定位点要素个数大于0"
+			//  注记图层中的注记定位点要素个数不为0
+			if (vRShpMultiPoints.size() > 0)
 			{
+        //  创建注记注记定位点要素层的字段信息
 				vector<string> vFieldsName;
 				vFieldsName.clear();
 				vector<OGRFieldType> vFieldType;
@@ -9752,39 +10113,47 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 				vFieldWidth.clear();
 				vector<int> vFieldPrecision;
 				vFieldPrecision.clear();
-				// 根据要素类型获取字段信息
-				CSE_VectorFormatConversion_Imp::CreateShpFieldsByLayerType(vLayerType[iLayerIndex], "", vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
-				// 创建对应要素类型的线图层，如:图幅_A_line.shp
-				// 线要素图层全路径
 
-				string strCPGFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_line.cpg";
-				string strLineShpFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_line.shp";
-
-				//创建结果数据源
+				//  根据要素类型获取字段信息
+        if (Flag4RRSXFile)
+        {
+          CSE_VectorFormatConversion_Imp::CreateShpFieldsByLayerType("RR", "", vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
+        }
+        else
+        {
+          CSE_VectorFormatConversion_Imp::CreateShpFieldsByLayerType(vLayerType[iLayerIndex], "", vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
+        }
+				
+        //  创建注记要素类型的注记定位点（多点）图层
+				string strMultiPointShpFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_AnnotationAnchorPoints.shp";
+				//  创建结果数据源
 				GDALDataset* poResultDS;
-				poResultDS = poDriver->Create(strLineShpFilePath.c_str(), 0, 0, 0, GDT_Unknown, NULL);
+				poResultDS = poDriver->Create(strMultiPointShpFilePath.c_str(), 0, 0, 0, GDT_Unknown, NULL);
 				if (poResultDS == NULL)
 				{
 					//	如果创建失败，则跳过，将相关信息写入到日志中
-					std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建注记要素层线图层（" + strLineShpFilePath + "）失败！";
+					std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建注记定位点图层（" + strMultiPointShpFilePath + "）失败！";
 					logger->error(msg);
 					continue;
 				}
-				// 根据图层要素类型创建shp文件
+
+        //  根据图层要素类型创建shp文件
 				OGRLayer* poResultLayer = NULL;
-
-				// 图层名称
-				string strResultShpName = strSheetNumber + "_" + vLayerType[iLayerIndex] + "_line";
-
-				poResultLayer = poResultDS->CreateLayer(strResultShpName.c_str(), &pResultSR, wkbLineString, NULL);
-				if (!poResultLayer)
+				//  图层名称
+				string strResultShpName = strSheetNumber + "_" + vLayerType[iLayerIndex] + "_AnnotationAnchorPoints";
+        //  这里需要将wkbLineString修改成wkbMultiPoint
+				//poResultLayer = poResultDS->CreateLayer(strResultShpName.c_str(), &pResultSR, wkbMultiPoint, NULL);
+        //  -2024-12-07：如果使用wkbMultiPoint的话将不能对单个多点要素中的每个对象赋予不同的属性值，因此这里需要对多点要素进行拆分
+        poResultLayer = poResultDS->CreateLayer(strResultShpName.c_str(), &pResultSR, wkbPoint, NULL);
+        if (!poResultLayer)
 				{
 					//	如果创建失败，则跳过，将相关信息写入到日志中
-					std::string msg = "目录（" + str_output_path + "/" + strSheetNumber + "）中创建结果线图层（" + strResultShpName + "）失败！";
+					std::string msg = "目录（" + str_output_path + "/" + strSheetNumber + "）中创建结果多点图层（" + strResultShpName + "）失败！";
 					logger->error(msg);
 					continue;
 				}
-				// 创建结果图层属性字段
+
+				//  创建结果图层属性字段
 				int iResult = CSE_VectorFormatConversion_Imp::SetFieldDefn(poResultLayer, vFieldsName, vFieldType, vFieldWidth, vFieldPrecision);
 				if (iResult != 0)
 				{
@@ -9793,26 +10162,40 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 					logger->error(msg);
 					continue;
 				}
-				// 创建要素
-				for (int i = 0; i < vRShpLines.size(); i++)
+
+        //  创建注记定位点要素（需要使用Set_MultiPoint函数）
+				for (int i = 0; i < vRShpMultiPoints.size(); i++)
 				{
-					iResult = CSE_VectorFormatConversion_Imp::Set_LineString(
-            poResultLayer,
-						vRShpLines[i],
-						vRFieldValues[i],
-						vLayerType[iLayerIndex]);
+          if (Flag4RRSXFile)
+          {
+            iResult = CSE_VectorFormatConversion_Imp::Set_MultiPoint(
+              poResultLayer,
+              vRShpMultiPoints[i],
+              vRRFieldValues[i],
+              "RR");
+          }
+          else
+          {
+            iResult = CSE_VectorFormatConversion_Imp::Set_MultiPoint(
+              poResultLayer,
+              vRShpMultiPoints[i],
+              vRFieldValues[i],
+              vLayerType[iLayerIndex]);
+          }
+          //  检查结果
 					if (iResult != 0 && iResult != -2)
 					{
 						//	如果创建失败，则跳过，将相关信息写入到日志中
-						std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）的结果图层（" + strResultShpName + "）中创建线要素失败！";
+						std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）的结果图层（" + strResultShpName + "）中创建多点要素失败！";
 						logger->error(msg);
 						continue;
 					}
 				}
-				// 关闭数据源
+				//  关闭数据源
 				GDALClose(poResultDS);
 
-				// 创建cpg文件
+				//  创建cpg文件
+        string strCPGFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_AnnotationAnchorPoints.cpg";
 				bResult = CSE_VectorFormatConversion_Imp::CreateShapefileCPG(strCPGFilePath);
 				if (!bResult)
 				{
@@ -9826,7 +10209,7 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 		}
 #pragma endregion
 
-#pragma region "case2:不是R图层"
+#pragma region "创建shapefile:图层类型是实体要素图层"
 		// 如果不是R图层
 		else
 		{
@@ -10107,13 +10490,17 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 		}
 #pragma endregion
 
+//  创建shp文件
+#pragma endregion
+
 	}
+#pragma endregion
 
 #pragma endregion
 
 #pragma region "【5】增加生成元数据描述图层S_polygon.shp图层"
 
-#pragma region "创建图层字段（字段名称、字段类型、字段精度）"
+#pragma region "1、创建图层字段（字段名称、字段类型、字段精度）"
 	// 修改说明：增加生成元数据描述图层S_polygon.shp图层
 	// 生成多边形图层，图层的几何信息为一个矩形要素，坐标点为四个角点，属性信息为要素编号和图幅号
 	// 创建S图层的属性字段
@@ -10123,389 +10510,396 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 	vSFieldType.clear();
 	vector<int> vSFieldWidth;
 	vSFieldWidth.clear();
-	vector<int> vFieldPrecision;
-	vFieldPrecision.clear();
-	// -------------------将元数据前94项全部写入shp文件--------------//
-	vSFieldsName.push_back("生产单位");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("生产日期");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("更新日期");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("图式编号");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("分类编码");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("图名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("图号");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	// 杨小兵-2024-02-21：根据《矢量模型及格式》“图幅等高距”字段为短整型
-	vSFieldsName.push_back("等高距");
-	vSFieldType.push_back(OFTInteger);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("比例尺分母");
-	vSFieldType.push_back(OFTInteger64);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("经度范围");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("纬度范围");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("左下角横");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("左下角纵");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("右下角横");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("右下角纵");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("右上角横");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("右上角纵");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("左上角横");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("左上角纵");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("长半径");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("椭球扁率");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(15);
-	vFieldPrecision.push_back(9);
-	vSFieldsName.push_back("大地基准");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("地图投影");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(9);
-	vSFieldsName.push_back("中央经线");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(5);
-	vSFieldsName.push_back("标准纬线1");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(5);
-	vSFieldsName.push_back("标准纬线2");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(5);
-	vSFieldsName.push_back("分带方式");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("带号");
-	vSFieldType.push_back(OFTInteger);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("坐标单位");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("坐标维数");
-	vSFieldType.push_back(OFTInteger);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("缩放系数");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(6);
-	vSFieldsName.push_back("相横坐标");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("相纵坐标");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("磁偏角");
-	vSFieldType.push_back(OFTInteger);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("磁坐偏角");
-	vSFieldType.push_back(OFTInteger);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("纵线偏角");
-	vSFieldType.push_back(OFTInteger);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("高程系统名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("高程基准");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("深度基准");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("主要资料");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("航分母");
-	vSFieldType.push_back(OFTInteger);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("航摄仪焦距");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("航摄单位");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("航摄日期");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("调绘日期");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("摄区号");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("分辨率");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(6);
-	vSFieldsName.push_back("数据来源");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("内插方法");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("采集方法");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("采集仪器");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原图图名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原图图号");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原基准");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原投影");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原中央经线");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(5);
-	vSFieldsName.push_back("原纬线1");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(5);
-	vSFieldsName.push_back("原纬线2");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(5);
-	vSFieldsName.push_back("原图分带");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原图坐标");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原图高");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原图基准");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原深度基准");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原经度范围");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原纬度范围");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原出版单位");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原图等高距");
-	vSFieldType.push_back(OFTInteger);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原图分母");
-	vSFieldType.push_back(OFTInteger64);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原出版日期");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原图图式");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("西边接边");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("北边接边");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("东边接边");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("南边接边");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("平面位置");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(6);
-	vSFieldsName.push_back("高程中误差");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(6);
-	vSFieldsName.push_back("属性精度");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("逻辑一致性");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("完整性");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("质量评价");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("结论总分");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("检验单位");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("评检日期");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("总评价");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("左上图幅名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("上边图幅名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("右上图幅名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("左边图幅名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("右边图幅名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("左下图幅名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("下边图幅名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("右下图幅名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("政区说明");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("总层数");
-	vSFieldType.push_back(OFTInteger);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
+	vector<int> vSFieldPrecision;
+	vSFieldPrecision.clear();
+
+  // 根据要素类型获取字段信息
+  CSE_VectorFormatConversion_Imp::CreateShpFieldsByLayerType("S", "Polygon", vSFieldsName, vSFieldType, vSFieldWidth, vSFieldPrecision);
+
+//#pragma region "S_polygon图层字段信息（旧版）"
+//	// -------------------将元数据前94项全部写入shp文件--------------//
+//	vSFieldsName.push_back("生产单位");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(30);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("生产日期");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(8);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("更新日期");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(8);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("图式编号");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(20);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("分类编码");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(20);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("图名");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(30);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("图号");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(0);
+//	// -2024-02-21：根据《矢量模型及格式》“图幅等高距”字段为短整型
+//	vSFieldsName.push_back("等高距");
+//	vSFieldType.push_back(OFTInteger);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("比例尺分母");
+//	vSFieldType.push_back(OFTInteger64);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("经度范围");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(20);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("纬度范围");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(20);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("左下角横");
+//	vSFieldType.push_back(OFTReal);
+//	vSFieldWidth.push_back(12);
+//	vSFieldPrecision.push_back(2);
+//	vSFieldsName.push_back("左下角纵");
+//	vSFieldType.push_back(OFTReal);
+//	vSFieldWidth.push_back(12);
+//	vSFieldPrecision.push_back(2);
+//	vSFieldsName.push_back("右下角横");
+//	vSFieldType.push_back(OFTReal);
+//	vSFieldWidth.push_back(12);
+//	vSFieldPrecision.push_back(2);
+//	vSFieldsName.push_back("右下角纵");
+//	vSFieldType.push_back(OFTReal);
+//	vSFieldWidth.push_back(12);
+//	vSFieldPrecision.push_back(2);
+//	vSFieldsName.push_back("右上角横");
+//	vSFieldType.push_back(OFTReal);
+//	vSFieldWidth.push_back(12);
+//	vSFieldPrecision.push_back(2);
+//	vSFieldsName.push_back("右上角纵");
+//	vSFieldType.push_back(OFTReal);
+//	vSFieldWidth.push_back(12);
+//	vSFieldPrecision.push_back(2);
+//	vSFieldsName.push_back("左上角横");
+//	vSFieldType.push_back(OFTReal);
+//	vSFieldWidth.push_back(12);
+//	vSFieldPrecision.push_back(2);
+//	vSFieldsName.push_back("左上角纵");
+//	vSFieldType.push_back(OFTReal);
+//	vSFieldWidth.push_back(12);
+//	vSFieldPrecision.push_back(2);
+//	vSFieldsName.push_back("长半径");
+//	vSFieldType.push_back(OFTReal);
+//	vSFieldWidth.push_back(12);
+//	vSFieldPrecision.push_back(2);
+//	vSFieldsName.push_back("椭球扁率");
+//	vSFieldType.push_back(OFTReal);
+//	vSFieldWidth.push_back(15);
+//	vSFieldPrecision.push_back(9);
+//	vSFieldsName.push_back("大地基准");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(20);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("地图投影");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(9);
+//	vSFieldsName.push_back("中央经线");
+//	vSFieldType.push_back(OFTReal);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(5);
+//	vSFieldsName.push_back("标准纬线1");
+//	vSFieldType.push_back(OFTReal);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(5);
+//	vSFieldsName.push_back("标准纬线2");
+//	vSFieldType.push_back(OFTReal);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(5);
+//	vSFieldsName.push_back("分带方式");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("带号");
+//	vSFieldType.push_back(OFTInteger);
+//	vSFieldWidth.push_back(8);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("坐标单位");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("坐标维数");
+//	vSFieldType.push_back(OFTInteger);
+//	vSFieldWidth.push_back(8);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("缩放系数");
+//	vSFieldType.push_back(OFTReal);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(6);
+//	vSFieldsName.push_back("相横坐标");
+//	vSFieldType.push_back(OFTReal);
+//	vSFieldWidth.push_back(12);
+//	vSFieldPrecision.push_back(2);
+//	vSFieldsName.push_back("相纵坐标");
+//	vSFieldType.push_back(OFTReal);
+//	vSFieldWidth.push_back(12);
+//	vSFieldPrecision.push_back(2);
+//	vSFieldsName.push_back("磁偏角");
+//	vSFieldType.push_back(OFTInteger);
+//	vSFieldWidth.push_back(8);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("磁坐偏角");
+//	vSFieldType.push_back(OFTInteger);
+//	vSFieldWidth.push_back(8);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("纵线偏角");
+//	vSFieldType.push_back(OFTInteger);
+//	vSFieldWidth.push_back(8);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("高程系统名");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("高程基准");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(30);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("深度基准");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(30);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("主要资料");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("航分母");
+//	vSFieldType.push_back(OFTInteger);
+//	vSFieldWidth.push_back(8);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("航摄仪焦距");
+//	vSFieldType.push_back(OFTReal);
+//	vSFieldWidth.push_back(12);
+//	vSFieldPrecision.push_back(2);
+//	vSFieldsName.push_back("航摄单位");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(30);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("航摄日期");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(8);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("调绘日期");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(8);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("摄区号");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("分辨率");
+//	vSFieldType.push_back(OFTReal);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(6);
+//	vSFieldsName.push_back("数据来源");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("内插方法");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("采集方法");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(30);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("采集仪器");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(30);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("原图图名");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(30);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("原图图号");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("原基准");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(20);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("原投影");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("原中央经线");
+//	vSFieldType.push_back(OFTReal);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(5);
+//	vSFieldsName.push_back("原纬线1");
+//	vSFieldType.push_back(OFTReal);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(5);
+//	vSFieldsName.push_back("原纬线2");
+//	vSFieldType.push_back(OFTReal);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(5);
+//	vSFieldsName.push_back("原图分带");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("原图坐标");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("原图高");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("原图基准");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(30);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("原深度基准");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(30);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("原经度范围");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(20);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("原纬度范围");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(20);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("原出版单位");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(30);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("原图等高距");
+//	vSFieldType.push_back(OFTInteger);
+//	vSFieldWidth.push_back(8);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("原图分母");
+//	vSFieldType.push_back(OFTInteger64);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("原出版日期");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(8);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("原图图式");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(20);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("西边接边");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("北边接边");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("东边接边");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("南边接边");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("平面位置");
+//	vSFieldType.push_back(OFTReal);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(6);
+//	vSFieldsName.push_back("高程中误差");
+//	vSFieldType.push_back(OFTReal);
+//	vSFieldWidth.push_back(10);
+//	vSFieldPrecision.push_back(6);
+//	vSFieldsName.push_back("属性精度");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(20);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("逻辑一致性");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(20);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("完整性");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(20);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("质量评价");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(20);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("结论总分");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(20);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("检验单位");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(30);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("评检日期");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(8);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("总评价");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(20);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("左上图幅名");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(30);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("上边图幅名");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(30);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("右上图幅名");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(30);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("左边图幅名");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(30);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("右边图幅名");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(30);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("左下图幅名");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(30);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("下边图幅名");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(30);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("右下图幅名");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(30);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("政区说明");
+//	vSFieldType.push_back(OFTString);
+//	vSFieldWidth.push_back(30);
+//	vSFieldPrecision.push_back(0);
+//	vSFieldsName.push_back("总层数");
+//	vSFieldType.push_back(OFTInteger);
+//	vSFieldWidth.push_back(8);
+//	vSFieldPrecision.push_back(0);
+//#pragma endregion
+
 #pragma endregion
 
-#pragma region "创建图层"
+#pragma region "2、创建S图层"
 	//--------------------------------------------------------------------//
 	// 创建对应要素类型的面图层，如:图幅_S_polygon.shp
 	// 面要素图层全路径
@@ -10546,7 +10940,7 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 		return SE_ERROR_CREATE_SHP_FILE_FAILED;
 	}
 	// 创建结果图层属性字段
-	int iRet = CSE_VectorFormatConversion_Imp::SetFieldDefn(poSResultLayer, vSFieldsName, vSFieldType, vSFieldWidth, vFieldPrecision);
+	int iRet = CSE_VectorFormatConversion_Imp::SetFieldDefn(poSResultLayer, vSFieldsName, vSFieldType, vSFieldWidth, vSFieldPrecision);
 	if (iRet != 0)
 	{
 		//	如果创建失败，则跳过，将相关信息写入到日志中
@@ -10559,7 +10953,7 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 	}
 #pragma endregion
 
-#pragma region "向图层要素中写入属性值"
+#pragma region "3、向S图层要素中写入属性值"
 
 	// 元数据几何要素
 	vector<SE_DPoint> vSPolygon;
@@ -10931,7 +11325,7 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_OriginSRS(
 	}
 	// 将ODATA中的sms文件拷贝到目标目录下
 
-	//	（时间：2023-10-17；杨小兵；为了跨平台应该使用下面的写法，因为在linux和Mac OS中只支持"/"，而在Windows OS中"/"和"\"都是支持的）
+	//	（时间：2023-10-17；；为了跨平台应该使用下面的写法，因为在linux和Mac OS中只支持"/"，而在Windows OS中"/"和"\"都是支持的）
 	//string strTargetSMSFilePath = strShpFilePath + "\\" + strSheetNumber + ".SMS";
 	string strTargetSMSFilePath = strShpFilePath + "/" + strSheetNumber + ".SMS";
 
@@ -12670,7 +13064,7 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_OriginSRS(
 	vSFieldType.push_back(OFTString);
 	vSFieldWidth.push_back(10);
 	vFieldPrecision.push_back(0);
-	// 杨小兵-2024-02-21：根据《矢量模型及格式》“图幅等高距”字段为短整型
+	// -2024-02-21：根据《矢量模型及格式》“图幅等高距”字段为短整型
 	vSFieldsName.push_back("等高距");
 	vSFieldType.push_back(OFTInteger);
 	vSFieldWidth.push_back(10);
@@ -13260,14 +13654,15 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_OriginSRS(
 
 #ifdef OS_FAMILY_WINDOWS
 	// 输出路径创建图幅目录
-	_mkdir(str_output_path.c_str());
+	//_mkdir(str_output_path.c_str());
+  make_dir_utf8(str_output_path);
 #else
 #define MODE (S_IRWXU | S_IRWXG | S_IRWXO)
 	mkdir(str_output_path.c_str(), MODE);
 #endif
 
 /*
-注释：杨小兵-2024-01-25；
+注释：-2024-01-25；
 分析：
 	1、首先创建一个日志器，然后根据具体不同的情况来划分类别，全部的级别为：trace、debug、info、warn、err、critical、off）
 	2、对于日志器而言，创建之后也是需要进行资源回收的，使用spdlog::shutdown()函数便可以对所有的日志器实现资源回收
@@ -13398,7 +13793,7 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_OriginSRS(
 	dCoordZoomScale = atof(strValue.c_str());
 
 	/*
-		（杨小兵-2023-12-07）添加功能：新增界面设置放大系数
+		（-2023-12-07）添加功能：新增界面设置放大系数
 	*/
 	//	如果选择手工设置放大系数
 	if (bsetzoomscale)
@@ -13428,7 +13823,7 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_OriginSRS(
 
 	
 /*将ODATA中的sms文件拷贝到目标目录下
-	（时间：2023-10-17；杨小兵；为了跨平台应该使用下面的写法，因为在linux和Mac OS中只支持"/"，而在Windows OS中"/"和"\"都是支持的）
+	（时间：2023-10-17；；为了跨平台应该使用下面的写法，因为在linux和Mac OS中只支持"/"，而在Windows OS中"/"和"\"都是支持的）
 	string strTargetSMSFilePath = str_output_path + "\\" + strSheetNumber + ".SMS";
 */	
 	string strTargetSMSFilePath = str_output_path + "/" + strSheetNumber + ".SMS";
@@ -13445,7 +13840,7 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_OriginSRS(
 	vector<string> vLayerType;
 	vLayerType.clear();
 
-	//	（杨小兵-2023-12-20）获取图层信息方式：1——从*.SMS文件中获取图层信息；2——从实际odata数据目录中获取图层信息
+	//	（-2023-12-20）获取图层信息方式：1——从*.SMS文件中获取图层信息；2——从实际odata数据目录中获取图层信息
 	if (method_of_obtaining_layer_info == 1)
 	{
 		CSE_VectorFormatConversion_Imp::GetLayerTypeFromSMS(strSMSPath, vLayerType);
@@ -13461,7 +13856,7 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_OriginSRS(
 			std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
 			logger->critical(log_tailer_info);
 			spdlog::shutdown();
-			//	（杨小兵-2024-01-24）从odata分幅数据中获取实际存在的图层信息失败，需要返回错误代码
+			//	（-2024-01-24）从odata分幅数据中获取实际存在的图层信息失败，需要返回错误代码
 			return SE_ERROR_FAILED2OBTAIN_ACTUAL_EXISTING_LAYER_INFO_FROM_ODATA_FRAMED_DATA;
 		}
 	}
@@ -15258,7 +15653,7 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_OriginSRS(
 	vSFieldType.push_back(OFTString);
 	vSFieldWidth.push_back(10);
 	vFieldPrecision.push_back(0);
-	// 杨小兵-2024-02-21：根据《矢量模型及格式》“图幅等高距”字段为短整型
+	// -2024-02-21：根据《矢量模型及格式》“图幅等高距”字段为短整型
 	vSFieldsName.push_back("等高距");
 	vSFieldType.push_back(OFTInteger);
 	vSFieldWidth.push_back(10);
@@ -15872,9 +16267,10 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_OriginSRS(
 }
 #pragma endregion
 
-SE_Error CSE_VectorFormatConversion::Get_Odata_Sx_Info(const char* szInputPath,
-		const char* szOutputPath,
-		vector<FeatureTypeRelatedLayers_t>& FeatureTypeRelatedLayers)
+SE_Error CSE_VectorFormatConversion::Get_Odata_Sx_Info(
+  const char* szInputPath,
+	const char* szOutputPath,
+	vector<FeatureTypeRelatedLayers_t>& FeatureTypeRelatedLayers)
 {
 
 #pragma region "【1】对输入和输出目录路径有效性的检查"
@@ -15894,7 +16290,7 @@ SE_Error CSE_VectorFormatConversion::Get_Odata_Sx_Info(const char* szInputPath,
 
 #pragma region "【2】读取输入文件夹中SMS文件，做一些准备工作"
 	/*
-		杨小兵（2023-8-7）
+		（2023-8-7）
 	注：
 		读取和校验图幅的SMS文件,获取图幅编号、投影信息、坐标单位等元数据（相当于是准备阶段）
 		1. 构造SMS文件全路径:
@@ -16271,7 +16667,9 @@ SE_Error CSE_VectorFormatConversion::Get_Odata_Sx_Info(const char* szInputPath,
 	return SE_ERROR_NONE;
 }
 
-SE_Error CSE_VectorFormatConversion::AnnotationPointerReverseExtraction(const char* szInputPath, const char* szOutputPath)
+SE_Error CSE_VectorFormatConversion::AnnotationPointerReverseExtraction(
+  const char* szInputPath,
+  const char* szOutputPath)
 {
 	//	将所有子任务组合在一起,这个函数将会生成多个分步骤的文件夹（用来分步骤测试功能较为方便）
 	//return CSE_AnnotationPointerReverseExtraction::ProcessAll(szInputPath,szOutputPath);

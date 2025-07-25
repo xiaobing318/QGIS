@@ -2,7 +2,7 @@
 #include "cse_annotation_pointer_reverse_extraction.h"
 #ifdef OS_FAMILY_WINDOWS
 /*
-* 杨小兵（2023-8-10）
+* （2023-8-10）
 	1、如果出在Windows环境中，下列这些头文件将会被包含
 	2、这些头文件提供了Windows系统的文件系统操作
 	3、关于文件系统操作的一些头文件
@@ -17,7 +17,7 @@
 
 #else
 /*
-* 杨小兵（2023-8-10）
+* （2023-8-10）
 	1、这些头文件包含了在非Windows系统（例如，UNIX，Linux）上执行文件系统操作的函数和类型。
 	2、这些头文件提供了在非Windows系统的文件系统操作
 	3、关于文件系统操作的一些头文件
@@ -31,7 +31,7 @@
 #include <sys/types.h>
 
 /*
-* 杨小兵（2023-8-10）
+* （2023-8-10）
 *
 功能：这个预处理指令定义了一个宏 `_atoi64`，这是Windows系统上的一个函数，用于将字符串转换为64位整数。在非Windows系统上，
 	相同的功能可以由 `strtoll` 函数完成，无论在哪个系统上，都可以使用 `_atoi64` 来完成这个操作。
@@ -356,7 +356,7 @@ int CSE_AnnotationPointerReverseExtraction::process_all_for_creating_single_outp
 *
 * @return 0：				预处理成功
 		  1：				其它错误
-注：杨小兵（2023-8-14）
+注：（2023-8-14）
 	1. ReverseExtractAnnotationPointers_PreProcess() 中用到的函数:
 
 	- GetLayerInfo:解析shp图层名称
@@ -591,7 +591,7 @@ int CSE_AnnotationPointerReverseExtraction::ReverseExtractAnnotationPointers_Pre
 					// 根据图层要素类型创建shp文件
 					OGRLayer* poResultLayer = NULL;
 
-					//	（杨小兵-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
+					//	（-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
 					if (oLayerSR == nullptr)
 					{
 						poResultLayer = poResultDS->CreateLayer(strPointShpFilePath.c_str(), nullptr, wkbPoint, NULL);
@@ -752,7 +752,7 @@ int CSE_AnnotationPointerReverseExtraction::ReverseExtractAnnotationPointers_Pre
 					}
 					// 根据图层要素类型创建shp文件
 					OGRLayer* poResultLayer = NULL;
-					//	（杨小兵-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
+					//	（-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
 					if (oLayerSR == nullptr)
 					{
 						poResultLayer = poResultDS->CreateLayer(strLineShpFilePath.c_str(), nullptr, wkbLineString, NULL);
@@ -794,7 +794,7 @@ int CSE_AnnotationPointerReverseExtraction::ReverseExtractAnnotationPointers_Pre
 		// 如果是元数据图层
 		else if (strLayerType == "S")
 		{
-			//	（杨小兵-2023-12-10）只需要将这个图层中的内容不进行改变复制到另外的路径下就可以了
+			//	（-2023-12-10）只需要将这个图层中的内容不进行改变复制到另外的路径下就可以了
 			std::filesystem::path sourcePath1 = strInputPath + "/" + strSheetNumber + "_S_polygon.cpg";
 			std::filesystem::path sourcePath2 = strInputPath + "/" + strSheetNumber + "_S_polygon.dbf";
 			std::filesystem::path sourcePath3 = strInputPath + "/" + strSheetNumber + "_S_polygon.prj";
@@ -952,7 +952,7 @@ int CSE_AnnotationPointerReverseExtraction::ReverseExtractAnnotationPointers_Pre
 					}
 					// 根据图层要素类型创建shp文件
 					OGRLayer* poResultLayer = NULL;
-					//	（杨小兵-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
+					//	（-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
 					if (oLayerSR == nullptr)
 					{
 						poResultLayer = poResultDS->CreateLayer(strPointShpFilePath.c_str(), nullptr, wkbPoint, NULL);
@@ -1140,7 +1140,7 @@ int CSE_AnnotationPointerReverseExtraction::ReverseExtractAnnotationPointers_Pre
 					}
 					// 根据图层要素类型创建shp文件
 					OGRLayer* poResultLayer = NULL;
-					//	（杨小兵-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
+					//	（-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
 					if (oLayerSR == nullptr)
 					{
 						poResultLayer = poResultDS->CreateLayer(strLineShpFilePath.c_str(), nullptr, wkbLineString, NULL);
@@ -1328,7 +1328,7 @@ int CSE_AnnotationPointerReverseExtraction::ReverseExtractAnnotationPointers_Pre
 					// 根据图层要素类型创建shp文件
 					OGRLayer* poResultLayer = NULL;
 
-					//	（杨小兵-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
+					//	（-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
 					if (oLayerSR == nullptr)
 					{
 						poResultLayer = poResultDS->CreateLayer(strPolygonShpFilePath.c_str(), nullptr, wkbPolygon, NULL);
@@ -1384,7 +1384,7 @@ int CSE_AnnotationPointerReverseExtraction::ReverseExtractAnnotationPointers_Pre
 * @return 0：				处理成功
 		  1：				其它错误
 
-注：杨小兵（2023-8-14）
+注：（2023-8-14）
 	1. ProcessDuplicatedAnnotationPointsAndAnnotationLines() 用到的函数:
 
 	- GetLayerInfo:解析shp图层名称
@@ -1506,7 +1506,7 @@ int CSE_AnnotationPointerReverseExtraction::ProcessDuplicatedAnnotationPointsAnd
 		// 如果是元数据图层
 		if (strLayerType == "S")
 		{
-			//	（杨小兵-2023-12-10）只需要将这个图层中的内容不进行改变复制到另外的路径下就可以了
+			//	（-2023-12-10）只需要将这个图层中的内容不进行改变复制到另外的路径下就可以了
 			std::filesystem::path sourcePath1 = strInputPath + "/" + strSheetNumber + "_S_polygon.cpg";
 			std::filesystem::path sourcePath2 = strInputPath + "/" + strSheetNumber + "_S_polygon.dbf";
 			std::filesystem::path sourcePath3 = strInputPath + "/" + strSheetNumber + "_S_polygon.prj";
@@ -1575,7 +1575,7 @@ int CSE_AnnotationPointerReverseExtraction::ProcessDuplicatedAnnotationPointsAnd
 					}
 					// 根据图层要素类型创建shp文件
 					OGRLayer* poResultLayer = NULL;
-					//	（杨小兵-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
+					//	（-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
 					if (oLayerSR == nullptr)
 					{
 						poResultLayer = poResultDS->CreateLayer(strPointShpFilePath.c_str(), nullptr, wkbPoint, NULL);
@@ -1666,7 +1666,7 @@ int CSE_AnnotationPointerReverseExtraction::ProcessDuplicatedAnnotationPointsAnd
 					}
 					// 根据图层要素类型创建shp文件
 					OGRLayer* poResultLayer = NULL;
-					//	（杨小兵-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
+					//	（-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
 					if (oLayerSR == nullptr)
 					{
 						poResultLayer = poResultDS->CreateLayer(strLineShpFilePath.c_str(), nullptr, wkbLineString, NULL);
@@ -1761,7 +1761,7 @@ int CSE_AnnotationPointerReverseExtraction::ProcessDuplicatedAnnotationPointsAnd
 					}
 					// 根据图层要素类型创建shp文件
 					OGRLayer* poResultLayer = NULL;
-					//	（杨小兵-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
+					//	（-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
 					if (oLayerSR == nullptr)
 					{
 						poResultLayer = poResultDS->CreateLayer(strPolygonShpFilePath.c_str(), nullptr, wkbPolygon, NULL);
@@ -1969,7 +1969,7 @@ int CSE_AnnotationPointerReverseExtraction::ProcessDuplicatedAnnotationPointsAnd
 		}
 		// 根据图层要素类型创建shp文件
 		OGRLayer* poResultLayer = NULL;
-		//	（杨小兵-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
+		//	（-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
 		if (oLayerSR == nullptr)
 		{
 			poResultLayer = poResultDS->CreateLayer(strPointShpFilePath.c_str(), nullptr, wkbPoint, NULL);
@@ -2059,7 +2059,7 @@ int CSE_AnnotationPointerReverseExtraction::ProcessDuplicatedAnnotationPointsAnd
 		}
 		// 根据图层要素类型创建shp文件
 		OGRLayer* poResultLayer = NULL;
-		//	（杨小兵-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
+		//	（-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
 		if (oLayerSR == nullptr)
 		{
 			poResultLayer = poResultDS->CreateLayer(strLineShpFilePath.c_str(), nullptr, wkbLineString, NULL);
@@ -2111,7 +2111,7 @@ int CSE_AnnotationPointerReverseExtraction::ProcessDuplicatedAnnotationPointsAnd
 *
 * @return 0：				处理成功
 		  1：				其它错误
-注：杨小兵（2023-8-10）
+注：（2023-8-10）
 	1. ProcessDuplicatedAnnotationPointsAndFeatureLayers() 用到的函数:
 
 	- GetLayerInfo:解析shp图层名称
@@ -2532,7 +2532,7 @@ int CSE_AnnotationPointerReverseExtraction::pre_ProcessDuplicatedAnnotationPoint
 *
 * @return 0：				处理成功
 		  1：				其它错误
-注：杨小兵（2023-8-10）
+注：（2023-8-10）
 	1. EntityElementDataRepeatedProcessing() 用到的函数:
 
 	- 读取实体要素图层中的数据
@@ -2891,7 +2891,7 @@ int CSE_AnnotationPointerReverseExtraction::EntityElementDataRepeatedProcessing_
 *
 * @return 0：				处理成功
 		  1：				其它错误
-注：杨小兵（2023-8-21）
+注：（2023-8-21）
 	1. EntityElementDataRepeatedProcessing_annotation_layer() 用到的函数:
 
 	- 判断图层是否为注记图层？
@@ -3332,7 +3332,7 @@ int CSE_AnnotationPointerReverseExtraction::EntityElementDataRepeatedProcessing_
 * @return 0：				处理成功
 		  1：				其它错误
 
-注：杨小兵（2024-01-04）
+注：（2024-01-04）
 	1. post_ProcessDuplicatedAnnotationPointsAndAnnotationLines() 用到的函数:
 
 	- GetLayerInfo:解析shp图层名称
@@ -3454,7 +3454,7 @@ int CSE_AnnotationPointerReverseExtraction::post_ProcessDuplicatedAnnotationPoin
 		// 如果是元数据图层
 		if (strLayerType == "S")
 		{
-			//	（杨小兵-2023-12-10）只需要将这个图层中的内容不进行改变复制到另外的路径下就可以了
+			//	（-2023-12-10）只需要将这个图层中的内容不进行改变复制到另外的路径下就可以了
 			std::filesystem::path sourcePath1 = strInputPath + "/" + strSheetNumber + "_S_polygon.cpg";
 			std::filesystem::path sourcePath2 = strInputPath + "/" + strSheetNumber + "_S_polygon.dbf";
 			std::filesystem::path sourcePath3 = strInputPath + "/" + strSheetNumber + "_S_polygon.prj";
@@ -3523,7 +3523,7 @@ int CSE_AnnotationPointerReverseExtraction::post_ProcessDuplicatedAnnotationPoin
 					}
 					// 根据图层要素类型创建shp文件
 					OGRLayer* poResultLayer = NULL;
-					//	（杨小兵-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
+					//	（-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
 					if (oLayerSR == nullptr)
 					{
 						poResultLayer = poResultDS->CreateLayer(strPointShpFilePath.c_str(), nullptr, wkbPoint, NULL);
@@ -3614,7 +3614,7 @@ int CSE_AnnotationPointerReverseExtraction::post_ProcessDuplicatedAnnotationPoin
 					}
 					// 根据图层要素类型创建shp文件
 					OGRLayer* poResultLayer = NULL;
-					//	（杨小兵-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
+					//	（-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
 					if (oLayerSR == nullptr)
 					{
 						poResultLayer = poResultDS->CreateLayer(strLineShpFilePath.c_str(), nullptr, wkbLineString, NULL);
@@ -3709,7 +3709,7 @@ int CSE_AnnotationPointerReverseExtraction::post_ProcessDuplicatedAnnotationPoin
 					}
 					// 根据图层要素类型创建shp文件
 					OGRLayer* poResultLayer = NULL;
-					//	（杨小兵-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
+					//	（-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
 					if (oLayerSR == nullptr)
 					{
 						poResultLayer = poResultDS->CreateLayer(strPolygonShpFilePath.c_str(), nullptr, wkbPolygon, NULL);
@@ -3917,7 +3917,7 @@ int CSE_AnnotationPointerReverseExtraction::post_ProcessDuplicatedAnnotationPoin
 		}
 		// 根据图层要素类型创建shp文件
 		OGRLayer* poResultLayer = NULL;
-		//	（杨小兵-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
+		//	（-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
 		if (oLayerSR == nullptr)
 		{
 			poResultLayer = poResultDS->CreateLayer(strPointShpFilePath.c_str(), nullptr, wkbPoint, NULL);
@@ -4007,7 +4007,7 @@ int CSE_AnnotationPointerReverseExtraction::post_ProcessDuplicatedAnnotationPoin
 		}
 		// 根据图层要素类型创建shp文件
 		OGRLayer* poResultLayer = NULL;
-		//	（杨小兵-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
+		//	（-2023-12-09：bug--->S数据层可能不会存在空间参考系，需要进行分类处理）
 		if (oLayerSR == nullptr)
 		{
 			poResultLayer = poResultDS->CreateLayer(strLineShpFilePath.c_str(), nullptr, wkbLineString, NULL);
@@ -4481,7 +4481,7 @@ int CSE_AnnotationPointerReverseExtraction::Get_Polygon(
 	vector<FieldNameAndValue_Imp>& vFieldvalue)
 {
 	/*
-	* 杨小兵-2023-12-9：
+	* -2023-12-9：
 		1、修复不能处理多部件面状数据的问题（OGRMultipolygon、OGRPolygon）
 		2、注意这里的Get_Polygon同之前cse_vector_format_conversion_Imp文件中的Get_Polygon不是数据结构不一样，进行了进一步的封装
 	* 原来的算法流程只是对OGRPolygon类型进行了处理而没有对OGRMultipolygon进行处理，因此这里需要分类进行讨论并且进行处理
@@ -4977,11 +4977,11 @@ int CSE_AnnotationPointerReverseExtraction::SetFieldDefn(OGRLayer* poLayer, vect
 
 #pragma endregion
 
-#pragma region "内部接口：(杨小兵)"
+#pragma region "内部接口：()"
 
 
 #pragma region "实体要素数据与注记点重复处理（内部函数）"
-//	杨小兵（2023-8-16）
+//	（2023-8-16）
 
 void CSE_AnnotationPointerReverseExtraction::Element_hook_operation_point(vector<FieldNameAndValue_Imp>& current_point_feature, vector<vector<FieldNameAndValue_Imp>>& v_R_PointAttrs, const string point_layer_type) 
 {
@@ -5048,7 +5048,7 @@ void CSE_AnnotationPointerReverseExtraction::Step2_point(vector<FieldNameAndValu
 			}
 			else
 			{
-				//	（杨小兵-2023-12-10：在已有的字符串中查找是否已经存在同layerName相同的名称，而不是简单的append在已有字符串的后面）
+				//	（-2023-12-10：在已有的字符串中查找是否已经存在同layerName相同的名称，而不是简单的append在已有字符串的后面）
 				//	“字段非空”并且“想要添加的图层名称layername同已存在的名称不相同”
 				if(r_point_feature[i].strFieldValue.find(layerName) == string::npos)
 				{
@@ -5160,7 +5160,7 @@ void CSE_AnnotationPointerReverseExtraction::Step2_Line(vector<FieldNameAndValue
 			}
 			else
 			{
-				//	（杨小兵-2023-12-10：在已有的字符串中查找是否已经存在同layerName相同的名称，而不是简单的append在已有字符串的后面）
+				//	（-2023-12-10：在已有的字符串中查找是否已经存在同layerName相同的名称，而不是简单的append在已有字符串的后面）
 				//	“字段非空”并且“想要添加的图层名称layername同已存在的名称不相同”
 				if (r_line_feature[i].strFieldValue.find(layerName) == string::npos)
 				{
@@ -5271,7 +5271,7 @@ void CSE_AnnotationPointerReverseExtraction::Step2_Polygon(vector<FieldNameAndVa
 			}
 			else
 			{
-				//	（杨小兵-2023-12-10：在已有的字符串中查找是否已经存在同layerName相同的名称，而不是简单的append在已有字符串的后面）
+				//	（-2023-12-10：在已有的字符串中查找是否已经存在同layerName相同的名称，而不是简单的append在已有字符串的后面）
 				//	“字段非空”并且“想要添加的图层名称layername同已存在的名称不相同”
 				if (r_polygon_feature[i].strFieldValue.find(layerName) == string::npos)
 				{
@@ -5721,12 +5721,12 @@ bool CSE_AnnotationPointerReverseExtraction::CreateShapefileFromAnnotationPoint(
 		std::cout << "CreateShapefileCPG():创建注记图层的R_point文件失败！" << std::endl;
 	}
 	GDALClose(poDS);
-	//	BUGS:杨小兵（2023-11-06：在这里没有关闭打开的数据源，导致后续出现了一些问题，例如无法删除中间文件，也有可能导致程序闪退）
+	//	BUGS:（2023-11-06：在这里没有关闭打开的数据源，导致后续出现了一些问题，例如无法删除中间文件，也有可能导致程序闪退）
 	GDALClose(poSrcDS);
 	return true;
 }
 /*
-* 杨小兵（2023-8-15）
+* （2023-8-15）
 说明：如果有R_line或者R_polygon相关的图层，增加相应的函数就可以了
 1	CreateShapefileFromAnnotationLine(const std::vector<std::vector<FieldNameAndValue_Imp>>& v_R_LineAttrs, const std::string& inputPath, const std::string& outputPath);
 2	CreateShapefileFromAnnotationPolygon(const std::vector<std::vector<FieldNameAndValue_Imp>>& v_R_PolygonAttrs, const std::string& inputPath, const std::string& outputPath)

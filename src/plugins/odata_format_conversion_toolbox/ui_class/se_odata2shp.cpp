@@ -22,7 +22,7 @@
 #include "se_odata2shp.h"
 /*--------------自定义---------------*/
 
-/*********（杨小兵 - 2023 - 12 - 11：添加多线程并行，增加速度；代码由杨志龙杨老师提供，杨小兵进行集成）*********/
+/*********（ - 2023 - 12 - 11：添加多线程并行，增加速度；代码由杨志龙杨老师提供，进行集成）*********/
 #ifdef OS_FAMILY_WINDOWS
 #include "windows.h"
 #else
@@ -31,7 +31,7 @@
 #pragma endregion
 
 #pragma region "多线程并行处理时使用的结构体"
-/*********（杨小兵 - 2023 - 12 - 11：添加多线程并行，增加速度；代码由杨志龙杨老师提供，杨小兵进行集成）*********/
+/*********（ - 2023 - 12 - 11：添加多线程并行，增加速度；代码由杨志龙杨老师提供，进行集成）*********/
 struct FromToIndex
 {
 	int iFromIndex;		// 起始图幅索引
@@ -76,7 +76,7 @@ CSE_VectorFormatConversionDialog::CSE_VectorFormatConversionDialog(
 	connect(ui.radioButton_ProjSRS, &QRadioButton::clicked, this, &CSE_VectorFormatConversionDialog::on_radioButton_ProjSRS_clicked);
 	connect(ui.lineEdit_OffsetX, &QLineEdit::textChanged, this, &CSE_VectorFormatConversionDialog::on_lineEdit_OffsetX_TextChanged);
 	connect(ui.lineEdit_OffsetY, &QLineEdit::textChanged, this, &CSE_VectorFormatConversionDialog::on_lineEdit_OffsetY_TextChanged);
-	//	（杨小兵-2024-01-29）获取汇总日志保存路径
+	//	（-2024-01-29）获取汇总日志保存路径
 	connect(ui.lineEdit_summary_log_saving_path, &QLineEdit::textChanged, this, &CSE_VectorFormatConversionDialog::on_summary_log_saving_path_TextChanged);
 
 	restoreState();
@@ -135,7 +135,7 @@ CSE_VectorFormatConversionDialog::CSE_VectorFormatConversionDialog(
 	//	默认选择从SMS文件中读取放大系数
 	ui.radioButton_read_from_sms_file->setChecked(true);
 
-	//	杨小兵-2023-12-20：默认选择从SMS文件中读取图层信息，而不是从实际目录下的图层信息
+	//	-2023-12-20：默认选择从SMS文件中读取图层信息，而不是从实际目录下的图层信息
 	ui.radioButton_read_layer_info_from_sms_file->setChecked(true);
 
 	//	默认日志器等级位err(一般错误)
@@ -194,7 +194,7 @@ void CSE_VectorFormatConversionDialog::Button_Open_clicked()
 	{
 		ui.lineEdit_InputDataPath->setText(selectedDir);
     /*
-    杨小兵-2024-06-03：对获取得到的路径进行处理
+    -2024-06-03：对获取得到的路径进行处理
     应该将输出数据所在的文件夹路径进行处理（windows上使用的为\转化为/，然后将路径字符编码转化为UTF-8之后再保存起来）
     */
     QString processedPath = selectedDir.replace("\\", "/");
@@ -261,7 +261,7 @@ void CSE_VectorFormatConversionDialog::Button_Save_clicked()
 	{
 		ui.lineEdit_OutputDataPath->setText(selectedDir);
     /*
-    杨小兵-2024-06-03：对获取得到的路径进行处理
+    -2024-06-03：对获取得到的路径进行处理
     应该将输出数据所在的文件夹路径进行处理（windows上使用的为\转化为/，然后将路径字符编码转化为UTF-8之后再保存起来）
     */
     QString processedPath = selectedDir.replace("\\", "/");
@@ -293,7 +293,7 @@ void CSE_VectorFormatConversionDialog::Button_summary_log_saving_path_clicked()
 			file.close();
 			ui.lineEdit_summary_log_saving_path->setText(strFileName);
       /*
-      杨小兵-2024-06-03：对获取得到的路径进行处理
+      -2024-06-03：对获取得到的路径进行处理
       应该将输出数据所在的文件夹路径进行处理（windows上使用的为\转化为/，然后将路径字符编码转化为UTF-8之后再保存起来）
       */
       QString processedPath = strFileName.replace("\\", "/");
@@ -303,7 +303,7 @@ void CSE_VectorFormatConversionDialog::Button_summary_log_saving_path_clicked()
 		}
 		ui.lineEdit_summary_log_saving_path->setText(strFileName);
     /*
-    杨小兵-2024-06-03：对获取得到的路径进行处理
+    -2024-06-03：对获取得到的路径进行处理
     应该将输出数据所在的文件夹路径进行处理（windows上使用的为\转化为/，然后将路径字符编码转化为UTF-8之后再保存起来）
     */
     QString processedPath = strFileName.replace("\\", "/");
@@ -402,7 +402,7 @@ void CSE_VectorFormatConversionDialog::Button_OK_accepted()
 
 
 #pragma region "一、多线程并行处理（1、宏定义控制编译；2、手动控制编译；3、交互界面控制）"
-  //  杨小兵-2024-11-05：多线程修改为单线程
+  //  -2024-11-05：多线程修改为单线程
 
 /*
 	//  获取计算机CPU核数
@@ -901,7 +901,7 @@ double CSE_VectorFormatConversionDialog::GetOffsetY()
 	return ui.lineEdit_OffsetY->text().toDouble();
 }
 
-//	杨小兵-2023-12-07：获得是否选择手动输入放大系数
+//	-2023-12-07：获得是否选择手动输入放大系数
 int CSE_VectorFormatConversionDialog::get_setting_zoomscale_method()
 {
 	//	如果点击了从SMS文件中读取选项
@@ -918,7 +918,7 @@ int CSE_VectorFormatConversionDialog::get_setting_zoomscale_method()
 	return 0;
 }
 
-//	杨小兵-2023-12-07：获得手动输入的放大系数数值
+//	-2023-12-07：获得手动输入的放大系数数值
 double CSE_VectorFormatConversionDialog::get_dzoomscale()
 {
 	return ui.lineEdit_zoom_scale->text().toDouble();
@@ -940,7 +940,7 @@ int CSE_VectorFormatConversionDialog::get_the_method_of_obtaining_layer_informat
 	return 1;
 }
 
-//	杨小兵-2024-01-24：spdlog日志器等级设置（默认为trace级别：最为详细的级别；全部的级别：trace、debug、info、warn、err、critical、off）
+//	-2024-01-24：spdlog日志器等级设置（默认为trace级别：最为详细的级别；全部的级别：trace、debug、info、warn、err、critical、off）
 spdlog::level::level_enum CSE_VectorFormatConversionDialog::get_log_level()
 {
 	//	设置输入的日志等级
@@ -982,7 +982,7 @@ spdlog::level::level_enum CSE_VectorFormatConversionDialog::get_log_level()
 	}
 }
 
-//	杨小兵-2024-01-29：获取汇总日志保存路径
+//	-2024-01-29：获取汇总日志保存路径
 std::string CSE_VectorFormatConversionDialog::get_summary_log_saving_path_str()
 {
 	QString qstr_summary_log_saving_path = ui.lineEdit_summary_log_saving_path->text();
@@ -990,7 +990,7 @@ std::string CSE_VectorFormatConversionDialog::get_summary_log_saving_path_str()
 	return std::string(qba_summary_log_saving_path);
 }
 
-//	杨小兵-2024-01-29：获取汇总日志保存路径
+//	-2024-01-29：获取汇总日志保存路径
 QString CSE_VectorFormatConversionDialog::get_summary_log_saving_path_qstr()
 {
 	m_summary_log_saving_path = ui.lineEdit_summary_log_saving_path->text();

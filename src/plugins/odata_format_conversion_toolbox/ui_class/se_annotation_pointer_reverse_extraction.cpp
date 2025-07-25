@@ -9,7 +9,7 @@
 #include <qvalidator.h>
 #include "se_annotation_pointer_reverse_extraction.h"
 /*-------------------------------*/
-/**************杨小兵 - 2024 - 01 - 08：添加多线程并行，增加速度；代码由杨志龙杨老师提供，杨小兵进行集成）**************/
+/************** - 2024 - 01 - 08：添加多线程并行，增加速度；代码由杨志龙杨老师提供，进行集成）**************/
 #ifdef OS_FAMILY_WINDOWS
 #include "windows.h"
 #else
@@ -27,7 +27,7 @@ struct FromToIndex
 		iToIndex = 0;
 	}
 };
-/**************杨小兵 - 2024 - 01 - 08：添加多线程并行，增加速度；代码由杨志龙杨老师提供，杨小兵进行集成）**************/
+/************** - 2024 - 01 - 08：添加多线程并行，增加速度；代码由杨志龙杨老师提供，进行集成）**************/
 
 CSE_AnnoPointerReverseExtractDialog::CSE_AnnoPointerReverseExtractDialog(
 	QgisInterface* qgisInterface, 
@@ -55,9 +55,9 @@ CSE_AnnoPointerReverseExtractDialog::CSE_AnnoPointerReverseExtractDialog(
 
 	//connect(&m_Thread, &SE_AnnoPointerReverseExtractThread::resultProcess, this, &CSE_AnnoPointerReverseExtractDialog::handleResults);
 	
-	/**************杨小兵 - 2024 - 01 - 08：添加多线程并行，增加速度；代码由杨志龙杨老师提供，杨小兵进行集成）**************/
+	/************** - 2024 - 01 - 08：添加多线程并行，增加速度；代码由杨志龙杨老师提供，进行集成）**************/
 	m_pThread = nullptr;
-	/**************杨小兵 - 2024 - 01 - 08：添加多线程并行，增加速度；代码由杨志龙杨老师提供，杨小兵进行集成）**************/
+	/************** - 2024 - 01 - 08：添加多线程并行，增加速度；代码由杨志龙杨老师提供，进行集成）**************/
 }
 
 CSE_AnnoPointerReverseExtractDialog::~CSE_AnnoPointerReverseExtractDialog()
@@ -131,7 +131,7 @@ QStringList CSE_AnnoPointerReverseExtractDialog::GetSubDirPathOfCurrentDir(QStri
 void CSE_AnnoPointerReverseExtractDialog::Button_OK_accepted_multi_thread()
 {
 	ui.progressBar->reset();
-/**************杨小兵 - 2024 - 01 - 08：添加多线程并行，增加速度；代码由杨志龙杨老师提供，杨小兵进行集成）**************/
+/************** - 2024 - 01 - 08：添加多线程并行，增加速度；代码由杨志龙杨老师提供，进行集成）**************/
 /*
 问题：
 1、可能存在一些内存泄露问题
@@ -227,7 +227,7 @@ void CSE_AnnoPointerReverseExtractDialog::Button_OK_accepted_multi_thread()
 				qstrOutputDataPath);
 		}
 	}
-/**************杨小兵 - 2024 - 01 - 08：添加多线程并行，增加速度；代码由杨志龙杨老师提供，杨小兵进行集成）**************/
+/************** - 2024 - 01 - 08：添加多线程并行，增加速度；代码由杨志龙杨老师提供，进行集成）**************/
 
 	ui.Button_OK->setEnabled(true);
 	//	将这次设置的“参数保存下来”

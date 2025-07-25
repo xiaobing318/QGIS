@@ -27,7 +27,7 @@ set(base_vector_format_conversion_HDRS
 #############################################################
 # vector_format_conversion base library
 #[[
-杨小兵-2024-02-28
+-2024-02-28
   LIBRARY_TYPE这个变量是在顶层cmakelists.txt中被定义，在Windows平台上将会被设置为SHARED,其他平台则是STATIC，不过可以进行修改
 ]]
 add_library(base_vector_format_conversion ${LIBRARY_TYPE} ${base_vector_format_conversion_SRCS} ${base_vector_format_conversion_HDRS})
@@ -37,7 +37,7 @@ add_library(base_vector_format_conversion ${LIBRARY_TYPE} ${base_vector_format_c
 target_compile_features(base_vector_format_conversion PRIVATE cxx_std_17)
 
 #[[
-杨小兵-2024-02-28
+-2024-02-28
   这段CMake代码使用`target_include_directories`命令为名为`base_vector_format_conversion`的目标（可能是一个可执行文件或库）添加包含目录。
 在编译这个目标时，指定的目录将被编译器用来查找头文件。`target_include_directories`命令用于为指定的目标添加包含目录（即头文件搜索路径）。
 这些路径在编译时被添加到编译器的包含路径中，让编译器能够找到源代码中引用的头文件。
@@ -56,7 +56,7 @@ set(OSGEO4W_ROOT_for_base_vector_format_conversion $ENV{OSGEO4W_ROOT})
 set(O4W_QT_HEADERS_for_base_vector_format_conversion $ENV{O4W_QT_HEADERS})
 set(O4W_QT_LIBRARIES_for_base_vector_format_conversion $ENV{O4W_QT_LIBRARIES})
 
-# 杨小兵-2024-03-28：添加头文件
+# -2024-03-28：添加头文件
 target_include_directories(base_vector_format_conversion PUBLIC
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_BINARY_DIR}
@@ -69,12 +69,13 @@ target_include_directories(base_vector_format_conversion SYSTEM PUBLIC
   
   ${CMAKE_SOURCE_DIR}/external/starmap_external/libiconv_build_1_17/include
   ${CMAKE_SOURCE_DIR}/external/starmap_external/spdlog_01_13_00/include
+  ${CMAKE_SOURCE_DIR}/external
 
   
 )
 
 #[[
-杨小兵-2024-02-25
+-2024-02-25
 GENERATE_EXPORT_HEADER(
   qgis_core
   BASE_NAME CORE
@@ -96,7 +97,7 @@ set(QGIS_CORE_HDRS ${QGIS_CORE_HDRS} ${CMAKE_CURRENT_BINARY_DIR}/qgis_core.h)
 
 ]]
 
-# 杨小兵-2024-03-28：添加头文件
+# -2024-03-28：添加头文件
 target_link_libraries(base_vector_format_conversion
   ${OSGEO4W_ROOT_for_base_vector_format_conversion}/lib/gdal_i.lib
   ${OSGEO4W_ROOT_for_base_vector_format_conversion}/lib/libxml2.lib
@@ -114,7 +115,7 @@ if (MSVC)
 endif()
 
 #[[
-杨小兵-2024-02-25
+-2024-02-25
   这行CMake代码是用于向指定目标（在这例子中是`qgis_core`库）添加编译时定义的。`target_compile_definitions`命令允许你为目标添加预处理器定义，
 这些定义将在编译时可用。这对于条件编译或启用特定的代码路径非常有用。
 
@@ -140,7 +141,7 @@ target_compile_definitions(base_vector_format_conversion PRIVATE "-DOS_FAMILY_WI
 
 # install
 #[[
-杨小兵-2024-02-25
+-2024-02-25
   安装到bin目录下
 )
 ]]
