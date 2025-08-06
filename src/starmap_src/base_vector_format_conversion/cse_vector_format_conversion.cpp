@@ -26,15 +26,15 @@
 using namespace std;
 #pragma endregion
 
+std::wstring utf8_to_utf16(const std::string& utf8) {
+  if (utf8.empty()) return std::wstring();
 
-void CSE_VectorFormatConversion::make_dir_utf8(const std::string& u8path)
-{
-  namespace fs = std::filesystem;
-  std::error_code ec;
-  fs::create_directories(fs::u8path(u8path), ec);  // 连续建父目录，UTF-8 安全
-  if (ec && ec != std::errc::file_exists)
-    throw std::filesystem::filesystem_error("create_directories", ec);
+  int size_needed = MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), NULL, 0);
+  std::wstring wstrTo(size_needed, 0);
+  MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), &wstrTo[0], size_needed);
+  return wstrTo;
 }
+
 
 CSE_VectorFormatConversion::CSE_VectorFormatConversion()
 {
@@ -2625,6 +2625,24 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_GeoSRS(
   double dzoomscale,
   spdlog::level::level_enum log_level)
 {
+  // UTF-8 到 UTF-16 转换函数
+  auto utf8_to_utf16 = [](const std::string& utf8) -> std::wstring {
+    if (utf8.empty()) return std::wstring();
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), NULL, 0);
+    std::wstring wstrTo(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), &wstrTo[0], size_needed);
+    return wstrTo;
+  };
+
+  // UTF-16 到 UTF-8 转换函数（用于GDAL等需要UTF-8的地方）
+  auto utf16_to_utf8 = [](const std::wstring& utf16) -> std::string {
+    if (utf16.empty()) return std::string();
+    int size_needed = WideCharToMultiByte(CP_UTF8, 0, &utf16[0], (int)utf16.size(), NULL, 0, NULL, NULL);
+    std::string strTo(size_needed, 0);
+    WideCharToMultiByte(CP_UTF8, 0, &utf16[0], (int)utf16.size(), &strTo[0], size_needed, NULL, NULL);
+    return strTo;
+  };
+
 #pragma region "【1】构建分幅数据输入、输出路径并且进行检查是否有效"
   //  分幅数据的输入路径
   string str_input_path = szInputPath;
@@ -2636,11 +2654,9 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_GeoSRS(
   //  构建分幅数据的输出路径（分幅子文件夹）
   str_output_path = str_output_path + "/" + strSheetNumber;
 #ifdef OS_FAMILY_WINDOWS
-  //  输出路径创建图幅目录
-  //_mkdir(str_output_path.c_str());
-  make_dir_utf8(str_output_path);
+  std::wstring wstr_output_path = utf8_to_utf16(str_output_path);
+  CreateDirectoryW(wstr_output_path.c_str(), NULL);
 #else
-#define MODE (S_IRWXU | S_IRWXG | S_IRWXO)
   mkdir(str_output_path.c_str(), MODE);
 #endif
 
@@ -2662,7 +2678,7 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_GeoSRS(
   //  设置日志器的等级
   spdlog::set_level(log_level);
   //  创建日志器
-  auto logger = spdlog::basic_logger_mt(logger_name, absolute_log_path, true);
+  auto logger = spdlog::basic_logger_mt(logger_name, utf8_to_utf16(absolute_log_path), true);
   //	在 spdlog 中，日志级别通常是分层的，包括 trace<debug<info<warn<error<critical 等几个等级,只有等级比log_level高的信息将会被及时刷新到日志中
   logger->flush_on(log_level);
 
@@ -2681,7 +2697,6 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_GeoSRS(
     return SE_ERROR_FILEPATH_IS_INVALID;
   }
   //	输出路径检查（不进行检查）
-
 #pragma endregion
 
 #pragma region "【2】读取SMS文件"
@@ -2866,8 +2881,18 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_GeoSRS(
 #pragma endregion
 
 #pragma region "2、设置GDAL"
-  //  如果使用的是GDAL 2.x及以前版本，可以保留以下设置；如果使用GDAL 3.x及以上版本，建议移除。
-  CPLSetConfigOption("GDAL_FILENAME_IS_UTF8", "NO"); // GDAL 3.x及以上版本不需要
+  /*
+  Windows 上的 GDAL 如何解析 “char * 路径”
+  1、情况一
+    1.1 配置项：GDAL_FILENAME_IS_UTF8 = YES (默认)
+    1.2 GDAL 内部流程：把传进来的 char* 当作 UTF-8，先用 MultiByteToWideChar(CP_UTF8) 转成 wchar_t*，再调用 CreateFileW() 等宽字节 API
+    1.3 结果：可以处理包含中文、韩文等非 ASCII 路径
+  2、情况二
+    1.1 配置项：GDAL_FILENAME_IS_UTF8 = NO
+    1.2 GDAL 内部流程：把传进来的 char* 当作 系统本地代码页（GBK/CP936）。GDAL 不再做 UTF-8 → UTF-16 的转换，而是把原始字节直接交给 CreateFileA() / CreateFile()
+    1.3 结果：只有全英文路径能成功；UTF-8 中文字节在 GBK 码页下变成“乱码”，从而导致 CreateFile 找不到文件
+  */
+  CPLSetConfigOption("GDAL_FILENAME_IS_UTF8", "YES");
   //  设置Shapefile属性表编码为UTF-8
   CPLSetConfigOption("SHAPE_ENCODING", "UTF-8");      // 属性表支持UTF-8字符集编码
   //  注册所有GDAL驱动
@@ -8201,6 +8226,24 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 	double dzoomscale,
 	spdlog::level::level_enum log_level)
 {
+  // UTF-8 到 UTF-16 转换函数
+  auto utf8_to_utf16 = [](const std::string& utf8) -> std::wstring {
+    if (utf8.empty()) return std::wstring();
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), NULL, 0);
+    std::wstring wstrTo(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), &wstrTo[0], size_needed);
+    return wstrTo;
+  };
+
+  // UTF-16 到 UTF-8 转换函数（用于GDAL等需要UTF-8的地方）
+  auto utf16_to_utf8 = [](const std::wstring& utf16) -> std::string {
+    if (utf16.empty()) return std::string();
+    int size_needed = WideCharToMultiByte(CP_UTF8, 0, &utf16[0], (int)utf16.size(), NULL, 0, NULL, NULL);
+    std::string strTo(size_needed, 0);
+    WideCharToMultiByte(CP_UTF8, 0, &utf16[0], (int)utf16.size(), &strTo[0], size_needed, NULL, NULL);
+    return strTo;
+  };
+
 #pragma region "【1】构建分幅数据输入、输出路径并且进行检查是否有效"
   //  分幅数据的输入路径
 	string str_input_path = szInputPath;
@@ -8211,17 +8254,16 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 	string strSheetNumber = str_input_path.substr(iIndexTemp + 1, str_input_path.length() - iIndexTemp);
   //  构建分幅数据的输出路径（分幅子文件夹）
 	str_output_path = str_output_path + "/" + strSheetNumber;
+
 #ifdef OS_FAMILY_WINDOWS
-	//  输出路径创建图幅目录
-	//_mkdir(str_output_path.c_str());
-  make_dir_utf8(str_output_path);
+  std::wstring wstr_output_path = utf8_to_utf16(str_output_path);
+  CreateDirectoryW(wstr_output_path.c_str(), NULL);
 #else
-#define MODE (S_IRWXU | S_IRWXG | S_IRWXO)
-	mkdir(str_output_path.c_str(), MODE);
+  mkdir(str_output_path.c_str(), MODE);
 #endif
 
 	/*
-	注释：-2024-01-29；
+	注释：杨小兵-2024-01-29；
 	分析：
 		1、首先创建一个日志器，然后根据具体不同的情况来划分类别，全部的级别为：trace、debug、info、warn、err、critical、off）
 		2、对于日志器而言，创建之后也是需要进行资源回收的，使用spdlog::shutdown()函数便可以对所有的日志器实现资源回收
@@ -8238,7 +8280,7 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
   //  设置日志器的等级
 	spdlog::set_level(log_level);
   //  创建日志器
-	auto logger = spdlog::basic_logger_mt(logger_name, absolute_log_path, true);
+	auto logger = spdlog::basic_logger_mt(logger_name, utf8_to_utf16(absolute_log_path), true);
 	//	在 spdlog 中，日志级别通常是分层的，包括 trace<debug<info<warn<error<critical 等几个等级,只有等级比log_level高的信息将会被及时刷新到日志中
 	logger->flush_on(log_level);
 
@@ -8442,8 +8484,18 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_ProjSRS(
 #pragma endregion
 
 #pragma region "2、设置GDAL"
-  //  如果使用的是GDAL 2.x及以前版本，可以保留以下设置；如果使用GDAL 3.x及以上版本，建议移除。
-  CPLSetConfigOption("GDAL_FILENAME_IS_UTF8", "NO"); // GDAL 3.x及以上版本不需要
+  /*
+  Windows 上的 GDAL 如何解析 “char * 路径”
+  1、情况一
+    1.1 配置项：GDAL_FILENAME_IS_UTF8 = YES (默认)
+    1.2 GDAL 内部流程：把传进来的 char* 当作 UTF-8，先用 MultiByteToWideChar(CP_UTF8) 转成 wchar_t*，再调用 CreateFileW() 等宽字节 API
+    1.3 结果：可以处理包含中文、韩文等非 ASCII 路径
+  2、情况二
+    1.1 配置项：GDAL_FILENAME_IS_UTF8 = NO
+    1.2 GDAL 内部流程：把传进来的 char* 当作 系统本地代码页（GBK/CP936）。GDAL 不再做 UTF-8 → UTF-16 的转换，而是把原始字节直接交给 CreateFileA() / CreateFile()
+    1.3 结果：只有全英文路径能成功；UTF-8 中文字节在 GBK 码页下变成“乱码”，从而导致 CreateFile 找不到文件
+  */
+  CPLSetConfigOption("GDAL_FILENAME_IS_UTF8", "YES");
   //  设置Shapefile属性表编码为UTF-8
   CPLSetConfigOption("SHAPE_ENCODING", "UTF-8");      // 属性表支持UTF-8字符集编码
   //  注册所有GDAL驱动
@@ -13641,6 +13693,23 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_OriginSRS(
 	double dzoomscale,
 	spdlog::level::level_enum log_level)
 {
+  // UTF-8 到 UTF-16 转换函数
+  auto utf8_to_utf16 = [](const std::string& utf8) -> std::wstring {
+    if (utf8.empty()) return std::wstring();
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), NULL, 0);
+    std::wstring wstrTo(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), &wstrTo[0], size_needed);
+    return wstrTo;
+  };
+
+  // UTF-16 到 UTF-8 转换函数（用于GDAL等需要UTF-8的地方）
+  auto utf16_to_utf8 = [](const std::wstring& utf16) -> std::string {
+    if (utf16.empty()) return std::string();
+    int size_needed = WideCharToMultiByte(CP_UTF8, 0, &utf16[0], (int)utf16.size(), NULL, 0, NULL, NULL);
+    std::string strTo(size_needed, 0);
+    WideCharToMultiByte(CP_UTF8, 0, &utf16[0], (int)utf16.size(), &strTo[0], size_needed, NULL, NULL);
+    return strTo;
+  };
 
 #pragma region "【1】构建分幅数据输出路径"
 	string str_input_path = szInputPath;
@@ -13653,16 +13722,14 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_OriginSRS(
 	str_output_path = str_output_path + "/" + strSheetNumber;
 
 #ifdef OS_FAMILY_WINDOWS
-	// 输出路径创建图幅目录
-	//_mkdir(str_output_path.c_str());
-  make_dir_utf8(str_output_path);
+  std::wstring wstr_output_path = utf8_to_utf16(str_output_path);
+  CreateDirectoryW(wstr_output_path.c_str(), NULL);
 #else
-#define MODE (S_IRWXU | S_IRWXG | S_IRWXO)
-	mkdir(str_output_path.c_str(), MODE);
+  mkdir(str_output_path.c_str(), MODE);
 #endif
 
 /*
-注释：-2024-01-25；
+注释：杨小兵-2024-01-25；
 分析：
 	1、首先创建一个日志器，然后根据具体不同的情况来划分类别，全部的级别为：trace、debug、info、warn、err、critical、off）
 	2、对于日志器而言，创建之后也是需要进行资源回收的，使用spdlog::shutdown()函数便可以对所有的日志器实现资源回收
@@ -13677,7 +13744,7 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_OriginSRS(
 
 	std::string absolute_log_path = str_output_path + "/" + strSheetNumber + "_log.txt";
 	spdlog::set_level(log_level);
-	auto logger = spdlog::basic_logger_mt(logger_name, absolute_log_path, true);
+	auto logger = spdlog::basic_logger_mt(logger_name, utf8_to_utf16(absolute_log_path), true);
 	//	在 spdlog 中，日志级别通常是分层的，包括 trace<debug<info<warn<error<critical 等几个等级,只有等级比log_level高的信息将会被及时刷新到日志中
 	logger->flush_on(log_level);
 
@@ -13816,8 +13883,18 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_OriginSRS(
 #pragma endregion
 
 #pragma region "【4】读取不同要素类型对应属性、坐标、拓扑文件"
-
-	CPLSetConfigOption("GDAL_FILENAME_IS_UTF8", "NO");		// 支持中文路径
+  /*
+  Windows 上的 GDAL 如何解析 “char * 路径”
+  1、情况一
+    1.1 配置项：GDAL_FILENAME_IS_UTF8 = YES (默认)
+    1.2 GDAL 内部流程：把传进来的 char* 当作 UTF-8，先用 MultiByteToWideChar(CP_UTF8) 转成 wchar_t*，再调用 CreateFileW() 等宽字节 API
+    1.3 结果：可以处理包含中文、韩文等非 ASCII 路径
+  2、情况二
+    1.1 配置项：GDAL_FILENAME_IS_UTF8 = NO
+    1.2 GDAL 内部流程：把传进来的 char* 当作 系统本地代码页（GBK/CP936）。GDAL 不再做 UTF-8 → UTF-16 的转换，而是把原始字节直接交给 CreateFileA() / CreateFile()
+    1.3 结果：只有全英文路径能成功；UTF-8 中文字节在 GBK 码页下变成“乱码”，从而导致 CreateFile 找不到文件
+  */
+	CPLSetConfigOption("GDAL_FILENAME_IS_UTF8", "YES");		// 支持中文路径
 	CPLSetConfigOption("SHAPE_ENCODING", "");				//属性表支持中文字段
 	GDALAllRegister();
 
@@ -13840,7 +13917,7 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_OriginSRS(
 	vector<string> vLayerType;
 	vLayerType.clear();
 
-	//	（-2023-12-20）获取图层信息方式：1——从*.SMS文件中获取图层信息；2——从实际odata数据目录中获取图层信息
+	//	（杨小兵-2023-12-20）获取图层信息方式：1——从*.SMS文件中获取图层信息；2——从实际odata数据目录中获取图层信息
 	if (method_of_obtaining_layer_info == 1)
 	{
 		CSE_VectorFormatConversion_Imp::GetLayerTypeFromSMS(strSMSPath, vLayerType);
@@ -13856,7 +13933,7 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_OriginSRS(
 			std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
 			logger->critical(log_tailer_info);
 			spdlog::shutdown();
-			//	（-2024-01-24）从odata分幅数据中获取实际存在的图层信息失败，需要返回错误代码
+			//	（杨小兵-2024-01-24）从odata分幅数据中获取实际存在的图层信息失败，需要返回错误代码
 			return SE_ERROR_FAILED2OBTAIN_ACTUAL_EXISTING_LAYER_INFO_FROM_ODATA_FRAMED_DATA;
 		}
 	}
@@ -15612,645 +15689,648 @@ SE_Error CSE_VectorFormatConversion::Odata2Shp_OriginSRS(
 
 #pragma region "【5】增加生成元数据描述图层S_polygon.shp图层"
 
-#pragma region "添加属性字段（字段名称、字段宽度、字段精度）"
-	// 修改说明：增加生成元数据描述图层S_polygon.shp图层
-	// 生成多边形图层，图层的几何信息为一个矩形要素，坐标点为四个角点，属性信息为要素编号和图幅号
-	// 创建S图层的属性字段
-	vector<string> vSFieldsName;
-	vSFieldsName.clear();
-	vector<OGRFieldType> vSFieldType;
-	vSFieldType.clear();
-	vector<int> vSFieldWidth;
-	vSFieldWidth.clear();
-	vector<int> vFieldPrecision;
-	vFieldPrecision.clear();
-	// -------------------将元数据前94项全部写入shp文件--------------//
-	vSFieldsName.push_back("产单位");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("生产日期");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("更新日期");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("图式编号");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("分类编码");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("图名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("图号");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	// -2024-02-21：根据《矢量模型及格式》“图幅等高距”字段为短整型
-	vSFieldsName.push_back("等高距");
-	vSFieldType.push_back(OFTInteger);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("比例尺分母");
-	vSFieldType.push_back(OFTInteger64);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("经度范围");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("纬度范围");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("左下角横");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("左下角纵");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("右下角横");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("右下角纵");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("右上角横");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("右上角纵");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("左上角横");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("左上角纵");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("长半径");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("椭球扁率");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(15);
-	vFieldPrecision.push_back(9);
-	vSFieldsName.push_back("大地基准");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("地图投影");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(9);
-	vSFieldsName.push_back("中央经线");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(5);
-	vSFieldsName.push_back("标准纬线1");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(5);
-	vSFieldsName.push_back("标准纬线2");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(5);
-	vSFieldsName.push_back("分带方式");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("带号");
-	vSFieldType.push_back(OFTInteger);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("坐标单位");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("坐标维数");
-	vSFieldType.push_back(OFTInteger);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("缩放系数");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(6);
-	vSFieldsName.push_back("相横坐标");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("相纵坐标");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("磁偏角");
-	vSFieldType.push_back(OFTInteger);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("磁坐偏角");
-	vSFieldType.push_back(OFTInteger);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("纵线偏角");
-	vSFieldType.push_back(OFTInteger);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("高程系统名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("高程基准");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("深度基准");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("主要资料");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("航分母");
-	vSFieldType.push_back(OFTInteger);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("航摄仪焦距");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(12);
-	vFieldPrecision.push_back(2);
-	vSFieldsName.push_back("航摄单位");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("航摄日期");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("调绘日期");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("摄区号");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("分辨率");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(6);
-	vSFieldsName.push_back("数据来源");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("内插方法");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("采集方法");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("采集仪器");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原图图名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原图图号");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原基准");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原投影");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原中央经线");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(5);
-	vSFieldsName.push_back("原纬线1");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(5);
-	vSFieldsName.push_back("原纬线2");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(5);
-	vSFieldsName.push_back("原图分带");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原图坐标");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原图高");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原图基准");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原深度基准");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原经度范围");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原纬度范围");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原出版单位");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原图等高距");
-	vSFieldType.push_back(OFTInteger);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原图分母");
-	vSFieldType.push_back(OFTInteger64);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原出版日期");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("原图图式");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("西边接边");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("北边接边");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("东边接边");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("南边接边");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("平面位置");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(6);
-	vSFieldsName.push_back("高程中误差");
-	vSFieldType.push_back(OFTReal);
-	vSFieldWidth.push_back(10);
-	vFieldPrecision.push_back(6);
-	vSFieldsName.push_back("属性精度");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("逻辑一致性");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("完整性");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("质量评价");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("结论总分");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("检验单位");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("评检日期");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("总评价");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(20);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("左上图幅名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("上边图幅名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("右上图幅名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("左边图幅名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("右边图幅名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("左下图幅名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("下边图幅名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("右下图幅名");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("政区说明");
-	vSFieldType.push_back(OFTString);
-	vSFieldWidth.push_back(30);
-	vFieldPrecision.push_back(0);
-	vSFieldsName.push_back("总层数");
-	vSFieldType.push_back(OFTInteger);
-	vSFieldWidth.push_back(8);
-	vFieldPrecision.push_back(0);
+#pragma region "1、创建图层字段（字段名称、字段类型、字段精度）"
+  // 修改说明：增加生成元数据描述图层S_polygon.shp图层
+  // 生成多边形图层，图层的几何信息为一个矩形要素，坐标点为四个角点，属性信息为要素编号和图幅号
+  // 创建S图层的属性字段
+  vector<string> vSFieldsName;
+  vSFieldsName.clear();
+  vector<OGRFieldType> vSFieldType;
+  vSFieldType.clear();
+  vector<int> vSFieldWidth;
+  vSFieldWidth.clear();
+  vector<int> vSFieldPrecision;
+  vSFieldPrecision.clear();
+
+  // 根据要素类型获取字段信息
+  CSE_VectorFormatConversion_Imp::CreateShpFieldsByLayerType("S", "Polygon", vSFieldsName, vSFieldType, vSFieldWidth, vSFieldPrecision);
+
+  //#pragma region "S_polygon图层字段信息（旧版）"
+  //	// -------------------将元数据前94项全部写入shp文件--------------//
+  //	vSFieldsName.push_back("生产单位");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("生产日期");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(8);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("更新日期");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(8);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("图式编号");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("分类编码");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("图名");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("图号");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	// -2024-02-21：根据《矢量模型及格式》“图幅等高距”字段为短整型
+  //	vSFieldsName.push_back("等高距");
+  //	vSFieldType.push_back(OFTInteger);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("比例尺分母");
+  //	vSFieldType.push_back(OFTInteger64);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("经度范围");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("纬度范围");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("左下角横");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(12);
+  //	vSFieldPrecision.push_back(2);
+  //	vSFieldsName.push_back("左下角纵");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(12);
+  //	vSFieldPrecision.push_back(2);
+  //	vSFieldsName.push_back("右下角横");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(12);
+  //	vSFieldPrecision.push_back(2);
+  //	vSFieldsName.push_back("右下角纵");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(12);
+  //	vSFieldPrecision.push_back(2);
+  //	vSFieldsName.push_back("右上角横");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(12);
+  //	vSFieldPrecision.push_back(2);
+  //	vSFieldsName.push_back("右上角纵");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(12);
+  //	vSFieldPrecision.push_back(2);
+  //	vSFieldsName.push_back("左上角横");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(12);
+  //	vSFieldPrecision.push_back(2);
+  //	vSFieldsName.push_back("左上角纵");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(12);
+  //	vSFieldPrecision.push_back(2);
+  //	vSFieldsName.push_back("长半径");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(12);
+  //	vSFieldPrecision.push_back(2);
+  //	vSFieldsName.push_back("椭球扁率");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(15);
+  //	vSFieldPrecision.push_back(9);
+  //	vSFieldsName.push_back("大地基准");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("地图投影");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(9);
+  //	vSFieldsName.push_back("中央经线");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(5);
+  //	vSFieldsName.push_back("标准纬线1");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(5);
+  //	vSFieldsName.push_back("标准纬线2");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(5);
+  //	vSFieldsName.push_back("分带方式");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("带号");
+  //	vSFieldType.push_back(OFTInteger);
+  //	vSFieldWidth.push_back(8);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("坐标单位");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("坐标维数");
+  //	vSFieldType.push_back(OFTInteger);
+  //	vSFieldWidth.push_back(8);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("缩放系数");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(6);
+  //	vSFieldsName.push_back("相横坐标");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(12);
+  //	vSFieldPrecision.push_back(2);
+  //	vSFieldsName.push_back("相纵坐标");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(12);
+  //	vSFieldPrecision.push_back(2);
+  //	vSFieldsName.push_back("磁偏角");
+  //	vSFieldType.push_back(OFTInteger);
+  //	vSFieldWidth.push_back(8);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("磁坐偏角");
+  //	vSFieldType.push_back(OFTInteger);
+  //	vSFieldWidth.push_back(8);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("纵线偏角");
+  //	vSFieldType.push_back(OFTInteger);
+  //	vSFieldWidth.push_back(8);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("高程系统名");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("高程基准");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("深度基准");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("主要资料");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("航分母");
+  //	vSFieldType.push_back(OFTInteger);
+  //	vSFieldWidth.push_back(8);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("航摄仪焦距");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(12);
+  //	vSFieldPrecision.push_back(2);
+  //	vSFieldsName.push_back("航摄单位");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("航摄日期");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(8);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("调绘日期");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(8);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("摄区号");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("分辨率");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(6);
+  //	vSFieldsName.push_back("数据来源");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("内插方法");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("采集方法");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("采集仪器");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原图图名");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原图图号");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原基准");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原投影");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原中央经线");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(5);
+  //	vSFieldsName.push_back("原纬线1");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(5);
+  //	vSFieldsName.push_back("原纬线2");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(5);
+  //	vSFieldsName.push_back("原图分带");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原图坐标");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原图高");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原图基准");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原深度基准");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原经度范围");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原纬度范围");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原出版单位");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原图等高距");
+  //	vSFieldType.push_back(OFTInteger);
+  //	vSFieldWidth.push_back(8);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原图分母");
+  //	vSFieldType.push_back(OFTInteger64);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原出版日期");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(8);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("原图图式");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("西边接边");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("北边接边");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("东边接边");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("南边接边");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("平面位置");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(6);
+  //	vSFieldsName.push_back("高程中误差");
+  //	vSFieldType.push_back(OFTReal);
+  //	vSFieldWidth.push_back(10);
+  //	vSFieldPrecision.push_back(6);
+  //	vSFieldsName.push_back("属性精度");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("逻辑一致性");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("完整性");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("质量评价");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("结论总分");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("检验单位");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("评检日期");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(8);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("总评价");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(20);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("左上图幅名");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("上边图幅名");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("右上图幅名");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("左边图幅名");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("右边图幅名");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("左下图幅名");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("下边图幅名");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("右下图幅名");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("政区说明");
+  //	vSFieldType.push_back(OFTString);
+  //	vSFieldWidth.push_back(30);
+  //	vSFieldPrecision.push_back(0);
+  //	vSFieldsName.push_back("总层数");
+  //	vSFieldType.push_back(OFTInteger);
+  //	vSFieldWidth.push_back(8);
+  //	vSFieldPrecision.push_back(0);
+  //#pragma endregion
+
 #pragma endregion
 
-#pragma region "创建S面图层"
+#pragma region "2、创建S图层"
   //--------------------------------------------------------------------//
-	// 创建对应要素类型的面图层，如:图幅_S_polygon.shp
-	// 面要素图层全路径
+  // 创建对应要素类型的面图层，如:图幅_S_polygon.shp
+  // 面要素图层全路径
 
-	string strSCPGFilePath = str_output_path + "/" + strSheetNumber + "_S_polygon.cpg";
-	string strSPolygonShpFilePath = str_output_path + "/" + strSheetNumber + "_S_polygon.shp";
+  string strSCPGFilePath = str_output_path + "/" + strSheetNumber + "_S_polygon.cpg";
+  string strSPolygonShpFilePath = str_output_path + "/" + strSheetNumber + "_S_polygon.shp";
 
-	//创建结果数据源
-	GDALDataset* poSResultDS_S_layer;
-	poSResultDS_S_layer = poDriver->Create(strSPolygonShpFilePath.c_str(), 0, 0, 0, GDT_Unknown, NULL);
-	if (poSResultDS_S_layer == NULL)
-	{
-		//	如果创建失败，则跳过，将相关信息写入到日志中
-		std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建S面图层（" + strSPolygonShpFilePath + "）失败！";
-		logger->error(msg);
-		std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
-		logger->critical(log_tailer_info);
-		spdlog::shutdown();
-    
-	}
-
-	// 根据图层要素类型创建shp文件
-	OGRLayer* poSResultLayer = NULL;
-	// 设置结果图层的空间参考（CGCS2000）
-	OGRSpatialReference pSResultSR;
-	pSResultSR.SetWellKnownGeogCS("EPSG:4490");
-
-	// shp中存储属性信息和几何信息
-	string strResultSShpFileName = strSheetNumber + "_S_polygon";
-	poSResultLayer = poSResultDS_S_layer->CreateLayer(strResultSShpFileName.c_str(), &pSResultSR, wkbPolygon, NULL);
-	if (!poSResultLayer)
-	{
-		//	如果创建失败，则跳过，将相关信息写入到日志中
-		std::string msg = "目录（" + str_output_path + "/" + strSheetNumber + "）中创建注记要素层面图层（" + strResultSShpFileName + "）失败！";
-		logger->error(msg);
-		std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
-		logger->critical(log_tailer_info);
-		spdlog::shutdown();
-		return SE_ERROR_CREATE_SHP_FILE_FAILED;
-	}
-	// 创建结果图层属性字段
-	int iRet = CSE_VectorFormatConversion_Imp::SetFieldDefn(poSResultLayer, vSFieldsName, vSFieldType, vSFieldWidth, vFieldPrecision);
-	if (iRet != 0)
-	{
-		//	如果创建失败，则跳过，将相关信息写入到日志中
-		std::string msg = "设置目录（" + str_output_path + "/" + strSheetNumber + "）中图层（" + strResultSShpFileName + "）的字段定义失败！";
-		logger->error(msg);
-		std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
-		logger->critical(log_tailer_info);
-		spdlog::shutdown();
-		return SE_ERROR_CREATE_LAYER_FIELD_FAILED;
-	}
-#pragma endregion
-
-#pragma region "向S面图层中的字段写入属性值"
-	// 元数据几何要素
-	vector<SE_DPoint> vSPolygon;
-	vSPolygon.clear();
-
-	// 图幅左上角点
-	SE_DPoint LeftTop_xyz;
-	LeftTop_xyz.dx = dSheetRect.dleft;
-	LeftTop_xyz.dy = dSheetRect.dtop;
-	vSPolygon.push_back(LeftTop_xyz);
-
-	// 图幅左下角点
-	SE_DPoint LeftBottom_xyz;
-	LeftBottom_xyz.dx = dSheetRect.dleft;
-	LeftBottom_xyz.dy = dSheetRect.dbottom;
-	vSPolygon.push_back(LeftBottom_xyz);
-
-	// 图幅右下角点
-	SE_DPoint RightBottom_xyz;
-	RightBottom_xyz.dx = dSheetRect.dright;
-	RightBottom_xyz.dy = dSheetRect.dbottom;
-	vSPolygon.push_back(RightBottom_xyz);
-
-	// 图幅右上角点
-	SE_DPoint RightTop_xyz;
-	RightTop_xyz.dx = dSheetRect.dright;
-	RightTop_xyz.dy = dSheetRect.dtop;
-	vSPolygon.push_back(RightTop_xyz);
-
-	// 创建几何信息和属性信息
-	OGRFeature* poSFeature;
-	poSFeature = OGRFeature::CreateFeature(poSResultLayer->GetLayerDefn());
-	if (!poSFeature)
-	{
-		//	如果创建失败，则跳过，将相关信息写入到日志中
-		std::string msg = "目录（" + str_output_path + "/" + strSheetNumber + "）中的图层（" + strResultSShpFileName + "）的要素创建失败！";
-		logger->error(msg);
-		std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
-		logger->critical(log_tailer_info);
-		spdlog::shutdown();
-
-		return SE_ERROR_CREATE_FEATURE_FAILED;
-	}
-
-	// 读取94项元数据信息，并写入图层中
-	//-------------------------------------------//
-	vector<string> vSMSInfo;
-	vSMSInfo.clear();
-	for (int i = 1; i <= 94; i++)
-	{
-		string strInfo;
-		CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, i, strInfo);
-		vSMSInfo.push_back(strInfo);
-	}
-	poSFeature->SetField(0, vSMSInfo[0].c_str());
-	poSFeature->SetField(1, vSMSInfo[1].c_str());
-	poSFeature->SetField(2, vSMSInfo[2].c_str());
-	poSFeature->SetField(3, vSMSInfo[3].c_str());
-	poSFeature->SetField(4, vSMSInfo[4].c_str());
-	poSFeature->SetField(5, vSMSInfo[5].c_str());
-	poSFeature->SetField(6, vSMSInfo[6].c_str());
-	poSFeature->SetField(7, atof(vSMSInfo[7].c_str()));
-	poSFeature->SetField(8, _atoi64(vSMSInfo[8].c_str()));
-	poSFeature->SetField(9, vSMSInfo[9].c_str());
-	poSFeature->SetField(10, vSMSInfo[10].c_str());
-	poSFeature->SetField(11, atof(vSMSInfo[11].c_str()));
-	poSFeature->SetField(12, atof(vSMSInfo[12].c_str()));
-	poSFeature->SetField(13, atof(vSMSInfo[13].c_str()));
-	poSFeature->SetField(14, atof(vSMSInfo[14].c_str()));
-	poSFeature->SetField(15, atof(vSMSInfo[15].c_str()));
-	poSFeature->SetField(16, atof(vSMSInfo[16].c_str()));
-	poSFeature->SetField(17, atof(vSMSInfo[17].c_str()));
-	poSFeature->SetField(18, atof(vSMSInfo[18].c_str()));
-	poSFeature->SetField(19, atof(vSMSInfo[19].c_str()));
-	poSFeature->SetField(20, atof(vSMSInfo[20].c_str()));
-	poSFeature->SetField(21, vSMSInfo[21].c_str());
-	poSFeature->SetField(22, vSMSInfo[22].c_str());
-	poSFeature->SetField(23, atof(vSMSInfo[23].c_str()));
-	poSFeature->SetField(24, atof(vSMSInfo[24].c_str()));
-	poSFeature->SetField(25, atof(vSMSInfo[25].c_str()));
-	poSFeature->SetField(26, vSMSInfo[26].c_str());
-	poSFeature->SetField(27, atoi(vSMSInfo[27].c_str()));
-	poSFeature->SetField(28, vSMSInfo[28].c_str());
-	poSFeature->SetField(29, atoi(vSMSInfo[29].c_str()));
-	poSFeature->SetField(30, atof(vSMSInfo[30].c_str()));
-	poSFeature->SetField(31, atof(vSMSInfo[31].c_str()));
-	poSFeature->SetField(32, atof(vSMSInfo[32].c_str()));
-	poSFeature->SetField(33, atoi(vSMSInfo[33].c_str()));
-	poSFeature->SetField(34, atoi(vSMSInfo[34].c_str()));
-	poSFeature->SetField(35, atoi(vSMSInfo[35].c_str()));
-	poSFeature->SetField(36, vSMSInfo[36].c_str());
-	poSFeature->SetField(37, vSMSInfo[37].c_str());
-	poSFeature->SetField(38, vSMSInfo[38].c_str());
-	poSFeature->SetField(39, vSMSInfo[39].c_str());
-	poSFeature->SetField(40, atoi(vSMSInfo[40].c_str()));
-	poSFeature->SetField(41, atof(vSMSInfo[41].c_str()));
-	poSFeature->SetField(42, vSMSInfo[42].c_str());
-	poSFeature->SetField(43, vSMSInfo[43].c_str());
-	poSFeature->SetField(44, vSMSInfo[44].c_str());
-	poSFeature->SetField(45, vSMSInfo[45].c_str());
-	poSFeature->SetField(46, atof(vSMSInfo[46].c_str()));
-	poSFeature->SetField(47, vSMSInfo[47].c_str());
-	poSFeature->SetField(48, vSMSInfo[48].c_str());
-	poSFeature->SetField(49, vSMSInfo[49].c_str());
-	poSFeature->SetField(50, vSMSInfo[50].c_str());
-	poSFeature->SetField(51, vSMSInfo[51].c_str());
-	poSFeature->SetField(52, vSMSInfo[52].c_str());
-	poSFeature->SetField(53, vSMSInfo[53].c_str());
-	poSFeature->SetField(54, vSMSInfo[54].c_str());
-	poSFeature->SetField(55, atof(vSMSInfo[55].c_str()));
-	poSFeature->SetField(56, atof(vSMSInfo[56].c_str()));
-	poSFeature->SetField(57, atof(vSMSInfo[57].c_str()));
-	poSFeature->SetField(58, vSMSInfo[58].c_str());
-	poSFeature->SetField(59, vSMSInfo[59].c_str());
-	poSFeature->SetField(60, vSMSInfo[60].c_str());
-	poSFeature->SetField(61, vSMSInfo[61].c_str());
-	poSFeature->SetField(62, vSMSInfo[62].c_str());
-	poSFeature->SetField(63, vSMSInfo[63].c_str());
-	poSFeature->SetField(64, vSMSInfo[64].c_str());
-	poSFeature->SetField(65, vSMSInfo[65].c_str());
-	poSFeature->SetField(66, atof(vSMSInfo[66].c_str()));
-	poSFeature->SetField(67, _atoi64(vSMSInfo[67].c_str()));
-	poSFeature->SetField(68, vSMSInfo[68].c_str());
-	poSFeature->SetField(69, vSMSInfo[69].c_str());
-	poSFeature->SetField(70, vSMSInfo[70].c_str());
-	poSFeature->SetField(71, vSMSInfo[71].c_str());
-	poSFeature->SetField(72, vSMSInfo[72].c_str());
-	poSFeature->SetField(73, vSMSInfo[73].c_str());
-	poSFeature->SetField(74, atof(vSMSInfo[74].c_str()));
-	poSFeature->SetField(75, atof(vSMSInfo[75].c_str()));
-	poSFeature->SetField(76, vSMSInfo[76].c_str());
-	poSFeature->SetField(77, vSMSInfo[77].c_str());
-	poSFeature->SetField(78, vSMSInfo[78].c_str());
-	poSFeature->SetField(79, vSMSInfo[79].c_str());
-	poSFeature->SetField(80, vSMSInfo[80].c_str());
-	poSFeature->SetField(81, vSMSInfo[81].c_str());
-	poSFeature->SetField(82, vSMSInfo[82].c_str());
-	poSFeature->SetField(83, vSMSInfo[83].c_str());
-	poSFeature->SetField(84, vSMSInfo[84].c_str());
-	poSFeature->SetField(85, vSMSInfo[85].c_str());
-	poSFeature->SetField(86, vSMSInfo[86].c_str());
-	poSFeature->SetField(87, vSMSInfo[87].c_str());
-	poSFeature->SetField(88, vSMSInfo[88].c_str());
-	poSFeature->SetField(89, vSMSInfo[89].c_str());
-	poSFeature->SetField(90, vSMSInfo[90].c_str());
-	poSFeature->SetField(91, vSMSInfo[91].c_str());
-	poSFeature->SetField(92, vSMSInfo[92].c_str());
-	poSFeature->SetField(93, atoi(vSMSInfo[93].c_str()));
-	//-------------------------------------------//
-#pragma endregion
-
-#pragma region "创建S图层的面要素"
-	OGRPolygon polygon;
-	// 外环
-	OGRLinearRing ringOut;
-	for (int i = 0; i < vSPolygon.size(); i++)
-	{
-		ringOut.addPoint(vSPolygon[i].dx, vSPolygon[i].dy);
-	}
-	//结束点应和起始点相同，保证多边形闭合
-	ringOut.closeRings();
-	polygon.addRing(&ringOut);
-	poSFeature->SetGeometry((OGRGeometry*)(&polygon));
-	if (poSResultLayer->CreateFeature(poSFeature) != OGRERR_NONE)
-	{
+  //创建结果数据源
+  GDALDataset* poSResultDS;
+  poSResultDS = poDriver->Create(strSPolygonShpFilePath.c_str(), 0, 0, 0, GDT_Unknown, NULL);
+  if (poSResultDS == NULL)
+  {
     //	如果创建失败，则跳过，将相关信息写入到日志中
+    std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建S面图层（" + strSPolygonShpFilePath + "）失败！";
+    logger->error(msg);
+    std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
+    logger->critical(log_tailer_info);
+    spdlog::shutdown();
+    return SE_ERROR_CREATE_S_LAYER_DATASET_FAILED;
+  }
+  // 根据图层要素类型创建shp文件
+  OGRLayer* poSResultLayer = NULL;
+  // 设置结果图层的空间参考（CGCS2000）
+  OGRSpatialReference pSResultSR;
+  pSResultSR.SetWellKnownGeogCS("EPSG:4490");
+
+  // shp中存储属性信息和几何信息
+  string strResultSShpFileName = strSheetNumber + "_S_polygon";
+  poSResultLayer = poSResultDS->CreateLayer(strResultSShpFileName.c_str(), &pSResultSR, wkbPolygon, NULL);
+  if (!poSResultLayer)
+  {
+    //	如果创建失败，则跳过，将相关信息写入到日志中
+    std::string msg = "目录（" + str_output_path + "/" + strSheetNumber + "）中创建注记要素层面图层（" + strResultSShpFileName + "）失败！";
+    logger->error(msg);
+    std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
+    logger->critical(log_tailer_info);
+    spdlog::shutdown();
+    return SE_ERROR_CREATE_SHP_FILE_FAILED;
+  }
+  // 创建结果图层属性字段
+  int iRet = CSE_VectorFormatConversion_Imp::SetFieldDefn(poSResultLayer, vSFieldsName, vSFieldType, vSFieldWidth, vSFieldPrecision);
+  if (iRet != 0)
+  {
+    //	如果创建失败，则跳过，将相关信息写入到日志中
+    std::string msg = "设置目录（" + str_output_path + "/" + strSheetNumber + "）中图层（" + strResultSShpFileName + "）的字段定义失败！";
+    logger->error(msg);
+    std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
+    logger->critical(log_tailer_info);
+    spdlog::shutdown();
+    return SE_ERROR_CREATE_LAYER_FIELD_FAILED;
+  }
+#pragma endregion
+
+#pragma region "3、向S图层要素中写入属性值"
+
+  // 元数据几何要素
+  vector<SE_DPoint> vSPolygon;
+  vSPolygon.clear();
+
+  // 图幅左上角点
+  SE_DPoint LeftTop_xyz;
+  LeftTop_xyz.dx = dSheetRect.dleft;
+  LeftTop_xyz.dy = dSheetRect.dtop;
+  vSPolygon.push_back(LeftTop_xyz);
+
+  // 图幅左下角点
+  SE_DPoint LeftBottom_xyz;
+  LeftBottom_xyz.dx = dSheetRect.dleft;
+  LeftBottom_xyz.dy = dSheetRect.dbottom;
+  vSPolygon.push_back(LeftBottom_xyz);
+
+  // 图幅右下角点
+  SE_DPoint RightBottom_xyz;
+  RightBottom_xyz.dx = dSheetRect.dright;
+  RightBottom_xyz.dy = dSheetRect.dbottom;
+  vSPolygon.push_back(RightBottom_xyz);
+
+  // 图幅右上角点
+  SE_DPoint RightTop_xyz;
+  RightTop_xyz.dx = dSheetRect.dright;
+  RightTop_xyz.dy = dSheetRect.dtop;
+  vSPolygon.push_back(RightTop_xyz);
+
+  // 创建几何信息和属性信息
+  OGRFeature* poSFeature;
+  poSFeature = OGRFeature::CreateFeature(poSResultLayer->GetLayerDefn());
+  if (!poSFeature)
+  {
+    //	如果创建失败，则跳过，将相关信息写入到日志中
+    std::string msg = "目录（" + str_output_path + "/" + strSheetNumber + "）中的图层（" + strResultSShpFileName + "）的要素创建失败！";
+    logger->error(msg);
+    std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
+    logger->critical(log_tailer_info);
+    spdlog::shutdown();
+    return SE_ERROR_CREATE_FEATURE_FAILED;
+  }
+
+  // 读取94项元数据信息，并写入图层中
+  //-------------------------------------------//
+  vector<string> vSMSInfo;
+  vSMSInfo.clear();
+  for (int i = 1; i <= 94; i++)
+  {
+    string strInfo;
+    CSE_VectorFormatConversion_Imp::ReadSMSFile(strSMSPath, i, strInfo);
+    vSMSInfo.push_back(strInfo);
+  }
+  poSFeature->SetField(0, vSMSInfo[0].c_str());
+  poSFeature->SetField(1, vSMSInfo[1].c_str());
+  poSFeature->SetField(2, vSMSInfo[2].c_str());
+  poSFeature->SetField(3, vSMSInfo[3].c_str());
+  poSFeature->SetField(4, vSMSInfo[4].c_str());
+  poSFeature->SetField(5, vSMSInfo[5].c_str());
+  poSFeature->SetField(6, vSMSInfo[6].c_str());
+  poSFeature->SetField(7, atof(vSMSInfo[7].c_str()));
+  poSFeature->SetField(8, _atoi64(vSMSInfo[8].c_str()));
+  poSFeature->SetField(9, vSMSInfo[9].c_str());
+  poSFeature->SetField(10, vSMSInfo[10].c_str());
+  poSFeature->SetField(11, atof(vSMSInfo[11].c_str()));
+  poSFeature->SetField(12, atof(vSMSInfo[12].c_str()));
+  poSFeature->SetField(13, atof(vSMSInfo[13].c_str()));
+  poSFeature->SetField(14, atof(vSMSInfo[14].c_str()));
+  poSFeature->SetField(15, atof(vSMSInfo[15].c_str()));
+  poSFeature->SetField(16, atof(vSMSInfo[16].c_str()));
+  poSFeature->SetField(17, atof(vSMSInfo[17].c_str()));
+  poSFeature->SetField(18, atof(vSMSInfo[18].c_str()));
+  poSFeature->SetField(19, atof(vSMSInfo[19].c_str()));
+  poSFeature->SetField(20, atof(vSMSInfo[20].c_str()));
+  poSFeature->SetField(21, vSMSInfo[21].c_str());
+  poSFeature->SetField(22, vSMSInfo[22].c_str());
+  poSFeature->SetField(23, atof(vSMSInfo[23].c_str()));
+  poSFeature->SetField(24, atof(vSMSInfo[24].c_str()));
+  poSFeature->SetField(25, atof(vSMSInfo[25].c_str()));
+  poSFeature->SetField(26, vSMSInfo[26].c_str());
+  poSFeature->SetField(27, atoi(vSMSInfo[27].c_str()));
+  poSFeature->SetField(28, vSMSInfo[28].c_str());
+  poSFeature->SetField(29, atoi(vSMSInfo[29].c_str()));
+  poSFeature->SetField(30, atof(vSMSInfo[30].c_str()));
+  poSFeature->SetField(31, atof(vSMSInfo[31].c_str()));
+  poSFeature->SetField(32, atof(vSMSInfo[32].c_str()));
+  poSFeature->SetField(33, atoi(vSMSInfo[33].c_str()));
+  poSFeature->SetField(34, atoi(vSMSInfo[34].c_str()));
+  poSFeature->SetField(35, atoi(vSMSInfo[35].c_str()));
+  poSFeature->SetField(36, vSMSInfo[36].c_str());
+  poSFeature->SetField(37, vSMSInfo[37].c_str());
+  poSFeature->SetField(38, vSMSInfo[38].c_str());
+  poSFeature->SetField(39, vSMSInfo[39].c_str());
+  poSFeature->SetField(40, atoi(vSMSInfo[40].c_str()));
+  poSFeature->SetField(41, atof(vSMSInfo[41].c_str()));
+  poSFeature->SetField(42, vSMSInfo[42].c_str());
+  poSFeature->SetField(43, vSMSInfo[43].c_str());
+  poSFeature->SetField(44, vSMSInfo[44].c_str());
+  poSFeature->SetField(45, vSMSInfo[45].c_str());
+  poSFeature->SetField(46, atof(vSMSInfo[46].c_str()));
+  poSFeature->SetField(47, vSMSInfo[47].c_str());
+  poSFeature->SetField(48, vSMSInfo[48].c_str());
+  poSFeature->SetField(49, vSMSInfo[49].c_str());
+  poSFeature->SetField(50, vSMSInfo[50].c_str());
+  poSFeature->SetField(51, vSMSInfo[51].c_str());
+  poSFeature->SetField(52, vSMSInfo[52].c_str());
+  poSFeature->SetField(53, vSMSInfo[53].c_str());
+  poSFeature->SetField(54, vSMSInfo[54].c_str());
+  poSFeature->SetField(55, atof(vSMSInfo[55].c_str()));
+  poSFeature->SetField(56, atof(vSMSInfo[56].c_str()));
+  poSFeature->SetField(57, atof(vSMSInfo[57].c_str()));
+  poSFeature->SetField(58, vSMSInfo[58].c_str());
+  poSFeature->SetField(59, vSMSInfo[59].c_str());
+  poSFeature->SetField(60, vSMSInfo[60].c_str());
+  poSFeature->SetField(61, vSMSInfo[61].c_str());
+  poSFeature->SetField(62, vSMSInfo[62].c_str());
+  poSFeature->SetField(63, vSMSInfo[63].c_str());
+  poSFeature->SetField(64, vSMSInfo[64].c_str());
+  poSFeature->SetField(65, vSMSInfo[65].c_str());
+  poSFeature->SetField(66, atof(vSMSInfo[66].c_str()));
+  poSFeature->SetField(67, _atoi64(vSMSInfo[67].c_str()));
+  poSFeature->SetField(68, vSMSInfo[68].c_str());
+  poSFeature->SetField(69, vSMSInfo[69].c_str());
+  poSFeature->SetField(70, vSMSInfo[70].c_str());
+  poSFeature->SetField(71, vSMSInfo[71].c_str());
+  poSFeature->SetField(72, vSMSInfo[72].c_str());
+  poSFeature->SetField(73, vSMSInfo[73].c_str());
+  poSFeature->SetField(74, atof(vSMSInfo[74].c_str()));
+  poSFeature->SetField(75, atof(vSMSInfo[75].c_str()));
+  poSFeature->SetField(76, vSMSInfo[76].c_str());
+  poSFeature->SetField(77, vSMSInfo[77].c_str());
+  poSFeature->SetField(78, vSMSInfo[78].c_str());
+  poSFeature->SetField(79, vSMSInfo[79].c_str());
+  poSFeature->SetField(80, vSMSInfo[80].c_str());
+  poSFeature->SetField(81, vSMSInfo[81].c_str());
+  poSFeature->SetField(82, vSMSInfo[82].c_str());
+  poSFeature->SetField(83, vSMSInfo[83].c_str());
+  poSFeature->SetField(84, vSMSInfo[84].c_str());
+  poSFeature->SetField(85, vSMSInfo[85].c_str());
+  poSFeature->SetField(86, vSMSInfo[86].c_str());
+  poSFeature->SetField(87, vSMSInfo[87].c_str());
+  poSFeature->SetField(88, vSMSInfo[88].c_str());
+  poSFeature->SetField(89, vSMSInfo[89].c_str());
+  poSFeature->SetField(90, vSMSInfo[90].c_str());
+  poSFeature->SetField(91, vSMSInfo[91].c_str());
+  poSFeature->SetField(92, vSMSInfo[92].c_str());
+  poSFeature->SetField(93, atoi(vSMSInfo[93].c_str()));
+  //-------------------------------------------//
+  OGRPolygon polygon;
+  // 外环
+  OGRLinearRing ringOut;
+  for (int i = 0; i < vSPolygon.size(); i++)
+  {
+    ringOut.addPoint(vSPolygon[i].dx, vSPolygon[i].dy);
+  }
+  //结束点应和起始点相同，保证多边形闭合
+  ringOut.closeRings();
+  polygon.addRing(&ringOut);
+  poSFeature->SetGeometry((OGRGeometry*)(&polygon));
+  if (poSResultLayer->CreateFeature(poSFeature) != OGRERR_NONE)
+  {
+    //	如果创建失败，将相关信息写入到日志中
     std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建S层的feature失败！";
     logger->error(msg);
     OGRFeature::DestroyFeature(poSFeature);
     // 关闭数据源
-    GDALClose(poSResultDS_S_layer);
+    GDALClose(poSResultLayer);
 
 
     std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
     logger->critical(log_tailer_info);
     spdlog::shutdown();
+    return SE_ERROR_CREATE_FEATURE_FAILED;
+  }
+  OGRFeature::DestroyFeature(poSFeature);
+  // 关闭数据源
+  GDALClose(poSResultDS);
 
-		return SE_ERROR_CREATE_FEATURE_FAILED;
-	}
-	OGRFeature::DestroyFeature(poSFeature);
-	// 关闭数据源
-	GDALClose(poSResultDS_S_layer);
 
+  // 创建cpg文件
+  bool bRet = CSE_VectorFormatConversion_Imp::CreateShapefileCPG(strSCPGFilePath);
+  if (!bRet)
+  {
+    //	如果创建失败，则跳过，将相关信息写入到日志中
+    std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建ShapefileCPG（" + strSCPGFilePath + "）失败！";
+    logger->error(msg);
+  }
 
-	// 创建cpg文件
-	bool bRet = CSE_VectorFormatConversion_Imp::CreateShapefileCPG(strSCPGFilePath);
-	if (!bRet)
-	{
-		//	如果创建失败，则跳过，将相关信息写入到日志中
-		std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）中创建S层的ShapefileCPG（" + strSCPGFilePath + "）失败！";
-		logger->error(msg);
-	}
 #pragma endregion
 
 #pragma endregion

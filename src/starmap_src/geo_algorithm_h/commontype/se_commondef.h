@@ -73,5 +73,7 @@ typedef int SE_Error;
 #define SE_ERROR_OGRFEATURE_TYPE_NOT_MATCH                65                  /*两个OGR要素类型是不匹配的*/
 
 #define SE_ERROR_SMS_LAYER_INFO_IS_NOT_SAME_WITH_ACTUAL_LAYER_INFO_FROM_ODATA_FRAMED_DATA		66				/*odata分幅数据中SMS文件描述的要素图层数量同实际存在要素图层数量不一致(杨小兵-2024-12-01)*/
+#define SE_ERROR_LOGGER_CREATION_FAILED                  67                  /*创建日志器失败*/
+
 #endif // SE_COMMONDEF_H_
 

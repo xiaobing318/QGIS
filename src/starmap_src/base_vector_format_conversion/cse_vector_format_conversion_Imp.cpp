@@ -7,13 +7,13 @@
 #include <fstream>
 
 #ifdef OS_FAMILY_WINDOWS
-#include <io.h>
-#include <stdio.h>
-#include <windows.h>
+  #include <io.h>
+  #include <stdio.h>
+  #include <windows.h>
 #else
-#include <sys/io.h>
-#include <dirent.h>
-#include <sys/errno.h>
+  #include <sys/io.h>
+  #include <dirent.h>
+  #include <sys/errno.h>
 #endif
 /*-----------------STL------------------*/
 
@@ -49,7 +49,23 @@ CSE_VectorFormatConversion_Imp::~CSE_VectorFormatConversion_Imp()
 
 void CSE_VectorFormatConversion_Imp::ReadSMSFile(string strSMSPath, int iKey, string& strValue)
 {
-	FILE* fp = fopen(strSMSPath.c_str(), "r");
+  // UTF-8 到 UTF-16 转换函数
+  auto utf8_to_utf16 = [](const std::string& utf8) -> std::wstring {
+    if (utf8.empty()) return std::wstring();
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), NULL, 0);
+    std::wstring wstrTo(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), &wstrTo[0], size_needed);
+    return wstrTo;
+  };
+
+#ifdef _WIN32
+  // Windows: 必须使用宽字符接口，否则 UTF-8 中文路径会失效
+  std::wstring wpath = utf8_to_utf16(strSMSPath);
+  FILE* fp = _wfopen(wpath.c_str(), L"r");
+#else
+  // 其它平台继续用 UTF-8 + fopen
+  FILE* fp = fopen(strSMSPath.c_str(), "r");
+#endif
 	if (!fp) {
 	}
 	int itemp = 0;
@@ -73,25 +89,63 @@ void CSE_VectorFormatConversion_Imp::ReadSMSFile(string strSMSPath, int iKey, st
 // 验证文件是否能够打开
 bool CSE_VectorFormatConversion_Imp::CheckFile(string strFileName)
 {
-	FILE* fp = fopen(strFileName.c_str(), "r");
-	if (!fp) {
-		return false;
-	}
-	fclose(fp);
-	return true;
+  // UTF-8 到 UTF-16 转换函数
+  auto utf8_to_utf16 = [](const std::string& utf8) -> std::wstring {
+    if (utf8.empty()) return std::wstring();
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), NULL, 0);
+    std::wstring wstrTo(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), &wstrTo[0], size_needed);
+    return wstrTo;
+  };
+
+#ifdef _WIN32
+  // Windows: 必须使用宽字符接口，否则 UTF-8 中文路径会失效
+  std::wstring wpath = utf8_to_utf16(strFileName);
+  FILE* fp = _wfopen(wpath.c_str(), L"r");   // “b”=binary 更通用
+#else
+  // 其它平台继续用 UTF-8 + fopen
+  FILE* fp = fopen(strFileName.c_str(), "r");
+#endif
+
+  if (!fp) return false;
+  fclose(fp);
+  return true;
 }
 
 
 bool CSE_VectorFormatConversion_Imp::CopySMSFile(string strFromPath, string strToPath)
 {
-	FILE* fpFrom = fopen(strFromPath.c_str(), "r");
-	if (!fpFrom) {
-		return false;
-	}
-	FILE* fpTo = fopen(strToPath.c_str(), "w");
-	if (!fpTo) {
-		return false;
-	}
+  // UTF-8 到 UTF-16 转换函数
+  auto utf8_to_utf16 = [](const std::string& utf8) -> std::wstring {
+    if (utf8.empty()) return std::wstring();
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), NULL, 0);
+    std::wstring wstrTo(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), &wstrTo[0], size_needed);
+    return wstrTo;
+  };
+
+#ifdef _WIN32
+  // Windows: 必须使用宽字符接口，否则 UTF-8 中文路径会失效
+  FILE* fpFrom = _wfopen(utf8_to_utf16(strFromPath).c_str(), L"r");
+  if (!fpFrom) {
+    return false;
+  }
+  FILE* fpTo = _wfopen(utf8_to_utf16(strToPath).c_str(), L"w");
+  if (!fpTo) {
+    return false;
+  }
+#else
+  // 其它平台继续用 UTF-8 + fopen
+  FILE* fpFrom = fopen(strFromPath.c_str(), "r");
+  if (!fpFrom) {
+    return false;
+  }
+  FILE* fpTo = fopen(strToPath.c_str(), "w");
+  if (!fpTo) {
+    return false;
+  }
+#endif
+
 	char c;
 	while ((c = fgetc(fpFrom)) != EOF)
 	{
@@ -106,8 +160,23 @@ bool CSE_VectorFormatConversion_Imp::CopySMSFile(string strFromPath, string strT
 //  根据SMS文件获取图幅下所有的ODATA图层类型
 void CSE_VectorFormatConversion_Imp::GetLayerTypeFromSMS(string strSMSPath, vector<string>& vLayerType)
 {
+  // UTF-8 到 UTF-16 转换函数
+  auto utf8_to_utf16 = [](const std::string& utf8) -> std::wstring {
+    if (utf8.empty()) return std::wstring();
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), NULL, 0);
+    std::wstring wstrTo(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), &wstrTo[0], size_needed);
+    return wstrTo;
+  };
+
+#ifdef _WIN32
 	// 读取第94行，获取图层个数，然后循环获取图层名称，通过图层类型映射表获取要素标识A、B、C等等
-	FILE* fp = fopen(strSMSPath.c_str(), "r");
+	FILE* fp = _wfopen(utf8_to_utf16(strSMSPath).c_str(), L"r");
+#else
+  // 读取第94行，获取图层个数，然后循环获取图层名称，通过图层类型映射表获取要素标识A、B、C等等
+  FILE* fp = fopen(strSMSPath.c_str(), "r");
+#endif
+
 	if (!fp) {
 		return;
 	}
@@ -155,7 +224,7 @@ void CSE_VectorFormatConversion_Imp::GetLayerTypeFromSMS(string strSMSPath, vect
 	fclose(fp);
 }
 
-//	根据实际ODATA目录路径下的图层获取所有的ODATA图层类型（-2023-12-20）
+//	根据实际ODATA目录路径下的图层获取所有的ODATA图层类型（杨小兵-2023-12-20）
 //int CSE_VectorFormatConversion_Imp::GetLayerTypeFromOdataDir(const string strOdataDir, vector<string>& vLayerType)
 //{
 //	//	首先检查strOdataDir是否存在
@@ -220,24 +289,29 @@ void CSE_VectorFormatConversion_Imp::GetLayerTypeFromSMS(string strSMSPath, vect
 //}
 
 
-// 根据实际ODATA目录路径下的图层获取所有的ODATA图层类型（-2024-12-01）
+// 根据实际ODATA目录路径下的图层获取所有的ODATA图层类型（杨小兵-2024-12-01）
 int CSE_VectorFormatConversion_Imp::GetLayerTypeFromOdataDir(const std::string& strOdataDir, std::vector<std::string>& vLayerType)
 {
+#ifdef _WIN32
+  std::filesystem::path dirPath = std::filesystem::u8path(strOdataDir);
+#else
+  const std::filesystem::path& dirPath = strOdataDir;   // 隐式构造
+#endif
   // 检查目录是否存在
-  if (!std::filesystem::exists(strOdataDir))
+  if (!std::filesystem::exists(dirPath))
   {
     // 目录不存在
     return 1;
   }
   // 检查是否为目录
-  if (!std::filesystem::is_directory(strOdataDir))
+  if (!std::filesystem::is_directory(dirPath))
   {
     // 不是目录
     return 2;
   }
 
   // 遍历目录中的所有文件
-  for (const auto& entry : std::filesystem::directory_iterator(strOdataDir))
+  for (const auto& entry : std::filesystem::directory_iterator(dirPath))
   {
     // 确保是一个普通文件
     if (!std::filesystem::is_regular_file(entry))
@@ -247,7 +321,11 @@ int CSE_VectorFormatConversion_Imp::GetLayerTypeFromOdataDir(const std::string& 
     }
 
     // 获取文件名
+#ifdef _WIN32
+    std::string fileName = entry.path().filename().u8string();
+#else
     std::string fileName = entry.path().filename().string();
+#endif
 
     // 定义一个正则表达式，匹配所需的文件名格式
     // 匹配格式：filename.<layer type identifier><file type>
@@ -371,7 +449,21 @@ void CSE_VectorFormatConversion_Imp::CapToSmall(string strLayerType, string& str
 // 根据要素层类型读拓扑文件
 bool CSE_VectorFormatConversion_Imp::LoadTPFile(string strTPFilePath, vector<vector<string>>& vLineTopogValues)
 {
-	FILE* fp = fopen(strTPFilePath.c_str(), "r");
+  // UTF-8 到 UTF-16 转换函数
+  auto utf8_to_utf16 = [](const std::string& utf8) -> std::wstring {
+    if (utf8.empty()) return std::wstring();
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), NULL, 0);
+    std::wstring wstrTo(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), &wstrTo[0], size_needed);
+    return wstrTo;
+  };
+
+#ifdef _WIN32
+  FILE* fp = _wfopen(utf8_to_utf16(strTPFilePath).c_str(), L"r");
+#else
+  FILE* fp = fopen(strTPFilePath.c_str(), "r");
+#endif
+
 	if (!fp) {
 		return false;
 	}
@@ -434,8 +526,21 @@ bool CSE_VectorFormatConversion_Imp::LoadRSXFile(
   const string& strSheetNumber,
 	vector<vector<string>>& vFieldValues)
 {
-	// 打开文件
-	FILE* fp = fopen(strRSXFilePath.c_str(), "r");
+  // UTF-8 到 UTF-16 转换函数
+  auto utf8_to_utf16 = [](const std::string& utf8) -> std::wstring {
+    if (utf8.empty()) return std::wstring();
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), NULL, 0);
+    std::wstring wstrTo(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), &wstrTo[0], size_needed);
+    return wstrTo;
+  };
+
+#ifdef _WIN32
+  FILE* fp = _wfopen(utf8_to_utf16(strRSXFilePath).c_str(), L"r");
+#else
+  FILE* fp = fopen(strRSXFilePath.c_str(), "r");
+#endif
+
 	if (!fp) {
 		return false;
 	}
@@ -473,14 +578,26 @@ bool CSE_VectorFormatConversion_Imp::LoadRSXFile(
 	return true;
 }
 
-// 读取注记属性文件(RRSX)，返回属性值数组(-2024-12-01)
+// 读取注记属性文件(RRSX)，返回属性值数组(杨小兵-2024-12-01)
 bool CSE_VectorFormatConversion_Imp::LoadRRSXFile(
   const string& strRRSXFilePath,
   const string& strSheetNumber,
   vector<vector<string>>& vFieldValues)
 {
-  // 打开文件
+  // UTF-8 到 UTF-16 转换函数
+  auto utf8_to_utf16 = [](const std::string& utf8) -> std::wstring {
+    if (utf8.empty()) return std::wstring();
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), NULL, 0);
+    std::wstring wstrTo(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), &wstrTo[0], size_needed);
+    return wstrTo;
+  };
+
+#ifdef _WIN32
+  FILE* fp = _wfopen(utf8_to_utf16(strRRSXFilePath).c_str(), L"r");
+#else
   FILE* fp = fopen(strRRSXFilePath.c_str(), "r");
+#endif
   if (!fp)
   {
     return false;
@@ -529,7 +646,21 @@ bool CSE_VectorFormatConversion_Imp::LoadSXFile(
 	vector<vector<string>>& vLineFieldValues,
 	vector<vector<string>>& vPolygonFieldValues)
 {
-	FILE* fp = fopen(strSXFilePath.c_str(), "r");
+  // UTF-8 到 UTF-16 转换函数
+  auto utf8_to_utf16 = [](const std::string& utf8) -> std::wstring {
+    if (utf8.empty()) return std::wstring();
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), NULL, 0);
+    std::wstring wstrTo(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), &wstrTo[0], size_needed);
+    return wstrTo;
+  };
+
+#ifdef _WIN32
+  FILE* fp = _wfopen(utf8_to_utf16(strSXFilePath).c_str(), L"r");
+#else
+  FILE* fp = fopen(strSXFilePath.c_str(), "r");
+#endif
+
 	if (!fp) {
 		return false;
 	}
@@ -696,7 +827,21 @@ bool CSE_VectorFormatConversion_Imp::LoadSXFile_FeatureCountStatistic(
 	iOutputLineCount = 0;
 	iOutputPolygonCount = 0;
 
-	FILE* fp = fopen(strSXFilePath.c_str(), "r");
+  // UTF-8 到 UTF-16 转换函数
+  auto utf8_to_utf16 = [](const std::string& utf8) -> std::wstring {
+    if (utf8.empty()) return std::wstring();
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), NULL, 0);
+    std::wstring wstrTo(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), &wstrTo[0], size_needed);
+    return wstrTo;
+  };
+
+#ifdef _WIN32
+  FILE* fp = _wfopen(utf8_to_utf16(strSXFilePath).c_str(), L"r");
+#else
+  FILE* fp = fopen(strSXFilePath.c_str(), "r");
+#endif
+
 	if (!fp) {
 		return false;
 	}
@@ -873,7 +1018,21 @@ bool CSE_VectorFormatConversion_Imp::LoadRZBFile(
 	vector<int>& vLineIDs,
 	vector<vector<SE_DPoint>>& vLines)
 {
-	FILE* fp = fopen(strZBFilePath.c_str(), "r");
+  // UTF-8 到 UTF-16 转换函数
+  auto utf8_to_utf16 = [](const std::string& utf8) -> std::wstring {
+    if (utf8.empty()) return std::wstring();
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), NULL, 0);
+    std::wstring wstrTo(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), &wstrTo[0], size_needed);
+    return wstrTo;
+  };
+
+#ifdef _WIN32
+  FILE* fp = _wfopen(utf8_to_utf16(strZBFilePath).c_str(), L"r");
+#else
+  FILE* fp = fopen(strZBFilePath.c_str(), "r");
+#endif
+
 	if (!fp) {
 		return false;
 	}
@@ -946,7 +1105,7 @@ bool CSE_VectorFormatConversion_Imp::LoadRZBFile(
 	return true;
 }
 
-//  -2024-12-03：读取注记层坐标文件(RZB)，返回坐标值数组，为了适配新的注记层
+//  杨小兵-2024-12-03：读取注记层坐标文件(RZB)，返回坐标值数组，为了适配新的注记层
 bool CSE_VectorFormatConversion_Imp::LoadRZBFile4NewVersionV1(
   const string& strZBFilePath,
   vector<int>& vRFeatureIDs,
@@ -954,7 +1113,21 @@ bool CSE_VectorFormatConversion_Imp::LoadRZBFile4NewVersionV1(
   vector<vector<SE_DPoint>>& vAnnotationAnchorPoints)
 {
 #pragma region "1、尝试打开*.RZB文件"
+  // UTF-8 到 UTF-16 转换函数
+  auto utf8_to_utf16 = [](const std::string& utf8) -> std::wstring {
+    if (utf8.empty()) return std::wstring();
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), NULL, 0);
+    std::wstring wstrTo(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), &wstrTo[0], size_needed);
+    return wstrTo;
+  };
+
+#ifdef _WIN32
+  FILE* fp = _wfopen(utf8_to_utf16(strZBFilePath).c_str(), L"r");
+#else
   FILE* fp = fopen(strZBFilePath.c_str(), "r");
+#endif
+
   if (!fp)
   {
     return false;
@@ -1055,7 +1228,7 @@ bool CSE_VectorFormatConversion_Imp::LoadRZBFile4NewVersionV1(
 }
 
 
-//  -2024-12-01:读取注记层坐标文件(RRZB)，返回坐标值数组(目前将不会用到这个文件，因为还不存在这个文件)
+//  杨小兵-2024-12-01:读取注记层坐标文件(RRZB)，返回坐标值数组(目前将不会用到这个文件，因为还不存在这个文件)
 bool CSE_VectorFormatConversion_Imp::LoadRRZBFile(
   const string& strZBFilePath,
   vector<int>& vPointIDs,
@@ -1063,7 +1236,20 @@ bool CSE_VectorFormatConversion_Imp::LoadRRZBFile(
   vector<int>& vLineIDs,
   vector<vector<SE_DPoint>>& vLines)
 {
+  // UTF-8 到 UTF-16 转换函数
+  auto utf8_to_utf16 = [](const std::string& utf8) -> std::wstring {
+    if (utf8.empty()) return std::wstring();
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), NULL, 0);
+    std::wstring wstrTo(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), &wstrTo[0], size_needed);
+    return wstrTo;
+  };
+
+#ifdef _WIN32
+  FILE* fp = _wfopen(utf8_to_utf16(strZBFilePath).c_str(), L"r");
+#else
   FILE* fp = fopen(strZBFilePath.c_str(), "r");
+#endif
   if (!fp)
   {
     return false;
@@ -1145,8 +1331,21 @@ bool CSE_VectorFormatConversion_Imp::LoadZBFile(string strZBFilePath,
 	vector<vector<SE_DPoint>>& vPolygons,
 	vector<vector<vector<SE_DPoint>>>& vInteriorPolygons)
 {
-	// 打开文件
-	FILE* fp = fopen(strZBFilePath.c_str(), "r");
+  // UTF-8 到 UTF-16 转换函数
+  auto utf8_to_utf16 = [](const std::string& utf8) -> std::wstring {
+    if (utf8.empty()) return std::wstring();
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), NULL, 0);
+    std::wstring wstrTo(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), &wstrTo[0], size_needed);
+    return wstrTo;
+  };
+
+#ifdef _WIN32
+  FILE* fp = _wfopen(utf8_to_utf16(strZBFilePath).c_str(), L"r");
+#else
+  FILE* fp = fopen(strZBFilePath.c_str(), "r");
+#endif
+
 	if (!fp) {
 		return false;
 	}
@@ -1383,7 +1582,7 @@ bool CSE_VectorFormatConversion_Imp::LoadZBFile(string strZBFilePath,
 //	}
 //}
 
-//  根据要素图层名称获取要素图层标识(-2024-12-01)
+//  根据要素图层名称获取要素图层标识(杨小兵-2024-12-01)
 void CSE_VectorFormatConversion_Imp::GetLayerTypeByName(const std::string& strLayerName, std::string& strLayerType)
 {
   // 定义子字符串与类型的映射
@@ -1504,7 +1703,7 @@ void CSE_VectorFormatConversion_Imp::GetLayerTypeByName(const std::string& strLa
 //	}
 //}
 
-//  根据要素图层类型获取要素图层名称(-2024-12-01)
+//  根据要素图层类型获取要素图层名称(杨小兵-2024-12-01)
 void CSE_VectorFormatConversion_Imp::GetLayerNameByType(const std::string& strLayerType, std::string& strLayerName)
 {
   // 定义类型与名称的映射
@@ -4180,7 +4379,7 @@ void CSE_VectorFormatConversion_Imp::LoadShapefileConfig(const std::string& conf
 //	vFieldPrecision.push_back(0);
 //}
 
-//  根据要素图层类型创建属性字段（-2024-12-01）
+//  根据要素图层类型创建属性字段（杨小兵-2024-12-01）
 void CSE_VectorFormatConversion_Imp::CreateShpFieldsByLayerType(
   const string& strLayerType,
   const string& strGeoType,
@@ -4239,7 +4438,7 @@ int CSE_VectorFormatConversion_Imp::SetFieldDefn(
 		OGRFieldDefn Field(fieldname[i].c_str(), fieldtype[i]);
     //  设置字段宽度，实际操作需要根据不同字段设置不同长度
 		Field.SetWidth(fieldwidth[i]);		
-		// (-2024-02-22)控制浮点数小数点位数，仅在字段类型为浮点数时生效，其他字段类型默认的是0
+		// (杨小兵-2024-02-22)控制浮点数小数点位数，仅在字段类型为浮点数时生效，其他字段类型默认的是0
 		Field.SetPrecision(vFieldPrecision[i]);
     //  将创建的字段写入到layer中
 		OGRErr err = poLayer->CreateField(&Field);
@@ -4256,7 +4455,20 @@ bool CSE_VectorFormatConversion_Imp::CreateShapefileCPG(
   string strCPGFilePath,
   string strEncoding)
 {
-	FILE* fp = fopen(strCPGFilePath.c_str(), "w");
+  // UTF-8 到 UTF-16 转换函数
+  auto utf8_to_utf16 = [](const std::string& utf8) -> std::wstring {
+    if (utf8.empty()) return std::wstring();
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), NULL, 0);
+    std::wstring wstrTo(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), &wstrTo[0], size_needed);
+    return wstrTo;
+  };
+
+#ifdef _WIN32
+  FILE* fp = _wfopen(utf8_to_utf16(strCPGFilePath).c_str(), L"w");
+#else
+  FILE* fp = fopen(strCPGFilePath.c_str(), "w");
+#endif
 	if (!fp)
 	{
 		return false;
@@ -4708,8 +4920,8 @@ int CSE_VectorFormatConversion_Imp::Set_Point(
 }
 
 /*
-* -2024-12-03：多点要素图层，根据字段类型赋值
-* -2024-12-07：需要将多点要素拆分成单点要素，其中需要对中文名称字段进行拆分
+* 杨小兵-2024-12-03：多点要素图层，根据字段类型赋值
+* 杨小兵-2024-12-07：需要将多点要素拆分成单点要素，其中需要对中文名称字段进行拆分
 */
 
 //int CSE_VectorFormatConversion_Imp::Set_MultiPoint(
@@ -6436,7 +6648,20 @@ bool CSE_VectorFormatConversion_Imp::LoadMSFile(
 	int& iLineCount,
 	int& iPolygonCount)
 {
-	FILE* fp = fopen(strMSFilePath.c_str(), "r");
+  // UTF-8 到 UTF-16 转换函数
+  auto utf8_to_utf16 = [](const std::string& utf8) -> std::wstring {
+    if (utf8.empty()) return std::wstring();
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), NULL, 0);
+    std::wstring wstrTo(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), &wstrTo[0], size_needed);
+    return wstrTo;
+  };
+
+#ifdef _WIN32
+  FILE* fp = _wfopen(utf8_to_utf16(strMSFilePath).c_str(), L"r");
+#else
+  FILE* fp = fopen(strMSFilePath.c_str(), "r");
+#endif
 	if (!fp) {
 		return false;
 }
@@ -6612,7 +6837,7 @@ SE_Error CSE_VectorFormatConversion_Imp::Get_Polygon(
 
 {
 	/*
-	* -2023-12-6：修复不能处理多部件面状数据的问题（OGRMultipolygon、OGRPolygon）
+	* 杨小兵-2023-12-6：修复不能处理多部件面状数据的问题（OGRMultipolygon、OGRPolygon）
 	* 原来的算法流程只是对OGRPolygon类型进行了处理而没有对OGRMultipolygon进行处理，因此这里需要分类进行讨论并且进行处理
 	*/
 	//	判断当前要素是否有效

@@ -7,9 +7,16 @@
 /*----------------STL--------------*/
 
 /*----------------spdlog第三方日志库--------------*/
-#include "spdlog/spdlog.h"
-#include "spdlog/sinks/basic_file_sink.h"	//	创建基本的日志文件，这个日志文件用来接收一般的信息
+#ifdef _WIN32
+  #define SPDLOG_WCHAR_FILENAMES
+  #include "spdlog/spdlog.h"
+  #include "spdlog/sinks/basic_file_sink.h"	//	创建基本的日志文件，这个日志文件用来接收一般的信息
 /*----------------spdlog第三方日志库--------------*/
+#else
+  #include "spdlog/spdlog.h"
+  #include "spdlog/sinks/basic_file_sink.h"	//	创建基本的日志文件，这个日志文件用来接收一般的信息
+#endif
+
 
 /*----------------自定义--------------*/
 #include "commontype/se_config.h"
@@ -207,7 +214,5 @@ public:
 	static SE_Error AnnotationPointerReverseExtraction(
 		const char* szInputPath,
 		const char* szOutputPath);
-
-  static void make_dir_utf8(const std::string& u8path);
 };
 #endif // CSTAREARTH_VECTOR_FORMAT_CONVERSION_H
