@@ -71,4 +71,5 @@ add_subdirectory(vector_data_tile_customization_toolbox)
 add_subdirectory(vector_data_consistency_processing_toolbox)
 add_subdirectory(planet_data_products_toolbox)
 add_subdirectory(DLHJ_Copilots_toolbox)
+add_subdirectory(plugin_vector_odata2shapefile_toolbox)
 # headers installed in qgis_core target
