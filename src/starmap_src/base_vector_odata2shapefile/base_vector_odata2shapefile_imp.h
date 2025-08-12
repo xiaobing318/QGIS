@@ -164,12 +164,17 @@ public:
     vector<string>& vFieldValues,
     string strLayerType);
 	//  根据字段类型赋值-面要素
-	static int Set_Polygon(
+  static int Set_Polygon(
     OGRLayer* poLayer,
     vector<SE_DPoint>& OuterRing,
     vector<vector<SE_DPoint>>& InteriorRingVec,
-    vector<string>& vFieldValues,
-    string strLayerType);
+    vector<string>& vFieldValues);
+  //  设置字段的属性值
+  static bool SetFieldFromString(
+    OGRFeature* f,
+    int iField,
+    const std::string& s,
+    OGRFieldType t);
 	//  创建shp文件对应的cpg编码文件
 	static bool CreateShapefileCPG(
     string strCPGFilePath,
@@ -202,8 +207,10 @@ public:
   static OGRFieldType StringToOGRFieldType(const std::string& typeStr);
   //  获取动态库所在目录
   static std::string GetLibraryDirectory();
-  //  加载JSON配置文件
-  static void LoadShapefileConfig(const std::string& configRelativePath);
+  //  JBDX2Shapefile：加载JSON配置文件
+  static void LoadShapefileConfig4JBDX(const std::string& configRelativePath);
+  //  DZB2Shapefile：加载JSON配置文件
+  static void LoadShapefileConfig4DZB(const std::string& configRelativePath);
 	//  判断属性值是否在枚举列表中
 	static bool FieldValueIsExistedInSimpleEnumList(
     vector<string>& vSimpleEnumValue,

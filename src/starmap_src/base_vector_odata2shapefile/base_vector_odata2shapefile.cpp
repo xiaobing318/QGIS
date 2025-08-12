@@ -1975,11 +1975,11 @@ SE_Error BaseVectorOdata2Shapefile::JBDX2Shapefile_GeoSRS(
 					for (int i = 0; i < vShpExteriorPolygons.size(); i++)
 					{
 						vector<vector<SE_DPoint>> vInterior = vShpInteriorPolygons[i];
-						iResult = BaseVectorOdata2ShapefileImp::Set_Polygon(poResultLayer,
+						iResult = BaseVectorOdata2ShapefileImp::Set_Polygon(
+              poResultLayer,
 							vShpExteriorPolygons[i],
 							vInterior,
-							vPolygonFieldValues[i],
-							vLayerType[iLayerIndex]);
+							vPolygonFieldValues[i]);
 						if (iResult != 0 && iResult != -2) {
 							fprintf(fp, "%s Set_Polygon failed!\n", vLayerType[iLayerIndex].c_str());
 							fflush(fp);
@@ -4905,11 +4905,11 @@ SE_Error BaseVectorOdata2Shapefile::JBDX2Shapefile_GeoSRS(
           for (int i = 0; i < vShpExteriorPolygons.size(); i++)
           {
             vector<vector<SE_DPoint>> vInterior = vShpInteriorPolygons[i];
-            iResult = BaseVectorOdata2ShapefileImp::Set_Polygon(poResultLayer,
+            iResult = BaseVectorOdata2ShapefileImp::Set_Polygon(
+              poResultLayer,
               vShpExteriorPolygons[i],
               vInterior,
-              vPolygonFieldValues[i],
-              vLayerType[iLayerIndex]);
+              vPolygonFieldValues[i]);
             if (iResult != 0 && iResult != -2)
             {
               //	如果创建失败，则跳过，将相关信息写入到日志中
@@ -7576,11 +7576,11 @@ SE_Error BaseVectorOdata2Shapefile::JBDX2Shapefile_ProjSRS(
 					for (int i = 0; i < vShpExteriorPolygons.size(); i++)
 					{
 						vector<vector<SE_DPoint>> vInterior = vShpInteriorPolygons[i];
-						iResult = BaseVectorOdata2ShapefileImp::Set_Polygon(poResultLayer,
+						iResult = BaseVectorOdata2ShapefileImp::Set_Polygon(
+              poResultLayer,
 							vShpExteriorPolygons[i],
 							vInterior,
-							vPolygonFieldValues[i],
-							vLayerType[iLayerIndex]);
+							vPolygonFieldValues[i]);
 						if (iResult != 0 && iResult != -2) {
 							fprintf(fp, "%s Set_Polygon failed!\n", vLayerType[iLayerIndex].c_str());
 							fflush(fp);
@@ -10507,11 +10507,11 @@ SE_Error BaseVectorOdata2Shapefile::JBDX2Shapefile_ProjSRS(
 					for (int i = 0; i < vShpExteriorPolygons.size(); i++)
 					{
 						vector<vector<SE_DPoint>> vInterior = vShpInteriorPolygons[i];
-						iResult = BaseVectorOdata2ShapefileImp::Set_Polygon(poResultLayer,
+						iResult = BaseVectorOdata2ShapefileImp::Set_Polygon(
+              poResultLayer,
 							vShpExteriorPolygons[i],
 							vInterior,
-							vPolygonFieldValues[i],
-							vLayerType[iLayerIndex]);
+							vPolygonFieldValues[i]);
 						if (iResult != 0 && iResult != -2)
 						{
 							//	如果创建失败，则跳过，将相关信息写入到日志中
@@ -13045,11 +13045,11 @@ SE_Error BaseVectorOdata2Shapefile::JBDX2Shapefile_OriginSRS(
 					for (int i = 0; i < vShpExteriorPolygons.size(); i++)
 					{
 						vector<vector<SE_DPoint>> vInterior = vShpInteriorPolygons[i];
-						iResult = BaseVectorOdata2ShapefileImp::Set_Polygon(poResultLayer,
+						iResult = BaseVectorOdata2ShapefileImp::Set_Polygon(
+              poResultLayer,
 							vShpExteriorPolygons[i],
 							vInterior,
-							vPolygonFieldValues[i],
-							vLayerType[iLayerIndex]);
+							vPolygonFieldValues[i]);
 						if (iResult != 0 && iResult != -2) {
 							fprintf(fp, "%s Set_Polygon failed!\n", vLayerType[iLayerIndex].c_str());
 							fflush(fp);
@@ -15648,11 +15648,11 @@ SE_Error BaseVectorOdata2Shapefile::JBDX2Shapefile_OriginSRS(
 					for (int i = 0; i < vShpExteriorPolygons.size(); i++)
 					{
 						vector<vector<SE_DPoint>> vInterior = vShpInteriorPolygons[i];
-						iResult = BaseVectorOdata2ShapefileImp::Set_Polygon(poResultLayer,
+						iResult = BaseVectorOdata2ShapefileImp::Set_Polygon(
+              poResultLayer,
 							vShpExteriorPolygons[i],
 							vInterior,
-							vPolygonFieldValues[i],
-							vLayerType[iLayerIndex]);
+							vPolygonFieldValues[i]);
 						if (iResult != 0 && iResult != -2)
 						{
 							//	如果创建失败，则跳过，将相关信息写入到日志中
@@ -18280,11 +18280,11 @@ SE_Error BaseVectorOdata2Shapefile::DZB2Shapefile_GeoSRS(
           for (int i = 0; i < vShpExteriorPolygons.size(); i++)
           {
             vector<vector<SE_DPoint>> vInterior = vShpInteriorPolygons[i];
-            iResult = BaseVectorOdata2ShapefileImp::Set_Polygon(poResultLayer,
+            iResult = BaseVectorOdata2ShapefileImp::Set_Polygon(
+              poResultLayer,
               vShpExteriorPolygons[i],
               vInterior,
-              vPolygonFieldValues[i],
-              vLayerType[iLayerIndex]);
+              vPolygonFieldValues[i]);
             if (iResult != 0 && iResult != -2) {
               fprintf(fp, "%s Set_Polygon failed!\n", vLayerType[iLayerIndex].c_str());
               fflush(fp);
@@ -19127,7 +19127,7 @@ SE_Error BaseVectorOdata2Shapefile::DZB2Shapefile_GeoSRS(
   //  用来存储当前图幅包含的要素图层列表
   vector<string> vLayerType;
   vLayerType.clear();
-  //	-2023-12-20：获取图层信息方式：1——从*.SMS文件中获取图层信息；2——从实际odata数据目录中获取图层信息
+  //	获取图层信息方式：1——从*.SMS文件中获取图层信息；2——从实际odata数据目录中获取图层信息
   if (method_of_obtaining_layer_info == 1)
   {
     BaseVectorOdata2ShapefileImp::GetLayerTypeFromSMS4DZB(strSMSPath, vLayerType);
@@ -19174,7 +19174,7 @@ SE_Error BaseVectorOdata2Shapefile::DZB2Shapefile_GeoSRS(
       std::string log_tailer_info = "<--------------------分幅数据：" + str_input_path + "日志结束！-------------------->";
       logger->critical(log_tailer_info);
       spdlog::shutdown();
-      //	（-2024-01-24）从odata分幅数据中获取实际存在的图层信息失败，需要返回错误代码
+      //	从odata分幅数据中获取实际存在的图层信息失败，需要返回错误代码
       return SE_ERROR_FAILED2OBTAIN_ACTUAL_EXISTING_LAYER_INFO_FROM_ODATA_FRAMED_DATA;
     }
   }
@@ -19218,12 +19218,6 @@ SE_Error BaseVectorOdata2Shapefile::DZB2Shapefile_GeoSRS(
   //  循环：1、读取不同要素类型对应属性、坐标、拓扑文件；2、坐标转化；3、生成shapefile文件
   for (size_t iLayerIndex = 0; iLayerIndex < vLayerType.size(); iLayerIndex++)
   {
-    //  Y图层暂不处理
-    if (vLayerType[iLayerIndex] == "Y")
-    {
-      continue;
-    }
-    bResult = false;
 
 #pragma region "1、检查属性、坐标、拓扑文件是否存在"
     //  拼接属性、坐标、拓扑文件路径
@@ -20787,8 +20781,12 @@ SE_Error BaseVectorOdata2Shapefile::DZB2Shapefile_GeoSRS(
           if (iResult != 0 && iResult != -2)
           {
             //	如果创建失败，则跳过，将相关信息写入到日志中
-            std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）的结果图层（" + strResultShpName + "）中创建点要素失败！";
-            logger->error(msg);
+            logger->error("函数[{}]：在[{}/{}.shp]中创建索引为 [{}] 的点要素失败，返回条件码是：[{}]",
+              __FUNCTION__,
+              str_output_path,
+              strResultShpName,
+              i,
+              iResult);
             continue;
           }
         }
@@ -20905,8 +20903,12 @@ SE_Error BaseVectorOdata2Shapefile::DZB2Shapefile_GeoSRS(
           if (iResult != 0 && iResult != -2)
           {
             //	如果创建失败，则跳过，将相关信息写入到日志中
-            std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）的结果图层（" + strResultShpName + "）中创建多点要素失败！";
-            logger->error(msg);
+            logger->error("函数[{}]：在[{}/{}.shp]中创建索引为 [{}] 的多点要素失败，返回条件码是：[{}]",
+              __FUNCTION__,
+              str_output_path,
+              strResultShpName,
+              i,
+              iResult);
             continue;
           }
         }
@@ -21014,8 +21016,12 @@ SE_Error BaseVectorOdata2Shapefile::DZB2Shapefile_GeoSRS(
             if (iResult != 0 && iResult != -2)
             {
               //	如果创建失败，则跳过，将相关信息写入到日志中
-              std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）的结果图层（" + strResultShpFileName + "）中创建点要素失败！";
-              logger->error(msg);
+              logger->error("函数[{}]：在[{}/{}.shp]中创建索引为 [{}] 的点要素失败，返回条件码是：[{}]",
+                __FUNCTION__,
+                str_output_path,
+                strResultShpFileName,
+                i,
+                iResult);
               continue;
             }
           }
@@ -21118,8 +21124,12 @@ SE_Error BaseVectorOdata2Shapefile::DZB2Shapefile_GeoSRS(
             if (iResult != 0 && iResult != -2)
             {
               //	如果创建失败，则跳过，将相关信息写入到日志中
-              std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）的结果图层（" + strResultShpFileName + "）中创建线要素失败！";
-              logger->error(msg);
+              logger->error("函数[{}]：在[{}/{}.shp]中创建索引为 [{}] 的线要素失败，返回条件码是：[{}]",
+                __FUNCTION__,
+                str_output_path,
+                strResultShpFileName,
+                i,
+                iResult);
               continue;
             }
           }
@@ -21163,7 +21173,7 @@ SE_Error BaseVectorOdata2Shapefile::DZB2Shapefile_GeoSRS(
           string strCPGFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_polygon.cpg";
           string strPolygonShpFilePath = str_output_path + "/" + strSheetNumber + "_" + vLayerType[iLayerIndex] + "_polygon.shp";
 
-          //创建结果数据源
+          // 创建结果数据源
           GDALDataset* poResultDS;
           poResultDS = poDriver->Create(strPolygonShpFilePath.c_str(), 0, 0, 0, GDT_Unknown, NULL);
           if (poResultDS == NULL)
@@ -21210,16 +21220,29 @@ SE_Error BaseVectorOdata2Shapefile::DZB2Shapefile_GeoSRS(
           for (int i = 0; i < vShpExteriorPolygons.size(); i++)
           {
             vector<vector<SE_DPoint>> vInterior = vShpInteriorPolygons[i];
-            iResult = BaseVectorOdata2ShapefileImp::Set_Polygon(poResultLayer,
+            //iResult = BaseVectorOdata2ShapefileImp::Set_Polygon(poResultLayer,
+            //  vShpExteriorPolygons[i],
+            //  vInterior,
+            //  vPolygonFieldValues[i],
+            //  vLayerType[iLayerIndex]);
+
+            iResult = BaseVectorOdata2ShapefileImp::Set_Polygon(
+              poResultLayer,
               vShpExteriorPolygons[i],
               vInterior,
-              vPolygonFieldValues[i],
-              vLayerType[iLayerIndex]);
-            if (iResult != 0 && iResult != -2)
+              vPolygonFieldValues[i]);
+
+
+            // 如果返回值不是 0，则说明设置属性出现了错误
+            if (iResult != 0)
             {
               //	如果创建失败，则跳过，将相关信息写入到日志中
-              std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）的结果图层（" + strResultShpFileName + "）中创建面要素失败！";
-              logger->error(msg);
+              logger->error("函数[{}]：在[{}/{}.shp]中创建索引为 [{}] 的面要素失败，返回条件码是：[{}]",
+                __FUNCTION__,
+                str_output_path,
+                strResultShpFileName,
+                i,
+                iResult);
               continue;
             }
           }
@@ -23881,11 +23904,11 @@ SE_Error BaseVectorOdata2Shapefile::DZB2Shapefile_ProjSRS(
           for (int i = 0; i < vShpExteriorPolygons.size(); i++)
           {
             vector<vector<SE_DPoint>> vInterior = vShpInteriorPolygons[i];
-            iResult = BaseVectorOdata2ShapefileImp::Set_Polygon(poResultLayer,
+            iResult = BaseVectorOdata2ShapefileImp::Set_Polygon(
+              poResultLayer,
               vShpExteriorPolygons[i],
               vInterior,
-              vPolygonFieldValues[i],
-              vLayerType[iLayerIndex]);
+              vPolygonFieldValues[i]);
             if (iResult != 0 && iResult != -2) {
               fprintf(fp, "%s Set_Polygon failed!\n", vLayerType[iLayerIndex].c_str());
               fflush(fp);
@@ -26432,8 +26455,12 @@ SE_Error BaseVectorOdata2Shapefile::DZB2Shapefile_ProjSRS(
           if (iResult != 0 && iResult != -2)
           {
             //	如果创建失败，则跳过，将相关信息写入到日志中
-            std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）的结果图层（" + strResultShpName + "）中创建点要素失败！";
-            logger->error(msg);
+            logger->error("函数[{}]：在[{}/{}.shp]中创建索引为 [{}] 的点要素失败，返回条件码是：[{}]",
+              __FUNCTION__,
+              str_output_path,
+              strResultShpName,
+              i,
+              iResult);
             continue;
           }
         }
@@ -26539,8 +26566,12 @@ SE_Error BaseVectorOdata2Shapefile::DZB2Shapefile_ProjSRS(
           if (iResult != 0 && iResult != -2)
           {
             //	如果创建失败，则跳过，将相关信息写入到日志中
-            std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）的结果图层（" + strResultShpName + "）中创建多点要素失败！";
-            logger->error(msg);
+            logger->error("函数[{}]：在[{}/{}.shp]中创建索引为 [{}] 的多点要素失败，返回条件码是：[{}]",
+              __FUNCTION__,
+              str_output_path,
+              strResultShpName,
+              i,
+              iResult);
             continue;
           }
         }
@@ -26637,8 +26668,12 @@ SE_Error BaseVectorOdata2Shapefile::DZB2Shapefile_ProjSRS(
             if (iResult != 0 && iResult != -2)
             {
               //	如果创建失败，则跳过，将相关信息写入到日志中
-              std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）的结果图层（" + strResultShpFileName + "）中创建点要素失败！";
-              logger->error(msg);
+              logger->error("函数[{}]：在[{}/{}.shp]中创建索引为 [{}] 的点要素失败，返回条件码是：[{}]",
+                __FUNCTION__,
+                str_output_path,
+                strResultShpFileName,
+                i,
+                iResult);
               continue;
             }
           }
@@ -26731,8 +26766,12 @@ SE_Error BaseVectorOdata2Shapefile::DZB2Shapefile_ProjSRS(
             if (iResult != 0 && iResult != -2)
             {
               //	如果创建失败，则跳过，将相关信息写入到日志中
-              std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）的结果图层（" + strResultShpFileName + "）中创建线要素失败！";
-              logger->error(msg);
+              logger->error("函数[{}]：在[{}/{}.shp]中创建索引为 [{}] 的线要素失败，返回条件码是：[{}]",
+                __FUNCTION__,
+                str_output_path,
+                strResultShpFileName,
+                i,
+                iResult);
               continue;
             }
           }
@@ -26812,16 +26851,20 @@ SE_Error BaseVectorOdata2Shapefile::DZB2Shapefile_ProjSRS(
           for (int i = 0; i < vShpExteriorPolygons.size(); i++)
           {
             vector<vector<SE_DPoint>> vInterior = vShpInteriorPolygons[i];
-            iResult = BaseVectorOdata2ShapefileImp::Set_Polygon(poResultLayer,
+            iResult = BaseVectorOdata2ShapefileImp::Set_Polygon(
+              poResultLayer,
               vShpExteriorPolygons[i],
               vInterior,
-              vPolygonFieldValues[i],
-              vLayerType[iLayerIndex]);
+              vPolygonFieldValues[i]);
             if (iResult != 0 && iResult != -2)
             {
               //	如果创建失败，则跳过，将相关信息写入到日志中
-              std::string msg = "在目录（" + str_output_path + "/" + strSheetNumber + "）的结果图层（" + strResultShpFileName + "）中创建面要素失败！";
-              logger->error(msg);
+              logger->error("函数[{}]：在[{}/{}.shp]中创建索引为 [{}] 的面要素失败，返回条件码是：[{}]",
+                __FUNCTION__,
+                str_output_path,
+                strResultShpFileName,
+                i,
+                iResult);
               continue;
             }
           }
@@ -29350,11 +29393,11 @@ SE_Error BaseVectorOdata2Shapefile::DZB2Shapefile_OriginSRS(
           for (int i = 0; i < vShpExteriorPolygons.size(); i++)
           {
             vector<vector<SE_DPoint>> vInterior = vShpInteriorPolygons[i];
-            iResult = BaseVectorOdata2ShapefileImp::Set_Polygon(poResultLayer,
+            iResult = BaseVectorOdata2ShapefileImp::Set_Polygon(
+              poResultLayer,
               vShpExteriorPolygons[i],
               vInterior,
-              vPolygonFieldValues[i],
-              vLayerType[iLayerIndex]);
+              vPolygonFieldValues[i]);
             if (iResult != 0 && iResult != -2) {
               fprintf(fp, "%s Set_Polygon failed!\n", vLayerType[iLayerIndex].c_str());
               fflush(fp);
@@ -31946,11 +31989,11 @@ SE_Error BaseVectorOdata2Shapefile::DZB2Shapefile_OriginSRS(
           for (int i = 0; i < vShpExteriorPolygons.size(); i++)
           {
             vector<vector<SE_DPoint>> vInterior = vShpInteriorPolygons[i];
-            iResult = BaseVectorOdata2ShapefileImp::Set_Polygon(poResultLayer,
+            iResult = BaseVectorOdata2ShapefileImp::Set_Polygon(
+              poResultLayer,
               vShpExteriorPolygons[i],
               vInterior,
-              vPolygonFieldValues[i],
-              vLayerType[iLayerIndex]);
+              vPolygonFieldValues[i]);
             if (iResult != 0 && iResult != -2)
             {
               //	如果创建失败，则跳过，将相关信息写入到日志中

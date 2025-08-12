@@ -25,9 +25,11 @@
 
 #pragma region "全局变量、常量"
 //  全局配置表
-std::unordered_map<std::string, std::vector<FieldDefinition>> g_layerFieldConfig;
+std::unordered_map<std::string, std::vector<FieldDefinition>> globalLayerFieldConfig4JBDX;
+std::unordered_map<std::string, std::vector<FieldDefinition>> globalLayerFieldConfig4DZB;
 std::mutex g_configMutex;
-bool g_configLoaded = false;
+bool globalConfigLoaded4JBDX = false;
+bool globalConfigLoaded4DZB = false;
 
 #define DEGREE_2_RADIAN  0.017453292519943
 #define RADIAN_2_DEGREE 57.295779513082321
@@ -272,16 +274,16 @@ void BaseVectorOdata2ShapefileImp::GetLayerTypeFromSMS4DZB(string strSMSPath, ve
     return;
   }
 
-  // 读取到第97行
+  // TODO:需要根据不同的数据格式来设置不同的读取行，目前针对“航天宏图”生产的数据读取到第98行
   char line[2048] = "";
-  for (int i = 1; i < 98; i++) {
+  for (int i = 1; i < 99; i++) {
     if (!fgets(line, sizeof(line), fp)) {
       fclose(fp);
       return;
     }
   }
 
-  // 读取第98行：层数
+  // TODO:需要根据不同的数据格式来设置不同的读取行，目前针对“航天宏图”生产的数据读取到第99行，这行标识层数
   int iLayerCount = 0;
   if (!fgets(line, sizeof(line), fp)) {
     fclose(fp);
@@ -294,7 +296,7 @@ void BaseVectorOdata2ShapefileImp::GetLayerTypeFromSMS4DZB(string strSMSPath, ve
     iLayerCount = atoi(token);
   }
 
-  // 读取第99行：层名列表（用中文符号、分隔）
+  // TODO:需要根据不同的数据格式来设置不同的读取行，目前针对“航天宏图”生产的数据读取到第100行，这行标识层名列表（用中文符号、分隔）
   char layerNames[2048] = "";
   if (!fgets(layerNames, sizeof(layerNames), fp)) {
     fclose(fp);
@@ -769,75 +771,211 @@ bool BaseVectorOdata2ShapefileImp::LoadSXFile(
 	{
 		iFieldCount = 8;
 	}
-	// -------------读点属性-----------------//
-	fscanf(fp, "%s", temp);
-	fscanf(fp, "%d", &iPointCount);
-	if (iPointCount > 0)
-	{
-		for (int i = 0; i < iPointCount; i++)
-		{
-			// 点要素转shp后多Angle字段，属性默认为0
-			// 单个要素的所有属性值
-			vector<string> vFeatureAttrs;
-			vFeatureAttrs.clear();
+  // DZB数据
+  else if (strLayerType == "T")
+  {
+    iFieldCount = 36;
+  }
+  else if (strLayerType == "U")
+  {
+    iFieldCount = 30;
+  }
+  else if (strLayerType == "V")
+  {
+    iFieldCount = 41;
+  }
+  else if (strLayerType == "W")
+  {
+    iFieldCount = 20;
+  }
+  else if (strLayerType == "X")
+  {
+    iFieldCount = 25;
+  }
+  else if (strLayerType == "Y")
+  {
+    iFieldCount = 17;
+  }
 
-			vFeatureAttrs.push_back("0");
-			for (int j = 0; j < iFieldCount; j++)
-			{
-				char szTemp[200] = "";
-				fscanf(fp, "%s", szTemp);
-				vFeatureAttrs.push_back(szTemp);
-			}
-			// 最后增加图号属性
-			vFeatureAttrs.push_back(strSheetNumber);
-			vPointFieldValues.push_back(vFeatureAttrs);
-		}
-	}
+  /*
+  1、TODO：需要针对不同类型的数据设置读取方式，这里目前涉及到两种大的数据格式
+    1.1 JBDX
+    1.2 DZB
+  2、针对 DZB 数据目前存在两种类型
+    1.1 最后多了两列。
+    1.2 最后没有多两列。
+  */
 
-	// -------------读线属性-----------------//
-	fscanf(fp, "%s", temp);
-	fscanf(fp, "%d", &iLineCount);
-	if (iLineCount > 0)
-	{
-		for (int i = 0; i < iLineCount; i++)
-		{
-			vector<string> vFeatureAttrs;	// 单个要素的所有属性值
-			vFeatureAttrs.clear();
+  // 针对 JBDX 数据格式
+  if (strLayerType == "T" || strLayerType == "U" ||
+    strLayerType == "V" || strLayerType == "W" ||
+    strLayerType == "X" || strLayerType == "Y")
+  {
+    // TODO：需要针对不同类型的数据设置读取方式，目前处理的是“航天宏图”生产的数据类型。
 
-			for (int j = 0; j < iFieldCount; j++)
-			{
-				char szTemp[200] = "";
-				fscanf(fp, "%s", szTemp);
-				vFeatureAttrs.push_back(szTemp);
-			}
-			// 最后增加图号属性
-			vFeatureAttrs.push_back(strSheetNumber);
-			vLineFieldValues.push_back(vFeatureAttrs);
-		}
-	}
+    // -------------读点属性-----------------//
+    fscanf(fp, "%s", temp);
+    fscanf(fp, "%d", &iPointCount);
+    if (iPointCount > 0)
+    {
+      for (int i = 0; i < iPointCount; i++)
+      {
+        // 点要素转shp后多Angle字段，属性默认为0
+        vector<string> vFeatureAttrs;
+        vFeatureAttrs.clear();
 
-	// -------------读面属性-----------------//
-	fscanf(fp, "%s", temp);
-	fscanf(fp, "%d", &iPolygonCount);
-	if (iPolygonCount > 0)
-	{
-		for (int i = 0; i < iPolygonCount; i++)
-		{
-			vector<string> vFeatureAttrs;	// 单个要素的所有属性值
-			vFeatureAttrs.clear();
+        // 1、角度字段
+        vFeatureAttrs.push_back("0");
+        // 2、SX 文件指定字段
+        for (int j = 0; j < (iFieldCount + 2); j++)
+        {
+          char szTemp[200] = "";
+          fscanf(fp, "%s", szTemp);
+          // 因为“航天宏图”生产的数据多了两列，所以需要跳过这两列数据的读取。
+          if (j >= iFieldCount)
+          {
+            continue;
+          }
 
-			for (int j = 0; j < iFieldCount; j++)
-			{
-				char szTemp[200] = "";
-				fscanf(fp, "%s", szTemp);
-				vFeatureAttrs.push_back(szTemp);
-			}
-			// 最后增加图号属性
-			vFeatureAttrs.push_back(strSheetNumber);
-			vPolygonFieldValues.push_back(vFeatureAttrs);
-		}
-	}
-	fclose(fp);
+          vFeatureAttrs.push_back(szTemp);
+        }
+        // 3、图幅号字段
+        vFeatureAttrs.push_back(strSheetNumber);
+        vPointFieldValues.push_back(vFeatureAttrs);
+      }
+    }
+
+    // -------------读线属性-----------------//
+    fscanf(fp, "%s", temp);
+    fscanf(fp, "%d", &iLineCount);
+    if (iLineCount > 0)
+    {
+      for (int i = 0; i < iLineCount; i++)
+      {
+        // 单个要素的所有属性值
+        vector<string> vFeatureAttrs;	
+        vFeatureAttrs.clear();
+
+        // 1、SX 文件指定字段
+        for (int j = 0; j < (iFieldCount + 2); j++)
+        {
+          char szTemp[200] = "";
+          fscanf(fp, "%s", szTemp);
+          // 因为“航天宏图”生产的数据多了两列，所以需要跳过这两列数据的读取。
+          if (j >= iFieldCount)
+          {
+            continue;
+          }
+          vFeatureAttrs.push_back(szTemp);
+        }
+        // 2、图幅号字段
+        vFeatureAttrs.push_back(strSheetNumber);
+        vLineFieldValues.push_back(vFeatureAttrs);
+      }
+    }
+
+    // -------------读面属性-----------------//
+    fscanf(fp, "%s", temp);
+    fscanf(fp, "%d", &iPolygonCount);
+    if (iPolygonCount > 0)
+    {
+      for (int i = 0; i < iPolygonCount; i++)
+      {
+        // 单个要素的所有属性值
+        vector<string> vFeatureAttrs;
+        vFeatureAttrs.clear();
+        // 1、SX 文件指定字段
+        for (int j = 0; j < (iFieldCount + 2); j++)
+        {
+          char szTemp[200] = "";
+          fscanf(fp, "%s", szTemp);
+          // 因为“航天宏图”生产的数据多了两列，所以需要跳过这两列数据的读取。
+          if (j >= iFieldCount)
+          {
+            continue;
+          }
+          vFeatureAttrs.push_back(szTemp);
+        }
+        // 2、图幅号字段
+        vFeatureAttrs.push_back(strSheetNumber);
+        vPolygonFieldValues.push_back(vFeatureAttrs);
+      }
+    }
+  }
+  // 针对 JBDX 数据格式
+  else
+  {
+    // -------------读点属性-----------------//
+    fscanf(fp, "%s", temp);
+    fscanf(fp, "%d", &iPointCount);
+    if (iPointCount > 0)
+    {
+      for (int i = 0; i < iPointCount; i++)
+      {
+        // 点要素转shp后多Angle字段，属性默认为0
+        // 单个要素的所有属性值
+        vector<string> vFeatureAttrs;
+        vFeatureAttrs.clear();
+
+        vFeatureAttrs.push_back("0");
+        for (int j = 0; j < iFieldCount; j++)
+        {
+          char szTemp[200] = "";
+          fscanf(fp, "%s", szTemp);
+          vFeatureAttrs.push_back(szTemp);
+        }
+        // 最后增加图号属性
+        vFeatureAttrs.push_back(strSheetNumber);
+        vPointFieldValues.push_back(vFeatureAttrs);
+      }
+    }
+
+    // -------------读线属性-----------------//
+    fscanf(fp, "%s", temp);
+    fscanf(fp, "%d", &iLineCount);
+    if (iLineCount > 0)
+    {
+      for (int i = 0; i < iLineCount; i++)
+      {
+        vector<string> vFeatureAttrs;	// 单个要素的所有属性值
+        vFeatureAttrs.clear();
+
+        for (int j = 0; j < iFieldCount; j++)
+        {
+          char szTemp[200] = "";
+          fscanf(fp, "%s", szTemp);
+          vFeatureAttrs.push_back(szTemp);
+        }
+        // 最后增加图号属性
+        vFeatureAttrs.push_back(strSheetNumber);
+        vLineFieldValues.push_back(vFeatureAttrs);
+      }
+    }
+
+    // -------------读面属性-----------------//
+    fscanf(fp, "%s", temp);
+    fscanf(fp, "%d", &iPolygonCount);
+    if (iPolygonCount > 0)
+    {
+      for (int i = 0; i < iPolygonCount; i++)
+      {
+        vector<string> vFeatureAttrs;	// 单个要素的所有属性值
+        vFeatureAttrs.clear();
+
+        for (int j = 0; j < iFieldCount; j++)
+        {
+          char szTemp[200] = "";
+          fscanf(fp, "%s", szTemp);
+          vFeatureAttrs.push_back(szTemp);
+        }
+        // 最后增加图号属性
+        vFeatureAttrs.push_back(strSheetNumber);
+        vPolygonFieldValues.push_back(vFeatureAttrs);
+      }
+    }
+  }
+
+  fclose(fp);
 	return true;
 }
 
@@ -1256,7 +1394,13 @@ void BaseVectorOdata2ShapefileImp::GetLayerTypeByName(const std::string& strLaye
       {"军事", "Q"},
       {"注记", "R"},
       {"图外", "Y"},
-      {"土体", "T"}
+      // DZB数据图层映射（TODO：JBDX中的图外图层同DZB中的资源图层可能冲突，需要分离）
+      {"土体", "T"},
+      {"岩体", "U"},
+      {"水体", "V"},
+      {"地质构造", "W"},
+      {"地质灾害", "X"},
+      {"资源", "Y"}
   };
 
   // 遍历映射，查找匹配的子字符串
@@ -1430,11 +1574,11 @@ std::string BaseVectorOdata2ShapefileImp::GetLibraryDirectory()
   return fullPath.substr(0, lastSlash);
 }
 
-//  加载JSON配置文件
-void BaseVectorOdata2ShapefileImp::LoadShapefileConfig(const std::string& configRelativePath)
+//  JBDX2Shapefile：加载JSON配置文件
+void BaseVectorOdata2ShapefileImp::LoadShapefileConfig4JBDX(const std::string& configRelativePath)
 {
   std::lock_guard<std::mutex> lock(g_configMutex);
-  if (g_configLoaded)
+  if (globalConfigLoaded4JBDX)
   {
     //  配置文件已加载
     return;
@@ -1474,15 +1618,15 @@ void BaseVectorOdata2ShapefileImp::LoadShapefileConfig(const std::string& config
       FieldDefinition field;
       field.chinese_field_name = fieldJson.value("chinese_field_name", "");
       field.english_field_name = fieldJson.value("english_field_name", "");
-      field.field_type_str = fieldJson.value("filed_type", "");
-      field.field_width = std::stoi(fieldJson.value("filed_width", "0"));
-      field.field_precision = std::stoi(fieldJson.value("filed_precision", "0"));
-      field.field_note = fieldJson.value("filed_note", "");
+      field.field_type_str = fieldJson.value("field_type", "");
+      field.field_width = std::stoi(fieldJson.value("field_width", "0"));
+      field.field_precision = std::stoi(fieldJson.value("field_precision", "0"));
+      field.field_note = fieldJson.value("field_note", "");
 
       fieldDefs.push_back(field);
     }
 
-    g_layerFieldConfig[layerType] = fieldDefs;
+    globalLayerFieldConfig4JBDX[layerType] = fieldDefs;
   }
 
   // Optionally, handle "shapefile_attribute_encoding_2024"
@@ -1492,7 +1636,72 @@ void BaseVectorOdata2ShapefileImp::LoadShapefileConfig(const std::string& config
     //  处理字符集编码相关内容
   }
 
-  g_configLoaded = true;
+  globalConfigLoaded4JBDX = true;
+}
+
+//  DZB2Shapefile：加载JSON配置文件
+void BaseVectorOdata2ShapefileImp::LoadShapefileConfig4DZB(const std::string& configRelativePath)
+{
+  std::lock_guard<std::mutex> lock(g_configMutex);
+  if (globalConfigLoaded4DZB)
+  {
+    //  配置文件已加载
+    return;
+  }
+
+  //  获取动态库所在目录
+  std::string libDir = GetLibraryDirectory();
+
+  // Build full path to config file
+  std::string configPath = libDir + "/" + configRelativePath;
+
+  // Open and read the JSON file
+  std::ifstream configFile(configPath);
+  if (!configFile.is_open())
+  {
+    throw std::runtime_error("Failed to open config file: " + configPath);
+  }
+
+  nlohmann::json jsonConfig;
+  configFile >> jsonConfig;
+
+  // Parse the "odata_version_2024_fields" section
+  if (!jsonConfig.contains("odata_version_2024_fields"))
+  {
+    throw std::runtime_error("Config file missing 'odata_version_2024_fields' section.");
+  }
+
+  nlohmann::json fieldsConfig = jsonConfig["odata_version_2024_fields"];
+
+  for (auto it = fieldsConfig.begin(); it != fieldsConfig.end(); ++it)
+  {
+    std::string layerType = it.key();
+    std::vector<FieldDefinition> fieldDefs;
+
+    for (const auto& fieldJson : it.value())
+    {
+      FieldDefinition field;
+      field.chinese_field_name = fieldJson.value("chinese_field_name", "");
+      field.english_field_name = fieldJson.value("english_field_name", "");
+      field.field_type_str = fieldJson.value("field_type", "");
+      field.field_width = std::stoi(fieldJson.value("field_width", "0"));
+      field.field_precision = std::stoi(fieldJson.value("field_precision", "0"));
+      field.field_note = fieldJson.value("field_note", "");
+
+      fieldDefs.push_back(field);
+    }
+
+    globalLayerFieldConfig4DZB[layerType] = fieldDefs;
+  }
+
+  // Optionally, handle "shapefile_attribute_encoding_2024"
+  if (jsonConfig.contains("shapefile_attribute_encoding_2024"))
+  {
+    std::string encoding = jsonConfig["shapefile_attribute_encoding_2024"];
+    //  处理字符集编码相关内容
+  }
+
+  globalConfigLoaded4DZB = true;
 }
 
 //  JBDX2Shapefile：根据要素图层类型创建属性字段
@@ -1505,7 +1714,7 @@ void BaseVectorOdata2ShapefileImp::CreateShpFieldsByLayerType4JBDX(
   vector<int>& vFieldPrecision)
 {
   //  加载配置文件
-  LoadShapefileConfig("PluginVectorOdata2ShapefileToolboxConfig/JBDX2ShapefileConfig.json");
+  LoadShapefileConfig4JBDX("PluginVectorOdata2ShapefileToolboxConfig/JBDX2ShapefileConfig.json");
   //  属性字段类型改成OFTString，方便存储属性值
   if (strGeoType == "Point")	// 点
   {
@@ -1513,12 +1722,12 @@ void BaseVectorOdata2ShapefileImp::CreateShpFieldsByLayerType4JBDX(
     //  字段类型
     //  字段宽度
     //  字段精度
-    for (int i = 0; i < g_layerFieldConfig[strLayerType].size(); i++)
+    for (int i = 0; i < globalLayerFieldConfig4JBDX[strLayerType].size(); i++)
     {
-      vFieldsName.push_back(g_layerFieldConfig[strLayerType][i].english_field_name);
-      vFieldType.push_back(StringToOGRFieldType(g_layerFieldConfig[strLayerType][i].field_type_str));
-      vFieldWidth.push_back(g_layerFieldConfig[strLayerType][i].field_width);
-      vFieldPrecision.push_back(g_layerFieldConfig[strLayerType][i].field_precision);
+      vFieldsName.push_back(globalLayerFieldConfig4JBDX[strLayerType][i].english_field_name);
+      vFieldType.push_back(StringToOGRFieldType(globalLayerFieldConfig4JBDX[strLayerType][i].field_type_str));
+      vFieldWidth.push_back(globalLayerFieldConfig4JBDX[strLayerType][i].field_width);
+      vFieldPrecision.push_back(globalLayerFieldConfig4JBDX[strLayerType][i].field_precision);
     }
 
   }
@@ -1528,12 +1737,12 @@ void BaseVectorOdata2ShapefileImp::CreateShpFieldsByLayerType4JBDX(
     //  字段类型
     //  字段宽度
     //  字段精度
-    for (int i = 1; i < g_layerFieldConfig[strLayerType].size(); i++)
+    for (int i = 1; i < globalLayerFieldConfig4JBDX[strLayerType].size(); i++)
     {
-      vFieldsName.push_back(g_layerFieldConfig[strLayerType][i].english_field_name);
-      vFieldType.push_back(StringToOGRFieldType(g_layerFieldConfig[strLayerType][i].field_type_str));
-      vFieldWidth.push_back(g_layerFieldConfig[strLayerType][i].field_width);
-      vFieldPrecision.push_back(g_layerFieldConfig[strLayerType][i].field_precision);
+      vFieldsName.push_back(globalLayerFieldConfig4JBDX[strLayerType][i].english_field_name);
+      vFieldType.push_back(StringToOGRFieldType(globalLayerFieldConfig4JBDX[strLayerType][i].field_type_str));
+      vFieldWidth.push_back(globalLayerFieldConfig4JBDX[strLayerType][i].field_width);
+      vFieldPrecision.push_back(globalLayerFieldConfig4JBDX[strLayerType][i].field_precision);
     }
 
   }
@@ -1549,7 +1758,7 @@ void BaseVectorOdata2ShapefileImp::CreateShpFieldsByLayerType4DZB(
   vector<int>& vFieldPrecision)
 {
   //  加载配置文件
-  LoadShapefileConfig("PluginVectorOdata2ShapefileToolboxConfig/DZB2ShapefileConfig.json");
+  LoadShapefileConfig4DZB("PluginVectorOdata2ShapefileToolboxConfig/DZB2ShapefileConfig.json");
   //  属性字段类型改成OFTString，方便存储属性值
   if (strGeoType == "Point")	// 点
   {
@@ -1557,12 +1766,12 @@ void BaseVectorOdata2ShapefileImp::CreateShpFieldsByLayerType4DZB(
     //  字段类型
     //  字段宽度
     //  字段精度
-    for (int i = 0; i < g_layerFieldConfig[strLayerType].size(); i++)
+    for (int i = 0; i < globalLayerFieldConfig4DZB[strLayerType].size(); i++)
     {
-      vFieldsName.push_back(g_layerFieldConfig[strLayerType][i].english_field_name);
-      vFieldType.push_back(StringToOGRFieldType(g_layerFieldConfig[strLayerType][i].field_type_str));
-      vFieldWidth.push_back(g_layerFieldConfig[strLayerType][i].field_width);
-      vFieldPrecision.push_back(g_layerFieldConfig[strLayerType][i].field_precision);
+      vFieldsName.push_back(globalLayerFieldConfig4DZB[strLayerType][i].english_field_name);
+      vFieldType.push_back(StringToOGRFieldType(globalLayerFieldConfig4DZB[strLayerType][i].field_type_str));
+      vFieldWidth.push_back(globalLayerFieldConfig4DZB[strLayerType][i].field_width);
+      vFieldPrecision.push_back(globalLayerFieldConfig4DZB[strLayerType][i].field_precision);
     }
 
   }
@@ -1572,12 +1781,12 @@ void BaseVectorOdata2ShapefileImp::CreateShpFieldsByLayerType4DZB(
     //  字段类型
     //  字段宽度
     //  字段精度
-    for (int i = 1; i < g_layerFieldConfig[strLayerType].size(); i++)
+    for (int i = 1; i < globalLayerFieldConfig4DZB[strLayerType].size(); i++)
     {
-      vFieldsName.push_back(g_layerFieldConfig[strLayerType][i].english_field_name);
-      vFieldType.push_back(StringToOGRFieldType(g_layerFieldConfig[strLayerType][i].field_type_str));
-      vFieldWidth.push_back(g_layerFieldConfig[strLayerType][i].field_width);
-      vFieldPrecision.push_back(g_layerFieldConfig[strLayerType][i].field_precision);
+      vFieldsName.push_back(globalLayerFieldConfig4DZB[strLayerType][i].english_field_name);
+      vFieldType.push_back(StringToOGRFieldType(globalLayerFieldConfig4DZB[strLayerType][i].field_type_str));
+      vFieldWidth.push_back(globalLayerFieldConfig4DZB[strLayerType][i].field_width);
+      vFieldPrecision.push_back(globalLayerFieldConfig4DZB[strLayerType][i].field_precision);
     }
 
   }
@@ -1642,1739 +1851,1650 @@ bool BaseVectorOdata2ShapefileImp::CreateShapefileCPG(
 
 
 //  点图层：根据字段类型赋值（TODO:采用配置文件的方式进行重构）
+//int BaseVectorOdata2ShapefileImp::Set_Point(
+//  OGRLayer* poLayer,
+//  double x,
+//  double y,
+//  double z,
+//  vector<string>& vFieldValues,
+//  string strLayerType)
+//{
+//  //  检查图层指针是否为空
+//  if (poLayer == NULL)
+//  {
+//    return -1;
+//  }
+//  //  创建空的要素指针
+//  OGRFeature* poFeature;
+//  //  创建要素
+//  poFeature = OGRFeature::CreateFeature(poLayer->GetLayerDefn());
+//  //  2021-08-15-修改问题：编码为0的点，并且图层类型不为R时创建图层时不生成对应的点要素
+//  if (_atoi64(vFieldValues[2].c_str()) == 0 && strLayerType != "R" && strLayerType != "RR")
+//  {
+//    //printf("strLayerType = %s\t id = %s\n", strLayerType.c_str(), vFieldValues[1].c_str());
+//    return -2;
+//  }
+//
+//  // 测量控制点（14个字段）
+//  if (strLayerType == "A")
+//  {
+//    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//    poFeature->SetField(3, vFieldValues[3].c_str());
+//    poFeature->SetField(4, vFieldValues[4].c_str());
+//    poFeature->SetField(5, _atoi64(vFieldValues[5].c_str()));
+//    poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//    poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//    poFeature->SetField(8, atof(vFieldValues[8].c_str()));
+//    poFeature->SetField(9, atof(vFieldValues[9].c_str()));
+//    poFeature->SetField(10, vFieldValues[10].c_str());
+//    poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
+//    poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
+//    poFeature->SetField(13, vFieldValues[13].c_str());
+//  }
+//  // 工农业社会文化设施（12个字段）
+//  else if (strLayerType == "B")
+//  {
+//    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//    poFeature->SetField(3, vFieldValues[3].c_str());
+//    poFeature->SetField(4, vFieldValues[4].c_str());
+//    poFeature->SetField(5, vFieldValues[5].c_str());
+//    poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//    poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//    poFeature->SetField(8, vFieldValues[8].c_str());
+//    poFeature->SetField(9, _atoi64(vFieldValues[9].c_str()));
+//    poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
+//    poFeature->SetField(11, vFieldValues[11].c_str());
+//  }
+//  // 居民地（13个字段）
+//  else if (strLayerType == "C")
+//  {
+//    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//    poFeature->SetField(3, vFieldValues[3].c_str());
+//    poFeature->SetField(4, vFieldValues[4].c_str());
+//    poFeature->SetField(5, _atoi64(vFieldValues[5].c_str()));
+//    poFeature->SetField(6, _atoi64(vFieldValues[6].c_str()));
+//    poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//    poFeature->SetField(8, vFieldValues[8].c_str());
+//    poFeature->SetField(9, vFieldValues[9].c_str());
+//    poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
+//    poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
+//    poFeature->SetField(12, vFieldValues[12].c_str());
+//  }
+//  // 陆地（23个字段）
+//  else if (strLayerType == "D")
+//  {
+//    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//    poFeature->SetField(3, vFieldValues[3].c_str());
+//    poFeature->SetField(4, vFieldValues[4].c_str());
+//    poFeature->SetField(5, vFieldValues[5].c_str());
+//    poFeature->SetField(6, vFieldValues[6].c_str());
+//    poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//    poFeature->SetField(8, atof(vFieldValues[8].c_str()));
+//    poFeature->SetField(9, atof(vFieldValues[9].c_str()));
+//    poFeature->SetField(10, atof(vFieldValues[10].c_str()));
+//    poFeature->SetField(11, atof(vFieldValues[11].c_str()));
+//    poFeature->SetField(12, atof(vFieldValues[12].c_str()));
+//    poFeature->SetField(13, atof(vFieldValues[13].c_str()));
+//    poFeature->SetField(14, _atoi64(vFieldValues[14].c_str()));
+//    poFeature->SetField(15, atof(vFieldValues[15].c_str()));
+//    poFeature->SetField(16, vFieldValues[16].c_str());
+//    poFeature->SetField(17, atof(vFieldValues[17].c_str()));
+//    poFeature->SetField(18, atof(vFieldValues[18].c_str()));
+//    poFeature->SetField(19, vFieldValues[19].c_str());
+//    poFeature->SetField(20, _atoi64(vFieldValues[20].c_str()));
+//    poFeature->SetField(21, _atoi64(vFieldValues[21].c_str()));
+//    poFeature->SetField(22, vFieldValues[22].c_str());
+//  }
+//  // 管线（14个字段）
+//  else if (strLayerType == "E")
+//  {
+//    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//    poFeature->SetField(3, vFieldValues[3].c_str());
+//    poFeature->SetField(4, vFieldValues[4].c_str());
+//    poFeature->SetField(5, atof(vFieldValues[5].c_str()));
+//    poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//    poFeature->SetField(7, vFieldValues[7].c_str());
+//    poFeature->SetField(8, vFieldValues[8].c_str());
+//    poFeature->SetField(9, vFieldValues[9].c_str());
+//    poFeature->SetField(10, vFieldValues[10].c_str());
+//    poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
+//    poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
+//    poFeature->SetField(13, vFieldValues[13].c_str());
+//  }
+//  // 水域陆地（26个字段）
+//  else if (strLayerType == "F")
+//  {
+//    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//    poFeature->SetField(3, vFieldValues[3].c_str());
+//    poFeature->SetField(4, vFieldValues[4].c_str());
+//    poFeature->SetField(5, atof(vFieldValues[5].c_str()));
+//    poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//    poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//    poFeature->SetField(8, _atoi64(vFieldValues[8].c_str()));
+//    poFeature->SetField(9, atof(vFieldValues[9].c_str()));
+//    poFeature->SetField(10, atof(vFieldValues[10].c_str()));
+//    poFeature->SetField(11, atof(vFieldValues[11].c_str()));
+//    poFeature->SetField(12, atof(vFieldValues[12].c_str()));
+//    poFeature->SetField(13, _atoi64(vFieldValues[13].c_str()));
+//    poFeature->SetField(14, vFieldValues[14].c_str());
+//    poFeature->SetField(15, vFieldValues[15].c_str());
+//    poFeature->SetField(16, vFieldValues[16].c_str());
+//    poFeature->SetField(17, vFieldValues[17].c_str());
+//    poFeature->SetField(18, vFieldValues[18].c_str());
+//    poFeature->SetField(19, vFieldValues[19].c_str());
+//    poFeature->SetField(20, vFieldValues[20].c_str());
+//    poFeature->SetField(21, vFieldValues[21].c_str());
+//    poFeature->SetField(22, vFieldValues[22].c_str());
+//    poFeature->SetField(23, _atoi64(vFieldValues[23].c_str()));
+//    poFeature->SetField(24, _atoi64(vFieldValues[24].c_str()));
+//    poFeature->SetField(25, vFieldValues[25].c_str());
+//  }
+//  // 海底地貌（19个字段）
+//  else if (strLayerType == "G")
+//  {
+//    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//    poFeature->SetField(3, vFieldValues[3].c_str());
+//    poFeature->SetField(4, vFieldValues[4].c_str());
+//    poFeature->SetField(5, atof(vFieldValues[5].c_str()));
+//    poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//    poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//    poFeature->SetField(8, vFieldValues[8].c_str());
+//    poFeature->SetField(9, vFieldValues[9].c_str());
+//    poFeature->SetField(10, vFieldValues[10].c_str());
+//    poFeature->SetField(11, vFieldValues[11].c_str());
+//    poFeature->SetField(12, vFieldValues[12].c_str());
+//    poFeature->SetField(13, vFieldValues[13].c_str());
+//    poFeature->SetField(14, vFieldValues[14].c_str());
+//    poFeature->SetField(15, vFieldValues[15].c_str());
+//    poFeature->SetField(16, _atoi64(vFieldValues[16].c_str()));
+//    poFeature->SetField(17, _atoi64(vFieldValues[17].c_str()));
+//    poFeature->SetField(18, vFieldValues[18].c_str());
+//  }
+//  // 礁石（21个字段）
+//  else if (strLayerType == "H")
+//  {
+//    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//    poFeature->SetField(3, vFieldValues[3].c_str());
+//    poFeature->SetField(4, vFieldValues[4].c_str());
+//    poFeature->SetField(5, atof(vFieldValues[5].c_str()));
+//    poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//    poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//    poFeature->SetField(8, vFieldValues[8].c_str());
+//    poFeature->SetField(9, vFieldValues[9].c_str());
+//    poFeature->SetField(10, vFieldValues[10].c_str());
+//    poFeature->SetField(11, vFieldValues[11].c_str());
+//    poFeature->SetField(12, vFieldValues[12].c_str());
+//    poFeature->SetField(13, vFieldValues[13].c_str());
+//    poFeature->SetField(14, vFieldValues[14].c_str());
+//    poFeature->SetField(15, vFieldValues[15].c_str());
+//    poFeature->SetField(16, vFieldValues[16].c_str());
+//    poFeature->SetField(17, vFieldValues[17].c_str());
+//    poFeature->SetField(18, _atoi64(vFieldValues[18].c_str()));
+//    poFeature->SetField(19, _atoi64(vFieldValues[19].c_str()));
+//    poFeature->SetField(20, vFieldValues[20].c_str());
+//  }
+//  // 水文（16个字段）
+//  else if (strLayerType == "I")
+//  {
+//    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//    poFeature->SetField(3, vFieldValues[3].c_str());
+//    poFeature->SetField(4, atof(vFieldValues[4].c_str()));
+//    poFeature->SetField(5, atof(vFieldValues[5].c_str()));
+//    poFeature->SetField(6, vFieldValues[6].c_str());
+//    poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//    poFeature->SetField(8, atof(vFieldValues[8].c_str()));
+//    poFeature->SetField(9, atof(vFieldValues[9].c_str()));
+//    poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
+//    poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
+//    poFeature->SetField(12, vFieldValues[12].c_str());
+//    poFeature->SetField(13, _atoi64(vFieldValues[13].c_str()));
+//    poFeature->SetField(14, _atoi64(vFieldValues[14].c_str()));
+//    poFeature->SetField(15, vFieldValues[15].c_str());
+//  }
+//  // 陆地地貌（14个字段）
+//  else if (strLayerType == "J")
+//  {
+//    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//    poFeature->SetField(3, vFieldValues[3].c_str());
+//    poFeature->SetField(4, vFieldValues[4].c_str());
+//    poFeature->SetField(5, vFieldValues[5].c_str());
+//    poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//    poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//    poFeature->SetField(8, atof(vFieldValues[8].c_str()));
+//    poFeature->SetField(9, atof(vFieldValues[9].c_str()));
+//    poFeature->SetField(10, vFieldValues[10].c_str());
+//    poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
+//    poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
+//    poFeature->SetField(13, vFieldValues[13].c_str());
+//  }
+//  // 境界与政区（14个字段）
+//  else if (strLayerType == "K")
+//  {
+//    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//    poFeature->SetField(3, vFieldValues[3].c_str());
+//    poFeature->SetField(4, vFieldValues[4].c_str());
+//    poFeature->SetField(5, vFieldValues[5].c_str());
+//    poFeature->SetField(6, _atoi64(vFieldValues[6].c_str()));
+//    poFeature->SetField(7, _atoi64(vFieldValues[7].c_str()));
+//    poFeature->SetField(8, atof(vFieldValues[8].c_str()));
+//    poFeature->SetField(9, atof(vFieldValues[9].c_str()));
+//    poFeature->SetField(10, vFieldValues[10].c_str());
+//    poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
+//    poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
+//    poFeature->SetField(13, vFieldValues[13].c_str());
+//  }
+//  // 植被（13个字段）
+//  else if (strLayerType == "L")
+//  {
+//    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//    poFeature->SetField(3, vFieldValues[3].c_str());
+//    poFeature->SetField(4, vFieldValues[4].c_str());
+//    poFeature->SetField(5, atof(vFieldValues[5].c_str()));
+//    poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//    poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//    poFeature->SetField(8, atof(vFieldValues[8].c_str()));
+//    poFeature->SetField(9, vFieldValues[9].c_str());
+//    poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
+//    poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
+//    poFeature->SetField(12, vFieldValues[12].c_str());
+//  }
+//  // 地磁要素（11个字段）
+//  else if (strLayerType == "M")
+//  {
+//    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//    poFeature->SetField(3, vFieldValues[3].c_str());
+//    poFeature->SetField(4, atof(vFieldValues[4].c_str()));
+//    poFeature->SetField(5, _atoi64(vFieldValues[5].c_str()));
+//    poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//    poFeature->SetField(7, vFieldValues[7].c_str());
+//    poFeature->SetField(8, _atoi64(vFieldValues[8].c_str()));
+//    poFeature->SetField(9, _atoi64(vFieldValues[9].c_str()));
+//    poFeature->SetField(10, vFieldValues[10].c_str());
+//  }
+//  // 助航设备及航道（29个字段）
+//  else if (strLayerType == "N")
+//  {
+//    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//    poFeature->SetField(3, vFieldValues[3].c_str());
+//    poFeature->SetField(4, vFieldValues[4].c_str());
+//    poFeature->SetField(5, vFieldValues[5].c_str());
+//    poFeature->SetField(6, _atoi64(vFieldValues[6].c_str()));
+//    poFeature->SetField(7, vFieldValues[7].c_str());
+//    poFeature->SetField(8, vFieldValues[8].c_str());
+//    poFeature->SetField(9, vFieldValues[9].c_str());
+//    poFeature->SetField(10, vFieldValues[10].c_str());
+//    poFeature->SetField(11, atof(vFieldValues[11].c_str()));
+//    poFeature->SetField(12, vFieldValues[12].c_str());
+//    poFeature->SetField(13, vFieldValues[13].c_str());
+//    poFeature->SetField(14, atof(vFieldValues[14].c_str()));
+//    poFeature->SetField(15, atof(vFieldValues[15].c_str()));
+//    poFeature->SetField(16, vFieldValues[16].c_str());
+//    poFeature->SetField(17, atof(vFieldValues[17].c_str()));
+//    poFeature->SetField(18, _atoi64(vFieldValues[18].c_str()));
+//    poFeature->SetField(19, atof(vFieldValues[19].c_str()));
+//    poFeature->SetField(20, atof(vFieldValues[20].c_str()));
+//    poFeature->SetField(21, _atoi64(vFieldValues[21].c_str()));
+//    poFeature->SetField(22, atof(vFieldValues[22].c_str()));
+//    poFeature->SetField(23, vFieldValues[23].c_str());
+//    poFeature->SetField(24, _atoi64(vFieldValues[24].c_str()));
+//    poFeature->SetField(25, vFieldValues[25].c_str());
+//    poFeature->SetField(26, _atoi64(vFieldValues[26].c_str()));
+//    poFeature->SetField(27, _atoi64(vFieldValues[27].c_str()));
+//    poFeature->SetField(28, vFieldValues[28].c_str());
+//  }
+//  // 海上区域界线（16个字段）
+//  else if (strLayerType == "O")
+//  {
+//    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//    poFeature->SetField(3, vFieldValues[3].c_str());
+//    poFeature->SetField(4, vFieldValues[4].c_str());
+//    poFeature->SetField(5, vFieldValues[5].c_str());
+//    poFeature->SetField(6, vFieldValues[6].c_str());
+//    poFeature->SetField(7, vFieldValues[7].c_str());
+//    poFeature->SetField(8, vFieldValues[8].c_str());
+//    poFeature->SetField(9, _atoi64(vFieldValues[9].c_str()));
+//    poFeature->SetField(10, atof(vFieldValues[10].c_str()));
+//    poFeature->SetField(11, atof(vFieldValues[11].c_str()));
+//    poFeature->SetField(12, vFieldValues[12].c_str());
+//    poFeature->SetField(13, _atoi64(vFieldValues[13].c_str()));
+//    poFeature->SetField(14, _atoi64(vFieldValues[14].c_str()));
+//    poFeature->SetField(15, vFieldValues[15].c_str());
+//  }
+//  // 航空要素（14个字段）
+//  else if (strLayerType == "P")
+//  {
+//    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//    poFeature->SetField(3, vFieldValues[3].c_str());
+//    poFeature->SetField(4, vFieldValues[4].c_str());
+//    poFeature->SetField(5, vFieldValues[5].c_str());
+//    poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//    poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//    poFeature->SetField(8, atof(vFieldValues[8].c_str()));
+//    poFeature->SetField(9, atof(vFieldValues[9].c_str()));
+//    poFeature->SetField(10, vFieldValues[10].c_str());
+//    poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
+//    poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
+//    poFeature->SetField(13, vFieldValues[13].c_str());
+//  }
+//  // 军事区域（10个字段）
+//  else if (strLayerType == "Q")
+//  {
+//    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//    poFeature->SetField(3, vFieldValues[3].c_str());
+//    poFeature->SetField(4, vFieldValues[4].c_str());
+//    poFeature->SetField(5, vFieldValues[5].c_str());
+//    poFeature->SetField(6, vFieldValues[6].c_str());
+//    poFeature->SetField(7, _atoi64(vFieldValues[7].c_str()));
+//    poFeature->SetField(8, _atoi64(vFieldValues[8].c_str()));
+//    poFeature->SetField(9, vFieldValues[9].c_str());
+//  }
+//  // 注记（旧版本：9个字段）
+//  else if (strLayerType == "R")
+//  {
+//    //  因为对图层进行创建字段的时候没有创建角度字段，所以这里没有对角度进行赋值
+//    poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
+//    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//    poFeature->SetField(2, vFieldValues[2].c_str());
+//    poFeature->SetField(3, vFieldValues[3].c_str());
+//    poFeature->SetField(4, vFieldValues[4].c_str());
+//    poFeature->SetField(5, atof(vFieldValues[5].c_str()));
+//    poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//    poFeature->SetField(7, vFieldValues[7].c_str());
+//    poFeature->SetField(8, vFieldValues[8].c_str());	// 图幅号
+//  }
+//  // 注记（兼容新版本：15个字段）
+//  else if (strLayerType == "RR")
+//  {
+//    //  角度
+//    //poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//
+//    //  RRSX文件包含的字段
+//    poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
+//    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//    poFeature->SetField(2, vFieldValues[2].c_str());
+//    poFeature->SetField(3, vFieldValues[3].c_str());
+//    poFeature->SetField(4, vFieldValues[4].c_str());
+//    poFeature->SetField(5, atof(vFieldValues[5].c_str()));
+//    poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//    poFeature->SetField(7, vFieldValues[7].c_str());
+//
+//    poFeature->SetField(8, vFieldValues[8].c_str());
+//    poFeature->SetField(9, vFieldValues[9].c_str());
+//    poFeature->SetField(10, vFieldValues[10].c_str());
+//    poFeature->SetField(11, vFieldValues[11].c_str());
+//    poFeature->SetField(12, vFieldValues[12].c_str());
+//
+//    //  图幅号
+//    poFeature->SetField(13, vFieldValues[13].c_str());
+//  }
+//
+//  //  当图层类型是实体要素层的时候，需要根据不同的情况设置角度字段，相当于重新进行了设置
+//  if (strLayerType.c_str() != "R")
+//  {
+//    //  2021-08-16-修改问题：只有当图形特征为PO时，才需要计算角度值，如果是PG和PN的话则是不需要进行计算角度的
+//    size_t iValuesCount = vFieldValues.size();
+//    if (strcmp(vFieldValues[iValuesCount - 4].c_str(), "PG") == 0 || strcmp(vFieldValues[iValuesCount - 4].c_str(), "PN") == 0)
+//    {
+//      poFeature->SetField(0, 0);
+//    }
+//  }
+//
+//  //  设置要素的几何坐标
+//  OGRPoint point;
+//  point.setX(x);
+//  point.setY(y);
+//  point.setZ(z);
+//  poFeature->SetGeometry((OGRGeometry*)(&point));
+//  if (poLayer->CreateFeature(poFeature) != OGRERR_NONE)
+//  {
+//    return -1;
+//  }
+//  OGRFeature::DestroyFeature(poFeature);
+//  return 0;
+//}
+
+//  点图层：根据字段类型赋值
 int BaseVectorOdata2ShapefileImp::Set_Point(
   OGRLayer* poLayer,
   double x,
   double y,
   double z,
-  vector<string>& vFieldValues,
-  string strLayerType)
+  std::vector<std::string>& vFieldValues,
+  std::string strLayerType)
 {
-  //  检查图层指针是否为空
-  if (poLayer == NULL)
-  {
-    return -1;
-  }
-  //  创建空的要素指针
-  OGRFeature* poFeature;
-  //  创建要素
-  poFeature = OGRFeature::CreateFeature(poLayer->GetLayerDefn());
-  //  2021-08-15-修改问题：编码为0的点，并且图层类型不为R时创建图层时不生成对应的点要素
-  if (_atoi64(vFieldValues[2].c_str()) == 0 && strLayerType != "R" && strLayerType != "RR")
-  {
-    //printf("strLayerType = %s\t id = %s\n", strLayerType.c_str(), vFieldValues[1].c_str());
-    return -2;
+  if (!poLayer) return -1;
+
+  // 编码=0 的早退（仅非 R/RR 层）
+  if (vFieldValues.size() > 2 && strLayerType != "R" && strLayerType != "RR") {
+    const GIntBig code = CPLAtoGIntBig(vFieldValues[2].c_str());
+    if (code == 0) return -2;
   }
 
-  // 测量控制点（14个字段）
-  if (strLayerType == "A")
-  {
-    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-    poFeature->SetField(3, vFieldValues[3].c_str());
-    poFeature->SetField(4, vFieldValues[4].c_str());
-    poFeature->SetField(5, _atoi64(vFieldValues[5].c_str()));
-    poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-    poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-    poFeature->SetField(8, atof(vFieldValues[8].c_str()));
-    poFeature->SetField(9, atof(vFieldValues[9].c_str()));
-    poFeature->SetField(10, vFieldValues[10].c_str());
-    poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
-    poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
-    poFeature->SetField(13, vFieldValues[13].c_str());
-  }
-  // 工农业社会文化设施（12个字段）
-  else if (strLayerType == "B")
-  {
-    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-    poFeature->SetField(3, vFieldValues[3].c_str());
-    poFeature->SetField(4, vFieldValues[4].c_str());
-    poFeature->SetField(5, vFieldValues[5].c_str());
-    poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-    poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-    poFeature->SetField(8, vFieldValues[8].c_str());
-    poFeature->SetField(9, _atoi64(vFieldValues[9].c_str()));
-    poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
-    poFeature->SetField(11, vFieldValues[11].c_str());
-  }
-  // 居民地（13个字段）
-  else if (strLayerType == "C")
-  {
-    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-    poFeature->SetField(3, vFieldValues[3].c_str());
-    poFeature->SetField(4, vFieldValues[4].c_str());
-    poFeature->SetField(5, _atoi64(vFieldValues[5].c_str()));
-    poFeature->SetField(6, _atoi64(vFieldValues[6].c_str()));
-    poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-    poFeature->SetField(8, vFieldValues[8].c_str());
-    poFeature->SetField(9, vFieldValues[9].c_str());
-    poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
-    poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
-    poFeature->SetField(12, vFieldValues[12].c_str());
-  }
-  // 陆地（23个字段）
-  else if (strLayerType == "D")
-  {
-    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-    poFeature->SetField(3, vFieldValues[3].c_str());
-    poFeature->SetField(4, vFieldValues[4].c_str());
-    poFeature->SetField(5, vFieldValues[5].c_str());
-    poFeature->SetField(6, vFieldValues[6].c_str());
-    poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-    poFeature->SetField(8, atof(vFieldValues[8].c_str()));
-    poFeature->SetField(9, atof(vFieldValues[9].c_str()));
-    poFeature->SetField(10, atof(vFieldValues[10].c_str()));
-    poFeature->SetField(11, atof(vFieldValues[11].c_str()));
-    poFeature->SetField(12, atof(vFieldValues[12].c_str()));
-    poFeature->SetField(13, atof(vFieldValues[13].c_str()));
-    poFeature->SetField(14, _atoi64(vFieldValues[14].c_str()));
-    poFeature->SetField(15, atof(vFieldValues[15].c_str()));
-    poFeature->SetField(16, vFieldValues[16].c_str());
-    poFeature->SetField(17, atof(vFieldValues[17].c_str()));
-    poFeature->SetField(18, atof(vFieldValues[18].c_str()));
-    poFeature->SetField(19, vFieldValues[19].c_str());
-    poFeature->SetField(20, _atoi64(vFieldValues[20].c_str()));
-    poFeature->SetField(21, _atoi64(vFieldValues[21].c_str()));
-    poFeature->SetField(22, vFieldValues[22].c_str());
-  }
-  // 管线（14个字段）
-  else if (strLayerType == "E")
-  {
-    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-    poFeature->SetField(3, vFieldValues[3].c_str());
-    poFeature->SetField(4, vFieldValues[4].c_str());
-    poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-    poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-    poFeature->SetField(7, vFieldValues[7].c_str());
-    poFeature->SetField(8, vFieldValues[8].c_str());
-    poFeature->SetField(9, vFieldValues[9].c_str());
-    poFeature->SetField(10, vFieldValues[10].c_str());
-    poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
-    poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
-    poFeature->SetField(13, vFieldValues[13].c_str());
-  }
-  // 水域陆地（26个字段）
-  else if (strLayerType == "F")
-  {
-    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-    poFeature->SetField(3, vFieldValues[3].c_str());
-    poFeature->SetField(4, vFieldValues[4].c_str());
-    poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-    poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-    poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-    poFeature->SetField(8, _atoi64(vFieldValues[8].c_str()));
-    poFeature->SetField(9, atof(vFieldValues[9].c_str()));
-    poFeature->SetField(10, atof(vFieldValues[10].c_str()));
-    poFeature->SetField(11, atof(vFieldValues[11].c_str()));
-    poFeature->SetField(12, atof(vFieldValues[12].c_str()));
-    poFeature->SetField(13, _atoi64(vFieldValues[13].c_str()));
-    poFeature->SetField(14, vFieldValues[14].c_str());
-    poFeature->SetField(15, vFieldValues[15].c_str());
-    poFeature->SetField(16, vFieldValues[16].c_str());
-    poFeature->SetField(17, vFieldValues[17].c_str());
-    poFeature->SetField(18, vFieldValues[18].c_str());
-    poFeature->SetField(19, vFieldValues[19].c_str());
-    poFeature->SetField(20, vFieldValues[20].c_str());
-    poFeature->SetField(21, vFieldValues[21].c_str());
-    poFeature->SetField(22, vFieldValues[22].c_str());
-    poFeature->SetField(23, _atoi64(vFieldValues[23].c_str()));
-    poFeature->SetField(24, _atoi64(vFieldValues[24].c_str()));
-    poFeature->SetField(25, vFieldValues[25].c_str());
-  }
-  // 海底地貌（19个字段）
-  else if (strLayerType == "G")
-  {
-    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-    poFeature->SetField(3, vFieldValues[3].c_str());
-    poFeature->SetField(4, vFieldValues[4].c_str());
-    poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-    poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-    poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-    poFeature->SetField(8, vFieldValues[8].c_str());
-    poFeature->SetField(9, vFieldValues[9].c_str());
-    poFeature->SetField(10, vFieldValues[10].c_str());
-    poFeature->SetField(11, vFieldValues[11].c_str());
-    poFeature->SetField(12, vFieldValues[12].c_str());
-    poFeature->SetField(13, vFieldValues[13].c_str());
-    poFeature->SetField(14, vFieldValues[14].c_str());
-    poFeature->SetField(15, vFieldValues[15].c_str());
-    poFeature->SetField(16, _atoi64(vFieldValues[16].c_str()));
-    poFeature->SetField(17, _atoi64(vFieldValues[17].c_str()));
-    poFeature->SetField(18, vFieldValues[18].c_str());
-  }
-  // 礁石（21个字段）
-  else if (strLayerType == "H")
-  {
-    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-    poFeature->SetField(3, vFieldValues[3].c_str());
-    poFeature->SetField(4, vFieldValues[4].c_str());
-    poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-    poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-    poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-    poFeature->SetField(8, vFieldValues[8].c_str());
-    poFeature->SetField(9, vFieldValues[9].c_str());
-    poFeature->SetField(10, vFieldValues[10].c_str());
-    poFeature->SetField(11, vFieldValues[11].c_str());
-    poFeature->SetField(12, vFieldValues[12].c_str());
-    poFeature->SetField(13, vFieldValues[13].c_str());
-    poFeature->SetField(14, vFieldValues[14].c_str());
-    poFeature->SetField(15, vFieldValues[15].c_str());
-    poFeature->SetField(16, vFieldValues[16].c_str());
-    poFeature->SetField(17, vFieldValues[17].c_str());
-    poFeature->SetField(18, _atoi64(vFieldValues[18].c_str()));
-    poFeature->SetField(19, _atoi64(vFieldValues[19].c_str()));
-    poFeature->SetField(20, vFieldValues[20].c_str());
-  }
-  // 水文（16个字段）
-  else if (strLayerType == "I")
-  {
-    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-    poFeature->SetField(3, vFieldValues[3].c_str());
-    poFeature->SetField(4, atof(vFieldValues[4].c_str()));
-    poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-    poFeature->SetField(6, vFieldValues[6].c_str());
-    poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-    poFeature->SetField(8, atof(vFieldValues[8].c_str()));
-    poFeature->SetField(9, atof(vFieldValues[9].c_str()));
-    poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
-    poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
-    poFeature->SetField(12, vFieldValues[12].c_str());
-    poFeature->SetField(13, _atoi64(vFieldValues[13].c_str()));
-    poFeature->SetField(14, _atoi64(vFieldValues[14].c_str()));
-    poFeature->SetField(15, vFieldValues[15].c_str());
-  }
-  // 陆地地貌（14个字段）
-  else if (strLayerType == "J")
-  {
-    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-    poFeature->SetField(3, vFieldValues[3].c_str());
-    poFeature->SetField(4, vFieldValues[4].c_str());
-    poFeature->SetField(5, vFieldValues[5].c_str());
-    poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-    poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-    poFeature->SetField(8, atof(vFieldValues[8].c_str()));
-    poFeature->SetField(9, atof(vFieldValues[9].c_str()));
-    poFeature->SetField(10, vFieldValues[10].c_str());
-    poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
-    poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
-    poFeature->SetField(13, vFieldValues[13].c_str());
-  }
-  // 境界与政区（14个字段）
-  else if (strLayerType == "K")
-  {
-    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-    poFeature->SetField(3, vFieldValues[3].c_str());
-    poFeature->SetField(4, vFieldValues[4].c_str());
-    poFeature->SetField(5, vFieldValues[5].c_str());
-    poFeature->SetField(6, _atoi64(vFieldValues[6].c_str()));
-    poFeature->SetField(7, _atoi64(vFieldValues[7].c_str()));
-    poFeature->SetField(8, atof(vFieldValues[8].c_str()));
-    poFeature->SetField(9, atof(vFieldValues[9].c_str()));
-    poFeature->SetField(10, vFieldValues[10].c_str());
-    poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
-    poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
-    poFeature->SetField(13, vFieldValues[13].c_str());
-  }
-  // 植被（13个字段）
-  else if (strLayerType == "L")
-  {
-    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-    poFeature->SetField(3, vFieldValues[3].c_str());
-    poFeature->SetField(4, vFieldValues[4].c_str());
-    poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-    poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-    poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-    poFeature->SetField(8, atof(vFieldValues[8].c_str()));
-    poFeature->SetField(9, vFieldValues[9].c_str());
-    poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
-    poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
-    poFeature->SetField(12, vFieldValues[12].c_str());
-  }
-  // 地磁要素（11个字段）
-  else if (strLayerType == "M")
-  {
-    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-    poFeature->SetField(3, vFieldValues[3].c_str());
-    poFeature->SetField(4, atof(vFieldValues[4].c_str()));
-    poFeature->SetField(5, _atoi64(vFieldValues[5].c_str()));
-    poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-    poFeature->SetField(7, vFieldValues[7].c_str());
-    poFeature->SetField(8, _atoi64(vFieldValues[8].c_str()));
-    poFeature->SetField(9, _atoi64(vFieldValues[9].c_str()));
-    poFeature->SetField(10, vFieldValues[10].c_str());
-  }
-  // 助航设备及航道（29个字段）
-  else if (strLayerType == "N")
-  {
-    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-    poFeature->SetField(3, vFieldValues[3].c_str());
-    poFeature->SetField(4, vFieldValues[4].c_str());
-    poFeature->SetField(5, vFieldValues[5].c_str());
-    poFeature->SetField(6, _atoi64(vFieldValues[6].c_str()));
-    poFeature->SetField(7, vFieldValues[7].c_str());
-    poFeature->SetField(8, vFieldValues[8].c_str());
-    poFeature->SetField(9, vFieldValues[9].c_str());
-    poFeature->SetField(10, vFieldValues[10].c_str());
-    poFeature->SetField(11, atof(vFieldValues[11].c_str()));
-    poFeature->SetField(12, vFieldValues[12].c_str());
-    poFeature->SetField(13, vFieldValues[13].c_str());
-    poFeature->SetField(14, atof(vFieldValues[14].c_str()));
-    poFeature->SetField(15, atof(vFieldValues[15].c_str()));
-    poFeature->SetField(16, vFieldValues[16].c_str());
-    poFeature->SetField(17, atof(vFieldValues[17].c_str()));
-    poFeature->SetField(18, _atoi64(vFieldValues[18].c_str()));
-    poFeature->SetField(19, atof(vFieldValues[19].c_str()));
-    poFeature->SetField(20, atof(vFieldValues[20].c_str()));
-    poFeature->SetField(21, _atoi64(vFieldValues[21].c_str()));
-    poFeature->SetField(22, atof(vFieldValues[22].c_str()));
-    poFeature->SetField(23, vFieldValues[23].c_str());
-    poFeature->SetField(24, _atoi64(vFieldValues[24].c_str()));
-    poFeature->SetField(25, vFieldValues[25].c_str());
-    poFeature->SetField(26, _atoi64(vFieldValues[26].c_str()));
-    poFeature->SetField(27, _atoi64(vFieldValues[27].c_str()));
-    poFeature->SetField(28, vFieldValues[28].c_str());
-  }
-  // 海上区域界线（16个字段）
-  else if (strLayerType == "O")
-  {
-    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-    poFeature->SetField(3, vFieldValues[3].c_str());
-    poFeature->SetField(4, vFieldValues[4].c_str());
-    poFeature->SetField(5, vFieldValues[5].c_str());
-    poFeature->SetField(6, vFieldValues[6].c_str());
-    poFeature->SetField(7, vFieldValues[7].c_str());
-    poFeature->SetField(8, vFieldValues[8].c_str());
-    poFeature->SetField(9, _atoi64(vFieldValues[9].c_str()));
-    poFeature->SetField(10, atof(vFieldValues[10].c_str()));
-    poFeature->SetField(11, atof(vFieldValues[11].c_str()));
-    poFeature->SetField(12, vFieldValues[12].c_str());
-    poFeature->SetField(13, _atoi64(vFieldValues[13].c_str()));
-    poFeature->SetField(14, _atoi64(vFieldValues[14].c_str()));
-    poFeature->SetField(15, vFieldValues[15].c_str());
-  }
-  // 航空要素（14个字段）
-  else if (strLayerType == "P")
-  {
-    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-    poFeature->SetField(3, vFieldValues[3].c_str());
-    poFeature->SetField(4, vFieldValues[4].c_str());
-    poFeature->SetField(5, vFieldValues[5].c_str());
-    poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-    poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-    poFeature->SetField(8, atof(vFieldValues[8].c_str()));
-    poFeature->SetField(9, atof(vFieldValues[9].c_str()));
-    poFeature->SetField(10, vFieldValues[10].c_str());
-    poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
-    poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
-    poFeature->SetField(13, vFieldValues[13].c_str());
-  }
-  // 军事区域（10个字段）
-  else if (strLayerType == "Q")
-  {
-    poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-    poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-    poFeature->SetField(3, vFieldValues[3].c_str());
-    poFeature->SetField(4, vFieldValues[4].c_str());
-    poFeature->SetField(5, vFieldValues[5].c_str());
-    poFeature->SetField(6, vFieldValues[6].c_str());
-    poFeature->SetField(7, _atoi64(vFieldValues[7].c_str()));
-    poFeature->SetField(8, _atoi64(vFieldValues[8].c_str()));
-    poFeature->SetField(9, vFieldValues[9].c_str());
-  }
-  // 注记（旧版本：9个字段）
-  else if (strLayerType == "R")
-  {
-    //  因为对图层进行创建字段的时候没有创建角度字段，所以这里没有对角度进行赋值
-    poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-    poFeature->SetField(2, vFieldValues[2].c_str());
-    poFeature->SetField(3, vFieldValues[3].c_str());
-    poFeature->SetField(4, vFieldValues[4].c_str());
-    poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-    poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-    poFeature->SetField(7, vFieldValues[7].c_str());
-    poFeature->SetField(8, vFieldValues[8].c_str());	// 图幅号
-  }
-  // 注记（兼容新版本：15个字段）
-  else if (strLayerType == "RR")
-  {
-    //  角度
-    //poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+  // 创建要素
+  OGRFeature* poFeature = OGRFeature::CreateFeature(poLayer->GetLayerDefn());
+  if (!poFeature) return -1;
 
-    //  RRSX文件包含的字段
-    poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-    poFeature->SetField(2, vFieldValues[2].c_str());
-    poFeature->SetField(3, vFieldValues[3].c_str());
-    poFeature->SetField(4, vFieldValues[4].c_str());
-    poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-    poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-    poFeature->SetField(7, vFieldValues[7].c_str());
+  // 按图层定义赋字段（源从 0 对齐）
+  OGRFeatureDefn* defn = poLayer->GetLayerDefn();
+  const int dstN = defn->GetFieldCount();
+  for (int dstIdx = 0; dstIdx < dstN; ++dstIdx) {
+    OGRFieldDefn* fd = defn->GetFieldDefn(dstIdx);
+    const OGRFieldType t = fd->GetType();
 
-    poFeature->SetField(8, vFieldValues[8].c_str());
-    poFeature->SetField(9, vFieldValues[9].c_str());
-    poFeature->SetField(10, vFieldValues[10].c_str());
-    poFeature->SetField(11, vFieldValues[11].c_str());
-    poFeature->SetField(12, vFieldValues[12].c_str());
-
-    //  图幅号
-    poFeature->SetField(13, vFieldValues[13].c_str());
-  }
-
-  //  当图层类型是实体要素层的时候，需要根据不同的情况设置角度字段，相当于重新进行了设置
-  if (strLayerType.c_str() != "R")
-  {
-    //  2021-08-16-修改问题：只有当图形特征为PO时，才需要计算角度值，如果是PG和PN的话则是不需要进行计算角度的
-    size_t iValuesCount = vFieldValues.size();
-    if (strcmp(vFieldValues[iValuesCount - 4].c_str(), "PG") == 0 || strcmp(vFieldValues[iValuesCount - 4].c_str(), "PN") == 0)
-    {
-      poFeature->SetField(0, 0);
+    if (dstIdx < static_cast<int>(vFieldValues.size())) {
+      SetFieldFromString(poFeature, dstIdx, vFieldValues[dstIdx], t);
+    }
+    else {
+      poFeature->SetFieldNull(dstIdx);
     }
   }
 
-  //  设置要素的几何坐标
-  OGRPoint point;
-  point.setX(x);
-  point.setY(y);
-  point.setZ(z);
-  poFeature->SetGeometry((OGRGeometry*)(&point));
-  if (poLayer->CreateFeature(poFeature) != OGRERR_NONE)
-  {
+  // 非 R/RR 层的角度覆盖逻辑（PG/PN 不需要角度）
+  if (strLayerType != "R" && strLayerType != "RR") {
+    if (vFieldValues.size() >= 4) {
+      const std::string& featType = vFieldValues[vFieldValues.size() - 4];
+      if (featType == "PG" || featType == "PN") {
+        poFeature->SetField(0, 0); // 角度字段置 0
+      }
+    }
+  }
+
+  // 设置几何并写入图层中
+  OGRPoint pt(x, y, z);
+  poFeature->SetGeometry(&pt);
+  if (poLayer->CreateFeature(poFeature) != OGRERR_NONE) {
+    OGRFeature::DestroyFeature(poFeature);
     return -1;
   }
   OGRFeature::DestroyFeature(poFeature);
   return 0;
 }
 
+
+//  多点图层：根据字段类型赋值
+//int BaseVectorOdata2ShapefileImp::Set_MultiPoint(
+//  OGRLayer* poLayer,
+//  vector<SE_DPoint> MultiPoint,
+//  vector<string>& vFieldValues,
+//  string strLayerType)
+//{
+//  // 检查图层指针是否为空
+//  if (poLayer == NULL) {
+//    return -1;
+//  }
+//
+//  // 如果编码为0，不创建对应的要素（编码为第2个字段）
+//  if (vFieldValues.size() > 1 && _atoi64(vFieldValues[1].c_str()) == 0)
+//  {
+//    return -2;
+//  }
+//
+//  // 获取原始名称
+//  std::string originalName;
+//  if (vFieldValues.size() > 2 && !vFieldValues[2].empty())
+//  {
+//    originalName = vFieldValues[2];
+//  }
+//  else
+//  {
+//    originalName = "";
+//  }
+//
+//  // UTF-8解析函数：将originalName解析为UTF-8字符的vector
+//  auto parseUTF8String = [&](const std::string& utf8str) {
+//    std::vector<std::string> chars;
+//    size_t bytePos = 0;
+//    while (bytePos < utf8str.size()) {
+//      unsigned char c = (unsigned char)utf8str[bytePos];
+//      size_t charLen = 0;
+//      if (c < 0x80) {
+//        charLen = 1;
+//      }
+//      else if ((c & 0xE0) == 0xC0) {
+//        if (bytePos + 1 >= utf8str.size()) break; // 不完整字符
+//        charLen = 2;
+//      }
+//      else if ((c & 0xF0) == 0xE0) {
+//        if (bytePos + 2 >= utf8str.size()) break; // 不完整字符
+//        charLen = 3;
+//      }
+//      else if ((c & 0xF8) == 0xF0) {
+//        if (bytePos + 3 >= utf8str.size()) break; // 不完整字符
+//        charLen = 4;
+//      }
+//      else {
+//        // 非法UTF-8字节序列
+//        break;
+//      }
+//
+//      // 提取字符子串
+//      std::string ch = utf8str.substr(bytePos, charLen);
+//      chars.push_back(ch);
+//      bytePos += charLen;
+//    }
+//
+//    // 如果解析中断且未能完整解析，则可以考虑记录日志或将后续字符视为错误,此处简单处理，如果解析不完整，可按需求决定策略
+//    return chars;
+//  };
+//
+//  std::vector<std::string> utf8Chars = parseUTF8String(originalName);
+//
+//  if (MultiPoint.size() == 1)
+//  {
+//    //  舍弃当前注记图层中的注记定位点的创建，不需要进行任何的处理
+//  }
+//  else if (MultiPoint.size() > 1)
+//  {
+//    // 遍历MultiPoint中的每个点，创建单点要素
+//    for (size_t i = 0; i < MultiPoint.size(); i++)
+//    {
+//      OGRFeature* poFeature = OGRFeature::CreateFeature(poLayer->GetLayerDefn());
+//      if (poFeature == NULL)
+//      {
+//        return -1;
+//      }
+//
+//      std::string charName = "字符解析错误";
+//      if ((strLayerType == "R" || strLayerType == "RR") && !utf8Chars.empty())
+//      {
+//        if (i < utf8Chars.size())
+//        {
+//          charName = utf8Chars[i];
+//        }
+//      }
+//      // 测量控制点（14个字段）
+//      if (strLayerType == "A")
+//      {
+//        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//        poFeature->SetField(3, vFieldValues[3].c_str());
+//        poFeature->SetField(4, vFieldValues[4].c_str());
+//        poFeature->SetField(5, _atoi64(vFieldValues[5].c_str()));
+//        poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//        poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//        poFeature->SetField(8, atof(vFieldValues[8].c_str()));
+//        poFeature->SetField(9, atof(vFieldValues[9].c_str()));
+//        poFeature->SetField(10, vFieldValues[10].c_str());
+//        poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
+//        poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
+//        poFeature->SetField(13, vFieldValues[13].c_str());
+//      }
+//      // 工农业社会文化设施（12个字段）
+//      else if (strLayerType == "B")
+//      {
+//        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//        poFeature->SetField(3, vFieldValues[3].c_str());
+//        poFeature->SetField(4, vFieldValues[4].c_str());
+//        poFeature->SetField(5, vFieldValues[5].c_str());
+//        poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//        poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//        poFeature->SetField(8, vFieldValues[8].c_str());
+//        poFeature->SetField(9, _atoi64(vFieldValues[9].c_str()));
+//        poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
+//        poFeature->SetField(11, vFieldValues[11].c_str());
+//      }
+//      // 居民地（13个字段）
+//      else if (strLayerType == "C")
+//      {
+//        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//        poFeature->SetField(3, vFieldValues[3].c_str());
+//        poFeature->SetField(4, vFieldValues[4].c_str());
+//        poFeature->SetField(5, _atoi64(vFieldValues[5].c_str()));
+//        poFeature->SetField(6, _atoi64(vFieldValues[6].c_str()));
+//        poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//        poFeature->SetField(8, vFieldValues[8].c_str());
+//        poFeature->SetField(9, vFieldValues[9].c_str());
+//        poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
+//        poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
+//        poFeature->SetField(12, vFieldValues[12].c_str());
+//      }
+//      // 陆地（23个字段）
+//      else if (strLayerType == "D")
+//      {
+//        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//        poFeature->SetField(3, vFieldValues[3].c_str());
+//        poFeature->SetField(4, vFieldValues[4].c_str());
+//        poFeature->SetField(5, vFieldValues[5].c_str());
+//        poFeature->SetField(6, vFieldValues[6].c_str());
+//        poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//        poFeature->SetField(8, atof(vFieldValues[8].c_str()));
+//        poFeature->SetField(9, atof(vFieldValues[9].c_str()));
+//        poFeature->SetField(10, atof(vFieldValues[10].c_str()));
+//        poFeature->SetField(11, atof(vFieldValues[11].c_str()));
+//        poFeature->SetField(12, atof(vFieldValues[12].c_str()));
+//        poFeature->SetField(13, atof(vFieldValues[13].c_str()));
+//        poFeature->SetField(14, _atoi64(vFieldValues[14].c_str()));
+//        poFeature->SetField(15, atof(vFieldValues[15].c_str()));
+//        poFeature->SetField(16, vFieldValues[16].c_str());
+//        poFeature->SetField(17, atof(vFieldValues[17].c_str()));
+//        poFeature->SetField(18, atof(vFieldValues[18].c_str()));
+//        poFeature->SetField(19, vFieldValues[19].c_str());
+//        poFeature->SetField(20, _atoi64(vFieldValues[20].c_str()));
+//        poFeature->SetField(21, _atoi64(vFieldValues[21].c_str()));
+//        poFeature->SetField(22, vFieldValues[22].c_str());
+//      }
+//      // 管线（14个字段）
+//      else if (strLayerType == "E")
+//      {
+//        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//        poFeature->SetField(3, vFieldValues[3].c_str());
+//        poFeature->SetField(4, vFieldValues[4].c_str());
+//        poFeature->SetField(5, atof(vFieldValues[5].c_str()));
+//        poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//        poFeature->SetField(7, vFieldValues[7].c_str());
+//        poFeature->SetField(8, vFieldValues[8].c_str());
+//        poFeature->SetField(9, vFieldValues[9].c_str());
+//        poFeature->SetField(10, vFieldValues[10].c_str());
+//        poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
+//        poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
+//        poFeature->SetField(13, vFieldValues[13].c_str());
+//      }
+//      // 水域陆地（26个字段）
+//      else if (strLayerType == "F")
+//      {
+//        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//        poFeature->SetField(3, vFieldValues[3].c_str());
+//        poFeature->SetField(4, vFieldValues[4].c_str());
+//        poFeature->SetField(5, atof(vFieldValues[5].c_str()));
+//        poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//        poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//        poFeature->SetField(8, _atoi64(vFieldValues[8].c_str()));
+//        poFeature->SetField(9, atof(vFieldValues[9].c_str()));
+//        poFeature->SetField(10, atof(vFieldValues[10].c_str()));
+//        poFeature->SetField(11, atof(vFieldValues[11].c_str()));
+//        poFeature->SetField(12, atof(vFieldValues[12].c_str()));
+//        poFeature->SetField(13, _atoi64(vFieldValues[13].c_str()));
+//        poFeature->SetField(14, vFieldValues[14].c_str());
+//        poFeature->SetField(15, vFieldValues[15].c_str());
+//        poFeature->SetField(16, vFieldValues[16].c_str());
+//        poFeature->SetField(17, vFieldValues[17].c_str());
+//        poFeature->SetField(18, vFieldValues[18].c_str());
+//        poFeature->SetField(19, vFieldValues[19].c_str());
+//        poFeature->SetField(20, vFieldValues[20].c_str());
+//        poFeature->SetField(21, vFieldValues[21].c_str());
+//        poFeature->SetField(22, vFieldValues[22].c_str());
+//        poFeature->SetField(23, _atoi64(vFieldValues[23].c_str()));
+//        poFeature->SetField(24, _atoi64(vFieldValues[24].c_str()));
+//        poFeature->SetField(25, vFieldValues[25].c_str());
+//      }
+//      // 海底地貌（19个字段）
+//      else if (strLayerType == "G")
+//      {
+//        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//        poFeature->SetField(3, vFieldValues[3].c_str());
+//        poFeature->SetField(4, vFieldValues[4].c_str());
+//        poFeature->SetField(5, atof(vFieldValues[5].c_str()));
+//        poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//        poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//        poFeature->SetField(8, vFieldValues[8].c_str());
+//        poFeature->SetField(9, vFieldValues[9].c_str());
+//        poFeature->SetField(10, vFieldValues[10].c_str());
+//        poFeature->SetField(11, vFieldValues[11].c_str());
+//        poFeature->SetField(12, vFieldValues[12].c_str());
+//        poFeature->SetField(13, vFieldValues[13].c_str());
+//        poFeature->SetField(14, vFieldValues[14].c_str());
+//        poFeature->SetField(15, vFieldValues[15].c_str());
+//        poFeature->SetField(16, _atoi64(vFieldValues[16].c_str()));
+//        poFeature->SetField(17, _atoi64(vFieldValues[17].c_str()));
+//        poFeature->SetField(18, vFieldValues[18].c_str());
+//      }
+//      // 礁石（21个字段）
+//      else if (strLayerType == "H")
+//      {
+//        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//        poFeature->SetField(3, vFieldValues[3].c_str());
+//        poFeature->SetField(4, vFieldValues[4].c_str());
+//        poFeature->SetField(5, atof(vFieldValues[5].c_str()));
+//        poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//        poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//        poFeature->SetField(8, vFieldValues[8].c_str());
+//        poFeature->SetField(9, vFieldValues[9].c_str());
+//        poFeature->SetField(10, vFieldValues[10].c_str());
+//        poFeature->SetField(11, vFieldValues[11].c_str());
+//        poFeature->SetField(12, vFieldValues[12].c_str());
+//        poFeature->SetField(13, vFieldValues[13].c_str());
+//        poFeature->SetField(14, vFieldValues[14].c_str());
+//        poFeature->SetField(15, vFieldValues[15].c_str());
+//        poFeature->SetField(16, vFieldValues[16].c_str());
+//        poFeature->SetField(17, vFieldValues[17].c_str());
+//        poFeature->SetField(18, _atoi64(vFieldValues[18].c_str()));
+//        poFeature->SetField(19, _atoi64(vFieldValues[19].c_str()));
+//        poFeature->SetField(20, vFieldValues[20].c_str());
+//      }
+//      // 水文（16个字段）
+//      else if (strLayerType == "I")
+//      {
+//        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//        poFeature->SetField(3, vFieldValues[3].c_str());
+//        poFeature->SetField(4, atof(vFieldValues[4].c_str()));
+//        poFeature->SetField(5, atof(vFieldValues[5].c_str()));
+//        poFeature->SetField(6, vFieldValues[6].c_str());
+//        poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//        poFeature->SetField(8, atof(vFieldValues[8].c_str()));
+//        poFeature->SetField(9, atof(vFieldValues[9].c_str()));
+//        poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
+//        poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
+//        poFeature->SetField(12, vFieldValues[12].c_str());
+//        poFeature->SetField(13, _atoi64(vFieldValues[13].c_str()));
+//        poFeature->SetField(14, _atoi64(vFieldValues[14].c_str()));
+//        poFeature->SetField(15, vFieldValues[15].c_str());
+//      }
+//      // 陆地地貌（14个字段）
+//      else if (strLayerType == "J")
+//      {
+//        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//        poFeature->SetField(3, vFieldValues[3].c_str());
+//        poFeature->SetField(4, vFieldValues[4].c_str());
+//        poFeature->SetField(5, vFieldValues[5].c_str());
+//        poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//        poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//        poFeature->SetField(8, atof(vFieldValues[8].c_str()));
+//        poFeature->SetField(9, atof(vFieldValues[9].c_str()));
+//        poFeature->SetField(10, vFieldValues[10].c_str());
+//        poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
+//        poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
+//        poFeature->SetField(13, vFieldValues[13].c_str());
+//      }
+//      // 境界与政区（14个字段）
+//      else if (strLayerType == "K")
+//      {
+//        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//        poFeature->SetField(3, vFieldValues[3].c_str());
+//        poFeature->SetField(4, vFieldValues[4].c_str());
+//        poFeature->SetField(5, vFieldValues[5].c_str());
+//        poFeature->SetField(6, _atoi64(vFieldValues[6].c_str()));
+//        poFeature->SetField(7, _atoi64(vFieldValues[7].c_str()));
+//        poFeature->SetField(8, atof(vFieldValues[8].c_str()));
+//        poFeature->SetField(9, atof(vFieldValues[9].c_str()));
+//        poFeature->SetField(10, vFieldValues[10].c_str());
+//        poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
+//        poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
+//        poFeature->SetField(13, vFieldValues[13].c_str());
+//      }
+//      // 植被（13个字段）
+//      else if (strLayerType == "L")
+//      {
+//        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//        poFeature->SetField(3, vFieldValues[3].c_str());
+//        poFeature->SetField(4, vFieldValues[4].c_str());
+//        poFeature->SetField(5, atof(vFieldValues[5].c_str()));
+//        poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//        poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//        poFeature->SetField(8, atof(vFieldValues[8].c_str()));
+//        poFeature->SetField(9, vFieldValues[9].c_str());
+//        poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
+//        poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
+//        poFeature->SetField(12, vFieldValues[12].c_str());
+//      }
+//      // 地磁要素（11个字段）
+//      else if (strLayerType == "M")
+//      {
+//        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//        poFeature->SetField(3, vFieldValues[3].c_str());
+//        poFeature->SetField(4, atof(vFieldValues[4].c_str()));
+//        poFeature->SetField(5, _atoi64(vFieldValues[5].c_str()));
+//        poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//        poFeature->SetField(7, vFieldValues[7].c_str());
+//        poFeature->SetField(8, _atoi64(vFieldValues[8].c_str()));
+//        poFeature->SetField(9, _atoi64(vFieldValues[9].c_str()));
+//        poFeature->SetField(10, vFieldValues[10].c_str());
+//      }
+//      // 助航设备及航道（29个字段）
+//      else if (strLayerType == "N")
+//      {
+//        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//        poFeature->SetField(3, vFieldValues[3].c_str());
+//        poFeature->SetField(4, vFieldValues[4].c_str());
+//        poFeature->SetField(5, vFieldValues[5].c_str());
+//        poFeature->SetField(6, _atoi64(vFieldValues[6].c_str()));
+//        poFeature->SetField(7, vFieldValues[7].c_str());
+//        poFeature->SetField(8, vFieldValues[8].c_str());
+//        poFeature->SetField(9, vFieldValues[9].c_str());
+//        poFeature->SetField(10, vFieldValues[10].c_str());
+//        poFeature->SetField(11, atof(vFieldValues[11].c_str()));
+//        poFeature->SetField(12, vFieldValues[12].c_str());
+//        poFeature->SetField(13, vFieldValues[13].c_str());
+//        poFeature->SetField(14, atof(vFieldValues[14].c_str()));
+//        poFeature->SetField(15, atof(vFieldValues[15].c_str()));
+//        poFeature->SetField(16, vFieldValues[16].c_str());
+//        poFeature->SetField(17, atof(vFieldValues[17].c_str()));
+//        poFeature->SetField(18, _atoi64(vFieldValues[18].c_str()));
+//        poFeature->SetField(19, atof(vFieldValues[19].c_str()));
+//        poFeature->SetField(20, atof(vFieldValues[20].c_str()));
+//        poFeature->SetField(21, _atoi64(vFieldValues[21].c_str()));
+//        poFeature->SetField(22, atof(vFieldValues[22].c_str()));
+//        poFeature->SetField(23, vFieldValues[23].c_str());
+//        poFeature->SetField(24, _atoi64(vFieldValues[24].c_str()));
+//        poFeature->SetField(25, vFieldValues[25].c_str());
+//        poFeature->SetField(26, _atoi64(vFieldValues[26].c_str()));
+//        poFeature->SetField(27, _atoi64(vFieldValues[27].c_str()));
+//        poFeature->SetField(28, vFieldValues[28].c_str());
+//      }
+//      // 海上区域界线（16个字段）
+//      else if (strLayerType == "O")
+//      {
+//        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//        poFeature->SetField(3, vFieldValues[3].c_str());
+//        poFeature->SetField(4, vFieldValues[4].c_str());
+//        poFeature->SetField(5, vFieldValues[5].c_str());
+//        poFeature->SetField(6, vFieldValues[6].c_str());
+//        poFeature->SetField(7, vFieldValues[7].c_str());
+//        poFeature->SetField(8, vFieldValues[8].c_str());
+//        poFeature->SetField(9, _atoi64(vFieldValues[9].c_str()));
+//        poFeature->SetField(10, atof(vFieldValues[10].c_str()));
+//        poFeature->SetField(11, atof(vFieldValues[11].c_str()));
+//        poFeature->SetField(12, vFieldValues[12].c_str());
+//        poFeature->SetField(13, _atoi64(vFieldValues[13].c_str()));
+//        poFeature->SetField(14, _atoi64(vFieldValues[14].c_str()));
+//        poFeature->SetField(15, vFieldValues[15].c_str());
+//      }
+//      // 航空要素（14个字段）
+//      else if (strLayerType == "P")
+//      {
+//        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//        poFeature->SetField(3, vFieldValues[3].c_str());
+//        poFeature->SetField(4, vFieldValues[4].c_str());
+//        poFeature->SetField(5, vFieldValues[5].c_str());
+//        poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//        poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//        poFeature->SetField(8, atof(vFieldValues[8].c_str()));
+//        poFeature->SetField(9, atof(vFieldValues[9].c_str()));
+//        poFeature->SetField(10, vFieldValues[10].c_str());
+//        poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
+//        poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
+//        poFeature->SetField(13, vFieldValues[13].c_str());
+//      }
+//      // 军事区域（10个字段）
+//      else if (strLayerType == "Q")
+//      {
+//        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
+//        poFeature->SetField(3, vFieldValues[3].c_str());
+//        poFeature->SetField(4, vFieldValues[4].c_str());
+//        poFeature->SetField(5, vFieldValues[5].c_str());
+//        poFeature->SetField(6, vFieldValues[6].c_str());
+//        poFeature->SetField(7, _atoi64(vFieldValues[7].c_str()));
+//        poFeature->SetField(8, _atoi64(vFieldValues[8].c_str()));
+//        poFeature->SetField(9, vFieldValues[9].c_str());
+//      }
+//      //  注记层（旧版）
+//      else if (strLayerType == "R")
+//      {
+//        // R层第三个字段为名称字段，使用拆分出来的charName
+//        poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
+//        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//        poFeature->SetField(2, charName.c_str());
+//        poFeature->SetField(3, vFieldValues[3].c_str());
+//        poFeature->SetField(4, vFieldValues[4].c_str());
+//        poFeature->SetField(5, atof(vFieldValues[5].c_str()));
+//        poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//        poFeature->SetField(7, vFieldValues[7].c_str());
+//        poFeature->SetField(8, vFieldValues[8].c_str());
+//      }
+//      //  注记层（适配新的odata标准）
+//      else if (strLayerType == "RR")
+//      {
+//        // RR层与R层逻辑相同
+//        poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
+//        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//        poFeature->SetField(2, charName.c_str());
+//        poFeature->SetField(3, vFieldValues[3].c_str());
+//        poFeature->SetField(4, vFieldValues[4].c_str());
+//        poFeature->SetField(5, atof(vFieldValues[5].c_str()));
+//        poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//        poFeature->SetField(7, vFieldValues[7].c_str());
+//        poFeature->SetField(8, vFieldValues[8].c_str());
+//        poFeature->SetField(9, vFieldValues[9].c_str());
+//        poFeature->SetField(10, vFieldValues[10].c_str());
+//        poFeature->SetField(11, vFieldValues[11].c_str());
+//        poFeature->SetField(12, vFieldValues[12].c_str());
+//        poFeature->SetField(13, vFieldValues[13].c_str());
+//      }
+//      else
+//      {
+//        // 对于没有特殊需求的图层类型，请根据原代码补齐字段赋值。
+//        // 这里省略其他分支，实际使用时需要完整实现。
+//      }
+//
+//      // 为当前点要素设置几何对象（单点要素）
+//      OGRPoint point(MultiPoint[i].dx, MultiPoint[i].dy, MultiPoint[i].dz);
+//      poFeature->SetGeometry(&point);
+//
+//      // 将要素添加到图层
+//      if (poLayer->CreateFeature(poFeature) != OGRERR_NONE)
+//      {
+//        OGRFeature::DestroyFeature(poFeature);
+//        return -1;
+//      }
+//
+//      // 销毁当前要素，释放资源
+//      OGRFeature::DestroyFeature(poFeature);
+//    }
+//  }
+//  else
+//  {
+//    //  do nothing
+//  }
+//
+//  return 0;
+//}
+
 //  多点图层：根据字段类型赋值
 int BaseVectorOdata2ShapefileImp::Set_MultiPoint(
   OGRLayer* poLayer,
-  vector<SE_DPoint> MultiPoint,
-  vector<string>& vFieldValues,
-  string strLayerType)
+  std::vector<SE_DPoint> MultiPoint,
+  std::vector<std::string>& vFieldValues,
+  std::string strLayerType)
 {
-  // 检查图层指针是否为空
-  if (poLayer == NULL) {
-    return -1;
+  if (!poLayer) return -1;
+
+  // 编码为第2个字段：为 0 则整个要素跳过
+  if (vFieldValues.size() > 1) {
+    const GIntBig code = CPLAtoGIntBig(vFieldValues[1].c_str());
+    if (code == 0) return -2;
   }
 
-  // 如果编码为0，不创建对应的要素（编码为第2个字段）
-  if (vFieldValues.size() > 1 && _atoi64(vFieldValues[1].c_str()) == 0)
-  {
-    return -2;
+  // 若只有一个点，保持你原逻辑：不创建任何要素
+  if (MultiPoint.size() <= 1) {
+    return 0;
   }
 
-  // 获取原始名称
-  std::string originalName;
-  if (vFieldValues.size() > 2 && !vFieldValues[2].empty())
-  {
-    originalName = vFieldValues[2];
-  }
-  else
-  {
-    originalName = "";
-  }
-
-  // UTF-8解析函数：将originalName解析为UTF-8字符的vector
+  // UTF-8 按字符切分（用于 R/RR 名称逐字）
   auto parseUTF8String = [&](const std::string& utf8str) {
     std::vector<std::string> chars;
-    size_t bytePos = 0;
-    while (bytePos < utf8str.size()) {
-      unsigned char c = (unsigned char)utf8str[bytePos];
-      size_t charLen = 0;
-      if (c < 0x80) {
-        charLen = 1;
-      }
-      else if ((c & 0xE0) == 0xC0) {
-        if (bytePos + 1 >= utf8str.size()) break; // 不完整字符
-        charLen = 2;
-      }
-      else if ((c & 0xF0) == 0xE0) {
-        if (bytePos + 2 >= utf8str.size()) break; // 不完整字符
-        charLen = 3;
-      }
-      else if ((c & 0xF8) == 0xF0) {
-        if (bytePos + 3 >= utf8str.size()) break; // 不完整字符
-        charLen = 4;
-      }
-      else {
-        // 非法UTF-8字节序列
-        break;
-      }
-
-      // 提取字符子串
-      std::string ch = utf8str.substr(bytePos, charLen);
-      chars.push_back(ch);
-      bytePos += charLen;
+    size_t i = 0;
+    while (i < utf8str.size()) {
+      unsigned char c = static_cast<unsigned char>(utf8str[i]);
+      size_t n = 0;
+      if (c < 0x80) n = 1;
+      else if ((c & 0xE0) == 0xC0) n = 2;
+      else if ((c & 0xF0) == 0xE0) n = 3;
+      else if ((c & 0xF8) == 0xF0) n = 4;
+      else break;
+      if (i + n > utf8str.size()) break;
+      chars.emplace_back(utf8str.substr(i, n));
+      i += n;
     }
-
-    // 如果解析中断且未能完整解析，则可以考虑记录日志或将后续字符视为错误,此处简单处理，如果解析不完整，可按需求决定策略
     return chars;
   };
 
-  std::vector<std::string> utf8Chars = parseUTF8String(originalName);
-
-  if (MultiPoint.size() == 1)
-  {
-    //  舍弃当前注记图层中的注记定位点的创建，不需要进行任何的处理
+  std::vector<std::string> utf8Chars;
+  if ((strLayerType == "R" || strLayerType == "RR") && vFieldValues.size() > 2) {
+    utf8Chars = parseUTF8String(vFieldValues[2]);
   }
-  else if (MultiPoint.size() > 1)
-  {
-    // 遍历MultiPoint中的每个点，创建单点要素
-    for (size_t i = 0; i < MultiPoint.size(); i++)
-    {
-      OGRFeature* poFeature = OGRFeature::CreateFeature(poLayer->GetLayerDefn());
-      if (poFeature == NULL)
-      {
-        return -1;
-      }
 
-      std::string charName = "字符解析错误";
-      if ((strLayerType == "R" || strLayerType == "RR") && !utf8Chars.empty())
-      {
-        if (i < utf8Chars.size())
-        {
-          charName = utf8Chars[i];
-        }
-      }
-      // 测量控制点（14个字段）
-      if (strLayerType == "A")
-      {
-        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-        poFeature->SetField(3, vFieldValues[3].c_str());
-        poFeature->SetField(4, vFieldValues[4].c_str());
-        poFeature->SetField(5, _atoi64(vFieldValues[5].c_str()));
-        poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-        poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-        poFeature->SetField(8, atof(vFieldValues[8].c_str()));
-        poFeature->SetField(9, atof(vFieldValues[9].c_str()));
-        poFeature->SetField(10, vFieldValues[10].c_str());
-        poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
-        poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
-        poFeature->SetField(13, vFieldValues[13].c_str());
-      }
-      // 工农业社会文化设施（12个字段）
-      else if (strLayerType == "B")
-      {
-        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-        poFeature->SetField(3, vFieldValues[3].c_str());
-        poFeature->SetField(4, vFieldValues[4].c_str());
-        poFeature->SetField(5, vFieldValues[5].c_str());
-        poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-        poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-        poFeature->SetField(8, vFieldValues[8].c_str());
-        poFeature->SetField(9, _atoi64(vFieldValues[9].c_str()));
-        poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
-        poFeature->SetField(11, vFieldValues[11].c_str());
-      }
-      // 居民地（13个字段）
-      else if (strLayerType == "C")
-      {
-        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-        poFeature->SetField(3, vFieldValues[3].c_str());
-        poFeature->SetField(4, vFieldValues[4].c_str());
-        poFeature->SetField(5, _atoi64(vFieldValues[5].c_str()));
-        poFeature->SetField(6, _atoi64(vFieldValues[6].c_str()));
-        poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-        poFeature->SetField(8, vFieldValues[8].c_str());
-        poFeature->SetField(9, vFieldValues[9].c_str());
-        poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
-        poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
-        poFeature->SetField(12, vFieldValues[12].c_str());
-      }
-      // 陆地（23个字段）
-      else if (strLayerType == "D")
-      {
-        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-        poFeature->SetField(3, vFieldValues[3].c_str());
-        poFeature->SetField(4, vFieldValues[4].c_str());
-        poFeature->SetField(5, vFieldValues[5].c_str());
-        poFeature->SetField(6, vFieldValues[6].c_str());
-        poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-        poFeature->SetField(8, atof(vFieldValues[8].c_str()));
-        poFeature->SetField(9, atof(vFieldValues[9].c_str()));
-        poFeature->SetField(10, atof(vFieldValues[10].c_str()));
-        poFeature->SetField(11, atof(vFieldValues[11].c_str()));
-        poFeature->SetField(12, atof(vFieldValues[12].c_str()));
-        poFeature->SetField(13, atof(vFieldValues[13].c_str()));
-        poFeature->SetField(14, _atoi64(vFieldValues[14].c_str()));
-        poFeature->SetField(15, atof(vFieldValues[15].c_str()));
-        poFeature->SetField(16, vFieldValues[16].c_str());
-        poFeature->SetField(17, atof(vFieldValues[17].c_str()));
-        poFeature->SetField(18, atof(vFieldValues[18].c_str()));
-        poFeature->SetField(19, vFieldValues[19].c_str());
-        poFeature->SetField(20, _atoi64(vFieldValues[20].c_str()));
-        poFeature->SetField(21, _atoi64(vFieldValues[21].c_str()));
-        poFeature->SetField(22, vFieldValues[22].c_str());
-      }
-      // 管线（14个字段）
-      else if (strLayerType == "E")
-      {
-        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-        poFeature->SetField(3, vFieldValues[3].c_str());
-        poFeature->SetField(4, vFieldValues[4].c_str());
-        poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-        poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-        poFeature->SetField(7, vFieldValues[7].c_str());
-        poFeature->SetField(8, vFieldValues[8].c_str());
-        poFeature->SetField(9, vFieldValues[9].c_str());
-        poFeature->SetField(10, vFieldValues[10].c_str());
-        poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
-        poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
-        poFeature->SetField(13, vFieldValues[13].c_str());
-      }
-      // 水域陆地（26个字段）
-      else if (strLayerType == "F")
-      {
-        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-        poFeature->SetField(3, vFieldValues[3].c_str());
-        poFeature->SetField(4, vFieldValues[4].c_str());
-        poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-        poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-        poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-        poFeature->SetField(8, _atoi64(vFieldValues[8].c_str()));
-        poFeature->SetField(9, atof(vFieldValues[9].c_str()));
-        poFeature->SetField(10, atof(vFieldValues[10].c_str()));
-        poFeature->SetField(11, atof(vFieldValues[11].c_str()));
-        poFeature->SetField(12, atof(vFieldValues[12].c_str()));
-        poFeature->SetField(13, _atoi64(vFieldValues[13].c_str()));
-        poFeature->SetField(14, vFieldValues[14].c_str());
-        poFeature->SetField(15, vFieldValues[15].c_str());
-        poFeature->SetField(16, vFieldValues[16].c_str());
-        poFeature->SetField(17, vFieldValues[17].c_str());
-        poFeature->SetField(18, vFieldValues[18].c_str());
-        poFeature->SetField(19, vFieldValues[19].c_str());
-        poFeature->SetField(20, vFieldValues[20].c_str());
-        poFeature->SetField(21, vFieldValues[21].c_str());
-        poFeature->SetField(22, vFieldValues[22].c_str());
-        poFeature->SetField(23, _atoi64(vFieldValues[23].c_str()));
-        poFeature->SetField(24, _atoi64(vFieldValues[24].c_str()));
-        poFeature->SetField(25, vFieldValues[25].c_str());
-      }
-      // 海底地貌（19个字段）
-      else if (strLayerType == "G")
-      {
-        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-        poFeature->SetField(3, vFieldValues[3].c_str());
-        poFeature->SetField(4, vFieldValues[4].c_str());
-        poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-        poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-        poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-        poFeature->SetField(8, vFieldValues[8].c_str());
-        poFeature->SetField(9, vFieldValues[9].c_str());
-        poFeature->SetField(10, vFieldValues[10].c_str());
-        poFeature->SetField(11, vFieldValues[11].c_str());
-        poFeature->SetField(12, vFieldValues[12].c_str());
-        poFeature->SetField(13, vFieldValues[13].c_str());
-        poFeature->SetField(14, vFieldValues[14].c_str());
-        poFeature->SetField(15, vFieldValues[15].c_str());
-        poFeature->SetField(16, _atoi64(vFieldValues[16].c_str()));
-        poFeature->SetField(17, _atoi64(vFieldValues[17].c_str()));
-        poFeature->SetField(18, vFieldValues[18].c_str());
-      }
-      // 礁石（21个字段）
-      else if (strLayerType == "H")
-      {
-        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-        poFeature->SetField(3, vFieldValues[3].c_str());
-        poFeature->SetField(4, vFieldValues[4].c_str());
-        poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-        poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-        poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-        poFeature->SetField(8, vFieldValues[8].c_str());
-        poFeature->SetField(9, vFieldValues[9].c_str());
-        poFeature->SetField(10, vFieldValues[10].c_str());
-        poFeature->SetField(11, vFieldValues[11].c_str());
-        poFeature->SetField(12, vFieldValues[12].c_str());
-        poFeature->SetField(13, vFieldValues[13].c_str());
-        poFeature->SetField(14, vFieldValues[14].c_str());
-        poFeature->SetField(15, vFieldValues[15].c_str());
-        poFeature->SetField(16, vFieldValues[16].c_str());
-        poFeature->SetField(17, vFieldValues[17].c_str());
-        poFeature->SetField(18, _atoi64(vFieldValues[18].c_str()));
-        poFeature->SetField(19, _atoi64(vFieldValues[19].c_str()));
-        poFeature->SetField(20, vFieldValues[20].c_str());
-      }
-      // 水文（16个字段）
-      else if (strLayerType == "I")
-      {
-        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-        poFeature->SetField(3, vFieldValues[3].c_str());
-        poFeature->SetField(4, atof(vFieldValues[4].c_str()));
-        poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-        poFeature->SetField(6, vFieldValues[6].c_str());
-        poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-        poFeature->SetField(8, atof(vFieldValues[8].c_str()));
-        poFeature->SetField(9, atof(vFieldValues[9].c_str()));
-        poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
-        poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
-        poFeature->SetField(12, vFieldValues[12].c_str());
-        poFeature->SetField(13, _atoi64(vFieldValues[13].c_str()));
-        poFeature->SetField(14, _atoi64(vFieldValues[14].c_str()));
-        poFeature->SetField(15, vFieldValues[15].c_str());
-      }
-      // 陆地地貌（14个字段）
-      else if (strLayerType == "J")
-      {
-        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-        poFeature->SetField(3, vFieldValues[3].c_str());
-        poFeature->SetField(4, vFieldValues[4].c_str());
-        poFeature->SetField(5, vFieldValues[5].c_str());
-        poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-        poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-        poFeature->SetField(8, atof(vFieldValues[8].c_str()));
-        poFeature->SetField(9, atof(vFieldValues[9].c_str()));
-        poFeature->SetField(10, vFieldValues[10].c_str());
-        poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
-        poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
-        poFeature->SetField(13, vFieldValues[13].c_str());
-      }
-      // 境界与政区（14个字段）
-      else if (strLayerType == "K")
-      {
-        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-        poFeature->SetField(3, vFieldValues[3].c_str());
-        poFeature->SetField(4, vFieldValues[4].c_str());
-        poFeature->SetField(5, vFieldValues[5].c_str());
-        poFeature->SetField(6, _atoi64(vFieldValues[6].c_str()));
-        poFeature->SetField(7, _atoi64(vFieldValues[7].c_str()));
-        poFeature->SetField(8, atof(vFieldValues[8].c_str()));
-        poFeature->SetField(9, atof(vFieldValues[9].c_str()));
-        poFeature->SetField(10, vFieldValues[10].c_str());
-        poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
-        poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
-        poFeature->SetField(13, vFieldValues[13].c_str());
-      }
-      // 植被（13个字段）
-      else if (strLayerType == "L")
-      {
-        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-        poFeature->SetField(3, vFieldValues[3].c_str());
-        poFeature->SetField(4, vFieldValues[4].c_str());
-        poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-        poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-        poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-        poFeature->SetField(8, atof(vFieldValues[8].c_str()));
-        poFeature->SetField(9, vFieldValues[9].c_str());
-        poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
-        poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
-        poFeature->SetField(12, vFieldValues[12].c_str());
-      }
-      // 地磁要素（11个字段）
-      else if (strLayerType == "M")
-      {
-        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-        poFeature->SetField(3, vFieldValues[3].c_str());
-        poFeature->SetField(4, atof(vFieldValues[4].c_str()));
-        poFeature->SetField(5, _atoi64(vFieldValues[5].c_str()));
-        poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-        poFeature->SetField(7, vFieldValues[7].c_str());
-        poFeature->SetField(8, _atoi64(vFieldValues[8].c_str()));
-        poFeature->SetField(9, _atoi64(vFieldValues[9].c_str()));
-        poFeature->SetField(10, vFieldValues[10].c_str());
-      }
-      // 助航设备及航道（29个字段）
-      else if (strLayerType == "N")
-      {
-        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-        poFeature->SetField(3, vFieldValues[3].c_str());
-        poFeature->SetField(4, vFieldValues[4].c_str());
-        poFeature->SetField(5, vFieldValues[5].c_str());
-        poFeature->SetField(6, _atoi64(vFieldValues[6].c_str()));
-        poFeature->SetField(7, vFieldValues[7].c_str());
-        poFeature->SetField(8, vFieldValues[8].c_str());
-        poFeature->SetField(9, vFieldValues[9].c_str());
-        poFeature->SetField(10, vFieldValues[10].c_str());
-        poFeature->SetField(11, atof(vFieldValues[11].c_str()));
-        poFeature->SetField(12, vFieldValues[12].c_str());
-        poFeature->SetField(13, vFieldValues[13].c_str());
-        poFeature->SetField(14, atof(vFieldValues[14].c_str()));
-        poFeature->SetField(15, atof(vFieldValues[15].c_str()));
-        poFeature->SetField(16, vFieldValues[16].c_str());
-        poFeature->SetField(17, atof(vFieldValues[17].c_str()));
-        poFeature->SetField(18, _atoi64(vFieldValues[18].c_str()));
-        poFeature->SetField(19, atof(vFieldValues[19].c_str()));
-        poFeature->SetField(20, atof(vFieldValues[20].c_str()));
-        poFeature->SetField(21, _atoi64(vFieldValues[21].c_str()));
-        poFeature->SetField(22, atof(vFieldValues[22].c_str()));
-        poFeature->SetField(23, vFieldValues[23].c_str());
-        poFeature->SetField(24, _atoi64(vFieldValues[24].c_str()));
-        poFeature->SetField(25, vFieldValues[25].c_str());
-        poFeature->SetField(26, _atoi64(vFieldValues[26].c_str()));
-        poFeature->SetField(27, _atoi64(vFieldValues[27].c_str()));
-        poFeature->SetField(28, vFieldValues[28].c_str());
-      }
-      // 海上区域界线（16个字段）
-      else if (strLayerType == "O")
-      {
-        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-        poFeature->SetField(3, vFieldValues[3].c_str());
-        poFeature->SetField(4, vFieldValues[4].c_str());
-        poFeature->SetField(5, vFieldValues[5].c_str());
-        poFeature->SetField(6, vFieldValues[6].c_str());
-        poFeature->SetField(7, vFieldValues[7].c_str());
-        poFeature->SetField(8, vFieldValues[8].c_str());
-        poFeature->SetField(9, _atoi64(vFieldValues[9].c_str()));
-        poFeature->SetField(10, atof(vFieldValues[10].c_str()));
-        poFeature->SetField(11, atof(vFieldValues[11].c_str()));
-        poFeature->SetField(12, vFieldValues[12].c_str());
-        poFeature->SetField(13, _atoi64(vFieldValues[13].c_str()));
-        poFeature->SetField(14, _atoi64(vFieldValues[14].c_str()));
-        poFeature->SetField(15, vFieldValues[15].c_str());
-      }
-      // 航空要素（14个字段）
-      else if (strLayerType == "P")
-      {
-        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-        poFeature->SetField(3, vFieldValues[3].c_str());
-        poFeature->SetField(4, vFieldValues[4].c_str());
-        poFeature->SetField(5, vFieldValues[5].c_str());
-        poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-        poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-        poFeature->SetField(8, atof(vFieldValues[8].c_str()));
-        poFeature->SetField(9, atof(vFieldValues[9].c_str()));
-        poFeature->SetField(10, vFieldValues[10].c_str());
-        poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
-        poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
-        poFeature->SetField(13, vFieldValues[13].c_str());
-      }
-      // 军事区域（10个字段）
-      else if (strLayerType == "Q")
-      {
-        poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-        poFeature->SetField(2, _atoi64(vFieldValues[2].c_str()));
-        poFeature->SetField(3, vFieldValues[3].c_str());
-        poFeature->SetField(4, vFieldValues[4].c_str());
-        poFeature->SetField(5, vFieldValues[5].c_str());
-        poFeature->SetField(6, vFieldValues[6].c_str());
-        poFeature->SetField(7, _atoi64(vFieldValues[7].c_str()));
-        poFeature->SetField(8, _atoi64(vFieldValues[8].c_str()));
-        poFeature->SetField(9, vFieldValues[9].c_str());
-      }
-      //  注记层（旧版）
-      else if (strLayerType == "R")
-      {
-        // R层第三个字段为名称字段，使用拆分出来的charName
-        poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-        poFeature->SetField(2, charName.c_str());
-        poFeature->SetField(3, vFieldValues[3].c_str());
-        poFeature->SetField(4, vFieldValues[4].c_str());
-        poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-        poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-        poFeature->SetField(7, vFieldValues[7].c_str());
-        poFeature->SetField(8, vFieldValues[8].c_str());
-      }
-      //  注记层（适配新的odata标准）
-      else if (strLayerType == "RR")
-      {
-        // RR层与R层逻辑相同
-        poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-        poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-        poFeature->SetField(2, charName.c_str());
-        poFeature->SetField(3, vFieldValues[3].c_str());
-        poFeature->SetField(4, vFieldValues[4].c_str());
-        poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-        poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-        poFeature->SetField(7, vFieldValues[7].c_str());
-        poFeature->SetField(8, vFieldValues[8].c_str());
-        poFeature->SetField(9, vFieldValues[9].c_str());
-        poFeature->SetField(10, vFieldValues[10].c_str());
-        poFeature->SetField(11, vFieldValues[11].c_str());
-        poFeature->SetField(12, vFieldValues[12].c_str());
-        poFeature->SetField(13, vFieldValues[13].c_str());
-      }
-      else
-      {
-        // 对于没有特殊需求的图层类型，请根据原代码补齐字段赋值。
-        // 这里省略其他分支，实际使用时需要完整实现。
-      }
+  // 逐点创建单点要素
+  OGRFeatureDefn* defn = poLayer->GetLayerDefn();
+  const int dstN = defn->GetFieldCount();
 
-      // 为当前点要素设置几何对象（单点要素）
-      OGRPoint point(MultiPoint[i].dx, MultiPoint[i].dy, MultiPoint[i].dz);
-      poFeature->SetGeometry(&point);
+  for (size_t i = 0; i < MultiPoint.size(); ++i) {
+    OGRFeature* poFeature = OGRFeature::CreateFeature(defn);
+    if (!poFeature) return -1;
 
-      // 将要素添加到图层
-      if (poLayer->CreateFeature(poFeature) != OGRERR_NONE)
-      {
-        OGRFeature::DestroyFeature(poFeature);
-        return -1;
+    // 按图层定义赋字段（源从 0 对齐）
+    for (int dstIdx = 0; dstIdx < dstN; ++dstIdx) {
+      OGRFieldDefn* fd = defn->GetFieldDefn(dstIdx);
+      const OGRFieldType t = fd->GetType();
+
+      if (dstIdx < static_cast<int>(vFieldValues.size())) {
+        SetFieldFromString(poFeature, dstIdx, vFieldValues[dstIdx], t);
       }
-
-      // 销毁当前要素，释放资源
-      OGRFeature::DestroyFeature(poFeature);
+      else {
+        poFeature->SetFieldNull(dstIdx);
+      }
     }
-  }
-  else
-  {
-    //  do nothing
+
+    // 注记层：把第2个字段替换为第 i 个字符（不足则给个提示串）
+    if ((strLayerType == "R" || strLayerType == "RR") && dstN > 2) {
+      const char* namePiece = "字符解析错误";
+      if (i < utf8Chars.size()) namePiece = utf8Chars[i].c_str();
+      poFeature->SetField(2, namePiece);
+    }
+
+    // 几何
+    OGRPoint pt(MultiPoint[i].dx, MultiPoint[i].dy, MultiPoint[i].dz);
+    poFeature->SetGeometry(&pt);
+
+    if (poLayer->CreateFeature(poFeature) != OGRERR_NONE) {
+      OGRFeature::DestroyFeature(poFeature);
+      return -1;
+    }
+    OGRFeature::DestroyFeature(poFeature);
   }
 
   return 0;
 }
 
+
+//  线图层：根据字段类型赋值
+//int BaseVectorOdata2ShapefileImp::Set_LineString(
+//  OGRLayer* poLayer,
+//  vector<SE_DPoint> Line,
+//  vector<string>& vFieldValues,
+//  string strLayerType)
+//{
+//  //  检查图层指针是否为空
+//  if (poLayer == NULL)
+//  {
+//    return -1;
+//  }
+//  //  创建空的要素指针
+//  OGRFeature* poFeature;
+//	poFeature = OGRFeature::CreateFeature(poLayer->GetLayerDefn());
+//	//  修改问题：编码为0的线创建图层时不生成对应的线要素，编码为第2个字段
+//	if (_atoi64(vFieldValues[1].c_str()) == 0)
+//	{
+//		//printf("strLayerType = %s\t id = %s\n", strLayerType.c_str(), vFieldValues[1].c_str());
+//		return -2;
+//	}
+//
+//	// 测量控制点（13个字段）
+//	if (strLayerType == "A")
+//	{
+//		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
+//		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//		poFeature->SetField(2, vFieldValues[2].c_str());
+//		poFeature->SetField(3, vFieldValues[3].c_str());
+//		poFeature->SetField(4, _atoi64(vFieldValues[4].c_str()));
+//		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
+//		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//		poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//		poFeature->SetField(8, atof(vFieldValues[8].c_str()));
+//		poFeature->SetField(9, vFieldValues[9].c_str());
+//		poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
+//		poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
+//		poFeature->SetField(12, vFieldValues[12].c_str());
+//	}
+//	// 工农业社会文化设施（11个字段）
+//	else if (strLayerType == "B")
+//	{
+//		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
+//		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//		poFeature->SetField(2, vFieldValues[2].c_str());
+//		poFeature->SetField(3, vFieldValues[3].c_str());
+//		poFeature->SetField(4, vFieldValues[4].c_str());
+//		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
+//		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//		poFeature->SetField(7, vFieldValues[7].c_str());
+//		poFeature->SetField(8, _atoi64(vFieldValues[8].c_str()));
+//		poFeature->SetField(9, _atoi64(vFieldValues[9].c_str()));
+//		poFeature->SetField(10, vFieldValues[10].c_str());
+//	}
+//	// 居民地（12个字段）
+//	else if (strLayerType == "C")
+//	{
+//		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
+//		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//		poFeature->SetField(2, vFieldValues[2].c_str());
+//		poFeature->SetField(3, vFieldValues[3].c_str());
+//		poFeature->SetField(4, _atoi64(vFieldValues[4].c_str()));
+//		poFeature->SetField(5, _atoi64(vFieldValues[5].c_str()));
+//		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//		poFeature->SetField(7, vFieldValues[7].c_str());
+//		poFeature->SetField(8, vFieldValues[8].c_str());
+//		poFeature->SetField(9, _atoi64(vFieldValues[9].c_str()));
+//		poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
+//		poFeature->SetField(11, vFieldValues[11].c_str());
+//	}
+//	// 陆地（22个字段）
+//	else if (strLayerType == "D")
+//	{
+//		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
+//		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//		poFeature->SetField(2, vFieldValues[2].c_str());
+//		poFeature->SetField(3, vFieldValues[3].c_str());
+//		poFeature->SetField(4, vFieldValues[4].c_str());
+//		poFeature->SetField(5, vFieldValues[5].c_str());
+//		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//		poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//		poFeature->SetField(8, atof(vFieldValues[8].c_str()));
+//		poFeature->SetField(9, atof(vFieldValues[9].c_str()));
+//		poFeature->SetField(10, atof(vFieldValues[10].c_str()));
+//		poFeature->SetField(11, atof(vFieldValues[11].c_str()));
+//		poFeature->SetField(12, atof(vFieldValues[12].c_str()));
+//		poFeature->SetField(13, _atoi64(vFieldValues[13].c_str()));
+//		poFeature->SetField(14, atof(vFieldValues[14].c_str()));
+//		poFeature->SetField(15, vFieldValues[15].c_str());
+//		poFeature->SetField(16, atof(vFieldValues[16].c_str()));
+//		poFeature->SetField(17, atof(vFieldValues[17].c_str()));
+//		poFeature->SetField(18, vFieldValues[18].c_str());
+//		poFeature->SetField(19, _atoi64(vFieldValues[19].c_str()));
+//		poFeature->SetField(20, _atoi64(vFieldValues[20].c_str()));
+//		poFeature->SetField(21, vFieldValues[21].c_str());
+//	}
+//	// 管线（13个字段）
+//	else if (strLayerType == "E")
+//	{
+//		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
+//		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//		poFeature->SetField(2, vFieldValues[2].c_str());
+//		poFeature->SetField(3, vFieldValues[3].c_str());
+//		poFeature->SetField(4, atof(vFieldValues[4].c_str()));
+//		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
+//		poFeature->SetField(6, vFieldValues[6].c_str());
+//		poFeature->SetField(7, vFieldValues[7].c_str());
+//		poFeature->SetField(8, vFieldValues[8].c_str());
+//		poFeature->SetField(9, vFieldValues[9].c_str());
+//		poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
+//		poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
+//		poFeature->SetField(12, vFieldValues[12].c_str());
+//	}
+//	// 水域陆地（25个字段）
+//	else if (strLayerType == "F")
+//	{
+//		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
+//		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//		poFeature->SetField(2, vFieldValues[2].c_str());
+//		poFeature->SetField(3, vFieldValues[3].c_str());
+//		poFeature->SetField(4, atof(vFieldValues[4].c_str()));
+//		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
+//		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//		poFeature->SetField(7, _atoi64(vFieldValues[7].c_str()));
+//		poFeature->SetField(8, atof(vFieldValues[8].c_str()));
+//		poFeature->SetField(9, atof(vFieldValues[9].c_str()));
+//		poFeature->SetField(10, atof(vFieldValues[10].c_str()));
+//		poFeature->SetField(11, atof(vFieldValues[11].c_str()));
+//		poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
+//		poFeature->SetField(13, vFieldValues[13].c_str());
+//		poFeature->SetField(14, vFieldValues[14].c_str());
+//		poFeature->SetField(15, vFieldValues[15].c_str());
+//		poFeature->SetField(16, vFieldValues[16].c_str());
+//		poFeature->SetField(17, vFieldValues[17].c_str());
+//		poFeature->SetField(18, vFieldValues[18].c_str());
+//		poFeature->SetField(19, vFieldValues[19].c_str());
+//		poFeature->SetField(20, vFieldValues[20].c_str());
+//		poFeature->SetField(21, vFieldValues[21].c_str());
+//		poFeature->SetField(22, _atoi64(vFieldValues[22].c_str()));
+//		poFeature->SetField(23, _atoi64(vFieldValues[23].c_str()));
+//		poFeature->SetField(24, vFieldValues[24].c_str());
+//	}
+//	// 海底地貌（18个字段）
+//	else if (strLayerType == "G")
+//	{
+//		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
+//		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//		poFeature->SetField(2, vFieldValues[2].c_str());
+//		poFeature->SetField(3, vFieldValues[3].c_str());
+//		poFeature->SetField(4, atof(vFieldValues[4].c_str()));
+//		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
+//		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//		poFeature->SetField(7, vFieldValues[7].c_str());
+//		poFeature->SetField(8, vFieldValues[8].c_str());
+//		poFeature->SetField(9, vFieldValues[9].c_str());
+//		poFeature->SetField(10, vFieldValues[10].c_str());
+//		poFeature->SetField(11, vFieldValues[11].c_str());
+//		poFeature->SetField(12, vFieldValues[12].c_str());
+//		poFeature->SetField(13, vFieldValues[13].c_str());
+//		poFeature->SetField(14, vFieldValues[14].c_str());
+//		poFeature->SetField(15, _atoi64(vFieldValues[15].c_str()));
+//		poFeature->SetField(16, _atoi64(vFieldValues[16].c_str()));
+//		poFeature->SetField(17, vFieldValues[17].c_str());
+//	}
+//	// 礁石（20个字段）
+//	else if (strLayerType == "H")
+//	{
+//		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
+//		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//		poFeature->SetField(2, vFieldValues[2].c_str());
+//		poFeature->SetField(3, vFieldValues[3].c_str());
+//		poFeature->SetField(4, atof(vFieldValues[4].c_str()));
+//		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
+//		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//		poFeature->SetField(7, vFieldValues[7].c_str());
+//		poFeature->SetField(8, vFieldValues[8].c_str());
+//		poFeature->SetField(9, vFieldValues[9].c_str());
+//		poFeature->SetField(10, vFieldValues[10].c_str());
+//		poFeature->SetField(11, vFieldValues[11].c_str());
+//		poFeature->SetField(12, vFieldValues[12].c_str());
+//		poFeature->SetField(13, vFieldValues[13].c_str());
+//		poFeature->SetField(14, vFieldValues[14].c_str());
+//		poFeature->SetField(15, vFieldValues[15].c_str());
+//		poFeature->SetField(16, vFieldValues[16].c_str());
+//		poFeature->SetField(17, _atoi64(vFieldValues[17].c_str()));
+//		poFeature->SetField(18, _atoi64(vFieldValues[18].c_str()));
+//		poFeature->SetField(19, vFieldValues[19].c_str());
+//	}
+//	// 水文（15个字段）
+//	else if (strLayerType == "I")
+//	{
+//		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
+//		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//		poFeature->SetField(2, vFieldValues[2].c_str());
+//		poFeature->SetField(3, atof(vFieldValues[3].c_str()));
+//		poFeature->SetField(4, atof(vFieldValues[4].c_str()));
+//		poFeature->SetField(5, vFieldValues[5].c_str());
+//		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//		poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//		poFeature->SetField(8, atof(vFieldValues[8].c_str()));
+//		poFeature->SetField(9, _atoi64(vFieldValues[9].c_str()));
+//		poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
+//		poFeature->SetField(11, vFieldValues[11].c_str());
+//		poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
+//		poFeature->SetField(13, _atoi64(vFieldValues[13].c_str()));
+//		poFeature->SetField(14, vFieldValues[14].c_str());
+//	}
+//	// 陆地地貌（13个字段）
+//	else if (strLayerType == "J")
+//	{
+//		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
+//		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//		poFeature->SetField(2, vFieldValues[2].c_str());
+//		poFeature->SetField(3, vFieldValues[3].c_str());
+//		poFeature->SetField(4, vFieldValues[4].c_str());
+//		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
+//		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//		poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//		poFeature->SetField(8, atof(vFieldValues[8].c_str()));
+//		poFeature->SetField(9, vFieldValues[9].c_str());
+//		poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
+//		poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
+//		poFeature->SetField(12, vFieldValues[12].c_str());
+//	}
+//	// 境界与政区（13个字段）
+//	else if (strLayerType == "K")
+//	{
+//		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
+//		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//		poFeature->SetField(2, vFieldValues[2].c_str());
+//		poFeature->SetField(3, vFieldValues[3].c_str());
+//		poFeature->SetField(4, vFieldValues[4].c_str());
+//		poFeature->SetField(5, _atoi64(vFieldValues[5].c_str()));
+//		poFeature->SetField(6, _atoi64(vFieldValues[6].c_str()));
+//		poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//		poFeature->SetField(8, atof(vFieldValues[8].c_str()));
+//		poFeature->SetField(9, vFieldValues[9].c_str());
+//		poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
+//		poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
+//		poFeature->SetField(12, vFieldValues[12].c_str());
+//	}
+//	// 植被（12个字段）
+//	else if (strLayerType == "L")
+//	{
+//		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
+//		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//		poFeature->SetField(2, vFieldValues[2].c_str());
+//		poFeature->SetField(3, vFieldValues[3].c_str());
+//		poFeature->SetField(4, atof(vFieldValues[4].c_str()));
+//		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
+//		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//		poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//		poFeature->SetField(8, vFieldValues[8].c_str());
+//		poFeature->SetField(9, _atoi64(vFieldValues[9].c_str()));
+//		poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
+//		poFeature->SetField(11, vFieldValues[11].c_str());
+//	}
+//	// 地磁要素（10个字段）
+//	else if (strLayerType == "M")
+//	{
+//		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
+//		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//		poFeature->SetField(2, vFieldValues[2].c_str());
+//		poFeature->SetField(3, atof(vFieldValues[3].c_str()));
+//		poFeature->SetField(4, _atoi64(vFieldValues[4].c_str()));
+//		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
+//		poFeature->SetField(6, vFieldValues[6].c_str());
+//		poFeature->SetField(7, _atoi64(vFieldValues[7].c_str()));
+//		poFeature->SetField(8, _atoi64(vFieldValues[8].c_str()));
+//		poFeature->SetField(9, vFieldValues[9].c_str());
+//	}
+//	// 助航设备及航道（28个字段）
+//	else if (strLayerType == "N")
+//	{
+//		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
+//		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//		poFeature->SetField(2, vFieldValues[2].c_str());
+//		poFeature->SetField(3, vFieldValues[3].c_str());
+//		poFeature->SetField(4, vFieldValues[4].c_str());
+//		poFeature->SetField(5, _atoi64(vFieldValues[5].c_str()));
+//		poFeature->SetField(6, vFieldValues[6].c_str());
+//		poFeature->SetField(7, vFieldValues[7].c_str());
+//		poFeature->SetField(8, vFieldValues[8].c_str());
+//		poFeature->SetField(9, vFieldValues[9].c_str());
+//		poFeature->SetField(10, atof(vFieldValues[10].c_str()));
+//		poFeature->SetField(11, vFieldValues[11].c_str());
+//		poFeature->SetField(12, vFieldValues[12].c_str());
+//		poFeature->SetField(13, atof(vFieldValues[13].c_str()));
+//		poFeature->SetField(14, atof(vFieldValues[14].c_str()));
+//		poFeature->SetField(15, vFieldValues[15].c_str());
+//		poFeature->SetField(16, atof(vFieldValues[16].c_str()));
+//		poFeature->SetField(17, _atoi64(vFieldValues[17].c_str()));
+//		poFeature->SetField(18, atof(vFieldValues[18].c_str()));
+//		poFeature->SetField(19, atof(vFieldValues[19].c_str()));
+//		poFeature->SetField(20, _atoi64(vFieldValues[20].c_str()));
+//		poFeature->SetField(21, atof(vFieldValues[21].c_str()));
+//		poFeature->SetField(22, vFieldValues[22].c_str());
+//		poFeature->SetField(23, _atoi64(vFieldValues[23].c_str()));
+//		poFeature->SetField(24, vFieldValues[24].c_str());
+//		poFeature->SetField(25, _atoi64(vFieldValues[25].c_str()));
+//		poFeature->SetField(26, _atoi64(vFieldValues[26].c_str()));
+//		poFeature->SetField(27, vFieldValues[27].c_str());
+//	}
+//	// 海上区域界线（15个字段）
+//	else if (strLayerType == "O")
+//	{
+//		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
+//		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//		poFeature->SetField(2, vFieldValues[2].c_str());
+//		poFeature->SetField(3, vFieldValues[3].c_str());
+//		poFeature->SetField(4, vFieldValues[4].c_str());
+//		poFeature->SetField(5, vFieldValues[5].c_str());
+//		poFeature->SetField(6, vFieldValues[6].c_str());
+//		poFeature->SetField(7, vFieldValues[7].c_str());
+//		poFeature->SetField(8, _atoi64(vFieldValues[8].c_str()));
+//		poFeature->SetField(9, atof(vFieldValues[9].c_str()));
+//		poFeature->SetField(10, atof(vFieldValues[10].c_str()));
+//		poFeature->SetField(11, vFieldValues[11].c_str());
+//		poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
+//		poFeature->SetField(13, _atoi64(vFieldValues[13].c_str()));
+//		poFeature->SetField(14, vFieldValues[14].c_str());
+//	}
+//	// 航空要素（13个字段）
+//	else if (strLayerType == "P")
+//	{
+//		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
+//		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//		poFeature->SetField(2, vFieldValues[2].c_str());
+//		poFeature->SetField(3, vFieldValues[3].c_str());
+//		poFeature->SetField(4, vFieldValues[4].c_str());
+//		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
+//		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//		poFeature->SetField(7, atof(vFieldValues[7].c_str()));
+//		poFeature->SetField(8, atof(vFieldValues[8].c_str()));
+//		poFeature->SetField(9, vFieldValues[9].c_str());
+//		poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
+//		poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
+//		poFeature->SetField(12, vFieldValues[12].c_str());
+//	}
+//	// 军事区域（9个字段）
+//	else if (strLayerType == "Q")
+//	{
+//		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
+//		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//		poFeature->SetField(2, vFieldValues[2].c_str());
+//		poFeature->SetField(3, vFieldValues[3].c_str());
+//		poFeature->SetField(4, vFieldValues[4].c_str());
+//		poFeature->SetField(5, vFieldValues[5].c_str());
+//		poFeature->SetField(6, _atoi64(vFieldValues[6].c_str()));
+//		poFeature->SetField(7, _atoi64(vFieldValues[7].c_str()));
+//		poFeature->SetField(8, vFieldValues[8].c_str());
+//	}
+//  // 注记（旧版本：9个字段）
+//  else if (strLayerType == "R")
+//  {
+//    //  因为对图层进行创建字段的时候没有创建角度字段，所以这里没有对角度进行赋值
+//    poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
+//    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//    poFeature->SetField(2, vFieldValues[2].c_str());
+//    poFeature->SetField(3, vFieldValues[3].c_str());
+//    poFeature->SetField(4, vFieldValues[4].c_str());
+//    poFeature->SetField(5, atof(vFieldValues[5].c_str()));
+//    poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//    poFeature->SetField(7, vFieldValues[7].c_str());
+//    //  图幅号
+//    poFeature->SetField(8, vFieldValues[8].c_str());
+//  }
+//  // 注记（兼容新版本：15个字段）
+//  else if (strLayerType == "RR")
+//  {
+//    //  角度（因为对图层进行创建字段的时候没有创建角度字段，所以这里没有对角度进行赋值）
+//    //poFeature->SetField(0, atof(vFieldValues[0].c_str()));
+//
+//    //  RRSX文件包含的字段
+//    poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
+//    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
+//    poFeature->SetField(2, vFieldValues[2].c_str());
+//    poFeature->SetField(3, vFieldValues[3].c_str());
+//    poFeature->SetField(4, vFieldValues[4].c_str());
+//    poFeature->SetField(5, atof(vFieldValues[5].c_str()));
+//    poFeature->SetField(6, atof(vFieldValues[6].c_str()));
+//    poFeature->SetField(7, vFieldValues[7].c_str());
+//
+//    poFeature->SetField(8, vFieldValues[8].c_str());
+//    poFeature->SetField(9, vFieldValues[9].c_str());
+//    poFeature->SetField(10, vFieldValues[10].c_str());
+//    poFeature->SetField(11, vFieldValues[11].c_str());
+//    poFeature->SetField(12, vFieldValues[12].c_str());
+//
+//    //  图幅号
+//    poFeature->SetField(13, vFieldValues[13].c_str());
+//  }
+//
+//  //  创建要素
+//	OGRLineString pLine;
+//  for (int i = 0; i < Line.size(); i++)
+//  {
+//    pLine.addPoint(Line[i].dx, Line[i].dy, Line[i].dz);
+//  }
+//	poFeature->SetGeometry((OGRGeometry*)(&pLine));
+//	if (poLayer->CreateFeature(poFeature) != OGRERR_NONE)
+//	{
+//		return -1;
+//	}
+//	OGRFeature::DestroyFeature(poFeature);
+//	return 0;
+//}
+
 //  线图层：根据字段类型赋值
 int BaseVectorOdata2ShapefileImp::Set_LineString(
   OGRLayer* poLayer,
-  vector<SE_DPoint> Line,
-  vector<string>& vFieldValues,
-  string strLayerType)
+  std::vector<SE_DPoint> Line,
+  std::vector<std::string>& vFieldValues,
+  std::string /*strLayerType*/)
 {
-  //  检查图层指针是否为空
-  if (poLayer == NULL)
-  {
+  if (!poLayer) return -1;
+
+  // 编码=0 的早退（编码为第2个字段）
+  if (vFieldValues.size() > 1) {
+    const GIntBig code = CPLAtoGIntBig(vFieldValues[1].c_str());
+    if (code == 0) return -2;
+  }
+
+  // 线几何
+  OGRLineString ls;
+  for (const auto& p : Line) {
+    ls.addPoint(p.dx, p.dy, p.dz);
+  }
+
+  // 创建要素
+  OGRFeature* poFeature = OGRFeature::CreateFeature(poLayer->GetLayerDefn());
+  if (!poFeature) return -1;
+
+  // 按图层定义赋字段（源从 0 对齐）
+  OGRFeatureDefn* defn = poLayer->GetLayerDefn();
+  const int dstN = defn->GetFieldCount();
+  for (int dstIdx = 0; dstIdx < dstN; ++dstIdx) {
+    OGRFieldDefn* fd = defn->GetFieldDefn(dstIdx);
+    const OGRFieldType t = fd->GetType();
+
+    if (dstIdx < static_cast<int>(vFieldValues.size())) {
+      SetFieldFromString(poFeature, dstIdx, vFieldValues[dstIdx], t);
+    }
+    else {
+      poFeature->SetFieldNull(dstIdx);
+    }
+  }
+
+  // 写入几何并落盘
+  poFeature->SetGeometry(&ls);
+  if (poLayer->CreateFeature(poFeature) != OGRERR_NONE) {
+    OGRFeature::DestroyFeature(poFeature);
     return -1;
   }
-  //  创建空的要素指针
-  OGRFeature* poFeature;
-	poFeature = OGRFeature::CreateFeature(poLayer->GetLayerDefn());
-	//  修改问题：编码为0的线创建图层时不生成对应的线要素，编码为第2个字段
-	if (_atoi64(vFieldValues[1].c_str()) == 0)
-	{
-		//printf("strLayerType = %s\t id = %s\n", strLayerType.c_str(), vFieldValues[1].c_str());
-		return -2;
-	}
-
-	// 测量控制点（13个字段）
-	if (strLayerType == "A")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, _atoi64(vFieldValues[4].c_str()));
-		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-		poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-		poFeature->SetField(8, atof(vFieldValues[8].c_str()));
-		poFeature->SetField(9, vFieldValues[9].c_str());
-		poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
-		poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
-		poFeature->SetField(12, vFieldValues[12].c_str());
-	}
-	// 工农业社会文化设施（11个字段）
-	else if (strLayerType == "B")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, vFieldValues[4].c_str());
-		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-		poFeature->SetField(7, vFieldValues[7].c_str());
-		poFeature->SetField(8, _atoi64(vFieldValues[8].c_str()));
-		poFeature->SetField(9, _atoi64(vFieldValues[9].c_str()));
-		poFeature->SetField(10, vFieldValues[10].c_str());
-	}
-	// 居民地（12个字段）
-	else if (strLayerType == "C")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, _atoi64(vFieldValues[4].c_str()));
-		poFeature->SetField(5, _atoi64(vFieldValues[5].c_str()));
-		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-		poFeature->SetField(7, vFieldValues[7].c_str());
-		poFeature->SetField(8, vFieldValues[8].c_str());
-		poFeature->SetField(9, _atoi64(vFieldValues[9].c_str()));
-		poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
-		poFeature->SetField(11, vFieldValues[11].c_str());
-	}
-	// 陆地（22个字段）
-	else if (strLayerType == "D")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, vFieldValues[4].c_str());
-		poFeature->SetField(5, vFieldValues[5].c_str());
-		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-		poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-		poFeature->SetField(8, atof(vFieldValues[8].c_str()));
-		poFeature->SetField(9, atof(vFieldValues[9].c_str()));
-		poFeature->SetField(10, atof(vFieldValues[10].c_str()));
-		poFeature->SetField(11, atof(vFieldValues[11].c_str()));
-		poFeature->SetField(12, atof(vFieldValues[12].c_str()));
-		poFeature->SetField(13, _atoi64(vFieldValues[13].c_str()));
-		poFeature->SetField(14, atof(vFieldValues[14].c_str()));
-		poFeature->SetField(15, vFieldValues[15].c_str());
-		poFeature->SetField(16, atof(vFieldValues[16].c_str()));
-		poFeature->SetField(17, atof(vFieldValues[17].c_str()));
-		poFeature->SetField(18, vFieldValues[18].c_str());
-		poFeature->SetField(19, _atoi64(vFieldValues[19].c_str()));
-		poFeature->SetField(20, _atoi64(vFieldValues[20].c_str()));
-		poFeature->SetField(21, vFieldValues[21].c_str());
-	}
-	// 管线（13个字段）
-	else if (strLayerType == "E")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, atof(vFieldValues[4].c_str()));
-		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-		poFeature->SetField(6, vFieldValues[6].c_str());
-		poFeature->SetField(7, vFieldValues[7].c_str());
-		poFeature->SetField(8, vFieldValues[8].c_str());
-		poFeature->SetField(9, vFieldValues[9].c_str());
-		poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
-		poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
-		poFeature->SetField(12, vFieldValues[12].c_str());
-	}
-	// 水域陆地（25个字段）
-	else if (strLayerType == "F")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, atof(vFieldValues[4].c_str()));
-		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-		poFeature->SetField(7, _atoi64(vFieldValues[7].c_str()));
-		poFeature->SetField(8, atof(vFieldValues[8].c_str()));
-		poFeature->SetField(9, atof(vFieldValues[9].c_str()));
-		poFeature->SetField(10, atof(vFieldValues[10].c_str()));
-		poFeature->SetField(11, atof(vFieldValues[11].c_str()));
-		poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
-		poFeature->SetField(13, vFieldValues[13].c_str());
-		poFeature->SetField(14, vFieldValues[14].c_str());
-		poFeature->SetField(15, vFieldValues[15].c_str());
-		poFeature->SetField(16, vFieldValues[16].c_str());
-		poFeature->SetField(17, vFieldValues[17].c_str());
-		poFeature->SetField(18, vFieldValues[18].c_str());
-		poFeature->SetField(19, vFieldValues[19].c_str());
-		poFeature->SetField(20, vFieldValues[20].c_str());
-		poFeature->SetField(21, vFieldValues[21].c_str());
-		poFeature->SetField(22, _atoi64(vFieldValues[22].c_str()));
-		poFeature->SetField(23, _atoi64(vFieldValues[23].c_str()));
-		poFeature->SetField(24, vFieldValues[24].c_str());
-	}
-	// 海底地貌（18个字段）
-	else if (strLayerType == "G")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, atof(vFieldValues[4].c_str()));
-		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-		poFeature->SetField(7, vFieldValues[7].c_str());
-		poFeature->SetField(8, vFieldValues[8].c_str());
-		poFeature->SetField(9, vFieldValues[9].c_str());
-		poFeature->SetField(10, vFieldValues[10].c_str());
-		poFeature->SetField(11, vFieldValues[11].c_str());
-		poFeature->SetField(12, vFieldValues[12].c_str());
-		poFeature->SetField(13, vFieldValues[13].c_str());
-		poFeature->SetField(14, vFieldValues[14].c_str());
-		poFeature->SetField(15, _atoi64(vFieldValues[15].c_str()));
-		poFeature->SetField(16, _atoi64(vFieldValues[16].c_str()));
-		poFeature->SetField(17, vFieldValues[17].c_str());
-	}
-	// 礁石（20个字段）
-	else if (strLayerType == "H")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, atof(vFieldValues[4].c_str()));
-		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-		poFeature->SetField(7, vFieldValues[7].c_str());
-		poFeature->SetField(8, vFieldValues[8].c_str());
-		poFeature->SetField(9, vFieldValues[9].c_str());
-		poFeature->SetField(10, vFieldValues[10].c_str());
-		poFeature->SetField(11, vFieldValues[11].c_str());
-		poFeature->SetField(12, vFieldValues[12].c_str());
-		poFeature->SetField(13, vFieldValues[13].c_str());
-		poFeature->SetField(14, vFieldValues[14].c_str());
-		poFeature->SetField(15, vFieldValues[15].c_str());
-		poFeature->SetField(16, vFieldValues[16].c_str());
-		poFeature->SetField(17, _atoi64(vFieldValues[17].c_str()));
-		poFeature->SetField(18, _atoi64(vFieldValues[18].c_str()));
-		poFeature->SetField(19, vFieldValues[19].c_str());
-	}
-	// 水文（15个字段）
-	else if (strLayerType == "I")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, atof(vFieldValues[3].c_str()));
-		poFeature->SetField(4, atof(vFieldValues[4].c_str()));
-		poFeature->SetField(5, vFieldValues[5].c_str());
-		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-		poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-		poFeature->SetField(8, atof(vFieldValues[8].c_str()));
-		poFeature->SetField(9, _atoi64(vFieldValues[9].c_str()));
-		poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
-		poFeature->SetField(11, vFieldValues[11].c_str());
-		poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
-		poFeature->SetField(13, _atoi64(vFieldValues[13].c_str()));
-		poFeature->SetField(14, vFieldValues[14].c_str());
-	}
-	// 陆地地貌（13个字段）
-	else if (strLayerType == "J")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, vFieldValues[4].c_str());
-		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-		poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-		poFeature->SetField(8, atof(vFieldValues[8].c_str()));
-		poFeature->SetField(9, vFieldValues[9].c_str());
-		poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
-		poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
-		poFeature->SetField(12, vFieldValues[12].c_str());
-	}
-	// 境界与政区（13个字段）
-	else if (strLayerType == "K")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, vFieldValues[4].c_str());
-		poFeature->SetField(5, _atoi64(vFieldValues[5].c_str()));
-		poFeature->SetField(6, _atoi64(vFieldValues[6].c_str()));
-		poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-		poFeature->SetField(8, atof(vFieldValues[8].c_str()));
-		poFeature->SetField(9, vFieldValues[9].c_str());
-		poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
-		poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
-		poFeature->SetField(12, vFieldValues[12].c_str());
-	}
-	// 植被（12个字段）
-	else if (strLayerType == "L")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, atof(vFieldValues[4].c_str()));
-		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-		poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-		poFeature->SetField(8, vFieldValues[8].c_str());
-		poFeature->SetField(9, _atoi64(vFieldValues[9].c_str()));
-		poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
-		poFeature->SetField(11, vFieldValues[11].c_str());
-	}
-	// 地磁要素（10个字段）
-	else if (strLayerType == "M")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, atof(vFieldValues[3].c_str()));
-		poFeature->SetField(4, _atoi64(vFieldValues[4].c_str()));
-		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-		poFeature->SetField(6, vFieldValues[6].c_str());
-		poFeature->SetField(7, _atoi64(vFieldValues[7].c_str()));
-		poFeature->SetField(8, _atoi64(vFieldValues[8].c_str()));
-		poFeature->SetField(9, vFieldValues[9].c_str());
-	}
-	// 助航设备及航道（28个字段）
-	else if (strLayerType == "N")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, vFieldValues[4].c_str());
-		poFeature->SetField(5, _atoi64(vFieldValues[5].c_str()));
-		poFeature->SetField(6, vFieldValues[6].c_str());
-		poFeature->SetField(7, vFieldValues[7].c_str());
-		poFeature->SetField(8, vFieldValues[8].c_str());
-		poFeature->SetField(9, vFieldValues[9].c_str());
-		poFeature->SetField(10, atof(vFieldValues[10].c_str()));
-		poFeature->SetField(11, vFieldValues[11].c_str());
-		poFeature->SetField(12, vFieldValues[12].c_str());
-		poFeature->SetField(13, atof(vFieldValues[13].c_str()));
-		poFeature->SetField(14, atof(vFieldValues[14].c_str()));
-		poFeature->SetField(15, vFieldValues[15].c_str());
-		poFeature->SetField(16, atof(vFieldValues[16].c_str()));
-		poFeature->SetField(17, _atoi64(vFieldValues[17].c_str()));
-		poFeature->SetField(18, atof(vFieldValues[18].c_str()));
-		poFeature->SetField(19, atof(vFieldValues[19].c_str()));
-		poFeature->SetField(20, _atoi64(vFieldValues[20].c_str()));
-		poFeature->SetField(21, atof(vFieldValues[21].c_str()));
-		poFeature->SetField(22, vFieldValues[22].c_str());
-		poFeature->SetField(23, _atoi64(vFieldValues[23].c_str()));
-		poFeature->SetField(24, vFieldValues[24].c_str());
-		poFeature->SetField(25, _atoi64(vFieldValues[25].c_str()));
-		poFeature->SetField(26, _atoi64(vFieldValues[26].c_str()));
-		poFeature->SetField(27, vFieldValues[27].c_str());
-	}
-	// 海上区域界线（15个字段）
-	else if (strLayerType == "O")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, vFieldValues[4].c_str());
-		poFeature->SetField(5, vFieldValues[5].c_str());
-		poFeature->SetField(6, vFieldValues[6].c_str());
-		poFeature->SetField(7, vFieldValues[7].c_str());
-		poFeature->SetField(8, _atoi64(vFieldValues[8].c_str()));
-		poFeature->SetField(9, atof(vFieldValues[9].c_str()));
-		poFeature->SetField(10, atof(vFieldValues[10].c_str()));
-		poFeature->SetField(11, vFieldValues[11].c_str());
-		poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
-		poFeature->SetField(13, _atoi64(vFieldValues[13].c_str()));
-		poFeature->SetField(14, vFieldValues[14].c_str());
-	}
-	// 航空要素（13个字段）
-	else if (strLayerType == "P")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, vFieldValues[4].c_str());
-		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-		poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-		poFeature->SetField(8, atof(vFieldValues[8].c_str()));
-		poFeature->SetField(9, vFieldValues[9].c_str());
-		poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
-		poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
-		poFeature->SetField(12, vFieldValues[12].c_str());
-	}
-	// 军事区域（9个字段）
-	else if (strLayerType == "Q")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, vFieldValues[4].c_str());
-		poFeature->SetField(5, vFieldValues[5].c_str());
-		poFeature->SetField(6, _atoi64(vFieldValues[6].c_str()));
-		poFeature->SetField(7, _atoi64(vFieldValues[7].c_str()));
-		poFeature->SetField(8, vFieldValues[8].c_str());
-	}
-  // 注记（旧版本：9个字段）
-  else if (strLayerType == "R")
-  {
-    //  因为对图层进行创建字段的时候没有创建角度字段，所以这里没有对角度进行赋值
-    poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-    poFeature->SetField(2, vFieldValues[2].c_str());
-    poFeature->SetField(3, vFieldValues[3].c_str());
-    poFeature->SetField(4, vFieldValues[4].c_str());
-    poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-    poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-    poFeature->SetField(7, vFieldValues[7].c_str());
-    //  图幅号
-    poFeature->SetField(8, vFieldValues[8].c_str());
-  }
-  // 注记（兼容新版本：15个字段）
-  else if (strLayerType == "RR")
-  {
-    //  角度（因为对图层进行创建字段的时候没有创建角度字段，所以这里没有对角度进行赋值）
-    //poFeature->SetField(0, atof(vFieldValues[0].c_str()));
-
-    //  RRSX文件包含的字段
-    poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-    poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-    poFeature->SetField(2, vFieldValues[2].c_str());
-    poFeature->SetField(3, vFieldValues[3].c_str());
-    poFeature->SetField(4, vFieldValues[4].c_str());
-    poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-    poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-    poFeature->SetField(7, vFieldValues[7].c_str());
-
-    poFeature->SetField(8, vFieldValues[8].c_str());
-    poFeature->SetField(9, vFieldValues[9].c_str());
-    poFeature->SetField(10, vFieldValues[10].c_str());
-    poFeature->SetField(11, vFieldValues[11].c_str());
-    poFeature->SetField(12, vFieldValues[12].c_str());
-
-    //  图幅号
-    poFeature->SetField(13, vFieldValues[13].c_str());
-  }
-
-  //  创建要素
-	OGRLineString pLine;
-  for (int i = 0; i < Line.size(); i++)
-  {
-    pLine.addPoint(Line[i].dx, Line[i].dy, Line[i].dz);
-  }
-	poFeature->SetGeometry((OGRGeometry*)(&pLine));
-	if (poLayer->CreateFeature(poFeature) != OGRERR_NONE)
-	{
-		return -1;
-	}
-	OGRFeature::DestroyFeature(poFeature);
-	return 0;
+  OGRFeature::DestroyFeature(poFeature);
+  return 0;
 }
+
 
 //  面图层：根据字段类型赋属性值
 int BaseVectorOdata2ShapefileImp::Set_Polygon(
   OGRLayer* poLayer,
-	vector<SE_DPoint> &OuterRing,
-	vector<vector<SE_DPoint>> &InteriorRingVec,
-	vector<string>& vFieldValues,
-	string strLayerType)
+  std::vector<SE_DPoint>& OuterRing,
+  std::vector<std::vector<SE_DPoint>>& InteriorRingVec,
+  std::vector<std::string>& vFieldValues)
 {
-  //  检查图层指针是否为空
-  if (poLayer == NULL)
+  if (!poLayer) return -1;
+
+  // 如果待赋值的数量至少大于 1 ，那么获取第二个待赋值字段将其转化后进行检查
+  if (static_cast<int>(vFieldValues.size()) > 1) {
+    // 业务规则：编码字段在 vFieldValues[1]，为 0 则跳过创建要素
+    const GIntBig code = CPLAtoGIntBig(vFieldValues[1].c_str());
+    if (code == 0) return -2;
+  }
+
+  // 构造几何
+  OGRPolygon polygon;
   {
+    OGRLinearRing ringOut;
+    for (const auto& p : OuterRing) ringOut.addPoint(p.dx, p.dy);
+    ringOut.closeRings();
+    polygon.addRing(&ringOut);
+
+    for (const auto& hole : InteriorRingVec) {
+      OGRLinearRing ringIn;
+      for (const auto& p : hole) ringIn.addPoint(p.dx, p.dy);
+      ringIn.closeRings();
+      polygon.addRing(&ringIn);
+    }
+  }
+
+  // 创建要素
+  OGRFeature* poFeature = OGRFeature::CreateFeature(poLayer->GetLayerDefn());
+  if (!poFeature) return -1;
+
+  // 按图层定义赋字段
+  OGRFeatureDefn* defn = poLayer->GetLayerDefn();
+  const int dstN = defn->GetFieldCount();
+
+  // 若源字段不够，安全处理：能赋的赋，其他置 NULL
+  for (int dstIdx = 0; dstIdx < dstN; ++dstIdx) {
+    OGRFieldDefn* fd = defn->GetFieldDefn(dstIdx);
+    const OGRFieldType t = fd->GetType();
+
+    if (dstIdx < static_cast<int>(vFieldValues.size())) {
+      SetFieldFromString(poFeature, dstIdx, vFieldValues[dstIdx], t);
+    }
+    else {
+      poFeature->SetFieldNull(dstIdx);
+    }
+  }
+
+  // 设置几何并且写入到图层中
+  poFeature->SetGeometry(&polygon);
+  if (poLayer->CreateFeature(poFeature) != OGRERR_NONE) {
+    OGRFeature::DestroyFeature(poFeature);
     return -1;
   }
-  //  创建空的要素指针
-  OGRFeature* poFeature = nullptr;
-  poFeature = OGRFeature::CreateFeature(poLayer->GetLayerDefn());
-	//  修改问题：编码为0的面创建图层时不生成对应的面要素，编码为第2个字段
-	if (_atoi64(vFieldValues[1].c_str()) == 0)
-	{
-		//printf("strLayerType = %s\t id = %s\n", strLayerType.c_str(), vFieldValues[1].c_str());
-		return -2;
-	}
+  OGRFeature::DestroyFeature(poFeature);
+  return 0;
+}
 
-	// 测量控制点（13个字段）
-	if (strLayerType == "A")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, _atoi64(vFieldValues[4].c_str()));
-		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-		poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-		poFeature->SetField(8, atof(vFieldValues[8].c_str()));
-		poFeature->SetField(9, vFieldValues[9].c_str());
-		poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
-		poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
-		poFeature->SetField(12, vFieldValues[12].c_str());
-	}
-	// 工农业社会文化设施（11个字段）
-	else if (strLayerType == "B")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, vFieldValues[4].c_str());
-		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-		poFeature->SetField(7, vFieldValues[7].c_str());
-		poFeature->SetField(8, _atoi64(vFieldValues[8].c_str()));
-		poFeature->SetField(9, _atoi64(vFieldValues[9].c_str()));
-		poFeature->SetField(10, vFieldValues[10].c_str());
-	}
-	// 居民地（12个字段）
-	else if (strLayerType == "C")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, _atoi64(vFieldValues[4].c_str()));
-		poFeature->SetField(5, _atoi64(vFieldValues[5].c_str()));
-		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-		poFeature->SetField(7, vFieldValues[7].c_str());
-		poFeature->SetField(8, vFieldValues[8].c_str());
-		poFeature->SetField(9, _atoi64(vFieldValues[9].c_str()));
-		poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
-		poFeature->SetField(11, vFieldValues[11].c_str());
-	}
-	// 陆地（22个字段）
-	else if (strLayerType == "D")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, vFieldValues[4].c_str());
-		poFeature->SetField(5, vFieldValues[5].c_str());
-		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-		poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-		poFeature->SetField(8, atof(vFieldValues[8].c_str()));
-		poFeature->SetField(9, atof(vFieldValues[9].c_str()));
-		poFeature->SetField(10, atof(vFieldValues[10].c_str()));
-		poFeature->SetField(11, atof(vFieldValues[11].c_str()));
-		poFeature->SetField(12, atof(vFieldValues[12].c_str()));
-		poFeature->SetField(13, _atoi64(vFieldValues[13].c_str()));
-		poFeature->SetField(14, atof(vFieldValues[14].c_str()));
-		poFeature->SetField(15, vFieldValues[15].c_str());
-		poFeature->SetField(16, atof(vFieldValues[16].c_str()));
-		poFeature->SetField(17, atof(vFieldValues[17].c_str()));
-		poFeature->SetField(18, vFieldValues[18].c_str());
-		poFeature->SetField(19, _atoi64(vFieldValues[19].c_str()));
-		poFeature->SetField(20, _atoi64(vFieldValues[20].c_str()));
-		poFeature->SetField(21, vFieldValues[21].c_str());
-	}
-	// 管线（13个字段）
-	else if (strLayerType == "E")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, atof(vFieldValues[4].c_str()));
-		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-		poFeature->SetField(6, vFieldValues[6].c_str());
-		poFeature->SetField(7, vFieldValues[7].c_str());
-		poFeature->SetField(8, vFieldValues[8].c_str());
-		poFeature->SetField(9, vFieldValues[9].c_str());
-		poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
-		poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
-		poFeature->SetField(12, vFieldValues[12].c_str());
-	}
-	// 水域陆地（25个字段）
-	else if (strLayerType == "F")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, atof(vFieldValues[4].c_str()));
-		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-		poFeature->SetField(7, _atoi64(vFieldValues[7].c_str()));
-		poFeature->SetField(8, atof(vFieldValues[8].c_str()));
-		poFeature->SetField(9, atof(vFieldValues[9].c_str()));
-		poFeature->SetField(10, atof(vFieldValues[10].c_str()));
-		poFeature->SetField(11, atof(vFieldValues[11].c_str()));
-		poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
-		poFeature->SetField(13, vFieldValues[13].c_str());
-		poFeature->SetField(14, vFieldValues[14].c_str());
-		poFeature->SetField(15, vFieldValues[15].c_str());
-		poFeature->SetField(16, vFieldValues[16].c_str());
-		poFeature->SetField(17, vFieldValues[17].c_str());
-		poFeature->SetField(18, vFieldValues[18].c_str());
-		poFeature->SetField(19, vFieldValues[19].c_str());
-		poFeature->SetField(20, vFieldValues[20].c_str());
-		poFeature->SetField(21, vFieldValues[21].c_str());
-		poFeature->SetField(22, _atoi64(vFieldValues[22].c_str()));
-		poFeature->SetField(23, _atoi64(vFieldValues[23].c_str()));
-		poFeature->SetField(24, vFieldValues[24].c_str());
-	}
-	// 海底地貌（18个字段）
-	else if (strLayerType == "G")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, atof(vFieldValues[4].c_str()));
-		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-		poFeature->SetField(7, vFieldValues[7].c_str());
-		poFeature->SetField(8, vFieldValues[8].c_str());
-		poFeature->SetField(9, vFieldValues[9].c_str());
-		poFeature->SetField(10, vFieldValues[10].c_str());
-		poFeature->SetField(11, vFieldValues[11].c_str());
-		poFeature->SetField(12, vFieldValues[12].c_str());
-		poFeature->SetField(13, vFieldValues[13].c_str());
-		poFeature->SetField(14, vFieldValues[14].c_str());
-		poFeature->SetField(15, _atoi64(vFieldValues[15].c_str()));
-		poFeature->SetField(16, _atoi64(vFieldValues[16].c_str()));
-		poFeature->SetField(17, vFieldValues[17].c_str());
-	}
-	// 礁石（20个字段）
-	else if (strLayerType == "H")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, atof(vFieldValues[4].c_str()));
-		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-		poFeature->SetField(7, vFieldValues[7].c_str());
-		poFeature->SetField(8, vFieldValues[8].c_str());
-		poFeature->SetField(9, vFieldValues[9].c_str());
-		poFeature->SetField(10, vFieldValues[10].c_str());
-		poFeature->SetField(11, vFieldValues[11].c_str());
-		poFeature->SetField(12, vFieldValues[12].c_str());
-		poFeature->SetField(13, vFieldValues[13].c_str());
-		poFeature->SetField(14, vFieldValues[14].c_str());
-		poFeature->SetField(15, vFieldValues[15].c_str());
-		poFeature->SetField(16, vFieldValues[16].c_str());
-		poFeature->SetField(17, _atoi64(vFieldValues[17].c_str()));
-		poFeature->SetField(18, _atoi64(vFieldValues[18].c_str()));
-		poFeature->SetField(19, vFieldValues[19].c_str());
-	}
-	// 水文（15个字段）
-	else if (strLayerType == "I")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, atof(vFieldValues[3].c_str()));
-		poFeature->SetField(4, atof(vFieldValues[4].c_str()));
-		poFeature->SetField(5, vFieldValues[5].c_str());
-		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-		poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-		poFeature->SetField(8, atof(vFieldValues[8].c_str()));
-		poFeature->SetField(9, _atoi64(vFieldValues[9].c_str()));
-		poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
-		poFeature->SetField(11, vFieldValues[11].c_str());
-		poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
-		poFeature->SetField(13, _atoi64(vFieldValues[13].c_str()));
-		poFeature->SetField(14, vFieldValues[14].c_str());
-	}
-	// 陆地地貌（13个字段）
-	else if (strLayerType == "J")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, vFieldValues[4].c_str());
-		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-		poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-		poFeature->SetField(8, atof(vFieldValues[8].c_str()));
-		poFeature->SetField(9, vFieldValues[9].c_str());
-		poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
-		poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
-		poFeature->SetField(12, vFieldValues[12].c_str());
-	}
-	// 境界与政区（13个字段）
-	else if (strLayerType == "K")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, vFieldValues[4].c_str());
-		poFeature->SetField(5, _atoi64(vFieldValues[5].c_str()));
-		poFeature->SetField(6, _atoi64(vFieldValues[6].c_str()));
-		poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-		poFeature->SetField(8, atof(vFieldValues[8].c_str()));
-		poFeature->SetField(9, vFieldValues[9].c_str());
-		poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
-		poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
-		poFeature->SetField(12, vFieldValues[12].c_str());
-	}
-	// 植被（12个字段）
-	else if (strLayerType == "L")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, atof(vFieldValues[4].c_str()));
-		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-		poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-		poFeature->SetField(8, vFieldValues[8].c_str());
-		poFeature->SetField(9, _atoi64(vFieldValues[9].c_str()));
-		poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
-		poFeature->SetField(11, vFieldValues[11].c_str());
-	}
-	// 地磁要素（10个字段）
-	else if (strLayerType == "M")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, atof(vFieldValues[3].c_str()));
-		poFeature->SetField(4, _atoi64(vFieldValues[4].c_str()));
-		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-		poFeature->SetField(6, vFieldValues[6].c_str());
-		poFeature->SetField(7, _atoi64(vFieldValues[7].c_str()));
-		poFeature->SetField(8, _atoi64(vFieldValues[8].c_str()));
-		poFeature->SetField(9, vFieldValues[9].c_str());
-	}
-	// 助航设备及航道（28个字段）
-	else if (strLayerType == "N")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, vFieldValues[4].c_str());
-		poFeature->SetField(5, _atoi64(vFieldValues[5].c_str()));
-		poFeature->SetField(6, vFieldValues[6].c_str());
-		poFeature->SetField(7, vFieldValues[7].c_str());
-		poFeature->SetField(8, vFieldValues[8].c_str());
-		poFeature->SetField(9, vFieldValues[9].c_str());
-		poFeature->SetField(10, atof(vFieldValues[10].c_str()));
-		poFeature->SetField(11, vFieldValues[11].c_str());
-		poFeature->SetField(12, vFieldValues[12].c_str());
-		poFeature->SetField(13, atof(vFieldValues[13].c_str()));
-		poFeature->SetField(14, atof(vFieldValues[14].c_str()));
-		poFeature->SetField(15, vFieldValues[15].c_str());
-		poFeature->SetField(16, atof(vFieldValues[16].c_str()));
-		poFeature->SetField(17, _atoi64(vFieldValues[17].c_str()));
-		poFeature->SetField(18, atof(vFieldValues[18].c_str()));
-		poFeature->SetField(19, atof(vFieldValues[19].c_str()));
-		poFeature->SetField(20, _atoi64(vFieldValues[20].c_str()));
-		poFeature->SetField(21, atof(vFieldValues[21].c_str()));
-		poFeature->SetField(22, vFieldValues[22].c_str());
-		poFeature->SetField(23, _atoi64(vFieldValues[23].c_str()));
-		poFeature->SetField(24, vFieldValues[24].c_str());
-		poFeature->SetField(25, _atoi64(vFieldValues[25].c_str()));
-		poFeature->SetField(26, _atoi64(vFieldValues[26].c_str()));
-		poFeature->SetField(27, vFieldValues[27].c_str());
-	}
-	// 海上区域界线（15个字段）
-	else if (strLayerType == "O")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, vFieldValues[4].c_str());
-		poFeature->SetField(5, vFieldValues[5].c_str());
-		poFeature->SetField(6, vFieldValues[6].c_str());
-		poFeature->SetField(7, vFieldValues[7].c_str());
-		poFeature->SetField(8, _atoi64(vFieldValues[8].c_str()));
-		poFeature->SetField(9, atof(vFieldValues[9].c_str()));
-		poFeature->SetField(10, atof(vFieldValues[10].c_str()));
-		poFeature->SetField(11, vFieldValues[11].c_str());
-		poFeature->SetField(12, _atoi64(vFieldValues[12].c_str()));
-		poFeature->SetField(13, _atoi64(vFieldValues[13].c_str()));
-		poFeature->SetField(14, vFieldValues[14].c_str());
-	}
-	// 航空要素（13个字段）
-	else if (strLayerType == "P")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, vFieldValues[4].c_str());
-		poFeature->SetField(5, atof(vFieldValues[5].c_str()));
-		poFeature->SetField(6, atof(vFieldValues[6].c_str()));
-		poFeature->SetField(7, atof(vFieldValues[7].c_str()));
-		poFeature->SetField(8, atof(vFieldValues[8].c_str()));
-		poFeature->SetField(9, vFieldValues[9].c_str());
-		poFeature->SetField(10, _atoi64(vFieldValues[10].c_str()));
-		poFeature->SetField(11, _atoi64(vFieldValues[11].c_str()));
-		poFeature->SetField(12, vFieldValues[12].c_str());
-	}
-	// 军事区域（9个字段）
-	else if (strLayerType == "Q")
-	{
-		poFeature->SetField(0, _atoi64(vFieldValues[0].c_str()));
-		poFeature->SetField(1, _atoi64(vFieldValues[1].c_str()));
-		poFeature->SetField(2, vFieldValues[2].c_str());
-		poFeature->SetField(3, vFieldValues[3].c_str());
-		poFeature->SetField(4, vFieldValues[4].c_str());
-		poFeature->SetField(5, vFieldValues[5].c_str());
-		poFeature->SetField(6, _atoi64(vFieldValues[6].c_str()));
-		poFeature->SetField(7, _atoi64(vFieldValues[7].c_str()));
-		poFeature->SetField(8, vFieldValues[8].c_str());
-	}
 
-	//  创建polygon对象
-	OGRPolygon polygon;
-	//  创建外环对象
-	OGRLinearRing ringOut;
-  //  循环对外环对象进行赋值
-	for (int i = 0; i < OuterRing.size(); i++)
-	{
-		ringOut.addPoint(OuterRing[i].dx, OuterRing[i].dy);
-	}
-	//  结束点应和起始点相同，保证多边形闭合
-	ringOut.closeRings();
-	polygon.addRing(&ringOut);
+bool BaseVectorOdata2ShapefileImp::SetFieldFromString(
+  OGRFeature* f,
+  int iField,
+  const std::string& s,
+  OGRFieldType t) {
+  // 空串：置 NULL
+  if (s.empty()) {
+    f->SetFieldNull(iField);
+    return true;
+  }
 
-	//  循环对内环对象进行赋值
-	for (int i = 0; i < InteriorRingVec.size(); i++)
-	{
-    //  创建内环对象
-		OGRLinearRing ringIn;
-    //  循环对内环每个对象进行赋值
-		for (int j = 0; j < InteriorRingVec[i].size(); j++)
-		{
-			ringIn.addPoint(InteriorRingVec[i][j].dx, InteriorRingVec[i][j].dy);
-		}
-		ringIn.closeRings();
-		polygon.addRing(&ringIn);
-	}
+  switch (t) {
+  case OFTInteger: {
+    GIntBig v = CPLAtoGIntBig(s.c_str());
+    f->SetField(iField, static_cast<int>(v));
+    return true;
+  }
+  case OFTInteger64: {
+    GIntBig v = CPLAtoGIntBig(s.c_str());
+    f->SetField(iField, v);
+    return true;
+  }
+  case OFTReal: {
+    double v = CPLAtof(s.c_str());
+    f->SetField(iField, v);
+    return true;
+  }
+  case OFTString:
+  case OFTWideString:
+    f->SetField(iField, s.c_str());
+    return true;
 
-  //  设置要素的几何信息
-	poFeature->SetGeometry((OGRGeometry*)(&polygon));
-	if (poLayer->CreateFeature(poFeature) != OGRERR_NONE)
-	{
-		return -1;
-	}
-	OGRFeature::DestroyFeature(poFeature);
-	return 0;
+  // 后续可以扩展 OFTIntegerList / OFTRealList / OFTStringList 的解析
+  case OFTDate:
+  case OFTTime:
+  case OFTDateTime:         
+  default:
+    f->SetField(iField, s.c_str());
+    return false;
+  }
 }
 
 bool BaseVectorOdata2ShapefileImp::FieldValueIsExistedInSimpleEnumList(

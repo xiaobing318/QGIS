@@ -315,6 +315,9 @@ QStringList ToolDZB2ShapefileDialog::GetSubDirPathOfCurrentDir(QString dirPath)
 
 void ToolDZB2ShapefileDialog::Button_OK_accepted()
 {
+  //	设置了用户界面参数，可能会运行失败，在执行具体的逻辑之前先将参数保存下来
+  saveState();
+
 #pragma region "重置统计信息"
   this->total_processed_frame_data_count = 0;
   this->total_successfully_processed_frame_data_count = 0;
@@ -801,7 +804,7 @@ void ToolDZB2ShapefileDialog::onAllProcessingCompleted()
   mergeLogFiles();
 
   // 显示统计信息
-  QString qstrTitle = tr("JBDX--->Shapefile:");
+  QString qstrTitle = tr("DZB--->Shapefile:");
   QString qstrText = tr("一共") + QString::number(m_SheetCount)
     + tr("幅分幅数据；其中成功处理了") + QString::number(total_successfully_processed_frame_data_count)
     + tr("幅分幅数据；其中") + QString::number(total_processed_frame_data_count - total_successfully_processed_frame_data_count)
