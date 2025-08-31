@@ -14,6 +14,9 @@
 #include <QtCore/QProcess>
 #include <QDesktopServices>
 #include <QUrl>
+#include <QFileInfo>
+#include <QDir>
+#include <QCoreApplication>
 
 //#include "DLHJ_Copilot_Chat.h"
 //#include "DLHJ_Copilot_Coder.h"
@@ -40,6 +43,26 @@ DLHJ_Copilots_toolbox::DLHJ_Copilots_toolbox(QgisInterface* qgisInterface)
 
 DLHJ_Copilots_toolbox::~DLHJ_Copilots_toolbox()
 {
+    // 确保在插件销毁时正确终止 qcopilot 进程
+    if (mServerProcess && mServerProcess->state() == QProcess::Running)
+    {
+        QgsMessageLog::logMessage("正在终止 qcopilot 进程...", "DLHJ_Copilots", Qgis::Info);
+        
+        // 发送终止信号（相当于 Ctrl+C）
+        mServerProcess->terminate();
+        
+        // 等待进程正常退出，超时后强制杀死
+        if (!mServerProcess->waitForFinished(5000))
+        {
+            QgsMessageLog::logMessage("qcopilot 进程未能正常退出，强制终止...", "DLHJ_Copilots", Qgis::Warning);
+            mServerProcess->kill();
+            mServerProcess->waitForFinished(2000);
+        }
+        else
+        {
+            QgsMessageLog::logMessage("qcopilot 进程已正常退出", "DLHJ_Copilots", Qgis::Info);
+        }
+    }
 }
 
 
@@ -116,47 +139,13 @@ void DLHJ_Copilots_toolbox::initGui()
         // 获取当前应用程序的目录路径
         QString appDir = QCoreApplication::applicationDirPath();
 
-        // 构建 llama-server.exe 的路径
-        QString program = QDir(appDir).filePath("DLHJ_Copilots/DLHJ_Copilots.exe");
+        // 构建 qcopilot.exe 的路径
+        QString program = QDir(appDir).filePath("QCopilot/qcopilot.exe");
 
-#pragma region "1 speculate decode"
-        //// 构建命令行参数
-        //QStringList arguments;
-        //arguments << "-m"
-        //  << QDir(appDir).filePath("DLHJ_Copilots_Models/boson-2-7b-instruct-q8_0")
-        //  << "-md"
-        //  << QDir(appDir).filePath("DLHJ_Copilots_Models/boson-2-1.5b-instruct-q8_0");
-#pragma endregion
-
-#pragma region "2 NVIDIA GPU Inference"
-        //// 构建命令行参数
-        //QStringList arguments;
-        //arguments << "-m"
-        //  << QDir(appDir).filePath("DLHJ_Copilots_Models/boson-2-7b-instruct-q8_0")
-        //  << "-ngl"
-        //  << "99"
-        //  << "-md"
-        //  << QDir(appDir).filePath("DLHJ_Copilots_Models/boson-2-1.5b-instruct-q8_0")
-        //  << "-ngld"
-        //  << "99"
-        //  << "-c"
-        //  << "4096";
-        //  //<< "--grammar-file"
-        //  //<< QDir(appDir).filePath("DLHJ_Copilots_Models/json.gbnf");
-#pragma endregion
-
-#pragma region "3 NVIDIA GPU Inference && speculate decode"
-        // 构建命令行参数
+        // 构建命令行参数 - qcopilot 需要配置文件路径参数
         QStringList arguments;
-        arguments << "-m"
-          << QDir(appDir).filePath("DLHJ_Copilots_Models/boson-2-1.5b-instruct-q8_0")
-          << "-ngl"
-          << "99"
-          << "-c"
-          << "4096";
-        //<< "--grammar-file"
-        //<< QDir(appDir).filePath("DLHJ_Copilots_Models/json.gbnf");
-#pragma endregion
+        QString configFilePath = QDir(appDir).filePath("QCopilot/config.json");
+        arguments << "--config-file-path" << configFilePath;
 
         // 获取当前环境变量
         QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
@@ -164,18 +153,48 @@ void DLHJ_Copilots_toolbox::initGui()
         // 将修改后的环境变量设置给 QProcess
         mServerProcess->setProcessEnvironment(env);
 
+        // 检查 qcopilot.exe 文件是否存在
+        QFileInfo programFile(program);
+        if (!programFile.exists())
+        {
+            QgsMessageLog::logMessage(QString("qcopilot.exe 文件不存在: %1").arg(program), "DLHJ_Copilots", Qgis::Critical);
+            return;
+        }
+
+        // 检查 config.json 文件是否存在
+        QFileInfo configFile(configFilePath);
+        if (!configFile.exists())
+        {
+            QgsMessageLog::logMessage(QString("config.json 文件不存在: %1").arg(configFilePath), "DLHJ_Copilots", Qgis::Critical);
+            return;
+        }
+
         // 启动进程
         mServerProcess->start(program, arguments);
 
         // 等待进程启动，检查是否成功
         if(!mServerProcess->waitForStarted(5000))
         {
-            // 启动失败时，可以弹出提示或写日志
-            QgsMessageLog::logMessage("DLHJ_Copilots启动失败！", "DLHJ_Copilots", Qgis::Warning);
+            QString errorMsg = QString("qcopilot 启动失败！错误信息: %1").arg(mServerProcess->errorString());
+            QgsMessageLog::logMessage(errorMsg, "DLHJ_Copilots", Qgis::Critical);
         }
         else
         {
-            QgsMessageLog::logMessage("DLHJ_Copilots启动成功！", "DLHJ_Copilots", Qgis::Info);
+            QgsMessageLog::logMessage("qcopilot 启动成功！", "DLHJ_Copilots", Qgis::Info);
+            
+            // 连接进程结束信号，用于监控进程状态
+            connect(mServerProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+                    this, [=](int exitCode, QProcess::ExitStatus exitStatus) {
+                        if (exitStatus == QProcess::CrashExit)
+                        {
+                            QgsMessageLog::logMessage(QString("qcopilot 进程异常退出，退出码: %1").arg(exitCode), 
+                                                    "DLHJ_Copilots", Qgis::Warning);
+                        }
+                        else
+                        {
+                            QgsMessageLog::logMessage("qcopilot 进程正常退出", "DLHJ_Copilots", Qgis::Info);
+                        }
+                    });
         }
     }
 #pragma endregion
@@ -206,8 +225,20 @@ void DLHJ_Copilots_toolbox::DLHJ_Copilot_Agent()
 
 void DLHJ_Copilots_toolbox::unload()
 {
-	// remove the GUI
+	// 首先终止 qcopilot 进程
+	if (mServerProcess && mServerProcess->state() == QProcess::Running)
+	{
+		QgsMessageLog::logMessage("插件卸载时终止 qcopilot 进程...", "DLHJ_Copilots", Qgis::Info);
+		mServerProcess->terminate();
+		
+		if (!mServerProcess->waitForFinished(3000))
+		{
+			mServerProcess->kill();
+			mServerProcess->waitForFinished(1000);
+		}
+	}
 
+	// remove the GUI
 	//  1、DLHJ_Copilot_Chat 	对话补全
 	mQGisIface->removePluginVectorMenu(tr("&DLHJ_Copilots"), mAction_DLHJ_Copilot_Chat);
 	mQGisIface->removeVectorToolBarIcon(mAction_DLHJ_Copilot_Chat);
@@ -222,8 +253,7 @@ void DLHJ_Copilots_toolbox::unload()
 	delete mAction_DLHJ_Copilot_Chat;
 	delete mAction_DLHJ_Copilot_Coder;
 	delete mAction_DLHJ_Copilot_Agent;
-  delete mServerProcess;
-	
+	delete mServerProcess;
 }
 
 

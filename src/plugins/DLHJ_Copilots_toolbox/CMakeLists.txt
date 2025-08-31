@@ -36,12 +36,6 @@ set (DLHJ_Copilots_toolbox_RCCS
   DLHJ_Copilots_toolbox_plugin.qrc
 )
 
-
-
-
-
-
-
 ########################################################
 # Build
 
@@ -57,44 +51,64 @@ add_library (plugin_DLHJ_Copilots_toolbox MODULE ${DLHJ_Copilots_toolbox_SRCS}  
 target_compile_features(plugin_DLHJ_Copilots_toolbox PRIVATE cxx_std_17)
 
 
-# 杨小兵-2024-02-29：获取为CMake临时设置的环境变量
+# 获取环境变量配置
 set(OSGEO4W_ROOT_for_plugin_DLHJ_Copilots_toolbox $ENV{OSGEO4W_ROOT})
 set(O4W_QT_HEADERS_for_plugin_DLHJ_Copilots_toolbox $ENV{O4W_QT_HEADERS})
 set(O4W_QT_LIBRARIES_for_plugin_DLHJ_Copilots_toolbox $ENV{O4W_QT_LIBRARIES})
 
-#杨小兵-2024-03-27：包含头文件
-target_include_directories(plugin_DLHJ_Copilots_toolbox SYSTEM PUBLIC
+# 包含头文件配置
+target_include_directories(plugin_DLHJ_Copilots_toolbox SYSTEM PRIVATE
+  # 当前源码和构建目录
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_BINARY_DIR}
-)
-
-target_include_directories(plugin_DLHJ_Copilots_toolbox SYSTEM PUBLIC
+  
+  # OSGEO4W 环境头文件
   ${OSGEO4W_ROOT_for_plugin_DLHJ_Copilots_toolbox}/include
 
+  # Qt 头文件目录
   ${O4W_QT_HEADERS_for_plugin_DLHJ_Copilots_toolbox}
   ${O4W_QT_HEADERS_for_plugin_DLHJ_Copilots_toolbox}/QtCore
   ${O4W_QT_HEADERS_for_plugin_DLHJ_Copilots_toolbox}/QtGui
   ${O4W_QT_HEADERS_for_plugin_DLHJ_Copilots_toolbox}/QtXml
   ${O4W_QT_HEADERS_for_plugin_DLHJ_Copilots_toolbox}/QtWidgets
 
+  # QGIS 相关头文件目录
   ${CMAKE_BINARY_DIR}/src/core
   ${CMAKE_BINARY_DIR}/src/gui
   ${CMAKE_SOURCE_DIR}/src/plugins
   ${CMAKE_BINARY_DIR}
 
+  # 插件子模块目录
   ${CMAKE_CURRENT_SOURCE_DIR}/DLHJ_Copilots
 )
 
 
-#杨小兵-2024-03-27：包含库文件
-target_link_libraries(plugin_DLHJ_Copilots_toolbox
-  ${O4W_QT_LIBRARIES_for_plugin_DLHJ_Copilots_toolbox}/Qt5Gui.lib
-  ${O4W_QT_LIBRARIES_for_plugin_DLHJ_Copilots_toolbox}/Qt5Core.lib
-  ${O4W_QT_LIBRARIES_for_plugin_DLHJ_Copilots_toolbox}/Qt5Xml.lib
+# 链接库文件配置
+if (BUILD_WITH_QT6)
+  target_link_libraries(plugin_DLHJ_Copilots_toolbox PRIVATE
+    # Qt6 库文件
+    Qt6::Core
+    Qt6::Gui
+    Qt6::Widgets
+    Qt6::Xml
+    
+    # QGIS 库文件
+    qgis_core
+    qgis_gui
+  )
+else()
+  target_link_libraries(plugin_DLHJ_Copilots_toolbox PRIVATE
+    # Qt5 库文件
+    ${O4W_QT_LIBRARIES_for_plugin_DLHJ_Copilots_toolbox}/Qt5Core.lib
+    ${O4W_QT_LIBRARIES_for_plugin_DLHJ_Copilots_toolbox}/Qt5Gui.lib
+    ${O4W_QT_LIBRARIES_for_plugin_DLHJ_Copilots_toolbox}/Qt5Widgets.lib
+    ${O4W_QT_LIBRARIES_for_plugin_DLHJ_Copilots_toolbox}/Qt5Xml.lib
 
-  qgis_core
-  qgis_gui
-)
+    # QGIS 库文件
+    qgis_core
+    qgis_gui
+  )
+endif()
 
 target_compile_definitions(plugin_DLHJ_Copilots_toolbox PRIVATE "-DOS_FAMILY_WINDOWS" "-DDLLPROJECT_EXPORT")
 
