@@ -163,17 +163,27 @@ void replaceAll(std::string& source, const std::string& from, const std::string&
 }
 
 /*
-1、作用：获取系统目录路径
+1、作用：获取用户可写的系统相关目录路径（使用ProgramData目录）
 */
 std::string getSystemDirectory()
 {
-  char systemDir[MAX_PATH];
-  if (GetSystemDirectory(systemDir, MAX_PATH) == 0)
+  char programDataDir[MAX_PATH];
+  // 使用ProgramData目录，所有用户都可以读写
+  if (GetEnvironmentVariable("ProgramData", programDataDir, MAX_PATH) == 0)
   {
-    //  获取系统目录失败
-    return "";
+    //  获取ProgramData目录失败，使用备用方案
+    if (GetTempPath(MAX_PATH, programDataDir) == 0)
+    {
+      //  获取临时目录也失败
+      return "";
+    }
   }
-  return std::string(systemDir);
+  
+  // 创建DLHJ子目录
+  std::string dlhjDir = std::string(programDataDir) + "\\DLHJ";
+  CreateDirectory(dlhjDir.c_str(), NULL);  // 如果目录已存在会自动忽略
+  
+  return dlhjDir;
 }
 
 /*
