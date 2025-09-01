@@ -160,9 +160,10 @@ void PluginCopilotsToolbox::initGui()
 // 按需启动server进程
 void PluginCopilotsToolbox::startServerIfNeeded()
 {
-    // 如果进程已经运行，直接返回
+    // 如果进程已经运行，显示提示信息并返回
     if(mServerProcess && mServerProcess->state() == QProcess::Running)
     {
+        mQGisIface->messageBar()->pushMessage("Copilots", "qcopilot 服务器已在运行中", Qgis::Info, 3);
         return;
     }
 
@@ -182,6 +183,7 @@ void PluginCopilotsToolbox::startServerIfNeeded()
     if (!programFile.exists())
     {
         QgsMessageLog::logMessage(QString("qcopilot.exe 文件不存在: %1").arg(program), "Copilots", Qgis::Critical);
+        mQGisIface->messageBar()->pushMessage("Copilots", QString("qcopilot.exe 文件不存在: %1").arg(program), Qgis::Critical, 10);
         return;
     }
 
@@ -190,6 +192,7 @@ void PluginCopilotsToolbox::startServerIfNeeded()
     if (!configFile.exists())
     {
         QgsMessageLog::logMessage(QString("config.json 文件不存在: %1").arg(configFilePath), "Copilots", Qgis::Critical);
+        mQGisIface->messageBar()->pushMessage("Copilots", QString("config.json 文件不存在: %1").arg(configFilePath), Qgis::Critical, 10);
         return;
     }
 
@@ -205,9 +208,9 @@ void PluginCopilotsToolbox::startServerIfNeeded()
         mServerProcess->setProcessEnvironment(env);
 
 #ifdef Q_OS_WIN
-        // 在Windows上设置进程创建选项，以便更好地管理子进程
+        // 在Windows上隐藏控制台窗口
         mServerProcess->setCreateProcessArgumentsModifier([](QProcess::CreateProcessArguments *args) {
-            args->flags |= CREATE_NEW_CONSOLE;
+            args->flags |= CREATE_NO_WINDOW;
         });
 #endif
 
@@ -216,15 +219,20 @@ void PluginCopilotsToolbox::startServerIfNeeded()
                 this, [=](int exitCode, QProcess::ExitStatus exitStatus) {
                     if (exitStatus == QProcess::CrashExit)
                     {
-                        QgsMessageLog::logMessage(QString("qcopilot 进程异常退出，退出码: %1").arg(exitCode),
-                                                "Copilots", Qgis::Warning);
+                        QString msg = QString("qcopilot 进程异常退出，退出码: %1").arg(exitCode);
+                        QgsMessageLog::logMessage(msg, "Copilots", Qgis::Warning);
+                        mQGisIface->messageBar()->pushMessage("Copilots", msg, Qgis::Warning, 8);
                     }
                     else
                     {
                         QgsMessageLog::logMessage("qcopilot 进程正常退出", "Copilots", Qgis::Info);
+                        mQGisIface->messageBar()->pushMessage("Copilots", "qcopilot 服务器已停止", Qgis::Info, 5);
                     }
                 });
     }
+
+    // 在启动前显示提示信息
+    mQGisIface->messageBar()->pushMessage("Copilots", "正在启动 qcopilot 服务器...", Qgis::Info, 5);
 
     // 启动进程
     mServerProcess->start(program, arguments);
@@ -234,10 +242,12 @@ void PluginCopilotsToolbox::startServerIfNeeded()
     {
         QString errorMsg = QString("qcopilot 启动失败！错误信息: %1").arg(mServerProcess->errorString());
         QgsMessageLog::logMessage(errorMsg, "Copilots", Qgis::Critical);
+        mQGisIface->messageBar()->pushMessage("Copilots", errorMsg, Qgis::Critical, 10);
     }
     else
     {
         QgsMessageLog::logMessage("qcopilot 启动成功！", "Copilots", Qgis::Info);
+        mQGisIface->messageBar()->pushMessage("Copilots", "qcopilot 服务器启动成功！正在准备智能对话服务...", Qgis::Success, 5);
     }
 }
 
