@@ -18,6 +18,11 @@
 #include <QDir>
 #include <QCoreApplication>
 
+/*-------------Windows--------------------*/
+#ifdef Q_OS_WIN
+#include <windows.h>
+#endif
+
 //#include "Copilot_Chat.h"
 //#include "Copilot_Coder.h"
 //#include "Copilot_Agent.h"
@@ -43,10 +48,27 @@ PluginCopilotsToolbox::PluginCopilotsToolbox(QgisInterface* qgisInterface)
 
 PluginCopilotsToolbox::~PluginCopilotsToolbox()
 {
-    // 确保在插件销毁时正确终止 qcopilot 进程
+    // 确保在插件销毁时正确终止 qcopilot 进程及其子进程
     if (mServerProcess && mServerProcess->state() == QProcess::Running)
     {
-        QgsMessageLog::logMessage("正在终止 qcopilot 进程...", "Copilots", Qgis::Info);
+        QgsMessageLog::logMessage("正在终止 qcopilot 进程及其子进程...", "Copilots", Qgis::Info);
+
+#ifdef Q_OS_WIN
+        // 在Windows上，使用taskkill命令强制终止进程树
+        QProcess killProcess;
+        QString processId = QString::number(mServerProcess->processId());
+        killProcess.start("taskkill", QStringList() << "/F" << "/T" << "/PID" << processId);
+        killProcess.waitForFinished(3000);
+        
+        if (killProcess.exitCode() == 0)
+        {
+            QgsMessageLog::logMessage("已通过taskkill终止qcopilot进程树", "Copilots", Qgis::Info);
+        }
+        else
+        {
+            QgsMessageLog::logMessage("taskkill命令执行失败，尝试标准终止方式", "Copilots", Qgis::Warning);
+        }
+#endif
 
         // 发送终止信号（相当于 Ctrl+C）
         mServerProcess->terminate();
@@ -130,22 +152,51 @@ void PluginCopilotsToolbox::initGui()
 
 #pragma endregion
 
-#pragma region "启动server进程"
+
+	//	更新菜单状态
+  updateActions();
+}
+
+// 按需启动server进程
+void PluginCopilotsToolbox::startServerIfNeeded()
+{
+    // 如果进程已经运行，直接返回
+    if(mServerProcess && mServerProcess->state() == QProcess::Running)
+    {
+        return;
+    }
+
+    // 获取当前应用程序的目录路径
+    QString appDir = QCoreApplication::applicationDirPath();
+
+    // 构建 qcopilot.exe 的路径
+    QString program = QDir(appDir).filePath("QCopilot/qcopilot.exe");
+
+    // 构建命令行参数 - qcopilot 需要配置文件路径参数
+    QStringList arguments;
+    QString configFilePath = QDir(appDir).filePath("QCopilot/config.json");
+    arguments << "--config-file-path" << configFilePath;
+
+    // 检查 qcopilot.exe 文件是否存在
+    QFileInfo programFile(program);
+    if (!programFile.exists())
+    {
+        QgsMessageLog::logMessage(QString("qcopilot.exe 文件不存在: %1").arg(program), "Copilots", Qgis::Critical);
+        return;
+    }
+
+    // 检查 config.json 文件是否存在
+    QFileInfo configFile(configFilePath);
+    if (!configFile.exists())
+    {
+        QgsMessageLog::logMessage(QString("config.json 文件不存在: %1").arg(configFilePath), "Copilots", Qgis::Critical);
+        return;
+    }
+
     // 初始化并启动 server 进程（采用相对路径）
     if(!mServerProcess)
     {
         mServerProcess = new QProcess(this);
-
-        // 获取当前应用程序的目录路径
-        QString appDir = QCoreApplication::applicationDirPath();
-
-        // 构建 qcopilot.exe 的路径
-        QString program = QDir(appDir).filePath("QCopilot/qcopilot.exe");
-
-        // 构建命令行参数 - qcopilot 需要配置文件路径参数
-        QStringList arguments;
-        QString configFilePath = QDir(appDir).filePath("QCopilot/config.json");
-        arguments << "--config-file-path" << configFilePath;
 
         // 获取当前环境变量
         QProcessEnvironment env = QProcessEnvironment::systemEnvironment();
@@ -153,88 +204,107 @@ void PluginCopilotsToolbox::initGui()
         // 将修改后的环境变量设置给 QProcess
         mServerProcess->setProcessEnvironment(env);
 
-        // 检查 qcopilot.exe 文件是否存在
-        QFileInfo programFile(program);
-        if (!programFile.exists())
-        {
-            QgsMessageLog::logMessage(QString("qcopilot.exe 文件不存在: %1").arg(program), "Copilots", Qgis::Critical);
-            return;
-        }
+#ifdef Q_OS_WIN
+        // 在Windows上设置进程创建选项，以便更好地管理子进程
+        mServerProcess->setCreateProcessArgumentsModifier([](QProcess::CreateProcessArguments *args) {
+            args->flags |= CREATE_NEW_CONSOLE;
+        });
+#endif
 
-        // 检查 config.json 文件是否存在
-        QFileInfo configFile(configFilePath);
-        if (!configFile.exists())
-        {
-            QgsMessageLog::logMessage(QString("config.json 文件不存在: %1").arg(configFilePath), "Copilots", Qgis::Critical);
-            return;
-        }
-
-        // 启动进程
-        mServerProcess->start(program, arguments);
-
-        // 等待进程启动，检查是否成功
-        if(!mServerProcess->waitForStarted(5000))
-        {
-            QString errorMsg = QString("qcopilot 启动失败！错误信息: %1").arg(mServerProcess->errorString());
-            QgsMessageLog::logMessage(errorMsg, "Copilots", Qgis::Critical);
-        }
-        else
-        {
-            QgsMessageLog::logMessage("qcopilot 启动成功！", "Copilots", Qgis::Info);
-
-            // 连接进程结束信号，用于监控进程状态
-            connect(mServerProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
-                    this, [=](int exitCode, QProcess::ExitStatus exitStatus) {
-                        if (exitStatus == QProcess::CrashExit)
-                        {
-                            QgsMessageLog::logMessage(QString("qcopilot 进程异常退出，退出码: %1").arg(exitCode),
-                                                    "Copilots", Qgis::Warning);
-                        }
-                        else
-                        {
-                            QgsMessageLog::logMessage("qcopilot 进程正常退出", "Copilots", Qgis::Info);
-                        }
-                    });
-        }
+        // 连接进程结束信号，用于监控进程状态
+        connect(mServerProcess, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+                this, [=](int exitCode, QProcess::ExitStatus exitStatus) {
+                    if (exitStatus == QProcess::CrashExit)
+                    {
+                        QgsMessageLog::logMessage(QString("qcopilot 进程异常退出，退出码: %1").arg(exitCode),
+                                                "Copilots", Qgis::Warning);
+                    }
+                    else
+                    {
+                        QgsMessageLog::logMessage("qcopilot 进程正常退出", "Copilots", Qgis::Info);
+                    }
+                });
     }
-#pragma endregion
 
-	//	更新菜单状态
-  updateActions();
+    // 启动进程
+    mServerProcess->start(program, arguments);
+
+    // 等待进程启动，检查是否成功
+    if(!mServerProcess->waitForStarted(5000))
+    {
+        QString errorMsg = QString("qcopilot 启动失败！错误信息: %1").arg(mServerProcess->errorString());
+        QgsMessageLog::logMessage(errorMsg, "Copilots", Qgis::Critical);
+    }
+    else
+    {
+        QgsMessageLog::logMessage("qcopilot 启动成功！", "Copilots", Qgis::Info);
+    }
 }
 
 //	1、Copilot_Chat 	对话补全
 void PluginCopilotsToolbox::Copilot_Chat()
 {
-	//  打开网页
-  QDesktopServices::openUrl(QUrl(QString("http://127.0.0.1:8081")));
+    // 确保服务器已启动
+    startServerIfNeeded();
+    
+    //  打开网页
+    QDesktopServices::openUrl(QUrl(QString("http://127.0.0.1:8081")));
 }
 //	2、Copilot_Coder 代码补全
 void PluginCopilotsToolbox::Copilot_Coder()
 {
-	//  打开网页
-	QDesktopServices::openUrl(QUrl(QString("http://127.0.0.1:8081")));
+    // 确保服务器已启动
+    startServerIfNeeded();
+    
+    //  打开网页
+    QDesktopServices::openUrl(QUrl(QString("http://127.0.0.1:8081")));
 }
 //	3、Copilot_Agent 代理
 void PluginCopilotsToolbox::Copilot_Agent()
 {
-	//  打开网页
-	QDesktopServices::openUrl(QUrl(QString("http://127.0.0.1:8081")));
+    // 确保服务器已启动
+    startServerIfNeeded();
+    
+    //  打开网页
+    QDesktopServices::openUrl(QUrl(QString("http://127.0.0.1:8081")));
 }
 
 
 void PluginCopilotsToolbox::unload()
 {
-	// 首先终止 qcopilot 进程
+	// 首先终止 qcopilot 进程及其子进程
 	if (mServerProcess && mServerProcess->state() == QProcess::Running)
 	{
-		QgsMessageLog::logMessage("插件卸载时终止 qcopilot 进程...", "Copilots", Qgis::Info);
+		QgsMessageLog::logMessage("插件卸载时终止 qcopilot 进程及其子进程...", "Copilots", Qgis::Info);
+		
+#ifdef Q_OS_WIN
+        // 在Windows上，使用taskkill命令强制终止进程树
+        QProcess killProcess;
+        QString processId = QString::number(mServerProcess->processId());
+        killProcess.start("taskkill", QStringList() << "/F" << "/T" << "/PID" << processId);
+        killProcess.waitForFinished(3000);
+        
+        if (killProcess.exitCode() == 0)
+        {
+            QgsMessageLog::logMessage("已通过taskkill终止qcopilot进程树", "Copilots", Qgis::Info);
+        }
+        else
+        {
+            QgsMessageLog::logMessage("taskkill命令执行失败，尝试标准终止方式", "Copilots", Qgis::Warning);
+        }
+#endif
+
 		mServerProcess->terminate();
 
 		if (!mServerProcess->waitForFinished(3000))
 		{
+			QgsMessageLog::logMessage("qcopilot 进程未能正常退出，强制终止...", "Copilots", Qgis::Warning);
 			mServerProcess->kill();
 			mServerProcess->waitForFinished(1000);
+		}
+		else
+		{
+			QgsMessageLog::logMessage("qcopilot 进程已正常退出", "Copilots", Qgis::Info);
 		}
 	}
 

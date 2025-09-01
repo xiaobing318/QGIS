@@ -55,6 +55,7 @@ private:
 
 private slots:
 	void updateActions();
+	void startServerIfNeeded();
 
 private:
 
