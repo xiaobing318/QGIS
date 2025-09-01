@@ -1,5 +1,5 @@
 <RCC>
-    <qresource prefix="/DLHJ_Copilots_toolbox">
+    <qresource prefix="/plugin_Copilots_toolbox">
     <file>icons/PluginCopilot.svg</file>
     <file>icons/Copilot_Agent.svg</file>
     <file>icons/Copilot_Chat.svg</file>

@@ -21,6 +21,7 @@ target_compile_features(plugin_Copilots_toolbox PRIVATE cxx_std_17)
 target_include_directories(plugin_Copilots_toolbox SYSTEM PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CMAKE_CURRENT_BINARY_DIR}
+  ${CMAKE_SOURCE_DIR}/src/plugins
 )
 
 

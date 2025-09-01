@@ -1,13 +1,3 @@
-#include "PluginCopilotsToolbox.h"
-
-/*------------QGIS include-----------------*/
-#include "qgisinterface.h"
-#include "qgsguiutils.h"
-#include "qgsproject.h"
-#include "qgsmessagebar.h"
-#include "qgsmapcanvas.h"
-#include "qgsapplication.h"
-
 /*-------------Qt--------------------*/
 #include <QAction>
 #include <QMessageBox>
@@ -20,16 +10,25 @@
 
 /*-------------Windows--------------------*/
 #ifdef Q_OS_WIN
-#include <windows.h>
+  #include <windows.h>
 #endif
+
+/*------------QGIS include-----------------*/
+#include "qgisinterface.h"
+#include "qgsguiutils.h"
+#include "qgsproject.h"
+#include "qgsmessagebar.h"
+#include "qgsmapcanvas.h"
+#include "qgsapplication.h"
+#include "qgsmessagelog.h"
+#include "qgsmessagebar.h"
+
+#include "PluginCopilotsToolbox.h"
 
 //#include "Copilot_Chat.h"
 //#include "Copilot_Coder.h"
 //#include "Copilot_Agent.h"
 
-// 消息日志
-#include "qgsmessagelog.h"
-#include "qgsmessagebar.h"
 
 static const QString sName = QObject::tr("Copilots Toolbox");
 static const QString sDescription = QObject::tr("三个功能：Copilot_Chat 智能对话； Copilot_Coder 智能代码；Copilot_Agent 智能体");
@@ -37,7 +36,7 @@ static const QString sCategory = QObject::tr("Copilots");
 static const QString sPluginVersion = QObject::tr("Version 1.0");
 static const QgisPlugin::PluginType sPluginType = QgisPlugin::UI;
 // 插件图标
-static const QString sPluginIcon = QStringLiteral(":/PluginCopilotsToolbox/icons/PluginCopilot.svg");
+static const QString sPluginIcon = QStringLiteral(":/plugin_Copilots_toolbox/icons/PluginCopilot.svg");
 
 PluginCopilotsToolbox::PluginCopilotsToolbox(QgisInterface* qgisInterface)
 	: QgisPlugin(sName, sDescription, sCategory, sPluginVersion, sPluginType)
@@ -59,14 +58,14 @@ PluginCopilotsToolbox::~PluginCopilotsToolbox()
         QString processId = QString::number(mServerProcess->processId());
         killProcess.start("taskkill", QStringList() << "/F" << "/T" << "/PID" << processId);
         killProcess.waitForFinished(3000);
-        
+
         if (killProcess.exitCode() == 0)
         {
-            QgsMessageLog::logMessage("已通过taskkill终止qcopilot进程树", "Copilots", Qgis::Info);
+            QgsMessageLog::logMessage("已通过 taskkill 终止 qcopilot 进程树", "Copilots", Qgis::Info);
         }
         else
         {
-            QgsMessageLog::logMessage("taskkill命令执行失败，尝试标准终止方式", "Copilots", Qgis::Warning);
+            QgsMessageLog::logMessage(" taskkill 命令执行失败，尝试标准终止方式", "Copilots", Qgis::Warning);
         }
 #endif
 
@@ -76,13 +75,13 @@ PluginCopilotsToolbox::~PluginCopilotsToolbox()
         // 等待进程正常退出，超时后强制杀死
         if (!mServerProcess->waitForFinished(5000))
         {
-            QgsMessageLog::logMessage("qcopilot 进程未能正常退出，强制终止...", "Copilots", Qgis::Warning);
+            QgsMessageLog::logMessage(" qcopilot 进程未能正常退出，强制终止...", "Copilots", Qgis::Warning);
             mServerProcess->kill();
             mServerProcess->waitForFinished(2000);
         }
         else
         {
-            QgsMessageLog::logMessage("qcopilot 进程已正常退出", "Copilots", Qgis::Info);
+            QgsMessageLog::logMessage(" qcopilot 进程已正常退出", "Copilots", Qgis::Info);
         }
     }
 }
@@ -108,7 +107,7 @@ void PluginCopilotsToolbox::initGui()
 
 #pragma region "1、Copilot_Chat 	对话补全"
   // Create the action for tool
-  mAction_Copilot_Chat = new QAction(QIcon(":/PluginCopilotsToolbox/icons/Copilot_Chat.svg"), tr(" Copilot 智能对话"), this);
+  mAction_Copilot_Chat = new QAction(QIcon(":/plugin_Copilots_toolbox/icons/Copilot_Chat.svg"), tr(" Copilot 智能对话"), this);
   mAction_Copilot_Chat->setObjectName(QStringLiteral("mAction_Copilot_Chat"));
   // Set the what's this text
   mAction_Copilot_Chat->setWhatsThis(tr(" Copilot 智能对话"));
@@ -121,13 +120,12 @@ void PluginCopilotsToolbox::initGui()
 
 #pragma endregion
 
-
 #pragma region "2、Copilot_Coder 代码补全"
 	// Create the action for tool
-	mAction_Copilot_Coder = new QAction(QIcon(":/PluginCopilotsToolbox/icons/Copilot_Coder.svg"), tr(" Copilot 智能代码"), this);
+	mAction_Copilot_Coder = new QAction(QIcon(":/plugin_Copilots_toolbox/icons/Copilot_Coder.svg"), tr(" Copilot 智能代码"), this);
 	mAction_Copilot_Coder->setObjectName(QStringLiteral("mAction_Copilot_Coder"));
 	// Set the what's this text
-	mAction_Copilot_Coder->setWhatsThis(tr(" Copilot智能代码"));
+	mAction_Copilot_Coder->setWhatsThis(tr(" Copilot 智能代码"));
 	// Connect the action to the run
 	connect(mAction_Copilot_Coder, &QAction::triggered, this, &PluginCopilotsToolbox::Copilot_Coder);
 	// Add the icon to the toolbar
@@ -139,7 +137,7 @@ void PluginCopilotsToolbox::initGui()
 
 #pragma region "3、Copilot_Agent 代理"
 	// Create the action for tool
-	mAction_Copilot_Agent = new QAction(QIcon(":/PluginCopilotsToolbox/icons/Copilot_Agent.svg"), tr(" Copilot 智能代理"), this);
+	mAction_Copilot_Agent = new QAction(QIcon(":/plugin_Copilots_toolbox/icons/Copilot_Agent.svg"), tr(" Copilot 智能代理"), this);
 	mAction_Copilot_Agent->setObjectName(QStringLiteral("mAction_Copilot_Agent"));
 	// Set the what's this text
 	mAction_Copilot_Agent->setWhatsThis(tr(" Copilot 智能代理"));
@@ -157,13 +155,13 @@ void PluginCopilotsToolbox::initGui()
   updateActions();
 }
 
-// 按需启动server进程
+//  按需启动server进程
 void PluginCopilotsToolbox::startServerIfNeeded()
 {
     // 如果进程已经运行，显示提示信息并返回
     if(mServerProcess && mServerProcess->state() == QProcess::Running)
     {
-        mQGisIface->messageBar()->pushMessage("Copilots", "qcopilot 服务器已在运行中", Qgis::Info, 3);
+        mQGisIface->messageBar()->pushMessage("Copilots", " qcopilot 服务器已在运行中", Qgis::Info, 3);
         return;
     }
 
@@ -182,8 +180,8 @@ void PluginCopilotsToolbox::startServerIfNeeded()
     QFileInfo programFile(program);
     if (!programFile.exists())
     {
-        QgsMessageLog::logMessage(QString("qcopilot.exe 文件不存在: %1").arg(program), "Copilots", Qgis::Critical);
-        mQGisIface->messageBar()->pushMessage("Copilots", QString("qcopilot.exe 文件不存在: %1").arg(program), Qgis::Critical, 10);
+        QgsMessageLog::logMessage(QString(" qcopilot 可执行文件不存在: %1").arg(program), "Copilots", Qgis::Critical);
+        mQGisIface->messageBar()->pushMessage("Copilots", QString(" qcopilot 可执行文件不存在: %1").arg(program), Qgis::Critical, 10);
         return;
     }
 
@@ -191,8 +189,8 @@ void PluginCopilotsToolbox::startServerIfNeeded()
     QFileInfo configFile(configFilePath);
     if (!configFile.exists())
     {
-        QgsMessageLog::logMessage(QString("config.json 文件不存在: %1").arg(configFilePath), "Copilots", Qgis::Critical);
-        mQGisIface->messageBar()->pushMessage("Copilots", QString("config.json 文件不存在: %1").arg(configFilePath), Qgis::Critical, 10);
+        QgsMessageLog::logMessage(QString(" config.json 配置文件不存在: %1").arg(configFilePath), "Copilots", Qgis::Critical);
+        mQGisIface->messageBar()->pushMessage("Copilots", QString(" config.json 配置文件不存在: %1").arg(configFilePath), Qgis::Critical, 10);
         return;
     }
 
@@ -240,14 +238,14 @@ void PluginCopilotsToolbox::startServerIfNeeded()
     // 等待进程启动，检查是否成功
     if(!mServerProcess->waitForStarted(5000))
     {
-        QString errorMsg = QString("qcopilot 启动失败！错误信息: %1").arg(mServerProcess->errorString());
+        QString errorMsg = QString(" qcopilot 启动失败！错误信息: %1").arg(mServerProcess->errorString());
         QgsMessageLog::logMessage(errorMsg, "Copilots", Qgis::Critical);
         mQGisIface->messageBar()->pushMessage("Copilots", errorMsg, Qgis::Critical, 10);
     }
     else
     {
         QgsMessageLog::logMessage("qcopilot 启动成功！", "Copilots", Qgis::Info);
-        mQGisIface->messageBar()->pushMessage("Copilots", "qcopilot 服务器启动成功！正在准备智能对话服务...", Qgis::Success, 5);
+        mQGisIface->messageBar()->pushMessage("Copilots", " qcopilot 服务器启动成功！正在准备智能对话、智能代码、智能体服务...", Qgis::Success, 5);
     }
 }
 
@@ -256,7 +254,7 @@ void PluginCopilotsToolbox::Copilot_Chat()
 {
     // 确保服务器已启动
     startServerIfNeeded();
-    
+
     //  打开网页
     QDesktopServices::openUrl(QUrl(QString("http://127.0.0.1:8081")));
 }
@@ -265,7 +263,7 @@ void PluginCopilotsToolbox::Copilot_Coder()
 {
     // 确保服务器已启动
     startServerIfNeeded();
-    
+
     //  打开网页
     QDesktopServices::openUrl(QUrl(QString("http://127.0.0.1:8081")));
 }
@@ -274,7 +272,7 @@ void PluginCopilotsToolbox::Copilot_Agent()
 {
     // 确保服务器已启动
     startServerIfNeeded();
-    
+
     //  打开网页
     QDesktopServices::openUrl(QUrl(QString("http://127.0.0.1:8081")));
 }
@@ -286,21 +284,21 @@ void PluginCopilotsToolbox::unload()
 	if (mServerProcess && mServerProcess->state() == QProcess::Running)
 	{
 		QgsMessageLog::logMessage("插件卸载时终止 qcopilot 进程及其子进程...", "Copilots", Qgis::Info);
-		
+
 #ifdef Q_OS_WIN
         // 在Windows上，使用taskkill命令强制终止进程树
         QProcess killProcess;
         QString processId = QString::number(mServerProcess->processId());
         killProcess.start("taskkill", QStringList() << "/F" << "/T" << "/PID" << processId);
         killProcess.waitForFinished(3000);
-        
+
         if (killProcess.exitCode() == 0)
         {
-            QgsMessageLog::logMessage("已通过taskkill终止qcopilot进程树", "Copilots", Qgis::Info);
+            QgsMessageLog::logMessage("已通过 taskkill 终止 qcopilot 进程树", "Copilots", Qgis::Info);
         }
         else
         {
-            QgsMessageLog::logMessage("taskkill命令执行失败，尝试标准终止方式", "Copilots", Qgis::Warning);
+            QgsMessageLog::logMessage(" taskkill 命令执行失败，尝试标准终止方式", "Copilots", Qgis::Warning);
         }
 #endif
 
@@ -308,13 +306,13 @@ void PluginCopilotsToolbox::unload()
 
 		if (!mServerProcess->waitForFinished(3000))
 		{
-			QgsMessageLog::logMessage("qcopilot 进程未能正常退出，强制终止...", "Copilots", Qgis::Warning);
+			QgsMessageLog::logMessage(" qcopilot 进程未能正常退出，强制终止...", "Copilots", Qgis::Warning);
 			mServerProcess->kill();
 			mServerProcess->waitForFinished(1000);
 		}
 		else
 		{
-			QgsMessageLog::logMessage("qcopilot 进程已正常退出", "Copilots", Qgis::Info);
+			QgsMessageLog::logMessage(" qcopilot 进程已正常退出", "Copilots", Qgis::Info);
 		}
 	}
 

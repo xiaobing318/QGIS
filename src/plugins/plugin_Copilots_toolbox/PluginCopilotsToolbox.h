@@ -1,13 +1,13 @@
 #ifndef PLUGIN_COPILOTS_TOOLBOX_H
 #define PLUGIN_COPILOTS_TOOLBOX_H
 
-#include "qgisplugin.h"
-#include <QObject>
-#include <QProcess>
-
 #include <string>
 #include <vector>
 
+#include <QObject>
+#include <QProcess>
+
+#include "qgisplugin.h"
 
 class QAction;
 class QgisInterface;
@@ -26,7 +26,7 @@ public slots:
 	void initGui() override;
 	//! actions
 
-	// 	1、Copilot_Chat 	对话补全
+	// 	1、Copilot_Chat  对话补全
 	void Copilot_Chat();
 	// 	2、Copilot_Coder 代码补全
 	void Copilot_Coder();
@@ -50,7 +50,7 @@ private:
 	// 3、Copilot_Agent 代理
 	QAction* mAction_Copilot_Agent = nullptr;
 
-  // 成员变量用于管理server进程
+  // 成员变量用于管理 server 进程
 	QProcess* mServerProcess = nullptr;
 
 private slots:
