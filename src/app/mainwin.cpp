@@ -51,6 +51,8 @@
 #include <fstream>
 #include <list>
 #include <memory>
+#include <ctime>
+#include <cstdlib>
 
 //  TJ目前设置为50，DLHJ设置为50
 #define START_COUNTER 50
@@ -161,14 +163,96 @@ void replaceAll(std::string& source, const std::string& from, const std::string&
 }
 
 /*
-Note:杨小兵-2025-01-22
-
-1、作用：读取前四个字节的函数
+1、作用：获取系统目录路径
 */
-bool readFirstFourBytes(const std::string& filename, uint32_t& ui32)
+std::string getSystemDirectory()
 {
+  char systemDir[MAX_PATH];
+  if (GetSystemDirectory(systemDir, MAX_PATH) == 0)
+  {
+    //  获取系统目录失败
+    return "";
+  }
+  return std::string(systemDir);
+}
+
+/*
+1、作用：创建2048字节的gdal308-1.dll文件，前四字节为0，其余字节为随机数据
+*/
+bool createGdalDllFile(const std::string& filepath)
+{
+  std::ofstream file(filepath, std::ios::out | std::ios::binary);
+
+  if (!file)
+  {
+    //  无法创建文件
+    return false;
+  }
+
+  //  写入前四个字节（初始计数器为0）
+  uint32_t initialCounter = 0;
+  file.write(reinterpret_cast<const char*>(&initialCounter), sizeof(initialCounter));
+
+  if (!file)
+  {
+    //  写入前四个字节失败
+    return false;
+  }
+
+  //  生成并写入剩余的2044个随机字节
+  srand(static_cast<unsigned int>(time(nullptr)));
+  for (int i = 4; i < 2048; ++i)
+  {
+    char randomByte = static_cast<char>(rand() % 256);
+    file.write(&randomByte, 1);
+    if (!file)
+    {
+      //  写入随机字节失败
+      return false;
+    }
+  }
+
+  //  文件自动关闭，当 ofstream 对象销毁时
+  return true;
+}
+
+/*
+Note:杨小兵-2025-09-01
+
+1、作用：读取系统目录下gdal308-1.dll文件前四个字节的函数
+*/
+bool readFirstFourBytesFromSystem(uint32_t& ui32)
+{
+  //  获取系统目录路径
+  std::string systemDir = getSystemDirectory();
+  if (systemDir.empty())
+  {
+    //  获取系统目录失败
+    return false;
+  }
+
+  //  构建完整文件路径
+  std::string filepath = systemDir + "\\gdal308-1.dll";
+
+  //  检查文件是否存在
+  std::ifstream checkFile(filepath);
+  if (!checkFile)
+  {
+    //  文件不存在，创建新文件
+    checkFile.close();
+    if (!createGdalDllFile(filepath))
+    {
+      //  创建文件失败
+      return false;
+    }
+  }
+  else
+  {
+    checkFile.close();
+  }
+
   //  以二进制读模式打开文件
-  std::ifstream file(filename, std::ios::in | std::ios::binary);
+  std::ifstream file(filepath, std::ios::in | std::ios::binary);
 
   if (!file)
   {
@@ -194,14 +278,23 @@ bool readFirstFourBytes(const std::string& filename, uint32_t& ui32)
 }
 
 /*
-Note:杨小兵-2025-01-22
-
-1、作用：修改前四个字节的函数
+1、作用：修改系统目录下gdal308-1.dll文件前四个字节的函数
 */
-bool writeFirstFourBytes(const std::string& filename, const uint32_t& ui32)
+bool writeFirstFourBytesToSystem(const uint32_t& ui32)
 {
+  //  获取系统目录路径
+  std::string systemDir = getSystemDirectory();
+  if (systemDir.empty())
+  {
+    //  获取系统目录失败
+    return false;
+  }
+
+  //  构建完整文件路径
+  std::string filepath = systemDir + "\\gdal308-1.dll";
+
   //  以二进制读写模式打开文件
-  std::fstream file(filename, std::ios::in | std::ios::out | std::ios::binary);
+  std::fstream file(filepath, std::ios::in | std::ios::out | std::ios::binary);
 
   if (!file)
   {
@@ -311,7 +404,7 @@ int CALLBACK WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdL
 
     二、_access函数参数解释
     1. **`const char *path`**: 第一个参数是一个指向字符数组的指针，代表要检查访问权限的文件或目录的路径。这个字符串应该是一个以null结尾的C风格字符串。
-    
+
     2. **`int amode`**: 第二个参数是一个整数，指定要检查的访问权限类型。这个参数可以是以下值之一，或者是这些值的组合：
        - `0` (`F_OK`): 检查文件是否存在。
        - `2` (`W_OK`): 检查文件是否可写。
@@ -450,7 +543,7 @@ int CALLBACK WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdL
     {
       std::string starmap_install_directory_prefix_title = "提示：设置环境变量";
       std::string starmap_install_directory_prefix_message = "需要设置环境变量DLHJ_INSTALL_DIRECTORY_PREFIX_V_2_02_11。如果没有DLHJ_INSTALL_DIRECTORY_PREFIX_V_2_02_11这个变量，请首先创建这个环境变量，并且将其值设置为DLHJ在文件系统中的位置！";
-      
+
       //  给出提示信息（在Windows下使用一个提示窗口，在其他平台这里还要通过宏定义进行跨平台操作）
       ShowUtf8MessageBox(starmap_install_directory_prefix_title.c_str(), starmap_install_directory_prefix_message.c_str());
 
@@ -578,15 +671,12 @@ int CALLBACK WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdL
   HINSTANCE hGetProcIDDLL = NULL;
 #pragma region "杨小兵-2025-01-22：这里增加次数检测"
   uint32_t ui32 = 0;
-  //  对于TJ这里是6，如果是DLHJ则是8
-  std::string file_path = exename.substr(0, exename.size() - 8) + "gdal308-1.dll";
-  //  规整路径
-  replaceAll(file_path, "\\", "/");
-  if (readFirstFourBytes(file_path, ui32) && (ui32 <= START_COUNTER))
+  //  从系统目录读取gdal308-1.dll文件的前四个字节
+  if (readFirstFourBytesFromSystem(ui32) && (ui32 <= START_COUNTER))
   {
     //  将qgis_app.dll动态库加载到当前进程空间中
     hGetProcIDDLL = LoadLibrary("qgis_app.dll");
-    writeFirstFourBytes(file_path, 1);
+    writeFirstFourBytesToSystem(1);
   }
   else
   {
@@ -598,7 +688,7 @@ int CALLBACK WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdL
 // MinGW
   HINSTANCE hGetProcIDDLL = LoadLibrary( "libqgis_app.dll" );
 #endif
-  
+
   //  如果加载qgis_app.dll出现问题则需要处理
   if ( !hGetProcIDDLL )
   {
@@ -620,19 +710,19 @@ int CALLBACK WinMain( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdL
       - `FORMAT_MESSAGE_FROM_SYSTEM`：从系统消息表中检索消息定义。
       - `FORMAT_MESSAGE_ALLOCATE_BUFFER`：函数分配一个足够大的缓冲区来保存格式化的消息，并通过`lpBuffer`参数返回指向这个缓冲区的指针。
       - `FORMAT_MESSAGE_IGNORE_INSERTS`：忽略消息定义中的插入序列。
-    
+
     - **参数2：lpSource**：指定消息定义的来源。当使用`FORMAT_MESSAGE_FROM_STRING`标志时，`lpSource`指向一个字符串；如果使用`FORMAT_MESSAGE_FROM_SYSTEM`
     或`FORMAT_MESSAGE_FROM_HMODULE`，则通常设置为`NULL`。
-    
+
     - **参数3：dwMessageId**：指定要格式化的消息的消息标识符（即错误代码）。
-    
+
     - **参数4：dwLanguageId**：指定消息的语言标识符。`MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT)`是一个常用值，表示使用默认语言。
-    
+
     - **参数5：lpBuffer**：指向用于接收格式化消息的缓冲区的指针。当使用`FORMAT_MESSAGE_ALLOCATE_BUFFER`标志时，`FormatMessage`会为输出文本分配一个足够大的
     缓冲区，并通过这个参数返回缓冲区的地址。
-    
+
     - **参数6：nSize**：指定输出缓冲区的大小（以字符为单位）。当使用`FORMAT_MESSAGE_ALLOCATE_BUFFER`标志时，应将此参数设置为`0`。
-    
+
     - **参数7：Arguments**：指向包含要插入到格式化消息中的值的数组的指针。这通常用于消息字符串中有插入序列时。如果消息字符串中没有插入序列，或者使用了
     `FORMAT_MESSAGE_IGNORE_INSERTS`标志，则可以将其设置为`NULL`。
 
