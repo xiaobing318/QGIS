@@ -173,7 +173,7 @@ void PluginCopilotsToolbox::startServerIfNeeded()
 
     // 构建命令行参数 - qcopilot 需要配置文件路径参数
     QStringList arguments;
-    QString configFilePath = QDir(appDir).filePath("QCopilot/config.json");
+    QString configFilePath = QDir(appDir).filePath("QCopilot/QCopilotConfig-windows.json");
     arguments << "--config-file-path" << configFilePath;
 
     // 检查 qcopilot.exe 文件是否存在

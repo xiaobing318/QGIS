@@ -68,6 +68,10 @@ public:
   static void GetLayerTypeFromSMS4DZB(
     string strOdataDir,
     vector<string>& vLayerType);
+  //  DZB2ShapefileWithSpecification：根据SMS文件获取图幅下所有的ODATA图层类型
+  static void GetLayerTypeFromSMS4DZBWithSpecification(
+    string strOdataDir,
+    vector<string>& vLayerType);
 	//  根据实际ODATA目录路径下的图层获取所有的ODATA图层类型
 	static int GetLayerTypeFromOdataDir(
     const std::string& strOdataDir,
@@ -94,6 +98,15 @@ public:
     vector<vector<string>>& vPointFieldValues,
     vector<vector<string>>& vLineFieldValues,
     vector<vector<string>>& vPolygonFieldValues);
+  //  根据要素层类型读属性文件，返回属性值数组
+  static bool LoadSXFileDZBWithSpecification(
+    string strSXFilePath,
+    string strLayerType,
+    string strSheetNumber,
+    vector<vector<string>> vLineTopogValues,
+    vector<vector<string>>& vPointFieldValues,
+    vector<vector<string>>& vLineFieldValues,
+    vector<vector<string>>& vPolygonFieldValues);
   //  读取注记层坐标文件(RZB)，返回坐标值数组，为了适配新的注记层
   static bool LoadRZBFile4NewVersionV1(
     const string& strZBFilePath,
@@ -102,6 +115,14 @@ public:
     vector<vector<SE_DPoint>>& vAnnotationAnchorPoints);
 	//  根据要素层类型读属性文件，返回属性值数组
 	static bool LoadZBFile(
+    string strZBFilePath,
+    vector<SE_DPoint>& vPoints,
+    vector<SE_DPoint>& vDirectionPoints,
+    vector<vector<SE_DPoint>>& vLines,
+    vector<vector<SE_DPoint>>& vPolygons,
+    vector<vector<vector<SE_DPoint>>>& vInteriorPolygons);
+  //  根据要素层类型读属性文件，返回属性值数组
+  static bool LoadZBFileDZBWithSpecification(
     string strZBFilePath,
     vector<SE_DPoint>& vPoints,
     vector<SE_DPoint>& vDirectionPoints,
@@ -130,6 +151,14 @@ public:
 		vector<int>& vFieldPrecision);
   //  DZB2Shapefile：根据要素图层类型创建属性字段（属性字段类型与标准一致）
   static void CreateShpFieldsByLayerType4DZB(
+    const string& strLayerType,
+    const string& strGeoType,
+    vector<string>& vFieldsName,
+    vector<OGRFieldType>& vFieldType,
+    vector<int>& vFieldWidth,
+    vector<int>& vFieldPrecision);
+  //  DZB2ShapefileWithSpecification：根据要素图层类型创建属性字段（属性字段类型与标准一致）
+  static void CreateShpFieldsByLayerType4DZBWithSpecification(
     const string& strLayerType,
     const string& strGeoType,
     vector<string>& vFieldsName,
@@ -211,7 +240,9 @@ public:
   static void LoadShapefileConfig4JBDX(const std::string& configRelativePath);
   //  DZB2Shapefile：加载JSON配置文件
   static void LoadShapefileConfig4DZB(const std::string& configRelativePath);
-	//  判断属性值是否在枚举列表中
+  //  DZB2ShapefileWithSpecification：加载JSON配置文件
+  static void LoadShapefileConfig4DZBWithSpecification(const std::string& configRelativePath);
+  //  判断属性值是否在枚举列表中
 	static bool FieldValueIsExistedInSimpleEnumList(
     vector<string>& vSimpleEnumValue,
     string strValue);

@@ -3,5 +3,6 @@
     <file>icons/plugin_icon.svg</file>
 		<file>icons/JBDX2Shapefile_icon.svg</file>
     <file>icons/DZB2Shapefile_icon.svg</file>
+    <file>icons/DZB2ShapefileWithSpecification_icon.svg</file>
   </qresource>
 </RCC>

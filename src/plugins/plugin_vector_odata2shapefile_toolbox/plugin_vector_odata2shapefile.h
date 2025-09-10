@@ -41,6 +41,8 @@ public slots:
 	void JBDX2Shapefile();
 	//  actions2:DZB2Shapefile
 	void DZB2Shapefile();
+	//  actions3:DZB2ShapefileWithSpecification
+	void DZB2ShapefileWithSpecification();
 
 	//  卸载插件
 	void unload() override;
@@ -57,6 +59,8 @@ private:
 	QAction* mActionJBDX2Shapefile = nullptr;
   // qaction2:DZB2Shapefile
   QAction* mActionDZB2Shapefile = nullptr;
+  // qaction2:DZB2ShapefileWithSpecification
+  QAction* mActionDZB2ShapefileWithSpecification = nullptr;
 
 private slots:
 	void updateActions();

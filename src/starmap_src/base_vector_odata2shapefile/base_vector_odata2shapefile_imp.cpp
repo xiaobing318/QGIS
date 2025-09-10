@@ -321,6 +321,104 @@ void BaseVectorOdata2ShapefileImp::GetLayerTypeFromSMS4DZB(string strSMSPath, ve
   }
 }
 
+//  DZB2ShapefileWithSpecification：根据SMS文件获取图幅下所有的ODATA图层类型
+void BaseVectorOdata2ShapefileImp::GetLayerTypeFromSMS4DZBWithSpecification(string strSMSPath, vector<string>& vLayerType)
+{
+  // UTF-8 到 UTF-16 转换函数
+  auto utf8_to_utf16 = [](const std::string& utf8) -> std::wstring {
+    if (utf8.empty()) return std::wstring();
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), NULL, 0);
+    std::wstring wstrTo(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), &wstrTo[0], size_needed);
+    return wstrTo;
+  };
+
+  // 字符串分割函数
+  auto split_string = [](const std::string& str, const std::string& delimiter) -> std::vector<std::string> {
+    std::vector<std::string> tokens;
+    size_t start = 0;
+    size_t end = str.find(delimiter);
+
+    while (end != std::string::npos) {
+      std::string token = str.substr(start, end - start);
+      // 去除前后空白字符
+      size_t first = token.find_first_not_of(" \t\r\n");
+      if (first != std::string::npos) {
+        size_t last = token.find_last_not_of(" \t\r\n");
+        tokens.push_back(token.substr(first, (last - first + 1)));
+      }
+      start = end + delimiter.length();
+      end = str.find(delimiter, start);
+    }
+
+    // 处理最后一个token
+    std::string token = str.substr(start);
+    size_t first = token.find_first_not_of(" \t\r\n");
+    if (first != std::string::npos) {
+      size_t last = token.find_last_not_of(" \t\r\n");
+      tokens.push_back(token.substr(first, (last - first + 1)));
+    }
+
+    return tokens;
+  };
+
+#ifdef _WIN32
+  FILE* fp = _wfopen(utf8_to_utf16(strSMSPath).c_str(), L"r");
+#else
+  FILE* fp = fopen(strSMSPath.c_str(), "r");
+#endif
+
+  if (!fp) {
+    return;
+  }
+
+  // 目前针对“非航天宏图”生产的数据读取到第97行
+  char line[2048] = "";
+  for (int i = 1; i < 98; i++) {
+    if (!fgets(line, sizeof(line), fp)) {
+      fclose(fp);
+      return;
+    }
+  }
+
+  // 目前针对“非航天宏图”生产的数据读取到第98行，这行标识层数
+  int iLayerCount = 0;
+  if (!fgets(line, sizeof(line), fp)) {
+    fclose(fp);
+    return;
+  }
+
+  // 解析层数
+  char* token = strtok(line, " \t\r\n");
+  if (token) {
+    iLayerCount = atoi(token);
+  }
+
+  // 目前针对“非航天宏图”生产的数据读取到第99行，这行标识层名列表（用中文符号、分隔）
+  char layerNames[2048] = "";
+  if (!fgets(layerNames, sizeof(layerNames), fp)) {
+    fclose(fp);
+    return;
+  }
+
+  fclose(fp);
+
+  // 将C字符串转换为std::string
+  std::string strLayerNames(layerNames);
+
+  // 使用中文符号"、"分割层名
+  std::vector<std::string> layerNameList = split_string(strLayerNames, "、");
+
+  // 遍历所有层名，获取对应的层类型
+  for (const auto& layerName : layerNameList) {
+    if (!layerName.empty()) {
+      std::string strLayerType;
+      GetLayerTypeByName(layerName, strLayerType);
+      vLayerType.push_back(strLayerType);
+    }
+  }
+}
+
 //  根据实际ODATA目录路径下的图层获取所有的ODATA图层类型
 int BaseVectorOdata2ShapefileImp::GetLayerTypeFromOdataDir(const std::string& strOdataDir, std::vector<std::string>& vLayerType)
 {
@@ -979,6 +1077,305 @@ bool BaseVectorOdata2ShapefileImp::LoadSXFile(
 	return true;
 }
 
+//  根据要素层类型读属性文件，返回属性值数组
+bool BaseVectorOdata2ShapefileImp::LoadSXFileDZBWithSpecification(
+  string strSXFilePath,
+  string strLayerType,
+  string strSheetNumber,
+  vector<vector<string>> vLineTopogValues,
+  vector<vector<string>>& vPointFieldValues,
+  vector<vector<string>>& vLineFieldValues,
+  vector<vector<string>>& vPolygonFieldValues)
+{
+  // UTF-8 到 UTF-16 转换函数
+  auto utf8_to_utf16 = [](const std::string& utf8) -> std::wstring {
+    if (utf8.empty()) return std::wstring();
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), NULL, 0);
+    std::wstring wstrTo(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), &wstrTo[0], size_needed);
+    return wstrTo;
+  };
+
+#ifdef _WIN32
+  FILE* fp = _wfopen(utf8_to_utf16(strSXFilePath).c_str(), L"r");
+#else
+  FILE* fp = fopen(strSXFilePath.c_str(), "r");
+#endif
+
+  if (!fp) {
+    return false;
+  }
+  // 读取第7行属性
+  char temp[200] = "";
+  for (int i = 1; i <= 7; i++)
+  {
+    fscanf(fp, "%s", temp);
+  }
+  int iPointCount = 0;
+  int iLineCount = 0;
+  int iPolygonCount = 0;
+  int iFieldCount = 0;		// 字段个数
+  if (strLayerType == "A")
+  {
+    iFieldCount = 12;
+  }
+  else if (strLayerType == "B")
+  {
+    iFieldCount = 10;
+  }
+  else if (strLayerType == "C")
+  {
+    iFieldCount = 11;
+  }
+  else if (strLayerType == "D")
+  {
+    iFieldCount = 21;
+  }
+  else if (strLayerType == "E")
+  {
+    iFieldCount = 12;
+  }
+  else if (strLayerType == "F")
+  {
+    iFieldCount = 24;
+  }
+  else if (strLayerType == "G")
+  {
+    iFieldCount = 17;
+  }
+  else if (strLayerType == "H")
+  {
+    iFieldCount = 19;
+  }
+  else if (strLayerType == "I")
+  {
+    iFieldCount = 14;
+  }
+  else if (strLayerType == "J")
+  {
+    iFieldCount = 12;
+  }
+  else if (strLayerType == "K")
+  {
+    iFieldCount = 12;
+  }
+  else if (strLayerType == "L")
+  {
+    iFieldCount = 11;
+  }
+  else if (strLayerType == "M")
+  {
+    iFieldCount = 9;
+  }
+  else if (strLayerType == "N")
+  {
+    iFieldCount = 27;
+  }
+  else if (strLayerType == "O")
+  {
+    iFieldCount = 14;
+  }
+  else if (strLayerType == "P")
+  {
+    iFieldCount = 12;
+  }
+  else if (strLayerType == "Q")
+  {
+    iFieldCount = 8;
+  }
+  // DZB数据
+  else if (strLayerType == "T")
+  {
+    iFieldCount = 36;
+  }
+  else if (strLayerType == "U")
+  {
+    iFieldCount = 30;
+  }
+  else if (strLayerType == "V")
+  {
+    iFieldCount = 41;
+  }
+  else if (strLayerType == "W")
+  {
+    iFieldCount = 20;
+  }
+  else if (strLayerType == "X")
+  {
+    iFieldCount = 25;
+  }
+  else if (strLayerType == "Y")
+  {
+    iFieldCount = 17;
+  }
+
+  /*
+  1、TODO：需要针对不同类型的数据设置读取方式，这里目前涉及到两种大的数据格式
+    1.1 JBDX
+    1.2 DZB
+  2、针对 DZB 数据目前存在两种类型
+    1.1 最后多了两列。
+    1.2 最后没有多两列。
+  */
+
+  // 针对 JBDX 数据格式
+  if (strLayerType == "T" || strLayerType == "U" ||
+    strLayerType == "V" || strLayerType == "W" ||
+    strLayerType == "X" || strLayerType == "Y")
+  {
+    // TODO：需要针对不同类型的数据设置读取方式，目前处理的是“非航天宏图”生产的数据类型。
+
+    // -------------读点属性-----------------//
+    fscanf(fp, "%s", temp);
+    fscanf(fp, "%d", &iPointCount);
+    if (iPointCount > 0)
+    {
+      for (int i = 0; i < iPointCount; i++)
+      {
+        // 点要素转shp后多Angle字段，属性默认为0
+        vector<string> vFeatureAttrs;
+        vFeatureAttrs.clear();
+
+        // 1、角度字段
+        vFeatureAttrs.push_back("0");
+        // 2、SX 文件指定字段
+        for (int j = 0; j < iFieldCount; j++)
+        {
+          char szTemp[200] = "";
+          fscanf(fp, "%s", szTemp);
+          vFeatureAttrs.push_back(szTemp);
+        }
+        // 3、图幅号字段
+        vFeatureAttrs.push_back(strSheetNumber);
+        vPointFieldValues.push_back(vFeatureAttrs);
+      }
+    }
+
+    // -------------读线属性-----------------//
+    fscanf(fp, "%s", temp);
+    fscanf(fp, "%d", &iLineCount);
+    if (iLineCount > 0)
+    {
+      for (int i = 0; i < iLineCount; i++)
+      {
+        // 单个要素的所有属性值
+        vector<string> vFeatureAttrs;
+        vFeatureAttrs.clear();
+
+        // 1、SX 文件指定字段
+        for (int j = 0; j < iFieldCount; j++)
+        {
+          char szTemp[200] = "";
+          fscanf(fp, "%s", szTemp);
+          vFeatureAttrs.push_back(szTemp);
+        }
+        // 2、图幅号字段
+        vFeatureAttrs.push_back(strSheetNumber);
+        vLineFieldValues.push_back(vFeatureAttrs);
+      }
+    }
+
+    // -------------读面属性-----------------//
+    fscanf(fp, "%s", temp);
+    fscanf(fp, "%d", &iPolygonCount);
+    if (iPolygonCount > 0)
+    {
+      for (int i = 0; i < iPolygonCount; i++)
+      {
+        // 单个要素的所有属性值
+        vector<string> vFeatureAttrs;
+        vFeatureAttrs.clear();
+        // 1、SX 文件指定字段
+        for (int j = 0; j < iFieldCount; j++)
+        {
+          char szTemp[200] = "";
+          fscanf(fp, "%s", szTemp);
+          vFeatureAttrs.push_back(szTemp);
+        }
+        // 2、图幅号字段
+        vFeatureAttrs.push_back(strSheetNumber);
+        vPolygonFieldValues.push_back(vFeatureAttrs);
+      }
+    }
+  }
+  // 针对 JBDX 数据格式
+  else
+  {
+    // -------------读点属性-----------------//
+    fscanf(fp, "%s", temp);
+    fscanf(fp, "%d", &iPointCount);
+    if (iPointCount > 0)
+    {
+      for (int i = 0; i < iPointCount; i++)
+      {
+        // 点要素转shp后多Angle字段，属性默认为0
+        // 单个要素的所有属性值
+        vector<string> vFeatureAttrs;
+        vFeatureAttrs.clear();
+
+        vFeatureAttrs.push_back("0");
+        for (int j = 0; j < iFieldCount; j++)
+        {
+          char szTemp[200] = "";
+          fscanf(fp, "%s", szTemp);
+          vFeatureAttrs.push_back(szTemp);
+        }
+        // 最后增加图号属性
+        vFeatureAttrs.push_back(strSheetNumber);
+        vPointFieldValues.push_back(vFeatureAttrs);
+      }
+    }
+
+    // -------------读线属性-----------------//
+    fscanf(fp, "%s", temp);
+    fscanf(fp, "%d", &iLineCount);
+    if (iLineCount > 0)
+    {
+      for (int i = 0; i < iLineCount; i++)
+      {
+        vector<string> vFeatureAttrs;	// 单个要素的所有属性值
+        vFeatureAttrs.clear();
+
+        for (int j = 0; j < iFieldCount; j++)
+        {
+          char szTemp[200] = "";
+          fscanf(fp, "%s", szTemp);
+          vFeatureAttrs.push_back(szTemp);
+        }
+        // 最后增加图号属性
+        vFeatureAttrs.push_back(strSheetNumber);
+        vLineFieldValues.push_back(vFeatureAttrs);
+      }
+    }
+
+    // -------------读面属性-----------------//
+    fscanf(fp, "%s", temp);
+    fscanf(fp, "%d", &iPolygonCount);
+    if (iPolygonCount > 0)
+    {
+      for (int i = 0; i < iPolygonCount; i++)
+      {
+        vector<string> vFeatureAttrs;	// 单个要素的所有属性值
+        vFeatureAttrs.clear();
+
+        for (int j = 0; j < iFieldCount; j++)
+        {
+          char szTemp[200] = "";
+          fscanf(fp, "%s", szTemp);
+          vFeatureAttrs.push_back(szTemp);
+        }
+        // 最后增加图号属性
+        vFeatureAttrs.push_back(strSheetNumber);
+        vPolygonFieldValues.push_back(vFeatureAttrs);
+      }
+    }
+  }
+
+  fclose(fp);
+  return true;
+}
+
+
 //  读取注记层坐标文件(RZB)，返回坐标值数组
 bool BaseVectorOdata2ShapefileImp::LoadRZBFile(
   const string& strZBFilePath,
@@ -1370,6 +1767,180 @@ bool BaseVectorOdata2ShapefileImp::LoadZBFile(string strZBFilePath,
 	return true;
 }
 
+// 根据要素层类型读坐标文件，返回坐标值数组
+bool BaseVectorOdata2ShapefileImp::LoadZBFileDZBWithSpecification(string strZBFilePath,
+  vector<SE_DPoint>& vPoints,
+  vector<SE_DPoint>& vDirectionPoints,
+  vector<vector<SE_DPoint>>& vLines,
+  vector<vector<SE_DPoint>>& vPolygons,
+  vector<vector<vector<SE_DPoint>>>& vInteriorPolygons)
+{
+  // UTF-8 到 UTF-16 转换函数
+  auto utf8_to_utf16 = [](const std::string& utf8) -> std::wstring {
+    if (utf8.empty()) return std::wstring();
+    int size_needed = MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), NULL, 0);
+    std::wstring wstrTo(size_needed, 0);
+    MultiByteToWideChar(CP_UTF8, 0, &utf8[0], (int)utf8.size(), &wstrTo[0], size_needed);
+    return wstrTo;
+  };
+
+#ifdef _WIN32
+  FILE* fp = _wfopen(utf8_to_utf16(strZBFilePath).c_str(), L"r");
+#else
+  FILE* fp = fopen(strZBFilePath.c_str(), "r");
+#endif
+
+  if (!fp) {
+    return false;
+  }
+  // 读取第7行属性,这里和常规的是不同的
+  char temp[200] = "";
+  for (int i = 1; i <= 7; i++)
+  {
+    fscanf(fp, "%s", temp);
+  }
+  int iPointCount = 0;
+  int iLineCount = 0;
+  int iPolygonCount = 0;
+  // -------------读点坐标-----------------//
+  fscanf(fp, "%s", temp);
+  fscanf(fp, "%d", &iPointCount);
+  if (iPointCount > 0)
+  {
+    for (int i = 0; i < iPointCount; i++)
+    {
+      SE_DPoint xyz;
+      SE_DPoint direction_xyz;		// 方向点坐标
+      int iID;
+
+      // 点ID
+      fscanf(fp, "%d", &iID);
+      // X坐标
+      fscanf(fp, "%lf", &xyz.dx);
+      // Y坐标
+      fscanf(fp, "%lf", &xyz.dy);
+      // 方向点X
+      fscanf(fp, "%lf", &direction_xyz.dx);
+      // 方向点Y
+      fscanf(fp, "%lf", &direction_xyz.dy);
+      vPoints.push_back(xyz);
+      vDirectionPoints.push_back(direction_xyz);
+    }
+  }
+  // -------------读线坐标-----------------//
+  fscanf(fp, "%s", temp);
+  fscanf(fp, "%d", &iLineCount);
+  if (iLineCount > 0)
+  {
+    for (int iLineIndex = 0; iLineIndex < iLineCount; iLineIndex++)
+    {
+      vector<SE_DPoint> vLinePoints;	// 每条线要素对应的点坐标
+      int iLinePointsCount = 0;		// 每条线对应的点数
+      int iID;
+      fscanf(fp, "%d", &iID);
+      fscanf(fp, "%d", &iLinePointsCount);
+      for (int i = 0; i < iLinePointsCount; i++)
+      {
+        SE_DPoint xyz;
+        fscanf(fp, "%lf", &xyz.dx);
+        fscanf(fp, "%lf", &xyz.dy);
+        vLinePoints.push_back(xyz);
+      }
+      vLines.push_back(vLinePoints);
+    }
+  }
+
+  // -------------读面坐标-----------------//
+  fscanf(fp, "%s", temp);
+  fscanf(fp, "%d", &iPolygonCount);
+  if (iPolygonCount > 0)
+  {
+    for (int iPolygonIndex = 0; iPolygonIndex < iPolygonCount; iPolygonIndex++)
+    {
+      vector<vector<SE_DPoint>> vInteriorRings;		// 每个要素对应的内环
+      vInteriorRings.clear();
+      vector<SE_DPoint> vFeaturePolygonPoints;		// 每个要素对应的面坐标
+      int iFeaturePolygonCount = 0;				// 每个要素对应的面数k
+      int iID;
+      double dTempX, dTempY;
+      // ID
+      fscanf(fp, "%d", &iID);
+      // X坐标
+      fscanf(fp, "%lf", &dTempX);
+      // Y坐标
+      fscanf(fp, "%lf", &dTempY);
+      // 要素个数
+      fscanf(fp, "%d", &iFeaturePolygonCount);
+
+      // 当面要素为0时，不跳过
+      if (iFeaturePolygonCount == 0)
+      {
+        vFeaturePolygonPoints.clear();
+        vPolygons.push_back(vFeaturePolygonPoints);
+      }
+      // 如果面个数为1，无内环的情况
+      else if (iFeaturePolygonCount == 1)
+      {
+        vFeaturePolygonPoints.clear();
+        int iPolygonPointsCount = 0;	// 面1的定位点个数
+        fscanf(fp, "%d", &iPolygonPointsCount);
+        for (int j = 0; j < iPolygonPointsCount; j++)
+        {
+          SE_DPoint xyz;
+          fscanf(fp, "%lf", &xyz.dx);
+          fscanf(fp, "%lf", &xyz.dy);
+          vFeaturePolygonPoints.push_back(xyz);
+        }
+        // 面要素ID从2到面个数iPolygonCount
+        vPolygons.push_back(vFeaturePolygonPoints);
+      }
+      // 如果面个数不为1，即首个面为外环，第2个到第n个为内环
+      else if (iFeaturePolygonCount > 1)
+      {
+        // 对每个面进行循环
+        for (int m = 0; m < iFeaturePolygonCount; m++)
+        {
+          // 如果是面1，则存储到外环多边形中
+          if (m == 0)
+          {
+            vFeaturePolygonPoints.clear();
+            int iPolygonPointsCount = 0;	// 面1的定位点个数
+            fscanf(fp, "%d", &iPolygonPointsCount);
+            for (int n = 0; n < iPolygonPointsCount; n++)
+            {
+              SE_DPoint xyz;
+              fscanf(fp, "%lf", &xyz.dx);
+              fscanf(fp, "%lf", &xyz.dy);
+              vFeaturePolygonPoints.push_back(xyz);
+            }
+            // 面要素ID从2到面个数iPolygonCount
+            vPolygons.push_back(vFeaturePolygonPoints);
+          }
+          // 从面2开始，存储到内环多边形中
+          else
+          {
+            vFeaturePolygonPoints.clear();
+            int iPolygonPointsCount = 0;	// 面m的定位点个数
+            fscanf(fp, "%d", &iPolygonPointsCount);
+            for (int n = 0; n < iPolygonPointsCount; n++)
+            {
+              SE_DPoint xyz;
+              fscanf(fp, "%lf", &xyz.dx);
+              fscanf(fp, "%lf", &xyz.dy);
+              vFeaturePolygonPoints.push_back(xyz);
+            }
+            // 面要素ID从2到面个数iPolygonCount
+            vInteriorRings.push_back(vFeaturePolygonPoints);
+          }
+        }
+      }
+      vInteriorPolygons.push_back(vInteriorRings);
+    }
+  }
+  fclose(fp);
+  return true;
+}
+
 //  根据要素图层名称获取要素图层标识
 void BaseVectorOdata2ShapefileImp::GetLayerTypeByName(const std::string& strLayerName, std::string& strLayerType)
 {
@@ -1704,6 +2275,71 @@ void BaseVectorOdata2ShapefileImp::LoadShapefileConfig4DZB(const std::string& co
   globalConfigLoaded4DZB = true;
 }
 
+//  DZB2ShapefileWithSpecification：加载JSON配置文件
+void BaseVectorOdata2ShapefileImp::LoadShapefileConfig4DZBWithSpecification(const std::string& configRelativePath)
+{
+  std::lock_guard<std::mutex> lock(g_configMutex);
+  if (globalConfigLoaded4DZB)
+  {
+    //  配置文件已加载
+    return;
+  }
+
+  //  获取动态库所在目录
+  std::string libDir = GetLibraryDirectory();
+
+  // Build full path to config file
+  std::string configPath = libDir + "/" + configRelativePath;
+
+  // Open and read the JSON file
+  std::ifstream configFile(configPath);
+  if (!configFile.is_open())
+  {
+    throw std::runtime_error("Failed to open config file: " + configPath);
+  }
+
+  nlohmann::json jsonConfig;
+  configFile >> jsonConfig;
+
+  // Parse the "odata_version_2024_fields" section
+  if (!jsonConfig.contains("odata_version_2024_fields"))
+  {
+    throw std::runtime_error("Config file missing 'odata_version_2024_fields' section.");
+  }
+
+  nlohmann::json fieldsConfig = jsonConfig["odata_version_2024_fields"];
+
+  for (auto it = fieldsConfig.begin(); it != fieldsConfig.end(); ++it)
+  {
+    std::string layerType = it.key();
+    std::vector<FieldDefinition> fieldDefs;
+
+    for (const auto& fieldJson : it.value())
+    {
+      FieldDefinition field;
+      field.chinese_field_name = fieldJson.value("chinese_field_name", "");
+      field.english_field_name = fieldJson.value("english_field_name", "");
+      field.field_type_str = fieldJson.value("field_type", "");
+      field.field_width = std::stoi(fieldJson.value("field_width", "0"));
+      field.field_precision = std::stoi(fieldJson.value("field_precision", "0"));
+      field.field_note = fieldJson.value("field_note", "");
+
+      fieldDefs.push_back(field);
+    }
+
+    globalLayerFieldConfig4DZB[layerType] = fieldDefs;
+  }
+
+  // Optionally, handle "shapefile_attribute_encoding_2024"
+  if (jsonConfig.contains("shapefile_attribute_encoding_2024"))
+  {
+    std::string encoding = jsonConfig["shapefile_attribute_encoding_2024"];
+    //  处理字符集编码相关内容
+  }
+
+  globalConfigLoaded4DZB = true;
+}
+
 //  JBDX2Shapefile：根据要素图层类型创建属性字段
 void BaseVectorOdata2ShapefileImp::CreateShpFieldsByLayerType4JBDX(
   const string& strLayerType,
@@ -1759,6 +2395,50 @@ void BaseVectorOdata2ShapefileImp::CreateShpFieldsByLayerType4DZB(
 {
   //  加载配置文件
   LoadShapefileConfig4DZB("PluginVectorOdata2ShapefileToolboxConfig/DZB2ShapefileConfig.json");
+  //  属性字段类型改成OFTString，方便存储属性值
+  if (strGeoType == "Point")	// 点
+  {
+    //  字段名称
+    //  字段类型
+    //  字段宽度
+    //  字段精度
+    for (int i = 0; i < globalLayerFieldConfig4DZB[strLayerType].size(); i++)
+    {
+      vFieldsName.push_back(globalLayerFieldConfig4DZB[strLayerType][i].english_field_name);
+      vFieldType.push_back(StringToOGRFieldType(globalLayerFieldConfig4DZB[strLayerType][i].field_type_str));
+      vFieldWidth.push_back(globalLayerFieldConfig4DZB[strLayerType][i].field_width);
+      vFieldPrecision.push_back(globalLayerFieldConfig4DZB[strLayerType][i].field_precision);
+    }
+
+  }
+  else
+  {
+    //  字段名称
+    //  字段类型
+    //  字段宽度
+    //  字段精度
+    for (int i = 1; i < globalLayerFieldConfig4DZB[strLayerType].size(); i++)
+    {
+      vFieldsName.push_back(globalLayerFieldConfig4DZB[strLayerType][i].english_field_name);
+      vFieldType.push_back(StringToOGRFieldType(globalLayerFieldConfig4DZB[strLayerType][i].field_type_str));
+      vFieldWidth.push_back(globalLayerFieldConfig4DZB[strLayerType][i].field_width);
+      vFieldPrecision.push_back(globalLayerFieldConfig4DZB[strLayerType][i].field_precision);
+    }
+
+  }
+}
+
+//  DZB2ShapefileWithSpecification：根据要素图层类型创建属性字段
+void BaseVectorOdata2ShapefileImp::CreateShpFieldsByLayerType4DZBWithSpecification(
+  const string& strLayerType,
+  const string& strGeoType,
+  vector<string>& vFieldsName,
+  vector<OGRFieldType>& vFieldType,
+  vector<int>& vFieldWidth,
+  vector<int>& vFieldPrecision)
+{
+  //  加载配置文件
+  LoadShapefileConfig4DZB("PluginVectorOdata2ShapefileToolboxConfig/DZB2ShapefileConfigWithSpecification.json");
   //  属性字段类型改成OFTString，方便存储属性值
   if (strGeoType == "Point")	// 点
   {

@@ -3,6 +3,7 @@
 #include "plugin_vector_odata2shapefile.h"
 #include "ui_class/tool_JBDX2Shapefile_class.h"
 #include "ui_class/tool_DZB2Shapefile_class.h"
+#include "ui_class/tool_DZB2ShapefileWithSpecification_class.h"
 /*---------------自定义-----------------*/
 
 
@@ -62,6 +63,10 @@ void QgsPluginVectorOdata2Shapefile::initGui()
   {
     delete mActionDZB2Shapefile;
   }
+  if (mActionDZB2ShapefileWithSpecification)
+  {
+    delete mActionDZB2ShapefileWithSpecification;
+  }
 
 #pragma region "1、工具：JBDX2Shapefile"
 	/*****************************************************/
@@ -97,6 +102,24 @@ void QgsPluginVectorOdata2Shapefile::initGui()
   mActionDZB2Shapefile->setEnabled(true);
 #pragma endregion
 
+
+#pragma region "3、工具：DZB2ShapefileWithSpecification"
+	/*****************************************************/
+	/*    工具：DZB2ShapefileWithSpecification   	*/
+	/*****************************************************/
+  // Create the action for tool
+  mActionDZB2ShapefileWithSpecification = new QAction(QIcon(":/plugin_vector_odata2shapefile_toolbox/icons/DZB2ShapefileWithSpecification_icon.svg"), tr("将 DZB（符合规范版本）转换为 Shapefile "), this);
+  mActionDZB2ShapefileWithSpecification->setObjectName(QStringLiteral("mActionDZB2ShapefileWithSpecification"));
+  // Set the what's this text
+  mActionDZB2ShapefileWithSpecification->setWhatsThis(tr("将 DZB（符合规范版本）转换为 Shapefile"));
+  // Connect the action to the run
+  connect(mActionDZB2ShapefileWithSpecification, &QAction::triggered, this, &QgsPluginVectorOdata2Shapefile::DZB2ShapefileWithSpecification);
+  // Add the icon to the toolbar
+  mQGisIface->addVectorToolBarIcon(mActionDZB2ShapefileWithSpecification);
+  mQGisIface->addPluginToVectorMenu(tr("&菜单：ODATA格式转化工具箱"), mActionDZB2ShapefileWithSpecification);
+  mActionDZB2ShapefileWithSpecification->setEnabled(true);
+#pragma endregion
+
 	updateActions();
 }
 
@@ -124,6 +147,18 @@ void QgsPluginVectorOdata2Shapefile::DZB2Shapefile()
   // 栈上对象会在函数结束时自动销毁
 }
 
+void QgsPluginVectorOdata2Shapefile::DZB2ShapefileWithSpecification()
+{
+  ToolDZB2ShapefileWithSpecificationDialog dlg(mQGisIface, nullptr, Qt::WindowCloseButtonHint);
+  dlg.setModal(true); // 确保对话框是模态的
+
+  if (dlg.exec() == QDialog::Accepted)
+  {
+    // 处理用户确认的逻辑
+  }
+  // 栈上对象会在函数结束时自动销毁
+}
+
 
 void QgsPluginVectorOdata2Shapefile::unload()
 {
@@ -136,6 +171,11 @@ void QgsPluginVectorOdata2Shapefile::unload()
 	mQGisIface->removePluginVectorMenu(tr("&菜单：ODATA格式转化工具箱"), mActionDZB2Shapefile);
 	mQGisIface->removeVectorToolBarIcon(mActionDZB2Shapefile);
 	delete mActionDZB2Shapefile;
+
+	// DZB2ShapefileWithSpecification:去掉ui界面
+	mQGisIface->removePluginVectorMenu(tr("&菜单：ODATA格式转化工具箱"), mActionDZB2ShapefileWithSpecification);
+	mQGisIface->removeVectorToolBarIcon(mActionDZB2ShapefileWithSpecification);
+	delete mActionDZB2ShapefileWithSpecification;
 }
 
 void QgsPluginVectorOdata2Shapefile::updateActions()

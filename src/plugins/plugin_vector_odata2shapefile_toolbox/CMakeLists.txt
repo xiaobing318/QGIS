@@ -1,12 +1,14 @@
 
 ########################################################
-# Files
+# Files WithSpecification
 set (plugin_vector_odata2shapefile_toolbox_SRCS
   ui_class/tool_JBDX2Shapefile_class.cpp
   ui_class/tool_DZB2Shapefile_class.cpp
+  ui_class/tool_DZB2ShapefileWithSpecification_class.cpp
 
   ui_thread/tool_JBDX2Shapefile_thread.cpp
   ui_thread/tool_DZB2Shapefile_thread.cpp
+  ui_thread/tool_DZB2ShapefileWithSpecification_thread.cpp
 
   plugin_vector_odata2shapefile.cpp
 )
@@ -14,15 +16,18 @@ set (plugin_vector_odata2shapefile_toolbox_SRCS
 set (plugin_vector_odata2shapefile_toolbox_HDRS
   ui_class/tool_JBDX2Shapefile_class.h
   ui_class/tool_DZB2Shapefile_class.h
+  ui_class/tool_DZB2ShapefileWithSpecification_class.h
 
   ui_thread/tool_JBDX2Shapefile_thread.h
   ui_thread/tool_DZB2Shapefile_thread.h
+  ui_thread/tool_DZB2ShapefileWithSpecification_class_thread.h
 
   plugin_vector_odata2shapefile.h
 )
 
 set (plugin_vector_odata2shapefile_toolbox_UIS
   ui/tool_DZB2Shapefile.ui
+  ui/tool_DZB2ShapefileWithSpecification.ui
   ui/tool_JBDX2Shapefile.ui
 )
 
