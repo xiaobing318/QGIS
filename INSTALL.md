@@ -5,57 +5,57 @@ Building QGIS from source - step by step
 - [1. Introduction](#1-introduction)
 - [2. Overview](#2-overview)
 - [3. Building on GNU/Linux](#3-building-on-gnulinux)
-   * [3.1. Building QGIS with Qt 5.x](#31-building-qgis-with-qt-5x)
-   * [3.2. Prepare apt](#32-prepare-apt)
-   * [3.3. Install build dependencies](#33-install-build-dependencies)
-   * [3.4. Setup ccache (Optional, but recommended)](#34-setup-ccache-optional-but-recommended)
-   * [3.5. Prepare your development environment](#35-prepare-your-development-environment)
-   * [3.6. Check out the QGIS Source Code](#36-check-out-the-qgis-source-code)
-   * [3.7. Starting the compile](#37-starting-the-compile)
-      + [3.7.1 Available compilation flags](#371-available-compilation-flags)
-   * [3.8. Compiling with 3D](#38-compiling-with-3d)
-      + [3.8.1. Compiling with 3D on old Debian based distributions](#381-compiling-with-3d-on-old-debian-based-distributions)
-   * [3.9. Building different branches](#39-building-different-branches)
-   * [3.10. Building Debian packages](#310-building-debian-packages)
-      + [3.10.1. Building packages with Oracle support](#3101-building-packages-with-oracle-support)
-   * [3.11. On Fedora Linux](#311-on-fedora-linux)
-      + [3.11.1. Install build dependencies](#3111-install-build-dependencies)
-      + [3.11.2. Suggested system tweaks](#3112-suggested-system-tweaks)
-      + [3.11.3. Additional tools for QGIS development](#3113-additional-tools-for-qgis-development)
-      + [3.11.4. QT6 experimental builds with Fedora Rawhide](#3114-qt6-experimental-builds-with-fedora-rawhide)
-   * [3.12. Building on Linux with vcpkg](#312-building-on-linux-with-vcpkg)
+  - [3.1. Building QGIS with Qt 5.x](#31-building-qgis-with-qt-5x)
+  - [3.2. Prepare apt](#32-prepare-apt)
+  - [3.3. Install build dependencies](#33-install-build-dependencies)
+  - [3.4. Setup ccache (Optional, but recommended)](#34-setup-ccache-optional-but-recommended)
+  - [3.5. Prepare your development environment](#35-prepare-your-development-environment)
+  - [3.6. Check out the QGIS Source Code](#36-check-out-the-qgis-source-code)
+  - [3.7. Starting the compile](#37-starting-the-compile)
+    - [3.7.1 Available compilation flags](#371-available-compilation-flags)
+  - [3.8. Compiling with 3D](#38-compiling-with-3d)
+    - [3.8.1. Compiling with 3D on old Debian based distributions](#381-compiling-with-3d-on-old-debian-based-distributions)
+  - [3.9. Building different branches](#39-building-different-branches)
+  - [3.10. Building Debian packages](#310-building-debian-packages)
+    - [3.10.1. Building packages with Oracle support](#3101-building-packages-with-oracle-support)
+  - [3.11. On Fedora Linux](#311-on-fedora-linux)
+    - [3.11.1. Install build dependencies](#3111-install-build-dependencies)
+    - [3.11.2. Suggested system tweaks](#3112-suggested-system-tweaks)
+    - [3.11.3. Additional tools for QGIS development](#3113-additional-tools-for-qgis-development)
+    - [3.11.4. QT6 experimental builds with Fedora Rawhide](#3114-qt6-experimental-builds-with-fedora-rawhide)
+  - [3.12. Building on Linux with vcpkg](#312-building-on-linux-with-vcpkg)
 - [4. Building on Windows](#4-building-on-windows)
-   * [4.1. Building with Microsoft Visual Studio](#41-building-with-microsoft-visual-studio)
-      + [4.1.1. Visual Studio 2022 Community Edition](#411-visual-studio-2022-community-edition)
-      + [4.1.2. Other tools and dependencies](#412-other-tools-and-dependencies)
-      + [4.1.3. Clone the QGIS Source Code](#413-clone-the-qgis-source-code)
-      + [4.1.4. OSGeo4W](#414-osgeo4w)
-   * [4.2. Building on Linux with mingw64](#42-building-on-linux-with-mingw64)
-      + [4.2.1. Building with Docker](#421-building-with-docker)
-         - [4.2.1.1. Initial setup](#4211-initial-setup)
-         - [4.2.1.2. Building the dependencies](#4212-building-the-dependencies)
-         - [4.2.1.3. Cross-Building QGIS](#4213-cross-building-qgis)
-      + [4.2.2. Testing QGIS](#422-testing-qgis)
-   * [4.3 Building on Windows with vcpkg](#43-building-on-windows-with-vcpkg)
-      + [4.3.1 Install Build Tools](#431-install-build-tools)
-      + [4.3.2 Build QGIS](#432-build-qgis)
-         - [4.3.2.1 Build with an SDK](#4321-build-with-an-sdk)
-         - [4.3.2.1 Build all the dependencies locally](#4321-build-all-the-dependencies-locally)
+  - [4.1. Building with Microsoft Visual Studio](#41-building-with-microsoft-visual-studio)
+    - [4.1.1. Visual Studio 2022 Community Edition](#411-visual-studio-2022-community-edition)
+    - [4.1.2. Other tools and dependencies](#412-other-tools-and-dependencies)
+    - [4.1.3. Clone the QGIS Source Code](#413-clone-the-qgis-source-code)
+    - [4.1.4. OSGeo4W](#414-osgeo4w)
+  - [4.2. Building on Linux with mingw64](#42-building-on-linux-with-mingw64)
+    - [4.2.1. Building with Docker](#421-building-with-docker)
+      - [4.2.1.1. Initial setup](#4211-initial-setup)
+      - [4.2.1.2. Building the dependencies](#4212-building-the-dependencies)
+      - [4.2.1.3. Cross-Building QGIS](#4213-cross-building-qgis)
+    - [4.2.2. Testing QGIS](#422-testing-qgis)
+  - [4.3 Building on Windows with vcpkg](#43-building-on-windows-with-vcpkg)
+    - [4.3.1 Install Build Tools](#431-install-build-tools)
+    - [4.3.2 Build QGIS](#432-build-qgis)
+      - [4.3.2.1 Build with an SDK](#4321-build-with-an-sdk)
+      - [4.3.2.1 Build all the dependencies locally](#4321-build-all-the-dependencies-locally)
 - [5. Building on MacOS X](#5-building-on-macos-x)
-   * [5.1. Building with Mac Packager](#51-building-with-mac-packager)
-     + [5.1.1. Install Developer Tools](#511-install-developer-tools)
-     + [5.1.2. Install CMake and other build tools](#512-install-cmake-and-other-build-tools)
-     + [5.1.3. Install Qt5 and QGIS-Deps](#513-install-qt5-and-qgis-deps)
-     + [5.1.4. QGIS source](#514-qgis-source)
-     + [5.1.5. Configure the build](#515-configure-the-build)
-     + [5.1.6. Building](#516-building)
-   * [5.2. Building with vcpkg](#52-building-with-vcpkg)
+  - [5.1. Building with Mac Packager](#51-building-with-mac-packager)
+    - [5.1.1. Install Developer Tools](#511-install-developer-tools)
+    - [5.1.2. Install CMake and other build tools](#512-install-cmake-and-other-build-tools)
+    - [5.1.3. Install Qt5 and QGIS-Deps](#513-install-qt5-and-qgis-deps)
+    - [5.1.4. QGIS source](#514-qgis-source)
+    - [5.1.5. Configure the build](#515-configure-the-build)
+    - [5.1.6. Building](#516-building)
+  - [5.2. Building with vcpkg](#52-building-with-vcpkg)
 - [6. Setting up the WCS test server on GNU/Linux](#6-setting-up-the-wcs-test-server-on-gnulinux)
-   * [6.1. Preparation](#61-preparation)
-   * [6.2. Setup mapserver](#62-setup-mapserver)
-   * [6.3. Create a home page](#63-create-a-home-page)
-   * [6.4. Now deploy it](#64-now-deploy-it)
-   * [6.5. Debugging](#65-debugging)
+  - [6.1. Preparation](#61-preparation)
+  - [6.2. Setup mapserver](#62-setup-mapserver)
+  - [6.3. Create a home page](#63-create-a-home-page)
+  - [6.4. Now deploy it](#64-now-deploy-it)
+  - [6.5. Debugging](#65-debugging)
 - [7. Setting up a Jenkins Build Server](#7-setting-up-a-jenkins-build-server)
 - [8. Debug output and running tests](#8-debug-output-and-running-tests)
 - [9. Authors and Acknowledgments](#9-authors-and-acknowledgments)
@@ -619,7 +619,25 @@ cmake --build ./build-x64-linux
 ```
 
 # 4. Building on Windows
-
+```c
+/*
+Notes:
+1、第四部分是一个指导如何在 Windows 平台上构建 QGIS 的说明书。
+2、在 Windows 平台上构建 QGIS 的路径不止一条，下列是构建 QGIS 的方式：
+  2.1 使用 Microsoft Visual Studio 工具链在 Windows 平台上构建 QGIS
+    2.1.1 官方 Windows 安装包就是通过这种方式构建的
+    2.1.2 所有依赖由 OSGeo4W 提供，避免开发者自己一一编译依赖库
+    2.1.3 需要特别注意不要安装某些冲突的包（例如 msinttypes）
+  2.2 使用 mingw64 工具链在 Linux 平台上构建 QGIS
+    2.2.1 典型的交叉编译工作流
+    2.2.2 CI/CD（比如 GitHub Actions）中常用这种方式来生成 Windows 版本
+    2.2.3 输出结果是 .zip 包（便携版 QGIS）+ .debugsym 包
+    2.2.4 如果使用 Docker，几乎不需要额外配置（镜像里已打包了 mxe 工具链）
+  2.3 使用 vcpkg 工具链在 Windows 平台上构建 QGIS
+    2.3.1 强调依赖的可重现性（通过 vcpkg.json 锁定依赖版本）
+    2.3.2 主要用于 Qt6 构建（QGIS 正在逐步迁移到 Qt6，MSVC + OSGeo4W 的方式目前还是 Qt5 为主）
+*/
+```
 ## 4.1. Building with Microsoft Visual Studio
 
 This section describes how to build QGIS using Visual Studio (MSVC) 2022 on Windows.
