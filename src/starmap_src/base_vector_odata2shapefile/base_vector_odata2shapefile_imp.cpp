@@ -372,7 +372,7 @@ void BaseVectorOdata2ShapefileImp::GetLayerTypeFromSMS4DZBWithSpecification(stri
     return;
   }
 
-  // 目前针对“非航天宏图”生产的数据读取到第97行
+  // 目前针对"符合标准规范"生产的数据读取到第97行
   char line[2048] = "";
   for (int i = 1; i < 98; i++) {
     if (!fgets(line, sizeof(line), fp)) {
@@ -381,7 +381,7 @@ void BaseVectorOdata2ShapefileImp::GetLayerTypeFromSMS4DZBWithSpecification(stri
     }
   }
 
-  // 目前针对“非航天宏图”生产的数据读取到第98行，这行标识层数
+  // 目前针对"符合标准规范"生产的数据读取到第98行，这行标识层数
   int iLayerCount = 0;
   if (!fgets(line, sizeof(line), fp)) {
     fclose(fp);
@@ -394,7 +394,7 @@ void BaseVectorOdata2ShapefileImp::GetLayerTypeFromSMS4DZBWithSpecification(stri
     iLayerCount = atoi(token);
   }
 
-  // 目前针对“非航天宏图”生产的数据读取到第99行，这行标识层名列表（用中文符号、分隔）
+  // 目前针对"符合标准规范"生产的数据读取到第99行，这行标识层名列表（用中文符号、分隔）
   char layerNames[2048] = "";
   if (!fgets(layerNames, sizeof(layerNames), fp)) {
     fclose(fp);
@@ -899,9 +899,9 @@ bool BaseVectorOdata2ShapefileImp::LoadSXFile(
   1、TODO：需要针对不同类型的数据设置读取方式，这里目前涉及到两种大的数据格式
     1.1 JBDX
     1.2 DZB
-  2、针对 DZB 数据目前存在两种类型
-    1.1 最后多了两列。
-    1.2 最后没有多两列。
+  2、针对 DZB 数据目前存在两种类型 
+    1.1 不符合规范的数据类型：最后多了两列
+    1.2 符合规范的数据类型
   */
 
   // 针对 JBDX 数据格式
@@ -909,7 +909,7 @@ bool BaseVectorOdata2ShapefileImp::LoadSXFile(
     strLayerType == "V" || strLayerType == "W" ||
     strLayerType == "X" || strLayerType == "Y")
   {
-    // TODO：需要针对不同类型的数据设置读取方式，目前处理的是“航天宏图”生产的数据类型。
+    // 需要针对不同类型的数据设置读取方式，目前处理的是“航天宏图”生产的数据类型。
 
     // -------------读点属性-----------------//
     fscanf(fp, "%s", temp);
@@ -1107,7 +1107,7 @@ bool BaseVectorOdata2ShapefileImp::LoadSXFileDZBWithSpecification(
   }
   // 读取第7行属性
   char temp[200] = "";
-  for (int i = 1; i <= 7; i++)
+  for (int i = 1; i < 7; i++)
   {
     fscanf(fp, "%s", temp);
   }
@@ -1186,44 +1186,44 @@ bool BaseVectorOdata2ShapefileImp::LoadSXFileDZBWithSpecification(
   // DZB数据
   else if (strLayerType == "T")
   {
-    iFieldCount = 36;
+    iFieldCount = 35;
   }
   else if (strLayerType == "U")
   {
-    iFieldCount = 30;
+    iFieldCount = 29;
   }
   else if (strLayerType == "V")
   {
-    iFieldCount = 41;
+    iFieldCount = 40;
   }
   else if (strLayerType == "W")
   {
-    iFieldCount = 20;
+    iFieldCount = 19;
   }
   else if (strLayerType == "X")
   {
-    iFieldCount = 25;
+    iFieldCount = 24;
   }
   else if (strLayerType == "Y")
   {
-    iFieldCount = 17;
+    iFieldCount = 16;
   }
 
   /*
-  1、TODO：需要针对不同类型的数据设置读取方式，这里目前涉及到两种大的数据格式
+  1、需要针对不同类型的数据设置读取方式，这里目前涉及到两种大的数据格式
     1.1 JBDX
     1.2 DZB
   2、针对 DZB 数据目前存在两种类型
-    1.1 最后多了两列。
-    1.2 最后没有多两列。
+    1.1 不符合规范的数据类型：最后多了两列。
+    1.2 符合标准规范的数据类型
   */
 
-  // 针对 JBDX 数据格式
+  // 针对 DZB 数据格式
   if (strLayerType == "T" || strLayerType == "U" ||
     strLayerType == "V" || strLayerType == "W" ||
     strLayerType == "X" || strLayerType == "Y")
   {
-    // TODO：需要针对不同类型的数据设置读取方式，目前处理的是“非航天宏图”生产的数据类型。
+    // 目前处理的是符合标准规范数据类型。
 
     // -------------读点属性-----------------//
     fscanf(fp, "%s", temp);
@@ -1795,7 +1795,7 @@ bool BaseVectorOdata2ShapefileImp::LoadZBFileDZBWithSpecification(string strZBFi
   }
   // 读取第7行属性,这里和常规的是不同的
   char temp[200] = "";
-  for (int i = 1; i <= 7; i++)
+  for (int i = 1; i < 7; i++)
   {
     fscanf(fp, "%s", temp);
   }
@@ -2978,9 +2978,21 @@ int BaseVectorOdata2ShapefileImp::Set_Point(
 {
   if (!poLayer) return -1;
 
-  // 编码=0 的早退（仅非 R/RR 层）
+  // 编码为 0 则整个要素跳过
   if (vFieldValues.size() > 2 && strLayerType != "R" && strLayerType != "RR") {
-    const GIntBig code = CPLAtoGIntBig(vFieldValues[2].c_str());
+    GIntBig code;
+    // 如果是 DZB 数据类型
+    if (strLayerType == "T" || strLayerType == "U" ||
+      strLayerType == "V" || strLayerType == "W" ||
+      strLayerType == "X" || strLayerType == "Y")
+    {
+      code = CPLAtoGIntBig(vFieldValues[1].c_str());
+    }
+    // 如果不是 JBDX 数据类型
+    else
+    {
+      code = CPLAtoGIntBig(vFieldValues[2].c_str());
+    }
     if (code == 0) return -2;
   }
 
@@ -3534,9 +3546,21 @@ int BaseVectorOdata2ShapefileImp::Set_MultiPoint(
 {
   if (!poLayer) return -1;
 
-  // 编码为第2个字段：为 0 则整个要素跳过
+  // 编码为 0 则整个要素跳过
   if (vFieldValues.size() > 1) {
-    const GIntBig code = CPLAtoGIntBig(vFieldValues[1].c_str());
+    GIntBig code;
+    // 如果是 DZB 数据类型
+    if (strLayerType == "T" || strLayerType == "U" ||
+      strLayerType == "V" || strLayerType == "W" ||
+      strLayerType == "X" || strLayerType == "Y")
+    {
+      code = CPLAtoGIntBig(vFieldValues[1].c_str());
+    }
+    // 如果不是 JBDX 数据类型
+    else
+    {
+      code = CPLAtoGIntBig(vFieldValues[2].c_str());
+    }
     if (code == 0) return -2;
   }
 
@@ -4025,13 +4049,25 @@ int BaseVectorOdata2ShapefileImp::Set_LineString(
   OGRLayer* poLayer,
   std::vector<SE_DPoint> Line,
   std::vector<std::string>& vFieldValues,
-  std::string /*strLayerType*/)
+  std::string strLayerType)
 {
   if (!poLayer) return -1;
 
-  // 编码=0 的早退（编码为第2个字段）
+  // 编码为 0 则整个要素跳过
   if (vFieldValues.size() > 1) {
-    const GIntBig code = CPLAtoGIntBig(vFieldValues[1].c_str());
+    GIntBig code;
+    // 如果是 DZB 数据类型
+    if (strLayerType == "T" || strLayerType == "U" ||
+      strLayerType == "V" || strLayerType == "W" ||
+      strLayerType == "X" || strLayerType == "Y")
+    {
+      code = CPLAtoGIntBig(vFieldValues[1].c_str());
+    }
+    // 如果不是 JBDX 数据类型
+    else
+    {
+      code = CPLAtoGIntBig(vFieldValues[2].c_str());
+    }
     if (code == 0) return -2;
   }
 
@@ -4076,14 +4112,26 @@ int BaseVectorOdata2ShapefileImp::Set_Polygon(
   OGRLayer* poLayer,
   std::vector<SE_DPoint>& OuterRing,
   std::vector<std::vector<SE_DPoint>>& InteriorRingVec,
-  std::vector<std::string>& vFieldValues)
+  std::vector<std::string>& vFieldValues,
+  string strLayerType)
 {
   if (!poLayer) return -1;
 
-  // 如果待赋值的数量至少大于 1 ，那么获取第二个待赋值字段将其转化后进行检查
+  // 编码为 0 则整个要素跳过
   if (static_cast<int>(vFieldValues.size()) > 1) {
-    // 业务规则：编码字段在 vFieldValues[1]，为 0 则跳过创建要素
-    const GIntBig code = CPLAtoGIntBig(vFieldValues[1].c_str());
+    GIntBig code;
+    // 如果是 DZB 数据类型
+    if (strLayerType == "T" || strLayerType == "U" ||
+      strLayerType == "V" || strLayerType == "W" ||
+      strLayerType == "X" || strLayerType == "Y")
+    {
+      code = CPLAtoGIntBig(vFieldValues[1].c_str());
+    }
+    // 如果不是 JBDX 数据类型
+    else
+    {
+      code = CPLAtoGIntBig(vFieldValues[2].c_str());
+    }
     if (code == 0) return -2;
   }
 

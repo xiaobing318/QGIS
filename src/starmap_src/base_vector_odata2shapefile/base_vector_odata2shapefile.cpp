@@ -1979,7 +1979,8 @@ SE_Error BaseVectorOdata2Shapefile::JBDX2Shapefile_GeoSRS(
               poResultLayer,
 							vShpExteriorPolygons[i],
 							vInterior,
-							vPolygonFieldValues[i]);
+							vPolygonFieldValues[i],
+              vLayerType[iLayerIndex]);
 						if (iResult != 0 && iResult != -2) {
 							fprintf(fp, "%s Set_Polygon failed!\n", vLayerType[iLayerIndex].c_str());
 							fflush(fp);
@@ -4909,7 +4910,8 @@ SE_Error BaseVectorOdata2Shapefile::JBDX2Shapefile_GeoSRS(
               poResultLayer,
               vShpExteriorPolygons[i],
               vInterior,
-              vPolygonFieldValues[i]);
+              vPolygonFieldValues[i],
+              vLayerType[iLayerIndex]);
             if (iResult != 0 && iResult != -2)
             {
               //	如果创建失败，则跳过，将相关信息写入到日志中
@@ -7580,7 +7582,8 @@ SE_Error BaseVectorOdata2Shapefile::JBDX2Shapefile_ProjSRS(
               poResultLayer,
 							vShpExteriorPolygons[i],
 							vInterior,
-							vPolygonFieldValues[i]);
+							vPolygonFieldValues[i],
+              vLayerType[iLayerIndex]);
 						if (iResult != 0 && iResult != -2) {
 							fprintf(fp, "%s Set_Polygon failed!\n", vLayerType[iLayerIndex].c_str());
 							fflush(fp);
@@ -10511,7 +10514,8 @@ SE_Error BaseVectorOdata2Shapefile::JBDX2Shapefile_ProjSRS(
               poResultLayer,
 							vShpExteriorPolygons[i],
 							vInterior,
-							vPolygonFieldValues[i]);
+							vPolygonFieldValues[i],
+              vLayerType[iLayerIndex]);
 						if (iResult != 0 && iResult != -2)
 						{
 							//	如果创建失败，则跳过，将相关信息写入到日志中
@@ -13049,7 +13053,8 @@ SE_Error BaseVectorOdata2Shapefile::JBDX2Shapefile_OriginSRS(
               poResultLayer,
 							vShpExteriorPolygons[i],
 							vInterior,
-							vPolygonFieldValues[i]);
+							vPolygonFieldValues[i],
+              vLayerType[iLayerIndex]);
 						if (iResult != 0 && iResult != -2) {
 							fprintf(fp, "%s Set_Polygon failed!\n", vLayerType[iLayerIndex].c_str());
 							fflush(fp);
@@ -15652,7 +15657,8 @@ SE_Error BaseVectorOdata2Shapefile::JBDX2Shapefile_OriginSRS(
               poResultLayer,
 							vShpExteriorPolygons[i],
 							vInterior,
-							vPolygonFieldValues[i]);
+							vPolygonFieldValues[i],
+              vLayerType[iLayerIndex]);
 						if (iResult != 0 && iResult != -2)
 						{
 							//	如果创建失败，则跳过，将相关信息写入到日志中
@@ -18284,7 +18290,8 @@ SE_Error BaseVectorOdata2Shapefile::DZB2Shapefile_GeoSRS(
               poResultLayer,
               vShpExteriorPolygons[i],
               vInterior,
-              vPolygonFieldValues[i]);
+              vPolygonFieldValues[i],
+              vLayerType[iLayerIndex]);
             if (iResult != 0 && iResult != -2) {
               fprintf(fp, "%s Set_Polygon failed!\n", vLayerType[iLayerIndex].c_str());
               fflush(fp);
@@ -21230,7 +21237,8 @@ SE_Error BaseVectorOdata2Shapefile::DZB2Shapefile_GeoSRS(
               poResultLayer,
               vShpExteriorPolygons[i],
               vInterior,
-              vPolygonFieldValues[i]);
+              vPolygonFieldValues[i],
+              vLayerType[iLayerIndex]);
 
 
             // 如果返回值不是 0，则说明设置属性出现了错误
@@ -23908,7 +23916,8 @@ SE_Error BaseVectorOdata2Shapefile::DZB2Shapefile_ProjSRS(
               poResultLayer,
               vShpExteriorPolygons[i],
               vInterior,
-              vPolygonFieldValues[i]);
+              vPolygonFieldValues[i],
+              vLayerType[iLayerIndex]);
             if (iResult != 0 && iResult != -2) {
               fprintf(fp, "%s Set_Polygon failed!\n", vLayerType[iLayerIndex].c_str());
               fflush(fp);
@@ -26855,7 +26864,8 @@ SE_Error BaseVectorOdata2Shapefile::DZB2Shapefile_ProjSRS(
               poResultLayer,
               vShpExteriorPolygons[i],
               vInterior,
-              vPolygonFieldValues[i]);
+              vPolygonFieldValues[i],
+              vLayerType[iLayerIndex]);
             if (iResult != 0 && iResult != -2)
             {
               //	如果创建失败，则跳过，将相关信息写入到日志中
@@ -29397,7 +29407,8 @@ SE_Error BaseVectorOdata2Shapefile::DZB2Shapefile_OriginSRS(
               poResultLayer,
               vShpExteriorPolygons[i],
               vInterior,
-              vPolygonFieldValues[i]);
+              vPolygonFieldValues[i],
+              vLayerType[iLayerIndex]);
             if (iResult != 0 && iResult != -2) {
               fprintf(fp, "%s Set_Polygon failed!\n", vLayerType[iLayerIndex].c_str());
               fflush(fp);
@@ -31993,7 +32004,8 @@ SE_Error BaseVectorOdata2Shapefile::DZB2Shapefile_OriginSRS(
               poResultLayer,
               vShpExteriorPolygons[i],
               vInterior,
-              vPolygonFieldValues[i]);
+              vPolygonFieldValues[i],
+              vLayerType[iLayerIndex]);
             if (iResult != 0 && iResult != -2)
             {
               //	如果创建失败，则跳过，将相关信息写入到日志中
@@ -34626,7 +34638,8 @@ SE_Error BaseVectorOdata2Shapefile::DZB2ShapefileWithSpecification_GeoSRS(
               poResultLayer,
               vShpExteriorPolygons[i],
               vInterior,
-              vPolygonFieldValues[i]);
+              vPolygonFieldValues[i],
+              vLayerType[iLayerIndex]);
             if (iResult != 0 && iResult != -2) {
               fprintf(fp, "%s Set_Polygon failed!\n", vLayerType[iLayerIndex].c_str());
               fflush(fp);
@@ -37572,7 +37585,8 @@ SE_Error BaseVectorOdata2Shapefile::DZB2ShapefileWithSpecification_GeoSRS(
               poResultLayer,
               vShpExteriorPolygons[i],
               vInterior,
-              vPolygonFieldValues[i]);
+              vPolygonFieldValues[i],
+              vLayerType[iLayerIndex]);
 
 
             // 如果返回值不是 0，则说明设置属性出现了错误
@@ -40250,7 +40264,8 @@ SE_Error BaseVectorOdata2Shapefile::DZB2ShapefileWithSpecification_ProjSRS(
               poResultLayer,
               vShpExteriorPolygons[i],
               vInterior,
-              vPolygonFieldValues[i]);
+              vPolygonFieldValues[i],
+              vLayerType[iLayerIndex]);
             if (iResult != 0 && iResult != -2) {
               fprintf(fp, "%s Set_Polygon failed!\n", vLayerType[iLayerIndex].c_str());
               fflush(fp);
@@ -43197,7 +43212,8 @@ SE_Error BaseVectorOdata2Shapefile::DZB2ShapefileWithSpecification_ProjSRS(
               poResultLayer,
               vShpExteriorPolygons[i],
               vInterior,
-              vPolygonFieldValues[i]);
+              vPolygonFieldValues[i],
+              vLayerType[iLayerIndex]);
             if (iResult != 0 && iResult != -2)
             {
               //	如果创建失败，则跳过，将相关信息写入到日志中
@@ -45739,7 +45755,8 @@ SE_Error BaseVectorOdata2Shapefile::DZB2ShapefileWithSpecification_OriginSRS(
               poResultLayer,
               vShpExteriorPolygons[i],
               vInterior,
-              vPolygonFieldValues[i]);
+              vPolygonFieldValues[i],
+              vLayerType[iLayerIndex]);
             if (iResult != 0 && iResult != -2) {
               fprintf(fp, "%s Set_Polygon failed!\n", vLayerType[iLayerIndex].c_str());
               fflush(fp);
@@ -48335,7 +48352,8 @@ SE_Error BaseVectorOdata2Shapefile::DZB2ShapefileWithSpecification_OriginSRS(
               poResultLayer,
               vShpExteriorPolygons[i],
               vInterior,
-              vPolygonFieldValues[i]);
+              vPolygonFieldValues[i],
+              vLayerType[iLayerIndex]);
             if (iResult != 0 && iResult != -2)
             {
               //	如果创建失败，则跳过，将相关信息写入到日志中
@@ -49024,6 +49042,8 @@ SE_Error BaseVectorOdata2Shapefile::DZB2ShapefileWithSpecification_OriginSRS(
 
   return SE_ERROR_NONE;
 }
+#pragma endregion
+
 #pragma endregion
 
 #pragma endregion

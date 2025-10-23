@@ -197,7 +197,8 @@ public:
     OGRLayer* poLayer,
     vector<SE_DPoint>& OuterRing,
     vector<vector<SE_DPoint>>& InteriorRingVec,
-    vector<string>& vFieldValues);
+    vector<string>& vFieldValues,
+    string strLayerType);
   //  设置字段的属性值
   static bool SetFieldFromString(
     OGRFeature* f,
