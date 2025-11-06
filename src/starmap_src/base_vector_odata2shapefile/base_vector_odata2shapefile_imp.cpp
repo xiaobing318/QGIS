@@ -2986,7 +2986,7 @@ int BaseVectorOdata2ShapefileImp::Set_Point(
       strLayerType == "V" || strLayerType == "W" ||
       strLayerType == "X" || strLayerType == "Y")
     {
-      code = CPLAtoGIntBig(vFieldValues[1].c_str());
+      code = CPLAtoGIntBig(vFieldValues[2].c_str());
     }
     // 如果不是 JBDX 数据类型
     else
