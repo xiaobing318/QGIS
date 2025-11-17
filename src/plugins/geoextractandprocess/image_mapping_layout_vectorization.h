@@ -40,186 +40,186 @@ typedef map<QString, QString> MAP_FeatureClassName_Code;
 typedef map<QString, QString> MAP_FeatureClassCode_Name;
 
 /*布局整饰要素结构体*/
-//struct LayoutItemParam
-//{
-//	QString     qstrMapTitleName;                   // 主标题图名
-//	QString     qstrMapSubTitleProvince;            // 地图副标题省名
-//	QString     qstrMapSubTitleCounty;              // 地图副标题县名
-//	bool        bMapSubTitleChecked;                // 是否绘制地图副标题
-//
-//	QString     qstrSecurityClassification;         // 密级
-//	QString     qstrMapDetails;                     // 地图说明
-//	bool        bMapDetailsChecked;                 // 是否绘制地图说明
-//	QString     qstrMapAgency;                      // 制图单位
-//	bool        bMapAgencyChecked;                  // 是否绘制制图单位
-//
-//	QString     qstrLeftTopCornerSheet;             // 左上角图幅号
-//	bool        bLeftTopCornerSheetChecked;         // 是否绘制左上角图幅号
-//	QString     qstrRightBottomCornerSheet;         // 右下角图幅号
-//	bool        bRightBottomCornerSheetChecked;     // 是否绘制右下角图幅号
-//
-//	QString     qstrScale;                          // 地图比例尺
-//	bool        bScaleChecked;                      // 是否绘制地图比例尺
-//
-//	bool        bKmNetChecked;                      // 是否绘制方里网
-//	bool        bSlopeRulerChecked;                 // 是否绘制坡度尺
-//	bool        bNorthDirectionLinesChecked;        // 是否绘制三北方向线
-//
-//	double      dMagenticAngle;                     // 磁偏角，单位：度
-//	double      dMeridianConvergenceAngle;          // 子午线收敛角
-//
-//	bool        bSheetListChecked;                  // 是否绘制接图表
-//	bool        bMosaicMapChecked;                  // 是否绘制镶嵌线缩略图
-//
-//	bool        bMainMapLegendChecked;              // 是否绘制主地图图例
-//	bool        bMosaicMapLegendChecked;            // 是否绘制镶嵌线地图图例
-//
-//	QString     qstrMapAnnotations;                 // 附注
-//	bool        bAnnotationsChecked;                // 是否绘制附注
-//
-//	LayoutItemParam()
-//	{
-//		qstrMapTitleName = "";
-//		qstrMapSubTitleProvince = "";
-//		qstrMapSubTitleCounty = "";
-//		bMapSubTitleChecked = true;
-//
-//		qstrSecurityClassification = "";
-//		qstrMapDetails = "";
-//		bMapDetailsChecked = true;
-//		qstrMapAgency = "";
-//		bMapAgencyChecked = true;
-//
-//		qstrLeftTopCornerSheet = "";
-//		bLeftTopCornerSheetChecked = true;
-//		qstrRightBottomCornerSheet = "";
-//		bRightBottomCornerSheetChecked = true;
-//
-//		qstrScale = "";
-//		bScaleChecked = true;
-//
-//		bKmNetChecked = true;
-//		bSlopeRulerChecked = false;
-//		bNorthDirectionLinesChecked = false;
-//
-//		dMagenticAngle = 0;
-//		dMeridianConvergenceAngle = 0;
-//
-//		bSheetListChecked = true;
-//		bMosaicMapChecked = true;
-//		bMainMapLegendChecked = true;
-//		bMosaicMapLegendChecked = true;
-//
-//		qstrMapAnnotations = "";
-//		bAnnotationsChecked = false;
-//	}
-//};
+// struct LayoutItemParam
+// {
+// 	QString     qstrMapTitleName;                   // 主标题图名
+// 	QString     qstrMapSubTitleProvince;            // 地图副标题省名
+// 	QString     qstrMapSubTitleCounty;              // 地图副标题县名
+// 	bool        bMapSubTitleChecked;                // 是否绘制地图副标题
+
+// 	QString     qstrSecurityClassification;         // 密级
+// 	QString     qstrMapDetails;                     // 地图说明
+// 	bool        bMapDetailsChecked;                 // 是否绘制地图说明
+// 	QString     qstrMapAgency;                      // 制图单位
+// 	bool        bMapAgencyChecked;                  // 是否绘制制图单位
+
+// 	QString     qstrLeftTopCornerSheet;             // 左上角图幅号
+// 	bool        bLeftTopCornerSheetChecked;         // 是否绘制左上角图幅号
+// 	QString     qstrRightBottomCornerSheet;         // 右下角图幅号
+// 	bool        bRightBottomCornerSheetChecked;     // 是否绘制右下角图幅号
+
+// 	QString     qstrScale;                          // 地图比例尺
+// 	bool        bScaleChecked;                      // 是否绘制地图比例尺
+
+// 	bool        bKmNetChecked;                      // 是否绘制方里网
+// 	bool        bSlopeRulerChecked;                 // 是否绘制坡度尺
+// 	bool        bNorthDirectionLinesChecked;        // 是否绘制三北方向线
+
+// 	double      dMagenticAngle;                     // 磁偏角，单位：度
+// 	double      dMeridianConvergenceAngle;          // 子午线收敛角
+
+// 	bool        bSheetListChecked;                  // 是否绘制接图表
+// 	bool        bMosaicMapChecked;                  // 是否绘制镶嵌线缩略图
+
+// 	bool        bMainMapLegendChecked;              // 是否绘制主地图图例
+// 	bool        bMosaicMapLegendChecked;            // 是否绘制镶嵌线地图图例
+
+// 	QString     qstrMapAnnotations;                 // 附注
+// 	bool        bAnnotationsChecked;                // 是否绘制附注
+
+// 	LayoutItemParam()
+// 	{
+// 		qstrMapTitleName = "";
+// 		qstrMapSubTitleProvince = "";
+// 		qstrMapSubTitleCounty = "";
+// 		bMapSubTitleChecked = true;
+
+// 		qstrSecurityClassification = "";
+// 		qstrMapDetails = "";
+// 		bMapDetailsChecked = true;
+// 		qstrMapAgency = "";
+// 		bMapAgencyChecked = true;
+
+// 		qstrLeftTopCornerSheet = "";
+// 		bLeftTopCornerSheetChecked = true;
+// 		qstrRightBottomCornerSheet = "";
+// 		bRightBottomCornerSheetChecked = true;
+
+// 		qstrScale = "";
+// 		bScaleChecked = true;
+
+// 		bKmNetChecked = true;
+// 		bSlopeRulerChecked = false;
+// 		bNorthDirectionLinesChecked = false;
+
+// 		dMagenticAngle = 0;
+// 		dMeridianConvergenceAngle = 0;
+
+// 		bSheetListChecked = true;
+// 		bMosaicMapChecked = true;
+// 		bMainMapLegendChecked = true;
+// 		bMosaicMapLegendChecked = true;
+
+// 		qstrMapAnnotations = "";
+// 		bAnnotationsChecked = false;
+// 	}
+// };
 
 /*要素选择参数结构体*/
-//struct FeatureClassParam
-//{
-//	QString qstrLayerName;				// 图层名称：GJB标准图层名称，如"A"
-//	vector<QString> vFeatureClassCode;	// 当前图层内要素类选择列表，通过编码区分，例如：测量控制点中的三角点（110101）
-//
-//	FeatureClassParam()
-//	{
-//		qstrLayerName = "";
-//		vFeatureClassCode.clear();
-//	}
-//};
+// struct FeatureClassParam
+// {
+// 	QString qstrLayerName;				// 图层名称：GJB标准图层名称，如"A"
+// 	vector<QString> vFeatureClassCode;	// 当前图层内要素类选择列表，通过编码区分，例如：测量控制点中的三角点（110101）
+
+// 	FeatureClassParam()
+// 	{
+// 		qstrLayerName = "";
+// 		vFeatureClassCode.clear();
+// 	}
+// };
 
 /*制图方案结构体*/
-//struct ImageMappingSchema
-//{
-//	QString     qstrName;                       // 制图方案名称
-//
-//	/*数据源*/
-//	QString     qstrVectorDataPath;             // 矢量数据路径
-//	QString     qstrImageDataPath;              // 影像数据路径
-//	QString     qstrMosaicDataPath;             // 镶嵌线数据路径
-//
-//	/*制图范围*/
-//	double      dLeft;                          // 左边界经度，单位：度
-//	double      dTop;                           // 上边界纬度，单位：度
-//	double      dRight;                         // 右边界经度，单位：度
-//	double      dBottom;                        // 下边界纬度，单位：度
-//
-//	/*矢量要素选择*/
-//	vector<FeatureClassParam>        vFeatureClass;     // 图层要素类列表
-//
-//	/*布局模板*/
-//	QString     qstrLayoutTemplatePath;         // 布局模板路径
-//	QString     qstrLayoutTemplateName;         // 布局模板名称
-//
-//	/*布局整饰要素*/
-//	LayoutItemParam     layoutItemParam;        // 布局整饰要素
-//
-//	/*地图输出*/
-//	QString     qstrMapExportType;                 // 地图输出类型：包括GeoPDF、PDF、tiff
-//	QString     qstrMapExportPath;                 // 地图输出路径，包括工程文件、元数据文件、地图文件
-//
-//	ImageMappingSchema()
-//	{
-//		qstrVectorDataPath = "";
-//		qstrImageDataPath = "";
-//		qstrMosaicDataPath = "";
-//
-//		dLeft = 0;
-//		dTop = 0;
-//		dRight = 0;
-//		dBottom = 0;
-//
-//		vFeatureClass.clear();
-//		qstrLayoutTemplatePath = "";
-//		qstrLayoutTemplateName = "";
-//		layoutItemParam = LayoutItemParam();
-//
-//		qstrMapExportType = "";
-//		qstrMapExportPath = "";
-//	}
-//};
+// struct ImageMappingSchema
+// {
+// 	QString     qstrName;                       // 制图方案名称
+
+// 	/*数据源*/
+// 	QString     qstrVectorDataPath;             // 矢量数据路径
+// 	QString     qstrImageDataPath;              // 影像数据路径
+// 	QString     qstrMosaicDataPath;             // 镶嵌线数据路径
+
+// 	/*制图范围*/
+// 	double      dLeft;                          // 左边界经度，单位：度
+// 	double      dTop;                           // 上边界纬度，单位：度
+// 	double      dRight;                         // 右边界经度，单位：度
+// 	double      dBottom;                        // 下边界纬度，单位：度
+
+// 	/*矢量要素选择*/
+// 	vector<FeatureClassParam>        vFeatureClass;     // 图层要素类列表
+
+// 	/*布局模板*/
+// 	QString     qstrLayoutTemplatePath;         // 布局模板路径
+// 	QString     qstrLayoutTemplateName;         // 布局模板名称
+
+// 	/*布局整饰要素*/
+// 	LayoutItemParam     layoutItemParam;        // 布局整饰要素
+
+// 	/*地图输出*/
+// 	QString     qstrMapExportType;                 // 地图输出类型：包括GeoPDF、PDF、tiff
+// 	QString     qstrMapExportPath;                 // 地图输出路径，包括工程文件、元数据文件、地图文件
+
+// 	ImageMappingSchema()
+// 	{
+// 		qstrVectorDataPath = "";
+// 		qstrImageDataPath = "";
+// 		qstrMosaicDataPath = "";
+
+// 		dLeft = 0;
+// 		dTop = 0;
+// 		dRight = 0;
+// 		dBottom = 0;
+
+// 		vFeatureClass.clear();
+// 		qstrLayoutTemplatePath = "";
+// 		qstrLayoutTemplateName = "";
+// 		layoutItemParam = LayoutItemParam();
+
+// 		qstrMapExportType = "";
+// 		qstrMapExportPath = "";
+// 	}
+// };
 
 /*制图布局元素位置结构体*/
-//struct LayoutItemPositions
-//{
-//	QString             qstrName;               // 布局元素名称
-//	QString             qstrAlias;              // 布局元素别名
-//	double              dLeft_offset;           // 相对地图外图廓左上角点的横坐标方向偏移量，单位：毫米
-//	double              dTop_offset;            // 相对地图外图廓左上角点的纵坐标方向偏移量，单位：毫米
-//	double              dWidth;                 // 布局元素宽度，单位：毫米
-//	double              dHeight;                // 布局元素高度，单位：毫米
-//	QString             qstrReferencePoint;     // 布局元素参考点位置，单位：毫米
-//
-//	LayoutItemPositions()
-//	{
-//		qstrName = "";
-//		qstrAlias = "";
-//		dLeft_offset = 0;
-//		dTop_offset = 0;
-//		dWidth = 0;
-//		dHeight = 0;
-//		qstrReferencePoint = "";
-//	}
-//};
+// struct LayoutItemPositions
+// {
+// 	QString             qstrName;               // 布局元素名称
+// 	QString             qstrAlias;              // 布局元素别名
+// 	double              dLeft_offset;           // 相对地图外图廓左上角点的横坐标方向偏移量，单位：毫米
+// 	double              dTop_offset;            // 相对地图外图廓左上角点的纵坐标方向偏移量，单位：毫米
+// 	double              dWidth;                 // 布局元素宽度，单位：毫米
+// 	double              dHeight;                // 布局元素高度，单位：毫米
+// 	QString             qstrReferencePoint;     // 布局元素参考点位置，单位：毫米
+
+// 	LayoutItemPositions()
+// 	{
+// 		qstrName = "";
+// 		qstrAlias = "";
+// 		dLeft_offset = 0;
+// 		dTop_offset = 0;
+// 		dWidth = 0;
+// 		dHeight = 0;
+// 		qstrReferencePoint = "";
+// 	}
+// };
 
 /*影像图元数据项结构体*/
-//struct ImageMetaDataItem
-//{
-//	string         strCategory;       // 元数据类别，包括：产品信息、安全信息、空间坐标信息、数据质量信息、其他信息、分发信息
-//	string         strName;           // 元数据项名称
-//	string         strType;           // 元数据类型，包括：字符型、数值型、整型
-//	int            iLength;            // 长度
-//	string         strValue;          // 元数据项属性值
-//
-//	ImageMetaDataItem()
-//	{
-//		strCategory = "";
-//		strName = "";
-//		strType = "";
-//		iLength = 0;
-//		strValue = "";
-//	}
-//};
+// struct ImageMetaDataItem
+// {
+// 	string         strCategory;       // 元数据类别，包括：产品信息、安全信息、空间坐标信息、数据质量信息、其他信息、分发信息
+// 	string         strName;           // 元数据项名称
+// 	string         strType;           // 元数据类型，包括：字符型、数值型、整型
+// 	int            iLength;            // 长度
+// 	string         strValue;          // 元数据项属性值
+
+// 	ImageMetaDataItem()
+// 	{
+// 		strCategory = "";
+// 		strName = "";
+// 		strType = "";
+// 		iLength = 0;
+// 		strValue = "";
+// 	}
+// };
 
 /*影像图元数据结构体*/
 /*struct ImageMetaData
@@ -233,50 +233,50 @@ typedef map<QString, QString> MAP_FeatureClassCode_Name;
 };*/
 
 /*主图图例信息结构体*/
-//struct MainMapLegendInfo 
-//{
-//	QString						qstrSymbolCode;			// 符号编码：如首都：280111
-//	QgsLayoutItemPicture*		pSymbolPicture;			// 符号示意图
-//	QgsLayoutItemLabel*			pSymbolLabel;			// 符号名称
-//
-//	MainMapLegendInfo()
-//	{
-//		qstrSymbolCode = "";
-//		pSymbolPicture = nullptr;
-//		pSymbolLabel = nullptr;
-//	}
-//
-//};
+// struct MainMapLegendInfo
+// {
+// 	QString						qstrSymbolCode;			// 符号编码：如首都：280111
+// 	QgsLayoutItemPicture*		pSymbolPicture;			// 符号示意图
+// 	QgsLayoutItemLabel*			pSymbolLabel;			// 符号名称
+
+// 	MainMapLegendInfo()
+// 	{
+// 		qstrSymbolCode = "";
+// 		pSymbolPicture = nullptr;
+// 		pSymbolLabel = nullptr;
+// 	}
+
+// };
 
 /*镶嵌线图例信息结构体*/
-/*struct MosaicMapLegendInfo
-{
-	QColor					qColor;					// 颜色
-	QString					qstrData;				// 摄影时间
-	QString					qstrSensor;				// 传感器
+// struct MosaicMapLegendInfo
+// {
+// 	QColor					qColor;					// 颜色
+// 	QString					qstrData;				// 摄影时间
+// 	QString					qstrSensor;				// 传感器
 
-	MosaicMapLegendInfo()
-	{
-		qColor = QColor(0,0,0);
-		qstrData = "";
-		qstrSensor = "";
-	}
+// 	MosaicMapLegendInfo()
+// 	{
+// 		qColor = QColor(0,0,0);
+// 		qstrData = "";
+// 		qstrSensor = "";
+// 	}
 
-};*/
+// };
 
 
 /*属性字段属性值对照结构体*/
-//struct FieldNameAndValue_Imp
-//{
-//	string strFieldName;
-//	string strFieldValue;
-//	FieldNameAndValue_Imp()
-//	{
-//		strFieldName = "";
-//		strFieldValue = "";
-//	}
-//
-//};
+// struct FieldNameAndValue_Imp
+// {
+// 	string strFieldName;
+// 	string strFieldValue;
+// 	FieldNameAndValue_Imp()
+// 	{
+// 		strFieldName = "";
+// 		strFieldValue = "";
+// 	}
+
+// };
 
 
 class QgsImageMappingDialog_LayoutVectorization : public QDialog
@@ -349,7 +349,7 @@ private:
 
 	// 地图外图廓四个角点构成的多边形高斯坐标（实际多边形外图廓），依次存储：左上角点-a、右上角点-b、右下角点-c、左下角点-d
 	SE_Polygon		m_ExteriorMapGaussPolygon;
-	
+
 	// 内图廓A点布局坐标
 	SE_DPoint		m_dInteriorMapLayoutPoint_A;
 
@@ -727,20 +727,20 @@ private:
 		QgsLineSymbol* kmLineBorderLine);
 
 	// 绘制邻带方里网要素
-	void DrawAdjKmNet_CreateLayer(OGRLayer* pLayoutPointLayer, 
-		OGRLayer* pLayoutLineLayer, 
+	void DrawAdjKmNet_CreateLayer(OGRLayer* pLayoutPointLayer,
+		OGRLayer* pLayoutLineLayer,
 		SE_DPoint dRefGaussPoint,
 		SE_DPoint dRefLayoutPoint,
-		vector<SE_DPoint>& vOuterLeftBorderLayoutCoords, 
-		vector<SE_DPoint>& vOuterTopBorderLayoutCoords, 
-		vector<SE_DPoint>& vOuterRightBorderLayoutCoords, 
-		vector<SE_DPoint>& vOuterBottomBorderLayoutCoords, 
-		vector<SE_DPoint>& vLeftBorderAdjGaussCoords, 
+		vector<SE_DPoint>& vOuterLeftBorderLayoutCoords,
+		vector<SE_DPoint>& vOuterTopBorderLayoutCoords,
+		vector<SE_DPoint>& vOuterRightBorderLayoutCoords,
+		vector<SE_DPoint>& vOuterBottomBorderLayoutCoords,
+		vector<SE_DPoint>& vLeftBorderAdjGaussCoords,
 		vector<SE_DPoint>& vTopBorderAdjGaussCoords,
 		vector<SE_DPoint>& vRightBorderAdjGaussCoords,
-		vector<SE_DPoint>& vBottomBorderAdjGaussCoords, 
-		double dCenterMeridian, 
-		double dScale, 
+		vector<SE_DPoint>& vBottomBorderAdjGaussCoords,
+		double dCenterMeridian,
+		double dScale,
 		double dMapUnit2LayoutUnit);
 
 	// 获取单选按钮状态
@@ -766,7 +766,7 @@ private:
 	// 高斯坐标到布局坐标的转换
 	void TransformGaussToLayout(SE_DPoint dRefGaussPoint,
 		SE_DPoint dRefLayoutPoint,
-		SE_DPoint dGaussPoint, 
+		SE_DPoint dGaussPoint,
 		double dMapUnitToLayoutUnit,
 		SE_DPoint& dLayoutPoint);
 
@@ -838,7 +838,7 @@ private:
 
 	// 限制文本框输入
 	void InitLineEdit();
-	
+
 	// 将tif文件转换为jpg
 	bool TranslateFromTif2Jpg(QString qstrFilePath, QString qstrSheetNumber);
 
@@ -859,7 +859,7 @@ private:
 
 	// 设置面要素
 	int Set_Polygon(OGRLayer* poLayer, vector<SE_DPoint> OuterRing, vector<FieldNameAndValue_Imp>& vFieldAndValue);
-	
+
 };
 
 #endif // QGS_IMAGE_MAPPING_DIALOG_LAYOUT_VECTORIZATION_H

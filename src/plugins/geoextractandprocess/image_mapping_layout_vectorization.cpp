@@ -174,7 +174,7 @@ QgsImageMappingDialog_LayoutVectorization::QgsImageMappingDialog_LayoutVectoriza
 	ui.plainTextEdit_SheetList->setEnabled(true);
 	ui.pushButton_LoadSheetList->setEnabled(true);
 
-	ui.lineEdit_MosaicDataRenderField->setText("catalog_id"); 
+	ui.lineEdit_MosaicDataRenderField->setText("catalog_id");
 	ui.lineEdit_MosaicDataAcqDataField->setText("acq_date");
 	ui.lineEdit_MosaicDataSensorField->setText("sensor");
 
@@ -3457,7 +3457,7 @@ void QgsImageMappingDialog_LayoutVectorization::DrawAdjKmNet(QgsPrintLayout* pPr
 	// 设置字体及大小
 	QFont font10km;
 	font10km.setFamily(QStringLiteral("等线"));
-	font10km.setPixelSize(35);		
+	font10km.setPixelSize(35);
 	font10km.setBold(true);
 
 	/*记录需要绘制百公里方里网数值的第一个点和最后一个点索引值*/
@@ -3533,7 +3533,7 @@ void QgsImageMappingDialog_LayoutVectorization::DrawAdjKmNet(QgsPrintLayout* pPr
 			5,
 			5));
 
-		
+
 		pPrintLayout->addLayoutItem(pTopBorderLabel_10km);
 
 		// 绘制百公里和带号
@@ -3558,8 +3558,8 @@ void QgsImageMappingDialog_LayoutVectorization::DrawAdjKmNet(QgsPrintLayout* pPr
 				layoutTopBorderPoint.dy - 2.5,
 				3,
 				3));
-			
-			
+
+
 			pPrintLayout->addLayoutItem(pTopBorderLabel_100km);
 			//--------------------------------------------------//
 
@@ -3583,8 +3583,8 @@ void QgsImageMappingDialog_LayoutVectorization::DrawAdjKmNet(QgsPrintLayout* pPr
 				layoutTopBorderPoint.dy - 3.3,
 				4,
 				4));
-			
-			
+
+
 			pPrintLayout->addLayoutItem(pTopBorderLabel_BandNumber);
 			//--------------------------------------------------//
 		}
@@ -3669,14 +3669,14 @@ void QgsImageMappingDialog_LayoutVectorization::DrawAdjKmNet(QgsPrintLayout* pPr
 		QString qstr10km = tr("%1").arg(int(layoutBottomBorderGaussPoint.dx / 1000.0));
 		qstr10km = qstr10km.right(2);
 		pBottomBorderLabel_10km->setText(qstr10km);
-	
+
 		// 10km刻度值
 		pBottomBorderLabel_10km->attemptSetSceneRect(QRectF(layoutBottomBorderPoint.dx + 0.15,
 			layoutBottomBorderPoint.dy + 0.1,
 			5,
 			5));
 
-		
+
 		pPrintLayout->addLayoutItem(pBottomBorderLabel_10km);
 
 		// 绘制百公里和带号
@@ -3697,14 +3697,14 @@ void QgsImageMappingDialog_LayoutVectorization::DrawAdjKmNet(QgsPrintLayout* pPr
 			QString qstr100km = tr("%1").arg(int(layoutBottomBorderGaussPoint.dx / 100000.0));
 			pBottomBorderLabel_100km->setText(qstr100km);
 
-			
+
 			// 100km刻度值
 			pBottomBorderLabel_100km->attemptSetSceneRect(QRectF(layoutBottomBorderPoint.dx - 1.5,
 				layoutBottomBorderPoint.dy + 1.2,
 				3,
 				3));
-			
-					
+
+
 			pPrintLayout->addLayoutItem(pBottomBorderLabel_100km);
 			//--------------------------------------------------//
 
@@ -3729,9 +3729,9 @@ void QgsImageMappingDialog_LayoutVectorization::DrawAdjKmNet(QgsPrintLayout* pPr
 				layoutBottomBorderPoint.dy + 0.1,
 				4,
 				4));
-			
-			
-			
+
+
+
 			pPrintLayout->addLayoutItem(pBottomBorderLabel_BandNumber);
 			//--------------------------------------------------//
 		}
@@ -3826,7 +3826,7 @@ void QgsImageMappingDialog_LayoutVectorization::DrawAdjKmNet(QgsPrintLayout* pPr
 			layoutLeftBorderPoint.dy - 3.35,
 			5,
 			5));
-		
+
 		/*-----------------------------------------------*/
 		// 修改时间：2023-03-11
 		// 修改内容：邻带方里网刻度值旋转
@@ -3837,7 +3837,7 @@ void QgsImageMappingDialog_LayoutVectorization::DrawAdjKmNet(QgsPrintLayout* pPr
 		/*-----------------------------------------------*/
 
 
-		
+
 		pPrintLayout->addLayoutItem(pLeftBorderLabel_10km);
 
 		// 绘制千公里+百公里
@@ -3872,9 +3872,9 @@ void QgsImageMappingDialog_LayoutVectorization::DrawAdjKmNet(QgsPrintLayout* pPr
 			{
 				qstr100km = tr("%1").arg(int(layoutLeftBorderGaussPoint.dy / 100000.0));
 			}
-			
-			
-			
+
+
+
 			pLeftBorderLabel_100km->setText(qstr100km);
 
 			// 100km刻度值
@@ -4028,7 +4028,7 @@ void QgsImageMappingDialog_LayoutVectorization::DrawAdjKmNet(QgsPrintLayout* pPr
 			{
 				qstr100km = tr("%1").arg(int(layoutRightBorderGaussPoint.dy / 100000.0));
 			}
-			
+
 			pRightBorderLabel_100km->setText(qstr100km);
 
 			// 100km刻度值
@@ -4045,7 +4045,7 @@ void QgsImageMappingDialog_LayoutVectorization::DrawAdjKmNet(QgsPrintLayout* pPr
 				layoutRightBorderPoint.dy));
 			//-------------------------------------------//
 
-	
+
 			pPrintLayout->addLayoutItem(pRightBorderLabel_100km);
 			//--------------------------------------------------//
 		}
@@ -4515,7 +4515,7 @@ void QgsImageMappingDialog_LayoutVectorization::DrawAdjKmNet_CreateLayer(
 	/*--------------------------------------*/
 	/*         绘制左边界方里网数值         */
 	/*--------------------------------------*/
-	
+
 
 	/*记录需要绘制千公里+百公里方里网数值的第一个点和最后一个点索引值*/
 	// 第一个需要绘制千公里+百公里的左边界整公里方里网点索引
@@ -5559,7 +5559,7 @@ void QgsImageMappingDialog_LayoutVectorization::LoadSheetListFile()
 	while (!feof(fp))
 	{
 		char szLineBuffer[256] = "";
-		fgets(szLineBuffer, sizeof(szLineBuffer) - 1, fp); 
+		fgets(szLineBuffer, sizeof(szLineBuffer) - 1, fp);
 
 		// 去除"\r\n"字符，最后一行不需要去"\r\n"
 		string strSheet = szLineBuffer;
@@ -5635,7 +5635,7 @@ void QgsImageMappingDialog_LayoutVectorization::LoadMappingSchema()
 	for (int i = 0; i < m_vImageMappingSchema.size(); i++)
 	{
 		ImageMappingSchema param = m_vImageMappingSchema[i];
-		// 设置对话框中各部件的内容 
+		// 设置对话框中各部件的内容
 		QStandardItem* item = new QStandardItem(param.qstrName);
 		model->appendRow(item);
 	}
@@ -5653,7 +5653,7 @@ void QgsImageMappingDialog_LayoutVectorization::LoadMappingSchema()
 		m_ImageMappingSchema = m_vImageMappingSchema[0];
 	}
 
-	
+
 }
 
 void QgsImageMappingDialog_LayoutVectorization::SaveMappingSchema()
@@ -5692,10 +5692,10 @@ void QgsImageMappingDialog_LayoutVectorization::SaveMappingSchema()
 	QDomDocument doc;
 	QDomProcessingInstruction instruction = doc.createProcessingInstruction("xml", "version=\"1.0\" encoding=\"UTF-8\"");
 	doc.appendChild(instruction);
-	
+
 	// 创建根节点  QDomElemet元素:Schema_List
 	QDomElement root = doc.createElement("Schema_List");
-	
+
 	// 添加根节点
 	doc.appendChild(root);
 
@@ -5742,7 +5742,7 @@ void QgsImageMappingDialog_LayoutVectorization::SaveMappingSchema()
 
 	// 【5】创建MappingRange节点
 	QDomElement MappingRangeNode = doc.createElement("MappingRange");
-	
+
 	// 制图范围使用属性节点
 	MappingRangeNode.setAttribute(tr("Left"), schema.dLeft);
 	MappingRangeNode.setAttribute(tr("Top"), schema.dTop);
@@ -5905,7 +5905,7 @@ void QgsImageMappingDialog_LayoutVectorization::SaveMappingSchema()
 		QDomText strMapAgencyCheckedText = doc.createTextNode("false");
 		MapAgencyCheckedNode.appendChild(strMapAgencyCheckedText);
 	}
-	
+
 	// 【19】LeftTopCornerSheet
 	QDomElement LeftTopCornerSheetNode = doc.createElement("LeftTopCornerSheet");
 	LayoutItemParamNode.appendChild(LeftTopCornerSheetNode);
@@ -6089,7 +6089,7 @@ void QgsImageMappingDialog_LayoutVectorization::SaveMappingSchema()
 	SchemaNode.appendChild(MapExportTypeNode);
 	QDomText strMapExportTypeText = doc.createTextNode(schema.qstrMapExportType);
 	MapExportTypeNode.appendChild(strMapExportTypeText);
-	
+
 
 	// 【35】创建MapExportPath节点
 	QDomElement MapExportPathNode = doc.createElement("MapExportPath");
@@ -6098,13 +6098,13 @@ void QgsImageMappingDialog_LayoutVectorization::SaveMappingSchema()
 	MapExportPathNode.appendChild(strMapExportPathText);
 
 	// 配置文件默认保存在当前运行环境下
-	QString curPath = m_qstrImageMappingSchemaSavePath; 
+	QString curPath = m_qstrImageMappingSchemaSavePath;
 	QString dlgTitle = tr("保存配置文件");
 	QString filter = tr("xml 文件(*.xml)");
 	QString strFileName = QFileDialog::getSaveFileName(this,
 		dlgTitle, curPath, filter);
 	if (!strFileName.isEmpty())
-	{		
+	{
 		ui.lineEdit_OutputMappingSchemaPath->setText(strFileName);
 		m_qstrImageMappingSchemaSavePath = strFileName;
 		string strBaseName = CPLGetBasename(strFileName.toLocal8Bit());
@@ -6301,7 +6301,7 @@ SE_DPoint QgsImageMappingDialog_LayoutVectorization::LineIntersect(SE_DPoint p0,
 	}
 
 	// 对于外图廓四个多边形结点，此处两条线不可能平行
-	
+
 	dIntersectPoint.dx = (B2 * C1 - B1 * C2) / denominator;
 	dIntersectPoint.dy = (A1 * C2 - A2 * C1) / denominator;
 	return dIntersectPoint;
@@ -6333,10 +6333,10 @@ int QgsImageMappingDialog_LayoutVectorization::CalIndexInVector_YCoord(double dy
 	return -1;
 }
 
-void QgsImageMappingDialog_LayoutVectorization::TransformLayoutToGauss(SE_DPoint dRefGaussPoint, 
-	SE_DPoint dRefLayoutPoint, 
-	SE_DPoint dLayoutPoint, 
-	double dMapUnitToLayoutUnit, 
+void QgsImageMappingDialog_LayoutVectorization::TransformLayoutToGauss(SE_DPoint dRefGaussPoint,
+	SE_DPoint dRefLayoutPoint,
+	SE_DPoint dLayoutPoint,
+	double dMapUnitToLayoutUnit,
 	SE_DPoint& dGaussPoint)
 {
 	// 高斯横坐标X
@@ -6348,9 +6348,9 @@ void QgsImageMappingDialog_LayoutVectorization::TransformLayoutToGauss(SE_DPoint
 }
 
 void QgsImageMappingDialog_LayoutVectorization::CalEndPointByStartPointAndAngle(
-	SE_DPoint dStartPoint, 
-	double dLength, 
-	double dAngle, 
+	SE_DPoint dStartPoint,
+	double dLength,
+	double dAngle,
 	SE_DPoint& dEndPoint)
 {
 	// 角度转换为弧度
@@ -6452,18 +6452,18 @@ QList<QgsStringMap> QgsImageMappingDialog_LayoutVectorization::GetAttributeValue
 	return featureValues;
 }
 
-void QgsImageMappingDialog_LayoutVectorization::GetAcqDataAndSensorByCateName(QList<QgsStringMap>& qAttributeList, 
-	const QString& qstrCateName, 
+void QgsImageMappingDialog_LayoutVectorization::GetAcqDataAndSensorByCateName(QList<QgsStringMap>& qAttributeList,
+	const QString& qstrCateName,
 	const QString& qstrCateField,
 	const QString& qstrAcaDataField,
 	const QString& qstrSensorField,
-	QString& qstrAcqDataValue, 
+	QString& qstrAcqDataValue,
 	QString& qstrSensorValue)
 {
 	for (int i = 0; i < qAttributeList.size(); i++)
 	{
 		QgsStringMap qAttrMap = qAttributeList.at(i);
-		
+
 		// 类别属性值
 		QString qstrCateValue = qAttrMap.value(qstrCateField);
 
@@ -6509,13 +6509,13 @@ void QgsImageMappingDialog_LayoutVectorization::InitLineEdit()
 
 	// 右边界经度
 	ui.lineEdit_Right->setValidator(new QRegExpValidator(QRegExp("^-?(180|1?[0-7]?\\d(\\.\\d+)?)$")));
-	
-	// 类别编号字段 
+
+	// 类别编号字段
 	ui.lineEdit_MosaicDataRenderField->setValidator(new QRegExpValidator(QRegExp("^[\u4e00-\u9fa5a-zA-Z0-9_]+$")));
-	
+
 	// 拍摄时间字段
 	ui.lineEdit_MosaicDataAcqDataField->setValidator(new QRegExpValidator(QRegExp("^[\u4e00-\u9fa5a-zA-Z0-9_]+$")));
-	
+
 	// 传感器字段
 	ui.lineEdit_MosaicDataSensorField->setValidator(new QRegExpValidator(QRegExp("^[\u4e00-\u9fa5a-zA-Z0-9_]+$")));
 
@@ -6524,7 +6524,7 @@ void QgsImageMappingDialog_LayoutVectorization::InitLineEdit()
 
 	// 比例尺
 	ui.lineEdit_Scale->setValidator(new QRegExpValidator(QRegExp("^[\u4e00-\u9fa5a-zA-Z0-9_]+$")));
-	
+
 }
 
 
@@ -6548,7 +6548,7 @@ bool QgsImageMappingDialog_LayoutVectorization::TranslateFromTif2Jpg(QString qst
 	// 输入tif文件全路径
 	string strRasterFullName = strFilePath + "/" + strSheetNumber + ".tif";
 
-	// 输出jpg文件全路径 
+	// 输出jpg文件全路径
 	string strOutputFullName = strFilePath + "/" + strSheetNumber + ".jpg";
 
 	// 输入数据路径
@@ -6795,7 +6795,7 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 
 	/*---------获取整饰要素---------*/
 	// 主标题名称和主标题图幅名自动计算，从SMS文件中获取
-	
+
 
 	// 密级
 	m_ImageMappingSchema.layoutItemParam.qstrSecurityClassification = GetSecurityClassification();
@@ -6813,7 +6813,7 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 
 	// 比例尺
 	m_ImageMappingSchema.layoutItemParam.qstrScale = GetScale();
-	
+
 	// 方里网
 	m_ImageMappingSchema.layoutItemParam.bKmNetChecked = ui.checkBox_KmNet->isChecked();
 
@@ -6999,7 +6999,7 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 			// 91       图幅接图表中南图幅名称
 			ReadSMSFile(strSMSPath, 91, strSouthName);
 
-			// 92       图幅接图表中东南图幅名称 
+			// 92       图幅接图表中东南图幅名称
 			ReadSMSFile(strSMSPath, 92, strSouthEastName);
 
 		}
@@ -7223,13 +7223,13 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 
 		// 布局线图层默认不存在
 		bool bLayoutLayerLineExisted = false;
-		
+
 		// 布局点图层路径
 		QString qstrLayoutLayerPointPath = m_ImageMappingSchema.qstrMapExportPath + "/" + qstrSheet + "/" + qstrSheet + "_LayoutPoint.shp";
-		
+
 		// 布局线图层路径
 		QString qstrLayoutLayerLinePath = m_ImageMappingSchema.qstrMapExportPath + "/" + qstrSheet + "/" + qstrSheet + "_LayoutLine.shp";
-		
+
 		// 获取布局点样式文件路径
 		QString qstrLayoutPointQmlFilePath;
 		QString qstrLayoutLineQmlFilePath;
@@ -7256,7 +7256,7 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 			QString qstrBaseName = fileInfoVector.baseName();       // 去除所有扩展名的图层名称
 
 			/*获取qml名称*/
-			
+
 
 			QgsVectorLayer* pVecotrLayer = new QgsVectorLayer(fileNameVector, baseNameVector, "ogr");
 			if (!pVecotrLayer->isValid())
@@ -7616,6 +7616,27 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 			continue;
 		}
 
+    /*鹰眼图加到地图后默认不显示*/
+		QgsLayerTree* root = pProject->layerTreeRoot();
+		if (!root)
+		{
+			delete vecLayerMosaic;
+			QgsMessageLog::logMessage(QString(tr("获取图层控制器失败:")), tr("影像图制图"), Qgis::Warning);
+			continue;
+		}
+
+		QgsLayerTreeLayer* layerNode = root->findLayer(pLayerMosaic->id());
+		if (!layerNode)
+		{
+			delete vecLayerMosaic;
+			QgsMessageLog::logMessage(QString(tr("获取鹰眼图图层ID失败:")), tr("影像图制图"), Qgis::Warning);
+			continue;
+		}
+
+		// 设置图层默认不可见
+		layerNode->setItemVisibilityChecked(false);
+
+
 		qMapLayerList.append(pLayerMosaic);
 		qMosaicMapLayerList.append(pLayerMosaic);
 #pragma endregion
@@ -7802,7 +7823,7 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 			m_InteriorMapLeftTopLayoutPoint.dy,
 			(dMBRRight - dMBRLeft) * dMapUnit2LayoutUnit,
 			(dMBRTop - dMBRBottom) * dMapUnit2LayoutUnit));
-		
+
 		pMainMapItem->setExtent(rect);
 
 #pragma endregion
@@ -8250,7 +8271,7 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 #else
 #define MODE (S_IRWXU | S_IRWXG | S_IRWXO)
 			mkdir(strShpFilePath.c_str(), MODE);
-#endif 
+#endif
 			vector<string> vFieldsName;
 			vFieldsName.clear();
 
@@ -8355,7 +8376,7 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 #else
 #define MODE (S_IRWXU | S_IRWXG | S_IRWXO)
 			mkdir(strShpFilePath.c_str(), MODE);
-#endif 
+#endif
 			vector<string> vFieldsName;
 			vFieldsName.clear();
 
@@ -8457,7 +8478,7 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 #else
 #define MODE (S_IRWXU | S_IRWXG | S_IRWXO)
 			mkdir(strShpFilePath.c_str(), MODE);
-#endif 
+#endif
 			vector<string> vFieldsName;
 			vFieldsName.clear();
 
@@ -8561,7 +8582,7 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 #else
 #define MODE (S_IRWXU | S_IRWXG | S_IRWXO)
 			mkdir(strShpFilePath.c_str(), MODE);
-#endif 
+#endif
 			vector<string> vFieldsName;
 			vFieldsName.clear();
 
@@ -9535,23 +9556,23 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 		int iEndMarkIndex_X_Top = 0;
 
 		// 下边界方里网绘制索引
-		int iBeginMarkIndex_X_Bottom = 0;                                     
-		int iEndMarkIndex_X_Bottom = 0;     
+		int iBeginMarkIndex_X_Bottom = 0;
+		int iEndMarkIndex_X_Bottom = 0;
 
 		// 左边界方里网绘制索引
-		int iBeginMarkIndex_Y_Left = 0;                                     
-		int iEndMarkIndex_Y_Left = 0;        
+		int iBeginMarkIndex_Y_Left = 0;
+		int iEndMarkIndex_Y_Left = 0;
 
 		// 右边界方里网绘制索引
-		int iBeginMarkIndex_Y_Right = 0;                                  
-		int iEndMarkIndex_Y_Right = 0;      
+		int iBeginMarkIndex_Y_Right = 0;
+		int iEndMarkIndex_Y_Right = 0;
 
 
 
 
 
 		// 如果绘制方里网，并且不存在已生成的布局点、线图层
-		if (m_ImageMappingSchema.layoutItemParam.bKmNetChecked 
+		if (m_ImageMappingSchema.layoutItemParam.bKmNetChecked
 			&& !bLayoutLayerLineExisted
 			&& !bLayoutLayerPointExisted)
 		{
@@ -9611,7 +9632,7 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 						vBorderLayoutCoords_d_c[iIndexOfX],
 						dMapUnit2LayoutUnit,
 						dBottomGaussPoint);
-					
+
 					dBottomValue[0] = dBottomGaussPoint.dx;
 					dBottomValue[1] = dBottomGaussPoint.dy;
 
@@ -9693,7 +9714,7 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 
 				}
 			}
-			
+
 
 
 #pragma endregion
@@ -10451,7 +10472,7 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 
 #pragma region "绘制邻带方里网"
 
-			// 判断当前图幅是否为邻带图幅，如果是邻带图幅，需要计算绘制邻带方里网	
+			// 判断当前图幅是否为邻带图幅，如果是邻带图幅，需要计算绘制邻带方里网
 			int iAdjSheetType = bIsAdjProjectBandSheet(dScale, qstrSheet, dCenterMeridian);
 
 			// 如果是5万比例尺
@@ -11595,7 +11616,7 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 		m_dInteriorRightBottomLayoutPoint.dx = dInteriorMapLayoutMBR.dright;
 		m_dInteriorRightBottomLayoutPoint.dy = dInteriorMapLayoutMBR.dtop;
 
-#pragma endregion	
+#pragma endregion
 
 
 
@@ -11624,7 +11645,7 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 
 		// 自动调整尺寸
 		pTextItem_MapTitleName->adjustSizeToText();
-		
+
 
 
 #pragma region "创建地图标题-图名要素"
@@ -11837,7 +11858,7 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 		else if (dScale == SCALE_50K)
 		{
 			// 获取位置配置信息
-			
+
 			GetLayoutItemPositionByName("TextItem_MapSubTileProvince", vLayoutItemPositions, textItem_MapSubTileProvince);
 
 			// 设置参考点位置
@@ -12577,7 +12598,7 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 
 			// 布局坐标转投影坐标
 			SE_DPoint dGaussPoint[4];		// 高斯坐标
-			double dValue[8] = { 0 };		
+			double dValue[8] = { 0 };
 			SE_DPoint dGeoPoint[4];			// 地理坐标
 			vector<SE_DPoint> vPoints;
 			vPoints.clear();
@@ -12611,12 +12632,12 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 				{
 					continue;
 				}
-			
+
 				dGeoPoint[iTempIndex].dx = dValue[2 * iTempIndex];
 				dGeoPoint[iTempIndex].dy = dValue[2 * iTempIndex + 1];
 
 				vPoints.push_back(dGeoPoint[iTempIndex]);
-			}	
+			}
 
 			iRet = Set_Polygon(poDecPolygonLayer, vPoints, vFieldNameAndValue);
 			if (iRet != 0)
@@ -13778,8 +13799,8 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 
 
 #pragma region "左中图幅号"
-			
-			
+
+
 			// 左中接图表
 			QgsLayoutItemLabel* pTextItem_LeftSheet = (QgsLayoutItemLabel*)GetLayoutItemByName(qLayoutItemList,
 				"TextItem_LeftSheet");
@@ -14299,7 +14320,7 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 			}*/
 
 
-#pragma endregion	
+#pragma endregion
 
 #pragma region "正中图名"
 
@@ -15039,13 +15060,13 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 			exteriorMapLayoutPoint_a,
 			exteriorMapLayoutPoint_d);
 
-		
+
 #pragma endregion
 
 #pragma region "依次绘制8条短线"
 
 		// 8条短线与内图廓线样式保持一致
-	
+
 #pragma region "绘制A-(1)短线"
 
 		if (!bLayoutLayerLineExisted)
@@ -16190,7 +16211,7 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 			}
 
 		}
-		
+
 		/*主地图最后加载影像*/
 		qMainMapLayerList.append(pLayerRaster);
 		pMainMapItem->setLayers(qMainMapLayerList);
@@ -16213,7 +16234,7 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 			}
 		}
 
-#pragma region "主地图图例列表"		
+#pragma region "主地图图例列表"
 
 		// 图例名称列表
 		vector<MainMapLegendInfo> vMainMapLegends;
@@ -16493,7 +16514,7 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 
 
 
-		// 
+		//
 
 #pragma endregion
 
@@ -16674,7 +16695,7 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 #pragma region "【22】附注"
 
 		QgsLayoutItemLabel* pMapAnnotationItem = (QgsLayoutItemLabel*)GetLayoutItemByName(qLayoutItemList, "TextItem_Annotations");
-		
+
 		// 设置附注
 		pMapAnnotationItem->setText(GetMapAnnotation());
 
@@ -16710,7 +16731,7 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 			dMosaicLegendLeftTopCornerLayoutPoint.dy));
 
 
-		// 创建颜色图例	
+		// 创建颜色图例
 		for (int iCateIndex = 0; iCateIndex < vCateColor.size(); iCateIndex++)
 		{
 			QgsLayoutItemLabel* pColorLabel = new QgsLayoutItemLabel(pPrintLayout);
@@ -16906,9 +16927,9 @@ void QgsImageMappingDialog_LayoutVectorization::ImageMapping_LayoutVectorization
 }
 
 
-int QgsImageMappingDialog_LayoutVectorization::SetFieldDefn(OGRLayer* poLayer, 
-	vector<string> fieldname, 
-	vector<OGRFieldType> fieldtype, 
+int QgsImageMappingDialog_LayoutVectorization::SetFieldDefn(OGRLayer* poLayer,
+	vector<string> fieldname,
+	vector<OGRFieldType> fieldtype,
 	vector<int> fieldwidth)
 {
 	OGRFieldDefn* pField = nullptr;
@@ -17030,7 +17051,7 @@ int QgsImageMappingDialog_LayoutVectorization::Set_Polygon(OGRLayer* poLayer, ve
 	// 结束点应和起始点相同，保证多边形闭合
 	ringOut.closeRings();
 	polygon.addRing(&ringOut);
-	
+
 	poFeature->SetGeometry((OGRGeometry*)(&polygon));
 	if (poLayer->CreateFeature(poFeature) != OGRERR_NONE)
 	{

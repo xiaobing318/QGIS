@@ -63,7 +63,7 @@ endif()
 
 add_subdirectory(analysis_ready_data_toolbox)
 #add_subdirectory(bin_moving_target_mapping_layout_vectorization)
-#add_subdirectory(geoextractandprocess)
+add_subdirectory(geoextractandprocess)
 #add_subdirectory(odata_format_conversion_toolbox)
 #add_subdirectory(planet_data_products_toolbox)
 #add_subdirectory(vector_data_check_odata_toolbox)

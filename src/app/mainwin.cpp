@@ -51,9 +51,11 @@
 #include <fstream>
 #include <list>
 #include <memory>
+#include <ctime>
+#include <cstdlib>
 
- //  MPQIS目前设置为50
-#define START_COUNTER 50
+ //  MPQIS目前设置为100
+#define START_COUNTER 100
 #pragma endregion
 
 /*
@@ -159,16 +161,107 @@ void replaceAll(std::string& source, const std::string& from, const std::string&
     startPos += to.length();
   }
 }
+/*
+作用：获取用户可写的系统相关目录路径（使用ProgramData目录）
+*/
+std::string getSystemDirectory()
+{
+  char programDataDir[MAX_PATH];
+  // 使用ProgramData目录，所有用户都可以读写
+  if (GetEnvironmentVariable("ProgramData", programDataDir, MAX_PATH) == 0)
+  {
+    //  获取ProgramData目录失败，使用备用方案
+    if (GetTempPath(MAX_PATH, programDataDir) == 0)
+    {
+      //  获取临时目录也失败
+      return "";
+    }
+  }
+
+  // 创建 license 子目录
+  std::string licenseDir = std::string(programDataDir) + "\\license";
+  CreateDirectory(licenseDir.c_str(), NULL);  // 如果目录已存在会自动忽略
+
+  return licenseDir;
+}
 
 /*
-Note:杨小兵-2025-01-22
-
-1、作用：读取前四个字节的函数
+作用：创建2048字节的license.dll文件，前四字节为0，其余字节为随机数据
 */
-bool readFirstFourBytes(const std::string& filename, uint32_t& ui32)
+bool createGdalDllFile(const std::string& filepath)
 {
+  std::ofstream file(filepath, std::ios::out | std::ios::binary);
+
+  if (!file)
+  {
+    //  无法创建文件
+    return false;
+  }
+
+  //  写入前四个字节（初始计数器为0）
+  uint32_t initialCounter = 0;
+  file.write(reinterpret_cast<const char*>(&initialCounter), sizeof(initialCounter));
+
+  if (!file)
+  {
+    //  写入前四个字节失败
+    return false;
+  }
+
+  //  生成并写入剩余的2044个随机字节
+  srand(static_cast<unsigned int>(time(nullptr)));
+  for (int i = 4; i < 2048; ++i)
+  {
+    char randomByte = static_cast<char>(rand() % 256);
+    file.write(&randomByte, 1);
+    if (!file)
+    {
+      //  写入随机字节失败
+      return false;
+    }
+  }
+
+  //  文件自动关闭，当 ofstream 对象销毁时
+  return true;
+}
+
+/*
+Note:杨小兵-2025-11-17
+
+作用：读取系统目录下license.dll文件前四个字节的函数
+*/
+bool readFirstFourBytesFromSystem(uint32_t& ui32)
+{
+  //  获取系统目录路径
+  std::string systemDir = getSystemDirectory();
+  if (systemDir.empty())
+  {
+    //  获取系统目录失败
+    return false;
+  }
+
+  //  构建完整文件路径
+  std::string filepath = systemDir + "\\license.dll";
+
+  //  检查文件是否存在
+  std::ifstream checkFile(filepath);
+  if (!checkFile)
+  {
+    //  文件不存在，创建新文件
+    checkFile.close();
+    if (!createGdalDllFile(filepath))
+    {
+      //  创建文件失败
+      return false;
+    }
+  }
+  else
+  {
+    checkFile.close();
+  }
+
   //  以二进制读模式打开文件
-  std::ifstream file(filename, std::ios::in | std::ios::binary);
+  std::ifstream file(filepath, std::ios::in | std::ios::binary);
 
   if (!file)
   {
@@ -194,14 +287,23 @@ bool readFirstFourBytes(const std::string& filename, uint32_t& ui32)
 }
 
 /*
-Note:杨小兵-2025-01-22
-
-1、作用：修改前四个字节的函数
+1、作用：修改系统目录下license.dll文件前四个字节的函数
 */
-bool writeFirstFourBytes(const std::string& filename, const uint32_t& ui32)
+bool writeFirstFourBytesToSystem(const uint32_t& ui32)
 {
+  //  获取系统目录路径
+  std::string systemDir = getSystemDirectory();
+  if (systemDir.empty())
+  {
+    //  获取系统目录失败
+    return false;
+  }
+
+  //  构建完整文件路径
+  std::string filepath = systemDir + "\\license.dll";
+
   //  以二进制读写模式打开文件
-  std::fstream file(filename, std::ios::in | std::ios::out | std::ios::binary);
+  std::fstream file(filepath, std::ios::in | std::ios::out | std::ios::binary);
 
   if (!file)
   {
@@ -445,11 +547,11 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     * 杨小兵-2024-02-29
       首先检测系统内是否设置了MPQIS_INSTALL_DIRECTORY_PREFIX自定义系统环境变量，如果没有设置的话直接退出并且进行给出提示信息
     */
-    const char* starmap_install_directory_prefix = getenv("MPQIS_INSTALL_DIRECTORY_PREFIX_V_0_00_01");
+    const char* starmap_install_directory_prefix = getenv("MPQIS_INSTALL_DIRECTORY_PREFIX_V_0_01_00");
     if (starmap_install_directory_prefix == nullptr)
     {
       std::string starmap_install_directory_prefix_title = "提示：设置环境变量";
-      std::string starmap_install_directory_prefix_message = "需要设置环境变量MPQIS_INSTALL_DIRECTORY_PREFIX_V_0_00_01。如果没有MPQIS_INSTALL_DIRECTORY_PREFIX_V_0_00_01这个变量，请首先创建这个环境变量，并且将其值设置为DLHJ在文件系统中的位置！";
+      std::string starmap_install_directory_prefix_message = "需要设置环境变量MPQIS_INSTALL_DIRECTORY_PREFIX_V_0_01_00。如果没有MPQIS_INSTALL_DIRECTORY_PREFIX_V_0_01_00这个变量，请首先创建这个环境变量，并且将其值设置为MPQIS在文件系统中的位置！";
 
       //  给出提示信息（在Windows下使用一个提示窗口，在其他平台这里还要通过宏定义进行跨平台操作）
       ShowUtf8MessageBox(starmap_install_directory_prefix_title.c_str(), starmap_install_directory_prefix_message.c_str());
@@ -466,15 +568,15 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     while (std::getline(file, var))
     {
 
-#pragma region "发布版本的时候将这段代码打开:设置MPQIS_INSTALL_DIRECTORY_PREFIX环境变量"
+#pragma region "发布版本的时候将这段代码打开:设置MPQIS_INSTALL_DIRECTORY_PREFIX_V_0_01_00环境变量"
       /*
       * 杨小兵-2024-02-29
-        将前面得到的MPQIS_INSTALL_DIRECTORY_PREFIX替换到具体的环境变量中，然后进行设置当前进程的环境变量中
+        将前面得到的MPQIS_INSTALL_DIRECTORY_PREFIX_V_0_01_00替换到具体的环境变量中，然后进行设置当前进程的环境变量中
       */
       //  先将starmap_install_directory_prefix中的正反斜杠统一处理
       //std::string temp = var;(debug)
       replaceAll(str_starmap_install_directory_prefix, str_right_slash, str_left_slash);
-      replaceAll(var, "MPQIS_INSTALL_DIRECTORY_PREFIX_V_0_00_01", str_starmap_install_directory_prefix);
+      replaceAll(var, "MPQIS_INSTALL_DIRECTORY_PREFIX_V_0_01_00", str_starmap_install_directory_prefix);
       //temp = var;
 #pragma endregion
 
@@ -576,17 +678,14 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
   */
 #ifdef _MSC_VER
   HINSTANCE hGetProcIDDLL = NULL;
-#pragma region "杨小兵-2025-01-22：这里增加次数检测"
+#pragma region "杨小兵-2025-11-17：这里增加次数检测"
   uint32_t ui32 = 0;
-  //  对于LC=6,DLHJ=8,TGFD=8、MPQIS=9
-  std::string file_path = exename.substr(0, exename.size() - 9) + "gdal308-1.dll";
-  //  规整路径
-  replaceAll(file_path, "\\", "/");
-  if (readFirstFourBytes(file_path, ui32) && (ui32 <= START_COUNTER))
+  //  从系统目录读取license.dll文件的前四个字节
+  if (readFirstFourBytesFromSystem(ui32) && (ui32 <= START_COUNTER))
   {
     //  将qgis_app.dll动态库加载到当前进程空间中
     hGetProcIDDLL = LoadLibrary("qgis_app.dll");
-    writeFirstFourBytes(file_path, 1);
+    writeFirstFourBytesToSystem(1);
   }
   else
   {
@@ -646,9 +745,21 @@ int CALLBACK WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
       0,
       NULL);
 
-    std::string message = "Could not load qgis_app.dll \n Windows Error: " + std::string(errorText)
-      + "\n Help: \n\n Check " + basename + ".env for correct environment paths";
+    std::string message =
+        "Could not load qgis_app.dll\n"
+        "Possible cause: A required Windows system library is missing or corrupted, "
+        "or the QGIS runtime environment is not correctly configured.\n"
+        "Windows Error: " + std::string(errorText) +
+        "\n\nHelp:\n\n"
+        "1) Check your system libraries (try 'sfc /scannow').\n"
+        "2) Check " + basename + ".env for correct environment paths.";
+
     showError(message, "Error loading QGIS");
+
+
+    // std::string message = "Could not load qgis_app.dll \n Windows Error: " + std::string(errorText)
+    //   + "\n Help: \n\n Check " + basename + ".env for correct environment paths";
+    // showError(message, "Error loading QGIS");
 
     LocalFree(errorText);
     errorText = NULL;
