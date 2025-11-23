@@ -1,11 +1,35 @@
 #############################################################
 # CMake settings
+#[[
+1、设置CMake的最小版本是3.22.0，假设使用构建的CMake版本低于指定版本那么CMakeLists.txt中使用到的feature将不会被正确识别和执行。
+]]
 cmake_minimum_required(VERSION 3.22.0)
+#[[
+1、设置一个普通的布尔类型变量，将其赋值为ON，这里设置并不是一个缓存变量，如果是缓存变量的话是可以在cmake-gui中显示的并且可以直接通过
+命令行-D来进行使用。
+2、设置这个变量是为了能够启动CMake中内置的一个特性即在日志中采用有颜色的输出日志信息，这样能够给使用者带来更好的开发体验。
+]]
 set(CMAKE_COLOR_MAKEFILE ON)
+#[[
+1、设置一个普通的布尔类型变量，将其赋值为ON，这里设置并不是一个缓存变量，如果是缓存变量的话是可以在cmake-gui中显示的并且可以直接通过
+命令行-D来进行使用。
+2、将这个变量设置为ON是为了让CMake能够在构建项目的时候自动对*.qrc文件进行处理。
+]]
 set(CMAKE_AUTORCC ON)
 # set path to additional CMake modules
+#[[
+1、对于CMake来说其默认有对应的模块搜索路径，例如C:\Program Files\CMake\share\cmake-3.28\Modules就是安装CMake的时候默认设置的模块
+搜索目录路径。
+2、这里添加了QGIS项目中自定义的CMake模块搜索目录路径从而使得CMake可以找到模块的具体实现，因为在顶层CMakeLists.txt以及其它的CMakeLists.txt
+文件中使用到了自定义CMake模块中的一些功能，这一点同Python、C、C++等等编程语言都是类似的，核心在于将功能进行模块化。
+]]
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 # POLICIES
+#[[
+1、POLICY是为了 CMake 在构建项目的时候能够兼容旧项目而设置的一个开关从而用来规定某个行为到底按旧规则还是新规则执行，这样可以避免升级
+后出现问题。
+2、POLICY是用来解决 CMake 升级后“新规则把老项目整崩了”的问题，例如
+]]
 if("${CMAKE_VERSION}" VERSION_GREATER_EQUAL "3.27")
   # include(Dart) still used, as is the "Experimental" target
   cmake_policy(SET CMP0145 OLD)
