@@ -1,34 +1,29 @@
 #############################################################
 # CMake settings
 #[[
-1、设置CMake的最小版本是3.22.0，假设使用构建的CMake版本低于指定版本那么CMakeLists.txt中使用到的feature将不会被正确识别和执行。
+1. 设置CMake的最小版本是3.22.0，假设使用构建的CMake版本低于指定版本那么CMakeLists.txt中使用到的feature将不会被正确识别和执行。
 ]]
 cmake_minimum_required(VERSION 3.22.0)
 #[[
-1、设置一个普通的布尔类型变量，将其赋值为ON，这里设置并不是一个缓存变量，如果是缓存变量的话是可以在cmake-gui中显示的并且可以直接通过
-命令行-D来进行使用。
-2、设置这个变量是为了能够启动CMake中内置的一个特性即在日志中采用有颜色的输出日志信息，这样能够给使用者带来更好的开发体验。
+1. 设置一个普通的布尔类型变量，将其赋值为ON，这里设置并不是一个缓存变量，如果是缓存变量的话是可以在cmake-gui中显示的并且可以直接通过命令行-D来进行使用。
+2. 设置这个变量是为了能够启动CMake中内置的一个特性即在日志中采用有颜色的输出日志信息，这样能够给使用者带来更好的开发体验。
 ]]
 set(CMAKE_COLOR_MAKEFILE ON)
 #[[
-1、设置一个普通的布尔类型变量，将其赋值为ON，这里设置并不是一个缓存变量，如果是缓存变量的话是可以在cmake-gui中显示的并且可以直接通过
-命令行-D来进行使用。
-2、将这个变量设置为ON是为了让CMake能够在构建项目的时候自动对*.qrc文件进行处理。
+1. 设置一个普通的布尔类型变量，将其赋值为ON，这里设置并不是一个缓存变量，如果是缓存变量的话是可以在cmake-gui中显示的并且可以直接通过命令行-D来进行使用。
+2. 将这个变量设置为ON是为了让CMake能够在构建项目的时候自动对*.qrc文件进行处理。
 ]]
 set(CMAKE_AUTORCC ON)
 # set path to additional CMake modules
 #[[
-1、对于CMake来说其默认有对应的模块搜索路径，例如C:\Program Files\CMake\share\cmake-3.28\Modules就是安装CMake的时候默认设置的模块
-搜索目录路径。
-2、这里添加了QGIS项目中自定义的CMake模块搜索目录路径从而使得CMake可以找到模块的具体实现，因为在顶层CMakeLists.txt以及其它的CMakeLists.txt
-文件中使用到了自定义CMake模块中的一些功能，这一点同Python、C、C++等等编程语言都是类似的，核心在于将功能进行模块化。
+1. 对于CMake来说其默认有对应的模块搜索路径，例如C:\Program Files\CMake\share\cmake-3.28\Modules就是安装CMake的时候默认设置的模块搜索目录路径。
+2. 这里添加了QGIS项目中自定义的CMake模块搜索目录路径从而使得CMake可以找到模块的具体实现，因为在顶层CMakeLists.txt以及其它的CMakeLists.txt文件中使用到了自定义CMake模块中的一些功能，这一点同Python、C、C++等等编程语言都是类似的，核心在于将功能进行模块化。
 ]]
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 # POLICIES
 #[[
-1、POLICY是为了 CMake 在构建项目的时候能够兼容旧项目而设置的一个开关从而用来规定某个行为到底按旧规则还是新规则执行，这样可以避免升级
-后出现问题。
-2、POLICY是用来解决 CMake 升级后“新规则把老项目整崩了”的问题，例如
+1. POLICY是为了 CMake 在构建项目的时候能够兼容旧项目而设置的一个开关从而用来规定某个行为到底按旧规则还是新规则执行，这样可以避免升级后出现问题。
+2. 在构建、编译QGIS的时候如果遇到了设置POLICY的提示，可以通过类似这种方式消除警告，根本的方式要从源头解决问题。
 ]]
 if("${CMAKE_VERSION}" VERSION_GREATER_EQUAL "3.27")
   # include(Dart) still used, as is the "Experimental" target
@@ -39,28 +34,70 @@ if("${CMAKE_VERSION}" VERSION_GREATER_EQUAL "3.31")
 endif()
 
 # don't relink it only the shared object changes
+#[[
+1. QGIS项目中依赖大量的第三方库，这些第三方库又依赖其它的第三方库，例如QT、GDAL、PROJ、GEOS等等，这些第三方库被使用的方式绝大多数是通过动态链接库的方式。QGIS在这些第三方库的基础上构建便于使用的动态链接库、静态库、可执行文件等等，在构建、编译QGIS的时候一般是不需要对第三方库进行单独编译的，也就是说直接使用第三方库的成果来编译、链接自己便于使用的动态链接库、静态库、可执行文件。在这个过程中CMake通过在项目文件中添加命令来控制是否需要对动态链接库进行重新链接，触发的条件就是动态链接库文件的时间戳是否发生了变化，默认情况是只要动态链接库文件的时间戳发生了变化那么在编译其它目标对象的时候重新链接时间戳发生变化的动态链接库。
+2. 反例：如果被依赖的动态链接库文件的接口经常发生变化并且打开这个设置，那么在编译阶段一般是不会出现问题，但是在运行时则会出现找不到符号的提示，这是需要注意的，如果公开接口不发生改变，其内部实现发生变化，那么是不会出现这种问题的。
+]]
 set(CMAKE_LINK_DEPENDS_NO_SHARED ON)
 
+#[[
+1. 创建一个布尔类型的开关以供开发者控制是否需要在QGIS中构建Python支持，如果该开关关闭的话那么将会禁用processing。
+2. 该变量是一个缓存变量，可以在CMakeCache.txt和CMake-GUI中显示。
+]]
 option (WITH_PYTHON "Determines whether Python support should be built (disabling it will in particular disable processing)" ON)
+#[[
+1. 创建一个布尔类型的缓存变量以供开发者控制是否在QGIS项目中提供Python绑定功能。
+2. 该变量被设置为一个缓存变量，可以在CMakeCache.txt和CMake-GUI中显示。
+]]
 set(WITH_BINDINGS ${WITH_PYTHON} CACHE BOOL "Determines whether Python bindings should be built")
 
+#[[
+1. 创建布尔类型的缓存变量以供开发者控制是否在QGIS项目中提供对应的功能。
+2. 这些变量被设置为一个缓存变量，可以在CMakeCache.txt和CMake-GUI中显示。
+]]
 set (WITH_3D TRUE CACHE BOOL "Determines whether QGIS 3D library should be built")
 set (WITH_QGIS_PROCESS TRUE CACHE BOOL "Determines whether the standalone \"qgis_process\" tool should be built")
 set (WITH_DESKTOP TRUE CACHE BOOL "Determines whether QGIS desktop should be built")
 set (WITH_GUI TRUE CACHE BOOL "Determines whether QGIS GUI library should be built")
 set(WITH_VCPKG FALSE CACHE BOOL "Use the vcpkg submodule for dependency management.")
 
+#[[
+1. 创建一个缓存变量用来保存VCPKG SDK的路径，如果选择使用vcpkg构建QGIS项目，那么需要提供VCPKG SDK的路径，默认是空路径，需要手动添加。
+2. 目前还没有通过这种方式构建QGIS。
+]]
 set(SDK_PATH "" CACHE STRING "Build with VCPKG SDK")
 
+#[[
+1. 根据不同的情况分别给出提示信息以及对应的设置：
+  1.1 方式一：直接使用VCPKG编译的QGIS所依赖的第三方库成果。
+  1.2 方式二：本地构建编译QGIS所依赖的第三方库。
+  1.3 方式三：不通过VCPKG的方式而是使用传统的方式构建QGIS，这是目前我走通的构建方式。
+]]
 if(NOT SDK_PATH STREQUAL "")
+  #[[
+  1. 输出使用VCPKG SDK构建QGIS项目的提示信息。
+  2. 在CMake中可以使用${VARIABLE}使用之前创建的变量。
+  ]]
   message(STATUS "Building with SDK -- ${SDK_PATH}")
+  #[[
+  1. 创建两个普通变量（非缓存变量）用来保存CMake工具链文件路径和SDK安装路径。
+  ]]
   set(CMAKE_TOOLCHAIN_FILE "${SDK_PATH}/scripts/buildsystems/vcpkg.cmake")
   set(VCPKG_INSTALL_PREFIX "${SDK_PATH}/installed")
+  #[[
+  1. 如果构建的目标平台是macos并且对应的变量没有被设置，则给出错误信息提示。
+  ]]
   if(APPLE AND NOT VCPKG_TARGET_TRIPLET)
     message(FATAL_ERROR "VCPKG_TARGET_TRIPLET not set (set it to arm64-osx-dynamic-release or x64-osx-dynamic-release")
   endif()
+  #[[
+  1. 将之前设置的缓存变量从FALSE修改为ON，说明使用VCPKG的方式构建编译QGIS。
+  ]]
   set(WITH_VCPKG ON)
 elseif(WITH_VCPKG)
+  #[[
+  1. 输出“使用VCPKG构建本地依赖”信息用来强调使用VCPKG来构建第三方库依赖而不是直接使用第三方库编译成果。
+  ]]
   message(STATUS "Building local dependencies with VCPKG --")
   set(VCPKG_INSTALL_PREFIX "${CMAKE_BINARY_DIR}/vcpkg_installed")
   include(VcpkgToolchain)
@@ -69,6 +106,10 @@ else()
 endif()
 
 
+#[[
+1. 如果选择使用 VCPKG 的方式即本地构建 QGIS 依赖以及 QGIS 项目则根据不同平台设置配置。
+2. CMAKE_PROGRAM_PATH 是 CMake 的一个路径搜索列表变量，会被 find_program() 使用，CMake 在查找可执行文件的时候会在这个变量罗列的目录路径中查找。
+]]
 if(WITH_VCPKG)
   if(WIN32)
     list(APPEND CMAKE_PROGRAM_PATH "${VCPKG_INSTALL_PREFIX}/${VCPKG_TARGET_TRIPLET}/tools/python3/Scripts/")
@@ -82,13 +123,24 @@ endif()
 
 #############################################################
 # Project and version
+#[[
+1. 创建五个普通变量用来保存字符串版本信息。
+]]
 set(CPACK_PACKAGE_VERSION_MAJOR "3")
 set(CPACK_PACKAGE_VERSION_MINOR "44")
 set(CPACK_PACKAGE_VERSION_PATCH "3")
 set(COMPLETE_VERSION ${CPACK_PACKAGE_VERSION_MAJOR}.${CPACK_PACKAGE_VERSION_MINOR}.${CPACK_PACKAGE_VERSION_PATCH})
 set(RELEASE_NAME "Solothurn")
+#[[
+1. 设置项目名称以及版本信息。
+]]
 project(qgis VERSION ${COMPLETE_VERSION})
 
+#[[
+1. 根据不同的构建、编译平台设置 QGIS 项目的名称信息：
+  1.1 如果构建、编译的平台是 MacOS 则将 QGIS 启动程序的名称设置为 QGIS 。
+  1.2 如果构建、编译的平台是 MacOS 则将 QGIS 启动程序的名称设置为 qgis 。
+]]
 if (APPLE)
   set(QGIS_APP_NAME "QGIS")
 else()
@@ -96,12 +148,22 @@ else()
 endif()
 
 # Note the version no is Mmmpp for Major/minor/patch, 0-padded, thus '10100' for 1.1.0
+#[[
+1. 使用 CMake 中数学工具计算 QGIS 版本信息。
+2. QGIS 版本采用 Mmmpp 的格式，这个我命名文件夹的方式是一致的。
+]]
 math(EXPR QGIS_VERSION_INT "${CPACK_PACKAGE_VERSION_MAJOR}*10000+${CPACK_PACKAGE_VERSION_MINOR}*100+${CPACK_PACKAGE_VERSION_PATCH}")
 message(STATUS "QGIS version: ${COMPLETE_VERSION} ${RELEASE_NAME} (${QGIS_VERSION_INT})")
 
+#[[
+1. 创建缓存变量以供开发者控制是否禁用某些和发布相关的步骤从而来加快在开发中的编译时间。
+]]
 set (ENABLE_LOCAL_BUILD_SHORTCUTS FALSE CACHE BOOL "Disables some build steps which are only relevant for releases to speed up compilation time for development")
 
 #############################################################
+#[[
+1. 如果构建、编译 QGIS 的平台是 MacOS ，那么进行一些平台相关的设置。
+]]
 if (APPLE)
   # QGIS custom dependencies package from qgis/QGIS-Mac-Packager
   # they can be downloaded from https://download.qgis.org/downloads/macos/deps/
@@ -118,6 +180,10 @@ endif()
 
 #############################################################
 # Configure OpenCL if available
+#[[
+1. 创建一个普通变量用来保存 OpenCL 是否可用的状态。
+2. 如果构建、编译 QGIS 的平台是 BSD 则禁用 OpenCL 支持，反之则启用 OpenCL 支持。
+]]
 set(HAVE_OPENCL FALSE)
 if (${CMAKE_HOST_SYSTEM_NAME} MATCHES "BSD$")
   option(USE_OPENCL "Use OpenCL" OFF)
@@ -125,14 +191,28 @@ else()
   option(USE_OPENCL "Use OpenCL" ON)
 endif()
 if (USE_OPENCL)
+    #[[
+    1. 使用 CMake 官方自带的模块配置 OpenCL 。
+    2. CMake 可以自动找到自带的模块文件而不需要手动配置，如果是自定义的或者不是官方支持的模块文件则需要手动配置。
+    ]]
     find_package(OpenCL)
+    #[[
+    1. 经过 CMake 官方自带的 OpenCL 模块配置，如果在目标平台上找到了 OpenCL 则会进行进一步的配置。
+    ]]
     if(${OpenCL_FOUND})
         set(HAVE_OPENCL TRUE)
         # Fixup for standard FindOpenCL module not assigning proper framework headers directory
+        #[[
+        1. 官方的 OpenCL 在 MacOS 平台上有些配置是不正确的，需要手动修正。
+        ]]
         if (APPLE AND "${OpenCL_INCLUDE_DIR}" MATCHES "OpenCL\\.framework/?$")
             set(OpenCL_INCLUDE_DIR "${OpenCL_INCLUDE_DIR}/Headers" CACHE PATH "" FORCE)
             set(OpenCL_INCLUDE_DIRS ${OpenCL_INCLUDE_DIR})
         endif()
+        #[[
+        1. 使用 CMake 官方的 OpenCLhpp 模块文件对 OpenCL 这个第三方库头文件进行配置。
+        2、如果 CMake 官方的 OpenCLhpp 模块文件对 OpenCL 这个第三方库头文件没有配置成功则选择使用 QGIS 项目中自带的头文件配置，整体的逻辑是优先选择官方配置，如果官方配置失败则选择使用自带的头文件。
+        ]]
         find_package(OpenCLhpp)
         if(NOT OPENCL_HPP_FOUND)
             # Use internal headers copied from OpenCL-CLHPP project
@@ -146,8 +226,16 @@ if (USE_OPENCL)
 endif()
 
 # Configure CCache if available
+#[[
+1. 创建一个缓存变量用来保存 CCache 是否可以使用的状态，默认 CCache 是可以使用的。
+2. CCache 是一种缓存技术，整体的效果就是可以加快编译。
+]]
 option(USE_CCACHE "Use ccache" ON)
 if (USE_CCACHE)
+  #[[
+  1. 使用 find_program 命令来确认 ccache 可执行文件是否存在，如果存在的话则获取其路径。
+  2. 如果 ccache 可执行文件是存在的则进行相应的配置，这部分不是重点。
+  ]]
   find_program(CCACHE_EXE ccache)
   if(CCACHE_EXE)
     message(STATUS "ccache found")
@@ -199,6 +287,9 @@ if (USE_CCACHE)
   endif(CCACHE_EXE)
 endif(USE_CCACHE)
 
+#[[
+1. 如果想要在 MSVC 即 Windows 平台上使用 ccache 加快编译系统的速度则需要关闭“预编译头”这个特性，因为这个特性在 MSVC 环境中还没有完全支持。
+]]
 if (USE_CCACHE AND MSVC)
   # CCache doesn't work yet with precompiled headers (cf https://github.com/ccache/ccache/issues/1383)
   set(USE_PRECOMPILED_HEADERS OFF)
@@ -206,14 +297,26 @@ else()
   set(USE_PRECOMPILED_HEADERS ON)
 endif()
 
+#[[
+1. 如果构建、编译 QGIS 的平台是 apple ios 则强制将动态链接库编译成静态库，这是因为在 apple ios 平台上采用的是静态库运行的方式而不是动态链接库的方式。
+]]
 if (IOS)
     set (DEFAULT_FORCE_STATIC_LIBS TRUE)
 else()
     set (DEFAULT_FORCE_STATIC_LIBS FALSE)
 endif()
 
+#[[
+1. 创建一个缓存变量用来保存是否应该将库仅编译为静态库，默认的设置则通过之前变量的值来确定。
+]]
 set (FORCE_STATIC_LIBS ${DEFAULT_FORCE_STATIC_LIBS} CACHE BOOL "Determines whether libraries should be static only")
+#[[
+1. 将该缓存变量设置成高级模式即不直接出现在 CMake-GUI 中，如果开发者想要修改该变量也是可以通过勾选高级模式来查看、修改该缓存变量的。
+]]
 mark_as_advanced(FORCE_STATIC_LIBS)
+#[[
+1. 如果想要将库仅编译成静态库，那么则将库的类型设置成静态库，否则设置成动态库的方式。
+]]
 if (FORCE_STATIC_LIBS)
   set (LIBRARY_TYPE STATIC)
   # following variable is used in qgsconfig.h
@@ -229,11 +332,20 @@ endif()
 # issue is caused by include_directories(${CMAKE_BINARY_DIR}) near the end of this file generating incorrect path
 #set (CMAKE_USE_RELATIVE_PATHS ON)
 
+#[[
+1. 创建一个缓存变量以供开发者控制是否应该构建 QGIS core ，默认情况是需要构建的，并且将这个变量设置为高级选项。
+]]
 set (WITH_CORE TRUE CACHE BOOL "Determines whether QGIS core should be built.")
 mark_as_advanced(WITH_CORE)
 
+#[[
+1.
+]]
 if(WITH_CORE)
   # Try to configure and build GRASS plugin by default
+  #[[
+  1. 默认情况下尝试配置和构建 GRASS 插件，循环处理 GRASS 的不同版本。
+  ]]
   foreach (GRASS_SEARCH_VERSION 7 8)
     # Legacy note:
     # For GRASS 6 there were used cached variables without version suffix so that existing caches didn't have to be reconfigured.
@@ -241,15 +353,28 @@ if(WITH_CORE)
     # Everywhere else each variable has version major appended.
     # Normal variables were: GRASS_FOUND6, GRASS_FOUND7, GRASS_MAJOR_VERSION6, GRASS_MAJOR_VERSION7, etc.
     # In addition there is also GRASS_FOUND, which is TRUE if at least one version of GRASS was found
+    #[[
+    1. 创建普通变量用来记录 GRASS 插件版本。
+    2、创建缓存变量用来记录指定 GRASS 插件版本是否应该被构建，默认都是构建的。
+    ]]
     set (GRASS_CACHE_VERSION ${GRASS_SEARCH_VERSION})
     set (WITH_GRASS${GRASS_CACHE_VERSION} TRUE CACHE BOOL "Determines whether GRASS ${GRASS_SEARCH_VERSION} plugin should be built")
+    #[[
+    1. 如果 GRASS 执行版本插件需要被构建，那么使用 cmake 目录中的 FindGRASS.cmake 文件对 GRASS 进行配置。
+    ]]
     if (WITH_GRASS${GRASS_CACHE_VERSION})
       find_package(GRASS ${GRASS_SEARCH_VERSION})
+      #[[
+      1. 设置缓存变量用来保存指定版本 GRASS 插件的根目录路径。
+      ]]
       set (GRASS_PREFIX${GRASS_CACHE_VERSION} ${GRASS_PREFIX${GRASS_SEARCH_VERSION}} CACHE PATH "Path to GRASS ${GRASS_SEARCH_VERSION} base directory")
     endif()
   endforeach (GRASS_SEARCH_VERSION)
 
 
+  #[[
+  1. 创建缓存变量以供开发者控制是否应该构建 OAuth2 authentication method 插件的状态，默认是需要构建的。
+  ]]
   set (WITH_OAUTH2_PLUGIN TRUE CACHE BOOL "Determines whether OAuth2 authentication method plugin should be built")
   if(WITH_OAUTH2_PLUGIN)
     set(HAVE_OAUTH2_PLUGIN TRUE)
@@ -259,6 +384,9 @@ if(WITH_CORE)
 
   set (WITH_ANALYSIS TRUE CACHE BOOL "Determines whether QGIS analysis library should be built")
 
+  #[[
+  1. 如果需要构建 QGIS desktop 那么根据不同的平台设置 crash handler 的构建状态，并且进行一些配置。
+  ]]
   if(WITH_DESKTOP)
       if((WIN32 AND NOT MINGW) OR (UNIX AND NOT APPLE AND NOT ANDROID AND NOT IOS))
 	set (CRASH_HANDLER_AVAILABLE TRUE)
@@ -283,17 +411,35 @@ if(WITH_CORE)
   mark_as_advanced (NATIVE_CRSSYNC_BIN)
 
   # try to configure and build python bindings by default
+  #[[
+  1. 默认将会配置和构建 Python 绑定。
+  ]]
   if (WITH_BINDINGS)
     # By default bindings will be installed only to QGIS directory
     # Someone might want to install it to python site-packages directory
     # as otherwise user has to use PYTHONPATH environment variable to add
     # QGIS bindings to package search path
+    #[[
+    1. 默认情况下，绑定程序只会安装到 QGIS 目录。但有些人可能希望将其安装到 Python 的 site-packages 目录，否则用户必须使用 PYTHONPATH 环境变量将 QGIS 绑定程序添加到包搜索路径中。
+    ]]
     set (BINDINGS_GLOBAL_INSTALL FALSE CACHE BOOL "Install bindings to global Python directory? (might need root)")
+    #[[
+    1. 创建一个缓存变量以供开发者控制是否应该将 sip source file 安装到系统的 sip 目录中，默认不会安装到系统目录中。
+    ]]
     set (SIP_GLOBAL_INSTALL FALSE CACHE BOOL "Install sip source files to system sip directory? (might need root)")
+    #[[
+    1. 创建一个缓存变量以供开发者控制是否预先安装核心 Python 插件以便从构建目录运行？（实用程序和控制台始终预先安装）。
+    ]]
     set (WITH_STAGED_PLUGINS TRUE CACHE BOOL "Stage-install core Python plugins to run from build directory? (utilities and console are always staged)")
+    #[[
+    1. 创建一个缓存变量以供开发者确定暂存位置或已安装位置中的 Python 模块是否应进行字节编译。
+    ]]
     set (WITH_PY_COMPILE FALSE CACHE BOOL "Determines whether Python modules in staged or installed locations should be byte-compiled")
     # concatenate QScintilla2 API files
     if (WITH_GUI)
+      #[[
+      1. 创建一个缓存变量以供开发者确认是否生成 PyQGIS QScintilla2 API 文件。（对于开发人员）在 QGIS 构建和安装之间运行 make qsci-pap-src 以在源代码树中重新生成 .pap 文件，以便实现控制台自动补全，默认是需要生成 PyQGIS QScintilla2 API 文件的。
+      ]]
       set (WITH_QSCIAPI TRUE CACHE BOOL "Whether to generate PyQGIS QScintilla2 API file. (For devs) run 'make qsci-pap-src' in between QGIS build and install to regenerate .pap file in source tree for console auto-completion.")
       # keep casual users from updating their source tree via WITH_QSCIAPI
       mark_as_advanced (WITH_QSCIAPI)
@@ -301,7 +447,13 @@ if(WITH_CORE)
   endif()
 
   # server disabled default because it needs FastCGI (which is optional dependency)
+  #[[
+  1. 创建一个缓存变量以供开发者确认 QGIS server 是否应该被构建，默认是不会进行构建的，因为这个功能依赖 FastCGI 。
+  ]]
   set (WITH_SERVER FALSE CACHE BOOL "Determines whether QGIS server should be built")
+  #[[
+  1. 如果 QGIS server 需要被构建，那么进行相应的配置。
+  ]]
   if(WITH_SERVER)
     set (WITH_SERVER_LANDINGPAGE_WEBAPP FALSE CACHE BOOL "Determines whether QGIS server landingpage webapp should be built (requires nodejs and yarn)")
 
@@ -343,6 +495,10 @@ if(WITH_CORE)
   if ( WITH_DESKTOP )
     # The qgis_desktop target is meant to build a minimal but complete running QGIS during development
     # This should help to reduce compile time while still having a "complete enough" QGIS for most of the development
+    #[[
+    1. 定义一个没有自己源文件的自定义目标，相当于给一组操作/依赖起了一个名字，方便用 `cmake --build` 或 IDE 单独构建这个“虚拟目标”。
+    2. 指定目标之间的构建依赖关系，让某个目标在编译前必须先完成其他目标，从而控制构建顺序。
+    ]]
     add_custom_target(qgis_desktop
       DEPENDS qgis provider_postgres staged-plugins resources svg doc icons
     )
@@ -441,6 +597,9 @@ if(WITH_CORE)
     set (USING_NINJA TRUE)
   endif()
 
+  #[[
+  1. 使用 CMake 官方的模块文件配置 flex 和 bison 。
+  ]]
   find_package(FLEX 2.6 REQUIRED)
   find_package(BISON 2.4 REQUIRED)
 
