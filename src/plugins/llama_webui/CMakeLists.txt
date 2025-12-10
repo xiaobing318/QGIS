@@ -28,7 +28,7 @@ include_directories(
 target_link_libraries(plugin_llama_webui
   qgis_core
   qgis_gui
-  Qt::WebEngineWidgets
+  Qt${QT_VERSION_MAJOR}::WebEngineWidgets
 )
 
 install(TARGETS plugin_llama_webui
