@@ -1,5 +1,5 @@
 /***************************************************************************
- *  qgsllamawebuidock.h                                                    *
+ *  qgsqcopilotsdock.h                                                    *
  *  --------------------                                                   *
  *  Dock widget that hosts a QWebEngineView for llama.cpp web UI.          *
  *                                                                         *
@@ -10,26 +10,38 @@
  *                                                                         *
  ***************************************************************************/
 
-#ifndef QGS_LLAMA_WEBUI_DOCK_H
-#define QGS_LLAMA_WEBUI_DOCK_H
+#ifndef QGS_QCOPILOTS_DOCK_H
+#define QGS_QCOPILOTS_DOCK_H
 
-#include "qgsdockwidget.h"
+#include "ui_qgsqcopilotsdock.h"
 
+#include <QDockWidget>
 #include <QUrl>
 
 class QWebEngineView;
 
-class QgsLlamaWebuiDockWidget : public QgsDockWidget
+class QgsQCopilotsDock : public QDockWidget
 {
     Q_OBJECT
 
   public:
-    explicit QgsLlamaWebuiDockWidget( QWidget *parent = nullptr );
+    explicit QgsQCopilotsDock( QWidget *parent = nullptr );
 
+    QUrl serverUrl() const;
     void loadUrl( const QUrl &url );
 
+  public slots:
+    void reload();
+
+  signals:
+    void loadFailed( const QUrl &url );
+
   private:
+    void handleLoadFinished( bool ok );
+
+    Ui::qgsqcopilotsdock mUi;
     QWebEngineView *mWebView = nullptr;
+    QUrl mServerUrl;
 };
 
-#endif // QGS_LLAMA_WEBUI_DOCK_H
+#endif // QGS_QCOPILOTS_DOCK_H
