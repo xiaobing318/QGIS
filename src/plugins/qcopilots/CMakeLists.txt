@@ -14,7 +14,7 @@ set(qcopilots_UIS
 )
 # 定义插件的资源文件
 set (qcopilots_RCCS
-  qgsqcopilotsplugin_resources.qrc
+  resources.qrc
 )
 
 # 生成UI头文件、构建插件库

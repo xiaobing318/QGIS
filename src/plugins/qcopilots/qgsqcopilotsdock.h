@@ -27,11 +27,13 @@ class QgsQCopilotsDock : public QDockWidget
   public:
     explicit QgsQCopilotsDock( QWidget *parent = nullptr );
 
+    // Get the currently loaded server URL
     QUrl serverUrl() const;
+
+    // Load the given server URL
     void loadUrl( const QUrl &url );
 
   public slots:
-    void reload();
 
   signals:
     void loadFailed( const QUrl &url );
