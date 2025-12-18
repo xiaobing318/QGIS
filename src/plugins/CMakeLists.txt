@@ -12,7 +12,7 @@ add_subdirectory(geometry_checker)
 if (WITH_QTWEBENGINE)
   add_subdirectory(qcopilots)
 else()
-  message(STATUS "Skipping QCopilots plugin,if you want to enable it, please enable WITH_QTWEBENGINE option which will build Qt with WebEngineWidgets support")
+  message(NOTICE "Skipping QCopilots plugin,if you want to enable it, please enable WITH_QTWEBENGINE option which will build Qt with WebEngineWidgets support")
 endif()
 
 if (WITH_SPATIALITE)
