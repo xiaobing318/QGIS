@@ -568,7 +568,7 @@ static void setTitleBarText_( QWidget &qgisApp )
   }
   if ( QgsProject::instance()->isDirty() )
     caption.prepend( '*' );
-  caption += QgisApp::tr("一张图数据处理与加工系统");
+  caption += QgisApp::tr("矢量数据解析处理工具");
   //caption += QgisApp::tr( "QGIS" );
 
   if ( Qgis::version().endsWith( QLatin1String( "Master" ) ) )

@@ -2097,7 +2097,7 @@ int main( int argc, char *argv[] )
   */
   //set up splash screen（设置启动画面，这个启动画面就是QGIS应用程序启动的时候出现的画面）。
   QString mySplashPath( QgsCustomization::instance()->splashPath() );
-  QPixmap myPixmap( mySplashPath + QStringLiteral( "DLHJ_splash.png" ) );
+  QPixmap myPixmap( mySplashPath + QStringLiteral( "LSL.png" ) );
 
   double screenDpi = 96;
   if ( QScreen *screen = QGuiApplication::primaryScreen() )
