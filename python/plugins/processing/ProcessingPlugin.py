@@ -26,7 +26,9 @@ from typing import List
 from functools import partial
 
 from qgis.core import (
+    Qgis,
     QgsApplication,
+    QgsMessageLog,
     QgsProcessingUtils,
     QgsProcessingModelAlgorithm,
     QgsProcessingAlgorithm,
@@ -204,6 +206,7 @@ class ProcessingPlugin(QObject):
         self.edit_features_locator_filter = None
         self.initialized = False
         self._gui_connections: list[QMetaObject.Connection] = []
+        self.mcp_server = None
         self.initProcessing()
 
     def initProcessing(self):
@@ -386,6 +389,43 @@ class ProcessingPlugin(QObject):
         self._gui_connections.append(
             self.projectProvider.algorithmsLoaded.connect(self.updateProjectModelMenu)
         )
+        # 在初始化交互界面时启动服务
+        self._start_mcp_server()
+
+    def _start_mcp_server(self):
+        try:
+            from processing.mcpserver import ProcessingMCPServer
+        except Exception as exc:
+            QgsMessageLog.logMessage(
+                f"Processing MCP server not available: {exc}",
+                "Processing MCP",
+                Qgis.Warning,
+            )
+            return
+
+        try:
+            server = ProcessingMCPServer(self.iface)
+            if server.start():
+                self.mcp_server = server
+        except Exception as exc:
+            QgsMessageLog.logMessage(
+                f"Failed to start Processing MCP server: {exc}",
+                "Processing MCP",
+                Qgis.Warning,
+            )
+
+    def _stop_mcp_server(self):
+        if self.mcp_server:
+            try:
+                self.mcp_server.stop()
+            except Exception as exc:
+                QgsMessageLog.logMessage(
+                    f"Failed to stop Processing MCP server: {exc}",
+                    "Processing MCP",
+                    Qgis.Warning,
+                )
+            finally:
+                self.mcp_server = None
 
     def updateProjectModelMenu(self):
         """Add projects models to menu"""
@@ -537,6 +577,8 @@ class ProcessingPlugin(QObject):
         )
 
     def unload(self):
+        # Stop MCP server if unloading processing plugin
+        self._stop_mcp_server()
         for connection in self._gui_connections:
             self.disconnect(connection)
         self._gui_connections = []
