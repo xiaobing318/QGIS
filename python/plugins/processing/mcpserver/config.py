@@ -7,7 +7,7 @@ from typing import Optional
 from qgis.core import QgsSettings
 
 @dataclass(frozen=True)
-class McpServerConfig:
+class MCPServerConfig:
     enabled: bool
     transport: str
     host: str
@@ -66,7 +66,7 @@ def _parse_transport(value: object, default: str) -> str:
     return default
 
 
-def load_mcp_config() -> McpServerConfig:
+def load_mcp_config() -> MCPServerConfig:
     settings = QgsSettings()
 
     enabled = _parse_bool(
@@ -121,7 +121,7 @@ def load_mcp_config() -> McpServerConfig:
         )
     )
 
-    return McpServerConfig(
+    return MCPServerConfig(
         enabled=enabled,
         transport=transport,
         host=host,

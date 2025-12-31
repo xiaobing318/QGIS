@@ -6,14 +6,15 @@ from typing import Optional
 from mcp.server.fastmcp import FastMCP
 from qgis.core import Qgis, QgsMessageLog
 
-from processing.mcpserver.config import McpServerConfig, load_mcp_config
+from processing.mcpserver.config import MCPServerConfig, load_mcp_config
 from processing.mcpserver.qtRunner import MainThreadRunner
 from processing.mcpserver.transports import create_transport
 from processing.mcpserver.tools import ProcessingMCPTools, register_tools
 
 
 class ProcessingMCPServer:
-    def __init__(self, iface, config: Optional[McpServerConfig] = None) -> None:
+
+    def __init__(self, iface, config: Optional[MCPServerConfig] = None) -> None:
         self._iface = iface
         self._config = config or load_mcp_config()
         self._runner = MainThreadRunner()

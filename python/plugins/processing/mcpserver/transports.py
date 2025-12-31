@@ -9,11 +9,11 @@ from typing import Optional
 from mcp.server.fastmcp import FastMCP
 from qgis.core import Qgis, QgsMessageLog
 
-from processing.mcpserver.config import McpServerConfig
+from processing.mcpserver.config import MCPServerConfig
 
 
 class BaseMcpTransport:
-    def __init__(self, mcp: FastMCP, config: McpServerConfig) -> None:
+    def __init__(self, mcp: FastMCP, config: MCPServerConfig) -> None:
         self._mcp = mcp
         self._config = config
         self._thread: Optional[threading.Thread] = None
@@ -90,7 +90,7 @@ class BaseMcpTransport:
 
 
 class UvicornTransport(BaseMcpTransport):
-    def __init__(self, mcp: FastMCP, config: McpServerConfig) -> None:
+    def __init__(self, mcp: FastMCP, config: MCPServerConfig) -> None:
         super().__init__(mcp, config)
         self._uvicorn_server = None
 
@@ -290,7 +290,7 @@ class StdioTransport(BaseMcpTransport):
         super().stop()
 
 
-def create_transport(mcp: FastMCP, config: McpServerConfig) -> BaseMcpTransport:
+def create_transport(mcp: FastMCP, config: MCPServerConfig) -> BaseMcpTransport:
     transport = (config.transport or "streamable-http").lower()
     if transport == "stdio":
         return StdioTransport(mcp, config)
