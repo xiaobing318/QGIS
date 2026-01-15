@@ -24,26 +24,35 @@ from qgis.PyQt.QtCore import QSize
 from qgis.PyQt.QtGui import QColor
 from qgis.utils import active_plugins
 
-from processing.mcpserver.qtRunner import MainThreadRunner
+from processing.processingmcpserver.qtRunner import MainThreadRunner
 
+
+# 基于 QGIS API 的 MCP 工具实现集合。
 class ProcessingMCPTools:
     def __init__(self, iface, runner: MainThreadRunner):
+        # QGIS 界面对象，用于访问项目/地图画布 API。
         self._iface = iface
+        # 运行器，确保 QGIS 调用在 Qt 主线程执行。
         self._runner = runner
 
     def _run(self, func, *args, **kwargs):
+        # 确保 QGIS 调用在主线程执行。
         return self._runner.run(lambda: func(*args, **kwargs))
 
     def ping(self) -> dict[str, bool]:
+        # 工具入口：返回基本健康检查结果。
         return self._run(self._ping_impl)
 
     def _ping_impl(self) -> dict[str, bool]:
+        # ping 工具的具体实现。
         return {"pong": True}
 
     def get_qgis_info(self) -> dict[str, Any]:
+        # 工具入口：读取 QGIS 运行时信息。
         return self._run(self._get_qgis_info_impl)
 
     def _get_qgis_info_impl(self) -> dict[str, Any]:
+        # 收集基础环境信息。
         return {
             "qgis_version": Qgis.version(),
             "profile_folder": QgsApplication.qgisSettingsDirPath(),
@@ -51,9 +60,11 @@ class ProcessingMCPTools:
         }
 
     def load_project(self, path: str) -> dict[str, Any]:
+        # 工具入口：按路径加载项目。
         return self._run(self._load_project_impl, path)
 
     def _load_project_impl(self, path: str) -> dict[str, Any]:
+        # 读取项目文件并刷新地图画布。
         project = QgsProject.instance()
         if project.read(path):
             self._iface.mapCanvas().refresh()
@@ -64,9 +75,11 @@ class ProcessingMCPTools:
         raise Exception(f"Failed to load project from {path}")
 
     def create_new_project(self, path: str) -> dict[str, Any]:
+        # 工具入口：创建新项目。
         return self._run(self._create_new_project_impl, path)
 
     def _create_new_project_impl(self, path: str) -> dict[str, Any]:
+        # 清理现有项目状态并保存到磁盘。
         project = QgsProject.instance()
 
         if project.fileName():
@@ -83,9 +96,11 @@ class ProcessingMCPTools:
         raise Exception(f"Failed to save project to {path}")
 
     def get_project_info(self) -> dict[str, Any]:
+        # 工具入口：获取项目元信息。
         return self._run(self._get_project_info_impl)
 
     def _get_project_info_impl(self) -> dict[str, Any]:
+        # 采集项目基础信息并截取部分图层信息。
         project = QgsProject.instance()
 
         info = {
@@ -101,6 +116,7 @@ class ProcessingMCPTools:
             if i >= 10:
                 break
 
+            # 为每个图层构建简要摘要。
             layer_info = {
                 "id": layer.id(),
                 "name": layer.name(),
@@ -115,18 +131,22 @@ class ProcessingMCPTools:
     def add_vector_layer(
         self, path: str, provider: str = "ogr", name: str | None = None
     ) -> dict[str, Any]:
+        # 工具入口：添加矢量图层。
         return self._run(self._add_vector_layer_impl, path, provider, name)
 
     def _add_vector_layer_impl(
         self, path: str, provider: str, name: str | None
     ) -> dict[str, Any]:
+        # 未提供名称时使用文件名作为默认图层名。
         if not name:
             name = os.path.basename(path)
 
+        # 创建并校验矢量图层。
         layer = QgsVectorLayer(path, name, provider)
         if not layer.isValid():
             raise Exception(f"Layer is not valid: {path}")
 
+        # 将图层添加到当前项目。
         QgsProject.instance().addMapLayer(layer)
 
         return {
@@ -139,18 +159,22 @@ class ProcessingMCPTools:
     def add_raster_layer(
         self, path: str, provider: str = "gdal", name: str | None = None
     ) -> dict[str, Any]:
+        # 工具入口：添加栅格图层。
         return self._run(self._add_raster_layer_impl, path, provider, name)
 
     def _add_raster_layer_impl(
         self, path: str, provider: str, name: str | None
     ) -> dict[str, Any]:
+        # 未提供名称时使用文件名作为默认图层名。
         if not name:
             name = os.path.basename(path)
 
+        # 创建并校验栅格图层。
         layer = QgsRasterLayer(path, name, provider)
         if not layer.isValid():
             raise Exception(f"Layer is not valid: {path}")
 
+        # 将图层添加到当前项目。
         QgsProject.instance().addMapLayer(layer)
 
         return {
@@ -162,13 +186,16 @@ class ProcessingMCPTools:
         }
 
     def get_layers(self) -> list[dict[str, Any]]:
+        # 工具入口：列出当前项目的图层。
         return self._run(self._get_layers_impl)
 
     def _get_layers_impl(self) -> list[dict[str, Any]]:
+        # 枚举图层并收集基础信息。
         project = QgsProject.instance()
         layers = []
 
         for layer_id, layer in project.mapLayers().items():
+            # 为每个图层构建摘要信息。
             layer_info = {
                 "id": layer_id,
                 "name": layer.name(),
@@ -196,9 +223,11 @@ class ProcessingMCPTools:
         return layers
 
     def remove_layer(self, layer_id: str) -> dict[str, str]:
+        # 工具入口：按 ID 移除图层。
         return self._run(self._remove_layer_impl, layer_id)
 
     def _remove_layer_impl(self, layer_id: str) -> dict[str, str]:
+        # 若图层存在则移除。
         project = QgsProject.instance()
 
         if layer_id in project.mapLayers():
@@ -207,9 +236,11 @@ class ProcessingMCPTools:
         raise Exception(f"Layer not found: {layer_id}")
 
     def zoom_to_layer(self, layer_id: str) -> dict[str, str]:
+        # 工具入口：缩放到指定图层。
         return self._run(self._zoom_to_layer_impl, layer_id)
 
     def _zoom_to_layer_impl(self, layer_id: str) -> dict[str, str]:
+        # 激活图层并将画布缩放到其范围。
         project = QgsProject.instance()
 
         if layer_id in project.mapLayers():
@@ -220,9 +251,11 @@ class ProcessingMCPTools:
         raise Exception(f"Layer not found: {layer_id}")
 
     def get_layer_features(self, layer_id: str, limit: int = 10) -> dict[str, Any]:
+        # 工具入口：采样获取图层要素。
         return self._run(self._get_layer_features_impl, layer_id, limit)
 
     def _get_layer_features_impl(self, layer_id: str, limit: int) -> dict[str, Any]:
+        # 校验图层并提取有限数量的要素。
         project = QgsProject.instance()
 
         if layer_id not in project.mapLayers():
@@ -237,10 +270,12 @@ class ProcessingMCPTools:
             if i >= limit:
                 break
 
+            # 将属性复制到普通字典中。
             attrs = {}
             for field in layer.fields():
                 attrs[field.name()] = feature.attribute(field.name())
 
+            # 将几何转换为 WKT 便于阅读。
             geom = None
             if feature.hasGeometry():
                 geom = {
@@ -266,6 +301,7 @@ class ProcessingMCPTools:
     def execute_processing(
         self, algorithm: str, parameters: dict, load_results: bool = True
     ) -> dict[str, Any]:
+        # 工具入口：运行 Processing 算法。
         return self._run(
             self._execute_processing_impl, algorithm, parameters, load_results
         )
@@ -273,6 +309,7 @@ class ProcessingMCPTools:
     def _execute_processing_impl(
         self, algorithm: str, parameters: dict, load_results: bool
     ) -> dict[str, Any]:
+        # 执行处理算法并序列化结果。
         try:
             if load_results:
                 result = processing.runAndLoadResults(algorithm, parameters)
@@ -294,6 +331,7 @@ class ProcessingMCPTools:
         include_outputs: bool = False,
         limit: int | None = None,
     ) -> dict[str, Any]:
+        # 工具入口：列出处理算法。
         return self._run(
             self._get_processing_algorithms_impl,
             algorithm_id,
@@ -311,6 +349,7 @@ class ProcessingMCPTools:
         include_outputs: bool,
         limit: int | None,
     ) -> dict[str, Any]:
+        # 查询处理算法注册表并格式化结果。
         registry = QgsApplication.processingRegistry()
 
         if algorithm_id:
@@ -356,9 +395,11 @@ class ProcessingMCPTools:
         }
 
     def save_project(self, path: str | None = None) -> dict[str, str]:
+        # 工具入口：保存项目。
         return self._run(self._save_project_impl, path)
 
     def _save_project_impl(self, path: str | None) -> dict[str, str]:
+        # 保存当前项目到已有或新路径。
         project = QgsProject.instance()
 
         if not path and not project.fileName():
@@ -370,9 +411,11 @@ class ProcessingMCPTools:
         raise Exception(f"Failed to save project to {save_path}")
 
     def render_map(self, path: str, width: int = 800, height: int = 600) -> dict[str, Any]:
+        # 工具入口：将地图渲染为图片。
         return self._run(self._render_map_impl, path, width, height)
 
     def _render_map_impl(self, path: str, width: int, height: int) -> dict[str, Any]:
+        # 将当前画布范围渲染为图片文件。
         try:
             ms = QgsMapSettings()
 
@@ -389,6 +432,7 @@ class ProcessingMCPTools:
             render.start()
             render.waitForFinished()
 
+            # 保存渲染结果到磁盘。
             img = render.renderedImage()
             if img.save(path):
                 return {
@@ -402,19 +446,24 @@ class ProcessingMCPTools:
             raise Exception(f"Render error: {str(e)}")
 
     def execute_code(self, code: str) -> dict[str, Any]:
+        # 工具入口：执行任意代码。
         return self._run(self._execute_code_impl, code)
 
     def _execute_code_impl(self, code: str) -> dict[str, Any]:
+        # 捕获 stdout/stderr 以便返回给调用方。
         stdout_capture = io.StringIO()
         stderr_capture = io.StringIO()
 
+        # 保存原始输出流，稍后恢复。
         original_stdout = sys.stdout
         original_stderr = sys.stderr
 
         try:
+            # 将 Python 输出重定向到内存缓冲区。
             sys.stdout = stdout_capture
             sys.stderr = stderr_capture
 
+            # 提供包含常用 QGIS 对象的命名空间。
             namespace = {
                 "qgis": Qgis,
                 "QgsProject": QgsProject,
@@ -425,8 +474,10 @@ class ProcessingMCPTools:
                 "QgsCoordinateReferenceSystem": QgsCoordinateReferenceSystem,
             }
 
+            # 在命名空间中执行用户提供的 Python 代码。
             exec(code, namespace)
 
+            # 返回前恢复输出流。
             sys.stdout = original_stdout
             sys.stderr = original_stderr
 
@@ -436,6 +487,7 @@ class ProcessingMCPTools:
                 "stderr": stderr_capture.getvalue(),
             }
         except Exception as e:
+            # 捕获回溯信息并恢复输出流。
             error_traceback = traceback.format_exc()
 
             sys.stdout = original_stdout
@@ -451,6 +503,7 @@ class ProcessingMCPTools:
 
     @staticmethod
     def _get_layer_type(layer) -> str:
+        # 将图层对象转换为简单的类型字符串。
         if layer.type() == QgsMapLayer.VectorLayer:
             return f"vector_{layer.geometryType()}"
         if layer.type() == QgsMapLayer.RasterLayer:
@@ -459,6 +512,7 @@ class ProcessingMCPTools:
 
     @staticmethod
     def _serialize_value(value: Any) -> Any:
+        # 将 QGIS 值转换为可序列化类型。
         if value is None:
             return None
         if isinstance(value, (bool, int, float, str)):
@@ -479,6 +533,7 @@ class ProcessingMCPTools:
 
     @staticmethod
     def _safe_call(obj: object, name: str, default: Any = None) -> Any:
+        # 安全调用方法，失败时返回默认值。
         attr = getattr(obj, name, None)
         if callable(attr):
             try:
@@ -488,6 +543,7 @@ class ProcessingMCPTools:
         return attr if attr is not None else default
 
     def _serialize_parameter(self, param) -> dict[str, Any]:
+        # 从处理算法定义中提取参数元数据。
         flags = self._safe_call(param, "flags", 0) or 0
         param_info = {
             "name": self._safe_call(param, "name"),
@@ -524,6 +580,7 @@ class ProcessingMCPTools:
         return param_info
 
     def _serialize_output(self, output_def) -> dict[str, Any]:
+        # 从算法定义中提取输出元数据。
         return {
             "name": self._safe_call(output_def, "name"),
             "description": self._safe_call(output_def, "description"),
@@ -534,6 +591,7 @@ class ProcessingMCPTools:
     def _serialize_algorithm(
         self, alg, include_parameters: bool, include_outputs: bool
     ) -> dict[str, Any]:
+        # 构建可序列化的算法信息。
         provider = alg.provider() if hasattr(alg, "provider") else None
         info = {
             "id": alg.id(),
@@ -560,7 +618,10 @@ class ProcessingMCPTools:
 
         return info
 
+
+# 注册工具函数，供 FastMCP 暴露给客户端。
 def register_tools(mcp, tools: ProcessingMCPTools) -> None:
+    # 每个装饰后的函数都会转发到 ProcessingMCPTools。
     @mcp.tool()
     def ping() -> dict[str, bool]:
         """Simple ping command to check server connectivity."""

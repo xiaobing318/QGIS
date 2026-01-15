@@ -206,7 +206,7 @@ class ProcessingPlugin(QObject):
         self.edit_features_locator_filter = None
         self.initialized = False
         self._gui_connections: list[QMetaObject.Connection] = []
-        self.mcp_server = None
+        self.processing_mcp_server = None
         self.initProcessing()
 
     def initProcessing(self):
@@ -389,12 +389,25 @@ class ProcessingPlugin(QObject):
         self._gui_connections.append(
             self.projectProvider.algorithmsLoaded.connect(self.updateProjectModelMenu)
         )
-        # 在初始化交互界面时启动服务
-        self._start_mcp_server()
+        # 在初始化交互界面的时候启动 processing mcp server
+        self._start_processing_mcp_server()
 
-    def _start_mcp_server(self):
+    def _start_processing_mcp_server(self):
+        """
+        1. 总结：启动 Processing MCP 服务器并将其附加到 QGIS 界面。
+        2. 更详细的行为说明
+         2.1 尝试导入并初始化 ProcessingMCPServer。
+         2.2 如果服务器成功启动，则将其存储在 ``self.processing_mcp_server`` 中以供后续使用。
+         2.3 失败情况（导入错误或启动错误）将记录到 QGIS 消息日志的 "Processing MCP" 频道下。
+        3. 副作用说明
+         3.1 启动一个后台 MCP 服务器进程。
+         3.2 在失败时向 QGIS 消息日志写入警告信息。
+         3.3 在成功时设置 ``self.processing_mcp_server``。
+        4. 参数和返回值说明
+         4.1 参数：无
+        """
         try:
-            from processing.mcpserver import ProcessingMCPServer
+            from processing.processingmcpserver import ProcessingMCPServer
         except Exception as exc:
             QgsMessageLog.logMessage(
                 f"Processing MCP server not available: {exc}",
@@ -406,7 +419,7 @@ class ProcessingPlugin(QObject):
         try:
             server = ProcessingMCPServer(self.iface)
             if server.start():
-                self.mcp_server = server
+                self.processing_mcp_server = server
         except Exception as exc:
             QgsMessageLog.logMessage(
                 f"Failed to start Processing MCP server: {exc}",
@@ -414,10 +427,10 @@ class ProcessingPlugin(QObject):
                 Qgis.Warning,
             )
 
-    def _stop_mcp_server(self):
-        if self.mcp_server:
+    def _stop_processing_mcp_server(self):
+        if self.processing_mcp_server:
             try:
-                self.mcp_server.stop()
+                self.processing_mcp_server.stop()
             except Exception as exc:
                 QgsMessageLog.logMessage(
                     f"Failed to stop Processing MCP server: {exc}",
@@ -425,7 +438,7 @@ class ProcessingPlugin(QObject):
                     Qgis.Warning,
                 )
             finally:
-                self.mcp_server = None
+                self.processing_mcp_server = None
 
     def updateProjectModelMenu(self):
         """Add projects models to menu"""
@@ -578,7 +591,7 @@ class ProcessingPlugin(QObject):
 
     def unload(self):
         # Stop MCP server if unloading processing plugin
-        self._stop_mcp_server()
+        self._stop_processing_mcp_server()
         for connection in self._gui_connections:
             self.disconnect(connection)
         self._gui_connections = []
