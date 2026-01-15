@@ -32,13 +32,13 @@
 #pragma endregion
 
 #pragma region "定义当前插件使用的一些常量"
-static const QString sName = QObject::tr("ODATA格式转化工具箱");
-static const QString sDescription = QObject::tr(R"(提供ODATA格式转化功能，包括：JBDX到Shapefile转化工具和DZB到Shapefile转化工具；)");
+static const QString sName = QObject::tr("格式转化工具箱");
+static const QString sDescription = QObject::tr(R"(提供格式转化功能，包括：JBDX到Shapefile转化工具和DZB到Shapefile转化工具；)");
 static const QString sCategory = QObject::tr("Vector");
 static const QString sPluginVersion = QObject::tr("Version 3.0");
 static const QgisPlugin::PluginType sPluginType = QgisPlugin::UI;
 //  插件图标
-static const QString sPluginIcon = QStringLiteral(":/plugin_vector_odata2shapefile_toolbox/icons/plugin_icon.svg");
+static const QString sPluginIcon = QStringLiteral(":/plugin_vector_odata2shapefile_toolbox/icons/pluginIcon.svg");
 #pragma endregion
 
 #pragma region "矢量数据ODATA转化为Shapefile插件类相关函数"
@@ -73,7 +73,7 @@ void QgsPluginVectorOdata2Shapefile::initGui()
 	/*    工具：JBDX2Shapefile   	*/
 	/*****************************************************/
   // Create the action for tool
-  mActionJBDX2Shapefile = new QAction(QIcon(":/plugin_vector_odata2shapefile_toolbox/icons/JBDX2Shapefile_icon.svg"), tr("将 JBDX 转换为 Shapefile "), this);
+  mActionJBDX2Shapefile = new QAction(QIcon(":/plugin_vector_odata2shapefile_toolbox/icons/JBDX2ShapefileIcon.svg"), tr("将 JBDX 转换为 Shapefile "), this);
   mActionJBDX2Shapefile->setObjectName(QStringLiteral("mActionJBDX2Shapefile"));
   // Set the what's this text
   mActionJBDX2Shapefile->setWhatsThis(tr("将 JBDX 转换为 Shapefile"));
@@ -81,7 +81,7 @@ void QgsPluginVectorOdata2Shapefile::initGui()
   connect(mActionJBDX2Shapefile, &QAction::triggered, this, &QgsPluginVectorOdata2Shapefile::JBDX2Shapefile);
   // Add the icon to the toolbar
   mQGisIface->addVectorToolBarIcon(mActionJBDX2Shapefile);
-  mQGisIface->addPluginToVectorMenu(tr("&菜单：ODATA格式转化工具箱"), mActionJBDX2Shapefile);
+  mQGisIface->addPluginToVectorMenu(tr("&矢量数据归一化处理子模块"), mActionJBDX2Shapefile);
   mActionJBDX2Shapefile->setEnabled(true);
 #pragma endregion
 
@@ -90,7 +90,7 @@ void QgsPluginVectorOdata2Shapefile::initGui()
 	/*    工具：DZB2Shapefile   	*/
 	/*****************************************************/
   // Create the action for tool
-  mActionDZB2Shapefile = new QAction(QIcon(":/plugin_vector_odata2shapefile_toolbox/icons/DZB2Shapefile_icon.svg"), tr("将 DZB 转换为 Shapefile "), this);
+  mActionDZB2Shapefile = new QAction(QIcon(":/plugin_vector_odata2shapefile_toolbox/icons/DZB2ShapefileIcon.svg"), tr("将 DZB 转换为 Shapefile "), this);
   mActionDZB2Shapefile->setObjectName(QStringLiteral("mActionDZB2Shapefile"));
   // Set the what's this text
   mActionDZB2Shapefile->setWhatsThis(tr("将 DZB 转换为 Shapefile"));
@@ -98,7 +98,7 @@ void QgsPluginVectorOdata2Shapefile::initGui()
   connect(mActionDZB2Shapefile, &QAction::triggered, this, &QgsPluginVectorOdata2Shapefile::DZB2Shapefile);
   // Add the icon to the toolbar
   mQGisIface->addVectorToolBarIcon(mActionDZB2Shapefile);
-  mQGisIface->addPluginToVectorMenu(tr("&菜单：ODATA格式转化工具箱"), mActionDZB2Shapefile);
+  mQGisIface->addPluginToVectorMenu(tr("&矢量数据归一化处理子模块"), mActionDZB2Shapefile);
   mActionDZB2Shapefile->setEnabled(true);
 #pragma endregion
 
@@ -108,7 +108,7 @@ void QgsPluginVectorOdata2Shapefile::initGui()
 	/*    工具：DZB2ShapefileWithSpecification   	*/
 	/*****************************************************/
   // Create the action for tool
-  mActionDZB2ShapefileWithSpecification = new QAction(QIcon(":/plugin_vector_odata2shapefile_toolbox/icons/DZB2ShapefileWithSpecification_icon.svg"), tr("将 DZB（符合规范版本）转换为 Shapefile "), this);
+  mActionDZB2ShapefileWithSpecification = new QAction(QIcon(":/plugin_vector_odata2shapefile_toolbox/icons/DZB2ShapefileWithSpecificationIcon.svg"), tr("将 DZB（符合规范版本）转换为 Shapefile "), this);
   mActionDZB2ShapefileWithSpecification->setObjectName(QStringLiteral("mActionDZB2ShapefileWithSpecification"));
   // Set the what's this text
   mActionDZB2ShapefileWithSpecification->setWhatsThis(tr("将 DZB（符合规范版本）转换为 Shapefile"));
@@ -116,7 +116,7 @@ void QgsPluginVectorOdata2Shapefile::initGui()
   connect(mActionDZB2ShapefileWithSpecification, &QAction::triggered, this, &QgsPluginVectorOdata2Shapefile::DZB2ShapefileWithSpecification);
   // Add the icon to the toolbar
   mQGisIface->addVectorToolBarIcon(mActionDZB2ShapefileWithSpecification);
-  mQGisIface->addPluginToVectorMenu(tr("&菜单：ODATA格式转化工具箱"), mActionDZB2ShapefileWithSpecification);
+  mQGisIface->addPluginToVectorMenu(tr("&矢量数据归一化处理子模块"), mActionDZB2ShapefileWithSpecification);
   mActionDZB2ShapefileWithSpecification->setEnabled(true);
 #pragma endregion
 
@@ -163,17 +163,17 @@ void QgsPluginVectorOdata2Shapefile::DZB2ShapefileWithSpecification()
 void QgsPluginVectorOdata2Shapefile::unload()
 {
 	// JBDX2Shapefile:去掉ui界面
-	mQGisIface->removePluginVectorMenu(tr("&菜单：ODATA格式转化工具箱"), mActionJBDX2Shapefile);
+	mQGisIface->removePluginVectorMenu(tr("&矢量数据归一化处理子模块"), mActionJBDX2Shapefile);
 	mQGisIface->removeVectorToolBarIcon(mActionJBDX2Shapefile);
 	delete mActionJBDX2Shapefile;
 
 	// DZB2Shapefile:去掉ui界面
-	mQGisIface->removePluginVectorMenu(tr("&菜单：ODATA格式转化工具箱"), mActionDZB2Shapefile);
+	mQGisIface->removePluginVectorMenu(tr("&矢量数据归一化处理子模块"), mActionDZB2Shapefile);
 	mQGisIface->removeVectorToolBarIcon(mActionDZB2Shapefile);
 	delete mActionDZB2Shapefile;
 
 	// DZB2ShapefileWithSpecification:去掉ui界面
-	mQGisIface->removePluginVectorMenu(tr("&菜单：ODATA格式转化工具箱"), mActionDZB2ShapefileWithSpecification);
+	mQGisIface->removePluginVectorMenu(tr("&矢量数据归一化处理子模块"), mActionDZB2ShapefileWithSpecification);
 	mQGisIface->removeVectorToolBarIcon(mActionDZB2ShapefileWithSpecification);
 	delete mActionDZB2ShapefileWithSpecification;
 }

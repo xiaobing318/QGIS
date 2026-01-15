@@ -1,13 +1,13 @@
 <RCC>
-    <qresource prefix="/vector_data_fusion_toolbox">
-        <file>icons/vector_data_fusion_toolbox.svg</file>
-        <file>icons/vector_data_feature_extraction.svg</file>
-        <file>icons/SW.svg</file>
-        <file>icons/QQCT.svg</file>
-        <file>icons/OSM.svg</file>
-        <file>icons/JYDH.svg</file>
-        <file>icons/JJBDX.svg</file>
-        <file>icons/JBHT.svg</file>
-        <file>icons/DZHT.svg</file>
-    </qresource>
+  <qresource prefix="/vector_data_fusion_toolbox">
+    <file>icons/pluginIcon.svg</file>
+    <file>icons/vectorDataFeatureExtractionIcon.svg</file>
+    <file>icons/SWIcon.svg</file>
+    <file>icons/QQCTIcon.svg</file>
+    <file>icons/OSMIcon.svg</file>
+    <file>icons/JYDHIcon.svg</file>
+    <file>icons/JJBDXIcon.svg</file>
+    <file>icons/JBHTIcon.svg</file>
+    <file>icons/DZHTIcon.svg</file>
+  </qresource>
 </RCC>

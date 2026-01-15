@@ -1,6 +1,23 @@
 <RCC>
-    <qresource prefix="/icons">
-        <file>icons/geoextractandprocess_createdb_22x22.png</file>
-        <file>icons/geoextractandprocess_setmergeparam_22x22.png</file>
+    <qresource prefix="/geoextractandprocess">
+      <file>icons/pluginIcon.svg</file>
+      <file>icons/createop.svg</file>
+      <file>icons/convert_sheet_op.svg</file>
+      <file>icons/db_in.svg</file>
+      <file>icons/set_param.svg</file>
+      <file>icons/auto_merge.svg</file>
+      <file>icons/create_between_op.svg</file>
+      <file>icons/extract_layers.svg</file>
+      <file>icons/image_accuracy_check.svg</file>
+      <file>icons/vector_accuracy_check.svg</file>
+      <file>icons/preprocess.svg</file>
+      <file>icons/gjb_integration.svg</file>
+      <file>icons/gjb_export.svg</file>
+      <file>icons/merge_feature.svg</file>
+      <file>icons/contour.svg</file>
+      <file>icons/image_mapping.svg</file>
+      <file>icons/moving_target_mapping.svg</file>
+      <file>icons/image_mapping_layout_vectorization.svg</file>
+      <file>icons/copy_shapefiles.svg</file>
     </qresource>
 </RCC>

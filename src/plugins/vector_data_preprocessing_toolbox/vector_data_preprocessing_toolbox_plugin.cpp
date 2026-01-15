@@ -24,13 +24,13 @@
 
 
 
-static const QString sName = QObject::tr("矢量数据预处理工具箱");
+static const QString sName = QObject::tr("矢量数据归一化处理子模块");
 static const QString sDescription = QObject::tr("提供地理坐标系转换、投影坐标系转换功能，支持BJS54、XAS80、WGS84及境外局部坐标系向CGCS2000坐标系转换，支持高斯、UTM、墨卡托投影");
 static const QString sCategory = QObject::tr("Vector");
 static const QString sPluginVersion = QObject::tr("Version 1.0");
 static const QgisPlugin::PluginType sPluginType = QgisPlugin::UI;
 // 插件图标
-static const QString sPluginIcon = QStringLiteral(":/vector_data_preprocessing_toolbox/images/geocoordsys_trans.png");
+static const QString sPluginIcon = QStringLiteral(":/vector_data_preprocessing_toolbox/icons/pluginIcon.svg");
 
 QgsCoordinateTransformationToolBox::QgsCoordinateTransformationToolBox(QgisInterface* qgisInterface)
 	: QgisPlugin(sName, sDescription, sCategory, sPluginVersion, sPluginType)
@@ -56,7 +56,7 @@ void QgsCoordinateTransformationToolBox::initGui()
 
 #pragma region "坐标转化工具"
   // Create the action for tool
-  mAction_GeoCoordSysTrans = new QAction(QIcon(":/vector_data_preprocessing_toolbox/images/geocoordsys_trans.png"), tr("矢量数据坐标转化工具"), this);
+  mAction_GeoCoordSysTrans = new QAction(QIcon(":/vector_data_preprocessing_toolbox/icons/geographicCoordinateSystemTransformationIcon.svg"), tr("矢量数据坐标转化工具"), this);
   mAction_GeoCoordSysTrans->setObjectName(QStringLiteral("mAction_GeoCoordSysTrans"));
   // Set the what's this text
   mAction_GeoCoordSysTrans->setWhatsThis(tr("地理坐标系转换工具"));
@@ -64,7 +64,7 @@ void QgsCoordinateTransformationToolBox::initGui()
   connect(mAction_GeoCoordSysTrans, &QAction::triggered, this, &QgsCoordinateTransformationToolBox::GeoCoordSysTrans);
   // Add the icon to the toolbar
   mQGisIface->addVectorToolBarIcon(mAction_GeoCoordSysTrans);
-  mQGisIface->addPluginToVectorMenu(tr("&矢量数据预处理工具箱"), mAction_GeoCoordSysTrans);
+  mQGisIface->addPluginToVectorMenu(tr("&矢量数据归一化处理子模"), mAction_GeoCoordSysTrans);
   mAction_GeoCoordSysTrans->setEnabled(true);
 
 #pragma endregion
@@ -72,7 +72,7 @@ void QgsCoordinateTransformationToolBox::initGui()
 
 #pragma region "矢量源数据检查工具"
   // Create the action for tool
-  mAction_source_data_inspection_tool = new QAction(QIcon(":/vector_data_preprocessing_toolbox/images/geocoordsys_trans.png"), tr("矢量源数据检查工具"), this);
+  mAction_source_data_inspection_tool = new QAction(QIcon(":/vector_data_preprocessing_toolbox/icons/vectorSourceDataInspectionIcon.svg"), tr("矢量源数据检查工具"), this);
   mAction_source_data_inspection_tool->setObjectName(QStringLiteral("mAction_source_data_inspection_tool"));
   // Set the what's this text
   mAction_source_data_inspection_tool->setWhatsThis(tr("矢量源数据检查工具"));
@@ -80,7 +80,7 @@ void QgsCoordinateTransformationToolBox::initGui()
   connect(mAction_source_data_inspection_tool, &QAction::triggered, this, &QgsCoordinateTransformationToolBox::source_data_inspection_tool);
   // Add the icon to the toolbar
   mQGisIface->addVectorToolBarIcon(mAction_source_data_inspection_tool);
-  mQGisIface->addPluginToVectorMenu(tr("&矢量数据预处理工具箱"), mAction_source_data_inspection_tool);
+  mQGisIface->addPluginToVectorMenu(tr("&矢量数据归一化处理子模"), mAction_source_data_inspection_tool);
   mAction_source_data_inspection_tool->setEnabled(true);
 
 #pragma endregion

@@ -1,7 +1,10 @@
 <RCC>
-    <qresource prefix="/vector_data_check_shp_toolbox">
-        <file>images/feature_attribute_check.png</file>
-        <file>images/feature_extent_check.png</file>
-        <file>images/feature_statistic.png</file>
-    </qresource>
+  <qresource prefix="/vector_data_check_shp_toolbox">
+    <file>icons/feature_attribute_check.svg</file>
+    <file>icons/feature_extent_check.svg</file>
+    <file>icons/feature_statistic.svg</file>
+    <file>icons/layer_validity_check.svg</file>
+    <file>icons/layer_integrity_check.svg</file>
+    <file>icons/layer_integrity_check.svg</file>
+  </qresource>
 </RCC>

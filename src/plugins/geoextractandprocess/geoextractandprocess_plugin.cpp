@@ -61,7 +61,7 @@ static const QString sPluginVersion = QObject::tr("Version 1.0");
 static const QgisPlugin::PluginType sPluginType = QgisPlugin::UI;
 
 // 插件图标
-static const QString sPluginIcon = QStringLiteral(":/resource/geoextractandprocess_createdb.png");
+static const QString sPluginIcon = QStringLiteral(":/geoextractandprocess/icons/pluginIcon.svg");
 
 /*************************************************/
 //===================内部函数====================//
@@ -126,10 +126,7 @@ void QgsGeoExtractAndProcessPlugin::initGui()
 	/*****************************************************/
 	/*    “作业区与图幅计算— 创建作业区”菜单          */
 	/*****************************************************/
-	QIcon iconCreateOperationAreaIcon;
-	QString strIconCreateOperationAreaIcon = curExePath + "/resource/geoextractandprocess/createop.png";
-	iconCreateOperationAreaIcon.addFile(strIconCreateOperationAreaIcon);
-	mActionCreateOperationArea = new QAction(iconCreateOperationAreaIcon, tr("创建作业区"), this);
+	mActionCreateOperationArea = new QAction(QIcon(":/geoextractandprocess/icons/createop.svg"), tr("创建作业区"), this);
 	mActionCreateOperationArea->setObjectName(QStringLiteral("mActionCreateOperationArea"));
 	mActionCreateOperationArea->setWhatsThis(tr("根据作业区范围创建作业区矢量要素文件"));
 	connect(mActionCreateOperationArea, &QAction::triggered, this, &QgsGeoExtractAndProcessPlugin::CreateOperationArea);
@@ -140,10 +137,7 @@ void QgsGeoExtractAndProcessPlugin::initGui()
 	/*****************************************************/
 	/*“作业区与图幅计算— 作业区名称与图幅号转换”菜单  */
 	/*****************************************************/
-	QIcon iconConvertOpAndSheetIcon;
-	QString strIconConvertOpAndSheet = curExePath + "/resource/geoextractandprocess/convert_sheet_op.png";
-	iconConvertOpAndSheetIcon.addFile(strIconConvertOpAndSheet);
-	mActionConvertOperationAreaAndSheet = new QAction(iconConvertOpAndSheetIcon, tr("作业区名称与图幅号转换"), this);
+	mActionConvertOperationAreaAndSheet = new QAction(QIcon(":/geoextractandprocess/icons/convert_sheet_op.svg"), tr("作业区名称与图幅号转换"), this);
 	mActionConvertOperationAreaAndSheet->setObjectName(QStringLiteral("mActionConvertOperationAreaAndSheet"));
 	mActionConvertOperationAreaAndSheet->setWhatsThis(tr("作业区名称与图幅号转换"));
 	connect(mActionConvertOperationAreaAndSheet, &QAction::triggered, this, &QgsGeoExtractAndProcessPlugin::ConvertOpNameAndSheet);
@@ -154,11 +148,7 @@ void QgsGeoExtractAndProcessPlugin::initGui()
 	/********************************/
 	/*“创建作业区数据库并入库”菜单 */
 	/********************************/
-	QIcon iconCreateDB;
-	QString strIconCreateDB = curExePath + "/resource/geoextractandprocess/db_in.png";
-	iconCreateDB.addFile(strIconCreateDB);
-
-	mActionCreateDbAndInputData = new QAction(iconCreateDB, tr("作业区建库及数据入库"), this);
+	mActionCreateDbAndInputData = new QAction(QIcon(":/geoextractandprocess/icons/db_in.svg"), tr("作业区建库及数据入库"), this);
 	mActionCreateDbAndInputData->setObjectName(QStringLiteral("mActionCreateDbAndInputData"));
 	// 设置菜单提示
 	mActionCreateDbAndInputData->setWhatsThis(tr("创建作业区数据库并入库"));
@@ -173,10 +163,7 @@ void QgsGeoExtractAndProcessPlugin::initGui()
 	/********************************/
 	/*    “接边检测参数设置”菜单 */
 	/********************************/
-	QIcon iconSetMergeParams;
-	QString strIconSetMergeParams = curExePath + "/resource/geoextractandprocess/set_param.png";
-	iconSetMergeParams.addFile(strIconSetMergeParams);
-	mActionSetMergeParams = new QAction(iconSetMergeParams, tr("设置接边检测参数"), this);
+	mActionSetMergeParams = new QAction(QIcon(":/geoextractandprocess/icons/set_param.svg"), tr("设置接边检测参数"), this);
 	mActionSetMergeParams->setObjectName(QStringLiteral("mActionSetMergeParams"));
 	mActionSetMergeParams->setWhatsThis(tr("设置接边检测参数"));
 	connect(mActionSetMergeParams, &QAction::triggered, this, &QgsGeoExtractAndProcessPlugin::SetMergeParams);
@@ -187,10 +174,7 @@ void QgsGeoExtractAndProcessPlugin::initGui()
 	/********************************/
 	/*    “作业区自动接边”菜单    */
 	/********************************/
-	QIcon iconAutoMerge;
-	QString strIconAutoMerge = curExePath + "/resource/geoextractandprocess/auto_merge.png";
-	iconAutoMerge.addFile(strIconAutoMerge);
-	mActionAutoMerge = new QAction(iconAutoMerge, tr("作业区自动接边"), this);
+	mActionAutoMerge = new QAction(QIcon(":/geoextractandprocess/icons/auto_merge.svg"), tr("作业区自动接边"), this);
 	mActionAutoMerge->setObjectName(QStringLiteral("mActionAutoMerge"));
 	mActionAutoMerge->setWhatsThis(tr("作业区自动接边"));
 	connect(mActionAutoMerge, &QAction::triggered, this, &QgsGeoExtractAndProcessPlugin::AutoMerge);
@@ -201,10 +185,7 @@ void QgsGeoExtractAndProcessPlugin::initGui()
 	/************************************/
 	/* “创建作业区间临时接边库”菜单	*/
 	/************************************/
-	QIcon iconCreateTempOpBetweenDB;
-	QString strIconCreateTempOpBetweenDB = curExePath + "/resource/geoextractandprocess/create_between_op.png";
-	iconCreateTempOpBetweenDB.addFile(strIconCreateTempOpBetweenDB);
-	mActionOpBetweenTempDB = new QAction(iconCreateTempOpBetweenDB, tr("创建作业区间临时接边库"), this);
+	mActionOpBetweenTempDB = new QAction(QIcon(":/geoextractandprocess/icons/create_between_op.svg"), tr("创建作业区间临时接边库"), this);
 	mActionOpBetweenTempDB->setObjectName(QStringLiteral("mActionOpBetweenTempDB"));
 	mActionOpBetweenTempDB->setWhatsThis(tr("创建作业区间临时接边库"));
 	connect(mActionOpBetweenTempDB, &QAction::triggered, this, &QgsGeoExtractAndProcessPlugin::CreateOpBetweenTempDB);
@@ -215,10 +196,7 @@ void QgsGeoExtractAndProcessPlugin::initGui()
 	/********************************/
 	/*   “作业区之间自动接边”菜单 */
 	/********************************/
-	QIcon iconBetweenOpAutoMerge;
-	QString strIconBetweenOpAutoMerge = curExePath + "/resource/geoextractandprocess/auto_merge.png";
-	iconBetweenOpAutoMerge.addFile(strIconBetweenOpAutoMerge);
-	mActionBetweenOpAutoMerge = new QAction(iconBetweenOpAutoMerge, tr("作业区之间自动接边"), this);
+	mActionBetweenOpAutoMerge = new QAction(QIcon(":/geoextractandprocess/icons/auto_merge.svg"), tr("作业区之间自动接边"), this);
 	mActionBetweenOpAutoMerge->setObjectName(QStringLiteral("mActionBetweenOpAutoMerge"));
 	mActionBetweenOpAutoMerge->setWhatsThis(tr("作业区之间自动接边"));
 	connect(mActionBetweenOpAutoMerge, &QAction::triggered, this, &QgsGeoExtractAndProcessPlugin::BetweenOpAutoMerge);
@@ -229,10 +207,7 @@ void QgsGeoExtractAndProcessPlugin::initGui()
 	/******************************************************/
 	/*  系列比例尺地图要素提取—“要素提取”菜单          */
 	/******************************************************/
-	QIcon iconExtractDataIcon;
-	QString strIconExtractData = curExePath + "/resource/geoextractandprocess/extract_layers.png";
-	iconExtractDataIcon.addFile(strIconExtractData);
-	mActionExtractData = new QAction(iconExtractDataIcon, tr("要素提取"), this);
+	mActionExtractData = new QAction(QIcon(":/geoextractandprocess/icons/extract_layers.svg"), tr("要素提取"), this);
 	mActionExtractData->setObjectName(QStringLiteral("mActionExtractData"));
 	mActionExtractData->setWhatsThis(tr("要素提取"));
 	connect(mActionExtractData, &QAction::triggered, this, &QgsGeoExtractAndProcessPlugin::ExtractData);
@@ -243,10 +218,7 @@ void QgsGeoExtractAndProcessPlugin::initGui()
 	/*****************************************************************/
 	/*    “测绘地理数据预处理— 影像数据空间精度检查”菜单          */
 	/*****************************************************************/
-	QIcon iconImageSpatialAccuracyCheck;
-	QString strIconImageSpatialAccuracyCheck = curExePath + "/resource/geoextractandprocess/image_accuracy_check.png";
-	iconImageSpatialAccuracyCheck.addFile(strIconImageSpatialAccuracyCheck);
-	mActionImageSpatialAccuracyCheck = new QAction(iconImageSpatialAccuracyCheck, tr("影像数据空间精度检查"), this);
+	mActionImageSpatialAccuracyCheck = new QAction(QIcon(":/geoextractandprocess/icons/image_accuracy_check.svg"), tr("影像数据空间精度检查"), this);
 	mActionImageSpatialAccuracyCheck->setObjectName(QStringLiteral("mActionImageSpatialAccuracyCheck"));
 	mActionImageSpatialAccuracyCheck->setWhatsThis(tr("影像数据空间精度检查"));
 	connect(mActionImageSpatialAccuracyCheck, &QAction::triggered, this, &QgsGeoExtractAndProcessPlugin::ImageSpatialAccuracyCheck);
@@ -257,10 +229,7 @@ void QgsGeoExtractAndProcessPlugin::initGui()
 	/*****************************************************************/
 	/*    “测绘地理数据预处理— 矢量数据空间精度检查”菜单          */
 	/*****************************************************************/
-	QIcon iconVectorSpatialAccuracyCheck;
-	QString strIconVectorSpatialAccuracyCheck = curExePath + "/resource/geoextractandprocess/vector_accuracy_check.png";
-	iconVectorSpatialAccuracyCheck.addFile(strIconVectorSpatialAccuracyCheck);
-	mActionVectorSpatialAccuracyCheck = new QAction(iconVectorSpatialAccuracyCheck, tr("矢量数据空间精度检查"), this);
+	mActionVectorSpatialAccuracyCheck = new QAction(QIcon(":/geoextractandprocess/icons/vector_accuracy_check.svg"), tr("矢量数据空间精度检查"), this);
 	mActionVectorSpatialAccuracyCheck->setObjectName(QStringLiteral("mActionVectorSpatialAccuracyCheck"));
 	mActionVectorSpatialAccuracyCheck->setWhatsThis(tr("矢量数据空间精度检查"));
 	connect(mActionVectorSpatialAccuracyCheck, &QAction::triggered, this, &QgsGeoExtractAndProcessPlugin::VectorSpatialAccuracyCheck);
@@ -273,10 +242,7 @@ void QgsGeoExtractAndProcessPlugin::initGui()
 	/*****************************************************************/
 	/*    “多尺度数据一致性处理— 预处理”菜单                      */
 	/*****************************************************************/
-	QIcon iconPreProcessMultiScaleData;
-	QString strIconPreProcessMultiScaleData = curExePath + "/resource/geoextractandprocess/preprocess.png";
-	iconPreProcessMultiScaleData.addFile(strIconPreProcessMultiScaleData);
-	mActionPreProcessMultiScaleData = new QAction(iconPreProcessMultiScaleData, tr("预处理"), this);
+	mActionPreProcessMultiScaleData = new QAction(QIcon(":/geoextractandprocess/icons/preprocess.svg"), tr("预处理"), this);
 	mActionPreProcessMultiScaleData->setObjectName(QStringLiteral("mActionPreProcessMultiScaleData"));
 	mActionPreProcessMultiScaleData->setWhatsThis(tr("预处理"));
 	connect(mActionPreProcessMultiScaleData, &QAction::triggered, this, &QgsGeoExtractAndProcessPlugin::PreProcessMultiScaleData);
@@ -287,10 +253,7 @@ void QgsGeoExtractAndProcessPlugin::initGui()
 	/*****************************************************************/
 	/*    “多尺度数据一致性处理— 多尺度匹配参数设置”菜单          */
 	/*****************************************************************/
-	QIcon iconSetMultiScaleDataParams;
-	QString strIconSetMultiScaleDataParams = curExePath + "/resource/geoextractandprocess/set_param.png";
-	iconSetMultiScaleDataParams.addFile(strIconSetMultiScaleDataParams);
-	mActionSetMultiScaleDataParams = new QAction(iconSetMultiScaleDataParams, tr("多尺度匹配参数设置"), this);
+	mActionSetMultiScaleDataParams = new QAction(QIcon(":/geoextractandprocess/icons/set_param.svg"), tr("多尺度匹配参数设置"), this);
 	mActionSetMultiScaleDataParams->setObjectName(QStringLiteral("mActionSetMultiScaleDataParams"));
 	mActionSetMultiScaleDataParams->setWhatsThis(tr("多尺度匹配参数设置"));
 	connect(mActionSetMultiScaleDataParams, &QAction::triggered, this, &QgsGeoExtractAndProcessPlugin::SetMultiScaleDataMatchParams);
@@ -302,10 +265,7 @@ void QgsGeoExtractAndProcessPlugin::initGui()
 	/*****************************************************************/
 	/*    “优于1:5万数据融合处理— 矢量数据语义融合”菜单		 */
 	/*****************************************************************/
-	QIcon iconConvertDataToGJB;
-	QString strIconConvertDataToGJB = curExePath + "/resource/geoextractandprocess/gjb_integration.png";
-	iconConvertDataToGJB.addFile(strIconConvertDataToGJB);
-	mActionConvertDataToGJB = new QAction(iconConvertDataToGJB, tr("矢量数据语义融合"), this);
+	mActionConvertDataToGJB = new QAction(QIcon(":/geoextractandprocess/icons/gjb_integration.svg"), tr("矢量数据语义融合"), this);
 	mActionConvertDataToGJB->setObjectName(QStringLiteral("mActionConvertDataToGJB"));
 	mActionConvertDataToGJB->setWhatsThis(tr("矢量数据语义融合"));
 	connect(mActionConvertDataToGJB, &QAction::triggered, this, &QgsGeoExtractAndProcessPlugin::ConvertDataToGJB);
@@ -316,10 +276,7 @@ void QgsGeoExtractAndProcessPlugin::initGui()
 	/*****************************************************************/
 	/*    “优于1:5万数据融合处理— 国/军标数据导出”菜单		     */
 	/*****************************************************************/
-	QIcon iconConvertDataToGB_OR_JB;
-	QString strIconConvertDataToGB_OR_JB = curExePath + "/resource/geoextractandprocess/gjb_export.png";
-	iconConvertDataToGB_OR_JB.addFile(strIconConvertDataToGB_OR_JB);
-	mActionConvertDataToGB_OR_JB = new QAction(iconConvertDataToGB_OR_JB, tr("国/军标数据导出"), this);
+	mActionConvertDataToGB_OR_JB = new QAction(QIcon(":/geoextractandprocess/icons/gjb_export.svg"), tr("国/军标数据导出"), this);
 	mActionConvertDataToGB_OR_JB->setObjectName(QStringLiteral("mActionConvertDataToGB_OR_JB"));
 	mActionConvertDataToGB_OR_JB->setWhatsThis(tr("国/军标数据导出"));
 	connect(mActionConvertDataToGB_OR_JB, &QAction::triggered, this, &QgsGeoExtractAndProcessPlugin::ConvertDataToGB_OR_JB);
@@ -330,10 +287,7 @@ void QgsGeoExtractAndProcessPlugin::initGui()
 	/*****************************************************************/
 	/*    “优于1:5万数据融合处理— 数据匹配”菜单          */
 	/*****************************************************************/
-	QIcon iconSetBetterThan5WMatchParams;
-	QString strIconSetBetterThan5WMatchParams = curExePath + "/resource/geoextractandprocess/set_param.png";
-	iconSetBetterThan5WMatchParams.addFile(strIconSetBetterThan5WMatchParams);
-	mActionSetBetterThan5WMatchParams = new QAction(iconSetBetterThan5WMatchParams, tr("数据匹配"), this);
+	mActionSetBetterThan5WMatchParams = new QAction(QIcon(":/geoextractandprocess/icons/set_param.svg"), tr("数据匹配"), this);
 	mActionSetBetterThan5WMatchParams->setObjectName(QStringLiteral("mActionSetBetterThan5WMatchParams"));
 	mActionSetBetterThan5WMatchParams->setWhatsThis(tr("数据匹配"));
 	connect(mActionSetBetterThan5WMatchParams, &QAction::triggered, this, &QgsGeoExtractAndProcessPlugin::SetBetterThan5WMatchParams);
@@ -344,11 +298,7 @@ void QgsGeoExtractAndProcessPlugin::initGui()
 	/*****************************************************************/
 	/*    “优于1:5万数据融合处理— 要素合并”菜单					 */
 	/*****************************************************************/
-	QIcon iconBetterThan5wMergeFeatures;
-
-	QString strIconBetterThan5wMergeFeatures = curExePath + "/resource/geoextractandprocess/merge_feature.png";
-	iconBetterThan5wMergeFeatures.addFile(strIconBetterThan5wMergeFeatures);
-	mActionBetterThan5wMergeFeatures = new QAction(iconBetterThan5wMergeFeatures, tr("要素合并"), this);
+	mActionBetterThan5wMergeFeatures = new QAction(QIcon(":/geoextractandprocess/icons/merge_feature.svg"), tr("要素合并"), this);
 	mActionBetterThan5wMergeFeatures->setObjectName(QStringLiteral("mActionBetterThan5wMergeFeatures"));
 	mActionBetterThan5wMergeFeatures->setWhatsThis(tr("要素合并"));
 	connect(mActionBetterThan5wMergeFeatures, &QAction::triggered, this, &QgsGeoExtractAndProcessPlugin::BetterThan5wMergeFeatures);
@@ -360,10 +310,7 @@ void QgsGeoExtractAndProcessPlugin::initGui()
 	/*****************************************************************/
 	/*    “测绘地理数据预处理— 提取等高线”菜单					 */
 	/*****************************************************************/
-	QIcon iconExtractContour;
-	QString strIconExtractContour = curExePath + "/resource/geoextractandprocess/contour.png";
-	iconExtractContour.addFile(strIconExtractContour);
-	mActionExtractContour = new QAction(iconExtractContour, tr("提取等高线"), this);
+	mActionExtractContour = new QAction(QIcon(":/geoextractandprocess/icons/contour.svg"), tr("提取等高线"), this);
 	mActionExtractContour->setObjectName(QStringLiteral("mActionBetterThan5wMergeFeatures"));
 	mActionExtractContour->setWhatsThis(tr("提取等高线"));
 	connect(mActionExtractContour, &QAction::triggered, this, &QgsGeoExtractAndProcessPlugin::ExtractContour);
@@ -374,10 +321,7 @@ void QgsGeoExtractAndProcessPlugin::initGui()
 	/*****************************************************************/
 	/*    “栅格— 影像图制图”菜单					 */
 	/*****************************************************************/
-	QIcon iconImageMapping;
-	QString strIconImageMapping = curExePath + "/resource/geoextractandprocess/image_mapping.png";
-	iconImageMapping.addFile(strIconImageMapping);
-	mActionImageMapping = new QAction(iconImageMapping, tr("影像图制图"), this);
+	mActionImageMapping = new QAction(QIcon(":/geoextractandprocess/icons/image_mapping.svg"), tr("影像图制图"), this);
 	mActionImageMapping->setObjectName(QStringLiteral("mActionImageMapping"));
 	mActionImageMapping->setWhatsThis(tr("影像图制图"));
 	connect(mActionImageMapping, &QAction::triggered, this, &QgsGeoExtractAndProcessPlugin::ImageMapping);
@@ -388,10 +332,7 @@ void QgsGeoExtractAndProcessPlugin::initGui()
 	/*****************************************************************/
 	/*    “栅格— 动目标专题图制作”菜单					 */
 	/*****************************************************************/
-	QIcon iconMovingTargetMapping;
-	QString strIconMovingTargetMapping = curExePath + "/resource/geoextractandprocess/moving_target_mapping.png";
-	iconMovingTargetMapping.addFile(strIconMovingTargetMapping);
-	mActionMovingTargetMapping = new QAction(iconMovingTargetMapping, tr("动目标专题制图"), this);
+	mActionMovingTargetMapping = new QAction(QIcon(":/geoextractandprocess/icons/moving_target_mapping.svg"), tr("动目标专题制图"), this);
 	mActionMovingTargetMapping->setObjectName(QStringLiteral("mActionMovingTargetMapping"));
 	mActionMovingTargetMapping->setWhatsThis(tr("动目标专题制图"));
 	connect(mActionMovingTargetMapping, &QAction::triggered, this, &QgsGeoExtractAndProcessPlugin::MovingTargetMapping);
@@ -402,10 +343,7 @@ void QgsGeoExtractAndProcessPlugin::initGui()
 	/*****************************************************************/
 	/*					“栅格— 影像图制图— 国地信数据”菜单					 */
 	/*****************************************************************/
-	QIcon iconImageMapping_GdxData;
-	QString strIconImageMapping_GdxData = curExePath + "/resource/geoextractandprocess/image_mapping_gdx.png";
-	iconImageMapping_GdxData.addFile(strIconImageMapping_GdxData);
-	mActionImageMapping_GdxData = new QAction(iconImageMapping_GdxData, tr("影像图制图（国地信数据）"), this);
+	mActionImageMapping_GdxData = new QAction(QIcon(":/geoextractandprocess/icons/image_mapping.svg"), tr("影像图制图（国地信数据）"), this);
 	mActionImageMapping_GdxData->setObjectName(QStringLiteral("mActionImageMapping_GdxData"));
 	mActionImageMapping_GdxData->setWhatsThis(tr("影像图制图（国地信数据）"));
 	connect(mActionImageMapping_GdxData, &QAction::triggered, this, &QgsGeoExtractAndProcessPlugin::ImageMapping_GdxData);
@@ -419,10 +357,7 @@ void QgsGeoExtractAndProcessPlugin::initGui()
 	/*****************************************************************/
 	/*					“栅格— 影像图制图— 整饰要素矢量化”菜单	 */
 	/*****************************************************************/
-	QIcon iconImageMapping_LayoutVectorization;
-	QString strIconImageMapping_LayoutVectorization = curExePath + "/resource/geoextractandprocess/image_mapping_layout_vectorization.png";
-	iconImageMapping_LayoutVectorization.addFile(strIconImageMapping_LayoutVectorization);
-	mActionImageMapping_LayoutVectorization = new QAction(iconImageMapping_LayoutVectorization, tr("影像图制图（整饰要素矢量化）"), this);
+	mActionImageMapping_LayoutVectorization = new QAction(QIcon(":/geoextractandprocess/icons/image_mapping_layout_vectorization.svg"), tr("影像图制图（整饰要素矢量化）"), this);
 	mActionImageMapping_LayoutVectorization->setObjectName(QStringLiteral("mActionImageMapping_LayoutVectorization"));
 	mActionImageMapping_LayoutVectorization->setToolTip(tr("影像图制图（整饰要素矢量化）"));
 
@@ -440,10 +375,7 @@ void QgsGeoExtractAndProcessPlugin::initGui()
 	/*****************************************************************/
 	/*					“栅格— 影像图制图— 矢量数据迁移”菜单	 */
 	/*****************************************************************/
-	QIcon iconCopyShapefiles;
-	QString strIconCopyShapefiles = curExePath + "/resource/geoextractandprocess/copy_shapefiles.png";
-	iconCopyShapefiles.addFile(strIconCopyShapefiles);
-	mActionCopyShapefiles = new QAction(iconCopyShapefiles, tr("矢量数据迁移"), this);
+	mActionCopyShapefiles = new QAction(QIcon(":/geoextractandprocess/icons/copy_shapefiles.svg"), tr("矢量数据迁移"), this);
 	mActionCopyShapefiles->setObjectName(QStringLiteral("mActionCopyShapefiles"));
 	mActionCopyShapefiles->setToolTip(tr("矢量数据迁移"));
 

@@ -23,7 +23,7 @@ static const QString sCategory = QObject::tr("Vector");
 static const QString sPluginVersion = QObject::tr("Version 0.1");
 static const QgisPlugin::PluginType sPluginType = QgisPlugin::UI;
 // 插件图标
-static const QString sPluginIcon = QStringLiteral(":/planet_data_products_toolbox/icons/plugin_icon.svg");
+static const QString sPluginIcon = QStringLiteral(":/planet_data_products_toolbox/icons/pluginIcon.svg");
 #pragma endregion
 
 #pragma region "构造函数、析构函数"

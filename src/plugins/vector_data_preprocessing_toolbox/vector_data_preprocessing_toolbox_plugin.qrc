@@ -1,6 +1,8 @@
 <RCC>
-    <qresource prefix="/vector_data_preprocessing_toolbox">
-        <file>images/geocoordsys_trans.png</file>
-        <file>images/projcoordsys_trans.png</file>
-    </qresource>
+  <qresource prefix="/vector_data_preprocessing_toolbox">
+    <file>icons/geographicCoordinateSystemTransformationIcon.svg</file>
+    <file>icons/projectedCoordinateSystemTransformationIcon.svg</file>
+    <file>icons/vectorSourceDataInspectionIcon.svg</file>
+    <file>icons/pluginIcon.svg</file>
+  </qresource>
 </RCC>

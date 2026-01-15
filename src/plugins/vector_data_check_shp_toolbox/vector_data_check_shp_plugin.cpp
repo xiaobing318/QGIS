@@ -32,7 +32,7 @@ static const QString sPluginVersion = QObject::tr("Version 1.0");
 static const QgisPlugin::PluginType sPluginType = QgisPlugin::UI;
 
 // 插件图标
-static const QString sPluginIcon = QObject::tr("格式转换成果检查插件"); 
+static const QString sPluginIcon = QStringLiteral(":/vector_data_check_shp_toolbox/icons/pluginIcon.svg");
 
 QgsVectorDataCheckShpPlugin::QgsVectorDataCheckShpPlugin(QgisInterface* qgisInterface)
 	: QgisPlugin(sName, sDescription, sCategory, sPluginVersion, sPluginType)
@@ -62,89 +62,71 @@ void QgsVectorDataCheckShpPlugin::initGui()
 	/*****************************************************/
 	/*    “【格式转换成果检查】-【要素属性检查】”菜单	*/
 	/*****************************************************/
-	QIcon iconFeatureAttributeCheck;
-	QString strFeatureAttributeCheck = curExePath + "/resource/toolbox/feature_attribute_check.png";
-	iconFeatureAttributeCheck.addFile(strFeatureAttributeCheck);
-	mActionFeatureAttributeCheck = new QAction(iconFeatureAttributeCheck, tr("要素属性检查"), this);
+	mActionFeatureAttributeCheck = new QAction(QIcon(":/vector_data_check_shp_toolbox/icons/feature_attribute_check.svg"), tr("要素属性检查"), this);
 	mActionFeatureAttributeCheck->setObjectName(QStringLiteral("mActionFeatureAttributeCheck"));
 	mActionFeatureAttributeCheck->setToolTip(tr("格式转换成果属性值规范性检查"));
 	connect(mActionFeatureAttributeCheck, &QAction::triggered, this, &QgsVectorDataCheckShpPlugin::FeatureAttributeCheck);
 	mQGisIface->addVectorToolBarIcon(mActionFeatureAttributeCheck);
-	mQGisIface->addPluginToVectorMenu(tr("&格式转换成果检查"), mActionFeatureAttributeCheck);
+	mQGisIface->addPluginToVectorMenu(tr("&质量检查评估子模块"), mActionFeatureAttributeCheck);
 	mActionFeatureAttributeCheck->setEnabled(true);
 
 
 	/*****************************************************/
 	/*    “【格式转换成果检查】-【要素范围检查】”菜单	*/
 	/*****************************************************/
-	QIcon iconFeatureExtentCheck;
-	QString strFeatureExtentCheck = curExePath + "/resource/toolbox/feature_extent_check.png";
-	iconFeatureExtentCheck.addFile(strFeatureExtentCheck);
-	mActionFeatureExtentCheck = new QAction(iconFeatureExtentCheck, tr("要素范围检查"), this);
+	mActionFeatureExtentCheck = new QAction(QIcon(":/vector_data_check_shp_toolbox/icons/feature_extent_check.svg"), tr("要素范围检查"), this);
 	mActionFeatureExtentCheck->setObjectName(QStringLiteral("mActionFeatureExtentCheck"));
 	mActionFeatureExtentCheck->setToolTip(tr("格式转换成果数据范围正确性检查"));
 	connect(mActionFeatureExtentCheck, &QAction::triggered, this, &QgsVectorDataCheckShpPlugin::FeatureExtentCheck);
 	mQGisIface->addVectorToolBarIcon(mActionFeatureExtentCheck);
-	mQGisIface->addPluginToVectorMenu(tr("&格式转换成果检查"), mActionFeatureExtentCheck);
+	mQGisIface->addPluginToVectorMenu(tr("&质量检查评估子模块"), mActionFeatureExtentCheck);
 	mActionFeatureExtentCheck->setEnabled(true);
 
 
 	/*****************************************************/
 	/*    “【格式转换成果检查】-【要素分类统计】”菜单	*/
 	/*****************************************************/
-	QIcon iconFeatureCategoryStatistics;
-	QString strFeatureCategoryStatistics = curExePath + "/resource/toolbox/feature_statistic.png";
-	iconFeatureCategoryStatistics.addFile(strFeatureCategoryStatistics);
-	mActionFeatureCategoryStatistics = new QAction(iconFeatureCategoryStatistics, tr("要素分类统计"), this);
+	mActionFeatureCategoryStatistics = new QAction(QIcon(":/vector_data_check_shp_toolbox/icons/feature_statistic.svg"), tr("要素分类统计"), this);
 	mActionFeatureCategoryStatistics->setObjectName(QStringLiteral("mActionFeatureCategoryStatistics"));
 	mActionFeatureCategoryStatistics->setToolTip(tr("格式转换成果数据要素条目数缺失检查"));
 	connect(mActionFeatureCategoryStatistics, &QAction::triggered, this, &QgsVectorDataCheckShpPlugin::FeatureCategoryStatistics);
 	mQGisIface->addVectorToolBarIcon(mActionFeatureCategoryStatistics);
-	mQGisIface->addPluginToVectorMenu(tr("&格式转换成果检查"), mActionFeatureCategoryStatistics);
+	mQGisIface->addPluginToVectorMenu(tr("&质量检查评估子模块"), mActionFeatureCategoryStatistics);
 	mActionFeatureCategoryStatistics->setEnabled(true);
 
 
 	/*****************************************************/
 	/* “【格式转换成果检查】-【图层文件可用性检查】”菜单*/
 	/*****************************************************/
-	QIcon iconLayerValidityCheck;
-	QString strLayerValidityCheck = curExePath + "/resource/toolbox/layer_validity_check.png";
-	iconLayerValidityCheck.addFile(strLayerValidityCheck);
-	mActionLayerValidityCheck = new QAction(iconLayerValidityCheck, tr("图层文件可用性检查"), this);
+	mActionLayerValidityCheck = new QAction(QIcon(":/vector_data_check_shp_toolbox/icons/layer_validity_check.svg"), tr("图层文件可用性检查"), this);
 	mActionLayerValidityCheck->setObjectName(QStringLiteral("mActionLayerValidityCheck"));
 	mActionLayerValidityCheck->setToolTip(tr("检查图层文件可用性"));
 	connect(mActionLayerValidityCheck, &QAction::triggered, this, &QgsVectorDataCheckShpPlugin::LayerValidityCheck);
 	mQGisIface->addVectorToolBarIcon(mActionLayerValidityCheck);
-	mQGisIface->addPluginToVectorMenu(tr("&格式转换成果检查"), mActionLayerValidityCheck);
+	mQGisIface->addPluginToVectorMenu(tr("&质量检查评估子模块"), mActionLayerValidityCheck);
 	mActionLayerValidityCheck->setEnabled(true);
 
 
 	/*****************************************************/
 	/* “【格式转换成果检查】-【图层文件完整性检查】”菜单*/
 	/*****************************************************/
-	QIcon iconLayerIntegrityCheck;
-	QString strLayerIntegrityCheck = curExePath + "/resource/toolbox/layer_integrity_check.png";
-	iconLayerIntegrityCheck.addFile(strLayerIntegrityCheck);
-	mActionLayerIntegrityCheck = new QAction(iconLayerIntegrityCheck, tr("图层文件完整性检查"), this);
+	mActionLayerIntegrityCheck = new QAction(QIcon(":/vector_data_check_shp_toolbox/icons/layer_integrity_check.svg"), tr("图层文件完整性检查"), this);
 	mActionLayerIntegrityCheck->setObjectName(QStringLiteral("mActionLayerIntegrityCheck"));
 	mActionLayerIntegrityCheck->setToolTip(tr("检查图层文件完整性，包括：shx文件、dbf文件、prj文件"));
 	connect(mActionLayerIntegrityCheck, &QAction::triggered, this, &QgsVectorDataCheckShpPlugin::LayerIntegrityCheck);
 	mQGisIface->addVectorToolBarIcon(mActionLayerIntegrityCheck);
-	mQGisIface->addPluginToVectorMenu(tr("&格式转换成果检查"), mActionLayerIntegrityCheck);
+	mQGisIface->addPluginToVectorMenu(tr("&质量检查评估子模块"), mActionLayerIntegrityCheck);
 	mActionLayerIntegrityCheck->setEnabled(true);
 
 	/*****************************************************/
 	/*    “【格式转换成果检查】-【一体化数据属性检查】”菜单	*/
 	/*****************************************************/
-	QIcon iconFeatureAttributeCheckYTH;
-	QString strFeatureAttributeCheckYTH = curExePath + "/resource/toolbox/feature_attribute_check.png";
-	iconFeatureAttributeCheckYTH.addFile(strFeatureAttributeCheckYTH);
-	mActionFeatureAttributeCheckYTH = new QAction(iconFeatureAttributeCheckYTH, tr("一体化数据属性检查"), this);
+	mActionFeatureAttributeCheckYTH = new QAction(QIcon(":/vector_data_check_shp_toolbox/icons/feature_attribute_check.svg"), tr("一体化数据属性检查"), this);
 	mActionFeatureAttributeCheckYTH->setObjectName(QStringLiteral("mActionFeatureAttributeCheckYTH"));
 	mActionFeatureAttributeCheckYTH->setToolTip(tr("一体化数据属性值规范性检查"));
 	connect(mActionFeatureAttributeCheckYTH, &QAction::triggered, this, &QgsVectorDataCheckShpPlugin::FeatureAttributeCheckYTH);
 	mQGisIface->addVectorToolBarIcon(mActionFeatureAttributeCheckYTH);
-	mQGisIface->addPluginToVectorMenu(tr("&一体化数据成果检查"), mActionFeatureAttributeCheckYTH);
+	mQGisIface->addPluginToVectorMenu(tr("&质量检查评估子模块"), mActionFeatureAttributeCheckYTH);
 	mActionFeatureAttributeCheckYTH->setEnabled(true);
 	updateActions();
 }
