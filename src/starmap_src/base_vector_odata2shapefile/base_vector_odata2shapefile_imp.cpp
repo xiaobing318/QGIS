@@ -2988,7 +2988,7 @@ int BaseVectorOdata2ShapefileImp::Set_Point(
     {
       code = CPLAtoGIntBig(vFieldValues[2].c_str());
     }
-    // 如果不是 JBDX 数据类型
+    // 如果是 JBDX 数据类型
     else
     {
       code = CPLAtoGIntBig(vFieldValues[2].c_str());
@@ -3554,7 +3554,7 @@ int BaseVectorOdata2ShapefileImp::Set_MultiPoint(
       strLayerType == "V" || strLayerType == "W" ||
       strLayerType == "X" || strLayerType == "Y")
     {
-      code = CPLAtoGIntBig(vFieldValues[1].c_str());
+      code = CPLAtoGIntBig(vFieldValues[2].c_str());
     }
     // 如果不是 JBDX 数据类型
     else
@@ -4063,10 +4063,10 @@ int BaseVectorOdata2ShapefileImp::Set_LineString(
     {
       code = CPLAtoGIntBig(vFieldValues[1].c_str());
     }
-    // 如果不是 JBDX 数据类型
+    // 如果是 JBDX 数据类型
     else
     {
-      code = CPLAtoGIntBig(vFieldValues[2].c_str());
+      code = CPLAtoGIntBig(vFieldValues[1].c_str());
     }
     if (code == 0) return -2;
   }
@@ -4130,7 +4130,7 @@ int BaseVectorOdata2ShapefileImp::Set_Polygon(
     // 如果不是 JBDX 数据类型
     else
     {
-      code = CPLAtoGIntBig(vFieldValues[2].c_str());
+      code = CPLAtoGIntBig(vFieldValues[1].c_str());
     }
     if (code == 0) return -2;
   }
