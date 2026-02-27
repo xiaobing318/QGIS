@@ -1,0 +1,35 @@
+# 默认使用的模型名称。
+model = "gpt-5.3-codex"
+
+# 模型推理强度，越高通常推理更深但耗时更长。
+# 候选值 ---> minimal：最低推理强度，速度优先。
+# 候选值 ---> low：    较低推理强度。
+# 候选值 ---> medium： 常规推理强度。
+# 候选值 ---> high：   高推理强度。
+# 候选值 ---> xhigh：  最高推理强度（是否可用取决于模型）。
+model_reasoning_effort = "xhigh"
+
+# 读取项目说明文档（如 AGENTS.md）的最大字节数。
+# 候选值 ---> number：正整数；单位为字节。
+project_doc_max_bytes = 65536
+
+# 交互风格偏好（仅对支持 personality 的模型生效）。
+# 候选值 ---> none：      不强制人格风格。
+# 候选值 ---> friendly：  友好协作风格。
+# 候选值 ---> pragmatic： 务实直接风格。
+personality = "friendly"
+
+# 抓“过去24小时新消息”，建议设置为 live。
+# 候选值 ---> disabled：禁止使用网页搜索功能。
+# 候选值 ---> cached：  将会缓存过去网页搜索内容。
+# 候选值 ---> live：    不会缓存过去网页搜索内容。
+web_search = "live"
+
+# 自动化要写 Markdown 文件到仓库目录
+sandbox_mode = "workspace-write"
+
+# 该选项控制 Codex 在要运行命令/触发一些需要批准的动作时，是否暂停来向你要权限。
+# 候选值 ---> untrusted： 只在“更不安全/不可信”的情况下才要求批准（更少弹窗）
+# 候选值 ---> on-request：只要需要批准就会问你（更常弹窗，适合你人在电脑前）
+# 候选值 ---> never：     从不弹批准提示（最“放行”，适合非交互/自动化）
+approval_policy = "never"
