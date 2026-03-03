@@ -18,6 +18,7 @@
 #include "qgis.h"
 
 #include <QDockWidget>
+#include <QPointer>
 #include <QUrl>
 
 class QNetworkAccessManager;
@@ -30,6 +31,7 @@ class QgsQCopilotsDock : public QDockWidget
 
   public:
     explicit QgsQCopilotsDock( QWidget *parent = nullptr );
+    ~QgsQCopilotsDock() override;
 
     // Get the currently loaded server URL
     QUrl serverUrl() const;
@@ -56,6 +58,7 @@ class QgsQCopilotsDock : public QDockWidget
     void appendDiagnosticLog( const QString &message, Qgis::MessageLevel level = Qgis::Info );
 
     void resetProbeState();
+    void cancelPendingProbe();
     void startConnectivityProbe( const QUrl &url );
     void finalizeConnectivityProbe( QNetworkReply *reply );
     QString httpStatusText() const;
@@ -65,7 +68,7 @@ class QgsQCopilotsDock : public QDockWidget
     Ui::qgsqcopilotsdock mUi;
     QWebEngineView *mWebView = nullptr;
     QNetworkAccessManager *mNetworkAccessManager = nullptr;
-    QNetworkReply *mProbeReply = nullptr;
+    QPointer< QNetworkReply > mProbeReply;
 
     QUrl mServerUrl;
     QUrl mPendingUrl;

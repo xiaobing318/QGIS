@@ -27,7 +27,9 @@
 #include <QSslError>
 
 #include <QWebEnginePage>
+#include <QWebEnginePermission>
 #include <QWebEngineProfile>
+#include <QWebEngineSettings>
 #include <QWebEngineView>
 
 namespace
@@ -119,7 +121,29 @@ QgsQCopilotsDock::QgsQCopilotsDock( QWidget *parent )
   if ( mWebView )
   {
     QWebEngineProfile *profile = qcopilotsProfile();
-    mWebView->setPage( new QWebEnginePage( profile, mWebView ) );
+    QWebEnginePage *page = new QWebEnginePage( profile, mWebView );
+    mWebView->setPage( page );
+
+    if ( QWebEngineSettings *pageSettings = page->settings() )
+    {
+      pageSettings->setAttribute( QWebEngineSettings::JavascriptCanAccessClipboard, true );
+      pageSettings->setAttribute( QWebEngineSettings::JavascriptCanPaste, true );
+      appendDiagnosticLog( tr( "Clipboard JavaScript permissions enabled for QCopilots dock pages." ), Qgis::Info );
+    }
+
+    connect( page, &QWebEnginePage::permissionRequested, this, [this]( const QWebEnginePermission &permission )
+    {
+      if ( !permission.isValid() )
+        return;
+
+      if ( permission.permissionType() != QWebEnginePermission::PermissionType::ClipboardReadWrite )
+        return;
+
+      permission.grant();
+      appendDiagnosticLog(
+        tr( "Granted clipboard permission for origin: %1" ).arg( permission.origin().toString() ),
+        Qgis::Info );
+    } );
 
     connect( mWebView, &QWebEngineView::loadFinished, this, &QgsQCopilotsDock::handleLoadFinished );
     connect( mWebView, &QWebEngineView::urlChanged, this, [this]( const QUrl &url )
@@ -135,6 +159,11 @@ QgsQCopilotsDock::QgsQCopilotsDock( QWidget *parent )
     mLastKnownGoodUrl = savedServerUrl;
 
   loadUrl( savedServerUrl, false );
+}
+
+QgsQCopilotsDock::~QgsQCopilotsDock()
+{
+  cancelPendingProbe();
 }
 
 QUrl QgsQCopilotsDock::serverUrl() const
@@ -240,24 +269,38 @@ void QgsQCopilotsDock::resetProbeState()
   mLastProxyHint.clear();
 }
 
+void QgsQCopilotsDock::cancelPendingProbe()
+{
+  if ( !mProbeReply )
+    return;
+
+  QObject::disconnect( mProbeReply, nullptr, this, nullptr );
+  mProbeReply->abort();
+  mProbeReply->deleteLater();
+  mProbeReply = nullptr;
+}
+
 void QgsQCopilotsDock::startConnectivityProbe( const QUrl &url )
 {
   if ( !mNetworkAccessManager )
     return;
 
-  if ( mProbeReply )
-  {
-    mProbeReply->abort();
-    mProbeReply->deleteLater();
-    mProbeReply = nullptr;
-  }
+  cancelPendingProbe();
 
   QNetworkRequest request( url );
   request.setAttribute( QNetworkRequest::RedirectPolicyAttribute, QNetworkRequest::NoLessSafeRedirectPolicy );
 
   mProbeReply = mNetworkAccessManager->head( request );
-  connect( mProbeReply, &QNetworkReply::sslErrors, this, [this]( const QList< QSslError > &errors )
+  const QPointer< QNetworkReply > probeReply = mProbeReply;
+
+  if ( !probeReply )
+    return;
+
+  connect( probeReply, &QNetworkReply::sslErrors, this, [this, probeReply]( const QList< QSslError > &errors )
   {
+    if ( !probeReply )
+      return;
+
     if ( errors.isEmpty() )
       return;
 
@@ -265,25 +308,26 @@ void QgsQCopilotsDock::startConnectivityProbe( const QUrl &url )
     appendDiagnosticLog( tr( "SSL error: %1" ).arg( mLastSslError ), Qgis::Warning );
   } );
 
-  connect( mProbeReply, &QNetworkReply::errorOccurred, this, [this]( QNetworkReply::NetworkError error )
+  connect( probeReply, &QNetworkReply::errorOccurred, this, [this, probeReply]( QNetworkReply::NetworkError error )
   {
-    if ( !mProbeReply )
+    if ( !probeReply )
       return;
 
-    mLastNetworkError = mProbeReply->errorString();
+    mLastNetworkError = probeReply->errorString();
     if ( isProxyRelatedError( error ) )
       mLastProxyHint = tr( "Proxy negotiation failed. Review system proxy settings and proxy credentials." );
   } );
 
-  connect( mProbeReply, &QNetworkReply::finished, this, [this]()
+  connect( probeReply, &QNetworkReply::finished, this, [this, probeReply]()
   {
-    if ( !mProbeReply )
+    if ( !probeReply )
       return;
 
-    QNetworkReply *finishedReply = mProbeReply;
-    mProbeReply = nullptr;
-    finalizeConnectivityProbe( finishedReply );
-    finishedReply->deleteLater();
+    if ( mProbeReply == probeReply )
+      mProbeReply = nullptr;
+
+    finalizeConnectivityProbe( probeReply.data() );
+    probeReply->deleteLater();
   } );
 }
 
