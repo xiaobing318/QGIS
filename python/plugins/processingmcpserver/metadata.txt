@@ -1,0 +1,16 @@
+[general]
+name=Processing MCP Server
+description=MCP server bridge for QGIS Processing tools and project operations
+about=Expose selected QGIS processing, project, and layer operations through Model Context Protocol (MCP).
+category=Analysis
+version=1.0.0
+qgisMinimumVersion=3.0
+supportsQt6=yes
+
+author=QGIS MCP Contributors
+
+homepage=https://github.com/qgis/QGIS
+tracker=https://github.com/qgis/QGIS/issues
+repository=https://github.com/qgis/QGIS
+
+plugin_dependencies=Processing

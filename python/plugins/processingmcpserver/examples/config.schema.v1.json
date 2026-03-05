@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qgis.org/schemas/processingmcpserver/config.v1.json",
+  "title": "Processing MCP Server Config",
+  "type": "object",
+  "required": [
+    "version",
+    "processing_mcp"
+  ],
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1
+    },
+    "processing_mcp": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "transport": {
+          "type": "string",
+          "enum": [
+            "streamable-http",
+            "sse",
+            "stdio"
+          ]
+        },
+        "host": {
+          "type": "string",
+          "minLength": 1
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535
+        },
+        "mount_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sse_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "message_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "streamable_http_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "stateless_http": {
+          "type": "boolean"
+        },
+        "json_response": {
+          "type": "boolean"
+        },
+        "log_level": {
+          "type": "string",
+          "minLength": 1
+        },
+        "cors_origins": {
+          "oneOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "cors_allow_headers": {
+          "oneOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "enable_execute_code": {
+          "type": "boolean"
+        },
+        "dependencies": {
+          "type": "object",
+          "properties": {
+            "auto_install": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "processing_mcp": {
+    "enabled": true,
+    "transport": "streamable-http",
+    "host": "127.0.0.1",
+    "port": 8000,
+    "mount_path": "/",
+    "sse_path": "/sse",
+    "message_path": "/messages/",
+    "streamable_http_path": "/mcp",
+    "stateless_http": true,
+    "json_response": true,
+    "log_level": "INFO",
+    "cors_origins": [
+      "https://<remote-webui-host>",
+      "https://<remote-webui-host>:8282"
+    ],
+    "cors_allow_headers": [
+      "mcp-session-id",
+      "mcp-protocol-version",
+      "last-event-id",
+      "authorization"
+    ],
+    "enable_execute_code": false,
+    "dependencies": {
+      "auto_install": true
+    }
+  }
+}
