@@ -3,7 +3,7 @@
 ### 1.1 必须遵守
 
 **1. 占位符说明**
-- 本地资料路径占位符统一使用 `__QGIS_MATERIALS_WIN_AMD64_PREFIX__`，例如 E:\github_repos\QGIS-Materials 路径仅用于说明格式，不代表固定盘符。
+- 本地资料路径占位符统一使用 `__QGIS_MATERIALS_WIN_AMD64_PREFIX__`，例如 E:\github_repos\QGIS-Materials\QGISCompilationNavigation 路径仅用于说明格式，不代表固定盘符。
 - OSGeo4W 路径占位符统一使用 `__OSGEO4W_ROOT__`，例如 E:\osgeo4w-setup\OSGeo4W34407 路径仅用于说明格式，不代表固定盘符。
 - 未解析出 `__QGIS_MATERIALS_WIN_AMD64_PREFIX__` 或 `__OSGEO4W_ROOT__` 的真实有效值前，不得执行依赖外部路径的命令。占位符解析后，必须先检查路径存在性；仅在 `Test-Path=True` 时继续执行。若 `Test-Path=False`，必须停止执行并提示缺失路径。
   ```powershell
