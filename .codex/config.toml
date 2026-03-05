@@ -25,7 +25,7 @@ personality = "friendly"
 # 候选值 ---> live：    不会缓存过去网页搜索内容。
 web_search = "live"
 
-# 自动化要写 Markdown 文件到仓库目录
+# 因为自动化要写 Markdown 文件到仓库目录，因此需要将模式修改为可写状态。
 sandbox_mode = "workspace-write"
 
 # 该选项控制 Codex 在要运行命令/触发一些需要批准的动作时，是否暂停来向你要权限。

@@ -20,6 +20,10 @@
 
 为了在当前仓库中稳定引用 `QGIS-Materials\QGISCompilationNavigation\QGIS-Windows-AMD64` 资料，统一使用 `__QGIS_MATERIALS_WIN_AMD64_PREFIX__` 前缀占位符，该占位符在后续手动替换为真实路径时，例如：`I:\github_repos\QGIS-Materials\QGISCompilationNavigation\QGIS-Windows-AMD64`。如果上下文中已经获取得到 `__QGIS_MATERIALS_WIN_AMD64_PREFIX__` 占位符的具体值并且有效，则在后续引用资料的时候需要自动替换、拼接成对应的路径。
 
+### 删除权限（必须遵守）
+
+不得整体删除该仓库中的所有文件和编译 QGIS 所依赖的第三方库 OSGeo4W 根目录中的所有文件。
+
 ## 2. 总体目标
 
 总体目标是对当前仓库内容进行深入、可验证的分析，帮助提问者理解：
