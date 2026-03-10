@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import importlib
 import sys
@@ -21,7 +21,11 @@ TEST_MODULES = [
     "processingmcpserver.tests.registrations_integrity",
     "processingmcpserver.tests.transports_contracts",
     "processingmcpserver.tests.log_handler_runtime",
+    "processingmcpserver.tests.mcp_main_thread_runner_runtime",
+    "processingmcpserver.tests.plugin_runtime",
+    "processingmcpserver.tests.server_runtime",
     "processingmcpserver.tests.dependencies_runtime",
+    "processingmcpserver.tests.mcp_tools_normalizers",
     "processingmcpserver.tests.mcp_tools_common_get_qgis_info",
     "processingmcpserver.tests.mcp_tools_vector_add_layer",
     "processingmcpserver.tests.mcp_tools_vector_add_layers",
@@ -70,9 +74,44 @@ TEST_MODULES = [
     "processingmcpserver.tests.mcp_resources_qgis_project_layers_summary",
 ]
 
+IGNORED_TEST_FILES = {
+    "__init__.py",
+    "_shared_case_base.py",
+    "_shared_fixtures.py",
+    "suite_runner.py",
+}
+
+
+def _discover_test_modules() -> list[str]:
+    tests_dir = Path(__file__).resolve().parent
+    return sorted(
+        f"processingmcpserver.tests.{path.stem}"
+        for path in tests_dir.glob("*.py")
+        if path.name not in IGNORED_TEST_FILES
+    )
+
+
+def _validate_test_modules() -> None:
+    discovered = _discover_test_modules()
+    declared = sorted(TEST_MODULES)
+    if discovered == declared:
+        return
+
+    missing = sorted(set(discovered) - set(TEST_MODULES))
+    extra = sorted(set(TEST_MODULES) - set(discovered))
+    details: list[str] = []
+    if missing:
+        details.append("missing=" + ", ".join(missing))
+    if extra:
+        details.append("extra=" + ", ".join(extra))
+    raise RuntimeError(
+        "TEST_MODULES is out of sync with tests directory: " + "; ".join(details)
+    )
+
 
 def build_suite() -> unittest.TestSuite:
     """Build full suite explicitly so filenames are unconstrained."""
+    _validate_test_modules()
     loader = unittest.defaultTestLoader
     suite = unittest.TestSuite()
     for module_name in TEST_MODULES:
@@ -100,5 +139,3 @@ def load_tests(
 if __name__ == "__main__":
     result = run_from_qgis_console()
     raise SystemExit(0 if result.wasSuccessful() else 1)
-
-

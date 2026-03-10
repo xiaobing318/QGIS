@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import gc
 import json
@@ -8,9 +8,12 @@ import tempfile
 import time
 from pathlib import Path
 
+from qgis.PyQt.QtCore import QDate, QDateTime, QTime, Qt, QVariant
 from qgis.core import (
     QgsFeature,
+    QgsField,
     QgsGeometry,
+    QgsMapLayer,
     QgsProject,
     QgsRasterLayer,
     QgsSettings,
@@ -22,6 +25,7 @@ from processingmcpserver import dependency_manager as dependency_runtime
 from processingmcpserver.config import (
     ProcessingMCPServerConfig,
     ProcessingMCPServerDependencies,
+    ProcessingMCPFilesystemConfig,
     processing_mcp_config_file_path,
 )
 from processingmcpserver.mcp_tools import ProcessingMCPTools
@@ -110,6 +114,14 @@ class ProcessingMCPTestBase(QgisTestCase):
             cors_allow_headers=None,
             enable_execute_code=False,
             dependencies=ProcessingMCPServerDependencies(),
+            filesystem=ProcessingMCPFilesystemConfig(
+                allowed_roots=[
+                    str(self.config_path.parent),
+                    tempfile.gettempdir(),
+                ],
+                readonly_roots=[],
+                disable_filesystem_tools=False,
+            ),
         )
 
     @staticmethod
@@ -130,7 +142,11 @@ class ProcessingMCPTestBase(QgisTestCase):
         )
 
     def build_tools(self) -> ProcessingMCPTools:
-        return ProcessingMCPTools(iface=None, runner=DummyRunner())
+        return ProcessingMCPTools(
+            iface=None,
+            runner=DummyRunner(),
+            config=self._build_config("streamable-http"),
+        )
 
     def _cleanup_new_project_layers(self) -> None:
         project = QgsProject.instance()
@@ -234,6 +250,52 @@ class ProcessingMCPTestBase(QgisTestCase):
         QgsProject.instance().addMapLayer(layer)
         return layer
 
+    def add_serialization_vector_layer(
+        self, layer_name: str = "processingmcpserver_serialization_vector"
+    ) -> QgsVectorLayer:
+        layer = QgsVectorLayer(
+            "Point?crs=EPSG:4326&field=name:string(32)",
+            layer_name,
+            "memory",
+        )
+        self.assertTrue(layer.isValid())
+        provider = layer.dataProvider()
+        add_fields_result = provider.addAttributes(
+            [
+                QgsField("event_date", QVariant.Date),
+                QgsField("event_time", QVariant.Time),
+                QgsField("event_ts", QVariant.DateTime),
+                QgsField("enabled", QVariant.Bool),
+                QgsField("notes", QVariant.String),
+            ]
+        )
+        if isinstance(add_fields_result, tuple):
+            self.assertTrue(add_fields_result[0])
+        else:
+            self.assertTrue(add_fields_result)
+        layer.updateFields()
+
+        feature = QgsFeature(layer.fields())
+        feature.setAttributes(
+            [
+                "complex-row",
+                QDate(2026, 3, 10),
+                QTime(12, 34, 56, 789),
+                QDateTime(QDate(2026, 3, 10), QTime(12, 34, 56, 789), Qt.TimeSpec.UTC),
+                True,
+                None,
+            ]
+        )
+        feature.setGeometry(QgsGeometry.fromWkt("POINT(108.9300 34.2300)"))
+        add_result = provider.addFeatures([feature])
+        if isinstance(add_result, tuple):
+            self.assertTrue(add_result[0])
+        else:
+            self.assertTrue(add_result)
+        layer.updateExtents()
+        QgsProject.instance().addMapLayer(layer)
+        return layer
+
     def sample_raster_path(self) -> Path:
         candidates = [
             self.data_dir() / "dem.tif",
@@ -299,5 +361,17 @@ class ProcessingMCPTestBase(QgisTestCase):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
         return path
+
+    @staticmethod
+    def project_layer(layer_id: str) -> QgsMapLayer | None:
+        return QgsProject.instance().mapLayer(layer_id)
+
+    @staticmethod
+    def vector_field_names(layer: QgsVectorLayer) -> list[str]:
+        return [field.name() for field in layer.fields()]
+
+    @staticmethod
+    def vector_attribute_values(layer: QgsVectorLayer, field_name: str) -> list[object]:
+        return [feature.attribute(field_name) for feature in layer.getFeatures()]
 
 

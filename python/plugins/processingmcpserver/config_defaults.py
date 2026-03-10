@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +23,8 @@ def processing_mcp_config_file_path() -> Path:
 
 def default_processing_mcp_json_document() -> dict[str, Any]:
     """生成默认配置文档，用于首次启动自动落盘。"""
+    settings_dir = QgsApplication.qgisSettingsDirPath()
+    temp_dir = tempfile.gettempdir()
     return {
         "version": 1,
         "processing_mcp": {
@@ -41,6 +44,11 @@ def default_processing_mcp_json_document() -> dict[str, Any]:
             "enable_execute_code": False,
             "dependencies": {
                 "auto_install": True,
+            },
+            "filesystem": {
+                "allowed_roots": [settings_dir, temp_dir],
+                "readonly_roots": [],
+                "disable_filesystem_tools": False,
             },
         },
     }

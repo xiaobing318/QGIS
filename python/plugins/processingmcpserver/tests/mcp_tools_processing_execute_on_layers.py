@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from unittest.mock import patch
 
@@ -86,3 +86,31 @@ class ToolsProcessingExecuteOnLayersTest(ProcessingMCPTestBase):
             )
         self.assertIn("layer_bindings is required", str(ctx.exception))
 
+    def test_failure_invalid_bound_layer_ref(self):
+        tools = self.build_tools()
+
+        with self.assertRaises(Exception) as ctx:
+            tools.processing_execute_on_layers(
+                algorithm="fake:buffer",
+                layer_bindings={"INPUT": "missing-layer"},
+                parameters={},
+                load_results=False,
+                batch_mode=False,
+            )
+        self.assertIn("Layer not found", str(ctx.exception))
+
+    @patch("processingmcpserver.mcp_tools.processing.run")
+    def test_failure_propagates_processing_runtime_error(self, mock_run):
+        tools = self.build_tools()
+        layer = self.add_sample_vector_layer("execute_on_layers_vector4")
+        mock_run.side_effect = RuntimeError("processing boom")
+
+        with self.assertRaises(RuntimeError) as ctx:
+            tools.processing_execute_on_layers(
+                algorithm="fake:buffer",
+                layer_bindings={"INPUT": layer.id()},
+                parameters={},
+                load_results=False,
+                batch_mode=False,
+            )
+        self.assertIn("processing boom", str(ctx.exception))

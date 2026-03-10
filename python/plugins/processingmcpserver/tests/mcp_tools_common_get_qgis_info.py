@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from ._shared_case_base import ProcessingMCPTestBase
 from ._shared_fixtures import assert_tool_registered
@@ -21,5 +21,8 @@ class ToolsCommonGetQgisInfoTest(ProcessingMCPTestBase):
         tools = self.build_tools()
         result = tools.common_get_qgis_info()
         self.assertIn("version", result["qgis"])
+        self.assertIn("platform", result)
+        self.assertIn("active_plugins", result)
         self.assertIn("layer_count", result["project"])
         self.assertIn("available", result["processing_mcp"])
+        self.assertIn("filesystem", result["processing_mcp"])

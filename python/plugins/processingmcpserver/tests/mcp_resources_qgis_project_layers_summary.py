@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import json
 
@@ -25,4 +25,18 @@ class ResourceQgisProjectLayersSummaryTest(ProcessingMCPTestBase):
         self.assertIn("generated_at", payload)
         self.assertIn("project_id", payload)
         self.assertIn("data", payload)
+
+    def test_resource_envelope_error_when_supplier_fails(self):
+        class BrokenTools(DummyTools):
+            def get_layers_summary(self):
+                raise RuntimeError("layers summary failed")
+
+        mcp = DummyMcp()
+        register_resources(mcp, BrokenTools())
+
+        payload = json.loads(mcp.resource_funcs["qgis://project/layers/summary"]())
+        self.assertFalse(payload["ok"])
+        self.assertEqual(payload["uri"], "qgis://project/layers/summary")
+        self.assertIn("error", payload)
+        self.assertIn("layers summary failed", payload["error"]["message"])
 

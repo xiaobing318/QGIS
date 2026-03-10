@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import io
 import logging
 from unittest.mock import patch
 
@@ -39,3 +40,31 @@ class LogHandlerRuntimeTest(ProcessingMCPTestBase):
         self.assertEqual(QgisLogHandler._map_level(logging.INFO), Qgis.Info)
         self.assertEqual(QgisLogHandler._map_level(logging.WARNING), Qgis.Warning)
         self.assertEqual(QgisLogHandler._map_level(logging.ERROR), Qgis.Critical)
+
+    def test_emit_falls_back_to_stderr_when_qgis_logging_fails(self):
+        handler = QgisLogHandler()
+        record = logging.LogRecord(
+            name="mcp.server.streamable_http",
+            level=logging.ERROR,
+            pathname=__file__,
+            lineno=48,
+            msg="fallback ready",
+            args=(),
+            exc_info=None,
+        )
+        stderr = io.StringIO()
+
+        with (
+            patch(
+                "processingmcpserver.log_handler.QgsMessageLog.logMessage",
+                side_effect=RuntimeError("log boom"),
+            ),
+            patch.object(
+                __import__("processingmcpserver.log_handler").log_handler.sys,
+                "__stderr__",
+                stderr,
+            ),
+        ):
+            handler.emit(record)
+
+        self.assertIn("fallback ready", stderr.getvalue())

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+"""Logging bridge from Python handlers into the QGIS message log."""
+
 import logging
 import sys
 

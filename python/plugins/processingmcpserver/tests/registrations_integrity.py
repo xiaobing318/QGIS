@@ -1,5 +1,6 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
+import inspect
 import json
 
 from processingmcpserver.mcp_prompts import REGISTERED_PROMPT_NAMES, register_prompts
@@ -7,7 +8,11 @@ from processingmcpserver.mcp_resources import (
     REGISTERED_RESOURCE_URIS,
     register_resources,
 )
-from processingmcpserver.mcp_tools import REGISTERED_TOOL_NAMES, register_tools
+from processingmcpserver.mcp_tools import (
+    REGISTERED_TOOL_NAMES,
+    ProcessingMCPTools,
+    register_tools,
+)
 
 from ._shared_case_base import ProcessingMCPTestBase
 from ._shared_fixtures import DummyMcp, DummyTools
@@ -41,6 +46,20 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
 
         self.assertEqual(set(mcp.prompt_names), set(REGISTERED_PROMPT_NAMES))
         self.assertEqual(set(mcp.resource_uris), set(REGISTERED_RESOURCE_URIS))
+
+    def test_registered_tools_have_non_placeholder_docstrings(self):
+        for tool_name in REGISTERED_TOOL_NAMES:
+            method = getattr(ProcessingMCPTools, tool_name, None)
+            self.assertTrue(callable(method), msg=f"Missing tool method: {tool_name}")
+            doc = inspect.getdoc(method)
+            self.assertTrue(doc, msg=f"Empty docstring for tool: {tool_name}")
+            self.assertIn("用途：", doc, msg=f"Missing purpose section: {tool_name}")
+            self.assertIn("返回结果：", doc, msg=f"Missing returns section: {tool_name}")
+            self.assertNotEqual(
+                doc,
+                f"MCP tool wrapper for {tool_name}.",
+                msg=f"Placeholder docstring leaked into tool: {tool_name}",
+            )
 
     def test_prompt_templates_exclude_removed_tool_names(self):
         removed_render_tool = "render" + "_map"

@@ -27,6 +27,17 @@
     "enable_execute_code": false,
     "dependencies": {
       "auto_install": true
+    },
+    "filesystem": {
+      "allowed_roots": [
+        "<QGIS_PROFILE>/processingmcpserver",
+        "<SYSTEM_TEMP>"
+      ],
+      "readonly_roots": [
+        "<QGIS_PROFILE>/processingmcpserver",
+        "<SYSTEM_TEMP>"
+      ],
+      "disable_filesystem_tools": false
     }
   }
 }

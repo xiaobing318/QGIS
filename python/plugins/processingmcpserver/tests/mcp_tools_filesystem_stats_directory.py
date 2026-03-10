@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from ._shared_case_base import ProcessingMCPTestBase
 from ._shared_fixtures import assert_tool_registered
@@ -21,6 +21,9 @@ class ToolsFilesystemStatsDirectoryTest(ProcessingMCPTestBase):
 
     def test_failure_missing_directory(self):
         tools = self.build_tools()
+        missing_dir = self.make_temp_dir() / "missing"
         with self.assertRaises(Exception) as ctx:
-            tools.filesystem_stats_directory(directory="C:/not-exist", recursive=True)
+            tools.filesystem_stats_directory(
+                directory=str(missing_dir), recursive=True
+            )
         self.assertIn("Directory not found", str(ctx.exception))

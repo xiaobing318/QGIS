@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from processingmcpserver.mcp_prompts import register_prompts
 

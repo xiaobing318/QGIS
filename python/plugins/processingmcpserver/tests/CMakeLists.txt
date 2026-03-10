@@ -10,5 +10,5 @@ PLUGIN_INSTALL(processingmcpserver tests/docs ${TEST_DOC_FILES})
 
 if(ENABLE_TESTS)
   include(UsePythonTest)
-  ADD_PYTHON_TEST(ProcessingMCPServer processing_mcp_server_tests.py)
+  ADD_PYTHON_TEST(ProcessingMCPServer suite_runner.py)
 endif()

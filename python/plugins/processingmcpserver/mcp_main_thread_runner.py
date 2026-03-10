@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+"""Qt main-thread runner used by MCP tools and server callbacks."""
+
 import threading
 from typing import Callable, TypeVar
 
@@ -52,7 +54,8 @@ class McpMainThreadRunner(QObject):
         invoke_ok = QMetaObject.invokeMethod(
             self, "_execute", Qt.ConnectionType.QueuedConnection, Q_ARG(object, wrapper)
         )
-        if not bool(invoke_ok):
+        # PyQt6 may return None here even when the callback was queued successfully.
+        if invoke_ok is False:
             raise RuntimeError("Failed to schedule callback on Qt main thread.")
 
         if not done.wait(self._wait_timeout_seconds):

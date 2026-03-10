@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from ._shared_case_base import ProcessingMCPTestBase
 from ._shared_fixtures import assert_tool_registered
@@ -19,6 +19,7 @@ class ToolsFilesystemQueryEntryInfoTest(ProcessingMCPTestBase):
 
     def test_failure_missing_path(self):
         tools = self.build_tools()
+        missing_path = self.make_temp_dir() / "missing.txt"
         with self.assertRaises(Exception) as ctx:
-            tools.filesystem_query_entry_info(path="C:/not-exist.txt")
+            tools.filesystem_query_entry_info(path=str(missing_path))
         self.assertIn("Path not found", str(ctx.exception))

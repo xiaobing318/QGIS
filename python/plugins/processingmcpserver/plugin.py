@@ -1,4 +1,6 @@
-﻿from __future__ import annotations
+from __future__ import annotations
+
+"""QGIS plugin entrypoint for the Processing MCP Server lifecycle."""
 
 from qgis.core import Qgis, QgsMessageLog
 

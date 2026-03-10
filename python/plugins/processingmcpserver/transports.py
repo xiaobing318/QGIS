@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+"""Transport adapters for exposing FastMCP over HTTP, SSE, or stdio."""
+
 import asyncio
 import sys
 import threading

@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import subprocess
 from pathlib import Path
@@ -472,5 +472,53 @@ class DependenciesRuntimeTest(ProcessingMCPTestBase):
         self.assertTrue(result.install_attempted)
         self.assertIn("Access is denied", result.failure_reason)
         self.assertNotIn("--user", result.install_command)
+
+    @patch("processingmcpserver.dependency_probe.sys.executable", "C:/invalid/not-python.txt")
+    def test_resolve_pip_python_executable_falls_back_to_prefix_python(self):
+        temp_root = self.make_temp_dir()
+        python_exe = temp_root / "python.exe"
+        python_exe.write_text("", encoding="utf-8")
+        snapshot = dependency_runtime.PythonEnvironmentSnapshot(
+            platform_system="Windows",
+            platform_release="10",
+            platform_machine="x86_64",
+            python_executable="C:/invalid/not-python.txt",
+            python_version="3.12.0",
+            python_prefix=str(temp_root),
+            python_base_prefix="C:/base-prefix",
+            python_exec_prefix="C:/exec-prefix",
+            is_virtual_environment=False,
+            site_packages=[],
+            user_site_packages="",
+            environment_error="",
+        )
+
+        python_path, source, error = dependency_runtime._resolve_pip_python_executable(
+            snapshot
+        )
+
+        self.assertEqual(Path(python_path), python_exe.resolve())
+        self.assertEqual(source, "sys.prefix")
+        self.assertEqual(error, "")
+
+    @patch("processingmcpserver.dependency_probe.subprocess.run")
+    def test_resolve_install_target_details_falls_back_on_invalid_probe_output(
+        self, mock_run
+    ):
+        environment = self.build_env_snapshot()
+        mock_run.return_value = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout="not-json",
+            stderr="",
+        )
+
+        prefix, site_packages = dependency_runtime._resolve_install_target_details(
+            "C:/Python/python.exe",
+            environment,
+        )
+
+        self.assertEqual(prefix, environment.python_prefix)
+        self.assertEqual(site_packages, environment.site_packages[-1])
 
 

@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from processingmcpserver.mcp_prompts import register_prompts
 
@@ -27,4 +27,14 @@ class PromptQgisTaskPlannerTest(ProcessingMCPTestBase):
         self.assertIn("Tool Chain / 工具链", output)
         self.assertIn("Deliverables / 交付物", output)
         self.assertIn("Task: 缓冲道路图层", output)
+
+    def test_prompt_defaults_placeholder_values_for_empty_inputs(self):
+        mcp = DummyMcp()
+        register_prompts(mcp, DummyTools())
+
+        prompt_fn = mcp.prompt_funcs["qgis_task_planner"]
+        output = prompt_fn(task=" ", constraints="")
+
+        self.assertIn("Task: N/A", output)
+        self.assertIn("Constraints: None", output)
 

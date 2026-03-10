@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from ._shared_case_base import ProcessingMCPTestBase
 from ._shared_fixtures import assert_tool_registered
@@ -16,6 +16,8 @@ class ToolsVectorStatsBasicTest(ProcessingMCPTestBase):
         self.assertTrue(result["ok"])
         self.assertEqual(result["tool"], "vector_stats_basic")
         self.assertIn("mean", result["summary"])
+        self.assertIn("stdev", result["summary"])
+        self.assertAlmostEqual(result["summary"]["stdev"], 1.0, places=6)
 
     def test_failure_missing_field(self):
         tools = self.build_tools()

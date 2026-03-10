@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from unittest.mock import patch
 
@@ -64,3 +64,15 @@ class ToolsProcessingExecuteAlgorithmTest(ProcessingMCPTestBase):
             )
         self.assertIn("parameters must be an object", str(ctx.exception))
 
+    @patch("processingmcpserver.mcp_tools.processing.run")
+    def test_failure_propagates_processing_runtime_error(self, mock_run):
+        tools = self.build_tools()
+        mock_run.side_effect = RuntimeError("processing boom")
+
+        with self.assertRaises(RuntimeError) as ctx:
+            tools.processing_execute_algorithm(
+                algorithm="fake:buffer",
+                parameters={"INPUT": "layer-1"},
+                load_results=False,
+            )
+        self.assertIn("processing boom", str(ctx.exception))

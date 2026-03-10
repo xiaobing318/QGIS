@@ -1,4 +1,6 @@
-﻿from __future__ import annotations
+from __future__ import annotations
+
+"""Processing MCP server assembly and lifecycle management."""
 
 import traceback
 from typing import TYPE_CHECKING, Optional
@@ -18,6 +20,11 @@ from processingmcpserver.transports import create_transport
 
 if TYPE_CHECKING:
     from mcp.server.fastmcp import FastMCP
+
+
+_SERVER_INSTRUCTIONS = (
+    "该 MCP Server 提供与 QGIS Processing 框架交互的工具，支持查询项目状态、图层详情、执行算法等功能。"
+)
 
 
 class ProcessingMCPServer:
@@ -46,9 +53,7 @@ class ProcessingMCPServer:
         try:
             mcp_server = FastMCP(
                 "QGIS Processing MCP Server",
-                instructions=(
-                    "Expose QGIS processing, project, and layer operations via MCP."
-                ),
+                instructions=_SERVER_INSTRUCTIONS,
                 host=self._config.host,
                 port=self._config.port,
                 mount_path=self._config.mount_path,
@@ -59,7 +64,7 @@ class ProcessingMCPServer:
                 json_response=self._config.json_response,
                 log_level=self._config.log_level,
             )
-            tools = ProcessingMCPTools(self._iface, self._runner)
+            tools = ProcessingMCPTools(self._iface, self._runner, self._config)
             register_tools(
                 mcp_server,
                 tools,
@@ -171,3 +176,14 @@ class ProcessingMCPServer:
             Qgis.Info,
         )
 
+        filesystem = self._config.filesystem
+        QgsMessageLog.logMessage(
+            (
+                "Processing MCP filesystem policy: "
+                f"disable_filesystem_tools={filesystem.disable_filesystem_tools}, "
+                f"allowed_roots={filesystem.allowed_roots}, "
+                f"readonly_roots={filesystem.readonly_roots}"
+            ),
+            MCP_LOG_CATEGORY,
+            Qgis.Info,
+        )

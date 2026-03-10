@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+"""Public config facade for processingmcpserver.
+
+This module intentionally re-exports the stable config API so other modules
+and tests can import from a single location without depending on the loader
+module layout.
+"""
+
 from processingmcpserver.config_defaults import (
     default_processing_mcp_json_document,
     processing_mcp_config_file_path,
@@ -14,6 +21,7 @@ from processingmcpserver.config_types import (
     SOURCE_SETTINGS,
     ProcessingMCPServerConfig,
     ProcessingMCPServerDependencies,
+    ProcessingMCPFilesystemConfig,
 )
 
 __all__ = [
@@ -24,6 +32,7 @@ __all__ = [
     "SOURCE_SETTINGS",
     "SOURCE_DEFAULT",
     "ProcessingMCPServerDependencies",
+    "ProcessingMCPFilesystemConfig",
     "ProcessingMCPServerConfig",
     "processing_mcp_config_file_path",
     "default_processing_mcp_json_document",
