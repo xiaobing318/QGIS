@@ -30,7 +30,7 @@ _SERVER_INSTRUCTIONS = (
     "能力说明：该服务运行在 QGIS 桌面会话内，可读取当前工程与图层上下文，支持空间数据管理与分析、地理处理执行、任务提示模板与项目资源摘要，以及受控的文件系统探查与编辑能力。"
     "使用背景：适用于需要让模型基于真实 QGIS 工程状态完成分析与处理任务的场景，尤其适合把自动化流程和人工复核结合起来。"
     "推荐工作流：先探查工程与图层现状并明确目标，再核对输入输出和关键参数；随后以小范围、非破坏方式试跑并检查结果与告警；确认后再执行批量处理，并在每轮后复核输出质量。"
-    "注意事项：默认采用非破坏执行策略，写盘与原位修改需显式放开；删除与覆盖操作需显式确认；文件系统访问受白名单与只读策略约束；执行失败时先回查参数与图层引用，再进行最小化重试。"
+    "注意事项：默认采用非破坏执行策略；所有文件系统写操作都需显式提供 confirm_write=true；删除与覆盖操作还需 confirm_destructive=true；执行失败时先回查参数与图层引用，再进行最小化重试。"
 )
 _PLUGIN_METADATA_FILENAME = "metadata.txt"
 _SERVER_ICON_FILENAME = "processingmcpserver.svg"
@@ -293,18 +293,6 @@ class ProcessingMCPServer:
                 "Processing MCP dependencies: "
                 f"auto_install={dependencies.auto_install}, "
                 "source=processingmcpserver/requirements.txt"
-            ),
-            MCP_LOG_CATEGORY,
-            Qgis.Info,
-        )
-
-        filesystem = self._config.filesystem
-        QgsMessageLog.logMessage(
-            (
-                "Processing MCP filesystem policy: "
-                f"disable_filesystem_tools={filesystem.disable_filesystem_tools}, "
-                f"allowed_roots={filesystem.allowed_roots}, "
-                f"readonly_roots={filesystem.readonly_roots}"
             ),
             MCP_LOG_CATEGORY,
             Qgis.Info,

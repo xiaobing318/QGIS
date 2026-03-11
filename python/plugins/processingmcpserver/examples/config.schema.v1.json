@@ -104,47 +104,6 @@
             }
           },
           "additionalProperties": false
-        },
-        "filesystem": {
-          "type": "object",
-          "properties": {
-            "allowed_roots": {
-              "oneOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "readonly_roots": {
-              "oneOf": [
-                {
-                  "type": "array",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                {
-                  "type": "string"
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            },
-            "disable_filesystem_tools": {
-              "type": "boolean"
-            }
-          },
-          "additionalProperties": false
         }
       },
       "additionalProperties": false

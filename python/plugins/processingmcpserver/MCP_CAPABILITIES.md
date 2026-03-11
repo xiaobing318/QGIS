@@ -1,8 +1,8 @@
 # Processing MCP Capabilities
 
-- Generated at (UTC): `2026-03-11T06:13:52.412870Z`
-- Exporter module: `I:\QGISCompilations\VisualStudio2022\feature-final-3_44_7-mcp\qgis-project\output\python\plugins\processingmcpserver\capabilities_markdown.py`
-- Package directory: `I:\QGISCompilations\VisualStudio2022\feature-final-3_44_7-mcp\qgis-project\output\python\plugins\processingmcpserver`
+- Generated at (UTC): `2026-03-11T16:04:39.166749Z`
+- Exporter module: `I:\github_repos\QGIS\python\plugins\processingmcpserver\capabilities_markdown.py`
+- Package directory: `I:\github_repos\QGIS\python\plugins\processingmcpserver`
 - Tool count: `42`
 - Prompt count: `2`
 - Resource count: `2`
@@ -11,7 +11,7 @@
 
 ### `common_get_qgis_info`
 
-用途：返回当前 QGIS Desktop 会话、平台、插件与 Processing MCP 运行状态，适合作为所有自动化流程的环境探测入口。 输入语义：无业务输入。 前置条件：QGIS Desktop 已启动且 processingmcpserver 插件已加载。 主要副作用：无写操作，只读取当前应用、项目与插件状态。 安全开关：无。 返回结果：返回 qgis、platform、python、active_project、active_plugins，以及 processing_mcp.filesystem 策略摘要等环境信息。
+用途：返回当前 QGIS Desktop 会话、平台、插件与 Processing MCP 运行状态，适合作为所有自动化流程的环境探测入口。 输入语义：无业务输入。 前置条件：QGIS Desktop 已启动且 processingmcpserver 插件已加载。 主要副作用：无写操作，只读取当前应用、项目与插件状态。 安全开关：无。 返回结果：返回 qgis、platform、python、active_project、active_plugins，以及 processing_mcp.filesystem.write_policy 安全摘要等环境信息。
 
 ### `vector_add_layer`
 
@@ -123,39 +123,39 @@
 
 ### `filesystem_query_list_entries`
 
-用途：列出目录中的文件或子目录条目，适合在执行文件操作前先做只读探查。 输入语义：directory 是根目录，recursive 控制是否递归，include_files 和 include_directories 控制返回对象类型，name_glob 过滤名称，limit 控制返回上限。 前置条件：目录必须存在，且位于 filesystem.allowed_roots 内；include_files 与 include_directories 不能同时为 false。 主要副作用：无写操作，只读取文件系统元数据。 安全开关：limit 会被内部阈值裁剪；disable_filesystem_tools=true 时会整体拒绝；结果里会明确 returned_count、matched_total 与 truncated。 返回结果：返回目录路径、entries 数组以及 limit 应用摘要。
+用途：列出目录中的文件或子目录条目，适合在执行文件操作前先做只读探查。 输入语义：directory 是根目录，recursive 控制是否递归，include_files 和 include_directories 控制返回对象类型，name_glob 过滤名称，limit 控制返回上限。 前置条件：目录必须存在；include_files 与 include_directories 不能同时为 false。 主要副作用：无写操作，只读取文件系统元数据。 安全开关：limit 会被内部阈值裁剪；结果里会明确 returned_count、matched_total 与 truncated。 返回结果：返回目录路径、entries 数组以及 limit 应用摘要。
 
 ### `filesystem_query_entry_info`
 
-用途：读取单个文件或目录的基础元数据。 输入语义：path 指向文件或目录。 前置条件：目标路径必须存在，且位于 filesystem.allowed_roots 内。 主要副作用：无写操作，只读取文件系统元数据。 安全开关：disable_filesystem_tools=true 时会整体拒绝。 返回结果：返回 entry 对象，包含类型、大小、时间戳和可用路径信息。
+用途：读取单个文件或目录的基础元数据。 输入语义：path 指向文件或目录。 前置条件：目标路径必须存在。 主要副作用：无写操作，只读取文件系统元数据。 安全开关：无。 返回结果：返回 entry 对象，包含类型、大小、时间戳和可用路径信息。
 
 ### `filesystem_query_read_text`
 
-用途：按 UTF-8 读取文本文件内容，适合让模型读取配置、脚本或日志片段。 输入语义：path 指向文本文件，max_chars 可选，用于限制返回字符数。 前置条件：目标路径必须存在且是文件，位于 filesystem.allowed_roots 内，并且内容应能按 UTF-8 解码。 主要副作用：无写操作，只读取文件内容。 安全开关：max_chars 为 None 时返回全文；传入数值时只读取 max_chars+1 个字符用于判断截断，并在 summary.truncated 中标记。 返回结果：返回 text 字段和截断摘要。
+用途：按 UTF-8 读取文本文件内容，适合让模型读取配置、脚本或日志片段。 输入语义：path 指向文本文件，max_chars 可选，用于限制返回字符数。 前置条件：目标路径必须存在且是文件，并且内容应能按 UTF-8 解码。 主要副作用：无写操作，只读取文件内容。 安全开关：max_chars 为 None 时返回全文；传入数值时只读取 max_chars+1 个字符用于判断截断，并在 summary.truncated 中标记。 返回结果：返回 text 字段和截断摘要。
 
 ### `filesystem_edit_write_text`
 
-用途：以 UTF-8 一次性写入文本文件，适合新建配置或覆盖写文件。 输入语义：path 是目标文件路径，content 是完整文本内容，overwrite 控制是否允许覆盖已存在文件，confirm_destructive 用于确认覆盖，create_parents 控制是否自动创建父目录。 前置条件：若目标已存在且 overwrite=false 会直接失败；父目录不存在时只有 create_parents=true 才会自动创建；目标路径必须落在 allowed_roots 内且不能命中 readonly_roots。 主要副作用：会创建或覆盖磁盘文件。 安全开关：所有 filesystem_* 调用都受 allowed_roots/readonly_roots/disable_filesystem_tools 约束；编辑类工具不会自动覆盖现有目标，覆盖或删除时必须显式打开 overwrite 或 confirm_destructive。 返回结果：返回写入字符数和最终 path 摘要。
+用途：以 UTF-8 一次性写入文本文件，适合新建配置或覆盖写文件。 输入语义：path 是目标文件路径，content 是完整文本内容，overwrite 控制是否允许覆盖已存在文件，confirm_destructive 用于确认覆盖，create_parents 控制是否自动创建父目录，confirm_write 用于显式确认写操作。 前置条件：若目标已存在且 overwrite=false 会直接失败；父目录不存在时只有 create_parents=true 才会自动创建。 主要副作用：会创建或覆盖磁盘文件。 安全开关：所有 filesystem_edit_* 调用都要求 confirm_write=true；删除或覆盖时还必须显式设置 confirm_destructive=true。 返回结果：返回写入字符数和最终 path 摘要。
 
 ### `filesystem_edit_append_text`
 
-用途：向文本文件尾部追加 UTF-8 内容。 输入语义：path 是目标文件路径，content 是待追加文本，create_parents 控制父目录不存在时是否自动创建。 前置条件：目标路径的父目录必须存在或允许自动创建；目标文件不存在时会被创建；目标路径必须落在 allowed_roots 内且不能命中 readonly_roots。 主要副作用：会在磁盘上创建文件或修改现有文件末尾内容。 安全开关：该工具不会覆盖已有内容，但仍属于写盘操作，调用前应确认目标路径。 返回结果：返回追加字符数和最终 path 摘要。
+用途：向文本文件尾部追加 UTF-8 内容。 输入语义：path 是目标文件路径，content 是待追加文本，create_parents 控制父目录不存在时是否自动创建，confirm_write 用于显式确认写操作。 前置条件：目标路径的父目录必须存在或允许自动创建；目标文件不存在时会被创建。 主要副作用：会在磁盘上创建文件或修改现有文件末尾内容。 安全开关：该工具不会覆盖已有内容，但仍属于写盘操作，调用前应确认目标路径。 返回结果：返回追加字符数和最终 path 摘要。
 
 ### `filesystem_edit_copy_entry`
 
-用途：复制单个文件或整个目录到新位置。 输入语义：source_path 是源路径，target_path 是目标路径，overwrite 控制是否允许覆盖目标，confirm_destructive 用于确认覆盖已存在目标。 前置条件：源路径必须存在且 source/target 都要位于 allowed_roots 内；target 不能命中 readonly_roots；目标若已存在且 overwrite=false 会失败。 主要副作用：会在磁盘上创建新的文件或目录副本；目录复制会递归复制内容。 安全开关：所有 filesystem_* 调用都受 allowed_roots/readonly_roots/disable_filesystem_tools 约束；编辑类工具不会自动覆盖现有目标，覆盖或删除时必须显式打开 overwrite 或 confirm_destructive。 返回结果：返回 source_path 和 target_path 摘要。
+用途：复制单个文件或整个目录到新位置。 输入语义：source_path 是源路径，target_path 是目标路径，overwrite 控制是否允许覆盖目标，confirm_destructive 用于确认覆盖已存在目标，confirm_write 用于显式确认写操作。 前置条件：源路径必须存在；目标若已存在且 overwrite=false 会失败。 主要副作用：会在磁盘上创建新的文件或目录副本；目录复制会递归复制内容。 安全开关：所有 filesystem_edit_* 调用都要求 confirm_write=true；删除或覆盖时还必须显式设置 confirm_destructive=true。 返回结果：返回 source_path 和 target_path 摘要。
 
 ### `filesystem_edit_move_entry`
 
-用途：把文件或目录移动到新位置。 输入语义：source_path 是源路径，target_path 是目标路径，overwrite 控制是否允许覆盖目标，confirm_destructive 用于确认覆盖已存在目标。 前置条件：源路径必须存在且 source/target 都要位于 allowed_roots 内；source/target 都不能命中 readonly_roots；目标若已存在且 overwrite=false 会失败。 主要副作用：会修改磁盘目录结构，源路径在成功后会消失。 安全开关：所有 filesystem_* 调用都受 allowed_roots/readonly_roots/disable_filesystem_tools 约束；编辑类工具不会自动覆盖现有目标，覆盖或删除时必须显式打开 overwrite 或 confirm_destructive。 返回结果：返回 source_path 和 target_path 摘要，表示移动已完成。
+用途：把文件或目录移动到新位置。 输入语义：source_path 是源路径，target_path 是目标路径，overwrite 控制是否允许覆盖目标，confirm_destructive 用于确认覆盖已存在目标，confirm_write 用于显式确认写操作。 前置条件：源路径必须存在；目标若已存在且 overwrite=false 会失败。 主要副作用：会修改磁盘目录结构，源路径在成功后会消失。 安全开关：所有 filesystem_edit_* 调用都要求 confirm_write=true；删除或覆盖时还必须显式设置 confirm_destructive=true。 返回结果：返回 source_path 和 target_path 摘要，表示移动已完成。
 
 ### `filesystem_edit_delete_entry`
 
-用途：删除单个文件或整个目录树。 输入语义：path 指向待删除文件或目录，confirm_destructive 必须明确确认删除。 前置条件：目标路径必须存在，位于 allowed_roots 内，且不能命中 readonly_roots。 主要副作用：会永久删除磁盘上的文件或目录内容。 安全开关：只有 confirm_destructive=true 才允许执行删除。 返回结果：返回 deleted_path 摘要。
+用途：删除单个文件或整个目录树。 输入语义：path 指向待删除文件或目录，confirm_destructive 必须明确确认删除，confirm_write 用于显式确认写操作。 前置条件：目标路径必须存在。 主要副作用：会永久删除磁盘上的文件或目录内容。 安全开关：只有 confirm_write=true 且 confirm_destructive=true 才允许执行删除。 返回结果：返回 deleted_path 摘要。
 
 ### `filesystem_stats_directory`
 
-用途：统计目录中的文件数、目录数和累计大小，适合在批处理前估算工作量。 输入语义：directory 是根目录，recursive 控制是否递归统计。 前置条件：目录必须存在且位于 filesystem.allowed_roots 内。 主要副作用：无写操作，只遍历文件系统做统计。 安全开关：disable_filesystem_tools=true 时会整体拒绝。 返回结果：返回文件数、目录数、总字节数等目录统计摘要。
+用途：统计目录中的文件数、目录数和累计大小，适合在批处理前估算工作量。 输入语义：directory 是根目录，recursive 控制是否递归统计。 前置条件：目录必须存在。 主要副作用：无写操作，只遍历文件系统做统计。 安全开关：无。 返回结果：返回文件数、目录数、总字节数等目录统计摘要。
 
 ### `processing_list_providers`
 

@@ -25,7 +25,6 @@ from processingmcpserver.config_types import (
     DEFAULT_CORS_ORIGINS,
     ProcessingMCPServerConfig,
     ProcessingMCPServerDependencies,
-    ProcessingMCPFilesystemConfig,
 )
 
 
@@ -91,16 +90,6 @@ def load_processing_mcp_server_config() -> ProcessingMCPServerConfig:
         json_dependencies = {}
     if not isinstance(json_dependencies, dict):
         json_dependencies = {}
-
-    json_filesystem = json_mcp.get("filesystem")
-    if json_filesystem is not None and not isinstance(json_filesystem, dict):
-        _log_warning(
-            "The 'processing_mcp.filesystem' section in JSON config must be an "
-            "object. Fallback to QGIS settings and defaults."
-        )
-        json_filesystem = {}
-    if not isinstance(json_filesystem, dict):
-        json_filesystem = {}
 
     sources: dict[str, str] = {}
 
@@ -226,40 +215,8 @@ def load_processing_mcp_server_config() -> ProcessingMCPServerConfig:
         _parse_bool,
         sources,
     )
-    filesystem_allowed_roots = _resolve_value(
-        "filesystem.allowed_roots",
-        json_filesystem.get("allowed_roots"),
-        settings.value("Processing/MCP/filesystem/allowed_roots", []),
-        default_processing_mcp_json_document()["processing_mcp"]["filesystem"][
-            "allowed_roots"
-        ],
-        _parse_string_list_or_none,
-        sources,
-    )
-    filesystem_readonly_roots = _resolve_value(
-        "filesystem.readonly_roots",
-        json_filesystem.get("readonly_roots"),
-        settings.value("Processing/MCP/filesystem/readonly_roots", []),
-        [],
-        _parse_string_list_or_none,
-        sources,
-    )
-    filesystem_disable_tools = _resolve_value(
-        "filesystem.disable_filesystem_tools",
-        json_filesystem.get("disable_filesystem_tools"),
-        settings.value("Processing/MCP/filesystem/disable_filesystem_tools", False),
-        False,
-        _parse_bool,
-        sources,
-    )
-
     dependencies = ProcessingMCPServerDependencies(
         auto_install=dependency_auto_install,
-    )
-    filesystem = ProcessingMCPFilesystemConfig(
-        allowed_roots=list(filesystem_allowed_roots or []),
-        readonly_roots=list(filesystem_readonly_roots or []),
-        disable_filesystem_tools=filesystem_disable_tools,
     )
 
     return ProcessingMCPServerConfig(
@@ -278,7 +235,6 @@ def load_processing_mcp_server_config() -> ProcessingMCPServerConfig:
         cors_allow_headers=cors_allow_headers,
         enable_execute_code=enable_execute_code,
         dependencies=dependencies,
-        filesystem=filesystem,
         config_sources=sources,
         config_file_path=str(json_path),
     )

@@ -29,3 +29,9 @@ class ToolsCommonGetQgisInfoTest(ProcessingMCPTestBase):
         self.assertIn("layer_count", result["project"])
         self.assertIn("available", result["processing_mcp"])
         self.assertIn("filesystem", result["processing_mcp"])
+        self.assertIn("write_policy", result["processing_mcp"]["filesystem"])
+        self.assertTrue(
+            result["processing_mcp"]["filesystem"]["write_policy"][
+                "require_confirm_write"
+            ]
+        )

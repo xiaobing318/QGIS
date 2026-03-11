@@ -48,12 +48,6 @@
     "enable_execute_code": false,
     "dependencies": {
       "auto_install": true
-    },
-    "filesystem": {
-      "allowed_roots": [
-        "<QGIS_PROFILE>/processingmcpserver", "<SYSTEM_TEMP>"],
-      "readonly_roots": [],
-      "disable_filesystem_tools": false
     }
   }
 }
@@ -61,8 +55,8 @@
 
 > [!NOTE]
 > 1. `enable_execute_code` 目前仅作为兼容字段保留，当前版本不会注册任意代码执行类工具。
-> 2. 默认配置会把 `filesystem.allowed_roots` 初始化为当前 `<QGIS Profile>/processingmcpserver` 与系统临时目录；`allowed_roots` 外路径会被拒绝。
-> 3. 远端 WebUI 场景建议把 `readonly_roots` 设为 `allowed_roots` 的同一组路径，这样保留只读探查能力，同时默认关闭 `filesystem_edit_*` 写入面。
+> 2. `filesystem_query_*` 与 `filesystem_stats_directory` 为只读能力，不再依赖白名单配置。
+> 3. `filesystem_edit_*` 默认拒绝写入，必须显式传入 `confirm_write=true`；删除与覆盖操作还需 `confirm_destructive=true`。
 
 ## 3. 依赖预检与自动安装
 
@@ -98,9 +92,6 @@
 - `Processing/MCP/cors_allow_headers`
 - `Processing/MCP/enable_execute_code`
 - `Processing/MCP/dependencies/auto_install`
-- `Processing/MCP/filesystem/allowed_roots`
-- `Processing/MCP/filesystem/readonly_roots`
-- `Processing/MCP/filesystem/disable_filesystem_tools`
 
 ## 6. 架构图
 

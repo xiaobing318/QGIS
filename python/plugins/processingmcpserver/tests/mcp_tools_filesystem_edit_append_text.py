@@ -15,9 +15,21 @@ class ToolsFilesystemEditAppendTextTest(ProcessingMCPTestBase):
         root = self.make_temp_dir()
         target = self.create_text_file(root / "target.txt", "v1")
 
-        result = tools.filesystem_edit_append_text(path=str(target), content="-v2")
+        result = tools.filesystem_edit_append_text(
+            path=str(target), content="-v2", confirm_write=True
+        )
         self.assertTrue(result["ok"])
         self.assertEqual(target.read_text(encoding="utf-8"), "v1-v2")
+
+    def test_failure_without_confirm_write(self):
+        """验证 without confirm write 的失败场景。"""
+        tools = self.build_tools()
+        root = self.make_temp_dir()
+        target = self.create_text_file(root / "target.txt", "v1")
+
+        with self.assertRaises(Exception) as ctx:
+            tools.filesystem_edit_append_text(path=str(target), content="-v2")
+        self.assertIn("confirm_write must be true", str(ctx.exception))
 
     def test_failure_parent_missing_without_create(self):
         """验证 parent missing without create 的失败场景。"""
@@ -29,5 +41,6 @@ class ToolsFilesystemEditAppendTextTest(ProcessingMCPTestBase):
                 path=str(target),
                 content="x",
                 create_parents=False,
+                confirm_write=True,
             )
         self.assertIn("Parent directory not found", str(ctx.exception))

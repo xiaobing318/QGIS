@@ -21,7 +21,6 @@ from processingmcpserver.config_types import (
     SOURCE_SETTINGS,
     ProcessingMCPServerConfig,
     ProcessingMCPServerDependencies,
-    ProcessingMCPFilesystemConfig,
 )
 
 __all__ = [
@@ -32,7 +31,6 @@ __all__ = [
     "SOURCE_SETTINGS",
     "SOURCE_DEFAULT",
     "ProcessingMCPServerDependencies",
-    "ProcessingMCPFilesystemConfig",
     "ProcessingMCPServerConfig",
     "processing_mcp_config_file_path",
     "default_processing_mcp_json_document",

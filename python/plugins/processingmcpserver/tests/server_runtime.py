@@ -121,7 +121,7 @@ class ProcessingMCPServerRuntimeTest(ProcessingMCPTestBase):
         self.assertIn("推荐工作流", server._mcp.instructions)
         self.assertIn("注意事项", server._mcp.instructions)
         self.assertIn("读取当前工程与图层上下文", server._mcp.instructions)
-        self.assertIn("文件系统访问受白名单与只读策略约束", server._mcp.instructions)
+        self.assertIn("所有文件系统写操作都需显式提供 confirm_write=true", server._mcp.instructions)
         self.assertNotIn("common_get_qgis_info", server._mcp.instructions)
         self.assertNotIn("processing_execute_algorithm", server._mcp.instructions)
         self.assertEqual(server._mcp.kwargs["host"], config.host)

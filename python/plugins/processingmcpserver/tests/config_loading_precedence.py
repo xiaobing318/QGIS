@@ -73,23 +73,6 @@ class ConfigLoadingPrecedenceTest(ProcessingMCPTestBase):
             config.config_sources.get("dependencies.auto_install"), "Settings"
         )
 
-    def test_filesystem_section_must_be_object(self):
-        """验证 filesystem section must be object 场景。"""
-        self.settings.setValue(
-            "Processing/MCP/filesystem/disable_filesystem_tools", True
-        )
-        payload = default_processing_mcp_json_document()
-        payload["processing_mcp"]["filesystem"] = ["invalid"]
-        self._write_json_config(payload)
-
-        config = load_processing_mcp_server_config()
-
-        self.assertTrue(config.filesystem.disable_filesystem_tools)
-        self.assertEqual(
-            config.config_sources.get("filesystem.disable_filesystem_tools"),
-            "Settings",
-        )
-
     def test_invalid_json_value_fallback_to_settings(self):
         """验证 invalid JSON value fallback to settings 场景。"""
         self.settings.setValue("Processing/MCP/port", 8123)

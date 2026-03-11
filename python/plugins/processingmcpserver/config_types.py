@@ -29,15 +29,6 @@ class ProcessingMCPServerDependencies:
 
 
 @dataclass(frozen=True)
-class ProcessingMCPFilesystemConfig:
-    """定义 filesystem_* 工具的 allowlist、只读根目录与总开关。"""
-
-    allowed_roots: list[str] = field(default_factory=list)
-    readonly_roots: list[str] = field(default_factory=list)
-    disable_filesystem_tools: bool = False
-
-
-@dataclass(frozen=True)
 class ProcessingMCPServerConfig:
     """聚合 Processing MCP 服务启动所需的全部配置项。"""
 
@@ -57,9 +48,6 @@ class ProcessingMCPServerConfig:
     enable_execute_code: bool
     dependencies: ProcessingMCPServerDependencies = field(
         default_factory=ProcessingMCPServerDependencies
-    )
-    filesystem: ProcessingMCPFilesystemConfig = field(
-        default_factory=ProcessingMCPFilesystemConfig
     )
     config_sources: dict[str, str] = field(default_factory=dict)
     config_file_path: str = ""

@@ -4,12 +4,10 @@ from __future__ import annotations
 
 import inspect
 import json
-import os
 import platform
 import shutil
 import statistics
 import sys
-import tempfile
 from datetime import date, datetime, time as time_value, timezone
 from fnmatch import fnmatch
 from pathlib import Path
@@ -45,7 +43,6 @@ from qgis.core import (
 from qgis.utils import active_plugins
 
 from processingmcpserver.config_types import (
-    ProcessingMCPFilesystemConfig,
     ProcessingMCPServerConfig,
 )
 from processingmcpserver.mcp_main_thread_runner import McpMainThreadRunner
@@ -58,7 +55,7 @@ _DESTRUCTIVE_VECTOR_SAFETY = (
     "默认 in_place=false；删除类操作还要求 confirm_destructive=true，避免误删原图层或记录。"
 )
 _FILESYSTEM_WRITE_SAFETY = (
-    "所有 filesystem_* 调用都受 allowed_roots/readonly_roots/disable_filesystem_tools 约束；编辑类工具不会自动覆盖现有目标，覆盖或删除时必须显式打开 overwrite 或 confirm_destructive。"
+    "所有 filesystem_edit_* 调用都要求 confirm_write=true；删除或覆盖时还必须显式设置 confirm_destructive=true。"
 )
 _PROCESSING_SAFETY = (
     "默认禁止磁盘写出和原位编辑；只有在明确需要时才把 allow_disk_write 或 allow_in_place_edit 设为 true，并应复核返回里的 safety_policy、warnings 与 effective_parameters。"
@@ -166,15 +163,6 @@ class ProcessingMCPTools:
         self._iface = iface
         self._runner = runner
         self._config = config
-        self._filesystem_config = (
-            config.filesystem if config is not None else self._default_filesystem_config()
-        )
-        self._filesystem_allowed_roots = self._normalize_filesystem_roots(
-            self._filesystem_config.allowed_roots
-        )
-        self._filesystem_readonly_roots = self._normalize_filesystem_roots(
-            self._filesystem_config.readonly_roots
-        )
 
     # Public MCP tool entry wrappers.
     def common_get_qgis_info(self) -> dict[str, Any]:
@@ -301,25 +289,25 @@ class ProcessingMCPTools:
         """执行文件系统相关的 query read text 逻辑。"""
         return self._run(self._filesystem_query_read_text_impl, path, max_chars)
 
-    def filesystem_edit_write_text(self, path: str, content: str, overwrite: bool = False, confirm_destructive: bool = False, create_parents: bool = True) -> dict[str, Any]:
+    def filesystem_edit_write_text(self, path: str, content: str, overwrite: bool = False, confirm_destructive: bool = False, create_parents: bool = True, confirm_write: bool = False) -> dict[str, Any]:
         """执行文件系统相关的 edit write text 逻辑。"""
-        return self._run(self._filesystem_edit_write_text_impl, path, content, overwrite, confirm_destructive, create_parents)
+        return self._run(self._filesystem_edit_write_text_impl, path, content, overwrite, confirm_destructive, create_parents, confirm_write)
 
-    def filesystem_edit_append_text(self, path: str, content: str, create_parents: bool = True) -> dict[str, Any]:
+    def filesystem_edit_append_text(self, path: str, content: str, create_parents: bool = True, confirm_write: bool = False) -> dict[str, Any]:
         """执行文件系统相关的 edit append text 逻辑。"""
-        return self._run(self._filesystem_edit_append_text_impl, path, content, create_parents)
+        return self._run(self._filesystem_edit_append_text_impl, path, content, create_parents, confirm_write)
 
-    def filesystem_edit_copy_entry(self, source_path: str, target_path: str, overwrite: bool = False, confirm_destructive: bool = False) -> dict[str, Any]:
+    def filesystem_edit_copy_entry(self, source_path: str, target_path: str, overwrite: bool = False, confirm_destructive: bool = False, confirm_write: bool = False) -> dict[str, Any]:
         """执行文件系统相关的 edit copy entry 逻辑。"""
-        return self._run(self._filesystem_edit_copy_entry_impl, source_path, target_path, overwrite, confirm_destructive)
+        return self._run(self._filesystem_edit_copy_entry_impl, source_path, target_path, overwrite, confirm_destructive, confirm_write)
 
-    def filesystem_edit_move_entry(self, source_path: str, target_path: str, overwrite: bool = False, confirm_destructive: bool = False) -> dict[str, Any]:
+    def filesystem_edit_move_entry(self, source_path: str, target_path: str, overwrite: bool = False, confirm_destructive: bool = False, confirm_write: bool = False) -> dict[str, Any]:
         """执行文件系统相关的 edit move entry 逻辑。"""
-        return self._run(self._filesystem_edit_move_entry_impl, source_path, target_path, overwrite, confirm_destructive)
+        return self._run(self._filesystem_edit_move_entry_impl, source_path, target_path, overwrite, confirm_destructive, confirm_write)
 
-    def filesystem_edit_delete_entry(self, path: str, confirm_destructive: bool = False) -> dict[str, Any]:
+    def filesystem_edit_delete_entry(self, path: str, confirm_destructive: bool = False, confirm_write: bool = False) -> dict[str, Any]:
         """执行文件系统相关的 edit delete entry 逻辑。"""
-        return self._run(self._filesystem_edit_delete_entry_impl, path, confirm_destructive)
+        return self._run(self._filesystem_edit_delete_entry_impl, path, confirm_destructive, confirm_write)
 
     def filesystem_stats_directory(self, directory: str, recursive: bool = False) -> dict[str, Any]:
         """执行文件系统相关的 stats directory 逻辑。"""
@@ -396,22 +384,6 @@ class ProcessingMCPTools:
         applied = min(normalized, self.MAX_FILESYSTEM_LIST_LIMIT)
         return requested, applied, applied != normalized
 
-    @staticmethod
-    def _default_filesystem_config() -> ProcessingMCPFilesystemConfig:
-        """执行 default filesystem config 相关逻辑。"""
-        return ProcessingMCPFilesystemConfig(
-            allowed_roots=[
-                root
-                for root in (
-                    QgsApplication.qgisSettingsDirPath(),
-                    tempfile.gettempdir(),
-                )
-                if str(root).strip()
-            ],
-            readonly_roots=[],
-            disable_filesystem_tools=False,
-        )
-
     # Execution/runtime bridge.
     def _ensure_processing_runtime(self) -> None:
         """确保 processing runtime 已就绪。"""
@@ -438,71 +410,21 @@ class ProcessingMCPTools:
             candidate = Path.cwd() / candidate
         return candidate.resolve(strict=False)
 
-    @classmethod
-    def _normalize_filesystem_roots(cls, roots: list[str] | None) -> list[Path]:
-        """归一化 filesystem roots。"""
-        normalized: list[Path] = []
-        seen: set[str] = set()
-        for root in roots or []:
-            text = str(root).strip()
-            if not text:
-                continue
-            path = cls._normalize_filesystem_path(text)
-            key = os.path.normcase(str(path))
-            if key in seen:
-                continue
-            seen.add(key)
-            normalized.append(path)
-        return normalized
-
-    @staticmethod
-    def _is_path_within_root(path: Path, root: Path) -> bool:
-        """判断 path within root 是否成立。"""
-        try:
-            return os.path.commonpath(
-                [os.path.normcase(str(path)), os.path.normcase(str(root))]
-            ) == os.path.normcase(str(root))
-        except ValueError:
-            return False
-
-    def _ensure_filesystem_tools_enabled(self) -> None:
-        """确保 filesystem tools enabled 已就绪。"""
-        if self._filesystem_config.disable_filesystem_tools:
-            raise Exception("filesystem tools are disabled by configuration")
-
-    def _ensure_filesystem_path_allowed(self, path: Path) -> None:
-        """确保 filesystem path allowed 已就绪。"""
-        if not self._filesystem_allowed_roots:
-            raise Exception(
-                "filesystem.allowed_roots is empty; filesystem access is disabled"
-            )
-        if any(
-            self._is_path_within_root(path, root)
-            for root in self._filesystem_allowed_roots
-        ):
-            return
-        raise Exception(f"Path is outside allowed_roots: {path}")
-
-    def _ensure_filesystem_path_writable(self, path: Path) -> None:
-        """确保 filesystem path writable 已就绪。"""
-        if any(
-            self._is_path_within_root(path, root)
-            for root in self._filesystem_readonly_roots
-        ):
-            raise Exception(f"Path is inside readonly_roots: {path}")
-
     def _resolve_filesystem_query_path(self, path: str | Path) -> Path:
         """解析 filesystem query path。"""
-        self._ensure_filesystem_tools_enabled()
-        candidate = self._normalize_filesystem_path(path)
-        self._ensure_filesystem_path_allowed(candidate)
-        return candidate
+        return self._normalize_filesystem_path(path)
 
     def _resolve_filesystem_write_path(self, path: str | Path) -> Path:
         """解析 filesystem write path。"""
-        candidate = self._resolve_filesystem_query_path(path)
-        self._ensure_filesystem_path_writable(candidate)
-        return candidate
+        return self._resolve_filesystem_query_path(path)
+
+    @staticmethod
+    def _ensure_filesystem_write_confirmed(confirm_write: bool) -> None:
+        """确保写操作已显式确认。"""
+        if not confirm_write:
+            raise Exception(
+                "confirm_write must be true for filesystem_edit_* operations"
+            )
 
     # Normalizers and serializers.
     @staticmethod
@@ -931,15 +853,11 @@ class ProcessingMCPTools:
                 "registered_tools_count": len(REGISTERED_TOOL_NAMES),
                 "active_plugins_count": len(plugin_names),
                 "filesystem": {
-                    "allowed_roots": [
-                        str(root) for root in self._filesystem_allowed_roots
-                    ],
-                    "readonly_roots": [
-                        str(root) for root in self._filesystem_readonly_roots
-                    ],
-                    "disable_filesystem_tools": bool(
-                        self._filesystem_config.disable_filesystem_tools
-                    ),
+                    "write_policy": {
+                        "require_confirm_write": True,
+                        "require_confirm_destructive_for_overwrite": True,
+                        "require_confirm_destructive_for_delete": True,
+                    },
                 },
             },
         }
@@ -1850,8 +1768,9 @@ class ProcessingMCPTools:
             text = handle.read(applied + 1)
         return self._ok_result("filesystem_query_read_text", summary={"truncated": len(text) > applied, "max_chars": applied}, outputs={"text": text[:applied]})
 
-    def _filesystem_edit_write_text_impl(self, path: str, content: str, overwrite: bool, confirm_destructive: bool, create_parents: bool) -> dict[str, Any]:
+    def _filesystem_edit_write_text_impl(self, path: str, content: str, overwrite: bool, confirm_destructive: bool, create_parents: bool, confirm_write: bool) -> dict[str, Any]:
         """执行文件系统相关的 edit write text impl 逻辑。"""
+        self._ensure_filesystem_write_confirmed(confirm_write)
         target = self._resolve_filesystem_write_path(path)
         if target.exists():
             if overwrite:
@@ -1867,8 +1786,9 @@ class ProcessingMCPTools:
         target.write_text(content, encoding="utf-8")
         return self._ok_result("filesystem_edit_write_text", summary={"written_chars": len(content), "path": str(target)})
 
-    def _filesystem_edit_append_text_impl(self, path: str, content: str, create_parents: bool) -> dict[str, Any]:
+    def _filesystem_edit_append_text_impl(self, path: str, content: str, create_parents: bool, confirm_write: bool) -> dict[str, Any]:
         """执行文件系统相关的 edit append text impl 逻辑。"""
+        self._ensure_filesystem_write_confirmed(confirm_write)
         target = self._resolve_filesystem_write_path(path)
         if not target.parent.exists():
             if create_parents:
@@ -1879,8 +1799,9 @@ class ProcessingMCPTools:
             handle.write(content)
         return self._ok_result("filesystem_edit_append_text", summary={"appended_chars": len(content), "path": str(target)})
 
-    def _filesystem_edit_copy_entry_impl(self, source_path: str, target_path: str, overwrite: bool, confirm_destructive: bool) -> dict[str, Any]:
+    def _filesystem_edit_copy_entry_impl(self, source_path: str, target_path: str, overwrite: bool, confirm_destructive: bool, confirm_write: bool) -> dict[str, Any]:
         """执行文件系统相关的 edit copy entry impl 逻辑。"""
+        self._ensure_filesystem_write_confirmed(confirm_write)
         source = self._resolve_filesystem_query_path(source_path)
         target = self._resolve_filesystem_write_path(target_path)
         if not source.exists():
@@ -1898,8 +1819,9 @@ class ProcessingMCPTools:
         shutil.copytree(source, target) if source.is_dir() else shutil.copy2(source, target)
         return self._ok_result("filesystem_edit_copy_entry", summary={"source_path": str(source), "target_path": str(target)})
 
-    def _filesystem_edit_move_entry_impl(self, source_path: str, target_path: str, overwrite: bool, confirm_destructive: bool) -> dict[str, Any]:
+    def _filesystem_edit_move_entry_impl(self, source_path: str, target_path: str, overwrite: bool, confirm_destructive: bool, confirm_write: bool) -> dict[str, Any]:
         """执行文件系统相关的 edit move entry impl 逻辑。"""
+        self._ensure_filesystem_write_confirmed(confirm_write)
         source = self._resolve_filesystem_write_path(source_path)
         target = self._resolve_filesystem_write_path(target_path)
         if not source.exists():
@@ -1917,8 +1839,9 @@ class ProcessingMCPTools:
         shutil.move(str(source), str(target))
         return self._ok_result("filesystem_edit_move_entry", summary={"source_path": str(source), "target_path": str(target)})
 
-    def _filesystem_edit_delete_entry_impl(self, path: str, confirm_destructive: bool) -> dict[str, Any]:
+    def _filesystem_edit_delete_entry_impl(self, path: str, confirm_destructive: bool, confirm_write: bool) -> dict[str, Any]:
         """执行文件系统相关的 edit delete entry impl 逻辑。"""
+        self._ensure_filesystem_write_confirmed(confirm_write)
         if not confirm_destructive:
             raise Exception("confirm_destructive must be true for delete operation")
         target = self._resolve_filesystem_write_path(path)
@@ -2099,7 +2022,7 @@ _REGISTERED_TOOL_DOCSTRINGS: dict[str, str] = {
         "QGIS Desktop 已启动且 processingmcpserver 插件已加载。",
         "无写操作，只读取当前应用、项目与插件状态。",
         "无。",
-        "返回 qgis、platform、python、active_project、active_plugins，以及 processing_mcp.filesystem 策略摘要等环境信息。",
+        "返回 qgis、platform、python、active_project、active_plugins，以及 processing_mcp.filesystem.write_policy 安全摘要等环境信息。",
     ),
     "vector_add_layer": _tool_doc(
         "把单个矢量数据源加载到当前 QGIS 工程。",
@@ -2320,73 +2243,73 @@ _REGISTERED_TOOL_DOCSTRINGS: dict[str, str] = {
     "filesystem_query_list_entries": _tool_doc(
         "列出目录中的文件或子目录条目，适合在执行文件操作前先做只读探查。",
         "directory 是根目录，recursive 控制是否递归，include_files 和 include_directories 控制返回对象类型，name_glob 过滤名称，limit 控制返回上限。",
-        "目录必须存在，且位于 filesystem.allowed_roots 内；include_files 与 include_directories 不能同时为 false。",
+        "目录必须存在；include_files 与 include_directories 不能同时为 false。",
         "无写操作，只读取文件系统元数据。",
-        "limit 会被内部阈值裁剪；disable_filesystem_tools=true 时会整体拒绝；结果里会明确 returned_count、matched_total 与 truncated。",
+        "limit 会被内部阈值裁剪；结果里会明确 returned_count、matched_total 与 truncated。",
         "返回目录路径、entries 数组以及 limit 应用摘要。",
     ),
     "filesystem_query_entry_info": _tool_doc(
         "读取单个文件或目录的基础元数据。",
         "path 指向文件或目录。",
-        "目标路径必须存在，且位于 filesystem.allowed_roots 内。",
+        "目标路径必须存在。",
         "无写操作，只读取文件系统元数据。",
-        "disable_filesystem_tools=true 时会整体拒绝。",
+        "无。",
         "返回 entry 对象，包含类型、大小、时间戳和可用路径信息。",
     ),
     "filesystem_query_read_text": _tool_doc(
         "按 UTF-8 读取文本文件内容，适合让模型读取配置、脚本或日志片段。",
         "path 指向文本文件，max_chars 可选，用于限制返回字符数。",
-        "目标路径必须存在且是文件，位于 filesystem.allowed_roots 内，并且内容应能按 UTF-8 解码。",
+        "目标路径必须存在且是文件，并且内容应能按 UTF-8 解码。",
         "无写操作，只读取文件内容。",
         "max_chars 为 None 时返回全文；传入数值时只读取 max_chars+1 个字符用于判断截断，并在 summary.truncated 中标记。",
         "返回 text 字段和截断摘要。",
     ),
     "filesystem_edit_write_text": _tool_doc(
         "以 UTF-8 一次性写入文本文件，适合新建配置或覆盖写文件。",
-        "path 是目标文件路径，content 是完整文本内容，overwrite 控制是否允许覆盖已存在文件，confirm_destructive 用于确认覆盖，create_parents 控制是否自动创建父目录。",
-        "若目标已存在且 overwrite=false 会直接失败；父目录不存在时只有 create_parents=true 才会自动创建；目标路径必须落在 allowed_roots 内且不能命中 readonly_roots。",
+        "path 是目标文件路径，content 是完整文本内容，overwrite 控制是否允许覆盖已存在文件，confirm_destructive 用于确认覆盖，create_parents 控制是否自动创建父目录，confirm_write 用于显式确认写操作。",
+        "若目标已存在且 overwrite=false 会直接失败；父目录不存在时只有 create_parents=true 才会自动创建。",
         "会创建或覆盖磁盘文件。",
         _FILESYSTEM_WRITE_SAFETY,
         "返回写入字符数和最终 path 摘要。",
     ),
     "filesystem_edit_append_text": _tool_doc(
         "向文本文件尾部追加 UTF-8 内容。",
-        "path 是目标文件路径，content 是待追加文本，create_parents 控制父目录不存在时是否自动创建。",
-        "目标路径的父目录必须存在或允许自动创建；目标文件不存在时会被创建；目标路径必须落在 allowed_roots 内且不能命中 readonly_roots。",
+        "path 是目标文件路径，content 是待追加文本，create_parents 控制父目录不存在时是否自动创建，confirm_write 用于显式确认写操作。",
+        "目标路径的父目录必须存在或允许自动创建；目标文件不存在时会被创建。",
         "会在磁盘上创建文件或修改现有文件末尾内容。",
         "该工具不会覆盖已有内容，但仍属于写盘操作，调用前应确认目标路径。",
         "返回追加字符数和最终 path 摘要。",
     ),
     "filesystem_edit_copy_entry": _tool_doc(
         "复制单个文件或整个目录到新位置。",
-        "source_path 是源路径，target_path 是目标路径，overwrite 控制是否允许覆盖目标，confirm_destructive 用于确认覆盖已存在目标。",
-        "源路径必须存在且 source/target 都要位于 allowed_roots 内；target 不能命中 readonly_roots；目标若已存在且 overwrite=false 会失败。",
+        "source_path 是源路径，target_path 是目标路径，overwrite 控制是否允许覆盖目标，confirm_destructive 用于确认覆盖已存在目标，confirm_write 用于显式确认写操作。",
+        "源路径必须存在；目标若已存在且 overwrite=false 会失败。",
         "会在磁盘上创建新的文件或目录副本；目录复制会递归复制内容。",
         _FILESYSTEM_WRITE_SAFETY,
         "返回 source_path 和 target_path 摘要。",
     ),
     "filesystem_edit_move_entry": _tool_doc(
         "把文件或目录移动到新位置。",
-        "source_path 是源路径，target_path 是目标路径，overwrite 控制是否允许覆盖目标，confirm_destructive 用于确认覆盖已存在目标。",
-        "源路径必须存在且 source/target 都要位于 allowed_roots 内；source/target 都不能命中 readonly_roots；目标若已存在且 overwrite=false 会失败。",
+        "source_path 是源路径，target_path 是目标路径，overwrite 控制是否允许覆盖目标，confirm_destructive 用于确认覆盖已存在目标，confirm_write 用于显式确认写操作。",
+        "源路径必须存在；目标若已存在且 overwrite=false 会失败。",
         "会修改磁盘目录结构，源路径在成功后会消失。",
         _FILESYSTEM_WRITE_SAFETY,
         "返回 source_path 和 target_path 摘要，表示移动已完成。",
     ),
     "filesystem_edit_delete_entry": _tool_doc(
         "删除单个文件或整个目录树。",
-        "path 指向待删除文件或目录，confirm_destructive 必须明确确认删除。",
-        "目标路径必须存在，位于 allowed_roots 内，且不能命中 readonly_roots。",
+        "path 指向待删除文件或目录，confirm_destructive 必须明确确认删除，confirm_write 用于显式确认写操作。",
+        "目标路径必须存在。",
         "会永久删除磁盘上的文件或目录内容。",
-        "只有 confirm_destructive=true 才允许执行删除。",
+        "只有 confirm_write=true 且 confirm_destructive=true 才允许执行删除。",
         "返回 deleted_path 摘要。",
     ),
     "filesystem_stats_directory": _tool_doc(
         "统计目录中的文件数、目录数和累计大小，适合在批处理前估算工作量。",
         "directory 是根目录，recursive 控制是否递归统计。",
-        "目录必须存在且位于 filesystem.allowed_roots 内。",
+        "目录必须存在。",
         "无写操作，只遍历文件系统做统计。",
-        "disable_filesystem_tools=true 时会整体拒绝。",
+        "无。",
         "返回文件数、目录数、总字节数等目录统计摘要。",
     ),
     "processing_list_providers": _tool_doc(

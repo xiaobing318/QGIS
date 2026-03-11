@@ -25,7 +25,6 @@ from processingmcpserver import dependency_manager as dependency_runtime
 from processingmcpserver.config import (
     ProcessingMCPServerConfig,
     ProcessingMCPServerDependencies,
-    ProcessingMCPFilesystemConfig,
     processing_mcp_config_file_path,
 )
 from processingmcpserver.mcp_tools import ProcessingMCPTools
@@ -122,14 +121,6 @@ class ProcessingMCPTestBase(QgisTestCase):
             cors_allow_headers=None,
             enable_execute_code=False,
             dependencies=ProcessingMCPServerDependencies(),
-            filesystem=ProcessingMCPFilesystemConfig(
-                allowed_roots=[
-                    str(self.config_path.parent),
-                    tempfile.gettempdir(),
-                ],
-                readonly_roots=[],
-                disable_filesystem_tools=False,
-            ),
         )
 
     @staticmethod
