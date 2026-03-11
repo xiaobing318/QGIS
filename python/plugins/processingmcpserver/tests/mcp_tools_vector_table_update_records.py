@@ -8,9 +8,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsVectorTableUpdateRecordsTest(ProcessingMCPTestBase):
     def test_registered(self):
+        """验证目标能力已完成注册。"""
         assert_tool_registered(self, "vector_table_update_records")
 
     def test_default_creates_copy_layer(self):
+        """验证默认条件下的 creates copy layer 场景。"""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("update_records_vector_copy")
 
@@ -37,6 +39,7 @@ class ToolsVectorTableUpdateRecordsTest(ProcessingMCPTestBase):
         )
 
     def test_success_update_records(self):
+        """验证 update records 的成功场景。"""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("update_records_vector")
 
@@ -51,6 +54,7 @@ class ToolsVectorTableUpdateRecordsTest(ProcessingMCPTestBase):
         self.assertEqual(result["summary"]["affected_count"], 1)
 
     def test_failure_without_updates(self):
+        """验证 without updates 的失败场景。"""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("update_records_vector2")
 
@@ -59,6 +63,7 @@ class ToolsVectorTableUpdateRecordsTest(ProcessingMCPTestBase):
         self.assertIn("set_literals or set_expressions", str(ctx.exception))
 
     def test_failure_missing_field(self):
+        """验证 missing field 的失败场景。"""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("update_records_vector_missing_field")
 
@@ -71,6 +76,7 @@ class ToolsVectorTableUpdateRecordsTest(ProcessingMCPTestBase):
         self.assertIn("Field not found: missing_field", str(ctx.exception))
 
     def test_failure_duplicate_layer_name_is_ambiguous(self):
+        """验证 duplicate layer name is ambiguous 的失败场景。"""
         tools = self.build_tools()
         self.add_sample_vector_layer("duplicate-update-layer")
         self.add_sample_vector_layer("duplicate-update-layer")
@@ -85,6 +91,7 @@ class ToolsVectorTableUpdateRecordsTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.mcp_tools.QgsExpression")
     def test_failure_where_eval_error(self, mock_expression_class):
+        """验证 where eval error 的失败场景。"""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("update_records_vector_eval_error")
         where_expr = MagicMock()

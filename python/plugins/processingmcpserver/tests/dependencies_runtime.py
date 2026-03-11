@@ -12,6 +12,7 @@ from ._shared_case_base import ProcessingMCPTestBase
 
 class DependenciesRuntimeTest(ProcessingMCPTestBase):
     def test_dependencies_support_requirement_syntax(self):
+        """验证 dependencies support requirement syntax 场景。"""
         parsed, error = dependency_runtime._parse_requirement("mcp>=0.0.1")
         self.assertIsNotNone(parsed)
         self.assertEqual(error, "")
@@ -19,12 +20,14 @@ class DependenciesRuntimeTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.dependency_evaluator.importlib.metadata.version")
     def test_dependencies_detect_version_mismatch(self, mock_version):
+        """验证 dependencies detect version mismatch 场景。"""
         mock_version.return_value = "0.1.0"
         result = dependency_runtime._evaluate_requirement("mcp>=1.0.0")
         self.assertFalse(result.satisfied)
         self.assertIn("does not satisfy", result.reason)
 
     def test_requirements_file_parser_skips_comments_and_blank_lines(self):
+        """验证 requirements file parser skips comments and blank lines 场景。"""
         temp_root = self.make_temp_dir()
         req_path = temp_root / "requirements.txt"
         req_path.write_text(
@@ -46,6 +49,7 @@ class DependenciesRuntimeTest(ProcessingMCPTestBase):
         )
 
     def test_requirements_file_missing_returns_error(self):
+        """验证 requirements file missing returns error 场景。"""
         temp_root = self.make_temp_dir()
         req_path = temp_root / "missing.txt"
         result = dependency_runtime._load_requirements_from_file(req_path)
@@ -73,6 +77,7 @@ class DependenciesRuntimeTest(ProcessingMCPTestBase):
         _mock_write_report,
         _mock_log_result,
     ):
+        """验证 dependencies install command constructed for missing requirements 场景。"""
         mock_collect_env.return_value = self.build_env_snapshot()
         mock_detect_pip.return_value = dependency_runtime.PipDetectionResult(
             available=True,
@@ -169,6 +174,7 @@ class DependenciesRuntimeTest(ProcessingMCPTestBase):
         _mock_write_report,
         _mock_log_result,
     ):
+        """验证 dependencies fail when pip unavailable 场景。"""
         mock_collect_env.return_value = self.build_env_snapshot()
         mock_detect_pip.return_value = dependency_runtime.PipDetectionResult(
             available=False,
@@ -220,6 +226,7 @@ class DependenciesRuntimeTest(ProcessingMCPTestBase):
         _mock_write_report,
         _mock_log_result,
     ):
+        """验证 dependencies report schema v3 场景。"""
         mock_collect_env.return_value = self.build_env_snapshot()
         mock_detect_pip.return_value = dependency_runtime.PipDetectionResult(
             available=True,
@@ -285,6 +292,7 @@ class DependenciesRuntimeTest(ProcessingMCPTestBase):
         _mock_write_report,
         _mock_log_result,
     ):
+        """验证 dependencies fail when MCP contract invalid 场景。"""
         mock_collect_env.return_value = self.build_env_snapshot()
         mock_detect_pip.return_value = dependency_runtime.PipDetectionResult(
             available=True,
@@ -336,6 +344,7 @@ class DependenciesRuntimeTest(ProcessingMCPTestBase):
         _mock_write_report,
         _mock_log_result,
     ):
+        """验证 dependencies fail when requirements file missing 场景。"""
         mock_collect_env.return_value = self.build_env_snapshot()
         mock_detect_pip.return_value = dependency_runtime.PipDetectionResult(
             available=True,
@@ -373,6 +382,7 @@ class DependenciesRuntimeTest(ProcessingMCPTestBase):
         _mock_write_report,
         _mock_log_result,
     ):
+        """验证 dependencies fail when requirements file empty 场景。"""
         mock_collect_env.return_value = self.build_env_snapshot()
         mock_detect_pip.return_value = dependency_runtime.PipDetectionResult(
             available=True,
@@ -399,6 +409,7 @@ class DependenciesRuntimeTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.dependency_probe.subprocess.run")
     def test_detect_pip_rejects_non_pip_output_even_on_success(self, mock_run):
+        """验证 detect pip rejects non pip output even on success 场景。"""
         mock_run.return_value = subprocess.CompletedProcess(
             args=[],
             returncode=0,
@@ -432,6 +443,7 @@ class DependenciesRuntimeTest(ProcessingMCPTestBase):
         _mock_write_report,
         _mock_log_result,
     ):
+        """验证 dependencies fail without user fallback on permission denied 场景。"""
         mock_collect_env.return_value = self.build_env_snapshot()
         mock_detect_pip.return_value = dependency_runtime.PipDetectionResult(
             available=True,
@@ -475,6 +487,7 @@ class DependenciesRuntimeTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.dependency_probe.sys.executable", "C:/invalid/not-python.txt")
     def test_resolve_pip_python_executable_falls_back_to_prefix_python(self):
+        """验证 resolve pip python executable falls back to prefix python 场景。"""
         temp_root = self.make_temp_dir()
         python_exe = temp_root / "python.exe"
         python_exe.write_text("", encoding="utf-8")
@@ -505,6 +518,7 @@ class DependenciesRuntimeTest(ProcessingMCPTestBase):
     def test_resolve_install_target_details_falls_back_on_invalid_probe_output(
         self, mock_run
     ):
+        """验证 resolve install target details falls back on invalid probe output 场景。"""
         environment = self.build_env_snapshot()
         mock_run.return_value = subprocess.CompletedProcess(
             args=[],
@@ -520,5 +534,3 @@ class DependenciesRuntimeTest(ProcessingMCPTestBase):
 
         self.assertEqual(prefix, environment.python_prefix)
         self.assertEqual(site_packages, environment.site_packages[-1])
-
-

@@ -18,6 +18,7 @@ class McpMainThreadRunnerRuntimeTest(ProcessingMCPTestBase):
         timeout_seconds: float = 2.0,
         failure_message: str = "Condition was not satisfied before timeout.",
     ) -> None:
+        """执行 pump events until 相关逻辑。"""
         app = QCoreApplication.instance()
         self.assertIsNotNone(app)
 
@@ -32,19 +33,23 @@ class McpMainThreadRunnerRuntimeTest(ProcessingMCPTestBase):
         self.assertTrue(predicate(), failure_message)
 
     def test_constructor_rejects_non_positive_timeout(self):
+        """验证 constructor rejects non positive timeout 场景。"""
         with self.assertRaises(ValueError) as ctx:
             McpMainThreadRunner(wait_timeout_seconds=0)
         self.assertIn("wait_timeout_seconds must be > 0", str(ctx.exception))
 
     def test_run_executes_directly_on_main_thread(self):
+        """验证 run executes directly on main thread 场景。"""
         runner = McpMainThreadRunner()
         self.assertEqual(runner.run(lambda: "ok"), "ok")
 
     def test_qt_event_loop_executes_queued_callback_when_invoke_method_returns_none(self):
+        """验证 Qt event loop executes queued callback when invoke method returns none 场景。"""
         runner = McpMainThreadRunner()
         state = {"called": False}
 
         def wrapper() -> None:
+            """包装回调并同步传递执行结果。"""
             state["called"] = True
 
         invoke_result = QMetaObject.invokeMethod(
@@ -58,6 +63,7 @@ class McpMainThreadRunnerRuntimeTest(ProcessingMCPTestBase):
         )
 
     def test_run_executes_queued_callback_for_worker_thread(self):
+        """验证 run executes queued callback for worker thread 场景。"""
         runner = McpMainThreadRunner()
         fake_app = MagicMock()
         fake_app.thread.return_value = object()
@@ -89,11 +95,13 @@ class McpMainThreadRunnerRuntimeTest(ProcessingMCPTestBase):
             self.assertEqual(runner.run(lambda: "queued"), "queued")
 
     def test_run_executes_queued_callback_for_real_worker_thread(self):
+        """验证 run executes queued callback for real worker thread 场景。"""
         runner = McpMainThreadRunner()
         result: dict[str, object] = {}
         finished = threading.Event()
 
         def worker() -> None:
+            """执行 worker 相关逻辑。"""
             try:
                 result["value"] = runner.run(lambda: "queued")
             except Exception as exc:  # pragma: no cover - failure path asserted below
@@ -118,6 +126,7 @@ class McpMainThreadRunnerRuntimeTest(ProcessingMCPTestBase):
         self.assertEqual(result.get("value"), "queued")
 
     def test_run_propagates_worker_thread_callback_error(self):
+        """验证 run propagates worker thread callback error 场景。"""
         runner = McpMainThreadRunner()
         fake_app = MagicMock()
         fake_app.thread.return_value = object()
@@ -145,6 +154,7 @@ class McpMainThreadRunnerRuntimeTest(ProcessingMCPTestBase):
             self.assertIn("boom", str(ctx.exception))
 
     def test_run_raises_when_invoke_method_fails(self):
+        """验证 run raises when invoke method fails 场景。"""
         runner = McpMainThreadRunner()
         fake_app = MagicMock()
         fake_app.thread.return_value = object()
@@ -172,6 +182,7 @@ class McpMainThreadRunnerRuntimeTest(ProcessingMCPTestBase):
             self.assertIn("Failed to schedule callback", str(ctx.exception))
 
     def test_run_raises_when_worker_thread_times_out(self):
+        """验证 run raises when worker thread times out 场景。"""
         runner = McpMainThreadRunner(wait_timeout_seconds=0.01)
         fake_app = MagicMock()
         fake_app.thread.return_value = object()

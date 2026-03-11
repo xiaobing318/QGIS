@@ -6,6 +6,7 @@ from pathlib import Path
 
 
 def _candidate_qgis_bin_dirs() -> list[str]:
+    """执行 candidate QGIS bin dirs 相关逻辑。"""
     candidates: list[str] = []
 
     qgis_prefix = os.environ.get("QGIS_PREFIX_PATH", "").strip()
@@ -32,6 +33,7 @@ def _candidate_qgis_bin_dirs() -> list[str]:
 
 
 def _prepend_runtime_paths() -> None:
+    """执行 prepend runtime paths 相关逻辑。"""
     original = os.environ.get("PATH", "")
     existing = original.split(os.pathsep) if original else []
     prepended: list[str] = []
@@ -70,31 +72,66 @@ class DummyMcp:
     """Minimal MCP mock for collecting registrations."""
 
     def __init__(self) -> None:
+        """初始化 DummyMcp 实例状态。"""
         self.tool_names: list[str] = []
         self.prompt_names: list[str] = []
         self.resource_uris: list[str] = []
         self.prompt_funcs: dict[str, object] = {}
         self.resource_funcs: dict[str, object] = {}
+        self.prompt_descriptions: dict[str, str] = {}
+        self.resource_descriptions: dict[str, str] = {}
 
     def tool(self):
+        """执行 tool 相关逻辑。"""
         def decorator(func):
+            """返回当前注册流程使用的装饰器。"""
             self.tool_names.append(func.__name__)
             return func
 
         return decorator
 
-    def prompt(self):
+    def prompt(
+        self,
+        name: str | None = None,
+        title: str | None = None,
+        description: str | None = None,
+        icons=None,
+    ):
+        """执行 prompt 相关逻辑。"""
+        _ = title, icons
+
         def decorator(func):
-            self.prompt_names.append(func.__name__)
-            self.prompt_funcs[func.__name__] = func
+            """返回当前注册流程使用的装饰器。"""
+            prompt_name = name or func.__name__
+            self.prompt_names.append(prompt_name)
+            self.prompt_funcs[prompt_name] = func
+            if isinstance(description, str):
+                self.prompt_descriptions[prompt_name] = description
             return func
 
         return decorator
 
-    def resource(self, uri: str):
+    def resource(
+        self,
+        uri: str,
+        *,
+        name: str | None = None,
+        title: str | None = None,
+        description: str | None = None,
+        mime_type: str | None = None,
+        icons=None,
+        annotations=None,
+        meta=None,
+    ):
+        """执行 resource 相关逻辑。"""
+        _ = name, title, mime_type, icons, annotations, meta
+
         def decorator(func):
+            """返回当前注册流程使用的装饰器。"""
             self.resource_uris.append(uri)
             self.resource_funcs[uri] = func
+            if isinstance(description, str):
+                self.resource_descriptions[uri] = description
             return func
 
         return decorator
@@ -104,18 +141,23 @@ class DummyTools:
     """Minimal tools stub used for register_* tests."""
 
     def get_project_snapshot(self):
+        """返回 project snapshot。"""
         return {"title": "dummy-project"}
 
     def layer_list(self):
+        """执行图层相关的 list 逻辑。"""
         return [{"id": "layer-1", "name": "L1", "type": "vector_0", "visible": True}]
 
     def common_get_qgis_info(self):
+        """返回 QGIS info 信息。"""
         return {"qgis_version": "test-version"}
 
     def _resource_json(self, payload):
+        """执行 resource JSON 相关逻辑。"""
         return json.dumps(payload, ensure_ascii=False, indent=2)
 
     def __getattr__(self, _name):
+        """执行 getattr 相关逻辑。"""
         return lambda *args, **kwargs: {}
 
 
@@ -123,6 +165,7 @@ class DummyRunner:
     """Main-thread runner stub that executes callback synchronously."""
 
     def run(self, func):
+        """执行当前核心逻辑并返回结果。"""
         return func()
 
 
@@ -133,4 +176,3 @@ def assert_tool_registered(testcase, tool_name: str) -> None:
     mcp = DummyMcp()
     register_tools(mcp, DummyTools(), enable_execute_code=False)
     testcase.assertIn(tool_name, mcp.tool_names)
-

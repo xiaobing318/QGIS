@@ -69,4 +69,3 @@ class ProcessingMCPServerPlugin:
             )
         finally:
             self._server = None
-

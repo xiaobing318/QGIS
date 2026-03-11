@@ -6,9 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsLayerResolveReferencesTest(ProcessingMCPTestBase):
     def test_registered(self):
+        """验证目标能力已完成注册。"""
         assert_tool_registered(self, "layer_resolve_references")
 
     def test_success_reports_ambiguous_names(self):
+        """验证 reports ambiguous names 的成功场景。"""
         tools = self.build_tools()
         layer_a = self.add_sample_vector_layer("duplicate-layer-name")
         layer_b = self.add_sample_vector_layer("duplicate-layer-name")
@@ -26,6 +28,7 @@ class ToolsLayerResolveReferencesTest(ProcessingMCPTestBase):
         self.assertNotIn("duplicate-layer-name", result["resolved"])
 
     def test_success_non_strict_reports_missing(self):
+        """验证 non strict reports missing 的成功场景。"""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("resolve_ref_vector")
 
@@ -37,12 +40,14 @@ class ToolsLayerResolveReferencesTest(ProcessingMCPTestBase):
         self.assertIn("missing-layer", result["missing"])
 
     def test_failure_strict_with_missing(self):
+        """验证 strict with missing 的失败场景。"""
         tools = self.build_tools()
         with self.assertRaises(Exception) as ctx:
             tools.layer_resolve_references(refs=["missing-layer"], strict=True)
         self.assertIn("Layer reference resolve failed", str(ctx.exception))
 
     def test_failure_strict_with_ambiguous_name(self):
+        """验证 strict with ambiguous name 的失败场景。"""
         tools = self.build_tools()
         self.add_sample_vector_layer("duplicate-layer-strict")
         self.add_sample_vector_layer("duplicate-layer-strict")

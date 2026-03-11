@@ -93,6 +93,7 @@ _PROCESSING_INITIALIZED = False
 
 
 def _ensure_processing_initialized() -> None:
+    """确保 processing initialized 已就绪。"""
     global _PROCESSING_INITIALIZED
     if _PROCESSING_INITIALIZED:
         return
@@ -116,6 +117,7 @@ class ProcessingMCPTools:
         runner: McpMainThreadRunner,
         config: ProcessingMCPServerConfig | None = None,
     ):
+        """初始化 ProcessingMCPTools 实例状态。"""
         self._iface = iface
         self._runner = runner
         self._config = config
@@ -130,22 +132,26 @@ class ProcessingMCPTools:
         )
 
     def _run(self, func, *args, **kwargs):
+        """执行 run 相关逻辑。"""
         return self._runner.run(lambda: func(*args, **kwargs))
 
     @staticmethod
     def _safe_int(value: Any, default: int) -> int:
+        """执行 safe int 相关逻辑。"""
         try:
             return int(value)
         except (TypeError, ValueError):
             return default
 
     def _normalize_feature_limit(self, limit: Any) -> tuple[int, int, bool]:
+        """归一化 feature limit。"""
         requested = self._safe_int(limit, self.DEFAULT_FEATURE_LIMIT)
         normalized = max(0, requested)
         applied = min(normalized, self.MAX_FEATURE_LIMIT)
         return requested, applied, applied != normalized
 
     def _normalize_algorithm_list_limit(self, limit: Any | None) -> tuple[int | None, int, bool]:
+        """归一化 algorithm list limit。"""
         requested = None if limit is None else self._safe_int(limit, self.DEFAULT_ALGORITHM_LIST_LIMIT)
         normalized = self.DEFAULT_ALGORITHM_LIST_LIMIT if requested is None else max(0, requested)
         applied = min(normalized, self.MAX_ALGORITHM_LIST_LIMIT)
@@ -153,12 +159,14 @@ class ProcessingMCPTools:
         return requested, applied, capped
 
     def _normalize_dataset_limit(self, limit: Any | None) -> tuple[int, int, bool]:
+        """归一化 dataset limit。"""
         requested = self._safe_int(limit, self.DEFAULT_DATASET_LIMIT)
         normalized = max(0, requested)
         applied = min(normalized, self.MAX_DATASET_LIMIT)
         return requested, applied, applied != normalized
 
     def _normalize_filesystem_limit(self, limit: Any | None) -> tuple[int, int, bool]:
+        """归一化 filesystem limit。"""
         requested = self._safe_int(limit, self.DEFAULT_FILESYSTEM_LIST_LIMIT)
         normalized = max(0, requested)
         applied = min(normalized, self.MAX_FILESYSTEM_LIST_LIMIT)
@@ -166,6 +174,7 @@ class ProcessingMCPTools:
 
     @staticmethod
     def _default_filesystem_config() -> ProcessingMCPFilesystemConfig:
+        """执行 default filesystem config 相关逻辑。"""
         return ProcessingMCPFilesystemConfig(
             allowed_roots=[
                 root
@@ -181,6 +190,7 @@ class ProcessingMCPTools:
 
     @staticmethod
     def _normalize_filesystem_path(path: str | Path) -> Path:
+        """归一化 filesystem path。"""
         candidate = path if isinstance(path, Path) else Path(str(path).strip()).expanduser()
         if not candidate.is_absolute():
             candidate = Path.cwd() / candidate
@@ -188,6 +198,7 @@ class ProcessingMCPTools:
 
     @classmethod
     def _normalize_filesystem_roots(cls, roots: list[str] | None) -> list[Path]:
+        """归一化 filesystem roots。"""
         normalized: list[Path] = []
         seen: set[str] = set()
         for root in roots or []:
@@ -204,6 +215,7 @@ class ProcessingMCPTools:
 
     @staticmethod
     def _is_path_within_root(path: Path, root: Path) -> bool:
+        """判断 path within root 是否成立。"""
         try:
             return os.path.commonpath(
                 [os.path.normcase(str(path)), os.path.normcase(str(root))]
@@ -212,10 +224,12 @@ class ProcessingMCPTools:
             return False
 
     def _ensure_filesystem_tools_enabled(self) -> None:
+        """确保 filesystem tools enabled 已就绪。"""
         if self._filesystem_config.disable_filesystem_tools:
             raise Exception("filesystem tools are disabled by configuration")
 
     def _ensure_filesystem_path_allowed(self, path: Path) -> None:
+        """确保 filesystem path allowed 已就绪。"""
         if not self._filesystem_allowed_roots:
             raise Exception(
                 "filesystem.allowed_roots is empty; filesystem access is disabled"
@@ -228,6 +242,7 @@ class ProcessingMCPTools:
         raise Exception(f"Path is outside allowed_roots: {path}")
 
     def _ensure_filesystem_path_writable(self, path: Path) -> None:
+        """确保 filesystem path writable 已就绪。"""
         if any(
             self._is_path_within_root(path, root)
             for root in self._filesystem_readonly_roots
@@ -235,18 +250,21 @@ class ProcessingMCPTools:
             raise Exception(f"Path is inside readonly_roots: {path}")
 
     def _resolve_filesystem_query_path(self, path: str | Path) -> Path:
+        """解析 filesystem query path。"""
         self._ensure_filesystem_tools_enabled()
         candidate = self._normalize_filesystem_path(path)
         self._ensure_filesystem_path_allowed(candidate)
         return candidate
 
     def _resolve_filesystem_write_path(self, path: str | Path) -> Path:
+        """解析 filesystem write path。"""
         candidate = self._resolve_filesystem_query_path(path)
         self._ensure_filesystem_path_writable(candidate)
         return candidate
 
     @staticmethod
     def _normalize_dataset_kind(dataset_kind: str | None) -> str:
+        """归一化 dataset kind。"""
         value = (dataset_kind or "both").strip().lower()
         if value in {"both", "all", "any"}:
             return "both"
@@ -256,6 +274,7 @@ class ProcessingMCPTools:
 
     @staticmethod
     def _normalize_geometry_type_filter(geometry_type: str | None) -> str:
+        """归一化 geometry type filter。"""
         value = (geometry_type or "any").strip().lower()
         if value in {"any", "point", "line", "polygon", "unknown"}:
             return value
@@ -263,6 +282,7 @@ class ProcessingMCPTools:
 
     @staticmethod
     def _normalize_layer_types_filter(layer_types: str | None) -> str:
+        """归一化 layer types filter。"""
         value = (layer_types or "both").strip().lower()
         if value in {"both", "all", "any"}:
             return "both"
@@ -272,15 +292,18 @@ class ProcessingMCPTools:
 
     @staticmethod
     def _normalize_name_glob(name_glob: str | None) -> str:
+        """归一化 name glob。"""
         value = (name_glob or "*").strip()
         return value or "*"
 
     @staticmethod
     def _resource_json(payload: Any) -> str:
+        """执行 resource JSON 相关逻辑。"""
         return json.dumps(payload, ensure_ascii=False, indent=2)
 
     @staticmethod
     def _layer_type_token(layer: QgsMapLayer) -> str:
+        """执行图层相关的 type token 逻辑。"""
         if layer.type() == QgsMapLayer.VectorLayer:
             return f"vector_{int(layer.geometryType())}"
         if layer.type() == QgsMapLayer.RasterLayer:
@@ -289,6 +312,7 @@ class ProcessingMCPTools:
 
     @staticmethod
     def _is_layer_visible(project: QgsProject, layer_id: str) -> bool:
+        """判断 layer visible 是否成立。"""
         node = project.layerTreeRoot().findLayer(layer_id) if project.layerTreeRoot() else None
         if node is None:
             return False
@@ -299,6 +323,7 @@ class ProcessingMCPTools:
 
     @staticmethod
     def _serialize_value(value: Any) -> Any:
+        """序列化 value。"""
         if value is None:
             return None
         if isinstance(value, (bool, int, float, str)):
@@ -331,6 +356,7 @@ class ProcessingMCPTools:
 
     @staticmethod
     def _safe_call(obj: object, name: str, default: Any = None) -> Any:
+        """执行 safe call 相关逻辑。"""
         attr = getattr(obj, name, None)
         if callable(attr):
             try:
@@ -340,6 +366,7 @@ class ProcessingMCPTools:
         return attr if attr is not None else default
 
     def _serialize_parameter(self, param) -> dict[str, Any]:
+        """序列化 parameter。"""
         flags = self._safe_call(param, "flags", 0) or 0
         result = {
             "name": self._safe_call(param, "name"),
@@ -357,6 +384,7 @@ class ProcessingMCPTools:
         return result
 
     def _serialize_output(self, output_def) -> dict[str, Any]:
+        """序列化 output。"""
         return {
             "name": self._safe_call(output_def, "name"),
             "description": self._safe_call(output_def, "description"),
@@ -365,6 +393,7 @@ class ProcessingMCPTools:
         }
 
     def _serialize_algorithm(self, alg, include_parameters: bool, include_outputs: bool) -> dict[str, Any]:
+        """序列化 algorithm。"""
         provider = alg.provider() if hasattr(alg, "provider") else None
         result = {
             "id": alg.id(),
@@ -384,10 +413,12 @@ class ProcessingMCPTools:
 
     @staticmethod
     def _is_disk_output_key(key: str) -> bool:
+        """判断 disk output key 是否成立。"""
         return "OUTPUT" in key.upper()
 
     @staticmethod
     def _is_disk_output_value(value: Any) -> bool:
+        """判断 disk output value 是否成立。"""
         if value is None:
             return False
         if isinstance(value, Path):
@@ -404,6 +435,7 @@ class ProcessingMCPTools:
         return True
 
     def _sanitize_processing_parameters(self, parameters: dict[str, Any], allow_disk_write: bool, allow_in_place_edit: bool) -> tuple[dict[str, Any], list[str]]:
+        """执行 sanitize processing parameters 相关逻辑。"""
         sanitized = dict(parameters)
         warnings: list[str] = []
         for key in list(sanitized.keys()):
@@ -419,6 +451,7 @@ class ProcessingMCPTools:
 
     @staticmethod
     def _coerce_output_identifier(value: Any) -> str:
+        """执行 coerce output identifier 相关逻辑。"""
         if value is None:
             return ""
         if isinstance(value, str):
@@ -432,6 +465,7 @@ class ProcessingMCPTools:
 
     @staticmethod
     def _to_field_type(field_type: str) -> QVariant.Type:
+        """执行 to field type 相关逻辑。"""
         value = (field_type or "string").strip().lower()
         mapping = {
             "string": QVariant.String,
@@ -450,6 +484,7 @@ class ProcessingMCPTools:
 
     @staticmethod
     def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[str, Any] | None = None, warnings: list[str] | None = None, **extra) -> dict[str, Any]:
+        """执行 ok result 相关逻辑。"""
         payload: dict[str, Any] = {"ok": True, "tool": tool, "summary": summary or {}, "outputs": outputs or {}}
         if warnings is not None:
             payload["warnings"] = warnings
@@ -458,6 +493,7 @@ class ProcessingMCPTools:
 
     @staticmethod
     def _path_info(path: Path) -> dict[str, Any]:
+        """执行 path info 相关逻辑。"""
         stat = path.stat()
         return {
             "path": str(path),
@@ -471,9 +507,11 @@ class ProcessingMCPTools:
 
     @staticmethod
     def _field_index(layer: QgsVectorLayer, field_name: str) -> int:
+        """执行 field index 相关逻辑。"""
         return layer.fields().indexFromName(field_name)
 
     def _resolve_layer_ref(self, layer_ref: Any) -> QgsMapLayer:
+        """解析 layer ref。"""
         if isinstance(layer_ref, QgsMapLayer):
             return layer_ref
         text = str(layer_ref).strip() if layer_ref is not None else ""
@@ -493,12 +531,14 @@ class ProcessingMCPTools:
         raise Exception(f"Layer not found: {text}")
 
     def _resolve_vector_layer_ref(self, layer_ref: Any) -> QgsVectorLayer:
+        """解析 vector layer ref。"""
         layer = self._resolve_layer_ref(layer_ref)
         if layer.type() != QgsMapLayer.VectorLayer:
             raise Exception(f"Layer is not a vector layer: {layer_ref}")
         return layer
 
     def _resolve_raster_layer_ref(self, layer_ref: Any) -> QgsRasterLayer:
+        """解析 raster layer ref。"""
         layer = self._resolve_layer_ref(layer_ref)
         if layer.type() != QgsMapLayer.RasterLayer:
             raise Exception(f"Layer is not a raster layer: {layer_ref}")
@@ -506,6 +546,7 @@ class ProcessingMCPTools:
 
     @staticmethod
     def _begin_vector_edit(layer: QgsVectorLayer) -> bool:
+        """执行 begin vector edit 相关逻辑。"""
         if layer.isEditable():
             return False
         if not layer.startEditing():
@@ -514,6 +555,7 @@ class ProcessingMCPTools:
 
     @staticmethod
     def _finish_vector_edit(layer: QgsVectorLayer, started_here: bool) -> None:
+        """执行 finish vector edit 相关逻辑。"""
         if not started_here:
             return
         if layer.commitChanges():
@@ -523,6 +565,7 @@ class ProcessingMCPTools:
         raise Exception(f"Failed to commit vector layer changes: {errors}")
 
     def _apply_vector_edit(self, layer: QgsVectorLayer, operation) -> Any:
+        """执行 apply vector edit 相关逻辑。"""
         started_here = self._begin_vector_edit(layer)
         try:
             result = operation()
@@ -535,6 +578,7 @@ class ProcessingMCPTools:
 
     @staticmethod
     def _copy_layer_name(layer: QgsMapLayer, suffix: str = "copy") -> str:
+        """复制 layer name。"""
         base_name = (layer.name() or "layer").strip() or "layer"
         clean_suffix = suffix.strip().replace(" ", "_") if suffix else "copy"
         return f"{base_name}_{clean_suffix}"
@@ -542,6 +586,7 @@ class ProcessingMCPTools:
     def _materialize_vector_layer(
         self, layer: QgsVectorLayer, suffix: str = "copy"
     ) -> QgsVectorLayer:
+        """执行 materialize vector layer 相关逻辑。"""
         cloned_layer = layer.materialize(QgsFeatureRequest())
         if cloned_layer is None or not cloned_layer.isValid():
             raise Exception(f"Failed to materialize vector layer copy: {layer.id()}")
@@ -552,22 +597,27 @@ class ProcessingMCPTools:
     def _prepare_vector_target_layer(
         self, layer: QgsVectorLayer, in_place: bool, suffix: str
     ) -> tuple[QgsVectorLayer, str]:
+        """执行 prepare vector target layer 相关逻辑。"""
         if in_place:
             return layer, "in_place"
         return self._materialize_vector_layer(layer, suffix), "copy"
 
     def _ensure_processing_runtime(self) -> None:
+        """确保 processing runtime 已就绪。"""
         _ensure_processing_initialized()
 
     def _execute_processing_call(self, algorithm: str, parameters: dict[str, Any], load_results: bool) -> dict[str, Any]:
+        """执行 execute processing call 相关逻辑。"""
         self._ensure_processing_runtime()
         result = processing.runAndLoadResults(algorithm, parameters) if load_results else processing.run(algorithm, parameters)
         return result if isinstance(result, dict) else {"result": result}
 
     def get_project_snapshot(self) -> dict[str, Any]:
+        """返回 project snapshot。"""
         return self._run(self._get_project_snapshot_impl)
 
     def _get_project_snapshot_impl(self) -> dict[str, Any]:
+        """执行 get project snapshot impl 相关逻辑。"""
         project = QgsProject.instance()
         return {
             "file_name": project.fileName(),
@@ -577,9 +627,11 @@ class ProcessingMCPTools:
         }
 
     def get_layers_summary(self) -> dict[str, Any]:
+        """返回 layers summary。"""
         return self._run(self._get_layers_summary_impl)
 
     def _get_layers_summary_impl(self) -> dict[str, Any]:
+        """执行 get layers summary impl 相关逻辑。"""
         layers = self.layer_list(layer_types="both")
         return {
             "count": len(layers),
@@ -592,9 +644,11 @@ class ProcessingMCPTools:
         }
 
     def common_get_qgis_info(self) -> dict[str, Any]:
+        """返回 QGIS info 信息。"""
         return self._run(self._common_get_qgis_info_impl)
 
     def _common_get_qgis_info_impl(self) -> dict[str, Any]:
+        """执行 common get QGIS info impl 相关逻辑。"""
         project = QgsProject.instance()
         available = False
         try:
@@ -646,9 +700,11 @@ class ProcessingMCPTools:
         }
 
     def vector_add_layer(self, path: str, provider: str = "ogr", name: str | None = None) -> dict[str, Any]:
+        """执行矢量相关的 add layer 逻辑。"""
         return self._run(self._vector_add_layer_impl, path, provider, name)
 
     def _vector_add_layer_impl(self, path: str, provider: str = "ogr", name: str | None = None) -> dict[str, Any]:
+        """执行矢量相关的 add layer impl 逻辑。"""
         layer = QgsVectorLayer(path, name or Path(path).stem, provider)
         if not layer.isValid():
             raise Exception(f"Layer is not valid: {path}")
@@ -656,9 +712,11 @@ class ProcessingMCPTools:
         return {"id": layer.id(), "name": layer.name(), "type": self._layer_type_token(layer), "feature_count": layer.featureCount()}
 
     def vector_add_layers(self, paths: list[str], provider: str = "ogr", skip_invalid: bool = True) -> dict[str, Any]:
+        """执行矢量相关的 add layers 逻辑。"""
         return self._run(self._vector_add_layers_impl, paths, provider, skip_invalid)
 
     def _vector_add_layers_impl(self, paths: list[str], provider: str, skip_invalid: bool) -> dict[str, Any]:
+        """执行矢量相关的 add layers impl 逻辑。"""
         loaded: list[dict[str, Any]] = []
         failed: list[dict[str, Any]] = []
         for path in paths or []:
@@ -671,9 +729,11 @@ class ProcessingMCPTools:
         return {"requested_count": len(paths or []), "loaded_count": len(loaded), "failed_count": len(failed), "loaded": loaded, "failed": failed}
 
     def raster_add_layer(self, path: str, provider: str = "gdal", name: str | None = None) -> dict[str, Any]:
+        """执行栅格相关的 add layer 逻辑。"""
         return self._run(self._raster_add_layer_impl, path, provider, name)
 
     def _raster_add_layer_impl(self, path: str, provider: str = "gdal", name: str | None = None) -> dict[str, Any]:
+        """执行栅格相关的 add layer impl 逻辑。"""
         layer = QgsRasterLayer(path, name or Path(path).stem, provider)
         if not layer.isValid():
             raise Exception(f"Layer is not valid: {path}")
@@ -681,9 +741,11 @@ class ProcessingMCPTools:
         return {"id": layer.id(), "name": layer.name(), "type": "raster", "width": layer.width(), "height": layer.height(), "band_count": layer.bandCount()}
 
     def raster_add_layers(self, paths: list[str], provider: str = "gdal", skip_invalid: bool = True) -> dict[str, Any]:
+        """执行栅格相关的 add layers 逻辑。"""
         return self._run(self._raster_add_layers_impl, paths, provider, skip_invalid)
 
     def _raster_add_layers_impl(self, paths: list[str], provider: str, skip_invalid: bool) -> dict[str, Any]:
+        """执行栅格相关的 add layers impl 逻辑。"""
         loaded: list[dict[str, Any]] = []
         failed: list[dict[str, Any]] = []
         for path in paths or []:
@@ -696,9 +758,11 @@ class ProcessingMCPTools:
         return {"requested_count": len(paths or []), "loaded_count": len(loaded), "failed_count": len(failed), "loaded": loaded, "failed": failed}
 
     def layer_list(self, layer_types: str = "both", include_hidden: bool = True, name_glob: str = "*") -> list[dict[str, Any]]:
+        """执行图层相关的 list 逻辑。"""
         return self._run(self._layer_list_impl, layer_types, include_hidden, name_glob)
 
     def _layer_list_impl(self, layer_types: str, include_hidden: bool, name_glob: str) -> list[dict[str, Any]]:
+        """执行图层相关的 list impl 逻辑。"""
         normalized_types = self._normalize_layer_types_filter(layer_types)
         pattern = self._normalize_name_glob(name_glob)
         project = QgsProject.instance()
@@ -733,15 +797,18 @@ class ProcessingMCPTools:
         return entries
 
     def layer_get_panel_tree(self, include_hidden: bool = True) -> dict[str, Any]:
+        """执行图层相关的 get panel tree 逻辑。"""
         return self._run(self._layer_get_panel_tree_impl, include_hidden)
 
     def _layer_get_panel_tree_impl(self, include_hidden: bool) -> dict[str, Any]:
+        """执行图层相关的 get panel tree impl 逻辑。"""
         root = QgsProject.instance().layerTreeRoot()
         groups: list[dict[str, Any]] = []
         layers: list[dict[str, Any]] = []
         project = QgsProject.instance()
 
         def layer_payload(layer: QgsMapLayer) -> dict[str, Any]:
+            """执行图层相关的 payload 逻辑。"""
             item: dict[str, Any] = {
                 "id": layer.id(),
                 "name": layer.name(),
@@ -759,6 +826,7 @@ class ProcessingMCPTools:
             return item
 
         def walk(group: QgsLayerTreeGroup, prefix: str) -> list[dict[str, Any]]:
+            """遍历当前节点及其子节点。"""
             children_payload: list[dict[str, Any]] = []
             for child in group.children():
                 visible = bool(child.isVisible()) if hasattr(child, "isVisible") else True
@@ -802,9 +870,11 @@ class ProcessingMCPTools:
         return {"tree": tree, "groups": groups, "layers": layers}
 
     def layer_get_details(self, layer_ref: str) -> dict[str, Any]:
+        """执行图层相关的 get details 逻辑。"""
         return self._run(self._layer_get_details_impl, layer_ref)
 
     def _layer_get_details_impl(self, layer_ref: str) -> dict[str, Any]:
+        """执行图层相关的 get details impl 逻辑。"""
         layer = self._resolve_layer_ref(layer_ref)
         result: dict[str, Any] = {
             "id": layer.id(),
@@ -824,9 +894,11 @@ class ProcessingMCPTools:
         return result
 
     def layer_remove(self, layer_id: str) -> dict[str, str]:
+        """执行图层相关的 remove 逻辑。"""
         return self._run(self._layer_remove_impl, layer_id)
 
     def _layer_remove_impl(self, layer_id: str) -> dict[str, str]:
+        """执行图层相关的 remove impl 逻辑。"""
         project = QgsProject.instance()
         if layer_id not in project.mapLayers():
             raise Exception(f"Layer not found: {layer_id}")
@@ -834,9 +906,11 @@ class ProcessingMCPTools:
         return {"removed": layer_id}
 
     def layer_remove_batch(self, layer_ids: list[str]) -> dict[str, list[str]]:
+        """执行图层相关的 remove batch 逻辑。"""
         return self._run(self._layer_remove_batch_impl, layer_ids)
 
     def _layer_remove_batch_impl(self, layer_ids: list[str]) -> dict[str, list[str]]:
+        """执行图层相关的 remove batch impl 逻辑。"""
         project = QgsProject.instance()
         removed: list[str] = []
         missing: list[str] = []
@@ -852,9 +926,11 @@ class ProcessingMCPTools:
         return {"removed": removed, "missing": missing}
 
     def layer_resolve_references(self, refs: list[str], strict: bool = False) -> dict[str, Any]:
+        """执行图层相关的 resolve references 逻辑。"""
         return self._run(self._layer_resolve_references_impl, refs, strict)
 
     def _layer_resolve_references_impl(self, refs: list[str], strict: bool) -> dict[str, Any]:
+        """执行图层相关的 resolve references impl 逻辑。"""
         resolved: dict[str, str] = {}
         missing: list[str] = []
         ambiguous: dict[str, list[str]] = {}
@@ -885,9 +961,11 @@ class ProcessingMCPTools:
         return {"resolved": resolved, "missing": missing, "ambiguous": ambiguous}
 
     def vector_get_layer_features(self, layer_ref: str, limit: int = DEFAULT_FEATURE_LIMIT) -> dict[str, Any]:
+        """执行矢量相关的 get layer features 逻辑。"""
         return self._run(self._vector_get_layer_features_impl, layer_ref, limit)
 
     def _vector_get_layer_features_impl(self, layer_ref: str, limit: int) -> dict[str, Any]:
+        """执行矢量相关的 get layer features impl 逻辑。"""
         layer = self._resolve_vector_layer_ref(layer_ref)
         requested, applied, capped = self._normalize_feature_limit(limit)
         features: list[dict[str, Any]] = []
@@ -917,9 +995,11 @@ class ProcessingMCPTools:
         }
 
     def vector_table_add_field(self, layer_ref: str, field_name: str, field_type: str = "string", field_length: int = 0, field_precision: int = 0, in_place: bool = False) -> dict[str, Any]:
+        """执行矢量相关的 table add field 逻辑。"""
         return self._run(self._vector_table_add_field_impl, layer_ref, field_name, field_type, field_length, field_precision, in_place)
 
     def _vector_table_add_field_impl(self, layer_ref: str, field_name: str, field_type: str, field_length: int, field_precision: int, in_place: bool) -> dict[str, Any]:
+        """执行矢量相关的 table add field impl 逻辑。"""
         source_layer = self._resolve_vector_layer_ref(layer_ref)
         layer, mode = self._prepare_vector_target_layer(
             source_layer, in_place, "add_field_copy"
@@ -932,6 +1012,7 @@ class ProcessingMCPTools:
         field = QgsField(name, self._to_field_type(field_type), len=max(0, self._safe_int(field_length, 0)), prec=max(0, self._safe_int(field_precision, 0)))
 
         def op() -> int:
+            """执行当前局部编辑操作。"""
             if not layer.addAttribute(field):
                 raise Exception(f"Failed to add field: {name}")
             layer.updateFields()
@@ -949,9 +1030,11 @@ class ProcessingMCPTools:
         )
 
     def vector_table_drop_fields(self, layer_ref: str, fields: list[str], in_place: bool = False) -> dict[str, Any]:
+        """执行矢量相关的 table drop fields 逻辑。"""
         return self._run(self._vector_table_drop_fields_impl, layer_ref, fields, in_place)
 
     def _vector_table_drop_fields_impl(self, layer_ref: str, fields: list[str], in_place: bool) -> dict[str, Any]:
+        """执行矢量相关的 table drop fields impl 逻辑。"""
         source_layer = self._resolve_vector_layer_ref(layer_ref)
         layer, mode = self._prepare_vector_target_layer(
             source_layer, in_place, "drop_fields_copy"
@@ -968,6 +1051,7 @@ class ProcessingMCPTools:
                 indexes.append(idx)
 
         def op() -> int:
+            """执行当前局部编辑操作。"""
             affected = 0
             for idx in sorted(indexes, reverse=True):
                 if layer.deleteAttribute(idx):
@@ -990,9 +1074,11 @@ class ProcessingMCPTools:
         )
 
     def vector_table_rename_field(self, layer_ref: str, field_name: str, new_field_name: str, in_place: bool = False) -> dict[str, Any]:
+        """执行矢量相关的 table rename field 逻辑。"""
         return self._run(self._vector_table_rename_field_impl, layer_ref, field_name, new_field_name, in_place)
 
     def _vector_table_rename_field_impl(self, layer_ref: str, field_name: str, new_field_name: str, in_place: bool) -> dict[str, Any]:
+        """执行矢量相关的 table rename field impl 逻辑。"""
         source_layer = self._resolve_vector_layer_ref(layer_ref)
         layer, mode = self._prepare_vector_target_layer(
             source_layer, in_place, "rename_field_copy"
@@ -1006,6 +1092,7 @@ class ProcessingMCPTools:
             raise Exception(f"Field already exists: {new_name}")
 
         def op() -> int:
+            """执行当前局部编辑操作。"""
             if not layer.renameAttribute(idx, new_name):
                 raise Exception(f"Failed to rename field {old_name} -> {new_name}")
             layer.updateFields()
@@ -1023,9 +1110,11 @@ class ProcessingMCPTools:
         )
 
     def vector_table_calculate_field(self, layer_ref: str, field_name: str, expression: str, field_type: str = "string", where: str | None = None, in_place: bool = False) -> dict[str, Any]:
+        """执行矢量相关的 table calculate field 逻辑。"""
         return self._run(self._vector_table_calculate_field_impl, layer_ref, field_name, expression, field_type, where, in_place)
 
     def _vector_table_calculate_field_impl(self, layer_ref: str, field_name: str, expression: str, field_type: str, where: str | None, in_place: bool) -> dict[str, Any]:
+        """执行矢量相关的 table calculate field impl 逻辑。"""
         source_layer = self._resolve_vector_layer_ref(layer_ref)
         layer, mode = self._prepare_vector_target_layer(
             source_layer, in_place, "calculate_field_copy"
@@ -1043,6 +1132,7 @@ class ProcessingMCPTools:
         created = False
 
         def op() -> int:
+            """执行当前局部编辑操作。"""
             nonlocal idx
             nonlocal created
             if idx < 0:
@@ -1083,9 +1173,11 @@ class ProcessingMCPTools:
         )
 
     def vector_table_query_records(self, layer_ref: str, where: str | None = None, fields: list[str] | None = None, limit: int = DEFAULT_FEATURE_LIMIT, offset: int = 0, order_by: str | None = None, include_geometry: bool = False) -> dict[str, Any]:
+        """执行矢量相关的 table query records 逻辑。"""
         return self._run(self._vector_table_query_records_impl, layer_ref, where, fields, limit, offset, order_by, include_geometry)
 
     def _vector_table_query_records_impl(self, layer_ref: str, where: str | None, fields: list[str] | None, limit: int, offset: int, order_by: str | None, include_geometry: bool) -> dict[str, Any]:
+        """执行矢量相关的 table query records impl 逻辑。"""
         if not str(layer_ref).strip():
             raise Exception("layer_ref is required")
         layer = self._resolve_vector_layer_ref(layer_ref)
@@ -1135,9 +1227,11 @@ class ProcessingMCPTools:
         return self._ok_result("vector_table_query_records", summary={"returned": len(records), "matched_total": len(matched), "offset": applied_offset, "requested_limit": requested, "applied_limit": applied, "limit_capped": capped}, outputs={"records": records})
 
     def vector_table_insert_records(self, layer_ref: str, records: list[dict[str, Any]], in_place: bool = False) -> dict[str, Any]:
+        """执行矢量相关的 table insert records 逻辑。"""
         return self._run(self._vector_table_insert_records_impl, layer_ref, records, in_place)
 
     def _vector_table_insert_records_impl(self, layer_ref: str, records: list[dict[str, Any]], in_place: bool) -> dict[str, Any]:
+        """执行矢量相关的 table insert records impl 逻辑。"""
         source_layer = self._resolve_vector_layer_ref(layer_ref)
         layer, mode = self._prepare_vector_target_layer(
             source_layer, in_place, "insert_records_copy"
@@ -1150,6 +1244,7 @@ class ProcessingMCPTools:
         ignored_seen: set[str] = set()
 
         def op() -> int:
+            """执行当前局部编辑操作。"""
             affected = 0
             for row in records:
                 feature = QgsFeature(layer.fields())
@@ -1193,9 +1288,11 @@ class ProcessingMCPTools:
         )
 
     def vector_table_update_records(self, layer_ref: str, where: str | None = None, set_literals: dict[str, Any] | None = None, set_expressions: dict[str, str] | None = None, in_place: bool = False) -> dict[str, Any]:
+        """执行矢量相关的 table update records 逻辑。"""
         return self._run(self._vector_table_update_records_impl, layer_ref, where, set_literals, set_expressions, in_place)
 
     def _vector_table_update_records_impl(self, layer_ref: str, where: str | None, set_literals: dict[str, Any] | None, set_expressions: dict[str, str] | None, in_place: bool) -> dict[str, Any]:
+        """执行矢量相关的 table update records impl 逻辑。"""
         source_layer = self._resolve_vector_layer_ref(layer_ref)
         layer, mode = self._prepare_vector_target_layer(
             source_layer, in_place, "update_records_copy"
@@ -1226,6 +1323,7 @@ class ProcessingMCPTools:
             field_indexes[key] = idx
 
         def op() -> int:
+            """执行当前局部编辑操作。"""
             context = QgsExpressionContext()
             context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(layer))
             affected = 0
@@ -1261,9 +1359,11 @@ class ProcessingMCPTools:
         )
 
     def vector_table_delete_records(self, layer_ref: str, where: str | None = None, in_place: bool = False, confirm_destructive: bool = False) -> dict[str, Any]:
+        """执行矢量相关的 table delete records 逻辑。"""
         return self._run(self._vector_table_delete_records_impl, layer_ref, where, in_place, confirm_destructive)
 
     def _vector_table_delete_records_impl(self, layer_ref: str, where: str | None, in_place: bool, confirm_destructive: bool) -> dict[str, Any]:
+        """执行矢量相关的 table delete records impl 逻辑。"""
         if not confirm_destructive:
             raise Exception("confirm_destructive must be true for delete operation")
         source_layer = self._resolve_vector_layer_ref(layer_ref)
@@ -1277,6 +1377,7 @@ class ProcessingMCPTools:
                 raise Exception(f"Invalid where expression: {where_expr.parserErrorString()}")
 
         def op() -> int:
+            """执行当前局部编辑操作。"""
             context = QgsExpressionContext()
             context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(layer))
             fids: list[int] = []
@@ -1307,9 +1408,11 @@ class ProcessingMCPTools:
         )
 
     def vector_table_truncate(self, layer_ref: str, in_place: bool = False, confirm_destructive: bool = False) -> dict[str, Any]:
+        """执行矢量相关的 table truncate 逻辑。"""
         return self._run(self._vector_table_truncate_impl, layer_ref, in_place, confirm_destructive)
 
     def _vector_table_truncate_impl(self, layer_ref: str, in_place: bool, confirm_destructive: bool) -> dict[str, Any]:
+        """执行矢量相关的 table truncate impl 逻辑。"""
         if not confirm_destructive:
             raise Exception("confirm_destructive must be true for truncate operation")
         source_layer = self._resolve_vector_layer_ref(layer_ref)
@@ -1318,6 +1421,7 @@ class ProcessingMCPTools:
         )
 
         def op() -> int:
+            """执行当前局部编辑操作。"""
             fids = [int(feature.id()) for feature in layer.getFeatures()]
             if not fids:
                 return 0
@@ -1337,9 +1441,11 @@ class ProcessingMCPTools:
         )
 
     def vector_stats_basic(self, layer_ref: str, field_name: str) -> dict[str, Any]:
+        """执行矢量相关的 stats basic 逻辑。"""
         return self._run(self._vector_stats_basic_impl, layer_ref, field_name)
 
     def _vector_stats_basic_impl(self, layer_ref: str, field_name: str) -> dict[str, Any]:
+        """执行矢量相关的 stats basic impl 逻辑。"""
         layer = self._resolve_vector_layer_ref(layer_ref)
         if self._field_index(layer, field_name) < 0:
             raise Exception(f"Invalid field: {field_name}")
@@ -1368,9 +1474,11 @@ class ProcessingMCPTools:
         )
 
     def vector_stats_by_categories(self, layer_ref: str, category_fields: list[str], values_field: str | None = None) -> dict[str, Any]:
+        """执行矢量相关的 stats by categories 逻辑。"""
         return self._run(self._vector_stats_by_categories_impl, layer_ref, category_fields, values_field)
 
     def _vector_stats_by_categories_impl(self, layer_ref: str, category_fields: list[str], values_field: str | None) -> dict[str, Any]:
+        """执行矢量相关的 stats by categories impl 逻辑。"""
         layer = self._resolve_vector_layer_ref(layer_ref)
         if not category_fields:
             raise Exception("category_fields is required")
@@ -1409,18 +1517,22 @@ class ProcessingMCPTools:
         return self._ok_result("vector_stats_by_categories", summary={"group_count": len(groups), "input_feature_count": layer.featureCount()}, outputs={"groups": groups})
 
     def raster_stats_basic(self, layer_ref: str, band: int = 1) -> dict[str, Any]:
+        """执行栅格相关的 stats basic 逻辑。"""
         return self._run(self._raster_stats_basic_impl, layer_ref, band)
 
     def _raster_stats_basic_impl(self, layer_ref: str, band: int) -> dict[str, Any]:
+        """执行栅格相关的 stats basic impl 逻辑。"""
         layer = self._resolve_raster_layer_ref(layer_ref)
         band_number = max(1, self._safe_int(band, 1))
         stats = layer.dataProvider().bandStatistics(band_number)
         return self._ok_result("raster_stats_basic", summary={"band": band_number, "count": int(stats.elementCount), "min": float(stats.minimumValue), "max": float(stats.maximumValue), "mean": float(stats.mean), "std_dev": float(stats.stdDev)}, outputs={"layer_id": layer.id()})
 
     def raster_stats_zonal(self, vector_layer_ref: str, raster_layer_ref: str, raster_band: int = 1, column_prefix: str = "z_", in_place: bool = False) -> dict[str, Any]:
+        """执行栅格相关的 stats zonal 逻辑。"""
         return self._run(self._raster_stats_zonal_impl, vector_layer_ref, raster_layer_ref, raster_band, column_prefix, in_place)
 
     def _raster_stats_zonal_impl(self, vector_layer_ref: str, raster_layer_ref: str, raster_band: int, column_prefix: str, in_place: bool) -> dict[str, Any]:
+        """执行栅格相关的 stats zonal impl 逻辑。"""
         vector_layer = self._resolve_vector_layer_ref(vector_layer_ref)
         raster_layer = self._resolve_raster_layer_ref(raster_layer_ref)
         self._ensure_processing_runtime()
@@ -1450,9 +1562,11 @@ class ProcessingMCPTools:
         )
 
     def raster_stats_cell(self, raster_layer_refs: list[str], statistic: int = 0, ignore_nodata: bool = True) -> dict[str, Any]:
+        """执行栅格相关的 stats cell 逻辑。"""
         return self._run(self._raster_stats_cell_impl, raster_layer_refs, statistic, ignore_nodata)
 
     def _raster_stats_cell_impl(self, raster_layer_refs: list[str], statistic: int, ignore_nodata: bool) -> dict[str, Any]:
+        """执行栅格相关的 stats cell impl 逻辑。"""
         if not raster_layer_refs:
             raise Exception("raster_layer_refs is required")
         layers = [self._resolve_raster_layer_ref(ref) for ref in raster_layer_refs]
@@ -1472,6 +1586,7 @@ class ProcessingMCPTools:
 
     @staticmethod
     def _detect_dataset_kind(path: Path) -> str | None:
+        """检测 dataset kind。"""
         vector_exts = {".shp", ".gpkg", ".geojson", ".json", ".kml", ".gml", ".sqlite", ".csv"}
         raster_exts = {".tif", ".tiff", ".img", ".vrt", ".asc", ".jp2", ".png", ".jpg", ".jpeg"}
         suffix = path.suffix.lower()
@@ -1483,15 +1598,18 @@ class ProcessingMCPTools:
 
     @staticmethod
     def _detect_vector_geometry_type(path: Path) -> str:
+        """检测 vector geometry type。"""
         layer = QgsVectorLayer(str(path), "__probe__", "ogr")
         if not layer.isValid():
             return "unknown"
         return {0: "point", 1: "line", 2: "polygon"}.get(int(layer.geometryType()), "unknown")
 
     def dataset_list_files(self, directory: str, recursive: bool = False, dataset_kind: str = "both", geometry_type: str = "any", name_glob: str = "*", limit: int = DEFAULT_DATASET_LIMIT) -> dict[str, Any]:
+        """执行数据集相关的 list files 逻辑。"""
         return self._run(self._dataset_list_files_impl, directory, recursive, dataset_kind, geometry_type, name_glob, limit)
 
     def _dataset_list_files_impl(self, directory: str, recursive: bool, dataset_kind: str, geometry_type: str, name_glob: str, limit: int) -> dict[str, Any]:
+        """执行数据集相关的 list files impl 逻辑。"""
         root = Path(directory)
         if not root.exists() or not root.is_dir():
             raise Exception(f"Directory not found: {directory}")
@@ -1522,9 +1640,11 @@ class ProcessingMCPTools:
         return {"directory": str(root), "requested_limit": requested, "applied_limit": applied, "limit_capped": capped, "returned": len(datasets), "matched_total": matched_total, "truncated": matched_total > len(datasets), "datasets": datasets}
 
     def dataset_load_from_directory(self, directory: str, recursive: bool = False, dataset_kind: str = "both", geometry_type: str = "any", name_glob: str = "*", limit: int = DEFAULT_DATASET_LIMIT, skip_invalid: bool = True) -> dict[str, Any]:
+        """执行数据集相关的 load from directory 逻辑。"""
         return self._run(self._dataset_load_from_directory_impl, directory, recursive, dataset_kind, geometry_type, name_glob, limit, skip_invalid)
 
     def _dataset_load_from_directory_impl(self, directory: str, recursive: bool, dataset_kind: str, geometry_type: str, name_glob: str, limit: int, skip_invalid: bool) -> dict[str, Any]:
+        """执行数据集相关的 load from directory impl 逻辑。"""
         list_result = self._dataset_list_files_impl(directory, recursive, dataset_kind, geometry_type, name_glob, limit)
         loaded: list[dict[str, Any]] = []
         failed: list[dict[str, Any]] = []
@@ -1542,9 +1662,11 @@ class ProcessingMCPTools:
         return {"requested_count": len(list_result["datasets"]), "loaded_count": len(loaded), "failed_count": len(failed), "loaded": loaded, "failed": failed}
 
     def filesystem_query_list_entries(self, directory: str, recursive: bool = False, include_files: bool = True, include_directories: bool = True, name_glob: str = "*", limit: int = DEFAULT_FILESYSTEM_LIST_LIMIT) -> dict[str, Any]:
+        """执行文件系统相关的 query list entries 逻辑。"""
         return self._run(self._filesystem_query_list_entries_impl, directory, recursive, include_files, include_directories, name_glob, limit)
 
     def _filesystem_query_list_entries_impl(self, directory: str, recursive: bool, include_files: bool, include_directories: bool, name_glob: str, limit: int) -> dict[str, Any]:
+        """执行文件系统相关的 query list entries impl 逻辑。"""
         if not include_files and not include_directories:
             raise Exception("include_files and include_directories cannot both be false")
         root = self._resolve_filesystem_query_path(directory)
@@ -1571,18 +1693,22 @@ class ProcessingMCPTools:
         return self._ok_result("filesystem_query_list_entries", summary={"returned_count": len(entries), "matched_total": matched_total, "requested_limit": requested, "applied_limit": applied, "limit_capped": capped, "truncated": matched_total > len(entries)}, outputs={"directory": str(root), "entries": entries})
 
     def filesystem_query_entry_info(self, path: str) -> dict[str, Any]:
+        """执行文件系统相关的 query entry info 逻辑。"""
         return self._run(self._filesystem_query_entry_info_impl, path)
 
     def _filesystem_query_entry_info_impl(self, path: str) -> dict[str, Any]:
+        """执行文件系统相关的 query entry info impl 逻辑。"""
         entry = self._resolve_filesystem_query_path(path)
         if not entry.exists():
             raise Exception(f"Path not found: {path}")
         return self._ok_result("filesystem_query_entry_info", summary={"exists": True}, outputs={"entry": self._path_info(entry)})
 
     def filesystem_query_read_text(self, path: str, max_chars: int | None = None) -> dict[str, Any]:
+        """执行文件系统相关的 query read text 逻辑。"""
         return self._run(self._filesystem_query_read_text_impl, path, max_chars)
 
     def _filesystem_query_read_text_impl(self, path: str, max_chars: int | None) -> dict[str, Any]:
+        """执行文件系统相关的 query read text impl 逻辑。"""
         entry = self._resolve_filesystem_query_path(path)
         if not entry.exists() or not entry.is_file():
             raise Exception(f"File not found: {path}")
@@ -1595,9 +1721,11 @@ class ProcessingMCPTools:
         return self._ok_result("filesystem_query_read_text", summary={"truncated": len(text) > applied, "max_chars": applied}, outputs={"text": text[:applied]})
 
     def filesystem_edit_write_text(self, path: str, content: str, overwrite: bool = False, confirm_destructive: bool = False, create_parents: bool = True) -> dict[str, Any]:
+        """执行文件系统相关的 edit write text 逻辑。"""
         return self._run(self._filesystem_edit_write_text_impl, path, content, overwrite, confirm_destructive, create_parents)
 
     def _filesystem_edit_write_text_impl(self, path: str, content: str, overwrite: bool, confirm_destructive: bool, create_parents: bool) -> dict[str, Any]:
+        """执行文件系统相关的 edit write text impl 逻辑。"""
         target = self._resolve_filesystem_write_path(path)
         if target.exists():
             if overwrite:
@@ -1614,9 +1742,11 @@ class ProcessingMCPTools:
         return self._ok_result("filesystem_edit_write_text", summary={"written_chars": len(content), "path": str(target)})
 
     def filesystem_edit_append_text(self, path: str, content: str, create_parents: bool = True) -> dict[str, Any]:
+        """执行文件系统相关的 edit append text 逻辑。"""
         return self._run(self._filesystem_edit_append_text_impl, path, content, create_parents)
 
     def _filesystem_edit_append_text_impl(self, path: str, content: str, create_parents: bool) -> dict[str, Any]:
+        """执行文件系统相关的 edit append text impl 逻辑。"""
         target = self._resolve_filesystem_write_path(path)
         if not target.parent.exists():
             if create_parents:
@@ -1628,9 +1758,11 @@ class ProcessingMCPTools:
         return self._ok_result("filesystem_edit_append_text", summary={"appended_chars": len(content), "path": str(target)})
 
     def filesystem_edit_copy_entry(self, source_path: str, target_path: str, overwrite: bool = False, confirm_destructive: bool = False) -> dict[str, Any]:
+        """执行文件系统相关的 edit copy entry 逻辑。"""
         return self._run(self._filesystem_edit_copy_entry_impl, source_path, target_path, overwrite, confirm_destructive)
 
     def _filesystem_edit_copy_entry_impl(self, source_path: str, target_path: str, overwrite: bool, confirm_destructive: bool) -> dict[str, Any]:
+        """执行文件系统相关的 edit copy entry impl 逻辑。"""
         source = self._resolve_filesystem_query_path(source_path)
         target = self._resolve_filesystem_write_path(target_path)
         if not source.exists():
@@ -1649,9 +1781,11 @@ class ProcessingMCPTools:
         return self._ok_result("filesystem_edit_copy_entry", summary={"source_path": str(source), "target_path": str(target)})
 
     def filesystem_edit_move_entry(self, source_path: str, target_path: str, overwrite: bool = False, confirm_destructive: bool = False) -> dict[str, Any]:
+        """执行文件系统相关的 edit move entry 逻辑。"""
         return self._run(self._filesystem_edit_move_entry_impl, source_path, target_path, overwrite, confirm_destructive)
 
     def _filesystem_edit_move_entry_impl(self, source_path: str, target_path: str, overwrite: bool, confirm_destructive: bool) -> dict[str, Any]:
+        """执行文件系统相关的 edit move entry impl 逻辑。"""
         source = self._resolve_filesystem_write_path(source_path)
         target = self._resolve_filesystem_write_path(target_path)
         if not source.exists():
@@ -1670,9 +1804,11 @@ class ProcessingMCPTools:
         return self._ok_result("filesystem_edit_move_entry", summary={"source_path": str(source), "target_path": str(target)})
 
     def filesystem_edit_delete_entry(self, path: str, confirm_destructive: bool = False) -> dict[str, Any]:
+        """执行文件系统相关的 edit delete entry 逻辑。"""
         return self._run(self._filesystem_edit_delete_entry_impl, path, confirm_destructive)
 
     def _filesystem_edit_delete_entry_impl(self, path: str, confirm_destructive: bool) -> dict[str, Any]:
+        """执行文件系统相关的 edit delete entry impl 逻辑。"""
         if not confirm_destructive:
             raise Exception("confirm_destructive must be true for delete operation")
         target = self._resolve_filesystem_write_path(path)
@@ -1682,9 +1818,11 @@ class ProcessingMCPTools:
         return self._ok_result("filesystem_edit_delete_entry", summary={"deleted_path": str(target)})
 
     def filesystem_stats_directory(self, directory: str, recursive: bool = False) -> dict[str, Any]:
+        """执行文件系统相关的 stats directory 逻辑。"""
         return self._run(self._filesystem_stats_directory_impl, directory, recursive)
 
     def _filesystem_stats_directory_impl(self, directory: str, recursive: bool) -> dict[str, Any]:
+        """执行文件系统相关的 stats directory impl 逻辑。"""
         root = self._resolve_filesystem_query_path(directory)
         if not root.exists() or not root.is_dir():
             raise Exception(f"Directory not found: {directory}")
@@ -1704,9 +1842,11 @@ class ProcessingMCPTools:
         return self._ok_result("filesystem_stats_directory", summary={"file_count": file_count, "directory_count": directory_count, "total_size_bytes": total_size_bytes}, outputs={"extensions": extensions})
 
     def processing_list_providers(self) -> dict[str, Any]:
+        """执行 Processing 相关的 list providers 逻辑。"""
         return self._run(self._processing_list_providers_impl)
 
     def _processing_list_providers_impl(self) -> dict[str, Any]:
+        """执行 Processing 相关的 list providers impl 逻辑。"""
         self._ensure_processing_runtime()
         providers = list(QgsApplication.processingRegistry().providers())
         payload = []
@@ -1721,9 +1861,11 @@ class ProcessingMCPTools:
         return {"count": len(payload), "providers": payload}
 
     def processing_get_algorithms(self, algorithm_id: str | None = None, provider_id: str | None = None, include_parameters: bool = False, include_outputs: bool = False, limit: int | None = None) -> dict[str, Any]:
+        """执行 Processing 相关的 get algorithms 逻辑。"""
         return self._run(self._processing_get_algorithms_impl, algorithm_id, provider_id, include_parameters, include_outputs, limit)
 
     def _processing_get_algorithms_impl(self, algorithm_id: str | None, provider_id: str | None, include_parameters: bool, include_outputs: bool, limit: int | None) -> dict[str, Any]:
+        """执行 Processing 相关的 get algorithms impl 逻辑。"""
         self._ensure_processing_runtime()
         registry = QgsApplication.processingRegistry()
         if algorithm_id:
@@ -1752,9 +1894,11 @@ class ProcessingMCPTools:
         }
 
     def processing_get_parameter_template(self, algorithm_id: str) -> dict[str, Any]:
+        """执行 Processing 相关的 get parameter template 逻辑。"""
         return self._run(self._processing_get_parameter_template_impl, algorithm_id)
 
     def _processing_get_parameter_template_impl(self, algorithm_id: str) -> dict[str, Any]:
+        """执行 Processing 相关的 get parameter template impl 逻辑。"""
         self._ensure_processing_runtime()
         algorithm = QgsApplication.processingRegistry().algorithmById(algorithm_id)
         if algorithm is None:
@@ -1772,9 +1916,11 @@ class ProcessingMCPTools:
         }
 
     def processing_execute_algorithm(self, algorithm: str, parameters: dict[str, Any], load_results: bool = True, allow_disk_write: bool = False, allow_in_place_edit: bool = False) -> dict[str, Any]:
+        """执行 Processing 相关的 execute algorithm 逻辑。"""
         return self._run(self._processing_execute_algorithm_impl, algorithm, parameters, load_results, allow_disk_write, allow_in_place_edit)
 
     def _processing_execute_algorithm_impl(self, algorithm: str, parameters: dict[str, Any], load_results: bool, allow_disk_write: bool, allow_in_place_edit: bool) -> dict[str, Any]:
+        """执行 Processing 相关的 execute algorithm impl 逻辑。"""
         if not isinstance(parameters, dict):
             raise Exception("parameters must be an object")
         effective, warnings = self._sanitize_processing_parameters(parameters, allow_disk_write, allow_in_place_edit)
@@ -1782,9 +1928,11 @@ class ProcessingMCPTools:
         return self._ok_result("processing_execute_algorithm", summary={"algorithm": algorithm, "load_results": bool(load_results)}, outputs={"result": self._serialize_value(result)}, warnings=warnings, safety_policy={"allow_disk_write": bool(allow_disk_write), "allow_in_place_edit": bool(allow_in_place_edit)}, effective_parameters=self._serialize_value(effective))
 
     def processing_execute_on_layers(self, algorithm: str, layer_bindings: dict[str, Any], parameters: dict[str, Any], load_results: bool = True, batch_mode: bool = False, allow_disk_write: bool = False, allow_in_place_edit: bool = False) -> dict[str, Any]:
+        """执行 Processing 相关的 execute on layers 逻辑。"""
         return self._run(self._processing_execute_on_layers_impl, algorithm, layer_bindings, parameters, load_results, batch_mode, allow_disk_write, allow_in_place_edit)
 
     def _normalize_layer_bindings(self, layer_bindings: dict[str, Any]) -> dict[str, list[str]]:
+        """归一化 layer bindings。"""
         if not isinstance(layer_bindings, dict):
             raise Exception("layer_bindings is required")
         normalized: dict[str, list[str]] = {}
@@ -1804,6 +1952,7 @@ class ProcessingMCPTools:
         return normalized
 
     def _processing_execute_on_layers_impl(self, algorithm: str, layer_bindings: dict[str, Any], parameters: dict[str, Any], load_results: bool, batch_mode: bool, allow_disk_write: bool, allow_in_place_edit: bool) -> dict[str, Any]:
+        """执行 Processing 相关的 execute on layers impl 逻辑。"""
         if not isinstance(parameters, dict):
             raise Exception("parameters must be an object")
         normalized_bindings = self._normalize_layer_bindings(layer_bindings)
@@ -1857,6 +2006,7 @@ def _tool_doc(
     safety: str,
     returns: str,
 ) -> str:
+    """执行 tool doc 相关逻辑。"""
     return (
         f"用途：{purpose} 输入语义：{inputs} 前置条件：{preconditions} "
         f"主要副作用：{effects} 安全开关：{safety} 返回结果：{returns}"
@@ -2217,6 +2367,7 @@ _REGISTERED_TOOL_DOCSTRINGS: dict[str, str] = {
 
 
 def _apply_registered_tool_docstrings() -> None:
+    """执行 apply registered tool docstrings 相关逻辑。"""
     missing: list[str] = []
     invalid: list[str] = []
     for tool_name in REGISTERED_TOOL_NAMES:
@@ -2241,6 +2392,7 @@ _apply_registered_tool_docstrings()
 
 
 def register_tools(mcp, tools: ProcessingMCPTools, enable_execute_code: bool = True) -> None:
+    """注册 tools 能力。"""
     _ = enable_execute_code
     tool_factory = getattr(mcp, "tool", None)
     if not callable(tool_factory):
@@ -2252,9 +2404,9 @@ def register_tools(mcp, tools: ProcessingMCPTools, enable_execute_code: bool = T
             continue
 
         def _wrapper(*args, _tool_name=tool_name, **kwargs):
+            """执行 wrapper 相关逻辑。"""
             return getattr(tools, _tool_name)(*args, **kwargs)
 
         _wrapper.__name__ = tool_name
         _wrapper.__doc__ = f"MCP tool wrapper for {tool_name}."
         tool_factory()(_wrapper)
-

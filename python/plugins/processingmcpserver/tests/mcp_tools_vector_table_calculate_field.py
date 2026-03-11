@@ -6,9 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsVectorTableCalculateFieldTest(ProcessingMCPTestBase):
     def test_registered(self):
+        """验证目标能力已完成注册。"""
         assert_tool_registered(self, "vector_table_calculate_field")
 
     def test_default_creates_copy_layer(self):
+        """验证默认条件下的 creates copy layer 场景。"""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("calc_field_vector_copy")
 
@@ -32,6 +34,7 @@ class ToolsVectorTableCalculateFieldTest(ProcessingMCPTestBase):
         )
 
     def test_success_calculate_field(self):
+        """验证 calculate field 的成功场景。"""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("calc_field_vector")
 
@@ -46,6 +49,7 @@ class ToolsVectorTableCalculateFieldTest(ProcessingMCPTestBase):
         self.assertEqual(result["summary"]["affected_count"], 3)
 
     def test_failure_invalid_expression(self):
+        """验证 invalid expression 的失败场景。"""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("calc_field_vector2")
 

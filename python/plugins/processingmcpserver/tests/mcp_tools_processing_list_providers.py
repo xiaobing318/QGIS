@@ -6,9 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsProcessingListProvidersTest(ProcessingMCPTestBase):
     def test_registered(self):
+        """验证目标能力已完成注册。"""
         assert_tool_registered(self, "processing_list_providers")
 
     def test_success_list_providers(self):
+        """验证 list providers 的成功场景。"""
         tools = self.build_tools()
         result = tools.processing_list_providers()
 
@@ -17,6 +19,7 @@ class ToolsProcessingListProvidersTest(ProcessingMCPTestBase):
         self.assertIsInstance(result["providers"], list)
 
     def test_safety_payload_shape(self):
+        """验证 safety payload shape 场景。"""
         tools = self.build_tools()
         result = tools.processing_list_providers()
         if result["providers"]:

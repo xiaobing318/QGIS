@@ -12,9 +12,11 @@ from ._shared_fixtures import DummyRunner, assert_tool_registered
 
 class ToolsFilesystemQueryReadTextTest(ProcessingMCPTestBase):
     def test_registered(self):
+        """验证目标能力已完成注册。"""
         assert_tool_registered(self, "filesystem_query_read_text")
 
     def test_success_read_with_truncate(self):
+        """验证 read with truncate 的成功场景。"""
         tools = self.build_tools()
         root = self.make_temp_dir()
         file_path = self.create_text_file(root / "a.txt", "abcdefghij")
@@ -25,6 +27,7 @@ class ToolsFilesystemQueryReadTextTest(ProcessingMCPTestBase):
         self.assertTrue(result["summary"]["truncated"])
 
     def test_failure_missing_file(self):
+        """验证 missing file 的失败场景。"""
         tools = self.build_tools()
         missing_path = self.make_temp_dir() / "missing.txt"
         with self.assertRaises(Exception) as ctx:
@@ -32,6 +35,7 @@ class ToolsFilesystemQueryReadTextTest(ProcessingMCPTestBase):
         self.assertIn("File not found", str(ctx.exception))
 
     def test_failure_path_outside_allowed_roots(self):
+        """验证 path outside allowed roots 的失败场景。"""
         tools = self.build_tools()
         file_path = Path(__file__).resolve()
 
@@ -40,6 +44,7 @@ class ToolsFilesystemQueryReadTextTest(ProcessingMCPTestBase):
         self.assertIn("outside allowed_roots", str(ctx.exception))
 
     def test_failure_when_filesystem_tools_disabled(self):
+        """验证 when filesystem tools disabled 的失败场景。"""
         base_config = self._build_config("streamable-http")
         config = replace(
             base_config,

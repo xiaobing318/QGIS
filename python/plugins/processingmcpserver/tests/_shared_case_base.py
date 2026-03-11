@@ -37,6 +37,7 @@ class ProcessingMCPTestBase(QgisTestCase):
     """Shared base for processingmcpserver tests."""
 
     def setUp(self) -> None:
+        """初始化测试前置状态。"""
         _ensure_qgis_test_app()
         self.settings = QgsSettings()
         self._old_settings = self._backup_processing_mcp_settings()
@@ -54,6 +55,7 @@ class ProcessingMCPTestBase(QgisTestCase):
         self._tmp_dirs: list[tempfile.TemporaryDirectory] = []
 
     def tearDown(self) -> None:
+        """清理测试后状态。"""
         cleanup_errors: list[str] = []
         try:
             self._cleanup_new_project_layers()
@@ -73,31 +75,37 @@ class ProcessingMCPTestBase(QgisTestCase):
             raise AssertionError("临时目录清理失败: " + "; ".join(cleanup_errors))
 
     def make_temp_dir(self) -> Path:
+        """生成 temp dir。"""
         temp_dir = tempfile.TemporaryDirectory()
         self._tmp_dirs.append(temp_dir)
         return Path(temp_dir.name)
 
     def _backup_processing_mcp_settings(self) -> dict[str, object]:
+        """执行 backup processing MCP settings 相关逻辑。"""
         self.settings.beginGroup("Processing/MCP")
         old_settings = {key: self.settings.value(key) for key in self.settings.allKeys()}
         self.settings.endGroup()
         return old_settings
 
     def _restore_processing_mcp_settings(self, old_settings: dict[str, object]) -> None:
+        """执行 restore processing MCP settings 相关逻辑。"""
         for key, value in old_settings.items():
             self.settings.setValue(f"Processing/MCP/{key}", value)
 
     def _write_json_config(self, payload: dict) -> None:
+        """执行 write JSON config 相关逻辑。"""
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
         self.config_path.write_text(
             json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
         )
 
     def _write_raw_json_text(self, content: str) -> None:
+        """执行 write raw JSON text 相关逻辑。"""
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
         self.config_path.write_text(content, encoding="utf-8")
 
     def _build_config(self, transport: str) -> ProcessingMCPServerConfig:
+        """执行 build config 相关逻辑。"""
         return ProcessingMCPServerConfig(
             enabled=True,
             transport=transport,
@@ -126,6 +134,7 @@ class ProcessingMCPTestBase(QgisTestCase):
 
     @staticmethod
     def build_env_snapshot() -> dependency_runtime.PythonEnvironmentSnapshot:
+        """构建 env snapshot。"""
         return dependency_runtime.PythonEnvironmentSnapshot(
             platform_system="Windows",
             platform_release="10",
@@ -142,6 +151,7 @@ class ProcessingMCPTestBase(QgisTestCase):
         )
 
     def build_tools(self) -> ProcessingMCPTools:
+        """构建 tools。"""
         return ProcessingMCPTools(
             iface=None,
             runner=DummyRunner(),
@@ -149,6 +159,7 @@ class ProcessingMCPTestBase(QgisTestCase):
         )
 
     def _cleanup_new_project_layers(self) -> None:
+        """执行 cleanup new project layers 相关逻辑。"""
         project = QgsProject.instance()
         current_ids = set(project.mapLayers().keys())
         for layer_id in current_ids - self._project_layer_ids_before:
@@ -156,11 +167,13 @@ class ProcessingMCPTestBase(QgisTestCase):
         gc.collect()
 
     def _assert_no_new_project_layers(self) -> None:
+        """断言 no new project layers。"""
         current_ids = set(QgsProject.instance().mapLayers().keys())
         leaked = sorted(current_ids - self._project_layer_ids_before)
         self.assertEqual(leaked, [], msg=f"存在未清理的测试图层: {leaked}")
 
     def _cleanup_temp_dirs_with_retry(self, errors: list[str]) -> None:
+        """执行 cleanup temp dirs with retry 相关逻辑。"""
         for temp_dir in self._tmp_dirs:
             last_error: Exception | None = None
             for attempt in range(1, 6):
@@ -181,6 +194,7 @@ class ProcessingMCPTestBase(QgisTestCase):
         self._tmp_dirs = []
 
     def data_dir(self) -> Path:
+        """执行 data dir 相关逻辑。"""
         candidates = [Path(__file__).resolve().parent / "data"]
         for candidate in candidates:
             if candidate.exists():
@@ -188,6 +202,7 @@ class ProcessingMCPTestBase(QgisTestCase):
         raise AssertionError("未找到测试数据目录: tests/data")
 
     def sample_vector_path(self) -> Path:
+        """执行 sample vector path 相关逻辑。"""
         vector_path = self.data_dir() / "sample_vector.geojson"
         if vector_path.exists():
             return vector_path
@@ -196,6 +211,7 @@ class ProcessingMCPTestBase(QgisTestCase):
     def add_sample_vector_layer(
         self, layer_name: str = "processingmcpserver_test_vector"
     ) -> QgsVectorLayer:
+        """添加 sample vector layer。"""
         layer = QgsVectorLayer(
             "Point?crs=EPSG:4326&field=name:string(32)&field=value:double&field=category:string(16)",
             layer_name,
@@ -227,6 +243,7 @@ class ProcessingMCPTestBase(QgisTestCase):
     def add_sample_polygon_layer(
         self, layer_name: str = "processingmcpserver_test_polygon"
     ) -> QgsVectorLayer:
+        """添加 sample polygon layer。"""
         layer = QgsVectorLayer(
             "Polygon?crs=EPSG:4326&field=name:string(32)",
             layer_name,
@@ -253,6 +270,7 @@ class ProcessingMCPTestBase(QgisTestCase):
     def add_serialization_vector_layer(
         self, layer_name: str = "processingmcpserver_serialization_vector"
     ) -> QgsVectorLayer:
+        """添加 serialization vector layer。"""
         layer = QgsVectorLayer(
             "Point?crs=EPSG:4326&field=name:string(32)",
             layer_name,
@@ -297,6 +315,7 @@ class ProcessingMCPTestBase(QgisTestCase):
         return layer
 
     def sample_raster_path(self) -> Path:
+        """执行 sample raster path 相关逻辑。"""
         candidates = [
             self.data_dir() / "dem.tif",
             Path(__file__).resolve().parents[4] / "tests" / "testdata" / "analysis" / "dem.tif",
@@ -316,6 +335,7 @@ class ProcessingMCPTestBase(QgisTestCase):
     def add_sample_raster_layer(
         self, layer_name: str = "processingmcpserver_test_dem"
     ) -> QgsRasterLayer:
+        """添加 sample raster layer。"""
         raster_path = self.sample_raster_path()
         layer = QgsRasterLayer(str(raster_path), layer_name, "gdal")
         self.assertTrue(layer.isValid())
@@ -323,6 +343,7 @@ class ProcessingMCPTestBase(QgisTestCase):
         return layer
 
     def create_vector_geojson_file(self, filename: str = "sample.geojson") -> Path:
+        """创建 vector GeoJSON file。"""
         temp_root = self.make_temp_dir()
         target = temp_root / filename
         target.write_text(
@@ -349,6 +370,7 @@ class ProcessingMCPTestBase(QgisTestCase):
     def copy_test_data_file(
         self, source_name: str, target_dir: Path, target_name: str | None = None
     ) -> Path:
+        """复制 test data file。"""
         source = self.data_dir() / source_name
         if not source.exists():
             raise AssertionError(f"未找到测试数据文件: {source_name}")
@@ -358,20 +380,22 @@ class ProcessingMCPTestBase(QgisTestCase):
         return target
 
     def create_text_file(self, path: Path, content: str) -> Path:
+        """创建 text file。"""
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
         return path
 
     @staticmethod
     def project_layer(layer_id: str) -> QgsMapLayer | None:
+        """执行 project layer 相关逻辑。"""
         return QgsProject.instance().mapLayer(layer_id)
 
     @staticmethod
     def vector_field_names(layer: QgsVectorLayer) -> list[str]:
+        """执行矢量相关的 field names 逻辑。"""
         return [field.name() for field in layer.fields()]
 
     @staticmethod
     def vector_attribute_values(layer: QgsVectorLayer, field_name: str) -> list[object]:
+        """执行矢量相关的 attribute values 逻辑。"""
         return [feature.attribute(field_name) for feature in layer.getFeatures()]
-
-

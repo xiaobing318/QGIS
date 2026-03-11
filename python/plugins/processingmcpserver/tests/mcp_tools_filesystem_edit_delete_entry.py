@@ -6,9 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsFilesystemEditDeleteEntryTest(ProcessingMCPTestBase):
     def test_registered(self):
+        """验证目标能力已完成注册。"""
         assert_tool_registered(self, "filesystem_edit_delete_entry")
 
     def test_success_delete_entry(self):
+        """验证 delete entry 的成功场景。"""
         tools = self.build_tools()
         root = self.make_temp_dir()
         target = self.create_text_file(root / "delete.txt", "bye")
@@ -21,6 +23,7 @@ class ToolsFilesystemEditDeleteEntryTest(ProcessingMCPTestBase):
         self.assertFalse(target.exists())
 
     def test_failure_without_confirmation(self):
+        """验证 without confirmation 的失败场景。"""
         tools = self.build_tools()
         root = self.make_temp_dir()
         target = self.create_text_file(root / "delete.txt", "bye")

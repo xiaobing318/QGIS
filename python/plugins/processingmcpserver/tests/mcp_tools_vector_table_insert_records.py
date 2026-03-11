@@ -6,9 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsVectorTableInsertRecordsTest(ProcessingMCPTestBase):
     def test_registered(self):
+        """验证目标能力已完成注册。"""
         assert_tool_registered(self, "vector_table_insert_records")
 
     def test_default_creates_copy_layer_and_reports_unknown_fields(self):
+        """验证默认条件下的 creates copy layer and reports unknown fields 场景。"""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("insert_records_vector_copy")
 
@@ -35,6 +37,7 @@ class ToolsVectorTableInsertRecordsTest(ProcessingMCPTestBase):
         self.assertIn("Ignored unknown fields", result["warnings"][0])
 
     def test_success_insert_records(self):
+        """验证 insert records 的成功场景。"""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("insert_records_vector")
 
@@ -54,6 +57,7 @@ class ToolsVectorTableInsertRecordsTest(ProcessingMCPTestBase):
         self.assertEqual(result["summary"]["affected_count"], 1)
 
     def test_failure_empty_records(self):
+        """验证 empty records 的失败场景。"""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("insert_records_vector2")
 

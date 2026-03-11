@@ -11,9 +11,11 @@ from ._shared_fixtures import DummyRunner, assert_tool_registered
 
 class ToolsFilesystemEditWriteTextTest(ProcessingMCPTestBase):
     def test_registered(self):
+        """验证目标能力已完成注册。"""
         assert_tool_registered(self, "filesystem_edit_write_text")
 
     def test_success_write_and_overwrite(self):
+        """验证 write and overwrite 的成功场景。"""
         tools = self.build_tools()
         root = self.make_temp_dir()
         target = root / "target.txt"
@@ -31,6 +33,7 @@ class ToolsFilesystemEditWriteTextTest(ProcessingMCPTestBase):
         self.assertEqual(target.read_text(encoding="utf-8"), "v2")
 
     def test_failure_overwrite_without_confirm(self):
+        """验证 overwrite without confirm 的失败场景。"""
         tools = self.build_tools()
         root = self.make_temp_dir()
         target = self.create_text_file(root / "target.txt", "v1")
@@ -45,6 +48,7 @@ class ToolsFilesystemEditWriteTextTest(ProcessingMCPTestBase):
         self.assertIn("confirm_destructive must be true", str(ctx.exception))
 
     def test_failure_write_inside_readonly_root(self):
+        """验证 write inside readonly root 的失败场景。"""
         root = self.make_temp_dir()
         config = replace(
             self._build_config("streamable-http"),

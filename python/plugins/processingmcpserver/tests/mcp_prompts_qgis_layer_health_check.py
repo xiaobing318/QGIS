@@ -8,11 +8,13 @@ from ._shared_fixtures import DummyMcp, DummyTools
 
 class PromptQgisLayerHealthCheckTest(ProcessingMCPTestBase):
     def test_prompt_registered(self):
+        """验证 prompt registered 场景。"""
         mcp = DummyMcp()
         register_prompts(mcp, DummyTools())
         self.assertIn("qgis_layer_health_check", mcp.prompt_names)
 
     def test_prompt_mentions_expected_tools(self):
+        """验证 prompt mentions expected tools 场景。"""
         mcp = DummyMcp()
         register_prompts(mcp, DummyTools())
 
@@ -23,10 +25,10 @@ class PromptQgisLayerHealthCheckTest(ProcessingMCPTestBase):
         self.assertIn("vector_get_layer_features", output)
 
     def test_prompt_excludes_removed_tool_names(self):
+        """验证 prompt excludes removed tool names 场景。"""
         removed_names = ["execute_processing(", "execute_code", "render_map"]
         mcp = DummyMcp()
         register_prompts(mcp, DummyTools())
         output = mcp.prompt_funcs["qgis_layer_health_check"](task="test")
         for name in removed_names:
             self.assertNotIn(name, output)
-

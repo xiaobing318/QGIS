@@ -6,9 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsFilesystemEditCopyEntryTest(ProcessingMCPTestBase):
     def test_registered(self):
+        """验证目标能力已完成注册。"""
         assert_tool_registered(self, "filesystem_edit_copy_entry")
 
     def test_success_copy_entry(self):
+        """验证 copy entry 的成功场景。"""
         tools = self.build_tools()
         root = self.make_temp_dir()
         source = self.create_text_file(root / "source.txt", "src")
@@ -22,6 +24,7 @@ class ToolsFilesystemEditCopyEntryTest(ProcessingMCPTestBase):
         self.assertEqual(target.read_text(encoding="utf-8"), "src")
 
     def test_failure_overwrite_without_confirm(self):
+        """验证 overwrite without confirm 的失败场景。"""
         tools = self.build_tools()
         root = self.make_temp_dir()
         source = self.create_text_file(root / "source.txt", "src")

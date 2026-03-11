@@ -8,12 +8,15 @@ from ._shared_fixtures import assert_tool_registered
 
 class _FakeProcessingRegistry:
     def __init__(self, available_algorithms: list[str]):
+        """初始化 _FakeProcessingRegistry 实例状态。"""
         self._available_algorithms = set(available_algorithms)
 
     def providers(self):
+        """返回当前测试用 provider 列表。"""
         return []
 
     def algorithmById(self, algorithm_id: str):
+        """按 ID 返回测试用算法对象。"""
         if algorithm_id in self._available_algorithms:
             return object()
         return None
@@ -21,9 +24,11 @@ class _FakeProcessingRegistry:
 
 class ToolsRasterStatsZonalTest(ProcessingMCPTestBase):
     def test_registered(self):
+        """验证目标能力已完成注册。"""
         assert_tool_registered(self, "raster_stats_zonal")
 
     def test_success_raster_stats_zonal(self):
+        """验证 raster stats zonal 的成功场景。"""
         tools = self.build_tools()
         vector_layer = self.add_sample_polygon_layer("zonal_polygon")
         raster_layer = self.add_sample_raster_layer("zonal_raster")
@@ -46,6 +51,7 @@ class ToolsRasterStatsZonalTest(ProcessingMCPTestBase):
         self.assertEqual(self.vector_field_names(vector_layer), original_fields)
 
     def test_failure_invalid_raster_ref(self):
+        """验证 invalid raster ref 的失败场景。"""
         tools = self.build_tools()
         vector_layer = self.add_sample_polygon_layer("zonal_polygon2")
 
@@ -61,6 +67,7 @@ class ToolsRasterStatsZonalTest(ProcessingMCPTestBase):
     def test_success_uses_latest_algorithm_only(
         self, mock_processing_registry, mock_run
     ):
+        """验证 uses latest algorithm only 的成功场景。"""
         tools = self.build_tools()
         vector_layer = self.add_sample_polygon_layer("zonal_polygon_fb_only")
         raster_layer = self.add_sample_raster_layer("zonal_raster_fb_only")
@@ -94,6 +101,7 @@ class ToolsRasterStatsZonalTest(ProcessingMCPTestBase):
     def test_success_in_place_normalizes_parameters_and_output_layer_id(
         self, mock_processing_registry, mock_run
     ):
+        """验证 in place normalizes parameters and output layer ID 的成功场景。"""
         tools = self.build_tools()
         vector_layer = self.add_sample_polygon_layer("zonal_polygon_in_place")
         raster_layer = self.add_sample_raster_layer("zonal_raster_in_place")
@@ -120,6 +128,7 @@ class ToolsRasterStatsZonalTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.mcp_tools.QgsApplication.processingRegistry")
     def test_failure_when_zonalstatisticsfb_unavailable(self, mock_processing_registry):
+        """验证 when zonalstatisticsfb unavailable 的失败场景。"""
         tools = self.build_tools()
         vector_layer = self.add_sample_polygon_layer("zonal_polygon_no_algorithm")
         raster_layer = self.add_sample_raster_layer("zonal_raster_no_algorithm")

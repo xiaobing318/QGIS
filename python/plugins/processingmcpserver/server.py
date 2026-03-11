@@ -23,7 +23,10 @@ if TYPE_CHECKING:
 
 
 _SERVER_INSTRUCTIONS = (
-    "该 MCP Server 提供与 QGIS Processing 框架交互的工具，支持查询项目状态、图层详情、执行算法等功能。"
+    "该 MCP Server 提供与 QGIS Processing 框架交互的工具，支持读取当前 QGIS Desktop 会话、工程状态、图层详情和执行算法等功能。 "
+    "建议先调用 common_get_qgis_info 建立运行上下文，再结合 qgis://project/info 与 qgis://project/layers/summary 读取工程摘要。 "
+    "当 llama-server WebUI 以浏览器直连 MCP Server 时，优先使用 useProxy=false。 "
+    "filesystem_* 工具受 allowed_roots 与 readonly_roots 约束。"
 )
 
 

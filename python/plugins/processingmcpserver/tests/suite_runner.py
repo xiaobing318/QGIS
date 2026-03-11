@@ -16,6 +16,7 @@ else:
 
 
 TEST_MODULES = [
+    "processingmcpserver.tests.capabilities_markdown_runtime",
     "processingmcpserver.tests.config_loading_precedence",
     "processingmcpserver.tests.config_dependencies_flags",
     "processingmcpserver.tests.registrations_integrity",
@@ -83,6 +84,7 @@ IGNORED_TEST_FILES = {
 
 
 def _discover_test_modules() -> list[str]:
+    """发现测试目录中的测试模块。"""
     tests_dir = Path(__file__).resolve().parent
     return sorted(
         f"processingmcpserver.tests.{path.stem}"
@@ -92,6 +94,7 @@ def _discover_test_modules() -> list[str]:
 
 
 def _validate_test_modules() -> None:
+    """校验声明的测试模块列表与目录内容一致。"""
     discovered = _discover_test_modules()
     declared = sorted(TEST_MODULES)
     if discovered == declared:

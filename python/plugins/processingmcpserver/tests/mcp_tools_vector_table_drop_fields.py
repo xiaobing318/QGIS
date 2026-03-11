@@ -6,9 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsVectorTableDropFieldsTest(ProcessingMCPTestBase):
     def test_registered(self):
+        """验证目标能力已完成注册。"""
         assert_tool_registered(self, "vector_table_drop_fields")
 
     def test_default_creates_copy_layer(self):
+        """验证默认条件下的 creates copy layer 场景。"""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("drop_field_vector_copy")
         tools.vector_table_add_field(
@@ -31,6 +33,7 @@ class ToolsVectorTableDropFieldsTest(ProcessingMCPTestBase):
         self.assertNotIn("temp_field", self.vector_field_names(output_layer))
 
     def test_success_drop_field(self):
+        """验证 drop field 的成功场景。"""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("drop_field_vector")
         add_result = tools.vector_table_add_field(
@@ -49,6 +52,7 @@ class ToolsVectorTableDropFieldsTest(ProcessingMCPTestBase):
         self.assertEqual(result["summary"]["affected_count"], 1)
 
     def test_failure_empty_fields(self):
+        """验证 empty fields 的失败场景。"""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("drop_field_vector2")
 

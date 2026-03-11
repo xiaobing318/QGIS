@@ -6,9 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsRasterAddLayersTest(ProcessingMCPTestBase):
     def test_registered(self):
+        """验证目标能力已完成注册。"""
         assert_tool_registered(self, "raster_add_layers")
 
     def test_success_with_skip_invalid(self):
+        """验证 with skip invalid 的成功场景。"""
         tools = self.build_tools()
         raster_path = self.sample_raster_path()
 
@@ -22,6 +24,7 @@ class ToolsRasterAddLayersTest(ProcessingMCPTestBase):
         self.assertEqual(result["failed_count"], 1)
 
     def test_failure_without_skip_invalid(self):
+        """验证 without skip invalid 的失败场景。"""
         tools = self.build_tools()
         raster_path = self.sample_raster_path()
 

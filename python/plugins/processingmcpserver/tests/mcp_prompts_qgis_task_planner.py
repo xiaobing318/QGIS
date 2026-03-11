@@ -8,11 +8,13 @@ from ._shared_fixtures import DummyMcp, DummyTools
 
 class PromptQgisTaskPlannerTest(ProcessingMCPTestBase):
     def test_prompt_registered(self):
+        """验证 prompt registered 场景。"""
         mcp = DummyMcp()
         register_prompts(mcp, DummyTools())
         self.assertIn("qgis_task_planner", mcp.prompt_names)
 
     def test_prompt_template_structure(self):
+        """验证 prompt template structure 场景。"""
         mcp = DummyMcp()
         register_prompts(mcp, DummyTools())
 
@@ -29,6 +31,7 @@ class PromptQgisTaskPlannerTest(ProcessingMCPTestBase):
         self.assertIn("Task: 缓冲道路图层", output)
 
     def test_prompt_defaults_placeholder_values_for_empty_inputs(self):
+        """验证 prompt defaults placeholder values for empty inputs 场景。"""
         mcp = DummyMcp()
         register_prompts(mcp, DummyTools())
 
@@ -37,4 +40,3 @@ class PromptQgisTaskPlannerTest(ProcessingMCPTestBase):
 
         self.assertIn("Task: N/A", output)
         self.assertIn("Constraints: None", output)
-

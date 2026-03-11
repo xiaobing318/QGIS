@@ -8,9 +8,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsLayerRemoveBatchTest(ProcessingMCPTestBase):
     def test_registered(self):
+        """验证目标能力已完成注册。"""
         assert_tool_registered(self, "layer_remove_batch")
 
     def test_success_remove_and_report_missing(self):
+        """验证 remove and report missing 的成功场景。"""
         tools = self.build_tools()
         layer1 = self.add_sample_vector_layer("remove_batch_vector_1")
         layer2 = self.add_sample_vector_layer("remove_batch_vector_2")
@@ -25,6 +27,7 @@ class ToolsLayerRemoveBatchTest(ProcessingMCPTestBase):
         self.assertNotIn(layer2_id, QgsProject.instance().mapLayers())
 
     def test_safety_ignore_empty_ids(self):
+        """验证 safety ignore empty IDs 场景。"""
         tools = self.build_tools()
         result = tools.layer_remove_batch(["", "   "])
         self.assertEqual(result["removed"], [])

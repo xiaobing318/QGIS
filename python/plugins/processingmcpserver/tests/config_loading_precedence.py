@@ -12,6 +12,7 @@ from ._shared_case_base import ProcessingMCPTestBase
 
 class ConfigLoadingPrecedenceTest(ProcessingMCPTestBase):
     def test_create_default_json_when_missing(self):
+        """验证 create default JSON when missing 场景。"""
         self.assertFalse(self.config_path.exists())
 
         config = load_processing_mcp_server_config()
@@ -27,6 +28,7 @@ class ConfigLoadingPrecedenceTest(ProcessingMCPTestBase):
         self.assertNotIn("limits", payload["processing_mcp"])
 
     def test_json_overrides_settings_host(self):
+        """验证 JSON overrides settings host 场景。"""
         self.settings.setValue("Processing/MCP/host", "settings-host")
         payload = default_processing_mcp_json_document()
         payload["processing_mcp"]["host"] = "json-host"
@@ -37,6 +39,7 @@ class ConfigLoadingPrecedenceTest(ProcessingMCPTestBase):
         self.assertEqual(config.config_sources.get("host"), "JSON")
 
     def test_json_missing_key_fallback_to_settings(self):
+        """验证 JSON missing key fallback to settings 场景。"""
         self.settings.setValue("Processing/MCP/host", "settings-host")
         payload = default_processing_mcp_json_document()
         del payload["processing_mcp"]["host"]
@@ -47,6 +50,7 @@ class ConfigLoadingPrecedenceTest(ProcessingMCPTestBase):
         self.assertEqual(config.config_sources.get("host"), "Settings")
 
     def test_processing_mcp_section_must_be_object(self):
+        """验证 processing MCP section must be object 场景。"""
         self.settings.setValue("Processing/MCP/host", "settings-host")
         self._write_json_config({"version": 1, "processing_mcp": ["invalid"]})
 
@@ -56,6 +60,7 @@ class ConfigLoadingPrecedenceTest(ProcessingMCPTestBase):
         self.assertEqual(config.config_sources.get("host"), "Settings")
 
     def test_dependencies_section_must_be_object(self):
+        """验证 dependencies section must be object 场景。"""
         self.settings.setValue("Processing/MCP/dependencies/auto_install", False)
         payload = default_processing_mcp_json_document()
         payload["processing_mcp"]["dependencies"] = ["invalid"]
@@ -69,6 +74,7 @@ class ConfigLoadingPrecedenceTest(ProcessingMCPTestBase):
         )
 
     def test_filesystem_section_must_be_object(self):
+        """验证 filesystem section must be object 场景。"""
         self.settings.setValue(
             "Processing/MCP/filesystem/disable_filesystem_tools", True
         )
@@ -85,6 +91,7 @@ class ConfigLoadingPrecedenceTest(ProcessingMCPTestBase):
         )
 
     def test_invalid_json_value_fallback_to_settings(self):
+        """验证 invalid JSON value fallback to settings 场景。"""
         self.settings.setValue("Processing/MCP/port", 8123)
         payload = default_processing_mcp_json_document()
         payload["processing_mcp"]["port"] = "bad-port"
@@ -95,6 +102,7 @@ class ConfigLoadingPrecedenceTest(ProcessingMCPTestBase):
         self.assertEqual(config.config_sources.get("port"), "Settings")
 
     def test_invalid_json_and_settings_fallback_to_default(self):
+        """验证 invalid JSON and settings fallback to default 场景。"""
         self.settings.setValue("Processing/MCP/port", 99999)
         self._write_raw_json_text("{invalid json")
 
@@ -103,6 +111,7 @@ class ConfigLoadingPrecedenceTest(ProcessingMCPTestBase):
         self.assertEqual(config.config_sources.get("port"), "Default")
 
     def test_transport_aliases_normalized_to_streamable_http(self):
+        """验证 transport aliases normalized to streamable HTTP 场景。"""
         for alias in ("streamable_http", "streamablehttp"):
             with self.subTest(alias=alias):
                 payload = default_processing_mcp_json_document()
@@ -115,6 +124,7 @@ class ConfigLoadingPrecedenceTest(ProcessingMCPTestBase):
                 self.assertEqual(config.config_sources.get("transport"), "JSON")
 
     def test_cors_values_support_string_list_and_empty_disable(self):
+        """验证 CORS values support string list and empty disable 场景。"""
         payload = default_processing_mcp_json_document()
         payload["processing_mcp"]["cors_origins"] = (
             "http://localhost:8080, http://127.0.0.1:8282"
@@ -147,6 +157,7 @@ class ConfigLoadingPrecedenceTest(ProcessingMCPTestBase):
         self.assertEqual(config.config_sources.get("cors_allow_headers"), "JSON")
 
     def test_legacy_limits_json_is_ignored(self):
+        """验证 legacy limits JSON is ignored 场景。"""
         payload = default_processing_mcp_json_document()
         payload["processing_mcp"]["limits"] = {
             "max_feature_limit": 111,

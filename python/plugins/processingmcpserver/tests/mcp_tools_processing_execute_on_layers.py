@@ -8,10 +8,12 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsProcessingExecuteOnLayersTest(ProcessingMCPTestBase):
     def test_registered(self):
+        """验证目标能力已完成注册。"""
         assert_tool_registered(self, "processing_execute_on_layers")
 
     @patch("processingmcpserver.mcp_tools.processing.run")
     def test_success_default_safety_policy(self, mock_run):
+        """验证 default safety policy 的成功场景。"""
         tools = self.build_tools()
         mock_run.return_value = {"OUTPUT": "TEMPORARY_OUTPUT"}
         layer = self.add_sample_vector_layer("execute_on_layers_vector")
@@ -36,6 +38,7 @@ class ToolsProcessingExecuteOnLayersTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.mcp_tools.processing.run")
     def test_batch_mode_mismatch_reported(self, mock_run):
+        """验证 batch mode mismatch reported 场景。"""
         tools = self.build_tools()
         mock_run.return_value = {"OUTPUT": "TEMPORARY_OUTPUT"}
         layer = self.add_sample_vector_layer("execute_on_layers_vector2")
@@ -54,6 +57,7 @@ class ToolsProcessingExecuteOnLayersTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.mcp_tools.processing.run")
     def test_explicit_allow_disk_write_and_in_place(self, mock_run):
+        """验证 explicit allow disk write and in place 场景。"""
         tools = self.build_tools()
         mock_run.return_value = {"OUTPUT": "C:/tmp/result.gpkg"}
         layer = self.add_sample_vector_layer("execute_on_layers_vector3")
@@ -75,6 +79,7 @@ class ToolsProcessingExecuteOnLayersTest(ProcessingMCPTestBase):
         self.assertTrue(result["safety_policy"]["allow_in_place_edit"])
 
     def test_failure_requires_bindings(self):
+        """验证 requires bindings 的失败场景。"""
         tools = self.build_tools()
         with self.assertRaises(Exception) as ctx:
             tools.processing_execute_on_layers(
@@ -87,6 +92,7 @@ class ToolsProcessingExecuteOnLayersTest(ProcessingMCPTestBase):
         self.assertIn("layer_bindings is required", str(ctx.exception))
 
     def test_failure_invalid_bound_layer_ref(self):
+        """验证 invalid bound layer ref 的失败场景。"""
         tools = self.build_tools()
 
         with self.assertRaises(Exception) as ctx:
@@ -101,6 +107,7 @@ class ToolsProcessingExecuteOnLayersTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.mcp_tools.processing.run")
     def test_failure_propagates_processing_runtime_error(self, mock_run):
+        """验证 propagates processing runtime error 的失败场景。"""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("execute_on_layers_vector4")
         mock_run.side_effect = RuntimeError("processing boom")

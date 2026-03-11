@@ -3,9 +3,14 @@ from __future__ import annotations
 import inspect
 import json
 
-from processingmcpserver.mcp_prompts import REGISTERED_PROMPT_NAMES, register_prompts
+from processingmcpserver.mcp_prompts import (
+    REGISTERED_PROMPT_NAMES,
+    _REGISTERED_PROMPT_DOCSTRINGS,
+    register_prompts,
+)
 from processingmcpserver.mcp_resources import (
     REGISTERED_RESOURCE_URIS,
+    _REGISTERED_RESOURCE_DOCSTRINGS,
     register_resources,
 )
 from processingmcpserver.mcp_tools import (
@@ -20,6 +25,7 @@ from ._shared_fixtures import DummyMcp, DummyTools
 
 class RegistrationsIntegrityTest(ProcessingMCPTestBase):
     def test_register_tools_matches_expected_set(self):
+        """验证 register tools matches expected set 场景。"""
         removed_render_tool = "render" + "_map"
         legacy_removed = {
             "ping",
@@ -39,6 +45,7 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
         self.assertTrue(legacy_removed.isdisjoint(set(mcp.tool_names)))
 
     def test_register_prompts_and_resources_discoverable(self):
+        """验证 register prompts and resources discoverable 场景。"""
         mcp = DummyMcp()
         tools = DummyTools()
         register_prompts(mcp, tools)
@@ -46,8 +53,11 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
 
         self.assertEqual(set(mcp.prompt_names), set(REGISTERED_PROMPT_NAMES))
         self.assertEqual(set(mcp.resource_uris), set(REGISTERED_RESOURCE_URIS))
+        self.assertEqual(set(mcp.prompt_descriptions), set(REGISTERED_PROMPT_NAMES))
+        self.assertEqual(set(mcp.resource_descriptions), set(REGISTERED_RESOURCE_URIS))
 
     def test_registered_tools_have_non_placeholder_docstrings(self):
+        """验证 registered tools have non placeholder docstrings 场景。"""
         for tool_name in REGISTERED_TOOL_NAMES:
             method = getattr(ProcessingMCPTools, tool_name, None)
             self.assertTrue(callable(method), msg=f"Missing tool method: {tool_name}")
@@ -61,7 +71,42 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
                 msg=f"Placeholder docstring leaked into tool: {tool_name}",
             )
 
+    def test_registered_prompts_have_non_empty_docstrings(self):
+        """验证 registered prompts have non empty docstrings 场景。"""
+        self.assertEqual(set(_REGISTERED_PROMPT_DOCSTRINGS), set(REGISTERED_PROMPT_NAMES))
+
+        mcp = DummyMcp()
+        register_prompts(mcp, DummyTools())
+
+        for prompt_name in REGISTERED_PROMPT_NAMES:
+            description = mcp.prompt_descriptions.get(prompt_name, "")
+            self.assertTrue(description, msg=f"Empty prompt description: {prompt_name}")
+            self.assertIn("用途：", description, msg=f"Missing purpose section: {prompt_name}")
+            self.assertEqual(
+                inspect.getdoc(mcp.prompt_funcs[prompt_name]),
+                description,
+                msg=f"Prompt docstring mismatch: {prompt_name}",
+            )
+
+    def test_registered_resources_have_non_empty_docstrings(self):
+        """验证 registered resources have non empty docstrings 场景。"""
+        self.assertEqual(set(_REGISTERED_RESOURCE_DOCSTRINGS), set(REGISTERED_RESOURCE_URIS))
+
+        mcp = DummyMcp()
+        register_resources(mcp, DummyTools())
+
+        for resource_uri in REGISTERED_RESOURCE_URIS:
+            description = mcp.resource_descriptions.get(resource_uri, "")
+            self.assertTrue(description, msg=f"Empty resource description: {resource_uri}")
+            self.assertIn("用途：", description, msg=f"Missing purpose section: {resource_uri}")
+            self.assertEqual(
+                inspect.getdoc(mcp.resource_funcs[resource_uri]),
+                description,
+                msg=f"Resource docstring mismatch: {resource_uri}",
+            )
+
     def test_prompt_templates_exclude_removed_tool_names(self):
+        """验证 prompt templates exclude removed tool names 场景。"""
         removed_render_tool = "render" + "_map"
         legacy_removed = [
             "ping",
@@ -86,6 +131,7 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
                 )
 
     def test_resource_envelope_for_kept_resources(self):
+        """验证 resource envelope for kept resources 场景。"""
         mcp = DummyMcp()
         tools = DummyTools()
         register_resources(mcp, tools)
@@ -105,4 +151,3 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
         self.assertIn("project_id", layers_summary_payload)
         self.assertEqual(layers_summary_payload["schema_version"], "1.0.0")
         self.assertIn("data", layers_summary_payload)
-

@@ -15,6 +15,7 @@ from ._shared_case_base import ProcessingMCPTestBase
 class LogHandlerRuntimeTest(ProcessingMCPTestBase):
     @patch("processingmcpserver.log_handler.QgsMessageLog.logMessage")
     def test_default_category_and_message_format(self, mock_log_message):
+        """验证默认条件下的 category and message format 场景。"""
         handler = QgisLogHandler()
         record = logging.LogRecord(
             name="mcp.server.streamable_http",
@@ -37,11 +38,13 @@ class LogHandlerRuntimeTest(ProcessingMCPTestBase):
         self.assertIn("startup ready", message)
 
     def test_level_mapping(self):
+        """验证 level mapping 场景。"""
         self.assertEqual(QgisLogHandler._map_level(logging.INFO), Qgis.Info)
         self.assertEqual(QgisLogHandler._map_level(logging.WARNING), Qgis.Warning)
         self.assertEqual(QgisLogHandler._map_level(logging.ERROR), Qgis.Critical)
 
     def test_emit_falls_back_to_stderr_when_qgis_logging_fails(self):
+        """验证 emit falls back to stderr when QGIS logging fails 场景。"""
         handler = QgisLogHandler()
         record = logging.LogRecord(
             name="mcp.server.streamable_http",

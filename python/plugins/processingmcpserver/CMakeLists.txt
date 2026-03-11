@@ -1,5 +1,5 @@
 file(GLOB PY_FILES *.py)
-file(GLOB ROOT_FILES metadata.txt README.md requirements.txt)
+set(ROOT_FILES metadata.txt README.md requirements.txt MCP_CAPABILITIES.md)
 file(GLOB EXAMPLE_FILES examples/*)
 file(GLOB TEST_FILES tests/*.py)
 file(GLOB TEST_DATA_FILES tests/data/*)

@@ -11,23 +11,28 @@ from ._shared_fixtures import DummyMcp, DummyTools
 
 class _FakeProject:
     def __init__(self, file_name: str = "", title: str = "") -> None:
+        """初始化 _FakeProject 实例状态。"""
         self._file_name = file_name
         self._title = title
 
     def fileName(self) -> str:
+        """执行 fileName 相关逻辑。"""
         return self._file_name
 
     def title(self) -> str:
+        """执行 title 相关逻辑。"""
         return self._title
 
 
 class ResourceQgisProjectInfoTest(ProcessingMCPTestBase):
     def test_resource_registered(self):
+        """验证 resource registered 场景。"""
         mcp = DummyMcp()
         register_resources(mcp, DummyTools())
         self.assertIn("qgis://project/info", mcp.resource_uris)
 
     def test_resource_envelope_ok(self):
+        """验证 resource envelope ok 场景。"""
         mcp = DummyMcp()
         register_resources(mcp, DummyTools())
 
@@ -40,8 +45,10 @@ class ResourceQgisProjectInfoTest(ProcessingMCPTestBase):
         self.assertIn("data", payload)
 
     def test_project_id_prefers_snapshot_file_name_then_title(self):
+        """验证 project ID prefers snapshot file name then title 场景。"""
         class FileNameTools(DummyTools):
             def get_project_snapshot(self):
+                """返回 project snapshot。"""
                 return {
                     "file_name": "C:/projects/demo.qgz",
                     "title": "snapshot-title",
@@ -57,8 +64,10 @@ class ResourceQgisProjectInfoTest(ProcessingMCPTestBase):
     def test_project_id_falls_back_to_snapshot_title_before_qgs_project(
         self, mock_project_instance
     ):
+        """验证 project ID falls back to snapshot title before qgs project 场景。"""
         class TitleTools(DummyTools):
             def get_project_snapshot(self):
+                """返回 project snapshot。"""
                 return {"file_name": "", "title": "snapshot-title"}
 
         mock_project_instance.return_value = _FakeProject(
@@ -73,8 +82,10 @@ class ResourceQgisProjectInfoTest(ProcessingMCPTestBase):
         self.assertEqual(payload["project_id"], "snapshot-title")
 
     def test_resource_envelope_error_when_supplier_fails(self):
+        """验证 resource envelope error when supplier fails 场景。"""
         class BrokenTools(DummyTools):
             def get_project_snapshot(self):
+                """返回 project snapshot。"""
                 raise RuntimeError("project snapshot failed")
 
         with patch("processingmcpserver.mcp_resources.QgsProject.instance") as mock_project_instance:

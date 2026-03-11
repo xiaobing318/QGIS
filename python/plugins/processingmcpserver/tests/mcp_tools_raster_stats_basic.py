@@ -6,9 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsRasterStatsBasicTest(ProcessingMCPTestBase):
     def test_registered(self):
+        """验证目标能力已完成注册。"""
         assert_tool_registered(self, "raster_stats_basic")
 
     def test_success_raster_stats_basic(self):
+        """验证 raster stats basic 的成功场景。"""
         tools = self.build_tools()
         layer = self.add_sample_raster_layer("raster_stats_basic_layer")
 
@@ -18,6 +20,7 @@ class ToolsRasterStatsBasicTest(ProcessingMCPTestBase):
         self.assertIn("count", result["summary"])
 
     def test_failure_non_raster_layer(self):
+        """验证 non raster layer 的失败场景。"""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("raster_stats_basic_layer2")
 

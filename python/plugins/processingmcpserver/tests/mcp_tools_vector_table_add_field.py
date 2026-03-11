@@ -6,9 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsVectorTableAddFieldTest(ProcessingMCPTestBase):
     def test_registered(self):
+        """验证目标能力已完成注册。"""
         assert_tool_registered(self, "vector_table_add_field")
 
     def test_default_creates_copy_layer(self):
+        """验证默认条件下的 creates copy layer 场景。"""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("add_field_vector_copy")
 
@@ -26,6 +28,7 @@ class ToolsVectorTableAddFieldTest(ProcessingMCPTestBase):
         self.assertIn("temp_field", self.vector_field_names(output_layer))
 
     def test_success_add_field(self):
+        """验证 add field 的成功场景。"""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("add_field_vector")
 
@@ -38,6 +41,7 @@ class ToolsVectorTableAddFieldTest(ProcessingMCPTestBase):
         self.assertIn("temp_field", result["outputs"]["fields"])
 
     def test_failure_duplicate_field(self):
+        """验证 duplicate field 的失败场景。"""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("add_field_vector2")
 

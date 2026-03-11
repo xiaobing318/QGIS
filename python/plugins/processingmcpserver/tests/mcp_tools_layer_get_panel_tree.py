@@ -6,9 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsLayerGetPanelTreeTest(ProcessingMCPTestBase):
     def test_registered(self):
+        """验证目标能力已完成注册。"""
         assert_tool_registered(self, "layer_get_panel_tree")
 
     def test_success_return_tree_and_layers(self):
+        """验证 return tree and layers 的成功场景。"""
         tools = self.build_tools()
         self.add_sample_vector_layer("panel_tree_vector")
 
@@ -20,6 +22,7 @@ class ToolsLayerGetPanelTreeTest(ProcessingMCPTestBase):
         self.assertTrue(any(item["name"] == "panel_tree_vector" for item in result["layers"]))
 
     def test_safety_hidden_filter(self):
+        """验证 safety hidden filter 场景。"""
         tools = self.build_tools()
         self.add_sample_vector_layer("panel_tree_vector2")
 

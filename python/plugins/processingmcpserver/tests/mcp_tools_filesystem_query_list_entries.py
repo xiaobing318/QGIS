@@ -6,9 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsFilesystemQueryListEntriesTest(ProcessingMCPTestBase):
     def test_registered(self):
+        """验证目标能力已完成注册。"""
         assert_tool_registered(self, "filesystem_query_list_entries")
 
     def test_success_list_entries(self):
+        """验证 list entries 的成功场景。"""
         tools = self.build_tools()
         root = self.make_temp_dir()
         self.create_text_file(root / "a.txt", "alpha")
@@ -26,6 +28,7 @@ class ToolsFilesystemQueryListEntriesTest(ProcessingMCPTestBase):
         self.assertEqual(result["summary"]["returned_count"], 2)
 
     def test_success_recursive_list_filters_relative_paths_and_truncates(self):
+        """验证 recursive list filters relative paths and truncates 的成功场景。"""
         tools = self.build_tools()
         root = self.make_temp_dir()
         nested = root / "nested"
@@ -63,6 +66,7 @@ class ToolsFilesystemQueryListEntriesTest(ProcessingMCPTestBase):
         self.assertGreaterEqual(truncated["summary"]["matched_total"], 3)
 
     def test_failure_invalid_include_flags(self):
+        """验证 invalid include flags 的失败场景。"""
         tools = self.build_tools()
         root = self.make_temp_dir()
 

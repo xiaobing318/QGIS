@@ -6,9 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsVectorTableTruncateTest(ProcessingMCPTestBase):
     def test_registered(self):
+        """验证目标能力已完成注册。"""
         assert_tool_registered(self, "vector_table_truncate")
 
     def test_default_creates_copy_layer(self):
+        """验证默认条件下的 creates copy layer 场景。"""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("truncate_records_vector_copy")
 
@@ -25,6 +27,7 @@ class ToolsVectorTableTruncateTest(ProcessingMCPTestBase):
         self.assertEqual(output_layer.featureCount(), 0)
 
     def test_success_truncate_records(self):
+        """验证 truncate records 的成功场景。"""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("truncate_records_vector")
 
@@ -39,6 +42,7 @@ class ToolsVectorTableTruncateTest(ProcessingMCPTestBase):
         self.assertEqual(result["outputs"]["feature_count"], 0)
 
     def test_failure_without_confirmation(self):
+        """验证 without confirmation 的失败场景。"""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("truncate_records_vector2")
 

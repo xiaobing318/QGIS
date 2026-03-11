@@ -28,6 +28,7 @@ class McpMainThreadRunner(QObject):
         wait_timeout_seconds: float = DEFAULT_WAIT_TIMEOUT_SECONDS,
         parent: QObject | None = None,
     ) -> None:
+        """初始化 McpMainThreadRunner 实例状态。"""
         super().__init__(parent)
         timeout = float(wait_timeout_seconds)
         if timeout <= 0:
@@ -44,6 +45,7 @@ class McpMainThreadRunner(QObject):
         done = threading.Event()
 
         def wrapper() -> None:
+            """包装回调并同步传递执行结果。"""
             try:
                 result["value"] = func()
             except Exception as exc:
