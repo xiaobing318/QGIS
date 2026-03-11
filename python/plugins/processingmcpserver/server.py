@@ -2,7 +2,11 @@ from __future__ import annotations
 
 """Processing MCP server assembly and lifecycle management."""
 
+import base64
+import configparser
+import inspect
 import traceback
+from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
 from qgis.core import Qgis, QgsMessageLog
@@ -23,11 +27,67 @@ if TYPE_CHECKING:
 
 
 _SERVER_INSTRUCTIONS = (
-    "该 MCP Server 提供与 QGIS Processing 框架交互的工具，支持读取当前 QGIS Desktop 会话、工程状态、图层详情和执行算法等功能。 "
-    "建议先调用 common_get_qgis_info 建立运行上下文，再结合 qgis://project/info 与 qgis://project/layers/summary 读取工程摘要。 "
-    "当 llama-server WebUI 以浏览器直连 MCP Server 时，优先使用 useProxy=false。 "
-    "filesystem_* 工具受 allowed_roots 与 readonly_roots 约束。"
+    "能力说明：该服务运行在 QGIS 桌面会话内，可读取当前工程与图层上下文，支持空间数据管理与分析、地理处理执行、任务提示模板与项目资源摘要，以及受控的文件系统探查与编辑能力。"
+    "使用背景：适用于需要让模型基于真实 QGIS 工程状态完成分析与处理任务的场景，尤其适合把自动化流程和人工复核结合起来。"
+    "推荐工作流：先探查工程与图层现状并明确目标，再核对输入输出和关键参数；随后以小范围、非破坏方式试跑并检查结果与告警；确认后再执行批量处理，并在每轮后复核输出质量。"
+    "注意事项：默认采用非破坏执行策略，写盘与原位修改需显式放开；删除与覆盖操作需显式确认；文件系统访问受白名单与只读策略约束；执行失败时先回查参数与图层引用，再进行最小化重试。"
 )
+_PLUGIN_METADATA_FILENAME = "metadata.txt"
+_SERVER_ICON_FILENAME = "processingmcpserver.svg"
+_SERVER_ICON_MIME_TYPE = "image/svg+xml"
+_SERVER_ICON_SIZE = "128x128"
+
+
+def _load_plugin_version_from_metadata() -> str | None:
+    """Load plugin version from metadata.txt."""
+    metadata_path = Path(__file__).resolve().parent / _PLUGIN_METADATA_FILENAME
+    parser = configparser.ConfigParser()
+
+    try:
+        with metadata_path.open("r", encoding="utf-8") as handle:
+            parser.read_file(handle)
+    except (OSError, configparser.Error) as exc:
+        QgsMessageLog.logMessage(
+            f"Failed to read processingmcpserver metadata version: {exc}",
+            MCP_LOG_CATEGORY,
+            Qgis.Warning,
+        )
+        return None
+
+    version = parser.get("general", "version", fallback="").strip()
+    if version:
+        return version
+
+    QgsMessageLog.logMessage(
+        "processingmcpserver metadata version is empty; fallback to MCP package "
+        "version.",
+        MCP_LOG_CATEGORY,
+        Qgis.Warning,
+    )
+    return None
+
+
+def _plugin_icon_data_uri() -> str:
+    """Build a data URI from the plugin icon file."""
+    icon_path = Path(__file__).resolve().parent / "icons" / _SERVER_ICON_FILENAME
+    encoded = base64.b64encode(icon_path.read_bytes()).decode("ascii")
+    return f"data:{_SERVER_ICON_MIME_TYPE};base64,{encoded}"
+
+
+def _fastmcp_supports_keyword_parameter(fastmcp_init, parameter_name: str) -> bool:
+    """Check whether FastMCP.__init__ accepts the given keyword parameter."""
+    try:
+        signature = inspect.signature(fastmcp_init)
+    except (TypeError, ValueError):
+        return False
+
+    if parameter_name in signature.parameters:
+        return True
+
+    return any(
+        parameter.kind == inspect.Parameter.VAR_KEYWORD
+        for parameter in signature.parameters.values()
+    )
 
 
 class ProcessingMCPServer:
@@ -54,6 +114,10 @@ class ProcessingMCPServer:
             ) from exc
 
         try:
+            plugin_version = _load_plugin_version_from_metadata()
+            fastmcp_identity_kwargs = self._build_fastmcp_identity_kwargs(
+                FastMCP.__init__, plugin_version
+            )
             mcp_server = FastMCP(
                 "QGIS Processing MCP Server",
                 instructions=_SERVER_INSTRUCTIONS,
@@ -66,7 +130,9 @@ class ProcessingMCPServer:
                 stateless_http=self._config.stateless_http,
                 json_response=self._config.json_response,
                 log_level=self._config.log_level,
+                **fastmcp_identity_kwargs,
             )
+            self._apply_plugin_version_to_low_level_server(mcp_server, plugin_version)
             tools = ProcessingMCPTools(self._iface, self._runner, self._config)
             register_tools(
                 mcp_server,
@@ -79,6 +145,59 @@ class ProcessingMCPServer:
         except Exception:
             self._log_exception("Failed to initialize Processing MCP server")
             raise
+
+    def _build_fastmcp_identity_kwargs(
+        self, fastmcp_init, plugin_version: str | None
+    ) -> dict[str, object]:
+        """Build optional identity kwargs based on FastMCP runtime signature."""
+        identity_kwargs: dict[str, object] = {}
+
+        if plugin_version and _fastmcp_supports_keyword_parameter(
+            fastmcp_init, "version"
+        ):
+            identity_kwargs["version"] = plugin_version
+
+        if not _fastmcp_supports_keyword_parameter(fastmcp_init, "icons"):
+            return identity_kwargs
+
+        try:
+            icon_data_uri = _plugin_icon_data_uri()
+        except OSError as exc:
+            QgsMessageLog.logMessage(
+                f"Failed to read Processing MCP icon file: {exc}",
+                MCP_LOG_CATEGORY,
+                Qgis.Warning,
+            )
+            return identity_kwargs
+
+        identity_kwargs["icons"] = [
+            {
+                "src": icon_data_uri,
+                "mimeType": _SERVER_ICON_MIME_TYPE,
+                "sizes": [_SERVER_ICON_SIZE],
+            }
+        ]
+        return identity_kwargs
+
+    def _apply_plugin_version_to_low_level_server(
+        self, mcp_server: object, plugin_version: str | None
+    ) -> None:
+        """Apply plugin version to low-level MCP server when FastMCP lacks version arg."""
+        if not plugin_version:
+            return
+
+        low_level_server = getattr(mcp_server, "_mcp_server", None)
+        if low_level_server is None or not hasattr(low_level_server, "version"):
+            return
+
+        try:
+            setattr(low_level_server, "version", plugin_version)
+        except Exception as exc:
+            QgsMessageLog.logMessage(
+                f"Failed to override Processing MCP server version: {exc}",
+                MCP_LOG_CATEGORY,
+                Qgis.Warning,
+            )
 
     def start(self) -> bool:
         """按配置启动传输层服务，副作用是启动后台线程监听请求。"""

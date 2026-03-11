@@ -1,7 +1,8 @@
-from __future__ import annotations
-
 """QGIS-backed MCP tool implementations and registration helpers."""
 
+from __future__ import annotations
+
+import inspect
 import json
 import os
 import platform
@@ -16,7 +17,12 @@ from typing import Any
 
 import processing
 from processing.core.Processing import Processing
-from qgis.PyQt.QtCore import QDate, QDateTime, QTime, Qt, QVariant
+from qgis.PyQt.QtCore import (
+    QDate,
+    QDateTime,
+    QTime,
+    Qt,
+    QVariant)
 from qgis.core import (
     Qgis,
     QgsApplication,
@@ -43,6 +49,22 @@ from processingmcpserver.config_types import (
     ProcessingMCPServerConfig,
 )
 from processingmcpserver.mcp_main_thread_runner import McpMainThreadRunner
+
+# Module state & contracts.
+_COPY_VECTOR_SAFETY = (
+    "默认 in_place=false，会先生成副本图层并返回新的 output_layer_id；仅在明确要修改原图层时才把 in_place 设为 true。"
+)
+_DESTRUCTIVE_VECTOR_SAFETY = (
+    "默认 in_place=false；删除类操作还要求 confirm_destructive=true，避免误删原图层或记录。"
+)
+_FILESYSTEM_WRITE_SAFETY = (
+    "所有 filesystem_* 调用都受 allowed_roots/readonly_roots/disable_filesystem_tools 约束；编辑类工具不会自动覆盖现有目标，覆盖或删除时必须显式打开 overwrite 或 confirm_destructive。"
+)
+_PROCESSING_SAFETY = (
+    "默认禁止磁盘写出和原位编辑；只有在明确需要时才把 allow_disk_write 或 allow_in_place_edit 设为 true，并应复核返回里的 safety_policy、warnings 与 effective_parameters。"
+)
+# Guard for one-time Processing.initialize() within current Python runtime.
+_PROCESSING_INITIALIZED = False
 
 REGISTERED_TOOL_NAMES: tuple[str, ...] = (
     "common_get_qgis_info",
@@ -88,9 +110,10 @@ REGISTERED_TOOL_NAMES: tuple[str, ...] = (
     "processing_execute_algorithm",
     "processing_execute_on_layers",
 )
-
-_PROCESSING_INITIALIZED = False
-
+NON_TOOL_PUBLIC_HELPER_NAMES: tuple[str, ...] = (
+    "get_project_snapshot",
+    "get_layers_summary",
+)
 
 def _ensure_processing_initialized() -> None:
     """确保 processing initialized 已就绪。"""
@@ -100,17 +123,39 @@ def _ensure_processing_initialized() -> None:
     Processing.initialize()
     _PROCESSING_INITIALIZED = True
 
+def _tool_doc(
+    purpose: str,
+    inputs: str,
+    preconditions: str,
+    effects: str,
+    safety: str,
+    returns: str,
+) -> str:
+    """执行 tool doc 相关逻辑。"""
+    return (
+        f"用途：{purpose} 输入语义：{inputs} 前置条件：{preconditions} "
+        f"主要副作用：{effects} 安全开关：{safety} 返回结果：{returns}"
+    )
+
+def _apply_registered_tool_docstrings() -> None:
+    """Apply validated tool docstrings onto public tool entry methods."""
+    for tool_name in REGISTERED_TOOL_NAMES:
+        method = getattr(ProcessingMCPTools, tool_name, None)
+        if not callable(method):
+            raise RuntimeError(f"Cannot set tool docstring, missing method: {tool_name}")
+        method.__doc__ = _REGISTERED_TOOL_DOCSTRINGS[tool_name].strip()
 
 class ProcessingMCPTools:
     DEFAULT_FEATURE_LIMIT = 10
-    MAX_FEATURE_LIMIT = 2000
-    DEFAULT_DATASET_LIMIT = 100
-    MAX_DATASET_LIMIT = 1000
+    MAX_FEATURE_LIMIT = 100
+    DEFAULT_DATASET_LIMIT = 50
+    MAX_DATASET_LIMIT = 100
     DEFAULT_FILESYSTEM_LIST_LIMIT = 100
-    MAX_FILESYSTEM_LIST_LIMIT = 2000
-    DEFAULT_ALGORITHM_LIST_LIMIT = 100
-    MAX_ALGORITHM_LIST_LIMIT = 500
+    MAX_FILESYSTEM_LIST_LIMIT = 200
+    DEFAULT_ALGORITHM_LIST_LIMIT = 30
+    MAX_ALGORITHM_LIST_LIMIT = 60
 
+    # Limits and initialization.
     def __init__(
         self,
         iface,
@@ -131,6 +176,185 @@ class ProcessingMCPTools:
             self._filesystem_config.readonly_roots
         )
 
+    # Public MCP tool entry wrappers.
+    def common_get_qgis_info(self) -> dict[str, Any]:
+        """返回 QGIS info 信息。"""
+        return self._run(self._common_get_qgis_info_impl)
+
+    def vector_add_layer(self, path: str, provider: str = "ogr", name: str | None = None) -> dict[str, Any]:
+        """执行矢量相关的 add layer 逻辑。"""
+        return self._run(self._vector_add_layer_impl, path, provider, name)
+
+    def vector_add_layers(self, paths: list[str], provider: str = "ogr", skip_invalid: bool = True) -> dict[str, Any]:
+        """执行矢量相关的 add layers 逻辑。"""
+        return self._run(self._vector_add_layers_impl, paths, provider, skip_invalid)
+
+    def raster_add_layer(self, path: str, provider: str = "gdal", name: str | None = None) -> dict[str, Any]:
+        """执行栅格相关的 add layer 逻辑。"""
+        return self._run(self._raster_add_layer_impl, path, provider, name)
+
+    def raster_add_layers(self, paths: list[str], provider: str = "gdal", skip_invalid: bool = True) -> dict[str, Any]:
+        """执行栅格相关的 add layers 逻辑。"""
+        return self._run(self._raster_add_layers_impl, paths, provider, skip_invalid)
+
+    def layer_list(self, layer_types: str = "both", include_hidden: bool = True, name_glob: str = "*") -> list[dict[str, Any]]:
+        """执行图层相关的 list 逻辑。"""
+        return self._run(self._layer_list_impl, layer_types, include_hidden, name_glob)
+
+    def layer_get_panel_tree(self, include_hidden: bool = True) -> dict[str, Any]:
+        """执行图层相关的 get panel tree 逻辑。"""
+        return self._run(self._layer_get_panel_tree_impl, include_hidden)
+
+    def layer_get_details(self, layer_ref: str) -> dict[str, Any]:
+        """执行图层相关的 get details 逻辑。"""
+        return self._run(self._layer_get_details_impl, layer_ref)
+
+    def layer_remove(self, layer_id: str) -> dict[str, str]:
+        """执行图层相关的 remove 逻辑。"""
+        return self._run(self._layer_remove_impl, layer_id)
+
+    def layer_remove_batch(self, layer_ids: list[str]) -> dict[str, list[str]]:
+        """执行图层相关的 remove batch 逻辑。"""
+        return self._run(self._layer_remove_batch_impl, layer_ids)
+
+    def layer_resolve_references(self, refs: list[str], strict: bool = False) -> dict[str, Any]:
+        """执行图层相关的 resolve references 逻辑。"""
+        return self._run(self._layer_resolve_references_impl, refs, strict)
+
+    def vector_get_layer_features(self, layer_ref: str, limit: int = DEFAULT_FEATURE_LIMIT) -> dict[str, Any]:
+        """执行矢量相关的 get layer features 逻辑。"""
+        return self._run(self._vector_get_layer_features_impl, layer_ref, limit)
+
+    def vector_table_add_field(self, layer_ref: str, field_name: str, field_type: str = "string", field_length: int = 0, field_precision: int = 0, in_place: bool = False) -> dict[str, Any]:
+        """执行矢量相关的 table add field 逻辑。"""
+        return self._run(self._vector_table_add_field_impl, layer_ref, field_name, field_type, field_length, field_precision, in_place)
+
+    def vector_table_drop_fields(self, layer_ref: str, fields: list[str], in_place: bool = False) -> dict[str, Any]:
+        """执行矢量相关的 table drop fields 逻辑。"""
+        return self._run(self._vector_table_drop_fields_impl, layer_ref, fields, in_place)
+
+    def vector_table_rename_field(self, layer_ref: str, field_name: str, new_field_name: str, in_place: bool = False) -> dict[str, Any]:
+        """执行矢量相关的 table rename field 逻辑。"""
+        return self._run(self._vector_table_rename_field_impl, layer_ref, field_name, new_field_name, in_place)
+
+    def vector_table_calculate_field(self, layer_ref: str, field_name: str, expression: str, field_type: str = "string", where: str | None = None, in_place: bool = False) -> dict[str, Any]:
+        """执行矢量相关的 table calculate field 逻辑。"""
+        return self._run(self._vector_table_calculate_field_impl, layer_ref, field_name, expression, field_type, where, in_place)
+
+    def vector_table_query_records(self, layer_ref: str, where: str | None = None, fields: list[str] | None = None, limit: int = DEFAULT_FEATURE_LIMIT, offset: int = 0, order_by: str | None = None, include_geometry: bool = False) -> dict[str, Any]:
+        """执行矢量相关的 table query records 逻辑。"""
+        return self._run(self._vector_table_query_records_impl, layer_ref, where, fields, limit, offset, order_by, include_geometry)
+
+    def vector_table_insert_records(self, layer_ref: str, records: list[dict[str, Any]], in_place: bool = False) -> dict[str, Any]:
+        """执行矢量相关的 table insert records 逻辑。"""
+        return self._run(self._vector_table_insert_records_impl, layer_ref, records, in_place)
+
+    def vector_table_update_records(self, layer_ref: str, where: str | None = None, set_literals: dict[str, Any] | None = None, set_expressions: dict[str, str] | None = None, in_place: bool = False) -> dict[str, Any]:
+        """执行矢量相关的 table update records 逻辑。"""
+        return self._run(self._vector_table_update_records_impl, layer_ref, where, set_literals, set_expressions, in_place)
+
+    def vector_table_delete_records(self, layer_ref: str, where: str | None = None, in_place: bool = False, confirm_destructive: bool = False) -> dict[str, Any]:
+        """执行矢量相关的 table delete records 逻辑。"""
+        return self._run(self._vector_table_delete_records_impl, layer_ref, where, in_place, confirm_destructive)
+
+    def vector_table_truncate(self, layer_ref: str, in_place: bool = False, confirm_destructive: bool = False) -> dict[str, Any]:
+        """执行矢量相关的 table truncate 逻辑。"""
+        return self._run(self._vector_table_truncate_impl, layer_ref, in_place, confirm_destructive)
+
+    def vector_stats_basic(self, layer_ref: str, field_name: str) -> dict[str, Any]:
+        """执行矢量相关的 stats basic 逻辑。"""
+        return self._run(self._vector_stats_basic_impl, layer_ref, field_name)
+
+    def vector_stats_by_categories(self, layer_ref: str, category_fields: list[str], values_field: str | None = None) -> dict[str, Any]:
+        """执行矢量相关的 stats by categories 逻辑。"""
+        return self._run(self._vector_stats_by_categories_impl, layer_ref, category_fields, values_field)
+
+    def raster_stats_basic(self, layer_ref: str, band: int = 1) -> dict[str, Any]:
+        """执行栅格相关的 stats basic 逻辑。"""
+        return self._run(self._raster_stats_basic_impl, layer_ref, band)
+
+    def raster_stats_zonal(self, vector_layer_ref: str, raster_layer_ref: str, raster_band: int = 1, column_prefix: str = "z_", in_place: bool = False) -> dict[str, Any]:
+        """执行栅格相关的 stats zonal 逻辑。"""
+        return self._run(self._raster_stats_zonal_impl, vector_layer_ref, raster_layer_ref, raster_band, column_prefix, in_place)
+
+    def raster_stats_cell(self, raster_layer_refs: list[str], statistic: int = 0, ignore_nodata: bool = True) -> dict[str, Any]:
+        """执行栅格相关的 stats cell 逻辑。"""
+        return self._run(self._raster_stats_cell_impl, raster_layer_refs, statistic, ignore_nodata)
+
+    def dataset_list_files(self, directory: str, recursive: bool = False, dataset_kind: str = "both", geometry_type: str = "any", name_glob: str = "*", limit: int = DEFAULT_DATASET_LIMIT) -> dict[str, Any]:
+        """执行数据集相关的 list files 逻辑。"""
+        return self._run(self._dataset_list_files_impl, directory, recursive, dataset_kind, geometry_type, name_glob, limit)
+
+    def dataset_load_from_directory(self, directory: str, recursive: bool = False, dataset_kind: str = "both", geometry_type: str = "any", name_glob: str = "*", limit: int = DEFAULT_DATASET_LIMIT, skip_invalid: bool = True) -> dict[str, Any]:
+        """执行数据集相关的 load from directory 逻辑。"""
+        return self._run(self._dataset_load_from_directory_impl, directory, recursive, dataset_kind, geometry_type, name_glob, limit, skip_invalid)
+
+    def filesystem_query_list_entries(self, directory: str, recursive: bool = False, include_files: bool = True, include_directories: bool = True, name_glob: str = "*", limit: int = DEFAULT_FILESYSTEM_LIST_LIMIT) -> dict[str, Any]:
+        """执行文件系统相关的 query list entries 逻辑。"""
+        return self._run(self._filesystem_query_list_entries_impl, directory, recursive, include_files, include_directories, name_glob, limit)
+
+    def filesystem_query_entry_info(self, path: str) -> dict[str, Any]:
+        """执行文件系统相关的 query entry info 逻辑。"""
+        return self._run(self._filesystem_query_entry_info_impl, path)
+
+    def filesystem_query_read_text(self, path: str, max_chars: int | None = None) -> dict[str, Any]:
+        """执行文件系统相关的 query read text 逻辑。"""
+        return self._run(self._filesystem_query_read_text_impl, path, max_chars)
+
+    def filesystem_edit_write_text(self, path: str, content: str, overwrite: bool = False, confirm_destructive: bool = False, create_parents: bool = True) -> dict[str, Any]:
+        """执行文件系统相关的 edit write text 逻辑。"""
+        return self._run(self._filesystem_edit_write_text_impl, path, content, overwrite, confirm_destructive, create_parents)
+
+    def filesystem_edit_append_text(self, path: str, content: str, create_parents: bool = True) -> dict[str, Any]:
+        """执行文件系统相关的 edit append text 逻辑。"""
+        return self._run(self._filesystem_edit_append_text_impl, path, content, create_parents)
+
+    def filesystem_edit_copy_entry(self, source_path: str, target_path: str, overwrite: bool = False, confirm_destructive: bool = False) -> dict[str, Any]:
+        """执行文件系统相关的 edit copy entry 逻辑。"""
+        return self._run(self._filesystem_edit_copy_entry_impl, source_path, target_path, overwrite, confirm_destructive)
+
+    def filesystem_edit_move_entry(self, source_path: str, target_path: str, overwrite: bool = False, confirm_destructive: bool = False) -> dict[str, Any]:
+        """执行文件系统相关的 edit move entry 逻辑。"""
+        return self._run(self._filesystem_edit_move_entry_impl, source_path, target_path, overwrite, confirm_destructive)
+
+    def filesystem_edit_delete_entry(self, path: str, confirm_destructive: bool = False) -> dict[str, Any]:
+        """执行文件系统相关的 edit delete entry 逻辑。"""
+        return self._run(self._filesystem_edit_delete_entry_impl, path, confirm_destructive)
+
+    def filesystem_stats_directory(self, directory: str, recursive: bool = False) -> dict[str, Any]:
+        """执行文件系统相关的 stats directory 逻辑。"""
+        return self._run(self._filesystem_stats_directory_impl, directory, recursive)
+
+    def processing_list_providers(self) -> dict[str, Any]:
+        """执行 Processing 相关的 list providers 逻辑。"""
+        return self._run(self._processing_list_providers_impl)
+
+    def processing_get_algorithms(self, algorithm_id: str | None = None, provider_id: str | None = None, include_parameters: bool = False, include_outputs: bool = False, limit: int | None = None) -> dict[str, Any]:
+        """执行 Processing 相关的 get algorithms 逻辑。"""
+        return self._run(self._processing_get_algorithms_impl, algorithm_id, provider_id, include_parameters, include_outputs, limit)
+
+    def processing_get_parameter_template(self, algorithm_id: str) -> dict[str, Any]:
+        """执行 Processing 相关的 get parameter template 逻辑。"""
+        return self._run(self._processing_get_parameter_template_impl, algorithm_id)
+
+    def processing_execute_algorithm(self, algorithm: str, parameters: dict[str, Any], load_results: bool = True, allow_disk_write: bool = False, allow_in_place_edit: bool = False) -> dict[str, Any]:
+        """执行 Processing 相关的 execute algorithm 逻辑。"""
+        return self._run(self._processing_execute_algorithm_impl, algorithm, parameters, load_results, allow_disk_write, allow_in_place_edit)
+
+    def processing_execute_on_layers(self, algorithm: str, layer_bindings: dict[str, Any], parameters: dict[str, Any], load_results: bool = True, batch_mode: bool = False, allow_disk_write: bool = False, allow_in_place_edit: bool = False) -> dict[str, Any]:
+        """执行 Processing 相关的 execute on layers 逻辑。"""
+        return self._run(self._processing_execute_on_layers_impl, algorithm, layer_bindings, parameters, load_results, batch_mode, allow_disk_write, allow_in_place_edit)
+
+    # Public non-tool helpers for resources.
+    def get_project_snapshot(self) -> dict[str, Any]:
+        """返回 project snapshot。"""
+        return self._run(self._get_project_snapshot_impl)
+
+    def get_layers_summary(self) -> dict[str, Any]:
+        """返回 layers summary。"""
+        return self._run(self._get_layers_summary_impl)
+
+    # Internal domain helpers.
     def _run(self, func, *args, **kwargs):
         """执行 run 相关逻辑。"""
         return self._runner.run(lambda: func(*args, **kwargs))
@@ -188,6 +412,24 @@ class ProcessingMCPTools:
             disable_filesystem_tools=False,
         )
 
+    # Execution/runtime bridge.
+    def _ensure_processing_runtime(self) -> None:
+        """确保 processing runtime 已就绪。"""
+        _ensure_processing_initialized()
+
+    def _execute_processing_call(
+        self, algorithm: str, parameters: dict[str, Any], load_results: bool
+    ) -> dict[str, Any]:
+        """执行 execute processing call 相关逻辑。"""
+        self._ensure_processing_runtime()
+        result = (
+            processing.runAndLoadResults(algorithm, parameters)
+            if load_results
+            else processing.run(algorithm, parameters)
+        )
+        return result if isinstance(result, dict) else {"result": result}
+
+    # Filesystem policy helpers.
     @staticmethod
     def _normalize_filesystem_path(path: str | Path) -> Path:
         """归一化 filesystem path。"""
@@ -262,6 +504,7 @@ class ProcessingMCPTools:
         self._ensure_filesystem_path_writable(candidate)
         return candidate
 
+    # Normalizers and serializers.
     @staticmethod
     def _normalize_dataset_kind(dataset_kind: str | None) -> str:
         """归一化 dataset kind。"""
@@ -300,26 +543,6 @@ class ProcessingMCPTools:
     def _resource_json(payload: Any) -> str:
         """执行 resource JSON 相关逻辑。"""
         return json.dumps(payload, ensure_ascii=False, indent=2)
-
-    @staticmethod
-    def _layer_type_token(layer: QgsMapLayer) -> str:
-        """执行图层相关的 type token 逻辑。"""
-        if layer.type() == QgsMapLayer.VectorLayer:
-            return f"vector_{int(layer.geometryType())}"
-        if layer.type() == QgsMapLayer.RasterLayer:
-            return "raster"
-        return str(int(layer.type()))
-
-    @staticmethod
-    def _is_layer_visible(project: QgsProject, layer_id: str) -> bool:
-        """判断 layer visible 是否成立。"""
-        node = project.layerTreeRoot().findLayer(layer_id) if project.layerTreeRoot() else None
-        if node is None:
-            return False
-        try:
-            return bool(node.isVisible())
-        except Exception:
-            return False
 
     @staticmethod
     def _serialize_value(value: Any) -> Any:
@@ -449,6 +672,26 @@ class ProcessingMCPTools:
                 warnings.append(f"{key} was rewritten to TEMPORARY_OUTPUT by safety policy.")
         return sanitized, warnings
 
+    def _normalize_layer_bindings(self, layer_bindings: dict[str, Any]) -> dict[str, list[str]]:
+        """归一化 layer bindings。"""
+        if not isinstance(layer_bindings, dict):
+            raise Exception("layer_bindings is required")
+        normalized: dict[str, list[str]] = {}
+        for key, raw_value in layer_bindings.items():
+            name = str(key).strip()
+            if not name:
+                continue
+            if isinstance(raw_value, (list, tuple)):
+                refs = [str(item).strip() for item in raw_value if str(item).strip()]
+            else:
+                text = str(raw_value).strip()
+                refs = [text] if text else []
+            if refs:
+                normalized[name] = refs
+        if not normalized:
+            raise Exception("layer_bindings is required")
+        return normalized
+
     @staticmethod
     def _coerce_output_identifier(value: Any) -> str:
         """执行 coerce output identifier 相关逻辑。"""
@@ -504,6 +747,27 @@ class ProcessingMCPTools:
             "extension": path.suffix.lower(),
             "modified_at": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
         }
+
+    # Layer resolution and vector edit helpers.
+    @staticmethod
+    def _layer_type_token(layer: QgsMapLayer) -> str:
+        """执行图层相关的 type token 逻辑。"""
+        if layer.type() == QgsMapLayer.VectorLayer:
+            return f"vector_{int(layer.geometryType())}"
+        if layer.type() == QgsMapLayer.RasterLayer:
+            return "raster"
+        return str(int(layer.type()))
+
+    @staticmethod
+    def _is_layer_visible(project: QgsProject, layer_id: str) -> bool:
+        """判断 layer visible 是否成立。"""
+        node = project.layerTreeRoot().findLayer(layer_id) if project.layerTreeRoot() else None
+        if node is None:
+            return False
+        try:
+            return bool(node.isVisible())
+        except Exception:
+            return False
 
     @staticmethod
     def _field_index(layer: QgsVectorLayer, field_name: str) -> int:
@@ -602,20 +866,7 @@ class ProcessingMCPTools:
             return layer, "in_place"
         return self._materialize_vector_layer(layer, suffix), "copy"
 
-    def _ensure_processing_runtime(self) -> None:
-        """确保 processing runtime 已就绪。"""
-        _ensure_processing_initialized()
-
-    def _execute_processing_call(self, algorithm: str, parameters: dict[str, Any], load_results: bool) -> dict[str, Any]:
-        """执行 execute processing call 相关逻辑。"""
-        self._ensure_processing_runtime()
-        result = processing.runAndLoadResults(algorithm, parameters) if load_results else processing.run(algorithm, parameters)
-        return result if isinstance(result, dict) else {"result": result}
-
-    def get_project_snapshot(self) -> dict[str, Any]:
-        """返回 project snapshot。"""
-        return self._run(self._get_project_snapshot_impl)
-
+    # Project snapshot helpers.
     def _get_project_snapshot_impl(self) -> dict[str, Any]:
         """执行 get project snapshot impl 相关逻辑。"""
         project = QgsProject.instance()
@@ -625,10 +876,6 @@ class ProcessingMCPTools:
             "crs": project.crs().authid() if project.crs().isValid() else "",
             "layer_count": len(project.mapLayers()),
         }
-
-    def get_layers_summary(self) -> dict[str, Any]:
-        """返回 layers summary。"""
-        return self._run(self._get_layers_summary_impl)
 
     def _get_layers_summary_impl(self) -> dict[str, Any]:
         """执行 get layers summary impl 相关逻辑。"""
@@ -643,10 +890,8 @@ class ProcessingMCPTools:
             "layers": layers,
         }
 
-    def common_get_qgis_info(self) -> dict[str, Any]:
-        """返回 QGIS info 信息。"""
-        return self._run(self._common_get_qgis_info_impl)
-
+    # Tool implementation bodies (_xxx_impl).
+    # Common/project.
     def _common_get_qgis_info_impl(self) -> dict[str, Any]:
         """执行 common get QGIS info impl 相关逻辑。"""
         project = QgsProject.instance()
@@ -699,10 +944,7 @@ class ProcessingMCPTools:
             },
         }
 
-    def vector_add_layer(self, path: str, provider: str = "ogr", name: str | None = None) -> dict[str, Any]:
-        """执行矢量相关的 add layer 逻辑。"""
-        return self._run(self._vector_add_layer_impl, path, provider, name)
-
+    # Layer add/list/details/remove/resolve.
     def _vector_add_layer_impl(self, path: str, provider: str = "ogr", name: str | None = None) -> dict[str, Any]:
         """执行矢量相关的 add layer impl 逻辑。"""
         layer = QgsVectorLayer(path, name or Path(path).stem, provider)
@@ -710,10 +952,6 @@ class ProcessingMCPTools:
             raise Exception(f"Layer is not valid: {path}")
         QgsProject.instance().addMapLayer(layer)
         return {"id": layer.id(), "name": layer.name(), "type": self._layer_type_token(layer), "feature_count": layer.featureCount()}
-
-    def vector_add_layers(self, paths: list[str], provider: str = "ogr", skip_invalid: bool = True) -> dict[str, Any]:
-        """执行矢量相关的 add layers 逻辑。"""
-        return self._run(self._vector_add_layers_impl, paths, provider, skip_invalid)
 
     def _vector_add_layers_impl(self, paths: list[str], provider: str, skip_invalid: bool) -> dict[str, Any]:
         """执行矢量相关的 add layers impl 逻辑。"""
@@ -728,10 +966,6 @@ class ProcessingMCPTools:
                 failed.append({"path": path, "error": str(exc)})
         return {"requested_count": len(paths or []), "loaded_count": len(loaded), "failed_count": len(failed), "loaded": loaded, "failed": failed}
 
-    def raster_add_layer(self, path: str, provider: str = "gdal", name: str | None = None) -> dict[str, Any]:
-        """执行栅格相关的 add layer 逻辑。"""
-        return self._run(self._raster_add_layer_impl, path, provider, name)
-
     def _raster_add_layer_impl(self, path: str, provider: str = "gdal", name: str | None = None) -> dict[str, Any]:
         """执行栅格相关的 add layer impl 逻辑。"""
         layer = QgsRasterLayer(path, name or Path(path).stem, provider)
@@ -739,10 +973,6 @@ class ProcessingMCPTools:
             raise Exception(f"Layer is not valid: {path}")
         QgsProject.instance().addMapLayer(layer)
         return {"id": layer.id(), "name": layer.name(), "type": "raster", "width": layer.width(), "height": layer.height(), "band_count": layer.bandCount()}
-
-    def raster_add_layers(self, paths: list[str], provider: str = "gdal", skip_invalid: bool = True) -> dict[str, Any]:
-        """执行栅格相关的 add layers 逻辑。"""
-        return self._run(self._raster_add_layers_impl, paths, provider, skip_invalid)
 
     def _raster_add_layers_impl(self, paths: list[str], provider: str, skip_invalid: bool) -> dict[str, Any]:
         """执行栅格相关的 add layers impl 逻辑。"""
@@ -756,10 +986,6 @@ class ProcessingMCPTools:
                     raise Exception(f"Failed to load raster dataset: {path}. {exc}") from exc
                 failed.append({"path": path, "error": str(exc)})
         return {"requested_count": len(paths or []), "loaded_count": len(loaded), "failed_count": len(failed), "loaded": loaded, "failed": failed}
-
-    def layer_list(self, layer_types: str = "both", include_hidden: bool = True, name_glob: str = "*") -> list[dict[str, Any]]:
-        """执行图层相关的 list 逻辑。"""
-        return self._run(self._layer_list_impl, layer_types, include_hidden, name_glob)
 
     def _layer_list_impl(self, layer_types: str, include_hidden: bool, name_glob: str) -> list[dict[str, Any]]:
         """执行图层相关的 list impl 逻辑。"""
@@ -795,10 +1021,6 @@ class ProcessingMCPTools:
                 item["band_count"] = layer.bandCount()
             entries.append(item)
         return entries
-
-    def layer_get_panel_tree(self, include_hidden: bool = True) -> dict[str, Any]:
-        """执行图层相关的 get panel tree 逻辑。"""
-        return self._run(self._layer_get_panel_tree_impl, include_hidden)
 
     def _layer_get_panel_tree_impl(self, include_hidden: bool) -> dict[str, Any]:
         """执行图层相关的 get panel tree impl 逻辑。"""
@@ -869,10 +1091,6 @@ class ProcessingMCPTools:
         }
         return {"tree": tree, "groups": groups, "layers": layers}
 
-    def layer_get_details(self, layer_ref: str) -> dict[str, Any]:
-        """执行图层相关的 get details 逻辑。"""
-        return self._run(self._layer_get_details_impl, layer_ref)
-
     def _layer_get_details_impl(self, layer_ref: str) -> dict[str, Any]:
         """执行图层相关的 get details impl 逻辑。"""
         layer = self._resolve_layer_ref(layer_ref)
@@ -893,10 +1111,6 @@ class ProcessingMCPTools:
             result["band_count"] = layer.bandCount()
         return result
 
-    def layer_remove(self, layer_id: str) -> dict[str, str]:
-        """执行图层相关的 remove 逻辑。"""
-        return self._run(self._layer_remove_impl, layer_id)
-
     def _layer_remove_impl(self, layer_id: str) -> dict[str, str]:
         """执行图层相关的 remove impl 逻辑。"""
         project = QgsProject.instance()
@@ -904,10 +1118,6 @@ class ProcessingMCPTools:
             raise Exception(f"Layer not found: {layer_id}")
         project.removeMapLayer(layer_id)
         return {"removed": layer_id}
-
-    def layer_remove_batch(self, layer_ids: list[str]) -> dict[str, list[str]]:
-        """执行图层相关的 remove batch 逻辑。"""
-        return self._run(self._layer_remove_batch_impl, layer_ids)
 
     def _layer_remove_batch_impl(self, layer_ids: list[str]) -> dict[str, list[str]]:
         """执行图层相关的 remove batch impl 逻辑。"""
@@ -924,10 +1134,6 @@ class ProcessingMCPTools:
             else:
                 missing.append(value)
         return {"removed": removed, "missing": missing}
-
-    def layer_resolve_references(self, refs: list[str], strict: bool = False) -> dict[str, Any]:
-        """执行图层相关的 resolve references 逻辑。"""
-        return self._run(self._layer_resolve_references_impl, refs, strict)
 
     def _layer_resolve_references_impl(self, refs: list[str], strict: bool) -> dict[str, Any]:
         """执行图层相关的 resolve references impl 逻辑。"""
@@ -960,10 +1166,7 @@ class ProcessingMCPTools:
             raise Exception("Layer reference resolve failed: " + "; ".join(details))
         return {"resolved": resolved, "missing": missing, "ambiguous": ambiguous}
 
-    def vector_get_layer_features(self, layer_ref: str, limit: int = DEFAULT_FEATURE_LIMIT) -> dict[str, Any]:
-        """执行矢量相关的 get layer features 逻辑。"""
-        return self._run(self._vector_get_layer_features_impl, layer_ref, limit)
-
+    # Vector query/table/stats.
     def _vector_get_layer_features_impl(self, layer_ref: str, limit: int) -> dict[str, Any]:
         """执行矢量相关的 get layer features impl 逻辑。"""
         layer = self._resolve_vector_layer_ref(layer_ref)
@@ -993,10 +1196,6 @@ class ProcessingMCPTools:
             "limit_capped": capped,
             "max_feature_limit": self.MAX_FEATURE_LIMIT,
         }
-
-    def vector_table_add_field(self, layer_ref: str, field_name: str, field_type: str = "string", field_length: int = 0, field_precision: int = 0, in_place: bool = False) -> dict[str, Any]:
-        """执行矢量相关的 table add field 逻辑。"""
-        return self._run(self._vector_table_add_field_impl, layer_ref, field_name, field_type, field_length, field_precision, in_place)
 
     def _vector_table_add_field_impl(self, layer_ref: str, field_name: str, field_type: str, field_length: int, field_precision: int, in_place: bool) -> dict[str, Any]:
         """执行矢量相关的 table add field impl 逻辑。"""
@@ -1028,10 +1227,6 @@ class ProcessingMCPTools:
             },
             outputs={"fields": [f.name() for f in layer.fields()]},
         )
-
-    def vector_table_drop_fields(self, layer_ref: str, fields: list[str], in_place: bool = False) -> dict[str, Any]:
-        """执行矢量相关的 table drop fields 逻辑。"""
-        return self._run(self._vector_table_drop_fields_impl, layer_ref, fields, in_place)
 
     def _vector_table_drop_fields_impl(self, layer_ref: str, fields: list[str], in_place: bool) -> dict[str, Any]:
         """执行矢量相关的 table drop fields impl 逻辑。"""
@@ -1073,10 +1268,6 @@ class ProcessingMCPTools:
             },
         )
 
-    def vector_table_rename_field(self, layer_ref: str, field_name: str, new_field_name: str, in_place: bool = False) -> dict[str, Any]:
-        """执行矢量相关的 table rename field 逻辑。"""
-        return self._run(self._vector_table_rename_field_impl, layer_ref, field_name, new_field_name, in_place)
-
     def _vector_table_rename_field_impl(self, layer_ref: str, field_name: str, new_field_name: str, in_place: bool) -> dict[str, Any]:
         """执行矢量相关的 table rename field impl 逻辑。"""
         source_layer = self._resolve_vector_layer_ref(layer_ref)
@@ -1108,10 +1299,6 @@ class ProcessingMCPTools:
             },
             outputs={"fields": [f.name() for f in layer.fields()]},
         )
-
-    def vector_table_calculate_field(self, layer_ref: str, field_name: str, expression: str, field_type: str = "string", where: str | None = None, in_place: bool = False) -> dict[str, Any]:
-        """执行矢量相关的 table calculate field 逻辑。"""
-        return self._run(self._vector_table_calculate_field_impl, layer_ref, field_name, expression, field_type, where, in_place)
 
     def _vector_table_calculate_field_impl(self, layer_ref: str, field_name: str, expression: str, field_type: str, where: str | None, in_place: bool) -> dict[str, Any]:
         """执行矢量相关的 table calculate field impl 逻辑。"""
@@ -1172,10 +1359,6 @@ class ProcessingMCPTools:
             outputs={"fields": [f.name() for f in layer.fields()]},
         )
 
-    def vector_table_query_records(self, layer_ref: str, where: str | None = None, fields: list[str] | None = None, limit: int = DEFAULT_FEATURE_LIMIT, offset: int = 0, order_by: str | None = None, include_geometry: bool = False) -> dict[str, Any]:
-        """执行矢量相关的 table query records 逻辑。"""
-        return self._run(self._vector_table_query_records_impl, layer_ref, where, fields, limit, offset, order_by, include_geometry)
-
     def _vector_table_query_records_impl(self, layer_ref: str, where: str | None, fields: list[str] | None, limit: int, offset: int, order_by: str | None, include_geometry: bool) -> dict[str, Any]:
         """执行矢量相关的 table query records impl 逻辑。"""
         if not str(layer_ref).strip():
@@ -1225,10 +1408,6 @@ class ProcessingMCPTools:
             records.append(item)
 
         return self._ok_result("vector_table_query_records", summary={"returned": len(records), "matched_total": len(matched), "offset": applied_offset, "requested_limit": requested, "applied_limit": applied, "limit_capped": capped}, outputs={"records": records})
-
-    def vector_table_insert_records(self, layer_ref: str, records: list[dict[str, Any]], in_place: bool = False) -> dict[str, Any]:
-        """执行矢量相关的 table insert records 逻辑。"""
-        return self._run(self._vector_table_insert_records_impl, layer_ref, records, in_place)
 
     def _vector_table_insert_records_impl(self, layer_ref: str, records: list[dict[str, Any]], in_place: bool) -> dict[str, Any]:
         """执行矢量相关的 table insert records impl 逻辑。"""
@@ -1286,10 +1465,6 @@ class ProcessingMCPTools:
             },
             warnings=warnings or None,
         )
-
-    def vector_table_update_records(self, layer_ref: str, where: str | None = None, set_literals: dict[str, Any] | None = None, set_expressions: dict[str, str] | None = None, in_place: bool = False) -> dict[str, Any]:
-        """执行矢量相关的 table update records 逻辑。"""
-        return self._run(self._vector_table_update_records_impl, layer_ref, where, set_literals, set_expressions, in_place)
 
     def _vector_table_update_records_impl(self, layer_ref: str, where: str | None, set_literals: dict[str, Any] | None, set_expressions: dict[str, str] | None, in_place: bool) -> dict[str, Any]:
         """执行矢量相关的 table update records impl 逻辑。"""
@@ -1358,10 +1533,6 @@ class ProcessingMCPTools:
             outputs={"feature_count": layer.featureCount()},
         )
 
-    def vector_table_delete_records(self, layer_ref: str, where: str | None = None, in_place: bool = False, confirm_destructive: bool = False) -> dict[str, Any]:
-        """执行矢量相关的 table delete records 逻辑。"""
-        return self._run(self._vector_table_delete_records_impl, layer_ref, where, in_place, confirm_destructive)
-
     def _vector_table_delete_records_impl(self, layer_ref: str, where: str | None, in_place: bool, confirm_destructive: bool) -> dict[str, Any]:
         """执行矢量相关的 table delete records impl 逻辑。"""
         if not confirm_destructive:
@@ -1407,10 +1578,6 @@ class ProcessingMCPTools:
             outputs={"feature_count": layer.featureCount()},
         )
 
-    def vector_table_truncate(self, layer_ref: str, in_place: bool = False, confirm_destructive: bool = False) -> dict[str, Any]:
-        """执行矢量相关的 table truncate 逻辑。"""
-        return self._run(self._vector_table_truncate_impl, layer_ref, in_place, confirm_destructive)
-
     def _vector_table_truncate_impl(self, layer_ref: str, in_place: bool, confirm_destructive: bool) -> dict[str, Any]:
         """执行矢量相关的 table truncate impl 逻辑。"""
         if not confirm_destructive:
@@ -1440,10 +1607,6 @@ class ProcessingMCPTools:
             outputs={"feature_count": layer.featureCount()},
         )
 
-    def vector_stats_basic(self, layer_ref: str, field_name: str) -> dict[str, Any]:
-        """执行矢量相关的 stats basic 逻辑。"""
-        return self._run(self._vector_stats_basic_impl, layer_ref, field_name)
-
     def _vector_stats_basic_impl(self, layer_ref: str, field_name: str) -> dict[str, Any]:
         """执行矢量相关的 stats basic impl 逻辑。"""
         layer = self._resolve_vector_layer_ref(layer_ref)
@@ -1472,10 +1635,6 @@ class ProcessingMCPTools:
             },
             outputs={"field_name": field_name},
         )
-
-    def vector_stats_by_categories(self, layer_ref: str, category_fields: list[str], values_field: str | None = None) -> dict[str, Any]:
-        """执行矢量相关的 stats by categories 逻辑。"""
-        return self._run(self._vector_stats_by_categories_impl, layer_ref, category_fields, values_field)
 
     def _vector_stats_by_categories_impl(self, layer_ref: str, category_fields: list[str], values_field: str | None) -> dict[str, Any]:
         """执行矢量相关的 stats by categories impl 逻辑。"""
@@ -1516,20 +1675,13 @@ class ProcessingMCPTools:
 
         return self._ok_result("vector_stats_by_categories", summary={"group_count": len(groups), "input_feature_count": layer.featureCount()}, outputs={"groups": groups})
 
-    def raster_stats_basic(self, layer_ref: str, band: int = 1) -> dict[str, Any]:
-        """执行栅格相关的 stats basic 逻辑。"""
-        return self._run(self._raster_stats_basic_impl, layer_ref, band)
-
+    # Raster stats.
     def _raster_stats_basic_impl(self, layer_ref: str, band: int) -> dict[str, Any]:
         """执行栅格相关的 stats basic impl 逻辑。"""
         layer = self._resolve_raster_layer_ref(layer_ref)
         band_number = max(1, self._safe_int(band, 1))
         stats = layer.dataProvider().bandStatistics(band_number)
         return self._ok_result("raster_stats_basic", summary={"band": band_number, "count": int(stats.elementCount), "min": float(stats.minimumValue), "max": float(stats.maximumValue), "mean": float(stats.mean), "std_dev": float(stats.stdDev)}, outputs={"layer_id": layer.id()})
-
-    def raster_stats_zonal(self, vector_layer_ref: str, raster_layer_ref: str, raster_band: int = 1, column_prefix: str = "z_", in_place: bool = False) -> dict[str, Any]:
-        """执行栅格相关的 stats zonal 逻辑。"""
-        return self._run(self._raster_stats_zonal_impl, vector_layer_ref, raster_layer_ref, raster_band, column_prefix, in_place)
 
     def _raster_stats_zonal_impl(self, vector_layer_ref: str, raster_layer_ref: str, raster_band: int, column_prefix: str, in_place: bool) -> dict[str, Any]:
         """执行栅格相关的 stats zonal impl 逻辑。"""
@@ -1560,10 +1712,6 @@ class ProcessingMCPTools:
             },
             outputs={"result": self._serialize_value(result)},
         )
-
-    def raster_stats_cell(self, raster_layer_refs: list[str], statistic: int = 0, ignore_nodata: bool = True) -> dict[str, Any]:
-        """执行栅格相关的 stats cell 逻辑。"""
-        return self._run(self._raster_stats_cell_impl, raster_layer_refs, statistic, ignore_nodata)
 
     def _raster_stats_cell_impl(self, raster_layer_refs: list[str], statistic: int, ignore_nodata: bool) -> dict[str, Any]:
         """执行栅格相关的 stats cell impl 逻辑。"""
@@ -1604,10 +1752,7 @@ class ProcessingMCPTools:
             return "unknown"
         return {0: "point", 1: "line", 2: "polygon"}.get(int(layer.geometryType()), "unknown")
 
-    def dataset_list_files(self, directory: str, recursive: bool = False, dataset_kind: str = "both", geometry_type: str = "any", name_glob: str = "*", limit: int = DEFAULT_DATASET_LIMIT) -> dict[str, Any]:
-        """执行数据集相关的 list files 逻辑。"""
-        return self._run(self._dataset_list_files_impl, directory, recursive, dataset_kind, geometry_type, name_glob, limit)
-
+    # Dataset scan/load.
     def _dataset_list_files_impl(self, directory: str, recursive: bool, dataset_kind: str, geometry_type: str, name_glob: str, limit: int) -> dict[str, Any]:
         """执行数据集相关的 list files impl 逻辑。"""
         root = Path(directory)
@@ -1639,10 +1784,6 @@ class ProcessingMCPTools:
 
         return {"directory": str(root), "requested_limit": requested, "applied_limit": applied, "limit_capped": capped, "returned": len(datasets), "matched_total": matched_total, "truncated": matched_total > len(datasets), "datasets": datasets}
 
-    def dataset_load_from_directory(self, directory: str, recursive: bool = False, dataset_kind: str = "both", geometry_type: str = "any", name_glob: str = "*", limit: int = DEFAULT_DATASET_LIMIT, skip_invalid: bool = True) -> dict[str, Any]:
-        """执行数据集相关的 load from directory 逻辑。"""
-        return self._run(self._dataset_load_from_directory_impl, directory, recursive, dataset_kind, geometry_type, name_glob, limit, skip_invalid)
-
     def _dataset_load_from_directory_impl(self, directory: str, recursive: bool, dataset_kind: str, geometry_type: str, name_glob: str, limit: int, skip_invalid: bool) -> dict[str, Any]:
         """执行数据集相关的 load from directory impl 逻辑。"""
         list_result = self._dataset_list_files_impl(directory, recursive, dataset_kind, geometry_type, name_glob, limit)
@@ -1661,10 +1802,7 @@ class ProcessingMCPTools:
                 failed.append({"path": path, "error": str(exc)})
         return {"requested_count": len(list_result["datasets"]), "loaded_count": len(loaded), "failed_count": len(failed), "loaded": loaded, "failed": failed}
 
-    def filesystem_query_list_entries(self, directory: str, recursive: bool = False, include_files: bool = True, include_directories: bool = True, name_glob: str = "*", limit: int = DEFAULT_FILESYSTEM_LIST_LIMIT) -> dict[str, Any]:
-        """执行文件系统相关的 query list entries 逻辑。"""
-        return self._run(self._filesystem_query_list_entries_impl, directory, recursive, include_files, include_directories, name_glob, limit)
-
+    # Filesystem query/edit/stats.
     def _filesystem_query_list_entries_impl(self, directory: str, recursive: bool, include_files: bool, include_directories: bool, name_glob: str, limit: int) -> dict[str, Any]:
         """执行文件系统相关的 query list entries impl 逻辑。"""
         if not include_files and not include_directories:
@@ -1692,20 +1830,12 @@ class ProcessingMCPTools:
             entries.append(info)
         return self._ok_result("filesystem_query_list_entries", summary={"returned_count": len(entries), "matched_total": matched_total, "requested_limit": requested, "applied_limit": applied, "limit_capped": capped, "truncated": matched_total > len(entries)}, outputs={"directory": str(root), "entries": entries})
 
-    def filesystem_query_entry_info(self, path: str) -> dict[str, Any]:
-        """执行文件系统相关的 query entry info 逻辑。"""
-        return self._run(self._filesystem_query_entry_info_impl, path)
-
     def _filesystem_query_entry_info_impl(self, path: str) -> dict[str, Any]:
         """执行文件系统相关的 query entry info impl 逻辑。"""
         entry = self._resolve_filesystem_query_path(path)
         if not entry.exists():
             raise Exception(f"Path not found: {path}")
         return self._ok_result("filesystem_query_entry_info", summary={"exists": True}, outputs={"entry": self._path_info(entry)})
-
-    def filesystem_query_read_text(self, path: str, max_chars: int | None = None) -> dict[str, Any]:
-        """执行文件系统相关的 query read text 逻辑。"""
-        return self._run(self._filesystem_query_read_text_impl, path, max_chars)
 
     def _filesystem_query_read_text_impl(self, path: str, max_chars: int | None) -> dict[str, Any]:
         """执行文件系统相关的 query read text impl 逻辑。"""
@@ -1719,10 +1849,6 @@ class ProcessingMCPTools:
         with entry.open("r", encoding="utf-8") as handle:
             text = handle.read(applied + 1)
         return self._ok_result("filesystem_query_read_text", summary={"truncated": len(text) > applied, "max_chars": applied}, outputs={"text": text[:applied]})
-
-    def filesystem_edit_write_text(self, path: str, content: str, overwrite: bool = False, confirm_destructive: bool = False, create_parents: bool = True) -> dict[str, Any]:
-        """执行文件系统相关的 edit write text 逻辑。"""
-        return self._run(self._filesystem_edit_write_text_impl, path, content, overwrite, confirm_destructive, create_parents)
 
     def _filesystem_edit_write_text_impl(self, path: str, content: str, overwrite: bool, confirm_destructive: bool, create_parents: bool) -> dict[str, Any]:
         """执行文件系统相关的 edit write text impl 逻辑。"""
@@ -1741,10 +1867,6 @@ class ProcessingMCPTools:
         target.write_text(content, encoding="utf-8")
         return self._ok_result("filesystem_edit_write_text", summary={"written_chars": len(content), "path": str(target)})
 
-    def filesystem_edit_append_text(self, path: str, content: str, create_parents: bool = True) -> dict[str, Any]:
-        """执行文件系统相关的 edit append text 逻辑。"""
-        return self._run(self._filesystem_edit_append_text_impl, path, content, create_parents)
-
     def _filesystem_edit_append_text_impl(self, path: str, content: str, create_parents: bool) -> dict[str, Any]:
         """执行文件系统相关的 edit append text impl 逻辑。"""
         target = self._resolve_filesystem_write_path(path)
@@ -1756,10 +1878,6 @@ class ProcessingMCPTools:
         with target.open("a", encoding="utf-8") as handle:
             handle.write(content)
         return self._ok_result("filesystem_edit_append_text", summary={"appended_chars": len(content), "path": str(target)})
-
-    def filesystem_edit_copy_entry(self, source_path: str, target_path: str, overwrite: bool = False, confirm_destructive: bool = False) -> dict[str, Any]:
-        """执行文件系统相关的 edit copy entry 逻辑。"""
-        return self._run(self._filesystem_edit_copy_entry_impl, source_path, target_path, overwrite, confirm_destructive)
 
     def _filesystem_edit_copy_entry_impl(self, source_path: str, target_path: str, overwrite: bool, confirm_destructive: bool) -> dict[str, Any]:
         """执行文件系统相关的 edit copy entry impl 逻辑。"""
@@ -1780,10 +1898,6 @@ class ProcessingMCPTools:
         shutil.copytree(source, target) if source.is_dir() else shutil.copy2(source, target)
         return self._ok_result("filesystem_edit_copy_entry", summary={"source_path": str(source), "target_path": str(target)})
 
-    def filesystem_edit_move_entry(self, source_path: str, target_path: str, overwrite: bool = False, confirm_destructive: bool = False) -> dict[str, Any]:
-        """执行文件系统相关的 edit move entry 逻辑。"""
-        return self._run(self._filesystem_edit_move_entry_impl, source_path, target_path, overwrite, confirm_destructive)
-
     def _filesystem_edit_move_entry_impl(self, source_path: str, target_path: str, overwrite: bool, confirm_destructive: bool) -> dict[str, Any]:
         """执行文件系统相关的 edit move entry impl 逻辑。"""
         source = self._resolve_filesystem_write_path(source_path)
@@ -1803,10 +1917,6 @@ class ProcessingMCPTools:
         shutil.move(str(source), str(target))
         return self._ok_result("filesystem_edit_move_entry", summary={"source_path": str(source), "target_path": str(target)})
 
-    def filesystem_edit_delete_entry(self, path: str, confirm_destructive: bool = False) -> dict[str, Any]:
-        """执行文件系统相关的 edit delete entry 逻辑。"""
-        return self._run(self._filesystem_edit_delete_entry_impl, path, confirm_destructive)
-
     def _filesystem_edit_delete_entry_impl(self, path: str, confirm_destructive: bool) -> dict[str, Any]:
         """执行文件系统相关的 edit delete entry impl 逻辑。"""
         if not confirm_destructive:
@@ -1816,10 +1926,6 @@ class ProcessingMCPTools:
             raise Exception(f"Path not found: {path}")
         shutil.rmtree(target) if target.is_dir() else target.unlink()
         return self._ok_result("filesystem_edit_delete_entry", summary={"deleted_path": str(target)})
-
-    def filesystem_stats_directory(self, directory: str, recursive: bool = False) -> dict[str, Any]:
-        """执行文件系统相关的 stats directory 逻辑。"""
-        return self._run(self._filesystem_stats_directory_impl, directory, recursive)
 
     def _filesystem_stats_directory_impl(self, directory: str, recursive: bool) -> dict[str, Any]:
         """执行文件系统相关的 stats directory impl 逻辑。"""
@@ -1841,15 +1947,15 @@ class ProcessingMCPTools:
             extensions[ext] = extensions.get(ext, 0) + 1
         return self._ok_result("filesystem_stats_directory", summary={"file_count": file_count, "directory_count": directory_count, "total_size_bytes": total_size_bytes}, outputs={"extensions": extensions})
 
-    def processing_list_providers(self) -> dict[str, Any]:
-        """执行 Processing 相关的 list providers 逻辑。"""
-        return self._run(self._processing_list_providers_impl)
-
+    # Processing metadata/execute.
     def _processing_list_providers_impl(self) -> dict[str, Any]:
         """执行 Processing 相关的 list providers impl 逻辑。"""
         self._ensure_processing_runtime()
         providers = list(QgsApplication.processingRegistry().providers())
         payload = []
+        total_algorithm_count = 0
+        active_provider_count = 0
+        active_algorithm_count = 0
         for provider in providers:
             active = True
             if hasattr(provider, "isActive") and callable(provider.isActive):
@@ -1857,12 +1963,32 @@ class ProcessingMCPTools:
                     active = bool(provider.isActive())
                 except Exception:
                     active = True
-            payload.append({"id": provider.id(), "name": provider.name(), "active": active})
-        return {"count": len(payload), "providers": payload}
-
-    def processing_get_algorithms(self, algorithm_id: str | None = None, provider_id: str | None = None, include_parameters: bool = False, include_outputs: bool = False, limit: int | None = None) -> dict[str, Any]:
-        """执行 Processing 相关的 get algorithms 逻辑。"""
-        return self._run(self._processing_get_algorithms_impl, algorithm_id, provider_id, include_parameters, include_outputs, limit)
+            algorithm_count = 0
+            if hasattr(provider, "algorithms") and callable(provider.algorithms):
+                try:
+                    algorithm_count = len(provider.algorithms())
+                except Exception:
+                    algorithm_count = 0
+            total_algorithm_count += algorithm_count
+            if active:
+                active_provider_count += 1
+                active_algorithm_count += algorithm_count
+            payload.append(
+                {
+                    "id": provider.id(),
+                    "name": provider.name(),
+                    "active": active,
+                    "algorithm_count": algorithm_count,
+                }
+            )
+        return {
+            "count": len(payload),
+            "count_scope": "registered_providers",
+            "total_algorithm_count": total_algorithm_count,
+            "active_provider_count": active_provider_count,
+            "active_algorithm_count": active_algorithm_count,
+            "providers": payload,
+        }
 
     def _processing_get_algorithms_impl(self, algorithm_id: str | None, provider_id: str | None, include_parameters: bool, include_outputs: bool, limit: int | None) -> dict[str, Any]:
         """执行 Processing 相关的 get algorithms impl 逻辑。"""
@@ -1893,10 +2019,6 @@ class ProcessingMCPTools:
             "algorithms": [self._serialize_algorithm(a, include_parameters=include_parameters, include_outputs=include_outputs) for a in algorithms],
         }
 
-    def processing_get_parameter_template(self, algorithm_id: str) -> dict[str, Any]:
-        """执行 Processing 相关的 get parameter template 逻辑。"""
-        return self._run(self._processing_get_parameter_template_impl, algorithm_id)
-
     def _processing_get_parameter_template_impl(self, algorithm_id: str) -> dict[str, Any]:
         """执行 Processing 相关的 get parameter template impl 逻辑。"""
         self._ensure_processing_runtime()
@@ -1915,10 +2037,6 @@ class ProcessingMCPTools:
             "outputs": [self._serialize_output(o) for o in algorithm.outputDefinitions()],
         }
 
-    def processing_execute_algorithm(self, algorithm: str, parameters: dict[str, Any], load_results: bool = True, allow_disk_write: bool = False, allow_in_place_edit: bool = False) -> dict[str, Any]:
-        """执行 Processing 相关的 execute algorithm 逻辑。"""
-        return self._run(self._processing_execute_algorithm_impl, algorithm, parameters, load_results, allow_disk_write, allow_in_place_edit)
-
     def _processing_execute_algorithm_impl(self, algorithm: str, parameters: dict[str, Any], load_results: bool, allow_disk_write: bool, allow_in_place_edit: bool) -> dict[str, Any]:
         """执行 Processing 相关的 execute algorithm impl 逻辑。"""
         if not isinstance(parameters, dict):
@@ -1926,30 +2044,6 @@ class ProcessingMCPTools:
         effective, warnings = self._sanitize_processing_parameters(parameters, allow_disk_write, allow_in_place_edit)
         result = self._execute_processing_call(algorithm, effective, load_results)
         return self._ok_result("processing_execute_algorithm", summary={"algorithm": algorithm, "load_results": bool(load_results)}, outputs={"result": self._serialize_value(result)}, warnings=warnings, safety_policy={"allow_disk_write": bool(allow_disk_write), "allow_in_place_edit": bool(allow_in_place_edit)}, effective_parameters=self._serialize_value(effective))
-
-    def processing_execute_on_layers(self, algorithm: str, layer_bindings: dict[str, Any], parameters: dict[str, Any], load_results: bool = True, batch_mode: bool = False, allow_disk_write: bool = False, allow_in_place_edit: bool = False) -> dict[str, Any]:
-        """执行 Processing 相关的 execute on layers 逻辑。"""
-        return self._run(self._processing_execute_on_layers_impl, algorithm, layer_bindings, parameters, load_results, batch_mode, allow_disk_write, allow_in_place_edit)
-
-    def _normalize_layer_bindings(self, layer_bindings: dict[str, Any]) -> dict[str, list[str]]:
-        """归一化 layer bindings。"""
-        if not isinstance(layer_bindings, dict):
-            raise Exception("layer_bindings is required")
-        normalized: dict[str, list[str]] = {}
-        for key, raw_value in layer_bindings.items():
-            name = str(key).strip()
-            if not name:
-                continue
-            if isinstance(raw_value, (list, tuple)):
-                refs = [str(item).strip() for item in raw_value if str(item).strip()]
-            else:
-                text = str(raw_value).strip()
-                refs = [text] if text else []
-            if refs:
-                normalized[name] = refs
-        if not normalized:
-            raise Exception("layer_bindings is required")
-        return normalized
 
     def _processing_execute_on_layers_impl(self, algorithm: str, layer_bindings: dict[str, Any], parameters: dict[str, Any], load_results: bool, batch_mode: bool, allow_disk_write: bool, allow_in_place_edit: bool) -> dict[str, Any]:
         """执行 Processing 相关的 execute on layers impl 逻辑。"""
@@ -1997,36 +2091,8 @@ class ProcessingMCPTools:
             "effective_parameters": self._serialize_value(last_effective),
         }
 
-
-def _tool_doc(
-    purpose: str,
-    inputs: str,
-    preconditions: str,
-    effects: str,
-    safety: str,
-    returns: str,
-) -> str:
-    """执行 tool doc 相关逻辑。"""
-    return (
-        f"用途：{purpose} 输入语义：{inputs} 前置条件：{preconditions} "
-        f"主要副作用：{effects} 安全开关：{safety} 返回结果：{returns}"
-    )
-
-
-_COPY_VECTOR_SAFETY = (
-    "默认 in_place=false，会先生成副本图层并返回新的 output_layer_id；仅在明确要修改原图层时才把 in_place 设为 true。"
-)
-_DESTRUCTIVE_VECTOR_SAFETY = (
-    "默认 in_place=false；删除类操作还要求 confirm_destructive=true，避免误删原图层或记录。"
-)
-_FILESYSTEM_WRITE_SAFETY = (
-    "所有 filesystem_* 调用都受 allowed_roots/readonly_roots/disable_filesystem_tools 约束；编辑类工具不会自动覆盖现有目标，覆盖或删除时必须显式打开 overwrite 或 confirm_destructive。"
-)
-_PROCESSING_SAFETY = (
-    "默认禁止磁盘写出和原位编辑；只有在明确需要时才把 allow_disk_write 或 allow_in_place_edit 设为 true，并应复核返回里的 safety_policy、warnings 与 effective_parameters。"
-)
-
 _REGISTERED_TOOL_DOCSTRINGS: dict[str, str] = {
+
     "common_get_qgis_info": _tool_doc(
         "返回当前 QGIS Desktop 会话、平台、插件与 Processing MCP 运行状态，适合作为所有自动化流程的环境探测入口。",
         "无业务输入。",
@@ -2329,7 +2395,7 @@ _REGISTERED_TOOL_DOCSTRINGS: dict[str, str] = {
         "Processing 运行时必须可用。",
         "无写操作，只读取 Processing 注册表。",
         "无。",
-        "返回 provider 的 id、name、active 状态和总数。",
+        "返回 provider 的 id、name、active、algorithm_count，以及 count_scope、total_algorithm_count、active_provider_count、active_algorithm_count 和总数。",
     ),
     "processing_get_algorithms": _tool_doc(
         "查询 Processing 算法目录，支持按 provider 过滤，或按 algorithm_id 精确读取单个算法。",
@@ -2365,31 +2431,65 @@ _REGISTERED_TOOL_DOCSTRINGS: dict[str, str] = {
     ),
 }
 
+def _validate_tool_entry_contracts() -> None:
+    """Validate tool entry wrappers, impl mappings, and docstring registry integrity."""
+    missing_tool_methods: list[str] = []
+    missing_tool_impls: list[str] = []
+    invalid_tool_wrappers: list[str] = []
+    missing_docs: list[str] = []
+    invalid_docs: list[str] = []
+    extra_docs = sorted(set(_REGISTERED_TOOL_DOCSTRINGS) - set(REGISTERED_TOOL_NAMES))
 
-def _apply_registered_tool_docstrings() -> None:
-    """执行 apply registered tool docstrings 相关逻辑。"""
-    missing: list[str] = []
-    invalid: list[str] = []
+    public_methods = {
+        name
+        for name, member in inspect.getmembers(ProcessingMCPTools, predicate=callable)
+        if not name.startswith("_")
+    }
+    expected_public_methods = set(REGISTERED_TOOL_NAMES) | set(NON_TOOL_PUBLIC_HELPER_NAMES)
+    missing_public_helpers = sorted(set(NON_TOOL_PUBLIC_HELPER_NAMES) - public_methods)
+    unexpected_public_methods = sorted(public_methods - expected_public_methods)
+
     for tool_name in REGISTERED_TOOL_NAMES:
-        description = _REGISTERED_TOOL_DOCSTRINGS.get(tool_name)
         method = getattr(ProcessingMCPTools, tool_name, None)
-        if not callable(method) or not isinstance(description, str):
-            missing.append(tool_name)
+        if not callable(method):
+            missing_tool_methods.append(tool_name)
             continue
-        cleaned = description.strip()
-        if not cleaned:
-            invalid.append(tool_name)
+
+        impl_name = f"_{tool_name}_impl"
+        if not callable(getattr(ProcessingMCPTools, impl_name, None)):
+            missing_tool_impls.append(impl_name)
+
+        code = getattr(method, "__code__", None)
+        co_names = tuple(getattr(code, "co_names", ()))
+        if "_run" not in co_names or impl_name not in co_names:
+            invalid_tool_wrappers.append(tool_name)
+
+        description = _REGISTERED_TOOL_DOCSTRINGS.get(tool_name)
+        if not isinstance(description, str):
+            missing_docs.append(tool_name)
             continue
-        method.__doc__ = cleaned
-    if missing or invalid:
+        if not description.strip():
+            invalid_docs.append(tool_name)
+
+    if (
+        missing_tool_methods
+        or missing_tool_impls
+        or invalid_tool_wrappers
+        or missing_public_helpers
+        or unexpected_public_methods
+        or missing_docs
+        or invalid_docs
+        or extra_docs
+    ):
         raise RuntimeError(
-            "Failed to initialize registered MCP tool docstrings: "
-            f"missing={missing}, invalid={invalid}"
+            "Failed to validate MCP tool entry contracts: "
+            f"missing_tool_methods={missing_tool_methods}, "
+            f"missing_tool_impls={missing_tool_impls}, "
+            f"invalid_tool_wrappers={invalid_tool_wrappers}, "
+            f"missing_public_helpers={missing_public_helpers}, "
+            f"unexpected_public_methods={unexpected_public_methods}, "
+            f"missing_docs={missing_docs}, invalid_docs={invalid_docs}, extra_docs={extra_docs}"
         )
-
-
-_apply_registered_tool_docstrings()
-
 
 def register_tools(mcp, tools: ProcessingMCPTools, enable_execute_code: bool = True) -> None:
     """注册 tools 能力。"""
@@ -2410,3 +2510,6 @@ def register_tools(mcp, tools: ProcessingMCPTools, enable_execute_code: bool = T
         _wrapper.__name__ = tool_name
         _wrapper.__doc__ = f"MCP tool wrapper for {tool_name}."
         tool_factory()(_wrapper)
+
+_validate_tool_entry_contracts()
+_apply_registered_tool_docstrings()

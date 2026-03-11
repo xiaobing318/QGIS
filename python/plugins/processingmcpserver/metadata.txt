@@ -6,6 +6,7 @@ category=Analysis
 version=1.0.0
 qgisMinimumVersion=3.0
 supportsQt6=yes
+icon=icons/processingmcpserver.svg
 
 author=QGIS MCP Contributors
 

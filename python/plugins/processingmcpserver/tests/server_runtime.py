@@ -45,6 +45,39 @@ class _FakeFastMCP:
         self.instructions = instructions
         self.kwargs = kwargs
         self.settings = SimpleNamespace(**kwargs)
+        self._mcp_server = SimpleNamespace(version="mcp-package-version")
+
+
+class _FakeFastMCPWithoutServerIdentity:
+    def __init__(
+        self,
+        name: str,
+        instructions: str = "",
+        host: str = "127.0.0.1",
+        port: int = 8000,
+        mount_path: str = "/",
+        sse_path: str = "/sse",
+        message_path: str = "/messages/",
+        streamable_http_path: str = "/mcp",
+        stateless_http: bool = False,
+        json_response: bool = False,
+        log_level: str = "INFO",
+    ):
+        """模拟不支持 website_url 与 icons 参数的 FastMCP。"""
+        self.name = name
+        self.instructions = instructions
+        self.settings = SimpleNamespace(
+            host=host,
+            port=port,
+            mount_path=mount_path,
+            sse_path=sse_path,
+            message_path=message_path,
+            streamable_http_path=streamable_http_path,
+            stateless_http=stateless_http,
+            json_response=json_response,
+            log_level=log_level,
+        )
+        self._mcp_server = SimpleNamespace(version="mcp-package-version")
 
 
 class ProcessingMCPServerRuntimeTest(ProcessingMCPTestBase):
@@ -74,23 +107,91 @@ class ProcessingMCPServerRuntimeTest(ProcessingMCPTestBase):
             patch(
                 "processingmcpserver.server.register_resources"
             ) as mock_register_resources,
+            patch(
+                "processingmcpserver.server._load_plugin_version_from_metadata",
+                return_value="9.9.9",
+            ),
         ):
             server = ProcessingMCPServer(iface="iface", config=config)
 
         self.assertEqual(server._mcp.name, "QGIS Processing MCP Server")
         self.assertTrue(server._mcp.instructions)
-        self.assertIn("当前 QGIS Desktop 会话", server._mcp.instructions)
-        self.assertIn("common_get_qgis_info", server._mcp.instructions)
-        self.assertIn("qgis://project/info", server._mcp.instructions)
-        self.assertIn("useProxy=false", server._mcp.instructions)
+        self.assertIn("能力说明", server._mcp.instructions)
+        self.assertIn("使用背景", server._mcp.instructions)
+        self.assertIn("推荐工作流", server._mcp.instructions)
+        self.assertIn("注意事项", server._mcp.instructions)
+        self.assertIn("读取当前工程与图层上下文", server._mcp.instructions)
+        self.assertIn("文件系统访问受白名单与只读策略约束", server._mcp.instructions)
+        self.assertNotIn("common_get_qgis_info", server._mcp.instructions)
+        self.assertNotIn("processing_execute_algorithm", server._mcp.instructions)
         self.assertEqual(server._mcp.kwargs["host"], config.host)
         self.assertEqual(server._mcp.kwargs["port"], config.port)
+        self.assertNotIn("website_url", server._mcp.kwargs)
+        self.assertEqual(server._mcp.kwargs["version"], "9.9.9")
+        self.assertEqual(server._mcp._mcp_server.version, "9.9.9")
+        self.assertIn("icons", server._mcp.kwargs)
+        self.assertEqual(server._mcp.kwargs["icons"][0]["mimeType"], "image/svg+xml")
+        self.assertEqual(server._mcp.kwargs["icons"][0]["sizes"], ["128x128"])
+        self.assertTrue(
+            server._mcp.kwargs["icons"][0]["src"].startswith(
+                "data:image/svg+xml;base64,"
+            )
+        )
         mock_register_tools.assert_called_once_with(
             server._mcp,
             mock_tools_class.return_value,
             enable_execute_code=config.enable_execute_code,
         )
         mock_tools_class.assert_called_once_with("iface", server._runner, config)
+        mock_register_prompts.assert_called_once_with(
+            server._mcp, mock_tools_class.return_value
+        )
+        mock_register_resources.assert_called_once_with(
+            server._mcp, mock_tools_class.return_value
+        )
+
+    def test_build_mcp_server_degrades_without_identity_constructor_params(self):
+        """验证 FastMCP 不支持 identity 参数时仍能成功初始化。"""
+        fake_transport = _FakeTransport()
+        fake_mcp_module = ModuleType("mcp.server.fastmcp")
+        fake_mcp_module.FastMCP = _FakeFastMCPWithoutServerIdentity
+        config = self._build_config("streamable-http")
+
+        with (
+            patch.dict(
+                sys.modules,
+                {
+                    "mcp": ModuleType("mcp"),
+                    "mcp.server": ModuleType("mcp.server"),
+                    "mcp.server.fastmcp": fake_mcp_module,
+                },
+            ),
+            patch(
+                "processingmcpserver.server.create_transport",
+                return_value=fake_transport,
+            ),
+            patch("processingmcpserver.server.ProcessingMCPTools") as mock_tools_class,
+            patch("processingmcpserver.server.register_tools") as mock_register_tools,
+            patch("processingmcpserver.server.register_prompts") as mock_register_prompts,
+            patch(
+                "processingmcpserver.server.register_resources"
+            ) as mock_register_resources,
+            patch(
+                "processingmcpserver.server._load_plugin_version_from_metadata",
+                return_value="9.9.9",
+            ),
+        ):
+            server = ProcessingMCPServer(iface="iface", config=config)
+
+        self.assertEqual(server._mcp.name, "QGIS Processing MCP Server")
+        self.assertEqual(server._mcp.settings.host, config.host)
+        self.assertEqual(server._mcp.settings.port, config.port)
+        self.assertEqual(server._mcp._mcp_server.version, "9.9.9")
+        mock_register_tools.assert_called_once_with(
+            server._mcp,
+            mock_tools_class.return_value,
+            enable_execute_code=config.enable_execute_code,
+        )
         mock_register_prompts.assert_called_once_with(
             server._mcp, mock_tools_class.return_value
         )
