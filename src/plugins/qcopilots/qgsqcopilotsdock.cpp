@@ -11,12 +11,15 @@
 #include "qgsqcopilotsdock.h"
 
 #include "qgsapplication.h"
+#include "qgsfileutils.h"
 #include "qgsmessagelog.h"
 #include "qgssettings.h"
 
 #include <QAuthenticator>
 #include <QDateTime>
 #include <QDir>
+#include <QFileDialog>
+#include <QFileInfo>
 #include <QLayout>
 #include <QNetworkAccessManager>
 #include <QNetworkProxy>
@@ -24,8 +27,10 @@
 #include <QNetworkRequest>
 #include <QPointer>
 #include <QStringList>
+#include <QStandardPaths>
 #include <QSslError>
 
+#include <QWebEngineDownloadRequest>
 #include <QWebEnginePage>
 #include <QWebEnginePermission>
 #include <QWebEngineProfile>
@@ -36,7 +41,9 @@ namespace
 {
   const QString sServerUrlKey = QStringLiteral( "QCopilots/QCopilotServerUrl" );
   const QString sLastKnownGoodUrlKey = QStringLiteral( "QCopilots/QCopilotServerLastKnownGoodUrl" );
+  const QString sDownloadLastDirKey = QStringLiteral( "QCopilots/QCopilotDownloadLastDir" );
   const QString sLogCategory = QStringLiteral( "QCopilots" );
+  const QString sFallbackDownloadFileName = QStringLiteral( "qcopilots-download.txt" );
 
   bool isProxyRelatedError( QNetworkReply::NetworkError error )
   {
@@ -123,6 +130,7 @@ QgsQCopilotsDock::QgsQCopilotsDock( QWidget *parent )
     QWebEngineProfile *profile = qcopilotsProfile();
     QWebEnginePage *page = new QWebEnginePage( profile, mWebView );
     mWebView->setPage( page );
+    connect( profile, &QWebEngineProfile::downloadRequested, this, &QgsQCopilotsDock::handleDownloadRequested );
 
     if ( QWebEngineSettings *pageSettings = page->settings() )
     {
@@ -357,6 +365,112 @@ void QgsQCopilotsDock::finalizeConnectivityProbe( QNetworkReply *reply )
     mLastNetworkError = tr( "HTTP probe returned %1." ).arg( httpStatusText() );
     appendDiagnosticLog( mLastNetworkError, Qgis::Warning );
   }
+}
+
+void QgsQCopilotsDock::handleDownloadRequested( QWebEngineDownloadRequest *download )
+{
+  if ( !download )
+    return;
+
+  const QString savePath = buildSuggestedSavePath( download );
+  const QString selectedPath = QFileDialog::getSaveFileName(
+    this,
+    tr( "Save Download As" ),
+    savePath );
+
+  if ( selectedPath.isEmpty() )
+  {
+    appendDiagnosticLog(
+      tr( "Download canceled by user: %1" ).arg( download->url().toString() ),
+      Qgis::Info );
+    download->cancel();
+    return;
+  }
+
+  const QFileInfo targetInfo( selectedPath );
+  if ( !targetInfo.dir().exists() )
+    QDir().mkpath( targetInfo.dir().absolutePath() );
+
+  QgsSettings settings;
+  settings.setValue(
+    sDownloadLastDirKey,
+    targetInfo.dir().absolutePath(),
+    QgsSettings::Section::Plugins );
+
+  download->setDownloadDirectory( targetInfo.dir().absolutePath() );
+  download->setDownloadFileName( targetInfo.fileName() );
+  trackDownloadState( download );
+  download->accept();
+
+  appendDiagnosticLog(
+    tr( "Download accepted: %1 -> %2" ).arg( download->url().toString(), selectedPath ),
+    Qgis::Info );
+}
+
+QString QgsQCopilotsDock::buildSuggestedSavePath( const QWebEngineDownloadRequest *download ) const
+{
+  QString fileName;
+  if ( download )
+  {
+    fileName = download->downloadFileName().trimmed();
+    if ( fileName.isEmpty() )
+      fileName = download->suggestedFileName().trimmed();
+    if ( fileName.isEmpty() )
+      fileName = QFileInfo( download->url().path() ).fileName().trimmed();
+  }
+
+  fileName = QgsFileUtils::stringToSafeFilename( fileName );
+  if ( fileName.isEmpty() )
+    fileName = sFallbackDownloadFileName;
+
+  QgsSettings settings;
+  QString downloadDir = settings.value( sDownloadLastDirKey, QString(), QgsSettings::Section::Plugins ).toString().trimmed();
+  if ( downloadDir.isEmpty() )
+    downloadDir = QStandardPaths::writableLocation( QStandardPaths::DownloadLocation );
+  if ( downloadDir.isEmpty() )
+    downloadDir = QDir::homePath();
+
+  return QDir( downloadDir ).filePath( fileName );
+}
+
+void QgsQCopilotsDock::trackDownloadState( QWebEngineDownloadRequest *download )
+{
+  if ( !download )
+    return;
+
+  const QPointer< QWebEngineDownloadRequest > downloadPtr( download );
+  connect( download, &QWebEngineDownloadRequest::stateChanged, this, [this, downloadPtr]( QWebEngineDownloadRequest::DownloadState state )
+  {
+    if ( !downloadPtr )
+      return;
+
+    switch ( state )
+    {
+      case QWebEngineDownloadRequest::DownloadInProgress:
+        appendDiagnosticLog(
+          tr( "Download started: %1" ).arg( downloadPtr->url().toString() ),
+          Qgis::Info );
+        break;
+      case QWebEngineDownloadRequest::DownloadCompleted:
+        appendDiagnosticLog(
+          tr( "Download completed: %1/%2" ).arg( downloadPtr->downloadDirectory(), downloadPtr->downloadFileName() ),
+          Qgis::Info );
+        break;
+      case QWebEngineDownloadRequest::DownloadCancelled:
+        appendDiagnosticLog(
+          tr( "Download canceled: %1" ).arg( downloadPtr->url().toString() ),
+          Qgis::Warning );
+        break;
+      case QWebEngineDownloadRequest::DownloadInterrupted:
+        appendDiagnosticLog(
+          tr( "Download interrupted: %1 (reason: %2)" )
+            .arg( downloadPtr->url().toString(), downloadPtr->interruptReasonString() ),
+          Qgis::Warning );
+        break;
+      case QWebEngineDownloadRequest::DownloadRequested:
+        break;
+    }
+  } );
 }
 
 void QgsQCopilotsDock::loadUrl( const QUrl &url, bool persistOnSuccess )

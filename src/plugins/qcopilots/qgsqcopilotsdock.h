@@ -23,6 +23,7 @@
 
 class QNetworkAccessManager;
 class QNetworkReply;
+class QWebEngineDownloadRequest;
 class QWebEngineView;
 
 class QgsQCopilotsDock : public QDockWidget
@@ -64,6 +65,9 @@ class QgsQCopilotsDock : public QDockWidget
     QString httpStatusText() const;
     QString diagnosticHintText() const;
     void handleLoadFinished( bool ok );
+    void handleDownloadRequested( QWebEngineDownloadRequest *download );
+    QString buildSuggestedSavePath( const QWebEngineDownloadRequest *download ) const;
+    void trackDownloadState( QWebEngineDownloadRequest *download );
 
     Ui::qgsqcopilotsdock mUi;
     QWebEngineView *mWebView = nullptr;

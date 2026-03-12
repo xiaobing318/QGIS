@@ -40,6 +40,7 @@ include_directories(
 target_link_libraries(plugin_qcopilots
   qgis_core
   qgis_gui
+  Qt${QT_VERSION_MAJOR}::WebEngineCore
   Qt${QT_VERSION_MAJOR}::WebEngineWidgets
 )
 
