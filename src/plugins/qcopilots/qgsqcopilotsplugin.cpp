@@ -187,10 +187,14 @@ void QgsQCopilotsPlugin::ensureDock()
   if ( mQgsQCopilotsDock || !mIface )
     return;
 
-  mQgsQCopilotsDock = new QgsQCopilotsDock( mIface->mainWindow() );
+  QMainWindow *mainWindow = qobject_cast<QMainWindow *>( mIface->mainWindow() );
+  if ( !mainWindow )
+    return;
+
+  mQgsQCopilotsDock = new QgsQCopilotsDock( mainWindow );
   mQgsQCopilotsDock->setObjectName( QStringLiteral( "QCopilotsDock" ) );
-  mIface->addDockWidget( Qt::RightDockWidgetArea, mQgsQCopilotsDock );
-  mQgsQCopilotsDock->raise();
+  if ( !mainWindow->restoreDockWidget( mQgsQCopilotsDock ) )
+    mIface->addDockWidget( Qt::RightDockWidgetArea, mQgsQCopilotsDock );
 }
 
 
