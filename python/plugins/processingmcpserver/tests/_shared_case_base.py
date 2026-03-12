@@ -18,6 +18,7 @@ from qgis.core import (
     QgsRasterLayer,
     QgsSettings,
     QgsVectorLayer,
+    QgsVectorFileWriter,
 )
 from qgis.testing import QgisTestCase
 
@@ -174,6 +175,14 @@ class ProcessingMCPTestBase(QgisTestCase):
                     break
                 except PermissionError as exc:
                     last_error = exc
+                    temp_root = Path(temp_dir.name)
+                    if temp_root.exists():
+                        for shp_path in temp_root.rglob("*.shp"):
+                            try:
+                                QgsVectorFileWriter.deleteShapeFile(str(shp_path))
+                            except Exception:
+                                pass
+                    gc.collect()
                     if attempt < 5:
                         time.sleep(0.1)
                     continue
@@ -375,6 +384,56 @@ class ProcessingMCPTestBase(QgisTestCase):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
         return path
+
+    def export_layer_to_shapefile(
+        self,
+        layer: QgsVectorLayer,
+        target_dir: Path,
+        stem: str = "sample",
+    ) -> Path:
+        """导出图层为 shapefile bundle。"""
+        target_dir.mkdir(parents=True, exist_ok=True)
+        target_path = target_dir / f"{stem}.shp"
+        if target_path.exists():
+            QgsVectorFileWriter.deleteShapeFile(str(target_path))
+
+        options = QgsVectorFileWriter.SaveVectorOptions()
+        options.driverName = "ESRI Shapefile"
+        options.fileEncoding = "UTF-8"
+        options.layerName = stem
+        err, msg, new_file_name, _new_layer = QgsVectorFileWriter.writeAsVectorFormatV3(
+            layer,
+            str(target_path),
+            QgsProject.instance().transformContext(),
+            options,
+        )
+        self.assertEqual(err, QgsVectorFileWriter.WriterError.NoError, msg or new_file_name)
+        self.assertTrue(target_path.exists())
+        return target_path
+
+    def copy_shapefile_bundle(
+        self,
+        source_path: Path,
+        target_dir: Path,
+        target_stem: str | None = None,
+    ) -> Path:
+        """复制 shapefile bundle。"""
+        if source_path.suffix.lower() != ".shp":
+            raise AssertionError("source_path 必须是 .shp 文件")
+        if not source_path.exists():
+            raise AssertionError(f"未找到 shapefile 源文件: {source_path}")
+
+        target_dir.mkdir(parents=True, exist_ok=True)
+        stem = target_stem or source_path.stem
+        copied_shp: Path | None = None
+        for member in source_path.parent.glob(f"{source_path.stem}.*"):
+            target = target_dir / f"{stem}{member.suffix}"
+            shutil.copy2(member, target)
+            if member.suffix.lower() == ".shp":
+                copied_shp = target
+        if copied_shp is None:
+            raise AssertionError("复制 shapefile bundle 失败，缺少 .shp")
+        return copied_shp
 
     @staticmethod
     def project_layer(layer_id: str) -> QgsMapLayer | None:

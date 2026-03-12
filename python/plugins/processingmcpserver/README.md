@@ -57,6 +57,7 @@
 > 1. `enable_execute_code` 目前仅作为兼容字段保留，当前版本不会注册任意代码执行类工具。
 > 2. `filesystem_query_*` 与 `filesystem_stats_directory` 为只读能力，不再依赖白名单配置。
 > 3. `filesystem_edit_*` 默认拒绝写入，必须显式传入 `confirm_write=true`；删除与覆盖操作还需 `confirm_destructive=true`。
+> 4. 当前版本已提供 shapefile 稳定模板能力，包含 `47` 个 tools、`1` 个 prompts、`3` 个 resources；其中新增 `dataset_inspect_shapefile_bundle`、`vector_check_validity_report`、`vector_prepare_work_layer`、`vector_export_shapefile`、`project_cleanup_work_layers` 五个 shapefile 专项工具。
 
 ## 3. 依赖预检与自动安装
 
@@ -127,6 +128,49 @@ sequenceDiagram
     M-->>W: 通过 CORS 校验后返回能力清单
     end
 ```
+
+### 6.3 Shapefile 稳定模板
+
+这套模板面向 `shapefile` 自动化生产，执行策略固定为“六阶段流水线”：
+
+1. 路径检查与数据范围确认（默认 all）
+2. 预检与基线统计
+3. CRS 标准化（默认 `EPSG:4490`）
+4. 业务处理
+5. 正式导出
+6. 清理
+
+推荐调用链如下：
+
+- Resources
+  - `qgis://workflow/shapefile/template`
+  - `qgis://workflow/shapefile/quality-profile/default`
+  - `qgis://workflow/shapefile/run-summary`
+- Prompts
+  - `qgis_shapefile_pipeline_planner`
+- Tools
+  - `dataset_inspect_shapefile_bundle`
+  - `vector_check_validity_report`
+  - `vector_prepare_work_layer`
+  - `processing_get_parameter_template`
+  - `processing_execute_algorithm`
+  - `processing_execute_on_layers`
+  - `vector_export_shapefile`
+  - `project_cleanup_work_layers`
+
+模板约束如下：
+
+- `qgis_shapefile_pipeline_planner` 在 llama-server WebUI 的 Use Prompt 仅暴露 5 个参数：
+  - `task_name`（必填）
+  - `input_dir`（必填）
+  - `output_dir`（必填）
+  - `quality_rule_resource`（可选，默认 `qgis://workflow/shapefile/quality-profile/default`）
+  - `deliverables`（可选）
+- 中间过程优先使用临时工作层，不直接改原始输入。
+- 标准化阶段默认执行空几何清理、无效几何修复、重复几何清理、CRS 统一与可选字段名收敛。
+- 导出阶段会结合 `quality_rule_resource` 对导出约束做最终复核，但不再拆分辅助 prompt。
+- 最终输出保留成果 shapefile bundle 与选定日志/manifest。
+- `project_cleanup_work_layers` 用于回收工作层、输入层和显式登记的临时文件。
 
 ## 7. QGIS Python Console
 

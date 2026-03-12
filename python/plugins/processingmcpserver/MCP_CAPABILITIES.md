@@ -1,11 +1,11 @@
 # Processing MCP Capabilities
 
-- Generated at (UTC): `2026-03-11T16:04:39.166749Z`
+- Generated at (UTC): `2026-03-12T08:10:40.636844Z`
 - Exporter module: `I:\github_repos\QGIS\python\plugins\processingmcpserver\capabilities_markdown.py`
 - Package directory: `I:\github_repos\QGIS\python\plugins\processingmcpserver`
-- Tool count: `42`
-- Prompt count: `2`
-- Resource count: `2`
+- Tool count: `47`
+- Prompt count: `1`
+- Resource count: `3`
 
 ## Tools
 
@@ -121,6 +121,26 @@
 
 用途：先扫描目录中的候选数据集，再把匹配的 vector 或 raster 图层批量加载到当前工程。 输入语义：参数和 dataset_list_files 基本一致，skip_invalid 控制遇到坏数据时是跳过还是整体失败。 前置条件：目录必须存在，且目录下至少有可识别的数据集文件才有意义。 主要副作用：会向当前工程新增多个图层，但不会改写源数据文件。 安全开关：skip_invalid=true 时失败项会进入 failed；skip_invalid=false 时第一个失败就终止。 返回结果：返回 requested_count、loaded_count、failed_count，以及 loaded 和 failed 明细。
 
+### `dataset_inspect_shapefile_bundle`
+
+用途：扫描目录或单个 `.shp` 文件，检查 shapefile bundle 及其 sidecar 文件是否完整，并返回结构化风险摘要。 输入语义：path 可以是目录或单个 `.shp` 文件，recursive 控制目录递归扫描，name_glob 过滤候选文件，limit 控制返回上限，task_name 可把结果写入最近一次运行摘要。 前置条件：path 必须存在；若传文件则必须是 `.shp`。 主要副作用：无写操作，只读取 shapefile bundle 成员信息和矢量元数据。 安全开关：limit 会被内部阈值裁剪；task_name 非空时会更新 qgis://workflow/shapefile/run-summary。 返回结果：返回 bundles 数组，元素包含 `.shp/.shx/.dbf/.prj/.cpg` 完整性、大小、CRS、几何类型、字段名、命名风险和 warnings。
+
+### `vector_check_validity_report`
+
+用途：对单个矢量图层或矢量文件做 shapefile 导向的结构化体检，统一输出几何、记录、字段和 CRS 风险。 输入语义：layer_ref 与 path 二选一；required_fields 用于声明必需字段，expected_crs 用于声明目标 CRS，task_name 可把结果写入运行摘要。 前置条件：目标图层必须存在，或 path 必须指向有效矢量数据文件。 主要副作用：无写操作，只读取图层要素、字段和 CRS 元数据。 安全开关：task_name 非空时会更新 qgis://workflow/shapefile/run-summary；若传 expected_crs，结果会包含 CRS mismatch 判定。 返回结果：返回 report 对象，覆盖 null/empty geometry、invalid geometry、duplicate geometry、duplicate record、multipart、字段长度和 safe_for_export 判断。
+
+### `vector_prepare_work_layer`
+
+用途：把输入矢量图层整理成带任务标签的临时工作层，并串行执行 shapefile 稳定模板的标准化前置动作。 输入语义：layer_ref 与 path 二选一；task_name 用于标记工作层和运行摘要；target_crs 控制目标坐标系；normalize_field_names 控制是否把字段名压到 10 字符以内；multipart_policy 可选 keep 或 singleparts。 前置条件：目标图层必须存在或 path 指向有效矢量数据文件；target_crs 若提供必须可被 QGIS 解析。 主要副作用：会在当前工程新增一个临时工作层，并对该临时层执行空几何清理、几何修复、重复几何清理、重投影和可选字段改名/拆多部件操作。 安全开关：默认不写盘；所有修改都落在临时工作层上，原始输入图层和源文件不会被直接改写。 返回结果：返回 output_layer_id、field_name_mapping、initial_report、final_report，以及各标准化步骤的影响计数。
+
+### `vector_export_shapefile`
+
+用途：把当前工作层或任意矢量图层安全导出为最终 shapefile，并在导出前强制复核几何与字段约束。 输入语义：layer_ref 指向待导出的矢量图层，output_directory 是输出目录，file_name 可覆盖输出文件名，task_name 用于运行摘要，overwrite 控制是否允许覆盖，auto_truncate_field_names 控制是否自动裁剪超长字段名，confirm_write 与 confirm_destructive 用于显式确认写盘和覆盖。 前置条件：目标图层必须存在；output_directory 必须可创建；当 overwrite=true 时必须同时传 confirm_destructive=true。 主要副作用：会在磁盘写出 shapefile bundle；若需要自动裁剪字段名，内部会生成临时导出副本并在导出后自动移除。 安全开关：必须显式设置 confirm_write=true；覆盖现有输出时还必须 confirm_destructive=true；存在无效几何或空几何时会阻断导出。 返回结果：返回 output_path、output_members、field_name_mapping、preflight_report 和 final_report，便于在导出后继续走质量 gate。
+
+### `project_cleanup_work_layers`
+
+用途：按 task_name 或 layer_ids 清理 shapefile 工作流创建的临时图层，并可选删除显式登记的临时文件。 输入语义：task_name 用于按任务标签批量匹配工作层，layer_ids 可精确指定图层，temp_paths 可补充显式临时路径，delete_temp_files 控制是否删除这些路径，confirm_write 与 confirm_destructive 仅在删文件时生效。 前置条件：至少提供可匹配的 task_name、layer_ids 或 temp_paths 中的一类才有意义；若 delete_temp_files=true 且存在路径，则必须 confirm_write=true 且 confirm_destructive=true。 主要副作用：会从当前工程移除匹配的临时图层；可选地删除临时文件或临时目录。 安全开关：删除磁盘临时文件时需要显式双确认；仅移除工程图层时不触碰源数据文件。 返回结果：返回 removed_layer_ids、deleted_temp_paths 和 missing_temp_paths，便于回收检查与日志留存。
+
 ### `filesystem_query_list_entries`
 
 用途：列出目录中的文件或子目录条目，适合在执行文件操作前先做只读探查。 输入语义：directory 是根目录，recursive 控制是否递归，include_files 和 include_directories 控制返回对象类型，name_glob 过滤名称，limit 控制返回上限。 前置条件：目录必须存在；include_files 与 include_directories 不能同时为 false。 主要副作用：无写操作，只读取文件系统元数据。 安全开关：limit 会被内部阈值裁剪；结果里会明确 returned_count、matched_total 与 truncated。 返回结果：返回目录路径、entries 数组以及 limit 应用摘要。
@@ -179,20 +199,20 @@
 
 ## Prompts
 
-### `qgis_task_planner`
+### `qgis_shapefile_pipeline_planner`
 
-用途：生成适合 llama-server WebUI 使用的 QGIS 任务规划提示模板，帮助模型先拆解任务再调用 tools。 输入语义：task 描述任务目标，constraints 描述输出格式、限制条件或交付要求。 前置条件：processingmcpserver 已注册 prompts 能力，且建议同时挂载 qgis://project/info 与 qgis://project/layers/summary。 主要副作用：无写操作，只返回结构化 prompt 文本。 安全开关：无。 返回结果：返回 Goal/Inputs/Tool Chain/Key Params/Validation/Deliverables 六段式双语提示模板。
-
-### `qgis_layer_health_check`
-
-用途：生成图层健康检查提示模板，引导模型按固定步骤检查图层状态、字段和样本记录。 输入语义：task 可作为兜底目标描述，layer_ref 用于指定要检查的图层引用。 前置条件：processingmcpserver 已注册 prompts 能力，且目标图层最好已加载到当前工程。 主要副作用：无写操作，只返回结构化 prompt 文本。 安全开关：无。 返回结果：返回面向图层体检的双语提示模板，覆盖 layer tree、details、features 和 records 查询链路。
+用途：生成面向 shapefile 的六阶段执行计划提示，约束模型按固定阶段完成路径检查、筛选、预检、统计、标准化、处理、导出和清理。 输入语义：task_name、input_dir、output_dir 为必填参数；quality_rule_resource 指向质量规则资源；deliverables 描述交付物说明。 前置条件：processingmcpserver 已注册 prompts/resources/tools，且建议同时挂载 qgis://workflow/shapefile/template 与 qgis://workflow/shapefile/quality-profile/default。 主要副作用：无写操作，只返回结构化 prompt 文本。 安全开关：无。 返回结果：返回六阶段中文主导提示模板，供 llama-server WebUI 的 Use Prompt 直接注入聊天上下文。
 
 ## Resources
 
-### `qgis://project/info`
+### `qgis://workflow/shapefile/template`
 
-用途：返回当前 QGIS 工程的项目级摘要资源，适合作为会话初始化上下文。 输入语义：无业务输入；由固定 URI qgis://project/info 标识。 前置条件：processingmcpserver 已注册 resources 能力，且当前 QGIS 工程可访问。 主要副作用：无写操作，只读取工程快照并封装为 resource envelope。 安全开关：无。 返回结果：返回带 generated_at、project_id、schema_version、uri、ok 和 data/error 的 JSON 文本。
+用途：返回 shapefile 稳定模板的机器可读流程定义，供模型在 llama-server WebUI 中按固定阶段调用 tools。 输入语义：无业务输入；由固定 URI qgis://workflow/shapefile/template 标识。 前置条件：processingmcpserver 已注册 resources 能力，且 tools 暴露了 shapefile workflow template helper。 主要副作用：无写操作，只读取模板快照并封装为 resource envelope。 安全开关：无。 返回结果：返回包含 workflow_stages、required_inputs、defaults、stage_tool_map 与 phases 的 JSON 文本。
 
-### `qgis://project/layers/summary`
+### `qgis://workflow/shapefile/quality-profile/default`
 
-用途：返回当前 QGIS 工程的图层摘要资源，适合在模型调用 tools 前先建立图层上下文。 输入语义：无业务输入；由固定 URI qgis://project/layers/summary 标识。 前置条件：processingmcpserver 已注册 resources 能力，且当前工程图层注册表可访问。 主要副作用：无写操作，只读取图层摘要并封装为 resource envelope。 安全开关：无。 返回结果：返回带 generated_at、project_id、schema_version、uri、ok 和 data/error 的 JSON 文本，data 中包含图层摘要。
+用途：返回 shapefile 默认质量规则，供模型在预检、标准化和导出阶段复用。 输入语义：无业务输入；由固定 URI qgis://workflow/shapefile/quality-profile/default 标识。 前置条件：processingmcpserver 已注册 resources 能力，且 tools 暴露了 shapefile quality profile helper。 主要副作用：无写操作，只读取默认质量规则并封装为 resource envelope。 安全开关：无。 返回结果：返回包含 quality_checks、blocking_rules、warning_rules、export_constraints 和 confirmation_policy 的 JSON 文本。
+
+### `qgis://workflow/shapefile/run-summary`
+
+用途：返回最近一次 shapefile 工作流运行的摘要 manifest，便于模型续跑、审计和导出后清理。 输入语义：无业务输入；由固定 URI qgis://workflow/shapefile/run-summary 标识。 前置条件：processingmcpserver 已注册 resources 能力，且当前会话中已初始化过 shapefile run summary。 主要副作用：无写操作，只读取最近一次运行摘要并封装为 resource envelope。 安全开关：无。 返回结果：返回包含 task_name、status、inputs、steps、warnings、outputs 和 generated_at 的 JSON 文本。

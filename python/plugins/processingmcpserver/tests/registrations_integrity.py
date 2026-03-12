@@ -118,11 +118,17 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
             "execute_processing(",
             "execute_code",
             removed_render_tool,
+            "qgis_shapefile_quality_gate",
+            "qgis_shapefile_export_review",
         ]
         mcp = DummyMcp()
         register_prompts(mcp, DummyTools())
         for prompt_name, prompt_fn in mcp.prompt_funcs.items():
-            output = prompt_fn(task="test")
+            output = prompt_fn(
+                task_name="test",
+                input_dir="C:/input",
+                output_dir="C:/output",
+            )
             for removed in legacy_removed:
                 self.assertNotIn(
                     removed,
@@ -136,18 +142,11 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
         tools = DummyTools()
         register_resources(mcp, tools)
 
-        project_info_payload = json.loads(mcp.resource_funcs["qgis://project/info"]())
-        self.assertTrue(project_info_payload["ok"])
-        self.assertIn("generated_at", project_info_payload)
-        self.assertIn("project_id", project_info_payload)
-        self.assertEqual(project_info_payload["schema_version"], "1.0.0")
-        self.assertIn("data", project_info_payload)
-
-        layers_summary_payload = json.loads(
-            mcp.resource_funcs["qgis://project/layers/summary"]()
-        )
-        self.assertTrue(layers_summary_payload["ok"])
-        self.assertIn("generated_at", layers_summary_payload)
-        self.assertIn("project_id", layers_summary_payload)
-        self.assertEqual(layers_summary_payload["schema_version"], "1.0.0")
-        self.assertIn("data", layers_summary_payload)
+        for resource_uri in REGISTERED_RESOURCE_URIS:
+            payload = json.loads(mcp.resource_funcs[resource_uri]())
+            self.assertTrue(payload["ok"])
+            self.assertEqual(payload["uri"], resource_uri)
+            self.assertIn("generated_at", payload)
+            self.assertIn("project_id", payload)
+            self.assertEqual(payload["schema_version"], "1.0.0")
+            self.assertIn("data", payload)

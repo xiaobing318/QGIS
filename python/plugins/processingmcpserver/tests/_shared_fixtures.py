@@ -144,6 +144,51 @@ class DummyTools:
         """返回 project snapshot。"""
         return {"title": "dummy-project"}
 
+    def get_shapefile_workflow_template(self):
+        """返回 shapefile workflow template。"""
+        return {
+            "workflow_stages": [
+                "path_check_and_geometry_filter",
+                "precheck_and_pre_statistics",
+                "standardize_crs",
+                "data_processing",
+                "export",
+                "cleanup",
+            ],
+            "required_inputs": [
+                "task_name",
+                "input_dir",
+                "output_dir",
+                "quality_rule_resource",
+                "deliverables",
+            ],
+            "defaults": {
+                "default_target_crs": "EPSG:4490",
+                "default_geometry_filter": "all",
+            },
+        }
+
+    def get_shapefile_quality_profile(self):
+        """返回 shapefile quality profile。"""
+        return {
+            "quality_checks": [
+                "crs_declared",
+                "geometry_valid",
+                "duplicates_checked",
+                "field_name_length",
+            ]
+        }
+
+    def get_shapefile_run_summary(self):
+        """返回 shapefile run summary。"""
+        return {
+            "task_name": "dummy-task",
+            "status": "initialized",
+            "steps": [],
+            "warnings": [],
+            "outputs": {},
+        }
+
     def layer_list(self):
         """执行图层相关的 list 逻辑。"""
         return [{"id": "layer-1", "name": "L1", "type": "vector_0", "visible": True}]

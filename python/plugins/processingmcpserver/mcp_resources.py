@@ -7,8 +7,9 @@ from typing import Any, Callable
 from qgis.core import QgsProject
 
 REGISTERED_RESOURCE_URIS: tuple[str, ...] = (
-    "qgis://project/info",
-    "qgis://project/layers/summary",
+    "qgis://workflow/shapefile/template",
+    "qgis://workflow/shapefile/quality-profile/default",
+    "qgis://workflow/shapefile/run-summary",
 )
 
 RESOURCE_SCHEMA_VERSION = "1.0.0"
@@ -30,21 +31,29 @@ def _resource_doc(
 
 
 _REGISTERED_RESOURCE_DOCSTRINGS: dict[str, str] = {
-    "qgis://project/info": _resource_doc(
-        "返回当前 QGIS 工程的项目级摘要资源，适合作为会话初始化上下文。",
-        "无业务输入；由固定 URI qgis://project/info 标识。",
-        "processingmcpserver 已注册 resources 能力，且当前 QGIS 工程可访问。",
-        "无写操作，只读取工程快照并封装为 resource envelope。",
+    "qgis://workflow/shapefile/template": _resource_doc(
+        "返回 shapefile 六阶段模板的机器可读流程定义，供模型在 llama-server WebUI 中按固定阶段调用 tools。",
+        "无业务输入；由固定 URI qgis://workflow/shapefile/template 标识。",
+        "processingmcpserver 已注册 resources 能力，且 tools 暴露了 shapefile workflow template helper。",
+        "无写操作，只读取模板快照并封装为 resource envelope。",
         "无。",
-        "返回带 generated_at、project_id、schema_version、uri、ok 和 data/error 的 JSON 文本。",
+        "返回包含 workflow_stages、required_inputs、defaults、stage_tool_map 与 phases 的 JSON 文本。",
     ),
-    "qgis://project/layers/summary": _resource_doc(
-        "返回当前 QGIS 工程的图层摘要资源，适合在模型调用 tools 前先建立图层上下文。",
-        "无业务输入；由固定 URI qgis://project/layers/summary 标识。",
-        "processingmcpserver 已注册 resources 能力，且当前工程图层注册表可访问。",
-        "无写操作，只读取图层摘要并封装为 resource envelope。",
+    "qgis://workflow/shapefile/quality-profile/default": _resource_doc(
+        "返回 shapefile 默认质量规则，供模型在预检、标准化和导出阶段复用。",
+        "无业务输入；由固定 URI qgis://workflow/shapefile/quality-profile/default 标识。",
+        "processingmcpserver 已注册 resources 能力，且 tools 暴露了 shapefile quality profile helper。",
+        "无写操作，只读取默认质量规则并封装为 resource envelope。",
         "无。",
-        "返回带 generated_at、project_id、schema_version、uri、ok 和 data/error 的 JSON 文本，data 中包含图层摘要。",
+        "返回包含 quality_checks、blocking_rules、warning_rules、export_constraints 和 confirmation_policy 的 JSON 文本。",
+    ),
+    "qgis://workflow/shapefile/run-summary": _resource_doc(
+        "返回最近一次 shapefile 工作流运行的摘要 manifest，便于模型续跑、审计和导出后清理。",
+        "无业务输入；由固定 URI qgis://workflow/shapefile/run-summary 标识。",
+        "processingmcpserver 已注册 resources 能力，且当前会话中已初始化过 shapefile run summary。",
+        "无写操作，只读取最近一次运行摘要并封装为 resource envelope。",
+        "无。",
+        "返回包含 task_name、status、inputs、steps、warnings、outputs 和 generated_at 的 JSON 文本。",
     ),
 }
 
@@ -122,29 +131,55 @@ def register_resources(mcp: Any, tools: Any) -> None:
             payload["error"] = {"message": str(exc)}
         return encode(payload)
 
-    qgis_project_info_description = _REGISTERED_RESOURCE_DOCSTRINGS["qgis://project/info"]
-
-    @resource_factory("qgis://project/info", description=qgis_project_info_description)
-    def qgis_project_info() -> str:
-        """执行 QGIS project info 相关逻辑。"""
-        if hasattr(tools, "get_project_snapshot") and callable(tools.get_project_snapshot):
-            return build("qgis://project/info", tools.get_project_snapshot)
-        return build("qgis://project/info", tools.common_get_qgis_info)
-
-    qgis_project_info.__doc__ = qgis_project_info_description
-
-    qgis_project_layers_summary_description = _REGISTERED_RESOURCE_DOCSTRINGS[
-        "qgis://project/layers/summary"
+    qgis_shapefile_template_description = _REGISTERED_RESOURCE_DOCSTRINGS[
+        "qgis://workflow/shapefile/template"
     ]
 
     @resource_factory(
-        "qgis://project/layers/summary",
-        description=qgis_project_layers_summary_description,
+        "qgis://workflow/shapefile/template",
+        description=qgis_shapefile_template_description,
     )
-    def qgis_project_layers_summary() -> str:
-        """执行 QGIS project layers summary 相关逻辑。"""
-        if hasattr(tools, "get_layers_summary") and callable(tools.get_layers_summary):
-            return build("qgis://project/layers/summary", tools.get_layers_summary)
-        return build("qgis://project/layers/summary", lambda: {"layers": tools.layer_list()})
+    def qgis_workflow_shapefile_template() -> str:
+        """执行 QGIS workflow shapefile template 相关逻辑。"""
+        return build(
+            "qgis://workflow/shapefile/template",
+            tools.get_shapefile_workflow_template,
+        )
 
-    qgis_project_layers_summary.__doc__ = qgis_project_layers_summary_description
+    qgis_workflow_shapefile_template.__doc__ = qgis_shapefile_template_description
+
+    qgis_shapefile_quality_profile_description = _REGISTERED_RESOURCE_DOCSTRINGS[
+        "qgis://workflow/shapefile/quality-profile/default"
+    ]
+
+    @resource_factory(
+        "qgis://workflow/shapefile/quality-profile/default",
+        description=qgis_shapefile_quality_profile_description,
+    )
+    def qgis_workflow_shapefile_quality_profile_default() -> str:
+        """执行 QGIS workflow shapefile quality profile default 相关逻辑。"""
+        return build(
+            "qgis://workflow/shapefile/quality-profile/default",
+            tools.get_shapefile_quality_profile,
+        )
+
+    qgis_workflow_shapefile_quality_profile_default.__doc__ = (
+        qgis_shapefile_quality_profile_description
+    )
+
+    qgis_shapefile_run_summary_description = _REGISTERED_RESOURCE_DOCSTRINGS[
+        "qgis://workflow/shapefile/run-summary"
+    ]
+
+    @resource_factory(
+        "qgis://workflow/shapefile/run-summary",
+        description=qgis_shapefile_run_summary_description,
+    )
+    def qgis_workflow_shapefile_run_summary() -> str:
+        """执行 QGIS workflow shapefile run summary 相关逻辑。"""
+        return build(
+            "qgis://workflow/shapefile/run-summary",
+            tools.get_shapefile_run_summary,
+        )
+
+    qgis_workflow_shapefile_run_summary.__doc__ = qgis_shapefile_run_summary_description

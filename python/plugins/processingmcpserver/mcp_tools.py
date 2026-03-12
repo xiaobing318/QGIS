@@ -5,6 +5,7 @@ from __future__ import annotations
 import inspect
 import json
 import platform
+import re
 import shutil
 import statistics
 import sys
@@ -34,11 +35,15 @@ from qgis.core import (
     QgsLayerTreeGroup,
     QgsLayerTreeLayer,
     QgsMapLayer,
+    QgsCoordinateReferenceSystem,
+    QgsCoordinateTransform,
     QgsProcessingParameterDefinition,
     QgsProcessingParameterEnum,
     QgsProject,
     QgsRasterLayer,
     QgsVectorLayer,
+    QgsVectorFileWriter,
+    QgsWkbTypes,
 )
 from qgis.utils import active_plugins
 
@@ -92,6 +97,11 @@ REGISTERED_TOOL_NAMES: tuple[str, ...] = (
     "raster_stats_cell",
     "dataset_list_files",
     "dataset_load_from_directory",
+    "dataset_inspect_shapefile_bundle",
+    "vector_check_validity_report",
+    "vector_prepare_work_layer",
+    "vector_export_shapefile",
+    "project_cleanup_work_layers",
     "filesystem_query_list_entries",
     "filesystem_query_entry_info",
     "filesystem_query_read_text",
@@ -110,6 +120,9 @@ REGISTERED_TOOL_NAMES: tuple[str, ...] = (
 NON_TOOL_PUBLIC_HELPER_NAMES: tuple[str, ...] = (
     "get_project_snapshot",
     "get_layers_summary",
+    "get_shapefile_workflow_template",
+    "get_shapefile_quality_profile",
+    "get_shapefile_run_summary",
 )
 
 def _ensure_processing_initialized() -> None:
@@ -163,6 +176,9 @@ class ProcessingMCPTools:
         self._iface = iface
         self._runner = runner
         self._config = config
+        self._shapefile_workflow_template = self._build_shapefile_workflow_template()
+        self._shapefile_quality_profile = self._build_shapefile_quality_profile()
+        self._shapefile_run_summary = self._empty_shapefile_run_summary()
 
     # Public MCP tool entry wrappers.
     def common_get_qgis_info(self) -> dict[str, Any]:
@@ -277,6 +293,26 @@ class ProcessingMCPTools:
         """执行数据集相关的 load from directory 逻辑。"""
         return self._run(self._dataset_load_from_directory_impl, directory, recursive, dataset_kind, geometry_type, name_glob, limit, skip_invalid)
 
+    def dataset_inspect_shapefile_bundle(self, path: str, recursive: bool = False, name_glob: str = "*.shp", limit: int = DEFAULT_DATASET_LIMIT, task_name: str = "") -> dict[str, Any]:
+        """执行数据集相关的 inspect shapefile bundle 逻辑。"""
+        return self._run(self._dataset_inspect_shapefile_bundle_impl, path, recursive, name_glob, limit, task_name)
+
+    def vector_check_validity_report(self, layer_ref: str = "", path: str = "", required_fields: list[str] | None = None, expected_crs: str | None = None, task_name: str = "") -> dict[str, Any]:
+        """执行矢量相关的 check validity report 逻辑。"""
+        return self._run(self._vector_check_validity_report_impl, layer_ref, path, required_fields, expected_crs, task_name)
+
+    def vector_prepare_work_layer(self, layer_ref: str = "", path: str = "", task_name: str = "", target_crs: str | None = None, normalize_field_names: bool = False, multipart_policy: str = "keep") -> dict[str, Any]:
+        """执行矢量相关的 prepare work layer 逻辑。"""
+        return self._run(self._vector_prepare_work_layer_impl, layer_ref, path, task_name, target_crs, normalize_field_names, multipart_policy)
+
+    def vector_export_shapefile(self, layer_ref: str, output_directory: str, file_name: str = "", task_name: str = "", overwrite: bool = False, auto_truncate_field_names: bool = True, confirm_write: bool = False, confirm_destructive: bool = False) -> dict[str, Any]:
+        """执行矢量相关的 export shapefile 逻辑。"""
+        return self._run(self._vector_export_shapefile_impl, layer_ref, output_directory, file_name, task_name, overwrite, auto_truncate_field_names, confirm_write, confirm_destructive)
+
+    def project_cleanup_work_layers(self, task_name: str = "", layer_ids: list[str] | None = None, temp_paths: list[str] | None = None, delete_temp_files: bool = True, confirm_write: bool = False, confirm_destructive: bool = False) -> dict[str, Any]:
+        """执行项目相关的 cleanup work layers 逻辑。"""
+        return self._run(self._project_cleanup_work_layers_impl, task_name, layer_ids, temp_paths, delete_temp_files, confirm_write, confirm_destructive)
+
     def filesystem_query_list_entries(self, directory: str, recursive: bool = False, include_files: bool = True, include_directories: bool = True, name_glob: str = "*", limit: int = DEFAULT_FILESYSTEM_LIST_LIMIT) -> dict[str, Any]:
         """执行文件系统相关的 query list entries 逻辑。"""
         return self._run(self._filesystem_query_list_entries_impl, directory, recursive, include_files, include_directories, name_glob, limit)
@@ -341,6 +377,18 @@ class ProcessingMCPTools:
     def get_layers_summary(self) -> dict[str, Any]:
         """返回 layers summary。"""
         return self._run(self._get_layers_summary_impl)
+
+    def get_shapefile_workflow_template(self) -> dict[str, Any]:
+        """返回 shapefile workflow template。"""
+        return self._run(self._get_shapefile_workflow_template_impl)
+
+    def get_shapefile_quality_profile(self) -> dict[str, Any]:
+        """返回 shapefile quality profile。"""
+        return self._run(self._get_shapefile_quality_profile_impl)
+
+    def get_shapefile_run_summary(self) -> dict[str, Any]:
+        """返回 shapefile run summary。"""
+        return self._run(self._get_shapefile_run_summary_impl)
 
     # Internal domain helpers.
     def _run(self, func, *args, **kwargs):
@@ -670,6 +718,881 @@ class ProcessingMCPTools:
             "modified_at": datetime.fromtimestamp(stat.st_mtime, tz=timezone.utc).isoformat(),
         }
 
+    @staticmethod
+    def _utc_now_iso() -> str:
+        """返回 UTC ISO 时间。"""
+        return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+    @staticmethod
+    def _display_geometry_type(layer: QgsVectorLayer) -> str:
+        """返回矢量图层几何类型标识。"""
+        return {
+            Qgis.GeometryType.Point: "point",
+            Qgis.GeometryType.Line: "line",
+            Qgis.GeometryType.Polygon: "polygon",
+            Qgis.GeometryType.Null: "null",
+            Qgis.GeometryType.Unknown: "unknown",
+        }.get(layer.geometryType(), "unknown")
+
+    def _build_shapefile_workflow_template(self) -> dict[str, Any]:
+        """构建 shapefile workflow template。"""
+        return {
+            "schema_version": "1.0.0",
+            "name": "shapefile_standard_workflow",
+            "summary": (
+                "用于 QCopilots/processingmcpserver 的 shapefile 自动化处理模板。"
+                "固定六阶段执行：路径检查与筛选、预检与统计、标准化、处理、导出、清理。"
+            ),
+            "workflow_stages": [
+                "path_check_and_geometry_filter",
+                "precheck_and_pre_statistics",
+                "standardize_crs",
+                "data_processing",
+                "export",
+                "cleanup",
+            ],
+            "required_inputs": [
+                "task_name",
+                "input_dir",
+                "output_dir",
+                "quality_rule_resource",
+                "deliverables",
+            ],
+            "defaults": {
+                "execution_mode": "plan_then_confirm",
+                "intermediate_storage": "temporary_layers",
+                "final_output_format": "shapefile",
+                "default_target_crs": "EPSG:4490",
+                "default_geometry_filter": "all",
+                "cleanup_temp_layers": True,
+                "cleanup_temp_files": True,
+            },
+            "stage_tool_map": {
+                "path_check_and_geometry_filter": [
+                    "common_get_qgis_info",
+                    "filesystem_query_entry_info",
+                    "filesystem_stats_directory",
+                    "dataset_list_files",
+                    "dataset_load_from_directory",
+                ],
+                "precheck_and_pre_statistics": [
+                    "dataset_inspect_shapefile_bundle",
+                    "vector_check_validity_report",
+                    "filesystem_stats_directory",
+                ],
+                "standardize_crs": [
+                    "vector_prepare_work_layer",
+                ],
+                "data_processing": [
+                    "processing_get_parameter_template",
+                    "processing_execute_algorithm",
+                    "processing_execute_on_layers",
+                    "vector_table_add_field",
+                    "vector_table_drop_fields",
+                    "vector_table_rename_field",
+                    "vector_table_calculate_field",
+                    "vector_table_query_records",
+                    "vector_table_insert_records",
+                    "vector_table_update_records",
+                    "vector_table_delete_records",
+                ],
+                "export": [
+                    "vector_check_validity_report",
+                    "vector_export_shapefile",
+                ],
+                "cleanup": [
+                    "project_cleanup_work_layers",
+                    "layer_remove",
+                ],
+            },
+            "phases": [
+                {
+                    "name": "path_check_and_geometry_filter",
+                    "goal": "检查 input_dir 与 output_dir 是否显式给出，并按用户意图筛选点/线/面或全部类型。",
+                    "recommended_tools": [
+                        "common_get_qgis_info",
+                        "filesystem_query_entry_info",
+                        "filesystem_stats_directory",
+                        "dataset_list_files",
+                        "dataset_load_from_directory",
+                    ],
+                },
+                {
+                    "name": "precheck_and_pre_statistics",
+                    "goal": "检查文件缺失、可打开性、无效几何、重复几何、UTF-8 编码风险，并统计文件数量与总大小。",
+                    "recommended_tools": [
+                        "dataset_inspect_shapefile_bundle",
+                        "vector_check_validity_report",
+                        "filesystem_stats_directory",
+                    ],
+                },
+                {
+                    "name": "standardize_crs",
+                    "goal": "标准化坐标系统，未指定时默认转为 EPSG:4490。",
+                    "recommended_tools": [
+                        "vector_prepare_work_layer",
+                    ],
+                },
+                {
+                    "name": "data_processing",
+                    "goal": "执行字段增删改查、缓冲区、面积字段等业务处理。",
+                    "recommended_tools": [
+                        "processing_get_parameter_template",
+                        "processing_execute_algorithm",
+                        "processing_execute_on_layers",
+                        "vector_table_add_field",
+                        "vector_table_drop_fields",
+                        "vector_table_rename_field",
+                        "vector_table_calculate_field",
+                    ],
+                },
+                {
+                    "name": "export",
+                    "goal": "在确认导出路径和导出约束后，将结果正式导出到 output_dir。",
+                    "recommended_tools": [
+                        "vector_check_validity_report",
+                        "vector_export_shapefile",
+                    ],
+                },
+                {
+                    "name": "cleanup",
+                    "goal": "移除中间/临时图层与输入图层，按策略清理临时文件。",
+                    "recommended_tools": [
+                        "project_cleanup_work_layers",
+                        "layer_remove",
+                    ],
+                },
+            ],
+        }
+
+    def _build_shapefile_quality_profile(self) -> dict[str, Any]:
+        """构建 shapefile quality profile。"""
+        return {
+            "schema_version": "1.0.0",
+            "name": "default",
+            "scope": "vector_shapefile",
+            "quality_checks": [
+                "bundle_integrity",
+                "crs_declared",
+                "geometry_valid",
+                "duplicates_checked",
+                "utf8_encoding_expected",
+            ],
+            "blocking_rules": [
+                "missing_required_bundle_files",
+                "missing_required_fields",
+                "invalid_geometry_count > 0",
+                "null_or_empty_geometry_count > 0",
+                "crs_mismatch",
+            ],
+            "warning_rules": [
+                "missing_prj_file",
+                "missing_cpg_file",
+                "duplicate_geometry_count > 0",
+                "duplicate_record_count > 0",
+                "multipart_feature_count > 0",
+                "field_name_length_gt_10",
+                "null_attribute_count > 0",
+            ],
+            "export_constraints": {
+                "driver": "ESRI Shapefile",
+                "field_name_max_length": 10,
+                "encoding": "UTF-8",
+                "write_cpg": True,
+            },
+            "confirmation_policy": {
+                "require_confirm_write": True,
+                "require_confirm_destructive_for_overwrite": True,
+            },
+        }
+
+    def _empty_shapefile_run_summary(self) -> dict[str, Any]:
+        """创建空的 shapefile run summary。"""
+        return {
+            "schema_version": "1.0.0",
+            "generated_at": self._utc_now_iso(),
+            "task_name": "",
+            "status": "idle",
+            "inputs": {},
+            "steps": [],
+            "warnings": [],
+            "outputs": {
+                "work_layer_ids": [],
+                "final_shapefiles": [],
+                "removed_layer_ids": [],
+                "removed_temp_files": [],
+            },
+        }
+
+    def _reset_shapefile_run_summary(
+        self,
+        task_name: str,
+        status: str,
+        inputs: dict[str, Any] | None = None,
+    ) -> str:
+        """重置 shapefile run summary。"""
+        normalized = (task_name or "").strip()
+        self._shapefile_run_summary = self._empty_shapefile_run_summary()
+        self._shapefile_run_summary["task_name"] = normalized
+        self._shapefile_run_summary["status"] = status
+        if inputs:
+            self._shapefile_run_summary["inputs"] = self._serialize_value(inputs)
+        return normalized
+
+    def _ensure_shapefile_run_summary(
+        self,
+        task_name: str = "",
+        status: str | None = None,
+        inputs: dict[str, Any] | None = None,
+    ) -> str:
+        """确保 shapefile run summary 已初始化。"""
+        normalized = (task_name or self._shapefile_run_summary.get("task_name") or "").strip()
+        if (
+            not self._shapefile_run_summary.get("task_name")
+            or (
+                normalized
+                and normalized != self._shapefile_run_summary.get("task_name")
+            )
+        ):
+            return self._reset_shapefile_run_summary(
+                normalized,
+                status or "initialized",
+                inputs=inputs,
+            )
+
+        if status:
+            self._shapefile_run_summary["status"] = status
+        if inputs:
+            current = self._shapefile_run_summary.setdefault("inputs", {})
+            current.update(self._serialize_value(inputs))
+        self._shapefile_run_summary["generated_at"] = self._utc_now_iso()
+        return normalized
+
+    def _append_shapefile_run_step(
+        self,
+        step: str,
+        summary: dict[str, Any] | None = None,
+        outputs: dict[str, Any] | None = None,
+        warnings: list[str] | None = None,
+        status: str | None = None,
+    ) -> None:
+        """追加 shapefile run summary step。"""
+        payload = {
+            "step": step,
+            "generated_at": self._utc_now_iso(),
+            "summary": self._serialize_value(summary or {}),
+            "outputs": self._serialize_value(outputs or {}),
+        }
+        if warnings:
+            payload["warnings"] = list(warnings)
+            existing = self._shapefile_run_summary.setdefault("warnings", [])
+            existing.extend(warnings)
+        self._shapefile_run_summary.setdefault("steps", []).append(payload)
+        if status:
+            self._shapefile_run_summary["status"] = status
+
+    @staticmethod
+    def _normalize_task_name(task_name: str | None, fallback: str = "") -> str:
+        """归一化 task_name。"""
+        value = (task_name or "").strip()
+        if value:
+            return value
+        return fallback.strip() or "shapefile-task"
+
+    @staticmethod
+    def _normalize_output_stem(text: str) -> str:
+        """归一化输出文件名。"""
+        value = re.sub(r"[^0-9A-Za-z_]+", "_", text or "")
+        value = value.strip("_")
+        return value or "output"
+
+    @staticmethod
+    def _normalize_bundle_stem(text: str) -> str:
+        """归一化 bundle stem。"""
+        return ProcessingMCPTools._normalize_output_stem(text).lower()
+
+    @staticmethod
+    def _normalize_shapefile_field_name(
+        field_name: str,
+        used_names: set[str],
+    ) -> str:
+        """归一化 shapefile 字段名。"""
+        clean = re.sub(r"[^0-9A-Za-z_]+", "_", field_name or "")
+        clean = clean.strip("_") or "field"
+        candidate = clean[:10]
+        counter = 1
+        while candidate.lower() in used_names:
+            suffix = str(counter)
+            candidate = f"{clean[: max(1, 10 - len(suffix))]}{suffix}"[:10]
+            counter += 1
+        used_names.add(candidate.lower())
+        return candidate
+
+    @staticmethod
+    def _layer_custom_property(layer: QgsMapLayer, key: str, default: Any = None) -> Any:
+        """读取图层 custom property。"""
+        if hasattr(layer, "customProperty"):
+            try:
+                return layer.customProperty(key, default)
+            except Exception:
+                return default
+        return default
+
+    def _tag_work_layer(
+        self,
+        layer: QgsVectorLayer,
+        task_name: str,
+        source_path: str = "",
+        temp_paths: list[str] | None = None,
+    ) -> None:
+        """为工作层打标签。"""
+        layer.setCustomProperty(
+            "processingmcpserver/workflow/task_name",
+            self._normalize_task_name(task_name, layer.name()),
+        )
+        layer.setCustomProperty("processingmcpserver/workflow/is_work_layer", True)
+        layer.setCustomProperty(
+            "processingmcpserver/workflow/source_path",
+            source_path or layer.source(),
+        )
+        layer.setCustomProperty(
+            "processingmcpserver/workflow/temp_paths",
+            json.dumps(temp_paths or [], ensure_ascii=False),
+        )
+
+    def _get_layer_temp_paths(self, layer: QgsMapLayer) -> list[str]:
+        """读取图层挂载的临时路径。"""
+        raw = self._layer_custom_property(
+            layer,
+            "processingmcpserver/workflow/temp_paths",
+            "[]",
+        )
+        if isinstance(raw, str):
+            try:
+                parsed = json.loads(raw)
+            except Exception:
+                return []
+            if isinstance(parsed, list):
+                return [str(item) for item in parsed if str(item).strip()]
+        if isinstance(raw, list):
+            return [str(item) for item in raw if str(item).strip()]
+        return []
+
+    def _record_run_output(self, output_key: str, value: str) -> None:
+        """记录运行输出列表。"""
+        outputs = self._shapefile_run_summary.setdefault("outputs", {})
+        bucket = outputs.setdefault(output_key, [])
+        if value not in bucket:
+            bucket.append(value)
+
+    def _resolve_vector_source(
+        self,
+        layer_ref: str = "",
+        path: str = "",
+    ) -> tuple[QgsVectorLayer, str]:
+        """解析矢量来源。"""
+        if str(layer_ref).strip():
+            layer = self._resolve_vector_layer_ref(layer_ref)
+            return layer, layer.source()
+        normalized_path = str(path).strip()
+        if not normalized_path:
+            raise Exception("layer_ref or path is required")
+        source_path = self._resolve_filesystem_query_path(normalized_path)
+        if not source_path.exists() or not source_path.is_file():
+            raise Exception(f"Vector dataset not found: {path}")
+        layer = QgsVectorLayer(str(source_path), source_path.stem, "ogr")
+        if not layer.isValid():
+            raise Exception(f"Vector dataset is not valid: {path}")
+        return layer, str(source_path)
+
+    @staticmethod
+    def _bundle_member_path(shp_path: Path, suffix: str) -> Path:
+        """返回 bundle 成员路径。"""
+        return shp_path.with_suffix(suffix)
+
+    def _inspect_shapefile_bundle_entry(self, shp_path: Path) -> dict[str, Any]:
+        """检查单个 shapefile bundle。"""
+        required_suffixes = [".shp", ".shx", ".dbf"]
+        optional_suffixes = [".prj", ".cpg"]
+        members: dict[str, dict[str, Any]] = {}
+        missing_required: list[str] = []
+        missing_optional: list[str] = []
+        total_size_bytes = 0
+
+        for suffix in required_suffixes + optional_suffixes:
+            member_path = self._bundle_member_path(shp_path, suffix)
+            exists = member_path.exists()
+            members[suffix[1:]] = {
+                "path": str(member_path),
+                "exists": exists,
+                "size_bytes": member_path.stat().st_size if exists else 0,
+            }
+            if exists:
+                total_size_bytes += member_path.stat().st_size
+            elif suffix in required_suffixes:
+                missing_required.append(suffix[1:])
+            else:
+                missing_optional.append(suffix[1:])
+
+        layer = QgsVectorLayer(str(shp_path), "__shapefile_probe__", "ogr")
+        geometry_type = "unknown"
+        crs_authid = ""
+        feature_count = 0
+        field_names: list[str] = []
+        encoding = ""
+        if layer.isValid():
+            geometry_type = self._display_geometry_type(layer)
+            crs_authid = layer.crs().authid() if layer.crs().isValid() else ""
+            feature_count = layer.featureCount()
+            field_names = [field.name() for field in layer.fields()]
+            provider = layer.dataProvider()
+            if provider is not None and hasattr(provider, "encoding"):
+                try:
+                    encoding = str(provider.encoding() or "")
+                except Exception:
+                    encoding = ""
+
+        warnings: list[str] = []
+        if "prj" in missing_optional:
+            warnings.append("Missing .prj file; CRS exchange may be unreliable.")
+        if "cpg" in missing_optional:
+            warnings.append("Missing .cpg file; encoding may be ambiguous.")
+
+        return {
+            "stem": shp_path.stem,
+            "bundle_path": str(shp_path),
+            "complete_bundle": not missing_required,
+            "missing_required": missing_required,
+            "missing_optional": missing_optional,
+            "members": members,
+            "size_bytes": total_size_bytes,
+            "geometry_type": geometry_type,
+            "crs": crs_authid,
+            "feature_count": feature_count,
+            "field_names": field_names,
+            "field_name_length_gt_10": [
+                name for name in field_names if len(name) > 10
+            ],
+            "encoding": encoding,
+            "warnings": warnings,
+        }
+
+    def _parse_target_crs(
+        self, target_crs: str | None
+    ) -> QgsCoordinateReferenceSystem | None:
+        """解析目标 CRS。"""
+        value = (target_crs or "").strip()
+        if not value:
+            return None
+        crs = QgsCoordinateReferenceSystem()
+        if not crs.createFromUserInput(value) or not crs.isValid():
+            raise Exception(f"Invalid target_crs: {target_crs}")
+        return crs
+
+    def _long_field_names(self, layer: QgsVectorLayer) -> list[str]:
+        """返回超出 shapefile 约束的字段名。"""
+        return [field.name() for field in layer.fields() if len(field.name()) > 10]
+
+    def _rename_layer_fields_for_shapefile(
+        self, layer: QgsVectorLayer
+    ) -> dict[str, str]:
+        """将字段名收敛到 shapefile 约束。"""
+        mapping: dict[str, str] = {}
+        used_names: set[str] = set()
+        for field in layer.fields():
+            field_name = field.name()
+            if len(field_name) <= 10:
+                used_names.add(field_name.lower())
+                continue
+            mapping[field_name] = self._normalize_shapefile_field_name(
+                field_name,
+                used_names,
+            )
+        if not mapping:
+            return {}
+
+        def op() -> int:
+            renamed = 0
+            for old_name, new_name in mapping.items():
+                idx = self._field_index(layer, old_name)
+                if idx < 0:
+                    continue
+                if layer.renameAttribute(idx, new_name):
+                    renamed += 1
+            layer.updateFields()
+            return renamed
+
+        self._apply_vector_edit(layer, op)
+        return mapping
+
+    def _collect_null_attribute_fields(self, layer: QgsVectorLayer) -> list[str]:
+        """收集存在空值的字段。"""
+        flagged: list[str] = []
+        field_names = [field.name() for field in layer.fields()]
+        if not field_names:
+            return flagged
+        for field_name in field_names:
+            for feature in layer.getFeatures():
+                if feature.attribute(field_name) is None:
+                    flagged.append(field_name)
+                    break
+        return flagged
+
+    def _inspect_vector_layer_validity(
+        self,
+        layer: QgsVectorLayer,
+        required_fields: list[str] | None = None,
+        expected_crs: str | None = None,
+    ) -> dict[str, Any]:
+        """执行矢量图层体检。"""
+        required = [str(item).strip() for item in (required_fields or []) if str(item).strip()]
+        expected = self._parse_target_crs(expected_crs) if expected_crs else None
+        feature_count = layer.featureCount()
+        null_geometry_count = 0
+        empty_geometry_count = 0
+        invalid_geometry_count = 0
+        duplicate_geometry_count = 0
+        duplicate_record_count = 0
+        multipart_feature_count = 0
+        seen_geometries: set[str] = set()
+        seen_records: set[tuple[Any, ...]] = set()
+        field_names = [field.name() for field in layer.fields()]
+
+        for feature in layer.getFeatures():
+            record_key = tuple(
+                self._serialize_value(feature.attribute(field_name))
+                for field_name in field_names
+            )
+            if record_key in seen_records:
+                duplicate_record_count += 1
+            else:
+                seen_records.add(record_key)
+
+            if not feature.hasGeometry():
+                null_geometry_count += 1
+                continue
+
+            geometry = feature.geometry()
+            if geometry is None or geometry.isNull():
+                null_geometry_count += 1
+                continue
+            if geometry.isEmpty():
+                empty_geometry_count += 1
+                continue
+            try:
+                if not geometry.isGeosValid():
+                    invalid_geometry_count += 1
+            except Exception:
+                invalid_geometry_count += 1
+            if geometry.isMultipart():
+                multipart_feature_count += 1
+            geometry_key = geometry.asWkt(precision=12)
+            if geometry_key in seen_geometries:
+                duplicate_geometry_count += 1
+            else:
+                seen_geometries.add(geometry_key)
+
+        missing_required_fields = [
+            field_name
+            for field_name in required
+            if self._field_index(layer, field_name) < 0
+        ]
+        long_field_names = self._long_field_names(layer)
+        null_attribute_fields = self._collect_null_attribute_fields(layer)
+        crs_authid = layer.crs().authid() if layer.crs().isValid() else ""
+        crs_mismatch = bool(
+            expected is not None
+            and expected.isValid()
+            and crs_authid
+            and crs_authid != expected.authid()
+        )
+
+        issues: list[dict[str, Any]] = []
+        if null_geometry_count or empty_geometry_count:
+            issues.append(
+                {
+                    "code": "null_or_empty_geometry",
+                    "severity": "error",
+                    "count": null_geometry_count + empty_geometry_count,
+                }
+            )
+        if invalid_geometry_count:
+            issues.append(
+                {
+                    "code": "invalid_geometry",
+                    "severity": "error",
+                    "count": invalid_geometry_count,
+                }
+            )
+        if duplicate_geometry_count:
+            issues.append(
+                {
+                    "code": "duplicate_geometry",
+                    "severity": "warning",
+                    "count": duplicate_geometry_count,
+                }
+            )
+        if duplicate_record_count:
+            issues.append(
+                {
+                    "code": "duplicate_record",
+                    "severity": "warning",
+                    "count": duplicate_record_count,
+                }
+            )
+        if multipart_feature_count:
+            issues.append(
+                {
+                    "code": "multipart_feature",
+                    "severity": "warning",
+                    "count": multipart_feature_count,
+                }
+            )
+        if missing_required_fields:
+            issues.append(
+                {
+                    "code": "missing_required_fields",
+                    "severity": "error",
+                    "fields": missing_required_fields,
+                }
+            )
+        if long_field_names:
+            issues.append(
+                {
+                    "code": "field_name_length_gt_10",
+                    "severity": "warning",
+                    "fields": long_field_names,
+                }
+            )
+        if crs_mismatch:
+            issues.append(
+                {
+                    "code": "crs_mismatch",
+                    "severity": "error",
+                    "expected_crs": expected.authid() if expected else "",
+                    "actual_crs": crs_authid,
+                }
+            )
+
+        return {
+            "layer_id": layer.id(),
+            "name": layer.name(),
+            "source": layer.source(),
+            "feature_count": feature_count,
+            "geometry_type": self._display_geometry_type(layer),
+            "crs": crs_authid,
+            "field_names": field_names,
+            "null_geometry_count": null_geometry_count,
+            "empty_geometry_count": empty_geometry_count,
+            "invalid_geometry_count": invalid_geometry_count,
+            "duplicate_geometry_count": duplicate_geometry_count,
+            "duplicate_record_count": duplicate_record_count,
+            "multipart_feature_count": multipart_feature_count,
+            "missing_required_fields": missing_required_fields,
+            "field_name_length_gt_10": long_field_names,
+            "null_attribute_fields": null_attribute_fields,
+            "crs_mismatch": crs_mismatch,
+            "issues": issues,
+            "safe_for_export": not long_field_names and not missing_required_fields,
+        }
+
+    def _remove_empty_geometries(self, layer: QgsVectorLayer) -> int:
+        """删除空几何要素。"""
+        def op() -> int:
+            fids: list[int] = []
+            for feature in layer.getFeatures():
+                if not feature.hasGeometry():
+                    fids.append(int(feature.id()))
+                    continue
+                geometry = feature.geometry()
+                if geometry is None or geometry.isNull() or geometry.isEmpty():
+                    fids.append(int(feature.id()))
+            if not fids:
+                return 0
+            if not layer.deleteFeatures(fids):
+                raise Exception("Failed to delete null or empty geometries")
+            return len(fids)
+
+        return int(self._apply_vector_edit(layer, op))
+
+    def _make_layer_geometries_valid(self, layer: QgsVectorLayer) -> int:
+        """修复无效几何。"""
+        def op() -> int:
+            fixed_count = 0
+            for feature in layer.getFeatures():
+                if not feature.hasGeometry():
+                    continue
+                geometry = feature.geometry()
+                if geometry is None or geometry.isNull() or geometry.isEmpty():
+                    continue
+                try:
+                    if geometry.isGeosValid():
+                        continue
+                except Exception:
+                    pass
+                fixed = geometry.makeValid()
+                if fixed is None or fixed.isNull() or fixed.isEmpty():
+                    continue
+                if not layer.changeGeometry(feature.id(), fixed):
+                    raise Exception(f"Failed to update geometry for feature {feature.id()}")
+                fixed_count += 1
+            return fixed_count
+
+        return int(self._apply_vector_edit(layer, op))
+
+    def _remove_duplicate_geometries(self, layer: QgsVectorLayer) -> int:
+        """删除重复几何。"""
+        def op() -> int:
+            seen_geometries: set[str] = set()
+            fids: list[int] = []
+            for feature in layer.getFeatures():
+                if not feature.hasGeometry():
+                    continue
+                geometry = feature.geometry()
+                if geometry is None or geometry.isNull() or geometry.isEmpty():
+                    continue
+                key = geometry.asWkt(precision=12)
+                if key in seen_geometries:
+                    fids.append(int(feature.id()))
+                else:
+                    seen_geometries.add(key)
+            if not fids:
+                return 0
+            if not layer.deleteFeatures(fids):
+                raise Exception("Failed to delete duplicate geometries")
+            return len(fids)
+
+        return int(self._apply_vector_edit(layer, op))
+
+    def _reproject_layer_in_place(
+        self,
+        layer: QgsVectorLayer,
+        target_crs: QgsCoordinateReferenceSystem,
+    ) -> int:
+        """原位重投影当前图层。"""
+        if not target_crs.isValid():
+            return 0
+        source_crs = layer.crs()
+        if not source_crs.isValid() or source_crs == target_crs:
+            return 0
+        transform = QgsCoordinateTransform(
+            source_crs,
+            target_crs,
+            QgsProject.instance(),
+        )
+
+        def op() -> int:
+            changed = 0
+            for feature in layer.getFeatures():
+                if not feature.hasGeometry():
+                    continue
+                geometry = QgsGeometry(feature.geometry())
+                if geometry.isNull() or geometry.isEmpty():
+                    continue
+                try:
+                    geometry.transform(transform)
+                except Exception as exc:
+                    raise Exception(
+                        f"Failed to transform feature {feature.id()}: {exc}"
+                    ) from exc
+                if not layer.changeGeometry(feature.id(), geometry):
+                    raise Exception(f"Failed to apply transformed geometry for feature {feature.id()}")
+                changed += 1
+            return changed
+
+        changed = int(self._apply_vector_edit(layer, op))
+        layer.setCrs(target_crs)
+        return changed
+
+    def _coerce_vector_output_layer(
+        self,
+        output_value: Any,
+        layer_name: str,
+    ) -> QgsVectorLayer:
+        """将 processing 输出解析为矢量图层。"""
+        output_layer: QgsVectorLayer | None = None
+        if isinstance(output_value, QgsVectorLayer):
+            output_layer = output_value
+        elif isinstance(output_value, QgsMapLayer) and output_value.type() == QgsMapLayer.VectorLayer:
+            output_layer = output_value
+        elif isinstance(output_value, str):
+            text = output_value.strip()
+            if text in QgsProject.instance().mapLayers():
+                candidate = QgsProject.instance().mapLayer(text)
+                if isinstance(candidate, QgsVectorLayer):
+                    output_layer = candidate
+            elif text:
+                candidate = QgsVectorLayer(text, layer_name, "ogr")
+                if candidate.isValid():
+                    output_layer = candidate
+        if output_layer is None or not output_layer.isValid():
+            raise Exception("Failed to resolve vector output layer from processing result")
+        if QgsProject.instance().mapLayer(output_layer.id()) is None:
+            QgsProject.instance().addMapLayer(output_layer)
+        output_layer.setName(layer_name)
+        return output_layer
+
+    def _explode_multipart_layer(
+        self, layer: QgsVectorLayer, task_name: str
+    ) -> tuple[QgsVectorLayer, int]:
+        """拆解 multipart 图层。"""
+        self._ensure_processing_runtime()
+        result = processing.run(
+            "native:multiparttosingleparts",
+            {
+                "INPUT": layer,
+                "OUTPUT": "memory:",
+            },
+        )
+        exploded_layer = self._coerce_vector_output_layer(
+            result.get("OUTPUT"),
+            self._copy_layer_name(layer, "singleparts"),
+        )
+        self._tag_work_layer(
+            exploded_layer,
+            task_name,
+            source_path=self._layer_custom_property(
+                layer,
+                "processingmcpserver/workflow/source_path",
+                layer.source(),
+            ),
+            temp_paths=self._get_layer_temp_paths(layer),
+        )
+        feature_delta = exploded_layer.featureCount() - layer.featureCount()
+        QgsProject.instance().removeMapLayer(layer.id())
+        return exploded_layer, feature_delta
+
+    def _collect_cleanup_target_layers(
+        self,
+        task_name: str,
+        layer_ids: list[str] | None,
+    ) -> list[QgsMapLayer]:
+        """收集待清理图层。"""
+        requested_ids = {
+            str(layer_id).strip()
+            for layer_id in (layer_ids or [])
+            if str(layer_id).strip()
+        }
+        normalized_task = (task_name or "").strip()
+        layers: list[QgsMapLayer] = []
+        for layer in QgsProject.instance().mapLayers().values():
+            if requested_ids and layer.id() in requested_ids:
+                layers.append(layer)
+                continue
+            if not normalized_task:
+                continue
+            if (
+                self._layer_custom_property(
+                    layer,
+                    "processingmcpserver/workflow/task_name",
+                    "",
+                )
+                == normalized_task
+            ):
+                layers.append(layer)
+        unique: dict[str, QgsMapLayer] = {layer.id(): layer for layer in layers}
+        return list(unique.values())
+
     # Layer resolution and vector edit helpers.
     @staticmethod
     def _layer_type_token(layer: QgsMapLayer) -> str:
@@ -811,6 +1734,18 @@ class ProcessingMCPTools:
             },
             "layers": layers,
         }
+
+    def _get_shapefile_workflow_template_impl(self) -> dict[str, Any]:
+        """返回 shapefile workflow template。"""
+        return self._serialize_value(self._shapefile_workflow_template)
+
+    def _get_shapefile_quality_profile_impl(self) -> dict[str, Any]:
+        """返回 shapefile quality profile。"""
+        return self._serialize_value(self._shapefile_quality_profile)
+
+    def _get_shapefile_run_summary_impl(self) -> dict[str, Any]:
+        """返回 shapefile run summary。"""
+        return self._serialize_value(self._shapefile_run_summary)
 
     # Tool implementation bodies (_xxx_impl).
     # Common/project.
@@ -1720,6 +2655,545 @@ class ProcessingMCPTools:
                 failed.append({"path": path, "error": str(exc)})
         return {"requested_count": len(list_result["datasets"]), "loaded_count": len(loaded), "failed_count": len(failed), "loaded": loaded, "failed": failed}
 
+    def _dataset_inspect_shapefile_bundle_impl(
+        self,
+        path: str,
+        recursive: bool,
+        name_glob: str,
+        limit: int,
+        task_name: str,
+    ) -> dict[str, Any]:
+        """执行数据集相关的 inspect shapefile bundle impl 逻辑。"""
+        target = self._resolve_filesystem_query_path(path)
+        if not target.exists():
+            raise Exception(f"Path not found: {path}")
+        pattern = self._normalize_name_glob(name_glob or "*.shp")
+        requested, applied, capped = self._normalize_dataset_limit(limit)
+
+        if target.is_file():
+            if target.suffix.lower() != ".shp":
+                raise Exception(f"Shapefile path is required: {path}")
+            candidates = [target]
+        else:
+            iterator = target.rglob("*.shp") if recursive else target.glob("*.shp")
+            candidates = sorted(
+                entry
+                for entry in iterator
+                if entry.is_file() and fnmatch(entry.name, pattern)
+            )
+
+        bundles: list[dict[str, Any]] = []
+        matched_total = 0
+        blocking_bundle_count = 0
+        warning_bundle_count = 0
+        for candidate in candidates:
+            matched_total += 1
+            if len(bundles) >= applied:
+                continue
+            bundle = self._inspect_shapefile_bundle_entry(candidate)
+            if not bundle["complete_bundle"]:
+                blocking_bundle_count += 1
+            if bundle["warnings"]:
+                warning_bundle_count += 1
+            bundles.append(bundle)
+
+        effective_task = ""
+        if task_name.strip():
+            effective_task = self._ensure_shapefile_run_summary(
+                self._normalize_task_name(task_name, target.stem),
+                status="prechecked",
+                inputs={
+                    "input_path": str(target),
+                    "recursive": bool(recursive),
+                    "name_glob": pattern,
+                },
+            )
+            self._append_shapefile_run_step(
+                "inspect_shapefile_bundle",
+                summary={
+                    "returned": len(bundles),
+                    "matched_total": matched_total,
+                    "blocking_bundle_count": blocking_bundle_count,
+                    "warning_bundle_count": warning_bundle_count,
+                },
+                outputs={"bundles": bundles},
+                status="prechecked",
+            )
+
+        return self._ok_result(
+            "dataset_inspect_shapefile_bundle",
+            summary={
+                "task_name": effective_task,
+                "returned": len(bundles),
+                "matched_total": matched_total,
+                "requested_limit": requested,
+                "applied_limit": applied,
+                "limit_capped": capped,
+                "blocking_bundle_count": blocking_bundle_count,
+                "warning_bundle_count": warning_bundle_count,
+            },
+            outputs={
+                "path": str(target),
+                "bundles": bundles,
+            },
+        )
+
+    def _vector_check_validity_report_impl(
+        self,
+        layer_ref: str,
+        path: str,
+        required_fields: list[str] | None,
+        expected_crs: str | None,
+        task_name: str,
+    ) -> dict[str, Any]:
+        """执行矢量相关的 check validity report impl 逻辑。"""
+        layer, source_path = self._resolve_vector_source(layer_ref=layer_ref, path=path)
+        report = self._inspect_vector_layer_validity(
+            layer,
+            required_fields=required_fields,
+            expected_crs=expected_crs,
+        )
+        blocking_issue_count = len(
+            [issue for issue in report["issues"] if issue.get("severity") == "error"]
+        )
+        warning_issue_count = len(
+            [issue for issue in report["issues"] if issue.get("severity") == "warning"]
+        )
+        effective_task = ""
+        if task_name.strip():
+            effective_task = self._ensure_shapefile_run_summary(
+                self._normalize_task_name(task_name, layer.name() or Path(source_path).stem),
+                status="validated",
+                inputs={
+                    "layer_ref": str(layer_ref).strip(),
+                    "path": str(path).strip(),
+                    "expected_crs": expected_crs or "",
+                    "required_fields": list(required_fields or []),
+                },
+            )
+            self._append_shapefile_run_step(
+                "vector_check_validity_report",
+                summary={
+                    "layer_id": report["layer_id"],
+                    "blocking_issue_count": blocking_issue_count,
+                    "warning_issue_count": warning_issue_count,
+                    "safe_for_export": report["safe_for_export"],
+                },
+                outputs={"report": report},
+                status="validated",
+            )
+
+        warnings = [
+            "Layer contains duplicate geometries."
+            for issue in report["issues"]
+            if issue.get("code") == "duplicate_geometry"
+        ]
+        warnings.extend(
+            [
+                "Layer contains duplicate records."
+                for issue in report["issues"]
+                if issue.get("code") == "duplicate_record"
+            ]
+        )
+        warnings.extend(
+            [
+                "Layer contains multipart features."
+                for issue in report["issues"]
+                if issue.get("code") == "multipart_feature"
+            ]
+        )
+        warnings = list(dict.fromkeys(warnings))
+
+        return self._ok_result(
+            "vector_check_validity_report",
+            summary={
+                "task_name": effective_task,
+                "layer_id": report["layer_id"],
+                "feature_count": report["feature_count"],
+                "blocking_issue_count": blocking_issue_count,
+                "warning_issue_count": warning_issue_count,
+                "safe_for_export": report["safe_for_export"],
+            },
+            outputs={
+                "source_path": source_path,
+                "report": report,
+            },
+            warnings=warnings,
+        )
+
+    def _vector_prepare_work_layer_impl(
+        self,
+        layer_ref: str,
+        path: str,
+        task_name: str,
+        target_crs: str | None,
+        normalize_field_names: bool,
+        multipart_policy: str,
+    ) -> dict[str, Any]:
+        """执行矢量相关的 prepare work layer impl 逻辑。"""
+        policy = (multipart_policy or "keep").strip().lower() or "keep"
+        if policy not in {"keep", "singleparts"}:
+            raise Exception(
+                "multipart_policy must be one of: keep, singleparts"
+            )
+
+        source_layer, source_path = self._resolve_vector_source(layer_ref=layer_ref, path=path)
+        effective_task = self._ensure_shapefile_run_summary(
+            self._normalize_task_name(task_name, source_layer.name() or Path(source_path).stem),
+            status="preparing",
+            inputs={
+                "layer_ref": str(layer_ref).strip(),
+                "path": str(path).strip(),
+                "target_crs": target_crs or "",
+                "normalize_field_names": bool(normalize_field_names),
+                "multipart_policy": policy,
+            },
+        )
+        initial_report = self._inspect_vector_layer_validity(source_layer)
+        work_layer = self._materialize_vector_layer(
+            source_layer,
+            f"{self._normalize_output_stem(effective_task)}_work",
+        )
+        work_layer.setName(
+            self._copy_layer_name(
+                source_layer,
+                f"{self._normalize_output_stem(effective_task)}_work",
+            )
+        )
+        self._tag_work_layer(
+            work_layer,
+            effective_task,
+            source_path=source_path,
+            temp_paths=[],
+        )
+
+        removed_empty_geometry_count = self._remove_empty_geometries(work_layer)
+        fixed_invalid_geometry_count = self._make_layer_geometries_valid(work_layer)
+        removed_duplicate_geometry_count = self._remove_duplicate_geometries(work_layer)
+        target_crs_obj = self._parse_target_crs(target_crs) if target_crs else None
+        reprojected_feature_count = 0
+        if target_crs_obj is not None and target_crs_obj.isValid():
+            reprojected_feature_count = self._reproject_layer_in_place(work_layer, target_crs_obj)
+        field_name_mapping: dict[str, str] = {}
+        if normalize_field_names:
+            field_name_mapping = self._rename_layer_fields_for_shapefile(work_layer)
+        multipart_split_feature_delta = 0
+        if policy == "singleparts":
+            current_report = self._inspect_vector_layer_validity(work_layer)
+            if current_report["multipart_feature_count"]:
+                work_layer, multipart_split_feature_delta = self._explode_multipart_layer(
+                    work_layer,
+                    effective_task,
+                )
+        final_report = self._inspect_vector_layer_validity(
+            work_layer,
+            expected_crs=target_crs or None,
+        )
+        self._record_run_output("work_layer_ids", work_layer.id())
+        self._append_shapefile_run_step(
+            "vector_prepare_work_layer",
+            summary={
+                "output_layer_id": work_layer.id(),
+                "removed_empty_geometry_count": removed_empty_geometry_count,
+                "fixed_invalid_geometry_count": fixed_invalid_geometry_count,
+                "removed_duplicate_geometry_count": removed_duplicate_geometry_count,
+                "reprojected_feature_count": reprojected_feature_count,
+                "multipart_split_feature_delta": multipart_split_feature_delta,
+                "field_rename_count": len(field_name_mapping),
+            },
+            outputs={
+                "initial_report": initial_report,
+                "final_report": final_report,
+                "output_layer_id": work_layer.id(),
+                "field_name_mapping": field_name_mapping,
+            },
+            warnings=[
+                "Work layer still has field names longer than 10 characters."
+                for _ in final_report["field_name_length_gt_10"]
+                if not normalize_field_names
+            ],
+            status="prepared",
+        )
+
+        warnings: list[str] = []
+        if final_report["field_name_length_gt_10"]:
+            warnings.append("Work layer still contains field names longer than 10 characters.")
+        if final_report["multipart_feature_count"] and policy != "singleparts":
+            warnings.append("Work layer still contains multipart features.")
+        if final_report["duplicate_record_count"]:
+            warnings.append("Work layer still contains duplicate records.")
+
+        return self._ok_result(
+            "vector_prepare_work_layer",
+            summary={
+                "task_name": effective_task,
+                "output_layer_id": work_layer.id(),
+                "feature_count": final_report["feature_count"],
+                "crs": final_report["crs"],
+                "removed_empty_geometry_count": removed_empty_geometry_count,
+                "fixed_invalid_geometry_count": fixed_invalid_geometry_count,
+                "removed_duplicate_geometry_count": removed_duplicate_geometry_count,
+                "reprojected_feature_count": reprojected_feature_count,
+                "multipart_split_feature_delta": multipart_split_feature_delta,
+                "field_rename_count": len(field_name_mapping),
+            },
+            outputs={
+                "source_path": source_path,
+                "output_layer_id": work_layer.id(),
+                "output_layer_name": work_layer.name(),
+                "field_name_mapping": field_name_mapping,
+                "initial_report": initial_report,
+                "final_report": final_report,
+            },
+            warnings=warnings,
+        )
+
+    def _vector_export_shapefile_impl(
+        self,
+        layer_ref: str,
+        output_directory: str,
+        file_name: str,
+        task_name: str,
+        overwrite: bool,
+        auto_truncate_field_names: bool,
+        confirm_write: bool,
+        confirm_destructive: bool,
+    ) -> dict[str, Any]:
+        """执行矢量相关的 export shapefile impl 逻辑。"""
+        self._ensure_filesystem_write_confirmed(confirm_write)
+        layer = self._resolve_vector_layer_ref(layer_ref)
+        output_dir = self._resolve_filesystem_write_path(output_directory)
+        output_dir.mkdir(parents=True, exist_ok=True)
+
+        effective_task = self._ensure_shapefile_run_summary(
+            self._normalize_task_name(task_name, layer.name()),
+            status="exporting",
+            inputs={
+                "output_directory": str(output_dir),
+                "file_name": str(file_name).strip(),
+                "overwrite": bool(overwrite),
+                "auto_truncate_field_names": bool(auto_truncate_field_names),
+            },
+        )
+        requested_stem = Path(str(file_name).strip()).stem if str(file_name).strip() else ""
+        output_stem = self._normalize_output_stem(
+            requested_stem or effective_task or layer.name()
+        )
+        target_path = output_dir / f"{output_stem}.shp"
+        if target_path.exists() and not overwrite:
+            raise Exception(f"Output shapefile already exists: {target_path}")
+        if target_path.exists() and overwrite and not confirm_destructive:
+            raise Exception(
+                "confirm_destructive must be true when overwrite is enabled"
+            )
+
+        preflight_report = self._inspect_vector_layer_validity(layer)
+        blocking_errors: list[str] = []
+        if preflight_report["null_geometry_count"] or preflight_report["empty_geometry_count"]:
+            blocking_errors.append("Layer contains null or empty geometries.")
+        if preflight_report["invalid_geometry_count"]:
+            blocking_errors.append("Layer contains invalid geometries.")
+        if blocking_errors:
+            raise Exception(" ".join(blocking_errors))
+
+        export_layer = layer
+        export_copy_id = ""
+        field_name_mapping: dict[str, str] = {}
+        created_export_copy = False
+        try:
+            long_field_names = self._long_field_names(layer)
+            if long_field_names:
+                if not auto_truncate_field_names:
+                    raise Exception(
+                        "Layer contains field names longer than 10 characters and "
+                        "auto_truncate_field_names is false"
+                    )
+                export_layer = self._materialize_vector_layer(layer, "shapefile_export")
+                created_export_copy = True
+                export_copy_id = export_layer.id()
+                field_name_mapping = self._rename_layer_fields_for_shapefile(export_layer)
+                self._tag_work_layer(
+                    export_layer,
+                    effective_task,
+                    source_path=layer.source(),
+                    temp_paths=[],
+                )
+
+            if target_path.exists():
+                QgsVectorFileWriter.deleteShapeFile(str(target_path))
+
+            options = QgsVectorFileWriter.SaveVectorOptions()
+            options.driverName = "ESRI Shapefile"
+            options.fileEncoding = "UTF-8"
+            options.layerName = output_stem
+            if overwrite:
+                options.actionOnExistingFile = (
+                    QgsVectorFileWriter.ActionOnExistingFile.CreateOrOverwriteFile
+                )
+
+            error_code, error_message, new_file_name, new_layer = (
+                QgsVectorFileWriter.writeAsVectorFormatV3(
+                    export_layer,
+                    str(target_path),
+                    QgsProject.instance().transformContext(),
+                    options,
+                )
+            )
+            if error_code != QgsVectorFileWriter.WriterError.NoError:
+                raise Exception(
+                    f"Failed to export shapefile: {error_message or error_code}"
+                )
+
+            output_members = sorted(
+                str(item)
+                for item in output_dir.glob(f"{target_path.stem}.*")
+                if item.is_file()
+            )
+            final_report = self._inspect_vector_layer_validity(export_layer)
+            self._record_run_output("final_shapefiles", str(target_path))
+            self._append_shapefile_run_step(
+                "vector_export_shapefile",
+                summary={
+                    "output_path": str(target_path),
+                    "sidecar_count": len(output_members),
+                    "field_rename_count": len(field_name_mapping),
+                    "export_copy_id": export_copy_id,
+                },
+                outputs={
+                    "output_path": str(target_path),
+                    "output_members": output_members,
+                    "field_name_mapping": field_name_mapping,
+                    "preflight_report": preflight_report,
+                    "final_report": final_report,
+                    "new_file_name": str(new_file_name),
+                    "new_layer_name": str(new_layer),
+                },
+                warnings=[
+                    "Exported shapefile contains null attribute values."
+                    for _ in final_report["null_attribute_fields"]
+                ],
+                status="exported",
+            )
+            del new_layer
+
+            warnings = list(
+                dict.fromkeys(
+                    [
+                        "Exported shapefile contains null attribute values."
+                        for _ in final_report["null_attribute_fields"]
+                    ]
+                )
+            )
+            return self._ok_result(
+                "vector_export_shapefile",
+                summary={
+                    "task_name": effective_task,
+                    "output_path": str(target_path),
+                    "sidecar_count": len(output_members),
+                    "field_rename_count": len(field_name_mapping),
+                },
+                outputs={
+                    "output_path": str(target_path),
+                    "output_members": output_members,
+                    "field_name_mapping": field_name_mapping,
+                    "preflight_report": preflight_report,
+                    "final_report": final_report,
+                },
+                warnings=warnings,
+            )
+        finally:
+            if created_export_copy and QgsProject.instance().mapLayer(export_layer.id()) is not None:
+                QgsProject.instance().removeMapLayer(export_layer.id())
+
+    def _project_cleanup_work_layers_impl(
+        self,
+        task_name: str,
+        layer_ids: list[str] | None,
+        temp_paths: list[str] | None,
+        delete_temp_files: bool,
+        confirm_write: bool,
+        confirm_destructive: bool,
+    ) -> dict[str, Any]:
+        """执行工程相关的 cleanup work layers impl 逻辑。"""
+        normalized_task = (task_name or "").strip()
+        target_layers = self._collect_cleanup_target_layers(normalized_task, layer_ids)
+        collected_temp_paths: list[str] = []
+        for layer in target_layers:
+            collected_temp_paths.extend(self._get_layer_temp_paths(layer))
+        collected_temp_paths.extend(
+            [
+                str(item).strip()
+                for item in (temp_paths or [])
+                if str(item).strip()
+            ]
+        )
+        unique_temp_paths = list(dict.fromkeys(collected_temp_paths))
+
+        removed_layer_ids: list[str] = []
+        for layer in target_layers:
+            removed_layer_ids.append(layer.id())
+            QgsProject.instance().removeMapLayer(layer.id())
+
+        deleted_temp_paths: list[str] = []
+        missing_temp_paths: list[str] = []
+        if delete_temp_files and unique_temp_paths:
+            self._ensure_filesystem_write_confirmed(confirm_write)
+            if not confirm_destructive:
+                raise Exception(
+                    "confirm_destructive must be true when delete_temp_files is enabled"
+                )
+            for raw_path in unique_temp_paths:
+                candidate = self._resolve_filesystem_write_path(raw_path)
+                if candidate.suffix.lower() == ".shp":
+                    if candidate.exists():
+                        if not QgsVectorFileWriter.deleteShapeFile(str(candidate)):
+                            raise Exception(f"Failed to delete shapefile bundle: {candidate}")
+                        deleted_temp_paths.append(str(candidate))
+                    else:
+                        missing_temp_paths.append(str(candidate))
+                    continue
+                if candidate.is_dir():
+                    shutil.rmtree(candidate)
+                    deleted_temp_paths.append(str(candidate))
+                    continue
+                if candidate.exists():
+                    candidate.unlink()
+                    deleted_temp_paths.append(str(candidate))
+                else:
+                    missing_temp_paths.append(str(candidate))
+
+        if normalized_task:
+            self._ensure_shapefile_run_summary(normalized_task, status="cleaned")
+        self._append_shapefile_run_step(
+            "project_cleanup_work_layers",
+            summary={
+                "removed_layer_count": len(removed_layer_ids),
+                "deleted_temp_path_count": len(deleted_temp_paths),
+                "missing_temp_path_count": len(missing_temp_paths),
+            },
+            outputs={
+                "removed_layer_ids": removed_layer_ids,
+                "deleted_temp_paths": deleted_temp_paths,
+                "missing_temp_paths": missing_temp_paths,
+            },
+            status="cleaned",
+        )
+
+        return self._ok_result(
+            "project_cleanup_work_layers",
+            summary={
+                "task_name": normalized_task,
+                "removed_layer_count": len(removed_layer_ids),
+                "deleted_temp_path_count": len(deleted_temp_paths),
+                "missing_temp_path_count": len(missing_temp_paths),
+            },
+            outputs={
+                "removed_layer_ids": removed_layer_ids,
+                "deleted_temp_paths": deleted_temp_paths,
+                "missing_temp_paths": missing_temp_paths,
+            },
+        )
+
     # Filesystem query/edit/stats.
     def _filesystem_query_list_entries_impl(self, directory: str, recursive: bool, include_files: bool, include_directories: bool, name_glob: str, limit: int) -> dict[str, Any]:
         """执行文件系统相关的 query list entries impl 逻辑。"""
@@ -2239,6 +3713,46 @@ _REGISTERED_TOOL_DOCSTRINGS: dict[str, str] = {
         "会向当前工程新增多个图层，但不会改写源数据文件。",
         "skip_invalid=true 时失败项会进入 failed；skip_invalid=false 时第一个失败就终止。",
         "返回 requested_count、loaded_count、failed_count，以及 loaded 和 failed 明细。",
+    ),
+    "dataset_inspect_shapefile_bundle": _tool_doc(
+        "扫描目录或单个 `.shp` 文件，检查 shapefile bundle 及其 sidecar 文件是否完整，并返回结构化风险摘要。",
+        "path 可以是目录或单个 `.shp` 文件，recursive 控制目录递归扫描，name_glob 过滤候选文件，limit 控制返回上限，task_name 可把结果写入最近一次运行摘要。",
+        "path 必须存在；若传文件则必须是 `.shp`。",
+        "无写操作，只读取 shapefile bundle 成员信息和矢量元数据。",
+        "limit 会被内部阈值裁剪；task_name 非空时会更新 qgis://workflow/shapefile/run-summary。",
+        "返回 bundles 数组，元素包含 `.shp/.shx/.dbf/.prj/.cpg` 完整性、大小、CRS、几何类型、字段名、命名风险和 warnings。",
+    ),
+    "vector_check_validity_report": _tool_doc(
+        "对单个矢量图层或矢量文件做 shapefile 导向的结构化体检，统一输出几何、记录、字段和 CRS 风险。",
+        "layer_ref 与 path 二选一；required_fields 用于声明必需字段，expected_crs 用于声明目标 CRS，task_name 可把结果写入运行摘要。",
+        "目标图层必须存在，或 path 必须指向有效矢量数据文件。",
+        "无写操作，只读取图层要素、字段和 CRS 元数据。",
+        "task_name 非空时会更新 qgis://workflow/shapefile/run-summary；若传 expected_crs，结果会包含 CRS mismatch 判定。",
+        "返回 report 对象，覆盖 null/empty geometry、invalid geometry、duplicate geometry、duplicate record、multipart、字段长度和 safe_for_export 判断。",
+    ),
+    "vector_prepare_work_layer": _tool_doc(
+        "把输入矢量图层整理成带任务标签的临时工作层，并串行执行 shapefile 稳定模板的标准化前置动作。",
+        "layer_ref 与 path 二选一；task_name 用于标记工作层和运行摘要；target_crs 控制目标坐标系；normalize_field_names 控制是否把字段名压到 10 字符以内；multipart_policy 可选 keep 或 singleparts。",
+        "目标图层必须存在或 path 指向有效矢量数据文件；target_crs 若提供必须可被 QGIS 解析。",
+        "会在当前工程新增一个临时工作层，并对该临时层执行空几何清理、几何修复、重复几何清理、重投影和可选字段改名/拆多部件操作。",
+        "默认不写盘；所有修改都落在临时工作层上，原始输入图层和源文件不会被直接改写。",
+        "返回 output_layer_id、field_name_mapping、initial_report、final_report，以及各标准化步骤的影响计数。",
+    ),
+    "vector_export_shapefile": _tool_doc(
+        "把当前工作层或任意矢量图层安全导出为最终 shapefile，并在导出前强制复核几何与字段约束。",
+        "layer_ref 指向待导出的矢量图层，output_directory 是输出目录，file_name 可覆盖输出文件名，task_name 用于运行摘要，overwrite 控制是否允许覆盖，auto_truncate_field_names 控制是否自动裁剪超长字段名，confirm_write 与 confirm_destructive 用于显式确认写盘和覆盖。",
+        "目标图层必须存在；output_directory 必须可创建；当 overwrite=true 时必须同时传 confirm_destructive=true。",
+        "会在磁盘写出 shapefile bundle；若需要自动裁剪字段名，内部会生成临时导出副本并在导出后自动移除。",
+        "必须显式设置 confirm_write=true；覆盖现有输出时还必须 confirm_destructive=true；存在无效几何或空几何时会阻断导出。",
+        "返回 output_path、output_members、field_name_mapping、preflight_report 和 final_report，便于在导出后继续走质量 gate。",
+    ),
+    "project_cleanup_work_layers": _tool_doc(
+        "按 task_name 或 layer_ids 清理 shapefile 工作流创建的临时图层，并可选删除显式登记的临时文件。",
+        "task_name 用于按任务标签批量匹配工作层，layer_ids 可精确指定图层，temp_paths 可补充显式临时路径，delete_temp_files 控制是否删除这些路径，confirm_write 与 confirm_destructive 仅在删文件时生效。",
+        "至少提供可匹配的 task_name、layer_ids 或 temp_paths 中的一类才有意义；若 delete_temp_files=true 且存在路径，则必须 confirm_write=true 且 confirm_destructive=true。",
+        "会从当前工程移除匹配的临时图层；可选地删除临时文件或临时目录。",
+        "删除磁盘临时文件时需要显式双确认；仅移除工程图层时不触碰源数据文件。",
+        "返回 removed_layer_ids、deleted_temp_paths 和 missing_temp_paths，便于回收检查与日志留存。",
     ),
     "filesystem_query_list_entries": _tool_doc(
         "列出目录中的文件或子目录条目，适合在执行文件操作前先做只读探查。",

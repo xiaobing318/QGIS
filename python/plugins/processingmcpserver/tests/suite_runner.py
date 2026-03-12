@@ -55,6 +55,11 @@ TEST_MODULES = [
     "processingmcpserver.tests.mcp_tools_raster_stats_cell",
     "processingmcpserver.tests.mcp_tools_dataset_list_files",
     "processingmcpserver.tests.mcp_tools_dataset_load_from_directory",
+    "processingmcpserver.tests.mcp_tools_dataset_inspect_shapefile_bundle",
+    "processingmcpserver.tests.mcp_tools_vector_check_validity_report",
+    "processingmcpserver.tests.mcp_tools_vector_prepare_work_layer",
+    "processingmcpserver.tests.mcp_tools_vector_export_shapefile",
+    "processingmcpserver.tests.mcp_tools_project_cleanup_work_layers",
     "processingmcpserver.tests.mcp_tools_filesystem_query_list_entries",
     "processingmcpserver.tests.mcp_tools_filesystem_query_entry_info",
     "processingmcpserver.tests.mcp_tools_filesystem_query_read_text",
@@ -69,10 +74,10 @@ TEST_MODULES = [
     "processingmcpserver.tests.mcp_tools_processing_get_parameter_template",
     "processingmcpserver.tests.mcp_tools_processing_execute_algorithm",
     "processingmcpserver.tests.mcp_tools_processing_execute_on_layers",
-    "processingmcpserver.tests.mcp_prompts_qgis_task_planner",
-    "processingmcpserver.tests.mcp_prompts_qgis_layer_health_check",
-    "processingmcpserver.tests.mcp_resources_qgis_project_info",
-    "processingmcpserver.tests.mcp_resources_qgis_project_layers_summary",
+    "processingmcpserver.tests.mcp_prompts_qgis_shapefile_pipeline_planner",
+    "processingmcpserver.tests.mcp_resources_qgis_workflow_shapefile_template",
+    "processingmcpserver.tests.mcp_resources_qgis_workflow_shapefile_quality_profile_default",
+    "processingmcpserver.tests.mcp_resources_qgis_workflow_shapefile_run_summary",
 ]
 
 IGNORED_TEST_FILES = {
