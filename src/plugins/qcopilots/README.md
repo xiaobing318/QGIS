@@ -43,8 +43,6 @@ qcopilots 仅使用 QGIS Settings 与默认值，不使用 JSON 配置文件：
   - `qgis://workflow/shapefile/run-summary`
 - prompts
   - `qgis_shapefile_pipeline_planner`
-  - `qgis_shapefile_quality_gate`
-  - `qgis_shapefile_export_review`
 - tools
   - `dataset_inspect_shapefile_bundle`
   - `vector_check_validity_report`
@@ -104,8 +102,8 @@ QCopilots 通过 Qt WebEngine 下载链路处理 llama-server WebUI 触发的资
      - `deliverables`（可选）
 3. 先执行 `dataset_inspect_shapefile_bundle` 和 `vector_check_validity_report` 做预检。
 4. 通过 `vector_prepare_work_layer` 生成带任务标签的临时工作层，再调用通用 Processing 工具完成业务处理。
-5. 在最终写盘前调用 `qgis_shapefile_export_review` 和 `qgis_shapefile_quality_gate`。
-6. 只有在确认写盘后才调用 `vector_export_shapefile`，并在完成后调用 `project_cleanup_work_layers`。
+5. 在确认导出路径与导出约束后调用 `vector_export_shapefile`。
+6. 导出完成后调用 `project_cleanup_work_layers`。
 
 ## 9. 诊断日志位置
 
