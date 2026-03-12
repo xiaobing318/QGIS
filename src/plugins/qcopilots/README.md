@@ -96,6 +96,12 @@ QCopilots 通过 Qt WebEngine 下载链路处理 llama-server WebUI 触发的资
 
 1. 读取 `qgis://workflow/shapefile/template` 与 `qgis://workflow/shapefile/quality-profile/default`。
 2. 让模型调用 `qgis_shapefile_pipeline_planner` 生成本次任务步骤。
+   - `qgis_shapefile_pipeline_planner` 在 Use Prompt 中仅暴露：
+     - `task_name`（必填）
+     - `input_dir`（必填）
+     - `output_dir`（必填）
+     - `quality_rule_resource`（可选）
+     - `deliverables`（可选）
 3. 先执行 `dataset_inspect_shapefile_bundle` 和 `vector_check_validity_report` 做预检。
 4. 通过 `vector_prepare_work_layer` 生成带任务标签的临时工作层，再调用通用 Processing 工具完成业务处理。
 5. 在最终写盘前调用 `qgis_shapefile_export_review` 和 `qgis_shapefile_quality_gate`。
