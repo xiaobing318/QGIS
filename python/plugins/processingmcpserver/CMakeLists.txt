@@ -1,4 +1,5 @@
 file(GLOB PY_FILES *.py)
+file(GLOB MCP_TOOLS_PY_FILES mcp_tools/*.py)
 set(ROOT_FILES metadata.txt README.md requirements.txt MCP_CAPABILITIES.md)
 file(GLOB ICON_FILES icons/*)
 file(GLOB EXAMPLE_FILES examples/*)
@@ -6,6 +7,7 @@ file(GLOB TEST_FILES tests/*.py)
 file(GLOB TEST_DATA_FILES tests/data/*)
 
 PLUGIN_INSTALL(processingmcpserver . ${PY_FILES} ${ROOT_FILES})
+PLUGIN_INSTALL(processingmcpserver mcp_tools ${MCP_TOOLS_PY_FILES})
 PLUGIN_INSTALL(processingmcpserver icons ${ICON_FILES})
 PLUGIN_INSTALL(processingmcpserver examples ${EXAMPLE_FILES})
 PLUGIN_INSTALL(processingmcpserver tests ${TEST_FILES})

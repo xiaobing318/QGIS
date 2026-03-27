@@ -280,7 +280,7 @@ class ProcessingMCPServer:
 
         QgsMessageLog.logMessage(
             (
-                "Processing MCP tool limits are defined inside mcp_tools.py and "
+                "Processing MCP tool limits are defined inside processingmcpserver.mcp_tools package and "
                 "can be overridden per tool call arguments where supported."
             ),
             MCP_LOG_CATEGORY,

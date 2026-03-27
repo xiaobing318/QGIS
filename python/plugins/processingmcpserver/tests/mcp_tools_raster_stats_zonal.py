@@ -62,8 +62,8 @@ class ToolsRasterStatsZonalTest(ProcessingMCPTestBase):
             )
         self.assertIn("Layer not found", str(ctx.exception))
 
-    @patch("processingmcpserver.mcp_tools.processing.run")
-    @patch("processingmcpserver.mcp_tools.QgsApplication.processingRegistry")
+    @patch("processingmcpserver.mcp_tools.mcp_tools_raster_stats_zonal.processing.run")
+    @patch("processingmcpserver.mcp_tools.mcp_tools_raster_stats_zonal.QgsApplication.processingRegistry")
     def test_success_uses_latest_algorithm_only(
         self, mock_processing_registry, mock_run
     ):
@@ -76,7 +76,7 @@ class ToolsRasterStatsZonalTest(ProcessingMCPTestBase):
         )
         mock_run.return_value = {"OUTPUT": "fb-output-layer"}
 
-        with patch("processingmcpserver.mcp_tools._PROCESSING_INITIALIZED", True):
+        with patch("processingmcpserver.mcp_tools.mcp_tools_raster_stats_zonal._PROCESSING_INITIALIZED", True):
             result = tools.raster_stats_zonal(
                 vector_layer_ref=vector_layer.id(),
                 raster_layer_ref=raster_layer.id(),
@@ -96,8 +96,8 @@ class ToolsRasterStatsZonalTest(ProcessingMCPTestBase):
         self.assertIn("OUTPUT", called_parameters)
         self.assertNotIn("INPUT_VECTOR", called_parameters)
 
-    @patch("processingmcpserver.mcp_tools.processing.run")
-    @patch("processingmcpserver.mcp_tools.QgsApplication.processingRegistry")
+    @patch("processingmcpserver.mcp_tools.mcp_tools_raster_stats_zonal.processing.run")
+    @patch("processingmcpserver.mcp_tools.mcp_tools_raster_stats_zonal.QgsApplication.processingRegistry")
     def test_success_in_place_normalizes_parameters_and_output_layer_id(
         self, mock_processing_registry, mock_run
     ):
@@ -110,7 +110,7 @@ class ToolsRasterStatsZonalTest(ProcessingMCPTestBase):
         )
         mock_run.return_value = {}
 
-        with patch("processingmcpserver.mcp_tools._PROCESSING_INITIALIZED", True):
+        with patch("processingmcpserver.mcp_tools.mcp_tools_raster_stats_zonal._PROCESSING_INITIALIZED", True):
             result = tools.raster_stats_zonal(
                 vector_layer_ref=vector_layer.id(),
                 raster_layer_ref=raster_layer.id(),
@@ -126,7 +126,7 @@ class ToolsRasterStatsZonalTest(ProcessingMCPTestBase):
         self.assertEqual(result["summary"]["mode"], "in_place")
         self.assertEqual(result["summary"]["output_layer_id"], vector_layer.id())
 
-    @patch("processingmcpserver.mcp_tools.QgsApplication.processingRegistry")
+    @patch("processingmcpserver.mcp_tools.mcp_tools_raster_stats_zonal.QgsApplication.processingRegistry")
     def test_failure_when_zonalstatisticsfb_unavailable(self, mock_processing_registry):
         """验证 when zonalstatisticsfb unavailable 的失败场景。"""
         tools = self.build_tools()
@@ -135,7 +135,7 @@ class ToolsRasterStatsZonalTest(ProcessingMCPTestBase):
         mock_processing_registry.return_value = _FakeProcessingRegistry([])
 
         with (
-            patch("processingmcpserver.mcp_tools._PROCESSING_INITIALIZED", True),
+            patch("processingmcpserver.mcp_tools.mcp_tools_raster_stats_zonal._PROCESSING_INITIALIZED", True),
             self.assertRaises(Exception) as ctx,
         ):
             tools.raster_stats_zonal(

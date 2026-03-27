@@ -11,7 +11,7 @@ class ToolsProcessingExecuteOnLayersTest(ProcessingMCPTestBase):
         """验证目标能力已完成注册。"""
         assert_tool_registered(self, "processing_execute_on_layers")
 
-    @patch("processingmcpserver.mcp_tools.processing.run")
+    @patch("processingmcpserver.mcp_tools.mcp_tools_processing_execute_on_layers.processing.run")
     def test_success_default_safety_policy(self, mock_run):
         """验证 default safety policy 的成功场景。"""
         tools = self.build_tools()
@@ -36,7 +36,7 @@ class ToolsProcessingExecuteOnLayersTest(ProcessingMCPTestBase):
         self.assertFalse(result["safety_policy"]["allow_disk_write"])
         self.assertFalse(result["safety_policy"]["allow_in_place_edit"])
 
-    @patch("processingmcpserver.mcp_tools.processing.run")
+    @patch("processingmcpserver.mcp_tools.mcp_tools_processing_execute_on_layers.processing.run")
     def test_batch_mode_mismatch_reported(self, mock_run):
         """验证 batch mode mismatch reported 场景。"""
         tools = self.build_tools()
@@ -55,7 +55,7 @@ class ToolsProcessingExecuteOnLayersTest(ProcessingMCPTestBase):
         self.assertEqual(result["success_count"], 1)
         self.assertEqual(result["failure_count"], 1)
 
-    @patch("processingmcpserver.mcp_tools.processing.run")
+    @patch("processingmcpserver.mcp_tools.mcp_tools_processing_execute_on_layers.processing.run")
     def test_explicit_allow_disk_write_and_in_place(self, mock_run):
         """验证 explicit allow disk write and in place 场景。"""
         tools = self.build_tools()
@@ -105,7 +105,7 @@ class ToolsProcessingExecuteOnLayersTest(ProcessingMCPTestBase):
             )
         self.assertIn("Layer not found", str(ctx.exception))
 
-    @patch("processingmcpserver.mcp_tools.processing.run")
+    @patch("processingmcpserver.mcp_tools.mcp_tools_processing_execute_on_layers.processing.run")
     def test_failure_propagates_processing_runtime_error(self, mock_run):
         """验证 propagates processing runtime error 的失败场景。"""
         tools = self.build_tools()

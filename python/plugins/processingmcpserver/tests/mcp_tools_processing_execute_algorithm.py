@@ -11,7 +11,7 @@ class ToolsProcessingExecuteAlgorithmTest(ProcessingMCPTestBase):
         """验证目标能力已完成注册。"""
         assert_tool_registered(self, "processing_execute_algorithm")
 
-    @patch("processingmcpserver.mcp_tools.processing.run")
+    @patch("processingmcpserver.mcp_tools.mcp_tools_processing_execute_algorithm.processing.run")
     def test_success_default_rewrites_disk_output_and_blocks_in_place(self, mock_run):
         """验证 default rewrites disk output and blocks in place 的成功场景。"""
         tools = self.build_tools()
@@ -34,7 +34,7 @@ class ToolsProcessingExecuteAlgorithmTest(ProcessingMCPTestBase):
         self.assertFalse(result["safety_policy"]["allow_in_place_edit"])
         self.assertTrue(result["warnings"])
 
-    @patch("processingmcpserver.mcp_tools.processing.run")
+    @patch("processingmcpserver.mcp_tools.mcp_tools_processing_execute_algorithm.processing.run")
     def test_success_allows_disk_write_when_explicit(self, mock_run):
         """验证 allows disk write when explicit 的成功场景。"""
         tools = self.build_tools()
@@ -68,7 +68,7 @@ class ToolsProcessingExecuteAlgorithmTest(ProcessingMCPTestBase):
             )
         self.assertIn("parameters must be an object", str(ctx.exception))
 
-    @patch("processingmcpserver.mcp_tools.processing.run")
+    @patch("processingmcpserver.mcp_tools.mcp_tools_processing_execute_algorithm.processing.run")
     def test_failure_propagates_processing_runtime_error(self, mock_run):
         """验证 propagates processing runtime error 的失败场景。"""
         tools = self.build_tools()

@@ -89,7 +89,7 @@ class ToolsVectorTableUpdateRecordsTest(ProcessingMCPTestBase):
             )
         self.assertIn("Ambiguous layer reference", str(ctx.exception))
 
-    @patch("processingmcpserver.mcp_tools.QgsExpression")
+    @patch("processingmcpserver.mcp_tools.mcp_tools_vector_table_update_records.QgsExpression")
     def test_failure_where_eval_error(self, mock_expression_class):
         """验证 where eval error 的失败场景。"""
         tools = self.build_tools()
