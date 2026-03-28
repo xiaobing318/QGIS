@@ -8,11 +8,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsVectorCheckValidityReportTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """验证目标能力已完成注册。"""
+        """Ensure the target capability is registered."""
         assert_tool_registered(self, "vector_check_validity_report")
 
     def test_success_clean_layer(self):
-        """验证 clean layer 的成功场景。"""
+        """Verify the successful path for clean layer."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("validity_clean")
 
@@ -29,7 +29,7 @@ class ToolsVectorCheckValidityReportTest(ProcessingMCPTestBase):
         self.assertEqual(report["crs"], "EPSG:4326")
 
     def test_detects_duplicates_and_long_field_names(self):
-        """验证 duplicates and long field names 的成功场景。"""
+        """Verify the successful path for duplicates and long field names."""
         tools = self.build_tools()
         layer = QgsVectorLayer(
             "Point?crs=EPSG:4326&field=very_long_field_name:string(32)",

@@ -68,11 +68,11 @@ TOOL_NAME = 'vector_add_layers'
 TOOL_DOC = '???批量把多个矢量数据源加载到当前 QGIS 工程。 ?????paths 是待加载路径数组，provider 默认 ogr，skip_invalid 控制遇到坏数据时是跳过还是整体失败。 ?????至少提供一个可访问路径，且对应数据源应能被 provider 识别。 ??????会向当前工程新增多个矢量图层，但不会改写源数据文件。 ?????skip_invalid=true 时会尽量继续加载其余路径；skip_invalid=false 时任何一个失败都会报错终止。 ?????返回 requested_count、loaded_count、failed_count，以及 loaded 和 failed 的逐项结果。'
 
 def vector_add_layers(self, paths: list[str], provider: str = "ogr", skip_invalid: bool = True) -> dict[str, Any]:
-    """执行矢量相关的 add layers 逻辑。"""
+    """Handle multiple vector layers."""
     return self._run(self._vector_add_layers_impl, paths, provider, skip_invalid)
 
 def _vector_add_layers_impl(self, paths: list[str], provider: str, skip_invalid: bool) -> dict[str, Any]:
-    """执行矢量相关的 add layers impl 逻辑。"""
+    """Build the multiple vector layers."""
     loaded: list[dict[str, Any]] = []
     failed: list[dict[str, Any]] = []
     for path in paths or []:
@@ -85,7 +85,7 @@ def _vector_add_layers_impl(self, paths: list[str], provider: str, skip_invalid:
     return {"requested_count": len(paths or []), "loaded_count": len(loaded), "failed_count": len(failed), "loaded": loaded, "failed": failed}
 
 def _vector_add_layer_impl(self, path: str, provider: str = "ogr", name: str | None = None) -> dict[str, Any]:
-    """执行矢量相关的 add layer impl 逻辑。"""
+    """Build the vector layer."""
     layer = QgsVectorLayer(path, name or Path(path).stem, provider)
     if not layer.isValid():
         raise Exception(f"Layer is not valid: {path}")
@@ -94,7 +94,7 @@ def _vector_add_layer_impl(self, path: str, provider: str = "ogr", name: str | N
 
 @staticmethod
 def _layer_type_token(layer: QgsMapLayer) -> str:
-    """执行图层相关的 type token 逻辑。"""
+    """Handle layer type token."""
     if layer.type() == QgsMapLayer.VectorLayer:
         return f"vector_{int(layer.geometryType())}"
     if layer.type() == QgsMapLayer.RasterLayer:

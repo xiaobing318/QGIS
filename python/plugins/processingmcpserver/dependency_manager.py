@@ -42,13 +42,13 @@ from processingmcpserver.dependency_reporting import (
 
 
 def _write_dependency_report(result: DependencyCheckResult) -> None:
-    """写入依赖报告 JSON 文件。"""
+    """Write the dependency report JSON file."""
     report_path = processing_mcp_dependency_report_file_path()
     _write_dependency_report_impl(report_path, result)
 
 
 def _log_result(result: DependencyCheckResult) -> None:
-    """输出依赖检查结论与关键运行时上下文日志。"""
+    """Log the dependency check summary and key runtime context."""
     report_path = processing_mcp_dependency_report_file_path()
     _log_result_impl(report_path, result)
 
@@ -56,7 +56,7 @@ def _log_result(result: DependencyCheckResult) -> None:
 def ensure_processing_mcp_dependencies(
     config: ProcessingMCPServerDependencies,
 ) -> DependencyCheckResult:
-    """执行依赖检查并按配置自动安装，副作用是写报告与日志。"""
+    """Run dependency checks and auto-install when configured; this writes the report and logs."""
     environment = _collect_python_environment()
     (
         pip_python_executable,

@@ -68,11 +68,11 @@ TOOL_NAME = 'raster_stats_basic'
 TOOL_DOC = '???读取栅格单个波段的基础统计量。 ?????layer_ref 指向栅格图层，band 指定波段号，默认 1。 ?????目标图层必须存在且为栅格，指定波段必须有效。 ??????无写操作，只读取栅格波段统计信息。 ?????无。 ?????返回目标波段的最小值、最大值、均值、标准差等基础统计摘要。'
 
 def raster_stats_basic(self, layer_ref: str, band: int = 1) -> dict[str, Any]:
-    """执行栅格相关的 stats basic 逻辑。"""
+    """Handle basic raster statistics."""
     return self._run(self._raster_stats_basic_impl, layer_ref, band)
 
 def _raster_stats_basic_impl(self, layer_ref: str, band: int) -> dict[str, Any]:
-    """执行栅格相关的 stats basic impl 逻辑。"""
+    """Build the basic raster statistics."""
     layer = self._resolve_raster_layer_ref(layer_ref)
     band_number = max(1, self._safe_int(band, 1))
     stats = layer.dataProvider().bandStatistics(band_number)
@@ -80,7 +80,7 @@ def _raster_stats_basic_impl(self, layer_ref: str, band: int) -> dict[str, Any]:
 
 @staticmethod
 def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[str, Any] | None = None, warnings: list[str] | None = None, **extra) -> dict[str, Any]:
-    """执行 ok result 相关逻辑。"""
+    """Handle ok result."""
     payload: dict[str, Any] = {"ok": True, "tool": tool, "summary": summary or {}, "outputs": outputs or {}}
     if warnings is not None:
         payload["warnings"] = warnings
@@ -88,7 +88,7 @@ def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[s
     return payload
 
 def _resolve_raster_layer_ref(self, layer_ref: Any) -> QgsRasterLayer:
-    """解析 raster layer ref。"""
+    """Resolve raster layer ref."""
     layer = self._resolve_layer_ref(layer_ref)
     if layer.type() != QgsMapLayer.RasterLayer:
         raise Exception(f"Layer is not a raster layer: {layer_ref}")
@@ -96,14 +96,14 @@ def _resolve_raster_layer_ref(self, layer_ref: Any) -> QgsRasterLayer:
 
 @staticmethod
 def _safe_int(value: Any, default: int) -> int:
-    """执行 safe int 相关逻辑。"""
+    """Handle safe int."""
     try:
         return int(value)
     except (TypeError, ValueError):
         return default
 
 def _resolve_layer_ref(self, layer_ref: Any) -> QgsMapLayer:
-    """解析 layer ref。"""
+    """Resolve layer ref."""
     if isinstance(layer_ref, QgsMapLayer):
         return layer_ref
     text = str(layer_ref).strip() if layer_ref is not None else ""

@@ -68,11 +68,11 @@ TOOL_NAME = 'layer_get_details'
 TOOL_DOC = '???按图层 id 或图层名读取单个图层的详细元数据。 ?????layer_ref 可以是唯一 layer id，也可以是能唯一解析的图层名称。 ?????目标图层必须已经加载到当前工程，名称引用不能歧义。 ??????无写操作，只读取图层元数据与字段摘要。 ?????无。 ?????返回 id、name、type、provider、source、crs，以及矢量的 fields 和 feature_count 或栅格的尺寸与波段数。'
 
 def layer_get_details(self, layer_ref: str) -> dict[str, Any]:
-    """执行图层相关的 get details 逻辑。"""
+    """Handle layer details."""
     return self._run(self._layer_get_details_impl, layer_ref)
 
 def _layer_get_details_impl(self, layer_ref: str) -> dict[str, Any]:
-    """执行图层相关的 get details impl 逻辑。"""
+    """Build the layer details."""
     layer = self._resolve_layer_ref(layer_ref)
     result: dict[str, Any] = {
         "id": layer.id(),
@@ -93,7 +93,7 @@ def _layer_get_details_impl(self, layer_ref: str) -> dict[str, Any]:
 
 @staticmethod
 def _layer_type_token(layer: QgsMapLayer) -> str:
-    """执行图层相关的 type token 逻辑。"""
+    """Handle layer type token."""
     if layer.type() == QgsMapLayer.VectorLayer:
         return f"vector_{int(layer.geometryType())}"
     if layer.type() == QgsMapLayer.RasterLayer:
@@ -101,7 +101,7 @@ def _layer_type_token(layer: QgsMapLayer) -> str:
     return str(int(layer.type()))
 
 def _resolve_layer_ref(self, layer_ref: Any) -> QgsMapLayer:
-    """解析 layer ref。"""
+    """Resolve layer ref."""
     if isinstance(layer_ref, QgsMapLayer):
         return layer_ref
     text = str(layer_ref).strip() if layer_ref is not None else ""

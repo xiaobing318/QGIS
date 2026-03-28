@@ -15,12 +15,12 @@ T = TypeVar("T")
 
 
 def _log_warning(message: str) -> None:
-    """输出配置相关警告日志，副作用是写入 QGIS 日志面板。"""
+    """Log a configuration warning to the QGIS message log."""
     QgsMessageLog.logMessage(message, MCP_LOG_CATEGORY, Qgis.Warning)
 
 
 def _parse_bool(value: object) -> tuple[bool, bool]:
-    """解析布尔值，支持 bool/数字/常见字符串表达。"""
+    """Parse booleans from bools, numbers, and common string forms."""
     if isinstance(value, bool):
         return True, value
     if isinstance(value, str):
@@ -35,7 +35,7 @@ def _parse_bool(value: object) -> tuple[bool, bool]:
 
 
 def _parse_transport(value: object) -> tuple[bool, str]:
-    """解析 transport 字段并归一化为受支持的传输类型。"""
+    """Parse the transport field and normalize it to a supported transport."""
     if not isinstance(value, str):
         return False, ""
     text = value.strip().lower()
@@ -47,7 +47,7 @@ def _parse_transport(value: object) -> tuple[bool, str]:
 
 
 def _parse_string(value: object) -> tuple[bool, str]:
-    """解析非空字符串。"""
+    """Parse a non-empty string."""
     if not isinstance(value, str):
         return False, ""
     text = value.strip()
@@ -57,7 +57,7 @@ def _parse_string(value: object) -> tuple[bool, str]:
 
 
 def _parse_log_level(value: object) -> tuple[bool, str]:
-    """解析日志级别并统一为大写字符串。"""
+    """Parse a log level and normalize it to uppercase."""
     ok, text = _parse_string(value)
     if not ok:
         return False, ""
@@ -65,7 +65,7 @@ def _parse_log_level(value: object) -> tuple[bool, str]:
 
 
 def _parse_string_list_or_none(value: object) -> tuple[bool, Optional[list[str]]]:
-    """解析字符串列表；空值返回 `None` 表示禁用对应配置。"""
+    """Parse a string list; empty values return `None` to disable the setting."""
     if value is None:
         return True, None
     if isinstance(value, str):
@@ -81,10 +81,10 @@ def _parse_string_list_or_none(value: object) -> tuple[bool, Optional[list[str]]
 
 
 def _int_parser(min_value: int, max_value: int) -> Callable[[object], tuple[bool, int]]:
-    """构造整数解析器，限制取值范围在给定最小/最大值内。"""
+    """Build an integer parser constrained to the given range."""
 
     def _parse(value: object) -> tuple[bool, int]:
-        """执行单个值的整数解析与范围校验。"""
+        """Parse one value as an integer and validate its range."""
         if isinstance(value, bool):
             return False, 0
         try:
@@ -106,7 +106,7 @@ def _resolve_value(
     parser: Callable[[object], tuple[bool, T]],
     sources: dict[str, str],
 ) -> T:
-    """按 JSON > Settings > Default 的优先级解析配置并记录来源。"""
+    """Resolve configuration with JSON > Settings > Default precedence and record the source."""
     candidates: list[tuple[str, object]] = [
         (SOURCE_JSON, json_value),
         (SOURCE_SETTINGS, settings_value),

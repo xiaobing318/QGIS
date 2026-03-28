@@ -68,7 +68,7 @@ TOOL_NAME = 'vector_prepare_work_layer'
 TOOL_DOC = '???把输入矢量图层整理成带任务标签的临时工作层，并串行执行 shapefile 稳定模板的标准化前置动作。 ?????layer_ref 与 path 二选一；task_name 用于标记工作层和运行摘要；target_crs 控制目标坐标系；normalize_field_names 控制是否把字段名压到 10 字符以内；multipart_policy 可选 keep 或 singleparts。 ?????目标图层必须存在或 path 指向有效矢量数据文件；target_crs 若提供必须可被 QGIS 解析。 ??????会在当前工程新增一个临时工作层，并对该临时层执行空几何清理、几何修复、重复几何清理、重投影和可选字段改名/拆多部件操作。 ?????默认不写盘；所有修改都落在临时工作层上，原始输入图层和源文件不会被直接改写。 ?????返回 output_layer_id、field_name_mapping、initial_report、final_report，以及各标准化步骤的影响计数。'
 
 def vector_prepare_work_layer(self, layer_ref: str = "", path: str = "", task_name: str = "", target_crs: str | None = None, normalize_field_names: bool = False, multipart_policy: str = "keep") -> dict[str, Any]:
-    """执行矢量相关的 prepare work layer 逻辑。"""
+    """Handle a vector work layer."""
     return self._run(self._vector_prepare_work_layer_impl, layer_ref, path, task_name, target_crs, normalize_field_names, multipart_policy)
 
 def _vector_prepare_work_layer_impl(
@@ -80,7 +80,7 @@ def _vector_prepare_work_layer_impl(
     normalize_field_names: bool,
     multipart_policy: str,
 ) -> dict[str, Any]:
-    """执行矢量相关的 prepare work layer impl 逻辑。"""
+    """Implement the vector work layer logic."""
     policy = (multipart_policy or "keep").strip().lower() or "keep"
     if policy not in {"keep", "singleparts"}:
         raise Exception(
@@ -206,7 +206,7 @@ def _append_shapefile_run_step(
     warnings: list[str] | None = None,
     status: str | None = None,
 ) -> None:
-    """追加 shapefile run summary step。"""
+    """Handle append shapefile run step."""
     payload = {
         "step": step,
         "generated_at": self._utc_now_iso(),
@@ -223,7 +223,7 @@ def _append_shapefile_run_step(
 
 @staticmethod
 def _copy_layer_name(layer: QgsMapLayer, suffix: str = "copy") -> str:
-    """复制 layer name。"""
+    """Handle copy layer name."""
     base_name = (layer.name() or "layer").strip() or "layer"
     clean_suffix = suffix.strip().replace(" ", "_") if suffix else "copy"
     return f"{base_name}_{clean_suffix}"
@@ -234,7 +234,7 @@ def _ensure_shapefile_run_summary(
     status: str | None = None,
     inputs: dict[str, Any] | None = None,
 ) -> str:
-    """确保 shapefile run summary 已初始化。"""
+    """Handle ensure shapefile run summary."""
     normalized = (task_name or self._shapefile_run_summary.get("task_name") or "").strip()
     if (
         not self._shapefile_run_summary.get("task_name")
@@ -260,7 +260,7 @@ def _ensure_shapefile_run_summary(
 def _explode_multipart_layer(
     self, layer: QgsVectorLayer, task_name: str
 ) -> tuple[QgsVectorLayer, int]:
-    """拆解 multipart 图层。"""
+    """Handle explode multipart layer."""
     self._ensure_processing_runtime()
     result = processing.run(
         "native:multiparttosingleparts",
@@ -293,7 +293,7 @@ def _inspect_vector_layer_validity(
     required_fields: list[str] | None = None,
     expected_crs: str | None = None,
 ) -> dict[str, Any]:
-    """执行矢量图层体检。"""
+    """Inspect vector layer validity."""
     required = [str(item).strip() for item in (required_fields or []) if str(item).strip()]
     expected = self._parse_target_crs(expected_crs) if expected_crs else None
     feature_count = layer.featureCount()
@@ -446,7 +446,7 @@ def _inspect_vector_layer_validity(
     }
 
 def _make_layer_geometries_valid(self, layer: QgsVectorLayer) -> int:
-    """修复无效几何。"""
+    """Handle make layer geometries valid."""
     def op() -> int:
         fixed_count = 0
         for feature in layer.getFeatures():
@@ -473,7 +473,7 @@ def _make_layer_geometries_valid(self, layer: QgsVectorLayer) -> int:
 def _materialize_vector_layer(
     self, layer: QgsVectorLayer, suffix: str = "copy"
 ) -> QgsVectorLayer:
-    """执行 materialize vector layer 相关逻辑。"""
+    """Handle materialize vector layer."""
     cloned_layer = layer.materialize(QgsFeatureRequest())
     if cloned_layer is None or not cloned_layer.isValid():
         raise Exception(f"Failed to materialize vector layer copy: {layer.id()}")
@@ -483,14 +483,14 @@ def _materialize_vector_layer(
 
 @staticmethod
 def _normalize_output_stem(text: str) -> str:
-    """归一化输出文件名。"""
+    """Handle normalize output stem."""
     value = re.sub(r"[^0-9A-Za-z_]+", "_", text or "")
     value = value.strip("_")
     return value or "output"
 
 @staticmethod
 def _normalize_task_name(task_name: str | None, fallback: str = "") -> str:
-    """归一化 task_name。"""
+    """Handle normalize task name."""
     value = (task_name or "").strip()
     if value:
         return value
@@ -498,7 +498,7 @@ def _normalize_task_name(task_name: str | None, fallback: str = "") -> str:
 
 @staticmethod
 def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[str, Any] | None = None, warnings: list[str] | None = None, **extra) -> dict[str, Any]:
-    """执行 ok result 相关逻辑。"""
+    """Handle ok result."""
     payload: dict[str, Any] = {"ok": True, "tool": tool, "summary": summary or {}, "outputs": outputs or {}}
     if warnings is not None:
         payload["warnings"] = warnings
@@ -508,7 +508,7 @@ def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[s
 def _parse_target_crs(
     self, target_crs: str | None
 ) -> QgsCoordinateReferenceSystem | None:
-    """解析目标 CRS。"""
+    """Handle parse target crs."""
     value = (target_crs or "").strip()
     if not value:
         return None
@@ -518,14 +518,14 @@ def _parse_target_crs(
     return crs
 
 def _record_run_output(self, output_key: str, value: str) -> None:
-    """记录运行输出列表。"""
+    """Handle record run output."""
     outputs = self._shapefile_run_summary.setdefault("outputs", {})
     bucket = outputs.setdefault(output_key, [])
     if value not in bucket:
         bucket.append(value)
 
 def _remove_duplicate_geometries(self, layer: QgsVectorLayer) -> int:
-    """删除重复几何。"""
+    """Remove duplicate geometries."""
     def op() -> int:
         seen_geometries: set[str] = set()
         fids: list[int] = []
@@ -549,7 +549,7 @@ def _remove_duplicate_geometries(self, layer: QgsVectorLayer) -> int:
     return int(self._apply_vector_edit(layer, op))
 
 def _remove_empty_geometries(self, layer: QgsVectorLayer) -> int:
-    """删除空几何要素。"""
+    """Remove empty geometries."""
     def op() -> int:
         fids: list[int] = []
         for feature in layer.getFeatures():
@@ -570,7 +570,7 @@ def _remove_empty_geometries(self, layer: QgsVectorLayer) -> int:
 def _rename_layer_fields_for_shapefile(
     self, layer: QgsVectorLayer
 ) -> dict[str, str]:
-    """将字段名收敛到 shapefile 约束。"""
+    """Handle rename layer fields for shapefile."""
     mapping: dict[str, str] = {}
     used_names: set[str] = set()
     for field in layer.fields():
@@ -604,7 +604,7 @@ def _reproject_layer_in_place(
     layer: QgsVectorLayer,
     target_crs: QgsCoordinateReferenceSystem,
 ) -> int:
-    """原位重投影当前图层。"""
+    """Handle reproject layer in place."""
     if not target_crs.isValid():
         return 0
     source_crs = layer.crs()
@@ -644,7 +644,7 @@ def _resolve_vector_source(
     layer_ref: str = "",
     path: str = "",
 ) -> tuple[QgsVectorLayer, str]:
-    """解析矢量来源。"""
+    """Resolve vector source."""
     if str(layer_ref).strip():
         layer = self._resolve_vector_layer_ref(layer_ref)
         return layer, layer.source()
@@ -666,7 +666,7 @@ def _tag_work_layer(
     source_path: str = "",
     temp_paths: list[str] | None = None,
 ) -> None:
-    """为工作层打标签。"""
+    """Handle tag work layer."""
     layer.setCustomProperty(
         "processingmcpserver/workflow/task_name",
         self._normalize_task_name(task_name, layer.name()),
@@ -683,7 +683,7 @@ def _tag_work_layer(
 
 @staticmethod
 def _serialize_value(value: Any) -> Any:
-    """序列化 value。"""
+    """Serialize values into JSON-friendly representations."""
     if value is None:
         return None
     if isinstance(value, (bool, int, float, str)):
@@ -716,7 +716,7 @@ def _serialize_value(value: Any) -> Any:
 
 @staticmethod
 def _utc_now_iso() -> str:
-    """返回 UTC ISO 时间。"""
+    """Return the current UTC timestamp in ISO 8601 format."""
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 def _reset_shapefile_run_summary(
@@ -725,7 +725,7 @@ def _reset_shapefile_run_summary(
     status: str,
     inputs: dict[str, Any] | None = None,
 ) -> str:
-    """重置 shapefile run summary。"""
+    """Handle reset shapefile run summary."""
     normalized = (task_name or "").strip()
     self._shapefile_run_summary = self._empty_shapefile_run_summary()
     self._shapefile_run_summary["task_name"] = normalized
@@ -739,7 +739,7 @@ def _coerce_vector_output_layer(
     output_value: Any,
     layer_name: str,
 ) -> QgsVectorLayer:
-    """将 processing 输出解析为矢量图层。"""
+    """Handle coerce vector output layer."""
     output_layer: QgsVectorLayer | None = None
     if isinstance(output_value, QgsVectorLayer):
         output_layer = output_value
@@ -763,11 +763,11 @@ def _coerce_vector_output_layer(
     return output_layer
 
 def _ensure_processing_runtime(self) -> None:
-    """确保 processing runtime 已就绪。"""
+    """Handle ensure processing runtime."""
     _ensure_processing_initialized()
 
 def _get_layer_temp_paths(self, layer: QgsMapLayer) -> list[str]:
-    """读取图层挂载的临时路径。"""
+    """Return the layer temp paths."""
     raw = self._layer_custom_property(
         layer,
         "processingmcpserver/workflow/temp_paths",
@@ -786,7 +786,7 @@ def _get_layer_temp_paths(self, layer: QgsMapLayer) -> list[str]:
 
 @staticmethod
 def _layer_custom_property(layer: QgsMapLayer, key: str, default: Any = None) -> Any:
-    """读取图层 custom property。"""
+    """Handle layer custom property."""
     if hasattr(layer, "customProperty"):
         try:
             return layer.customProperty(key, default)
@@ -795,7 +795,7 @@ def _layer_custom_property(layer: QgsMapLayer, key: str, default: Any = None) ->
     return default
 
 def _collect_null_attribute_fields(self, layer: QgsVectorLayer) -> list[str]:
-    """收集存在空值的字段。"""
+    """Handle collect null attribute fields."""
     flagged: list[str] = []
     field_names = [field.name() for field in layer.fields()]
     if not field_names:
@@ -809,7 +809,7 @@ def _collect_null_attribute_fields(self, layer: QgsVectorLayer) -> list[str]:
 
 @staticmethod
 def _display_geometry_type(layer: QgsVectorLayer) -> str:
-    """返回矢量图层几何类型标识。"""
+    """Handle display geometry type."""
     return {
         Qgis.GeometryType.Point: "point",
         Qgis.GeometryType.Line: "line",
@@ -820,15 +820,15 @@ def _display_geometry_type(layer: QgsVectorLayer) -> str:
 
 @staticmethod
 def _field_index(layer: QgsVectorLayer, field_name: str) -> int:
-    """执行 field index 相关逻辑。"""
+    """Handle field index."""
     return layer.fields().indexFromName(field_name)
 
 def _long_field_names(self, layer: QgsVectorLayer) -> list[str]:
-    """返回超出 shapefile 约束的字段名。"""
+    """Handle long field names."""
     return [field.name() for field in layer.fields() if len(field.name()) > 10]
 
 def _apply_vector_edit(self, layer: QgsVectorLayer, operation) -> Any:
-    """执行 apply vector edit 相关逻辑。"""
+    """Handle apply vector edit."""
     started_here = self._begin_vector_edit(layer)
     try:
         result = operation()
@@ -844,7 +844,7 @@ def _normalize_shapefile_field_name(
     field_name: str,
     used_names: set[str],
 ) -> str:
-    """归一化 shapefile 字段名。"""
+    """Handle normalize shapefile field name."""
     clean = re.sub(r"[^0-9A-Za-z_]+", "_", field_name or "")
     clean = clean.strip("_") or "field"
     candidate = clean[:10]
@@ -857,18 +857,18 @@ def _normalize_shapefile_field_name(
     return candidate
 
 def _resolve_filesystem_query_path(self, path: str | Path) -> Path:
-    """解析 filesystem query path。"""
+    """Resolve filesystem query path."""
     return self._normalize_filesystem_path(path)
 
 def _resolve_vector_layer_ref(self, layer_ref: Any) -> QgsVectorLayer:
-    """解析 vector layer ref。"""
+    """Resolve vector layer ref."""
     layer = self._resolve_layer_ref(layer_ref)
     if layer.type() != QgsMapLayer.VectorLayer:
         raise Exception(f"Layer is not a vector layer: {layer_ref}")
     return layer
 
 def _empty_shapefile_run_summary(self) -> dict[str, Any]:
-    """创建空的 shapefile run summary。"""
+    """Build an empty shapefile run summary record."""
     return {
         "schema_version": "1.0.0",
         "generated_at": self._utc_now_iso(),
@@ -887,7 +887,7 @@ def _empty_shapefile_run_summary(self) -> dict[str, Any]:
 
 @staticmethod
 def _begin_vector_edit(layer: QgsVectorLayer) -> bool:
-    """执行 begin vector edit 相关逻辑。"""
+    """Handle begin vector edit."""
     if layer.isEditable():
         return False
     if not layer.startEditing():
@@ -896,7 +896,7 @@ def _begin_vector_edit(layer: QgsVectorLayer) -> bool:
 
 @staticmethod
 def _finish_vector_edit(layer: QgsVectorLayer, started_here: bool) -> None:
-    """执行 finish vector edit 相关逻辑。"""
+    """Handle finish vector edit."""
     if not started_here:
         return
     if layer.commitChanges():
@@ -907,14 +907,14 @@ def _finish_vector_edit(layer: QgsVectorLayer, started_here: bool) -> None:
 
 @staticmethod
 def _normalize_filesystem_path(path: str | Path) -> Path:
-    """归一化 filesystem path。"""
+    """Handle normalize filesystem path."""
     candidate = path if isinstance(path, Path) else Path(str(path).strip()).expanduser()
     if not candidate.is_absolute():
         candidate = Path.cwd() / candidate
     return candidate.resolve(strict=False)
 
 def _resolve_layer_ref(self, layer_ref: Any) -> QgsMapLayer:
-    """解析 layer ref。"""
+    """Resolve layer ref."""
     if isinstance(layer_ref, QgsMapLayer):
         return layer_ref
     text = str(layer_ref).strip() if layer_ref is not None else ""

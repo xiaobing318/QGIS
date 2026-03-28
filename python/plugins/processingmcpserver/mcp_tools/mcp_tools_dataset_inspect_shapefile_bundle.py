@@ -68,7 +68,7 @@ TOOL_NAME = 'dataset_inspect_shapefile_bundle'
 TOOL_DOC = '???扫描目录或单个 `.shp` 文件，检查 shapefile bundle 及其 sidecar 文件是否完整，并返回结构化风险摘要。 ?????path 可以是目录或单个 `.shp` 文件，recursive 控制目录递归扫描，name_glob 过滤候选文件，limit 控制返回上限，task_name 可把结果写入最近一次运行摘要。 ?????path 必须存在；若传文件则必须是 `.shp`。 ??????无写操作，只读取 shapefile bundle 成员信息和矢量元数据。 ?????limit 会被内部阈值裁剪；task_name 非空时会更新 qgis://workflow/shapefile/run-summary。 ?????返回 bundles 数组，元素包含 `.shp/.shx/.dbf/.prj/.cpg` 完整性、大小、CRS、几何类型、字段名、命名风险和 warnings。'
 
 def dataset_inspect_shapefile_bundle(self, path: str, recursive: bool = False, name_glob: str = "*.shp", limit: int = DEFAULT_DATASET_LIMIT, task_name: str = "") -> dict[str, Any]:
-    """执行数据集相关的 inspect shapefile bundle 逻辑。"""
+    """Handle a shapefile bundle."""
     return self._run(self._dataset_inspect_shapefile_bundle_impl, path, recursive, name_glob, limit, task_name)
 
 def _dataset_inspect_shapefile_bundle_impl(
@@ -79,7 +79,7 @@ def _dataset_inspect_shapefile_bundle_impl(
     limit: int,
     task_name: str,
 ) -> dict[str, Any]:
-    """执行数据集相关的 inspect shapefile bundle impl 逻辑。"""
+    """Implement the shapefile bundle logic."""
     target = self._resolve_filesystem_query_path(path)
     if not target.exists():
         raise Exception(f"Path not found: {path}")
@@ -162,7 +162,7 @@ def _append_shapefile_run_step(
     warnings: list[str] | None = None,
     status: str | None = None,
 ) -> None:
-    """追加 shapefile run summary step。"""
+    """Handle append shapefile run step."""
     payload = {
         "step": step,
         "generated_at": self._utc_now_iso(),
@@ -183,7 +183,7 @@ def _ensure_shapefile_run_summary(
     status: str | None = None,
     inputs: dict[str, Any] | None = None,
 ) -> str:
-    """确保 shapefile run summary 已初始化。"""
+    """Handle ensure shapefile run summary."""
     normalized = (task_name or self._shapefile_run_summary.get("task_name") or "").strip()
     if (
         not self._shapefile_run_summary.get("task_name")
@@ -207,7 +207,7 @@ def _ensure_shapefile_run_summary(
     return normalized
 
 def _inspect_shapefile_bundle_entry(self, shp_path: Path) -> dict[str, Any]:
-    """检查单个 shapefile bundle。"""
+    """Inspect shapefile bundle entry."""
     required_suffixes = [".shp", ".shx", ".dbf"]
     optional_suffixes = [".prj", ".cpg"]
     members: dict[str, dict[str, Any]] = {}
@@ -274,7 +274,7 @@ def _inspect_shapefile_bundle_entry(self, shp_path: Path) -> dict[str, Any]:
     }
 
 def _normalize_dataset_limit(self, limit: Any | None) -> tuple[int, int, bool]:
-    """归一化 dataset limit。"""
+    """Handle normalize dataset limit."""
     requested = self._safe_int(limit, self.DEFAULT_DATASET_LIMIT)
     normalized = max(0, requested)
     applied = min(normalized, self.MAX_DATASET_LIMIT)
@@ -282,13 +282,13 @@ def _normalize_dataset_limit(self, limit: Any | None) -> tuple[int, int, bool]:
 
 @staticmethod
 def _normalize_name_glob(name_glob: str | None) -> str:
-    """归一化 name glob。"""
+    """Handle normalize name glob."""
     value = (name_glob or "*").strip()
     return value or "*"
 
 @staticmethod
 def _normalize_task_name(task_name: str | None, fallback: str = "") -> str:
-    """归一化 task_name。"""
+    """Handle normalize task name."""
     value = (task_name or "").strip()
     if value:
         return value
@@ -296,7 +296,7 @@ def _normalize_task_name(task_name: str | None, fallback: str = "") -> str:
 
 @staticmethod
 def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[str, Any] | None = None, warnings: list[str] | None = None, **extra) -> dict[str, Any]:
-    """执行 ok result 相关逻辑。"""
+    """Handle ok result."""
     payload: dict[str, Any] = {"ok": True, "tool": tool, "summary": summary or {}, "outputs": outputs or {}}
     if warnings is not None:
         payload["warnings"] = warnings
@@ -304,12 +304,12 @@ def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[s
     return payload
 
 def _resolve_filesystem_query_path(self, path: str | Path) -> Path:
-    """解析 filesystem query path。"""
+    """Resolve filesystem query path."""
     return self._normalize_filesystem_path(path)
 
 @staticmethod
 def _serialize_value(value: Any) -> Any:
-    """序列化 value。"""
+    """Serialize values into JSON-friendly representations."""
     if value is None:
         return None
     if isinstance(value, (bool, int, float, str)):
@@ -342,7 +342,7 @@ def _serialize_value(value: Any) -> Any:
 
 @staticmethod
 def _utc_now_iso() -> str:
-    """返回 UTC ISO 时间。"""
+    """Return the current UTC timestamp in ISO 8601 format."""
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 def _reset_shapefile_run_summary(
@@ -351,7 +351,7 @@ def _reset_shapefile_run_summary(
     status: str,
     inputs: dict[str, Any] | None = None,
 ) -> str:
-    """重置 shapefile run summary。"""
+    """Handle reset shapefile run summary."""
     normalized = (task_name or "").strip()
     self._shapefile_run_summary = self._empty_shapefile_run_summary()
     self._shapefile_run_summary["task_name"] = normalized
@@ -362,12 +362,12 @@ def _reset_shapefile_run_summary(
 
 @staticmethod
 def _bundle_member_path(shp_path: Path, suffix: str) -> Path:
-    """返回 bundle 成员路径。"""
+    """Handle bundle member path."""
     return shp_path.with_suffix(suffix)
 
 @staticmethod
 def _display_geometry_type(layer: QgsVectorLayer) -> str:
-    """返回矢量图层几何类型标识。"""
+    """Handle display geometry type."""
     return {
         Qgis.GeometryType.Point: "point",
         Qgis.GeometryType.Line: "line",
@@ -378,7 +378,7 @@ def _display_geometry_type(layer: QgsVectorLayer) -> str:
 
 @staticmethod
 def _safe_int(value: Any, default: int) -> int:
-    """执行 safe int 相关逻辑。"""
+    """Handle safe int."""
     try:
         return int(value)
     except (TypeError, ValueError):
@@ -386,14 +386,14 @@ def _safe_int(value: Any, default: int) -> int:
 
 @staticmethod
 def _normalize_filesystem_path(path: str | Path) -> Path:
-    """归一化 filesystem path。"""
+    """Handle normalize filesystem path."""
     candidate = path if isinstance(path, Path) else Path(str(path).strip()).expanduser()
     if not candidate.is_absolute():
         candidate = Path.cwd() / candidate
     return candidate.resolve(strict=False)
 
 def _empty_shapefile_run_summary(self) -> dict[str, Any]:
-    """创建空的 shapefile run summary。"""
+    """Build an empty shapefile run summary record."""
     return {
         "schema_version": "1.0.0",
         "generated_at": self._utc_now_iso(),

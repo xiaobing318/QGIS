@@ -89,7 +89,7 @@ IGNORED_TEST_FILES = {
 
 
 def _discover_test_modules() -> list[str]:
-    """发现测试目录中的测试模块。"""
+    """Discover test modules in the tests directory."""
     tests_dir = Path(__file__).resolve().parent
     return sorted(
         f"processingmcpserver.tests.{path.stem}"
@@ -99,7 +99,7 @@ def _discover_test_modules() -> list[str]:
 
 
 def _validate_test_modules() -> None:
-    """校验声明的测试模块列表与目录内容一致。"""
+    """Ensure the declared module list matches the directory contents."""
     discovered = _discover_test_modules()
     declared = sorted(TEST_MODULES)
     if discovered == declared:
@@ -118,7 +118,7 @@ def _validate_test_modules() -> None:
 
 
 def build_suite() -> unittest.TestSuite:
-    """Build full suite explicitly so filenames are unconstrained."""
+    """Build the full suite explicitly so filename patterns do not matter."""
     _validate_test_modules()
     loader = unittest.defaultTestLoader
     suite = unittest.TestSuite()
@@ -129,7 +129,7 @@ def build_suite() -> unittest.TestSuite:
 
 
 def run_from_qgis_console(verbosity: int = 2) -> unittest.result.TestResult:
-    """Run full processingmcpserver test suite from QGIS Python Console."""
+    """Run the full processingmcpserver test suite from the QGIS Python Console."""
     _ensure_qgis_test_app()
     runner = unittest.TextTestRunner(stream=sys.stdout, verbosity=verbosity)
     return runner.run(build_suite())
@@ -140,7 +140,7 @@ def load_tests(
     _standard_tests: unittest.TestSuite,
     _pattern: str | None,
 ) -> unittest.TestSuite:
-    """Expose aggregated suite for `python -m unittest ...`."""
+    """Expose the aggregated suite for `python -m unittest ...`."""
     return build_suite()
 
 

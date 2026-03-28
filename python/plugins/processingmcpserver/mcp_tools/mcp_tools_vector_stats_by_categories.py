@@ -68,11 +68,11 @@ TOOL_NAME = 'vector_stats_by_categories'
 TOOL_DOC = '???按一个或多个分类字段汇总记录数或数值字段统计，适合做分组分析。 ?????layer_ref 指向矢量图层，category_fields 是分类字段数组，values_field 可选；为空时通常只做分组计数。 ?????目标图层必须存在，分类字段必须存在；若提供 values_field，该字段也必须存在。 ??????无写操作，只读取要素属性并做分组汇总。 ?????无。 ?????返回按分类组合分组后的统计结果，便于模型理解类别分布。'
 
 def vector_stats_by_categories(self, layer_ref: str, category_fields: list[str], values_field: str | None = None) -> dict[str, Any]:
-    """执行矢量相关的 stats by categories 逻辑。"""
+    """Handle vector statistics by category."""
     return self._run(self._vector_stats_by_categories_impl, layer_ref, category_fields, values_field)
 
 def _vector_stats_by_categories_impl(self, layer_ref: str, category_fields: list[str], values_field: str | None) -> dict[str, Any]:
-    """执行矢量相关的 stats by categories impl 逻辑。"""
+    """Build the vector statistics by category."""
     layer = self._resolve_vector_layer_ref(layer_ref)
     if not category_fields:
         raise Exception("category_fields is required")
@@ -112,12 +112,12 @@ def _vector_stats_by_categories_impl(self, layer_ref: str, category_fields: list
 
 @staticmethod
 def _field_index(layer: QgsVectorLayer, field_name: str) -> int:
-    """执行 field index 相关逻辑。"""
+    """Handle field index."""
     return layer.fields().indexFromName(field_name)
 
 @staticmethod
 def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[str, Any] | None = None, warnings: list[str] | None = None, **extra) -> dict[str, Any]:
-    """执行 ok result 相关逻辑。"""
+    """Handle ok result."""
     payload: dict[str, Any] = {"ok": True, "tool": tool, "summary": summary or {}, "outputs": outputs or {}}
     if warnings is not None:
         payload["warnings"] = warnings
@@ -125,7 +125,7 @@ def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[s
     return payload
 
 def _resolve_vector_layer_ref(self, layer_ref: Any) -> QgsVectorLayer:
-    """解析 vector layer ref。"""
+    """Resolve vector layer ref."""
     layer = self._resolve_layer_ref(layer_ref)
     if layer.type() != QgsMapLayer.VectorLayer:
         raise Exception(f"Layer is not a vector layer: {layer_ref}")
@@ -133,7 +133,7 @@ def _resolve_vector_layer_ref(self, layer_ref: Any) -> QgsVectorLayer:
 
 @staticmethod
 def _serialize_value(value: Any) -> Any:
-    """序列化 value。"""
+    """Serialize values into JSON-friendly representations."""
     if value is None:
         return None
     if isinstance(value, (bool, int, float, str)):
@@ -165,7 +165,7 @@ def _serialize_value(value: Any) -> Any:
     return str(value)
 
 def _resolve_layer_ref(self, layer_ref: Any) -> QgsMapLayer:
-    """解析 layer ref。"""
+    """Resolve layer ref."""
     if isinstance(layer_ref, QgsMapLayer):
         return layer_ref
     text = str(layer_ref).strip() if layer_ref is not None else ""

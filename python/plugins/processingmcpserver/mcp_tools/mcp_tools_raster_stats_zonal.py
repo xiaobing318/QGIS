@@ -68,11 +68,11 @@ TOOL_NAME = 'raster_stats_zonal'
 TOOL_DOC = '???把栅格统计结果按分区写入矢量图层属性表，常用于区域统计。 ?????vector_layer_ref 指向分区矢量图层，raster_layer_ref 指向栅格图层，raster_band 指定波段，column_prefix 控制输出字段前缀，in_place 控制是否直接写回原矢量图层。 ?????矢量与栅格图层都必须存在，且空间关系应满足分区统计需求。 ??????会运行原生 zonal statistics 算法，并在矢量属性表增加统计字段；默认副本模式下生成新的输出图层。 ?????默认 in_place=false，会先生成副本图层并返回新的 output_layer_id；仅在明确要修改原图层时才把 in_place 设为 true。 ?????返回 summary.mode、algorithm、output_layer_id 和底层 Processing 结果对象。'
 
 def raster_stats_zonal(self, vector_layer_ref: str, raster_layer_ref: str, raster_band: int = 1, column_prefix: str = "z_", in_place: bool = False) -> dict[str, Any]:
-    """执行栅格相关的 stats zonal 逻辑。"""
+    """Handle zonal raster statistics."""
     return self._run(self._raster_stats_zonal_impl, vector_layer_ref, raster_layer_ref, raster_band, column_prefix, in_place)
 
 def _raster_stats_zonal_impl(self, vector_layer_ref: str, raster_layer_ref: str, raster_band: int, column_prefix: str, in_place: bool) -> dict[str, Any]:
-    """执行栅格相关的 stats zonal impl 逻辑。"""
+    """Build the zonal raster statistics."""
     vector_layer = self._resolve_vector_layer_ref(vector_layer_ref)
     raster_layer = self._resolve_raster_layer_ref(raster_layer_ref)
     self._ensure_processing_runtime()
@@ -103,7 +103,7 @@ def _raster_stats_zonal_impl(self, vector_layer_ref: str, raster_layer_ref: str,
 
 @staticmethod
 def _coerce_output_identifier(value: Any) -> str:
-    """执行 coerce output identifier 相关逻辑。"""
+    """Handle coerce output identifier."""
     if value is None:
         return ""
     if isinstance(value, str):
@@ -116,12 +116,12 @@ def _coerce_output_identifier(value: Any) -> str:
     return str(value)
 
 def _ensure_processing_runtime(self) -> None:
-    """确保 processing runtime 已就绪。"""
+    """Handle ensure processing runtime."""
     _ensure_processing_initialized()
 
 @staticmethod
 def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[str, Any] | None = None, warnings: list[str] | None = None, **extra) -> dict[str, Any]:
-    """执行 ok result 相关逻辑。"""
+    """Handle ok result."""
     payload: dict[str, Any] = {"ok": True, "tool": tool, "summary": summary or {}, "outputs": outputs or {}}
     if warnings is not None:
         payload["warnings"] = warnings
@@ -129,14 +129,14 @@ def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[s
     return payload
 
 def _resolve_raster_layer_ref(self, layer_ref: Any) -> QgsRasterLayer:
-    """解析 raster layer ref。"""
+    """Resolve raster layer ref."""
     layer = self._resolve_layer_ref(layer_ref)
     if layer.type() != QgsMapLayer.RasterLayer:
         raise Exception(f"Layer is not a raster layer: {layer_ref}")
     return layer
 
 def _resolve_vector_layer_ref(self, layer_ref: Any) -> QgsVectorLayer:
-    """解析 vector layer ref。"""
+    """Resolve vector layer ref."""
     layer = self._resolve_layer_ref(layer_ref)
     if layer.type() != QgsMapLayer.VectorLayer:
         raise Exception(f"Layer is not a vector layer: {layer_ref}")
@@ -144,7 +144,7 @@ def _resolve_vector_layer_ref(self, layer_ref: Any) -> QgsVectorLayer:
 
 @staticmethod
 def _safe_int(value: Any, default: int) -> int:
-    """执行 safe int 相关逻辑。"""
+    """Handle safe int."""
     try:
         return int(value)
     except (TypeError, ValueError):
@@ -152,7 +152,7 @@ def _safe_int(value: Any, default: int) -> int:
 
 @staticmethod
 def _serialize_value(value: Any) -> Any:
-    """序列化 value。"""
+    """Serialize values into JSON-friendly representations."""
     if value is None:
         return None
     if isinstance(value, (bool, int, float, str)):
@@ -184,7 +184,7 @@ def _serialize_value(value: Any) -> Any:
     return str(value)
 
 def _resolve_layer_ref(self, layer_ref: Any) -> QgsMapLayer:
-    """解析 layer ref。"""
+    """Resolve layer ref."""
     if isinstance(layer_ref, QgsMapLayer):
         return layer_ref
     text = str(layer_ref).strip() if layer_ref is not None else ""

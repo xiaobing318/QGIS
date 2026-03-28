@@ -25,7 +25,7 @@ from ._shared_fixtures import DummyMcp, DummyTools
 
 class RegistrationsIntegrityTest(ProcessingMCPTestBase):
     def test_register_tools_matches_expected_set(self):
-        """验证 register tools matches expected set 场景。"""
+        """Verify register tools matches expected set."""
         removed_render_tool = "render" + "_map"
         legacy_removed = {
             "ping",
@@ -45,7 +45,7 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
         self.assertTrue(legacy_removed.isdisjoint(set(mcp.tool_names)))
 
     def test_register_prompts_and_resources_discoverable(self):
-        """验证 register prompts and resources discoverable 场景。"""
+        """Verify register prompts and resources discoverable."""
         mcp = DummyMcp()
         tools = DummyTools()
         register_prompts(mcp, tools)
@@ -57,7 +57,7 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
         self.assertEqual(set(mcp.resource_descriptions), set(REGISTERED_RESOURCE_URIS))
 
     def test_registered_tools_have_non_placeholder_docstrings(self):
-        """验证 registered tools have non placeholder docstrings 场景。"""
+        """Verify registered tools have non placeholder docstrings."""
         for tool_name in REGISTERED_TOOL_NAMES:
             method = getattr(ProcessingMCPTools, tool_name, None)
             self.assertTrue(callable(method), msg=f"Missing tool method: {tool_name}")
@@ -72,7 +72,7 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
             )
 
     def test_registered_prompts_have_non_empty_docstrings(self):
-        """验证 registered prompts have non empty docstrings 场景。"""
+        """Verify registered prompts have non empty docstrings."""
         self.assertEqual(set(_REGISTERED_PROMPT_DOCSTRINGS), set(REGISTERED_PROMPT_NAMES))
 
         mcp = DummyMcp()
@@ -89,7 +89,7 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
             )
 
     def test_registered_resources_have_non_empty_docstrings(self):
-        """验证 registered resources have non empty docstrings 场景。"""
+        """Verify registered resources have non empty docstrings."""
         self.assertEqual(set(_REGISTERED_RESOURCE_DOCSTRINGS), set(REGISTERED_RESOURCE_URIS))
 
         mcp = DummyMcp()
@@ -106,7 +106,7 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
             )
 
     def test_prompt_templates_exclude_removed_tool_names(self):
-        """验证 prompt templates exclude removed tool names 场景。"""
+        """Verify prompt templates exclude removed tool names."""
         removed_render_tool = "render" + "_map"
         legacy_removed = [
             "ping",
@@ -137,7 +137,7 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
                 )
 
     def test_resource_envelope_for_kept_resources(self):
-        """验证 resource envelope for kept resources 场景。"""
+        """Verify resource envelope for kept resources."""
         mcp = DummyMcp()
         tools = DummyTools()
         register_resources(mcp, tools)

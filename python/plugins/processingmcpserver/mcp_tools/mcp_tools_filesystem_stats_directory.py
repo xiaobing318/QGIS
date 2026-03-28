@@ -68,11 +68,11 @@ TOOL_NAME = 'filesystem_stats_directory'
 TOOL_DOC = '???统计目录中的文件数、目录数和累计大小，适合在批处理前估算工作量。 ?????directory 是根目录，recursive 控制是否递归统计。 ?????目录必须存在。 ??????无写操作，只遍历文件系统做统计。 ?????无。 ?????返回文件数、目录数、总字节数等目录统计摘要。'
 
 def filesystem_stats_directory(self, directory: str, recursive: bool = False) -> dict[str, Any]:
-    """执行文件系统相关的 stats directory 逻辑。"""
+    """Handle a filesystem directory."""
     return self._run(self._filesystem_stats_directory_impl, directory, recursive)
 
 def _filesystem_stats_directory_impl(self, directory: str, recursive: bool) -> dict[str, Any]:
-    """执行文件系统相关的 stats directory impl 逻辑。"""
+    """Build the filesystem directory."""
     root = self._resolve_filesystem_query_path(directory)
     if not root.exists() or not root.is_dir():
         raise Exception(f"Directory not found: {directory}")
@@ -93,7 +93,7 @@ def _filesystem_stats_directory_impl(self, directory: str, recursive: bool) -> d
 
 @staticmethod
 def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[str, Any] | None = None, warnings: list[str] | None = None, **extra) -> dict[str, Any]:
-    """执行 ok result 相关逻辑。"""
+    """Handle ok result."""
     payload: dict[str, Any] = {"ok": True, "tool": tool, "summary": summary or {}, "outputs": outputs or {}}
     if warnings is not None:
         payload["warnings"] = warnings
@@ -101,12 +101,12 @@ def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[s
     return payload
 
 def _resolve_filesystem_query_path(self, path: str | Path) -> Path:
-    """解析 filesystem query path。"""
+    """Resolve filesystem query path."""
     return self._normalize_filesystem_path(path)
 
 @staticmethod
 def _normalize_filesystem_path(path: str | Path) -> Path:
-    """归一化 filesystem path。"""
+    """Handle normalize filesystem path."""
     candidate = path if isinstance(path, Path) else Path(str(path).strip()).expanduser()
     if not candidate.is_absolute():
         candidate = Path.cwd() / candidate

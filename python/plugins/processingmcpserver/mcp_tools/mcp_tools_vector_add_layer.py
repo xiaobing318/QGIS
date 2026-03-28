@@ -68,11 +68,11 @@ TOOL_NAME = 'vector_add_layer'
 TOOL_DOC = '???把单个矢量数据源加载到当前 QGIS 工程。 ?????path 指向矢量数据文件或数据源，provider 默认 ogr，name 可覆盖图层显示名。 ?????目标路径必须存在且能被对应 provider 正常识别。 ??????会向当前工程新增一个矢量图层，但不会改写源数据文件。 ?????无 destructive 开关；若路径无效会直接报错并中止加载。 ?????返回新图层的 id、name、type 与 feature_count，便于后续继续引用。'
 
 def vector_add_layer(self, path: str, provider: str = "ogr", name: str | None = None) -> dict[str, Any]:
-    """执行矢量相关的 add layer 逻辑。"""
+    """Handle a vector layer."""
     return self._run(self._vector_add_layer_impl, path, provider, name)
 
 def _vector_add_layer_impl(self, path: str, provider: str = "ogr", name: str | None = None) -> dict[str, Any]:
-    """执行矢量相关的 add layer impl 逻辑。"""
+    """Build the vector layer."""
     layer = QgsVectorLayer(path, name or Path(path).stem, provider)
     if not layer.isValid():
         raise Exception(f"Layer is not valid: {path}")
@@ -81,7 +81,7 @@ def _vector_add_layer_impl(self, path: str, provider: str = "ogr", name: str | N
 
 @staticmethod
 def _layer_type_token(layer: QgsMapLayer) -> str:
-    """执行图层相关的 type token 逻辑。"""
+    """Handle layer type token."""
     if layer.type() == QgsMapLayer.VectorLayer:
         return f"vector_{int(layer.geometryType())}"
     if layer.type() == QgsMapLayer.RasterLayer:

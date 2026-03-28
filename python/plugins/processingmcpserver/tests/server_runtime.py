@@ -12,35 +12,35 @@ from ._shared_case_base import ProcessingMCPTestBase
 
 class _FakeTransport:
     def __init__(self, start_result: bool = True):
-        """初始化 _FakeTransport 实例状态。"""
+        """Initialize the fake transport state."""
         self.start_result = start_result
         self.running = False
         self.start_calls = 0
         self.stop_calls = 0
 
     def start(self) -> bool:
-        """启动当前对象管理的运行流程。"""
+        """Start the fake transport and record the attempt."""
         self.start_calls += 1
         self.running = self.start_result
         return self.start_result
 
     def stop(self) -> None:
-        """停止当前对象管理的运行流程。"""
+        """Stop the fake transport."""
         self.stop_calls += 1
         self.running = False
 
     def is_running(self) -> bool:
-        """判断 running 是否成立。"""
+        """Return whether the fake transport is running."""
         return self.running
 
     def describe(self) -> str:
-        """返回当前对象的描述信息。"""
+        """Return a short description for the fake transport."""
         return "fake transport"
 
 
 class _FakeFastMCP:
     def __init__(self, name: str, instructions: str = "", **kwargs):
-        """初始化 _FakeFastMCP 实例状态。"""
+        """Initialize the _FakeFastMCP instance state."""
         self.name = name
         self.instructions = instructions
         self.kwargs = kwargs
@@ -63,7 +63,7 @@ class _FakeFastMCPWithoutServerIdentity:
         json_response: bool = False,
         log_level: str = "INFO",
     ):
-        """模拟不支持 website_url 与 icons 参数的 FastMCP。"""
+        """Simulate a FastMCP that does not accept website_url or icons parameters."""
         self.name = name
         self.instructions = instructions
         self.settings = SimpleNamespace(
@@ -82,7 +82,7 @@ class _FakeFastMCPWithoutServerIdentity:
 
 class ProcessingMCPServerRuntimeTest(ProcessingMCPTestBase):
     def test_build_mcp_server_registers_tools_prompts_and_resources(self):
-        """验证 build MCP server registers tools prompts and resources 场景。"""
+        """Verify build MCP server registers tools prompts and resources."""
         fake_transport = _FakeTransport()
         fake_mcp_module = ModuleType("mcp.server.fastmcp")
         fake_mcp_module.FastMCP = _FakeFastMCP
@@ -151,7 +151,7 @@ class ProcessingMCPServerRuntimeTest(ProcessingMCPTestBase):
         )
 
     def test_build_mcp_server_degrades_without_identity_constructor_params(self):
-        """验证 FastMCP 不支持 identity 参数时仍能成功初始化。"""
+        """Verify the server still initializes when FastMCP lacks website_url and icons parameters."""
         fake_transport = _FakeTransport()
         fake_mcp_module = ModuleType("mcp.server.fastmcp")
         fake_mcp_module.FastMCP = _FakeFastMCPWithoutServerIdentity
@@ -200,7 +200,7 @@ class ProcessingMCPServerRuntimeTest(ProcessingMCPTestBase):
         )
 
     def test_start_returns_false_when_disabled(self):
-        """验证 start returns false when disabled 场景。"""
+        """Verify start returns false when disabled."""
         fake_transport = _FakeTransport()
         config = replace(self._build_config("streamable-http"), enabled=False)
 
@@ -219,7 +219,7 @@ class ProcessingMCPServerRuntimeTest(ProcessingMCPTestBase):
         self.assertEqual(fake_transport.start_calls, 0)
 
     def test_start_and_stop_delegate_to_transport(self):
-        """验证 start and stop delegate to transport 场景。"""
+        """Verify start and stop delegate to transport."""
         fake_transport = _FakeTransport()
         config = self._build_config("streamable-http")
 
@@ -245,7 +245,7 @@ class ProcessingMCPServerRuntimeTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.server.QgsMessageLog.logMessage")
     def test_stop_logs_exception_when_transport_stop_raises(self, mock_log_message):
-        """验证 stop logs exception when transport stop raises 场景。"""
+        """Verify stop logs exception when transport stop raises."""
         fake_transport = MagicMock()
         fake_transport.stop.side_effect = RuntimeError("stop boom")
         config = self._build_config("streamable-http")
@@ -272,7 +272,7 @@ class ProcessingMCPServerRuntimeTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.server.QgsMessageLog.logMessage")
     def test_start_returns_false_when_transport_raises(self, mock_log_message):
-        """验证 start returns false when transport raises 场景。"""
+        """Verify start returns false when transport raises."""
         fake_transport = MagicMock()
         fake_transport.describe.return_value = "broken transport"
         fake_transport.is_running.return_value = False

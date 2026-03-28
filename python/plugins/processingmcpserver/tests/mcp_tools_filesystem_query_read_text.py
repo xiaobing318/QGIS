@@ -8,11 +8,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsFilesystemQueryReadTextTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """验证目标能力已完成注册。"""
+        """Ensure the target capability is registered."""
         assert_tool_registered(self, "filesystem_query_read_text")
 
     def test_success_read_with_truncate(self):
-        """验证 read with truncate 的成功场景。"""
+        """Verify the successful path for read with truncate."""
         tools = self.build_tools()
         root = self.make_temp_dir()
         file_path = self.create_text_file(root / "a.txt", "abcdefghij")
@@ -23,7 +23,7 @@ class ToolsFilesystemQueryReadTextTest(ProcessingMCPTestBase):
         self.assertTrue(result["summary"]["truncated"])
 
     def test_failure_missing_file(self):
-        """验证 missing file 的失败场景。"""
+        """Verify the failure path for missing file."""
         tools = self.build_tools()
         missing_path = self.make_temp_dir() / "missing.txt"
         with self.assertRaises(Exception) as ctx:
@@ -31,7 +31,7 @@ class ToolsFilesystemQueryReadTextTest(ProcessingMCPTestBase):
         self.assertIn("File not found", str(ctx.exception))
 
     def test_success_reads_path_outside_previous_whitelist_scope(self):
-        """验证 reads path outside previous whitelist scope 的成功场景。"""
+        """Verify the successful path for reads path outside previous whitelist scope."""
         tools = self.build_tools()
         file_path = Path(__file__).resolve()
 

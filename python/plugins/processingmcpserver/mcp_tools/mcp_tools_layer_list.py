@@ -68,11 +68,11 @@ TOOL_NAME = 'layer_list'
 TOOL_DOC = '???列出当前工程中可见或全部图层的基础清单，用于给模型建立当前项目上下文。 ?????layer_types 可选 vector、raster 或 both，include_hidden 控制是否包含图层面板中隐藏图层，name_glob 用于名称通配过滤。 ?????当前工程中至少存在已加载图层时结果更有意义，但空工程也可调用。 ??????无写操作，只读取工程图层注册表与图层树可见性。 ?????无。 ?????返回按过滤条件匹配的图层数组，元素包含 id、name、type、visible、provider 以及矢量或栅格的补充摘要。'
 
 def layer_list(self, layer_types: str = "both", include_hidden: bool = True, name_glob: str = "*") -> list[dict[str, Any]]:
-    """执行图层相关的 list 逻辑。"""
+    """Handle the loaded layer list."""
     return self._run(self._layer_list_impl, layer_types, include_hidden, name_glob)
 
 def _layer_list_impl(self, layer_types: str, include_hidden: bool, name_glob: str) -> list[dict[str, Any]]:
-    """执行图层相关的 list impl 逻辑。"""
+    """Build the the loaded layer list."""
     normalized_types = self._normalize_layer_types_filter(layer_types)
     pattern = self._normalize_name_glob(name_glob)
     project = QgsProject.instance()
@@ -108,7 +108,7 @@ def _layer_list_impl(self, layer_types: str, include_hidden: bool, name_glob: st
 
 @staticmethod
 def _is_layer_visible(project: QgsProject, layer_id: str) -> bool:
-    """判断 layer visible 是否成立。"""
+    """Handle is layer visible."""
     node = project.layerTreeRoot().findLayer(layer_id) if project.layerTreeRoot() else None
     if node is None:
         return False
@@ -119,7 +119,7 @@ def _is_layer_visible(project: QgsProject, layer_id: str) -> bool:
 
 @staticmethod
 def _layer_type_token(layer: QgsMapLayer) -> str:
-    """执行图层相关的 type token 逻辑。"""
+    """Handle layer type token."""
     if layer.type() == QgsMapLayer.VectorLayer:
         return f"vector_{int(layer.geometryType())}"
     if layer.type() == QgsMapLayer.RasterLayer:
@@ -128,7 +128,7 @@ def _layer_type_token(layer: QgsMapLayer) -> str:
 
 @staticmethod
 def _normalize_layer_types_filter(layer_types: str | None) -> str:
-    """归一化 layer types filter。"""
+    """Handle normalize layer types filter."""
     value = (layer_types or "both").strip().lower()
     if value in {"both", "all", "any"}:
         return "both"
@@ -138,7 +138,7 @@ def _normalize_layer_types_filter(layer_types: str | None) -> str:
 
 @staticmethod
 def _normalize_name_glob(name_glob: str | None) -> str:
-    """归一化 name glob。"""
+    """Handle normalize name glob."""
     value = (name_glob or "*").strip()
     return value or "*"
 

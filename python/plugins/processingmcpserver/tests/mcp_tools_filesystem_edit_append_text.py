@@ -6,11 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsFilesystemEditAppendTextTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """验证目标能力已完成注册。"""
+        """Ensure the target capability is registered."""
         assert_tool_registered(self, "filesystem_edit_append_text")
 
     def test_success_append(self):
-        """验证 append 的成功场景。"""
+        """Verify the successful path for append."""
         tools = self.build_tools()
         root = self.make_temp_dir()
         target = self.create_text_file(root / "target.txt", "v1")
@@ -22,7 +22,7 @@ class ToolsFilesystemEditAppendTextTest(ProcessingMCPTestBase):
         self.assertEqual(target.read_text(encoding="utf-8"), "v1-v2")
 
     def test_failure_without_confirm_write(self):
-        """验证 without confirm write 的失败场景。"""
+        """Verify the failure path for without confirm write."""
         tools = self.build_tools()
         root = self.make_temp_dir()
         target = self.create_text_file(root / "target.txt", "v1")
@@ -32,7 +32,7 @@ class ToolsFilesystemEditAppendTextTest(ProcessingMCPTestBase):
         self.assertIn("confirm_write must be true", str(ctx.exception))
 
     def test_failure_parent_missing_without_create(self):
-        """验证 parent missing without create 的失败场景。"""
+        """Verify the failure path for parent missing without create."""
         tools = self.build_tools()
         root = self.make_temp_dir()
         target = root / "missing" / "target.txt"

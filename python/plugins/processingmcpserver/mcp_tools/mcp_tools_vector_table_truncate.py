@@ -68,11 +68,11 @@ TOOL_NAME = 'vector_table_truncate'
 TOOL_DOC = '???清空矢量图层中的全部记录，但保留图层结构和字段。 ?????layer_ref 指向矢量图层，in_place 控制是否直接改源图层，confirm_destructive 必须明确确认清空行为。 ?????目标图层必须存在。 ??????会删除全部要素；默认副本模式下清空的是副本图层。 ?????默认 in_place=false；删除类操作还要求 confirm_destructive=true，避免误删原图层或记录。 ?????返回 summary.mode、affected_count、output_layer_id 和清空后的 feature_count。'
 
 def vector_table_truncate(self, layer_ref: str, in_place: bool = False, confirm_destructive: bool = False) -> dict[str, Any]:
-    """执行矢量相关的 table truncate 逻辑。"""
+    """Handle a vector table."""
     return self._run(self._vector_table_truncate_impl, layer_ref, in_place, confirm_destructive)
 
 def _vector_table_truncate_impl(self, layer_ref: str, in_place: bool, confirm_destructive: bool) -> dict[str, Any]:
-    """执行矢量相关的 table truncate impl 逻辑。"""
+    """Build the vector table."""
     if not confirm_destructive:
         raise Exception("confirm_destructive must be true for truncate operation")
     source_layer = self._resolve_vector_layer_ref(layer_ref)
@@ -81,7 +81,7 @@ def _vector_table_truncate_impl(self, layer_ref: str, in_place: bool, confirm_de
     )
 
     def op() -> int:
-        """执行当前局部编辑操作。"""
+        """Handle op."""
         fids = [int(feature.id()) for feature in layer.getFeatures()]
         if not fids:
             return 0
@@ -101,7 +101,7 @@ def _vector_table_truncate_impl(self, layer_ref: str, in_place: bool, confirm_de
     )
 
 def _apply_vector_edit(self, layer: QgsVectorLayer, operation) -> Any:
-    """执行 apply vector edit 相关逻辑。"""
+    """Handle apply vector edit."""
     started_here = self._begin_vector_edit(layer)
     try:
         result = operation()
@@ -114,7 +114,7 @@ def _apply_vector_edit(self, layer: QgsVectorLayer, operation) -> Any:
 
 @staticmethod
 def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[str, Any] | None = None, warnings: list[str] | None = None, **extra) -> dict[str, Any]:
-    """执行 ok result 相关逻辑。"""
+    """Handle ok result."""
     payload: dict[str, Any] = {"ok": True, "tool": tool, "summary": summary or {}, "outputs": outputs or {}}
     if warnings is not None:
         payload["warnings"] = warnings
@@ -124,13 +124,13 @@ def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[s
 def _prepare_vector_target_layer(
     self, layer: QgsVectorLayer, in_place: bool, suffix: str
 ) -> tuple[QgsVectorLayer, str]:
-    """执行 prepare vector target layer 相关逻辑。"""
+    """Prepare prepare vector target layer."""
     if in_place:
         return layer, "in_place"
     return self._materialize_vector_layer(layer, suffix), "copy"
 
 def _resolve_vector_layer_ref(self, layer_ref: Any) -> QgsVectorLayer:
-    """解析 vector layer ref。"""
+    """Resolve vector layer ref."""
     layer = self._resolve_layer_ref(layer_ref)
     if layer.type() != QgsMapLayer.VectorLayer:
         raise Exception(f"Layer is not a vector layer: {layer_ref}")
@@ -138,7 +138,7 @@ def _resolve_vector_layer_ref(self, layer_ref: Any) -> QgsVectorLayer:
 
 @staticmethod
 def _begin_vector_edit(layer: QgsVectorLayer) -> bool:
-    """执行 begin vector edit 相关逻辑。"""
+    """Handle begin vector edit."""
     if layer.isEditable():
         return False
     if not layer.startEditing():
@@ -147,7 +147,7 @@ def _begin_vector_edit(layer: QgsVectorLayer) -> bool:
 
 @staticmethod
 def _finish_vector_edit(layer: QgsVectorLayer, started_here: bool) -> None:
-    """执行 finish vector edit 相关逻辑。"""
+    """Handle finish vector edit."""
     if not started_here:
         return
     if layer.commitChanges():
@@ -159,7 +159,7 @@ def _finish_vector_edit(layer: QgsVectorLayer, started_here: bool) -> None:
 def _materialize_vector_layer(
     self, layer: QgsVectorLayer, suffix: str = "copy"
 ) -> QgsVectorLayer:
-    """执行 materialize vector layer 相关逻辑。"""
+    """Handle materialize vector layer."""
     cloned_layer = layer.materialize(QgsFeatureRequest())
     if cloned_layer is None or not cloned_layer.isValid():
         raise Exception(f"Failed to materialize vector layer copy: {layer.id()}")
@@ -168,7 +168,7 @@ def _materialize_vector_layer(
     return cloned_layer
 
 def _resolve_layer_ref(self, layer_ref: Any) -> QgsMapLayer:
-    """解析 layer ref。"""
+    """Resolve layer ref."""
     if isinstance(layer_ref, QgsMapLayer):
         return layer_ref
     text = str(layer_ref).strip() if layer_ref is not None else ""
@@ -189,7 +189,7 @@ def _resolve_layer_ref(self, layer_ref: Any) -> QgsMapLayer:
 
 @staticmethod
 def _copy_layer_name(layer: QgsMapLayer, suffix: str = "copy") -> str:
-    """复制 layer name。"""
+    """Handle copy layer name."""
     base_name = (layer.name() or "layer").strip() or "layer"
     clean_suffix = suffix.strip().replace(" ", "_") if suffix else "copy"
     return f"{base_name}_{clean_suffix}"

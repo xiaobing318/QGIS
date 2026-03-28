@@ -6,11 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsCommonGetQgisInfoTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """验证目标能力已完成注册。"""
+        """Ensure the target capability is registered."""
         assert_tool_registered(self, "common_get_qgis_info")
 
     def test_success_returns_runtime_snapshot(self):
-        """验证 returns runtime snapshot 的成功场景。"""
+        """Verify the successful path for returns runtime snapshot."""
         tools = self.build_tools()
         result = tools.common_get_qgis_info()
 
@@ -20,7 +20,7 @@ class ToolsCommonGetQgisInfoTest(ProcessingMCPTestBase):
         self.assertIn("processing_mcp", result)
 
     def test_success_contains_expected_sections(self):
-        """验证 contains expected sections 的成功场景。"""
+        """Verify the successful path for contains expected sections."""
         tools = self.build_tools()
         result = tools.common_get_qgis_info()
         self.assertIn("version", result["qgis"])

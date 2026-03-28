@@ -68,11 +68,11 @@ TOOL_NAME = 'vector_table_calculate_field'
 TOOL_DOC = '???按 QGIS 表达式批量计算字段值，可在字段不存在时自动创建字段。 ?????layer_ref 指向矢量图层，field_name 是目标字段，expression 是赋值表达式，where 可选筛选条件，field_type 只在自动建字段时生效，in_place 控制是否直接改源图层。 ?????目标图层必须存在，expression 和 where 若提供都必须能被 QGIS 表达式解析并成功求值。 ??????会更新匹配要素的属性值；字段不存在时会先新增该字段。 ?????默认 in_place=false，会先生成副本图层并返回新的 output_layer_id；仅在明确要修改原图层时才把 in_place 设为 true。 ?????返回 summary.mode、affected_count、field_created、output_layer_id 和更新后的字段列表。'
 
 def vector_table_calculate_field(self, layer_ref: str, field_name: str, expression: str, field_type: str = "string", where: str | None = None, in_place: bool = False) -> dict[str, Any]:
-    """执行矢量相关的 table calculate field 逻辑。"""
+    """Handle a vector table field."""
     return self._run(self._vector_table_calculate_field_impl, layer_ref, field_name, expression, field_type, where, in_place)
 
 def _vector_table_calculate_field_impl(self, layer_ref: str, field_name: str, expression: str, field_type: str, where: str | None, in_place: bool) -> dict[str, Any]:
-    """执行矢量相关的 table calculate field impl 逻辑。"""
+    """Build the vector table field."""
     source_layer = self._resolve_vector_layer_ref(layer_ref)
     layer, mode = self._prepare_vector_target_layer(
         source_layer, in_place, "calculate_field_copy"
@@ -90,7 +90,7 @@ def _vector_table_calculate_field_impl(self, layer_ref: str, field_name: str, ex
     created = False
 
     def op() -> int:
-        """执行当前局部编辑操作。"""
+        """Handle op."""
         nonlocal idx
         nonlocal created
         if idx < 0:
@@ -131,7 +131,7 @@ def _vector_table_calculate_field_impl(self, layer_ref: str, field_name: str, ex
     )
 
 def _apply_vector_edit(self, layer: QgsVectorLayer, operation) -> Any:
-    """执行 apply vector edit 相关逻辑。"""
+    """Handle apply vector edit."""
     started_here = self._begin_vector_edit(layer)
     try:
         result = operation()
@@ -144,12 +144,12 @@ def _apply_vector_edit(self, layer: QgsVectorLayer, operation) -> Any:
 
 @staticmethod
 def _field_index(layer: QgsVectorLayer, field_name: str) -> int:
-    """执行 field index 相关逻辑。"""
+    """Handle field index."""
     return layer.fields().indexFromName(field_name)
 
 @staticmethod
 def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[str, Any] | None = None, warnings: list[str] | None = None, **extra) -> dict[str, Any]:
-    """执行 ok result 相关逻辑。"""
+    """Handle ok result."""
     payload: dict[str, Any] = {"ok": True, "tool": tool, "summary": summary or {}, "outputs": outputs or {}}
     if warnings is not None:
         payload["warnings"] = warnings
@@ -159,13 +159,13 @@ def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[s
 def _prepare_vector_target_layer(
     self, layer: QgsVectorLayer, in_place: bool, suffix: str
 ) -> tuple[QgsVectorLayer, str]:
-    """执行 prepare vector target layer 相关逻辑。"""
+    """Prepare prepare vector target layer."""
     if in_place:
         return layer, "in_place"
     return self._materialize_vector_layer(layer, suffix), "copy"
 
 def _resolve_vector_layer_ref(self, layer_ref: Any) -> QgsVectorLayer:
-    """解析 vector layer ref。"""
+    """Resolve vector layer ref."""
     layer = self._resolve_layer_ref(layer_ref)
     if layer.type() != QgsMapLayer.VectorLayer:
         raise Exception(f"Layer is not a vector layer: {layer_ref}")
@@ -173,7 +173,7 @@ def _resolve_vector_layer_ref(self, layer_ref: Any) -> QgsVectorLayer:
 
 @staticmethod
 def _to_field_type(field_type: str) -> QVariant.Type:
-    """执行 to field type 相关逻辑。"""
+    """Handle to field type."""
     value = (field_type or "string").strip().lower()
     mapping = {
         "string": QVariant.String,
@@ -192,7 +192,7 @@ def _to_field_type(field_type: str) -> QVariant.Type:
 
 @staticmethod
 def _begin_vector_edit(layer: QgsVectorLayer) -> bool:
-    """执行 begin vector edit 相关逻辑。"""
+    """Handle begin vector edit."""
     if layer.isEditable():
         return False
     if not layer.startEditing():
@@ -201,7 +201,7 @@ def _begin_vector_edit(layer: QgsVectorLayer) -> bool:
 
 @staticmethod
 def _finish_vector_edit(layer: QgsVectorLayer, started_here: bool) -> None:
-    """执行 finish vector edit 相关逻辑。"""
+    """Handle finish vector edit."""
     if not started_here:
         return
     if layer.commitChanges():
@@ -213,7 +213,7 @@ def _finish_vector_edit(layer: QgsVectorLayer, started_here: bool) -> None:
 def _materialize_vector_layer(
     self, layer: QgsVectorLayer, suffix: str = "copy"
 ) -> QgsVectorLayer:
-    """执行 materialize vector layer 相关逻辑。"""
+    """Handle materialize vector layer."""
     cloned_layer = layer.materialize(QgsFeatureRequest())
     if cloned_layer is None or not cloned_layer.isValid():
         raise Exception(f"Failed to materialize vector layer copy: {layer.id()}")
@@ -222,7 +222,7 @@ def _materialize_vector_layer(
     return cloned_layer
 
 def _resolve_layer_ref(self, layer_ref: Any) -> QgsMapLayer:
-    """解析 layer ref。"""
+    """Resolve layer ref."""
     if isinstance(layer_ref, QgsMapLayer):
         return layer_ref
     text = str(layer_ref).strip() if layer_ref is not None else ""
@@ -243,7 +243,7 @@ def _resolve_layer_ref(self, layer_ref: Any) -> QgsMapLayer:
 
 @staticmethod
 def _copy_layer_name(layer: QgsMapLayer, suffix: str = "copy") -> str:
-    """复制 layer name。"""
+    """Handle copy layer name."""
     base_name = (layer.name() or "layer").strip() or "layer"
     clean_suffix = suffix.strip().replace(" ", "_") if suffix else "copy"
     return f"{base_name}_{clean_suffix}"

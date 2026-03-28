@@ -68,11 +68,11 @@ TOOL_NAME = 'processing_list_providers'
 TOOL_DOC = '???列出当前 QGIS Processing 注册表中的 provider 清单。 ?????无业务输入。 ?????Processing 运行时必须可用。 ??????无写操作，只读取 Processing 注册表。 ?????无。 ?????返回 provider 的 id、name、active、algorithm_count，以及 count_scope、total_algorithm_count、active_provider_count、active_algorithm_count 和总数。'
 
 def processing_list_providers(self) -> dict[str, Any]:
-    """执行 Processing 相关的 list providers 逻辑。"""
+    """Handle processing providers."""
     return self._run(self._processing_list_providers_impl)
 
 def _processing_list_providers_impl(self) -> dict[str, Any]:
-    """执行 Processing 相关的 list providers impl 逻辑。"""
+    """Build the processing providers."""
     self._ensure_processing_runtime()
     providers = list(QgsApplication.processingRegistry().providers())
     payload = []
@@ -114,7 +114,7 @@ def _processing_list_providers_impl(self) -> dict[str, Any]:
     }
 
 def _ensure_processing_runtime(self) -> None:
-    """确保 processing runtime 已就绪。"""
+    """Handle ensure processing runtime."""
     _ensure_processing_initialized()
 
 TOOL_METHODS: dict[str, object] = {

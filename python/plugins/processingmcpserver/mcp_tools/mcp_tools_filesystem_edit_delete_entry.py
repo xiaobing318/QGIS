@@ -68,11 +68,11 @@ TOOL_NAME = 'filesystem_edit_delete_entry'
 TOOL_DOC = '???删除单个文件或整个目录树。 ?????path 指向待删除文件或目录，confirm_destructive 必须明确确认删除，confirm_write 用于显式确认写操作。 ?????目标路径必须存在。 ??????会永久删除磁盘上的文件或目录内容。 ?????只有 confirm_write=true 且 confirm_destructive=true 才允许执行删除。 ?????返回 deleted_path 摘要。'
 
 def filesystem_edit_delete_entry(self, path: str, confirm_destructive: bool = False, confirm_write: bool = False) -> dict[str, Any]:
-    """执行文件系统相关的 edit delete entry 逻辑。"""
+    """Handle a filesystem entry."""
     return self._run(self._filesystem_edit_delete_entry_impl, path, confirm_destructive, confirm_write)
 
 def _filesystem_edit_delete_entry_impl(self, path: str, confirm_destructive: bool, confirm_write: bool) -> dict[str, Any]:
-    """执行文件系统相关的 edit delete entry impl 逻辑。"""
+    """Build the filesystem entry."""
     self._ensure_filesystem_write_confirmed(confirm_write)
     if not confirm_destructive:
         raise Exception("confirm_destructive must be true for delete operation")
@@ -84,7 +84,7 @@ def _filesystem_edit_delete_entry_impl(self, path: str, confirm_destructive: boo
 
 @staticmethod
 def _ensure_filesystem_write_confirmed(confirm_write: bool) -> None:
-    """确保写操作已显式确认。"""
+    """Handle ensure filesystem write confirmed."""
     if not confirm_write:
         raise Exception(
             "confirm_write must be true for filesystem_edit_* operations"
@@ -92,7 +92,7 @@ def _ensure_filesystem_write_confirmed(confirm_write: bool) -> None:
 
 @staticmethod
 def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[str, Any] | None = None, warnings: list[str] | None = None, **extra) -> dict[str, Any]:
-    """执行 ok result 相关逻辑。"""
+    """Handle ok result."""
     payload: dict[str, Any] = {"ok": True, "tool": tool, "summary": summary or {}, "outputs": outputs or {}}
     if warnings is not None:
         payload["warnings"] = warnings
@@ -100,16 +100,16 @@ def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[s
     return payload
 
 def _resolve_filesystem_write_path(self, path: str | Path) -> Path:
-    """解析 filesystem write path。"""
+    """Resolve filesystem write path."""
     return self._resolve_filesystem_query_path(path)
 
 def _resolve_filesystem_query_path(self, path: str | Path) -> Path:
-    """解析 filesystem query path。"""
+    """Resolve filesystem query path."""
     return self._normalize_filesystem_path(path)
 
 @staticmethod
 def _normalize_filesystem_path(path: str | Path) -> Path:
-    """归一化 filesystem path。"""
+    """Handle normalize filesystem path."""
     candidate = path if isinstance(path, Path) else Path(str(path).strip()).expanduser()
     if not candidate.is_absolute():
         candidate = Path.cwd() / candidate

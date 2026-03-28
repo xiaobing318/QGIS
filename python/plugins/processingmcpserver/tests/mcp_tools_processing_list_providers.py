@@ -6,11 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsProcessingListProvidersTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """验证目标能力已完成注册。"""
+        """Ensure the target capability is registered."""
         assert_tool_registered(self, "processing_list_providers")
 
     def test_success_list_providers(self):
-        """验证 list providers 的成功场景。"""
+        """Verify the successful path for list providers."""
         tools = self.build_tools()
         result = tools.processing_list_providers()
 
@@ -44,7 +44,7 @@ class ToolsProcessingListProvidersTest(ProcessingMCPTestBase):
         self.assertEqual(active_algorithm_total, result["active_algorithm_count"])
 
     def test_safety_payload_shape(self):
-        """验证 safety payload shape 场景。"""
+        """Verify safety payload shape."""
         tools = self.build_tools()
         result = tools.processing_list_providers()
         if result["providers"]:
@@ -56,7 +56,7 @@ class ToolsProcessingListProvidersTest(ProcessingMCPTestBase):
             self.assertIsInstance(first["algorithm_count"], int)
 
     def test_consistent_with_processing_algorithms_count(self):
-        """验证 providers 统计与 algorithms count 保持一致。"""
+        """Verify provider statistics stay consistent with algorithm counts."""
         tools = self.build_tools()
         providers_result = tools.processing_list_providers()
         algorithms_result = tools.processing_get_algorithms(limit=0)

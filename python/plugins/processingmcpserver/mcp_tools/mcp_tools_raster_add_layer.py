@@ -68,11 +68,11 @@ TOOL_NAME = 'raster_add_layer'
 TOOL_DOC = '???把单个栅格数据源加载到当前 QGIS 工程。 ?????path 指向栅格文件或数据源，provider 默认 gdal，name 可覆盖图层显示名。 ?????目标路径必须存在且能被 GDAL 或指定 provider 识别。 ??????会向当前工程新增一个栅格图层，但不会改写源数据文件。 ?????无 destructive 开关；路径或数据源无效时直接失败。 ?????返回新图层的 id、name、type、width、height 与 band_count。'
 
 def raster_add_layer(self, path: str, provider: str = "gdal", name: str | None = None) -> dict[str, Any]:
-    """执行栅格相关的 add layer 逻辑。"""
+    """Handle a raster layer."""
     return self._run(self._raster_add_layer_impl, path, provider, name)
 
 def _raster_add_layer_impl(self, path: str, provider: str = "gdal", name: str | None = None) -> dict[str, Any]:
-    """执行栅格相关的 add layer impl 逻辑。"""
+    """Build the raster layer."""
     layer = QgsRasterLayer(path, name or Path(path).stem, provider)
     if not layer.isValid():
         raise Exception(f"Layer is not valid: {path}")

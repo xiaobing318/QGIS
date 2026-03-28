@@ -23,14 +23,14 @@ SOURCE_DEFAULT = "Default"
 
 @dataclass(frozen=True)
 class ProcessingMCPServerDependencies:
-    """定义依赖检查与自动安装策略。"""
+    """Describe dependency checking and auto-installation policy."""
 
     auto_install: bool = True
 
 
 @dataclass(frozen=True)
 class ProcessingMCPServerConfig:
-    """聚合 Processing MCP 服务启动所需的全部配置项。"""
+    """Aggregate all configuration needed to start the Processing MCP server."""
 
     enabled: bool
     transport: str

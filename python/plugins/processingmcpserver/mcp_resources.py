@@ -23,10 +23,10 @@ def _resource_doc(
     safety: str,
     returns: str,
 ) -> str:
-    """执行 resource doc 相关逻辑。"""
+    """Build a resource description from structured sections."""
     return (
-        f"用途：{purpose} 输入语义：{inputs} 前置条件：{preconditions} "
-        f"主要副作用：{effects} 安全开关：{safety} 返回结果：{returns}"
+        f"Purpose: {purpose} Inputs: {inputs} Preconditions: {preconditions} "
+        f"Side effects: {effects} Safety controls: {safety} Returns: {returns}"
     )
 
 
@@ -59,7 +59,7 @@ _REGISTERED_RESOURCE_DOCSTRINGS: dict[str, str] = {
 
 
 def _validate_registered_resource_docstrings() -> None:
-    """校验 registered resource docstrings。"""
+    """Validate the registered resource docstrings."""
     missing: list[str] = []
     invalid: list[str] = []
     extra = sorted(set(_REGISTERED_RESOURCE_DOCSTRINGS) - set(REGISTERED_RESOURCE_URIS))
@@ -81,25 +81,25 @@ _validate_registered_resource_docstrings()
 
 
 def _utc_now_iso() -> str:
-    """执行 utc now iso 相关逻辑。"""
+    """Return the current UTC time in ISO 8601 format."""
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def register_resources(mcp: Any, tools: Any) -> None:
-    """注册 resources 能力。"""
+    """Register resource capabilities."""
     resource_factory = getattr(mcp, "resource", None)
     if not callable(resource_factory):
         return
 
     def encode(payload: dict[str, Any]) -> str:
-        """编码当前负载并返回文本结果。"""
+        """Serialize the current payload to a text result."""
         encoder = getattr(tools, "_resource_json", None)
         if callable(encoder):
             return encoder(payload)
         return json.dumps(payload, ensure_ascii=False, indent=2)
 
     def project_id() -> str:
-        """返回当前工程标识。"""
+        """Return the current project identifier."""
         if hasattr(tools, "get_project_snapshot") and callable(tools.get_project_snapshot):
             try:
                 snapshot = tools.get_project_snapshot()
@@ -116,7 +116,7 @@ def register_resources(mcp: Any, tools: Any) -> None:
         return project.fileName() or project.title() or "in-memory-project"
 
     def build(uri: str, supplier: Callable[[], Any]) -> str:
-        """构建当前负载并返回结果。"""
+        """Build a payload and return the encoded result."""
         payload: dict[str, Any] = {
             "ok": True,
             "uri": uri,
@@ -140,7 +140,7 @@ def register_resources(mcp: Any, tools: Any) -> None:
         description=qgis_shapefile_template_description,
     )
     def qgis_workflow_shapefile_template() -> str:
-        """执行 QGIS workflow shapefile template 相关逻辑。"""
+        """Return the shapefile workflow template resource."""
         return build(
             "qgis://workflow/shapefile/template",
             tools.get_shapefile_workflow_template,
@@ -157,7 +157,7 @@ def register_resources(mcp: Any, tools: Any) -> None:
         description=qgis_shapefile_quality_profile_description,
     )
     def qgis_workflow_shapefile_quality_profile_default() -> str:
-        """执行 QGIS workflow shapefile quality profile default 相关逻辑。"""
+        """Return the default shapefile quality profile resource."""
         return build(
             "qgis://workflow/shapefile/quality-profile/default",
             tools.get_shapefile_quality_profile,
@@ -176,7 +176,7 @@ def register_resources(mcp: Any, tools: Any) -> None:
         description=qgis_shapefile_run_summary_description,
     )
     def qgis_workflow_shapefile_run_summary() -> str:
-        """执行 QGIS workflow shapefile run summary 相关逻辑。"""
+        """Return the shapefile run-summary resource."""
         return build(
             "qgis://workflow/shapefile/run-summary",
             tools.get_shapefile_run_summary,

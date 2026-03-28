@@ -68,11 +68,11 @@ TOOL_NAME = 'vector_table_insert_records'
 TOOL_DOC = '???向矢量图层批量插入新记录，可选携带 geometry_wkt。 ?????layer_ref 指向矢量图层，records 是对象数组，键名按字段名匹配，geometry_wkt 若提供会被解析为新要素几何，in_place 控制是否直接改源图层。 ?????目标图层必须存在，records 不能为空，geometry_wkt 若提供必须是有效 WKT。 ??????会新增要素；未知字段不会写入，而是被忽略并记录到 warnings 与 outputs.ignored_fields。 ?????默认 in_place=false，会先生成副本图层并返回新的 output_layer_id；仅在明确要修改原图层时才把 in_place 设为 true。 ?????返回 summary.mode、affected_count、output_layer_id、feature_count，以及 ignored_fields 和 warnings。'
 
 def vector_table_insert_records(self, layer_ref: str, records: list[dict[str, Any]], in_place: bool = False) -> dict[str, Any]:
-    """执行矢量相关的 table insert records 逻辑。"""
+    """Handle records into a vector table."""
     return self._run(self._vector_table_insert_records_impl, layer_ref, records, in_place)
 
 def _vector_table_insert_records_impl(self, layer_ref: str, records: list[dict[str, Any]], in_place: bool) -> dict[str, Any]:
-    """执行矢量相关的 table insert records impl 逻辑。"""
+    """Build the records into a vector table."""
     source_layer = self._resolve_vector_layer_ref(layer_ref)
     layer, mode = self._prepare_vector_target_layer(
         source_layer, in_place, "insert_records_copy"
@@ -85,7 +85,7 @@ def _vector_table_insert_records_impl(self, layer_ref: str, records: list[dict[s
     ignored_seen: set[str] = set()
 
     def op() -> int:
-        """执行当前局部编辑操作。"""
+        """Handle op."""
         affected = 0
         for row in records:
             feature = QgsFeature(layer.fields())
@@ -129,7 +129,7 @@ def _vector_table_insert_records_impl(self, layer_ref: str, records: list[dict[s
     )
 
 def _apply_vector_edit(self, layer: QgsVectorLayer, operation) -> Any:
-    """执行 apply vector edit 相关逻辑。"""
+    """Handle apply vector edit."""
     started_here = self._begin_vector_edit(layer)
     try:
         result = operation()
@@ -142,7 +142,7 @@ def _apply_vector_edit(self, layer: QgsVectorLayer, operation) -> Any:
 
 @staticmethod
 def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[str, Any] | None = None, warnings: list[str] | None = None, **extra) -> dict[str, Any]:
-    """执行 ok result 相关逻辑。"""
+    """Handle ok result."""
     payload: dict[str, Any] = {"ok": True, "tool": tool, "summary": summary or {}, "outputs": outputs or {}}
     if warnings is not None:
         payload["warnings"] = warnings
@@ -152,13 +152,13 @@ def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[s
 def _prepare_vector_target_layer(
     self, layer: QgsVectorLayer, in_place: bool, suffix: str
 ) -> tuple[QgsVectorLayer, str]:
-    """执行 prepare vector target layer 相关逻辑。"""
+    """Prepare prepare vector target layer."""
     if in_place:
         return layer, "in_place"
     return self._materialize_vector_layer(layer, suffix), "copy"
 
 def _resolve_vector_layer_ref(self, layer_ref: Any) -> QgsVectorLayer:
-    """解析 vector layer ref。"""
+    """Resolve vector layer ref."""
     layer = self._resolve_layer_ref(layer_ref)
     if layer.type() != QgsMapLayer.VectorLayer:
         raise Exception(f"Layer is not a vector layer: {layer_ref}")
@@ -166,7 +166,7 @@ def _resolve_vector_layer_ref(self, layer_ref: Any) -> QgsVectorLayer:
 
 @staticmethod
 def _begin_vector_edit(layer: QgsVectorLayer) -> bool:
-    """执行 begin vector edit 相关逻辑。"""
+    """Handle begin vector edit."""
     if layer.isEditable():
         return False
     if not layer.startEditing():
@@ -175,7 +175,7 @@ def _begin_vector_edit(layer: QgsVectorLayer) -> bool:
 
 @staticmethod
 def _finish_vector_edit(layer: QgsVectorLayer, started_here: bool) -> None:
-    """执行 finish vector edit 相关逻辑。"""
+    """Handle finish vector edit."""
     if not started_here:
         return
     if layer.commitChanges():
@@ -187,7 +187,7 @@ def _finish_vector_edit(layer: QgsVectorLayer, started_here: bool) -> None:
 def _materialize_vector_layer(
     self, layer: QgsVectorLayer, suffix: str = "copy"
 ) -> QgsVectorLayer:
-    """执行 materialize vector layer 相关逻辑。"""
+    """Handle materialize vector layer."""
     cloned_layer = layer.materialize(QgsFeatureRequest())
     if cloned_layer is None or not cloned_layer.isValid():
         raise Exception(f"Failed to materialize vector layer copy: {layer.id()}")
@@ -196,7 +196,7 @@ def _materialize_vector_layer(
     return cloned_layer
 
 def _resolve_layer_ref(self, layer_ref: Any) -> QgsMapLayer:
-    """解析 layer ref。"""
+    """Resolve layer ref."""
     if isinstance(layer_ref, QgsMapLayer):
         return layer_ref
     text = str(layer_ref).strip() if layer_ref is not None else ""
@@ -217,7 +217,7 @@ def _resolve_layer_ref(self, layer_ref: Any) -> QgsMapLayer:
 
 @staticmethod
 def _copy_layer_name(layer: QgsMapLayer, suffix: str = "copy") -> str:
-    """复制 layer name。"""
+    """Handle copy layer name."""
     base_name = (layer.name() or "layer").strip() or "layer"
     clean_suffix = suffix.strip().replace(" ", "_") if suffix else "copy"
     return f"{base_name}_{clean_suffix}"

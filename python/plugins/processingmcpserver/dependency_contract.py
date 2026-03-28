@@ -4,7 +4,7 @@ import inspect
 
 
 def _validate_mcp_runtime_contract() -> tuple[bool, str]:
-    """校验 FastMCP 运行时契约，确保插件所需能力可用。"""
+    """Validate the FastMCP runtime contract and required plugin capabilities."""
     try:
         from mcp.server.fastmcp import FastMCP
     except Exception as exc:

@@ -10,13 +10,13 @@ from ._shared_fixtures import DummyMcp, DummyTools
 
 class ResourceQgisWorkflowShapefileRunSummaryTest(ProcessingMCPTestBase):
     def test_resource_registered(self):
-        """验证 resource registered 场景。"""
+        """Verify resource registered."""
         mcp = DummyMcp()
         register_resources(mcp, DummyTools())
         self.assertIn("qgis://workflow/shapefile/run-summary", mcp.resource_uris)
 
     def test_resource_envelope_ok(self):
-        """验证 resource envelope ok 场景。"""
+        """Verify resource envelope ok."""
         mcp = DummyMcp()
         register_resources(mcp, DummyTools())
 

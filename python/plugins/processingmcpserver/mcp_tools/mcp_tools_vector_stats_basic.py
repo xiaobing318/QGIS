@@ -68,11 +68,11 @@ TOOL_NAME = 'vector_stats_basic'
 TOOL_DOC = '???计算矢量字段的基础统计量，适合先判断数值分布。 ?????layer_ref 指向矢量图层，field_name 是目标字段。 ?????目标图层必须存在且字段存在，字段最好是可统计的数值型字段。 ??????无写操作，只读取字段值并做统计。 ?????无。 ?????返回 count、sum、mean、min、max、stdev 等基础统计摘要。'
 
 def vector_stats_basic(self, layer_ref: str, field_name: str) -> dict[str, Any]:
-    """执行矢量相关的 stats basic 逻辑。"""
+    """Handle basic vector statistics."""
     return self._run(self._vector_stats_basic_impl, layer_ref, field_name)
 
 def _vector_stats_basic_impl(self, layer_ref: str, field_name: str) -> dict[str, Any]:
-    """执行矢量相关的 stats basic impl 逻辑。"""
+    """Build the basic vector statistics."""
     layer = self._resolve_vector_layer_ref(layer_ref)
     if self._field_index(layer, field_name) < 0:
         raise Exception(f"Invalid field: {field_name}")
@@ -102,12 +102,12 @@ def _vector_stats_basic_impl(self, layer_ref: str, field_name: str) -> dict[str,
 
 @staticmethod
 def _field_index(layer: QgsVectorLayer, field_name: str) -> int:
-    """执行 field index 相关逻辑。"""
+    """Handle field index."""
     return layer.fields().indexFromName(field_name)
 
 @staticmethod
 def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[str, Any] | None = None, warnings: list[str] | None = None, **extra) -> dict[str, Any]:
-    """执行 ok result 相关逻辑。"""
+    """Handle ok result."""
     payload: dict[str, Any] = {"ok": True, "tool": tool, "summary": summary or {}, "outputs": outputs or {}}
     if warnings is not None:
         payload["warnings"] = warnings
@@ -115,14 +115,14 @@ def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[s
     return payload
 
 def _resolve_vector_layer_ref(self, layer_ref: Any) -> QgsVectorLayer:
-    """解析 vector layer ref。"""
+    """Resolve vector layer ref."""
     layer = self._resolve_layer_ref(layer_ref)
     if layer.type() != QgsMapLayer.VectorLayer:
         raise Exception(f"Layer is not a vector layer: {layer_ref}")
     return layer
 
 def _resolve_layer_ref(self, layer_ref: Any) -> QgsMapLayer:
-    """解析 layer ref。"""
+    """Resolve layer ref."""
     if isinstance(layer_ref, QgsMapLayer):
         return layer_ref
     text = str(layer_ref).strip() if layer_ref is not None else ""

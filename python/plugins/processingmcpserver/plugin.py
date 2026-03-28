@@ -8,15 +8,15 @@ from processingmcpserver.config import MCP_LOG_CATEGORY
 
 
 class ProcessingMCPServerPlugin:
-    """管理 Processing MCP Server 的生命周期并对接 QGIS 插件入口。"""
+    """Manage the Processing MCP Server lifecycle and QGIS plugin entrypoint."""
 
     def __init__(self, iface):
-        """保存 QGIS 接口对象并初始化服务器句柄。"""
+        """Store the QGIS interface object and initialize the server handle."""
         self.iface = iface
         self._server = None
 
     def initGui(self):
-        """在插件加载时执行依赖检测并按配置启动 MCP 服务。"""
+        """Run dependency checks on load and start the MCP server when enabled."""
         try:
             from processingmcpserver.config import load_processing_mcp_server_config
             from processingmcpserver.dependency_manager import (
@@ -55,7 +55,7 @@ class ProcessingMCPServerPlugin:
             )
 
     def unload(self):
-        """在插件卸载时停止 MCP 服务并清理内部状态。"""
+        """Stop the MCP server during plugin unload and clear internal state."""
         if not self._server:
             return
 

@@ -10,11 +10,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsVectorGetLayerFeaturesTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """验证目标能力已完成注册。"""
+        """Ensure the target capability is registered."""
         assert_tool_registered(self, "vector_get_layer_features")
 
     def test_success_limit_and_payload(self):
-        """验证 limit and payload 的成功场景。"""
+        """Verify the successful path for limit and payload."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("feature_vector")
 
@@ -25,7 +25,7 @@ class ToolsVectorGetLayerFeaturesTest(ProcessingMCPTestBase):
         self.assertEqual(result["features"][0]["geometry_wkt"], "Point (108.9 34.2)")
 
     def test_success_zero_or_negative_limit_returns_empty_slice(self):
-        """验证 zero or negative limit returns empty slice 的成功场景。"""
+        """Verify the successful path for zero or negative limit returns empty slice."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("feature_vector_zero")
 
@@ -38,7 +38,7 @@ class ToolsVectorGetLayerFeaturesTest(ProcessingMCPTestBase):
         self.assertEqual(negative_result["features"], [])
 
     def test_success_limit_cap_is_reported(self):
-        """验证 limit cap is reported 的成功场景。"""
+        """Verify the successful path for limit cap is reported."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("feature_vector_capped")
 
@@ -52,14 +52,14 @@ class ToolsVectorGetLayerFeaturesTest(ProcessingMCPTestBase):
         self.assertEqual(len(result["features"]), 3)
 
     def test_failure_layer_not_found(self):
-        """验证 layer not found 的失败场景。"""
+        """Verify the failure path for layer not found."""
         tools = self.build_tools()
         with self.assertRaises(Exception) as ctx:
             tools.vector_get_layer_features(layer_ref="missing-layer", limit=2)
         self.assertIn("Layer not found", str(ctx.exception))
 
     def test_success_serializes_qt_field_values(self):
-        """验证 serializes Qt field values 的成功场景。"""
+        """Verify the successful path for serializes Qt field values."""
         tools = self.build_tools()
         layer = self.add_serialization_vector_layer("feature_vector_serialization")
 

@@ -21,7 +21,7 @@ from processingmcpserver.dependency_reporting import (
 
 
 def processing_mcp_dependency_report_file_path() -> Path:
-    """返回依赖检测报告输出路径。"""
+    """Return the dependency report output path."""
     return (
         Path(QgsApplication.qgisSettingsDirPath())
         / "processingmcpserver"
@@ -30,12 +30,12 @@ def processing_mcp_dependency_report_file_path() -> Path:
 
 
 def processing_mcp_requirements_file_path() -> Path:
-    """返回插件 requirements.txt 文件路径。"""
+    """Return the plugin requirements.txt path."""
     return Path(__file__).resolve().parent / "requirements.txt"
 
 
 def _load_requirements_from_file(path: Path) -> RequirementsFileLoadResult:
-    """从 requirements.txt 读取依赖清单，跳过空行与注释。"""
+    """Read dependencies from requirements.txt and skip empty lines and comments."""
     normalized: list[str] = []
     seen: set[str] = set()
 
@@ -83,7 +83,7 @@ def _load_requirements_from_file(path: Path) -> RequirementsFileLoadResult:
 
 
 def _collect_python_environment() -> PythonEnvironmentSnapshot:
-    """采集当前解释器与平台信息，异常时写入环境错误字段。"""
+    """Collect interpreter and platform information and record environment errors on failure."""
     environment_errors: list[str] = []
 
     site_packages: list[str] = []
@@ -125,7 +125,7 @@ def _collect_python_environment() -> PythonEnvironmentSnapshot:
 def _resolve_pip_python_executable(
     environment: PythonEnvironmentSnapshot,
 ) -> tuple[str, str, str]:
-    """解析用于 pip 的 Python 可执行文件路径。"""
+    """Resolve the Python executable path used by pip."""
     candidates: list[tuple[str, Path]] = []
 
     try:
@@ -169,7 +169,7 @@ def _resolve_install_target_details(
     python_executable: str,
     environment: PythonEnvironmentSnapshot,
 ) -> tuple[str, str]:
-    """解析依赖安装目标 prefix 和 site-packages 路径。"""
+    """Resolve the dependency install prefix and site-packages paths."""
     fallback_prefix = environment.python_prefix
     fallback_site_packages = _default_site_packages_from_prefix(fallback_prefix)
     if environment.site_packages:
@@ -220,7 +220,7 @@ def _resolve_install_target_details(
 
 
 def _default_site_packages_from_prefix(prefix: str) -> str:
-    """根据 prefix 推导 site-packages 目录。"""
+    """Derive the site-packages directory from a prefix."""
     path = Path(prefix)
     if platform.system().lower() == "windows":
         return str(path / "Lib" / "site-packages")
@@ -231,7 +231,7 @@ def _default_site_packages_from_prefix(prefix: str) -> str:
 def _detect_pip(
     python_executable: str, python_source: str, resolve_error: str
 ) -> PipDetectionResult:
-    """探测指定解释器下 pip 是否可用并返回版本信息。"""
+    """Probe whether pip is available for the given interpreter and return version information."""
     if not python_executable:
         return PipDetectionResult(
             available=False,

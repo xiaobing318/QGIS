@@ -19,7 +19,7 @@ ResultT = TypeVar("ResultT")
 
 
 class McpMainThreadRunner(QObject):
-    """将任意回调切换到 Qt 主线程执行并同步返回结果。"""
+    """Run callbacks on the Qt main thread and return their results synchronously."""
 
     DEFAULT_WAIT_TIMEOUT_SECONDS = 30.0
 
@@ -28,7 +28,7 @@ class McpMainThreadRunner(QObject):
         wait_timeout_seconds: float = DEFAULT_WAIT_TIMEOUT_SECONDS,
         parent: QObject | None = None,
     ) -> None:
-        """初始化 McpMainThreadRunner 实例状态。"""
+        """Initialize the runner state."""
         super().__init__(parent)
         timeout = float(wait_timeout_seconds)
         if timeout <= 0:
@@ -36,7 +36,7 @@ class McpMainThreadRunner(QObject):
         self._wait_timeout_seconds = timeout
 
     def run(self, func: Callable[[], ResultT]) -> ResultT:
-        """执行回调并在跨线程场景下阻塞等待执行完成。"""
+        """Execute a callback and block until it finishes when crossing threads."""
         app = QCoreApplication.instance()
         if app is None or QThread.currentThread() == app.thread():
             return func()
@@ -45,7 +45,7 @@ class McpMainThreadRunner(QObject):
         done = threading.Event()
 
         def wrapper() -> None:
-            """包装回调并同步传递执行结果。"""
+            """Wrap the callback and transfer its result synchronously."""
             try:
                 result["value"] = func()
             except Exception as exc:
@@ -72,5 +72,5 @@ class McpMainThreadRunner(QObject):
 
     @pyqtSlot(object)
     def _execute(self, func: Callable[[], None]) -> None:
-        """作为 Qt 槽函数执行排队回调，副作用是运行传入函数。"""
+        """Execute the queued callback as a Qt slot."""
         func()

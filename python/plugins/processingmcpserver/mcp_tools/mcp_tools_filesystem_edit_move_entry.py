@@ -68,11 +68,11 @@ TOOL_NAME = 'filesystem_edit_move_entry'
 TOOL_DOC = '???把文件或目录移动到新位置。 ?????source_path 是源路径，target_path 是目标路径，overwrite 控制是否允许覆盖目标，confirm_destructive 用于确认覆盖已存在目标，confirm_write 用于显式确认写操作。 ?????源路径必须存在；目标若已存在且 overwrite=false 会失败。 ??????会修改磁盘目录结构，源路径在成功后会消失。 ?????所有 filesystem_edit_* 调用都要求 confirm_write=true；删除或覆盖时还必须显式设置 confirm_destructive=true。 ?????返回 source_path 和 target_path 摘要，表示移动已完成。'
 
 def filesystem_edit_move_entry(self, source_path: str, target_path: str, overwrite: bool = False, confirm_destructive: bool = False, confirm_write: bool = False) -> dict[str, Any]:
-    """执行文件系统相关的 edit move entry 逻辑。"""
+    """Handle a filesystem entry."""
     return self._run(self._filesystem_edit_move_entry_impl, source_path, target_path, overwrite, confirm_destructive, confirm_write)
 
 def _filesystem_edit_move_entry_impl(self, source_path: str, target_path: str, overwrite: bool, confirm_destructive: bool, confirm_write: bool) -> dict[str, Any]:
-    """执行文件系统相关的 edit move entry impl 逻辑。"""
+    """Build the filesystem entry."""
     self._ensure_filesystem_write_confirmed(confirm_write)
     source = self._resolve_filesystem_write_path(source_path)
     target = self._resolve_filesystem_write_path(target_path)
@@ -93,7 +93,7 @@ def _filesystem_edit_move_entry_impl(self, source_path: str, target_path: str, o
 
 @staticmethod
 def _ensure_filesystem_write_confirmed(confirm_write: bool) -> None:
-    """确保写操作已显式确认。"""
+    """Handle ensure filesystem write confirmed."""
     if not confirm_write:
         raise Exception(
             "confirm_write must be true for filesystem_edit_* operations"
@@ -101,7 +101,7 @@ def _ensure_filesystem_write_confirmed(confirm_write: bool) -> None:
 
 @staticmethod
 def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[str, Any] | None = None, warnings: list[str] | None = None, **extra) -> dict[str, Any]:
-    """执行 ok result 相关逻辑。"""
+    """Handle ok result."""
     payload: dict[str, Any] = {"ok": True, "tool": tool, "summary": summary or {}, "outputs": outputs or {}}
     if warnings is not None:
         payload["warnings"] = warnings
@@ -109,16 +109,16 @@ def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[s
     return payload
 
 def _resolve_filesystem_write_path(self, path: str | Path) -> Path:
-    """解析 filesystem write path。"""
+    """Resolve filesystem write path."""
     return self._resolve_filesystem_query_path(path)
 
 def _resolve_filesystem_query_path(self, path: str | Path) -> Path:
-    """解析 filesystem query path。"""
+    """Resolve filesystem query path."""
     return self._normalize_filesystem_path(path)
 
 @staticmethod
 def _normalize_filesystem_path(path: str | Path) -> Path:
-    """归一化 filesystem path。"""
+    """Handle normalize filesystem path."""
     candidate = path if isinstance(path, Path) else Path(str(path).strip()).expanduser()
     if not candidate.is_absolute():
         candidate = Path.cwd() / candidate

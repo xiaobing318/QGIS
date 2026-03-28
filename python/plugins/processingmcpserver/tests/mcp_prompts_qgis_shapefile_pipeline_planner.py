@@ -10,13 +10,13 @@ from ._shared_fixtures import DummyMcp, DummyTools
 
 class PromptQgisShapefilePipelinePlannerTest(ProcessingMCPTestBase):
     def test_prompt_registered(self):
-        """验证 prompt registered 场景。"""
+        """Verify prompt registered."""
         mcp = DummyMcp()
         register_prompts(mcp, DummyTools())
         self.assertIn("qgis_shapefile_pipeline_planner", mcp.prompt_names)
 
     def test_prompt_signature_matches_expected_arguments(self):
-        """验证 prompt signature matches expected arguments 场景。"""
+        """Verify prompt signature matches expected arguments."""
         mcp = DummyMcp()
         register_prompts(mcp, DummyTools())
 
@@ -36,7 +36,7 @@ class PromptQgisShapefilePipelinePlannerTest(ProcessingMCPTestBase):
         self.assertEqual(signature.parameters["output_dir"].default, inspect.Signature.empty)
 
     def test_prompt_template_contains_six_stages(self):
-        """验证 prompt template contains six stages 场景。"""
+        """Verify prompt template contains six stages."""
         mcp = DummyMcp()
         register_prompts(mcp, DummyTools())
 
@@ -62,7 +62,7 @@ class PromptQgisShapefilePipelinePlannerTest(ProcessingMCPTestBase):
         self.assertNotIn("qgis_shapefile_export_review", output)
 
     def test_prompt_defaults_for_optional_arguments(self):
-        """验证 prompt defaults for optional arguments 场景。"""
+        """Verify prompt defaults for optional arguments."""
         mcp = DummyMcp()
         register_prompts(mcp, DummyTools())
 

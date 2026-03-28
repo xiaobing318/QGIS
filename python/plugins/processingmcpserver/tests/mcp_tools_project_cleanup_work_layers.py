@@ -6,11 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsProjectCleanupWorkLayersTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """验证目标能力已完成注册。"""
+        """Ensure the target capability is registered."""
         assert_tool_registered(self, "project_cleanup_work_layers")
 
     def test_cleanup_removes_work_layers_and_temp_files(self):
-        """验证 cleanup removes work layers and temp files 的成功场景。"""
+        """Verify the successful path for cleanup removes work layers and temp files."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("cleanup_source")
         prepared = tools.vector_prepare_work_layer(

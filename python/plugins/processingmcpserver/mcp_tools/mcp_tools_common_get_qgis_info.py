@@ -68,11 +68,11 @@ TOOL_NAME = 'common_get_qgis_info'
 TOOL_DOC = '???返回当前 QGIS Desktop 会话、平台、插件与 Processing MCP 运行状态，适合作为所有自动化流程的环境探测入口。 ?????无业务输入。 ?????QGIS Desktop 已启动且 processingmcpserver 插件已加载。 ??????无写操作，只读取当前应用、项目与插件状态。 ?????无。 ?????返回 qgis、platform、python、active_project、active_plugins，以及 processing_mcp.filesystem.write_policy 安全摘要等环境信息。'
 
 def common_get_qgis_info(self) -> dict[str, Any]:
-    """返回 QGIS info 信息。"""
+    """Handle common QGIS information."""
     return self._run(self._common_get_qgis_info_impl)
 
 def _common_get_qgis_info_impl(self) -> dict[str, Any]:
-    """执行 common get QGIS info impl 相关逻辑。"""
+    """Implement the common QGIS information logic."""
     project = QgsProject.instance()
     available = False
     try:
@@ -120,7 +120,7 @@ def _common_get_qgis_info_impl(self) -> dict[str, Any]:
     }
 
 def _ensure_processing_runtime(self) -> None:
-    """确保 processing runtime 已就绪。"""
+    """Handle ensure processing runtime."""
     _ensure_processing_initialized()
 
 TOOL_METHODS: dict[str, object] = {

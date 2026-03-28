@@ -8,11 +8,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsLayerListTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """验证目标能力已完成注册。"""
+        """Ensure the target capability is registered."""
         assert_tool_registered(self, "layer_list")
 
     def test_success_list_vector_and_raster(self):
-        """验证 list vector and raster 的成功场景。"""
+        """Verify the successful path for list vector and raster."""
         tools = self.build_tools()
         vector_layer = self.add_sample_vector_layer("layer_list_vector")
         raster_layer = self.add_sample_raster_layer("layer_list_raster")
@@ -25,7 +25,7 @@ class ToolsLayerListTest(ProcessingMCPTestBase):
         self.assertIn(raster_layer.id(), raster_ids)
 
     def test_success_hidden_filter_and_name_glob(self):
-        """验证 hidden filter and name glob 的成功场景。"""
+        """Verify the successful path for hidden filter and name glob."""
         tools = self.build_tools()
         visible_layer = self.add_sample_vector_layer("visible_vector")
         hidden_layer = self.add_sample_vector_layer("hidden_vector")
@@ -44,7 +44,7 @@ class ToolsLayerListTest(ProcessingMCPTestBase):
         self.assertTrue(all(item["visible"] for item in result))
 
     def test_failure_invalid_layer_type_filter(self):
-        """验证 invalid layer type filter 的失败场景。"""
+        """Verify the failure path for invalid layer type filter."""
         tools = self.build_tools()
         with self.assertRaises(Exception):
             tools.layer_list(layer_types="invalid")

@@ -68,11 +68,11 @@ TOOL_NAME = 'filesystem_edit_append_text'
 TOOL_DOC = '???向文本文件尾部追加 UTF-8 内容。 ?????path 是目标文件路径，content 是待追加文本，create_parents 控制父目录不存在时是否自动创建，confirm_write 用于显式确认写操作。 ?????目标路径的父目录必须存在或允许自动创建；目标文件不存在时会被创建。 ??????会在磁盘上创建文件或修改现有文件末尾内容。 ?????该工具不会覆盖已有内容，但仍属于写盘操作，调用前应确认目标路径。 ?????返回追加字符数和最终 path 摘要。'
 
 def filesystem_edit_append_text(self, path: str, content: str, create_parents: bool = True, confirm_write: bool = False) -> dict[str, Any]:
-    """执行文件系统相关的 edit append text 逻辑。"""
+    """Handle text to a filesystem entry."""
     return self._run(self._filesystem_edit_append_text_impl, path, content, create_parents, confirm_write)
 
 def _filesystem_edit_append_text_impl(self, path: str, content: str, create_parents: bool, confirm_write: bool) -> dict[str, Any]:
-    """执行文件系统相关的 edit append text impl 逻辑。"""
+    """Build the text to a filesystem entry."""
     self._ensure_filesystem_write_confirmed(confirm_write)
     target = self._resolve_filesystem_write_path(path)
     if not target.parent.exists():
@@ -86,7 +86,7 @@ def _filesystem_edit_append_text_impl(self, path: str, content: str, create_pare
 
 @staticmethod
 def _ensure_filesystem_write_confirmed(confirm_write: bool) -> None:
-    """确保写操作已显式确认。"""
+    """Handle ensure filesystem write confirmed."""
     if not confirm_write:
         raise Exception(
             "confirm_write must be true for filesystem_edit_* operations"
@@ -94,7 +94,7 @@ def _ensure_filesystem_write_confirmed(confirm_write: bool) -> None:
 
 @staticmethod
 def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[str, Any] | None = None, warnings: list[str] | None = None, **extra) -> dict[str, Any]:
-    """执行 ok result 相关逻辑。"""
+    """Handle ok result."""
     payload: dict[str, Any] = {"ok": True, "tool": tool, "summary": summary or {}, "outputs": outputs or {}}
     if warnings is not None:
         payload["warnings"] = warnings
@@ -102,16 +102,16 @@ def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[s
     return payload
 
 def _resolve_filesystem_write_path(self, path: str | Path) -> Path:
-    """解析 filesystem write path。"""
+    """Resolve filesystem write path."""
     return self._resolve_filesystem_query_path(path)
 
 def _resolve_filesystem_query_path(self, path: str | Path) -> Path:
-    """解析 filesystem query path。"""
+    """Resolve filesystem query path."""
     return self._normalize_filesystem_path(path)
 
 @staticmethod
 def _normalize_filesystem_path(path: str | Path) -> Path:
-    """归一化 filesystem path。"""
+    """Handle normalize filesystem path."""
     candidate = path if isinstance(path, Path) else Path(str(path).strip()).expanduser()
     if not candidate.is_absolute():
         candidate = Path.cwd() / candidate

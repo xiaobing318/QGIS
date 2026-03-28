@@ -68,11 +68,11 @@ TOOL_NAME = 'processing_get_algorithms'
 TOOL_DOC = '???查询 Processing 算法目录，支持按 provider 过滤，或按 algorithm_id 精确读取单个算法。 ?????algorithm_id 提供时返回单个算法完整定义；provider_id 提供时按 provider 过滤；include_parameters 和 include_outputs 控制列表模式下是否展开参数和输出；limit 控制列表返回上限。 ?????Processing 运行时必须可用；若指定 algorithm_id，则该算法必须存在。 ??????无写操作，只读取 Processing 算法元数据。 ?????列表模式的 limit 会被内部阈值裁剪；单算法模式会始终返回该算法的完整参数和输出定义。 ?????返回单个 algorithm 对象或 algorithms 数组，以及 count、returned、truncated 等摘要。'
 
 def processing_get_algorithms(self, algorithm_id: str | None = None, provider_id: str | None = None, include_parameters: bool = False, include_outputs: bool = False, limit: int | None = None) -> dict[str, Any]:
-    """执行 Processing 相关的 get algorithms 逻辑。"""
+    """Handle available processing algorithms."""
     return self._run(self._processing_get_algorithms_impl, algorithm_id, provider_id, include_parameters, include_outputs, limit)
 
 def _processing_get_algorithms_impl(self, algorithm_id: str | None, provider_id: str | None, include_parameters: bool, include_outputs: bool, limit: int | None) -> dict[str, Any]:
-    """执行 Processing 相关的 get algorithms impl 逻辑。"""
+    """Build the available processing algorithms."""
     self._ensure_processing_runtime()
     registry = QgsApplication.processingRegistry()
     if algorithm_id:
@@ -101,11 +101,11 @@ def _processing_get_algorithms_impl(self, algorithm_id: str | None, provider_id:
     }
 
 def _ensure_processing_runtime(self) -> None:
-    """确保 processing runtime 已就绪。"""
+    """Handle ensure processing runtime."""
     _ensure_processing_initialized()
 
 def _normalize_algorithm_list_limit(self, limit: Any | None) -> tuple[int | None, int, bool]:
-    """归一化 algorithm list limit。"""
+    """Handle normalize algorithm list limit."""
     requested = None if limit is None else self._safe_int(limit, self.DEFAULT_ALGORITHM_LIST_LIMIT)
     normalized = self.DEFAULT_ALGORITHM_LIST_LIMIT if requested is None else max(0, requested)
     applied = min(normalized, self.MAX_ALGORITHM_LIST_LIMIT)
@@ -113,7 +113,7 @@ def _normalize_algorithm_list_limit(self, limit: Any | None) -> tuple[int | None
     return requested, applied, capped
 
 def _serialize_algorithm(self, alg, include_parameters: bool, include_outputs: bool) -> dict[str, Any]:
-    """序列化 algorithm。"""
+    """Serialize serialize algorithm."""
     provider = alg.provider() if hasattr(alg, "provider") else None
     result = {
         "id": alg.id(),
@@ -133,14 +133,14 @@ def _serialize_algorithm(self, alg, include_parameters: bool, include_outputs: b
 
 @staticmethod
 def _safe_int(value: Any, default: int) -> int:
-    """执行 safe int 相关逻辑。"""
+    """Handle safe int."""
     try:
         return int(value)
     except (TypeError, ValueError):
         return default
 
 def _serialize_output(self, output_def) -> dict[str, Any]:
-    """序列化 output。"""
+    """Serialize serialize output."""
     return {
         "name": self._safe_call(output_def, "name"),
         "description": self._safe_call(output_def, "description"),
@@ -149,7 +149,7 @@ def _serialize_output(self, output_def) -> dict[str, Any]:
     }
 
 def _serialize_parameter(self, param) -> dict[str, Any]:
-    """序列化 parameter。"""
+    """Serialize serialize parameter."""
     flags = self._safe_call(param, "flags", 0) or 0
     result = {
         "name": self._safe_call(param, "name"),
@@ -168,7 +168,7 @@ def _serialize_parameter(self, param) -> dict[str, Any]:
 
 @staticmethod
 def _safe_call(obj: object, name: str, default: Any = None) -> Any:
-    """执行 safe call 相关逻辑。"""
+    """Handle safe call."""
     attr = getattr(obj, name, None)
     if callable(attr):
         try:
@@ -179,7 +179,7 @@ def _safe_call(obj: object, name: str, default: Any = None) -> Any:
 
 @staticmethod
 def _serialize_value(value: Any) -> Any:
-    """序列化 value。"""
+    """Serialize values into JSON-friendly representations."""
     if value is None:
         return None
     if isinstance(value, (bool, int, float, str)):

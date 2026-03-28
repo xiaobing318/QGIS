@@ -8,7 +8,7 @@ from processingmcpserver.dependency_models import RequirementEvaluation
 
 
 def _parse_requirement(spec: str) -> tuple[Optional[Any], str]:
-    """解析 requirement 字符串并返回解析对象与错误信息。"""
+    """Parse a requirement string and return the parsed object plus any error."""
     text = spec.strip()
     if not text:
         return None, "Requirement is empty."
@@ -27,7 +27,7 @@ def _parse_requirement(spec: str) -> tuple[Optional[Any], str]:
 
 
 def _load_requirement_parser() -> tuple[Optional[Any], str]:
-    """按优先级加载 requirement 解析器。"""
+    """Load a requirement parser in priority order."""
     try:
         from packaging.requirements import Requirement
 
@@ -46,7 +46,7 @@ def _load_requirement_parser() -> tuple[Optional[Any], str]:
 def _evaluate_requirements(
     requirements: list[str],
 ) -> dict[str, RequirementEvaluation]:
-    """批量评估 requirements 是否满足。"""
+    """Evaluate a list of requirements."""
     evaluations: dict[str, RequirementEvaluation] = {}
     for requirement in requirements:
         evaluations[requirement] = _evaluate_requirement(requirement)
@@ -54,7 +54,7 @@ def _evaluate_requirements(
 
 
 def _evaluate_requirement(spec: str) -> RequirementEvaluation:
-    """评估单个 requirement，检查安装状态、版本约束与导入可用性。"""
+    """Evaluate one requirement for install state, version constraints, and importability."""
     text = spec.strip()
     parsed, parse_error = _parse_requirement(text)
     if parsed is None:
@@ -150,7 +150,7 @@ def _evaluate_requirement(spec: str) -> RequirementEvaluation:
 
 
 def _collect_import_names(distribution_name: str) -> list[str]:
-    """从分发元数据推导可导入模块名。"""
+    """Derive importable module names from distribution metadata."""
     import_names: list[str] = []
     try:
         distribution = importlib.metadata.distribution(distribution_name)
@@ -179,7 +179,7 @@ def _collect_import_names(distribution_name: str) -> list[str]:
 
 
 def _try_import(module_name: str) -> tuple[bool, str]:
-    """尝试导入模块并返回成功标记与错误信息。"""
+    """Try importing a module and return a success flag plus error text."""
     try:
         importlib.import_module(module_name)
         return True, ""
@@ -190,7 +190,7 @@ def _try_import(module_name: str) -> tuple[bool, str]:
 def _extract_unsatisfied(
     evaluations: dict[str, RequirementEvaluation]
 ) -> tuple[list[str], dict[str, str]]:
-    """从评估结果提取不满足 requirement 及对应原因。"""
+    """Extract unmet requirements and their reasons from evaluation results."""
     unsatisfied: list[str] = []
     reasons: dict[str, str] = {}
     for requirement, evaluation in evaluations.items():
@@ -204,7 +204,7 @@ def _extract_unsatisfied(
 def _collect_versions_from_evaluations(
     evaluations: dict[str, RequirementEvaluation]
 ) -> dict[str, str]:
-    """从评估结果提取每个 requirement 的安装版本快照。"""
+    """Collect installed version snapshots from evaluation results."""
     versions: dict[str, str] = {}
     for requirement, evaluation in evaluations.items():
         versions[requirement] = evaluation.installed_version

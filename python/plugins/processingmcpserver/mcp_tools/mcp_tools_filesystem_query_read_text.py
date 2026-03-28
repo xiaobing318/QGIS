@@ -68,11 +68,11 @@ TOOL_NAME = 'filesystem_query_read_text'
 TOOL_DOC = '???按 UTF-8 读取文本文件内容，适合让模型读取配置、脚本或日志片段。 ?????path 指向文本文件，max_chars 可选，用于限制返回字符数。 ?????目标路径必须存在且是文件，并且内容应能按 UTF-8 解码。 ??????无写操作，只读取文件内容。 ?????max_chars 为 None 时返回全文；传入数值时只读取 max_chars+1 个字符用于判断截断，并在 summary.truncated 中标记。 ?????返回 text 字段和截断摘要。'
 
 def filesystem_query_read_text(self, path: str, max_chars: int | None = None) -> dict[str, Any]:
-    """执行文件系统相关的 query read text 逻辑。"""
+    """Handle text from a filesystem entry."""
     return self._run(self._filesystem_query_read_text_impl, path, max_chars)
 
 def _filesystem_query_read_text_impl(self, path: str, max_chars: int | None) -> dict[str, Any]:
-    """执行文件系统相关的 query read text impl 逻辑。"""
+    """Build the text from a filesystem entry."""
     entry = self._resolve_filesystem_query_path(path)
     if not entry.exists() or not entry.is_file():
         raise Exception(f"File not found: {path}")
@@ -86,7 +86,7 @@ def _filesystem_query_read_text_impl(self, path: str, max_chars: int | None) -> 
 
 @staticmethod
 def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[str, Any] | None = None, warnings: list[str] | None = None, **extra) -> dict[str, Any]:
-    """执行 ok result 相关逻辑。"""
+    """Handle ok result."""
     payload: dict[str, Any] = {"ok": True, "tool": tool, "summary": summary or {}, "outputs": outputs or {}}
     if warnings is not None:
         payload["warnings"] = warnings
@@ -94,12 +94,12 @@ def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[s
     return payload
 
 def _resolve_filesystem_query_path(self, path: str | Path) -> Path:
-    """解析 filesystem query path。"""
+    """Resolve filesystem query path."""
     return self._normalize_filesystem_path(path)
 
 @staticmethod
 def _safe_int(value: Any, default: int) -> int:
-    """执行 safe int 相关逻辑。"""
+    """Handle safe int."""
     try:
         return int(value)
     except (TypeError, ValueError):
@@ -107,7 +107,7 @@ def _safe_int(value: Any, default: int) -> int:
 
 @staticmethod
 def _normalize_filesystem_path(path: str | Path) -> Path:
-    """归一化 filesystem path。"""
+    """Handle normalize filesystem path."""
     candidate = path if isinstance(path, Path) else Path(str(path).strip()).expanduser()
     if not candidate.is_absolute():
         candidate = Path.cwd() / candidate

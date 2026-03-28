@@ -6,11 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsVectorTableDeleteRecordsTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """验证目标能力已完成注册。"""
+        """Ensure the target capability is registered."""
         assert_tool_registered(self, "vector_table_delete_records")
 
     def test_default_creates_copy_layer(self):
-        """验证默认条件下的 creates copy layer 场景。"""
+        """Verify the default behavior for creates copy layer."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("delete_records_vector_copy")
 
@@ -28,7 +28,7 @@ class ToolsVectorTableDeleteRecordsTest(ProcessingMCPTestBase):
         self.assertEqual(output_layer.featureCount(), 2)
 
     def test_success_delete_records(self):
-        """验证 delete records 的成功场景。"""
+        """Verify the successful path for delete records."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("delete_records_vector")
 
@@ -42,7 +42,7 @@ class ToolsVectorTableDeleteRecordsTest(ProcessingMCPTestBase):
         self.assertEqual(result["summary"]["affected_count"], 1)
 
     def test_success_delete_records_without_where_deletes_all(self):
-        """验证 delete records without where deletes all 的成功场景。"""
+        """Verify the successful path for delete records without where deletes all."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("delete_records_vector_all")
 
@@ -58,7 +58,7 @@ class ToolsVectorTableDeleteRecordsTest(ProcessingMCPTestBase):
         self.assertEqual(result["summary"]["output_layer_id"], layer.id())
 
     def test_failure_invalid_where(self):
-        """验证 invalid where 的失败场景。"""
+        """Verify the failure path for invalid where."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("delete_records_vector_invalid_where")
 
@@ -72,7 +72,7 @@ class ToolsVectorTableDeleteRecordsTest(ProcessingMCPTestBase):
         self.assertIn("Invalid where expression", str(ctx.exception))
 
     def test_failure_without_confirmation(self):
-        """验证 without confirmation 的失败场景。"""
+        """Verify the failure path for without confirmation."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("delete_records_vector2")
 
@@ -86,7 +86,7 @@ class ToolsVectorTableDeleteRecordsTest(ProcessingMCPTestBase):
         self.assertIn("confirm_destructive must be true", str(ctx.exception))
 
     def test_failure_duplicate_layer_name_is_ambiguous(self):
-        """验证 duplicate layer name is ambiguous 的失败场景。"""
+        """Verify the failure path for duplicate layer name is ambiguous."""
         tools = self.build_tools()
         self.add_sample_vector_layer("duplicate-delete-layer")
         self.add_sample_vector_layer("duplicate-delete-layer")

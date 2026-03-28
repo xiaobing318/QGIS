@@ -8,11 +8,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsVectorPrepareWorkLayerTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """验证目标能力已完成注册。"""
+        """Ensure the target capability is registered."""
         assert_tool_registered(self, "vector_prepare_work_layer")
 
     def test_prepare_work_layer_standardizes_geometry_crs_and_schema(self):
-        """验证 prepare work layer standardizes geometry CRS and schema 场景。"""
+        """Verify prepare work layer standardizes geometry CRS and schema."""
         tools = self.build_tools()
         layer = QgsVectorLayer(
             "MultiPoint?crs=EPSG:4326&field=very_long_field_name:string(32)",
@@ -57,7 +57,7 @@ class ToolsVectorPrepareWorkLayerTest(ProcessingMCPTestBase):
         self.assertEqual(prepared_layer.featureCount(), 2)
 
     def test_failure_invalid_multipart_policy(self):
-        """验证 invalid multipart policy 的失败场景。"""
+        """Verify the failure path for invalid multipart policy."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("prepare_invalid_policy")
 

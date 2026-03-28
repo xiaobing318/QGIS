@@ -6,11 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsFilesystemEditWriteTextTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """验证目标能力已完成注册。"""
+        """Ensure the target capability is registered."""
         assert_tool_registered(self, "filesystem_edit_write_text")
 
     def test_success_write_and_overwrite(self):
-        """验证 write and overwrite 的成功场景。"""
+        """Verify the successful path for write and overwrite."""
         tools = self.build_tools()
         root = self.make_temp_dir()
         target = root / "target.txt"
@@ -31,7 +31,7 @@ class ToolsFilesystemEditWriteTextTest(ProcessingMCPTestBase):
         self.assertEqual(target.read_text(encoding="utf-8"), "v2")
 
     def test_failure_without_confirm_write(self):
-        """验证 without confirm write 的失败场景。"""
+        """Verify the failure path for without confirm write."""
         tools = self.build_tools()
         root = self.make_temp_dir()
         target = root / "target.txt"
@@ -41,7 +41,7 @@ class ToolsFilesystemEditWriteTextTest(ProcessingMCPTestBase):
         self.assertIn("confirm_write must be true", str(ctx.exception))
 
     def test_failure_overwrite_without_confirm(self):
-        """验证 overwrite without confirm 的失败场景。"""
+        """Verify the failure path for overwrite without confirm."""
         tools = self.build_tools()
         root = self.make_temp_dir()
         target = self.create_text_file(root / "target.txt", "v1")

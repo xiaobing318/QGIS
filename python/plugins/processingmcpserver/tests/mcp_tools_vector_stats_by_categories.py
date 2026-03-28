@@ -6,11 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsVectorStatsByCategoriesTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """验证目标能力已完成注册。"""
+        """Ensure the target capability is registered."""
         assert_tool_registered(self, "vector_stats_by_categories")
 
     def test_success_vector_stats_by_categories(self):
-        """验证 vector stats by categories 的成功场景。"""
+        """Verify the successful path for vector stats by categories."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("vector_stats_cat_layer")
 
@@ -23,7 +23,7 @@ class ToolsVectorStatsByCategoriesTest(ProcessingMCPTestBase):
         self.assertEqual(result["tool"], "vector_stats_by_categories")
 
     def test_failure_empty_categories(self):
-        """验证 empty categories 的失败场景。"""
+        """Verify the failure path for empty categories."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("vector_stats_cat_layer2")
 

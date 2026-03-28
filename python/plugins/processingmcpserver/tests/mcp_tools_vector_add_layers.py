@@ -6,11 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsVectorAddLayersTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """验证目标能力已完成注册。"""
+        """Ensure the target capability is registered."""
         assert_tool_registered(self, "vector_add_layers")
 
     def test_success_with_skip_invalid(self):
-        """验证 with skip invalid 的成功场景。"""
+        """Verify the successful path for with skip invalid."""
         tools = self.build_tools()
         geojson = self.sample_vector_path()
 
@@ -24,7 +24,7 @@ class ToolsVectorAddLayersTest(ProcessingMCPTestBase):
         self.assertEqual(result["failed_count"], 1)
 
     def test_failure_without_skip_invalid(self):
-        """验证 without skip invalid 的失败场景。"""
+        """Verify the failure path for without skip invalid."""
         tools = self.build_tools()
         geojson = self.sample_vector_path()
 

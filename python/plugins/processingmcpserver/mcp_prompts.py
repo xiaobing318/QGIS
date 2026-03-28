@@ -13,10 +13,10 @@ def _prompt_doc(
     safety: str,
     returns: str,
 ) -> str:
-    """执行 prompt doc 相关逻辑。"""
+    """Build a prompt description from structured sections."""
     return (
-        f"用途：{purpose} 输入语义：{inputs} 前置条件：{preconditions} "
-        f"主要副作用：{effects} 安全开关：{safety} 返回结果：{returns}"
+        f"Purpose: {purpose} Inputs: {inputs} Preconditions: {preconditions} "
+        f"Side effects: {effects} Safety controls: {safety} Returns: {returns}"
     )
 
 
@@ -33,7 +33,7 @@ _REGISTERED_PROMPT_DOCSTRINGS: dict[str, str] = {
 
 
 def _validate_registered_prompt_docstrings() -> None:
-    """校验 registered prompt docstrings。"""
+    """Validate the registered prompt docstrings."""
     missing: list[str] = []
     invalid: list[str] = []
     extra = sorted(set(_REGISTERED_PROMPT_DOCSTRINGS) - set(REGISTERED_PROMPT_NAMES))
@@ -55,7 +55,7 @@ _validate_registered_prompt_docstrings()
 
 
 def register_prompts(mcp: Any, tools: Any) -> None:
-    """注册 prompts 能力。"""
+    """Register prompt capabilities."""
     prompt_factory = getattr(mcp, "prompt", None)
     if not callable(prompt_factory):
         return
@@ -106,7 +106,7 @@ def register_prompts(mcp: Any, tools: Any) -> None:
         quality_rule_resource: str = "qgis://workflow/shapefile/quality-profile/default",
         deliverables: str = "标准交付：输出 shapefile bundle、质量结果、运行摘要。",
     ) -> str:
-        """执行 QGIS shapefile pipeline planner 相关逻辑。"""
+        """Build the QGIS shapefile pipeline planner prompt."""
         task_text = task_name.strip() if isinstance(task_name, str) else ""
         input_text = input_dir.strip() if isinstance(input_dir, str) else ""
         output_text = output_dir.strip() if isinstance(output_dir, str) else ""

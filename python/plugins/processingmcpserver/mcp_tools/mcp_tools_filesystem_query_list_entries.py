@@ -68,11 +68,11 @@ TOOL_NAME = 'filesystem_query_list_entries'
 TOOL_DOC = '???列出目录中的文件或子目录条目，适合在执行文件操作前先做只读探查。 ?????directory 是根目录，recursive 控制是否递归，include_files 和 include_directories 控制返回对象类型，name_glob 过滤名称，limit 控制返回上限。 ?????目录必须存在；include_files 与 include_directories 不能同时为 false。 ??????无写操作，只读取文件系统元数据。 ?????limit 会被内部阈值裁剪；结果里会明确 returned_count、matched_total 与 truncated。 ?????返回目录路径、entries 数组以及 limit 应用摘要。'
 
 def filesystem_query_list_entries(self, directory: str, recursive: bool = False, include_files: bool = True, include_directories: bool = True, name_glob: str = "*", limit: int = DEFAULT_FILESYSTEM_LIST_LIMIT) -> dict[str, Any]:
-    """执行文件系统相关的 query list entries 逻辑。"""
+    """Handle entries in a filesystem path."""
     return self._run(self._filesystem_query_list_entries_impl, directory, recursive, include_files, include_directories, name_glob, limit)
 
 def _filesystem_query_list_entries_impl(self, directory: str, recursive: bool, include_files: bool, include_directories: bool, name_glob: str, limit: int) -> dict[str, Any]:
-    """执行文件系统相关的 query list entries impl 逻辑。"""
+    """Build the entries in a filesystem path."""
     if not include_files and not include_directories:
         raise Exception("include_files and include_directories cannot both be false")
     root = self._resolve_filesystem_query_path(directory)
@@ -99,7 +99,7 @@ def _filesystem_query_list_entries_impl(self, directory: str, recursive: bool, i
     return self._ok_result("filesystem_query_list_entries", summary={"returned_count": len(entries), "matched_total": matched_total, "requested_limit": requested, "applied_limit": applied, "limit_capped": capped, "truncated": matched_total > len(entries)}, outputs={"directory": str(root), "entries": entries})
 
 def _normalize_filesystem_limit(self, limit: Any | None) -> tuple[int, int, bool]:
-    """归一化 filesystem limit。"""
+    """Handle normalize filesystem limit."""
     requested = self._safe_int(limit, self.DEFAULT_FILESYSTEM_LIST_LIMIT)
     normalized = max(0, requested)
     applied = min(normalized, self.MAX_FILESYSTEM_LIST_LIMIT)
@@ -107,13 +107,13 @@ def _normalize_filesystem_limit(self, limit: Any | None) -> tuple[int, int, bool
 
 @staticmethod
 def _normalize_name_glob(name_glob: str | None) -> str:
-    """归一化 name glob。"""
+    """Handle normalize name glob."""
     value = (name_glob or "*").strip()
     return value or "*"
 
 @staticmethod
 def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[str, Any] | None = None, warnings: list[str] | None = None, **extra) -> dict[str, Any]:
-    """执行 ok result 相关逻辑。"""
+    """Handle ok result."""
     payload: dict[str, Any] = {"ok": True, "tool": tool, "summary": summary or {}, "outputs": outputs or {}}
     if warnings is not None:
         payload["warnings"] = warnings
@@ -122,7 +122,7 @@ def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[s
 
 @staticmethod
 def _path_info(path: Path) -> dict[str, Any]:
-    """执行 path info 相关逻辑。"""
+    """Handle path info."""
     stat = path.stat()
     return {
         "path": str(path),
@@ -135,12 +135,12 @@ def _path_info(path: Path) -> dict[str, Any]:
     }
 
 def _resolve_filesystem_query_path(self, path: str | Path) -> Path:
-    """解析 filesystem query path。"""
+    """Resolve filesystem query path."""
     return self._normalize_filesystem_path(path)
 
 @staticmethod
 def _safe_int(value: Any, default: int) -> int:
-    """执行 safe int 相关逻辑。"""
+    """Handle safe int."""
     try:
         return int(value)
     except (TypeError, ValueError):
@@ -148,7 +148,7 @@ def _safe_int(value: Any, default: int) -> int:
 
 @staticmethod
 def _normalize_filesystem_path(path: str | Path) -> Path:
-    """归一化 filesystem path。"""
+    """Handle normalize filesystem path."""
     candidate = path if isinstance(path, Path) else Path(str(path).strip()).expanduser()
     if not candidate.is_absolute():
         candidate = Path.cwd() / candidate

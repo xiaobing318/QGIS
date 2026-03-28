@@ -68,11 +68,11 @@ TOOL_NAME = 'layer_resolve_references'
 TOOL_DOC = '???把图层名称或 layer id 解析成唯一 layer id，便于后续安全调用其它工具。 ?????refs 是待解析引用数组，strict 控制遇到 missing 或 ambiguous 时是返回详情还是直接失败。 ?????目标引用应来自当前工程；若名称重复会被归类为 ambiguous。 ??????无写操作，只读取当前工程图层注册表。 ?????strict=false 时会尽量返回 resolved、missing、ambiguous；strict=true 时只要存在缺失或歧义就抛错。 ?????返回 resolved 映射、missing 数组和 ambiguous 映射。'
 
 def layer_resolve_references(self, refs: list[str], strict: bool = False) -> dict[str, Any]:
-    """执行图层相关的 resolve references 逻辑。"""
+    """Handle layer references."""
     return self._run(self._layer_resolve_references_impl, refs, strict)
 
 def _layer_resolve_references_impl(self, refs: list[str], strict: bool) -> dict[str, Any]:
-    """执行图层相关的 resolve references impl 逻辑。"""
+    """Build the layer references."""
     resolved: dict[str, str] = {}
     missing: list[str] = []
     ambiguous: dict[str, list[str]] = {}

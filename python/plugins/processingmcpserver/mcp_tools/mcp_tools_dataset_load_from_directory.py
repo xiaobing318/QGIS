@@ -68,11 +68,11 @@ TOOL_NAME = 'dataset_load_from_directory'
 TOOL_DOC = '???先扫描目录中的候选数据集，再把匹配的 vector 或 raster 图层批量加载到当前工程。 ?????参数和 dataset_list_files 基本一致，skip_invalid 控制遇到坏数据时是跳过还是整体失败。 ?????目录必须存在，且目录下至少有可识别的数据集文件才有意义。 ??????会向当前工程新增多个图层，但不会改写源数据文件。 ?????skip_invalid=true 时失败项会进入 failed；skip_invalid=false 时第一个失败就终止。 ?????返回 requested_count、loaded_count、failed_count，以及 loaded 和 failed 明细。'
 
 def dataset_load_from_directory(self, directory: str, recursive: bool = False, dataset_kind: str = "both", geometry_type: str = "any", name_glob: str = "*", limit: int = DEFAULT_DATASET_LIMIT, skip_invalid: bool = True) -> dict[str, Any]:
-    """执行数据集相关的 load from directory 逻辑。"""
+    """Handle datasets from a directory."""
     return self._run(self._dataset_load_from_directory_impl, directory, recursive, dataset_kind, geometry_type, name_glob, limit, skip_invalid)
 
 def _dataset_load_from_directory_impl(self, directory: str, recursive: bool, dataset_kind: str, geometry_type: str, name_glob: str, limit: int, skip_invalid: bool) -> dict[str, Any]:
-    """执行数据集相关的 load from directory impl 逻辑。"""
+    """Build the datasets from a directory."""
     list_result = self._dataset_list_files_impl(directory, recursive, dataset_kind, geometry_type, name_glob, limit)
     loaded: list[dict[str, Any]] = []
     failed: list[dict[str, Any]] = []
@@ -90,7 +90,7 @@ def _dataset_load_from_directory_impl(self, directory: str, recursive: bool, dat
     return {"requested_count": len(list_result["datasets"]), "loaded_count": len(loaded), "failed_count": len(failed), "loaded": loaded, "failed": failed}
 
 def _dataset_list_files_impl(self, directory: str, recursive: bool, dataset_kind: str, geometry_type: str, name_glob: str, limit: int) -> dict[str, Any]:
-    """执行数据集相关的 list files impl 逻辑。"""
+    """Build the files in a dataset directory."""
     root = Path(directory)
     if not root.exists() or not root.is_dir():
         raise Exception(f"Directory not found: {directory}")
@@ -121,7 +121,7 @@ def _dataset_list_files_impl(self, directory: str, recursive: bool, dataset_kind
     return {"directory": str(root), "requested_limit": requested, "applied_limit": applied, "limit_capped": capped, "returned": len(datasets), "matched_total": matched_total, "truncated": matched_total > len(datasets), "datasets": datasets}
 
 def _raster_add_layer_impl(self, path: str, provider: str = "gdal", name: str | None = None) -> dict[str, Any]:
-    """执行栅格相关的 add layer impl 逻辑。"""
+    """Build the raster layer."""
     layer = QgsRasterLayer(path, name or Path(path).stem, provider)
     if not layer.isValid():
         raise Exception(f"Layer is not valid: {path}")
@@ -129,7 +129,7 @@ def _raster_add_layer_impl(self, path: str, provider: str = "gdal", name: str | 
     return {"id": layer.id(), "name": layer.name(), "type": "raster", "width": layer.width(), "height": layer.height(), "band_count": layer.bandCount()}
 
 def _vector_add_layer_impl(self, path: str, provider: str = "ogr", name: str | None = None) -> dict[str, Any]:
-    """执行矢量相关的 add layer impl 逻辑。"""
+    """Build the vector layer."""
     layer = QgsVectorLayer(path, name or Path(path).stem, provider)
     if not layer.isValid():
         raise Exception(f"Layer is not valid: {path}")
@@ -138,7 +138,7 @@ def _vector_add_layer_impl(self, path: str, provider: str = "ogr", name: str | N
 
 @staticmethod
 def _detect_dataset_kind(path: Path) -> str | None:
-    """检测 dataset kind。"""
+    """Handle detect dataset kind."""
     vector_exts = {".shp", ".gpkg", ".geojson", ".json", ".kml", ".gml", ".sqlite", ".csv"}
     raster_exts = {".tif", ".tiff", ".img", ".vrt", ".asc", ".jp2", ".png", ".jpg", ".jpeg"}
     suffix = path.suffix.lower()
@@ -150,7 +150,7 @@ def _detect_dataset_kind(path: Path) -> str | None:
 
 @staticmethod
 def _detect_vector_geometry_type(path: Path) -> str:
-    """检测 vector geometry type。"""
+    """Handle detect vector geometry type."""
     layer = QgsVectorLayer(str(path), "__probe__", "ogr")
     if not layer.isValid():
         return "unknown"
@@ -158,7 +158,7 @@ def _detect_vector_geometry_type(path: Path) -> str:
 
 @staticmethod
 def _normalize_dataset_kind(dataset_kind: str | None) -> str:
-    """归一化 dataset kind。"""
+    """Handle normalize dataset kind."""
     value = (dataset_kind or "both").strip().lower()
     if value in {"both", "all", "any"}:
         return "both"
@@ -167,7 +167,7 @@ def _normalize_dataset_kind(dataset_kind: str | None) -> str:
     raise Exception(f"Invalid dataset_kind: {dataset_kind}")
 
 def _normalize_dataset_limit(self, limit: Any | None) -> tuple[int, int, bool]:
-    """归一化 dataset limit。"""
+    """Handle normalize dataset limit."""
     requested = self._safe_int(limit, self.DEFAULT_DATASET_LIMIT)
     normalized = max(0, requested)
     applied = min(normalized, self.MAX_DATASET_LIMIT)
@@ -175,7 +175,7 @@ def _normalize_dataset_limit(self, limit: Any | None) -> tuple[int, int, bool]:
 
 @staticmethod
 def _normalize_geometry_type_filter(geometry_type: str | None) -> str:
-    """归一化 geometry type filter。"""
+    """Handle normalize geometry type filter."""
     value = (geometry_type or "any").strip().lower()
     if value in {"any", "point", "line", "polygon", "unknown"}:
         return value
@@ -183,13 +183,13 @@ def _normalize_geometry_type_filter(geometry_type: str | None) -> str:
 
 @staticmethod
 def _normalize_name_glob(name_glob: str | None) -> str:
-    """归一化 name glob。"""
+    """Handle normalize name glob."""
     value = (name_glob or "*").strip()
     return value or "*"
 
 @staticmethod
 def _layer_type_token(layer: QgsMapLayer) -> str:
-    """执行图层相关的 type token 逻辑。"""
+    """Handle layer type token."""
     if layer.type() == QgsMapLayer.VectorLayer:
         return f"vector_{int(layer.geometryType())}"
     if layer.type() == QgsMapLayer.RasterLayer:
@@ -198,7 +198,7 @@ def _layer_type_token(layer: QgsMapLayer) -> str:
 
 @staticmethod
 def _safe_int(value: Any, default: int) -> int:
-    """执行 safe int 相关逻辑。"""
+    """Handle safe int."""
     try:
         return int(value)
     except (TypeError, ValueError):

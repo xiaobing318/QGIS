@@ -1,11 +1,11 @@
-from __future__ import annotations
-
 """Public config facade for processingmcpserver.
 
 This module intentionally re-exports the stable config API so other modules
 and tests can import from a single location without depending on the loader
 module layout.
 """
+
+from __future__ import annotations
 
 from processingmcpserver.config_defaults import (
     default_processing_mcp_json_document,

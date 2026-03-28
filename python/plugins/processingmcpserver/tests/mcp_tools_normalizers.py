@@ -7,7 +7,7 @@ from ._shared_case_base import ProcessingMCPTestBase
 
 class ToolsNormalizersTest(ProcessingMCPTestBase):
     def test_feature_limit_default_and_dynamic_override(self):
-        """验证 feature limit default and dynamic override 场景。"""
+        """Verify feature limit default and dynamic override."""
         tools = self.build_tools()
 
         requested, applied, capped = tools._normalize_feature_limit(None)
@@ -21,7 +21,7 @@ class ToolsNormalizersTest(ProcessingMCPTestBase):
         self.assertFalse(capped)
 
     def test_feature_limit_handles_zero_negative_and_cap(self):
-        """验证 feature limit handles zero negative and cap 场景。"""
+        """Verify feature limit handles zero negative and cap."""
         tools = self.build_tools()
 
         requested, applied, capped = tools._normalize_feature_limit(0)
@@ -38,7 +38,7 @@ class ToolsNormalizersTest(ProcessingMCPTestBase):
         self.assertTrue(capped)
 
     def test_algorithm_dataset_and_filesystem_limits_cap(self):
-        """验证 algorithm dataset and filesystem limits cap 场景。"""
+        """Verify algorithm dataset and filesystem limits cap."""
         tools = self.build_tools()
 
         requested, applied, capped = tools._normalize_algorithm_list_limit(
@@ -65,7 +65,7 @@ class ToolsNormalizersTest(ProcessingMCPTestBase):
         self.assertTrue(capped)
 
     def test_filter_and_glob_normalizers(self):
-        """验证 filter and glob normalizers 场景。"""
+        """Verify filter and glob normalizers."""
         tools = self.build_tools()
 
         self.assertEqual(tools._normalize_dataset_kind("vector"), "vector")

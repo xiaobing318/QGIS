@@ -11,7 +11,7 @@ from processingmcpserver.dependency_models import DependencyCheckResult
 
 
 def _write_dependency_report(path: Path, result: DependencyCheckResult) -> None:
-    """写入依赖报告 JSON 文件，失败时记录警告。"""
+    """Write the dependency report JSON file and log a warning on failure."""
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
@@ -27,7 +27,7 @@ def _write_dependency_report(path: Path, result: DependencyCheckResult) -> None:
 
 
 def _log_result(report_path: Path, result: DependencyCheckResult) -> None:
-    """输出依赖检查结论与关键运行时上下文日志。"""
+    """Log the dependency check summary and key runtime context."""
     QgsMessageLog.logMessage(
         f"Processing MCP dependency report: {report_path}",
         MCP_LOG_CATEGORY,
@@ -135,14 +135,14 @@ def _log_result(report_path: Path, result: DependencyCheckResult) -> None:
 
 
 def _truncate_text(text: str, max_length: int = 20_000) -> str:
-    """截断超长文本，避免报告和日志过大。"""
+    """Truncate long text to keep reports and logs compact."""
     if len(text) <= max_length:
         return text
     return text[:max_length] + "\n...[truncated]..."
 
 
 def _first_line(text: str) -> str:
-    """提取文本首行，用于日志摘要展示。"""
+    """Extract the first line for log summaries."""
     content = (text or "").strip()
     if not content:
         return "<empty>"
@@ -151,7 +151,7 @@ def _first_line(text: str) -> str:
 
 
 def _summarize_failure_reason(stderr_text: str) -> str:
-    """提取失败摘要，优先返回首行文本。"""
+    """Extract a failure summary and prefer the first line of text."""
     text = (stderr_text or "").strip()
     if not text:
         return "no stderr output"

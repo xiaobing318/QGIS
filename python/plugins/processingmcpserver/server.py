@@ -91,12 +91,12 @@ def _fastmcp_supports_keyword_parameter(fastmcp_init, parameter_name: str) -> bo
 
 
 class ProcessingMCPServer:
-    """封装 FastMCP 与传输层，负责 Processing MCP 服务启动与停止。"""
+    """Wrap FastMCP and the transport layer to start and stop the server."""
 
     def __init__(
         self, iface, config: Optional[ProcessingMCPServerConfig] = None
     ) -> None:
-        """初始化服务对象并根据配置构建 MCP 实例与传输对象。"""
+        """Initialize the server object and build the MCP instance and transport."""
         self._iface = iface
         self._config = config or load_processing_mcp_server_config()
         self._config_logged = False
@@ -105,7 +105,7 @@ class ProcessingMCPServer:
         self._transport = create_transport(self._mcp, self._config)
 
     def _build_mcp_server(self) -> "FastMCP":
-        """创建 FastMCP 服务并注册工具，副作用是加载 MCP 运行时依赖。"""
+        """Create the FastMCP server and register tools; this loads MCP runtime dependencies."""
         try:
             from mcp.server.fastmcp import FastMCP
         except Exception as exc:
@@ -200,7 +200,7 @@ class ProcessingMCPServer:
             )
 
     def start(self) -> bool:
-        """按配置启动传输层服务，副作用是启动后台线程监听请求。"""
+        """Start the transport service from configuration and launch its worker thread."""
         self._log_config_summary_once()
 
         if not self._config.enabled:
@@ -228,7 +228,7 @@ class ProcessingMCPServer:
             return False
 
     def stop(self) -> None:
-        """停止传输层服务并记录停止结果。"""
+        """Stop the transport service and log the outcome."""
         try:
             self._transport.stop()
         except Exception:
@@ -243,11 +243,11 @@ class ProcessingMCPServer:
             )
 
     def is_running(self) -> bool:
-        """返回传输层是否处于运行状态。"""
+        """Return whether the transport layer is currently running."""
         return self._transport.is_running()
 
     def _log_exception(self, message: str) -> None:
-        """记录异常堆栈到 QGIS 日志，副作用是输出 Critical 级日志。"""
+        """Log an exception stack trace to the QGIS log as a Critical message."""
         QgsMessageLog.logMessage(
             f"{message}\n{traceback.format_exc()}",
             MCP_LOG_CATEGORY,
@@ -255,7 +255,7 @@ class ProcessingMCPServer:
         )
 
     def _log_config_summary_once(self) -> None:
-        """仅首次输出配置摘要，便于定位配置来源与依赖策略。"""
+        """Log the configuration summary only once to aid diagnostics."""
         if self._config_logged:
             return
         self._config_logged = True

@@ -5,7 +5,7 @@ from dataclasses import dataclass, field
 
 @dataclass(frozen=True)
 class PythonEnvironmentSnapshot:
-    """记录当前解释器与平台环境快照。"""
+    """Record the current interpreter and platform snapshot."""
 
     platform_system: str
     platform_release: str
@@ -23,7 +23,7 @@ class PythonEnvironmentSnapshot:
 
 @dataclass(frozen=True)
 class PipDetectionResult:
-    """记录 pip 可用性探测结果。"""
+    """Record the pip availability probe result."""
 
     available: bool
     version: str
@@ -37,7 +37,7 @@ class PipDetectionResult:
 
 @dataclass(frozen=True)
 class RequirementEvaluation:
-    """记录单个 requirement 的满足情况。"""
+    """Record the satisfaction state for one requirement."""
 
     requirement: str
     distribution_name: str
@@ -48,7 +48,7 @@ class RequirementEvaluation:
 
 @dataclass(frozen=True)
 class RequirementsFileLoadResult:
-    """记录 requirements.txt 文件读取结果。"""
+    """Record the result of reading requirements.txt."""
 
     path: str
     read_success: bool
@@ -58,7 +58,7 @@ class RequirementsFileLoadResult:
 
 @dataclass(frozen=True)
 class DependencyCheckResult:
-    """记录依赖检测、自动安装与报告输出的完整结果。"""
+    """Record the full result of dependency checks, auto-installation, and report output."""
 
     report_schema_version: int
     timestamp_utc: str

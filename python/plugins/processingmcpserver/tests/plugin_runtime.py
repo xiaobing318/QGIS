@@ -12,12 +12,12 @@ from ._shared_case_base import ProcessingMCPTestBase
 class PluginRuntimeTest(ProcessingMCPTestBase):
     @patch("processingmcpserver.plugin.QgsMessageLog.logMessage")
     def test_initgui_logs_unavailable_when_runtime_import_fails(self, mock_log_message):
-        """验证 initgui logs unavailable when runtime import fails 场景。"""
+        """Verify initgui logs unavailable when runtime import fails."""
         plugin = ProcessingMCPServerPlugin(iface="iface")
         original_import = builtins.__import__
 
         def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
-            """提供用于测试的导入替身函数。"""
+            """Provide a test-only import stub."""
             if name == "processingmcpserver.server":
                 raise ImportError("server import boom")
             return original_import(name, globals, locals, fromlist, level)
@@ -33,7 +33,7 @@ class PluginRuntimeTest(ProcessingMCPTestBase):
         )
 
     def test_initgui_starts_server_after_dependency_check(self):
-        """验证 initgui starts server after dependency check 场景。"""
+        """Verify initgui starts server after dependency check."""
         plugin = ProcessingMCPServerPlugin(iface="iface")
         config = self._build_config("streamable-http")
         server_instance = MagicMock()
@@ -60,7 +60,7 @@ class PluginRuntimeTest(ProcessingMCPTestBase):
         self.assertIs(plugin._server, server_instance)
 
     def test_initgui_does_not_store_server_when_start_returns_false(self):
-        """验证 initgui does not store server when start returns false 场景。"""
+        """Verify initgui does not store server when start returns false."""
         plugin = ProcessingMCPServerPlugin(iface="iface")
         config = self._build_config("streamable-http")
         server_instance = MagicMock()
@@ -87,7 +87,7 @@ class PluginRuntimeTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.plugin.QgsMessageLog.logMessage")
     def test_initgui_skips_server_on_dependency_failure(self, mock_log_message):
-        """验证 initgui skips server on dependency failure 场景。"""
+        """Verify initgui skips server on dependency failure."""
         plugin = ProcessingMCPServerPlugin(iface="iface")
         config = self._build_config("streamable-http")
 
@@ -115,7 +115,7 @@ class PluginRuntimeTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.plugin.QgsMessageLog.logMessage")
     def test_unload_stops_server_and_clears_handle(self, mock_log_message):
-        """验证 unload stops server and clears handle 场景。"""
+        """Verify unload stops server and clears handle."""
         plugin = ProcessingMCPServerPlugin(iface="iface")
         server_instance = MagicMock()
         plugin._server = server_instance

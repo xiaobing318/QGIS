@@ -20,17 +20,17 @@ DEFAULT_CAPABILITIES_MARKDOWN_FILENAME = "MCP_CAPABILITIES.md"
 
 
 def _utc_now_iso() -> str:
-    """执行 utc now iso 相关逻辑。"""
+    """Return the current UTC time in ISO 8601 format."""
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def _module_dir() -> Path:
-    """执行 module dir 相关逻辑。"""
+    """Return the module directory."""
     return Path(__file__).resolve().parent
 
 
 def _resolve_output_path(output_path: str | Path = "") -> Path:
-    """解析 output path。"""
+    """Resolve the output path."""
     if isinstance(output_path, Path):
         output_text = str(output_path)
     else:
@@ -47,7 +47,7 @@ def _validate_registry(
     registered_names: tuple[str, ...],
     docstrings: dict[str, str],
 ) -> None:
-    """校验 registry。"""
+    """Validate a registry against the registered names."""
     missing: list[str] = []
     invalid: list[str] = []
     extra = sorted(set(docstrings) - set(registered_names))
@@ -72,7 +72,7 @@ def _build_section(
     registered_names: tuple[str, ...],
     docstrings: dict[str, str],
 ) -> list[str]:
-    """执行 build section 相关逻辑。"""
+    """Build a markdown section for one registry."""
     lines = [f"## {heading}", ""]
     for registered_name in registered_names:
         lines.extend(
@@ -87,7 +87,7 @@ def _build_section(
 
 
 def _render_markdown() -> str:
-    """执行 render markdown 相关逻辑。"""
+    """Render the full capabilities markdown document."""
     _validate_registry("tools", REGISTERED_TOOL_NAMES, _REGISTERED_TOOL_DOCSTRINGS)
     _validate_registry("prompts", REGISTERED_PROMPT_NAMES, _REGISTERED_PROMPT_DOCSTRINGS)
     _validate_registry(

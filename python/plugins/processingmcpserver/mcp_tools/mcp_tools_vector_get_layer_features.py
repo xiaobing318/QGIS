@@ -68,11 +68,11 @@ TOOL_NAME = 'vector_get_layer_features'
 TOOL_DOC = '???提取矢量图层的样本要素，供模型观察字段值和几何概貌。 ?????layer_ref 指向矢量图层，limit 是希望返回的要素数。 ?????目标图层必须存在且为矢量图层。 ??????无写操作，只顺序读取要素并序列化属性与 geometry_wkt。 ?????limit 会被内部最大阈值裁剪，返回里会明确给出 requested_limit、applied_limit 与 limit_capped。 ?????返回 layer_id、feature_count、fields、features 以及 limit 应用结果。'
 
 def vector_get_layer_features(self, layer_ref: str, limit: int = DEFAULT_FEATURE_LIMIT) -> dict[str, Any]:
-    """执行矢量相关的 get layer features 逻辑。"""
+    """Handle features from a vector layer."""
     return self._run(self._vector_get_layer_features_impl, layer_ref, limit)
 
 def _vector_get_layer_features_impl(self, layer_ref: str, limit: int) -> dict[str, Any]:
-    """执行矢量相关的 get layer features impl 逻辑。"""
+    """Build the features from a vector layer."""
     layer = self._resolve_vector_layer_ref(layer_ref)
     requested, applied, capped = self._normalize_feature_limit(limit)
     features: list[dict[str, Any]] = []
@@ -102,14 +102,14 @@ def _vector_get_layer_features_impl(self, layer_ref: str, limit: int) -> dict[st
     }
 
 def _normalize_feature_limit(self, limit: Any) -> tuple[int, int, bool]:
-    """归一化 feature limit。"""
+    """Handle normalize feature limit."""
     requested = self._safe_int(limit, self.DEFAULT_FEATURE_LIMIT)
     normalized = max(0, requested)
     applied = min(normalized, self.MAX_FEATURE_LIMIT)
     return requested, applied, applied != normalized
 
 def _resolve_vector_layer_ref(self, layer_ref: Any) -> QgsVectorLayer:
-    """解析 vector layer ref。"""
+    """Resolve vector layer ref."""
     layer = self._resolve_layer_ref(layer_ref)
     if layer.type() != QgsMapLayer.VectorLayer:
         raise Exception(f"Layer is not a vector layer: {layer_ref}")
@@ -117,7 +117,7 @@ def _resolve_vector_layer_ref(self, layer_ref: Any) -> QgsVectorLayer:
 
 @staticmethod
 def _serialize_value(value: Any) -> Any:
-    """序列化 value。"""
+    """Serialize values into JSON-friendly representations."""
     if value is None:
         return None
     if isinstance(value, (bool, int, float, str)):
@@ -150,14 +150,14 @@ def _serialize_value(value: Any) -> Any:
 
 @staticmethod
 def _safe_int(value: Any, default: int) -> int:
-    """执行 safe int 相关逻辑。"""
+    """Handle safe int."""
     try:
         return int(value)
     except (TypeError, ValueError):
         return default
 
 def _resolve_layer_ref(self, layer_ref: Any) -> QgsMapLayer:
-    """解析 layer ref。"""
+    """Resolve layer ref."""
     if isinstance(layer_ref, QgsMapLayer):
         return layer_ref
     text = str(layer_ref).strip() if layer_ref is not None else ""

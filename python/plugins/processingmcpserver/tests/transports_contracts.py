@@ -20,7 +20,7 @@ from ._shared_case_base import ProcessingMCPTestBase
 
 class _FakeMcp:
     def __init__(self):
-        """初始化 _FakeMcp 实例状态。"""
+        """Initialize the _FakeMcp instance state."""
         self.settings = SimpleNamespace(
             host="127.0.0.1",
             port=8000,
@@ -32,28 +32,28 @@ class _FakeMcp:
         )
 
     def streamable_http_app(self):
-        """执行 streamable HTTP app 相关逻辑。"""
+        """Run streamable HTTP app related logic."""
         return {"app": "streamable-http"}
 
     def sse_app(self, _mount_path):
-        """执行 SSE app 相关逻辑。"""
+        """Run SSE app related logic."""
         return {"app": "sse"}
 
 
 class _DummyTransport(BaseMcpTransport):
     def _run(self) -> None:
-        """执行 run 相关逻辑。"""
+        """Implement the transport hook without side effects."""
         return None
 
 
 class TransportsContractsTest(ProcessingMCPTestBase):
     def test_transport_fallback_to_streamable_http(self):
-        """验证 transport fallback to streamable HTTP 场景。"""
+        """Verify transport fallback to streamable HTTP."""
         transport = create_transport(object(), self._build_config("invalid-transport"))
         self.assertIsInstance(transport, StreamableHttpTransport)
 
     def test_transport_selects_sse_and_stdio(self):
-        """验证 transport selects SSE and STDIO 场景。"""
+        """Verify transport selects SSE and STDIO."""
         self.assertIsInstance(
             create_transport(object(), self._build_config("sse")), SseTransport
         )
@@ -62,7 +62,7 @@ class TransportsContractsTest(ProcessingMCPTestBase):
         )
 
     def test_apply_cors_returns_original_app_when_disabled(self):
-        """验证 apply CORS returns original app when disabled 场景。"""
+        """Verify apply CORS returns original app when disabled."""
         transport = StreamableHttpTransport(
             _FakeMcp(), self._build_config("streamable-http")
         )
@@ -70,7 +70,7 @@ class TransportsContractsTest(ProcessingMCPTestBase):
         self.assertIs(transport._apply_cors(app), app)
 
     def test_apply_cors_wraps_app_when_enabled(self):
-        """验证 apply CORS wraps app when enabled 场景。"""
+        """Verify apply CORS wraps app when enabled."""
         config = replace(
             self._build_config("streamable-http"),
             cors_origins=["http://localhost:8080"],
@@ -87,7 +87,7 @@ class TransportsContractsTest(ProcessingMCPTestBase):
         self.assertEqual(wrapped["allow_headers"], ["authorization"])
 
     def test_apply_cors_returns_original_app_when_import_fails(self):
-        """验证 apply CORS returns original app when import fails 场景。"""
+        """Verify apply CORS returns original app when import fails."""
         config = replace(
             self._build_config("streamable-http"),
             cors_origins=["http://localhost:8080"],
@@ -97,7 +97,7 @@ class TransportsContractsTest(ProcessingMCPTestBase):
         original_import = builtins.__import__
 
         def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
-            """提供用于测试的导入替身函数。"""
+            """Provide a test-only import stub."""
             if name == "starlette.middleware.cors":
                 raise ImportError("cors import boom")
             return original_import(name, globals, locals, fromlist, level)
@@ -112,14 +112,14 @@ class TransportsContractsTest(ProcessingMCPTestBase):
         mock_log_exception.assert_called_once()
 
     def test_create_uvicorn_config_retries_without_custom_logging(self):
-        """验证 create uvicorn config retries without custom logging 场景。"""
+        """Verify create uvicorn config retries without custom logging."""
         transport = StreamableHttpTransport(
             _FakeMcp(), self._build_config("streamable-http")
         )
         calls: list[object] = []
 
         def fake_config(_app, host, port, log_level, log_config):
-            """提供用于测试的配置构造函数。"""
+            """Provide a config stub that exercises the retry path."""
             calls.append(log_config)
             self.assertEqual(host, "127.0.0.1")
             self.assertEqual(port, 8000)
@@ -138,7 +138,7 @@ class TransportsContractsTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.transports.threading.Thread")
     def test_base_transport_start_reentry_returns_true(self, mock_thread_class):
-        """验证 base transport start reentry returns true 场景。"""
+        """Verify base transport start reentry returns true."""
         fake_thread = MagicMock()
         fake_thread.is_alive.return_value = True
         mock_thread_class.return_value = fake_thread
@@ -151,7 +151,7 @@ class TransportsContractsTest(ProcessingMCPTestBase):
         fake_thread.start.assert_called_once_with()
 
     def test_base_transport_stop_without_thread_requests_stop(self):
-        """验证 base transport stop without thread requests stop 场景。"""
+        """Verify base transport stop without thread requests stop."""
         transport = _DummyTransport(_FakeMcp(), self._build_config("streamable-http"))
 
         with patch.object(transport, "_request_stop") as mock_request_stop:
@@ -162,7 +162,7 @@ class TransportsContractsTest(ProcessingMCPTestBase):
     @patch("processingmcpserver.transports.sys.stdout", None)
     @patch("processingmcpserver.transports.sys.stderr", None)
     def test_ensure_stdio_streams_restores_stdout_and_stderr(self):
-        """验证 ensure STDIO streams restores stdout and stderr 场景。"""
+        """Verify ensure STDIO streams restores stdout and stderr."""
         transport = _DummyTransport(_FakeMcp(), self._build_config("streamable-http"))
         fake_stdout = io.StringIO()
         fake_stderr = io.StringIO()
@@ -193,7 +193,7 @@ class TransportsContractsTest(ProcessingMCPTestBase):
     @patch("processingmcpserver.transports.sys.stdout", None)
     @patch("processingmcpserver.transports.sys.stdin", None)
     def test_stdio_transport_reports_missing_streams(self):
-        """验证 STDIO transport reports missing streams 场景。"""
+        """Verify STDIO transport reports missing streams."""
         transport = StdioTransport(_FakeMcp(), self._build_config("stdio"))
 
         with patch.object(transport, "_log") as mock_log:

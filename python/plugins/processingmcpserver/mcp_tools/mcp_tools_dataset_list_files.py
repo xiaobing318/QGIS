@@ -68,11 +68,11 @@ TOOL_NAME = 'dataset_list_files'
 TOOL_DOC = '???扫描目录并识别可加载的数据集文件，区分 vector 与 raster。 ?????directory 是根目录，recursive 控制是否递归，dataset_kind 控制筛选 vector、raster 或 both，geometry_type 与 name_glob 用于进一步过滤，limit 控制返回上限。 ?????目录必须存在且可访问。 ??????无写操作，只遍历文件系统并按扩展名和几何类型推断数据集。 ?????limit 会被内部阈值裁剪，geometry_type 过滤仅对识别出的矢量数据集生效。 ?????返回 datasets 数组及 requested_limit、applied_limit、limit_capped 等扫描摘要。'
 
 def dataset_list_files(self, directory: str, recursive: bool = False, dataset_kind: str = "both", geometry_type: str = "any", name_glob: str = "*", limit: int = DEFAULT_DATASET_LIMIT) -> dict[str, Any]:
-    """执行数据集相关的 list files 逻辑。"""
+    """Handle files in a dataset directory."""
     return self._run(self._dataset_list_files_impl, directory, recursive, dataset_kind, geometry_type, name_glob, limit)
 
 def _dataset_list_files_impl(self, directory: str, recursive: bool, dataset_kind: str, geometry_type: str, name_glob: str, limit: int) -> dict[str, Any]:
-    """执行数据集相关的 list files impl 逻辑。"""
+    """Build the files in a dataset directory."""
     root = Path(directory)
     if not root.exists() or not root.is_dir():
         raise Exception(f"Directory not found: {directory}")
@@ -104,7 +104,7 @@ def _dataset_list_files_impl(self, directory: str, recursive: bool, dataset_kind
 
 @staticmethod
 def _detect_dataset_kind(path: Path) -> str | None:
-    """检测 dataset kind。"""
+    """Handle detect dataset kind."""
     vector_exts = {".shp", ".gpkg", ".geojson", ".json", ".kml", ".gml", ".sqlite", ".csv"}
     raster_exts = {".tif", ".tiff", ".img", ".vrt", ".asc", ".jp2", ".png", ".jpg", ".jpeg"}
     suffix = path.suffix.lower()
@@ -116,7 +116,7 @@ def _detect_dataset_kind(path: Path) -> str | None:
 
 @staticmethod
 def _detect_vector_geometry_type(path: Path) -> str:
-    """检测 vector geometry type。"""
+    """Handle detect vector geometry type."""
     layer = QgsVectorLayer(str(path), "__probe__", "ogr")
     if not layer.isValid():
         return "unknown"
@@ -124,7 +124,7 @@ def _detect_vector_geometry_type(path: Path) -> str:
 
 @staticmethod
 def _normalize_dataset_kind(dataset_kind: str | None) -> str:
-    """归一化 dataset kind。"""
+    """Handle normalize dataset kind."""
     value = (dataset_kind or "both").strip().lower()
     if value in {"both", "all", "any"}:
         return "both"
@@ -133,7 +133,7 @@ def _normalize_dataset_kind(dataset_kind: str | None) -> str:
     raise Exception(f"Invalid dataset_kind: {dataset_kind}")
 
 def _normalize_dataset_limit(self, limit: Any | None) -> tuple[int, int, bool]:
-    """归一化 dataset limit。"""
+    """Handle normalize dataset limit."""
     requested = self._safe_int(limit, self.DEFAULT_DATASET_LIMIT)
     normalized = max(0, requested)
     applied = min(normalized, self.MAX_DATASET_LIMIT)
@@ -141,7 +141,7 @@ def _normalize_dataset_limit(self, limit: Any | None) -> tuple[int, int, bool]:
 
 @staticmethod
 def _normalize_geometry_type_filter(geometry_type: str | None) -> str:
-    """归一化 geometry type filter。"""
+    """Handle normalize geometry type filter."""
     value = (geometry_type or "any").strip().lower()
     if value in {"any", "point", "line", "polygon", "unknown"}:
         return value
@@ -149,13 +149,13 @@ def _normalize_geometry_type_filter(geometry_type: str | None) -> str:
 
 @staticmethod
 def _normalize_name_glob(name_glob: str | None) -> str:
-    """归一化 name glob。"""
+    """Handle normalize name glob."""
     value = (name_glob or "*").strip()
     return value or "*"
 
 @staticmethod
 def _safe_int(value: Any, default: int) -> int:
-    """执行 safe int 相关逻辑。"""
+    """Handle safe int."""
     try:
         return int(value)
     except (TypeError, ValueError):

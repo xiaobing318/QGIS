@@ -68,18 +68,18 @@ TOOL_NAME = 'layer_get_panel_tree'
 TOOL_DOC = '???读取图层面板树结构，帮助模型理解分组、顺序和隐藏状态。 ?????include_hidden 控制是否把隐藏图层与分组也放入返回结构。 ?????当前工程已初始化即可调用，最好已有图层树内容。 ??????无写操作，只读取 QgsLayerTree 结构。 ?????无。 ?????返回 tree 主结构，以及为兼容旧调用保留的 groups、layers 扁平摘要，便于模型按图层面板顺序推理。'
 
 def layer_get_panel_tree(self, include_hidden: bool = True) -> dict[str, Any]:
-    """执行图层相关的 get panel tree 逻辑。"""
+    """Handle the layer tree panel structure."""
     return self._run(self._layer_get_panel_tree_impl, include_hidden)
 
 def _layer_get_panel_tree_impl(self, include_hidden: bool) -> dict[str, Any]:
-    """执行图层相关的 get panel tree impl 逻辑。"""
+    """Build the the layer tree panel structure."""
     root = QgsProject.instance().layerTreeRoot()
     groups: list[dict[str, Any]] = []
     layers: list[dict[str, Any]] = []
     project = QgsProject.instance()
 
     def layer_payload(layer: QgsMapLayer) -> dict[str, Any]:
-        """执行图层相关的 payload 逻辑。"""
+        """Handle layer payload."""
         item: dict[str, Any] = {
             "id": layer.id(),
             "name": layer.name(),
@@ -97,7 +97,7 @@ def _layer_get_panel_tree_impl(self, include_hidden: bool) -> dict[str, Any]:
         return item
 
     def walk(group: QgsLayerTreeGroup, prefix: str) -> list[dict[str, Any]]:
-        """遍历当前节点及其子节点。"""
+        """Handle walk."""
         children_payload: list[dict[str, Any]] = []
         for child in group.children():
             visible = bool(child.isVisible()) if hasattr(child, "isVisible") else True
@@ -142,7 +142,7 @@ def _layer_get_panel_tree_impl(self, include_hidden: bool) -> dict[str, Any]:
 
 @staticmethod
 def _is_layer_visible(project: QgsProject, layer_id: str) -> bool:
-    """判断 layer visible 是否成立。"""
+    """Handle is layer visible."""
     node = project.layerTreeRoot().findLayer(layer_id) if project.layerTreeRoot() else None
     if node is None:
         return False
@@ -153,7 +153,7 @@ def _is_layer_visible(project: QgsProject, layer_id: str) -> bool:
 
 @staticmethod
 def _layer_type_token(layer: QgsMapLayer) -> str:
-    """执行图层相关的 type token 逻辑。"""
+    """Handle layer type token."""
     if layer.type() == QgsMapLayer.VectorLayer:
         return f"vector_{int(layer.geometryType())}"
     if layer.type() == QgsMapLayer.RasterLayer:

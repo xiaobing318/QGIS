@@ -68,11 +68,11 @@ TOOL_NAME = 'vector_table_query_records'
 TOOL_DOC = '???按条件查询矢量图层记录，适合做数据抽样、分页和字段级检查。 ?????layer_ref 指向矢量图层，where 是可选过滤表达式，fields 控制返回字段，limit 和 offset 控制分页，order_by 指定简单排序字段，include_geometry 控制是否附带 geometry_wkt。 ?????目标图层必须存在，where 表达式和字段名必须有效。 ??????无写操作，只读取并序列化匹配记录。 ?????limit 会被内部阈值裁剪；order_by 仅按属性字符串表示做简单排序，不是完整 SQL 排序。 ?????返回 matched_total、returned、offset、limit 应用结果和 records 数组。'
 
 def vector_table_query_records(self, layer_ref: str, where: str | None = None, fields: list[str] | None = None, limit: int = DEFAULT_FEATURE_LIMIT, offset: int = 0, order_by: str | None = None, include_geometry: bool = False) -> dict[str, Any]:
-    """执行矢量相关的 table query records 逻辑。"""
+    """Handle records from a vector table."""
     return self._run(self._vector_table_query_records_impl, layer_ref, where, fields, limit, offset, order_by, include_geometry)
 
 def _vector_table_query_records_impl(self, layer_ref: str, where: str | None, fields: list[str] | None, limit: int, offset: int, order_by: str | None, include_geometry: bool) -> dict[str, Any]:
-    """执行矢量相关的 table query records impl 逻辑。"""
+    """Build the records from a vector table."""
     if not str(layer_ref).strip():
         raise Exception("layer_ref is required")
     layer = self._resolve_vector_layer_ref(layer_ref)
@@ -123,11 +123,11 @@ def _vector_table_query_records_impl(self, layer_ref: str, where: str | None, fi
 
 @staticmethod
 def _field_index(layer: QgsVectorLayer, field_name: str) -> int:
-    """执行 field index 相关逻辑。"""
+    """Handle field index."""
     return layer.fields().indexFromName(field_name)
 
 def _normalize_feature_limit(self, limit: Any) -> tuple[int, int, bool]:
-    """归一化 feature limit。"""
+    """Handle normalize feature limit."""
     requested = self._safe_int(limit, self.DEFAULT_FEATURE_LIMIT)
     normalized = max(0, requested)
     applied = min(normalized, self.MAX_FEATURE_LIMIT)
@@ -135,7 +135,7 @@ def _normalize_feature_limit(self, limit: Any) -> tuple[int, int, bool]:
 
 @staticmethod
 def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[str, Any] | None = None, warnings: list[str] | None = None, **extra) -> dict[str, Any]:
-    """执行 ok result 相关逻辑。"""
+    """Handle ok result."""
     payload: dict[str, Any] = {"ok": True, "tool": tool, "summary": summary or {}, "outputs": outputs or {}}
     if warnings is not None:
         payload["warnings"] = warnings
@@ -143,7 +143,7 @@ def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[s
     return payload
 
 def _resolve_vector_layer_ref(self, layer_ref: Any) -> QgsVectorLayer:
-    """解析 vector layer ref。"""
+    """Resolve vector layer ref."""
     layer = self._resolve_layer_ref(layer_ref)
     if layer.type() != QgsMapLayer.VectorLayer:
         raise Exception(f"Layer is not a vector layer: {layer_ref}")
@@ -151,7 +151,7 @@ def _resolve_vector_layer_ref(self, layer_ref: Any) -> QgsVectorLayer:
 
 @staticmethod
 def _safe_int(value: Any, default: int) -> int:
-    """执行 safe int 相关逻辑。"""
+    """Handle safe int."""
     try:
         return int(value)
     except (TypeError, ValueError):
@@ -159,7 +159,7 @@ def _safe_int(value: Any, default: int) -> int:
 
 @staticmethod
 def _serialize_value(value: Any) -> Any:
-    """序列化 value。"""
+    """Serialize values into JSON-friendly representations."""
     if value is None:
         return None
     if isinstance(value, (bool, int, float, str)):
@@ -191,7 +191,7 @@ def _serialize_value(value: Any) -> Any:
     return str(value)
 
 def _resolve_layer_ref(self, layer_ref: Any) -> QgsMapLayer:
-    """解析 layer ref。"""
+    """Resolve layer ref."""
     if isinstance(layer_ref, QgsMapLayer):
         return layer_ref
     text = str(layer_ref).strip() if layer_ref is not None else ""

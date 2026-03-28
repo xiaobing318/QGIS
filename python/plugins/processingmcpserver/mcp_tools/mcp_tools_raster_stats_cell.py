@@ -68,11 +68,11 @@ TOOL_NAME = 'raster_stats_cell'
 TOOL_DOC = '???对多个栅格做逐像元统计运算，例如逐像元均值、最小值或最大值。 ?????raster_layer_refs 是栅格引用数组，statistic 选择逐像元统计类型，ignore_nodata 控制是否忽略 NoData。 ?????至少提供一个有效栅格图层，且各栅格最好在分辨率、范围和 CRS 上可兼容处理。 ??????会运行 Processing 栅格统计算法，通常产生新的输出栅格结果；是否自动加载取决于算法默认行为和 Processing 设置。 ?????无 destructive 开关，但会触发 Processing 执行。 ?????返回算法摘要和序列化后的 Processing 输出结果。'
 
 def raster_stats_cell(self, raster_layer_refs: list[str], statistic: int = 0, ignore_nodata: bool = True) -> dict[str, Any]:
-    """执行栅格相关的 stats cell 逻辑。"""
+    """Handle per-cell raster statistics."""
     return self._run(self._raster_stats_cell_impl, raster_layer_refs, statistic, ignore_nodata)
 
 def _raster_stats_cell_impl(self, raster_layer_refs: list[str], statistic: int, ignore_nodata: bool) -> dict[str, Any]:
-    """执行栅格相关的 stats cell impl 逻辑。"""
+    """Build the per-cell raster statistics."""
     if not raster_layer_refs:
         raise Exception("raster_layer_refs is required")
     layers = [self._resolve_raster_layer_ref(ref) for ref in raster_layer_refs]
@@ -92,7 +92,7 @@ def _raster_stats_cell_impl(self, raster_layer_refs: list[str], statistic: int, 
 
 @staticmethod
 def _coerce_output_identifier(value: Any) -> str:
-    """执行 coerce output identifier 相关逻辑。"""
+    """Handle coerce output identifier."""
     if value is None:
         return ""
     if isinstance(value, str):
@@ -105,12 +105,12 @@ def _coerce_output_identifier(value: Any) -> str:
     return str(value)
 
 def _ensure_processing_runtime(self) -> None:
-    """确保 processing runtime 已就绪。"""
+    """Handle ensure processing runtime."""
     _ensure_processing_initialized()
 
 @staticmethod
 def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[str, Any] | None = None, warnings: list[str] | None = None, **extra) -> dict[str, Any]:
-    """执行 ok result 相关逻辑。"""
+    """Handle ok result."""
     payload: dict[str, Any] = {"ok": True, "tool": tool, "summary": summary or {}, "outputs": outputs or {}}
     if warnings is not None:
         payload["warnings"] = warnings
@@ -118,7 +118,7 @@ def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[s
     return payload
 
 def _resolve_raster_layer_ref(self, layer_ref: Any) -> QgsRasterLayer:
-    """解析 raster layer ref。"""
+    """Resolve raster layer ref."""
     layer = self._resolve_layer_ref(layer_ref)
     if layer.type() != QgsMapLayer.RasterLayer:
         raise Exception(f"Layer is not a raster layer: {layer_ref}")
@@ -126,7 +126,7 @@ def _resolve_raster_layer_ref(self, layer_ref: Any) -> QgsRasterLayer:
 
 @staticmethod
 def _safe_int(value: Any, default: int) -> int:
-    """执行 safe int 相关逻辑。"""
+    """Handle safe int."""
     try:
         return int(value)
     except (TypeError, ValueError):
@@ -134,7 +134,7 @@ def _safe_int(value: Any, default: int) -> int:
 
 @staticmethod
 def _serialize_value(value: Any) -> Any:
-    """序列化 value。"""
+    """Serialize values into JSON-friendly representations."""
     if value is None:
         return None
     if isinstance(value, (bool, int, float, str)):
@@ -166,7 +166,7 @@ def _serialize_value(value: Any) -> Any:
     return str(value)
 
 def _resolve_layer_ref(self, layer_ref: Any) -> QgsMapLayer:
-    """解析 layer ref。"""
+    """Resolve layer ref."""
     if isinstance(layer_ref, QgsMapLayer):
         return layer_ref
     text = str(layer_ref).strip() if layer_ref is not None else ""

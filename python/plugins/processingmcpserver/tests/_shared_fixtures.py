@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 def _candidate_qgis_bin_dirs() -> list[str]:
-    """执行 candidate QGIS bin dirs 相关逻辑。"""
+    """Collect candidate QGIS bin directories."""
     candidates: list[str] = []
 
     qgis_prefix = os.environ.get("QGIS_PREFIX_PATH", "").strip()
@@ -33,7 +33,7 @@ def _candidate_qgis_bin_dirs() -> list[str]:
 
 
 def _prepend_runtime_paths() -> None:
-    """执行 prepend runtime paths 相关逻辑。"""
+    """Prepend discovered runtime paths to PATH."""
     original = os.environ.get("PATH", "")
     existing = original.split(os.pathsep) if original else []
     prepended: list[str] = []
@@ -72,7 +72,7 @@ class DummyMcp:
     """Minimal MCP mock for collecting registrations."""
 
     def __init__(self) -> None:
-        """初始化 DummyMcp 实例状态。"""
+        """Initialize the DummyMcp instance state."""
         self.tool_names: list[str] = []
         self.prompt_names: list[str] = []
         self.resource_uris: list[str] = []
@@ -82,9 +82,9 @@ class DummyMcp:
         self.resource_descriptions: dict[str, str] = {}
 
     def tool(self):
-        """执行 tool 相关逻辑。"""
+        """Return the tool registration decorator."""
         def decorator(func):
-            """返回当前注册流程使用的装饰器。"""
+            """Return the decorator used by the registration flow."""
             self.tool_names.append(func.__name__)
             return func
 
@@ -97,11 +97,11 @@ class DummyMcp:
         description: str | None = None,
         icons=None,
     ):
-        """执行 prompt 相关逻辑。"""
+        """Return the prompt registration decorator."""
         _ = title, icons
 
         def decorator(func):
-            """返回当前注册流程使用的装饰器。"""
+            """Return the decorator used by the registration flow."""
             prompt_name = name or func.__name__
             self.prompt_names.append(prompt_name)
             self.prompt_funcs[prompt_name] = func
@@ -123,11 +123,11 @@ class DummyMcp:
         annotations=None,
         meta=None,
     ):
-        """执行 resource 相关逻辑。"""
+        """Return the resource registration decorator."""
         _ = name, title, mime_type, icons, annotations, meta
 
         def decorator(func):
-            """返回当前注册流程使用的装饰器。"""
+            """Return the decorator used by the registration flow."""
             self.resource_uris.append(uri)
             self.resource_funcs[uri] = func
             if isinstance(description, str):
@@ -141,11 +141,11 @@ class DummyTools:
     """Minimal tools stub used for register_* tests."""
 
     def get_project_snapshot(self):
-        """返回 project snapshot。"""
+        """Return a project snapshot."""
         return {"title": "dummy-project"}
 
     def get_shapefile_workflow_template(self):
-        """返回 shapefile workflow template。"""
+        """Return the shapefile workflow template."""
         return {
             "workflow_stages": [
                 "path_check_and_geometry_filter",
@@ -169,7 +169,7 @@ class DummyTools:
         }
 
     def get_shapefile_quality_profile(self):
-        """返回 shapefile quality profile。"""
+        """Return the shapefile quality profile."""
         return {
             "quality_checks": [
                 "crs_declared",
@@ -180,7 +180,7 @@ class DummyTools:
         }
 
     def get_shapefile_run_summary(self):
-        """返回 shapefile run summary。"""
+        """Return the shapefile run summary."""
         return {
             "task_name": "dummy-task",
             "status": "initialized",
@@ -190,19 +190,19 @@ class DummyTools:
         }
 
     def layer_list(self):
-        """执行图层相关的 list 逻辑。"""
+        """Return the layer list."""
         return [{"id": "layer-1", "name": "L1", "type": "vector_0", "visible": True}]
 
     def common_get_qgis_info(self):
-        """返回 QGIS info 信息。"""
+        """Return QGIS info metadata."""
         return {"qgis_version": "test-version"}
 
     def _resource_json(self, payload):
-        """执行 resource JSON 相关逻辑。"""
+        """Return the resource payload as formatted JSON."""
         return json.dumps(payload, ensure_ascii=False, indent=2)
 
     def __getattr__(self, _name):
-        """执行 getattr 相关逻辑。"""
+        """Fallback to an empty callable for missing attributes."""
         return lambda *args, **kwargs: {}
 
 
@@ -210,7 +210,7 @@ class DummyRunner:
     """Main-thread runner stub that executes callback synchronously."""
 
     def run(self, func):
-        """执行当前核心逻辑并返回结果。"""
+        """Execute the callback and return its result."""
         return func()
 
 

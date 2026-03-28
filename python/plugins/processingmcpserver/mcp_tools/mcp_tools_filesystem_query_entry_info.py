@@ -68,11 +68,11 @@ TOOL_NAME = 'filesystem_query_entry_info'
 TOOL_DOC = '???读取单个文件或目录的基础元数据。 ?????path 指向文件或目录。 ?????目标路径必须存在。 ??????无写操作，只读取文件系统元数据。 ?????无。 ?????返回 entry 对象，包含类型、大小、时间戳和可用路径信息。'
 
 def filesystem_query_entry_info(self, path: str) -> dict[str, Any]:
-    """执行文件系统相关的 query entry info 逻辑。"""
+    """Handle filesystem entry information."""
     return self._run(self._filesystem_query_entry_info_impl, path)
 
 def _filesystem_query_entry_info_impl(self, path: str) -> dict[str, Any]:
-    """执行文件系统相关的 query entry info impl 逻辑。"""
+    """Build the filesystem entry information."""
     entry = self._resolve_filesystem_query_path(path)
     if not entry.exists():
         raise Exception(f"Path not found: {path}")
@@ -80,7 +80,7 @@ def _filesystem_query_entry_info_impl(self, path: str) -> dict[str, Any]:
 
 @staticmethod
 def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[str, Any] | None = None, warnings: list[str] | None = None, **extra) -> dict[str, Any]:
-    """执行 ok result 相关逻辑。"""
+    """Handle ok result."""
     payload: dict[str, Any] = {"ok": True, "tool": tool, "summary": summary or {}, "outputs": outputs or {}}
     if warnings is not None:
         payload["warnings"] = warnings
@@ -89,7 +89,7 @@ def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[s
 
 @staticmethod
 def _path_info(path: Path) -> dict[str, Any]:
-    """执行 path info 相关逻辑。"""
+    """Handle path info."""
     stat = path.stat()
     return {
         "path": str(path),
@@ -102,12 +102,12 @@ def _path_info(path: Path) -> dict[str, Any]:
     }
 
 def _resolve_filesystem_query_path(self, path: str | Path) -> Path:
-    """解析 filesystem query path。"""
+    """Resolve filesystem query path."""
     return self._normalize_filesystem_path(path)
 
 @staticmethod
 def _normalize_filesystem_path(path: str | Path) -> Path:
-    """归一化 filesystem path。"""
+    """Handle normalize filesystem path."""
     candidate = path if isinstance(path, Path) else Path(str(path).strip()).expanduser()
     if not candidate.is_absolute():
         candidate = Path.cwd() / candidate

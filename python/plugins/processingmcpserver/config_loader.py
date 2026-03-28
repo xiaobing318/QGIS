@@ -29,7 +29,7 @@ from processingmcpserver.config_types import (
 
 
 def _load_json_config_file(path: Path) -> dict[str, Any]:
-    """读取 JSON 配置；文件缺失时写入默认配置并返回默认值。"""
+    """Read the JSON config file and create defaults when the file is missing."""
     default_doc = default_processing_mcp_json_document()
 
     if not path.exists():
@@ -66,7 +66,7 @@ def _load_json_config_file(path: Path) -> dict[str, Any]:
 
 
 def load_processing_mcp_server_config() -> ProcessingMCPServerConfig:
-    """加载并合并配置，返回可直接用于启动服务的配置对象。"""
+    """Load and merge configuration into a server-ready config object."""
     settings = QgsSettings()
     json_path = processing_mcp_config_file_path()
     payload = _load_json_config_file(json_path)

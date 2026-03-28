@@ -24,7 +24,7 @@ from ._shared_case_base import ProcessingMCPTestBase
 
 class CapabilitiesMarkdownRuntimeTest(ProcessingMCPTestBase):
     def test_default_output_path_targets_exporter_module_directory(self):
-        """验证默认条件下的 output path targets exporter module directory 场景。"""
+        """Verify the default behavior for output path targets exporter module directory."""
         expected = (
             Path(capabilities_markdown.__file__).resolve().parent
             / capabilities_markdown.DEFAULT_CAPABILITIES_MARKDOWN_FILENAME
@@ -33,7 +33,7 @@ class CapabilitiesMarkdownRuntimeTest(ProcessingMCPTestBase):
         self.assertEqual(capabilities_markdown._resolve_output_path(""), expected)
 
     def test_write_markdown_uses_default_target_when_output_omitted(self):
-        """验证 write markdown uses default target when output omitted 场景。"""
+        """Verify write markdown uses default target when output omitted."""
         with tempfile.TemporaryDirectory() as temp_dir:
             expected = (
                 Path(temp_dir) / capabilities_markdown.DEFAULT_CAPABILITIES_MARKDOWN_FILENAME
@@ -50,7 +50,7 @@ class CapabilitiesMarkdownRuntimeTest(ProcessingMCPTestBase):
             self.assertTrue(expected.exists())
 
     def test_write_markdown_supports_explicit_output_path(self):
-        """验证 write markdown supports explicit output path 场景。"""
+        """Verify write markdown supports explicit output path."""
         with tempfile.TemporaryDirectory() as temp_dir:
             output_path = Path(temp_dir) / "nested" / "caps.md"
 
@@ -60,7 +60,7 @@ class CapabilitiesMarkdownRuntimeTest(ProcessingMCPTestBase):
             self.assertTrue(written_path.exists())
 
     def test_written_markdown_covers_registered_capabilities(self):
-        """验证 written markdown covers registered capabilities 场景。"""
+        """Verify written markdown covers registered capabilities."""
         with tempfile.TemporaryDirectory() as temp_dir:
             output_path = Path(temp_dir) / "capabilities.md"
             written_path = processingmcpserver.write_mcp_capabilities_markdown(output_path)

@@ -12,7 +12,7 @@ from processingmcpserver.config_types import (
 
 
 def processing_mcp_config_file_path() -> Path:
-    """返回 Processing MCP 的 JSON 配置文件路径。"""
+    """Return the Processing MCP JSON configuration file path."""
     return (
         Path(QgsApplication.qgisSettingsDirPath())
         / "processingmcpserver"
@@ -21,7 +21,7 @@ def processing_mcp_config_file_path() -> Path:
 
 
 def default_processing_mcp_json_document() -> dict[str, Any]:
-    """生成默认配置文档，用于首次启动自动落盘。"""
+    """Build the default configuration document used for first-run bootstrapping."""
     return {
         "version": 1,
         "processing_mcp": {

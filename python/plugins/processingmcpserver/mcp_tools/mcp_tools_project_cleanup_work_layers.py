@@ -68,7 +68,7 @@ TOOL_NAME = 'project_cleanup_work_layers'
 TOOL_DOC = '???按 task_name 或 layer_ids 清理 shapefile 工作流创建的临时图层，并可选删除显式登记的临时文件。 ?????task_name 用于按任务标签批量匹配工作层，layer_ids 可精确指定图层，temp_paths 可补充显式临时路径，delete_temp_files 控制是否删除这些路径，confirm_write 与 confirm_destructive 仅在删文件时生效。 ?????至少提供可匹配的 task_name、layer_ids 或 temp_paths 中的一类才有意义；若 delete_temp_files=true 且存在路径，则必须 confirm_write=true 且 confirm_destructive=true。 ??????会从当前工程移除匹配的临时图层；可选地删除临时文件或临时目录。 ?????删除磁盘临时文件时需要显式双确认；仅移除工程图层时不触碰源数据文件。 ?????返回 removed_layer_ids、deleted_temp_paths 和 missing_temp_paths，便于回收检查与日志留存。'
 
 def project_cleanup_work_layers(self, task_name: str = "", layer_ids: list[str] | None = None, temp_paths: list[str] | None = None, delete_temp_files: bool = True, confirm_write: bool = False, confirm_destructive: bool = False) -> dict[str, Any]:
-    """执行项目相关的 cleanup work layers 逻辑。"""
+    """Handle work layers from the project."""
     return self._run(self._project_cleanup_work_layers_impl, task_name, layer_ids, temp_paths, delete_temp_files, confirm_write, confirm_destructive)
 
 def _project_cleanup_work_layers_impl(
@@ -80,7 +80,7 @@ def _project_cleanup_work_layers_impl(
     confirm_write: bool,
     confirm_destructive: bool,
 ) -> dict[str, Any]:
-    """执行工程相关的 cleanup work layers impl 逻辑。"""
+    """Implement the work layers from the project logic."""
     normalized_task = (task_name or "").strip()
     target_layers = self._collect_cleanup_target_layers(normalized_task, layer_ids)
     collected_temp_paths: list[str] = []
@@ -168,7 +168,7 @@ def _append_shapefile_run_step(
     warnings: list[str] | None = None,
     status: str | None = None,
 ) -> None:
-    """追加 shapefile run summary step。"""
+    """Handle append shapefile run step."""
     payload = {
         "step": step,
         "generated_at": self._utc_now_iso(),
@@ -188,7 +188,7 @@ def _collect_cleanup_target_layers(
     task_name: str,
     layer_ids: list[str] | None,
 ) -> list[QgsMapLayer]:
-    """收集待清理图层。"""
+    """Handle collect cleanup target layers."""
     requested_ids = {
         str(layer_id).strip()
         for layer_id in (layer_ids or [])
@@ -216,7 +216,7 @@ def _collect_cleanup_target_layers(
 
 @staticmethod
 def _ensure_filesystem_write_confirmed(confirm_write: bool) -> None:
-    """确保写操作已显式确认。"""
+    """Handle ensure filesystem write confirmed."""
     if not confirm_write:
         raise Exception(
             "confirm_write must be true for filesystem_edit_* operations"
@@ -228,7 +228,7 @@ def _ensure_shapefile_run_summary(
     status: str | None = None,
     inputs: dict[str, Any] | None = None,
 ) -> str:
-    """确保 shapefile run summary 已初始化。"""
+    """Handle ensure shapefile run summary."""
     normalized = (task_name or self._shapefile_run_summary.get("task_name") or "").strip()
     if (
         not self._shapefile_run_summary.get("task_name")
@@ -252,7 +252,7 @@ def _ensure_shapefile_run_summary(
     return normalized
 
 def _get_layer_temp_paths(self, layer: QgsMapLayer) -> list[str]:
-    """读取图层挂载的临时路径。"""
+    """Return the layer temp paths."""
     raw = self._layer_custom_property(
         layer,
         "processingmcpserver/workflow/temp_paths",
@@ -271,7 +271,7 @@ def _get_layer_temp_paths(self, layer: QgsMapLayer) -> list[str]:
 
 @staticmethod
 def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[str, Any] | None = None, warnings: list[str] | None = None, **extra) -> dict[str, Any]:
-    """执行 ok result 相关逻辑。"""
+    """Handle ok result."""
     payload: dict[str, Any] = {"ok": True, "tool": tool, "summary": summary or {}, "outputs": outputs or {}}
     if warnings is not None:
         payload["warnings"] = warnings
@@ -279,12 +279,12 @@ def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[s
     return payload
 
 def _resolve_filesystem_write_path(self, path: str | Path) -> Path:
-    """解析 filesystem write path。"""
+    """Resolve filesystem write path."""
     return self._resolve_filesystem_query_path(path)
 
 @staticmethod
 def _serialize_value(value: Any) -> Any:
-    """序列化 value。"""
+    """Serialize values into JSON-friendly representations."""
     if value is None:
         return None
     if isinstance(value, (bool, int, float, str)):
@@ -317,12 +317,12 @@ def _serialize_value(value: Any) -> Any:
 
 @staticmethod
 def _utc_now_iso() -> str:
-    """返回 UTC ISO 时间。"""
+    """Return the current UTC timestamp in ISO 8601 format."""
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 @staticmethod
 def _layer_custom_property(layer: QgsMapLayer, key: str, default: Any = None) -> Any:
-    """读取图层 custom property。"""
+    """Handle layer custom property."""
     if hasattr(layer, "customProperty"):
         try:
             return layer.customProperty(key, default)
@@ -336,7 +336,7 @@ def _reset_shapefile_run_summary(
     status: str,
     inputs: dict[str, Any] | None = None,
 ) -> str:
-    """重置 shapefile run summary。"""
+    """Handle reset shapefile run summary."""
     normalized = (task_name or "").strip()
     self._shapefile_run_summary = self._empty_shapefile_run_summary()
     self._shapefile_run_summary["task_name"] = normalized
@@ -346,11 +346,11 @@ def _reset_shapefile_run_summary(
     return normalized
 
 def _resolve_filesystem_query_path(self, path: str | Path) -> Path:
-    """解析 filesystem query path。"""
+    """Resolve filesystem query path."""
     return self._normalize_filesystem_path(path)
 
 def _empty_shapefile_run_summary(self) -> dict[str, Any]:
-    """创建空的 shapefile run summary。"""
+    """Build an empty shapefile run summary record."""
     return {
         "schema_version": "1.0.0",
         "generated_at": self._utc_now_iso(),
@@ -369,7 +369,7 @@ def _empty_shapefile_run_summary(self) -> dict[str, Any]:
 
 @staticmethod
 def _normalize_filesystem_path(path: str | Path) -> Path:
-    """归一化 filesystem path。"""
+    """Handle normalize filesystem path."""
     candidate = path if isinstance(path, Path) else Path(str(path).strip()).expanduser()
     if not candidate.is_absolute():
         candidate = Path.cwd() / candidate

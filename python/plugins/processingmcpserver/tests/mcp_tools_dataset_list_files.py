@@ -6,11 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsDatasetListFilesTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """验证目标能力已完成注册。"""
+        """Ensure the target capability is registered."""
         assert_tool_registered(self, "dataset_list_files")
 
     def test_success_dataset_scan(self):
-        """验证 dataset scan 的成功场景。"""
+        """Verify the successful path for dataset scan."""
         tools = self.build_tools()
         temp_root = self.make_temp_dir()
         vector_file = self.copy_test_data_file(
@@ -30,7 +30,7 @@ class ToolsDatasetListFilesTest(ProcessingMCPTestBase):
         self.assertEqual(result["datasets"][0]["dataset_kind"], "vector")
 
     def test_success_dataset_scan_recursive_filter_and_truncate(self):
-        """验证 dataset scan recursive filter and truncate 的成功场景。"""
+        """Verify the successful path for dataset scan recursive filter and truncate."""
         tools = self.build_tools()
         temp_root = self.make_temp_dir()
         nested = temp_root / "nested"
@@ -68,7 +68,7 @@ class ToolsDatasetListFilesTest(ProcessingMCPTestBase):
         self.assertTrue(truncated_result["truncated"])
 
     def test_failure_missing_directory(self):
-        """验证 missing directory 的失败场景。"""
+        """Verify the failure path for missing directory."""
         tools = self.build_tools()
         with self.assertRaises(Exception) as ctx:
             tools.dataset_list_files(directory="C:/not-exist", recursive=False)

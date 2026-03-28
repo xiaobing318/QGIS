@@ -196,7 +196,7 @@ class ProcessingMCPTools:
         runner: McpMainThreadRunner,
         config: ProcessingMCPServerConfig | None = None,
     ):
-        """初始化 ProcessingMCPTools 实例状态。"""
+        """Initialize the tool registry and cache workflow resources."""
         self._iface = iface
         self._runner = runner
         self._config = config
@@ -205,32 +205,32 @@ class ProcessingMCPTools:
         self._shapefile_run_summary = self._empty_shapefile_run_summary()
 
     def get_project_snapshot(self) -> dict[str, Any]:
-        """返回 project snapshot。"""
+        """Return a snapshot of the current QGIS project."""
         return self._run(self._get_project_snapshot_impl)
 
     def get_layers_summary(self) -> dict[str, Any]:
-        """返回 layers summary。"""
+        """Return a summary of the currently loaded layers."""
         return self._run(self._get_layers_summary_impl)
 
     def get_shapefile_workflow_template(self) -> dict[str, Any]:
-        """返回 shapefile workflow template。"""
+        """Return the cached shapefile workflow template."""
         return self._run(self._get_shapefile_workflow_template_impl)
 
     def get_shapefile_quality_profile(self) -> dict[str, Any]:
-        """返回 shapefile quality profile。"""
+        """Return the cached shapefile quality profile."""
         return self._run(self._get_shapefile_quality_profile_impl)
 
     def get_shapefile_run_summary(self) -> dict[str, Any]:
-        """返回 shapefile run summary。"""
+        """Return the cached shapefile run summary."""
         return self._run(self._get_shapefile_run_summary_impl)
 
     def _run(self, func, *args, **kwargs):
-        """执行 run 相关逻辑。"""
+        """Run a callable on the main-thread runner and return its result."""
         return self._runner.run(lambda: func(*args, **kwargs))
 
     @staticmethod
     def _serialize_value(value: Any) -> Any:
-        """序列化 value。"""
+        """Serialize values into JSON-friendly representations."""
         if value is None:
             return None
         if isinstance(value, (bool, int, float, str)):
@@ -263,11 +263,11 @@ class ProcessingMCPTools:
 
     @staticmethod
     def _utc_now_iso() -> str:
-        """返回 UTC ISO 时间。"""
+        """Return the current UTC timestamp in ISO 8601 format."""
         return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
     def _build_shapefile_workflow_template(self) -> dict[str, Any]:
-        """构建 shapefile workflow template。"""
+        """Build the default shapefile workflow template."""
         return {
             "schema_version": "1.0.0",
             "name": "shapefile_standard_workflow",
@@ -398,7 +398,7 @@ class ProcessingMCPTools:
         }
 
     def _build_shapefile_quality_profile(self) -> dict[str, Any]:
-        """构建 shapefile quality profile。"""
+        """Build the default shapefile quality profile."""
         return {
             "schema_version": "1.0.0",
             "name": "default",
@@ -439,7 +439,7 @@ class ProcessingMCPTools:
         }
 
     def _empty_shapefile_run_summary(self) -> dict[str, Any]:
-        """创建空的 shapefile run summary。"""
+        """Build an empty shapefile run summary record."""
         return {
             "schema_version": "1.0.0",
             "generated_at": self._utc_now_iso(),
@@ -457,7 +457,7 @@ class ProcessingMCPTools:
         }
 
     def _get_project_snapshot_impl(self) -> dict[str, Any]:
-        """执行 get project snapshot impl 相关逻辑。"""
+        """Collect the current QGIS project snapshot."""
         project = QgsProject.instance()
         return {
             "file_name": project.fileName(),
@@ -467,7 +467,7 @@ class ProcessingMCPTools:
         }
 
     def _get_layers_summary_impl(self) -> dict[str, Any]:
-        """执行 get layers summary impl 相关逻辑。"""
+        """Collect a summary of the loaded layers."""
         layers = self.layer_list(layer_types="both")
         return {
             "count": len(layers),
@@ -480,15 +480,15 @@ class ProcessingMCPTools:
         }
 
     def _get_shapefile_workflow_template_impl(self) -> dict[str, Any]:
-        """返回 shapefile workflow template。"""
+        """Return the shapefile workflow template payload."""
         return self._serialize_value(self._shapefile_workflow_template)
 
     def _get_shapefile_quality_profile_impl(self) -> dict[str, Any]:
-        """返回 shapefile quality profile。"""
+        """Return the shapefile quality profile payload."""
         return self._serialize_value(self._shapefile_quality_profile)
 
     def _get_shapefile_run_summary_impl(self) -> dict[str, Any]:
-        """返回 shapefile run summary。"""
+        """Return the shapefile run summary payload."""
         return self._serialize_value(self._shapefile_run_summary)
 
 _TOOL_MODULES = [
@@ -619,7 +619,7 @@ def _apply_registered_tool_docstrings() -> None:
         method.__doc__ = doc
 
 def register_tools(mcp, tools: ProcessingMCPTools, enable_execute_code: bool = True) -> None:
-    """注册 tools 能力。"""
+    """Register all processing tools with the MCP server."""
     _ = enable_execute_code
     tool_factory = getattr(mcp, "tool", None)
     if not callable(tool_factory):
@@ -631,7 +631,7 @@ def register_tools(mcp, tools: ProcessingMCPTools, enable_execute_code: bool = T
             continue
 
         def _wrapper(*args, _tool_name=tool_name, **kwargs):
-            """执行 wrapper 相关逻辑。"""
+            """Wrap a tool method so it can be registered dynamically."""
             return getattr(tools, _tool_name)(*args, **kwargs)
 
         _wrapper.__name__ = tool_name

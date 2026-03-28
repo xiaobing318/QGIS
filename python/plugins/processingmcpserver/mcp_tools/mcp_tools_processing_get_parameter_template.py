@@ -68,11 +68,11 @@ TOOL_NAME = 'processing_get_parameter_template'
 TOOL_DOC = '???把某个 Processing 算法的输入参数和输出定义整理成适合模型填写的模板。 ?????algorithm_id 是目标算法 id。 ?????Processing 运行时必须可用，且算法必须存在。 ??????无写操作，只读取算法参数定义和输出定义。 ?????无。 ?????返回 algorithm 基本信息、required_parameters、optional_parameters 和 outputs。'
 
 def processing_get_parameter_template(self, algorithm_id: str) -> dict[str, Any]:
-    """执行 Processing 相关的 get parameter template 逻辑。"""
+    """Handle a processing parameter template."""
     return self._run(self._processing_get_parameter_template_impl, algorithm_id)
 
 def _processing_get_parameter_template_impl(self, algorithm_id: str) -> dict[str, Any]:
-    """执行 Processing 相关的 get parameter template impl 逻辑。"""
+    """Build the processing parameter template."""
     self._ensure_processing_runtime()
     algorithm = QgsApplication.processingRegistry().algorithmById(algorithm_id)
     if algorithm is None:
@@ -90,11 +90,11 @@ def _processing_get_parameter_template_impl(self, algorithm_id: str) -> dict[str
     }
 
 def _ensure_processing_runtime(self) -> None:
-    """确保 processing runtime 已就绪。"""
+    """Handle ensure processing runtime."""
     _ensure_processing_initialized()
 
 def _serialize_output(self, output_def) -> dict[str, Any]:
-    """序列化 output。"""
+    """Serialize serialize output."""
     return {
         "name": self._safe_call(output_def, "name"),
         "description": self._safe_call(output_def, "description"),
@@ -103,7 +103,7 @@ def _serialize_output(self, output_def) -> dict[str, Any]:
     }
 
 def _serialize_parameter(self, param) -> dict[str, Any]:
-    """序列化 parameter。"""
+    """Serialize serialize parameter."""
     flags = self._safe_call(param, "flags", 0) or 0
     result = {
         "name": self._safe_call(param, "name"),
@@ -122,7 +122,7 @@ def _serialize_parameter(self, param) -> dict[str, Any]:
 
 @staticmethod
 def _safe_call(obj: object, name: str, default: Any = None) -> Any:
-    """执行 safe call 相关逻辑。"""
+    """Handle safe call."""
     attr = getattr(obj, name, None)
     if callable(attr):
         try:
@@ -133,7 +133,7 @@ def _safe_call(obj: object, name: str, default: Any = None) -> Any:
 
 @staticmethod
 def _serialize_value(value: Any) -> Any:
-    """序列化 value。"""
+    """Serialize values into JSON-friendly representations."""
     if value is None:
         return None
     if isinstance(value, (bool, int, float, str)):
