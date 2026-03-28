@@ -25,11 +25,45 @@ personality = "friendly"
 # 候选值 ---> live：    不会缓存过去网页搜索内容。
 web_search = "live"
 
-# 因为自动化要写 Markdown 文件到仓库目录，因此需要将模式修改为可写状态。
-sandbox_mode = "workspace-write"
-
 # 该选项控制 Codex 在要运行命令/触发一些需要批准的动作时，是否暂停来向你要权限。
 # 候选值 ---> untrusted： 只在“更不安全/不可信”的情况下才要求批准（更少弹窗）
 # 候选值 ---> on-request：只要需要批准就会问你（更常弹窗，适合你人在电脑前）
 # 候选值 ---> never：     从不弹批准提示（最“放行”，适合非交互/自动化）
 approval_policy = "never"
+
+# 该选项控制命令执行时的文件系统/网络沙箱边界（Codex 官方配置键：sandbox_mode）。
+# 候选值 ---> read-only：          只能读文件；写操作会被沙箱拦截，命令可执行范围最保守。
+# 候选值 ---> workspace-write：    可在工作区内读写并执行常规本地命令；工作区外仍受边界限制。
+# 候选值 ---> danger-full-access： 关闭沙箱（文件系统与网络边界都会移除），风险极高，不建议常态使用。
+sandbox_mode = "workspace-write"
+
+# workspace-write 模式下的附加项，仅在 sandbox_mode = "workspace-write" 时生效
+[sandbox_workspace_write]
+# 候选值 ---> array<string>：在当前 workspace 之外额外允许写入的目录列表；默认空数组。
+writable_roots = []
+# 候选值 ---> true/false：是否允许 sandbox 子进程向外联网；默认 false。
+network_access = true
+# 候选值 ---> true/false：是否将 $TMPDIR 从 writable roots 中排除；默认 false。
+exclude_tmpdir_env_var = false
+# 候选值 ---> true/false：是否将 /tmp 从 writable roots 中排除；默认 false。
+exclude_slash_tmp = false
+
+# Windows 原生 sandbox 配置项（Codex App for Windows）
+[windows]
+# 候选值 ---> elevated：   官方建议优先使用。
+# 候选值 ---> unelevated： 无法获取管理员权限或 setup 失败时的 fallback。
+sandbox = "elevated"
+# 候选值 ---> true/false：是否将 sandbox 子进程放入 private desktop；默认 true，仅兼容性问题时改 false。
+sandbox_private_desktop = true
+
+# 功能开关
+[features]
+# 候选值 ---> true/false：是否启用多代理/子代理能力。
+multi_agent = true
+
+# 子代理全局限制，对本项目内所有 subagent 生效。
+[agents]
+# 候选值 ---> number：可并行打开的 agent 线程上限；默认为六个代理。
+max_threads = 6
+# 候选值 ---> number：子代理嵌套深度上限；默认 1 即主代理可拉起一层子代理。
+max_depth = 1
