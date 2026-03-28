@@ -196,7 +196,18 @@ class ProcessingMCPTools:
         runner: McpMainThreadRunner,
         config: ProcessingMCPServerConfig | None = None,
     ):
-        """Initialize the tool registry and cache workflow resources."""
+        """
+        作用：封装内部辅助步骤 `__init__`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `__init__`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `iface`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `runner`（`McpMainThreadRunner`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `config`（`ProcessingMCPServerConfig | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         self._iface = iface
         self._runner = runner
         self._config = config
@@ -205,32 +216,91 @@ class ProcessingMCPTools:
         self._shapefile_run_summary = self._empty_shapefile_run_summary()
 
     def get_project_snapshot(self) -> dict[str, Any]:
-        """Return a snapshot of the current QGIS project."""
+        """
+        作用：实现 `get_project_snapshot` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `get_project_snapshot` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 MCP 客户端调用对应 tool 时触发，作为工具公开入口处理请求与响应。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+        """
         return self._run(self._get_project_snapshot_impl)
 
     def get_layers_summary(self) -> dict[str, Any]:
-        """Return a summary of the currently loaded layers."""
+        """
+        作用：实现 `get_layers_summary` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `get_layers_summary` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 MCP 客户端调用对应 tool 时触发，作为工具公开入口处理请求与响应。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+        """
         return self._run(self._get_layers_summary_impl)
 
     def get_shapefile_workflow_template(self) -> dict[str, Any]:
-        """Return the cached shapefile workflow template."""
+        """
+        作用：实现 `get_shapefile_workflow_template` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `get_shapefile_workflow_template` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 MCP 客户端调用对应 tool 时触发，作为工具公开入口处理请求与响应。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+        """
         return self._run(self._get_shapefile_workflow_template_impl)
 
     def get_shapefile_quality_profile(self) -> dict[str, Any]:
-        """Return the cached shapefile quality profile."""
+        """
+        作用：实现 `get_shapefile_quality_profile` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `get_shapefile_quality_profile` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 MCP 客户端调用对应 tool 时触发，作为工具公开入口处理请求与响应。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+        """
         return self._run(self._get_shapefile_quality_profile_impl)
 
     def get_shapefile_run_summary(self) -> dict[str, Any]:
-        """Return the cached shapefile run summary."""
+        """
+        作用：实现 `get_shapefile_run_summary` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `get_shapefile_run_summary` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 MCP 客户端调用对应 tool 时触发，作为工具公开入口处理请求与响应。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+        """
         return self._run(self._get_shapefile_run_summary_impl)
 
     def _run(self, func, *args, **kwargs):
-        """Run a callable on the main-thread runner and return its result."""
+        """
+        作用：封装内部辅助步骤 `_run`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `_run`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `func`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `*args`：可变位置参数，按调用时顺序传入补充数据。
+        - 参数 `**kwargs`：可变关键字参数，用于扩展命名输入。
+        - 返回：返回执行结果对象或状态值，具体结构以当前实现生成的数据为准。
+        返回结果：返回执行结果对象或状态值，具体结构以当前实现生成的数据为准。
+        """
         return self._runner.run(lambda: func(*args, **kwargs))
 
     @staticmethod
     def _serialize_value(value: Any) -> Any:
-        """Serialize values into JSON-friendly representations."""
+        """
+        作用：封装内部辅助步骤 `_serialize_value`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `_serialize_value`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+        参数与返回：
+        - 参数 `value`（`Any`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：返回 `Any` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `Any` 类型结果，返回值语义遵循该函数实现约定。
+        """
         if value is None:
             return None
         if isinstance(value, (bool, int, float, str)):
@@ -263,11 +333,27 @@ class ProcessingMCPTools:
 
     @staticmethod
     def _utc_now_iso() -> str:
-        """Return the current UTC timestamp in ISO 8601 format."""
+        """
+        作用：封装内部辅助步骤 `_utc_now_iso`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `_utc_now_iso`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+        参数与返回：
+        - 参数：无。
+        - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+        """
         return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
     def _build_shapefile_workflow_template(self) -> dict[str, Any]:
-        """Build the default shapefile workflow template."""
+        """
+        作用：构建 `_build_shapefile_workflow_template` 相关对象或配置数据，供后续流程直接复用。
+        用途：构建 `_build_shapefile_workflow_template` 相关对象或配置数据，供后续流程直接复用。
+        使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+        """
         return {
             "schema_version": "1.0.0",
             "name": "shapefile_standard_workflow",
@@ -398,7 +484,15 @@ class ProcessingMCPTools:
         }
 
     def _build_shapefile_quality_profile(self) -> dict[str, Any]:
-        """Build the default shapefile quality profile."""
+        """
+        作用：构建 `_build_shapefile_quality_profile` 相关对象或配置数据，供后续流程直接复用。
+        用途：构建 `_build_shapefile_quality_profile` 相关对象或配置数据，供后续流程直接复用。
+        使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+        """
         return {
             "schema_version": "1.0.0",
             "name": "default",
@@ -439,7 +533,15 @@ class ProcessingMCPTools:
         }
 
     def _empty_shapefile_run_summary(self) -> dict[str, Any]:
-        """Build an empty shapefile run summary record."""
+        """
+        作用：封装内部辅助步骤 `_empty_shapefile_run_summary`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `_empty_shapefile_run_summary`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+        """
         return {
             "schema_version": "1.0.0",
             "generated_at": self._utc_now_iso(),
@@ -457,7 +559,15 @@ class ProcessingMCPTools:
         }
 
     def _get_project_snapshot_impl(self) -> dict[str, Any]:
-        """Collect the current QGIS project snapshot."""
+        """
+        作用：实现 `_get_project_snapshot_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+        用途：实现 `_get_project_snapshot_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+        使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+        """
         project = QgsProject.instance()
         return {
             "file_name": project.fileName(),
@@ -467,7 +577,15 @@ class ProcessingMCPTools:
         }
 
     def _get_layers_summary_impl(self) -> dict[str, Any]:
-        """Collect a summary of the loaded layers."""
+        """
+        作用：实现 `_get_layers_summary_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+        用途：实现 `_get_layers_summary_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+        使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+        """
         layers = self.layer_list(layer_types="both")
         return {
             "count": len(layers),
@@ -480,15 +598,39 @@ class ProcessingMCPTools:
         }
 
     def _get_shapefile_workflow_template_impl(self) -> dict[str, Any]:
-        """Return the shapefile workflow template payload."""
+        """
+        作用：实现 `_get_shapefile_workflow_template_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+        用途：实现 `_get_shapefile_workflow_template_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+        使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+        """
         return self._serialize_value(self._shapefile_workflow_template)
 
     def _get_shapefile_quality_profile_impl(self) -> dict[str, Any]:
-        """Return the shapefile quality profile payload."""
+        """
+        作用：实现 `_get_shapefile_quality_profile_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+        用途：实现 `_get_shapefile_quality_profile_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+        使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+        """
         return self._serialize_value(self._shapefile_quality_profile)
 
     def _get_shapefile_run_summary_impl(self) -> dict[str, Any]:
-        """Return the shapefile run summary payload."""
+        """
+        作用：实现 `_get_shapefile_run_summary_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+        用途：实现 `_get_shapefile_run_summary_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+        使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+        """
         return self._serialize_value(self._shapefile_run_summary)
 
 _TOOL_MODULES = [
@@ -546,7 +688,16 @@ for _tool_module in _TOOL_MODULES:
         setattr(ProcessingMCPTools, _name, _callable)
 
 def _validate_tool_entry_contracts() -> None:
-    """Validate tool entry wrappers, impl mappings, and docstring registry integrity."""
+    """
+    作用：封装内部辅助步骤 `_validate_tool_entry_contracts`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_validate_tool_entry_contracts`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数：无。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    异常：可能显式抛出 `RuntimeError`。
+    """
     missing_tool_methods: list[str] = []
     missing_tool_impls: list[str] = []
     invalid_tool_wrappers: list[str] = []
@@ -606,7 +757,16 @@ def _validate_tool_entry_contracts() -> None:
         )
 
 def _apply_registered_tool_docstrings() -> None:
-    """Apply validated tool docstrings onto public tool entry methods."""
+    """
+    作用：封装内部辅助步骤 `_apply_registered_tool_docstrings`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_apply_registered_tool_docstrings`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数：无。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    异常：可能显式抛出 `RuntimeError`。
+    """
     for tool_name in REGISTERED_TOOL_NAMES:
         method = getattr(ProcessingMCPTools, tool_name, None)
         if not callable(method):
@@ -619,7 +779,17 @@ def _apply_registered_tool_docstrings() -> None:
         method.__doc__ = doc
 
 def register_tools(mcp, tools: ProcessingMCPTools, enable_execute_code: bool = True) -> None:
-    """Register all processing tools with the MCP server."""
+    """
+    作用：注册 `tools`，完成当前函数负责的处理步骤并产出结果。
+    用途：注册 `tools`，完成当前函数负责的处理步骤并产出结果。
+    使用场景：在 MCP 客户端调用对应 tool 时触发，作为工具公开入口处理请求与响应。
+    参数与返回：
+    - 参数 `mcp`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `tools`（`ProcessingMCPTools`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `enable_execute_code`（`bool`）：布尔开关参数，用于控制是否启用特定行为。 默认值为 `True`。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     _ = enable_execute_code
     tool_factory = getattr(mcp, "tool", None)
     if not callable(tool_factory):
@@ -631,7 +801,17 @@ def register_tools(mcp, tools: ProcessingMCPTools, enable_execute_code: bool = T
             continue
 
         def _wrapper(*args, _tool_name=tool_name, **kwargs):
-            """Wrap a tool method so it can be registered dynamically."""
+            """
+            作用：封装内部辅助步骤 `_wrapper`，用于拆分并复用模块内重复处理逻辑。
+            用途：封装内部辅助步骤 `_wrapper`，用于拆分并复用模块内重复处理逻辑。
+            使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+            参数与返回：
+            - 参数 `*args`：可变位置参数，按调用时顺序传入补充数据。
+            - 参数 `_tool_name`：标识或模式参数，用于指定目标对象或流程分支。 默认值为 `tool_name`。
+            - 参数 `**kwargs`：可变关键字参数，用于扩展命名输入。
+            - 返回：返回执行结果对象或状态值，具体结构以当前实现生成的数据为准。
+            返回结果：返回执行结果对象或状态值，具体结构以当前实现生成的数据为准。
+            """
             return getattr(tools, _tool_name)(*args, **kwargs)
 
         _wrapper.__name__ = tool_name

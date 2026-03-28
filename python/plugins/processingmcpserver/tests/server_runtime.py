@@ -12,35 +12,87 @@ from ._shared_case_base import ProcessingMCPTestBase
 
 class _FakeTransport:
     def __init__(self, start_result: bool = True):
-        """Initialize the fake transport state."""
+        """
+        作用：封装内部辅助步骤 `__init__`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `__init__`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `start_result`（`bool`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `True`。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         self.start_result = start_result
         self.running = False
         self.start_calls = 0
         self.stop_calls = 0
 
     def start(self) -> bool:
-        """Start the fake transport and record the attempt."""
+        """
+        作用：实现 `start` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `start` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+        """
         self.start_calls += 1
         self.running = self.start_result
         return self.start_result
 
     def stop(self) -> None:
-        """Stop the fake transport."""
+        """
+        作用：实现 `stop` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `stop` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         self.stop_calls += 1
         self.running = False
 
     def is_running(self) -> bool:
-        """Return whether the fake transport is running."""
+        """
+        作用：实现 `is_running` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `is_running` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+        """
         return self.running
 
     def describe(self) -> str:
-        """Return a short description for the fake transport."""
+        """
+        作用：实现 `describe` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `describe` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+        """
         return "fake transport"
 
 
 class _FakeFastMCP:
     def __init__(self, name: str, instructions: str = "", **kwargs):
-        """Initialize the _FakeFastMCP instance state."""
+        """
+        作用：封装内部辅助步骤 `__init__`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `__init__`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `name`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+        - 参数 `instructions`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `""`。
+        - 参数 `**kwargs`：可变关键字参数，用于扩展命名输入。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         self.name = name
         self.instructions = instructions
         self.kwargs = kwargs
@@ -63,7 +115,26 @@ class _FakeFastMCPWithoutServerIdentity:
         json_response: bool = False,
         log_level: str = "INFO",
     ):
-        """Simulate a FastMCP that does not accept website_url or icons parameters."""
+        """
+        作用：封装内部辅助步骤 `__init__`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `__init__`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `name`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+        - 参数 `instructions`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `""`。
+        - 参数 `host`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `"127.0.0.1"`。
+        - 参数 `port`（`int`）：数值控制参数，用于限制范围、数量或时限。 默认值为 `8000`。
+        - 参数 `mount_path`（`str`）：路径类参数，用于定位输入或输出文件系统位置。 默认值为 `"/"`。
+        - 参数 `sse_path`（`str`）：路径类参数，用于定位输入或输出文件系统位置。 默认值为 `"/sse"`。
+        - 参数 `message_path`（`str`）：路径类参数，用于定位输入或输出文件系统位置。 默认值为 `"/messages/"`。
+        - 参数 `streamable_http_path`（`str`）：路径类参数，用于定位输入或输出文件系统位置。 默认值为 `"/mcp"`。
+        - 参数 `stateless_http`（`bool`）：布尔开关参数，用于控制是否启用特定行为。 默认值为 `False`。
+        - 参数 `json_response`（`bool`）：布尔开关参数，用于控制是否启用特定行为。 默认值为 `False`。
+        - 参数 `log_level`（`str`）：标识或模式参数，用于指定目标对象或流程分支。 默认值为 `"INFO"`。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         self.name = name
         self.instructions = instructions
         self.settings = SimpleNamespace(
@@ -82,7 +153,15 @@ class _FakeFastMCPWithoutServerIdentity:
 
 class ProcessingMCPServerRuntimeTest(ProcessingMCPTestBase):
     def test_build_mcp_server_registers_tools_prompts_and_resources(self):
-        """Verify build MCP server registers tools prompts and resources."""
+        """
+        作用：执行测试用例 `build mcp server registers tools prompts and resources`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `build mcp server registers tools prompts and resources`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         fake_transport = _FakeTransport()
         fake_mcp_module = ModuleType("mcp.server.fastmcp")
         fake_mcp_module.FastMCP = _FakeFastMCP
@@ -151,7 +230,15 @@ class ProcessingMCPServerRuntimeTest(ProcessingMCPTestBase):
         )
 
     def test_build_mcp_server_degrades_without_identity_constructor_params(self):
-        """Verify the server still initializes when FastMCP lacks website_url and icons parameters."""
+        """
+        作用：执行测试用例 `build mcp server degrades without identity constructor params`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `build mcp server degrades without identity constructor params`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         fake_transport = _FakeTransport()
         fake_mcp_module = ModuleType("mcp.server.fastmcp")
         fake_mcp_module.FastMCP = _FakeFastMCPWithoutServerIdentity
@@ -200,7 +287,15 @@ class ProcessingMCPServerRuntimeTest(ProcessingMCPTestBase):
         )
 
     def test_start_returns_false_when_disabled(self):
-        """Verify start returns false when disabled."""
+        """
+        作用：执行测试用例 `start returns false when disabled`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `start returns false when disabled`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         fake_transport = _FakeTransport()
         config = replace(self._build_config("streamable-http"), enabled=False)
 
@@ -219,7 +314,15 @@ class ProcessingMCPServerRuntimeTest(ProcessingMCPTestBase):
         self.assertEqual(fake_transport.start_calls, 0)
 
     def test_start_and_stop_delegate_to_transport(self):
-        """Verify start and stop delegate to transport."""
+        """
+        作用：执行测试用例 `start and stop delegate to transport`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `start and stop delegate to transport`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         fake_transport = _FakeTransport()
         config = self._build_config("streamable-http")
 
@@ -245,7 +348,16 @@ class ProcessingMCPServerRuntimeTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.server.QgsMessageLog.logMessage")
     def test_stop_logs_exception_when_transport_stop_raises(self, mock_log_message):
-        """Verify stop logs exception when transport stop raises."""
+        """
+        作用：执行测试用例 `stop logs exception when transport stop raises`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `stop logs exception when transport stop raises`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `mock_log_message`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         fake_transport = MagicMock()
         fake_transport.stop.side_effect = RuntimeError("stop boom")
         config = self._build_config("streamable-http")
@@ -272,7 +384,16 @@ class ProcessingMCPServerRuntimeTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.server.QgsMessageLog.logMessage")
     def test_start_returns_false_when_transport_raises(self, mock_log_message):
-        """Verify start returns false when transport raises."""
+        """
+        作用：执行测试用例 `start returns false when transport raises`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `start returns false when transport raises`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `mock_log_message`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         fake_transport = MagicMock()
         fake_transport.describe.return_value = "broken transport"
         fake_transport.is_running.return_value = False

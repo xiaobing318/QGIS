@@ -58,6 +58,15 @@ MAX_ALGORITHM_LIST_LIMIT = 60
 _PROCESSING_INITIALIZED = False
 
 def _ensure_processing_initialized() -> None:
+    """
+    作用：确保 `_ensure_processing_initialized` 负责的前置状态可用，必要时执行初始化或修复动作。
+    用途：确保 `_ensure_processing_initialized` 负责的前置状态可用，必要时执行初始化或修复动作。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数：无。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     global _PROCESSING_INITIALIZED
     if _PROCESSING_INITIALIZED:
         return
@@ -68,7 +77,23 @@ TOOL_NAME = 'vector_export_shapefile'
 TOOL_DOC = '把当前工作层或任意矢量图层安全导出为最终 shapefile，并在导出前强制复核几何与字段约束。 layer_ref 指向待导出的矢量图层，output_directory 是输出目录，file_name 可覆盖输出文件名，task_name 用于运行摘要，overwrite 控制是否允许覆盖，auto_truncate_field_names 控制是否自动裁剪超长字段名，confirm_write 与 confirm_destructive 用于显式确认写盘和覆盖。 目标图层必须存在；output_directory 必须可创建；当 overwrite=true 时必须同时传 confirm_destructive=true。 会在磁盘写出 shapefile bundle；若需要自动裁剪字段名，内部会生成临时导出副本并在导出后自动移除。 必须显式设置 confirm_write=true；覆盖现有输出时还必须 confirm_destructive=true；存在无效几何或空几何时会阻断导出。 返回 output_path、output_members、field_name_mapping、preflight_report 和 final_report，便于在导出后继续走质量 gate。'
 
 def vector_export_shapefile(self, layer_ref: str, output_directory: str, file_name: str = "", task_name: str = "", overwrite: bool = False, auto_truncate_field_names: bool = True, confirm_write: bool = False, confirm_destructive: bool = False) -> dict[str, Any]:
-    """Handle a shapefile export."""
+    """
+    作用：处理 `vector_export_shapefile` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    用途：处理 `vector_export_shapefile` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    使用场景：在 MCP 客户端调用对应 tool 时触发，作为工具公开入口处理请求与响应。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `layer_ref`（`str`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 参数 `output_directory`（`str`）：路径类参数，用于定位输入或输出文件系统位置。
+    - 参数 `file_name`（`str`）：路径类参数，用于定位输入或输出文件系统位置。 默认值为 `""`。
+    - 参数 `task_name`（`str`）：标识或模式参数，用于指定目标对象或流程分支。 默认值为 `""`。
+    - 参数 `overwrite`（`bool`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `False`。
+    - 参数 `auto_truncate_field_names`（`bool`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。 默认值为 `True`。
+    - 参数 `confirm_write`（`bool`）：布尔开关参数，用于控制是否启用特定行为。 默认值为 `False`。
+    - 参数 `confirm_destructive`（`bool`）：布尔开关参数，用于控制是否启用特定行为。 默认值为 `False`。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return self._run(self._vector_export_shapefile_impl, layer_ref, output_directory, file_name, task_name, overwrite, auto_truncate_field_names, confirm_write, confirm_destructive)
 
 def _vector_export_shapefile_impl(
@@ -82,7 +107,24 @@ def _vector_export_shapefile_impl(
     confirm_write: bool,
     confirm_destructive: bool,
 ) -> dict[str, Any]:
-    """Implement the shapefile export logic."""
+    """
+    作用：实现 `_vector_export_shapefile_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+    用途：实现 `_vector_export_shapefile_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `layer_ref`（`str`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 参数 `output_directory`（`str`）：路径类参数，用于定位输入或输出文件系统位置。
+    - 参数 `file_name`（`str`）：路径类参数，用于定位输入或输出文件系统位置。
+    - 参数 `task_name`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 参数 `overwrite`（`bool`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `auto_truncate_field_names`（`bool`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 参数 `confirm_write`（`bool`）：布尔开关参数，用于控制是否启用特定行为。
+    - 参数 `confirm_destructive`（`bool`）：布尔开关参数，用于控制是否启用特定行为。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    异常：可能显式抛出 `Exception`。
+    """
     self._ensure_filesystem_write_confirmed(confirm_write)
     layer = self._resolve_vector_layer_ref(layer_ref)
     output_dir = self._resolve_filesystem_write_path(output_directory)
@@ -236,7 +278,20 @@ def _append_shapefile_run_step(
     warnings: list[str] | None = None,
     status: str | None = None,
 ) -> None:
-    """Handle append shapefile run step."""
+    """
+    作用：封装内部辅助步骤 `_append_shapefile_run_step`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_append_shapefile_run_step`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `step`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `summary`（`dict[str, Any] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 参数 `outputs`（`dict[str, Any] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 参数 `warnings`（`list[str] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 参数 `status`（`str | None`）：标识或模式参数，用于指定目标对象或流程分支。 默认值为 `None`。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     payload = {
         "step": step,
         "generated_at": self._utc_now_iso(),
@@ -253,7 +308,16 @@ def _append_shapefile_run_step(
 
 @staticmethod
 def _ensure_filesystem_write_confirmed(confirm_write: bool) -> None:
-    """Handle ensure filesystem write confirmed."""
+    """
+    作用：确保 `_ensure_filesystem_write_confirmed` 负责的前置状态可用，必要时执行初始化或修复动作。
+    用途：确保 `_ensure_filesystem_write_confirmed` 负责的前置状态可用，必要时执行初始化或修复动作。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `confirm_write`（`bool`）：布尔开关参数，用于控制是否启用特定行为。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    异常：可能显式抛出 `Exception`。
+    """
     if not confirm_write:
         raise Exception(
             "confirm_write must be true for filesystem_edit_* operations"
@@ -265,7 +329,18 @@ def _ensure_shapefile_run_summary(
     status: str | None = None,
     inputs: dict[str, Any] | None = None,
 ) -> str:
-    """Handle ensure shapefile run summary."""
+    """
+    作用：确保 `_ensure_shapefile_run_summary` 负责的前置状态可用，必要时执行初始化或修复动作。
+    用途：确保 `_ensure_shapefile_run_summary` 负责的前置状态可用，必要时执行初始化或修复动作。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `task_name`（`str`）：标识或模式参数，用于指定目标对象或流程分支。 默认值为 `""`。
+    - 参数 `status`（`str | None`）：标识或模式参数，用于指定目标对象或流程分支。 默认值为 `None`。
+    - 参数 `inputs`（`dict[str, Any] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     normalized = (task_name or self._shapefile_run_summary.get("task_name") or "").strip()
     if (
         not self._shapefile_run_summary.get("task_name")
@@ -294,7 +369,18 @@ def _inspect_vector_layer_validity(
     required_fields: list[str] | None = None,
     expected_crs: str | None = None,
 ) -> dict[str, Any]:
-    """Inspect vector layer validity."""
+    """
+    作用：封装内部辅助步骤 `_inspect_vector_layer_validity`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_inspect_vector_layer_validity`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `layer`（`QgsVectorLayer`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 参数 `required_fields`（`list[str] | None`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。 默认值为 `None`。
+    - 参数 `expected_crs`（`str | None`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。 默认值为 `None`。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     required = [str(item).strip() for item in (required_fields or []) if str(item).strip()]
     expected = self._parse_target_crs(expected_crs) if expected_crs else None
     feature_count = layer.featureCount()
@@ -447,13 +533,33 @@ def _inspect_vector_layer_validity(
     }
 
 def _long_field_names(self, layer: QgsVectorLayer) -> list[str]:
-    """Handle long field names."""
+    """
+    作用：封装内部辅助步骤 `_long_field_names`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_long_field_names`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `layer`（`QgsVectorLayer`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 返回：返回 `list[str]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `list[str]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return [field.name() for field in layer.fields() if len(field.name()) > 10]
 
 def _materialize_vector_layer(
     self, layer: QgsVectorLayer, suffix: str = "copy"
 ) -> QgsVectorLayer:
-    """Handle materialize vector layer."""
+    """
+    作用：封装内部辅助步骤 `_materialize_vector_layer`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_materialize_vector_layer`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `layer`（`QgsVectorLayer`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 参数 `suffix`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `"copy"`。
+    - 返回：返回 `QgsVectorLayer` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `QgsVectorLayer` 类型结果，返回值语义遵循该函数实现约定。
+    异常：可能显式抛出 `Exception`。
+    """
     cloned_layer = layer.materialize(QgsFeatureRequest())
     if cloned_layer is None or not cloned_layer.isValid():
         raise Exception(f"Failed to materialize vector layer copy: {layer.id()}")
@@ -463,14 +569,31 @@ def _materialize_vector_layer(
 
 @staticmethod
 def _normalize_output_stem(text: str) -> str:
-    """Handle normalize output stem."""
+    """
+    作用：封装内部辅助步骤 `_normalize_output_stem`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_normalize_output_stem`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `text`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     value = re.sub(r"[^0-9A-Za-z_]+", "_", text or "")
     value = value.strip("_")
     return value or "output"
 
 @staticmethod
 def _normalize_task_name(task_name: str | None, fallback: str = "") -> str:
-    """Handle normalize task name."""
+    """
+    作用：封装内部辅助步骤 `_normalize_task_name`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_normalize_task_name`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `task_name`（`str | None`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 参数 `fallback`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `""`。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     value = (task_name or "").strip()
     if value:
         return value
@@ -478,7 +601,19 @@ def _normalize_task_name(task_name: str | None, fallback: str = "") -> str:
 
 @staticmethod
 def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[str, Any] | None = None, warnings: list[str] | None = None, **extra) -> dict[str, Any]:
-    """Handle ok result."""
+    """
+    作用：封装内部辅助步骤 `_ok_result`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_ok_result`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `tool`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `summary`（`dict[str, Any] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 参数 `outputs`（`dict[str, Any] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 参数 `warnings`（`list[str] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 参数 `**extra`：可变关键字参数，用于扩展命名输入。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     payload: dict[str, Any] = {"ok": True, "tool": tool, "summary": summary or {}, "outputs": outputs or {}}
     if warnings is not None:
         payload["warnings"] = warnings
@@ -486,7 +621,17 @@ def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[s
     return payload
 
 def _record_run_output(self, output_key: str, value: str) -> None:
-    """Handle record run output."""
+    """
+    作用：封装内部辅助步骤 `_record_run_output`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_record_run_output`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `output_key`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 参数 `value`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     outputs = self._shapefile_run_summary.setdefault("outputs", {})
     bucket = outputs.setdefault(output_key, [])
     if value not in bucket:
@@ -495,7 +640,16 @@ def _record_run_output(self, output_key: str, value: str) -> None:
 def _rename_layer_fields_for_shapefile(
     self, layer: QgsVectorLayer
 ) -> dict[str, str]:
-    """Handle rename layer fields for shapefile."""
+    """
+    作用：封装内部辅助步骤 `_rename_layer_fields_for_shapefile`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_rename_layer_fields_for_shapefile`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `layer`（`QgsVectorLayer`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 返回：返回 `dict[str, str]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, str]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     mapping: dict[str, str] = {}
     used_names: set[str] = set()
     for field in layer.fields():
@@ -511,6 +665,15 @@ def _rename_layer_fields_for_shapefile(
         return {}
 
     def op() -> int:
+        """
+        作用：处理 `op` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+        用途：处理 `op` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+        使用场景：在 MCP 客户端调用对应 tool 时触发，作为工具公开入口处理请求与响应。
+        参数与返回：
+        - 参数：无。
+        - 返回：返回 `int` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `int` 类型结果，返回值语义遵循该函数实现约定。
+        """
         renamed = 0
         for old_name, new_name in mapping.items():
             idx = self._field_index(layer, old_name)
@@ -525,11 +688,30 @@ def _rename_layer_fields_for_shapefile(
     return mapping
 
 def _resolve_filesystem_write_path(self, path: str | Path) -> Path:
-    """Resolve filesystem write path."""
+    """
+    作用：封装内部辅助步骤 `_resolve_filesystem_write_path`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_resolve_filesystem_write_path`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `path`（`str | Path`）：路径类参数，用于定位输入或输出文件系统位置。
+    - 返回：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return self._resolve_filesystem_query_path(path)
 
 def _resolve_vector_layer_ref(self, layer_ref: Any) -> QgsVectorLayer:
-    """Resolve vector layer ref."""
+    """
+    作用：封装内部辅助步骤 `_resolve_vector_layer_ref`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_resolve_vector_layer_ref`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `layer_ref`（`Any`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 返回：返回 `QgsVectorLayer` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `QgsVectorLayer` 类型结果，返回值语义遵循该函数实现约定。
+    异常：可能显式抛出 `Exception`。
+    """
     layer = self._resolve_layer_ref(layer_ref)
     if layer.type() != QgsMapLayer.VectorLayer:
         raise Exception(f"Layer is not a vector layer: {layer_ref}")
@@ -542,7 +724,19 @@ def _tag_work_layer(
     source_path: str = "",
     temp_paths: list[str] | None = None,
 ) -> None:
-    """Handle tag work layer."""
+    """
+    作用：封装内部辅助步骤 `_tag_work_layer`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_tag_work_layer`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `layer`（`QgsVectorLayer`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 参数 `task_name`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 参数 `source_path`（`str`）：路径类参数，用于定位输入或输出文件系统位置。 默认值为 `""`。
+    - 参数 `temp_paths`（`list[str] | None`）：路径类参数，用于定位输入或输出文件系统位置。 默认值为 `None`。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     layer.setCustomProperty(
         "processingmcpserver/workflow/task_name",
         self._normalize_task_name(task_name, layer.name()),
@@ -559,7 +753,15 @@ def _tag_work_layer(
 
 @staticmethod
 def _serialize_value(value: Any) -> Any:
-    """Serialize values into JSON-friendly representations."""
+    """
+    作用：封装内部辅助步骤 `_serialize_value`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_serialize_value`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `value`（`Any`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `Any` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `Any` 类型结果，返回值语义遵循该函数实现约定。
+    """
     if value is None:
         return None
     if isinstance(value, (bool, int, float, str)):
@@ -592,7 +794,15 @@ def _serialize_value(value: Any) -> Any:
 
 @staticmethod
 def _utc_now_iso() -> str:
-    """Return the current UTC timestamp in ISO 8601 format."""
+    """
+    作用：封装内部辅助步骤 `_utc_now_iso`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_utc_now_iso`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数：无。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 def _reset_shapefile_run_summary(
@@ -601,7 +811,18 @@ def _reset_shapefile_run_summary(
     status: str,
     inputs: dict[str, Any] | None = None,
 ) -> str:
-    """Handle reset shapefile run summary."""
+    """
+    作用：封装内部辅助步骤 `_reset_shapefile_run_summary`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_reset_shapefile_run_summary`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `task_name`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 参数 `status`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 参数 `inputs`（`dict[str, Any] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     normalized = (task_name or "").strip()
     self._shapefile_run_summary = self._empty_shapefile_run_summary()
     self._shapefile_run_summary["task_name"] = normalized
@@ -611,7 +832,16 @@ def _reset_shapefile_run_summary(
     return normalized
 
 def _collect_null_attribute_fields(self, layer: QgsVectorLayer) -> list[str]:
-    """Handle collect null attribute fields."""
+    """
+    作用：封装内部辅助步骤 `_collect_null_attribute_fields`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_collect_null_attribute_fields`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `layer`（`QgsVectorLayer`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 返回：返回 `list[str]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `list[str]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     flagged: list[str] = []
     field_names = [field.name() for field in layer.fields()]
     if not field_names:
@@ -625,7 +855,15 @@ def _collect_null_attribute_fields(self, layer: QgsVectorLayer) -> list[str]:
 
 @staticmethod
 def _display_geometry_type(layer: QgsVectorLayer) -> str:
-    """Handle display geometry type."""
+    """
+    作用：封装内部辅助步骤 `_display_geometry_type`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_display_geometry_type`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `layer`（`QgsVectorLayer`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return {
         Qgis.GeometryType.Point: "point",
         Qgis.GeometryType.Line: "line",
@@ -636,13 +874,32 @@ def _display_geometry_type(layer: QgsVectorLayer) -> str:
 
 @staticmethod
 def _field_index(layer: QgsVectorLayer, field_name: str) -> int:
-    """Handle field index."""
+    """
+    作用：封装内部辅助步骤 `_field_index`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_field_index`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `layer`（`QgsVectorLayer`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 参数 `field_name`（`str`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 返回：返回 `int` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `int` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return layer.fields().indexFromName(field_name)
 
 def _parse_target_crs(
     self, target_crs: str | None
 ) -> QgsCoordinateReferenceSystem | None:
-    """Handle parse target crs."""
+    """
+    作用：封装内部辅助步骤 `_parse_target_crs`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_parse_target_crs`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `target_crs`（`str | None`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 返回：返回 `QgsCoordinateReferenceSystem | None` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `QgsCoordinateReferenceSystem | None` 类型结果，返回值语义遵循该函数实现约定。
+    异常：可能显式抛出 `Exception`。
+    """
     value = (target_crs or "").strip()
     if not value:
         return None
@@ -653,13 +910,33 @@ def _parse_target_crs(
 
 @staticmethod
 def _copy_layer_name(layer: QgsMapLayer, suffix: str = "copy") -> str:
-    """Handle copy layer name."""
+    """
+    作用：封装内部辅助步骤 `_copy_layer_name`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_copy_layer_name`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `layer`（`QgsMapLayer`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 参数 `suffix`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `"copy"`。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     base_name = (layer.name() or "layer").strip() or "layer"
     clean_suffix = suffix.strip().replace(" ", "_") if suffix else "copy"
     return f"{base_name}_{clean_suffix}"
 
 def _apply_vector_edit(self, layer: QgsVectorLayer, operation) -> Any:
-    """Handle apply vector edit."""
+    """
+    作用：封装内部辅助步骤 `_apply_vector_edit`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_apply_vector_edit`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `layer`（`QgsVectorLayer`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 参数 `operation`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `Any` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `Any` 类型结果，返回值语义遵循该函数实现约定。
+    异常：在异常处理分支中会透传当前异常。
+    """
     started_here = self._begin_vector_edit(layer)
     try:
         result = operation()
@@ -675,7 +952,16 @@ def _normalize_shapefile_field_name(
     field_name: str,
     used_names: set[str],
 ) -> str:
-    """Handle normalize shapefile field name."""
+    """
+    作用：封装内部辅助步骤 `_normalize_shapefile_field_name`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_normalize_shapefile_field_name`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `field_name`（`str`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 参数 `used_names`（`set[str]`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     clean = re.sub(r"[^0-9A-Za-z_]+", "_", field_name or "")
     clean = clean.strip("_") or "field"
     candidate = clean[:10]
@@ -688,11 +974,30 @@ def _normalize_shapefile_field_name(
     return candidate
 
 def _resolve_filesystem_query_path(self, path: str | Path) -> Path:
-    """Resolve filesystem query path."""
+    """
+    作用：封装内部辅助步骤 `_resolve_filesystem_query_path`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_resolve_filesystem_query_path`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `path`（`str | Path`）：路径类参数，用于定位输入或输出文件系统位置。
+    - 返回：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return self._normalize_filesystem_path(path)
 
 def _resolve_layer_ref(self, layer_ref: Any) -> QgsMapLayer:
-    """Resolve layer ref."""
+    """
+    作用：封装内部辅助步骤 `_resolve_layer_ref`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_resolve_layer_ref`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `layer_ref`（`Any`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 返回：返回 `QgsMapLayer` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `QgsMapLayer` 类型结果，返回值语义遵循该函数实现约定。
+    异常：可能显式抛出 `Exception`。
+    """
     if isinstance(layer_ref, QgsMapLayer):
         return layer_ref
     text = str(layer_ref).strip() if layer_ref is not None else ""
@@ -712,7 +1017,15 @@ def _resolve_layer_ref(self, layer_ref: Any) -> QgsMapLayer:
     raise Exception(f"Layer not found: {text}")
 
 def _empty_shapefile_run_summary(self) -> dict[str, Any]:
-    """Build an empty shapefile run summary record."""
+    """
+    作用：封装内部辅助步骤 `_empty_shapefile_run_summary`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_empty_shapefile_run_summary`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return {
         "schema_version": "1.0.0",
         "generated_at": self._utc_now_iso(),
@@ -731,7 +1044,16 @@ def _empty_shapefile_run_summary(self) -> dict[str, Any]:
 
 @staticmethod
 def _begin_vector_edit(layer: QgsVectorLayer) -> bool:
-    """Handle begin vector edit."""
+    """
+    作用：封装内部辅助步骤 `_begin_vector_edit`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_begin_vector_edit`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `layer`（`QgsVectorLayer`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 返回：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+    异常：可能显式抛出 `Exception`。
+    """
     if layer.isEditable():
         return False
     if not layer.startEditing():
@@ -740,7 +1062,17 @@ def _begin_vector_edit(layer: QgsVectorLayer) -> bool:
 
 @staticmethod
 def _finish_vector_edit(layer: QgsVectorLayer, started_here: bool) -> None:
-    """Handle finish vector edit."""
+    """
+    作用：封装内部辅助步骤 `_finish_vector_edit`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_finish_vector_edit`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `layer`（`QgsVectorLayer`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 参数 `started_here`（`bool`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    异常：可能显式抛出 `Exception`。
+    """
     if not started_here:
         return
     if layer.commitChanges():
@@ -751,7 +1083,15 @@ def _finish_vector_edit(layer: QgsVectorLayer, started_here: bool) -> None:
 
 @staticmethod
 def _normalize_filesystem_path(path: str | Path) -> Path:
-    """Handle normalize filesystem path."""
+    """
+    作用：封装内部辅助步骤 `_normalize_filesystem_path`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_normalize_filesystem_path`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `path`（`str | Path`）：路径类参数，用于定位输入或输出文件系统位置。
+    - 返回：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    """
     candidate = path if isinstance(path, Path) else Path(str(path).strip()).expanduser()
     if not candidate.is_absolute():
         candidate = Path.cwd() / candidate

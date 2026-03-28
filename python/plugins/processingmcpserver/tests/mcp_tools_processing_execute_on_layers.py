@@ -8,12 +8,29 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsProcessingExecuteOnLayersTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the expected capability is registered."""
+        """
+        作用：执行测试用例 `registered`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `registered`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         assert_tool_registered(self, "processing_execute_on_layers")
 
     @patch("processingmcpserver.mcp_tools.mcp_tools_processing_execute_on_layers.processing.run")
     def test_success_default_safety_policy(self, mock_run):
-        """Verify that the default safety policy is applied."""
+        """
+        作用：执行测试用例 `success default safety policy`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `success default safety policy`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `mock_run`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         mock_run.return_value = {"OUTPUT": "TEMPORARY_OUTPUT"}
         layer = self.add_sample_vector_layer("execute_on_layers_vector")
@@ -38,7 +55,16 @@ class ToolsProcessingExecuteOnLayersTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.mcp_tools.mcp_tools_processing_execute_on_layers.processing.run")
     def test_batch_mode_mismatch_reported(self, mock_run):
-        """Verify batch mode mismatch reported."""
+        """
+        作用：执行测试用例 `batch mode mismatch reported`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `batch mode mismatch reported`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `mock_run`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         mock_run.return_value = {"OUTPUT": "TEMPORARY_OUTPUT"}
         layer = self.add_sample_vector_layer("execute_on_layers_vector2")
@@ -57,7 +83,16 @@ class ToolsProcessingExecuteOnLayersTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.mcp_tools.mcp_tools_processing_execute_on_layers.processing.run")
     def test_explicit_allow_disk_write_and_in_place(self, mock_run):
-        """Verify explicit allow disk write and in place."""
+        """
+        作用：执行测试用例 `explicit allow disk write and in place`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `explicit allow disk write and in place`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `mock_run`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         mock_run.return_value = {"OUTPUT": "C:/tmp/result.gpkg"}
         layer = self.add_sample_vector_layer("execute_on_layers_vector3")
@@ -79,7 +114,15 @@ class ToolsProcessingExecuteOnLayersTest(ProcessingMCPTestBase):
         self.assertTrue(result["safety_policy"]["allow_in_place_edit"])
 
     def test_failure_requires_bindings(self):
-        """Verify that required bindings are enforced."""
+        """
+        作用：执行测试用例 `failure requires bindings`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `failure requires bindings`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         with self.assertRaises(Exception) as ctx:
             tools.processing_execute_on_layers(
@@ -92,7 +135,15 @@ class ToolsProcessingExecuteOnLayersTest(ProcessingMCPTestBase):
         self.assertIn("layer_bindings is required", str(ctx.exception))
 
     def test_failure_invalid_bound_layer_ref(self):
-        """Verify the failure path for an invalid bound layer reference."""
+        """
+        作用：执行测试用例 `failure invalid bound layer ref`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `failure invalid bound layer ref`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
 
         with self.assertRaises(Exception) as ctx:
@@ -107,7 +158,16 @@ class ToolsProcessingExecuteOnLayersTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.mcp_tools.mcp_tools_processing_execute_on_layers.processing.run")
     def test_failure_propagates_processing_runtime_error(self, mock_run):
-        """Verify that processing runtime errors are propagated."""
+        """
+        作用：执行测试用例 `failure propagates processing runtime error`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `failure propagates processing runtime error`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `mock_run`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("execute_on_layers_vector4")
         mock_run.side_effect = RuntimeError("processing boom")

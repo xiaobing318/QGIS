@@ -58,6 +58,15 @@ MAX_ALGORITHM_LIST_LIMIT = 60
 _PROCESSING_INITIALIZED = False
 
 def _ensure_processing_initialized() -> None:
+    """
+    作用：确保 `_ensure_processing_initialized` 负责的前置状态可用，必要时执行初始化或修复动作。
+    用途：确保 `_ensure_processing_initialized` 负责的前置状态可用，必要时执行初始化或修复动作。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数：无。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     global _PROCESSING_INITIALIZED
     if _PROCESSING_INITIALIZED:
         return
@@ -68,11 +77,30 @@ TOOL_NAME = 'layer_remove'
 TOOL_DOC = '从当前工程中移除单个图层。 layer_id 必须是当前工程已存在的 layer id，不接受模糊名称。 目标图层必须已经在当前工程注册。 会修改当前工程图层列表和图层面板，但不会删除底层数据文件。 无 confirm_destructive 开关，因此调用前应先用 layer_list 或 layer_get_details 复核目标 id。 返回 removed 字段，值为已移除的 layer id。'
 
 def layer_remove(self, layer_id: str) -> dict[str, str]:
-    """Handle a layer from the project."""
+    """
+    作用：处理 `layer_remove` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    用途：处理 `layer_remove` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    使用场景：在 MCP 客户端调用对应 tool 时触发，作为工具公开入口处理请求与响应。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `layer_id`（`str`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 返回：返回 `dict[str, str]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, str]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return self._run(self._layer_remove_impl, layer_id)
 
 def _layer_remove_impl(self, layer_id: str) -> dict[str, str]:
-    """Build the layer from the project."""
+    """
+    作用：实现 `_layer_remove_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+    用途：实现 `_layer_remove_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `layer_id`（`str`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 返回：返回 `dict[str, str]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, str]` 类型结果，返回值语义遵循该函数实现约定。
+    异常：可能显式抛出 `Exception`。
+    """
     project = QgsProject.instance()
     if layer_id not in project.mapLayers():
         raise Exception(f"Layer not found: {layer_id}")

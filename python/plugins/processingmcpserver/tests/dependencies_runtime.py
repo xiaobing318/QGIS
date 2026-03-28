@@ -12,7 +12,15 @@ from ._shared_case_base import ProcessingMCPTestBase
 
 class DependenciesRuntimeTest(ProcessingMCPTestBase):
     def test_dependencies_support_requirement_syntax(self):
-        """Verify dependencies support requirement syntax."""
+        """
+        作用：执行测试用例 `dependencies support requirement syntax`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `dependencies support requirement syntax`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         parsed, error = dependency_runtime._parse_requirement("mcp>=0.0.1")
         self.assertIsNotNone(parsed)
         self.assertEqual(error, "")
@@ -20,14 +28,31 @@ class DependenciesRuntimeTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.dependency_evaluator.importlib.metadata.version")
     def test_dependencies_detect_version_mismatch(self, mock_version):
-        """Verify dependencies detect version mismatch."""
+        """
+        作用：执行测试用例 `dependencies detect version mismatch`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `dependencies detect version mismatch`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `mock_version`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         mock_version.return_value = "0.1.0"
         result = dependency_runtime._evaluate_requirement("mcp>=1.0.0")
         self.assertFalse(result.satisfied)
         self.assertIn("does not satisfy", result.reason)
 
     def test_requirements_file_parser_skips_comments_and_blank_lines(self):
-        """Verify requirements file parser skips comments and blank lines."""
+        """
+        作用：执行测试用例 `requirements file parser skips comments and blank lines`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `requirements file parser skips comments and blank lines`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         temp_root = self.make_temp_dir()
         req_path = temp_root / "requirements.txt"
         req_path.write_text(
@@ -49,7 +74,15 @@ class DependenciesRuntimeTest(ProcessingMCPTestBase):
         )
 
     def test_requirements_file_missing_returns_error(self):
-        """Verify requirements file missing returns error."""
+        """
+        作用：执行测试用例 `requirements file missing returns error`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `requirements file missing returns error`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         temp_root = self.make_temp_dir()
         req_path = temp_root / "missing.txt"
         result = dependency_runtime._load_requirements_from_file(req_path)
@@ -77,7 +110,23 @@ class DependenciesRuntimeTest(ProcessingMCPTestBase):
         _mock_write_report,
         _mock_log_result,
     ):
-        """Verify dependencies install command constructed for missing requirements."""
+        """
+        作用：执行测试用例 `dependencies install command constructed for missing requirements`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `dependencies install command constructed for missing requirements`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `mock_validate_contract`：标识或模式参数，用于指定目标对象或流程分支。
+        - 参数 `mock_load_requirements`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `mock_collect_env`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `mock_detect_pip`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `mock_evaluate_requirements`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `mock_subprocess_run`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `_mock_write_report`：数值控制参数，用于限制范围、数量或时限。
+        - 参数 `_mock_log_result`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         mock_collect_env.return_value = self.build_env_snapshot()
         mock_detect_pip.return_value = dependency_runtime.PipDetectionResult(
             available=True,
@@ -174,7 +223,21 @@ class DependenciesRuntimeTest(ProcessingMCPTestBase):
         _mock_write_report,
         _mock_log_result,
     ):
-        """Verify dependencies fail when pip unavailable."""
+        """
+        作用：执行测试用例 `dependencies fail when pip unavailable`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `dependencies fail when pip unavailable`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `mock_load_requirements`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `mock_collect_env`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `mock_detect_pip`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `mock_evaluate_requirements`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `_mock_write_report`：数值控制参数，用于限制范围、数量或时限。
+        - 参数 `_mock_log_result`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         mock_collect_env.return_value = self.build_env_snapshot()
         mock_detect_pip.return_value = dependency_runtime.PipDetectionResult(
             available=False,
@@ -226,7 +289,22 @@ class DependenciesRuntimeTest(ProcessingMCPTestBase):
         _mock_write_report,
         _mock_log_result,
     ):
-        """Verify dependencies report schema v3."""
+        """
+        作用：执行测试用例 `dependencies report schema v3`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `dependencies report schema v3`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `mock_validate_contract`：标识或模式参数，用于指定目标对象或流程分支。
+        - 参数 `mock_load_requirements`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `mock_collect_env`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `mock_detect_pip`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `mock_evaluate_requirements`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `_mock_write_report`：数值控制参数，用于限制范围、数量或时限。
+        - 参数 `_mock_log_result`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         mock_collect_env.return_value = self.build_env_snapshot()
         mock_detect_pip.return_value = dependency_runtime.PipDetectionResult(
             available=True,
@@ -292,7 +370,22 @@ class DependenciesRuntimeTest(ProcessingMCPTestBase):
         _mock_write_report,
         _mock_log_result,
     ):
-        """Verify dependencies fail when MCP contract invalid."""
+        """
+        作用：执行测试用例 `dependencies fail when mcp contract invalid`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `dependencies fail when mcp contract invalid`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `mock_validate_contract`：标识或模式参数，用于指定目标对象或流程分支。
+        - 参数 `mock_load_requirements`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `mock_collect_env`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `mock_detect_pip`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `mock_evaluate_requirements`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `_mock_write_report`：数值控制参数，用于限制范围、数量或时限。
+        - 参数 `_mock_log_result`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         mock_collect_env.return_value = self.build_env_snapshot()
         mock_detect_pip.return_value = dependency_runtime.PipDetectionResult(
             available=True,
@@ -344,7 +437,20 @@ class DependenciesRuntimeTest(ProcessingMCPTestBase):
         _mock_write_report,
         _mock_log_result,
     ):
-        """Verify dependencies fail when requirements file missing."""
+        """
+        作用：执行测试用例 `dependencies fail when requirements file missing`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `dependencies fail when requirements file missing`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `mock_load_requirements`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `mock_collect_env`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `mock_detect_pip`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `_mock_write_report`：数值控制参数，用于限制范围、数量或时限。
+        - 参数 `_mock_log_result`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         mock_collect_env.return_value = self.build_env_snapshot()
         mock_detect_pip.return_value = dependency_runtime.PipDetectionResult(
             available=True,
@@ -382,7 +488,20 @@ class DependenciesRuntimeTest(ProcessingMCPTestBase):
         _mock_write_report,
         _mock_log_result,
     ):
-        """Verify dependencies fail when requirements file empty."""
+        """
+        作用：执行测试用例 `dependencies fail when requirements file empty`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `dependencies fail when requirements file empty`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `mock_load_requirements`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `mock_collect_env`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `mock_detect_pip`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `_mock_write_report`：数值控制参数，用于限制范围、数量或时限。
+        - 参数 `_mock_log_result`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         mock_collect_env.return_value = self.build_env_snapshot()
         mock_detect_pip.return_value = dependency_runtime.PipDetectionResult(
             available=True,
@@ -409,7 +528,16 @@ class DependenciesRuntimeTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.dependency_probe.subprocess.run")
     def test_detect_pip_rejects_non_pip_output_even_on_success(self, mock_run):
-        """Verify detect pip rejects non pip output even on success."""
+        """
+        作用：执行测试用例 `detect pip rejects non pip output even on success`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `detect pip rejects non pip output even on success`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `mock_run`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         mock_run.return_value = subprocess.CompletedProcess(
             args=[],
             returncode=0,
@@ -443,7 +571,23 @@ class DependenciesRuntimeTest(ProcessingMCPTestBase):
         _mock_write_report,
         _mock_log_result,
     ):
-        """Verify dependencies fail without user fallback on permission denied."""
+        """
+        作用：执行测试用例 `dependencies fail without user fallback on permission denied`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `dependencies fail without user fallback on permission denied`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `mock_validate_contract`：标识或模式参数，用于指定目标对象或流程分支。
+        - 参数 `mock_load_requirements`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `mock_collect_env`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `mock_detect_pip`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `mock_evaluate_requirements`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `mock_subprocess_run`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `_mock_write_report`：数值控制参数，用于限制范围、数量或时限。
+        - 参数 `_mock_log_result`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         mock_collect_env.return_value = self.build_env_snapshot()
         mock_detect_pip.return_value = dependency_runtime.PipDetectionResult(
             available=True,
@@ -487,7 +631,15 @@ class DependenciesRuntimeTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.dependency_probe.sys.executable", "C:/invalid/not-python.txt")
     def test_resolve_pip_python_executable_falls_back_to_prefix_python(self):
-        """Verify resolve pip python executable falls back to prefix python."""
+        """
+        作用：执行测试用例 `resolve pip python executable falls back to prefix python`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `resolve pip python executable falls back to prefix python`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         temp_root = self.make_temp_dir()
         python_exe = temp_root / "python.exe"
         python_exe.write_text("", encoding="utf-8")
@@ -518,7 +670,16 @@ class DependenciesRuntimeTest(ProcessingMCPTestBase):
     def test_resolve_install_target_details_falls_back_on_invalid_probe_output(
         self, mock_run
     ):
-        """Verify resolve install target details falls back on invalid probe output."""
+        """
+        作用：执行测试用例 `resolve install target details falls back on invalid probe output`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `resolve install target details falls back on invalid probe output`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `mock_run`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         environment = self.build_env_snapshot()
         mock_run.return_value = subprocess.CompletedProcess(
             args=[],

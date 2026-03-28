@@ -91,7 +91,15 @@ IGNORED_TEST_FILES = {
 
 
 def _discover_test_modules() -> list[str]:
-    """Discover test modules in the tests directory."""
+    """
+    作用：封装内部辅助步骤 `_discover_test_modules`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_discover_test_modules`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+    参数与返回：
+    - 参数：无。
+    - 返回：返回 `list[str]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `list[str]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     tests_dir = Path(__file__).resolve().parent
     return sorted(
         f"processingmcpserver.tests.{path.stem}"
@@ -101,7 +109,16 @@ def _discover_test_modules() -> list[str]:
 
 
 def _validate_test_modules() -> None:
-    """Ensure the declared module list matches the directory contents."""
+    """
+    作用：封装内部辅助步骤 `_validate_test_modules`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_validate_test_modules`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+    参数与返回：
+    - 参数：无。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    异常：可能显式抛出 `RuntimeError`。
+    """
     discovered = _discover_test_modules()
     declared = sorted(TEST_MODULES)
     if discovered == declared:
@@ -120,7 +137,15 @@ def _validate_test_modules() -> None:
 
 
 def build_suite() -> unittest.TestSuite:
-    """Build the full suite explicitly so filename patterns do not matter."""
+    """
+    作用：构建 `suite`，完成当前函数负责的处理步骤并产出结果。
+    用途：构建 `suite`，完成当前函数负责的处理步骤并产出结果。
+    使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+    参数与返回：
+    - 参数：无。
+    - 返回：返回 `unittest.TestSuite` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `unittest.TestSuite` 类型结果，返回值语义遵循该函数实现约定。
+    """
     _validate_test_modules()
     loader = unittest.defaultTestLoader
     suite = unittest.TestSuite()
@@ -131,7 +156,15 @@ def build_suite() -> unittest.TestSuite:
 
 
 def run_from_qgis_console(verbosity: int = 2) -> unittest.result.TestResult:
-    """Run the full processingmcpserver test suite from the QGIS Python Console."""
+    """
+    作用：运行 `from_qgis_console`，完成当前函数负责的处理步骤并产出结果。
+    用途：运行 `from_qgis_console`，完成当前函数负责的处理步骤并产出结果。
+    使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+    参数与返回：
+    - 参数 `verbosity`（`int`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `2`。
+    - 返回：返回 `unittest.result.TestResult` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `unittest.result.TestResult` 类型结果，返回值语义遵循该函数实现约定。
+    """
     _ensure_qgis_test_app()
     runner = unittest.TextTestRunner(stream=sys.stdout, verbosity=verbosity)
     return runner.run(build_suite())
@@ -142,7 +175,17 @@ def load_tests(
     _standard_tests: unittest.TestSuite,
     _pattern: str | None,
 ) -> unittest.TestSuite:
-    """Expose the aggregated suite for `python -m unittest ...`."""
+    """
+    作用：加载 `tests`，完成当前函数负责的处理步骤并产出结果。
+    用途：加载 `tests`，完成当前函数负责的处理步骤并产出结果。
+    使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+    参数与返回：
+    - 参数 `_loader`（`unittest.TestLoader`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `_standard_tests`（`unittest.TestSuite`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `_pattern`（`str | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `unittest.TestSuite` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `unittest.TestSuite` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return build_suite()
 
 

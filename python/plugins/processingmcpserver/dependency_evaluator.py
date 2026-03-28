@@ -8,7 +8,15 @@ from processingmcpserver.dependency_models import RequirementEvaluation
 
 
 def _parse_requirement(spec: str) -> tuple[Optional[Any], str]:
-    """Parse a requirement string and return the parsed object plus any error."""
+    """
+    作用：封装内部辅助步骤 `_parse_requirement`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_parse_requirement`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在依赖校验流程中被调用，用于判定 requirement 是否满足当前运行环境。
+    参数与返回：
+    - 参数 `spec`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `tuple[Optional[Any], str]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `tuple[Optional[Any], str]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     text = spec.strip()
     if not text:
         return None, "Requirement is empty."
@@ -27,7 +35,15 @@ def _parse_requirement(spec: str) -> tuple[Optional[Any], str]:
 
 
 def _load_requirement_parser() -> tuple[Optional[Any], str]:
-    """Load a requirement parser in priority order."""
+    """
+    作用：封装内部辅助步骤 `_load_requirement_parser`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_load_requirement_parser`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在依赖校验流程中被调用，用于判定 requirement 是否满足当前运行环境。
+    参数与返回：
+    - 参数：无。
+    - 返回：返回 `tuple[Optional[Any], str]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `tuple[Optional[Any], str]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     try:
         from packaging.requirements import Requirement
 
@@ -46,7 +62,15 @@ def _load_requirement_parser() -> tuple[Optional[Any], str]:
 def _evaluate_requirements(
     requirements: list[str],
 ) -> dict[str, RequirementEvaluation]:
-    """Evaluate a list of requirements."""
+    """
+    作用：封装内部辅助步骤 `_evaluate_requirements`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_evaluate_requirements`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在依赖校验流程中被调用，用于判定 requirement 是否满足当前运行环境。
+    参数与返回：
+    - 参数 `requirements`（`list[str]`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `dict[str, RequirementEvaluation]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, RequirementEvaluation]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     evaluations: dict[str, RequirementEvaluation] = {}
     for requirement in requirements:
         evaluations[requirement] = _evaluate_requirement(requirement)
@@ -54,7 +78,15 @@ def _evaluate_requirements(
 
 
 def _evaluate_requirement(spec: str) -> RequirementEvaluation:
-    """Evaluate one requirement for install state, version constraints, and importability."""
+    """
+    作用：封装内部辅助步骤 `_evaluate_requirement`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_evaluate_requirement`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在依赖校验流程中被调用，用于判定 requirement 是否满足当前运行环境。
+    参数与返回：
+    - 参数 `spec`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `RequirementEvaluation` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `RequirementEvaluation` 类型结果，返回值语义遵循该函数实现约定。
+    """
     text = spec.strip()
     parsed, parse_error = _parse_requirement(text)
     if parsed is None:
@@ -150,7 +182,15 @@ def _evaluate_requirement(spec: str) -> RequirementEvaluation:
 
 
 def _collect_import_names(distribution_name: str) -> list[str]:
-    """Derive importable module names from distribution metadata."""
+    """
+    作用：封装内部辅助步骤 `_collect_import_names`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_collect_import_names`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在依赖校验流程中被调用，用于判定 requirement 是否满足当前运行环境。
+    参数与返回：
+    - 参数 `distribution_name`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 返回：返回 `list[str]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `list[str]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     import_names: list[str] = []
     try:
         distribution = importlib.metadata.distribution(distribution_name)
@@ -179,7 +219,15 @@ def _collect_import_names(distribution_name: str) -> list[str]:
 
 
 def _try_import(module_name: str) -> tuple[bool, str]:
-    """Try importing a module and return a success flag plus error text."""
+    """
+    作用：封装内部辅助步骤 `_try_import`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_try_import`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在依赖校验流程中被调用，用于判定 requirement 是否满足当前运行环境。
+    参数与返回：
+    - 参数 `module_name`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 返回：返回 `tuple[bool, str]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `tuple[bool, str]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     try:
         importlib.import_module(module_name)
         return True, ""
@@ -190,7 +238,15 @@ def _try_import(module_name: str) -> tuple[bool, str]:
 def _extract_unsatisfied(
     evaluations: dict[str, RequirementEvaluation]
 ) -> tuple[list[str], dict[str, str]]:
-    """Extract unmet requirements and their reasons from evaluation results."""
+    """
+    作用：封装内部辅助步骤 `_extract_unsatisfied`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_extract_unsatisfied`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在依赖校验流程中被调用，用于判定 requirement 是否满足当前运行环境。
+    参数与返回：
+    - 参数 `evaluations`（`dict[str, RequirementEvaluation]`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `tuple[list[str], dict[str, str]]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `tuple[list[str], dict[str, str]]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     unsatisfied: list[str] = []
     reasons: dict[str, str] = {}
     for requirement, evaluation in evaluations.items():
@@ -204,7 +260,15 @@ def _extract_unsatisfied(
 def _collect_versions_from_evaluations(
     evaluations: dict[str, RequirementEvaluation]
 ) -> dict[str, str]:
-    """Collect installed version snapshots from evaluation results."""
+    """
+    作用：封装内部辅助步骤 `_collect_versions_from_evaluations`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_collect_versions_from_evaluations`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在依赖校验流程中被调用，用于判定 requirement 是否满足当前运行环境。
+    参数与返回：
+    - 参数 `evaluations`（`dict[str, RequirementEvaluation]`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `dict[str, str]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, str]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     versions: dict[str, str] = {}
     for requirement, evaluation in evaluations.items():
         versions[requirement] = evaluation.installed_version

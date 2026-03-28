@@ -15,12 +15,28 @@ T = TypeVar("T")
 
 
 def _log_warning(message: str) -> None:
-    """Log a configuration warning to the QGIS message log."""
+    """
+    作用：封装内部辅助步骤 `_log_warning`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_log_warning`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在配置解析流程中被调用，用于把原始输入转换为可用配置值。
+    参数与返回：
+    - 参数 `message`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     QgsMessageLog.logMessage(message, MCP_LOG_CATEGORY, Qgis.Warning)
 
 
 def _parse_bool(value: object) -> tuple[bool, bool]:
-    """Parse booleans from bools, numbers, and common string forms."""
+    """
+    作用：封装内部辅助步骤 `_parse_bool`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_parse_bool`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在配置解析流程中被调用，用于把原始输入转换为可用配置值。
+    参数与返回：
+    - 参数 `value`（`object`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `tuple[bool, bool]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `tuple[bool, bool]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     if isinstance(value, bool):
         return True, value
     if isinstance(value, str):
@@ -35,7 +51,15 @@ def _parse_bool(value: object) -> tuple[bool, bool]:
 
 
 def _parse_transport(value: object) -> tuple[bool, str]:
-    """Parse the transport field and normalize it to a supported transport."""
+    """
+    作用：封装内部辅助步骤 `_parse_transport`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_parse_transport`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在配置解析流程中被调用，用于把原始输入转换为可用配置值。
+    参数与返回：
+    - 参数 `value`（`object`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `tuple[bool, str]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `tuple[bool, str]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     if not isinstance(value, str):
         return False, ""
     text = value.strip().lower()
@@ -47,7 +71,15 @@ def _parse_transport(value: object) -> tuple[bool, str]:
 
 
 def _parse_string(value: object) -> tuple[bool, str]:
-    """Parse a non-empty string."""
+    """
+    作用：封装内部辅助步骤 `_parse_string`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_parse_string`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在配置解析流程中被调用，用于把原始输入转换为可用配置值。
+    参数与返回：
+    - 参数 `value`（`object`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `tuple[bool, str]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `tuple[bool, str]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     if not isinstance(value, str):
         return False, ""
     text = value.strip()
@@ -57,7 +89,15 @@ def _parse_string(value: object) -> tuple[bool, str]:
 
 
 def _parse_log_level(value: object) -> tuple[bool, str]:
-    """Parse a log level and normalize it to uppercase."""
+    """
+    作用：封装内部辅助步骤 `_parse_log_level`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_parse_log_level`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在配置解析流程中被调用，用于把原始输入转换为可用配置值。
+    参数与返回：
+    - 参数 `value`（`object`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `tuple[bool, str]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `tuple[bool, str]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     ok, text = _parse_string(value)
     if not ok:
         return False, ""
@@ -65,7 +105,15 @@ def _parse_log_level(value: object) -> tuple[bool, str]:
 
 
 def _parse_string_list_or_none(value: object) -> tuple[bool, Optional[list[str]]]:
-    """Parse a string list; empty values return `None` to disable the setting."""
+    """
+    作用：封装内部辅助步骤 `_parse_string_list_or_none`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_parse_string_list_or_none`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在配置解析流程中被调用，用于把原始输入转换为可用配置值。
+    参数与返回：
+    - 参数 `value`（`object`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `tuple[bool, Optional[list[str]]]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `tuple[bool, Optional[list[str]]]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     if value is None:
         return True, None
     if isinstance(value, str):
@@ -81,10 +129,27 @@ def _parse_string_list_or_none(value: object) -> tuple[bool, Optional[list[str]]
 
 
 def _int_parser(min_value: int, max_value: int) -> Callable[[object], tuple[bool, int]]:
-    """Build an integer parser constrained to the given range."""
+    """
+    作用：封装内部辅助步骤 `_int_parser`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_int_parser`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在配置解析流程中被调用，用于把原始输入转换为可用配置值。
+    参数与返回：
+    - 参数 `min_value`（`int`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `max_value`（`int`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `Callable[[object], tuple[bool, int]]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `Callable[[object], tuple[bool, int]]` 类型结果，返回值语义遵循该函数实现约定。
+    """
 
     def _parse(value: object) -> tuple[bool, int]:
-        """Parse one value as an integer and validate its range."""
+        """
+        作用：封装内部辅助步骤 `_parse`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `_parse`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在配置解析流程中被调用，用于把原始输入转换为可用配置值。
+        参数与返回：
+        - 参数 `value`（`object`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：返回 `tuple[bool, int]` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `tuple[bool, int]` 类型结果，返回值语义遵循该函数实现约定。
+        """
         if isinstance(value, bool):
             return False, 0
         try:
@@ -106,7 +171,21 @@ def _resolve_value(
     parser: Callable[[object], tuple[bool, T]],
     sources: dict[str, str],
 ) -> T:
-    """Resolve a configuration value with JSON > Settings > Default precedence and record the source."""
+    """
+    作用：封装内部辅助步骤 `_resolve_value`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_resolve_value`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在配置解析流程中被调用，用于把原始输入转换为可用配置值。
+    参数与返回：
+    - 参数 `key`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 参数 `json_value`（`object`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `settings_value`（`object`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `default_value`（`object`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `parser`（`Callable[[object], tuple[bool, T]]`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `sources`（`dict[str, str]`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `T` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `T` 类型结果，返回值语义遵循该函数实现约定。
+    异常：可能显式抛出 `RuntimeError`。
+    """
     candidates: list[tuple[str, object]] = [
         (SOURCE_JSON, json_value),
         (SOURCE_SETTINGS, settings_value),

@@ -8,11 +8,27 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsLayerListTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the expected capability is registered."""
+        """
+        作用：执行测试用例 `registered`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `registered`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         assert_tool_registered(self, "layer_list")
 
     def test_success_list_vector_and_raster(self):
-        """Verify the successful path for listing vector and raster layers."""
+        """
+        作用：执行测试用例 `success list vector and raster`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `success list vector and raster`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         vector_layer = self.add_sample_vector_layer("layer_list_vector")
         raster_layer = self.add_sample_raster_layer("layer_list_raster")
@@ -25,7 +41,15 @@ class ToolsLayerListTest(ProcessingMCPTestBase):
         self.assertIn(raster_layer.id(), raster_ids)
 
     def test_success_hidden_filter_and_name_glob(self):
-        """Verify that the hidden filter and name glob are applied."""
+        """
+        作用：执行测试用例 `success hidden filter and name glob`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `success hidden filter and name glob`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         visible_layer = self.add_sample_vector_layer("visible_vector")
         hidden_layer = self.add_sample_vector_layer("hidden_vector")
@@ -44,7 +68,15 @@ class ToolsLayerListTest(ProcessingMCPTestBase):
         self.assertTrue(all(item["visible"] for item in result))
 
     def test_failure_invalid_layer_type_filter(self):
-        """Verify the failure path for an invalid layer-type filter."""
+        """
+        作用：执行测试用例 `failure invalid layer type filter`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `failure invalid layer type filter`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         with self.assertRaises(Exception):
             tools.layer_list(layer_types="invalid")

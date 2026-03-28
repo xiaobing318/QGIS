@@ -4,7 +4,15 @@ import inspect
 
 
 def _validate_mcp_runtime_contract() -> tuple[bool, str]:
-    """Validate the FastMCP runtime contract and required plugin capabilities."""
+    """
+    作用：封装内部辅助步骤 `_validate_mcp_runtime_contract`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_validate_mcp_runtime_contract`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 processingmcpserver 插件运行流程中被调用，用于支撑当前模块的业务处理。
+    参数与返回：
+    - 参数：无。
+    - 返回：返回 `tuple[bool, str]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `tuple[bool, str]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     try:
         from mcp.server.fastmcp import FastMCP
     except Exception as exc:

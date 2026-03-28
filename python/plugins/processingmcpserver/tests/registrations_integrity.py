@@ -25,7 +25,15 @@ from ._shared_fixtures import DummyMcp, DummyTools
 
 class RegistrationsIntegrityTest(ProcessingMCPTestBase):
     def test_register_tools_matches_expected_set(self):
-        """Verify register tools matches expected set."""
+        """
+        作用：执行测试用例 `register tools matches expected set`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `register tools matches expected set`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         removed_render_tool = "render" + "_map"
         legacy_removed = {
             "ping",
@@ -45,7 +53,15 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
         self.assertTrue(legacy_removed.isdisjoint(set(mcp.tool_names)))
 
     def test_register_prompts_and_resources_discoverable(self):
-        """Verify register prompts and resources discoverable."""
+        """
+        作用：执行测试用例 `register prompts and resources discoverable`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `register prompts and resources discoverable`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         mcp = DummyMcp()
         tools = DummyTools()
         register_prompts(mcp, tools)
@@ -57,7 +73,15 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
         self.assertEqual(set(mcp.resource_descriptions), set(REGISTERED_RESOURCE_URIS))
 
     def test_registered_tools_have_non_placeholder_docstrings(self):
-        """Verify that registered tools have non-placeholder docstrings."""
+        """
+        作用：执行测试用例 `registered tools have non placeholder docstrings`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `registered tools have non placeholder docstrings`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         for tool_name in REGISTERED_TOOL_NAMES:
             method = getattr(ProcessingMCPTools, tool_name, None)
             self.assertTrue(callable(method), msg=f"Missing tool method: {tool_name}")
@@ -72,7 +96,15 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
             )
 
     def test_registered_prompts_have_non_empty_docstrings(self):
-        """Verify that registered prompts have non-empty docstrings."""
+        """
+        作用：执行测试用例 `registered prompts have non empty docstrings`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `registered prompts have non empty docstrings`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         self.assertEqual(set(_REGISTERED_PROMPT_DOCSTRINGS), set(REGISTERED_PROMPT_NAMES))
 
         mcp = DummyMcp()
@@ -89,7 +121,15 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
             )
 
     def test_registered_resources_have_non_empty_docstrings(self):
-        """Verify that registered resources have non-empty docstrings."""
+        """
+        作用：执行测试用例 `registered resources have non empty docstrings`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `registered resources have non empty docstrings`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         self.assertEqual(set(_REGISTERED_RESOURCE_DOCSTRINGS), set(REGISTERED_RESOURCE_URIS))
 
         mcp = DummyMcp()
@@ -106,7 +146,15 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
             )
 
     def test_prompt_templates_exclude_removed_tool_names(self):
-        """Verify prompt templates exclude removed tool names."""
+        """
+        作用：执行测试用例 `prompt templates exclude removed tool names`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `prompt templates exclude removed tool names`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         removed_render_tool = "render" + "_map"
         legacy_removed = [
             "ping",
@@ -137,7 +185,15 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
                 )
 
     def test_resource_envelope_for_kept_resources(self):
-        """Verify resource envelope for kept resources."""
+        """
+        作用：执行测试用例 `resource envelope for kept resources`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `resource envelope for kept resources`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         mcp = DummyMcp()
         tools = DummyTools()
         register_resources(mcp, tools)

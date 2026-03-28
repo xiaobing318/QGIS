@@ -20,17 +20,41 @@ DEFAULT_CAPABILITIES_MARKDOWN_FILENAME = "MCP_CAPABILITIES.md"
 
 
 def _utc_now_iso() -> str:
-    """Return the current UTC time in ISO 8601 format."""
+    """
+    作用：封装内部辅助步骤 `_utc_now_iso`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_utc_now_iso`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在能力文档生成流程中被调用，用于导出 tools/prompts/resources 描述。
+    参数与返回：
+    - 参数：无。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def _module_dir() -> Path:
-    """Return the module directory."""
+    """
+    作用：封装内部辅助步骤 `_module_dir`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_module_dir`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在能力文档生成流程中被调用，用于导出 tools/prompts/resources 描述。
+    参数与返回：
+    - 参数：无。
+    - 返回：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return Path(__file__).resolve().parent
 
 
 def _resolve_output_path(output_path: str | Path = "") -> Path:
-    """Resolve the output path."""
+    """
+    作用：封装内部辅助步骤 `_resolve_output_path`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_resolve_output_path`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在能力文档生成流程中被调用，用于导出 tools/prompts/resources 描述。
+    参数与返回：
+    - 参数 `output_path`（`str | Path`）：路径类参数，用于定位输入或输出文件系统位置。 默认值为 `""`。
+    - 返回：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    """
     if isinstance(output_path, Path):
         output_text = str(output_path)
     else:
@@ -47,7 +71,18 @@ def _validate_registry(
     registered_names: tuple[str, ...],
     docstrings: dict[str, str],
 ) -> None:
-    """Validate a registry against the registered names."""
+    """
+    作用：封装内部辅助步骤 `_validate_registry`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_validate_registry`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在能力文档生成流程中被调用，用于导出 tools/prompts/resources 描述。
+    参数与返回：
+    - 参数 `section_name`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 参数 `registered_names`（`tuple[str, ...]`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 参数 `docstrings`（`dict[str, str]`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    异常：可能显式抛出 `RuntimeError`。
+    """
     missing: list[str] = []
     invalid: list[str] = []
     extra = sorted(set(docstrings) - set(registered_names))
@@ -72,7 +107,17 @@ def _build_section(
     registered_names: tuple[str, ...],
     docstrings: dict[str, str],
 ) -> list[str]:
-    """Build a markdown section for one registry."""
+    """
+    作用：构建 `_build_section` 相关对象或配置数据，供后续流程直接复用。
+    用途：构建 `_build_section` 相关对象或配置数据，供后续流程直接复用。
+    使用场景：在能力文档生成流程中被调用，用于导出 tools/prompts/resources 描述。
+    参数与返回：
+    - 参数 `heading`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `registered_names`（`tuple[str, ...]`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 参数 `docstrings`（`dict[str, str]`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `list[str]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `list[str]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     lines = [f"## {heading}", ""]
     for registered_name in registered_names:
         lines.extend(
@@ -87,7 +132,15 @@ def _build_section(
 
 
 def _render_markdown() -> str:
-    """Render the full capabilities markdown document."""
+    """
+    作用：封装内部辅助步骤 `_render_markdown`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_render_markdown`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在能力文档生成流程中被调用，用于导出 tools/prompts/resources 描述。
+    参数与返回：
+    - 参数：无。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     _validate_registry("tools", REGISTERED_TOOL_NAMES, _REGISTERED_TOOL_DOCSTRINGS)
     _validate_registry("prompts", REGISTERED_PROMPT_NAMES, _REGISTERED_PROMPT_DOCSTRINGS)
     _validate_registry(
@@ -122,7 +175,15 @@ def _render_markdown() -> str:
 
 
 def write_mcp_capabilities_markdown(output_path: str | Path = "") -> Path:
-    """Write MCP tools/prompts/resources markdown to the target path."""
+    """
+    作用：写入 `mcp_capabilities_markdown`，完成当前函数负责的处理步骤并产出结果。
+    用途：写入 `mcp_capabilities_markdown`，完成当前函数负责的处理步骤并产出结果。
+    使用场景：在能力文档生成流程中被调用，用于导出 tools/prompts/resources 描述。
+    参数与返回：
+    - 参数 `output_path`（`str | Path`）：路径类参数，用于定位输入或输出文件系统位置。 默认值为 `""`。
+    - 返回：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    """
     destination = _resolve_output_path(output_path)
     destination.parent.mkdir(parents=True, exist_ok=True)
     destination.write_text(_render_markdown(), encoding="utf-8")

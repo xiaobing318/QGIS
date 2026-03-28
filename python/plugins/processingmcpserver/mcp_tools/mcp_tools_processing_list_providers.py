@@ -58,6 +58,15 @@ MAX_ALGORITHM_LIST_LIMIT = 60
 _PROCESSING_INITIALIZED = False
 
 def _ensure_processing_initialized() -> None:
+    """
+    作用：确保 `_ensure_processing_initialized` 负责的前置状态可用，必要时执行初始化或修复动作。
+    用途：确保 `_ensure_processing_initialized` 负责的前置状态可用，必要时执行初始化或修复动作。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数：无。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     global _PROCESSING_INITIALIZED
     if _PROCESSING_INITIALIZED:
         return
@@ -68,11 +77,27 @@ TOOL_NAME = 'processing_list_providers'
 TOOL_DOC = '列出当前 QGIS Processing 注册表中的 provider 清单。 无业务输入。 Processing 运行时必须可用。 无写操作，只读取 Processing 注册表。 无。 返回 provider 的 id、name、active、algorithm_count，以及 count_scope、total_algorithm_count、active_provider_count、active_algorithm_count 和总数。'
 
 def processing_list_providers(self) -> dict[str, Any]:
-    """Handle processing providers."""
+    """
+    作用：处理 `processing_list_providers` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    用途：处理 `processing_list_providers` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    使用场景：在 MCP 客户端调用对应 tool 时触发，作为工具公开入口处理请求与响应。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return self._run(self._processing_list_providers_impl)
 
 def _processing_list_providers_impl(self) -> dict[str, Any]:
-    """Build the processing providers."""
+    """
+    作用：实现 `_processing_list_providers_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+    用途：实现 `_processing_list_providers_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     self._ensure_processing_runtime()
     providers = list(QgsApplication.processingRegistry().providers())
     payload = []
@@ -114,7 +139,15 @@ def _processing_list_providers_impl(self) -> dict[str, Any]:
     }
 
 def _ensure_processing_runtime(self) -> None:
-    """Handle ensure processing runtime."""
+    """
+    作用：确保 `_ensure_processing_runtime` 负责的前置状态可用，必要时执行初始化或修复动作。
+    用途：确保 `_ensure_processing_runtime` 负责的前置状态可用，必要时执行初始化或修复动作。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     _ensure_processing_initialized()
 
 TOOL_METHODS: dict[str, object] = {

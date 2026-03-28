@@ -8,15 +8,41 @@ from ._shared_fixtures import assert_tool_registered
 
 class _FakeProcessingRegistry:
     def __init__(self, available_algorithms: list[str]):
-        """Initialize the fake processing registry state."""
+        """
+        作用：封装内部辅助步骤 `__init__`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `__init__`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `available_algorithms`（`list[str]`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         self._available_algorithms = set(available_algorithms)
 
     def providers(self):
-        """Return the test provider list."""
+        """
+        作用：实现 `providers` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `providers` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回执行结果对象或状态值，具体结构以当前实现生成的数据为准。
+        返回结果：返回执行结果对象或状态值，具体结构以当前实现生成的数据为准。
+        """
         return []
 
     def algorithmById(self, algorithm_id: str):
-        """Return the test algorithm object for an ID."""
+        """
+        作用：实现 `algorithmById` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `algorithmById` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `algorithm_id`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+        - 返回：返回执行结果对象或状态值，具体结构以当前实现生成的数据为准。
+        返回结果：返回执行结果对象或状态值，具体结构以当前实现生成的数据为准。
+        """
         if algorithm_id in self._available_algorithms:
             return object()
         return None
@@ -24,11 +50,27 @@ class _FakeProcessingRegistry:
 
 class ToolsRasterStatsZonalTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the expected capability is registered."""
+        """
+        作用：执行测试用例 `registered`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `registered`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         assert_tool_registered(self, "raster_stats_zonal")
 
     def test_success_raster_stats_zonal(self):
-        """Verify the successful path for zonal raster statistics."""
+        """
+        作用：执行测试用例 `success raster stats zonal`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `success raster stats zonal`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         vector_layer = self.add_sample_polygon_layer("zonal_polygon")
         raster_layer = self.add_sample_raster_layer("zonal_raster")
@@ -51,7 +93,15 @@ class ToolsRasterStatsZonalTest(ProcessingMCPTestBase):
         self.assertEqual(self.vector_field_names(vector_layer), original_fields)
 
     def test_failure_invalid_raster_ref(self):
-        """Verify the failure path for an invalid raster reference."""
+        """
+        作用：执行测试用例 `failure invalid raster ref`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `failure invalid raster ref`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         vector_layer = self.add_sample_polygon_layer("zonal_polygon2")
 
@@ -67,7 +117,17 @@ class ToolsRasterStatsZonalTest(ProcessingMCPTestBase):
     def test_success_uses_latest_algorithm_only(
         self, mock_processing_registry, mock_run
     ):
-        """Verify the successful path for uses the latest algorithm only."""
+        """
+        作用：执行测试用例 `success uses latest algorithm only`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `success uses latest algorithm only`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `mock_processing_registry`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `mock_run`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         vector_layer = self.add_sample_polygon_layer("zonal_polygon_fb_only")
         raster_layer = self.add_sample_raster_layer("zonal_raster_fb_only")
@@ -101,7 +161,17 @@ class ToolsRasterStatsZonalTest(ProcessingMCPTestBase):
     def test_success_in_place_normalizes_parameters_and_output_layer_id(
         self, mock_processing_registry, mock_run
     ):
-        """Verify the successful path for in-place mode normalizes parameters and the output layer ID."""
+        """
+        作用：执行测试用例 `success in place normalizes parameters and output layer id`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `success in place normalizes parameters and output layer id`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `mock_processing_registry`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `mock_run`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         vector_layer = self.add_sample_polygon_layer("zonal_polygon_in_place")
         raster_layer = self.add_sample_raster_layer("zonal_raster_in_place")
@@ -128,7 +198,16 @@ class ToolsRasterStatsZonalTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.mcp_tools.mcp_tools_raster_stats_zonal.QgsApplication.processingRegistry")
     def test_failure_when_zonalstatisticsfb_unavailable(self, mock_processing_registry):
-        """Verify the failure path for when `zonalstatisticsfb` is unavailable."""
+        """
+        作用：执行测试用例 `failure when zonalstatisticsfb unavailable`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `failure when zonalstatisticsfb unavailable`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `mock_processing_registry`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         vector_layer = self.add_sample_polygon_layer("zonal_polygon_no_algorithm")
         raster_layer = self.add_sample_raster_layer("zonal_raster_no_algorithm")

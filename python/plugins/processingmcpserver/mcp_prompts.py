@@ -13,10 +13,23 @@ def _prompt_doc(
     safety: str,
     returns: str,
 ) -> str:
-    """Build a prompt description from structured sections."""
+    """
+    作用：封装内部辅助步骤 `_prompt_doc`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_prompt_doc`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP prompt 注册与调用流程中被调用，用于返回提示词模板内容。
+    参数与返回：
+    - 参数 `purpose`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `inputs`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `preconditions`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `effects`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `safety`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `returns`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return (
-        f"Purpose: {purpose} Inputs: {inputs} Preconditions: {preconditions} "
-        f"Side effects: {effects} Safety controls: {safety} Returns: {returns}"
+        f"用途：{purpose} 输入：{inputs} 前置条件：{preconditions} "
+        f"副作用：{effects} 安全控制：{safety} 返回结果：{returns}"
     )
 
 
@@ -33,7 +46,16 @@ _REGISTERED_PROMPT_DOCSTRINGS: dict[str, str] = {
 
 
 def _validate_registered_prompt_docstrings() -> None:
-    """Validate the registered prompt docstrings."""
+    """
+    作用：封装内部辅助步骤 `_validate_registered_prompt_docstrings`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_validate_registered_prompt_docstrings`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP prompt 注册与调用流程中被调用，用于返回提示词模板内容。
+    参数与返回：
+    - 参数：无。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    异常：可能显式抛出 `RuntimeError`。
+    """
     missing: list[str] = []
     invalid: list[str] = []
     extra = sorted(set(_REGISTERED_PROMPT_DOCSTRINGS) - set(REGISTERED_PROMPT_NAMES))
@@ -55,7 +77,16 @@ _validate_registered_prompt_docstrings()
 
 
 def register_prompts(mcp: Any, tools: Any) -> None:
-    """Register prompt capabilities."""
+    """
+    作用：注册 `prompts`，完成当前函数负责的处理步骤并产出结果。
+    用途：注册 `prompts`，完成当前函数负责的处理步骤并产出结果。
+    使用场景：在 MCP prompt 注册与调用流程中被调用，用于返回提示词模板内容。
+    参数与返回：
+    - 参数 `mcp`（`Any`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `tools`（`Any`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     prompt_factory = getattr(mcp, "prompt", None)
     if not callable(prompt_factory):
         return
@@ -106,7 +137,19 @@ def register_prompts(mcp: Any, tools: Any) -> None:
         quality_rule_resource: str = "qgis://workflow/shapefile/quality-profile/default",
         deliverables: str = "标准交付：输出 shapefile bundle、质量结果、运行摘要。",
     ) -> str:
-        """Build the QGIS shapefile pipeline planner prompt."""
+        """
+        作用：处理 `qgis_shapefile_pipeline_planner` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+        用途：处理 `qgis_shapefile_pipeline_planner` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+        使用场景：在 MCP prompt 注册与调用流程中被调用，用于返回提示词模板内容。
+        参数与返回：
+        - 参数 `task_name`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+        - 参数 `input_dir`（`str`）：路径类参数，用于定位输入或输出文件系统位置。
+        - 参数 `output_dir`（`str`）：路径类参数，用于定位输入或输出文件系统位置。
+        - 参数 `quality_rule_resource`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `"qgis://workflow/shapefile/quality-profile/default"`。
+        - 参数 `deliverables`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `"标准交付：输出 shapefile bundle、质量结果、运行摘要。"`。
+        - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+        """
         task_text = task_name.strip() if isinstance(task_name, str) else ""
         input_text = input_dir.strip() if isinstance(input_dir, str) else ""
         output_text = output_dir.strip() if isinstance(output_dir, str) else ""

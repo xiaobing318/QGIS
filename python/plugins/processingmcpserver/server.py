@@ -39,7 +39,15 @@ _SERVER_ICON_SIZE = "128x128"
 
 
 def _load_plugin_version_from_metadata() -> str | None:
-    """Load the plugin version from `metadata.txt`."""
+    """
+    作用：封装内部辅助步骤 `_load_plugin_version_from_metadata`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_load_plugin_version_from_metadata`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 Processing MCP 服务器运行流程中被调用，用于组装服务、注册能力并管理运行状态。
+    参数与返回：
+    - 参数：无。
+    - 返回：返回 `str | None` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str | None` 类型结果，返回值语义遵循该函数实现约定。
+    """
     metadata_path = Path(__file__).resolve().parent / _PLUGIN_METADATA_FILENAME
     parser = configparser.ConfigParser()
 
@@ -68,14 +76,31 @@ def _load_plugin_version_from_metadata() -> str | None:
 
 
 def _plugin_icon_data_uri() -> str:
-    """Build a data URI for the plugin icon file."""
+    """
+    作用：封装内部辅助步骤 `_plugin_icon_data_uri`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_plugin_icon_data_uri`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 Processing MCP 服务器运行流程中被调用，用于组装服务、注册能力并管理运行状态。
+    参数与返回：
+    - 参数：无。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     icon_path = Path(__file__).resolve().parent / "icons" / _SERVER_ICON_FILENAME
     encoded = base64.b64encode(icon_path.read_bytes()).decode("ascii")
     return f"data:{_SERVER_ICON_MIME_TYPE};base64,{encoded}"
 
 
 def _fastmcp_supports_keyword_parameter(fastmcp_init, parameter_name: str) -> bool:
-    """Check whether FastMCP.__init__ accepts the given keyword parameter."""
+    """
+    作用：封装内部辅助步骤 `_fastmcp_supports_keyword_parameter`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_fastmcp_supports_keyword_parameter`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 Processing MCP 服务器运行流程中被调用，用于组装服务、注册能力并管理运行状态。
+    参数与返回：
+    - 参数 `fastmcp_init`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `parameter_name`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 返回：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+    """
     try:
         signature = inspect.signature(fastmcp_init)
     except (TypeError, ValueError):
@@ -96,7 +121,17 @@ class ProcessingMCPServer:
     def __init__(
         self, iface, config: Optional[ProcessingMCPServerConfig] = None
     ) -> None:
-        """Initialize the server object and build the MCP instance and transport."""
+        """
+        作用：封装内部辅助步骤 `__init__`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `__init__`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 Processing MCP 服务器运行流程中被调用，用于组装服务、注册能力并管理运行状态。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `iface`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `config`（`Optional[ProcessingMCPServerConfig]`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         self._iface = iface
         self._config = config or load_processing_mcp_server_config()
         self._config_logged = False
@@ -105,7 +140,16 @@ class ProcessingMCPServer:
         self._transport = create_transport(self._mcp, self._config)
 
     def _build_mcp_server(self) -> "FastMCP":
-        """Create the FastMCP server, register capabilities, and load MCP runtime dependencies."""
+        """
+        作用：构建 `_build_mcp_server` 相关对象或配置数据，供后续流程直接复用。
+        用途：构建 `_build_mcp_server` 相关对象或配置数据，供后续流程直接复用。
+        使用场景：在 Processing MCP 服务器运行流程中被调用，用于组装服务、注册能力并管理运行状态。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `"FastMCP"` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `"FastMCP"` 类型结果，返回值语义遵循该函数实现约定。
+        异常：可能显式抛出 `RuntimeError`，并在部分分支中透传当前异常。
+        """
         try:
             from mcp.server.fastmcp import FastMCP
         except Exception as exc:
@@ -149,7 +193,17 @@ class ProcessingMCPServer:
     def _build_fastmcp_identity_kwargs(
         self, fastmcp_init, plugin_version: str | None
     ) -> dict[str, object]:
-        """Build optional identity kwargs based on FastMCP runtime signature."""
+        """
+        作用：构建 `_build_fastmcp_identity_kwargs` 相关对象或配置数据，供后续流程直接复用。
+        用途：构建 `_build_fastmcp_identity_kwargs` 相关对象或配置数据，供后续流程直接复用。
+        使用场景：在 Processing MCP 服务器运行流程中被调用，用于组装服务、注册能力并管理运行状态。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `fastmcp_init`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `plugin_version`（`str | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：返回 `dict[str, object]` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `dict[str, object]` 类型结果，返回值语义遵循该函数实现约定。
+        """
         identity_kwargs: dict[str, object] = {}
 
         if plugin_version and _fastmcp_supports_keyword_parameter(
@@ -182,7 +236,17 @@ class ProcessingMCPServer:
     def _apply_plugin_version_to_low_level_server(
         self, mcp_server: object, plugin_version: str | None
     ) -> None:
-        """Apply the plugin version to the underlying MCP server when FastMCP lacks a version parameter."""
+        """
+        作用：封装内部辅助步骤 `_apply_plugin_version_to_low_level_server`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `_apply_plugin_version_to_low_level_server`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 Processing MCP 服务器运行流程中被调用，用于组装服务、注册能力并管理运行状态。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `mcp_server`（`object`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `plugin_version`（`str | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         if not plugin_version:
             return
 
@@ -200,7 +264,15 @@ class ProcessingMCPServer:
             )
 
     def start(self) -> bool:
-        """Start the configured transport and launch its worker thread."""
+        """
+        作用：实现 `start` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `start` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 Processing MCP 服务器运行流程中被调用，用于组装服务、注册能力并管理运行状态。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+        """
         self._log_config_summary_once()
 
         if not self._config.enabled:
@@ -228,7 +300,15 @@ class ProcessingMCPServer:
             return False
 
     def stop(self) -> None:
-        """Stop the transport and log the outcome."""
+        """
+        作用：实现 `stop` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `stop` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 Processing MCP 服务器运行流程中被调用，用于组装服务、注册能力并管理运行状态。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         try:
             self._transport.stop()
         except Exception:
@@ -243,11 +323,28 @@ class ProcessingMCPServer:
             )
 
     def is_running(self) -> bool:
-        """Return whether the transport layer is currently running."""
+        """
+        作用：实现 `is_running` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `is_running` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 Processing MCP 服务器运行流程中被调用，用于组装服务、注册能力并管理运行状态。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+        """
         return self._transport.is_running()
 
     def _log_exception(self, message: str) -> None:
-        """Log an exception stack trace to the QGIS log as a Critical message."""
+        """
+        作用：封装内部辅助步骤 `_log_exception`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `_log_exception`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 Processing MCP 服务器运行流程中被调用，用于组装服务、注册能力并管理运行状态。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `message`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         QgsMessageLog.logMessage(
             f"{message}\n{traceback.format_exc()}",
             MCP_LOG_CATEGORY,
@@ -255,7 +352,15 @@ class ProcessingMCPServer:
         )
 
     def _log_config_summary_once(self) -> None:
-        """Log the configuration summary once to aid diagnostics."""
+        """
+        作用：封装内部辅助步骤 `_log_config_summary_once`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `_log_config_summary_once`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 Processing MCP 服务器运行流程中被调用，用于组装服务、注册能力并管理运行状态。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         if self._config_logged:
             return
         self._config_logged = True

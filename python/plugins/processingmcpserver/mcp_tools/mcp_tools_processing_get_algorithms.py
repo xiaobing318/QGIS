@@ -58,6 +58,15 @@ MAX_ALGORITHM_LIST_LIMIT = 60
 _PROCESSING_INITIALIZED = False
 
 def _ensure_processing_initialized() -> None:
+    """
+    作用：确保 `_ensure_processing_initialized` 负责的前置状态可用，必要时执行初始化或修复动作。
+    用途：确保 `_ensure_processing_initialized` 负责的前置状态可用，必要时执行初始化或修复动作。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数：无。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     global _PROCESSING_INITIALIZED
     if _PROCESSING_INITIALIZED:
         return
@@ -68,11 +77,38 @@ TOOL_NAME = 'processing_get_algorithms'
 TOOL_DOC = '查询 Processing 算法目录，支持按 provider 过滤，或按 algorithm_id 精确读取单个算法。 algorithm_id 提供时返回单个算法完整定义；provider_id 提供时按 provider 过滤；include_parameters 和 include_outputs 控制列表模式下是否展开参数和输出；limit 控制列表返回上限。 Processing 运行时必须可用；若指定 algorithm_id，则该算法必须存在。 无写操作，只读取 Processing 算法元数据。 列表模式的 limit 会被内部阈值裁剪；单算法模式会始终返回该算法的完整参数和输出定义。 返回单个 algorithm 对象或 algorithms 数组，以及 count、returned、truncated 等摘要。'
 
 def processing_get_algorithms(self, algorithm_id: str | None = None, provider_id: str | None = None, include_parameters: bool = False, include_outputs: bool = False, limit: int | None = None) -> dict[str, Any]:
-    """Handle available processing algorithms."""
+    """
+    作用：处理 `processing_get_algorithms` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    用途：处理 `processing_get_algorithms` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    使用场景：在 MCP 客户端调用对应 tool 时触发，作为工具公开入口处理请求与响应。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `algorithm_id`（`str | None`）：标识或模式参数，用于指定目标对象或流程分支。 默认值为 `None`。
+    - 参数 `provider_id`（`str | None`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。 默认值为 `None`。
+    - 参数 `include_parameters`（`bool`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `False`。
+    - 参数 `include_outputs`（`bool`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `False`。
+    - 参数 `limit`（`int | None`）：数值控制参数，用于限制范围、数量或时限。 默认值为 `None`。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return self._run(self._processing_get_algorithms_impl, algorithm_id, provider_id, include_parameters, include_outputs, limit)
 
 def _processing_get_algorithms_impl(self, algorithm_id: str | None, provider_id: str | None, include_parameters: bool, include_outputs: bool, limit: int | None) -> dict[str, Any]:
-    """Build the available processing algorithms."""
+    """
+    作用：实现 `_processing_get_algorithms_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+    用途：实现 `_processing_get_algorithms_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `algorithm_id`（`str | None`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 参数 `provider_id`（`str | None`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 参数 `include_parameters`（`bool`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `include_outputs`（`bool`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `limit`（`int | None`）：数值控制参数，用于限制范围、数量或时限。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    异常：可能显式抛出 `Exception`。
+    """
     self._ensure_processing_runtime()
     registry = QgsApplication.processingRegistry()
     if algorithm_id:
@@ -101,11 +137,28 @@ def _processing_get_algorithms_impl(self, algorithm_id: str | None, provider_id:
     }
 
 def _ensure_processing_runtime(self) -> None:
-    """Handle ensure processing runtime."""
+    """
+    作用：确保 `_ensure_processing_runtime` 负责的前置状态可用，必要时执行初始化或修复动作。
+    用途：确保 `_ensure_processing_runtime` 负责的前置状态可用，必要时执行初始化或修复动作。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     _ensure_processing_initialized()
 
 def _normalize_algorithm_list_limit(self, limit: Any | None) -> tuple[int | None, int, bool]:
-    """Handle normalize algorithm list limit."""
+    """
+    作用：封装内部辅助步骤 `_normalize_algorithm_list_limit`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_normalize_algorithm_list_limit`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `limit`（`Any | None`）：数值控制参数，用于限制范围、数量或时限。
+    - 返回：返回 `tuple[int | None, int, bool]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `tuple[int | None, int, bool]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     requested = None if limit is None else self._safe_int(limit, self.DEFAULT_ALGORITHM_LIST_LIMIT)
     normalized = self.DEFAULT_ALGORITHM_LIST_LIMIT if requested is None else max(0, requested)
     applied = min(normalized, self.MAX_ALGORITHM_LIST_LIMIT)
@@ -113,7 +166,18 @@ def _normalize_algorithm_list_limit(self, limit: Any | None) -> tuple[int | None
     return requested, applied, capped
 
 def _serialize_algorithm(self, alg, include_parameters: bool, include_outputs: bool) -> dict[str, Any]:
-    """Serialize serialize algorithm."""
+    """
+    作用：封装内部辅助步骤 `_serialize_algorithm`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_serialize_algorithm`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `alg`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `include_parameters`（`bool`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `include_outputs`（`bool`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     provider = alg.provider() if hasattr(alg, "provider") else None
     result = {
         "id": alg.id(),
@@ -133,14 +197,32 @@ def _serialize_algorithm(self, alg, include_parameters: bool, include_outputs: b
 
 @staticmethod
 def _safe_int(value: Any, default: int) -> int:
-    """Handle safe int."""
+    """
+    作用：封装内部辅助步骤 `_safe_int`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_safe_int`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `value`（`Any`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `default`（`int`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `int` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `int` 类型结果，返回值语义遵循该函数实现约定。
+    """
     try:
         return int(value)
     except (TypeError, ValueError):
         return default
 
 def _serialize_output(self, output_def) -> dict[str, Any]:
-    """Serialize serialize output."""
+    """
+    作用：封装内部辅助步骤 `_serialize_output`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_serialize_output`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `output_def`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return {
         "name": self._safe_call(output_def, "name"),
         "description": self._safe_call(output_def, "description"),
@@ -149,7 +231,16 @@ def _serialize_output(self, output_def) -> dict[str, Any]:
     }
 
 def _serialize_parameter(self, param) -> dict[str, Any]:
-    """Serialize serialize parameter."""
+    """
+    作用：封装内部辅助步骤 `_serialize_parameter`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_serialize_parameter`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `param`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     flags = self._safe_call(param, "flags", 0) or 0
     result = {
         "name": self._safe_call(param, "name"),
@@ -168,7 +259,17 @@ def _serialize_parameter(self, param) -> dict[str, Any]:
 
 @staticmethod
 def _safe_call(obj: object, name: str, default: Any = None) -> Any:
-    """Handle safe call."""
+    """
+    作用：封装内部辅助步骤 `_safe_call`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_safe_call`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `obj`（`object`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `name`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 参数 `default`（`Any`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 返回：返回 `Any` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `Any` 类型结果，返回值语义遵循该函数实现约定。
+    """
     attr = getattr(obj, name, None)
     if callable(attr):
         try:
@@ -179,7 +280,15 @@ def _safe_call(obj: object, name: str, default: Any = None) -> Any:
 
 @staticmethod
 def _serialize_value(value: Any) -> Any:
-    """Serialize values into JSON-friendly representations."""
+    """
+    作用：封装内部辅助步骤 `_serialize_value`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_serialize_value`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `value`（`Any`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `Any` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `Any` 类型结果，返回值语义遵循该函数实现约定。
+    """
     if value is None:
         return None
     if isinstance(value, (bool, int, float, str)):

@@ -58,6 +58,15 @@ MAX_ALGORITHM_LIST_LIMIT = 60
 _PROCESSING_INITIALIZED = False
 
 def _ensure_processing_initialized() -> None:
+    """
+    作用：确保 `_ensure_processing_initialized` 负责的前置状态可用，必要时执行初始化或修复动作。
+    用途：确保 `_ensure_processing_initialized` 负责的前置状态可用，必要时执行初始化或修复动作。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数：无。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     global _PROCESSING_INITIALIZED
     if _PROCESSING_INITIALIZED:
         return
@@ -68,7 +77,20 @@ TOOL_NAME = 'dataset_inspect_shapefile_bundle'
 TOOL_DOC = '扫描目录或单个 `.shp` 文件，检查 shapefile bundle 及其 sidecar 文件是否完整，并返回结构化风险摘要。 path 可以是目录或单个 `.shp` 文件，recursive 控制目录递归扫描，name_glob 过滤候选文件，limit 控制返回上限，task_name 可把结果写入最近一次运行摘要。 path 必须存在；若传文件则必须是 `.shp`。 无写操作，只读取 shapefile bundle 成员信息和矢量元数据。 limit 会被内部阈值裁剪；task_name 非空时会更新 qgis://workflow/shapefile/run-summary。 返回 bundles 数组，元素包含 `.shp/.shx/.dbf/.prj/.cpg` 完整性、大小、CRS、几何类型、字段名、命名风险和 warnings。'
 
 def dataset_inspect_shapefile_bundle(self, path: str, recursive: bool = False, name_glob: str = "*.shp", limit: int = DEFAULT_DATASET_LIMIT, task_name: str = "") -> dict[str, Any]:
-    """Handle a shapefile bundle."""
+    """
+    作用：处理 `dataset_inspect_shapefile_bundle` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    用途：处理 `dataset_inspect_shapefile_bundle` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    使用场景：在 MCP 客户端调用对应 tool 时触发，作为工具公开入口处理请求与响应。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `path`（`str`）：路径类参数，用于定位输入或输出文件系统位置。
+    - 参数 `recursive`（`bool`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `False`。
+    - 参数 `name_glob`（`str`）：标识或模式参数，用于指定目标对象或流程分支。 默认值为 `"*.shp"`。
+    - 参数 `limit`（`int`）：数值控制参数，用于限制范围、数量或时限。 默认值为 `DEFAULT_DATASET_LIMIT`。
+    - 参数 `task_name`（`str`）：标识或模式参数，用于指定目标对象或流程分支。 默认值为 `""`。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return self._run(self._dataset_inspect_shapefile_bundle_impl, path, recursive, name_glob, limit, task_name)
 
 def _dataset_inspect_shapefile_bundle_impl(
@@ -79,7 +101,21 @@ def _dataset_inspect_shapefile_bundle_impl(
     limit: int,
     task_name: str,
 ) -> dict[str, Any]:
-    """Implement the shapefile bundle logic."""
+    """
+    作用：实现 `_dataset_inspect_shapefile_bundle_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+    用途：实现 `_dataset_inspect_shapefile_bundle_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `path`（`str`）：路径类参数，用于定位输入或输出文件系统位置。
+    - 参数 `recursive`（`bool`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `name_glob`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 参数 `limit`（`int`）：数值控制参数，用于限制范围、数量或时限。
+    - 参数 `task_name`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    异常：可能显式抛出 `Exception`。
+    """
     target = self._resolve_filesystem_query_path(path)
     if not target.exists():
         raise Exception(f"Path not found: {path}")
@@ -162,7 +198,20 @@ def _append_shapefile_run_step(
     warnings: list[str] | None = None,
     status: str | None = None,
 ) -> None:
-    """Handle append shapefile run step."""
+    """
+    作用：封装内部辅助步骤 `_append_shapefile_run_step`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_append_shapefile_run_step`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `step`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `summary`（`dict[str, Any] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 参数 `outputs`（`dict[str, Any] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 参数 `warnings`（`list[str] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 参数 `status`（`str | None`）：标识或模式参数，用于指定目标对象或流程分支。 默认值为 `None`。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     payload = {
         "step": step,
         "generated_at": self._utc_now_iso(),
@@ -183,7 +232,18 @@ def _ensure_shapefile_run_summary(
     status: str | None = None,
     inputs: dict[str, Any] | None = None,
 ) -> str:
-    """Handle ensure shapefile run summary."""
+    """
+    作用：确保 `_ensure_shapefile_run_summary` 负责的前置状态可用，必要时执行初始化或修复动作。
+    用途：确保 `_ensure_shapefile_run_summary` 负责的前置状态可用，必要时执行初始化或修复动作。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `task_name`（`str`）：标识或模式参数，用于指定目标对象或流程分支。 默认值为 `""`。
+    - 参数 `status`（`str | None`）：标识或模式参数，用于指定目标对象或流程分支。 默认值为 `None`。
+    - 参数 `inputs`（`dict[str, Any] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     normalized = (task_name or self._shapefile_run_summary.get("task_name") or "").strip()
     if (
         not self._shapefile_run_summary.get("task_name")
@@ -207,7 +267,16 @@ def _ensure_shapefile_run_summary(
     return normalized
 
 def _inspect_shapefile_bundle_entry(self, shp_path: Path) -> dict[str, Any]:
-    """Inspect shapefile bundle entry."""
+    """
+    作用：封装内部辅助步骤 `_inspect_shapefile_bundle_entry`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_inspect_shapefile_bundle_entry`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `shp_path`（`Path`）：路径类参数，用于定位输入或输出文件系统位置。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     required_suffixes = [".shp", ".shx", ".dbf"]
     optional_suffixes = [".prj", ".cpg"]
     members: dict[str, dict[str, Any]] = {}
@@ -274,7 +343,16 @@ def _inspect_shapefile_bundle_entry(self, shp_path: Path) -> dict[str, Any]:
     }
 
 def _normalize_dataset_limit(self, limit: Any | None) -> tuple[int, int, bool]:
-    """Handle normalize dataset limit."""
+    """
+    作用：封装内部辅助步骤 `_normalize_dataset_limit`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_normalize_dataset_limit`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `limit`（`Any | None`）：数值控制参数，用于限制范围、数量或时限。
+    - 返回：返回 `tuple[int, int, bool]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `tuple[int, int, bool]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     requested = self._safe_int(limit, self.DEFAULT_DATASET_LIMIT)
     normalized = max(0, requested)
     applied = min(normalized, self.MAX_DATASET_LIMIT)
@@ -282,13 +360,30 @@ def _normalize_dataset_limit(self, limit: Any | None) -> tuple[int, int, bool]:
 
 @staticmethod
 def _normalize_name_glob(name_glob: str | None) -> str:
-    """Handle normalize name glob."""
+    """
+    作用：封装内部辅助步骤 `_normalize_name_glob`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_normalize_name_glob`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `name_glob`（`str | None`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     value = (name_glob or "*").strip()
     return value or "*"
 
 @staticmethod
 def _normalize_task_name(task_name: str | None, fallback: str = "") -> str:
-    """Handle normalize task name."""
+    """
+    作用：封装内部辅助步骤 `_normalize_task_name`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_normalize_task_name`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `task_name`（`str | None`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 参数 `fallback`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `""`。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     value = (task_name or "").strip()
     if value:
         return value
@@ -296,7 +391,19 @@ def _normalize_task_name(task_name: str | None, fallback: str = "") -> str:
 
 @staticmethod
 def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[str, Any] | None = None, warnings: list[str] | None = None, **extra) -> dict[str, Any]:
-    """Handle ok result."""
+    """
+    作用：封装内部辅助步骤 `_ok_result`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_ok_result`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `tool`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `summary`（`dict[str, Any] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 参数 `outputs`（`dict[str, Any] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 参数 `warnings`（`list[str] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 参数 `**extra`：可变关键字参数，用于扩展命名输入。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     payload: dict[str, Any] = {"ok": True, "tool": tool, "summary": summary or {}, "outputs": outputs or {}}
     if warnings is not None:
         payload["warnings"] = warnings
@@ -304,12 +411,29 @@ def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[s
     return payload
 
 def _resolve_filesystem_query_path(self, path: str | Path) -> Path:
-    """Resolve filesystem query path."""
+    """
+    作用：封装内部辅助步骤 `_resolve_filesystem_query_path`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_resolve_filesystem_query_path`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `path`（`str | Path`）：路径类参数，用于定位输入或输出文件系统位置。
+    - 返回：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return self._normalize_filesystem_path(path)
 
 @staticmethod
 def _serialize_value(value: Any) -> Any:
-    """Serialize values into JSON-friendly representations."""
+    """
+    作用：封装内部辅助步骤 `_serialize_value`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_serialize_value`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `value`（`Any`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `Any` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `Any` 类型结果，返回值语义遵循该函数实现约定。
+    """
     if value is None:
         return None
     if isinstance(value, (bool, int, float, str)):
@@ -342,7 +466,15 @@ def _serialize_value(value: Any) -> Any:
 
 @staticmethod
 def _utc_now_iso() -> str:
-    """Return the current UTC timestamp in ISO 8601 format."""
+    """
+    作用：封装内部辅助步骤 `_utc_now_iso`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_utc_now_iso`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数：无。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 def _reset_shapefile_run_summary(
@@ -351,7 +483,18 @@ def _reset_shapefile_run_summary(
     status: str,
     inputs: dict[str, Any] | None = None,
 ) -> str:
-    """Handle reset shapefile run summary."""
+    """
+    作用：封装内部辅助步骤 `_reset_shapefile_run_summary`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_reset_shapefile_run_summary`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `task_name`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 参数 `status`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 参数 `inputs`（`dict[str, Any] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     normalized = (task_name or "").strip()
     self._shapefile_run_summary = self._empty_shapefile_run_summary()
     self._shapefile_run_summary["task_name"] = normalized
@@ -362,12 +505,29 @@ def _reset_shapefile_run_summary(
 
 @staticmethod
 def _bundle_member_path(shp_path: Path, suffix: str) -> Path:
-    """Handle bundle member path."""
+    """
+    作用：封装内部辅助步骤 `_bundle_member_path`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_bundle_member_path`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `shp_path`（`Path`）：路径类参数，用于定位输入或输出文件系统位置。
+    - 参数 `suffix`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return shp_path.with_suffix(suffix)
 
 @staticmethod
 def _display_geometry_type(layer: QgsVectorLayer) -> str:
-    """Handle display geometry type."""
+    """
+    作用：封装内部辅助步骤 `_display_geometry_type`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_display_geometry_type`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `layer`（`QgsVectorLayer`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return {
         Qgis.GeometryType.Point: "point",
         Qgis.GeometryType.Line: "line",
@@ -378,7 +538,16 @@ def _display_geometry_type(layer: QgsVectorLayer) -> str:
 
 @staticmethod
 def _safe_int(value: Any, default: int) -> int:
-    """Handle safe int."""
+    """
+    作用：封装内部辅助步骤 `_safe_int`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_safe_int`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `value`（`Any`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `default`（`int`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `int` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `int` 类型结果，返回值语义遵循该函数实现约定。
+    """
     try:
         return int(value)
     except (TypeError, ValueError):
@@ -386,14 +555,30 @@ def _safe_int(value: Any, default: int) -> int:
 
 @staticmethod
 def _normalize_filesystem_path(path: str | Path) -> Path:
-    """Handle normalize filesystem path."""
+    """
+    作用：封装内部辅助步骤 `_normalize_filesystem_path`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_normalize_filesystem_path`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `path`（`str | Path`）：路径类参数，用于定位输入或输出文件系统位置。
+    - 返回：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    """
     candidate = path if isinstance(path, Path) else Path(str(path).strip()).expanduser()
     if not candidate.is_absolute():
         candidate = Path.cwd() / candidate
     return candidate.resolve(strict=False)
 
 def _empty_shapefile_run_summary(self) -> dict[str, Any]:
-    """Build an empty shapefile run summary record."""
+    """
+    作用：封装内部辅助步骤 `_empty_shapefile_run_summary`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_empty_shapefile_run_summary`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return {
         "schema_version": "1.0.0",
         "generated_at": self._utc_now_iso(),

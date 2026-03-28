@@ -58,6 +58,15 @@ MAX_ALGORITHM_LIST_LIMIT = 60
 _PROCESSING_INITIALIZED = False
 
 def _ensure_processing_initialized() -> None:
+    """
+    作用：确保 `_ensure_processing_initialized` 负责的前置状态可用，必要时执行初始化或修复动作。
+    用途：确保 `_ensure_processing_initialized` 负责的前置状态可用，必要时执行初始化或修复动作。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数：无。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     global _PROCESSING_INITIALIZED
     if _PROCESSING_INITIALIZED:
         return
@@ -68,11 +77,31 @@ TOOL_NAME = 'vector_get_layer_features'
 TOOL_DOC = '提取矢量图层的样本要素，供模型观察字段值和几何概貌。 layer_ref 指向矢量图层，limit 是希望返回的要素数。 目标图层必须存在且为矢量图层。 无写操作，只顺序读取要素并序列化属性与 geometry_wkt。 limit 会被内部最大阈值裁剪，返回里会明确给出 requested_limit、applied_limit 与 limit_capped。 返回 layer_id、feature_count、fields、features 以及 limit 应用结果。'
 
 def vector_get_layer_features(self, layer_ref: str, limit: int = DEFAULT_FEATURE_LIMIT) -> dict[str, Any]:
-    """Handle features from a vector layer."""
+    """
+    作用：处理 `vector_get_layer_features` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    用途：处理 `vector_get_layer_features` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    使用场景：在 MCP 客户端调用对应 tool 时触发，作为工具公开入口处理请求与响应。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `layer_ref`（`str`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 参数 `limit`（`int`）：数值控制参数，用于限制范围、数量或时限。 默认值为 `DEFAULT_FEATURE_LIMIT`。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return self._run(self._vector_get_layer_features_impl, layer_ref, limit)
 
 def _vector_get_layer_features_impl(self, layer_ref: str, limit: int) -> dict[str, Any]:
-    """Build the features from a vector layer."""
+    """
+    作用：实现 `_vector_get_layer_features_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+    用途：实现 `_vector_get_layer_features_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `layer_ref`（`str`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 参数 `limit`（`int`）：数值控制参数，用于限制范围、数量或时限。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     layer = self._resolve_vector_layer_ref(layer_ref)
     requested, applied, capped = self._normalize_feature_limit(limit)
     features: list[dict[str, Any]] = []
@@ -102,14 +131,33 @@ def _vector_get_layer_features_impl(self, layer_ref: str, limit: int) -> dict[st
     }
 
 def _normalize_feature_limit(self, limit: Any) -> tuple[int, int, bool]:
-    """Handle normalize feature limit."""
+    """
+    作用：封装内部辅助步骤 `_normalize_feature_limit`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_normalize_feature_limit`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `limit`（`Any`）：数值控制参数，用于限制范围、数量或时限。
+    - 返回：返回 `tuple[int, int, bool]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `tuple[int, int, bool]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     requested = self._safe_int(limit, self.DEFAULT_FEATURE_LIMIT)
     normalized = max(0, requested)
     applied = min(normalized, self.MAX_FEATURE_LIMIT)
     return requested, applied, applied != normalized
 
 def _resolve_vector_layer_ref(self, layer_ref: Any) -> QgsVectorLayer:
-    """Resolve vector layer ref."""
+    """
+    作用：封装内部辅助步骤 `_resolve_vector_layer_ref`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_resolve_vector_layer_ref`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `layer_ref`（`Any`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 返回：返回 `QgsVectorLayer` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `QgsVectorLayer` 类型结果，返回值语义遵循该函数实现约定。
+    异常：可能显式抛出 `Exception`。
+    """
     layer = self._resolve_layer_ref(layer_ref)
     if layer.type() != QgsMapLayer.VectorLayer:
         raise Exception(f"Layer is not a vector layer: {layer_ref}")
@@ -117,7 +165,15 @@ def _resolve_vector_layer_ref(self, layer_ref: Any) -> QgsVectorLayer:
 
 @staticmethod
 def _serialize_value(value: Any) -> Any:
-    """Serialize values into JSON-friendly representations."""
+    """
+    作用：封装内部辅助步骤 `_serialize_value`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_serialize_value`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `value`（`Any`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `Any` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `Any` 类型结果，返回值语义遵循该函数实现约定。
+    """
     if value is None:
         return None
     if isinstance(value, (bool, int, float, str)):
@@ -150,14 +206,33 @@ def _serialize_value(value: Any) -> Any:
 
 @staticmethod
 def _safe_int(value: Any, default: int) -> int:
-    """Handle safe int."""
+    """
+    作用：封装内部辅助步骤 `_safe_int`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_safe_int`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `value`（`Any`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `default`（`int`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `int` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `int` 类型结果，返回值语义遵循该函数实现约定。
+    """
     try:
         return int(value)
     except (TypeError, ValueError):
         return default
 
 def _resolve_layer_ref(self, layer_ref: Any) -> QgsMapLayer:
-    """Resolve layer ref."""
+    """
+    作用：封装内部辅助步骤 `_resolve_layer_ref`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_resolve_layer_ref`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `layer_ref`（`Any`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 返回：返回 `QgsMapLayer` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `QgsMapLayer` 类型结果，返回值语义遵循该函数实现约定。
+    异常：可能显式抛出 `Exception`。
+    """
     if isinstance(layer_ref, QgsMapLayer):
         return layer_ref
     text = str(layer_ref).strip() if layer_ref is not None else ""

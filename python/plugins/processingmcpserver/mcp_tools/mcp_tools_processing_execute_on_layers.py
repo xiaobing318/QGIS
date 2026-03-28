@@ -58,6 +58,15 @@ MAX_ALGORITHM_LIST_LIMIT = 60
 _PROCESSING_INITIALIZED = False
 
 def _ensure_processing_initialized() -> None:
+    """
+    作用：确保 `_ensure_processing_initialized` 负责的前置状态可用，必要时执行初始化或修复动作。
+    用途：确保 `_ensure_processing_initialized` 负责的前置状态可用，必要时执行初始化或修复动作。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数：无。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     global _PROCESSING_INITIALIZED
     if _PROCESSING_INITIALIZED:
         return
@@ -68,11 +77,42 @@ TOOL_NAME = 'processing_execute_on_layers'
 TOOL_DOC = '把一组图层引用先解析成真实 layer id，再执行单次或批量 Processing 算法调用，适合模型按图层绑定自动批处理。 algorithm 是算法 id，layer_bindings 把参数名映射到图层引用或引用数组，parameters 是其余参数对象，load_results 控制是否加载结果，batch_mode 控制是否按绑定数组逐批运行，allow_disk_write 与 allow_in_place_edit 控制安全检查。 Processing 运行时必须可用，parameters 必须是对象，layer_bindings 必须能解析到有效图层；batch_mode=true 时每个绑定在对应索引都要有值。 会触发一次或多次 Processing 执行，并在每轮执行前把图层引用替换为真实 layer id。 默认禁止磁盘写出和原位编辑；只有在明确需要时才把 allow_disk_write 或 allow_in_place_edit 设为 true，并应复核返回里的 safety_policy、warnings 与 effective_parameters。 batch_mode=false 时任一失败会直接抛错；batch_mode=true 时失败会记录到 runs 中继续处理后续批次。 返回 ok、run_count、success_count、failure_count、runs、warnings、safety_policy 和最后一次 effective_parameters。'
 
 def processing_execute_on_layers(self, algorithm: str, layer_bindings: dict[str, Any], parameters: dict[str, Any], load_results: bool = True, batch_mode: bool = False, allow_disk_write: bool = False, allow_in_place_edit: bool = False) -> dict[str, Any]:
-    """Handle a processing algorithm on layers."""
+    """
+    作用：处理 `processing_execute_on_layers` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    用途：处理 `processing_execute_on_layers` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    使用场景：在 MCP 客户端调用对应 tool 时触发，作为工具公开入口处理请求与响应。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `algorithm`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `layer_bindings`（`dict[str, Any]`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 参数 `parameters`（`dict[str, Any]`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `load_results`（`bool`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `True`。
+    - 参数 `batch_mode`（`bool`）：标识或模式参数，用于指定目标对象或流程分支。 默认值为 `False`。
+    - 参数 `allow_disk_write`（`bool`）：布尔开关参数，用于控制是否启用特定行为。 默认值为 `False`。
+    - 参数 `allow_in_place_edit`（`bool`）：布尔开关参数，用于控制是否启用特定行为。 默认值为 `False`。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return self._run(self._processing_execute_on_layers_impl, algorithm, layer_bindings, parameters, load_results, batch_mode, allow_disk_write, allow_in_place_edit)
 
 def _processing_execute_on_layers_impl(self, algorithm: str, layer_bindings: dict[str, Any], parameters: dict[str, Any], load_results: bool, batch_mode: bool, allow_disk_write: bool, allow_in_place_edit: bool) -> dict[str, Any]:
-    """Build the processing algorithm on layers."""
+    """
+    作用：实现 `_processing_execute_on_layers_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+    用途：实现 `_processing_execute_on_layers_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `algorithm`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `layer_bindings`（`dict[str, Any]`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 参数 `parameters`（`dict[str, Any]`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `load_results`（`bool`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `batch_mode`（`bool`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 参数 `allow_disk_write`（`bool`）：布尔开关参数，用于控制是否启用特定行为。
+    - 参数 `allow_in_place_edit`（`bool`）：布尔开关参数，用于控制是否启用特定行为。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    异常：可能显式抛出 `Exception`，并在部分分支中透传当前异常。
+    """
     if not isinstance(parameters, dict):
         raise Exception("parameters must be an object")
     normalized_bindings = self._normalize_layer_bindings(layer_bindings)
@@ -120,7 +160,18 @@ def _processing_execute_on_layers_impl(self, algorithm: str, layer_bindings: dic
 def _execute_processing_call(
     self, algorithm: str, parameters: dict[str, Any], load_results: bool
 ) -> dict[str, Any]:
-    """Execute execute processing call."""
+    """
+    作用：封装内部辅助步骤 `_execute_processing_call`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_execute_processing_call`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `algorithm`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `parameters`（`dict[str, Any]`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `load_results`（`bool`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     self._ensure_processing_runtime()
     result = (
         processing.runAndLoadResults(algorithm, parameters)
@@ -130,7 +181,17 @@ def _execute_processing_call(
     return result if isinstance(result, dict) else {"result": result}
 
 def _normalize_layer_bindings(self, layer_bindings: dict[str, Any]) -> dict[str, list[str]]:
-    """Handle normalize layer bindings."""
+    """
+    作用：封装内部辅助步骤 `_normalize_layer_bindings`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_normalize_layer_bindings`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `layer_bindings`（`dict[str, Any]`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 返回：返回 `dict[str, list[str]]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, list[str]]` 类型结果，返回值语义遵循该函数实现约定。
+    异常：可能显式抛出 `Exception`。
+    """
     if not isinstance(layer_bindings, dict):
         raise Exception("layer_bindings is required")
     normalized: dict[str, list[str]] = {}
@@ -150,7 +211,17 @@ def _normalize_layer_bindings(self, layer_bindings: dict[str, Any]) -> dict[str,
     return normalized
 
 def _resolve_layer_ref(self, layer_ref: Any) -> QgsMapLayer:
-    """Resolve layer ref."""
+    """
+    作用：封装内部辅助步骤 `_resolve_layer_ref`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_resolve_layer_ref`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `layer_ref`（`Any`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 返回：返回 `QgsMapLayer` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `QgsMapLayer` 类型结果，返回值语义遵循该函数实现约定。
+    异常：可能显式抛出 `Exception`。
+    """
     if isinstance(layer_ref, QgsMapLayer):
         return layer_ref
     text = str(layer_ref).strip() if layer_ref is not None else ""
@@ -170,7 +241,18 @@ def _resolve_layer_ref(self, layer_ref: Any) -> QgsMapLayer:
     raise Exception(f"Layer not found: {text}")
 
 def _sanitize_processing_parameters(self, parameters: dict[str, Any], allow_disk_write: bool, allow_in_place_edit: bool) -> tuple[dict[str, Any], list[str]]:
-    """Handle sanitize processing parameters."""
+    """
+    作用：封装内部辅助步骤 `_sanitize_processing_parameters`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_sanitize_processing_parameters`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `parameters`（`dict[str, Any]`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `allow_disk_write`（`bool`）：布尔开关参数，用于控制是否启用特定行为。
+    - 参数 `allow_in_place_edit`（`bool`）：布尔开关参数，用于控制是否启用特定行为。
+    - 返回：返回 `tuple[dict[str, Any], list[str]]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `tuple[dict[str, Any], list[str]]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     sanitized = dict(parameters)
     warnings: list[str] = []
     for key in list(sanitized.keys()):
@@ -186,7 +268,15 @@ def _sanitize_processing_parameters(self, parameters: dict[str, Any], allow_disk
 
 @staticmethod
 def _serialize_value(value: Any) -> Any:
-    """Serialize values into JSON-friendly representations."""
+    """
+    作用：封装内部辅助步骤 `_serialize_value`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_serialize_value`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `value`（`Any`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `Any` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `Any` 类型结果，返回值语义遵循该函数实现约定。
+    """
     if value is None:
         return None
     if isinstance(value, (bool, int, float, str)):
@@ -218,17 +308,41 @@ def _serialize_value(value: Any) -> Any:
     return str(value)
 
 def _ensure_processing_runtime(self) -> None:
-    """Handle ensure processing runtime."""
+    """
+    作用：确保 `_ensure_processing_runtime` 负责的前置状态可用，必要时执行初始化或修复动作。
+    用途：确保 `_ensure_processing_runtime` 负责的前置状态可用，必要时执行初始化或修复动作。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     _ensure_processing_initialized()
 
 @staticmethod
 def _is_disk_output_key(key: str) -> bool:
-    """Handle is disk output key."""
+    """
+    作用：封装内部辅助步骤 `_is_disk_output_key`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_is_disk_output_key`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `key`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 返回：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return "OUTPUT" in key.upper()
 
 @staticmethod
 def _is_disk_output_value(value: Any) -> bool:
-    """Handle is disk output value."""
+    """
+    作用：封装内部辅助步骤 `_is_disk_output_value`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_is_disk_output_value`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `value`（`Any`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+    """
     if value is None:
         return False
     if isinstance(value, Path):

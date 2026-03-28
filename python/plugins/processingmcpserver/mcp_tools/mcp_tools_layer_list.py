@@ -58,6 +58,15 @@ MAX_ALGORITHM_LIST_LIMIT = 60
 _PROCESSING_INITIALIZED = False
 
 def _ensure_processing_initialized() -> None:
+    """
+    作用：确保 `_ensure_processing_initialized` 负责的前置状态可用，必要时执行初始化或修复动作。
+    用途：确保 `_ensure_processing_initialized` 负责的前置状态可用，必要时执行初始化或修复动作。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数：无。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     global _PROCESSING_INITIALIZED
     if _PROCESSING_INITIALIZED:
         return
@@ -68,11 +77,33 @@ TOOL_NAME = 'layer_list'
 TOOL_DOC = '列出当前工程中可见或全部图层的基础清单，用于给模型建立当前项目上下文。 layer_types 可选 vector、raster 或 both，include_hidden 控制是否包含图层面板中隐藏图层，name_glob 用于名称通配过滤。 当前工程中至少存在已加载图层时结果更有意义，但空工程也可调用。 无写操作，只读取工程图层注册表与图层树可见性。 无。 返回按过滤条件匹配的图层数组，元素包含 id、name、type、visible、provider 以及矢量或栅格的补充摘要。'
 
 def layer_list(self, layer_types: str = "both", include_hidden: bool = True, name_glob: str = "*") -> list[dict[str, Any]]:
-    """Handle the loaded layer list."""
+    """
+    作用：处理 `layer_list` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    用途：处理 `layer_list` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    使用场景：在 MCP 客户端调用对应 tool 时触发，作为工具公开入口处理请求与响应。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `layer_types`（`str`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。 默认值为 `"both"`。
+    - 参数 `include_hidden`（`bool`）：标识或模式参数，用于指定目标对象或流程分支。 默认值为 `True`。
+    - 参数 `name_glob`（`str`）：标识或模式参数，用于指定目标对象或流程分支。 默认值为 `"*"`。
+    - 返回：返回 `list[dict[str, Any]]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `list[dict[str, Any]]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return self._run(self._layer_list_impl, layer_types, include_hidden, name_glob)
 
 def _layer_list_impl(self, layer_types: str, include_hidden: bool, name_glob: str) -> list[dict[str, Any]]:
-    """Build the the loaded layer list."""
+    """
+    作用：实现 `_layer_list_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+    用途：实现 `_layer_list_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `layer_types`（`str`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 参数 `include_hidden`（`bool`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 参数 `name_glob`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 返回：返回 `list[dict[str, Any]]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `list[dict[str, Any]]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     normalized_types = self._normalize_layer_types_filter(layer_types)
     pattern = self._normalize_name_glob(name_glob)
     project = QgsProject.instance()
@@ -108,7 +139,16 @@ def _layer_list_impl(self, layer_types: str, include_hidden: bool, name_glob: st
 
 @staticmethod
 def _is_layer_visible(project: QgsProject, layer_id: str) -> bool:
-    """Handle is layer visible."""
+    """
+    作用：封装内部辅助步骤 `_is_layer_visible`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_is_layer_visible`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `project`（`QgsProject`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `layer_id`（`str`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 返回：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+    """
     node = project.layerTreeRoot().findLayer(layer_id) if project.layerTreeRoot() else None
     if node is None:
         return False
@@ -119,7 +159,15 @@ def _is_layer_visible(project: QgsProject, layer_id: str) -> bool:
 
 @staticmethod
 def _layer_type_token(layer: QgsMapLayer) -> str:
-    """Handle layer type token."""
+    """
+    作用：封装内部辅助步骤 `_layer_type_token`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_layer_type_token`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `layer`（`QgsMapLayer`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     if layer.type() == QgsMapLayer.VectorLayer:
         return f"vector_{int(layer.geometryType())}"
     if layer.type() == QgsMapLayer.RasterLayer:
@@ -128,7 +176,16 @@ def _layer_type_token(layer: QgsMapLayer) -> str:
 
 @staticmethod
 def _normalize_layer_types_filter(layer_types: str | None) -> str:
-    """Handle normalize layer types filter."""
+    """
+    作用：封装内部辅助步骤 `_normalize_layer_types_filter`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_normalize_layer_types_filter`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `layer_types`（`str | None`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    异常：可能显式抛出 `Exception`。
+    """
     value = (layer_types or "both").strip().lower()
     if value in {"both", "all", "any"}:
         return "both"
@@ -138,7 +195,15 @@ def _normalize_layer_types_filter(layer_types: str | None) -> str:
 
 @staticmethod
 def _normalize_name_glob(name_glob: str | None) -> str:
-    """Handle normalize name glob."""
+    """
+    作用：封装内部辅助步骤 `_normalize_name_glob`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_normalize_name_glob`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `name_glob`（`str | None`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     value = (name_glob or "*").strip()
     return value or "*"
 

@@ -58,6 +58,15 @@ MAX_ALGORITHM_LIST_LIMIT = 60
 _PROCESSING_INITIALIZED = False
 
 def _ensure_processing_initialized() -> None:
+    """
+    作用：确保 `_ensure_processing_initialized` 负责的前置状态可用，必要时执行初始化或修复动作。
+    用途：确保 `_ensure_processing_initialized` 负责的前置状态可用，必要时执行初始化或修复动作。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数：无。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     global _PROCESSING_INITIALIZED
     if _PROCESSING_INITIALIZED:
         return
@@ -68,18 +77,44 @@ TOOL_NAME = 'layer_get_panel_tree'
 TOOL_DOC = '读取图层面板树结构，帮助模型理解分组、顺序和隐藏状态。 include_hidden 控制是否把隐藏图层与分组也放入返回结构。 当前工程已初始化即可调用，最好已有图层树内容。 无写操作，只读取 QgsLayerTree 结构。 无。 返回 tree 主结构，以及为兼容旧调用保留的 groups、layers 扁平摘要，便于模型按图层面板顺序推理。'
 
 def layer_get_panel_tree(self, include_hidden: bool = True) -> dict[str, Any]:
-    """Handle the layer tree panel structure."""
+    """
+    作用：处理 `layer_get_panel_tree` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    用途：处理 `layer_get_panel_tree` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    使用场景：在 MCP 客户端调用对应 tool 时触发，作为工具公开入口处理请求与响应。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `include_hidden`（`bool`）：标识或模式参数，用于指定目标对象或流程分支。 默认值为 `True`。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return self._run(self._layer_get_panel_tree_impl, include_hidden)
 
 def _layer_get_panel_tree_impl(self, include_hidden: bool) -> dict[str, Any]:
-    """Build the the layer tree panel structure."""
+    """
+    作用：实现 `_layer_get_panel_tree_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+    用途：实现 `_layer_get_panel_tree_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `include_hidden`（`bool`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     root = QgsProject.instance().layerTreeRoot()
     groups: list[dict[str, Any]] = []
     layers: list[dict[str, Any]] = []
     project = QgsProject.instance()
 
     def layer_payload(layer: QgsMapLayer) -> dict[str, Any]:
-        """Handle layer payload."""
+        """
+        作用：处理 `layer_payload` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+        用途：处理 `layer_payload` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+        使用场景：在 MCP 客户端调用对应 tool 时触发，作为工具公开入口处理请求与响应。
+        参数与返回：
+        - 参数 `layer`（`QgsMapLayer`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+        - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+        """
         item: dict[str, Any] = {
             "id": layer.id(),
             "name": layer.name(),
@@ -97,7 +132,16 @@ def _layer_get_panel_tree_impl(self, include_hidden: bool) -> dict[str, Any]:
         return item
 
     def walk(group: QgsLayerTreeGroup, prefix: str) -> list[dict[str, Any]]:
-        """Handle walk."""
+        """
+        作用：处理 `walk` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+        用途：处理 `walk` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+        使用场景：在 MCP 客户端调用对应 tool 时触发，作为工具公开入口处理请求与响应。
+        参数与返回：
+        - 参数 `group`（`QgsLayerTreeGroup`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `prefix`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：返回 `list[dict[str, Any]]` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `list[dict[str, Any]]` 类型结果，返回值语义遵循该函数实现约定。
+        """
         children_payload: list[dict[str, Any]] = []
         for child in group.children():
             visible = bool(child.isVisible()) if hasattr(child, "isVisible") else True
@@ -142,7 +186,16 @@ def _layer_get_panel_tree_impl(self, include_hidden: bool) -> dict[str, Any]:
 
 @staticmethod
 def _is_layer_visible(project: QgsProject, layer_id: str) -> bool:
-    """Handle is layer visible."""
+    """
+    作用：封装内部辅助步骤 `_is_layer_visible`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_is_layer_visible`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `project`（`QgsProject`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `layer_id`（`str`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 返回：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+    """
     node = project.layerTreeRoot().findLayer(layer_id) if project.layerTreeRoot() else None
     if node is None:
         return False
@@ -153,7 +206,15 @@ def _is_layer_visible(project: QgsProject, layer_id: str) -> bool:
 
 @staticmethod
 def _layer_type_token(layer: QgsMapLayer) -> str:
-    """Handle layer type token."""
+    """
+    作用：封装内部辅助步骤 `_layer_type_token`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_layer_type_token`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `layer`（`QgsMapLayer`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     if layer.type() == QgsMapLayer.VectorLayer:
         return f"vector_{int(layer.geometryType())}"
     if layer.type() == QgsMapLayer.RasterLayer:

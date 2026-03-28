@@ -21,13 +21,31 @@ class BaseMcpTransport:
     """Base MCP transport that unifies thread lifecycle and logging behavior."""
 
     def __init__(self, mcp: "FastMCP", config: ProcessingMCPServerConfig) -> None:
-        """Store the MCP instance and configuration, then initialize the worker thread handle."""
+        """
+        作用：封装内部辅助步骤 `__init__`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `__init__`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `mcp`（`"FastMCP"`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `config`（`ProcessingMCPServerConfig`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         self._mcp = mcp
         self._config = config
         self._thread: Optional[threading.Thread] = None
 
     def start(self) -> bool:
-        """Start the transport worker thread."""
+        """
+        作用：实现 `start` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `start` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+        """
         if self.is_running():
             self._log(
                 f"Processing MCP transport already running ({self._context_details()}).",
@@ -46,7 +64,15 @@ class BaseMcpTransport:
         return True
 
     def stop(self) -> None:
-        """Request shutdown and wait for the worker thread to exit."""
+        """
+        作用：实现 `stop` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `stop` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         self._log(
             f"Stopping Processing MCP transport thread '{self.thread_name}' "
             f"({self._context_details()}).",
@@ -70,24 +96,65 @@ class BaseMcpTransport:
         )
 
     def is_running(self) -> bool:
-        """Return whether the transport thread is still running."""
+        """
+        作用：实现 `is_running` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `is_running` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+        """
         return self._thread is not None and self._thread.is_alive()
 
     @property
     def thread_name(self) -> str:
-        """Return the default thread name for subclasses to override."""
+        """
+        作用：实现 `thread_name` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `thread_name` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+        """
         return "ProcessingMCPTransport"
 
     def describe(self) -> str:
-        """Return a transport description for logs and UI display."""
+        """
+        作用：实现 `describe` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `describe` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+        """
         return "MCP transport"
 
     def _run(self) -> None:
-        """Run the transport implementation; subclasses must provide it."""
+        """
+        作用：封装内部辅助步骤 `_run`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `_run`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        异常：可能显式抛出 `NotImplementedError`。
+        """
         raise NotImplementedError
 
     def _run_with_logging(self) -> None:
-        """Wrap `_run` and centralize exception logging."""
+        """
+        作用：封装内部辅助步骤 `_run_with_logging`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `_run_with_logging`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         try:
             self._ensure_stdio_streams()
             self._run()
@@ -97,18 +164,42 @@ class BaseMcpTransport:
             )
 
     def _ensure_stdio_streams(self) -> None:
-        """Restore `stdout` and `stderr` when they are temporarily unavailable."""
+        """
+        作用：确保 `_ensure_stdio_streams` 负责的前置状态可用，必要时执行初始化或修复动作。
+        用途：确保 `_ensure_stdio_streams` 负责的前置状态可用，必要时执行初始化或修复动作。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         if sys.stdout is None and sys.__stdout__ is not None:
             sys.stdout = sys.__stdout__
         if sys.stderr is None and sys.__stderr__ is not None:
             sys.stderr = sys.__stderr__
 
     def _request_stop(self) -> None:
-        """Request shutdown; subclasses implement protocol-specific behavior."""
+        """
+        作用：封装内部辅助步骤 `_request_stop`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `_request_stop`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         return
 
     def _context_details(self) -> str:
-        """Summarize host, port, and path context for lifecycle logging."""
+        """
+        作用：封装内部辅助步骤 `_context_details`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `_context_details`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+        """
         settings = getattr(self._mcp, "settings", None)
         details = [f"transport={self._config.transport or 'streamable-http'}"]
         host = getattr(settings, "host", None)
@@ -132,16 +223,45 @@ class BaseMcpTransport:
         return ", ".join(details)
 
     def _log(self, message: str, level=Qgis.Info) -> None:
-        """Write a message to the QGIS message log."""
+        """
+        作用：封装内部辅助步骤 `_log`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `_log`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `message`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `level`：标识或模式参数，用于指定目标对象或流程分支。 默认值为 `Qgis.Info`。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         QgsMessageLog.logMessage(message, MCP_LOG_CATEGORY, level)
 
     def _log_exception(self, message: str, level=Qgis.Critical) -> None:
-        """Log an exception message together with its traceback."""
+        """
+        作用：封装内部辅助步骤 `_log_exception`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `_log_exception`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `message`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `level`：标识或模式参数，用于指定目标对象或流程分支。 默认值为 `Qgis.Critical`。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         details = traceback.format_exc()
         self._log(f"{message}\n{details}", level)
 
     def _apply_cors(self, app):
-        """Inject CORS middleware into an ASGI app when configured."""
+        """
+        作用：封装内部辅助步骤 `_apply_cors`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `_apply_cors`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `app`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：返回执行结果对象或状态值，具体结构以当前实现生成的数据为准。
+        返回结果：返回执行结果对象或状态值，具体结构以当前实现生成的数据为准。
+        """
         if not self._config.cors_origins:
             return app
         try:
@@ -163,12 +283,30 @@ class UvicornTransport(BaseMcpTransport):
     """Uvicorn-based HTTP/SSE transport implementation."""
 
     def __init__(self, mcp: "FastMCP", config: ProcessingMCPServerConfig) -> None:
-        """Initialize the uvicorn server handle."""
+        """
+        作用：封装内部辅助步骤 `__init__`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `__init__`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `mcp`（`"FastMCP"`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `config`（`ProcessingMCPServerConfig`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         super().__init__(mcp, config)
         self._uvicorn_server = None
 
     def _run(self) -> None:
-        """Build the ASGI app and start the uvicorn server loop."""
+        """
+        作用：封装内部辅助步骤 `_run`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `_run`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         try:
             import uvicorn
         except Exception as exc:
@@ -195,16 +333,41 @@ class UvicornTransport(BaseMcpTransport):
             self._uvicorn_server = None
 
     def _request_stop(self) -> None:
-        """Tell uvicorn to exit its main loop."""
+        """
+        作用：封装内部辅助步骤 `_request_stop`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `_request_stop`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         if self._uvicorn_server:
             self._uvicorn_server.should_exit = True
 
     def _build_app(self):
-        """Return the ASGI application object; subclasses must implement this."""
+        """
+        作用：构建 `_build_app` 相关对象或配置数据，供后续流程直接复用。
+        用途：构建 `_build_app` 相关对象或配置数据，供后续流程直接复用。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        异常：可能显式抛出 `NotImplementedError`。
+        """
         raise NotImplementedError
 
     def _build_log_config(self) -> dict[str, object]:
-        """Build the logging bridge configuration used to forward uvicorn logs to QGIS."""
+        """
+        作用：构建 `_build_log_config` 相关对象或配置数据，供后续流程直接复用。
+        用途：构建 `_build_log_config` 相关对象或配置数据，供后续流程直接复用。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `dict[str, object]` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `dict[str, object]` 类型结果，返回值语义遵循该函数实现约定。
+        """
         log_level = self._mcp.settings.log_level
         return {
             "version": 1,
@@ -267,7 +430,17 @@ class UvicornTransport(BaseMcpTransport):
         }
 
     def _create_uvicorn_config(self, uvicorn, app):
-        """Create the uvicorn config and fall back to default logging if custom logging setup fails."""
+        """
+        作用：封装内部辅助步骤 `_create_uvicorn_config`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `_create_uvicorn_config`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `uvicorn`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 参数 `app`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：返回执行结果对象或状态值，具体结构以当前实现生成的数据为准。
+        返回结果：返回执行结果对象或状态值，具体结构以当前实现生成的数据为准。
+        """
         log_config = None
         try:
             log_config = self._build_log_config()
@@ -310,18 +483,42 @@ class StreamableHttpTransport(UvicornTransport):
 
     @property
     def thread_name(self) -> str:
-        """Return the Streamable HTTP thread name."""
+        """
+        作用：实现 `thread_name` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `thread_name` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+        """
         return "ProcessingMCPStreamableHTTP"
 
     def describe(self) -> str:
-        """Return the Streamable HTTP access description."""
+        """
+        作用：实现 `describe` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `describe` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+        """
         host = self._mcp.settings.host
         port = self._mcp.settings.port
         path = self._mcp.settings.streamable_http_path
         return f"Streamable HTTP on http://{host}:{port}{path}"
 
     def _build_app(self):
-        """Build the Streamable HTTP ASGI app and apply CORS."""
+        """
+        作用：构建 `_build_app` 相关对象或配置数据，供后续流程直接复用。
+        用途：构建 `_build_app` 相关对象或配置数据，供后续流程直接复用。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回执行结果对象或状态值，具体结构以当前实现生成的数据为准。
+        返回结果：返回执行结果对象或状态值，具体结构以当前实现生成的数据为准。
+        """
         return self._apply_cors(self._mcp.streamable_http_app())
 
 
@@ -330,11 +527,27 @@ class SseTransport(UvicornTransport):
 
     @property
     def thread_name(self) -> str:
-        """Return the SSE thread name."""
+        """
+        作用：实现 `thread_name` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `thread_name` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+        """
         return "ProcessingMCPSSE"
 
     def describe(self) -> str:
-        """Return the SSE endpoint and message-path description."""
+        """
+        作用：实现 `describe` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `describe` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+        """
         host = self._mcp.settings.host
         port = self._mcp.settings.port
         sse_path = self._mcp.settings.sse_path
@@ -342,7 +555,15 @@ class SseTransport(UvicornTransport):
         return f"SSE on http://{host}:{port}{sse_path} (messages {message_path})"
 
     def _build_app(self):
-        """Build the SSE ASGI app and apply CORS."""
+        """
+        作用：构建 `_build_app` 相关对象或配置数据，供后续流程直接复用。
+        用途：构建 `_build_app` 相关对象或配置数据，供后续流程直接复用。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回执行结果对象或状态值，具体结构以当前实现生成的数据为准。
+        返回结果：返回执行结果对象或状态值，具体结构以当前实现生成的数据为准。
+        """
         return self._apply_cors(self._mcp.sse_app(self._config.mount_path))
 
 
@@ -351,15 +572,39 @@ class StdioTransport(BaseMcpTransport):
 
     @property
     def thread_name(self) -> str:
-        """Return the STDIO thread name."""
+        """
+        作用：实现 `thread_name` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `thread_name` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+        """
         return "ProcessingMCPStdio"
 
     def describe(self) -> str:
-        """Return the STDIO transport description."""
+        """
+        作用：实现 `describe` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `describe` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+        """
         return "STDIO (stdin/stdout)"
 
     def _run(self) -> None:
-        """Run the MCP stdio mode when stdin and stdout are available."""
+        """
+        作用：封装内部辅助步骤 `_run`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `_run`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         if (
             sys.stdin is None
             or sys.stdout is None
@@ -377,7 +622,15 @@ class StdioTransport(BaseMcpTransport):
             self._log_exception("Processing MCP stdio server stopped with error")
 
     def stop(self) -> None:
-        """Log STDIO shutdown limitations before calling the base stop flow."""
+        """
+        作用：实现 `stop` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `stop` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         if self.is_running():
             self._log(
                 "STDIO transport does not support graceful shutdown; close QGIS or stdin.",
@@ -389,7 +642,16 @@ class StdioTransport(BaseMcpTransport):
 def create_transport(
     mcp: "FastMCP", config: ProcessingMCPServerConfig
 ) -> BaseMcpTransport:
-    """Create the configured transport implementation, defaulting to Streamable HTTP."""
+    """
+    作用：创建 `transport`，完成当前函数负责的处理步骤并产出结果。
+    用途：创建 `transport`，完成当前函数负责的处理步骤并产出结果。
+    使用场景：在 MCP 传输层启动与停止流程中被调用，用于管理 stdio/http/sse 运行线程与日志。
+    参数与返回：
+    - 参数 `mcp`（`"FastMCP"`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `config`（`ProcessingMCPServerConfig`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `BaseMcpTransport` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `BaseMcpTransport` 类型结果，返回值语义遵循该函数实现约定。
+    """
     transport = (config.transport or "streamable-http").lower()
     if transport == "stdio":
         return StdioTransport(mcp, config)

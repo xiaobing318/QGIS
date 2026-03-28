@@ -58,6 +58,15 @@ MAX_ALGORITHM_LIST_LIMIT = 60
 _PROCESSING_INITIALIZED = False
 
 def _ensure_processing_initialized() -> None:
+    """
+    作用：确保 `_ensure_processing_initialized` 负责的前置状态可用，必要时执行初始化或修复动作。
+    用途：确保 `_ensure_processing_initialized` 负责的前置状态可用，必要时执行初始化或修复动作。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数：无。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     global _PROCESSING_INITIALIZED
     if _PROCESSING_INITIALIZED:
         return
@@ -68,11 +77,38 @@ TOOL_NAME = 'processing_execute_algorithm'
 TOOL_DOC = '执行单次 Processing 算法调用，是通用算法执行入口。 algorithm 是算法 id，parameters 是参数对象，load_results 控制是否把结果加载到当前工程，allow_disk_write 控制是否允许磁盘输出路径通过安全检查，allow_in_place_edit 控制是否允许原位编辑参数通过安全检查。 Processing 运行时必须可用，algorithm 必须存在，parameters 必须是对象。 会触发 Processing 执行，可能生成临时输出、加载新图层，或在显式允许时写盘或原位修改。 默认禁止磁盘写出和原位编辑；只有在明确需要时才把 allow_disk_write 或 allow_in_place_edit 设为 true，并应复核返回里的 safety_policy、warnings 与 effective_parameters。 返回 algorithm、load_results、result、warnings、safety_policy 和 effective_parameters。'
 
 def processing_execute_algorithm(self, algorithm: str, parameters: dict[str, Any], load_results: bool = True, allow_disk_write: bool = False, allow_in_place_edit: bool = False) -> dict[str, Any]:
-    """Handle a processing algorithm."""
+    """
+    作用：处理 `processing_execute_algorithm` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    用途：处理 `processing_execute_algorithm` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    使用场景：在 MCP 客户端调用对应 tool 时触发，作为工具公开入口处理请求与响应。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `algorithm`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `parameters`（`dict[str, Any]`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `load_results`（`bool`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `True`。
+    - 参数 `allow_disk_write`（`bool`）：布尔开关参数，用于控制是否启用特定行为。 默认值为 `False`。
+    - 参数 `allow_in_place_edit`（`bool`）：布尔开关参数，用于控制是否启用特定行为。 默认值为 `False`。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return self._run(self._processing_execute_algorithm_impl, algorithm, parameters, load_results, allow_disk_write, allow_in_place_edit)
 
 def _processing_execute_algorithm_impl(self, algorithm: str, parameters: dict[str, Any], load_results: bool, allow_disk_write: bool, allow_in_place_edit: bool) -> dict[str, Any]:
-    """Build the processing algorithm."""
+    """
+    作用：实现 `_processing_execute_algorithm_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+    用途：实现 `_processing_execute_algorithm_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `algorithm`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `parameters`（`dict[str, Any]`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `load_results`（`bool`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `allow_disk_write`（`bool`）：布尔开关参数，用于控制是否启用特定行为。
+    - 参数 `allow_in_place_edit`（`bool`）：布尔开关参数，用于控制是否启用特定行为。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    异常：可能显式抛出 `Exception`。
+    """
     if not isinstance(parameters, dict):
         raise Exception("parameters must be an object")
     effective, warnings = self._sanitize_processing_parameters(parameters, allow_disk_write, allow_in_place_edit)
@@ -82,7 +118,18 @@ def _processing_execute_algorithm_impl(self, algorithm: str, parameters: dict[st
 def _execute_processing_call(
     self, algorithm: str, parameters: dict[str, Any], load_results: bool
 ) -> dict[str, Any]:
-    """Execute execute processing call."""
+    """
+    作用：封装内部辅助步骤 `_execute_processing_call`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_execute_processing_call`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `algorithm`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `parameters`（`dict[str, Any]`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `load_results`（`bool`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     self._ensure_processing_runtime()
     result = (
         processing.runAndLoadResults(algorithm, parameters)
@@ -93,7 +140,19 @@ def _execute_processing_call(
 
 @staticmethod
 def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[str, Any] | None = None, warnings: list[str] | None = None, **extra) -> dict[str, Any]:
-    """Handle ok result."""
+    """
+    作用：封装内部辅助步骤 `_ok_result`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_ok_result`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `tool`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `summary`（`dict[str, Any] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 参数 `outputs`（`dict[str, Any] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 参数 `warnings`（`list[str] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 参数 `**extra`：可变关键字参数，用于扩展命名输入。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     payload: dict[str, Any] = {"ok": True, "tool": tool, "summary": summary or {}, "outputs": outputs or {}}
     if warnings is not None:
         payload["warnings"] = warnings
@@ -101,7 +160,18 @@ def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[s
     return payload
 
 def _sanitize_processing_parameters(self, parameters: dict[str, Any], allow_disk_write: bool, allow_in_place_edit: bool) -> tuple[dict[str, Any], list[str]]:
-    """Handle sanitize processing parameters."""
+    """
+    作用：封装内部辅助步骤 `_sanitize_processing_parameters`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_sanitize_processing_parameters`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `parameters`（`dict[str, Any]`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `allow_disk_write`（`bool`）：布尔开关参数，用于控制是否启用特定行为。
+    - 参数 `allow_in_place_edit`（`bool`）：布尔开关参数，用于控制是否启用特定行为。
+    - 返回：返回 `tuple[dict[str, Any], list[str]]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `tuple[dict[str, Any], list[str]]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     sanitized = dict(parameters)
     warnings: list[str] = []
     for key in list(sanitized.keys()):
@@ -117,7 +187,15 @@ def _sanitize_processing_parameters(self, parameters: dict[str, Any], allow_disk
 
 @staticmethod
 def _serialize_value(value: Any) -> Any:
-    """Serialize values into JSON-friendly representations."""
+    """
+    作用：封装内部辅助步骤 `_serialize_value`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_serialize_value`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `value`（`Any`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `Any` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `Any` 类型结果，返回值语义遵循该函数实现约定。
+    """
     if value is None:
         return None
     if isinstance(value, (bool, int, float, str)):
@@ -149,17 +227,41 @@ def _serialize_value(value: Any) -> Any:
     return str(value)
 
 def _ensure_processing_runtime(self) -> None:
-    """Handle ensure processing runtime."""
+    """
+    作用：确保 `_ensure_processing_runtime` 负责的前置状态可用，必要时执行初始化或修复动作。
+    用途：确保 `_ensure_processing_runtime` 负责的前置状态可用，必要时执行初始化或修复动作。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     _ensure_processing_initialized()
 
 @staticmethod
 def _is_disk_output_key(key: str) -> bool:
-    """Handle is disk output key."""
+    """
+    作用：封装内部辅助步骤 `_is_disk_output_key`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_is_disk_output_key`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `key`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 返回：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return "OUTPUT" in key.upper()
 
 @staticmethod
 def _is_disk_output_value(value: Any) -> bool:
-    """Handle is disk output value."""
+    """
+    作用：封装内部辅助步骤 `_is_disk_output_value`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_is_disk_output_value`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `value`（`Any`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+    """
     if value is None:
         return False
     if isinstance(value, Path):

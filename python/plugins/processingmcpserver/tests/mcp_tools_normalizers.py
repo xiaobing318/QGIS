@@ -7,7 +7,15 @@ from ._shared_case_base import ProcessingMCPTestBase
 
 class ToolsNormalizersTest(ProcessingMCPTestBase):
     def test_feature_limit_default_and_dynamic_override(self):
-        """Verify feature limit default and dynamic override."""
+        """
+        作用：执行测试用例 `feature limit default and dynamic override`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `feature limit default and dynamic override`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
 
         requested, applied, capped = tools._normalize_feature_limit(None)
@@ -21,7 +29,15 @@ class ToolsNormalizersTest(ProcessingMCPTestBase):
         self.assertFalse(capped)
 
     def test_feature_limit_handles_zero_negative_and_cap(self):
-        """Verify feature limit handles zero negative and cap."""
+        """
+        作用：执行测试用例 `feature limit handles zero negative and cap`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `feature limit handles zero negative and cap`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
 
         requested, applied, capped = tools._normalize_feature_limit(0)
@@ -38,7 +54,15 @@ class ToolsNormalizersTest(ProcessingMCPTestBase):
         self.assertTrue(capped)
 
     def test_algorithm_dataset_and_filesystem_limits_cap(self):
-        """Verify algorithm dataset and filesystem limits cap."""
+        """
+        作用：执行测试用例 `algorithm dataset and filesystem limits cap`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `algorithm dataset and filesystem limits cap`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
 
         requested, applied, capped = tools._normalize_algorithm_list_limit(
@@ -65,7 +89,15 @@ class ToolsNormalizersTest(ProcessingMCPTestBase):
         self.assertTrue(capped)
 
     def test_filter_and_glob_normalizers(self):
-        """Verify filter and glob normalizers."""
+        """
+        作用：执行测试用例 `filter and glob normalizers`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `filter and glob normalizers`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
 
         self.assertEqual(tools._normalize_dataset_kind("vector"), "vector")

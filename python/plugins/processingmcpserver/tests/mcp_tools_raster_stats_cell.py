@@ -6,11 +6,27 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsRasterStatsCellTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the expected capability is registered."""
+        """
+        作用：执行测试用例 `registered`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `registered`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         assert_tool_registered(self, "raster_stats_cell")
 
     def test_success_raster_stats_cell(self):
-        """Verify the successful path for cell raster statistics."""
+        """
+        作用：执行测试用例 `success raster stats cell`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `success raster stats cell`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         layer1 = self.add_sample_raster_layer("cell_stats_raster1")
         layer2 = self.add_sample_raster_layer("cell_stats_raster2")
@@ -24,7 +40,15 @@ class ToolsRasterStatsCellTest(ProcessingMCPTestBase):
         self.assertEqual(result["summary"]["input_count"], 2)
 
     def test_failure_empty_refs(self):
-        """Verify the failure path for empty references."""
+        """
+        作用：执行测试用例 `failure empty refs`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `failure empty refs`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         with self.assertRaises(Exception) as ctx:
             tools.raster_stats_cell(raster_layer_refs=[])

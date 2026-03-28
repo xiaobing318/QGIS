@@ -6,11 +6,27 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsVectorTableInsertRecordsTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the expected capability is registered."""
+        """
+        作用：执行测试用例 `registered`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `registered`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         assert_tool_registered(self, "vector_table_insert_records")
 
     def test_default_creates_copy_layer_and_reports_unknown_fields(self):
-        """Verify that the default behavior creates a copy layer and reports unknown fields."""
+        """
+        作用：执行测试用例 `default creates copy layer and reports unknown fields`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `default creates copy layer and reports unknown fields`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("insert_records_vector_copy")
 
@@ -37,7 +53,15 @@ class ToolsVectorTableInsertRecordsTest(ProcessingMCPTestBase):
         self.assertIn("Ignored unknown fields", result["warnings"][0])
 
     def test_success_insert_records(self):
-        """Verify the successful path for inserting records."""
+        """
+        作用：执行测试用例 `success insert records`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `success insert records`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("insert_records_vector")
 
@@ -57,7 +81,15 @@ class ToolsVectorTableInsertRecordsTest(ProcessingMCPTestBase):
         self.assertEqual(result["summary"]["affected_count"], 1)
 
     def test_failure_empty_records(self):
-        """Verify that empty record lists are rejected."""
+        """
+        作用：执行测试用例 `failure empty records`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `failure empty records`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("insert_records_vector2")
 

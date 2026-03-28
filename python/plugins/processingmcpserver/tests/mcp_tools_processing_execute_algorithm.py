@@ -8,12 +8,29 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsProcessingExecuteAlgorithmTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the expected capability is registered."""
+        """
+        作用：执行测试用例 `registered`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `registered`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         assert_tool_registered(self, "processing_execute_algorithm")
 
     @patch("processingmcpserver.mcp_tools.mcp_tools_processing_execute_algorithm.processing.run")
     def test_success_default_rewrites_disk_output_and_blocks_in_place(self, mock_run):
-        """Verify the successful path for rewriting disk output by default and blocking in-place edits."""
+        """
+        作用：执行测试用例 `success default rewrites disk output and blocks in place`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `success default rewrites disk output and blocks in place`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `mock_run`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         mock_run.return_value = {"OUTPUT": "TEMPORARY_OUTPUT"}
 
@@ -36,7 +53,16 @@ class ToolsProcessingExecuteAlgorithmTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.mcp_tools.mcp_tools_processing_execute_algorithm.processing.run")
     def test_success_allows_disk_write_when_explicit(self, mock_run):
-        """Verify that explicit configuration allows disk writes."""
+        """
+        作用：执行测试用例 `success allows disk write when explicit`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `success allows disk write when explicit`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `mock_run`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         mock_run.return_value = {"OUTPUT": "C:/tmp/result.gpkg"}
 
@@ -59,7 +85,15 @@ class ToolsProcessingExecuteAlgorithmTest(ProcessingMCPTestBase):
         self.assertTrue(result["safety_policy"]["allow_in_place_edit"])
 
     def test_failure_parameters_must_be_object(self):
-        """Verify that parameters must be an object."""
+        """
+        作用：执行测试用例 `failure parameters must be object`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `failure parameters must be object`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         with self.assertRaises(Exception) as ctx:
             tools.processing_execute_algorithm(
@@ -70,7 +104,16 @@ class ToolsProcessingExecuteAlgorithmTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.mcp_tools.mcp_tools_processing_execute_algorithm.processing.run")
     def test_failure_propagates_processing_runtime_error(self, mock_run):
-        """Verify that processing runtime errors are propagated."""
+        """
+        作用：执行测试用例 `failure propagates processing runtime error`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `failure propagates processing runtime error`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `mock_run`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         mock_run.side_effect = RuntimeError("processing boom")
 

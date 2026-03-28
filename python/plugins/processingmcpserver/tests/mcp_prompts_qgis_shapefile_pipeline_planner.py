@@ -10,13 +10,29 @@ from ._shared_fixtures import DummyMcp, DummyTools
 
 class PromptQgisShapefilePipelinePlannerTest(ProcessingMCPTestBase):
     def test_prompt_registered(self):
-        """Verify prompt registered."""
+        """
+        作用：执行测试用例 `prompt registered`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `prompt registered`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         mcp = DummyMcp()
         register_prompts(mcp, DummyTools())
         self.assertIn("qgis_shapefile_pipeline_planner", mcp.prompt_names)
 
     def test_prompt_signature_matches_expected_arguments(self):
-        """Verify prompt signature matches expected arguments."""
+        """
+        作用：执行测试用例 `prompt signature matches expected arguments`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `prompt signature matches expected arguments`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         mcp = DummyMcp()
         register_prompts(mcp, DummyTools())
 
@@ -36,7 +52,15 @@ class PromptQgisShapefilePipelinePlannerTest(ProcessingMCPTestBase):
         self.assertEqual(signature.parameters["output_dir"].default, inspect.Signature.empty)
 
     def test_prompt_template_contains_six_stages(self):
-        """Verify prompt template contains six stages."""
+        """
+        作用：执行测试用例 `prompt template contains six stages`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `prompt template contains six stages`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         mcp = DummyMcp()
         register_prompts(mcp, DummyTools())
 
@@ -62,7 +86,15 @@ class PromptQgisShapefilePipelinePlannerTest(ProcessingMCPTestBase):
         self.assertNotIn("qgis_shapefile_export_review", output)
 
     def test_prompt_defaults_for_optional_arguments(self):
-        """Verify prompt defaults for optional arguments."""
+        """
+        作用：执行测试用例 `prompt defaults for optional arguments`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `prompt defaults for optional arguments`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         mcp = DummyMcp()
         register_prompts(mcp, DummyTools())
 

@@ -58,6 +58,15 @@ MAX_ALGORITHM_LIST_LIMIT = 60
 _PROCESSING_INITIALIZED = False
 
 def _ensure_processing_initialized() -> None:
+    """
+    作用：确保 `_ensure_processing_initialized` 负责的前置状态可用，必要时执行初始化或修复动作。
+    用途：确保 `_ensure_processing_initialized` 负责的前置状态可用，必要时执行初始化或修复动作。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数：无。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     global _PROCESSING_INITIALIZED
     if _PROCESSING_INITIALIZED:
         return
@@ -68,11 +77,40 @@ TOOL_NAME = 'dataset_list_files'
 TOOL_DOC = '扫描目录并识别可加载的数据集文件，区分 vector 与 raster。 directory 是根目录，recursive 控制是否递归，dataset_kind 控制筛选 vector、raster 或 both，geometry_type 与 name_glob 用于进一步过滤，limit 控制返回上限。 目录必须存在且可访问。 无写操作，只遍历文件系统并按扩展名和几何类型推断数据集。 limit 会被内部阈值裁剪，geometry_type 过滤仅对识别出的矢量数据集生效。 返回 datasets 数组及 requested_limit、applied_limit、limit_capped 等扫描摘要。'
 
 def dataset_list_files(self, directory: str, recursive: bool = False, dataset_kind: str = "both", geometry_type: str = "any", name_glob: str = "*", limit: int = DEFAULT_DATASET_LIMIT) -> dict[str, Any]:
-    """Handle files in a dataset directory."""
+    """
+    作用：处理 `dataset_list_files` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    用途：处理 `dataset_list_files` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    使用场景：在 MCP 客户端调用对应 tool 时触发，作为工具公开入口处理请求与响应。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `directory`（`str`）：路径类参数，用于定位输入或输出文件系统位置。
+    - 参数 `recursive`（`bool`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `False`。
+    - 参数 `dataset_kind`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `"both"`。
+    - 参数 `geometry_type`（`str`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。 默认值为 `"any"`。
+    - 参数 `name_glob`（`str`）：标识或模式参数，用于指定目标对象或流程分支。 默认值为 `"*"`。
+    - 参数 `limit`（`int`）：数值控制参数，用于限制范围、数量或时限。 默认值为 `DEFAULT_DATASET_LIMIT`。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return self._run(self._dataset_list_files_impl, directory, recursive, dataset_kind, geometry_type, name_glob, limit)
 
 def _dataset_list_files_impl(self, directory: str, recursive: bool, dataset_kind: str, geometry_type: str, name_glob: str, limit: int) -> dict[str, Any]:
-    """Build the files in a dataset directory."""
+    """
+    作用：实现 `_dataset_list_files_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+    用途：实现 `_dataset_list_files_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `directory`（`str`）：路径类参数，用于定位输入或输出文件系统位置。
+    - 参数 `recursive`（`bool`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `dataset_kind`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `geometry_type`（`str`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 参数 `name_glob`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 参数 `limit`（`int`）：数值控制参数，用于限制范围、数量或时限。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    异常：可能显式抛出 `Exception`。
+    """
     root = Path(directory)
     if not root.exists() or not root.is_dir():
         raise Exception(f"Directory not found: {directory}")
@@ -104,7 +142,15 @@ def _dataset_list_files_impl(self, directory: str, recursive: bool, dataset_kind
 
 @staticmethod
 def _detect_dataset_kind(path: Path) -> str | None:
-    """Handle detect dataset kind."""
+    """
+    作用：封装内部辅助步骤 `_detect_dataset_kind`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_detect_dataset_kind`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `path`（`Path`）：路径类参数，用于定位输入或输出文件系统位置。
+    - 返回：返回 `str | None` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str | None` 类型结果，返回值语义遵循该函数实现约定。
+    """
     vector_exts = {".shp", ".gpkg", ".geojson", ".json", ".kml", ".gml", ".sqlite", ".csv"}
     raster_exts = {".tif", ".tiff", ".img", ".vrt", ".asc", ".jp2", ".png", ".jpg", ".jpeg"}
     suffix = path.suffix.lower()
@@ -116,7 +162,15 @@ def _detect_dataset_kind(path: Path) -> str | None:
 
 @staticmethod
 def _detect_vector_geometry_type(path: Path) -> str:
-    """Handle detect vector geometry type."""
+    """
+    作用：封装内部辅助步骤 `_detect_vector_geometry_type`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_detect_vector_geometry_type`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `path`（`Path`）：路径类参数，用于定位输入或输出文件系统位置。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     layer = QgsVectorLayer(str(path), "__probe__", "ogr")
     if not layer.isValid():
         return "unknown"
@@ -124,7 +178,16 @@ def _detect_vector_geometry_type(path: Path) -> str:
 
 @staticmethod
 def _normalize_dataset_kind(dataset_kind: str | None) -> str:
-    """Handle normalize dataset kind."""
+    """
+    作用：封装内部辅助步骤 `_normalize_dataset_kind`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_normalize_dataset_kind`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `dataset_kind`（`str | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    异常：可能显式抛出 `Exception`。
+    """
     value = (dataset_kind or "both").strip().lower()
     if value in {"both", "all", "any"}:
         return "both"
@@ -133,7 +196,16 @@ def _normalize_dataset_kind(dataset_kind: str | None) -> str:
     raise Exception(f"Invalid dataset_kind: {dataset_kind}")
 
 def _normalize_dataset_limit(self, limit: Any | None) -> tuple[int, int, bool]:
-    """Handle normalize dataset limit."""
+    """
+    作用：封装内部辅助步骤 `_normalize_dataset_limit`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_normalize_dataset_limit`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `limit`（`Any | None`）：数值控制参数，用于限制范围、数量或时限。
+    - 返回：返回 `tuple[int, int, bool]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `tuple[int, int, bool]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     requested = self._safe_int(limit, self.DEFAULT_DATASET_LIMIT)
     normalized = max(0, requested)
     applied = min(normalized, self.MAX_DATASET_LIMIT)
@@ -141,7 +213,16 @@ def _normalize_dataset_limit(self, limit: Any | None) -> tuple[int, int, bool]:
 
 @staticmethod
 def _normalize_geometry_type_filter(geometry_type: str | None) -> str:
-    """Handle normalize geometry type filter."""
+    """
+    作用：封装内部辅助步骤 `_normalize_geometry_type_filter`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_normalize_geometry_type_filter`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `geometry_type`（`str | None`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    异常：可能显式抛出 `Exception`。
+    """
     value = (geometry_type or "any").strip().lower()
     if value in {"any", "point", "line", "polygon", "unknown"}:
         return value
@@ -149,13 +230,30 @@ def _normalize_geometry_type_filter(geometry_type: str | None) -> str:
 
 @staticmethod
 def _normalize_name_glob(name_glob: str | None) -> str:
-    """Handle normalize name glob."""
+    """
+    作用：封装内部辅助步骤 `_normalize_name_glob`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_normalize_name_glob`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `name_glob`（`str | None`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     value = (name_glob or "*").strip()
     return value or "*"
 
 @staticmethod
 def _safe_int(value: Any, default: int) -> int:
-    """Handle safe int."""
+    """
+    作用：封装内部辅助步骤 `_safe_int`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_safe_int`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `value`（`Any`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `default`（`int`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `int` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `int` 类型结果，返回值语义遵循该函数实现约定。
+    """
     try:
         return int(value)
     except (TypeError, ValueError):

@@ -58,6 +58,15 @@ MAX_ALGORITHM_LIST_LIMIT = 60
 _PROCESSING_INITIALIZED = False
 
 def _ensure_processing_initialized() -> None:
+    """
+    作用：确保 `_ensure_processing_initialized` 负责的前置状态可用，必要时执行初始化或修复动作。
+    用途：确保 `_ensure_processing_initialized` 负责的前置状态可用，必要时执行初始化或修复动作。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数：无。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     global _PROCESSING_INITIALIZED
     if _PROCESSING_INITIALIZED:
         return
@@ -68,7 +77,21 @@ TOOL_NAME = 'project_cleanup_work_layers'
 TOOL_DOC = '按 task_name 或 layer_ids 清理 shapefile 工作流创建的临时图层，并可选删除显式登记的临时文件。 task_name 用于按任务标签批量匹配工作层，layer_ids 可精确指定图层，temp_paths 可补充显式临时路径，delete_temp_files 控制是否删除这些路径，confirm_write 与 confirm_destructive 仅在删文件时生效。 至少提供可匹配的 task_name、layer_ids 或 temp_paths 中的一类才有意义；若 delete_temp_files=true 且存在路径，则必须 confirm_write=true 且 confirm_destructive=true。 会从当前工程移除匹配的临时图层；可选地删除临时文件或临时目录。 删除磁盘临时文件时需要显式双确认；仅移除工程图层时不触碰源数据文件。 返回 removed_layer_ids、deleted_temp_paths 和 missing_temp_paths，便于回收检查与日志留存。'
 
 def project_cleanup_work_layers(self, task_name: str = "", layer_ids: list[str] | None = None, temp_paths: list[str] | None = None, delete_temp_files: bool = True, confirm_write: bool = False, confirm_destructive: bool = False) -> dict[str, Any]:
-    """Handle work layers from the project."""
+    """
+    作用：处理 `project_cleanup_work_layers` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    用途：处理 `project_cleanup_work_layers` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    使用场景：在 MCP 客户端调用对应 tool 时触发，作为工具公开入口处理请求与响应。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `task_name`（`str`）：标识或模式参数，用于指定目标对象或流程分支。 默认值为 `""`。
+    - 参数 `layer_ids`（`list[str] | None`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。 默认值为 `None`。
+    - 参数 `temp_paths`（`list[str] | None`）：路径类参数，用于定位输入或输出文件系统位置。 默认值为 `None`。
+    - 参数 `delete_temp_files`（`bool`）：路径类参数，用于定位输入或输出文件系统位置。 默认值为 `True`。
+    - 参数 `confirm_write`（`bool`）：布尔开关参数，用于控制是否启用特定行为。 默认值为 `False`。
+    - 参数 `confirm_destructive`（`bool`）：布尔开关参数，用于控制是否启用特定行为。 默认值为 `False`。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return self._run(self._project_cleanup_work_layers_impl, task_name, layer_ids, temp_paths, delete_temp_files, confirm_write, confirm_destructive)
 
 def _project_cleanup_work_layers_impl(
@@ -80,7 +103,22 @@ def _project_cleanup_work_layers_impl(
     confirm_write: bool,
     confirm_destructive: bool,
 ) -> dict[str, Any]:
-    """Implement the work layers from the project logic."""
+    """
+    作用：实现 `_project_cleanup_work_layers_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+    用途：实现 `_project_cleanup_work_layers_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `task_name`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 参数 `layer_ids`（`list[str] | None`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 参数 `temp_paths`（`list[str] | None`）：路径类参数，用于定位输入或输出文件系统位置。
+    - 参数 `delete_temp_files`（`bool`）：路径类参数，用于定位输入或输出文件系统位置。
+    - 参数 `confirm_write`（`bool`）：布尔开关参数，用于控制是否启用特定行为。
+    - 参数 `confirm_destructive`（`bool`）：布尔开关参数，用于控制是否启用特定行为。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    异常：可能显式抛出 `Exception`。
+    """
     normalized_task = (task_name or "").strip()
     target_layers = self._collect_cleanup_target_layers(normalized_task, layer_ids)
     collected_temp_paths: list[str] = []
@@ -168,7 +206,20 @@ def _append_shapefile_run_step(
     warnings: list[str] | None = None,
     status: str | None = None,
 ) -> None:
-    """Handle append shapefile run step."""
+    """
+    作用：封装内部辅助步骤 `_append_shapefile_run_step`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_append_shapefile_run_step`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `step`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `summary`（`dict[str, Any] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 参数 `outputs`（`dict[str, Any] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 参数 `warnings`（`list[str] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 参数 `status`（`str | None`）：标识或模式参数，用于指定目标对象或流程分支。 默认值为 `None`。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     payload = {
         "step": step,
         "generated_at": self._utc_now_iso(),
@@ -188,7 +239,17 @@ def _collect_cleanup_target_layers(
     task_name: str,
     layer_ids: list[str] | None,
 ) -> list[QgsMapLayer]:
-    """Handle collect cleanup target layers."""
+    """
+    作用：封装内部辅助步骤 `_collect_cleanup_target_layers`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_collect_cleanup_target_layers`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `task_name`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 参数 `layer_ids`（`list[str] | None`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 返回：返回 `list[QgsMapLayer]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `list[QgsMapLayer]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     requested_ids = {
         str(layer_id).strip()
         for layer_id in (layer_ids or [])
@@ -216,7 +277,16 @@ def _collect_cleanup_target_layers(
 
 @staticmethod
 def _ensure_filesystem_write_confirmed(confirm_write: bool) -> None:
-    """Handle ensure filesystem write confirmed."""
+    """
+    作用：确保 `_ensure_filesystem_write_confirmed` 负责的前置状态可用，必要时执行初始化或修复动作。
+    用途：确保 `_ensure_filesystem_write_confirmed` 负责的前置状态可用，必要时执行初始化或修复动作。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `confirm_write`（`bool`）：布尔开关参数，用于控制是否启用特定行为。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    异常：可能显式抛出 `Exception`。
+    """
     if not confirm_write:
         raise Exception(
             "confirm_write must be true for filesystem_edit_* operations"
@@ -228,7 +298,18 @@ def _ensure_shapefile_run_summary(
     status: str | None = None,
     inputs: dict[str, Any] | None = None,
 ) -> str:
-    """Handle ensure shapefile run summary."""
+    """
+    作用：确保 `_ensure_shapefile_run_summary` 负责的前置状态可用，必要时执行初始化或修复动作。
+    用途：确保 `_ensure_shapefile_run_summary` 负责的前置状态可用，必要时执行初始化或修复动作。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `task_name`（`str`）：标识或模式参数，用于指定目标对象或流程分支。 默认值为 `""`。
+    - 参数 `status`（`str | None`）：标识或模式参数，用于指定目标对象或流程分支。 默认值为 `None`。
+    - 参数 `inputs`（`dict[str, Any] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     normalized = (task_name or self._shapefile_run_summary.get("task_name") or "").strip()
     if (
         not self._shapefile_run_summary.get("task_name")
@@ -252,7 +333,16 @@ def _ensure_shapefile_run_summary(
     return normalized
 
 def _get_layer_temp_paths(self, layer: QgsMapLayer) -> list[str]:
-    """Return the layer temp paths."""
+    """
+    作用：封装内部辅助步骤 `_get_layer_temp_paths`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_get_layer_temp_paths`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `layer`（`QgsMapLayer`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 返回：返回 `list[str]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `list[str]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     raw = self._layer_custom_property(
         layer,
         "processingmcpserver/workflow/temp_paths",
@@ -271,7 +361,19 @@ def _get_layer_temp_paths(self, layer: QgsMapLayer) -> list[str]:
 
 @staticmethod
 def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[str, Any] | None = None, warnings: list[str] | None = None, **extra) -> dict[str, Any]:
-    """Handle ok result."""
+    """
+    作用：封装内部辅助步骤 `_ok_result`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_ok_result`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `tool`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `summary`（`dict[str, Any] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 参数 `outputs`（`dict[str, Any] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 参数 `warnings`（`list[str] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 参数 `**extra`：可变关键字参数，用于扩展命名输入。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     payload: dict[str, Any] = {"ok": True, "tool": tool, "summary": summary or {}, "outputs": outputs or {}}
     if warnings is not None:
         payload["warnings"] = warnings
@@ -279,12 +381,29 @@ def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[s
     return payload
 
 def _resolve_filesystem_write_path(self, path: str | Path) -> Path:
-    """Resolve filesystem write path."""
+    """
+    作用：封装内部辅助步骤 `_resolve_filesystem_write_path`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_resolve_filesystem_write_path`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `path`（`str | Path`）：路径类参数，用于定位输入或输出文件系统位置。
+    - 返回：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return self._resolve_filesystem_query_path(path)
 
 @staticmethod
 def _serialize_value(value: Any) -> Any:
-    """Serialize values into JSON-friendly representations."""
+    """
+    作用：封装内部辅助步骤 `_serialize_value`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_serialize_value`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `value`（`Any`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `Any` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `Any` 类型结果，返回值语义遵循该函数实现约定。
+    """
     if value is None:
         return None
     if isinstance(value, (bool, int, float, str)):
@@ -317,12 +436,30 @@ def _serialize_value(value: Any) -> Any:
 
 @staticmethod
 def _utc_now_iso() -> str:
-    """Return the current UTC timestamp in ISO 8601 format."""
+    """
+    作用：封装内部辅助步骤 `_utc_now_iso`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_utc_now_iso`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数：无。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 @staticmethod
 def _layer_custom_property(layer: QgsMapLayer, key: str, default: Any = None) -> Any:
-    """Handle layer custom property."""
+    """
+    作用：封装内部辅助步骤 `_layer_custom_property`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_layer_custom_property`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `layer`（`QgsMapLayer`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 参数 `key`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 参数 `default`（`Any`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 返回：返回 `Any` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `Any` 类型结果，返回值语义遵循该函数实现约定。
+    """
     if hasattr(layer, "customProperty"):
         try:
             return layer.customProperty(key, default)
@@ -336,7 +473,18 @@ def _reset_shapefile_run_summary(
     status: str,
     inputs: dict[str, Any] | None = None,
 ) -> str:
-    """Handle reset shapefile run summary."""
+    """
+    作用：封装内部辅助步骤 `_reset_shapefile_run_summary`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_reset_shapefile_run_summary`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `task_name`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 参数 `status`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+    - 参数 `inputs`（`dict[str, Any] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     normalized = (task_name or "").strip()
     self._shapefile_run_summary = self._empty_shapefile_run_summary()
     self._shapefile_run_summary["task_name"] = normalized
@@ -346,11 +494,28 @@ def _reset_shapefile_run_summary(
     return normalized
 
 def _resolve_filesystem_query_path(self, path: str | Path) -> Path:
-    """Resolve filesystem query path."""
+    """
+    作用：封装内部辅助步骤 `_resolve_filesystem_query_path`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_resolve_filesystem_query_path`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `path`（`str | Path`）：路径类参数，用于定位输入或输出文件系统位置。
+    - 返回：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return self._normalize_filesystem_path(path)
 
 def _empty_shapefile_run_summary(self) -> dict[str, Any]:
-    """Build an empty shapefile run summary record."""
+    """
+    作用：封装内部辅助步骤 `_empty_shapefile_run_summary`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_empty_shapefile_run_summary`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return {
         "schema_version": "1.0.0",
         "generated_at": self._utc_now_iso(),
@@ -369,7 +534,15 @@ def _empty_shapefile_run_summary(self) -> dict[str, Any]:
 
 @staticmethod
 def _normalize_filesystem_path(path: str | Path) -> Path:
-    """Handle normalize filesystem path."""
+    """
+    作用：封装内部辅助步骤 `_normalize_filesystem_path`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_normalize_filesystem_path`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `path`（`str | Path`）：路径类参数，用于定位输入或输出文件系统位置。
+    - 返回：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    """
     candidate = path if isinstance(path, Path) else Path(str(path).strip()).expanduser()
     if not candidate.is_absolute():
         candidate = Path.cwd() / candidate

@@ -58,6 +58,15 @@ MAX_ALGORITHM_LIST_LIMIT = 60
 _PROCESSING_INITIALIZED = False
 
 def _ensure_processing_initialized() -> None:
+    """
+    作用：确保 `_ensure_processing_initialized` 负责的前置状态可用，必要时执行初始化或修复动作。
+    用途：确保 `_ensure_processing_initialized` 负责的前置状态可用，必要时执行初始化或修复动作。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数：无。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     global _PROCESSING_INITIALIZED
     if _PROCESSING_INITIALIZED:
         return
@@ -68,11 +77,38 @@ TOOL_NAME = 'raster_stats_zonal'
 TOOL_DOC = '把栅格统计结果按分区写入矢量图层属性表，常用于区域统计。 vector_layer_ref 指向分区矢量图层，raster_layer_ref 指向栅格图层，raster_band 指定波段，column_prefix 控制输出字段前缀，in_place 控制是否直接写回原矢量图层。 矢量与栅格图层都必须存在，且空间关系应满足分区统计需求。 会运行原生 zonal statistics 算法，并在矢量属性表增加统计字段；默认副本模式下生成新的输出图层。 默认 in_place=false，会先生成副本图层并返回新的 output_layer_id；仅在明确要修改原图层时才把 in_place 设为 true。 返回 summary.mode、algorithm、output_layer_id 和底层 Processing 结果对象。'
 
 def raster_stats_zonal(self, vector_layer_ref: str, raster_layer_ref: str, raster_band: int = 1, column_prefix: str = "z_", in_place: bool = False) -> dict[str, Any]:
-    """Handle zonal raster statistics."""
+    """
+    作用：处理 `raster_stats_zonal` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    用途：处理 `raster_stats_zonal` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    使用场景：在 MCP 客户端调用对应 tool 时触发，作为工具公开入口处理请求与响应。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `vector_layer_ref`（`str`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 参数 `raster_layer_ref`（`str`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 参数 `raster_band`（`int`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `1`。
+    - 参数 `column_prefix`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `"z_"`。
+    - 参数 `in_place`（`bool`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `False`。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return self._run(self._raster_stats_zonal_impl, vector_layer_ref, raster_layer_ref, raster_band, column_prefix, in_place)
 
 def _raster_stats_zonal_impl(self, vector_layer_ref: str, raster_layer_ref: str, raster_band: int, column_prefix: str, in_place: bool) -> dict[str, Any]:
-    """Build the zonal raster statistics."""
+    """
+    作用：实现 `_raster_stats_zonal_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+    用途：实现 `_raster_stats_zonal_impl` 对应的核心处理逻辑，承担实际数据处理与结果组织。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `vector_layer_ref`（`str`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 参数 `raster_layer_ref`（`str`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 参数 `raster_band`（`int`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `column_prefix`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `in_place`（`bool`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    异常：可能显式抛出 `Exception`。
+    """
     vector_layer = self._resolve_vector_layer_ref(vector_layer_ref)
     raster_layer = self._resolve_raster_layer_ref(raster_layer_ref)
     self._ensure_processing_runtime()
@@ -103,7 +139,15 @@ def _raster_stats_zonal_impl(self, vector_layer_ref: str, raster_layer_ref: str,
 
 @staticmethod
 def _coerce_output_identifier(value: Any) -> str:
-    """Handle coerce output identifier."""
+    """
+    作用：封装内部辅助步骤 `_coerce_output_identifier`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_coerce_output_identifier`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `value`（`Any`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     if value is None:
         return ""
     if isinstance(value, str):
@@ -116,12 +160,32 @@ def _coerce_output_identifier(value: Any) -> str:
     return str(value)
 
 def _ensure_processing_runtime(self) -> None:
-    """Handle ensure processing runtime."""
+    """
+    作用：确保 `_ensure_processing_runtime` 负责的前置状态可用，必要时执行初始化或修复动作。
+    用途：确保 `_ensure_processing_runtime` 负责的前置状态可用，必要时执行初始化或修复动作。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     _ensure_processing_initialized()
 
 @staticmethod
 def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[str, Any] | None = None, warnings: list[str] | None = None, **extra) -> dict[str, Any]:
-    """Handle ok result."""
+    """
+    作用：封装内部辅助步骤 `_ok_result`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_ok_result`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `tool`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `summary`（`dict[str, Any] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 参数 `outputs`（`dict[str, Any] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 参数 `warnings`（`list[str] | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+    - 参数 `**extra`：可变关键字参数，用于扩展命名输入。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     payload: dict[str, Any] = {"ok": True, "tool": tool, "summary": summary or {}, "outputs": outputs or {}}
     if warnings is not None:
         payload["warnings"] = warnings
@@ -129,14 +193,34 @@ def _ok_result(tool: str, summary: dict[str, Any] | None = None, outputs: dict[s
     return payload
 
 def _resolve_raster_layer_ref(self, layer_ref: Any) -> QgsRasterLayer:
-    """Resolve raster layer ref."""
+    """
+    作用：封装内部辅助步骤 `_resolve_raster_layer_ref`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_resolve_raster_layer_ref`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `layer_ref`（`Any`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 返回：返回 `QgsRasterLayer` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `QgsRasterLayer` 类型结果，返回值语义遵循该函数实现约定。
+    异常：可能显式抛出 `Exception`。
+    """
     layer = self._resolve_layer_ref(layer_ref)
     if layer.type() != QgsMapLayer.RasterLayer:
         raise Exception(f"Layer is not a raster layer: {layer_ref}")
     return layer
 
 def _resolve_vector_layer_ref(self, layer_ref: Any) -> QgsVectorLayer:
-    """Resolve vector layer ref."""
+    """
+    作用：封装内部辅助步骤 `_resolve_vector_layer_ref`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_resolve_vector_layer_ref`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `layer_ref`（`Any`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 返回：返回 `QgsVectorLayer` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `QgsVectorLayer` 类型结果，返回值语义遵循该函数实现约定。
+    异常：可能显式抛出 `Exception`。
+    """
     layer = self._resolve_layer_ref(layer_ref)
     if layer.type() != QgsMapLayer.VectorLayer:
         raise Exception(f"Layer is not a vector layer: {layer_ref}")
@@ -144,7 +228,16 @@ def _resolve_vector_layer_ref(self, layer_ref: Any) -> QgsVectorLayer:
 
 @staticmethod
 def _safe_int(value: Any, default: int) -> int:
-    """Handle safe int."""
+    """
+    作用：封装内部辅助步骤 `_safe_int`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_safe_int`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `value`（`Any`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `default`（`int`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `int` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `int` 类型结果，返回值语义遵循该函数实现约定。
+    """
     try:
         return int(value)
     except (TypeError, ValueError):
@@ -152,7 +245,15 @@ def _safe_int(value: Any, default: int) -> int:
 
 @staticmethod
 def _serialize_value(value: Any) -> Any:
-    """Serialize values into JSON-friendly representations."""
+    """
+    作用：封装内部辅助步骤 `_serialize_value`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_serialize_value`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `value`（`Any`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `Any` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `Any` 类型结果，返回值语义遵循该函数实现约定。
+    """
     if value is None:
         return None
     if isinstance(value, (bool, int, float, str)):
@@ -184,7 +285,17 @@ def _serialize_value(value: Any) -> Any:
     return str(value)
 
 def _resolve_layer_ref(self, layer_ref: Any) -> QgsMapLayer:
-    """Resolve layer ref."""
+    """
+    作用：封装内部辅助步骤 `_resolve_layer_ref`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_resolve_layer_ref`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在 MCP 工具内部处理链路中被同模块函数串联调用，用于完成分步业务处理。
+    参数与返回：
+    - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+    - 参数 `layer_ref`（`Any`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+    - 返回：返回 `QgsMapLayer` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `QgsMapLayer` 类型结果，返回值语义遵循该函数实现约定。
+    异常：可能显式抛出 `Exception`。
+    """
     if isinstance(layer_ref, QgsMapLayer):
         return layer_ref
     text = str(layer_ref).strip() if layer_ref is not None else ""

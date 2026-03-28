@@ -24,7 +24,15 @@ from ._shared_case_base import ProcessingMCPTestBase
 
 class CapabilitiesMarkdownRuntimeTest(ProcessingMCPTestBase):
     def test_default_output_path_targets_exporter_module_directory(self):
-        """Verify that the default output path targets the exporter module directory."""
+        """
+        作用：执行测试用例 `default output path targets exporter module directory`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `default output path targets exporter module directory`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         expected = (
             Path(capabilities_markdown.__file__).resolve().parent
             / capabilities_markdown.DEFAULT_CAPABILITIES_MARKDOWN_FILENAME
@@ -33,7 +41,15 @@ class CapabilitiesMarkdownRuntimeTest(ProcessingMCPTestBase):
         self.assertEqual(capabilities_markdown._resolve_output_path(""), expected)
 
     def test_write_markdown_uses_default_target_when_output_omitted(self):
-        """Verify write markdown uses default target when output omitted."""
+        """
+        作用：执行测试用例 `write markdown uses default target when output omitted`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `write markdown uses default target when output omitted`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         with tempfile.TemporaryDirectory() as temp_dir:
             expected = (
                 Path(temp_dir) / capabilities_markdown.DEFAULT_CAPABILITIES_MARKDOWN_FILENAME
@@ -50,7 +66,15 @@ class CapabilitiesMarkdownRuntimeTest(ProcessingMCPTestBase):
             self.assertTrue(expected.exists())
 
     def test_write_markdown_supports_explicit_output_path(self):
-        """Verify write markdown supports explicit output path."""
+        """
+        作用：执行测试用例 `write markdown supports explicit output path`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `write markdown supports explicit output path`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         with tempfile.TemporaryDirectory() as temp_dir:
             output_path = Path(temp_dir) / "nested" / "caps.md"
 
@@ -60,7 +84,15 @@ class CapabilitiesMarkdownRuntimeTest(ProcessingMCPTestBase):
             self.assertTrue(written_path.exists())
 
     def test_written_markdown_covers_registered_capabilities(self):
-        """Verify written markdown covers registered capabilities."""
+        """
+        作用：执行测试用例 `written markdown covers registered capabilities`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `written markdown covers registered capabilities`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         with tempfile.TemporaryDirectory() as temp_dir:
             output_path = Path(temp_dir) / "capabilities.md"
             written_path = processingmcpserver.write_mcp_capabilities_markdown(output_path)

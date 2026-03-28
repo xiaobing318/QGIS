@@ -29,7 +29,15 @@ from processingmcpserver.config_types import (
 
 
 def _load_json_config_file(path: Path) -> dict[str, Any]:
-    """Read the JSON config file and create defaults when the file is missing."""
+    """
+    作用：封装内部辅助步骤 `_load_json_config_file`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_load_json_config_file`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在插件启动读取配置时被调用，用于合并 JSON、Settings 与默认值。
+    参数与返回：
+    - 参数 `path`（`Path`）：路径类参数，用于定位输入或输出文件系统位置。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     default_doc = default_processing_mcp_json_document()
 
     if not path.exists():
@@ -66,7 +74,15 @@ def _load_json_config_file(path: Path) -> dict[str, Any]:
 
 
 def load_processing_mcp_server_config() -> ProcessingMCPServerConfig:
-    """Load and merge configuration into a server-ready config object."""
+    """
+    作用：加载 `processing_mcp_server_config`，完成当前函数负责的处理步骤并产出结果。
+    用途：加载 `processing_mcp_server_config`，完成当前函数负责的处理步骤并产出结果。
+    使用场景：在插件启动读取配置时被调用，用于合并 JSON、Settings 与默认值。
+    参数与返回：
+    - 参数：无。
+    - 返回：返回 `ProcessingMCPServerConfig` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `ProcessingMCPServerConfig` 类型结果，返回值语义遵循该函数实现约定。
+    """
     settings = QgsSettings()
     json_path = processing_mcp_config_file_path()
     payload = _load_json_config_file(json_path)

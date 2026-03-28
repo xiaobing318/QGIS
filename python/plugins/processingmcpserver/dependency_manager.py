@@ -42,13 +42,29 @@ from processingmcpserver.dependency_reporting import (
 
 
 def _write_dependency_report(result: DependencyCheckResult) -> None:
-    """Write the dependency report JSON file."""
+    """
+    作用：封装内部辅助步骤 `_write_dependency_report`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_write_dependency_report`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在插件依赖预检流程中被调用，用于评估并处理第三方依赖安装策略。
+    参数与返回：
+    - 参数 `result`（`DependencyCheckResult`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     report_path = processing_mcp_dependency_report_file_path()
     _write_dependency_report_impl(report_path, result)
 
 
 def _log_result(result: DependencyCheckResult) -> None:
-    """Log the dependency check summary and key runtime context."""
+    """
+    作用：封装内部辅助步骤 `_log_result`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_log_result`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在插件依赖预检流程中被调用，用于评估并处理第三方依赖安装策略。
+    参数与返回：
+    - 参数 `result`（`DependencyCheckResult`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     report_path = processing_mcp_dependency_report_file_path()
     _log_result_impl(report_path, result)
 
@@ -56,7 +72,15 @@ def _log_result(result: DependencyCheckResult) -> None:
 def ensure_processing_mcp_dependencies(
     config: ProcessingMCPServerDependencies,
 ) -> DependencyCheckResult:
-    """Run dependency checks, optionally auto-install missing packages, and write the report."""
+    """
+    作用：确保 `processing_mcp_dependencies`，完成当前函数负责的处理步骤并产出结果。
+    用途：确保 `processing_mcp_dependencies`，完成当前函数负责的处理步骤并产出结果。
+    使用场景：在插件依赖预检流程中被调用，用于评估并处理第三方依赖安装策略。
+    参数与返回：
+    - 参数 `config`（`ProcessingMCPServerDependencies`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `DependencyCheckResult` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `DependencyCheckResult` 类型结果，返回值语义遵循该函数实现约定。
+    """
     environment = _collect_python_environment()
     (
         pip_python_executable,

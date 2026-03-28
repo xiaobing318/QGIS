@@ -10,11 +10,27 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsVectorGetLayerFeaturesTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the expected capability is registered."""
+        """
+        作用：执行测试用例 `registered`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `registered`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         assert_tool_registered(self, "vector_get_layer_features")
 
     def test_success_limit_and_payload(self):
-        """Verify that limit handling and payload output are correct."""
+        """
+        作用：执行测试用例 `success limit and payload`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `success limit and payload`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("feature_vector")
 
@@ -25,7 +41,15 @@ class ToolsVectorGetLayerFeaturesTest(ProcessingMCPTestBase):
         self.assertEqual(result["features"][0]["geometry_wkt"], "Point (108.9 34.2)")
 
     def test_success_zero_or_negative_limit_returns_empty_slice(self):
-        """Verify that zero or negative limits return an empty slice."""
+        """
+        作用：执行测试用例 `success zero or negative limit returns empty slice`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `success zero or negative limit returns empty slice`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("feature_vector_zero")
 
@@ -38,7 +62,15 @@ class ToolsVectorGetLayerFeaturesTest(ProcessingMCPTestBase):
         self.assertEqual(negative_result["features"], [])
 
     def test_success_limit_cap_is_reported(self):
-        """Verify that limit capping is reported."""
+        """
+        作用：执行测试用例 `success limit cap is reported`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `success limit cap is reported`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("feature_vector_capped")
 
@@ -52,14 +84,30 @@ class ToolsVectorGetLayerFeaturesTest(ProcessingMCPTestBase):
         self.assertEqual(len(result["features"]), 3)
 
     def test_failure_layer_not_found(self):
-        """Verify that a missing layer is reported."""
+        """
+        作用：执行测试用例 `failure layer not found`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `failure layer not found`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         with self.assertRaises(Exception) as ctx:
             tools.vector_get_layer_features(layer_ref="missing-layer", limit=2)
         self.assertIn("Layer not found", str(ctx.exception))
 
     def test_success_serializes_qt_field_values(self):
-        """Verify that Qt field values are serialized."""
+        """
+        作用：执行测试用例 `success serializes qt field values`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `success serializes qt field values`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         layer = self.add_serialization_vector_layer("feature_vector_serialization")
 

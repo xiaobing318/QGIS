@@ -21,7 +21,15 @@ from processingmcpserver.dependency_reporting import (
 
 
 def processing_mcp_dependency_report_file_path() -> Path:
-    """Return the dependency report output path."""
+    """
+    作用：处理 `processing_mcp_dependency_report_file_path` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    用途：处理 `processing_mcp_dependency_report_file_path` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    使用场景：在依赖探测流程中被调用，用于收集解释器、pip 与安装目标环境信息。
+    参数与返回：
+    - 参数：无。
+    - 返回：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return (
         Path(QgsApplication.qgisSettingsDirPath())
         / "processingmcpserver"
@@ -30,12 +38,28 @@ def processing_mcp_dependency_report_file_path() -> Path:
 
 
 def processing_mcp_requirements_file_path() -> Path:
-    """Return the plugin requirements.txt path."""
+    """
+    作用：处理 `processing_mcp_requirements_file_path` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    用途：处理 `processing_mcp_requirements_file_path` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    使用场景：在依赖探测流程中被调用，用于收集解释器、pip 与安装目标环境信息。
+    参数与返回：
+    - 参数：无。
+    - 返回：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return Path(__file__).resolve().parent / "requirements.txt"
 
 
 def _load_requirements_from_file(path: Path) -> RequirementsFileLoadResult:
-    """Read dependencies from requirements.txt and skip empty lines and comments."""
+    """
+    作用：封装内部辅助步骤 `_load_requirements_from_file`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_load_requirements_from_file`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在依赖探测流程中被调用，用于收集解释器、pip 与安装目标环境信息。
+    参数与返回：
+    - 参数 `path`（`Path`）：路径类参数，用于定位输入或输出文件系统位置。
+    - 返回：返回 `RequirementsFileLoadResult` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `RequirementsFileLoadResult` 类型结果，返回值语义遵循该函数实现约定。
+    """
     normalized: list[str] = []
     seen: set[str] = set()
 
@@ -83,7 +107,15 @@ def _load_requirements_from_file(path: Path) -> RequirementsFileLoadResult:
 
 
 def _collect_python_environment() -> PythonEnvironmentSnapshot:
-    """Collect interpreter and platform information and record environment errors on failure."""
+    """
+    作用：封装内部辅助步骤 `_collect_python_environment`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_collect_python_environment`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在依赖探测流程中被调用，用于收集解释器、pip 与安装目标环境信息。
+    参数与返回：
+    - 参数：无。
+    - 返回：返回 `PythonEnvironmentSnapshot` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `PythonEnvironmentSnapshot` 类型结果，返回值语义遵循该函数实现约定。
+    """
     environment_errors: list[str] = []
 
     site_packages: list[str] = []
@@ -125,7 +157,15 @@ def _collect_python_environment() -> PythonEnvironmentSnapshot:
 def _resolve_pip_python_executable(
     environment: PythonEnvironmentSnapshot,
 ) -> tuple[str, str, str]:
-    """Resolve the Python executable path used by pip."""
+    """
+    作用：封装内部辅助步骤 `_resolve_pip_python_executable`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_resolve_pip_python_executable`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在依赖探测流程中被调用，用于收集解释器、pip 与安装目标环境信息。
+    参数与返回：
+    - 参数 `environment`（`PythonEnvironmentSnapshot`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `tuple[str, str, str]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `tuple[str, str, str]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     candidates: list[tuple[str, Path]] = []
 
     try:
@@ -169,7 +209,16 @@ def _resolve_install_target_details(
     python_executable: str,
     environment: PythonEnvironmentSnapshot,
 ) -> tuple[str, str]:
-    """Resolve the dependency install prefix and site-packages paths."""
+    """
+    作用：封装内部辅助步骤 `_resolve_install_target_details`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_resolve_install_target_details`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在依赖探测流程中被调用，用于收集解释器、pip 与安装目标环境信息。
+    参数与返回：
+    - 参数 `python_executable`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `environment`（`PythonEnvironmentSnapshot`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `tuple[str, str]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `tuple[str, str]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     fallback_prefix = environment.python_prefix
     fallback_site_packages = _default_site_packages_from_prefix(fallback_prefix)
     if environment.site_packages:
@@ -220,7 +269,15 @@ def _resolve_install_target_details(
 
 
 def _default_site_packages_from_prefix(prefix: str) -> str:
-    """Derive the site-packages directory from a prefix."""
+    """
+    作用：封装内部辅助步骤 `_default_site_packages_from_prefix`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_default_site_packages_from_prefix`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在依赖探测流程中被调用，用于收集解释器、pip 与安装目标环境信息。
+    参数与返回：
+    - 参数 `prefix`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     path = Path(prefix)
     if platform.system().lower() == "windows":
         return str(path / "Lib" / "site-packages")
@@ -231,7 +288,17 @@ def _default_site_packages_from_prefix(prefix: str) -> str:
 def _detect_pip(
     python_executable: str, python_source: str, resolve_error: str
 ) -> PipDetectionResult:
-    """Probe whether pip is available for the given interpreter and return version information."""
+    """
+    作用：封装内部辅助步骤 `_detect_pip`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_detect_pip`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在依赖探测流程中被调用，用于收集解释器、pip 与安装目标环境信息。
+    参数与返回：
+    - 参数 `python_executable`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `python_source`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `resolve_error`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `PipDetectionResult` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `PipDetectionResult` 类型结果，返回值语义遵循该函数实现约定。
+    """
     if not python_executable:
         return PipDetectionResult(
             available=False,

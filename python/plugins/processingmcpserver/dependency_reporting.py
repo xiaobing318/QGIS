@@ -11,7 +11,16 @@ from processingmcpserver.dependency_models import DependencyCheckResult
 
 
 def _write_dependency_report(path: Path, result: DependencyCheckResult) -> None:
-    """Write the dependency report JSON file and log a warning on failure."""
+    """
+    作用：封装内部辅助步骤 `_write_dependency_report`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_write_dependency_report`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在依赖检查结果落盘与日志展示流程中被调用，用于输出结构化报告。
+    参数与返回：
+    - 参数 `path`（`Path`）：路径类参数，用于定位输入或输出文件系统位置。
+    - 参数 `result`（`DependencyCheckResult`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(
@@ -27,7 +36,16 @@ def _write_dependency_report(path: Path, result: DependencyCheckResult) -> None:
 
 
 def _log_result(report_path: Path, result: DependencyCheckResult) -> None:
-    """Log the dependency check summary and key runtime context."""
+    """
+    作用：封装内部辅助步骤 `_log_result`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_log_result`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在依赖检查结果落盘与日志展示流程中被调用，用于输出结构化报告。
+    参数与返回：
+    - 参数 `report_path`（`Path`）：路径类参数，用于定位输入或输出文件系统位置。
+    - 参数 `result`（`DependencyCheckResult`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：无返回值。
+    返回结果：无返回值。
+    """
     QgsMessageLog.logMessage(
         f"Processing MCP dependency report: {report_path}",
         MCP_LOG_CATEGORY,
@@ -135,14 +153,31 @@ def _log_result(report_path: Path, result: DependencyCheckResult) -> None:
 
 
 def _truncate_text(text: str, max_length: int = 20_000) -> str:
-    """Truncate long text to keep reports and logs compact."""
+    """
+    作用：封装内部辅助步骤 `_truncate_text`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_truncate_text`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在依赖检查结果落盘与日志展示流程中被调用，用于输出结构化报告。
+    参数与返回：
+    - 参数 `text`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `max_length`（`int`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `20_000`。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     if len(text) <= max_length:
         return text
     return text[:max_length] + "\n...[truncated]..."
 
 
 def _first_line(text: str) -> str:
-    """Extract the first line for log summaries."""
+    """
+    作用：封装内部辅助步骤 `_first_line`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_first_line`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在依赖检查结果落盘与日志展示流程中被调用，用于输出结构化报告。
+    参数与返回：
+    - 参数 `text`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     content = (text or "").strip()
     if not content:
         return "<empty>"
@@ -151,7 +186,15 @@ def _first_line(text: str) -> str:
 
 
 def _summarize_failure_reason(stderr_text: str) -> str:
-    """Extract a failure summary and prefer the first line of text."""
+    """
+    作用：封装内部辅助步骤 `_summarize_failure_reason`，用于拆分并复用模块内重复处理逻辑。
+    用途：封装内部辅助步骤 `_summarize_failure_reason`，用于拆分并复用模块内重复处理逻辑。
+    使用场景：在依赖检查结果落盘与日志展示流程中被调用，用于输出结构化报告。
+    参数与返回：
+    - 参数 `stderr_text`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
+    """
     text = (stderr_text or "").strip()
     if not text:
         return "no stderr output"

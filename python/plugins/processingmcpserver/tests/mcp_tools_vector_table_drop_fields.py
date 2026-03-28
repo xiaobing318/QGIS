@@ -6,11 +6,27 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsVectorTableDropFieldsTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the expected capability is registered."""
+        """
+        作用：执行测试用例 `registered`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `registered`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         assert_tool_registered(self, "vector_table_drop_fields")
 
     def test_default_creates_copy_layer(self):
-        """Verify that the default behavior creates a copy layer."""
+        """
+        作用：执行测试用例 `default creates copy layer`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `default creates copy layer`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("drop_field_vector_copy")
         tools.vector_table_add_field(
@@ -33,7 +49,15 @@ class ToolsVectorTableDropFieldsTest(ProcessingMCPTestBase):
         self.assertNotIn("temp_field", self.vector_field_names(output_layer))
 
     def test_success_drop_field(self):
-        """Verify the successful path for dropping a field."""
+        """
+        作用：执行测试用例 `success drop field`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `success drop field`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("drop_field_vector")
         add_result = tools.vector_table_add_field(
@@ -52,7 +76,15 @@ class ToolsVectorTableDropFieldsTest(ProcessingMCPTestBase):
         self.assertEqual(result["summary"]["affected_count"], 1)
 
     def test_failure_empty_fields(self):
-        """Verify that empty field lists are rejected."""
+        """
+        作用：执行测试用例 `failure empty fields`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `failure empty fields`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("drop_field_vector2")
 

@@ -39,7 +39,15 @@ class ProcessingMCPTestBase(QgisTestCase):
     """Shared base for processingmcpserver tests."""
 
     def setUp(self) -> None:
-        """Initialize the test fixture state."""
+        """
+        作用：准备当前测试用例运行所需的初始状态与测试资源。
+        用途：准备当前测试用例运行所需的初始状态与测试资源。
+        使用场景：在每个 unittest 测试用例开始或结束时由测试框架生命周期钩子调用。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         _ensure_qgis_test_app()
         self.settings = QgsSettings()
         self._old_settings = self._backup_processing_mcp_settings()
@@ -57,7 +65,16 @@ class ProcessingMCPTestBase(QgisTestCase):
         self._tmp_dirs: list[tempfile.TemporaryDirectory] = []
 
     def tearDown(self) -> None:
-        """Clean up the test fixture state."""
+        """
+        作用：清理当前测试用例创建的资源，避免对后续测试造成污染。
+        用途：清理当前测试用例创建的资源，避免对后续测试造成污染。
+        使用场景：在每个 unittest 测试用例开始或结束时由测试框架生命周期钩子调用。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        异常：可能显式抛出 `AssertionError`。
+        """
         cleanup_errors: list[str] = []
         try:
             self._cleanup_new_project_layers()
@@ -77,37 +94,89 @@ class ProcessingMCPTestBase(QgisTestCase):
             raise AssertionError("临时目录清理失败: " + "; ".join(cleanup_errors))
 
     def make_temp_dir(self) -> Path:
-        """Create a temporary directory."""
+        """
+        作用：实现 `make_temp_dir` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `make_temp_dir` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+        """
         temp_dir = tempfile.TemporaryDirectory()
         self._tmp_dirs.append(temp_dir)
         return Path(temp_dir.name)
 
     def _backup_processing_mcp_settings(self) -> dict[str, object]:
-        """Back up Processing MCP settings."""
+        """
+        作用：封装内部辅助步骤 `_backup_processing_mcp_settings`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `_backup_processing_mcp_settings`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `dict[str, object]` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `dict[str, object]` 类型结果，返回值语义遵循该函数实现约定。
+        """
         self.settings.beginGroup("Processing/MCP")
         old_settings = {key: self.settings.value(key) for key in self.settings.allKeys()}
         self.settings.endGroup()
         return old_settings
 
     def _restore_processing_mcp_settings(self, old_settings: dict[str, object]) -> None:
-        """Restore Processing MCP settings."""
+        """
+        作用：封装内部辅助步骤 `_restore_processing_mcp_settings`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `_restore_processing_mcp_settings`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `old_settings`（`dict[str, object]`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         for key, value in old_settings.items():
             self.settings.setValue(f"Processing/MCP/{key}", value)
 
     def _write_json_config(self, payload: dict) -> None:
-        """Write the JSON config file."""
+        """
+        作用：封装内部辅助步骤 `_write_json_config`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `_write_json_config`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `payload`（`dict`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
         self.config_path.write_text(
             json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8"
         )
 
     def _write_raw_json_text(self, content: str) -> None:
-        """Write raw JSON config text."""
+        """
+        作用：封装内部辅助步骤 `_write_raw_json_text`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `_write_raw_json_text`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `content`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         self.config_path.parent.mkdir(parents=True, exist_ok=True)
         self.config_path.write_text(content, encoding="utf-8")
 
     def _build_config(self, transport: str) -> ProcessingMCPServerConfig:
-        """Build a test config object."""
+        """
+        作用：构建 `_build_config` 相关对象或配置数据，供后续流程直接复用。
+        用途：构建 `_build_config` 相关对象或配置数据，供后续流程直接复用。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `transport`（`str`）：数值控制参数，用于限制范围、数量或时限。
+        - 返回：返回 `ProcessingMCPServerConfig` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `ProcessingMCPServerConfig` 类型结果，返回值语义遵循该函数实现约定。
+        """
         return ProcessingMCPServerConfig(
             enabled=True,
             transport=transport,
@@ -128,7 +197,15 @@ class ProcessingMCPTestBase(QgisTestCase):
 
     @staticmethod
     def build_env_snapshot() -> dependency_runtime.PythonEnvironmentSnapshot:
-        """Build an environment snapshot."""
+        """
+        作用：实现 `build_env_snapshot` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `build_env_snapshot` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数：无。
+        - 返回：返回 `dependency_runtime.PythonEnvironmentSnapshot` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `dependency_runtime.PythonEnvironmentSnapshot` 类型结果，返回值语义遵循该函数实现约定。
+        """
         return dependency_runtime.PythonEnvironmentSnapshot(
             platform_system="Windows",
             platform_release="10",
@@ -145,7 +222,15 @@ class ProcessingMCPTestBase(QgisTestCase):
         )
 
     def build_tools(self) -> ProcessingMCPTools:
-        """Build test tools."""
+        """
+        作用：实现 `build_tools` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `build_tools` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `ProcessingMCPTools` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `ProcessingMCPTools` 类型结果，返回值语义遵循该函数实现约定。
+        """
         return ProcessingMCPTools(
             iface=None,
             runner=DummyRunner(),
@@ -153,7 +238,15 @@ class ProcessingMCPTestBase(QgisTestCase):
         )
 
     def _cleanup_new_project_layers(self) -> None:
-        """Remove any project layers created during the test."""
+        """
+        作用：封装内部辅助步骤 `_cleanup_new_project_layers`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `_cleanup_new_project_layers`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         project = QgsProject.instance()
         current_ids = set(project.mapLayers().keys())
         for layer_id in current_ids - self._project_layer_ids_before:
@@ -161,13 +254,30 @@ class ProcessingMCPTestBase(QgisTestCase):
         gc.collect()
 
     def _assert_no_new_project_layers(self) -> None:
-        """Assert that no new project layers remain."""
+        """
+        作用：封装内部辅助步骤 `_assert_no_new_project_layers`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `_assert_no_new_project_layers`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         current_ids = set(QgsProject.instance().mapLayers().keys())
         leaked = sorted(current_ids - self._project_layer_ids_before)
         self.assertEqual(leaked, [], msg=f"存在未清理的测试图层: {leaked}")
 
     def _cleanup_temp_dirs_with_retry(self, errors: list[str]) -> None:
-        """Clean up temporary directories with retries."""
+        """
+        作用：封装内部辅助步骤 `_cleanup_temp_dirs_with_retry`，用于拆分并复用模块内重复处理逻辑。
+        用途：封装内部辅助步骤 `_cleanup_temp_dirs_with_retry`，用于拆分并复用模块内重复处理逻辑。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `errors`（`list[str]`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         for temp_dir in self._tmp_dirs:
             last_error: Exception | None = None
             for attempt in range(1, 6):
@@ -196,7 +306,16 @@ class ProcessingMCPTestBase(QgisTestCase):
         self._tmp_dirs = []
 
     def data_dir(self) -> Path:
-        """Resolve the test data directory."""
+        """
+        作用：实现 `data_dir` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `data_dir` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+        异常：可能显式抛出 `AssertionError`。
+        """
         candidates = [Path(__file__).resolve().parent / "data"]
         for candidate in candidates:
             if candidate.exists():
@@ -204,7 +323,16 @@ class ProcessingMCPTestBase(QgisTestCase):
         raise AssertionError("未找到测试数据目录: tests/data")
 
     def sample_vector_path(self) -> Path:
-        """Resolve the sample vector dataset path."""
+        """
+        作用：实现 `sample_vector_path` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `sample_vector_path` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+        异常：可能显式抛出 `AssertionError`。
+        """
         vector_path = self.data_dir() / "sample_vector.geojson"
         if vector_path.exists():
             return vector_path
@@ -213,7 +341,16 @@ class ProcessingMCPTestBase(QgisTestCase):
     def add_sample_vector_layer(
         self, layer_name: str = "processingmcpserver_test_vector"
     ) -> QgsVectorLayer:
-        """Add a sample vector layer."""
+        """
+        作用：实现 `add_sample_vector_layer` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `add_sample_vector_layer` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `layer_name`（`str`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。 默认值为 `"processingmcpserver_test_vector"`。
+        - 返回：返回 `QgsVectorLayer` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `QgsVectorLayer` 类型结果，返回值语义遵循该函数实现约定。
+        """
         layer = QgsVectorLayer(
             "Point?crs=EPSG:4326&field=name:string(32)&field=value:double&field=category:string(16)",
             layer_name,
@@ -245,7 +382,16 @@ class ProcessingMCPTestBase(QgisTestCase):
     def add_sample_polygon_layer(
         self, layer_name: str = "processingmcpserver_test_polygon"
     ) -> QgsVectorLayer:
-        """Add a sample polygon layer."""
+        """
+        作用：实现 `add_sample_polygon_layer` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `add_sample_polygon_layer` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `layer_name`（`str`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。 默认值为 `"processingmcpserver_test_polygon"`。
+        - 返回：返回 `QgsVectorLayer` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `QgsVectorLayer` 类型结果，返回值语义遵循该函数实现约定。
+        """
         layer = QgsVectorLayer(
             "Polygon?crs=EPSG:4326&field=name:string(32)",
             layer_name,
@@ -272,7 +418,16 @@ class ProcessingMCPTestBase(QgisTestCase):
     def add_serialization_vector_layer(
         self, layer_name: str = "processingmcpserver_serialization_vector"
     ) -> QgsVectorLayer:
-        """Add a vector layer with serializable field values."""
+        """
+        作用：实现 `add_serialization_vector_layer` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `add_serialization_vector_layer` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `layer_name`（`str`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。 默认值为 `"processingmcpserver_serialization_vector"`。
+        - 返回：返回 `QgsVectorLayer` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `QgsVectorLayer` 类型结果，返回值语义遵循该函数实现约定。
+        """
         layer = QgsVectorLayer(
             "Point?crs=EPSG:4326&field=name:string(32)",
             layer_name,
@@ -317,7 +472,16 @@ class ProcessingMCPTestBase(QgisTestCase):
         return layer
 
     def sample_raster_path(self) -> Path:
-        """Resolve the sample raster dataset path."""
+        """
+        作用：实现 `sample_raster_path` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `sample_raster_path` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+        异常：可能显式抛出 `AssertionError`。
+        """
         candidates = [
             self.data_dir() / "dem.tif",
             Path(__file__).resolve().parents[4] / "tests" / "testdata" / "analysis" / "dem.tif",
@@ -337,7 +501,16 @@ class ProcessingMCPTestBase(QgisTestCase):
     def add_sample_raster_layer(
         self, layer_name: str = "processingmcpserver_test_dem"
     ) -> QgsRasterLayer:
-        """Add a sample raster layer."""
+        """
+        作用：实现 `add_sample_raster_layer` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `add_sample_raster_layer` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `layer_name`（`str`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。 默认值为 `"processingmcpserver_test_dem"`。
+        - 返回：返回 `QgsRasterLayer` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `QgsRasterLayer` 类型结果，返回值语义遵循该函数实现约定。
+        """
         raster_path = self.sample_raster_path()
         layer = QgsRasterLayer(str(raster_path), layer_name, "gdal")
         self.assertTrue(layer.isValid())
@@ -345,7 +518,16 @@ class ProcessingMCPTestBase(QgisTestCase):
         return layer
 
     def create_vector_geojson_file(self, filename: str = "sample.geojson") -> Path:
-        """Create a vector GeoJSON file."""
+        """
+        作用：实现 `create_vector_geojson_file` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `create_vector_geojson_file` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `filename`（`str`）：路径类参数，用于定位输入或输出文件系统位置。 默认值为 `"sample.geojson"`。
+        - 返回：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+        """
         temp_root = self.make_temp_dir()
         target = temp_root / filename
         target.write_text(
@@ -372,7 +554,19 @@ class ProcessingMCPTestBase(QgisTestCase):
     def copy_test_data_file(
         self, source_name: str, target_dir: Path, target_name: str | None = None
     ) -> Path:
-        """Copy a test data file."""
+        """
+        作用：实现 `copy_test_data_file` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `copy_test_data_file` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `source_name`（`str`）：标识或模式参数，用于指定目标对象或流程分支。
+        - 参数 `target_dir`（`Path`）：路径类参数，用于定位输入或输出文件系统位置。
+        - 参数 `target_name`（`str | None`）：标识或模式参数，用于指定目标对象或流程分支。 默认值为 `None`。
+        - 返回：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+        异常：可能显式抛出 `AssertionError`。
+        """
         source = self.data_dir() / source_name
         if not source.exists():
             raise AssertionError(f"未找到测试数据文件: {source_name}")
@@ -382,7 +576,17 @@ class ProcessingMCPTestBase(QgisTestCase):
         return target
 
     def create_text_file(self, path: Path, content: str) -> Path:
-        """Create a text file."""
+        """
+        作用：实现 `create_text_file` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `create_text_file` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `path`（`Path`）：路径类参数，用于定位输入或输出文件系统位置。
+        - 参数 `content`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+        """
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(content, encoding="utf-8")
         return path
@@ -393,7 +597,18 @@ class ProcessingMCPTestBase(QgisTestCase):
         target_dir: Path,
         stem: str = "sample",
     ) -> Path:
-        """Export the layer as a shapefile bundle."""
+        """
+        作用：实现 `export_layer_to_shapefile` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `export_layer_to_shapefile` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `layer`（`QgsVectorLayer`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+        - 参数 `target_dir`（`Path`）：路径类参数，用于定位输入或输出文件系统位置。
+        - 参数 `stem`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `"sample"`。
+        - 返回：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+        """
         target_dir.mkdir(parents=True, exist_ok=True)
         target_path = target_dir / f"{stem}.shp"
         if target_path.exists():
@@ -419,7 +634,19 @@ class ProcessingMCPTestBase(QgisTestCase):
         target_dir: Path,
         target_stem: str | None = None,
     ) -> Path:
-        """Copy a shapefile bundle."""
+        """
+        作用：实现 `copy_shapefile_bundle` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `copy_shapefile_bundle` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `source_path`（`Path`）：路径类参数，用于定位输入或输出文件系统位置。
+        - 参数 `target_dir`（`Path`）：路径类参数，用于定位输入或输出文件系统位置。
+        - 参数 `target_stem`（`str | None`）：业务输入参数，由调用方提供以驱动当前函数逻辑。 默认值为 `None`。
+        - 返回：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+        异常：可能显式抛出 `AssertionError`。
+        """
         if source_path.suffix.lower() != ".shp":
             raise AssertionError("source_path 必须是 .shp 文件")
         if not source_path.exists():
@@ -439,15 +666,40 @@ class ProcessingMCPTestBase(QgisTestCase):
 
     @staticmethod
     def project_layer(layer_id: str) -> QgsMapLayer | None:
-        """Return the project layer for the given ID."""
+        """
+        作用：实现 `project_layer` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `project_layer` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `layer_id`（`str`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+        - 返回：返回 `QgsMapLayer | None` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `QgsMapLayer | None` 类型结果，返回值语义遵循该函数实现约定。
+        """
         return QgsProject.instance().mapLayer(layer_id)
 
     @staticmethod
     def vector_field_names(layer: QgsVectorLayer) -> list[str]:
-        """Return the field names for a vector layer."""
+        """
+        作用：实现 `vector_field_names` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `vector_field_names` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `layer`（`QgsVectorLayer`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+        - 返回：返回 `list[str]` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `list[str]` 类型结果，返回值语义遵循该函数实现约定。
+        """
         return [field.name() for field in layer.fields()]
 
     @staticmethod
     def vector_attribute_values(layer: QgsVectorLayer, field_name: str) -> list[object]:
-        """Return the attribute values for a vector layer."""
+        """
+        作用：实现 `vector_attribute_values` 方法，处理该类在当前职责中的一个流程步骤。
+        用途：实现 `vector_attribute_values` 方法，处理该类在当前职责中的一个流程步骤。
+        使用场景：在 processingmcpserver 测试辅助流程中被测试代码调用，用于构建、清理或断言测试上下文。
+        参数与返回：
+        - 参数 `layer`（`QgsVectorLayer`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+        - 参数 `field_name`（`str`）：QGIS 数据对象相关参数，用于定位图层、要素或空间参考上下文。
+        - 返回：返回 `list[object]` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `list[object]` 类型结果，返回值语义遵循该函数实现约定。
+        """
         return [feature.attribute(field_name) for feature in layer.getFeatures()]

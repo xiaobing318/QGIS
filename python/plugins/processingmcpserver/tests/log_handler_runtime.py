@@ -15,7 +15,16 @@ from ._shared_case_base import ProcessingMCPTestBase
 class LogHandlerRuntimeTest(ProcessingMCPTestBase):
     @patch("processingmcpserver.log_handler.QgsMessageLog.logMessage")
     def test_default_category_and_message_format(self, mock_log_message):
-        """Verify the default category and message format."""
+        """
+        作用：执行测试用例 `default category and message format`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `default category and message format`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 参数 `mock_log_message`：业务输入参数，由调用方提供以驱动当前函数逻辑。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         handler = QgisLogHandler()
         record = logging.LogRecord(
             name="mcp.server.streamable_http",
@@ -38,13 +47,29 @@ class LogHandlerRuntimeTest(ProcessingMCPTestBase):
         self.assertIn("startup ready", message)
 
     def test_level_mapping(self):
-        """Verify level mapping."""
+        """
+        作用：执行测试用例 `level mapping`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `level mapping`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         self.assertEqual(QgisLogHandler._map_level(logging.INFO), Qgis.Info)
         self.assertEqual(QgisLogHandler._map_level(logging.WARNING), Qgis.Warning)
         self.assertEqual(QgisLogHandler._map_level(logging.ERROR), Qgis.Critical)
 
     def test_emit_falls_back_to_stderr_when_qgis_logging_fails(self):
-        """Verify emit falls back to stderr when QGIS logging fails."""
+        """
+        作用：执行测试用例 `emit falls back to stderr when qgis logging fails`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `emit falls back to stderr when qgis logging fails`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         handler = QgisLogHandler()
         record = logging.LogRecord(
             name="mcp.server.streamable_http",

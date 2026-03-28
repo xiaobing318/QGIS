@@ -8,11 +8,27 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsVectorCheckValidityReportTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the expected capability is registered."""
+        """
+        作用：执行测试用例 `registered`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `registered`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         assert_tool_registered(self, "vector_check_validity_report")
 
     def test_success_clean_layer(self):
-        """Verify that a clean layer passes validation."""
+        """
+        作用：执行测试用例 `success clean layer`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `success clean layer`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("validity_clean")
 
@@ -29,7 +45,15 @@ class ToolsVectorCheckValidityReportTest(ProcessingMCPTestBase):
         self.assertEqual(report["crs"], "EPSG:4326")
 
     def test_detects_duplicates_and_long_field_names(self):
-        """Verify that layers with duplicates and long field names produce the expected report."""
+        """
+        作用：执行测试用例 `detects duplicates and long field names`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `detects duplicates and long field names`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         layer = QgsVectorLayer(
             "Point?crs=EPSG:4326&field=very_long_field_name:string(32)",

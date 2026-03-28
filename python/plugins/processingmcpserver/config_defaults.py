@@ -12,7 +12,15 @@ from processingmcpserver.config_types import (
 
 
 def processing_mcp_config_file_path() -> Path:
-    """Return the Processing MCP JSON configuration file path."""
+    """
+    作用：处理 `processing_mcp_config_file_path` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    用途：处理 `processing_mcp_config_file_path` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    使用场景：在 processingmcpserver 插件运行流程中被调用，用于支撑当前模块的业务处理。
+    参数与返回：
+    - 参数：无。
+    - 返回：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `Path` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return (
         Path(QgsApplication.qgisSettingsDirPath())
         / "processingmcpserver"
@@ -21,7 +29,15 @@ def processing_mcp_config_file_path() -> Path:
 
 
 def default_processing_mcp_json_document() -> dict[str, Any]:
-    """Build the default configuration document used for first-run bootstrapping."""
+    """
+    作用：处理 `default_processing_mcp_json_document` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    用途：处理 `default_processing_mcp_json_document` 相关逻辑，完成当前函数负责的处理步骤并产出结果。
+    使用场景：在 processingmcpserver 插件运行流程中被调用，用于支撑当前模块的业务处理。
+    参数与返回：
+    - 参数：无。
+    - 返回：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回 `dict[str, Any]` 类型结果，返回值语义遵循该函数实现约定。
+    """
     return {
         "version": 1,
         "processing_mcp": {

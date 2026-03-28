@@ -6,11 +6,27 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsFilesystemQueryListEntriesTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the expected capability is registered."""
+        """
+        作用：执行测试用例 `registered`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `registered`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         assert_tool_registered(self, "filesystem_query_list_entries")
 
     def test_success_list_entries(self):
-        """Verify the successful path for listing entries."""
+        """
+        作用：执行测试用例 `success list entries`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `success list entries`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         root = self.make_temp_dir()
         self.create_text_file(root / "a.txt", "alpha")
@@ -28,7 +44,15 @@ class ToolsFilesystemQueryListEntriesTest(ProcessingMCPTestBase):
         self.assertEqual(result["summary"]["returned_count"], 2)
 
     def test_success_recursive_list_filters_relative_paths_and_truncates(self):
-        """Verify the successful path for recursive listing filters relative paths and truncates output."""
+        """
+        作用：执行测试用例 `success recursive list filters relative paths and truncates`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `success recursive list filters relative paths and truncates`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         root = self.make_temp_dir()
         nested = root / "nested"
@@ -66,7 +90,15 @@ class ToolsFilesystemQueryListEntriesTest(ProcessingMCPTestBase):
         self.assertGreaterEqual(truncated["summary"]["matched_total"], 3)
 
     def test_failure_invalid_include_flags(self):
-        """Verify that invalid include flags are rejected."""
+        """
+        作用：执行测试用例 `failure invalid include flags`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `failure invalid include flags`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
         tools = self.build_tools()
         root = self.make_temp_dir()
 
