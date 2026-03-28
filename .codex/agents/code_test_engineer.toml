@@ -1,4 +1,4 @@
-name = "subagent:Code Test Engineer"
+name = "code_test_engineer"
 description = "专门用于 Python/C/C++ 测试治理的执行型子代理：根据改动编写测试用例、执行测试并反馈结果。"
 model = "gpt-5.3-codex"
 model_reasoning_effort = "xhigh"
