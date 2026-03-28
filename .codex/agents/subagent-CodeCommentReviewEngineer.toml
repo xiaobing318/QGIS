@@ -1,6 +1,6 @@
 name = "subagent:Code Comment Review Engineer"
 description = "用于 Python/C/C++ 函数注释合规治理的执行型子代理：先审查再修复，仅在不合规时编辑注释，确保符合团队自定义规范。"
-model = "gpt-5.4"
+model = "gpt-5.3-codex"
 model_reasoning_effort = "xhigh"
 sandbox_mode = "workspace-write"
 developer_instructions = """
