@@ -40,7 +40,9 @@ sandbox_mode = "workspace-write"
 # workspace-write 模式下的附加项，仅在 sandbox_mode = "workspace-write" 时生效
 [sandbox_workspace_write]
 # 候选值 ---> array<string>：在当前 workspace 之外额外允许写入的目录列表；默认空数组。
-writable_roots = []
+writable_roots = [
+  "i:\\github_repos\\QGIS-Materials\\QGISCompilationNavigation\\QGIS-Windows-AMD64\\QGISCompilationGuide-Win10-VS2022\\codex-automations\\logs"
+]
 # 候选值 ---> true/false：是否允许 sandbox 子进程向外联网；默认 false。
 network_access = true
 # 候选值 ---> true/false：是否将 $TMPDIR 从 writable roots 中排除；默认 false。
