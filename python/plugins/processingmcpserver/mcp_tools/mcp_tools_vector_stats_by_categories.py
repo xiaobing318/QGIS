@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'vector_stats_by_categories'
-TOOL_DOC = '???按一个或多个分类字段汇总记录数或数值字段统计，适合做分组分析。 ?????layer_ref 指向矢量图层，category_fields 是分类字段数组，values_field 可选；为空时通常只做分组计数。 ?????目标图层必须存在，分类字段必须存在；若提供 values_field，该字段也必须存在。 ??????无写操作，只读取要素属性并做分组汇总。 ?????无。 ?????返回按分类组合分组后的统计结果，便于模型理解类别分布。'
+TOOL_DOC = '按一个或多个分类字段汇总记录数或数值字段统计，适合做分组分析。 layer_ref 指向矢量图层，category_fields 是分类字段数组，values_field 可选；为空时通常只做分组计数。 目标图层必须存在，分类字段必须存在；若提供 values_field，该字段也必须存在。 无写操作，只读取要素属性并做分组汇总。 无。 返回按分类组合分组后的统计结果，便于模型理解类别分布。'
 
 def vector_stats_by_categories(self, layer_ref: str, category_fields: list[str], values_field: str | None = None) -> dict[str, Any]:
     """Handle vector statistics by category."""

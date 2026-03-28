@@ -8,7 +8,7 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsVectorPrepareWorkLayerTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the target capability is registered."""
+        """Ensure the expected capability is registered."""
         assert_tool_registered(self, "vector_prepare_work_layer")
 
     def test_prepare_work_layer_standardizes_geometry_crs_and_schema(self):
@@ -57,11 +57,10 @@ class ToolsVectorPrepareWorkLayerTest(ProcessingMCPTestBase):
         self.assertEqual(prepared_layer.featureCount(), 2)
 
     def test_failure_invalid_multipart_policy(self):
-        """Verify the failure path for invalid multipart policy."""
+        """Verify the failure path for an invalid multipart policy."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("prepare_invalid_policy")
 
         with self.assertRaises(Exception) as ctx:
             tools.vector_prepare_work_layer(layer_ref=layer.id(), multipart_policy="explode")
         self.assertIn("multipart_policy", str(ctx.exception))
-

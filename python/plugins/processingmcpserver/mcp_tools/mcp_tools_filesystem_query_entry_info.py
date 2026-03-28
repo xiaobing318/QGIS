@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'filesystem_query_entry_info'
-TOOL_DOC = '???读取单个文件或目录的基础元数据。 ?????path 指向文件或目录。 ?????目标路径必须存在。 ??????无写操作，只读取文件系统元数据。 ?????无。 ?????返回 entry 对象，包含类型、大小、时间戳和可用路径信息。'
+TOOL_DOC = '读取单个文件或目录的基础元数据。 path 指向文件或目录。 目标路径必须存在。 无写操作，只读取文件系统元数据。 无。 返回 entry 对象，包含类型、大小、时间戳和可用路径信息。'
 
 def filesystem_query_entry_info(self, path: str) -> dict[str, Any]:
     """Handle filesystem entry information."""

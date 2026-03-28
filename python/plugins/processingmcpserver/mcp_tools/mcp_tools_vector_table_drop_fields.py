@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'vector_table_drop_fields'
-TOOL_DOC = '???删除矢量图层中的一个或多个字段。 ?????layer_ref 指向矢量图层，fields 是待删除字段名数组，in_place 控制是否直接改源图层。 ?????目标图层必须存在，且至少提供一个字段名。 ??????会修改图层字段结构；不存在的字段不会阻止执行，而是记录到 missing_fields。 ?????默认 in_place=false，会先生成副本图层并返回新的 output_layer_id；仅在明确要修改原图层时才把 in_place 设为 true。 ?????返回 summary.mode、affected_count、output_layer_id、剩余字段列表和 missing_fields。'
+TOOL_DOC = '删除矢量图层中的一个或多个字段。 layer_ref 指向矢量图层，fields 是待删除字段名数组，in_place 控制是否直接改源图层。 目标图层必须存在，且至少提供一个字段名。 会修改图层字段结构；不存在的字段不会阻止执行，而是记录到 missing_fields。 默认 in_place=false，会先生成副本图层并返回新的 output_layer_id；仅在明确要修改原图层时才把 in_place 设为 true。 返回 summary.mode、affected_count、output_layer_id、剩余字段列表和 missing_fields。'
 
 def vector_table_drop_fields(self, layer_ref: str, fields: list[str], in_place: bool = False) -> dict[str, Any]:
     """Handle fields from a vector table."""

@@ -1,3 +1,5 @@
+"""Aggregate and execute the processingmcpserver test modules as one suite."""
+
 from __future__ import annotations
 
 import importlib

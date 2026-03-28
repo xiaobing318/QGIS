@@ -6,11 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsDatasetInspectShapefileBundleTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the target capability is registered."""
+        """Ensure the expected capability is registered."""
         assert_tool_registered(self, "dataset_inspect_shapefile_bundle")
 
     def test_success_inspect_complete_bundle(self):
-        """Verify the successful path for inspect complete bundle."""
+        """Verify the successful path for inspecting a complete bundle."""
         tools = self.build_tools()
         temp_root = self.make_temp_dir()
         layer = self.add_sample_vector_layer("shapefile_bundle_complete")
@@ -26,7 +26,7 @@ class ToolsDatasetInspectShapefileBundleTest(ProcessingMCPTestBase):
         self.assertEqual(bundle["missing_required"], [])
 
     def test_detects_missing_required_sidecar(self):
-        """Verify the successful path for missing required sidecar."""
+        """Verify that a missing required sidecar is reported."""
         tools = self.build_tools()
         temp_root = self.make_temp_dir()
         layer = self.add_sample_vector_layer("shapefile_bundle_missing_sidecar")
@@ -40,4 +40,3 @@ class ToolsDatasetInspectShapefileBundleTest(ProcessingMCPTestBase):
         bundle = result["outputs"]["bundles"][0]
         self.assertFalse(bundle["complete_bundle"])
         self.assertIn("shx", bundle["missing_required"])
-

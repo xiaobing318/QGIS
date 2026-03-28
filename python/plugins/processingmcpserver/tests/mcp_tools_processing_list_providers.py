@@ -6,11 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsProcessingListProvidersTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the target capability is registered."""
+        """Ensure the expected capability is registered."""
         assert_tool_registered(self, "processing_list_providers")
 
     def test_success_list_providers(self):
-        """Verify the successful path for list providers."""
+        """Verify the successful path for listing providers."""
         tools = self.build_tools()
         result = tools.processing_list_providers()
 

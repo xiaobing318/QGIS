@@ -6,11 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsProcessingGetAlgorithmsTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the target capability is registered."""
+        """Ensure the expected capability is registered."""
         assert_tool_registered(self, "processing_get_algorithms")
 
     def test_success_get_algorithms_limited(self):
-        """Verify the successful path for get algorithms limited."""
+        """Verify that algorithm listing respects the configured limit."""
         tools = self.build_tools()
 
         result = tools.processing_get_algorithms(limit=5)
@@ -19,7 +19,7 @@ class ToolsProcessingGetAlgorithmsTest(ProcessingMCPTestBase):
         self.assertLessEqual(int(result["returned"]), 5)
 
     def test_success_filter_by_provider_and_return_detail_payload(self):
-        """Verify the successful path for filter by provider and return detail payload."""
+        """Verify that filtering by provider returns a detailed payload."""
         tools = self.build_tools()
 
         filtered = tools.processing_get_algorithms(provider_id="native", limit=5)
@@ -34,7 +34,7 @@ class ToolsProcessingGetAlgorithmsTest(ProcessingMCPTestBase):
         self.assertIn("outputs", detailed["algorithm"])
 
     def test_success_limit_cap_is_reported(self):
-        """Verify the successful path for limit cap is reported."""
+        """Verify that limit capping is reported."""
         tools = self.build_tools()
 
         result = tools.processing_get_algorithms(
@@ -45,7 +45,7 @@ class ToolsProcessingGetAlgorithmsTest(ProcessingMCPTestBase):
         self.assertTrue(result["limit_capped"])
 
     def test_failure_unknown_algorithm_id(self):
-        """Verify the failure path for unknown algorithm ID."""
+        """Verify the failure path for an unknown algorithm ID."""
         tools = self.build_tools()
         with self.assertRaises(Exception) as ctx:
             tools.processing_get_algorithms(algorithm_id="not-exist:algorithm")

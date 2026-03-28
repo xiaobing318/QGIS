@@ -48,7 +48,7 @@ class _DummyTransport(BaseMcpTransport):
 
 class TransportsContractsTest(ProcessingMCPTestBase):
     def test_transport_fallback_to_streamable_http(self):
-        """Verify transport fallback to streamable HTTP."""
+        """Verify that transport creation falls back to Streamable HTTP."""
         transport = create_transport(object(), self._build_config("invalid-transport"))
         self.assertIsInstance(transport, StreamableHttpTransport)
 
@@ -62,7 +62,7 @@ class TransportsContractsTest(ProcessingMCPTestBase):
         )
 
     def test_apply_cors_returns_original_app_when_disabled(self):
-        """Verify apply CORS returns original app when disabled."""
+        """Verify that `_apply_cors` returns the original app when disabled."""
         transport = StreamableHttpTransport(
             _FakeMcp(), self._build_config("streamable-http")
         )
@@ -70,7 +70,7 @@ class TransportsContractsTest(ProcessingMCPTestBase):
         self.assertIs(transport._apply_cors(app), app)
 
     def test_apply_cors_wraps_app_when_enabled(self):
-        """Verify apply CORS wraps app when enabled."""
+        """Verify that `_apply_cors` wraps the app when enabled."""
         config = replace(
             self._build_config("streamable-http"),
             cors_origins=["http://localhost:8080"],
@@ -87,7 +87,7 @@ class TransportsContractsTest(ProcessingMCPTestBase):
         self.assertEqual(wrapped["allow_headers"], ["authorization"])
 
     def test_apply_cors_returns_original_app_when_import_fails(self):
-        """Verify apply CORS returns original app when import fails."""
+        """Verify that `_apply_cors` returns the original app when the import fails."""
         config = replace(
             self._build_config("streamable-http"),
             cors_origins=["http://localhost:8080"],
@@ -138,7 +138,7 @@ class TransportsContractsTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.transports.threading.Thread")
     def test_base_transport_start_reentry_returns_true(self, mock_thread_class):
-        """Verify base transport start reentry returns true."""
+        """Verify that repeated base transport start calls return true."""
         fake_thread = MagicMock()
         fake_thread.is_alive.return_value = True
         mock_thread_class.return_value = fake_thread
@@ -151,7 +151,7 @@ class TransportsContractsTest(ProcessingMCPTestBase):
         fake_thread.start.assert_called_once_with()
 
     def test_base_transport_stop_without_thread_requests_stop(self):
-        """Verify base transport stop without thread requests stop."""
+        """Verify that base transport stop requests a stop even without a thread."""
         transport = _DummyTransport(_FakeMcp(), self._build_config("streamable-http"))
 
         with patch.object(transport, "_request_stop") as mock_request_stop:
@@ -162,7 +162,7 @@ class TransportsContractsTest(ProcessingMCPTestBase):
     @patch("processingmcpserver.transports.sys.stdout", None)
     @patch("processingmcpserver.transports.sys.stderr", None)
     def test_ensure_stdio_streams_restores_stdout_and_stderr(self):
-        """Verify ensure STDIO streams restores stdout and stderr."""
+        """Verify that `_ensure_stdio_streams` restores stdout and stderr."""
         transport = _DummyTransport(_FakeMcp(), self._build_config("streamable-http"))
         fake_stdout = io.StringIO()
         fake_stderr = io.StringIO()

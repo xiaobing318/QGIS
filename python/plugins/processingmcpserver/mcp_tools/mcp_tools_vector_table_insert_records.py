@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'vector_table_insert_records'
-TOOL_DOC = '???向矢量图层批量插入新记录，可选携带 geometry_wkt。 ?????layer_ref 指向矢量图层，records 是对象数组，键名按字段名匹配，geometry_wkt 若提供会被解析为新要素几何，in_place 控制是否直接改源图层。 ?????目标图层必须存在，records 不能为空，geometry_wkt 若提供必须是有效 WKT。 ??????会新增要素；未知字段不会写入，而是被忽略并记录到 warnings 与 outputs.ignored_fields。 ?????默认 in_place=false，会先生成副本图层并返回新的 output_layer_id；仅在明确要修改原图层时才把 in_place 设为 true。 ?????返回 summary.mode、affected_count、output_layer_id、feature_count，以及 ignored_fields 和 warnings。'
+TOOL_DOC = '向矢量图层批量插入新记录，可选携带 geometry_wkt。 layer_ref 指向矢量图层，records 是对象数组，键名按字段名匹配，geometry_wkt 若提供会被解析为新要素几何，in_place 控制是否直接改源图层。 目标图层必须存在，records 不能为空，geometry_wkt 若提供必须是有效 WKT。 会新增要素；未知字段不会写入，而是被忽略并记录到 warnings 与 outputs.ignored_fields。 默认 in_place=false，会先生成副本图层并返回新的 output_layer_id；仅在明确要修改原图层时才把 in_place 设为 true。 返回 summary.mode、affected_count、output_layer_id、feature_count，以及 ignored_fields 和 warnings。'
 
 def vector_table_insert_records(self, layer_ref: str, records: list[dict[str, Any]], in_place: bool = False) -> dict[str, Any]:
     """Handle records into a vector table."""

@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'layer_remove_batch'
-TOOL_DOC = '???从当前工程中批量移除多个图层。 ?????layer_ids 是 layer id 数组，空白值会被忽略。 ?????建议先用 layer_list 确认待删除 id；不存在的 id 不会抛错，而是记录到 missing。 ??????会修改当前工程图层列表和图层面板，但不会删除底层数据文件。 ?????无 confirm_destructive 开关，因此应只传入已确认的 layer id。 ?????返回 removed 与 missing 两个数组，便于区分成功移除和未命中的目标。'
+TOOL_DOC = '从当前工程中批量移除多个图层。 layer_ids 是 layer id 数组，空白值会被忽略。 建议先用 layer_list 确认待删除 id；不存在的 id 不会抛错，而是记录到 missing。 会修改当前工程图层列表和图层面板，但不会删除底层数据文件。 无 confirm_destructive 开关，因此应只传入已确认的 layer id。 返回 removed 与 missing 两个数组，便于区分成功移除和未命中的目标。'
 
 def layer_remove_batch(self, layer_ids: list[str]) -> dict[str, list[str]]:
     """Handle multiple layers from the project."""

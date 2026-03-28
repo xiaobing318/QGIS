@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'filesystem_query_list_entries'
-TOOL_DOC = '???列出目录中的文件或子目录条目，适合在执行文件操作前先做只读探查。 ?????directory 是根目录，recursive 控制是否递归，include_files 和 include_directories 控制返回对象类型，name_glob 过滤名称，limit 控制返回上限。 ?????目录必须存在；include_files 与 include_directories 不能同时为 false。 ??????无写操作，只读取文件系统元数据。 ?????limit 会被内部阈值裁剪；结果里会明确 returned_count、matched_total 与 truncated。 ?????返回目录路径、entries 数组以及 limit 应用摘要。'
+TOOL_DOC = '列出目录中的文件或子目录条目，适合在执行文件操作前先做只读探查。 directory 是根目录，recursive 控制是否递归，include_files 和 include_directories 控制返回对象类型，name_glob 过滤名称，limit 控制返回上限。 目录必须存在；include_files 与 include_directories 不能同时为 false。 无写操作，只读取文件系统元数据。 limit 会被内部阈值裁剪；结果里会明确 returned_count、matched_total 与 truncated。 返回目录路径、entries 数组以及 limit 应用摘要。'
 
 def filesystem_query_list_entries(self, directory: str, recursive: bool = False, include_files: bool = True, include_directories: bool = True, name_glob: str = "*", limit: int = DEFAULT_FILESYSTEM_LIST_LIMIT) -> dict[str, Any]:
     """Handle entries in a filesystem path."""

@@ -15,7 +15,7 @@ from ._shared_case_base import ProcessingMCPTestBase
 class LogHandlerRuntimeTest(ProcessingMCPTestBase):
     @patch("processingmcpserver.log_handler.QgsMessageLog.logMessage")
     def test_default_category_and_message_format(self, mock_log_message):
-        """Verify the default behavior for category and message format."""
+        """Verify the default category and message format."""
         handler = QgisLogHandler()
         record = logging.LogRecord(
             name="mcp.server.streamable_http",

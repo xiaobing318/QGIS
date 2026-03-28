@@ -8,12 +8,12 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsProcessingExecuteAlgorithmTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the target capability is registered."""
+        """Ensure the expected capability is registered."""
         assert_tool_registered(self, "processing_execute_algorithm")
 
     @patch("processingmcpserver.mcp_tools.mcp_tools_processing_execute_algorithm.processing.run")
     def test_success_default_rewrites_disk_output_and_blocks_in_place(self, mock_run):
-        """Verify the successful path for default rewrites disk output and blocks in place."""
+        """Verify the successful path for rewriting disk output by default and blocking in-place edits."""
         tools = self.build_tools()
         mock_run.return_value = {"OUTPUT": "TEMPORARY_OUTPUT"}
 
@@ -36,7 +36,7 @@ class ToolsProcessingExecuteAlgorithmTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.mcp_tools.mcp_tools_processing_execute_algorithm.processing.run")
     def test_success_allows_disk_write_when_explicit(self, mock_run):
-        """Verify the successful path for allows disk write when explicit."""
+        """Verify that explicit configuration allows disk writes."""
         tools = self.build_tools()
         mock_run.return_value = {"OUTPUT": "C:/tmp/result.gpkg"}
 
@@ -59,7 +59,7 @@ class ToolsProcessingExecuteAlgorithmTest(ProcessingMCPTestBase):
         self.assertTrue(result["safety_policy"]["allow_in_place_edit"])
 
     def test_failure_parameters_must_be_object(self):
-        """Verify the failure path for parameters must be object."""
+        """Verify that parameters must be an object."""
         tools = self.build_tools()
         with self.assertRaises(Exception) as ctx:
             tools.processing_execute_algorithm(
@@ -70,7 +70,7 @@ class ToolsProcessingExecuteAlgorithmTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.mcp_tools.mcp_tools_processing_execute_algorithm.processing.run")
     def test_failure_propagates_processing_runtime_error(self, mock_run):
-        """Verify the failure path for propagates processing runtime error."""
+        """Verify that processing runtime errors are propagated."""
         tools = self.build_tools()
         mock_run.side_effect = RuntimeError("processing boom")
 

@@ -1,6 +1,6 @@
-from __future__ import annotations
+"""Logging bridge that forwards Python records to the QGIS message log."""
 
-"""Logging bridge from Python handlers into the QGIS message log."""
+from __future__ import annotations
 
 import logging
 import sys
@@ -10,14 +10,13 @@ from qgis.core import Qgis, QgsMessageLog
 from processingmcpserver.config_types import MCP_LOG_CATEGORY
 
 
-# Handler that forwards logs to the QGIS message log.
 class QgisLogHandler(logging.Handler):
-    """Forward Python logging records to the QGIS log panel."""
+    """Forward Python logging records to the QGIS message log."""
 
     def __init__(self, category: str = MCP_LOG_CATEGORY) -> None:
-        """Initialize the log category used for QGIS output."""
+        """Initialize the QGIS log category used for emitted records."""
         super().__init__()
-        # Category name shown in the QGIS log panel.
+        # Category shown in the QGIS message log.
         self._category = category
         self.setFormatter(
             logging.Formatter(
@@ -28,7 +27,7 @@ class QgisLogHandler(logging.Handler):
 
     def emit(self, record: logging.LogRecord) -> None:
         """Emit one log record and fall back to stderr on failure."""
-        # Format the log and map the level to QGIS.
+        # Format the record and map its level to QGIS.
         try:
             message = self.format(record)
             level = self._map_level(record.levelno)
@@ -40,7 +39,7 @@ class QgisLogHandler(logging.Handler):
     @staticmethod
     def _map_level(levelno: int) -> Qgis.MessageLevel:
         """Map a logging level to a QGIS message level."""
-        # Convert Python logging levels to QGIS levels.
+        # Convert Python logging levels to QGIS message levels.
         if levelno >= logging.ERROR:
             return Qgis.Critical
         if levelno >= logging.WARNING:
@@ -49,7 +48,7 @@ class QgisLogHandler(logging.Handler):
 
     def _fallback_emit(self, record: logging.LogRecord) -> None:
         """Write the message to `stderr` when QGIS logging is unavailable."""
-        # Final fallback to avoid swallowing the record.
+        # Final fallback to avoid dropping the record.
         try:
             message = self.format(record)
             if sys.__stderr__:

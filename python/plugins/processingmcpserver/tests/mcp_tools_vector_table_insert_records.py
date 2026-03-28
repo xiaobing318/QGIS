@@ -6,11 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsVectorTableInsertRecordsTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the target capability is registered."""
+        """Ensure the expected capability is registered."""
         assert_tool_registered(self, "vector_table_insert_records")
 
     def test_default_creates_copy_layer_and_reports_unknown_fields(self):
-        """Verify the default behavior for creates copy layer and reports unknown fields."""
+        """Verify that the default behavior creates a copy layer and reports unknown fields."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("insert_records_vector_copy")
 
@@ -37,7 +37,7 @@ class ToolsVectorTableInsertRecordsTest(ProcessingMCPTestBase):
         self.assertIn("Ignored unknown fields", result["warnings"][0])
 
     def test_success_insert_records(self):
-        """Verify the successful path for insert records."""
+        """Verify the successful path for inserting records."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("insert_records_vector")
 
@@ -57,7 +57,7 @@ class ToolsVectorTableInsertRecordsTest(ProcessingMCPTestBase):
         self.assertEqual(result["summary"]["affected_count"], 1)
 
     def test_failure_empty_records(self):
-        """Verify the failure path for empty records."""
+        """Verify that empty record lists are rejected."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("insert_records_vector2")
 

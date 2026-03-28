@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """Transport adapters for exposing FastMCP over HTTP, SSE, or stdio."""
+
+from __future__ import annotations
 
 import asyncio
 import sys
@@ -21,13 +21,13 @@ class BaseMcpTransport:
     """Base MCP transport that unifies thread lifecycle and logging behavior."""
 
     def __init__(self, mcp: "FastMCP", config: ProcessingMCPServerConfig) -> None:
-        """Store the MCP instance and config, and initialize the worker thread handle."""
+        """Store the MCP instance and configuration, then initialize the worker thread handle."""
         self._mcp = mcp
         self._config = config
         self._thread: Optional[threading.Thread] = None
 
     def start(self) -> bool:
-        """Start the transport thread and launch the background service thread."""
+        """Start the transport worker thread."""
         if self.is_running():
             self._log(
                 f"Processing MCP transport already running ({self._context_details()}).",
@@ -97,7 +97,7 @@ class BaseMcpTransport:
             )
 
     def _ensure_stdio_streams(self) -> None:
-        """Fill in `stdout/stderr` when needed to avoid empty-stream failures."""
+        """Restore `stdout` and `stderr` when they are temporarily unavailable."""
         if sys.stdout is None and sys.__stdout__ is not None:
             sys.stdout = sys.__stdout__
         if sys.stderr is None and sys.__stderr__ is not None:
@@ -204,7 +204,7 @@ class UvicornTransport(BaseMcpTransport):
         raise NotImplementedError
 
     def _build_log_config(self) -> dict[str, object]:
-        """Build the log bridge configuration from uvicorn to QGIS."""
+        """Build the logging bridge configuration used to forward uvicorn logs to QGIS."""
         log_level = self._mcp.settings.log_level
         return {
             "version": 1,
@@ -267,7 +267,7 @@ class UvicornTransport(BaseMcpTransport):
         }
 
     def _create_uvicorn_config(self, uvicorn, app):
-        """Create the uvicorn config and fall back to default logging on failure."""
+        """Create the uvicorn config and fall back to default logging if custom logging setup fails."""
         log_config = None
         try:
             log_config = self._build_log_config()
@@ -359,7 +359,7 @@ class StdioTransport(BaseMcpTransport):
         return "STDIO (stdin/stdout)"
 
     def _run(self) -> None:
-        """Run the MCP stdio mode when stdin/stdout are available."""
+        """Run the MCP stdio mode when stdin and stdout are available."""
         if (
             sys.stdin is None
             or sys.stdout is None
@@ -377,7 +377,7 @@ class StdioTransport(BaseMcpTransport):
             self._log_exception("Processing MCP stdio server stopped with error")
 
     def stop(self) -> None:
-        """Log STDIO shutdown limitations and then call the base stop flow."""
+        """Log STDIO shutdown limitations before calling the base stop flow."""
         if self.is_running():
             self._log(
                 "STDIO transport does not support graceful shutdown; close QGIS or stdin.",

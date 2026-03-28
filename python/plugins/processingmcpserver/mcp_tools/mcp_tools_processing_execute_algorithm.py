@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'processing_execute_algorithm'
-TOOL_DOC = '???执行单次 Processing 算法调用，是通用算法执行入口。 ?????algorithm 是算法 id，parameters 是参数对象，load_results 控制是否把结果加载到当前工程，allow_disk_write 控制是否允许磁盘输出路径通过安全检查，allow_in_place_edit 控制是否允许原位编辑参数通过安全检查。 ?????Processing 运行时必须可用，algorithm 必须存在，parameters 必须是对象。 ??????会触发 Processing 执行，可能生成临时输出、加载新图层，或在显式允许时写盘或原位修改。 ?????默认禁止磁盘写出和原位编辑；只有在明确需要时才把 allow_disk_write 或 allow_in_place_edit 设为 true，并应复核返回里的 safety_policy、warnings 与 effective_parameters。 ?????返回 algorithm、load_results、result、warnings、safety_policy 和 effective_parameters。'
+TOOL_DOC = '执行单次 Processing 算法调用，是通用算法执行入口。 algorithm 是算法 id，parameters 是参数对象，load_results 控制是否把结果加载到当前工程，allow_disk_write 控制是否允许磁盘输出路径通过安全检查，allow_in_place_edit 控制是否允许原位编辑参数通过安全检查。 Processing 运行时必须可用，algorithm 必须存在，parameters 必须是对象。 会触发 Processing 执行，可能生成临时输出、加载新图层，或在显式允许时写盘或原位修改。 默认禁止磁盘写出和原位编辑；只有在明确需要时才把 allow_disk_write 或 allow_in_place_edit 设为 true，并应复核返回里的 safety_policy、warnings 与 effective_parameters。 返回 algorithm、load_results、result、warnings、safety_policy 和 effective_parameters。'
 
 def processing_execute_algorithm(self, algorithm: str, parameters: dict[str, Any], load_results: bool = True, allow_disk_write: bool = False, allow_in_place_edit: bool = False) -> dict[str, Any]:
     """Handle a processing algorithm."""

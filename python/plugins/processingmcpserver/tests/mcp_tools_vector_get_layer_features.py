@@ -10,11 +10,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsVectorGetLayerFeaturesTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the target capability is registered."""
+        """Ensure the expected capability is registered."""
         assert_tool_registered(self, "vector_get_layer_features")
 
     def test_success_limit_and_payload(self):
-        """Verify the successful path for limit and payload."""
+        """Verify that limit handling and payload output are correct."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("feature_vector")
 
@@ -25,7 +25,7 @@ class ToolsVectorGetLayerFeaturesTest(ProcessingMCPTestBase):
         self.assertEqual(result["features"][0]["geometry_wkt"], "Point (108.9 34.2)")
 
     def test_success_zero_or_negative_limit_returns_empty_slice(self):
-        """Verify the successful path for zero or negative limit returns empty slice."""
+        """Verify that zero or negative limits return an empty slice."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("feature_vector_zero")
 
@@ -38,7 +38,7 @@ class ToolsVectorGetLayerFeaturesTest(ProcessingMCPTestBase):
         self.assertEqual(negative_result["features"], [])
 
     def test_success_limit_cap_is_reported(self):
-        """Verify the successful path for limit cap is reported."""
+        """Verify that limit capping is reported."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("feature_vector_capped")
 
@@ -52,14 +52,14 @@ class ToolsVectorGetLayerFeaturesTest(ProcessingMCPTestBase):
         self.assertEqual(len(result["features"]), 3)
 
     def test_failure_layer_not_found(self):
-        """Verify the failure path for layer not found."""
+        """Verify that a missing layer is reported."""
         tools = self.build_tools()
         with self.assertRaises(Exception) as ctx:
             tools.vector_get_layer_features(layer_ref="missing-layer", limit=2)
         self.assertIn("Layer not found", str(ctx.exception))
 
     def test_success_serializes_qt_field_values(self):
-        """Verify the successful path for serializes Qt field values."""
+        """Verify that Qt field values are serialized."""
         tools = self.build_tools()
         layer = self.add_serialization_vector_layer("feature_vector_serialization")
 

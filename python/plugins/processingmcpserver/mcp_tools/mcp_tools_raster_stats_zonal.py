@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'raster_stats_zonal'
-TOOL_DOC = '???把栅格统计结果按分区写入矢量图层属性表，常用于区域统计。 ?????vector_layer_ref 指向分区矢量图层，raster_layer_ref 指向栅格图层，raster_band 指定波段，column_prefix 控制输出字段前缀，in_place 控制是否直接写回原矢量图层。 ?????矢量与栅格图层都必须存在，且空间关系应满足分区统计需求。 ??????会运行原生 zonal statistics 算法，并在矢量属性表增加统计字段；默认副本模式下生成新的输出图层。 ?????默认 in_place=false，会先生成副本图层并返回新的 output_layer_id；仅在明确要修改原图层时才把 in_place 设为 true。 ?????返回 summary.mode、algorithm、output_layer_id 和底层 Processing 结果对象。'
+TOOL_DOC = '把栅格统计结果按分区写入矢量图层属性表，常用于区域统计。 vector_layer_ref 指向分区矢量图层，raster_layer_ref 指向栅格图层，raster_band 指定波段，column_prefix 控制输出字段前缀，in_place 控制是否直接写回原矢量图层。 矢量与栅格图层都必须存在，且空间关系应满足分区统计需求。 会运行原生 zonal statistics 算法，并在矢量属性表增加统计字段；默认副本模式下生成新的输出图层。 默认 in_place=false，会先生成副本图层并返回新的 output_layer_id；仅在明确要修改原图层时才把 in_place 设为 true。 返回 summary.mode、algorithm、output_layer_id 和底层 Processing 结果对象。'
 
 def raster_stats_zonal(self, vector_layer_ref: str, raster_layer_ref: str, raster_band: int = 1, column_prefix: str = "z_", in_place: bool = False) -> dict[str, Any]:
     """Handle zonal raster statistics."""

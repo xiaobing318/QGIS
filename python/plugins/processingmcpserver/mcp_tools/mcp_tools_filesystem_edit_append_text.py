@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'filesystem_edit_append_text'
-TOOL_DOC = '???向文本文件尾部追加 UTF-8 内容。 ?????path 是目标文件路径，content 是待追加文本，create_parents 控制父目录不存在时是否自动创建，confirm_write 用于显式确认写操作。 ?????目标路径的父目录必须存在或允许自动创建；目标文件不存在时会被创建。 ??????会在磁盘上创建文件或修改现有文件末尾内容。 ?????该工具不会覆盖已有内容，但仍属于写盘操作，调用前应确认目标路径。 ?????返回追加字符数和最终 path 摘要。'
+TOOL_DOC = '向文本文件尾部追加 UTF-8 内容。 path 是目标文件路径，content 是待追加文本，create_parents 控制父目录不存在时是否自动创建，confirm_write 用于显式确认写操作。 目标路径的父目录必须存在或允许自动创建；目标文件不存在时会被创建。 会在磁盘上创建文件或修改现有文件末尾内容。 该工具不会覆盖已有内容，但仍属于写盘操作，调用前应确认目标路径。 返回追加字符数和最终 path 摘要。'
 
 def filesystem_edit_append_text(self, path: str, content: str, create_parents: bool = True, confirm_write: bool = False) -> dict[str, Any]:
     """Handle text to a filesystem entry."""

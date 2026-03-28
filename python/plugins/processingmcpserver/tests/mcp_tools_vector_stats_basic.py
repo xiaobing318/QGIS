@@ -6,11 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsVectorStatsBasicTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the target capability is registered."""
+        """Ensure the expected capability is registered."""
         assert_tool_registered(self, "vector_stats_basic")
 
     def test_success_vector_stats_basic(self):
-        """Verify the successful path for vector stats basic."""
+        """Verify the successful path for basic vector statistics."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("vector_stats_basic_layer")
 
@@ -22,7 +22,7 @@ class ToolsVectorStatsBasicTest(ProcessingMCPTestBase):
         self.assertAlmostEqual(result["summary"]["stdev"], 1.0, places=6)
 
     def test_failure_missing_field(self):
-        """Verify the failure path for missing field."""
+        """Verify the failure path for a missing field."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("vector_stats_basic_layer2")
         with self.assertRaises(Exception) as ctx:

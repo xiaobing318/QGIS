@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'filesystem_edit_move_entry'
-TOOL_DOC = '???把文件或目录移动到新位置。 ?????source_path 是源路径，target_path 是目标路径，overwrite 控制是否允许覆盖目标，confirm_destructive 用于确认覆盖已存在目标，confirm_write 用于显式确认写操作。 ?????源路径必须存在；目标若已存在且 overwrite=false 会失败。 ??????会修改磁盘目录结构，源路径在成功后会消失。 ?????所有 filesystem_edit_* 调用都要求 confirm_write=true；删除或覆盖时还必须显式设置 confirm_destructive=true。 ?????返回 source_path 和 target_path 摘要，表示移动已完成。'
+TOOL_DOC = '把文件或目录移动到新位置。 source_path 是源路径，target_path 是目标路径，overwrite 控制是否允许覆盖目标，confirm_destructive 用于确认覆盖已存在目标，confirm_write 用于显式确认写操作。 源路径必须存在；目标若已存在且 overwrite=false 会失败。 会修改磁盘目录结构，源路径在成功后会消失。 所有 filesystem_edit_* 调用都要求 confirm_write=true；删除或覆盖时还必须显式设置 confirm_destructive=true。 返回 source_path 和 target_path 摘要，表示移动已完成。'
 
 def filesystem_edit_move_entry(self, source_path: str, target_path: str, overwrite: bool = False, confirm_destructive: bool = False, confirm_write: bool = False) -> dict[str, Any]:
     """Handle a filesystem entry."""

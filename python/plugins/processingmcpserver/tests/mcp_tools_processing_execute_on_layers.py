@@ -8,12 +8,12 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsProcessingExecuteOnLayersTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the target capability is registered."""
+        """Ensure the expected capability is registered."""
         assert_tool_registered(self, "processing_execute_on_layers")
 
     @patch("processingmcpserver.mcp_tools.mcp_tools_processing_execute_on_layers.processing.run")
     def test_success_default_safety_policy(self, mock_run):
-        """Verify the successful path for default safety policy."""
+        """Verify that the default safety policy is applied."""
         tools = self.build_tools()
         mock_run.return_value = {"OUTPUT": "TEMPORARY_OUTPUT"}
         layer = self.add_sample_vector_layer("execute_on_layers_vector")
@@ -79,7 +79,7 @@ class ToolsProcessingExecuteOnLayersTest(ProcessingMCPTestBase):
         self.assertTrue(result["safety_policy"]["allow_in_place_edit"])
 
     def test_failure_requires_bindings(self):
-        """Verify the failure path for requires bindings."""
+        """Verify that required bindings are enforced."""
         tools = self.build_tools()
         with self.assertRaises(Exception) as ctx:
             tools.processing_execute_on_layers(
@@ -92,7 +92,7 @@ class ToolsProcessingExecuteOnLayersTest(ProcessingMCPTestBase):
         self.assertIn("layer_bindings is required", str(ctx.exception))
 
     def test_failure_invalid_bound_layer_ref(self):
-        """Verify the failure path for invalid bound layer ref."""
+        """Verify the failure path for an invalid bound layer reference."""
         tools = self.build_tools()
 
         with self.assertRaises(Exception) as ctx:
@@ -107,7 +107,7 @@ class ToolsProcessingExecuteOnLayersTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.mcp_tools.mcp_tools_processing_execute_on_layers.processing.run")
     def test_failure_propagates_processing_runtime_error(self, mock_run):
-        """Verify the failure path for propagates processing runtime error."""
+        """Verify that processing runtime errors are propagated."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("execute_on_layers_vector4")
         mock_run.side_effect = RuntimeError("processing boom")

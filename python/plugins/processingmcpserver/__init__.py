@@ -11,7 +11,7 @@ def classFactory(iface):
 
 
 def write_mcp_capabilities_markdown(output_path: str | Path = "") -> Path:
-    """Export the current processingmcpserver tools, prompts, and resources docs."""
+    """Generate markdown documentation for the current processingmcpserver tools, prompts, and resources."""
     from processingmcpserver.capabilities_markdown import (
         write_mcp_capabilities_markdown as _write_markdown,
     )

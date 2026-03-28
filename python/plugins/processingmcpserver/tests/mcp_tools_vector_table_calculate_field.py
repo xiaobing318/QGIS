@@ -6,11 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsVectorTableCalculateFieldTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the target capability is registered."""
+        """Ensure the expected capability is registered."""
         assert_tool_registered(self, "vector_table_calculate_field")
 
     def test_default_creates_copy_layer(self):
-        """Verify the default behavior for creates copy layer."""
+        """Verify that the default behavior creates a copy layer."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("calc_field_vector_copy")
 
@@ -34,7 +34,7 @@ class ToolsVectorTableCalculateFieldTest(ProcessingMCPTestBase):
         )
 
     def test_success_calculate_field(self):
-        """Verify the successful path for calculate field."""
+        """Verify the successful path for calculating a field."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("calc_field_vector")
 
@@ -49,7 +49,7 @@ class ToolsVectorTableCalculateFieldTest(ProcessingMCPTestBase):
         self.assertEqual(result["summary"]["affected_count"], 3)
 
     def test_failure_invalid_expression(self):
-        """Verify the failure path for invalid expression."""
+        """Verify the failure path for an invalid expression."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("calc_field_vector2")
 

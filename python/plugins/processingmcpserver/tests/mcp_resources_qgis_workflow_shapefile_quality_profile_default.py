@@ -26,4 +26,3 @@ class ResourceQgisWorkflowShapefileQualityProfileDefaultTest(ProcessingMCPTestBa
         self.assertTrue(payload["ok"])
         self.assertEqual(payload["uri"], "qgis://workflow/shapefile/quality-profile/default")
         self.assertIn("quality_checks", payload["data"])
-

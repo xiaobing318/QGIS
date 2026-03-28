@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'vector_table_add_field'
-TOOL_DOC = '???为矢量图层增加一个新字段。 ?????layer_ref 指向矢量图层，field_name 是新字段名，field_type、field_length、field_precision 用于定义字段类型，in_place 控制是否直接改源图层。 ?????目标图层必须存在，且 field_name 不能为空且不能与现有字段重名。 ??????会修改图层字段结构；默认副本模式下先复制图层再修改。 ?????默认 in_place=false，会先生成副本图层并返回新的 output_layer_id；仅在明确要修改原图层时才把 in_place 设为 true。 ?????返回 summary.mode、affected_count、output_layer_id 以及最新字段列表。'
+TOOL_DOC = '为矢量图层增加一个新字段。 layer_ref 指向矢量图层，field_name 是新字段名，field_type、field_length、field_precision 用于定义字段类型，in_place 控制是否直接改源图层。 目标图层必须存在，且 field_name 不能为空且不能与现有字段重名。 会修改图层字段结构；默认副本模式下先复制图层再修改。 默认 in_place=false，会先生成副本图层并返回新的 output_layer_id；仅在明确要修改原图层时才把 in_place 设为 true。 返回 summary.mode、affected_count、output_layer_id 以及最新字段列表。'
 
 def vector_table_add_field(self, layer_ref: str, field_name: str, field_type: str = "string", field_length: int = 0, field_precision: int = 0, in_place: bool = False) -> dict[str, Any]:
     """Handle a field in a vector table."""

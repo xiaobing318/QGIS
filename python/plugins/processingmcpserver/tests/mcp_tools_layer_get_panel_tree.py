@@ -6,11 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsLayerGetPanelTreeTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the target capability is registered."""
+        """Ensure the expected capability is registered."""
         assert_tool_registered(self, "layer_get_panel_tree")
 
     def test_success_return_tree_and_layers(self):
-        """Verify the successful path for return tree and layers."""
+        """Verify that the panel tree and layers are returned."""
         tools = self.build_tools()
         self.add_sample_vector_layer("panel_tree_vector")
 

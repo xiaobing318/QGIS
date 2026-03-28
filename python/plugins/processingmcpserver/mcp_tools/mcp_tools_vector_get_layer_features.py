@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'vector_get_layer_features'
-TOOL_DOC = '???提取矢量图层的样本要素，供模型观察字段值和几何概貌。 ?????layer_ref 指向矢量图层，limit 是希望返回的要素数。 ?????目标图层必须存在且为矢量图层。 ??????无写操作，只顺序读取要素并序列化属性与 geometry_wkt。 ?????limit 会被内部最大阈值裁剪，返回里会明确给出 requested_limit、applied_limit 与 limit_capped。 ?????返回 layer_id、feature_count、fields、features 以及 limit 应用结果。'
+TOOL_DOC = '提取矢量图层的样本要素，供模型观察字段值和几何概貌。 layer_ref 指向矢量图层，limit 是希望返回的要素数。 目标图层必须存在且为矢量图层。 无写操作，只顺序读取要素并序列化属性与 geometry_wkt。 limit 会被内部最大阈值裁剪，返回里会明确给出 requested_limit、applied_limit 与 limit_capped。 返回 layer_id、feature_count、fields、features 以及 limit 应用结果。'
 
 def vector_get_layer_features(self, layer_ref: str, limit: int = DEFAULT_FEATURE_LIMIT) -> dict[str, Any]:
     """Handle features from a vector layer."""

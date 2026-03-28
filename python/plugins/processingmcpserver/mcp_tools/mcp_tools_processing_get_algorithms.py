@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'processing_get_algorithms'
-TOOL_DOC = '???查询 Processing 算法目录，支持按 provider 过滤，或按 algorithm_id 精确读取单个算法。 ?????algorithm_id 提供时返回单个算法完整定义；provider_id 提供时按 provider 过滤；include_parameters 和 include_outputs 控制列表模式下是否展开参数和输出；limit 控制列表返回上限。 ?????Processing 运行时必须可用；若指定 algorithm_id，则该算法必须存在。 ??????无写操作，只读取 Processing 算法元数据。 ?????列表模式的 limit 会被内部阈值裁剪；单算法模式会始终返回该算法的完整参数和输出定义。 ?????返回单个 algorithm 对象或 algorithms 数组，以及 count、returned、truncated 等摘要。'
+TOOL_DOC = '查询 Processing 算法目录，支持按 provider 过滤，或按 algorithm_id 精确读取单个算法。 algorithm_id 提供时返回单个算法完整定义；provider_id 提供时按 provider 过滤；include_parameters 和 include_outputs 控制列表模式下是否展开参数和输出；limit 控制列表返回上限。 Processing 运行时必须可用；若指定 algorithm_id，则该算法必须存在。 无写操作，只读取 Processing 算法元数据。 列表模式的 limit 会被内部阈值裁剪；单算法模式会始终返回该算法的完整参数和输出定义。 返回单个 algorithm 对象或 algorithms 数组，以及 count、returned、truncated 等摘要。'
 
 def processing_get_algorithms(self, algorithm_id: str | None = None, provider_id: str | None = None, include_parameters: bool = False, include_outputs: bool = False, limit: int | None = None) -> dict[str, Any]:
     """Handle available processing algorithms."""

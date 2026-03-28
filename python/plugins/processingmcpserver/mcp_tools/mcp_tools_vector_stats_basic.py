@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'vector_stats_basic'
-TOOL_DOC = '???计算矢量字段的基础统计量，适合先判断数值分布。 ?????layer_ref 指向矢量图层，field_name 是目标字段。 ?????目标图层必须存在且字段存在，字段最好是可统计的数值型字段。 ??????无写操作，只读取字段值并做统计。 ?????无。 ?????返回 count、sum、mean、min、max、stdev 等基础统计摘要。'
+TOOL_DOC = '计算矢量字段的基础统计量，适合先判断数值分布。 layer_ref 指向矢量图层，field_name 是目标字段。 目标图层必须存在且字段存在，字段最好是可统计的数值型字段。 无写操作，只读取字段值并做统计。 无。 返回 count、sum、mean、min、max、stdev 等基础统计摘要。'
 
 def vector_stats_basic(self, layer_ref: str, field_name: str) -> dict[str, Any]:
     """Handle basic vector statistics."""

@@ -6,11 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsVectorTableTruncateTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the target capability is registered."""
+        """Ensure the expected capability is registered."""
         assert_tool_registered(self, "vector_table_truncate")
 
     def test_default_creates_copy_layer(self):
-        """Verify the default behavior for creates copy layer."""
+        """Verify that the default behavior creates a copy layer."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("truncate_records_vector_copy")
 
@@ -27,7 +27,7 @@ class ToolsVectorTableTruncateTest(ProcessingMCPTestBase):
         self.assertEqual(output_layer.featureCount(), 0)
 
     def test_success_truncate_records(self):
-        """Verify the successful path for truncate records."""
+        """Verify the successful path for truncating records."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("truncate_records_vector")
 
@@ -42,7 +42,7 @@ class ToolsVectorTableTruncateTest(ProcessingMCPTestBase):
         self.assertEqual(result["outputs"]["feature_count"], 0)
 
     def test_failure_without_confirmation(self):
-        """Verify the failure path for without confirmation."""
+        """Verify that confirmation is required."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("truncate_records_vector2")
 

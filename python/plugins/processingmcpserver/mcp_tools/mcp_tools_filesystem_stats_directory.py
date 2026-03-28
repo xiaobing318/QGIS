@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'filesystem_stats_directory'
-TOOL_DOC = '???统计目录中的文件数、目录数和累计大小，适合在批处理前估算工作量。 ?????directory 是根目录，recursive 控制是否递归统计。 ?????目录必须存在。 ??????无写操作，只遍历文件系统做统计。 ?????无。 ?????返回文件数、目录数、总字节数等目录统计摘要。'
+TOOL_DOC = '统计目录中的文件数、目录数和累计大小，适合在批处理前估算工作量。 directory 是根目录，recursive 控制是否递归统计。 目录必须存在。 无写操作，只遍历文件系统做统计。 无。 返回文件数、目录数、总字节数等目录统计摘要。'
 
 def filesystem_stats_directory(self, directory: str, recursive: bool = False) -> dict[str, Any]:
     """Handle a filesystem directory."""

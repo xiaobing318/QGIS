@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'raster_stats_basic'
-TOOL_DOC = '???读取栅格单个波段的基础统计量。 ?????layer_ref 指向栅格图层，band 指定波段号，默认 1。 ?????目标图层必须存在且为栅格，指定波段必须有效。 ??????无写操作，只读取栅格波段统计信息。 ?????无。 ?????返回目标波段的最小值、最大值、均值、标准差等基础统计摘要。'
+TOOL_DOC = '读取栅格单个波段的基础统计量。 layer_ref 指向栅格图层，band 指定波段号，默认 1。 目标图层必须存在且为栅格，指定波段必须有效。 无写操作，只读取栅格波段统计信息。 无。 返回目标波段的最小值、最大值、均值、标准差等基础统计摘要。'
 
 def raster_stats_basic(self, layer_ref: str, band: int = 1) -> dict[str, Any]:
     """Handle basic raster statistics."""

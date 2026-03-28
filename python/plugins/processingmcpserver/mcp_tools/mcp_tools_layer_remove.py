@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'layer_remove'
-TOOL_DOC = '???从当前工程中移除单个图层。 ?????layer_id 必须是当前工程已存在的 layer id，不接受模糊名称。 ?????目标图层必须已经在当前工程注册。 ??????会修改当前工程图层列表和图层面板，但不会删除底层数据文件。 ?????无 confirm_destructive 开关，因此调用前应先用 layer_list 或 layer_get_details 复核目标 id。 ?????返回 removed 字段，值为已移除的 layer id。'
+TOOL_DOC = '从当前工程中移除单个图层。 layer_id 必须是当前工程已存在的 layer id，不接受模糊名称。 目标图层必须已经在当前工程注册。 会修改当前工程图层列表和图层面板，但不会删除底层数据文件。 无 confirm_destructive 开关，因此调用前应先用 layer_list 或 layer_get_details 复核目标 id。 返回 removed 字段，值为已移除的 layer id。'
 
 def layer_remove(self, layer_id: str) -> dict[str, str]:
     """Handle a layer from the project."""

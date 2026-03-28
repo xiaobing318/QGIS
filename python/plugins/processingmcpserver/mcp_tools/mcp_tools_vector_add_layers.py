@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'vector_add_layers'
-TOOL_DOC = '???批量把多个矢量数据源加载到当前 QGIS 工程。 ?????paths 是待加载路径数组，provider 默认 ogr，skip_invalid 控制遇到坏数据时是跳过还是整体失败。 ?????至少提供一个可访问路径，且对应数据源应能被 provider 识别。 ??????会向当前工程新增多个矢量图层，但不会改写源数据文件。 ?????skip_invalid=true 时会尽量继续加载其余路径；skip_invalid=false 时任何一个失败都会报错终止。 ?????返回 requested_count、loaded_count、failed_count，以及 loaded 和 failed 的逐项结果。'
+TOOL_DOC = '批量把多个矢量数据源加载到当前 QGIS 工程。 paths 是待加载路径数组，provider 默认 ogr，skip_invalid 控制遇到坏数据时是跳过还是整体失败。 至少提供一个可访问路径，且对应数据源应能被 provider 识别。 会向当前工程新增多个矢量图层，但不会改写源数据文件。 skip_invalid=true 时会尽量继续加载其余路径；skip_invalid=false 时任何一个失败都会报错终止。 返回 requested_count、loaded_count、failed_count，以及 loaded 和 failed 的逐项结果。'
 
 def vector_add_layers(self, paths: list[str], provider: str = "ogr", skip_invalid: bool = True) -> dict[str, Any]:
     """Handle multiple vector layers."""

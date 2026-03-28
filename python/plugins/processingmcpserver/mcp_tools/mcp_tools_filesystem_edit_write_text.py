@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'filesystem_edit_write_text'
-TOOL_DOC = '???以 UTF-8 一次性写入文本文件，适合新建配置或覆盖写文件。 ?????path 是目标文件路径，content 是完整文本内容，overwrite 控制是否允许覆盖已存在文件，confirm_destructive 用于确认覆盖，create_parents 控制是否自动创建父目录，confirm_write 用于显式确认写操作。 ?????若目标已存在且 overwrite=false 会直接失败；父目录不存在时只有 create_parents=true 才会自动创建。 ??????会创建或覆盖磁盘文件。 ?????所有 filesystem_edit_* 调用都要求 confirm_write=true；删除或覆盖时还必须显式设置 confirm_destructive=true。 ?????返回写入字符数和最终 path 摘要。'
+TOOL_DOC = '以 UTF-8 一次性写入文本文件，适合新建配置或覆盖写文件。 path 是目标文件路径，content 是完整文本内容，overwrite 控制是否允许覆盖已存在文件，confirm_destructive 用于确认覆盖，create_parents 控制是否自动创建父目录，confirm_write 用于显式确认写操作。 若目标已存在且 overwrite=false 会直接失败；父目录不存在时只有 create_parents=true 才会自动创建。 会创建或覆盖磁盘文件。 所有 filesystem_edit_* 调用都要求 confirm_write=true；删除或覆盖时还必须显式设置 confirm_destructive=true。 返回写入字符数和最终 path 摘要。'
 
 def filesystem_edit_write_text(self, path: str, content: str, overwrite: bool = False, confirm_destructive: bool = False, create_parents: bool = True, confirm_write: bool = False) -> dict[str, Any]:
     """Handle text to a filesystem entry."""

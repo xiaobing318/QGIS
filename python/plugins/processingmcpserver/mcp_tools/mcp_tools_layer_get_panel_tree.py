@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'layer_get_panel_tree'
-TOOL_DOC = '???读取图层面板树结构，帮助模型理解分组、顺序和隐藏状态。 ?????include_hidden 控制是否把隐藏图层与分组也放入返回结构。 ?????当前工程已初始化即可调用，最好已有图层树内容。 ??????无写操作，只读取 QgsLayerTree 结构。 ?????无。 ?????返回 tree 主结构，以及为兼容旧调用保留的 groups、layers 扁平摘要，便于模型按图层面板顺序推理。'
+TOOL_DOC = '读取图层面板树结构，帮助模型理解分组、顺序和隐藏状态。 include_hidden 控制是否把隐藏图层与分组也放入返回结构。 当前工程已初始化即可调用，最好已有图层树内容。 无写操作，只读取 QgsLayerTree 结构。 无。 返回 tree 主结构，以及为兼容旧调用保留的 groups、layers 扁平摘要，便于模型按图层面板顺序推理。'
 
 def layer_get_panel_tree(self, include_hidden: bool = True) -> dict[str, Any]:
     """Handle the layer tree panel structure."""

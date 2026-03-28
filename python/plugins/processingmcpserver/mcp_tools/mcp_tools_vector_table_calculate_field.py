@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'vector_table_calculate_field'
-TOOL_DOC = '???按 QGIS 表达式批量计算字段值，可在字段不存在时自动创建字段。 ?????layer_ref 指向矢量图层，field_name 是目标字段，expression 是赋值表达式，where 可选筛选条件，field_type 只在自动建字段时生效，in_place 控制是否直接改源图层。 ?????目标图层必须存在，expression 和 where 若提供都必须能被 QGIS 表达式解析并成功求值。 ??????会更新匹配要素的属性值；字段不存在时会先新增该字段。 ?????默认 in_place=false，会先生成副本图层并返回新的 output_layer_id；仅在明确要修改原图层时才把 in_place 设为 true。 ?????返回 summary.mode、affected_count、field_created、output_layer_id 和更新后的字段列表。'
+TOOL_DOC = '按 QGIS 表达式批量计算字段值，可在字段不存在时自动创建字段。 layer_ref 指向矢量图层，field_name 是目标字段，expression 是赋值表达式，where 可选筛选条件，field_type 只在自动建字段时生效，in_place 控制是否直接改源图层。 目标图层必须存在，expression 和 where 若提供都必须能被 QGIS 表达式解析并成功求值。 会更新匹配要素的属性值；字段不存在时会先新增该字段。 默认 in_place=false，会先生成副本图层并返回新的 output_layer_id；仅在明确要修改原图层时才把 in_place 设为 true。 返回 summary.mode、affected_count、field_created、output_layer_id 和更新后的字段列表。'
 
 def vector_table_calculate_field(self, layer_ref: str, field_name: str, expression: str, field_type: str = "string", where: str | None = None, in_place: bool = False) -> dict[str, Any]:
     """Handle a vector table field."""

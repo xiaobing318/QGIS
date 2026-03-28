@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'dataset_load_from_directory'
-TOOL_DOC = '???先扫描目录中的候选数据集，再把匹配的 vector 或 raster 图层批量加载到当前工程。 ?????参数和 dataset_list_files 基本一致，skip_invalid 控制遇到坏数据时是跳过还是整体失败。 ?????目录必须存在，且目录下至少有可识别的数据集文件才有意义。 ??????会向当前工程新增多个图层，但不会改写源数据文件。 ?????skip_invalid=true 时失败项会进入 failed；skip_invalid=false 时第一个失败就终止。 ?????返回 requested_count、loaded_count、failed_count，以及 loaded 和 failed 明细。'
+TOOL_DOC = '先扫描目录中的候选数据集，再把匹配的 vector 或 raster 图层批量加载到当前工程。 参数和 dataset_list_files 基本一致，skip_invalid 控制遇到坏数据时是跳过还是整体失败。 目录必须存在，且目录下至少有可识别的数据集文件才有意义。 会向当前工程新增多个图层，但不会改写源数据文件。 skip_invalid=true 时失败项会进入 failed；skip_invalid=false 时第一个失败就终止。 返回 requested_count、loaded_count、failed_count，以及 loaded 和 failed 明细。'
 
 def dataset_load_from_directory(self, directory: str, recursive: bool = False, dataset_kind: str = "both", geometry_type: str = "any", name_glob: str = "*", limit: int = DEFAULT_DATASET_LIMIT, skip_invalid: bool = True) -> dict[str, Any]:
     """Handle datasets from a directory."""

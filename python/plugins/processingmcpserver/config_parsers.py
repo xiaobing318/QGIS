@@ -106,7 +106,7 @@ def _resolve_value(
     parser: Callable[[object], tuple[bool, T]],
     sources: dict[str, str],
 ) -> T:
-    """Resolve configuration with JSON > Settings > Default precedence and record the source."""
+    """Resolve a configuration value with JSON > Settings > Default precedence and record the source."""
     candidates: list[tuple[str, object]] = [
         (SOURCE_JSON, json_value),
         (SOURCE_SETTINGS, settings_value),

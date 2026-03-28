@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'layer_get_details'
-TOOL_DOC = '???按图层 id 或图层名读取单个图层的详细元数据。 ?????layer_ref 可以是唯一 layer id，也可以是能唯一解析的图层名称。 ?????目标图层必须已经加载到当前工程，名称引用不能歧义。 ??????无写操作，只读取图层元数据与字段摘要。 ?????无。 ?????返回 id、name、type、provider、source、crs，以及矢量的 fields 和 feature_count 或栅格的尺寸与波段数。'
+TOOL_DOC = '按图层 id 或图层名读取单个图层的详细元数据。 layer_ref 可以是唯一 layer id，也可以是能唯一解析的图层名称。 目标图层必须已经加载到当前工程，名称引用不能歧义。 无写操作，只读取图层元数据与字段摘要。 无。 返回 id、name、type、provider、source、crs，以及矢量的 fields 和 feature_count 或栅格的尺寸与波段数。'
 
 def layer_get_details(self, layer_ref: str) -> dict[str, Any]:
     """Handle layer details."""

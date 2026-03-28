@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'filesystem_edit_copy_entry'
-TOOL_DOC = '???复制单个文件或整个目录到新位置。 ?????source_path 是源路径，target_path 是目标路径，overwrite 控制是否允许覆盖目标，confirm_destructive 用于确认覆盖已存在目标，confirm_write 用于显式确认写操作。 ?????源路径必须存在；目标若已存在且 overwrite=false 会失败。 ??????会在磁盘上创建新的文件或目录副本；目录复制会递归复制内容。 ?????所有 filesystem_edit_* 调用都要求 confirm_write=true；删除或覆盖时还必须显式设置 confirm_destructive=true。 ?????返回 source_path 和 target_path 摘要。'
+TOOL_DOC = '复制单个文件或整个目录到新位置。 source_path 是源路径，target_path 是目标路径，overwrite 控制是否允许覆盖目标，confirm_destructive 用于确认覆盖已存在目标，confirm_write 用于显式确认写操作。 源路径必须存在；目标若已存在且 overwrite=false 会失败。 会在磁盘上创建新的文件或目录副本；目录复制会递归复制内容。 所有 filesystem_edit_* 调用都要求 confirm_write=true；删除或覆盖时还必须显式设置 confirm_destructive=true。 返回 source_path 和 target_path 摘要。'
 
 def filesystem_edit_copy_entry(self, source_path: str, target_path: str, overwrite: bool = False, confirm_destructive: bool = False, confirm_write: bool = False) -> dict[str, Any]:
     """Handle a filesystem entry."""

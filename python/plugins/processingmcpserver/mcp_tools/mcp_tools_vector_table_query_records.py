@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'vector_table_query_records'
-TOOL_DOC = '???按条件查询矢量图层记录，适合做数据抽样、分页和字段级检查。 ?????layer_ref 指向矢量图层，where 是可选过滤表达式，fields 控制返回字段，limit 和 offset 控制分页，order_by 指定简单排序字段，include_geometry 控制是否附带 geometry_wkt。 ?????目标图层必须存在，where 表达式和字段名必须有效。 ??????无写操作，只读取并序列化匹配记录。 ?????limit 会被内部阈值裁剪；order_by 仅按属性字符串表示做简单排序，不是完整 SQL 排序。 ?????返回 matched_total、returned、offset、limit 应用结果和 records 数组。'
+TOOL_DOC = '按条件查询矢量图层记录，适合做数据抽样、分页和字段级检查。 layer_ref 指向矢量图层，where 是可选过滤表达式，fields 控制返回字段，limit 和 offset 控制分页，order_by 指定简单排序字段，include_geometry 控制是否附带 geometry_wkt。 目标图层必须存在，where 表达式和字段名必须有效。 无写操作，只读取并序列化匹配记录。 limit 会被内部阈值裁剪；order_by 仅按属性字符串表示做简单排序，不是完整 SQL 排序。 返回 matched_total、returned、offset、limit 应用结果和 records 数组。'
 
 def vector_table_query_records(self, layer_ref: str, where: str | None = None, fields: list[str] | None = None, limit: int = DEFAULT_FEATURE_LIMIT, offset: int = 0, order_by: str | None = None, include_geometry: bool = False) -> dict[str, Any]:
     """Handle records from a vector table."""

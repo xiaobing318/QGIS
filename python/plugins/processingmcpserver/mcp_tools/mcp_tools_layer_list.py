@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'layer_list'
-TOOL_DOC = '???列出当前工程中可见或全部图层的基础清单，用于给模型建立当前项目上下文。 ?????layer_types 可选 vector、raster 或 both，include_hidden 控制是否包含图层面板中隐藏图层，name_glob 用于名称通配过滤。 ?????当前工程中至少存在已加载图层时结果更有意义，但空工程也可调用。 ??????无写操作，只读取工程图层注册表与图层树可见性。 ?????无。 ?????返回按过滤条件匹配的图层数组，元素包含 id、name、type、visible、provider 以及矢量或栅格的补充摘要。'
+TOOL_DOC = '列出当前工程中可见或全部图层的基础清单，用于给模型建立当前项目上下文。 layer_types 可选 vector、raster 或 both，include_hidden 控制是否包含图层面板中隐藏图层，name_glob 用于名称通配过滤。 当前工程中至少存在已加载图层时结果更有意义，但空工程也可调用。 无写操作，只读取工程图层注册表与图层树可见性。 无。 返回按过滤条件匹配的图层数组，元素包含 id、name、type、visible、provider 以及矢量或栅格的补充摘要。'
 
 def layer_list(self, layer_types: str = "both", include_hidden: bool = True, name_glob: str = "*") -> list[dict[str, Any]]:
     """Handle the loaded layer list."""

@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'dataset_list_files'
-TOOL_DOC = '???扫描目录并识别可加载的数据集文件，区分 vector 与 raster。 ?????directory 是根目录，recursive 控制是否递归，dataset_kind 控制筛选 vector、raster 或 both，geometry_type 与 name_glob 用于进一步过滤，limit 控制返回上限。 ?????目录必须存在且可访问。 ??????无写操作，只遍历文件系统并按扩展名和几何类型推断数据集。 ?????limit 会被内部阈值裁剪，geometry_type 过滤仅对识别出的矢量数据集生效。 ?????返回 datasets 数组及 requested_limit、applied_limit、limit_capped 等扫描摘要。'
+TOOL_DOC = '扫描目录并识别可加载的数据集文件，区分 vector 与 raster。 directory 是根目录，recursive 控制是否递归，dataset_kind 控制筛选 vector、raster 或 both，geometry_type 与 name_glob 用于进一步过滤，limit 控制返回上限。 目录必须存在且可访问。 无写操作，只遍历文件系统并按扩展名和几何类型推断数据集。 limit 会被内部阈值裁剪，geometry_type 过滤仅对识别出的矢量数据集生效。 返回 datasets 数组及 requested_limit、applied_limit、limit_capped 等扫描摘要。'
 
 def dataset_list_files(self, directory: str, recursive: bool = False, dataset_kind: str = "both", geometry_type: str = "any", name_glob: str = "*", limit: int = DEFAULT_DATASET_LIMIT) -> dict[str, Any]:
     """Handle files in a dataset directory."""

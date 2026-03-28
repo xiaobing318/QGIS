@@ -6,11 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsFilesystemQueryEntryInfoTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the target capability is registered."""
+        """Ensure the expected capability is registered."""
         assert_tool_registered(self, "filesystem_query_entry_info")
 
     def test_success_entry_info(self):
-        """Verify the successful path for entry info."""
+        """Verify the successful path for entry information."""
         tools = self.build_tools()
         root = self.make_temp_dir()
         file_path = self.create_text_file(root / "a.txt", "hello")
@@ -20,7 +20,7 @@ class ToolsFilesystemQueryEntryInfoTest(ProcessingMCPTestBase):
         self.assertEqual(result["outputs"]["entry"]["name"], "a.txt")
 
     def test_failure_missing_path(self):
-        """Verify the failure path for missing path."""
+        """Verify the failure path for a missing path."""
         tools = self.build_tools()
         missing_path = self.make_temp_dir() / "missing.txt"
         with self.assertRaises(Exception) as ctx:

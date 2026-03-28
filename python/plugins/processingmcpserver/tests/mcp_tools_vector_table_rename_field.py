@@ -6,11 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsVectorTableRenameFieldTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the target capability is registered."""
+        """Ensure the expected capability is registered."""
         assert_tool_registered(self, "vector_table_rename_field")
 
     def test_default_creates_copy_layer(self):
-        """Verify the default behavior for creates copy layer."""
+        """Verify that the default behavior creates a copy layer."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("rename_field_vector_copy")
         tools.vector_table_add_field(
@@ -36,7 +36,7 @@ class ToolsVectorTableRenameFieldTest(ProcessingMCPTestBase):
         self.assertIn("temp_field2", self.vector_field_names(output_layer))
 
     def test_success_rename_field(self):
-        """Verify the successful path for rename field."""
+        """Verify the successful path for renaming a field."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("rename_field_vector")
         add_result = tools.vector_table_add_field(
@@ -56,7 +56,7 @@ class ToolsVectorTableRenameFieldTest(ProcessingMCPTestBase):
         self.assertEqual(result["summary"]["affected_count"], 1)
 
     def test_failure_missing_field(self):
-        """Verify the failure path for missing field."""
+        """Verify the failure path for a missing field."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("rename_field_vector2")
 

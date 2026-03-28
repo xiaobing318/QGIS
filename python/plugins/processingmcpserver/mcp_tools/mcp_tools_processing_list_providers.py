@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'processing_list_providers'
-TOOL_DOC = '???列出当前 QGIS Processing 注册表中的 provider 清单。 ?????无业务输入。 ?????Processing 运行时必须可用。 ??????无写操作，只读取 Processing 注册表。 ?????无。 ?????返回 provider 的 id、name、active、algorithm_count，以及 count_scope、total_algorithm_count、active_provider_count、active_algorithm_count 和总数。'
+TOOL_DOC = '列出当前 QGIS Processing 注册表中的 provider 清单。 无业务输入。 Processing 运行时必须可用。 无写操作，只读取 Processing 注册表。 无。 返回 provider 的 id、name、active、algorithm_count，以及 count_scope、total_algorithm_count、active_provider_count、active_algorithm_count 和总数。'
 
 def processing_list_providers(self) -> dict[str, Any]:
     """Handle processing providers."""

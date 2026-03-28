@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'vector_check_validity_report'
-TOOL_DOC = '???对单个矢量图层或矢量文件做 shapefile 导向的结构化体检，统一输出几何、记录、字段和 CRS 风险。 ?????layer_ref 与 path 二选一；required_fields 用于声明必需字段，expected_crs 用于声明目标 CRS，task_name 可把结果写入运行摘要。 ?????目标图层必须存在，或 path 必须指向有效矢量数据文件。 ??????无写操作，只读取图层要素、字段和 CRS 元数据。 ?????task_name 非空时会更新 qgis://workflow/shapefile/run-summary；若传 expected_crs，结果会包含 CRS mismatch 判定。 ?????返回 report 对象，覆盖 null/empty geometry、invalid geometry、duplicate geometry、duplicate record、multipart、字段长度和 safe_for_export 判断。'
+TOOL_DOC = '对单个矢量图层或矢量文件做 shapefile 导向的结构化体检，统一输出几何、记录、字段和 CRS 风险。 layer_ref 与 path 二选一；required_fields 用于声明必需字段，expected_crs 用于声明目标 CRS，task_name 可把结果写入运行摘要。 目标图层必须存在，或 path 必须指向有效矢量数据文件。 无写操作，只读取图层要素、字段和 CRS 元数据。 task_name 非空时会更新 qgis://workflow/shapefile/run-summary；若传 expected_crs，结果会包含 CRS mismatch 判定。 返回 report 对象，覆盖 null/empty geometry、invalid geometry、duplicate geometry、duplicate record、multipart、字段长度和 safe_for_export 判断。'
 
 def vector_check_validity_report(self, layer_ref: str = "", path: str = "", required_fields: list[str] | None = None, expected_crs: str | None = None, task_name: str = "") -> dict[str, Any]:
     """Handle a vector validity report."""

@@ -24,11 +24,11 @@ class _FakeProcessingRegistry:
 
 class ToolsRasterStatsZonalTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the target capability is registered."""
+        """Ensure the expected capability is registered."""
         assert_tool_registered(self, "raster_stats_zonal")
 
     def test_success_raster_stats_zonal(self):
-        """Verify the successful path for raster stats zonal."""
+        """Verify the successful path for zonal raster statistics."""
         tools = self.build_tools()
         vector_layer = self.add_sample_polygon_layer("zonal_polygon")
         raster_layer = self.add_sample_raster_layer("zonal_raster")
@@ -51,7 +51,7 @@ class ToolsRasterStatsZonalTest(ProcessingMCPTestBase):
         self.assertEqual(self.vector_field_names(vector_layer), original_fields)
 
     def test_failure_invalid_raster_ref(self):
-        """Verify the failure path for invalid raster ref."""
+        """Verify the failure path for an invalid raster reference."""
         tools = self.build_tools()
         vector_layer = self.add_sample_polygon_layer("zonal_polygon2")
 
@@ -67,7 +67,7 @@ class ToolsRasterStatsZonalTest(ProcessingMCPTestBase):
     def test_success_uses_latest_algorithm_only(
         self, mock_processing_registry, mock_run
     ):
-        """Verify the successful path for uses latest algorithm only."""
+        """Verify the successful path for uses the latest algorithm only."""
         tools = self.build_tools()
         vector_layer = self.add_sample_polygon_layer("zonal_polygon_fb_only")
         raster_layer = self.add_sample_raster_layer("zonal_raster_fb_only")
@@ -101,7 +101,7 @@ class ToolsRasterStatsZonalTest(ProcessingMCPTestBase):
     def test_success_in_place_normalizes_parameters_and_output_layer_id(
         self, mock_processing_registry, mock_run
     ):
-        """Verify the successful path for in place normalizes parameters and output layer ID."""
+        """Verify the successful path for in-place mode normalizes parameters and the output layer ID."""
         tools = self.build_tools()
         vector_layer = self.add_sample_polygon_layer("zonal_polygon_in_place")
         raster_layer = self.add_sample_raster_layer("zonal_raster_in_place")
@@ -128,7 +128,7 @@ class ToolsRasterStatsZonalTest(ProcessingMCPTestBase):
 
     @patch("processingmcpserver.mcp_tools.mcp_tools_raster_stats_zonal.QgsApplication.processingRegistry")
     def test_failure_when_zonalstatisticsfb_unavailable(self, mock_processing_registry):
-        """Verify the failure path for when zonalstatisticsfb unavailable."""
+        """Verify the failure path for when `zonalstatisticsfb` is unavailable."""
         tools = self.build_tools()
         vector_layer = self.add_sample_polygon_layer("zonal_polygon_no_algorithm")
         raster_layer = self.add_sample_raster_layer("zonal_raster_no_algorithm")

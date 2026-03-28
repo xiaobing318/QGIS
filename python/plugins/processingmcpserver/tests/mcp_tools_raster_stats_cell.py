@@ -6,11 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsRasterStatsCellTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the target capability is registered."""
+        """Ensure the expected capability is registered."""
         assert_tool_registered(self, "raster_stats_cell")
 
     def test_success_raster_stats_cell(self):
-        """Verify the successful path for raster stats cell."""
+        """Verify the successful path for cell raster statistics."""
         tools = self.build_tools()
         layer1 = self.add_sample_raster_layer("cell_stats_raster1")
         layer2 = self.add_sample_raster_layer("cell_stats_raster2")
@@ -24,7 +24,7 @@ class ToolsRasterStatsCellTest(ProcessingMCPTestBase):
         self.assertEqual(result["summary"]["input_count"], 2)
 
     def test_failure_empty_refs(self):
-        """Verify the failure path for empty refs."""
+        """Verify the failure path for empty references."""
         tools = self.build_tools()
         with self.assertRaises(Exception) as ctx:
             tools.raster_stats_cell(raster_layer_refs=[])

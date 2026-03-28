@@ -57,7 +57,7 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
         self.assertEqual(set(mcp.resource_descriptions), set(REGISTERED_RESOURCE_URIS))
 
     def test_registered_tools_have_non_placeholder_docstrings(self):
-        """Verify registered tools have non placeholder docstrings."""
+        """Verify that registered tools have non-placeholder docstrings."""
         for tool_name in REGISTERED_TOOL_NAMES:
             method = getattr(ProcessingMCPTools, tool_name, None)
             self.assertTrue(callable(method), msg=f"Missing tool method: {tool_name}")
@@ -72,7 +72,7 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
             )
 
     def test_registered_prompts_have_non_empty_docstrings(self):
-        """Verify registered prompts have non empty docstrings."""
+        """Verify that registered prompts have non-empty docstrings."""
         self.assertEqual(set(_REGISTERED_PROMPT_DOCSTRINGS), set(REGISTERED_PROMPT_NAMES))
 
         mcp = DummyMcp()
@@ -89,7 +89,7 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
             )
 
     def test_registered_resources_have_non_empty_docstrings(self):
-        """Verify registered resources have non empty docstrings."""
+        """Verify that registered resources have non-empty docstrings."""
         self.assertEqual(set(_REGISTERED_RESOURCE_DOCSTRINGS), set(REGISTERED_RESOURCE_URIS))
 
         mcp = DummyMcp()

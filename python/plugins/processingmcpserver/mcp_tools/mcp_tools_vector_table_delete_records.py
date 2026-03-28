@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'vector_table_delete_records'
-TOOL_DOC = '???按条件删除矢量图层中的部分记录。 ?????layer_ref 指向矢量图层，where 可选筛选表达式，in_place 控制是否直接改源图层，confirm_destructive 必须明确确认删除行为。 ?????目标图层必须存在；若提供 where，表达式必须有效。 ??????会删除匹配记录；默认副本模式下删除的是副本图层中的记录。 ?????默认 in_place=false；删除类操作还要求 confirm_destructive=true，避免误删原图层或记录。 ?????返回 summary.mode、affected_count、output_layer_id 和删除后的 feature_count。'
+TOOL_DOC = '按条件删除矢量图层中的部分记录。 layer_ref 指向矢量图层，where 可选筛选表达式，in_place 控制是否直接改源图层，confirm_destructive 必须明确确认删除行为。 目标图层必须存在；若提供 where，表达式必须有效。 会删除匹配记录；默认副本模式下删除的是副本图层中的记录。 默认 in_place=false；删除类操作还要求 confirm_destructive=true，避免误删原图层或记录。 返回 summary.mode、affected_count、output_layer_id 和删除后的 feature_count。'
 
 def vector_table_delete_records(self, layer_ref: str, where: str | None = None, in_place: bool = False, confirm_destructive: bool = False) -> dict[str, Any]:
     """Handle records from a vector table."""

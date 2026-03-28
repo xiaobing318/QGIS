@@ -6,11 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsVectorAddLayerTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the target capability is registered."""
+        """Ensure the expected capability is registered."""
         assert_tool_registered(self, "vector_add_layer")
 
     def test_success_add_geojson_layer(self):
-        """Verify the successful path for add GeoJSON layer."""
+        """Verify the successful path for adding a GeoJSON layer."""
         tools = self.build_tools()
         geojson = self.sample_vector_path()
 
@@ -19,7 +19,7 @@ class ToolsVectorAddLayerTest(ProcessingMCPTestBase):
         self.assertEqual(result["feature_count"], 1)
 
     def test_failure_invalid_path(self):
-        """Verify the failure path for invalid path."""
+        """Verify the failure path for an invalid path."""
         tools = self.build_tools()
         with self.assertRaises(Exception) as ctx:
             tools.vector_add_layer(path="C:/not-exist/sample.geojson", provider="ogr")

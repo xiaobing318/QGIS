@@ -6,11 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsVectorAddLayersTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the target capability is registered."""
+        """Ensure the expected capability is registered."""
         assert_tool_registered(self, "vector_add_layers")
 
     def test_success_with_skip_invalid(self):
-        """Verify the successful path for with skip invalid."""
+        """Verify that skip-invalid mode accepts valid layers."""
         tools = self.build_tools()
         geojson = self.sample_vector_path()
 
@@ -24,7 +24,7 @@ class ToolsVectorAddLayersTest(ProcessingMCPTestBase):
         self.assertEqual(result["failed_count"], 1)
 
     def test_failure_without_skip_invalid(self):
-        """Verify the failure path for without skip invalid."""
+        """Verify that invalid layers fail when skip-invalid is disabled."""
         tools = self.build_tools()
         geojson = self.sample_vector_path()
 

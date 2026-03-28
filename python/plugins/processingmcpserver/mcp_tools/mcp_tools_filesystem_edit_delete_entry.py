@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'filesystem_edit_delete_entry'
-TOOL_DOC = '???删除单个文件或整个目录树。 ?????path 指向待删除文件或目录，confirm_destructive 必须明确确认删除，confirm_write 用于显式确认写操作。 ?????目标路径必须存在。 ??????会永久删除磁盘上的文件或目录内容。 ?????只有 confirm_write=true 且 confirm_destructive=true 才允许执行删除。 ?????返回 deleted_path 摘要。'
+TOOL_DOC = '删除单个文件或整个目录树。 path 指向待删除文件或目录，confirm_destructive 必须明确确认删除，confirm_write 用于显式确认写操作。 目标路径必须存在。 会永久删除磁盘上的文件或目录内容。 只有 confirm_write=true 且 confirm_destructive=true 才允许执行删除。 返回 deleted_path 摘要。'
 
 def filesystem_edit_delete_entry(self, path: str, confirm_destructive: bool = False, confirm_write: bool = False) -> dict[str, Any]:
     """Handle a filesystem entry."""

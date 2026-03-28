@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'vector_add_layer'
-TOOL_DOC = '???把单个矢量数据源加载到当前 QGIS 工程。 ?????path 指向矢量数据文件或数据源，provider 默认 ogr，name 可覆盖图层显示名。 ?????目标路径必须存在且能被对应 provider 正常识别。 ??????会向当前工程新增一个矢量图层，但不会改写源数据文件。 ?????无 destructive 开关；若路径无效会直接报错并中止加载。 ?????返回新图层的 id、name、type 与 feature_count，便于后续继续引用。'
+TOOL_DOC = '把单个矢量数据源加载到当前 QGIS 工程。 path 指向矢量数据文件或数据源，provider 默认 ogr，name 可覆盖图层显示名。 目标路径必须存在且能被对应 provider 正常识别。 会向当前工程新增一个矢量图层，但不会改写源数据文件。 无 destructive 开关；若路径无效会直接报错并中止加载。 返回新图层的 id、name、type 与 feature_count，便于后续继续引用。'
 
 def vector_add_layer(self, path: str, provider: str = "ogr", name: str | None = None) -> dict[str, Any]:
     """Handle a vector layer."""

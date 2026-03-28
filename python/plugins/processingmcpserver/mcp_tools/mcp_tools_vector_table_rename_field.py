@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'vector_table_rename_field'
-TOOL_DOC = '???重命名矢量图层中的单个字段。 ?????layer_ref 指向矢量图层，field_name 是旧字段名，new_field_name 是新字段名，in_place 控制是否直接改源图层。 ?????目标图层必须存在，旧字段必须存在，新字段名不能与已有字段重名。 ??????会修改图层字段结构；默认副本模式下会生成新的输出图层。 ?????默认 in_place=false，会先生成副本图层并返回新的 output_layer_id；仅在明确要修改原图层时才把 in_place 设为 true。 ?????返回 summary.mode、affected_count、output_layer_id 和重命名后的字段列表。'
+TOOL_DOC = '重命名矢量图层中的单个字段。 layer_ref 指向矢量图层，field_name 是旧字段名，new_field_name 是新字段名，in_place 控制是否直接改源图层。 目标图层必须存在，旧字段必须存在，新字段名不能与已有字段重名。 会修改图层字段结构；默认副本模式下会生成新的输出图层。 默认 in_place=false，会先生成副本图层并返回新的 output_layer_id；仅在明确要修改原图层时才把 in_place 设为 true。 返回 summary.mode、affected_count、output_layer_id 和重命名后的字段列表。'
 
 def vector_table_rename_field(self, layer_ref: str, field_name: str, new_field_name: str, in_place: bool = False) -> dict[str, Any]:
     """Handle a field in a vector table."""

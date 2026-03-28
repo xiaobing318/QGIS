@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """Qt main-thread runner used by MCP tools and server callbacks."""
+
+from __future__ import annotations
 
 import threading
 from typing import Callable, TypeVar
@@ -28,7 +28,7 @@ class McpMainThreadRunner(QObject):
         wait_timeout_seconds: float = DEFAULT_WAIT_TIMEOUT_SECONDS,
         parent: QObject | None = None,
     ) -> None:
-        """Initialize the runner state."""
+        """Initialize the runner state and validate the timeout."""
         super().__init__(parent)
         timeout = float(wait_timeout_seconds)
         if timeout <= 0:
@@ -36,7 +36,7 @@ class McpMainThreadRunner(QObject):
         self._wait_timeout_seconds = timeout
 
     def run(self, func: Callable[[], ResultT]) -> ResultT:
-        """Execute a callback and block until it finishes when crossing threads."""
+        """Execute a callback synchronously, marshalling it to the Qt main thread when needed."""
         app = QCoreApplication.instance()
         if app is None or QThread.currentThread() == app.thread():
             return func()
@@ -45,7 +45,7 @@ class McpMainThreadRunner(QObject):
         done = threading.Event()
 
         def wrapper() -> None:
-            """Wrap the callback and transfer its result synchronously."""
+            """Run the callback and capture either its result or raised exception."""
             try:
                 result["value"] = func()
             except Exception as exc:
@@ -56,7 +56,7 @@ class McpMainThreadRunner(QObject):
         invoke_ok = QMetaObject.invokeMethod(
             self, "_execute", Qt.ConnectionType.QueuedConnection, Q_ARG(object, wrapper)
         )
-        # PyQt6 may return None here even when the callback was queued successfully.
+        # PyQt6 may return `None` here even when the callback was queued successfully.
         if invoke_ok is False:
             raise RuntimeError("Failed to schedule callback on Qt main thread.")
 
@@ -72,5 +72,5 @@ class McpMainThreadRunner(QObject):
 
     @pyqtSlot(object)
     def _execute(self, func: Callable[[], None]) -> None:
-        """Execute the queued callback as a Qt slot."""
+        """Execute the queued callback on the Qt main thread."""
         func()

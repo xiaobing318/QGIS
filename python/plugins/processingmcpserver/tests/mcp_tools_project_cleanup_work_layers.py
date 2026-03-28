@@ -6,11 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsProjectCleanupWorkLayersTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the target capability is registered."""
+        """Ensure the expected capability is registered."""
         assert_tool_registered(self, "project_cleanup_work_layers")
 
     def test_cleanup_removes_work_layers_and_temp_files(self):
-        """Verify the successful path for cleanup removes work layers and temp files."""
+        """Verify that cleanup removes work layers and temporary files."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("cleanup_source")
         prepared = tools.vector_prepare_work_layer(
@@ -32,4 +32,3 @@ class ToolsProjectCleanupWorkLayersTest(ProcessingMCPTestBase):
         self.assertIn(work_layer_id, result["outputs"]["removed_layer_ids"])
         self.assertIsNone(self.project_layer(work_layer_id))
         self.assertFalse(shapefile_path.exists())
-

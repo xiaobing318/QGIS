@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'raster_stats_cell'
-TOOL_DOC = '???对多个栅格做逐像元统计运算，例如逐像元均值、最小值或最大值。 ?????raster_layer_refs 是栅格引用数组，statistic 选择逐像元统计类型，ignore_nodata 控制是否忽略 NoData。 ?????至少提供一个有效栅格图层，且各栅格最好在分辨率、范围和 CRS 上可兼容处理。 ??????会运行 Processing 栅格统计算法，通常产生新的输出栅格结果；是否自动加载取决于算法默认行为和 Processing 设置。 ?????无 destructive 开关，但会触发 Processing 执行。 ?????返回算法摘要和序列化后的 Processing 输出结果。'
+TOOL_DOC = '对多个栅格做逐像元统计运算，例如逐像元均值、最小值或最大值。 raster_layer_refs 是栅格引用数组，statistic 选择逐像元统计类型，ignore_nodata 控制是否忽略 NoData。 至少提供一个有效栅格图层，且各栅格最好在分辨率、范围和 CRS 上可兼容处理。 会运行 Processing 栅格统计算法，通常产生新的输出栅格结果；是否自动加载取决于算法默认行为和 Processing 设置。 无 destructive 开关，但会触发 Processing 执行。 返回算法摘要和序列化后的 Processing 输出结果。'
 
 def raster_stats_cell(self, raster_layer_refs: list[str], statistic: int = 0, ignore_nodata: bool = True) -> dict[str, Any]:
     """Handle per-cell raster statistics."""

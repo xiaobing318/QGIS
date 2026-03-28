@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'vector_table_truncate'
-TOOL_DOC = '???清空矢量图层中的全部记录，但保留图层结构和字段。 ?????layer_ref 指向矢量图层，in_place 控制是否直接改源图层，confirm_destructive 必须明确确认清空行为。 ?????目标图层必须存在。 ??????会删除全部要素；默认副本模式下清空的是副本图层。 ?????默认 in_place=false；删除类操作还要求 confirm_destructive=true，避免误删原图层或记录。 ?????返回 summary.mode、affected_count、output_layer_id 和清空后的 feature_count。'
+TOOL_DOC = '清空矢量图层中的全部记录，但保留图层结构和字段。 layer_ref 指向矢量图层，in_place 控制是否直接改源图层，confirm_destructive 必须明确确认清空行为。 目标图层必须存在。 会删除全部要素；默认副本模式下清空的是副本图层。 默认 in_place=false；删除类操作还要求 confirm_destructive=true，避免误删原图层或记录。 返回 summary.mode、affected_count、output_layer_id 和清空后的 feature_count。'
 
 def vector_table_truncate(self, layer_ref: str, in_place: bool = False, confirm_destructive: bool = False) -> dict[str, Any]:
     """Handle a vector table."""

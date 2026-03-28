@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'vector_prepare_work_layer'
-TOOL_DOC = '???把输入矢量图层整理成带任务标签的临时工作层，并串行执行 shapefile 稳定模板的标准化前置动作。 ?????layer_ref 与 path 二选一；task_name 用于标记工作层和运行摘要；target_crs 控制目标坐标系；normalize_field_names 控制是否把字段名压到 10 字符以内；multipart_policy 可选 keep 或 singleparts。 ?????目标图层必须存在或 path 指向有效矢量数据文件；target_crs 若提供必须可被 QGIS 解析。 ??????会在当前工程新增一个临时工作层，并对该临时层执行空几何清理、几何修复、重复几何清理、重投影和可选字段改名/拆多部件操作。 ?????默认不写盘；所有修改都落在临时工作层上，原始输入图层和源文件不会被直接改写。 ?????返回 output_layer_id、field_name_mapping、initial_report、final_report，以及各标准化步骤的影响计数。'
+TOOL_DOC = '把输入矢量图层整理成带任务标签的临时工作层，并串行执行 shapefile 稳定模板的标准化前置动作。 layer_ref 与 path 二选一；task_name 用于标记工作层和运行摘要；target_crs 控制目标坐标系；normalize_field_names 控制是否把字段名压到 10 字符以内；multipart_policy 可选 keep 或 singleparts。 目标图层必须存在或 path 指向有效矢量数据文件；target_crs 若提供必须可被 QGIS 解析。 会在当前工程新增一个临时工作层，并对该临时层执行空几何清理、几何修复、重复几何清理、重投影和可选字段改名/拆多部件操作。 默认不写盘；所有修改都落在临时工作层上，原始输入图层和源文件不会被直接改写。 返回 output_layer_id、field_name_mapping、initial_report、final_report，以及各标准化步骤的影响计数。'
 
 def vector_prepare_work_layer(self, layer_ref: str = "", path: str = "", task_name: str = "", target_crs: str | None = None, normalize_field_names: bool = False, multipart_policy: str = "keep") -> dict[str, Any]:
     """Handle a vector work layer."""

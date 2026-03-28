@@ -64,4 +64,3 @@ class ConfigDependenciesFlagsTest(ProcessingMCPTestBase):
 
         self.assertTrue(config.enable_execute_code)
         self.assertEqual(config.config_sources.get("enable_execute_code"), "Settings")
-

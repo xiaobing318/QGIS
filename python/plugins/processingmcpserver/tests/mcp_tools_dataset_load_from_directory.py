@@ -6,11 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsDatasetLoadFromDirectoryTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the target capability is registered."""
+        """Ensure the expected capability is registered."""
         assert_tool_registered(self, "dataset_load_from_directory")
 
     def test_success_dataset_load_vector(self):
-        """Verify the successful path for dataset load vector."""
+        """Verify the successful path for loading a vector dataset."""
         tools = self.build_tools()
         temp_root = self.make_temp_dir()
         vector_file = self.copy_test_data_file(
@@ -31,7 +31,7 @@ class ToolsDatasetLoadFromDirectoryTest(ProcessingMCPTestBase):
         self.assertEqual(result["failed_count"], 0)
 
     def test_success_dataset_load_raster(self):
-        """Verify the successful path for dataset load raster."""
+        """Verify the successful path for loading a raster dataset."""
         tools = self.build_tools()
         temp_root = self.make_temp_dir()
         raster_file = self.copy_test_data_file("dem.tif", temp_root, "dataset_load.tif")
@@ -51,7 +51,7 @@ class ToolsDatasetLoadFromDirectoryTest(ProcessingMCPTestBase):
         self.assertEqual(result["failed_count"], 0)
 
     def test_success_skip_invalid_collects_failures(self):
-        """Verify the successful path for skip invalid collects failures."""
+        """Verify the successful path for skip-invalid mode collects failures."""
         tools = self.build_tools()
         temp_root = self.make_temp_dir()
         self.copy_test_data_file("sample_vector.geojson", temp_root, "valid.geojson")
@@ -73,7 +73,7 @@ class ToolsDatasetLoadFromDirectoryTest(ProcessingMCPTestBase):
         self.assertIn("broken.geojson", result["failed"][0]["path"])
 
     def test_failure_skip_invalid_false_raises_on_invalid_dataset(self):
-        """Verify the failure path for skip invalid false raises on invalid dataset."""
+        """Verify the failure path for skip-invalid set to false raises on an invalid dataset."""
         tools = self.build_tools()
         temp_root = self.make_temp_dir()
         self.copy_test_data_file("sample_vector.geojson", temp_root, "valid.geojson")
@@ -92,7 +92,7 @@ class ToolsDatasetLoadFromDirectoryTest(ProcessingMCPTestBase):
         self.assertIn("Failed to load dataset from directory", str(ctx.exception))
 
     def test_failure_missing_directory(self):
-        """Verify the failure path for missing directory."""
+        """Verify the failure path for a missing directory."""
         tools = self.build_tools()
         with self.assertRaises(Exception) as ctx:
             tools.dataset_load_from_directory(directory="C:/not-exist")

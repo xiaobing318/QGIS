@@ -1,6 +1,6 @@
-from __future__ import annotations
-
 """Processing MCP server assembly and lifecycle management."""
+
+from __future__ import annotations
 
 import base64
 import configparser
@@ -39,7 +39,7 @@ _SERVER_ICON_SIZE = "128x128"
 
 
 def _load_plugin_version_from_metadata() -> str | None:
-    """Load plugin version from metadata.txt."""
+    """Load the plugin version from `metadata.txt`."""
     metadata_path = Path(__file__).resolve().parent / _PLUGIN_METADATA_FILENAME
     parser = configparser.ConfigParser()
 
@@ -68,7 +68,7 @@ def _load_plugin_version_from_metadata() -> str | None:
 
 
 def _plugin_icon_data_uri() -> str:
-    """Build a data URI from the plugin icon file."""
+    """Build a data URI for the plugin icon file."""
     icon_path = Path(__file__).resolve().parent / "icons" / _SERVER_ICON_FILENAME
     encoded = base64.b64encode(icon_path.read_bytes()).decode("ascii")
     return f"data:{_SERVER_ICON_MIME_TYPE};base64,{encoded}"
@@ -105,7 +105,7 @@ class ProcessingMCPServer:
         self._transport = create_transport(self._mcp, self._config)
 
     def _build_mcp_server(self) -> "FastMCP":
-        """Create the FastMCP server and register tools; this loads MCP runtime dependencies."""
+        """Create the FastMCP server, register capabilities, and load MCP runtime dependencies."""
         try:
             from mcp.server.fastmcp import FastMCP
         except Exception as exc:
@@ -182,7 +182,7 @@ class ProcessingMCPServer:
     def _apply_plugin_version_to_low_level_server(
         self, mcp_server: object, plugin_version: str | None
     ) -> None:
-        """Apply plugin version to low-level MCP server when FastMCP lacks version arg."""
+        """Apply the plugin version to the underlying MCP server when FastMCP lacks a version parameter."""
         if not plugin_version:
             return
 
@@ -200,7 +200,7 @@ class ProcessingMCPServer:
             )
 
     def start(self) -> bool:
-        """Start the transport service from configuration and launch its worker thread."""
+        """Start the configured transport and launch its worker thread."""
         self._log_config_summary_once()
 
         if not self._config.enabled:
@@ -228,7 +228,7 @@ class ProcessingMCPServer:
             return False
 
     def stop(self) -> None:
-        """Stop the transport service and log the outcome."""
+        """Stop the transport and log the outcome."""
         try:
             self._transport.stop()
         except Exception:
@@ -255,7 +255,7 @@ class ProcessingMCPServer:
         )
 
     def _log_config_summary_once(self) -> None:
-        """Log the configuration summary only once to aid diagnostics."""
+        """Log the configuration summary once to aid diagnostics."""
         if self._config_logged:
             return
         self._config_logged = True

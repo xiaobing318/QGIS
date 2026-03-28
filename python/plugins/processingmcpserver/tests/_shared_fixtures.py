@@ -1,3 +1,5 @@
+"""Shared runtime fixtures and test doubles for processingmcpserver tests."""
+
 from __future__ import annotations
 
 import json

@@ -8,11 +8,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsLayerRemoveTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the target capability is registered."""
+        """Ensure the expected capability is registered."""
         assert_tool_registered(self, "layer_remove")
 
     def test_success_remove_existing_layer(self):
-        """Verify the successful path for remove existing layer."""
+        """Verify the successful path for removing an existing layer."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("remove_vector")
         layer_id = layer.id()
@@ -22,7 +22,7 @@ class ToolsLayerRemoveTest(ProcessingMCPTestBase):
         self.assertNotIn(layer_id, QgsProject.instance().mapLayers())
 
     def test_failure_missing_layer(self):
-        """Verify the failure path for missing layer."""
+        """Verify the failure path for a missing layer."""
         tools = self.build_tools()
         with self.assertRaises(Exception) as ctx:
             tools.layer_remove(layer_id="missing-layer")

@@ -56,7 +56,7 @@ def _log_result(result: DependencyCheckResult) -> None:
 def ensure_processing_mcp_dependencies(
     config: ProcessingMCPServerDependencies,
 ) -> DependencyCheckResult:
-    """Run dependency checks and auto-install when configured; this writes the report and logs."""
+    """Run dependency checks, optionally auto-install missing packages, and write the report."""
     environment = _collect_python_environment()
     (
         pip_python_executable,

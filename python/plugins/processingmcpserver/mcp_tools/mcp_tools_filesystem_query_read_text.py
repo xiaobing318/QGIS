@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'filesystem_query_read_text'
-TOOL_DOC = '???按 UTF-8 读取文本文件内容，适合让模型读取配置、脚本或日志片段。 ?????path 指向文本文件，max_chars 可选，用于限制返回字符数。 ?????目标路径必须存在且是文件，并且内容应能按 UTF-8 解码。 ??????无写操作，只读取文件内容。 ?????max_chars 为 None 时返回全文；传入数值时只读取 max_chars+1 个字符用于判断截断，并在 summary.truncated 中标记。 ?????返回 text 字段和截断摘要。'
+TOOL_DOC = '按 UTF-8 读取文本文件内容，适合让模型读取配置、脚本或日志片段。 path 指向文本文件，max_chars 可选，用于限制返回字符数。 目标路径必须存在且是文件，并且内容应能按 UTF-8 解码。 无写操作，只读取文件内容。 max_chars 为 None 时返回全文；传入数值时只读取 max_chars+1 个字符用于判断截断，并在 summary.truncated 中标记。 返回 text 字段和截断摘要。'
 
 def filesystem_query_read_text(self, path: str, max_chars: int | None = None) -> dict[str, Any]:
     """Handle text from a filesystem entry."""

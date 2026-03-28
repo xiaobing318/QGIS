@@ -8,11 +8,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsLayerRemoveBatchTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the target capability is registered."""
+        """Ensure the expected capability is registered."""
         assert_tool_registered(self, "layer_remove_batch")
 
     def test_success_remove_and_report_missing(self):
-        """Verify the successful path for remove and report missing."""
+        """Verify that removal reports missing items."""
         tools = self.build_tools()
         layer1 = self.add_sample_vector_layer("remove_batch_vector_1")
         layer2 = self.add_sample_vector_layer("remove_batch_vector_2")

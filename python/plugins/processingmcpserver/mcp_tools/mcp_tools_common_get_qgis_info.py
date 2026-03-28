@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'common_get_qgis_info'
-TOOL_DOC = '???返回当前 QGIS Desktop 会话、平台、插件与 Processing MCP 运行状态，适合作为所有自动化流程的环境探测入口。 ?????无业务输入。 ?????QGIS Desktop 已启动且 processingmcpserver 插件已加载。 ??????无写操作，只读取当前应用、项目与插件状态。 ?????无。 ?????返回 qgis、platform、python、active_project、active_plugins，以及 processing_mcp.filesystem.write_policy 安全摘要等环境信息。'
+TOOL_DOC = '返回当前 QGIS Desktop 会话、平台、插件与 Processing MCP 运行状态，适合作为所有自动化流程的环境探测入口。 无业务输入。 QGIS Desktop 已启动且 processingmcpserver 插件已加载。 无写操作，只读取当前应用、项目与插件状态。 无。 返回 qgis、platform、python、active_project、active_plugins，以及 processing_mcp.filesystem.write_policy 安全摘要等环境信息。'
 
 def common_get_qgis_info(self) -> dict[str, Any]:
     """Handle common QGIS information."""

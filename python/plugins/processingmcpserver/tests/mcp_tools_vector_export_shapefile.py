@@ -14,11 +14,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsVectorExportShapefileTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the target capability is registered."""
+        """Ensure the expected capability is registered."""
         assert_tool_registered(self, "vector_export_shapefile")
 
     def test_success_export_with_auto_truncated_field_names(self):
-        """Verify the successful path for export with auto truncated field names."""
+        """Verify that exporting auto-truncates field names."""
         tools = self.build_tools()
         layer = QgsVectorLayer(
             "Point?crs=EPSG:4326&field=very_long_field_name:string(32)",
@@ -57,7 +57,7 @@ class ToolsVectorExportShapefileTest(ProcessingMCPTestBase):
         )
 
     def test_failure_overwrite_requires_confirm_destructive(self):
-        """Verify the failure path for overwrite requires confirm destructive."""
+        """Verify that overwriting requires destructive confirmation."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("export_overwrite_guard")
         output_dir = self.make_temp_dir()

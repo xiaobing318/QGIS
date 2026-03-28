@@ -8,11 +8,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsVectorTableQueryRecordsTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the target capability is registered."""
+        """Ensure the expected capability is registered."""
         assert_tool_registered(self, "vector_table_query_records")
 
     def test_success_query_records(self):
-        """Verify the successful path for query records."""
+        """Verify the successful path for querying records."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("query_records_vector")
 
@@ -28,7 +28,7 @@ class ToolsVectorTableQueryRecordsTest(ProcessingMCPTestBase):
         self.assertEqual(result["outputs"]["records"][0]["attributes"]["name"], "alpha")
 
     def test_success_query_records_with_offset_sort_and_geometry(self):
-        """Verify the successful path for query records with offset sort and geometry."""
+        """Verify the successful path for querying records with offset, sort, and geometry."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("query_records_vector_offset")
 
@@ -48,7 +48,7 @@ class ToolsVectorTableQueryRecordsTest(ProcessingMCPTestBase):
         )
 
     def test_failure_invalid_where(self):
-        """Verify the failure path for invalid where."""
+        """Verify the failure path for an invalid where clause."""
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("query_records_vector2")
 
@@ -57,7 +57,7 @@ class ToolsVectorTableQueryRecordsTest(ProcessingMCPTestBase):
         self.assertIn("Invalid where expression", str(ctx.exception))
 
     def test_success_serializes_qt_field_values(self):
-        """Verify the successful path for serializes Qt field values."""
+        """Verify that Qt field values are serialized."""
         tools = self.build_tools()
         layer = self.add_serialization_vector_layer("query_records_vector_serialization")
 

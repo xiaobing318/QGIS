@@ -6,11 +6,11 @@ from ._shared_fixtures import assert_tool_registered
 
 class ToolsProcessingGetParameterTemplateTest(ProcessingMCPTestBase):
     def test_registered(self):
-        """Ensure the target capability is registered."""
+        """Ensure the expected capability is registered."""
         assert_tool_registered(self, "processing_get_parameter_template")
 
     def test_success_get_parameter_template(self):
-        """Verify the successful path for get parameter template."""
+        """Verify the successful path for getting the parameter template."""
         tools = self.build_tools()
 
         result = tools.processing_get_parameter_template("native:buffer")
@@ -20,7 +20,7 @@ class ToolsProcessingGetParameterTemplateTest(ProcessingMCPTestBase):
         self.assertIn("outputs", result)
 
     def test_failure_unknown_algorithm_id(self):
-        """Verify the failure path for unknown algorithm ID."""
+        """Verify the failure path for an unknown algorithm ID."""
         tools = self.build_tools()
         with self.assertRaises(Exception) as ctx:
             tools.processing_get_parameter_template("not-exist:algorithm")

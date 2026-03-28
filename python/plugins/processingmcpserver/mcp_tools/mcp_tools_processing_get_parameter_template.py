@@ -65,7 +65,7 @@ def _ensure_processing_initialized() -> None:
     _PROCESSING_INITIALIZED = True
 
 TOOL_NAME = 'processing_get_parameter_template'
-TOOL_DOC = '???把某个 Processing 算法的输入参数和输出定义整理成适合模型填写的模板。 ?????algorithm_id 是目标算法 id。 ?????Processing 运行时必须可用，且算法必须存在。 ??????无写操作，只读取算法参数定义和输出定义。 ?????无。 ?????返回 algorithm 基本信息、required_parameters、optional_parameters 和 outputs。'
+TOOL_DOC = '把某个 Processing 算法的输入参数和输出定义整理成适合模型填写的模板。 algorithm_id 是目标算法 id。 Processing 运行时必须可用，且算法必须存在。 无写操作，只读取算法参数定义和输出定义。 无。 返回 algorithm 基本信息、required_parameters、optional_parameters 和 outputs。'
 
 def processing_get_parameter_template(self, algorithm_id: str) -> dict[str, Any]:
     """Handle a processing parameter template."""

@@ -24,7 +24,7 @@ from ._shared_case_base import ProcessingMCPTestBase
 
 class CapabilitiesMarkdownRuntimeTest(ProcessingMCPTestBase):
     def test_default_output_path_targets_exporter_module_directory(self):
-        """Verify the default behavior for output path targets exporter module directory."""
+        """Verify that the default output path targets the exporter module directory."""
         expected = (
             Path(capabilities_markdown.__file__).resolve().parent
             / capabilities_markdown.DEFAULT_CAPABILITIES_MARKDOWN_FILENAME
