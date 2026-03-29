@@ -1,116 +1,36 @@
+"""Processing MCP prompt module."""
+
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable
 
-REGISTERED_PROMPT_NAMES: tuple[str, ...] = ("qgis_shapefile_pipeline_planner",)
+PROMPT_NAME = "qgis_shapefile_pipeline_planner"
+PROMPT_DOC = (
+    "用途：生成面向 shapefile 的六阶段执行计划提示，约束模型按固定阶段完成路径检查、筛选、预检、统计、标准化、处理、导出和清理。 "
+    "输入：task_name、input_dir、output_dir 为必填参数；quality_rule_resource 指向质量规则资源；deliverables 描述交付物说明。 "
+    "前置条件：processingmcpserver 已注册 prompts/resources/tools，且建议同时挂载 qgis://workflow/shapefile/template 与 qgis://workflow/shapefile/quality-profile/default。 "
+    "副作用：无写操作，只返回结构化 prompt 文本。 "
+    "安全控制：无。 "
+    "返回结果：返回六阶段中文主导提示模板，供 llama-server WebUI 的 Use Prompt 直接注入聊天上下文。"
+)
 
 
-def _prompt_doc(
-    purpose: str,
-    inputs: str,
-    preconditions: str,
-    effects: str,
-    safety: str,
-    returns: str,
-) -> str:
+def register_prompt(
+    prompt_factory: Callable[..., Any],
+    workflow_template: dict[str, Any],
+    quality_profile: dict[str, Any],
+) -> None:
     """
-    作用：封装内部辅助步骤 `_prompt_doc`，用于拆分并复用模块内重复处理逻辑。
-    用途：封装内部辅助步骤 `_prompt_doc`，用于拆分并复用模块内重复处理逻辑。
-    使用场景：在 MCP prompt 注册与调用流程中被调用，用于返回提示词模板内容。
+    作用：注册 `qgis_shapefile_pipeline_planner`，完成当前函数负责的处理步骤并产出结果。
+    用途：注册 `qgis_shapefile_pipeline_planner`，完成当前函数负责的处理步骤并产出结果。
+    使用场景：在 MCP prompt 注册流程中由聚合模块调用，用于挂载单个 prompt 实现。
     参数与返回：
-    - 参数 `purpose`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
-    - 参数 `inputs`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
-    - 参数 `preconditions`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
-    - 参数 `effects`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
-    - 参数 `safety`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
-    - 参数 `returns`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
-    - 返回：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
-    返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
-    """
-    return (
-        f"用途：{purpose} 输入：{inputs} 前置条件：{preconditions} "
-        f"副作用：{effects} 安全控制：{safety} 返回结果：{returns}"
-    )
-
-
-_REGISTERED_PROMPT_DOCSTRINGS: dict[str, str] = {
-    "qgis_shapefile_pipeline_planner": _prompt_doc(
-        "生成面向 shapefile 的六阶段执行计划提示，约束模型按固定阶段完成路径检查、筛选、预检、统计、标准化、处理、导出和清理。",
-        "task_name、input_dir、output_dir 为必填参数；quality_rule_resource 指向质量规则资源；deliverables 描述交付物说明。",
-        "processingmcpserver 已注册 prompts/resources/tools，且建议同时挂载 qgis://workflow/shapefile/template 与 qgis://workflow/shapefile/quality-profile/default。",
-        "无写操作，只返回结构化 prompt 文本。",
-        "无。",
-        "返回六阶段中文主导提示模板，供 llama-server WebUI 的 Use Prompt 直接注入聊天上下文。",
-    ),
-}
-
-
-def _validate_registered_prompt_docstrings() -> None:
-    """
-    作用：封装内部辅助步骤 `_validate_registered_prompt_docstrings`，用于拆分并复用模块内重复处理逻辑。
-    用途：封装内部辅助步骤 `_validate_registered_prompt_docstrings`，用于拆分并复用模块内重复处理逻辑。
-    使用场景：在 MCP prompt 注册与调用流程中被调用，用于返回提示词模板内容。
-    参数与返回：
-    - 参数：无。
-    - 返回：无返回值。
-    返回结果：无返回值。
-    异常：可能显式抛出 `RuntimeError`。
-    """
-    missing: list[str] = []
-    invalid: list[str] = []
-    extra = sorted(set(_REGISTERED_PROMPT_DOCSTRINGS) - set(REGISTERED_PROMPT_NAMES))
-    for prompt_name in REGISTERED_PROMPT_NAMES:
-        description = _REGISTERED_PROMPT_DOCSTRINGS.get(prompt_name)
-        if not isinstance(description, str):
-            missing.append(prompt_name)
-            continue
-        if not description.strip():
-            invalid.append(prompt_name)
-    if missing or invalid or extra:
-        raise RuntimeError(
-            "Failed to initialize registered MCP prompt docstrings: "
-            f"missing={missing}, invalid={invalid}, extra={extra}"
-        )
-
-
-_validate_registered_prompt_docstrings()
-
-
-def register_prompts(mcp: Any, tools: Any) -> None:
-    """
-    作用：注册 `prompts`，完成当前函数负责的处理步骤并产出结果。
-    用途：注册 `prompts`，完成当前函数负责的处理步骤并产出结果。
-    使用场景：在 MCP prompt 注册与调用流程中被调用，用于返回提示词模板内容。
-    参数与返回：
-    - 参数 `mcp`（`Any`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
-    - 参数 `tools`（`Any`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `prompt_factory`（`Callable[..., Any]`）：注册器参数。
+    - 参数 `workflow_template`（`dict[str, Any]`）：workflow 资源模板快照。
+    - 参数 `quality_profile`（`dict[str, Any]`）：质量规则快照。
     - 返回：无返回值。
     返回结果：无返回值。
     """
-    prompt_factory = getattr(mcp, "prompt", None)
-    if not callable(prompt_factory):
-        return
-
-    workflow_template: dict[str, Any] = {}
-    quality_profile: dict[str, Any] = {}
-    if hasattr(tools, "get_shapefile_workflow_template") and callable(
-        tools.get_shapefile_workflow_template
-    ):
-        try:
-            workflow_template = tools.get_shapefile_workflow_template()
-        except Exception:
-            workflow_template = {}
-    if hasattr(tools, "get_shapefile_quality_profile") and callable(
-        tools.get_shapefile_quality_profile
-    ):
-        try:
-            quality_profile = tools.get_shapefile_quality_profile()
-        except Exception:
-            quality_profile = {}
-
-    qgis_shapefile_pipeline_planner_description = _REGISTERED_PROMPT_DOCSTRINGS[
-        "qgis_shapefile_pipeline_planner"
-    ]
     workflow_stages = workflow_template.get(
         "workflow_stages",
         [
@@ -129,7 +49,7 @@ def register_prompts(mcp: Any, tools: Any) -> None:
     )
     quality_checks = quality_profile.get("quality_checks", [])
 
-    @prompt_factory(description=qgis_shapefile_pipeline_planner_description)
+    @prompt_factory(description=PROMPT_DOC)
     def qgis_shapefile_pipeline_planner(
         task_name: str,
         input_dir: str,
@@ -226,4 +146,5 @@ def register_prompts(mcp: Any, tools: Any) -> None:
             f"- {deliverables_text}"
         )
 
-    qgis_shapefile_pipeline_planner.__doc__ = qgis_shapefile_pipeline_planner_description
+    qgis_shapefile_pipeline_planner.__doc__ = PROMPT_DOC
+
