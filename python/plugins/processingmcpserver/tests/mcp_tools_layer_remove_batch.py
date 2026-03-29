@@ -42,6 +42,25 @@ class ToolsLayerRemoveBatchTest(ProcessingMCPTestBase):
         self.assertNotIn(layer1_id, QgsProject.instance().mapLayers())
         self.assertNotIn(layer2_id, QgsProject.instance().mapLayers())
 
+    def test_success_single_layer_id(self):
+        """
+        作用：执行测试用例 `success single layer id`，验证目标行为在回归场景下是否符合预期。
+        用途：执行测试用例 `success single layer id`，验证目标行为在回归场景下是否符合预期。
+        使用场景：在 processingmcpserver 自动化测试套件执行阶段由 unittest 运行器调用，用于回归验证。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：无返回值。
+        返回结果：无返回值。
+        """
+        tools = self.build_tools()
+        layer = self.add_sample_vector_layer("remove_batch_single")
+        layer_id = layer.id()
+
+        result = tools.layer_remove_batch([layer_id])
+        self.assertEqual(result["removed"], [layer_id])
+        self.assertEqual(result["missing"], [])
+        self.assertNotIn(layer_id, QgsProject.instance().mapLayers())
+
     def test_safety_ignore_empty_ids(self):
         """
         作用：执行测试用例 `safety ignore empty ids`，验证目标行为在回归场景下是否符合预期。

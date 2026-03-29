@@ -23,17 +23,13 @@ from processingmcpserver.config_types import (
 from processingmcpserver.mcp_main_thread_runner import McpMainThreadRunner
 
 from . import mcp_tools_common_get_qgis_info as _MOD_common_get_qgis_info
-from . import mcp_tools_vector_add_layer as _MOD_vector_add_layer
 from . import mcp_tools_vector_add_layers as _MOD_vector_add_layers
-from . import mcp_tools_raster_add_layer as _MOD_raster_add_layer
 from . import mcp_tools_raster_add_layers as _MOD_raster_add_layers
 from . import mcp_tools_layer_list as _MOD_layer_list
 from . import mcp_tools_layer_get_panel_tree as _MOD_layer_get_panel_tree
 from . import mcp_tools_layer_get_details as _MOD_layer_get_details
-from . import mcp_tools_layer_remove as _MOD_layer_remove
 from . import mcp_tools_layer_remove_batch as _MOD_layer_remove_batch
 from . import mcp_tools_layer_resolve_references as _MOD_layer_resolve_references
-from . import mcp_tools_vector_get_layer_features as _MOD_vector_get_layer_features
 from . import mcp_tools_vector_table_add_field as _MOD_vector_table_add_field
 from . import mcp_tools_vector_table_drop_fields as _MOD_vector_table_drop_fields
 from . import mcp_tools_vector_table_rename_field as _MOD_vector_table_rename_field
@@ -72,17 +68,13 @@ from . import mcp_tools_processing_execute_on_layers as _MOD_processing_execute_
 
 REGISTERED_TOOL_NAMES: tuple[str, ...] = (
     'common_get_qgis_info',
-    'vector_add_layer',
     'vector_add_layers',
-    'raster_add_layer',
     'raster_add_layers',
     'layer_list',
     'layer_get_panel_tree',
     'layer_get_details',
-    'layer_remove',
     'layer_remove_batch',
     'layer_resolve_references',
-    'vector_get_layer_features',
     'vector_table_add_field',
     'vector_table_drop_fields',
     'vector_table_rename_field',
@@ -129,17 +121,13 @@ NON_TOOL_PUBLIC_HELPER_NAMES: tuple[str, ...] = (
 
 _REGISTERED_TOOL_DOCSTRINGS: dict[str, str] = {
     'common_get_qgis_info': _MOD_common_get_qgis_info.TOOL_DOC,
-    'vector_add_layer': _MOD_vector_add_layer.TOOL_DOC,
     'vector_add_layers': _MOD_vector_add_layers.TOOL_DOC,
-    'raster_add_layer': _MOD_raster_add_layer.TOOL_DOC,
     'raster_add_layers': _MOD_raster_add_layers.TOOL_DOC,
     'layer_list': _MOD_layer_list.TOOL_DOC,
     'layer_get_panel_tree': _MOD_layer_get_panel_tree.TOOL_DOC,
     'layer_get_details': _MOD_layer_get_details.TOOL_DOC,
-    'layer_remove': _MOD_layer_remove.TOOL_DOC,
     'layer_remove_batch': _MOD_layer_remove_batch.TOOL_DOC,
     'layer_resolve_references': _MOD_layer_resolve_references.TOOL_DOC,
-    'vector_get_layer_features': _MOD_vector_get_layer_features.TOOL_DOC,
     'vector_table_add_field': _MOD_vector_table_add_field.TOOL_DOC,
     'vector_table_drop_fields': _MOD_vector_table_drop_fields.TOOL_DOC,
     'vector_table_rename_field': _MOD_vector_table_rename_field.TOOL_DOC,
@@ -420,7 +408,7 @@ class ProcessingMCPTools:
                 ],
                 "cleanup": [
                     "project_cleanup_work_layers",
-                    "layer_remove",
+                    "layer_remove_batch",
                 ],
             },
             "phases": [
@@ -477,7 +465,7 @@ class ProcessingMCPTools:
                     "goal": "移除中间/临时图层与输入图层，按策略清理临时文件。",
                     "recommended_tools": [
                         "project_cleanup_work_layers",
-                        "layer_remove",
+                        "layer_remove_batch",
                     ],
                 },
             ],
@@ -635,17 +623,13 @@ class ProcessingMCPTools:
 
 _TOOL_MODULES = [
     _MOD_common_get_qgis_info,
-    _MOD_vector_add_layer,
     _MOD_vector_add_layers,
-    _MOD_raster_add_layer,
     _MOD_raster_add_layers,
     _MOD_layer_list,
     _MOD_layer_get_panel_tree,
     _MOD_layer_get_details,
-    _MOD_layer_remove,
     _MOD_layer_remove_batch,
     _MOD_layer_resolve_references,
-    _MOD_vector_get_layer_features,
     _MOD_vector_table_add_field,
     _MOD_vector_table_drop_fields,
     _MOD_vector_table_rename_field,

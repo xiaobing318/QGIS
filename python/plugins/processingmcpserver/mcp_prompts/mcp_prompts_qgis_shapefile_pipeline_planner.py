@@ -137,7 +137,7 @@ def register_prompt(
             "- Goal: 清理中间层、临时层和加载的输入层。\n"
             "- Checks: 清理清单完整，必要时记录移除结果与剩余风险。\n"
             "- Blocking: 清理失败时记录 warning，不回滚已完成导出。\n"
-            "- Tools: project_cleanup_work_layers, layer_remove\n"
+            "- Tools: project_cleanup_work_layers, layer_remove_batch\n"
             "- Output: cleanup_report。\n"
             "Quality Rules / 质量规则:\n"
             f"- quality_rule_resource: {quality_rule_text}\n"
@@ -147,4 +147,3 @@ def register_prompt(
         )
 
     qgis_shapefile_pipeline_planner.__doc__ = PROMPT_DOC
-

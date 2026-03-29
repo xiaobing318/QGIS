@@ -1,9 +1,9 @@
 # Processing MCP Capabilities
 
-- Generated at (UTC): `2026-03-12T08:10:40.636844Z`
+- Generated at (UTC): `2026-03-29T05:46:22Z`
 - Exporter module: `I:\github_repos\QGIS\python\plugins\processingmcpserver\capabilities_markdown.py`
 - Package directory: `I:\github_repos\QGIS\python\plugins\processingmcpserver`
-- Tool count: `47`
+- Tool count: `43`
 - Prompt count: `1`
 - Resource count: `3`
 
@@ -13,21 +13,13 @@
 
 用途：返回当前 QGIS Desktop 会话、平台、插件与 Processing MCP 运行状态，适合作为所有自动化流程的环境探测入口。 输入语义：无业务输入。 前置条件：QGIS Desktop 已启动且 processingmcpserver 插件已加载。 主要副作用：无写操作，只读取当前应用、项目与插件状态。 安全开关：无。 返回结果：返回 qgis、platform、python、active_project、active_plugins，以及 processing_mcp.filesystem.write_policy 安全摘要等环境信息。
 
-### `vector_add_layer`
-
-用途：把单个矢量数据源加载到当前 QGIS 工程。 输入语义：path 指向矢量数据文件或数据源，provider 默认 ogr，name 可覆盖图层显示名。 前置条件：目标路径必须存在且能被对应 provider 正常识别。 主要副作用：会向当前工程新增一个矢量图层，但不会改写源数据文件。 安全开关：无 destructive 开关；若路径无效会直接报错并中止加载。 返回结果：返回新图层的 id、name、type 与 feature_count，便于后续继续引用。
-
 ### `vector_add_layers`
 
-用途：批量把多个矢量数据源加载到当前 QGIS 工程。 输入语义：paths 是待加载路径数组，provider 默认 ogr，skip_invalid 控制遇到坏数据时是跳过还是整体失败。 前置条件：至少提供一个可访问路径，且对应数据源应能被 provider 识别。 主要副作用：会向当前工程新增多个矢量图层，但不会改写源数据文件。 安全开关：skip_invalid=true 时会尽量继续加载其余路径；skip_invalid=false 时任何一个失败都会报错终止。 返回结果：返回 requested_count、loaded_count、failed_count，以及 loaded 和 failed 的逐项结果。
-
-### `raster_add_layer`
-
-用途：把单个栅格数据源加载到当前 QGIS 工程。 输入语义：path 指向栅格文件或数据源，provider 默认 gdal，name 可覆盖图层显示名。 前置条件：目标路径必须存在且能被 GDAL 或指定 provider 识别。 主要副作用：会向当前工程新增一个栅格图层，但不会改写源数据文件。 安全开关：无 destructive 开关；路径或数据源无效时直接失败。 返回结果：返回新图层的 id、name、type、width、height 与 band_count。
+用途：批量把多个矢量数据源加载到当前 QGIS 工程。 输入语义：paths 必须是 list[str]，provider 默认 ogr，skip_invalid 控制遇到坏数据时是跳过还是整体失败。 前置条件：至少提供一个可访问路径，且对应数据源应能被 provider 识别。 主要副作用：会向当前工程新增多个矢量图层，但不会改写源数据文件。 安全开关：skip_invalid=true 时会尽量继续加载其余路径；skip_invalid=false 时任何一个失败都会报错终止。 返回结果：返回 requested_count、loaded_count、failed_count，以及 loaded 和 failed 的逐项结果。
 
 ### `raster_add_layers`
 
-用途：批量把多个栅格数据源加载到当前 QGIS 工程。 输入语义：paths 是待加载路径数组，provider 默认 gdal，skip_invalid 控制遇到坏数据时是跳过还是整体失败。 前置条件：至少提供一个可访问路径，且对应数据源应能被 provider 识别。 主要副作用：会向当前工程新增多个栅格图层，但不会改写源数据文件。 安全开关：skip_invalid=true 时会跳过坏数据继续执行；skip_invalid=false 时任一失败都会中止。 返回结果：返回 requested_count、loaded_count、failed_count，以及 loaded 和 failed 的逐项信息。
+用途：批量把多个栅格数据源加载到当前 QGIS 工程。 输入语义：paths 必须是 list[str]，provider 默认 gdal，skip_invalid 控制遇到坏数据时是跳过还是整体失败。 前置条件：至少提供一个可访问路径，且对应数据源应能被 provider 识别。 主要副作用：会向当前工程新增多个栅格图层，但不会改写源数据文件。 安全开关：skip_invalid=true 时会跳过坏数据继续执行；skip_invalid=false 时任一失败都会中止。 返回结果：返回 requested_count、loaded_count、failed_count，以及 loaded 和 failed 的逐项信息。
 
 ### `layer_list`
 
@@ -41,10 +33,6 @@
 
 用途：按图层 id 或图层名读取单个图层的详细元数据。 输入语义：layer_ref 可以是唯一 layer id，也可以是能唯一解析的图层名称。 前置条件：目标图层必须已经加载到当前工程，名称引用不能歧义。 主要副作用：无写操作，只读取图层元数据与字段摘要。 安全开关：无。 返回结果：返回 id、name、type、provider、source、crs，以及矢量的 fields 和 feature_count 或栅格的尺寸与波段数。
 
-### `layer_remove`
-
-用途：从当前工程中移除单个图层。 输入语义：layer_id 必须是当前工程已存在的 layer id，不接受模糊名称。 前置条件：目标图层必须已经在当前工程注册。 主要副作用：会修改当前工程图层列表和图层面板，但不会删除底层数据文件。 安全开关：无 confirm_destructive 开关，因此调用前应先用 layer_list 或 layer_get_details 复核目标 id。 返回结果：返回 removed 字段，值为已移除的 layer id。
-
 ### `layer_remove_batch`
 
 用途：从当前工程中批量移除多个图层。 输入语义：layer_ids 是 layer id 数组，空白值会被忽略。 前置条件：建议先用 layer_list 确认待删除 id；不存在的 id 不会抛错，而是记录到 missing。 主要副作用：会修改当前工程图层列表和图层面板，但不会删除底层数据文件。 安全开关：无 confirm_destructive 开关，因此应只传入已确认的 layer id。 返回结果：返回 removed 与 missing 两个数组，便于区分成功移除和未命中的目标。
@@ -52,10 +40,6 @@
 ### `layer_resolve_references`
 
 用途：把图层名称或 layer id 解析成唯一 layer id，便于后续安全调用其它工具。 输入语义：refs 是待解析引用数组，strict 控制遇到 missing 或 ambiguous 时是返回详情还是直接失败。 前置条件：目标引用应来自当前工程；若名称重复会被归类为 ambiguous。 主要副作用：无写操作，只读取当前工程图层注册表。 安全开关：strict=false 时会尽量返回 resolved、missing、ambiguous；strict=true 时只要存在缺失或歧义就抛错。 返回结果：返回 resolved 映射、missing 数组和 ambiguous 映射。
-
-### `vector_get_layer_features`
-
-用途：提取矢量图层的样本要素，供模型观察字段值和几何概貌。 输入语义：layer_ref 指向矢量图层，limit 是希望返回的要素数。 前置条件：目标图层必须存在且为矢量图层。 主要副作用：无写操作，只顺序读取要素并序列化属性与 geometry_wkt。 安全开关：limit 会被内部最大阈值裁剪，返回里会明确给出 requested_limit、applied_limit 与 limit_capped。 返回结果：返回 layer_id、feature_count、fields、features 以及 limit 应用结果。
 
 ### `vector_table_add_field`
 
