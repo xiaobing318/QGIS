@@ -365,7 +365,11 @@ class DummyTools:
         - 返回：返回执行结果对象或状态值，具体结构以当前实现生成的数据为准。
         返回结果：返回执行结果对象或状态值，具体结构以当前实现生成的数据为准。
         """
-        return lambda *args, **kwargs: {}
+        def _stub():
+            return {}
+
+        _stub.__name__ = str(_name)
+        return _stub
 
 
 class DummyRunner:

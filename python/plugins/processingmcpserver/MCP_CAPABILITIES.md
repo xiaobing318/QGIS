@@ -1,10 +1,10 @@
 # Processing MCP Capabilities
 
-- Generated at (UTC): `2026-03-31T14:17:50.301655Z`
+- Generated at (UTC): `2026-04-18T10:20:20.336470Z`
 - Exporter module: `I:\github_repos\QGIS\python\plugins\processingmcpserver\capabilities_markdown.py`
 - Package directory: `I:\github_repos\QGIS\python\plugins\processingmcpserver`
 - Tool count: `53`
-- Prompt count: `1`
+- Prompt count: `3`
 - Resource count: `3`
 
 ## Tools
@@ -223,9 +223,17 @@
 
 ## Prompts
 
-### `qgis_shapefile_pipeline_planner`
+### `qgis_shapefile_quality_repair_export_workflow`
 
-用途：生成面向 shapefile 的六阶段执行计划提示，约束模型按固定阶段完成路径检查、筛选、预检、统计、标准化、处理、导出和清理。 输入：task_name、input_dir、output_dir 为必填参数；quality_rule_resource 指向质量规则资源；deliverables 描述交付物说明。 前置条件：processingmcpserver 已注册 prompts/resources/tools，且建议同时挂载 qgis://workflow/shapefile/template 与 qgis://workflow/shapefile/quality-profile/default。 副作用：无写操作，只返回结构化 prompt 文本。 安全控制：无。 返回结果：返回六阶段中文主导提示模板，供 llama-server WebUI 的 Use Prompt 直接注入聊天上下文。
+用途：生成面向 shapefile 批量质检、修复、标准化并导出的执行提示，适用于目录级批处理。 输入：task_name、input_dir、output_dir 为必填；target_crs、geometry_type、name_glob、required_fields、deliverables 为可选。 前置条件：processingmcpserver 已注册 prompts/resources/tools，且建议同步读取 qgis://workflow/shapefile/quality-profile/default。 副作用：无写操作，只返回结构化 prompt 文本。 安全控制：导出/清理步骤要求显式确认 confirm_write，覆盖或删除时要求 confirm_destructive。 返回结果：返回“质检修复导出”工作流模板，供 llama-server WebUI 的 Use Prompt 直接注入聊天上下文。
+
+### `qgis_shapefile_overlay_clip_stats_workflow`
+
+用途：生成面向 shapefile 叠加裁剪与面积统计的执行提示，适用于主体图层与覆盖图层二元分析。 输入：task_name、subject_shapefile、overlay_shapefile、output_shapefile 为必填；target_crs、area_field、group_field、deliverables 为可选。 前置条件：processingmcpserver 已注册 prompts/resources/tools，主体与覆盖 shapefile 可被 QGIS 正常加载。 副作用：无写操作，只返回结构化 prompt 文本。 安全控制：导出步骤要求 confirm_write=true，覆盖输出时要求 confirm_destructive=true。 返回结果：返回“叠加裁剪统计”工作流模板，供 llama-server WebUI 的 Use Prompt 直接注入聊天上下文。
+
+### `qgis_shapefile_buffer_join_workflow`
+
+用途：生成面向 shapefile 线缓冲区与点空间连接分析的执行提示，适用于设施服务范围与点位关联场景。 输入：task_name、line_shapefile、point_shapefile、output_shapefile、buffer_distance 为必填；target_crs、predicate_codes、point_category_field、deliverables 为可选。 前置条件：processingmcpserver 已注册 prompts/resources/tools，输入数据可被 QGIS 正常加载。 副作用：无写操作，只返回结构化 prompt 文本。 安全控制：导出步骤要求 confirm_write=true，覆盖输出时要求 confirm_destructive=true。 返回结果：返回“缓冲连接分析”工作流模板，供 llama-server WebUI 的 Use Prompt 直接注入聊天上下文。
 
 ## Resources
 

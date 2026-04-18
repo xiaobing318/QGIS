@@ -111,6 +111,7 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
         self.assertEqual(set(mcp.resource_uris), set(REGISTERED_RESOURCE_URIS))
         self.assertEqual(set(mcp.prompt_descriptions), set(REGISTERED_PROMPT_NAMES))
         self.assertEqual(set(mcp.resource_descriptions), set(REGISTERED_RESOURCE_URIS))
+        self.assertNotIn("qgis_shapefile_pipeline_planner", mcp.prompt_names)
 
     def test_registered_tools_have_non_placeholder_docstrings(self):
         """
@@ -211,12 +212,28 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
         ]
         mcp = DummyMcp()
         register_prompts(mcp, DummyTools())
+        prompt_call_inputs = {
+            "qgis_shapefile_quality_repair_export_workflow": {
+                "task_name": "quality-check",
+                "input_dir": "C:/input",
+                "output_dir": "C:/output",
+            },
+            "qgis_shapefile_overlay_clip_stats_workflow": {
+                "task_name": "overlay-check",
+                "subject_shapefile": "C:/input/subject.shp",
+                "overlay_shapefile": "C:/input/overlay.shp",
+                "output_shapefile": "C:/output/overlay_out.shp",
+            },
+            "qgis_shapefile_buffer_join_workflow": {
+                "task_name": "buffer-check",
+                "line_shapefile": "C:/input/line.shp",
+                "point_shapefile": "C:/input/point.shp",
+                "output_shapefile": "C:/output/buffer_out.shp",
+                "buffer_distance": 120.0,
+            },
+        }
         for prompt_name, prompt_fn in mcp.prompt_funcs.items():
-            output = prompt_fn(
-                task_name="test",
-                input_dir="C:/input",
-                output_dir="C:/output",
-            )
+            output = prompt_fn(**prompt_call_inputs[prompt_name])
             for removed in legacy_removed:
                 self.assertNotIn(
                     removed,

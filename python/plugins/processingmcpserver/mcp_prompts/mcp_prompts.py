@@ -3,11 +3,19 @@ from __future__ import annotations
 from typing import Any
 
 from . import (
-    mcp_prompts_qgis_shapefile_pipeline_planner as _MOD_qgis_shapefile_pipeline_planner,
+    mcp_prompts_qgis_shapefile_buffer_join_workflow as _MOD_qgis_shapefile_buffer_join_workflow,
+)
+from . import (
+    mcp_prompts_qgis_shapefile_overlay_clip_stats_workflow as _MOD_qgis_shapefile_overlay_clip_stats_workflow,
+)
+from . import (
+    mcp_prompts_qgis_shapefile_quality_repair_export_workflow as _MOD_qgis_shapefile_quality_repair_export_workflow,
 )
 
 _PROMPT_MODULES = [
-    _MOD_qgis_shapefile_pipeline_planner,
+    _MOD_qgis_shapefile_quality_repair_export_workflow,
+    _MOD_qgis_shapefile_overlay_clip_stats_workflow,
+    _MOD_qgis_shapefile_buffer_join_workflow,
 ]
 
 REGISTERED_PROMPT_NAMES: tuple[str, ...] = tuple(
