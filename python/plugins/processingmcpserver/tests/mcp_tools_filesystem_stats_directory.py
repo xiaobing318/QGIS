@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from ._shared_case_base import ProcessingMCPTestBase
 from ._shared_fixtures import assert_tool_registered
@@ -15,7 +15,7 @@ class ToolsFilesystemStatsDirectoryTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "filesystem_stats_directory")
+        assert_tool_registered(self, "mcp_tools_filesystem_stats_directory")
 
     def test_success_stats_directory(self):
         """
@@ -32,7 +32,7 @@ class ToolsFilesystemStatsDirectoryTest(ProcessingMCPTestBase):
         self.create_text_file(root / "a.txt", "aaa")
         self.create_text_file(root / "b.log", "bbb")
 
-        result = tools.filesystem_stats_directory(directory=str(root), recursive=True)
+        result = tools.mcp_tools_filesystem_stats_directory(directory=str(root), recursive=True)
         self.assertTrue(result["ok"])
         self.assertEqual(result["summary"]["file_count"], 2)
         self.assertIn(".txt", result["outputs"]["extensions"])
@@ -50,7 +50,8 @@ class ToolsFilesystemStatsDirectoryTest(ProcessingMCPTestBase):
         tools = self.build_tools()
         missing_dir = self.make_temp_dir() / "missing"
         with self.assertRaises(Exception) as ctx:
-            tools.filesystem_stats_directory(
+            tools.mcp_tools_filesystem_stats_directory(
                 directory=str(missing_dir), recursive=True
             )
         self.assertIn("Directory not found", str(ctx.exception))
+

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from qgis.core import QgsProject
 
@@ -17,7 +17,7 @@ class ToolsLayerRemoveBatchTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "layer_remove_batch")
+        assert_tool_registered(self, "mcp_tools_layer_remove_batch")
 
     def test_success_remove_and_report_missing(self):
         """
@@ -35,7 +35,7 @@ class ToolsLayerRemoveBatchTest(ProcessingMCPTestBase):
         layer1_id = layer1.id()
         layer2_id = layer2.id()
 
-        result = tools.layer_remove_batch([layer1_id, "missing", layer2_id])
+        result = tools.mcp_tools_layer_remove_batch([layer1_id, "missing", layer2_id])
         self.assertIn(layer1_id, result["removed"])
         self.assertIn(layer2_id, result["removed"])
         self.assertIn("missing", result["missing"])
@@ -56,7 +56,7 @@ class ToolsLayerRemoveBatchTest(ProcessingMCPTestBase):
         layer = self.add_sample_vector_layer("remove_batch_single")
         layer_id = layer.id()
 
-        result = tools.layer_remove_batch([layer_id])
+        result = tools.mcp_tools_layer_remove_batch([layer_id])
         self.assertEqual(result["removed"], [layer_id])
         self.assertEqual(result["missing"], [])
         self.assertNotIn(layer_id, QgsProject.instance().mapLayers())
@@ -72,6 +72,7 @@ class ToolsLayerRemoveBatchTest(ProcessingMCPTestBase):
         返回结果：无返回值。
         """
         tools = self.build_tools()
-        result = tools.layer_remove_batch(["", "   "])
+        result = tools.mcp_tools_layer_remove_batch(["", "   "])
         self.assertEqual(result["removed"], [])
         self.assertEqual(result["missing"], [])
+

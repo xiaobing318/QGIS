@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from ._shared_case_base import ProcessingMCPTestBase
 from ._shared_fixtures import assert_tool_registered
@@ -15,7 +15,7 @@ class ToolsProjectCleanupWorkLayersTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "project_cleanup_work_layers")
+        assert_tool_registered(self, "mcp_tools_project_cleanup_work_layers")
 
     def test_cleanup_removes_work_layers_and_temp_files(self):
         """
@@ -29,7 +29,7 @@ class ToolsProjectCleanupWorkLayersTest(ProcessingMCPTestBase):
         """
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("cleanup_source")
-        prepared = tools.vector_prepare_work_layer(
+        prepared = tools.mcp_tools_vector_prepare_work_layer(
             layer_ref=layer.id(),
             task_name="cleanup-task",
         )
@@ -37,7 +37,7 @@ class ToolsProjectCleanupWorkLayersTest(ProcessingMCPTestBase):
         output_dir = self.make_temp_dir()
         shapefile_path = self.export_layer_to_shapefile(layer, output_dir, "cleanup_temp")
 
-        result = tools.project_cleanup_work_layers(
+        result = tools.mcp_tools_project_cleanup_work_layers(
             task_name="cleanup-task",
             temp_paths=[str(shapefile_path)],
             delete_temp_files=True,
@@ -48,3 +48,4 @@ class ToolsProjectCleanupWorkLayersTest(ProcessingMCPTestBase):
         self.assertIn(work_layer_id, result["outputs"]["removed_layer_ids"])
         self.assertIsNone(self.project_layer(work_layer_id))
         self.assertFalse(shapefile_path.exists())
+

@@ -418,3 +418,31 @@ class ProcessingMCPServerRuntimeTest(ProcessingMCPTestBase):
                 for call in mock_log_message.call_args_list
             )
         )
+
+    @patch("processingmcpserver.server.QgsMessageLog.logMessage")
+    def test_start_logs_final_endpoint_url_when_available(self, mock_log_message):
+        fake_transport = _FakeTransport()
+        fake_transport.endpoint_url = MagicMock(
+            return_value="http://127.0.0.1:18000/mcp"
+        )
+        config = self._build_config("streamable-http")
+
+        with (
+            patch.object(
+                ProcessingMCPServer, "_build_mcp_server", return_value=SimpleNamespace()
+            ),
+            patch(
+                "processingmcpserver.server.create_transport",
+                return_value=fake_transport,
+            ),
+        ):
+            server = ProcessingMCPServer(iface="iface", config=config)
+
+        self.assertTrue(server.start())
+        self.assertTrue(
+            any(
+                "Processing MCP final endpoint URL: http://127.0.0.1:18000/mcp"
+                in call.args[0]
+                for call in mock_log_message.call_args_list
+            )
+        )

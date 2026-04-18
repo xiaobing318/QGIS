@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import inspect
 import json
+import re
 
 from processingmcpserver.mcp_prompts import (
     REGISTERED_PROMPT_NAMES,
@@ -45,12 +46,51 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
             "execute_processing",
             "execute_code",
             removed_render_tool,
+            "vector_add_layers",
+            "raster_add_layers",
+            "dataset_load_from_directory",
+            "layer_get_panel_tree",
+            "processing_execute_on_layers",
         }
 
         mcp = DummyMcp()
         register_tools(mcp, DummyTools(), enable_execute_code=False)
         self.assertEqual(set(mcp.tool_names), set(REGISTERED_TOOL_NAMES))
         self.assertTrue(legacy_removed.isdisjoint(set(mcp.tool_names)))
+
+    def test_registered_tool_signatures_have_no_private_parameter_names(self):
+        mcp = DummyMcp()
+        register_tools(mcp, DummyTools(), enable_execute_code=False)
+        self.assertEqual(set(mcp.tool_names), set(REGISTERED_TOOL_NAMES))
+
+        for tool_name, func in mcp.tool_funcs.items():
+            signature = inspect.signature(func)
+            for parameter in signature.parameters.values():
+                self.assertFalse(
+                    parameter.name.startswith("_"),
+                    msg=f"{tool_name} has private parameter name: {parameter.name}",
+                )
+                self.assertNotIn(
+                    parameter.name,
+                    {"args", "kwargs"},
+                    msg=f"{tool_name} leaked variadic placeholder parameter: {parameter.name}",
+                )
+                self.assertNotIn(
+                    parameter.kind,
+                    {
+                        inspect.Parameter.VAR_POSITIONAL,
+                        inspect.Parameter.VAR_KEYWORD,
+                    },
+                    msg=(
+                        f"{tool_name} uses variadic signature kind: "
+                        f"{parameter.kind!r}"
+                    ),
+                )
+
+    def test_registered_tool_names_follow_lowercase_pattern(self):
+        pattern = re.compile(r"^mcp_tools_[a-z0-9]+_[a-z0-9_]+$")
+        for tool_name in REGISTERED_TOOL_NAMES:
+            self.assertRegex(tool_name, pattern)
 
     def test_register_prompts_and_resources_discoverable(self):
         """

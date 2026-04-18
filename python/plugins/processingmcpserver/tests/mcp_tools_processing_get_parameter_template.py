@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from ._shared_case_base import ProcessingMCPTestBase
 from ._shared_fixtures import assert_tool_registered
@@ -15,7 +15,7 @@ class ToolsProcessingGetParameterTemplateTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "processing_get_parameter_template")
+        assert_tool_registered(self, "mcp_tools_processing_get_parameter_template")
 
     def test_success_get_parameter_template(self):
         """
@@ -29,7 +29,7 @@ class ToolsProcessingGetParameterTemplateTest(ProcessingMCPTestBase):
         """
         tools = self.build_tools()
 
-        result = tools.processing_get_parameter_template("native:buffer")
+        result = tools.mcp_tools_processing_get_parameter_template("native:buffer")
         self.assertIn("algorithm", result)
         self.assertIn("required_parameters", result)
         self.assertIn("optional_parameters", result)
@@ -47,5 +47,6 @@ class ToolsProcessingGetParameterTemplateTest(ProcessingMCPTestBase):
         """
         tools = self.build_tools()
         with self.assertRaises(Exception) as ctx:
-            tools.processing_get_parameter_template("not-exist:algorithm")
+            tools.mcp_tools_processing_get_parameter_template("not-exist:algorithm")
         self.assertIn("Algorithm not found", str(ctx.exception))
+

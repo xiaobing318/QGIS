@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from ._shared_case_base import ProcessingMCPTestBase
 from ._shared_fixtures import assert_tool_registered
@@ -15,7 +15,7 @@ class ToolsDatasetListFilesTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "dataset_list_files")
+        assert_tool_registered(self, "mcp_tools_dataset_list_files")
 
     def test_success_dataset_scan(self):
         """
@@ -34,7 +34,7 @@ class ToolsDatasetListFilesTest(ProcessingMCPTestBase):
         )
         (temp_root / "note.txt").write_text("hello", encoding="utf-8")
 
-        result = tools.dataset_list_files(
+        result = tools.mcp_tools_dataset_list_files(
             directory=str(vector_file.parent),
             recursive=False,
             dataset_kind="both",
@@ -62,7 +62,7 @@ class ToolsDatasetListFilesTest(ProcessingMCPTestBase):
         self.copy_test_data_file("sample_vector.geojson", nested, "nested.geojson")
         self.copy_test_data_file("dem.tif", nested, "nested_dem.tif")
 
-        recursive_result = tools.dataset_list_files(
+        recursive_result = tools.mcp_tools_dataset_list_files(
             directory=str(temp_root),
             recursive=True,
             dataset_kind="vector",
@@ -70,7 +70,7 @@ class ToolsDatasetListFilesTest(ProcessingMCPTestBase):
             name_glob="*.geojson",
             limit=10,
         )
-        truncated_result = tools.dataset_list_files(
+        truncated_result = tools.mcp_tools_dataset_list_files(
             directory=str(temp_root),
             recursive=True,
             dataset_kind="both",
@@ -103,5 +103,6 @@ class ToolsDatasetListFilesTest(ProcessingMCPTestBase):
         """
         tools = self.build_tools()
         with self.assertRaises(Exception) as ctx:
-            tools.dataset_list_files(directory="C:/not-exist", recursive=False)
+            tools.mcp_tools_dataset_list_files(directory="C:/not-exist", recursive=False)
         self.assertIn("Directory not found", str(ctx.exception))
+

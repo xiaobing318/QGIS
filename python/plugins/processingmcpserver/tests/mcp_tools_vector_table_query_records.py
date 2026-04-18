@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
 
@@ -17,7 +17,7 @@ class ToolsVectorTableQueryRecordsTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "vector_table_query_records")
+        assert_tool_registered(self, "mcp_tools_vector_table_query_records")
 
     def test_success_query_records(self):
         """
@@ -32,7 +32,7 @@ class ToolsVectorTableQueryRecordsTest(ProcessingMCPTestBase):
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("query_records_vector")
 
-        result = tools.vector_table_query_records(
+        result = tools.mcp_tools_vector_table_query_records(
             layer_ref=layer.id(),
             where="\"name\" = 'alpha'",
             fields=["name", "value"],
@@ -56,7 +56,7 @@ class ToolsVectorTableQueryRecordsTest(ProcessingMCPTestBase):
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("query_records_vector_offset")
 
-        result = tools.vector_table_query_records(
+        result = tools.mcp_tools_vector_table_query_records(
             layer_ref=layer.id(),
             limit=1,
             offset=1,
@@ -84,7 +84,7 @@ class ToolsVectorTableQueryRecordsTest(ProcessingMCPTestBase):
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("query_records_vector_get_features_compat")
 
-        result = tools.vector_table_query_records(
+        result = tools.mcp_tools_vector_table_query_records(
             layer_ref=layer.id(),
             limit=2,
             include_geometry=True,
@@ -115,7 +115,7 @@ class ToolsVectorTableQueryRecordsTest(ProcessingMCPTestBase):
         layer = self.add_sample_vector_layer("query_records_vector2")
 
         with self.assertRaises(Exception) as ctx:
-            tools.vector_table_query_records(layer_ref=layer.id(), where="\"name\" = ")
+            tools.mcp_tools_vector_table_query_records(layer_ref=layer.id(), where="\"name\" = ")
         self.assertIn("Invalid where expression", str(ctx.exception))
 
     def test_success_serializes_qt_field_values(self):
@@ -131,7 +131,7 @@ class ToolsVectorTableQueryRecordsTest(ProcessingMCPTestBase):
         tools = self.build_tools()
         layer = self.add_serialization_vector_layer("query_records_vector_serialization")
 
-        result = tools.vector_table_query_records(
+        result = tools.mcp_tools_vector_table_query_records(
             layer_ref=layer.id(),
             fields=["event_date", "event_time", "event_ts", "enabled", "notes"],
             limit=1,
@@ -144,3 +144,4 @@ class ToolsVectorTableQueryRecordsTest(ProcessingMCPTestBase):
         self.assertIs(attributes["enabled"], True)
         self.assertIsNone(attributes["notes"])
         json.dumps(result, ensure_ascii=False)
+

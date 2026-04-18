@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from ._shared_case_base import ProcessingMCPTestBase
 from ._shared_fixtures import assert_tool_registered
@@ -15,7 +15,7 @@ class ToolsProcessingListProvidersTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "processing_list_providers")
+        assert_tool_registered(self, "mcp_tools_processing_list_providers")
 
     def test_success_list_providers(self):
         """
@@ -28,7 +28,7 @@ class ToolsProcessingListProvidersTest(ProcessingMCPTestBase):
         返回结果：无返回值。
         """
         tools = self.build_tools()
-        result = tools.processing_list_providers()
+        result = tools.mcp_tools_processing_list_providers()
 
         self.assertIn("count", result)
         self.assertIn("count_scope", result)
@@ -70,7 +70,7 @@ class ToolsProcessingListProvidersTest(ProcessingMCPTestBase):
         返回结果：无返回值。
         """
         tools = self.build_tools()
-        result = tools.processing_list_providers()
+        result = tools.mcp_tools_processing_list_providers()
         if result["providers"]:
             first = result["providers"][0]
             self.assertIn("id", first)
@@ -90,11 +90,12 @@ class ToolsProcessingListProvidersTest(ProcessingMCPTestBase):
         返回结果：无返回值。
         """
         tools = self.build_tools()
-        providers_result = tools.processing_list_providers()
-        algorithms_result = tools.processing_get_algorithms(limit=0)
+        providers_result = tools.mcp_tools_processing_list_providers()
+        algorithms_result = tools.mcp_tools_processing_get_algorithms(limit=0)
 
         self.assertIn("count", algorithms_result)
         self.assertEqual(
             int(algorithms_result["count"]),
             int(providers_result["total_algorithm_count"]),
         )
+

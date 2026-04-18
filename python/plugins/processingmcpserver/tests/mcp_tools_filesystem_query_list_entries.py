@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from ._shared_case_base import ProcessingMCPTestBase
 from ._shared_fixtures import assert_tool_registered
@@ -15,7 +15,7 @@ class ToolsFilesystemQueryListEntriesTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "filesystem_query_list_entries")
+        assert_tool_registered(self, "mcp_tools_filesystem_query_list_entries")
 
     def test_success_list_entries(self):
         """
@@ -32,7 +32,7 @@ class ToolsFilesystemQueryListEntriesTest(ProcessingMCPTestBase):
         self.create_text_file(root / "a.txt", "alpha")
         self.create_text_file(root / "b.log", "beta")
 
-        result = tools.filesystem_query_list_entries(
+        result = tools.mcp_tools_filesystem_query_list_entries(
             directory=str(root),
             recursive=False,
             include_files=True,
@@ -60,7 +60,7 @@ class ToolsFilesystemQueryListEntriesTest(ProcessingMCPTestBase):
         self.create_text_file(nested / "b.log", "beta")
         self.create_text_file(nested / "c.log", "gamma")
 
-        filtered = tools.filesystem_query_list_entries(
+        filtered = tools.mcp_tools_filesystem_query_list_entries(
             directory=str(root),
             recursive=True,
             include_files=True,
@@ -68,7 +68,7 @@ class ToolsFilesystemQueryListEntriesTest(ProcessingMCPTestBase):
             name_glob="*.log",
             limit=10,
         )
-        truncated = tools.filesystem_query_list_entries(
+        truncated = tools.mcp_tools_filesystem_query_list_entries(
             directory=str(root),
             recursive=True,
             include_files=True,
@@ -103,9 +103,10 @@ class ToolsFilesystemQueryListEntriesTest(ProcessingMCPTestBase):
         root = self.make_temp_dir()
 
         with self.assertRaises(Exception) as ctx:
-            tools.filesystem_query_list_entries(
+            tools.mcp_tools_filesystem_query_list_entries(
                 directory=str(root),
                 include_files=False,
                 include_directories=False,
             )
         self.assertIn("cannot both be false", str(ctx.exception))
+

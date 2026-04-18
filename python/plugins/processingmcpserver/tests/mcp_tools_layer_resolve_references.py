@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from ._shared_case_base import ProcessingMCPTestBase
 from ._shared_fixtures import assert_tool_registered
@@ -15,7 +15,7 @@ class ToolsLayerResolveReferencesTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "layer_resolve_references")
+        assert_tool_registered(self, "mcp_tools_layer_resolve_references")
 
     def test_success_reports_ambiguous_names(self):
         """
@@ -31,7 +31,7 @@ class ToolsLayerResolveReferencesTest(ProcessingMCPTestBase):
         layer_a = self.add_sample_vector_layer("duplicate-layer-name")
         layer_b = self.add_sample_vector_layer("duplicate-layer-name")
 
-        result = tools.layer_resolve_references(
+        result = tools.mcp_tools_layer_resolve_references(
             refs=["duplicate-layer-name", layer_a.id()],
             strict=False,
         )
@@ -56,7 +56,7 @@ class ToolsLayerResolveReferencesTest(ProcessingMCPTestBase):
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("resolve_ref_vector")
 
-        result = tools.layer_resolve_references(
+        result = tools.mcp_tools_layer_resolve_references(
             refs=[layer.id(), "missing-layer"],
             strict=False,
         )
@@ -75,7 +75,7 @@ class ToolsLayerResolveReferencesTest(ProcessingMCPTestBase):
         """
         tools = self.build_tools()
         with self.assertRaises(Exception) as ctx:
-            tools.layer_resolve_references(refs=["missing-layer"], strict=True)
+            tools.mcp_tools_layer_resolve_references(refs=["missing-layer"], strict=True)
         self.assertIn("Layer reference resolve failed", str(ctx.exception))
 
     def test_failure_strict_with_ambiguous_name(self):
@@ -93,8 +93,9 @@ class ToolsLayerResolveReferencesTest(ProcessingMCPTestBase):
         self.add_sample_vector_layer("duplicate-layer-strict")
 
         with self.assertRaises(Exception) as ctx:
-            tools.layer_resolve_references(
+            tools.mcp_tools_layer_resolve_references(
                 refs=["duplicate-layer-strict"],
                 strict=True,
             )
         self.assertIn("ambiguous", str(ctx.exception))
+

@@ -294,7 +294,17 @@ class ProcessingMCPServer:
         )
 
         try:
-            return self._transport.start()
+            started = self._transport.start()
+            if started:
+                endpoint_getter = getattr(self._transport, "endpoint_url", None)
+                endpoint = endpoint_getter() if callable(endpoint_getter) else None
+                if endpoint:
+                    QgsMessageLog.logMessage(
+                        f"Processing MCP final endpoint URL: {endpoint}",
+                        MCP_LOG_CATEGORY,
+                        Qgis.Info,
+                    )
+            return started
         except Exception:
             self._log_exception("Failed to start Processing MCP server")
             return False

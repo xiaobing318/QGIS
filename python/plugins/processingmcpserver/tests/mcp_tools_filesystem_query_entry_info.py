@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from ._shared_case_base import ProcessingMCPTestBase
 from ._shared_fixtures import assert_tool_registered
@@ -15,7 +15,7 @@ class ToolsFilesystemQueryEntryInfoTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "filesystem_query_entry_info")
+        assert_tool_registered(self, "mcp_tools_filesystem_query_entry_info")
 
     def test_success_entry_info(self):
         """
@@ -31,7 +31,7 @@ class ToolsFilesystemQueryEntryInfoTest(ProcessingMCPTestBase):
         root = self.make_temp_dir()
         file_path = self.create_text_file(root / "a.txt", "hello")
 
-        result = tools.filesystem_query_entry_info(path=str(file_path))
+        result = tools.mcp_tools_filesystem_query_entry_info(path=str(file_path))
         self.assertTrue(result["ok"])
         self.assertEqual(result["outputs"]["entry"]["name"], "a.txt")
 
@@ -48,5 +48,6 @@ class ToolsFilesystemQueryEntryInfoTest(ProcessingMCPTestBase):
         tools = self.build_tools()
         missing_path = self.make_temp_dir() / "missing.txt"
         with self.assertRaises(Exception) as ctx:
-            tools.filesystem_query_entry_info(path=str(missing_path))
+            tools.mcp_tools_filesystem_query_entry_info(path=str(missing_path))
         self.assertIn("Path not found", str(ctx.exception))
+

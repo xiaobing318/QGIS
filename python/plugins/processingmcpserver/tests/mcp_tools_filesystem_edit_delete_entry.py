@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from ._shared_case_base import ProcessingMCPTestBase
 from ._shared_fixtures import assert_tool_registered
@@ -15,7 +15,7 @@ class ToolsFilesystemEditDeleteEntryTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "filesystem_edit_delete_entry")
+        assert_tool_registered(self, "mcp_tools_filesystem_edit_delete_entry")
 
     def test_success_delete_entry(self):
         """
@@ -31,7 +31,7 @@ class ToolsFilesystemEditDeleteEntryTest(ProcessingMCPTestBase):
         root = self.make_temp_dir()
         target = self.create_text_file(root / "delete.txt", "bye")
 
-        result = tools.filesystem_edit_delete_entry(
+        result = tools.mcp_tools_filesystem_edit_delete_entry(
             path=str(target),
             confirm_destructive=True,
             confirm_write=True,
@@ -54,7 +54,7 @@ class ToolsFilesystemEditDeleteEntryTest(ProcessingMCPTestBase):
         target = self.create_text_file(root / "delete.txt", "bye")
 
         with self.assertRaises(Exception) as ctx:
-            tools.filesystem_edit_delete_entry(
+            tools.mcp_tools_filesystem_edit_delete_entry(
                 path=str(target),
                 confirm_destructive=True,
             )
@@ -75,9 +75,10 @@ class ToolsFilesystemEditDeleteEntryTest(ProcessingMCPTestBase):
         target = self.create_text_file(root / "delete.txt", "bye")
 
         with self.assertRaises(Exception) as ctx:
-            tools.filesystem_edit_delete_entry(
+            tools.mcp_tools_filesystem_edit_delete_entry(
                 path=str(target),
                 confirm_destructive=False,
                 confirm_write=True,
             )
         self.assertIn("confirm_destructive must be true", str(ctx.exception))
+

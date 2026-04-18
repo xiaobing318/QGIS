@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from qgis.core import QgsFeature, QgsGeometry, QgsProject, QgsVectorLayer
 
@@ -17,7 +17,7 @@ class ToolsVectorPrepareWorkLayerTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "vector_prepare_work_layer")
+        assert_tool_registered(self, "mcp_tools_vector_prepare_work_layer")
 
     def test_prepare_work_layer_standardizes_geometry_crs_and_schema(self):
         """
@@ -55,7 +55,7 @@ class ToolsVectorPrepareWorkLayerTest(ProcessingMCPTestBase):
         layer.updateExtents()
         QgsProject.instance().addMapLayer(layer)
 
-        result = tools.vector_prepare_work_layer(
+        result = tools.mcp_tools_vector_prepare_work_layer(
             layer_ref=layer.id(),
             task_name="prepare-task",
             target_crs="EPSG:3857",
@@ -86,5 +86,6 @@ class ToolsVectorPrepareWorkLayerTest(ProcessingMCPTestBase):
         layer = self.add_sample_vector_layer("prepare_invalid_policy")
 
         with self.assertRaises(Exception) as ctx:
-            tools.vector_prepare_work_layer(layer_ref=layer.id(), multipart_policy="explode")
+            tools.mcp_tools_vector_prepare_work_layer(layer_ref=layer.id(), multipart_policy="explode")
         self.assertIn("multipart_policy", str(ctx.exception))
+

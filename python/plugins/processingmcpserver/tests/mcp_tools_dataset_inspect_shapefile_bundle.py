@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from ._shared_case_base import ProcessingMCPTestBase
 from ._shared_fixtures import assert_tool_registered
@@ -15,7 +15,7 @@ class ToolsDatasetInspectShapefileBundleTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "dataset_inspect_shapefile_bundle")
+        assert_tool_registered(self, "mcp_tools_dataset_inspect_vector_bundle")
 
     def test_success_inspect_complete_bundle(self):
         """
@@ -32,10 +32,10 @@ class ToolsDatasetInspectShapefileBundleTest(ProcessingMCPTestBase):
         layer = self.add_sample_vector_layer("shapefile_bundle_complete")
         shp_path = self.export_layer_to_shapefile(layer, temp_root, "complete_bundle")
 
-        result = tools.dataset_inspect_shapefile_bundle(path=str(shp_path))
+        result = tools.mcp_tools_dataset_inspect_vector_bundle(path=str(shp_path))
 
         self.assertTrue(result["ok"])
-        self.assertEqual(result["summary"]["returned"], 1)
+        self.assertEqual(result["summary"]["bundle_count"], 1)
         bundle = result["outputs"]["bundles"][0]
         self.assertTrue(bundle["complete_bundle"])
         self.assertEqual(bundle["geometry_type"], "point")
@@ -59,8 +59,9 @@ class ToolsDatasetInspectShapefileBundleTest(ProcessingMCPTestBase):
         self.assertTrue(shx_path.exists())
         shx_path.unlink()
 
-        result = tools.dataset_inspect_shapefile_bundle(path=str(shp_path))
+        result = tools.mcp_tools_dataset_inspect_vector_bundle(path=str(shp_path))
 
         bundle = result["outputs"]["bundles"][0]
         self.assertFalse(bundle["complete_bundle"])
         self.assertIn("shx", bundle["missing_required"])
+

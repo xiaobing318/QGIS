@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from ._shared_case_base import ProcessingMCPTestBase
 from ._shared_fixtures import assert_tool_registered
@@ -15,7 +15,7 @@ class ToolsFilesystemEditAppendTextTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "filesystem_edit_append_text")
+        assert_tool_registered(self, "mcp_tools_filesystem_edit_append_text")
 
     def test_success_append(self):
         """
@@ -31,7 +31,7 @@ class ToolsFilesystemEditAppendTextTest(ProcessingMCPTestBase):
         root = self.make_temp_dir()
         target = self.create_text_file(root / "target.txt", "v1")
 
-        result = tools.filesystem_edit_append_text(
+        result = tools.mcp_tools_filesystem_edit_append_text(
             path=str(target), content="-v2", confirm_write=True
         )
         self.assertTrue(result["ok"])
@@ -52,7 +52,7 @@ class ToolsFilesystemEditAppendTextTest(ProcessingMCPTestBase):
         target = self.create_text_file(root / "target.txt", "v1")
 
         with self.assertRaises(Exception) as ctx:
-            tools.filesystem_edit_append_text(path=str(target), content="-v2")
+            tools.mcp_tools_filesystem_edit_append_text(path=str(target), content="-v2")
         self.assertIn("confirm_write must be true", str(ctx.exception))
 
     def test_failure_parent_missing_without_create(self):
@@ -69,10 +69,11 @@ class ToolsFilesystemEditAppendTextTest(ProcessingMCPTestBase):
         root = self.make_temp_dir()
         target = root / "missing" / "target.txt"
         with self.assertRaises(Exception) as ctx:
-            tools.filesystem_edit_append_text(
+            tools.mcp_tools_filesystem_edit_append_text(
                 path=str(target),
                 content="x",
                 create_parents=False,
                 confirm_write=True,
             )
         self.assertIn("Parent directory not found", str(ctx.exception))
+

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from unittest.mock import patch
 
@@ -59,7 +59,7 @@ class ToolsRasterStatsZonalTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "raster_stats_zonal")
+        assert_tool_registered(self, "mcp_tools_raster_stats_zonal")
 
     def test_success_raster_stats_zonal(self):
         """
@@ -76,14 +76,14 @@ class ToolsRasterStatsZonalTest(ProcessingMCPTestBase):
         raster_layer = self.add_sample_raster_layer("zonal_raster")
         original_fields = self.vector_field_names(vector_layer)
 
-        result = tools.raster_stats_zonal(
+        result = tools.mcp_tools_raster_stats_zonal(
             vector_layer_ref=vector_layer.id(),
             raster_layer_ref=raster_layer.id(),
             raster_band=1,
             in_place=False,
         )
         self.assertTrue(result["ok"])
-        self.assertEqual(result["tool"], "raster_stats_zonal")
+        self.assertEqual(result["tool"], "mcp_tools_raster_stats_zonal")
         self.assertEqual(result["summary"]["mode"], "copy")
         self.assertIn("output_layer_id", result["summary"])
         self.assertNotEqual(result["summary"]["output_layer_id"], vector_layer.id())
@@ -106,7 +106,7 @@ class ToolsRasterStatsZonalTest(ProcessingMCPTestBase):
         vector_layer = self.add_sample_polygon_layer("zonal_polygon2")
 
         with self.assertRaises(Exception) as ctx:
-            tools.raster_stats_zonal(
+            tools.mcp_tools_raster_stats_zonal(
                 vector_layer_ref=vector_layer.id(),
                 raster_layer_ref="missing-raster",
             )
@@ -137,7 +137,7 @@ class ToolsRasterStatsZonalTest(ProcessingMCPTestBase):
         mock_run.return_value = {"OUTPUT": "fb-output-layer"}
 
         with patch("processingmcpserver.mcp_tools.mcp_tools_raster_stats_zonal._PROCESSING_INITIALIZED", True):
-            result = tools.raster_stats_zonal(
+            result = tools.mcp_tools_raster_stats_zonal(
                 vector_layer_ref=vector_layer.id(),
                 raster_layer_ref=raster_layer.id(),
                 raster_band=1,
@@ -181,7 +181,7 @@ class ToolsRasterStatsZonalTest(ProcessingMCPTestBase):
         mock_run.return_value = {}
 
         with patch("processingmcpserver.mcp_tools.mcp_tools_raster_stats_zonal._PROCESSING_INITIALIZED", True):
-            result = tools.raster_stats_zonal(
+            result = tools.mcp_tools_raster_stats_zonal(
                 vector_layer_ref=vector_layer.id(),
                 raster_layer_ref=raster_layer.id(),
                 raster_band=0,
@@ -217,8 +217,9 @@ class ToolsRasterStatsZonalTest(ProcessingMCPTestBase):
             patch("processingmcpserver.mcp_tools.mcp_tools_raster_stats_zonal._PROCESSING_INITIALIZED", True),
             self.assertRaises(Exception) as ctx,
         ):
-            tools.raster_stats_zonal(
+            tools.mcp_tools_raster_stats_zonal(
                 vector_layer_ref=vector_layer.id(),
                 raster_layer_ref=raster_layer.id(),
             )
         self.assertIn("Algorithm not available: native:zonalstatisticsfb", str(ctx.exception))
+

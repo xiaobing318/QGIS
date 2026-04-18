@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from qgis.core import QgsProject
 
@@ -17,7 +17,7 @@ class ToolsLayerListTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "layer_list")
+        assert_tool_registered(self, "mcp_tools_layer_list")
 
     def test_success_list_vector_and_raster(self):
         """
@@ -33,8 +33,8 @@ class ToolsLayerListTest(ProcessingMCPTestBase):
         vector_layer = self.add_sample_vector_layer("layer_list_vector")
         raster_layer = self.add_sample_raster_layer("layer_list_raster")
 
-        vector_result = tools.layer_list(layer_types="vector")
-        raster_result = tools.layer_list(layer_types="raster")
+        vector_result = tools.mcp_tools_layer_list(layer_types="vector")
+        raster_result = tools.mcp_tools_layer_list(layer_types="raster")
         vector_ids = {item["id"] for item in vector_result}
         raster_ids = {item["id"] for item in raster_result}
         self.assertIn(vector_layer.id(), vector_ids)
@@ -56,7 +56,7 @@ class ToolsLayerListTest(ProcessingMCPTestBase):
         hidden_node = QgsProject.instance().layerTreeRoot().findLayer(hidden_layer.id())
         hidden_node.setItemVisibilityChecked(False)
 
-        result = tools.layer_list(
+        result = tools.mcp_tools_layer_list(
             layer_types="vector",
             include_hidden=False,
             name_glob="visible*",
@@ -79,4 +79,5 @@ class ToolsLayerListTest(ProcessingMCPTestBase):
         """
         tools = self.build_tools()
         with self.assertRaises(Exception):
-            tools.layer_list(layer_types="invalid")
+            tools.mcp_tools_layer_list(layer_types="invalid")
+
