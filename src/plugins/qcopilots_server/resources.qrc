@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/qcopilots_server">
+        <file>icons/qcopilots-server-plugin.svg</file>
+    </qresource>
+</RCC>
+

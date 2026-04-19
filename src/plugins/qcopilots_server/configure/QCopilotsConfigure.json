@@ -1,0 +1,45 @@
+{
+  "metadata": {
+    "name": "QCopilotsServer 配置模板",
+    "version": "1.0.0",
+    "updatedAt": "2026-04-18",
+    "description": "下列 launcher 字段中的配置可以直接被 QCopilotsServer 插件读取，必须要设置的是 model/host/port/--ctx-size/--n-gpu-layers 这几个参数。参数 model 的含义是模型文件的路径；参数 host 和 port 用于指定服务监听的地址和端口；参数 ctx-size 的含义是上下文大小；参数 n-gpu-layers 的含义是将 model 参数指向模型文件中指定层数数据加载到 GPU 中执行推理任务。主要注意的是：健康检查地址将从 arguments 的 --host/--port 自动拼接。"
+  },
+  "launcher": {
+    "arguments": [
+      "--model",
+      "I:/QGISPackages/QGIS34407-20260418/QGIS34407/bin/backend/models/ggml-org_gemma-3-4b-it-Q4_K_M.gguf",
+      "--host",
+      "127.0.0.1",
+      "--port",
+      "8080",
+      "--ctx-size",
+      "8192",
+      "--threads",
+      "8",
+      "--batch-size",
+      "2048",
+      "--ubatch-size",
+      "512",
+      "--n-gpu-layers",
+      "0",
+      "--flash-attn",
+      "off",
+      "--jinja",
+      "--metrics",
+      "--slots"
+    ],
+    "workingDirectory": "backend",
+    "environment": {
+      "LLAMA_LOG_PREFIX": "1",
+      "LLAMA_LOG_TIMESTAMPS": "1",
+      "LLAMA_ARG_THREADS": "8",
+      "LLAMA_ARG_CTX_SIZE": "8192"
+    },
+    "health": {
+      "path": "/health",
+      "pollIntervalMs": 1000,
+      "startupTimeoutSec": 60
+    }
+  }
+}
