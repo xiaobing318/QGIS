@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from ._shared_case_base import ProcessingMCPTestBase
 from ._shared_fixtures import assert_tool_registered
@@ -15,7 +15,7 @@ class ToolsFilesystemEditCopyEntryTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "filesystem_edit_copy_entry")
+        assert_tool_registered(self, "mcp_tools_filesystem_edit_copy_entry")
 
     def test_success_copy_entry(self):
         """
@@ -32,7 +32,7 @@ class ToolsFilesystemEditCopyEntryTest(ProcessingMCPTestBase):
         source = self.create_text_file(root / "source.txt", "src")
         target = root / "copied.txt"
 
-        result = tools.filesystem_edit_copy_entry(
+        result = tools.mcp_tools_filesystem_edit_copy_entry(
             source_path=str(source),
             target_path=str(target),
             confirm_write=True,
@@ -56,7 +56,7 @@ class ToolsFilesystemEditCopyEntryTest(ProcessingMCPTestBase):
         target = root / "copied.txt"
 
         with self.assertRaises(Exception) as ctx:
-            tools.filesystem_edit_copy_entry(
+            tools.mcp_tools_filesystem_edit_copy_entry(
                 source_path=str(source),
                 target_path=str(target),
             )
@@ -78,7 +78,7 @@ class ToolsFilesystemEditCopyEntryTest(ProcessingMCPTestBase):
         target = self.create_text_file(root / "copied.txt", "old")
 
         with self.assertRaises(Exception) as ctx:
-            tools.filesystem_edit_copy_entry(
+            tools.mcp_tools_filesystem_edit_copy_entry(
                 source_path=str(source),
                 target_path=str(target),
                 overwrite=True,
@@ -86,3 +86,4 @@ class ToolsFilesystemEditCopyEntryTest(ProcessingMCPTestBase):
                 confirm_write=True,
             )
         self.assertIn("confirm_destructive must be true", str(ctx.exception))
+

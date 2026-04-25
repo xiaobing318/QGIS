@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from pathlib import Path
 
@@ -17,7 +17,7 @@ class ToolsFilesystemQueryReadTextTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "filesystem_query_read_text")
+        assert_tool_registered(self, "mcp_tools_filesystem_query_read_text")
 
     def test_success_read_with_truncate(self):
         """
@@ -33,7 +33,7 @@ class ToolsFilesystemQueryReadTextTest(ProcessingMCPTestBase):
         root = self.make_temp_dir()
         file_path = self.create_text_file(root / "a.txt", "abcdefghij")
 
-        result = tools.filesystem_query_read_text(path=str(file_path), max_chars=5)
+        result = tools.mcp_tools_filesystem_query_read_text(path=str(file_path), max_chars=5)
         self.assertTrue(result["ok"])
         self.assertEqual(result["outputs"]["text"], "abcde")
         self.assertTrue(result["summary"]["truncated"])
@@ -51,7 +51,7 @@ class ToolsFilesystemQueryReadTextTest(ProcessingMCPTestBase):
         tools = self.build_tools()
         missing_path = self.make_temp_dir() / "missing.txt"
         with self.assertRaises(Exception) as ctx:
-            tools.filesystem_query_read_text(path=str(missing_path))
+            tools.mcp_tools_filesystem_query_read_text(path=str(missing_path))
         self.assertIn("File not found", str(ctx.exception))
 
     def test_success_reads_path_outside_previous_whitelist_scope(self):
@@ -67,6 +67,7 @@ class ToolsFilesystemQueryReadTextTest(ProcessingMCPTestBase):
         tools = self.build_tools()
         file_path = Path(__file__).resolve()
 
-        result = tools.filesystem_query_read_text(path=str(file_path), max_chars=3)
+        result = tools.mcp_tools_filesystem_query_read_text(path=str(file_path), max_chars=3)
         self.assertTrue(result["ok"])
         self.assertEqual(result["outputs"]["text"], "fro")
+

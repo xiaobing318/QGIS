@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import socket
 import sys
 import threading
 import traceback
@@ -52,6 +53,8 @@ class BaseMcpTransport:
                 Qgis.Warning,
             )
             return True
+        if not self._preflight_start():
+            return False
         self._log(
             f"Starting Processing MCP transport thread '{self.thread_name}' "
             f"({self._context_details()}).",
@@ -131,6 +134,30 @@ class BaseMcpTransport:
         返回结果：返回 `str` 类型结果，返回值语义遵循该函数实现约定。
         """
         return "MCP transport"
+
+    def endpoint_url(self) -> Optional[str]:
+        """
+        作用：返回当前传输模式可用于客户端连接的主入口 URL。
+        用途：为启动日志提供最终连接地址，便于定位配置错误与联调。
+        使用场景：在服务启动完成后由上层调用，用于输出最终 MCP URL。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `Optional[str]` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `Optional[str]` 类型结果，返回值语义遵循该函数实现约定。
+        """
+        return None
+
+    def _preflight_start(self) -> bool:
+        """
+        作用：执行传输层启动前置校验，失败时阻止后续启动动作。
+        用途：在真正创建线程前提前暴露可预见错误（如端口占用）。
+        使用场景：在 `start` 中被调用，作为统一前置校验钩子。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+        """
+        return True
 
     def _run(self) -> None:
         """
@@ -332,6 +359,74 @@ class UvicornTransport(BaseMcpTransport):
         finally:
             self._uvicorn_server = None
 
+    def _preflight_start(self) -> bool:
+        """
+        作用：实现 `UvicornTransport` 的启动前置校验。
+        用途：启动前检测 host/port 是否可绑定，避免线程启动后立即报错退出。
+        使用场景：在 HTTP/SSE 传输模式启动前调用。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `bool` 类型结果，返回值语义遵循该函数实现约定。
+        """
+        settings = getattr(self._mcp, "settings", None)
+        host = str(getattr(settings, "host", "") or self._config.host or "")
+        port_raw = getattr(settings, "port", self._config.port)
+        try:
+            port = int(port_raw)
+        except (TypeError, ValueError):
+            self._log(
+                f"Processing MCP port check failed: invalid port value {port_raw!r}.",
+                Qgis.Critical,
+            )
+            return False
+
+        if port <= 0 or port > 65535:
+            self._log(
+                f"Processing MCP port check failed: port {port} is out of range (1-65535).",
+                Qgis.Critical,
+            )
+            return False
+
+        ok, detail = _is_tcp_bind_available(host, port)
+        if ok:
+            return True
+
+        fallback_port = _find_available_port(host, port)
+        if fallback_port is not None:
+            try:
+                setattr(settings, "port", fallback_port)
+            except Exception as exc:
+                self._log(
+                    (
+                        "Processing MCP port check failed: "
+                        f"configured {host}:{port} is unavailable ({detail}), and fallback "
+                        f"port {fallback_port} cannot be applied to runtime settings ({exc})."
+                    ),
+                    Qgis.Critical,
+                )
+                return False
+            self._log(
+                (
+                    "Processing MCP port check warning: "
+                    f"configured {host}:{port} is unavailable ({detail}); "
+                    f"automatically selected fallback port {fallback_port}."
+                ),
+                Qgis.Warning,
+            )
+            return True
+
+        self._log(
+            (
+                "Processing MCP port check failed: "
+                f"{host}:{port} is already in use or unavailable ({detail}). "
+                "No fallback port was found. Please update processingmcpserver/config.json "
+                "with an unused port."
+            ),
+            Qgis.Critical,
+        )
+        return False
+
     def _request_stop(self) -> None:
         """
         作用：封装内部辅助步骤 `_request_stop`，用于拆分并复用模块内重复处理逻辑。
@@ -509,6 +604,21 @@ class StreamableHttpTransport(UvicornTransport):
         path = self._mcp.settings.streamable_http_path
         return f"Streamable HTTP on http://{host}:{port}{path}"
 
+    def endpoint_url(self) -> Optional[str]:
+        """
+        作用：返回 Streamable HTTP 模式对外提供的最终 MCP URL。
+        用途：为启动成功日志输出可直接复制使用的连接地址。
+        使用场景：上层服务启动成功后调用。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `Optional[str]` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `Optional[str]` 类型结果，返回值语义遵循该函数实现约定。
+        """
+        host = self._mcp.settings.host
+        port = self._mcp.settings.port
+        path = self._mcp.settings.streamable_http_path
+        return f"http://{host}:{port}{path}"
+
     def _build_app(self):
         """
         作用：构建 `_build_app` 相关对象或配置数据，供后续流程直接复用。
@@ -553,6 +663,21 @@ class SseTransport(UvicornTransport):
         sse_path = self._mcp.settings.sse_path
         message_path = self._mcp.settings.message_path
         return f"SSE on http://{host}:{port}{sse_path} (messages {message_path})"
+
+    def endpoint_url(self) -> Optional[str]:
+        """
+        作用：返回 SSE 模式主入口 URL（SSE 端点）。
+        用途：为启动成功日志输出连接地址。
+        使用场景：上层服务启动成功后调用。
+        参数与返回：
+        - 参数 `self`：实例或类上下文对象，用于访问当前方法所在对象状态。
+        - 返回：返回 `Optional[str]` 类型结果，返回值语义遵循该函数实现约定。
+        返回结果：返回 `Optional[str]` 类型结果，返回值语义遵循该函数实现约定。
+        """
+        host = self._mcp.settings.host
+        port = self._mcp.settings.port
+        sse_path = self._mcp.settings.sse_path
+        return f"http://{host}:{port}{sse_path}"
 
     def _build_app(self):
         """
@@ -658,3 +783,66 @@ def create_transport(
     if transport == "sse":
         return SseTransport(mcp, config)
     return StreamableHttpTransport(mcp, config)
+
+
+def _is_tcp_bind_available(host: str, port: int) -> tuple[bool, str]:
+    """
+    作用：检查给定 host/port 是否可用于 TCP bind。
+    用途：在启动前识别端口冲突，避免 uvicorn 报 [WinError 10048] 后才失败。
+    使用场景：仅供传输层启动前置校验调用。
+    参数与返回：
+    - 参数 `host`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `port`（`int`）：数值控制参数，用于限制范围、数量或时限。
+    - 返回：返回 `tuple[bool, str]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：`(True, "")` 表示可绑定，`(False, detail)` 表示不可绑定并返回错误摘要。
+    """
+    try:
+        addr_infos = socket.getaddrinfo(
+            host,
+            port,
+            type=socket.SOCK_STREAM,
+            proto=socket.IPPROTO_TCP,
+        )
+    except OSError as exc:
+        return False, str(exc)
+
+    first_error: Optional[str] = None
+    seen: set[tuple[int, int, int, tuple]] = set()
+    for family, socktype, proto, _canonname, sockaddr in addr_infos:
+        key = (family, socktype, proto, sockaddr)
+        if key in seen:
+            continue
+        seen.add(key)
+        try:
+            with socket.socket(family, socktype, proto) as sock:
+                sock.bind(sockaddr)
+            return True, ""
+        except OSError as exc:
+            if first_error is None:
+                first_error = str(exc)
+
+    return False, first_error or "no bindable address candidates"
+
+
+def _find_available_port(host: str, preferred_port: int) -> Optional[int]:
+    """
+    作用：在配置端口不可用时，查找可绑定的替代端口。
+    用途：提升启动鲁棒性，避免端口冲突导致 MCP 直接不可用。
+    使用场景：仅供 HTTP/SSE 传输启动前置校验调用。
+    参数与返回：
+    - 参数 `host`（`str`）：业务输入参数，由调用方提供以驱动当前函数逻辑。
+    - 参数 `preferred_port`（`int`）：数值控制参数，用于限制范围、数量或时限。
+    - 返回：返回 `Optional[int]` 类型结果，返回值语义遵循该函数实现约定。
+    返回结果：返回首个可用端口；若未找到则返回 `None`。
+    """
+    candidates: list[int] = []
+    for port in range(preferred_port + 1, min(preferred_port + 101, 65536)):
+        candidates.append(port)
+    for port in (18000, 19000, 20000, 29000):
+        if 1 <= port <= 65535 and port not in candidates and port != preferred_port:
+            candidates.append(port)
+    for port in candidates:
+        ok, _detail = _is_tcp_bind_available(host, port)
+        if ok:
+            return port
+    return None

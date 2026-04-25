@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from ._shared_case_base import ProcessingMCPTestBase
 from ._shared_fixtures import assert_tool_registered
@@ -15,7 +15,7 @@ class ToolsCommonGetQgisInfoTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "common_get_qgis_info")
+        assert_tool_registered(self, "mcp_tools_common_get_qgis_info")
 
     def test_success_returns_runtime_snapshot(self):
         """
@@ -28,7 +28,7 @@ class ToolsCommonGetQgisInfoTest(ProcessingMCPTestBase):
         返回结果：无返回值。
         """
         tools = self.build_tools()
-        result = tools.common_get_qgis_info()
+        result = tools.mcp_tools_common_get_qgis_info()
 
         self.assertIn("qgis", result)
         self.assertIn("python", result)
@@ -46,7 +46,7 @@ class ToolsCommonGetQgisInfoTest(ProcessingMCPTestBase):
         返回结果：无返回值。
         """
         tools = self.build_tools()
-        result = tools.common_get_qgis_info()
+        result = tools.mcp_tools_common_get_qgis_info()
         self.assertIn("version", result["qgis"])
         self.assertIn("platform", result)
         self.assertIn("active_plugins", result)
@@ -59,3 +59,4 @@ class ToolsCommonGetQgisInfoTest(ProcessingMCPTestBase):
                 "require_confirm_write"
             ]
         )
+

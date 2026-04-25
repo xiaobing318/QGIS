@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from ._shared_case_base import ProcessingMCPTestBase
 from ._shared_fixtures import assert_tool_registered
@@ -15,7 +15,7 @@ class ToolsVectorTableDeleteRecordsTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "vector_table_delete_records")
+        assert_tool_registered(self, "mcp_tools_vector_table_delete_records")
 
     def test_default_creates_copy_layer(self):
         """
@@ -30,7 +30,7 @@ class ToolsVectorTableDeleteRecordsTest(ProcessingMCPTestBase):
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("delete_records_vector_copy")
 
-        result = tools.vector_table_delete_records(
+        result = tools.mcp_tools_vector_table_delete_records(
             layer_ref=layer.id(),
             where="\"name\" = 'alpha'",
             confirm_destructive=True,
@@ -56,7 +56,7 @@ class ToolsVectorTableDeleteRecordsTest(ProcessingMCPTestBase):
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("delete_records_vector")
 
-        result = tools.vector_table_delete_records(
+        result = tools.mcp_tools_vector_table_delete_records(
             layer_ref=layer.id(),
             where="\"name\" = 'alpha'",
             in_place=True,
@@ -78,7 +78,7 @@ class ToolsVectorTableDeleteRecordsTest(ProcessingMCPTestBase):
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("delete_records_vector_all")
 
-        result = tools.vector_table_delete_records(
+        result = tools.mcp_tools_vector_table_delete_records(
             layer_ref=layer.id(),
             where="",
             in_place=True,
@@ -103,7 +103,7 @@ class ToolsVectorTableDeleteRecordsTest(ProcessingMCPTestBase):
         layer = self.add_sample_vector_layer("delete_records_vector_invalid_where")
 
         with self.assertRaises(Exception) as ctx:
-            tools.vector_table_delete_records(
+            tools.mcp_tools_vector_table_delete_records(
                 layer_ref=layer.id(),
                 where="\"name\" = ",
                 in_place=True,
@@ -125,7 +125,7 @@ class ToolsVectorTableDeleteRecordsTest(ProcessingMCPTestBase):
         layer = self.add_sample_vector_layer("delete_records_vector2")
 
         with self.assertRaises(Exception) as ctx:
-            tools.vector_table_delete_records(
+            tools.mcp_tools_vector_table_delete_records(
                 layer_ref=layer.id(),
                 where="",
                 in_place=True,
@@ -148,10 +148,11 @@ class ToolsVectorTableDeleteRecordsTest(ProcessingMCPTestBase):
         self.add_sample_vector_layer("duplicate-delete-layer")
 
         with self.assertRaises(Exception) as ctx:
-            tools.vector_table_delete_records(
+            tools.mcp_tools_vector_table_delete_records(
                 layer_ref="duplicate-delete-layer",
                 where="",
                 in_place=True,
                 confirm_destructive=True,
             )
         self.assertIn("Ambiguous layer reference", str(ctx.exception))
+

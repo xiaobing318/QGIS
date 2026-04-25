@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from qgis.core import QgsFeature, QgsGeometry, QgsProject, QgsVectorLayer
 
@@ -17,7 +17,7 @@ class ToolsVectorCheckValidityReportTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "vector_check_validity_report")
+        assert_tool_registered(self, "mcp_tools_vector_check_validity_report")
 
     def test_success_clean_layer(self):
         """
@@ -32,7 +32,7 @@ class ToolsVectorCheckValidityReportTest(ProcessingMCPTestBase):
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("validity_clean")
 
-        result = tools.vector_check_validity_report(
+        result = tools.mcp_tools_vector_check_validity_report(
             layer_ref=layer.id(),
             required_fields=["name", "value"],
             expected_crs="EPSG:4326",
@@ -74,9 +74,10 @@ class ToolsVectorCheckValidityReportTest(ProcessingMCPTestBase):
         layer.updateExtents()
         QgsProject.instance().addMapLayer(layer)
 
-        result = tools.vector_check_validity_report(layer_ref=layer.id())
+        result = tools.mcp_tools_vector_check_validity_report(layer_ref=layer.id())
 
         report = result["outputs"]["report"]
         self.assertEqual(report["duplicate_geometry_count"], 1)
         self.assertEqual(report["duplicate_record_count"], 1)
         self.assertIn("very_long_field_name", report["field_name_length_gt_10"])
+

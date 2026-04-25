@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
@@ -17,7 +17,7 @@ class ToolsVectorTableUpdateRecordsTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "vector_table_update_records")
+        assert_tool_registered(self, "mcp_tools_vector_table_update_records")
 
     def test_default_creates_copy_layer(self):
         """
@@ -32,7 +32,7 @@ class ToolsVectorTableUpdateRecordsTest(ProcessingMCPTestBase):
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("update_records_vector_copy")
 
-        result = tools.vector_table_update_records(
+        result = tools.mcp_tools_vector_table_update_records(
             layer_ref=layer.id(),
             where="\"name\" = 'alpha'",
             set_literals={"category": "g9"},
@@ -67,7 +67,7 @@ class ToolsVectorTableUpdateRecordsTest(ProcessingMCPTestBase):
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("update_records_vector")
 
-        result = tools.vector_table_update_records(
+        result = tools.mcp_tools_vector_table_update_records(
             layer_ref=layer.id(),
             where="\"name\" = 'alpha'",
             set_literals={"category": "g9"},
@@ -91,7 +91,7 @@ class ToolsVectorTableUpdateRecordsTest(ProcessingMCPTestBase):
         layer = self.add_sample_vector_layer("update_records_vector2")
 
         with self.assertRaises(Exception) as ctx:
-            tools.vector_table_update_records(layer_ref=layer.id(), in_place=True)
+            tools.mcp_tools_vector_table_update_records(layer_ref=layer.id(), in_place=True)
         self.assertIn("set_literals or set_expressions", str(ctx.exception))
 
     def test_failure_missing_field(self):
@@ -108,7 +108,7 @@ class ToolsVectorTableUpdateRecordsTest(ProcessingMCPTestBase):
         layer = self.add_sample_vector_layer("update_records_vector_missing_field")
 
         with self.assertRaises(Exception) as ctx:
-            tools.vector_table_update_records(
+            tools.mcp_tools_vector_table_update_records(
                 layer_ref=layer.id(),
                 set_literals={"missing_field": "value"},
                 in_place=True,
@@ -130,7 +130,7 @@ class ToolsVectorTableUpdateRecordsTest(ProcessingMCPTestBase):
         self.add_sample_vector_layer("duplicate-update-layer")
 
         with self.assertRaises(Exception) as ctx:
-            tools.vector_table_update_records(
+            tools.mcp_tools_vector_table_update_records(
                 layer_ref="duplicate-update-layer",
                 set_literals={"category": "g9"},
                 in_place=True,
@@ -159,10 +159,11 @@ class ToolsVectorTableUpdateRecordsTest(ProcessingMCPTestBase):
         mock_expression_class.return_value = where_expr
 
         with self.assertRaises(Exception) as ctx:
-            tools.vector_table_update_records(
+            tools.mcp_tools_vector_table_update_records(
                 layer_ref=layer.id(),
                 where="value > 0",
                 set_literals={"category": "g9"},
                 in_place=True,
             )
         self.assertIn("where eval boom", str(ctx.exception))
+

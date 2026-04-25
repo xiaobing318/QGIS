@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from ._shared_case_base import ProcessingMCPTestBase
 from ._shared_fixtures import assert_tool_registered
@@ -15,7 +15,7 @@ class ToolsVectorTableDropFieldsTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "vector_table_drop_fields")
+        assert_tool_registered(self, "mcp_tools_vector_table_drop_fields")
 
     def test_default_creates_copy_layer(self):
         """
@@ -29,14 +29,14 @@ class ToolsVectorTableDropFieldsTest(ProcessingMCPTestBase):
         """
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("drop_field_vector_copy")
-        tools.vector_table_add_field(
+        tools.mcp_tools_vector_table_add_field(
             layer_ref=layer.id(),
             field_name="temp_field",
             field_type="string",
             in_place=True,
         )
 
-        result = tools.vector_table_drop_fields(
+        result = tools.mcp_tools_vector_table_drop_fields(
             layer_ref=layer.id(),
             fields=["temp_field"],
         )
@@ -60,14 +60,14 @@ class ToolsVectorTableDropFieldsTest(ProcessingMCPTestBase):
         """
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("drop_field_vector")
-        add_result = tools.vector_table_add_field(
+        add_result = tools.mcp_tools_vector_table_add_field(
             layer_ref=layer.id(),
             field_name="temp_field",
             field_type="string",
         )
         target_layer_id = add_result["summary"]["output_layer_id"]
 
-        result = tools.vector_table_drop_fields(
+        result = tools.mcp_tools_vector_table_drop_fields(
             layer_ref=target_layer_id,
             fields=["temp_field"],
             in_place=True,
@@ -89,5 +89,6 @@ class ToolsVectorTableDropFieldsTest(ProcessingMCPTestBase):
         layer = self.add_sample_vector_layer("drop_field_vector2")
 
         with self.assertRaises(Exception) as ctx:
-            tools.vector_table_drop_fields(layer_ref=layer.id(), fields=[])
+            tools.mcp_tools_vector_table_drop_fields(layer_ref=layer.id(), fields=[])
         self.assertIn("fields is required", str(ctx.exception))
+

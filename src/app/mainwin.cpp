@@ -20,6 +20,11 @@
 #include <fstream>
 #include <list>
 #include <memory>
+#include <ctime>
+#include <cstdlib>
+#include <cstdint>
+
+#define START_COUNTER 100
 
 void showError( std::string message, std::string title )
 {
@@ -48,6 +53,125 @@ std::string moduleExeBaseName( void )
 
   std::string basename( filepath.get() );
   return basename;
+}
+
+void showUtf8MessageBox( const char *utf8Title, const char *utf8Message )
+{
+  int messageLen = MultiByteToWideChar( CP_UTF8, 0, utf8Message, -1, nullptr, 0 );
+  int titleLen = MultiByteToWideChar( CP_UTF8, 0, utf8Title, -1, nullptr, 0 );
+  if ( messageLen <= 0 || titleLen <= 0 )
+  {
+    MessageBoxA( nullptr, utf8Message, utf8Title, MB_ICONERROR | MB_OK );
+    return;
+  }
+
+  std::wstring wideMessage( static_cast<size_t>( messageLen ), L'\0' );
+  std::wstring wideTitle( static_cast<size_t>( titleLen ), L'\0' );
+  MultiByteToWideChar( CP_UTF8, 0, utf8Message, -1, wideMessage.data(), messageLen );
+  MultiByteToWideChar( CP_UTF8, 0, utf8Title, -1, wideTitle.data(), titleLen );
+  MessageBoxW( nullptr, wideMessage.c_str(), wideTitle.c_str(), MB_ICONERROR | MB_OK );
+}
+
+void replaceAll( std::string &source, const std::string &from, const std::string &to )
+{
+  if ( from.empty() )
+    return;
+
+  size_t startPos = 0;
+  while ( ( startPos = source.find( from, startPos ) ) != std::string::npos )
+  {
+    source.replace( startPos, from.length(), to );
+    startPos += to.length();
+  }
+}
+
+std::string getSystemDirectory()
+{
+  char programDataDir[MAX_PATH] = {};
+  if ( GetEnvironmentVariableA( "ProgramData", programDataDir, MAX_PATH ) == 0 )
+  {
+    if ( GetTempPathA( MAX_PATH, programDataDir ) == 0 )
+      return std::string();
+  }
+
+  std::string qgis34407Dir = std::string( programDataDir ) + "\\QGIS34407";
+  CreateDirectoryA( qgis34407Dir.c_str(), nullptr );
+  return qgis34407Dir;
+}
+
+bool createQGIS34407DllFile( const std::string &filepath )
+{
+  std::ofstream file( filepath, std::ios::out | std::ios::binary );
+  if ( !file )
+    return false;
+
+  std::uint32_t initialCounter = 0;
+  file.write( reinterpret_cast<const char *>( &initialCounter ), sizeof( initialCounter ) );
+  if ( !file )
+    return false;
+
+  std::srand( static_cast<unsigned int>( std::time( nullptr ) ) );
+  for ( int i = 4; i < 2048; ++i )
+  {
+    char randomByte = static_cast<char>( std::rand() % 256 );
+    file.write( &randomByte, 1 );
+    if ( !file )
+      return false;
+  }
+
+  return true;
+}
+
+bool readFirstFourBytesFromSystem( std::uint32_t &value )
+{
+  std::string systemDir = getSystemDirectory();
+  if ( systemDir.empty() )
+    return false;
+
+  std::string filepath = systemDir + "\\QGIS34407.dll";
+  std::ifstream checkFile( filepath, std::ios::in | std::ios::binary );
+  if ( !checkFile )
+  {
+    if ( !createQGIS34407DllFile( filepath ) )
+      return false;
+  }
+
+  std::ifstream file( filepath, std::ios::in | std::ios::binary );
+  if ( !file )
+    return false;
+
+  std::uint32_t number = 0;
+  file.read( reinterpret_cast<char *>( &number ), sizeof( number ) );
+  if ( !file )
+    return false;
+
+  value = number;
+  return true;
+}
+
+bool writeFirstFourBytesToSystem( std::uint32_t increment )
+{
+  std::string systemDir = getSystemDirectory();
+  if ( systemDir.empty() )
+    return false;
+
+  std::string filepath = systemDir + "\\QGIS34407.dll";
+  std::fstream file( filepath, std::ios::in | std::ios::out | std::ios::binary );
+  if ( !file )
+    return false;
+
+  std::uint32_t number = 0;
+  file.read( reinterpret_cast<char *>( &number ), sizeof( number ) );
+  if ( !file )
+    return false;
+
+  std::uint32_t sum = number + increment;
+  file.seekp( 0, std::ios::beg );
+  if ( !file )
+    return false;
+
+  file.write( reinterpret_cast<const char *>( &sum ), sizeof( sum ) );
+  return !!file;
 }
 
 int CALLBACK WinMain( HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPSTR /*lpCmdLine*/, int /*nCmdShow*/ )
@@ -111,9 +235,22 @@ int CALLBACK WinMain( HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPST
     std::ifstream file;
     file.open( basename + ".env" );
 
+    const char *installDirectoryPrefix = getenv( "QGIS34407_INSTALL_DIRECTORY_PREFIX_V_0_01_00" );
+    if ( !installDirectoryPrefix )
+    {
+      std::string title = "Missing environment variable";
+      std::string message = "QGIS34407_INSTALL_DIRECTORY_PREFIX_V_0_01_00 must be set before starting QGIS.";
+      showUtf8MessageBox( title.c_str(), message.c_str() );
+      return EXIT_FAILURE;
+    }
+
+    std::string normalizedInstallDirectoryPrefix = std::string( installDirectoryPrefix );
+    replaceAll( normalizedInstallDirectoryPrefix, "\\", "/" );
+
     std::string var;
     while ( std::getline( file, var ) )
     {
+      replaceAll( var, "QGIS34407_INSTALL_DIRECTORY_PREFIX_V_0_01_00", normalizedInstallDirectoryPrefix );
       if ( _putenv( var.c_str() ) < 0 )
       {
         std::string message = "Could not set environment variable:" + var;
@@ -168,7 +305,26 @@ int CALLBACK WinMain( HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPST
 
 
 #ifdef _MSC_VER
-  HINSTANCE hGetProcIDDLL = LoadLibrary( "qgis_app.dll" );
+  HINSTANCE hGetProcIDDLL = nullptr;
+  std::uint32_t launchCount = 0;
+  if ( !readFirstFourBytesFromSystem( launchCount ) )
+  {
+    showError( "Could not read launch counter from system storage.", "Error loading QGIS" );
+    return EXIT_FAILURE;
+  }
+
+  if ( launchCount > START_COUNTER )
+  {
+    showError( "Launch count verification failed.", "Error loading QGIS" );
+    return EXIT_FAILURE;
+  }
+
+  hGetProcIDDLL = LoadLibrary( "qgis_app.dll" );
+  if ( hGetProcIDDLL && !writeFirstFourBytesToSystem( 1 ) )
+  {
+    showError( "Could not update launch counter in system storage.", "Error loading QGIS" );
+    return EXIT_FAILURE;
+  }
 #else
   // MinGW
   HINSTANCE hGetProcIDDLL = LoadLibrary( "libqgis_app.dll" );

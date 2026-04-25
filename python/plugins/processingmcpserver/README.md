@@ -55,9 +55,9 @@
 
 > [!NOTE]
 > 1. `enable_execute_code` 目前仅作为兼容字段保留，当前版本不会注册任意代码执行类工具。
-> 2. `filesystem_query_*` 与 `filesystem_stats_directory` 为只读能力，不再依赖白名单配置。
-> 3. `filesystem_edit_*` 默认拒绝写入，必须显式传入 `confirm_write=true`；删除与覆盖操作还需 `confirm_destructive=true`。
-> 4. 当前版本已提供 shapefile 稳定模板能力，包含 `47` 个 tools、`1` 个 prompts、`3` 个 resources；其中新增 `dataset_inspect_shapefile_bundle`、`vector_check_validity_report`、`vector_prepare_work_layer`、`vector_export_shapefile`、`project_cleanup_work_layers` 五个 shapefile 专项工具。
+> 2. `mcp_tools_filesystem_query_*` 与 `mcp_tools_filesystem_stats_directory` 为只读能力，不再依赖白名单配置。
+> 3. `mcp_tools_filesystem_edit_*` 默认拒绝写入，必须显式传入 `confirm_write=true`；删除与覆盖操作还需 `confirm_destructive=true`。
+> 4. 当前版本使用小写命名 `mcp_tools_<class>_<toolname>`，包含 `53` 个 tools、`3` 个 prompts、`3` 个 resources；其中 `vector_add_layers`、`raster_add_layers`、`dataset_load_from_directory`、`layer_get_panel_tree`、`processing_execute_on_layers` 已删除，`dataset_load_layers` 与矢量/栅格高频工具已新增。
 
 ## 3. 依赖预检与自动安装
 
@@ -131,14 +131,11 @@ sequenceDiagram
 
 ### 6.3 Shapefile 稳定模板
 
-这套模板面向 `shapefile` 自动化生产，执行策略固定为“六阶段流水线”：
+这套模板面向 `shapefile` 自动化生产，当前提供 3 个独立 Prompt 工作流：
 
-1. 路径检查与数据范围确认（默认 all）
-2. 预检与基线统计
-3. CRS 标准化（默认 `EPSG:4490`）
-4. 业务处理
-5. 正式导出
-6. 清理
+1. `qgis_shapefile_quality_repair_export_workflow`
+2. `qgis_shapefile_overlay_clip_stats_workflow`
+3. `qgis_shapefile_buffer_join_workflow`
 
 推荐调用链如下：
 
@@ -147,30 +144,78 @@ sequenceDiagram
   - `qgis://workflow/shapefile/quality-profile/default`
   - `qgis://workflow/shapefile/run-summary`
 - Prompts
-  - `qgis_shapefile_pipeline_planner`
-- Tools
-  - `dataset_inspect_shapefile_bundle`
-  - `vector_check_validity_report`
-  - `vector_prepare_work_layer`
-  - `processing_get_parameter_template`
-  - `processing_execute_algorithm`
-  - `processing_execute_on_layers`
-  - `vector_export_shapefile`
-  - `project_cleanup_work_layers`
+  - `qgis_shapefile_quality_repair_export_workflow`
+  - `qgis_shapefile_overlay_clip_stats_workflow`
+  - `qgis_shapefile_buffer_join_workflow`
+- 高频 Tools
+  - `mcp_tools_dataset_inspect_vector_bundle`
+  - `mcp_tools_dataset_load_layers`
+  - `mcp_tools_vector_check_validity_report`
+  - `mcp_tools_vector_prepare_work_layer`
+  - `mcp_tools_vector_clip`
+  - `mcp_tools_vector_buffer`
+  - `mcp_tools_vector_join_attributes_by_location`
+  - `mcp_tools_vector_table_calculate_field`
+  - `mcp_tools_vector_stats_by_categories`
+  - `mcp_tools_vector_export_dataset`
+  - `mcp_tools_project_cleanup_work_layers`
 
-模板约束如下：
+工作流参数约束如下：
 
-- `qgis_shapefile_pipeline_planner` 在 llama-server WebUI 的 Use Prompt 仅暴露 5 个参数：
-  - `task_name`（必填）
-  - `input_dir`（必填）
-  - `output_dir`（必填）
-  - `quality_rule_resource`（可选，默认 `qgis://workflow/shapefile/quality-profile/default`）
-  - `deliverables`（可选）
+- `qgis_shapefile_quality_repair_export_workflow`
+  - 必填：`task_name`、`input_dir`、`output_dir`
+  - 可选：`target_crs`（默认 `EPSG:4490`）、`geometry_type`（默认 `any`）、`name_glob`（默认 `*.shp`）、`required_fields`、`deliverables`
+- `qgis_shapefile_overlay_clip_stats_workflow`
+  - 必填：`task_name`、`subject_shapefile`、`overlay_shapefile`、`output_shapefile`
+  - 可选：`target_crs`（默认 `EPSG:4490`）、`area_field`（默认 `area_m2`）、`group_field`、`deliverables`
+- `qgis_shapefile_buffer_join_workflow`
+  - 必填：`task_name`、`line_shapefile`、`point_shapefile`、`output_shapefile`、`buffer_distance`
+  - 可选：`target_crs`（默认 `EPSG:4490`）、`predicate_codes`（默认 `0`）、`point_category_field`、`deliverables`
+
+Use Prompt 示例（llama-server WebUI）：
+
+```text
+qgis_shapefile_quality_repair_export_workflow(
+  task_name="roads_quality_repair_2026q2",
+  input_dir="D:/gis/jobs/roads/input",
+  output_dir="D:/gis/jobs/roads/output",
+  target_crs="EPSG:4490",
+  geometry_type="line",
+  name_glob="road_*.shp",
+  required_fields="road_id,road_name,class",
+  deliverables="修复后道路 shapefile、质检报告、运行摘要"
+)
+
+qgis_shapefile_overlay_clip_stats_workflow(
+  task_name="parcel_clip_stats_2026q2",
+  subject_shapefile="D:/gis/jobs/parcel/subject.shp",
+  overlay_shapefile="D:/gis/jobs/parcel/district.shp",
+  output_shapefile="D:/gis/jobs/parcel/output/parcel_clip.shp",
+  target_crs="EPSG:4490",
+  area_field="area_m2",
+  group_field="district_id",
+  deliverables="裁剪结果 shapefile、分组面积统计、运行摘要"
+)
+
+qgis_shapefile_buffer_join_workflow(
+  task_name="road_buffer_join_poi_2026q2",
+  line_shapefile="D:/gis/jobs/traffic/road_centerline.shp",
+  point_shapefile="D:/gis/jobs/traffic/poi.shp",
+  output_shapefile="D:/gis/jobs/traffic/output/road_buffer_join.shp",
+  buffer_distance=100.0,
+  target_crs="EPSG:4490",
+  predicate_codes="0",
+  point_category_field="poi_type",
+  deliverables="缓冲连接结果 shapefile、分类统计、运行摘要"
+)
+```
+
+执行策略说明：
+
 - 中间过程优先使用临时工作层，不直接改原始输入。
-- 标准化阶段默认执行空几何清理、无效几何修复、重复几何清理、CRS 统一与可选字段名收敛。
-- 导出阶段会结合 `quality_rule_resource` 对导出约束做最终复核，但不再拆分辅助 prompt。
-- 最终输出保留成果 shapefile bundle 与选定日志/manifest。
-- `project_cleanup_work_layers` 用于回收工作层、输入层和显式登记的临时文件。
+- 标准化阶段默认建议统一 CRS，并按流程场景执行几何修复/字段规范化。
+- 导出阶段统一走 `mcp_tools_vector_export_dataset(file_format='shp')`，写盘时需显式确认。
+- 最终输出保留成果 shapefile bundle 与运行摘要，并通过 `mcp_tools_project_cleanup_work_layers` 回收工作层与显式临时产物。
 
 ## 7. QGIS Python Console
 
@@ -230,7 +275,7 @@ $env:PYTHONPATH='<QGIS_SOURCE_DIR>\python\plugins;<QGIS_BUILD_DIR>\output\python
 **一、对功能做验证**
 
 ```bat
-cmd /c "call C:\OSGeo4W\bin\o4w_env.bat && call C:\OSGeo4W\etc\ini\python3.bat && call C:\OSGeo4W\bin\qt6_env.bat && python -m py_compile C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\mcp_tools\mcp_tools.py C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\mcp_prompts.py C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\mcp_resources.py C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\dependency_manager.py C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\dependency_models.py C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\dependency_probe.py C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\dependency_evaluator.py C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\dependency_contract.py C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\dependency_reporting.py C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\mcp_main_thread_runner.py C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\tests\suite_runner.py"
+cmd /c "call C:\OSGeo4W\bin\o4w_env.bat && call C:\OSGeo4W\etc\ini\python3.bat && call C:\OSGeo4W\bin\qt6_env.bat && python -m py_compile C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\mcp_tools\mcp_tools.py C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\mcp_prompts\__init__.py C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\mcp_prompts\mcp_prompts.py C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\mcp_prompts\mcp_prompts_qgis_shapefile_quality_repair_export_workflow.py C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\mcp_prompts\mcp_prompts_qgis_shapefile_overlay_clip_stats_workflow.py C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\mcp_prompts\mcp_prompts_qgis_shapefile_buffer_join_workflow.py C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\mcp_resources\__init__.py C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\mcp_resources\mcp_resources.py C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\mcp_resources\mcp_resources_qgis_workflow_shapefile_template.py C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\mcp_resources\mcp_resources_qgis_workflow_shapefile_quality_profile_default.py C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\mcp_resources\mcp_resources_qgis_workflow_shapefile_run_summary.py C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\dependency_manager.py C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\dependency_models.py C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\dependency_probe.py C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\dependency_evaluator.py C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\dependency_contract.py C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\dependency_reporting.py C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\mcp_main_thread_runner.py C:\OSGeo4W64\QGIS\python\plugins\processingmcpserver\tests\suite_runner.py"
 ```
 
 **二、对测试做整体验证**

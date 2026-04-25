@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from unittest.mock import patch
 
@@ -17,7 +17,7 @@ class ToolsProcessingExecuteAlgorithmTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "processing_execute_algorithm")
+        assert_tool_registered(self, "mcp_tools_processing_execute_algorithm")
 
     @patch("processingmcpserver.mcp_tools.mcp_tools_processing_execute_algorithm.processing.run")
     def test_success_default_rewrites_disk_output_and_blocks_in_place(self, mock_run):
@@ -34,7 +34,7 @@ class ToolsProcessingExecuteAlgorithmTest(ProcessingMCPTestBase):
         tools = self.build_tools()
         mock_run.return_value = {"OUTPUT": "TEMPORARY_OUTPUT"}
 
-        result = tools.processing_execute_algorithm(
+        result = tools.mcp_tools_processing_execute_algorithm(
             algorithm="fake:buffer",
             parameters={
                 "INPUT": "layer-1",
@@ -66,7 +66,7 @@ class ToolsProcessingExecuteAlgorithmTest(ProcessingMCPTestBase):
         tools = self.build_tools()
         mock_run.return_value = {"OUTPUT": "C:/tmp/result.gpkg"}
 
-        result = tools.processing_execute_algorithm(
+        result = tools.mcp_tools_processing_execute_algorithm(
             algorithm="fake:buffer",
             parameters={
                 "INPUT": "layer-1",
@@ -96,7 +96,7 @@ class ToolsProcessingExecuteAlgorithmTest(ProcessingMCPTestBase):
         """
         tools = self.build_tools()
         with self.assertRaises(Exception) as ctx:
-            tools.processing_execute_algorithm(
+            tools.mcp_tools_processing_execute_algorithm(
                 algorithm="native:buffer",
                 parameters="not-an-object",
             )
@@ -118,9 +118,10 @@ class ToolsProcessingExecuteAlgorithmTest(ProcessingMCPTestBase):
         mock_run.side_effect = RuntimeError("processing boom")
 
         with self.assertRaises(RuntimeError) as ctx:
-            tools.processing_execute_algorithm(
+            tools.mcp_tools_processing_execute_algorithm(
                 algorithm="fake:buffer",
                 parameters={"INPUT": "layer-1"},
                 load_results=False,
             )
         self.assertIn("processing boom", str(ctx.exception))
+

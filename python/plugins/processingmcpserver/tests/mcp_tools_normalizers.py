@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from processingmcpserver.mcp_tools import ProcessingMCPTools
 
@@ -113,3 +113,4 @@ class ToolsNormalizersTest(ProcessingMCPTestBase):
             tools._normalize_geometry_type_filter("curve")
         with self.assertRaises(Exception):
             tools._normalize_layer_types_filter("mesh")
+

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from ._shared_case_base import ProcessingMCPTestBase
 from ._shared_fixtures import assert_tool_registered
@@ -15,7 +15,7 @@ class ToolsProcessingGetAlgorithmsTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "processing_get_algorithms")
+        assert_tool_registered(self, "mcp_tools_processing_get_algorithms")
 
     def test_success_get_algorithms_limited(self):
         """
@@ -29,7 +29,7 @@ class ToolsProcessingGetAlgorithmsTest(ProcessingMCPTestBase):
         """
         tools = self.build_tools()
 
-        result = tools.processing_get_algorithms(limit=5)
+        result = tools.mcp_tools_processing_get_algorithms(limit=5)
         self.assertIn("count", result)
         self.assertIn("returned", result)
         self.assertLessEqual(int(result["returned"]), 5)
@@ -46,8 +46,8 @@ class ToolsProcessingGetAlgorithmsTest(ProcessingMCPTestBase):
         """
         tools = self.build_tools()
 
-        filtered = tools.processing_get_algorithms(provider_id="native", limit=5)
-        detailed = tools.processing_get_algorithms(algorithm_id="native:buffer")
+        filtered = tools.mcp_tools_processing_get_algorithms(provider_id="native", limit=5)
+        detailed = tools.mcp_tools_processing_get_algorithms(algorithm_id="native:buffer")
 
         self.assertGreater(filtered["returned"], 0)
         self.assertTrue(
@@ -69,7 +69,7 @@ class ToolsProcessingGetAlgorithmsTest(ProcessingMCPTestBase):
         """
         tools = self.build_tools()
 
-        result = tools.processing_get_algorithms(
+        result = tools.mcp_tools_processing_get_algorithms(
             limit=tools.MAX_ALGORITHM_LIST_LIMIT + 1
         )
 
@@ -88,5 +88,6 @@ class ToolsProcessingGetAlgorithmsTest(ProcessingMCPTestBase):
         """
         tools = self.build_tools()
         with self.assertRaises(Exception) as ctx:
-            tools.processing_get_algorithms(algorithm_id="not-exist:algorithm")
+            tools.mcp_tools_processing_get_algorithms(algorithm_id="not-exist:algorithm")
         self.assertIn("Algorithm not found", str(ctx.exception))
+

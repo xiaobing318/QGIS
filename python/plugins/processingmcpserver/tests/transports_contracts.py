@@ -243,6 +243,63 @@ class TransportsContractsTest(ProcessingMCPTestBase):
         self.assertEqual(calls[1], None)
         self.assertEqual(config["log_config"], None)
 
+    def test_streamable_transport_exposes_endpoint_url(self):
+        transport = StreamableHttpTransport(
+            _FakeMcp(), self._build_config("streamable-http")
+        )
+        self.assertEqual(transport.endpoint_url(), "http://127.0.0.1:8000/mcp")
+
+    def test_sse_transport_exposes_endpoint_url(self):
+        transport = SseTransport(_FakeMcp(), self._build_config("sse"))
+        self.assertEqual(transport.endpoint_url(), "http://127.0.0.1:8000/sse")
+
+    @patch("processingmcpserver.transports._is_tcp_bind_available")
+    @patch("processingmcpserver.transports.threading.Thread")
+    def test_uvicorn_transport_port_check_failure_blocks_thread_start(
+        self, mock_thread_class, mock_port_check
+    ):
+        mock_port_check.return_value = (False, "address already in use")
+        transport = StreamableHttpTransport(
+            _FakeMcp(), self._build_config("streamable-http")
+        )
+
+        with patch.object(transport, "_log") as mock_log:
+            self.assertFalse(transport.start())
+
+        mock_thread_class.assert_not_called()
+        self.assertTrue(
+            any(
+                "Processing MCP port check failed" in call.args[0]
+                for call in mock_log.call_args_list
+            )
+        )
+
+    @patch("processingmcpserver.transports._find_available_port")
+    @patch("processingmcpserver.transports._is_tcp_bind_available")
+    @patch("processingmcpserver.transports.threading.Thread")
+    def test_uvicorn_transport_port_check_uses_fallback_port(
+        self, mock_thread_class, mock_port_check, mock_find_port
+    ):
+        fake_thread = MagicMock()
+        mock_thread_class.return_value = fake_thread
+        mock_port_check.return_value = (False, "address already in use")
+        mock_find_port.return_value = 19000
+        transport = StreamableHttpTransport(
+            _FakeMcp(), self._build_config("streamable-http")
+        )
+
+        with patch.object(transport, "_log") as mock_log:
+            self.assertTrue(transport.start())
+
+        self.assertEqual(transport._mcp.settings.port, 19000)
+        mock_thread_class.assert_called_once()
+        self.assertTrue(
+            any(
+                "automatically selected fallback port 19000" in call.args[0]
+                for call in mock_log.call_args_list
+            )
+        )
+
     @patch("processingmcpserver.transports.threading.Thread")
     def test_base_transport_start_reentry_returns_true(self, mock_thread_class):
         """

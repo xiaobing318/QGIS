@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from ._shared_case_base import ProcessingMCPTestBase
 from ._shared_fixtures import assert_tool_registered
@@ -15,7 +15,7 @@ class ToolsLayerGetDetailsTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "layer_get_details")
+        assert_tool_registered(self, "mcp_tools_layer_get_details")
 
     def test_success_get_details_by_layer_id(self):
         """
@@ -30,7 +30,7 @@ class ToolsLayerGetDetailsTest(ProcessingMCPTestBase):
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("details_vector")
 
-        result = tools.layer_get_details(layer_ref=layer.id())
+        result = tools.mcp_tools_layer_get_details(layer_ref=layer.id())
         self.assertEqual(result["name"], "details_vector")
         self.assertIn("fields", result)
         self.assertIn("feature_count", result)
@@ -48,7 +48,7 @@ class ToolsLayerGetDetailsTest(ProcessingMCPTestBase):
         tools = self.build_tools()
         raster_layer = self.add_sample_raster_layer("details_raster")
 
-        result = tools.layer_get_details(layer_ref="details_raster")
+        result = tools.mcp_tools_layer_get_details(layer_ref="details_raster")
 
         self.assertEqual(result["id"], raster_layer.id())
         self.assertEqual(result["type"], "raster")
@@ -68,7 +68,7 @@ class ToolsLayerGetDetailsTest(ProcessingMCPTestBase):
         """
         tools = self.build_tools()
         with self.assertRaises(Exception) as ctx:
-            tools.layer_get_details(layer_ref="missing-layer")
+            tools.mcp_tools_layer_get_details(layer_ref="missing-layer")
         self.assertIn("Layer not found", str(ctx.exception))
 
     def test_failure_duplicate_layer_name_is_ambiguous(self):
@@ -86,5 +86,6 @@ class ToolsLayerGetDetailsTest(ProcessingMCPTestBase):
         self.add_sample_vector_layer("duplicate-details-layer")
 
         with self.assertRaises(Exception) as ctx:
-            tools.layer_get_details(layer_ref="duplicate-details-layer")
+            tools.mcp_tools_layer_get_details(layer_ref="duplicate-details-layer")
         self.assertIn("Ambiguous layer reference", str(ctx.exception))
+

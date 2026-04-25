@@ -108,6 +108,7 @@ class DummyMcp:
         返回结果：无返回值。
         """
         self.tool_names: list[str] = []
+        self.tool_funcs: dict[str, object] = {}
         self.prompt_names: list[str] = []
         self.resource_uris: list[str] = []
         self.prompt_funcs: dict[str, object] = {}
@@ -136,6 +137,7 @@ class DummyMcp:
             返回结果：返回执行结果对象或状态值，具体结构以当前实现生成的数据为准。
             """
             self.tool_names.append(func.__name__)
+            self.tool_funcs[func.__name__] = func
             return func
 
         return decorator
@@ -363,7 +365,11 @@ class DummyTools:
         - 返回：返回执行结果对象或状态值，具体结构以当前实现生成的数据为准。
         返回结果：返回执行结果对象或状态值，具体结构以当前实现生成的数据为准。
         """
-        return lambda *args, **kwargs: {}
+        def _stub():
+            return {}
+
+        _stub.__name__ = str(_name)
+        return _stub
 
 
 class DummyRunner:

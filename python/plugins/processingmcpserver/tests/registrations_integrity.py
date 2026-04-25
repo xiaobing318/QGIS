@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import inspect
 import json
+import re
 
 from processingmcpserver.mcp_prompts import (
     REGISTERED_PROMPT_NAMES,
@@ -45,12 +46,51 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
             "execute_processing",
             "execute_code",
             removed_render_tool,
+            "vector_add_layers",
+            "raster_add_layers",
+            "dataset_load_from_directory",
+            "layer_get_panel_tree",
+            "processing_execute_on_layers",
         }
 
         mcp = DummyMcp()
         register_tools(mcp, DummyTools(), enable_execute_code=False)
         self.assertEqual(set(mcp.tool_names), set(REGISTERED_TOOL_NAMES))
         self.assertTrue(legacy_removed.isdisjoint(set(mcp.tool_names)))
+
+    def test_registered_tool_signatures_have_no_private_parameter_names(self):
+        mcp = DummyMcp()
+        register_tools(mcp, DummyTools(), enable_execute_code=False)
+        self.assertEqual(set(mcp.tool_names), set(REGISTERED_TOOL_NAMES))
+
+        for tool_name, func in mcp.tool_funcs.items():
+            signature = inspect.signature(func)
+            for parameter in signature.parameters.values():
+                self.assertFalse(
+                    parameter.name.startswith("_"),
+                    msg=f"{tool_name} has private parameter name: {parameter.name}",
+                )
+                self.assertNotIn(
+                    parameter.name,
+                    {"args", "kwargs"},
+                    msg=f"{tool_name} leaked variadic placeholder parameter: {parameter.name}",
+                )
+                self.assertNotIn(
+                    parameter.kind,
+                    {
+                        inspect.Parameter.VAR_POSITIONAL,
+                        inspect.Parameter.VAR_KEYWORD,
+                    },
+                    msg=(
+                        f"{tool_name} uses variadic signature kind: "
+                        f"{parameter.kind!r}"
+                    ),
+                )
+
+    def test_registered_tool_names_follow_lowercase_pattern(self):
+        pattern = re.compile(r"^mcp_tools_[a-z0-9]+_[a-z0-9_]+$")
+        for tool_name in REGISTERED_TOOL_NAMES:
+            self.assertRegex(tool_name, pattern)
 
     def test_register_prompts_and_resources_discoverable(self):
         """
@@ -71,6 +111,7 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
         self.assertEqual(set(mcp.resource_uris), set(REGISTERED_RESOURCE_URIS))
         self.assertEqual(set(mcp.prompt_descriptions), set(REGISTERED_PROMPT_NAMES))
         self.assertEqual(set(mcp.resource_descriptions), set(REGISTERED_RESOURCE_URIS))
+        self.assertNotIn("qgis_shapefile_pipeline_planner", mcp.prompt_names)
 
     def test_registered_tools_have_non_placeholder_docstrings(self):
         """
@@ -171,12 +212,28 @@ class RegistrationsIntegrityTest(ProcessingMCPTestBase):
         ]
         mcp = DummyMcp()
         register_prompts(mcp, DummyTools())
+        prompt_call_inputs = {
+            "qgis_shapefile_quality_repair_export_workflow": {
+                "task_name": "quality-check",
+                "input_dir": "C:/input",
+                "output_dir": "C:/output",
+            },
+            "qgis_shapefile_overlay_clip_stats_workflow": {
+                "task_name": "overlay-check",
+                "subject_shapefile": "C:/input/subject.shp",
+                "overlay_shapefile": "C:/input/overlay.shp",
+                "output_shapefile": "C:/output/overlay_out.shp",
+            },
+            "qgis_shapefile_buffer_join_workflow": {
+                "task_name": "buffer-check",
+                "line_shapefile": "C:/input/line.shp",
+                "point_shapefile": "C:/input/point.shp",
+                "output_shapefile": "C:/output/buffer_out.shp",
+                "buffer_distance": 120.0,
+            },
+        }
         for prompt_name, prompt_fn in mcp.prompt_funcs.items():
-            output = prompt_fn(
-                task_name="test",
-                input_dir="C:/input",
-                output_dir="C:/output",
-            )
+            output = prompt_fn(**prompt_call_inputs[prompt_name])
             for removed in legacy_removed:
                 self.assertNotIn(
                     removed,

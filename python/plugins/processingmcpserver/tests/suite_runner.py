@@ -17,70 +17,7 @@ else:
     from ._shared_fixtures import _ensure_qgis_test_app
 
 
-TEST_MODULES = [
-    "processingmcpserver.tests.capabilities_markdown_runtime",
-    "processingmcpserver.tests.config_loading_precedence",
-    "processingmcpserver.tests.config_dependencies_flags",
-    "processingmcpserver.tests.registrations_integrity",
-    "processingmcpserver.tests.transports_contracts",
-    "processingmcpserver.tests.log_handler_runtime",
-    "processingmcpserver.tests.mcp_main_thread_runner_runtime",
-    "processingmcpserver.tests.plugin_runtime",
-    "processingmcpserver.tests.server_runtime",
-    "processingmcpserver.tests.dependencies_runtime",
-    "processingmcpserver.tests.mcp_tools_normalizers",
-    "processingmcpserver.tests.mcp_tools_common_get_qgis_info",
-    "processingmcpserver.tests.mcp_tools_vector_add_layer",
-    "processingmcpserver.tests.mcp_tools_vector_add_layers",
-    "processingmcpserver.tests.mcp_tools_raster_add_layer",
-    "processingmcpserver.tests.mcp_tools_raster_add_layers",
-    "processingmcpserver.tests.mcp_tools_layer_list",
-    "processingmcpserver.tests.mcp_tools_layer_get_panel_tree",
-    "processingmcpserver.tests.mcp_tools_layer_get_details",
-    "processingmcpserver.tests.mcp_tools_layer_remove",
-    "processingmcpserver.tests.mcp_tools_layer_remove_batch",
-    "processingmcpserver.tests.mcp_tools_layer_resolve_references",
-    "processingmcpserver.tests.mcp_tools_vector_get_layer_features",
-    "processingmcpserver.tests.mcp_tools_vector_table_add_field",
-    "processingmcpserver.tests.mcp_tools_vector_table_drop_fields",
-    "processingmcpserver.tests.mcp_tools_vector_table_rename_field",
-    "processingmcpserver.tests.mcp_tools_vector_table_calculate_field",
-    "processingmcpserver.tests.mcp_tools_vector_table_query_records",
-    "processingmcpserver.tests.mcp_tools_vector_table_insert_records",
-    "processingmcpserver.tests.mcp_tools_vector_table_update_records",
-    "processingmcpserver.tests.mcp_tools_vector_table_delete_records",
-    "processingmcpserver.tests.mcp_tools_vector_table_truncate",
-    "processingmcpserver.tests.mcp_tools_vector_stats_basic",
-    "processingmcpserver.tests.mcp_tools_vector_stats_by_categories",
-    "processingmcpserver.tests.mcp_tools_raster_stats_basic",
-    "processingmcpserver.tests.mcp_tools_raster_stats_zonal",
-    "processingmcpserver.tests.mcp_tools_raster_stats_cell",
-    "processingmcpserver.tests.mcp_tools_dataset_list_files",
-    "processingmcpserver.tests.mcp_tools_dataset_load_from_directory",
-    "processingmcpserver.tests.mcp_tools_dataset_inspect_shapefile_bundle",
-    "processingmcpserver.tests.mcp_tools_vector_check_validity_report",
-    "processingmcpserver.tests.mcp_tools_vector_prepare_work_layer",
-    "processingmcpserver.tests.mcp_tools_vector_export_shapefile",
-    "processingmcpserver.tests.mcp_tools_project_cleanup_work_layers",
-    "processingmcpserver.tests.mcp_tools_filesystem_query_list_entries",
-    "processingmcpserver.tests.mcp_tools_filesystem_query_entry_info",
-    "processingmcpserver.tests.mcp_tools_filesystem_query_read_text",
-    "processingmcpserver.tests.mcp_tools_filesystem_edit_write_text",
-    "processingmcpserver.tests.mcp_tools_filesystem_edit_append_text",
-    "processingmcpserver.tests.mcp_tools_filesystem_edit_copy_entry",
-    "processingmcpserver.tests.mcp_tools_filesystem_edit_move_entry",
-    "processingmcpserver.tests.mcp_tools_filesystem_edit_delete_entry",
-    "processingmcpserver.tests.mcp_tools_filesystem_stats_directory",
-    "processingmcpserver.tests.mcp_tools_processing_list_providers",
-    "processingmcpserver.tests.mcp_tools_processing_get_algorithms",
-    "processingmcpserver.tests.mcp_tools_processing_get_parameter_template",
-    "processingmcpserver.tests.mcp_tools_processing_execute_algorithm",
-    "processingmcpserver.tests.mcp_tools_processing_execute_on_layers",
-    "processingmcpserver.tests.mcp_prompts_qgis_shapefile_pipeline_planner",
-    "processingmcpserver.tests.mcp_resources_qgis_workflow_shapefile_template",
-    "processingmcpserver.tests.mcp_resources_qgis_workflow_shapefile_quality_profile_default",
-    "processingmcpserver.tests.mcp_resources_qgis_workflow_shapefile_run_summary",
-]
+TEST_MODULES: list[str] = []
 
 IGNORED_TEST_FILES = {
     "__init__.py",
@@ -119,21 +56,8 @@ def _validate_test_modules() -> None:
     返回结果：无返回值。
     异常：可能显式抛出 `RuntimeError`。
     """
-    discovered = _discover_test_modules()
-    declared = sorted(TEST_MODULES)
-    if discovered == declared:
-        return
-
-    missing = sorted(set(discovered) - set(TEST_MODULES))
-    extra = sorted(set(TEST_MODULES) - set(discovered))
-    details: list[str] = []
-    if missing:
-        details.append("missing=" + ", ".join(missing))
-    if extra:
-        details.append("extra=" + ", ".join(extra))
-    raise RuntimeError(
-        "TEST_MODULES is out of sync with tests directory: " + "; ".join(details)
-    )
+    # 使用动态发现，避免工具扩展时遗漏测试模块。
+    return
 
 
 def build_suite() -> unittest.TestSuite:
@@ -149,7 +73,8 @@ def build_suite() -> unittest.TestSuite:
     _validate_test_modules()
     loader = unittest.defaultTestLoader
     suite = unittest.TestSuite()
-    for module_name in TEST_MODULES:
+    modules = _discover_test_modules()
+    for module_name in modules:
         module = importlib.import_module(module_name)
         suite.addTests(loader.loadTestsFromModule(module))
     return suite

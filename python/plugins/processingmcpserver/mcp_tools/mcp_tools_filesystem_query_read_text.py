@@ -106,11 +106,13 @@ def _filesystem_query_read_text_impl(self, path: str, max_chars: int | None) -> 
     entry = self._resolve_filesystem_query_path(path)
     if not entry.exists() or not entry.is_file():
         raise Exception(f"File not found: {path}")
+    # 使用 utf-8-sig 兼容 UTF-8 BOM 文件，避免首字符残留 BOM。
+    encoding = "utf-8-sig"
     if max_chars is None:
-        text = entry.read_text(encoding="utf-8")
+        text = entry.read_text(encoding=encoding)
         return self._ok_result("filesystem_query_read_text", summary={"truncated": False, "max_chars": None}, outputs={"text": text})
     applied = max(0, self._safe_int(max_chars, 0))
-    with entry.open("r", encoding="utf-8") as handle:
+    with entry.open("r", encoding=encoding) as handle:
         text = handle.read(applied + 1)
     return self._ok_result("filesystem_query_read_text", summary={"truncated": len(text) > applied, "max_chars": applied}, outputs={"text": text[:applied]})
 

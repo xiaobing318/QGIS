@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from ._shared_case_base import ProcessingMCPTestBase
 from ._shared_fixtures import assert_tool_registered
@@ -15,7 +15,7 @@ class ToolsVectorTableCalculateFieldTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "vector_table_calculate_field")
+        assert_tool_registered(self, "mcp_tools_vector_table_calculate_field")
 
     def test_default_creates_copy_layer(self):
         """
@@ -30,7 +30,7 @@ class ToolsVectorTableCalculateFieldTest(ProcessingMCPTestBase):
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("calc_field_vector_copy")
 
-        result = tools.vector_table_calculate_field(
+        result = tools.mcp_tools_vector_table_calculate_field(
             layer_ref=layer.id(),
             field_name="calc_value",
             expression="\"value\" * 2",
@@ -62,7 +62,7 @@ class ToolsVectorTableCalculateFieldTest(ProcessingMCPTestBase):
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("calc_field_vector")
 
-        result = tools.vector_table_calculate_field(
+        result = tools.mcp_tools_vector_table_calculate_field(
             layer_ref=layer.id(),
             field_name="calc_value",
             expression="\"value\" * 2",
@@ -86,10 +86,11 @@ class ToolsVectorTableCalculateFieldTest(ProcessingMCPTestBase):
         layer = self.add_sample_vector_layer("calc_field_vector2")
 
         with self.assertRaises(Exception) as ctx:
-            tools.vector_table_calculate_field(
+            tools.mcp_tools_vector_table_calculate_field(
                 layer_ref=layer.id(),
                 field_name="calc_value",
                 expression="\"value\" +",
                 in_place=True,
             )
         self.assertIn("Invalid expression", str(ctx.exception))
+

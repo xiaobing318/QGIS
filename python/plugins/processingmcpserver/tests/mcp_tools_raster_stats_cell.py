@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from ._shared_case_base import ProcessingMCPTestBase
 from ._shared_fixtures import assert_tool_registered
@@ -15,7 +15,7 @@ class ToolsRasterStatsCellTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "raster_stats_cell")
+        assert_tool_registered(self, "mcp_tools_raster_stats_cell")
 
     def test_success_raster_stats_cell(self):
         """
@@ -31,12 +31,12 @@ class ToolsRasterStatsCellTest(ProcessingMCPTestBase):
         layer1 = self.add_sample_raster_layer("cell_stats_raster1")
         layer2 = self.add_sample_raster_layer("cell_stats_raster2")
 
-        result = tools.raster_stats_cell(
+        result = tools.mcp_tools_raster_stats_cell(
             raster_layer_refs=[layer1.id(), layer2.id()],
             ignore_nodata=True,
         )
         self.assertTrue(result["ok"])
-        self.assertEqual(result["tool"], "raster_stats_cell")
+        self.assertEqual(result["tool"], "mcp_tools_raster_stats_cell")
         self.assertEqual(result["summary"]["input_count"], 2)
 
     def test_failure_empty_refs(self):
@@ -51,5 +51,6 @@ class ToolsRasterStatsCellTest(ProcessingMCPTestBase):
         """
         tools = self.build_tools()
         with self.assertRaises(Exception) as ctx:
-            tools.raster_stats_cell(raster_layer_refs=[])
+            tools.mcp_tools_raster_stats_cell(raster_layer_refs=[])
         self.assertIn("raster_layer_refs is required", str(ctx.exception))
+

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 from ._shared_case_base import ProcessingMCPTestBase
 from ._shared_fixtures import assert_tool_registered
@@ -15,7 +15,7 @@ class ToolsVectorTableTruncateTest(ProcessingMCPTestBase):
         - 返回：无返回值。
         返回结果：无返回值。
         """
-        assert_tool_registered(self, "vector_table_truncate")
+        assert_tool_registered(self, "mcp_tools_vector_table_truncate")
 
     def test_default_creates_copy_layer(self):
         """
@@ -30,7 +30,7 @@ class ToolsVectorTableTruncateTest(ProcessingMCPTestBase):
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("truncate_records_vector_copy")
 
-        result = tools.vector_table_truncate(
+        result = tools.mcp_tools_vector_table_truncate(
             layer_ref=layer.id(),
             confirm_destructive=True,
         )
@@ -55,7 +55,7 @@ class ToolsVectorTableTruncateTest(ProcessingMCPTestBase):
         tools = self.build_tools()
         layer = self.add_sample_vector_layer("truncate_records_vector")
 
-        result = tools.vector_table_truncate(
+        result = tools.mcp_tools_vector_table_truncate(
             layer_ref=layer.id(),
             in_place=True,
             confirm_destructive=True,
@@ -79,9 +79,10 @@ class ToolsVectorTableTruncateTest(ProcessingMCPTestBase):
         layer = self.add_sample_vector_layer("truncate_records_vector2")
 
         with self.assertRaises(Exception) as ctx:
-            tools.vector_table_truncate(
+            tools.mcp_tools_vector_table_truncate(
                 layer_ref=layer.id(),
                 in_place=True,
                 confirm_destructive=False,
             )
         self.assertIn("confirm_destructive must be true", str(ctx.exception))
+
