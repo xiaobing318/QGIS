@@ -21,7 +21,7 @@ model_reasoning_effort = "xhigh"
 model_reasoning_summary = "auto"
 
 # 配置作用：读取项目说明文档的最大字节数。
-# 候选值 ---> number     正整数，单位为字节，当前值为 131072，足够覆盖当前 QGIS/AGENTS.md 并保留扩展余量。
+# 候选值 ---> number     正整数，单位为字节，当前值为 131072，足够覆盖项目 AGENTS.md 并保留扩展余量。
 project_doc_max_bytes = 131072
 
 # 配置作用：交互风格偏好，仅对支持 personality 的模型生效。
@@ -31,15 +31,15 @@ project_doc_max_bytes = 131072
 personality = "friendly"
 
 # 配置作用：网络搜索工具模式，用于控制 Codex 是否以及如何访问网页搜索结果。
-# 候选值 ---> disabled   禁用网页搜索工具。
+# 候选值 ---> disabled   禁用 Codex 使用网页搜索工具。
 # 候选值 ---> cached     使用 OpenAI 维护的搜索缓存，默认更稳健。
-# 候选值 ---> live       实时抓取最新网页结果；适合明确要求“最新/今天/最近”的任务。
+# 候选值 ---> live       实时抓取最新网页结果，适合明确要求“最新/今天/最近”的任务。
 web_search = "live"
 
 # 配置作用：该选项控制 Codex 在要运行命令或触发需要批准的动作时，是否暂停来向你要权限。
 # 候选值 ---> untrusted   只自动运行可信只读命令，其它命令请求批准。
 # 候选值 ---> on-request  由 Codex 在需要越过沙箱、联网或执行高风险动作时请求批准。
-# 候选值 ---> never       从不请求批准；沙箱拒绝时直接失败，适合外部已完全隔离的非交互环境。
+# 候选值 ---> never       从不请求批准，沙箱拒绝时直接失败，适合外部已完全隔离的非交互环境。
 approval_policy = "on-request"
 
 # 配置作用：自动审批复核器，用于控制交互式审批请求由用户还是自动复核器处理。
@@ -48,7 +48,7 @@ approval_policy = "on-request"
 approvals_reviewer = "auto_review"
 
 # 配置作用：该选项控制命令执行时的文件系统/网络沙箱边界。
-# 候选值 ---> read-only             只能读文件；适合纯分析。
+# 候选值 ---> read-only             只能读文件，适合纯分析。
 # 候选值 ---> workspace-write       可写当前工作区，并可通过 writable_roots 放行必要的外部目录。
 # 候选值 ---> danger-full-access    关闭沙箱，风险极高，不建议常态使用。
 sandbox_mode = "workspace-write"
@@ -57,9 +57,9 @@ sandbox_mode = "workspace-write"
 # 候选值 ---> array<string>         绝对路径数组，本配置只放行编译输出、自动化日志、自动化报告目录。
 [sandbox_workspace_write]
 writable_roots = [
-  "E:\\QGISCompilations",
-  "E:\\github_repos\\QGIS-Materials\\QGISCompilationNavigation\\QGIS-Windows-AMD64\\QGISCompilationGuide-Win10-VS2022\\codex-automations\\logs",
-  "E:\\github_repos\\QGIS-Materials\\QGISCompilationNavigation\\QGIS-Windows-AMD64\\QGISCompilationGuide-Win10-VS2022\\codex-automations\\automation-reports"
+  "C:\\Dev\\QGISComps",
+  "E:\\ExampleDir1",
+  "E:\\ExampleDir2"
 ]
 
 # 配置作用：是否允许 sandbox 子进程直接联网。
@@ -109,6 +109,10 @@ multi_agent = true
 # 候选值 ---> false   禁用，如果 Windows 上遇到环境刷新异常，可临时改为 false。
 shell_snapshot = true
 
+# 配置作用：开启后更方便按轮次回滚本地修改，适合 coding agent 的日常使用。
+# 候选值 ---> true         启用，更加方便按照轮次回滚本地修改。
+# 候选值 ---> false        禁用，默认配置。
+undo = true
 
 
 
