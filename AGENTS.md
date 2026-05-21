@@ -236,3 +236,117 @@
 - https://download.osgeo.org/osgeo4w/
 - https://debian.qgis.org/debian/
 - https://ubuntu.qgis.org/ubuntu/
+
+## 7. Codex Subagents 使用规范
+
+### 7.1 总则
+
+- 子代理配置位于 `.codex/agents`，用于辅助主代理处理大型 QGIS 开发任务中的需求分析、仓库分析、实现、测试、审查、验证和构建闭环。
+- 子代理输出只能作为证据来源和建议，最终结论、文件改动、回归等级判定、构建验收和对用户的答复仍由主代理负责整合。
+- 子代理不得覆盖本 `AGENTS.md` 的任何约束；若子代理说明与本文件冲突，必须以本文件为准。
+- 主代理在派发子代理前，必须先锁定目标 `OS/ISA/QGIS/Qt/工具链/profile`，解析并核验 `__QGISCompilationNavigation__` 与 `__OSGeo4WRoot__`，再按第 2 章判定当前任务等级。
+- 子代理不得硬编码具体 QGIS 版本、机器绝对路径、profile 名称或 OSGeo4W 快照；这些上下文必须由主代理按当前任务显式提供。
+- 当前验证 profile 可以作为一次性证据记录，但不得写成默认值或长期规则。例如 `WPGWorkstation-Windows-x64-feature-final-3_44_7-mcp-Qt6-RelWithDebInfo` 只表示本轮验证示例，后续任务必须重新按当前上下文锁定。
+- 子代理 TOML 应使用 Codex 官方字段，例如 `name`、`description`、`sandbox_mode`、`developer_instructions`、`nickname_candidates`；不得使用非官方 `nickname` 字段。
+- 默认不在子代理 TOML 中固定 `model` 或 `model_reasoning_effort`，子代理继承主会话模型策略，除非后续任务明确要求按角色分级。
+- 子代理不得恢复、回滚或删除用户已有改动；如发现工作树存在无关脏状态，只能报告并绕开。
+- 主代理派发子代理时必须给出任务包：目标、范围、禁止事项、当前上下文、允许读写范围、期望输出和需要回填的证据。
+
+### 7.2 子代理清单与使用时机
+
+| 子代理文件 | 子代理名称 | 使用时机 | 权限边界 |
+| --- | --- | --- | --- |
+| `.codex/agents/QGISAcceptanceAnalyst.toml` | `qgis_acceptance_analyst` | 用户需求宽泛、验收口径不清、需要形成 AC/TODO/确认项时。 | 只读；不修改文件；输出需求边界、验收标准、确认项和风险。 |
+| `.codex/agents/QGISRepositoryCartographer.toml` | `qgis_repository_cartographer` | 陌生模块、源码结构不清楚、测试入口不明确、构建入口不明确、跨平台影响需要判断、需要核验本地或官方资料时。 | 只读；不得修改文件；结论必须附本地路径、命令摘要或官方链接。 |
+| `.codex/agents/QGISImplementationEngineer.toml` | `qgis_implementation_engineer` | 方案已确认，需要在明确写范围内实现生产逻辑、插件、UI、Provider、资源或生产配置时。 | 可写主代理指定的生产实现范围；不得修改测试；不得扩大范围或做无关重构。 |
+| `.codex/agents/QGISTestEngineer.toml` | `qgis_test_engineer` | 需求稳定后设计测试、实现前建立测试矩阵、实现后补充回归测试、测试失败路径不足、需要注册 C++/Python/插件测试时。 | 可写测试文件、测试数据、测试夹具和必要测试注册；不得修改生产逻辑。若修改被构建链消费的测试注册文件，必须提示主代理按 R2 验证。 |
+| `.codex/agents/QGISRequirementImplementationReviewer.toml` | `qgis_requirement_implementation_reviewer` | 生产实现完成后，需要检查漏实现、错实现、范围漂移或用户可见行为偏差时。 | 只读；逐项映射需求与实现证据，不直接改文件。 |
+| `.codex/agents/QGISTestCoverageReviewer.toml` | `qgis_test_coverage_reviewer` | 测试实现完成后，需要检查测试矩阵、断言强度、失败路径、回归覆盖和测试注册时。 | 只读；只输出覆盖缺口、可执行性风险和补测建议。 |
+| `.codex/agents/QGISCodeStyleReviewer.toml` | `qgis_code_style_reviewer` | 提交前、大范围改动后、代码风格不确定、需要检查 `.clang-format`、`.clang-tidy`、`.editorconfig`、pre-commit、black/isort/flake8 一致性时。 | 只读；只输出问题清单、行号、规则来源和建议，不直接改文件。 |
+| `.codex/agents/QGISCodeQualityReviewer.toml` | `qgis_code_quality_reviewer` | 最终验证前、代码风险较高、怀疑存在回归、安全、兼容性、性能、架构或维护性问题时。 | 只读；采用代码审查姿态，先列风险和 bug，再给结论；必须区分确定问题、推断问题和待验证问题。 |
+| `.codex/agents/QGISVerificationEngineer.toml` | `qgis_verification_engineer` | 审查通过后，需要执行完整相关测试并回填测试证据，但尚不启动整体构建时。 | 可写测试日志、缓存和临时验证产物；不得修改源码、测试或构建配置；不得用冒烟测试替代完整相关测试。 |
+| `.codex/agents/QGISBuildVerifier.toml` | `qgis_build_verifier` | 当前任务达到 R2、构建失败、测试失败、安装/打包/runtime validation 失败、需要分析 pipeline/cmake/MSBuild/CTest 日志时。 | 可写构建输出、日志和允许的临时验证产物；必须先静态核验脚本参数与 profile，再按第 4 章执行验收和日志分析。 |
+
+### 7.3 Mainagent 编排流程图
+
+Mainagent 应按下图编排子代理。图中的 `Subagent 1` 至 `Subagent 10` 与第 7.4 节派发顺序、以及下方正式代理名称映射表保持一致。图中的 profile 表示当前任务 profile，不是固定名称。
+
+```mermaid
+flowchart TD
+    A[用户需求]
+
+    A --> B[Mainagent：前置检查<br/>锁定平台/路径/当前 Profile<br/>判定 R0/R1/R2]
+
+    B --> C[Subagent 1：需求分析<br/>提取需求、边界、验收标准]
+    B --> D[Subagent 2：仓库分析<br/>源码结构、相关模块、构建和测试入口]
+
+    C --> E[Mainagent：完整实现方案和测试方案设计<br/>实现方案、测试矩阵、TODO、验收标准、并行任务切分]
+    D --> E
+
+    E --> F{Mainagent：方案是否和用户需求一致?}
+
+    F -- 不一致 --> C
+    F -- 不一致 --> D
+    F -- 一致 --> G[Mainagent：准备完整需求实现和完整测试实现]
+
+    G --> H[Subagent 3：完整需求实现<br/>实现全部确认需求]
+    G --> I[Subagent 4：完整测试实现<br/>实现完整测试用例和必要测试注册]
+
+    H --> J[Subagent 5：需求实现审查<br/>检查生产代码是否满足需求]
+    I --> K[Subagent 6：测试实现审查<br/>检查测试是否覆盖需求和风险]
+
+    J --> L[Subagent 7：代码风格审查<br/>格式、命名、注释、仓库风格]
+    K --> L
+
+    J --> M[Subagent 8：代码质量审查<br/>架构、回归、安全、性能、维护性]
+    K --> M
+
+    L --> N{Mainagent：审查是否全部通过?}
+    M --> N
+
+    N -- 不通过 --> G
+    N -- 通过 --> O[Subagent 9：完整测试验证<br/>运行完整相关测试并回填证据]
+
+    O --> P{Mainagent：完整测试是否通过?}
+
+    P -- 不通过 --> G
+    P -- 通过 --> Q[Subagent 10：整体编译验证<br/>构建、测试、安装、打包、日志分析]
+
+    Q --> R{Mainagent：整体编译验证是否通过?}
+
+    R -- 不通过 --> G
+    R -- 通过 --> S[Mainagent：最终验收总结<br/>AC 对比、测试证据、构建日志、风险边界]
+```
+
+| 流程编号 | 正式子代理名称 | 主要职责 |
+| --- | --- | --- |
+| Subagent 1 | `qgis_acceptance_analyst` | 需求分析、边界提取、验收标准草案。 |
+| Subagent 2 | `qgis_repository_cartographer` | 仓库分析、模块定位、构建和测试入口证据。 |
+| Subagent 3 | `qgis_implementation_engineer` | 完整需求实现，只改确认范围内生产代码。 |
+| Subagent 4 | `qgis_test_engineer` | 完整测试实现、测试数据和必要测试注册。 |
+| Subagent 5 | `qgis_requirement_implementation_reviewer` | 需求实现审查，检查生产代码是否满足需求。 |
+| Subagent 6 | `qgis_test_coverage_reviewer` | 测试实现审查，检查测试是否覆盖需求和风险。 |
+| Subagent 7 | `qgis_code_style_reviewer` | 代码风格审查，检查格式、命名、注释和仓库风格。 |
+| Subagent 8 | `qgis_code_quality_reviewer` | 代码质量审查，检查架构、回归、安全、性能和维护性。 |
+| Subagent 9 | `qgis_verification_engineer` | 完整相关测试验证，运行测试并回填证据。 |
+| Subagent 10 | `qgis_build_verifier` | R2 整体编译验证，构建、测试、安装、打包和日志分析。 |
+
+### 7.4 派发顺序建议
+
+1. 主代理先做前置检查：锁定平台、当前任务 profile、路径和 R 等级。
+2. 需求或模块不清楚时，并行使用 `qgis_acceptance_analyst` 和 `qgis_repository_cartographer`，分别产出需求边界与仓库证据。
+3. 主代理汇总完整实现方案、完整测试方案、TODO、验收标准和并行任务切分。
+4. 方案稳定后，可并行使用 `qgis_implementation_engineer` 和 `qgis_test_engineer`，分别实现生产逻辑与测试。
+5. 实现完成后，可并行使用 `qgis_requirement_implementation_reviewer` 和 `qgis_test_coverage_reviewer`，分别审查需求符合度与测试覆盖。
+6. 覆盖审查后，可并行使用 `qgis_code_style_reviewer` 和 `qgis_code_quality_reviewer`，分别审查风格与综合质量。
+7. 审查通过后，使用 `qgis_verification_engineer` 执行完整相关测试并回填证据。
+8. 若任务属于 R2 或涉及构建/测试/安装/打包结果，最后由主代理或 `qgis_build_verifier` 按第 4 章执行 `InvokeQGISBuild.ps1`，并完成日志分析和验收对比。
+
+### 7.5 输出与验收要求
+
+- 子代理必须使用中文输出，并明确证据来源。
+- 涉及测试的子代理输出必须包含测试目标、测试矩阵、执行命令、结果证据、未覆盖风险和是否需要主代理触发 `InvokeQGISBuild.ps1`。
+- 涉及构建的子代理输出必须按第 4.5 节生成并回填验收标准，不得用“手工建议”替代实际构建证据。
+- R2 构建验证只能由主代理或 `qgis_build_verifier` 按第 4 章闭环执行，不能由测试代理、小范围测试或口头建议替代。
+- `qgis_verification_engineer` 和 `qgis_build_verifier` 必须记录临时产物路径、用途、清理结果或保留理由；未执行、跳过或无匹配的测试不得写成通过。
+- 主代理整合子代理结果时，必须重新检查回归等级和验证边界；子代理未覆盖的部分不得写成已通过。
