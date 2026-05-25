@@ -114,6 +114,11 @@ shell_snapshot = true
 # 候选值 ---> false        禁用，默认配置。
 undo = true
 
+# 配置作用：是否启用 /Goal 持久目标能力，未启用时 VS Code 扩展会提示 Failed to set goal 信息。
+# 候选值 ---> true         启用 /Goal，可为当前线程设置持续目标。
+# 候选值 ---> false        禁用 /Goal，保持默认实验特性关闭状态。
+goals = true
+
 
 
 
