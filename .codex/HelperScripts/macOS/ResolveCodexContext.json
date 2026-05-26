@@ -1,0 +1,19 @@
+{
+  "EnabledScripts": [
+    "ResolvePlatformInfo.sh",
+    "ResolveQGISCompilationNavigation.sh"
+  ],
+  "QGISCompilationNavigation": {
+    "DefaultSearchMode": "AllFileSystemsAndVolumes",
+    "PruneDirectoryNames": [
+      "dev",
+      "System",
+      "private",
+      "Volumes",
+      ".Spotlight-V100",
+      ".Trashes",
+      ".git",
+      "node_modules"
+    ]
+  }
+}

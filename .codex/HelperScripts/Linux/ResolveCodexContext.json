@@ -1,0 +1,18 @@
+{
+  "EnabledScripts": [
+    "ResolvePlatformInfo.sh",
+    "ResolveQGISCompilationNavigation.sh"
+  ],
+  "QGISCompilationNavigation": {
+    "DefaultSearchMode": "AllFileSystems",
+    "PruneDirectoryNames": [
+      "proc",
+      "sys",
+      "dev",
+      "run",
+      "tmp",
+      ".git",
+      "node_modules"
+    ]
+  }
+}
