@@ -48,9 +48,9 @@ trust_level = "trusted"
 
 本仓库在 `.codex/agents` 中配置项目级子代理。子代理用于把大型 QGIS 开发任务拆成相互解耦的需求分析、仓库分析、实现、测试、审查、验证和构建闭环工作。主代理仍然负责锁定上下文、整合结论、判定 R 等级和输出最终验收结果。
 
-`.codex/config.toml` 已启用 `multi_agent`，并设置了项目级并行线程上限。子代理 TOML 不固定模型、不固定 QGIS 版本、不固定机器路径、不固定 profile；这些上下文必须由主代理在每次任务开始时按 `AGENTS.md` 锁定后传给子代理。
+`.codex/config.toml` 已启用 `multi_agent`，并设置了项目级并行线程上限。子代理 TOML 不固定模型、不固定 QGIS 版本、不固定机器路径、不固定 profile 或其它平台上下文字段；这些上下文必须由主代理在每次任务开始时按 `AGENTS.md` 和当前平台分册锁定后传给子代理。
 
-本轮验证曾使用 `WPGWorkstation-Windows-x64-feature-final-3_44_7-mcp-Qt6-RelWithDebInfo` 作为当前验证 profile 示例。它不是默认 profile，也不能写入子代理通用规则。后续任务应以主代理当轮核验出的 profile 为准。
+某次验证使用的 profile、发行版、依赖根或脚本目录只能作为当轮证据记录，不是默认值，也不能写入子代理通用规则。后续任务应以主代理当轮核验出的平台上下文为准。
 
 子代理 TOML 应使用 Codex 官方字段，例如 `name`、`description`、`sandbox_mode`、`developer_instructions`、`nickname_candidates`。不要使用非官方的 `nickname` 字段；不要在 agent 文件中写入 `model` 或 `model_reasoning_effort`，除非以后明确决定让某个代理脱离主会话模型策略。
 
@@ -67,9 +67,9 @@ trust_level = "trusted"
 | `QGISVerificationEngineer.toml` | `qgis_verification_engineer` | `workspace-write` | 执行完整相关测试并回填证据，只允许测试日志、缓存和临时产物。 | 审查通过后，需要运行完整相关测试而不启动整体构建时。 |
 | `QGISBuildVerifier.toml` | `qgis_build_verifier` | `workspace-write` | R2 时执行整体构建、测试、安装、打包与日志健康度分析。 | R2 任务、构建失败、测试失败、安装/打包/runtime validation 或日志根因分析时。 |
 
-建议派发顺序对应 DevFlow。每次派发前，主代理需要把任务包讲清楚：目标、范围、禁止事项、当前 OS/ISA/QGIS/Qt/工具链/profile、两个占位符路径的 `Test-Path` 结果、R 等级、允许读写范围和期望输出。
+建议派发顺序对应 DevFlow。每次派发前，主代理需要把任务包讲清楚：目标、范围、禁止事项、当前 OS/ISA/QGIS/Qt/工具链/平台上下文、`__QGISCompilationNavigation__` 与当前平台分册声明的必需外部根路径的 `Test-Path` 结果、R 等级、允许读写范围和期望输出。
 
-1. 主代理前置检查：锁定平台、当前任务 profile、路径和 R 等级。
+1. 主代理前置检查：锁定平台、平台分册、当前任务平台上下文、路径和 R 等级。
 2. 并行启动 `qgis_acceptance_analyst` 与 `qgis_repository_cartographer`。
 3. 主代理汇总完整实现方案、测试矩阵、TODO、验收标准和并行任务切分。
 4. 并行启动 `qgis_implementation_engineer` 与 `qgis_test_engineer`。
