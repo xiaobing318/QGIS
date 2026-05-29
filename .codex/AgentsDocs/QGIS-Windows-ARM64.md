@@ -15,7 +15,7 @@
 ## 任务前置
 
 - 必须先确认用户确实要求 Windows ARM64，而不是 Windows AMD64 或 macOS ARM64。
-- 若用户要求 Windows ARM64 QGIS 开发、构建或验证，必须让用户补充目标 QGIS/Qt/工具链、依赖来源、构建入口、配置文件、profile、构建目录、测试命令和本任务 R 等级。
+- 若用户要求 Windows ARM64 QGIS 开发、构建或验证，必须让用户补充目标 QGIS/Qt/工具链、依赖来源、构建入口、配置文件、构建配置方案、构建目录、测试命令和本任务 R 等级。
 - 未补充资料前，不得复用 Windows AMD64 的 VS2022 + OSGeo4W 命令作为 Windows ARM64 构建入口。
 
 推荐先运行仓库内上下文发现入口，生成 JSON 后再整理给用户审查：
@@ -25,11 +25,11 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .codex\HelperScripts\Win
   --config .codex\HelperScripts\Windows\ResolveCodexContext.json
 ```
 
-该脚本只解析 Windows 平台信息，并发现、校验 `AGENTS.md` 中使用的 `__QGISCompilationNavigation__` 占位符绝对路径；当前仍没有 Windows ARM64 构建 profile 或 OSGeo4W ARM64 自动化入口，必须等待用户补充资料。
+该脚本只解析 Windows 平台信息，并发现、校验 `AGENTS.md` 中使用的 `__QGISCompilationNavigation__` 占位符绝对路径；当前仍没有 Windows ARM64 构建配置方案或 OSGeo4W ARM64 自动化入口，必须等待用户补充资料。
 
 ## 构建和验证边界
 
-- 当前没有可用的 Windows ARM64 `InvokeQGISBuild.ps1`、`Configure.json`、profile 或 OSGeo4W ARM64 资料。
+- 当前没有可用的 Windows ARM64 `BuildPipeline.ps1`、`BuildPipeline.json`、构建配置方案或 OSGeo4W ARM64 资料。
 - 若任务达到 R2 且要求完整编译验证，但用户未补充 Windows ARM64 构建入口、配置文件、构建目录和测试命令，必须判定为 `BLOCKED`。
 - 可执行的替代核验包括：源码静态检查、官方 QGIS/Qt/Windows ARM64 资料核验、用户补充脚本的参数检查和文档一致性检查；任何安装、依赖下载或系统环境修改都必须等待用户补充明确入口与影响范围。
 

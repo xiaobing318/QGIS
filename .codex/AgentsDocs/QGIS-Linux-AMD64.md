@@ -24,7 +24,7 @@
 ## 任务前置
 
 - 必须先锁定发行版、版本、CPU 架构、目标 QGIS 版本、Qt 版本、glibc 版本、部署目标和本任务 R 等级。
-- 本平台没有统一 profile；不得从 Windows `Configure.json` 或 OSGeo4W profile 推导 Linux 构建上下文。
+- 本平台没有统一构建配置方案；不得从 Windows AMD64 的 `BuildPipeline.json`、OSGeo4W 构建配置方案或其它平台配置文件推导 Linux 构建上下文。
 - 脚本执行前必须静态核验脚本内变量、下载源、输出目录、是否需要 root 权限、是否会写入系统目录或目标部署目录。
 - 对会下载、解包、复制或修改运行环境的脚本，执行前必须声明影响范围；验证完成后清理本轮临时产物。
 
@@ -38,10 +38,10 @@ bash .codex/HelperScripts/Linux/ResolveCodexContext.sh --config .codex/HelperScr
 
 ## 构建和验证边界
 
-- 当前资料中没有与 Windows AMD64 `InvokeQGISBuild.ps1` 等价的统一 Codex 构建入口。
+- 当前资料中没有与 Windows AMD64 `BuildPipeline.ps1` 等价的统一 Codex 构建入口。
 - 若任务达到 R2 且要求完整编译验证，但用户未补充当前 Linux AMD64 的构建入口、配置文件、构建目录和测试命令，必须判定为 `BLOCKED`。
 - 可执行的替代核验包括：源码静态检查、脚本参数检查、README/Guide 一致性检查、Bash 语法检查和已明确脚本的 `--check-only`、`--dry-run` 或只读检查；参数存在性必须先静态核验。
-- 不得把 Windows AMD64 的 OSGeo4W、VS2022 或 `InvokeQGISBuild.ps1` 命令套用到本平台。
+- 不得把 Windows AMD64 的 OSGeo4W、VS2022、`BuildPipeline.ps1` 或 `BuildPipeline.json` 流程套用到本平台。
 
 ## 常见检查点
 

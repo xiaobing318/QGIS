@@ -34,7 +34,7 @@ bash .codex/HelperScripts/macOS/ResolveCodexContext.sh --config .codex/HelperScr
 - 当前资料没有原生 macOS ARM64 QGIS 编译、测试、安装或打包的统一入口。
 - 若任务达到 R2 且要求原生 macOS ARM64 完整编译验证，但用户未补充对应构建入口、配置文件、构建目录和测试命令，必须判定为 `BLOCKED`。
 - 可执行的替代核验包括：源码静态检查、官方 QGIS macOS 构建资料核验、代理脚本语法检查、Parallels 网络配置静态核验。
-- 不得把 Windows AMD64 的 OSGeo4W、VS2022 或 `InvokeQGISBuild.ps1` 命令套用到本平台。
+- 不得把 Windows AMD64 的 OSGeo4W、VS2022、`BuildPipeline.ps1` 或 `BuildPipeline.json` 流程套用到本平台。
 
 ## 常见检查点
 

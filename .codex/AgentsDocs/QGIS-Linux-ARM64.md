@@ -23,7 +23,7 @@
 
 - 必须先锁定发行版、版本、桌面/服务器环境、CPU 架构、QGIS 版本、Qt 版本、目标脚本目录、运行目标和本任务 R 等级。
 - 不同子目录代表不同系统版本或 QGIS 版本，不能混用脚本和依赖包目录。
-- 本平台没有统一 profile；不得从 Windows `Configure.json`、OSGeo4W 或其它发行版子目录推导当前任务上下文。
+- 本平台没有统一构建配置方案；不得从 Windows AMD64 的 `BuildPipeline.json`、OSGeo4W 或其它发行版子目录推导当前任务上下文。
 - 脚本执行前必须静态核验下载源、包名、输出目录、解包目录、环境变量和是否需要 root 权限。
 
 推荐先运行仓库内上下文发现入口，生成 JSON 后再整理给用户审查：
@@ -36,10 +36,10 @@ bash .codex/HelperScripts/Linux/ResolveCodexContext.sh --config .codex/HelperScr
 
 ## 构建和验证边界
 
-- 当前资料中没有统一 Codex 构建入口，也没有跨发行版通用 profile 配置。
+- 当前资料中没有统一 Codex 构建入口，也没有跨发行版通用构建配置方案。
 - 若任务达到 R2 且要求完整编译验证，但用户未补充当前 Linux ARM64 的构建入口、配置文件、构建目录和测试命令，必须判定为 `BLOCKED`。
 - 可执行的替代核验包括：源码静态检查、Markdown 资料一致性检查、Bash 脚本参数/变量检查、语法检查和用户指定脚本的受控执行；任何下载、解包或启动命令执行前都必须声明影响范围。
-- 不得把 Windows AMD64 的 OSGeo4W、VS2022 或 `InvokeQGISBuild.ps1` 命令套用到本平台。
+- 不得把 Windows AMD64 的 OSGeo4W、VS2022、`BuildPipeline.ps1` 或 `BuildPipeline.json` 流程套用到本平台。
 
 ## 常见检查点
 
