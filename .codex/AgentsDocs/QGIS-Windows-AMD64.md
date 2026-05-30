@@ -396,10 +396,10 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File `
 
 ## 11. 子代理任务包要求
 
-主代理派发任何 QGIS 子代理前，任务包必须先包含本轮基础上下文：
+主代理派发任何 QGIS 项目级子代理前，不得使用完整历史 fork 作为子代理上下文。任务包必须是自包含输入，并先包含本轮基础上下文：
 
 - 当前平台分册路径：`.codex\AgentsDocs\QGIS-Windows-AMD64.md`。
-- 本轮目标：需求、范围、禁止事项和期望输出。
+- 本轮目标：背景摘要、需求、范围、禁止事项、关键路径、已核验证据、需要子代理独立确认的事项、期望输出、停止条件和回补方式。
 - 锁定上下文：`OS/ISA/R 等级`。
 - `__QGISCompilationNavigation__` 的真实路径、来源和 `Test-Path` 结果。
 - 允许读写范围：仓库内、已核验外部资料目录、构建输出目录、日志目录、临时产物目录；不适用的范围必须明确标为不适用。
@@ -411,4 +411,4 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File `
 - `BuildPipeline.json`、`__OSGeo4WRoot__` 的真实路径、来源和 `Test-Path` 结果。
 - 当前构建配置方案的关键字段：`paths.sourceDir`、`paths.buildDir`、`paths.installDir`、`paths.osgeo4wRoot`、`paths.gitCommand`、`envSetup.scriptPath`、`cmake.generator`、`cmake.architecture`、`cmake.definitions.ENABLE_TESTS`、`pipeline.defaultStages`、`pipeline.configuration`、`pipeline.buildTarget`、`pipeline.rebuildTarget`、`pipeline.testProjects`、`publishPackage`、`logging`。
 
-子代理如果没有收到任务实际依赖的上述额外上下文，不得自行猜测构建配置方案、OSGeo4W 根目录、构建目录、安装目录、日志目录或测试范围；当前任务不依赖这些上下文时，任务包应明确记录“不适用”，且子代理不得执行依赖这些外部构建上下文的命令。
+子代理如果没有收到任务实际依赖的上述额外上下文，不得自行猜测构建配置方案、OSGeo4W 根目录、构建目录、安装目录、日志目录或测试范围；当前任务不依赖这些上下文时，任务包应明确记录“不适用”，且子代理不得执行依赖这些外部构建上下文的命令。子代理应独立核验职责内关键细节，缺少阻断信息时必须向主代理说明缺失字段、影响原因和建议补充的证据位置，不得用完整历史、历史 fork 或平台示例补齐。
