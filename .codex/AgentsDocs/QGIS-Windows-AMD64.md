@@ -24,6 +24,8 @@
 - 明确的构建配置方案名称，不能使用脚本默认选择代替用户选择。
 - 目标 QGIS、Qt、工具链、构建类型、构建目录、安装目录、日志目录、发布目录和 OSGeo4W 依赖根等当前任务实际需要的信息。
 
+若任务需要这些上下文，但用户未明确提供且当前可追溯上下文中也无法确认，主代理必须先向用户请求补充。用户无法提供、拒绝提供或补充后仍无法核验时，才将对应验证项标记为 `BLOCKED` 标签。
+
 ## 3. 资料入口
 
 平台资料根目录是 `__QGISCompilationNavigation__\QGIS-Windows-AMD64\` 目录，主要资料块：
@@ -64,7 +66,7 @@
 - `QGISCompilationGuide-Win10-VS2022\BuildPipeline.json`
 - `QGISCompilationGuide-Win10-VS2022\BuildPipelineSchema.json`
 
-执行或解释 `BuildPipeline.ps1` 配置文件之前必须先读 `BuildPipelineGuide.md` 说明文档，并让用户提供或确认 `BuildPipeline.json` 和具体构建配置方案。Codex 生成执行命令时，必须先使用已核验且 `Test-Path=True` 的 `__QGISCompilationNavigation__` 真实值拼接脚本和配置文件路径，再显式传入用户明确指定的构建配置方案，不能依赖脚本默认选择，也不能自由猜测 profile。
+执行或解释 `BuildPipeline.ps1` 配置文件之前必须先读 `BuildPipelineGuide.md` 说明文档，并让用户提供或确认 `BuildPipeline.json` 和具体构建配置方案。若用户未明确提供且当前可追溯上下文中也没有可核验的构建配置方案，必须先向用户请求补充，不能直接把缺失 profile 写成最终阻塞结论。Codex 生成执行命令时，必须先使用已核验且 `Test-Path=True` 的 `__QGISCompilationNavigation__` 真实值拼接脚本和配置文件路径，再显式传入用户明确指定的构建配置方案，不能依赖脚本默认选择，也不能自由猜测 profile。
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File `
@@ -127,19 +129,19 @@ R2：
 
 - 涉及源码、构建链、测试链、运行资源、安装、打包、发布或运行时验证时，按 AGENTS.md 自动创建验收标准。
 - Windows AMD64 的完整构建验证入口是 `QGISCompilationGuide-Win10-VS2022\BuildPipeline.ps1`。
-- 执行前必须由用户提供或确认构建配置文件和具体构建配置方案。
+- 执行前必须由用户提供或确认构建配置文件和具体构建配置方案。若当前上下文缺少 BuildPipeline profile，必须先向用户请求补充，补充后仍无法核验时才标记为 `BLOCKED` 标签。
 - 日志、测试发现、失败用例、发布输出和运行时验证结论必须来自实际执行证据。
 - 任一必选验收项缺证据、失败或阻塞时，总判定必须为未通过或受控例外，不得写成通过。
 
 ## 6. 常见阻塞条件
 
-必须停止并报告 `BLOCKED` 的情况：
+已经向用户请求补充但仍必须停止并报告 `BLOCKED` 的情况：
 
 - 未能锁定 Windows AMD64 平台或当前平台分册。
 - `__QGISCompilationNavigation__` 不存在。
 - Windows AMD64 资料根目录不存在。
 - 任务需要 VS2022 构建流水线，但 `BuildPipeline.ps1`、`BuildPipelineGuide.md`、`BuildPipeline.json` 或 `BuildPipelineSchema.json` 缺失。
-- 任务需要执行 `BuildPipeline.ps1`，但用户没有提供或确认构建配置文件和具体构建配置方案。
+- 任务需要执行 `BuildPipeline.ps1`，但用户在请求补充后仍没有提供或确认构建配置文件和具体构建配置方案。
 - 用户要求 VS2019 自动化构建，但没有提供有效 VS2019 构建入口、配置文件、构建配置方案和验证边界。
 - 任务需要发布或运行时验证，但安装目录、发布目录、OSGeo4W 依赖根、校验文件、清理行为或日志位置无法核验。
 - 发布或打包会清理、覆盖或写入目标目录，但用户未确认影响范围。
