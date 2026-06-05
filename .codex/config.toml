@@ -21,8 +21,8 @@ model_reasoning_effort = "xhigh"
 model_reasoning_summary = "auto"
 
 # 配置作用：自动压缩上下文的 token 阈值，达到该阈值后 Codex 可自动整理会话上下文。
-# 候选值 ---> number     正整数，单位为 token 数量，当前值是 258400 * 0.89 = 229976，未设置时使用模型默认值。
-model_auto_compact_token_limit = 229976
+# 候选值 ---> number     正整数，单位为 token 数量，当前值是 258400 * 0.88 = 227392，未设置时使用模型默认值。
+model_auto_compact_token_limit = 227392
 
 # 配置作用：读取项目说明文档的最大字节数。
 # 候选值 ---> number     正整数，单位为字节，当前值为 131072，足够覆盖项目 AGENTS.md 并保留扩展余量。
