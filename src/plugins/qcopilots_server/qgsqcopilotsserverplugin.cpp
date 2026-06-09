@@ -48,7 +48,7 @@ namespace
   const QString sMenuName = QObject::tr( "&QCopilots" );
   const QString sLogCategory = QStringLiteral( "QCopilotsServer" );
 
-  const QString sInstallPrefixEnv = QStringLiteral( "QGIS34407_INSTALL_DIRECTORY_PREFIX_V_0_01_00" );
+  const QString sInstallPrefixEnv = QStringLiteral( "QGIS34407_INSTALL_DIRECTORY_PREFIX_V_0_00_03" );
   const QString sQCopilotsConfigFileName = QStringLiteral( "QCopilotsConfigure.json" );
   const QString sLlamaServerExeName = QStringLiteral( "qcopilots-server.exe" );
   const QString sRuntimeLogFileName = QStringLiteral( "runtime.log" );
@@ -434,9 +434,9 @@ bool QgsQCopilotsServerPlugin::resolveInstallLayout(
     return false;
   }
 
-  const QDir installPrefixDir( QDir::fromNativeSeparators( installPrefix ) );
-  const QString qgisRootPath = installPrefixDir.absoluteFilePath( QStringLiteral( "QGIS34407" ) );
-  binDirPath = QDir( qgisRootPath ).absoluteFilePath( QStringLiteral( "bin" ) );
+  const QString qgisRootPath = QDir::fromNativeSeparators( installPrefix );
+  const QDir qgisRootDir( qgisRootPath );
+  binDirPath = qgisRootDir.absoluteFilePath( QStringLiteral( "bin" ) );
   backendDirPath = QDir( binDirPath ).absoluteFilePath( QStringLiteral( "backend" ) );
   configFilePath = QDir( binDirPath ).absoluteFilePath( sQCopilotsConfigFileName );
   executablePath = QDir( backendDirPath ).absoluteFilePath( sLlamaServerExeName );
