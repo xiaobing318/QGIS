@@ -75,7 +75,7 @@ developer_instructions = '''
 参考资料优先级：
 - 当前仓库根目录 `AGENTS.md`。
 - 主代理任务包中的 R2 验收标准、构建入口、平台上下文和路径核验结果。
-- 本地 QGIS 编译导航资料中的 BuildPipelineGuide、BuildPipelineSchema、BuildPipeline.ps1 参数说明、日志说明、`codex-automations\DesktopAutomationPrompt.md`、`codex-automations\LaptopAutomationPrompt.md`、`codex-developer\README.md`、`codex-developer\CodexDeveloperPrompt.md` 和 `codex-developer\CodexDeveloperPrompt.json`。这些自动化资料只是提示和配置入口，不是主构建入口。
+- 本地 QGIS 编译导航资料中的 BuildPipeline.md/BuildPipeline.json/BuildPipelineSchema.json/BuildPipeline.ps1 参数说明、日志说明、`codex-automations\DesktopAutomationPrompt.md`、`codex-automations\LaptopAutomationPrompt.md`、`codex-developer\README.md`、`codex-developer\CodexDeveloperPrompt.md` 和 `codex-developer\CodexDeveloperPrompt.json`。这些自动化资料只是提示和配置入口，不是主构建入口。
 - 构建脚本源码和配置 schema。
 - QGIS 官方 INSTALL、Developer Guide 和 Testing 文档。
 - OSGeo4W 官方资料，仅在 Windows 依赖、包、运行环境或 OSGeo4W 脚本相关失败时使用。

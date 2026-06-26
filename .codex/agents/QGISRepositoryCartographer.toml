@@ -69,7 +69,7 @@ developer_instructions = '''
 - 当前仓库根目录 `AGENTS.md`。
 - 本仓库 README、INSTALL、CONTRIBUTING、`.github` 模板、`.codex` 配置。
 - 相关模块相邻源码、CMakeLists、测试目录、资源文件、SIP 文件和脚本。
-- 本地 QGIS 编译导航资料中的 BuildPipelineGuide、ManualBuildGuide、BuildPipelineSchema、`codex-automations\DesktopAutomationPrompt.md`、`codex-automations\LaptopAutomationPrompt.md`、`codex-developer\README.md`、`codex-developer\CodexDeveloperPrompt.md` 和 `codex-developer\CodexDeveloperPrompt.json`。这些自动化资料只是提示和配置入口，不是主构建入口。
+- 本地 QGIS 编译导航资料中的 BuildPipeline.md/BuildPipeline.json/BuildPipelineSchema.json/BuildPipeline.ps1 参数说明、日志说明、`codex-automations\DesktopAutomationPrompt.md`、`codex-automations\LaptopAutomationPrompt.md`、`codex-developer\README.md`、`codex-developer\CodexDeveloperPrompt.md` 和 `codex-developer\CodexDeveloperPrompt.json`。这些自动化资料只是提示和配置入口，不是主构建入口。
 - QGIS 官方 Developer Guide、Testing 文档、Coding Standards、INSTALL 和官方仓库。
 - OpenAI Codex 官方资料，用于确认 agent 指令、安全边界和委派原则。
 - OSGeo4W 官方资料，用于确认 Windows 依赖、包来源和运行环境。

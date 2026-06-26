@@ -32,7 +32,7 @@
 
 | 资料块 | 入口 | 使用场景 | 边界 |
 | --- | --- | --- | --- |
-| VS2022 构建流水线 | `QGISCompilationGuide-Win10-VS2022\BuildPipeline.ps1`、`BuildPipelineGuide.md`、`BuildPipeline.json`、`BuildPipelineSchema.json` | 自动化构建、测试、安装、发布阶段解释或执行 | 执行前必须由用户提供或确认构建配置文件和具体构建配置方案 |
+| VS2022 构建流水线 | `QGISCompilationGuide-Win10-VS2022\BuildPipeline.ps1`、`BuildPipeline.md`、`BuildPipeline.json`、`BuildPipelineSchema.json` | 自动化构建、测试、安装、发布阶段解释或执行 | 执行前必须由用户提供或确认构建配置文件和具体构建配置方案 |
 | VS2022 手工资料 | `QGISCompilationGuide-Win10-VS2022\ManualBuildGuide.md`、`msvc-env-setup4vs2022.bat` | 环境准备、手工复现、构建原理解释 | 历史示例只作背景，不得复用账号、密码、代理、路径或机器配置 |
 | VS2019 历史资料 | `QGISCompilationGuide-Win10-VS2019\README.md` | VS2019 + Qt5 手工编译参考 | 仅作为用户明确要求 VS2019 时的历史或预留手工资料；未明确要求 VS2019 时不作为默认资料入口 |
 | 旧版归档资料 | `OldQGISCompilationGuide-Win10-VS2019\` | 旧版图文资料和附带环境脚本参考 | 仅归档参考，不作为当前验证入口 |
@@ -62,11 +62,11 @@
 使用 VS2022 自动化构建链时，主入口是：
 
 - `QGISCompilationGuide-Win10-VS2022\BuildPipeline.ps1`
-- `QGISCompilationGuide-Win10-VS2022\BuildPipelineGuide.md`
+- `QGISCompilationGuide-Win10-VS2022\BuildPipeline.md`
 - `QGISCompilationGuide-Win10-VS2022\BuildPipeline.json`
 - `QGISCompilationGuide-Win10-VS2022\BuildPipelineSchema.json`
 
-执行或解释 `BuildPipeline.ps1` 配置文件之前必须先读 `BuildPipelineGuide.md` 说明文档，并让用户提供或确认 `BuildPipeline.json` 和具体构建配置方案。若用户未明确提供且当前可追溯上下文中也没有可核验的构建配置方案，必须先向用户请求补充，不能直接把缺失 profile 写成最终阻塞结论。Codex 生成执行命令时，必须先使用已核验且 `Test-Path=True` 的 `__QGISCompilationNavigation__` 真实值拼接脚本和配置文件路径，再显式传入用户明确指定的构建配置方案，不能依赖脚本默认选择，也不能自由猜测 profile。
+执行或解释 `BuildPipeline.ps1` 配置文件之前必须先读 `BuildPipeline.md` 说明文档，并让用户提供或确认 `BuildPipeline.json` 和具体构建配置方案。若用户未明确提供且当前可追溯上下文中也没有可核验的构建配置方案，必须先向用户请求补充，不能直接把缺失 profile 写成最终阻塞结论。Codex 生成执行命令时，必须先使用已核验且 `Test-Path=True` 的 `__QGISCompilationNavigation__` 真实值拼接脚本和配置文件路径，再显式传入用户明确指定的构建配置方案，不能依赖脚本默认选择，也不能自由猜测 profile。
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File `
@@ -84,7 +84,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File `
   -Profile WPGWorkstation-Windows-x64-feature-final-3_44_7-mcp-Qt6-Release
 ```
 
-阶段、参数、日志、测试筛选、退出码和诊断输出以 `BuildPipelineGuide.md`、`BuildPipelineSchema.json`、脚本帮助和实际日志为准，本分册不重复维护这些细节。任务等级 R2 完整验证必须使用该入口闭环，且不得用 `-CheckOnly`、`-DryRun` 或小范围测试替代完整验证。
+阶段、参数、日志、测试筛选、退出码和诊断输出以 `BuildPipeline.md`、`BuildPipelineSchema.json`、脚本帮助和实际日志为准，本分册不重复维护这些细节。任务等级 R2 完整验证必须使用该入口闭环，且不得用 `-CheckOnly`、`-DryRun` 或小范围测试替代完整验证。
 
 ### 4.3 发布拷贝版运行目录
 
@@ -140,7 +140,7 @@ R2：
 - 未能锁定 Windows AMD64 平台或当前平台分册。
 - `__QGISCompilationNavigation__` 不存在。
 - Windows AMD64 资料根目录不存在。
-- 任务需要 VS2022 构建流水线，但 `BuildPipeline.ps1`、`BuildPipelineGuide.md`、`BuildPipeline.json` 或 `BuildPipelineSchema.json` 缺失。
+- 任务需要 VS2022 构建流水线，但 `BuildPipeline.ps1`、`BuildPipeline.md`、`BuildPipeline.json` 或 `BuildPipelineSchema.json` 缺失。
 - 任务需要执行 `BuildPipeline.ps1`，但用户在请求补充后仍没有提供或确认构建配置文件和具体构建配置方案。
 - 用户要求 VS2019 自动化构建，但没有提供有效 VS2019 构建入口、配置文件、构建配置方案和验证边界。
 - 任务需要发布或运行时验证，但安装目录、发布目录、OSGeo4W 依赖根、校验文件、清理行为或日志位置无法核验。
