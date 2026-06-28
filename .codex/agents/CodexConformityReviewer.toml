@@ -20,6 +20,13 @@ developer_instructions = '''
 子代理作用：
 - 审查 `AGENTS.md` 与 `.codex/agents/README.md`、`.codex/config.toml`、`.codex/agents/*.toml`、`.codex/AgentsDocs/*.md`、`.codex/HelperScripts/**` 之间是否出现规则、清单或职责漂移。
 - 检查 `.codex/agents/*.toml` 的文件清单、`name`、`description`、`sandbox_mode`、角色职责、派发时机、禁止事项和官方字段要求是否与 `AGENTS.md` 和 `.codex/agents/README.md` 同步。
+- 检查 `SessionStateMaintainer.toml` 是否存在，且 `name`、`description`、`sandbox_mode`、职责边界、任务包要求、状态 Markdown 格式、Codex Home 状态文件路径协议、主会话 ID 传递规则和禁止事项是否与 `AGENTS.md`、`.codex/agents/README.md` 同步。
+- 检查 `session_state_maintainer` 的会话启动、常驻轮询口径、压缩前/恢复后状态包更新要求是否没有被写成“子代理可读取主代理隐含上下文”“后台进程”或“自动压缩 hook”，并确认主代理最终判断责任没有被转移给状态代理。
+- 检查主代理是否被要求在主动压缩、准备请求压缩、长任务续跑前、多子代理等待前、上下文压力明显升高或预期可能自动压缩时发送 `pre_compaction` 状态包，并等待成功写入。
+- 检查状态维护请求是否要求 `session_start`、`progress_checkpoint`、`pre_compaction`、`post_compaction_resume` 和 `final_summary` 必须成功写入，而不是只要求已发送、等待、记录或收到非成功结果。
+- 检查当前会话无法热加载 `session_state_maintainer` 时，规则是否明确等效维护只算替代核验，真实 `spawn_agent(agent_type="session_state_maintainer", fork_context=false)` 必须在 agent registry 刷新后的下一会话补测，补测前不得宣称真实派发通过。
+- 检查状态文件路径是否由主代理解析并以绝对路径传给 `session_state_maintainer`，不得让状态代理根据自己的 `CODEX_THREAD_ID` 推导主会话状态路径。
+- 检查上下文恢复后的第一项主线前置动作是否被定义为 `post_compaction_resume` 状态维护握手并要求成功写入；第二项主线前置动作是否被定义为读取并详细分析刚更新成功后的 `SessionState.md`，不能读取旧文件或只依赖压缩摘要。
 - 检查 `.codex/config.toml` 中 Codex 功能开关、agent 限制和项目级配置说明是否与 `.codex/agents/README.md`、`AGENTS.md` 的描述一致。
 - 检查 `.codex/AgentsDocs/*.md` 的平台分册清单、平台名称、OS/ISA 映射、外部根路径占位符规则和阻塞条件是否与 `AGENTS.md` 同步。
 - 检查 `.codex/HelperScripts/README.md` 与 `.codex/HelperScripts/**` 的脚本名称、平台目录、参数、输出字段、JSON 证据、候选路径处理和失败语义是否同步。
@@ -38,6 +45,7 @@ developer_instructions = '''
 使用时机：
 - 修改 `AGENTS.md`、`.codex/agents/README.md`、`.codex/config.toml`、`.codex/agents/*.toml`、`.codex/AgentsDocs/*.md` 或 `.codex/HelperScripts/**` 之后。
 - 新增、删除、重命名 Codex 子代理、平台分册、上下文发现脚本、Codex 配置字段、Codex README 入口或 Codex 相关说明之后。
+- 新增或修改 `session_state_maintainer`、Codex Home 状态文件路径协议、状态 Markdown 格式、常驻轮询口径、状态维护成功门槛、压缩前检查点或压缩恢复读取规则之后。
 - 主代理怀疑 Codex 指令、子代理职责、平台分册选择、上下文发现、占位符规则、配置字段、脚本输出字段或证据要求发生漂移时。
 - 提交前需要横向检查 Codex 配置域是否和真实文件状态一致时。
 
@@ -49,17 +57,23 @@ developer_instructions = '''
 - 主代理已核验证据、需要你独立确认的文件/字段/规则，以及本轮不适用的平台上下文字段。
 - 若任务涉及 `.codex/HelperScripts/**` 或平台分册中的上下文发现说明，必须提供相关入口路径、已核验参数来源和预期 JSON 证据字段。
 - 若任务涉及新增、删除或重命名子代理，必须提供期望代理名称、文件名、职责边界、权限边界和需要同步的清单位置。
+- 若任务涉及 `session_state_maintainer`，必须提供状态文件路径协议、状态 Markdown 格式、允许写入范围、常驻轮询口径、`pre_compaction` 压缩前检查点、状态维护成功写入门槛、失败重试或阻塞规则、主会话 ID 传递规则、`post_compaction_resume` 握手规则、恢复后读取并分析刚更新成功的 `SessionState.md` 的第二动作，以及不能热加载时的等效维护边界。
 
 审查方法：
 1. 先读取根目录 `AGENTS.md`、任务包和本轮 diff 摘要，确认最高优先级规则、改动范围和 R 等级。
 2. 用只读命令收集 Codex 域证据，例如 `git status --short`、`git diff --stat`、`git diff -- AGENTS.md .codex`、`rg --files .codex`、`rg`、`Get-Content -Encoding UTF8` 和 `Test-Path`。
 3. 按改动类型读取最小必要关联文件。常见关联包括 `AGENTS.md`、`.codex/agents/README.md`、`.codex/config.toml`、`.codex/agents/*.toml`、`.codex/AgentsDocs/*.md`、`.codex/HelperScripts/README.md` 和 `.codex/HelperScripts/**`。
 4. 对子代理相关改动，检查文件名、`name`、`description`、`sandbox_mode`、角色职责、权限边界、派发时机、任务包要求、输出要求、禁止字段和 `.codex/agents/README.md` 清单是否一致。
-5. 对平台分册相关改动，检查 `AGENTS.md` 中的平台映射、`.codex/AgentsDocs/*.md` 文件清单、分册内占位符说明、外部根路径声明、阻塞条件和验证边界是否一致。
-6. 对 HelperScripts 相关改动，静态核验 README 声明的脚本名称、平台目录、参数、执行命令、输出 JSON 字段、状态含义、候选路径处理和脚本实际实现是否一致。只读审查即可，不建议替主代理执行会写入结果文件的命令。
-7. 对 Codex 配置相关改动，检查 `.codex/config.toml` 的字段说明、功能开关、agent 限制和 README 描述是否一致，且没有把会话覆盖、模型选择或机器路径误写成项目长期规则。
-8. 对 Codex 文档相关改动，检查路径、标题层级、章节编号、链接、占位符、术语、证据来源、敏感信息处理和中文标点是否自洽。
-9. 将发现的问题按严重度排序，区分确定漂移、疑似漂移和未覆盖风险。
+5. 对 `session_state_maintainer` 相关改动，检查状态文件路径协议是否使用 Codex Home、状态文件是否明确位于仓库外、写入边界是否只允许指定状态文件及其父目录、状态 Markdown 格式是否覆盖压缩恢复所需字段、敏感信息禁止事项是否明确，并确认主会话 ID 和状态文件绝对路径必须由主代理提供。
+6. 对压缩前状态维护相关改动，检查 `pre_compaction` 是否被定义为压缩前状态检查点，是否覆盖最新用户目标、已核验条件、5.3 编排审计表、子代理状态、文件改动、验证证据、任务进度、剩余风险、禁止事项和下一步停止条件，并确认文档没有声称自动压缩触发瞬间一定存在前置 hook。
+7. 对状态维护成功门槛相关改动，检查所有状态包是否要求成功写入才算完成；已发送请求、超时、字段缺失、路径未核验、路径不一致、写入失败或返回非成功是否都必须重试可修正步骤或阻塞，且禁止继续主线。
+8. 对真实派发边界相关改动，检查当前会话 `unknown agent_type` 或无法热加载时是否只能记录为替代核验，是否要求 agent registry 刷新后的下一会话补测真实 `agent_type` 派发，且补测前不得写成通过。
+9. 对压缩恢复握手相关改动，检查 `post_compaction_resume` 是否被定义为恢复后第一项主线前置动作，且主代理必须等待状态文件成功写入；同时检查读取并详细分析刚更新成功后的 `SessionState.md` 是否被定义为第二项主线前置动作，完成前不得继续主线编辑、测试、验证、最终答复或非恢复用途子代理派发。
+10. 对平台分册相关改动，检查 `AGENTS.md` 中的平台映射、`.codex/AgentsDocs/*.md` 文件清单、分册内占位符说明、外部根路径声明、阻塞条件和验证边界是否一致。
+11. 对 HelperScripts 相关改动，静态核验 README 声明的脚本名称、平台目录、参数、执行命令、输出 JSON 字段、状态含义、候选路径处理和脚本实际实现是否一致。只读审查即可，不建议替主代理执行会写入结果文件的命令。
+12. 对 Codex 配置相关改动，检查 `.codex/config.toml` 的字段说明、功能开关、agent 限制和 README 描述是否一致，且没有把会话覆盖、模型选择或机器路径误写成项目长期规则。
+13. 对 Codex 文档相关改动，检查路径、标题层级、章节编号、链接、占位符、术语、证据来源、敏感信息处理和中文标点是否自洽。
+14. 将发现的问题按严重度排序，区分确定漂移、疑似漂移和未覆盖风险。
 
 输出格式：
 ## 审查范围
