@@ -58,7 +58,7 @@ approvals_reviewer = "auto_review"
 sandbox_mode = "workspace-write"
 
 # 配置作用：在 workspace-write 模式下的附加项，仅在 workspace-write 时生效，额外允许写入的目录列表，当前仓库本身由 workspace 提供写权限，不需要写在这里。
-# 候选值 ---> array<string>         绝对路径数组，本配置只放行编译输出、自动化日志、自动化报告目录。
+# 候选值 ---> array<string>         绝对路径数组。
 [sandbox_workspace_write]
 writable_roots = [
   "C:\\Dev\\QGISComps",
@@ -129,7 +129,7 @@ goals = true
 # 配置组：子代理全局限制，对本项目内所有 subagent 生效。
 [agents]
 # 配置作用：可并行打开的 agent 线程上限。
-# 候选值 ---> number  正整数，默认通常为 20 个子代理，数值越大并行能力越强但资源占用越高。
+# 候选值 ---> number  正整数，默认通常为 6 个子代理，数值越大并行能力越强但资源占用越高。
 max_threads = 20
 
 # 配置作用：子代理嵌套深度上限。
