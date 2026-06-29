@@ -33,7 +33,7 @@
 | 资料块 | 入口 | 使用场景 | 边界 |
 | --- | --- | --- | --- |
 | VS2022 构建流水线 | `QGISCompilationGuide-Win10-VS2022\BuildPipeline.ps1`、`BuildPipeline.md`、`BuildPipeline.json`、`BuildPipelineSchema.json` | 自动化构建、测试、安装、发布阶段解释或执行 | 执行前必须由用户提供或确认构建配置文件和具体构建配置方案 |
-| VS2022 手工资料 | `QGISCompilationGuide-Win10-VS2022\ManualBuildGuide.md`、`msvc-env-setup4vs2022.bat` | 环境准备、手工复现、构建原理解释 | 历史示例只作背景，不得复用账号、密码、代理、路径或机器配置 |
+| VS2022 手工资料 | `QGISCompilationGuide-Win10-VS2022\ManualBuildGuide.md`、`ConfigureEnvironment4VS2022.bat` | 环境准备、手工复现、构建原理解释 | 历史示例只作背景，不得复用账号、密码、代理、路径或机器配置 |
 | VS2019 历史资料 | `QGISCompilationGuide-Win10-VS2019\README.md` | VS2019 + Qt5 手工编译参考 | 仅作为用户明确要求 VS2019 时的历史或预留手工资料；未明确要求 VS2019 时不作为默认资料入口 |
 | 旧版归档资料 | `OldQGISCompilationGuide-Win10-VS2019\` | 旧版图文资料和附带环境脚本参考 | 仅归档参考，不作为当前验证入口 |
 | OSGeo4W MSI 打包 | `QGISPackagingGuide-Win10-VS2022\README.md`、`ScriptInvocationOrderGuide.md` | 在 OSGeo4W 工作树中构建包、生成索引和制作 MSI | 会影响 OSGeo4W 工作树、缓存和输出目录，执行前必须单独声明影响范围 |
