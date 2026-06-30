@@ -7,7 +7,7 @@
 - `*.toml` 是 Codex 子代理配置文件，文件内字段决定子代理名称、描述、权限和开发者指令。
 - `README.md` 是目录级说明文档，不是子代理配置文件，不应被当作 agent 加载。
 - 完整子代理清单以根目录 `AGENTS.md` 第 5.2 节和本目录实际 `*.toml` 文件为准。本文件只维护目录级规则和同步要求。
-- `SessionStateMaintainer.toml` 定义会话状态维护代理。它维护的 `SessionState.md` 位于 Codex Home 下的 `session-state/QGIS/<MAIN_CODEX_THREAD_ID>/` 目录，不是仓库内容，不应放入 `.codex/agents/` 或普通 QGIS 源码目录。
+- `SessionStateMaintainer.toml` 定义会话状态维护代理。它维护的 `SessionState.md` 位于 Codex Home 下的 `session-state/QGIS/<MAIN_CODEX_THREAD_ID>/` 目录，不是仓库内容，不应放入 `.codex/agents/` 或普通 QGIS 源码目录。完整状态模板以 `SessionStateMaintainer.toml` 的 `状态文件格式` 小节为准，`AGENTS.md` 和本文件只维护恢复流程、成功门槛和必须覆盖的状态类别。
 - 不在本目录保存机器专属配置方案、依赖快照、构建目录、发布目录、凭据、代理地址或其它只适用于单台机器的长期配置。
 
 ## TOML 字段规则
@@ -30,15 +30,17 @@
 - 平台分册可以补充当前平台特有的子代理任务包字段、外部根路径和阻塞条件。平台分册没有专门子代理任务包补充章节时，默认完全继承根目录 `AGENTS.md` 和本文件的通用要求，不得让子代理自行补齐平台特有上下文。
 - 任务包必须说明 QGIS/Qt 版本、工具链、构建/运行配置方案、平台配置文件、依赖根、发行版、glibc、部署目标、网络、凭据或外部路径是否适用；适用时给出来源和核验结果，不适用时明确写“不适用”。
 - 当前会话开始后、长任务前置检查完成后、关键节点完成或失败后、压缩前、恢复后和最终汇总前，主代理必须优先尝试启动或复用 `session_state_maintainer`。主代理发送 `session_start`、`progress_checkpoint`、`pre_compaction`、`post_compaction_resume` 或 `final_summary` 状态包后，必须等待子代理返回明确成功写入。仅已发送、超时、字段缺失、路径未核验或返回非成功都不算状态维护完成。
-- 派发 `session_state_maintainer` 时，任务包还必须包含由主代理解析的 Codex Home 状态文件绝对路径、路径来源、`CODEX_HOME` 核验证据、主会话 ID、主会话 ID 来源、状态文件保留策略、状态包类型、当前状态包、禁止记录敏感信息要求，以及只允许写入该状态文件及其父目录的边界。不得只提供路径协议让子代理自行推导。
+- 派发 `session_state_maintainer` 时，任务包还必须包含由主代理解析的 Codex Home 状态文件绝对路径、路径来源、`CODEX_HOME` 核验证据、主会话 ID、主会话 ID 来源、状态文件保留和清理策略、状态包类型、当前状态包、禁止记录敏感信息要求，以及只允许写入该状态文件及其父目录的边界。不得只提供路径协议让子代理自行推导。
+- `pre_compaction` 状态包必须覆盖最新用户目标、已核验条件、编排审计表、已派发/待派发子代理、子代理结论、计划描述、任务进度、已修改/待修改文件、验证证据、剩余风险、禁止事项和下一步停止条件，而 `post_compaction_resume` 状态包必须写明压缩摘要来源、压缩后重新核验的证据、缺失字段、主会话 ID、状态文件路径和恢复后第一动作执行结果。
 - `session_state_maintainer` 的“常驻”和“轮询”仅表示主代理持续复用并主动发送状态包。不得写成后台进程、自动 hook 或子代理能读取主代理隐含上下文。当前会话无法按名称热加载该代理时，主代理应读取 `SessionStateMaintainer.toml` 的 `developer_instructions` 做等效维护，并记录验证边界。等效维护只算替代核验，真实 `spawn_agent(agent_type="session_state_maintainer", fork_context=false)` 必须在 agent registry 刷新后的下一会话补测，补测前不得宣称真实派发通过。
 - 压缩恢复后的固定顺序是：第一动作发送 `post_compaction_resume` 状态包并等待状态文件成功写入。第二动作读取并详细分析刚更新成功的 Codex Home `SessionState.md`，再结合压缩摘要、`AGENTS.md`、本文件、相关 TOML 和当前差别重建状态。第一动作未成功、第二动作未完成前，不得继续主线编辑、测试、验证、最终答复或派发非恢复用途子代理。
+- 压缩和恢复状态摘要必须覆盖 `SessionStateMaintainer.toml` 的 `状态文件格式` 小节规定的全部章节。旧版独立字段如“等待状态”“无关脏改动处理方式”不再作为单独必填字段，相关信息应并入“子代理状态”“文件和验证证据”“任务进度”或“剩余风险”。
 - 子代理收到任务包后，应先读取 `AGENTS.md`、`.editorconfig`、任务包指定文件和最小必要关联文件，再独立核验职责内关键细节。缺少关键背景、流程编号、上游证据、失败回退目标、并行派发字段或任务状态快照时，应报告缺失字段、影响原因和建议补充证据，不得用完整历史、历史 fork、平台分册示例或猜测补齐。
 
 ## 同步要求
 
 - 更新子代理清单、名称、权限、职责、派发时机、禁止事项或输出要求时，必须同步核验 `.codex/agents/*.toml`、本文件、`AGENTS.md` 和相关平台分册。
 - 新增、删除或重命名子代理 TOML 时，必须同步更新本文件和 `AGENTS.md` 第 5 章的子代理清单、编排流程图和任务包要求。
-- 修改 `session_state_maintainer` 子代理、状态文件路径协议、状态 Markdown 格式、常驻轮询口径、压缩前检查点、状态维护成功写入门槛、失败重试或阻塞规则、主会话 ID 传递规则、压缩恢复握手或恢复后读取状态文件规则时，必须同步核验 `AGENTS.md`、本文件、`CodexConformityReviewer.toml` 和 `SessionStateMaintainer.toml`。
+- 修改 `session_state_maintainer` 子代理、状态文件路径协议、状态文件格式、常驻轮询口径、压缩前检查点、状态维护成功写入门槛、失败重试或阻塞规则、主会话 ID 传递规则、压缩恢复握手或恢复后读取状态文件规则时，必须同步核验 `AGENTS.md`、本文件、`CodexConformityReviewer.toml` 和 `SessionStateMaintainer.toml`。
 - 修改项目级子代理派发、完整历史 fork、任务包字段、自查、回补、上下文压缩或任务状态快照规则时，必须同步核验 `AGENTS.md`、本文件、全部 `.codex/agents/*.toml` 和受影响平台分册的要求是否一致。
 - 修改本目录规则后，应使用 `codex_conformity_reviewer` 或等效只读审查核对 Codex 配置域是否发生漂移。
