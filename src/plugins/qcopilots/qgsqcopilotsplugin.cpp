@@ -12,7 +12,6 @@
 #include "moc_qgsqcopilotsplugin.cpp"
 
 #include "qgisinterface.h"
-#include "qgsapplication.h"
 #include "qgsmessagebar.h"
 #include "qgsqcopilotsdock.h"
 
@@ -23,6 +22,8 @@
 #include <QMainWindow>
 #include <QMenu>
 #include <QMenuBar>
+#include <QRegularExpression>
+#include <QUrlQuery>
 
 namespace
 {
@@ -30,6 +31,98 @@ namespace
   {
     const QString scheme = url.scheme().toLower();
     return scheme == QLatin1String( "http" ) || scheme == QLatin1String( "https" );
+  }
+
+  bool isSensitiveUrlQueryItemName( const QString &name )
+  {
+    static const QRegularExpression sensitiveNamePattern(
+      QStringLiteral( "(api[_-]?key|access[_-]?token|auth[_-]?token|id[_-]?token|refresh[_-]?token|token|password|passwd|secret|jwt|bearer)" ),
+      QRegularExpression::CaseInsensitiveOption );
+    return sensitiveNamePattern.match( name ).hasMatch();
+  }
+
+  QString redactSensitiveMessageText( const QString &message )
+  {
+    QString redacted = message;
+    const QRegularExpression::PatternOptions options = QRegularExpression::CaseInsensitiveOption;
+    redacted.replace(
+      QRegularExpression( QStringLiteral( "(Bearer\\s+)[^\\s\"'<>;,&}]+" ), options ),
+      QStringLiteral( "\\1[redacted]" ) );
+    redacted.replace(
+      QRegularExpression( QStringLiteral( "((?:api[_-]?key|token|password|cookie)\\s*[\"']?\\s*[:=]\\s*[\"']?)[^\\s\"'<>;,&}]+" ), options ),
+      QStringLiteral( "\\1[redacted]" ) );
+    redacted.replace(
+      QRegularExpression( QStringLiteral( "(X-Api-Key\\s*[:=]\\s*)[^\\s\"'<>;,&}]+" ), options ),
+      QStringLiteral( "\\1[redacted]" ) );
+    redacted.replace(
+      QRegularExpression( QStringLiteral( "([A-Za-z][A-Za-z0-9+.-]*://)[^\\s/@]+@" ), options ),
+      QStringLiteral( "\\1[redacted]@" ) );
+    return redacted;
+  }
+
+  QUrl urlWithoutSensitiveCredentials( const QUrl &url )
+  {
+    QUrl safeUrl = url;
+    safeUrl.setUserName( QString() );
+    safeUrl.setPassword( QString() );
+
+    QUrlQuery query( safeUrl );
+    const QList< QPair< QString, QString > > items = query.queryItems( QUrl::FullyDecoded );
+    bool hasSensitiveQueryItem = false;
+    for ( const QPair< QString, QString > &item : items )
+    {
+      if ( isSensitiveUrlQueryItemName( item.first ) )
+      {
+        hasSensitiveQueryItem = true;
+        break;
+      }
+    }
+
+    if ( hasSensitiveQueryItem )
+    {
+      QUrlQuery safeQuery;
+      for ( const QPair< QString, QString > &item : items )
+      {
+        if ( !isSensitiveUrlQueryItemName( item.first ) )
+          safeQuery.addQueryItem( item.first, item.second );
+      }
+      safeUrl.setQuery( safeQuery );
+    }
+
+    return safeUrl;
+  }
+
+  QString urlStringForUserMessage( const QUrl &url )
+  {
+    QUrl redactedUrl = url;
+    if ( !redactedUrl.userName().isEmpty() )
+      redactedUrl.setUserName( QStringLiteral( "[redacted]" ) );
+    if ( !redactedUrl.password().isEmpty() )
+      redactedUrl.setPassword( QStringLiteral( "[redacted]" ) );
+
+    QUrlQuery query( redactedUrl );
+    const QList< QPair< QString, QString > > items = query.queryItems( QUrl::FullyDecoded );
+    bool hasSensitiveQueryItem = false;
+    for ( const QPair< QString, QString > &item : items )
+    {
+      if ( isSensitiveUrlQueryItemName( item.first ) )
+      {
+        hasSensitiveQueryItem = true;
+        break;
+      }
+    }
+
+    if ( hasSensitiveQueryItem )
+    {
+      QUrlQuery redactedQuery;
+      for ( const QPair< QString, QString > &item : items )
+      {
+        redactedQuery.addQueryItem( item.first, isSensitiveUrlQueryItemName( item.first ) ? QStringLiteral( "[redacted]" ) : item.second );
+      }
+      redactedUrl.setQuery( redactedQuery );
+    }
+
+    return redactSensitiveMessageText( redactedUrl.toString() );
   }
 }
 
@@ -144,7 +237,7 @@ void QgsQCopilotsPlugin::configureServerUrl()
   if ( !mIface || !mQgsQCopilotsDock )
     return;
 
-  const QString currentUrl = mQgsQCopilotsDock->serverUrl().toString();
+  const QString currentUrl = urlWithoutSensitiveCredentials( mQgsQCopilotsDock->serverUrl() ).toString();
   bool ok = false;
   const QString urlString = QInputDialog::getText( mIface->mainWindow(), tr( "QCopilots" ), tr( "Set QCopilots Server URL:" ), QLineEdit::Normal, currentUrl, &ok ).trimmed();
   if ( !ok || urlString.isEmpty() )
@@ -153,7 +246,7 @@ void QgsQCopilotsPlugin::configureServerUrl()
   const QUrl url = QUrl::fromUserInput( urlString );
   if ( !url.isValid() || url.scheme().isEmpty() )
   {
-    mIface->messageBar()->pushWarning( tr( "QCopilots" ), tr( "Invalid URL: %1" ).arg( urlString ) );
+    mIface->messageBar()->pushWarning( tr( "QCopilots" ), tr( "Invalid URL: %1" ).arg( redactSensitiveMessageText( urlString ) ) );
     return;
   }
   if ( !isAllowedWebUiScheme( url ) )
@@ -172,12 +265,12 @@ void QgsQCopilotsPlugin::handleDockLoadFailed( const QUrl &url )
   if ( !mIface )
     return;
 
-  QString message = tr( "Failed to load %1. Is QCopilots server running?" ).arg( url.toString() );
+  QString message = tr( "Failed to load %1. Is QCopilots server running?" ).arg( urlStringForUserMessage( url ) );
   if ( mQgsQCopilotsDock )
   {
     const QString details = mQgsQCopilotsDock->lastFailureSummary();
     if ( !details.isEmpty() )
-      message += tr( " Details: %1" ).arg( details );
+      message += tr( " Details: %1" ).arg( redactSensitiveMessageText( details ) );
   }
   mIface->messageBar()->pushWarning( tr( "QCopilots" ), message );
 }

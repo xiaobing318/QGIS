@@ -31,6 +31,8 @@ qcopilots 仅使用 QGIS Settings 与默认值，不使用 JSON 配置文件：
 2. 仅在页面加载成功后才写入 `QCopilots/QCopilotServerUrl`。
 3. 若加载失败且存在 `LastKnownGood`，自动回滚到最后一次成功 URL。
 
+插件 QCopilots 使用独立的 Qt WebEngine 方案。它的 localStorage、Cookie 和缓存不与 Chrome、Edge 或其它外部浏览器共享。因此同一个 llama-server WebUI 即使能在外部浏览器中打开，QGIS 内嵌 WebUI 仍可能因为缺少自己的 llama-ui 配置而停在鉴权或初始化错误页。若 URL 本身意外带有 userinfo 或 `api_key`、`token` 等敏感查询参数，QCopilots 会在持久化 URL 时剥离这些敏感部分，并在诊断日志或消息栏中脱敏展示。
+
 ## 4. 与 MCP 的关系
 
 `qcopilots` 本身不实现 MCP 协议客户端逻辑，MCP 服务的配置、连接和工具调用由 llama-server WebUI 处理。
@@ -107,12 +109,14 @@ QCopilots 通过 Qt WebEngine 下载链路处理 llama-server WebUI 触发的资
 
 ## 9. 诊断日志位置
 
-所有诊断信息仅写入 QGIS 的 Log Messages 面板，分类页签为 `QCopilots`，日志包含：
+详细诊断信息写入 QGIS 的 Log Messages 面板，分类页签为 `QCopilots` 页面，部分配置或加载失败也会在 QGIS 消息栏给出简短提示。日志包含：
 
 - Configured URL：当前配置尝试地址
 - Final URL：实际最终访问地址（可能重定向）
 - HTTP：连通性探测状态
 - TLS/Proxy：证书与代理相关错误
+- Web view console：llama-ui 页面输出的 JavaScript 控制台消息
+- Web view render process terminated：Qt WebEngine 渲染进程退出状态
 - Hints：排障提示
 
 ## 10. 常见错误与处理
@@ -127,7 +131,7 @@ QCopilots 通过 Qt WebEngine 下载链路处理 llama-server WebUI 触发的资
 
 - HTTP 401/403
   - 表现：HTTP status 显示 401/403，并给出鉴权提示
-  - 处理：确认目标服务认证配置或反向代理访问策略
+  - 处理：确认目标服务认证配置或反向代理访问策略；若外部浏览器可用但 QCopilots 不可用，优先在 QCopilots 内嵌 llama-ui 页面中单独完成 API key 等 WebUI 设置
 
 - 证书或代理问题
   - 表现：Hints 出现 TLS/Proxy 相关提示

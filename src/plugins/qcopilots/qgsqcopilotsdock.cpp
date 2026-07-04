@@ -16,6 +16,7 @@
 #include "qgssettings.h"
 
 #include <QAuthenticator>
+#include <QCoreApplication>
 #include <QDateTime>
 #include <QDir>
 #include <QFileDialog>
@@ -26,9 +27,11 @@
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QPointer>
+#include <QRegularExpression>
 #include <QStringList>
 #include <QStandardPaths>
 #include <QSslError>
+#include <QUrlQuery>
 
 #include <QWebEngineDownloadRequest>
 #include <QWebEnginePage>
@@ -44,6 +47,166 @@ namespace
   const QString sDownloadLastDirKey = QStringLiteral( "QCopilots/QCopilotDownloadLastDir" );
   const QString sLogCategory = QStringLiteral( "QCopilots" );
   const QString sFallbackDownloadFileName = QStringLiteral( "qcopilots-download.txt" );
+
+  void appendQCopilotsDiagnosticLog( const QString &message, Qgis::MessageLevel level = Qgis::Info )
+  {
+    const QString timestamped = QStringLiteral( "[%1] %2" ).arg(
+      QDateTime::currentDateTime().toString( QStringLiteral( "yyyy-MM-dd HH:mm:ss" ) ),
+      message );
+    QgsMessageLog::logMessage( timestamped, sLogCategory, level );
+  }
+
+  QString redactSensitiveDiagnosticText( const QString &message )
+  {
+    QString redacted = message;
+    const QRegularExpression::PatternOptions options = QRegularExpression::CaseInsensitiveOption;
+    redacted.replace(
+      QRegularExpression( QStringLiteral( "(Bearer\\s+)[^\\s\"'<>;,&}]+" ), options ),
+      QStringLiteral( "\\1[redacted]" ) );
+    redacted.replace(
+      QRegularExpression( QStringLiteral( "((?:api[_-]?key|token|password|cookie)\\s*[\"']?\\s*[:=]\\s*[\"']?)[^\\s\"'<>;,&}]+" ), options ),
+      QStringLiteral( "\\1[redacted]" ) );
+    redacted.replace(
+      QRegularExpression( QStringLiteral( "(X-Api-Key\\s*[:=]\\s*)[^\\s\"'<>;,&}]+" ), options ),
+      QStringLiteral( "\\1[redacted]" ) );
+    redacted.replace(
+      QRegularExpression( QStringLiteral( "([A-Za-z][A-Za-z0-9+.-]*://)[^\\s/@]+@" ), options ),
+      QStringLiteral( "\\1[redacted]@" ) );
+
+    if ( redacted.size() > 1000 )
+      redacted = redacted.left( 1000 ) + QStringLiteral( "..." );
+
+    return redacted;
+  }
+
+  bool isSensitiveUrlQueryItemName( const QString &name )
+  {
+    static const QRegularExpression sensitiveNamePattern(
+      QStringLiteral( "(api[_-]?key|access[_-]?token|auth[_-]?token|id[_-]?token|refresh[_-]?token|token|password|passwd|secret|jwt|bearer)" ),
+      QRegularExpression::CaseInsensitiveOption );
+    return sensitiveNamePattern.match( name ).hasMatch();
+  }
+
+  QUrl urlWithoutSensitiveCredentials( const QUrl &url )
+  {
+    QUrl safeUrl = url;
+    safeUrl.setUserName( QString() );
+    safeUrl.setPassword( QString() );
+
+    QUrlQuery query( safeUrl );
+    const QList< QPair< QString, QString > > items = query.queryItems( QUrl::FullyDecoded );
+    bool hasSensitiveQueryItem = false;
+    for ( const QPair< QString, QString > &item : items )
+    {
+      if ( isSensitiveUrlQueryItemName( item.first ) )
+      {
+        hasSensitiveQueryItem = true;
+        break;
+      }
+    }
+
+    if ( hasSensitiveQueryItem )
+    {
+      QUrlQuery safeQuery;
+      for ( const QPair< QString, QString > &item : items )
+      {
+        if ( !isSensitiveUrlQueryItemName( item.first ) )
+          safeQuery.addQueryItem( item.first, item.second );
+      }
+      safeUrl.setQuery( safeQuery );
+    }
+
+    return safeUrl;
+  }
+
+  QString urlStringForDiagnostics( const QUrl &url )
+  {
+    QUrl redactedUrl = url;
+    if ( !redactedUrl.userName().isEmpty() )
+      redactedUrl.setUserName( QStringLiteral( "[redacted]" ) );
+    if ( !redactedUrl.password().isEmpty() )
+      redactedUrl.setPassword( QStringLiteral( "[redacted]" ) );
+
+    QUrlQuery query( redactedUrl );
+    const QList< QPair< QString, QString > > items = query.queryItems( QUrl::FullyDecoded );
+    bool hasSensitiveQueryItem = false;
+    for ( const QPair< QString, QString > &item : items )
+    {
+      if ( isSensitiveUrlQueryItemName( item.first ) )
+      {
+        hasSensitiveQueryItem = true;
+        break;
+      }
+    }
+
+    if ( hasSensitiveQueryItem )
+    {
+      QUrlQuery redactedQuery;
+      for ( const QPair< QString, QString > &item : items )
+      {
+        redactedQuery.addQueryItem( item.first, isSensitiveUrlQueryItemName( item.first ) ? QStringLiteral( "[redacted]" ) : item.second );
+      }
+      redactedUrl.setQuery( redactedQuery );
+    }
+
+    return redactSensitiveDiagnosticText( redactedUrl.toString() );
+  }
+
+  QString qcopilotsDockTranslate( const char *sourceText )
+  {
+    return QCoreApplication::translate( "QgsQCopilotsDock", sourceText );
+  }
+
+  QString renderProcessTerminationStatusText( QWebEnginePage::RenderProcessTerminationStatus status )
+  {
+    switch ( status )
+    {
+      case QWebEnginePage::NormalTerminationStatus:
+        return QStringLiteral( "normal" );
+      case QWebEnginePage::AbnormalTerminationStatus:
+        return QStringLiteral( "abnormal" );
+      case QWebEnginePage::CrashedTerminationStatus:
+        return QStringLiteral( "crashed" );
+      case QWebEnginePage::KilledTerminationStatus:
+        return QStringLiteral( "killed" );
+    }
+
+    return QStringLiteral( "unknown" );
+  }
+
+  class QgsQCopilotsWebPage : public QWebEnginePage
+  {
+    public:
+      explicit QgsQCopilotsWebPage( QWebEngineProfile *profile, QObject *parent = nullptr )
+        : QWebEnginePage( profile, parent )
+      {}
+
+    protected:
+      void javaScriptConsoleMessage( JavaScriptConsoleMessageLevel level, const QString &message, int lineNumber, const QString &sourceID ) override
+      {
+        Qgis::MessageLevel qgisLevel = Qgis::Info;
+        switch ( level )
+        {
+          case QWebEnginePage::InfoMessageLevel:
+            qgisLevel = Qgis::Info;
+            break;
+          case QWebEnginePage::WarningMessageLevel:
+            qgisLevel = Qgis::Warning;
+            break;
+          case QWebEnginePage::ErrorMessageLevel:
+            qgisLevel = Qgis::Critical;
+            break;
+          default:
+            qgisLevel = Qgis::Info;
+            break;
+        }
+
+        appendQCopilotsDiagnosticLog(
+          qcopilotsDockTranslate( "Web view console: %1 (%2:%3)" )
+            .arg( redactSensitiveDiagnosticText( message ), redactSensitiveDiagnosticText( sourceID ), QString::number( lineNumber ) ),
+          qgisLevel );
+      }
+  };
 
   bool isProxyRelatedError( QNetworkReply::NetworkError error )
   {
@@ -128,15 +291,17 @@ QgsQCopilotsDock::QgsQCopilotsDock( QWidget *parent )
   if ( mWebView )
   {
     QWebEngineProfile *profile = qcopilotsProfile();
-    QWebEnginePage *page = new QWebEnginePage( profile, mWebView );
+    QWebEnginePage *page = new QgsQCopilotsWebPage( profile, mWebView );
     mWebView->setPage( page );
     connect( profile, &QWebEngineProfile::downloadRequested, this, &QgsQCopilotsDock::handleDownloadRequested );
 
     if ( QWebEngineSettings *pageSettings = page->settings() )
     {
+      pageSettings->setAttribute( QWebEngineSettings::JavascriptEnabled, true );
+      pageSettings->setAttribute( QWebEngineSettings::LocalStorageEnabled, true );
       pageSettings->setAttribute( QWebEngineSettings::JavascriptCanAccessClipboard, true );
       pageSettings->setAttribute( QWebEngineSettings::JavascriptCanPaste, true );
-      appendDiagnosticLog( tr( "Clipboard JavaScript permissions enabled for QCopilots dock pages." ), Qgis::Info );
+      appendDiagnosticLog( tr( "JavaScript, local storage, and clipboard permissions enabled for QCopilots dock pages." ), Qgis::Info );
     }
 
     connect( page, &QWebEnginePage::permissionRequested, this, [this]( const QWebEnginePermission &permission )
@@ -156,13 +321,33 @@ QgsQCopilotsDock::QgsQCopilotsDock( QWidget *parent )
     connect( mWebView, &QWebEngineView::loadFinished, this, &QgsQCopilotsDock::handleLoadFinished );
     connect( mWebView, &QWebEngineView::urlChanged, this, [this]( const QUrl &url )
     {
-      mLastFinalUrl = url.toString();
+      mLastFinalUrl = urlStringForDiagnostics( url );
+    } );
+    connect( page, &QWebEnginePage::renderProcessTerminated, this, [this]( QWebEnginePage::RenderProcessTerminationStatus status, int exitCode )
+    {
+      appendDiagnosticLog(
+        tr( "Web view render process terminated: status=%1, exitCode=%2" )
+          .arg( renderProcessTerminationStatusText( status ), QString::number( exitCode ) ),
+        status == QWebEnginePage::NormalTerminationStatus ? Qgis::Info : Qgis::Critical );
     } );
   }
 
-  const QgsSettings settings;
-  const QUrl savedServerUrl = normalizeUrl( QUrl( settings.value( sServerUrlKey, defaultServerUrl().toString(), QgsSettings::Section::Plugins ).toString() ) );
+  QgsSettings settings;
+  QUrl savedServerUrl = normalizeUrl( QUrl( settings.value( sServerUrlKey, defaultServerUrl().toString(), QgsSettings::Section::Plugins ).toString() ) );
+  const QUrl safeSavedServerUrl = urlWithoutSensitiveCredentials( savedServerUrl );
+  if ( safeSavedServerUrl != savedServerUrl )
+  {
+    savedServerUrl = safeSavedServerUrl;
+    settings.setValue( sServerUrlKey, savedServerUrl.toString(), QgsSettings::Section::Plugins );
+  }
+
   mLastKnownGoodUrl = normalizeUrl( QUrl( settings.value( sLastKnownGoodUrlKey, savedServerUrl.toString(), QgsSettings::Section::Plugins ).toString() ) );
+  const QUrl safeLastKnownGoodUrl = urlWithoutSensitiveCredentials( mLastKnownGoodUrl );
+  if ( safeLastKnownGoodUrl != mLastKnownGoodUrl )
+  {
+    mLastKnownGoodUrl = safeLastKnownGoodUrl;
+    settings.setValue( sLastKnownGoodUrlKey, mLastKnownGoodUrl.toString(), QgsSettings::Section::Plugins );
+  }
   if ( !mLastKnownGoodUrl.isValid() )
     mLastKnownGoodUrl = savedServerUrl;
 
@@ -203,10 +388,11 @@ void QgsQCopilotsDock::persistSuccessfulUrl( const QUrl &url )
     return;
 
   QgsSettings settings;
-  settings.setValue( sServerUrlKey, url.toString(), QgsSettings::Section::Plugins );
-  settings.setValue( sLastKnownGoodUrlKey, url.toString(), QgsSettings::Section::Plugins );
+  const QUrl persistentUrl = urlWithoutSensitiveCredentials( url );
+  settings.setValue( sServerUrlKey, persistentUrl.toString(), QgsSettings::Section::Plugins );
+  settings.setValue( sLastKnownGoodUrlKey, persistentUrl.toString(), QgsSettings::Section::Plugins );
 
-  mLastKnownGoodUrl = url;
+  mLastKnownGoodUrl = persistentUrl;
 }
 
 void QgsQCopilotsDock::rollbackToLastKnownGoodUrl()
@@ -219,16 +405,13 @@ void QgsQCopilotsDock::rollbackToLastKnownGoodUrl()
 
   mRollbackInProgress = true;
   mPersistPendingUrlOnSuccess = false;
-  appendDiagnosticLog( tr( "Rolling back to last known good URL: %1" ).arg( mLastKnownGoodUrl.toString() ), Qgis::Warning );
+  appendDiagnosticLog( tr( "Rolling back to last known good URL: %1" ).arg( urlStringForDiagnostics( mLastKnownGoodUrl ) ), Qgis::Warning );
   loadUrl( mLastKnownGoodUrl, false );
 }
 
 void QgsQCopilotsDock::appendDiagnosticLog( const QString &message, Qgis::MessageLevel level )
 {
-  const QString timestamped = QStringLiteral( "[%1] %2" ).arg(
-    QDateTime::currentDateTime().toString( QStringLiteral( "yyyy-MM-dd HH:mm:ss" ) ),
-    message );
-  QgsMessageLog::logMessage( timestamped, sLogCategory, level );
+  appendQCopilotsDiagnosticLog( redactSensitiveDiagnosticText( message ), level );
 }
 
 QString QgsQCopilotsDock::httpStatusText() const
@@ -344,7 +527,7 @@ void QgsQCopilotsDock::finalizeConnectivityProbe( QNetworkReply *reply )
   if ( !reply )
     return;
 
-  mLastFinalUrl = reply->url().toString();
+  mLastFinalUrl = urlStringForDiagnostics( reply->url() );
   const QVariant statusCodeValue = reply->attribute( QNetworkRequest::HttpStatusCodeAttribute );
   if ( statusCodeValue.isValid() )
     mLastHttpStatusCode = statusCodeValue.toInt();
@@ -483,7 +666,7 @@ void QgsQCopilotsDock::loadUrl( const QUrl &url, bool persistOnSuccess )
   mPersistPendingUrlOnSuccess = persistOnSuccess;
   mLastFailureSummary.clear();
 
-  appendDiagnosticLog( tr( "Loading URL: %1" ).arg( mPendingUrl.toString() ), Qgis::Info );
+  appendDiagnosticLog( tr( "Loading URL: %1" ).arg( urlStringForDiagnostics( mPendingUrl ) ), Qgis::Info );
   startConnectivityProbe( mPendingUrl );
 
   mWebView->setUrl( mPendingUrl );
@@ -499,15 +682,16 @@ void QgsQCopilotsDock::handleLoadFinished( bool ok )
       if ( mPersistPendingUrlOnSuccess || !mLastKnownGoodUrl.isValid() )
         persistSuccessfulUrl( mServerUrl );
 
-      appendDiagnosticLog( tr( "Web view load succeeded: %1" ).arg( mServerUrl.toString() ), Qgis::Info );
+      appendDiagnosticLog( tr( "Web view load succeeded: %1" ).arg( urlStringForDiagnostics( mServerUrl ) ), Qgis::Info );
     }
+
     mRollbackInProgress = false;
     return;
   }
 
   const QUrl failedUrl = mPendingUrl;
   QStringList details;
-  details << tr( "Configured URL: %1" ).arg( mPendingUrl.toString() );
+  details << tr( "Configured URL: %1" ).arg( urlStringForDiagnostics( mPendingUrl ) );
   if ( !mLastFinalUrl.isEmpty() )
     details << tr( "Final URL: %1" ).arg( mLastFinalUrl );
   if ( mLastHttpStatusCode > 0 )
@@ -520,7 +704,7 @@ void QgsQCopilotsDock::handleLoadFinished( bool ok )
     details << tr( "Proxy: %1" ).arg( mLastProxyHint );
   details << tr( "Hints: %1" ).arg( diagnosticHintText() );
 
-  mLastFailureSummary = details.join( QLatin1String( " | " ) );
+  mLastFailureSummary = redactSensitiveDiagnosticText( details.join( QLatin1String( " | " ) ) );
   appendDiagnosticLog( tr( "Web view load failed: %1" ).arg( mLastFailureSummary ), Qgis::Warning );
 
   const bool rollbackAttempted = mRollbackInProgress;
