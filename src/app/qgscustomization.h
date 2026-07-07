@@ -146,12 +146,12 @@ class APP_EXPORT QgsCustomization
         /**
          * Returns TRUE if the item is visible
          */
-        bool isVisible() const;
+        APP_EXPORT bool isVisible() const;
 
         /**
          * Sets item visibility to \a isVisible
          */
-        void setVisible( bool isVisible );
+        APP_EXPORT void setVisible( bool isVisible );
 
         /**
          * Adds child item \a item
