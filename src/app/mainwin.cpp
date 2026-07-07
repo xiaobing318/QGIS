@@ -19,6 +19,7 @@
 #include <memory>
 #include <sstream>
 #include <windows.h>
+#include "startuphelper.h"
 
 void showError( std::string message, std::string title )
 {
@@ -108,6 +109,13 @@ int CALLBACK WinMain( HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPST
     std::string var;
     while ( std::getline( file, var ) )
     {
+      std::string startupHelperError;
+      if ( !QgsStartupHelper::replaceInstallDirectoryPrefix( var, startupHelperError ) )
+      {
+        QgsStartupHelper::showStartupMessageBox( "Missing Environment Variable", startupHelperError.c_str() );
+        return EXIT_FAILURE;
+      }
+
       if ( _putenv( var.c_str() ) < 0 )
       {
         std::string message = "Could not set environment variable:" + var;
@@ -162,7 +170,13 @@ int CALLBACK WinMain( HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, LPST
 
 
 #ifdef _MSC_VER
-  HINSTANCE hGetProcIDDLL = LoadLibrary( "qgis_app.dll" );
+  HINSTANCE hGetProcIDDLL = nullptr;
+  std::string startupHelperError;
+  if ( !QgsStartupHelper::loadLibraryWithLaunchCounter( "qgis_app.dll", hGetProcIDDLL, startupHelperError ) )
+  {
+    showError( startupHelperError, "Error loading QGIS" );
+    return EXIT_FAILURE;
+  }
 #else
   // MinGW
   HINSTANCE hGetProcIDDLL = LoadLibrary( "libqgis_app.dll" );
