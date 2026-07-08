@@ -182,30 +182,30 @@ class APP_EXPORT QgsCustomizationDialog : public QMainWindow, private Ui::QgsCus
           ItemVisibility  //!< Use to change item visibility
         };
 
-        QgsCustomizationModel( QgisApp *qgisApp, Mode mode, QObject *parent = nullptr );
+        APP_EXPORT QgsCustomizationModel( QgisApp *qgisApp, Mode mode, QObject *parent = nullptr );
 
-        QVariant data( const QModelIndex &index, int role ) const override;
-        bool setData( const QModelIndex &index, const QVariant &value, int role = Qt::EditRole ) override;
+        APP_EXPORT QVariant data( const QModelIndex &index, int role ) const override;
+        APP_EXPORT bool setData( const QModelIndex &index, const QVariant &value, int role = Qt::EditRole ) override;
         Qt::ItemFlags flags( const QModelIndex &index ) const override;
         QVariant headerData( int section, Qt::Orientation orientation, int role = Qt::DisplayRole ) const override;
-        QModelIndex index( int row, int column, const QModelIndex &parent = {} ) const override;
+        APP_EXPORT QModelIndex index( int row, int column, const QModelIndex &parent = {} ) const override;
         QModelIndex parent( const QModelIndex &index ) const override;
-        int rowCount( const QModelIndex &parent = {} ) const override;
+        APP_EXPORT int rowCount( const QModelIndex &parent = {} ) const override;
         int columnCount( const QModelIndex &parent = {} ) const override;
-        QMimeData *mimeData( const QModelIndexList &indexes ) const override;
-        bool canDropMimeData( const QMimeData *data, Qt::DropAction action, int, int, const QModelIndex & ) const override;
-        bool dropMimeData( const QMimeData *data, Qt::DropAction action, int row, int, const QModelIndex &parent ) override;
+        APP_EXPORT QMimeData *mimeData( const QModelIndexList &indexes ) const override;
+        APP_EXPORT bool canDropMimeData( const QMimeData *data, Qt::DropAction action, int, int, const QModelIndex & ) const override;
+        APP_EXPORT bool dropMimeData( const QMimeData *data, Qt::DropAction action, int row, int, const QModelIndex &parent ) override;
 
         /**
          * Add a user item (either a UserMenu or UserToolBar) on \a parent
          * Returns created item model index. Invalid model index is returned if it was not possible
          */
-        QModelIndex addUserItem( const QModelIndex &parent );
+        APP_EXPORT QModelIndex addUserItem( const QModelIndex &parent );
 
         /**
          * Delete user items at \a indexes location
          */
-        void deleteUserItems( const QModelIndexList &indexes );
+        APP_EXPORT void deleteUserItems( const QModelIndexList &indexes );
 
         /**
        * Initialize (or reinitialize if already initialized) model
@@ -215,12 +215,12 @@ class APP_EXPORT QgsCustomizationDialog : public QMainWindow, private Ui::QgsCus
         /**
        * Reset all current modifications
        */
-        void reset();
+        APP_EXPORT void reset();
 
         /**
        * Apply modification to the application
        */
-        void apply();
+        APP_EXPORT void apply();
 
         /**
        * Read new customization model file and reset model

@@ -146,17 +146,17 @@ class APP_EXPORT QgsCustomization
         /**
          * Returns TRUE if the item is visible
          */
-        bool isVisible() const;
+        APP_EXPORT bool isVisible() const;
 
         /**
          * Sets item visibility to \a isVisible
          */
-        void setVisible( bool isVisible );
+        APP_EXPORT void setVisible( bool isVisible );
 
         /**
          * Adds child item \a item
          */
-        void addChild( std::unique_ptr<QgsItem> item );
+        APP_EXPORT void addChild( std::unique_ptr<QgsItem> item );
 
         /**
          * Insert \a item at \a position
@@ -206,7 +206,7 @@ class APP_EXPORT QgsCustomization
         /**
          * Returns children count
          */
-        unsigned int childrenCount() const;
+        APP_EXPORT unsigned int childrenCount() const;
 
         /**
          * Sets \a icon
@@ -503,7 +503,7 @@ class APP_EXPORT QgsCustomization
          * Constructor
          * \param parent parent Item
          */
-        QgsUserToolBarItem( QgsItem *parent );
+        APP_EXPORT QgsUserToolBarItem( QgsItem *parent );
 
         /**
          * Constructor
@@ -511,7 +511,7 @@ class APP_EXPORT QgsCustomization
          * \param title title
          * \param parent parent Item
          */
-        QgsUserToolBarItem( const QString &name, const QString &title, QgsItem *parent );
+        APP_EXPORT QgsUserToolBarItem( const QString &name, const QString &title, QgsItem *parent );
 
         std::unique_ptr<QgsItem> clone( QgsItem *parent = nullptr ) const override;
 
