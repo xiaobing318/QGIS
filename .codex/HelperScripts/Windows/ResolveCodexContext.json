@@ -1,0 +1,17 @@
+{
+  "EnabledScripts": [
+    "ResolvePlatformInfo.ps1",
+    "ResolveQGISCompilationNavigation.ps1"
+  ],
+  "QGISCompilationNavigation": {
+    "DefaultSearchMode": "AllFixedDrives",
+    "PruneDirectoryNames": [
+      "$Recycle.Bin",
+      "System Volume Information",
+      "Recovery",
+      "Config.Msi",
+      ".git",
+      "node_modules"
+    ]
+  }
+}
