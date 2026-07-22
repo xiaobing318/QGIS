@@ -508,6 +508,12 @@ class McpHttpServer:
                         },
                     )
                     return
+                if self.path == controller.path:
+                    self._send_empty(
+                        HTTPStatus.METHOD_NOT_ALLOWED,
+                        {"Allow": "POST, DELETE, OPTIONS"},
+                    )
+                    return
                 self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
 
             def do_POST(self) -> None:

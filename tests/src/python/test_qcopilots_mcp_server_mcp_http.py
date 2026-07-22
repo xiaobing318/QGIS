@@ -1959,6 +1959,25 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
                 self.assertEqual(response.headers["mcp-session-id"], session_id)
                 self.assertEqual(response.read(), b"")
 
+            stream_request = Request(
+                f"http://127.0.0.1:{port}/mcp",
+                headers={
+                    "Accept": "text/event-stream",
+                    "MCP-Protocol-Version": "2025-06-18",
+                    "MCP-Session-Id": session_id,
+                },
+                method="GET",
+            )
+            with self.assertRaises(HTTPError) as raised:
+                urlopen(stream_request, timeout=5)
+            stream_response = raised.exception
+            self.assertEqual(stream_response.code, 405)
+            self.assertEqual(stream_response.headers["content-length"], "0")
+            self.assertIn("POST", stream_response.headers["Allow"])
+            self.assertIn("DELETE", stream_response.headers["Allow"])
+            self.assertIn("OPTIONS", stream_response.headers["Allow"])
+            self.assertEqual(stream_response.read(), b"")
+
             with post(
                 {
                     "jsonrpc": "2.0",
