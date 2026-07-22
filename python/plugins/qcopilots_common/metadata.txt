@@ -1,0 +1,10 @@
+[general]
+name=QCopilots Common
+description=Shared runtime support used by QCopilots Python plugins.
+category=QCopilots
+version=0.1.0
+qgisMinimumVersion=4.0
+author=QCopilots
+email=
+tags=qcopilots,common,runtime
+icon=icon.svg

@@ -1,0 +1,128 @@
+{
+  "$schema": "../references/qgis-skill-plan.schema.json",
+  "plan_schema_version": "3.1.0",
+  "plan_id": "qgis-skill-plan-replace-with-stable-id",
+  "revision": 1,
+  "status": "draft",
+  "created_at": "2000-01-01T00:00:00Z",
+  "updated_at": "2000-01-01T00:00:00Z",
+  "plan_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "request_summary": {
+    "verbatim_request": "替换为用户原始需求，不要只保留摘要。",
+    "interpreted_goal": "替换为对可复用 QGIS 地理数据技能目标的理解。",
+    "user_language": "zh-CN"
+  },
+  "scope": {
+    "in_scope": [],
+    "out_of_scope": [],
+    "non_goals": []
+  },
+  "facts": [
+    {
+      "id": "REQ-001",
+      "status": "UNKNOWN",
+      "statement": "替换为尚待确认的关键事实。",
+      "evidence": "当前只有用户需求中的有限信息。",
+      "impact_if_wrong": "说明该事实错误会怎样改变工具、工作流、输出或验收。"
+    }
+  ],
+  "skill_identity": {
+    "name": "pending-qgis-workflow",
+    "display_name": "Pending QGIS Workflow",
+    "description": "Replace with what the generated skill does and the precise QGIS or geospatial scenarios that should trigger it.",
+    "compatibility": "Requires the live-observed QGIS and QCopilots runtime and services recorded in the approved plan."
+  },
+  "usage_scenarios": {
+    "triggers": [],
+    "positive_examples": [],
+    "negative_examples": [],
+    "prerequisites": []
+  },
+  "input_contracts": [],
+  "output_contracts": [],
+  "geospatial_semantics": {
+    "domains": ["pending-domain-selection"],
+    "crs_policy": "待确认输入 CRS、目标 CRS、坐标轴顺序和转换策略。",
+    "vertical_crs_policy": "待确认垂直 CRS、基准面、高程来源和单位；不涉及高程时说明不适用。",
+    "units_policy": "待确认距离、面积、高程、像元和角度单位。",
+    "temporal_policy": "待确认时区、时间原点、单位、采样与区间边界；非时变任务说明不适用。",
+    "geometry_policy": "待确认矢量几何类型、Z/M、有效性和拓扑规则。",
+    "raster_policy": "待确认范围、分辨率、波段、NoData、对齐和重采样规则。",
+    "point_cloud_policy": "待确认点格式、维度、scale/offset、分类、密度和空间索引；未选择点云域时说明不适用。",
+    "mesh_policy": "待确认单元拓扑、dataset groups、标量/矢量位置和时间步；未选择网格域时说明不适用。",
+    "three_d_policy": "待确认水平/垂直参考、轴与单位、LOD、bounding volumes 和资源；未选择三维域时说明不适用。",
+    "service_policy": "待确认协议/版本、endpoint、集合、CRS、分页、认证、限流和缓存；未选择服务域时说明不适用。",
+    "tabular_policy": "待确认字段、类型、主键、null、编码和空间关联；未选择表格域时说明不适用。",
+    "quality_policy": "待定义可量化的输出质量与失败阈值。"
+  },
+  "environment_contract": {
+    "execution_mode": "hybrid",
+    "qgis_version_observed": "pending-runtime-probe",
+    "qt_major": 6,
+    "required_services": [],
+    "required_providers": [],
+    "workspace_roots": [],
+    "skills_root": {
+      "display_path": "pending-resolved-skills-root",
+      "manifest_path": "pending-qcopilots-service-manifest",
+      "manifest_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+      "identity_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+    },
+    "temporary_root_policy": "在获批工作区内使用每次任务独立临时目录，并在成功或失败后清理。",
+    "project_path": null
+  },
+  "capability_snapshot": {
+    "catalog_version": "1.2.0",
+    "discovered_at": "2000-01-01T00:00:00Z",
+    "mcp_protocol_version": "pending-runtime-probe",
+    "qgis_version": "pending-runtime-probe",
+    "available_services": [],
+    "available_providers": [],
+    "catalog_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "capabilities": [],
+    "snapshot_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "notes": "生成计划时替换所有 pending 值；每项 capability 必须审查并 hash-bind nested RFC 6901 target map 与 algorithm parameter constraints。URI kind 按 RFC 3986 scheme 绑定：file=local path，已知 DB scheme=database，network/未知 absolute scheme=network-endpoint；再对规范化快照重新计算 SHA-256。"
+  },
+  "selected_tools": [],
+  "known_issue_acceptances": [],
+  "workflow_nodes": [],
+  "target_skill_package": {
+    "skills_root_role": "qcopilots-skills-root",
+    "target_relative_path": "pending-qgis-workflow",
+    "collision_policy": "fail-no-overwrite",
+    "staging_policy": "resources-first-skill-md-last",
+    "files": []
+  },
+  "permissions": [],
+  "validation_matrix": [],
+  "risks": [],
+  "unresolved_decisions": [
+    {
+      "id": "OPEN-001",
+      "question": "替换为会实质改变计划的用户选择。",
+      "why_blocking": "说明为什么无法安全地采用默认值。",
+      "options": ["候选方案一", "候选方案二"]
+    }
+  ],
+  "decision_log": [
+    {
+      "revision": 1,
+      "timestamp": "2000-01-01T00:00:00Z",
+      "source": "creator",
+      "decision": "创建初始草案。",
+      "effect": "当前仅允许发现、分析和计划审查，不允许创建目标技能。"
+    }
+  ],
+  "approval": {
+    "required": true,
+    "state": "pending",
+    "approved_revision": null,
+    "approved_plan_hash": null,
+    "approved_capability_hash": null,
+    "approved_review_markdown_hash": null,
+    "approved_target_relative_path": null,
+    "intent": null,
+    "user_statement": null,
+    "approved_at": null
+  }
+}

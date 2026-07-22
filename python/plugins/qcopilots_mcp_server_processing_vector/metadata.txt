@@ -1,0 +1,10 @@
+[general]
+name=QCopilots MCP Server Processing Vector
+description=Expose QGIS Processing vector algorithms as MCP tools through the QCopilots bridge.
+category=QCopilots
+version=0.1.0
+qgisMinimumVersion=4.0
+author=QCopilots
+email=
+tags=qcopilots,mcp,processing,vector
+icon=icon.svg

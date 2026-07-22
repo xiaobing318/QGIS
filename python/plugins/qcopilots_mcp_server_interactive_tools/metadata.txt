@@ -1,0 +1,10 @@
+[general]
+name=QCopilots MCP Server Interactive Tools
+description=Expose QGIS canvas actions, layer loading/removal, and vector data create/update workflows as MCP tools through the QCopilots bridge.
+category=QCopilots
+version=0.1.0
+qgisMinimumVersion=4.0
+author=QCopilots
+email=
+tags=qcopilots,mcp,qgis
+icon=icon.svg

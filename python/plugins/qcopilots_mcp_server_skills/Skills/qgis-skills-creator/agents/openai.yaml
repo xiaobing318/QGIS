@@ -1,0 +1,4 @@
+interface:
+  display_name: "QGIS Skills Creator"
+  short_description: "Create reviewed QGIS geospatial workflow skills"
+  default_prompt: "Use $qgis-skills-creator to design and validate a reusable QGIS geospatial workflow skill."

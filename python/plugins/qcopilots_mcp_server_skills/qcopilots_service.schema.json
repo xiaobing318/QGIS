@@ -1,0 +1,189 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://qgis.org/qcopilots/qcopilots_service.schema.json",
+  "title": "QCopilots MCP service manifest",
+  "description": "描述一个 QCopilots MCP 服务插件的运行清单。每个字段提示都说明字段作用、可用候选值或取值范围，以及不同取值对服务发现、启动、端点创建、运行时隔离、客户端展示和安全边界的影响。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "service_id",
+    "plugin_name",
+    "display_name",
+    "description",
+    "entry_point",
+    "host",
+    "default_port",
+    "mcp_path",
+    "category",
+    "capabilities",
+    "runtime",
+    "skillsRoot",
+    "cors_origins"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "字段作用是告诉 JSON 编辑器使用哪个校验文件提供自动提示。候选值通常是 './qcopilots_service.schema.json'，也可以是可访问的绝对 URI。使用相对路径便于插件整体迁移，使用错误路径不会改变服务运行逻辑，但会让编辑器失去字段校验和提示。"
+    },
+    "service_id": {
+      "type": "string",
+      "pattern": "^(?!\\.)(?!.*\\.\\.)(?!.*\\.$)[A-Za-z0-9_.-]+$",
+      "examples": [
+        "qcopilots.mcp_server_builtin_tools",
+        "qcopilots.mcp_server_skills",
+        "qcopilots.mcp_server_interactive_tools",
+        "qcopilots.mcp_server_processing_vector",
+        "qcopilots.mcp_server_processing_raster"
+      ],
+      "description": "字段作用是给服务一个稳定安全编号，管理器用它做服务发现、排序、进程状态跟踪和默认端口查找。候选值是由字母、数字、下划线、点和连字符组成且不以点开头或结尾、不包含连续点的 service_id，常见内置候选包括 qcopilots.mcp_server_builtin_tools、qcopilots.mcp_server_skills、qcopilots.mcp_server_interactive_tools、qcopilots.mcp_server_processing_vector、qcopilots.mcp_server_processing_raster。选择不同值会改变服务状态文件名、默认端口回退和管理器排序语义，不安全的值会导致清单不可用。"
+    },
+    "plugin_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "字段作用是提供日志和管理器界面显示的 QGIS 插件名称。候选值是非空字符串，通常应与 metadata.txt 中的 name 保持一致。修改该值只影响用户看到的插件归属名称，不改变服务编号或端口，但名称不一致会降低排障和迁移时的可读性。"
+    },
+    "display_name": {
+      "type": "string",
+      "minLength": 1,
+      "description": "字段作用是提供面向 MCP 客户端和管理器卡片显示的服务名称。候选值是非空字符串，建议清楚区分 Builtin Tools、Skills、Interactive Tools、Processing Vector、Processing Raster。修改该值会改变客户端展示名称，不改变服务发现逻辑，但含糊名称会让用户难以判断应启动哪个服务。"
+    },
+    "description": {
+      "type": "string",
+      "minLength": 1,
+      "description": "字段作用是向用户和 MCP 客户端说明服务用途。候选值是非空说明文本，应写明服务暴露的能力、适合的使用场景，以及是否依赖 QGIS bridge、Processing 或本地文件访问。描述越具体，管理器卡片和客户端元数据越容易帮助用户选择服务，空泛描述不会阻止启动，但会降低可发现性。"
+    },
+    "entry_point": {
+      "type": "string",
+      "default": "server.py",
+      "description": "字段作用是指定启动 MCP 服务进程的 Python 入口文件。候选值通常是相对于插件目录的 'server.py'，也可以是插件内其它入口脚本。不同入口会改变进程控制器实际执行的文件，路径错误会导致服务启动失败。"
+    },
+    "host": {
+      "type": "string",
+      "default": "127.0.0.1",
+      "description": "字段作用是在未设置 transport.host 时指定 HTTP 服务绑定主机。候选值包括 '127.0.0.1'、其它 IPv4 loopback 地址、'localhost'、'0.0.0.0'、IPv4 私有局域网地址或链路本地地址。不同值会改变 MCP 端点只在本机可访问还是可被局域网访问，开放到 LAN 时应同步配置 advertised_host 和 cors_origins。"
+    },
+    "advertised_host": {
+      "type": "string",
+      "default": "",
+      "description": "字段作用是在未设置 transport.advertised_host 时指定远端 MCP 客户端可连接到运行服务的 QGIS 主机名或 LAN IP。候选值为空字符串、远端 MCP 客户端可解析的 QGIS 客户端主机名，或该 Windows 客户端的局域网 IP。空字符串会沿用绑定 host；不同值会改变管理器和状态文件生成的 endpoint URL，但不会改变服务实际绑定地址。"
+    },
+    "default_port": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 65535,
+      "description": "字段作用是在未设置 transport.port 时指定 MCP HTTP 端口。候选值是 1 到 65535 的整数，内置约定端口为 Builtin Tools 48211、Skills 48212、Interactive Tools 48213、Processing Vector 48214、Processing Raster 48215。选择稳定且唯一的端口便于客户端重连，端口冲突时进程控制器会向后查找最多 100 个候选端口，范围耗尽或无权限端口会导致服务启动失败。"
+    },
+    "mcp_path": {
+      "type": "string",
+      "default": "/mcp",
+      "pattern": "^/",
+      "description": "字段作用是在未设置 transport.path 时指定 MCP HTTP 路径。候选值必须以 '/' 开头，通常使用 '/mcp'。不同路径会改变客户端访问 URL，客户端和服务路径不一致会导致连接失败。"
+    },
+    "transport": {
+      "type": "object",
+      "description": "字段作用是用嵌套配置覆盖顶层 host、advertised_host、default_port 和 mcp_path。候选子字段为 type、host、advertised_host、port、path，其中 type 当前只支持 'http'。设置 transport 后，子字段会优先生效，适合需要集中描述端点配置的清单，配置错误会直接影响服务绑定、展示 URL 和客户端连接。",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["http"],
+          "default": "http",
+          "description": "字段作用是声明 MCP 服务传输协议。候选值当前只有 'http'。使用 'http' 会按本地 MCP HTTP 服务启动，填写其它值会被清单加载器拒绝。"
+        },
+        "host": {
+          "type": "string",
+          "default": "127.0.0.1",
+          "description": "字段作用是在 transport 配置中覆盖顶层 host。候选值包括 '127.0.0.1'、其它 IPv4 loopback 地址、'localhost'、'0.0.0.0'、IPv4 私有局域网地址或链路本地地址。不同值会改变 MCP 端点只在本机可访问还是可被局域网访问，开放到 LAN 时应同步配置 advertised_host 和 cors_origins。"
+        },
+        "advertised_host": {
+          "type": "string",
+          "default": "",
+          "description": "字段作用是在 transport 配置中覆盖顶层 advertised_host。候选值为空字符串、远端 MCP 客户端可解析的 QGIS 客户端主机名，或该 Windows 客户端的 LAN IP。空字符串会沿用绑定 host；不同值会改变客户端看到和复制的 endpoint URL，但不会改变 HTTP 服务实际监听地址。"
+        },
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "description": "字段作用是在 transport 配置中覆盖顶层 default_port。候选值是 1 到 65535 的整数。填写后进程控制器会优先使用该端口，端口冲突时会向后查找最多 100 个候选端口，范围耗尽或无权限时对应服务无法启动。"
+        },
+        "path": {
+          "type": "string",
+          "default": "/mcp",
+          "pattern": "^/",
+          "description": "字段作用是在 transport 配置中覆盖顶层 mcp_path。候选值必须以 '/' 开头，通常仍使用 '/mcp'。不同路径会改变 MCP 端点 URL，客户端未同步更新时会连接失败。"
+        }
+      }
+    },
+    "category": {
+      "type": "string",
+      "enum": ["qcopilots"],
+      "default": "qcopilots",
+      "description": "字段作用是声明服务所属逻辑分组，供管理器过滤、排序和后续界面分组使用。候选值当前只有 'qcopilots'。保持该值可让内置 MCP 服务出现在 QCopilots 分组，使用其它值会被 schema 拒绝。"
+    },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "description": "字段作用是向管理器和客户端声明服务能力标签。候选值包括 'tools'、'prompts'、'skills'、'qgis-bridge'、'processing'、'vector'、'raster'。不同标签会影响用户对服务能力和依赖的判断，tools 表示有可调用 MCP 工具，prompts 表示有可获取的 MCP 提示模板，skills 表示读取技能资源，qgis-bridge 表示会访问 QGIS bridge，processing 表示使用 Processing 算法，vector 或 raster 用于限定算法领域。",
+      "items": {
+        "type": "string",
+        "enum": ["tools", "prompts", "skills", "qgis-bridge", "processing", "vector", "raster"],
+        "description": "字段作用是声明单个能力标签。候选值为 'tools'、'prompts'、'skills'、'qgis-bridge'、'processing'、'vector'、'raster'。选择不同标签会改变管理器和客户端对服务用途、QGIS 依赖和数据处理领域的提示。"
+      }
+    },
+    "runtime": {
+      "type": "object",
+      "description": "字段作用是描述进程控制器启动服务时使用的 Python 运行时。候选配置包含 type 和 requirements，当前 type 只支持 'uv'，requirements 通常指向 'requirements.lock'。不同配置会影响依赖安装、运行时隔离和启动命令，配置缺失或路径错误会导致服务无法准备运行环境。",
+      "additionalProperties": false,
+      "required": ["type", "requirements"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["uv"],
+          "description": "字段作用是指定运行时启动器。候选值当前只有 'uv'。选择 'uv' 会为服务创建或复用隔离环境，并按 requirements 文件安装依赖，填写其它值会被 schema 拒绝或无法被当前进程控制器处理。"
+        },
+        "requirements": {
+          "type": "string",
+          "default": "requirements.lock",
+          "description": "字段作用是指定相对于插件目录的依赖锁定文件。候选值通常是 'requirements.lock'，也可以是插件内其它固定依赖文件名。不同文件会改变 uv 安装的依赖集合，文件缺失或内容不正确会影响服务启动和工具可用性。"
+        }
+      }
+    },
+    "skillsRoot": {
+      "type": "string",
+      "minLength": 1,
+      "default": "Skills",
+      "description": "字段作用是声明唯一的 Skills 根目录。候选值是一个非空路径字符串，相对路径按 qcopilots_service.json 所在插件目录解析，绝对路径按原路径使用。默认值是配置文件同目录下的 Skills 目录。该字段是服务选择技能目录的唯一配置入口，环境变量、CODEX_HOME/skills、skills_roots 和 skills.roots 都不会作为技能根来源。"
+    },
+    "skills": {
+      "type": "object",
+      "description": "字段作用是集中配置 Skills 服务的校验策略。候选配置字段只有 validation_mode，该字段控制严格规范校验或带诊断的显式兼容层。不同 validation_mode 取值会影响可接受的技能格式和兼容性诊断；技能根目录只能通过顶层 skillsRoot 指定，不能在此对象中配置 roots。",
+      "additionalProperties": false,
+      "properties": {
+        "validation_mode": {
+          "type": "string",
+          "enum": ["strict", "compatible"],
+          "default": "strict",
+          "description": "字段作用是选择 Agent Skills 校验策略。候选值为 strict 和 compatible：strict 只接受 canonical SKILL.md、规范 frontmatter、可移植 name 和规范字段类型；compatible 接受 lowercase skill.md、归档、allowed_tools 别名、YAML allowed-tools 列表及其它可恢复旧格式，并为每项扩展返回结构化 warning。不同候选的影响是改变可接受的技能格式和兼容性诊断，但不会放宽路径、归档大小、只读资源或宿主权限边界。"
+        }
+      }
+    },
+    "cors_origins": {
+      "type": "array",
+      "description": "字段作用是声明允许浏览器跨域调用 MCP HTTP 端点的 CORS origins。常用候选值是 'http://127.0.0.1:8282'、'http://localhost:8282'、服务器端 llama-ui 的精确 origin，或封闭 LAN 中显式使用的 '*'。不同来源会改变哪些浏览器页面能访问服务，加入非本机或通配来源会扩大访问面，应谨慎配置。",
+      "items": {
+        "type": "string",
+        "description": "字段作用是声明一个允许的浏览器来源。候选值通常是 llama-ui 的本机地址、服务器端 llama-ui 的 LAN origin，或封闭 LAN 中显式使用的 '*'。加入更多来源会让对应页面可以跨域访问 MCP 端点，也会扩大暴露面。"
+      }
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "字段作用是控制服务是否参与默认发现。候选值为 true 或 false。true 表示管理器正常显示并可启动该服务，false 表示默认隐藏该服务，只有发现流程明确包含已禁用服务时才会返回。"
+    },
+    "icon": {
+      "type": "string",
+      "description": "字段作用是为管理器和客户端提供服务图标。候选值可以是插件目录内的相对路径、可访问 URL 或 data URI，也可以省略并回退到 metadata.txt 中的 icon。有效图标会出现在服务元数据和管理器界面中，路径无效时服务仍可启动但不会显示该图标。"
+    }
+  }
+}

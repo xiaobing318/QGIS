@@ -1,0 +1,2 @@
+# Runtime dependencies installed by the QCopilots uv launcher.
+pyyaml==6.0.2

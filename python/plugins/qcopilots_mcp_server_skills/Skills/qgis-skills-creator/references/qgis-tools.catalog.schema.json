@@ -1,0 +1,469 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "./qgis-tools.catalog.schema.json",
+  "title": "QGIS-Skills-Creator tool catalog",
+  "description": "供 QGIS-Skills-Creator 读取的工具目录 Schema。它约束 MCP 服务、QGIS Processing 发现入口、Qt6 运行环境包装器、地理命令行工具和最小权限选择规则。目录中的工具路径必须相对于运行时发现的 QGIS 发布根目录，不能固化本机绝对路径。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "catalog_version",
+    "profile_id",
+    "runtime_profile",
+    "path_policy",
+    "mcp_services",
+    "cli_tools",
+    "processing_discovery",
+    "selection_policy"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "字段作用是声明校验本文件所用的 JSON Schema。候选值应是相对于本目录的 qgis-tools.catalog.schema.json。选择相对路径可以随技能目录迁移，改为绝对路径会造成发布包位置固化。"
+    },
+    "catalog_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$",
+      "description": "字段作用是标识工具目录数据结构与内容版本。候选值是语义化版本号，例如 1.0.0。主版本变化表示不兼容结构变化，次版本变化表示向后兼容的工具或字段扩展，修订版本变化表示不改变接口的修正。"
+    },
+    "profile_id": {
+      "$ref": "#/$defs/portableId",
+      "description": "字段作用是唯一标识一套运行时工具配置。候选值是小写字母、数字、点和连字符组成的稳定 ID。选择不同值表示切换到不同操作系统、Qt 主版本或 QGIS 发布布局，不能把具体安装绝对路径写入该字段。"
+    },
+    "observed_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "字段作用是记录目录中观测性事实最后一次核验的时间。候选值是 RFC 3339 时间。时间较旧意味着必须重新运行探测，不能把旧快照当作当前可用性事实。"
+    },
+    "runtime_profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["os_family", "qt_major", "qgis_version_range", "runtime_reprobe_required"],
+      "properties": {
+        "os_family": {
+          "type": "string",
+          "enum": ["windows"],
+          "description": "字段作用是声明本目录适配的操作系统命令语义。当前候选值只有 windows。选择 Windows 表示批处理包装器和 Windows 引号规则适用，若未来支持其他系统应新增独立 profile，不能复用本 profile。"
+        },
+        "qt_major": {
+          "type": "integer",
+          "const": 6,
+          "description": "字段作用是锁定 QGIS 运行时的 Qt 主版本。当前候选值只能是 6。选择 6 表示只使用 Qt6 启动器和库，任何 Qt5 入口都不属于本目录允许范围。"
+        },
+        "qgis_version_range": {
+          "type": "string",
+          "minLength": 1,
+          "description": "字段作用是声明工具目录预期兼容的 QGIS 版本范围。候选值是人和代理都能读懂的范围表达式，例如 >=4.2,<5。范围不匹配时必须停止复用旧探测快照并重新生成计划，不能盲目执行。"
+        },
+        "runtime_reprobe_required": {
+          "type": "boolean",
+          "const": true,
+          "description": "字段作用是规定每次制定技能计划前是否必须重新探测运行时。候选值理论上为 true 或 false，本模板固定为 true。true 会用实际文件、版本、MCP 工具和算法清单覆盖陈旧认知，false 会产生工具漂移风险，因此不允许。"
+        },
+        "observed_versions": {
+          "type": "object",
+          "additionalProperties": {"type": ["string", "integer", "null"]},
+          "description": "字段作用是保存上次只读探测得到的版本与数量快照。候选键可以是 qgis、qt、python、gdal、proj、geos、algorithm_count 等，值只能是字符串、整数或 null。该对象仅用于差异检测，不能替代当前运行时探测。"
+        }
+      }
+    },
+    "path_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "catalog_base",
+        "qgis_root_discovery",
+        "reject_absolute_catalog_paths",
+        "reject_parent_segments",
+        "canonicalize_before_use",
+        "containment_check_required"
+      ],
+      "properties": {
+        "catalog_base": {
+          "type": "string",
+          "const": "creator_skill_root",
+          "description": "字段作用是定义目录文件自身相对引用的基准。候选值当前只能是 creator_skill_root。选择该值表示所有模板资源从 QGIS-Skills-Creator 技能根解析，技能整体迁移后引用仍保持有效。"
+        },
+        "qgis_root_discovery": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["strategy", "start", "max_ancestor_levels", "required_markers"],
+          "properties": {
+            "strategy": {
+              "type": "string",
+              "const": "walk_up_markers",
+              "description": "字段作用是选择 QGIS 发布根目录的发现算法。候选值当前只能是 walk_up_markers。该策略从技能根向上查找全部标记，避免写死安装目录层级或盘符。"
+            },
+            "start": {
+              "type": "string",
+              "const": "creator_skill_root",
+              "description": "字段作用是声明向上查找的起点。候选值当前只能是 creator_skill_root。使用其他未受控起点可能发现到错误 QGIS 安装，因此不允许。"
+            },
+            "max_ancestor_levels": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 32,
+              "description": "字段作用是限制向上搜索深度。候选值是 1 到 32，推荐 12。值过小可能找不到发布根，值过大则扩大错误匹配范围，发现失败时应停止并向用户报告。"
+            },
+            "required_markers": {
+              "type": "array",
+              "minItems": 2,
+              "uniqueItems": true,
+              "items": {"$ref": "#/$defs/relativePath"},
+              "description": "字段作用是定义确认 QGIS 发布根目录必须同时存在的相对路径。候选值应包含 Qt6 qgis_process 包装器、QGIS 应用目录和 Skills 服务清单。标记越具体误匹配越少，任一标记缺失都必须判定发现失败。"
+            }
+          }
+        },
+        "reject_absolute_catalog_paths": {
+          "type": "boolean",
+          "const": true,
+          "description": "字段作用是禁止工具目录保存盘符、UNC 或根路径。候选值固定为 true。true 保持可迁移性，false 会把工具路径固化到某台机器，因此不允许。"
+        },
+        "reject_parent_segments": {
+          "type": "boolean",
+          "const": true,
+          "description": "字段作用是禁止目录路径出现 .. 段。候选值固定为 true。true 防止目录穿越，false 可能让工具解析逃逸已发现的 QGIS 根目录，因此不允许。"
+        },
+        "canonicalize_before_use": {
+          "type": "boolean",
+          "const": true,
+          "description": "字段作用是要求调用前解析规范化真实路径。候选值固定为 true。true 能识别符号链接、短路径和大小写差异，false 会削弱后续包含关系检查。"
+        },
+        "containment_check_required": {
+          "type": "boolean",
+          "const": true,
+          "description": "字段作用是要求规范化后的工具路径仍位于发现的 QGIS 根目录内。候选值固定为 true。true 阻止路径逃逸，false 可能执行发布包外部的同名程序，因此不允许。"
+        }
+      }
+    },
+    "mcp_services": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/mcpService"},
+      "description": "字段作用是声明模板可识别的 QCopilots MCP 服务与基础工具。候选值包括 Builtin Tools、Skills、Interactive Tools、Processing Vector 和 Processing Raster。只有同时出现在默认启动配置和当前会话实际工具清单中的服务才能判为可用。"
+    },
+    "cli_tools": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/cliTool"},
+      "description": "字段作用是声明 QGIS 发布包内可探测的批处理包装器、环境初始化入口和地理命令行工具族。候选值必须使用相对于 qgis_root 的路径或 glob。allowed 可参与技能计划，restricted 需要额外确认，bootstrap-only 只能设置环境，disabled 不得选用。"
+    },
+    "processing_discovery": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/processingDiscovery"},
+      "description": "字段作用是定义完整发现 QGIS Processing 算法的入口。候选值可以是 QCopilots vector/raster MCP 三工具组合或 qgis_process JSON CLI。MCP 入口适合当前 QGIS 工程状态，CLI 入口适合无界面、可复现的完整算法枚举。"
+    },
+    "selection_policy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "deny_unknown_tools",
+        "minimum_required_tools_only",
+        "details_required_before_selection",
+        "approval_does_not_grant_runtime_permission",
+        "preferred_routes",
+        "risk_levels"
+      ],
+      "properties": {
+        "deny_unknown_tools": {
+          "type": "boolean",
+          "const": true,
+          "description": "字段作用是决定未被目录或动态发现结果识别的工具是否可选。候选值固定为 true。true 采用默认拒绝，false 会让未知二进制或工具绕过目录审查，因此不允许。"
+        },
+        "minimum_required_tools_only": {
+          "type": "boolean",
+          "const": true,
+          "description": "字段作用是要求生成技能只声明完成任务所需的最小工具子集。候选值固定为 true。true 降低误调用和权限面，false 会把完整工具库错误写入每个技能，因此不允许。"
+        },
+        "details_required_before_selection": {
+          "type": "boolean",
+          "const": true,
+          "description": "字段作用是规定选定 Processing 算法前是否必须读取参数和输出详情。候选值固定为 true。true 可以核对 CRS、数据类型、必填参数和副作用，false 容易基于名称猜测算法。"
+        },
+        "approval_does_not_grant_runtime_permission": {
+          "type": "boolean",
+          "const": true,
+          "description": "字段作用是区分技能创建计划批准与具体工具调用权限。候选值固定为 true。true 表示批准计划后敏感调用仍遵循宿主确认，false 会错误地把 allowed-tools 或计划批准当作无限权限。"
+        },
+        "preferred_routes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "enum": [
+              "mcp-processing-for-live-project",
+              "qgis-process-for-headless-reproducible-workflow",
+              "interactive-tools-for-visible-qgis-state",
+              "direct-cli-when-processing-is-insufficient"
+            ]
+          },
+          "description": "字段作用是声明工具路由优先级。候选值分别表示当前工程 Processing、无界面 qgis_process、可见 QGIS 状态交互和直接地理 CLI。数组顺序影响默认选择，只有明确理由时才跳到后置路线。"
+        },
+        "risk_levels": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["R0", "R1", "R2", "R3"],
+          "properties": {
+            "R0": {"type": "string", "minLength": 1},
+            "R1": {"type": "string", "minLength": 1},
+            "R2": {"type": "string", "minLength": 1},
+            "R3": {"type": "string", "minLength": 1}
+          },
+          "description": "字段作用是给工具副作用建立统一分级。候选键固定为 R0 只读、R1 可恢复的临时或画布状态、R2 文件或工程持久修改、R3 Shell、网络、数据库或潜在破坏性操作。风险越高，计划和执行时所需说明、确认、回滚与证据越严格。"
+        }
+      }
+    }
+  },
+  "$defs": {
+    "portableId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$"
+    },
+    "toolName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9_.-]+$"
+    },
+    "relativePath": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^(?![A-Za-z]:)(?!/)(?!.*//)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*[:\"<>|])[^\\\\/](?:[^\\\\]*[^\\\\/])?$"
+    },
+    "riskLevel": {
+      "type": "string",
+      "enum": ["R0", "R1", "R2", "R3"]
+    },
+    "sideEffects": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reads_files",
+        "writes_files",
+        "modifies_qgis_state",
+        "uses_network",
+        "runs_shell",
+        "destructive_possible"
+      ],
+      "properties": {
+        "reads_files": {"type": "boolean"},
+        "writes_files": {"type": "boolean"},
+        "modifies_qgis_state": {"type": "boolean"},
+        "uses_network": {"type": "boolean"},
+        "runs_shell": {"type": "boolean"},
+        "destructive_possible": {"type": "boolean"}
+      }
+    },
+    "toolEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "description", "status", "risk_level", "side_effects"],
+      "properties": {
+        "name": {"$ref": "#/$defs/toolName"},
+        "description": {"type": "string", "minLength": 1},
+        "status": {
+          "type": "string",
+          "enum": ["allowed", "restricted", "bootstrap-only", "disabled"]
+        },
+        "risk_level": {"$ref": "#/$defs/riskLevel"},
+        "requires_qgis_bridge": {"type": "boolean", "default": false},
+        "requires_gui": {"type": "boolean", "default": false},
+        "requires_explicit_confirmation": {"type": "boolean", "default": false},
+        "invocation_policy": {"$ref": "#/$defs/invocationPolicy"},
+        "side_effects": {"$ref": "#/$defs/sideEffects"},
+        "notes": {"type": "string"}
+      }
+    },
+    "invocationPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "require_all_schema_properties_explicit",
+        "required_arguments",
+        "required_any_argument_groups",
+        "required_target_arguments",
+        "command_shape"
+      ],
+      "properties": {
+        "require_all_schema_properties_explicit": {"type": "boolean"},
+        "required_arguments": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/toolName"}
+        },
+        "required_any_argument_groups": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"$ref": "#/$defs/toolName"}
+          }
+        },
+        "required_any_target_argument_groups": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "items": {"type": "string", "minLength": 1},
+            "uniqueItems": true
+          }
+        },
+        "required_target_arguments": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/toolName"}
+        },
+        "command_shape": {
+          "type": "string",
+          "enum": ["schema-defined", "argv-only"]
+        },
+        "notes": {"type": "string"}
+      }
+    },
+    "mcpService": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "service_id",
+        "availability_source",
+        "enabled_by_default_observed",
+        "tools"
+      ],
+      "properties": {
+        "service_id": {"$ref": "#/$defs/portableId"},
+        "availability_source": {
+          "type": "string",
+          "enum": ["manager-config-and-runtime-tool-list"]
+        },
+        "manager_config_path": {"$ref": "#/$defs/relativePath"},
+        "enabled_by_default_observed": {"type": "boolean"},
+        "dynamic_tools": {"type": "boolean", "default": false},
+        "tools": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/toolEntry"}
+        }
+      }
+    },
+    "cliTool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "entry_kind",
+        "status",
+        "risk_level",
+        "purpose",
+        "requires_environment",
+        "side_effects"
+      ],
+      "properties": {
+        "id": {"$ref": "#/$defs/portableId"},
+        "entry_kind": {
+          "type": "string",
+          "enum": ["batch-wrapper", "executable", "executable-family", "environment-bootstrap", "gui-launcher"]
+        },
+        "relative_path": {"$ref": "#/$defs/relativePath"},
+        "path_glob": {"$ref": "#/$defs/relativePath"},
+        "observed_members": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/relativePath"}
+        },
+        "status": {
+          "type": "string",
+          "enum": ["allowed", "restricted", "bootstrap-only", "disabled"]
+        },
+        "risk_level": {"$ref": "#/$defs/riskLevel"},
+        "purpose": {"type": "string", "minLength": 1},
+        "requires_environment": {"type": ["string", "null"]},
+        "version_args": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "discovery_args": {
+          "type": "array",
+          "items": {"type": "string"}
+        },
+        "operation_contracts": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/cliOperation"}
+        },
+        "requires_explicit_confirmation": {"type": "boolean", "default": false},
+        "side_effects": {"$ref": "#/$defs/sideEffects"},
+        "notes": {"type": "string"}
+      },
+      "oneOf": [
+        {"required": ["relative_path"]},
+        {"required": ["path_glob"]}
+      ]
+    },
+    "cliOperation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "risk_level",
+        "argv_template",
+        "stdin_policy",
+        "stdin_schema",
+        "description"
+      ],
+      "properties": {
+        "id": {"$ref": "#/$defs/portableId"},
+        "risk_level": {"$ref": "#/$defs/riskLevel"},
+        "argv_template": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "argument_target_kinds": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "enum": ["input-path", "output-path", "file-read", "file-write", "cwd", "executable"]
+          }
+        },
+        "stdin_policy": {
+          "type": "string",
+          "enum": ["none", "json-object"]
+        },
+        "stdin_schema": {"type": ["object", "null"]},
+        "description": {"type": "string", "minLength": 1}
+      },
+      "oneOf": [
+        {
+          "properties": {
+            "stdin_policy": {"const": "none"},
+            "stdin_schema": {"type": "null"}
+          }
+        },
+        {
+          "properties": {
+            "stdin_policy": {"const": "json-object"},
+            "stdin_schema": {"type": "object"}
+          }
+        }
+      ]
+    },
+    "processingDiscovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "transport", "scope", "list_entry", "details_entry", "run_entry"],
+      "properties": {
+        "id": {"$ref": "#/$defs/portableId"},
+        "transport": {"type": "string", "enum": ["mcp", "cli"]},
+        "scope": {"type": "string", "enum": ["vector", "raster", "all"]},
+        "list_entry": {"type": "string", "minLength": 1},
+        "details_entry": {"type": "string", "minLength": 1},
+        "run_entry": {"type": "string", "minLength": 1},
+        "structured_output": {"type": "boolean", "const": true},
+        "requires_qgis_bridge": {"type": "boolean", "default": false},
+        "notes": {"type": "string"}
+      }
+    }
+  }
+}

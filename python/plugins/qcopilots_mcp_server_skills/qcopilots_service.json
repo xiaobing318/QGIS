@@ -1,0 +1,22 @@
+{
+  "$schema": "./qcopilots_service.schema.json",
+  "service_id": "qcopilots.mcp_server_skills",
+  "plugin_name": "QCopilots MCP Server Skills",
+  "display_name": "QCopilots MCP Server Skills",
+  "description": "将本地 Agent Skills 以只读 MCP 工具、提示和资源形式暴露给客户端，支持检索技能名称、描述、入口资源、技能文件内容和可激活提示。服务本身不执行脚本，也不负责修改技能内容；脚本仍只能在宿主提供合适工具且权限策略明确批准后从目录技能根运行，归档资源仅支持按需只读访问。",
+  "entry_point": "server.py",
+  "host": "127.0.0.1",
+  "default_port": 48212,
+  "mcp_path": "/mcp",
+  "category": "qcopilots",
+  "capabilities": ["tools", "prompts", "skills"],
+  "runtime": {
+    "type": "uv",
+    "requirements": "requirements.lock"
+  },
+  "skillsRoot": "Skills",
+  "skills": {
+    "validation_mode": "compatible"
+  },
+  "cors_origins": ["http://127.0.0.1:8282", "http://localhost:8282"]
+}

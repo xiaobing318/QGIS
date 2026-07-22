@@ -1,0 +1,18 @@
+{
+  "$schema": "./qcopilots_service.schema.json",
+  "service_id": "qcopilots.mcp_server_processing_vector",
+  "plugin_name": "QCopilots MCP Server Processing Vector",
+  "display_name": "QCopilots MCP Server Processing Vector",
+  "description": "通过 QGIS bridge 将 QGIS Processing 中的矢量算法暴露为 MCP 工具，覆盖要素、几何、属性、叠加、缓冲和矢量数据导出等处理流程。适合让 llama-ui 或其它 MCP 客户端编排常见矢量分析任务，服务依赖当前 QGIS Processing 环境、可用 provider 和工程中的数据上下文。",
+  "entry_point": "server.py",
+  "host": "127.0.0.1",
+  "default_port": 48214,
+  "mcp_path": "/mcp",
+  "category": "qcopilots",
+  "capabilities": ["tools", "processing", "vector"],
+  "runtime": {
+    "type": "uv",
+    "requirements": "requirements.lock"
+  },
+  "cors_origins": ["http://127.0.0.1:8282", "http://localhost:8282"]
+}

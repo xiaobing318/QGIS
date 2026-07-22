@@ -1,0 +1,10 @@
+[general]
+name=QCopilots MCP Server Skills
+description=Expose read-only Agent Skills as MCP tools, prompts, and resources.
+category=QCopilots
+version=0.1.0
+qgisMinimumVersion=4.0
+author=QCopilots
+email=
+tags=qcopilots,mcp,skills
+icon=icon.svg

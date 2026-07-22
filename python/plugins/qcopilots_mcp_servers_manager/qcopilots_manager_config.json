@@ -1,0 +1,21 @@
+{
+  "$schema": "./qcopilots_manager_config.schema.json",
+  "default_startup": {
+    "enabled": true,
+    "service_ids": [
+      "qcopilots.mcp_server_builtin_tools",
+      "qcopilots.mcp_server_interactive_tools",
+      "qcopilots.mcp_server_processing_vector",
+      "qcopilots.mcp_server_processing_raster",
+      "qcopilots.mcp_server_skills"
+    ]
+  },
+  "service_network": {
+    "enabled": true,
+    "host": "0.0.0.0",
+    "advertised_host": "",
+    "cors_origins": [
+      "*"
+    ]
+  }
+}

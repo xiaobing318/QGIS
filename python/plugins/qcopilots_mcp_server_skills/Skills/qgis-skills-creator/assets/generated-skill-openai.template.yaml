@@ -1,0 +1,4 @@
+interface:
+  display_name: "{{display_name_yaml_escaped}}"
+  short_description: "{{short_description_yaml_escaped_25_to_64_chars}}"
+  default_prompt: "Use ${{skill_name}} to {{default_prompt_action_yaml_escaped}}."

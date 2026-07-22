@@ -1,0 +1,1278 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "./qgis-skill-plan.schema.json",
+  "title": "QGIS-Skills-Creator approval-gated plan",
+  "description": "QGIS-Skills-Creator 在创建具体地理数据技能前必须生成并交给用户审查的机器可校验计划。Schema 校验是必要条件，但 plan revision、能力快照和批准哈希的一致性还必须由确定性门禁再次校验。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "plan_schema_version",
+    "plan_id",
+    "revision",
+    "status",
+    "created_at",
+    "updated_at",
+    "plan_hash",
+    "request_summary",
+    "scope",
+    "facts",
+    "skill_identity",
+    "usage_scenarios",
+    "input_contracts",
+    "output_contracts",
+    "geospatial_semantics",
+    "environment_contract",
+    "capability_snapshot",
+    "selected_tools",
+    "known_issue_acceptances",
+    "workflow_nodes",
+    "target_skill_package",
+    "permissions",
+    "validation_matrix",
+    "risks",
+    "unresolved_decisions",
+    "decision_log",
+    "approval"
+  ],
+  "properties": {
+    "$schema": {"type": "string"},
+    "plan_schema_version": {
+      "type": "string",
+      "const": "3.1.0",
+      "description": "计划结构版本。结构不兼容时提升主版本，并要求重新生成和重新批准计划。"
+    },
+    "plan_id": {
+      "type": "string",
+      "pattern": "^qgis-skill-plan-[a-z0-9][a-z0-9-]{2,80}$",
+      "description": "跨修订稳定的计划 ID。修改内容只提升 revision，不更换 plan_id。"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "当前计划修订号。任何需求、路径、工具、算法、参数、副作用、测试或输出结构的实质变化都必须递增。"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "discovering",
+        "draft",
+        "under-review",
+        "changes-requested",
+        "approved",
+        "implementing",
+        "validating",
+        "completed",
+        "blocked"
+      ],
+      "description": "计划状态。只有 approved 且审批记录与本 revision 和哈希一致时，才能进入 implementing。"
+    },
+    "created_at": {"type": "string", "format": "date-time"},
+    "updated_at": {"type": "string", "format": "date-time"},
+    "plan_hash": {
+      "$ref": "#/$defs/sha256",
+      "description": "QGIS Skills Plan Canonical Form v1 的 SHA-256。草案模板使用全零占位；提交审查前必须重新计算。"
+    },
+    "request_summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verbatim_request", "interpreted_goal", "user_language"],
+      "properties": {
+        "verbatim_request": {"type": "string", "minLength": 1},
+        "interpreted_goal": {"type": "string", "minLength": 1},
+        "user_language": {"type": "string", "minLength": 2}
+      }
+    },
+    "scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["in_scope", "out_of_scope", "non_goals"],
+      "properties": {
+        "in_scope": {"$ref": "#/$defs/nonEmptyStrings"},
+        "out_of_scope": {"$ref": "#/$defs/nonEmptyStrings"},
+        "non_goals": {"$ref": "#/$defs/nonEmptyStrings"}
+      }
+    },
+    "facts": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/fact"},
+      "description": "需求和环境事实。每条必须区分 CONFIRMED、INFERRED 或 UNKNOWN，并记录证据和错误影响。"
+    },
+    "skill_identity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "display_name", "description", "compatibility"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$",
+          "maxLength": 64,
+          "description": "严格 Agent Skills 名称，同时必须等于最终目录名。"
+        },
+        "display_name": {"type": "string", "minLength": 1, "maxLength": 100},
+        "description": {"type": "string", "minLength": 1, "maxLength": 1024},
+        "compatibility": {"type": "string", "minLength": 1, "maxLength": 500}
+      }
+    },
+    "usage_scenarios": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["triggers", "positive_examples", "negative_examples", "prerequisites"],
+      "properties": {
+        "triggers": {"$ref": "#/$defs/nonEmptyStrings"},
+        "positive_examples": {"$ref": "#/$defs/nonEmptyStrings"},
+        "negative_examples": {"$ref": "#/$defs/nonEmptyStrings"},
+        "prerequisites": {"$ref": "#/$defs/nonEmptyStrings"}
+      }
+    },
+    "input_contracts": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/dataContract"}
+    },
+    "output_contracts": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/dataContract"}
+    },
+    "geospatial_semantics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "domains",
+        "crs_policy",
+        "vertical_crs_policy",
+        "units_policy",
+        "temporal_policy",
+        "geometry_policy",
+        "raster_policy",
+        "point_cloud_policy",
+        "mesh_policy",
+        "three_d_policy",
+        "service_policy",
+        "tabular_policy",
+        "quality_policy"
+      ],
+      "properties": {
+        "domains": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": [
+              "vector",
+              "raster",
+              "point-cloud",
+              "mesh",
+              "three-dimensional",
+              "geospatial-service",
+              "spatiotemporal",
+              "tabular",
+              "pending-domain-selection"
+            ]
+          },
+          "description": "当前技能实际处理的数据域。pending-domain-selection 仅使原始草案模板保持结构有效，提交 review 前必须替换；只为真实选中域生成详细操作与验收检查。"
+        },
+        "crs_policy": {"type": "string", "minLength": 1},
+        "vertical_crs_policy": {"type": "string", "minLength": 1},
+        "units_policy": {"type": "string", "minLength": 1},
+        "temporal_policy": {"type": "string", "minLength": 1},
+        "geometry_policy": {"type": "string", "minLength": 1},
+        "raster_policy": {"type": "string", "minLength": 1},
+        "point_cloud_policy": {"type": "string", "minLength": 1},
+        "mesh_policy": {"type": "string", "minLength": 1},
+        "three_d_policy": {"type": "string", "minLength": 1},
+        "service_policy": {"type": "string", "minLength": 1},
+        "tabular_policy": {"type": "string", "minLength": 1},
+        "quality_policy": {"type": "string", "minLength": 1}
+      }
+    },
+    "environment_contract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "execution_mode",
+        "qgis_version_observed",
+        "qt_major",
+        "required_services",
+        "required_providers",
+        "workspace_roots",
+        "skills_root",
+        "temporary_root_policy"
+      ],
+      "properties": {
+        "execution_mode": {
+          "type": "string",
+          "enum": ["live-qgis-mcp", "qgis-process-headless", "hybrid"]
+        },
+        "qgis_version_observed": {"type": "string", "minLength": 1},
+        "qt_major": {"type": "integer", "const": 6},
+        "required_services": {"$ref": "#/$defs/nonEmptyStrings"},
+        "required_providers": {"$ref": "#/$defs/nonEmptyStrings"},
+        "workspace_roots": {"$ref": "#/$defs/nonEmptyStrings"},
+        "skills_root": {"$ref": "#/$defs/skillsRootContract"},
+        "temporary_root_policy": {"type": "string", "minLength": 1},
+        "project_path": {"type": ["string", "null"]}
+      }
+    },
+    "capability_snapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "catalog_version",
+        "discovered_at",
+        "mcp_protocol_version",
+        "qgis_version",
+        "available_services",
+        "available_providers",
+        "catalog_hash",
+        "capabilities",
+        "snapshot_hash"
+      ],
+      "properties": {
+        "catalog_version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+        "discovered_at": {"type": "string", "format": "date-time"},
+        "mcp_protocol_version": {"type": "string", "minLength": 1},
+        "qgis_version": {"type": "string", "minLength": 1},
+        "available_services": {"$ref": "#/$defs/nonEmptyStrings"},
+        "available_providers": {"$ref": "#/$defs/nonEmptyStrings"},
+        "catalog_hash": {"$ref": "#/$defs/sha256"},
+        "capabilities": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/capabilityDescriptor"}
+        },
+        "snapshot_hash": {"$ref": "#/$defs/sha256"},
+        "notes": {"type": "string"}
+      }
+    },
+    "selected_tools": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/selectedTool"},
+      "description": "本计划实际需要的最小工具子集。泛化 Processing run 工具还必须绑定 exact algorithm_id。"
+    },
+    "known_issue_acceptances": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/knownIssueAcceptance"},
+      "description": "仅记录本 plan_id 和 revision 对 selected capability 已知问题的明确接受；每条必须逐项绑定 capability、描述哈希和 exact issue。"
+    },
+    "workflow_nodes": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/workflowNode"}
+    },
+    "target_skill_package": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["skills_root_role", "target_relative_path", "collision_policy", "staging_policy", "files"],
+      "properties": {
+        "skills_root_role": {"type": "string", "const": "qcopilots-skills-root"},
+        "target_relative_path": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "collision_policy": {
+          "type": "string",
+          "const": "fail-no-overwrite"
+        },
+        "staging_policy": {
+          "type": "string",
+          "const": "resources-first-skill-md-last"
+        },
+        "files": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/packageFile"}
+        }
+      }
+    },
+    "permissions": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/permission"}
+    },
+    "validation_matrix": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/validationCase"}
+    },
+    "risks": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/risk"}
+    },
+    "unresolved_decisions": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/unresolvedDecision"}
+    },
+    "decision_log": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/decisionLogEntry"}
+    },
+    "approval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "required",
+        "state",
+        "approved_revision",
+        "approved_plan_hash",
+        "approved_capability_hash",
+        "approved_review_markdown_hash",
+        "approved_target_relative_path",
+        "intent",
+        "user_statement",
+        "approved_at"
+      ],
+      "properties": {
+        "required": {"type": "boolean", "const": true},
+        "state": {"type": "string", "enum": ["pending", "approved", "superseded", "rejected"]},
+        "approved_revision": {"type": ["integer", "null"], "minimum": 1},
+        "approved_plan_hash": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+        "approved_capability_hash": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+        "approved_review_markdown_hash": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+        "approved_target_relative_path": {"type": ["string", "null"]},
+        "intent": {
+          "oneOf": [
+            {"type": "null"},
+            {"type": "string", "const": "create-current-plan"}
+          ]
+        },
+        "user_statement": {
+          "type": ["string", "null"],
+          "description": "批准时必须逐字等于：批准计划 {plan_id} revision {revision}，按该计划创建。花括号替换为当前精确值。"
+        },
+        "approved_at": {"type": ["string", "null"], "format": "date-time"}
+      },
+      "description": "用户对 current/exact plan_id 与 revision 的对话审批审计记录；它不是 cryptographic host attestation，也不授予或绕过宿主权限。计划门禁必须额外验证 approved_revision 等于当前 revision，批准哈希仍匹配，目标路径未变化。"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {"enum": ["approved", "implementing", "validating", "completed"]}
+        },
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {
+          "selected_tools": {"minItems": 1},
+          "workflow_nodes": {"minItems": 1},
+          "facts": {"minItems": 1},
+          "input_contracts": {"minItems": 1},
+          "output_contracts": {"minItems": 1},
+          "permissions": {"minItems": 1},
+          "validation_matrix": {"minItems": 1},
+          "unresolved_decisions": {"maxItems": 0},
+          "scope": {
+            "properties": {
+              "in_scope": {"minItems": 1},
+              "out_of_scope": {"minItems": 1},
+              "non_goals": {"minItems": 1}
+            }
+          },
+          "usage_scenarios": {
+            "properties": {
+              "triggers": {"minItems": 1},
+              "positive_examples": {"minItems": 1},
+              "negative_examples": {"minItems": 1}
+            }
+          },
+          "capability_snapshot": {
+            "properties": {"capabilities": {"minItems": 1}}
+          },
+          "target_skill_package": {
+            "properties": {"files": {"minItems": 1}}
+          },
+          "approval": {
+            "properties": {
+              "state": {"const": "approved"},
+              "approved_revision": {"type": "integer"},
+              "approved_plan_hash": {"$ref": "#/$defs/sha256"},
+              "approved_capability_hash": {"$ref": "#/$defs/sha256"},
+              "approved_review_markdown_hash": {"$ref": "#/$defs/sha256"},
+              "approved_target_relative_path": {"type": "string", "minLength": 1},
+              "intent": {"const": "create-current-plan"},
+              "user_statement": {"type": "string", "minLength": 1},
+              "approved_at": {"type": "string", "format": "date-time"}
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[a-f0-9]{64}$"
+    },
+    "nonEmptyStrings": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "uniqueItems": true
+    },
+    "skillsRootContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "display_path",
+        "manifest_path",
+        "manifest_hash",
+        "identity_hash"
+      ],
+      "properties": {
+        "display_path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The resolved Skills root shown in the reviewed per-task plan. Generated skill resources must not copy this absolute host path."
+        },
+        "manifest_path": {
+          "type": "string",
+          "minLength": 1,
+          "description": "The service manifest used to resolve skillsRoot, recorded for review and create-time rebinding."
+        },
+        "manifest_hash": {"$ref": "#/$defs/sha256"},
+        "identity_hash": {
+          "$ref": "#/$defs/sha256",
+          "description": "Canonical hash of manifest_hash plus the normalized, case-folded resolved Skills root."
+        }
+      }
+    },
+    "sideEffects": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reads_files",
+        "writes_files",
+        "modifies_qgis_state",
+        "uses_network",
+        "runs_shell",
+        "destructive_possible"
+      ],
+      "properties": {
+        "reads_files": {"type": "boolean"},
+        "writes_files": {"type": "boolean"},
+        "modifies_qgis_state": {"type": "boolean"},
+        "uses_network": {"type": "boolean"},
+        "runs_shell": {"type": "boolean"},
+        "destructive_possible": {"type": "boolean"}
+      }
+    },
+    "reviewedInvocationPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "require_all_schema_properties_explicit",
+        "required_arguments",
+        "required_any_argument_groups",
+        "required_any_target_argument_groups",
+        "required_target_arguments",
+        "command_shape"
+      ],
+      "properties": {
+        "require_all_schema_properties_explicit": {"type": "boolean"},
+        "required_arguments": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "required_any_argument_groups": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1}
+          }
+        },
+        "required_any_target_argument_groups": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {"type": "string", "minLength": 1}
+          }
+        },
+        "required_target_arguments": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "command_shape": {
+          "type": "string",
+          "enum": ["schema-defined", "argv-only"]
+        },
+        "notes": {"type": "string"}
+      }
+    },
+    "fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "status", "statement", "evidence", "impact_if_wrong"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^[A-Z]+-[0-9]{3}$"},
+        "status": {"type": "string", "enum": ["CONFIRMED", "INFERRED", "UNKNOWN"]},
+        "statement": {"type": "string", "minLength": 1},
+        "evidence": {"type": "string", "minLength": 1},
+        "impact_if_wrong": {"type": "string", "minLength": 1}
+      }
+    },
+    "dataContract": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "role",
+        "format",
+        "source_or_destination",
+        "crs",
+        "data_type",
+        "schema_or_bands",
+        "quality_constraints",
+        "overwrite_policy"
+      ],
+      "properties": {
+        "id": {"type": "string", "pattern": "^(IN|OUT)-[0-9]{3}$"},
+        "role": {"type": "string", "enum": ["input", "output", "intermediate"]},
+        "format": {"type": "string", "minLength": 1},
+        "source_or_destination": {"type": "string", "minLength": 1},
+        "crs": {"type": "string", "minLength": 1},
+        "data_type": {"type": "string", "minLength": 1},
+        "schema_or_bands": {"type": "string", "minLength": 1},
+        "quality_constraints": {"$ref": "#/$defs/nonEmptyStrings"},
+        "overwrite_policy": {"type": "string", "enum": ["read-only", "fail-if-exists", "new-version", "explicit-overwrite-approval"]},
+        "cleanup": {"type": "string"}
+      }
+    },
+    "capabilityDescriptor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "catalog_ref",
+        "source_type",
+        "service_id",
+        "tool_name",
+        "algorithm_id",
+        "cli_id",
+        "provider",
+        "description",
+        "description_hash",
+        "observed_version",
+        "discovered",
+        "eligible",
+        "eligibility_evidence",
+        "ineligibility_reason",
+        "available",
+        "deprecated",
+        "known_issues",
+        "input_schema",
+        "output_schema",
+        "input_schema_hash",
+        "output_schema_hash",
+        "discovery_evidence",
+        "risk_review_status",
+        "reviewed_risk_level",
+        "reviewed_side_effects",
+        "reviewed_invocation_policy",
+        "reviewed_operation_id",
+        "reviewed_argv_template",
+        "reviewed_stdin_contract",
+        "reviewed_argument_target_kinds",
+        "reviewed_nested_target_kinds",
+        "reviewed_nested_target_kinds_hash",
+        "nested_target_review_evidence",
+        "reviewed_parameter_constraints",
+        "reviewed_parameter_constraints_hash",
+        "parameter_constraints_review_evidence",
+        "risk_review_evidence",
+        "resolved_executable",
+        "resolved_executable_sha256",
+        "executable_evidence"
+      ],
+      "properties": {
+        "id": {"type": "string", "pattern": "^CAP-[0-9]{3}$"},
+        "catalog_ref": {"type": "string", "minLength": 1},
+        "source_type": {"type": "string", "enum": ["mcp", "qgis-processing", "cli"]},
+        "service_id": {"type": ["string", "null"]},
+        "tool_name": {"type": ["string", "null"]},
+        "algorithm_id": {"type": ["string", "null"]},
+        "cli_id": {"type": ["string", "null"]},
+        "provider": {"type": ["string", "null"]},
+        "description": {"type": "string", "minLength": 1},
+        "description_hash": {"$ref": "#/$defs/sha256"},
+        "observed_version": {"type": "string", "minLength": 1},
+        "discovered": {
+          "type": "boolean",
+          "const": true,
+          "description": "从当前 session、服务、registry 或文件标记实际观察到。"
+        },
+        "eligible": {
+          "type": "boolean",
+          "description": "与当前任务、数据、版本、路径和风险相容；不授予权限。"
+        },
+        "eligibility_evidence": {"type": "string", "minLength": 1},
+        "ineligibility_reason": {"type": ["string", "null"]},
+        "available": {
+          "type": "boolean",
+          "description": "actually available：当前会话此刻真实可调用或可执行。"
+        },
+        "deprecated": {"type": "boolean"},
+        "known_issues": {"$ref": "#/$defs/nonEmptyStrings"},
+        "input_schema": {"type": "object"},
+        "output_schema": {"type": "object"},
+        "input_schema_hash": {"$ref": "#/$defs/sha256"},
+        "output_schema_hash": {"$ref": "#/$defs/sha256"},
+        "discovery_evidence": {"type": "string", "minLength": 1},
+        "risk_review_status": {
+          "type": "string",
+          "enum": ["reviewed", "unknown"]
+        },
+        "reviewed_risk_level": {
+          "type": "string",
+          "enum": ["R0", "R1", "R2", "R3"]
+        },
+        "reviewed_side_effects": {"$ref": "#/$defs/sideEffects"},
+        "reviewed_invocation_policy": {
+          "$ref": "#/$defs/reviewedInvocationPolicy"
+        },
+        "reviewed_operation_id": {"type": "string", "minLength": 1},
+        "reviewed_argv_template": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "array",
+              "minItems": 1,
+              "items": {"type": "string", "minLength": 1}
+            }
+          ]
+        },
+        "reviewed_stdin_contract": {"type": ["object", "null"]},
+        "reviewed_argument_target_kinds": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "enum": [
+              "input-path",
+              "output-path",
+              "file-read",
+              "file-write",
+              "cwd",
+              "executable"
+            ]
+          }
+        },
+        "reviewed_nested_target_kinds": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "enum": [
+              "none",
+              "input-path",
+              "output-path",
+              "file-read",
+              "file-write",
+              "qgis-state",
+              "network-endpoint",
+              "database",
+              "credential",
+              "device",
+              "executable"
+            ]
+          },
+          "description": "Live/manual reviewed exact RFC 6901 nested-leaf pointer to target-kind contract. Keys must exactly equal the structured leaves used by every selected invocation. Kinds must match the value family: file URI/local path to a file/path kind; postgres/postgresql/mssql/mysql/mariadb/oracle/sqlite URI to database; network and unknown absolute URI schemes to network-endpoint."
+        },
+        "reviewed_nested_target_kinds_hash": {"$ref": "#/$defs/sha256"},
+        "nested_target_review_evidence": {"type": "string", "minLength": 1},
+        "reviewed_parameter_constraints": {
+          "type": "object",
+          "description": "Live/manual reviewed argument schema for this exact capability and, where applicable, exact algorithm."
+        },
+        "reviewed_parameter_constraints_hash": {"$ref": "#/$defs/sha256"},
+        "parameter_constraints_review_evidence": {
+          "type": "string",
+          "minLength": 1
+        },
+        "risk_review_evidence": {"type": "string", "minLength": 1},
+        "resolved_executable": {"type": ["string", "null"]},
+        "resolved_executable_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "executable_evidence": {"type": ["string", "null"]}
+      },
+      "oneOf": [
+        {
+          "required": ["source_type", "service_id", "tool_name", "cli_id"],
+          "properties": {
+            "source_type": {"const": "cli"},
+            "service_id": {"type": "null"},
+            "tool_name": {"type": "null"},
+            "cli_id": {"type": "string", "minLength": 1},
+            "reviewed_argv_template": {"type": "array"},
+            "resolved_executable": {"type": "string", "minLength": 1},
+            "resolved_executable_sha256": {"$ref": "#/$defs/sha256"},
+            "executable_evidence": {"type": "string", "minLength": 1}
+          }
+        },
+        {
+          "required": ["source_type", "service_id", "tool_name", "cli_id"],
+          "properties": {
+            "source_type": {"enum": ["mcp", "qgis-processing"]},
+            "service_id": {"type": "string", "minLength": 1},
+            "tool_name": {"type": "string", "minLength": 1},
+            "cli_id": {"type": "null"},
+            "reviewed_argv_template": {"type": "null"},
+            "reviewed_stdin_contract": {"type": "null"},
+            "resolved_executable": {"type": "null"},
+            "resolved_executable_sha256": {"type": "null"},
+            "executable_evidence": {"type": "null"}
+          }
+        }
+      ]
+    },
+    "selectedTool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "capability_id",
+        "source_type",
+        "catalog_ref",
+        "service_id",
+        "tool_name",
+        "algorithm_id",
+        "cli_id",
+        "provider",
+        "operation_id",
+        "argv_template",
+        "argument_target_kinds",
+        "nested_target_kinds",
+        "nested_target_kinds_hash",
+        "stdin_contract",
+        "description_hash",
+        "exact_operation",
+        "purpose",
+        "availability_evidence",
+        "risk_level",
+        "catalog_side_effects",
+        "invocation_policy",
+        "input_schema_hash",
+        "output_schema_hash",
+        "parameter_constraints",
+        "parameter_constraints_hash",
+        "allowed_algorithm_ids",
+        "allowed_input_roots",
+        "allowed_output_roots",
+        "allowed_executable_roots",
+        "allowed_cwd_roots",
+        "resolved_executable",
+        "resolved_executable_sha256",
+        "overwrite_policy",
+        "network_policy",
+        "qgis_state_changes",
+        "approval_policy",
+        "timeout_and_cancel",
+        "idempotency",
+        "rollback",
+        "fallback",
+        "approval_required"
+      ],
+      "properties": {
+        "id": {"type": "string", "pattern": "^TOOL-[0-9]{3}$"},
+        "capability_id": {"type": "string", "pattern": "^CAP-[0-9]{3}$"},
+        "source_type": {"type": "string", "enum": ["mcp", "qgis-processing", "cli"]},
+        "catalog_ref": {"type": "string", "minLength": 1},
+        "service_id": {"type": ["string", "null"]},
+        "tool_name": {"type": ["string", "null"]},
+        "algorithm_id": {"type": ["string", "null"]},
+        "cli_id": {"type": ["string", "null"]},
+        "provider": {"type": ["string", "null"]},
+        "operation_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+          "maxLength": 128
+        },
+        "argv_template": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "array",
+              "minItems": 1,
+              "items": {"type": "string", "minLength": 1}
+            }
+          ]
+        },
+        "argument_target_kinds": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "enum": [
+              "input-path",
+              "output-path",
+              "file-read",
+              "file-write",
+              "cwd",
+              "executable"
+            ]
+          }
+        },
+        "nested_target_kinds": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "enum": [
+              "none",
+              "input-path",
+              "output-path",
+              "file-read",
+              "file-write",
+              "qgis-state",
+              "network-endpoint",
+              "database",
+              "credential",
+              "device",
+              "executable"
+            ]
+          },
+          "description": "Exact copy of the reviewed nested-leaf map. Every kind must remain compatible with the actual value family, including fail-safe network-endpoint classification for unknown absolute URI schemes."
+        },
+        "nested_target_kinds_hash": {"$ref": "#/$defs/sha256"},
+        "stdin_contract": {"type": ["object", "null"]},
+        "description_hash": {"$ref": "#/$defs/sha256"},
+        "exact_operation": {"type": "string", "minLength": 1},
+        "purpose": {"type": "string", "minLength": 1},
+        "availability_evidence": {"type": "string", "minLength": 1},
+        "risk_level": {"type": "string", "enum": ["R0", "R1", "R2", "R3"]},
+        "catalog_side_effects": {
+          "$ref": "#/$defs/sideEffects",
+          "description": "Legacy field name; value is the effective reviewed side-effect contract copied from the selected live capability and must not understate a catalog baseline."
+        },
+        "invocation_policy": {"$ref": "#/$defs/reviewedInvocationPolicy"},
+        "input_schema_hash": {"$ref": "#/$defs/sha256"},
+        "output_schema_hash": {"$ref": "#/$defs/sha256"},
+        "parameter_constraints": {"type": "object"},
+        "parameter_constraints_hash": {"$ref": "#/$defs/sha256"},
+        "allowed_algorithm_ids": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "uniqueItems": true
+        },
+        "allowed_input_roots": {"$ref": "#/$defs/nonEmptyStrings"},
+        "allowed_output_roots": {"$ref": "#/$defs/nonEmptyStrings"},
+        "allowed_executable_roots": {"$ref": "#/$defs/nonEmptyStrings"},
+        "allowed_cwd_roots": {"$ref": "#/$defs/nonEmptyStrings"},
+        "resolved_executable": {"type": ["string", "null"]},
+        "resolved_executable_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "overwrite_policy": {
+          "type": "string",
+          "enum": ["read-only", "fail-if-exists", "new-version", "explicit-overwrite-approval"]
+        },
+        "network_policy": {
+          "type": "string",
+          "enum": ["no-network", "exact-endpoint-allowlist", "per-invocation-approval", "default-deny"]
+        },
+        "qgis_state_changes": {"$ref": "#/$defs/nonEmptyStrings"},
+        "approval_policy": {
+          "type": "string",
+          "enum": ["none-r0", "plan-approval", "per-invocation-approval", "default-deny"]
+        },
+        "timeout_and_cancel": {"type": "string", "minLength": 1},
+        "idempotency": {"type": "string", "minLength": 1},
+        "rollback": {"type": "string", "minLength": 1},
+        "fallback": {"type": ["string", "null"]},
+        "approval_required": {"type": "boolean"}
+      },
+      "oneOf": [
+        {
+          "required": ["source_type", "service_id", "tool_name", "cli_id", "argv_template"],
+          "properties": {
+            "source_type": {"const": "cli"},
+            "service_id": {"type": "null"},
+            "tool_name": {"type": "null"},
+            "cli_id": {"type": "string", "minLength": 1},
+            "argv_template": {"type": "array"},
+            "resolved_executable": {"type": "string", "minLength": 1},
+            "resolved_executable_sha256": {"$ref": "#/$defs/sha256"}
+          }
+        },
+        {
+          "required": ["source_type", "service_id", "tool_name", "cli_id", "argv_template", "stdin_contract"],
+          "properties": {
+            "source_type": {"enum": ["mcp", "qgis-processing"]},
+            "service_id": {"type": "string", "minLength": 1},
+            "tool_name": {"type": "string", "minLength": 1},
+            "cli_id": {"type": "null"},
+            "argv_template": {"type": "null"},
+            "stdin_contract": {"type": "null"},
+            "resolved_executable": {"type": "null"},
+            "resolved_executable_sha256": {"type": "null"}
+          }
+        }
+      ]
+    },
+    "argumentBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "source_kind",
+        "source_ref",
+        "constraint_schema",
+        "target_kind",
+        "permission_target",
+        "sensitive"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_.-]+$"
+        },
+        "source_kind": {
+          "type": "string",
+          "enum": [
+            "literal",
+            "input-contract",
+            "workflow-output",
+            "approved-runtime-value",
+            "derived"
+          ]
+        },
+        "source_ref": {"type": ["string", "null"]},
+        "constraint_schema": {"type": "object"},
+        "target_kind": {
+          "type": "string",
+          "enum": [
+            "none",
+            "input-path",
+            "output-path",
+            "file-read",
+            "file-write",
+            "qgis-state",
+            "network-endpoint",
+            "database",
+            "credential",
+            "device",
+            "executable",
+            "argv",
+            "cwd",
+            "stdin",
+            "arguments"
+          ]
+        },
+        "permission_target": {"type": ["string", "null"]},
+        "sensitive": {"type": "boolean"}
+      }
+    },
+    "nestedTargetBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "json_pointer",
+        "target_kind",
+        "permission_target",
+        "sensitive",
+        "rationale"
+      ],
+      "properties": {
+        "json_pointer": {
+          "type": "string",
+          "pattern": "^/(?:arguments(?:/(?:[^~]|~0|~1)*)+|stdin_payload(?:/(?:[^~]|~0|~1)*)*)$"
+        },
+        "target_kind": {
+          "type": "string",
+          "enum": [
+            "none",
+            "input-path",
+            "output-path",
+            "file-read",
+            "file-write",
+            "qgis-state",
+            "network-endpoint",
+            "database",
+            "credential",
+            "device",
+            "executable"
+          ],
+          "description": "Must equal the authoritative reviewed kind and match the actual value family: local file/path, database URI, or network/unknown absolute URI."
+        },
+        "permission_target": {"type": ["string", "null"]},
+        "sensitive": {"type": "boolean"},
+        "rationale": {"type": "string", "minLength": 1}
+      }
+    },
+    "effectTarget": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "value", "permission_target", "rationale"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "input-root",
+            "output-root",
+            "executable-root",
+            "cwd-root",
+            "input-path",
+            "output-path",
+            "file-read",
+            "file-write",
+            "qgis-state",
+            "network-endpoint",
+            "database",
+            "credential",
+            "device",
+            "executable",
+            "argv",
+            "cwd",
+            "stdin",
+            "arguments"
+          ]
+        },
+        "value": {"type": "string", "minLength": 1},
+        "permission_target": {
+          "type": "string",
+          "pattern": "^[a-z][a-z-]*:.+$"
+        },
+        "rationale": {"type": "string", "minLength": 1}
+      }
+    },
+    "workflowNode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "depends_on",
+        "tool_id",
+        "operation_id",
+        "arguments",
+        "argument_bindings",
+        "nested_target_bindings",
+        "omitted_optional_arguments",
+        "stdin_payload",
+        "executable",
+        "materialized_argv",
+        "cwd",
+        "effect_targets",
+        "exact_operation",
+        "inputs",
+        "parameter_sources",
+        "validated_parameters",
+        "outputs",
+        "intermediates",
+        "preconditions",
+        "postconditions",
+        "side_effects",
+        "risk_level",
+        "timeout_and_cancel",
+        "retry_and_idempotency",
+        "fallback_condition",
+        "acceptance_evidence",
+        "cleanup"
+      ],
+      "properties": {
+        "id": {"type": "string", "pattern": "^STEP-[0-9]{3}$"},
+        "title": {"type": "string", "minLength": 1},
+        "depends_on": {"type": "array", "items": {"type": "string", "pattern": "^STEP-[0-9]{3}$"}, "uniqueItems": true},
+        "tool_id": {"type": "string", "pattern": "^TOOL-[0-9]{3}$"},
+        "operation_id": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:[._-][a-z0-9]+)*$",
+          "maxLength": 128
+        },
+        "arguments": {"type": "object"},
+        "argument_bindings": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/argumentBinding"}
+        },
+        "nested_target_bindings": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/nestedTargetBinding"}
+        },
+        "omitted_optional_arguments": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_.-]+$"
+          }
+        },
+        "stdin_payload": {"type": ["object", "null"]},
+        "executable": {"type": ["string", "null"]},
+        "materialized_argv": {
+          "oneOf": [
+            {"type": "null"},
+            {
+              "type": "array",
+              "minItems": 1,
+              "items": {"type": "string", "minLength": 1}
+            }
+          ]
+        },
+        "cwd": {"type": ["string", "null"]},
+        "effect_targets": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/effectTarget"}
+        },
+        "exact_operation": {"type": "string", "minLength": 1},
+        "inputs": {"$ref": "#/$defs/nonEmptyStrings"},
+        "parameter_sources": {"type": "object"},
+        "validated_parameters": {"type": "object"},
+        "outputs": {"$ref": "#/$defs/nonEmptyStrings"},
+        "intermediates": {"$ref": "#/$defs/nonEmptyStrings"},
+        "preconditions": {"$ref": "#/$defs/nonEmptyStrings"},
+        "postconditions": {"$ref": "#/$defs/nonEmptyStrings"},
+        "side_effects": {"$ref": "#/$defs/nonEmptyStrings"},
+        "risk_level": {"type": "string", "enum": ["R0", "R1", "R2", "R3"]},
+        "timeout_and_cancel": {"type": "string", "minLength": 1},
+        "retry_and_idempotency": {"type": "string", "minLength": 1},
+        "fallback_condition": {"type": ["string", "null"]},
+        "acceptance_evidence": {"$ref": "#/$defs/nonEmptyStrings"},
+        "cleanup": {"type": "string", "minLength": 1}
+      }
+    },
+    "packageFile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "relative_path",
+        "purpose",
+        "required",
+        "source",
+        "content_kind",
+        "expected_sha256",
+        "expected_size_bytes"
+      ],
+      "properties": {
+        "relative_path": {
+          "type": "string",
+          "pattern": "^(?![A-Za-z]:)(?!/)(?!.*//)(?!.*(?:^|/)\\.{1,2}(?:/|$))(?!.*[:*?\"<>|])[^\\\\/](?:[^\\\\]*[^\\\\/])?$"
+        },
+        "purpose": {"type": "string", "minLength": 1},
+        "required": {"type": "boolean"},
+        "source": {"type": "string", "enum": ["generated", "template", "approved-user-artifact"]},
+        "content_kind": {"type": "string", "enum": ["text-utf8", "binary"]},
+        "expected_sha256": {"$ref": "#/$defs/sha256"},
+        "expected_size_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 262144
+        }
+      }
+    },
+    "knownIssueAcceptance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "plan_id",
+        "revision",
+        "capability_id",
+        "capability_description_hash",
+        "issue",
+        "rationale",
+        "acceptance_basis"
+      ],
+      "properties": {
+        "id": {"type": "string", "pattern": "^ISSUE-ACCEPT-[0-9]{3}$"},
+        "plan_id": {
+          "type": "string",
+          "pattern": "^qgis-skill-plan-[a-z0-9][a-z0-9-]{2,80}$"
+        },
+        "revision": {"type": "integer", "minimum": 1},
+        "capability_id": {"type": "string", "pattern": "^CAP-[0-9]{3}$"},
+        "capability_description_hash": {"$ref": "#/$defs/sha256"},
+        "issue": {"type": "string", "minLength": 1},
+        "rationale": {"type": "string", "minLength": 1},
+        "acceptance_basis": {"type": "string", "minLength": 1}
+      }
+    },
+    "permission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "action",
+        "scope",
+        "tool_ids",
+        "workflow_node_ids",
+        "targets",
+        "risk_level",
+        "approval_policy",
+        "rollback"
+      ],
+      "properties": {
+        "id": {"type": "string", "pattern": "^PERM-[0-9]{3}$"},
+        "action": {"type": "string", "minLength": 1},
+        "scope": {"type": "string", "minLength": 1},
+        "tool_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^TOOL-[0-9]{3}$"}
+        },
+        "workflow_node_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^STEP-[0-9]{3}$"}
+        },
+        "targets": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "risk_level": {"type": "string", "enum": ["R0", "R1", "R2", "R3"]},
+        "approval_policy": {"type": "string", "enum": ["plan-approval", "per-invocation-approval", "default-deny"]},
+        "rollback": {"type": "string", "minLength": 1}
+      }
+    },
+    "validationCase": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "layer", "case_type", "procedure", "expected", "evidence", "cleanup"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^TEST-[0-9]{3}$"},
+        "layer": {"type": "string", "enum": ["structure", "trigger", "plan-gate", "tool-contract", "functional", "qgis-integration", "cleanup"]},
+        "case_type": {"type": "string", "enum": ["normal", "boundary", "failure", "negative-trigger", "drift"]},
+        "procedure": {"type": "string", "minLength": 1},
+        "expected": {"type": "string", "minLength": 1},
+        "evidence": {"type": "string", "minLength": 1},
+        "cleanup": {"type": "string", "minLength": 1}
+      }
+    },
+    "risk": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "description", "likelihood", "impact", "mitigation", "residual_risk"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^RISK-[0-9]{3}$"},
+        "description": {"type": "string", "minLength": 1},
+        "likelihood": {"type": "string", "enum": ["low", "medium", "high"]},
+        "impact": {"type": "string", "enum": ["low", "medium", "high", "critical"]},
+        "mitigation": {"type": "string", "minLength": 1},
+        "residual_risk": {"type": "string", "minLength": 1}
+      }
+    },
+    "unresolvedDecision": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "question", "why_blocking", "options"],
+      "properties": {
+        "id": {"type": "string", "pattern": "^OPEN-[0-9]{3}$"},
+        "question": {"type": "string", "minLength": 1},
+        "why_blocking": {"type": "string", "minLength": 1},
+        "options": {"$ref": "#/$defs/nonEmptyStrings"}
+      }
+    },
+    "decisionLogEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["revision", "timestamp", "source", "decision", "effect"],
+      "properties": {
+        "revision": {"type": "integer", "minimum": 1},
+        "timestamp": {"type": "string", "format": "date-time"},
+        "source": {"type": "string", "minLength": 1},
+        "decision": {"type": "string", "minLength": 1},
+        "effect": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

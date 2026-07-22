@@ -1,0 +1,18 @@
+{
+  "$schema": "./qcopilots_service.schema.json",
+  "service_id": "qcopilots.mcp_server_builtin_tools",
+  "plugin_name": "QCopilots MCP Server Builtin Tools",
+  "display_name": "QCopilots MCP Server Builtin Tools",
+  "description": "提供与 llama-server 内置工具兼容的本机工具服务，覆盖文件读取、文件搜索、文本检索、Shell 执行、文件写入、文本替换编辑和日期时间查询。适合在 llama-ui 或其它 MCP 客户端中完成本地资料检索、脚本辅助和受控自动化操作，由 QCopilots MCP Servers Manager 启动并绑定到本机 MCP HTTP 端点。",
+  "entry_point": "server.py",
+  "host": "127.0.0.1",
+  "default_port": 48211,
+  "mcp_path": "/mcp",
+  "category": "qcopilots",
+  "capabilities": ["tools"],
+  "runtime": {
+    "type": "uv",
+    "requirements": "requirements.lock"
+  },
+  "cors_origins": ["http://127.0.0.1:8282", "http://localhost:8282"]
+}

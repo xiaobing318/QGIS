@@ -1,0 +1,10 @@
+[general]
+name=QCopilots MCP Servers Manager
+description=Manage QCopilots MCP server plugins.
+category=QCopilots
+version=0.1.0
+qgisMinimumVersion=4.0
+author=QCopilots
+email=
+tags=qcopilots,mcp,manager
+icon=icon.svg
