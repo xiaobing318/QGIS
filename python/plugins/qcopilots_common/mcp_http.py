@@ -568,7 +568,7 @@ class McpHttpServer:
                     responses = [item for item in responses if item is not None]
                     if not responses:
                         self._send_empty(
-                            HTTPStatus.NO_CONTENT,
+                            HTTPStatus.ACCEPTED,
                             self._session_headers(session_id),
                         )
                     else:
@@ -586,7 +586,7 @@ class McpHttpServer:
                 )
                 if response is None:
                     self._send_empty(
-                        HTTPStatus.NO_CONTENT,
+                        HTTPStatus.ACCEPTED,
                         self._session_headers(session_id),
                     )
                 else:
@@ -605,6 +605,11 @@ class McpHttpServer:
                 self._send_cors_headers()
                 for name, value in (extra_headers or {}).items():
                     self.send_header(name, value)
+                if not (
+                    100 <= int(status) < 200
+                    or status in (HTTPStatus.NO_CONTENT, HTTPStatus.NOT_MODIFIED)
+                ):
+                    self.send_header("Content-Length", "0")
                 if self.close_connection:
                     self.send_header("Connection", "close")
                 self.end_headers()

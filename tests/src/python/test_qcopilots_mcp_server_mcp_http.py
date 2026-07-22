@@ -1887,6 +1887,101 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
         finally:
             self._stop_http_server(httpd, thread)
 
+    def test_http_initialize_notification_and_tools_list_sequence(self):
+        from qcopilots_common.mcp_http import McpHttpServer
+
+        server = McpHttpServer(
+            name="qcopilots-http-test",
+            version="1.0.0",
+            tools=[],
+            port=0,
+        )
+        httpd = server.create_http_server()
+        port = httpd.server_address[1]
+        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+        thread.start()
+
+        def post(payload, session_id=None):
+            headers = {
+                "Accept": "application/json, text/event-stream",
+                "Content-Type": "application/json",
+            }
+            if session_id:
+                headers.update(
+                    {
+                        "MCP-Protocol-Version": "2025-06-18",
+                        "MCP-Session-Id": session_id,
+                    }
+                )
+            return urlopen(
+                Request(
+                    f"http://127.0.0.1:{port}/mcp",
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers=headers,
+                    method="POST",
+                ),
+                timeout=5,
+            )
+
+        initialized_notification = {
+            "jsonrpc": "2.0",
+            "method": "notifications/initialized",
+        }
+        try:
+            with post(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "method": "initialize",
+                    "params": {
+                        "protocolVersion": "2025-06-18",
+                        "capabilities": {},
+                        "clientInfo": {
+                            "name": "http-sequence-test",
+                            "version": "1.0",
+                        },
+                    },
+                }
+            ) as response:
+                self.assertEqual(response.status, 200)
+                session_id = response.headers["mcp-session-id"]
+                self.assertTrue(session_id)
+                self.assertEqual(
+                    json.loads(response.read().decode("utf-8"))["result"][
+                        "protocolVersion"
+                    ],
+                    "2025-06-18",
+                )
+
+            with post(initialized_notification, session_id) as response:
+                self.assertEqual(response.status, 202)
+                self.assertEqual(response.headers["content-length"], "0")
+                self.assertEqual(response.headers["mcp-session-id"], session_id)
+                self.assertEqual(response.read(), b"")
+
+            with post(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "method": "tools/list",
+                    "params": {},
+                },
+                session_id,
+            ) as response:
+                self.assertEqual(response.status, 200)
+                self.assertEqual(
+                    json.loads(response.read().decode("utf-8"))["result"],
+                    {"tools": []},
+                )
+
+            with post([initialized_notification], session_id) as response:
+                self.assertEqual(response.status, 202)
+                self.assertEqual(response.headers["content-length"], "0")
+                self.assertEqual(response.headers["mcp-session-id"], session_id)
+                self.assertEqual(response.read(), b"")
+        finally:
+            self._stop_http_server(httpd, thread)
+
     def test_http_initialize_generates_session_header_and_delete_clears_context(self):
         from qcopilots_common.mcp_http import McpHttpServer, McpTool
 
