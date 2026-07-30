@@ -1500,7 +1500,9 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
         self.assertNotIn("AUTH" + "_HEADER_NAME", plugin_source)
         self.assertNotIn("processes:", plugin_source)
         self.assertNotIn("owner = ", plugin_source)
-        self.assertNotIn("self.status.log_file", plugin_source)
+        self.assertIn("self.log_file_label", plugin_source)
+        self.assertIn("self.diagnostic_label", plugin_source)
+        self.assertIn("Startup diagnostic", plugin_source)
         self.assertNotIn("runtime =", plugin_source)
 
     def test_manager_dialog_has_no_refresh_all_button_or_handler(self):
@@ -1609,6 +1611,39 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
         self.assertEqual(controller.calls, ["start", "stop"])
         self.assertEqual(worker.finished.emissions, [])
         self.assertEqual(worker.failed.emissions[0], ("Service did not become healthy", stopped))
+
+    def test_manager_toggle_worker_preserves_startup_diagnostic_before_automatic_stop(self):
+        _install_manager_import_stubs()
+
+        from qcopilots_mcp_servers_manager.plugin import ServiceToggleWorker
+
+        manifest = types.SimpleNamespace(service_id="qcopilots.test")
+        diagnostic = (
+            "HTTP health check timed out while the service process was still running\n"
+            "Failure: http-health-timeout\n"
+            "Startup timeout: 30 seconds\n"
+            "Log file: C:\\logs\\service.log\n"
+            "Log tail:\nwaiting for health"
+        )
+        unhealthy = _status(
+            running=True,
+            health="http-health-timeout",
+            diagnostic=diagnostic,
+        )
+        stopped_without_diagnostic = _status(running=False, health="stopped")
+        controller = _FakeProcessController(
+            start_status=unhealthy,
+            stop_status=stopped_without_diagnostic,
+        )
+        worker = _worker(ServiceToggleWorker, controller, manifest, enabled=True, was_running=False)
+        worker.finished = _CaptureSignal()
+        worker.failed = _CaptureSignal()
+
+        worker.run()
+
+        self.assertEqual(controller.calls, ["start", "stop"])
+        self.assertEqual(worker.finished.emissions, [])
+        self.assertEqual(worker.failed.emissions[0], (diagnostic, stopped_without_diagnostic))
 
     def test_manager_toggle_worker_emits_finished_for_successful_start_and_stop(self):
         _install_manager_import_stubs()
@@ -2236,6 +2271,32 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
         self.assertEqual(card.running_label.text(), "Running")
         self.assertEqual(card.running_label.toolTip(), "")
 
+    def test_manager_status_refresh_keeps_startup_diagnostic_in_tooltip_and_details(self):
+        _install_manager_import_stubs()
+
+        import qcopilots_mcp_servers_manager.plugin as manager_plugin
+
+        diagnostic = (
+            "Service process exited before the HTTP health check succeeded\n"
+            "Exit code: 7\n"
+            "Log file: C:\\logs\\service.log\n"
+            "Log tail:\nfailed"
+        )
+        card = _fake_service_card(manager_plugin)
+        card.status = _status(
+            running=False,
+            health="process-exited-before-healthy",
+            diagnostic=diagnostic,
+            log_file="C:\\logs\\service.log",
+            exit_code=7,
+        )
+
+        card.update_status_widgets()
+
+        self.assertEqual(card.running_label.toolTip(), diagnostic)
+        self.assertEqual(card.log_file_label.text(), "C:\\logs\\service.log")
+        self.assertEqual(card.diagnostic_label.text(), diagnostic)
+
     def test_manager_finished_start_stops_service_when_shutdown_is_pending(self):
         _install_manager_import_stubs()
 
@@ -2362,17 +2423,41 @@ class TestQCopilotsMcpServerDiscovery(unittest.TestCase):
             self.assertEqual(manifest["runtime"]["requirements"], "requirements.lock", plugin_dir_name)
             self.assertEqual(str(manifest["default_port"]), port, plugin_dir_name)
             self.assertNotIn("command", manifest, plugin_dir_name)
-            if plugin_dir_name == "qcopilots_mcp_server_skills":
-                self.assertIn("pyyaml==6.0.2", lock.lower())
-            else:
-                self.assertFalse(
-                    [
-                        line
-                        for line in lock.splitlines()
-                        if line.strip() and not line.lstrip().startswith("#")
-                    ],
-                    plugin_dir_name,
-                )
+            self.assertFalse(
+                [
+                    line
+                    for line in lock.splitlines()
+                    if line.strip() and not line.lstrip().startswith("#")
+                ],
+                plugin_dir_name,
+            )
+
+    def test_skills_uses_qgis_python_without_uv_dependency_overlay(self):
+        import yaml
+
+        from qcopilots_common.manifest import load_service_manifest
+        from qcopilots_common.uv_runtime import UvRuntime
+
+        skills_root = (
+            Path(__file__).resolve().parents[3]
+            / "python"
+            / "plugins"
+            / "qcopilots_mcp_server_skills"
+        )
+        manifest = load_service_manifest(skills_root / "qcopilots_service.json")
+        command = UvRuntime().service_command(manifest, sys.executable)
+        version_match = re.fullmatch(r"(\d+)\.(\d+)\.(\d+)", yaml.__version__)
+
+        self.assertNotIn("--with-requirements", command)
+        self.assertIsNotNone(version_match)
+        self.assertGreaterEqual(
+            tuple(int(component) for component in version_match.groups()),
+            (6, 0, 3),
+        )
+        self.assertEqual(
+            yaml.safe_load("metadata:\n  owner: qcopilots\n"),
+            {"metadata": {"owner": "qcopilots"}},
+        )
 
     def test_manager_switch_matches_requested_visual_contract(self):
         plugin_source = (
@@ -2598,12 +2683,23 @@ def _contains_cjk(text):
     return any("\u4e00" <= character <= "\u9fff" for character in text)
 
 
-def _status(running=False, health="stopped", url="http://127.0.0.1:48211/mcp", port=48211):
+def _status(
+    running=False,
+    health="stopped",
+    url="http://127.0.0.1:48211/mcp",
+    port=48211,
+    diagnostic="",
+    log_file="",
+    exit_code=None,
+):
     return types.SimpleNamespace(
         running=running,
         health=health,
         url=url,
         port=port,
+        diagnostic=diagnostic,
+        log_file=log_file,
+        exit_code=exit_code,
     )
 
 
@@ -2642,6 +2738,8 @@ def _fake_service_card(manager_plugin, running=False):
     card.status = _status(running=running, health="ok" if running else "stopped")
     card.switch = _FakeSwitch()
     card.port_label = _FakeLabel()
+    card.log_file_label = _FakeLabel()
+    card.diagnostic_label = _FakeLabel()
     card.running_label = _FakeLabel()
     card.inline_endpoint_label = _FakeLabel()
     card.endpoint_label = _FakeLabel()

@@ -859,10 +859,11 @@ class ServiceToggleWorker(QObject):
             self.finished.emit(status)
             return
 
-        detail = status.health if status else self.unknown_state_message
+        detail = self._failure_detail(status)
         if self.enabled and status and status.running:
+            startup_detail = detail
             status = self._safe_stop_service(status)
-            detail = self.unhealthy_message
+            detail = startup_detail
         self.failed.emit(detail, status)
 
     def _toggle_service(self):
@@ -888,6 +889,17 @@ class ServiceToggleWorker(QObject):
             return self.controller.status(self.manifest)
         except Exception:
             return None
+
+    def _failure_detail(self, status) -> str:
+        if not status:
+            return self.unknown_state_message
+        diagnostic = str(getattr(status, "diagnostic", "") or "").strip()
+        if diagnostic:
+            return diagnostic
+        if self.enabled and getattr(status, "running", False):
+            return self.unhealthy_message
+        health = str(getattr(status, "health", "") or "").strip()
+        return health or self.unhealthy_message
 
     def _safe_stop_service(self, fallback_status):
         try:
@@ -1002,6 +1014,17 @@ class ServiceCard(QWidget):
             add_copy=True,
         )
         self.port_label = self._details_row(details_layout, self.plugin.tr("Port"), str(self.status.port))
+        self.log_file_label = self._details_row(
+            details_layout,
+            self.plugin.tr("Log file"),
+            str(getattr(self.status, "log_file", "") or ""),
+        )
+        self.diagnostic_label = self._details_row(
+            details_layout,
+            self.plugin.tr("Startup diagnostic"),
+            str(getattr(self.status, "diagnostic", "") or ""),
+        )
+        self.diagnostic_label.setWordWrap(True)
         layout.addWidget(self.details_frame)
 
         self._update_details_visibility()
@@ -1181,13 +1204,18 @@ class ServiceCard(QWidget):
     def update_status_widgets(self):
         self.port_label.setText(str(self.status.port))
         self.running_label.setText(self._running_text())
-        self.running_label.setToolTip("")
+        diagnostic = str(getattr(self.status, "diagnostic", "") or "")
+        self.running_label.setToolTip(diagnostic)
         if self.switch.isChecked() != self.status.running:
             self.switch.blockSignals(True)
             self.switch.setChecked(self.status.running)
             self.switch.blockSignals(False)
         self.inline_endpoint_label.setText(self.status.url)
         self.endpoint_label.setText(self.status.url)
+        if getattr(self, "log_file_label", None):
+            self.log_file_label.setText(str(getattr(self.status, "log_file", "") or ""))
+        if getattr(self, "diagnostic_label", None):
+            self.diagnostic_label.setText(diagnostic)
         self._update_card_style()
 
     def _show_temporary_status(self, message: str, tooltip: str = ""):

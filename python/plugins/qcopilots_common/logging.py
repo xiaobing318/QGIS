@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import logging
+import sys
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
@@ -16,6 +17,8 @@ from qcopilots_common.constants import LOG_CHANNEL, logs_root
 
 LOG_ROTATE_BYTES = 1024 * 1024
 LOG_BACKUP_COUNT = 1
+LOG_FORMAT = "%(asctime)s %(levelname)s %(name)s: %(message)s"
+_MANAGED_DEFAULT_HANDLER_ATTRIBUTE = "_qcopilots_managed_default_handler"
 
 
 def ensure_log_dir() -> Path:
@@ -33,12 +36,18 @@ def configure_logger(name: str, log_file: str | Path | None = None) -> logging.L
     logger.setLevel(logging.INFO)
     logger.propagate = False
 
-    if not logger.handlers:
-        stream_handler = logging.StreamHandler()
-        stream_handler.setFormatter(
-            logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
-        )
-        logger.addHandler(stream_handler)
+    if log_file:
+        _remove_managed_default_handlers(logger)
+    elif not logger.handlers:
+        stderr = sys.stderr
+        if stderr is not None and callable(getattr(stderr, "write", None)):
+            stream_handler = logging.StreamHandler(stderr)
+            stream_handler.setFormatter(logging.Formatter(LOG_FORMAT))
+            handler: logging.Handler = stream_handler
+        else:
+            handler = logging.NullHandler()
+        setattr(handler, _MANAGED_DEFAULT_HANDLER_ATTRIBUTE, True)
+        logger.addHandler(handler)
 
     if log_file:
         log_path = Path(log_file)
@@ -58,12 +67,18 @@ def configure_logger(name: str, log_file: str | Path | None = None) -> logging.L
                 backupCount=LOG_BACKUP_COUNT,
                 encoding="utf-8",
             )
-            file_handler.setFormatter(
-                logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
-            )
+            file_handler.setFormatter(logging.Formatter(LOG_FORMAT))
             logger.addHandler(file_handler)
 
     return logger
+
+
+def _remove_managed_default_handlers(logger: logging.Logger) -> None:
+    for handler in list(logger.handlers):
+        if not getattr(handler, _MANAGED_DEFAULT_HANDLER_ATTRIBUTE, False):
+            continue
+        logger.removeHandler(handler)
+        handler.close()
 
 
 def _handler_log_file(handler: logging.Handler) -> str | None:

@@ -1638,6 +1638,105 @@ class TestQCopilotsMcpServerMcpHttp(unittest.TestCase):
             },
         )
 
+    def test_configure_logger_uses_writable_stderr_without_log_file(self):
+        from qcopilots_common.logging import configure_logger
+
+        logger_name = f"qcopilots-stderr-log-test-{os.getpid()}"
+        logger = logging.getLogger(logger_name)
+        for handler in list(logger.handlers):
+            logger.removeHandler(handler)
+            handler.close()
+        logger.propagate = False
+
+        stderr = StringIO()
+        try:
+            with redirect_stderr(stderr):
+                configured_logger = configure_logger(logger_name)
+                configured_logger.info("stream handler is available")
+                for handler in configured_logger.handlers:
+                    handler.flush()
+
+            self.assertEqual(len(configured_logger.handlers), 1)
+            self.assertIs(type(configured_logger.handlers[0]), logging.StreamHandler)
+            self.assertIn("stream handler is available", stderr.getvalue())
+        finally:
+            for handler in list(logger.handlers):
+                logger.removeHandler(handler)
+                handler.close()
+
+    def test_configure_logger_skips_unavailable_stderr(self):
+        from qcopilots_common.logging import configure_logger
+
+        unavailable_streams = (
+            ("missing", None),
+            ("not writable", types.SimpleNamespace(write=None)),
+        )
+        for description, stderr in unavailable_streams:
+            with self.subTest(stderr=description):
+                logger_name = (
+                    f"qcopilots-unavailable-stderr-test-{description}-{os.getpid()}"
+                )
+                logger = logging.getLogger(logger_name)
+                for handler in list(logger.handlers):
+                    logger.removeHandler(handler)
+                    handler.close()
+                logger.propagate = False
+
+                try:
+                    with redirect_stderr(stderr):
+                        configured_logger = configure_logger(logger_name)
+                        configured_logger.info("discarded without stderr")
+                    self.assertEqual(len(configured_logger.handlers), 1)
+                    self.assertIs(
+                        type(configured_logger.handlers[0]),
+                        logging.NullHandler,
+                    )
+                finally:
+                    for handler in list(logger.handlers):
+                        logger.removeHandler(handler)
+                        handler.close()
+
+    def test_configure_logger_log_file_replaces_managed_stream_handler(self):
+        from logging.handlers import RotatingFileHandler
+
+        from qcopilots_common.logging import configure_logger
+
+        logger_name = f"qcopilots-single-log-output-test-{os.getpid()}"
+        logger = logging.getLogger(logger_name)
+        for handler in list(logger.handlers):
+            logger.removeHandler(handler)
+            handler.close()
+        logger.propagate = False
+
+        stderr = StringIO()
+        temp_dir = tempfile.TemporaryDirectory()
+        try:
+            log_file = Path(temp_dir.name) / "service.log"
+            with redirect_stderr(stderr):
+                configured_logger = configure_logger(logger_name)
+                configured_logger = configure_logger(logger_name, log_file)
+                configured_logger.info("written once to the service log")
+                for handler in configured_logger.handlers:
+                    handler.flush()
+
+            self.assertEqual(len(configured_logger.handlers), 1)
+            self.assertIsInstance(
+                configured_logger.handlers[0],
+                RotatingFileHandler,
+            )
+            self.assertNotIn("written once to the service log", stderr.getvalue())
+            self.assertEqual(
+                log_file.read_text(encoding="utf-8").count(
+                    "written once to the service log"
+                ),
+                1,
+            )
+        finally:
+            for handler in list(logger.handlers):
+                logger.removeHandler(handler)
+                handler.close()
+            temp_dir.cleanup()
+
     def test_configure_logger_replaces_previous_log_file_handler(self):
         from qcopilots_common.logging import configure_logger
 

@@ -1,2 +1,2 @@
-# Runtime dependencies installed by the QCopilots uv launcher.
-pyyaml==6.0.2
+# Runtime dependencies are provided by the packaged QGIS Python environment.
+# PyYAML 6.0.3 or newer is supplied and verified by that environment.
